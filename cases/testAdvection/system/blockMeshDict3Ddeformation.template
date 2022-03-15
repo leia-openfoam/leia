@@ -10,57 +10,52 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    location    "system";
-    object      fvSolution;
+    object      blockMeshDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-solvers
-{
-    psi 
+scale   1;
+
+vertices
+(
+    (0 0 0)
+    (1 0 0)
+    (1 1 0)
+    (0 1 0)
+    (0 0 1)
+    (1 0 1)
+    (1 1 1)
+    (0 1 1)
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) (@!N_CELLS!@ @!N_CELLS!@ @!N_CELLS!@) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    wall 
     {
-        solver          PBiCGStab;
-        preconditioner  DILU;
-        tolerance       1e-10;
-        relTol          0;
+        type wall;
+        faces
+        (
+            (3 7 6 2)
+            (0 4 7 3)
+            (2 6 5 1)
+            (1 5 4 0)
+            (0 3 2 1)
+            (4 5 6 7)
+        );
     }
-}
+);
 
-PISO
-{
-    nCorrectors     -1; // Disables p-v coupling.
-    nNonOrthogonalCorrectors 0;
-    pRefCell        0;
-    pRefValue       0;
-}
-
-velocityModel
-{
-    type rotation; 
-    omega (1 0 0);
-    point (0.5 0.5 0.5);
-    oscillation off;
-}
-
-levelSet
-{
-    implicitSurface 
-    {
-        type slottedSphere; 
-        minSlotCorner (0.2 0.475 0.2);
-        maxSlotCorner (0.8 0.525 0.735);
-    }
-
-    phaseIndicator
-    {
-        type geometric;
-    }
-
-    redistancer 
-    {
-        type noRedistancing;
-    }
-}
-
+mergePatchPairs
+(
+);
 
 // ************************************************************************* //

@@ -11,56 +11,40 @@ FoamFile
     format      ascii;
     class       dictionary;
     location    "system";
-    object      fvSolution;
+    object      controlDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-solvers
-{
-    psi 
-    {
-        solver          PBiCGStab;
-        preconditioner  DILU;
-        tolerance       1e-10;
-        relTol          0;
-    }
-}
+application     leiaLevelSetFoam;
 
-PISO
-{
-    nCorrectors     -1; // Disables p-v coupling.
-    nNonOrthogonalCorrectors 0;
-    pRefCell        0;
-    pRefValue       0;
-}
+startFrom       startTime;
 
-velocityModel
-{
-    type rotation; 
-    omega (1 0 0);
-    point (0.5 0.5 0.5);
-    oscillation off;
-}
+startTime       0;
 
-levelSet
-{
-    implicitSurface 
-    {
-        type slottedSphere; 
-        minSlotCorner (0.2 0.475 0.2);
-        maxSlotCorner (0.8 0.525 0.735);
-    }
+stopAt          endTime;
 
-    phaseIndicator
-    {
-        type geometric;
-    }
+endTime         @!END_TIME!@;
 
-    redistancer 
-    {
-        type noRedistancing;
-    }
-}
+timeStep #calc "@!END_TIME!@ / floor(@!END_TIME!@ / ( 1. / @!N_CELLS!@))"; 
 
+deltaT          $timeStep; 
+
+writeControl    timeStep;
+
+writeInterval   #calc "floor(0.1 * @!END_TIME!@ / $timeStep)";
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  12;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
 
 // ************************************************************************* //
