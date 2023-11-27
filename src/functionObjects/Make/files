@@ -2,5 +2,6 @@ writeIsoSurfaceTopo/writeIsoSurfaceTopo.C
 gradPsiError/gradPsiError.C
 gradPsiErrorCSV/gradPsiErrorCSV.C
 tvErrorCSV/tvErrorCSV.C
+contactPoint/contactPoint.C
 
 LIB = $(FOAM_USER_LIBBIN)/libleiaFunctionObjects

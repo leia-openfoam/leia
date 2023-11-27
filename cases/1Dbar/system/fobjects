@@ -1,0 +1,81 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2206                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+functions
+{
+    gradPsi
+    {
+        type            grad;
+        libs            ( fieldFunctionObjects );
+        field           psi;
+        result          gradPsi;
+        writeControl    timeStep;
+    }
+    kappa
+    {
+        type coded;
+        libs (utilityFunctionObjects);
+
+        // Name of on-the-fly generated functionObject
+        name            kappa;
+        writeControl    timeStep;
+//        enabled         false;
+        codeWrite
+        #{
+            // Lookup psi
+            const volScalarField& psi = mesh().lookupObject<volScalarField>("psi");
+            // Calc kappa
+            const volVectorField gradPsi = fvc::grad(psi);
+            const volVectorField normal = volVectorField("normal", gradPsi/(mag(gradPsi) + SMALL));
+            const volScalarField kappa = volScalarField("kappa", -fvc::div(normal));
+
+            // Write
+            normal.write();
+            kappa.write();
+        #};
+    }
+    kappaFix
+    {
+        type coded;
+        libs (utilityFunctionObjects);
+
+        // Name of on-the-fly generated functionObject
+        name            kappaFix;
+        writeControl    timeStep;
+        enabled         false;
+        codeWrite
+        #{
+            // Lookup psi
+            const volScalarField& psi = mesh().lookupObject<volScalarField>("psi");
+            // Calc kappa
+            const volVectorField gradPsi = fvc::grad(psi);
+            volVectorField normal = gradPsi/mag(gradPsi);
+
+            const label patchID_ = mesh().boundary().findPatchID("bottom");
+            const fvPatch& patch_ = mesh().boundary()["bottom"];
+
+            normal.boundaryFieldRef().set(patchID_, fvPatchField<vector>::New("oneSidedGradient", patch_, normal));
+            normal.boundaryFieldRef().evaluate();
+            const volScalarField kappa = volScalarField("kappaFix", -fvc::div(normal));
+
+            // Write
+            kappa.write();
+        #};
+    }
+    magGradPsi
+    {
+        type            mag;
+        libs            (fieldFunctionObjects);
+        field           gradPsi;
+        result          magGradPsi;
+        writeControl    timeStep;
+    }
+}
+
+
+// ************************************************************************* //
