@@ -28,6 +28,43 @@ License
 #include "sdplsBeta.H"
 #include "addToRunTimeSelectionTable.H"
 
+// * * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * * //
+ 
+namespace Foam
+{
+
+static scalar etaCutoff(const scalar val, const scalar b)
+{
+    if (val <= b)
+    {
+        return 1;
+    }
+    else if (val > b)
+    {
+        return 0;
+    }
+    else
+    {
+        return 0.5*cos((val-2*b)*constant::mathematical::pi) + 0.5;
+    }
+} 
+
+static scalar psiCutoff(const scalar psi)
+{
+    scalar ib = 0.5;    // inner bound
+    scalar ob = 1;      // outer bound
+    if (mag(psi) < ib)
+        return 1;
+    else if (mag(psi) < ob)
+        return 0.5*cos((psi - ib)*(constant::mathematical::pi)/(ob-ib)) + 0.5;
+    else
+        return 0;
+} 
+
+
+} // End namespace Foam
+
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -40,7 +77,10 @@ namespace Foam
 Foam::sdplsBeta::sdplsBeta(const dictionary& dict, const fvMesh& mesh)
     :
         sdplsSource(dict, mesh),
-        beta_(dict.get<scalar>("beta"))
+        alpha_(dict.getOrDefault<scalar>("alpha", -1)),
+        beta_(dict.get<scalar>("beta")),
+        etaCutoff_(dict.getOrDefault<bool>("etaCutoff", false)),
+        psiCutoff_(dict.getOrDefault<bool>("psiCutoff", false))
 {}
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
@@ -56,7 +96,7 @@ nonLinearPart
 {
     const fvMesh& mesh = psi.mesh();
 
-    return tmp<volScalarField>
+    tmp<volScalarField> tfield
     (
         new volScalarField
         (
@@ -73,9 +113,28 @@ nonLinearPart
             *(beta_ - mag(grad(psi)))
         )
     );
+
+    if (etaCutoff_ && alpha_ != -1)
+    {
+        const volScalarField maggradPsi = mag(grad(psi));
+        forAll(tfield(), ID)
+        {
+            tfield.ref()[ID] *= etaCutoff(maggradPsi[ID], beta_ + alpha_);        
+        }
+        
+    }
+    if (psiCutoff_)
+    {
+        forAll(tfield(), ID)
+        {
+            tfield.ref()[ID] *= psiCutoff(psi[ID]);        
+        }
+        
+    }
+
+    return tfield;
 }
 
-// ************************************************************************* //
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

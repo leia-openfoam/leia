@@ -1,0 +1,53 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2206                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+functions
+{
+    writeIsoSurfaceTopo
+    {
+        type            writeIsoSurfaceTopo;
+        libs            ( fieldFunctionObjects leiaFunctionObjects );
+        enabled         false;
+    }
+    gradPsiError
+    {
+        type            gradPsiError;
+        libs            ( fieldFunctionObjects leiaFunctionObjects );
+        field           psi;
+        result          gradPsiError;
+        writeControl    writeTime;
+    }
+    gradPsi
+    {
+        type            grad;
+        libs            ( fieldFunctionObjects );
+        field           psi;
+        result          gradPsi;
+        writeControl    timeStep;
+        //writeControl    writeTime;
+    }
+    magGradPsi
+    {
+        type            mag;
+        libs            ( fieldFunctionObjects );
+        field           gradPsi;
+        result          magGradPsi;
+        writeControl    timeStep;
+        //writeControl    writeTime;
+    }
+    gradPsiErrorCSV
+    {
+        type            gradPsiErrorCSV;
+        libs            ( leiaFunctionObjects );
+        writeControl    timeStep;
+        field           gradPsiError;
+    }
+}
+
+
+// ************************************************************************* //

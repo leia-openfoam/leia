@@ -1,0 +1,82 @@
+values
+{
+ 	solver (leiaLevelSetFoam);
+	
+	CFL	( 0.5 );
+
+	N_CELLS
+	(
+		101 
+		201 
+		401
+	);
+		
+	SOURCE_SCHEME
+	(
+		simpleLinearImplicit 
+	);
+
+	MOLLIFIER
+	(
+		none
+	);
+
+    BETA
+    (
+        5
+        6
+        6.283185307179586
+        6.5
+        7.5
+    );
+	
+    ETA_CUTOFF
+    (
+        false;
+        true;
+    );
+
+    PSI_CUTOFF
+    (
+        false;
+        true;
+    );
+
+	SDPLS_SOURCE
+	(
+		noSource
+		R
+        beta
+	);
+    
+	NEIGHBOURS
+	(
+		5
+	);
+
+	NARROWBAND
+	(
+		signChange
+	);
+	
+	BC
+	(
+		zeroGradient
+	);
+	
+	DIV
+	(
+		$LinearUpwind
+        upwind
+	);
+	
+	TANH_LIMIT
+	(
+		0.1
+	);
+
+	PROFILE
+	(
+		signedDistance 
+	);
+}

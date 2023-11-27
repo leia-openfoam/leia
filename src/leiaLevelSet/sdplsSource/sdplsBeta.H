@@ -80,7 +80,11 @@ public:
 
     // Data Members
 
+    const scalar alpha_;
     const scalar beta_;
+
+    const bool etaCutoff_;
+    const bool psiCutoff_;
 
     // Constructors
         
