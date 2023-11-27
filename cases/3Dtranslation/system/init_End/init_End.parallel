@@ -4,6 +4,8 @@ readonly SCRIPT_PATH=$(realpath "${BASH_SOURCE[0]}")
 readonly SUPPORT_CASE="$(dirname $SCRIPT_PATH)"
 readonly CASE="$(realpath $SUPPORT_CASE/../../)"
 
+. ${WM_PROJECT_DIR}/bin/tools/RunFunctions
+
 if [[ ! -d "$CASE/0" ]]; then
   echo "0/ directory is missing in $CASE"
   exit 1
@@ -24,7 +26,7 @@ function rename() {
 
 set -e
 cd "$SUPPORT_CASE"
-cp -a 0.org 0
+restore0Dir
 leiaSetFields 
 rename psi
 rename alpha
