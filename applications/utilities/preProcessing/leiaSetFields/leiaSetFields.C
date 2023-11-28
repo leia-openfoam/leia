@@ -96,17 +96,6 @@ int main(int argc, char *argv[])
     alpha.write();
 
 
-    { // Write functionObjects with writeControl=timeStep at time 0
-        functionObjectList& fobjects = runTime.functionObjects();
-        fobjects.start();
-        fobjects.execute();
-        // forAll(fobjects, ID)
-        // {
-        //     fobjects[ID].write();
-        // }
-    }
-
-
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     // Checking the marker field convergence.
