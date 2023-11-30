@@ -1,6 +1,5 @@
 writeIsoSurfaceTopo/writeIsoSurfaceTopo.C
 gradPsiError/gradPsiError.C
 gradPsiErrorCSV/gradPsiErrorCSV.C
-tvErrorCSV/tvErrorCSV.C
 
 LIB = $(FOAM_USER_LIBBIN)/libleiaFunctionObjects
