@@ -135,59 +135,16 @@ int main(int argc, char *argv[])
             velocityModel->oscillateVelocity(U, U0, phi, phi0, runTime);
         }
 
-        if (!source->iterative())
-        {
-            fvScalarMatrix psiEqn
-            (
-                fvm::ddt(psi)
-                + fvm::div(phi, psi)
-            ==
-                // fvm::sdplsSource(psi, U)
-                source->fvmsdplsSource(psi, U)
-            );
+        fvScalarMatrix psiEqn
+        (
+            fvm::ddt(psi)
+            + fvm::div(phi, psi)
+        ==
+            source->fvmsdplsSource(psi, U)
+        );
 
-            psiEqn.solve();
-        }
-        else
-        {
-            scalarField sdpls0 = scalarField(psi.size());
-            scalar sdplsChange = 9999;
-
-            uint i = 0;
-            while (!std::isnan(sdplsChange) && sdplsChange > 1e-6 && i < source->maxIterations())
-            {
-                fvScalarMatrix psiEqn
-                (
-                    fvm::ddt(psi)
-                    + fvm::div(phi, psi)
-                ==
-                    // fvm::sdplsSource(psi, U)
-                    source->fvmsdplsSource(psi, U)
-                );
-
-                psiEqn.solve();
-
-                fvScalarMatrix sdplsEqn = source->fvmsdplsSource(psi, U);
-                sdplsEqn.lower() = scalarField(psi.size());
-                sdplsEqn.upper() = scalarField(psi.size());
-                sdplsEqn.psi() == psi;
-
-                scalarField sdpls = sdplsEqn.residual();
-                sdplsChange = gSum(mag(sdpls - sdpls0));
-                sdpls0 = sdpls;
-                ++i;
-
-                Info    << "Evaluating SDPLS source iterative "
-                        << ":  Iteration change = " << sdplsChange
-                        << endl;
-            }
-            Info    << "Evaluating SDPLS source iterative "
-                    << ":  Final iteration change = " << sdplsChange
-                    << ", No Iterations " << i
-                    << endl;
-
-        }
-
+        psiEqn.solve();
+        
         redist->redistance(psi);
         
         phaseInd->calcPhaseIndicator(alpha, psi);
@@ -209,10 +166,10 @@ int main(int argc, char *argv[])
         
 
         // CFL based deltaT setting
-    if (runTime.controlDict().getOrDefault<bool>("adjustTimeStep", false))
-    {
-        runTime.setDeltaT(maxDeltaT(phi, runTime.controlDict()), false);
-    }
+        if (runTime.controlDict().getOrDefault<bool>("adjustTimeStep", false))
+        {
+            runTime.setDeltaT(maxDeltaT(phi, runTime.controlDict()), false);
+        }
 
         // if last timestep would overshoot endTime, set deltaT
         if ((runTime.endTime() - runTime) < runTime.deltaT())

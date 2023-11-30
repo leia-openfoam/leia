@@ -15,16 +15,11 @@ surfaceTensionForce/correctionKang.C
 
 sdplsSource/sdplsSource.C
 sdplsSource/sdplsR.C
-sdplsSource/sdplsRLin.C
-sdplsSource/sdplsRQuad.C
-sdplsSource/sdplsQuad.C
-sdplsSource/sdplsLin.C
 sdplsSource/sdplsBeta.C
 sdplsSource/discretization/discretization.C
 sdplsSource/discretization/explicitDiscretization.C
 sdplsSource/discretization/simpleLinearImplicit.C
 sdplsSource/discretization/strictNegativeSpLinearImplicit.C
-sdplsSource/discretization/iterativeImplicit.C
 sdplsSource/mollifier/mollifier.C
 sdplsSource/mollifier/mollifier1.C
 sdplsSource/gradPsi/gradPsi.C
