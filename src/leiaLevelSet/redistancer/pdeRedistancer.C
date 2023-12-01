@@ -32,6 +32,42 @@ License
 #include "fvm.H"
 #include "fvc.H"
 
+// * * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * * //
+ 
+namespace Foam
+{
+
+static tmp<volScalarField> mysign(const volScalarField& field)
+{
+    tmp<volScalarField> tfield
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                word(),
+                fileName(),
+                field.mesh(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE,
+                false
+            ),
+            field.mesh(),
+            dimensionedScalar(dimless, 0.0)
+        )
+    );
+
+    forAll(field, ID)
+    {
+        tfield.ref()[ID] = Foam::sign(field[ID]);
+    }
+
+    return tfield;
+} 
+
+
+} // End namespace Foam
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -96,7 +132,6 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
         Foam::IOobject
         (
         "psi_p",
-        //psi.name(),
         pseudoTime.timeName(),
         mesh_p,
         IOobject::NO_READ,
@@ -104,6 +139,10 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
         ),
         psi
     );
+
+    auto spsi = sign(psi);
+
+    auto my_spsi = mysign(psi);
 
     fvScalarMatrix redistanceEqn
     (
