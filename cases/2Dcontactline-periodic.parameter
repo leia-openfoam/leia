@@ -1,83 +1,78 @@
 values
 {
- 	solver (leiaLevelSetFoam);
-	
-	CFL	( 0.5 );
+     solver (leiaLevelSetFoam);
+    
+    CFL    ( 0.5 );
 
-	N_CELLS
-	(
-		100 
-		200 
-		400
-	);
-		
-	SOURCE_SCHEME
-	(
-		explicit 
-		simpleLinearImplicit 
-		strictNegativeSpLinearImplicit
-	);
+    N_CELLS
+    (
+        100 
+        200 
+        400
+    );
+        
+    SOURCE_SCHEME
+    (
+        explicit 
+        simpleLinearImplicit 
+        strictNegativeSpLinearImplicit
+    );
 
-	MOLLIFIER
-	(
-		none
-		m1
-	);
+    MOLLIFIER
+    (
+        none
+        m1
+    );
 
-	SDPLS_SOURCE
-	(
-		noSource
-		R
-		Rlin
-		Rquad
-		lin
-		quad
-	);
-	
-	NEIGHBOURS
-	(
-		5
-		10
-	);
+    SDPLS_SOURCE
+    (
+        noSource
+        R
+        beta
+    );
+    
+    NEIGHBOURS
+    (
+        5
+        10
+    );
 
-	NARROWBAND
-	(
-		signChange
-		neighbours
-		distance
-	);
-	
-	BC
-	(
-		zeroGradient
-		explicitGradient
-		explicitMag1Gradient
-	);
-	
-	DIV
-	(
-		linear
-		$LinearUpwind
-		vanLeer
-		$Gamma1
-		MUSCL 
-		Minmod
-		OSPRE 
-		SFCD
-		SuperBee
-		UMIST
-		vanAlbada 
-    upwind
-	);
-	
-	TANH_LIMIT
-	(
-		0.1
-	);
+    NARROWBAND
+    (
+        signChange
+        neighbours
+        distance
+    );
+    
+    BC
+    (
+        zeroGradient
+    );
+    
+    DIV
+    (
+        linear
+        $LinearUpwind
+        vanLeer
+        $Gamma1
+        MUSCL 
+        Minmod
+        OSPRE 
+        SFCD
+        SuperBee
+        UMIST
+        vanAlbada 
+        upwind
+    );
+    
+    TANH_LIMIT
+    (
+        0.1
+    );
 
-	PROFILE
-	(
-		signedDistance 
-		tanh
-	);
+    PROFILE
+    (
+        signedDistance 
+        tanh
+    );
 }
