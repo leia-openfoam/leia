@@ -10,60 +10,56 @@ values
     (
         32 64 128
     );
-		
-	SOURCE_SCHEME
-	(
-		R
-	);
-	
-	SOURCE_SCHEME
+        
+    SOURCE_SCHEME
+    (
+        R
+    );
+    
+    SOURCE_SCHEME
 
-	SDPLS_SOURCE
-	(
-		noSource
-		R
-		Rlin
-		Rquad
-		lin
-		quad
-	);
-	(
-		none 
-		explicit 
-		simpleLinearImplicit 
-		strictNegativeSpLinearImplicit
-	);
-	
-	BC
-	(
-		zeroGradient
-		explicitGradient
-		explicitMag1Gradient
-	);
-	
-	DIV
-	(
-		linear
-		$LinearUpwind
-		vanLeer
-		$Gamma1
-		MUSCL 
-		Minmod
-		OSPRE 
-		SFCD
-		SuperBee
-		UMIST
-		vanAlbada 
-	);
-	
-	TANH_LIMIT
-	(
-		0.1
-	);
+    SDPLS_SOURCE
+    (
+        noSource
+        R
+        beta
+    );
+    (
+        none 
+        explicit 
+        simpleLinearImplicit 
+        strictNegativeSpLinearImplicit
+    );
+    
+    BC
+    (
+        zeroGradient
+    );
+    
+    DIV
+    (
+        linear
+        $LinearUpwind
+        vanLeer
+        $Gamma1
+        MUSCL 
+        Minmod
+        OSPRE 
+        SFCD
+        SuperBee
+        UMIST
+        vanAlbada 
+        upwind
+    );
+    
+    TANH_LIMIT
+    (
+        0.1
+    );
 
-	PROFILE
-	(
-		signedDistance 
-		tanh
-	);
+    PROFILE
+    (
+        signedDistance 
+        tanh
+    );
 }
