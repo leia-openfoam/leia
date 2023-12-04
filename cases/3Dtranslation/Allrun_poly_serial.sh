@@ -4,7 +4,7 @@
 
 set -o verbose
 
-restore0Dir  
+rm -rf 0 && cp -r 0.org 0  
 touch "$(basename ${PWD}).foam" && \
 set -o errexit
 pMesh
