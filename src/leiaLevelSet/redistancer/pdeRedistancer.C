@@ -112,8 +112,6 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
     // Foam::autoPtr<Foam::Time> pseudoTime_ptr = Foam::Time::New();
     // Time& pseudoTime = pseudoTime_ptr.ref();
 
-
-
     Foam::fvMesh mesh_p
         (
             Foam::IOobject
@@ -133,22 +131,25 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
         (
         "psi_p",
         pseudoTime.timeName(),
-        mesh_p,
+        pseudoTime,
         IOobject::NO_READ,
         IOobject::NO_WRITE
         ),
-        psi
+        mesh_p,
+        psi.dimensions()
     );
 
-    auto spsi = sign(psi);
-
-    auto my_spsi = mysign(psi);
+    forAll(psi, ID)
+    {
+        psi_p[ID] = psi[ID];
+    }
 
     fvScalarMatrix redistanceEqn
     (
         fvm::ddt(psi_p)
     ==
-        sign(psi)*(1 - mag(fvc::grad(psi_p)))
+        sign(psi)*
+        (1 - mag(fvc::grad(psi_p)))
         *dimensioned<scalar>(dimLength/dimTime, 1.0)
     );
 
@@ -156,7 +157,11 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
 
     redistanceEqn.solve(solverControls);
 
-    psi == psi_p;
+    // psi == psi_p; // Won't work: Different meshes
+    forAll(psi, ID)
+    {
+        psi[ID] = psi_p[ID];
+    }
 }
 
 
