@@ -27,86 +27,12 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "noBvGrad.H"
-#include "extrapolatedCalculatedFvPatchField.H"
+
+// #include "extrapolatedCalculatedFvPatchField.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-template<class Type>
-Foam::tmp
-<
-    Foam::GeometricField
-    <
-        typename Foam::outerProduct<Foam::vector, Type>::type,
-        Foam::fvPatchField,
-        Foam::volMesh
-    >
->
-Foam::fv::noBvGrad<Type>::gradf
-(
-    const GeometricField<Type, fvsPatchField, surfaceMesh>& ssf,
-    const word& name
-)
-{
-    typedef typename outerProduct<vector, Type>::type GradType;
-    typedef GeometricField<GradType, fvPatchField, volMesh> GradFieldType;
 
-    const fvMesh& mesh = ssf.mesh();
-
-    tmp<GradFieldType> tgGrad
-    (
-        new GradFieldType
-        (
-            IOobject
-            (
-                name,
-                ssf.instance(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh,
-            dimensioned<GradType>(ssf.dimensions()/dimLength, Zero),
-            extrapolatedCalculatedFvPatchField<GradType>::typeName
-        )
-    );
-    GradFieldType& gGrad = tgGrad.ref();
-
-    const labelUList& owner = mesh.owner();
-    const labelUList& neighbour = mesh.neighbour();
-    const vectorField& Sf = mesh.Sf();
-
-    Field<GradType>& igGrad = gGrad;
-    const Field<Type>& issf = ssf;
-
-    forAll(owner, facei)
-    {
-        const GradType Sfssf = Sf[facei]*issf[facei];
-
-        igGrad[owner[facei]] += Sfssf;
-        igGrad[neighbour[facei]] -= Sfssf;
-    }
-
-    forAll(mesh.boundary(), patchi)
-    {
-        const labelUList& pFaceCells =
-            mesh.boundary()[patchi].faceCells();
-
-        const vectorField& pSf = mesh.Sf().boundaryField()[patchi];
-
-        const fvsPatchField<Type>& pssf = ssf.boundaryField()[patchi];
-
-        forAll(mesh.boundary()[patchi], facei)
-        {
-            igGrad[pFaceCells[facei]] += pSf[facei]*pssf[facei];
-        }
-    }
-
-    igGrad /= mesh.V();
-
-    gGrad.correctBoundaryConditions();
-
-    return tgGrad;
-}
 
 
 template<class Type>
@@ -128,48 +54,17 @@ Foam::fv::noBvGrad<Type>::calcGrad
     typedef typename outerProduct<vector, Type>::type GradType;
     typedef GeometricField<GradType, fvPatchField, volMesh> GradFieldType;
 
-    tmp<GradFieldType> tgGrad
-    (
-        gradf(tinterpScheme_().interpolate(vsf), name)
-    );
-    GradFieldType& gGrad = tgGrad.ref();
+    tmp<GradFieldType> tgGrad;
+    // (
+    //     gradf(tinterpScheme_().interpolate(vsf), name)
+    // );
+    // GradFieldType& gGrad = tgGrad.ref();
 
-    correctBoundaryConditions(vsf, gGrad);
+    // correctBoundaryConditions(vsf, gGrad);
 
     return tgGrad;
 }
 
-
-template<class Type>
-void Foam::fv::noBvGrad<Type>::correctBoundaryConditions
-(
-    const GeometricField<Type, fvPatchField, volMesh>& vsf,
-    GeometricField
-    <
-        typename outerProduct<vector, Type>::type, fvPatchField, volMesh
-    >& gGrad
-)
-{
-    auto& gGradbf = gGrad.boundaryFieldRef();
-
-    forAll(vsf.boundaryField(), patchi)
-    {
-        if (!vsf.boundaryField()[patchi].coupled())
-        {
-            const vectorField n
-            (
-                vsf.mesh().Sf().boundaryField()[patchi]
-              / vsf.mesh().magSf().boundaryField()[patchi]
-            );
-
-            gGradbf[patchi] += n *
-            (
-                vsf.boundaryField()[patchi].snGrad()
-              - (n & gGradbf[patchi])
-            );
-        }
-     }
-}
 
 
 // ************************************************************************* //

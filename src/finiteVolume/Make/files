@@ -1,6 +1,6 @@
 
 gradSchemes = finiteVolume/gradSchemes
-$(gradSchemes)/noBvGrad/noBvGrad.C
+$(gradSchemes)/noBvGrad/noBvGrads.C
 
 
 LIB = $(FOAM_USER_LIBBIN)/libleiafiniteVolume
