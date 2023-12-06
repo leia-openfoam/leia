@@ -77,6 +77,8 @@ namespace Foam {
         vector position_; 
         vector normal_; 
 
+        scalar gradient_;
+
         public:
 
             TypeName ("implicitPlane");
