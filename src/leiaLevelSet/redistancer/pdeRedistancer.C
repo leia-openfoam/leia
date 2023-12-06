@@ -32,43 +32,6 @@ License
 #include "fvm.H"
 #include "fvc.H"
 
-// * * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * * //
- 
-namespace Foam
-{
-
-static tmp<volScalarField> mysign(const volScalarField& field)
-{
-    tmp<volScalarField> tfield
-    (
-        new volScalarField
-        (
-            IOobject
-            (
-                word(),
-                fileName(),
-                field.mesh(),
-                IOobject::NO_READ,
-                IOobject::NO_WRITE,
-                false
-            ),
-            field.mesh(),
-            dimensionedScalar(dimless, 0.0)
-        )
-    );
-
-    forAll(field, ID)
-    {
-        tfield.ref()[ID] = Foam::sign(field[ID]);
-    }
-
-    return tfield;
-} 
-
-
-} // End namespace Foam
-
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -83,7 +46,8 @@ addToRunTimeSelectionTable(redistancer, pdeRedistancer, Mesh);
 
 Foam::pdeRedistancer::pdeRedistancer(const fvMesh& mesh)
     :
-        redistancer(mesh)
+        redistancer(mesh),
+        ninterations_(redistDict_.getOrDefault<uint>("niterations",10))
 {}
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
@@ -94,9 +58,9 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
 
     pseudoTime_controlDict.add("startTime", 0);
     pseudoTime_controlDict.add("deltaT", 1);
-    pseudoTime_controlDict.add("endTime", 4);
+    pseudoTime_controlDict.add("endTime", ninterations_);
     pseudoTime_controlDict.add("writeControl", "timeStep");
-    pseudoTime_controlDict.add("writeInterval", 1000);
+    pseudoTime_controlDict.add("writeInterval", ninterations_+1);
     pseudoTime_controlDict.add("log", 2);
 
     const Time& runTime = psi.mesh().time(); 
@@ -143,19 +107,22 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
     {
         psi_p[ID] = psi[ID];
     }
-
-    fvScalarMatrix redistanceEqn
-    (
-        fvm::ddt(psi_p)
-    ==
-        sign(psi)*
-        (1 - mag(fvc::grad(psi_p)))
-        *dimensioned<scalar>(dimLength/dimTime, 1.0)
-    );
-
+    
     dictionary const& solverControls = fvSolution_.subDict("solvers").subDict(psi.name());
 
-    redistanceEqn.solve(solverControls);
+    while(pseudoTime.run())
+    {
+        ++pseudoTime;
+        fvScalarMatrix redistanceEqn
+        (
+            fvm::ddt(psi_p)
+        ==
+            sign(psi)*
+            (1 - mag(fvc::grad(psi_p)))
+            *dimensioned<scalar>(dimLength/dimTime, 1.0)
+        );
+        redistanceEqn.solve(solverControls);
+    }
 
     // psi == psi_p; // Won't work: Different meshes
     forAll(psi, ID)

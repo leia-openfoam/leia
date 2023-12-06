@@ -51,6 +51,10 @@ class pdeRedistancer
 :
     public redistancer
 {
+private:
+    // Data Members
+
+    uint ninterations_;
 
 public:
 
