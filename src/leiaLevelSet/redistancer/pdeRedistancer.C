@@ -100,7 +100,8 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
         IOobject::NO_WRITE
         ),
         mesh_p,
-        psi.dimensions()
+        psi.dimensions(),
+        "extrapolatedCalculated"
     );
 
     forAll(psi, ID)

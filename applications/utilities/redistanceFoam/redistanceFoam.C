@@ -63,9 +63,9 @@ int main(int argc, char *argv[])
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 
-    Foam::fv::EulerDdtScheme<scalar> scheme = Foam::fv::EulerDdtScheme<scalar>(mesh);
-    tmp<fvScalarMatrix> tmatrix = scheme.fvmDdt(psi);
-    // fvScalarMatrix rEqn = fvm::ddt(psi);
+    volVectorField gradPsi = fvc::grad(psi);
+    gradPsi.rename("gradPsi");
+    gradPsi.write();
 
     redist->redistance(psi);
         
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 
     psi.write();
 
-    volVectorField gradPsi = fvc::grad(psi);
+    gradPsi = fvc::grad(psi);
     gradPsi.rename("gradPsi");
     gradPsi.write();
 
