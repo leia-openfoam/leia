@@ -54,13 +54,7 @@ Foam::fv::noBvGrad<Type>::calcGrad
     typedef typename outerProduct<vector, Type>::type GradType;
     typedef GeometricField<GradType, fvPatchField, volMesh> GradFieldType;
 
-    tmp<GradFieldType> tgGrad;
-    // (
-    //     gradf(tinterpScheme_().interpolate(vsf), name)
-    // );
-    // GradFieldType& gGrad = tgGrad.ref();
-
-    // correctBoundaryConditions(vsf, gGrad);
+    tmp<GradFieldType> tgGrad = tinnerGradScheme_().calcGrad(vsf, name);
 
     return tgGrad;
 }

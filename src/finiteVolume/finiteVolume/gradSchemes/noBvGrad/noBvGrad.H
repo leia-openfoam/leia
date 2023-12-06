@@ -43,8 +43,6 @@ SourceFiles
 
 #include "gradScheme.H"
 #include "gaussGrad.H"
-// #include "surfaceInterpolationScheme.H"
-// #include "linear.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
