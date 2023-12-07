@@ -62,11 +62,14 @@ template<class Type>
 class noBvGrad
 :
     public fv::gradScheme<Type>
+    // public  fv::leastSquaresGrad<Type>
 {
+private:
     // Private Data
 
         tmp<fv::gradScheme<Type>> tinnerGradScheme_;
 
+        // tmp<fv::leastSquaresGrad<Type>> tlsGradScheme_;
 
     // Private Member Functions
 
@@ -75,6 +78,16 @@ class noBvGrad
 
         //- No copy assignment
         void operator=(const noBvGrad&) = delete;
+
+        tmp
+        <
+            GeometricField
+            <typename outerProduct<vector, Type>::type, fvPatchField, volMesh>
+        > modified_leastSquaresGrad_calcGrad
+        (
+            const GeometricField<Type, fvPatchField, volMesh>& vsf,
+            const word& name
+        ) const;
 
 
 public:
@@ -90,6 +103,7 @@ public:
         :
             gradScheme<Type>(mesh),
             tinnerGradScheme_(new gaussGrad<Type>(mesh))
+            // tlsGradScheme_(new leastSquaresGrad<Type>(mesh))
         {}
 
         //- Construct from mesh and Istream
@@ -97,6 +111,7 @@ public:
         :
             gradScheme<Type>(mesh),
             tinnerGradScheme_(nullptr)
+            // tlsGradScheme_(new leastSquaresGrad<Type>(mesh))
         {
             if (is.eof())
             {
