@@ -5,8 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011-2016 OpenFOAM Foundation
-    Copyright (C) 2018-2021 OpenCFD Ltd.
+    Copyright (C) 2023 Julian Reitzel, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -31,7 +30,11 @@ Group
     grpFvGradSchemes
 
 Description
-
+    Gradient scheme that decorates another gradient scheme. For the internal
+    field, the decorated scheme is used to calculate the gradient. At the 
+    boundary cells, a least-squares gradient calculation is used without the 
+    influence of boundary surfaces. For level set fields this scheme can be 
+    useful.
 
 SourceFiles
     noBvGrad.C
@@ -62,14 +65,11 @@ template<class Type>
 class noBvGrad
 :
     public fv::gradScheme<Type>
-    // public  fv::leastSquaresGrad<Type>
 {
 private:
     // Private Data
 
         tmp<fv::gradScheme<Type>> tinnerGradScheme_;
-
-        // tmp<fv::leastSquaresGrad<Type>> tlsGradScheme_;
 
     // Private Member Functions
 
@@ -103,7 +103,6 @@ public:
         :
             gradScheme<Type>(mesh),
             tinnerGradScheme_(new gaussGrad<Type>(mesh))
-            // tlsGradScheme_(new leastSquaresGrad<Type>(mesh))
         {}
 
         //- Construct from mesh and Istream
@@ -111,7 +110,6 @@ public:
         :
             gradScheme<Type>(mesh),
             tinnerGradScheme_(nullptr)
-            // tlsGradScheme_(new leastSquaresGrad<Type>(mesh))
         {
             if (is.eof())
             {

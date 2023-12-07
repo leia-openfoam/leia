@@ -5,8 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011-2016 OpenFOAM Foundation
-    Copyright (C) 2018-2021 OpenCFD Ltd.
+    Copyright (C) 2023 Julian Reitzel, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -23,6 +22,28 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
+Implementation details
+    calcGrad() delegates to the decorated gradient scheme. The gradients at 
+    boundary cells are overwritten by modified least squares gradients.
+    To compute least squares gradients that do not include contributions from
+    boundary cells, these rows must be eliminated from the overestimated linear
+    algebraic system. Contributions appear in the 
+    \f$ (\boldsymbol{d}^T \boldsymbol{d})^{-1} \boldsymbol{d}^T \f$
+    vector and on the right.
+    Therefore, the class modified_leastSquaresVectors is introduced. It is 
+    identical to the OpenFOAM built-in class leastSquaresVectors, except that 
+    the function calcLeastSquaresVectors skips boundary faces to exclude 
+    contributions to the vector. The function 
+    modified_leastSquaresGrad_calcGrad() calculates least squares gradients 
+    like the original, but skips boundary faces to modify the right side as 
+    mentioned above.
+
+    \f{equation}{ 
+    (\nabla T)_P 
+        = (\boldsymbol{d}^T \boldsymbol{d})^{-1} \boldsymbol{d}^T 
+        (\boldsymbol{T}_N - \boldsymbol{T}_P)
+    \f} 
 
 \*---------------------------------------------------------------------------*/
 
@@ -77,27 +98,29 @@ class modified_leastSquaresVectors
                 dd[nei] += wdd;
             }
 
+            // Skip boundary faces
+            /*
+            surfaceVectorField::Boundary& blsP =
+                pVectors_.boundaryFieldRef();
 
-            // surfaceVectorField::Boundary& blsP =
-            //     pVectors_.boundaryFieldRef();
+            forAll(blsP, patchi)
+            {
+                const fvsPatchVectorField& patchLsP = blsP[patchi];
 
-            // forAll(blsP, patchi)
-            // {
-            //     const fvsPatchVectorField& patchLsP = blsP[patchi];
+                const fvPatch& p = patchLsP.patch();
+                const labelUList& faceCells = p.patch().faceCells();
 
-            //     const fvPatch& p = patchLsP.patch();
-            //     const labelUList& faceCells = p.patch().faceCells();
+                // Build the d-vectors
+                const vectorField pd(p.delta());
 
-            //     // Build the d-vectors
-            //     const vectorField pd(p.delta());
+                forAll(pd, patchFacei)
+                {
+                    const vector& d = pd[patchFacei];
 
-            //     forAll(pd, patchFacei)
-            //     {
-            //         const vector& d = pd[patchFacei];
-
-            //         dd[faceCells[patchFacei]] += sqr(d)/magSqr(d);
-            //     }
-            // }
+                    dd[faceCells[patchFacei]] += sqr(d)/magSqr(d);
+                }
+            }
+            */
 
 
             // Invert the dd tensor
@@ -116,23 +139,26 @@ class modified_leastSquaresVectors
                 nVectors_[facei] = -(invDd[nei] & d)/magSqr(d);
             }
 
-            // forAll(blsP, patchi)
-            // {
-            //     fvsPatchVectorField& patchLsP = blsP[patchi];
+            // Skip boundary faces
+            /*
+            forAll(blsP, patchi)
+            {
+                fvsPatchVectorField& patchLsP = blsP[patchi];
 
-            //     const fvPatch& p = patchLsP.patch();
-            //     const labelUList& faceCells = p.faceCells();
+                const fvPatch& p = patchLsP.patch();
+                const labelUList& faceCells = p.faceCells();
 
-            //     // Build the d-vectors
-            //     const vectorField pd(p.delta());
+                // Build the d-vectors
+                const vectorField pd(p.delta());
 
-            //     forAll(pd, patchFacei)
-            //     {
-            //         const vector& d = pd[patchFacei];
+                forAll(pd, patchFacei)
+                {
+                    const vector& d = pd[patchFacei];
 
-            //         patchLsP[patchFacei] = (invDd[faceCells[patchFacei]] & d)/magSqr(d);
-            //     }
-            // }
+                    patchLsP[patchFacei] = (invDd[faceCells[patchFacei]] & d)/magSqr(d);
+                }
+            }
+            */
 
             DebugInfo << "Finished calculating least square gradient vectors" << endl;
         }
@@ -207,9 +233,7 @@ public:
             return true;
         }
 };
-// }
-// namespace Foam
-// {
+
     defineTypeNameAndDebug(modified_leastSquaresVectors, 0);
 }
 
@@ -235,31 +259,27 @@ Foam::fv::noBvGrad<Type>::calcGrad
 
     // Delegate gradient calculation 
     tmp<GradFieldType> tgrad = tinnerGradScheme_().calcGrad(vsf, name);
-    
-    // GradFieldType& grad = tgrad.ref();
-    // auto& gradbf = grad.boundaryFieldRef();
+    GradFieldType& grad = tgrad.ref();
+    auto& gradbf = grad.boundaryFieldRef();
 
-    // // Fix gradients in boundary cells
+    // Calc least squares gradients with modified linear system in boundary cells
+    tmp<GradFieldType> tlsGrad = modified_leastSquaresGrad_calcGrad(vsf, name);
+    const GradFieldType& lsGrad = tlsGrad.cref();
 
-    // // fvc::reconstruct(fvc::snGrad(vsf)*mesh.magSf())
+    // Override gradients in boundary cells
 
-    // forAll(vsf.boundaryField(), patchi)
-    // {
-    //     const fvPatchField&     pfield = vsf.boundaryField()[patchi];
-    //     fvPatchField::Internal& ifield = vsf.boundaryField()[patchi].internalField();
-
-    //     if (!vsf.boundaryField()[patchi].coupled())
-    //     {
-    //         forAll(pfield, facei)
-    //         {
-    //             // grad(own(face)) = fvc::snGrad(oppositeFace(face)
-    //             ifield.[facei] = 
-    //         }
-
-
-    //     }
-    // }
-
+    forAll(gradbf, patchi)
+    {
+        if (!gradbf[patchi].coupled())
+        {
+            const fvPatchField<GradType>& pfield = gradbf[patchi];
+            const labelUList& faceCells = pfield.patch().faceCells();
+            forAll(pfield, pfaceID)
+            {
+                grad[faceCells[pfaceID]] = lsGrad[faceCells[pfaceID]];
+            }
+        }
+    }
 
     return tgrad;
 }
@@ -282,9 +302,9 @@ Foam::fv::noBvGrad<Type>::modified_leastSquaresGrad_calcGrad
 {
     typedef typename outerProduct<vector, Type>::type GradType;
     typedef GeometricField<GradType, fvPatchField, volMesh> GradFieldType;
- 
+
     const fvMesh& mesh = vsf.mesh();
- 
+
     tmp<GradFieldType> tlsGrad
     (
         new GradFieldType
@@ -303,42 +323,42 @@ Foam::fv::noBvGrad<Type>::modified_leastSquaresGrad_calcGrad
         )
     );
     GradFieldType& lsGrad = tlsGrad.ref();
- 
+
     // Get reference to least square vectors
     const modified_leastSquaresVectors& lsv = modified_leastSquaresVectors::New(mesh);
- 
+
     const surfaceVectorField& ownLs = lsv.pVectors();
     const surfaceVectorField& neiLs = lsv.nVectors();
- 
+
     const labelUList& own = mesh.owner();
     const labelUList& nei = mesh.neighbour();
- 
+
     forAll(own, facei)
     {
         const label ownFacei = own[facei];
         const label neiFacei = nei[facei];
- 
+
         const Type deltaVsf(vsf[neiFacei] - vsf[ownFacei]);
- 
+
         lsGrad[ownFacei] += ownLs[facei]*deltaVsf;
         lsGrad[neiFacei] -= neiLs[facei]*deltaVsf;
     }
- 
+
     // Boundary faces
     forAll(vsf.boundaryField(), patchi)
     {
         const fvsPatchVectorField& patchOwnLs = ownLs.boundaryField()[patchi];
- 
+
         const labelUList& faceCells =
             vsf.boundaryField()[patchi].patch().faceCells();
- 
+
         if (vsf.boundaryField()[patchi].coupled())
         {
             const Field<Type> neiVsf
             (
                 vsf.boundaryField()[patchi].patchNeighbourField()
             );
- 
+
             forAll(neiVsf, patchFacei)
             {
                 lsGrad[faceCells[patchFacei]] +=
@@ -348,21 +368,24 @@ Foam::fv::noBvGrad<Type>::modified_leastSquaresGrad_calcGrad
         }
         else
         {
-            // const fvPatchField<Type>& patchVsf = vsf.boundaryField()[patchi];
- 
-            // forAll(patchVsf, patchFacei)
-            // {
-            //     lsGrad[faceCells[patchFacei]] +=
-            //          patchOwnLs[patchFacei]
-            //         *(patchVsf[patchFacei] - vsf[faceCells[patchFacei]]);
-            // }
+            // Skip boundary faces
+            /*
+            const fvPatchField<Type>& patchVsf = vsf.boundaryField()[patchi];
+
+            forAll(patchVsf, patchFacei)
+            {
+                lsGrad[faceCells[patchFacei]] +=
+                     patchOwnLs[patchFacei]
+                    *(patchVsf[patchFacei] - vsf[faceCells[patchFacei]]);
+            }
+            */
         }
     }
- 
- 
+
+
     lsGrad.correctBoundaryConditions();
     gaussGrad<Type>::correctBoundaryConditions(vsf, lsGrad);
- 
+
     return tlsGrad;
 }
 
