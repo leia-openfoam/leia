@@ -23,7 +23,6 @@ ddtSchemes
 gradSchemes
 {
     grad(psi)       noBvGrad Gauss linear;
-    grad(psi_p)       noBvGrad Gauss linear;
 }
 
 divSchemes

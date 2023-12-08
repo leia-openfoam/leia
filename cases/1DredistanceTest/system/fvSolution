@@ -77,7 +77,8 @@ levelSet
     redistancer 
     {
         type PDE;
-        niterations 50;
+        deltaT      0.1;
+        niterations 500;
         write   true;
     }
 
