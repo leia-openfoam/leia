@@ -47,7 +47,8 @@ addToRunTimeSelectionTable(redistancer, pdeRedistancer, Mesh);
 Foam::pdeRedistancer::pdeRedistancer(const fvMesh& mesh)
     :
         redistancer(mesh),
-        ninterations_(redistDict_.getOrDefault<uint>("niterations",10))
+        ninterations_(redistDict_.getOrDefault<uint>("niterations",10)),
+        write_(redistDict_.getOrDefault<bool>("write",false))
 {}
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
@@ -93,7 +94,7 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
     (
         Foam::IOobject
         (
-        "psi_p",
+        "psi",
         pseudoTime.timeName(),
         pseudoTime,
         IOobject::NO_READ,
@@ -123,6 +124,10 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
             *dimensioned<scalar>(dimLength/dimTime, 1.0)
         );
         redistanceEqn.solve(solverControls);
+        if (write_)
+        {
+            write(psi_p);
+        }
     }
 
     // psi == psi_p; // Won't work: Different meshes
@@ -132,6 +137,13 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
     }
 }
 
+void Foam::pdeRedistancer::write(const volScalarField& psi) const
+{
+    psi.write();
+    volVectorField gradPsi = fvc::grad(psi);
+    gradPsi.rename("gradPsi");
+    gradPsi.write();
+}
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

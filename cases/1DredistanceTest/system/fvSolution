@@ -77,7 +77,8 @@ levelSet
     redistancer 
     {
         type PDE;
-        niterations 10;
+        niterations 50;
+        write   true;
     }
 
     sdplsSource

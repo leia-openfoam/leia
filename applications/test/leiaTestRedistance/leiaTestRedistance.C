@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2021 Tomislav Maric, TU Darmstadt 
+    Copyright (C) 2023 Julian Reitzel, TU Darmstadt 
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -63,19 +63,19 @@ int main(int argc, char *argv[])
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 
-    volVectorField gradPsi = fvc::grad(psi);
-    gradPsi.rename("gradPsi");
-    gradPsi.write();
+    // volVectorField gradPsi = fvc::grad(psi);
+    // gradPsi.rename("gradPsi");
+    // gradPsi.write();
 
     redist->redistance(psi);
         
     runTime.setTime(1,1);
 
-    psi.write();
+    // psi.write();
 
-    gradPsi = fvc::grad(psi);
-    gradPsi.rename("gradPsi");
-    gradPsi.write();
+    // gradPsi = fvc::grad(psi);
+    // gradPsi.rename("gradPsi");
+    // gradPsi.write();
 
 
     Info<< "End\n" << endl;

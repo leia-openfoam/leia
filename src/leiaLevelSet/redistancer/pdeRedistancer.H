@@ -56,6 +56,10 @@ private:
 
     uint ninterations_;
 
+    bool write_;
+
+    void write(const volScalarField& psi) const;
+
 public:
 
     // Static Data Members
