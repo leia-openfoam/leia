@@ -23,29 +23,14 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         0.8; 
+endTime         1.0; 
 
-<<<<<<<< HEAD:cases/2Dcontactline-periodic/system/controlDict
-Umax            1.2;
-
-CFL              0.5;
-
-// safty factor which is necessary to ensure maxCFL for some reason
-CFLsafty        1.0;
-
-// dummy float value. Will be replaced by Allrun
-deltaX          1.0;
-
-deltaT          #eval "$CFL * $CFLsafty * $deltaX / $Umax";
-
-========
-maxCo             @!CFL!@;
+maxCo             0.5;
 
 deltaT          1e-6;
 
 adjustTimeStep  yes;
 
->>>>>>>> f0a742d96763dc0926bac8022029dec3adea578c:cases/2Dcontactline-vortex/system/controlDict.template
 writeControl    runTime;
 
 writeInterval   0.05;
@@ -66,5 +51,4 @@ runTimeModifiable true;
 
 libs ("libleiafiniteVolume.so");
 
-#include "fobjects";
 // ************************************************************************* //
