@@ -11,6 +11,6 @@ blockMesh
 
 
 leiaSetFields 
-redistanceFoam
+leiaTestRedistance
 
 sed -n '21,45p' 1/psi
