@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2021 Tomislav Maric, TU Darmstadt
+    Copyright (C) 2023 Julian Reitzel, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -27,6 +27,16 @@ Class
     Foam::pdeRedistancer
 
 Description
+    Level-Set Redistancer using the reinitialization equation of Sussman, 
+    Smereka, and Osher.
+
+    Reference:
+    \verbatim
+    Sussman, M., Smereka, P., & Osher, S. (1994). A Level Set Approach for 
+    Computing Solutions to Incompressible Two-Phase Flow. Journal of 
+    Computational Physics, 114(1), 146–159.
+    \endverbatim
+
 
 SourceFiles
     pdeRedistancer.C
@@ -54,6 +64,7 @@ class pdeRedistancer
 private:
     // Data Members
 
+    scalar deltaT_;
     uint ninterations_;
 
     bool write_;

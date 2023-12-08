@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2021 AUTHOR,AFFILIATION
+    Copyright (C) 2023 Julian Reitzel, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -32,6 +32,20 @@ License
 #include "fvm.H"
 #include "fvc.H"
 
+// * * * * * * * * * * * * * *  Local Functions  * * * * * * * * * * * * * * //
+
+static Foam::tmp<Foam::volScalarField> sign_smoothed(const Foam::volScalarField& field)
+{
+    using namespace Foam;
+    return tmp<volScalarField>
+        (
+            new volScalarField
+            (
+                field/sqrt(pow(field,2) + pow(dimensioned(field.dimensions(), SMALL),2))
+            )
+        ); 
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -47,6 +61,7 @@ addToRunTimeSelectionTable(redistancer, pdeRedistancer, Mesh);
 Foam::pdeRedistancer::pdeRedistancer(const fvMesh& mesh)
     :
         redistancer(mesh),
+        deltaT_(redistDict_.getOrDefault<scalar>("deltaT",0.1)),
         ninterations_(redistDict_.getOrDefault<uint>("niterations",10)),
         write_(redistDict_.getOrDefault<bool>("write",false))
 {}
@@ -58,10 +73,10 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
     dictionary pseudoTime_controlDict;
 
     pseudoTime_controlDict.add("startTime", 0);
-    pseudoTime_controlDict.add("deltaT", 1);
-    pseudoTime_controlDict.add("endTime", ninterations_);
+    pseudoTime_controlDict.add("deltaT", deltaT_);
+    pseudoTime_controlDict.add("endTime", deltaT_*ninterations_);
     pseudoTime_controlDict.add("writeControl", "timeStep");
-    pseudoTime_controlDict.add("writeInterval", ninterations_+1);
+    pseudoTime_controlDict.add("writeInterval", ceil(deltaT_*ninterations_) + 1);
     pseudoTime_controlDict.add("log", 2);
 
     const Time& runTime = psi.mesh().time(); 
@@ -73,9 +88,6 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
             false,
             true
         );
-    
-    // Foam::autoPtr<Foam::Time> pseudoTime_ptr = Foam::Time::New();
-    // Time& pseudoTime = pseudoTime_ptr.ref();
 
     Foam::fvMesh mesh_p
         (
@@ -120,6 +132,7 @@ void Foam::pdeRedistancer::redistance(volScalarField& psi)
             fvm::ddt(psi_p)
         ==
             sign(psi)*
+            // sign_smoothed(psi)*
             (1 - mag(fvc::grad(psi_p)))
             *dimensioned<scalar>(dimLength/dimTime, 1.0)
         );
