@@ -147,8 +147,8 @@ scalar Foam::functionObjects::contactPoint::calcContactAngle()
 {
     const volVectorField gradPsi = fvc::grad(field_);
     volVectorField normal = gradPsi/mag(gradPsi);
-    normal.boundaryFieldRef().set(patchID_, fvPatchField<vector>::New("oneSidedGradient", patch_, normal));
-    normal.boundaryFieldRef().evaluate(); 
+    // normal.boundaryFieldRef().set(patchID_, fvPatchField<vector>::New("oneSidedGradient", patch_, normal));
+    // normal.boundaryFieldRef().evaluate(); 
 
     // const vectorField normal_p = patch_.patchInternalField(normal); // patchInternal
     const vectorField& normal_p = normal.boundaryField()[patchID_]; // patch
@@ -163,14 +163,14 @@ scalar Foam::functionObjects::contactPoint::calcContactCurvature()
 {
     const volVectorField gradPsi = fvc::grad(field_);
     volVectorField normal = gradPsi/mag(gradPsi);
-    normal.boundaryFieldRef().set(patchID_, fvPatchField<vector>::New("oneSidedGradient", patch_, normal));
-    normal.boundaryFieldRef().evaluate(); 
+    // normal.boundaryFieldRef().set(patchID_, fvPatchField<vector>::New("oneSidedGradient", patch_, normal));
+    // normal.boundaryFieldRef().evaluate(); 
 
 
     volScalarField kappa = -fvc::div(normal);
 
-    kappa.boundaryFieldRef().set(patchID_, fvPatchField<scalar>::New("oneSidedGradient", patch_, kappa));
-    kappa.boundaryFieldRef().evaluate(); 
+    // kappa.boundaryFieldRef().set(patchID_, fvPatchField<scalar>::New("oneSidedGradient", patch_, kappa));
+    // kappa.boundaryFieldRef().evaluate(); 
 
     // const scalarField kappa_ph = getHalfField(kappa.boundaryField()[patchID_]); // patch
     const scalarField kappa_ph = getHalfField(patch_.patchInternalField(kappa)()); // patchInternal
