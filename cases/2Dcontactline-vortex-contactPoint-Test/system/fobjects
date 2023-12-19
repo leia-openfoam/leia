@@ -37,11 +37,10 @@ functions
     contactPoint
     {
         type            contactPoint;
-        libs            ( leiaFunctionObjects );
+        libs            ( fieldFunctionObjects leiaFunctionObjects );
         writeControl    timeStep;
         field           psi;
         patch           bottom;
-        enabled         false;
     }
     kappa
     {
@@ -51,26 +50,28 @@ functions
         // Name of on-the-fly generated functionObject
         name            kappa;
         writeControl    timeStep;
+        enabled         false;
         codeWrite
         #{
             // Lookup psi
             const volScalarField& psi = mesh().lookupObject<volScalarField>("psi");
+
             // Calc kappa
             const volVectorField gradPsi = fvc::grad(psi);
-            volScalarField magGradPsi = mag(gradPsi);
-            magGradPsi.rename("magGradPsi");
+            const volScalarField magGradPsi = volScalarField("magGradPSi", mag(gradPsi));
             magGradPsi.write();
+
             const volVectorField normal = gradPsi/mag(gradPsi);
+
             const volScalarField kappa = volScalarField("kappa", -fvc::div(normal));
+            kappa.write();
             const volScalarField kappa_tr = volScalarField("kappa_tr", -tr(fvc::grad(normal)));
+            kappa_tr.write();
             
             const volScalarField psi_orig = volScalarField("psi_orig", psi.clone()); 
             const volScalarField magGradPsi_orig = volScalarField("magGradPsi_orig", mag(fvc::grad(psi_orig)));
             magGradPsi_orig.write();
 
-            // Write
-            kappa.write();
-            kappa_tr.write();
         #};
     }
     magGradPsi
