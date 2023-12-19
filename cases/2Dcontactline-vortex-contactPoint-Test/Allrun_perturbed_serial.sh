@@ -3,10 +3,8 @@
 . ${WM_PROJECT_DIR}/bin/tools/RunFunctions
 
 set -o verbose
-. ${WM_PROJECT_DIR}/bin/tools/RunFunctions
 
-
-restore0Dir  
+rm -rf 0 && cp -r 0.org 0  
 touch "$(basename ${PWD}).foam" && \
 set -o errexit
 blockMesh 
