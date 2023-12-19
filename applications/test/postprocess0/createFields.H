@@ -61,32 +61,4 @@ volVectorField U
     dimensionedVector("U", dimVelocity, vector(0,0,0))
 );
 
-// Leve Set re-distancing model
-autoPtr<redistancer> redist = redistancer::New(mesh);
-
-// Level Set narrowBand model
-autoPtr<NarrowBand> narrowBand = NarrowBand::New(mesh, psi); 
-narrowBand->calc();
-narrowBand->write();
-
-// Level Set phase-indicator model
-autoPtr<phaseIndicator> phaseInd = phaseIndicator::New(mesh); 
-phaseInd->calcPhaseIndicator(alpha, psi);
-alpha.write();
-
-// SDPLS Source term
-autoPtr<SDPLSSource> source = SDPLSSource::New(mesh); 
-source->update(psi, U);
-source->write();
-
-// Advection velocity model
-autoPtr<velocityModel> velocityModel = velocityModel::New(mesh); 
-
-velocityModel->setVolumetricFlux(phi); 
-if (args.found("fluxCorrection"))
-    correctFlux(phi);
-phi.write(); 
-
-velocityModel->setVelocity(U);
-U.write();
 

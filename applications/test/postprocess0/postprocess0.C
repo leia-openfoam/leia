@@ -50,12 +50,11 @@ Description
 
 #include "fvCFD.H"
 #include "simpleControl.H"
-#include "advectionErrors.H"
-#include "phaseIndicator.H"
-#include "redistancer.H"
-#include "NarrowBand.H"
-#include "SDPLSSource.H"
-#include "advectionVerification.H"
+// #include "advectionErrors.H"
+// #include "phaseIndicator.H"
+// #include "redistancer.H"
+// #include "SDPLSSource.H"
+// #include "advectionVerification.H"
 
 // tmp
 #include "fileName.H"
