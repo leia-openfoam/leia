@@ -12,4 +12,4 @@ blockMesh
 
 leiaSetFields 
 leiaLevelSetFoam 
-
+./plot.py

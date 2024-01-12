@@ -29,6 +29,7 @@ License
 #include "contactPoint.H"
 #include "addToRunTimeSelectionTable.H"
 #include "FieldOps.H"
+#include "noBvGrad.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -145,13 +146,13 @@ scalar Foam::functionObjects::contactPoint::calcContactPosition(const fvPatchFie
 //  contactAngle = 180° - arccos((\grad{psi} \cdot \Sf)/(|\grad{psi}| |\Sf|))
 scalar Foam::functionObjects::contactPoint::calcContactAngle()
 {
-    const volVectorField gradPsi = fvc::grad(field_);
+    const volVectorField gradPsi = fv::noBvGrad<scalar>(mesh_).grad(field_);
     volVectorField normal = gradPsi/mag(gradPsi);
     // normal.boundaryFieldRef().set(patchID_, fvPatchField<vector>::New("oneSidedGradient", patch_, normal));
     // normal.boundaryFieldRef().evaluate(); 
 
-    // const vectorField normal_p = patch_.patchInternalField(normal); // patchInternal
-    const vectorField& normal_p = normal.boundaryField()[patchID_]; // patch
+    const vectorField normal_p = patch_.patchInternalField(normal); // patchInternal
+    // const vectorField& normal_p = normal.boundaryField()[patchID_]; // patch
     const vectorField& Sf_p = mesh_.Sf().boundaryField()[patchID_];
 
     const scalarField cosAlpha_p = (normal_p & Sf_p)/(mag(normal_p)*mag(Sf_p));
@@ -161,13 +162,14 @@ scalar Foam::functionObjects::contactPoint::calcContactAngle()
 
 scalar Foam::functionObjects::contactPoint::calcContactCurvature()
 {
-    const volVectorField gradPsi = fvc::grad(field_);
+    const volVectorField gradPsi = fv::noBvGrad<scalar>(mesh_).grad(field_);
     volVectorField normal = gradPsi/mag(gradPsi);
     // normal.boundaryFieldRef().set(patchID_, fvPatchField<vector>::New("oneSidedGradient", patch_, normal));
     // normal.boundaryFieldRef().evaluate(); 
 
 
-    volScalarField kappa = -fvc::div(normal);
+    // volScalarField kappa = -fvc::div(normal);
+    volScalarField kappa = -tr(fv::noBvGrad<vector>(mesh_).grad(normal));
 
     // kappa.boundaryFieldRef().set(patchID_, fvPatchField<scalar>::New("oneSidedGradient", patch_, kappa));
     // kappa.boundaryFieldRef().evaluate(); 

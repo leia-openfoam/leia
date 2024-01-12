@@ -3,7 +3,8 @@ EXE_INC = -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(FOAM_SRC)/surfMesh/lnInclude \
     -I$(FOAM_SRC)/sampling/lnInclude \
     -I$(FOAM_SRC)/functionObjects/field/lnInclude \
-    -I$(FOAM_SRC)/dynamicMesh/lnInclude
+    -I$(FOAM_SRC)/dynamicMesh/lnInclude \
+    -I../finiteVolume/lnInclude
 
 LIB_LIBS = \
     -lOpenFOAM \

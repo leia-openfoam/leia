@@ -50,7 +50,7 @@ functions
         // Name of on-the-fly generated functionObject
         name            kappa;
         writeControl    timeStep;
-        enabled         false;
+        enabled         true;
         codeWrite
         #{
             // Lookup psi
