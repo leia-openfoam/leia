@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2022 Julian Reitzel, TU Darmstadt 
+    Copyright (C) 2024 Julian Reitzel, TU Darmstadt 
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -27,9 +27,39 @@ License
 
 
 #include "contactPoint.H"
+#include "noBvGrad.H"
 #include "addToRunTimeSelectionTable.H"
 #include "FieldOps.H"
-#include "noBvGrad.H"
+#include "interpolationCellPoint.H"
+#include <vector>
+
+// * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * * * //
+
+template <class Type>
+static Vector<double> findRootPosition(const fvPatchField<Type>& patchfield, int whichRoot = -1)
+{
+    const vectorField& Cf = patchfield.patch().Cf(); // face centres
+
+    std::vector<Vector<double>> roots;
+    for (int i=1; i < patchfield.size(); ++i)
+    {
+        if (sign(patchfield[i-1]) != sign(patchfield[i]))
+        {
+            Type y1 = patchfield[i-1];
+            Type y2 = patchfield[i];
+            Vector<double> x1 = Cf[i-1];
+            Vector<double> x2 = Cf[i];
+            Vector<double> rootPos = -y1*(x2 - x1)/(y2 - y1) + x1;
+            roots.push_back(rootPos);
+        }
+    }
+    if (sign(whichRoot) < 0)
+    {
+        whichRoot = roots.size() + whichRoot;
+    }
+    Info << "roots: " << roots << "; root: " << roots.at(whichRoot) << "\n";
+    return roots.at(whichRoot);
+}
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -164,20 +194,39 @@ scalar Foam::functionObjects::contactPoint::calcContactCurvature()
 {
     const volVectorField gradPsi = fv::noBvGrad<scalar>(mesh_).grad(field_);
     volVectorField normal = gradPsi/mag(gradPsi);
-    // normal.boundaryFieldRef().set(patchID_, fvPatchField<vector>::New("oneSidedGradient", patch_, normal));
-    // normal.boundaryFieldRef().evaluate(); 
 
-
-    // volScalarField kappa = -fvc::div(normal);
     volScalarField kappa = -tr(fv::noBvGrad<vector>(mesh_).grad(normal));
+    kappa.boundaryFieldRef().set(patchID_, fvPatchField<scalar>::New("zeroGradient", patch_, kappa));
+    kappa.boundaryFieldRef().evaluate();
 
-    // kappa.boundaryFieldRef().set(patchID_, fvPatchField<scalar>::New("oneSidedGradient", patch_, kappa));
-    // kappa.boundaryFieldRef().evaluate(); 
+    const Vector<scalar> root = findRootPosition(pfield_);
+    const label rootCell = mesh_.findCell(root);
+    Info << "root: " << root << "\nrootCell: " << rootCell << "\n"; 
+    return interpolationCellPoint<scalar>(kappa).interpolate(root, rootCell);
 
-    // const scalarField kappa_ph = getHalfField(kappa.boundaryField()[patchID_]); // patch
-    const scalarField kappa_ph = getHalfField(patch_.patchInternalField(kappa)()); // patchInternal
-    return rint_.interpolate(kappa_ph);
 }
+
+// scalar Foam::functionObjects::contactPoint::calcContactCurvature()
+// {
+//     const volVectorField gradPsi = fv::noBvGrad<scalar>(mesh_).grad(field_);
+//     volVectorField normal = gradPsi/mag(gradPsi);
+//     // normal.boundaryFieldRef().set(patchID_, fvPatchField<vector>::New("oneSidedGradient", patch_, normal));
+//     // normal.boundaryFieldRef().evaluate(); 
+
+
+//     // volScalarField kappa = -fvc::div(normal);
+//     volScalarField kappa = -tr(fv::noBvGrad<vector>(mesh_).grad(normal));
+
+//     // kappa.boundaryFieldRef().set(patchID_, fvPatchField<scalar>::New("oneSidedGradient", patch_, kappa));
+//     // kappa.boundaryFieldRef().evaluate(); 
+
+//     kappa.boundaryFieldRef().set(patchID_, fvPatchField<scalar>::New("zeroGradient", patch_, kappa));
+//     kappa.boundaryFieldRef().evaluate(); 
+
+//     const scalarField kappa_ph = getHalfField(kappa.boundaryField()[patchID_]); // patch
+//     // const scalarField kappa_ph = getHalfField(patch_.patchInternalField(kappa)()); // patchInternal
+//     return rint_.interpolate(kappa_ph);
+// }
 
 scalar Foam::functionObjects::contactPoint::calcContactGradientNorm()
 {
