@@ -67,6 +67,35 @@ functions
             kappa.write();
             const volScalarField kappa_tr = volScalarField("kappa_tr", -tr(fvc::grad(normal)));
             kappa_tr.write();
+
+//            Vector<double> tensorVectorMul = [](Tensor<double> ten, Vector<double> vec) 
+            auto tensorVectorMul = [](Tensor<double> ten, Vector<double> vec) 
+            { 
+                return Vector<double>(
+                   ten.row(0) & vec, 
+                   ten.row(1) & vec, 
+                   ten.row(2) & vec 
+                ); 
+            };
+
+            const volVectorField tau1 = normal^vector(1,0,0);
+            const volVectorField tau2 = normal^tau1;
+            const volTensorField gradNormal = fvc::grad(normal);
+//            const volScalarField kappa_tau = volScalarField("kappa_tau", -1*(gradNormal*tau1)*tau1 - 1*(gradNormal*tau2)*tau2);
+//            const auto test = gradNormal*tau1;
+//            const auto test = gradNormal[0]*tau1[0];
+//            const Vector<double> test = tensorVectorMul(gradNormal[0], tau1[0]);
+            volScalarField kappa_tau = volScalarField("kappa_tau", kappa);
+            forAll(kappa_tau, ID)
+            {
+//                kappa_tau[ID] = -1;
+//                kappa_tau[ID] = -1*tensorVectorMul(gradNormal[ID], tau1[ID]) & tau1[ID] 
+//                                -1*tensorVectorMul(gradNormal[ID], tau2[ID]) & tau2[ID];
+                const auto tmp1 = -1*tensorVectorMul(gradNormal[ID], tau1[ID]) & tau1[ID]; 
+                const auto tmp2 = -1*tensorVectorMul(gradNormal[ID], tau2[ID]) & tau2[ID];
+                kappa_tau[ID]   = tmp1 + tmp2;
+            }
+            kappa_tau.write();
             
             const volScalarField psi_orig = volScalarField("psi_orig", psi.clone()); 
             const volScalarField magGradPsi_orig = volScalarField("magGradPsi_orig", mag(fvc::grad(psi_orig)));
