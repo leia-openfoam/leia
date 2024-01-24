@@ -78,8 +78,11 @@ functions
                 ); 
             };
 
-            const volVectorField tau1 = normal^vector(1,0,0);
-            const volVectorField tau2 = normal^tau1;
+//            const volVectorField tau1 = normal^vector(1,0,0);
+            volVectorField tau1 = normal^vector(0,0,1);
+            tau1.normalise();
+            volVectorField tau2 = normal^tau1;
+            tau2.normalise();
             const volTensorField gradNormal = fvc::grad(normal);
 //            const volScalarField kappa_tau = volScalarField("kappa_tau", -1*(gradNormal*tau1)*tau1 - 1*(gradNormal*tau2)*tau2);
 //            const auto test = gradNormal*tau1;
@@ -91,9 +94,10 @@ functions
 //                kappa_tau[ID] = -1;
 //                kappa_tau[ID] = -1*tensorVectorMul(gradNormal[ID], tau1[ID]) & tau1[ID] 
 //                                -1*tensorVectorMul(gradNormal[ID], tau2[ID]) & tau2[ID];
-                const auto tmp1 = -1*tensorVectorMul(gradNormal[ID], tau1[ID]) & tau1[ID]; 
-                const auto tmp2 = -1*tensorVectorMul(gradNormal[ID], tau2[ID]) & tau2[ID];
-                kappa_tau[ID]   = tmp1 + tmp2;
+                const auto tmp1 = tensorVectorMul(gradNormal[ID], tau1[ID]) & tau1[ID]; 
+                const auto tmp2 = tensorVectorMul(gradNormal[ID], tau2[ID]) & tau2[ID];
+                const auto tmp3 = tensorVectorMul(gradNormal[ID], normal[ID]) & normal[ID];
+                kappa_tau[ID]   = -1*(tmp1 + tmp2 + tmp3);
             }
             kappa_tau.write();
             
