@@ -57,8 +57,18 @@ static Vector<double> findRootPosition(const fvPatchField<Type>& patchfield, int
     {
         whichRoot = roots.size() + whichRoot;
     }
-    Info << "roots: " << roots << "; root: " << roots.at(whichRoot) << "\n";
     return roots.at(whichRoot);
+}
+
+
+template <class Type>
+static Vector<Type> mulTenVec(const Tensor<Type>& ten, const Vector<Type>& vec)
+{
+    return Vector<Type>(
+        ten.x() & vec,
+        ten.y() & vec,
+        ten.z() & vec
+    );
 }
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -194,14 +204,44 @@ scalar Foam::functionObjects::contactPoint::calcContactCurvature()
 {
     const volVectorField gradPsi = fv::noBvGrad<scalar>(mesh_).grad(field_);
     volVectorField normal = gradPsi/mag(gradPsi);
+    volVectorField tau1 = volVectorField("tau1", normal);
+    volVectorField tau2 = volVectorField("tau2", normal);
+    forAll(normal, ID)
+    {
+        tau1[ID] = normal[ID] ^ vector(0,0,1);
+        tau2[ID] = tau1[ID] ^ normal[ID];
+    }
+    volTensorField gradNormal = fv::noBvGrad<vector>(mesh_).grad(normal);
+
+    gradNormal.boundaryFieldRef().set(patchID_, fvPatchField<tensor>::New("zeroGradient", patch_, gradNormal));
+    gradNormal.boundaryFieldRef().evaluate();
 
     volScalarField kappa = -tr(fv::noBvGrad<vector>(mesh_).grad(normal));
+    forAll(kappa, ID)
+    {
+        kappa[ID] = (-1*mulTenVec(gradNormal[ID], tau1[ID]) & tau1[ID]) + (-1*mulTenVec(gradNormal[ID], tau2[ID]) & tau2[ID]);
+    }
     kappa.boundaryFieldRef().set(patchID_, fvPatchField<scalar>::New("zeroGradient", patch_, kappa));
     kappa.boundaryFieldRef().evaluate();
 
     const Vector<scalar> root = findRootPosition(pfield_);
     const label rootCell = mesh_.findCell(root);
-    Info << "root: " << root << "\nrootCell: " << rootCell << "\n"; 
+
+    // tensor ten = interpolationCellPoint<tensor>(gradNormal).interpolate(root, rootCell);
+    tensor ten = gradNormal[762];
+    std::string val_str = 
+        "dnx_dy == dny_dx: " 
+        + std::to_string(ten.xy()) + ", "
+        + std::to_string(ten.yx()) + ";  "
+        + "dnx_dz == dnz_dx: "
+        + std::to_string(ten.xz()) + ", "
+        + std::to_string(ten.zx()) + ";  "
+        + "dnz_dy == dny_dz: "
+        + std::to_string(ten.zy()) + ", "
+        + std::to_string(ten.yz()) + ";  ";
+
+    Info << "symmetry gradNormal: " << val_str << "\n";
+    std::cout<< "\nsymmetry-error:\t" << ten.xy() - ten.yx() << "\n";
     return interpolationCellPoint<scalar>(kappa).interpolate(root, rootCell);
 
 }
