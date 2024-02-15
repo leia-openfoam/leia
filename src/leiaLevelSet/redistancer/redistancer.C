@@ -43,7 +43,8 @@ redistancer::redistancer(const fvMesh& mesh)
     :
         fvSolution_(mesh),
         levelSetDict_(fvSolution_.subDict("levelSet")),
-        redistDict_(levelSetDict_.subDict("redistancer"))
+        redistDict_(levelSetDict_.subDict("redistancer")),
+        redistanceInterval_(redistDict_.getOrDefault<label>("redistanceInterval", 1))
 {}
 
 // * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
