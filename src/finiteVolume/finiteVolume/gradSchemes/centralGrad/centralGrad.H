@@ -5,8 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011-2016 OpenFOAM Foundation
-    Copyright (C) 2018-2021 OpenCFD Ltd.
+    Copyright (C) 2024 Julian Reitzel
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -31,8 +30,9 @@ Group
     grpFvGradSchemes
 
 Description
-    Basic second-order gradient scheme using face-interpolation
-    and Gauss' theorem.
+    Basic second-order gradient scheme using the second order accurate central
+    and equidistant meshes. At the boundaries the second order accurate 
+    forward gradient scheme is used.
 
 SourceFiles
     centralGrad.C
@@ -79,11 +79,34 @@ class centralGrad
         //- No copy assignment
         void operator=(const centralGrad&) = delete;
 
+        bool isMeshOrthogonalEqudistant(const fvMesh& mesh)
+        {
+            // equidistant
+            const surfaceScalarField magDeltas = mag(mesh.delta());
+            scalar reference_delta = magDeltas[0];
+            bool equidistant = std::all_of(magDeltas.cbegin(), magDeltas.cend(), 
+                [reference_delta](scalar delta){return delta == reference_delta;});
+            // orthogonal
+            bool orthogonal = !mesh.checkFaceOrthogonality();
+            return orthogonal && equidistant;
+        }
+
+        void abbortNonOrthogonalEquidistantMesh(const fvMesh& mesh)
+        {
+            if (!isMeshOrthogonalEqudistant(mesh))
+            {
+                FatalErrorInFunction
+                << "Mesh is not orthogonal and equidistant.\n"
+                << "Can not use fvc::centralGrad()"
+                << abort(FatalError);
+            }
+        }
+
 
 public:
 
     //- Runtime type information
-    TypeName("Gauss");
+    TypeName("centralGrad");
 
 
     // Constructors
@@ -93,7 +116,9 @@ public:
         :
             gradScheme<Type>(mesh),
             tinterpScheme_(new linear<Type>(mesh))
-        {}
+        {
+            abbortNonOrthogonalEquidistantMesh(mesh);
+        }
 
         //- Construct from mesh and Istream
         centralGrad(const fvMesh& mesh, Istream& is)
@@ -101,6 +126,7 @@ public:
             gradScheme<Type>(mesh),
             tinterpScheme_(nullptr)
         {
+            abbortNonOrthogonalEquidistantMesh(mesh);
             if (is.eof())
             {
                 tinterpScheme_ =
