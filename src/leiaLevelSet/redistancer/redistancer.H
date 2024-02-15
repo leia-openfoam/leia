@@ -55,12 +55,14 @@ namespace Foam
 
 class redistancer
 {
-    
 protected:
 
     const fvSolution& fvSolution_;
     const dictionary& levelSetDict_;
     const dictionary& redistDict_;
+
+private:
+    const label redistanceInterval_;
 
 public:
 
@@ -95,7 +97,15 @@ public:
 
     // Member Functions
 
-    virtual void redistance(volScalarField& psi) 
+    void redistance(volScalarField& psi)
+    {
+        if (psi.mesh().time().timeIndex() % redistanceInterval_ == 0)
+        {
+            doRedistance(psi);
+        }
+    }
+
+    virtual void doRedistance(volScalarField& psi) 
     {
         Info  << "No redistancing. " << endl;
     }

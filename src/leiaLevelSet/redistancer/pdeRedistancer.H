@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2021 Tomislav Maric, TU Darmstadt
+    Copyright (C) 2023 Julian Reitzel, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,17 +24,27 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::lsqRedistancer
+    Foam::pdeRedistancer
 
 Description
+    Level-Set Redistancer using the reinitialization equation of Sussman, 
+    Smereka, and Osher.
+
+    Reference:
+    \verbatim
+    Sussman, M., Smereka, P., & Osher, S. (1994). A Level Set Approach for 
+    Computing Solutions to Incompressible Two-Phase Flow. Journal of 
+    Computational Physics, 114(1), 146–159.
+    \endverbatim
+
 
 SourceFiles
-    lsqRedistancer.C
+    pdeRedistancer.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef lsqRedistancer_H
-#define lsqRedistancer_H
+#ifndef pdeRedistancer_H
+#define pdeRedistancer_H
 
 #include "redistancer.H"
 
@@ -44,31 +54,40 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                         Class lsqRedistancer Declaration
+                         Class pdeRedistancer Declaration
 \*---------------------------------------------------------------------------*/
 
-class lsqRedistancer
+class pdeRedistancer
 :
     public redistancer
 {
+private:
+    // Data Members
+
+    scalar deltaT_;
+    uint ninterations_;
+
+    bool write_;
+
+    void write(const volScalarField& psi) const;
 
 public:
 
     // Static Data Members
 
-    TypeName ("linearLeastSquares");
+    TypeName ("PDE");
 
     // Constructors
 
     //- Construct from components
-    lsqRedistancer(const fvMesh& mesh);
+    pdeRedistancer(const fvMesh& mesh);
 
     //- Destructor
-    virtual ~lsqRedistancer() = default;
+    virtual ~pdeRedistancer() = default;
 
     // Member Functions
     
-    virtual void redistance(volScalarField& psi); 
+    virtual void doRedistance(volScalarField& psi); 
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

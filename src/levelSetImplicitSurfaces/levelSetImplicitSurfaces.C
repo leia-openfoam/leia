@@ -83,19 +83,20 @@ implicitPlane::implicitPlane(vector position, vector normal)
 implicitPlane::implicitPlane(const dictionary& dict)
     :
         position_(dict.get<vector>("position")),
-        normal_(dict.get<vector>("normal"))
+        normal_(dict.get<vector>("normal")),
+        gradient_(dict.getOrDefault<scalar>("gradient", 1))
 {}
 
 // * * * * * * * * * * * * * Member Functions * * * * * * * * * * * * * //
 
 scalar implicitPlane::value(const vector& x) const
 {
-    return Foam::dot(x - position_, normal_);
+    return gradient_*Foam::dot(x - position_, normal_);
 }
 
 vector implicitPlane::grad(const vector& x) const
 {
-    return normal_; 
+    return normal_*gradient_; 
 }
 
 vector implicitPlane::position() const
