@@ -4,7 +4,7 @@ phaseIndicator/sharpJumpPhaseIndicator.C
 phaseIndicator/geometricPhaseIndicator.C
 
 redistancer/redistancer.C
-redistancer/lsqRedistancer.C
+redistancer/pdeRedistancer.C
 
 surfaceTensionForce/surfaceTensionForce.C
 surfaceTensionForce/constantCurvatureSurfTension.C
