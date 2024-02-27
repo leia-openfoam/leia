@@ -43,8 +43,7 @@ SourceFiles
 #define centralGrad_H
 
 #include "gradScheme.H"
-#include "surfaceInterpolationScheme.H"
-#include "linear.H"
+#include "cartesianMeshMap.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -67,8 +66,7 @@ class centralGrad
 {
     // Private Data
 
-        //- Interpolation scheme
-        tmp<surfaceInterpolationScheme<Type>> tinterpScheme_;
+    cartesianMeshMap map_;
 
 
     // Private Member Functions
@@ -79,29 +77,7 @@ class centralGrad
         //- No copy assignment
         void operator=(const centralGrad&) = delete;
 
-        bool isMeshOrthogonalEqudistant(const fvMesh& mesh)
-        {
-            // equidistant
-            const surfaceScalarField magDeltas = mag(mesh.delta());
-            scalar reference_delta = magDeltas[0];
-            bool equidistant = std::all_of(magDeltas.cbegin(), magDeltas.cend(), 
-                [reference_delta](scalar delta){return delta == reference_delta;});
-            // orthogonal
-            bool orthogonal = !mesh.checkFaceOrthogonality();
-            return orthogonal && equidistant;
-        }
-
-        void abbortNonOrthogonalEquidistantMesh(const fvMesh& mesh)
-        {
-            if (!isMeshOrthogonalEqudistant(mesh))
-            {
-                FatalErrorInFunction
-                << "Mesh is not orthogonal and equidistant.\n"
-                << "Can not use fvc::centralGrad()"
-                << abort(FatalError);
-            }
-        }
-
+        
 
 public:
 
@@ -115,51 +91,27 @@ public:
         centralGrad(const fvMesh& mesh)
         :
             gradScheme<Type>(mesh),
-            tinterpScheme_(new linear<Type>(mesh))
+            map_(mesh)
         {
-            abbortNonOrthogonalEquidistantMesh(mesh);
+            forAll(map_.sizes(), cmp)
+            {
+                if (map_.sizes()[cmp] == 2 )
+                {
+                    FatalErrorInFunction
+                    << "A cartesian mesh with sizes[" << cmp << "] == 2 is not supported."
+                    << abort(FatalError);
+                }
+            }
         }
 
         //- Construct from mesh and Istream
         centralGrad(const fvMesh& mesh, Istream& is)
         :
-            gradScheme<Type>(mesh),
-            tinterpScheme_(nullptr)
-        {
-            abbortNonOrthogonalEquidistantMesh(mesh);
-            if (is.eof())
-            {
-                tinterpScheme_ =
-                    tmp<surfaceInterpolationScheme<Type>>
-                    (
-                        new linear<Type>(mesh)
-                    );
-            }
-            else
-            {
-                tinterpScheme_ =
-                    tmp<surfaceInterpolationScheme<Type>>
-                    (
-                        surfaceInterpolationScheme<Type>::New(mesh, is)
-                    );
-            }
-        }
+            centralGrad(mesh)
+        {}
 
 
     // Member Functions
-
-        //- Return the gradient of the given field
-        //- calculated using Gauss' theorem on the given surface field
-        static
-        tmp
-        <
-            GeometricField
-            <typename outerProduct<vector, Type>::type, fvPatchField, volMesh>
-        > gradf
-        (
-            const GeometricField<Type, fvsPatchField, surfaceMesh>&,
-            const word& name
-        );
 
         //- Return the gradient of the given field to the gradScheme::grad
         //- for optional caching
@@ -173,14 +125,6 @@ public:
             const word& name
         ) const;
 
-        //- Correct the boundary values of the gradient using the patchField
-        //- snGrad functions
-        static void correctBoundaryConditions
-        (
-            const GeometricField<Type, fvPatchField, volMesh>&,
-            GeometricField
-            <typename outerProduct<vector, Type>::type, fvPatchField, volMesh>&
-        );
 };
 
 

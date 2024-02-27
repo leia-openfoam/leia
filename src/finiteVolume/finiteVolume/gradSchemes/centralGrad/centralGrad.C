@@ -27,85 +27,9 @@ License
 
 #include "centralGrad.H"
 #include "extrapolatedCalculatedFvPatchField.H"
+// #include "zero.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-template<class Type>
-Foam::tmp
-<
-    Foam::GeometricField
-    <
-        typename Foam::outerProduct<Foam::vector, Type>::type,
-        Foam::fvPatchField,
-        Foam::volMesh
-    >
->
-Foam::fv::centralGrad<Type>::gradf
-(
-    const GeometricField<Type, fvsPatchField, surfaceMesh>& ssf,
-    const word& name
-)
-{
-    typedef typename outerProduct<vector, Type>::type GradType;
-    typedef GeometricField<GradType, fvPatchField, volMesh> GradFieldType;
-
-    const fvMesh& mesh = ssf.mesh();
-
-    tmp<GradFieldType> tgGrad
-    (
-        new GradFieldType
-        (
-            IOobject
-            (
-                name,
-                ssf.instance(),
-                mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh,
-            dimensioned<GradType>(ssf.dimensions()/dimLength, Zero),
-            extrapolatedCalculatedFvPatchField<GradType>::typeName
-        )
-    );
-    GradFieldType& gGrad = tgGrad.ref();
-
-    const labelUList& owner = mesh.owner();
-    const labelUList& neighbour = mesh.neighbour();
-    const vectorField& Sf = mesh.Sf();
-
-    Field<GradType>& igGrad = gGrad;
-    const Field<Type>& issf = ssf;
-
-    forAll(owner, facei)
-    {
-        const GradType Sfssf = Sf[facei]*issf[facei];
-
-        igGrad[owner[facei]] += Sfssf;
-        igGrad[neighbour[facei]] -= Sfssf;
-    }
-
-    forAll(mesh.boundary(), patchi)
-    {
-        const labelUList& pFaceCells =
-            mesh.boundary()[patchi].faceCells();
-
-        const vectorField& pSf = mesh.Sf().boundaryField()[patchi];
-
-        const fvsPatchField<Type>& pssf = ssf.boundaryField()[patchi];
-
-        forAll(mesh.boundary()[patchi], facei)
-        {
-            igGrad[pFaceCells[facei]] += pSf[facei]*pssf[facei];
-        }
-    }
-
-    igGrad /= mesh.V();
-
-    gGrad.correctBoundaryConditions();
-
-    return tgGrad;
-}
 
 
 template<class Type>
@@ -129,46 +53,148 @@ Foam::fv::centralGrad<Type>::calcGrad
 
     tmp<GradFieldType> tgGrad
     (
-        gradf(tinterpScheme_().interpolate(vsf), name)
+        new GradFieldType
+        (
+            IOobject
+            (
+                "grad(" + vsf.name() + ")",
+                fileName(),
+                vsf.mesh(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            vsf.mesh(),
+            dimensioned<GradType>(vsf.dimensions()/dimLength, Foam::zero())
+        )
     );
     GradFieldType& gGrad = tgGrad.ref();
 
-    correctBoundaryConditions(vsf, gGrad);
+    labelVector sizes = map_.sizes();
+
+
+    if (sizes.x() != 1) // non-empty direction
+    {
+        forAll(gGrad, ID)
+            {
+                const labelVector ijk = map_(ID);
+                const label i = ijk[0];
+                const label j = ijk[1];
+                const label k = ijk[2];
+
+                if (i == 0) // left boundary
+                {
+                    gGrad[ID].x() = 
+                        ( 
+                            -   vsf[map_(i+2, j, k)] 
+                            + 4*vsf[map_(i+1, j, k)]
+                            - 3*vsf[map_(i  , j, k)]
+                        )/(2*map_.h());
+                }
+                else if (i == sizes.x() - 1) // right boundary
+                {
+                    gGrad[ID].x() = 
+                        ( 
+                                vsf[map_(i-2, j, k)] 
+                            - 4*vsf[map_(i-1, j, k)]
+                            + 3*vsf[map_(i  , j, k)]
+                        )/(2*map_.h());
+                }
+                else // (0 < i && i < sizes.x())
+                {
+                    gGrad[ID].x() = 
+                        ( 
+                                vsf[map_(i+1, j, k)] 
+                            -   vsf[map_(i-1, j, k)]
+                        )/(2*map_.h());
+                }
+            }
+    }
+
+    if (sizes.y() != 1) // non-empty direction
+    {
+        forAll(gGrad, ID)
+            {
+                const labelVector ijk = map_(ID);
+                const label i = ijk[0];
+                const label j = ijk[1];
+                const label k = ijk[2];
+
+                if (j == 0) // left boundary
+                {
+                    gGrad[ID].y() = 
+                        ( 
+                            -   vsf[map_(i, j+2, k)] 
+                            + 4*vsf[map_(i, j+1, k)]
+                            - 3*vsf[map_(i, j  , k)]
+                        )/(2*map_.h());
+                }
+                else if (j == sizes.y() - 1) // right boundary
+                {
+                    gGrad[ID].y() = 
+                        ( 
+                                vsf[map_(i, j-2, k)] 
+                            - 4*vsf[map_(i, j-1, k)]
+                            + 3*vsf[map_(i, j  , k)]
+                        )/(2*map_.h());
+                }
+                else // (0 < j && j < sizes.y())
+                {
+                    gGrad[ID].y() = 
+                        ( 
+                                vsf[map_(i, j+1, k)] 
+                            -   vsf[map_(i, j-1, k)]
+                        )/(2*map_.h());
+                }
+            }
+    }
+
+    if (sizes.z() != 1) // non-empty direction
+    {
+        forAll(gGrad, ID)
+            {
+                const labelVector ijk = map_(ID);
+                const label i = ijk[0];
+                const label j = ijk[1];
+                const label k = ijk[2];
+
+                if (k == 0) // left boundary
+                {
+                    gGrad[ID].z() = 
+                        ( 
+                            -   vsf[map_(i, j, k+2)] 
+                            + 4*vsf[map_(i, j, k+1)]
+                            - 3*vsf[map_(i, j, k  )]
+                        )/(2*map_.h());
+                }
+                else if (k == sizes.z() - 1) // right boundary
+                {
+                    gGrad[ID].z() = 
+                        ( 
+                                vsf[map_(i, j, k-2)] 
+                            - 4*vsf[map_(i, j, k-1)]
+                            + 3*vsf[map_(i, j, k  )]
+                        )/(2*map_.h());
+                }
+                else // (0 < i && i < sizes.x())
+                {
+                    gGrad[ID].z() = 
+                        ( 
+                                vsf[map_(i, j, k+1)] 
+                            -   vsf[map_(i, j, k-1)]
+                        )/(2*map_.h());
+                }
+            }
+    }
+
+    Field<GradType>& igGrad = gGrad;
+    igGrad /= vsf.mesh().V();
+
+     // TODO Implement coupled boundary case
 
     return tgGrad;
 }
 
 
-template<class Type>
-void Foam::fv::centralGrad<Type>::correctBoundaryConditions
-(
-    const GeometricField<Type, fvPatchField, volMesh>& vsf,
-    GeometricField
-    <
-        typename outerProduct<vector, Type>::type, fvPatchField, volMesh
-    >& gGrad
-)
-{
-    auto& gGradbf = gGrad.boundaryFieldRef();
-
-    forAll(vsf.boundaryField(), patchi)
-    {
-        if (!vsf.boundaryField()[patchi].coupled())
-        {
-            const vectorField n
-            (
-                vsf.mesh().Sf().boundaryField()[patchi]
-              / vsf.mesh().magSf().boundaryField()[patchi]
-            );
-
-            gGradbf[patchi] += n *
-            (
-                vsf.boundaryField()[patchi].snGrad()
-              - (n & gGradbf[patchi])
-            );
-        }
-     }
-}
 
 
 // ************************************************************************* //
