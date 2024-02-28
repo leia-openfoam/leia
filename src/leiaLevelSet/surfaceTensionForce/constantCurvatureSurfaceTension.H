@@ -27,7 +27,6 @@ Class
     Foam::constantCurvatureSurfaceTension
 
 Description
-
     A constant-curvature surface-tension force for testing if the pressure-
     velocity coupling algorithm is force-balanced. 
 

@@ -27,6 +27,8 @@ Class
     Foam::phaseIndicator
 
 Description
+    Abstract base class opening a model hierachy to implement an algorithmn 
+    for deriving a discrete phase indicator field from the level-set field.
 
 SourceFiles
     phaseIndicator.C

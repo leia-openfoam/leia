@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2023 AUTHOR,AFFILIATION
+    Copyright (C) 2023 Julian Reitzel, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -27,6 +27,7 @@ Application
     leiaTestGradScheme
 
 Description
+    Reads in the psi field, calculates the gradient and writes it.
 
 \*---------------------------------------------------------------------------*/
 

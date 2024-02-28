@@ -27,12 +27,11 @@ Class
     Foam::divGradPsiSnGradAlpha
 
 Description
-
     Computes the face-centered surface tension force using the trace
     of the gradient of the level set function, multiplied by the face-
     normal gradient of the phase indicator (CSF model)
 
-    f_{\Sigma,f} = \sigma_f [trace(\nabla(\psi))]_f snGrad(alpha)
+    \f$\f$ f_{\Sigma,f} = \sigma_f [trace(\nabla(\psi))]_f snGrad(alpha) \f$\f$
 
 SourceFiles
     divGradPsiSnGradAlpha.C

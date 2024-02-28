@@ -27,7 +27,6 @@ Application
     leiaLevelSetFoam 
 
 Description
-
     \heading Solver details
     A level-set equation in conservative form   
 

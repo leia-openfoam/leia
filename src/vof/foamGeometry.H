@@ -24,13 +24,12 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Description
-
-    Volume fraction of the phase \Omega^-1 given by an implicit planeace 
-    \psi(x): R^3 -> R,
+    Volume fraction of the phase \f$\Omega^-1\f$ given by an implicit planeace 
+    \f$ \psi(x): \R^3 -> \R \f$,
     
-    \Omega^- := \{x, x \psi(x) < 0 \},
+    \f$\f$ \Omega^- := \{x, x \psi(x) < 0 \} \f$\f$,
     
-    for a polyedral finite volume cell \Omega_c, using the divergence
+    for a polyedral finite volume cell \f$\Omega_c\f$, using the divergence
     theorem in 3D (volume), then again in 2D (area). 
 
 \*---------------------------------------------------------------------------*/

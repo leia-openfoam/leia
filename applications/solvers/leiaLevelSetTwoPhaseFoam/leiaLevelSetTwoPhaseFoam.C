@@ -30,7 +30,6 @@ Group
     grpMultiphaseSolvers
 
 Description
-
     A solver for two incompressible, isothermal immiscible fluids using the
     Linear Least-Squares 0-Level Set (LLS0LS) method.  
 
