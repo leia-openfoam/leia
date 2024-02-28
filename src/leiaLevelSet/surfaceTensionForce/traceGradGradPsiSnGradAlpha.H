@@ -27,7 +27,6 @@ Class
     Foam::traceGradGradPsiSnGradAlpha
 
 Description
-
     Computes the face-centered surface tension force using the trace
     of the gradient of the geometrical normal field computed in the 
     narrow band by the geometrical phase indicator. The field is fetched

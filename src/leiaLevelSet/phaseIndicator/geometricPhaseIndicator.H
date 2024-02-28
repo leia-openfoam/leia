@@ -27,15 +27,14 @@ Class
     Foam::geometricPhaseIndicator
 
 Description
-
-    Computes the phase indicator as a volume fraction from a field \psi_c. 
+    Computes the phase indicator as a volume fraction from a field \f$\psi_c\f$. 
     
-    In each cell \Omega_c, a piecewise-planer approximation \psi^l_c is
+    In each cell \f$\Omega_c\f$, a piecewise-planer approximation \f$\psi^l_c\f$ is
     computed using linear least squares. This implicit plane is then used to
-    truncate the cell and compute the phase-specific volume \Omega_c^-,
+    truncate the cell and compute the phase-specific volume \f$\Omega_c^-\f$,
     resulting in the volume fraction 
 
-    \alpha_c = |\Omega_c^-| / |\Omega_c| 
+    \f$\f$ \alpha_c = |\Omega_c^-| / |\Omega_c| \f$\f$
 
 SourceFiles
     geometricPhaseIndicator.C

@@ -27,8 +27,7 @@ Application
     leiaTestRedistance 
 
 Description
-
-    TODO
+    Application for testing redistancing algorithmn.
 
 \*---------------------------------------------------------------------------*/
 
@@ -63,20 +62,9 @@ int main(int argc, char *argv[])
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 
-    // volVectorField gradPsi = fvc::grad(psi);
-    // gradPsi.rename("gradPsi");
-    // gradPsi.write();
-
     redist->redistance(psi);
         
     runTime.setTime(1,1);
-
-    // psi.write();
-
-    // gradPsi = fvc::grad(psi);
-    // gradPsi.rename("gradPsi");
-    // gradPsi.write();
-
 
     Info<< "End\n" << endl;
 

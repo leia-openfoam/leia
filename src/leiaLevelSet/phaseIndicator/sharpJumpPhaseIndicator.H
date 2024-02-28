@@ -27,6 +27,7 @@ Class
     Foam::sharpJumpPhaseIndicator
 
 Description
+    A phase indicator with an abrupt or sharp jump.
 
 SourceFiles
     sharpJumpPhaseIndicator.C

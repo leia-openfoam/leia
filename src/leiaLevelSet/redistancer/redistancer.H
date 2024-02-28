@@ -27,6 +27,8 @@ Class
     Foam::redistancer
 
 Description
+    Abstract base class for implementing a redistancing/ reinitialization
+    algorithmen for the Level-Set Method.
 
 SourceFiles
     redistancer.C

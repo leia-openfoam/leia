@@ -27,6 +27,10 @@ Class
     Foam::heavisidePhaseIndicator
 
 Description
+    A phase indicator using a smoothed heaviside function for the transition.
+
+    It accepts nCells as a dictionary argument to determine the width of the 
+    transition.
 
 SourceFiles
     heavisidePhaseIndicator.C
