@@ -1,6 +1,6 @@
 # leia 
 
-The "leia" project is an [OpenFOAM](https://develop.openfoam.com/Development/openfoam) module that implements unstructured Lagrangian / Eulerian Interface Approximation (LEIA) methods for multiphase flow simulations in complex geometries.
+The "leia" project is an [OpenFOAM](https://develop.openfoam.com/Development/openfoam) module that implements unstructured Lagrangian / Eulerian Interface Approximation (LEIA) methods for multiphase flow simulations in complex geometries. This currently includes an unstructured Finite Volume Level Set Method for advecting interfaces and for simulating two-phase flows.
 
 [![Build Tests](https://github.com/leia-openfoam/leia/actions/workflows/build.yml/badge.svg)](https://github.com/leia-openfoam/leia/actions/workflows/build.yml)
 [![Documentation](https://github.com/leia-openfoam/leia/actions/workflows/docs.yml/badge.svg)](https://leia-openfoam.github.io/leia/)
