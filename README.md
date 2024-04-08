@@ -28,7 +28,7 @@ These instructions will get your copy of the project up and running on your loca
 
 ### Compilation & Installation dependencies 
 
-A C++ compiler that supports the C++20 standard, tested with 
+A C++ compiler that supports the C++17 standard. Tested with 
 
 * g++ (GCC) 11.2.0
 * g++ (GCC) 10.3.0
