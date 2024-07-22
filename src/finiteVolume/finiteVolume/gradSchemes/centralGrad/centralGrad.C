@@ -64,7 +64,8 @@ Foam::fv::centralGrad<Type>::calcGrad
                 IOobject::NO_WRITE
             ),
             vsf.mesh(),
-            dimensioned<GradType>(vsf.dimensions()/dimLength, Foam::zero())
+            dimensioned<GradType>(vsf.dimensions()/dimLength, Foam::zero()),
+            extrapolatedCalculatedFvPatchField<GradType>::typeName
         )
     );
     GradFieldType& gGrad = tgGrad.ref();
@@ -190,11 +191,41 @@ Foam::fv::centralGrad<Type>::calcGrad
     igGrad /= vsf.mesh().V();
 
      // TODO Implement coupled boundary case
+    correctBoundaryConditions(vsf, gGrad);
 
     return tgGrad;
 }
 
+template<class Type>
+void Foam::fv::centralGrad<Type>::correctBoundaryConditions
+(
+    const GeometricField<Type, fvPatchField, volMesh>& vsf,
+    GeometricField
+    <
+        typename outerProduct<vector, Type>::type, fvPatchField, volMesh
+    >& gGrad
+)
+{
+    auto& gGradbf = gGrad.boundaryFieldRef();
 
+    forAll(vsf.boundaryField(), patchi)
+    {
+        if (!vsf.boundaryField()[patchi].coupled())
+        {
+            const vectorField n
+            (
+                vsf.mesh().Sf().boundaryField()[patchi]
+              / vsf.mesh().magSf().boundaryField()[patchi]
+            );
+
+            gGradbf[patchi] += n *
+            (
+                vsf.boundaryField()[patchi].snGrad()
+              - (n & gGradbf[patchi])
+            );
+        }
+     }
+}
 
 
 // ************************************************************************* //

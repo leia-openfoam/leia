@@ -22,7 +22,8 @@ ddtSchemes
 
 gradSchemes
 {
-    grad(psi)       noBvGrad Gauss linear;
+    default         centralGrad;
+    grad(psi)       centralGrad;
 }
 
 divSchemes

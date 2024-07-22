@@ -24,7 +24,8 @@ ddtSchemes
 
 gradSchemes
 {
-    default         noBvGrad Gauss linear;
+//    default         noBvGrad Gauss linear;
+    default         centralGrad;
     grad(psi_orig)  Gauss linear;
 }
 

@@ -227,8 +227,8 @@ scalar Foam::functionObjects::contactPoint::calcContactCurvature()
     const Vector<scalar> root = findRootPosition(pfield_);
     const label rootCell = mesh_.findCell(root);
 
-    // tensor ten = interpolationCellPoint<tensor>(gradNormal).interpolate(root, rootCell);
-    tensor ten = gradNormal[762];
+    tensor ten = interpolationCellPoint<tensor>(gradNormal).interpolate(root, rootCell);
+    // tensor ten = gradNormal[762];
     std::string val_str = 
         "dnx_dy == dny_dx: " 
         + std::to_string(ten.xy()) + ", "

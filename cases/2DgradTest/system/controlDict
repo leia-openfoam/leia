@@ -49,6 +49,10 @@ timePrecision   6;
 
 runTimeModifiable true;
 
-libs ("libleiafiniteVolume");
+libs 
+(
+    "libleiaMeshTools.so"
+    "libleiafiniteVolume.so"
+);
 
 // ************************************************************************* //

@@ -49,7 +49,11 @@ timePrecision   6;
 
 runTimeModifiable true;
 
-libs ("libleiafiniteVolume.so");
+libs 
+(
+    "libleiaMeshTools.so"
+    "libleiafiniteVolume.so"
+);
 
 #include "fobjects";
 // ************************************************************************* //
