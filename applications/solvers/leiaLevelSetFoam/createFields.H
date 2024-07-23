@@ -13,6 +13,35 @@ volScalarField psi
     mesh
 );
 
+// Debugging
+volVectorField gradPsi 
+(
+    IOobject
+    (
+        "gradPsi",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    fvc::grad(psi)
+);
+
+surfaceScalarField psiErr 
+(
+    IOobject
+    (
+        "psiErr",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh, 
+    dimensionedScalar("psiErr", psi.dimensions(), 0.)
+);
+
+
 // Phase-indicator  
 // FIXME: Use phase indicator name from transport properties. TM. 
 Info<< "Reading field alpha\n" << endl;

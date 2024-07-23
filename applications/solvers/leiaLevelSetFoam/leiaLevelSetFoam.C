@@ -55,6 +55,7 @@ Description
 #include "narrowBand.H"
 #include "sdplsSource.H"
 #include "advectionVerification.H"
+#include "subCycle.H"
 
 // tmp
 #include "fileName.H"
@@ -121,6 +122,10 @@ int main(int argc, char *argv[])
 
     #include "errorCalculation.H"
 
+    // TODO(TM): read from constant/functions/divDefCorr
+    //           bool defCorr() member function using solver performance? 
+    const label MAX_N_DEF_CORR = 10;
+
     while (runTime.run())
     {
         #include "CourantNo.H"
@@ -134,15 +139,114 @@ int main(int argc, char *argv[])
             velocityModel->oscillateVelocity(U, U0, phi, phi0, runTime);
         }
 
-        fvScalarMatrix psiEqn
-        (
-            fvm::ddt(psi)
-            + fvm::div(phi, psi)
-        ==
-            source->fvmsdplsSource(psi, U)
-        );
+        // TOD(TM): move to divDefCorr src/fvOptions.
+        // Applies the defered correction source for the upwind scheme.
+        bool defCorr = true; 
+        label nDefCorr = 0;
+        while (defCorr && (nDefCorr < MAX_N_DEF_CORR))
+	    //for (label nDeferredCorrs = 0; nDeferredCorrs < 10; ++nDeferredCorrs)
+    	{
+            // FIXME(TM): this resets only the internal field values! 
+            // psiErr.primitiveFieldRef() = 0; 
+            psiErr == dimensionedScalar("psiErr", psi.dimensions(), 0);
+            // Compute cell-centered gradient of psi.
+            gradPsi = fvc::grad(psi); 
+            // Get owner-neighbour addressing.
+            const auto& own = mesh.owner();
+            const auto& nei = mesh.neighbour();
+            // Get cell centers.
+            const auto& C = mesh.C();
+            // Get face centers.
+            const auto& Cf = mesh.Cf();
 
-        psiEqn.solve();
+            forAll(own, faceI)
+            {
+                // If flux is positive, owner-cell is upwind. 
+                if (phi[faceI] > 0)
+                {
+                    psiErr[faceI] = (gradPsi[own[faceI]] & (Cf[faceI] - C[own[faceI]]));
+                }
+                else // If flux is negative, neighbor-cell is upwind. 
+                {
+                    psiErr[faceI] = (gradPsi[nei[faceI]] & (Cf[faceI] - C[nei[faceI]])); 
+                }
+            }
+
+            // Computing psiErr on coupled boundaries.
+            auto& psiErrBdryField = psiErr.boundaryFieldRef(); 
+            // Boundary data for psiErr calculation.
+            const auto& gradPsiBdryField = gradPsi.boundaryField(); 
+            const auto& cfBdryField = Cf.boundaryField(); 
+            const auto& cBdryField = C.boundaryField(); 
+            const auto& phiBdryField = phi.boundaryField();
+            const auto& patches = mesh.boundary(); 
+            const auto& faceOwner = mesh.faceOwner();
+            // For all boundary patches.
+            forAll(psiErrBdryField, patchI)
+            {
+                const fvPatch& patch = patches[patchI];
+                // TODO(TM): define psiErr on non-coupled BCs.
+                if (isA<coupledFvPatch>(patch)) // coupled patch
+                {
+                    // Get psiErr patch field 
+                    auto& psiErrPatch = psiErrBdryField[patchI];
+
+                    // Get gradPsi across coupled patch boundary 
+                    const auto& gradPsiPatch = gradPsiBdryField[patchI];
+                    auto gradPsiNeiTmp = gradPsiPatch.patchNeighbourField();
+                    const auto& gradPsiNei = gradPsiNeiTmp();
+
+                    // Get cell centers across coupled patch boundary 
+                    const auto& cPatch = cBdryField[patchI];
+                    auto cNeiTmp = cPatch.patchNeighbourField();
+                    const auto& cNei = cNeiTmp();
+
+                    // Cf patch field
+                    const auto& cfPatch = cfBdryField[patchI];
+
+                    // phi patch field
+                    const auto& phiPatchField = phiBdryField[patchI];
+
+                    forAll(phiPatchField, faceI)
+                    {
+                        const label faceG = faceI + patch.start(); // Global label. 
+                        // If flux is positive, owner-cell is upwind. 
+                        if (phiPatchField[faceI] > 0) // If flux is positive
+                        {
+                            psiErrPatch[faceI] = 
+                            (   
+                                gradPsi[faceOwner[faceG]] &  
+                                (cfPatch[faceI] - C[faceOwner[faceG]])
+                            );
+                        }
+                        else // If flux is negative, neighbor-cell is upwind. 
+                        {
+                            psiErrPatch[faceI] = 
+                            (   
+                                gradPsiNei[faceI] &  
+                                (cfPatch[faceI] - cNei[faceI])
+                            );
+                        }
+                    }
+                }
+            }
+	    
+            fvScalarMatrix psiEqn
+            (
+                fvm::ddt(psi) + fvm::div(phi, psi)
+            	==
+                -fvc::div(phi*psiErr)	
+                //+ source->fvmsdplsSource(psi, U)
+                //+ fvOptions(psi)
+            );
+
+            auto eqnSolverPerf = psiEqn.solve();
+            // TODO(TM): obtain solver performance from the equation in fvOption.
+            defCorr = (eqnSolverPerf.nIterations() > 0);  
+            ++nDefCorr;
+
+            psi.correctBoundaryConditions(); 
+        }
         
         redist->redistance(psi);
         
