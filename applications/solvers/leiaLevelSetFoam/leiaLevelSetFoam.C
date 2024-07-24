@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 
     // TODO(TM): read from constant/functions/divDefCorr
     //           bool defCorr() member function using solver performance? 
-    const label MAX_N_DEF_CORR = 10;
+    const label MAX_N_DEF_CORR = 20;
 
     while (runTime.run())
     {
@@ -144,10 +144,8 @@ int main(int argc, char *argv[])
         bool defCorr = true; 
         label nDefCorr = 0;
         while (defCorr && (nDefCorr < MAX_N_DEF_CORR))
-	    //for (label nDeferredCorrs = 0; nDeferredCorrs < 10; ++nDeferredCorrs)
     	{
-            // FIXME(TM): this resets only the internal field values! 
-            // psiErr.primitiveFieldRef() = 0; 
+            // Reset the error.
             psiErr == dimensionedScalar("psiErr", psi.dimensions(), 0);
             // Compute cell-centered gradient of psi.
             gradPsi = fvc::grad(psi); 
@@ -159,6 +157,7 @@ int main(int argc, char *argv[])
             // Get face centers.
             const auto& Cf = mesh.Cf();
 
+            // For internal faces
             forAll(own, faceI)
             {
                 // If flux is positive, owner-cell is upwind. 
@@ -181,16 +180,38 @@ int main(int argc, char *argv[])
             const auto& phiBdryField = phi.boundaryField();
             const auto& patches = mesh.boundary(); 
             const auto& faceOwner = mesh.faceOwner();
-            // For all boundary patches.
+
+            // For all boundary patches (faces).
             forAll(psiErrBdryField, patchI)
             {
                 const fvPatch& patch = patches[patchI];
-                // TODO(TM): define psiErr on non-coupled BCs.
+
+                // Face centers patch field
+                const auto& cfPatch = cfBdryField[patchI];
+
+                // Face-centered error patch field for calculation 
+                auto& psiErrPatch = psiErrBdryField[patchI];
+
+                // Face-centered volumetric flux patch field
+                const auto& phiPatchField = phiBdryField[patchI];
+
+                // Compute psiErr on all outflow patches
+                forAll(phiPatchField, faceI)
+                {
+                    const label faceG = faceI + patch.start(); // Global label. 
+                    // If flux is positive, owner-cell is upwind. 
+                    if (phiPatchField[faceI] > 0) // If flux is positive
+                    {
+                        psiErrPatch[faceI] = 
+                        (   
+                            gradPsi[faceOwner[faceG]] &  
+                            (cfPatch[faceI] - C[faceOwner[faceG]])
+                        );
+                    }
+                }
+
                 if (isA<coupledFvPatch>(patch)) // coupled patch
                 {
-                    // Get psiErr patch field 
-                    auto& psiErrPatch = psiErrBdryField[patchI];
-
                     // Get gradPsi across coupled patch boundary 
                     const auto& gradPsiPatch = gradPsiBdryField[patchI];
                     auto gradPsiNeiTmp = gradPsiPatch.patchNeighbourField();
@@ -201,26 +222,12 @@ int main(int argc, char *argv[])
                     auto cNeiTmp = cPatch.patchNeighbourField();
                     const auto& cNei = cNeiTmp();
 
-                    // Cf patch field
-                    const auto& cfPatch = cfBdryField[patchI];
-
-                    // phi patch field
-                    const auto& phiPatchField = phiBdryField[patchI];
-
+                    // Compute psiErr on coupled patch.
                     forAll(phiPatchField, faceI)
                     {
-                        const label faceG = faceI + patch.start(); // Global label. 
-                        // If flux is positive, owner-cell is upwind. 
-                        if (phiPatchField[faceI] > 0) // If flux is positive
+                        if (phiPatchField[faceI] < 0) // If flux is negative 
                         {
-                            psiErrPatch[faceI] = 
-                            (   
-                                gradPsi[faceOwner[faceG]] &  
-                                (cfPatch[faceI] - C[faceOwner[faceG]])
-                            );
-                        }
-                        else // If flux is negative, neighbor-cell is upwind. 
-                        {
+                            // Coupled-patch neighbor is upwind
                             psiErrPatch[faceI] = 
                             (   
                                 gradPsiNei[faceI] &  
