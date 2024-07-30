@@ -6,7 +6,7 @@
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
     Copyright (C) 2011-2017 OpenFOAM Foundation
-    Copyright (C) 2024 Tomislav Maric, TU Darmstadt 
+    Copyright (C) 2024      Tomislav Maric, TU Darmstadt 
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -25,14 +25,13 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    simpleDefCorrFoam
+    simpleFoam
 
 Group
     grpIncompressibleSolvers
 
 Description
-    Steady-state solver for incompressible, turbulent flows with 
-    defect correction.
+    Steady-state solver for incompressible, turbulent flows.
 
     \heading Solver details
     The solver uses the SIMPLE algorithm to solve the continuity equation:
@@ -65,6 +64,59 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
-#include "simpleFoam.C"
+#include "fvCFD.H"
+#include "singlePhaseTransportModel.H"
+#include "turbulentTransportModel.H"
+#include "simpleControl.H"
+#include "fvOptions.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+int main(int argc, char *argv[])
+{
+    argList::addNote
+    (
+        "Steady-state solver for incompressible, turbulent flows."
+    );
+
+    #include "postProcess.H"
+
+    #include "addCheckCaseOptions.H"
+    #include "setRootCaseLists.H"
+    #include "createTime.H"
+    #include "createMesh.H"
+    #include "createControl.H"
+    #include "createFields.H"
+    #include "initContinuityErrs.H"
+
+    turbulence->validate();
+
+    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+    Info<< "\nStarting time loop\n" << endl;
+
+    while (simple.loop())
+    {
+        Info<< "Time = " << runTime.timeName() << nl << endl;
+
+        // --- Pressure-velocity SIMPLE corrector
+        {
+            #include "UEqn.H"
+            #include "pEqn.H"
+        }
+
+        laminarTransport.correct();
+        turbulence->correct();
+
+        runTime.write();
+
+        runTime.printExecutionTime(Info);
+    }
+
+    Info<< "End\n" << endl;
+
+    return 0;
+}
+
 
 // ************************************************************************* //
