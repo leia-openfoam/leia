@@ -36,7 +36,7 @@
         ++nCorrectDefect; 
         correctDefect = (pEqnPerformance.nIterations() > 0);
 
-        if (! (correctDefect && simple.finalNonOrthogonalIter()))
+        if (!correctDefect || simple.finalNonOrthogonalIter())
         {
             phi = phiHbyA - pEqn.flux();
         }

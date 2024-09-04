@@ -28,14 +28,14 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
-#include "linearDefCorrUpwind.H"
+#include "upwindSecondOrderDefCorr.H"
 #include "fvMesh.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    makelimitedSurfaceInterpolationScheme(linearDefCorrUpwind)
+    makelimitedSurfaceInterpolationScheme(upwindSecondOrderDefCorr)
 }
 
 // ************************************************************************* //

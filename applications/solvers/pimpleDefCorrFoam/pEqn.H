@@ -52,7 +52,7 @@ while (correctDefect && pimple.correctNonOrthogonal())
     auto pEqnPerformance = pEqn.solve(p.select(pimple.finalInnerIter()));
     correctDefect = (pEqnPerformance.nIterations() > 0);
 
-    if (! (correctDefect && pimple.finalNonOrthogonalIter()))
+    if (!correctDefect || pimple.finalNonOrthogonalIter())
     {
         phi = phiHbyA - pEqn.flux();
     }

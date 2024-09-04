@@ -1,0 +1,5 @@
+defCorrGaussConvectionScheme/defCorrGaussConvectionSchemes.C
+
+upwindSecondOrderDefCorr/upwindSecondOrderDefCorrs.C
+
+LIB = $(FOAM_USER_LIBBIN)/libdefCorrSchemes
