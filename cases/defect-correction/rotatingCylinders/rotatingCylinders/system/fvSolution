@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2012                                 |
+|  \\    /   O peration     | Version:  v2312                                 |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -11,48 +11,53 @@ FoamFile
     format      ascii;
     class       dictionary;
     location    "system";
-    object      fvSchemes;
+    object      fvSolution;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-ddtSchemes
+solvers
 {
-    default         CrankNicolson 1;
-    // default         Euler;
+    p
+    {
+        solver          GAMG;
+        tolerance       1e-10;
+        relTol          1e-03;
+        smoother        GaussSeidel;
+    }
+
+    U
+    {
+        solver          smoothSolver;
+        smoother        GaussSeidel;
+        tolerance       1e-10;
+        relTol          1e-03;
+    }
 }
 
-gradSchemes
+SIMPLE
 {
-    default         Gauss linear;
-    grad(p)         Gauss linear;
+    nNonOrthogonalCorrectors 0; 
+    pRefCell        0;
+    pRefValue       0;
+
+    residualControl
+    {
+        p               1e-4;
+        U               1e-5;
+    }
 }
 
-divSchemes
+relaxationFactors
 {
-    default         none;
-    div(phi,psi)    Gauss upwind;
-    // Defect-corrected div schemes
-    //div(phi,psi)    GaussDefCorr upwindSecondOrderDefCorr;
+    fields
+    {
+        p               0.3;
+    }
+    equations
+    {
+        U               0.7;
+    }
 }
 
-laplacianSchemes
-{
-    default         Gauss linear orthogonal;
-}
-
-interpolationSchemes
-{
-    default         linear;
-}
-
-snGradSchemes
-{
-    default         orthogonal;
-}
-
-fluxRequired
-{
-    p;
-}
 
 // ************************************************************************* //

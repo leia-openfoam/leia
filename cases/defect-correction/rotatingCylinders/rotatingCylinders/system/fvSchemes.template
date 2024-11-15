@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2012                                 |
+|  \\    /   O peration     | Version:  v2312                                 |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -17,27 +17,28 @@ FoamFile
 
 ddtSchemes
 {
-    default         CrankNicolson 1;
-    // default         Euler;
+    default         steadyState;
 }
 
 gradSchemes
 {
     default         Gauss linear;
-    grad(p)         Gauss linear;
 }
+
+linear Gauss linear;
+upwind Gauss upwind; 
+upwindDefCorr2ndOrder GaussDefCorr upwindSecondOrderDefCorr;
 
 divSchemes
 {
     default         none;
-    div(phi,psi)    Gauss upwind;
-    // Defect-corrected div schemes
-    //div(phi,psi)    GaussDefCorr upwindSecondOrderDefCorr;
+    div(phi,U)      $|-DIV_SCHEME-|; 
+    div((nuEff*dev2(T(grad(U))))) Gauss linear;
 }
 
 laplacianSchemes
 {
-    default         Gauss linear orthogonal;
+    default         Gauss linear corrected;
 }
 
 interpolationSchemes
@@ -47,12 +48,8 @@ interpolationSchemes
 
 snGradSchemes
 {
-    default         orthogonal;
+    default         corrected;
 }
 
-fluxRequired
-{
-    p;
-}
 
 // ************************************************************************* //

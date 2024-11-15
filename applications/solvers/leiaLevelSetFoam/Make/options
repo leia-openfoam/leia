@@ -11,4 +11,5 @@ EXE_LIBS = \
     -lfvOptions \
     -lmeshTools \
     -lsampling \
-    -lleiaLevelSet
+    -lleiaLevelSet \
+    -ldefCorrSchemes 

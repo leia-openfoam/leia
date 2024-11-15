@@ -139,15 +139,16 @@ int main(int argc, char *argv[])
             velocityModel->oscillateVelocity(U, U0, phi, phi0, runTime);
         }
 
-        // TOD(TM): move to divDefCorr src/fvOptions.
-        // Applies the defered correction source for the upwind scheme.
+        // Applies the defect correction source for the upwind scheme.
         bool defCorr = true; 
         label nDefCorr = 0;
         while (defCorr && (nDefCorr < MAX_N_DEF_CORR))
     	{
+            // TODO(TM): remove, ported to upwindSecondOrderDefCorr
             // Reset the error.
             psiErr == dimensionedScalar("psiErr", psi.dimensions(), 0);
             // Compute cell-centered gradient of psi.
+            // TODO(TM): contraction for tensor fields or snGrad. 
             gradPsi = fvc::grad(psi); 
             // Get owner-neighbour addressing.
             const auto& own = mesh.owner();
@@ -241,10 +242,7 @@ int main(int argc, char *argv[])
             fvScalarMatrix psiEqn
             (
                 fvm::ddt(psi) + fvm::div(phi, psi)
-            	==
-                -fvc::div(phi*psiErr)	
-                //+ source->fvmsdplsSource(psi, U)
-                //+ fvOptions(psi)
+            	//== source->fvmsdplsSource(psi, U)
             );
 
             auto eqnSolverPerf = psiEqn.solve();

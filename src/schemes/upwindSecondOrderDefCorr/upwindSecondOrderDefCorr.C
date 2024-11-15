@@ -44,8 +44,6 @@ upwindSecondOrderDefCorr<Type>::correction
     const GeometricField<Type, fvPatchField, volMesh>& vf
 ) const
 {
-    // TODO(TM): remove, debugging
-    Info << "Correction called " << endl;
     // Implements the defect correction, which is used by the  Gauss divergence
     // scheme (gaussConvectionScheme.C) by adding an explicit source to the
     // matrix in the form of

@@ -41,7 +41,7 @@
             phi = phiHbyA - pEqn.flux();
         }
     }
-    Info << "Number of defect corrections = " << nCorrectDefect << endl; 
+    Info << "p_rgh defect corrections = " << nCorrectDefect << endl; 
 
     #include "continuityErrs.H"
 

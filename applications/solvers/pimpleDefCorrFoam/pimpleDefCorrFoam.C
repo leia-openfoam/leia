@@ -5,10 +5,8 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2011-2016 OpenFOAM Foundation
+    Copyright (C) 2011-2017 OpenFOAM Foundation
     Copyright (C) 2019 OpenCFD Ltd.
-    Copyright (C) 2024 Tomislav Maric, TU Darmstadt 
-
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -27,16 +25,18 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    icoFoam
+    pimpleFoam.C
 
 Group
     grpIncompressibleSolvers
 
 Description
-    Transient solver for incompressible, laminar flow of Newtonian fluids.
+    Transient solver for incompressible, turbulent flow of Newtonian fluids
+    on a moving mesh.
 
     \heading Solver details
-    The solver uses the PISO algorithm to solve the continuity equation:
+    The solver uses the PIMPLE (merged PISO-SIMPLE) algorithm to solve the
+    continuity equation:
 
         \f[
             \div \vec{U} = 0
@@ -45,28 +45,44 @@ Description
     and momentum equation:
 
         \f[
-            \ddt{\vec{U}}
-          + \div \left( \vec{U} \vec{U} \right)
-          - \div \left(\nu \grad \vec{U} \right)
-          = - \grad p
+            \ddt{\vec{U}} + \div \left( \vec{U} \vec{U} \right) - \div \gvec{R}
+          = - \grad p + \vec{S}_U
         \f]
 
     Where:
     \vartable
         \vec{U} | Velocity
         p       | Pressure
+        \vec{R} | Stress tensor
+        \vec{S}_U | Momentum source
     \endvartable
+
+    Sub-models include:
+    - turbulence modelling, i.e. laminar, RAS or LES
+    - run-time selectable MRF and finite volume options, e.g. explicit porosity
 
     \heading Required fields
     \plaintable
         U       | Velocity [m/s]
         p       | Kinematic pressure, p/rho [m2/s2]
+        \<turbulence fields\> | As required by user selection
     \endplaintable
+
+Note
+   The motion frequency of this solver can be influenced by the presence
+   of "updateControl" and "updateInterval" in the dynamicMeshDict.
 
 \*---------------------------------------------------------------------------*/
 
 #include "fvCFD.H"
-#include "pisoControl.H"
+#include "dynamicFvMesh.H"
+#include "singlePhaseTransportModel.H"
+#include "turbulentTransportModel.H"
+#include "pimpleControl.H"
+#include "CorrectPhi.H"
+#include "fvOptions.H"
+#include "localEulerDdtScheme.H"
+#include "fvcSmooth.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -74,8 +90,8 @@ int main(int argc, char *argv[])
 {
     argList::addNote
     (
-        "Transient solver for incompressible, laminar flow"
-        " of Newtonian fluids."
+        "Transient solver for incompressible, turbulent flow"
+        " of Newtonian fluids on a moving mesh."
     );
 
     #include "postProcess.H"
@@ -83,78 +99,88 @@ int main(int argc, char *argv[])
     #include "addCheckCaseOptions.H"
     #include "setRootCaseLists.H"
     #include "createTime.H"
-    #include "createMesh.H"
-
-    pisoControl piso(mesh);
-
-    #include "createFields.H"
+    #include "createDynamicFvMesh.H"
     #include "initContinuityErrs.H"
+    #include "createDyMControls.H"
+    #include "createFields.H"
+    #include "createUfIfPresent.H"
+    #include "CourantNo.H"
+    #include "setInitialDeltaT.H"
+
+    turbulence->validate();
+
+    if (!LTS)
+    {
+        #include "CourantNo.H"
+        #include "setInitialDeltaT.H"
+    }
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     Info<< "\nStarting time loop\n" << endl;
 
-    while (runTime.loop())
+    while (runTime.run())
     {
-        Info<< "Time = " << runTime.timeName() << nl << endl;
+        #include "readDyMControls.H"
 
-        #include "CourantNo.H"
-
-        // Momentum predictor
-
-        fvVectorMatrix UEqn
-        (
-            fvm::ddt(U)
-          + fvm::div(phi, U)
-          - fvm::laplacian(nu, U)
-        );
-
-        if (piso.momentumPredictor())
+        if (LTS)
         {
-            solve(UEqn == -fvc::grad(p));
+            #include "setRDeltaT.H"
+        }
+        else
+        {
+            #include "CourantNo.H"
+            #include "setDeltaT.H"
         }
 
-        // --- PISO loop
-        while (piso.correct())
+        ++runTime;
+
+        Info<< "Time = " << runTime.timeName() << nl << endl;
+
+        // --- Pressure-velocity PIMPLE corrector loop
+        while (pimple.loop())
         {
-            volScalarField rAU(1.0/UEqn.A());
-            volVectorField HbyA(constrainHbyA(rAU*UEqn.H(), U, p));
-            surfaceScalarField phiHbyA
-            (
-                "phiHbyA",
-                fvc::flux(HbyA)
-              + fvc::interpolate(rAU)*fvc::ddtCorr(U, phi)
-            );
-
-            adjustPhi(phiHbyA, U, p);
-
-            // Update the pressure BCs to ensure flux consistency
-            constrainPressure(p, U, phiHbyA, rAU);
-
-            // Non-orthogonal pressure corrector loop
-            while (piso.correctNonOrthogonal())
+            if (pimple.firstIter() || moveMeshOuterCorrectors)
             {
-                // Pressure corrector
+                // Do any mesh changes
+                mesh.controlledUpdate();
 
-                fvScalarMatrix pEqn
-                (
-                    fvm::laplacian(rAU, p) == fvc::div(phiHbyA)
-                );
-
-                pEqn.setReference(pRefCell, pRefValue);
-
-                pEqn.solve(p.select(piso.finalInnerIter()));
-
-                if (piso.finalNonOrthogonalIter())
+                if (mesh.changing())
                 {
-                    phi = phiHbyA - pEqn.flux();
+                    MRF.update();
+
+                    if (correctPhi)
+                    {
+                        // Calculate absolute flux
+                        // from the mapped surface velocity
+                        phi = mesh.Sf() & Uf();
+
+                        #include "correctPhi.H"
+
+                        // Make the flux relative to the mesh motion
+                        fvc::makeRelative(phi, U);
+                    }
+
+                    if (checkMeshCourantNo)
+                    {
+                        #include "meshCourantNo.H"
+                    }
                 }
             }
 
-            #include "continuityErrs.H"
+            #include "UEqn.H"
 
-            U = HbyA - rAU*fvc::grad(p);
-            U.correctBoundaryConditions();
+            // --- Pressure corrector loop
+            while (pimple.correct())
+            {
+                #include "pEqn.H"
+            }
+
+            if (pimple.turbCorr())
+            {
+                laminarTransport.correct();
+                turbulence->correct();
+            }
         }
 
         runTime.write();

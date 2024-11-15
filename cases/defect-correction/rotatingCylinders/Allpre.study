@@ -1,0 +1,13 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+python ../create-study.py -c rotatingCylinders \
+	-p rotatingCylinders.parameter \
+	-s convergence-study 2>&1 | tee log.create-study
+
+pyFoamRunParameterVariation.py --list-variations rotatingCylinders \
+	rotatingCylinders.parameter 2>&1 | tee variations.txt
+
+#------------------------------------------------------------------------------

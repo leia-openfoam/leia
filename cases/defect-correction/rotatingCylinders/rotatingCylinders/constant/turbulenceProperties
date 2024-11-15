@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2012                                 |
+|  \\    /   O peration     | Version:  v2312                                 |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -10,49 +10,11 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    location    "system";
-    object      fvSchemes;
+    location    "constant";
+    object      turbulenceProperties;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-ddtSchemes
-{
-    default         CrankNicolson 1;
-    // default         Euler;
-}
-
-gradSchemes
-{
-    default         Gauss linear;
-    grad(p)         Gauss linear;
-}
-
-divSchemes
-{
-    default         none;
-    div(phi,psi)    Gauss upwind;
-    // Defect-corrected div schemes
-    //div(phi,psi)    GaussDefCorr upwindSecondOrderDefCorr;
-}
-
-laplacianSchemes
-{
-    default         Gauss linear orthogonal;
-}
-
-interpolationSchemes
-{
-    default         linear;
-}
-
-snGradSchemes
-{
-    default         orthogonal;
-}
-
-fluxRequired
-{
-    p;
-}
+simulationType laminar;
 
 // ************************************************************************* //
