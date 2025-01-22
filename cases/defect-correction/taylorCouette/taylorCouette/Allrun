@@ -3,11 +3,10 @@ cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 #------------------------------------------------------------------------------
 
-python ../create-study.py -c rotatingCylinders \
-	-p rotatingCylinders-corrected.parameter \
-	-s convergence-study-corrected 2>&1 | tee log.create-study-corrected
-
-pyFoamRunParameterVariation.py --list-variations rotatingCylinders \
-	rotatingCylinders-corrected.parameter 2>&1 | tee rotatingCylinders-corrected.variations
+cp -r 0.org 0
+runApplication blockMesh
+runApplication foamSetRotationalPatchVelocity  -axisPoint '(0 0 0)' -angularVelocity '(0 0 1)' -patchName innerWall
+runApplication $(getApplication)
+#python constant/plot.py
 
 #------------------------------------------------------------------------------

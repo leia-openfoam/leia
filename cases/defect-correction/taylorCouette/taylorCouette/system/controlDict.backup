@@ -15,7 +15,7 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     |-solver-|; 
+application     simpleFoam; 
 
 startFrom       startTime;
 
@@ -44,6 +44,8 @@ timeFormat      general;
 timePrecision   6;
 
 runTimeModifiable true;
+
+libs ("libcouetteFieldErrors.so");
 
 functions
 {
@@ -83,6 +85,15 @@ functions
         );
     }
 
+    calculateFieldErrors 
+    {
+        //type coded;
+        name taylorCouette;
+        libs ("libtaylorCouetteFunctionObject.so");
+        writeControl writeTime;
+    }
+
+
    // calculateFieldErrors
    // {
    //     type coded;
@@ -97,15 +108,16 @@ functions
 
    //     codeData
    //     #{
-   //         const scalar Omega1 = 100.0;
-   //         const scalar Omega2 = 0.0;
-   //         const scalar R1 = 1.0;
-   //         const scalar R2 = 2.0;
 
-   //         const scalar mu = Omega2 / Omega1;
-   //         const scalar A = Omega1 * (1.0 - R2 * R2 * mu / R1 / R1) / (1.0 - R2 * R2 / R1 / R1);
-   //         const scalar B = R1 * R1 * Omega1 * (1.0 - mu) / (1.0 - R1 * R1 / R2 / R2);
-   //         const scalar C = 0.5 * A * A * R1 * R1 + 2.0 * A * B * log(R1) - 0.5 * B * B / (R1 * R1);
+   //         scalar Omega1 = 100.0;   // Angular velocity of the inner cylinder
+   //         scalar Omega2 = 0.0;     // Angular velocity of the outer cylinder
+   //         scalar R1 = 1.0;         // Radius of the inner cylinder
+   //         scalar R2 = 2.0;         // Radius of the outer cylinder
+   //     			     //
+   //         scalar mu = (Omega2 / Omega1);  
+   //         scalar A = (Omega1 * (1.0 - ((R2 * R2 * mu) / (R1 * R1)))) / (1.0 - ((R2 * R2) / (R1 * R1)));
+   //         scalar B = ((R1 * R1 * Omega1) * (1.0 - mu)) / (1.0 - ((R1 * R1) / (R2 * R2)));
+   //         scalar C = (0.5 * A * A * R1 * R1) + (2.0 * A * B * Foam::log(R1)) - (0.5 * B * B / (R1 * R1));
 
    //         tmp<volScalarField> pExactPtr;
    //         tmp<volScalarField> pErrPtr;
@@ -117,39 +129,35 @@ functions
    //     codeRead
    //     #{
    //         // Initialize exact fields
-   //         pExactPtr.reset
+   //         pExactPtr = new volScalarField 
    //         (
-   //             new volScalarField
-   //     	(
-   //     	    IOobject
-   //     	    (
-   //     	        "pExact", 
-   //     		mesh().time().timeName(), 
-   //     		mesh(), 
-   //     		IOobject::NO_READ, 
-   //     		IOobject::AUTO_WRITE
-   //     	    ), 
-   //     	    mesh(), 
-   //     	    dimensionedScalar("p", dimPressure, 0.0)
-   //     	)
+   //             IOobject
+   //             (
+   //                 "pExact", 
+   //                 mesh().time().timeName(), 
+   //                 mesh(), 
+   //                 IOobject::NO_READ, 
+   //                 IOobject::AUTO_WRITE
+   //             ), 
+   //             mesh(), 
+   //             dimensionedScalar("p", dimPressure, 0.0)
    //         );
 
-   //         UExactPtr.reset
-   //         (
-   //             new volVectorField
-   //     	(
-   //     	    IOobject
-   //     	    (
-   //     	        "UExact", 
-   //     		mesh().time().timeName(), 
-   //     		mesh(), 
-   //     		IOobject::NO_READ, 
-   //     		IOobject::AUTO_WRITE
-   //     	    ), 
-   //     	    mesh(), 
-   //     	    dimensionedVector("U", dimVelocity, vector::zero)
-   //     	)
-   //         );
+   //         //UExactPtr.
+   //         //    new volVectorField
+   //         //    (
+   //         //        IOobject
+   //         //        (
+   //         //            "UExact", 
+   //         //    	mesh().time().timeName(), 
+   //         //    	mesh(), 
+   //         //    	IOobject::NO_READ, 
+   //         //    	IOobject::AUTO_WRITE
+   //         //        ), 
+   //         //        mesh(), 
+   //         //        dimensionedVector("U", dimVelocity, vector::zero)
+   //         //    )
+   //         //);
 
    //         //volScalarField& pExact = pExactPtr.ref();
    //         //volVectorField& UExact = UExactPtr.ref();
@@ -181,11 +189,11 @@ functions
    //     #{
    //         //if (mrunTime.write())
    //         //{
-   //             pExactPtr->write();
-   //             pErrPtr->write();
+   //             //pExactPtr->write();
+   //             //pErrPtr->write();
 
-   //     	UExactPtr->write();
-   //             UErrPtr->write();
+   //     	//UExactPtr->write();
+   //             //UErrPtr->write();
    //         //}
    //     #};
    //}

@@ -11,45 +11,48 @@ FoamFile
     format      ascii;
     class       dictionary;
     location    "system";
-    object      fvSchemes;
+    object      controlDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-ddtSchemes
+application     simpleFoam; 
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         5000;
+
+deltaT          1;
+
+writeControl    timeStep;
+
+writeInterval   10;
+
+// purgeWrite      3;
+
+writeFormat     ascii;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
+
+functions
 {
-    default         steadyState;
+    taylorCouetteErrors
+    {
+        type taylorCouette;
+        libs ("libtaylorCouette.so");
+        writeControl writeTime;
+    }
 }
-
-gradSchemes
-{
-    default         Gauss linear;
-}
-
-linear Gauss linear;
-upwind Gauss upwind; 
-upwindDefCorr2ndOrder GausssDefCorr upwindSecondOrderDefCorr;
-
-divSchemes
-{
-    default         none;
-    div(phi,U)      $linear; 
-    div((nuEff*dev2(T(grad(U))))) Gauss linear;
-}
-
-laplacianSchemes
-{
-    default         Gauss linear corrected;
-}
-
-interpolationSchemes
-{
-    default         linear;
-}
-
-snGradSchemes
-{
-    default         corrected;
-}
-
 
 // ************************************************************************* //

@@ -6,7 +6,7 @@ values
 
     N_CELLS (40 80 160);
 
-    DIV_SCHEME (linear upwind);
+    DIV_SCHEME (linear upwind boundedLinearUpwind);
 }
 
 
