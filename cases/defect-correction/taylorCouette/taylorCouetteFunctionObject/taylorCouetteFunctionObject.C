@@ -116,15 +116,6 @@ Foam::functionObjects::taylorCouetteFunctionObject::taylorCouetteFunctionObject
 
             vector xfCylindrical (xf[0], xf[1], 0);
 
-            // DEBUGGING
-            const scalar r = mag(xfCylindrical); 
-            Info << "face center = " << xfCylindrical << endl;
-            Info << "r = " << r << endl; 
-            Info << "velocity cylindrical = " << tcFlow_.velocityCylindrical(r) << endl;
-            Info << "velocity cartesian = " << tcFlow_.velocityCartesian(xfCylindrical) << endl;
-            Info << "velocity cartesian mag = " << mag(tcFlow_.velocityCartesian(xfCylindrical)) << endl;
-            // DEBUGGING
-
             // Compute and set the velocity and pressure for the boundary face
             velocityPatch[faceI] = tcFlow_.velocityCartesian(xfCylindrical);
             pressurePatch[faceI] = tcFlow_.pressureCartesian(xfCylindrical);
@@ -163,18 +154,15 @@ bool Foam::functionObjects::taylorCouetteFunctionObject::end()
 {
     volScalarField UerrMag ("UerrMag", mag(Uerr_));
 
-    if (Pstream::myProcNo() == 0)
-    {
-        scalar UerrLinf = gMax(UerrMag);
-	scalar UerrL1 = gSum((UerrMag * mesh_.V())());
-	scalar UerrL2 = sqrt(gSum((UerrMag * UerrMag * mesh_.V())()));
-	scalar h = gMax(Foam::pow(mesh_.deltaCoeffs(), -1)());
+    scalar UerrLinf = gMax(UerrMag); 
+    scalar UerrL1 = gSum((UerrMag * mesh_.V())());
+    scalar UerrL2 = sqrt(gSum((UerrMag * UerrMag * mesh_.V())()));
+    scalar h = gMax(Foam::pow(mesh_.deltaCoeffs(), -1)());
 
-	OFstream of("TaylorCouette.csv");
-	of << "h,UerrLinf,UerrL1,UerrL2\n"
-            << h << "," << UerrLinf << "," 
-	    << UerrL1 << "," << UerrL2 << "\n";
-    }
+    OFstream of("TaylorCouette.csv");
+    of << "h,UerrLinf,UerrL1,UerrL2\n"
+        << h << "," << UerrLinf << "," 
+        << UerrL1 << "," << UerrL2 << "\n";
     
     return true;
 }

@@ -3,13 +3,12 @@ cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 #------------------------------------------------------------------------------
 
-cp -r 0.org 0
-runApplication blockMesh
-runApplication foamSetRotationalPatchVelocity  -axisPoint '(0 0 0)' -angularVelocity '(0 0 1)' -patchName innerWall
-runApplication decomposePar
+rm -rf convergence-study*/
 
-runParallel $(getApplication) # local mpi parallel run
-# Alternative
-#runApplication $(getApplication) # serial run
+rm -rf *.variations 
+
+rm -rf *.database
+
+rm -rf log.*
 
 #------------------------------------------------------------------------------
