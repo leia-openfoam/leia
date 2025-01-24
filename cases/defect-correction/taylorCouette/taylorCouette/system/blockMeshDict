@@ -21,8 +21,8 @@ geom
     r0          1;
     r1          2;
 
-    nr          50;
-    ntheta      50;
+    nr          80;
+    ntheta      80;
 
     g           10;
 

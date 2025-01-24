@@ -1,8 +1,13 @@
-#!/bin/sh
+#!/bin/bash
 cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 #------------------------------------------------------------------------------
 
+# Display warning and wait for user confirmation
+echo "WARNING: This will delete all study files. Do you want to proceed? [Press ENTER to proceed or Ctrl+C to cancel]"
+read -r _  # Wait for the user to press the return key (using _ as a dummy variable)
+
+# Proceed with deletion
 rm -rf convergence-study*/
 
 rm -rf *.variations 
@@ -11,4 +16,7 @@ rm -rf *.database
 
 rm -rf log.*
 
+rm -rf *.pdf *.csv
+
 #------------------------------------------------------------------------------
+

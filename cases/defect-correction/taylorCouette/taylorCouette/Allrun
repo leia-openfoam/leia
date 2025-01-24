@@ -8,8 +8,8 @@ runApplication blockMesh
 runApplication foamSetRotationalPatchVelocity  -axisPoint '(0 0 0)' -angularVelocity '(0 0 1)' -patchName innerWall
 runApplication decomposePar
 
-runParallel $(getApplication) # local mpi parallel run
-# Alternative
+mpirun -np 4 $(getApplication) -parallel # local mpi parallel run
+#runParallel $(getApplication) # local mpi parallel run in background
 #runApplication $(getApplication) # serial run
 
 #------------------------------------------------------------------------------
