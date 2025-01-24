@@ -158,12 +158,20 @@ bool Foam::functionObjects::taylorCouetteFunctionObject::end()
     scalar UerrL1 = gSum((UerrMag * mesh_.V())());
     scalar UerrL2 = sqrt(gSum((UerrMag * UerrMag * mesh_.V())()));
     scalar h = gMax(Foam::pow(mesh_.deltaCoeffs(), -1)());
+    
+    const Time& runTime = mesh_.time();
+    scalar elapsedCpuTime = runTime.elapsedCpuTime();
+
+    // Local number of cells
+    label nCells = mesh_.nCells();
+
+    // Global number of cells (sum over all ranks)
+    reduce(nCells, sumOp<label>());
 
     OFstream of("TaylorCouette.csv");
-    of << "h,UerrLinf,UerrL1,UerrL2\n"
-        << h << "," << UerrLinf << "," 
-        << UerrL1 << "," << UerrL2 << "\n";
-    
+    of << "h,UerrLinf,UerrL1,UerrL2,N_CELLS,ELAPSED_CPU_TIME\n"
+        << h << "," << UerrLinf << "," << UerrL1 << "," << UerrL2 << ","  
+        << nCells << "," << elapsedCpuTime << "\n";
     return true;
 }
 
