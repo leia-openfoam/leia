@@ -31,6 +31,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "surfaceFields.H"
 #include "OFstream.H"
+#include "fixedValueFvPatchFields.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -69,23 +70,20 @@ Foam::functionObjects::taylorCouetteFunctionObject::taylorCouetteFunctionObject
     ),
     UTaylorCouette_
     (
-        IOobject
-        (
-            "UTaylorCouette",
-            runTime.timeName(), 
-            mesh_,
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh_,
-        dimensionedVector("dimensionedVelocity", dimVelocity, vector::zero)
+        "UTaylorCouette",
+	mesh_.lookupObject<volVectorField>("U")
     ),
-    Uerr_("Uerr", UTaylorCouette_)
+    Uerr_ 
+    (
+        "Uerr",
+	mesh_.lookupObject<volVectorField>("U")
+    )
 {
     // Compute the Taylor-Couette pressure and velocity fields 
     
     // Access the mesh cell centers
     const vectorField& C = mesh_.C();
+
 
     // Iterate over all cell-centered values 
     forAll(C, cellI)
@@ -99,31 +97,33 @@ Foam::functionObjects::taylorCouetteFunctionObject::taylorCouetteFunctionObject
         pTaylorCouette_[cellI] = tcFlow_.pressureCartesian(xcCylindrical);
     }
 
+    volVectorField& U = const_cast<volVectorField&>(mesh_.lookupObject<volVectorField>("U"));
+
     // Iterate over all boundary patches for face-centered values
     forAll(UTaylorCouette_.boundaryField(), patchI)
     {
         // Access the current boundary patch
-        fvPatchVectorField& velocityPatch = UTaylorCouette_.boundaryFieldRef()[patchI];
-        fvPatchScalarField& pressurePatch = pTaylorCouette_.boundaryFieldRef()[patchI];
+        fvPatchVectorField& UTaylorCouettePatch = UTaylorCouette_.boundaryFieldRef()[patchI];
+        fvPatchScalarField& pTaylorCouettePatch = pTaylorCouette_.boundaryFieldRef()[patchI];
 
-        // Access the face centers of the boundary patch
-        const vectorField& faceCenters = velocityPatch.patch().Cf();
+	if (!isA<fixedValueFvPatchVectorField>(UTaylorCouettePatch))
+	{
+            // Access the face centers of the boundary patch
+            const vectorField& faceCenters = UTaylorCouettePatch.patch().Cf();
 
-        // Iterate over all faces on the current patch
-        forAll(faceCenters, faceI)
-        {
-            const vector& xf = faceCenters[faceI];
-
-            vector xfCylindrical (xf[0], xf[1], 0);
-
-            // Compute and set the velocity and pressure for the boundary face
-            velocityPatch[faceI] = tcFlow_.velocityCartesian(xfCylindrical);
-            pressurePatch[faceI] = tcFlow_.pressureCartesian(xfCylindrical);
-        }
+            // Iterate over all faces on the current patch
+            forAll(faceCenters, faceI)
+            {
+                const vector& xf = faceCenters[faceI];
+		
+                // Compute and set the velocity and pressure for the boundary face
+                UTaylorCouettePatch[faceI] = tcFlow_.velocityCartesian(xf);
+                pTaylorCouettePatch[faceI] = tcFlow_.pressureCartesian(xf);
+            }
+	}
     }
 
     // Compute the velocity error. 
-    const volVectorField& U = mesh_.lookupObject<volVectorField>("U");
     Uerr_ == U - UTaylorCouette_; 
     
     // Write fields
@@ -131,7 +131,6 @@ Foam::functionObjects::taylorCouetteFunctionObject::taylorCouetteFunctionObject
     pTaylorCouette_.write();
     Uerr_.write();
 }
-
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
@@ -155,8 +154,8 @@ bool Foam::functionObjects::taylorCouetteFunctionObject::end()
     volScalarField UerrMag ("UerrMag", mag(Uerr_));
 
     scalar UerrLinf = gMax(UerrMag); 
-    scalar UerrL1 = gSum((UerrMag * mesh_.V())());
-    scalar UerrL2 = sqrt(gSum((UerrMag * UerrMag * mesh_.V())()));
+    scalar UerrL1 = gSum((UerrMag * mesh_.V())()) / gSum(mesh_.V());
+    scalar UerrL2 = sqrt(gSum((UerrMag * UerrMag * mesh_.V())()) / gSum(mesh_.V()));
     scalar h = gMax(Foam::pow(mesh_.deltaCoeffs(), -1)());
     
     const Time& runTime = mesh_.time();

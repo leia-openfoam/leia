@@ -74,8 +74,9 @@ taylorCouetteFlow::taylorCouetteFlow(const dictionary& dict)
 
 vector taylorCouetteFlow::velocityCylindrical(const scalar r) const
 {
+    // Brenn, G. (2016). Analytical solutions for transport processes. New York: Springer.
     scalar u_theta = r*(omegao_*sqrRo_ - omegai_*sqrRi_) / (sqrRo_ - sqrRi_) - 
-	((omegao_ - omegai_) * sqrRi_*sqrRo_)/(r * (sqrRo_ - sqrRi_));
+    	((omegao_ - omegai_) * sqrRi_*sqrRo_)/(r * (sqrRo_ - sqrRi_));
 
     return vector(0, u_theta, 0); 
 }
@@ -84,7 +85,8 @@ vector taylorCouetteFlow::velocityCartesian(const vector& x) const
 {
     // Compute radial distance of x from the axis point.
     scalar r = mag(x - axisPoint_);
-    if (r == 0) // then undefined transformation at the origin.
+
+    if (r < SMALL) // undefined transformation at the origin
     {
        return vector(0,0,0); 
     }
@@ -97,8 +99,8 @@ vector taylorCouetteFlow::velocityCartesian(const vector& x) const
     scalar sinTheta = x[1] / r;
 
     // Convert to Cartesian components
-    scalar u_x = -uCylindrical[1]* sinTheta;
-    scalar u_y = uCylindrical[1]* cosTheta;
+    scalar u_x = -uCylindrical[1] * sinTheta;
+    scalar u_y = uCylindrical[1] * cosTheta;
 
     return vector(u_x, u_y, 0);
 }

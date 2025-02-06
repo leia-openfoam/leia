@@ -104,7 +104,7 @@ def plot_convergence_rate(global_dataframe):
             # Annotate the plot with the slope at the midpoint of the fit line
             mid_x = np.sqrt(h.iloc[0] * h.iloc[-1])  # Geometric midpoint on the x-axis
             mid_y = np.exp(intercept) * mid_x**slope
-            plt.annotate(f"convergence rate: {abs(slope):.2f}", xy=(mid_x, mid_y),
+            plt.annotate(f"convergence rate: {slope:.2f}", xy=(mid_x, mid_y),
                          xytext=(10, 10), textcoords="offset points", fontsize=10)
 
         # Configure plot

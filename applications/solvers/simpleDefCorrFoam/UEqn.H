@@ -18,7 +18,6 @@
 
     if (simple.momentumPredictor())
     {
-	Info << "Predictor " << endl;
 	bool correctDefect = true;
 	label nCorrectDefect = 0;
 
@@ -36,4 +35,4 @@
         Info << "UEqn defect corrections = " << nCorrectDefect << endl; 
 
         fvOptions.correct(U);
-    }
+   }

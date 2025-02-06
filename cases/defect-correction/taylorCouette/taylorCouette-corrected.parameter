@@ -4,7 +4,7 @@ values
 
     N_NON_ORTH (10);
 
-    N_CELLS (40 80 160);
+    N_CELLS (32 64 128);
 
     DIV_SCHEME (upwindDefCorr2ndOrder);
 }

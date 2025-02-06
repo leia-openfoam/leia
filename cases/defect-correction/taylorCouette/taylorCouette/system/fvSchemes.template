@@ -32,9 +32,9 @@ upwindDefCorr2ndOrder GaussDefCorr upwindSecondOrderDefCorr;
 
 divSchemes
 {
-    default         none;
+    default         $|-DIV_SCHEME-|;
     div(phi,U)      $|-DIV_SCHEME-|; 
-    div((nuEff*dev2(T(grad(U))))) Gauss linear;
+    div((nuEff*dev2(T(grad(U))))) $linear;
 }
 
 laplacianSchemes

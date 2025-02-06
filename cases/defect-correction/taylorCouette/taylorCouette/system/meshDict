@@ -1,0 +1,45 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                |
+| \\      /  F ield         | cfMesh: A library for mesh generation          |
+|  \\    /   O peration     |                                                |
+|   \\  /    A nd           | Author: Franjo Juretic                         |
+|    \\/     M anipulation  | E-mail: franjo.juretic@c-fields.com            |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      meshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+maxCellSize     0.1;
+
+surfaceFile     "taylorCouette.stl";
+
+// Patch settings
+boundary
+{
+    frontAndBack
+    {
+        type    empty;    // Set front and back patches as empty
+        patches ("frontAndBack"); // Define the patch names
+    }
+
+    physicalPatches
+    {
+        type    wall;    // Default type for STL patches
+        patches ("innerWall" "outerWall"); // List of STL-defined patch names
+    }
+}
+
+boundaryLayers
+{
+    nLayers         6;
+    thicknessRatio  1.2;
+}
+
+// ************************************************************************* //

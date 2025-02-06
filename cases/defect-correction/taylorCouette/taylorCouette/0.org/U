@@ -29,7 +29,8 @@ boundaryField
     }
     outerWall
     {
-        type            noSlip;
+        type            fixedValue;
+	value		uniform (0 0 0);
     }
     frontAndBack
     {

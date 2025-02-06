@@ -9,6 +9,7 @@ fi
 
 wmake $WITH_BEAR $1 src/levelSetImplicitSurfaces 
 wmake $WITH_BEAR $1 src/functionObjects
+wmake $WITH_BEAR $1 src/functionObjects/taylorCouetteFunctionObject
 wmake $WITH_BEAR $1 src/leiaLevelSet
 wmake $WITH_BEAR $1 src/finiteVolume
 wmake $WITH_BEAR $1 src/schemes
