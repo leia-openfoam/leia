@@ -4,10 +4,10 @@ cd "${0%/*}" || exit                                # Run from this directory
 #------------------------------------------------------------------------------
 
 python ../create-study.py -c taylorCouette \
-	-p taylorCouette-uncorrected.parameter \
-	-s convergence-study-uncorrected 2>&1 | tee log.create-study-uncorrected
+	-p taylorCouette-no-defcorr.parameter \
+	-s no-defcorr 2>&1 | tee log.taylorCouette-no-defcorr
 
 pyFoamRunParameterVariation.py --list-variations taylorCouette \
-	taylorCouette-uncorrected.parameter 2>&1 | tee taylorCouette-uncorrected.variations
+	taylorCouette-no-defcorr.parameter 2>&1 | tee taylorCouette-no-defcorr.variations
 
 #------------------------------------------------------------------------------

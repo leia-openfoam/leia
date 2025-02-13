@@ -6,6 +6,9 @@ values
 
     N_CELLS (32 64 128);
 
+    // Re (1 10 50) 
+    NU (1 0.1 0.02);
+
     DIV_SCHEME (upwindDefCorr2ndOrder);
 }
 

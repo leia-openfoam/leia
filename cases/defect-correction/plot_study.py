@@ -6,6 +6,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 
 from matplotlib import rcParams
 
@@ -54,16 +55,27 @@ def agglomerate_data_files(folder_pattern, csv_file_name):
         df = pd.read_csv(data_file_path)
 
         # Extend the DataFrame with additional columns
-        for key in ["DIV_SCHEME", "N_CELLS", "solver", "N_NON_ORTH"]:
-            df[key] = parameters.get(key, None)
+        #for key in ["DIV_SCHEME", "N_CELLS", "solver", "N_NON_ORTH", "NU"]:
+        #    df[key] = parameters.get(key, None)
+
+        # Extend the DataFrame with all additional columns 
+        # - Use all parameter variation parameters, ignore OpenFOAM metadata
+        # - OpenFOAM metadata is ignored because the CSV files must still be
+        #   archived alongside the whole input setup for OpenFOAM cases, all
+        #   solution parameters must be archived along the CSV otherwise the
+        #   results are not reproducible.
+       
+        exclude_keys = {"casePath", "caseName", "foamFork", 
+                        "numberOfProcessors", "foamVersion"}
+
+        # Assign only the allowed keys
+        for key in parameters.keys():
+                if key not in exclude_keys:
+                            df[key] = parameters.get(key, None)
 
         # Append to the global DataFrame
         global_dataframe = pd.concat([global_dataframe, df], ignore_index=True)
 
-    # Save the global DataFrame as a CSV file
-    output_file = f"convergence-study-{folder_pattern}.csv"
-    global_dataframe.to_csv(output_file, index=False)
-    print(f"Global data saved to {output_file}")
     return global_dataframe 
 
 def plot_convergence_rate(global_dataframe):
@@ -74,61 +86,75 @@ def plot_convergence_rate(global_dataframe):
     Parameters:
         global_dataframe (pd.DataFrame): The dataframe containing the aggregated data.
     """
-    # Get unique DIV_SCHEME values
-    div_schemes = global_dataframe["DIV_SCHEME"].unique()
+    # Get unique NU values
+    nus = global_dataframe["NU"].unique()
 
-    for div_scheme in div_schemes:
-        # Filter the dataframe for the current div_scheme
-        scheme_dataframe = global_dataframe[global_dataframe["DIV_SCHEME"] == div_scheme]
+    for nu in nus:
 
-        # Sort by 'h' to ensure proper plotting
-        scheme_dataframe = scheme_dataframe.sort_values(by="h")
+        # Get unique DIV_SCHEME values
+        div_schemes = global_dataframe["DIV_SCHEME"].unique()
 
-        # Create a log-log plot for each error type
-        plt.figure(figsize=(10, 6))
-        for error_type in ["UerrLinf", "UerrL1", "UerrL2"]:
-            # Plot data
-            h = scheme_dataframe["h"]
-            error = scheme_dataframe[error_type]
-            plt.loglog(h, error, marker='o', label=f"{error_type}")
+        for div_scheme in div_schemes:
 
-            # Fit a linear line on log-log scale
-            log_h = np.log(h)
-            log_error = np.log(error)
-            slope, intercept = np.polyfit(log_h, log_error, 1)
+            # Filter the dataframe for the current div_scheme
+            is_divscheme = global_dataframe["DIV_SCHEME"] == div_scheme
+            is_nu = global_dataframe["NU"] == nu 
+            scheme_dataframe = global_dataframe[is_divscheme & is_nu]
 
-            # Generate the linear fit line
-            fit_line = np.exp(intercept) * h**slope
-            plt.loglog(h, fit_line, linestyle='--', label=f"{error_type} Fit")
+            # Sort by 'h' to ensure proper plotting
+            scheme_dataframe = scheme_dataframe.sort_values(by="h")
 
-            # Annotate the plot with the slope at the midpoint of the fit line
-            mid_x = np.sqrt(h.iloc[0] * h.iloc[-1])  # Geometric midpoint on the x-axis
-            mid_y = np.exp(intercept) * mid_x**slope
-            plt.annotate(f"convergence rate: {slope:.2f}", xy=(mid_x, mid_y),
-                         xytext=(10, 10), textcoords="offset points", fontsize=10)
+            # Create a log-log plot for each error type
+            plt.figure(figsize=(10, 6))
 
-        # Configure plot
-        plt.title(f"Convergence Plot for DIV_SCHEME: {div_scheme}")
-        plt.xlabel("h")
-        plt.ylabel("Error")
-        plt.legend()
-        plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-        plt.tight_layout()
+            for error_type in ["UerrLinf", "UerrL1", "UerrL2"]:
+                # Plot data
+                h = scheme_dataframe["h"]
+                error = scheme_dataframe[error_type]
+                plt.loglog(h, error, marker='o', label=f"{error_type}")
 
-        # Save or show the plot
-        plt.savefig(f"convergence-rate-{div_scheme}.pdf")
-        plt.show()
+                # Fit a linear line on log-log scale
+                log_h = np.log(h)
+                log_error = np.log(error)
+                slope, intercept = np.polyfit(log_h, log_error, 1)
 
-def plot_elapsed_cpu_time(global_dataframe):
+                # Generate the linear fit line
+                fit_line = np.exp(intercept) * h**slope
+                plt.loglog(h, fit_line, linestyle='--', label=f"{error_type} Fit")
+                global_dataframe[f"{error_type}Convergence"] = slope
+
+                # Annotate the plot with the slope at the midpoint of the fit line
+                mid_x = np.sqrt(h.iloc[0] * h.iloc[-1])  # Geometric midpoint on the x-axis
+                mid_y = np.exp(intercept) * mid_x**slope
+                plt.annotate(f"convergence rate: {slope:.2f}", xy=(mid_x, mid_y),
+                             xytext=(10, 10), textcoords="offset points", fontsize=10)
+
+            # Configure plot
+            plt.title(f"Convergence Plot for DIV_SCHEME: {div_scheme}, NU: {nu}")
+            plt.xlabel("h")
+            plt.ylabel("Error")
+            plt.legend()
+            plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+            plt.tight_layout()
+
+            # Save or show the plot
+            plt.savefig(f"convergence-rate-{div_scheme}-nu-{nu}.pdf")
+            plt.show()
+
+def plot_elapsed_cpu_time(global_dataframe, folder_pattern):
     """
     Creates a column plot for ELAPSED_CPU_TIME(h) grouped by DIV_SCHEME.
 
     Parameters:
         global_dataframe (pd.DataFrame): The dataframe containing the aggregated data.
     """
+
+    plt.clf()
+
     # Get unique h values and DIV_SCHEME values
     unique_h = sorted(global_dataframe["h"].unique())
     div_schemes = global_dataframe["DIV_SCHEME"].unique()
+    nus = global_dataframe["NU"].unique()
 
     bar_width = 0.2
     colors = plt.cm.tab10.colors  # Use a colormap for better differentiation
@@ -162,19 +188,20 @@ def plot_elapsed_cpu_time(global_dataframe):
 
     # Configure the plot
     plt.title("Elapsed CPU time by h for each DIV_SCHEME")
-    plt.semilogy()
+    #plt.semilogy()
     plt.xlabel("h")
     plt.ylabel("Elapsed CPU Time")
     plt.grid(axis='y', linestyle="--", linewidth=0.5)
     plt.tight_layout()
 
     # Save and show the plot
-    output_file = "elapsed-cpu-time-plot.pdf"
+    output_file = f"elapsed-cpu-time-plot-{folder_pattern}.pdf"
     plt.savefig(output_file)
     print(f"Plot saved as {output_file}")
     plt.show()
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(description="Agglomerate data files with extended parameters.")
     parser.add_argument("--folder-pattern", type=str, required=True, help="Regex pattern to match folder names.")
     parser.add_argument("--data-file", type=str, required=True, help="Name of the CSV file to read in each folder.")
@@ -185,5 +212,11 @@ if __name__ == "__main__":
 
     plot_convergence_rate(global_dataframe)
 
-    plot_elapsed_cpu_time(global_dataframe)
+    plot_elapsed_cpu_time(global_dataframe, args.folder_pattern)
+
+    # Save the global DataFrame as a CSV file
+    output_file_name = args.folder_pattern.rstrip('0').rstrip("_")
+    output_file = f"{output_file_name}.csv"
+    global_dataframe.to_csv(output_file, index=False)
+    print(f"Global data saved to {output_file}")
     

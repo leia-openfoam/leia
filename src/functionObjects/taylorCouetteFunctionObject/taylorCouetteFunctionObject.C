@@ -58,7 +58,8 @@ Foam::functionObjects::taylorCouetteFunctionObject::taylorCouetteFunctionObject
     tcFlow_(dict), 
     pTaylorCouette_ 
     (
-        IOobject(
+        IOobject
+        (
             "pTaylorCouette",
             runTime.timeName(),
             mesh_,
@@ -66,24 +67,31 @@ Foam::functionObjects::taylorCouetteFunctionObject::taylorCouetteFunctionObject
             IOobject::AUTO_WRITE
         ),
         mesh_,
-        dimensionedScalar("dimensionedPressure", dimPressure, 0.0)
+        dimensionedScalar("pTaylorCouette", dimPressure, 0.0)
     ),
     UTaylorCouette_
     (
         "UTaylorCouette",
-	mesh_.lookupObject<volVectorField>("U")
+	    mesh_.lookupObject<volVectorField>("U")
     ),
     Uerr_ 
     (
-        "Uerr",
-	mesh_.lookupObject<volVectorField>("U")
+        IOobject
+        (
+            "Uerr",
+            runTime.timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh_,
+        dimensionedVector("Uerr", dimVelocity, vector(0,0,0))
     )
 {
     // Compute the Taylor-Couette pressure and velocity fields 
     
     // Access the mesh cell centers
     const vectorField& C = mesh_.C();
-
 
     // Iterate over all cell-centered values 
     forAll(C, cellI)
@@ -97,34 +105,37 @@ Foam::functionObjects::taylorCouetteFunctionObject::taylorCouetteFunctionObject
         pTaylorCouette_[cellI] = tcFlow_.pressureCartesian(xcCylindrical);
     }
 
-    volVectorField& U = const_cast<volVectorField&>(mesh_.lookupObject<volVectorField>("U"));
 
-    // Iterate over all boundary patches for face-centered values
-    forAll(UTaylorCouette_.boundaryField(), patchI)
-    {
-        // Access the current boundary patch
-        fvPatchVectorField& UTaylorCouettePatch = UTaylorCouette_.boundaryFieldRef()[patchI];
-        fvPatchScalarField& pTaylorCouettePatch = pTaylorCouette_.boundaryFieldRef()[patchI];
+    // Set TaylorCouette velocity on mesh boundaries 
+    // volVectorField& U = const_cast<volVectorField&>(mesh_.lookupObject<volVectorField>("U"));
+    //forAll(UTaylorCouette_.boundaryField(), patchI)
+    //{
+    //    // Access the current boundary patch
+    //    fvPatchVectorField& UTaylorCouettePatch = UTaylorCouette_.boundaryFieldRef()[patchI];
+    //    fvPatchScalarField& pTaylorCouettePatch = pTaylorCouette_.boundaryFieldRef()[patchI];
 
-	if (!isA<fixedValueFvPatchVectorField>(UTaylorCouettePatch))
-	{
-            // Access the face centers of the boundary patch
-            const vectorField& faceCenters = UTaylorCouettePatch.patch().Cf();
+	//    if (!isA<fixedValueFvPatchVectorField>(UTaylorCouettePatch))
+	//    {
+    //            // Access the face centers of the boundary patch
+    //            const vectorField& faceCenters = UTaylorCouettePatch.patch().Cf();
 
-            // Iterate over all faces on the current patch
-            forAll(faceCenters, faceI)
-            {
-                const vector& xf = faceCenters[faceI];
-		
-                // Compute and set the velocity and pressure for the boundary face
-                UTaylorCouettePatch[faceI] = tcFlow_.velocityCartesian(xf);
-                pTaylorCouettePatch[faceI] = tcFlow_.pressureCartesian(xf);
-            }
-	}
-    }
+    //            // Iterate over all faces on the current patch
+    //            forAll(faceCenters, faceI)
+    //            {
+    //                const vector& xf = faceCenters[faceI];
+	//    	
+    //                // Compute and set the velocity and pressure for the boundary face
+    //                UTaylorCouettePatch[faceI] = tcFlow_.velocityCartesian(xf);
+    //                pTaylorCouettePatch[faceI] = tcFlow_.pressureCartesian(xf);
+    //            }
+	//    }
+    //}
+    // Compute the velocity error including mesh boundaries. 
+    //Uerr_ == U - UTaylorCouette_; 
 
-    // Compute the velocity error. 
-    Uerr_ == U - UTaylorCouette_; 
+    // Compute velocity error at cell centers.
+    const volVectorField& U = mesh_.lookupObject<volVectorField>("U");
+    Uerr_ = U - UTaylorCouette_; 
     
     // Write fields
     UTaylorCouette_.write(); 
@@ -144,7 +155,7 @@ bool Foam::functionObjects::taylorCouetteFunctionObject::execute()
 {
     // Compute the velocity error. 
     const volVectorField& U = mesh_.lookupObject<volVectorField>("U");
-    Uerr_ == U - UTaylorCouette_; 
+    Uerr_ = U - UTaylorCouette_; 
     return true;
 }
 

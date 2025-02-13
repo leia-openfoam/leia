@@ -34,7 +34,7 @@ divSchemes
 {
     default         $linear;
     div(phi,U)      $linear; 
-    div((nuEff*dev2(T(grad(U))))) $linear;
+    div((nuEff*dev2(T(grad(U))))) Gauss linear;
 }
 
 laplacianSchemes

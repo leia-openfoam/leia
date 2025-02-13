@@ -22,7 +22,7 @@ boundaryField
 {
     "innerWall|outerWall"
     {
-        //type            fixedFluxPressure;
+        // type            fixedFluxPressure;
         type            zeroGradient;
     }
 

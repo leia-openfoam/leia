@@ -167,8 +167,6 @@ upwindSecondOrderDefCorr<Type>::correction
         }
     }
 
-    Info << gMax(vfErrTmp.cref()) << " : " << gMin(vfErrTmp.cref())  << endl;
-
     return vfErrTmp;
 }
 

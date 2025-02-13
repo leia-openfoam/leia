@@ -8,7 +8,7 @@ echo "WARNING: This will delete all study files. Do you want to proceed? [Press 
 read -r _  # Wait for the user to press the return key (using _ as a dummy variable)
 
 # Proceed with deletion
-rm -rf convergence-study*/
+rm -rf *_00*/
 
 rm -rf *.variations 
 
