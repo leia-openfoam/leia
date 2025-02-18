@@ -45,6 +45,8 @@ timePrecision   6;
 
 runTimeModifiable true;
 
+libs ("libdefCorrSchemes.so");
+
 functions
 {
     taylorCouetteErrors

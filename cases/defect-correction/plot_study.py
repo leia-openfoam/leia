@@ -100,6 +100,7 @@ def plot_convergence_rate(global_dataframe):
             is_divscheme = global_dataframe["DIV_SCHEME"] == div_scheme
             is_nu = global_dataframe["NU"] == nu 
             scheme_dataframe = global_dataframe[is_divscheme & is_nu]
+            print (scheme_dataframe)
 
             # Sort by 'h' to ensure proper plotting
             scheme_dataframe = scheme_dataframe.sort_values(by="h")
@@ -111,6 +112,8 @@ def plot_convergence_rate(global_dataframe):
                 # Plot data
                 h = scheme_dataframe["h"]
                 error = scheme_dataframe[error_type]
+                print(h)
+                print(error)
                 plt.loglog(h, error, marker='o', label=f"{error_type}")
 
                 # Fit a linear line on log-log scale

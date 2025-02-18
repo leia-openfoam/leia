@@ -28,12 +28,12 @@ gradSchemes
 linear Gauss linear;
 upwind Gauss upwind; 
 boundedLinearUpwind  bounded Gauss linearUpwind grad(U);
-upwindDefCorr2ndOrder GausssDefCorr upwindSecondOrderDefCorr;
+upwindDefCorr2ndOrder GaussDefCorr upwindSecondOrderDefCorr;
 
 divSchemes
 {
     default         $linear;
-    div(phi,U)      $linear; 
+    div(phi,U)      $upwindDefCorr2ndOrder; 
     div((nuEff*dev2(T(grad(U))))) Gauss linear;
 }
 
