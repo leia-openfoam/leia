@@ -124,7 +124,7 @@ def plot_convergence_rate(global_dataframe):
                 # Generate the linear fit line
                 fit_line = np.exp(intercept) * h**slope
                 plt.loglog(h, fit_line, linestyle='--', label=f"{error_type} Fit")
-                global_dataframe[f"{error_type}Convergence"] = slope
+                # global_dataframe[f"{error_type}Convergence"] = slope
 
                 # Annotate the plot with the slope at the midpoint of the fit line
                 mid_x = np.sqrt(h.iloc[0] * h.iloc[-1])  # Geometric midpoint on the x-axis

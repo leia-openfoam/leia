@@ -21,9 +21,7 @@
     constrainPressure(p, U, phiHbyA, rAtU(), MRF);
 
     // Non-orthogonal pressure corrector loop
-    bool correctDefect = true;
-    label nCorrectDefect = 0;
-    while (correctDefect && simple.correctNonOrthogonal())
+    while (simple.correctNonOrthogonal())
     {
         fvScalarMatrix pEqn
         (
@@ -32,16 +30,13 @@
 
         pEqn.setReference(pRefCell, pRefValue);
 
-        auto pEqnPerformance = pEqn.solve();
-        ++nCorrectDefect; 
-        correctDefect = (pEqnPerformance.nIterations() > 0);
+        pEqn.solve();
 
-        if (!correctDefect || simple.finalNonOrthogonalIter())
+        if (simple.finalNonOrthogonalIter())
         {
             phi = phiHbyA - pEqn.flux();
         }
     }
-    Info << "p_rgh defect corrections = " << nCorrectDefect << endl; 
 
     #include "continuityErrs.H"
 
