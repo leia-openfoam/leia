@@ -1,0 +1,30 @@
+#!/bin/bash
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+# Display warning and wait for user confirmation
+echo "WARNING: This will delete all study files. Do you want to proceed? [Press ENTER to proceed or Ctrl+C to cancel]"
+read -r _  # Wait for the user to press the return key (using _ as a dummy variable)
+
+# Proceed with deletion
+PATTERN=$1
+
+if [ -z $PATTERN ]; 
+then 
+    echo Provide a pattern for folders to be removed. 
+    exit 1
+fi
+
+rm -rf $PATTERN*/
+
+rm -rf $PATTERN*.variations 
+
+rm -rf $PATTERN*.database
+
+rm -rf log.*
+
+rm -rf *.pdf *.csv
+
+#------------------------------------------------------------------------------
+

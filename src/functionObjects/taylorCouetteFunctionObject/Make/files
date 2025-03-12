@@ -1,0 +1,4 @@
+taylorCouetteFlow.C
+taylorCouetteFunctionObject.C
+
+LIB = $(FOAM_USER_LIBBIN)/libtaylorCouette

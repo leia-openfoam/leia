@@ -40,17 +40,13 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
 
-    numberOfVariations = [0,1,2,3,4,5,6,7,8,9,10,11] 
- 
-    study_name = options.studyname
-    
     call(["pyFoamRunParameterVariation.py", 
           "--no-execute-solver", 
           "--no-server-process", 
           "--no-mesh-create", 
           "--no-case-setup", 
+          "--create-database", 
           "--cloned-case-prefix=%s" % options.studyname, 
           "--every-variant-one-case-execution", 
-          "--create-database", 
           options.casedir, 
           options.paramfile])

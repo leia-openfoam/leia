@@ -1,0 +1,12 @@
+values
+{
+    solver (simpleFoam);
+
+    N_NON_ORTH (0);
+
+    N_CELLS (10 20 40);
+
+    DIV_SCHEME (linear);
+}
+
+

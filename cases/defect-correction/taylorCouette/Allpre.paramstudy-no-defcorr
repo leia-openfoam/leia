@@ -1,0 +1,13 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+python ../create-study.py -c taylorCouette \
+	-p no-defcorr.parameter \
+	-s no-defcorr 2>&1 | tee log.create-study.no-defcorr
+
+pyFoamRunParameterVariation.py --list-variations taylorCouette \
+	no-defcorr.parameter 2>&1 | tee no-defcorr.variations
+
+#------------------------------------------------------------------------------

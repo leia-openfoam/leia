@@ -1,0 +1,11 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+runApplication blockMesh
+#foamSetRotationalPatchVelocity  -axisPoint '(0 0 0)' -angularVelocity '(0 0 100)' -patchName innerWall
+runApplication $(getApplication)
+#python3 constant/plot.py
+
+#------------------------------------------------------------------------------

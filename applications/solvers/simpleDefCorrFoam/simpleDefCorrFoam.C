@@ -101,8 +101,20 @@ int main(int argc, char *argv[])
 
         // --- Pressure-velocity SIMPLE corrector
         {
-            #include "UEqn.H"
-            #include "pEqn.H"
+            const dictionary& simpleDict = simple.dict();  
+            // If defect correction is turned on
+            bool correctDefect = true;
+            label nDefCorr = 0;
+            const label maxDefCorr = 
+                simpleDict.get<label>("maxDefectCorrectors");
+            // Iteratively solve the momentum equation using 
+            // defect-corrected schemes until defect converges.
+            while (correctDefect && (nDefCorr < maxDefCorr)) 
+            {
+                ++nDefCorr;
+                #include "UEqn.H"
+                #include "pEqn.H"
+            }
         }
 
         laminarTransport.correct();

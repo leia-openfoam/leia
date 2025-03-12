@@ -1,0 +1,10 @@
+#!/bin/bash
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+# Processes the cases from the convergence study. 
+# Assembles case-specific TaylorCouette.csv into a global convergence CSV file.
+# Plots convergence rates for all the schemes used across mesh resolutions as pdf.
+find . -type f -name "Allrun" -exec chmod +x {} \; -exec {} \;
+python3 ../plot_study.py --folder-pattern corrected --data-file Couette.csv

@@ -1,0 +1,38 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2312                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+Build  : _e651d635-20240208 OPENFOAM=2312 patch=240220 version=2312
+Arch   : "LSB;label=32;scalar=64"
+Exec   : simpleFoam
+Date   : Mar 12 2025
+Time   : 23:14:01
+Host   : mma120348
+PID    : 93958
+I/O    : uncollated
+Case   : /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/Poiseuille
+nProcs : 1
+trapFpe: Floating point exception trapping enabled (FOAM_SIGFPE).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster (fileModificationSkew 5, maxFileModificationPolls 20)
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Create mesh for time = 0
+
+
+
+--> FOAM FATAL IO ERROR: (openfoam-2312 patch=240220)
+Wrong token type - expected label (int32), found on line 38: word '|-N_NON_ORTH-|'
+
+file: system/fvSolution/SIMPLE/nNonOrthogonalCorrectors at line 38.
+
+    From Foam::Istream& Foam::operator>>(Foam::Istream&, int32_t&)
+    in file primitives/ints/int32/int32IO.C at line 160.
+
+FOAM exiting
+
