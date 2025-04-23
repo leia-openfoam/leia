@@ -115,6 +115,7 @@ dynamicCode/
 processor*/
 
 # vscode
+.vscode/
 .ccls-cache
 
 # python
