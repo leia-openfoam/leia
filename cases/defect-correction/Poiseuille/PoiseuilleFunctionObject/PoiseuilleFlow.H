@@ -66,7 +66,7 @@ class PoiseuilleFlow
 	    const scalar H,
 	    const scalar Vis,
 	    const scalar L,
-	    const scalar& P
+	    const scalar P
 	);
 
 	PoiseuilleFlow(const dictionary& dict);

@@ -7,4 +7,4 @@ cd "${0%/*}" || exit                                # Run from this directory
 # Assembles case-specific TaylorCouette.csv into a global convergence CSV file.
 # Plots convergence rates for all the schemes used across mesh resolutions as pdf.
 find . -type f -name "Allrun" -exec chmod +x {} \; -exec {} \;
-python3 ../plot_study.py --folder-pattern corrected --data-file Couette.csv
+python3 ../plot_study.py --folder-pattern uncorrected --data-file Couette.csv

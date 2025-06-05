@@ -22,7 +22,7 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         1000;
+endTime         100000;
 
 deltaT          1;
 
@@ -52,6 +52,13 @@ functions
         libs ("libCouette.so");
         writeControl writeTime;
     }
+   UComponents
+   {
+   	type components;
+   	libs ("fieldFunctionObjects.so");
+   	field U;
+   	writeControl writeTime;
+   }
 }
 
 

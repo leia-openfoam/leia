@@ -55,8 +55,8 @@ CouetteFlow::CouetteFlow
 
 CouetteFlow::CouetteFlow(const dictionary& dict)
 : 
-    H_(dict.getOrDefault<scalar>("H", 1.0)),
-    U_(dict.getOrDefault<scalar>("U", 1.0))
+    H_(dict.getOrDefault<scalar>("H", 40.0)),
+    U_(dict.getOrDefault<scalar>("U", 10.0))
 {}
 
 

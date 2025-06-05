@@ -25,10 +25,10 @@ gradSchemes
     grad(p)         Gauss linear;
 }
 
-//linear Gauss linear;
-//upwind Gauss upwind; 
-//boundedLinearUpwind  bounded Gauss linearUpwind grad(U);
-//upwindDefCorr2ndOrder GausssDefCorr upwindSecondOrderDefCorr;
+linear Gauss linear;
+upwind Gauss upwind; 
+boundedLinearUpwind  bounded Gauss linearUpwind grad(U);
+upwindDefCorr2ndOrder GaussDefCorr upwindSecondOrderDefCorr;
 
 divSchemes
 {

@@ -55,7 +55,6 @@ boundary
     outlet
     {
         type		patch;
-        neighbourPatch	inlet;
         faces
         (
             (2 6 5 1)

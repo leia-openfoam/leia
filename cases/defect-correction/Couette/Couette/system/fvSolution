@@ -18,9 +18,9 @@ solvers
 {
     p
     {
-        solver          GAMG;
-        tolerance       1e-10;
-        relTol          1e-10;
+        solver          smoothSolver;
+        tolerance       1e-11;
+        relTol          1e-11;
         smoother        GaussSeidel;
     }
 
@@ -28,8 +28,8 @@ solvers
     {
         solver          smoothSolver;
         smoother        GaussSeidel;
-        tolerance       1e-10;
-        relTol          1e-10;
+        tolerance       1e-11;
+        relTol          1e-11;
     }
 }
 
@@ -40,8 +40,8 @@ SIMPLE
     pRefValue       0;
     residualControl
     {
-        p               1e-10;
-        U               1e-10;
+        p               1e-11;
+        U               1e-11;
     }
 }
 
@@ -49,7 +49,7 @@ relaxationFactors
 {
     fields
     {
-        p               0.3;
+        p               0.5;
     }
     equations
     {

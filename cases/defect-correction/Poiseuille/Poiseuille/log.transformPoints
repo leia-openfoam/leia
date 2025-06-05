@@ -1,0 +1,33 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2312                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+Build  : _e651d635-20240208 OPENFOAM=2312 patch=240220 version=2312
+Arch   : "LSB;label=32;scalar=64"
+Exec   : transformPoints -rotate-angle ((0 0 1) 45)
+Date   : Apr 29 2025
+Time   : 10:21:00
+Host   : mma120348
+PID    : 95786
+I/O    : uncollated
+Case   : /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/Poiseuille
+nProcs : 1
+trapFpe: Floating point exception trapping enabled (FOAM_SIGFPE).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster (fileModificationSkew 5, maxFileModificationPolls 20)
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Rotating points 
+    about (0 0 1)
+    angle 45
+Rotating points by (0.707107 -0.707107 0 0.707107 0.707107 0 0 0 1)
+Writing points into directory "constant/polyMesh"
+
+
+End
+

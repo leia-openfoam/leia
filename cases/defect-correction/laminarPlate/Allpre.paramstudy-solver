@@ -1,0 +1,13 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+python3 ../create-study.py -c laminarPlate \
+	-p SolverLaminarPlate.parameter \
+	-s convergence-study 2>&1 | tee log.create-study-solver
+
+pyFoamRunParameterVariation.py --list-variations laminarPlate \
+	SolverLaminarPlate.parameter 2>&1 | tee SolverLaminarPlate.variations
+
+#------------------------------------------------------------------------------

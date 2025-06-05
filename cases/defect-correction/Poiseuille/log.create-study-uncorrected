@@ -1,0 +1,615 @@
+
+==============================
+8 variations with 2 parameters
+==============================
+
+
+==========================
+Starting actual variations
+==========================
+
+
+========================
+Variation 0 of [ 0 , 7 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: solver, DIV_SCHEME, N_CELLS, N_NON_ORTH (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - linear
+           N_CELLS - 10
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00000_Poiseuille"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/PyFoamPrepareCaseParameters.rst
+Not going to clean '0'
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/system/fvSolution
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/system/controlDict
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/0
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/system
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00000_Poiseuille/0
+Clearing templates
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 1 of [ 0 , 7 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: solver, DIV_SCHEME, N_CELLS, N_NON_ORTH (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - linear
+           N_CELLS - 20
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00001_Poiseuille"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/PyFoamPrepareCaseParameters.rst
+Not going to clean '0'
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/system/fvSolution
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/system/controlDict
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/0
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/system
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00001_Poiseuille/0
+Clearing templates
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 2 of [ 0 , 7 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: solver, DIV_SCHEME, N_CELLS, N_NON_ORTH (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - linear
+           N_CELLS - 40
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00002_Poiseuille"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/PyFoamPrepareCaseParameters.rst
+Not going to clean '0'
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/system/fvSolution
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/system/controlDict
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/0
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/system
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00002_Poiseuille/0
+Clearing templates
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 3 of [ 0 , 7 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: solver, DIV_SCHEME, N_CELLS, N_NON_ORTH (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - linear
+           N_CELLS - 80
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00003_Poiseuille"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/PyFoamPrepareCaseParameters.rst
+Not going to clean '0'
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/system/fvSolution
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/system/controlDict
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/0
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/system
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00003_Poiseuille/0
+Clearing templates
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 4 of [ 0 , 7 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: solver, DIV_SCHEME, N_CELLS, N_NON_ORTH (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - upwind
+           N_CELLS - 10
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00004_Poiseuille"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/PyFoamPrepareCaseParameters.rst
+Not going to clean '0'
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/system/fvSolution
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/system/controlDict
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/0
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/system
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00004_Poiseuille/0
+Clearing templates
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 5 of [ 0 , 7 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: solver, DIV_SCHEME, N_CELLS, N_NON_ORTH (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - upwind
+           N_CELLS - 20
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00005_Poiseuille"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/PyFoamPrepareCaseParameters.rst
+Not going to clean '0'
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/system/fvSolution
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/system/controlDict
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/0
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/system
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00005_Poiseuille/0
+Clearing templates
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 6 of [ 0 , 7 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: solver, DIV_SCHEME, N_CELLS, N_NON_ORTH (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - upwind
+           N_CELLS - 40
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00006_Poiseuille"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/PyFoamPrepareCaseParameters.rst
+Not going to clean '0'
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/system/fvSolution
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/system/controlDict
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/0
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/system
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00006_Poiseuille/0
+Clearing templates
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 7 of [ 0 , 7 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: solver, DIV_SCHEME, N_CELLS, N_NON_ORTH (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - upwind
+           N_CELLS - 80
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00007_Poiseuille"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/PyFoamPrepareCaseParameters.rst
+Not going to clean '0'
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/system/fvSolution
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/system/controlDict
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/0
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/system
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/convergence-study-uncorrected_00007_Poiseuille/0
+Clearing templates
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+================
+Ending variation
+================
+

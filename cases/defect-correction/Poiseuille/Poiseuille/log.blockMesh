@@ -8,10 +8,10 @@
 Build  : _e651d635-20240208 OPENFOAM=2312 patch=240220 version=2312
 Arch   : "LSB;label=32;scalar=64"
 Exec   : blockMesh
-Date   : Mar 12 2025
-Time   : 23:14:01
+Date   : Apr 29 2025
+Time   : 10:21:00
 Host   : mma120348
-PID    : 93955
+PID    : 95784
 I/O    : uncollated
 Case   : /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Poiseuille/Poiseuille
 nProcs : 1

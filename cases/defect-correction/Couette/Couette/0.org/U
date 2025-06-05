@@ -22,12 +22,12 @@ boundaryField
 {
     inlet
     {
-        type            zeroGradient;
+        type            cyclic;
     }
 
     outlet
     {
-        type            zeroGradient;
+        type            cyclic;
     }
 
     walls
@@ -38,7 +38,7 @@ boundaryField
     movingWall
     {
         type            movingWallVelocity;
-        value           uniform (1 0 0);
+        value           uniform (10 0 0);
     }
 
     frontAndBack

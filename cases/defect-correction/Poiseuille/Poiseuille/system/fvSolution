@@ -35,7 +35,7 @@ solvers
 
 SIMPLE
 {
-    nNonOrthogonalCorrectors |-N_NON_ORTH-|; 
+    nNonOrthogonalCorrectors 0; 
     pRefCell        0;
     pRefValue       0;
     residualControl

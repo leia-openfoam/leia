@@ -48,7 +48,7 @@ PoiseuilleFlow::PoiseuilleFlow
     const scalar H, 
     const scalar Vis,
     const scalar L,
-    const scalar& P
+    const scalar P
 )
 : 
     H_(H),
@@ -60,9 +60,9 @@ PoiseuilleFlow::PoiseuilleFlow
 PoiseuilleFlow::PoiseuilleFlow(const dictionary& dict)
 : 
     H_(dict.getOrDefault<scalar>("H", 1.0)),
-    P_(dict.getOrDefault<scalar>("P", 100.0)),
     Vis_(dict.getOrDefault<scalar>("Vis", 10.0)),
-    L_(dict.getOrDefault<scalar>("L", 1.0))
+    L_(dict.getOrDefault<scalar>("L", 1.0)),
+    P_(dict.getOrDefault<scalar>("P", 100.0))
 {}
 
 
@@ -74,11 +74,16 @@ vector PoiseuilleFlow::velocityCartesian(const vector& pos) const
     {
        return vector(0,0,0); 
     }
+    
+    scalar d = (pos[1]-pos[0])/sqrt(2.0);
 
     // Compute velocity at y point
-    scalar Uypos = 1/(2*Vis_)*(P_/L_)*(pos[1]*H_-sqr(pos[1]));
+    scalar Upos = 1/(2*Vis_)*(P_/L_)*(d*H_-sqr(d));
+    
+    scalar Uxpos = Upos/sqrt(2.0);
+    scalar Uypos = Upos/sqrt(2.0);
 
-    return vector(Uypos, 0, 0);
+    return vector(Uxpos, Uypos, 0);
 }
 
 scalar PoiseuilleFlow::pressureCartesian(const vector& pos) const

@@ -4,6 +4,7 @@ cd "${0%/*}" || exit                                # Run from this directory
 #------------------------------------------------------------------------------
 
 cp -r 0.org 0
+./ParaMake.sh
 runApplication blockMesh
 #foamSetRotationalPatchVelocity  -axisPoint '(0 0 0)' -angularVelocity '(0 0 100)' -patchName innerWall
 runApplication $(getApplication)

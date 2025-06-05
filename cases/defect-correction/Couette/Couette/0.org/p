@@ -22,14 +22,14 @@ boundaryField
 {
     inlet
     {
-        type            zeroGradient;
+        type            cyclic;
     }
 
     outlet
     {
-        type            zeroGradient;
+        type            cyclic;
     }
-
+    
     walls
     {
         type            zeroGradient;
