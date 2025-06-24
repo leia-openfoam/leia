@@ -25,7 +25,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "upwindSecondOrderDefCorr.H"
+#include "upwindCellDec.H"
 #include "error.H"
 #include "fvcGrad.H"
 
@@ -39,7 +39,7 @@ namespace Foam
 
 template<typename Type> 
 tmp<GeometricField<Type, fvsPatchField, surfaceMesh>>
-upwindSecondOrderDefCorr<Type>::correction
+upwindCellDec<Type>::correction
 (
     const GeometricField<Type, fvPatchField, volMesh>& vf
 ) const

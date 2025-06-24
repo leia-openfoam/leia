@@ -24,7 +24,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::upwindSecondOrderDefCorr
+    Foam::upwindCellDec
 
 Group
     grpFvLimitedSurfaceInterpolationSchemes
@@ -33,12 +33,12 @@ Description
     A second-order explicit defect correction for the upwind scheme. 
 
 SourceFiles
-    upwindSecondOrderDefCorr.C
+    upwindCellDec.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef upwindSecondOrderDefCorr_H
-#define upwindSecondOrderDefCorr_H
+#ifndef upwindCellDec_H
+#define upwindCellDec_H
 
 #include "upwind.H"
 #include "surfaceFields.H"
@@ -51,11 +51,11 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class upwindSecondOrderDefCorr Declaration
+                           Class upwindCellDec Declaration
 \*---------------------------------------------------------------------------*/
 
 template<class Type>
-class upwindSecondOrderDefCorr
+class upwindCellDec
 :
     public upwind<Type>
 {
@@ -63,13 +63,13 @@ class upwindSecondOrderDefCorr
 public:
 
     //- Runtime type information
-    TypeName("upwindSecondOrderDefCorr");
+    TypeName("upwindCellDec");
 
 
     // Constructors
 
         //- Construct from faceFlux
-        upwindSecondOrderDefCorr
+        upwindCellDec
         (
             const fvMesh& mesh,
             const surfaceScalarField& faceFlux
@@ -81,7 +81,7 @@ public:
         //- Construct from Istream.
         //  The name of the flux field is read from the Istream and looked-up
         //  from the mesh objectRegistry
-        upwindSecondOrderDefCorr
+        upwindCellDec
         (
             const fvMesh& mesh,
             Istream& is
@@ -91,7 +91,7 @@ public:
         {}
 
         //- Construct from faceFlux and Istream
-        upwindSecondOrderDefCorr
+        upwindCellDec
         (
             const fvMesh& mesh,
             const surfaceScalarField& faceFlux,
@@ -123,7 +123,7 @@ public:
 // for tensor fields, with the Gauss gradient scheme. 
 template<>
 tmp<GeometricField<Tensor<scalar>, fvsPatchField, surfaceMesh>>
-upwindSecondOrderDefCorr<Tensor<scalar>>::correction
+upwindCellDec<Tensor<scalar>>::correction
 (
     const GeometricField<Tensor<scalar>, fvPatchField, volMesh>& vf
 ) const
@@ -134,7 +134,7 @@ upwindSecondOrderDefCorr<Tensor<scalar>>::correction
 
 template<>
 tmp<GeometricField<SymmTensor<scalar>, fvsPatchField, surfaceMesh>>
-upwindSecondOrderDefCorr<SymmTensor<scalar>>::correction
+upwindCellDec<SymmTensor<scalar>>::correction
 (
     const GeometricField<SymmTensor<scalar>, fvPatchField, volMesh>& vf
 ) const
@@ -145,7 +145,7 @@ upwindSecondOrderDefCorr<SymmTensor<scalar>>::correction
 
 template<>
 tmp<GeometricField<SphericalTensor<scalar>, fvsPatchField, surfaceMesh>>
-upwindSecondOrderDefCorr<SphericalTensor<scalar>>::correction
+upwindCellDec<SphericalTensor<scalar>>::correction
 (
     const GeometricField<SphericalTensor<scalar>, fvPatchField, volMesh>& vf
 ) const
@@ -159,7 +159,7 @@ upwindSecondOrderDefCorr<SphericalTensor<scalar>>::correction
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #ifdef NoRepository
-    #include "upwindSecondOrderDefCorr.C"
+    #include "upwindCellDec.C"
 #endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
