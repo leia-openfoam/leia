@@ -1,5 +1,6 @@
 defCorrGaussConvectionScheme/defCorrGaussConvectionSchemes.C
 
 upwindCellDec/upwindCellDecs.C
+upwindFaceDec/upwindFaceDecs.C
 
 LIB = $(FOAM_USER_LIBBIN)/libdefCorrSchemes
