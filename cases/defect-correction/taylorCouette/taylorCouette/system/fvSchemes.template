@@ -30,7 +30,7 @@ upwind              Gauss upwind;
 boundedLinearUpwind bounded Gauss linearUpwind grad(U);
 linearUpwind 	    Gauss linearUpwind grad(U);
 upwindCellDec       Gauss upwindCellDec;
-upwindFaceDec 	    Gauss upwindFaceDec;
+upwindFaceDec 	    Gauss upwindFaceDec snGrad(U);
 
 divSchemes
 {

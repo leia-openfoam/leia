@@ -30,12 +30,12 @@ linear               Gauss linear;
 linearUpwind 	     Gauss linearUpwind grad(U);
 boundedLinearUpwind  bounded Gauss linearUpwind grad(U);
 upwindCellDec        Gauss upwindCellDec;
-upwindFaceDec        Gauss upwindFaceDec;
+upwindFaceDec        Gauss upwindFaceDec snGrad(U);
 
 divSchemes
 {
     default         none;
-    div(phi,U)      $upwindCellDec; 
+    div(phi,U)      $upwindFaceDec; 
     div((nuEff*dev2(T(grad(U))))) Gauss linear;
 }
 
