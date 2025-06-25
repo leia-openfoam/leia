@@ -1,0 +1,12 @@
+values
+{
+    solver (simpleDefCorrFoam);
+
+    N_NON_ORTH (0);
+
+    N_CELLS (10 20 40 80);
+
+    DIV_SCHEME (upwindDefCorr2ndOrder);
+}
+
+

@@ -1,0 +1,13 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+python3 ../create-study.py -c Poiseuille \
+	-p Poiseuille-corrected.parameter \
+	-s convergence-study-corrected 2>&1 | tee log.create-study-corrected
+
+pyFoamRunParameterVariation.py --list-variations Poiseuille \
+	Poiseuille-corrected.parameter 2>&1 | tee Poiseuille-corrected.variations
+
+#------------------------------------------------------------------------------

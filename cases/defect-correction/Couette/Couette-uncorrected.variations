@@ -1,0 +1,15 @@
+
+==============================
+5 variations with 1 parameters
+==============================
+
+
+==================
+Listing variations
+==================
+
+Variation 0 : {'N_CELLS': 10}
+Variation 1 : {'N_CELLS': 20}
+Variation 2 : {'N_CELLS': 40}
+Variation 3 : {'N_CELLS': 80}
+Variation 4 : {'N_CELLS': 160}

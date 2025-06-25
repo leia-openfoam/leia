@@ -1,0 +1,18 @@
+
+==============================
+8 variations with 2 parameters
+==============================
+
+
+==================
+Listing variations
+==================
+
+Variation 0 : {'DIV_SCHEME': 'linear', 'N_CELLS': 10}
+Variation 1 : {'DIV_SCHEME': 'linear', 'N_CELLS': 20}
+Variation 2 : {'DIV_SCHEME': 'linear', 'N_CELLS': 40}
+Variation 3 : {'DIV_SCHEME': 'linear', 'N_CELLS': 80}
+Variation 4 : {'DIV_SCHEME': 'upwind', 'N_CELLS': 10}
+Variation 5 : {'DIV_SCHEME': 'upwind', 'N_CELLS': 20}
+Variation 6 : {'DIV_SCHEME': 'upwind', 'N_CELLS': 40}
+Variation 7 : {'DIV_SCHEME': 'upwind', 'N_CELLS': 80}

@@ -1,0 +1,10 @@
+values
+{
+    solver (simple);
+
+    N_CELLS (160);
+
+    DIV_SCHEME (upwind linear boundedLinearUpwind);
+}
+
+

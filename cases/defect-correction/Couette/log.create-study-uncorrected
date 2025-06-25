@@ -1,0 +1,425 @@
+[4m PyFoam WARNING on line 698 of file /usr/local/lib/python3.10/dist-packages/PyFoam/RunDictionary/SolutionDirectory.py : The first timestep in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette  is  None not a number. Doing nothing (B[m
+
+==============================
+5 variations with 1 parameters
+==============================
+
+
+==========================
+Starting actual variations
+==========================
+
+
+========================
+Variation 0 of [ 0 , 4 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: DIV_SCHEME, N_NON_ORTH, N_CELLS, solver (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - linear
+           N_CELLS - 10
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00000_Couette"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/PyFoamPrepareCaseParameters.rst
+Found 0.org . Clearing 0
+No 0-directory
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/0.org
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/system/controlDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/blockMeshDict
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/system
+Copying /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/0.org to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/0.org
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/0.org
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/0
+Clearing templates
+Looking for extension .template in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/0
+Looking for extension .postTemplate in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/0
+Looking for extension .finalTemplate in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00000_Couette/0
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 1 of [ 0 , 4 ]
+[4m PyFoam WARNING on line 698 of file /usr/local/lib/python3.10/dist-packages/PyFoam/RunDictionary/SolutionDirectory.py : The first timestep in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette  is  None not a number. Doing nothing (B[m
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: DIV_SCHEME, N_NON_ORTH, N_CELLS, solver (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - linear
+           N_CELLS - 20
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00001_Couette"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/PyFoamPrepareCaseParameters.rst
+Found 0.org . Clearing 0
+No 0-directory
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/0.org
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/system/controlDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/blockMeshDict
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/system
+Copying /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/0.org to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/0.org
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/0.org
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/0
+Clearing templates
+Looking for extension .template in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/0
+Looking for extension .postTemplate in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/0
+Looking for extension .finalTemplate in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00001_Couette/0
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 2 of [ 0 , 4 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values [4m PyFoam WARNING on line 698 of file /usr/local/lib/python3.10/dist-packages/PyFoam/RunDictionary/SolutionDirectory.py : The first timestep in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette  is  None not a number. Doing nothing (B[m
+/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: DIV_SCHEME, N_NON_ORTH, N_CELLS, solver (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - linear
+           N_CELLS - 40
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00002_Couette"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/PyFoamPrepareCaseParameters.rst
+Found 0.org . Clearing 0
+No 0-directory
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/0.org
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/system/controlDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/blockMeshDict
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/system
+Copying /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/0.org to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/0.org
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/0.org
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/0
+Clearing templates
+Looking for extension .template in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/0
+Looking for extension .postTemplate in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/0
+Looking for extension .finalTemplate in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00002_Couette/0
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 3 of [ 0 , 4 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : [4m PyFoam WARNING on line 698 of file /usr/local/lib/python3.10/dist-packages/PyFoam/RunDictionary/SolutionDirectory.py : The first timestep in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette  is  None not a number. Doing nothing (B[m
+Values for which no default was specified: DIV_SCHEME, N_NON_ORTH, N_CELLS, solver (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - linear
+           N_CELLS - 80
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00003_Couette"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/PyFoamPrepareCaseParameters.rst
+Found 0.org . Clearing 0
+No 0-directory
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/0.org
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/system/controlDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/blockMeshDict
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/system
+Copying /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/0.org to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/0.org
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/0.org
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/0
+Clearing templates
+Looking for extension .template in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/0
+Looking for extension .postTemplate in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/0
+Looking for extension .finalTemplate in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00003_Couette/0
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+========================
+Variation 4 of [ 0 , 4 ]
+========================
+
+
+=================
+Cloning work case
+=================
+
+
+===================
+Setting up the case
+===================
+
+Looking for template values /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette
+(B[m Warning in /usr/local/bin/pyFoamRunParameterVariation.py : Values for which no default was specified: DIV_SCHEME, N_NON_ORTH, N_CELLS, solver (B[m
+
+Used values
+
+              Name - Value
+----------------------------------------
+        DIV_SCHEME - linear
+           N_CELLS - 160
+[4m PyFoam WARNING on line 698 of file /usr/local/lib/python3.10/dist-packages/PyFoam/RunDictionary/SolutionDirectory.py : The first timestep in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette  is  None not a number. Doing nothing (B[m
+        N_NON_ORTH - 0
+          caseName - "convergence-study-uncorrected_00004_Couette"
+          casePath - "/home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette"
+          foamFork - openfoamplus
+       foamVersion - 2312
+numberOfProcessors - 1
+            solver - simpleFoam
+
+No script /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/derivedParameters.py for derived values
+Clearing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette
+Executing /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/Allclean for case clearing
+Writing parameters to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/PyFoamPrepareCaseParameters
+Writing report to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/PyFoamPrepareCaseParameters.rst
+Found 0.org . Clearing 0
+No 0-directory
+
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/constant
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/constant/polyMesh
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/0.org
+Looking for templates with extension .template in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/system
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/system/fvSchemes
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/system/controlDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/system/blockMeshDict
+Found template for /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/blockMeshDict
+
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/constant
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/constant/polyMesh
+Looking for originals in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/system
+Copying /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/0.org to /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/0
+
+No field decomposition necessary
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/constant
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/constant/polyMesh
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/0.org
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/system
+Looking for templates with extension .postTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/0
+
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/constant
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/constant/polyMesh
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/0.org
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/system
+Looking for templates with extension .finalTemplate in  /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/0
+Clearing templates
+Looking for extension .template in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/0
+Looking for extension .postTemplate in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/0
+Looking for extension .finalTemplate in /home/bc57gude/OpenFOAM/bc57gude-v2312/run/tutorials/incompressible/simpleFoam/taylorCouette/Couette/convergence-study-uncorrected_00004_Couette/0
+
+Case setup finished
+
+========================
+Not executing the solver
+========================
+
+
+================
+Ending variation
+================
+
