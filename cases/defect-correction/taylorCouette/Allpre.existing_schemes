@@ -4,10 +4,10 @@ cd "${0%/*}" || exit                                # Run from this directory
 #------------------------------------------------------------------------------
 
 python ../create-study.py -c taylorCouette \
-	-p defcorr.parameter \
-	-s defcorr 2>&1 | tee log.create-study.defcorr
+	-p existing_schemes.parameter \
+	-s existing_schemes 2>&1 | tee log.create-study.existing_schemes
 
 pyFoamRunParameterVariation.py --list-variations taylorCouette \
-	defcorr.parameter 2>&1 | tee defcorr.variations
+	existing_schemes.parameter 2>&1 | tee existing_schemes.variations
 
 #------------------------------------------------------------------------------

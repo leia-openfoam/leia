@@ -5,16 +5,16 @@ cd "${0%/*}" || exit                                # Run from this directory
 
 rm -rf 0 && cp -r 0.org 0 
 runApplication blockMesh
-#foamSetRotationalPatchVelocity -axisPoint '(0 0 0)' \
-#	-angularVelocity '(0 0 1)' -patchName innerWall
 runApplication decomposePar
+
+# Serial run in background
+#runApplication $(getApplication) 
 
 # Local MPI run in background 
 #runParallel $(getApplication) 
-# Serial run in background
-#runApplication $(getApplication) 
+
 # Local MPI run in foreground (parameter study)
-#mpirun -np 4 $(getApplication) \
-#    -parallel 2>&1 | tee log.$(getApplication) 
+mpirun -np 4 $(getApplication) \
+    -parallel 2>&1 | tee log.$(getApplication) 
 
 #------------------------------------------------------------------------------

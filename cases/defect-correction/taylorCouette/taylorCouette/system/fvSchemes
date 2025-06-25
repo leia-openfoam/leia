@@ -25,15 +25,17 @@ gradSchemes
     default         Gauss linear;
 }
 
-linear Gauss linear;
-upwind Gauss upwind; 
+upwind               Gauss upwind; 
+linear               Gauss linear;
+linearUpwind 	     Gauss linearUpwind grad(U);
 boundedLinearUpwind  bounded Gauss linearUpwind grad(U);
-upwindDefCorr2ndOrder GaussDefCorr upwindSecondOrderDefCorr;
+upwindCellDec        Gauss upwindCellDec;
+upwindFaceDec        Gauss upwindFaceDec;
 
 divSchemes
 {
-    default         $linear;
-    div(phi,U)      $upwindDefCorr2ndOrder; 
+    default         none;
+    div(phi,U)      $upwindCellDec; 
     div((nuEff*dev2(T(grad(U))))) Gauss linear;
 }
 

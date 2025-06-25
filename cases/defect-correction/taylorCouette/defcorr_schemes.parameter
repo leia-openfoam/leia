@@ -1,0 +1,13 @@
+values
+{
+    solver (simpleFoam);
+
+    N_NON_ORTH (0);
+
+    N_CELLS (32 64 128 256);
+
+    // Re  1 10  100 
+    NU    (1 0.1 0.01);
+
+    DIV_SCHEME (upwindCellDec upwindFaceDec);
+}
