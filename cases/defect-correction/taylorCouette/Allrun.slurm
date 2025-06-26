@@ -10,7 +10,7 @@ SOLVER=$2
 for case in $PATTERN*; 
 do
     cd $case
-    ./Allpre 
+    ./Allrun
     sbatch ../$SOLVER.sbatch
     sleep 1
     cd ..

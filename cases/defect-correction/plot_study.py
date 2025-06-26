@@ -100,7 +100,6 @@ def plot_convergence_rate(global_dataframe):
             is_divscheme = global_dataframe["DIV_SCHEME"] == div_scheme
             is_nu = global_dataframe["NU"] == nu 
             scheme_dataframe = global_dataframe[is_divscheme & is_nu]
-            print (scheme_dataframe)
 
             # Sort by 'h' to ensure proper plotting
             scheme_dataframe = scheme_dataframe.sort_values(by="h")
@@ -112,8 +111,6 @@ def plot_convergence_rate(global_dataframe):
                 # Plot data
                 h = scheme_dataframe["h"]
                 error = scheme_dataframe[error_type]
-                print(h)
-                print(error)
                 plt.loglog(h, error, marker='o', label=f"{error_type}")
 
                 # Fit a linear line on log-log scale
@@ -142,6 +139,7 @@ def plot_convergence_rate(global_dataframe):
 
             # Save or show the plot
             plt.savefig(f"convergence-rate-{div_scheme}-nu-{nu}.pdf")
+            plt.savefig(f"convergence-rate-{div_scheme}-nu-{nu}.png")
             plt.show()
 
 def plot_elapsed_cpu_time(global_dataframe, folder_pattern):
@@ -198,8 +196,9 @@ def plot_elapsed_cpu_time(global_dataframe, folder_pattern):
     plt.tight_layout()
 
     # Save and show the plot
-    output_file = f"elapsed-cpu-time-plot-{folder_pattern}.pdf"
-    plt.savefig(output_file)
+    output_file = f"elapsed-cpu-time-plot-{folder_pattern}"
+    plt.savefig(output_file + ".pdf")
+    plt.savefig(output_file + ".png")
     print(f"Plot saved as {output_file}")
     plt.show()
 
