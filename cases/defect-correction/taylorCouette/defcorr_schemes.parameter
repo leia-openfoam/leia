@@ -6,8 +6,8 @@ values
 
     N_CELLS (32 64 128 256);
 
-    // Re  1 100  1e05
-    NU    (1 0.01 1e-05);
+    // Re  1 100  500 
+    NU    (1 0.01 5e-03);
 
     DIV_SCHEME (upwindFaceDec);
 }

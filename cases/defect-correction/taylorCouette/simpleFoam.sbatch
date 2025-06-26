@@ -18,7 +18,7 @@
 ### of the chosen partition, e.g. on test30m the runtime limit is
 ### 30 minutes.
 ### The format is hh:mm:ss
-#SBATCH -t 00:20:00
+#SBATCH -t 01:00:00
 
 ####---------------------------------------------------------------------------
 ####    The actual command to submit as job 
