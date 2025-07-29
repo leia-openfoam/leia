@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2022 Julian Reitzel, TU Darmstadt
+    Copyright (C) 2021 Tomislav Maric, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -25,45 +25,22 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "emptyNarrowBand.H"
+#include "redistancer.H"
 #include "addToRunTimeSelectionTable.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-defineTypeNameAndDebug(emptyNarrowBand, false);
-addToRunTimeSelectionTable(narrowBand, emptyNarrowBand, Dictionary);
+    defineTypeNameAndDebug(redistancer, 0);
+    defineRunTimeSelectionTable(redistancer, Mesh);
+}
 
-emptyNarrowBand::emptyNarrowBand(const dictionary& dict, const volScalarField& psi)
-    :
-        narrowBand(dict, psi),
-        field_(
-            IOobject(
-                "NarrowBand",
-                mesh().time().timeName(),
-                mesh(),
-                IOobject::NO_READ,
-                IOobject::AUTO_WRITE
-                ), 
-            mesh(), 
-            dimensionedScalar(dimless, 0.)
-        )
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::redistancer::redistancer(const fvMesh& mesh)
+:
+    redistDict_(mesh.solutionDict().subDict("levelSet").subDict("redistancer")),
+    restartEvery_(redistDict_.getOrDefault<label>("redistanceInterval", 1))
 {}
 
-    const volScalarField& emptyNarrowBand::field() const
-    {
-        return field_;
-    }
-
-    volScalarField& emptyNarrowBand::field()
-    {
-        return field_;
-    }
-
-    void emptyNarrowBand::write() const
-    {
-        field().write();
-    }
-
-} // End namespace Foam
-
-// ************************************************************************* //

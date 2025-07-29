@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2021 Tomislav Maric, TU Darmstadt
+    Copyright (C) 2023 Julian Reitzel, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,27 +24,21 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::redistancer
+    Foam::noRedistancer
 
 Description
-    Abstract base class for implementing a redistancing/ reinitialization
-    algorithmen for the Level-Set Method.
+    Do nothing class
+
 
 SourceFiles
-    redistancer.C
+    noRedistancer.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef redistancer_H
-#define redistancer_H
+#ifndef noRedistancer_H
+#define noRedistancer_H
 
-#include "dictionary.H"
-#include "messageStream.H"
-#include "typeInfo.H"
-#include "autoPtr.H"
-#include "runTimeSelectionTables.H"
-#include "fvSolution.H"
-#include "volFields.H"
+#include "redistancer.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -52,66 +46,31 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                         Class redistancer Declaration
+                         Class noRedistancer Declaration
 \*---------------------------------------------------------------------------*/
 
-class redistancer
+class noRedistancer
+:
+    public redistancer
 {
-protected:
-
-    const fvSolution& fvSolution_;
-    const dictionary& levelSetDict_;
-    const dictionary& redistDict_;
-
 private:
-    const label redistanceInterval_;
 
 public:
 
     // Static Data Members
 
-    TypeName("noRedistancing");
-
-
-    declareRunTimeSelectionTable
-    (
-        autoPtr,
-        redistancer, 
-        Mesh, 
-        (
-            const fvMesh& mesh 
-        ), 
-        (mesh)
-    );
+    TypeName ("none");
 
     // Constructors
 
-        //- Construct from components 
-        redistancer(const fvMesh& mesh);
-
-    // Selectors
-
-        //- Select default constructed
-        static autoPtr<redistancer> New(const fvMesh& mesh);
+    //- Construct from components
+    noRedistancer(const fvMesh& mesh);
 
     //- Destructor
-    virtual ~redistancer() = default;
+    virtual ~noRedistancer() = default;
 
     // Member Functions
-
-    void redistance(volScalarField& psi)
-    {
-        if (psi.mesh().time().timeIndex() % redistanceInterval_ == 0)
-        {
-            doRedistance(psi);
-        }
-    }
-
-    virtual void doRedistance(volScalarField& psi) 
-    {
-        Info  << "No redistancing. " << endl;
-    }
-    
+    virtual void doRedistance(volScalarField& psi); 
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2022 Julian Reitzel, TU Darmstadt
+    Copyright (C) 2021 Tomislav Maric, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -25,45 +25,36 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "emptyNarrowBand.H"
-#include "addToRunTimeSelectionTable.H"
+#include "redistancer.H"
 
-namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+Foam::autoPtr<Foam::redistancer> Foam::redistancer::New
+(
+    const fvMesh& mesh
+)
 {
-defineTypeNameAndDebug(emptyNarrowBand, false);
-addToRunTimeSelectionTable(narrowBand, emptyNarrowBand, Dictionary);
+    const dictionary& redistDict = mesh.solutionDict().subDict("levelSet").subDict("redistancer");
+    const word modelType (redistDict.get<word>("type"));
+    
+    // Find the constructor pointer for the model in the constructor table.
+    auto* ctorPtr = MeshConstructorTable(modelType);
 
-emptyNarrowBand::emptyNarrowBand(const dictionary& dict, const volScalarField& psi)
-    :
-        narrowBand(dict, psi),
-        field_(
-            IOobject(
-                "NarrowBand",
-                mesh().time().timeName(),
-                mesh(),
-                IOobject::NO_READ,
-                IOobject::AUTO_WRITE
-                ), 
-            mesh(), 
-            dimensionedScalar(dimless, 0.)
-        )
-{}
-
-    const volScalarField& emptyNarrowBand::field() const
+    // If the constructor pointer is not found in the table.
+    if (!ctorPtr) 
     {
-        return field_;
+        FatalIOErrorInLookup
+        (
+            redistDict,
+            "redistancer",
+            modelType,
+            *MeshConstructorTablePtr_
+        ) << exit(FatalIOError);
     }
 
-    volScalarField& emptyNarrowBand::field()
-    {
-        return field_;
-    }
+    return autoPtr<redistancer>(ctorPtr(mesh));
+}
 
-    void emptyNarrowBand::write() const
-    {
-        field().write();
-    }
 
-} // End namespace Foam
-
-// ************************************************************************* //
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

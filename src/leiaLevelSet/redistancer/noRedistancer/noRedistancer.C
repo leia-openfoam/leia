@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2021 Tomislav Maric, TU Darmstadt
+    Copyright (C) 2023 Julian Reitzel, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -25,57 +25,36 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "redistancer.H"
+#include "noRedistancer.H"
 #include "addToRunTimeSelectionTable.H"
+#include "fvScalarMatrix.H"
+#include "fvm.H"
+#include "fvc.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-defineTypeNameAndDebug(redistancer, false);
-defineRunTimeSelectionTable(redistancer, Mesh);
-addToRunTimeSelectionTable(redistancer, redistancer, Mesh);
+    defineTypeNameAndDebug(noRedistancer, 0);
+    addToRunTimeSelectionTable(redistancer, noRedistancer, Mesh);
+
+} 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-redistancer::redistancer(const fvMesh& mesh)
-    :
-        fvSolution_(mesh),
-        levelSetDict_(fvSolution_.subDict("levelSet")),
-        redistDict_(levelSetDict_.subDict("redistancer")),
-        redistanceInterval_(redistDict_.getOrDefault<label>("redistanceInterval", 1))
+Foam::noRedistancer::noRedistancer(const fvMesh& mesh)
+:
+    redistancer(mesh)
 {}
 
-// * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-autoPtr<Foam::redistancer> redistancer::New(const fvMesh& mesh)
+void Foam::noRedistancer::doRedistance(volScalarField& psi) 
 {
-    const fvSolution& fvSolution (mesh);
-    const dictionary& levelSetDict = fvSolution.subDict("levelSet");
-    const dictionary& redistDict = levelSetDict.subDict("redistancer");
-    const word& modelType = redistDict.getOrDefault<word>("type", "noRedistancing");
-    
-    // Find the constructor pointer for the model in the constructor table.
-    auto* ctorPtr = MeshConstructorTable(modelType);
-
-    // If the constructor pointer is not found in the table.
-    if (!ctorPtr) 
-    {
-        FatalIOErrorInLookup
-        (
-            fvSolution,
-            "redistancer",
-            modelType,
-            *MeshConstructorTablePtr_
-        ) << exit(FatalIOError);
-    }
-
-    return autoPtr<redistancer>(ctorPtr(mesh));
 }
 
-// ************************************************************************* //
-
-} // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// ************************************************************************* //

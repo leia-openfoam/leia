@@ -1,0 +1,133 @@
+        type coded;                       
+        libs (utilityFunctionObjects);    
+        writeControl writeTime;           
+                                      
+        name initLevelSet;          
+                                      
+        codeWrite                         
+        #{                               
+
+            volScalarField alpha                     
+            (                                
+                IOobject                       
+                (                              
+                    "alpha",                     
+                    mesh().time().timeName(),    
+                    mesh(),                      
+                    IOobject::MUST_READ,           
+                    IOobject::AUTO_WRITE         
+                ),                             
+                mesh()                        
+            );                               
+
+
+            volScalarField psi                     
+            (                                
+                IOobject                       
+                (                              
+                    "psi",                     
+                    mesh().time().timeName(),    
+                    mesh(),                      
+                    IOobject::MUST_READ,           
+                    IOobject::AUTO_WRITE         
+                ),                             
+                mesh()                         
+            );    
+
+
+            // Read cell centres
+            const volVectorField& C = mesh().C();
+
+            // // Rescale lambda fn
+            // auto rescaleVals = [](const scalar x, const scalar min, const scalar max) -> scalar 
+            // {
+            //     const scalar a = -1.0;
+            //     const scalar b = 1.0;
+
+            //     const scalar max_min_diff = max - min;
+
+
+            //     const scalar x_norm = a + ((x - min)*(b-a))/max_min_diff;
+
+            //     return x_norm;
+            // };
+
+            auto tanhTransition = [](
+                                        const scalar x, 
+                                        const scalar a, 
+                                        const scalar b, 
+                                        const scalar y0,
+                                        const scalar y1,
+                                        const scalar k=5) -> scalar 
+            {
+                const scalar c = 0.5*(a + b); // center of the transition
+
+                const scalar y_min = 0.5*(1 + Foam::tanh(k*(a - c)));
+                const scalar y_max = 0.5*(1 + Foam::tanh(k*(b - c)));
+                
+                const scalar y = 0.5*(1 + Foam::tanh(k*(x - c)));
+                
+                const scalar y_norm = y0 + ((y - y_min)*(y1 - y0))/(y_max - y_min);
+                
+                return y_norm;
+            };
+
+            const vector origin (0.5, 0, 0.5);
+            const scalar radius = 0.25;
+            const vector direction (0, 1, 0);
+            const tensor project = tensor::I - direction*direction;
+
+            const scalar dr = 0.05;
+            const scalar drTransition = 0.075;
+
+
+            // Populate field
+            forAll(C, cellI)          
+            {                      
+                const scalar distToInterface = (-mag(project & (C[cellI] - origin)) + radius);
+
+                // Give true value if within +/- dr
+                if (mag(distToInterface) < dr)
+                {
+                    psi[cellI] = distToInterface;
+                }
+                else    // tanh transition to +/- over drTransition
+                {
+                    if ( (distToInterface > dr) && (distToInterface <= (dr + drTransition)) )
+                    {
+                        const scalar a = dr;
+                        const scalar b = dr + drTransition;
+                        psi[cellI] = tanhTransition(distToInterface, a, b, dr, 1.0);
+                    }
+                    else if ( (distToInterface >= (-dr - drTransition)) && (distToInterface < -dr ) )
+                    {
+                        const scalar a = -dr;
+                        const scalar b = -dr - drTransition;
+                        psi[cellI] = tanhTransition(distToInterface, b, a, -1.0, -dr);
+                    }
+                    else if (distToInterface > (dr + drTransition))
+                    {
+                        psi[cellI] = 1.0;
+                    }
+                    else
+                    {
+                        psi[cellI] = -1.0;
+                    }
+                }
+            }     
+
+
+            // const scalar max = gMax(alpha.internalField());
+            // const scalar min = gMin(alpha.internalField());
+
+            // forAll(psi, cellI)          
+            // {                               
+            //     psi[cellI] = rescaleVals(alpha[cellI], min, max);
+            // }                               
+
+            psi *= -1.0; // negative inside, positive outside
+
+            psi.correctBoundaryConditions();                         
+              
+            psi.write();
+        #};  

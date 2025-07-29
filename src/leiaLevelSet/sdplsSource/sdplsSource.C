@@ -87,7 +87,7 @@ Foam::sdplsSource::sdplsSource(const dictionary& dict, const fvMesh& mesh)
                 IOobject::AUTO_WRITE
                 ), 
             mesh, 
-            dimensioned(dimless/dimTime, 0.0)
+            dimensionedScalar(dimless/dimTime, 0.0)
         ),
         nonLinearPart_(
             IOobject
@@ -139,7 +139,7 @@ Foam::sdplsSource::R(const volScalarField& psi, const volVectorField& U) const
 {
     volVectorField const grad_psi = grad(psi);
     volTensorField const grad_U = fvc::grad(U).cref();
-    dimensioned<scalar> const eps = dimensioned(grad_psi.dimensions(), SMALL);
+    dimensioned<scalar> const eps = dimensionedScalar(grad_psi.dimensions(), SMALL);
     volVectorField const normal_interface = 
         (grad_psi/(mag(grad_psi) + eps)).cref();
 

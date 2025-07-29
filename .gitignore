@@ -87,17 +87,22 @@ doc/Doxygen/Doxygen.warnings
 VTK/
 [0-9].[0-9]*
 [0-9]/
+
+# Except 0.orig
+!0.[a-z]*/
+
 *.png
 *.ogv
 *.avi
 PyFoam*
 *.obj
+*.foam
 
 .ipynb_checkpoints/
 *.database
 *_000*/
 log.analyzed/
-log
+log*
 *.vtp
 *.vtk
 *.vtm
@@ -120,4 +125,6 @@ processor*/
 
 # python
 __pycache__
+
+# Remove numeric folder from test cases
 

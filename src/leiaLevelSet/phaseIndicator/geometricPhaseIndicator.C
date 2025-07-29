@@ -127,7 +127,7 @@ void geometricPhaseIndicator::calcPhaseIndicator
             // Assemble the LLSQ linear system
             // TODO: Extend for 2D simulations in OpenFOAM. 
             //SquareMatrix<scalar> LLSQ(4,0);
-            simpleMatrix LLSQ
+            simpleMatrix<scalar> LLSQ
             (
                 4  /* size 4x4 */, 
                 0. /* init coeff value*/, 

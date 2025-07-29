@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2023 Julian Reitzel, TU Darmstadt
+    Copyright (C) 2021 Tomislav Maric, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,29 +24,29 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::pdeRedistancer
+    Foam::redistancer
 
 Description
-    Level-Set Redistancer using the reinitialization equation of Sussman, 
-    Smereka, and Osher.
-
-    Reference:
-    \verbatim
-    Sussman, M., Smereka, P., & Osher, S. (1994). A Level Set Approach for 
-    Computing Solutions to Incompressible Two-Phase Flow. Journal of 
-    Computational Physics, 114(1), 146–159.
-    \endverbatim
-
+    Abstract base class for implementing a redistancing/ reinitialization
+    algorithm for the Level-Set Method.
 
 SourceFiles
-    pdeRedistancer.C
+    redistancer.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef pdeRedistancer_H
-#define pdeRedistancer_H
+#ifndef redistancer_H
+#define redistancer_H
 
-#include "redistancer.H"
+#include "dictionary.H"
+#include "volFieldsFwd.H"
+#include "surfaceFieldsFwd.H"
+#include "dimensionedScalar.H"
+#include "runTimeSelectionTables.H"
+
+#include "volFields.H"
+#include "fvMesh.H"
+#include "autoPtr.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -54,40 +54,60 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                         Class pdeRedistancer Declaration
+                         Class redistancer Declaration
 \*---------------------------------------------------------------------------*/
 
-class pdeRedistancer
-:
-    public redistancer
+class redistancer
 {
-private:
-    // Data Members
 
-    scalar deltaT_;
-    uint ninterations_;
+protected:
+    const dictionary redistDict_;
+    const label restartEvery_;
 
-    bool write_;
 
-    void write(const volScalarField& psi) const;
 
 public:
 
     // Static Data Members
 
-    TypeName ("PDE");
+    TypeName("redistance");
+
+
+    declareRunTimeSelectionTable
+    (
+        autoPtr,
+        redistancer, 
+        Mesh, 
+        (
+            const fvMesh& mesh 
+        ), 
+        (mesh)
+    );
 
     // Constructors
 
-    //- Construct from components
-    pdeRedistancer(const fvMesh& mesh);
+        //- Construct from components 
+        redistancer(const fvMesh& mesh);
+
+    // Selectors
+
+        //- Select default constructed
+        static autoPtr<redistancer> New(const fvMesh& mesh);
 
     //- Destructor
-    virtual ~pdeRedistancer() = default;
+    virtual ~redistancer() = default;
 
     // Member Functions
-    
-    virtual void doRedistance(volScalarField& psi); 
+
+    void redistance(volScalarField& psi) 
+    {
+        if (psi.mesh().time().timeIndex() % restartEvery_ == 0)
+        {
+            doRedistance(psi);
+        }
+    }
+
+    virtual void doRedistance(volScalarField& psi) = 0;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

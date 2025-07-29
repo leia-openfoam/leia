@@ -1,0 +1,80 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    "psi.*"
+    {
+         solver         PBiCG;
+         preconditioner DILU;
+       // solver          diagonal;
+        tolerance       1e-12;
+        relTol          0;
+    }
+
+    p
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-12;
+        relTol          0.;
+    }
+}
+
+PISO
+{
+    nCorrectors     -1; // Disables p-v coupling.
+    nNonOrthogonalCorrectors 0;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+
+levelSet
+{
+    narrowBand  
+    {
+      type  signChange;
+    }
+    
+    profile
+    {
+      type  signedDistance;
+    }
+
+    phaseIndicator
+    {
+        type heaviside;
+    }
+
+    redistancer 
+    {
+        type        PDE2;
+        deltaT      0.001;
+        nIter       1000;
+        write       true;
+    }
+
+    sdplsSource
+    {
+        type noSource;
+        discretization none;
+    }
+}
+
+
+// ************************************************************************* //
