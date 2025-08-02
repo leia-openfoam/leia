@@ -67,6 +67,9 @@ levelSet
         deltaT      0.001;
         nIter       1000;
         write       true;
+
+        // Uncomment for constrained system
+        constrainSystem yes;
     }
 
     sdplsSource

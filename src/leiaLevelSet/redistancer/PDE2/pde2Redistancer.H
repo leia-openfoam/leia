@@ -78,6 +78,8 @@ private:
 
         bool write_;
 
+        Switch  constrain_;
+
 public:
 
     // Static Data Members

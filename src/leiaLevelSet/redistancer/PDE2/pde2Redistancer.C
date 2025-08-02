@@ -52,9 +52,11 @@ Foam::pde2Redistancer::pde2Redistancer(const fvMesh& mesh)
     deltaTau_(redistDict_.getOrDefault<scalar>("deltaT", 0.5*deltaX_)),
     nIter_(redistDict_.getOrDefault<label>("nIter", 10)),
     maxCo_(redistDict_.getOrDefault<scalar>("maxCo", 1.0)),
-    write_(redistDict_.getOrDefault<bool>("write", false))
+    write_(redistDict_.getOrDefault<bool>("write", false)),
+    constrain_(redistDict_.getOrDefault<Switch>("constrainSystem", false))
 {
-    Info << "Delta X: "  << deltaX_  << nl
+    Info << "constrainSystem: " << constrain_ << nl
+         << "Delta X: "  << deltaX_  << nl
          << "epsilon: "  << epsilon_ << nl 
          << "deltaT: " << deltaTau_  << nl << endl;
 }
@@ -126,7 +128,7 @@ void Foam::pde2Redistancer::doRedistance(volScalarField& psi)
 
 
     
-    // Mark anchoring cells
+    // Mark anchoring cells. Currently a volField for visualization...
     volScalarField anchoringCells 
     (
         Foam::IOobject
@@ -141,6 +143,9 @@ void Foam::pde2Redistancer::doRedistance(volScalarField& psi)
         mesh,
         dimensionedScalar("0", dimless, 0.0)
     );
+
+    DynamicList<label> markCellsID;
+    DynamicList<scalar> markCellsValue;
 
     {
         const scalarField& psiIf = psi.internalField();
@@ -157,6 +162,16 @@ void Foam::pde2Redistancer::doRedistance(volScalarField& psi)
                 anchoringCellsIf[P[fi]] = 1.0;
                 anchoringCellsIf[N[fi]] = 1.0;
             }
+        }
+    }
+
+
+    forAll(anchoringCells, cellI)
+    {
+        if(anchoringCells[cellI] == 1.0)
+        {
+            markCellsID.append(cellI);
+            markCellsValue.append(psi[cellI]);
         }
     }
 
@@ -222,19 +237,28 @@ void Foam::pde2Redistancer::doRedistance(volScalarField& psi)
         );
             
         redistanceLevelSetEq.relax();
+
+        if (constrain_)
+        {
+            redistanceLevelSetEq.setReferences(markCellsID, markCellsValue, true);
+        }
         
         redistanceLevelSetEq.solve();
 
         // Reset levelSet values
-        forAll(anchoringCellsIf, cellI)
+        if (!constrain_)
         {
-            if (anchoringCellsIf[cellI] == 1.0)
+            forAll(anchoringCellsIf, cellI)
             {
-                restartPsi[cellI] = psi[cellI];
+                if (anchoringCellsIf[cellI] == 1.0)
+                {
+                    restartPsi[cellI] = psi[cellI];
+                }
             }
+
+            restartPsi.correctBoundaryConditions();
         }
 
-        restartPsi.correctBoundaryConditions();
     
         volScalarField& oldTime = restartPsi.oldTime();
 

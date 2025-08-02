@@ -23,17 +23,17 @@ startTime       0;
 
 stopAt          writeNow;
 
-endTime         3; 
+endTime         2; 
 
 maxCo           0.5;
 
-deltaT          3;
+deltaT          2;
 
 adjustTimeStep  yes;
 
 writeControl    runTime;
 
-writeInterval   3;
+writeInterval   2;
 
 purgeWrite      0;
 
