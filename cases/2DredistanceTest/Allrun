@@ -6,29 +6,6 @@ cd "${0%/*}" || exit                                # Run from this directory
 
 set -e
 
-# Functions
-print() {
-  local msg="$1"
-  local color_name="$2"
-  local color_code
-
-  # map names to ANSI codes
-  case "$color_name" in
-    black)   color_code="\e[30m" ;;
-    red)     color_code="\e[31m" ;;
-    green)   color_code="\e[32m" ;;
-    yellow)  color_code="\e[33m" ;;
-    blue)    color_code="\e[34m" ;;
-    magenta) color_code="\e[35m" ;;
-    cyan)    color_code="\e[36m" ;;
-    white)   color_code="\e[37m" ;;
-    *)       color_code="\e[0m"  ;;  # default / reset
-  esac
-
-  # print with color, then reset
-  printf "${color_code}%s\e[0m\n" "$msg"
-}
-
 changeEndTimeAndDeltaT(){
   local newTime="$1"
 
@@ -43,7 +20,7 @@ myRestore0Dir(){
 }
 
 echo 
-print "Restoring 0 directory" "green"
+echo "Restoring 0 directory" 
 myRestore0Dir
 
 runApplication blockMesh
@@ -51,7 +28,7 @@ runApplication blockMesh
 
 # Case1 : from Paper with sharp IC
 echo 
-print "Running case 1" "green"
+echo "Running case 1" 
 changeEndTimeAndDeltaT 1
 
 runApplication -s case1 setFields 
@@ -60,7 +37,7 @@ mv 1 1_store
 
 # Case 2: Use setAlphaFields and normalize data
 echo 
-print "Running case 2" "green"
+echo "Running case 2" 
 myRestore0Dir
 changeEndTimeAndDeltaT 2
 
@@ -80,7 +57,7 @@ mv 2 2_store
 # This is the one that works best
 
 echo 
-print "Running case 3" "green"
+echo "Running case 3" 
 myRestore0Dir
 changeEndTimeAndDeltaT 3
 
