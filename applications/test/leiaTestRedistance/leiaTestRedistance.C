@@ -27,7 +27,7 @@ Application
     leiaTestRedistance 
 
 Description
-    Application for testing redistancing algorithmn.
+    Application for testing redistancing algorithms.
 
 \*---------------------------------------------------------------------------*/
 
@@ -40,9 +40,6 @@ Description
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-
-
-
 int main(int argc, char *argv[])
 {
     argList::addNote
@@ -50,22 +47,27 @@ int main(int argc, char *argv[])
         "Redistance application."
     );
     
-
-
     #include "addCheckCaseOptions.H"
     #include "setRootCaseLists.H"
     #include "createTime.H"
     #include "createMesh.H"
 
+
     #include "createFields.H"
 
+    simpleControl simple(mesh);
+    
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-
-    redist->redistance(psi);
+    while (simple.loop())
+    {
+        Info<< "Time = " << runTime.timeName() << nl << endl;
         
-    runTime.setTime(1,1);
-
+        redist->redistance(psi);
+    }
+    
+    runTime.printExecutionTime(Info);
+    
     Info<< "End\n" << endl;
 
     return 0;

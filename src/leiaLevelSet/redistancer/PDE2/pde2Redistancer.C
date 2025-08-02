@@ -105,6 +105,7 @@ void Foam::pde2Redistancer::doRedistance(volScalarField& psi)
                                                             sqr(restartPsi) 
                                                             + magGradPsi*sqr(epsilon_)
                                                           )
+                                                + dimensionedScalar("0", dimLength, SMALL)
                                               ); 
     
     // // Sharp

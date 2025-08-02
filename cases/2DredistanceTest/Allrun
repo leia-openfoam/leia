@@ -3,9 +3,104 @@
 cd "${0%/*}" || exit                                # Run from this directory
 . ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
 
-rm -rf 0 
-cp -r 0.org 0
+
+set -e
+
+# Functions
+print() {
+  local msg="$1"
+  local color_name="$2"
+  local color_code
+
+  # map names to ANSI codes
+  case "$color_name" in
+    black)   color_code="\e[30m" ;;
+    red)     color_code="\e[31m" ;;
+    green)   color_code="\e[32m" ;;
+    yellow)  color_code="\e[33m" ;;
+    blue)    color_code="\e[34m" ;;
+    magenta) color_code="\e[35m" ;;
+    cyan)    color_code="\e[36m" ;;
+    white)   color_code="\e[37m" ;;
+    *)       color_code="\e[0m"  ;;  # default / reset
+  esac
+
+  # print with color, then reset
+  printf "${color_code}%s\e[0m\n" "$msg"
+}
+
+changeEndTimeAndDeltaT(){
+  local newTime="$1"
+
+  sed -i -E "s/^(endTime[[:space:]]*)[0-9]+(\.[0-9]+)?;/\1${newTime};/" system/controlDict
+  sed -i -E "s/^(deltaT[[:space:]]*)[0-9]+(\.[0-9]+)?;/\1${newTime};/" system/controlDict
+  sed -i -E "s/^(writeInterval[[:space:]]*)[0-9]+(\.[0-9]+)?;/\1${newTime};/" system/controlDict
+}
+
+myRestore0Dir(){
+  rm -rf 0 
+  cp -r 0.org 0
+}
+
+echo 
+print "Restoring 0 directory" "green"
+myRestore0Dir
 
 runApplication blockMesh
-runApplication setFields
-runApplication leiaTestRedistance
+
+
+# Case1 : from Paper with sharp IC
+echo 
+print "Running case 1" "green"
+changeEndTimeAndDeltaT 1
+
+runApplication -s case1 setFields 
+runApplication -s case1 leiaTestRedistance
+mv 1 1_store
+
+# Case 2: Use setAlphaFields and normalize data
+echo 
+print "Running case 2" "green"
+myRestore0Dir
+changeEndTimeAndDeltaT 2
+
+runApplication -s case2 setAlphaField
+
+activation="minMax"
+sed -i -E \
+  's/(word activation \(")[^"]+("\);)/\1'"$activation"'\2/' \
+  system/initLevelSet
+
+postProcess -func "initLevelSet"
+runApplication -s case2 leiaTestRedistance 
+mv 2 2_store
+
+
+# Case 3: Use setAlphaFields and normalize data. 
+# This is the one that works best
+
+echo 
+print "Running case 3" "green"
+myRestore0Dir
+changeEndTimeAndDeltaT 3
+
+# Start from sharp field
+runApplication -s case3 setFields
+
+# Apply tanh smoothing 
+activation="tanh"
+sed -i -E \
+  's/(word activation \(")[^"]+("\);)/\1'"$activation"'\2/' \
+  system/initLevelSet
+
+postProcess -func "initLevelSet"
+runApplication -s case3 leiaTestRedistance 
+
+
+mv 1_store 1 
+mv 2_store 2
+
+touch a.foam
+
+
+

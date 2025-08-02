@@ -68,18 +68,6 @@ void Foam::pde1Redistancer::doRedistance(volScalarField& psi)
     // Grab time
     const Time& runTime = mesh.time();
 
-    // Time& runTime = const_cast<Time&>(mesh.time());
-
-    // // Store real time dT
-    // const scalar deltaT = runTime.deltaT().value();
-
-    // // Manually set deltaT
-    // runTime.setDeltaT
-    // (
-    //     deltaTau_,
-    //     false
-    // );
-
     // Copy levelSet into another field for SS solution
     volScalarField restartPsi 
     (
@@ -112,6 +100,7 @@ void Foam::pde1Redistancer::doRedistance(volScalarField& psi)
                                                             sqr(restartPsi) 
                                                             + magGradPsi*sqr(epsilon_)
                                                           )
+                                                + dimensionedScalar("0", dimLength, SMALL)
                                               ); 
     
     // // Sharp
@@ -176,13 +165,6 @@ void Foam::pde1Redistancer::doRedistance(volScalarField& psi)
     // Copy variable back
     psi.internalFieldRef() = restartPsi.internalField();
     psi.correctBoundaryConditions();
-
-
-    // // Restore simulation deltaT
-    // runTime.setDeltaT
-    // (
-    //     deltaT, false
-    // );
 
     if (write_)
     {
