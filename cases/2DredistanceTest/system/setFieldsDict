@@ -21,15 +21,33 @@ defaultFieldValues
 
 regions
 (
-    cylinderToCell
+    // cylinderToCell
+    // {
+    //     radius   0.25;
+    //      p1      (0.5 -1 0.5);
+    //      p2      (0.5 1 0.5);
+
+    //     fieldValues
+    //     (
+    //         volScalarFieldValue psi -1
+    //     );
+    // }
+
+    surfaceToCell
     {
-        radius   0.25;
-         p1      (0.5 -1 0.5);
-         p2      (0.5 1 0.5);
+        file "box.stl";
+        outsidePoints ((0.0 0.0 0.13)); 
+        includeCut false;
+        includeInside yes; 
+        includeOutside no; 
+        useSurfaceOrientation true;
+        nearDistance -1; 
+        curvature 0; 
 
         fieldValues
         (
             volScalarFieldValue psi -1
         );
     }
+
 );

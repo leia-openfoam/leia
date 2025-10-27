@@ -26,31 +26,31 @@ myRestore0Dir
 runApplication blockMesh
 
 
-# Case1 : from Paper with sharp IC
-echo 
-echo "Running case 1" 
-changeEndTimeAndDeltaT 1
+# # Case1 : from Paper with sharp IC
+# echo 
+# echo "Running case 1" 
+# changeEndTimeAndDeltaT 1
 
-runApplication -s case1 setFields 
-runApplication -s case1 leiaTestRedistance
-mv 1 1_store
+# runApplication -s case1 setFields 
+# runApplication -s case1 leiaTestRedistance
+# mv 1 1_store
 
-# Case 2: Use setAlphaFields and normalize data
-echo 
-echo "Running case 2" 
-myRestore0Dir
-changeEndTimeAndDeltaT 2
+# # Case 2: Use setAlphaFields and normalize data
+# echo 
+# echo "Running case 2" 
+# myRestore0Dir
+# changeEndTimeAndDeltaT 2
 
-runApplication -s case2 setAlphaField
+# runApplication -s case2 setAlphaField
 
-activation="minMax"
-sed -i -E \
-  's/(word activation \(")[^"]+("\);)/\1'"$activation"'\2/' \
-  system/initLevelSet
+# activation="minMax"
+# sed -i -E \
+#   's/(word activation \(")[^"]+("\);)/\1'"$activation"'\2/' \
+#   system/initLevelSet
 
-postProcess -func "initLevelSet"
-runApplication -s case2 leiaTestRedistance 
-mv 2 2_store
+# postProcess -func "initLevelSet"
+# runApplication -s case2 leiaTestRedistance 
+# mv 2 2_store
 
 
 # Case 3: Use setAlphaFields and normalize data. 

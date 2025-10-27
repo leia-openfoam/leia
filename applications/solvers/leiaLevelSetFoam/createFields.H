@@ -38,7 +38,7 @@ surfaceScalarField phi
         "phi",
         runTime.timeName(),
         mesh,
-        IOobject::NO_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
     mesh,
@@ -54,7 +54,7 @@ volVectorField U
         "U",
         runTime.timeName(),
         mesh,
-        IOobject::NO_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
     mesh,
@@ -89,4 +89,3 @@ phi.write();
 
 velocityModel->setVelocity(U);
 U.write();
-

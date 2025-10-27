@@ -24,27 +24,28 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::pde2Redistancer
+    Foam::pde3Redistancer
 
 Description
-    Level-Set Redistancer using the reinitialization routine of Ferro et al.
+    Implementation based on: 
+    Mark Sussman, Peter Smereka, Stanley Osher,
+    A Level Set Approach for Computing Solutions to Incompressible Two-Phase Flow,
+    Journal of Computational Physics,Volume 114, Issue 1, 1994, Pages 146-159,
+    https://doi.org/10.1006/jcph.1994.1155.
 
     Reference:
     \verbatim
-        Ferro, P., Landel, P., Landrodie, C., Guillot, S., & Pescheux, M. (2025). 
-        Enhanced Level-Set Method for free surface flow applications. 
-        International Journal of Multiphase Flow, 185. 
-        https://doi.org/10.1016/j.ijmultiphaseflow.2025.105126
+
     \endverbatim
 
 
 SourceFiles
-    pde2Redistancer.C
+    pde3Redistancer.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef pde2Redistancer_H
-#define pde2Redistancer_H
+#ifndef pde3Redistancer_H
+#define pde3Redistancer_H
 
 #include "redistancer.H"
 
@@ -54,45 +55,44 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                         Class pde2Redistancer Declaration
+                         Class pde3Redistancer Declaration
 \*---------------------------------------------------------------------------*/
 
-class pde2Redistancer
+class pde3Redistancer
 :
     public redistancer
 {
 private:
     // Data Members
 
-        label nCellsForDiffusion_;
-    
-        scalar deltaX_;
+    label nCellsForDiffusion_;
 
-        dimensionedScalar epsilon_;
+    scalar deltaX_;
 
-        scalar deltaTau_;
+    dimensionedScalar epsilon_;
 
-        label nIter_;
+    scalar deltaTau_;
 
-        scalar maxCo_;
+    label nIter_;
 
-        Switch write_;
+    Switch write_;
 
-        Switch  constrain_;
+    Switch  constrain_;
+
 
 public:
 
     // Static Data Members
 
-    TypeName ("PDE2");
+    TypeName ("PDE3");
 
     // Constructors
 
     //- Construct from components
-    pde2Redistancer(const fvMesh& mesh);
+    pde3Redistancer(const fvMesh& mesh);
 
     //- Destructor
-    virtual ~pde2Redistancer() = default;
+    virtual ~pde3Redistancer() = default;
 
     // Member Functions
     virtual void doRedistance(volScalarField& psi); 

@@ -23,6 +23,8 @@ boundaryField
     rim 
     {
         type            zeroGradient;
+        // type            calculated;
+        // value           uniform 0;
     }
 
     "(front|back)"

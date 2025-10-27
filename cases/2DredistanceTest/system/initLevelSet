@@ -138,6 +138,11 @@
             }
 
 
+            // forAll(psi, cellI)
+            // {
+            //     psi[cellI] = cellI;
+            // }
+
             psi *= -1.0; // negative inside, positive outside
 
             psi.correctBoundaryConditions();                         

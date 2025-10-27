@@ -64,7 +64,7 @@ class velocityModel
     public: 
 
         //- Runtime type information
-        TypeName("none");
+        TypeName("velocityModel");
 
         // Declare run-time constructor selection table
 
@@ -451,6 +451,33 @@ defineTypeNameAndDebug(periodic2D, 0);
 addToRunTimeSelectionTable(velocityModel, periodic2D, Mesh);
 
 
+class noVelocity 
+:
+    public velocityModel
+{
+    public: 
+
+        //- Runtime type information
+        TypeName("None");
+        
+        noVelocity(const fvMesh& mesh) : velocityModel(mesh) {}; 
+
+        virtual ~noVelocity() = default;
+
+
+        virtual void setVelocity(volVectorField& U) const 
+        {
+        }
+
+        virtual void setVolumetricFlux(surfaceScalarField& phi) const 
+        {
+
+        }
+};
+
+defineTypeNameAndDebug(noVelocity, 0);
+addToRunTimeSelectionTable(velocityModel, noVelocity, Mesh);
+
 /*---------------------------------------------------------------------------*\    
                     Function templates for advection 
 \*---------------------------------------------------------------------------*/    
@@ -501,6 +528,9 @@ void correctFlux(surfaceScalarField& phi)
         Evol.write();
 
 }
+
+
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

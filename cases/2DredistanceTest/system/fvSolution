@@ -1,4 +1,4 @@
-/*--------------------------------*- C++ -*----------------------------------*\
+/*C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
 |  \\    /   O peration     | Version:  v2012                                 |
@@ -63,13 +63,13 @@ levelSet
 
     redistancer 
     {
-        type        PDE2;
-        deltaT      0.001;
+        type        PDE3;
+        deltaT      0.0015625;
         nIter       1000;
         write       true;
 
-        // Uncomment for constrained system
-        constrainSystem yes;
+        // // Uncomment for constrained system
+        // constrainSystem yes;
     }
 
     sdplsSource

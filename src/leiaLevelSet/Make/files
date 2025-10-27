@@ -9,6 +9,7 @@ redistancer/redistancer/redistancer.C
 redistancer/noRedistancer/noRedistancer.C
 redistancer/PDE1/pde1Redistancer.C
 redistancer/PDE2/pde2Redistancer.C
+redistancer/PDE3/pde3Redistancer.C
 
 surfaceTensionForce/surfaceTensionForce.C
 surfaceTensionForce/constantCurvatureSurfTension.C

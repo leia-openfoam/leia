@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
         (
             fvm::ddt(psi)
             + fvm::div(phi, psi)
-        ==
+            ==
             source->fvmsdplsSource(psi, U)
         );
 
@@ -151,15 +151,12 @@ int main(int argc, char *argv[])
         narrowBand->calc();
 
         reportErrors(
-            errorFile, 
-            psi, 
-            psi0, 
-            alpha, 
-            alpha0, 
-            phi,
-            CoNum
-        );
-
+                        errorFile, psi, 
+                        psi0, alpha, 
+                        alpha0, phi,
+                        CoNum
+                    );
+        
         runTime.write();
         runTime.printExecutionTime(Info);
         

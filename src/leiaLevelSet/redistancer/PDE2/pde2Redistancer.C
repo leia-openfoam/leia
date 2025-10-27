@@ -52,7 +52,7 @@ Foam::pde2Redistancer::pde2Redistancer(const fvMesh& mesh)
     deltaTau_(redistDict_.getOrDefault<scalar>("deltaT", 0.5*deltaX_)),
     nIter_(redistDict_.getOrDefault<label>("nIter", 10)),
     maxCo_(redistDict_.getOrDefault<scalar>("maxCo", 1.0)),
-    write_(redistDict_.getOrDefault<bool>("write", false)),
+    write_(redistDict_.getOrDefault<Switch>("write", false)),
     constrain_(redistDict_.getOrDefault<Switch>("constrainSystem", false))
 {
     Info << "constrainSystem: " << constrain_ << nl

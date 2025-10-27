@@ -95,13 +95,18 @@ void Foam::pde1Redistancer::doRedistance(volScalarField& psi)
 
     // Sign of level set
     // Smooth variant
-    const volScalarField psiSign = restartPsi/(
-                                                Foam::sqrt(
-                                                            sqr(restartPsi) 
-                                                            + magGradPsi*sqr(epsilon_)
-                                                          )
-                                                + dimensionedScalar("0", dimLength, SMALL)
-                                              ); 
+    // const volScalarField psiSign = restartPsi/(
+    //                                             Foam::sqrt(
+    //                                                         sqr(restartPsi) 
+    //                                                         + magGradPsi*sqr(epsilon_)
+    //                                                       )
+    //                                             + dimensionedScalar("0", dimLength, SMALL)
+    //                                           ); 
+
+    const volScalarField psiSign = psi/sqrt(   
+                                                sqr(psi)
+                                            + sqr(epsilon_) 
+                                        ); 
     
     // // Sharp
     // const volScalarField psiSign = Foam::sign(psi); 
@@ -140,6 +145,15 @@ void Foam::pde1Redistancer::doRedistance(volScalarField& psi)
 
     for (int iter=0; iter<nIter_; iter++)
     {
+        forAll(psiSign, cellI)
+        {
+            const scalar curSign = restartPsi[cellI];
+            if (curSign != psiSign[cellI])
+            {
+                restartPsi[cellI] = sign(psiSign[cellI])*mag(restartPsi[cellI]);
+            }
+        }
+
         gradPsi = fvc::grad(restartPsi, "grad(psi)"); 
  
         magGradPsi = mag(gradPsi);
