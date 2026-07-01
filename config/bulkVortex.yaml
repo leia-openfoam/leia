@@ -1,0 +1,30 @@
+# Convergence study: classical reversed single (shear) vortex, BULK test.
+#
+# The 2Dvortex case advects a circle (R=0.15, centred at (0.5,0.75)) in the unit
+# box with the reversing single-vortex field (shear2D, oscillation on); run to
+# the period T (tau defaults to endTime) so the interface returns to its initial
+# shape. Sweep T, mesh spacing h, and the interface-normal velocity-extension
+# model so the results section shows a separate convergence diagram per model.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/bulkVortex.yaml
+#
+# Post-processing writes studies/<study>/<study>_errors.csv with columns
+# velocityExtension, T, h (=1/N_CELLS), gradientError (L2 of ||grad psi|-1|),
+# shapeError (E_GEOM_ALPHA), volumeError (E_VOL_ALPHA_REL) and one convergence
+# triptych per velocity-extension model.
+
+study_name: bulkVortexConvergence
+case: 2Dvortex
+mesh: hex
+mode: parallel      # each leiaLevelSetFoam runs on np cores (scotch decomposition)
+np: 4               # prescribed cores per simulation
+
+axes_override:
+  END_TIME: [0.5, 2, 4, 8]                              # T = period = end time
+  N_CELLS:  [32, 64, 128]                               # cells per unit domain length
+  VELOCITY_EXTENSION: [none, anisotropicDiffusion, pseudoTime]
+  PHASE_INDICATOR: [detrixheAslam]                      # fixed: analytic 2D-robust indicator
+collapse_other_axes: true                               # everything else -> first value
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

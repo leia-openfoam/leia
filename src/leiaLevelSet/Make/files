@@ -1,7 +1,9 @@
 phaseIndicator/phaseIndicator.C
 phaseIndicator/heavisidePhaseIndicator.C
 phaseIndicator/sharpJumpPhaseIndicator.C
+phaseIndicator/levelSetPlaneReconstruction.C
 phaseIndicator/geometricPhaseIndicator.C
+phaseIndicator/detrixheAslamPhaseIndicator.C
 
 redistancer/redistancer.C
 redistancer/pdeRedistancer.C
@@ -34,5 +36,14 @@ narrowBand/distanceNarrowBand.C
 profile/profile.C
 profile/signedDistance.C
 profile/tanh.C
+
+velocityModel/velocityModel.C
+velocityModel/prescribedVelocityModels.C
+velocityModel/fluxCorrection.C
+
+velocityExtension/velocityExtension.C
+velocityExtension/interfaceExtension.C
+velocityExtension/anisotropicDiffusion.C
+velocityExtension/pseudoTime.C
 
 LIB = $(FOAM_USER_LIBBIN)/libleiaLevelSet

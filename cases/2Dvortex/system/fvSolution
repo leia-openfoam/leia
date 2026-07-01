@@ -1,0 +1,100 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    psi
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-10;
+        relTol          0;
+    }
+
+    p
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-12;
+        relTol          0.;
+    }
+}
+
+PISO
+{
+    nCorrectors     -1; // Disables p-v coupling.
+    nNonOrthogonalCorrectors 0;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+velocityModel
+{
+    type shear2D;
+    oscillation on;
+}
+
+levelSet
+{
+    narrowBand
+    {
+      type  signChange;
+    }
+
+    profile
+    {
+      type  signedDistance;
+      limit  0.1;
+    }
+
+    implicitSurface
+    {
+        type implicitSphere;
+        center (0.5 0.75 0);
+        radius 0.15;
+    }
+
+    phaseIndicator
+    {
+        type detrixheAslam;
+    }
+
+    redistancer
+    {
+        type noRedistancing;
+    }
+
+    sdplsSource
+    {
+        type noSource;
+        discretization explicit;
+    }
+
+    velocityExtension
+    {
+        type        none;
+        nLayers     3;
+        epsilon     1e-3;
+        nIterations 10;
+        deltaTau    0.2;
+        projectFlux true;      // Helmholtz-project phiExt to div-free (conservation/stability)
+        maxScale    5;         // clip |Uext| <= maxScale*max|U| in the band (runaway guard)
+    }
+}
+
+
+// ************************************************************************* //

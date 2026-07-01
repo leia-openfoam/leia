@@ -72,7 +72,7 @@ levelSet
 
     phaseIndicator
     {
-        type heaviside;
+        type @!PHASE_INDICATOR!@;
     }
 
     redistancer 

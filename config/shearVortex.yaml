@@ -1,0 +1,26 @@
+# Convergence study: reversing single (shear) vortex.
+#
+# The 2Dcontactline-vortex-oscillate case advects a circle in the oscillating
+# vortex2D field; run to the oscillation period T (tau defaults to endTime) so
+# the interface should return to its initial shape. Sweep T and mesh spacing.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/shearVortex.yaml
+#
+# Post-processing writes studies/<study>/<study>_errors.csv with columns
+# T, h (=1/N_CELLS), N_CELLS, gradientError (L2 of ||grad psi|-1|),
+# shapeError (E_GEOM_ALPHA), volumeError (E_VOL_ALPHA_REL).
+
+study_name: shearVortexConvergence
+case: 2Dcontactline-vortex-oscillate
+mesh: hex
+mode: serial
+np: 1
+
+axes_override:
+  END_TIME: [0.5, 2, 4, 8]     # T = period = end time
+  N_CELLS:  [32, 64, 128]      # cells per unit domain length
+  PHASE_INDICATOR: [detrixheAslam]   # fixed: analytic geometric indicator (2D-robust)
+collapse_other_axes: true      # everything else (scheme/source/profile) -> first value
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

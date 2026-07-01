@@ -39,7 +39,13 @@ Description
         "E_MAX_GRAD_PSI,"
         "E_MEAN_GRAD_PSI,"
         "E_NARROW_MAX_GRAD_PSI,"
-        "E_NARROW_MEAN_GRAD_PSI\n"
+        "E_NARROW_MEAN_GRAD_PSI, ..."
+
+    Also writes volume-weighted L1 and L2 (RMS) norms of the signed-distance
+    error e = ||grad psi| - 1|, globally and over the narrow band:
+        L1 = sum(e V)/sum(V),  L2 = sqrt(sum(e^2 V)/sum(V))
+    in columns E_L1_GRAD_PSI, E_L2_GRAD_PSI, E_NARROW_L1_GRAD_PSI,
+    E_NARROW_L2_GRAD_PSI.
 
 Usage
     Minimal example by using \c system/controlDict.functions:

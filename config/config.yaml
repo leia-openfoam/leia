@@ -1,0 +1,38 @@
+# leia Snakemake test-suite — study selection + scope.
+#
+# One invocation runs ONE (case, mesh, mode) study.  Switch the execution
+# backend with the profile (NOT by editing this file):
+#   snakemake --workflow-profile profiles/local     # this machine, mpirun
+#   snakemake --workflow-profile profiles/slurm      # cluster, one sbatch / case
+#
+# Override any value on the command line, e.g.:
+#   snakemake --workflow-profile profiles/local --config case=3Dshear mode=parallel np=8
+
+study_name: smoke-3Drotation-hex-serial
+case: 3Drotation          # any directory under cases/
+mesh: hex                 # hex | perturbed | poly   (poly = 3D cases only)
+mode: serial              # serial | parallel
+np: 4                     # MPI ranks for parallel mode; decomposeParDict is
+                          # regenerated from this, so they cannot disagree.
+
+# --- scope control --------------------------------------------------------
+# axes_override: replace the value list of specific @!TOKEN!@ axes.
+# collapse_other_axes: reduce every *other* multi-valued axis to its first
+#   value, keeping the default "smoke" study tiny.
+# For the FULL cartesian product from cases/<case>.parameter, set
+#   axes_override: {}   and   collapse_other_axes: false
+axes_override:
+  N_CELLS: [32, 64]
+  DIV: [linear, upwind]
+  PHASE_INDICATOR: [geometric, detrixheAslam]   # compare the two geometric methods
+collapse_other_axes: true
+
+# --- execution (the profiles override these) ------------------------------
+# env_preamble runs at the top of every OpenFOAM rule shell. Locally we source
+# the OpenFOAM install that the leia binaries were built against. Adjust the
+# path/version for your machine, or set it to "" if you always source OpenFOAM
+# before launching snakemake.
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"
+
+# studies_dir: studies     # default: <repo>/studies  (already in .gitignore)

@@ -1,0 +1,62 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+ddtSchemes
+{
+    default         CrankNicolson 1;
+}
+
+gradSchemes
+{
+    default         Gauss linear;
+    grad(p)         Gauss linear;
+    // Cell-limited least-squares gradient used by the linearUpwind advection of
+    // psi below (deferred second-order correction). Fallbacks if it mislimits on
+    // the coarse vortex: "faceLimited leastSquares 1" or "cellLimited Gauss linear 1".
+    grad(psi)       cellLimited leastSquares 1;
+}
+
+divSchemes
+{
+    default         none;
+    // Second-order linear-upwind advection of the level set; the deferred
+    // correction (linearUpwind - upwind) is converged by the nDefCorr loop in
+    // leiaLevelSetFoam.C. (phiExt is named "phi", so this key covers it.)
+    div(phi,psi)    Gauss linearUpwind grad(psi);
+}
+
+laplacianSchemes
+{
+    default         Gauss linear orthogonal;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         orthogonal;
+}
+
+fluxRequired
+{
+    p;
+}
+
+// ************************************************************************* //

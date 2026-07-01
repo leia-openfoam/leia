@@ -54,7 +54,10 @@ Description
 #include "redistancer.H"
 #include "narrowBand.H"
 #include "sdplsSource.H"
-#include "advectionVerification.H"
+#include "velocityModel.H"
+#include "prescribedVelocityModels.H"
+#include "fluxCorrection.H"
+#include "velocityExtension.H"
 
 // tmp
 #include "fileName.H"
@@ -114,7 +117,10 @@ int main(int argc, char *argv[])
     // CFL based deltaT setting
     if (runTime.controlDict().getOrDefault<bool>("adjustTimeStep", false))
     {
-        runTime.setDeltaT(maxDeltaT(phi, runTime.controlDict()), false);
+        // CFL from the flux that actually advects psi (velExt->phi() == phiExt;
+        // == phi for the "none" model), not the base phi, so the extension
+        // cannot silently exceed maxCo.
+        runTime.setDeltaT(maxDeltaT(velExt->phi(), runTime.controlDict()), false);
     }
 
     Info<< "\nCalculating scalar transport\n" << endl;
@@ -134,15 +140,30 @@ int main(int argc, char *argv[])
             velocityModel->oscillateVelocity(U, U0, phi, phi0, runTime);
         }
 
-        fvScalarMatrix psiEqn
-        (
-            fvm::ddt(psi)
-            + fvm::div(phi, psi)
-        ==
-            source->fvmsdplsSource(psi, U)
-        );
+        // Correct the advecting velocity to be interface-normal-constant in a
+        // narrow band (non-invasive: U/phi unchanged; advect with velExt->phi()).
+        velExt->correct();
 
-        psiEqn.solve();
+        // Defect-correction loop for the deferred second-order (linearUpwind)
+        // spatial term: each pass re-assembles with the latest psi so the
+        // explicit (linearUpwind - upwind) correction converges (~2-3 passes ->
+        // formal 2nd order). Safe: fvm::ddt reuses psi.oldTime(), which is fixed
+        // within the step (only updated at ++runTime), so re-solving here does
+        // not corrupt the time derivative.
+        const label nDefCorr =
+            runTime.controlDict().getOrDefault<label>("nDefCorr", 2);
+        for (label corr = 0; corr < nDefCorr; ++corr)
+        {
+            fvScalarMatrix psiEqn
+            (
+                fvm::ddt(psi)
+                + fvm::div(velExt->phi(), psi)
+            ==
+                source->fvmsdplsSource(psi, U)
+            );
+
+            psiEqn.solve();
+        }
         
         redist->redistance(psi);
         
@@ -167,7 +188,10 @@ int main(int argc, char *argv[])
         // CFL based deltaT setting
         if (runTime.controlDict().getOrDefault<bool>("adjustTimeStep", false))
         {
-            runTime.setDeltaT(maxDeltaT(phi, runTime.controlDict()), false);
+            // CFL from the flux that actually advects psi (velExt->phi() == phiExt;
+        // == phi for the "none" model), not the base phi, so the extension
+        // cannot silently exceed maxCo.
+        runTime.setDeltaT(maxDeltaT(velExt->phi(), runTime.controlDict()), false);
         }
 
         // if last timestep would overshoot endTime, set deltaT

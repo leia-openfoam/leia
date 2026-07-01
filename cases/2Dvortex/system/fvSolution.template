@@ -1,0 +1,107 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    psi
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-10;
+        relTol          0;
+    }
+
+    p
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-12;
+        relTol          0.;
+    }
+}
+
+PISO
+{
+    nCorrectors     -1; // Disables p-v coupling.
+    nNonOrthogonalCorrectors 0;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+// Classical single (shear) vortex, reversed by cos(pi t / tau); tau defaults
+// to endTime so the interface returns to its initial shape at t = endTime.
+velocityModel
+{
+    type shear2D;
+    oscillation on;
+}
+
+levelSet
+{
+    narrowBand
+    {
+      type  signChange;
+    }
+
+
+    profile
+    {
+      type  @!PROFILE!@;
+      limit  @!TANH_LIMIT!@;
+    }
+
+
+    // Bulk interface: circle of radius 0.15 centred at (0.5, 0.75).
+    implicitSurface
+    {
+        type implicitSphere;
+        center (0.5 0.75 0);
+        radius 0.15;
+    }
+
+    phaseIndicator
+    {
+        type @!PHASE_INDICATOR!@;
+    }
+
+    redistancer
+    {
+        type noRedistancing;
+    }
+
+    sdplsSource
+    {
+        type @!SDPLS_SOURCE!@;
+        discretization @!SOURCE_SCHEME!@;
+    }
+
+    // Runtime-selectable interface-normal velocity extension used to advect psi.
+    //   none | anisotropicDiffusion | pseudoTime
+    velocityExtension
+    {
+        type        @!VELOCITY_EXTENSION!@;
+        nLayers     3;
+        epsilon     1e-3;      // anisotropicDiffusion
+        nIterations 10;        // pseudoTime
+        deltaTau    0.2;       // pseudoTime
+        projectFlux true;      // Helmholtz-project phiExt to div-free (conservation/stability)
+        maxScale    5;         // clip |Uext| <= maxScale*max|U| in the band (runaway guard)
+    }
+}
+
+
+// ************************************************************************* //

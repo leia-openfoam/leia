@@ -1,0 +1,67 @@
+values
+{
+    PHASE_INDICATOR ( detrixheAslam geometric );
+
+    solver (leiaLevelSetFoam);
+
+    CFL ( 0.5 );
+
+    N_CELLS
+    (
+        32 64 128
+    );
+
+    // Interface-normal velocity extension used to advect psi.
+    VELOCITY_EXTENSION
+    (
+        none
+        anisotropicDiffusion
+        pseudoTime
+    );
+
+    SOURCE_SCHEME
+    (
+        explicit
+        simpleLinearImplicit
+        strictNegativeSpLinearImplicit
+    );
+
+    SDPLS_SOURCE
+    (
+        noSource
+        R
+        beta
+    );
+
+    BC
+    (
+        zeroGradient
+    );
+
+    DIV
+    (
+        linear
+        $LinearUpwind
+        vanLeer
+        $Gamma1
+        MUSCL
+        Minmod
+        OSPRE
+        SFCD
+        SuperBee
+        UMIST
+        vanAlbada
+        upwind
+    );
+
+    TANH_LIMIT
+    (
+        0.1
+    );
+
+    PROFILE
+    (
+        signedDistance
+        tanh
+    );
+}

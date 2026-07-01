@@ -76,7 +76,7 @@ levelSet
 
     phaseIndicator
     {
-        type geometric;
+        type @!PHASE_INDICATOR!@;
     }
 
     redistancer 

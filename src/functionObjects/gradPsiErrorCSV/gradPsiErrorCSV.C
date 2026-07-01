@@ -68,6 +68,10 @@ Foam::functionObjects::gradPsiErrorCSV::gradPsiErrorCSV
                 << "E_MEAN_GRAD_PSI,"
                 << "E_NARROW_MAX_GRAD_PSI,"
                 << "E_NARROW_MEAN_GRAD_PSI,"
+                << "E_L1_GRAD_PSI,"
+                << "E_L2_GRAD_PSI,"
+                << "E_NARROW_L1_GRAD_PSI,"
+                << "E_NARROW_L2_GRAD_PSI,"
                 << "MAX_MAG_GRAD_PSI,"
                 << "MEAN_MAG_GRAD_PSI,"
                 << "NARROW_MAX_MAG_GRAD_PSI,"
@@ -91,6 +95,18 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
     scalar max_narrowGradPsiError = 0.0;
     scalar mean_narrowGradPsiError = 0.0;
 
+    // Volume-weighted L1 and L2 (RMS) norms of e = ||grad psi| - 1|:
+    //   L1 = sum(e V)/sum(V),  L2 = sqrt(sum(e^2 V)/sum(V)).
+    const scalarField& cellV = mesh.V().field();
+    const scalarField& eField = field_.primitiveField();
+    const scalar sumV = gSum(cellV);
+    const scalar L1_gradPsiError =
+        gSum(eField*cellV)/Foam::max(sumV, VSMALL);
+    const scalar L2_gradPsiError =
+        Foam::sqrt(gSum(Foam::sqr(eField)*cellV)/Foam::max(sumV, VSMALL));
+    scalar L1_narrowGradPsiError = 0.0;
+    scalar L2_narrowGradPsiError = 0.0;
+
     const volScalarField magGradPsi = mag(fvc::grad(psi_));
     // const volScalarField magGradPsi = mag(gradPsi_);
     const auto max_magGradPsi = gMax(magGradPsi);
@@ -108,6 +124,21 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
         List<scalar> narrowMagGradPsi = subset(narrowBand, magGradPsi);
         max_narrowMagGradPsi = gMax(narrowMagGradPsi);
         mean_narrowMagGradPsi = gAverage(narrowMagGradPsi);
+
+        // Volume-weighted L1/L2 of the error restricted to the narrow band.
+        const scalarField& nbField = narrowBand.primitiveField();
+        scalarField nbMask(eField.size(), 0.0);
+        forAll(nbMask, c)
+        {
+            nbMask[c] = (nbField[c] > 0.5) ? 1.0 : 0.0;
+        }
+        const scalar nbV = gSum(nbMask*cellV);
+        if (nbV > VSMALL)
+        {
+            L1_narrowGradPsiError = gSum(nbMask*eField*cellV)/nbV;
+            L2_narrowGradPsiError =
+                Foam::sqrt(gSum(nbMask*Foam::sqr(eField)*cellV)/nbV);
+        }
     }
 
     if (Pstream::myProcNo() == 0)
@@ -119,6 +150,10 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
             << mean_gradPsiError << ","
             << max_narrowGradPsiError << ","
             << mean_narrowGradPsiError << ","
+            << L1_gradPsiError << ","
+            << L2_gradPsiError << ","
+            << L1_narrowGradPsiError << ","
+            << L2_narrowGradPsiError << ","
             << max_magGradPsi << ","
             << mean_magGradPsi << ","
             << max_narrowMagGradPsi << ","

@@ -1,0 +1,9 @@
+# Local profile: run every case on this machine, MPI via mpirun.
+#   snakemake --workflow-profile profiles/local
+#
+# Uses the mpi_launcher / env_preamble defaults from config/config.yaml.
+executor: local
+cores: 16           # total cores Snakemake may use at once (parallel solves use np each)
+jobs: 8             # max concurrent cases
+printshellcmds: true
+rerun-incomplete: true

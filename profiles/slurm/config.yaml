@@ -1,0 +1,32 @@
+# SLURM profile: one sbatch per case (mesh+decompose+solve share group "case").
+#   pip install snakemake-executor-plugin-slurm
+#   snakemake --workflow-profile profiles/slurm
+#
+# Requires nothing else: the module environment and the srun launcher are
+# injected through `config:` below, overriding config/config.yaml. Edit the
+# account and the OpenFOAM/module lines for your cluster.
+executor: slurm
+jobs: 200                  # max sbatch jobs in flight
+printshellcmds: true
+rerun-incomplete: true
+
+default-resources:
+  slurm_account: "special00004"
+  mem_mb_per_cpu: 4000
+  runtime: 1440            # minutes (24 h), matches the old Allrun_*_parallel.sbatch
+
+# Cheap steps need little; the solve step inherits default runtime + tasks.
+set-resources:
+  mesh:
+    runtime: 30
+    mem_mb_per_cpu: 3000
+  decompose:
+    runtime: 30
+    mem_mb_per_cpu: 3000
+
+# Override execution knobs from config/config.yaml. srun inherits --ntasks from
+# the allocation (resources.tasks), so no -np is needed. The preamble re-sources
+# OpenFOAM in every job exactly like the original .sbatch files did.
+config:
+  - "mpi_launcher=srun"
+  - "env_preamble=module purge; ml gcc/10.2.0 openmpi/4.1.4 python; source /work/groups/da_mma_b/OpenFOAM-v2212/etc/bashrc"

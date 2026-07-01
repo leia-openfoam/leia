@@ -90,3 +90,10 @@ phi.write();
 velocityModel->setVelocity(U);
 U.write();
 
+// Level Set velocity-extension (correction) model.
+// Reads U/phi, emits Uext (AUTO_WRITE) + the advection flux velExt->phi();
+// non-invasive (U and phi are never mutated). Defaults to "none" (identity).
+autoPtr<velocityExtension> velExt = velocityExtension::New(mesh);
+velExt->correct();
+velExt->Uext().write();
+

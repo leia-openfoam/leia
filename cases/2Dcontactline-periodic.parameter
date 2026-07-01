@@ -1,5 +1,6 @@
 values
 {
+    PHASE_INDICATOR ( geometric detrixheAslam );
      solver (leiaLevelSetFoam);
     
     CFL    ( 0.5 );

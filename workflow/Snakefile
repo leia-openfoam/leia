@@ -1,0 +1,253 @@
+# =============================================================================
+# leia level-set test-suite — KISS Snakemake workflow
+#
+#   generate_case  (local, python)  ->  one materialized OpenFOAM case / variation
+#   mesh           (shell)          ->  blockMesh | pMesh | blockMesh+leiaPerturbMesh
+#   decompose      (shell, ||-only) ->  decomposePar -force  (np from config)
+#   solve          (shell)          ->  [mpi] leiaSetFields ; [init_End] ; [mpi] leiaLevelSetFoam
+#   aggregate      (local, python)  ->  <study>_database.csv  (forces every case)
+#
+# mesh/decompose/solve share group "case" so the slurm executor submits exactly
+# one sbatch per case. Switch backends with --workflow-profile only.
+# =============================================================================
+import os
+import sys
+
+REPO = os.path.abspath(os.path.join(workflow.basedir, ".."))
+sys.path.insert(0, os.path.join(workflow.basedir, "scripts"))
+import foam_param
+import materialize
+import aggregate
+import plots
+import export_html
+import export_pdf
+
+configfile: os.path.join(REPO, "config", "config.yaml")
+
+CASES_DIR   = os.path.join(REPO, "cases")
+CASE        = config["case"]
+MESH        = config["mesh"]
+MODE        = config["mode"]
+NP          = int(config["np"])
+STUDY       = config["study_name"]
+STUDIES_DIR = os.path.abspath(config.get("studies_dir", os.path.join(REPO, "studies")))
+MPI         = config.get("mpi_launcher", "mpirun -np {np}")
+PREAMBLE    = (config.get("env_preamble") or "").strip()
+
+assert MESH in ("hex", "perturbed", "poly"), f"bad mesh: {MESH}"
+assert MODE in ("serial", "parallel"), f"bad mode: {MODE}"
+PARALLEL = MODE == "parallel"
+DIMS = 1 if CASE.startswith("1D") else (2 if CASE.startswith("2D") else 3)
+
+if MESH == "poly":
+    assert DIMS == 3, "poly mesh is only available for 3D cases"
+    PARAM_FILE = os.path.join(CASES_DIR, f"{CASE}_poly.parameter")
+else:
+    PARAM_FILE = os.path.join(CASES_DIR, f"{CASE}.parameter")
+BASE_CASE     = os.path.join(CASES_DIR, CASE)
+DEFAULT_PARAM = os.path.join(CASES_DIR, "default.parameter")
+
+AXES, CONSTANTS, IGNORED = foam_param.build_token_grid(
+    PARAM_FILE, DEFAULT_PARAM, BASE_CASE,
+    axes_override=config.get("axes_override"),
+    collapse_other_axes=config.get("collapse_other_axes", False),
+)
+VARIATIONS = foam_param.expand(AXES, CONSTANTS)
+IDX = [f"{i:05d}" for i in range(len(VARIATIONS))]
+
+# Decomposition is scotch (graph-based): numberOfSubdomains = np, no coeffs and
+# no factorisation constraint, so any np works for 2D or 3D meshes.
+assert NP >= 1, "np must be >= 1"
+
+STUDY_DIR = os.path.join(STUDIES_DIR, STUDY)
+CASE_DIR  = os.path.join(STUDY_DIR, CASE + "_{idx}")
+DATABASE  = os.path.join(STUDY_DIR, f"{STUDY}_database.csv")
+
+# Figures: regenerated every run (foamlib+matplotlib) into <study>/figures and
+# exported into the reveal slide deck so doc/slides is always current. The deck
+# is also rendered to a shareable PDF (leia-code-design.pdf) next to index.html.
+SLIDES_DIR  = os.path.join(REPO, "doc", "slides")
+SLIDES_FIGS = os.path.join(SLIDES_DIR, "figures")
+SLIDES_HTML = "leia-velocity-extension.html"   # self-contained, shareable deck
+SLIDES_PDF  = "leia-velocity-extension.pdf"    # fallback only
+REPORT      = os.path.join(STUDY_DIR, "figures", ".report.done")
+
+wildcard_constraints:
+    idx=r"\d{5}",
+
+localrules: all, generate_case, aggregate, report, utilities
+
+
+def case_path(w):
+    return os.path.join(STUDY_DIR, f"{CASE}_{w.idx}")
+
+
+def sh(*lines):
+    """Shell body: source OpenFOAM (lenient), then run the commands strictly."""
+    pre = (PREAMBLE + "\n") if PREAMBLE else ""
+    return "set +eu\n" + pre + "set -e\n" + "\n".join(lines)
+
+
+# --- per-mesh command (chosen once per study) --------------------------------
+if MESH == "hex":
+    MESH_CMD = "blockMesh"
+elif MESH == "poly":
+    MESH_CMD = "pMesh"
+else:  # perturbed
+    MESH_CMD = "blockMesh\nleiaPerturbMesh\ncp -r 0/polyMesh/ constant/\nrm -rf 0/polyMesh"
+
+# --- solve command (serial/parallel, perturbed flux, 3Dtranslation init_End) -
+PAR        = "-parallel" if PARALLEL else ""
+# MPI may contain a {np} placeholder (e.g. "mpirun -np {np}"); srun needs none
+# because the slurm allocation already carries --ntasks (resources.tasks).
+MPI_PREFIX = (MPI.format(np=NP) + " ") if PARALLEL else ""
+FLUX       = " -fluxCorrection" if MESH == "perturbed" else ""
+INIT_END   = f"./system/init_End/init_End.{MODE}" if CASE == "3Dtranslation" else ""
+
+_solve = ["cd {params.d}", f"{MPI_PREFIX}leiaSetFields {PAR}".rstrip()]
+if INIT_END:
+    _solve.append(INIT_END)
+_solve.append(f"{MPI_PREFIX}leiaLevelSetFoam {PAR}{FLUX}".rstrip())
+# Parallel runs write decomposed fields into processor*/; reconstruct them so the
+# post-processing (foamlib montage) can read alpha at the case root. -withZero
+# also reconstructs time 0 (default skips it), overwriting the uniform 0.org copy
+# with the leiaSetFields-initialised field so the montage's initial contour is right.
+if PARALLEL:
+    _solve.append("reconstructPar -withZero")
+
+
+onstart:
+    print(f"[leia] study={STUDY} case={CASE} mesh={MESH} mode={MODE} np={NP}")
+    print(f"[leia] axes={ {k: len(v) for k, v in AXES.items()} } -> {len(VARIATIONS)} variations")
+    if IGNORED:
+        print(f"[leia] ignored params (not in templates): {IGNORED}")
+
+
+rule all:
+    input:
+        DATABASE,
+        REPORT
+
+
+rule generate_case:
+    output:
+        os.path.join(CASE_DIR, "case_params.json"),
+    run:
+        materialize.materialize(
+            BASE_CASE, VARIATIONS[int(wildcards.idx)],
+            os.path.dirname(output[0]),
+            NP, MESH, MODE, DIMS, CASE, wildcards.idx,
+        )
+
+
+rule mesh:
+    input:
+        os.path.join(CASE_DIR, "case_params.json"),
+    output:
+        os.path.join(CASE_DIR, "constant", "polyMesh", "owner"),
+    params:
+        d=case_path,
+    group:
+        "case"
+    shell:
+        sh("cd {params.d}",
+           "rm -rf 0 && cp -r 0.org 0",
+           "find 0 -name '*.template' -delete 2>/dev/null || true",
+           MESH_CMD)
+
+
+if PARALLEL:
+
+    rule decompose:
+        input:
+            os.path.join(CASE_DIR, "constant", "polyMesh", "owner"),
+        output:
+            os.path.join(CASE_DIR, "processor0", "constant", "polyMesh", "owner"),
+        params:
+            d=case_path,
+        resources:
+            tasks=1,
+        group:
+            "case"
+        shell:
+            sh("cd {params.d}", "decomposePar -force")
+
+
+rule solve:
+    input:
+        (os.path.join(CASE_DIR, "processor0", "constant", "polyMesh", "owner")
+         if PARALLEL else
+         os.path.join(CASE_DIR, "constant", "polyMesh", "owner")),
+    output:
+        os.path.join(CASE_DIR, "leiaLevelSetFoam.csv"),
+    params:
+        d=case_path,
+    resources:
+        tasks=(NP if PARALLEL else 1),
+    group:
+        "case"
+    shell:
+        sh(*_solve)
+
+
+rule aggregate:
+    input:
+        expand(os.path.join(CASE_DIR, "leiaLevelSetFoam.csv"), idx=IDX),
+    output:
+        DATABASE,
+    run:
+        case_dirs = [os.path.join(STUDY_DIR, f"{CASE}_{i}") for i in IDX]
+        aggregate.build_database(case_dirs, output[0])
+
+
+# --- figures + shareable PDF --------------------------------------------------
+#   foamlib reads the 2D cases; matplotlib writes to <study>/figures and the
+#   PNGs are copied into doc/slides/figures so the reveal deck stays current.
+#   The deck is then rendered (Playwright headless Chromium) to a shareable
+#   doc/slides/leia-code-design.pdf. PDF export is best-effort: if Playwright is
+#   missing the figures still update and the workflow succeeds.
+rule report:
+    input:
+        DATABASE,
+    output:
+        touch(REPORT),
+    run:
+        # export_slides=false (e.g. secondary comparison studies) keeps figures in
+        # the study dir only, so they don't clobber the main deck's doc/slides.
+        if config.get("export_slides", True):
+            plots.main(STUDY_DIR, SLIDES_FIGS)
+            # Prefer a single self-contained HTML (offline, no browser needed);
+            # only fall back to the PDF render if the HTML export is unavailable.
+            if not export_html.export(SLIDES_DIR, SLIDES_HTML):
+                export_pdf.export(SLIDES_DIR, SLIDES_PDF)
+        else:
+            plots.main(STUDY_DIR, "")
+
+
+# --- optional: non-parametric utility tests (1D/2D), run on demand -----------
+#   snakemake --workflow-profile profiles/local utilities
+# (needs the leiaTestRedistance / leiaTestGradScheme apps built by ./Allwmake)
+UTILITY = {"1DredistanceTest": "leiaTestRedistance", "2DgradTest": "leiaTestGradScheme"}
+
+rule utilities:
+    input:
+        [os.path.join(STUDIES_DIR, "utility", u, f"{u}.ok") for u in UTILITY]
+
+rule utility:
+    output:
+        os.path.join(STUDIES_DIR, "utility", "{ucase}", "{ucase}.ok"),
+    wildcard_constraints:
+        ucase="|".join(UTILITY),
+    params:
+        src=lambda w: os.path.join(CASES_DIR, w.ucase),
+        d=lambda w: os.path.join(STUDIES_DIR, "utility", w.ucase),
+        tool=lambda w: UTILITY[w.ucase],
+    shell:
+        sh("rm -rf {params.d} && mkdir -p {params.d}",
+           "cp -r {params.src}/. {params.d}/",
+           "cd {params.d}",
+           "rm -rf 0 && cp -r 0.org 0",
+           "blockMesh",
+           "leiaSetFields",
+           "{params.tool}",
+           "touch {wildcards.ucase}.ok")

@@ -1,0 +1,33 @@
+# Convergence study: phase-indicator (Heaviside / volume-fraction) comparison.
+#
+# geometric vs detrixheAslam on the bulk shear vortex (2Dvortex). Both build the
+# SAME LLS signed-distance plane per interface cell; geometric clips the cell
+# against it (divergence-theorem sub-volume), detrixheAslam integrates it
+# analytically per tetrahedron (tolerance-free, 2D-robust). The phase indicator
+# only sets alpha from psi (the psi-advection is identical), so this isolates the
+# Heaviside computation: shape (E_GEOM_ALPHA) and volume errors reflect the
+# indicator; the gradient error is identical for both.
+#
+# Velocity extension is fixed to none (the stable baseline). Sweeps the indicator
+# and mesh spacing (and period T). Produces
+#   studies/phaseIndicatorConvergence/figures/convergence_indicators.png
+# export_slides: false -> figures stay in the study dir, not the main deck.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/phaseIndicatorConvergence.yaml
+
+study_name: phaseIndicatorConvergence
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+axes_override:
+  END_TIME: [0.5, 2, 4, 8]
+  N_CELLS:  [32, 64, 128]
+  PHASE_INDICATOR: [geometric, detrixheAslam]
+  VELOCITY_EXTENSION: [none]
+collapse_other_axes: true
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"
