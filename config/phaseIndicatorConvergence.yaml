@@ -23,6 +23,10 @@ np: 4
 
 axes_override:
   END_TIME: [0.5, 2, 4, 8]
+  # N=256 deliberately omitted: the indicator study isolates the alpha
+  # reconstruction (psi dynamics are identical to the bulk study's `none`
+  # cases) and the two indicators coincide to ~1e-11 -- the extra resolution
+  # doubles the heaviest runs for no information.
   N_CELLS:  [32, 64, 128]
   PHASE_INDICATOR: [geometric, detrixheAslam]
   VELOCITY_EXTENSION: [none]

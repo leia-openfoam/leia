@@ -81,14 +81,12 @@ void Foam::anisotropicDiffusion::extend()
 
     UextEqn.setValues(fixedCells, fixedVals);
 
-    // Explicit solver controls (avoids needing a solvers/Uext entry in fvSolution).
-    // The anisotropic-laplacian matrix is symmetric -> symmetric solver/precond.
-    dictionary solverControls;
-    solverControls.add("solver", "PCG");
-    solverControls.add("preconditioner", "DIC");
-    solverControls.add("tolerance", 1e-9);
-    solverControls.add("relTol", scalar(0));
-    UextEqn.solve(solverControls);
+    // Linear-solver controls come from the case dictionary (fvSolution ->
+    // solvers -> "Uext.*"), not the source -- e.g. PBiCGStab/DIC with a
+    // per-step RELATIVE tolerance (the previous step's Uext is the initial
+    // guess); demanding a tight absolute tolerance on this near-rank-1
+    // anisotropic Laplacian costs hundreds of iterations for no accuracy gain.
+    UextEqn.solve();
 }
 
 // ************************************************************************* //

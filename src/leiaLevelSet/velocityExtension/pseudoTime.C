@@ -111,12 +111,6 @@ void Foam::pseudoTime::extend()
         rDtau[c] = 1.0/(deltaTau_*Foam::pow(mesh_.V()[c], 1.0/3.0));
     }
 
-    dictionary solverControls;
-    solverControls.add("solver", "PBiCGStab");
-    solverControls.add("preconditioner", "DILU");
-    solverControls.add("tolerance", 1e-9);
-    solverControls.add("relTol", scalar(0));
-
     // Implicit backward-Euler pseudo-time march of the NON-CONSERVATIVE normal
     // advection (Adalsteinsson & Sethian velocity extension):
     //   dUext/dtau + (w . grad)Uext = 0,   w = sign(psi) n  (upwind).
@@ -147,7 +141,9 @@ void Foam::pseudoTime::extend()
         );
 
         UextEqn.setValues(fixedCells, fixedVals);
-        UextEqn.solve(solverControls);
+        // Linear-solver controls come from the case dictionary (fvSolution ->
+        // solvers -> "Uext.*"), not the source.
+        UextEqn.solve();
     }
 }
 

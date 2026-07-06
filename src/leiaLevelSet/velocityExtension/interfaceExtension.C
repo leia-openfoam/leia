@@ -169,9 +169,10 @@ void Foam::interfaceExtension::buildSeedVelocity()
 
 void Foam::interfaceExtension::clipExtended()
 {
-    // Runaway safety net: bound the extended velocity in the band by a multiple
-    // of the global peak base-velocity magnitude. Prescribed-flux verification
-    // is bounded (|U| ~ O(1)); an extension that overshoots this is diverging.
+    // Runaway safety net: bound the extended velocity (whole domain -- the
+    // seamless flux advects psi with Uext everywhere) by a multiple of the
+    // global peak base-velocity magnitude. Prescribed-flux verification is
+    // bounded (|U| ~ O(1)); an extension that overshoots this is diverging.
     if (maxScale_ <= 0)
     {
         return;
@@ -181,15 +182,12 @@ void Foam::interfaceExtension::clipExtended()
     {
         return;
     }
-    forAll(band_, c)
+    forAll(Uext_, c)
     {
-        if (band_[c] > 0.5)
+        const scalar m = mag(Uext_[c]);
+        if (m > Umax)
         {
-            const scalar m = mag(Uext_[c]);
-            if (m > Umax)
-            {
-                Uext_[c] *= Umax/m;
-            }
+            Uext_[c] *= Umax/m;
         }
     }
 }
@@ -197,43 +195,42 @@ void Foam::interfaceExtension::clipExtended()
 
 void Foam::interfaceExtension::updateFlux()
 {
-    // Outside the band, keep the base velocity.
+    // WHOLE-DOMAIN extension flux -- deliberately no band seam. A hard switch
+    // from the extension flux to the base flux across one face is a velocity
+    // discontinuity that writes irreversible |grad psi| kinks just outside the
+    // band; under flow reversal they return onto Sigma (measured at T=2,
+    // N=128: band L2 of ||grad psi|-1| grew ~10x through the seam).
+    //
+    // Smoothly FADE the extension into the base velocity outside the band:
+    // w = 1 for |psi| <= L (band half-width, L = nLayers*cellSize), cosine
+    // ramp to w = 0 by 2L. pseudoTime fades naturally (its march starts from
+    // Uext == U and has finite reach); anisotropicDiffusion is whole-domain
+    // and NEEDS the fade -- advecting far-field psi with the approximate
+    // extension distorts it globally and feeds back through
+    // n = grad(psi)/|grad(psi)| (measured: global gradient error 0.18 -> 1.0
+    // without the fade). The blended Uext stays C^1-smooth, so the flux has
+    // no discontinuity anywhere.
     forAll(Uext_, c)
     {
-        if (band_[c] < 0.5)
+        const scalar L = nLayers_*Foam::pow(mesh_.V()[c], 1.0/3.0);
+        const scalar a = (Foam::mag(psi_[c]) - L)/Foam::max(L, SMALL);
+        if (a >= 1.0)
         {
             Uext_[c] = U_[c];
         }
+        else if (a > 0.0)
+        {
+            const scalar w = 0.5*(1.0 + Foam::cos(M_PI*a));
+            Uext_[c] = w*Uext_[c] + (1.0 - w)*U_[c];
+        }
     }
     Uext_.correctBoundaryConditions();
+    const surfaceScalarField phiU(fvc::interpolate(Uext_) & mesh_.Sf());
+    phiExt_.primitiveFieldRef() = phiU.primitiveField();
 
-    // Advection flux: base flux everywhere, Uext-derived flux on band faces.
-    surfaceScalarField phiU(fvc::interpolate(Uext_) & mesh_.Sf());
-    phiExt_ == phi_;
-
-    const labelUList& own = mesh_.owner();
-    const labelUList& nei = mesh_.neighbour();
-    forAll(own, f)
-    {
-        if (band_[own[f]] > 0.5 || band_[nei[f]] > 0.5)
-        {
-            phiExt_[f] = phiU[f];
-        }
-    }
-
-    auto& phiExtBf = phiExt_.boundaryFieldRef();
-    const auto& phiUBf = phiU.boundaryField();
-    forAll(mesh_.boundary(), patchI)
-    {
-        const labelUList& fc = mesh_.boundary()[patchI].faceCells();
-        forAll(fc, i)
-        {
-            if (band_[fc[i]] > 0.5)
-            {
-                phiExtBf[patchI][i] = phiUBf[patchI][i];
-            }
-        }
-    }
+    // Keep the base boundary fluxes: the domain boundary keeps its base
+    // (e.g. impermeable) behaviour; the extension only matters near Sigma.
+    phiExt_.boundaryFieldRef() = phi_.boundaryField();
 
     if (projectFlux_)
     {

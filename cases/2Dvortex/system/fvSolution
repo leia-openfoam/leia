@@ -32,6 +32,32 @@ solvers
         tolerance       1e-12;
         relTol          0.;
     }
+
+    // Velocity-extension solve: per-model settings (see fvSolution.template for
+    // the rationale). anisotropicDiffusion: symmetric near-rank-1 Laplacian ->
+    // cheap DIC iterations to a per-step RELATIVE tolerance (prev Uext = initial
+    // guess) reproduce fully converged errors to 4 digits (A/B validated).
+    // pseudoTime: asymmetric, diagonally dominant -> ~3 DILU iterations.
+    anisotropicDiffusionUext
+    {
+        solver          PBiCGStab;
+        preconditioner  DIC;    // symmetric matrix -> symmetric preconditioner
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         2000;
+    }
+
+    pseudoTimeUext
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-3;
+    }
+
+    noneUext { $pseudoTimeUext }   // identity model: never solved
+
+    "Uext.*" { $noneUext; }        // this case runs velocityExtension type none
 }
 
 PISO
@@ -91,7 +117,10 @@ levelSet
         epsilon     1e-3;
         nIterations 10;
         deltaTau    0.2;
-        projectFlux true;      // Helmholtz-project phiExt to div-free (conservation/stability)
+        // NO Helmholtz projection: it would destroy (n.grad)Uext = 0 (the
+        // property that preserves |grad psi| = 1 near Sigma); the psi equation
+        // is solved in its advective form instead (leiaLevelSetFoam.C).
+        projectFlux false;
         maxScale    5;         // clip |Uext| <= maxScale*max|U| in the band (runaway guard)
     }
 }

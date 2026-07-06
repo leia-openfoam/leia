@@ -144,6 +144,19 @@ int main(int argc, char *argv[])
         // narrow band (non-invasive: U/phi unchanged; advect with velExt->phi()).
         velExt->correct();
 
+        // The level set obeys the ADVECTIVE (Hamilton-Jacobi) law Dpsi/Dt = 0,
+        // not a conservation law. The conservative fvm::div(phiExt, psi) equals
+        // (v.grad)psi only for solenoidal v; an interface-normal-constant
+        // extension velocity is generically NOT solenoidal (div(v0*n) = v0*kappa),
+        // so the conservative form hides a spurious compression source
+        // psi*div(vExt). Assemble the advective derivative exactly,
+        //   (v.grad)psi = div(phiExt psi) - psi (div phiExt),
+        // (same idiom as pseudoTime's Uext transport). This also removes the
+        // need to Helmholtz-project phiExt: a projection would destroy the
+        // (n.grad)Uext = 0 property that preserves |grad psi| = 1 near Sigma
+        // (Zhao et al. 1996; Adalsteinsson & Sethian 1999).
+        const volScalarField divPhiExt("divPhiExt", fvc::div(velExt->phi()));
+
         // Defect-correction loop for the deferred second-order (linearUpwind)
         // spatial term: each pass re-assembles with the latest psi so the
         // explicit (linearUpwind - upwind) correction converges (~2-3 passes ->
@@ -158,6 +171,7 @@ int main(int argc, char *argv[])
             (
                 fvm::ddt(psi)
                 + fvm::div(velExt->phi(), psi)
+                - fvm::Sp(divPhiExt, psi)
             ==
                 source->fvmsdplsSource(psi, U)
             );

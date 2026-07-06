@@ -16,10 +16,18 @@ workflow/scripts/
   materialize.py            render templates, write np-driven decomposeParDict + case_params.json
   aggregate.py              join per-case CSVs + parameter vector -> <study>_database.csv
 config/config.yaml          which case/mesh/mode/np + scope (smoke subset by default)
-profiles/local/config.yaml  executor: local   (mpirun)
+config/bulkVortex.yaml      FAST reversed-vortex suite (N<=128, ~3 min; export_slides: false)
+config/bulkVortexHighRes.yaml  opt-in deep convergence (+N=256, ~30 min; regenerates the deck)
+config/phaseIndicatorConvergence.yaml  geometric vs detrixheAslam (N<=128 by design)
+profiles/local/config.yaml  executor: local   (mpirun; jobs x np = 24 ranks, no oversubscription)
 profiles/slurm/config.yaml  executor: slurm    (one sbatch per case; srun + module env)
 studies/<study>/            generated cases + <study>_database.csv  (git-ignored)
 ```
+
+Named studies write to their own `studies/<study_name>` — never point configs with
+different axes at one study dir (cartesian-product indices would remap and stale
+cases would be silently reused). Cost scaling: +1 resolution level in 2D = 8x
+(4x cells x 2x CFL steps) — that is why N=256 is a separate opt-in config.
 
 ## Install
 

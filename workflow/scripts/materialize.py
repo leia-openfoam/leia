@@ -75,7 +75,21 @@ def _assert_no_residual_tokens(case_dir):
         raise SystemExit(f"[materialize] unsubstituted @!TOKEN!@ remain in: {bad}")
 
 
+def _with_derived_tokens(tokens):
+    """Add tokens that are computed from the sweep values, so templates can use
+    them directly. Currently: HALF_END_TIME = END_TIME/2, used by controlDict to
+    write a snapshot at maximum deformation (t = T/2) as well as t = 0 and t = T."""
+    out = dict(tokens)
+    if "END_TIME" in out:
+        try:
+            out["HALF_END_TIME"] = "{:g}".format(float(out["END_TIME"]) / 2.0)
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
 def materialize(base_case, tokens, out_dir, np_, mesh, mode, dims, case_name, index):
+    tokens = _with_derived_tokens(tokens)
     if os.path.exists(out_dir):
         shutil.rmtree(out_dir)
     shutil.copytree(base_case, out_dir, ignore=_IGNORE)

@@ -3,7 +3,7 @@
 #
 # Uses the mpi_launcher / env_preamble defaults from config/config.yaml.
 executor: local
-cores: 16           # total cores Snakemake may use at once (parallel solves use np each)
-jobs: 8             # max concurrent cases
+cores: 24           # total cores Snakemake may use at once (parallel solves use np each)
+jobs: 6             # max concurrent cases: 6 x np=4 = 24 ranks, no oversubscription
 printshellcmds: true
 rerun-incomplete: true

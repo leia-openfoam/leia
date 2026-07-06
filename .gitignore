@@ -130,8 +130,9 @@ studies/
 # rule, yet bundled with doc/slides so the deck renders without a study run.
 !doc/slides/figures/
 !doc/slides/figures/*.png
-# ...and the exported, shareable deck: the standalone HTML
-# (doc/slides/leia-velocity-extension.html) is not ignored, so it is tracked
-# directly; the fallback PDF needs a negation to override the global *.pdf ignore.
+# ...and the deck itself: index.template.html is the editable source (external
+# figure/CDN refs, clean diffs); the Snakemake `report` rule inlines it into the
+# single self-contained, shareable doc/slides/index.html. Both are tracked; the
+# fallback PDF needs a negation to override the global *.pdf ignore.
 !doc/slides/*.pdf
 

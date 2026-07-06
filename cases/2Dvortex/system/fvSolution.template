@@ -32,6 +32,39 @@ solvers
         tolerance       1e-12;
         relTol          0.;
     }
+
+    // Velocity-extension solve: PER-MODEL solver settings, selected through the
+    // materialized VELOCITY_EXTENSION token + OpenFOAM dictionary expansion
+    // (same $-alias mechanism as fvSchemes). One size does not fit both:
+    //  * anisotropicDiffusion: SYMMETRIC near-rank-1 Laplacian D = n(x)n+eps*I.
+    //    The key is the per-step RELATIVE tolerance (previous Uext = initial
+    //    guess): demanding 1e-9 absolute needed ~430 DIC iterations/solve and
+    //    multigrid stalls/overheads made it worse (standalone GAMG hits the
+    //    iteration cap; a GAMG preconditioner rebuilds its coarse hierarchy
+    //    every solve). Cheap DIC iterations to relTol 1e-4 reproduce the fully
+    //    converged errors to 4 digits at ~300 iterations max (A/B validated).
+    //  * pseudoTime: ASYMMETRIC, diagonally dominant (Sp(rDtau) + upwind) ->
+    //    DILU converges in ~3 iterations with zero setup.
+    anisotropicDiffusionUext
+    {
+        solver          PBiCGStab;
+        preconditioner  DIC;    // symmetric matrix -> symmetric preconditioner
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         2000;
+    }
+
+    pseudoTimeUext
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-3;
+    }
+
+    noneUext { $pseudoTimeUext }   // identity model: never solved
+
+    "Uext.*" { $@!VELOCITY_EXTENSION!@Uext; }
 }
 
 PISO
@@ -98,7 +131,12 @@ levelSet
         epsilon     1e-3;      // anisotropicDiffusion
         nIterations 10;        // pseudoTime
         deltaTau    0.2;       // pseudoTime
-        projectFlux true;      // Helmholtz-project phiExt to div-free (conservation/stability)
+        // NO Helmholtz projection: projecting phiExt to div-free would destroy
+        // the interface-normal constancy (n.grad)Uext = 0 that preserves
+        // |grad psi| = 1 near Sigma. The psi equation is instead solved in its
+        // ADVECTIVE form (ddt + div(phiExt,psi) - psi*div(phiExt)), which is
+        // exact for non-solenoidal extension velocities (leiaLevelSetFoam.C).
+        projectFlux false;
         maxScale    5;         // clip |Uext| <= maxScale*max|U| in the band (runaway guard)
     }
 }

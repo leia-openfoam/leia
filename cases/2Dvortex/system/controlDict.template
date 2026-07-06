@@ -31,9 +31,12 @@ deltaT          1e-6;
 
 adjustTimeStep  yes;
 
-writeControl    runTime;
+writeControl    adjustableRunTime;
 
-writeInterval   @!END_TIME!@;
+// Write at t = 0, T/2 (maximum deformation) and T (reversed) so the automated
+// field atlas (alpha, |grad psi|-1) can show the full init -> half -> reversed
+// evolution. adjustableRunTime nudges deltaT to land exactly on the write times.
+writeInterval   @!HALF_END_TIME!@;
 
 purgeWrite      0;
 

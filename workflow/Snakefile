@@ -68,8 +68,10 @@ DATABASE  = os.path.join(STUDY_DIR, f"{STUDY}_database.csv")
 # is also rendered to a shareable PDF (leia-code-design.pdf) next to index.html.
 SLIDES_DIR  = os.path.join(REPO, "doc", "slides")
 SLIDES_FIGS = os.path.join(SLIDES_DIR, "figures")
-SLIDES_HTML = "leia-velocity-extension.html"   # self-contained, shareable deck
-SLIDES_PDF  = "leia-velocity-extension.pdf"    # fallback only
+# The deck is ONE self-contained file: index.template.html (editable, external
+# figure/CDN refs) is inlined into index.html (base64 figures + CDN) -- the single
+# shareable, offline-openable deck.
+SLIDES_PDF  = "leia-velocity-extension.pdf"    # fallback only (if HTML build fails)
 REPORT      = os.path.join(STUDY_DIR, "figures", ".report.done")
 
 wildcard_constraints:
@@ -216,9 +218,10 @@ rule report:
         # the study dir only, so they don't clobber the main deck's doc/slides.
         if config.get("export_slides", True):
             plots.main(STUDY_DIR, SLIDES_FIGS)
-            # Prefer a single self-contained HTML (offline, no browser needed);
-            # only fall back to the PDF render if the HTML export is unavailable.
-            if not export_html.export(SLIDES_DIR, SLIDES_HTML):
+            # Build the single self-contained deck: index.template.html -> index.html
+            # (offline, no browser needed). Fall back to a PDF render only if the
+            # HTML build is unavailable (no source template).
+            if not export_html.export(SLIDES_DIR):
                 export_pdf.export(SLIDES_DIR, SLIDES_PDF)
         else:
             plots.main(STUDY_DIR, "")

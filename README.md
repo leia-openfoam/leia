@@ -99,6 +99,39 @@ geometric indicators (a `PHASE_INDICATOR` column appears in the database). The d
 `config/config.yaml` is a small smoke study; set `axes_override: {}` and
 `collapse_other_axes: false` for the full grid (preview the size with `-n` first).
 
+### Fast vs. high-resolution convergence studies
+
+Adding one resolution level to a time-reversal benchmark costs **8× in 2D**
+(4× cells × 2× CFL time steps), so the reversed-vortex convergence study is split
+into a fast daily suite and a deliberate deep-convergence run:
+
+```
+# FAST default (N = 32/64/128): ~3 min measured on a 24-thread laptop.
+# Smoke/regression; keeps figures in studies/, never touches the slide deck
+# (export_slides: false).
+leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortex.yaml
+
+# HIGH-RES opt-in (adds N = 256): ~30 min measured, floored by the single heaviest
+# case (T=8, N=256 ~ 12k steps). THE deck-regeneration run: rebuilds the convergence
+# triptychs, the alpha / |grad psi|-1 field atlas and the standalone
+# doc/slides/index.html.
+leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortexHighRes.yaml
+
+# Phase-indicator comparison (geometric vs detrixheAslam), N <= 128 by design:
+# the indicators coincide to ~1e-11 and psi dynamics duplicate the bulk `none` cases.
+leia> snakemake --workflow-profile profiles/local --configfile config/phaseIndicatorConvergence.yaml
+```
+
+The two vortex configs write to **separate study directories**
+(`studies/bulkVortexConvergence` vs `studies/bulkVortexHighRes`) — never point
+configs with different axes at the same study dir: the cartesian-product case
+indices would remap and stale cases would be silently reused. Per-model linear
+solvers for the extension solves live in
+`cases/2Dvortex/system/fvSolution(.template)` (`solvers → "Uext.*"`, selected via
+the `VELOCITY_EXTENSION` token: Krylov-wrapped GAMG for `anisotropicDiffusion`,
+DILU for `pseudoTime`). Need more levels than N=256? Use
+`--workflow-profile profiles/slurm` on a cluster instead of a laptop.
+
 ### Legacy single-case runs
 
 The committed per-case scripts still work for manual runs:
@@ -109,7 +142,7 @@ case> ./Allrun_hex_serial.sh        # also _hex_parallel / _perturbed_* / _poly_
 
 ## Velocity extension
 
-To advect `psi` with an interface-normal-constant velocity in a narrow band, select a
+To advect `psi` with an interface-normal-constant velocity near the interface, select a
 `velocityExtension` model in `system/fvSolution` (defaults to `none`):
 
 ```
@@ -118,10 +151,10 @@ levelSet
     velocityExtension
     {
         type        anisotropicDiffusion;   // none | anisotropicDiffusion | pseudoTime
-        narrowBand  NarrowBand;  nLayers 3; // seed band + dilation
+        narrowBand  NarrowBand;  nLayers 3; // seed band + fade length scale
         epsilon     1e-3;                    // anisotropicDiffusion regularization
         nIterations 10;  deltaTau 0.3;       // pseudoTime
-        projectFlux false;                   // true => correctFlux(phiExt) (volume cons.)
+        projectFlux false;                   // keep false: projection destroys (n.grad)Uext = 0
     }
 }
 ```
@@ -129,6 +162,18 @@ levelSet
 The model writes a corrected velocity `Uext` (visualizable, written with `U`) and advects
 the level set with the corresponding flux, without modifying `U`. `none` reproduces the
 unmodified solver exactly.
+
+**Coupling design (validated on the reversed vortex):** the psi equation is solved in its
+**advective** form, `ddt(psi) + div(phiExt, psi) - psi*div(phiExt)` — the level set obeys
+`Dpsi/Dt = 0`, and a normal-constant extension velocity is generically *not* solenoidal
+(`div(v0*n) = v0*kappa`), so the conservative form alone hides a spurious compression
+source. The extension flux is **seamless**: `phiExt = interpolate(Uext) & Sf` on all
+internal faces, with `Uext` fading into `U` by a C1 cosine ramp over `|psi| in [L, 2L]`,
+`L = nLayers*h` (a hard band-edge flux switch is a velocity discontinuity whose
+`|grad psi|` kinks return onto the interface under flow reversal). Do **not** re-enable
+`projectFlux`: Helmholtz-projecting `phiExt` to divergence-free destroys the
+`(n.grad)Uext = 0` property that preserves `|grad psi| = 1` near the interface — with
+projection the `|grad psi| = 1` channel at the interface measurably disappears.
 
 ## License
 

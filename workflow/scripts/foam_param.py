@@ -33,6 +33,10 @@ _LIST_ENTRY = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*;", re.DOTALL)
 _SCALAR_ENTRY = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s+([^();{}]+?)\s*;")
 _TOKEN = re.compile(r"@!([A-Z0-9_]+)!@")
 
+# Tokens computed by materialize._with_derived_tokens from another token (so they
+# must NOT be a sweep axis or require a .parameter value); skip them in the grid.
+_DERIVED_TOKENS = {"HALF_END_TIME"}
+
 
 def _strip_comments(text):
     text = _COMMENT_BLOCK.sub(" ", text)
@@ -101,6 +105,8 @@ def build_token_grid(param_file, default_file, case_dir,
 
     axes, constants, missing = OrderedDict(), OrderedDict(), []
     for tok in sorted(referenced):
+        if tok in _DERIVED_TOKENS:
+            continue  # supplied per-case by materialize._with_derived_tokens
         if tok in axes_override and axes_override[tok]:
             vals = axes_override[tok]
         elif tok in params:

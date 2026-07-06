@@ -7,7 +7,12 @@ Produces, into ``<study>/figures/`` and (copied) into the reveal slide folder:
     with the velocity-extension model in the figure title;
   * ``interface_grid.png`` -- reversed-interface montage: initial (dashed) vs
     final (solid) alpha=0.5 contour for each (T, h) case  [2D structured cases,
-    a single representative velocity-extension model].
+    a single representative velocity-extension model];
+  * ``alpha_evo_<model>_T<T>.png`` -- volume-fraction field at t = 0, T/2
+    (max deformation) and T (reversed), rows = resolution;
+  * ``graderr_<model>_T<T>.png`` -- signed-distance error |grad psi|-1 at the
+    same snapshots (where the SDF property breaks);
+  * ``volume_history_T8.png`` -- relative phase-volume error vs t/T (T=8, none).
 
 Driven by the curated ``*_errors.csv`` (columns velocityExtension,T,h,
 gradientError,shapeError,volumeError) written by aggregate.py, plus the per-case
@@ -225,6 +230,172 @@ def indicator_comparison(rows, figdir):
     return p
 
 
+# --- field-evolution atlas: alpha and |grad psi|-1 at t = 0, T/2, T ----------
+_SNAP_LABELS = ("t = 0", "t = T/2  (max deformation)", "t = T  (reversed)")
+
+
+def _snapshot_indices(case, T):
+    """Time indices of the snapshots nearest {0, T/2, T}. Returns (idxs, times)
+    or None if the case has too few writes."""
+    times = [float(t.time) for t in case]
+    if len(times) < 2:
+        return None
+    idxs = [min(range(len(times)), key=lambda k: abs(times[k] - tgt))
+            for tgt in (0.0, 0.5*float(T), float(T))]
+    return idxs, times
+
+
+def _read2d(case, idx, name, N, ncells=None):
+    """Read an internal field and reshape to (Ny, Nx) for a structured hex mesh
+    with square cells and x in [0,1] (same convention as interface_montage).
+    A totally-lost phase writes alpha as a *uniform* field (size 1); broadcast it
+    to the mesh size (from ``ncells``) so the panel still renders (e.g. empty)."""
+    arr = np.asarray(case[idx][name].internal_field, float)
+    if arr.size == 1 and ncells:
+        arr = np.full(ncells, float(arr.reshape(-1)[0]))
+    Nx = N
+    Ny = arr.size // Nx
+    return arr.reshape(Ny, Nx), Ny
+
+
+def _grid_by_model_T(cases):
+    g = {}
+    for c in cases:
+        g.setdefault((c["model"], c["T"]), {})[c["N"]] = c["dir"]
+    return g
+
+
+def _field_montage(model, T, ngrid, figdir, kind):
+    """One montage per (model, T): rows = resolution N, cols = {t=0, T/2, T}.
+    kind='alpha' -> filled volume fraction (+ 0.5 contour, dashed initial on the
+    reversed column); kind='graderr' -> |grad psi|-1 field (+ psi=0 interface)."""
+    Ns = sorted(ngrid)
+    data = {}
+    emax = []
+    for r, N in enumerate(Ns):
+        try:
+            case = FoamCase(ngrid[N])
+            snap = _snapshot_indices(case, T)
+            if snap is None:
+                continue
+            idxs, times = snap
+            xc = (np.arange(N) + 0.5) / N
+            # psi is a signed distance -> always non-uniform, so its length is a
+            # reliable cell count to broadcast any uniform (fully-lost) alpha to.
+            ncells = np.asarray(case[idxs[0]]["psi"].internal_field, float).size
+            a0 = _read2d(case, idxs[0], "alpha", N, ncells)[0] if kind == "alpha" else None
+            for c, ti in enumerate(idxs):
+                if kind == "alpha":
+                    f2d, Ny = _read2d(case, ti, "alpha", N, ncells)
+                    psi2d = None
+                else:
+                    psi2d, Ny = _read2d(case, ti, "psi", N, ncells)
+                    h = 1.0 / N
+                    gy, gx = np.gradient(psi2d, h, h)
+                    f2d = np.abs(np.sqrt(gx*gx + gy*gy) - 1.0)
+                    emax.append(float(np.nanpercentile(f2d, 99)))
+                ymax = Ny / N
+                yc = (np.arange(Ny) + 0.5) / Ny * ymax
+                X, Y = np.meshgrid(xc, yc)
+                data[(r, c)] = dict(X=X, Y=Y, f=f2d, psi=psi2d, a0=a0, ymax=ymax)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[plots] {kind} {model} T={T:g} N={N}: {type(exc).__name__}: {exc}")
+    if not data:
+        return None
+    vmax = float(np.clip(max(emax), 0.5, 3.0)) if (kind == "graderr" and emax) else 1.0
+    cmap = "Blues" if kind == "alpha" else "inferno"
+    fig, axes = plt.subplots(
+        len(Ns), 3, figsize=(9.8, 2.7*len(Ns)), squeeze=False, layout="constrained")
+    im = None
+    for r, N in enumerate(Ns):
+        for c in range(3):
+            ax = axes[r][c]
+            ax.set_xticks([]); ax.set_yticks([])
+            d = data.get((r, c))
+            if d is None:
+                ax.axis("off"); continue
+            im = ax.imshow(d["f"], origin="lower", extent=[0, 1, 0, d["ymax"]],
+                           vmin=0.0, vmax=(1.0 if kind == "alpha" else vmax),
+                           cmap=cmap, aspect="equal", interpolation="nearest")
+            if kind == "alpha":
+                ax.contour(d["X"], d["Y"], d["f"], [0.5], colors="#D85A30", linewidths=1.6)
+                if c == 2 and d["a0"] is not None:
+                    ax.contour(d["X"], d["Y"], d["a0"], [0.5],
+                               colors="k", linestyles="--", linewidths=1.0)
+            elif d["psi"] is not None:
+                ax.contour(d["X"], d["Y"], d["psi"], [0.0], colors="#4fc3f7", linewidths=1.2)
+            if r == 0:
+                ax.set_title(_SNAP_LABELS[c], fontsize=9)
+            if c == 0:
+                ax.set_ylabel(f"h = 1/{N}", fontsize=9)
+    field_name = ("Volume fraction  " + r"$\alpha$") if kind == "alpha" \
+        else r"Signed-distance error  $|\nabla\psi|-1$"
+    fig.suptitle(f"{field_name} — {model}, reversed vortex, T = {T:g}", fontsize=12)
+    if im is not None:
+        fig.colorbar(im, ax=axes.ravel().tolist(), shrink=0.85, pad=0.02)
+    stem = "alpha_evo" if kind == "alpha" else "graderr"
+    p = os.path.join(figdir, f"{stem}_{model}_T{T:g}.png")
+    fig.savefig(p, dpi=130); plt.close(fig)
+    return p
+
+
+def alpha_evolution(study_dir, figdir):
+    """One alpha montage per (model, T) over the reversed vortex."""
+    grid = _grid_by_model_T(_cases_2d(study_dir))
+    out = []
+    for key in sorted(grid):
+        p = _field_montage(key[0], key[1], grid[key], figdir, "alpha")
+        if p:
+            out.append(p)
+    return out
+
+
+def gradient_error_field(study_dir, figdir):
+    """One |grad psi|-1 montage per (model, T): where the SDF property breaks."""
+    grid = _grid_by_model_T(_cases_2d(study_dir))
+    out = []
+    for key in sorted(grid):
+        p = _field_montage(key[0], key[1], grid[key], figdir, "graderr")
+        if p:
+            out.append(p)
+    return out
+
+
+def volume_history_T8(study_dir, figdir, model="none", T=8.0):
+    """Relative phase-volume error vs t/T for the three resolutions (T=8, model
+    none): the loss completes at t/T=0.5 (max deformation) and never recovers."""
+    cases = [c for c in _cases_2d(study_dir)
+             if c["model"] == model and abs(c["T"] - T) < 1e-9]
+    if not cases:
+        return None
+    fig, ax = plt.subplots(figsize=(6.2, 4.2))
+    plotted = False
+    for c in sorted(cases, key=lambda c: c["N"]):
+        csvp = os.path.join(c["dir"], "leiaLevelSetFoam.csv")
+        if not os.path.isfile(csvp):
+            continue
+        ts, ev = [], []
+        with open(csvp, newline="") as fh:
+            for row in csv.DictReader(fh):
+                t, e = _f(row.get("TIME")), _f(row.get("E_VOL_ALPHA_REL"))
+                if t is not None and e is not None:
+                    ts.append(t/T); ev.append(e)
+        if ts:
+            ax.plot(ts, ev, lw=1.8, label=f"h = 1/{c['N']}")
+            plotted = True
+    if not plotted:
+        plt.close(fig); return None
+    ax.axvline(0.5, color="k", ls=":", lw=1, alpha=0.7)
+    ax.text(0.49, 0.03, "max deformation", rotation=90, va="bottom", ha="right",
+            fontsize=8, alpha=0.7)
+    ax.set_xlabel("t / T"); ax.set_ylabel(r"relative volume error  $E_{\mathrm{vol}}$")
+    ax.set_title(f"Phase-volume loss vs time — {model}, T = {T:g}")
+    ax.set_ylim(-0.03, 1.05); ax.grid(alpha=0.3); ax.legend()
+    p = os.path.join(figdir, "volume_history_T8.png")
+    fig.tight_layout(); fig.savefig(p, dpi=130); plt.close(fig)
+    return p
+
+
 def main(study_dir, slides_dir):
     hits = glob.glob(os.path.join(study_dir, "*_errors.csv"))
     if not hits:
@@ -248,6 +419,16 @@ def main(study_dir, slides_dir):
     montage = interface_montage(study_dir, figdir, "none")
     if montage:
         outputs.append(montage)
+
+    # Automated field atlas: alpha + |grad psi|-1 at t = 0, T/2, T, per (model, T).
+    try:
+        outputs += alpha_evolution(study_dir, figdir)
+        outputs += gradient_error_field(study_dir, figdir)
+        vh = volume_history_T8(study_dir, figdir)
+        if vh:
+            outputs.append(vh)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[plots] field atlas skipped: {type(exc).__name__}: {exc}")
 
     if slides_dir:
         for p in outputs:
