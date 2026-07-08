@@ -1,5 +1,15 @@
 MAX_CELL_SIZE -1.0; // cfmesh pMesh (polyhedral mesh) not used
-N_CELLS       -1.0; // blockMesh not used   
+N_CELLS       -1.0; // blockMesh not used
 CFL           0.3;
 SURFACE_FILE  none; // cfmesh pMesh (polyhedral mesh) not used
 PHASE_INDICATOR geometric;
+ANCHOR_LAYERS 0;    // velocityExtension: extra foot-pointed Dirichlet layers
+UEXT_DIV UpwindUext; // steadyUpwind div scheme alias; MEASURED: the linearUpwind
+                     // deferred correction DIVERGES on the steady extension
+                     // equation (no ddt damping) -> upwind is the safe default.
+OSCILLATION on;      // velocityModel: on = reversed test (cos(pi t/tau) factor),
+                     // off = steady non-reversing vortex (sustained strain).
+SL_RECONSTRUCTION quadraticWLSQ; // leiaSemiLagrangeLevelSetFoam foot reconstruction;
+                     // single value here (constant for velocity-extension studies,
+                     // which ignore it) -> the SL configs axes_override the sweep
+                     // [linearTaylor nestedLSQ quadraticWLSQ].

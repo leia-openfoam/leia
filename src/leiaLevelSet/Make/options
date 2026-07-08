@@ -10,4 +10,5 @@ LIB_LIBS = \
     -L$(FOAM_USER_LIBBIN) \
     -lfiniteVolume \
     -lsurfMesh \
+    -lmeshTools \
     -llevelSetImplicitSurfaces

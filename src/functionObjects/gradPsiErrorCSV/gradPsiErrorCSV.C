@@ -75,7 +75,13 @@ Foam::functionObjects::gradPsiErrorCSV::gradPsiErrorCSV
                 << "MAX_MAG_GRAD_PSI,"
                 << "MEAN_MAG_GRAD_PSI,"
                 << "NARROW_MAX_MAG_GRAD_PSI,"
-                << "NARROW_MEAN_MAG_GRAD_PSI\n";
+                << "NARROW_MEAN_MAG_GRAD_PSI,"
+                // Conditioning diagnostic: the interface position error scales
+                // like err_psi / |grad psi|, so a FLATTENING level set
+                // (min |grad psi| -> 0 near the interface) amplifies psi noise
+                // into O(1) position noise.
+                << "MIN_MAG_GRAD_PSI,"
+                << "NARROW_MIN_MAG_GRAD_PSI\n";
     }
     write();
 }
@@ -111,19 +117,30 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
     // const volScalarField magGradPsi = mag(gradPsi_);
     const auto max_magGradPsi = gMax(magGradPsi);
     const auto mean_magGradPsi = gAverage(magGradPsi);
+    const auto min_magGradPsi = gMin(magGradPsi);
     scalar max_narrowMagGradPsi = 0.0;
     scalar mean_narrowMagGradPsi = 0.0;
+    scalar min_narrowMagGradPsi = 0.0;
 
     if (mesh.objectRegistry::found("NarrowBand"))
     {
         const auto narrowBand = mesh.lookupObject<volScalarField>("NarrowBand");
         List<scalar> narrowGradPsiError = subset(narrowBand, gradPsiError);
-        max_narrowGradPsiError = gMax(narrowGradPsiError);
-        mean_narrowGradPsiError = gAverage(narrowGradPsiError);
+        // The band is EMPTY once the phase is fully annihilated (no psi sign
+        // change): g{Max,Min} on an empty list return -/+VGREAT garbage.
+        // Report zeros instead so the CSV stays plottable.
+        const label nBand =
+            returnReduce(narrowGradPsiError.size(), sumOp<label>());
+        if (nBand > 0)
+        {
+            max_narrowGradPsiError = gMax(narrowGradPsiError);
+            mean_narrowGradPsiError = gAverage(narrowGradPsiError);
 
-        List<scalar> narrowMagGradPsi = subset(narrowBand, magGradPsi);
-        max_narrowMagGradPsi = gMax(narrowMagGradPsi);
-        mean_narrowMagGradPsi = gAverage(narrowMagGradPsi);
+            List<scalar> narrowMagGradPsi = subset(narrowBand, magGradPsi);
+            max_narrowMagGradPsi = gMax(narrowMagGradPsi);
+            mean_narrowMagGradPsi = gAverage(narrowMagGradPsi);
+            min_narrowMagGradPsi = gMin(narrowMagGradPsi);
+        }
 
         // Volume-weighted L1/L2 of the error restricted to the narrow band.
         const scalarField& nbField = narrowBand.primitiveField();
@@ -157,7 +174,9 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
             << max_magGradPsi << ","
             << mean_magGradPsi << ","
             << max_narrowMagGradPsi << ","
-            << mean_narrowMagGradPsi << "\n";
+            << mean_narrowMagGradPsi << ","
+            << min_magGradPsi << ","
+            << min_narrowMagGradPsi << "\n";
     }
     return true;
 }

@@ -52,8 +52,15 @@ class anisotropicDiffusion
 :
     public interfaceExtension
 {
-    //- Isotropic regularization of the normal-aligned diffusion tensor.
+    //- Isotropic regularization of the normal-aligned diffusion tensor:
+    //  the absolute value ('fixed') or the cell-size coefficient ('cellSize').
     scalar epsilon_;
+
+    //- 'fixed' (legacy: eps = epsilon_, h-independent error floor) or
+    //  'cellSize' (eps_c = epsilon_*cellSize_c, the min face-neighbour
+    //  centre distance -> O(h)-consistent; NOT cbrt(V), which mis-scales
+    //  on 2D meshes of arbitrary thickness).
+    word epsilonModel_;
 
 protected:
 

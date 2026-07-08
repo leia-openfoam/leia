@@ -11,3 +11,10 @@
 
 LinearUpwind      linearUpwind grad(U);
 Gamma1            Gamma 1;
+
+// ## Steady velocity-extension convection (div(velExtPhiW,Uext)), selected by
+// the UEXT_DIV study token: first-order upwind vs deferred-corrected
+// second-order linearUpwind (converged by the nDefCorrExt loop).
+
+UpwindUext        upwind;
+LinearUpwindUext  linearUpwind grad(Uext);

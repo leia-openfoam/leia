@@ -45,5 +45,16 @@ velocityExtension/velocityExtension.C
 velocityExtension/interfaceExtension.C
 velocityExtension/anisotropicDiffusion.C
 velocityExtension/pseudoTime.C
+velocityExtension/steadyUpwind.C
+velocityExtension/steadyUpwindLinear.C
+velocityExtension/closestPoint.C
+velocityExtension/meshWaveExt.C
+
+semiLagrangian/slReconstruction.C
+semiLagrangian/linearTaylorReconstruction.C
+semiLagrangian/nestedLSQReconstruction.C
+semiLagrangian/quadraticWLSQReconstruction.C
+semiLagrangian/bandQuadraticWLSQReconstruction.C
+semiLagrangian/slAdvection.C
 
 LIB = $(FOAM_USER_LIBBIN)/libleiaLevelSet

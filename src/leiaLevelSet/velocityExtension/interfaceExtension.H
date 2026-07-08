@@ -76,6 +76,14 @@ protected:
     //- Number of gradient-descent steps from cell centre to the interface.
     label nDescent_;
 
+    //- Number of additional cell layers around the interface layer whose
+    //  velocity is also foot-pointed (steepest descent + interpolation) and
+    //  pinned as Dirichlet data in the extension solve. The PDE stencil of an
+    //  interface-adjacent cell otherwise mixes solved and pinned values,
+    //  producing kinks in Uext. 0 = pin the interface layer only (classic).
+    //  Clamped to nLayers_ - 1 (anchors must stay inside the band).
+    label nAnchorLayers_;
+
     //- Project phiExt to divergence-free after extension (sacrifices exact
     //  normal-constancy for volume conservation).
     bool projectFlux_;
@@ -93,11 +101,20 @@ protected:
     //- Interface-layer (seed) cells where Uext is Dirichlet data.
     labelList seedCells_;
 
+    //- Per-cell characteristic size: minimum face-neighbour centre distance
+    //  (1/deltaCoeffs). Correct for 2D meshes of arbitrary thickness, where
+    //  cbrt(V) = (h^2 t)^(1/3) != h mis-scales every h-proportional length
+    //  (band/fade widths, tolerances, regularizations).
+    scalarField cellSize_;
+
 
     // Backbone steps
 
         //- nHat_ = grad(psi)/|grad psi|.
         void computeNormals();
+
+        //- Fill cellSize_ (min face-neighbour distance; once, mesh static).
+        void computeCellSize();
 
         //- Fill band_ and seedCells_ (seed = narrowBand, dilated nLayers).
         void buildBand();

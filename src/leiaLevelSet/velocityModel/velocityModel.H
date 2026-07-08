@@ -105,6 +105,14 @@ public:
             return isOscillating_;
         }
 
+        //- Reversal period tau (defaults to endTime). Lets a consumer
+        //  reconstruct the analytic velocity at any time as
+        //  velocity(x) * oscillationFactor(t, tau()).
+        scalar tau() const
+        {
+            return tau_;
+        }
+
         scalar oscillationFactor(const scalar time, const scalar tau) const;
 
         //- Scale U and phi by cos(pi t / tau) for reversed (oscillating) tests

@@ -62,7 +62,23 @@ solvers
         relTol          1e-3;
     }
 
-    noneUext { $pseudoTimeUext }   // identity model: never solved
+    // Steady normal-transport solve (steadyUpwind family): near-triangular
+    // upwind matrix along the acyclic characteristic graph -> DILU/BiCGStab
+    // converges in a handful of iterations; per-pass relTol (defect-correction
+    // loop re-solves with the improved deferred correction).
+    steadyUpwindUext
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         500;
+    }
+
+    steadyUpwindLinearUext { $steadyUpwindUext }
+    closestPointUext       { $steadyUpwindUext }   // fallback fill solve
+    meshWaveUext           { $steadyUpwindUext }   // never solved (wave only)
+    noneUext               { $pseudoTimeUext }     // identity model: never solved
 
     "Uext.*" { $@!VELOCITY_EXTENSION!@Uext; }
 }
@@ -75,12 +91,14 @@ PISO
     pRefValue       0;
 }
 
-// Classical single (shear) vortex, reversed by cos(pi t / tau); tau defaults
-// to endTime so the interface returns to its initial shape at t = endTime.
+// Classical single (shear) vortex. oscillation on: reversed by cos(pi t / tau),
+// tau defaults to endTime so the interface returns to its initial shape at
+// t = endTime. oscillation off: STEADY vortex -- sustained strain, no error
+// cancellation on the way back (the non-reversing stress test).
 velocityModel
 {
     type shear2D;
-    oscillation on;
+    oscillation @!OSCILLATION!@;
 }
 
 levelSet
@@ -128,9 +146,23 @@ levelSet
     {
         type        @!VELOCITY_EXTENSION!@;
         nLayers     3;
-        epsilon     1e-3;      // anisotropicDiffusion
+        // Foot-point + pin this many additional cell layers around the
+        // interface layer (Dirichlet anchors; 0 = interface layer only).
+        nAnchorLayers @!ANCHOR_LAYERS!@;
+        // anisotropicDiffusion regularization: eps_c = epsilon*cellSize_c
+        // (min face-neighbour centre distance -- NOT cbrt(V), which
+        // mis-scales on 2D meshes; epsilonModel cellSize -> O(h)-consistent;
+        // a FIXED eps imposes an h-independent error floor -- 'fixed' keeps
+        // the legacy behaviour).
+        epsilon      1.0;
+        epsilonModel cellSize;
         nIterations 10;        // pseudoTime
         deltaTau    0.2;       // pseudoTime
+        nDefCorrExt 5;         // steadyUpwind family: relaxed defect-correction passes
+        // closestPoint parallel halo (zoneDistribute): Taylor data from the
+        // one-layer CPC halo is trusted within cpHaloReach*cellSize of the
+        // exit cell; foot points beyond it fall back to the steadyUpwind fill.
+        cpHaloReach 1.5;
         // NO Helmholtz projection: projecting phiExt to div-free would destroy
         // the interface-normal constancy (n.grad)Uext = 0 that preserves
         // |grad psi| = 1 near Sigma. The psi equation is instead solved in its
@@ -138,6 +170,23 @@ levelSet
         // exact for non-solenoidal extension velocities (leiaLevelSetFoam.C).
         projectFlux false;
         maxScale    5;         // clip |Uext| <= maxScale*max|U| in the band (runaway guard)
+    }
+
+    // Semi-Lagrangian advection (leiaSemiLagrangeLevelSetFoam). Ignored by
+    // leiaLevelSetFoam. reconstruction of psi^n at the departure foot:
+    //   linearTaylor (O(h) baseline) | nestedLSQ | quadraticWLSQ (production)
+    //   | bandQuadraticWLSQ (quadratic in the band, linear far field; O(band) memory).
+    semiLagrangian
+    {
+        reconstruction      @!SL_RECONSTRUCTION!@;
+        CFLmax              @!CFL!@;   // foot-radius guard threshold
+        limitSlope          false;     // Barth-Jespersen limiter: MEASURED to cost
+                                       // convergence order -> off; the value cap
+                                       // in slAdvection handles overflow instead.
+        clipToStencilBounds false;     // extra tight monotonicity clip (backstop)
+        analyticVelocity    true;      // prescribed U is the analytic cell velocity
+        nLayersBand         3;         // bandQuadraticWLSQ: quadratic where |psi|<= (nLayersBand+bandGuard)*h
+        bandGuard           2;         // guard so band cells' stencils stay inside the fitted band
     }
 }
 

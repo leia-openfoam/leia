@@ -1,0 +1,39 @@
+# Semi-Lagrangian level set advection, DEEP-CONVERGENCE tier: + N=256.
+# Opt-in (8x cost per 2D level); regenerates the deck's SL figures
+# (reconstruction convergence triptychs + the sl_vs_extension cross-study
+# overlay). See config/bulkVortexSL.yaml for the rationale.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/bulkVortexSLHighRes.yaml
+#
+# RESOURCE NOTE: only the FULL quadraticWLSQ reconstruction caches a per-cell QR
+# pseudo-inverse over all ~65k cells at N=256 (~130 MB/rank); 6 concurrent such
+# jobs can exhaust memory and get cases killed intermittently (fluctuating
+# incompletes, NOT numerical divergence). bandQuadraticWLSQ fits per step in the
+# band only (memory O(band)) and runs fine at full concurrency; linearTaylor /
+# nestedLSQ use fvc::grad (no cache). Because the full quadraticWLSQ member is in
+# the sweep, run this mixed tier at reduced concurrency, e.g.
+#   snakemake --workflow-profile profiles/local --configfile config/bulkVortexSLHighRes.yaml \
+#             --cores 12 --jobs 3
+# (bandQuadraticWLSQ ~= quadraticWLSQ on all band metrics, so for a band-only
+#  N=256 run at FULL concurrency drop quadraticWLSQ from SL_RECONSTRUCTION).
+
+study_name: bulkVortexSLHighRes
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [0.5, 2, 4, 8]
+  N_CELLS:  [32, 64, 128, 256]
+  CFL:      [0.5, 1.0]
+  SL_RECONSTRUCTION: [linearTaylor, nestedLSQ, quadraticWLSQ, bandQuadraticWLSQ]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: true   # deliberate deep run: refresh the deck's SL figures
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

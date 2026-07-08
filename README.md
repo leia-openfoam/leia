@@ -42,7 +42,9 @@ The level-set components are **runtime-selectable** (chosen in `system/fvSolutio
   *correction* that, in a narrow band, replaces the advecting velocity with one constant
   along the interface normal (an extension velocity). Non-invasive: it reads `U`, emits a
   corrected field `Uext` and an advection flux, and leaves `U`/`phi` untouched.
-  Types: `none` (default, identity), `anisotropicDiffusion`, `pseudoTime`. See
+  Types: `none` (default, identity), `anisotropicDiffusion`, `pseudoTime`,
+  `steadyUpwind`, `steadyUpwindLinear`, `closestPoint` (the statically
+  ~O(h^2)-convergent geometric reference), `meshWave` (parallel-robust wave). See
   [Velocity extension](#velocity-extension).
 
 Solvers (`applications/solvers/`): **`leiaLevelSetFoam`** (advection verification) and
@@ -106,20 +108,46 @@ Adding one resolution level to a time-reversal benchmark costs **8× in 2D**
 into a fast daily suite and a deliberate deep-convergence run:
 
 ```
-# FAST default (N = 32/64/128): ~3 min measured on a 24-thread laptop.
+# FAST default (N = 32/64/128, 6 models, 72 cases): ~5 min measured.
 # Smoke/regression; keeps figures in studies/, never touches the slide deck
 # (export_slides: false).
 leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortex.yaml
 
-# HIGH-RES opt-in (adds N = 256): ~30 min measured, floored by the single heaviest
-# case (T=8, N=256 ~ 12k steps). THE deck-regeneration run: rebuilds the convergence
-# triptychs, the alpha / |grad psi|-1 field atlas and the standalone
-# doc/slides/index.html.
+# HIGH-RES opt-in (adds N = 256; 6 models, 96 cases): ~46 min measured, floored by the
+# heaviest cases (T=8, N=256 ~ 12k steps). THE deck-regeneration run: rebuilds the
+# triptychs, the alpha / |grad psi|-1 field atlas and BOTH standalone deck variants:
+# doc/slides/index.html (vertical section stacks: -> parts, v slides within a part)
+# and doc/slides/index-linear.html (flat linear flow for front-to-back reading).
 leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortexHighRes.yaml
 
 # Phase-indicator comparison (geometric vs detrixheAslam), N <= 128 by design:
 # the indicators coincide to ~1e-11 and psi dynamics duplicate the bulk `none` cases.
 leia> snakemake --workflow-profile profiles/local --configfile config/phaseIndicatorConvergence.yaml
+
+# STATIC (t=0) extension verification: apply each velocityExtension model ONCE to the
+# initial configuration (no advection) and measure e = |n.grad(Uext)| convergence with h
+# (leiaTestVelocityExtension; 7 models x 4 resolutions x 2 divergence schemes = 56 cases,
+# ~1 min). The gatekeeper: what does not converge statically cannot converge advected.
+leia> snakemake --workflow-profile profiles/local --configfile config/staticExtension.yaml
+
+# NON-REVERSING stress test: STEADY vortex (oscillation off, T=3, 6 models). The
+# reversed benchmark's final-time reading credits `none` with error cancellation
+# (measured ~1300x at T=2/N=256); here the strain never reverses, the headline is
+# error-vs-TIME per model (crossover t*), and the shape error is measured against a
+# marker-traced quasi-exact reference (workflow/scripts/marker_ref.py) because no
+# analytic final interface exists. Fast tier N <= 128 (minutes); the HighRes config
+# adds N=256 and refreshes the deck's steady_* figures.
+leia> snakemake --workflow-profile profiles/local --configfile config/steadyVortex2D.yaml
+leia> snakemake --workflow-profile profiles/local --configfile config/steadyVortex2DHighRes.yaml
+
+# SEMI-LAGRANGIAN advection (leiaSemiLagrangeLevelSetFoam): the parallel research
+# line to velocity extension. Instead of correcting the velocity it solves
+# Dpsi/Dt = 0 along characteristics (psi^{n+1}(x_c) = psi^n(x_d)); the reconstruction
+# of psi^n at the departure foot is the swept axis (linearTaylor O(h) baseline,
+# nestedLSQ / quadraticWLSQ O(h^2)). Same reversed 2Dvortex study; quadraticWLSQ
+# beats every velocity-extension model on shape AND |grad psi| with no linear solve.
+leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortexSL.yaml
+leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortexSLHighRes.yaml
 ```
 
 The two vortex configs write to **separate study directories**
@@ -128,9 +156,10 @@ configs with different axes at the same study dir: the cartesian-product case
 indices would remap and stale cases would be silently reused. Per-model linear
 solvers for the extension solves live in
 `cases/2Dvortex/system/fvSolution(.template)` (`solvers → "Uext.*"`, selected via
-the `VELOCITY_EXTENSION` token: Krylov-wrapped GAMG for `anisotropicDiffusion`,
-DILU for `pseudoTime`). Need more levels than N=256? Use
-`--workflow-profile profiles/slurm` on a cluster instead of a laptop.
+the `VELOCITY_EXTENSION` token; discretization schemes in `fvSchemes(.template)`
+via the `UEXT_DIV` aliasDict token — keep it `UpwindUext`: the linearUpwind
+deferred correction diverges on the steady extension equation). Need more levels
+than N=256? Use `--workflow-profile profiles/slurm` on a cluster.
 
 ### Legacy single-case runs
 
@@ -150,11 +179,20 @@ levelSet
 {
     velocityExtension
     {
-        type        anisotropicDiffusion;   // none | anisotropicDiffusion | pseudoTime
-        narrowBand  NarrowBand;  nLayers 3; // seed band + fade length scale
-        epsilon     1e-3;                    // anisotropicDiffusion regularization
+        // none | anisotropicDiffusion | pseudoTime | steadyUpwind
+        // | steadyUpwindLinear | closestPoint | meshWave
+        // Statically verified (staticExtension study): closestPoint converges at
+        // ~O(h^2) (the geometric reference); meshWave is the parallel-robust O(h)
+        // wave fallback; steadyUpwind is the one-solve PDE transport (keep the
+        // upwind scheme: the linearUpwind deferred correction diverges on the
+        // steady equation); the legacy PDE models do not converge.
+        type        closestPoint;
+        narrowBand  NarrowBand;  nLayers 3; // |psi|-based band + fade length scale
+        epsilon     1.0;  epsilonModel cellSize; // anisotropicDiffusion: eps_c = c*h
         nIterations 10;  deltaTau 0.3;       // pseudoTime
+        nDefCorrExt 5;                       // steadyUpwind family
         projectFlux false;                   // keep false: projection destroys (n.grad)Uext = 0
+        cpHaloReach 1.5;                     // closestPoint MPI halo: Taylor validity radius (x cellSize)
     }
 }
 ```
@@ -162,6 +200,18 @@ levelSet
 The model writes a corrected velocity `Uext` (visualizable, written with `U`) and advects
 the level set with the corresponding flux, without modifying `U`. `none` reproduces the
 unmodified solver exactly.
+
+**closestPoint in MPI-parallel runs:** the Newton foot-point walk is processor-local; a
+`zoneDistribute` cell-point-cell halo (as in geometricVoF/plicRDF) carries one layer of
+remote `(C, psi, grad psi, U, grad U)` around the band, and a walk that steps off the
+local mesh continues on first-order Taylor data anchored at the nearest halo cell
+(sub-stepped at ~one cell per step so the halo anchor tracks the true exit cell). Foot
+points deeper than the one-layer halo fall back to the pinned `steadyUpwind` fill.
+Measured on the steady vortex (N=64, np=4, scotch): fallback share 5.3% -> **1.3%**
+(serial floor 0.15%); serial results are bit-identical (the halo branch never runs);
+the parallel solution moves 2-3.5x closer to the serial one on the field metrics. The
+per-step counters print as `closestPoint: N foot-pointed band cells (M via halo), K
+fallback cells`.
 
 **Coupling design (validated on the reversed vortex):** the psi equation is solved in its
 **advective** form, `ddt(psi) + div(phiExt, psi) - psi*div(phiExt)` — the level set obeys

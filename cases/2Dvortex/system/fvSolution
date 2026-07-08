@@ -55,7 +55,19 @@ solvers
         relTol          1e-3;
     }
 
-    noneUext { $pseudoTimeUext }   // identity model: never solved
+    steadyUpwindUext
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         500;
+    }
+
+    steadyUpwindLinearUext { $steadyUpwindUext }
+    closestPointUext       { $steadyUpwindUext }   // fallback fill solve
+    meshWaveUext           { $steadyUpwindUext }   // never solved (wave only)
+    noneUext               { $pseudoTimeUext }     // identity model: never solved
 
     "Uext.*" { $noneUext; }        // this case runs velocityExtension type none
 }
@@ -114,14 +126,36 @@ levelSet
     {
         type        none;
         nLayers     3;
-        epsilon     1e-3;
-        nIterations 10;
-        deltaTau    0.2;
+        nAnchorLayers 0;       // foot-point + pin N extra layers (0 = interface layer only)
+        // anisotropicDiffusion: eps_c = epsilon*cbrt(V_c) (cellSize -> O(h);
+        // 'fixed' = legacy h-independent floor).
+        epsilon      1.0;
+        epsilonModel cellSize;
+        nIterations 10;        // pseudoTime
+        deltaTau    0.2;       // pseudoTime
+        nDefCorrExt 5;         // steadyUpwind family: relaxed defect-correction passes
+        // closestPoint parallel halo (zoneDistribute): Taylor data from the
+        // one-layer CPC halo is trusted within cpHaloReach*cellSize of the
+        // exit cell; foot points beyond it fall back to the steadyUpwind fill.
+        cpHaloReach 1.5;
         // NO Helmholtz projection: it would destroy (n.grad)Uext = 0 (the
         // property that preserves |grad psi| = 1 near Sigma); the psi equation
         // is solved in its advective form instead (leiaLevelSetFoam.C).
         projectFlux false;
         maxScale    5;         // clip |Uext| <= maxScale*max|U| in the band (runaway guard)
+    }
+
+    // Semi-Lagrangian advection (leiaSemiLagrangeLevelSetFoam); ignored by
+    // leiaLevelSetFoam. reconstruction: linearTaylor | nestedLSQ | quadraticWLSQ.
+    semiLagrangian
+    {
+        reconstruction      quadraticWLSQ;
+        CFLmax              0.5;
+        limitSlope          false;
+        clipToStencilBounds false;
+        analyticVelocity    true;
+        nLayersBand         3;
+        bandGuard           2;
     }
 }
 

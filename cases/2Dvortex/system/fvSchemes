@@ -28,6 +28,17 @@ gradSchemes
     // psi below (deferred second-order correction). Fallbacks if it mislimits on
     // the coarse vortex: "faceLimited leastSquares 1" or "cellLimited Gauss linear 1".
     grad(psi)       cellLimited leastSquares 1;
+    // Reconstruction gradient for the linearUpwind steady velocity extension.
+    grad(Uext)      leastSquares;
+    // Pure least-squares gradient for the Aslam cascade's normal derivative
+    // V = n.grad(U) (steadyUpwindLinear).
+    velExtLSGrad    leastSquares;
+    // Semi-Lagrangian reconstruction (leiaSemiLagrangeLevelSetFoam): dedicated
+    // gradient keys so the sub-steps never share the grad(psi) advection
+    // scheme. pointCellsLeastSquares = cell-point-cell LSQ gradient.
+    gradPsi         pointCellsLeastSquares;   // g_c = grad(psi^n)
+    gradGradPsi     pointCellsLeastSquares;   // H_c = grad(g_c) (nestedLSQ)
+    gradU           pointCellsLeastSquares;   // grad(u^{n+1}) for the SL foot
 }
 
 divSchemes
@@ -37,6 +48,11 @@ divSchemes
     // correction (linearUpwind - upwind) is converged by the nDefCorr loop in
     // leiaLevelSetFoam.C. (phiExt is named "phi", so this key covers it.)
     div(phi,psi)    Gauss linearUpwind grad(psi);
+    // Steady velocity extension (steadyUpwind family): implicit part = upwind
+    // matrix (one solve = infinite reach along the acyclic characteristics of
+    // w = sign(psi) n); the linearUpwind deferred correction is converged by
+    // the nDefCorrExt loop -> second-order extension quality.
+    div(velExtPhiW,Uext) Gauss linearUpwind grad(Uext);
 }
 
 laplacianSchemes

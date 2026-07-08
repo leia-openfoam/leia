@@ -131,8 +131,9 @@ studies/
 !doc/slides/figures/
 !doc/slides/figures/*.png
 # ...and the deck itself: index.template.html is the editable source (external
-# figure/CDN refs, clean diffs); the Snakemake `report` rule inlines it into the
-# single self-contained, shareable doc/slides/index.html. Both are tracked; the
+# figure/CDN refs, clean diffs); the Snakemake `report` rule inlines it into TWO
+# self-contained, shareable variants: doc/slides/index.html (vertical section
+# stacks) and doc/slides/index-linear.html (flat linear flow). All tracked; the
 # fallback PDF needs a negation to override the global *.pdf ignore.
 !doc/slides/*.pdf
 

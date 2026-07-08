@@ -30,6 +30,10 @@ MESH        = config["mesh"]
 MODE        = config["mode"]
 NP          = int(config["np"])
 STUDY       = config["study_name"]
+# The per-case application run after leiaSetFields; its CSV (<SOLVER>.csv) is the
+# solve rule's output. Default: the advection solver. Alternative apps (e.g. the
+# static extension verification leiaTestVelocityExtension) plug in per study.
+SOLVER      = config.get("solver", "leiaLevelSetFoam")
 STUDIES_DIR = os.path.abspath(config.get("studies_dir", os.path.join(REPO, "studies")))
 MPI         = config.get("mpi_launcher", "mpirun -np {np}")
 PREAMBLE    = (config.get("env_preamble") or "").strip()
@@ -106,10 +110,15 @@ MPI_PREFIX = (MPI.format(np=NP) + " ") if PARALLEL else ""
 FLUX       = " -fluxCorrection" if MESH == "perturbed" else ""
 INIT_END   = f"./system/init_End/init_End.{MODE}" if CASE == "3Dtranslation" else ""
 
-_solve = ["cd {params.d}", f"{MPI_PREFIX}leiaSetFields {PAR}".rstrip()]
+# The gradPsiErrorCSV / leiaSetFields function objects APPEND to their CSVs: a
+# re-run of an interrupted case would otherwise stack a second time series onto
+# the stale one (TIME jumps backward, plots and half-time extraction break).
+_solve = ["cd {params.d}",
+          "rm -f gradPsiError.csv leiaSetFields.csv leiaLevelSetFoam.csv",
+          f"{MPI_PREFIX}leiaSetFields {PAR}".rstrip()]
 if INIT_END:
     _solve.append(INIT_END)
-_solve.append(f"{MPI_PREFIX}leiaLevelSetFoam {PAR}{FLUX}".rstrip())
+_solve.append(f"{MPI_PREFIX}{SOLVER} {PAR}{FLUX}".rstrip())
 # Parallel runs write decomposed fields into processor*/; reconstruct them so the
 # post-processing (foamlib montage) can read alpha at the case root. -withZero
 # also reconstructs time 0 (default skips it), overwriting the uniform 0.org copy
@@ -181,7 +190,7 @@ rule solve:
          if PARALLEL else
          os.path.join(CASE_DIR, "constant", "polyMesh", "owner")),
     output:
-        os.path.join(CASE_DIR, "leiaLevelSetFoam.csv"),
+        os.path.join(CASE_DIR, f"{SOLVER}.csv"),
     params:
         d=case_path,
     resources:
@@ -194,7 +203,7 @@ rule solve:
 
 rule aggregate:
     input:
-        expand(os.path.join(CASE_DIR, "leiaLevelSetFoam.csv"), idx=IDX),
+        expand(os.path.join(CASE_DIR, f"{SOLVER}.csv"), idx=IDX),
     output:
         DATABASE,
     run:

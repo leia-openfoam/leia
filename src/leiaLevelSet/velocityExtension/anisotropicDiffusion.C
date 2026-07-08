@@ -43,15 +43,50 @@ namespace Foam
 Foam::anisotropicDiffusion::anisotropicDiffusion(const fvMesh& mesh)
 :
     interfaceExtension(mesh),
-    epsilon_(velExtDict_.getOrDefault<scalar>("epsilon", 1e-3))
-{}
+    epsilon_(velExtDict_.getOrDefault<scalar>("epsilon", 1e-3)),
+    epsilonModel_(velExtDict_.getOrDefault<word>("epsilonModel", "fixed"))
+{
+    if (epsilonModel_ != "fixed" && epsilonModel_ != "cellSize")
+    {
+        FatalErrorInFunction
+            << "epsilonModel must be 'fixed' or 'cellSize', got "
+            << epsilonModel_ << exit(FatalError);
+    }
+}
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
 void Foam::anisotropicDiffusion::extend()
 {
     // Normal-aligned (anisotropic) diffusion tensor with isotropic
-    // regularization: D = n (x) n + eps I.
+    // regularization: D = n (x) n + eps I. A FIXED eps imposes an
+    // h-independent error floor on the extension quality (interior error is
+    // linear in eps -- regular perturbation); epsilonModel 'cellSize' scales
+    // it with the mesh, eps_c = epsilon_*cellSize, restoring O(h) consistency.
+    // Do not chase eps ~ h^2: the mesh-induced cross-diffusion of the stock
+    // Gauss laplacian on a near-rank-1 tensor is already ~h (Droniou 2014).
+    volScalarField eps
+    (
+        IOobject
+        (
+            "velExtEps",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedScalar("eps", dimless, epsilon_)
+    );
+    if (epsilonModel_ == "cellSize")
+    {
+        forAll(eps, c)
+        {
+            eps[c] = epsilon_*cellSize_[c];
+        }
+        eps.correctBoundaryConditions();
+    }
+
     volSymmTensorField D
     (
         IOobject
@@ -63,7 +98,7 @@ void Foam::anisotropicDiffusion::extend()
             IOobject::NO_WRITE
         ),
         sqr(nHat_)
-      + dimensionedSymmTensor("eps", dimless, epsilon_*symmTensor::I)
+      + eps*dimensionedSymmTensor("I", dimless, symmTensor::I)
     );
 
     fvVectorMatrix UextEqn(fvm::laplacian(D, Uext_));

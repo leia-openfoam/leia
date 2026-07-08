@@ -49,6 +49,49 @@
     .reveal section img { background: none; border: none; box-shadow: none; }
     .center { text-align: center; }
     .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    /* --- deck orientation: persistent footer + roadmap / part intros --- */
+    .deck-footer {
+      position: fixed; bottom: 7px; left: 18px; right: 96px; z-index: 30;
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 14px;
+      font-family: "Source Sans Pro", Helvetica, sans-serif;
+      font-size: 13px; color: var(--ls-muted); opacity: 0.9;
+      pointer-events: none;
+    }
+    .deck-footer .df-track { color: var(--ls-accent); white-space: nowrap; }
+    .deck-footer .df-authors { flex: 1; text-align: center; }
+    /* clickable part-navigation chips (bottom-left) */
+    .deck-footer .df-nav { white-space: nowrap; }
+    .deck-footer .df-nav a {
+      pointer-events: auto; display: inline-block; min-width: 1.3em;
+      margin-right: 3px; padding: 0 4px; text-align: center;
+      border: 1px solid var(--ls-line); border-radius: 3px;
+      color: var(--ls-muted); text-decoration: none; font-size: 12px;
+      line-height: 1.5; opacity: 0.8;
+    }
+    .deck-footer .df-nav a:hover {
+      color: var(--ls-fg); border-color: var(--ls-fg); opacity: 1;
+    }
+    .deck-footer .df-nav a.here {
+      color: var(--ls-accent); border-color: var(--ls-accent);
+      font-weight: 600; opacity: 1;
+    }
+    .reveal ol.roadmap { list-style: none; margin-left: 0; }
+    .reveal ol.roadmap li {
+      color: var(--ls-muted); margin: 0.14em 0; font-size: 0.92em;
+    }
+    .reveal ol.roadmap li .idx {
+      display: inline-block; width: 1.5em; color: var(--ls-line);
+    }
+    .reveal ol.roadmap li.here { color: var(--ls-fg); font-weight: 600; }
+    .reveal ol.roadmap li.here .idx { color: var(--ls-accent); }
+    .reveal ol.roadmap li.here::after { content: "  \25C0  you are here";
+      color: var(--ls-accent); font-size: 0.8em; letter-spacing: 0.06em; }
+    .reveal .part-kicker {
+      font-size: 0.62em; letter-spacing: 0.22em; color: var(--ls-accent);
+      text-transform: uppercase; margin-bottom: 0.1em;
+    }
+    .reveal .part-prevnext { font-size: 0.55em; color: var(--ls-muted); }
   </style>
 
   <!-- MathJax 3 (loaded directly from cdnjs) -->
@@ -67,6 +110,12 @@
           src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
 </head>
 <body>
+
+<div class="deck-footer">
+  <span class="df-nav" id="deckNav" aria-label="jump to part"></span>
+  <span class="df-authors">T. Mari&#263; &middot; J. Reitzel &middot; M. Fricke &middot; D. Bothe &nbsp;&mdash;&nbsp; Mathematical Modeling &amp; Analysis, TU Darmstadt</span>
+  <span class="df-track" id="deckTrack"></span>
+</div>
 <div class="reveal">
 <div class="slides">
 
@@ -89,7 +138,53 @@
   </aside>
 </section>
 
-<section>  <!-- ############ TRACK: level set & phase indicator ############ -->
+<!-- ==================== 1b. ROADMAP ==================== -->
+<section>
+  <h2>Roadmap</h2>
+  <ol class="roadmap" style="font-size:1.05em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator &mdash;
+        \(\psi\), advection, geometric &amp; analytic \(\alpha\)</li>
+    <li><span class="idx">2</span>Velocity extension &mdash; the models &mdash;
+        why, and seven ways to build \(\mathbf{U}_{\text{ext}}\)</li>
+    <li><span class="idx">3</span>Static verification (\(t=0\)) &mdash;
+        is \((\mathbf{n}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\)? measured orders</li>
+    <li><span class="idx">4</span>Advected verification &amp; results &mdash;
+        the reversed vortex, convergence, topology</li>
+    <li><span class="idx">5</span>Semi-Lagrangian advection &mdash;
+        characteristics, the Taylor foot, LSQ reconstruction</li>
+    <li><span class="idx">6</span>Conclusions &mdash; what works best, the two lines ranked</li>
+    <li><span class="idx">7</span>Software design &mdash; runtime model selection,
+        extend without touching existing code</li>
+    <li><span class="idx">8</span>Appendix &mdash; the automated field atlas</li>
+  </ol>
+  <p class="footnote muted" id="roadmapNavHint">Navigation: &rarr; next part &middot;
+     &darr; slides within a part &middot; Esc = overview &middot; the footer always shows
+     where you are.</p>
+  <aside class="notes">
+    Didactic order: mathematics -> discretization -> measurement -> software. Every part
+    opens with this map and the footer names the current part on every slide.
+  </aside>
+</section>
+
+<section data-track="The level set &amp; the phase indicator">  <!-- ############ TRACK: level set & phase indicator ############ -->
+<!-- part intro (auto-pattern) -->
+<section>
+  <p class="part-kicker">Part 1 of 8</p>
+  <h2>The level set &amp; the phase indicator</h2>
+  <p class="muted" style="font-size:0.85em">\(\psi\), its advection, and recovering \(\alpha\) geometrically / analytically</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li class="here"><span class="idx">1</span>The level set &amp; the phase indicator</li>
+    <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
+    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">4</span>Advected verification &amp; results</li>
+    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
+    <li><span class="idx">6</span>Conclusions</li>
+    <li><span class="idx">7</span>Software design</li>
+    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+  </ol>
+  <p class="part-prevnext">Previously: Title &amp; roadmap &nbsp;&middot;&nbsp; Next: Velocity extension &mdash; the models</p>
+</section>
+
 <!-- ==================== 2. THE LEVEL SET ==================== -->
 <section>
   <h2>The level set</h2>
@@ -392,21 +487,26 @@
   </aside>
 </section>
 
-<!-- phase-indicator convergence comparison (geometric vs detrixheAslam) -->
+<!-- phase-indicator static (t=0) convergence to the exact area -->
 <section>
-  <h2>geometric vs detrixheAslam &mdash; they coincide</h2>
-  <img src="figures/convergence_indicators.png"
-       alt="geometric vs detrixheAslam convergence on the bulk shear vortex"
-       style="max-height:56vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
-  <p class="footnote center">Bulk shear vortex, velocity extension <code>none</code>. Both
-     integrate the <b>same</b> LLS plane, so they agree to round-off: the gradient error is
-     <b>identical</b> (ψ-advection is indicator-independent), shape/volume differ by
-     \(\lesssim\!10^{-10}\). detrixheAslam is the tolerance-free, 2D-robust choice.</p>
+  <h2>geometric vs detrixheAslam &mdash; 2nd order to the exact area</h2>
+  <img src="figures/static_indicator_volume_convergence.png"
+       alt="static t=0 phase-indicator volume convergence to the exact circle area, geometric vs detrixheAslam"
+       style="max-height:60vh; max-width:88%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote center"><b>Static (\(t=0\)) verification.</b> Initialise the circle
+     (\(r=0.15\)) on the pseudo-2D shear-vortex mesh at \(N=32\!\to\!256\); the indicator volume
+     \(V_\alpha=\sum_c\alpha_c V_c\) converges to the <b>exact</b> cylinder volume
+     \(\pi r^2 t_z\) &mdash; equivalently the circle area \(\pi r^2\) with the slab height
+     \(t_z=0.1\) divided out &mdash; at <b>order \(\approx 2\)</b>. Both indicators build the
+     <b>same</b> LLS plane, so their volumes are <b>identical to 8 digits</b>;
+     <code>detrixheAslam</code> is the tolerance-free, 2D-robust integration.</p>
   <aside class="notes">
-    Snakemake study config/phaseIndicatorConvergence.yaml sweeps PHASE_INDICATOR
-    {geometric, detrixheAslam} x N_CELLS x T with velocity extension = none. Max relative
-    indicator difference: gradient 0, shape 5e-11, volume 3e-11. Figures live in the study
-    dir (export_slides:false) — this one copied in for the deck.
+    leiaSetFields only (no advection): VOL_ALPHA_0 = gSum(alpha*V) vs exact pi*0.15^2*0.1 =
+    0.00706858. Relative error 1.46e-2 / 3.55e-3 / 8.38e-4 / 2.15e-4 at N=32/64/128/256 ->
+    least-squares order 2.03, identical for both indicators (they clip/tet-fill the same plane,
+    so the total volume coincides at t=0). Regenerates from
+    workflow/scripts/static_indicator_volume.sh + make_indicator_static_fig.py. (The advected
+    conservation/agreement comparison lives in the phaseIndicatorConvergence study, not the deck.)
   </aside>
 </section>
 
@@ -414,8 +514,32 @@
 
 
 
-<section>  <!-- ############ TRACK: velocity extension ############ -->
-<!-- ==================== 11. VELOCITY EXTENSION — MOTIVATION ==================== -->
+<section data-track="Velocity extension &mdash; the models">  <!-- ############ TRACK: velocity extension -- OVERVIEW COLUMN ############ -->
+<!-- part intro (auto-pattern) -->
+<section>
+  <p class="part-kicker">Part 2 of 8</p>
+  <h2>Velocity extension &mdash; the models</h2>
+  <p class="muted" style="font-size:0.85em">why an extension velocity, the shared machinery,
+     and seven models &mdash; <b>one vertical stack per model</b>:
+     motivation &rarr; model &rarr; discretization &rarr; code &rarr; measured verdict</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
+    <li class="here"><span class="idx">2</span>Velocity extension &mdash; the models</li>
+    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">4</span>Advected verification &amp; results</li>
+    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
+    <li><span class="idx">6</span>Conclusions</li>
+    <li><span class="idx">7</span>Software design</li>
+    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+  </ol>
+  <p class="part-prevnext">Previously: The level set &amp; the phase indicator &nbsp;&middot;&nbsp; Next: Static verification (t = 0)</p>
+  <aside class="notes">
+    Part 2 is reorganized: this overview column (why extension, the shared seed/band/flux
+    machinery, the family map), then one vertical stack per model in family-map order.
+    Right arrow hops model to model; down arrow goes deep into one model.
+  </aside>
+</section>
+
 <section>
   <h2>Velocity extension &mdash; why</h2>
   <p>Only motion <b>along the interface normal</b> moves \(\Sigma\). The cell-centred
@@ -487,7 +611,6 @@
   </aside>
 </section>
 
-<!-- ==================== 12. INTERFACE VELOCITY ==================== -->
 <section>
   <h2>Interface velocity</h2>
   <div class="cols">
@@ -539,337 +662,6 @@
   </aside>
 </section>
 
-<!-- ==================== 13. EXTENSION PDE (TWO MODELS — OVERVIEW) ==================== -->
-<section>
-  <h2>Extension PDE &mdash; two models</h2>
-  <p>Goal: \((\mathbf{n}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\) off \(\Sigma\), with
-     \(\mathbf{U}_{\text{ext}}=\mathbf{U}_\Sigma\) at the interface layer (Dirichlet).</p>
-  <div class="cols" style="align-items:flex-start">
-    <div>
-      <p class="accent"><b>Anisotropic harmonic</b></p>
-      \[ \nabla\!\cdot\!\big(\mathbf{D}\,\nabla\mathbf{U}_{\text{ext}}\big)=0 \]
-      \[ \mathbf{D}=\mathbf{n}\otimes\mathbf{n}+\varepsilon\,\mathbf{I} \]
-      <p class="footnote muted">whole domain, zeroGradient outer BC; PBiCGStab/DIC, per-step relTol (from fvSolution).</p>
-    </div>
-    <div>
-      <p class="accent"><b>Pseudo-time</b> <span class="footnote">(Adalsteinsson&ndash;Sethian)</span></p>
-      \[ \frac{\partial \mathbf{U}_{\text{ext}}}{\partial\tau}
-         + \operatorname{sign}(\psi)\,(\mathbf{n}\cdot\nabla)\mathbf{U}_{\text{ext}}=0 \]
-      <p class="footnote muted">implicit backward Euler, upwind; \(n_{\text{iter}}\) marches.</p>
-    </div>
-  </div>
-  <p class="center good">Each model gets its own slides next: <b>definition &rarr; discretization &rarr;
-     verbatim solver code</b>. The interface layer is imposed as Dirichlet directly in the
-     assembled matrix via <code>fvMatrix::setValues</code> &mdash; no submesh.</p>
-  <aside class="notes">
-    Both are whole-domain solves; the seed cells are constrained by setValues so no
-    submesh/region machinery is needed. Anisotropic diffuses only along n (plus eps I
-    for well-posedness); pseudo-time propagates outward with w = sign(psi) n.
-  </aside>
-</section>
-
-<!-- ===== MODEL none — DEFINITION ===== -->
-<section>
-  <h2>Model: <code>none</code> &mdash; definition (baseline)</h2>
-  <p><b>No extension is built.</b> The advecting velocity is the prescribed field itself,
-     so the level set is advected with the exact, (near-)divergence-free flux \(\phi\):</p>
-  \[ \mathbf{U}_{\text{ext}} = \mathbf{U}, \qquad \phi_{\text{ext}} = \phi \]
-  <p class="muted">The reference against which the two genuine extension models are measured
-     &mdash; and, as the results show, the most accurate choice on a prescribed
-     divergence-free field.</p>
-  <aside class="notes">
-    none is the abstract base itself (addToRunTimeSelectionTable as "none").
-  </aside>
-</section>
-
-<!-- ===== MODEL none — DISCRETIZATION ===== -->
-<section>
-  <h2><code>none</code> &mdash; discretization (UFVM)</h2>
-  <p>No linear system is assembled &mdash; <code>correct()</code> re-syncs the registry
-     fields each step (after the oscillation rescaling of \(\mathbf{U}\), \(\phi\)):</p>
-  \[ \texttt{Uext == U;}\qquad \texttt{phiExt == phi;} \]
-  <p>The \(\psi\)-equation advects with <code>fvm::div(velExt-&gt;phi(), psi)</code> = the exact
-     prescribed <code>div(phi, psi)</code>, which is discretely divergence-free &mdash; the
-     property that keeps it stable and conservative.</p>
-  <p class="footnote">Source &mdash; base class registered as the <code>none</code> type:
-     <em class="tag">src/leiaLevelSet/velocityExtension/velocityExtension.C</em>
-     &rarr; <em class="tag">velocityExtension::correct()</em></p>
-</section>
-
-<!-- ===== MODEL none — VERBATIM CODE (shared psi advection) ===== -->
-<section>
-  <h2><code>none</code> &mdash; solver code (\(\psi\) advection)</h2>
-  <pre style="font-size:0.44em; line-height:1.2; background:rgba(255,255,255,0.04); padding:0.6em; border-radius:6px;"><code>// non-invasive: U/phi are never mutated; advect psi with velExt-&gt;phi().
-// For "none", correct() simply re-syncs:  Uext == U;  phiExt == phi;
-velExt-&gt;correct();
-
-// The level set obeys the ADVECTIVE law Dpsi/Dt = 0, not a conservation law:
-// a normal-constant extension velocity is generically NOT solenoidal
-// (div(v0*n) = v0*kappa), so assemble (v.grad)psi exactly:
-//   (v.grad)psi = div(phiExt psi) - psi (div phiExt).
-const volScalarField divPhiExt("divPhiExt", fvc::div(velExt-&gt;phi()));
-
-// Defect-correction loop: each pass re-assembles with the LATEST psi so the
-// deferred (linearUpwind - upwind) correction converges (~2-3 passes -&gt; 2nd
-// order). Safe: fvm::ddt reuses psi.oldTime(), fixed within the step.
-const label nDefCorr =
-    runTime.controlDict().getOrDefault&lt;label&gt;("nDefCorr", 2);
-
-for (label corr = 0; corr &lt; nDefCorr; ++corr)
-{
-    fvScalarMatrix psiEqn
-    (
-        fvm::ddt(psi)
-      + fvm::div(velExt-&gt;phi(), psi)     // Gauss linearUpwind grad(psi)
-      - fvm::Sp(divPhiExt, psi)          // advective (non-conservative) form
-     ==
-        source-&gt;fvmsdplsSource(psi, U)
-    );
-
-    psiEqn.solve();
-}</code></pre>
-  <p class="footnote muted center">
-     <em class="tag">applications/solvers/leiaLevelSetFoam/leiaLevelSetFoam.C</em>.
-     <code>grad(psi)</code> = <code>cellLimited leastSquares 1</code>;
-     <code>div(phi,psi)</code> = <code>Gauss linearUpwind grad(psi)</code>.
-     For <code>none</code>, \(\nabla\!\cdot\!\phi\approx0\) &rArr; the Sp term vanishes
-     (verified: results identical to machine precision).</p>
-</section>
-
-<!-- ===== MODEL anisotropicDiffusion — DEFINITION + SCHEMATIC ===== -->
-<section>
-  <h2>Model: <code>anisotropicDiffusion</code> &mdash; definition</h2>
-  <div class="cols">
-    <div>
-      <p>Extend the interface velocity \(\mathbf{U}_\Sigma\) off \(\Sigma\) by diffusion that
-         acts <b>only along the normal</b> (normal-aligned harmonic extension):</p>
-      \[ \nabla\!\cdot\!\big(\mathbf{D}\,\nabla\mathbf{U}_{\text{ext}}\big)=0,
-         \qquad \mathbf{D}=\mathbf{n}\otimes\mathbf{n}+\varepsilon\,\mathbf{I} \]
-      <p>\(\mathbf{n}\otimes\mathbf{n}\) diffuses along \(\mathbf{n}\) (making
-         \(\mathbf{U}_{\text{ext}}\) normal-constant); \(\varepsilon\mathbf{I}\) regularizes the
-         tangential/empty directions. Dirichlet \(\mathbf{U}_{\text{ext}}=\mathbf{U}_\Sigma\) at
-         the interface seed layer.</p>
-    </div>
-    <div>
-      <svg viewBox="0 0 260 205" width="100%" role="img" aria-label="anisotropic diffusion extends the interface velocity along the normal">
-        <defs>
-          <marker id="adG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-good)"/>
-          </marker>
-          <marker id="adN" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-warn)"/>
-          </marker>
-        </defs>
-        <line x1="52" y1="26" x2="52" y2="170" stroke="var(--ls-accent)" stroke-width="3"/>
-        <text x="44" y="22" fill="var(--ls-accent)" font-size="11">&#931;</text>
-        <g stroke="var(--ls-line)" stroke-width="1" stroke-dasharray="4,3" stroke-opacity="0.45">
-          <line x1="120" y1="30" x2="120" y2="166"/>
-          <line x1="188" y1="30" x2="188" y2="166"/>
-        </g>
-        <g stroke="var(--ls-good)" stroke-width="2.4" marker-end="url(#adG)">
-          <line x1="52" y1="58"  x2="86" y2="58"/>
-          <line x1="52" y1="98"  x2="86" y2="98"/>
-          <line x1="52" y1="138" x2="86" y2="138"/>
-        </g>
-        <text x="56" y="50" fill="var(--ls-good)" font-size="9.5">U<tspan dy="2.5" font-size="7">&#931;</tspan></text>
-        <g stroke="var(--ls-good)" stroke-width="2" marker-end="url(#adG)" stroke-opacity="0.8">
-          <line x1="120" y1="58"  x2="150" y2="58"/>
-          <line x1="120" y1="98"  x2="150" y2="98"/>
-          <line x1="120" y1="138" x2="150" y2="138"/>
-          <line x1="188" y1="58"  x2="218" y2="58"/>
-          <line x1="188" y1="98"  x2="218" y2="98"/>
-          <line x1="188" y1="138" x2="218" y2="138"/>
-        </g>
-        <text x="196" y="50" fill="var(--ls-good)" font-size="9.5">U<tspan dy="2.5" font-size="7">ext</tspan></text>
-        <line x1="150" y1="186" x2="196" y2="186" stroke="var(--ls-warn)" stroke-width="2" marker-end="url(#adN)"/>
-        <text x="201" y="190" fill="var(--ls-warn)" font-size="10">n</text>
-        <text x="118" y="201" fill="var(--ls-muted)" font-size="9" text-anchor="middle">diffuse along n &#8594; constant on each normal</text>
-      </svg>
-    </div>
-  </div>
-  <aside class="notes">
-    D = n(x)n + eps I. Diffusion along n makes Uext constant on each normal ray (the
-    extension property); eps I regularizes the tangential direction for well-posedness.
-    Seed layer pinned to U_Sigma as Dirichlet.
-  </aside>
-</section>
-
-<!-- ===== MODEL anisotropicDiffusion — DISCRETIZATION ===== -->
-<section>
-  <h2><code>anisotropicDiffusion</code> &mdash; discretization (UFVM)</h2>
-  <ul class="tight">
-    <li>tensor \(\mathbf{D}=\) <code>sqr(nHat) + eps*I</code> (<code>volSymmTensorField</code>),
-        with \(\mathbf{n}=\) <code>fvc::grad(psi)/|grad psi|</code></li>
-    <li>implicit anisotropic Laplacian: <code>fvm::laplacian(D, Uext)</code></li>
-    <li>interface Dirichlet <em>in the assembled matrix</em>:
-        <code>fvMatrix::setValues(seedCells, U&#931;)</code> &mdash; no submesh</li>
-    <li>solver from <em class="tag">fvSolution &rarr; solvers &rarr; "Uext.*"</em>:
-        <code>PBiCGStab</code>/<code>DIC</code> with a <b>per-step relative tolerance</b>
-        (previous \(\mathbf{U}_{\text{ext}}\) = initial guess) &mdash; a tight absolute
-        tolerance on this near-rank-1 Laplacian costs ~430 iterations/solve for no
-        accuracy gain (multigrid stalls on it). zeroGradient outer BC</li>
-  </ul>
-  \[ \sum_{f}\, \mathbf{D}_f\,\big(\nabla\mathbf{U}_{\text{ext}}\big)_f\!\cdot\!\mathbf{S}_f = 0,
-     \qquad \mathbf{U}_{\text{ext}}|_{\text{seed}}=\mathbf{U}_\Sigma \]
-  <p class="footnote">Source:
-     <em class="tag">src/leiaLevelSet/velocityExtension/anisotropicDiffusion.C</em>
-     &rarr; <em class="tag">anisotropicDiffusion::extend()</em>; shared seed/band/flux
-     backbone in <em class="tag">interfaceExtension.C</em>.</p>
-</section>
-
-<!-- ===== MODEL anisotropicDiffusion — VERBATIM CODE ===== -->
-<section>
-  <h2><code>anisotropicDiffusion::extend()</code> &mdash; code</h2>
-  <pre style="font-size:0.44em; line-height:1.18; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>void Foam::anisotropicDiffusion::extend()
-{
-    // D = n (x) n + eps I  (diffuse along the normal; eps regularizes)
-    volSymmTensorField D
-    (
-        IOobject("velExtD", /* ... */),
-        sqr(nHat_) + dimensionedSymmTensor("eps", dimless, epsilon_*symmTensor::I)
-    );
-
-    fvVectorMatrix UextEqn(fvm::laplacian(D, Uext_));
-
-    // Dirichlet only at the single interface layer, directly in the matrix:
-    forAll(seedCells_, i)
-    {
-        fixedCells.append(seedCells_[i]);
-        fixedVals.append(Uext_[seedCells_[i]]);   // = U_Sigma
-    }
-    UextEqn.setValues(fixedCells, fixedVals);
-
-    // solver from fvSolution -&gt; solvers -&gt; "Uext.*" (PBiCGStab/DIC,
-    // per-step relTol), one solve; zeroGradient outer BC.
-    UextEqn.solve();
-}</code></pre>
-  <p class="footnote muted center">Whole-domain harmonic solve; no submesh &mdash; the seed
-     layer is the only constraint.</p>
-</section>
-
-<!-- ===== MODEL pseudoTime — DEFINITION + SCHEMATIC ===== -->
-<section>
-  <h2>Model: <code>pseudoTime</code> &mdash; definition (Adalsteinsson&ndash;Sethian)</h2>
-  <div class="cols">
-    <div>
-      <p>March \(\mathbf{U}_{\text{ext}}\) to the steady state of a pseudo-time transport that
-         carries \(\mathbf{U}_\Sigma\) <b>outward along the normals</b> on both sides of
-         \(\Sigma\):</p>
-      \[ \frac{\partial \mathbf{U}_{\text{ext}}}{\partial\tau}
-         + \operatorname{sign}(\psi)\,(\mathbf{n}\cdot\nabla)\,\mathbf{U}_{\text{ext}}=0 \]
-      <p>Dirichlet \(\mathbf{U}_{\text{ext}}=\mathbf{U}_\Sigma\) at the interface seed layer;
-         \(n_{\text{iter}}\) pseudo-time steps set the reach. The direction
-         \(\mathbf{w}=\operatorname{sign}(\psi)\,\mathbf{n}\) flips across \(\Sigma\) and is
-         <b>not divergence-free</b> &mdash; which forces the non-conservative discretization.</p>
-    </div>
-    <div>
-      <svg viewBox="0 0 270 200" width="100%" role="img" aria-label="pseudo-time marches the interface velocity outward along w = sign(psi) n">
-        <defs>
-          <marker id="ptG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-good)"/>
-          </marker>
-          <marker id="ptW" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-warn)"/>
-          </marker>
-        </defs>
-        <line x1="135" y1="22" x2="135" y2="162" stroke="var(--ls-accent)" stroke-width="3"/>
-        <text x="127" y="18" fill="var(--ls-accent)" font-size="11">&#931;</text>
-        <text x="58"  y="180" fill="var(--ls-muted)" font-size="10" text-anchor="middle">&#968; &lt; 0</text>
-        <text x="212" y="180" fill="var(--ls-muted)" font-size="10" text-anchor="middle">&#968; &gt; 0</text>
-        <g stroke="var(--ls-line)" stroke-width="1" stroke-dasharray="4,3" stroke-opacity="0.4">
-          <line x1="100" y1="30" x2="100" y2="150"/>
-          <line x1="66"  y1="30" x2="66"  y2="150"/>
-          <line x1="170" y1="30" x2="170" y2="150"/>
-          <line x1="204" y1="30" x2="204" y2="150"/>
-        </g>
-        <text x="83"  y="42" fill="var(--ls-muted)" font-size="8" text-anchor="middle">&#964;&#8321;</text>
-        <text x="49"  y="42" fill="var(--ls-muted)" font-size="8" text-anchor="middle">&#964;&#8322;</text>
-        <text x="187" y="42" fill="var(--ls-muted)" font-size="8" text-anchor="middle">&#964;&#8321;</text>
-        <text x="221" y="42" fill="var(--ls-muted)" font-size="8" text-anchor="middle">&#964;&#8322;</text>
-        <g stroke="var(--ls-warn)" stroke-width="2" marker-end="url(#ptW)">
-          <line x1="122" y1="62"  x2="88"  y2="62"/>
-          <line x1="122" y1="140" x2="88"  y2="140"/>
-          <line x1="148" y1="62"  x2="182" y2="62"/>
-          <line x1="148" y1="140" x2="182" y2="140"/>
-        </g>
-        <text x="88"  y="56" fill="var(--ls-warn)" font-size="9" text-anchor="middle">w</text>
-        <text x="182" y="56" fill="var(--ls-warn)" font-size="9" text-anchor="middle">w</text>
-        <g stroke="var(--ls-good)" stroke-width="2.4" marker-end="url(#ptG)">
-          <line x1="132" y1="112" x2="156" y2="98"/>
-          <line x1="92"  y1="112" x2="116" y2="98" stroke-opacity="0.75"/>
-          <line x1="164" y1="112" x2="188" y2="98" stroke-opacity="0.75"/>
-        </g>
-        <text x="136" y="128" fill="var(--ls-good)" font-size="9.5">U<tspan dy="2.5" font-size="7">&#931;</tspan></text>
-        <text x="135" y="194" fill="var(--ls-muted)" font-size="9.5" text-anchor="middle">w = sign(&#968;)&#8201;n</text>
-      </svg>
-    </div>
-  </div>
-  <aside class="notes">
-    Adalsteinsson-Sethian: transport U_Sigma outward along w = sign(psi) n so it becomes
-    constant along each normal. n_iter pseudo-time steps set the reach (tau1, tau2). w flips
-    sign across Sigma and is not solenoidal -> non-conservative discretization required.
-  </aside>
-</section>
-
-<!-- ===== MODEL pseudoTime — DISCRETIZATION ===== -->
-<section>
-  <h2><code>pseudoTime</code> &mdash; discretization (UFVM, implicit backward Euler)</h2>
-  <ul class="tight">
-    <li>propagation direction \(\mathbf{w}=\operatorname{sign}(\psi)\,\mathbf{n}\);
-        flux <code>phiW = fvc::interpolate(w) &amp; Sf</code></li>
-    <li><b>non-conservative</b> advection assembled as
-        \((\mathbf{w}\!\cdot\!\nabla)\mathbf{U}_{\text{ext}}
-        = \nabla\!\cdot\!(\phi_W\mathbf{U}_{\text{ext}})
-        - \mathbf{U}_{\text{ext}}\,(\nabla\!\cdot\!\phi_W)\)
-        &mdash; needed because \(\mathbf{w}\) is not divergence-free</li>
-    <li>\(1/\Delta\tau_{\text{cell}}=\) <code>rDtau = 1/(deltaTau*V^(1/3))</code>;
-        upwind convection &rarr; stable, positive diagonal</li>
-    <li>Dirichlet <code>setValues(seedCells, U&#931;)</code>;
-        solver from <em class="tag">fvSolution &rarr; "Uext.*"</em>
-        (<code>PBiCGStab</code>/<code>DILU</code>: asymmetric, diagonally dominant
-        &rarr; ~3 iterations), one solve per iteration</li>
-  </ul>
-  \[ \tfrac{1}{\Delta\tau}\mathbf{U}_{\text{ext}}^{k+1}
-     + \big(\mathbf{w}\!\cdot\!\nabla\big)^{\text{up}}\mathbf{U}_{\text{ext}}^{k+1}
-     = \tfrac{1}{\Delta\tau}\mathbf{U}_{\text{ext}}^{k} \]
-  <p class="footnote">Source:
-     <em class="tag">src/leiaLevelSet/velocityExtension/pseudoTime.C</em>
-     &rarr; <em class="tag">pseudoTime::extend()</em>; shared seed/band/flux backbone in
-     <em class="tag">interfaceExtension.C</em>.</p>
-</section>
-
-<!-- ===== MODEL pseudoTime — VERBATIM CODE (non-conservative) ===== -->
-<section>
-  <h2><code>pseudoTime::extend()</code> &mdash; code (non-conservative)</h2>
-  <pre style="font-size:0.42em; line-height:1.15; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>void Foam::pseudoTime::extend()
-{
-    // w = sign(psi) n  (outward, NOT divergence-free)
-    forAll(w, c) w[c] = ((psi_[c] &lt; 0) ? -1.0 : 1.0)*nHat_[c];
-    const surfaceScalarField phiW("velExtPhiW", fvc::interpolate(w) &amp; mesh_.Sf());
-    forAll(rDtau, c) rDtau[c] = 1.0/(deltaTau_*Foam::pow(mesh_.V()[c], 1.0/3.0));
-
-    // NON-CONSERVATIVE: (w.grad)Uext = div(phiW,Uext) - Uext*(div phiW)
-    const volScalarField divW("velExtDivW", fvc::div(phiW));
-    for (label it = 0; it &lt; nIterations_; ++it)
-    {
-        fvVectorMatrix UextEqn
-        (
-            fvm::Sp(rDtau, Uext_)
-          + fv::gaussConvectionScheme&lt;vector&gt;
-            (mesh_, phiW, new upwind&lt;vector&gt;(mesh_, phiW)).fvmDiv(phiW, Uext_)
-          - fvm::Sp(divW, Uext_)
-         == rDtau*Uext_
-        );
-        UextEqn.setValues(fixedCells, fixedVals);  // seed Dirichlet
-        UextEqn.solve();       // solver: fvSolution "Uext.*" (PBiCGStab+DILU)
-    }
-}</code></pre>
-  <p class="footnote muted center">The <code>- fvm::Sp(divW, Uext_)</code> term converts the
-     conservative flux divergence into the advective \((\mathbf{w}\!\cdot\!\nabla)\) derivative
-     an extension needs.</p>
-</section>
-
-<!-- ==================== 14. NON-INVASIVE COUPLING ==================== -->
 <section>
   <h2>Non-invasive coupling</h2>
   <div class="cols">
@@ -922,9 +714,1617 @@ for (label corr = 0; corr &lt; nDefCorr; ++corr)
     flow reversal.
   </aside>
 </section>
-</section>  <!-- ############ /TRACK: velocity extension ############ -->
 
-<section>  <!-- ############ TRACK: verification & results ############ -->
+<!-- ==================== NEW: MODEL FAMILY MAP ==================== -->
+<section>
+  <h2>The model family &mdash; map of the seven stacks</h2>
+  <table style="width:100%; font-size:0.6em; border-collapse:collapse; margin-top:0.35em; line-height:1.35;">
+    <thead>
+      <tr style="color:var(--ls-accent); border-bottom:2px solid var(--ls-line); text-align:left;">
+        <th style="padding:0.3em 0.45em;">#</th>
+        <th style="padding:0.3em 0.45em;">model</th>
+        <th style="padding:0.3em 0.45em;">family</th>
+        <th style="padding:0.3em 0.45em;">static \(\|\hat{\mathbf{n}}\cdot\nabla\mathbf{U}_{\text{ext}}\|\) vs \(h\) (measured)</th>
+        <th style="padding:0.3em 0.45em;">one-line verdict</th>
+      </tr>
+    </thead>
+    <tbody style="color:var(--ls-fg);">
+      <tr style="border-bottom:1px solid rgba(144,164,174,0.3);">
+        <td style="padding:0.28em 0.45em; color:var(--ls-line);">1</td>
+        <td style="padding:0.28em 0.45em;"><code>none</code></td>
+        <td style="padding:0.28em 0.45em;">control (no extension)</td>
+        <td style="padding:0.28em 0.45em;">ratio \(\equiv 1\) (defines the reference)</td>
+        <td style="padding:0.28em 0.45em;" class="muted">wins only reversible, prescribed-\(\mathbf{U}\) tests</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(144,164,174,0.3);">
+        <td style="padding:0.28em 0.45em; color:var(--ls-line);">2</td>
+        <td style="padding:0.28em 0.45em;"><code>anisotropicDiffusion</code></td>
+        <td style="padding:0.28em 0.45em;">PDE &mdash; elliptic (harmonic)</td>
+        <td style="padding:0.28em 0.45em;">flat; ratio 0.55&ndash;0.72 (\(\varepsilon=c\,h\))</td>
+        <td style="padding:0.28em 0.45em;" class="muted">\(\varepsilon\)-floor &mdash; the crudest extension</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(144,164,174,0.3);">
+        <td style="padding:0.28em 0.45em; color:var(--ls-line);">3</td>
+        <td style="padding:0.28em 0.45em;"><code>pseudoTime</code></td>
+        <td style="padding:0.28em 0.45em;">PDE &mdash; pseudo-time transport</td>
+        <td style="padding:0.28em 0.45em;">flat; ratio \(\approx\) 0.47</td>
+        <td style="padding:0.28em 0.45em;" class="muted">truncated reach &mdash; a band fraction never updated</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(144,164,174,0.3);">
+        <td style="padding:0.28em 0.45em; color:var(--ls-line);">4</td>
+        <td style="padding:0.28em 0.45em;"><code>steadyUpwind</code></td>
+        <td style="padding:0.28em 0.45em;">PDE &mdash; steady transport</td>
+        <td style="padding:0.28em 0.45em;">ratio 0.11 \(\to\) 0.34, <em>degrades</em> under refinement</td>
+        <td style="padding:0.28em 0.45em;" class="muted">one solve, infinite reach &mdash; seed noise survives</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(144,164,174,0.3);">
+        <td style="padding:0.28em 0.45em; color:var(--ls-line);">5</td>
+        <td style="padding:0.28em 0.45em;"><code>steadyUpwindLinear</code></td>
+        <td style="padding:0.28em 0.45em;">PDE &mdash; extrapolation cascade</td>
+        <td style="padding:0.28em 0.45em;" class="warn"><b>diverges</b> (\(e\sim10^{1}\!-\!10^{2}\))</td>
+        <td style="padding:0.28em 0.45em;" class="warn">the honest negative result</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(144,164,174,0.3);">
+        <td style="padding:0.28em 0.45em; color:var(--ls-line);">6</td>
+        <td style="padding:0.28em 0.45em;"><code>closestPoint</code></td>
+        <td style="padding:0.28em 0.45em;">geometric (foot point)</td>
+        <td style="padding:0.28em 0.45em;" class="good"><b>\(\approx O(h^2)\)</b>; ratio \(\to 10^{-3}\)</td>
+        <td style="padding:0.28em 0.45em;" class="good">the only convergent model</td>
+      </tr>
+      <tr>
+        <td style="padding:0.28em 0.45em; color:var(--ls-line);">7</td>
+        <td style="padding:0.28em 0.45em;"><code>meshWave</code></td>
+        <td style="padding:0.28em 0.45em;">wave &mdash; nearest seed (FMM analogue)</td>
+        <td style="padding:0.28em 0.45em;">flat; ratio 0.16&ndash;0.19 (\(O(h)\))</td>
+        <td style="padding:0.28em 0.45em;" class="good">robust parallel default</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="footnote muted" style="margin-top:0.55em">Static \(t=0\) harness (Part 3):
+     volume-weighted norms of \(e=|\hat{\mathbf{n}}\cdot\nabla\mathbf{U}_{\text{ext}}|\) over
+     \(|\psi|\le 3h\); &ldquo;ratio&rdquo; = \(\|e\|/\|e_{\text{raw}}\|\).
+     <b>Didactic chain of the stacks</b>: elliptic smears (2) &rarr; transport it instead (3)
+     &rarr; give the transport infinite reach (4) &rarr; try second order (5, diverges)
+     &rarr; drop the PDE, use geometry (6, converges) &rarr; make geometry parallel-robust (7).
+     Each stack below: motivation &rarr; model &rarr; discretization &rarr; code &rarr; verdict.</p>
+  <aside class="notes">
+    The map is the reading guide: three families (PDE transport, geometric, wave) plus the
+    control. The measured static column is the punchline of Part 3, placed here so every
+    per-model stack can be read against it. The chain framing is genuinely how the models
+    were developed: each one fixes the measured failure of the previous one.
+  </aside>
+</section>
+</section>  <!-- ############ /overview column ############ -->
+
+<section data-track="Velocity extension &mdash; the models">  <!-- ##### STACK model 1/7: none ##### -->
+<!-- ===== none 1: MOTIVATION ===== -->
+<section>
+  <p class="part-kicker">Part 2 &middot; model 1 of 7</p>
+  <h2>Model <code>none</code> &mdash; motivation: the control</h2>
+  <div class="cols">
+    <div>
+      <p>Every extension model <b>replaces</b> the advecting flux with an approximation.
+         Before trusting any of them, measure the control: what does
+         <em>doing nothing</em> buy &mdash; and what does it cost?</p>
+      <ul class="tight">
+        <li class="good"><b>Buys:</b> \(\psi\) advected with the <b>exact prescribed flux</b>
+            \(\phi\), discretely (near-)divergence-free &rArr; stable, conservative &mdash;
+            the best transport a prescribed field admits.</li>
+        <li class="warn"><b>Costs:</b> \((\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}\neq0\):
+            level-set spacing distorts, \(|\nabla\psi|\) drifts like
+            \(e^{\int\!\text{strain}\,dt}\).</li>
+        <li class="muted">Also the harness validator: its error ratio must be
+            <b>exactly 1</b> by definition.</li>
+      </ul>
+    </div>
+    <div>
+      <svg viewBox="0 0 280 210" width="92%" role="img" aria-label="model none is the identity bypass in the extension pipeline">
+        <defs>
+          <marker id="noP" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-line)"/>
+          </marker>
+        </defs>
+        <g font-size="11" text-anchor="middle">
+          <rect x="60" y="10" width="160" height="36" rx="6" fill="none" stroke="var(--ls-warn)" stroke-width="1.5"/>
+          <text x="140" y="25" fill="var(--ls-fg)">velocityModel</text>
+          <text x="140" y="39" fill="var(--ls-muted)" font-size="9.5">U, &#966;  (&#8711;&middot;&#966; &#8776; 0, exact)</text>
+
+          <rect x="60" y="80" width="160" height="40" rx="6" fill="none" stroke="var(--ls-muted)" stroke-width="1.4" stroke-dasharray="5,4"/>
+          <text x="140" y="96" fill="var(--ls-muted)">velocityExtension: none</text>
+          <text x="140" y="111" fill="var(--ls-accent)" font-size="9.5" font-family="monospace">Uext == U;  phiExt == phi;</text>
+
+          <rect x="60" y="156" width="160" height="36" rx="6" fill="none" stroke="var(--ls-accent)" stroke-width="1.6"/>
+          <text x="140" y="171" fill="var(--ls-fg)">&#968;-equation</text>
+          <text x="140" y="186" fill="var(--ls-muted)" font-size="9.5" font-family="monospace">fvm::div(velExt-&gt;phi(), psi)</text>
+
+          <g stroke="var(--ls-line)" stroke-width="1.4">
+            <line x1="140" y1="46" x2="140" y2="78" marker-end="url(#noP)"/>
+            <line x1="140" y1="120" x2="140" y2="154" marker-end="url(#noP)"/>
+          </g>
+          <text x="140" y="206" fill="var(--ls-good)" font-size="9.5">identity: exact flux in = exact flux out</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+  <aside class="notes">
+    Every measured claim about the extensions is a claim relative to this model. none is
+    also the identity element of the design: the solver pipeline is unchanged, the
+    extension stage merely re-syncs the registry fields. The costs bullet is the whole
+    reason velocity extension exists (Part 2 opening slide).
+  </aside>
+</section>
+
+<!-- ===== none 2: MODEL + DISCRETIZATION ===== -->
+<section>
+  <h2><code>none</code> &mdash; model &amp; discretization</h2>
+  <p>The identity correction &mdash; no extension field is constructed:</p>
+  \[ \mathbf{U}_{\text{ext}} = \mathbf{U}, \qquad \phi_{\text{ext}} = \phi \]
+  <ul class="tight">
+    <li><b>No linear system.</b> <code>correct()</code> re-syncs the registry fields each
+        step (after the oscillation rescaling of \(\mathbf{U}\), \(\phi\)):
+        <code>Uext == U; phiExt == phi;</code></li>
+    <li>The \(\psi\)-equation advects with <code>velExt-&gt;phi()</code> &mdash; here the
+        exact prescribed flux. \(\nabla\!\cdot\!\phi\approx0\) discretely &rArr; the
+        compression term \(-\texttt{fvm::Sp}(\nabla\!\cdot\!\phi,\psi)\) vanishes
+        (verified: identical to machine precision).</li>
+    <li><b>Guaranteed extension property: none.</b>
+        \((\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}_{\text{ext}}
+        =(\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}\) &mdash; the static ratio is
+        \(\equiv 1\), which is exactly what makes it the reference.</li>
+  </ul>
+  <p class="footnote">Source &mdash; the base class itself, registered as type
+     <code>none</code>: <em class="tag">src/leiaLevelSet/velocityExtension/velocityExtension.C</em>
+     &rarr; <em class="tag">velocityExtension::correct()</em>.</p>
+  <aside class="notes">
+    Design detail worth telling numericists: phiExt is NAMED "phi" but unregistered, so
+    fvm::div(phiExt, psi) picks up the existing div(phi,psi) scheme from fvSchemes without
+    clashing with the registered phi. That trick is reused by the Aslam cascade later.
+  </aside>
+</section>
+
+<!-- ===== none 3: IMPLEMENTATION (shared psi advection) ===== -->
+<section>
+  <h2><code>none</code> &mdash; code (the \(\psi\) advection all models feed)</h2>
+  <pre style="font-size:0.44em; line-height:1.2; background:rgba(255,255,255,0.04); padding:0.6em; border-radius:6px;"><code>// non-invasive: U/phi are never mutated; advect psi with velExt-&gt;phi().
+// For "none", correct() simply re-syncs:  Uext == U;  phiExt == phi;
+velExt-&gt;correct();
+
+// The level set obeys the ADVECTIVE law Dpsi/Dt = 0, not a conservation law:
+// a normal-constant extension velocity is generically NOT solenoidal
+// (div(v0*n) = v0*kappa), so assemble (v.grad)psi exactly:
+//   (v.grad)psi = div(phiExt psi) - psi (div phiExt).
+const volScalarField divPhiExt("divPhiExt", fvc::div(velExt-&gt;phi()));
+
+// Defect-correction loop: each pass re-assembles with the LATEST psi so the
+// deferred (linearUpwind - upwind) correction converges (~2-3 passes -&gt; 2nd
+// order). Safe: fvm::ddt reuses psi.oldTime(), fixed within the step.
+const label nDefCorr =
+    runTime.controlDict().getOrDefault&lt;label&gt;("nDefCorr", 2);
+
+for (label corr = 0; corr &lt; nDefCorr; ++corr)
+{
+    fvScalarMatrix psiEqn
+    (
+        fvm::ddt(psi)
+      + fvm::div(velExt-&gt;phi(), psi)     // Gauss linearUpwind grad(psi)
+      - fvm::Sp(divPhiExt, psi)          // advective (non-conservative) form
+     ==
+        source-&gt;fvmsdplsSource(psi, U)
+    );
+
+    psiEqn.solve();
+}</code></pre>
+  <p class="footnote muted center">
+     <em class="tag">applications/solvers/leiaLevelSetFoam/leiaLevelSetFoam.C</em>.
+     <code>grad(psi)</code> = <code>cellLimited leastSquares 1</code>;
+     <code>div(phi,psi)</code> = <code>Gauss linearUpwind grad(psi)</code>.
+     For <code>none</code>, \(\nabla\!\cdot\!\phi\approx0\) &rArr; the Sp term vanishes
+     (verified: results identical to machine precision).</p>
+</section>
+
+<!-- ===== none 4: VERDICT ===== -->
+<section>
+  <h2><code>none</code> &mdash; measured verdict</h2>
+  <ul class="tight">
+    <li><b>Static:</b> ratio \(\equiv1\) &mdash; validates the harness exactly.</li>
+    <li><b>Reversed vortex</b> (\(T{=}2\), \(N{=}256\); band grad / volume):
+        <b>0.070 / 2\(\times\)10<sup>-4</sup></b> &mdash; the best final-time numbers of
+        all seven models.</li>
+    <li class="warn"><b>But the benchmark flatters it:</b> band \(L_2\) = <b>1.67</b> at
+        \(t=T/2\) vs <b>0.0013</b> at \(t=T\) &mdash; a \(\sim\)1300&times; reversibility
+        cancellation. At maximal deformation <code>none</code> is the <b>worst</b> model at
+        every \(T\le4\); the extensions hold the band 6&ndash;15&times; tighter.</li>
+    <li class="warn"><b>Steady (non-reversing) vortex, \(T{=}3\):</b> never wins &mdash;
+        worst band error from \(t=0\), fastest \(\min|\nabla\psi|\) flattening, and the
+        first to annihilate the interface (\(h{=}1/64\): \(t\approx2.65\);
+        <code>meshWave</code> 2.85; the other four reach \(T{=}3\)).</li>
+    <li class="good"><b>Verdict:</b> the indispensable control &mdash; and a defensible
+        <em>choice</em> only when \(\mathbf{U}\) is prescribed <em>and</em> the scenario
+        effectively reverses.</li>
+  </ul>
+  <aside class="notes">
+    The final-time reading rewards reversible transport distortion; the half-time and
+    non-reversing readings expose it. Keep this asymmetry in mind: it frames every
+    per-model verdict that follows.
+  </aside>
+</section>
+</section>  <!-- ##### /STACK none ##### -->
+
+<section data-track="Velocity extension &mdash; the models">  <!-- ##### STACK model 2/7: anisotropicDiffusion ##### -->
+<!-- ===== aniso 1: MOTIVATION ===== -->
+<section>
+  <p class="part-kicker">Part 2 &middot; model 2 of 7</p>
+  <h2>Model <code>anisotropicDiffusion</code> &mdash; motivation</h2>
+  <div class="cols">
+    <div>
+      <p><b>Problem:</b> propagate \(\mathbf{U}_\Sigma\) off \(\Sigma\) so it stops varying
+         along \(\hat{\mathbf{n}}\) &mdash; using only machinery a FVM code already owns.</p>
+      <p><b>Idea: one elliptic solve.</b> Diffusion with
+         \(\mathbf{D}=\hat{\mathbf{n}}\otimes\hat{\mathbf{n}}+\varepsilon\mathbf{I}\)
+         conducts strongly <b>along</b> each normal ray and only
+         \(\varepsilon\)-weakly across: its steady state equalizes
+         \(\mathbf{U}_{\text{ext}}\) along the rays.</p>
+      <p class="muted">Regularized normal-aligned harmonic extension (source header credits
+         Kummer). One <code>fvm::laplacian</code>, standard symmetric solvers, max
+         principle &rArr; bounded by the seed data.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 260 205" width="100%" role="img" aria-label="diffusion ellipse D = n outer n + eps I aligned with the interface normal: strong coupling along n, weak tangential">
+        <defs>
+          <marker id="anA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-good)"/>
+          </marker>
+          <marker id="anB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-warn)"/>
+          </marker>
+        </defs>
+        <!-- interface (vertical, slightly curved) -->
+        <path d="M62,12 Q46,100 62,192" fill="none" stroke="var(--ls-accent)" stroke-width="3"/>
+        <text x="52" y="12" fill="var(--ls-accent)" font-size="11">&#931;</text>
+        <!-- normal rays -->
+        <g stroke="var(--ls-line)" stroke-width="1" stroke-dasharray="4,3" stroke-opacity="0.45">
+          <line x1="54" y1="55"  x2="240" y2="47"/>
+          <line x1="51" y1="100" x2="240" y2="100"/>
+          <line x1="54" y1="145" x2="240" y2="153"/>
+        </g>
+        <!-- normal arrow -->
+        <line x1="51" y1="100" x2="86" y2="100" stroke="var(--ls-warn)" stroke-width="2.2" marker-end="url(#anB)"/>
+        <text x="72" y="92" fill="var(--ls-warn)" font-size="10">n&#770;</text>
+        <!-- diffusion ellipse at a band cell -->
+        <ellipse cx="162" cy="100" rx="54" ry="13" fill="var(--ls-liquid)" fill-opacity="0.14"
+                 stroke="var(--ls-fg)" stroke-width="1.3"/>
+        <circle cx="162" cy="100" r="2.6" fill="var(--ls-fg)"/>
+        <!-- strong axis (double arrow along n) -->
+        <line x1="120" y1="100" x2="152" y2="100" stroke="var(--ls-good)" stroke-width="2.2" marker-end="url(#anA)"/>
+        <line x1="204" y1="100" x2="172" y2="100" stroke="var(--ls-good)" stroke-width="2.2" marker-end="url(#anA)"/>
+        <text x="162" y="133" fill="var(--ls-good)" font-size="9.5" text-anchor="middle">1+&#949; along n&#770; &mdash; strong</text>
+        <!-- weak axis -->
+        <g stroke="var(--ls-muted)" stroke-width="1.4" stroke-dasharray="3,2.5">
+          <line x1="162" y1="86" x2="162" y2="72"/>
+          <line x1="162" y1="114" x2="162" y2="121"/>
+        </g>
+        <text x="168" y="70" fill="var(--ls-muted)" font-size="9.5">&#949; along &#931; &mdash; weak</text>
+        <text x="150" y="176" fill="var(--ls-muted)" font-size="9.5" text-anchor="middle">D = n&#770;&#8855;n&#770; + &#949;I: steady diffusion &#8658;</text>
+        <text x="150" y="189" fill="var(--ls-muted)" font-size="9.5" text-anchor="middle">U<tspan dy="2.5" font-size="7">ext</tspan><tspan dy="-2.5"> equalized on each normal ray</tspan></text>
+      </svg>
+    </div>
+  </div>
+  <aside class="notes">
+    The picture is the whole model: a diffusion ellipse with its long axis glued to the
+    local interface normal. In the limit eps -&gt; 0 diffusion acts ONLY along rays, so the
+    steady state is ray-wise constant = the extension property. eps regularizes the
+    tangential (and 2D-empty) directions so the operator stays uniformly elliptic.
+  </aside>
+</section>
+
+<!-- ===== aniso 2: THE MODEL ===== -->
+<section>
+  <h2><code>anisotropicDiffusion</code> &mdash; the model</h2>
+  \[ \nabla\!\cdot\!\big(\mathbf{D}\,\nabla\mathbf{U}_{\text{ext}}\big)=\mathbf{0},
+     \qquad \mathbf{D}=\hat{\mathbf{n}}\otimes\hat{\mathbf{n}}+\varepsilon\,\mathbf{I},
+     \qquad \mathbf{U}_{\text{ext}}\big|_{\text{seed}}=\mathbf{U}_\Sigma \]
+  <ul class="tight">
+    <li><b>Why it extends:</b> as \(\varepsilon\!\to\!0\) the solve minimizes
+        \(\int_\Omega\big|(\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}_{\text{ext}}\big|^2\mathrm{d}V\)
+        &mdash; the normal-constancy defect itself is the Dirichlet energy of
+        \(\mathbf{n}\otimes\mathbf{n}\)-diffusion.</li>
+    <li><b>Guarantee:</b> \((\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\) only
+        <b>approximately</b>: the interior error is <em>linear</em> in \(\varepsilon\)
+        (regular perturbation) &rArr; any fixed \(\varepsilon\) is an
+        \(h\)-independent error floor.</li>
+    <li class="warn"><b>Failure modes:</b> (i) the \(\varepsilon\)-floor;
+        (ii) even with \(\varepsilon=c\,h\), the discrete cross-diffusion of a
+        near-rank-1 tensor Laplacian is itself \(\sim h\) (Droniou M3AS 24 (2014)) &mdash;
+        the model cannot get below it; (iii) one-sided error (out/in \(\approx2.7\)):
+        outside a convex \(\Sigma\) the rays <em>diverge</em> and under-constrain the
+        exterior.</li>
+    <li class="good"><b>Safety:</b> elliptic max principle &mdash;
+        \(|\mathbf{U}_{\text{ext}}|\) is bounded by the seed data. This model is never
+        unstable, merely inconsistent.</li>
+  </ul>
+  <aside class="notes">
+    The energy view is the cleanest way to see both the strength (a variational
+    characterization of the extension property) and the weakness (eps trades
+    well-posedness against consistency linearly, and the discretization of the rank-1
+    limit adds its own O(h) cross-diffusion).
+  </aside>
+</section>
+
+<!-- ===== aniso 3: DISCRETIZATION ===== -->
+<section>
+  <h2><code>anisotropicDiffusion</code> &mdash; discretization (UFVM)</h2>
+  <ul class="tight">
+    <li>\(\hat{\mathbf{n}}=\nabla\psi/|\nabla\psi|\) (least-squares gradient);
+        \(\mathbf{D}=\) <code>sqr(nHat) + eps*I</code> as a
+        <code>volSymmTensorField</code>; <em class="tag">epsilonModel cellSize</em>:
+        \(\varepsilon_c=\varepsilon\,h_c\) (the measured configuration;
+        <em class="tag">fixed</em> = legacy \(h\)-independent floor)</li>
+    <li>implicit anisotropic Laplacian <code>fvm::laplacian(D, Uext)</code>:
+        face sum \(\sum_f\mathbf{D}_f(\nabla\mathbf{U}_{\text{ext}})_f\!\cdot\!\mathbf{S}_f\)
+        (Gauss linear \(\mathbf{D}_f\), orthogonal <code>snGrad</code>)</li>
+    <li>interface Dirichlet <b>in the assembled matrix</b>:
+        <code>fvMatrix::setValues(seedCells, U&#931;)</code> &mdash; row := identity,
+        RHS := seed value; <b>no submesh</b>; <code>nAnchorLayers</code> extra pinned
+        layers available (measured default <b>0</b>)</li>
+    <li>whole-domain solve, zeroGradient outer BC; the shared \(C^1\) cosine fade
+        (<em class="tag">updateFlux</em>) blends \(\mathbf{U}_{\text{ext}}\!\to\!\mathbf{U}\)
+        beyond the band</li>
+    <li>solver from <em class="tag">fvSolution &rarr; "Uext.*"</em>:
+        <code>PBiCGStab</code>/<code>DIC</code> with a <b>per-step relative tolerance</b>
+        (previous \(\mathbf{U}_{\text{ext}}\) = initial guess) &mdash; a tight absolute
+        tolerance costs ~430 iterations/solve for no accuracy gain; GAMG stalls on the
+        near-rank-1 \(\mathbf{D}\)</li>
+  </ul>
+  \[ \sum_{f}\, \mathbf{D}_f\,\big(\nabla\mathbf{U}_{\text{ext}}\big)_f\!\cdot\!\mathbf{S}_f = \mathbf{0},
+     \qquad \mathbf{U}_{\text{ext}}|_{\text{seed}}=\mathbf{U}_\Sigma \]
+  <p class="footnote">Source:
+     <em class="tag">src/leiaLevelSet/velocityExtension/anisotropicDiffusion.C</em>
+     &rarr; <em class="tag">anisotropicDiffusion::extend()</em>; shared seed/band/flux
+     backbone in <em class="tag">interfaceExtension.C</em>.</p>
+</section>
+
+<!-- ===== aniso 4: CODE ===== -->
+<section>
+  <h2><code>anisotropicDiffusion::extend()</code> &mdash; code</h2>
+  <pre style="font-size:0.44em; line-height:1.18; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>void Foam::anisotropicDiffusion::extend()
+{
+    // eps: 'fixed' (h-independent error floor) or 'cellSize': eps_c = eps*h_c
+    volScalarField eps(IOobject("velExtEps", /* ... */),
+        mesh_, dimensionedScalar("eps", dimless, epsilon_));
+    if (epsilonModel_ == "cellSize")
+    {
+        forAll(eps, c) { eps[c] = epsilon_*cellSize_[c]; }
+    }
+
+    // D = n (x) n + eps I: conduct along the normal, eps across
+    volSymmTensorField D(IOobject("velExtD", /* ... */),
+        sqr(nHat_) + eps*dimensionedSymmTensor("I", dimless, symmTensor::I));
+
+    fvVectorMatrix UextEqn(fvm::laplacian(D, Uext_));
+
+    // Dirichlet ONLY at the interface seed layer, directly in the matrix:
+    forAll(seedCells_, i)
+    {
+        fixedCells.append(seedCells_[i]);
+        fixedVals.append(Uext_[seedCells_[i]]);   // = U_Sigma (foot-pointed)
+    }
+    UextEqn.setValues(fixedCells, fixedVals);
+
+    // fvSolution "Uext.*": PBiCGStab/DIC, per-step relTol (prev Uext = guess)
+    UextEqn.solve();
+}</code></pre>
+  <p class="footnote muted center">Line 3&ndash;8: \(\varepsilon_c=\varepsilon h_c\) is the
+     consistency fix &mdash; line 11: the ellipse of the motivation sketch &mdash;
+     line 17&ndash;22: seeds enter as matrix rows, <b>no submesh</b> &mdash; line 25: solver
+     controls live in the case dictionary, never in C++.</p>
+</section>
+
+<!-- ===== aniso 5: VERDICT ===== -->
+<section>
+  <h2><code>anisotropicDiffusion</code> &mdash; measured verdict</h2>
+  <ul class="tight">
+    <li><b>Static:</b> ratio 0.55&ndash;0.72, <b>flat</b> in \(h\) even with
+        \(\varepsilon=c\,h\) &mdash; the \(\sim h\) cross-diffusion of the near-rank-1
+        Laplacian dominates; a fixed \(\varepsilon\) is strictly worse (pure floor).</li>
+    <li><b>One-sidedness:</b> exterior \(L_2\) \(\approx2.7\times\) the interior,
+        \(h\)-independent &mdash; the diverging-rays mechanism, measured.</li>
+    <li><b>Anchoring swept</b> (<code>nAnchorLayers</code> 0/1/2): <b>refuted</b> &mdash;
+        \(L_2\) changes &lt;3%, \(L_\infty\) <em>worsens</em> (10.0\(\to\)13.1 at
+        \(N{=}256\)); default stays 0.</li>
+    <li><b>Reversed vortex</b> (\(T{=}2\), \(N{=}256\)): 0.125 / 2.6% &mdash; the largest
+        band-gradient <em>and</em> volume errors of the healthy family.</li>
+    <li><b>Steady vortex:</b> loses volume fastest (strong smoothing near high
+        curvature).</li>
+    <li class="warn"><b>Verdict:</b> simple, bounded, max-principle safe &mdash; but the
+        <b>crudest</b> extension: its regularization floor is intrinsic, not a tuning
+        problem.</li>
+  </ul>
+  <aside class="notes">
+    The anchoring sweep is worth a sentence in the talk: the hypothesis (seed-stencil
+    kinks dominate) was plausible and cheap to test, and the measurement killed it --
+    more pinned interpolated data means more local gradients, so Linf grows.
+  </aside>
+</section>
+</section>  <!-- ##### /STACK anisotropicDiffusion ##### -->
+
+<section data-track="Velocity extension &mdash; the models">  <!-- ##### STACK model 3/7: pseudoTime ##### -->
+<!-- ===== pseudoTime 1: MOTIVATION ===== -->
+<section>
+  <p class="part-kicker">Part 2 &middot; model 3 of 7</p>
+  <h2>Model <code>pseudoTime</code> &mdash; motivation (Adalsteinsson&ndash;Sethian)</h2>
+  <div class="cols">
+    <div>
+      <p><b>Problem:</b> the elliptic extension smears tangentially and floors at
+         \(\varepsilon\). The extension property is a statement about <b>transport along
+         rays</b> &mdash; so discretize it as transport.</p>
+      <p><b>Idea:</b> carry \(\mathbf{U}_\Sigma\) outward along the characteristics
+         \(\mathbf{w}=\operatorname{sign}(\psi)\hat{\mathbf{n}}\), marching a pseudo-time
+         PDE towards its steady state. Upwinding respects the causality: information flows
+         <em>from</em> \(\Sigma\) <em>outward</em>, front by front.</p>
+      <p class="footnote muted">Adalsteinsson &amp; Sethian JCP 148 (1999); PDE form with
+         \(\operatorname{sign}(\psi)\): Peng et&nbsp;al. JCP 155 (1999).</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 270 210" width="100%" role="img" aria-label="pseudo-time marches the interface velocity outward along w = sign(psi) n, with truncated reach inside the band">
+        <defs>
+          <marker id="ptG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-good)"/>
+          </marker>
+          <marker id="ptW" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-warn)"/>
+          </marker>
+        </defs>
+        <!-- unreached band fraction (shaded) -->
+        <rect x="30" y="30" width="36" height="120" fill="var(--ls-warn)" fill-opacity="0.10"/>
+        <rect x="204" y="30" width="36" height="120" fill="var(--ls-warn)" fill-opacity="0.10"/>
+        <!-- band edges -->
+        <g stroke="var(--ls-fg)" stroke-width="1" stroke-dasharray="6,3" stroke-opacity="0.55">
+          <line x1="30"  y1="30" x2="30"  y2="150"/>
+          <line x1="240" y1="30" x2="240" y2="150"/>
+        </g>
+        <text x="30"  y="24" fill="var(--ls-muted)" font-size="8.5" text-anchor="middle">band edge (3h)</text>
+        <text x="240" y="24" fill="var(--ls-muted)" font-size="8.5" text-anchor="middle">band edge (3h)</text>
+        <!-- interface -->
+        <line x1="135" y1="26" x2="135" y2="155" stroke="var(--ls-accent)" stroke-width="3"/>
+        <text x="127" y="20" fill="var(--ls-accent)" font-size="11">&#931;</text>
+        <text x="58"  y="168" fill="var(--ls-muted)" font-size="10" text-anchor="middle">&#968; &lt; 0</text>
+        <text x="212" y="168" fill="var(--ls-muted)" font-size="10" text-anchor="middle">&#968; &gt; 0</text>
+        <!-- pseudo-time fronts -->
+        <g stroke="var(--ls-line)" stroke-width="1" stroke-dasharray="4,3" stroke-opacity="0.5">
+          <line x1="100" y1="34" x2="100" y2="146"/>
+          <line x1="66"  y1="34" x2="66"  y2="146"/>
+          <line x1="170" y1="34" x2="170" y2="146"/>
+          <line x1="204" y1="34" x2="204" y2="146"/>
+        </g>
+        <text x="117" y="42" fill="var(--ls-muted)" font-size="8" text-anchor="middle">&#964;&#8321;</text>
+        <text x="83"  y="42" fill="var(--ls-muted)" font-size="8" text-anchor="middle">&#964;&#8322;</text>
+        <text x="152" y="42" fill="var(--ls-muted)" font-size="8" text-anchor="middle">&#964;&#8321;</text>
+        <text x="186" y="42" fill="var(--ls-muted)" font-size="8" text-anchor="middle">&#964;&#8322;</text>
+        <!-- w arrows -->
+        <g stroke="var(--ls-warn)" stroke-width="2" marker-end="url(#ptW)">
+          <line x1="122" y1="62"  x2="88"  y2="62"/>
+          <line x1="122" y1="132" x2="88"  y2="132"/>
+          <line x1="148" y1="62"  x2="182" y2="62"/>
+          <line x1="148" y1="132" x2="182" y2="132"/>
+        </g>
+        <text x="88"  y="56" fill="var(--ls-warn)" font-size="9" text-anchor="middle">w</text>
+        <text x="182" y="56" fill="var(--ls-warn)" font-size="9" text-anchor="middle">w</text>
+        <!-- seed velocity -->
+        <g stroke="var(--ls-good)" stroke-width="2.4" marker-end="url(#ptG)">
+          <line x1="130" y1="106" x2="154" y2="92"/>
+        </g>
+        <text x="134" y="122" fill="var(--ls-good)" font-size="9.5">U<tspan dy="2.5" font-size="7">&#931;</tspan></text>
+        <!-- reach annotation -->
+        <text x="135" y="186" fill="var(--ls-warn)" font-size="9.5" text-anchor="middle">reach = n<tspan dy="2.5" font-size="7">iter</tspan><tspan dy="-2.5">&#8201;&#916;&#964; (study: 10&#215;0.2 = 2h) &lt; 3h band</tspan></text>
+        <text x="135" y="201" fill="var(--ls-muted)" font-size="9" text-anchor="middle">w = sign(&#968;)&#8201;n&#770; &mdash; shaded cells are NEVER updated</text>
+      </svg>
+    </div>
+  </div>
+  <aside class="notes">
+    The transport view is the classical one. The sketch already contains the model's
+    measured failure: the fronts advance one front per pseudo-step, and with the study
+    settings the total reach is 2 cells inside a 3-cell band -- the shaded fraction keeps
+    the RAW velocity forever, which is why the static ratio pins at 0.47 regardless of h.
+  </aside>
+</section>
+
+<!-- ===== pseudoTime 2: THE MODEL ===== -->
+<section>
+  <h2><code>pseudoTime</code> &mdash; the model</h2>
+  \[ \frac{\partial \mathbf{U}_{\text{ext}}}{\partial\tau}
+     + \operatorname{sign}(\psi)\,(\hat{\mathbf{n}}\cdot\nabla)\,\mathbf{U}_{\text{ext}}=\mathbf{0},
+     \qquad \mathbf{U}_{\text{ext}}\big|_{\text{seed}}=\mathbf{U}_\Sigma \]
+  <ul class="tight">
+    <li><b>Why it extends:</b> the steady state satisfies
+        \((\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\) wherever the march has
+        arrived; the characteristics of
+        \(\mathbf{w}=\operatorname{sign}(\psi)\hat{\mathbf{n}}\) all leave \(\Sigma\), so
+        Dirichlet data at the seed layer determines everything downstream.</li>
+    <li class="warn"><b>Failure mode 1 &mdash; truncated reach:</b> \(n_{\text{iter}}\)
+        steps of size \(\Delta\tau\) advance \(\approx n_{\text{iter}}\Delta\tau\) cells;
+        anything farther keeps the raw velocity. A <em>fixed fraction</em> of the band is
+        never extended &mdash; inconsistency by construction.</li>
+    <li class="warn"><b>Failure mode 2 &mdash; \(\mathbf{w}\) is not solenoidal:</b>
+        \(\nabla\!\cdot\!(\operatorname{sign}(\psi)\hat{\mathbf{n}})
+        =\operatorname{sign}(\psi)\,\kappa\) + a jump at \(\Sigma\). A conservative
+        discretization adds the spurious compression
+        \(\mathbf{U}_{\text{ext}}\nabla\!\cdot\!\mathbf{w}\) &mdash; the historical
+        \(\sim\!10^{108}\) blow-up of this very model. The cure is the
+        <b>non-conservative</b> (advective) assembly.</li>
+  </ul>
+  <p class="footnote muted">Same lesson as the \(\psi\)-equation: extension PDEs transport
+     <em>values</em>, they do not conserve fluxes &mdash; discretize
+     \((\mathbf{w}\!\cdot\!\nabla)\), never \(\nabla\!\cdot\!(\mathbf{w}\,\cdot)\), when
+     \(\nabla\!\cdot\!\mathbf{w}\neq0\).</p>
+  <aside class="notes">
+    Two independent failure modes: one of consistency (reach), one of stability
+    (conservative form of a non-solenoidal transport). The second was fixed and is part of
+    the Conclusions story; the first is intrinsic to pseudo-time marching and motivates the
+    next stack (steadyUpwind).
+  </aside>
+</section>
+
+<!-- ===== pseudoTime 3: DISCRETIZATION ===== -->
+<section>
+  <h2><code>pseudoTime</code> &mdash; discretization (UFVM, implicit backward Euler)</h2>
+  <ul class="tight">
+    <li>propagation flux <code>phiW = fvc::interpolate(w) &amp; Sf</code>,
+        \(\mathbf{w}=\operatorname{sign}(\psi)\hat{\mathbf{n}}\)</li>
+    <li><b>non-conservative</b> advection assembled as
+        \((\mathbf{w}\!\cdot\!\nabla)\mathbf{U}_{\text{ext}}
+        = \nabla\!\cdot\!(\phi_W\mathbf{U}_{\text{ext}})
+        - \mathbf{U}_{\text{ext}}\,(\nabla\!\cdot\!\phi_W)\) &mdash;
+        <code>fvmDiv(phiW, Uext) - fvm::Sp(divW, Uext)</code></li>
+    <li>local pseudo-time step: \(1/\Delta\tau_c=\) <code>1/(deltaTau*cellSize)</code>
+        [1/length] &mdash; a CFL-like fraction of the local cell size; <b>upwind</b>
+        convection &rArr; positive diagonal, unconditionally stable march</li>
+    <li>Dirichlet seeds <code>setValues(seedCells, U&#931;)</code> re-imposed every
+        iteration; \(n_{\text{iter}}\) outer solves</li>
+    <li>solver from <em class="tag">fvSolution &rarr; "Uext.*"</em>:
+        <code>PBiCGStab</code>/<code>DILU</code> &mdash; asymmetric but diagonally
+        dominant, ~3 iterations per march step</li>
+  </ul>
+  \[ \tfrac{1}{\Delta\tau}\mathbf{U}_{\text{ext}}^{k+1}
+     + \big(\mathbf{w}\!\cdot\!\nabla\big)^{\text{up}}\mathbf{U}_{\text{ext}}^{k+1}
+     = \tfrac{1}{\Delta\tau}\mathbf{U}_{\text{ext}}^{k},
+     \qquad k = 0,\dots,n_{\text{iter}}-1 \]
+  <p class="footnote">Source:
+     <em class="tag">src/leiaLevelSet/velocityExtension/pseudoTime.C</em>
+     &rarr; <em class="tag">pseudoTime::extend()</em>; shared seed/band/flux backbone in
+     <em class="tag">interfaceExtension.C</em>.</p>
+</section>
+
+<!-- ===== pseudoTime 4: CODE ===== -->
+<section>
+  <h2><code>pseudoTime::extend()</code> &mdash; code (non-conservative)</h2>
+  <pre style="font-size:0.42em; line-height:1.15; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>void Foam::pseudoTime::extend()
+{
+    // w = sign(psi) n  (outward, NOT divergence-free)
+    forAll(w, c) w[c] = ((psi_[c] &lt; 0) ? -1.0 : 1.0)*nHat_[c];
+    const surfaceScalarField phiW("velExtPhiW", fvc::interpolate(w) &amp; mesh_.Sf());
+    forAll(rDtau, c) rDtau[c] = 1.0/(deltaTau_*cellSize_[c]);
+
+    // NON-CONSERVATIVE: (w.grad)Uext = div(phiW,Uext) - Uext*(div phiW)
+    const volScalarField divW("velExtDivW", fvc::div(phiW));
+    for (label it = 0; it &lt; nIterations_; ++it)
+    {
+        fvVectorMatrix UextEqn
+        (
+            fvm::Sp(rDtau, Uext_)
+          + fv::gaussConvectionScheme&lt;vector&gt;
+            (mesh_, phiW, new upwind&lt;vector&gt;(mesh_, phiW)).fvmDiv(phiW, Uext_)
+          - fvm::Sp(divW, Uext_)
+         == rDtau*Uext_
+        );
+        UextEqn.setValues(fixedCells, fixedVals);  // seed Dirichlet
+        UextEqn.solve();       // solver: fvSolution "Uext.*" (PBiCGStab+DILU)
+    }
+}</code></pre>
+  <p class="footnote muted center">Line 14/17: implicit Euler diagonal + upwind convection
+     matrix. The <code>- fvm::Sp(divW, Uext_)</code> term converts the conservative flux
+     divergence into the advective \((\mathbf{w}\!\cdot\!\nabla)\) derivative an extension
+     needs &mdash; removing it reproduces the historical \(10^{108}\) blow-up.</p>
+</section>
+
+<!-- ===== pseudoTime 5: VERDICT ===== -->
+<section>
+  <h2><code>pseudoTime</code> &mdash; measured verdict</h2>
+  <ul class="tight">
+    <li><b>Static:</b> ratio \(\approx0.47\), <b>flat</b> in \(h\) &mdash; diagnosed as
+        <b>reach failure, not discretization</b>: \(n_{\text{iter}}\Delta\tau
+        = 10\times0.2 = 2\) cells \(&lt;\) the 3-cell band, so a fixed band fraction keeps
+        the raw velocity at every resolution.</li>
+    <li><b>History:</b> the conservative assembly blew up (\(\sim\!10^{108}\)); the
+        non-conservative form + advective \(\psi\)-equation + seamless faded flux made it
+        healthy (Conclusions, Part 5).</li>
+    <li><b>Reversed vortex</b> (\(T{=}2\), \(N{=}256\)): 0.085 / 0.2% &mdash; second-best
+        of the family; at \(T{=}8\): 0.36 / 0.5% &mdash; degrades gracefully.</li>
+    <li><b>Steady vortex:</b> mid-pack; keeps the interface alive to \(T{=}3\)
+        (unlike <code>none</code>).</li>
+    <li class="warn"><b>Verdict:</b> the classical model, healthy after the fixes, but
+        statically <b>inconsistent by construction</b> &mdash; its truncated reach is cured
+        by the steady solve of the next stack.</li>
+  </ul>
+  <aside class="notes">
+    Chasing the reach by raising nIterations is possible but the cost grows linearly with
+    band width in solves; the steady formulation gets infinite reach in ONE solve, which is
+    the cleaner mathematical answer.
+  </aside>
+</section>
+</section>  <!-- ##### /STACK pseudoTime ##### -->
+
+<section data-track="Velocity extension &mdash; the models">  <!-- ##### STACK model 4/7: steadyUpwind ##### -->
+<!-- ===== steadyUpwind 1: MOTIVATION ===== -->
+<section>
+  <p class="part-kicker">Part 2 &middot; model 4 of 7</p>
+  <h2>Model <code>steadyUpwind</code> &mdash; motivation: one solve, infinite reach</h2>
+  <div class="cols">
+    <div>
+      <p><b>Problem:</b> <code>pseudoTime</code> reaches \(n_{\text{iter}}\Delta\tau\)
+         cells &mdash; a fixed band fraction is never updated (static ratio pinned at
+         0.47).</p>
+      <p><b>Idea:</b> solve the <b>steady limit directly</b>. Every characteristic of
+         \(\mathbf{w}=\operatorname{sign}(\psi)\hat{\mathbf{n}}\) <em>emanates from</em>
+         \(\Sigma\): the upwind dependency graph is <b>acyclic</b>, so the implicit upwind
+         matrix is an M-matrix permutable to <b>block-lower-triangular</b> form &mdash;
+         <b>one</b> linear solve propagates the seed data to the whole domain.</p>
+      <p class="footnote muted">The implicit twin of fast marching / fast sweeping:
+         Zhao et&nbsp;al. JCP 127 (1996); Peng et&nbsp;al. JCP 155 (1999);
+         Aslam, Luo &amp; Zhao SISC 36 (2014).</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 300 205" width="100%" role="img" aria-label="characteristics of w = sign(psi) n leave the interface; the upwind stencil forms an acyclic graph solved in one implicit solve">
+        <defs>
+          <marker id="suW" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-warn)"/>
+          </marker>
+          <marker id="suG" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto">
+            <path d="M0,0 L5,2.5 L0,5 Z" fill="var(--ls-good)"/>
+          </marker>
+        </defs>
+        <!-- interface -->
+        <line x1="90" y1="15" x2="90" y2="160" stroke="var(--ls-accent)" stroke-width="3"/>
+        <text x="82" y="12" fill="var(--ls-accent)" font-size="11">&#931;</text>
+        <!-- cell columns -->
+        <g stroke="var(--ls-line)" stroke-width="1" stroke-dasharray="4,3" stroke-opacity="0.4">
+          <line x1="130" y1="20" x2="130" y2="155"/>
+          <line x1="170" y1="20" x2="170" y2="155"/>
+          <line x1="210" y1="20" x2="210" y2="155"/>
+          <line x1="250" y1="20" x2="250" y2="155"/>
+        </g>
+        <!-- characteristics -->
+        <g stroke="var(--ls-warn)" stroke-width="1.8" marker-end="url(#suW)">
+          <line x1="94" y1="40"  x2="280" y2="40"/>
+          <line x1="94" y1="140" x2="280" y2="140"/>
+          <line x1="86" y1="40"  x2="24"  y2="40"/>
+          <line x1="86" y1="140" x2="24"  y2="140"/>
+        </g>
+        <text x="270" y="30" fill="var(--ls-warn)" font-size="9.5">w</text>
+        <text x="30"  y="30" fill="var(--ls-warn)" font-size="9.5">w</text>
+        <!-- upwind dependency chain (cells + arrows) -->
+        <g>
+          <rect x="100" y="76" width="22" height="22" fill="var(--ls-good)" fill-opacity="0.16" stroke="var(--ls-good)" stroke-width="1.3"/>
+          <rect x="140" y="76" width="22" height="22" fill="none" stroke="var(--ls-fg)" stroke-width="1.1"/>
+          <rect x="180" y="76" width="22" height="22" fill="none" stroke="var(--ls-fg)" stroke-width="1.1"/>
+          <rect x="220" y="76" width="22" height="22" fill="none" stroke="var(--ls-fg)" stroke-width="1.1"/>
+          <text x="111" y="91" fill="var(--ls-good)" font-size="10" text-anchor="middle">s</text>
+          <text x="151" y="91" fill="var(--ls-fg)" font-size="10" text-anchor="middle">1</text>
+          <text x="191" y="91" fill="var(--ls-fg)" font-size="10" text-anchor="middle">2</text>
+          <text x="231" y="91" fill="var(--ls-fg)" font-size="10" text-anchor="middle">3</text>
+          <g stroke="var(--ls-good)" stroke-width="1.6" marker-end="url(#suG)">
+            <line x1="124" y1="87" x2="137" y2="87"/>
+            <line x1="164" y1="87" x2="177" y2="87"/>
+            <line x1="204" y1="87" x2="217" y2="87"/>
+          </g>
+        </g>
+        <text x="192" y="118" fill="var(--ls-muted)" font-size="9" text-anchor="middle">stencil = interface-ward neighbour only</text>
+        <text x="150" y="178" fill="var(--ls-fg)" font-size="10" text-anchor="middle">all characteristics EXIT &#931; &#8658; acyclic graph</text>
+        <text x="150" y="193" fill="var(--ls-good)" font-size="10" text-anchor="middle">&#8658; block-lower-triangular matrix &#8658; ONE implicit solve</text>
+      </svg>
+    </div>
+  </div>
+  <aside class="notes">
+    The graph argument is the entire model: seed cell s determines cell 1, which determines
+    2, which determines 3 -- a topological order by distance from Sigma exists because no
+    characteristic ever returns to the interface. An M-matrix in that order is
+    block-lower-triangular, so DILU/BiCGStab converges in a handful of iterations and the
+    reach is unbounded. This is fast sweeping expressed as a single fvMatrix.
+  </aside>
+</section>
+
+<!-- ===== steadyUpwind 2: THE MODEL ===== -->
+<section>
+  <h2><code>steadyUpwind</code> &mdash; the model</h2>
+  \[ \operatorname{sign}(\psi)\,(\hat{\mathbf{n}}\cdot\nabla)\,\mathbf{U}_{\text{ext}} = \mathbf{0},
+     \qquad \mathbf{U}_{\text{ext}}\big|_{\text{seed}} = \mathbf{U}_\Sigma \]
+  <ul class="tight">
+    <li><b>Why it extends:</b> the steady limit of the pseudo-time PDE &mdash; the
+        extension property <em>is</em> the equation; no truncation, no reach parameter.
+        Well-posed because the boundary (seed) data sits exactly where all
+        characteristics originate.</li>
+    <li><b>Guarantee:</b> \((\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\)
+        asymptotically, at the order of the transport scheme (upwind: \(O(h)\)).</li>
+    <li class="warn"><b>Failure mode 1 &mdash; the discrete skeleton:</b> cells at local
+        maxima of \(|\psi|\) have <em>no upwind neighbour</em> &rarr; a (near-)zero matrix
+        row. Cure: a tiny zero-inflow guard \(\lambda\) relaxing such rows to their
+        current value.</li>
+    <li class="warn"><b>Failure mode 2 &mdash; the seed staircase:</b> Dirichlet data
+        pinned at cell centres at <em>varying distances</em> from \(\Sigma\) carries
+        \(O(1)\) gradient noise; the steady transport propagates it <b>unchanged</b> along
+        characteristics &mdash; and it <em>emerges</em> under refinement as
+        cross-characteristic upwind diffusion shrinks (Chopp SISC 2009: invest in
+        anchoring, keep transport simple).</li>
+  </ul>
+  <aside class="notes">
+    Skeleton rows are a genuinely discrete phenomenon: continuum characteristics never
+    collide except on a measure-zero set, but on a mesh the "ridge" cells see outflow on
+    all faces. The lambda guard is the minimal regularization: it leaves transported rows
+    untouched to 1e-6/h.
+  </aside>
+</section>
+
+<!-- ===== steadyUpwind 3: DISCRETIZATION ===== -->
+<section>
+  <h2><code>steadyUpwind</code> &mdash; discretization (UFVM) + a measured warning</h2>
+  <ul class="tight">
+    <li>Assembled exactly like the \(\psi\)-equation (advective form of a non-solenoidal
+        transport), plus the guard:</li>
+  </ul>
+  \[ \underbrace{\nabla\!\cdot\!(\phi_W\,\mathbf{q})}_{\texttt{fvm::div(phiW,q)}}
+     \;-\;\underbrace{\mathbf{q}\,(\nabla\!\cdot\!\phi_W)}_{\texttt{fvm::Sp(divW,q)}}
+     \;+\;\underbrace{\lambda\,\mathbf{q}}_{\texttt{fvm::Sp}}
+     \;=\;\underbrace{\lambda\,\mathbf{q}^{\,k}}_{\text{RHS}},
+     \qquad \lambda=\frac{10^{-6}}{h_c} \]
+  <ul class="tight">
+    <li>divergence scheme from <em class="tag">fvSchemes</em>
+        (<code>div(velExtPhiW,Uext)</code>, study token: upwind / linearUpwind);
+        solver from <em class="tag">fvSolution "Uext.*"</em> (PBiCGStab/DILU &mdash; a
+        handful of iterations on the near-triangular matrix)</li>
+    <li><code>nDefCorrExt</code> defect-correction passes converge the deferred
+        (higher-order \(-\) upwind) flux, <b>under-relaxed</b> by
+        <code>defCorrRelax</code> = 0.7 between passes</li>
+    <li class="warn"><b>Measured negative result:</b> the <code>linearUpwind</code>
+        deferred correction <b>DIVERGES</b> on the steady equation (static \(e\) grows to
+        \(\sim\!10^2\); under-relaxation does not save it) &mdash; unlike the
+        \(\psi\)-equation there is <em>no</em> <code>fvm::ddt</code> mass matrix to damp
+        the fixed-point iteration. <b>Upwind is the safe default</b>; second order comes
+        from the geometric route (<code>closestPoint</code>) instead.</li>
+  </ul>
+  <p class="footnote">Source: <em class="tag">src/leiaLevelSet/velocityExtension/steadyUpwind.C</em>
+     &rarr; <em class="tag">steadyUpwind::solveSteady()</em> &mdash; shared by
+     <code>steadyUpwindLinear</code> and <code>closestPoint</code> (fallback fill).</p>
+</section>
+
+<!-- ===== steadyUpwind 4: CODE ===== -->
+<section>
+  <h2><code>steadyUpwind::solveSteady()</code> &mdash; code (the family operator)</h2>
+  <pre style="font-size:0.375em; line-height:1.12; background:rgba(255,255,255,0.04); padding:0.5em; border-radius:6px;"><code>void Foam::steadyUpwind::solveSteady(volVectorField&amp; q,
+    const labelUList&amp; fixedCells, const UList&lt;vector&gt;&amp; fixedVals,
+    const volVectorField* source)
+{
+    // w = sign(psi) n -- NOT solenoidal; its flux and compression:
+    forAll(w, c) w[c] = ((psi_[c] &lt; 0) ? -1.0 : 1.0)*nHat_[c];
+    const surfaceScalarField phiW("velExtPhiW", fvc::interpolate(w) &amp; mesh_.Sf());
+    const volScalarField divW("velExtDivW", fvc::div(phiW));
+    // zero-inflow guard: discrete-skeleton cells (local max |psi|) have no
+    // upwind neighbour -&gt; near-zero row; lambda relaxes them to themselves.
+    forAll(lambda, c) lambda[c] = zeroInflowGuard_/cellSize_[c];   // 1e-6/h
+
+    vectorField qPrev(q.primitiveField());
+    for (label corr = 0; corr &lt; nDefCorrExt_; ++corr)
+    {
+        fvVectorMatrix qEqn
+        (
+            fvm::div(phiW, q)     // scheme: fvSchemes div(velExtPhiW,Uext)
+          - fvm::Sp(divW, q)      // advective form: (w.grad)q, not div(w q)
+          + fvm::Sp(lambda, q)
+         == lambda*q              // guard RHS: relax to the current value
+        );
+        if (source) qEqn -= *source;            // Aslam cascade stage RHS
+        qEqn.setValues(fixedCells, fixedVals);  // seed Dirichlet in the matrix
+        qEqn.solve();                           // fvSolution "Uext.*"
+
+        if (corr &lt; nDefCorrExt_ - 1)   // damp the deferred correction (the
+        {                              // steady fixed point rings undamped)
+            q.primitiveFieldRef() = defCorrRelax_*q.primitiveField()
+                                  + (1.0 - defCorrRelax_)*qPrev;
+            qPrev = q.primitiveField();
+        }
+    }
+}</code></pre>
+  <p class="footnote muted center">One routine, three models: <code>steadyUpwind</code>
+     calls it on \(\mathbf{U}_{\text{ext}}\); the Aslam cascade calls it twice (with
+     <code>source</code>); <code>closestPoint</code> uses it to fill its failed cells.</p>
+</section>
+
+<!-- ===== steadyUpwind 5: VERDICT ===== -->
+<section>
+  <h2><code>steadyUpwind</code> &mdash; measured verdict</h2>
+  <ul class="tight">
+    <li><b>Static:</b> ratio 0.11&ndash;0.34 &mdash; better than the classical PDE pair,
+        but <b>degrading under refinement</b>: the seed-staircase \(O(1)\) Dirichlet noise
+        is transported unchanged while the cross-characteristic upwind diffusion that used
+        to smear it shrinks with \(h\).</li>
+    <li class="warn"><b>linearUpwind deferred correction diverges</b> on the steady
+        equation (no <code>ddt</code> damping) &mdash; upwind is the default; the
+        second-order ambition moves to the geometric route.</li>
+    <li><b>Reversed vortex</b> (\(T{=}2\), \(N{=}256\)): 0.105 / 0.4% &mdash; healthy
+        mid-pack.</li>
+    <li><b>Steady vortex:</b> keeps the interface alive to \(T{=}3\).</li>
+    <li class="good"><b>Roles it earned:</b> the PDE fallback of the family <em>and</em>
+        the fill operator inside <code>closestPoint</code> &mdash; infinite reach and
+        graceful parallel behaviour make it the ideal backstop even though it never wins
+        outright.</li>
+  </ul>
+  <aside class="notes">
+    The degradation is the deep lesson: an O(h)-consistent transport of O(1)-noisy boundary
+    data is NOT convergent. Chopp's advice (2009) -- put the accuracy into the seed
+    anchoring, keep the transport dumb -- points directly at the closest-point model two
+    stacks down.
+  </aside>
+</section>
+</section>  <!-- ##### /STACK steadyUpwind ##### -->
+
+<section data-track="Velocity extension &mdash; the models">  <!-- ##### STACK model 5/7: steadyUpwindLinear ##### -->
+<!-- ===== cascade 1: MOTIVATION ===== -->
+<section>
+  <p class="part-kicker">Part 2 &middot; model 5 of 7</p>
+  <h2>Model <code>steadyUpwindLinear</code> &mdash; motivation: the Aslam cascade</h2>
+  <div class="cols">
+    <div>
+      <p><b>Problem:</b> a <em>constant</em>-along-rays extension is only \(O(h)\)
+         faithful to the physical \(\mathbf{U}\) near \(\Sigma\).</p>
+      <p><b>Idea (Aslam JCP 193 (2004)):</b> extend the normal <b>derivative</b> first,
+         then integrate it along the rays:</p>
+      <ol class="tight" style="font-size:0.9em; margin-left:1.2em;">
+        <li>\(V=\hat{\mathbf{n}}\cdot\nabla\mathbf{U}\) at the seed layer</li>
+        <li>extend \(V\): \(\operatorname{sign}(\psi)(\hat{\mathbf{n}}\cdot\nabla)V=0\)</li>
+        <li>integrate: \(\operatorname{sign}(\psi)(\hat{\mathbf{n}}\cdot\nabla)
+            \mathbf{U}_{\text{ext}}=\operatorname{sign}(\psi)\,V_{\text{ext}}\)</li>
+      </ol>
+      <p>\(\mathbf{U}_{\text{ext}}\) is then <b>linear</b> along each ray &mdash;
+         \(O(h^2)\) by construction. The PDE counterpart of the closest-point model.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 300 205" width="100%" role="img" aria-label="along one normal ray: constant extension is O(h), the Aslam linear extension matches the normal derivative and is O(h squared)">
+        <!-- axes -->
+        <line x1="42" y1="180" x2="290" y2="180" stroke="var(--ls-line)" stroke-width="1"/>
+        <line x1="42" y1="180" x2="42" y2="26"  stroke="var(--ls-accent)" stroke-width="2.5"/>
+        <text x="42" y="18"  fill="var(--ls-accent)" font-size="10" text-anchor="middle">&#931;</text>
+        <text x="284" y="194" fill="var(--ls-muted)" font-size="9.5" text-anchor="end">s = distance along the ray</text>
+        <text x="16" y="100" fill="var(--ls-muted)" font-size="9.5" transform="rotate(-90 16,100)" text-anchor="middle">U(s)</text>
+        <!-- true U along the ray -->
+        <path d="M42,120 C 110,102 200,84 285,72" fill="none" stroke="var(--ls-muted)" stroke-width="2"/>
+        <text x="200" y="62" fill="var(--ls-muted)" font-size="9.5" text-anchor="middle">true U(s)</text>
+        <!-- constant extension -->
+        <line x1="42" y1="120" x2="285" y2="120" stroke="var(--ls-warn)" stroke-width="2" stroke-dasharray="6,3"/>
+        <text x="222" y="134" fill="var(--ls-warn)" font-size="9.5">constant: O(h)</text>
+        <!-- linear extension -->
+        <line x1="42" y1="120" x2="285" y2="78" stroke="var(--ls-good)" stroke-width="2.2"/>
+        <text x="200" y="108" fill="var(--ls-good)" font-size="9.5" text-anchor="middle">linear, slope V<tspan dy="2.5" font-size="7">ext</tspan><tspan dy="-2.5">: O(h&#178;)</tspan></text>
+        <!-- seed dot -->
+        <circle cx="42" cy="120" r="3.4" fill="var(--ls-fg)"/>
+        <text x="52" y="145" fill="var(--ls-fg)" font-size="9">U<tspan dy="2.5" font-size="7">&#931;</tspan><tspan dy="-2.5">, V = n&#770;&#183;&#8711;U</tspan></text>
+      </svg>
+    </div>
+  </div>
+  <aside class="notes">
+    The cascade is the natural "next order" of the steady transport: same operator, applied
+    twice, second pass with the extended derivative as a source. Along each ray the ODE
+    dU/ds = V_ext with constant V_ext integrates to a straight line matching value AND
+    slope at the interface.
+  </aside>
+</section>
+
+<!-- ===== cascade 2: MODEL + DISCRETIZATION ===== -->
+<section>
+  <h2><code>steadyUpwindLinear</code> &mdash; model &amp; discretization</h2>
+  <div style="font-size:0.72em">
+  \[ \text{(1)}\; V=\hat{\mathbf{n}}\cdot\nabla\mathbf{U}\big|_{\text{seed}}
+     \quad\Rightarrow\quad
+     \text{(2)}\; \operatorname{sign}(\psi)(\hat{\mathbf{n}}\cdot\nabla)V=0
+     \quad\Rightarrow\quad
+     \text{(3)}\; \operatorname{sign}(\psi)(\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}_{\text{ext}}
+     =\operatorname{sign}(\psi)\,V_{\text{ext}} \]
+  </div>
+  <ul class="tight">
+    <li>Both extension stages are the <b>same</b> <code>solveSteady()</code> operator of
+        the previous stack; stage 3 passes \(\operatorname{sign}(\psi)V_{\text{ext}}\)
+        as an explicit RHS (<code>qEqn -= *source</code>).</li>
+    <li>\(V\) from the pure least-squares gradient
+        (<em class="tag">fvSchemes: velExtLSGrad</em>), per cell:
+        <code>V = nHat &amp; fvc::grad(U, "velExtLSGrad")</code>.</li>
+    <li>Scheme-reuse trick: \(V\) is <b>named</b> <code>"Uext"</code> but
+        <b>unregistered</b>, so its transport picks up the same
+        <code>div(velExtPhiW,Uext)</code> entry &mdash; the <code>phiExt=="phi"</code>
+        naming pattern again.</li>
+    <li>Seeds of <em>both</em> stages come from the interface layer
+        (\(V\) and \(\mathbf{U}_\Sigma\) respectively), pinned via
+        <code>setValues</code>.</li>
+  </ul>
+  <p class="footnote">Source:
+     <em class="tag">src/leiaLevelSet/velocityExtension/steadyUpwindLinear.C</em>
+     &rarr; <em class="tag">steadyUpwindLinear::extend()</em>. Implicit/fast-sweeping
+     lineage: Aslam, Luo &amp; Zhao SISC 36 (2014); FMM variant to avoid on unstructured
+     meshes: McCaslin et&nbsp;al. JCP 274 (2014).</p>
+</section>
+
+<!-- ===== cascade 3: CODE ===== -->
+<section>
+  <h2><code>steadyUpwindLinear::extend()</code> &mdash; code</h2>
+  <pre style="font-size:0.44em; line-height:1.18; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>void Foam::steadyUpwindLinear::extend()
+{
+    // 1. V = n . grad(U), least-squares (fvSchemes: velExtLSGrad). Named
+    //    "Uext" but UNREGISTERED, so solveSteady reuses div(velExtPhiW,Uext).
+    volVectorField V(IOobject("Uext", /* ... */ false /* no register */),
+        mesh_, dimensionedVector("0", dimVelocity/dimLength, vector::zero),
+        "zeroGradient");
+    V.primitiveFieldRef() =
+        (nHat_ &amp; fvc::grad(U_, "velExtLSGrad"))().primitiveField();
+
+    // Seeds for BOTH stages from the interface layer:
+    forAll(seedCells_, i)
+    {
+        fixedCells.append(seedCells_[i]);
+        fixedValsV.append(V[seedCells_[i]]);       // stage-2 seed
+        fixedValsU.append(Uext_[seedCells_[i]]);   // stage-3 seed
+    }
+
+    // 2. extend the normal derivative:  sign(psi) (n.grad) V = 0
+    solveSteady(V, fixedCells, fixedValsV);
+
+    // 3. integrate along rays:  sign(psi) (n.grad) Uext = sign(psi) V_ext
+    const volVectorField S("velExtSrc", signPsi*V);
+    solveSteady(Uext_, fixedCells, fixedValsU, &amp;S);
+}</code></pre>
+  <p class="footnote muted center">Three stages, two solves, one operator &mdash; the
+     entire cascade is ~40 lines on top of <code>steadyUpwind</code>.</p>
+</section>
+
+<!-- ===== cascade 4: VERDICT (negative result) ===== -->
+<section>
+  <h2><code>steadyUpwindLinear</code> &mdash; measured verdict: <span class="warn">divergent</span></h2>
+  <ul class="tight">
+    <li class="warn"><b>Static: diverges</b> &mdash; \(e\sim10^{1}\!-\!10^{2}\), growing
+        under refinement; <b>excluded</b> from the advected suite.</li>
+    <li><b>Mechanism:</b> the least-squares \(V=\hat{\mathbf{n}}\cdot\nabla\mathbf{U}\)
+        seeds are <em>noisy differentiated data</em>, fed into the same <b>undamped steady
+        fixed point</b> that already breaks the linearUpwind deferred correction &mdash;
+        two divergence mechanisms, one root cause: <b>no mass matrix on a steady
+        pure-advection system</b>.</li>
+    <li><b>Why it stays in the deck (and the code):</b> an \(O(h^2)\)-by-construction
+        formulation is worthless if the iteration diverges &mdash; the boundary of the
+        design space, documented. The model remains registered and measured in the static
+        harness as the reproducible negative result.</li>
+    <li><b>Future work:</b> a damped Gauss&ndash;Seidel / fast-sweeping formulation
+        (Aslam&ndash;Luo&ndash;Zhao SISC 2014) or per-ray integration after the geometric
+        foot-point pass.</li>
+  </ul>
+  <aside class="notes">
+    Honest negative results are rare in method papers and priceless in code bases: the
+    next person who "just adds linear extrapolation" will find the measured divergence and
+    the diagnosis waiting. Differentiating noisy data and transporting it with an undamped
+    steady iteration compounds two amplifiers.
+  </aside>
+</section>
+</section>  <!-- ##### /STACK steadyUpwindLinear ##### -->
+
+<section data-track="Velocity extension &mdash; the models">  <!-- ##### STACK model 6/7: closestPoint ##### -->
+<!-- ===== closestPoint 1: MOTIVATION ===== -->
+<section>
+  <p class="part-kicker">Part 2 &middot; model 6 of 7</p>
+  <h2>Model <code>closestPoint</code> &mdash; motivation: skip the PDE</h2>
+  <div class="cols">
+    <div>
+      <p><b>Problem:</b> every PDE transport pollutes the extension with seed-staircase
+         noise &mdash; measured as the non-convergence of stacks 2&ndash;5.</p>
+      <p><b>Idea:</b> no transport at all. Each band cell walks to <em>its own</em>
+         closest interface point by <b>Newton descent</b> on \(\psi\) and samples
+         \(\mathbf{U}\) there. Cells on one normal ray share the foot point &rArr;
+         \((\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\)
+         <b>by construction</b> &mdash; no seed noise, no scheme, no linear solve;
+         embarrassingly parallel per cell.</p>
+      <p class="footnote muted">Closest point method: Ruuth &amp; Merriman JCP 227 (2008);
+         degree-\(p\) interpolation \(\Rightarrow O(h^{p+1})\): Macdonald &amp; Ruuth
+         SISC 31 (2009); front-tracking practice: Mari&#263; et&nbsp;al.
+         C&amp;F 113 (2015).</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 300 215" width="100%" role="img" aria-label="Newton foot-point descent from a cell centre to the interface, with the path cap, decreasing psi guard and acceptance tolerance sketched">
+        <defs>
+          <marker id="cpW" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-warn)"/>
+          </marker>
+          <marker id="cpG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-good)"/>
+          </marker>
+        </defs>
+        <!-- interface -->
+        <path d="M15,168 Q150,120 290,158" fill="none" stroke="var(--ls-accent)" stroke-width="2.6"/>
+        <text x="276" y="143" fill="var(--ls-accent)" font-size="11">&#931;</text>
+        <!-- path cap circle -->
+        <circle cx="150" cy="52" r="98" fill="none" stroke="var(--ls-muted)" stroke-width="1" stroke-dasharray="5,4" stroke-opacity="0.6"/>
+        <text x="238" y="34" fill="var(--ls-muted)" font-size="8.5">path cap</text>
+        <text x="238" y="45" fill="var(--ls-muted)" font-size="8.5">1.5&#183;n<tspan dy="2" font-size="6.5">layers</tspan><tspan dy="-2">&#183;h</tspan></text>
+        <!-- cell centre + iterates -->
+        <circle cx="150" cy="52" r="4" fill="var(--ls-fg)"/>
+        <text x="158" y="47" fill="var(--ls-fg)" font-size="10">x<tspan dy="2.5" font-size="7">c</tspan></text>
+        <g stroke="var(--ls-warn)" stroke-width="2" marker-end="url(#cpW)">
+          <line x1="150" y1="52"  x2="160" y2="102"/>
+          <line x1="162" y1="110" x2="166" y2="130"/>
+        </g>
+        <circle cx="161" cy="106" r="3" fill="var(--ls-warn)"/>
+        <text x="171" y="104" fill="var(--ls-warn)" font-size="9">x&#8321; (findCell &#8594; local n&#770;, &#968;)</text>
+        <circle cx="167" cy="136" r="3.6" fill="var(--ls-good)"/>
+        <line x1="167" y1="140" x2="160" y2="156" stroke="var(--ls-good)" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <text x="118" y="167" fill="var(--ls-good)" font-size="9.5">accept x<tspan dy="2.5" font-size="7">fp</tspan><tspan dy="-2.5">: |&#968;(x</tspan><tspan dy="2.5" font-size="7">fp</tspan><tspan dy="-2.5">)| &lt; 0.1&#8201;h</tspan><tspan dy="2.5" font-size="7">c</tspan></text>
+        <!-- U at foot point -->
+        <line x1="167" y1="136" x2="205" y2="126" stroke="var(--ls-good)" stroke-width="2.2" marker-end="url(#cpG)"/>
+        <text x="208" y="122" fill="var(--ls-good)" font-size="9">U(x<tspan dy="2.5" font-size="6.5">fp</tspan><tspan dy="-2.5">) &#8658; U</tspan><tspan dy="2.5" font-size="6.5">ext</tspan><tspan dy="-2.5">(x</tspan><tspan dy="2.5" font-size="6.5">c</tspan><tspan dy="-2.5">)</tspan></text>
+        <!-- guard annotation -->
+        <text x="6" y="100" fill="var(--ls-muted)" font-size="8.5">guards each step:</text>
+        <text x="6" y="111" fill="var(--ls-muted)" font-size="8.5">|&#968;| must decrease,</text>
+        <text x="6" y="122" fill="var(--ls-muted)" font-size="8.5">stay under the cap</text>
+        <text x="150" y="193" fill="var(--ls-muted)" font-size="9.5" text-anchor="middle">x &#8592; x &minus; &#968;(x)&#8201;n&#770;(x): Newton descent on &#968;</text>
+        <text x="150" y="207" fill="#e57373" font-size="9" text-anchor="middle">&#10007; capped / non-decreasing / deeper-than-halo walks &#8594; steadyUpwind fill</text>
+      </svg>
+    </div>
+  </div>
+  <aside class="notes">
+    The philosophical shift of the whole part: extension is a GEOMETRIC statement, so
+    compute it geometrically. The guards in the sketch are exactly the ways a walk can
+    lie: it can run away (path cap), it can stop descending (|psi| monotonicity), and it
+    can leave the processor mesh -- the last is rescued by a one-layer zoneDistribute
+    halo (next slides); only deeper excursions fall back to the PDE fill.
+  </aside>
+</section>
+
+<!-- ===== closestPoint 2: THE MODEL ===== -->
+<section>
+  <h2><code>closestPoint</code> &mdash; the model (the geometric guarantee)</h2>
+  \[ \mathbf{U}_{\text{ext}}(\mathbf{x}_c) = \mathbf{U}\big(\mathbf{x}_{fp}(\mathbf{x}_c)\big),
+     \qquad \mathbf{x}_{fp} = \operatorname*{arg\,min}_{\mathbf{y}\in\Sigma}\|\mathbf{x}_c-\mathbf{y}\|
+     \;\;\approx\;\; \mathbf{x} \leftarrow \mathbf{x} - \psi(\mathbf{x})\,\hat{\mathbf{n}}(\mathbf{x}) \]
+  <ul class="tight">
+    <li><b>Guarantee:</b> cells on one normal ray share the foot point \(\Rightarrow\)
+        \((\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}_{\text{ext}}=\mathbf{0}\)
+        <b>by construction</b> (not asymptotically) inside the foot-point reach &mdash;
+        mesh-agnostic, the general answer for unstructured FVM.</li>
+    <li><b>Accuracy:</b> set by <em>interpolation only</em> &mdash; degree-\(p\)
+        interpolation of \(\mathbf{U}\) at \(\mathbf{x}_{fp}\) gives \(O(h^{p+1})\)
+        (here: cell-point linear \(\Rightarrow O(h^2)\), and that is what the static
+        harness measures).</li>
+    <li class="warn"><b>Failure modes:</b> (i) the <b>skeleton</b> &mdash; where normal
+        rays collide the descent diverges; (ii) <b>ψ must be near-SDF</b>: one Newton step
+        is exact only for \(|\nabla\psi|=1\), a degraded \(\psi\) bends the walk;
+        (iii) the foot point may lie on <b>another processor</b> &mdash; rescued by a
+        one-layer <code>zoneDistribute</code> halo (next slide); only walks
+        <em>deeper</em> than one remote layer still fail.</li>
+    <li class="good"><b>Graceful degradation:</b> every failed cell is filled by the
+        <code>steadyUpwind</code> solve pinned at <em>all</em> successful cells &mdash;
+        the geometric data becomes the Dirichlet anchor set of the PDE backstop.</li>
+  </ul>
+  <aside class="notes">
+    Note the division of labour: geometry where geometry is sound, transport where it is
+    not. The steady operator that could not win on its own (seed staircase) is excellent
+    as a FILLER, because the closest-point successes anchor it densely through the band.
+  </aside>
+</section>
+
+<!-- ===== closestPoint 3: DISCRETIZATION ===== -->
+<section>
+  <h2><code>closestPoint</code> &mdash; discretization (UFVM)</h2>
+  <ul class="tight">
+    <li><b>Newton walk per band cell</b> along the <b>local</b> normal: each step
+        interpolates \(\psi\) at the iterate (<code>interpolationCellPoint</code>, IDW),
+        steps \(\mathbf{x}\leftarrow\mathbf{x}-\psi(\mathbf{x})\hat{\mathbf{n}}(c_x)\),
+        and <b>re-localizes</b> with <code>findCell</code> so \(\hat{\mathbf{n}}\), \(\psi\)
+        are always evaluated in the cell containing the iterate (a frozen starting normal
+        is too crude across the band); \(n_{\text{descent}}\) steps.</li>
+    <li><b>Guards</b> (in walk order): path cap
+        \(|\mathbf{x}-\mathbf{x}_c|\le\) <code>cpMaxDist</code>\(\cdot n_{\text{layers}}h_c\)
+        (=1.5&middot;3&middot;h); <code>findCell</code> &lt; 0 &rArr; try the halo (below),
+        else fail; non-decreasing \(|\psi|\) &rArr; diverging descent. Acceptance:
+        \(|\psi(\mathbf{x}_{fp})|<\) <code>cpTol</code>\(\cdot h_c\) (=0.1&middot;h).</li>
+    <li><b>MPI halo</b> (parallel only; <code>zoneDistribute</code>, the plicRDF
+        machinery, Scheufler&ndash;Roenby JCP 383 (2019)): one cell-point-cell layer of
+        remote \((\mathbf{C},\psi,\nabla\psi,\mathbf{U},\nabla\mathbf{U})\) around the
+        band. Steps are <b>sub-stepped</b> at \(0.9\,h_c\) so the stencil anchor tracks
+        the true <em>exit</em> cell; off-mesh iterates continue on <b>first-order
+        Taylor</b> data at the nearest remote cell within
+        <code>cpHaloReach</code>\(\cdot h\) (= same order as the local cell-point
+        interpolation). Serial path untouched &mdash; bit-identical regression.</li>
+    <li><b>Fill:</b> failures (counted, reported: <em>skeleton, path cap,
+        deeper-than-halo</em>) &rarr; one <code>solveSteady</code> with
+        <em>all successes</em> as Dirichlet data.</li>
+    <li>Band and fade are <b>\(|\psi|\)-based</b>: band
+        \(=\{|\psi|\le(n_{\text{layers}}\!+\!1)h_c\}\) (guard layer keeps gradient stencils
+        interior); \(h_c\) = min face-neighbour centre distance, <b>not</b>
+        \(\sqrt[3]{V}\) (which mis-scales every length on a 2D mesh of thickness
+        \(t\)).</li>
+  </ul>
+  <p class="footnote">Source:
+     <em class="tag">src/leiaLevelSet/velocityExtension/closestPoint.C</em>
+     (inherits <code>solveSteady</code> from <em class="tag">steadyUpwind.C</em>);
+     band/fade/cell-size in <em class="tag">interfaceExtension.C</em>.</p>
+</section>
+
+<!-- ===== closestPoint 4: CODE ===== -->
+<section>
+  <h2><code>closestPoint::extend()</code> &mdash; code</h2>
+  <pre style="font-size:0.335em; line-height:1.13; background:rgba(255,255,255,0.04); padding:0.5em; border-radius:6px;"><code>// PARALLEL: one CPC halo layer of remote (C, psi, grad psi, U, grad U) around
+// the band (zoneDistribute; as in plicRDF), fetched once per correct().
+// Per band cell: cx &gt;= 0 = local containing cell; cx = -1 = halo mode (data
+// cell jg); cLast = last LOCAL cell (halo stencil anchor + reach scale).
+const label nIter = haveHalo ? nDescent_ + nLayers_ + 2 : nDescent_;
+for (label it = 0; it &lt; nIter; ++it)                   // Newton walk
+{
+    scalar psix;  vector nx;
+    if (cx &gt;= 0) { psix = psiInterp.interpolate(x, cx);  nx = nHat_[cx]; }
+    else {                            // halo: 1st-order TAYLOR at nearest
+        psix = ccPsi[jg] + (ccGPsi[jg] &amp; (x - ccC[jg]));   // remote cell
+        nx = ccGPsi[jg]/Foam::max(Foam::mag(ccGPsi[jg]), SMALL); }
+
+    vector dx = -psix*nx;
+    if (haveHalo) {                   // sub-step ~1 cell: cLast tracks the
+        const scalar mS = 0.9*cellSize_[cLast &gt;= 0 ? cLast : c];  // true
+        if (Foam::mag(dx) &gt; mS) dx *= mS/Foam::mag(dx); }    // exit cell
+    const point xNew = x + dx;
+    if (Foam::mag(xNew - C[c]) &gt; maxDist) { ok = false; break; } // path cap
+
+    const label cn = mesh_.findCell(xNew);             // local first ...
+    label jn = -1;
+    if (cn &lt; 0) { jn = nearestHalo(xNew, cLast);       // ... then halo
+                  if (jn &lt; 0) { ok = false; break; } } // deeper -&gt; fill
+    // |psi| decrease guard (1e-3 h slack on Taylor steps), then advance:
+    x = xNew;  cx = cn;  jg = jn;  if (cn &gt;= 0) cLast = cn;
+}
+if (ok &amp;&amp; apsi &lt; cpTol_*hc)            // acceptance: |psi(x_fp)| &lt; 0.1 h
+{
+    Uext_[c] = (cx &gt;= 0) ? Uinterp.interpolate(x, cx)  // U at foot point
+             : ccU[jg] + ((x - ccC[jg]) &amp; ccGU[jg]);   // Taylor U (halo)
+    fixedCells.append(c);  fixedVals.append(Uext_[c]);
+}
+else ++nFailed;
+// ... after the loop over band cells:
+solveSteady(Uext_, fixedCells, fixedVals);   // pinned at ALL successes</code></pre>
+  <p class="footnote muted center">Two evaluation operators, one walk: local
+     cell-point interpolation while <code>findCell</code> succeeds, first-order Taylor
+     at the nearest halo cell after a processor crossing (same order) &mdash; the
+     sub-stepping keeps the halo anchor <code>cLast</code> on the true exit cell
+     &mdash; the PDE backstop only sees skeleton, path-cap and deeper-than-halo
+     cells.</p>
+</section>
+
+<!-- ===== closestPoint 5: VERDICT ===== -->
+<section>
+  <h2><code>closestPoint</code> &mdash; measured verdict</h2>
+  <ul class="tight">
+    <li class="good"><b>Static: the only convergent model.</b> \(e_{L_2}\):
+        0.27 \(\to\) 0.0045 over \(h=1/32\to1/256\) &mdash; \(\approx O(h^2)\), ratio
+        \(\to10^{-3}\), within 4&times; of the exact-extension reference.</li>
+    <li><b>Reversed vortex</b> (\(T{=}2\), \(N{=}256\)): 0.104 / <b>0.015%</b> &mdash; the
+        best volume conservation of the family.</li>
+    <li class="warn"><b>Extreme \(T{=}8\) inverts the story:</b> 0.61 / 55% loss &mdash;
+        after long unredistanced advection \(\psi\) is far from a signed distance, the
+        Newton walks bend and fail en masse. <b>Redistancing is this model&rsquo;s missing
+        partner.</b></li>
+    <li><b>Steady vortex:</b> the lowest band error until \(t\approx1.2\)
+        (5&ndash;10&times; below <code>none</code>); degrades once the filament band
+        self-overlaps.</li>
+    <li><b>MPI (measured, steady vortex, np=4/scotch):</b> the
+        <code>zoneDistribute</code> halo + sub-stepped walk cut the fallback share
+        5.32% \(\to\) <b>1.28%</b> at \(N{=}64\) and to <b>0.26%</b> at \(N{=}128\)
+        &mdash; essentially the 0.15% serial floor (skeleton + tolerance only);
+        parallel&ndash;serial \(L_\infty\psi\) discrepancy 1.19&times;10<sup>&minus;3</sup>
+        \(\to\) 3.37&times;10<sup>&minus;4</sup>; serial results bit-identical.</li>
+    <li class="good"><b>Verdict: the reference model</b> wherever \(\psi\) is maintained
+        &mdash; highest accuracy, geometric guarantee, parallel-complete up to one halo
+        layer with a graceful PDE fallback beyond; couple with redistancing for
+        long-time robustness.</li>
+  </ul>
+  <aside class="notes">
+    The T=8 inversion is the cleanest demonstration in the whole study that a method's
+    hypothesis set matters: the model assumes psi is close to a signed distance; violate
+    that long enough and the geometric walk -- its very strength -- becomes the failure
+    channel, while dumb transport (meshWave) keeps chugging.
+  </aside>
+</section>
+</section>  <!-- ##### /STACK closestPoint ##### -->
+
+<section data-track="Velocity extension &mdash; the models">  <!-- ##### STACK model 7/7: meshWave ##### -->
+<!-- ===== meshWave 1: MOTIVATION ===== -->
+<section>
+  <p class="part-kicker">Part 2 &middot; model 7 of 7</p>
+  <h2>Model <code>meshWave</code> &mdash; motivation: the parallel-native wave</h2>
+  <div class="cols">
+    <div>
+      <p><b>Problem:</b> <code>closestPoint</code> walks fail at processor boundaries and
+         near the skeleton; the PDE fill needs a linear solve. Can the closest-point
+         <em>idea</em> run on machinery that is parallel-correct by design?</p>
+      <p><b>Idea:</b> OpenFOAM already owns one: <code>FaceCellWave</code> &mdash; the
+         <em>wallDist</em> engine. Seed every \(\psi\)-sign-change face with its foot
+         point <em>and the interface velocity there</em> as a payload; the wave delivers
+         the <b>nearest seed&rsquo;s</b> payload to every cell, distance-ordered like fast
+         marching &mdash; across processor, cyclic and AMI boundaries natively.</p>
+      <p class="footnote muted">Adalsteinsson &amp; Sethian JCP 148 (1999) reinterpreted
+         through OpenFOAM&rsquo;s wave engine
+         (<code>MeshWave&lt;wallPointData&lt;vector&gt;&gt;</code>).</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 320 210" width="100%" role="img" aria-label="wave fronts propagate foot-point and velocity payloads from seed faces on the interface, crossing a processor boundary">
+        <defs>
+          <marker id="mwG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-good)"/>
+          </marker>
+        </defs>
+        <!-- interface -->
+        <path d="M96,12 Q76,105 96,198" fill="none" stroke="var(--ls-accent)" stroke-width="2.8"/>
+        <text x="80" y="14" fill="var(--ls-accent)" font-size="11">&#931;</text>
+        <!-- seed faces -->
+        <g fill="var(--ls-warn)">
+          <rect x="88" y="55"  width="7" height="7" transform="rotate(12 91 58)"/>
+          <rect x="82" y="101" width="7" height="7" transform="rotate(4 85 104)"/>
+          <rect x="88" y="148" width="7" height="7" transform="rotate(-10 91 151)"/>
+        </g>
+        <text x="60" y="48" fill="var(--ls-warn)" font-size="8.5" text-anchor="end">seed faces:</text>
+        <text x="60" y="59" fill="var(--ls-warn)" font-size="8.5" text-anchor="end">&#968; changes sign</text>
+        <!-- payload label -->
+        <text x="190" y="92" fill="var(--ls-good)" font-size="9" text-anchor="middle">payload: (x<tspan dy="2.5" font-size="6.5">fp</tspan><tspan dy="-2.5">, U(x</tspan><tspan dy="2.5" font-size="6.5">fp</tspan><tspan dy="-2.5">), d&#178;)</tspan></text>
+        <!-- wave fronts from middle seed -->
+        <g fill="none" stroke="var(--ls-line)" stroke-width="1.2" stroke-dasharray="5,4">
+          <path d="M 92,66 A 39,39 0 0 1 92,144"/>
+          <path d="M 96,36 A 69,69 0 0 1 96,174"/>
+          <path d="M 102,7  A 99,99 0 0 1 102,203"/>
+        </g>
+        <!-- processor boundary -->
+        <line x1="216" y1="8" x2="216" y2="202" stroke="var(--ls-fg)" stroke-width="1.4" stroke-dasharray="9,4,2,4" stroke-opacity="0.65"/>
+        <text x="222" y="18" fill="var(--ls-muted)" font-size="8.5">processor</text>
+        <text x="222" y="29" fill="var(--ls-muted)" font-size="8.5">boundary</text>
+        <!-- receiving cell -->
+        <rect x="252" y="96" width="18" height="18" fill="var(--ls-good)" fill-opacity="0.16" stroke="var(--ls-good)" stroke-width="1.4"/>
+        <line x1="150" y1="105" x2="248" y2="105" stroke="var(--ls-good)" stroke-width="1.8" marker-end="url(#mwG)"/>
+        <text x="261" y="130" fill="var(--ls-good)" font-size="9" text-anchor="middle">U<tspan dy="2.5" font-size="6.5">ext</tspan><tspan dy="-2.5"> = nearest</tspan></text>
+        <text x="261" y="142" fill="var(--ls-good)" font-size="9" text-anchor="middle">seed payload</text>
+        <text x="160" y="207" fill="var(--ls-muted)" font-size="9.5" text-anchor="middle">FaceCellWave: distance-ordered fronts, proc/cyclic/AMI native</text>
+      </svg>
+    </div>
+  </div>
+  <aside class="notes">
+    wallDist computes distance to walls by exactly this wave; here the wall is Sigma
+    (sign-change faces) and the transported info additionally carries the interface
+    velocity. Where the wave fronts of two seeds meet, the nearer seed wins -- a discrete
+    Voronoi diagram of the seed set, which IS the closest-point map quantized to seeds.
+  </aside>
+</section>
+
+<!-- ===== meshWave 2: THE MODEL ===== -->
+<section>
+  <h2><code>meshWave</code> &mdash; the model</h2>
+  \[ \mathbf{U}_{\text{ext}}(\mathbf{x}_c) = \mathbf{U}\big(\mathbf{x}_{fp}(f^*)\big),
+     \qquad f^* = \operatorname*{arg\,min}_{f\,\in\,\text{seed faces}}
+     \big\|\mathbf{x}_c - \mathbf{x}_{fp}(f)\big\|,
+     \qquad \mathbf{x}_{fp}(f)=\mathbf{x}_f-\psi_f\,\hat{\mathbf{n}}_f \]
+  <ul class="tight">
+    <li><b>What it is:</b> the closest-point map <b>quantized to the seed set</b> &mdash;
+        a discrete Voronoi assignment: every cell inherits the payload of its nearest
+        seed&rsquo;s foot point.</li>
+    <li><b>Guarantee:</b> \((\hat{\mathbf{n}}\cdot\nabla)\mathbf{U}_{\text{ext}}\approx0\)
+        to \(O(h)\): the nearest <em>seed</em> is within \(O(h)\) of the true foot point
+        along \(\Sigma\), so the sampled velocity is \(O(h)\) off &mdash; a flat,
+        non-convergent but <em>uniformly bounded</em> extension error.</li>
+    <li><b>By-products:</b> exact band distances for free
+        (<code>wallPointData::distSqr</code>) and an initial guess for other models.</li>
+    <li class="good"><b>No solve, no walk, no failure channel:</b> the wave visits each
+        face O(1) times; parallel, cyclic and AMI transfers are the engine&rsquo;s own
+        (<code>FaceCellWave</code>) &mdash; the model inherits fifteen years of
+        production hardening.</li>
+  </ul>
+  <aside class="notes">
+    Contrast with closestPoint: same geometric target, opposite accuracy/robustness
+    trade. closestPoint refines the foot point per cell (O(h^2)) but owns its failure
+    handling; meshWave accepts O(h) quantization and in exchange NOTHING can fail --
+    every cell always receives the nearest valid payload.
+  </aside>
+</section>
+
+<!-- ===== meshWave 3: DISCRETIZATION ===== -->
+<section>
+  <h2><code>meshWave</code> &mdash; discretization (UFVM)</h2>
+  <ul class="tight">
+    <li><b>Seeds:</b> every internal face with \(\psi_{\text{own}}\psi_{\text{nei}}<0\);
+        face foot point \(\mathbf{x}_{fp}=\mathbf{x}_f-\psi_f\hat{\mathbf{n}}_f\)
+        (\(\psi_f\), \(\hat{\mathbf{n}}_f\) linearly interpolated); payload =
+        <code>wallPointData&lt;vector&gt;(fp, U(fp), |x_f-fp|&sup2;)</code> with
+        \(\mathbf{U}(\mathbf{x}_{fp})\) by cell-point (IDW) interpolation
+        (owner-cell value if <code>findCell</code> fails).</li>
+    <li><b>Wave:</b> <code>MeshWave&lt;wallPointData&lt;vector&gt;&gt;</code> over the
+        whole mesh (cheap; \(n_{\text{totalCells}}+1\) iterations cap); each visited
+        cell/face keeps the payload with the <b>smaller</b> distance &mdash; the
+        distance-ordered relaxation that makes it the FVM-native fast marching.</li>
+    <li><b>Consumption:</b> only band cells overwrite
+        \(\mathbf{U}_{\text{ext}}\) with the wave payload; the shared cosine fade
+        (<em class="tag">updateFlux</em>) handles the transition beyond.</li>
+    <li>Stock OpenFOAM classes end to end: <em class="tag">MeshWave.H</em>,
+        <em class="tag">wallPointData.H</em> (patterns from
+        <em class="tag">patchDataWave</em> / <em class="tag">fvc::sweep</em>) &mdash;
+        <b>zero</b> new parallel code in leia.</li>
+  </ul>
+  <p class="footnote">Source: <em class="tag">src/leiaLevelSet/velocityExtension/meshWaveExt.C</em>
+     &rarr; <em class="tag">meshWaveExt::extend()</em>; registered as
+     <code>type meshWave;</code>.</p>
+</section>
+
+<!-- ===== meshWave 4: CODE ===== -->
+<section>
+  <h2><code>meshWaveExt::extend()</code> &mdash; code</h2>
+  <pre style="font-size:0.44em; line-height:1.2; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>forAll(own, f)                        // seed every psi-sign-change face
+{
+    if (psi_[own[f]]*psi_[nei[f]] &lt; 0)
+    {
+        const point fp = Cf[f] - psiF[f]*nF[f];       // face foot point
+        const label cf = mesh_.findCell(fp);
+        const vector Ufp = (cf &gt;= 0) ? Uinterp.interpolate(fp, cf)
+                                     : U_[own[f]];    // left the proc mesh
+        seedFaces.append(f);
+        seedInfo.append(wallPointData&lt;vector&gt;(fp, Ufp, magSqr(Cf[f] - fp)));
+    }
+}
+
+MeshWave&lt;wallPointData&lt;vector&gt;&gt; wave    // whole-mesh distance-ordered sweep
+(
+    mesh_, seedFaces, seedInfo, mesh_.globalData().nTotalCells() + 1
+);
+
+const List&lt;wallPointData&lt;vector&gt;&gt;&amp; cellInfo = wave.allCellInfo();
+forAll(band_, c)
+{
+    if (band_[c] &gt; 0.5 &amp;&amp; cellInfo[c].valid(td))
+    {
+        Uext_[c] = cellInfo[c].data();    // nearest seed's payload
+    }
+}</code></pre>
+  <p class="footnote muted center">Line 5: the seed foot point &mdash; line 10: the payload
+     carries position <em>and</em> velocity &mdash; line 14: the entire parallel transport
+     is one stock-class constructor call &mdash; line 25: consumption is a per-cell copy,
+     no solve.</p>
+</section>
+
+<!-- ===== meshWave 5: VERDICT ===== -->
+<section>
+  <h2><code>meshWave</code> &mdash; measured verdict</h2>
+  <ul class="tight">
+    <li><b>Static:</b> ratio flat at 0.16&ndash;0.19 &mdash; the \(O(h)\)
+        nearest-<em>seed</em> quantization, exactly as predicted; never converges, never
+        degrades.</li>
+    <li><b>Reversed vortex</b> (\(T{=}2\), \(N{=}256\)): 0.082 / 0.3% &mdash; the best
+        extension at final time; <b>extreme \(T{=}8\): the best model overall</b>
+        (0.21 / 0.5%) &mdash; transported seed data needs no SDF quality from
+        \(\psi\).</li>
+    <li><b>Steady vortex:</b> resists \(\min|\nabla\psi|\) flattening <b>longest</b>;
+        keeps the interface alive past <code>none</code> (\(t\approx2.85\) vs 2.65 at
+        \(h{=}1/64\)); shape error at \(t{=}T/2\) leads the field together with
+        <code>none</code>.</li>
+    <li class="good"><b>Verdict: the robust default for two-phase flow.</b> Parallel-native,
+        solve-free, degrades gracefully exactly where the accurate models break &mdash;
+        pair it with <code>closestPoint</code> + redistancing when accuracy near
+        \(\Sigma\) is the priority.</li>
+  </ul>
+  <p class="footnote muted center">End of the seven stacks &mdash; Part 3 measures all of
+     them statically, Part 4 under advection, Part 5 ranks them.</p>
+  <aside class="notes">
+    The closing symmetry of the part: the most accurate model (closestPoint) and the most
+    robust one (meshWave) are BOTH closest-point methods -- one refines the geometric map
+    per cell, the other quantizes it to seeds and rides bulletproof infrastructure. The
+    PDE family sits in between and is kept for what PDEs are good at: filling holes.
+  </aside>
+</section>
+</section>  <!-- ##### /STACK meshWave ##### -->
+
+<section data-track="Static verification (t = 0)">  <!-- ############ TRACK: static verification (t=0) ############ -->
+<!-- part intro (auto-pattern) -->
+<section>
+  <p class="part-kicker">Part 3 of 8</p>
+  <h2>Static verification (t = 0)</h2>
+  <p class="muted" style="font-size:0.85em">one <code>correct()</code>, no advection: measured convergence of \(|\hat{\mathbf{n}}\cdot\nabla\mathbf{U}_{\text{ext}}|\)</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
+    <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
+    <li class="here"><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">4</span>Advected verification &amp; results</li>
+    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
+    <li><span class="idx">6</span>Conclusions</li>
+    <li><span class="idx">7</span>Software design</li>
+    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+  </ol>
+  <p class="part-prevnext">Previously: Velocity extension &mdash; the models &nbsp;&middot;&nbsp; Next: Advected verification &amp; results</p>
+</section>
+
+<!-- S1: method -->
+<section>
+  <h2>Static verification &mdash; is \((\mathbf{n}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\) at \(t=0\)?</h2>
+  <p>Before advecting anything: initialize the reversed-vortex case (exact SDF \(\psi_0\),
+     prescribed velocity at \(t=0\)), apply each extension model <b>once</b>, and measure
+     the defining property directly:</p>
+  \[ e(\mathbf{x}) = \big|\,\hat{\mathbf{n}}\cdot\nabla\mathbf{U}_{\text{ext}}\,\big|,
+     \qquad \hat{\mathbf{n}} = \nabla\psi/|\nabla\psi| \]
+  <ul class="tight">
+    <li>Norms: volume-weighted \(L_2\) and \(L_\infty\) of \(e\) over the extension-active
+        region \(\Omega_L=\{|\psi|\le n_{\text{layers}}h\}\) (inside the fade start).</li>
+    <li>Reference: the same for the <b>raw</b> velocity (\(e_{\text{raw}}\); model
+        <code>none</code> \(\equiv\) raw, ratio \(\equiv 1\) &mdash; validated exactly).</li>
+    <li>Ratio \(\|e\|/\|e_{\text{raw}}\|\): \(\to 0\) iff the extension works;
+        \(L_2\) also split by \(\operatorname{sign}(\psi)\) (one-sidedness).</li>
+  </ul>
+  <p class="footnote muted"><em class="tag">applications/test/leiaTestVelocityExtension</em>
+     driven by <em class="tag">config/staticExtension.yaml</em>: 4 resolutions &times; 7 models
+     &times; 2 divergence schemes = 56 cases, one <code>correct()</code> each, no advection.
+     Region and every \(h\)-proportional length use the per-cell <b>min face-neighbour
+     distance</b> (\(\sqrt[3]{V}=(h^2t)^{1/3}\ne h\) on a 2D mesh of thickness \(t\)).
+     <b>If a model does not converge on a static interface, it never will under
+     advection.</b></p>
+</section>
+
+<!-- S2: e-field -->
+<section>
+  <h2>\(e=|\hat{\mathbf{n}}\cdot\nabla\mathbf{U}|\) at \(t=0\) &mdash; the fields</h2>
+  <img src="figures/static_e_anchor0.png"
+       alt="normal-derivative magnitude at t=0: raw vs anisotropicDiffusion vs pseudoTime"
+       style="max-height:62vh; max-width:94%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">Rows: resolution; columns: raw \(\mathbf{U}\) /
+     <code>anisotropicDiffusion</code> / <code>pseudoTime</code> /
+     <code>steadyUpwind</code> / <code>steadyUpwindLinear</code> /
+     <code>closestPoint</code> / <code>meshWave</code> (cyan = \(\psi=0\); shared per-row
+     colour scale from the raw field &mdash; darker = better extension). Note the
+     near-black band of <code>closestPoint</code> and <code>meshWave</code>, the ring
+     artifacts of the PDE models, and <code>steadyUpwindLinear</code>'s divergence.</p>
+</section>
+
+<!-- S3: convergence -->
+<section>
+  <h2>Static convergence of \(\|\hat{\mathbf{n}}\cdot\nabla\mathbf{U}_{\text{ext}}\|\)</h2>
+  <img src="figures/static_convergence.png"
+       alt="L2 and Linf of the normal derivative vs h, per model and anchor layers"
+       style="max-height:56vh; max-width:94%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote center">Measured verdicts (\(e_{L_2}\) over \(|\psi|\le3h\), ratio to
+     raw 4.36): <span class="good"><b><code>closestPoint</code> converges at
+     \(\approx O(h^2)\)</b></span> (\(0.27\!\to\!0.0045\), ratio \(\to10^{-3}\), within
+     4&times; of the exact-extension reference); <code>meshWave</code> flat at ratio
+     0.16&ndash;0.19 (nearest-<em>seed</em> resolution); <code>steadyUpwind</code>(upwind)
+     ratio 0.11&ndash;0.34 but <em>degrading</em> (seed-staircase noise survives as upwind
+     diffusion shrinks); <span class="warn">linearUpwind deferred correction and the Aslam
+     cascade <b>diverge</b></span> (no ddt damping on the steady equation);
+     aniso (\(\varepsilon\!=\!c\,h\)) 0.55&ndash;0.72 and pseudoTime 0.47, both flat.
+     The legacy models remain inconsistent; <b>the geometric extension is the answer</b>.</p>
+  <aside class="notes">
+    Three measurement-infrastructure bugs were found and fixed on the way (each visible as
+    a spurious plateau/ring): (1) cbrt(V) != h on a 2D mesh of thickness 0.1 mis-scaled
+    every length (region spanned 4.4-8.8 cells instead of 3) -- fixed with per-cell min
+    face-neighbour distance; (2) the cell-hop band under-covered the |psi| shell at
+    corners -- fixed with a |psi|-based band + one guard layer; (3) fade must start beyond
+    the guard layer so gradient stencils stay interior. Layer-resolved diagnosis (numpy,
+    exact-extension reference at 1e-3) was the decisive tool.
+  </aside>
+</section>
+
+<!-- S3b: diagnosis of the legacy models -->
+<section>
+  <h2>Why the legacy models cannot converge &mdash; diagnosis</h2>
+  <ul class="tight">
+    <li><b><code>pseudoTime</code>: reach failure, not discretization.</b> The march covers
+        \(n_{\text{iter}}\,\Delta\tau = 10\times0.2 = 2\) cells &lt; the 3-cell band: a
+        <em>fixed fraction</em> of the band never receives the extension &mdash; ratio
+        pinned at &asymp;0.47 for every \(h\). Cure: the steady solve
+        (<code>steadyUpwind</code>) with infinite reach.</li>
+    <li><b><code>anisotropicDiffusion</code>: regularization floor.</b> Interior error is
+        <em>linear</em> in \(\varepsilon\) (regular perturbation), so fixed
+        \(\varepsilon=10^{-3}\) gives an \(h\)-independent floor; even
+        \(\varepsilon=c\,h\) leaves ratio 0.55&ndash;0.72 &mdash; the mesh-induced
+        cross-diffusion of <code>fvm::laplacian</code> on a near-rank-1 tensor is itself
+        \(\sim h\) (the measured grid-aligned artifacts; Droniou M3AS 2014).</li>
+    <li><b>Both: the seed staircase.</b> Dirichlet data pinned at cell centres at varying
+        distances from \(\Sigma\) carries \(O(1)\) gradient noise into every PDE
+        transport; the geometric <code>closestPoint</code> assignment has no transport to
+        pollute (Chopp SISC 2009: invest in anchoring, keep transport simple).</li>
+  </ul>
+</section>
+
+<!-- S3c: literature landscape -->
+<section>
+  <h2>The landscape &mdash; extension methods &amp; what fits UFVM</h2>
+  <ul class="tight" style="font-size:0.82em">
+    <li><b>Fast-marching extension</b> (Adalsteinsson&ndash;Sethian JCP 148 '99; Chopp
+        SISC '01/'09): heap-ordered causal updates &mdash; outside
+        <code>fvMatrix</code>, first order; its FVM-native analogue is our
+        <code>meshWave</code> (FaceCellWave).</li>
+    <li><b>PDE extension</b> (Zhao et&nbsp;al. '96; Peng et&nbsp;al. '99): pseudo-time or
+        steady transport &mdash; our <code>pseudoTime</code>/<code>steadyUpwind</code>;
+        implicit-steady = fast sweeping (Aslam&ndash;Luo&ndash;Zhao SISC '14).</li>
+    <li><b>Extrapolation cascade</b> (Aslam JCP 193 '04; McCaslin et&nbsp;al. JCP 274
+        '14): \(O(h^2)\!-\!O(h^3)\) along normals &mdash; our
+        <code>steadyUpwindLinear</code>; needs a damped/sweeping form on UFVM (measured
+        divergent in the undamped implicit form).</li>
+    <li><b>Closest point</b> (Ruuth&ndash;Merriman JCP 227 '08; Macdonald&ndash;Ruuth SISC
+        '09; LENT: Mari&#263; et&nbsp;al. C&amp;F 113 '15): geometric,
+        \(O(h^{p+1})\) &mdash; our <code>closestPoint</code>, the measured winner.</li>
+    <li><b>Skipped deliberately</b>: heap-FMM/OUM ports (Kimmel&ndash;Sethian;
+        Sethian&ndash;Vladimirsky &mdash; alien to fvMatrix, first order anyway) and
+        elliptic/Hilbertian extension (de Gournay SICON '06 &mdash;
+        \(\mathbf{n}\cdot\nabla\mathbf{u}_{\text{ext}}\not\to0\): wrong target).</li>
+  </ul>
+  <p class="footnote muted">Well-posedness of the velocity-extension evolution:
+     Bothe &amp; Soga arXiv:2412.13567. Gap this work fills: a measured
+     \(\ge\)2nd-order \(\mathbf{n}\cdot\nabla\mathbf{u}_{\text{ext}}\to0\) extension
+     <b>native to general polyhedral FVM meshes</b>.</p>
+</section>
+
+<!-- S4: anchoring -->
+<section>
+  <h2>Anchoring: foot-pointed Dirichlet layers (<code>nAnchorLayers</code>)</h2>
+  <p><b>Hypothesis:</b> pinning only the single interface-cell layer leaves the PDE
+     stencil of every interface-adjacent cell mixing <em>solved</em> and <em>pinned</em>
+     values &mdash; kinks in \(\mathbf{U}_{\text{ext}}\) right where it matters.</p>
+  <p><b>Remedy tested:</b> foot-point (steepest descent + IDW interpolation, identical
+     to the interface layer) the velocities of <code>nAnchorLayers</code> adjacent cell
+     layers and pin them as Dirichlet data too
+     (<em class="tag">interfaceExtension::buildBand</em>, dict entry
+     <em class="tag">nAnchorLayers</em>, default 0; swept \(\{0,1,2\}\)).</p>
+  <p><span class="warn"><b>Measured: refuted as the dominant error.</b></span>
+     \(\|e\|_{L_2}\) changes by &lt;3% (aniso, \(N=64\): 2.951&rarr;2.958);
+     \(\|e\|_{L_\infty}\) <em>worsens</em> (\(N=256\): 10.0&rarr;13.1 for 0&rarr;2 layers).
+     The transition ring dominates, not seed-stencil kinks.</p>
+  <aside class="notes">
+    More pinned interpolated data creates more local gradients (hence the Linf growth).
+    nAnchorLayers stays available (default 0); the anchor-1/2 field montages
+    (figures/static_e_anchor1/2.png) are visually indistinguishable from anchor 0.
+  </aside>
+</section>
+
+<!-- S5: one-sidedness -->
+<section>
+  <h2>One-sided errors across \(\Sigma\) &mdash; measured</h2>
+  <ul class="tight">
+    <li><b>At \(t=0\)</b> the SDF is symmetric (\(\|\,|\nabla\psi|-1\,\|\approx5\!\times\!10^{-4}\)
+        both sides), but the <b>PDE extensions' static error is one-sided</b>:
+        <code>anisotropicDiffusion</code> \(L_2\) inside 1.1&ndash;1.4 vs outside
+        2.9&ndash;4.2 (out/in \(\approx\!2.7\), \(h\)-independent); pseudoTime mildly
+        out-heavy (\(\approx\!1.15\times\)). The geometric <code>closestPoint</code> is
+        <em>symmetric</em> at fine \(h\) and <em>inside</em>-heavy at coarse \(h\)
+        (0.41 vs 0.15 at \(N\!=\!32\)) &mdash; the interior shell touches the SDF
+        <b>skeleton</b> once \(R\approx5h\).</li>
+    <li><b>Under advection</b> (\(T=2\), \(N=128\), \(|\psi|<10h\)): aniso becomes
+        outside-heavy (out/in \(\approx1.8\) by \(t=T\)); <code>pseudoTime</code> mildly
+        inside-heavy; <code>none</code> strongly <em>inside</em>-heavy (0.14&ndash;0.5
+        &mdash; the SDF skeleton at the blob centre).</li>
+    <li><b>Why:</b> outside a convex \(\Sigma\) the normal rays <b>diverge</b> &mdash; seed
+        information spreads over growing area, under-constraining the exterior extension;
+        inside, rays converge to the skeleton. The visual impression of "large error
+        outside" is additionally amplified by the exterior's larger area.</li>
+  </ul>
+  <p class="footnote muted">In/out \(L_2\) columns are now a permanent part of the static
+     study CSV (<em class="tag">E_NORMAL_L2_IN / E_NORMAL_L2_OUT</em>).</p>
+</section>
+</section>  <!-- ############ /TRACK: static verification (t=0) ############ -->
+
+<section data-track="Advected verification &amp; results">  <!-- ############ TRACK: verification & results ############ -->
+<!-- part intro (auto-pattern) -->
+<section>
+  <p class="part-kicker">Part 4 of 8</p>
+  <h2>Advected verification &amp; results</h2>
+  <p class="muted" style="font-size:0.85em">the classical reversed vortex: convergence, field atlas, topology</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
+    <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
+    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li class="here"><span class="idx">4</span>Advected verification &amp; results</li>
+    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
+    <li><span class="idx">6</span>Conclusions</li>
+    <li><span class="idx">7</span>Software design</li>
+    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+  </ol>
+  <p class="part-prevnext">Previously: Static verification (t = 0) &nbsp;&middot;&nbsp; Next: Semi-Lagrangian advection</p>
+</section>
+
 <!-- ==================== 15. VERIFICATION METRICS ==================== -->
 <section>
   <h2>Verification metrics</h2>
@@ -1142,110 +2542,596 @@ for (label corr = 0; corr &lt; nDefCorr; ++corr)
     prescribed-velocity test. Extensions pay off when U is a flow solution (two-phase).
   </aside>
 </section>
+
+<!-- ===== Reversibility bias: the benchmark question ===== -->
+<section>
+  <h2>Is the final-time verdict fair? The reversibility bias</h2>
+  <p>The classical benchmark measures only at \(t=T\), where the flow has
+     <b>undone itself</b>. Advection errors that are transported out and back
+     <b>partially cancel</b> &mdash; and <code>none</code> collects <em>all</em> of that
+     credit, because its error is pure (reversible) transport distortion. A model&rsquo;s
+     approximation error does <b>not</b> self-reverse.</p>
+  <ul class="tight">
+    <li>The same per-step CSVs also hold the row at \(t=T/2\) &mdash; <b>maximal
+        deformation, before any cancellation</b>. No new runs: a second reading of the
+        same data.</li>
+    <li>Why it matters: the interface position error obeys
+        \(\;\mathrm{err}_x \approx \mathrm{err}_\psi / |\nabla\psi|\;\) &mdash; a flattening
+        level set <em>amplifies</em> \(\psi\)-noise into \(O(1)\) position noise
+        <b>while deformed</b>, which is when a two-phase solver actually consumes
+        \(\psi\).</li>
+    <li>Measured (\(T{=}2\), \(N{=}256\), band \(L_2\)): <code>none</code> =
+        <b>1.67</b> at \(t=T/2\) vs <b>0.0013</b> at \(t=T\) &mdash; a
+        <b>&sim;1300&times;</b> cancellation artifact.</li>
+  </ul>
+  <p class="footnote muted">Same data, two verdicts: the final-time reading answers
+     &ldquo;does the error cancel?&rdquo;; the half-time reading answers &ldquo;is \(\psi\)
+     usable while deformed?&rdquo; &mdash; the question that matters for two-phase flow.</p>
+</section>
+
+<!-- ===== Reversibility bias: the measurement ===== -->
+<section>
+  <h2>Band gradient error at maximal deformation</h2>
+  <img src="figures/maxdef_convergence.png"
+       alt="band gradient error vs h per model, at t=T/2 (top) and t=T (bottom)"
+       style="max-height:66vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">Top: \(t=T/2\) (no cancellation) &mdash; <code>none</code>
+     is the <b>worst</b> model at every \(T\le4\), flat at 0.3&ndash;1.7;
+     <code>closestPoint</code>/<code>meshWave</code>/<code>steadyUpwind</code> hold the band
+     <b>6&ndash;15&times;</b> tighter (\(T{=}0.5\): 0.02&ndash;0.06 vs 0.31). Bottom:
+     \(t=T\) &mdash; the ranking <b>inverts</b>; <code>none</code> converges to
+     \(10^{-4}\)&ndash;\(10^{-3}\) purely by cancellation. At \(T{=}8\) both rows are
+     \(O(1)\): the sub-grid pinch dominates everything.</p>
+  <aside class="notes">
+    aggregate.py now extracts the per-step CSV row nearest t=T/2 (half.* columns);
+    plots.maxdef_convergence renders this two-row figure. The top row is the honest
+    forward-deformation error; it is also why "none keeps psi more regular" is only
+    true in the reversed reading -- during deformation it is the least regular.
+  </aside>
+</section>
+
+<!-- ===== The non-reversing test: setup ===== -->
+<section>
+  <h2>The non-reversing test &mdash; steady vortex, marker-traced truth</h2>
+  <div class="cols">
+    <div>
+      <p><b>Same field, no modulation</b> (<code>oscillation off</code>,
+         <code>@!OSCILLATION!@</code> token): sustained strain winds the circle into a
+         spiral filament; \(|\nabla\psi|\) drifts like \(e^{\int\!\text{strain}\,dt}\)
+         and <b>never gets a refund</b>. \(T=3\), \(N\in\{64,128,256\}\), all 6 models.</p>
+      <ul class="tight">
+        <li><b>No analytic final interface</b> &rarr; reference = <b>marker tracing</b>:
+            8192 circle points through the <em>analytic</em> field
+            (<code>DOP853</code>, rtol \(10^{-10}\)); shape error
+            \(=\|\alpha-\chi_{\text{ref}}\|_{L_1}/A_{\text{ref}}\) via a
+            1024&sup2; scanline raster.</li>
+        <li>Tracer self-check: oscillating run returns the markers to the circle at
+            \(t=T\) to <b>5&times;10&sup1;&sup1;</b> &mdash; quasi-exact.</li>
+      </ul>
+    </div>
+    <div>
+      <p class="muted">Headline read-out: error <em>vs time</em> per model &mdash; the
+         <b>crossover</b> \(t^{*}\) where &ldquo;doing nothing&rdquo; stops winning.</p>
+      <ul class="tight">
+        <li>Band gradient error &amp; <b>flattening</b>
+            (\(\min_{\text{band}}|\nabla\psi|\), new CSV column) vs \(t\).</li>
+        <li>Volume error (exact reference: divergence-free flow).</li>
+        <li>Caveat: once the filament is thinner than \(2(n_{\text{layers}}{+}1)h\)
+            the band <b>self-overlaps</b> (medial axis inside the band): closest-point
+            foot-points jump branches, PDE transport gets competing characteristics
+            &mdash; all models degrade together. Discriminating data: \(N\ge128\).</li>
+      </ul>
+    </div>
+  </div>
+  <p class="footnote muted center"><code>config/steadyVortex2D.yaml</code> (fast,
+     \(N\le128\)) / <code>steadyVortex2DHighRes.yaml</code> (+\(N{=}256\), refreshes the
+     deck&rsquo;s <code>steady_*</code> figures); reference machinery:
+     <code>workflow/scripts/marker_ref.py</code>.</p>
+</section>
+
+<!-- ===== Steady vortex: the time-series verdict ===== -->
+<section>
+  <h2>Steady vortex &mdash; <code>none</code> never wins</h2>
+  <img src="figures/steady_timeseries.png"
+       alt="band gradient error, band min |grad psi| and volume error vs time per model"
+       style="max-height:64vh; max-width:92%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">Rows: band \(\||\nabla\psi|-1\|_{L_2}\) /
+     \(\min_{\text{band}}|\nabla\psi|\) (flattening) / \(E_{\text{vol}}\); columns:
+     \(h\). <b>There is no crossover: <code>none</code> is the worst \(\psi\)-regularizer
+     from \(t=0\)</b> (top curve in row 1, fastest to flatten in row 2), and at
+     \(h{=}1/64\) it <b>annihilates the interface first</b> (\(t\approx2.65\);
+     <code>meshWave</code> \(2.85\); the other four keep an interface to \(T{=}3\)).
+     <code>closestPoint</code> holds the lowest band error until \(t\approx1.2\)
+     (5&ndash;10&times; below <code>none</code>); <code>meshWave</code> resists flattening
+     longest. All saturate once the filament thins below the band width.</p>
+  <aside class="notes">
+    This kills the "doing nothing keeps psi more regular" reading: it was ONLY the
+    reversibility of the benchmark. In the non-reversing regime the extension models
+    dominate the psi-regularity metrics from the first step. The volume row shows the
+    honest cost side: aniso (strong smoothing) loses volume fastest; none is the most
+    volume-friendly early because it adds no model noise.
+  </aside>
+</section>
+
+<!-- ===== Steady vortex: shape vs marker reference ===== -->
+<section>
+  <h2>Steady vortex &mdash; shape error vs the marker reference</h2>
+  <img src="figures/steady_shape_reference.png"
+       alt="shape error vs h against the marker-traced reference at t=T/2 and t=T"
+       style="max-height:58vh; max-width:92%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">\(\|\alpha-\chi_{\text{ref}}\|_{L_1}/A_{\text{ref}}\)
+     against the traced interface. At \(t{=}T/2\): <code>meshWave</code> and
+     <code>none</code> lead; <code>closestPoint</code>/<code>aniso</code> trail &mdash;
+     replacing the transport velocity near \(\Sigma\) perturbs <em>prescribed-velocity</em>
+     shape transport even when \((\mathbf{n}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\) holds.
+     At \(t{=}T{=}3\) all models are \(O(1)\): the filament is sub-grid at
+     \(N\le128\) (the \(N{=}256\) tier is the opt-in config). <b>Honest summary:
+     extension buys \(\psi\)-regularity and interface survival &mdash; not coarse-mesh
+     shape accuracy under a prescribed velocity.</b></p>
+  <aside class="notes">
+    The shape metric needs no reversal: the reference is the flow-map image of the
+    circle, computed to ~1e-10 by tracing markers through the ANALYTIC field. For the
+    reversed studies the same machinery gives a half-time shape error (the t=T/2
+    column of the maxdef analysis).
+  </aside>
+</section>
+
+<!-- ===== Steady vortex: the annihilation montage ===== -->
+<section>
+  <h2>Steady vortex &mdash; winding &amp; annihilation (<code>none</code>)</h2>
+  <img src="figures/steady_alpha_evo_none_T3.png"
+       alt="alpha field at t = 0, 1.5, 3 for the steady vortex, model none"
+       style="max-height:64vh; max-width:94%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">\(\alpha\) at \(t=0\) / \(T/2\) / \(T{=}3\)
+     (rows: \(h\)). Without reversal the spiral only ever <em>tightens</em>: by
+     \(t{=}3\) the tail is sub-grid and the phase is annihilated at \(h{=}1/64\)
+     (<code>none</code> dies at \(t\approx2.65\) &mdash; extension models keep it alive
+     longer). Compare <code>steady_alpha_evo_&lt;model&gt;_T3.png</code> per model.</p>
+</section>
 </section>  <!-- ############ /TRACK: verification & results ############ -->
 
-<!-- ==================== CONCLUSIONS (vertical stack) ==================== -->
+<!-- ==================== SEMI-LAGRANGIAN (vertical stack) ==================== -->
+<section data-track="Semi-Lagrangian advection">  <!-- ############ TRACK: semi-Lagrangian ############ -->
+<!-- part intro (auto-pattern) -->
 <section>
+  <p class="part-kicker">Part 5 of 8</p>
+  <h2>Semi-Lagrangian advection</h2>
+  <p class="muted" style="font-size:0.85em">the parallel research line: don't fix the velocity &mdash; follow the characteristic</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
+    <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
+    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">4</span>Advected verification &amp; results</li>
+    <li class="here"><span class="idx">5</span>Semi-Lagrangian advection</li>
+    <li><span class="idx">6</span>Conclusions</li>
+    <li><span class="idx">7</span>Software design</li>
+    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+  </ol>
+  <p class="part-prevnext">Previously: Advected verification &amp; results &nbsp;&middot;&nbsp; Next: Conclusions</p>
+</section>
 
-  <!-- C1: why the extensions failed -->
-  <section>
-    <h2>Conclusions &mdash; why the extensions first failed</h2>
-    <p><code>none</code> advects ψ with the prescribed flux \(\phi\), which is discretely
-       ~divergence-free ⇒ stable, conservative, accurate. Both extensions rebuild
-       \(\phi_{\text{ext}}=\operatorname{interp}(\mathbf{U}_{\text{ext}})\!\cdot\!\mathbf{S}_f\),
-       which breaks that. Written out, ψ obeys</p>
-    \[ \frac{\partial\psi}{\partial t} = -\,\phi_{\text{ext}}\!\cdot\!\nabla\psi
-        \;-\; \psi\,\underbrace{(\nabla\!\cdot\!\phi_{\text{ext}})}_{\ne\,0\ \Rightarrow\ \text{source}} \]
-    <ul class="tight">
-      <li><b>A. Wrong equation form</b> — the level set obeys \(D\psi/Dt=0\) (advection,
-          not conservation); the conservative \(\nabla\!\cdot\!(\phi_{\text{ext}}\psi)\)
-          hides the compression source \(\psi\,\nabla\!\cdot\!\phi_{\text{ext}}\neq0\)
-          ⇒ \(|\nabla\psi|\) and volume grow. Fixed <b>exactly</b> by the advective form
-          (subtract \(\psi\,\nabla\!\cdot\!\phi_{\text{ext}}\)) — <em>not</em> by
-          Helmholtz-projecting \(\phi_{\text{ext}}\), which destroys
-          \((\mathbf{n}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\) (measured: no
-          \(|\nabla\psi|=1\) channel exists at \(\Sigma\) with projection).</li>
-      <li><b>B. Wrong time step</b> — Δt from CFL of the base \(\phi\), while ψ is advected
-          with \(\phi_{\text{ext}}\) (<em class="tag">leiaLevelSetFoam.C</em>).</li>
-      <li><b>C. Feedback</b> — no redistancing ⇒ ψ (hence \(\mathbf{n}=\nabla\psi/|\nabla\psi|\)
-          and the foot point) degrades ⇒ worse \(\mathbf{U}_{\text{ext}}\) ⇒ worse ψ.</li>
-    </ul>
-    <p class="footnote muted">Two <b>discretization</b> issues compounded it: central
-       <code>Gauss linear</code> advection of \(\psi\) (dispersive wiggles), and
-       <code>pseudoTime</code> discretizing the non-solenoidal
-       \(\mathbf{w}=\operatorname{sign}(\psi)\mathbf{n}\) in <b>conservative</b> form
-       (spurious \(\mathbf{U}_{\text{ext}}\) compression) &rarr; the \(\sim\!10^{108}\)
-       blow-up. aniso stayed bounded (max-principle harmonic solve) but degraded with \(T\).</p>
-  </section>
-
-  <!-- C2: the fixes, with math + code location -->
-  <section>
-    <h2>Conclusions &mdash; the fixes</h2>
-    <ul class="tight">
-      <li><b>1. Non-conservative pseudoTime</b> (the big one): assemble
-          \((\mathbf{w}\!\cdot\!\nabla)\mathbf{U}_{\text{ext}}
-          =\nabla\!\cdot\!(\phi_W\mathbf{U}_{\text{ext}})-\mathbf{U}_{\text{ext}}(\nabla\!\cdot\!\phi_W)\)
-          — <code>- fvm::Sp(fvc::div(phiW), Uext_)</code> in
-          <em class="tag">pseudoTime::extend()</em>. Kills the \(10^{108}\) blow-up.</li>
-      <li><b>2. Bounded 2nd-order advection</b>: <code>Gauss linearUpwind grad(psi)</code> with
-          <code>grad(psi) = cellLimited leastSquares 1</code>, inside a
-          <b>defect-correction loop</b> (<code>nDefCorr</code>) in
-          <em class="tag">leiaLevelSetFoam.C</em> — deferred correction &rarr; ~2nd order, no
-          central wiggles.</li>
-      <li><b>3. Advective \(\psi\)-equation</b> (removes A <em>exactly</em>):
-          \(\partial_t\psi+\nabla\!\cdot\!(\phi_{\text{ext}}\psi)
-          -\psi\,\nabla\!\cdot\!\phi_{\text{ext}}=0\) —
-          <code>- fvm::Sp(fvc::div(phiExt), psi)</code> in
-          <em class="tag">leiaLevelSetFoam.C</em>. Supersedes the Helmholtz projection
-          (<em class="tag">projectFlux false</em>): projecting \(\phi_{\text{ext}}\)
-          destroys \((\mathbf{n}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\).</li>
-      <li><b>3b. Seamless faded flux</b>: \(\phi_{\text{ext}}=\)
-          <code>interpolate(Uext)&amp;Sf</code> on <em>all</em> faces, with
-          \(\mathbf{U}_{\text{ext}}\!\to\!\mathbf{U}\) by a \(C^1\) cosine ramp over
-          \(|\psi|\in[L,2L]\) (<em class="tag">interfaceExtension::updateFlux</em>). A
-          hard band-edge switch is a velocity discontinuity: its \(|\nabla\psi|\) kinks
-          returned onto \(\Sigma\) at reversal (band error &times;10).</li>
-      <li><b>4. CFL from the actual flux</b> (removes B):
-          <em class="tag">maxDeltaT(velExt-&gt;phi(), …)</em>; plus a band clip
-          \(|\mathbf{U}_{\text{ext}}|\le\)<code>maxScale</code>\(\cdot\max|\mathbf{U}|\)
-          (<em class="tag">clipExtended()</em>).</li>
-      <li><b>Future</b> (mitigates C): PDE redistancing (parallel temp-mesh) to refresh
-          \(\mathbf{n}\)/foot-points under strong stretch.</li>
-    </ul>
-  </section>
-
-  <!-- C3: before/after -->
-  <section>
-    <h2>Conclusions &mdash; before &rarr; after</h2>
-    <div class="cols">
-      <div>
-        <p class="footnote muted center">pseudoTime — before (unstable)</p>
-        <img src="figures/convergence_pseudoTime_before.png" alt="pseudoTime before fixes"
-             style="width:100%; border-radius:6px;">
-      </div>
-      <div>
-        <p class="footnote muted center">pseudoTime — after fixes</p>
-        <img src="figures/convergence_pseudoTime.png" alt="pseudoTime after fixes"
-             style="width:100%; border-radius:6px;">
-      </div>
+<!-- ===== SL 1: MOTIVATION ===== -->
+<section>
+  <h2>Semi-Lagrangian &mdash; motivation: skip the equation, follow the flow</h2>
+  <div class="cols">
+    <div>
+      <p><b>Two routes to an accurate \(\psi\) near \(\Sigma\).</b> Velocity extension
+         (Part 2) corrects <em>where the velocity points</em>, then advects with a flux
+         scheme. Semi-Lagrangian advection corrects <em>nothing</em>: it uses the exact
+         property of pure advection &mdash; \(\psi\) is <b>constant along characteristics</b>.</p>
+      <p>For each arrival cell centre \(\mathbf{x}_c\) at \(t^{n+1}\), trace the
+         characteristic <b>backward</b> to its departure foot \(\mathbf{x}_d\) at \(t^n\)
+         and copy the value:</p>
+      \[ \psi^{n+1}(\mathbf{x}_c) = \psi^{n}(\mathbf{x}_d). \]
+      <ul class="tight">
+        <li><b>No flux, no divergence, no linear solve</b> &mdash; a per-cell assignment.</li>
+        <li><b>Unconditionally stable for CFL \(\le 1\)</b>: the foot stays inside the
+            arrival cell's point-neighbour hull &rArr; evaluation is
+            <em>interpolation</em>, never extrapolation &rArr; no cell search.</li>
+      </ul>
+      <p class="footnote muted">Courant&ndash;Isaacson&ndash;Rees (1952); Taylor-displacement
+         foot: Mari&#263; PhD thesis &sect;6.3.1, eqs. (165)&ndash;(167).</p>
     </div>
-    <p class="footnote center">The catastrophic \(\sim\!10^{108}\) blow-up is gone. With the
-       <span class="good">advective \(\psi\)-equation + seamless faded flux</span>,
-       pseudoTime's \(E_{\nabla\psi}\) <b>converges with \(h\)</b>, matching
-       <code>none</code> at moderate \(T\) (\(0.066\) at \(T\!=\!0.5\)/\(N\!=\!256\)) —
-       the \(|\nabla\psi|\!=\!1\) channel at \(\Sigma\) is real; aniso is the cruder model.
-       Extensions <b>trade volume error</b> (no conservation mechanism; non-reversing
-       approximation error) for local SDF preservation. \(E_{\text{vol}}\!\to\!1\) at
-       \(T=8\)/coarse \(h\) is the shared <b>topological pinch-off</b>; the threshold moves
-       with \(h\) (\(N\le64\) total, \(N=128\) 24%, \(N=256\) ~2% for <code>none</code>) at
-       8&times; cost per level. For a <b>prescribed</b> divergence-free field
-       <code>none</code> stays optimal — extension pays off only when \(\mathbf{U}\) is a
-       flow solution (two-phase).</p>
+    <div>
+      <svg viewBox="0 0 300 220" width="100%" role="img" aria-label="backward characteristic from the arrival cell centre to the departure foot inside the point-neighbour stencil">
+        <defs>
+          <marker id="slBack" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-warn)"/>
+          </marker>
+        </defs>
+        <!-- 3x3 cell block (the point-neighbour stencil of x_c) -->
+        <g stroke="var(--ls-muted)" stroke-width="1" fill="none" stroke-opacity="0.5">
+          <rect x="90"  y="70"  width="50" height="50"/>
+          <rect x="140" y="70"  width="50" height="50"/>
+          <rect x="190" y="70"  width="50" height="50"/>
+          <rect x="90"  y="120" width="50" height="50"/>
+          <rect x="140" y="120" width="50" height="50"/>
+          <rect x="190" y="120" width="50" height="50"/>
+          <rect x="90"  y="20"  width="50" height="50"/>
+          <rect x="140" y="20"  width="50" height="50"/>
+          <rect x="190" y="20"  width="50" height="50"/>
+        </g>
+        <text x="150" y="14" fill="var(--ls-muted)" font-size="8.5">point-neighbour (CPC) stencil of x<tspan dy="2" font-size="6.5">c</tspan></text>
+        <!-- arrival cell centre -->
+        <circle cx="165" cy="95" r="4" fill="var(--ls-fg)"/>
+        <text x="171" y="92" fill="var(--ls-fg)" font-size="10">x<tspan dy="2.5" font-size="7">c</tspan> (t<tspan dy="-3" font-size="7">n+1</tspan>)</text>
+        <!-- backward characteristic to the foot -->
+        <path d="M165,95 C150,120 128,132 116,140" fill="none" stroke="var(--ls-warn)" stroke-width="2.2" marker-end="url(#slBack)"/>
+        <text x="150" y="118" fill="var(--ls-warn)" font-size="8.5">&minus;u dt + &frac12;(&hellip;)dt&sup2;</text>
+        <!-- foot -->
+        <circle cx="113" cy="142" r="4" fill="var(--ls-accent)"/>
+        <text x="60" y="158" fill="var(--ls-accent)" font-size="9.5">x<tspan dy="2.5" font-size="7">d</tspan> (t<tspan dy="-3" font-size="7">n</tspan>): foot</text>
+        <!-- reconstruction glyph at the foot -->
+        <text x="70" y="188" fill="var(--ls-good)" font-size="9">reconstruct &psi;<tspan dy="-3" font-size="7">n</tspan><tspan dy="3">(x</tspan><tspan dy="2.5" font-size="7">d</tspan><tspan dy="-2.5">) in cell x</tspan><tspan dy="2.5" font-size="7">c</tspan></text>
+        <text x="70" y="202" fill="var(--ls-good)" font-size="9">&rArr; &psi;<tspan dy="-3" font-size="7">n+1</tspan><tspan dy="3">(x</tspan><tspan dy="2.5" font-size="7">c</tspan><tspan dy="-2.5">)</tspan></text>
+        <text x="150" y="216" fill="var(--ls-muted)" font-size="8.5" text-anchor="middle">CFL &le; 1 &rArr; foot inside the stencil &rArr; interpolation</text>
+      </svg>
+    </div>
+  </div>
+  <aside class="notes">
+    The philosophical contrast with Part 2: extension is a velocity-space fix that lets a
+    standard Eulerian scheme behave; SL is a change of discretization that removes the flux
+    scheme entirely. Both target the same goal (accurate psi near the interface); SL trades
+    the linear solve for a per-cell reconstruction.
+  </aside>
+</section>
+
+<!-- ===== SL 2: THE FOOT ===== -->
+<section>
+  <h2>The backward foot &mdash; explicit Taylor displacement</h2>
+  <p>Trace the characteristic backward with the Taylor-series point-displacement integrator
+     (Mari&#263; thesis eqs. 165&ndash;167), fully explicit, at cell centres:</p>
+  \[ \mathbf{x}_d = \mathbf{x}_c - \mathbf{u}_c^{n+1}\,\Delta t
+     + \tfrac{1}{2}\Big[\tfrac{\mathbf{u}_c^{n+1}-\mathbf{u}_c^{n}}{\Delta t}
+     + \big(\mathbf{u}_c^{n+1}\!\cdot\nabla_c\big)\mathbf{u}^{n+1}\Big]\Delta t^2 \]
+  <ul class="tight">
+    <li>Per-step displacement error \(O(\Delta t^3)\); with quadratic spatial reconstruction
+        the scheme is globally \(O(h^2)\) at fixed CFL. <b>The \(\tfrac12\) is essential</b>
+        &mdash; drop it and the local error falls to \(O(\Delta t^2)\).</li>
+    <li>\(\partial_t\mathbf{u}\approx(\mathbf{u}^{n+1}-\mathbf{u}^{n})/\Delta t\) (backward
+        Euler) is first-order &mdash; sufficient, it multiplies \(\Delta t^2\).</li>
+    <li>\(\nabla_c\mathbf{u}^{n+1}\) is the <b>least-squares</b> cell gradient
+        (fvSchemes key <code>gradU</code>, <code>pointCellsLeastSquares</code>) &mdash;
+        never Green&ndash;Gauss. Works unchanged when \(\mathbf{u}\) is a Navier&ndash;Stokes
+        field, not only analytic.</li>
+    <li><b>Guard</b>: if \(|\mathbf{x}_c-\mathbf{x}_d|\) exceeds the stencil radius (CFL&nbsp;&gt;&nbsp;1)
+        the code warns and the step is clipped &mdash; no silent extrapolation.</li>
+    <li><b>Robustness</b>: a generous value cap (\(\pm10\times\) stencil range) prevents
+        runaway overflow without touching a well-behaved reconstruction; a
+        Barth&ndash;Jespersen slope limiter is available but <em>measured to cost
+        convergence order</em> (over the wide point-neighbour stencil) &mdash; off by
+        default.</li>
+  </ul>
+  <p class="footnote muted center">Verified: for uniform \(\mathbf{u}\) the acceleration
+     term vanishes and \(\mathbf{x}_d = \mathbf{x}_c - \mathbf{u}\,\Delta t\) exactly
+     (unit test, \(\sim\!10^{-14}\)).</p>
+</section>
+
+<!-- ===== SL 3: RECONSTRUCTIONS ===== -->
+<section>
+  <h2>Reconstruction of \(\psi^n\) at the foot &mdash; three, pluggable</h2>
+  <p>Runtime-selectable (<code>levelSet { semiLagrangian { reconstruction ...; } }</code>).
+     Each <b>reproduces the cell value</b>: <code>evaluate(c, x_c) == psi[c]</code> exactly.</p>
+  <table style="font-size:0.72em; border-collapse:collapse; margin:0.3em auto; width:94%">
+    <tr style="border-bottom:1px solid var(--ls-muted)">
+      <th style="text-align:left; padding:0.25em 0.5em">model</th>
+      <th style="text-align:left; padding:0.25em 0.5em">form</th>
+      <th style="text-align:left; padding:0.25em 0.5em">order</th>
+      <th style="text-align:left; padding:0.25em 0.5em">cost / notes</th>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+      <td style="padding:0.25em 0.5em"><code>linearTaylor</code></td>
+      <td style="padding:0.25em 0.5em">\(\psi_c + \mathbf{g}_c\!\cdot\mathbf{d}\)</td>
+      <td style="padding:0.25em 0.5em">\(O(h)\)</td>
+      <td style="padding:0.25em 0.5em">baseline (\(\equiv\) 1st-order upwind); validates the pipeline</td>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+      <td style="padding:0.25em 0.5em"><code>nestedLSQ</code></td>
+      <td style="padding:0.25em 0.5em">\(+\tfrac12\mathbf{d}^{\!\top}\!\mathbf{H}_c\mathbf{d}\), \(\mathbf{H}=\nabla(\nabla\psi)\)</td>
+      <td style="padding:0.25em 0.5em">\(O(h^2)\) at CFL\(\le\tfrac12\);<br><span class="warn">diverges at CFL\(\,1\)</span></td>
+      <td style="padding:0.25em 0.5em">Hessian = gradient-of-gradient-field &rArr; amplifies noise when the foot nears the stencil edge (see next slide)</td>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(76,175,80,0.10)">
+      <td style="padding:0.25em 0.5em"><code>quadraticWLSQ</code> <span class="good">&#9733;</span></td>
+      <td style="padding:0.25em 0.5em">one IDW-weighted quadratic fit over the CPC stencil</td>
+      <td style="padding:0.25em 0.5em"><b>\(O(h^2)\) incl. CFL\(\,1\)</b></td>
+      <td style="padding:0.25em 0.5em"><b>production &mdash; the robust choice</b>; cached pseudo-inverse (1 halo exchange); the single simultaneous fit stays 2nd order at every CFL</td>
+    </tr>
+    <tr>
+      <td style="padding:0.25em 0.5em"><code>bandQuadraticWLSQ</code></td>
+      <td style="padding:0.25em 0.5em">quadratic in the band; far field re-extended by distance</td>
+      <td style="padding:0.25em 0.5em">stable; \(\sim\!O(1)\) floor</td>
+      <td style="padding:0.25em 0.5em"><b>memory O(band)</b>, per-step fit &mdash; but the crude far-field re-extension caps convergence (needs a high-order reinit for \(O(h^2)\))</td>
+    </tr>
+  </table>
+  <ul class="tight">
+    <li>All three use <b>least squares</b> over the cell-point-cell stencil (linear-exact on
+        arbitrary polyhedra) &mdash; nested LSQ is therefore quadratic-exact. <b>No
+        Green&ndash;Gauss</b> anywhere in the chain.</li>
+    <li><b>Unit-tested exact</b>: a global quadratic \(\psi\) is reproduced by
+        <code>nestedLSQ</code>/<code>quadraticWLSQ</code> to \(\sim\!10^{-16}\); a linear
+        field by <code>linearTaylor</code>; centre value to \(0\).</li>
+  </ul>
+</section>
+
+<!-- ===== SL 4: DISCRETIZATION ===== -->
+<section>
+  <h2>quadraticWLSQ &mdash; discretization (UFVM, parallel)</h2>
+  <ul class="tight">
+    <li><b>Stencil</b>: OpenFOAM's cached cell-point-cell stencil
+        (<code>centredCPCCellToCellStencil</code>); its <code>collectData</code> gathers the
+        remote (processor / cyclic) point neighbours through a <code>mapDistribute</code> &mdash;
+        one halo exchange of \(\psi^n\) per step; the cell centres are gathered once.</li>
+    <li><b>Fit</b>: per cell, minimise \(\sum_n w_n\big(P(\mathbf{d}_n)-(\psi_n-\psi_c)\big)^2\)
+        over the quadratic basis \(\{d_x,d_y,[d_z],\tfrac12 d_x^2,\tfrac12 d_y^2,[\tfrac12 d_z^2],
+        d_xd_y,[\ldots]\}\) (the empty direction is dropped on 2D meshes), IDW weights
+        \(w_n=1/|\mathbf{d}_n|\). Fitting \((\psi_n-\psi_c)\) drops the constant &rArr; the
+        centre value is reproduced exactly.</li>
+    <li><b>Solve</b>: Moore&ndash;Penrose pseudo-inverse (<code>QRMatrix</code>, Householder QR).
+        The stencil geometry is fixed while the mesh is static &rArr; the per-cell
+        pseudo-inverse is <b>cached once</b>; the per-step cost is one small matrix&ndash;vector
+        product per cell. Under-determined boundary cells fall back to a linear fit (counted).</li>
+    <li><b>Performance</b> (hpctoolkit-profiled): that per-cell mat&ndash;vector product was
+        <b>~28% of the whole solver</b> and did not vectorise. Folding the IDW weight into the
+        cached map and storing it <b>flat row-major</b> (so the update is a contiguous pointer
+        reduction with no per-cell allocation) cut it to ~20% &mdash; <b>&minus;17% wall-clock,
+        &minus;23% CPU</b> at \(N{=}128\), machine-precision identical. (A hand-unrolled mat&ndash;vec
+        <em>regressed</em> &mdash; the stencil is too short &mdash; and was reverted.)</li>
+    <li><b>Dedicated scheme keys</b> <code>gradPsi</code> / <code>gradGradPsi</code> /
+        <code>gradU</code> (all <code>pointCellsLeastSquares</code>) &mdash; the sub-steps never
+        share the <code>grad(psi)</code> advection scheme.</li>
+  </ul>
+  <p class="footnote muted">Source:
+     <em class="tag">src/leiaLevelSet/semiLagrangian/</em>
+     (<code>slAdvection</code>, <code>slReconstruction</code> + 3 models); solver
+     <em class="tag">leiaSemiLagrangeLevelSetFoam</em>.</p>
+</section>
+
+<!-- ===== SL 5: CODE ===== -->
+<section>
+  <h2><code>slAdvection::advect()</code> &mdash; code</h2>
+  <pre style="font-size:0.38em; line-height:1.15; background:rgba(255,255,255,0.04); padding:0.5em; border-radius:6px;"><code>const scalar dt = mesh_.time().deltaTValue();
+const volTensorField gradU(fvc::grad(Unew, "gradU"));   // LSQ grad u^{n+1}
+recon_-&gt;update(psi);                                     // fit psi^n (halo + QR)
+
+forAll(C, c)
+{
+    const vector accel = (Unew[c] - Uold[c])/dt          // du/dt (backward Euler)
+                       + (Unew[c] &amp; gradU[c]);            // (u.grad)u
+    const point xd = C[c] - Unew[c]*dt + 0.5*accel*dt*dt; // Taylor backward foot
+    // guard: |xd - C[c]| within the point-neighbour stencil radius (CFL<=1)
+    newPsi[c] = recon_-&gt;evaluate(c, xd);                  // psi^{n+1}(x_c)=psi^n(x_d)
+}
+psi.primitiveFieldRef() = newPsi;                        // assign, then BCs
+psi.correctBoundaryConditions();
+
+// quadraticWLSQ::evaluate -- the arrival cell's OWN cached polynomial:
+//   d = x - C[c];  return psi_c + sum_k coeffs_c[k] * basis_k(d);</code></pre>
+  <p class="footnote muted center">Steps 3 and 5 are embarrassingly parallel per-cell loops;
+     the only communication is the one halo exchange inside <code>recon_-&gt;update()</code>.
+     Serial and <code>np=4</code> results match to round-off.</p>
+</section>
+
+<!-- ===== SL 6: CONVERGENCE ===== -->
+<section>
+  <h2>Reconstruction convergence &mdash; the order jump</h2>
+  <img src="figures/sl_reconstruction_convergence.png"
+       alt="band gradient error and shape error vs h per reconstruction at CFL 0.5 and 1.0"
+       style="max-height:66vh; max-width:94%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">Reversed vortex, \(T=2\). Shape error (the trustworthy
+     metric): at <b>CFL \(\le\tfrac12\)</b> both quadratic fits converge \(\approx O(h^2)\)
+     (measured order: <code>nestedLSQ</code> 2.4, <code>quadraticWLSQ</code> 2.8) &mdash;
+     <b>they are comparable there</b>. <code>linearTaylor</code> is flat
+     (\(\equiv\) diffusive first-order upwind) and its band \(|\nabla\psi|-1\) blows up.
+     The decisive split is <b>at CFL \(=1\)</b> (next slide): <code>quadraticWLSQ</code>
+     holds \(O(h^2)\), <code>nestedLSQ</code> <span class="warn">diverges</span>.
+     <code>bandQuadraticWLSQ</code> is stable and memory-light but its crude far-field
+     re-extension caps it below first order.</p>
+  <aside class="notes">
+    Measured shape-error order (LSQ over N=32..256): CFL 0.5 T=2 nested 2.37 / quadratic 2.76;
+    CFL 1.0 T=2 nested -0.81 (DIVERGES) / quadratic 2.30. Band |grad psi| order CFL 1.0 T=2:
+    nested -6.7 (blows up to 5.7e4 at N=256) / quadratic +2.65. linearTaylor non-convergent
+    at all CFL. This is a pure semi-Lagrangian result (no velocity extension involved).
+  </aside>
+</section>
+
+<!-- ===== SL 7: nestedLSQ vs quadraticWLSQ ===== -->
+<section>
+  <h2>Why <code>quadraticWLSQ</code>, not <code>nestedLSQ</code></h2>
+  <img src="figures/sl_nested_vs_quad.png"
+       alt="nestedLSQ vs quadraticWLSQ shape and band error vs h at CFL 0.5 and 1.0"
+       style="max-height:62vh; max-width:92%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">Reversed vortex \(T=2\), \(N=32\!\to\!256\).
+     <b>At CFL \(\le\tfrac12\) they are comparable</b> (both \(\approx O(h^2)\); <code>nestedLSQ</code>
+     is even marginally cheaper &mdash; no cached inverse). <b>At CFL \(=1\) <code>nestedLSQ</code>
+     diverges</b>: its Hessian \(\mathbf{H}=\nabla(\nabla\psi)\) is a gradient <em>of a gradient
+     field</em>, which amplifies noise like \(1/h\); as the foot reaches the stencil edge the
+     bad curvature feeds back and \(|\nabla\psi|\) explodes (\(5.7\times10^4\) at \(N=256\)).
+     <code>quadraticWLSQ</code> fits \(\mathbf{g}\) and \(\mathbf{H}\) <b>together</b> in one
+     IDW-weighted, bounded least-squares &mdash; it stays \(O(h^2)\) at every CFL.</p>
+  <aside class="notes">
+    Measured (this deck, controlled serial sweeps): CFL 1.0 T=2 shape order nested -0.81 vs
+    quadratic 2.30. Fix attempts on nestedLSQ -- monotonicity clip, distance-weighted /
+    face-neighbour LSQ schemes, cell-limited LSQ -- either fail to stabilise or stabilise only
+    by collapsing the order to ~0. The single simultaneous IDW-weighted fit (= quadraticWLSQ)
+    is the configuration that is BOTH stable AND 2nd order; after the hpctoolkit optimisation it
+    costs the same as nestedLSQ (within ~10% CPU, comparable memory at N=128), so there is no
+    accuracy-for-cost trade to make. Pure semi-Lagrangian result -- no velocity extension here.
+  </aside>
+</section>
+</section>  <!-- ############ /TRACK: semi-Lagrangian ############ -->
+
+<!-- ==================== CONCLUSIONS (vertical stack) ==================== -->
+<section data-track="Conclusions">
+<!-- part intro (auto-pattern) -->
+<section>
+  <p class="part-kicker">Part 6 of 8</p>
+  <h2>Conclusions</h2>
+  <p class="muted" style="font-size:0.85em">what works best &mdash; the two research lines, ranked by error</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
+    <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
+    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">4</span>Advected verification &amp; results</li>
+    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
+    <li class="here"><span class="idx">6</span>Conclusions</li>
+    <li><span class="idx">7</span>Software design</li>
+    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+  </ol>
+  <p class="part-prevnext">Previously: Semi-Lagrangian advection &nbsp;&middot;&nbsp; Next: Software design</p>
+</section>
+
+
+  <!-- C-velExt: velocity-extension ranking (results only) -->
+  <section>
+    <h2>Velocity extension &mdash; ranked by error</h2>
+    <p class="muted" style="font-size:0.8em">Reversed vortex, \(N=256\). Advecting a
+       <b>prescribed</b> divergence-free field: the extension must preserve \(\psi\)-regularity
+       without hurting transport. Band \(E_{\nabla\psi}\) / volume error; best&rarr;worst.</p>
+    <table style="font-size:0.66em; border-collapse:collapse; margin:0.25em auto; width:96%">
+      <tr style="border-bottom:1px solid var(--ls-muted)">
+        <th style="text-align:left; padding:0.22em 0.45em">#</th>
+        <th style="text-align:left; padding:0.22em 0.45em">model</th>
+        <th style="text-align:left; padding:0.22em 0.45em">\(T{=}2\)&nbsp;grad / vol</th>
+        <th style="text-align:left; padding:0.22em 0.45em">\(T{=}8\)&nbsp;grad / vol</th>
+        <th style="text-align:left; padding:0.22em 0.45em">best for</th>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(76,175,80,0.10)">
+        <td style="padding:0.22em 0.45em">1 <span class="good">&#9733;</span></td>
+        <td style="padding:0.22em 0.45em"><code>meshWave</code></td>
+        <td style="padding:0.22em 0.45em">0.082 / 0.3%</td>
+        <td style="padding:0.22em 0.45em">0.21 / 0.5%</td>
+        <td style="padding:0.22em 0.45em"><b>robust default</b> &mdash; holds best under large deformation</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <td style="padding:0.22em 0.45em">2</td>
+        <td style="padding:0.22em 0.45em"><code>closestPoint</code></td>
+        <td style="padding:0.22em 0.45em">0.104 / <b>0.015%</b></td>
+        <td style="padding:0.22em 0.45em">0.61 / 55%<sup>&#8224;</sup></td>
+        <td style="padding:0.22em 0.45em">highest accuracy (lowest volume error; only \(O(h^2)\) static SDF) &mdash; needs \(\psi\) near-SDF</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <td style="padding:0.22em 0.45em">3</td>
+        <td style="padding:0.22em 0.45em"><code>pseudoTime</code></td>
+        <td style="padding:0.22em 0.45em">0.085 / 0.2%</td>
+        <td style="padding:0.22em 0.45em">0.36 / 0.5%</td>
+        <td style="padding:0.22em 0.45em">solid PDE extension (advective form)</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <td style="padding:0.22em 0.45em">4</td>
+        <td style="padding:0.22em 0.45em"><code>steadyUpwind</code></td>
+        <td style="padding:0.22em 0.45em">0.105 / 0.4%</td>
+        <td style="padding:0.22em 0.45em">&mdash;</td>
+        <td style="padding:0.22em 0.45em">one-solve PDE fallback (infinite reach)</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <td style="padding:0.22em 0.45em">5</td>
+        <td style="padding:0.22em 0.45em"><code>anisotropicDiffusion</code></td>
+        <td style="padding:0.22em 0.45em">0.125 / 2.6%</td>
+        <td style="padding:0.22em 0.45em">&mdash;</td>
+        <td style="padding:0.22em 0.45em">cruder (harmonic solve), degrades with \(T\)</td>
+      </tr>
+      <tr>
+        <td style="padding:0.22em 0.45em; color:var(--ls-muted)">ref</td>
+        <td style="padding:0.22em 0.45em"><code>none</code></td>
+        <td style="padding:0.22em 0.45em">0.070 / 0.02%</td>
+        <td style="padding:0.22em 0.45em">&mdash;</td>
+        <td style="padding:0.22em 0.45em">no extension &mdash; best <em>only</em> when \(\mathbf{U}\) is prescribed <em>and</em> the motion reverses</td>
+      </tr>
+    </table>
+    <p class="footnote muted"><sup>&#8224;</sup><code>closestPoint</code> inverts at \(T{=}8\) without
+       redistancing (Newton foot-points need \(\psi\) near-SDF); the <code>steadyUpwindLinear</code>
+       (Aslam cascade) <span class="warn">diverges</span> on the steady equation and is not usable.</p>
+  </section>
+
+  <!-- C-SL: semi-Lagrangian ranking (results only) -->
+  <section>
+    <h2>Semi-Lagrangian &mdash; ranked by error</h2>
+    <p class="muted" style="font-size:0.8em">Reversed vortex, geometric shape-error convergence
+       order (\(N=32\!\to\!256\)); the reconstruction of \(\psi^n\) at the departure foot.</p>
+    <table style="font-size:0.68em; border-collapse:collapse; margin:0.25em auto; width:96%">
+      <tr style="border-bottom:1px solid var(--ls-muted)">
+        <th style="text-align:left; padding:0.22em 0.45em">#</th>
+        <th style="text-align:left; padding:0.22em 0.45em">reconstruction</th>
+        <th style="text-align:left; padding:0.22em 0.45em">order&nbsp;@CFL&nbsp;\(\tfrac12\)</th>
+        <th style="text-align:left; padding:0.22em 0.45em">order&nbsp;@CFL&nbsp;1</th>
+        <th style="text-align:left; padding:0.22em 0.45em">notes</th>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(76,175,80,0.10)">
+        <td style="padding:0.22em 0.45em">1 <span class="good">&#9733;</span></td>
+        <td style="padding:0.22em 0.45em"><code>quadraticWLSQ</code></td>
+        <td style="padding:0.22em 0.45em"><b>2.8</b></td>
+        <td style="padding:0.22em 0.45em"><b>2.3</b></td>
+        <td style="padding:0.22em 0.45em"><b>\(O(h^2)\) at every CFL</b>, \(|\nabla\psi|\) bounded &mdash; production</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <td style="padding:0.22em 0.45em">2</td>
+        <td style="padding:0.22em 0.45em"><code>nestedLSQ</code></td>
+        <td style="padding:0.22em 0.45em">2.4</td>
+        <td style="padding:0.22em 0.45em"><span class="warn">&minus;0.8 (diverges)</span></td>
+        <td style="padding:0.22em 0.45em">matches quadratic only at CFL\(\le\tfrac12\); grad-of-grad Hessian blows up at CFL 1</td>
+      </tr>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <td style="padding:0.22em 0.45em">3</td>
+        <td style="padding:0.22em 0.45em"><code>bandQuadraticWLSQ</code></td>
+        <td style="padding:0.22em 0.45em">~0.5</td>
+        <td style="padding:0.22em 0.45em">~0.5</td>
+        <td style="padding:0.22em 0.45em">stable + memory-\(O\)(band), but crude far-field re-extension caps it below 1st order</td>
+      </tr>
+      <tr>
+        <td style="padding:0.22em 0.45em">4</td>
+        <td style="padding:0.22em 0.45em"><code>linearTaylor</code></td>
+        <td style="padding:0.22em 0.45em">~0</td>
+        <td style="padding:0.22em 0.45em">~0</td>
+        <td style="padding:0.22em 0.45em">1st-order baseline; \(|\nabla\psi|\) blows up &mdash; pipeline validation only</td>
+      </tr>
+    </table>
+    <p class="footnote muted"><b>Cost</b>: after the hpctoolkit optimisation, <code>quadraticWLSQ</code>
+       is within ~10% CPU of <code>nestedLSQ</code> and comparable memory at \(N=128\) &mdash;
+       so the robust 2nd-order choice carries no cost penalty.</p>
+  </section>
+
+  <!-- C-guidance: which method, by problem (lines kept separate) -->
+  <section>
+    <h2>Which method &mdash; by problem</h2>
+    <ul class="tight" style="font-size:0.9em">
+      <li><b>Prescribed-velocity level-set transport</b> &rarr; the semi-Lagrangian solver
+          <code>leiaSemiLagrangeLevelSetFoam</code> with <code>quadraticWLSQ</code>: lowest shape
+          error, \(O(h^2)\) up to CFL 1, best \(|\nabla\psi|\) regularity, and no linear solve.</li>
+      <li><b>Coupled flow (\(\mathbf{U}\) is a momentum-equation solution, not prescribed)</b>
+          &rarr; the Eulerian solver needs a velocity extension: <code>meshWave</code> is the robust
+          default; <code>closestPoint</code> the highest-accuracy where \(\psi\) is kept near-SDF.</li>
+      <li>These two lines address <b>different problems</b> and are evaluated on their own metrics &mdash;
+          they are not interchangeable. Both share one open item: no reinitialization, so \(|\nabla\psi|=1\)
+          is not maintained over very long integrations (a redistancing partner is future work).</li>
+    </ul>
+    <p class="footnote muted">All numbers regenerate from <em class="tag">config/staticExtension.yaml</em>,
+       <em class="tag">config/bulkVortexHighRes.yaml</em>, <em class="tag">config/steadyVortex2D.yaml</em>
+       (velocity extension) and <em class="tag">config/bulkVortexSL.yaml</em> /
+       <em class="tag">bulkVortexSLHighRes.yaml</em> (semi-Lagrangian).</p>
   </section>
 
 </section>
 
-<section>  <!-- ############ TRACK: Software Design ############ -->
+<section data-track="Software design">  <!-- ############ TRACK: Software Design ############ -->
+<!-- part intro (auto-pattern) -->
+<section>
+  <p class="part-kicker">Part 7 of 8</p>
+  <h2>Software design</h2>
+  <p class="muted" style="font-size:0.85em">runtime model selection; add a model without touching existing code</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
+    <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
+    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">4</span>Advected verification &amp; results</li>
+    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
+    <li><span class="idx">6</span>Conclusions</li>
+    <li class="here"><span class="idx">7</span>Software design</li>
+    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+  </ol>
+  <p class="part-prevnext">Previously: Conclusions &nbsp;&middot;&nbsp; Next: Appendix &mdash; the field atlas</p>
+</section>
+
 <!-- Software Design overview -->
 <section>
   <h2>Software Design</h2>
@@ -1449,7 +3335,25 @@ void Foam::myExtension::extend()
   </section>
 </section>  <!-- ############ /TRACK: Software Design ############ -->
 
-<section>  <!-- ############ APPENDIX: field atlas (alpha) ############ -->
+<section data-track="Appendix &mdash; the field atlas">  <!-- ############ APPENDIX: field atlas (alpha) ############ -->
+<!-- part intro (auto-pattern) -->
+<section>
+  <p class="part-kicker">Part 8 of 8</p>
+  <h2>Appendix &mdash; the field atlas</h2>
+  <p class="muted" style="font-size:0.85em">every model &times; period &times; resolution, regenerated by the pipeline</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
+    <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
+    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">4</span>Advected verification &amp; results</li>
+    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
+    <li><span class="idx">6</span>Conclusions</li>
+    <li><span class="idx">7</span>Software design</li>
+    <li class="here"><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+  </ol>
+  <p class="part-prevnext">Previously: Software design &nbsp;&middot;&nbsp; Next: &mdash; (end)</p>
+</section>
+
 <section>
   <h2>Appendix &mdash; field atlas</h2>
   <p class="accent" style="font-size:1.1em">Volume fraction \(\alpha\) at \(t=0,\ T/2,\ T\)</p>
@@ -1515,9 +3419,69 @@ void Foam::myExtension::extend()
   <img src="figures/alpha_evo_pseudoTime_T8.png" alt="alpha pseudoTime T=8"
        style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
 </section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>steadyUpwind</code>, \(T=0.5\)</h2>
+  <img src="figures/alpha_evo_steadyUpwind_T0.5.png" alt="alpha steadyUpwind T=0.5"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>steadyUpwind</code>, \(T=2\)</h2>
+  <img src="figures/alpha_evo_steadyUpwind_T2.png" alt="alpha steadyUpwind T=2"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>steadyUpwind</code>, \(T=4\)</h2>
+  <img src="figures/alpha_evo_steadyUpwind_T4.png" alt="alpha steadyUpwind T=4"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>steadyUpwind</code>, \(T=8\)</h2>
+  <img src="figures/alpha_evo_steadyUpwind_T8.png" alt="alpha steadyUpwind T=8"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>closestPoint</code>, \(T=0.5\)</h2>
+  <img src="figures/alpha_evo_closestPoint_T0.5.png" alt="alpha closestPoint T=0.5"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>closestPoint</code>, \(T=2\)</h2>
+  <img src="figures/alpha_evo_closestPoint_T2.png" alt="alpha closestPoint T=2"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>closestPoint</code>, \(T=4\)</h2>
+  <img src="figures/alpha_evo_closestPoint_T4.png" alt="alpha closestPoint T=4"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>closestPoint</code>, \(T=8\)</h2>
+  <img src="figures/alpha_evo_closestPoint_T8.png" alt="alpha closestPoint T=8"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>meshWave</code>, \(T=0.5\)</h2>
+  <img src="figures/alpha_evo_meshWave_T0.5.png" alt="alpha meshWave T=0.5"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>meshWave</code>, \(T=2\)</h2>
+  <img src="figures/alpha_evo_meshWave_T2.png" alt="alpha meshWave T=2"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>meshWave</code>, \(T=4\)</h2>
+  <img src="figures/alpha_evo_meshWave_T4.png" alt="alpha meshWave T=4"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(\alpha\) &mdash; <code>meshWave</code>, \(T=8\)</h2>
+  <img src="figures/alpha_evo_meshWave_T8.png" alt="alpha meshWave T=8"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
 </section>  <!-- ############ /APPENDIX: field atlas (alpha) ############ -->
 
-<section>  <!-- ############ APPENDIX: field atlas (grad error) ############ -->
+<section data-track="Appendix &mdash; the field atlas">  <!-- ############ APPENDIX: field atlas (grad error) ############ -->
 <section>
   <h2>Appendix &mdash; signed-distance error field</h2>
   <p class="accent" style="font-size:1.1em">\(|\nabla\psi|-1\) at \(t=0,\ T/2,\ T\)</p>
@@ -1583,6 +3547,66 @@ void Foam::myExtension::extend()
   <img src="figures/graderr_pseudoTime_T8.png" alt="graderr pseudoTime T=8"
        style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
 </section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>steadyUpwind</code>, \(T=0.5\)</h2>
+  <img src="figures/graderr_steadyUpwind_T0.5.png" alt="graderr steadyUpwind T=0.5"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>steadyUpwind</code>, \(T=2\)</h2>
+  <img src="figures/graderr_steadyUpwind_T2.png" alt="graderr steadyUpwind T=2"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>steadyUpwind</code>, \(T=4\)</h2>
+  <img src="figures/graderr_steadyUpwind_T4.png" alt="graderr steadyUpwind T=4"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>steadyUpwind</code>, \(T=8\)</h2>
+  <img src="figures/graderr_steadyUpwind_T8.png" alt="graderr steadyUpwind T=8"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>closestPoint</code>, \(T=0.5\)</h2>
+  <img src="figures/graderr_closestPoint_T0.5.png" alt="graderr closestPoint T=0.5"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>closestPoint</code>, \(T=2\)</h2>
+  <img src="figures/graderr_closestPoint_T2.png" alt="graderr closestPoint T=2"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>closestPoint</code>, \(T=4\)</h2>
+  <img src="figures/graderr_closestPoint_T4.png" alt="graderr closestPoint T=4"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>closestPoint</code>, \(T=8\)</h2>
+  <img src="figures/graderr_closestPoint_T8.png" alt="graderr closestPoint T=8"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>meshWave</code>, \(T=0.5\)</h2>
+  <img src="figures/graderr_meshWave_T0.5.png" alt="graderr meshWave T=0.5"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>meshWave</code>, \(T=2\)</h2>
+  <img src="figures/graderr_meshWave_T2.png" alt="graderr meshWave T=2"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>meshWave</code>, \(T=4\)</h2>
+  <img src="figures/graderr_meshWave_T4.png" alt="graderr meshWave T=4"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
+<section>
+  <h2>\(|\nabla\psi|-1\) &mdash; <code>meshWave</code>, \(T=8\)</h2>
+  <img src="figures/graderr_meshWave_T8.png" alt="graderr meshWave T=8"
+       style="max-height:70vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+</section>
 </section>  <!-- ############ /APPENDIX: field atlas (grad error) ############ -->
 
 
@@ -1602,6 +3626,73 @@ void Foam::myExtension::extend()
     margin: 0.04,
     plugins: [ RevealNotes ]
   });
+
+  // Orientation footer: 'Part k/n - name' from the nearest data-track ancestor.
+  (function () {
+    var tracks = [];
+    document.querySelectorAll('[data-track]').forEach(function (e) {
+      var n = e.getAttribute('data-track');
+      if (tracks.indexOf(n) < 0) { tracks.push(n); }
+    });
+    function trackOf(slide) {
+      var el = slide;
+      while (el && el !== document.body) {
+        if (el.getAttribute && el.getAttribute('data-track')) {
+          return el.getAttribute('data-track');
+        }
+        el = el.parentElement;
+      }
+      return '';
+    }
+    // Clickable part-navigation chips (bottom-left).
+    var chips = [];
+    (function buildNav() {
+      var nav = document.getElementById('deckNav');
+      if (!nav) { return; }
+      tracks.forEach(function (name, i) {
+        var target = null;
+        var els = document.querySelectorAll('[data-track]');
+        for (var k = 0; k < els.length; k++) {
+          if (els[k].getAttribute('data-track') === name) {
+            target = els[k].querySelector(':scope > section') || els[k];
+            break;
+          }
+        }
+        var a = document.createElement('a');
+        a.href = '#';
+        a.textContent = (i + 1);
+        a.title = 'Part ' + (i + 1) + ': ' + name;
+        a.onclick = function (ev) {
+          ev.preventDefault();
+          if (target) {
+            var idx = Reveal.getIndices(target);
+            Reveal.slide(idx.h, idx.v || 0);
+          }
+        };
+        nav.appendChild(a);
+        chips.push(a);
+      });
+    })();
+    function upd() {
+      var el = document.getElementById('deckTrack');
+      if (!el) { return; }
+      var name = trackOf(Reveal.getCurrentSlide());
+      chips.forEach(function (a, i) {
+        a.className = (tracks[i] === name) ? 'here' : '';
+      });
+      if (!name) {
+        el.textContent = window.DECK_LINEAR
+          ? '\u2192 / \u2190 to navigate \u00b7 Esc = overview'
+          : '\u2192 parts \u00b7 \u2193 slides \u00b7 Esc = overview';
+        return;
+      }
+      el.innerHTML = 'Part ' + (tracks.indexOf(name) + 1) + '/' + tracks.length
+                   + ' \u00b7 ' + name;
+    }
+    Reveal.on('slidechanged', upd);
+    Reveal.on('ready', upd);
+  })();
+
 </script>
 </body>
 </html>

@@ -1,0 +1,39 @@
+# NON-REVERSING stress test: STEADY single (shear) vortex, oscillation OFF.
+# >>> FAST DEFAULT tier (N <= 128, 6 models, 12 cases): minutes. <<<
+#
+# Purpose: the reversed vortex is a REVERSIBILITY benchmark -- advection errors
+# partially cancel on the way back, so "no extension" (none) gets credit for
+# cancellation the extension models never see. Here the shear2D field is applied
+# WITHOUT the cos(pi t/tau) modulation: sustained strain winds the circle into a
+# spiral filament and |grad psi| drifts exponentially -- the regime velocity
+# extension / redistancing exists for. There is no analytic final interface, so
+# the shape error is measured against a MARKER-TRACED quasi-exact reference
+# (workflow/scripts/marker_ref.py: solve_ivp through the analytic field).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/steadyVortex2D.yaml
+#
+# Headline result: gradient error vs TIME per model at fixed N -> the crossover
+# time t* where "doing nothing" stops winning. Interpretation caveat: once the
+# filament is thinner than 2*(nLayers+1)*h the band self-overlaps (the medial
+# axis enters it) and all models degrade together -- the discriminating data is
+# N >= 128. The N=256 tier lives in steadyVortex2DHighRes.yaml (opt-in).
+
+study_name: steadyVortex2D
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+axes_override:
+  END_TIME: [3]                                         # classic non-reversed horizon
+  OSCILLATION: ["off"]                                  # steady field: no reversal (quoted: YAML would read bare off as False)
+  N_CELLS:  [64, 128]                                   # fast; 256 -> steadyVortex2DHighRes.yaml
+  VELOCITY_EXTENSION: [none, anisotropicDiffusion, pseudoTime,
+                       steadyUpwind, closestPoint, meshWave]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false  # fast tier: keep figures in the study dir
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

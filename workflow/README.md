@@ -16,9 +16,23 @@ workflow/scripts/
   materialize.py            render templates, write np-driven decomposeParDict + case_params.json
   aggregate.py              join per-case CSVs + parameter vector -> <study>_database.csv
 config/config.yaml          which case/mesh/mode/np + scope (smoke subset by default)
-config/bulkVortex.yaml      FAST reversed-vortex suite (N<=128, ~3 min; export_slides: false)
-config/bulkVortexHighRes.yaml  opt-in deep convergence (+N=256, ~30 min; regenerates the deck)
+config/bulkVortex.yaml      FAST reversed-vortex suite (N<=128, 6 models, ~5 min; export_slides: false)
+config/bulkVortexHighRes.yaml  opt-in deep convergence (+N=256, 6 models, ~46 min; regenerates the deck)
 config/phaseIndicatorConvergence.yaml  geometric vs detrixheAslam (N<=128 by design)
+config/staticExtension.yaml  static t=0 extension verification: e=|n.grad(Uext)| vs h
+                             (solver: leiaTestVelocityExtension; 7 models x 2 div schemes)
+config/steadyVortex2D.yaml   NON-REVERSING stress test: steady vortex (oscillation off,
+                             T=3), 6 models; error-vs-time crossover t*; shape error vs a
+                             marker-traced reference (scripts/marker_ref.py) since there
+                             is no analytic final interface without reversal
+config/steadyVortex2DHighRes.yaml  + N=256 tier (opt-in; refreshes the deck's steady_* figures)
+config/bulkVortexSL.yaml     SEMI-LAGRANGIAN solver (solver: leiaSemiLagrangeLevelSetFoam)
+                             on the reversed vortex; sweeps SL_RECONSTRUCTION
+                             (linearTaylor/nestedLSQ/quadraticWLSQ) x CFL{0.5,1.0} -- the SL
+                             analog of the VELOCITY_EXTENSION model sweep. plots.py emits the
+                             reconstruction-convergence figure + an sl_vs_extension cross-study
+                             overlay (reads the bulkVortexHighRes velocity-extension study).
+config/bulkVortexSLHighRes.yaml  + N=256 tier (opt-in; refreshes the deck's sl_* figures)
 profiles/local/config.yaml  executor: local   (mpirun; jobs x np = 24 ranks, no oversubscription)
 profiles/slurm/config.yaml  executor: slurm    (one sbatch per case; srun + module env)
 studies/<study>/            generated cases + <study>_database.csv  (git-ignored)
@@ -85,6 +99,12 @@ default smoke config sweeps both; drop it from `axes_override` to fix one.
 
 ## Notes
 
+- Advection studies also aggregate the per-step CSV row nearest **t = T/2**
+  (`half.*` database columns; `gradientErrorBandHalf` etc. in `*_errors.csv`):
+  the state at maximal deformation, before any reversal cancellation. The
+  `maxdef_convergence.png` figure contrasts it with the final-time reading —
+  the reversed benchmark's final row credits `none` with error cancellation
+  that no extension model receives.
 - `mesh` ∈ {hex, perturbed, poly}; `poly` is 3D-only and uses
   `cases/<Case>_poly.parameter`. `perturbed` adds `-fluxCorrection`.
 - `np` is the single source of truth: it regenerates `system/decomposeParDict`,

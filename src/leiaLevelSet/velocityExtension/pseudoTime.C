@@ -108,7 +108,7 @@ void Foam::pseudoTime::extend()
     );
     forAll(rDtau, c)
     {
-        rDtau[c] = 1.0/(deltaTau_*Foam::pow(mesh_.V()[c], 1.0/3.0));
+        rDtau[c] = 1.0/(deltaTau_*cellSize_[c]);
     }
 
     // Implicit backward-Euler pseudo-time march of the NON-CONSERVATIVE normal

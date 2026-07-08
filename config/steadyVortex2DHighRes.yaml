@@ -1,0 +1,26 @@
+# NON-REVERSING stress test, DEEP-CONVERGENCE tier: + N=256 (18 cases).
+# Opt-in (cost scales 8x per 2D resolution level); regenerates the deck figures
+# (steady_* filenames -- no clash with the reversed-vortex figure family).
+# See config/steadyVortex2D.yaml for the rationale and metrics.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/steadyVortex2DHighRes.yaml
+
+study_name: steadyVortex2DHighRes
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+axes_override:
+  END_TIME: [3]
+  OSCILLATION: ["off"]   # quoted: YAML would read bare off as False
+  N_CELLS:  [64, 128, 256]
+  VELOCITY_EXTENSION: [none, anisotropicDiffusion, pseudoTime,
+                       steadyUpwind, closestPoint, meshWave]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: true   # deliberate deep run: refresh the deck's steady_* figures
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

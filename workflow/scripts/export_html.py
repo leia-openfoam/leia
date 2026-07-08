@@ -27,7 +27,71 @@ def _fetch(url, timeout=30):
         return r.read().decode("utf-8", "replace")
 
 
+def _flatten_sections(html):
+    """Linear-flow variant: remove the top-level <section> wrappers (vertical
+    stacks), promoting their child slides to top level in document order. The
+    wrapper's data-track attribute is stamped onto every promoted child so the
+    orientation footer keeps working."""
+    tag = re.compile(r"<section\b[^>]*>|</section>")
+    track_re = re.compile(r'data-track="([^"]*)"')
+
+    out = []
+    pos = 0
+    depth = 0
+    # (is_wrapper unknown until we see a child) -> collect spans first.
+    spans = []   # (open_start, open_end, close_start, close_end, track) of depth-1 wrappers
+    stack = []
+    for m in tag.finditer(html):
+        if m.group(0).startswith("<section"):
+            depth += 1
+            stack.append((m.start(), m.end(), depth))
+        else:
+            os_, oe_, d = stack.pop()
+            if d == 1:
+                inner = html[oe_:m.start()]
+                if "<section" in inner:   # wrapper: contains nested slides
+                    tm = track_re.search(html[os_:oe_])
+                    spans.append((os_, oe_, m.start(), m.end(),
+                                  tm.group(1) if tm else None))
+            depth -= 1
+
+    for os_, oe_, cs_, ce_, track in spans:
+        out.append(html[pos:os_])
+        inner = html[oe_:cs_]
+        if track:
+            # stamp the track on each direct child <section> (all children are
+            # depth-1 within `inner`)
+            def _stamp(m2, _t=track):
+                s = m2.group(0)
+                if "data-track" in s:
+                    return s
+                return s[:-1] + f' data-track="{_t}">'
+            # only stamp depth-1 opens within inner
+            res, d2, p2 = [], 0, 0
+            for m2 in tag.finditer(inner):
+                if m2.group(0).startswith("<section"):
+                    d2 += 1
+                    if d2 == 1:
+                        res.append(inner[p2:m2.start()])
+                        res.append(_stamp(m2))
+                        p2 = m2.end()
+                else:
+                    d2 -= 1
+            res.append(inner[p2:])
+            inner = "".join(res)
+        out.append(inner)
+        pos = ce_
+    out.append(html[pos:])
+    flat = "".join(out)
+    flat = flat.replace("Reveal.initialize({",
+                        "window.DECK_LINEAR = true;\n  Reveal.initialize({", 1)
+    return flat
+
+
 def export(slides_dir, src_name=DEFAULT_SRC, out_name=DEFAULT_OUT):
+    """Build BOTH standalone variants from the template: `index.html`
+    (vertical section stacks) and `index-linear.html` (flat linear flow).
+    Returns the primary (vertical) path or None."""
     src = os.path.join(slides_dir, src_name)
     if not os.path.isfile(src):
         print(f"[html] no {src}; skip standalone HTML build")
@@ -74,6 +138,13 @@ def export(slides_dir, src_name=DEFAULT_SRC, out_name=DEFAULT_OUT):
     remaining = len(re.findall(r'(?:href|src)="https?://', html))
     print(f"[html] wrote {out} ({len(html.encode())//1024} KiB; "
           f"{remaining} un-inlined CDN refs)")
+
+    # Linear-flow variant (same inlined assets, flattened structure).
+    base, ext = os.path.splitext(out_name)
+    lin = os.path.join(slides_dir, f"{base}-linear{ext}")
+    with open(lin, "w", encoding="utf-8") as fh:
+        fh.write(_flatten_sections(html))
+    print(f"[html] wrote {lin} (linear flow)")
     return out
 
 

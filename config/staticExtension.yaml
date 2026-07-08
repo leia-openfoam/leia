@@ -1,0 +1,55 @@
+# STATIC (t = 0) velocity-extension verification -- no advection.
+#
+# Initialize the reversed-vortex case (exact SDF psi0: circle R=0.15 at
+# (0.5,0.75); prescribed shear2D velocity at t=0), apply the runtime-selected
+# extension model ONCE (leiaTestVelocityExtension), and measure whether the
+# extended velocity is constant along the discrete level-set normal:
+#
+#     e = | nHat . grad(Uext) |,   nHat = grad(psi)/|grad(psi)|
+#
+# Norm: volume-weighted L2 + Linf over the extension-active region
+# |psi| <= nLayers*cellSize (inside the Uext->U fade start), the raw-velocity
+# reference (model `none` == raw), the ratio ||e||/||e_raw||, and the L2 split
+# by sign(psi) (one-sidedness diagnosis). If a model does not converge on a
+# static interface it never will under advection.
+#
+# Sweeps the ANCHOR_LAYERS hypothesis: foot-point + pin nAnchorLayers extra
+# cell layers around the interface layer (the PDE stencil of an interface-
+# adjacent cell otherwise mixes solved and pinned values -> kinks in Uext).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/staticExtension.yaml
+#
+# 36 cases, one extension solve each, serial -> minutes. export_slides: true --
+# this study's figures (static_e_anchor<A>.png, static_convergence.png) feed
+# the deck's "Static verification" section and its report rebuilds index.html.
+
+study_name: staticExtension
+case: 2Dvortex
+mesh: hex
+mode: serial        # one extension solve per case -- no decomposition needed
+np: 1
+solver: leiaTestVelocityExtension   # replaces leiaLevelSetFoam in the solve rule
+
+axes_override:
+  END_TIME: [1]                                         # unused by the app; controlDict.template needs it
+  N_CELLS:  [32, 64, 128, 256]
+  # Full extension-model family (R1-R5 program): the classical pair, the
+  # steady-transport family (R1: one implicit solve, infinite reach; R3:
+  # Aslam linear cascade), the geometric closest-point extension (R4) and the
+  # FaceCellWave nearest-seed wave (R5).
+  VELOCITY_EXTENSION: [none, anisotropicDiffusion, pseudoTime,
+                       steadyUpwind, steadyUpwindLinear, closestPoint, meshWave]
+  # Anchoring hypothesis measured & refuted (2026-07-06): <3% L2 effect,
+  # Linf worsens -- keep 0.
+  ANCHOR_LAYERS: [0]
+  # Divergence scheme of the steady extension solve: measures the order jump
+  # first-order upwind O(h) -> deferred-corrected linearUpwind O(h^2).
+  # (Only the steadyUpwind family reads it; other models are insensitive.)
+  UEXT_DIV: [UpwindUext, LinearUpwindUext]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: true   # figures + standalone index.html rebuild
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"
