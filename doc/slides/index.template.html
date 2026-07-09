@@ -794,7 +794,97 @@
     were developed: each one fixes the measured failure of the previous one.
   </aside>
 </section>
-</section>  <!-- ############ /overview column ############ -->
+</section>
+
+<!-- velExt formulation: framework -->
+<section>
+  <h2>Velocity extension &mdash; the framework (advective &psi;-equation, band, fade)</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 300 230" width="100%" role="img" aria-label="Interface Sigma with signed-distance cell layers, a highlighted seed layer, a narrow-band boundary at |psi|=(nLayers+1)h, and a cosine fade region [L,2L] where U_ext blends into the free-stream U.">
+        <!-- fade region shading (outside band, |psi| in [L,2L]) -->
+        <rect x="20"  y="20" width="34" height="190" fill="var(--ls-warn)" opacity="0.10"/>
+        <rect x="246" y="20" width="34" height="190" fill="var(--ls-warn)" opacity="0.10"/>
+        <!-- cell layers (muted) -->
+        <g stroke="var(--ls-muted)" stroke-width="0.8" fill="none">
+          <rect x="54"  y="20" width="46" height="190"/>
+          <rect x="100" y="20" width="46" height="190"/>
+          <rect x="154" y="20" width="46" height="190"/>
+          <rect x="200" y="20" width="46" height="190"/>
+        </g>
+        <!-- seed layer highlighted (0<alpha<1, straddles Sigma) -->
+        <rect x="146" y="20" width="8" height="190" fill="var(--ls-accent)" opacity="0.22"/>
+        <text x="150" y="16" font-size="8" text-anchor="middle" fill="var(--ls-accent)">seed 0&lt;&alpha;&lt;1</text>
+        <!-- interface Sigma: vertical green dashed -->
+        <line x1="150" y1="20" x2="150" y2="210" stroke="var(--ls-good)" stroke-width="2" stroke-dasharray="5 4"/>
+        <text x="150" y="224" font-size="9" text-anchor="middle" fill="var(--ls-good)">&Sigma; (&psi;=0)</text>
+        <!-- band boundary at |psi|=(nLayers+1)h (dashed) -->
+        <line x1="54"  y1="20" x2="54"  y2="210" stroke="var(--ls-fg)" stroke-width="1" stroke-dasharray="2 3"/>
+        <line x1="246" y1="20" x2="246" y2="210" stroke="var(--ls-fg)" stroke-width="1" stroke-dasharray="2 3"/>
+        <text x="54"  y="12" font-size="7.5" text-anchor="middle" fill="var(--ls-fg)">|&psi;|=L</text>
+        <text x="246" y="12" font-size="7.5" text-anchor="middle" fill="var(--ls-fg)">|&psi;|=L</text>
+        <!-- layer psi labels -->
+        <g font-size="8" fill="var(--ls-muted)" text-anchor="middle">
+          <text x="123" y="205">&minus;h</text>
+          <text x="177" y="205">+h</text>
+          <text x="77"  y="205">&minus;2h</text>
+          <text x="223" y="205">+2h</text>
+        </g>
+        <!-- U_ext arrows: constant along the normal inside band -->
+        <g stroke="var(--ls-accent)" stroke-width="1.6" marker-end="url(#ah)">
+          <line x1="60"  y1="55"  x2="90"  y2="55"/>
+          <line x1="108" y1="90"  x2="138" y2="90"/>
+          <line x1="162" y1="90"  x2="192" y2="90"/>
+          <line x1="210" y1="125" x2="240" y2="125"/>
+        </g>
+        <text x="118" y="82" font-size="8" fill="var(--ls-accent)">U_ext &perp; along n&#770;</text>
+        <!-- cosine-faded arrows outside band -> free-stream U -->
+        <g stroke="var(--ls-warn)" stroke-width="1.1" marker-end="url(#ah2)">
+          <line x1="26" y1="160" x2="44" y2="160"/>
+          <line x1="256" y1="160" x2="274" y2="160"/>
+        </g>
+        <text x="37"  y="180" font-size="7.5" text-anchor="middle" fill="var(--ls-warn)">fade</text>
+        <text x="264" y="180" font-size="7.5" text-anchor="middle" fill="var(--ls-warn)">[L,2L]</text>
+        <text x="264" y="192" font-size="7.5" text-anchor="middle" fill="var(--ls-muted)">&rarr; U</text>
+        <!-- normal direction n_hat -->
+        <g stroke="var(--ls-good)" stroke-width="1.2" marker-end="url(#ah3)">
+          <line x1="150" y1="40" x2="178" y2="40"/>
+        </g>
+        <text x="185" y="43" font-size="8" fill="var(--ls-good)">n&#770;</text>
+        <defs>
+          <marker id="ah" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-accent)"/>
+          </marker>
+          <marker id="ah2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-warn)"/>
+          </marker>
+          <marker id="ah3" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-good)"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+    <div>
+      \[ (\hat{\mathbf n}\cdot\nabla)\mathbf U_{\text{ext}}=\mathbf 0,\quad \hat{\mathbf n}=\nabla\psi/|\nabla\psi| \]
+      \[ \frac{\partial\psi}{\partial t}+\nabla\!\cdot(\phi_{\text{ext}}\psi)-\psi\,\nabla\!\cdot\phi_{\text{ext}}=0 \]
+      \[ w(\psi)=\tfrac12\big(1+\cos\pi a\big),\ a=\tfrac{|\psi|-L}{L},\ L=(n_{\text{layers}}{+}1)h \]
+      \[ \mathbf U=w\,\mathbf U_{\text{ext}}+(1-w)\,\mathbf U,\quad |\psi|\in[L,2L] \]
+      <ol class="tight" style="font-size:0.82em; line-height:1.3">
+        <li>\(\hat{\mathbf n}=\nabla\psi/|\nabla\psi|\).</li>
+        <li>band \(=\{\,|\psi|\le(n_{\text{layers}}{+}1)h\,\}\) plus seed cells \((0&lt;\alpha&lt;1)\).</li>
+        <li>seed velocity: foot-point descent to \(\Sigma\), then cell-point interpolate \(\mathbf U\).</li>
+        <li>model-specific <code>extend()</code> fills the band.</li>
+        <li>clip \(|\mathbf U_{\text{ext}}|\le\texttt{maxScale}\cdot\max|\mathbf U|\).</li>
+        <li>\(\phi_{\text{ext}}=\texttt{interpolate}(\mathbf U_{\text{ext}})\!\cdot\!\mathbf S_f\).</li>
+        <li>\(C^1\) cosine fade \(\mathbf U_{\text{ext}}\!\to\!\mathbf U\) over \([L,2L]\).</li>
+        <li>advect \(\psi\) with the advective equation above.</li>
+      </ol>
+      <p class="footnote muted">The \(-\psi\,\nabla\!\cdot\phi_{\text{ext}}\) term is <code>fvm::Sp(divPhiExt, psi)</code>, making the &psi;-equation advective (non-conservative). <em class="tag">velocityExtension</em>; <code>"none"</code> is the identity \(\mathbf U_{\text{ext}}=\mathbf U\).</p>
+    </div>
+  </div>
+  <aside class="notes">The framework decouples the extension into replaceable pieces: a normal from the level set, a narrow band around the interface, a seeding step that lands the free-stream velocity onto Sigma, a model-specific extend that pushes it constant along the normal, a clip for stability, and a C1 cosine fade so U_ext relaxes smoothly back to the free-stream U over [L,2L]. The transported field psi is advected with the non-conservative form, where the minus psi div phi_ext term is added implicitly as fvm::Sp(divPhiExt, psi). The "none" model short-circuits everything and just returns U.</aside>
+</section>
+  <!-- ############ /overview column ############ -->
 
 <section data-track="Velocity extension &mdash; the models">  <!-- ##### STACK model 1/7: none ##### -->
 <!-- ===== none 1: MOTIVATION ===== -->
@@ -1083,6 +1173,96 @@ for (label corr = 0; corr &lt; nDefCorr; ++corr)
      backbone in <em class="tag">interfaceExtension.C</em>.</p>
 </section>
 
+<!-- velExt formulation: anisotropicDiffusion -->
+<section>
+  <h2><code>anisotropicDiffusion</code> &mdash; formulation &amp; algorithm</h2>
+
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 300 230" width="100%" role="img" aria-label="Interface Sigma with normal rays, an anisotropic diffusion ellipse elongated along the normal, and a shaded Dirichlet seed band">
+        <defs>
+          <marker id="adHeavy" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+            <path d="M0,0 L7,3 L0,6 Z" fill="var(--ls-accent)"/>
+          </marker>
+          <marker id="adThin" markerWidth="7" markerHeight="7" refX="5" refY="2.4" orient="auto">
+            <path d="M0,0 L5,2.4 L0,4.8 Z" fill="var(--ls-muted)"/>
+          </marker>
+        </defs>
+
+        <!-- Dirichlet seed band -->
+        <path d="M20,175 C90,140 210,110 280,72 L280,92 C210,130 90,160 20,195 Z"
+              fill="var(--ls-warn)" opacity="0.16" stroke="none"/>
+        <text x="30" y="210" font-size="9" fill="var(--ls-warn)">Dirichlet seed band</text>
+        <text x="30" y="220" font-size="8" fill="var(--ls-muted)">U_ext = U&#931;</text>
+
+        <!-- Interface Sigma (green dashed) -->
+        <path d="M20,185 C90,150 210,120 280,82"
+              fill="none" stroke="var(--ls-good)" stroke-width="2.2"
+              stroke-dasharray="7 4"/>
+        <text x="238" y="72" font-size="10" fill="var(--ls-good)">&#931;</text>
+
+        <!-- Normal rays with heavy double arrows (strong diffusion along n) -->
+        <g stroke="var(--ls-accent)" stroke-width="2.2">
+          <line x1="70"  y1="163" x2="52"  y2="128" marker-end="url(#adHeavy)"/>
+          <line x1="130" y1="146" x2="112" y2="111" marker-end="url(#adHeavy)"/>
+          <line x1="200" y1="122" x2="182" y2="87"  marker-end="url(#adHeavy)"/>
+          <line x1="255" y1="103" x2="237" y2="68"  marker-end="url(#adHeavy)"/>
+        </g>
+        <text x="44" y="118" font-size="9" fill="var(--ls-accent)">n</text>
+
+        <!-- Thin tangential arrows (weak diffusion) at one point -->
+        <g stroke="var(--ls-muted)" stroke-width="1">
+          <line x1="130" y1="146" x2="158" y2="132" marker-end="url(#adThin)"/>
+          <line x1="130" y1="146" x2="102" y2="160" marker-end="url(#adThin)"/>
+        </g>
+
+        <!-- Diffusion ellipse: long axis (1+eps) along n_hat, short axis (eps) tangential -->
+        <g transform="translate(130,146) rotate(-27)">
+          <ellipse cx="0" cy="0" rx="10" ry="30"
+                   fill="var(--ls-accent)" opacity="0.14"
+                   stroke="var(--ls-accent)" stroke-width="1.3"/>
+        </g>
+        <text x="150" y="176" font-size="8" fill="var(--ls-fg)">1+&#949; along n</text>
+        <text x="150" y="186" font-size="8" fill="var(--ls-muted)">&#949; tangential</text>
+
+        <!-- D label -->
+        <text x="20" y="30" font-size="10" fill="var(--ls-fg)">D = n(x)&#8855;n + &#949; I</text>
+      </svg>
+    </div>
+
+    <div>
+      <p>Whole-domain harmonic extension with a rank-deficient tensor conductivity:</p>
+      \[ \nabla\!\cdot(\mathbf D\,\nabla\mathbf U_{\text{ext}})=\mathbf 0,\quad
+         \mathbf D=\hat{\mathbf n}\otimes\hat{\mathbf n}+\varepsilon\mathbf I \]
+      \[ \varepsilon_c=\varepsilon\,h_c\ (\text{cellSize}),\qquad
+         \mathbf U_{\text{ext}}\big|_{\text{seed}}=\mathbf U_\Sigma\ (\text{Dirichlet}) \]
+
+      <p class="muted" style="font-size:0.82em; margin:0.2em 0 0.4em">
+        Eigenvalues \(1+\varepsilon\) along \(\hat{\mathbf n}\), \(\varepsilon\) tangential: strong normal transport, weak lateral smearing.
+      </p>
+
+      <ol class="tight" style="font-size:0.82em; line-height:1.3">
+        <li>Build \(\hat{\mathbf n}\) and cell size \(h_c\)</li>
+        <li><code>eps</code> field: <code>epsilon_</code> or <code>epsilon_*cellSize_c</code></li>
+        <li>Assemble \(\mathbf D=\)<code>sqr(nHat_) + eps*I</code> (<code>volSymmTensorField</code>)</li>
+        <li>Implicit <code>fvm::laplacian(D, Uext)</code> &rarr; <code>UextEqn</code></li>
+        <li>Dirichlet: <code>UextEqn.setValues(seedCells, U_&#931;)</code></li>
+        <li>Solve PBiCGStab/DIC, controls from <code>fvSolution "Uext.*"</code></li>
+        <li>Cosine fade of \(\mathbf U_{\text{ext}}\) outside the narrow band</li>
+      </ol>
+
+      <p class="footnote muted">
+        <em class="tag">velocityExtension/anisotropicDiffusion.C</em> &mdash; <code>D = sqr(nHat_) + eps*symmTensor::I</code>; natural zeroGradient at domain patches, Dirichlet only at the single interface layer.
+      </p>
+    </div>
+  </div>
+
+  <aside class="notes">
+    The anisotropic-diffusion extension solves one steady tensor Laplacian over the whole domain. The conductivity D is a rank-one projector n-outer-n plus a small isotropic regularizer epsilon*I, so its eigenvalues are one-plus-epsilon along the normal and epsilon in the two tangential directions. Diffusion is therefore strongly directional: information from the interface seed cells is carried along the normal rays with almost no lateral bleeding. The seed cells hold the interpolated interface velocity U-Sigma and are pinned as Dirichlet constraints directly in the matrix via fvMatrix::setValues, while the domain boundaries stay natural zeroGradient. Epsilon can be a fixed absolute value or scale with the local cell size, eps_c = epsilon*h_c, which restores O(h) mesh consistency. The near-rank-one system is solved with PBiCGStab/DIC using a per-step relative tolerance taken from fvSolution's Uext.* entry, never hardcoded in C++. Finally a cosine taper fades the extended field to zero outside the narrow band.
+  </aside>
+</section>
+
+
 <!-- ===== aniso 4: CODE ===== -->
 <section>
   <h2><code>anisotropicDiffusion::extend()</code> &mdash; code</h2>
@@ -1294,6 +1474,85 @@ for (label corr = 0; corr &lt; nDefCorr; ++corr)
      <em class="tag">interfaceExtension.C</em>.</p>
 </section>
 
+<!-- velExt formulation: pseudoTime -->
+<section>
+  <h2><code>pseudoTime</code> &mdash; formulation &amp; algorithm</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 300 230" width="100%" role="img" aria-label="Interface Sigma with outward normals w = sign(psi) n on both sides; pseudo-time march of U_ext from the seed value outward along rays, dashed intermediate to solid steady, becoming constant along each ray.">
+        <!-- background cells -->
+        <g stroke="var(--ls-muted)" fill="none" stroke-width="0.5" opacity="0.5">
+          <rect x="20" y="20" width="40" height="40"/><rect x="60" y="20" width="40" height="40"/>
+          <rect x="100" y="20" width="40" height="40"/><rect x="140" y="20" width="40" height="40"/>
+          <rect x="180" y="20" width="40" height="40"/><rect x="220" y="20" width="40" height="40"/>
+          <rect x="20" y="60" width="40" height="40"/><rect x="60" y="60" width="40" height="40"/>
+          <rect x="100" y="60" width="40" height="40"/><rect x="140" y="60" width="40" height="40"/>
+          <rect x="180" y="60" width="40" height="40"/><rect x="220" y="60" width="40" height="40"/>
+          <rect x="20" y="100" width="40" height="40"/><rect x="60" y="100" width="40" height="40"/>
+          <rect x="100" y="100" width="40" height="40"/><rect x="140" y="100" width="40" height="40"/>
+          <rect x="180" y="100" width="40" height="40"/><rect x="220" y="100" width="40" height="40"/>
+          <rect x="20" y="140" width="40" height="40"/><rect x="60" y="140" width="40" height="40"/>
+          <rect x="100" y="140" width="40" height="40"/><rect x="140" y="140" width="40" height="40"/>
+          <rect x="180" y="140" width="40" height="40"/><rect x="220" y="140" width="40" height="40"/>
+        </g>
+
+        <defs>
+          <marker id="wArr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-accent)"/>
+          </marker>
+          <marker id="mArr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-fg)"/>
+          </marker>
+        </defs>
+
+        <!-- interface Sigma (green dashed) -->
+        <path d="M40,180 C90,140 110,90 150,60 C185,35 215,30 260,25"
+              fill="none" stroke="var(--ls-good)" stroke-width="2" stroke-dasharray="5 3"/>
+        <text x="46" y="196" font-size="10" fill="var(--ls-good)">&#931;</text>
+
+        <!-- outward normals w = sign(psi) n on both sides -->
+        <!-- side A (upper-right, psi>0) -->
+        <line x1="120" y1="80" x2="146" y2="58" stroke="var(--ls-accent)" stroke-width="1.5" marker-end="url(#wArr)"/>
+        <line x1="175" y1="52" x2="196" y2="36" stroke="var(--ls-accent)" stroke-width="1.5" marker-end="url(#wArr)"/>
+        <!-- side B (lower-left, psi<0) -->
+        <line x1="95" y1="120" x2="70" y2="140" stroke="var(--ls-accent)" stroke-width="1.5" marker-end="url(#wArr)"/>
+        <line x1="150" y1="78" x2="128" y2="96" stroke="var(--ls-accent)" stroke-width="1.5" marker-end="url(#wArr)"/>
+
+        <!-- seed value on interface -->
+        <circle cx="150" cy="60" r="3.5" fill="var(--ls-good)"/>
+        <text x="156" y="56" font-size="8" fill="var(--ls-good)">U<tspan dy="2" font-size="6">&#931;</tspan></text>
+
+        <!-- pseudo-time march along a ray: dashed intermediate -> solid steady -->
+        <line x1="150" y1="60" x2="205" y2="150" stroke="var(--ls-warn)" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>
+        <circle cx="168" cy="90" r="2.5" fill="none" stroke="var(--ls-warn)" stroke-width="1"/>
+        <circle cx="186" cy="120" r="2.5" fill="none" stroke="var(--ls-warn)" stroke-width="1"/>
+        <circle cx="205" cy="150" r="2.5" fill="var(--ls-warn)"/>
+        <text x="210" y="153" font-size="8" fill="var(--ls-warn)">&#964; &#8594; steady</text>
+        <text x="188" y="180" font-size="8" fill="var(--ls-fg)">U<tspan dy="2" font-size="6">ext</tspan><tspan dy="-2"> const on ray</tspan></text>
+
+        <!-- label for w -->
+        <text x="24" y="216" font-size="9" fill="var(--ls-accent)">w = sign(&#968;) n&#770;</text>
+      </svg>
+    </div>
+    <div>
+      \[ \frac{\partial\mathbf U_{\text{ext}}}{\partial\tau}+\operatorname{sign}(\psi)\,(\hat{\mathbf n}\cdot\nabla)\mathbf U_{\text{ext}}=\mathbf 0,\quad \mathbf w=\operatorname{sign}(\psi)\,\hat{\mathbf n} \]
+      \[ (\mathbf w\cdot\nabla)\mathbf U_{\text{ext}}=\underbrace{\nabla\!\cdot(\phi_W\mathbf U_{\text{ext}})-\mathbf U_{\text{ext}}(\nabla\!\cdot\phi_W)}_{\text{non-conservative}},\quad \phi_W=\mathbf w_f\!\cdot\mathbf S_f \]
+      \[ \tfrac{1}{\Delta\tau\,h}\,\mathbf U + \nabla\!\cdot(\phi_W\mathbf U) - (\nabla\!\cdot\phi_W)\,\mathbf U = \tfrac{1}{\Delta\tau\,h}\,\mathbf U^{\text{prev}} \]
+      <ol class="tight" style="font-size:0.82em; line-height:1.3">
+        <li>Build march field <code>w = sign(psi)*nHat</code>.</li>
+        <li>Flux <code>phiW = interpolate(w)&amp;Sf</code>; divergence <code>divW = fvc::div(phiW)</code>.</li>
+        <li>For <code>k = 1..nIterations</code>: assemble implicit upwind backward-Euler
+          <br><code>fvm::Sp(1/(dTau*h),U) + fvm::div(phiW,U) - fvm::Sp(divW,U) == (1/(dTau*h))*U.prevIter()</code>;
+          <code>setValues(seed, U_Sigma)</code>; <code>solve()</code>.</li>
+        <li>Fade <code>U_ext</code> away from &#931; to blend with the bulk field.</li>
+      </ol>
+      <p class="footnote muted">The <code>-U_ext&nbsp;(&#8711;&middot;phiW)</code> correction subtracts the spurious source from the non-solenoidal march field <em class="tag">w</em>; without it the implicit upwind system diverges (~1e108 blow-up).</p>
+    </div>
+  </div>
+  <aside class="notes">pseudoTime extends the interface velocity into the bulk by pseudo-time-marching a transport equation whose characteristics are the signed normals w = sign(psi) n_hat. Since w is not divergence-free, the naive div(phiW, U) discretization injects a fake U_ext*div(phiW) source; the fvm::Sp(divW, U) term cancels it exactly, converting the conservative divergence into the intended non-conservative advection (w.grad)U. Backward-Euler in pseudo-time gives an unconditionally stable implicit upwind solve; the seed value U_Sigma on the interface is pinned each iteration via setValues, and after nIterations the solution is constant along each ray so U_ext is a faithful normal extension. A final fade blends it into the surrounding field.</aside>
+</section>
+
+
 <!-- ===== pseudoTime 4: CODE ===== -->
 <section>
   <h2><code>pseudoTime::extend()</code> &mdash; code (non-conservative)</h2>
@@ -1495,6 +1754,70 @@ for (label corr = 0; corr &lt; nDefCorr; ++corr)
      <code>steadyUpwindLinear</code> and <code>closestPoint</code> (fallback fill).</p>
 </section>
 
+<!-- velExt formulation: steadyUpwind -->
+<section>
+  <h2><code>steadyUpwind</code> &mdash; formulation &amp; algorithm</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 300 230" width="100%" role="img" aria-label="Interface seed layer at center with concentric outward shells of cells; arrows point outward along characteristics illustrating an acyclic block-lower-triangular M-matrix; a discrete-skeleton cell with no upwind neighbour receives the lambda guard; one ray shows U_ext held constant from the seed">
+        <!-- concentric shells (outer to inner so inner draws on top) -->
+        <rect x="30"  y="30"  width="240" height="170" rx="6" fill="var(--ls-muted)" opacity="0.10" stroke="var(--ls-muted)" stroke-width="1"/>
+        <rect x="66"  y="58"  width="168" height="114" rx="5" fill="var(--ls-muted)" opacity="0.16" stroke="var(--ls-muted)" stroke-width="1"/>
+        <rect x="102" y="86"  width="96"  height="58"  rx="4" fill="var(--ls-muted)" opacity="0.24" stroke="var(--ls-muted)" stroke-width="1"/>
+
+        <text x="150" y="22" text-anchor="middle" font-size="9" fill="var(--ls-muted)">shell 2</text>
+        <text x="150" y="50" text-anchor="middle" font-size="9" fill="var(--ls-muted)">shell 1</text>
+
+        <!-- interface (green dashed) through the seed layer -->
+        <path d="M150 12 C 138 70, 162 150, 150 218" fill="none" stroke="var(--ls-good)" stroke-width="2" stroke-dasharray="5 4"/>
+        <text x="164" y="20" font-size="9" fill="var(--ls-good)">&#931;</text>
+
+        <!-- seed layer at center -->
+        <rect x="126" y="100" width="48" height="30" rx="3" fill="var(--ls-good)" opacity="0.28" stroke="var(--ls-good)" stroke-width="1.5"/>
+        <text x="150" y="119" text-anchor="middle" font-size="8" fill="var(--ls-good)">seed U<tspan dy="2" font-size="6">&#931;</tspan></text>
+
+        <!-- outward characteristic arrows w = sign(psi) n_hat -->
+        <defs>
+          <marker id="suArr" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+            <path d="M0 0 L6 3 L0 6 z" fill="var(--ls-accent)"/>
+          </marker>
+        </defs>
+        <line x1="176" y1="115" x2="256" y2="115" stroke="var(--ls-accent)" stroke-width="1.4" marker-end="url(#suArr)"/>
+        <line x1="124" y1="115" x2="44"  y2="115" stroke="var(--ls-accent)" stroke-width="1.4" marker-end="url(#suArr)"/>
+        <line x1="150" y1="98"  x2="150" y2="40"  stroke="var(--ls-accent)" stroke-width="1.4" marker-end="url(#suArr)"/>
+        <line x1="150" y1="132" x2="150" y2="190" stroke="var(--ls-accent)" stroke-width="1.4" marker-end="url(#suArr)"/>
+        <line x1="172" y1="104" x2="222" y2="72"  stroke="var(--ls-accent)" stroke-width="1.2" marker-end="url(#suArr)"/>
+        <line x1="128" y1="126" x2="78"  y2="158" stroke="var(--ls-accent)" stroke-width="1.2" marker-end="url(#suArr)"/>
+
+        <text x="238" y="108" font-size="8" fill="var(--ls-accent)">w = sign(&#968;) n&#770;</text>
+
+        <!-- one ray: U_ext held CONSTANT (flat, O(h)) from the seed -->
+        <line x1="176" y1="128" x2="262" y2="128" stroke="var(--ls-fg)" stroke-width="1" stroke-dasharray="2 2"/>
+        <text x="200" y="140" font-size="8" fill="var(--ls-fg)">U<tspan dy="2" font-size="6">ext</tspan><tspan dy="-2"> const, O(h)</tspan></text>
+
+        <!-- discrete-skeleton cell: local |psi| max, no upwind neighbour, gets lambda guard -->
+        <rect x="228" y="176" width="34" height="22" rx="3" fill="var(--ls-warn)" opacity="0.30" stroke="var(--ls-warn)" stroke-width="1.5"/>
+        <text x="245" y="212" text-anchor="middle" font-size="8" fill="var(--ls-warn)">skeleton: &#955; guard</text>
+      </svg>
+    </div>
+    <div>
+      \[ \operatorname{sign}(\psi)\,(\hat{\mathbf n}\cdot\nabla)\,\mathbf U_{\text{ext}}=\mathbf 0 \]
+      \[ \nabla\!\cdot(\phi_W\mathbf q)-\mathbf q\,\nabla\!\cdot\phi_W+\lambda\mathbf q=\lambda\mathbf q^{k} \]
+      \[ \phi_W=\big(\operatorname{sign}(\psi)\,\hat{\mathbf n}\big)_f\!\cdot\mathbf S_f,\qquad \lambda=\frac{10^{-6}}{h_c} \]
+      <ol class="tight" style="font-size:0.82em; line-height:1.3">
+        <li>Build <code>w = sign(psi)*n_hat</code>; face flux <code>phiW</code>, <code>divW = fvc::div(phiW)</code>; zero-inflow guard <code>lambda = 1e-6/h</code>.</li>
+        <li>For <code>pass = 1..nDefCorrExt</code> assemble the advective UFVM system <code>fvm::div(phiW,q) - fvm::Sp(divW,q) + fvm::Sp(lambda,q) == lambda*q</code>.</li>
+        <li><code>q.setValues(seed, U_Sigma)</code> &mdash; pin the interface seed layer as Dirichlet.</li>
+        <li>Solve (PBiCGStab + DILU) &mdash; near-triangular M-matrix, one implicit solve, infinite reach.</li>
+        <li>Under-relax by <code>0.7</code> between passes; upwind interpolation is default.</li>
+      </ol>
+      <p class="footnote muted">Shells order acyclically outward &rarr; block-lower-triangular M-matrix. <code>linearUpwind</code> deferred correction was <em>measured</em> to diverge on the steady equation. <em class="tag">velocityExtension/steadyUpwind</em></p>
+    </div>
+  </div>
+  <aside class="notes">The steady extension enforces that U_ext is constant along characteristics emanating outward from the interface, where the transport direction w = sign(psi) n_hat points away from Sigma on both sides. Discretised as an advective finite-volume system in one implicit solve: div(phiW q) with the compressive correction -q div(phiW), plus a tiny Tikhonov-style guard lambda = 1e-6/h on rows with no upwind neighbour (discrete-skeleton cells at local |psi| maxima), which otherwise have singular, zero-inflow rows. The seed layer at the interface is pinned via setValues to the reconstructed interface velocity U_Sigma. Because the characteristic flow is acyclic, the assembled matrix is essentially block-lower-triangular, so PBiCGStab with DILU converges in very few sweeps and the influence reaches every cell in a single solve. Plain upwind is used deliberately: linearUpwind via deferred correction was measured to diverge here. Under-relaxation of 0.7 between the nDefCorrExt passes stabilises the outer iteration. One ray in the schematic shows the resulting flat, O(h) constant extension carried from the seed outward.</aside>
+</section>
+
+
 <!-- ===== steadyUpwind 4: CODE ===== -->
 <section>
   <h2><code>steadyUpwind::solveSteady()</code> &mdash; code (the family operator)</h2>
@@ -1648,6 +1971,65 @@ for (label corr = 0; corr &lt; nDefCorr; ++corr)
      lineage: Aslam, Luo &amp; Zhao SISC 36 (2014); FMM variant to avoid on unstructured
      meshes: McCaslin et&nbsp;al. JCP 274 (2014).</p>
 </section>
+
+<!-- velExt formulation: steadyUpwindLinear -->
+<section>
+  <h2><code>steadyUpwindLinear</code> &mdash; the Aslam cascade (and why it diverges)</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 300 230" width="100%" role="img" aria-label="Normal ray from the interface Sigma with the true velocity profile U(s), the O(h) constant steadyUpwind line, the O(h-squared) linear tangent line, and a jagged red divergence overlay growing away from Sigma.">
+        <!-- axes -->
+        <line x1="40" y1="200" x2="285" y2="200" stroke="var(--ls-muted)" stroke-width="1"/>
+        <line x1="40" y1="200" x2="40" y2="20" stroke="var(--ls-muted)" stroke-width="1"/>
+        <text x="278" y="214" font-size="9" fill="var(--ls-muted)">s (ray)</text>
+        <text x="8" y="26" font-size="9" fill="var(--ls-muted)">U</text>
+
+        <!-- interface Sigma at seed -->
+        <line x1="40" y1="20" x2="40" y2="205" stroke="var(--ls-good)" stroke-width="1.4" stroke-dasharray="4 3"/>
+        <text x="30" y="16" font-size="9" fill="var(--ls-good)">&#931;</text>
+        <circle cx="40" cy="150" r="3" fill="var(--ls-good)"/>
+        <text x="12" y="153" font-size="8" fill="var(--ls-good)">U&#931;</text>
+
+        <!-- true U(s) curve -->
+        <path d="M40,150 C90,120 150,95 220,60 S 275,42 282,40" fill="none" stroke="var(--ls-fg)" stroke-width="1.8"/>
+        <text x="230" y="80" font-size="9" fill="var(--ls-fg)">true U(s)</text>
+
+        <!-- steadyUpwind: flat constant line O(h) -->
+        <line x1="40" y1="150" x2="282" y2="150" stroke="var(--ls-muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <text x="150" y="145" font-size="8" fill="var(--ls-muted)">steadyUpwind (const, O(h))</text>
+
+        <!-- steadyUpwindLinear: tangent slope V at Sigma O(h^2) -->
+        <line x1="40" y1="150" x2="200" y2="86" stroke="var(--ls-accent)" stroke-width="1.6"/>
+        <text x="86" y="112" font-size="8" fill="var(--ls-accent)">slope V (O(h&#178;))</text>
+
+        <!-- jagged divergence overlay -->
+        <path d="M200,86 L208,70 L214,96 L222,54 L230,104 L239,40 L248,120 L258,26 L268,132 L280,18"
+              fill="none" stroke="var(--ls-warn)" stroke-width="1.6"/>
+        <text x="196" y="30" font-size="9" fill="var(--ls-warn)">diverges ~10&#185;&ndash;10&#178;</text>
+
+        <!-- stage labels -->
+        <text x="46" y="176" font-size="8" fill="var(--ls-fg)">(1) V=n&#770;&middot;&#8711;U|seed</text>
+        <text x="110" y="192" font-size="8" fill="var(--ls-muted)">(2) extend V const</text>
+        <text x="150" y="70" font-size="8" fill="var(--ls-accent)">(3) integrate U_ext</text>
+      </svg>
+    </div>
+    <div>
+      <p style="font-size:0.82em; margin:0 0 .2em">Three-stage cascade, <em>O(h&sup2;)</em> by construction:</p>
+      \[ V=\hat{\mathbf n}\cdot\nabla\mathbf U\big|_{\text{seed}} \]
+      \[ \operatorname{sign}(\psi)\,(\hat{\mathbf n}\cdot\nabla)V=0 \]
+      \[ \operatorname{sign}(\psi)\,(\hat{\mathbf n}\cdot\nabla)\mathbf U_{\text{ext}}=\operatorname{sign}(\psi)\,V_{\text{ext}} \]
+      <ol class="tight" style="font-size:0.82em; line-height:1.3">
+        <li><b>Stage 1</b> &mdash; normal derivative <code>V = n&#770;&middot;grad(U)</code> at the seed (LSQ gradient, <em class="tag">fvSchemes/velExtLSGrad</em>).</li>
+        <li><b>Stage 2</b> &mdash; extend <code>V</code> constant along the rays (<code>steadyUpwind</code>, no source).</li>
+        <li><b>Stage 3</b> &mdash; integrate <code>U_ext</code> with <code>sign(&psi;)V_ext</code> as RHS source (linear along rays). Intended <em>O(h&sup2;)</em>.</li>
+      </ol>
+      <p style="font-size:0.8em; color:var(--ls-warn); margin:.3em 0 0"><b>Measured: DIVERGES</b> (~10&#185;&ndash;10&#178;). Differentiating already-noisy foot-point seeds, plus an undamped steady fixed point (no <code>ddt</code> mass matrix).</p>
+    </div>
+  </div>
+  <p class="footnote muted">Documented negative result &mdash; excluded from the advected suite.</p>
+  <aside class="notes">The Aslam cascade builds a second-order extension by first computing the normal derivative V at the seed, extending V constant along the characteristics, then integrating U_ext with V as a linear source. In principle this makes U_ext tangent to the true profile at Sigma, giving O(h squared) versus the O(h) flat constant extension. In practice it blows up to order ten-to-one-hundred: stage one differentiates foot-point seeds that are already noisy, amplifying that noise, and the steady formulation has no time-derivative mass matrix to damp the fixed point. We keep it in the paper as a documented negative result but exclude it from the advected test suite.</aside>
+</section>
+
 
 <!-- ===== cascade 3: CODE ===== -->
 <section>
@@ -1848,6 +2230,95 @@ for (label corr = 0; corr &lt; nDefCorr; ++corr)
      (inherits <code>solveSteady</code> from <em class="tag">steadyUpwind.C</em>);
      band/fade/cell-size in <em class="tag">interfaceExtension.C</em>.</p>
 </section>
+
+<!-- velExt formulation: closestPoint -->
+<section>
+  <h2><code>closestPoint</code> &mdash; formulation &amp; algorithm</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 300 230" width="100%" role="img" aria-label="A band cell centre x_c descends by Newton steps along the local normal onto a curved interface Sigma at the foot point x_fp, within a path-cap circle; the sampled interface velocity is copied back. Inset shows a processor boundary with a one-layer halo Taylor continuation.">
+        <!-- background band cells -->
+        <rect x="18" y="20" width="46" height="46" fill="var(--ls-muted)" opacity="0.10" stroke="var(--ls-muted)" stroke-width="0.6"/>
+        <rect x="64" y="20" width="46" height="46" fill="var(--ls-muted)" opacity="0.10" stroke="var(--ls-muted)" stroke-width="0.6"/>
+        <rect x="18" y="66" width="46" height="46" fill="var(--ls-muted)" opacity="0.10" stroke="var(--ls-muted)" stroke-width="0.6"/>
+        <rect x="64" y="66" width="46" height="46" fill="var(--ls-muted)" opacity="0.10" stroke="var(--ls-muted)" stroke-width="0.6"/>
+        <rect x="18" y="112" width="46" height="46" fill="var(--ls-muted)" opacity="0.10" stroke="var(--ls-muted)" stroke-width="0.6"/>
+        <rect x="64" y="112" width="46" height="46" fill="var(--ls-muted)" opacity="0.10" stroke="var(--ls-muted)" stroke-width="0.6"/>
+
+        <defs>
+          <marker id="cpArr" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-accent)"/>
+          </marker>
+          <marker id="cpArrG" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-good)"/>
+          </marker>
+        </defs>
+
+        <!-- path-cap circle centred at x_c -->
+        <circle cx="41" cy="43" r="86" fill="none" stroke="var(--ls-warn)" stroke-width="1" stroke-dasharray="2 3"/>
+        <text x="118" y="122" font-size="8" fill="var(--ls-warn)">cpMaxDist</text>
+        <text x="118" y="132" font-size="8" fill="var(--ls-warn)">&#183; nLayers &#183; h</text>
+
+        <!-- curved interface Sigma -->
+        <path d="M150,10 C138,60 128,110 150,175 C160,205 175,215 200,222" fill="none" stroke="var(--ls-good)" stroke-width="2" stroke-dasharray="5 4"/>
+        <text x="126" y="150" font-size="10" fill="var(--ls-good)">&#931;</text>
+
+        <!-- descent x_c -> x1 -> x_fp -->
+        <line x1="41" y1="43" x2="92" y2="58" stroke="var(--ls-accent)" stroke-width="1.6" marker-end="url(#cpArr)"/>
+        <line x1="92" y1="58" x2="131" y2="70" stroke="var(--ls-accent)" stroke-width="1.6" marker-end="url(#cpArr)"/>
+
+        <!-- x_c -->
+        <circle cx="41" cy="43" r="3" fill="var(--ls-accent)"/>
+        <text x="24" y="16" font-size="9" fill="var(--ls-fg)">x<tspan font-size="7" dy="2">c</tspan></text>
+        <!-- x1 intermediate -->
+        <circle cx="92" cy="58" r="2.4" fill="var(--ls-accent)" opacity="0.8"/>
+        <text x="85" y="52" font-size="8" fill="var(--ls-muted)">x<tspan font-size="6" dy="2">1</tspan></text>
+        <!-- x_fp foot on Sigma -->
+        <circle cx="138" cy="72" r="3" fill="var(--ls-good)"/>
+        <text x="140" y="66" font-size="9" fill="var(--ls-good)">x<tspan font-size="7" dy="2">fp</tspan></text>
+
+        <!-- orthogonal tick at foot -->
+        <line x1="138" y1="72" x2="126" y2="88" stroke="var(--ls-good)" stroke-width="0.8"/>
+        <path d="M132,80 l-4,-3 l3,-4" fill="none" stroke="var(--ls-good)" stroke-width="0.7"/>
+
+        <!-- copy-back U(x_fp) -> x_c -->
+        <path d="M134,74 C100,95 60,80 45,49" fill="none" stroke="var(--ls-good)" stroke-width="1.2" stroke-dasharray="1.5 2.5" marker-end="url(#cpArrG)"/>
+        <text x="70" y="100" font-size="8" fill="var(--ls-good)">U(x<tspan font-size="6" dy="2">fp</tspan><tspan dy="-2">)</tspan></text>
+
+        <!-- inset: processor boundary + one-layer halo -->
+        <rect x="188" y="150" width="104" height="72" fill="none" stroke="var(--ls-muted)" stroke-width="0.6"/>
+        <line x1="240" y1="150" x2="240" y2="222" stroke="var(--ls-warn)" stroke-width="1" stroke-dasharray="3 2"/>
+        <text x="196" y="162" font-size="7.5" fill="var(--ls-muted)">rank A</text>
+        <text x="244" y="162" font-size="7.5" fill="var(--ls-muted)">rank B (halo)</text>
+        <!-- local cell + halo cell -->
+        <rect x="216" y="176" width="22" height="22" fill="var(--ls-muted)" opacity="0.12" stroke="var(--ls-muted)" stroke-width="0.5"/>
+        <rect x="242" y="176" width="22" height="22" fill="var(--ls-accent)" opacity="0.14" stroke="var(--ls-accent)" stroke-width="0.6" stroke-dasharray="2 1.5"/>
+        <circle cx="253" cy="187" r="1.8" fill="var(--ls-accent)"/>
+        <text x="246" y="210" font-size="7" fill="var(--ls-accent)">C<tspan font-size="5.5" dy="1.5">j</tspan></text>
+        <line x1="227" y1="187" x2="250" y2="187" stroke="var(--ls-fg)" stroke-width="1" marker-end="url(#cpArr)"/>
+        <text x="196" y="220" font-size="7" fill="var(--ls-fg)">Taylor cont.</text>
+      </svg>
+    </div>
+    <div>
+      <p style="margin:0 0 .2em 0; font-size:0.9em">Foot-point value; no PDE where the geometry reaches:</p>
+      \[ \mathbf U_{\text{ext}}(\mathbf x_c)=\mathbf U\big(\mathbf x_{fp}\big),\quad \mathbf x_{fp}=\arg\min_{\mathbf y\in\Sigma}\|\mathbf x_c-\mathbf y\| \]
+      <p style="margin:0 0 .2em 0; font-size:0.9em">Newton descent along the local normal:</p>
+      \[ \mathbf x\leftarrow\mathbf x-\psi(\mathbf x)\,\hat{\mathbf n}(\mathbf x) \]
+      <p style="margin:.1em 0 .2em 0; font-size:0.82em">accept if \(|\psi(\mathbf x_{fp})|<\text{cpTol}\,h\); cap \(|\mathbf x_{fp}-\mathbf x_c|\le\text{cpMaxDist}\,n_{\text{layers}}h\); require \(|\psi|\) decreasing.</p>
+      <ol class="tight" style="font-size:0.82em; line-height:1.3">
+        <li>each band cell: <code>x=x_c</code>, <code>cx=c</code>, <code>apsi=|psi_c|</code>.</li>
+        <li>step <code>x&larr;x&minus;&psi;(x)n&#770;(x)</code>; <code>findCell</code> re-localizes, <code>n&#770;=nHat_[cx]</code> re-evaluated per cell.</li>
+        <li>guards: path cap; non-decreasing \(|\psi|\) aborts; off-mesh &rarr; <code>zoneDistribute</code> one-layer halo, Taylor continuation \(\psi\approx\psi_j+\nabla\psi_j\!\cdot\!(x-C_j)\).</li>
+        <li>accept \(|\psi|<\text{cpTol}\,h\) &rarr; <code>Uext=interpolationCellPoint</code> of <code>U</code> at foot, \(O(h^2)\).</li>
+        <li>skeleton / deep failures &rarr; <code>solveSteady</code> (steadyUpwind) pinned at all successes.</li>
+      </ol>
+      <p style="margin:.2em 0 0 0; font-size:0.82em">\((\hat{\mathbf n}\cdot\nabla)\mathbf U_{\text{ext}}=0\) holds <em>by construction</em>: all cells on one descent ray share the foot.</p>
+    </div>
+  </div>
+  <p class="footnote muted"><em class="tag">closestPoint.C / extend()</em> &middot; closest-point method Ruuth &amp; Merriman JCP 227 (2008); degree-\(p\) &rarr; \(O(h^{p+1})\) Macdonald &amp; Ruuth SISC 31 (2009); halo via zoneDistribute Scheufler &amp; Roenby JCP 383 (2019).</p>
+  <aside class="notes">closestPoint is the direct geometric extension: instead of solving a transport PDE everywhere, each band cell walks to its own foot point on Sigma by Newton descent along the interface-normal psi field and copies back the interface velocity there. The step is x minus psi times n-hat; after each step findCell re-localizes the iterate and the normal is re-read from the containing cell (nHat_[cx]) rather than frozen at the start, because across the band the starting normal is too crude. Three guards keep it robust: a path cap of cpMaxDist times nLayers times h, an abort if |psi| stops decreasing, and a parallel halo. In parallel we cap each step at ~0.9 cell so the walk traverses cells and cLast tracks the true exit cell; when a step leaves the local mesh we continue on a first-order Taylor expansion of psi anchored at the nearest remote halo cell fetched with zoneDistribute (same order as the local cell-point interpolation), within cpHaloReach times h. Accepted cells interpolate U at the foot with cell-point interpolation, O(h^2). Cells that fail — skeleton region, path cap, deep excursions, cyclic transforms — are filled afterward by the steadyUpwind solve pinned as Dirichlet data at every successful closest-point cell, so it is parallel-graceful by construction. Defaults: cpTol 0.1, cpMaxDist 1.5, cpHaloReach 1.5. The key property: because every cell on a single descent ray converges to the same foot point, (n-grad)Uext = 0 is exact, not asymptotic.</aside>
+</section>
+
 
 <!-- ===== closestPoint 4: CODE ===== -->
 <section>
@@ -2054,6 +2525,85 @@ solveSteady(Uext_, fixedCells, fixedVals);   // pinned at ALL successes</code></
      &rarr; <em class="tag">meshWaveExt::extend()</em>; registered as
      <code>type meshWave;</code>.</p>
 </section>
+
+<!-- velExt formulation: meshWave -->
+<section>
+  <h2><code>meshWave</code> &mdash; formulation &amp; algorithm</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 300 230" width="100%" role="img" aria-label="Sign-change seed faces on the interface emit distance-ordered FaceCellWave fronts that tessellate the band into nearest-seed Voronoi regions; one band cell points to its nearest seed foot point.">
+        <!-- background band cells -->
+        <g stroke="var(--ls-muted)" stroke-width="0.6" fill="none" opacity="0.5">
+          <rect x="20" y="20" width="30" height="30"/><rect x="50" y="20" width="30" height="30"/>
+          <rect x="80" y="20" width="30" height="30"/><rect x="110" y="20" width="30" height="30"/>
+          <rect x="140" y="20" width="30" height="30"/><rect x="170" y="20" width="30" height="30"/>
+          <rect x="200" y="20" width="30" height="30"/><rect x="230" y="20" width="30" height="30"/>
+          <rect x="20" y="50" width="30" height="30"/><rect x="50" y="50" width="30" height="30"/>
+          <rect x="80" y="50" width="30" height="30"/><rect x="110" y="50" width="30" height="30"/>
+          <rect x="140" y="50" width="30" height="30"/><rect x="170" y="50" width="30" height="30"/>
+          <rect x="200" y="50" width="30" height="30"/><rect x="230" y="50" width="30" height="30"/>
+          <rect x="20" y="80" width="30" height="30"/><rect x="50" y="80" width="30" height="30"/>
+          <rect x="80" y="80" width="30" height="30"/><rect x="110" y="80" width="30" height="30"/>
+          <rect x="140" y="80" width="30" height="30"/><rect x="170" y="80" width="30" height="30"/>
+          <rect x="200" y="80" width="30" height="30"/><rect x="230" y="80" width="30" height="30"/>
+          <rect x="20" y="110" width="30" height="30"/><rect x="50" y="110" width="30" height="30"/>
+          <rect x="80" y="110" width="30" height="30"/><rect x="110" y="110" width="30" height="30"/>
+          <rect x="140" y="110" width="30" height="30"/><rect x="170" y="110" width="30" height="30"/>
+          <rect x="200" y="110" width="30" height="30"/><rect x="230" y="110" width="30" height="30"/>
+        </g>
+
+        <!-- concentric distance-ordered fronts (Voronoi tessellation) -->
+        <g fill="none" stroke="var(--ls-accent)" stroke-width="0.8" opacity="0.55">
+          <circle cx="95" cy="95" r="18"/><circle cx="95" cy="95" r="34"/><circle cx="95" cy="95" r="50"/>
+          <circle cx="195" cy="95" r="18"/><circle cx="195" cy="95" r="34"/><circle cx="195" cy="95" r="50"/>
+        </g>
+
+        <!-- interface: green dashed -->
+        <path d="M 20 140 C 70 105, 130 105, 150 95 C 175 82, 220 92, 260 70"
+              fill="none" stroke="var(--ls-good)" stroke-width="2" stroke-dasharray="6 4"/>
+        <text x="24" y="152" font-size="9" fill="var(--ls-good)">interface</text>
+
+        <!-- SEED faces (green ticks) + foot points -->
+        <g stroke="var(--ls-good)" stroke-width="2">
+          <line x1="90" y1="120" x2="100" y2="112"/>
+          <line x1="190" y1="98" x2="200" y2="90"/>
+          <line x1="140" y1="112" x2="150" y2="104"/>
+        </g>
+        <g fill="var(--ls-good)">
+          <circle cx="95" cy="95" r="2.4"/><circle cx="195" cy="95" r="2.4"/>
+        </g>
+        <text x="60" y="90" font-size="8" fill="var(--ls-good)">seed f (sign-change)</text>
+        <text x="132" y="90" font-size="8" fill="var(--ls-good)">foot fp</text>
+
+        <!-- band cell -> nearest seed foot arrow -->
+        <defs>
+          <marker id="mwArr" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 z" fill="var(--ls-warn)"/>
+          </marker>
+        </defs>
+        <circle cx="65" cy="125" r="2.4" fill="var(--ls-warn)"/>
+        <line x1="65" y1="125" x2="92" y2="98" stroke="var(--ls-warn)" stroke-width="1.4" marker-end="url(#mwArr)"/>
+        <text x="14" y="122" font-size="8" fill="var(--ls-warn)">band cell xc</text>
+
+        <text x="150" y="220" font-size="9" fill="var(--ls-muted)" text-anchor="middle">distance-ordered front (FaceCellWave)</text>
+      </svg>
+    </div>
+    <div>
+      \[ \mathbf U_{\text{ext}}(\mathbf x_c)=\mathbf U\big(\mathbf x_{fp}(f^{*})\big),\quad f^{*}=\arg\min_{f\in\text{seed}}\lVert\mathbf x_c-\mathbf x_{fp}(f)\rVert \]
+      \[ \mathbf x_{fp}(f)=\mathbf x_f-\psi_f\,\hat{\mathbf n}_f,\qquad (\hat{\mathbf n}\cdot\nabla)\mathbf U_{\text{ext}}=\mathcal O(h) \]
+      <ol class="tight" style="font-size:0.82em; line-height:1.3">
+        <li>Seeds: internal faces with <code>psi_own*psi_nei &lt; 0</code> (sign-change across the face).</li>
+        <li>Face foot <code>fp = Cf - psi_f*n_hat_f</code>; payload = <code>(fp, U(fp)</code> via cell-point interpolation<code>, |Cf-fp|^2)</code>.</li>
+        <li>MeshWave (<em class="tag">FaceCellWave</em>) propagates fronts in <strong>distance order</strong>; each cell keeps the minimum-distance payload &mdash; native across processor / cyclic / AMI boundaries.</li>
+        <li>Band cells &larr; nearest seed's velocity \(\mathbf U(\mathbf x_{fp}(f^{*}))\).</li>
+        <li>Fade toward the outer band edge.</li>
+      </ol>
+      <p class="footnote muted">Solve-free; \(\mathcal O(h)\) nearest-seed quantization error; never diverges. <em class="tag">velocityExtension/meshWave</em></p>
+    </div>
+  </div>
+  <aside class="notes">meshWave is the solve-free extension. It marks interface-adjacent faces where the level-set changes sign as seeds, projects each seed face centre back onto the interface along the normal to get a foot point, and attaches the interpolated velocity at that foot as a payload. OpenFOAM's FaceCellWave then floods the narrow band in strict distance order, so every band cell inherits the velocity of its single nearest seed. This tessellates the band into nearest-seed Voronoi regions. Because it is a graph flood rather than a linear solve, it never diverges and works transparently across processor, cyclic, and AMI patches; the price is O(h) piecewise-constant quantization from picking exactly one nearest seed, softened by the fade near the band edge.</aside>
+</section>
+
 
 <!-- ===== meshWave 4: CODE ===== -->
 <section>
@@ -2807,6 +3357,51 @@ forAll(band_, c)
      (unit test, \(\sim\!10^{-14}\)).</p>
 </section>
 
+<!-- ===== SL 2b: FORMULATION & ALGORITHM ===== -->
+<section>
+  <h2>Semi-Lagrangian &mdash; formulation &amp; algorithm</h2>
+  <div class="cols">
+    <div>
+      <p class="footnote muted" style="margin-bottom:0.15em">Governing relations (per time step \(t^n\!\to\!t^{n+1}\)):</p>
+      \[ \frac{D\psi}{Dt}=0 \;\;\Longrightarrow\;\; \boxed{\;\psi^{n+1}(\mathbf{x}_c)=\psi^{n}(\mathbf{x}_d)\;} \]
+      \[ \mathbf{x}_d=\mathbf{x}_c-\mathbf{u}_c^{n+1}\Delta t
+         +\tfrac12\Big[\underbrace{\tfrac{\mathbf{u}_c^{n+1}-\mathbf{u}_c^{n}}{\Delta t}}_{\partial_t\mathbf{u}}
+         +\underbrace{(\mathbf{u}_c^{n+1}\!\cdot\nabla_c)\mathbf{u}^{n+1}}_{(\mathbf{u}\cdot\nabla)\mathbf{u}}\Big]\Delta t^2 \]
+      \[ \psi^{n+1}_c=\psi_c^{n}+\phi_c\big(R_c(\mathbf{x}_d)-\psi_c^{n}\big),\qquad
+         \mathrm{CFL}=\frac{|\mathbf{x}_d-\mathbf{x}_c|}{r_{\text{stencil}}}\le 1 \]
+      <p class="footnote muted">\(R_c\): per-cell reconstruction of \(\psi^n\) over the
+         cell&ndash;point&ndash;cell (CPC) stencil; \(r_{\text{stencil}}\): max stencil-cell
+         distance; \(\phi_c\!\in\![0,1]\): Barth&ndash;Jespersen limiter (\(=1\) by default).
+         <b>No flux, no divergence, no linear solve.</b></p>
+    </div>
+    <div>
+      <p class="footnote muted" style="margin-bottom:0.15em">Per-step algorithm (<em class="tag">slAdvection::advect</em>):</p>
+      <ol class="tight" style="font-size:0.82em; line-height:1.32">
+        <li>Gather \(\psi^n\) &amp; cell centres over each cell's CPC stencil &mdash;
+            <b>one paired halo exchange</b> (<code>mapDistribute</code>; remote proc/cyclic
+            neighbours native).</li>
+        <li>\(\nabla\mathbf{u}^{n+1}\leftarrow\) LSQ gradient (fvSchemes <code>gradU</code>).</li>
+        <li><code>recon.update(</code>\(\psi^n\)<code>)</code>: build the per-cell polynomial \(R_c\).</li>
+        <li>For each cell \(c\): form acceleration \(\mathbf{a}_c\), foot \(\mathbf{x}_d\)
+            (boxed formula); guard \(|\mathbf{x}_d-\mathbf{x}_c|\le r_{\text{stencil}}\).</li>
+        <li>\(v\leftarrow\) limited \(R_c(\mathbf{x}_d)\); robustness: non-finite \(\to\)
+            stencil mid, else generous cap \(\pm10\times\) range.</li>
+        <li>\(\psi^{n+1}_c\leftarrow v\); <code>correctBoundaryConditions()</code>;
+            <code>postAdvect()</code> hook.</li>
+      </ol>
+      <p class="footnote muted">Explicit, per-cell, embarrassingly parallel; the only
+         communication is step&nbsp;1. Local displacement error \(O(\Delta t^3)\)
+         \(\Rightarrow\) \(O(h^2)\) at fixed CFL with a quadratic \(R_c\).</p>
+    </div>
+  </div>
+  <aside class="notes">
+    Governing PDE Dψ/Dt=0 solved by the method of characteristics: no PDE is discretised in
+    space beyond the reconstruction. The foot integrator is Maric thesis eqs. 165-167; the 1/2
+    on the dt^2 term is what makes it 3rd-order-in-time locally. Steps 1-3 are once per step;
+    steps 4-6 are the per-cell loop. Serial and np=4 match to 1e-12 (halo exchange is exact).
+  </aside>
+</section>
+
 <!-- ===== SL 3: RECONSTRUCTIONS ===== -->
 <section>
   <h2>Reconstruction of \(\psi^n\) at the foot &mdash; three, pluggable</h2>
@@ -2852,6 +3447,80 @@ forAll(band_, c)
         <code>nestedLSQ</code>/<code>quadraticWLSQ</code> to \(\sim\!10^{-16}\); a linear
         field by <code>linearTaylor</code>; centre value to \(0\).</li>
   </ul>
+</section>
+
+<!-- ===== SL 3b: quadraticWLSQ FORMULATION ===== -->
+<section>
+  <h2>quadraticWLSQ &mdash; the weighted least-squares fit</h2>
+  <p class="footnote muted center" style="margin-bottom:0.2em">Fit the full quadratic (2D shown;
+     the empty direction is dropped) to the increments \(\psi_i-\psi_c\),
+     \(\mathbf{d}_i=\mathbf{x}_i-\mathbf{x}_c\), over the cell&ndash;point&ndash;cell stencil:</p>
+  \[ R_c(\mathbf{x})=\psi_c+\sum_{k=1}^{n_k}a_k\,b_k(\mathbf{d}),\qquad
+     \mathbf{b}=\big(d_x,\,d_y,\,\tfrac12 d_x^2,\,\tfrac12 d_y^2,\,d_xd_y\big),\quad n_k=5 \]
+  \[ \mathbf{a}=\arg\min_{\mathbf{a}}\sum_{i=1}^{N}w_i^{2}\big(\mathbf{b}(\mathbf{d}_i)\!\cdot\!\mathbf{a}-(\psi_i-\psi_c)\big)^2,
+     \quad w_i=\frac{1}{|\mathbf{d}_i|},\quad
+     A_{ik}=w_i\,b_k(\mathbf{d}_i) \]
+  \[ \mathbf{a}=\underbrace{(A^{\top}A)^{-1}A^{\top}}_{\text{Moore–Penrose }A^{+}\,(\text{QR})}\,\mathbf{b}_w,
+     \;(b_w)_i=w_i(\psi_i-\psi_c)
+     \;\;\xrightarrow{\text{fold }M_{ki}=A^{+}_{ki}w_i}\;\; a_k=\sum_i M_{ki}(\psi_i-\psi_c) \]
+  <p class="footnote muted center">Fitting \((\psi_i-\psi_c)\) forces \(R_c(\mathbf{x}_c)=\psi_c\)
+     <b>exactly</b>. Mesh geometry is static \(\Rightarrow\) \(A^{+}\) (hence \(M\)) is built
+     <b>once per cell</b>; each step is then one contiguous mat&ndash;vec &mdash; no per-cell
+     allocation. \(n_k=9\) in 3D (3 linear + 3 pure-quadratic + 3 cross).</p>
+  <aside class="notes">
+    The pseudo-inverse is a Householder QR (MatrixTools::pinv over QRMatrix), robust to the
+    near-rank-deficient rows on distorted stencils. nestedLSQ instead forms H=grad(grad psi) by
+    two LSQ passes -- cheaper but grad-of-grad amplifies noise and diverges at CFL 1 (next-but-one
+    slide). Folding the IDW weight into the cached map is the hpctoolkit-guided optimisation.
+  </aside>
+</section>
+
+<!-- ===== SL 3c: quadraticWLSQ SCHEMATIC ===== -->
+<section>
+  <h2>quadraticWLSQ &mdash; the stencil &amp; the fit</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 320 250" width="100%" role="img" aria-label="cell-point-cell stencil with inverse-distance weights, the fitted quadratic, and the departure foot">
+        <g stroke="var(--ls-muted)" stroke-width="1" fill="none" stroke-opacity="0.45">
+          <rect x="85"  y="45"  width="50" height="50"/><rect x="135" y="45"  width="50" height="50"/><rect x="185" y="45"  width="50" height="50"/>
+          <rect x="85"  y="95"  width="50" height="50"/><rect x="135" y="95"  width="50" height="50"/><rect x="185" y="95"  width="50" height="50"/>
+          <rect x="85"  y="145" width="50" height="50"/><rect x="135" y="145" width="50" height="50"/><rect x="185" y="145" width="50" height="50"/>
+        </g>
+        <path d="M92,190 C130,150 150,120 175,50" fill="none" stroke="var(--ls-good)" stroke-width="1.6" stroke-dasharray="4 3"/>
+        <text x="58" y="196" fill="var(--ls-good)" font-size="9">&psi;=0</text>
+        <g fill="var(--ls-muted)">
+          <circle cx="110" cy="70" r="2.8"/><circle cx="160" cy="70" r="2.8"/><circle cx="210" cy="70" r="2.8"/>
+          <circle cx="110" cy="120" r="2.8"/><circle cx="210" cy="120" r="2.8"/>
+          <circle cx="110" cy="170" r="2.8"/><circle cx="160" cy="170" r="2.8"/><circle cx="210" cy="170" r="2.8"/>
+        </g>
+        <!-- IDW weight arrows: near (axial, heavy) vs far (diagonal, light) -->
+        <line x1="110" y1="120" x2="152" y2="120" stroke="var(--ls-accent)" stroke-width="3.6" stroke-opacity="0.9"/>
+        <text x="82" y="113" fill="var(--ls-accent)" font-size="9">w=1/h</text>
+        <line x1="210" y1="70" x2="167" y2="113" stroke="var(--ls-accent)" stroke-width="1.2" stroke-opacity="0.7"/>
+        <text x="188" y="60" fill="var(--ls-accent)" font-size="9">w=1/&radic;2h</text>
+        <circle cx="160" cy="120" r="4.5" fill="var(--ls-fg)"/>
+        <text x="166" y="115" fill="var(--ls-fg)" font-size="11">x<tspan dy="3" font-size="8">c</tspan></text>
+        <circle cx="140" cy="140" r="4" fill="none" stroke="var(--ls-warn)" stroke-width="2"/>
+        <text x="116" y="158" fill="var(--ls-warn)" font-size="10">x<tspan dy="3" font-size="8">d</tspan></text>
+        <line x1="160" y1="120" x2="142" y2="138" stroke="var(--ls-warn)" stroke-width="1.5" stroke-dasharray="3 2"/>
+      </svg>
+    </div>
+    <div>
+      <ul class="tight">
+        <li>The <b>cell&ndash;point&ndash;cell (CPC)</b> stencil: the arrival cell \(\mathbf{x}_c\)
+            plus <b>all cells sharing a point</b> with it (8 in 2D structured, up to 26 in 3D) &mdash;
+            wider than a face-neighbour stencil, so a full quadratic is over-determined.</li>
+        <li><b>Inverse-distance weights</b> \(w_i=1/|\mathbf{d}_i|\): the near axial neighbour (heavy
+            arrow) dominates the fit; the far diagonal (light) is down-weighted &mdash; this is what
+            keeps the Hessian bounded and second order even when the foot \(\mathbf{x}_d\) reaches the
+            stencil edge (CFL 1).</li>
+        <li>The fitted quadratic \(R_c\) is evaluated <b>once</b>, at the departure foot
+            \(\mathbf{x}_d\) (hollow), giving \(\psi^{n+1}_c=R_c(\mathbf{x}_d)\).</li>
+        <li>Remote (processor / cyclic) stencil cells are gathered by the single paired halo exchange
+            &mdash; serial and \(np{=}4\) agree to \(\sim\!10^{-12}\).</li>
+      </ul>
+    </div>
+  </div>
 </section>
 
 <!-- ===== SL 4: DISCRETIZATION ===== -->

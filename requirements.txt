@@ -1,0 +1,15 @@
+# Python dependencies for the leia study pipeline and figure/deck generation.
+#   pip install -r requirements.txt   (a venv or --user is recommended)
+#
+# NOT installable via pip and required to RUN the studies (produce the data the
+# figures are drawn from): a built OpenFOAM v2506 with the leia libraries/solvers
+# compiled -- see the top-level README.md.
+#
+# Rebuilding only the deck HTML from index.template.html needs NONE of these
+# (workflow/scripts/export_html.py is Python standard library only) -- see
+# doc/slides/README.md.
+
+snakemake>=7        # orchestrates the parameter studies (config/*.yaml)
+foamlib>=0.8        # reads OpenFOAM case fields in workflow/scripts/plots.py
+numpy>=1.24         # field reshaping / convergence-order fits
+matplotlib>=3.6     # all figures (convergence, field atlas, schematic plots)

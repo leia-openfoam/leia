@@ -149,7 +149,9 @@ def export(slides_dir, src_name=DEFAULT_SRC, out_name=DEFAULT_OUT):
 
 
 if __name__ == "__main__":
+    # Usage: python3 export_html.py [slides_dir] [template_name]
+    #   e.g. python3 workflow/scripts/export_html.py doc/slides
     export(
         sys.argv[1] if len(sys.argv) > 1 else "doc/slides",
-        sys.argv[2] if len(sys.argv) > 2 else DEFAULT_NAME,
+        sys.argv[2] if len(sys.argv) > 2 else DEFAULT_SRC,
     )
