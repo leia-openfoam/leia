@@ -88,10 +88,11 @@ def _flatten_sections(html):
     return flat
 
 
-def export(slides_dir, src_name=DEFAULT_SRC, out_name=DEFAULT_OUT):
-    """Build BOTH standalone variants from the template: `index.html`
-    (vertical section stacks) and `index-linear.html` (flat linear flow).
-    Returns the primary (vertical) path or None."""
+def export(slides_dir, src_name=DEFAULT_SRC, out_name=DEFAULT_OUT, linear=False):
+    """Build the standalone deck `index.html` (vertical section stacks) from the
+    template. If ``linear=True``, ALSO write the flat-flow `index-linear.html`
+    variant (not tracked in git -- generated on demand). Returns the primary path
+    or None."""
     src = os.path.join(slides_dir, src_name)
     if not os.path.isfile(src):
         print(f"[html] no {src}; skip standalone HTML build")
@@ -139,19 +140,24 @@ def export(slides_dir, src_name=DEFAULT_SRC, out_name=DEFAULT_OUT):
     print(f"[html] wrote {out} ({len(html.encode())//1024} KiB; "
           f"{remaining} un-inlined CDN refs)")
 
-    # Linear-flow variant (same inlined assets, flattened structure).
-    base, ext = os.path.splitext(out_name)
-    lin = os.path.join(slides_dir, f"{base}-linear{ext}")
-    with open(lin, "w", encoding="utf-8") as fh:
-        fh.write(_flatten_sections(html))
-    print(f"[html] wrote {lin} (linear flow)")
+    # Optional linear-flow variant (same inlined assets, flattened structure).
+    # Not tracked in git -- generated on demand (pass linear=True / --linear).
+    if linear:
+        base, ext = os.path.splitext(out_name)
+        lin = os.path.join(slides_dir, f"{base}-linear{ext}")
+        with open(lin, "w", encoding="utf-8") as fh:
+            fh.write(_flatten_sections(html))
+        print(f"[html] wrote {lin} (linear flow)")
     return out
 
 
 if __name__ == "__main__":
-    # Usage: python3 export_html.py [slides_dir] [template_name]
+    # Usage: python3 export_html.py [slides_dir] [template_name] [--linear]
     #   e.g. python3 workflow/scripts/export_html.py doc/slides
+    #        python3 workflow/scripts/export_html.py doc/slides --linear
+    argv = [a for a in sys.argv[1:] if a != "--linear"]
     export(
-        sys.argv[1] if len(sys.argv) > 1 else "doc/slides",
-        sys.argv[2] if len(sys.argv) > 2 else DEFAULT_SRC,
+        argv[0] if len(argv) > 0 else "doc/slides",
+        argv[1] if len(argv) > 1 else DEFAULT_SRC,
+        linear=("--linear" in sys.argv),
     )

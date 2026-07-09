@@ -2,13 +2,13 @@
 
 The presentation is a [reveal.js](https://revealjs.com) deck. The **only file you
 edit** is [`index.template.html`](index.template.html) (it references `figures/*.png`
-and CDN assets, so it diffs cleanly). Two self-contained, shareable variants are
-generated from it:
+and CDN assets, so it diffs cleanly). Self-contained, shareable HTML is generated
+from it:
 
-| file | layout |
-|------|--------|
-| `index.html`        | vertical section stacks (→ Parts, ↓ slides within a Part) |
-| `index-linear.html` | flat, front-to-back linear reading |
+| file | layout | tracked? |
+|------|--------|----------|
+| `index.html`        | vertical section stacks (→ Parts, ↓ slides within a Part) | **yes** |
+| `index-linear.html` | flat, front-to-back linear reading | no — generated on demand (`--linear`) |
 
 Each built file inlines the local figures (base64) and the CDN assets (reveal.js,
 theme, MathJax) into **one** file that opens offline — no `figures/` dir or network
@@ -17,19 +17,22 @@ needed to *view* it.
 ## Rebuild the deck (fast — after editing the template)
 
 ```bash
-bash doc/slides/build.sh
+bash doc/slides/build.sh            # -> index.html
+bash doc/slides/build.sh --linear   # -> index.html AND index-linear.html
 ```
 
 This runs [`../../workflow/scripts/export_html.py`](../../workflow/scripts/export_html.py)
-(Python **standard library only** — no packages to install) and writes both variants.
-A **network connection is needed on the build machine** to fetch and inline the CDN
-assets; without it the deck still builds but keeps CDN `<link>`/`<script>` tags (so it
-then needs the internet to render). Open `doc/slides/index.html` in any browser.
+(Python **standard library only** — no packages to install). Only `index.html` is
+tracked in git; the flat `index-linear.html` is a convenience variant produced only
+with `--linear` (git-ignored). A **network connection is needed on the build machine**
+to fetch and inline the CDN assets; without it the deck still builds but keeps CDN
+`<link>`/`<script>` tags (so it then needs the internet to render). Open
+`doc/slides/index.html` in any browser.
 
 Equivalently, directly:
 
 ```bash
-python3 workflow/scripts/export_html.py doc/slides
+python3 workflow/scripts/export_html.py doc/slides [--linear]
 ```
 
 ## Regenerate the figures (slower — needs the simulations)

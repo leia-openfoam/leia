@@ -137,10 +137,11 @@ studies/
 # rule, yet bundled with doc/slides so the deck renders without a study run.
 !doc/slides/figures/
 !doc/slides/figures/*.png
-# ...and the deck itself: index.template.html is the editable source (external
-# figure/CDN refs, clean diffs); the Snakemake `report` rule inlines it into TWO
-# self-contained, shareable variants: doc/slides/index.html (vertical section
-# stacks) and doc/slides/index-linear.html (flat linear flow). All tracked; the
-# fallback PDF needs a negation to override the global *.pdf ignore.
+# ...and the deck: index.template.html is the editable source (external figure/CDN
+# refs, clean diffs); `doc/slides/build.sh` inlines it into the self-contained
+# doc/slides/index.html (vertical stacks) -- the ONE tracked build. The flat
+# index-linear.html is a build-on-demand convenience (`build.sh --linear`) and is
+# NOT tracked. The fallback PDF needs a negation to override the global *.pdf ignore.
+doc/slides/index-linear.html
 !doc/slides/*.pdf
 

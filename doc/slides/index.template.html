@@ -869,20 +869,30 @@
       \[ \frac{\partial\psi}{\partial t}+\nabla\!\cdot(\phi_{\text{ext}}\psi)-\psi\,\nabla\!\cdot\phi_{\text{ext}}=0 \]
       \[ w(\psi)=\tfrac12\big(1+\cos\pi a\big),\ a=\tfrac{|\psi|-L}{L},\ L=(n_{\text{layers}}{+}1)h \]
       \[ \mathbf U=w\,\mathbf U_{\text{ext}}+(1-w)\,\mathbf U,\quad |\psi|\in[L,2L] \]
-      <ol class="tight" style="font-size:0.82em; line-height:1.3">
-        <li>\(\hat{\mathbf n}=\nabla\psi/|\nabla\psi|\).</li>
-        <li>band \(=\{\,|\psi|\le(n_{\text{layers}}{+}1)h\,\}\) plus seed cells \((0&lt;\alpha&lt;1)\).</li>
-        <li>seed velocity: foot-point descent to \(\Sigma\), then cell-point interpolate \(\mathbf U\).</li>
-        <li>model-specific <code>extend()</code> fills the band.</li>
-        <li>clip \(|\mathbf U_{\text{ext}}|\le\texttt{maxScale}\cdot\max|\mathbf U|\).</li>
-        <li>\(\phi_{\text{ext}}=\texttt{interpolate}(\mathbf U_{\text{ext}})\!\cdot\!\mathbf S_f\).</li>
-        <li>\(C^1\) cosine fade \(\mathbf U_{\text{ext}}\!\to\!\mathbf U\) over \([L,2L]\).</li>
-        <li>advect \(\psi\) with the advective equation above.</li>
-      </ol>
-      <p class="footnote muted">The \(-\psi\,\nabla\!\cdot\phi_{\text{ext}}\) term is <code>fvm::Sp(divPhiExt, psi)</code>, making the &psi;-equation advective (non-conservative). <em class="tag">velocityExtension</em>; <code>"none"</code> is the identity \(\mathbf U_{\text{ext}}=\mathbf U\).</p>
+      <p class="footnote muted">The build <b>algorithm</b> is on the next slide.
+         <code>"none"</code> is the identity \(\mathbf U_{\text{ext}}=\mathbf U\) (no extension).</p>
     </div>
   </div>
-  <aside class="notes">The framework decouples the extension into replaceable pieces: a normal from the level set, a narrow band around the interface, a seeding step that lands the free-stream velocity onto Sigma, a model-specific extend that pushes it constant along the normal, a clip for stability, and a C1 cosine fade so U_ext relaxes smoothly back to the free-stream U over [L,2L]. The transported field psi is advected with the non-conservative form, where the minus psi div phi_ext term is added implicitly as fvm::Sp(divPhiExt, psi). The "none" model short-circuits everything and just returns U.</aside>
+  <aside class="notes">Equations and the band picture here; the per-step algorithm follows on the next slide.</aside>
+</section>
+
+<!-- velExt formulation: framework (algorithm) -->
+<section>
+  <h2>Velocity extension &mdash; the framework: the algorithm</h2>
+  <ol class="tight" style="font-size:0.95em; line-height:1.5; max-width:92%; margin:0.5em auto">
+    <li>\(\hat{\mathbf n}=\nabla\psi/|\nabla\psi|\).</li>
+    <li>band \(=\{\,|\psi|\le(n_{\text{layers}}{+}1)h\,\}\) plus seed cells \((0&lt;\alpha&lt;1)\).</li>
+    <li>seed velocity: foot-point descent to \(\Sigma\), then cell-point interpolate \(\mathbf U\).</li>
+    <li>model-specific <code>extend()</code> fills the band.</li>
+    <li>clip \(|\mathbf U_{\text{ext}}|\le\texttt{maxScale}\cdot\max|\mathbf U|\).</li>
+    <li>\(\phi_{\text{ext}}=\texttt{interpolate}(\mathbf U_{\text{ext}})\!\cdot\!\mathbf S_f\).</li>
+    <li>\(C^1\) cosine fade \(\mathbf U_{\text{ext}}\!\to\!\mathbf U\) over \([L,2L]\).</li>
+    <li>advect \(\psi\) with the advective equation (previous slide).</li>
+  </ol>
+  <p class="footnote muted center">The \(-\psi\,\nabla\!\cdot\phi_{\text{ext}}\) term is
+     <code>fvm::Sp(divPhiExt, psi)</code> &mdash; advective (non-conservative)
+     \(\psi\)-transport. <em class="tag">velocityExtension</em>.</p>
+  <aside class="notes">The framework decouples the extension into replaceable pieces: a normal, a narrow band, a seeding step, a model-specific extend, a clip, and a C1 cosine fade. The advective psi-eq uses the non-conservative -psi div(phi_ext) = fvm::Sp(divPhiExt,psi).</aside>
 </section>
   <!-- ############ /overview column ############ -->
 
@@ -1804,17 +1814,26 @@ for (label corr = 0; corr &lt; nDefCorr; ++corr)
       \[ \operatorname{sign}(\psi)\,(\hat{\mathbf n}\cdot\nabla)\,\mathbf U_{\text{ext}}=\mathbf 0 \]
       \[ \nabla\!\cdot(\phi_W\mathbf q)-\mathbf q\,\nabla\!\cdot\phi_W+\lambda\mathbf q=\lambda\mathbf q^{k} \]
       \[ \phi_W=\big(\operatorname{sign}(\psi)\,\hat{\mathbf n}\big)_f\!\cdot\mathbf S_f,\qquad \lambda=\frac{10^{-6}}{h_c} \]
-      <ol class="tight" style="font-size:0.82em; line-height:1.3">
-        <li>Build <code>w = sign(psi)*n_hat</code>; face flux <code>phiW</code>, <code>divW = fvc::div(phiW)</code>; zero-inflow guard <code>lambda = 1e-6/h</code>.</li>
-        <li>For <code>pass = 1..nDefCorrExt</code> assemble the advective UFVM system <code>fvm::div(phiW,q) - fvm::Sp(divW,q) + fvm::Sp(lambda,q) == lambda*q</code>.</li>
-        <li><code>q.setValues(seed, U_Sigma)</code> &mdash; pin the interface seed layer as Dirichlet.</li>
-        <li>Solve (PBiCGStab + DILU) &mdash; near-triangular M-matrix, one implicit solve, infinite reach.</li>
-        <li>Under-relax by <code>0.7</code> between passes; upwind interpolation is default.</li>
-      </ol>
-      <p class="footnote muted">Shells order acyclically outward &rarr; block-lower-triangular M-matrix. <code>linearUpwind</code> deferred correction was <em>measured</em> to diverge on the steady equation. <em class="tag">velocityExtension/steadyUpwind</em></p>
+      <p class="footnote muted">The five-step algorithm is on the next slide.
+         Shells order acyclically outward &rarr; block-lower-triangular M-matrix.</p>
     </div>
   </div>
-  <aside class="notes">The steady extension enforces that U_ext is constant along characteristics emanating outward from the interface, where the transport direction w = sign(psi) n_hat points away from Sigma on both sides. Discretised as an advective finite-volume system in one implicit solve: div(phiW q) with the compressive correction -q div(phiW), plus a tiny Tikhonov-style guard lambda = 1e-6/h on rows with no upwind neighbour (discrete-skeleton cells at local |psi| maxima), which otherwise have singular, zero-inflow rows. The seed layer at the interface is pinned via setValues to the reconstructed interface velocity U_Sigma. Because the characteristic flow is acyclic, the assembled matrix is essentially block-lower-triangular, so PBiCGStab with DILU converges in very few sweeps and the influence reaches every cell in a single solve. Plain upwind is used deliberately: linearUpwind via deferred correction was measured to diverge here. Under-relaxation of 0.7 between the nDefCorrExt passes stabilises the outer iteration. One ray in the schematic shows the resulting flat, O(h) constant extension carried from the seed outward.</aside>
+  <aside class="notes">Equations and the acyclic-shell picture here; the algorithm follows on the next slide.</aside>
+</section>
+
+<!-- velExt formulation: steadyUpwind (algorithm) -->
+<section>
+  <h2><code>steadyUpwind</code> &mdash; algorithm</h2>
+  <ol class="tight" style="font-size:0.95em; line-height:1.5; max-width:94%; margin:0.5em auto">
+    <li>Build <code>w = sign(psi)*n_hat</code>; face flux <code>phiW</code>, <code>divW = fvc::div(phiW)</code>; zero-inflow guard <code>lambda = 1e-6/h</code>.</li>
+    <li>For <code>pass = 1..nDefCorrExt</code> assemble the advective UFVM system <code>fvm::div(phiW,q) - fvm::Sp(divW,q) + fvm::Sp(lambda,q) == lambda*q</code>.</li>
+    <li><code>q.setValues(seed, U_Sigma)</code> &mdash; pin the interface seed layer as Dirichlet.</li>
+    <li>Solve (PBiCGStab + DILU) &mdash; near-triangular M-matrix, one implicit solve, infinite reach.</li>
+    <li>Under-relax by <code>0.7</code> between passes; upwind interpolation is default.</li>
+  </ol>
+  <p class="footnote muted center"><code>linearUpwind</code> deferred correction was <em>measured</em> to
+     diverge on the steady equation &mdash; plain upwind is the default. <em class="tag">velocityExtension/steadyUpwind</em></p>
+  <aside class="notes">One implicit advective solve div(phiW q) - q div(phiW), + lambda=1e-6/h guard on zero-inflow skeleton rows; seed pinned via setValues; acyclic characteristic flow => block-lower-triangular, PBiCGStab+DILU in few sweeps, infinite reach in one solve. Plain upwind (linearUpwind diverges). Under-relaxation 0.7 between nDefCorrExt passes.</aside>
 </section>
 
 
@@ -2305,18 +2324,24 @@ for (label corr = 0; corr &lt; nDefCorr; ++corr)
       <p style="margin:0 0 .2em 0; font-size:0.9em">Newton descent along the local normal:</p>
       \[ \mathbf x\leftarrow\mathbf x-\psi(\mathbf x)\,\hat{\mathbf n}(\mathbf x) \]
       <p style="margin:.1em 0 .2em 0; font-size:0.82em">accept if \(|\psi(\mathbf x_{fp})|<\text{cpTol}\,h\); cap \(|\mathbf x_{fp}-\mathbf x_c|\le\text{cpMaxDist}\,n_{\text{layers}}h\); require \(|\psi|\) decreasing.</p>
-      <ol class="tight" style="font-size:0.82em; line-height:1.3">
-        <li>each band cell: <code>x=x_c</code>, <code>cx=c</code>, <code>apsi=|psi_c|</code>.</li>
-        <li>step <code>x&larr;x&minus;&psi;(x)n&#770;(x)</code>; <code>findCell</code> re-localizes, <code>n&#770;=nHat_[cx]</code> re-evaluated per cell.</li>
-        <li>guards: path cap; non-decreasing \(|\psi|\) aborts; off-mesh &rarr; <code>zoneDistribute</code> one-layer halo, Taylor continuation \(\psi\approx\psi_j+\nabla\psi_j\!\cdot\!(x-C_j)\).</li>
-        <li>accept \(|\psi|<\text{cpTol}\,h\) &rarr; <code>Uext=interpolationCellPoint</code> of <code>U</code> at foot, \(O(h^2)\).</li>
-        <li>skeleton / deep failures &rarr; <code>solveSteady</code> (steadyUpwind) pinned at all successes.</li>
-      </ol>
-      <p style="margin:.2em 0 0 0; font-size:0.82em">\((\hat{\mathbf n}\cdot\nabla)\mathbf U_{\text{ext}}=0\) holds <em>by construction</em>: all cells on one descent ray share the foot.</p>
+      <p style="margin:.2em 0 0 0; font-size:0.82em">\((\hat{\mathbf n}\cdot\nabla)\mathbf U_{\text{ext}}=0\) holds <em>by construction</em>: all cells on one descent ray share the foot. <b>Algorithm &rarr; next slide.</b></p>
     </div>
   </div>
-  <p class="footnote muted"><em class="tag">closestPoint.C / extend()</em> &middot; closest-point method Ruuth &amp; Merriman JCP 227 (2008); degree-\(p\) &rarr; \(O(h^{p+1})\) Macdonald &amp; Ruuth SISC 31 (2009); halo via zoneDistribute Scheufler &amp; Roenby JCP 383 (2019).</p>
-  <aside class="notes">closestPoint is the direct geometric extension: instead of solving a transport PDE everywhere, each band cell walks to its own foot point on Sigma by Newton descent along the interface-normal psi field and copies back the interface velocity there. The step is x minus psi times n-hat; after each step findCell re-localizes the iterate and the normal is re-read from the containing cell (nHat_[cx]) rather than frozen at the start, because across the band the starting normal is too crude. Three guards keep it robust: a path cap of cpMaxDist times nLayers times h, an abort if |psi| stops decreasing, and a parallel halo. In parallel we cap each step at ~0.9 cell so the walk traverses cells and cLast tracks the true exit cell; when a step leaves the local mesh we continue on a first-order Taylor expansion of psi anchored at the nearest remote halo cell fetched with zoneDistribute (same order as the local cell-point interpolation), within cpHaloReach times h. Accepted cells interpolate U at the foot with cell-point interpolation, O(h^2). Cells that fail — skeleton region, path cap, deep excursions, cyclic transforms — are filled afterward by the steadyUpwind solve pinned as Dirichlet data at every successful closest-point cell, so it is parallel-graceful by construction. Defaults: cpTol 0.1, cpMaxDist 1.5, cpHaloReach 1.5. The key property: because every cell on a single descent ray converges to the same foot point, (n-grad)Uext = 0 is exact, not asymptotic.</aside>
+  <aside class="notes">closestPoint: each band cell walks to its own foot point on Sigma by Newton descent and copies back the interface velocity. Equations + geometry here; the per-step algorithm follows on the next slide.</aside>
+</section>
+
+<!-- velExt formulation: closestPoint (algorithm) -->
+<section>
+  <h2><code>closestPoint</code> &mdash; algorithm</h2>
+  <ol class="tight" style="font-size:0.92em; line-height:1.5; max-width:94%; margin:0.4em auto">
+    <li>each band cell: <code>x=x_c</code>, <code>cx=c</code>, <code>apsi=|psi_c|</code>.</li>
+    <li>step <code>x&larr;x&minus;&psi;(x)n&#770;(x)</code>; <code>findCell</code> re-localizes, <code>n&#770;=nHat_[cx]</code> re-evaluated per cell.</li>
+    <li>guards: path cap; non-decreasing \(|\psi|\) aborts; off-mesh &rarr; <code>zoneDistribute</code> one-layer halo, Taylor continuation \(\psi\approx\psi_j+\nabla\psi_j\!\cdot\!(x-C_j)\).</li>
+    <li>accept \(|\psi|<\text{cpTol}\,h\) &rarr; <code>Uext=interpolationCellPoint</code> of <code>U</code> at foot, \(O(h^2)\).</li>
+    <li>skeleton / deep failures &rarr; <code>solveSteady</code> (steadyUpwind) pinned at all successes.</li>
+  </ol>
+  <p class="footnote muted center"><em class="tag">closestPoint.C / extend()</em> &middot; closest-point method Ruuth &amp; Merriman JCP 227 (2008); degree-\(p\)&rarr;\(O(h^{p+1})\) Macdonald &amp; Ruuth SISC 31 (2009); halo via zoneDistribute Scheufler &amp; Roenby JCP 383 (2019).</p>
+  <aside class="notes">Newton descent x - psi*n_hat; findCell re-localizes, normal re-read per cell. Guards: path cap, non-decreasing |psi|, parallel halo (0.9-cell substeps, Taylor continuation at nearest remote cell within cpHaloReach*h). Accepted cells interpolate U at foot (cell-point, O(h^2)); failures filled by steadyUpwind pinned at successes. Defaults cpTol 0.1, cpMaxDist 1.5, cpHaloReach 1.5.</aside>
 </section>
 
 
@@ -3273,14 +3298,9 @@ forAll(band_, c)
          characteristic <b>backward</b> to its departure foot \(\mathbf{x}_d\) at \(t^n\)
          and copy the value:</p>
       \[ \psi^{n+1}(\mathbf{x}_c) = \psi^{n}(\mathbf{x}_d). \]
-      <ul class="tight">
-        <li><b>No flux, no divergence, no linear solve</b> &mdash; a per-cell assignment.</li>
-        <li><b>Unconditionally stable for CFL \(\le 1\)</b>: the foot stays inside the
-            arrival cell's point-neighbour hull &rArr; evaluation is
-            <em>interpolation</em>, never extrapolation &rArr; no cell search.</li>
-      </ul>
-      <p class="footnote muted">Courant&ndash;Isaacson&ndash;Rees (1952); Taylor-displacement
-         foot: Mari&#263; PhD thesis &sect;6.3.1, eqs. (165)&ndash;(167).</p>
+      <p class="footnote muted">Why it is <b>solve-free</b> and <b>stable for CFL \(\le 1\)</b>
+         &rarr; next slide. Courant&ndash;Isaacson&ndash;Rees (1952); foot:
+         Mari&#263; thesis &sect;6.3.1.</p>
     </div>
     <div>
       <svg viewBox="0 0 300 220" width="100%" role="img" aria-label="backward characteristic from the arrival cell centre to the departure foot inside the point-neighbour stencil">
@@ -3324,6 +3344,22 @@ forAll(band_, c)
     scheme entirely. Both target the same goal (accurate psi near the interface); SL trades
     the linear solve for a per-cell reconstruction.
   </aside>
+</section>
+
+<!-- ===== SL 1b: WHY IT WORKS ===== -->
+<section>
+  <h2>Semi-Lagrangian &mdash; why it works</h2>
+  <ul class="tight" style="font-size:1.0em; line-height:1.55; max-width:90%; margin:0.6em auto">
+    <li><b>No flux, no divergence, no linear solve</b> &mdash; a per-cell assignment.</li>
+    <li><b>Unconditionally stable for CFL \(\le 1\)</b>: the foot stays inside the arrival
+        cell's point-neighbour hull &rArr; evaluation is <em>interpolation</em>, never
+        extrapolation &rArr; no cell search.</li>
+    <li><b>Accuracy is set by the reconstruction</b>, not the time step &mdash; a high-order
+        fit at the foot gives a high-order scheme at any stable CFL.</li>
+  </ul>
+  <p class="footnote muted center">Courant&ndash;Isaacson&ndash;Rees (1952); Taylor-displacement
+     foot: Mari&#263; PhD thesis &sect;6.3.1, eqs. (165)&ndash;(167).</p>
+  <aside class="notes">SL trades the linear solve for a per-cell reconstruction; stable for CFL<=1 because the departure foot lands inside the arrival cell's point-neighbour hull, so evaluation is interpolation not extrapolation. Order is set by the spatial reconstruction, decoupled from dt.</aside>
 </section>
 
 <!-- ===== SL 2: THE FOOT ===== -->
@@ -3540,6 +3576,17 @@ forAll(band_, c)
         The stencil geometry is fixed while the mesh is static &rArr; the per-cell
         pseudo-inverse is <b>cached once</b>; the per-step cost is one small matrix&ndash;vector
         product per cell. Under-determined boundary cells fall back to a linear fit (counted).</li>
+  </ul>
+  <p class="footnote muted">Source:
+     <em class="tag">src/leiaLevelSet/semiLagrangian/</em>
+     (<code>slAdvection</code>, <code>slReconstruction</code> + 3 models); solver
+     <em class="tag">leiaSemiLagrangeLevelSetFoam</em>.</p>
+</section>
+
+<!-- ===== SL 4b: DISCRETIZATION (HOT LOOP) ===== -->
+<section>
+  <h2>quadraticWLSQ &mdash; the hot loop</h2>
+  <ul class="tight">
     <li><b>Performance</b> (hpctoolkit-profiled): that per-cell mat&ndash;vector product was
         <b>~28% of the whole solver</b> and did not vectorise. Folding the IDW weight into the
         cached map and storing it <b>flat row-major</b> (so the update is a contiguous pointer
@@ -3550,10 +3597,9 @@ forAll(band_, c)
         <code>gradU</code> (all <code>pointCellsLeastSquares</code>) &mdash; the sub-steps never
         share the <code>grad(psi)</code> advection scheme.</li>
   </ul>
-  <p class="footnote muted">Source:
-     <em class="tag">src/leiaLevelSet/semiLagrangian/</em>
-     (<code>slAdvection</code>, <code>slReconstruction</code> + 3 models); solver
-     <em class="tag">leiaSemiLagrangeLevelSetFoam</em>.</p>
+  <p class="footnote muted">Parallel-verified: serial &equiv; <code>np=4</code> to \(10^{-12}\)
+     (halo exchange of \(\psi^n\) via <code>mapDistribute</code>).</p>
+  <aside class="notes">The cached pseudo-inverse means the per-step cost is one small mat-vec per cell; profiling showed it dominating, and the flat row-major IDW-folded layout removed the per-cell allocation for -17% wall-clock. Parallel identical to serial to 1e-12.</aside>
 </section>
 
 <!-- ===== SL 5: CODE ===== -->
