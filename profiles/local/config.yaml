@@ -1,9 +1,17 @@
 # Local profile: run every case on this machine, MPI via mpirun.
-#   snakemake --workflow-profile profiles/local
+#   snakemake --workflow-profile profiles/local --configfile config/<study>.yaml
 #
 # Uses the mpi_launcher / env_preamble defaults from config/config.yaml.
 executor: local
-cores: 24           # total cores Snakemake may use at once (parallel solves use np each)
-jobs: 6             # max concurrent cases: 6 x np=4 = 24 ranks, no oversubscription
+cores: 24           # CPU cores Snakemake may use at once
+jobs: 6             # max concurrent Snakemake jobs
+# The `solve` rule declares `resources: tasks=<np>`. Capping the global tasks
+# budget to the core count bounds concurrent MPI solves to floor(tasks/np), so a
+# run never oversubscribes REGARDLESS of np (np=4 -> 6 solves, np=8 -> 3). This is
+# why plain snakemake suffices -- no launcher script needed. For a memory-heavy
+# tier on a small box (e.g. 128^3 on 15 GB) run ONE solve at a time by lowering it:
+#   snakemake ... --configfile config/3DdeformationSL.yaml --resources tasks=8
+resources:
+  - tasks=24
 printshellcmds: true
 rerun-incomplete: true

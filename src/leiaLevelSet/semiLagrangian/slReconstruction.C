@@ -61,6 +61,7 @@ Foam::slReconstruction::slReconstruction(const fvMesh& mesh)
     stencil_(centredCPCCellToCellStencilObject::New(mesh)),
     stencilC_(),
     haveCentres_(false),
+    radius_(),
     stencilPsi_(),
     psiOldPtr_(nullptr)
 {}
@@ -76,7 +77,7 @@ Foam::autoPtr<Foam::slReconstruction> Foam::slReconstruction::New
     const dictionary& levelSetDict = fvSolution.subDict("levelSet");
     const dictionary& slDict = levelSetDict.subOrEmptyDict("semiLagrangian");
     const word modelType =
-        slDict.getOrDefault<word>("reconstruction", "quadraticWLSQ");
+        slDict.getOrDefault<word>("reconstruction", "quadraticWeightedLeastSquares");
     Info<< "Selecting slReconstruction " << modelType << endl;
 
     auto* ctorPtr = MeshConstructorTable(modelType);
@@ -107,6 +108,20 @@ void Foam::slReconstruction::collectStencil(const volScalarField& psiOld)
     if (!haveCentres_)
     {
         stencil_.collectData(mesh_.C(), stencilC_);
+        // Cache the per-cell interpolation radius NOW so stencilRadius() no
+        // longer reads the centres; caching models can then free stencilC_
+        // (releaseStencilCentres) after build() -- ~26 vectors/cell is GBs at 128^3.
+        radius_.setSize(mesh_.nCells());
+        forAll(stencilC_, c)
+        {
+            const List<vector>& C = stencilC_[c];
+            scalar r = 0;
+            for (label i = 1; i < C.size(); ++i)
+            {
+                r = Foam::max(r, Foam::mag(C[i] - C[0]));
+            }
+            radius_[c] = r;
+        }
         haveCentres_ = true;
     }
     psiOldPtr_ = &psiOld;
@@ -132,13 +147,19 @@ void Foam::slReconstruction::stencilRange
 
 Foam::scalar Foam::slReconstruction::stencilRadius(const label c) const
 {
-    const List<vector>& C = stencilC_[c];   // [0] = arrival cell centre
-    scalar r = 0;
-    for (label i = 1; i < C.size(); ++i)
+    // Cached in collectStencil() so this stays valid after the centres are freed.
+    return radius_[c];
+}
+
+
+void Foam::slReconstruction::releaseStencilCentres()
+{
+    // The slope limiter (computeLimiters) still needs the centres; keep them if on.
+    if (limitSlope_)
     {
-        r = Foam::max(r, Foam::mag(C[i] - C[0]));
+        return;
     }
-    return r;
+    stencilC_.clear();   // frees the per-cell centre lists (radius_ is retained)
 }
 
 

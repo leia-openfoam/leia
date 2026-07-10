@@ -146,10 +146,10 @@ levelSet
     }
 
     // Semi-Lagrangian advection (leiaSemiLagrangeLevelSetFoam); ignored by
-    // leiaLevelSetFoam. reconstruction: linearTaylor | nestedLSQ | quadraticWLSQ.
+    // leiaLevelSetFoam. reconstruction: linearTaylor | nestedLSQ | quadraticWeightedLeastSquares.
     semiLagrangian
     {
-        reconstruction      quadraticWLSQ;
+        reconstruction      quadraticWeightedLeastSquares;
         CFLmax              0.5;
         limitSlope          false;
         clipToStencilBounds false;

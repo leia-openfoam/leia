@@ -172,21 +172,76 @@ levelSet
         maxScale    5;         // clip |Uext| <= maxScale*max|U| in the band (runaway guard)
     }
 
-    // Semi-Lagrangian advection (leiaSemiLagrangeLevelSetFoam). Ignored by
-    // leiaLevelSetFoam. reconstruction of psi^n at the departure foot:
-    //   linearTaylor (O(h) baseline) | nestedLSQ | quadraticWLSQ (production)
-    //   | bandQuadraticWLSQ (quadratic in the band, linear far field; O(band) memory).
+    // ===================================================================== //
+    // Semi-Lagrangian advection (leiaSemiLagrangeLevelSetFoam only; ignored by
+    // leiaLevelSetFoam). psi^{n+1}(x_c) = psi^n(x_d): a fixed Taylor backward
+    // foot x_d, a runtime-selectable reconstruction of psi^n at x_d, applied by
+    // a runtime-selectable correction strategy. All selectable options and their
+    // controls are listed below; unset keys fall back to the defaults shown.
+    // ===================================================================== //
     semiLagrangian
     {
+        // ---- reconstruction of psi^n at the foot (RTS slReconstruction) ----
+        //   linearTaylor                      : psi_c + grad_c.(x-x_c). O(h) baseline;
+        //                                       |grad psi| drifts (gradient injected).
+        //   nestedLSQ                         : nested least squares. O(h^2) at CFL<=1/2.
+        //   quadraticWeightedLeastSquares     : IDW-weighted quadratic VALUE fit. O(h^2..3),
+        //                                       STABLE. PRODUCTION. Memory-bound (caches a
+        //                                       per-cell pseudo-inverse).
+        //   uncachedQuadraticWeightedLeastSquares : the SAME fit as quad (identical accuracy
+        //                                       + stability, verified cell-for-cell) but
+        //                                       recomputes the small normal-equations Cholesky
+        //                                       per step -> CPU-bound, O(1) memory/cell, no
+        //                                       large-N memory ceiling, better strong scaling.
+        //   bandQuadraticWeightedLeastSquares : quadratic in the narrow band, linear far
+        //                                       field. O(band) memory.
+        //   defectCorrectedIDW                : IDW + iterated gradient/defect correction.
+        //                                       Cheap/CPU-bound but UNSTABLE here (gradient
+        //                                       injection amplifies |grad psi|). Research.
         reconstruction      @!SL_RECONSTRUCTION!@;
-        CFLmax              @!CFL!@;   // foot-radius guard threshold
-        limitSlope          false;     // Barth-Jespersen limiter: MEASURED to cost
-                                       // convergence order -> off; the value cap
-                                       // in slAdvection handles overflow instead.
-        clipToStencilBounds false;     // extra tight monotonicity clip (backstop)
-        analyticVelocity    true;      // prescribed U is the analytic cell velocity
-        nLayersBand         3;         // bandQuadraticWLSQ: quadratic where |psi|<= (nLayersBand+bandGuard)*h
-        bandGuard           2;         // guard so band cells' stencils stay inside the fitted band
+
+        // ---- correction strategy (RTS slCorrector) ----
+        //   direct             : one reconstruction pass. Use with the stable value-fitting
+        //                        reconstructions (quadraticWeightedLeastSquares). DEFAULT.
+        //   deferredCorrection : fixed-point iteration, rebuilding the reconstruction from
+        //                        the current iterate (self-consistent gradient). Only
+        //                        stabilises a CONTRACTING operator; DIVERGES for
+        //                        defectCorrectedIDW (spectral radius > 1). Research seam.
+        correction          @!SL_CORRECTION!@;
+
+        CFLmax              @!CFL!@;   // foot-radius guard: warn if the foot leaves the
+                                       // point-neighbour stencil hull (operational CFL<=1)
+        analyticVelocity    true;      // prescribed U is the analytic cell-centre velocity
+
+        // ---- reconstruction safeguards (slReconstruction base; every reconstruction) ----
+        limitSlope          false;     // Barth-Jespersen limiter on the increment. MEASURED
+                                       // to cost convergence order -> off; the always-on
+                                       // value cap in the corrector handles overflow.
+        clipToStencilBounds false;     // extra tight monotone clip to the stencil min/max.
+
+        // ---- uncachedQuadraticWeightedLeastSquares control ----
+        ridgeEps            0;         // Tikhonov ridge on the normal-equations diagonal
+                                       // (0 = off; raise if Cholesky reports near-degenerate
+                                       // stencils on distorted/polyhedral meshes)
+
+        // ---- bandQuadraticWeightedLeastSquares controls ----
+        nLayersBand         3;         // quadratic where |psi| <= (nLayersBand+bandGuard)*h
+        bandGuard           2;         // guard so band cells' stencils stay inside the band
+
+        // ---- defectCorrectedIDW controls (iterative nodal-defect correction) ----
+        idwPower            2;         // final-blend weight = |x_d - x_C|^{-idwPower}
+        dcIters             3;         // Gauss-Seidel nodal-defect sweeps
+        dcMaxIters          10;        // hard cap on sweeps
+        dcTol               1e-3;      // range-relative residual early-out
+        dcRelax             0.8;       // under-relaxation of the sweep (<= 1)
+        dcRegEps            0.1;       // nugget for the regularised blend weight
+                                       // wreg = (h^2/(|r|^2 + dcRegEps^2 h^2))^(idwPower/2)
+
+        // ---- deferredCorrection controls (correction = deferredCorrection) ----
+        nDefCorr            3;         // deferred-correction passes
+        nDefCorrMax         10;        // hard cap on passes
+        defCorrRelax        1.0;       // under-relaxation of the fixed-point update (<= 1)
+        defCorrTol          0.0;       // range-relative early-out (0 = run all passes)
     }
 }
 

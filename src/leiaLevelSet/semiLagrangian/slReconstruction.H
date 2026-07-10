@@ -105,9 +105,15 @@ protected:
     const extendedCentredCellToCellStencil& stencil_;
 
     //- Per-cell stencil cell centres (compact, incl. remote) -- collected once
-    //  (mesh is static within a run).
+    //  (mesh is static within a run). Large in 3D (~26 vectors/cell); caching
+    //  models free it after build() via releaseStencilCentres().
     List<List<vector>> stencilC_;
     bool haveCentres_;
+
+    //- Per-cell interpolation radius (max centre distance over the stencil),
+    //  cached from stencilC_ on the first collectStencil() so stencilRadius()
+    //  no longer needs the centres -- which lets build() free them.
+    scalarField radius_;
 
     //- Per-cell stencil psiOld (compact, incl. remote) -- collected per step
     //  when a model or the clip needs it.
@@ -119,6 +125,13 @@ protected:
     //- Fill stencilPsi_ from psiOld (one paired halo exchange); fill stencilC_
     //  on first call. Call once per step, uniformly on all ranks.
     void collectStencil(const volScalarField& psiOld);
+
+    //- Free the per-cell stencil centres (~26 vectors/cell -> GBs at 128^3 in 3D)
+    //  once a CACHING model has finished build(): thereafter only the slope
+    //  limiter needs them, and stencilRadius() uses the cached radius_. No-op
+    //  when limitSlope is on. A model that re-reads the centres every step
+    //  (bandQuadraticWeightedLeastSquares) must NOT call this.
+    void releaseStencilCentres();
 
 
 public:
@@ -145,7 +158,7 @@ public:
     // Selectors
 
         //- Select from levelSet.semiLagrangian.reconstruction (default
-        //  quadraticWLSQ).
+        //  quadraticWeightedLeastSquares).
         static autoPtr<slReconstruction> New(const fvMesh& mesh);
 
     //- Destructor

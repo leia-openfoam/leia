@@ -31,9 +31,12 @@ deltaT          1e-6;
 
 adjustTimeStep  yes;
 
-writeControl    runTime;
+writeControl    adjustableRunTime;
 
-writeInterval   0.2;
+// Write at t = 0, T/2 (maximum deformation) and T (reversed) so the reversible-flow
+// error (psi(T) vs psi(0)) and the half-time / max-deformation metrics are captured.
+// adjustableRunTime nudges deltaT to land exactly on the write times.
+writeInterval   @!HALF_END_TIME!@;
 
 purgeWrite      0;
 

@@ -81,5 +81,5 @@ velocityModel->setVelocity(U);
 U.write();
 
 // Semi-Lagrangian advection engine (reconstruction selected from
-// levelSet.semiLagrangian.reconstruction; default quadraticWLSQ).
+// levelSet.semiLagrangian.reconstruction; default quadraticWeightedLeastSquares).
 autoPtr<slAdvection> slAdv = slAdvection::New(mesh);

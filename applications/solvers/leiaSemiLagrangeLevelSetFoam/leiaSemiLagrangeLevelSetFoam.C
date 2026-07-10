@@ -29,7 +29,7 @@ Description
     Cell-centred semi-Lagrangian level-set advection: psi is constant along
     characteristics, so psi^{n+1}(x_c) = psi^n(x_d) with x_d the Taylor backward
     foot and psi^n at x_d reconstructed by a runtime-selectable slReconstruction
-    (linearTaylor | nestedLSQ | quadraticWLSQ). No flux, no divergence, no linear
+    (linearTaylor | nestedLSQ | quadraticWeightedLeastSquares). No flux, no divergence, no linear
     solve; no reinitialization (the signed-distance property is not maintained).
 
     The parallel research line to the velocity-extension solver
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
         // (oscillating) test; identity for the steady case.
         if (velocityModel->isOscillating())
         {
-            velocityModel->oscillateVelocity(U, U0, phi, phi0, runTime);
+            velocityModel->oscillateVelocity(U, U0, phi, phi0Ptr(), runTime);
         }
 
         // u^n: the previous-step velocity the Taylor trajectory needs. For the

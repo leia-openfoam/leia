@@ -142,20 +142,13 @@
 <section>
   <h2>Roadmap</h2>
   <ol class="roadmap" style="font-size:1.05em">
-    <li><span class="idx">1</span>The level set &amp; the phase indicator &mdash;
-        \(\psi\), advection, geometric &amp; analytic \(\alpha\)</li>
-    <li><span class="idx">2</span>Velocity extension &mdash; the models &mdash;
-        why, and seven ways to build \(\mathbf{U}_{\text{ext}}\)</li>
-    <li><span class="idx">3</span>Static verification (\(t=0\)) &mdash;
-        is \((\mathbf{n}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\)? measured orders</li>
-    <li><span class="idx">4</span>Advected verification &amp; results &mdash;
-        the reversed vortex, convergence, topology</li>
-    <li><span class="idx">5</span>Semi-Lagrangian advection &mdash;
-        characteristics, the Taylor foot, LSQ reconstruction</li>
-    <li><span class="idx">6</span>Conclusions &mdash; what works best, the two lines ranked</li>
-    <li><span class="idx">7</span>Software design &mdash; runtime model selection,
-        extend without touching existing code</li>
-    <li><span class="idx">8</span>Appendix &mdash; the automated field atlas</li>
+    <li><span class="idx">1</span>The level set &amp; the phase indicator &mdash; \(\psi\), advection, geometric &amp; analytic \(\alpha\)</li>
+    <li><span class="idx">2</span>Velocity extension &mdash; the models &mdash; why, and seven ways to build \(\mathbf{U}_{\text{ext}}\)</li>
+    <li><span class="idx">3</span>Static verification (\(t=0\)) &mdash; is \((\mathbf{n}\cdot\nabla)\mathbf{U}_{\text{ext}}=0\)? measured orders</li>
+    <li><span class="idx">4</span>Advected verification &amp; results &mdash; the reversed vortex, convergence, topology</li>
+    <li><span class="idx">5</span>Conclusions &mdash; what works best, the models ranked</li>
+    <li><span class="idx">6</span>Software design &mdash; runtime model selection, extend without touching existing code</li>
+    <li><span class="idx">7</span>Appendix &mdash; the field atlas &mdash; the automated field atlas</li>
   </ol>
   <p class="footnote muted" id="roadmapNavHint">Navigation: &rarr; next part &middot;
      &darr; slides within a part &middot; Esc = overview &middot; the footer always shows
@@ -169,18 +162,17 @@
 <section data-track="The level set &amp; the phase indicator">  <!-- ############ TRACK: level set & phase indicator ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 1 of 8</p>
+  <p class="part-kicker">Part 1 of 7</p>
   <h2>The level set &amp; the phase indicator</h2>
   <p class="muted" style="font-size:0.85em">\(\psi\), its advection, and recovering \(\alpha\) geometrically / analytically</p>
   <ol class="roadmap" style="font-size:0.8em">
     <li class="here"><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
-    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">3</span>Static verification (\(t=0\))</li>
     <li><span class="idx">4</span>Advected verification &amp; results</li>
-    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
-    <li><span class="idx">6</span>Conclusions</li>
-    <li><span class="idx">7</span>Software design</li>
-    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+    <li><span class="idx">5</span>Conclusions</li>
+    <li><span class="idx">6</span>Software design</li>
+    <li><span class="idx">7</span>Appendix &mdash; the field atlas</li>
   </ol>
   <p class="part-prevnext">Previously: Title &amp; roadmap &nbsp;&middot;&nbsp; Next: Velocity extension &mdash; the models</p>
 </section>
@@ -517,7 +509,7 @@
 <section data-track="Velocity extension &mdash; the models">  <!-- ############ TRACK: velocity extension -- OVERVIEW COLUMN ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 2 of 8</p>
+  <p class="part-kicker">Part 2 of 7</p>
   <h2>Velocity extension &mdash; the models</h2>
   <p class="muted" style="font-size:0.85em">why an extension velocity, the shared machinery,
      and seven models &mdash; <b>one vertical stack per model</b>:
@@ -525,14 +517,13 @@
   <ol class="roadmap" style="font-size:0.8em">
     <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li class="here"><span class="idx">2</span>Velocity extension &mdash; the models</li>
-    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">3</span>Static verification (\(t=0\))</li>
     <li><span class="idx">4</span>Advected verification &amp; results</li>
-    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
-    <li><span class="idx">6</span>Conclusions</li>
-    <li><span class="idx">7</span>Software design</li>
-    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+    <li><span class="idx">5</span>Conclusions</li>
+    <li><span class="idx">6</span>Software design</li>
+    <li><span class="idx">7</span>Appendix &mdash; the field atlas</li>
   </ol>
-  <p class="part-prevnext">Previously: The level set &amp; the phase indicator &nbsp;&middot;&nbsp; Next: Static verification (t = 0)</p>
+  <p class="part-prevnext">Previously: The level set &amp; the phase indicator &nbsp;&middot;&nbsp; Next: Static verification (\(t=0\))</p>
   <aside class="notes">
     Part 2 is reorganized: this overview column (why extension, the shared seed/band/flux
     machinery, the family map), then one vertical stack per model in family-map order.
@@ -2699,18 +2690,17 @@ forAll(band_, c)
 <section data-track="Static verification (t = 0)">  <!-- ############ TRACK: static verification (t=0) ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 3 of 8</p>
+  <p class="part-kicker">Part 3 of 7</p>
   <h2>Static verification (t = 0)</h2>
   <p class="muted" style="font-size:0.85em">one <code>correct()</code>, no advection: measured convergence of \(|\hat{\mathbf{n}}\cdot\nabla\mathbf{U}_{\text{ext}}|\)</p>
   <ol class="roadmap" style="font-size:0.8em">
     <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
-    <li class="here"><span class="idx">3</span>Static verification (t = 0)</li>
+    <li class="here"><span class="idx">3</span>Static verification (\(t=0\))</li>
     <li><span class="idx">4</span>Advected verification &amp; results</li>
-    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
-    <li><span class="idx">6</span>Conclusions</li>
-    <li><span class="idx">7</span>Software design</li>
-    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+    <li><span class="idx">5</span>Conclusions</li>
+    <li><span class="idx">6</span>Software design</li>
+    <li><span class="idx">7</span>Appendix &mdash; the field atlas</li>
   </ol>
   <p class="part-prevnext">Previously: Velocity extension &mdash; the models &nbsp;&middot;&nbsp; Next: Advected verification &amp; results</p>
 </section>
@@ -2884,20 +2874,19 @@ forAll(band_, c)
 <section data-track="Advected verification &amp; results">  <!-- ############ TRACK: verification & results ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 4 of 8</p>
+  <p class="part-kicker">Part 4 of 7</p>
   <h2>Advected verification &amp; results</h2>
   <p class="muted" style="font-size:0.85em">the classical reversed vortex: convergence, field atlas, topology</p>
   <ol class="roadmap" style="font-size:0.8em">
     <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
-    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">3</span>Static verification (\(t=0\))</li>
     <li class="here"><span class="idx">4</span>Advected verification &amp; results</li>
-    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
-    <li><span class="idx">6</span>Conclusions</li>
-    <li><span class="idx">7</span>Software design</li>
-    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+    <li><span class="idx">5</span>Conclusions</li>
+    <li><span class="idx">6</span>Software design</li>
+    <li><span class="idx">7</span>Appendix &mdash; the field atlas</li>
   </ol>
-  <p class="part-prevnext">Previously: Static verification (t = 0) &nbsp;&middot;&nbsp; Next: Semi-Lagrangian advection</p>
+  <p class="part-prevnext">Previously: Static verification (\(t=0\)) &nbsp;&middot;&nbsp; Next: Conclusions</p>
 </section>
 
 <!-- ==================== 15. VERIFICATION METRICS ==================== -->
@@ -3266,434 +3255,22 @@ forAll(band_, c)
 </section>  <!-- ############ /TRACK: verification & results ############ -->
 
 <!-- ==================== SEMI-LAGRANGIAN (vertical stack) ==================== -->
-<section data-track="Semi-Lagrangian advection">  <!-- ############ TRACK: semi-Lagrangian ############ -->
-<!-- part intro (auto-pattern) -->
-<section>
-  <p class="part-kicker">Part 5 of 8</p>
-  <h2>Semi-Lagrangian advection</h2>
-  <p class="muted" style="font-size:0.85em">the parallel research line: don't fix the velocity &mdash; follow the characteristic</p>
-  <ol class="roadmap" style="font-size:0.8em">
-    <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
-    <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
-    <li><span class="idx">3</span>Static verification (t = 0)</li>
-    <li><span class="idx">4</span>Advected verification &amp; results</li>
-    <li class="here"><span class="idx">5</span>Semi-Lagrangian advection</li>
-    <li><span class="idx">6</span>Conclusions</li>
-    <li><span class="idx">7</span>Software design</li>
-    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
-  </ol>
-  <p class="part-prevnext">Previously: Advected verification &amp; results &nbsp;&middot;&nbsp; Next: Conclusions</p>
-</section>
-
-<!-- ===== SL 1: MOTIVATION ===== -->
-<section>
-  <h2>Semi-Lagrangian &mdash; motivation: skip the equation, follow the flow</h2>
-  <div class="cols">
-    <div>
-      <p><b>Two routes to an accurate \(\psi\) near \(\Sigma\).</b> Velocity extension
-         (Part 2) corrects <em>where the velocity points</em>, then advects with a flux
-         scheme. Semi-Lagrangian advection corrects <em>nothing</em>: it uses the exact
-         property of pure advection &mdash; \(\psi\) is <b>constant along characteristics</b>.</p>
-      <p>For each arrival cell centre \(\mathbf{x}_c\) at \(t^{n+1}\), trace the
-         characteristic <b>backward</b> to its departure foot \(\mathbf{x}_d\) at \(t^n\)
-         and copy the value:</p>
-      \[ \psi^{n+1}(\mathbf{x}_c) = \psi^{n}(\mathbf{x}_d). \]
-      <p class="footnote muted">Why it is <b>solve-free</b> and <b>stable for CFL \(\le 1\)</b>
-         &rarr; next slide. Courant&ndash;Isaacson&ndash;Rees (1952); foot:
-         Mari&#263; thesis &sect;6.3.1.</p>
-    </div>
-    <div>
-      <svg viewBox="0 0 300 220" width="100%" role="img" aria-label="backward characteristic from the arrival cell centre to the departure foot inside the point-neighbour stencil">
-        <defs>
-          <marker id="slBack" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="var(--ls-warn)"/>
-          </marker>
-        </defs>
-        <!-- 3x3 cell block (the point-neighbour stencil of x_c) -->
-        <g stroke="var(--ls-muted)" stroke-width="1" fill="none" stroke-opacity="0.5">
-          <rect x="90"  y="70"  width="50" height="50"/>
-          <rect x="140" y="70"  width="50" height="50"/>
-          <rect x="190" y="70"  width="50" height="50"/>
-          <rect x="90"  y="120" width="50" height="50"/>
-          <rect x="140" y="120" width="50" height="50"/>
-          <rect x="190" y="120" width="50" height="50"/>
-          <rect x="90"  y="20"  width="50" height="50"/>
-          <rect x="140" y="20"  width="50" height="50"/>
-          <rect x="190" y="20"  width="50" height="50"/>
-        </g>
-        <text x="150" y="14" fill="var(--ls-muted)" font-size="8.5">point-neighbour (CPC) stencil of x<tspan dy="2" font-size="6.5">c</tspan></text>
-        <!-- arrival cell centre -->
-        <circle cx="165" cy="95" r="4" fill="var(--ls-fg)"/>
-        <text x="171" y="92" fill="var(--ls-fg)" font-size="10">x<tspan dy="2.5" font-size="7">c</tspan> (t<tspan dy="-3" font-size="7">n+1</tspan>)</text>
-        <!-- backward characteristic to the foot -->
-        <path d="M165,95 C150,120 128,132 116,140" fill="none" stroke="var(--ls-warn)" stroke-width="2.2" marker-end="url(#slBack)"/>
-        <text x="150" y="118" fill="var(--ls-warn)" font-size="8.5">&minus;u dt + &frac12;(&hellip;)dt&sup2;</text>
-        <!-- foot -->
-        <circle cx="113" cy="142" r="4" fill="var(--ls-accent)"/>
-        <text x="60" y="158" fill="var(--ls-accent)" font-size="9.5">x<tspan dy="2.5" font-size="7">d</tspan> (t<tspan dy="-3" font-size="7">n</tspan>): foot</text>
-        <!-- reconstruction glyph at the foot -->
-        <text x="70" y="188" fill="var(--ls-good)" font-size="9">reconstruct &psi;<tspan dy="-3" font-size="7">n</tspan><tspan dy="3">(x</tspan><tspan dy="2.5" font-size="7">d</tspan><tspan dy="-2.5">) in cell x</tspan><tspan dy="2.5" font-size="7">c</tspan></text>
-        <text x="70" y="202" fill="var(--ls-good)" font-size="9">&rArr; &psi;<tspan dy="-3" font-size="7">n+1</tspan><tspan dy="3">(x</tspan><tspan dy="2.5" font-size="7">c</tspan><tspan dy="-2.5">)</tspan></text>
-        <text x="150" y="216" fill="var(--ls-muted)" font-size="8.5" text-anchor="middle">CFL &le; 1 &rArr; foot inside the stencil &rArr; interpolation</text>
-      </svg>
-    </div>
-  </div>
-  <aside class="notes">
-    The philosophical contrast with Part 2: extension is a velocity-space fix that lets a
-    standard Eulerian scheme behave; SL is a change of discretization that removes the flux
-    scheme entirely. Both target the same goal (accurate psi near the interface); SL trades
-    the linear solve for a per-cell reconstruction.
-  </aside>
-</section>
-
-<!-- ===== SL 1b: WHY IT WORKS ===== -->
-<section>
-  <h2>Semi-Lagrangian &mdash; why it works</h2>
-  <ul class="tight" style="font-size:1.0em; line-height:1.55; max-width:90%; margin:0.6em auto">
-    <li><b>No flux, no divergence, no linear solve</b> &mdash; a per-cell assignment.</li>
-    <li><b>Unconditionally stable for CFL \(\le 1\)</b>: the foot stays inside the arrival
-        cell's point-neighbour hull &rArr; evaluation is <em>interpolation</em>, never
-        extrapolation &rArr; no cell search.</li>
-    <li><b>Accuracy is set by the reconstruction</b>, not the time step &mdash; a high-order
-        fit at the foot gives a high-order scheme at any stable CFL.</li>
-  </ul>
-  <p class="footnote muted center">Courant&ndash;Isaacson&ndash;Rees (1952); Taylor-displacement
-     foot: Mari&#263; PhD thesis &sect;6.3.1, eqs. (165)&ndash;(167).</p>
-  <aside class="notes">SL trades the linear solve for a per-cell reconstruction; stable for CFL<=1 because the departure foot lands inside the arrival cell's point-neighbour hull, so evaluation is interpolation not extrapolation. Order is set by the spatial reconstruction, decoupled from dt.</aside>
-</section>
-
-<!-- ===== SL 2: THE FOOT ===== -->
-<section>
-  <h2>The backward foot &mdash; explicit Taylor displacement</h2>
-  <p>Trace the characteristic backward with the Taylor-series point-displacement integrator
-     (Mari&#263; thesis eqs. 165&ndash;167), fully explicit, at cell centres:</p>
-  \[ \mathbf{x}_d = \mathbf{x}_c - \mathbf{u}_c^{n+1}\,\Delta t
-     + \tfrac{1}{2}\Big[\tfrac{\mathbf{u}_c^{n+1}-\mathbf{u}_c^{n}}{\Delta t}
-     + \big(\mathbf{u}_c^{n+1}\!\cdot\nabla_c\big)\mathbf{u}^{n+1}\Big]\Delta t^2 \]
-  <ul class="tight">
-    <li>Per-step displacement error \(O(\Delta t^3)\); with quadratic spatial reconstruction
-        the scheme is globally \(O(h^2)\) at fixed CFL. <b>The \(\tfrac12\) is essential</b>
-        &mdash; drop it and the local error falls to \(O(\Delta t^2)\).</li>
-    <li>\(\partial_t\mathbf{u}\approx(\mathbf{u}^{n+1}-\mathbf{u}^{n})/\Delta t\) (backward
-        Euler) is first-order &mdash; sufficient, it multiplies \(\Delta t^2\).</li>
-    <li>\(\nabla_c\mathbf{u}^{n+1}\) is the <b>least-squares</b> cell gradient
-        (fvSchemes key <code>gradU</code>, <code>pointCellsLeastSquares</code>) &mdash;
-        never Green&ndash;Gauss. Works unchanged when \(\mathbf{u}\) is a Navier&ndash;Stokes
-        field, not only analytic.</li>
-    <li><b>Guard</b>: if \(|\mathbf{x}_c-\mathbf{x}_d|\) exceeds the stencil radius (CFL&nbsp;&gt;&nbsp;1)
-        the code warns and the step is clipped &mdash; no silent extrapolation.</li>
-    <li><b>Robustness</b>: a generous value cap (\(\pm10\times\) stencil range) prevents
-        runaway overflow without touching a well-behaved reconstruction; a
-        Barth&ndash;Jespersen slope limiter is available but <em>measured to cost
-        convergence order</em> (over the wide point-neighbour stencil) &mdash; off by
-        default.</li>
-  </ul>
-  <p class="footnote muted center">Verified: for uniform \(\mathbf{u}\) the acceleration
-     term vanishes and \(\mathbf{x}_d = \mathbf{x}_c - \mathbf{u}\,\Delta t\) exactly
-     (unit test, \(\sim\!10^{-14}\)).</p>
-</section>
-
-<!-- ===== SL 2b: FORMULATION & ALGORITHM ===== -->
-<section>
-  <h2>Semi-Lagrangian &mdash; formulation &amp; algorithm</h2>
-  <div class="cols">
-    <div>
-      <p class="footnote muted" style="margin-bottom:0.15em">Governing relations (per time step \(t^n\!\to\!t^{n+1}\)):</p>
-      \[ \frac{D\psi}{Dt}=0 \;\;\Longrightarrow\;\; \boxed{\;\psi^{n+1}(\mathbf{x}_c)=\psi^{n}(\mathbf{x}_d)\;} \]
-      \[ \mathbf{x}_d=\mathbf{x}_c-\mathbf{u}_c^{n+1}\Delta t
-         +\tfrac12\Big[\underbrace{\tfrac{\mathbf{u}_c^{n+1}-\mathbf{u}_c^{n}}{\Delta t}}_{\partial_t\mathbf{u}}
-         +\underbrace{(\mathbf{u}_c^{n+1}\!\cdot\nabla_c)\mathbf{u}^{n+1}}_{(\mathbf{u}\cdot\nabla)\mathbf{u}}\Big]\Delta t^2 \]
-      \[ \psi^{n+1}_c=\psi_c^{n}+\phi_c\big(R_c(\mathbf{x}_d)-\psi_c^{n}\big),\qquad
-         \mathrm{CFL}=\frac{|\mathbf{x}_d-\mathbf{x}_c|}{r_{\text{stencil}}}\le 1 \]
-      <p class="footnote muted">\(R_c\): per-cell reconstruction of \(\psi^n\) over the
-         cell&ndash;point&ndash;cell (CPC) stencil; \(r_{\text{stencil}}\): max stencil-cell
-         distance; \(\phi_c\!\in\![0,1]\): Barth&ndash;Jespersen limiter (\(=1\) by default).
-         <b>No flux, no divergence, no linear solve.</b></p>
-    </div>
-    <div>
-      <p class="footnote muted" style="margin-bottom:0.15em">Per-step algorithm (<em class="tag">slAdvection::advect</em>):</p>
-      <ol class="tight" style="font-size:0.82em; line-height:1.32">
-        <li>Gather \(\psi^n\) &amp; cell centres over each cell's CPC stencil &mdash;
-            <b>one paired halo exchange</b> (<code>mapDistribute</code>; remote proc/cyclic
-            neighbours native).</li>
-        <li>\(\nabla\mathbf{u}^{n+1}\leftarrow\) LSQ gradient (fvSchemes <code>gradU</code>).</li>
-        <li><code>recon.update(</code>\(\psi^n\)<code>)</code>: build the per-cell polynomial \(R_c\).</li>
-        <li>For each cell \(c\): form acceleration \(\mathbf{a}_c\), foot \(\mathbf{x}_d\)
-            (boxed formula); guard \(|\mathbf{x}_d-\mathbf{x}_c|\le r_{\text{stencil}}\).</li>
-        <li>\(v\leftarrow\) limited \(R_c(\mathbf{x}_d)\); robustness: non-finite \(\to\)
-            stencil mid, else generous cap \(\pm10\times\) range.</li>
-        <li>\(\psi^{n+1}_c\leftarrow v\); <code>correctBoundaryConditions()</code>;
-            <code>postAdvect()</code> hook.</li>
-      </ol>
-      <p class="footnote muted">Explicit, per-cell, embarrassingly parallel; the only
-         communication is step&nbsp;1. Local displacement error \(O(\Delta t^3)\)
-         \(\Rightarrow\) \(O(h^2)\) at fixed CFL with a quadratic \(R_c\).</p>
-    </div>
-  </div>
-  <aside class="notes">
-    Governing PDE Dψ/Dt=0 solved by the method of characteristics: no PDE is discretised in
-    space beyond the reconstruction. The foot integrator is Maric thesis eqs. 165-167; the 1/2
-    on the dt^2 term is what makes it 3rd-order-in-time locally. Steps 1-3 are once per step;
-    steps 4-6 are the per-cell loop. Serial and np=4 match to 1e-12 (halo exchange is exact).
-  </aside>
-</section>
-
-<!-- ===== SL 3: RECONSTRUCTIONS ===== -->
-<section>
-  <h2>Reconstruction of \(\psi^n\) at the foot &mdash; three, pluggable</h2>
-  <p>Runtime-selectable (<code>levelSet { semiLagrangian { reconstruction ...; } }</code>).
-     Each <b>reproduces the cell value</b>: <code>evaluate(c, x_c) == psi[c]</code> exactly.</p>
-  <table style="font-size:0.72em; border-collapse:collapse; margin:0.3em auto; width:94%">
-    <tr style="border-bottom:1px solid var(--ls-muted)">
-      <th style="text-align:left; padding:0.25em 0.5em">model</th>
-      <th style="text-align:left; padding:0.25em 0.5em">form</th>
-      <th style="text-align:left; padding:0.25em 0.5em">order</th>
-      <th style="text-align:left; padding:0.25em 0.5em">cost / notes</th>
-    </tr>
-    <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
-      <td style="padding:0.25em 0.5em"><code>linearTaylor</code></td>
-      <td style="padding:0.25em 0.5em">\(\psi_c + \mathbf{g}_c\!\cdot\mathbf{d}\)</td>
-      <td style="padding:0.25em 0.5em">\(O(h)\)</td>
-      <td style="padding:0.25em 0.5em">baseline (\(\equiv\) 1st-order upwind); validates the pipeline</td>
-    </tr>
-    <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
-      <td style="padding:0.25em 0.5em"><code>nestedLSQ</code></td>
-      <td style="padding:0.25em 0.5em">\(+\tfrac12\mathbf{d}^{\!\top}\!\mathbf{H}_c\mathbf{d}\), \(\mathbf{H}=\nabla(\nabla\psi)\)</td>
-      <td style="padding:0.25em 0.5em">\(O(h^2)\) at CFL\(\le\tfrac12\);<br><span class="warn">diverges at CFL\(\,1\)</span></td>
-      <td style="padding:0.25em 0.5em">Hessian = gradient-of-gradient-field &rArr; amplifies noise when the foot nears the stencil edge (see next slide)</td>
-    </tr>
-    <tr style="border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(76,175,80,0.10)">
-      <td style="padding:0.25em 0.5em"><code>quadraticWLSQ</code> <span class="good">&#9733;</span></td>
-      <td style="padding:0.25em 0.5em">one IDW-weighted quadratic fit over the CPC stencil</td>
-      <td style="padding:0.25em 0.5em"><b>\(O(h^2)\) incl. CFL\(\,1\)</b></td>
-      <td style="padding:0.25em 0.5em"><b>production &mdash; the robust choice</b>; cached pseudo-inverse (1 halo exchange); the single simultaneous fit stays 2nd order at every CFL</td>
-    </tr>
-    <tr>
-      <td style="padding:0.25em 0.5em"><code>bandQuadraticWLSQ</code></td>
-      <td style="padding:0.25em 0.5em">quadratic in the band; far field re-extended by distance</td>
-      <td style="padding:0.25em 0.5em">stable; \(\sim\!O(1)\) floor</td>
-      <td style="padding:0.25em 0.5em"><b>memory O(band)</b>, per-step fit &mdash; but the crude far-field re-extension caps convergence (needs a high-order reinit for \(O(h^2)\))</td>
-    </tr>
-  </table>
-  <ul class="tight">
-    <li>All three use <b>least squares</b> over the cell-point-cell stencil (linear-exact on
-        arbitrary polyhedra) &mdash; nested LSQ is therefore quadratic-exact. <b>No
-        Green&ndash;Gauss</b> anywhere in the chain.</li>
-    <li><b>Unit-tested exact</b>: a global quadratic \(\psi\) is reproduced by
-        <code>nestedLSQ</code>/<code>quadraticWLSQ</code> to \(\sim\!10^{-16}\); a linear
-        field by <code>linearTaylor</code>; centre value to \(0\).</li>
-  </ul>
-</section>
-
-<!-- ===== SL 3b: quadraticWLSQ FORMULATION ===== -->
-<section>
-  <h2>quadraticWLSQ &mdash; the weighted least-squares fit</h2>
-  <p class="footnote muted center" style="margin-bottom:0.2em">Fit the full quadratic (2D shown;
-     the empty direction is dropped) to the increments \(\psi_i-\psi_c\),
-     \(\mathbf{d}_i=\mathbf{x}_i-\mathbf{x}_c\), over the cell&ndash;point&ndash;cell stencil:</p>
-  \[ R_c(\mathbf{x})=\psi_c+\sum_{k=1}^{n_k}a_k\,b_k(\mathbf{d}),\qquad
-     \mathbf{b}=\big(d_x,\,d_y,\,\tfrac12 d_x^2,\,\tfrac12 d_y^2,\,d_xd_y\big),\quad n_k=5 \]
-  \[ \mathbf{a}=\arg\min_{\mathbf{a}}\sum_{i=1}^{N}w_i^{2}\big(\mathbf{b}(\mathbf{d}_i)\!\cdot\!\mathbf{a}-(\psi_i-\psi_c)\big)^2,
-     \quad w_i=\frac{1}{|\mathbf{d}_i|},\quad
-     A_{ik}=w_i\,b_k(\mathbf{d}_i) \]
-  \[ \mathbf{a}=\underbrace{(A^{\top}A)^{-1}A^{\top}}_{\text{Moore–Penrose }A^{+}\,(\text{QR})}\,\mathbf{b}_w,
-     \;(b_w)_i=w_i(\psi_i-\psi_c)
-     \;\;\xrightarrow{\text{fold }M_{ki}=A^{+}_{ki}w_i}\;\; a_k=\sum_i M_{ki}(\psi_i-\psi_c) \]
-  <p class="footnote muted center">Fitting \((\psi_i-\psi_c)\) forces \(R_c(\mathbf{x}_c)=\psi_c\)
-     <b>exactly</b>. Mesh geometry is static \(\Rightarrow\) \(A^{+}\) (hence \(M\)) is built
-     <b>once per cell</b>; each step is then one contiguous mat&ndash;vec &mdash; no per-cell
-     allocation. \(n_k=9\) in 3D (3 linear + 3 pure-quadratic + 3 cross).</p>
-  <aside class="notes">
-    The pseudo-inverse is a Householder QR (MatrixTools::pinv over QRMatrix), robust to the
-    near-rank-deficient rows on distorted stencils. nestedLSQ instead forms H=grad(grad psi) by
-    two LSQ passes -- cheaper but grad-of-grad amplifies noise and diverges at CFL 1 (next-but-one
-    slide). Folding the IDW weight into the cached map is the hpctoolkit-guided optimisation.
-  </aside>
-</section>
-
-<!-- ===== SL 3c: quadraticWLSQ SCHEMATIC ===== -->
-<section>
-  <h2>quadraticWLSQ &mdash; the stencil &amp; the fit</h2>
-  <div class="cols">
-    <div>
-      <svg viewBox="0 0 320 250" width="100%" role="img" aria-label="cell-point-cell stencil with inverse-distance weights, the fitted quadratic, and the departure foot">
-        <g stroke="var(--ls-muted)" stroke-width="1" fill="none" stroke-opacity="0.45">
-          <rect x="85"  y="45"  width="50" height="50"/><rect x="135" y="45"  width="50" height="50"/><rect x="185" y="45"  width="50" height="50"/>
-          <rect x="85"  y="95"  width="50" height="50"/><rect x="135" y="95"  width="50" height="50"/><rect x="185" y="95"  width="50" height="50"/>
-          <rect x="85"  y="145" width="50" height="50"/><rect x="135" y="145" width="50" height="50"/><rect x="185" y="145" width="50" height="50"/>
-        </g>
-        <path d="M92,190 C130,150 150,120 175,50" fill="none" stroke="var(--ls-good)" stroke-width="1.6" stroke-dasharray="4 3"/>
-        <text x="58" y="196" fill="var(--ls-good)" font-size="9">&psi;=0</text>
-        <g fill="var(--ls-muted)">
-          <circle cx="110" cy="70" r="2.8"/><circle cx="160" cy="70" r="2.8"/><circle cx="210" cy="70" r="2.8"/>
-          <circle cx="110" cy="120" r="2.8"/><circle cx="210" cy="120" r="2.8"/>
-          <circle cx="110" cy="170" r="2.8"/><circle cx="160" cy="170" r="2.8"/><circle cx="210" cy="170" r="2.8"/>
-        </g>
-        <!-- IDW weight arrows: near (axial, heavy) vs far (diagonal, light) -->
-        <line x1="110" y1="120" x2="152" y2="120" stroke="var(--ls-accent)" stroke-width="3.6" stroke-opacity="0.9"/>
-        <text x="82" y="113" fill="var(--ls-accent)" font-size="9">w=1/h</text>
-        <line x1="210" y1="70" x2="167" y2="113" stroke="var(--ls-accent)" stroke-width="1.2" stroke-opacity="0.7"/>
-        <text x="188" y="60" fill="var(--ls-accent)" font-size="9">w=1/&radic;2h</text>
-        <circle cx="160" cy="120" r="4.5" fill="var(--ls-fg)"/>
-        <text x="166" y="115" fill="var(--ls-fg)" font-size="11">x<tspan dy="3" font-size="8">c</tspan></text>
-        <circle cx="140" cy="140" r="4" fill="none" stroke="var(--ls-warn)" stroke-width="2"/>
-        <text x="116" y="158" fill="var(--ls-warn)" font-size="10">x<tspan dy="3" font-size="8">d</tspan></text>
-        <line x1="160" y1="120" x2="142" y2="138" stroke="var(--ls-warn)" stroke-width="1.5" stroke-dasharray="3 2"/>
-      </svg>
-    </div>
-    <div>
-      <ul class="tight">
-        <li>The <b>cell&ndash;point&ndash;cell (CPC)</b> stencil: the arrival cell \(\mathbf{x}_c\)
-            plus <b>all cells sharing a point</b> with it (8 in 2D structured, up to 26 in 3D) &mdash;
-            wider than a face-neighbour stencil, so a full quadratic is over-determined.</li>
-        <li><b>Inverse-distance weights</b> \(w_i=1/|\mathbf{d}_i|\): the near axial neighbour (heavy
-            arrow) dominates the fit; the far diagonal (light) is down-weighted &mdash; this is what
-            keeps the Hessian bounded and second order even when the foot \(\mathbf{x}_d\) reaches the
-            stencil edge (CFL 1).</li>
-        <li>The fitted quadratic \(R_c\) is evaluated <b>once</b>, at the departure foot
-            \(\mathbf{x}_d\) (hollow), giving \(\psi^{n+1}_c=R_c(\mathbf{x}_d)\).</li>
-        <li>Remote (processor / cyclic) stencil cells are gathered by the single paired halo exchange
-            &mdash; serial and \(np{=}4\) agree to \(\sim\!10^{-12}\).</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<!-- ===== SL 4: DISCRETIZATION ===== -->
-<section>
-  <h2>quadraticWLSQ &mdash; discretization (UFVM, parallel)</h2>
-  <ul class="tight">
-    <li><b>Stencil</b>: OpenFOAM's cached cell-point-cell stencil
-        (<code>centredCPCCellToCellStencil</code>); its <code>collectData</code> gathers the
-        remote (processor / cyclic) point neighbours through a <code>mapDistribute</code> &mdash;
-        one halo exchange of \(\psi^n\) per step; the cell centres are gathered once.</li>
-    <li><b>Fit</b>: per cell, minimise \(\sum_n w_n\big(P(\mathbf{d}_n)-(\psi_n-\psi_c)\big)^2\)
-        over the quadratic basis \(\{d_x,d_y,[d_z],\tfrac12 d_x^2,\tfrac12 d_y^2,[\tfrac12 d_z^2],
-        d_xd_y,[\ldots]\}\) (the empty direction is dropped on 2D meshes), IDW weights
-        \(w_n=1/|\mathbf{d}_n|\). Fitting \((\psi_n-\psi_c)\) drops the constant &rArr; the
-        centre value is reproduced exactly.</li>
-    <li><b>Solve</b>: Moore&ndash;Penrose pseudo-inverse (<code>QRMatrix</code>, Householder QR).
-        The stencil geometry is fixed while the mesh is static &rArr; the per-cell
-        pseudo-inverse is <b>cached once</b>; the per-step cost is one small matrix&ndash;vector
-        product per cell. Under-determined boundary cells fall back to a linear fit (counted).</li>
-  </ul>
-  <p class="footnote muted">Source:
-     <em class="tag">src/leiaLevelSet/semiLagrangian/</em>
-     (<code>slAdvection</code>, <code>slReconstruction</code> + 3 models); solver
-     <em class="tag">leiaSemiLagrangeLevelSetFoam</em>.</p>
-</section>
-
-<!-- ===== SL 4b: DISCRETIZATION (HOT LOOP) ===== -->
-<section>
-  <h2>quadraticWLSQ &mdash; the hot loop</h2>
-  <ul class="tight">
-    <li><b>Performance</b> (hpctoolkit-profiled): that per-cell mat&ndash;vector product was
-        <b>~28% of the whole solver</b> and did not vectorise. Folding the IDW weight into the
-        cached map and storing it <b>flat row-major</b> (so the update is a contiguous pointer
-        reduction with no per-cell allocation) cut it to ~20% &mdash; <b>&minus;17% wall-clock,
-        &minus;23% CPU</b> at \(N{=}128\), machine-precision identical. (A hand-unrolled mat&ndash;vec
-        <em>regressed</em> &mdash; the stencil is too short &mdash; and was reverted.)</li>
-    <li><b>Dedicated scheme keys</b> <code>gradPsi</code> / <code>gradGradPsi</code> /
-        <code>gradU</code> (all <code>pointCellsLeastSquares</code>) &mdash; the sub-steps never
-        share the <code>grad(psi)</code> advection scheme.</li>
-  </ul>
-  <p class="footnote muted">Parallel-verified: serial &equiv; <code>np=4</code> to \(10^{-12}\)
-     (halo exchange of \(\psi^n\) via <code>mapDistribute</code>).</p>
-  <aside class="notes">The cached pseudo-inverse means the per-step cost is one small mat-vec per cell; profiling showed it dominating, and the flat row-major IDW-folded layout removed the per-cell allocation for -17% wall-clock. Parallel identical to serial to 1e-12.</aside>
-</section>
-
-<!-- ===== SL 5: CODE ===== -->
-<section>
-  <h2><code>slAdvection::advect()</code> &mdash; code</h2>
-  <pre style="font-size:0.38em; line-height:1.15; background:rgba(255,255,255,0.04); padding:0.5em; border-radius:6px;"><code>const scalar dt = mesh_.time().deltaTValue();
-const volTensorField gradU(fvc::grad(Unew, "gradU"));   // LSQ grad u^{n+1}
-recon_-&gt;update(psi);                                     // fit psi^n (halo + QR)
-
-forAll(C, c)
-{
-    const vector accel = (Unew[c] - Uold[c])/dt          // du/dt (backward Euler)
-                       + (Unew[c] &amp; gradU[c]);            // (u.grad)u
-    const point xd = C[c] - Unew[c]*dt + 0.5*accel*dt*dt; // Taylor backward foot
-    // guard: |xd - C[c]| within the point-neighbour stencil radius (CFL<=1)
-    newPsi[c] = recon_-&gt;evaluate(c, xd);                  // psi^{n+1}(x_c)=psi^n(x_d)
-}
-psi.primitiveFieldRef() = newPsi;                        // assign, then BCs
-psi.correctBoundaryConditions();
-
-// quadraticWLSQ::evaluate -- the arrival cell's OWN cached polynomial:
-//   d = x - C[c];  return psi_c + sum_k coeffs_c[k] * basis_k(d);</code></pre>
-  <p class="footnote muted center">Steps 3 and 5 are embarrassingly parallel per-cell loops;
-     the only communication is the one halo exchange inside <code>recon_-&gt;update()</code>.
-     Serial and <code>np=4</code> results match to round-off.</p>
-</section>
-
-<!-- ===== SL 6: CONVERGENCE ===== -->
-<section>
-  <h2>Reconstruction convergence &mdash; the order jump</h2>
-  <img src="figures/sl_reconstruction_convergence.png"
-       alt="band gradient error and shape error vs h per reconstruction at CFL 0.5 and 1.0"
-       style="max-height:66vh; max-width:94%; width:auto; height:auto; border-radius:6px;">
-  <p class="footnote muted center">Reversed vortex, \(T=2\). Shape error (the trustworthy
-     metric): at <b>CFL \(\le\tfrac12\)</b> both quadratic fits converge \(\approx O(h^2)\)
-     (measured order: <code>nestedLSQ</code> 2.4, <code>quadraticWLSQ</code> 2.8) &mdash;
-     <b>they are comparable there</b>. <code>linearTaylor</code> is flat
-     (\(\equiv\) diffusive first-order upwind) and its band \(|\nabla\psi|-1\) blows up.
-     The decisive split is <b>at CFL \(=1\)</b> (next slide): <code>quadraticWLSQ</code>
-     holds \(O(h^2)\), <code>nestedLSQ</code> <span class="warn">diverges</span>.
-     <code>bandQuadraticWLSQ</code> is stable and memory-light but its crude far-field
-     re-extension caps it below first order.</p>
-  <aside class="notes">
-    Measured shape-error order (LSQ over N=32..256): CFL 0.5 T=2 nested 2.37 / quadratic 2.76;
-    CFL 1.0 T=2 nested -0.81 (DIVERGES) / quadratic 2.30. Band |grad psi| order CFL 1.0 T=2:
-    nested -6.7 (blows up to 5.7e4 at N=256) / quadratic +2.65. linearTaylor non-convergent
-    at all CFL. This is a pure semi-Lagrangian result (no velocity extension involved).
-  </aside>
-</section>
-
-<!-- ===== SL 7: nestedLSQ vs quadraticWLSQ ===== -->
-<section>
-  <h2>Why <code>quadraticWLSQ</code>, not <code>nestedLSQ</code></h2>
-  <img src="figures/sl_nested_vs_quad.png"
-       alt="nestedLSQ vs quadraticWLSQ shape and band error vs h at CFL 0.5 and 1.0"
-       style="max-height:62vh; max-width:92%; width:auto; height:auto; border-radius:6px;">
-  <p class="footnote muted center">Reversed vortex \(T=2\), \(N=32\!\to\!256\).
-     <b>At CFL \(\le\tfrac12\) they are comparable</b> (both \(\approx O(h^2)\); <code>nestedLSQ</code>
-     is even marginally cheaper &mdash; no cached inverse). <b>At CFL \(=1\) <code>nestedLSQ</code>
-     diverges</b>: its Hessian \(\mathbf{H}=\nabla(\nabla\psi)\) is a gradient <em>of a gradient
-     field</em>, which amplifies noise like \(1/h\); as the foot reaches the stencil edge the
-     bad curvature feeds back and \(|\nabla\psi|\) explodes (\(5.7\times10^4\) at \(N=256\)).
-     <code>quadraticWLSQ</code> fits \(\mathbf{g}\) and \(\mathbf{H}\) <b>together</b> in one
-     IDW-weighted, bounded least-squares &mdash; it stays \(O(h^2)\) at every CFL.</p>
-  <aside class="notes">
-    Measured (this deck, controlled serial sweeps): CFL 1.0 T=2 shape order nested -0.81 vs
-    quadratic 2.30. Fix attempts on nestedLSQ -- monotonicity clip, distance-weighted /
-    face-neighbour LSQ schemes, cell-limited LSQ -- either fail to stabilise or stabilise only
-    by collapsing the order to ~0. The single simultaneous IDW-weighted fit (= quadraticWLSQ)
-    is the configuration that is BOTH stable AND 2nd order; after the hpctoolkit optimisation it
-    costs the same as nestedLSQ (within ~10% CPU, comparable memory at N=128), so there is no
-    accuracy-for-cost trade to make. Pure semi-Lagrangian result -- no velocity extension here.
-  </aside>
-</section>
-</section>  <!-- ############ /TRACK: semi-Lagrangian ############ -->
-
-<!-- ==================== CONCLUSIONS (vertical stack) ==================== -->
 <section data-track="Conclusions">
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 6 of 8</p>
+  <p class="part-kicker">Part 5 of 7</p>
   <h2>Conclusions</h2>
-  <p class="muted" style="font-size:0.85em">what works best &mdash; the two research lines, ranked by error</p>
+  <p class="muted" style="font-size:0.85em">what works best &mdash; the velocity-extension models, ranked by error</p>
   <ol class="roadmap" style="font-size:0.8em">
     <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
-    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">3</span>Static verification (\(t=0\))</li>
     <li><span class="idx">4</span>Advected verification &amp; results</li>
-    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
-    <li class="here"><span class="idx">6</span>Conclusions</li>
-    <li><span class="idx">7</span>Software design</li>
-    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+    <li class="here"><span class="idx">5</span>Conclusions</li>
+    <li><span class="idx">6</span>Software design</li>
+    <li><span class="idx">7</span>Appendix &mdash; the field atlas</li>
   </ol>
-  <p class="part-prevnext">Previously: Semi-Lagrangian advection &nbsp;&middot;&nbsp; Next: Software design</p>
+  <p class="part-prevnext">Previously: Advected verification &amp; results &nbsp;&middot;&nbsp; Next: Software design</p>
 </section>
 
 
@@ -3759,71 +3336,23 @@ psi.correctBoundaryConditions();
        (Aslam cascade) <span class="warn">diverges</span> on the steady equation and is not usable.</p>
   </section>
 
-  <!-- C-SL: semi-Lagrangian ranking (results only) -->
-  <section>
-    <h2>Semi-Lagrangian &mdash; ranked by error</h2>
-    <p class="muted" style="font-size:0.8em">Reversed vortex, geometric shape-error convergence
-       order (\(N=32\!\to\!256\)); the reconstruction of \(\psi^n\) at the departure foot.</p>
-    <table style="font-size:0.68em; border-collapse:collapse; margin:0.25em auto; width:96%">
-      <tr style="border-bottom:1px solid var(--ls-muted)">
-        <th style="text-align:left; padding:0.22em 0.45em">#</th>
-        <th style="text-align:left; padding:0.22em 0.45em">reconstruction</th>
-        <th style="text-align:left; padding:0.22em 0.45em">order&nbsp;@CFL&nbsp;\(\tfrac12\)</th>
-        <th style="text-align:left; padding:0.22em 0.45em">order&nbsp;@CFL&nbsp;1</th>
-        <th style="text-align:left; padding:0.22em 0.45em">notes</th>
-      </tr>
-      <tr style="border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(76,175,80,0.10)">
-        <td style="padding:0.22em 0.45em">1 <span class="good">&#9733;</span></td>
-        <td style="padding:0.22em 0.45em"><code>quadraticWLSQ</code></td>
-        <td style="padding:0.22em 0.45em"><b>2.8</b></td>
-        <td style="padding:0.22em 0.45em"><b>2.3</b></td>
-        <td style="padding:0.22em 0.45em"><b>\(O(h^2)\) at every CFL</b>, \(|\nabla\psi|\) bounded &mdash; production</td>
-      </tr>
-      <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
-        <td style="padding:0.22em 0.45em">2</td>
-        <td style="padding:0.22em 0.45em"><code>nestedLSQ</code></td>
-        <td style="padding:0.22em 0.45em">2.4</td>
-        <td style="padding:0.22em 0.45em"><span class="warn">&minus;0.8 (diverges)</span></td>
-        <td style="padding:0.22em 0.45em">matches quadratic only at CFL\(\le\tfrac12\); grad-of-grad Hessian blows up at CFL 1</td>
-      </tr>
-      <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
-        <td style="padding:0.22em 0.45em">3</td>
-        <td style="padding:0.22em 0.45em"><code>bandQuadraticWLSQ</code></td>
-        <td style="padding:0.22em 0.45em">~0.5</td>
-        <td style="padding:0.22em 0.45em">~0.5</td>
-        <td style="padding:0.22em 0.45em">stable + memory-\(O\)(band), but crude far-field re-extension caps it below 1st order</td>
-      </tr>
-      <tr>
-        <td style="padding:0.22em 0.45em">4</td>
-        <td style="padding:0.22em 0.45em"><code>linearTaylor</code></td>
-        <td style="padding:0.22em 0.45em">~0</td>
-        <td style="padding:0.22em 0.45em">~0</td>
-        <td style="padding:0.22em 0.45em">1st-order baseline; \(|\nabla\psi|\) blows up &mdash; pipeline validation only</td>
-      </tr>
-    </table>
-    <p class="footnote muted"><b>Cost</b>: after the hpctoolkit optimisation, <code>quadraticWLSQ</code>
-       is within ~10% CPU of <code>nestedLSQ</code> and comparable memory at \(N=128\) &mdash;
-       so the robust 2nd-order choice carries no cost penalty.</p>
-  </section>
 
-  <!-- C-guidance: which method, by problem (lines kept separate) -->
+  <!-- C-guidance: choosing a velocity-extension model -->
   <section>
-    <h2>Which method &mdash; by problem</h2>
+    <h2>Which extension &mdash; by problem</h2>
     <ul class="tight" style="font-size:0.9em">
-      <li><b>Prescribed-velocity level-set transport</b> &rarr; the semi-Lagrangian solver
-          <code>leiaSemiLagrangeLevelSetFoam</code> with <code>quadraticWLSQ</code>: lowest shape
-          error, \(O(h^2)\) up to CFL 1, best \(|\nabla\psi|\) regularity, and no linear solve.</li>
-      <li><b>Coupled flow (\(\mathbf{U}\) is a momentum-equation solution, not prescribed)</b>
-          &rarr; the Eulerian solver needs a velocity extension: <code>meshWave</code> is the robust
-          default; <code>closestPoint</code> the highest-accuracy where \(\psi\) is kept near-SDF.</li>
-      <li>These two lines address <b>different problems</b> and are evaluated on their own metrics &mdash;
-          they are not interchangeable. Both share one open item: no reinitialization, so \(|\nabla\psi|=1\)
-          is not maintained over very long integrations (a redistancing partner is future work).</li>
+      <li><b>Coupled flow</b> (\(\mathbf U\) is a momentum-equation solution) &rarr; the Eulerian
+          solver needs a velocity extension: <code>meshWave</code> is the robust default;
+          <code>closestPoint</code> the highest-accuracy where \(\psi\) is kept near-SDF;
+          <code>pseudoTime</code> a solid PDE extension.</li>
+      <li><b>Avoid</b> <code>steadyUpwindLinear</code> (the Aslam cascade <span class="warn">diverges</span>
+          on the steady equation) and, at large deformation without redistancing, <code>closestPoint</code>
+          (Newton foot-points need \(\psi\) near-SDF).</li>
+      <li><b>Prescribed-velocity transport</b> (\(\mathbf U\) analytic/known) is a <b>different problem</b>,
+          solved best by the <em>semi-Lagrangian</em> method &mdash; see the companion deck.</li>
     </ul>
     <p class="footnote muted">All numbers regenerate from <em class="tag">config/staticExtension.yaml</em>,
-       <em class="tag">config/bulkVortexHighRes.yaml</em>, <em class="tag">config/steadyVortex2D.yaml</em>
-       (velocity extension) and <em class="tag">config/bulkVortexSL.yaml</em> /
-       <em class="tag">bulkVortexSLHighRes.yaml</em> (semi-Lagrangian).</p>
+       <em class="tag">config/bulkVortexHighRes.yaml</em>, <em class="tag">config/steadyVortex2D.yaml</em>.</p>
   </section>
 
 </section>
@@ -3831,18 +3360,17 @@ psi.correctBoundaryConditions();
 <section data-track="Software design">  <!-- ############ TRACK: Software Design ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 7 of 8</p>
+  <p class="part-kicker">Part 6 of 7</p>
   <h2>Software design</h2>
   <p class="muted" style="font-size:0.85em">runtime model selection; add a model without touching existing code</p>
   <ol class="roadmap" style="font-size:0.8em">
     <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
-    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">3</span>Static verification (\(t=0\))</li>
     <li><span class="idx">4</span>Advected verification &amp; results</li>
-    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
-    <li><span class="idx">6</span>Conclusions</li>
-    <li class="here"><span class="idx">7</span>Software design</li>
-    <li><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+    <li><span class="idx">5</span>Conclusions</li>
+    <li class="here"><span class="idx">6</span>Software design</li>
+    <li><span class="idx">7</span>Appendix &mdash; the field atlas</li>
   </ol>
   <p class="part-prevnext">Previously: Conclusions &nbsp;&middot;&nbsp; Next: Appendix &mdash; the field atlas</p>
 </section>
@@ -4053,18 +3581,17 @@ void Foam::myExtension::extend()
 <section data-track="Appendix &mdash; the field atlas">  <!-- ############ APPENDIX: field atlas (alpha) ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 8 of 8</p>
+  <p class="part-kicker">Part 7 of 7</p>
   <h2>Appendix &mdash; the field atlas</h2>
   <p class="muted" style="font-size:0.85em">every model &times; period &times; resolution, regenerated by the pipeline</p>
   <ol class="roadmap" style="font-size:0.8em">
     <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li><span class="idx">2</span>Velocity extension &mdash; the models</li>
-    <li><span class="idx">3</span>Static verification (t = 0)</li>
+    <li><span class="idx">3</span>Static verification (\(t=0\))</li>
     <li><span class="idx">4</span>Advected verification &amp; results</li>
-    <li><span class="idx">5</span>Semi-Lagrangian advection</li>
-    <li><span class="idx">6</span>Conclusions</li>
-    <li><span class="idx">7</span>Software design</li>
-    <li class="here"><span class="idx">8</span>Appendix &mdash; the field atlas</li>
+    <li><span class="idx">5</span>Conclusions</li>
+    <li><span class="idx">6</span>Software design</li>
+    <li class="here"><span class="idx">7</span>Appendix &mdash; the field atlas</li>
   </ol>
   <p class="part-prevnext">Previously: Software design &nbsp;&middot;&nbsp; Next: &mdash; (end)</p>
 </section>

@@ -1,0 +1,25 @@
+# 3D shear at N=128 (128x128x256 = 4.2M cells) -- completes the 32/64/128
+# convergence order for quadraticWeightedLeastSquares. Memory-heavy: one case at a time.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/idwCompare3Dshear128.yaml --resources tasks=8
+study_name: idwCompare3Dshear128
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [128]
+  CFL:      [0.5, 1.0]
+  SL_RECONSTRUCTION: [quadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+  DIV: [linear]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

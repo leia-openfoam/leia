@@ -1,0 +1,24 @@
+# Head-to-head: the memory-bound cached quad vs the CPU-bound uncached quad.
+# Same fit -> expect identical shape error + order + bounded |grad psi|.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/uncachedCompare2D.yaml
+study_name: uncachedCompare2D
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5, 1.0]
+  SL_RECONSTRUCTION: [quadraticWeightedLeastSquares, uncachedQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

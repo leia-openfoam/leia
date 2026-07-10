@@ -92,6 +92,67 @@ levelSet
           w1    0.05;
         }
     }
+
+    // ===================================================================== //
+    // Semi-Lagrangian advection (leiaSemiLagrangeLevelSetFoam only; ignored by
+    // leiaLevelSetFoam). psi^{n+1}(x_c) = psi^n(x_d): a fixed Taylor backward
+    // foot x_d, a runtime-selectable reconstruction of psi^n at x_d, applied by
+    // a runtime-selectable correction strategy. All selectable options and their
+    // controls are listed below; unset keys fall back to the defaults shown.
+    // ===================================================================== //
+    semiLagrangian
+    {
+        // ---- reconstruction of psi^n at the foot (RTS slReconstruction) ----
+        //   linearTaylor                      : psi_c + grad_c.(x-x_c). O(h); gradient injected.
+        //   nestedLSQ                         : nested least squares. O(h^2) at CFL<=1/2.
+        //   quadraticWeightedLeastSquares     : IDW-weighted quadratic VALUE fit. O(h^2..3),
+        //                                       STABLE. PRODUCTION. Memory-bound (per-cell
+        //                                       pseudo-inverse cache).
+        //   uncachedQuadraticWeightedLeastSquares : SAME fit as quad (identical accuracy +
+        //                                       stability, verified cell-for-cell); recomputes
+        //                                       the normal-equations Cholesky per step ->
+        //                                       CPU-bound, O(1) memory/cell, no large-N ceiling.
+        //   bandQuadraticWeightedLeastSquares : quadratic in the band, linear far field.
+        //   defectCorrectedIDW                : IDW + iterated gradient/defect correction.
+        //                                       Cheap/CPU-bound but UNSTABLE here. Research.
+        reconstruction      @!SL_RECONSTRUCTION!@;
+
+        // ---- correction strategy (RTS slCorrector) ----
+        //   direct             : one reconstruction pass. Use with quadraticWeightedLeastSquares. DEFAULT.
+        //   deferredCorrection : fixed-point iteration, rebuilding the reconstruction from the
+        //                        current iterate. DIVERGES for defectCorrectedIDW (rho > 1). Research.
+        correction          @!SL_CORRECTION!@;
+
+        CFLmax              @!CFL!@;   // foot-radius guard (operational CFL<=1)
+        analyticVelocity    true;      // prescribed velocityModel IS the cell velocity
+                                       // (no velocity extension for the prescribed-flow tests)
+
+        // ---- reconstruction safeguards (slReconstruction base; every reconstruction) ----
+        limitSlope          false;     // Barth-Jespersen limiter; MEASURED to cost order -> off
+        clipToStencilBounds false;     // extra tight monotone clip to the stencil min/max
+
+        // ---- uncachedQuadraticWeightedLeastSquares control ----
+        ridgeEps            0;         // Tikhonov ridge on the normal-equations diagonal
+                                       // (0 = off; raise on distorted/polyhedral meshes)
+
+        // ---- bandQuadraticWeightedLeastSquares controls ----
+        nLayersBand         3;         // quadratic where |psi| <= (nLayersBand+bandGuard)*h
+        bandGuard           2;         // guard so band cells' stencils stay inside the band
+
+        // ---- defectCorrectedIDW controls (iterative nodal-defect correction) ----
+        idwPower            2;         // final-blend weight = |x_d - x_C|^{-idwPower}
+        dcIters             3;         // Gauss-Seidel nodal-defect sweeps
+        dcMaxIters          10;        // hard cap on sweeps
+        dcTol               1e-3;      // range-relative residual early-out
+        dcRelax             0.8;       // under-relaxation of the sweep (<= 1)
+        dcRegEps            0.1;       // nugget: wreg = (h^2/(|r|^2 + dcRegEps^2 h^2))^(idwPower/2)
+
+        // ---- deferredCorrection controls (correction = deferredCorrection) ----
+        nDefCorr            3;         // deferred-correction passes
+        nDefCorrMax         10;        // hard cap on passes
+        defCorrRelax        1.0;       // under-relaxation of the fixed-point update (<= 1)
+        defCorrTol          0.0;       // range-relative early-out (0 = run all passes)
+    }
 }
 
 

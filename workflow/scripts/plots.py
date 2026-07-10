@@ -732,6 +732,11 @@ def reconstruction_convergence(rows, figdir, Tpick=2.0):
            and _f(r.get("gradientErrorBand")) is not None]
     if not sub:
         return None
+    # Merge historical short names into the spelled-out class names (post-rename).
+    _alias = {"quadraticWLSQ": "quadraticWeightedLeastSquares",
+              "bandQuadraticWLSQ": "bandQuadraticWeightedLeastSquares"}
+    for r in sub:
+        r["reconstruction"] = _alias.get(r["reconstruction"], r["reconstruction"])
     recons = sorted({r["reconstruction"] for r in sub})
     cfls = sorted({_f(r["cfl"]) for r in sub if _f(r.get("cfl")) is not None})
     if not cfls:
@@ -787,14 +792,14 @@ def reconstruction_convergence(rows, figdir, Tpick=2.0):
 
 
 def sl_vs_extension(study_dir, figdir, Tpick=2.0):
-    """Cross-study head-to-head at fixed T: the SL quadraticWLSQ solver against
+    """Cross-study head-to-head at fixed T: the SL quadraticWeightedLeastSquares solver against
     the velocity-extension solver (none + meshWave), band gradient error and
     shape error vs h on one axis. Skips gracefully if a study dir is absent."""
     studies_root = os.path.dirname(os.path.abspath(study_dir))
     sources = [
-        ("bulkVortexSLHighRes", "reconstruction", "quadraticWLSQ",
-         "SL quadraticWLSQ"),
-        ("bulkVortexSL", "reconstruction", "quadraticWLSQ", "SL quadraticWLSQ"),
+        ("bulkVortexSLHighRes", "reconstruction", "quadraticWeightedLeastSquares",
+         "SL quadraticWeightedLeastSquares"),
+        ("bulkVortexSL", "reconstruction", "quadraticWeightedLeastSquares", "SL quadraticWeightedLeastSquares"),
         ("bulkVortexHighRes", "velocityExtension", "none", "Eulerian none"),
         ("bulkVortexHighRes", "velocityExtension", "meshWave",
          "Eulerian meshWave"),

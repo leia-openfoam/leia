@@ -1,0 +1,26 @@
+# Focused 2D reversed-vortex comparison: quadraticWeightedLeastSquares vs defectCorrectedIDW.
+# One representative period (T=2) so the reversed-flow shape error is a true
+# accuracy measure; convergence over N = 32/64/128 at CFL 0.5 and 1.0. Only the
+# departure-point reconstruction changes (the Taylor backtracking is identical).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/idwCompare2D.yaml
+study_name: idwCompare2D
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5, 1.0]
+  SL_RECONSTRUCTION: [quadraticWeightedLeastSquares, defectCorrectedIDW]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

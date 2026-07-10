@@ -144,7 +144,7 @@ leia> snakemake --workflow-profile profiles/local --configfile config/steadyVort
 # line to velocity extension. Instead of correcting the velocity it solves
 # Dpsi/Dt = 0 along characteristics (psi^{n+1}(x_c) = psi^n(x_d)); the reconstruction
 # of psi^n at the departure foot is the swept axis (linearTaylor O(h) baseline,
-# nestedLSQ / quadraticWLSQ O(h^2)). Same reversed 2Dvortex study; quadraticWLSQ
+# nestedLSQ / quadraticWeightedLeastSquares O(h^2)). Same reversed 2Dvortex study; quadraticWeightedLeastSquares
 # beats every velocity-extension model on shape AND |grad psi| with no linear solve.
 leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortexSL.yaml
 leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortexSLHighRes.yaml

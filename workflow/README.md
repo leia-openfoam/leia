@@ -28,7 +28,7 @@ config/steadyVortex2D.yaml   NON-REVERSING stress test: steady vortex (oscillati
 config/steadyVortex2DHighRes.yaml  + N=256 tier (opt-in; refreshes the deck's steady_* figures)
 config/bulkVortexSL.yaml     SEMI-LAGRANGIAN solver (solver: leiaSemiLagrangeLevelSetFoam)
                              on the reversed vortex; sweeps SL_RECONSTRUCTION
-                             (linearTaylor/nestedLSQ/quadraticWLSQ) x CFL{0.5,1.0} -- the SL
+                             (linearTaylor/nestedLSQ/quadraticWeightedLeastSquares) x CFL{0.5,1.0} -- the SL
                              analog of the VELOCITY_EXTENSION model sweep. plots.py emits the
                              reconstruction-convergence figure + an sl_vs_extension cross-study
                              overlay (reads the bulkVortexHighRes velocity-extension study).
@@ -116,3 +116,37 @@ default smoke config sweeps both; drop it from `axes_override` to fix one.
   (requires the `leiaTestRedistance` / `leiaTestGradScheme` apps to be built).
 - On SLURM, edit the account and the module/`source` lines in
   `profiles/slurm/config.yaml` for your cluster.
+
+## 3D semi-Lagrangian convergence (quadraticWeightedLeastSquares)
+
+Plain snakemake, one config per case (both sweep N=32/64/128, CFL 0.5 & 1.0):
+
+    snakemake --workflow-profile profiles/local --configfile config/3DdeformationSL.yaml
+    snakemake --workflow-profile profiles/local --configfile config/3DshearSL.yaml
+
+The local profile caps the global `tasks` budget to the core count, so concurrent
+np=8 solves are bounded to 3 (no oversubscription) — which is why plain snakemake is
+enough. 32/64 are fast; each 128^3 case is ~1.5–2 h (the 3D departure-foot search
+dominates).
+
+Memory (this box is 15 GB; the `quadraticWeightedLeastSquares` pseudo-inverse cache is single precision):
+  * deformation 128^3 (2.1M cells) fits at np=8 — give a 128^3 case the whole box by
+    running one solve at a time:
+
+        snakemake ... --configfile config/3DdeformationSL.yaml --resources tasks=8
+
+  * shear 128^3 (128×128×256 = 4.2M cells) OOMs at np=8 on 15 GB; use fewer ranks:
+
+        snakemake ... --configfile config/3DshearSL.yaml --config np=4 --resources tasks=4
+
+    or run it on a >~24 GB node.
+
+Resuming a long 128^3 run (snakemake restarts an interrupted case from t=0) — resume the
+solver directly instead:
+
+    cd studies/<study>/<case_dir>
+    sed -i 's/startFrom       startTime/startFrom       latestTime/' system/controlDict
+    mpirun -np <np> leiaSemiLagrangeLevelSetFoam -parallel   # continues from latestTime
+    reconstructPar -withZero                                 # then re-run snakemake to aggregate
+
+Regenerate the deck figures: `python3 workflow/scripts/make_sl_3d_fig.py`

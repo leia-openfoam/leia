@@ -27,7 +27,6 @@ License
 
 #include "slAdvection.H"
 #include "fvcGrad.H"
-#include <cmath>   // std::isfinite
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -45,12 +44,13 @@ Foam::slAdvection::slAdvection(const fvMesh& mesh)
     levelSetDict_(fvSolution_.subDict("levelSet")),
     slDict_(levelSetDict_.subOrEmptyDict("semiLagrangian")),
     recon_(slReconstruction::New(mesh)),
+    corrector_(slCorrector::New(mesh, slDict_)),
     CFLmax_(slDict_.getOrDefault<scalar>("CFLmax", 1.0)),
     analyticVelocity_(slDict_.getOrDefault<Switch>("analyticVelocity", true))
 {
     Info<< "slAdvection: CFLmax = " << CFLmax_
         << ", clipToStencilBounds = " << recon_->clipToStencilBounds()
-        << endl;
+        << ", correction = " << corrector_->type() << endl;
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
@@ -76,91 +76,33 @@ void Foam::slAdvection::advect
     // pointCellsLeastSquares); gradU[c] = d(U_j)/d(x_i) so (u.grad)u = (u & gradU).
     const volTensorField gradU(fvc::grad(Unew, "gradU"));
 
-    // Prepare the reconstruction from psi^n (psi still holds the old field).
-    recon_->update(psi);
-    const slReconstruction& R = recon_();
-    const bool clip = R.clipToStencilBounds();
-
-    scalarField newPsi(mesh_.nCells());
-    label nOutside = 0;
-    label nNonFinite = 0;
-    scalar maxRatio = 0;
-
+    // ------------------------------------------------------------------ //
+    // Departure (foot) points: computed ONCE. The Taylor backward-foot
+    // integrator is UNCHANGED -- it is only hoisted out of the reconstruction
+    // loop below and cached, so the deferred-correction passes reuse the same
+    // characteristic feet. (KEEP the 1/2 on the dt^2 term.)
+    //   x_d = x_c - u^{n+1} dt + 1/2 [ du/dt + (u^{n+1}.grad)u^{n+1} ] dt^2
+    // ------------------------------------------------------------------ //
+    pointField feet(mesh_.nCells());
     forAll(C, c)
     {
         const vector& uNew = Unew[c];
         const vector& uOld = Uold[c];
-
-        // Taylor backward displacement (KEEP the 1/2 on the dt^2 term):
-        //   x_d = x_c - u^{n+1} dt + 1/2 [ du/dt + (u^{n+1}.grad)u^{n+1} ] dt^2
-        // du/dt ~ (u^{n+1} - u^n)/dt is first-order (it multiplies dt^2).
         const vector accel = (uNew - uOld)/dt + (uNew & gradU[c]);
-        const point xd = C[c] - uNew*dt + 0.5*accel*dt*dt;
-
-        // Foot-radius guard = the operational CFL<=1 check: the foot must stay
-        // inside the point-neighbour hull, else evaluate() would extrapolate.
-        const scalar disp = Foam::mag(xd - C[c]);
-        const scalar radius = R.stencilRadius(c);
-        if (radius > SMALL)
-        {
-            maxRatio = Foam::max(maxRatio, disp/radius);
-            if (disp > radius)
-            {
-                ++nOutside;
-            }
-        }
-
-        // evaluate() is the reconstruction (Barth-Jespersen slope-limited only
-        // if limitSlope is on -- off by default because it costs convergence
-        // order). Robustness: non-finite -> stencil mid; optional tight clip;
-        // and an ALWAYS-ON generous value cap (mid +- 10*range) that only fires
-        // on runaway growth, preventing overflow / SIGFPE without touching a
-        // well-behaved (order-preserving) reconstruction.
-        scalar v = R.evaluate(c, xd);
-        scalar lo, hi;
-        R.stencilRange(c, lo, hi);
-        const scalar mid = 0.5*(lo + hi);
-        if (!std::isfinite(v))
-        {
-            v = mid;
-            ++nNonFinite;
-        }
-        else if (clip)
-        {
-            v = Foam::min(Foam::max(v, lo), hi);
-        }
-        else
-        {
-            const scalar cap = 10.0*Foam::max(hi - lo, SMALL);
-            v = Foam::min(Foam::max(v, mid - cap), mid + cap);
-        }
-        newPsi[c] = v;
+        feet[c] = C[c] - uNew*dt + 0.5*accel*dt*dt;
     }
 
-    psi.primitiveFieldRef() = newPsi;
-    psi.correctBoundaryConditions();
+    // ------------------------------------------------------------------ //
+    // The selected correction strategy assembles psi^{n+1} in place from psi^n,
+    // evaluating the reconstruction at the fixed feet and (for deferredCorrection)
+    // rebuilding it from the current iterate. It owns the value cap / non-finite
+    // reset / foot-radius guard. The backtracking above is not its concern.
+    // ------------------------------------------------------------------ //
+    corrector_->correct(psi, feet, recon_());
 
     // Optional post-advection fix-up (band model: re-extend psi outside the band
     // as a clean signed distance so freshly-entered band cells get a good value).
     recon_->postAdvect(psi);
-
-    reduce(nOutside, sumOp<label>());
-    reduce(nNonFinite, sumOp<label>());
-    reduce(maxRatio, maxOp<scalar>());
-    if (nNonFinite > 0)
-    {
-        WarningInFunction
-            << "reconstruction produced a non-finite value in " << nNonFinite
-            << " cells (reconstruction unstable at this CFL / resolution);"
-            << " reset to the stencil mid-range." << endl;
-    }
-    if (nOutside > 0)
-    {
-        WarningInFunction
-            << "semi-Lagrangian foot left the point-neighbour stencil in "
-            << nOutside << " cells (max |x_d - x_c|/stencilRadius = "
-            << maxRatio << "); CFL likely > 1 -- reduce maxCo." << endl;
-    }
 }
 
 // ************************************************************************* //

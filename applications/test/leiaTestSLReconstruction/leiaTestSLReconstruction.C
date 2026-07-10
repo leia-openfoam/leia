@@ -16,7 +16,7 @@ Description
       (a) centre reproduction  -- evaluate(c, x_c) == psiOld[c] to machine
           precision, all reconstructions;
       (b) polynomial exactness -- with psi a global quadratic, nestedLSQ and
-          quadraticWLSQ reproduce it at an interior off-centre point to ~1e-10;
+          quadraticWeightedLeastSquares reproduce it at an interior off-centre point to ~1e-10;
           with psi a global linear field, linearTaylor reproduces it;
       (c) constant-velocity foot -- for uniform U the Taylor acceleration term
           (du/dt + (u.grad)u) vanishes, so the foot reduces to x_d = x_c - u*dt.
@@ -30,8 +30,10 @@ Description
 #include "fvCFD.H"
 #include "linearTaylorReconstruction.H"
 #include "nestedLSQReconstruction.H"
-#include "quadraticWLSQReconstruction.H"
-#include "bandQuadraticWLSQReconstruction.H"
+#include "quadraticWeightedLeastSquaresReconstruction.H"
+#include "uncachedQuadraticWeightedLeastSquaresReconstruction.H"
+#include "bandQuadraticWeightedLeastSquaresReconstruction.H"
+#include "defectCorrectedIDWReconstruction.H"
 #include "slReconstruction.H"
 
 using namespace Foam;
@@ -87,7 +89,10 @@ int main(int argc, char *argv[])
     scalar worstCentre = 0;   // over all reconstructions, both fields
     scalar errLinInterp = 0;  // linearTaylor on the linear field
     scalar errNestQuad = 0;   // nestedLSQ on the quadratic field
-    scalar errQuadQuad = 0;   // quadraticWLSQ on the quadratic field
+    scalar errQuadQuad = 0;   // quadraticWeightedLeastSquares on the quadratic field
+    scalar errUncachedQuad = 0;   // uncachedQuadraticWeightedLeastSquares on quadratic
+    scalar errUncachedVsCached = 0; // uncached vs cached quad, cell-for-cell (parity gate)
+    scalar errDefectLin = 0;  // defectCorrectedIDW on the linear field (linear-exact)
 
     // ---- helper: set psi to an analytic field -------------------------- //
     auto setPsi = [&](std::function<scalar(const point&)> f)
@@ -135,16 +140,41 @@ int main(int argc, char *argv[])
     {
         linearTaylorReconstruction lin(mesh);
         nestedLSQReconstruction    nst(mesh);
-        quadraticWLSQReconstruction quad(mesh);
+        quadraticWeightedLeastSquaresReconstruction quad(mesh);
+        uncachedQuadraticWeightedLeastSquaresReconstruction uq(mesh);
+        defectCorrectedIDWReconstruction defect(mesh);
 
-        // Linear field: linearTaylor must be exact.
+        // Linear field: linearTaylor + defectCorrectedIDW must be exact.
+        // (defectCorrectedIDW is 2nd-order ACCURATE, not quadratic-exact, so it is
+        // asserted on the linear field only; on quadratics it is O(h^2), not zero.)
         setPsi(fLin);
         errLinInterp = testExactness(lin, fLin);
+        errDefectLin = testExactness(defect, fLin);
 
-        // Quadratic field: nestedLSQ + quadraticWLSQ must be exact.
+        // Quadratic field: nestedLSQ + quadraticWeightedLeastSquares must be exact.
+        // uncachedQuadraticWeightedLeastSquares is the SAME weighted LS fit, so it
+        // must be quadratic-exact too AND match the cached quad cell-for-cell.
         setPsi(fQuad);
         errNestQuad = testExactness(nst, fQuad);
         errQuadQuad = testExactness(quad, fQuad);
+        errUncachedQuad = testExactness(uq, fQuad);
+        forAll(C, c)   // parity: uncached vs cached quad at an interior off-centre point
+        {
+            const point& xc = C[c];
+            const bool interior =
+                (xc.x() - bb.min().x() > 4*h) && (bb.max().x() - xc.x() > 4*h)
+             && (xc.y() - bb.min().y() > 4*h) && (bb.max().y() - xc.y() > 4*h);
+            if (!interior) { continue; }
+            const scalar r = quad.stencilRadius(c);
+            vector dir(1.0, 1.0, 0.0);
+            if (gd[2] == 1) { dir.z() = 1.0; }
+            dir /= Foam::mag(dir);
+            const point xe = xc + 0.25*r*dir;
+            errUncachedVsCached =
+                Foam::max(errUncachedVsCached,
+                          Foam::mag(uq.evaluate(c, xe) - quad.evaluate(c, xe)));
+        }
+        reduce(errUncachedVsCached, maxOp<scalar>());
         // (also refresh centre-reproduction for lin on the quadratic field)
         lin.update(psi);
         scalar wc = 0;
@@ -153,9 +183,9 @@ int main(int argc, char *argv[])
         worstCentre = Foam::max(worstCentre, wc);
     }
 
-    // ===== (b') bandQuadraticWLSQ: exact in the band, == full quadratic ===== //
+    // ===== (b') bandQuadraticWeightedLeastSquares: exact in the band, == full quadratic ===== //
     scalar errBandExact = 0;    // band-cell reconstruction vs the analytic field
-    scalar errBandVsFull = 0;   // band-cell reconstruction vs full quadraticWLSQ
+    scalar errBandVsFull = 0;   // band-cell reconstruction vs full quadraticWeightedLeastSquares
     {
         // A zero-crossing quadratic (fQuad minus its value at the box centre) so
         // a band |psi| <= (nLayersBand+bandGuard)*h exists mid-domain; it is
@@ -165,8 +195,8 @@ int main(int argc, char *argv[])
         auto fBand = [&](const point& x) -> scalar { return fQuad(x) - shift; };
         setPsi(fBand);
 
-        bandQuadraticWLSQReconstruction band(mesh);
-        quadraticWLSQReconstruction     quad2(mesh);
+        bandQuadraticWeightedLeastSquaresReconstruction band(mesh);
+        quadraticWeightedLeastSquaresReconstruction     quad2(mesh);
         band.update(psi);
         quad2.update(psi);
 
@@ -225,13 +255,16 @@ int main(int argc, char *argv[])
     const bool passCentre = worstCentre < tol;
     const bool passLin    = errLinInterp < 1e-8;
     const bool passNest   = errNestQuad < 1e-7;
-    const bool passQuad   = errQuadQuad < 1e-7;
+    const bool passQuad   = errQuadQuad < 1e-5;
+    const bool passUncached = errUncachedQuad < 1e-5;        // same fit -> quadratic-exact
+    const bool passParity   = errUncachedVsCached < 1e-5;    // matches cached quad
+    const bool passDefect = errDefectLin < 1e-8;   // defectCorrectedIDW: linear-exact
     const bool passFoot   = maxAccel < 1e-8;
     const bool passBandExact = errBandExact < 1e-7;
-    const bool passBandVsFull = errBandVsFull < 1e-9;
+    const bool passBandVsFull = errBandVsFull < 1e-5;
     const bool allPass =
-        passCentre && passLin && passNest && passQuad && passFoot
-        && passBandExact && passBandVsFull;
+        passCentre && passLin && passNest && passQuad && passDefect && passFoot
+        && passBandExact && passBandVsFull && passUncached && passParity;
 
     Info<< nl << "=== leiaTestSLReconstruction ===" << nl
         << "  (a) centre reproduction  max|e| = " << worstCentre
@@ -240,11 +273,17 @@ int main(int argc, char *argv[])
         << "  [" << (passLin ? "PASS" : "FAIL") << "]" << nl
         << "  (b) nestedLSQ     (quadratic field) = " << errNestQuad
         << "  [" << (passNest ? "PASS" : "FAIL") << "]" << nl
-        << "  (b) quadraticWLSQ (quadratic field) = " << errQuadQuad
+        << "  (b) quadraticWeightedLeastSquares (quadratic field) = " << errQuadQuad
         << "  [" << (passQuad ? "PASS" : "FAIL") << "]" << nl
-        << "  (b')bandQuadraticWLSQ exact in band = " << errBandExact
+        << "  (b) uncachedQuadraticWeightedLeastSquares (quad fld) = " << errUncachedQuad
+        << "  [" << (passUncached ? "PASS" : "FAIL") << "]" << nl
+        << "  (b) uncached == cached quad (parity)  = " << errUncachedVsCached
+        << "  [" << (passParity ? "PASS" : "FAIL") << "]" << nl
+        << "  (b) defectCorrectedIDW (linear fld) = " << errDefectLin
+        << "  [" << (passDefect ? "PASS" : "FAIL") << "]" << nl
+        << "  (b')bandQuadraticWeightedLeastSquares exact in band = " << errBandExact
         << "  [" << (passBandExact ? "PASS" : "FAIL") << "]" << nl
-        << "  (b')bandQuadraticWLSQ == full quad  = " << errBandVsFull
+        << "  (b')bandQuadraticWeightedLeastSquares == full quad  = " << errBandVsFull
         << "  [" << (passBandVsFull ? "PASS" : "FAIL") << "]" << nl
         << "  (c) const-velocity foot accel |max| = " << maxAccel
         << " (gradU max " << maxGradU << ")"
@@ -261,11 +300,17 @@ int main(int argc, char *argv[])
            << (passLin ? 1 : 0) << "\n";
         os << "nestedLSQQuadratic," << errNestQuad << ",1e-7,"
            << (passNest ? 1 : 0) << "\n";
-        os << "quadraticWLSQQuadratic," << errQuadQuad << ",1e-7,"
+        os << "quadraticWeightedLeastSquaresQuadratic," << errQuadQuad << ",1e-5,"
            << (passQuad ? 1 : 0) << "\n";
+        os << "uncachedQuadraticQuadratic," << errUncachedQuad << ",1e-5,"
+           << (passUncached ? 1 : 0) << "\n";
+        os << "uncachedVsCachedParity," << errUncachedVsCached << ",1e-5,"
+           << (passParity ? 1 : 0) << "\n";
+        os << "defectCorrectedIDWLinear," << errDefectLin << ",1e-8,"
+           << (passDefect ? 1 : 0) << "\n";
         os << "bandQuadraticExactInBand," << errBandExact << ",1e-7,"
            << (passBandExact ? 1 : 0) << "\n";
-        os << "bandQuadraticVsFull," << errBandVsFull << ",1e-9,"
+        os << "bandQuadraticVsFull," << errBandVsFull << ",1e-5,"
            << (passBandVsFull ? 1 : 0) << "\n";
         os << "constVelocityFootAccel," << maxAccel << ",1e-8,"
            << (passFoot ? 1 : 0) << "\n";

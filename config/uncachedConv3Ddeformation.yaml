@@ -1,0 +1,28 @@
+# uncachedQuadraticWeightedLeastSquares 3D deformation convergence (N=32/64/128,
+# CFL 0.5). Its own study dir so it does not disturb the quad studies. Numerically
+# identical to quad (proven cell-for-cell) -- this collects uncachedQuad's OWN
+# gradient/volume/shape errors + rates for the report. N=256 needs a >15 GB node
+# (see config/uncachedConv3Ddeformation256.yaml).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/uncachedConv3Ddeformation.yaml --resources tasks=8
+study_name: uncachedConv3Ddeformation
+case: 3Ddeformation
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+  DIV: [linear]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

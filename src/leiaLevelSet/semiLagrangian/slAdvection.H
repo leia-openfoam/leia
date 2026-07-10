@@ -39,12 +39,15 @@ Description
                             + (u_c^{n+1} . grad_c) u^{n+1} ] dt^2
 
       * the OLD field evaluated at x_d by a runtime-selectable slReconstruction
-        (linearTaylor | nestedLSQ | quadraticWLSQ), always the ARRIVAL cell's own
+        (linearTaylor | nestedLSQ | quadraticWeightedLeastSquares), always the ARRIVAL cell's own
         polynomial => interpolation, not extrapolation, under CFL <= 1.
 
-    No flux, no divergence, no linear solve: a per-cell assignment loop. Reads
-    `levelSet { semiLagrangian { reconstruction; CFLmax; clipToStencilBounds;
-    analyticVelocity; } }` in fvSolution. grad u^{n+1} uses the LSQ scheme keyed
+    No flux, no divergence, no linear solve. The characteristic feet are computed
+    ONCE (the Taylor backtracking) and the OLD field is assembled at those feet by
+    a runtime-selectable slCorrector (`correction`: direct | deferredCorrection),
+    which composes with any runtime-selectable slReconstruction. Reads
+    `levelSet { semiLagrangian { reconstruction; correction; CFLmax; } }`
+    in fvSolution. grad u^{n+1} uses the LSQ scheme keyed
     `gradU` in fvSchemes (never Green-Gauss). The u^{n+1}, u^n fields are passed
     in, so the integrator works unchanged for a Navier-Stokes velocity; for the
     prescribed-velocity verification those fields are the analytic velocity
@@ -65,6 +68,7 @@ SourceFiles
 #include "Switch.H"
 #include "autoPtr.H"
 #include "slReconstruction.H"
+#include "slCorrector.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -84,6 +88,10 @@ class slAdvection
 
     //- The reconstruction of psi^n at the foot.
     autoPtr<slReconstruction> recon_;
+
+    //- The strategy that assembles psi^{n+1} from the reconstruction at the feet
+    //  (direct single pass | deferred correction). Selected by `correction`.
+    autoPtr<slCorrector> corrector_;
 
     //- Convective CFL bound used for the foot-radius warning (the solver's
     //  adjustTimeStep/maxCo keeps the actual step under this).

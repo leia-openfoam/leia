@@ -88,11 +88,15 @@ def _flatten_sections(html):
     return flat
 
 
-def export(slides_dir, src_name=DEFAULT_SRC, out_name=DEFAULT_OUT, linear=False):
-    """Build the standalone deck `index.html` (vertical section stacks) from the
-    template. If ``linear=True``, ALSO write the flat-flow `index-linear.html`
-    variant (not tracked in git -- generated on demand). Returns the primary path
-    or None."""
+def export(slides_dir, src_name=DEFAULT_SRC, out_name=None, linear=False):
+    """Build a standalone deck from ``src_name`` (a ``*.template.html``). The output
+    name is derived from the template (``foo.template.html`` -> ``foo.html``) unless
+    given explicitly, so one function builds any deck (index, sl, ...). If
+    ``linear=True``, ALSO write the flat-flow ``*-linear.html`` variant (not tracked
+    in git -- generated on demand). Returns the primary path or None."""
+    if out_name is None:
+        out_name = (src_name.replace(".template.html", ".html")
+                    if ".template.html" in src_name else DEFAULT_OUT)
     src = os.path.join(slides_dir, src_name)
     if not os.path.isfile(src):
         print(f"[html] no {src}; skip standalone HTML build")

@@ -1,0 +1,25 @@
+# 3D (LeVeque) deformation at N=128 (128^3 = 2.1M cells) -- completes the 32/64/128
+# convergence order for quadraticWLSQ. Memory-heavy: run ONE case at a time.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/idwCompare3Ddeformation128.yaml --resources tasks=8
+study_name: idwCompare3Ddeformation128
+case: 3Ddeformation
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [128]
+  CFL:      [0.5, 1.0]
+  SL_RECONSTRUCTION: [quadraticWLSQ]
+  PHASE_INDICATOR: [detrixheAslam]
+  DIV: [linear]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

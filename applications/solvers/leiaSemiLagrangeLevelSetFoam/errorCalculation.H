@@ -1,5 +1,12 @@
-// Initialize fields for error analysis
-surfaceScalarField phi0 ("phi0", phi);
+// Initialize fields for error analysis.
+// phi0 (a full surfaceScalarField) is read ONLY by oscillateVelocity() on the
+// reversed/oscillating path; the steady path never touches it, so only allocate
+// it when oscillating (saves ~one surfaceScalarField on steady cases).
+autoPtr<surfaceScalarField> phi0Ptr;
+if (velocityModel->isOscillating())
+{
+    phi0Ptr.reset(new surfaceScalarField("phi0", phi));
+}
 volVectorField U0("U0", U);
 
 // Previous-step velocity u^n reused by the semi-Lagrangian trajectory

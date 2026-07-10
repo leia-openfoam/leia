@@ -12,7 +12,7 @@
 # reconstruction:
 #   linearTaylor  -- O(h) baseline (= first-order upwind; validates the pipeline)
 #   nestedLSQ     -- O(h^2) via nested pointCellsLeastSquares gradients
-#   quadraticWLSQ -- O(h^2) production (per-cell weighted LSQ over the CPC stencil)
+#   quadraticWeightedLeastSquares -- O(h^2) production (per-cell weighted LSQ over the CPC stencil)
 # CFL (maxCo) sweeps 0.5 and 1.0 to confirm the order at both stability bounds.
 # N=256 lives in the opt-in bulkVortexSLHighRes.yaml (8x cost per level in 2D).
 
@@ -28,7 +28,7 @@ axes_override:
   END_TIME: [0.5, 2, 4, 8]                              # T = period = end time
   N_CELLS:  [32, 64, 128]                               # fast; 256 -> HighRes
   CFL:      [0.5, 1.0]                                  # stability-bound sweep
-  SL_RECONSTRUCTION: [linearTaylor, nestedLSQ, quadraticWLSQ, bandQuadraticWLSQ]
+  SL_RECONSTRUCTION: [linearTaylor, nestedLSQ, quadraticWeightedLeastSquares, bandQuadraticWeightedLeastSquares, defectCorrectedIDW]
   PHASE_INDICATOR: [detrixheAslam]
 collapse_other_axes: true
 

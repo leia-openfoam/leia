@@ -1,0 +1,47 @@
+# Semi-Lagrangian level set advection on the reversed 3D (LeVeque) deformation flow.
+# >>> 3D convergence of the production quadraticWeightedLeastSquares reconstruction. <<<
+#
+# The 3D companion to config/bulkVortexSL.yaml: same solver
+# (leiaSemiLagrangeLevelSetFoam), same error norms, its own study dir. Domain is
+# the unit cube [0,1]^3 so N_CELLS -> N^3 cubic cells (h = 1/N). deformation3D
+# with oscillation on reverses at T = END_TIME (classic LeVeque single-vortex
+# stretch/fold that returns to the sphere), so exact(T) = initial -> the reversed
+# error is a true accuracy measure. Interface: sphere r = 0.15 @ (0.35,0.35,0.35).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/3DdeformationSL.yaml
+#
+# Only the best quadratic reconstruction (quadraticWeightedLeastSquares, full) is swept in 3D;
+# CFL 0.5 and 1.0 confirm 2nd-order convergence is independent of the step size
+# up to the CFL = 1 stability bound. N=128 (2.1M cells) is the expensive tier.
+
+study_name: 3DdeformationSL
+case: 3Ddeformation
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [3.0]                        # T = period = end time (reversible)
+  N_CELLS:  [32, 64, 128]                # h = 1/N cubic cells (N^3). 128 (2.1M cells)
+                                         # is memory-bound at np=8 on 15 GB even with the single-precision quadraticWeightedLeastSquares
+                                         # pseudo-inverse cache on this 15 GB box.
+  CFL:      [0.5, 1.0]                   # stability-bound sweep
+  # quadraticWeightedLeastSquares = memory-bound production fit;
+  # uncachedQuadraticWeightedLeastSquares = the SAME fit, CPU-bound (no per-cell
+  # pseudo-inverse cache -> per-step Cholesky), identical accuracy/stability;
+  # defectCorrectedIDW = unstable research model.
+  SL_RECONSTRUCTION: [quadraticWeightedLeastSquares, uncachedQuadraticWeightedLeastSquares, defectCorrectedIDW]
+  PHASE_INDICATOR: [detrixheAslam]
+  # 3D fvSchemes references @!DIV!@ (the Eulerian psi flux scheme). The SL solver
+  # never advects psi by flux, so DIV is inert -- pin it to a single value or the
+  # base config/config.yaml axes_override (DIV: [linear, upwind]) merges in and
+  # doubles every run with bit-identical results.
+  DIV: [linear]
+collapse_other_axes: true
+
+export_slides: false  # 3D: no field montages; figures assembled separately
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

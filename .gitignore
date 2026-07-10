@@ -137,11 +137,12 @@ studies/
 # rule, yet bundled with doc/slides so the deck renders without a study run.
 !doc/slides/figures/
 !doc/slides/figures/*.png
-# ...and the deck: index.template.html is the editable source (external figure/CDN
-# refs, clean diffs); `doc/slides/build.sh` inlines it into the self-contained
-# doc/slides/index.html (vertical stacks) -- the ONE tracked build. The flat
-# index-linear.html is a build-on-demand convenience (`build.sh --linear`) and is
-# NOT tracked. The fallback PDF needs a negation to override the global *.pdf ignore.
-doc/slides/index-linear.html
+# ...and the decks: index.template.html (velocity extension) and sl.template.html
+# (semi-Lagrangian) are the editable sources (external figure/CDN refs, clean
+# diffs); `doc/slides/build.sh` inlines each into a self-contained tracked build --
+# doc/slides/index.html and doc/slides/sl.html (vertical stacks). The flat
+# *-linear.html variants are a build-on-demand convenience (`build.sh --linear`)
+# and are NOT tracked. The fallback PDF needs a negation to override *.pdf ignore.
+doc/slides/*-linear.html
 !doc/slides/*.pdf
 

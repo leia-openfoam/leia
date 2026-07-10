@@ -1,0 +1,26 @@
+# Focused 3D (LeVeque) deformation comparison: quadraticWeightedLeastSquares vs defectCorrectedIDW
+# at N = 32/64 (128^3 via config/3DdeformationSL.yaml on a longer-lived node). Only
+# the departure-point reconstruction changes.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/idwCompare3Ddeformation.yaml --resources tasks=8
+study_name: idwCompare3Ddeformation
+case: 3Ddeformation
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [32, 64]
+  CFL:      [0.5, 1.0]
+  SL_RECONSTRUCTION: [quadraticWeightedLeastSquares, defectCorrectedIDW]
+  PHASE_INDICATOR: [detrixheAslam]
+  DIV: [linear]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

@@ -53,8 +53,13 @@ velocityExtension/meshWaveExt.C
 semiLagrangian/slReconstruction.C
 semiLagrangian/linearTaylorReconstruction.C
 semiLagrangian/nestedLSQReconstruction.C
-semiLagrangian/quadraticWLSQReconstruction.C
-semiLagrangian/bandQuadraticWLSQReconstruction.C
+semiLagrangian/quadraticWeightedLeastSquaresReconstruction.C
+semiLagrangian/uncachedQuadraticWeightedLeastSquaresReconstruction.C
+semiLagrangian/bandQuadraticWeightedLeastSquaresReconstruction.C
+semiLagrangian/defectCorrectedIDWReconstruction.C
+semiLagrangian/slCorrector.C
+semiLagrangian/directCorrector.C
+semiLagrangian/deferredCorrector.C
 semiLagrangian/slAdvection.C
 
 LIB = $(FOAM_USER_LIBBIN)/libleiaLevelSet

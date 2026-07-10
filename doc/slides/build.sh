@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 #
-# Build the self-contained reveal.js deck from its editable source.
+# Build the self-contained reveal.js decks from their editable sources.
 #
-#   doc/slides/index.template.html   (edit THIS: external figure + CDN refs)
+#   doc/slides/index.template.html   (edit THIS: the VELOCITY-EXTENSION deck)
+#   doc/slides/sl.template.html      (edit THIS: the SEMI-LAGRANGIAN deck)
 #        │  build.sh  →  workflow/scripts/export_html.py
 #        ▼
-#   doc/slides/index.html            (vertical section stacks; the tracked deck)
-#   doc/slides/index-linear.html     (flat, front-to-back reading; ONLY with --linear,
-#                                     not tracked in git -- generated on demand)
+#   doc/slides/index.html            (velocity-extension deck; tracked)
+#   doc/slides/sl.html               (semi-Lagrangian deck; tracked)
+#   doc/slides/{index,sl}-linear.html (flat reading order; ONLY with --linear, not tracked)
 #
 # Each output is ONE self-contained file: local figures/*.png are inlined as base64
 # and the CDN assets (reveal.js, theme, MathJax) are fetched and inlined so the deck
@@ -17,23 +18,25 @@
 # Regenerating the FIGURES is a separate, heavier step -- see README.md.
 #
 # Run from anywhere:
-#   bash doc/slides/build.sh            # index.html
-#   bash doc/slides/build.sh --linear   # index.html + index-linear.html
+#   bash doc/slides/build.sh            # index.html + sl.html
+#   bash doc/slides/build.sh --linear   # + the flat *-linear.html variants
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # .../doc/slides
 repo="$(cd "$here/../.." && pwd)"                       # repository root
 
 command -v python3 >/dev/null || { echo "error: python3 not found on PATH" >&2; exit 1; }
 
-python3 "$repo/workflow/scripts/export_html.py" "$here" "$@"
-
-# sanity: the reveal structure must be balanced (unbalanced <section> = broken deck)
-python3 - "$here/index.html" <<'PY'
+for tpl in index.template.html sl.template.html; do
+    [ -f "$here/$tpl" ] || { echo "[skip] no $tpl"; continue; }
+    python3 "$repo/workflow/scripts/export_html.py" "$here" "$tpl" "$@"
+    out="$here/${tpl/.template.html/.html}"
+    # sanity: the reveal structure must be balanced (unbalanced <section> = broken deck)
+    python3 - "$out" <<'PY'
 import sys
 t = open(sys.argv[1], encoding="utf-8").read()
 o, c = t.count("<section"), t.count("</section>")
 assert o == c, f"unbalanced sections in {sys.argv[1]}: {o} <section> vs {c} </section>"
-n = t.count('mjx-container')  # 0 in source; MathJax renders at load, not here
 print(f"[ok] {sys.argv[1]} built: {o} balanced sections, {len(t)//1024} KiB")
 PY
-echo "[ok] open doc/slides/index.html in a browser (offline-capable)."
+done
+echo "[ok] open doc/slides/index.html (velocity extension) or sl.html (semi-Lagrangian)."
