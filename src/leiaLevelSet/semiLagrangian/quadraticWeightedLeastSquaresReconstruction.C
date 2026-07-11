@@ -141,11 +141,10 @@ void Foam::quadraticWeightedLeastSquaresReconstruction::build()
 
     label nFallback = 0;
     scalarList brow(ncoeffFull_);   // reused basis buffer (one row of A)
-    forAll(stencilC_, c)
+    for (label c = 0; c < nCells; ++c)
     {
-        const List<vector>& C = stencilC_[c];     // [0] = arrival cell c
-        const label nNbr = C.size() - 1;          // skip self
-        const point xc = C[0];
+        const label nNbr = stencilSize(c) - 1;    // skip self
+        const point xc = stencilC(c, 0);          // arrival cell centre
         nNbr_[c] = nNbr;
         maxNbr_ = Foam::max(maxNbr_, nNbr);
 
@@ -169,7 +168,7 @@ void Foam::quadraticWeightedLeastSquaresReconstruction::build()
         scalarList wloc(nNbr);
         for (label i = 0; i < nNbr; ++i)
         {
-            const vector d = C[i + 1] - xc;
+            const vector d = stencilC(c, i + 1) - xc;
             const scalar wi = 1.0/Foam::max(Foam::mag(d), SMALL);
             wloc[i] = wi;
             basis(d, ncoeff, brow.data());
@@ -202,7 +201,8 @@ void Foam::quadraticWeightedLeastSquaresReconstruction::build()
             << endl;
     }
     built_ = true;
-    releaseStencilCentres();  // build-only stencil centres freed (~GBs at 128^3 in 3D)
+    // (stencil centres are no longer stored per cell -- stencilC() reads them from
+    // mesh_.C()/centreTail_ on demand, so there is nothing to free after build.)
 }
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //

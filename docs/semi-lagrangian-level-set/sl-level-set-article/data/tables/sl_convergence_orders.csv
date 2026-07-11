@@ -1,0 +1,7 @@
+case,mesh,reconstruction,cfl,nLevels,hMin,hMax,gradientOrder,shapeOrder,volumeOrder
+2Dvortex,hex,uncachedQuadraticWeightedLeastSquares,0.5,7,0.00390625,0.03125,0.527,2.965,2.978
+2Dvortex,hex,uncachedQuadraticWeightedLeastSquares,1.0,7,0.00390625,0.03125,0.532,2.593,2.940
+3Dshear,hex,uncachedQuadraticWeightedLeastSquares,0.5,4,0.0078125,0.03125,-0.055,2.497,3.246
+3Ddeformation,hex,uncachedQuadraticWeightedLeastSquares,0.5,5,0.00625,0.03125,-0.396,1.360,1.859
+3Dshear,poly,uncachedQuadraticWeightedLeastSquares,0.5,2,0.02,0.03125,-0.892,1.177,1.289
+3Ddeformation,poly,uncachedQuadraticWeightedLeastSquares,0.5,4,0.0078125,0.03125,-0.062,1.464,2.513

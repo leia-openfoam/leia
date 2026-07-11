@@ -156,9 +156,9 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::build()
     maxNbr_ = 0;
 
     label nFallback = 0;
-    forAll(stencilC_, c)
+    for (label c = 0; c < nCells; ++c)
     {
-        const label nNbr = stencilC_[c].size() - 1;   // skip self
+        const label nNbr = stencilSize(c) - 1;   // skip self
         nNbr_[c] = nNbr;
         maxNbr_ = Foam::max(maxNbr_, nNbr);
 
@@ -205,10 +205,9 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::update
         const label nc = ncoeff_[c];
         if (nc == 0) { continue; }    // constant reconstruction (= psi_c)
 
-        const List<vector>& C = stencilC_[c];    // [0] = arrival cell c
         const List<scalar>& s = stencilPsi_[c];
         const label nNbr = nNbr_[c];
-        const point xc = C[0];
+        const point xc = stencilC(c, 0);         // arrival cell centre (== mesh_.C()[c])
         const scalar psiC = s[0];
 
         // Assemble the SYMMETRIC weighted normal equations M = A^T W^2 A,
@@ -221,7 +220,7 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::update
         }
         for (label i = 0; i < nNbr; ++i)
         {
-            const vector d = C[i + 1] - xc;
+            const vector d = stencilC(c, i + 1) - xc;
             const scalar w = 1.0/Foam::max(Foam::mag(d), SMALL);
             const scalar w2 = w*w;
             basis(d, nc, brow);

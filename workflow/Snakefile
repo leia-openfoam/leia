@@ -21,6 +21,7 @@ import aggregate
 import plots
 import export_html
 import export_pdf
+import paths   # thematic docs layout: theme -> data/figures, data/tables, presentation dir
 
 configfile: os.path.join(REPO, "config", "config.yaml")
 
@@ -34,6 +35,9 @@ STUDY       = config["study_name"]
 # solve rule's output. Default: the advection solver. Alternative apps (e.g. the
 # static extension verification leiaTestVelocityExtension) plug in per study.
 SOLVER      = config.get("solver", "leiaLevelSetFoam")
+# Which research line this study belongs to -> where its results are agglomerated.
+# Explicit `theme:` in the config wins; otherwise inferred from the solver.
+THEME       = paths.theme_of(SOLVER, config.get("theme"))
 STUDIES_DIR = os.path.abspath(config.get("studies_dir", os.path.join(REPO, "studies")))
 MPI         = config.get("mpi_launcher", "mpirun -np {np}")
 PREAMBLE    = (config.get("env_preamble") or "").strip()
@@ -67,15 +71,14 @@ STUDY_DIR = os.path.join(STUDIES_DIR, STUDY)
 CASE_DIR  = os.path.join(STUDY_DIR, CASE + "_{idx}")
 DATABASE  = os.path.join(STUDY_DIR, f"{STUDY}_database.csv")
 
-# Figures: regenerated every run (foamlib+matplotlib) into <study>/figures and
-# exported into the reveal slide deck so doc/slides is always current. The deck
-# is also rendered to a shareable PDF (leia-code-design.pdf) next to index.html.
-SLIDES_DIR  = os.path.join(REPO, "doc", "slides")
-SLIDES_FIGS = os.path.join(SLIDES_DIR, "figures")
-# The deck is ONE self-contained file: index.template.html (editable, external
-# figure/CDN refs) is inlined into index.html (base64 figures + CDN) -- the single
-# shareable, offline-openable deck.
-SLIDES_PDF  = "leia-velocity-extension.pdf"    # fallback only (if HTML build fails)
+# Results agglomeration (thematic single source): a study's figures + curated CSV
+# tables land in ITS theme's data/ folder (docs/<theme>/<slug>-article/data/), which
+# BOTH the reveal deck and the Elsevier article of that theme consume. The deck is
+# rebuilt into ONE self-contained *.html next to its *.template.html.
+PRES_DIR    = paths.presentation_dir(THEME)   # docs/<theme>/<slug>-presentation
+FIGS_DIR    = paths.figs_dir(THEME)           # docs/<theme>/<slug>-article/data/figures
+TABLES_DIR  = paths.tables_dir(THEME)         # docs/<theme>/<slug>-article/data/tables
+DECK_TPL    = paths.deck_template(THEME)      # sl.template.html | index.template.html
 REPORT      = os.path.join(STUDY_DIR, "figures", ".report.done")
 
 wildcard_constraints:
@@ -211,27 +214,39 @@ rule aggregate:
         aggregate.build_database(case_dirs, output[0])
 
 
-# --- figures + shareable PDF --------------------------------------------------
-#   foamlib reads the 2D cases; matplotlib writes to <study>/figures and the
-#   PNGs are copied into doc/slides/figures so the reveal deck stays current.
-#   The deck is then rendered (Playwright headless Chromium) to a shareable
-#   doc/slides/leia-code-design.pdf. PDF export is best-effort: if Playwright is
-#   missing the figures still update and the workflow succeeds.
+# --- agglomerate results into the theme's data/ + rebuild the theme deck --------
+#   A study's results are collected into ITS theme's single data source:
+#     - curated error table   -> data/tables/<study>_errors.csv
+#     - figures (montages,     -> data/figures/  (foamlib reads the cases; matplotlib
+#       convergence, iso-surf)     writes the PNGs the deck + article both consume)
+#   then the theme's self-contained deck is rebuilt (figures inlined). export_slides
+#   is honoured for secondary comparison studies (figures stay in the study dir only).
 rule report:
     input:
         DATABASE,
     output:
         touch(REPORT),
     run:
-        # export_slides=false (e.g. secondary comparison studies) keeps figures in
-        # the study dir only, so they don't clobber the main deck's doc/slides.
+        import glob as _glob, shutil as _shutil, subprocess as _sp
+        _scripts = os.path.join(workflow.basedir, "scripts")
+        # 1. curated error table -> theme data/tables
+        for _csv in _glob.glob(os.path.join(STUDY_DIR, f"{STUDY}_errors.csv")):
+            _shutil.copy(_csv, TABLES_DIR)
         if config.get("export_slides", True):
-            plots.main(STUDY_DIR, SLIDES_FIGS)
-            # Build the single self-contained deck: index.template.html -> index.html
-            # (offline, no browser needed). Fall back to a PDF render only if the
-            # HTML build is unavailable (no source template).
-            if not export_html.export(SLIDES_DIR):
-                export_pdf.export(SLIDES_DIR, SLIDES_PDF)
+            # 2. theme-specific figures -> theme data/figures
+            if THEME == "semi-lagrangian-level-set":
+                # cross-study convergence triptychs + curated tables (idempotent,
+                # skip-missing), + per-study psi=0 iso-surface montage (3D cases).
+                for _s in ("make_sl_3d_fig.py", "make_convergence_table.py"):
+                    _sp.run(["python3", os.path.join(_scripts, _s)], check=False)
+                if CASE in ("3Dshear", "3Ddeformation"):
+                    _sp.run(["python3", os.path.join(_scripts, "make_isosurface_fig.py"),
+                             STUDY_DIR], check=False)
+            else:
+                # velocity-extension: field montages + convergence figures.
+                plots.main(STUDY_DIR, FIGS_DIR)
+            # 3. rebuild THIS theme's self-contained deck (figures inlined from data/)
+            export_html.export(PRES_DIR, DECK_TPL)
         else:
             plots.main(STUDY_DIR, "")
 

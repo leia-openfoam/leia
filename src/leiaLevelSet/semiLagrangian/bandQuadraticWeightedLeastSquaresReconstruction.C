@@ -226,7 +226,11 @@ void Foam::bandQuadraticWeightedLeastSquaresReconstruction::update(const volScal
         band_[c] = (Foam::mag(psiOld[c]) <= bw*cellSize_[c]);
         if (band_[c])
         {
-            ncoeff_[c] = fitCell(stencilC_[c], stencilPsi_[c], coeffs_[c]);
+            // Only band cells are fitted (few); gather their centres locally from
+            // mesh_.C()/tail via the accessor -- no persistent stencilC_ store.
+            List<vector> X(stencilSize(c));
+            forAll(X, i) { X[i] = stencilC(c, i); }
+            ncoeff_[c] = fitCell(X, stencilPsi_[c], coeffs_[c]);
             ++nBand;
         }
         else
@@ -299,18 +303,18 @@ void Foam::bandQuadraticWeightedLeastSquaresReconstruction::postAdvect(volScalar
                 continue;
             }
             const List<scalar>& s = sPsi[c];
-            const List<vector>& X = stencilC_[c];
-            const label n = Foam::min(s.size(), X.size());
+            const label n = Foam::min(s.size(), stencilSize(c));
             if (n < 2)
             {
                 continue;
             }
             const scalar sgn = (pIn[c] >= 0) ? 1.0 : -1.0;
             scalar best = Foam::mag(pIn[c]);
+            const point x0 = stencilC(c, 0);
             for (label i = 1; i < n; ++i)
             {
                 const scalar cand =
-                    Foam::mag(s[i]) + Foam::mag(X[i] - X[0]);
+                    Foam::mag(s[i]) + Foam::mag(stencilC(c, i) - x0);
                 best = Foam::min(best, cand);
             }
             pOut[c] = sgn*best;

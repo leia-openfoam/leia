@@ -28,6 +28,7 @@ License
 #include "slReconstruction.H"
 #include "addToRunTimeSelectionTable.H"
 #include "centredCPCCellToCellStencilObject.H"
+#include "centredCFCCellToCellStencilObject.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -58,13 +59,32 @@ Foam::slReconstruction::slReconstruction(const fvMesh& mesh)
     // second order).
     limitSlope_(slDict_.getOrDefault<Switch>("limitSlope", false)),
     phi_(mesh.nCells(), 1.0),
-    stencil_(centredCPCCellToCellStencilObject::New(mesh)),
-    stencilC_(),
+    // Departure-foot reconstruction stencil. Default cell-POINT-cell (CPC): a hex
+    // cell has only 6 face-neighbours < the 9 needed for a 3D quadratic value fit,
+    // so structured meshes require the wider point-neighbour stencil. General
+    // polyhedra (~12-16 faces) already over-determine the quadratic with the
+    // compact cell-FACE-cell (CFC) stencil, which is ~3-4x smaller -> much cheaper
+    // per-cell fit and better conditioned (no sprawl into the coplanar far field).
+    // Selectable per run: levelSet { semiLagrangian { stencil point | face; } }.
+    stencil_
+    (
+        slDict_.getOrDefault<word>("stencil", "point") == "face"
+      ? static_cast<const extendedCentredCellToCellStencil&>
+            (centredCFCCellToCellStencilObject::New(mesh))
+      : static_cast<const extendedCentredCellToCellStencil&>
+            (centredCPCCellToCellStencilObject::New(mesh))
+    ),
+    nLocal_(mesh.nCells()),
+    centreTail_(),
     haveCentres_(false),
     radius_(),
     stencilPsi_(),
     psiOldPtr_(nullptr)
-{}
+{
+    Info<< "slReconstruction: departure-foot stencil = "
+        << slDict_.getOrDefault<word>("stencil", "point")
+        << " (point = cell-point-cell, face = cell-face-cell)" << endl;
+}
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
 
@@ -107,24 +127,59 @@ void Foam::slReconstruction::collectStencil(const volScalarField& psiOld)
 
     if (!haveCentres_)
     {
-        stencil_.collectData(mesh_.C(), stencilC_);
-        // Cache the per-cell interpolation radius NOW so stencilRadius() no
-        // longer reads the centres; caching models can then free stencilC_
-        // (releaseStencilCentres) after build() -- ~26 vectors/cell is GBs at 128^3.
+        // Build the boundary/halo centre tail ONCE; local centres are read from
+        // mesh_.C() on demand via stencilC(), so they are not duplicated per
+        // stencil entry. Cache the per-cell interpolation radius via the accessor.
+        buildCentreTail();
         radius_.setSize(mesh_.nCells());
-        forAll(stencilC_, c)
+        forAll(radius_, c)
         {
-            const List<vector>& C = stencilC_[c];
+            const label n = stencilSize(c);
+            const point x0 = stencilC(c, 0);
             scalar r = 0;
-            for (label i = 1; i < C.size(); ++i)
+            for (label i = 1; i < n; ++i)
             {
-                r = Foam::max(r, Foam::mag(C[i] - C[0]));
+                r = Foam::max(r, Foam::mag(stencilC(c, i) - x0));
             }
             radius_[c] = r;
         }
         haveCentres_ = true;
     }
     psiOldPtr_ = &psiOld;
+}
+
+
+void Foam::slReconstruction::buildCentreTail()
+{
+    // Replicate extendedCellToFaceStencil::collectData's compact layout for the
+    // cell centres, then keep only the [nLocal_ ..) tail (boundary faces +
+    // processor halo). Internal-cell entries are served from mesh_.C() directly,
+    // so stencilC(c,i) == the former collectData(mesh_.C())[c][i] for every entry.
+    const mapDistribute& map = stencil_.map();
+    const volVectorField& C = mesh_.C();
+
+    List<vector> flat(map.constructSize(), Zero);
+    forAll(C, celli)
+    {
+        flat[celli] = C[celli];                    // internal cells [0 .. nCells)
+    }
+    forAll(C.boundaryField(), patchi)              // boundary-face centres
+    {
+        const fvPatchField<vector>& pf = C.boundaryField()[patchi];
+        label nc = pf.patch().start() - mesh_.nInternalFaces() + mesh_.nCells();
+        forAll(pf, i)
+        {
+            flat[nc++] = pf[i];
+        }
+    }
+    map.distribute(flat);                          // fill processor-halo entries
+
+    nLocal_ = mesh_.nCells();
+    centreTail_.setSize(flat.size() - nLocal_);
+    forAll(centreTail_, i)
+    {
+        centreTail_[i] = flat[nLocal_ + i];
+    }
 }
 
 
@@ -152,17 +207,6 @@ Foam::scalar Foam::slReconstruction::stencilRadius(const label c) const
 }
 
 
-void Foam::slReconstruction::releaseStencilCentres()
-{
-    // The slope limiter (computeLimiters) still needs the centres; keep them if on.
-    if (limitSlope_)
-    {
-        return;
-    }
-    stencilC_.clear();   // frees the per-cell centre lists (radius_ is retained)
-}
-
-
 void Foam::slReconstruction::computeLimiters()
 {
     phi_.setSize(mesh_.nCells());
@@ -178,7 +222,6 @@ void Foam::slReconstruction::computeLimiters()
     forAll(phi_, c)
     {
         const List<scalar>& s = stencilPsi_[c];
-        const List<vector>& X = stencilC_[c];
         const scalar psiC = s[0];
         scalar lo = s[0], hi = s[0];
         forAll(s, i)
@@ -188,9 +231,10 @@ void Foam::slReconstruction::computeLimiters()
         }
 
         scalar phi = 1.0;
-        for (label i = 1; i < X.size(); ++i)
+        const label n = stencilSize(c);
+        for (label i = 1; i < n; ++i)
         {
-            const scalar d = evaluateRaw(c, X[i]) - psiC;   // unlimited increment
+            const scalar d = evaluateRaw(c, stencilC(c, i)) - psiC;   // unlimited increment
             if (d > VSMALL)
             {
                 phi = Foam::min(phi, Foam::min(scalar(1), (hi - psiC)/d));

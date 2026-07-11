@@ -103,16 +103,23 @@ def export(slides_dir, src_name=DEFAULT_SRC, out_name=None, linear=False):
         return None
     html = open(src, encoding="utf-8").read()
 
-    # 1. Inline local figures (<img src="figures/...">) as base64 data URIs.
+    # 1. Inline LOCAL images (<img src="...">) as base64 data URIs. The path is
+    #    resolved relative to the template dir, so this supports both a `figures/`
+    #    dir next to the deck AND the thematic single-source layout where the deck
+    #    references `../<theme>-article/data/figures/...`. http(s)/data URIs are left.
     def _img(m):
         src = m.group(1)
-        p = os.path.join(slides_dir, src)
+        p = os.path.normpath(os.path.join(slides_dir, src))
         if os.path.isfile(p):
             data = base64.b64encode(open(p, "rb").read()).decode()
             ext = (os.path.splitext(p)[1].lstrip(".") or "png").lower()
+            if ext == "svg":
+                ext = "svg+xml"
             return f'src="data:image/{ext};base64,{data}"'
+        print(f"[html] WARNING: local image not found, left as-is: {src}")
         return m.group(0)
-    html = re.sub(r'src="((?:\./)?figures/[^"]+)"', _img, html)
+    html = re.sub(
+        r'src="(?!https?://|data:)([^"]+\.(?:png|svg|jpe?g|gif))"', _img, html)
 
     # 2. Inline CDN stylesheets (<link rel="stylesheet" href="http...">).
     def _css(m):

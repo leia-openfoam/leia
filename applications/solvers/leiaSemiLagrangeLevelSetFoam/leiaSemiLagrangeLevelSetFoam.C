@@ -133,19 +133,30 @@ int main(int argc, char *argv[])
         // Semi-Lagrangian update: psi holds psi^n on entry, psi^{n+1} on exit.
         slAdv->advect(psi, U, Uold);
 
-        phaseInd->calcPhaseIndicator(alpha, psi);
+        // Diagnostics (phase indicator alpha, narrow band, error norms + CSV row)
+        // are needed only at write times: the advection above uses neither alpha
+        // nor the narrow band (no file in src/leiaLevelSet/semiLagrangian reads
+        // "NarrowBand"). Recomputing the per-cell-LLS + tet-fill phase indicator
+        // every step otherwise dominates the cost on fine / polyhedral meshes
+        // (small deltaT -> thousands of steps). Gating to writeTime leaves the
+        // reported error at t=0 / T/2 / T unchanged (those are the write times)
+        // and only drops the unused per-step rows.
+        if (runTime.writeTime())
+        {
+            phaseInd->calcPhaseIndicator(alpha, psi);
 
-        narrowBand->calc();
+            narrowBand->calc();
 
-        reportErrors(
-            errorFile,
-            psi,
-            psi0,
-            alpha,
-            alpha0,
-            phi,
-            CoNum
-        );
+            reportErrors(
+                errorFile,
+                psi,
+                psi0,
+                alpha,
+                alpha0,
+                phi,
+                CoNum
+            );
+        }
 
         runTime.write();
         runTime.printExecutionTime(Info);

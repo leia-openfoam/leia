@@ -1,0 +1,52 @@
+# uncachedQuadraticWeightedLeastSquares 3D shear convergence on a POLYHEDRAL
+# (cfMesh pMesh) mesh -- the mesh-generality companion to the hex study
+# config/uncachedConv3Dshear.yaml.
+#
+# The Snakefile poly path runs pMesh and reads cases/3Dshear_poly.parameter (cfMesh
+# maxCellSize + SURFACE_FILE); the solver, reconstruction and SL controls come from
+# this config + cases/default.parameter. The convergence spacing h = maxCellSize
+# (aggregate.py maps mesh==poly -> h = maxCellSize).
+#
+# Shear is [0,1]^2x[0,2] (2x the deformation volume) so it hits the 15 GB ceiling at
+# a coarser maxCellSize: the hex-equivalent 1/128 = 0.0078 would be ~3.4M polyhedra
+# (~OOM), so the ladder stops at 1/100 = 0.01 (finest, ~1.7M, tight). maxCellSize =
+# 1/32,1/50,1/80,1/100. The sanity run calibrates the finest level; drop 0.01 if it
+# is too tight. LSQ order over the ladder.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/uncachedConv3DshearPoly.yaml --resources tasks=12
+study_name: uncachedConv3DshearPoly
+case: 3Dshear
+mesh: poly
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [3.0]
+  # h = maxCellSize; 1/32,1/50. Shear is 1x1x2 (2x deformation volume) AND the
+  # CPU-bound uncached reconstruction is slow on the large polyhedral point-
+  # neighbour stencils, so on this 15 GB / desktop box the finer levels are
+  # prohibitive: 1/80 (0.0125, ~0.8M polyhedra) ~80 min/run, 1/100 thrashes swap,
+  # 1/128 OOMs. Two levels here corroborate the (4-level) deformation-poly result;
+  # extend on a larger machine by re-adding 0.0125, 0.01, 0.0078125.
+  MAX_CELL_SIZE: [0.03125, 0.02]
+  CFL: [0.5]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  # clipToStencilBounds: REQUIRED on polyhedra (bounds a near-singular per-cell WLSQ
+  # fit that would else run away). Inactive in smooth regions -> order preserved.
+  SL_CLIP: ["true"]   # quoted so it renders lowercase (OpenFOAM Switch; unquoted YAML true -> "True" -> parse error)
+  # Face-neighbour (cell-face-cell) stencil -- mesh-appropriate + A/B-verified to
+  # match the point-stencil accuracy on polyhedra at lower cost (see def-poly config).
+  SL_STENCIL: [face]
+  PHASE_INDICATOR: [detrixheAslam]
+  SURFACE_FILE: [box-shear-edges.stl]
+  DIV: [linear]
+  # N_CELLS unused by pMesh; pin to a dummy so the base [32,64] does not multiply runs.
+  N_CELLS: [64]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

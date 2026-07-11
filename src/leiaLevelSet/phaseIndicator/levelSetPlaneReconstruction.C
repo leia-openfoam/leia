@@ -30,6 +30,29 @@ License
 #include "coupledFvPatch.H"
 #include "processorFvPatch.H"
 
+#include <cmath>
+
+// * * * * * * * * * * * * * * * * Local Functions * * * * * * * * * * * * * //
+
+namespace Foam
+{
+namespace
+{
+
+//- 3x3 determinant by cofactor expansion (no divisions).
+inline scalar det3x3
+(
+    scalar a, scalar b, scalar c,
+    scalar d, scalar e, scalar f,
+    scalar g, scalar h, scalar i
+)
+{
+    return a*(e*i - f*h) - b*(d*i - f*g) + c*(d*h - e*g);
+}
+
+} // End anonymous namespace
+} // End namespace Foam
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 Foam::coupledFaceNeighbours::coupledFaceNeighbours
@@ -178,7 +201,48 @@ Foam::scalarList Foam::leastSquaresPlaneCoeffs
 
     scalarField& source = LLSQ.source();
     source = LLSQsource;
+
+    // Guard against a singular normal-equations matrix. On general polyhedra a
+    // narrow-band cell can have a face-neighbour cloud whose centres are (near)
+    // coplanar, making the 4x4 LLSQ system rank-deficient; simpleMatrix::solve()
+    // then divides by a ~0 pivot and returns non-finite coefficients, which blow
+    // up downstream (nc/|nc| = inf/inf = NaN -> SIGFPE). Detect this with a
+    // scale-free Hadamard ratio |det|/prod(diag) (~1 for well-spread rows, -> 0
+    // for a coplanar/degenerate cloud) and return a flat (zero) plane; the
+    // callers treat |n| ~ 0 as "degenerate" and fall back to the sign of psi.
+    // Well-conditioned (e.g. hexahedral) cells have |det|/prod(diag) ~ O(1e-2),
+    // far above the threshold, so their fit is untouched (bit-identical).
+    const scalar diagProd =
+        LLSQ(0, 0)*LLSQ(1, 1)*LLSQ(2, 2)*LLSQ(3, 3);
+    const scalar detLLSQ =
+        LLSQ(0, 0)*det3x3(LLSQ(1,1),LLSQ(1,2),LLSQ(1,3),
+                          LLSQ(2,1),LLSQ(2,2),LLSQ(2,3),
+                          LLSQ(3,1),LLSQ(3,2),LLSQ(3,3))
+      - LLSQ(0, 1)*det3x3(LLSQ(1,0),LLSQ(1,2),LLSQ(1,3),
+                          LLSQ(2,0),LLSQ(2,2),LLSQ(2,3),
+                          LLSQ(3,0),LLSQ(3,2),LLSQ(3,3))
+      + LLSQ(0, 2)*det3x3(LLSQ(1,0),LLSQ(1,1),LLSQ(1,3),
+                          LLSQ(2,0),LLSQ(2,1),LLSQ(2,3),
+                          LLSQ(3,0),LLSQ(3,1),LLSQ(3,3))
+      - LLSQ(0, 3)*det3x3(LLSQ(1,0),LLSQ(1,1),LLSQ(1,2),
+                          LLSQ(2,0),LLSQ(2,1),LLSQ(2,2),
+                          LLSQ(3,0),LLSQ(3,1),LLSQ(3,2));
+    if (diagProd <= VSMALL || mag(detLLSQ) < 1e-10*mag(diagProd))
+    {
+        return scalarList(4, scalar(0));   // degenerate -> flat plane
+    }
+
     planeCoeffs = LLSQ.solve(); // TODO: Improve this. Gauss substitution. TM.
+
+    // Belt-and-suspenders: a near-singular (but above-threshold) solve can still
+    // return non-finite coefficients; treat those as degenerate too.
+    for (const scalar c : planeCoeffs)
+    {
+        if (!std::isfinite(c))
+        {
+            return scalarList(4, scalar(0));
+        }
+    }
 
     return planeCoeffs;
 }

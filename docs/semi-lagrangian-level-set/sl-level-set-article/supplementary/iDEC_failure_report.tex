@@ -1,0 +1,278 @@
+\documentclass[11pt]{article}
+
+% ---------------------------------------------------------------------------
+% Self-contained: minimal package set, compiles with any modern TeX.
+% ---------------------------------------------------------------------------
+\usepackage[a4paper,margin=25mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\psib}{\psi}
+\newcommand{\gradpsi}{\lVert\nabla\psi\rVert}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{Failure of iterative defect(-error) correction (iDEC) for
+gradient-injecting departure-point reconstructions in the
+semi-Lagrangian level-set method}
+\author{leia OpenFOAM module --- research record\\
+\small (generated as a hand-off note for a follow-up DEC investigation)}
+\date{2026-07-10}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We record, for a follow-up investigation, exactly \emph{what} failed with an
+iterative defect(-error) correction (iDEC) reconstruction in the semi-Lagrangian
+(SL) level-set solver \code{leiaSemiLagrangeLevelSetFoam}, \emph{for which cases},
+and \emph{how}. The short version: a departure-point reconstruction that injects a
+separately-computed cell gradient into the interpolation (\code{defectCorrectedIDW}
+and its two iterative variants) is \textbf{unstable} under repeated SL transport on
+all three verification flows (2D reversed shear vortex, 3D shear, 3D LeVeque
+deformation, both $\mathrm{CFL}=0.5$ and $1.0$): the signed-distance gradient
+$\gradpsi$ grows without bound while the interface shape error fails to converge.
+Iterating the correction does \emph{not} fix it. We show numerically that (i) the
+converged fixed point of the nodal-defect iteration still amplifies, and (ii) the
+advection-level deferred correction (a Picard iteration on the reconstruction)
+\emph{accelerates} the divergence. The diagnosis is that the reconstruction
+operator has spectral radius $\rho>1$; iterating an amplifying operator cannot
+stabilise it. The value-fitting \code{quadraticWeightedLeastSquares} (no injected
+gradient) is stable and convergent on the same flows and serves as the control.
+This document is intended to seed a separate effort on defect/error-correction
+(DEC) formulations that could be made contractive.
+\end{abstract}
+
+\section{Context and problem statement}
+
+The SL update advects the level set $\psi$ along characteristics,
+\begin{equation}
+\psi^{\,n+1}(\mathbf{x}_c) \;=\; \psi^{\,n}(\mathbf{x}_d),
+\qquad
+\mathbf{x}_d \;=\; \mathbf{x}_c - \mathbf{u}^{n+1}\Delta t
++ \tfrac12\!\left[\tfrac{\mathbf{u}^{n+1}-\mathbf{u}^{n}}{\Delta t}
++ (\mathbf{u}^{n+1}\!\cdot\nabla)\mathbf{u}^{n+1}\right]\!\Delta t^2 ,
+\end{equation}
+where $\mathbf{x}_d$ is the second-order Taylor backward-foot (fixed; not the
+subject here) and the reconstruction of $\psi^{\,n}$ at $\mathbf{x}_d$ is
+runtime-selectable (\code{slReconstruction}). Every reconstruction must reproduce
+the arrival-cell value, $\mathcal{R}(c,\mathbf{x}_c)=\psi^{\,n}_c$, and is built on
+the arrival cell's cell-point-cell (CPC) point-neighbour stencil
+$S(c)=\{c\}\cup\{\text{point neighbours}\}$ (${\sim}9$ in 2D, ${\sim}27$ in 3D).
+No reinitialisation is performed, by design, so $\gradpsi=1$ is \emph{not} enforced;
+it is expected to drift but must stay \emph{bounded}.
+
+Errors reported below (aggregated per resolution $h=1/N$):
+\emph{shape} $=$ geometric interface (marker-traced) error at the reversal time $T$;
+\emph{gradient} $=\lVert\gradpsi-1\rVert_{L_2}$ in the narrow band;
+\emph{volume} $=$ phase-volume (mass) conservation error.
+
+\section{The reconstruction and its two iterative variants}
+
+\subsection{Single-pass gradient-enhanced Shepard (\code{defectCorrectedIDW})}
+Inverse-distance-weighted (IDW) interpolation lifted to second order by a per-node
+Taylor/defect term with the cell-centred least-squares gradient
+$\mathbf{g}_C=\nabla\psi^{\,n}_C$ (OpenFOAM \code{pointCellsLeastSquares}):
+\begin{equation}
+\psi(\mathbf{x}_d) \;=\;
+\frac{\sum_{C\in S} w_C\,\big[\psi_C + \mathbf{g}_C\!\cdot(\mathbf{x}_d-\mathbf{x}_C)\big]}
+     {\sum_{C\in S} w_C},
+\qquad w_C=\lvert \mathbf{x}_d-\mathbf{x}_C\rvert^{-p}.
+\label{eq:singlepass}
+\end{equation}
+As a \emph{static} interpolant \eqref{eq:singlepass} is linear-exact (unit test:
+error $\sim 3\times10^{-16}$). It is the composition of a bounded Shepard smoother
+with an \emph{independently computed} differentiator $\mathbf{g}_C$.
+
+\subsection{Variant A: iterative nodal-defect correction}
+Derived (via an independent-derivation panel) as the ``correct'' iterative reading:
+solve, per cell, for effective nodal values $u_C=\psi_C+\delta_C$ so that a
+\emph{regularised}, row-stochastic blend $A$ reproduces the stencil data,
+\begin{equation}
+\sum_{C} A_{DC}\,\big(u_C + \mathbf{g}_C\!\cdot(\mathbf{x}_D-\mathbf{x}_C)\big)=\psi_D
+\quad\forall D\in S,
+\qquad
+A_{DC}=\frac{w^{\mathrm{reg}}(\mathbf{x}_D-\mathbf{x}_C)}{\sum_E w^{\mathrm{reg}}(\mathbf{x}_D-\mathbf{x}_E)},
+\end{equation}
+by damped Gauss--Seidel (dict controls \code{dcIters}$=3$, \code{dcRelax}$=0.8$,
+\code{dcRegEps}$=0.1$; $A_{DD}>\tfrac12$ makes the \emph{inner} solve a contraction),
+with the arrival-node defect pinned $\delta_0=0$ (preserves the contract). The final
+foot value uses the original singular weights on the corrected Taylor values. The
+regularisation is essential: with singular weights $A=I$ and the nodal defect
+collapses to zero, recovering \eqref{eq:singlepass}.
+
+\subsection{Variant B: advection-level deferred correction}
+A Picard/deferred correction wrapped around the reconstruction in
+\code{slAdvection::advect()} (the backtracking foot is computed once and reused,
+byte-identical): iterate
+\begin{equation}
+\psi^{(0)}=\psi^{\,n},\qquad
+\psi^{(k+1)}(\mathbf{x}_c)=
+\mathcal{R}\!\big[\psi^{(k)}\big](\mathbf{x}_d(c)),
+\label{eq:picard}
+\end{equation}
+so the gradient $\mathbf{g}$ is recomputed from the current iterate each pass
+(``self-consistent gradient''). Controls \code{nDefCorr}, \code{defCorrRelax},
+\code{defCorrTol}; \code{nDefCorr}$=1$ reproduces the single pass exactly.
+
+\section{Numerical results: the failure}
+
+All runs: reversed (oscillating) flows so $\text{exact}(T)=\text{initial}$;
+detrixheAslam phase indicator; $N=32/64/128$; the reported columns are at the
+finest available resolution and $\mathrm{CFL}=0.5$ unless noted.
+
+\subsection{Single pass \eqref{eq:singlepass}: $\gradpsi$ blows up}
+\begin{center}
+\begin{tabular}{l r r r}
+\toprule
+case & shape($T$) trend & gradient $\lVert\gradpsi-1\rVert_{L_2}$ (as $h\downarrow$) & shape order \\
+\midrule
+2D reversed vortex & $1.6\!\times\!10^{-2}\!\to\!3.0\!\times\!10^{-2}$ & $39 \to 1.4\!\times\!10^{4}\to 4.7\!\times\!10^{9}$ & $-0.25$ \\
+3D shear           & $0.83 \to 0.92$ (interface destroyed) & $8.5\!\times\!10^{3}\to 1.2\!\times\!10^{9}$ & $\approx 0$ \\
+3D deformation     & $0.45 \to 0.48$ (interface destroyed) & $8.8\!\times\!10^{4}\to 4.5\!\times\!10^{12}$ & $\approx 0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The always-on value cap in the advection keeps $\psi$ \emph{values} bounded (so the
+shape error saturates rather than NaN-ing), but $\gradpsi$ sawtooths to enormous
+values --- the signed-distance field is destroyed.
+
+\subsection{Variant A (iterative nodal-defect): helps, but still diverges}
+\begin{center}
+\begin{tabular}{l r r r}
+\toprule
+case & shape($T$) $N{=}32\!\to\!128$ & gradient $N{=}32\!\to\!128$ & shape order \\
+\midrule
+2D reversed vortex & $1.16\!\times\!10^{-2}\!\to\!2.55\!\times\!10^{-2}$ & $15.2 \to 1.66\!\times\!10^{3}\to 6.3\!\times\!10^{7}$ & $-0.33$ \\
+3D shear           & $0.341 \to 0.610$ ($N{=}64$) & $50.1 \to 1.15\!\times\!10^{4}$ ($N{=}64$) & $-0.84$ \\
+3D deformation     & $0.302 \to 0.399$ ($N{=}64$) & $2.36\!\times\!10^{2}\to 3.39\!\times\!10^{5}$ ($N{=}64$) & $-0.99$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Iterating reduces the amplification constant by $1$--$2$ orders (2D $N{=}128$:
+$6.3\!\times\!10^{7}$ vs.\ $4.7\!\times\!10^{9}$ single-pass) but the character is
+unchanged: the error \emph{grows} under refinement.
+
+\paragraph{The iteration is converged, not under-iterated.}
+Same case (2D, $N{=}64$, $\mathrm{CFL}=0.5$, $\lVert\gradpsi-1\rVert_{L_2}$ at $T$):
+\begin{center}
+\begin{tabular}{l r}
+\toprule
+Variant A setting & gradient error \\
+\midrule
+\code{dcIters}$=3$ (default)      & $1657$ \\
+\code{dcIters}$=30$               & $1649$ \quad(\emph{identical}: GS at its fixed point in 3 sweeps) \\
+\code{limitSlope}\,=\,true        & $1657$ \quad(Barth--Jespersen increment limiter: no effect) \\
+\bottomrule
+\end{tabular}
+\end{center}
+More sweeps change nothing --- the \emph{fixed point itself} amplifies --- and the
+slope limiter (which bounds the increment at neighbour centres) does not bound the
+grid-scale $\gradpsi$ oscillation.
+
+\subsection{Variant B (advection-level deferred correction): diverges faster}
+Same case, sweeping the number of deferred-correction passes:
+\begin{center}
+\begin{tabular}{l r}
+\toprule
+\code{nDefCorr} & gradient error $\lVert\gradpsi-1\rVert_{L_2}$ at $T$ \\
+\midrule
+$1$ (single pass)             & $1.66\!\times\!10^{3}$ \\
+$3$                           & $4.33\!\times\!10^{12}$ \\
+$5$                           & $2.93\!\times\!10^{22}$ \\
+$10$                          & $1.25\!\times\!10^{47}$ \\
+$10$, \code{defCorrRelax}$=0.5$ & $5.62\!\times\!10^{18}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Each pass multiplies the error by roughly the operator gain: \code{nDefCorr}$=K$
+blows up ${\sim}K$ times faster. Under-relaxation slows but does not cross below the
+divergence threshold.
+
+\subsection{Control: value-fitting \code{quadraticWeightedLeastSquares} is stable}
+Same flows, same solver, \emph{no injected gradient} (weighted least-squares
+\emph{value} fit; its slope is a by-product, never an input):
+\begin{center}
+\begin{tabular}{l r r r}
+\toprule
+case & shape($T$) $N{=}32\!\to\!128$ & shape order (LSQ) & gradient (bounded) \\
+\midrule
+2D reversed vortex & $3.0\!\times\!10^{-4}\!\to\!4.7\!\times\!10^{-6}$ & $3.01$ & ${\sim}0.1$--$0.2$ \\
+3D shear           & $1.5\!\times\!10^{-3}\!\to\!5.2\!\times\!10^{-5}$ & $2.43$ & ${\sim}0.38$ \\
+3D deformation     & $5.3\!\times\!10^{-3}\!\to\!8.2\!\times\!10^{-4}$ & $1.34$ & ${\sim}0.4$--$0.5$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+(The lower 3D-deformation order is under-resolution of the thin LeVeque filament,
+not instability: the per-interval order \emph{rises} with refinement and the volume
+error converges $\sim$2nd order.)
+
+\section{Diagnosis: the operator has spectral radius $\rho>1$}
+The SL step is a fixed-point map $\psi^{\,n+1}=\mathcal{M}[\psi^{\,n}]$. For the
+gradient-injecting reconstructions \eqref{eq:singlepass}, $\mathcal{M}$ is
+(bounded Shepard smoother) $\circ$ (\emph{unbounded} least-squares differentiator).
+Differentiation amplifies grid-scale ($\sim$ Nyquist) content; the smoother does not
+remove it. The lift term $\mathbf{g}_C\!\cdot(\mathbf{x}_d-\mathbf{x}_C)$ feeds the
+gradient of $\psi^{\,n}$ back into $\psi^{\,n+1}$ without ever being constrained by
+the reconstructed values, so $\lVert\mathcal{M}'\rVert>1$ on the high-frequency
+modes: $\rho(\mathcal{M})>1$ and $\gradpsi$ diverges geometrically in the step index
+(the measured $10^{9}$--$10^{12}$ over one reversal period). This is the same failure
+family as \code{linearTaylor} and \code{nestedLSQ}, which also inject an LSQ gradient.
+
+\section{Why iteration cannot help}
+A defect/deferred correction stabilises only a \emph{contracting} base operator
+($\rho\le1$): it drives the iterate to the fixed point of a stable map.
+\begin{itemize}
+\item \textbf{Variant A} drives the \emph{nodal} defect to zero (its \emph{inner}
+Gauss--Seidel is a contraction, $A_{DD}>\tfrac12$), but the resulting reconstruction
+is still evaluated with the singular-weight blend of $\psi_C+\mathbf{g}_C\!\cdot r$
+--- the gradient path is not severed --- so the \emph{outer} SL map still has
+$\rho>1$. Hence the converged fixed point amplifies and more sweeps do nothing.
+\item \textbf{Variant B} iterates the SL map itself \eqref{eq:picard}. Iterating a
+map with $\rho>1$ is Picard on a divergent fixed point: it \emph{amplifies faster}
+(the measured $K$-fold acceleration).
+\end{itemize}
+In both cases the lower-order-gradient ``lift'' does not ``only work iteratively'';
+the object being iterated is expansive, not contractive.
+
+\section{Directions for a DEC investigation}
+The instability is intrinsic to injecting a \emph{value-inconsistent}
+externally-differentiated gradient. Promising directions to make a defect/error
+correction contractive (each untested here):
+\begin{enumerate}
+\item \textbf{Consistent-gradient DEC.} Replace the external LSQ gradient by the
+\emph{gradient of the reconstructed polynomial itself} (as \code{quadraticWeightedLeastSquares}
+does implicitly), so the lift cannot inject an independent mode. This is essentially
+why the value fit is stable; a DEC that keeps value and slope self-consistent per
+iterate may inherit $\rho\le1$.
+\item \textbf{Bounded / limited gradient.} Constrain $\mathbf{g}_C\!\cdot r$ to the
+stencil range (a genuine slope limiter on the \emph{lift}, not on the increment at
+neighbour centres as the current \code{limitSlope}), trading order for a guaranteed
+$\rho\le1$; then defect-correct \emph{upward} in order from the limited, stable base.
+\item \textbf{Low-order stable base $\oplus$ deferred high-order defect
+(Khosla--Rubin form).} Use plain IDW/donor (monotone, $\rho\le1$) as the operator
+that is \emph{inverted} each pass, with the high-order term as a lagged
+right-hand-side defect --- but only if the base is genuinely contracting (plain IDW
+in the SL loop must be verified to be).
+\item \textbf{BFECC / error-compensated SL.} Round-trip (advect forward then
+backward), estimate the transport error, and compensate --- a defect correction on
+the \emph{trajectory/advection} rather than on the reconstruction; second-order and
+known to be stable for SL when the base advection is monotone.
+\item \textbf{Discrete-exterior-calculus (DEC) discretisation.} If ``DEC'' is meant
+as discrete exterior calculus, a structure-preserving gradient/codifferential on the
+dual mesh may give a better-conditioned (non-amplifying) gradient operator than the
+cell LSQ; worth checking whether it changes $\rho$.
+\end{enumerate}
+
+\paragraph{Reproduction.} All numbers above come from the leia SL suite
+(\code{leiaSemiLagrangeLevelSetFoam}) driven by the snakemake workflow. The three
+diagnostic sweeps (\code{dcIters}, \code{limitSlope}, \code{nDefCorr}) were run on
+the 2D reversed vortex at $N{=}64$, $\mathrm{CFL}=0.5$; the per-case tables from the
+\code{idwCompare\{2D,3Dshear,3Ddeformation\}} studies. The reconstruction models and
+controls live in \code{src/leiaLevelSet/semiLagrangian/}
+(\code{defectCorrectedIDWReconstruction}, \code{slCorrector}/\code{deferredCorrector},
+\code{quadraticWeightedLeastSquaresReconstruction}); the Taylor backtracking in
+\code{slAdvection.C} was never modified.
+
+\end{document}

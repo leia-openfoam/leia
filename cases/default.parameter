@@ -17,3 +17,15 @@ SL_CORRECTION direct; // leiaSemiLagrangeLevelSetFoam slCorrector: how psi^n is
                      // assembled at the feet. direct = one reconstruction pass
                      // (default); deferredCorrection = fixed-point iteration
                      // (nDefCorr/defCorrRelax/defCorrTol). Sweepable per SL config.
+SL_STENCIL point;    // leiaSemiLagrangeLevelSetFoam departure-foot reconstruction
+                     // stencil: point = cell-point-cell (REQUIRED on hex: 6 face-
+                     // neighbours < 9 for a 3D quadratic). face = cell-face-cell
+                     // (polyhedra only: ~12-16 faces suffice, ~3-4x smaller/faster
+                     // + better conditioned). Sweepable per SL config.
+SL_CLIP false;       // leiaSemiLagrangeLevelSetFoam clipToStencilBounds: tight
+                     // monotone clamp of the reconstructed psi^n to the stencil
+                     // [min,max]. false = default (structured hex is well-
+                     // conditioned). true = REQUIRED on general polyhedra, where a
+                     // near-singular per-cell fit can otherwise let psi run away
+                     // geometrically; the clamp is inactive in smooth regions so
+                     // it preserves the 2nd-order convergence.

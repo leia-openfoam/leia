@@ -28,6 +28,21 @@ values
         strictNegativeSpLinearImplicit
     );
 
+    // Eulerian fvSchemes tokens (shared 3Dshear fvSchemes.template references
+    // them); inert for the SL solver but required so the dict renders. Mirror
+    // cases/3Dshear.parameter / 3Ddeformation_poly.parameter.
+    MOLLIFIER
+    (
+        none
+        m1
+    );
+
+    GRAD_PSI
+    (
+        fvc
+        narrowLS
+    );
+
     SDPLS_SOURCE
     (
         noSource

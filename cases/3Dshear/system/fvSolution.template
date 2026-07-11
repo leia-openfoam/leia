@@ -120,6 +120,10 @@ levelSet
         //                                       Cheap/CPU-bound but UNSTABLE here. Research.
         reconstruction      @!SL_RECONSTRUCTION!@;
 
+        // Reconstruction stencil: point = cell-point-cell (default; required on
+        // hex), face = cell-face-cell (polyhedra only -- compact, ~3-4x smaller).
+        stencil             @!SL_STENCIL!@;
+
         // ---- correction strategy (RTS slCorrector) ----
         //   direct             : one reconstruction pass. Use with quadraticWeightedLeastSquares. DEFAULT.
         //   deferredCorrection : fixed-point iteration, rebuilding the reconstruction from the
@@ -132,7 +136,9 @@ levelSet
 
         // ---- reconstruction safeguards (slReconstruction base; every reconstruction) ----
         limitSlope          false;     // Barth-Jespersen limiter; MEASURED to cost order -> off
-        clipToStencilBounds false;     // extra tight monotone clip to the stencil min/max
+        clipToStencilBounds @!SL_CLIP!@;   // tight monotone clip to stencil [min,max];
+                                       // false on hex, true on polyhedra (REQUIRED: bounds a
+                                       // near-singular per-cell fit that would else run away)
 
         // ---- uncachedQuadraticWeightedLeastSquares control ----
         ridgeEps            0;         // Tikhonov ridge on the normal-equations diagonal

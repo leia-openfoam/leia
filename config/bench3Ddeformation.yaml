@@ -1,0 +1,23 @@
+# Benchmark: 3D (LeVeque) deformation (reversed), N=32/64/128 (128 = 2.1M cells),
+# CFL 0.5, at np=12. quad vs uncached -- same errors, wall-clock comparison.
+study_name: bench3Ddeformation
+case: 3Ddeformation
+mesh: hex
+mode: parallel
+np: 12
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5]
+  SL_RECONSTRUCTION: [quadraticWeightedLeastSquares, uncachedQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+  DIV: [linear]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

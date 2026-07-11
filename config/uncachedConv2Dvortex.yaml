@@ -1,0 +1,30 @@
+# uncachedQuadraticWeightedLeastSquares 2D reversed-vortex convergence.
+# Uniform refinement ladder N = 32,45,64,90,128,181,256 (ratio r = sqrt(2) per
+# direction -> cells x2 per level; 2D is cheap so the dense ladder is affordable,
+# finest 256^2 = 65k cells). Reversed single vortex at period T = END_TIME = 2 (the
+# period the deck's convergence figure fixes, plots.py Tpick=2.0), so exact(T) =
+# initial and the reversed error is a true accuracy measure. CFL 0.5 and 1.0 show
+# the order is independent of the step size up to the stability bound. Least-
+# squares order over the ladder.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/uncachedConv2Dvortex.yaml --resources tasks=12
+study_name: uncachedConv2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [2]                                    # reversed period (matches deck Tpick)
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]        # sqrt(2) ladder, cells x2/level
+  CFL:      [0.5, 1.0]                              # stability-bound sweep
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false  # secondary study: keep figures in the study dir
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

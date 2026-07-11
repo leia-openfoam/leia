@@ -20,8 +20,10 @@ V_EXACT = A_EXACT * TZ            # exact cylinder volume
 
 csv_path = sys.argv[1] if len(sys.argv) > 1 else \
     "/home/tmaric/OpenFOAM/repos/leia/workflow/scripts/static_indicator_volume.csv"
+import paths  # thematic docs layout
 out = sys.argv[2] if len(sys.argv) > 2 else \
-    "/home/tmaric/OpenFOAM/repos/leia/doc/slides/figures/static_indicator_volume_convergence.png"
+    os.path.join(paths.figs_dir("semi-lagrangian-level-set"),
+                 "static_indicator_volume_convergence.png")
 
 rows = list(csv.DictReader(open(csv_path)))
 def series(ind):

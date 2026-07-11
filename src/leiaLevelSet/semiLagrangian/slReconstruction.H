@@ -104,15 +104,20 @@ protected:
     //  neighbours gathered via its mapDistribute in collectStencil().
     const extendedCentredCellToCellStencil& stencil_;
 
-    //- Per-cell stencil cell centres (compact, incl. remote) -- collected once
-    //  (mesh is static within a run). Large in 3D (~26 vectors/cell); caching
-    //  models free it after build() via releaseStencilCentres().
-    List<List<vector>> stencilC_;
+    //- Number of local cells. A compact stencil index g < nLocal_ is a LOCAL
+    //  cell whose centre is read directly from mesh_.C() -- so the local stencil
+    //  geometry is NOT duplicated per stencil entry (the dominant per-cell saving
+    //  on the retained-centre models: >90% of interior cells store nothing here).
+    label nLocal_;
+
+    //- Compact-array TAIL: the [nLocal_ .. map.constructSize()) slice of the
+    //  distributed cell centres -- boundary-face + processor-halo entries only,
+    //  built once (geometry static). Indexed by (g - nLocal_) in stencilC().
+    List<vector> centreTail_;
     bool haveCentres_;
 
-    //- Per-cell interpolation radius (max centre distance over the stencil),
-    //  cached from stencilC_ on the first collectStencil() so stencilRadius()
-    //  no longer needs the centres -- which lets build() free them.
+    //- Per-cell interpolation radius (max stencil-centre distance), cached on the
+    //  first collectStencil() via the stencilC() accessor.
     scalarField radius_;
 
     //- Per-cell stencil psiOld (compact, incl. remote) -- collected per step
@@ -122,16 +127,33 @@ protected:
     //- The field passed to the most recent update().
     const volScalarField* psiOldPtr_;
 
-    //- Fill stencilPsi_ from psiOld (one paired halo exchange); fill stencilC_
-    //  on first call. Call once per step, uniformly on all ranks.
+    //- Fill stencilPsi_ from psiOld (one paired halo exchange); build the centre
+    //  tail + radius on the first call. Call once per step, uniformly on all ranks.
     void collectStencil(const volScalarField& psiOld);
 
-    //- Free the per-cell stencil centres (~26 vectors/cell -> GBs at 128^3 in 3D)
-    //  once a CACHING model has finished build(): thereafter only the slope
-    //  limiter needs them, and stencilRadius() uses the cached radius_. No-op
-    //  when limitSlope is on. A model that re-reads the centres every step
-    //  (bandQuadraticWeightedLeastSquares) must NOT call this.
-    void releaseStencilCentres();
+    //- Build centreTail_ (+ set nLocal_): the boundary-face + processor-halo slice
+    //  of the compact distributed cell centres. Called once (mesh static).
+    void buildCentreTail();
+
+    //- Number of entries in cell c's compact stencil (self + neighbours).
+    inline label stencilSize(const label c) const
+    {
+        return stencil_.stencil()[c].size();
+    }
+
+    //- Centre of the i-th stencil entry of cell c. Local entries (compact index
+    //  < nLocal_) are read straight from mesh_.C(); boundary/halo entries from
+    //  centreTail_. Reproduces the former stencilC_[c][i] with no per-cell store.
+    inline point stencilC(const label c, const label i) const
+    {
+        const label g = stencil_.stencil()[c][i];
+        return (g < nLocal_) ? mesh_.C()[g] : centreTail_[g - nLocal_];
+    }
+
+    //- No-op retained for API compatibility: the per-cell stencil centres are no
+    //  longer stored (stencilC() reads mesh_.C()/centreTail_ on demand), so there
+    //  is nothing to free. Kept so existing callers compile unchanged.
+    void releaseStencilCentres() {}
 
 
 public:

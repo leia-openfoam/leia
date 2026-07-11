@@ -82,7 +82,7 @@ def _write_error_table(records, database_path):
         return rec.get(f"half.{s}.{key}", "")
 
     cols = ["velocityExtension", "reconstruction", "solver", "phaseIndicator",
-            "T", "h", "cfl",
+            "T", "h", "maxCellSize", "cfl",
             "gradientError", "shapeError", "volumeError",
             # Band-restricted gradient error + the same metrics at maximal
             # deformation t = T/2 (before any reversal cancellation) + the
@@ -96,6 +96,15 @@ def _write_error_table(records, database_path):
     rows = []
     for rec in records:
         n = _num(rec.get("N_CELLS"))
+        mcs = _num(rec.get("MAX_CELL_SIZE"))
+        # Mesh spacing h for the convergence fit. Hexahedral meshes have a
+        # uniform N per direction -> h = 1/N (domain length 1). Polyhedral
+        # (cfMesh) meshes have no uniform N (N_CELLS is a dummy pin), so the
+        # characteristic length IS the target maxCellSize -> h = maxCellSize.
+        if rec.get("mesh") == "poly":
+            h = mcs if (mcs and mcs > 0) else ""
+        else:
+            h = (1.0 / n) if n else ""
         rows.append({
             "velocityExtension": rec.get("VELOCITY_EXTENSION", "none"),
             # semi-Lagrangian reconstruction (blank for the Eulerian solver).
@@ -104,7 +113,8 @@ def _write_error_table(records, database_path):
             "solver": solver_of(rec),
             "phaseIndicator": rec.get("PHASE_INDICATOR", ""),
             "T": rec.get("END_TIME", ""),                 # oscillation period / end time
-            "h": (1.0 / n) if n else "",                  # domain length 1 / cells
+            "h": h,                                        # 1/N (hex) or maxCellSize (poly)
+            "maxCellSize": (mcs if (mcs and mcs > 0) else ""),  # cfMesh target size (poly only)
             "cfl": rec.get("CFL", ""),                     # max Courant (SL sweeps 0.5/1.0)
             "gradientError": rec.get("gradPsiError.E_L2_GRAD_PSI", ""),
             "shapeError": sget(rec, "E_GEOM_ALPHA"),

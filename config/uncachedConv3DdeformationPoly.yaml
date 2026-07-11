@@ -1,0 +1,53 @@
+# uncachedQuadraticWeightedLeastSquares 3D deformation convergence on a
+# POLYHEDRAL (cfMesh pMesh) mesh -- the mesh-generality companion to the hex
+# study config/uncachedConv3Ddeformation.yaml.
+#
+# The Snakefile poly path runs pMesh and reads cases/3Ddeformation_poly.parameter
+# (which carries the cfMesh maxCellSize + SURFACE_FILE); the solver, reconstruction
+# and SL controls come from this config + cases/default.parameter. The convergence
+# spacing h = maxCellSize (aggregate.py maps mesh==poly -> h = maxCellSize), so the
+# ladder mirrors the hex 1/N ladder: maxCellSize = 1/32,1/50,1/80,1/128.
+#
+# Deformation is the unit cube; at maxCellSize 1/128 = 0.0078 cfMesh yields ~1.7M
+# polyhedra (~fits on the 15 GB box). Poly cells are heavier (more faces/neighbours)
+# than hex; the sanity run (config restricted to maxCellSize 0.03125) calibrates the
+# finest level before the full sweep. LSQ order over the ladder.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/uncachedConv3DdeformationPoly.yaml --resources tasks=12
+study_name: uncachedConv3DdeformationPoly
+case: 3Ddeformation
+mesh: poly
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [3.0]
+  # h = maxCellSize; 1/32,1/50,1/80,1/128 (mirrors the hex cbrt(4) ladder).
+  MAX_CELL_SIZE: [0.03125, 0.02, 0.0125, 0.0078125]
+  CFL: [0.5]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  # clipToStencilBounds: REQUIRED on polyhedra. A near-singular per-cell WLSQ fit
+  # on an irregular polyhedral stencil can otherwise let psi run away geometrically
+  # (the loose default cap grows with the stencil range); the tight monotone clamp
+  # to the stencil [min,max] bounds it and is inactive in smooth regions (order kept).
+  SL_CLIP: ["true"]   # quoted so it renders lowercase (OpenFOAM Switch; unquoted YAML true -> "True" -> parse error)
+  # Face-neighbour (cell-face-cell) stencil: the mesh-appropriate choice on
+  # polyhedra (~12-16 faces over-determine the 3D quadratic). Compact -> cheaper
+  # per-cell fit + better conditioned; A/B-verified to match the point (CPC)
+  # stencil accuracy cell-for-cell. Hex would need point (only 6 faces).
+  SL_STENCIL: [face]
+  PHASE_INDICATOR: [detrixheAslam]
+  SURFACE_FILE: [box-edges.stl]
+  DIV: [linear]
+  # N_CELLS is unused by pMesh but is referenced by the (unused) blockMeshDict
+  # template and lives in the base config.yaml axes_override ([32,64]); pin it to a
+  # single dummy value so it does not multiply the poly variations.
+  N_CELLS: [64]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

@@ -104,13 +104,13 @@ void Foam::defectCorrectedIDWReconstruction::update(const volScalarField& psiOld
     // One-off sizing (mesh static within a run).
     if (!built_)
     {
-        const label nc = stencilC_.size();
+        const label nc = mesh_.nCells();
         m_.setSize(nc);
         delta_.setSize(nc);
         maxM_ = 0;
-        forAll(stencilC_, c)
+        for (label c = 0; c < nc; ++c)
         {
-            m_[c] = stencilC_[c].size();
+            m_[c] = stencilSize(c);
             delta_[c].setSize(m_[c], 0.0);
             maxM_ = Foam::max(maxM_, m_[c]);
         }
@@ -123,15 +123,16 @@ void Foam::defectCorrectedIDWReconstruction::update(const volScalarField& psiOld
     scalarField b(maxM_);
 
     label nFallback = 0;
+    List<vector> X(maxM_);   // reused per-cell stencil centres (from mesh_.C()/tail)
 
-    forAll(stencilC_, c)
+    forAll(stencilPsi_, c)
     {
         const label m = m_[c];
         scalarList& d = delta_[c];
         d = 0.0;                               // reset the defects each step
         if (m < 2) { continue; }               // degenerate stencil -> single pass
 
-        const List<vector>& X = stencilC_[c];  // [0] == arrival cell c
+        for (label i = 0; i < m; ++i) { X[i] = stencilC(c, i); }  // [0] == cell c
         const List<scalar>& P = stencilPsi_[c];
         const List<vector>& G = stencilGrad_[c];
 
@@ -216,16 +217,16 @@ Foam::scalar Foam::defectCorrectedIDWReconstruction::evaluateRaw
     const point& x
 ) const
 {
-    const List<vector>& X = stencilC_[c];      // [0] == arrival cell c
     const List<scalar>& P = stencilPsi_[c];
     const List<vector>& G = stencilGrad_[c];
     const scalarList&   d = delta_[c];          // cached nodal defects (d[0] == 0)
 
     scalar sumW = 0;
     scalar phid = 0;
-    forAll(X, i)
+    const label m = stencilSize(c);
+    for (label i = 0; i < m; ++i)
     {
-        const vector r = x - X[i];
+        const vector r = x - stencilC(c, i);    // [0] == arrival cell c
         // Corrected (effective-nodal-value) Taylor value from stencil cell i.
         const scalar taylor = P[i] + d[i] + (G[i] & r);
         const scalar dist = Foam::mag(r);

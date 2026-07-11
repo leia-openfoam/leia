@@ -19,7 +19,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-FIGDIR = os.path.join(REPO, "doc", "slides", "figures")
+FIGDIR = os.path.join(REPO, "docs", "semi-lagrangian-level-set",
+                       "sl-level-set-article", "data", "figures")
 
 CASES = [
     ("idwCompare2D",                                                 "2D reversed vortex (T=2)"),

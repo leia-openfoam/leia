@@ -1,10 +1,12 @@
-# uncachedQuadraticWeightedLeastSquares 3D deformation convergence (N=32/64/128,
-# CFL 0.5). Its own study dir so it does not disturb the quad studies. Numerically
-# identical to quad (proven cell-for-cell) -- this collects uncachedQuad's OWN
-# gradient/volume/shape errors + rates for the report. N=256 needs a >15 GB node
-# (see config/uncachedConv3Ddeformation256.yaml).
+# uncachedQuadraticWeightedLeastSquares 3D deformation convergence, CFL 0.5.
+# Uniform refinement ladder N = 32,50,80,128,160 (ratio r = cbrt(4) per direction
+# -> cells x4 per level; unit cube so cells = N^3). The finest level 160 = 4.1M
+# cells (~9 GB) uses deformation's spare headroom over shear (which caps at 128);
+# 256^3 needs a >15 GB node. Its own study dir so it does not disturb the quad
+# studies. Numerically identical to quad (proven cell-for-cell). LSQ order over
+# the ladder.
 #
-#   snakemake --workflow-profile profiles/local --configfile config/uncachedConv3Ddeformation.yaml --resources tasks=8
+#   snakemake --workflow-profile profiles/local --configfile config/uncachedConv3Ddeformation.yaml --resources tasks=12
 study_name: uncachedConv3Ddeformation
 case: 3Ddeformation
 mesh: hex
@@ -15,7 +17,7 @@ solver: leiaSemiLagrangeLevelSetFoam
 
 axes_override:
   END_TIME: [3.0]
-  N_CELLS:  [32, 64, 128]
+  N_CELLS:  [32, 50, 80, 128, 160]      # cbrt(4) ladder + headroom finest, cells x4/level
   CFL:      [0.5]
   SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
   PHASE_INDICATOR: [detrixheAslam]

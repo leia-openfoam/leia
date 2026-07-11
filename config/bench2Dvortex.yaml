@@ -1,0 +1,23 @@
+# Benchmark: 2D shear vortex (reversed single vortex, shear2D velocity), N=32/64/128,
+# CFL 0.5, at np=12. quad (memory-bound) vs uncached (CPU-bound) -- same errors,
+# different wall-clock. Errors + timing reported together.
+study_name: bench2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 12
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5]
+  SL_RECONSTRUCTION: [quadraticWeightedLeastSquares, uncachedQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"
