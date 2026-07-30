@@ -7,13 +7,26 @@ phaseIndicator/detrixheAslamPhaseIndicator.C
 
 redistancer/redistancer.C
 redistancer/pdeRedistancer.C
+redistancer/planeAnchors.C
+redistancer/anchoredEikonalRedistancer.C
+redistancer/planeFootWaveRedistancer.C
+
+advection/levelSetAdvection.C
+advection/eulerianAdvection.C
+advection/semiLagrangianAdvection.C
 
 surfaceTensionForce/surfaceTensionForce.C
 surfaceTensionForce/constantCurvatureSurfTension.C
+surfaceTensionForce/constantCurvaturePressurePotential.C
 surfaceTensionForce/traceGradGeoNormalSnGradAlpha.C
 surfaceTensionForce/traceGradGradPsiSnGradAlpha.C
 surfaceTensionForce/divGradPsiSnGradAlpha.C
+surfaceTensionForce/divGradAlphaSnGradAlpha.C
+surfaceTensionForce/integralSurfaceTension.C
+surfaceTensionForce/integralConormalSurfaceTension.C
+surfaceTensionForce/isoCurvatureSurfaceTension.C
 surfaceTensionForce/correctionKang.C
+surfaceTensionForce/reconstructedCurvature.C
 
 sdplsSource/sdplsSource.C
 sdplsSource/sdplsR.C
@@ -52,14 +65,20 @@ velocityExtension/meshWaveExt.C
 
 semiLagrangian/slReconstruction.C
 semiLagrangian/linearTaylorReconstruction.C
-semiLagrangian/nestedLSQReconstruction.C
+semiLagrangian/linearWeightedLeastSquaresReconstruction.C
+semiLagrangian/signedDistanceLinearWeightedLeastSquaresReconstruction.C
+semiLagrangian/quadraticTaylorReconstruction.C
 semiLagrangian/quadraticWeightedLeastSquaresReconstruction.C
 semiLagrangian/uncachedQuadraticWeightedLeastSquaresReconstruction.C
+semiLagrangian/signedDistanceQuadraticWeightedLeastSquaresReconstruction.C
 semiLagrangian/bandQuadraticWeightedLeastSquaresReconstruction.C
 semiLagrangian/defectCorrectedIDWReconstruction.C
 semiLagrangian/slCorrector.C
 semiLagrangian/directCorrector.C
 semiLagrangian/deferredCorrector.C
+semiLagrangian/slScheme.C
+semiLagrangian/pointValueScheme.C
+semiLagrangian/fluxFormScheme.C
 semiLagrangian/slAdvection.C
 
 LIB = $(FOAM_USER_LIBBIN)/libleiaLevelSet

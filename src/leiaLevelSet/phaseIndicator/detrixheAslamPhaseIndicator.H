@@ -58,6 +58,7 @@ SourceFiles
 #define detrixheAslamPhaseIndicator_H
 
 #include "phaseIndicator.H"
+#include "levelSetImplicitSurfaces.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -77,6 +78,12 @@ protected:
 
     //- Narrow-band marker
     const volScalarField& narrowBand_;
+
+    //- Geometry source for the local tangent planes.  The production path
+    //  reconstructs psi from cell values; the manufactured oracle evaluates
+    //  the configured implicit surface and its exact normal directly.
+    word geometrySource_;
+    autoPtr<implicitSurface> analyticSurface_;
 
 public:
 

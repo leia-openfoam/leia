@@ -138,7 +138,9 @@ Foam::tmp<volScalarField>
 Foam::sdplsSource::R(const volScalarField& psi, const volVectorField& U) const
 {
     volVectorField const grad_psi = grad(psi);
-    volTensorField const grad_U = fvc::grad(U).cref();
+    // Dedicated fvSchemes keyword (was the unnamed "grad(U)" fallback):
+    // R = (grad(U) & nHat) & nHat needs independent scheme control.
+    volTensorField const grad_U = fvc::grad(U, "gradUSdpls").cref();
     dimensioned<scalar> const eps = dimensioned(grad_psi.dimensions(), SMALL);
     volVectorField const normal_interface = 
         (grad_psi/(mag(grad_psi) + eps)).cref();

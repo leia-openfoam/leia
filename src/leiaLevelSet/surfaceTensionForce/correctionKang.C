@@ -67,13 +67,16 @@ Foam::tmp<Foam::surfaceScalarField> Foam::correctionKang::interpolate
                 dimensionedScalar(psi.dimensions()/dimLength/dimLength, 0.0)
             )
         );
-    surfaceScalarField kappaf = tkappaf.ref();
+    surfaceScalarField& kappaf = tkappaf.ref();
 
     forAll(nei, faceI)
     {
         const label o = own[faceI];
         const label n = nei[faceI];
-        kappaf[faceI] = (kappa[o]*psi[n] + kappa[n]*psi[0])/(psi[n] + psi[o]);
+        const scalar wO = mag(psi[n]);
+        const scalar wN = mag(psi[o]);
+        kappaf[faceI] =
+            (kappa[o]*wO + kappa[n]*wN)/(wO + wN + VSMALL);
     }
 
     return tkappaf;
@@ -103,13 +106,24 @@ Foam::correctionKang::correctionKang(const fvMesh& mesh)
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
 Foam::tmp<surfaceScalarField> 
-Foam::correctionKang::faceSurfaceTensionForce() const 
+Foam::correctionKang::calcFaceSurfaceTensionForceFlux() const
 {
+    if (const surfaceScalarField* sharedKappa =
+        registeredFaceCurvature(surfTensionDict_))
+    {
+        Info<< "correctionKang: registered face curvature selected; "
+            << "bypassing Kang cell-curvature interpolation" << endl;
+        return integratedCSFFlux
+        (
+            *sharedKappa, alpha_, "GSigmaKangConnected"
+        );
+    }
+
     // Compute interface-normals using the gradient of the level set field. 
     tmp<volVectorField> nPsiTmp = fvc::grad(psi_);
     nPsiTmp->rename("nPsi");
     volVectorField& nPsi = nPsiTmp.ref();
-    nPsi = nPsi / mag(nPsi);
+    nPsi = nPsi / (mag(nPsi) + dimensionedScalar("deltaN", nPsi.dimensions(), SMALL));
     Info << nPsi.name() << endl;
     
     tmp<volScalarField> tkappa = fvc::div(nPsi);
@@ -118,7 +132,7 @@ Foam::correctionKang::faceSurfaceTensionForce() const
     tmp<surfaceScalarField> tkappaf = this->interpolate(kappa, psi_);
     const surfaceScalarField kappaf = tkappaf.cref(); 
 
-    return sigma_*kappaf*fvc::snGrad(alpha_);
+    return integratedCSFFlux(kappaf, alpha_, "GSigmaKang");
 }
 
 

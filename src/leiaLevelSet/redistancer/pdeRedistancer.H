@@ -65,7 +65,42 @@ private:
     // Data Members
 
     scalar deltaT_;
+
+    //- Mesh-relative pseudo-time step: deltaT = deltaTCoeff*h_min when
+    //  set (> 0). The explicit reinitialization equation is CFL-limited by
+    //  the MESH (|grad psi| ~ 1 characteristic speed): a fixed deltaT that
+    //  is stable on one mesh diverges on a finer one -- measured on the
+    //  static circle gate (deltaT 0.1 at h = 1/64: band error 2.7e-2 ->
+    //  7.5e6). deltaTCoeff <= 0 (default) keeps the legacy fixed deltaT.
+    scalar deltaTCoeff_;
+
     uint ninterations_;
+
+    //- Frozen-band (bulk-only) variant: freeze the sign-change band +
+    //  anchorLayers guard layers as Dirichlet data (their TRANSPORTED values
+    //  -- nothing is reconstructed, so no chord-plane displacement) and run
+    //  the pseudo-time fill on the bulk only. Zero interface displacement by
+    //  construction. Default false = classical whole-field reinit (existing
+    //  behaviour, bitwise).
+    Switch freezeBand_;
+
+    //- |grad psi| discretization of the reinit Hamiltonian:
+    //    central (default) -- the fvSchemes grad(psi); MEASURED to oscillate
+    //                         and diverge (bulk grad-err 0.56 -> 59.7 over
+    //                         300 pseudo-steps; runaway flips bulk signs).
+    //    godunov           -- Rouy-Tourin upwind: axis-wise max of the
+    //                         one-sided differences toward the interface.
+    //                         Monotone and causal (information flows from
+    //                         the anchors outward; no sign flips) -- the
+    //                         classical cure.
+    const word hamiltonian_;
+
+    //- Rouy-Tourin upwind |grad psi| of psi_p (see hamiltonian_).
+    tmp<volScalarField> magGradGodunov
+    (
+        const volScalarField& psi_p,
+        const volScalarField& signPsi
+    ) const;
 
     bool write_;
 
@@ -87,7 +122,7 @@ public:
 
     // Member Functions
     
-    virtual void doRedistance(volScalarField& psi); 
+    virtual bool doRedistance(volScalarField& psi);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

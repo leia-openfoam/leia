@@ -86,12 +86,24 @@ protected:
     //  bounds of psiOld (default false; quadratic fits can overshoot).
     Switch clipToStencilBounds_;
 
-    //- Barth-Jespersen slope limiting of the reconstruction (default on): scale
-    //  each cell's reconstruction increment by phi_[c] in [0,1] so it does not
-    //  overshoot the stencil min/max at the neighbour centres -- prevents the
-    //  runaway that a raw high-slope extrapolation causes, without a post-hoc
-    //  value clamp. phi_ = 1 => unlimited.
+    //- Legacy switch: limitSlope true == slopeLimiter barthJespersen (kept for
+    //  backward compatibility with existing dictionaries).
     Switch limitSlope_;
+
+    //- Slope-limiter family (default derived from limitSlope_ for compat):
+    //    none            -- phi_ = 1, unlimited (default; bitwise unchanged).
+    //    barthJespersen  -- hard min-ratio cap; MEASURED to collapse the
+    //                       quadratic convergence order (3.0 -> 0.1) over the
+    //                       wide point stencil.
+    //    venkatakrishnan -- SMOOTH cap that deactivates in smooth regions
+    //                       (epsilon^2 = (venkK*h)^3), so it bounds overshoot
+    //                       near extrema WITHOUT collapsing the order.
+    const word limiterType_;
+
+    //- Venkatakrishnan threshold constant K (epsilon^2 = (venkK_*radius_[c])^3).
+    //  Larger K => limiter deactivates over a wider smooth band (more accuracy,
+    //  less bounding). Default 5.
+    const scalar venkK_;
 
     //- Per-cell Barth-Jespersen limiter (filled by computeLimiters()).
     scalarField phi_;
@@ -216,6 +228,46 @@ public:
         //  step after the per-cell assignment (e.g. the band model's far-field
         //  signed-distance re-extension). Default: no-op.
         virtual void postAdvect(volScalarField& psi) {}
+
+        //- Fill kappa (1/length) with the interface mean curvature
+        //  kappa = div(grad psi / |grad psi|) evaluated SYMBOLICALLY from the
+        //  reconstruction's fit gradient and Hessian (no FVM operators), constant-
+        //  extended along the normal via the foot-point. Requires a prior update()
+        //  on the current psi. Only the quadratic models provide this.
+        virtual void meanCurvature(volScalarField& kappa) const
+        {
+            NotImplemented;
+        }
+
+        //- The SDF-assuming curvature kappa = Laplacian(psi) = tr(H), read from the
+        //  fit Hessian. Equal to div(grad psi/|grad psi|) ONLY when psi is a signed
+        //  distance (|grad psi| = 1); provided for comparison with meanCurvature.
+        virtual void meanCurvatureLaplacian(volScalarField& kappa) const
+        {
+            NotImplemented;
+        }
+
+        //- As meanCurvature (same div(grad psi/|grad psi|) from the fit), but
+        //  evaluated AT THE CELL CENTRE -- WITHOUT the foot-point projection, so it
+        //  is NOT extended constant along the interface normal. Provided to compare
+        //  curvature accuracy with and without the normal extension.
+        virtual void meanCurvatureNoExtension(volScalarField& kappa) const
+        {
+            NotImplemented;
+        }
+
+        //- As meanCurvature -- symbolic kappa at the interface foot of the
+        //  cell's own quadratic -- but the foot is the TRUE closest point,
+        //  found by Newton on the KKT system of min |delta|^2 s.t.
+        //  P(delta) = 0 (Jacobian uses the constant fit Hessian), with a
+        //  trust region |delta| <= stencilRadius. Falls back per cell to the
+        //  cell-centre (NoExtension) value on any guard failure, including
+        //  feet beyond the trust region (outer band cells): only the
+        //  force-support layer is foot-evaluated.
+        virtual void meanCurvatureClosestPoint(volScalarField& kappa) const
+        {
+            NotImplemented;
+        }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -29,8 +29,9 @@ Class
 Description
     Plain single-pass semi-Lagrangian assignment: build the reconstruction once
     from psi^n and evaluate it at each foot. This is the original scheme and the
-    one the stable value-fitting reconstructions (quadraticWeightedLeastSquares,
-    nestedLSQ, ...) use. Selected with `correction direct;` (the default).
+    one the value-fitting reconstructions (linearWeightedLeastSquares,
+    quadraticWeightedLeastSquares, ...) use. Selected with `correction direct;`
+    (the default).
 
 SourceFiles
     directCorrector.C

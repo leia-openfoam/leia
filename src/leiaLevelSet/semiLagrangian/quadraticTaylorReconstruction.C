@@ -25,7 +25,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "nestedLSQReconstruction.H"
+#include "quadraticTaylorReconstruction.H"
 #include "addToRunTimeSelectionTable.H"
 #include "fvcGrad.H"
 
@@ -33,18 +33,18 @@ License
 
 namespace Foam
 {
-    defineTypeNameAndDebug(nestedLSQReconstruction, 0);
+    defineTypeNameAndDebug(quadraticTaylorReconstruction, 0);
     addToRunTimeSelectionTable
     (
         slReconstruction,
-        nestedLSQReconstruction,
+        quadraticTaylorReconstruction,
         Mesh
     );
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::nestedLSQReconstruction::nestedLSQReconstruction(const fvMesh& mesh)
+Foam::quadraticTaylorReconstruction::quadraticTaylorReconstruction(const fvMesh& mesh)
 :
     slReconstruction(mesh),
     gradPsi_
@@ -79,7 +79,7 @@ Foam::nestedLSQReconstruction::nestedLSQReconstruction(const fvMesh& mesh)
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void Foam::nestedLSQReconstruction::update(const volScalarField& psiOld)
+void Foam::quadraticTaylorReconstruction::update(const volScalarField& psiOld)
 {
     // First LSQ pass: cell gradient (key "gradPsi"). Assign values only
     // (primitiveFieldRef) so psi's dimensions (it is a signed distance) do not
@@ -104,7 +104,7 @@ void Foam::nestedLSQReconstruction::update(const volScalarField& psiOld)
 }
 
 
-Foam::scalar Foam::nestedLSQReconstruction::evaluateRaw
+Foam::scalar Foam::quadraticTaylorReconstruction::evaluateRaw
 (
     const label c,
     const point& x

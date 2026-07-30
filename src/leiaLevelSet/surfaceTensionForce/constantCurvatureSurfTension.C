@@ -63,9 +63,10 @@ constantCurvatureSurfaceTension::constantCurvatureSurfaceTension(const fvMesh& m
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-tmp<surfaceScalarField> constantCurvatureSurfaceTension::faceSurfaceTensionForce() const 
+tmp<surfaceScalarField>
+constantCurvatureSurfaceTension::calcFaceSurfaceTensionForceFlux() const
 {
-    return sigma_ * curvature_ * fvc::snGrad(alpha_);
+    return sigma_*curvature_*fvc::snGrad(alpha_)*mesh_.magSf();
 }
 
 } // End namespace Foam

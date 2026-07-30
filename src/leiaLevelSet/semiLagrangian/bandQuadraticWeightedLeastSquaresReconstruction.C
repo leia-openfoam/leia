@@ -223,7 +223,23 @@ void Foam::bandQuadraticWeightedLeastSquaresReconstruction::update(const volScal
     label nBand = 0;
     forAll(band_, c)
     {
-        band_[c] = (Foam::mag(psiOld[c]) <= bw*cellSize_[c]);
+        // ISO-AGNOSTIC band gate: the raw |psi| value is a distance only for a
+        // signed-distance field; estimate the distance as |psi|/|grad psi| with a
+        // cheap one-ring finite-difference gradient bound (max slope towards any
+        // stencil neighbour), SMALL-guarded. Exact no-op on an SDF (slope ~ 1).
+        scalar gEst = 0;
+        const label nNbr = stencilSize(c);
+        const vector& xc = mesh_.C()[c];
+        for (label i = 0; i < nNbr; ++i)
+        {
+            const scalar dd = Foam::mag(stencilC(c, i) - xc);
+            if (dd > SMALL)
+            {
+                gEst = max(gEst, Foam::mag(stencilPsi_[c][i] - psiOld[c])/dd);
+            }
+        }
+        band_[c] =
+            (Foam::mag(psiOld[c])/max(gEst, SMALL) <= bw*cellSize_[c]);
         if (band_[c])
         {
             // Only band cells are fitted (few); gather their centres locally from

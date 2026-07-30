@@ -30,6 +30,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include <cmath>
 #include "scalarField.H"
+#include "mathematicalConstants.H"
 
 namespace Foam {
 
@@ -392,6 +393,139 @@ scalar implicitEllipsoid::curvature(const vector& x) const
            *pow(-O0 + x0, 2)/pow(a0, 4))) - 2.0*(-2*O0 + 2*x0)*(-O0 + x0)/(pow(a0, 6)
            *pow(4*pow(-O2 + x2, 2)/pow(a2, 4) + 4*pow(-O1 + x1, 2)/pow(a1, 4)
            + 4*pow(-O0 + x0, 2)/pow(a0, 4), 3.0/2.0));
+}
+
+// * * * * * * * * * * Class signedDistanceEllipse * * * * * * * * * * * //
+
+defineTypeNameAndDebug(signedDistanceEllipse, false);
+addToRunTimeSelectionTable
+(
+    implicitSurface,
+    signedDistanceEllipse,
+    dictionary
+);
+
+signedDistanceEllipse::signedDistanceEllipse(vector center, vector axes)
+:
+    center_(center),
+    axes_(axes)
+{}
+
+signedDistanceEllipse::signedDistanceEllipse(const dictionary& dict)
+:
+    center_(dict.get<vector>("center")),
+    axes_(dict.get<vector>("axes"))
+{}
+
+scalar signedDistanceEllipse::closestParameter(const vector& x) const
+{
+    const scalar px = mag(x.x() - center_.x());
+    const scalar py = mag(x.y() - center_.y());
+    const scalar a = axes_.x();
+    const scalar b = axes_.y();
+    const scalar halfPi = constant::mathematical::pi/2;
+
+    auto distanceSqr = [&](const scalar theta)
+    {
+        return
+            sqr(a*Foam::cos(theta) - px)
+          + sqr(b*Foam::sin(theta) - py);
+    };
+
+    // Bracket the global minimum first.  The distance to a point inside an
+    // ellipse is not guaranteed to be unimodal over the complete quadrant;
+    // this inexpensive scan avoids converging to the wrong stationary point.
+    const label nBracket = 64;
+    const scalar dTheta = halfPi/nBracket;
+    label best = 0;
+    scalar bestDistance = distanceSqr(0);
+    for (label i = 1; i <= nBracket; ++i)
+    {
+        const scalar candidate = distanceSqr(i*dTheta);
+        if (candidate < bestDistance)
+        {
+            best = i;
+            bestDistance = candidate;
+        }
+    }
+
+    scalar left = max(scalar(0), (best - 1)*dTheta);
+    scalar right = min(halfPi, (best + 1)*dTheta);
+    const scalar golden = 0.5*(Foam::sqrt(5.0) - 1);
+    scalar x1 = right - golden*(right - left);
+    scalar x2 = left + golden*(right - left);
+    scalar f1 = distanceSqr(x1);
+    scalar f2 = distanceSqr(x2);
+    for (label iter = 0; iter < 48; ++iter)
+    {
+        if (f1 > f2)
+        {
+            left = x1;
+            x1 = x2;
+            f1 = f2;
+            x2 = left + golden*(right - left);
+            f2 = distanceSqr(x2);
+        }
+        else
+        {
+            right = x2;
+            x2 = x1;
+            f2 = f1;
+            x1 = right - golden*(right - left);
+            f1 = distanceSqr(x1);
+        }
+    }
+    return 0.5*(left + right);
+}
+
+scalar signedDistanceEllipse::value(const vector& x) const
+{
+    const scalar theta = closestParameter(x);
+    const scalar px = mag(x.x() - center_.x());
+    const scalar py = mag(x.y() - center_.y());
+    const scalar qx = axes_.x()*Foam::cos(theta);
+    const scalar qy = axes_.y()*Foam::sin(theta);
+    const scalar distance = Foam::sqrt(sqr(px - qx) + sqr(py - qy));
+    const scalar algebraic =
+        sqr(px/axes_.x()) + sqr(py/axes_.y()) - 1;
+    return algebraic >= 0 ? distance : -distance;
+}
+
+vector signedDistanceEllipse::grad(const vector& x) const
+{
+    const scalar theta = closestParameter(x);
+    vector normal
+    (
+        Foam::cos(theta)/axes_.x(),
+        Foam::sin(theta)/axes_.y(),
+        0
+    );
+    normal /= mag(normal) + VSMALL;
+    normal.x() *= (x.x() < center_.x() ? -1 : 1);
+    normal.y() *= (x.y() < center_.y() ? -1 : 1);
+    return normal;
+}
+
+scalar signedDistanceEllipse::curvature(const vector& x) const
+{
+    const scalar theta = closestParameter(x);
+    const scalar a = axes_.x();
+    const scalar b = axes_.y();
+    return a*b/Foam::pow
+    (
+        sqr(a*Foam::sin(theta)) + sqr(b*Foam::cos(theta)),
+        1.5
+    );
+}
+
+vector signedDistanceEllipse::center() const
+{
+    return center_;
+}
+
+vector signedDistanceEllipse::axes() const
+{
+    return axes_;
 }
 
 // * * * * * * * * * * * * Class implicitSinc * * * * * * * * * * * //

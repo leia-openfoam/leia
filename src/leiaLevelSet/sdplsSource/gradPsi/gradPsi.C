@@ -66,7 +66,11 @@ Foam::gradPsi::gradPsi(const fvMesh& mesh)
 
 Foam::tmp<volVectorField> Foam::gradPsi::grad(const volScalarField& psi) const
 {
-    return fvc::grad(psi);
+    // Dedicated fvSchemes keyword: the SDPLS source gradient must NOT be
+    // silently coupled to the psi ADVECTION gradient ("grad(psi)", typically
+    // cell-limited for the linearUpwind reconstruction) -- the source needs
+    // independent control of its gradient scheme and accuracy.
+    return fvc::grad(psi, "gradPsiSdpls");
 }
 
 

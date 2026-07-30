@@ -58,6 +58,17 @@ Foam::slReconstruction::slReconstruction(const fvMesh& mesh)
     // (a nearest-neighbour or Venkatakrishnan variant would be needed to keep
     // second order).
     limitSlope_(slDict_.getOrDefault<Switch>("limitSlope", false)),
+    // Backward compatible: an explicit slopeLimiter wins; otherwise the legacy
+    // limitSlope Switch maps true->barthJespersen, false->none.
+    limiterType_
+    (
+        slDict_.getOrDefault<word>
+        (
+            "slopeLimiter",
+            limitSlope_ ? word("barthJespersen") : word("none")
+        )
+    ),
+    venkK_(slDict_.getOrDefault<scalar>("venkK", 5.0)),
     phi_(mesh.nCells(), 1.0),
     // Departure-foot reconstruction stencil. Default cell-POINT-cell (CPC): a hex
     // cell has only 6 face-neighbours < the 9 needed for a 3D quadratic value fit,
@@ -81,9 +92,24 @@ Foam::slReconstruction::slReconstruction(const fvMesh& mesh)
     stencilPsi_(),
     psiOldPtr_(nullptr)
 {
+    if (limiterType_ != "none"
+     && limiterType_ != "barthJespersen"
+     && limiterType_ != "venkatakrishnan")
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "slopeLimiter must be none, barthJespersen or venkatakrishnan, "
+            << "got '" << limiterType_ << "'" << exit(FatalIOError);
+    }
+
     Info<< "slReconstruction: departure-foot stencil = "
         << slDict_.getOrDefault<word>("stencil", "point")
-        << " (point = cell-point-cell, face = cell-face-cell)" << endl;
+        << " (point = cell-point-cell, face = cell-face-cell)"
+        << ", slopeLimiter = " << limiterType_;
+    if (limiterType_ == "venkatakrishnan")
+    {
+        Info<< " (venkK = " << venkK_ << ")";
+    }
+    Info<< endl;
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
@@ -210,15 +236,21 @@ Foam::scalar Foam::slReconstruction::stencilRadius(const label c) const
 void Foam::slReconstruction::computeLimiters()
 {
     phi_.setSize(mesh_.nCells());
-    if (!limitSlope_)
+    if (limiterType_ == "none")
     {
         phi_ = 1.0;
         return;
     }
 
-    // Barth-Jespersen: scale each cell's reconstruction increment so the
-    // UNLIMITED value at every stencil-neighbour centre stays within the stencil
-    // min/max of psiOld. phi in [0,1]; phi = 1 on smooth, consistent data.
+    const bool venk = (limiterType_ == "venkatakrishnan");
+
+    // Both variants scale each cell's reconstruction increment so the UNLIMITED
+    // value at every stencil-neighbour centre stays within the stencil min/max
+    // of psiOld; phi in [0,1], phi = 1 => unlimited.
+    //  - barthJespersen: hard cap phi_i = min(1, Delta/d).
+    //  - venkatakrishnan: SMOOTH cap that -> 1 in smooth regions (epsilon^2 =
+    //    (venkK*h)^3 with h = the cell's interpolation radius), so it does not
+    //    collapse the convergence order the way the hard cap does.
     forAll(phi_, c)
     {
         const List<scalar>& s = stencilPsi_[c];
@@ -230,21 +262,32 @@ void Foam::slReconstruction::computeLimiters()
             hi = Foam::max(hi, s[i]);
         }
 
+        const scalar eps2 =
+            venk ? Foam::pow3(venkK_*radius_[c]) : 0.0;
+
         scalar phi = 1.0;
         const label n = stencilSize(c);
         for (label i = 1; i < n; ++i)
         {
-            const scalar d = evaluateRaw(c, stencilC(c, i)) - psiC;   // unlimited increment
+            const scalar d = evaluateRaw(c, stencilC(c, i)) - psiC;
+            scalar phiI = 1.0;
             if (d > VSMALL)
             {
-                phi = Foam::min(phi, Foam::min(scalar(1), (hi - psiC)/d));
+                const scalar D = hi - psiC;                 // allowed + increment
+                phiI = venk
+                  ? ((D*D + eps2)*d + 2.0*d*d*D)/(D*D + 2.0*d*d + D*d + eps2)/d
+                  : Foam::min(scalar(1), D/d);
             }
             else if (d < -VSMALL)
             {
-                phi = Foam::min(phi, Foam::min(scalar(1), (lo - psiC)/d));
+                const scalar D = lo - psiC;                 // allowed - increment
+                phiI = venk
+                  ? ((D*D + eps2)*d + 2.0*d*d*D)/(D*D + 2.0*d*d + D*d + eps2)/d
+                  : Foam::min(scalar(1), D/d);
             }
+            phi = Foam::min(phi, phiI);
         }
-        phi_[c] = Foam::max(scalar(0), phi);
+        phi_[c] = Foam::min(scalar(1), Foam::max(scalar(0), phi));
     }
 }
 

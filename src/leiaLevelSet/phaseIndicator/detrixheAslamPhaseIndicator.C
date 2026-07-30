@@ -93,8 +93,34 @@ inline scalar tetNegativeFraction(scalar a, scalar b, scalar c, scalar d)
 detrixheAslamPhaseIndicator::detrixheAslamPhaseIndicator(const fvMesh& mesh)
 :
     phaseIndicator(mesh),
-    narrowBand_(mesh.lookupObject<volScalarField>("NarrowBand"))
-{}
+    narrowBand_(mesh.lookupObject<volScalarField>("NarrowBand")),
+    geometrySource_
+    (
+        phaseIndDict_.getOrDefault<word>("geometrySource", "levelSetField")
+    ),
+    analyticSurface_()
+{
+    if
+    (
+        geometrySource_ != "levelSetField"
+     && geometrySource_ != "analyticImplicitSurface"
+    )
+    {
+        FatalIOErrorInFunction(phaseIndDict_)
+            << "Unknown Detrixhe-Aslam geometrySource '" << geometrySource_
+            << "'. Valid: levelSetField, analyticImplicitSurface."
+            << exit(FatalIOError);
+    }
+    if (geometrySource_ == "analyticImplicitSurface")
+    {
+        const dictionary& surfaceDict = levelSetDict_.subDict("implicitSurface");
+        analyticSurface_ = implicitSurface::New
+        (
+            surfaceDict.get<word>("type"),
+            surfaceDict
+        );
+    }
+}
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
@@ -107,8 +133,15 @@ void detrixheAslamPhaseIndicator::calcPhaseIndicator
     const fvMesh& mesh = alpha.mesh();
 
     // Bulk: sign-based indicator.
+    const bool analyticGeometry =
+        geometrySource_ == "analyticImplicitSurface";
     forAll(alpha, cellID)
-        alpha[cellID] = (psi[cellID] < 0) ? 1 : 0;
+    {
+        const scalar signValue = analyticGeometry
+          ? analyticSurface_->value(mesh.cellCentres()[cellID])
+          : psi[cellID];
+        alpha[cellID] = (signValue < 0) ? 1 : 0;
+    }
 
     const volScalarField& narrowBand = narrowBand_;
 
@@ -125,21 +158,47 @@ void detrixheAslamPhaseIndicator::calcPhaseIndicator
     {
         if (narrowBand[cellI] != 1) continue;
 
-        // Same linear least-squares reconstruction as geometricPhaseIndicator.
-        const scalarList pc = leastSquaresPlaneCoeffs(mesh, psi, cellI, coupledNei);
+        // Production: the same linear least-squares reconstruction as
+        // geometricPhaseIndicator.  Oracle: the exact signed-distance tangent
+        // plane at the cell centre, phi(x)=n.(x-xc)+surface.value(xc).
+        vector nc(Zero);
+        scalar d = 0;
+        if (analyticGeometry)
+        {
+            const point& xc = cellCentres[cellI];
+            nc = analyticSurface_->grad(xc);
+            const scalar nmag = mag(nc);
+            if (nmag >= SMALL)
+            {
+                nc /= nmag;
+                d = analyticSurface_->value(xc) - (nc & xc);
+            }
+        }
+        else
+        {
+            const scalarList pc =
+                leastSquaresPlaneCoeffs(mesh, psi, cellI, coupledNei);
+            nc = vector(pc[0], pc[1], pc[2]);
+            const scalar nmag = mag(nc);
+            if (nmag >= SMALL)
+            {
+                d = pc[3]/nmag;
+            }
+        }
 
-        const vector nc(pc[0], pc[1], pc[2]);
         const scalar nmag = mag(nc);
         if (nmag < SMALL)
         {
             // Degenerate (flat) reconstruction: fall back to the sign.
-            alpha[cellI] = (psi[cellI] < 0) ? 1 : 0;
+            const scalar signValue = analyticGeometry
+              ? analyticSurface_->value(cellCentres[cellI])
+              : psi[cellI];
+            alpha[cellI] = (signValue < 0) ? 1 : 0;
             continue;
         }
 
         // Signed-distance plane: phi(x) = n & x + d, |n| = 1.
         const vector n = nc/nmag;
-        const scalar d = pc[3]/nmag;
 
         const point& xc   = cellCentres[cellI];
         const scalar phic = (n & xc) + d;

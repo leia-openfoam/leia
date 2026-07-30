@@ -76,7 +76,7 @@ public:
     virtual ~constantCurvatureSurfaceTension() = default;
 
     // Member Functions
-    virtual tmp<surfaceScalarField> faceSurfaceTensionForce() const; 
+    virtual tmp<surfaceScalarField> calcFaceSurfaceTensionForceFlux() const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

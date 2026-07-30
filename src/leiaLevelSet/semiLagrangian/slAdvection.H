@@ -39,8 +39,9 @@ Description
                             + (u_c^{n+1} . grad_c) u^{n+1} ] dt^2
 
       * the OLD field evaluated at x_d by a runtime-selectable slReconstruction
-        (linearTaylor | nestedLSQ | quadraticWeightedLeastSquares), always the ARRIVAL cell's own
-        polynomial => interpolation, not extrapolation, under CFL <= 1.
+        (linearTaylor | linearWeightedLeastSquares | quadraticTaylor |
+        quadraticWeightedLeastSquares), always the ARRIVAL cell's own polynomial
+        => interpolation, not extrapolation, under CFL <= 1.
 
     No flux, no divergence, no linear solve. The characteristic feet are computed
     ONCE (the Taylor backtracking) and the OLD field is assembled at those feet by
@@ -69,6 +70,7 @@ SourceFiles
 #include "autoPtr.H"
 #include "slReconstruction.H"
 #include "slCorrector.H"
+#include "slScheme.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -102,6 +104,12 @@ class slAdvection
     //  used unconditionally; a future exact-gradient trajectory can honour it.
     Switch analyticVelocity_;
 
+    //- Advection scheme (RTS): pointValue (default; the Lagrange interpolation
+    //  psi^{n+1}(x_c) = psi^n(x_d), non-conservative) or fluxForm (conservative
+    //  swept-face finite-volume semi-Lagrangian, CFL <= 1). Selected by
+    //  levelSet.semiLagrangian.scheme.
+    autoPtr<slScheme> scheme_;
+
 public:
 
     //- Runtime type information
@@ -130,6 +138,25 @@ public:
             const volVectorField& Unew,
             const volVectorField& Uold
         );
+
+        //- Re-fit the CURRENT psi and fill kappa (1/length) with the interface mean
+        //  curvature evaluated symbolically from the reconstruction (see
+        //  slReconstruction::meanCurvature). Requires a quadratic reconstruction.
+        void meanCurvature(const volScalarField& psi, volScalarField& kappa);
+
+        //- As meanCurvature, but the SDF-assuming curvature kappa = Laplacian(psi)
+        //  = tr(H) (see slReconstruction::meanCurvatureLaplacian). For comparison.
+        void meanCurvatureLaplacian(const volScalarField& psi, volScalarField& kappa);
+
+        //- As meanCurvature, but evaluated at the cell centre WITHOUT the foot-point
+        //  normal extension (see slReconstruction::meanCurvatureNoExtension).
+        void meanCurvatureNoExtension(const volScalarField& psi, volScalarField& kappa);
+
+        //- As meanCurvature, but the foot found by a trust-region CLOSEST-POINT
+        //  Newton on the cell's own quadratic (KKT system with the fit Hessian)
+        //  instead of the gradient-projection flow; per-cell fallback to the
+        //  cell-centre value (see slReconstruction::meanCurvatureClosestPoint).
+        void meanCurvatureClosestPoint(const volScalarField& psi, volScalarField& kappa);
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

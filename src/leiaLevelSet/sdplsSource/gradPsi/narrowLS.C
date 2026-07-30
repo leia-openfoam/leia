@@ -49,7 +49,8 @@ Foam::narrowLS::narrowLS(const fvMesh& mesh)
 
 Foam::tmp<volVectorField> Foam::narrowLS::grad(const volScalarField& psi) const
 {
-    tmp<volVectorField> tgradpsi = fvc::grad(psi);
+    // Dedicated SDPLS gradient keyword (see gradPsi::grad).
+    tmp<volVectorField> tgradpsi = fvc::grad(psi, "gradPsiSdpls");
     forAll(narrowBand_, cellID)
     {
         if (narrowBand_[cellID] == 1)

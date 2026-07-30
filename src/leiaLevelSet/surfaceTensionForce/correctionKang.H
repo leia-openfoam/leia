@@ -95,8 +95,8 @@ public:
 
     // Member Functions
     
-        //- Face-centered surface tension force 
-        virtual tmp<surfaceScalarField> faceSurfaceTensionForce() const; 
+        //- Integrated scalar surface-tension face flux
+        virtual tmp<surfaceScalarField> calcFaceSurfaceTensionForceFlux() const;
 };
 
 

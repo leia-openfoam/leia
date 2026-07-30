@@ -64,8 +64,6 @@ class traceGradGradPsiSnGradAlpha
         const dictionary& levelSetDict_; 
         const dictionary& surfTensionDict_;
         
-        // Interface normals from the geometrical phase indicator. 
-        const volVectorField& normals_;
         // Volume fraction
         const volScalarField& alpha_;
         // Level set field 
@@ -83,7 +81,7 @@ public:
     virtual ~traceGradGradPsiSnGradAlpha() = default;
 
     // Member Functions
-    virtual tmp<surfaceScalarField> faceSurfaceTensionForce() const; 
+    virtual tmp<surfaceScalarField> calcFaceSurfaceTensionForceFlux() const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

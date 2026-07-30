@@ -104,8 +104,33 @@ class uncachedQuadraticWeightedLeastSquaresReconstruction
     //  M(k,k) += ridgeEps * trace(M)/ncoeff. Conditions distorted-mesh solves.
     scalar ridgeEps_;
 
+    //- Least-squares solver: "normalEquations" (default; A^T W^2 A + Cholesky,
+    //  fast but squares the condition number and drops to a constant fit on a
+    //  non-SPD/degenerate cell) or "householderQR" (QR of the weighted design
+    //  rows W A directly -- no squaring, a bounded LS solution even when the
+    //  normal equations would be near-singular, at a modest extra cost).
+    const word fit_;
+
+    //- Foot-point Newton iterations for the curvature normal-extension (default 3).
+    label curvatureNewtonIters_;
+
+    //- Iteration cap for the closest-point (KKT) Newton foot
+    label closestPointIters_;
+
     //- Constant-free quadratic basis at displacement d (identical to quad).
     void basis(const vector& d, const label ncoeff, scalar* b) const;
+
+    //- grad P at displacement d from the fitted coefficients (analytic: g + H d).
+    void gradFromCoeffs
+    (
+        const scalar* cf,
+        const label nc,
+        const vector& d,
+        vector& g
+    ) const;
+
+    //- Symmetric Hessian of P from the fitted coefficients (0 for a linear fit).
+    void hessianFromCoeffs(const scalar* cf, const label nc, symmTensor& H) const;
 
     //- Active directions + ncoeffFull_ from mesh geometricD().
     void setupBasis();
@@ -125,6 +150,26 @@ public:
     virtual void update(const volScalarField& psiOld) override;
 
     virtual scalar evaluateRaw(const label c, const point& x) const override;
+
+    //- Interface mean curvature kappa = div(grad psi/|grad psi|) evaluated
+    //  symbolically from each cell's fitted gradient + Hessian and constant-
+    //  extended along the normal via a foot-point Newton step. Requires a prior
+    //  update() (the coefficients + stencil are reused). Only near-interface
+    //  cells with a full quadratic fit are filled; the rest are left at 0.
+    virtual void meanCurvature(volScalarField& kappa) const override;
+
+    //- SDF-assuming curvature kappa = Laplacian(psi) = tr(H) (no |grad psi|
+    //  normalisation, no normal projection); for comparison with meanCurvature.
+    virtual void meanCurvatureLaplacian(volScalarField& kappa) const override;
+
+    //- As meanCurvature but evaluated at the cell centre (no foot-point Newton
+    //  projection, so NOT normal-extended); for the with/without-extension study.
+    virtual void meanCurvatureNoExtension(volScalarField& kappa) const override;
+
+    //- As meanCurvature but the foot from a trust-region CLOSEST-POINT
+    //  Newton (KKT system with the fit Hessian) instead of the
+    //  gradient-projection flow; per-cell fallback to the cell-centre value.
+    virtual void meanCurvatureClosestPoint(volScalarField& kappa) const override;
 };
 
 } // End namespace Foam

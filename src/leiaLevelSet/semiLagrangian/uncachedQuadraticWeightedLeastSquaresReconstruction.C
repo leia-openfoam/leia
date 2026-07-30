@@ -80,6 +80,59 @@ static bool choleskySolve(Foam::scalar* A, Foam::scalar* b, const Foam::label n)
     }
     return true;
 }
+
+// Householder-QR least squares of the m x n (m >= n, n <= 9) system Q R x = y,
+// with the DESIGN matrix Ad stored row-major (m rows, n cols) and rhs y (length
+// m); solution written to x (length n). Solves min ||Ad x - y||_2 WITHOUT
+// forming the normal equations (no condition-number squaring). Returns false
+// only if a pivot is numerically zero (rank-deficient below n) so the caller
+// can fall back. m <= maxNbr (~26), n <= 9 -> tiny dense factorisation.
+static bool householderQRSolve
+(
+    Foam::scalar* Ad, Foam::scalar* y, Foam::scalar* x,
+    const Foam::label m, const Foam::label n
+)
+{
+    using Foam::scalar;
+    using Foam::label;
+    for (label k = 0; k < n; ++k)
+    {
+        // Householder vector for column k (rows k..m-1).
+        scalar normx = 0;
+        for (label i = k; i < m; ++i) { normx += Ad[i*n + k]*Ad[i*n + k]; }
+        normx = Foam::sqrt(normx);
+        if (normx <= Foam::SMALL) { return false; }        // rank-deficient
+        const scalar akk = Ad[k*n + k];
+        const scalar alpha = (akk >= 0) ? -normx : normx;
+        // v = column - alpha e_k ; store v in-place in Ad[k..m-1][k]
+        Ad[k*n + k] = akk - alpha;
+        scalar vtv = Ad[k*n + k]*Ad[k*n + k];
+        for (label i = k + 1; i < m; ++i) { vtv += Ad[i*n + k]*Ad[i*n + k]; }
+        if (vtv <= Foam::SMALL) { Ad[k*n + k] = akk; continue; }
+        // apply H = I - 2 v v^T / (v^T v) to the trailing columns of Ad and to y
+        for (label j = k + 1; j < n; ++j)
+        {
+            scalar s = 0;
+            for (label i = k; i < m; ++i) { s += Ad[i*n + k]*Ad[i*n + j]; }
+            s = 2.0*s/vtv;
+            for (label i = k; i < m; ++i) { Ad[i*n + j] -= s*Ad[i*n + k]; }
+        }
+        scalar sy = 0;
+        for (label i = k; i < m; ++i) { sy += Ad[i*n + k]*y[i]; }
+        sy = 2.0*sy/vtv;
+        for (label i = k; i < m; ++i) { y[i] -= sy*Ad[i*n + k]; }
+        Ad[k*n + k] = alpha;                                 // R diagonal
+    }
+    // back-substitute R x = (Q^T y)[0..n-1]
+    for (label i = n - 1; i >= 0; --i)
+    {
+        scalar s = y[i];
+        for (label j = i + 1; j < n; ++j) { s -= Ad[i*n + j]*x[j]; }
+        if (Foam::mag(Ad[i*n + i]) <= Foam::SMALL) { return false; }
+        x[i] = s/Ad[i*n + i];
+    }
+    return true;
+}
 } // End anonymous namespace
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -98,8 +151,19 @@ uncachedQuadraticWeightedLeastSquaresReconstruction
     ncoeff_(),
     coeffsFlat_(),
     built_(false),
-    ridgeEps_(slDict_.getOrDefault<scalar>("ridgeEps", 0))
-{}
+    ridgeEps_(slDict_.getOrDefault<scalar>("ridgeEps", 0)),
+    fit_(slDict_.getOrDefault<word>("fit", "normalEquations")),
+    curvatureNewtonIters_(slDict_.getOrDefault<label>("curvatureNewtonIters", 3)),
+    closestPointIters_(slDict_.getOrDefault<label>("closestPointNewtonIters", 10))
+{
+    if (fit_ != "normalEquations" && fit_ != "householderQR")
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "fit must be normalEquations or householderQR, got '"
+            << fit_ << "'" << exit(FatalIOError);
+    }
+    Info<< "uncachedQuadraticWeightedLeastSquares: fit = " << fit_ << endl;
+}
 
 // * * * * * * * * * * * * * * * Private Members * * * * * * * * * * * * * * //
 
@@ -128,6 +192,79 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::basis
             b[k++] = d[activeDirs_[a]]*d[activeDirs_[bcol]];
         }
     }
+}
+
+
+// grad P(d) = g_lin + H d, read directly from the fitted coefficients (same
+// coeff<->basis map as basis()): linear cf[0..nd-1], diagonal Hessian
+// cf[nd..2nd-1], off-diagonal (cross) Hessian cf[2nd..].
+void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::gradFromCoeffs
+(
+    const scalar* cf,
+    const label nc,
+    const vector& d,
+    vector& g
+) const
+{
+    g = Zero;
+    const label nd = activeDirs_.size();
+
+    for (label a = 0; a < nd; ++a) { g[activeDirs_[a]] += cf[a]; }
+    if (nc == nd) { return; }             // linear fit: constant gradient
+
+    for (label a = 0; a < nd; ++a)
+    {
+        g[activeDirs_[a]] += cf[nd + a]*d[activeDirs_[a]];
+    }
+    label k = 2*nd;
+    for (label a = 0; a < nd; ++a)
+    {
+        for (label bcol = a + 1; bcol < nd; ++bcol)
+        {
+            g[activeDirs_[a]]    += cf[k]*d[activeDirs_[bcol]];
+            g[activeDirs_[bcol]] += cf[k]*d[activeDirs_[a]];
+            ++k;
+        }
+    }
+}
+
+
+// Symmetric Hessian H of the quadratic fit (constant over the cell). The 0.5 on
+// the diagonal basis term means d^2 P/dx_a^2 = cf[nd+a]; cross terms are cf[2nd..].
+void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::hessianFromCoeffs
+(
+    const scalar* cf,
+    const label nc,
+    symmTensor& H
+) const
+{
+    H = Zero;
+    const label nd = activeDirs_.size();
+    if (nc < ncoeffFull_) { return; }     // linear/constant fit: no curvature
+
+    scalar Hm[3][3] = {{0,0,0},{0,0,0},{0,0,0}};
+    for (label a = 0; a < nd; ++a)
+    {
+        Hm[activeDirs_[a]][activeDirs_[a]] = cf[nd + a];
+    }
+    label k = 2*nd;
+    for (label a = 0; a < nd; ++a)
+    {
+        for (label bcol = a + 1; bcol < nd; ++bcol)
+        {
+            const label i = activeDirs_[a];
+            const label j = activeDirs_[bcol];
+            Hm[i][j] = cf[k];
+            Hm[j][i] = cf[k];
+            ++k;
+        }
+    }
+    H = symmTensor
+    (
+        Hm[0][0], Hm[0][1], Hm[0][2],
+                  Hm[1][1], Hm[1][2],
+                            Hm[2][2]
+    );
 }
 
 
@@ -195,9 +332,14 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::update
 
     coeffsFlat_.setSize(mesh_.nCells()*ncoeffFull_);   // one contiguous buffer
 
+    const bool useQR = (fit_ == "householderQR");
+
     scalar A[81];      // ncoeff x ncoeff normal-equations matrix (<= 9x9)
     scalar g[9];       // rhs / solution
     scalar brow[9];    // one basis row
+    // QR scratch: weighted design rows (m x nc, row-major) and weighted rhs.
+    List<scalar> Ad(useQR ? maxNbr_*ncoeffFull_ : 0);
+    List<scalar> yq(useQR ? maxNbr_ : 0);
 
     label nSingular = 0;
     forAll(stencilPsi_, c)
@@ -209,6 +351,29 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::update
         const label nNbr = nNbr_[c];
         const point xc = stencilC(c, 0);         // arrival cell centre (== mesh_.C()[c])
         const scalar psiC = s[0];
+        scalar* cf = &coeffsFlat_[c*ncoeffFull_];
+
+        if (useQR)
+        {
+            // Assemble the WEIGHTED DESIGN system W A x = W ds directly and solve
+            // by Householder QR -- no normal-equations squaring. Same 1/|d| IDW
+            // weight, so the minimiser is identical to the Cholesky path on a
+            // well-conditioned cell but far better conditioned near-degenerate.
+            for (label i = 0; i < nNbr; ++i)
+            {
+                const vector d = stencilC(c, i + 1) - xc;
+                const scalar w = 1.0/Foam::max(Foam::mag(d), SMALL);
+                basis(d, nc, brow);
+                for (label k = 0; k < nc; ++k) { Ad[i*nc + k] = w*brow[k]; }
+                yq[i] = w*(s[i + 1] - psiC);
+            }
+            const bool ok =
+                (nNbr >= nc)
+             && householderQRSolve(Ad.data(), yq.data(), g, nNbr, nc);
+            if (!ok) { ++nSingular; }
+            for (label k = 0; k < nc; ++k) { cf[k] = ok ? g[k] : 0; }
+            continue;
+        }
 
         // Assemble the SYMMETRIC weighted normal equations M = A^T W^2 A,
         // g = A^T W^2 ds, in one sweep over the stencil. Same 1/|d| IDW weight
@@ -243,7 +408,6 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::update
 
         const bool ok = choleskySolve(A, g, nc);
         if (!ok) { ++nSingular; }
-        scalar* cf = &coeffsFlat_[c*ncoeffFull_];
         for (label k = 0; k < nc; ++k) { cf[k] = ok ? g[k] : 0; }
     }
 
@@ -251,9 +415,11 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::update
     if (nSingular > 0)
     {
         WarningInFunction
-            << "uncachedQuadraticWeightedLeastSquares: normal equations not SPD in "
+            << "uncachedQuadraticWeightedLeastSquares: least-squares fit failed in "
             << nSingular << " cells (near-degenerate stencil); fell back to the"
-            << " constant reconstruction there. Consider a small ridgeEps." << endl;
+            << " constant reconstruction there."
+            << (useQR ? "" : " Consider a small ridgeEps or fit householderQR.")
+            << endl;
     }
 
     computeLimiters();
@@ -277,6 +443,312 @@ Foam::scalar Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::evaluate
     scalar val = psiC;
     for (label k = 0; k < nc; ++k) { val += cf[k]*b[k]; }
     return val;
+}
+
+
+void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::meanCurvature
+(
+    volScalarField& kappa
+) const
+{
+    scalarField& k = kappa.primitiveFieldRef();
+    k = 0;
+
+    scalar bb[9];
+    forAll(k, c)
+    {
+        const label nc = ncoeff_[c];
+        if (nc < ncoeffFull_) { continue; }   // need the full quadratic (Hessian)
+
+        const scalar psiC = (*psiOldPtr_)[c];
+        const scalar* cf = &coeffsFlat_[c*ncoeffFull_];
+
+        // Restrict to the near-interface band: kappa in far cells multiplies a
+        // zero snGrad(alpha) in the CSF force, so it is never used.
+        // ISO-AGNOSTIC gate: the distance to the interface is estimated as
+        // |psi|/|grad psi| (first order, epsilon-guarded) -- the raw |psi| value is
+        // a distance ONLY for a signed-distance field; on an algebraic level set
+        // (|grad psi| ~ 1e3) the raw test fails in EVERY cell and silently zeroes
+        // kappa (measured on the equal-axes-ellipsoid droplet).
+        {
+            vector dG(Zero), gG(Zero);
+            gradFromCoeffs(cf, nc, dG, gG);
+            if (Foam::mag(psiC)/max(Foam::mag(gG), SMALL) > 3.0*stencilRadius(c))
+            {
+                continue;
+            }
+        }
+
+        symmTensor H;
+        hessianFromCoeffs(cf, nc, H);
+
+        // Foot-point Newton from the cell centre onto the zero set {P = 0}. Cells
+        // sharing an interface-normal ray converge to the same foot, so evaluating
+        // kappa THERE makes it constant along the normal (normal-constant
+        // extension) -- purely symbolic and local, no field sweep.
+        vector delta(Zero);
+        for (label it = 0; it < curvatureNewtonIters_; ++it)
+        {
+            basis(delta, nc, bb);
+            scalar p = psiC;
+            for (label m = 0; m < nc; ++m) { p += cf[m]*bb[m]; }
+            vector gr(Zero);
+            gradFromCoeffs(cf, nc, delta, gr);
+            const scalar g2 = gr & gr;
+            if (g2 < SMALL) { break; }
+            delta -= (p/g2)*gr;
+        }
+
+        // kappa = div(grad psi/|grad psi|) = (tr(H)|g|^2 - g.(H.g))/|g|^3, evaluated
+        // at the foot point (same sign/definition as traceGradGradPsiSnGradAlpha).
+        vector gf(Zero);
+        gradFromCoeffs(cf, nc, delta, gf);
+        const scalar gm = Foam::mag(gf);
+        if (gm < SMALL) { continue; }
+
+        k[c] = (tr(H)*gm*gm - (gf & (H & gf)))/(gm*gm*gm);
+    }
+
+    kappa.correctBoundaryConditions();
+}
+
+
+void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::meanCurvatureLaplacian
+(
+    volScalarField& kappa
+) const
+{
+    // Curvature under the signed-distance assumption: kappa = Laplacian(psi) =
+    // tr(H). The Hessian is constant over a cell for a quadratic fit, so no
+    // foot-point projection is needed. Equal to the full div(grad psi/|grad psi|)
+    // of meanCurvature() only when |grad psi| = 1 (and the second derivative along
+    // the normal vanishes) -- i.e. for a true signed distance.
+    scalarField& k = kappa.primitiveFieldRef();
+    k = 0;
+
+    forAll(k, c)
+    {
+        const label nc = ncoeff_[c];
+        if (nc < ncoeffFull_) { continue; }   // need the full quadratic (Hessian)
+
+        const scalar psiC = (*psiOldPtr_)[c];
+        const scalar* cf = &coeffsFlat_[c*ncoeffFull_];
+        // Iso-agnostic band gate (distance ~ |psi|/|grad psi|; see meanCurvature).
+        {
+            vector dG(Zero), gG(Zero);
+            gradFromCoeffs(cf, nc, dG, gG);
+            if (Foam::mag(psiC)/max(Foam::mag(gG), SMALL) > 3.0*stencilRadius(c))
+            {
+                continue;
+            }
+        }
+        symmTensor H;
+        hessianFromCoeffs(cf, nc, H);
+        k[c] = tr(H);
+    }
+
+    kappa.correctBoundaryConditions();
+}
+
+
+void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::meanCurvatureNoExtension
+(
+    volScalarField& kappa
+) const
+{
+    // Identical closed form to meanCurvature -- kappa = (tr(H)|g|^2 - g.(H.g))/|g|^3
+    // -- but the gradient g is taken AT THE CELL CENTRE (delta = 0), skipping the
+    // foot-point Newton projection. The curvature is therefore NOT extended constant
+    // along the interface normal; this isolates the effect of that extension.
+    scalarField& k = kappa.primitiveFieldRef();
+    k = 0;
+
+    forAll(k, c)
+    {
+        const label nc = ncoeff_[c];
+        if (nc < ncoeffFull_) { continue; }
+
+        const scalar psiC = (*psiOldPtr_)[c];
+        const scalar* cf = &coeffsFlat_[c*ncoeffFull_];
+
+        symmTensor H;
+        hessianFromCoeffs(cf, nc, H);
+
+        // Gradient at the cell centre: g = grad P(0) = the linear coefficients.
+        vector d0(Zero);
+        vector gc(Zero);
+        gradFromCoeffs(cf, nc, d0, gc);
+        const scalar gm = Foam::mag(gc);
+        if (gm < SMALL) { continue; }
+
+        // Iso-agnostic band gate (distance ~ |psi|/|grad psi|; see meanCurvature).
+        if (Foam::mag(psiC)/gm > 3.0*stencilRadius(c)) { continue; }
+
+        k[c] = (tr(H)*gm*gm - (gc & (H & gc)))/(gm*gm*gm);
+    }
+
+    kappa.correctBoundaryConditions();
+}
+
+
+void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::
+meanCurvatureClosestPoint
+(
+    volScalarField& kappa
+) const
+{
+    // Symbolic kappa at the interface foot of the cell's OWN quadratic, the
+    // foot found as the TRUE closest point: min |delta|^2 s.t. P(delta) = 0.
+    // KKT: delta = lambda*gradP(delta), P(delta) = 0, solved by Newton on
+    // F(delta, lambda) with the analytic Jacobian
+    //     [ I - lambda*H   -gradP(delta) ]
+    //     [ gradP(delta)^T       0       ]
+    // (H = the constant fit Hessian). This differs from meanCurvature()'s
+    // gradient-projection flow (delta -= P/|gradP|^2 gradP), which follows
+    // curving gradient lines and lands NEAR but not AT the closest point.
+    // Guards: trust region |delta| <= stencilRadius(c) (a capped foot means
+    // the zero set lies outside the trusted fit region -- outer band cells),
+    // pivot/degeneracy checks on the 4x4 solve, non-finite checks; every
+    // guard failure falls back to the cell-centre (NoExtension) value, so
+    // only the force-support layer is foot-evaluated.
+    scalarField& k = kappa.primitiveFieldRef();
+    k = 0;
+
+    scalar bb[9];
+    forAll(k, c)
+    {
+        const label nc = ncoeff_[c];
+        if (nc < ncoeffFull_) { continue; }
+
+        const scalar psiC = (*psiOldPtr_)[c];
+        const scalar* cf = &coeffsFlat_[c*ncoeffFull_];
+
+        symmTensor H;
+        hessianFromCoeffs(cf, nc, H);
+        const tensor Ht(H);
+
+        // Cell-centre gradient; the fallback (NoExtension) value.
+        vector d0(Zero);
+        vector g0(Zero);
+        gradFromCoeffs(cf, nc, d0, g0);
+        const scalar gm0 = Foam::mag(g0);
+        if (gm0 < SMALL) { continue; }
+
+        // Iso-agnostic band gate (distance ~ |psi|/|grad psi|; see meanCurvature).
+        if (Foam::mag(psiC)/gm0 > 3.0*stencilRadius(c)) { continue; }
+
+        const scalar kCentre =
+            (tr(H)*gm0*gm0 - (g0 & (H & g0)))/(gm0*gm0*gm0);
+        k[c] = kCentre;
+
+        const scalar rTrust = stencilRadius(c);
+        const scalar tolP = 1e-8*rTrust;
+
+        // Initial guess: one linearized projection step.
+        scalar lambda = -psiC/(gm0*gm0);
+        vector delta = lambda*g0;
+
+        bool ok = false;
+        bool failed = false;
+        for (label it = 0; it < closestPointIters_; ++it)
+        {
+            basis(delta, nc, bb);
+            scalar p = psiC;
+            for (label m = 0; m < nc; ++m) { p += cf[m]*bb[m]; }
+
+            vector gr(Zero);
+            gradFromCoeffs(cf, nc, delta, gr);
+            if (magSqr(gr) < SMALL) { failed = true; break; }
+
+            const vector rV = delta - lambda*gr;
+            if (Foam::mag(p) < tolP && Foam::mag(rV) < 1e-8*rTrust)
+            {
+                ok = true;
+                break;
+            }
+
+            // Newton system A*[ddelta; dlambda] = -[rV; p], 4x4 Gaussian
+            // elimination with partial pivoting and a pivot guard (empty
+            // mesh directions give clean identity rows).
+            scalar A[4][5];
+            for (label i = 0; i < 3; ++i)
+            {
+                for (label j = 0; j < 3; ++j)
+                {
+                    A[i][j] = (i == j ? 1.0 : 0.0) - lambda*Ht(i, j);
+                }
+                A[i][3] = -gr[i];
+                A[i][4] = -rV[i];
+                A[3][i] = gr[i];
+            }
+            A[3][3] = 0;
+            A[3][4] = -p;
+
+            for (label col = 0; col < 4 && !failed; ++col)
+            {
+                label piv = col;
+                for (label r = col + 1; r < 4; ++r)
+                {
+                    if (Foam::mag(A[r][col]) > Foam::mag(A[piv][col]))
+                    {
+                        piv = r;
+                    }
+                }
+                if (Foam::mag(A[piv][col]) < VSMALL) { failed = true; break; }
+                if (piv != col)
+                {
+                    for (label j = col; j < 5; ++j)
+                    {
+                        const scalar t = A[col][j];
+                        A[col][j] = A[piv][j];
+                        A[piv][j] = t;
+                    }
+                }
+                for (label r = col + 1; r < 4; ++r)
+                {
+                    const scalar f = A[r][col]/A[col][col];
+                    for (label j = col; j < 5; ++j) { A[r][j] -= f*A[col][j]; }
+                }
+            }
+            if (failed) { break; }
+
+            scalar sol[4];
+            for (label i = 3; i >= 0; --i)
+            {
+                scalar s = A[i][4];
+                for (label j = i + 1; j < 4; ++j) { s -= A[i][j]*sol[j]; }
+                sol[i] = s/A[i][i];
+            }
+            if
+            (
+                !std::isfinite(sol[0]) || !std::isfinite(sol[1])
+             || !std::isfinite(sol[2]) || !std::isfinite(sol[3])
+            )
+            {
+                failed = true;
+                break;
+            }
+
+            delta += vector(sol[0], sol[1], sol[2]);
+            lambda += sol[3];
+
+            // Trust region: a capped step means the foot is outside the
+            // trusted fit region -- reject and keep the centre value.
+            if (Foam::mag(delta) > rTrust) { failed = true; break; }
+        }
+
+        if (failed || !ok) { continue; }   // k[c] stays at kCentre
+
+        vector gf(Zero);
+        gradFromCoeffs(cf, nc, delta, gf);
+        const scalar gm = Foam::mag(gf);
+        if (gm < SMALL) { continue; }
+
+        const scalar kFoot = (tr(H)*gm*gm - (gf & (H & gf)))/(gm*gm*gm);
+        if (std::isfinite(kFoot)) { k[c] = kFoot; }
+    }
+
+    kappa.correctBoundaryConditions();
 }
 
 // ************************************************************************* //

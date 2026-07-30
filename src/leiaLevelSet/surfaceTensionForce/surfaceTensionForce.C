@@ -25,8 +25,9 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "surfaceFieldsFwd.H"
 #include "surfaceTensionForce.H"
+#include "surfaceFields.H"
+#include "fvcSnGrad.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -86,6 +87,104 @@ surfaceTensionForce::surfaceTensionForce(const fvMesh& mesh)
         transportProperties_.get<scalar>("sigma")
     )
 {}
+
+
+const Foam::surfaceScalarField*
+Foam::surfaceTensionForce::registeredFaceCurvature
+(
+    const dictionary& modelDict,
+    const bool legacyConnectedSelection
+) const
+{
+    word source
+    (
+        modelDict.getOrDefault<word>
+        (
+            "faceCurvatureSource",
+            legacyConnectedSelection ? "registered" : "model"
+        )
+    );
+
+    if (source == "model")
+    {
+        return nullptr;
+    }
+    if (source == "connectedInterface")
+    {
+        source = "registered";
+    }
+    if (source != "registered")
+    {
+        FatalIOErrorInFunction(modelDict)
+            << "Unknown faceCurvatureSource '" << source << "'. Valid: "
+            << "model, registered (or connectedInterface as a synonym)."
+            << exit(FatalIOError);
+    }
+
+    const word fieldName
+    (
+        modelDict.getOrDefault<word>
+        (
+            "faceCurvatureField",
+            "kappaInterfaceFace"
+        )
+    );
+    if (!mesh_.foundObject<surfaceScalarField>(fieldName))
+    {
+        FatalIOErrorInFunction(modelDict)
+            << "faceCurvatureSource=" << source << " requires registered "
+            << "surfaceScalarField '" << fieldName << "', but it is absent."
+            << exit(FatalIOError);
+    }
+
+    return &mesh_.lookupObject<surfaceScalarField>(fieldName);
+}
+
+
+Foam::tmp<Foam::surfaceScalarField>
+Foam::surfaceTensionForce::integratedCSFFlux
+(
+    const surfaceScalarField& kappaFace,
+    const volScalarField& forceWeight,
+    const word& resultName
+) const
+{
+    tmp<surfaceScalarField> tFlux
+    (
+        sigma_*kappaFace*fvc::snGrad(forceWeight)*mesh_.magSf()
+    );
+    tFlux.ref().rename(resultName);
+    return tFlux;
+}
+
+
+Foam::tmp<Foam::surfaceScalarField>
+Foam::surfaceTensionForce::faceSurfaceTensionForceFlux() const
+{
+    tmp<surfaceScalarField> tFlux = calcFaceSurfaceTensionForceFlux();
+    const dimensionSet expected(dimForce/dimLength);
+
+    if (tFlux().dimensions() != expected)
+    {
+        FatalErrorInFunction
+            << "Surface-tension model '" << type() << "' returned dimensions "
+            << tFlux().dimensions() << " for " << tFlux().name() << nl
+            << "The production contract requires the integrated scalar face "
+            << "force flux G_sigma,f with dimensions " << expected << "."
+            << abort(FatalError);
+    }
+    if (!tFlux().is_oriented())
+    {
+        FatalErrorInFunction
+            << "Surface-tension model '" << type() << "' returned an "
+            << "unoriented field " << tFlux().name() << "." << nl
+            << "G_sigma,f must be owner-oriented so it can be combined with "
+            << "snGrad(p_rgh)|Sf| in the pressure-flux space."
+            << abort(FatalError);
+    }
+
+    return tFlux;
+}
 
 // ************************************************************************* //
 

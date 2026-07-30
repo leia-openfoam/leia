@@ -1,0 +1,348 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | www.openfoam.com
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+    Copyright (C) 2026 Tomislav Maric, TU Darmstadt
+-------------------------------------------------------------------------------
+License
+    This file is part of OpenFOAM.
+
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
+\*---------------------------------------------------------------------------*/
+
+#include "linearWeightedLeastSquaresReconstruction.H"
+#include "addToRunTimeSelectionTable.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+namespace Foam
+{
+    defineTypeNameAndDebug(linearWeightedLeastSquaresReconstruction, 0);
+    addToRunTimeSelectionTable
+    (
+        slReconstruction,
+        linearWeightedLeastSquaresReconstruction,
+        Mesh
+    );
+}
+
+namespace
+{
+// In-place Cholesky solve of the SPD system A x = b, A stored row-major n x n
+// (n <= 3 here), b overwritten with x. Returns false if A is not positive-
+// definite (near-singular / rank-deficient stencil) so the caller can fall back.
+static bool choleskySolve(Foam::scalar* A, Foam::scalar* b, const Foam::label n)
+{
+    using Foam::scalar;
+    using Foam::label;
+    for (label j = 0; j < n; ++j)
+    {
+        scalar d = A[j*n + j];
+        for (label k = 0; k < j; ++k) { d -= A[j*n + k]*A[j*n + k]; }
+        if (d <= Foam::SMALL) { return false; }          // not SPD
+        d = Foam::sqrt(d);
+        A[j*n + j] = d;
+        for (label i = j + 1; i < n; ++i)
+        {
+            scalar s = A[i*n + j];
+            for (label k = 0; k < j; ++k) { s -= A[i*n + k]*A[j*n + k]; }
+            A[i*n + j] = s/d;
+        }
+    }
+    // forward solve L y = b
+    for (label i = 0; i < n; ++i)
+    {
+        scalar s = b[i];
+        for (label k = 0; k < i; ++k) { s -= A[i*n + k]*b[k]; }
+        b[i] = s/A[i*n + i];
+    }
+    // backward solve L^T x = y
+    for (label i = n - 1; i >= 0; --i)
+    {
+        scalar s = b[i];
+        for (label k = i + 1; k < n; ++k) { s -= A[k*n + i]*b[k]; }
+        b[i] = s/A[i*n + i];
+    }
+    return true;
+}
+
+// Householder-QR least squares of the m x n (m >= n, n <= 3) system Q R x = y,
+// design matrix Ad row-major (m rows, n cols), rhs y (length m), solution x
+// (length n). Solves min ||Ad x - y||_2 without forming the normal equations.
+// Returns false only if a pivot is numerically zero (rank-deficient below n).
+static bool householderQRSolve
+(
+    Foam::scalar* Ad, Foam::scalar* y, Foam::scalar* x,
+    const Foam::label m, const Foam::label n
+)
+{
+    using Foam::scalar;
+    using Foam::label;
+    for (label k = 0; k < n; ++k)
+    {
+        scalar normx = 0;
+        for (label i = k; i < m; ++i) { normx += Ad[i*n + k]*Ad[i*n + k]; }
+        normx = Foam::sqrt(normx);
+        if (normx <= Foam::SMALL) { return false; }        // rank-deficient
+        const scalar akk = Ad[k*n + k];
+        const scalar alpha = (akk >= 0) ? -normx : normx;
+        Ad[k*n + k] = akk - alpha;
+        scalar vtv = Ad[k*n + k]*Ad[k*n + k];
+        for (label i = k + 1; i < m; ++i) { vtv += Ad[i*n + k]*Ad[i*n + k]; }
+        if (vtv <= Foam::SMALL) { Ad[k*n + k] = akk; continue; }
+        for (label j = k + 1; j < n; ++j)
+        {
+            scalar s = 0;
+            for (label i = k; i < m; ++i) { s += Ad[i*n + k]*Ad[i*n + j]; }
+            s = 2.0*s/vtv;
+            for (label i = k; i < m; ++i) { Ad[i*n + j] -= s*Ad[i*n + k]; }
+        }
+        scalar sy = 0;
+        for (label i = k; i < m; ++i) { sy += Ad[i*n + k]*y[i]; }
+        sy = 2.0*sy/vtv;
+        for (label i = k; i < m; ++i) { y[i] -= sy*Ad[i*n + k]; }
+        Ad[k*n + k] = alpha;                                 // R diagonal
+    }
+    for (label i = n - 1; i >= 0; --i)
+    {
+        scalar s = y[i];
+        for (label j = i + 1; j < n; ++j) { s -= Ad[i*n + j]*x[j]; }
+        if (Foam::mag(Ad[i*n + i]) <= Foam::SMALL) { return false; }
+        x[i] = s/Ad[i*n + i];
+    }
+    return true;
+}
+} // End anonymous namespace
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::linearWeightedLeastSquaresReconstruction::
+linearWeightedLeastSquaresReconstruction
+(
+    const fvMesh& mesh
+)
+:
+    slReconstruction(mesh),
+    activeDirs_(),
+    ncoeffFull_(0),
+    nNbr_(),
+    maxNbr_(0),
+    ncoeff_(),
+    coeffsFlat_(),
+    built_(false),
+    ridgeEps_(slDict_.getOrDefault<scalar>("ridgeEps", 0)),
+    fit_(slDict_.getOrDefault<word>("fit", "normalEquations"))
+{
+    if (fit_ != "normalEquations" && fit_ != "householderQR")
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "fit must be normalEquations or householderQR, got '"
+            << fit_ << "'" << exit(FatalIOError);
+    }
+    Info<< "linearWeightedLeastSquares: fit = " << fit_ << endl;
+}
+
+// * * * * * * * * * * * * * * * Private Members * * * * * * * * * * * * * * //
+
+// Constant-free LINEAR basis at displacement d: b_a = d_a over active dirs.
+void Foam::linearWeightedLeastSquaresReconstruction::basis
+(
+    const vector& d,
+    const label ncoeff,
+    scalar* b
+) const
+{
+    forAll(activeDirs_, a) { b[a] = d[activeDirs_[a]]; }
+    // ncoeff == nd always for this model: no higher-order terms.
+    (void)ncoeff;
+}
+
+
+void Foam::linearWeightedLeastSquaresReconstruction::setupBasis()
+{
+    const Vector<label> gd = mesh_.geometricD();
+    DynamicList<label> dirs(3);
+    for (direction cmpt = 0; cmpt < 3; ++cmpt)
+    {
+        if (gd[cmpt] == 1) { dirs.append(cmpt); }
+    }
+    activeDirs_ = dirs;
+    // LINEAR basis: one coefficient per active mesh direction.
+    ncoeffFull_ = activeDirs_.size();
+}
+
+
+void Foam::linearWeightedLeastSquaresReconstruction::build()
+{
+    setupBasis();
+    const label nd = activeDirs_.size();
+
+    const label nCells = mesh_.nCells();
+    nNbr_.setSize(nCells);
+    ncoeff_.setSize(nCells);
+    maxNbr_ = 0;
+
+    label nFallback = 0;
+    for (label c = 0; c < nCells; ++c)
+    {
+        const label nNbr = stencilSize(c) - 1;   // skip self
+        nNbr_[c] = nNbr;
+        maxNbr_ = Foam::max(maxNbr_, nNbr);
+
+        // Well-determined => linear fit (nd coeffs); else constant (= psi_c).
+        const label ncoeff = (nNbr >= nd) ? nd : 0;
+        if (nNbr < nd) { ++nFallback; }
+        ncoeff_[c] = ncoeff;
+    }
+
+    reduce(nFallback, sumOp<label>());
+    if (nFallback > 0)
+    {
+        Info<< "linearWeightedLeastSquares: " << nFallback
+            << " cells with under-determined stencils fell back to a constant fit"
+            << endl;
+    }
+    built_ = true;
+    // NB: do NOT releaseStencilCentres() -- the fit is reassembled every step.
+}
+
+// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+
+void Foam::linearWeightedLeastSquaresReconstruction::update
+(
+    const volScalarField& psiOld
+)
+{
+    collectStencil(psiOld);       // fills stencilPsi_ (+ stencilC_ once); sets ptr
+
+    if (!built_) { build(); }
+
+    coeffsFlat_.setSize(mesh_.nCells()*ncoeffFull_);   // one contiguous buffer
+
+    const bool useQR = (fit_ == "householderQR");
+
+    scalar A[9];       // ncoeff x ncoeff normal-equations matrix (<= 3x3)
+    scalar g[3];       // rhs / solution
+    scalar brow[3];    // one basis row
+    // QR scratch: weighted design rows (m x nc, row-major) and weighted rhs.
+    List<scalar> Ad(useQR ? maxNbr_*ncoeffFull_ : 0);
+    List<scalar> yq(useQR ? maxNbr_ : 0);
+
+    label nSingular = 0;
+    forAll(stencilPsi_, c)
+    {
+        const label nc = ncoeff_[c];
+        if (nc == 0) { continue; }    // constant reconstruction (= psi_c)
+
+        const List<scalar>& s = stencilPsi_[c];
+        const label nNbr = nNbr_[c];
+        const point xc = stencilC(c, 0);         // arrival cell centre (== mesh_.C()[c])
+        const scalar psiC = s[0];
+        scalar* cf = &coeffsFlat_[c*ncoeffFull_];
+
+        if (useQR)
+        {
+            // Assemble the WEIGHTED DESIGN system W A x = W ds directly and solve
+            // by Householder QR -- no normal-equations squaring.
+            for (label i = 0; i < nNbr; ++i)
+            {
+                const vector d = stencilC(c, i + 1) - xc;
+                const scalar w = 1.0/Foam::max(Foam::mag(d), SMALL);
+                basis(d, nc, brow);
+                for (label k = 0; k < nc; ++k) { Ad[i*nc + k] = w*brow[k]; }
+                yq[i] = w*(s[i + 1] - psiC);
+            }
+            const bool ok =
+                (nNbr >= nc)
+             && householderQRSolve(Ad.data(), yq.data(), g, nNbr, nc);
+            if (!ok) { ++nSingular; }
+            for (label k = 0; k < nc; ++k) { cf[k] = ok ? g[k] : 0; }
+            continue;
+        }
+
+        // Assemble the SYMMETRIC weighted normal equations M = A^T W^2 A,
+        // g = A^T W^2 ds, in one sweep over the stencil. Same 1/|d| IDW weight
+        // as the quadratic value fit -> the same weighted LS minimiser.
+        for (label k = 0; k < nc; ++k)
+        {
+            g[k] = 0;
+            for (label l = 0; l < nc; ++l) { A[k*nc + l] = 0; }
+        }
+        for (label i = 0; i < nNbr; ++i)
+        {
+            const vector d = stencilC(c, i + 1) - xc;
+            const scalar w = 1.0/Foam::max(Foam::mag(d), SMALL);
+            const scalar w2 = w*w;
+            basis(d, nc, brow);
+            const scalar ds = s[i + 1] - psiC;
+            for (label k = 0; k < nc; ++k)
+            {
+                const scalar wb = w2*brow[k];
+                g[k] += wb*ds;
+                for (label l = 0; l < nc; ++l) { A[k*nc + l] += wb*brow[l]; }
+            }
+        }
+
+        if (ridgeEps_ > 0)
+        {
+            scalar tr = 0;
+            for (label k = 0; k < nc; ++k) { tr += A[k*nc + k]; }
+            const scalar r = ridgeEps_*tr/nc;
+            for (label k = 0; k < nc; ++k) { A[k*nc + k] += r; }
+        }
+
+        const bool ok = choleskySolve(A, g, nc);
+        if (!ok) { ++nSingular; }
+        for (label k = 0; k < nc; ++k) { cf[k] = ok ? g[k] : 0; }
+    }
+
+    reduce(nSingular, sumOp<label>());
+    if (nSingular > 0)
+    {
+        WarningInFunction
+            << "linearWeightedLeastSquares: least-squares fit failed in "
+            << nSingular << " cells (near-degenerate stencil); fell back to the"
+            << " constant reconstruction there."
+            << (useQR ? "" : " Consider a small ridgeEps or fit householderQR.")
+            << endl;
+    }
+
+    computeLimiters();
+}
+
+
+Foam::scalar Foam::linearWeightedLeastSquaresReconstruction::evaluateRaw
+(
+    const label c,
+    const point& x
+) const
+{
+    const scalar psiC = (*psiOldPtr_)[c];
+    const label nc = ncoeff_[c];
+    if (nc == 0) { return psiC; }
+
+    const vector d = x - mesh_.C()[c];
+    scalar b[3];
+    basis(d, nc, b);
+    const scalar* cf = &coeffsFlat_[c*ncoeffFull_];
+    scalar val = psiC;
+    for (label k = 0; k < nc; ++k) { val += cf[k]*b[k]; }
+    return val;
+}
+
+// ************************************************************************* //

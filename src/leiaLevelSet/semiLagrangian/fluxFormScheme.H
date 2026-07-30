@@ -24,55 +24,51 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::nestedLSQReconstruction
+    Foam::fluxFormScheme
 
 Description
-    Second-order Taylor reconstruction with derivatives from nested linear
-    least squares:
-
-        psi(x) ~= psi_c + g_c . d + 1/2 d^T H_c d,     d = x - x_c
-
-    g_c = LSQ gradient of psiOld (fvSchemes key `gradPsi`);
-    H_c = LSQ gradient of g_c, symmetrised (fvSchemes key `gradGradPsi`).
-    Both passes are cell-point-cell least squares (linear-exact on arbitrary
-    stencils), so the nested construction is exact for quadratic psi => global
-    O(h^2). Nested Green-Gauss would NOT be consistent on skewed meshes and is
-    deliberately avoided (the LSQ scheme is selected by name).
+    Conservative (flux-form) semi-Lagrangian, CFL <= 1. The face psi-flux is the
+    reconstructed psi^n integrated over the swept prism; at CFL <= 1 the prism
+    lies in the face-upwind cell, so F_f = phi_f * psiTilde with psiTilde the
+    UPWIND cell's reconstruction at the swept-prism centroid x_f - 1/2 u_f dt.
+    psi^{n+1} = psi^n - dt div(F) telescopes over internal faces -> discrete
+    conservation of the integral of psi (exact for a divergence-free flux). The
+    corrector is unused. CFL > 1 would need the multi-cell preimage integral
+    (documented scope limit; not implemented).
 
 SourceFiles
-    nestedLSQReconstruction.C
+    fluxFormScheme.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef nestedLSQReconstruction_H
-#define nestedLSQReconstruction_H
+#ifndef fluxFormScheme_H
+#define fluxFormScheme_H
 
-#include "slReconstruction.H"
+#include "slScheme.H"
 
 namespace Foam
 {
 
-class nestedLSQReconstruction
+class fluxFormScheme
 :
-    public slReconstruction
+    public slScheme
 {
-    //- Cell-centred LSQ gradient of psiOld (fvSchemes key "gradPsi").
-    volVectorField gradPsi_;
-
-    //- Symmetrised cell-centred LSQ Hessian of psiOld (key "gradGradPsi").
-    volTensorField hessPsi_;
-
 public:
 
-    TypeName("nestedLSQ");
+    TypeName("fluxForm");
 
-    explicit nestedLSQReconstruction(const fvMesh& mesh);
+    explicit fluxFormScheme(const fvMesh& mesh);
 
-    virtual ~nestedLSQReconstruction() = default;
+    virtual ~fluxFormScheme() = default;
 
-    virtual void update(const volScalarField& psiOld) override;
-
-    virtual scalar evaluateRaw(const label c, const point& x) const override;
+    virtual void advance
+    (
+        volScalarField& psi,
+        const volVectorField& Unew,
+        const volVectorField& Uold,
+        slReconstruction& recon,
+        slCorrector& corrector
+    );
 };
 
 } // End namespace Foam

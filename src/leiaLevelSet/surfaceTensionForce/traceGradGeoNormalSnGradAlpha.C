@@ -36,6 +36,7 @@ License
 #include "fvcSnGrad.H"
 #include "surfaceInterpolate.H"
 #include "volFieldsFwd.H"
+#include "levelSetPlaneReconstruction.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -52,7 +53,6 @@ traceGradGeoNormalSnGradAlpha::traceGradGeoNormalSnGradAlpha(const fvMesh& mesh)
     fvSolutionDict_(mesh_),
     levelSetDict_(fvSolutionDict_.subDict("levelSet")),
     surfTensionDict_(levelSetDict_.subDict("surfaceTensionForce")),
-    normals_(mesh_.lookupObject<volVectorField>(surfTensionDict_.getOrDefault<word>("normals", "nc"))),
     alpha_(mesh_.lookupObject<volScalarField>(surfTensionDict_.getOrDefault<word>("alpha", "alpha.dispersed"))),
     psi_(mesh_.lookupObject<volScalarField>(surfTensionDict_.getOrDefault<word>("levelSet", "psi"))),
     narrowBand_(mesh_.lookupObject<volScalarField>(surfTensionDict_.getOrDefault<word>("narrowBand", "NarrowBand")))
@@ -60,27 +60,50 @@ traceGradGeoNormalSnGradAlpha::traceGradGeoNormalSnGradAlpha(const fvMesh& mesh)
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-tmp<surfaceScalarField> traceGradGeoNormalSnGradAlpha::faceSurfaceTensionForce() const 
+tmp<surfaceScalarField>
+traceGradGeoNormalSnGradAlpha::calcFaceSurfaceTensionForceFlux() const
 {
+    if (const surfaceScalarField* sharedKappa =
+        registeredFaceCurvature(surfTensionDict_))
+    {
+        return integratedCSFFlux
+        (
+            *sharedKappa, alpha_, "GSigmaTraceGeoNormalConnected"
+        );
+    }
+
     // Compute interface-normals using the gradient of the level set field. 
     tmp<volVectorField> nPsiTmp = fvc::grad(psi_);
     nPsiTmp->rename("nPsi");
     volVectorField& nPsi = nPsiTmp.ref();
-    nPsi = nPsi / mag(nPsi);
+    nPsi = nPsi / (mag(nPsi) + dimensionedScalar("deltaN", nPsi.dimensions(), SMALL));
     Info << nPsi.name() << endl;
 
-    // Set the normals in the narrow band to the geometrical phase-indicator normals.
+    // Recompute the same normalized linear-LSQ plane normals used by the
+    // Detrixhe-Aslam phase indicator. Unlike the historical implementation,
+    // this does not require the separate geometricPhaseIndicator model to
+    // register an `nc` field, so the force works with Detrixhe-Aslam directly.
+    const coupledFaceNeighbours coupledNei(mesh_, psi_);
     forAll(narrowBand_, cellI)
     {
         if (narrowBand_[cellI] == 1)    
         {
-            nPsi[cellI] = normals_[cellI];
+            const scalarList pc =
+                leastSquaresPlaneCoeffs(mesh_, psi_, cellI, coupledNei);
+            const vector nc(pc[0], pc[1], pc[2]);
+            const scalar nmag = mag(nc);
+            if (nmag > SMALL)
+            {
+                nPsi[cellI] = nc/nmag;
+            }
         }
     }
     
     // Face-centered curvature as a linear interpolation of the trace of the gradient 
     // of the interface-normal-field. 
-    return sigma_*fvc::interpolate(tr(fvc::grad(nPsi)))*fvc::snGrad(alpha_);
+    tmp<surfaceScalarField> tkf =
+        fvc::interpolate(tr(fvc::grad(nPsi)));
+    return integratedCSFFlux(tkf(), alpha_, "GSigmaTraceGeoNormal");
 }
 
 } // End namespace Foam

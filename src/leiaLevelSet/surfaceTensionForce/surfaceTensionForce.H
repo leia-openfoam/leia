@@ -44,6 +44,7 @@ SourceFiles
 #include "runTimeSelectionTables.H"
 #include "fvSolution.H"
 #include "volFields.H"
+#include "surfaceFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -66,6 +67,37 @@ protected:
     // Surface tension coefficient.
     IOdictionary transportProperties_;
     dimensionedScalar sigma_; 
+
+    //- Model implementation of the integrated face force flux.
+    virtual tmp<surfaceScalarField>
+    calcFaceSurfaceTensionForceFlux() const = 0;
+
+    //- Return the registered face-native curvature selected by a model, or
+    //  nullptr when the model should use its own curvature estimator.
+    //
+    //  The common dictionary contract is
+    //
+    //      faceCurvatureSource model;       // model | registered
+    //      faceCurvatureField  kappaInterfaceFace;
+    //
+    //  "connectedInterface" is accepted as a descriptive synonym for
+    //  "registered".  Curvature reconstruction/regularisation is deliberately
+    //  outside the force models: once kappa_f exists on the CSF faces, Kang or
+    //  arithmetic cell-to-face interpolation must not be applied again.
+    const surfaceScalarField* registeredFaceCurvature
+    (
+        const dictionary& modelDict,
+        const bool legacyConnectedSelection = false
+    ) const;
+
+    //- Assemble the pressure-compatible, integrated scalar CSF flux directly
+    //  from face curvature and a model-specific localisation field.
+    tmp<surfaceScalarField> integratedCSFFlux
+    (
+        const surfaceScalarField& kappaFace,
+        const volScalarField& forceWeight,
+        const word& resultName = "GSigma"
+    ) const;
 
 public:
 
@@ -99,8 +131,15 @@ public:
 
     // Member Functions
     
-    //- Face-centered surface tension force 
-    virtual tmp<surfaceScalarField> faceSurfaceTensionForce() const = 0;
+    //- Integrated scalar capillary force flux G_sigma,f [N/m].
+    //
+    //  This is the only production delivery contract. It already includes the
+    //  face-area integration (for a pointwise face force density f_sigma,f,
+    //  G_sigma,f = f_sigma,f |Sf|). The pressure corrector therefore combines
+    //  it directly with snGrad(p_rgh)|Sf|, and both enter the same
+    //  fvc::reconstruct path. Models cannot bypass that balanced face-flux
+    //  space with a cell-centred momentum source.
+    tmp<surfaceScalarField> faceSurfaceTensionForceFlux() const;
 
 };
 

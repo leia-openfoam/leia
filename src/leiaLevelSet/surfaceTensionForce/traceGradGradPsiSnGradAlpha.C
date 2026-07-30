@@ -52,24 +52,35 @@ traceGradGradPsiSnGradAlpha::traceGradGradPsiSnGradAlpha(const fvMesh& mesh)
     fvSolutionDict_(mesh_),
     levelSetDict_(fvSolutionDict_.subDict("levelSet")),
     surfTensionDict_(levelSetDict_.subDict("surfaceTensionForce")),
-    normals_(mesh_.lookupObject<volVectorField>(surfTensionDict_.getOrDefault<word>("normals", "nc"))),
     alpha_(mesh_.lookupObject<volScalarField>(surfTensionDict_.getOrDefault<word>("alpha", "alpha.dispersed"))),
     psi_(mesh_.lookupObject<volScalarField>(surfTensionDict_.getOrDefault<word>("levelSet", "psi")))
 {}
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-tmp<surfaceScalarField> traceGradGradPsiSnGradAlpha::faceSurfaceTensionForce() const 
+tmp<surfaceScalarField>
+traceGradGradPsiSnGradAlpha::calcFaceSurfaceTensionForceFlux() const
 {
+    if (const surfaceScalarField* sharedKappa =
+        registeredFaceCurvature(surfTensionDict_))
+    {
+        return integratedCSFFlux
+        (
+            *sharedKappa, alpha_, "GSigmaTraceGradPsiConnected"
+        );
+    }
+
     // Compute interface-normals using the gradient of the level set field. 
     tmp<volVectorField> nPsiTmp = fvc::grad(psi_);
     nPsiTmp->rename("nPsi");
     volVectorField& nPsi = nPsiTmp.ref();
-    nPsi = nPsi / mag(nPsi);
+    nPsi = nPsi / (mag(nPsi) + dimensionedScalar("deltaN", nPsi.dimensions(), SMALL));
     
     // Face-centered curvature as a linear interpolation of the trace of the gradient 
     // of the interface-normal-field. 
-    return sigma_*fvc::interpolate(tr(fvc::grad(nPsi)))*fvc::snGrad(alpha_);
+    tmp<surfaceScalarField> tkf =
+        fvc::interpolate(tr(fvc::grad(nPsi)));
+    return integratedCSFFlux(tkf(), alpha_, "GSigmaTraceGradPsi");
 }
 
 } // End namespace Foam

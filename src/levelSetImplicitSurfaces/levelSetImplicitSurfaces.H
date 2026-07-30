@@ -228,6 +228,39 @@ namespace Foam {
             vector axes() const;
     };
 
+    //- Exact Euclidean signed distance to an axis-aligned 2-D ellipse.
+    //  The z coordinate and axes.z are ignored, making this suitable for the
+    //  one-cell-thick empty-patch droplet benchmarks.  This is deliberately a
+    //  separate type: implicitEllipsoid retains its historical algebraic
+    //  level-set value for backward compatibility.
+    class signedDistanceEllipse : public implicitSurface
+    {
+        vector center_;
+        vector axes_;
+
+        scalar closestParameter(const vector& x) const;
+
+        public:
+
+            TypeName ("signedDistanceEllipse");
+
+            signedDistanceEllipse(vector center, vector axes);
+
+            signedDistanceEllipse(const dictionary& dict);
+
+            virtual ~signedDistanceEllipse() = default;
+
+            virtual scalar value(const vector& x) const;
+
+            virtual vector grad(const vector& x) const;
+
+            virtual scalar curvature(const vector& x) const;
+
+            vector center() const;
+
+            vector axes() const;
+    };
+
     class implicitSinc : public implicitSurface
     {
         vector origin_; 
