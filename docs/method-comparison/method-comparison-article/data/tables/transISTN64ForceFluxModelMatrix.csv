@@ -1,0 +1,11 @@
+model,status,final_time_s,max_U_minus_Utrans_m_per_s,final_U_minus_Utrans_m_per_s
+constantCurvatureSurfaceTension,reached_0.05,0.0499988053,2.166028956e-07,4.888063729e-08
+reconstructedCurvature,FPE,0.0037758962,6.905016316,6.905016316
+divGradPsiSnGradAlpha,reached_0.05,0.0499988053,0.09062060977,0.06557643487
+traceGradGradPsiSnGradAlpha,reached_0.05,0.0499988053,0.09062060977,0.06557643487
+traceGradGeoNormalSnGradAlpha,reached_0.05,0.0499988053,0.09062060977,0.06557643487
+correctionKang,reached_0.05,0.0499988053,0.1669796087,0.1629989014
+divGradAlphaSnGradAlpha,FPE,0.0009545805,1.074924587,1.074924587
+integralSurfaceTension,FPE,0.0009333676,4.631466264,2.038615827
+integralConormalSurfaceTension,FPE,0.0009545805,3.538496257,3.538496257
+isoCurvature_conormalCSF,FPE,0.0014212643,0.9026329883,0.3990411544

@@ -1,0 +1,133 @@
+% SKELETON — parallel structure to the SL/GRL articles. Compiles now; the
+% verification section fills from the benchVortex* studies (single data
+% source: data/{figures,tables} feeds this article AND both reveal decks).
+\documentclass[preprint,3p,11pt]{elsarticle}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+\graphicspath{{data/figures/}}
+
+\newcommand{\psilev}{\psi}
+\newcommand{\nhat}{\hat{\mathbf{n}}}
+
+\begin{document}
+\begin{frontmatter}
+
+\title{The SDPLS level-set method for two-phase flows: source-term control
+of the signed-distance property without interface displacement}
+
+\author[tuda]{Tomislav Mari\'{c}}
+\author[tuda]{Mathis Fricke}
+\author[tuda]{Dieter Bothe}
+\address[tuda]{Mathematical Modeling and Analysis, TU Darmstadt, Germany}
+
+\begin{abstract}
+Reinitialization displaces the interface: the zero level set and the
+narrow-band values are the same degrees of freedom, so any rewrite of the
+band trades transport accuracy for reconstruction accuracy and pays a
+spurious volume change per redistancing step. The SDPLS method avoids the
+trade entirely: a source term $S = f_{nl}(\psilev^n)\,\psilev$ that
+vanishes identically on the zero level set controls the gradient of
+$\psilev$ through the transport equation itself --- zero interface
+displacement by construction. We analyze and measure the stability of
+three source-term linearizations, control the source gradients through
+dedicated discretization keywords, and benchmark the method against
+semi-Lagrangian transport and interface-normal velocity extension on the
+reversed vortex at resolutions up to $512^2$, including wall-clock cost
+and the maximally-stretched state at $t = T/2$. TODO: benchmark numbers.
+\end{abstract}
+
+\begin{keyword}
+level set \sep two-phase flow \sep reinitialization \sep signed distance
+\sep OpenFOAM
+\end{keyword}
+\end{frontmatter}
+
+% ============================================================================
+\section{Introduction}
+TODO: level-set transport degrades $|\nabla\psilev|$; classical
+reinitialization \cite{sussman1994,russo2000} and its measured
+interface-displacement cost (companion GRL line); the SDPLS idea.
+
+% ============================================================================
+\section{Method}
+\subsection{The source term}
+\begin{equation}
+  \partial_t \psilev + \nabla\cdot(\mathbf{v}\psilev)
+  - \psilev\,\nabla\cdot\mathbf{v} = f_{nl}(\psilev^n)\,\psilev .
+  \label{eq:sdpls}
+\end{equation}
+Because $S \propto \psilev$, the source vanishes identically on the zero
+level set: the interface evolves by transport alone. Along characteristics
+$d\ln|\nabla\psilev|/dt = -(\nhat\cdot\nabla\mathbf{v}\cdot\nhat)$, so
+\begin{itemize}
+  \item \textbf{R}: $f_{nl} = (\nhat\cdot\nabla\mathbf{v}\cdot\nhat)$
+    cancels the normal-strain drift of $|\nabla\psilev|$ (the SDPLS model);
+  \item \textbf{beta}: $f_{nl} = \beta - |\nabla\psilev|$ relaxes
+    $|\nabla\psilev| \to \beta$ (the convected level-set idea
+    \cite{ville2011}).
+\end{itemize}
+The source gradients are discretized under dedicated scheme keywords
+(\texttt{gradPsiSdpls}, \texttt{gradUSdpls}) --- never silently coupled to
+the advection scheme's limited $\nabla\psilev$.
+
+\subsection{Linearization and stability}
+$S = f_{nl}(\psilev^n)\,\psilev^{n+1}$ splits into an explicit part
+$S_c$ and an implicit diagonal part $S_p$:
+\begin{center}
+\begin{tabular}{l l l}
+\hline
+discretization & split & stability (measured, $N{=}128$, CFL 0.1--1.0) \\
+\hline
+explicit & $S_c = f_{nl}\psilev^n$, $S_p = 0$ &
+  R: stable; \textbf{beta: diverges at every CFL} \\
+simpleLinearImplicit & $S_p = f_{nl}$ (any sign) &
+  both stable; beta: best accuracy (4.5e-5) \\
+strictNegativeSp & $S_p = \min(f_{nl},0)$, $S_c = \max(f_{nl},0)\psilev^n$ &
+  both stable; diagonally dominant by construction \\
+\hline
+\end{tabular}
+\end{center}
+The beta+explicit divergence is dt-independent: the relaxation source turns
+its stable fixed point into an anti-damped oscillation when lagged
+explicitly --- the implicit diagonal must carry it. R is mild
+($|f_{nl}| \le \max\|\nabla\mathbf{v}\|$), stable in all variants.
+
+\subsection{Defect correction and the two-phase coupling}
+Second-order deferred div schemes (linearUpwind) require re-assembly of
+(\ref{eq:sdpls}): \texttt{nDefCorr} passes in pure advection; in the
+two-phase solver the equation is re-assembled \emph{every PIMPLE outer
+corrector} (verified: steps $\times$ correctors $=$ $\psilev$ solves), so
+\texttt{nOuterCorrectors} is the defect-correction control. Interface
+updates (band, redistancing criterion, volume fraction) run once per time
+step on the final corrector.
+
+% ============================================================================
+\section{Verification: the method-decision benchmark}
+TODO (from \texttt{config/benchVortex*.yaml}): reversed vortex, $N =
+32^2..512^2$, $T \in \{2, 8\}$; Euler+SDPLS \{noSource, R, beta\} vs
+semi-Lagrangian \{cached, uncached quadratic\} vs velocity extension
+\{closestPoint\}; shape/volume/gradient at $t{=}T$, volume+gradient at
+$t{=}T/2$, wall clock.
+% \input{data/tables/benchVortex_decision.tex}
+% \includegraphics[width=\linewidth]{benchVortex_convergence_T2.png}
+% \includegraphics[width=\linewidth]{benchVortex_cost_accuracy.png}
+
+% ============================================================================
+\section{Negative results}
+Measured and documented in the companion deck: beta+explicit divergence
+(all CFL); the missing-coefficient construction failure; R over-flattening
+near the resolution limit ($T{=}8$, $N{=}128$: volume error 0.488 vs 0.238
+without source, final band $\max|\nabla\psilev| = 0.19$); R's scope limit
+(controls steepening --- band max $5.5{-}7.4 \to 1.36$ --- but not
+under-resolution flattening); the dead \texttt{limit} entry pitfall.
+
+% ============================================================================
+\section{Conclusions}
+TODO after the benchmark.
+
+\bibliographystyle{elsarticle-num}
+\bibliography{refs}
+\end{document}

@@ -1,0 +1,4 @@
+method,velocityExtension,reconstruction,redistancer,redistTrigger,solver,phaseIndicator,T,h,maxCellSize,cfl,totalClockTime,clockPerSimTime,gradientError,shapeError,volumeError,gradientErrorBand,gradientErrorHalf,gradientErrorBandHalf,volumeErrorHalf,minGradPsiBand,minGradPsiBandHalf,anchorLayers,uextDiv,eNormalL2,eNormalLinf,eNormalRawL2,ratioL2,eNormalL2In,eNormalL2Out
+euler,none,,,,leiaLevelSetFoam,,0.1,0.0078125,,,743.0,7430.0,,1.5776974e-12,0.00030890069,,,,0.00018482246,,,,,,,,,,
+euler,none,,,,leiaLevelSetFoam,,0.1,0.015625,,,66.0,660.0,,2.2354119e-12,0.0022239289,,,,0.0021825114,,,,,,,,,,
+euler,none,,,,leiaLevelSetFoam,,0.1,0.03125,,,6.0,60.0,,8.8772554e-12,0.0063044479,,,,0.0051900563,,,,,,,,,,

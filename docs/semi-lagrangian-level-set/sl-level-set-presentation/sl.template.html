@@ -100,10 +100,21 @@
       tex: {
         inlineMath: [['\\(', '\\)'], ['$', '$']],
         displayMath: [['\\[', '\\]'], ['$$', '$$']],
-        processEscapes: true
+        processEscapes: true,
+        // \boldsymbol is NOT in the inlined tex-svg bundle; leaving it as-is makes
+        // MathJax try to autoload it from the CDN, which fails in the offline,
+        // self-contained deck and ABORTS the whole typeset run (blanking every
+        // slide after the first use). Alias it to a base-supported no-op so it
+        // renders (upright) without any network fetch.
+        macros: { boldsymbol: ['{#1}', 1] }
       },
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
-      svg: { fontCache: 'global' }
+      // fontCache 'local' (not 'global'): a global cache emits one shared <defs> of
+      // glyph paths that every equation references by <use href="#...">. In reveal.js
+      // that <defs> lives inside ONE (hidden) slide, so the cross-slide references
+      // resolve into a display:none subtree and the glyphs render blank on most
+      // slides. 'local' makes each equation's SVG self-contained.
+      svg: { fontCache: 'local' }
     };
   </script>
   <script id="MathJax-script" async
@@ -143,9 +154,10 @@
   <h2>Roadmap</h2>
   <ol class="roadmap" style="font-size:1.05em">
     <li><span class="idx">1</span>The level set &amp; the phase indicator &mdash; \(\psi\), advection, geometric &amp; analytic \(\alpha\)</li>
-    <li><span class="idx">2</span>Semi-Lagrangian advection &mdash; characteristics, the Taylor foot, LSQ reconstruction; 2D &amp; 3D convergence</li>
-    <li><span class="idx">3</span>Conclusions &mdash; what works best &mdash; the reconstructions ranked</li>
-    <li><span class="idx">4</span>Software design &mdash; runtime model selection, extend without touching existing code</li>
+    <li><span class="idx">2</span>Semi-Lagrangian advection &mdash; characteristics, the Taylor foot, UQWLSR reconstruction; 2D &amp; 3D convergence</li>
+    <li><span class="idx">3</span>Two-phase flow &mdash; one-field Navier&ndash;Stokes, surface tension from the reconstructed curvature, the static droplet</li>
+    <li><span class="idx">4</span>Conclusions &mdash; what works best</li>
+    <li><span class="idx">5</span>Software design &mdash; runtime model selection, extend without touching existing code</li>
   </ol>
   <p class="footnote muted" id="roadmapNavHint">Navigation: &rarr; next part &middot;
      &darr; slides within a part &middot; Esc = overview &middot; the footer always shows
@@ -159,14 +171,15 @@
 <section data-track="The level set &amp; the phase indicator">  <!-- ############ TRACK: level set & phase indicator ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 1 of 4</p>
+  <p class="part-kicker">Part 1 of 5</p>
   <h2>The level set &amp; the phase indicator</h2>
   <p class="muted" style="font-size:0.85em">\(\psi\), its advection, and recovering \(\alpha\) geometrically / analytically</p>
   <ol class="roadmap" style="font-size:0.8em">
     <li class="here"><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li><span class="idx">2</span>Semi-Lagrangian advection</li>
-    <li><span class="idx">3</span>Conclusions</li>
-    <li><span class="idx">4</span>Software design</li>
+    <li><span class="idx">3</span>Two-phase flow</li>
+    <li><span class="idx">4</span>Conclusions</li>
+    <li><span class="idx">5</span>Software design</li>
   </ol>
   <p class="part-prevnext">Previously: Title &amp; roadmap &nbsp;&middot;&nbsp; Next: Semi-Lagrangian advection</p>
 </section>
@@ -476,7 +489,7 @@
 <!-- phase-indicator static (t=0) convergence to the exact area -->
 <section>
   <h2>geometric vs detrixheAslam &mdash; 2nd order to the exact area</h2>
-  <img src="../sl-level-set-article/data/figures/static_indicator_volume_convergence.png"
+  <img src="data/figures/static_indicator_volume_convergence.png"
        alt="static t=0 phase-indicator volume convergence to the exact circle area, geometric vs detrixheAslam"
        style="max-height:60vh; max-width:88%; width:auto; height:auto; border-radius:6px;">
   <p class="footnote center"><b>Static (\(t=0\)) verification.</b> Initialise the circle
@@ -503,16 +516,17 @@
 <section data-track="Semi-Lagrangian advection">  <!-- ############ TRACK: semi-Lagrangian ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 2 of 4</p>
+  <p class="part-kicker">Part 2 of 5</p>
   <h2>Semi-Lagrangian advection</h2>
   <p class="muted" style="font-size:0.85em">the parallel research line: don't fix the velocity &mdash; follow the characteristic</p>
   <ol class="roadmap" style="font-size:0.8em">
     <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li class="here"><span class="idx">2</span>Semi-Lagrangian advection</li>
-    <li><span class="idx">3</span>Conclusions</li>
-    <li><span class="idx">4</span>Software design</li>
+    <li><span class="idx">3</span>Two-phase flow</li>
+    <li><span class="idx">4</span>Conclusions</li>
+    <li><span class="idx">5</span>Software design</li>
   </ol>
-  <p class="part-prevnext">Previously: The level set &amp; the phase indicator &nbsp;&middot;&nbsp; Next: Conclusions</p>
+  <p class="part-prevnext">Previously: The level set &amp; the phase indicator &nbsp;&middot;&nbsp; Next: Two-phase flow</p>
 </section>
 
 <!-- ===== SL 1: MOTIVATION ===== -->
@@ -804,6 +818,59 @@
      <em class="tag">leiaSemiLagrangeLevelSetFoam</em>.</p>
 </section>
 
+<!-- ===== SL 4a: MESH-ADAPTIVE STENCIL SCHEMATIC (CPC quad vs CFC hex) ===== -->
+<section>
+  <h2>Mesh-adaptive stencil &mdash; CPC (hex) vs CFC (polyhedra)</h2>
+  <p class="muted" style="font-size:0.86em">a 3D quadratic needs \(\ge 9\) neighbours; a hexahedron
+     has only 6 <b>face</b>-neighbours, so the stencil is chosen per mesh</p>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 300 268" width="100%" role="img" aria-label="cell-point-cell CPC stencil on a 2D quadrilateral (hexahedral) mesh: centre cell plus its eight vertex neighbours">
+        <g stroke="var(--ls-muted)" stroke-width="1" fill="none" stroke-opacity="0.5">
+          <rect x="75" y="55" width="50" height="50"/><rect x="125" y="55" width="50" height="50"/><rect x="175" y="55" width="50" height="50"/>
+          <rect x="75" y="105" width="50" height="50"/><rect x="175" y="105" width="50" height="50"/>
+          <rect x="75" y="155" width="50" height="50"/><rect x="125" y="155" width="50" height="50"/><rect x="175" y="155" width="50" height="50"/>
+        </g>
+        <rect x="125" y="105" width="50" height="50" fill="var(--ls-accent)" fill-opacity="0.16" stroke="var(--ls-accent)" stroke-width="1.7"/>
+        <g fill="var(--ls-muted)">
+          <circle cx="100" cy="80" r="3"/><circle cx="150" cy="80" r="3"/><circle cx="200" cy="80" r="3"/>
+          <circle cx="100" cy="130" r="3"/><circle cx="200" cy="130" r="3"/>
+          <circle cx="100" cy="180" r="3"/><circle cx="150" cy="180" r="3"/><circle cx="200" cy="180" r="3"/>
+        </g>
+        <circle cx="150" cy="130" r="4.5" fill="var(--ls-fg)"/>
+        <text x="157" y="126" fill="var(--ls-fg)" font-size="12">x<tspan dy="3" font-size="8">c</tspan></text>
+        <text x="150" y="235" text-anchor="middle" fill="var(--ls-fg)" font-size="12.5"><tspan font-weight="bold">cell&ndash;point&ndash;cell (CPC)</tspan></text>
+        <text x="150" y="252" text-anchor="middle" fill="var(--ls-muted)" font-size="10.5">vertex neighbours: 8 in 2D, up to 26 in 3D</text>
+      </svg>
+    </div>
+    <div>
+      <svg viewBox="0 0 300 268" width="100%" role="img" aria-label="cell-face-cell CFC stencil on a 2D hexagonal (polyhedral) mesh: centre cell plus its six face neighbours">
+        <g stroke="var(--ls-muted)" stroke-width="1" fill="none" stroke-opacity="0.5">
+          <polygon points="235,100.6 218,71.2 184,71.2 167,100.6 184,130 218,130"/>
+          <polygon points="184,71.1 167,41.7 133,41.7 116,71.1 133,100.5 167,100.5"/>
+          <polygon points="133,100.6 116,71.2 82,71.2 65,100.6 82,130 116,130"/>
+          <polygon points="133,159.4 116,130 82,130 65,159.4 82,188.8 116,188.8"/>
+          <polygon points="184,188.9 167,159.5 133,159.5 116,188.9 133,218.3 167,218.3"/>
+          <polygon points="235,159.4 218,130 184,130 167,159.4 184,188.8 218,188.8"/>
+        </g>
+        <polygon points="184,130 167,100.6 133,100.6 116,130 133,159.4 167,159.4"
+                 fill="var(--ls-accent)" fill-opacity="0.16" stroke="var(--ls-accent)" stroke-width="1.7"/>
+        <g fill="var(--ls-muted)">
+          <circle cx="201" cy="100.6" r="3"/><circle cx="150" cy="71.1" r="3"/><circle cx="99" cy="100.6" r="3"/>
+          <circle cx="99" cy="159.4" r="3"/><circle cx="150" cy="188.9" r="3"/><circle cx="201" cy="159.4" r="3"/>
+        </g>
+        <circle cx="150" cy="130" r="4.5" fill="var(--ls-fg)"/>
+        <text x="157" y="126" fill="var(--ls-fg)" font-size="12">x<tspan dy="3" font-size="8">c</tspan></text>
+        <text x="150" y="235" text-anchor="middle" fill="var(--ls-fg)" font-size="12.5"><tspan font-weight="bold">cell&ndash;face&ndash;cell (CFC)</tspan></text>
+        <text x="150" y="252" text-anchor="middle" fill="var(--ls-muted)" font-size="10.5">6 face neighbours; polyhedra: 12&ndash;16 (over-determined)</text>
+      </svg>
+    </div>
+  </div>
+  <p class="footnote muted center">Shaded: arrival cell \(\mathbf{x}_c\); dots: stencil-neighbour centres.
+     CPC reaches through shared <b>vertices</b> (enough terms on hexahedra); CFC through shared
+     <b>faces</b> is compact and better-conditioned where the face valence is high.</p>
+</section>
+
 <!-- ===== SL 4b: DISCRETIZATION (HOT LOOP) ===== -->
 <section>
   <h2>quadraticWeightedLeastSquares &mdash; the hot loop</h2>
@@ -821,6 +888,78 @@
   <p class="footnote muted">Parallel-verified: serial &equiv; <code>np=4</code> to \(10^{-12}\)
      (halo exchange of \(\psi^n\) via <code>mapDistribute</code>).</p>
   <aside class="notes">The cached pseudo-inverse means the per-step cost is one small mat-vec per cell; profiling showed it dominating, and the flat row-major IDW-folded layout removed the per-cell allocation for -17% wall-clock. Parallel identical to serial to 1e-12.</aside>
+</section>
+
+<!-- ===== SL 4c: MEMORY (cache-free UQWLSR) ===== -->
+<section>
+  <h2>Cache-free evaluation &mdash; UQWLSR</h2>
+  <p class="muted" style="font-size:0.85em">the <b>u</b>ncached <b>q</b>uadratic <b>w</b>eighted <b>l</b>east-<b>s</b>quares <b>r</b>econstruction: same arithmetic, no per-cell cache &mdash; trade memory for compute</p>
+  <div style="display:flex; gap:1.1em; font-size:0.8em; text-align:left; margin:0.3em 0">
+    <div style="flex:1; border:1px solid rgba(127,127,127,0.45); border-radius:6px; padding:0.5em 0.7em">
+      <b>cached</b> <code>quadraticWeightedLeastSquares</code>
+      <ul class="tight">
+        <li>per-cell pseudo-inverse map, \(O(N_c\,m\,n_i)\)</li>
+        <li>per step: <b>streamed mat&ndash;vec</b> &rArr; bandwidth-bound (~0.25 flop/byte)</li>
+        <li>hard DRAM ceiling at large \(N\); forces single precision</li>
+      </ul>
+    </div>
+    <div style="flex:1; border:1px solid rgba(80,140,255,0.6); border-radius:6px; padding:0.5em 0.7em">
+      <b>cache-free</b> <code>uncached&hellip;</code> (UQWLSR)
+      <ul class="tight">
+        <li>per step: assemble \(M=A^{\!\top}W^2A\) (\(m\times m\)) + in-place Cholesky</li>
+        <li><b>compute-bound</b> (~2 flop/byte) &rArr; scales with cores, <b>no ceiling</b></li>
+        <li>stencil geometry tail-eliminated &mdash; interior cells read mesh centres directly</li>
+      </ul>
+    </div>
+  </div>
+  <p style="font-size:0.95em">Peak RSS at \(128^3\) (8 ranks): <b>6.6&nbsp;GB</b> (cached) &rarr; <b>4.6&nbsp;GB</b> (UQWLSR),
+     <b>&minus;30%</b> &mdash; identical up to floating-point reassociation.</p>
+</section>
+
+<!-- ===== SL 4d: THE LINEAR LINE (nestedLSQ) — pointer to the companion ===== -->
+<section>
+  <h2>The linear reconstruction line &mdash; a companion method</h2>
+  <p style="font-size:0.9em">A separate, fully documented method line uses a LINEAR reconstruction
+     of \(\psi^n\) at the foot. There are two ways to build it &mdash; and they behave oppositely:</p>
+  <table style="font-size:0.66em; margin:0.3em auto">
+    <thead><tr><th></th><th><code>nestedLSQ</code> (the method)</th><th><code>linearTaylor</code> (the trap)</th></tr></thead>
+    <tbody>
+      <tr><td>gradient</td><td>least-squares slope over the stencil</td><td>arrival cell's single cell gradient</td></tr>
+      <tr><td>pure-advection stability</td><td class="good">stable, converges (CFL \(\le\tfrac12\))</td><td class="warn">UNSTABLE: \(\||\nabla\psi|-1\|\to10^{21}\)</td></tr>
+      <tr><td>2D shape order</td><td>\(\approx\)1.1</td><td class="warn">\(-\)0.9 (diverges)</td></tr>
+    </tbody>
+  </table>
+  <ul class="tight" style="font-size:0.82em">
+    <li><b>stencil averaging</b>, not polynomial degree, is what makes it stable: same linear basis,
+        opposite behaviour</li>
+    <li><code>nestedLSQ</code> is a low-cost, memory-light (\(O(1)\)/cell, no ceiling) stable
+        kinematic transport method &mdash; below UQWLSR accuracy, by design</li>
+  </ul>
+  <p class="footnote">Full verification (all errors, 2D + 3D, hex + poly) + the linearTaylor
+     divergence: the companion <code>lsl</code> deck + paper
+     (<code>docs/linear-semi-lagrangian-level-set/</code>, <code>make sl-linear</code>).</p>
+</section>
+
+<!-- ===== SL 4e: linearTaylor's two-phase role ===== -->
+<section>
+  <h2>linearTaylor: unstable in advection, yet the two-phase workhorse</h2>
+  <p style="font-size:0.88em">The advection-unstable <code>linearTaylor</code> is exactly the
+     reconstruction of the two-phase <b>consistent-linear</b> pipeline. Its dissipation damps the
+     curvature-feedback loop the reinit-free quadratic transport leaves undamped; the coupled
+     solver's own dissipation + short pre-equilibrium horizon keep it in its stable regime:</p>
+  <table style="font-size:0.7em; margin:0.3em auto">
+    <thead><tr><th>2D stationary droplet, blow-up time [s]</th><th>N=64</th><th>N=128</th><th>N=256</th></tr></thead>
+    <tbody>
+      <tr><td>quadratic pipeline (UQWLSR + reconstructed &kappa;)</td><td>0.44</td><td>0.105</td><td class="warn">0.035</td></tr>
+      <tr><td>consistent-linear (linearTaylor + FVM &kappa;)</td><td>0.80</td><td>0.125</td><td class="good">&gt; 0.1</td></tr>
+    </tbody>
+  </table>
+  <ul class="tight" style="font-size:0.8em">
+    <li>no contradiction: coupled result is <b>relative</b> (linear less destabilizing in the loop);
+        kinematic instability is <b>absolute</b> (long reversible integration)</li>
+    <li><b>recipe</b>: UQWLSR for kinematics; <code>nestedLSQ</code> for low-cost stable transport;
+        <code>linearTaylor</code> under two-phase capillary coupling</li>
+  </ul>
 </section>
 
 <!-- ===== SL 5: CODE ===== -->
@@ -851,7 +990,7 @@ psi.correctBoundaryConditions();
 <!-- ===== SL 6: CONVERGENCE ===== -->
 <section>
   <h2>2D convergence &mdash; high order to \(N=256\), CFL-independent</h2>
-  <img src="../sl-level-set-article/data/figures/sl_2Dvortex_convergence.png"
+  <img src="data/figures/sl_2Dvortex_convergence.png"
        alt="2D reversed vortex: gradient, shape and volume error vs h at CFL 0.5 and 1.0, quadraticWeightedLeastSquares"
        style="max-height:66vh; max-width:94%; width:auto; height:auto; border-radius:6px;">
   <p class="footnote muted center">Reversed vortex, \(T=2\), <code>quadraticWeightedLeastSquares</code>, on a
@@ -860,13 +999,49 @@ psi.correctBoundaryConditions();
      at CFL \(\tfrac12\) (<b>2.97 / 2.98</b>) and stay high-order at CFL 1 (<b>2.59 / 2.94</b>)
      &mdash; the order is <b>independent of the Courant number</b> up to the stability bound.
      (The \(\||\nabla\psi|-1\|\) order \(\approx0.5\) reflects the absence of reinitialization,
-     not the transport accuracy.)</p>
+     not the transport accuracy. The CFL-1 finest-pair dip is the \(O(\Delta t^2)\)
+     departure-foot error crossing the \(O(h^3)\) spatial error &mdash; the CFL-1:CFL-\(\tfrac12\)
+     error ratio reaches exactly \(4=\mathrm{CFL}^2\) at \(N{=}256\).)</p>
   <aside class="notes">
     uncachedQuadraticWeightedLeastSquares (identical cell-for-cell to the cached fit),
     config/uncachedConv2Dvortex.yaml. LSQ orders over N=32,45,64,90,128,181,256:
     CFL 0.5 shape 2.97 / vol 2.98 / grad 0.53; CFL 1.0 shape 2.59 / vol 2.94 / grad 0.53.
     Pure semi-Lagrangian result (no velocity extension).
   </aside>
+</section>
+
+<!-- ===== SL 6b: 2D ALL ERROR MEASURES (band + half-time diagnostics) ===== -->
+<section>
+  <h2>2D vortex &mdash; ALL error measures</h2>
+  <img src="data/figures/sl_2Dvortex_convergence_diagnostics.png"
+       alt="2D reversed vortex: band gradient defect, half-time gradient defects and half-time volume error vs h"
+       style="max-height:56vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">The remaining error measures completing the picture:
+     <b>band-restricted</b> \(\||\nabla\psi|-1\|\) at \(t=T\) (what the numerics near the interface
+     actually see), the <b>half-time</b> (\(t=T/2\), maximum stretching) gradient defect globally and
+     in the band, and the half-time volume error. The half-time gradient defect saturates toward
+     \(O(1)\) on <b>every</b> mesh &mdash; reinitialization-free transport does not maintain the
+     signed-distance property through maximal deformation; the transport accuracy (shape/volume,
+     previous slide) converges regardless.</p>
+  <aside class="notes">Same data source (uncachedConv2Dvortex errors CSV), columns
+    gradientErrorBand, gradientErrorHalf, gradientErrorBandHalf, volumeErrorHalf. Health metric
+    minGradPsiBand(Half) is in the curated CSVs. Regenerated by make_sl_3d_fig.py --method quadratic.</aside>
+</section>
+
+<!-- ===== SL 6c: 2D VOLUME-FRACTION FIELD EVOLUTION ===== -->
+<section>
+  <h2>2D vortex &mdash; volume-fraction field evolution</h2>
+  <img src="data/figures/alpha_field_2Dvortex_hex.png"
+       alt="alpha field of the 2D reversed vortex at t=0, T/2, T across the resolution ladder"
+       style="max-height:58vh; max-width:88%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">\(\alpha\) at \(t=0,\,T/2,\,T\) (rows) across the ladder
+     (columns), CFL \(\tfrac12\). Black: the \(\psi=0\) level set; dashed red on the \(t=T\) row:
+     the exact reversed circle. The filament tail thins below the cell size at \(T/2\) on the
+     coarse meshes and is lost irreversibly; refinement recovers the reversed circle at the
+     measured orders &mdash; the field-level picture behind the convergence plots.</p>
+  <aside class="notes">make_alpha_field_fig.py: coarsest/median/finest of the ladder, nearest
+    written times to 0, T/2, T; graded alpha fill makes the indicator transition width (smearing)
+    visible; the exact circle overlay makes the shape error readable by eye.</aside>
 </section>
 
 
@@ -912,7 +1087,7 @@ psi.correctBoundaryConditions();
 <!-- ===== SL 9: 3D SHEAR RESULTS ===== -->
 <section>
   <h2>3D shear &mdash; convergence (hex &amp; polyhedral)</h2>
-  <img src="../sl-level-set-article/data/figures/sl_3Dshear_convergence.png"
+  <img src="data/figures/sl_3Dshear_convergence.png"
        alt="3D shear: gradient, shape and volume error vs h, hex and polyhedral, quadraticWeightedLeastSquares"
        style="max-height:64vh; max-width:94%; width:auto; height:auto; border-radius:6px;">
   <p class="footnote muted center">Reversed 3D shear, \(T=3\), <code>quadraticWeightedLeastSquares</code>, CFL \(\tfrac12\),
@@ -928,10 +1103,22 @@ psi.correctBoundaryConditions();
     uncachedQuadraticWeightedLeastSquares.</aside>
 </section>
 
+<!-- ===== SL 9b: 3D SHEAR ALL ERROR MEASURES ===== -->
+<section>
+  <h2>3D shear &mdash; ALL error measures</h2>
+  <img src="data/figures/sl_3Dshear_convergence_diagnostics.png"
+       alt="3D shear: band gradient defect, half-time gradient defects and half-time volume error vs h"
+       style="max-height:56vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">Band-restricted and half-time (\(t=T/2\), rolled sheet) error
+     measures of the 3D shear case, hex and polyhedral overlaid. Same reading as in 2D: the
+     transport errors converge, the half-time gradient defect &mdash; the signed-distance property
+     under maximal stretching &mdash; does not.</p>
+</section>
+
 <!-- ===== SL 10: 3D DEFORMATION RESULTS ===== -->
 <section>
   <h2>3D deformation &mdash; convergence (hex &amp; polyhedral)</h2>
-  <img src="../sl-level-set-article/data/figures/sl_3Ddeformation_convergence.png"
+  <img src="data/figures/sl_3Ddeformation_convergence.png"
        alt="3D LeVeque deformation: gradient, shape and volume error vs h, hex and polyhedral, quadraticWeightedLeastSquares"
        style="max-height:64vh; max-width:94%; width:auto; height:auto; border-radius:6px;">
   <p class="footnote muted center">Reversed LeVeque deformation (unit cube), \(T=3\),
@@ -948,56 +1135,678 @@ psi.correctBoundaryConditions();
     unstructured meshes. Orders are the LSQ slopes in the figure legend.</aside>
 </section>
 
+<!-- ===== SL 10b: 3D DEFORMATION ALL ERROR MEASURES ===== -->
+<section>
+  <h2>3D deformation &mdash; ALL error measures</h2>
+  <img src="data/figures/sl_3Ddeformation_convergence_diagnostics.png"
+       alt="3D deformation: band gradient defect, half-time gradient defects and half-time volume error vs h"
+       style="max-height:56vh; max-width:96%; width:auto; height:auto; border-radius:6px;">
+  <p class="footnote muted center">Band-restricted and half-time (\(t=T/2\), thin filament) error
+     measures of the deformation case, hex and polyhedral overlaid. The filament state is the
+     hardest gradient-quality test of the suite: the half-time defects sit highest here, while the
+     reversed-state transport errors (previous slide) still converge mesh-agnostically.</p>
+</section>
+
 <!-- ===== SL 11: 3D SHEAR INTERFACE EVOLUTION ===== -->
 <section>
   <h2>3D shear &mdash; interface evolution</h2>
-  <img src="../sl-level-set-article/data/figures/isosurface_3Dshear_hex.png"
+  <img src="data/figures/isosurface_3Dshear_hex.png"
        alt="psi=0 iso-surface of the 3D shear flow at t=0, T/2, T for three resolutions"
-       style="max-height:72vh; max-width:78%; width:auto; height:auto; border-radius:6px;">
+       style="max-height:560px; max-width:78%; border-radius:6px;">
   <p class="footnote muted center">Reversed 3D shear (hexahedral): the \(\psi=0\) fluid interface at
      \(t=0\) (sphere), \(t=T/2\) (rolled sheet) and \(t=T\) (recovered sphere), for the three finest
-     resolutions. Rendered straight from the simulation fields (foamlib + VTK), auto-generated by the
-     Snakemake study into the article's <em class="tag">data/figures</em>.</p>
+     resolutions. Rendered straight from the simulation fields (foamlib + VTK) by the Snakemake study.</p>
   <aside class="notes">One panel per (resolution, time); fixed canonical camera + domain outline.
     The recovered sphere at t=T is the visual check on the reversible-flow accuracy.</aside>
 </section>
 
-<!-- ===== SL 12: 3D DEFORMATION INTERFACE, HEX vs POLY ===== -->
+<!-- ===== SL 12a: 3D DEFORMATION INTERFACE, HEX (split for height) ===== -->
 <section>
-  <h2>3D deformation &mdash; interface, hexahedral vs polyhedral</h2>
-  <div class="cols">
-    <div>
-      <img src="../sl-level-set-article/data/figures/isosurface_3Ddeformation_hex.png"
-           alt="deformation psi=0 iso-surface, hexahedral" style="max-width:100%; border-radius:6px;">
-      <p class="footnote muted center">hexahedral</p>
-    </div>
-    <div>
-      <img src="../sl-level-set-article/data/figures/isosurface_3Ddeformation_poly.png"
-           alt="deformation psi=0 iso-surface, polyhedral (cfMesh)" style="max-width:100%; border-radius:6px;">
-      <p class="footnote muted center">polyhedral (cfMesh)</p>
-    </div>
-  </div>
+  <h2>3D deformation &mdash; interface on hexahedra</h2>
+  <img src="data/figures/isosurface_3Ddeformation_hex.png"
+       alt="deformation psi=0 iso-surface, hexahedral"
+       style="max-height:590px; max-width:82%; border-radius:6px;">
   <p class="footnote muted center">LeVeque deformation, \(t=0/T/2/T\) (rows) \(\times\) three finest
-     resolutions (columns). The thin filament at \(T/2\) and the recovered sphere at \(T\) look the
-     same on <b>hexahedral and polyhedral</b> meshes &mdash; the visual counterpart of the mesh-agnostic
-     convergence.</p>
+     resolutions (columns) on <b>hexahedral</b> meshes. Thin filament at \(T/2\), recovered sphere at
+     \(T\). Compare with the polyhedral mesh (next slide).</p>
+</section>
+
+<!-- ===== SL 12b: 3D DEFORMATION INTERFACE, POLY (split for height) ===== -->
+<section>
+  <h2>3D deformation &mdash; interface on polyhedra (cfMesh)</h2>
+  <img src="data/figures/isosurface_3Ddeformation_poly.png"
+       alt="deformation psi=0 iso-surface, polyhedral (cfMesh)"
+       style="max-height:590px; max-width:82%; border-radius:6px;">
+  <p class="footnote muted center">The same LeVeque deformation on <b>polyhedral</b> (cfMesh) meshes,
+     rendered identically. The interface matches the hexahedral result &mdash; the visual counterpart
+     of the mesh-agnostic convergence.</p>
 </section>
 </section>  <!-- ############ /TRACK: semi-Lagrangian ############ -->
+
+<!-- ==================== TWO-PHASE FLOW (vertical stack) ==================== -->
+<section data-track="Two-phase flow">  <!-- ############ TRACK: two-phase flow ############ -->
+<!-- part intro (auto-pattern) -->
+<section>
+  <p class="part-kicker">Part 3 of 5</p>
+  <h2>Two-phase flow</h2>
+  <p class="muted" style="font-size:0.85em">same transport, now driven by Navier&ndash;Stokes &mdash; surface tension from the reconstructed curvature</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
+    <li><span class="idx">2</span>Semi-Lagrangian advection</li>
+    <li class="here"><span class="idx">3</span>Two-phase flow</li>
+    <li><span class="idx">4</span>Conclusions</li>
+    <li><span class="idx">5</span>Software design</li>
+  </ol>
+  <p class="part-prevnext">Previously: Semi-Lagrangian advection &nbsp;&middot;&nbsp; Next: Conclusions</p>
+</section>
+
+<!-- coupling overview -->
+<section>
+  <h2>Coupling the level set to the flow</h2>
+  <p>The same SL transport now runs with a Navier&ndash;Stokes velocity instead of a prescribed one. Once per time step:</p>
+  <div style="font-size:0.9em">
+  \[ \psi \;\xrightarrow{\text{SL advect}}\; \psi^{n+1}
+       \;\xrightarrow{\text{indicator}}\; \alpha
+       \;\xrightarrow{\text{mixture}}\; \rho,\mu,
+     \qquad
+     \psi^{n+1}\;\xrightarrow{\text{quadratic fit}}\;\kappa
+       \;\xrightarrow{\text{CSF}}\; \mathbf f_\sigma \]
+  </div>
+  <ul>
+    <li>Reinitialisation-free &mdash; the SL update preserves the profile; no redistancing.</li>
+    <li>Advance the interface <b>once</b> per step (first outer corrector), then hold it fixed while pressure&ndash;velocity iterate &mdash; as interFoam holds \(\alpha\).</li>
+    <li>Solver <code>leiaSemiLagrangianLevelSetTwoPhaseFoam</code>: the advection library dropped into a one-field PIMPLE solver.</li>
+  </ul>
+</section>
+
+<!-- one-field NS -->
+<section>
+  <h2>One-field incompressible Navier&ndash;Stokes</h2>
+  <p class="muted" style="font-size:0.85em">a single velocity and pressure; the phase fraction \(\alpha\) selects the fluid</p>
+  \[ \nabla\!\cdot\mathbf u = 0 \]
+  \[ \partial_t(\rho\mathbf u)+\nabla\!\cdot(\rho\,\mathbf u\mathbf u)
+     = -\nabla p_{\mathrm d}-(\mathbf g\!\cdot\mathbf x)\nabla\rho
+       +\nabla\!\cdot\!\big[\mu(\nabla\mathbf u+\nabla\mathbf u^{\!\top})\big]
+       +\mathbf f_\sigma \]
+  \[ \rho=\alpha\rho_1+(1-\alpha)\rho_2,\qquad \mu=\alpha\mu_1+(1-\alpha)\mu_2 \]
+  <ul style="font-size:0.9em">
+    <li>\(p_{\mathrm d}=p-\rho(\mathbf g\!\cdot\mathbf x)\): dynamic pressure, removing the hydrostatic head from the balance.</li>
+    <li>PISO/PIMPLE with a Rhie&ndash;Chow face flux; laminar here. Static droplet: \(\mathbf g=\mathbf 0\Rightarrow p_{\mathrm d}\equiv p\).</li>
+  </ul>
+</section>
+
+<!-- surface tension from reconstructed curvature -->
+<section>
+  <h2>Surface tension from the reconstructed curvature</h2>
+  <p>Continuum surface force (CSF), with curvature taken <b>symbolically</b> from the same quadratic fit \(R_c=\psi_c+\mathbf g\!\cdot\mathbf d+\tfrac12\mathbf d^{\!\top}\mathbf H\mathbf d\):</p>
+  \[ \mathbf f_\sigma=\sigma\,\kappa\,\nabla\alpha,\qquad
+     \kappa=\nabla\!\cdot\!\Big(\tfrac{\nabla\psi}{|\nabla\psi|}\Big)
+          =\frac{\operatorname{tr}(\mathbf H)\,|\mathbf g|^2-\mathbf g^{\!\top}\mathbf H\mathbf g}{|\mathbf g|^3} \]
+  <ul style="font-size:0.88em">
+    <li>\(\mathbf g,\mathbf H\) are <b>read off the fit coefficients</b> &mdash; no FVM re-differentiation of the (noisy, non-signed-distance) \(\psi\).</li>
+    <li><b>Normal-constant extension</b>: Newton-project the cell centre onto \(\{R_c=0\}\), \(\;\boldsymbol\delta\leftarrow\boldsymbol\delta-\dfrac{R_c}{|\nabla R_c|^2}\nabla R_c\), and evaluate \(\kappa\) there &mdash; cells on one normal ray share a foot, so \(\kappa\) is constant along the normal.</li>
+    <li>Computed only in the narrow band (\(\nabla\alpha\neq0\)); interpolated linearly to faces.</li>
+    <li><b>Balanced-force</b> [Francois&nbsp;2006]: \(\sigma\kappa_f\,\mathrm{snGrad}(\alpha)\) enters the pressure Poisson on the same faces as \(\mathrm{snGrad}(p)\) and is differenced against it &mdash; constant \(\kappa\) is absorbed exactly, so spurious currents track only the curvature error.</li>
+  </ul>
+</section>
+
+<!-- curvature accuracy (standalone) -->
+<section>
+  <h2>Curvature accuracy (standalone test)</h2>
+  <p class="muted" style="font-size:0.85em">currents are curvature-error-limited &rArr; measure the curvature error directly, no flow solve (<code>leiaTestMeanCurvature</code>)</p>
+  <img src="data/figures/sl_curvature_error.png" style="max-height:300px">
+  <ul style="font-size:0.83em">
+    <li>Circle SDF; error of \(\kappa\) vs exact \(1/R\) in the \(\mathrm{snGrad}(\alpha)\) band (the NS-relevant cells), \(N=32\to512\).</li>
+    <li><b>Converges at \(\approx\)first order</b>, \(\|\kappa-\kappa_e\|_2=O(h^{1.2})\) (rel.\ \(L_2\) \(35\%\to1\%\)) &mdash; as expected for the 2nd derivative of a quadratic fit.</li>
+    <li><b>With vs without the normal extension</b> (foot-point vs cell-centre) the error is coincident on a clean SDF (\(O(h^{1.22})\) vs \(O(h^{1.29})\), extension marginally better only at \(N{=}32\)); the <b>face-averaged</b> force-effective \(\mathrm{avg}(\mathrm{interp}\,\kappa)\) tracks it too (\(O(h^{1.18})\)). \(\mathrm{tr}(H)=\Delta\psi\) coincides as \(h\to0\). The extension is a <b>run-time</b> device, not a clean-SDF accuracy improver &mdash; and at run-time, dropping it only <b>delays</b> the coupled \(N{=}128\) divergence (\(t{\approx}0.06\to0.11\)), it does not cure it.</li>
+    <li>So the curvature is <b>consistent</b> by every measure on a clean interface &mdash; the coupled-run fine-mesh growth is \(\psi\) leaving the SDF at run time (mechanism slide), not the formula.</li>
+  </ul>
+</section>
+
+<!-- stationary droplet results -->
+<section>
+  <h2>Verification: the stationary droplet</h2>
+  <p class="muted" style="font-size:0.85em">water/air, \(R=1\)&thinsp;mm, \(\sigma/R=72.74\)&thinsp;Pa (Lippert et&nbsp;al. 2022) &mdash; the exact solution is quiescent</p>
+  <img src="data/figures/sl_droplet_parasitic.png" style="max-height:300px">
+  <ul style="font-size:0.79em">
+    <li><b>Laplace jump converges</b> to \(\sigma/R\): rel. error \(4.2\%\to1.5\%\) at \(N=32\to64\) &mdash; curvature is accurate &amp; correctly signed.</li>
+    <li>At \(N=32,64\) the parasitic currents <b>decay</b> to a small settled level (settled \(\max|\mathbf u|\) drops \(\approx\!46\times\), 32\(\to\)64). No reinitialisation, no auxiliary curvature field.</li>
+    <li>The coupling <b>is balanced-force</b>: \(\sigma\kappa_f\,\mathrm{snGrad}(\alpha)\) is differenced against \(\mathrm{snGrad}(p)\) on the same faces in the pressure Poisson &mdash; constant \(\kappa\Rightarrow\) zero current. So the currents are set by the <b>curvature error</b>.</li>
+    <li><b>Honest caveat:</b> at \(N\ge128\) the currents <b>grow</b> instead &mdash; and it is a <i>universal</i>, \(h\)-driven instability (every resolution diverges, coarse just later; next slides). Instrumented tests rule out the force, the formula, the capillary CFL, \(|\nabla\psi|\)-degeneracy and the density ratio &mdash; it is a curvature-error-seeded parasitic feedback.</li>
+    <li>Cost: explicit capillary step \(\Delta t\lesssim\tfrac14\Delta t_\sigma\propto h^{3/2}\) &rArr; steps \(\sim\!N^{3/2}\), wall \(\sim\!N^3\) (2D).</li>
+  </ul>
+</section>
+
+<!-- fine-mesh divergence mechanism (investigated, not assumed) -->
+<section>
+  <h2>The parasitic-current instability &mdash; what it is (and isn't)</h2>
+  <p class="muted" style="font-size:0.8em">instrumented per-step + frozen-interface + resolution-scaling controls (each cause tested, not assumed)</p>
+  <div class="cols">
+    <div>
+      <p style="font-size:0.8em; margin:0 0 0.15em"><b>Ruled out &mdash; each verified:</b></p>
+      <ul style="font-size:0.74em; line-height:1.3">
+        <li><b>Not</b> a force imbalance &mdash; balanced-force: constant \(\kappa\Rightarrow\) zero current.</li>
+        <li><b>Not</b> the curvature formula &mdash; on a clean SDF \(\kappa\) converges \(O(h^2)\); the residual is a small \(\cos4\theta\) grid-anisotropy bias (\(0.2\%\) at \(N{=}128\)).</li>
+        <li><b>Not</b> a capillary-CFL violation &mdash; \(\Delta t{=}\tfrac14\Delta t_\sigma\) is inside Brackbill's sum-density limit; coarser mesh uses <i>bigger</i> \(\Delta t\) yet is <i>more</i> stable \(\Rightarrow\) \(h\)-driven, not \(\Delta t\).</li>
+        <li><b>Not</b> \(|\nabla\psi|\)-degeneracy &mdash; \(|\nabla\psi|\approx0.85\!-\!1.1\) at the spikes (\({>}1\) at the poles); the no-extension run diverges with \(|\nabla\psi|\approx0.94\).</li>
+        <li><b>Not</b> the density ratio &mdash; equal-\(\rho\) still diverges (it sets the amplitude, not the onset).</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:0.8em; margin:0 0 0.15em"><b>What it is: a universal, \(h\)-driven feedback.</b></p>
+      <p style="font-size:0.75em; line-height:1.3">The \(\cos4\theta\) curvature-error seed \(\to\) parasitic current \(\to\) interface distortion \(\to\) larger error. Freezing \(\psi\) removes the runaway (it is transport-coupled). <b>Every</b> resolution diverges &mdash; coarse just later:</p>
+      <table style="font-size:0.74em; border-collapse:collapse; margin:0.4em auto; width:88%">
+        <tr style="border-bottom:1px solid var(--ls-muted)"><th style="text-align:left">\(N\)</th><th>32</th><th>64</th><th>128</th><th>256</th></tr>
+        <tr><td style="text-align:left">\(t_{\text{blow}}\) [s]</td><td>0.47</td><td>0.44</td><td>0.11</td><td>0.03</td></tr>
+      </table>
+      <p style="font-size:0.72em; line-height:1.3">\(t_{\text{blow}}\sim N^{-3/2}\) at the fine end (the capillary clock \(\propto h^{3/2}\)). The "stable" \(N\le64\) runs are the quiescent phase seen <i>before</i> their later onset.</p>
+    </div>
+  </div>
+</section>
+
+<!-- development path: stabilizing the parasitic current -->
+<section>
+  <h2>Stabilizing the parasitic current &mdash; the development path</h2>
+  <p class="muted" style="font-size:0.82em">every lever tested against the \(N{=}128\) static-droplet onset</p>
+  <table style="font-size:0.68em; border-collapse:collapse; margin:0.25em auto; width:97%; line-height:1.25">
+    <tr style="border-bottom:1px solid var(--ls-muted)">
+      <th style="text-align:left; padding:0.15em 0.5em">lever</th>
+      <th style="text-align:left; padding:0.15em 0.5em">effect on the onset</th>
+    </tr>
+    <tr><td style="padding:0.15em 0.5em">Euler time (1st order, L-stable)</td><td>the stable baseline &mdash; damps the grid-scale capillary mode</td></tr>
+    <tr><td style="padding:0.15em 0.5em">backward (2nd-order time)</td><td><b>worse</b> &mdash; removes the L-stable damping (needs \(\Delta t_\sigma/8\))</td></tr>
+    <tr><td style="padding:0.15em 0.5em">smaller / adaptive \(\Delta t\)</td><td>only <b>delays</b> &mdash; \(h\)-driven, already inside the CFL</td></tr>
+    <tr><td style="padding:0.15em 0.5em">curvature normal extension (foot-point Newton)</td><td><b>worse</b> &mdash; the projection amplifies \(\kappa\) \(40\!-\!85\times\)</td></tr>
+    <tr><td style="padding:0.15em 0.5em">harmonic (Laplace) curvature smoothing</td><td><b>worse</b> &mdash; coupling correlates the error force</td></tr>
+    <tr style="background:rgba(0,158,115,0.12)"><td style="padding:0.15em 0.5em">cell-local (no-extension) \(\kappa\)</td><td>most stable curvature choice &rArr; <b>default</b></td></tr>
+    <tr style="background:rgba(0,158,115,0.12)"><td style="padding:0.15em 0.5em">consistent geometric mass flux (upwind \(\alpha_f\))</td><td>blow-up <b>\(97\) orders gentler</b>; onset unchanged</td></tr>
+    <tr><td style="padding:0.15em 0.5em">Kang/GFM interface-weighted \(\kappa_f\)</td><td>statics \(58\times\) better, coupled loop <b>worse</b> (blows \(0.07\) vs \(0.44\))</td></tr>
+    <tr><td style="padding:0.15em 0.5em">CST integral model (sign-corrected)</td><td><b>first reachable equilibrium</b> at \(N{=}64\); \(N{=}128\) blows at \(0.047\)</td></tr>
+  </table>
+  <p style="font-size:0.7em; line-height:1.3"><b>Verdict:</b> the <i>onset</i> is a curvature-error-seed + parasitic feedback (spatial, universal). Time order, \(\Delta t\), curvature <i>coupling</i>, and every published <i>delivery</i> cure fail — the sharper the static balance, the higher the feedback gain. Open levers: <b>signed-distance consistency</b> + a <b>profile-robust estimator</b>.</p>
+</section>
+
+<!-- ============ DIDACTIC ARC: force balance, equilibrium, accuracy, stability ============ -->
+
+<!-- B1: the two forces at a face -->
+<section>
+  <h2>Lecture: the two forces at a face</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 300 180" style="width:300px; max-width:100%">
+        <rect x="20" y="30" width="120" height="120" fill="rgba(41,182,246,0.25)" stroke="var(--ls-line)"/>
+        <rect x="140" y="30" width="120" height="120" fill="none" stroke="var(--ls-line)"/>
+        <line x1="140" y1="30" x2="140" y2="150" stroke="var(--ls-accent)" stroke-width="3"/>
+        <circle cx="80" cy="90" r="3" fill="var(--ls-fg)"/>
+        <circle cx="200" cy="90" r="3" fill="var(--ls-fg)"/>
+        <text x="74" y="80" fill="var(--ls-fg)" font-size="13">P</text>
+        <text x="196" y="80" fill="var(--ls-fg)" font-size="13">N</text>
+        <text x="30" y="48" fill="var(--ls-fg)" font-size="12">&#945;=1</text>
+        <text x="222" y="48" fill="var(--ls-fg)" font-size="12">&#945;=0</text>
+        <line x1="140" y1="62" x2="108" y2="62" stroke="var(--ls-warn)" stroke-width="2.5" marker-end="url(#arwB1)"/>
+        <line x1="140" y1="118" x2="172" y2="118" stroke="var(--ls-good)" stroke-width="2.5" marker-end="url(#arwB1g)"/>
+        <text x="86" y="58" fill="var(--ls-warn)" font-size="12">f&#963;</text>
+        <text x="176" y="122" fill="var(--ls-good)" font-size="12">&#8711;p</text>
+        <defs>
+          <marker id="arwB1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="var(--ls-warn)"/></marker>
+          <marker id="arwB1g" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="var(--ls-good)"/></marker>
+        </defs>
+      </svg>
+    </div>
+    <div style="font-size:0.8em; text-align:left; line-height:1.4">
+      <p>The balanced-force CSF discretisation (Francois et&nbsp;al. 2006; Popinet 2009) places BOTH the
+      surface-tension force and the pressure gradient <b>at faces, with the same discrete operator</b>:</p>
+      \[ f_{\sigma,f} = \sigma\,\kappa_f\,(\nabla_f \alpha)\cdot \hat{\mathbf S}_f
+         \qquad\text{vs.}\qquad (\nabla_f p)\cdot \hat{\mathbf S}_f \]
+      <p>In the collocated face-flux arrangement (interFoam family), the pressure equation and the
+      flux correction see exactly these <em>face</em> values — so the balance question is decided
+      <b>face by face</b>, never cell by cell.</p>
+    </div>
+  </div>
+  <p style="font-size:0.78em"><b>"Balanced-force" is the PAIRING.</b> Whether the pair actually cancels depends entirely on the
+     face curvature \(\kappa_f\) that is fed in — the next slides make that precise.</p>
+</section>
+
+<!-- B2: worked example with numbers -->
+<section>
+  <h2>Lecture: a worked example — one matrix row, real numbers</h2>
+  <p style="font-size:0.78em">Three-cell strip, water/air droplet values: \(\sigma = 0.0727\)&nbsp;N/m, constant
+     \(\bar\kappa = 1/R = 1000\)&nbsp;m\(^{-1}\); \(\alpha = (1,\,1,\,0)\) — one jump face:</p>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 320 190" style="width:320px; max-width:100%">
+        <text x="8" y="18" fill="var(--ls-muted)" font-size="12">&#945;</text>
+        <rect x="30"  y="20" width="80" height="40" fill="rgba(41,182,246,0.45)"/>
+        <rect x="115" y="20" width="80" height="40" fill="rgba(41,182,246,0.45)"/>
+        <rect x="200" y="20" width="80" height="40" fill="rgba(69,90,100,0.5)"/>
+        <text x="60" y="45" fill="var(--ls-fg)" font-size="13">1</text>
+        <text x="145" y="45" fill="var(--ls-fg)" font-size="13">1</text>
+        <text x="230" y="45" fill="var(--ls-fg)" font-size="13">0</text>
+        <text x="8" y="105" fill="var(--ls-muted)" font-size="12">p</text>
+        <rect x="30"  y="90" width="80" height="40" fill="rgba(255,183,77,0.45)"/>
+        <rect x="115" y="90" width="80" height="40" fill="rgba(255,183,77,0.45)"/>
+        <rect x="200" y="90" width="80" height="40" fill="rgba(255,183,77,0.12)"/>
+        <text x="46" y="115" fill="var(--ls-fg)" font-size="12">+72.7 Pa</text>
+        <text x="131" y="115" fill="var(--ls-fg)" font-size="12">+72.7 Pa</text>
+        <text x="230" y="115" fill="var(--ls-fg)" font-size="12">0</text>
+        <line x1="197" y1="20" x2="197" y2="130" stroke="var(--ls-accent)" stroke-width="2.5"/>
+        <text x="150" y="160" fill="var(--ls-accent)" font-size="12">the ONLY active face</text>
+        <text x="30" y="180" fill="var(--ls-muted)" font-size="11">p is a rescaled copy of &#945;: p = p&#8320; + &#963;&#954;&#772;&#945;</text>
+      </svg>
+    </div>
+    <div style="font-size:0.76em; text-align:left; line-height:1.45">
+      <p>Surface tension acts on exactly one face:
+      \(f_{\sigma,f} = \sigma\bar\kappa\,(\alpha_N-\alpha_P)/\delta = -\,\sigma\bar\kappa/\delta\).</p>
+      <p>The pressure field \(p = p_0 + \sigma\bar\kappa\,\alpha\) — a jump of
+      \(\sigma\bar\kappa = 72.7\)&nbsp;Pa — produces \((\nabla_f p) = \sigma\bar\kappa\,(\alpha_N-\alpha_P)/\delta\)
+      on the SAME face: the two terms cancel <b>row by row in the matrix</b>, and on every other face
+      both are zero.</p>
+      <p class="good"><b>Result: exact discrete rest, at any resolution.</b> No smallness argument, no
+      limit — an identity.</p>
+    </div>
+  </div>
+</section>
+
+<!-- B3: what pressure can and cannot cancel -->
+<section>
+  <h2>Lecture: what the pressure can — and cannot — cancel</h2>
+  <p style="font-size:0.8em">The worked example generalises: constant \(\kappa_f=\bar\kappa\) makes the force a
+     <b>discrete gradient of a cell field</b>,
+     \(\;\sigma\bar\kappa\,\nabla_f\alpha = \nabla_f(\sigma\bar\kappa\,\alpha)\), and the pressure solve absorbs ANY
+     discrete gradient exactly — that is precisely what \(\nabla\!\cdot\!\nabla p = \nabla\!\cdot\!f\) does, every step.</p>
+  <div class="cols">
+    <div style="font-size:0.78em; text-align:left; line-height:1.45">
+      <p><b>The discrete Helmholtz split.</b> Any face force decomposes into a gradient part + a
+      <em>rotational</em> remainder (nonzero circulation around cell loops). Pressure — a scalar cell
+      field — can only ever match the gradient part.</p>
+      <p>When \(\kappa_f\) VARIES along the force support, the remainder is nonzero: no cell field's
+      face differences can reproduce unequal \(\kappa\) values around a loop.</p>
+      <p class="warn"><b>Verified:</b> converging \(p_{\mathrm{rgh}}\) to \(10^{-14}\) changes nothing —
+      the rotational remainder drives flow at ANY solver accuracy.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 240 195" style="width:240px; max-width:100%">
+        <rect x="30" y="20" width="90" height="75" fill="none" stroke="var(--ls-line)"/>
+        <rect x="120" y="20" width="90" height="75" fill="none" stroke="var(--ls-line)"/>
+        <rect x="30" y="95" width="90" height="75" fill="none" stroke="var(--ls-line)"/>
+        <rect x="120" y="95" width="90" height="75" fill="none" stroke="var(--ls-line)"/>
+        <line x1="120" y1="20" x2="120" y2="95" stroke="var(--ls-bad)" stroke-width="2.5"/>
+        <line x1="120" y1="95" x2="120" y2="170" stroke="var(--ls-bad)" stroke-width="2.5"/>
+        <line x1="30" y1="95" x2="120" y2="95" stroke="var(--ls-bad)" stroke-width="2.5"/>
+        <line x1="120" y1="95" x2="210" y2="95" stroke="var(--ls-bad)" stroke-width="2.5"/>
+        <text x="126" y="52" fill="var(--ls-bad)" font-size="14">&#954;&#8321;</text>
+        <text x="168" y="88" fill="var(--ls-bad)" font-size="14">&#954;&#8322;</text>
+        <text x="126" y="146" fill="var(--ls-bad)" font-size="14">&#954;&#8323;</text>
+        <text x="62" y="88" fill="var(--ls-bad)" font-size="14">&#954;&#8324;</text>
+        <circle cx="120" cy="95" r="26" fill="none" stroke="var(--ls-warn)" stroke-width="2.5" stroke-dasharray="5 4"/>
+        <path d="M 141 76 L 150 70 L 149 81 z" fill="var(--ls-warn)"/>
+        <text x="150" y="34" fill="var(--ls-warn)" font-size="13">&#8721;loop &#8800; 0</text>
+      </svg>
+    </div>
+  </div>
+  <p style="font-size:0.78em"><b>Punchline:</b> the pressure removes the gradient part to machine precision every step;
+     <span class="bad">whatever remains is FLOW — permanently injected, step after step.</span></p>
+</section>
+
+<!-- B4: source taxonomy -->
+<section>
+  <h2>Lecture: where the \(\kappa_f\) errors come from (quadratic SL)</h2>
+  <table style="font-size:0.7em; border-collapse:collapse; margin:0.3em auto; width:97%; line-height:1.3">
+    <tr style="border-bottom:1px solid var(--ls-muted)">
+      <th style="text-align:left; padding:0.15em 0.4em">source</th>
+      <th style="text-align:left; padding:0.15em 0.4em">character</th>
+      <th style="text-align:left; padding:0.15em 0.4em">measured scale</th>
+      <th style="text-align:left; padding:0.15em 0.4em">details</th></tr>
+    <tr><td style="padding:0.12em 0.4em"><b>parallel-contour \(\kappa\)</b>: the cell reads its OWN isosurface, \(\kappa_d = \kappa/(1{+}d\kappa)\)</td>
+        <td>static, structural</td><td>8&ndash;30% of \(1/R\) across the force support (N=128)</td><td>&rarr; parallel curves</td></tr>
+    <tr><td style="padding:0.12em 0.4em">arithmetic face average mixes the two contour values</td>
+        <td>static, delivery</td><td>same origin, face level</td><td>&rarr; Kang cure</td></tr>
+    <tr><td style="padding:0.12em 0.4em">grid-anisotropy \(\cos4\theta\) bias of the CPC fit (poles vs diagonals)</td>
+        <td>static, convergent</td><td>0.6% &rarr; 0.05% (N=64&rarr;256)</td><td>the angular seed</td></tr>
+    <tr><td style="padding:0.12em 0.4em"><b>2h profile modes aliasing into the tangential Hessian</b></td>
+        <td class="bad">dynamic, run-fed</td><td>sign-flipping \(O(\varepsilon/h)\)</td><td>&rarr; the amplifier</td></tr>
+    <tr><td style="padding:0.12em 0.4em">support pairing: sharp geometric \(\alpha\) vs smeared delivery</td>
+        <td>static, delivery</td><td>staircase / support cliffs</td><td>&rarr; E3 verdicts</td></tr>
+  </table>
+  <p style="font-size:0.76em; line-height:1.4"><b>Two of these are load-bearing:</b> the parallel-contour structure makes a face-constant
+     \(\kappa_f\) UNREACHABLE for any interface shape (Defect&nbsp;1 — no equilibrium exists), and the
+     tangential-Hessian aliasing converts run-time \(\psi\)-profile strain into coherent force errors
+     (Defect&nbsp;2 — the amplifier). The rest set constants, not the fate.</p>
+</section>
+
+<!-- B5: standing vs exploding -->
+<section>
+  <h2>Lecture: standing currents vs the EXPLOSION</h2>
+  <p style="font-size:0.8em"><b>Non-constant \(\kappa_f\) alone does NOT explode.</b> With the interface pinned
+     (diagnostic control) the rotational force residue drives a <b>bounded standing eddy</b> — measured
+     \(\sim\!2\times10^{-2}\) at N=128, DECREASING under refinement at \(O(h^{1.6})\). That is the classic,
+     benign spurious current.</p>
+  <p style="font-size:0.8em">The explosion is the <b>closed loop</b>:</p>
+  <p class="center" style="font-size:0.85em">
+    \( \text{standing current} \;\to\; \psi\text{-profile strain} \;\to\;
+       \text{Hessian response} \;\to\; \kappa_f \text{ error growth} \;\to\; \cdots \)</p>
+  <ul style="font-size:0.76em; line-height:1.4">
+    <li><b>The decisive control (E4):</b> cut the feedback (fixed velocity pump, \(\psi\) advects passively) — error grows
+        <b>LINEARLY</b> (\(R^2=0.995\)). Close the loop — <b>exponential</b>, e-folding \(4.6\)&nbsp;ms at N=128.</li>
+    <li><b>Loop gain scales like \(1/h\):</b> \(t_{\mathrm{blow}} = 0.466/0.444/0.105/0.032\) at \(N=32/64/128/256\) —
+        fine meshes do not have larger errors, they have a faster amplifier.</li>
+    <li>One line: <b>the imbalance sets the seed; the \(\psi\)-feedback sets the exponent.</b></li>
+  </ul>
+  <p class="footnote muted">The evidence-ladder slide isolates each rung of this claim with a dedicated control run.</p>
+</section>
+
+<!-- B6: nothing is frozen -->
+<section>
+  <h2>Lecture: nothing is frozen — the coupling map</h2>
+  <p style="font-size:0.78em">Per time step (production configuration — every field evolves):</p>
+  <p class="center" style="font-size:0.82em; line-height:1.5">
+     SL-advect \(\psi\) <span class="muted">(first outer corrector; Taylor foot from \(\mathbf u^{n},\mathbf u^{n-1}\))</span>
+     &rarr; narrow band &rarr; \(\alpha(\psi)\) &rarr; \(\kappa(\psi)\) &rarr; \(f_\sigma\)
+     &rarr; PIMPLE momentum + pressure correctors
+     <span class="muted">(\(\psi\) held WITHIN the step across correctors — exactly interFoam's \(\alpha\) treatment)</span></p>
+  <ul style="font-size:0.76em; line-height:1.45">
+    <li>Frozen-\(\psi\)/frozen-flow states exist ONLY as explicitly gated diagnostic probes — and they are the
+        <b>proof instruments</b>: freezing removes the explosion \(\Rightarrow\) the explosion lives in the
+        evolution feedback, not in the static force error.</li>
+    <li><b>Why can't the evolution relax it?</b> Relaxation needs a reachable state \(\psi^\ast\) whose
+        <em>estimated</em> \(\kappa_f\) is face-constant. For the cell-centred level-set \(\kappa\), the
+        parallel-contour geometry forbids such a state for EVERY shape — \(\psi\) keeps moving, searching for a
+        rest state that cannot exist, and the motion pumps the Defect-2 modes.</li>
+    <li class="good"><b>The constructive counter-example:</b> give the discretisation a reachable equilibrium
+        (CST integral force, N=64) and the currents DID decay three and a half decades — everything evolving,
+        reinitialisation-free.</li>
+  </ul>
+</section>
+
+<!-- B7 (old D1 punchline): balance is a property of the input -->
+<section>
+  <h2>Lecture: force balance is a property of the <em>input</em></h2>
+  <p style="font-size:0.85em">Summarising the sequence:</p>
+  <ul style="font-size:0.8em; line-height:1.5">
+    <li>The machinery pairs \(f_{\sigma,f}\) and \(\nabla_f p\) on the same faces with the same operator; a constant
+        \(\kappa_f\) telescopes into \(\nabla_f(\sigma\bar\kappa\alpha)\) and is absorbed exactly — a matrix identity.</li>
+    <li><b>Verified in this code:</b> the <code>constantCurvature</code> control gives solver-tolerance currents —
+        the <em>machinery</em> is exact.</li>
+    <li>Everything therefore hangs on the <b>input</b> \(\kappa_f\): its non-constant part is un-cancellable
+        (rotational), its dynamic response to \(\psi\)-strain sets the growth exponent.</li>
+    <li>The interesting question is no longer "is the discretisation balanced?" but:
+        <b>can this estimator ever PRODUCE a face-constant input?</b> — the equilibrium question, next.</li>
+  </ul>
+</section>
+
+<!-- D2: what equilibrium IS -->
+<section>
+  <h2>Lecture: equilibrium is a property of the <em>estimator</em></h2>
+  <p style="font-size:0.85em"><b>Numerical equilibrium</b> (Popinet 2009): the parasitic current transports the interface until the
+     <em>discretely evaluated</em> curvature becomes face-constant — then the force is a pure gradient, and the
+     currents decay to round-off. Height functions famously reach this state.</p>
+  <p style="font-size:0.85em">Formally: let \(\mathcal K\) be the map from the scheme's state (here: the level-set field \(\psi\)) to the
+     face curvature. Equilibrium requires a <b>reachable state</b> \(\psi^\ast\) with</p>
+  \[ \mathcal K(\psi^\ast)\big|_f = \text{const on the force support}\quad
+     (\text{faces where } \nabla_f\alpha \neq 0). \]
+  <ul style="font-size:0.8em">
+    <li>Balance = "constant \(\kappa_f\) cancels" (previous slide, always true).</li>
+    <li>Equilibrium = "the state space contains a point where <em>my own estimator</em> returns a constant" — this depends entirely on <b>what the estimator reads</b>.</li>
+    <li>The two are routinely conflated; the static droplet separates them cleanly.</li>
+  </ul>
+</section>
+
+<!-- D3: the parallel-curve obstruction -->
+<section>
+  <h2>Lecture: the obstruction — parallel curves</h2>
+  <div class="cols">
+    <div>
+      <p style="font-size:0.8em">The symbolic estimator \(\kappa=(\mathrm{tr}\,H\,|\mathbf g|^2-\mathbf g^{\!\top}\!H\mathbf g)/|\mathbf g|^3\)
+         is <b>profile-invariant</b>: for \(\psi=f(d(\mathbf x))\), \(\mathbf g = f'\mathbf n\),
+         \(H = f'H_d + f''\,\mathbf n\mathbf n^{\!\top}\), and the formula returns
+         \(\mathrm{tr}\,H_d\) <em>exactly</em>, for any monotone profile \(f\).</p>
+      <p style="font-size:0.8em">So it always reports the curvature of the <b>isosurface through the cell centre</b>. But the band
+         isosurfaces are (near-)parallel curves, and a parallel curve at normal offset \(d\) has</p>
+      \[ \kappa_d = \frac{\kappa}{1 + d\,\kappa} \;\neq\; \kappa
+         \qquad (\text{circle: } \kappa_d = 1/(R+d)). \]
+      <p style="font-size:0.8em"><b>Consequence:</b> \(\kappa_f\) varies <em>along the normal</em> across the 2–3-cell force support
+         for <b>every</b> interface shape — and no \(\psi\)-profile change can alter it (invariance!).
+         The reachable state space contains <b>no balanced state</b>: a permanent force circulation stirs the
+         band, for any interface the scheme can produce.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 300 300" style="max-width:97%">
+        <defs>
+          <marker id="dArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 z" fill="#B22222"/>
+          </marker>
+        </defs>
+        <!-- parallel arcs -->
+        <path d="M 30 280 A 200 200 0 0 1 280 30" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <path d="M 55 280 A 175 175 0 0 1 280 55" fill="none" stroke="#e2e8f0" stroke-width="2.5"/>
+        <path d="M 80 280 A 150 150 0 0 1 280 80" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <!-- cell centres on different isosurfaces -->
+        <circle cx="98" cy="146" r="4" fill="#e05252"/>
+        <circle cx="118" cy="163" r="4" fill="#e2e8f0"/>
+        <circle cx="139" cy="181" r="4" fill="#60a5fa"/>
+        <text x="30" y="120" font-size="12" fill="#e05252">k = 1/(R-h)</text>
+        <text x="52" y="185" font-size="12" fill="#e2e8f0">k = 1/R</text>
+        <text x="80" y="235" font-size="12" fill="#60a5fa">k = 1/(R+h)</text>
+        <!-- normal ray -->
+        <line x1="90" y1="139" x2="150" y2="190" stroke="#e05252" stroke-width="1.2" marker-end="url(#dArrow)"/>
+        <text x="150" y="210" font-size="12" fill="#e05252">normal: k varies</text>
+        <text x="150" y="226" font-size="12" fill="#e05252">across the force support</text>
+        <text x="150" y="60" font-size="12" fill="#e2e8f0">interface (psi = 0)</text>
+        <text x="30" y="292" font-size="11" fill="#64748b">band isosurfaces = parallel curves</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- D4: the evidence ladder -->
+<section>
+  <h2>Lecture: the evidence ladder (each rung isolates one ingredient)</h2>
+  <table style="font-size:0.78em; border-collapse:collapse; margin:0.4em auto; width:96%">
+    <tr style="border-bottom:1px solid var(--ls-muted)">
+      <th style="text-align:left; padding:0.2em 0.5em">control (N=128)</th>
+      <th style="text-align:left; padding:0.2em 0.5em">what is active</th>
+      <th style="text-align:left; padding:0.2em 0.5em">outcome</th>
+    </tr>
+    <tr><td style="padding:0.2em 0.5em">full estimator, coupled</td><td>Defect 1 + Defect 2 + feedback</td><td><b>exponential runaway</b> (\(t_{\text{blow}}\!\approx\!0.11\))</td></tr>
+    <tr><td style="padding:0.2em 0.5em">frozen \(\psi\) (interface pinned)</td><td>Defect 1 only (static circulation)</td><td><b>bounded stirring</b> \(\sim\!2\times10^{-2}\) m/s (viscous balance)</td></tr>
+    <tr><td style="padding:0.2em 0.5em">frozen flow (open loop, fixed pump)</td><td>transport under fixed strain</td><td>\(\kappa\)-error grows <b>linearly</b> (\(R^2{=}0.995\)) — no self-amplification</td></tr>
+    <tr><td style="padding:0.2em 0.5em">constant \(\kappa\)</td><td>balance machinery only</td><td><b>solver-tolerance zero</b></td></tr>
+  </table>
+  <ul style="font-size:0.78em">
+    <li>Reading upward: the machinery is exact; a fixed pump only integrates error <em>linearly</em>; the <em>exponential</em> runaway needs the closed \(\kappa\!\to\!\text{force}\!\to\!\mathbf u\!\to\!\psi\) loop; and even with the interface pinned, Defect&nbsp;1's circulation never vanishes.</li>
+    <li>The offline refit of measured \(3\times3\) stencils reproduces every solver \(\kappa\) spike to <b>0.00% (100% sign match)</b> — the spikes are the fit's true response to the local \(\psi\), not a bug.</li>
+  </ul>
+</section>
+
+<!-- D5: Defect 2, the aliasing amplifier -->
+<section>
+  <h2>Lecture: the amplifier — grid-scale aliasing in the quadratic fit</h2>
+  <p style="font-size:0.8em">Why does the discrete estimator degrade at run time although the continuous one is profile-invariant?
+     Write the formula for \(\mathbf g \parallel \mathbf n\):
+     \(\;\mathbf g^{\!\top}\!H\mathbf g/|\mathbf g|^2 = H_{nn}\;\Rightarrow\;
+     \kappa = (\mathrm{tr}\,H - H_{nn})/|\mathbf g|\) — <b>any fit error confined to \(H_{nn}\) cancels identically.</b></p>
+  <ul style="font-size:0.78em; line-height:1.35">
+    <li><b>Smooth profile</b> \(f''\) (up to \(5000\,\mathrm m^{-1}\)): the fitted Hessian absorbs it into \(H_{nn}\) — measured \(\kappa\) error \(\sim\!1\%\). Harmless (the "\(\psi\) is smooth" observation).</li>
+    <li><b>Grid-scale (2h) profile oscillation</b> — the level-set compression wave the alternating parasitic strain pumps, invisible to \(\alpha\) (the indicator normalises its plane):
+      <ul style="font-size:0.95em">
+        <li>at a grid-aligned <b>pole</b>: sampled at exact Nyquist \(\Rightarrow\) projects onto \(H_{nn}\) \(\Rightarrow\) cancels (\(\pm10\%\) even at \(\varepsilon{=}0.5\));</li>
+        <li>at a <b>diagonal</b>: sampling spacing along \(d\) is \(h/\sqrt2\) — incommensurate \(\Rightarrow\) leaks into \(H_{tt},H_{nt}\) \(\Rightarrow\)
+            \(\kappa \in [-883,\,2744]\) at \(\varepsilon{=}0.5\) (exact: 953) — <b>sign-flipping</b> \(O(\varepsilon/h)\) errors.</li>
+      </ul></li>
+    <li>This reproduces the observed \(\pm O(10^3)\) \(\kappa\) speckle along the diagonal rays, at the measured \(|\nabla\psi|\) amplitudes.</li>
+    <li><b>Why smoothing made it worse:</b> face interpolation of <em>decorrelated</em> \(\pm\) speckle partially cancels; harmonic/foot-point coupling makes both cells of a face agree on one <em>signed</em> error — a full-strength coherent force. Coupling signed errors is destabilising; only <em>normal-constant</em> structure is safe.</li>
+  </ul>
+</section>
+
+<!-- D6: estimation vs delivery -->
+<section>
+  <h2>Lecture: the architecture — separate <em>estimation</em> from <em>delivery</em></h2>
+  <div class="cols">
+    <div>
+      <p style="font-size:0.8em"><b>The integral-estimator dilemma.</b> Robust (staircase-immune) curvature estimates are
+         <em>integral</em> — column sums, fits of interface positions. But their raw output is a cell-integrated
+         \(\kappa\mathbf n\) in one cell layer, and a <b>cell source has no discrete-gradient structure</b>:
+         paired against \(\nabla_f p\) it is unbalanced even for constant \(\kappa\).</p>
+      <p style="font-size:0.8em"><b>Requirement</b> (balanced CSF): a <em>face-centred</em> \(\kappa_f\), <b>single-valued along every
+         interface normal</b> within the \(\nabla_f\alpha\) support.</p>
+    </div>
+    <div>
+      <p style="font-size:0.8em"><b>The resolution:</b></p>
+      <ol style="font-size:0.8em; line-height:1.4">
+        <li><b>Estimate</b> \(\kappa_i\) per interface cell from interface <em>positions</em> (integral, LSQ — filters the staircase);</li>
+        <li><b>Deliver</b> as a normal-constant cell field: every band cell inherits its parent interface cell's \(\kappa_i\);</li>
+        <li>Keep \(\sigma\,\mathrm{interp}(\kappa)\,\nabla_f\alpha\): both cells of an intra-column face carry the same \(\kappa\) \(\Rightarrow\) the face value <em>is</em> the column \(\kappa\) \(\Rightarrow\) balanced along the normal.</li>
+      </ol>
+      <p style="font-size:0.8em">The only residual is the <b>tangential</b> variation of \(\kappa_i\) — exactly the height-function situation, and exactly what the interface can relax away.</p>
+    </div>
+  </div>
+  <p class="footnote muted">This is why height functions equilibrate: the column value is geometry-only <em>and</em> integral <em>and</em> normal-constant. All three properties are needed; the first two without the third (a one-layer source) is not balanced.</p>
+</section>
+
+<!-- D7: the psi height function -->
+<section>
+  <h2>Lecture: a height function from \(\psi\) — no grid columns needed</h2>
+  <div class="cols">
+    <div>
+      <p style="font-size:0.78em"><b>1. Feet</b> — per interface cell, the zero-crossing of its linear LSQ plane
+         \(\psi_i(\mathbf x)=\mathbf n_i\!\cdot\!\mathbf x + d_i\):</p>
+      \[ \mathbf p_i = \mathbf x_i - \big(\hat{\mathbf n}_i\!\cdot\!\mathbf x_i + \hat d_i\big)\,\hat{\mathbf n}_i \]
+      <p style="font-size:0.78em">A <b>geometry-only observable</b>: a 2h profile mode of amplitude \(\varepsilon\) shifts the
+         5-point plane zero-set only \(\sim\varepsilon h/(5\pi)\).</p>
+      <p style="font-size:0.78em"><b>2. Local height function</b> — neighbour feet in the frame \((\hat{\mathbf t},\bar{\mathbf n})\):
+         fit \(\zeta(\tau)=\tfrac12 A\tau^2+B\tau+C\),</p>
+      \[ \kappa_i = -\,\frac{A/h}{\left(1+B^2\right)^{3/2}} \]
+      <p style="font-size:0.78em"><b>3. Delivery</b> — uniform <b>nearest-foot</b>: on a circle,
+         \(|\mathbf x-\mathbf p_i|^2-|\mathbf x-\mathbf p_j|^2\) has an \(r\)-independent sign
+         \(\Rightarrow\) the parent assignment is <b>exactly radial</b> — zero \(\kappa\) jump within any normal column.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 300 300" style="max-width:97%">
+        <!-- interface arc -->
+        <path d="M 40 280 A 210 210 0 0 1 280 40" fill="none" stroke="#e2e8f0" stroke-width="2.5"/>
+        <!-- feet on the arc -->
+        <circle cx="63" cy="203" r="4.5" fill="#e05252"/>
+        <circle cx="84" cy="167" r="4.5" fill="#e05252"/>
+        <circle cx="112" cy="134" r="4.5" fill="#e05252"/>
+        <circle cx="146" cy="106" r="4.5" fill="#e05252"/>
+        <circle cx="184" cy="84" r="4.5" fill="#e05252"/>
+        <!-- local frame at the middle foot -->
+        <line x1="112" y1="134" x2="163" y2="176" stroke="#1d4ed8" stroke-width="1.6"/>
+        <line x1="112" y1="134" x2="153" y2="86" stroke="#009E73" stroke-width="1.6"/>
+        <text x="166" y="188" font-size="12" fill="#1d4ed8">n (outward)</text>
+        <text x="156" y="82" font-size="12" fill="#009E73">t (tangent)</text>
+        <!-- parabola hint through feet -->
+        <path d="M 63 203 Q 118 128 184 84" fill="none" stroke="#e05252" stroke-width="1.2" stroke-dasharray="5 3"/>
+        <text x="34" y="232" font-size="12" fill="#e05252">feet p_i (plane zero-crossings)</text>
+        <text x="34" y="248" font-size="12" fill="#e05252">parabola fit in (t, n) frame</text>
+        <!-- column cells -->
+        <rect x="90" y="112" width="22" height="22" fill="none" stroke="#94a3b8"/>
+        <rect x="112" y="134" width="22" height="22" fill="none" stroke="#94a3b8"/>
+        <rect x="134" y="156" width="22" height="22" fill="none" stroke="#94a3b8"/>
+        <text x="160" y="150" font-size="11" fill="#64748b">column: one kappa</text>
+        <text x="160" y="164" font-size="11" fill="#64748b">(nearest foot)</text>
+      </svg>
+      <p class="footnote muted" style="margin-top:0.2em">Height function in the <em>local normal frame</em> — mesh-topology-free
+         (unstructured-compatible), unlike \(\alpha\)-column HF.</p>
+    </div>
+  </div>
+</section>
+
+<!-- D8: the traps + first results -->
+<section>
+  <h2>Lecture: the traps (each guard has a failure mode behind it) &amp; first gates</h2>
+  <ul style="font-size:0.75em; line-height:1.35">
+    <li><b>Sign:</b> \(\zeta\) along the outward gradient \(\Rightarrow\) a droplet fits \(A&lt;0\) and \(\kappa=+1/R\) needs the minus sign — locked by a static test <em>before</em> any coupled run (a slip inverts the force: instant "divergence").</li>
+    <li><b>Leverage:</b> one bad plane's distant zero-crossing poisons every neighbour's fit <em>quadratically</em> in \(\tau\) — reject feet with \(|\mathbf p_i-\mathbf x_i| &gt; 1.2h\).</li>
+    <li><b>Extent beats count:</b> adjacent feet share 3–4 of 5 stencil values (strongly correlated) — require tangential extent \(\ge 2h\) and two-sided coverage, not just "\(\ge5\) points".</li>
+    <li><b>Uniform delivery:</b> any "own-\(\kappa\)" exception or ring-averaging re-creates normal variation inside the force support — the exact failure of the harmonic extension.</li>
+    <li><b>Fixed point exists:</b> the SL reconstruction reproduces cell values exactly \(\Rightarrow\) advection at \(\mathbf u=\mathbf 0\) is the <em>identity</em> — the coupled system has an exact rest state, so decay can <em>terminate</em> (stronger than MULES-VoF, which re-injects noise every step).</li>
+  </ul>
+  <table style="font-size:0.74em; border-collapse:collapse; margin:0.35em auto; width:92%">
+    <tr style="border-bottom:1px solid var(--ls-muted)">
+      <th style="text-align:left; padding:0.15em 0.4em">N</th><th>32</th><th>64</th><th>128</th><th>256</th></tr>
+    <tr><td style="text-align:left; padding:0.15em 0.4em">foot-point HF, rel. \(L_2\) vs const. \(1/R\) over the band</td>
+        <td><b>8.3%</b></td><td><b>1.6%</b></td><td><b>0.48%</b></td><td><b>0.22%</b></td></tr>
+    <tr><td style="text-align:left; padding:0.15em 0.4em">symbolic cell-centre (same metric)</td>
+        <td>45%</td><td>13.6%</td><td>7.1%</td><td>3.5%</td></tr>
+  </table>
+  <p style="font-size:0.74em; line-height:1.3">The metric <em>is</em> the balanced-force requirement (deviation from a constant over the whole force band): the symbolic estimator's error is dominated by its \(1/r\) normal variation (Defect&nbsp;1); the foot-point HF removes it — zero fallbacks, correct sign, \(\approx\!O(h^{1.7})\).
+  <b>Coupled gates (honest status):</b> frozen interface = quiet (13k steps, standing \(1.3{\times}10^{-2}\) from unrelaxable tangential scatter ✓); <b>free interface = new fast instability</b> (ms-scale, worse at finer \(N\)) — the fitted-feet \(\kappa\)'s <em>response to interface deformation</em> is mis-phased in the coupled loop (static accuracy is not sufficiency!). Ray-distance parents and temporal \(\kappa\) relaxation both fail \(\Rightarrow\) v2 needs a <em>continuous, per-cell column</em> response (no parent switching) or tangentially-coupled (overlapping-column, HF-like) fits — plus an offline deformation-transfer-function diagnostic \(\delta\kappa(\cos m\theta)\) before the next coupled run.</p>
+</section>
+
+<!-- D9: published cure 1 — Kang/GFM face weighting -->
+<section>
+  <h2>Lecture: published cure&nbsp;1 — the Kang/GFM face curvature</h2>
+  <p style="font-size:0.82em; line-height:1.4">(Kang et&nbsp;al. 2000; Abadie et&nbsp;al. 2015: <em>exact</em> balance in the ghost-fluid setting)</p>
+  \[ \kappa_f=\frac{\kappa_P|\psi_N|+\kappa_N|\psi_P|}{|\psi_P|+|\psi_N|} \]
+  <p style="font-size:0.82em; line-height:1.4">— inverse-distance interpolation of the two parallel-contour values <em>to the \(\psi{=}0\) crossing</em>:
+     for parallel curves \(\kappa_d=\kappa/(1+d\kappa)\) is \(\approx\)linear in \(d\) over \(\pm h\), so the weighted value \(\approx\kappa\) at the
+     interface — the Defect-1 normal variation is cancelled <em>at the faces, where the balance lives</em>.</p>
+  <table style="font-size:0.76em; border-collapse:collapse; margin:0.3em auto; width:90%">
+    <tr style="border-bottom:1px solid var(--ls-muted)">
+      <th style="text-align:left; padding:0.15em 0.4em">\(N{=}64\) variant</th><th>initial current</th><th>fate</th></tr>
+    <tr><td style="text-align:left; padding:0.15em 0.4em">arithmetic \(\times\) geometric \(\alpha\) (default)</td><td>\(4.5{\times}10^{-3}\)</td><td>decays to \(1.3{\times}10^{-5}\), stable to \(0.44\)</td></tr>
+    <tr><td style="text-align:left; padding:0.15em 0.4em">Kang \(\times\) geometric \(\alpha\)</td><td>\(7.0{\times}10^{-4}\)</td><td>grows to \({\sim}4{\times}10^{-3}\), rising</td></tr>
+    <tr><td style="text-align:left; padding:0.15em 0.4em">Kang \(\times\) sharp Heaviside (LS–SSF)</td><td>\(7.7{\times}10^{-5}\)</td><td><b>blows at \(t=0.073\)</b></td></tr>
+  </table>
+  <p style="font-size:0.78em; line-height:1.35"><b>The better the static balance, the worse the dynamic fate</b> — sharpening raises the feedback gain.</p>
+</section>
+
+<!-- D10: published cure 2 — CST integral model -->
+<section>
+  <h2>Lecture: published cure&nbsp;2 — the integral (CST) model</h2>
+  <p style="font-size:0.74em; line-height:1.35"><b>Abu-Al-Saud, Popinet &amp; Tchelepi 2018:</b> force \(=-\nabla\cdot(p\mathbf I+\sigma)\), stress from interface
+     <em>tangents</em> at the face intersections of \(\psi\) + jump corrections \(\gamma\tilde\kappa s\) <em>at</em> the intersections;
+     momentum-conserving; \(\kappa\) appears only at crossings.
+     <b>Implementer's warning:</b> the printed relations (Eq.&nbsp;8 vs the paper's own \(-\nabla\cdot(p\mathbf I+\sigma)\); Appendix&nbsp;B)
+     carry an <b>inverted overall sign</b> — verbatim they give an inverted Laplace jump (\(-72.7\)&nbsp;Pa) and an <em>anti-restoring</em>,
+     \(\Delta t\)-independent instability at the grid-capillary frequency (the algorithms are \(\psi\)-orientation-invariant;
+     the fix is a global sign flip).</p>
+  <table style="font-size:0.72em; border-collapse:collapse; margin:0.25em auto; width:94%; line-height:1.25">
+    <tr style="border-bottom:1px solid var(--ls-muted)">
+      <th style="text-align:left; padding:0.12em 0.4em">gate (sharp \(\rho\))</th><th>result</th></tr>
+    <tr><td style="text-align:left; padding:0.12em 0.4em">\(N{=}64\), \(t\to0.5\)</td>
+        <td><b>decays \(3.3{\times}10^{-3}\to5{\times}10^{-7}\)</b> — first reachable equilibrium; slow regrowth after \(t\approx0.25\)</td></tr>
+    <tr><td style="text-align:left; padding:0.12em 0.4em">\(N{=}128\)</td>
+        <td>blows at \(t\approx0.047\) &lt; CSF's \(0.105\); <b>\(\Delta t/2\) does not help</b></td></tr>
+  </table>
+  <p style="font-size:0.68em; line-height:1.3"><b>Why:</b> the CST inputs still read the \(\psi\) <em>profile</em> — \(\tilde\kappa\) at crossings, tangents unit only for
+     \(|\nabla\psi|=1\): balance error \(\sim\gamma(|\nabla\psi|-1)/h^2\). The paper's <b>threshold reinitialisation</b> at the
+     \(h^2\) level bounds that amplifier; reinit-free transport has no cap. <b>Fourth replication: better statics, higher feedback gain.</b></p>
+</section>
+
+<!-- ===== SL: droplet flow & curvature fields (3 resolutions) ===== -->
+<section>
+  <h2>Stationary droplet &mdash; flow &amp; curvature fields</h2>
+  <img src="data/figures/sl_droplet_velocity_field.png"
+       alt="parasitic current glyphs over volume fraction, three resolutions"
+       style="max-height:245px; max-width:96%; border-radius:6px;">
+  <img src="data/figures/sl_droplet_curvature_field.png"
+       alt="reconstructed curvature in the band, three resolutions"
+       style="max-height:245px; max-width:96%; border-radius:6px;">
+  <p class="footnote muted center">\(N=32/64/128\), mesh on every panel. Parasitic current = a symmetric
+     vortical pattern at the interface (top, run-time); reconstructed \(\kappa\) on the initialised
+     interface (bottom) is a clean \(\approx\!1/R\) band that <b>tightens with refinement</b> &mdash;
+     \(N{=}128\) the most accurate (converges, cf. curvature-accuracy slide). Run-time roughening is a
+     transport effect &mdash; see the mechanism slide.</p>
+</section>
+</section>  <!-- ############ /TRACK: two-phase flow ############ -->
 
 <!-- ==================== CONCLUSIONS (vertical stack) ==================== -->
 <section data-track="Conclusions">
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 3 of 4</p>
+  <p class="part-kicker">Part 4 of 5</p>
   <h2>Conclusions</h2>
-  <p class="muted" style="font-size:0.85em">the working method &mdash; convergence on hex &amp; polyhedral meshes</p>
+  <p class="muted" style="font-size:0.85em">the working method &mdash; convergence on hex &amp; polyhedral meshes, and two-phase coupling</p>
   <ol class="roadmap" style="font-size:0.8em">
     <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li><span class="idx">2</span>Semi-Lagrangian advection</li>
-    <li class="here"><span class="idx">3</span>Conclusions</li>
-    <li><span class="idx">4</span>Software design</li>
+    <li><span class="idx">3</span>Two-phase flow</li>
+    <li class="here"><span class="idx">4</span>Conclusions</li>
+    <li><span class="idx">5</span>Software design</li>
   </ol>
-  <p class="part-prevnext">Previously: Semi-Lagrangian advection &nbsp;&middot;&nbsp; Next: Software design</p>
+  <p class="part-prevnext">Previously: Two-phase flow &nbsp;&middot;&nbsp; Next: Software design</p>
 </section>
 
 
@@ -1078,11 +1887,16 @@ psi.correctBoundaryConditions();
       <li><b>Any mesh</b> &rarr; the same solver runs on <b>hexahedral and general polyhedral</b>
           (cfMesh) meshes at the <em>same</em> convergence order &mdash; point-neighbour stencil on
           structured cells, compact face-neighbour stencil on polyhedra.</li>
-      <li><b>Coupled flow</b> (\(\mathbf U\) is a momentum-equation solution, not prescribed) is a
-          <b>different problem</b> &mdash; there the Eulerian solver needs a velocity extension
-          (see the companion deck).</li>
+      <li><b>Coupled two-phase flow</b> (\(\mathbf U\) from a one-field Navier&ndash;Stokes solve) &rarr;
+          <code>leiaSemiLagrangianLevelSetTwoPhaseFoam</code>: the interface curvature comes
+          <b>symbolically</b> from the same reconstruction, giving a <b>converging Laplace jump</b>
+          and currents that decay on coarse meshes (static droplet, reinit-free). The coupling is
+          <b>balanced-force</b>; instrumented + frozen-interface tests trace the fine-mesh growth to a
+          <b>transport-coupled feedback</b>, so signed-distance consistency <i>and</i> curvature-error
+          reduction (not a force-discretisation change) are the levers (future work).</li>
       <li>Open item: no reinitialization, so \(|\nabla\psi|=1\) is not maintained over long
-          integrations (a redistancing partner is future work).</li>
+          integrations (a redistancing partner is future work); explicit surface tension imposes a
+          capillary time-step limit.</li>
     </ul>
     <p class="footnote muted">All numbers regenerate from
        <em class="tag">config/uncachedConv2Dvortex.yaml</em> (2D) and
@@ -1095,14 +1909,15 @@ psi.correctBoundaryConditions();
 <section data-track="Software design">  <!-- ############ TRACK: Software Design ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 4 of 4</p>
+  <p class="part-kicker">Part 5 of 5</p>
   <h2>Software design</h2>
   <p class="muted" style="font-size:0.85em">runtime model selection; add a model without touching existing code</p>
   <ol class="roadmap" style="font-size:0.8em">
     <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
     <li><span class="idx">2</span>Semi-Lagrangian advection</li>
-    <li><span class="idx">3</span>Conclusions</li>
-    <li class="here"><span class="idx">4</span>Software design</li>
+    <li><span class="idx">3</span>Two-phase flow</li>
+    <li><span class="idx">4</span>Conclusions</li>
+    <li class="here"><span class="idx">5</span>Software design</li>
   </ol>
   <p class="part-prevnext">Previously: Conclusions &nbsp;&middot;&nbsp; Next: &mdash; (end)</p>
 </section>

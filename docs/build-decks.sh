@@ -19,6 +19,11 @@ set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # repository root
 command -v python3 >/dev/null || { echo "error: python3 not found on PATH" >&2; exit 1; }
 
+# Self-healing dual-copy sync: the semi-Lagrangian method-line decks read their
+# figures/tables from a LOCAL data/ mirror of the article data/ -- refresh it
+# before building so a manual `make decks` never inlines stale copies.
+python3 "$repo/workflow/scripts/propagate_data.py"
+
 shopt -s nullglob
 built=0
 for tpl in "$repo"/docs/*/*-presentation/*.template.html; do

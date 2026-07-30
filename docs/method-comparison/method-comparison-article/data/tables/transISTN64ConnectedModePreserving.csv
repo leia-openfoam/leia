@@ -1,0 +1,2 @@
+candidate,N_CELLS,end_time_s,samples,max_U_minus_Utrans_m_per_s,final_U_minus_Utrans_m_per_s,maximum_abs_phase_volume_relative_error,final_phase_volume_relative_error,maximum_centroid_error_m,final_centroid_error_m,final_zero_set_radial_L2_m,final_zero_set_radial_Linf_m,final_pLaplace_Pa,final_kappa_error_L2_per_m,solver_status,oscillating_run_started
+h4_helmholtz_l16_preserve_m2_m4,64,0.0499988053,2357,0.0893327039,0.0893327039,0.02375889877,0.009520762295,2.14726244e-05,1.653602957e-05,8.064420293e-05,2.037551368e-04,70.65005571,33.49734671,0,1

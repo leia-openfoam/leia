@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>leia — geometric redistancing: negative results</title>
+
+  <!-- reveal.js 4.6.x core + black theme, from cdnjs -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css"
+        id="theme">
+
+  <style>
+    :root {
+      /* Palette — same as the theme's main deck (reads on the black theme). */
+      --ls-fg:      #f2f2f2;
+      --ls-muted:   #b9c2cc;
+      --ls-accent:  #4fc3f7;
+      --ls-liquid:  #29b6f6;
+      --ls-liquid2: #1565c0;
+      --ls-gas:     #455a64;
+      --ls-warn:    #ffb74d;
+      --ls-bad:     #ef5350; /* negative results */
+      --ls-good:    #81c784;
+      --ls-line:    #90a4ae;
+    }
+    .reveal h1 { font-size: 1.55em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.25em; color: var(--ls-accent); }
+    .reveal section { font-size: 0.82em; }
+    .reveal p, .reveal li { color: var(--ls-fg); }
+    .reveal .muted { color: var(--ls-muted); }
+    .reveal .accent { color: var(--ls-accent); }
+    .reveal .warn { color: var(--ls-warn); }
+    .reveal .bad { color: var(--ls-bad); }
+    .reveal .good { color: var(--ls-good); }
+    .reveal small { color: var(--ls-muted); }
+    .reveal em.tag {
+      font-style: normal; color: var(--ls-accent);
+      font-family: monospace; font-size: 0.9em;
+    }
+    .reveal code { color: var(--ls-warn); }
+    .reveal .mjx-container { color: var(--ls-fg) !important; }
+    .reveal svg text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+    .cols { display: flex; gap: 1.2em; align-items: center; justify-content: center; }
+    .cols > div { flex: 1; }
+    .reveal ul.tight { margin: 0; }
+    .reveal ul.tight li { margin: 0.1em 0; }
+    .reveal section img { background: none; border: none; box-shadow: none; }
+    .center { text-align: center; }
+    .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    /* measured-verdict callouts */
+    .verdict {
+      border-left: 4px solid var(--ls-bad); padding: 0.25em 0.7em;
+      background: rgba(239, 83, 80, 0.08); margin: 0.5em 0;
+    }
+    .verdict.fixed { border-left-color: var(--ls-good);
+      background: rgba(129, 199, 132, 0.08); }
+    .verdict .v-kicker {
+      font-size: 0.62em; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--ls-bad); display: block;
+    }
+    .verdict.fixed .v-kicker { color: var(--ls-good); }
+    .reveal table.num { font-size: 0.78em; }
+    .reveal table.num th { color: var(--ls-accent); }
+    .reveal table.num td { color: var(--ls-fg); }
+    /* --- deck orientation: persistent footer + roadmap / part intros --- */
+    .deck-footer {
+      position: fixed; bottom: 7px; left: 18px; right: 96px; z-index: 30;
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 14px;
+      font-family: "Source Sans Pro", Helvetica, sans-serif;
+      font-size: 13px; color: var(--ls-muted); opacity: 0.9;
+      pointer-events: none;
+    }
+    .deck-footer .df-track { color: var(--ls-accent); white-space: nowrap; }
+    .deck-footer .df-authors { flex: 1; text-align: center; }
+    .deck-footer .df-nav { white-space: nowrap; }
+    .deck-footer .df-nav a {
+      pointer-events: auto; display: inline-block; min-width: 1.3em;
+      margin-right: 3px; padding: 0 4px; text-align: center;
+      border: 1px solid var(--ls-line); border-radius: 3px;
+      color: var(--ls-muted); text-decoration: none; font-size: 12px;
+      line-height: 1.5; opacity: 0.8;
+    }
+    .deck-footer .df-nav a:hover {
+      color: var(--ls-fg); border-color: var(--ls-fg); opacity: 1;
+    }
+    .deck-footer .df-nav a.here {
+      color: var(--ls-accent); border-color: var(--ls-accent);
+      font-weight: 600; opacity: 1;
+    }
+    .reveal ol.roadmap { list-style: none; margin-left: 0; }
+    .reveal ol.roadmap li {
+      color: var(--ls-muted); margin: 0.14em 0; font-size: 0.92em;
+    }
+    .reveal ol.roadmap li .idx {
+      display: inline-block; width: 1.5em; color: var(--ls-line);
+    }
+    .reveal .part-kicker {
+      font-size: 0.62em; letter-spacing: 0.22em; color: var(--ls-accent);
+      text-transform: uppercase; margin-bottom: 0.1em;
+    }
+  </style>
+
+  <!-- MathJax 3 (loaded directly from cdnjs) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        // \boldsymbol is NOT in the inlined tex-svg bundle; alias it to a
+        // no-op so the offline, self-contained deck never tries a CDN
+        // autoload (which aborts the whole typeset run).
+        macros: { boldsymbol: ['{#1}', 1] }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+      // 'local' font cache: a global cache renders blank across reveal slides.
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+
+<div class="deck-footer">
+  <span class="df-nav" id="deckNav" aria-label="jump to part"></span>
+  <span class="df-authors">T. Mari&#263; &middot; M. Fricke &middot; D. Bothe &nbsp;&mdash;&nbsp; Mathematical Modeling &amp; Analysis, TU Darmstadt</span>
+  <span class="df-track" id="deckTrack"></span>
+</div>
+<div class="reveal">
+<div class="slides">
+
+<!-- ==================== TITLE ==================== -->
+<section>
+  <h1>leia</h1>
+  <h2 style="color:var(--ls-fg)">Geometrically redistanced level set</h2>
+  <p class="bad" style="font-size:1.1em">Negative results &mdash; and why</p>
+  <p class="muted">every dead end, measured, with the mechanism behind it &middot;
+     the record that keeps the next person from re-walking them</p>
+  <p style="margin-top:0.7em; font-size:1.05em">
+     <b>Tomislav Mari&#263; &middot; Mathis Fricke &middot; Dieter Bothe</b>
+     <span class="muted" style="font-weight:normal"><br>MMA, TU Darmstadt</span></p>
+  <p class="footnote"><code>libleiaLevelSet</code> &nbsp;|&nbsp; solver <code>leiaRedistancedLevelSetFoam</code>
+     &nbsp;|&nbsp; companion deck: <code>grl.template.html</code> (the method &amp; the results that work)</p>
+  <aside class="notes">
+    This deck only documents what did NOT work in the geometric-redistancing
+    line, with measurements and the mechanism. Honest negative results are rare
+    in method papers and priceless in code bases. The positive story lives in
+    the main theme deck.
+  </aside>
+</section>
+
+<!-- ==================== ROADMAP ==================== -->
+<section>
+  <h2>Roadmap</h2>
+  <ol class="roadmap" style="font-size:1.05em">
+    <li><span class="idx">1</span>The gate &mdash; the method in one slide, the static gate, the governing lesson</li>
+    <li><span class="idx">2</span>Foot-cloud scalloping &mdash; <em class="tag">planeFootWave</em> v1 injured the band; the donor-plane repair</li>
+    <li><span class="idx">3</span>The Eikonal fill &mdash; <em class="tag">anchoredEikonal</em>: plateau fixed, first-order fill remains</li>
+    <li><span class="idx">4</span>PDE reinitialization &mdash; fixed \(\Delta\tau\) blow-up; central-gradient oscillation</li>
+    <li><span class="idx">5</span>Measurement pitfalls &mdash; when the measuring stick was the bug</li>
+    <li><span class="idx">6</span>Scoreboard &amp; standing rules</li>
+  </ol>
+  <aside class="notes">
+    Structure per finding: what we tried, measured verdict, mechanism, repair or
+    documented status. All numbers are reproducible from the snakemake configs.
+  </aside>
+</section>
+
+<section data-track="The gate">  <!-- ############ TRACK 1: the gate ############ -->
+<section>
+  <p class="part-kicker">Part 1 of 6</p>
+  <h2>The gate</h2>
+  <p class="muted">the method in one slide &middot; the static gate that decides &middot; the governing lesson</p>
+</section>
+
+<section>
+  <h2>The method in one slide</h2>
+  <ul class="tight">
+    <li>Advect \(\psi\) as a PDE with the plain prescribed flux:
+        \(\partial_t\psi + \nabla\cdot(\mathbf{v}\psi) - \psi\,\nabla\cdot\mathbf{v} = 0\)
+        (advective form; optional Helmholtz projection <code>-fluxCorrection</code>).</li>
+    <li>Restore the signed-distance property <b>geometrically</b>, from the
+        <span class="accent">same linear least-squares interface planes</span> the
+        Detrixhe&ndash;Aslam phase indicator already reconstructs per cell.</li>
+    <li><b>Anchors</b> (exact, hard): band cells &mdash; own normalized plane;
+        first ring &mdash; plicRDF-weighted donor-plane distances.</li>
+    <li><b>Fill</b> (the rest of the domain) &mdash; the sweepable model:
+        <em class="tag">planeFootWave</em> (MeshWave), <em class="tag">anchoredEikonal</em>
+        (steady solve), <em class="tag">PDE</em> (Sussman baseline).</li>
+    <li>Events fire through a criterion (<code>gradPsiThreshold</code>:
+        band \(L_1(\,||\nabla\psi|-1|\,) > (h/L)^2\)) &mdash; redistancing is rare, not per-step.</li>
+  </ul>
+  <p class="footnote">Consistency by construction: the indicator and the redistancer read the SAME planes
+     &mdash; \(\alpha\) and \(\psi\) cannot disagree about where the interface is.</p>
+</section>
+
+<section>
+  <h2>The static gate</h2>
+  <div class="cols">
+    <div>
+      <ul class="tight">
+        <li>Case <code>cases/2DredistanceCircle</code>: circle \(R=0.25\) in the unit square,
+            \(\psi_0 = \ell\,\tanh\!\big(d/(\ell\,\varepsilon)\big)\), \(\ell=0.1\), \(\varepsilon=0.5\):
+            exact zero set, \(|\nabla\psi|(\Sigma)=2\), saturates to \(\pm0.1\) &mdash; deliberately hostile.</li>
+        <li><code>leiaTestRedistance</code> applies <b>one</b> event and measures against the
+            analytic SDF \(|\mathbf{x}-\mathbf{c}|-R\) over the trigger band
+            \(B=\{|\psi_{exact}|\le 6h\}\) &mdash; the region the indicator and the criterion read.</li>
+        <li>Pre-event @ \(N=64\): band \(L_\infty(\psi)\) = 2.66e-2,
+            band mean \(||\nabla\psi|-1|\) = <b>0.537</b>.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="verdict fixed">
+        <span class="v-kicker">pass criterion</span>
+        post-event band error \(\le\) pre-event band error,<br>
+        interface metrics unchanged.<br>
+        <span class="muted">An event that fires must improve the field it was called to repair.</span>
+      </div>
+      <p class="footnote">Reproducible: <code>snakemake --workflow-profile profiles/local
+         --configfile config/redistanceCircle2D.yaml</code></p>
+    </div>
+  </div>
+  <aside class="notes">
+    The gate is static on purpose: no advection error mixed in, an analytic
+    reference, and one event. If a fill cannot pass here it cannot help anywhere.
+  </aside>
+</section>
+
+<section>
+  <h2>The governing lesson</h2>
+  <div class="verdict">
+    <span class="v-kicker">measured, both v1 fills</span>
+    A redistance event <b>raised</b> the band deviation it exists to lower:<br>
+    band \(L_1(||\nabla\psi|-1|)\): 6.9e-3 &rarr; <b class="bad">8.6e-2</b> (Eikonal),
+    &rarr; <b class="bad">2.1e-2</b> (foot wave, 76-seed cloud).
+  </div>
+  <ul class="tight">
+    <li>Consequence: <b>no trigger policy can help</b>. If firing injures, the only
+        "good" schedule is <em>never</em> &mdash; the criterion literature
+        (Abu-Al-Saud et al. 2018) presumes a fill worth calling.</li>
+    <li>Fill quality is <b>upstream</b> of every trigger/threshold study;
+        the static gate therefore gates all of them.</li>
+  </ul>
+  <aside class="notes">
+    This reframed the work: before studying WHEN to redistance, make the event
+    itself non-injuring. Both repairs below are measured against the gate.
+  </aside>
+</section>
+</section>  <!-- ############ /TRACK 1 ############ -->
+
+<section data-track="Foot-cloud scalloping">  <!-- ############ TRACK 2 ############ -->
+<section>
+  <p class="part-kicker">Part 2 of 6</p>
+  <h2>Foot-cloud scalloping</h2>
+  <p class="muted"><em class="tag">planeFootWave</em> v1: distance to discrete foot points</p>
+</section>
+
+<section>
+  <h2>What we tried (v1)</h2>
+  <ul class="tight">
+    <li>Each band cell's LLS plane contributes its <b>foot point</b>
+        \(\mathbf{f}_c = \mathbf{x}_c - d_c\,\hat{\mathbf{n}}_c\) as a
+        <code>MeshWave&lt;wallPointData&lt;scalar&gt;&gt;</code> seed.</li>
+    <li>Every cell receives the Euclidean distance to its <b>nearest foot point</b>:
+        \(\;\psi_{new} = \mathrm{sign}(\psi_{old})\,\min_i |\mathbf{x}-\mathbf{f}_i|\).</li>
+    <li>Band + ring anchors overridden with exact plane distances; monotone, causal,
+        parallel-native, no parameters.</li>
+  </ul>
+  <div class="verdict">
+    <span class="v-kicker">measured verdict — injures</span>
+    Event gate: band \(L_1(||\nabla\psi|-1|)\) 6.9e-3 &rarr; <b class="bad">2.1e-2</b>.<br>
+    Static gate @ \(N=64\): band \(L_\infty(\psi)\) = 6.1e-3, band
+    \(L_\infty(||\nabla\psi|-1|)\) = <b class="bad">0.167</b>.
+  </div>
+</section>
+
+<section>
+  <h2>Why: the scalloping mechanism</h2>
+  <div class="cols">
+    <div>
+      <svg viewBox="0 0 420 240" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <!-- interface line -->
+        <line x1="20" y1="60" x2="400" y2="60" stroke="var(--ls-accent)" stroke-width="2"/>
+        <text x="24" y="48" fill="var(--ls-accent)" font-size="13">interface (donor planes)</text>
+        <!-- foot points -->
+        <g fill="var(--ls-warn)">
+          <circle cx="60" cy="60" r="4"/><circle cx="130" cy="60" r="4"/>
+          <circle cx="200" cy="60" r="4"/><circle cx="270" cy="60" r="4"/>
+          <circle cx="340" cy="60" r="4"/>
+        </g>
+        <text x="348" y="76" fill="var(--ls-warn)" font-size="13">feet, spacing ~ h</text>
+        <!-- scalloped level set: arcs bulging between feet -->
+        <path d="M 25 165 A 78 78 0 0 1 95 150 A 78 78 0 0 1 165 150 A 78 78 0 0 1 235 150 A 78 78 0 0 1 305 150 A 78 78 0 0 1 375 165"
+              fill="none" stroke="var(--ls-bad)" stroke-width="2.5"/>
+        <text x="30" y="196" fill="var(--ls-bad)" font-size="13">level set of min-distance-to-feet: scalloped</text>
+        <!-- true level set -->
+        <line x1="25" y1="150" x2="395" y2="150" stroke="var(--ls-good)" stroke-width="1.5" stroke-dasharray="6 5"/>
+        <text x="256" y="140" fill="var(--ls-good)" font-size="13">true plane distance</text>
+      </svg>
+    </div>
+    <div>
+      <ul class="tight">
+        <li>\(\min_i|\mathbf{x}-\mathbf{f}_i|\) is a union of <b>cones</b>: its level
+            sets bulge between feet (sagitta \(\approx s^2/8d\), \(s\) = foot spacing).</li>
+        <li>\(\psi\) error is small &mdash; but \(\nabla\psi\) <b>kinks at every donor
+            boundary</b>, and the band deviation the trigger reads is exactly a
+            gradient norm: the scalloping lands on the quantity being policed.</li>
+        <li>A resolution-independent <b>floor</b>: refining moves the feet closer but
+            the kink pattern persists at the new scale.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The repair: evaluate the donor PLANE, not its foot</h2>
+  <ul class="tight">
+    <li>Payload upgrade: <code>wallPointData&lt;vector&gt;(foot, nHat, distSqr)</code> &mdash;
+        the wave still <b>orders</b> donors by foot distance, but the received value is the
+        <b>continuous</b> donor-plane evaluation
+        \(\;\psi_{new} = \mathrm{sign}(\psi_{old})\,\big|(\mathbf{x}-\mathbf{f})\cdot\hat{\mathbf{n}}\big|\)
+        &mdash; geometricVoF/plicRDF's trick.</li>
+    <li>Moving parallel to the plane no longer changes the value: the scalloping is
+        removed <b>structurally</b>, not tuned away.</li>
+  </ul>
+  <div class="verdict fixed">
+    <span class="v-kicker">measured verdict — pass</span>
+    Static gate, post-event band \(L_\infty(\psi-\psi_{exact})\):
+    <b class="good">4.1e-3 / 7.0e-4 / 1.8e-4</b> @ \(N=32/64/128\) &mdash; <b>second order</b>
+    (was 6.1e-3 @ 64: <b>8.7&times;</b>).<br>
+    Band mean \(||\nabla\psi|-1|\): 0.537 &rarr; <b class="good">5.1e-3</b> @ \(N=64\).<br>
+    Planar field: machine-exact over the whole \(6h\) band
+    (\(L_\infty=8\!\cdot\!10^{-14}\)); 1D case globally exact.
+  </div>
+  <p class="footnote"><em class="tag">planeFootWave</em> is the working model.</p>
+  <aside class="notes">
+    The ordering metric stays the foot distance (guarantees monotone causal
+    propagation); only the VALUE changed to the plane evaluation. On a single
+    plane every donor evaluates to the same infinite plane, hence machine
+    exactness in the planar unit test.
+  </aside>
+</section>
+</section>  <!-- ############ /TRACK 2 ############ -->
+
+<section data-track="The Eikonal fill">  <!-- ############ TRACK 3 ############ -->
+<section>
+  <p class="part-kicker">Part 3 of 6</p>
+  <h2>The Eikonal fill</h2>
+  <p class="muted"><em class="tag">anchoredEikonal</em>: plateau fixed &mdash; the first-order fill remains</p>
+</section>
+
+<section>
+  <h2>What we tried</h2>
+  <ul class="tight">
+    <li>Tucker-regularized steady Eikonal for the unsigned distance \(y\):
+        \(\;\nabla\cdot(\hat{\mathbf{n}}y) - y\nabla\cdot\hat{\mathbf{n}}
+        - \epsilon\, y\,\nabla^2 y = 1\), direction frozen per iteration
+        (OpenFOAM's <code>advectionDiffusion</code> wall-distance discretization,
+        with <code>fvMatrix::setValues</code> internal Dirichlet anchors).</li>
+    <li>Defaults inherited from OpenFOAM: \(\epsilon=0.1\), tolerance 1e-3,
+        <b>maxIter 10</b>.</li>
+  </ul>
+  <div class="verdict">
+    <span class="v-kicker">measured verdict v1 — injures</span>
+    Event gate: band \(L_1(||\nabla\psi|-1|)\) 6.9e-3 &rarr; <b class="bad">8.6e-2</b>.<br>
+    Diagnosis: the frozen-direction iteration hit <b>maxIter=10 with the residual
+    plateaued at ~1e-3</b> &mdash; the fill returned un-converged.
+  </div>
+</section>
+
+<section>
+  <h2>Repair attempt: iteration budget</h2>
+  <ul class="tight">
+    <li><code>maxIter 100</code>, <code>tolerance 1e-4</code> (set in the case dictionaries,
+        never hardcoded).</li>
+    <li>Result: converges in <b>4 outer iterations</b> (final residual 4.8e-5) &mdash;
+        the plateau was purely budget. The event now improves the field:
+        band mean \(||\nabla\psi|-1|\) 0.537 &rarr; 4.3e-2 @ \(N=64\).</li>
+  </ul>
+  <div class="verdict">
+    <span class="v-kicker">measured verdict v2 — converged, still loses</span>
+    <b>~8&times; worse than the wave</b> at every resolution
+    (band \(L_\infty(\psi)\): 3.0e-2 / 5.8e-3 / 1.4e-3 vs 4.1e-3 / 7.0e-4 / 1.8e-4).<br>
+    Planar unit test: the fill is <b class="bad">first order inside the trigger band</b>
+    &mdash; \(6h\)-band \(L_\infty(\psi)\) = 2.6e-2 / 1.5e-2 / 7.6e-3 @ \(N=32/64/128\)
+    (\(\approx 0.8\!-\!1.0\,h\)) on an EXACT planar field.
+  </div>
+</section>
+
+<section>
+  <h2>Why, and the documented status</h2>
+  <ul class="tight">
+    <li><b>Mechanism</b>: the fill transports distance with first-order upwind
+        (\(O(h)\)) plus the \(\epsilon\,y\,\nabla^2 y\) regularization bias &mdash;
+        both contaminate the outer band cells that the trigger criterion and the
+        indicator read; the anchors (band + ring) stay machine-exact.</li>
+    <li><b>The obvious cure is a documented divergence</b>: the second-order
+        deferred-corrected <code>linearUpwind</code> on a STEADY transport equation
+        (no \(\partial_t\) damping) already diverged in the velocity-extension line
+        (<em class="tag">steadyUpwindLinear</em>, "the Aslam cascade") &mdash; same
+        equation class, same failure mode expected.</li>
+  </ul>
+  <div class="verdict">
+    <span class="v-kicker">status</span>
+    <em class="tag">anchoredEikonal</em> stays in the code and in the study axis as the
+    <b>documented comparison model</b>; the planar unit test records it as an
+    <b>expected fail</b> of the \(6h\)-band bound. The wave is the working model.
+  </div>
+  <aside class="notes">
+    Not deleted: a converged, honest second place is exactly what a comparison
+    table needs, and its RTS model costs nothing to keep. But no further tuning
+    effort goes here.
+  </aside>
+</section>
+</section>  <!-- ############ /TRACK 3 ############ -->
+
+<section data-track="PDE reinitialization">  <!-- ############ TRACK 4 ############ -->
+<section>
+  <p class="part-kicker">Part 4 of 6</p>
+  <h2>PDE reinitialization</h2>
+  <p class="muted"><em class="tag">PDE</em> (Sussman) baseline: two distinct failures</p>
+</section>
+
+<section>
+  <h2>Failure 1: fixed \(\Delta\tau\) is a mesh-dependent time bomb</h2>
+  <ul class="tight">
+    <li>\(\partial_\tau\psi = \mathrm{sign}(\psi)\,(1-|\nabla\psi|)\): pseudo-time
+        transport at <b>unit characteristic speed</b> &mdash; explicit Euler is
+        CFL-limited by the mesh.</li>
+    <li>Historic settings \(\Delta\tau=0.1\), 10 iterations were tuned on the 1D case
+        (\(h=1\)); on the circle gate at \(h=1/64\) the pseudo-CFL is <b>&asymp; 12.8</b>.</li>
+  </ul>
+  <div class="verdict">
+    <span class="v-kicker">measured verdict — blow-up</span>
+    Static gate @ \(N=64\): band \(L_\infty(\psi)\) 2.7e-2 &rarr; <b class="bad">7.5e+6</b>.
+  </div>
+  <div class="verdict fixed">
+    <span class="v-kicker">repair</span>
+    <code>deltaTCoeff</code>: \(\Delta\tau = 0.5\,h_{min}\) (mesh-relative, backward
+    compatible: <code>deltaTCoeff &le; 0</code> keeps the legacy fixed \(\Delta\tau\));
+    30 iterations cover \(15h \supset\) the \(6h\) trigger band. No more blow-up at any \(N\).
+  </div>
+</section>
+
+<section>
+  <h2>Failure 2: stable, and still injures</h2>
+  <div class="verdict">
+    <span class="v-kicker">measured verdict — injures at every N</span>
+    With \(\Delta\tau=0.5h\), 30 iterations, static gate:
+    band mean \(||\nabla\psi|-1|\) 0.537 &rarr; <b class="bad">1.28</b>
+    (\(L_\infty\!=\!6.8\)) @ \(N=64\);
+    band \(L_\infty(\psi)\) = 0.37 / 0.17 / 0.089 @ \(N=32/64/128\) &mdash; first order,
+    huge constants.
+  </div>
+  <ul class="tight">
+    <li><b>Mechanism</b>: the implementation discretizes \(|\nabla\psi|\) with a
+        <b>central</b> gradient (<code>fvc::grad</code>) &mdash; no Godunov upwinding.
+        On the saturated tanh profile (plateaus \(|\nabla\psi|\to 0\), kinks where the
+        reinitialized region meets the plateau) the central Hamiltonian oscillates;
+        classic cures are Godunov flux + the Sussman&ndash;Fatemi / Russo&ndash;Smereka
+        subcell fixes &mdash; a research line of its own.</li>
+    <li>The 1D redistance case passed for years because \(h=1\) and the profile was
+        globally linear: <b>the historical config masked both failures</b>.</li>
+    <li>The geometric route <b>sidesteps</b> this entirely: no pseudo-time PDE, no
+        Hamiltonian discretization, no interface displacement.</li>
+  </ul>
+  <div class="verdict">
+    <span class="v-kicker">status</span>
+    Kept as the classic baseline in the advection studies (near-SDF regime is milder
+    than the saturated gate); the static verdict stands in the comparison table.
+  </div>
+</section>
+</section>  <!-- ############ /TRACK 4 ############ -->
+
+<section data-track="Measurement pitfalls">  <!-- ############ TRACK 5 ############ -->
+<section>
+  <p class="part-kicker">Part 5 of 6</p>
+  <h2>Measurement pitfalls</h2>
+  <p class="muted">two "failures" that were bugs in the measuring stick, one inflated constant</p>
+</section>
+
+<section>
+  <h2>Wrong reference: infinite plane vs interface patch</h2>
+  <ul class="tight">
+    <li>The planar unit test first asserted the <b>global</b> field against the
+        <b>infinite</b> plane's distance &mdash; and "failed" at \(1.7h\) near domain corners.</li>
+    <li>But the interface only exists <b>inside the domain</b>: beyond the ends of its
+        trace, the distance to the interface <em>patch</em> legitimately exceeds the
+        infinite-plane distance. The model was right; the reference was wrong.</li>
+    <li>Same lesson for boundary-cell gradients: <code>noBvGrad</code> deliberately
+        ignores patch values, so a PERFECT plane "fails" a global gradient check at
+        boundary cells (measured: 0.57).</li>
+  </ul>
+  <div class="verdict fixed">
+    <span class="v-kicker">repair</span>
+    Assertions now match each model's <b>contract region</b>: machine exactness on the
+    anchor set (band + ring), sanity bounds over the \(6h\) trigger band, interior
+    cells only for gradient checks; the far field is reported, never asserted.
+  </div>
+</section>
+
+<section>
+  <h2>Inflated constants: the saturated tanh</h2>
+  <ul class="tight">
+    <li>The gate's initial profile \(0.1\tanh(d/0.05)\) is stencil-nonlinear at coarse
+        \(N\): the LLS plane fit absorbs profile curvature <b>and</b> geometry error,
+        inflating the static band constants (e.g. 4.1e-3 @ \(N=32\) vs the pure
+        \(h^2\kappa/2 \approx 2\!\cdot\!10^{-3}\)).</li>
+    <li>Kept <b>deliberately</b>: an advected \(\psi\) between redistance events looks
+        exactly like this &mdash; a gate on pristine SDF input would flatter every model.
+        The convergence ORDER (2.5 &rarr; 2.0 across \(32/64/128\)) confirms the
+        nonlinearity washes out under refinement.</li>
+  </ul>
+  <aside class="notes">
+    Not repaired on purpose — documented so nobody "fixes" the gate into an
+    easier test and celebrates the smaller constants.
+  </aside>
+</section>
+</section>  <!-- ############ /TRACK 5 ############ -->
+
+<section data-track="Scoreboard &amp; rules">  <!-- ############ TRACK 6 ############ -->
+<section>
+  <p class="part-kicker">Part 6 of 6</p>
+  <h2>Scoreboard &amp; standing rules</h2>
+</section>
+
+<section>
+  <h2>Static gate scoreboard (circle, one event)</h2>
+  <table class="num" style="margin:auto">
+    <thead>
+      <tr><th>model</th>
+          <th>band \(L_\infty(\psi)\) @ 32/64/128</th>
+          <th>band mean \(||\nabla\psi|-1|\) @ 64</th>
+          <th>planar \(6h\)-band</th>
+          <th>verdict</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="muted">pre-event (tanh)</td>
+          <td class="muted">8.6e-2 / 2.7e-2 / 2.7e-2</td>
+          <td class="muted">0.537</td><td class="muted">&mdash;</td>
+          <td class="muted">reference</td></tr>
+      <tr><td><em class="tag">planeFootWave</em> (donor-plane)</td>
+          <td class="good">4.1e-3 / 7.0e-4 / 1.8e-4 &nbsp;(&asymp;2nd order)</td>
+          <td class="good">5.1e-3</td>
+          <td class="good">8e-14 (exact)</td>
+          <td class="good"><b>working model</b></td></tr>
+      <tr><td><em class="tag">anchoredEikonal</em> (budget 100)</td>
+          <td>3.0e-2 / 5.8e-3 / 1.4e-3</td>
+          <td>4.3e-2</td>
+          <td class="bad">&asymp; h (1st order)</td>
+          <td>documented comparison</td></tr>
+      <tr><td><em class="tag">PDE</em> (\(\Delta\tau=0.5h\), 30 it)</td>
+          <td class="bad">0.37 / 0.17 / 0.089</td>
+          <td class="bad">1.28 (injures)</td>
+          <td>&mdash;</td>
+          <td>classic baseline only</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">Superseded dead ends not in the table: foot-point-cloud wave
+     (scalloping, band \(L_\infty\) 6.1e-3 @ 64), Eikonal @ maxIter 10 (plateau,
+     injures), PDE fixed \(\Delta\tau\) (blow-up 7.5e+6).</p>
+</section>
+
+<section>
+  <h2>Standing rules distilled from the dead ends</h2>
+  <ul class="tight">
+    <li><b>1. An event must not injure.</b> The static gate (post \(\le\) pre on the
+        band) gates every fill change &mdash; before any trigger, threshold, or
+        advection study spends compute.</li>
+    <li><b>2. Trigger policy is downstream of fill quality.</b> No schedule rescues a
+        harmful fill; tune criteria only for fills that pass rule 1.</li>
+    <li><b>3. Assert each model's contract region.</b> Anchors: machine exact. Trigger
+        band: bounded. Far field: reported, not asserted. A test that asserts outside
+        the contract manufactures false negatives.</li>
+    <li><b>4. Mesh-relative parameters only.</b> Any dimensional constant tuned on one
+        mesh (\(\Delta\tau=0.1\)) is a latent divergence on the next one.</li>
+    <li><b>5. Distances come from continuous geometry.</b> Evaluate planes, not point
+        clouds &mdash; discrete minima put kinks into exactly the gradient norms the
+        method polices.</li>
+  </ul>
+  <p class="footnote">Every number in this deck reproduces with:
+     <code>make studies-grl</code> (or the per-config snakemake calls) + the unit tests
+     <code>leiaTestRedistance</code> / <code>leiaTestLevelSet</code>.</p>
+</section>
+</section>  <!-- ############ /TRACK 6 ############ -->
+
+</div>
+</div>
+
+<!-- reveal.js core + notes plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [ RevealNotes ]
+  });
+
+  // Orientation footer: 'Part k/n - name' from the nearest data-track ancestor.
+  (function () {
+    var tracks = [];
+    document.querySelectorAll('[data-track]').forEach(function (e) {
+      var n = e.getAttribute('data-track');
+      if (tracks.indexOf(n) < 0) { tracks.push(n); }
+    });
+    function trackOf(slide) {
+      var el = slide;
+      while (el && el !== document.body) {
+        if (el.getAttribute && el.getAttribute('data-track')) {
+          return el.getAttribute('data-track');
+        }
+        el = el.parentElement;
+      }
+      return '';
+    }
+    var chips = [];
+    (function buildNav() {
+      var nav = document.getElementById('deckNav');
+      if (!nav) { return; }
+      tracks.forEach(function (name, i) {
+        var target = null;
+        var els = document.querySelectorAll('[data-track]');
+        for (var k = 0; k < els.length; k++) {
+          if (els[k].getAttribute('data-track') === name) {
+            target = els[k].querySelector(':scope > section') || els[k];
+            break;
+          }
+        }
+        var a = document.createElement('a');
+        a.href = '#';
+        a.textContent = (i + 1);
+        a.title = 'Part ' + (i + 1) + ': ' + name;
+        a.onclick = function (ev) {
+          ev.preventDefault();
+          if (target) {
+            var idx = Reveal.getIndices(target);
+            Reveal.slide(idx.h, idx.v || 0);
+          }
+        };
+        nav.appendChild(a);
+        chips.push(a);
+      });
+    })();
+    function upd() {
+      var el = document.getElementById('deckTrack');
+      if (!el) { return; }
+      var name = trackOf(Reveal.getCurrentSlide());
+      chips.forEach(function (a, i) {
+        a.className = (tracks[i] === name) ? 'here' : '';
+      });
+      if (!name) {
+        el.textContent = window.DECK_LINEAR
+          ? '→ / ← to navigate · Esc = overview'
+          : '→ parts · ↓ slides · Esc = overview';
+        return;
+      }
+      el.innerHTML = 'Part ' + (tracks.indexOf(name) + 1) + '/' + tracks.length
+                   + ' · ' + name;
+    }
+    Reveal.on('slidechanged', upd);
+    Reveal.on('ready', upd);
+  })();
+
+</script>
+</body>
+</html>

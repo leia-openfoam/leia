@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>leia — geometrically redistanced level set</title>
+
+  <!-- reveal.js 4.6.x core + black theme, from cdnjs -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css"
+        id="theme">
+
+  <style>
+    :root {
+      --ls-fg:      #f2f2f2;
+      --ls-muted:   #b9c2cc;
+      --ls-accent:  #4fc3f7;
+      --ls-liquid:  #29b6f6;
+      --ls-liquid2: #1565c0;
+      --ls-gas:     #455a64;
+      --ls-warn:    #ffb74d;
+      --ls-good:    #81c784;
+      --ls-line:    #90a4ae;
+    }
+    .reveal h1 { font-size: 1.55em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.25em; color: var(--ls-accent); }
+    .reveal section { font-size: 0.82em; }
+    .reveal p, .reveal li { color: var(--ls-fg); }
+    .reveal .muted { color: var(--ls-muted); }
+    .reveal .accent { color: var(--ls-accent); }
+    .reveal .warn { color: var(--ls-warn); }
+    .reveal .good { color: var(--ls-good); }
+    .reveal small { color: var(--ls-muted); }
+    .reveal em.tag {
+      font-style: normal; color: var(--ls-accent);
+      font-family: monospace; font-size: 0.9em;
+    }
+    .reveal code { color: var(--ls-warn); }
+    .reveal .mjx-container { color: var(--ls-fg) !important; }
+    .reveal svg text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+    .cols { display: flex; gap: 1.2em; align-items: center; justify-content: center; }
+    .cols > div { flex: 1; }
+    .reveal ul.tight { margin: 0; }
+    .reveal ul.tight li { margin: 0.1em 0; }
+    .reveal section img { background: none; border: none; box-shadow: none; }
+    .center { text-align: center; }
+    .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    .deck-footer {
+      position: fixed; bottom: 7px; left: 18px; right: 96px; z-index: 30;
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 14px;
+      font-family: "Source Sans Pro", Helvetica, sans-serif;
+      font-size: 13px; color: var(--ls-muted); opacity: 0.9;
+      pointer-events: none;
+    }
+    .deck-footer .df-track { color: var(--ls-accent); white-space: nowrap; }
+    .deck-footer .df-authors { flex: 1; text-align: center; }
+    .deck-footer .df-nav { white-space: nowrap; }
+    .deck-footer .df-nav a {
+      pointer-events: auto; display: inline-block; min-width: 1.3em;
+      margin-right: 3px; padding: 0 4px; text-align: center;
+      border: 1px solid var(--ls-line); border-radius: 3px;
+      color: var(--ls-muted); text-decoration: none; font-size: 12px;
+      line-height: 1.5; opacity: 0.8;
+    }
+    .deck-footer .df-nav a:hover {
+      color: var(--ls-fg); border-color: var(--ls-fg); opacity: 1;
+    }
+    .deck-footer .df-nav a.here {
+      color: var(--ls-accent); border-color: var(--ls-accent);
+      font-weight: 600; opacity: 1;
+    }
+    .reveal ol.roadmap { list-style: none; margin-left: 0; }
+    .reveal ol.roadmap li {
+      color: var(--ls-muted); margin: 0.14em 0; font-size: 0.92em;
+    }
+    .reveal ol.roadmap li .idx {
+      display: inline-block; width: 1.5em; color: var(--ls-line);
+    }
+    .reveal .part-kicker {
+      font-size: 0.62em; letter-spacing: 0.22em; color: var(--ls-accent);
+      text-transform: uppercase; margin-bottom: 0.1em;
+    }
+    .todo {
+      border-left: 4px solid var(--ls-warn); padding: 0.25em 0.7em;
+      background: rgba(255, 183, 77, 0.08); margin: 0.5em 0;
+      font-size: 0.85em; color: var(--ls-muted);
+    }
+  </style>
+
+  <!-- MathJax 3 (loaded directly from cdnjs) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        macros: { boldsymbol: ['{#1}', 1] }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+
+<div class="deck-footer">
+  <span class="df-nav" id="deckNav" aria-label="jump to part"></span>
+  <span class="df-authors">T. Mari&#263; &middot; M. Fricke &middot; D. Bothe &nbsp;&mdash;&nbsp; Mathematical Modeling &amp; Analysis, TU Darmstadt</span>
+  <span class="df-track" id="deckTrack"></span>
+</div>
+<div class="reveal">
+<div class="slides">
+
+<!-- ==================== TITLE ==================== -->
+<section>
+  <h1>leia</h1>
+  <h2 style="color:var(--ls-fg)">An unstructured Finite-Volume Level Set Method in OpenFOAM</h2>
+  <p class="accent" style="font-size:1.1em">Geometrically redistanced level set</p>
+  <p class="muted">PDE advection &middot; criterion-gated geometric redistancing from the
+     indicator's own least-squares planes &middot; 2D &amp; 3D convergence</p>
+  <p style="margin-top:0.7em; font-size:1.05em">
+     <b>Tomislav Mari&#263; &middot; Mathis Fricke &middot; Dieter Bothe</b>
+     <span class="muted" style="font-weight:normal"><br>MMA, TU Darmstadt</span></p>
+  <p class="footnote"><code>libleiaLevelSet</code> &nbsp;|&nbsp; solver <code>leiaRedistancedLevelSetFoam</code>
+     &nbsp;|&nbsp; companion deck: <code>grl-negative-results.template.html</code> (every dead end, measured)</p>
+  <aside class="notes">
+    The third research line next to velocity extension and semi-Lagrangian
+    advection: keep the Eulerian PDE, restore the signed-distance property
+    geometrically and only when a criterion demands it.
+  </aside>
+</section>
+
+<!-- ==================== ROADMAP ==================== -->
+<section>
+  <h2>Roadmap</h2>
+  <ol class="roadmap" style="font-size:1.05em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator &mdash; \(\psi\), advection, LLS planes, Detrixhe&ndash;Aslam \(\alpha\)</li>
+    <li><span class="idx">2</span>Geometric redistancing &mdash; anchors (band + ring), the donor-plane MeshWave fill, the trigger criterion</li>
+    <li><span class="idx">3</span>The solver &mdash; \(\partial_t\psi + \nabla\cdot(\mathbf{v}\psi) - \psi\nabla\cdot\mathbf{v} = 0\), flux projection, event handling</li>
+    <li><span class="idx">4</span>Verification &mdash; static circle gate, reversed vortex, 3D shear &amp; deformation, criterion ablation</li>
+    <li><span class="idx">5</span>Conclusions</li>
+    <li><span class="idx">6</span>Software design &mdash; runtime model selection, extend without touching existing code</li>
+  </ol>
+  <p class="footnote muted">Navigation: &rarr; next part &middot; &darr; slides within a part &middot; Esc = overview.</p>
+</section>
+
+<section data-track="Level set &amp; phase indicator">
+<section>
+  <p class="part-kicker">Part 1 of 6</p>
+  <h2>The level set &amp; the phase indicator</h2>
+  <div class="todo">SKELETON &mdash; this part mirrors the shared Part-1 track of the
+    semi-Lagrangian / velocity-extension decks (LLS plane reconstruction, geometric
+    Heaviside, Detrixhe&ndash;Aslam tet fill). To be filled in.</div>
+</section>
+</section>
+
+<section data-track="Geometric redistancing">
+<section>
+  <p class="part-kicker">Part 2 of 6</p>
+  <h2>Geometric redistancing: <em class="tag">planeFootWave</em></h2>
+  <p class="muted">anchors from the indicator's own LLS planes &middot; a donor-plane
+     MeshWave fill &middot; a criterion that keeps events rare</p>
+  <p class="footnote">Measured dead ends and their repairs: companion deck
+     <code>grl-negative-results</code>.</p>
+</section>
+
+<section>
+  <h2>Idea: redistance to the interface the solver already sees</h2>
+  <ul class="tight">
+    <li>Advection degrades \(|\nabla\psi| = 1\); classic PDE reinitialization
+        \(\partial_\tau\psi = \mathrm{sign}(\psi)(1-|\nabla\psi|)\) moves the
+        interface while fixing the gradient (and worse &mdash; companion deck).</li>
+    <li>But the phase indicator ALREADY reconstructs, per band cell, a
+        <b>least-squares interface plane</b> \(\psi^{\ell}_c(\mathbf{x}) =
+        \mathbf{n}_c\cdot\mathbf{x} + d_c\) &mdash; the discrete interface.</li>
+    <li class="accent"><b>Redistance to those planes.</b> Exact signed distances near
+        \(\Sigma\), a monotone geometric fill everywhere else &mdash; no PDE, no
+        pseudo-time, no parameters.</li>
+    <li>Consistency by construction: \(\alpha\) (tet-fill of the planes) and the
+        redistanced \(\psi\) (distances to the same planes) cannot disagree about
+        where the interface is.</li>
+  </ul>
+  <aside class="notes">
+    The whole method is one design decision applied twice: the LLS plane is the
+    single source of interface geometry — the indicator integrates it, the
+    redistancer measures distance to it.
+  </aside>
+</section>
+
+<section>
+  <h2>The plane, normalized</h2>
+  <div class="cols">
+    <div>
+      <p>Per band cell \(c\) (sign-change cells), fit over the cell + face
+         neighbours \(S_c\) (one matched halo exchange in parallel):</p>
+      \[ (\mathbf{n}_c, d_c) = \arg\min \sum_{k\in S_c}
+         \big(\psi_k - (\mathbf{n}\cdot\mathbf{x}_k + d)\big)^2 \]
+      <p>4&times;4 normal equations (2D: empty direction pinned); degenerate fits
+         (\(|\mathbf{n}_c| \approx 0\)) are excluded.</p>
+    </div>
+    <div>
+      <p><b>Normalization is load-bearing</b>: \(|\mathbf{n}_c|\) deviates from 1 by
+         exactly the \(|\nabla\psi|\) drift being repaired. The Hesse-normal form</p>
+      \[ \hat{\mathbf{n}}_c = \frac{\mathbf{n}_c}{|\mathbf{n}_c|}, \qquad
+         \delta_c(\mathbf{x}) = \frac{\mathbf{n}_c\cdot\mathbf{x} + d_c}{|\mathbf{n}_c|} \]
+      <p>makes \(\delta_c\) the EXACT signed distance to the plane's zero set.</p>
+    </div>
+  </div>
+  <p class="footnote">Shared code path: <code>leastSquaresPlaneCoeffs()</code>
+     (<code>levelSetPlaneReconstruction.H</code>) &mdash; the same call the
+     <code>detrixheAslam</code> indicator makes.</p>
+</section>
+
+<section>
+  <h2>Anchors: band + first ring</h2>
+  <div class="cols">
+    <div style="flex:1.3">
+      <svg viewBox="0 0 560 330" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <!-- mesh -->
+        <g stroke="var(--ls-line)" stroke-width="0.8" opacity="0.7">
+          <path d="M40 40 H460 M40 110 H460 M40 180 H460 M40 250 H460 M40 320 H460"/>
+          <path d="M40 40 V320 M110 40 V320 M180 40 V320 M250 40 V320 M320 40 V320 M390 40 V320 M460 40 V320"/>
+        </g>
+        <!-- band cells (blue) along the interface, ring cells (green) around -->
+        <g opacity="0.5">
+          <rect x="40" y="110" width="70" height="70" fill="#1565c0"/>
+          <rect x="110" y="110" width="70" height="70" fill="#1565c0"/>
+          <rect x="180" y="110" width="70" height="70" fill="#1565c0"/>
+          <rect x="250" y="180" width="70" height="70" fill="#1565c0"/>
+          <rect x="320" y="180" width="70" height="70" fill="#1565c0"/>
+          <rect x="390" y="180" width="70" height="70" fill="#1565c0"/>
+        </g>
+        <g opacity="0.35">
+          <rect x="40" y="40" width="70" height="70" fill="#81c784"/>
+          <rect x="110" y="40" width="70" height="70" fill="#81c784"/>
+          <rect x="180" y="40" width="70" height="70" fill="#81c784"/>
+          <rect x="250" y="110" width="70" height="70" fill="#81c784"/>
+          <rect x="320" y="110" width="70" height="70" fill="#81c784"/>
+          <rect x="390" y="110" width="70" height="70" fill="#81c784"/>
+          <rect x="40" y="180" width="70" height="70" fill="#81c784"/>
+          <rect x="110" y="180" width="70" height="70" fill="#81c784"/>
+          <rect x="180" y="180" width="70" height="70" fill="#81c784"/>
+          <rect x="250" y="250" width="70" height="70" fill="#81c784"/>
+          <rect x="320" y="250" width="70" height="70" fill="#81c784"/>
+          <rect x="390" y="250" width="70" height="70" fill="#81c784"/>
+        </g>
+        <!-- interface curve -->
+        <path d="M40 130 C 130 138, 210 150, 250 180 S 380 218, 460 222"
+              fill="none" stroke="var(--ls-accent)" stroke-width="3"/>
+        <text x="365" y="248" fill="var(--ls-accent)" font-size="15">&Sigma;</text>
+        <!-- LLS plane in one band cell -->
+        <line x1="90" y1="122" x2="205" y2="152" stroke="var(--ls-warn)" stroke-width="2.5"/>
+        <circle cx="145" cy="145" r="4" fill="none" stroke="var(--ls-fg)" stroke-width="1.5"/>
+        <text x="152" y="160" fill="var(--ls-fg)" font-size="13">x_c</text>
+        <circle cx="143" cy="136" r="4" fill="var(--ls-warn)"/>
+        <text x="118" y="128" fill="var(--ls-warn)" font-size="13">f_c</text>
+        <line x1="143" y1="136" x2="128" y2="82" stroke="var(--ls-warn)" stroke-width="2"
+              marker-end="url(#arrowW)"/>
+        <text x="132" y="70" fill="var(--ls-warn)" font-size="13">n_c</text>
+        <!-- ring cell donors -->
+        <circle cx="285" cy="145" r="4" fill="none" stroke="var(--ls-fg)" stroke-width="1.5"/>
+        <text x="292" y="138" fill="var(--ls-fg)" font-size="13">x_r</text>
+        <g stroke="var(--ls-good)" stroke-width="2">
+          <line x1="285" y1="145" x2="222" y2="162" marker-end="url(#arrowG)"/>
+          <line x1="285" y1="145" x2="285" y2="196" marker-end="url(#arrowG)"/>
+          <line x1="285" y1="145" x2="343" y2="200" marker-end="url(#arrowG)"/>
+        </g>
+        <defs>
+          <marker id="arrowW" markerWidth="8" markerHeight="8" refX="6" refY="3"
+                  orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="var(--ls-warn)"/></marker>
+          <marker id="arrowG" markerWidth="8" markerHeight="8" refX="6" refY="3"
+                  orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="var(--ls-good)"/></marker>
+        </defs>
+        <!-- legend -->
+        <rect x="480" y="60" width="16" height="16" fill="#1565c0" opacity="0.5"/>
+        <text x="502" y="73" fill="var(--ls-fg)" font-size="13">band B</text>
+        <rect x="480" y="88" width="16" height="16" fill="#81c784" opacity="0.35"/>
+        <text x="502" y="101" fill="var(--ls-fg)" font-size="13">first ring</text>
+        <line x1="480" y1="126" x2="496" y2="126" stroke="var(--ls-warn)" stroke-width="2.5"/>
+        <text x="502" y="130" fill="var(--ls-fg)" font-size="13">LLS plane</text>
+      </svg>
+    </div>
+    <div>
+      <ul class="tight" style="font-size:0.9em">
+        <li><b>Band</b> \(c\in B\): own plane,
+            \(D_c = \delta_c(\mathbf{x}_c)\), foot
+            \(\mathbf{f}_c = \mathbf{x}_c - D_c\hat{\mathbf{n}}_c\).
+            Error: plane fit of a smooth interface, \(\mathcal{O}(h^2\kappa)\).</li>
+        <li><b>First ring</b> \(r\): plicRDF-weighted donor evaluation
+            \[ D_r = \frac{\sum_c w_{rc}\,\delta_c(\mathbf{x}_r)}{\sum_c w_{rc}},\ \
+               w_{rc} = \Big(\tfrac{\mathbf{f}_c-\mathbf{x}_r}{|\mathbf{f}_c-\mathbf{x}_r|}\cdot\hat{\mathbf{n}}_c\Big)^{2} \]
+            (Scheufler &amp; Roenby 2019).</li>
+        <li><b>One ring only</b>: plane extrapolation degrades as
+            \(\tfrac12|\mathbf{x}-\mathbf{f}|^2\kappa\), and anchors are hard
+            constraints the fill cannot correct.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The donor-plane wave</h2>
+  <div class="cols">
+    <div style="flex:1.25">
+      <svg viewBox="0 0 560 300" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <!-- left: point cloud scalloped -->
+        <g>
+          <line x1="20" y1="60" x2="255" y2="60" stroke="var(--ls-accent)" stroke-width="2.5"/>
+          <g fill="var(--ls-warn)">
+            <circle cx="45" cy="60" r="4"/><circle cx="90" cy="60" r="4"/>
+            <circle cx="135" cy="60" r="4"/><circle cx="180" cy="60" r="4"/>
+            <circle cx="225" cy="60" r="4"/>
+          </g>
+          <path d="M20 160 Q 45 185 67 163 Q 90 185 112 163 Q 135 185 157 163 Q 180 185 202 163 Q 225 185 250 160"
+                fill="none" stroke="#ef5350" stroke-width="2.5"/>
+          <text x="30" y="215" fill="#ef5350" font-size="13">min over feet: scalloped,</text>
+          <text x="30" y="232" fill="#ef5350" font-size="13">gradient kinks at donor edges</text>
+          <text x="55" y="270" fill="var(--ls-muted)" font-size="14">(a) v1 — injured the band</text>
+        </g>
+        <!-- right: donor plane evaluation -->
+        <g>
+          <line x1="305" y1="60" x2="540" y2="60" stroke="var(--ls-accent)" stroke-width="2.5"/>
+          <g fill="var(--ls-warn)">
+            <circle cx="330" cy="60" r="4"/><circle cx="375" cy="60" r="4"/>
+            <circle cx="420" cy="60" r="4"/><circle cx="465" cy="60" r="4"/>
+            <circle cx="510" cy="60" r="4"/>
+          </g>
+          <line x1="420" y1="60" x2="420" y2="22" stroke="var(--ls-warn)" stroke-width="2"
+                marker-end="url(#arrowW2)"/>
+          <text x="428" y="30" fill="var(--ls-warn)" font-size="13">n</text>
+          <g stroke="var(--ls-good)" stroke-width="2" stroke-dasharray="8 6">
+            <line x1="305" y1="130" x2="540" y2="130"/>
+            <line x1="305" y1="185" x2="540" y2="185"/>
+          </g>
+          <text x="315" y="215" fill="var(--ls-good)" font-size="13">|(x − f)·n|: flat level sets,</text>
+          <text x="315" y="232" fill="var(--ls-good)" font-size="13">machine-exact for planes</text>
+          <text x="345" y="270" fill="var(--ls-muted)" font-size="14">(b) donor plane — the fix</text>
+          <defs>
+            <marker id="arrowW2" markerWidth="8" markerHeight="8" refX="6" refY="3"
+                    orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="var(--ls-warn)"/></marker>
+          </defs>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <ul class="tight" style="font-size:0.9em">
+        <li>Seeds: every face of every band cell carries
+            \((\mathbf{f}_c, \hat{\mathbf{n}}_c, |\mathbf{x}_f-\mathbf{f}_c|^2)\);
+            shared faces keep the closer donor.</li>
+        <li><code>MeshWave</code>/<code>FaceCellWave</code> <b>orders</b> donors by
+            foot distance (monotone, causal, \(\mathcal{O}(N)\), parallel-native);
+            the <b>received value</b> is
+            \[ \psi_{new} = \mathrm{sign}(\psi_{old})\,\big|(\mathbf{x}-\mathbf{f})\cdot\hat{\mathbf{n}}\big| \]</li>
+        <li>Then the exact anchor override on band + ring; unreached cells keep
+            \(|\psi_{old}|\).</li>
+        <li class="warn">Payload matters: v1 carried only the foot &mdash; measured
+            scalloping floor (companion deck).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The hot loop</h2>
+  <pre style="font-size:0.52em; line-height:1.35"><code>// planeFootWaveRedistancer.C — seed the donor planes, wave, evaluate
+forAll(anchors.bandCells, i)
+{
+    const point&  foot = anchors.bandFoot[i];
+    const vector& nHat = anchors.bandNHat[i];
+    for (const label faceI : mesh_.cells()[anchors.bandCells[i]])
+    {
+        const scalar dist2 = magSqr(Cf[faceI] - foot);          // ordering metric
+        // ... per-face dedup: keep the smaller dist2 ...
+        seedInfo.append(wallPointData&lt;vector&gt;(foot, nHat, dist2));
+    }
+}
+
+MeshWave&lt;wallPointData&lt;vector&gt;&gt; wave(mesh_, seedFaces, seedInfo, nTotalCells+1);
+
+forAll(psiIn, celli)                                            // donor-plane evaluation
+{
+    const scalar d = cellInfo[celli].valid(dummyTd)
+      ? mag((C[celli] - cellInfo[celli].origin()) &amp; cellInfo[celli].data())
+      : mag(psiOld[celli]);                                     // unreached: keep old
+    psiIn[celli] = (psiOld[celli] &gt;= 0) ? d : -d;               // re-sign
+}
+forAll(anchors.cells, i) psiIn[anchors.cells[i]] = anchors.dist[i];  // exact anchors</code></pre>
+  <p class="footnote">No parameters, no linear solves, no pseudo-time. One
+     matched halo exchange (plane fits) + the parallel-native wave.</p>
+</section>
+
+<section>
+  <h2>Guarantees &amp; measured properties</h2>
+  <ul class="tight">
+    <li><b>Planar interfaces: machine-exact</b> over the whole trigger band
+        (\(8\!\cdot\!10^{-14}\) @ \(N=64\)); 1D case globally exact
+        (\(5\!\cdot\!10^{-15}\)).</li>
+    <li><b>Curved interfaces: second order in the band</b> &mdash; static circle
+        gate, band \(L_\infty(\psi-\psi_{exact})\):
+        4.1e-3 / 7.0e-4 / 1.8e-4 / 4.5e-5 @ \(N=32/64/128/256\).</li>
+    <li><b>Events improve the field</b>: band mean \(||\nabla\psi|-1|\)
+        0.537 &rarr; 5.1e-3 in one event (@ \(N=64\)) &mdash; the pass criterion
+        every fill must meet.</li>
+    <li><b>Monotone</b> (wave distances only shrink), <b>sign-preserving</b> outside
+        the band (no bulk topology change); band cells may realign sub-\(h\) &mdash;
+        the solver refreshes band + \(\alpha\) and logs the volume shift per event.</li>
+    <li><b>Trigger</b>: fires only when band
+        \(L_1(||\nabla\psi|-1|) > (h/L)^2\) (Abu-Al-Saud et al. 2018) &mdash;
+        redistancing stays rare.</li>
+  </ul>
+  <p class="footnote">Reproduce: <code>snakemake --workflow-profile profiles/local
+     --configfile config/redistanceCircle2D.yaml</code> &nbsp;(or <code>make studies-grl</code>).</p>
+</section>
+</section>
+
+<section data-track="The solver">
+<section>
+  <p class="part-kicker">Part 3 of 6</p>
+  <h2>The solver: <code>leiaRedistancedLevelSetFoam</code></h2>
+  <div class="todo">SKELETON &mdash; advective-form \(\psi\) equation, optional Helmholtz
+    flux projection, band refresh around redistance events, per-event volume-shift
+    diagnostic.</div>
+</section>
+</section>
+
+<section data-track="Verification">
+<section>
+  <p class="part-kicker">Part 4 of 6</p>
+  <h2>Verification</h2>
+  <p class="muted">the two static gates decide; the advected studies measure what
+     compounds</p>
+</section>
+
+<section>
+  <h2>Does one redistancing step move the interface?</h2>
+  <p style="font-size:0.85em">Input = exact signed distance (circle \(R=0.15\)
+     centered; diagonal plane). Redistancing it must leave the interface
+     position, the phase volume and the signed-distance profile unchanged —
+     every deviation is the interface displacement of ONE redistancing step
+     (the classical reinitialization concern, Sussman et al. / Russo&ndash;Smereka).</p>
+  <img src="../grl-level-set-article/data/figures/redistanceStatic2D_convergence_circle.png"
+       style="max-height:420px">
+  <ul class="tight" style="font-size:0.8em">
+    <li class="good"><em class="tag">planeFootWave</em>: planar interface preserved
+        to machine precision (1e-14, volume change ~1e-16); circle = spurious
+        volume change PER REDISTANCING STEP \(= \mathcal{O}(h^2)\):
+        1.05e-4 &rarr; 1.72e-6 @ N=32&rarr;256
+        (1.5% &rarr; 0.02% of the phase volume).</li>
+    <li class="warn">Shape error \(=\) volume error EXACTLY at every N: the interface
+        displacement is one-signed — the least-squares chord-plane bias, not noise.
+        anchoredEikonal: identical volume change (interface position is set by the
+        anchors, not by the far-field distance propagation).</li>
+  </ul>
+  <p class="footnote">Reproduce: <code>snakemake --workflow-profile profiles/local
+     --configfile config/redistanceStatic2D.yaml</code></p>
+</section>
+
+<section>
+  <h2>Interface displacement per redistancing step: the fields</h2>
+  <img src="../grl-level-set-article/data/figures/redistanceStatic2D_fields_circle.png"
+       style="max-height:560px">
+  <p class="footnote">Zero sets input (black) vs output (red, dashed) and
+     \(\log_{10}|\psi_{out}-\psi_{in}|\) per model, N=64, circle. Plane montage:
+     <code>redistanceStatic2D_fields_plane.png</code>.</p>
+</section>
+
+<section>
+  <h2>What the advected studies measured (so far)</h2>
+  <ul class="tight" style="font-size:0.85em">
+    <li><em class="tag">noRedistancing</em> converges cleanly (2D reversed vortex,
+        shape 7.8e-5 &rarr; 8.2e-7) — until conditioning fails: at T=8, N=32/64 the
+        interface VANISHES (volume error = 1, empty band).</li>
+    <li class="warn">Band-mean trigger criterion: degenerates to every-step firing
+        (ablation: identical to 3 digits; thresholds 0.01/0.05 change nothing) —
+        every-step &times; per-event \(\mathcal{O}(h^2)\) displacement = volume
+        runaway (companion deck).</li>
+    <li class="accent">Consequence (the design under way): trigger on the
+        <b>conditioning extremes</b> only — band \(\min|\nabla\psi| \to 0\)
+        (flattening/interface loss) or \(\max|\nabla\psi|\) large (quasi-Dirac) —
+        so the event budget stays \(\ll\) steps and the total volume cost stays
+        events &times; \(\mathcal{O}(h^2)\).</li>
+  </ul>
+</section>
+</section>
+
+<section data-track="Conclusions">
+<section>
+  <p class="part-kicker">Part 5 of 6</p>
+  <h2>Conclusions</h2>
+  <div class="todo">SKELETON &mdash; written after the studies.</div>
+</section>
+</section>
+
+<section data-track="Software design">
+<section>
+  <p class="part-kicker">Part 6 of 6</p>
+  <h2>Software design</h2>
+  <div class="todo">SKELETON &mdash; the redistancer RTS hierarchy
+    (<code>noRedistancing | PDE | planeFootWave | anchoredEikonal</code>), the shared
+    plane-reconstruction code path with the phase indicator, adding a model without
+    touching existing code.</div>
+</section>
+</section>
+
+</div>
+</div>
+
+<!-- reveal.js core + notes plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [ RevealNotes ]
+  });
+
+  // Orientation footer: 'Part k/n - name' from the nearest data-track ancestor.
+  (function () {
+    var tracks = [];
+    document.querySelectorAll('[data-track]').forEach(function (e) {
+      var n = e.getAttribute('data-track');
+      if (tracks.indexOf(n) < 0) { tracks.push(n); }
+    });
+    function trackOf(slide) {
+      var el = slide;
+      while (el && el !== document.body) {
+        if (el.getAttribute && el.getAttribute('data-track')) {
+          return el.getAttribute('data-track');
+        }
+        el = el.parentElement;
+      }
+      return '';
+    }
+    var chips = [];
+    (function buildNav() {
+      var nav = document.getElementById('deckNav');
+      if (!nav) { return; }
+      tracks.forEach(function (name, i) {
+        var target = null;
+        var els = document.querySelectorAll('[data-track]');
+        for (var k = 0; k < els.length; k++) {
+          if (els[k].getAttribute('data-track') === name) {
+            target = els[k].querySelector(':scope > section') || els[k];
+            break;
+          }
+        }
+        var a = document.createElement('a');
+        a.href = '#';
+        a.textContent = (i + 1);
+        a.title = 'Part ' + (i + 1) + ': ' + name;
+        a.onclick = function (ev) {
+          ev.preventDefault();
+          if (target) {
+            var idx = Reveal.getIndices(target);
+            Reveal.slide(idx.h, idx.v || 0);
+          }
+        };
+        nav.appendChild(a);
+        chips.push(a);
+      });
+    })();
+    function upd() {
+      var el = document.getElementById('deckTrack');
+      if (!el) { return; }
+      var name = trackOf(Reveal.getCurrentSlide());
+      chips.forEach(function (a, i) {
+        a.className = (tracks[i] === name) ? 'here' : '';
+      });
+      if (!name) {
+        el.textContent = window.DECK_LINEAR
+          ? '→ / ← to navigate · Esc = overview'
+          : '→ parts · ↓ slides · Esc = overview';
+        return;
+      }
+      el.innerHTML = 'Part ' + (tracks.indexOf(name) + 1) + '/' + tracks.length
+                   + ' · ' + name;
+    }
+    Reveal.on('slidechanged', upd);
+    Reveal.on('ready', upd);
+  })();
+
+</script>
+</body>
+</html>

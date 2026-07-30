@@ -100,10 +100,16 @@
       tex: {
         inlineMath: [['\\(', '\\)'], ['$', '$']],
         displayMath: [['\\[', '\\]'], ['$$', '$$']],
-        processEscapes: true
+        processEscapes: true,
+        // Alias \boldsymbol to a base no-op: it is not in the inlined tex-svg bundle,
+        // and left as-is it autoloads from the CDN (fails offline, aborts typeset).
+        macros: { boldsymbol: ['{#1}', 1] }
       },
       options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
-      svg: { fontCache: 'global' }
+      // 'local' (not 'global'): a global glyph cache lives in one hidden reveal slide,
+      // so cross-slide <use> references render blank on most slides. 'local' makes each
+      // equation self-contained.
+      svg: { fontCache: 'local' }
     };
   </script>
   <script id="MathJax-script" async

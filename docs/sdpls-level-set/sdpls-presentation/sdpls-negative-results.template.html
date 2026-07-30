@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>leia — SDPLS level set: negative results</title>
+
+  <!-- reveal.js 4.6.x core + black theme, from cdnjs -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css"
+        id="theme">
+
+  <style>
+    :root {
+      /* Palette — same as the theme's main deck (reads on the black theme). */
+      --ls-fg:      #f2f2f2;
+      --ls-muted:   #b9c2cc;
+      --ls-accent:  #4fc3f7;
+      --ls-liquid:  #29b6f6;
+      --ls-liquid2: #1565c0;
+      --ls-gas:     #455a64;
+      --ls-warn:    #ffb74d;
+      --ls-bad:     #ef5350; /* negative results */
+      --ls-good:    #81c784;
+      --ls-line:    #90a4ae;
+    }
+    .reveal h1 { font-size: 1.55em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.25em; color: var(--ls-accent); }
+    .reveal section { font-size: 0.82em; }
+    .reveal p, .reveal li { color: var(--ls-fg); }
+    .reveal .muted { color: var(--ls-muted); }
+    .reveal .accent { color: var(--ls-accent); }
+    .reveal .warn { color: var(--ls-warn); }
+    .reveal .bad { color: var(--ls-bad); }
+    .reveal .good { color: var(--ls-good); }
+    .reveal small { color: var(--ls-muted); }
+    .reveal em.tag {
+      font-style: normal; color: var(--ls-accent);
+      font-family: monospace; font-size: 0.9em;
+    }
+    .reveal code { color: var(--ls-warn); }
+    .reveal .mjx-container { color: var(--ls-fg) !important; }
+    .reveal svg text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+    .cols { display: flex; gap: 1.2em; align-items: center; justify-content: center; }
+    .cols > div { flex: 1; }
+    .reveal ul.tight { margin: 0; }
+    .reveal ul.tight li { margin: 0.1em 0; }
+    .reveal section img { background: none; border: none; box-shadow: none; }
+    .center { text-align: center; }
+    .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    /* measured-verdict callouts */
+    .verdict {
+      border-left: 4px solid var(--ls-bad); padding: 0.25em 0.7em;
+      background: rgba(239, 83, 80, 0.08); margin: 0.5em 0;
+    }
+    .verdict.fixed { border-left-color: var(--ls-good);
+      background: rgba(129, 199, 132, 0.08); }
+    .verdict .v-kicker {
+      font-size: 0.62em; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--ls-bad); display: block;
+    }
+    .verdict.fixed .v-kicker { color: var(--ls-good); }
+    .reveal table.num { font-size: 0.78em; }
+    .reveal table.num th { color: var(--ls-accent); }
+    .reveal table.num td { color: var(--ls-fg); }
+    /* --- deck orientation: persistent footer + roadmap / part intros --- */
+    .deck-footer {
+      position: fixed; bottom: 7px; left: 18px; right: 96px; z-index: 30;
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 14px;
+      font-family: "Source Sans Pro", Helvetica, sans-serif;
+      font-size: 13px; color: var(--ls-muted); opacity: 0.9;
+      pointer-events: none;
+    }
+    .deck-footer .df-track { color: var(--ls-accent); white-space: nowrap; }
+    .deck-footer .df-authors { flex: 1; text-align: center; }
+    .deck-footer .df-nav { white-space: nowrap; }
+    .deck-footer .df-nav a {
+      pointer-events: auto; display: inline-block; min-width: 1.3em;
+      margin-right: 3px; padding: 0 4px; text-align: center;
+      border: 1px solid var(--ls-line); border-radius: 3px;
+      color: var(--ls-muted); text-decoration: none; font-size: 12px;
+      line-height: 1.5; opacity: 0.8;
+    }
+    .deck-footer .df-nav a:hover {
+      color: var(--ls-fg); border-color: var(--ls-fg); opacity: 1;
+    }
+    .deck-footer .df-nav a.here {
+      color: var(--ls-accent); border-color: var(--ls-accent);
+      font-weight: 600; opacity: 1;
+    }
+    .reveal ol.roadmap { list-style: none; margin-left: 0; }
+    .reveal ol.roadmap li {
+      color: var(--ls-muted); margin: 0.14em 0; font-size: 0.92em;
+    }
+    .reveal ol.roadmap li .idx {
+      display: inline-block; width: 1.5em; color: var(--ls-line);
+    }
+    .reveal .part-kicker {
+      font-size: 0.62em; letter-spacing: 0.22em; color: var(--ls-accent);
+      text-transform: uppercase; margin-bottom: 0.1em;
+    }
+  </style>
+
+  <!-- MathJax 3 (loaded directly from cdnjs) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        // \boldsymbol is NOT in the inlined tex-svg bundle; alias it to a
+        // no-op so the offline, self-contained deck never tries a CDN
+        // autoload (which aborts the whole typeset run).
+        macros: { boldsymbol: ['{#1}', 1] }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+      // 'local' font cache: a global cache renders blank across reveal slides.
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+
+<div class="deck-footer">
+  <span class="df-nav" id="deckNav" aria-label="jump to part"></span>
+  <span class="df-authors">T. Mari&#263; &middot; M. Fricke &middot; D. Bothe &nbsp;&mdash;&nbsp; Mathematical Modeling &amp; Analysis, TU Darmstadt</span>
+  <span class="df-track" id="deckTrack"></span>
+</div>
+<div class="reveal">
+<div class="slides">
+
+<!-- ==================== TITLE ==================== -->
+<section>
+  <h1>leia</h1>
+  <h2 style="color:var(--ls-fg)">The SDPLS level set for two-phase flows</h2>
+  <p class="bad" style="font-size:1.1em">Negative results &mdash; and why</p>
+  <p class="muted">every dead end, measured, with the mechanism &middot; companion to
+     <code>sdpls.template.html</code></p>
+  <p style="margin-top:0.7em; font-size:1.05em"><b>Tomislav Mari&#263; &middot; Mathis Fricke &middot; Dieter Bothe</b>
+     <span class="muted" style="font-weight:normal"><br>MMA, TU Darmstadt</span></p>
+</section>
+
+<section>
+  <h2>Roadmap</h2>
+  <ol class="roadmap" style="font-size:1.05em">
+    <li><span class="idx">1</span>beta + explicit discretization: divergent at every CFL</li>
+    <li><span class="idx">2</span>beta without a coefficient: construction failure</li>
+    <li><span class="idx">3</span>R near the resolution limit: over-flattening</li>
+    <li><span class="idx">4</span>R controls steepening, not flattening: the scope limit</li>
+    <li><span class="idx">5</span>Measurement pitfalls: the dead <code>limit</code> entry</li>
+  </ol>
+</section>
+
+<section data-track="beta + explicit">
+<section>
+  <p class="part-kicker">Stack 1 of 5</p>
+  <h2>beta + explicit: divergent at every CFL</h2>
+  <div class="verdict">
+    <span class="v-kicker">measured verdict — diverged</span>
+    N=128, T=2, CFL &isin; {0.1, 0.5, 1.0}: ALL beta+explicit runs blow up;
+    every implicit variant of the same source is stable
+    (<code>config/sdplsStability.yaml</code>).
+  </div>
+  <p style="font-size:0.85em"><b>Mechanism:</b> \(f_{nl} = \beta - |\nabla\psi|\) is a
+     RELAXATION source: explicit treatment turns the stable fixed point
+     \(|\nabla\psi| = \beta\) into an anti-damped oscillator through the
+     \(|\nabla\psi|\)-feedback &mdash; dt-independent, hence divergence at every CFL.
+     Sp must carry the relaxation implicitly.</p>
+</section>
+</section>
+
+<section data-track="beta coefficient">
+<section>
+  <p class="part-kicker">Stack 2 of 5</p>
+  <h2>beta without a coefficient: construction failure</h2>
+  <div class="verdict">
+    <span class="v-kicker">measured verdict — FatalIOError at startup</span>
+    All 6 beta cases of the first SDPLS study died in the constructor:
+    <code>sdplsBeta</code> REQUIRES a <code>beta</code> entry the case templates never
+    rendered; no log survived (materialize skips log copies).
+  </div>
+  <p style="font-size:0.85em"><b>Repair:</b> <code>beta @!SDPLS_BETA!@;</code> token
+     (default 1.0) in every sdplsSource block; the required
+     <code>get&lt;scalar&gt;</code> stays (explicit beats a hidden default).</p>
+</section>
+</section>
+
+<section data-track="R near the resolution limit">
+<section>
+  <p class="part-kicker">Stack 3 of 5</p>
+  <h2>R near the resolution limit: over-flattening</h2>
+  <div class="verdict">
+    <span class="v-kicker">measured verdict — worse than no source</span>
+    Reversed vortex T=8, N=128: volume error 0.488 (R) vs 0.238 (noSource);
+    final band max\(|\nabla\psi|\) = 0.19 &mdash; the source kept cancelling
+    "steepening" that was actually the under-resolved filament's discrete
+    structure, flattening the band below usability.
+  </div>
+  <p style="font-size:0.85em"><b>Scope rule:</b> strain cancellation is exact only while
+     the interface is resolved; near \(\kappa h \sim 1\) the reconstructed normal (and
+     hence R) is unreliable. Candidate guard: mollify R by a resolution indicator
+     &mdash; open work.</p>
+</section>
+</section>
+
+<section data-track="Steepening, not flattening">
+<section>
+  <p class="part-kicker">Stack 4 of 5</p>
+  <h2>R controls steepening, not flattening</h2>
+  <div class="verdict">
+    <span class="v-kicker">measured scope limit</span>
+    Band max\(|\nabla\psi|\): 5.5&ndash;7.4 &rarr; <b class="good">&le; 1.36</b> under R
+    (T=8). Band min\(|\nabla\psi|\) &rarr; 0 by t &asymp; 1 <b>unchanged</b> under R.
+  </div>
+  <p style="font-size:0.85em"><b>Mechanism:</b> R cancels strain-driven drift of BOTH
+     signs along characteristics &mdash; so a min\(\to 0\) that survives R is not
+     strain-driven: it is the filament thinning below the mesh (numerical diffusion of a
+     sub-cell sign oscillation). No source term repairs resolution; only refinement does
+     (measured: partial survival at N=128, death at N&le;64).</p>
+</section>
+</section>
+
+<section data-track="Measurement pitfalls">
+<section>
+  <p class="part-kicker">Stack 5 of 5</p>
+  <h2>Pitfall: the dead <code>limit</code> entry</h2>
+  <div class="verdict">
+    <span class="v-kicker">measured — bit-identical "clipped" and "unclipped" runs</span>
+    <code>limit</code> is read ONLY by the tanh profile; <code>signedDistance</code>
+    ignores it. Every "clip at 0.1" hypothesis built on that entry tested nothing
+    &mdash; two studies compared identical initial fields.
+  </div>
+  <p style="font-size:0.85em"><b>Repair:</b> the entry is now commented
+     "tanh profile ONLY" in every template; lesson: verify that a dictionary entry is
+     actually consumed before building hypotheses on it (grep the reader, or perturb it
+     and diff the output).</p>
+</section>
+</section>
+
+</div>
+</div>
+
+<!-- reveal.js core + notes plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [ RevealNotes ]
+  });
+
+  // Orientation footer: 'Part k/n - name' from the nearest data-track ancestor.
+  (function () {
+    var tracks = [];
+    document.querySelectorAll('[data-track]').forEach(function (e) {
+      var n = e.getAttribute('data-track');
+      if (tracks.indexOf(n) < 0) { tracks.push(n); }
+    });
+    function trackOf(slide) {
+      var el = slide;
+      while (el && el !== document.body) {
+        if (el.getAttribute && el.getAttribute('data-track')) {
+          return el.getAttribute('data-track');
+        }
+        el = el.parentElement;
+      }
+      return '';
+    }
+    var chips = [];
+    (function buildNav() {
+      var nav = document.getElementById('deckNav');
+      if (!nav) { return; }
+      tracks.forEach(function (name, i) {
+        var target = null;
+        var els = document.querySelectorAll('[data-track]');
+        for (var k = 0; k < els.length; k++) {
+          if (els[k].getAttribute('data-track') === name) {
+            target = els[k].querySelector(':scope > section') || els[k];
+            break;
+          }
+        }
+        var a = document.createElement('a');
+        a.href = '#';
+        a.textContent = (i + 1);
+        a.title = 'Part ' + (i + 1) + ': ' + name;
+        a.onclick = function (ev) {
+          ev.preventDefault();
+          if (target) {
+            var idx = Reveal.getIndices(target);
+            Reveal.slide(idx.h, idx.v || 0);
+          }
+        };
+        nav.appendChild(a);
+        chips.push(a);
+      });
+    })();
+    function upd() {
+      var el = document.getElementById('deckTrack');
+      if (!el) { return; }
+      var name = trackOf(Reveal.getCurrentSlide());
+      chips.forEach(function (a, i) {
+        a.className = (tracks[i] === name) ? 'here' : '';
+      });
+      if (!name) {
+        el.textContent = window.DECK_LINEAR
+          ? '→ / ← to navigate · Esc = overview'
+          : '→ parts · ↓ slides · Esc = overview';
+        return;
+      }
+      el.innerHTML = 'Part ' + (tracks.indexOf(name) + 1) + '/' + tracks.length
+                   + ' · ' + name;
+    }
+    Reveal.on('slidechanged', upd);
+    Reveal.on('ready', upd);
+  })();
+
+</script>
+</body>
+</html>

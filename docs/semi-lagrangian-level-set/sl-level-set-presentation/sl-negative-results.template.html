@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>leia — semi-Lagrangian level set: negative results</title>
+
+  <!-- reveal.js 4.6.x core + black theme, from cdnjs -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css"
+        id="theme">
+
+  <style>
+    :root {
+      --ls-fg:      #f2f2f2;
+      --ls-muted:   #b9c2cc;
+      --ls-accent:  #4fc3f7;
+      --ls-warn:    #ffb74d;
+      --ls-bad:     #e57373;
+      --ls-good:    #81c784;
+      --ls-line:    #90a4ae;
+    }
+    .reveal h1 { font-size: 1.55em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.15em; color: var(--ls-accent); }
+    .reveal section { font-size: 0.8em; }
+    .reveal p, .reveal li { color: var(--ls-fg); }
+    .reveal .muted { color: var(--ls-muted); }
+    .reveal .accent { color: var(--ls-accent); }
+    .reveal .warn { color: var(--ls-warn); }
+    .reveal .bad { color: var(--ls-bad); }
+    .reveal .good { color: var(--ls-good); }
+    .reveal small { color: var(--ls-muted); }
+    .reveal code { color: var(--ls-warn); }
+    .reveal .mjx-container { color: var(--ls-fg) !important; }
+    .cols { display: flex; gap: 1.2em; align-items: center; justify-content: center; }
+    .cols > div { flex: 1; }
+    .center { text-align: center; }
+    .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    /* the idea / measured / why / lesson card */
+    .reveal .nr { font-size: 0.78em; line-height: 1.35; text-align: left;
+                  margin: 0.25em auto; width: 96%; }
+    .reveal .nr b.k { color: var(--ls-accent); }
+    .reveal .nr b.m { color: var(--ls-warn); }
+    .reveal .nr b.w { color: var(--ls-bad); }
+    .reveal .nr b.l { color: var(--ls-good); }
+    .reveal table.nrt { font-size: 0.7em; border-collapse: collapse;
+                        margin: 0.3em auto; line-height: 1.3; }
+    .reveal table.nrt th { text-align: left; padding: 0.12em 0.5em;
+                           border-bottom: 1px solid var(--ls-line); }
+    .reveal table.nrt td { padding: 0.12em 0.5em; }
+    .deck-footer {
+      position: fixed; bottom: 7px; left: 18px; right: 96px; z-index: 30;
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 14px;
+      font-family: "Source Sans Pro", Helvetica, sans-serif;
+      font-size: 13px; color: var(--ls-muted); opacity: 0.9;
+      pointer-events: none;
+    }
+    .deck-footer .df-track { color: var(--ls-accent); white-space: nowrap; }
+    .deck-footer .df-authors { flex: 1; text-align: center; }
+    .deck-footer .df-nav { white-space: nowrap; }
+    .deck-footer .df-nav a {
+      pointer-events: auto; display: inline-block; min-width: 1.3em;
+      margin-right: 3px; padding: 0 4px; text-align: center;
+      border: 1px solid var(--ls-line); border-radius: 3px;
+      color: var(--ls-muted); text-decoration: none; font-size: 12px;
+      line-height: 1.5; opacity: 0.8;
+    }
+    .deck-footer .df-nav a:hover { color: var(--ls-fg); border-color: var(--ls-fg); opacity: 1; }
+    .deck-footer .df-nav a.here {
+      color: var(--ls-accent); border-color: var(--ls-accent);
+      font-weight: 600; opacity: 1;
+    }
+  </style>
+
+  <!-- MathJax 3 (loaded directly from cdnjs) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        macros: { boldsymbol: ['{#1}', 1] }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+
+<div class="deck-footer">
+  <span class="df-nav" id="deckNav" aria-label="jump to part"></span>
+  <span class="df-authors">T. Mari&#263; &middot; MMA, TU Darmstadt &mdash; negative results of the SL level-set two-phase campaign</span>
+  <span class="df-track" id="deckTrack"></span>
+</div>
+<div class="reveal">
+<div class="slides">
+
+<!-- ==================== TITLE ==================== -->
+<section>
+  <h1>leia — negative results</h1>
+  <h2 style="color:var(--ls-fg)">What did NOT fix the parasitic-current instability, and why</h2>
+  <p class="muted">semi-Lagrangian reinit-free level set &middot; 2D stationary water/air droplet (R=1&nbsp;mm, &rho; ratio 839, La&nbsp;=&nbsp;7.3&times;10<sup>7</sup>)</p>
+  <p style="margin-top:0.7em; font-size:0.9em">Every entry: a reasonable idea, implemented and <b>verified correct</b>, that failed for a mechanistic reason worth remembering.<br>
+  Reference problem: the universal \(h\)-driven blow-up, \(t_{\mathrm{blow}} = 0.466/0.444/0.105/0.032\) at \(N=32/64/128/256\) (Euler, \(\Delta t_\sigma/4\), cell-local symbolic \(\kappa\), CSF).</p>
+  <p class="footnote">Root cause (verified): Defect&nbsp;1 — no discrete equilibrium (cell \(\kappa\) is the parallel-contour value, \(\kappa_d=\kappa/(1+d\kappa)\) varies across the force support);
+  Defect&nbsp;2 — grid-scale \(\psi\)-profile modes alias into the tangential Hessian (sign-flipping \(\kappa\) errors, diagonal-dominant). Companion deck: <code>sl.html</code>.</p>
+</section>
+
+<!-- ==================== PART 1: time ==================== -->
+<section data-track="Time discretization">
+<section>
+  <h2>Higher-order momentum time integration (backward, CN)</h2>
+  <p class="nr"><b class="k">Idea:</b> replace 1st-order Euler in the momentum equation by 2nd-order backward (or Crank&ndash;Nicolson) — better temporal accuracy should not hurt a spatially-seeded problem.</p>
+  <p class="nr"><b class="m">Measured:</b> backward DESTABILIZES the previously stable \(N{=}64\) case (frozen rhoPhi: peak 48 at \(t{=}0.048\); active: \(10^{102}\) at 0.051). Stable only at \(\Delta t \lesssim \Delta t_\sigma/8\) (2&times; the steps). CN&nbsp;0.9 diverges even faster (\(t{=}0.017\)).</p>
+  <p class="nr"><b class="w">Why it failed:</b> Euler is L-stable and damps the grid-scale parasitic capillary mode every step; backward is only A-stable, CN is neutral — the L-stable damping was <em>load-bearing</em> for the explicit capillary coupling, not an accuracy defect.</p>
+  <p class="nr"><b class="l">Lesson:</b> in an explicitly-coupled capillary loop, the time scheme is part of the STABILIZATION, not just the accuracy budget. Monotone: less numerical dissipation &rArr; smaller required capillary \(\Delta t\).</p>
+</section>
+
+<section>
+  <h2>Smaller / adaptive time step</h2>
+  <p class="nr"><b class="k">Idea:</b> if the coupling is unstable, an adaptive \(\Delta t\) that respects a stricter capillary constraint should stabilize every resolution.</p>
+  <p class="nr"><b class="m">Measured:</b> reducing \(\Delta t\) only DELAYS the onset; the blow-up scaling is \(h\)-driven (coarse meshes with BIGGER \(\Delta t\) survive LONGER: \(t_{\mathrm{blow}}\) 0.466 at \(N{=}32\) vs 0.032 at \(N{=}256\)). We already run 2.8&times; inside Brackbill's limit. Later replicated for CST: \(\Delta t/2\) moved \(t_{\mathrm{blow}}\) only 0.047&rarr;0.050.</p>
+  <p class="nr"><b class="w">Why it failed:</b> the instability is a SPATIAL feedback (curvature-error force &rarr; interface distortion &rarr; worse curvature), with a per-unit-time gain set by \(h\), not a capillary-CFL violation. (The capillary limit itself is SUM-density \(\rho_1{+}\rho_2\) — the "light-phase \(\Delta t/29\)" hypothesis was wrong.)</p>
+  <p class="nr"><b class="l">Lesson:</b> if refining the MESH at fixed physics destabilizes, no time-step policy can cure it — measure \(t_{\mathrm{blow}}(N)\) before touching \(\Delta t\).</p>
+</section>
+</section>
+
+<!-- ==================== PART 2: curvature post-processing ==================== -->
+<section data-track="Curvature post-processing">
+<section>
+  <h2>Foot-point (Newton) normal extension of &kappa;</h2>
+  <p class="nr"><b class="k">Idea:</b> make \(\kappa\) constant along interface normals (the height-function property) by Newton-projecting each band cell to its interface foot point and copying the foot value.</p>
+  <p class="nr"><b class="m">Measured:</b> the divergence onset moves EARLIER (\(t\approx0.06\) vs 0.11 without); at blow-up the written \(\kappa = 1.36\times10^{5}\) vs a cell-centre refit of only \(3.3\times10^{3}\) at the same cells — the projection amplifies 40&ndash;85&times;.</p>
+  <p class="nr"><b class="w">Why it failed:</b> the Newton step \(\delta \leftarrow \delta - \psi/|\nabla\psi|^2\,\nabla\psi\) assumes a clean signed distance; on the drifting field it lands on a displaced evaluation point and the amplification grows exactly when accuracy is needed most. The GOAL (normal constancy) was right; the mechanism was the amplifier.</p>
+  <p class="nr"><b class="l">Lesson:</b> any post-processing that divides by \(|\nabla\psi|\)-dependent quantities inherits the profile drift as gain.</p>
+</section>
+
+<section>
+  <h2>Harmonic (Laplace) curvature extension</h2>
+  <p class="nr"><b class="k">Idea:</b> pin \(\kappa\) at interface cells (fvMatrix::setValues), solve \(\nabla^2\kappa=0\) — a smooth, monotone extension with no Newton step.</p>
+  <p class="nr"><b class="m">Measured:</b> \(N{=}64\) blows at \(t\approx0.051\) (tight solve) or 0.013 (loose) vs 0.44 for the plain cell-local \(\kappa\). Strictly worse.</p>
+  <p class="nr"><b class="w">Why it failed:</b> smoothing/coupling CORRELATES the curvature error across the band: the arithmetic face average of decorrelated &plusmn; speckle partially cancels at faces; once both sides of a face agree on one signed error, the parasitic force acts at full strength, coherently.</p>
+  <p class="nr"><b class="l">Lesson:</b> "smooth the noisy input" backfires when the noise was self-cancelling at the delivery points. Cell-LOCAL \(\kappa\) is the most stable of the three extension options — it stayed the default.</p>
+</section>
+
+<section>
+  <h2>Curvature clamping + temporal under-relaxation</h2>
+  <p class="nr"><b class="k">Idea (E5):</b> clamp \(\kappa\in[0,2000]\) — if the sign-flipping grid-scale \(\kappa\) excursions drive the blow-up, capping them should cure it.</p>
+  <p class="nr"><b class="m">Measured:</b> \(t_{\mathrm{blow}} = 0.111\) vs 0.105 unclamped — unchanged.</p>
+  <p class="nr"><b class="w">Why it failed:</b> the SMOOTH error channels (Defect-1 normal variation + \(\theta\)-dependent isosurface error), all inside the clamp, suffice to drive the feedback. The spectacular excursions are a symptom, not the engine.</p>
+  <p class="nr"><b class="k">Idea (foot-point HF rescue):</b> temporal under-relaxation \(\kappa^n = 0.2\,\kappa_{\mathrm{new}} + 0.8\,\kappa^{n-1}\) and ray-distance parent assignment to filter discrete foot/parent switching.</p>
+  <p class="nr"><b class="m">Measured:</b> \(t_{\mathrm{blow}}\) 0.006 &rarr; ~0.009 — delay only. <b class="w">Why:</b> the estimator's RESPONSE to interface deformation is mis-phased; filtering its jitter does not fix its phase.</p>
+</section>
+</section>
+
+<!-- ==================== PART 3: alternative estimators ==================== -->
+<section data-track="Alternative curvature estimators">
+<section>
+  <h2>FVM curvature \(\nabla\cdot(\nabla\psi/|\nabla\psi|)\)</h2>
+  <p class="nr"><b class="k">Idea:</b> normalize BEFORE differentiating and use conservative Gauss operators — a different discrete route to \(\kappa\) with built-in low-pass character.</p>
+  <p class="nr"><b class="m">Measured:</b> \(N{=}128\) still diverges (\(t_{\mathrm{blow}}=0.116\) vs 0.105); \(N{=}64\) stable but with a standing current of \(8\times10^{-4}\) — 60&times; the reconstruction's \(1.3\times10^{-5}\) (interFoam-class).</p>
+  <p class="nr"><b class="w">Why it failed:</b> it still READS THE \(\psi\) PROFILE. All profile-reading curvatures diverged in the same \(0.105{-}0.116\) window — the operator choice changes the gain slightly, not the loop.</p>
+  <p class="nr"><b class="l">Lesson:</b> the family is the problem, not the member.</p>
+</section>
+
+<section>
+  <h2>\(\nabla\cdot(\nabla\alpha/|\nabla\alpha|)\) on the sharp geometric &alpha;</h2>
+  <p class="nr"><b class="k">Idea:</b> a geometry-only curvature from the volume fraction (interFoam-style), decoupled from the \(\psi\) profile entirely.</p>
+  <p class="nr"><b class="m">Measured:</b> instant/fast blow-up in every variant (raw \(t\sim8\times10^{-5}\); smoothed, consistent pairs \(10^{-3}\)&ndash;\(6\times10^{-3}\)). Offline: interface-layer \(\kappa\) is fine (1016&plusmn;141) but the force support contains &plusmn;3750 SUPPORT-EDGE CLIFFS, and the geometric indicator's tangential staircase survives smoothing into the tails.</p>
+  <p class="nr"><b class="w">Why it failed:</b> differential \(\kappa(\alpha)\) estimators require an algebraically-diffused (MULES-like, tangentially smooth) \(\alpha\). On a SHARP geometric \(\alpha\), geometry-only needs INTEGRAL estimators — height functions integrate the staircase out.</p>
+  <p class="nr"><b class="l">Lesson:</b> estimator and interface REPRESENTATION are a pair; porting one without the other transplants the failure.</p>
+</section>
+
+<section>
+  <h2>Foot-point height-function &kappa; from &psi;-planes</h2>
+  <p class="nr"><b class="k">Idea:</b> geometry-only + integral + normal-constant \(\kappa\) — feet from the linear LSQ planes, tangential parabola fit, shared column value (the HF property built from \(\psi\), not \(\alpha\)-columns).</p>
+  <p class="nr"><b class="m">Measured:</b> STATIC: excellent — band rel-\(L_2\) vs the constant \(1/R\): 8.3/1.6/0.48/0.22% at \(N{=}32/64/128/256\) (5&ndash;16&times; better than symbolic). COUPLED: a NEW, faster instability — \(t_{\mathrm{blow}}\) 0.006 (\(N{=}64\)), 0.003 (\(N{=}128\)); ms-scale, worse at finer \(N\).</p>
+  <p class="nr"><b class="w">Why it failed:</b> the fitted-feet \(\kappa\)'s response to interface DEFORMATION is mis-phased/destabilizing in the loop. Popinet (2018) anticipated it: point/weight selection in fit-based estimators is "complicated and somewhat fragile".</p>
+  <p class="nr"><b class="l">Lesson (the campaign's central one):</b> <b>static accuracy is NOT dynamic sufficiency</b> — gate estimators on their deformation transfer function \(\delta\kappa(\cos m\theta)\), not on static convergence tables.</p>
+</section>
+
+<section>
+  <h2>Closest-point NEWTON foot for &kappa; (the root-finder upgrade)</h2>
+  <p class="nr"><b class="k">Idea (user-proposed):</b> the retired foot-point extension used a gradient-projection flow
+     (\(\delta \leftarrow \delta - P/|\nabla P|^2\,\nabla P\)) — replace it with a TRUE closest-point Newton on the cell's own
+     quadratic (KKT system with the fit Hessian), trust-region-guarded (\(|\delta| \le r_{\mathrm{stencil}}\), indefinite/degenerate
+     rejection, per-cell fallback to the centre value), symbolic \(\kappa\) at the converged foot.</p>
+  <p class="nr"><b class="m">Measured (straight-to-coupled, user's call):</b> \(N{=}64\): decays to \(3.0\times10^{-6}\) at \(t=0.14\) —
+     <b>the best CSF-delivery floor of the campaign</b> (4&times; below the no-extension plateau) — then the \(\psi\)-drift-led feedback
+     returns (min\(|\nabla\psi|\) 0.975&rarr;0.76 in lockstep) and it blows at \(t=0.279\) vs no-extension 0.44.
+     \(N{=}128\): blows at \(t=0.075\) — later than the old projection flow (0.06; the guards help) but earlier than
+     no-extension (0.105).</p>
+  <p class="nr"><b class="w">Why it failed:</b> the root-finder was never the load-bearing defect — Newton converges beautifully to
+     the foot of a Defect-2-corrupted quadratic. Displaced evaluation of corrupted coefficients + normal-constant coherence
+     raise the loop gain exactly as before.</p>
+  <p class="nr"><b class="l">Lesson (6th replication):</b> the better the static balance, the earlier the coupled failure —
+     now demonstrated across projection-flow vs Newton root-finders too. Estimator INPUT quality, not foot-finding
+     precision, is the frontier.</p>
+</section>
+
+<section>
+  <h2>Higher-order fits, SVD, steeper weights (the pole-bias thread)</h2>
+  <p class="nr"><b class="k">Idea(s):</b> the \(\cos 4\theta\) grid-anisotropy curvature bias at the poles — attack with (a) SVD instead of normal equations, (b) steeper IDW weights, (c) a quartic (deg-4) fit.</p>
+  <p class="nr"><b class="m">Measured:</b> (a) SVD identical TO ALL DIGITS (the bias is a property of the least-squares PROBLEM, not the solver; conditioning \(5\times10^9\) yet the solve is machine-accurate). (b) steeper weight halves the bias — but the optimum scales with \(R/h\): case-local tuning, rejected on principle. (c) quartic: 30&times; better on the CLEAN field, \(O(h^4)\) — but WORSE than quadratic on the noisy run field (bias&ndash;variance crossover at noise \(\sim10^{-4}h\); the run's drift is far above it).</p>
+  <p class="nr"><b class="w">Why they failed:</b> curvature is a second derivative — maximally noise-amplifying; more fit freedom chases noise. Also: a BIGGER stencil at the SAME order is worse (more quartic contamination).</p>
+  <p class="nr"><b class="l">Lesson:</b> clean the field first; only then is higher order safe. Order without cleanliness is dangerous.</p>
+</section>
+
+<section>
+  <h2>Signed-distance-preserving SL reconstruction (foot reprojection)</h2>
+  <p class="nr"><b class="k">Idea:</b> make the SL advection itself SDF-preserving — reproject the departure foot onto the reconstructed interface and copy the signed distance instead of the interpolated value.</p>
+  <p class="nr"><b class="m">Measured:</b> mathematically correct (unit test \(1.3\times10^{-3}\)), but UNDERPERFORMS the plain value-copy control on the 2D reversed vortex.</p>
+  <p class="nr"><b class="w">Why it failed:</b> the reprojection injects reconstruction noise into every step's transport; the plain value copy is the exact identity at rest and adds nothing that isn't already there.</p>
+  <p class="nr"><b class="l">Lesson:</b> a per-step geometric correction must beat the noise it injects; "preserving a property approximately every step" can be worse than not touching it.</p>
+</section>
+</section>
+
+<!-- ==================== PART 4: force delivery ==================== -->
+<section data-track="Force delivery">
+<section>
+  <h2>Kang/GFM interface-weighted \(\kappa_f\) (&plusmn; sharp Heaviside)</h2>
+  <p class="nr"><b class="k">Idea:</b> the published exact-balance cure (Kang 2000; Abadie 2015): \(\kappa_f=(\kappa_P|\psi_N|+\kappa_N|\psi_P|)/(|\psi_P|+|\psi_N|)\) — interpolate the parallel-contour values TO the crossing, killing the Defect-1 normal variation at the faces.</p>
+  <table class="nrt">
+    <tr><th>\(N{=}64\) variant</th><th>initial current</th><th>fate</th></tr>
+    <tr><td>arithmetic &times; geometric \(\alpha\) (default)</td><td>\(4.5\times10^{-3}\)</td><td class="good">decays to \(1.3\times10^{-5}\), stable to 0.44</td></tr>
+    <tr><td>Kang &times; geometric \(\alpha\)</td><td>\(7.0\times10^{-4}\)</td><td class="bad">grows, rising at \(4\times10^{-3}\)</td></tr>
+    <tr><td>Kang &times; sharp Heaviside (LS&ndash;SSF)</td><td>\(7.7\times10^{-5}\)</td><td class="bad">blows at \(t=0.073\)</td></tr>
+  </table>
+  <p class="nr"><b class="w">Why it failed:</b> the \(\kappa\) CELL VALUES still carry the aliasing response to \(\psi\) distortion; Kang cannot fix corrupted inputs — and delivering them more sharply raises the \(\psi\)-to-force coupling gain. The arithmetic average + smeared support were a spatial LOW-PASS.</p>
+  <p class="nr"><b class="l">Lesson:</b> the better the static balance, the higher the dynamic feedback gain (replication 1 and 2 of the tension).</p>
+</section>
+
+<section>
+  <h2>CST integral model — verbatim transcription (the sign trap)</h2>
+  <p class="nr"><b class="k">Idea:</b> Abu-Al-Saud/Popinet/Tchelepi (2018) — surface tension as \(-\nabla\cdot(p\mathbf{I}+\sigma)\), momentum-conserving, machine-zero equilibrium reinit-free. Transcribe Algorithms 1&ndash;2 + Appendix B exactly.</p>
+  <p class="nr"><b class="m">Measured:</b> \(\Delta t\)-INDEPENDENT exponential instability at the grid-capillary frequency (same blow-up TIME at \(\Delta t = 2\times10^{-5}\) and \(2\times10^{-6}\)); survives \(10^{-14}\) pressure solves; erf-smoothed \(\rho\) slows it 6&times; only. Decisive clue: measured Laplace jump \(-72.7\)&nbsp;Pa — exact magnitude, WRONG SIGN.</p>
+  <p class="nr"><b class="w">Why:</b> the PAPER's printed relations carry an inverted overall sign (its Eq.&nbsp;8 has \(+\nabla\cdot\sigma\) against its own \(-\nabla\cdot(p\mathbf{I}+\sigma)\) identity; the App-B equilibrium relations hand-evaluate to \(p_{\mathrm{air}} = p_{\mathrm{water}} + \gamma\kappa\) on an SDF circle). The algorithms are \(\psi\)-orientation-INVARIANT, so no convention rescues them; their sign-blind error metric \(|[p]_{\mathrm{comp}}-[p]_{\mathrm{exact}}|\) hides it.</p>
+  <p class="nr"><b class="l">Lesson:</b> an inverted capillary force = ANTI-RESTORING: growth at \(\omega_{\mathrm{capillary}}\), immune to \(\Delta t\), tolerances, smoothing. Lock the SIGN with a static Laplace-jump check (signed!) before any coupled run.</p>
+</section>
+
+<section>
+  <h2>CST integral model — sign-corrected, at fine resolution</h2>
+  <p class="nr"><b class="k">Idea:</b> with the physical sign, CST should reach the machine-zero equilibrium of the paper.</p>
+  <p class="nr"><b class="m">Measured:</b> \(N{=}64\): the campaign's FIRST reachable equilibrium — decay \(3.3\times10^{-3}\to5\times10^{-7}\) (t=0.2), \(\Delta p\) 0.02% — then slow regrowth from \(t\approx0.25\). \(N{=}128\): blows at \(t\approx0.047\), EARLIER than CSF's 0.105; \(\Delta t/2\) does not help.</p>
+  <p class="nr"><b class="w">Why it failed at fine \(h\):</b> the CST inputs still read the \(\psi\) profile — \(\tilde\kappa\) at crossings, and tangents that are unit only while \(|\nabla\psi|=1\): tangential balance error \(\sim\gamma(|\nabla\psi|-1)/h^2\). The paper caps this with THRESHOLD reinitialization at the \(h^2\) deviation level ("particularly important in the present context") — hygiene a reinit-free loop lacks by design.</p>
+  <p class="nr"><b class="l">Lesson:</b> replication 3 and 4 of the tension — CST has the deepest statics of all, and (at \(N{=}128\)) the fastest coupled failure. Published equilibrium results can silently depend on the reference code's reinit policy.</p>
+</section>
+
+<section>
+  <h2>The meta-law: static balance vs dynamic stability</h2>
+  <table class="nrt" style="font-size:0.74em">
+    <tr><th>delivery scheme</th><th>static balance</th><th>coupled fate (\(N{=}64\) / \(N{=}128\))</th></tr>
+    <tr><td>arithmetic \(\kappa_f\) &times; smeared \(\alpha\) (default)</td><td>worst (\(4.5\times10^{-3}\))</td><td class="good">most stable (0.44 / 0.105)</td></tr>
+    <tr><td>Kang \(\kappa_f\) &times; geometric \(\alpha\)</td><td>6&times; better</td><td class="bad">grows at \(N{=}64\)</td></tr>
+    <tr><td>Kang \(\kappa_f\) &times; sharp Heaviside (SSF)</td><td>58&times; better</td><td class="bad">0.073 / 0.049</td></tr>
+    <tr><td>CST integral (sign-corrected)</td><td>best (\(5\times10^{-7}\) floor)</td><td class="bad">regrows / 0.047</td></tr>
+  </table>
+  <p class="nr" style="font-size:0.82em"><b class="w">The monotone pattern:</b> every sharpening that improves the static equilibrium couples the \(\psi\)-profile perturbations to the force more coherently — the smeared, "inaccurate" delivery was a stabilizing low-pass all along.</p>
+  <p class="nr"><b class="l">Lesson:</b> delivery-side remedies cannot close the fine-mesh gap. The operative levers are the estimator's dynamic response to profile distortion, and signed-distance maintenance.</p>
+</section>
+</section>
+
+<!-- ==================== PART 5: transport & reinit ==================== -->
+<section data-track="Transport &amp; reinitialization">
+<section>
+  <h2>Mass&ndash;momentum-consistent flux (steps 2a, 2b)</h2>
+  <p class="nr"><b class="k">Idea:</b> the literature cure for density-ratio-839 blow-ups (Rudman; Vaudor; Ghods&ndash;Herrmann): consistent \(\rho_f\phi\) — first arithmetic \(\mathrm{interp}(\rho)\phi\) (2a), then the geometric UPWIND face fraction \(\alpha_f\) from the level-set planes (2b, rhoLENT-style).</p>
+  <p class="nr"><b class="m">Measured:</b> onset essentially UNCHANGED (0.1055 &rarr; 0.1086); but the terminal blow-up is \(\sim\)97 ORDERS gentler (peak \(1.6\times10^{7}\) vs \(7.9\times10^{104}\)).</p>
+  <p class="nr"><b class="w">Why (partially) a negative:</b> consistency governs the CASCADE (once currents advect the interface, the light phase amplifies), not the TRIGGER (the curvature-error seed). Right fix, wrong lever for the onset.</p>
+  <p class="nr"><b class="l">Lesson:</b> separate trigger from cascade in the diagnosis before selecting the remedy — a 97-orders improvement can still be "onset unchanged".</p>
+</section>
+
+<section>
+  <h2>Threshold-triggered plane-anchored redistancing (PRELIMINARY)</h2>
+  <p class="nr"><b class="k">Idea:</b> cap the \(\gamma(|\nabla\psi|-1)/h^2\) channel with the paper's criterion (fire when band-\(L_1\) of \(||\nabla\psi|-1|\) exceeds \((h/L)^2\)), anchoring to the SAME LSQ planes the indicator/mass-flux read (Eikonal + foot-wave fills).</p>
+  <p class="nr"><b class="m">Measured (static gate, \(N{=}64\)):</b> threshold \((h/L)^2 = 2.4\times10^{-4}\); band \(L_1\) of the ANALYTIC SDF = \(6.9\times10^{-3}\) — the Gauss-gradient METRIC FLOOR is 28&times; the threshold &rArr; fires EVERY step. Both fills currently RAISE \(L_1\) (Eikonal &rarr; \(8.6\times10^{-2}\); foot-wave &rarr; \(2.1\times10^{-2}\), scalloping of the discrete foot-POINT cloud). Every-step firing kicks \(\max|\mathbf u|\) 10&ndash;20&times; in 5 steps — the regime both papers warn destroys equilibrium.</p>
+  <p class="nr"><b class="w">Open, not closed:</b> the paper's threshold presumes high-order (WENO) derivatives with a far lower metric floor. Candidate repairs: threshold referenced to the measured \(t{=}0\) floor; continuous plane-fill instead of point-feet. Policy pending. <b class="l">Lesson so far:</b> a trigger criterion is only as good as its measurement floor in YOUR discretization.</p>
+</section>
+</section>
+
+<!-- ==================== PART 6: process traps ==================== -->
+<section data-track="Process traps">
+<section>
+  <h2>Band-limited &psi;-filter (grid-scale damping alone)</h2>
+  <p class="nr"><b class="k">Idea:</b> the stability inequality says the reinit-free SL loop has ZERO damping for
+     \(\delta\psi\) — add the minimal explicit term: \(\psi \leftarrow \psi - \theta\,L(L(\psi))\) in the band + 1 ring,
+     \(L = I - \mathrm{avg}(\mathrm{interp}(\cdot))\) (annihilates quadratics &rArr; no smooth-interface displacement;
+     damps the 2h carrier at near-maximal rate). Everything else unchanged — the clean falsifier of the damping theory.</p>
+  <p class="nr"><b class="m">Measured (N=128, quadratic pipeline, baseline \(t_{\mathrm{blow}}=0.105\)):</b>
+     static sanity at \(\theta=0.2\): smooth-field perturbation at the \(10^{-4}\)-relative level ✓.
+     Coupled: \(\theta=0.05 \Rightarrow\) survives \(t=0.3\) (tail growing at ~33&nbsp;s\(^{-1}\), 6&times; slower than the
+     unfiltered 190&nbsp;s\(^{-1}\)); \(\theta=0.2 \Rightarrow t_{\mathrm{blow}}=0.442\) — <b>4.2&times; the baseline</b>, delay
+     monotone in \(\theta\). The damping mechanism is CONFIRMED quantitatively.</p>
+  <p class="nr"><b class="w">Why it did not close the gap:</b> min\(|\nabla\psi|\) erodes steadily (0.94&rarr;0.33) with NO 2h
+     content — the feedback migrates to LONGER wavelengths the scale-selective filter deliberately ignores. The
+     instability cascades to the shortest UNDAMPED scale.</p>
+  <p class="nr"><b class="l">Lesson:</b> grid-scale dissipation buys constant factors, not a sign flip of the eigenvalue —
+     the damping must be BROADBAND in the band (i.e. SDF maintenance), not mode-selective.</p>
+</section>
+
+<section>
+  <h2>Consistent piecewise-linear pipeline + resolution (PARTIAL POSITIVE)</h2>
+  <p class="nr"><b class="k">Idea (user's):</b> drop the order mismatch — linearTaylor SL transport + FVM curvature
+     \(\nabla\cdot(\nabla\psi/|\nabla\psi|)\) (no fit Hessian anywhere) + the plane-based \(\alpha\)/flux the pipeline already
+     uses — and buy accuracy back with cells. In stability language: the linear transport's interpolation diffusion is
+     BROADBAND \(\delta\psi\) damping.</p>
+  <table class="nrt">
+    <tr><th>N</th><th>quadratic \(t_{\mathrm{blow}}\)</th><th>linear-consistent \(t_{\mathrm{blow}}\)</th></tr>
+    <tr><td>64</td><td>0.44</td><td class="good">0.80 (standing plateau 2&ndash;7\(\times10^{-4}\))</td></tr>
+    <tr><td>128</td><td>0.105</td><td class="good">0.125</td></tr>
+    <tr><td>256</td><td>0.035</td><td class="good">&gt; 0.1 measured (plateau to 0.09; est. 0.13&ndash;0.15)</td></tr>
+  </table>
+  <p class="nr"><b class="m">The headline:</b> the finer-blows-first trend is BROKEN — \(N{=}256\) outlives \(N{=}128\).
+     At capillary \(\Delta t \propto h^{3/2}\) the transport damping rate grows RELATIVE to the \(1/h\) feedback gain
+     (\(\sim h^{-1/2}\)), so refinement now helps. "Linear + resolution" is an operationally valid two-phase design point.</p>
+  <p class="nr"><b class="w">Limits:</b> every N still blows eventually (bounded windows, not equilibrium); standing currents
+     20&ndash;50&times; the quadratic floors. <b class="l">Lesson — two design points:</b> quadratic SL for kinematics,
+     linear-consistent for explicit-capillary two-phase; permanence still needs SDF maintenance.</p>
+</section>
+
+<section>
+  <h2>Methodology traps that produced false positives</h2>
+  <ul style="font-size:0.74em; line-height:1.45">
+    <li><b class="w">The premature-cure trap (fell in TWICE):</b> "stable at \(t=0.075\)" claims retracted after longer runs — the no-extension switch and the foot-point HF both looked cured until run past the baseline \(t_{\mathrm{blow}}\). <b class="l">Rule: run 2&ndash;3&times; past the baseline blow-up time before any verdict.</b></li>
+    <li><b class="w">The accidental-blend trap:</b> a "temporal relaxation" captured \(\kappa_{\mathrm{old}}\) AFTER the symbolic refill — silently testing a 0.2&nbsp;foot + 0.8&nbsp;symbolic SPATIAL blend that "passed" only because the symbolic part is stable at \(N{=}64\). <b class="l">Rule: verify what a filter actually blends before believing its pass.</b></li>
+    <li><b class="w">The contention trap:</b> concurrent solver runs on one memory-bound machine produce FALSE divergences. <b class="l">Rule: verdict-grade runs are serial.</b></li>
+    <li><b class="w">The written-field trap:</b> curvature recomputed from a WRITTEN \(\psi\) (6 significant digits) shows \(\sim\)90% error — a post-processing artifact, not solver state. <b class="l">Rule: diagnose 2nd derivatives in-memory.</b></li>
+    <li><b class="w">The sign-blind-metric trap:</b> a published scheme with an inverted force passes its own \(|[p]-[p]_{\mathrm{exact}}|\) test. <b class="l">Rule: check SIGNED jumps.</b></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Running index of failed levers (one line each)</h2>
+  <table class="nrt" style="font-size:0.66em; width:97%">
+    <tr><th>lever</th><th>verdict</th><th>mechanism</th></tr>
+    <tr><td>backward / CN momentum time</td><td class="bad">destabilizes</td><td>Euler's L-stable damping was load-bearing</td></tr>
+    <tr><td>smaller / adaptive \(\Delta t\)</td><td class="bad">delays only</td><td>\(h\)-driven spatial feedback</td></tr>
+    <tr><td>foot-point Newton \(\kappa\) extension</td><td class="bad">40&ndash;85&times; amplifier</td><td>Newton on drifting \(|\nabla\psi|\)</td></tr>
+    <tr><td>harmonic Laplace \(\kappa\) extension</td><td class="bad">earlier blow-up</td><td>coupling correlates the error force</td></tr>
+    <tr><td>\(\kappa\) clamp</td><td class="bad">onset unchanged</td><td>smooth error channels suffice</td></tr>
+    <tr><td>FVM \(\nabla\cdot(\nabla\psi/|\nabla\psi|)\)</td><td class="bad">same window</td><td>still reads the profile</td></tr>
+    <tr><td>\(\nabla\cdot(\nabla\alpha/|\nabla\alpha|)\), sharp \(\alpha\)</td><td class="bad">instant</td><td>support-edge cliffs + staircase</td></tr>
+    <tr><td>foot-point HF \(\kappa\) (static 0.22&ndash;8.3%)</td><td class="bad">ms-scale coupled</td><td>mis-phased deformation response</td></tr>
+    <tr><td>closest-point Newton foot \(\kappa\) (floor \(3\times10^{-6}\))</td><td class="bad">0.28 / 0.075</td><td>Newton finds the foot of a corrupted quadratic</td></tr>
+    <tr><td>quartic fit / SVD / steep weights</td><td class="bad">noise / no-op / tuning</td><td>2nd-derivative variance; problem&ne;solver</td></tr>
+    <tr><td>SDF-preserving SL reprojection</td><td class="bad">worse than value copy</td><td>injects reconstruction noise per step</td></tr>
+    <tr><td>Kang \(\kappa_f\) / LS&ndash;SSF</td><td class="bad">statics&uarr; dynamics&darr;</td><td>sharper delivery = higher loop gain</td></tr>
+    <tr><td>CST integral (sign-fixed)</td><td class="bad">\(N{=}128\): 0.047</td><td>\(\gamma(|\nabla\psi|-1)/h^2\) channel, no reinit cap</td></tr>
+    <tr><td>consistent rhoPhi (2a/2b)</td><td class="warn">onset unchanged</td><td>cures cascade violence (&minus;97 orders), not trigger</td></tr>
+    <tr><td>every-step / floor-locked reinit</td><td class="warn">preliminary</td><td>metric floor 28&times; the paper threshold</td></tr>
+    <tr><td>band \(\psi\)-filter (2h-selective damping)</td><td class="warn">delays 4.2&times;, no sign flip</td><td>feedback migrates to longer undamped modes</td></tr>
+    <tr><td>consistent-linear pipeline + resolution</td><td class="good">TREND FLIPPED (0.80/0.125/&gt;0.1)</td><td>broadband transport diffusion; damping/gain \(\sim h^{-1/2}\)</td></tr>
+  </table>
+  <p class="footnote">Living document — every failed idea, its numbers, its mechanism. Companion: <code>sl.html</code>.</p>
+</section>
+</section>
+
+</div>
+</div>
+
+<!-- reveal.js core -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [ RevealNotes ]
+  });
+
+  // Orientation footer: 'Part k/n - name' from the nearest data-track ancestor.
+  (function () {
+    var tracks = [];
+    document.querySelectorAll('[data-track]').forEach(function (e) {
+      var n = e.getAttribute('data-track');
+      if (tracks.indexOf(n) < 0) { tracks.push(n); }
+    });
+    function trackOf(slide) {
+      var el = slide;
+      while (el && el !== document.body) {
+        if (el.getAttribute && el.getAttribute('data-track')) {
+          return el.getAttribute('data-track');
+        }
+        el = el.parentElement;
+      }
+      return '';
+    }
+    var chips = [];
+    (function buildNav() {
+      var nav = document.getElementById('deckNav');
+      if (!nav) { return; }
+      tracks.forEach(function (name, i) {
+        var target = null;
+        var els = document.querySelectorAll('[data-track]');
+        for (var k = 0; k < els.length; k++) {
+          if (els[k].getAttribute('data-track') === name) {
+            target = els[k].querySelector(':scope > section') || els[k];
+            break;
+          }
+        }
+        var a = document.createElement('a');
+        a.href = '#';
+        a.textContent = (i + 1);
+        a.title = 'Part ' + (i + 1) + ': ' + name;
+        a.onclick = function (ev) {
+          ev.preventDefault();
+          if (target) {
+            var idx = Reveal.getIndices(target);
+            Reveal.slide(idx.h, idx.v || 0);
+          }
+        };
+        nav.appendChild(a);
+        chips.push(a);
+      });
+    })();
+    function upd() {
+      var el = document.getElementById('deckTrack');
+      if (!el) { return; }
+      var name = trackOf(Reveal.getCurrentSlide());
+      chips.forEach(function (a, i) {
+        a.className = (tracks[i] === name) ? 'here' : '';
+      });
+      if (!name) {
+        el.textContent = window.DECK_LINEAR
+          ? '→ / ← to navigate · Esc = overview'
+          : '→ parts · ↓ slides · Esc = overview';
+        return;
+      }
+      el.innerHTML = 'Part ' + (tracks.indexOf(name) + 1) + '/' + tracks.length
+                   + ' · ' + name;
+    }
+    Reveal.on('slidechanged', upd);
+    Reveal.on('ready', upd);
+  })();
+
+</script>
+</body>
+</html>

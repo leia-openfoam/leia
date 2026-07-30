@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>leia — level-set method comparison</title>
+
+  <!-- reveal.js 4.6.x core + black theme, from cdnjs -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css"
+        id="theme">
+
+  <style>
+    :root {
+      --ls-fg:      #f2f2f2;
+      --ls-muted:   #b9c2cc;
+      --ls-accent:  #4fc3f7;
+      --ls-liquid:  #29b6f6;
+      --ls-liquid2: #1565c0;
+      --ls-gas:     #455a64;
+      --ls-warn:    #ffb74d;
+      --ls-good:    #81c784;
+      --ls-line:    #90a4ae;
+    }
+    .reveal h1 { font-size: 1.55em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.25em; color: var(--ls-accent); }
+    .reveal section { font-size: 0.82em; }
+    .reveal p, .reveal li { color: var(--ls-fg); }
+    .reveal .muted { color: var(--ls-muted); }
+    .reveal .accent { color: var(--ls-accent); }
+    .reveal .warn { color: var(--ls-warn); }
+    .reveal .good { color: var(--ls-good); }
+    .reveal small { color: var(--ls-muted); }
+    .reveal em.tag {
+      font-style: normal; color: var(--ls-accent);
+      font-family: monospace; font-size: 0.9em;
+    }
+    .reveal code { color: var(--ls-warn); }
+    .reveal .mjx-container { color: var(--ls-fg) !important; }
+    .reveal svg text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+    .cols { display: flex; gap: 1.2em; align-items: center; justify-content: center; }
+    .cols > div { flex: 1; }
+    .reveal ul.tight { margin: 0; }
+    .reveal ul.tight li { margin: 0.1em 0; }
+    .reveal section img { background: none; border: none; box-shadow: none;
+      max-width: 100%; object-fit: contain; }
+    .center { text-align: center; }
+    .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    .deck-footer {
+      position: fixed; bottom: 7px; left: 18px; right: 96px; z-index: 30;
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 14px;
+      font-family: "Source Sans Pro", Helvetica, sans-serif;
+      font-size: 13px; color: var(--ls-muted); opacity: 0.9;
+      pointer-events: none;
+    }
+    .deck-footer .df-track { color: var(--ls-accent); white-space: nowrap; }
+    .deck-footer .df-authors { flex: 1; text-align: center; }
+    .deck-footer .df-nav { white-space: nowrap; }
+    .deck-footer .df-nav a {
+      pointer-events: auto; display: inline-block; min-width: 1.3em;
+      margin-right: 3px; padding: 0 4px; text-align: center;
+      border: 1px solid var(--ls-line); border-radius: 3px;
+      color: var(--ls-muted); text-decoration: none; font-size: 12px;
+      line-height: 1.5; opacity: 0.8;
+    }
+    .deck-footer .df-nav a:hover {
+      color: var(--ls-fg); border-color: var(--ls-fg); opacity: 1;
+    }
+    .deck-footer .df-nav a.here {
+      color: var(--ls-accent); border-color: var(--ls-accent);
+      font-weight: 600; opacity: 1;
+    }
+    .reveal ol.roadmap { list-style: none; margin-left: 0; }
+    .reveal ol.roadmap li {
+      color: var(--ls-muted); margin: 0.14em 0; font-size: 0.92em;
+    }
+    .reveal ol.roadmap li .idx {
+      display: inline-block; width: 1.5em; color: var(--ls-line);
+    }
+    .reveal .part-kicker {
+      font-size: 0.62em; letter-spacing: 0.22em; color: var(--ls-accent);
+      text-transform: uppercase; margin-bottom: 0.1em;
+    }
+    .todo {
+      border-left: 4px solid var(--ls-warn); padding: 0.25em 0.7em;
+      background: rgba(255, 183, 77, 0.08); margin: 0.5em 0;
+      font-size: 0.85em; color: var(--ls-muted);
+    }
+    .flowline {
+      display: flex; align-items: stretch; justify-content: center;
+      gap: 0.42em; margin: 0.65em auto; width: 96%;
+    }
+    .flowline .step {
+      flex: 1; padding: 0.38em 0.28em; border-top: 2px solid var(--ls-accent);
+      color: var(--ls-fg); font-size: 0.72em; line-height: 1.25;
+    }
+    .flowline .arrow { align-self: center; color: var(--ls-line); font-size: 1.1em; }
+    .eqblock {
+      margin: 0.45em auto; padding: 0.35em 0.55em; width: 91%;
+      border-left: 4px solid var(--ls-accent); text-align: left;
+      background: rgba(79, 195, 247, 0.055); font-size: 0.77em;
+    }
+    .resultline {
+      margin: 0.45em auto; width: 91%; border-top: 1px solid var(--ls-line);
+      padding-top: 0.35em; font-size: 0.77em;
+    }
+  </style>
+
+  <!-- MathJax 3 (loaded directly from cdnjs) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        macros: { boldsymbol: ['{#1}', 1] }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+
+<div class="deck-footer">
+  <span class="df-nav" id="deckNav" aria-label="jump to part"></span>
+  <span class="df-authors">T. Mari&#263; &middot; M. Fricke &middot; D. Bothe &nbsp;&mdash;&nbsp; Mathematical Modeling &amp; Analysis, TU Darmstadt</span>
+  <span class="df-track" id="deckTrack"></span>
+</div>
+<div class="reveal">
+<div class="slides">
+
+<!-- ==================== TITLE ==================== -->
+<section>
+  <h1>leia</h1>
+  <h2 style="color:var(--ls-fg)">Level-set method comparison</h2>
+  <p class="accent" style="font-size:1.1em">Given sufficient resolution, which method do we choose?</p>
+  <p class="muted">reversed 2D vortex, 32&sup2;&ndash;512&sup2;, T &isin; {2, 8} &middot; shape / volume /
+     gradient errors &middot; wall-clock cost &middot; N=64 translating capillary balance</p>
+  <p style="margin-top:0.7em; font-size:1.05em"><b>Tomislav Mari&#263; &middot; Mathis Fricke &middot; Dieter Bothe</b>
+     <span class="muted" style="font-weight:normal"><br>MMA, TU Darmstadt</span></p>
+  <p class="footnote">unified solver <code>leiaLevelSetFoam</code> &mdash; every method one dictionary
+     &nbsp;|&nbsp; reproduce: <code>config/benchVortex*.yaml</code> and
+    <code>config/transISTN64ForceFluxModelMatrix.yaml</code> and
+    <code>config/transISTN64CurvatureDeliveryReplay.yaml</code></p>
+</section>
+
+<section>
+  <h2>Roadmap</h2>
+  <ol class="roadmap" style="font-size:1.05em">
+    <li><span class="idx">1</span>The contenders &mdash; four research lines, one benchmark</li>
+    <li><span class="idx">2</span>Convergence &mdash; t = T (reversed) and t = T/2 (maximally stretched)</li>
+    <li><span class="idx">3</span>Cost vs accuracy &mdash; wall clock per method</li>
+    <li><span class="idx">4</span>The decision table</li>
+    <li><span class="idx">5</span>Field atlas &mdash; &alpha;, &psi;, ||&nabla;&psi;|&minus;1| across resolutions</li>
+    <li><span class="idx">6</span>Faults &amp; improvements &mdash; per method, measured &rarr; concrete fix</li>
+    <li><span class="idx">7</span>Capillary balance &mdash; face flux, connected curvature, replay gates</li>
+    <li><span class="idx">8</span>Verdict &amp; scope</li>
+  </ol>
+</section>
+
+<section data-track="The contenders">
+<section>
+  <p class="part-kicker">Part 1 of 8</p>
+  <h2>The contenders</h2>
+  <ul class="tight" style="font-size:0.9em">
+    <li><em class="tag">SL:quadraticWeightedLeastSquares</em> (+ uncached variant) &mdash;
+        matrix-free characteristic transport, weighted quadratic foot reconstruction
+        (semi-lagrangian-level-set deck).</li>
+    <li><em class="tag">euler</em> &mdash; implicit FV transport, advective form,
+        defect-corrected linearUpwind (nDefCorr).</li>
+    <li><em class="tag">euler+SDPLS:R / beta</em> &mdash; + source-term gradient control,
+        zero interface displacement by construction (sdpls deck).</li>
+    <li><em class="tag">euler+VE:closestPoint</em> &mdash; + interface-normal-constant
+        velocity extension (velocity-extension deck).</li>
+    <li class="muted">Not competing: interface-rewriting redistancing &mdash; retired with
+        measurements (grl negative-results deck): the zero level set and the band values
+        are the same degrees of freedom; every rewrite displaces the interface.</li>
+  </ul>
+  <p class="footnote">Same case, same error norms, same reporting cadence (write times
+     only) in every line &mdash; the wall clock is comparable by construction.</p>
+</section>
+</section>
+
+<section data-track="Convergence">
+<section>
+  <p class="part-kicker">Part 2 of 8</p>
+  <h2>Convergence, T = 2 (resolved regime) &mdash; overview</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_convergence_T2.png"
+       style="max-height:560px; width:100%">
+  <p class="footnote">Five panels: shape / volume / band-gradient at t = T; volume +
+     band-gradient at t = T/2 (maximal stretching &mdash; the volume fraction of that
+     shape is unknown, so no shape reference there). The next five slides take each
+     panel one at a time.</p>
+</section>
+
+<section>
+  <h2>T = 2 &middot; shape error \(E_{geom}(\alpha)\) at t = T</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_T2_shape_T.png"
+       style="max-height:600px">
+  <p class="footnote">The headline accuracy: SL and plain Euler converge at ~2nd order and
+     coincide; the SDPLS sources and velocity extension trail by a constant factor.
+     Everything is well-resolved here, so all lines converge cleanly.</p>
+</section>
+
+<section>
+  <h2>T = 2 &middot; volume conservation \(E_{vol}\) at t = T</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_T2_volume_T.png"
+       style="max-height:600px">
+  <p class="footnote">Reversed-state volume error. SL and Euler are best; the source
+     terms add a small mass-exchange penalty at the end state (the price for the T/2
+     volume advantage two slides on).</p>
+</section>
+
+<section>
+  <h2>T = 2 &middot; signed-distance quality: band \(L_2(||\nabla\psi|-1|)\) at t = T</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_T2_grad_T.png"
+       style="max-height:600px">
+  <p class="footnote">The one panel where the methods SEPARATE by design: SL keeps
+     \(|\nabla\psi|\approx1\) (the reconstruction is signed-distance-aware); the SDPLS
+     sources force a large band gradient deviation (they trade signed distance for the
+     conservation shown next); plain Euler sits between.</p>
+</section>
+
+<section>
+  <h2>T = 2 &middot; volume conservation \(E_{vol}\) at t = T/2 (maximal stretch)</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_T2_volume_Thalf.png"
+       style="max-height:600px">
+  <p class="footnote">The SDPLS home turf: at the most-deformed instant the R/beta sources
+     give the best volume conservation of any method &mdash; the zero-interface-displacement
+     property paying off exactly where it should. (At 512&sup2; SL closes this gap.)</p>
+</section>
+
+<section>
+  <h2>T = 2 &middot; signed-distance quality at t = T/2</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_T2_grad_Thalf.png"
+       style="max-height:600px">
+  <p class="footnote">Same separation as the t = T gradient panel but under maximal
+     strain: SL stays closest to a signed distance; the sources deviate most (by
+     construction, they control the gradient's evolution, not its band value).</p>
+</section>
+
+<section>
+  <h2>Convergence, T = 8 (filament regime) &mdash; overview</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_convergence_T8.png"
+       style="max-height:520px; width:100%">
+  <p class="footnote">At N &le; 128 the wound filament is below the mesh resolution for
+     every method; 256&sup2;/512&sup2; restore the T = 2 ranking (SL first). Per-panel
+     T=8 figures are in <code>data/figures/benchVortex_T8_*.png</code>.</p>
+</section>
+</section>
+
+<section data-track="Cost vs accuracy">
+<section>
+  <p class="part-kicker">Part 3 of 8</p>
+  <h2>Cost vs accuracy</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_cost_accuracy.png"
+       style="max-height:430px">
+  <p class="footnote">Total wall clock (ELAPSED_CLOCK_TIME) vs shape error at t = T;
+     point labels: N. Down-left is better.</p>
+</section>
+</section>
+
+<section data-track="Decision table">
+<section>
+  <p class="part-kicker">Part 4 of 8</p>
+  <h2>The decision table (finest tier, N = 512&sup2;)</h2>
+  <table class="num" style="margin:auto; font-size:0.62em">
+    <thead><tr><th>method</th><th>T=2: E_geom / E_vol / clock</th>
+               <th>T=8: E_geom / E_vol / clock</th></tr></thead>
+    <tbody>
+      <tr><td><b>SL quadratic (cached)</b></td>
+          <td class="good"><b>1.7e-5</b> / <b>2.7e-4</b> / <b>160 s</b></td>
+          <td class="good"><b>1.5e-5</b> / <b>3.8e-4</b> / <b>595 s</b></td></tr>
+      <tr><td>SL quadratic (uncached)</td>
+          <td>1.7e-5 / 2.7e-4 / 190 s</td><td>1.5e-5 / 3.8e-4 / 722 s</td></tr>
+      <tr><td>SL quadratic flux-form <span class="muted">(N=256&sup2;)</span></td>
+          <td class="good">1.5e-5 / 1.5e-4 / 25 s</td>
+          <td>7.7e-4 / 2.0e-2 / 88 s</td></tr>
+      <tr><td>euler (defect-corrected)</td>
+          <td>1.7e-5 / 3.2e-4 / 323 s</td><td>3.0e-4 / 2.1e-2 / 1170 s</td></tr>
+      <tr><td>euler + SDPLS:R</td>
+          <td>2.6e-5 / 8.1e-4 / 327 s</td><td>5.8e-4 / 6.8e-2 / 1170 s</td></tr>
+      <tr><td>euler + SDPLS:beta</td>
+          <td>2.4e-5 / 5.9e-4 / 329 s</td><td>9.8e-4 / 1.4e-1 / 1180 s</td></tr>
+      <tr><td>euler + VE:closestPoint</td>
+          <td class="bad">5.9e-5 / 4.8e-3 / 6630 s</td>
+          <td class="bad">1.4e-3 / 1.1e-2 / <b>16100 s</b></td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.8em" class="warn">SL at T = 8 / 512&sup2; matches its own T = 2
+     accuracy: with the filament resolved, the long horizon costs SL nothing. The SDPLS
+     T/2-volume advantage seen at N &le; 128 is a coarse-mesh effect &mdash; at 512&sup2;
+     SL wins that column too (5.2e-3 vs 1.1e-2).</p>
+  <p class="footnote">Flux-form (conservative scheme, ran to 256&sup2;) is COMPETITIVE at
+     T = 2 &mdash; same convergence order as point-value, errors within ~2&times;, and it
+     conserves &int;&psi; to machine precision (at 256&sup2; its shape error edges point-value,
+     which stalled 128&rarr;256). Its extra numerical diffusion (half-step swept flux) only
+     costs at the T = 8 sub-cell filament (vs point-value at the same N=256&sup2;: 1.1e-4 /
+     1.1e-2 / 79 s). Full table incl. T/2 + band gradients:
+     <code>data/tables/benchVortex_decision.tex</code> (regenerated per harvest).</p>
+</section>
+
+<section>
+  <h2>Detailed comparison &mdash; every method, with convergence order</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_detailed.png"
+       style="max-height:640px; width:100%">
+  <p class="footnote">Finest N per method (variants ran to 256&sup2;, core lines to
+     512&sup2;). \(p_{geom}\), \(p_{vol}\) = least-squares convergence orders over the swept
+     N. Blue = core method line, tan = tuning knob / redistancing variant. SL point-value
+     leads on accuracy at both horizons; flux-form matches it at T = 2 and trails only at
+     T = 8; the Eulerian lines are ~2nd order; VE is dominated on cost.</p>
+</section>
+</section>
+
+<section data-track="Field atlas">
+<section>
+  <p class="part-kicker">Part 5 of 8</p>
+  <h2>Field atlas: the winner vs the baseline (T = 8)</h2>
+  <div class="cols">
+    <div><p class="center" style="font-size:0.8em">SL quadratic &mdash; &alpha;</p>
+      <img src="../method-comparison-article/data/figures/bench_SL_quadraticWeightedLeastSquares_T8_alpha.png"
+           style="max-height:540px; width:100%"></div>
+    <div><p class="center" style="font-size:0.8em">euler &mdash; &alpha;</p>
+      <img src="../method-comparison-article/data/figures/bench_euler_T8_alpha.png"
+           style="max-height:540px; width:100%"></div>
+  </div>
+  <p class="footnote">rows: N; cols: t &isin; {0, T/2, T}; cyan: zero level set.</p>
+</section>
+<section>
+  <h2>Field atlas: signed-distance quality (T = 8)</h2>
+  <div class="cols">
+    <div><p class="center" style="font-size:0.8em">SL quadratic &mdash; ||&nabla;&psi;|&minus;1|</p>
+      <img src="../method-comparison-article/data/figures/bench_SL_quadraticWeightedLeastSquares_T8_graderr.png"
+           style="max-height:540px; width:100%"></div>
+    <div><p class="center" style="font-size:0.8em">euler+SDPLS:R &mdash; ||&nabla;&psi;|&minus;1|</p>
+      <img src="../method-comparison-article/data/figures/bench_euler_SDPLS_R_T8_graderr.png"
+           style="max-height:540px; width:100%"></div>
+  </div>
+  <p class="footnote">Full atlas (every method &times; {&alpha;, &psi;, ||&nabla;&psi;|&minus;1|}
+     &times; T &isin; {2, 8}): <code>data/figures/bench_*_*.png</code>.</p>
+</section>
+</section>
+
+<section data-track="Faults &amp; improvements">
+<section>
+  <p class="part-kicker">Part 6 of 8</p>
+  <h2>Faults &amp; improvements &mdash; per method</h2>
+  <p class="muted">every fault code-documented or benchmark-measured; every improvement
+     concrete. Several are already implemented (this deck's SL rows).</p>
+</section>
+
+<section>
+  <h2>Semi-Lagrangian quadratic <span class="good">(winner)</span></h2>
+  <div class="cols">
+    <div><p class="warn center">Faults</p>
+      <ul class="tight" style="font-size:0.8em">
+        <li>No maximum principle: quadratic fits overshoot; Barth&ndash;Jespersen
+            <b>collapses order 3.0&rarr;0.1</b>, so it ships with only a &plusmn;10&times;
+            value cap.</li>
+        <li>Cached model memory-bound (~8 GB @128&sup3; &rarr; single precision;
+            pseudo-inverse mat-vec 28% of solver).</li>
+        <li>Uncached squares the condition number &rarr; degenerate cell falls back to a
+            constant.</li>
+        <li>Value fit: no signed-distance property; volume small but not conserved.</li>
+      </ul></div>
+    <div><p class="good center">Improvements</p>
+      <ul class="tight" style="font-size:0.8em">
+        <li class="good"><b>Venkatakrishnan limiter</b> (implemented): smooth, order-
+            preserving bound &mdash; where BJ collapsed the order.</li>
+        <li class="good"><b>Householder-QR</b> fit (implemented): no condition-number
+            squaring, fewer degenerate fallbacks.</li>
+        <li class="good"><b>Flux-form SL</b> (implemented, RTS <em class="tag">scheme
+            fluxForm</em>): conserves &int;&psi;dV to machine precision.</li>
+        <li>CFC stencil on polyhedra (cheaper, better conditioned).</li>
+      </ul></div>
+  </div>
+  <p class="footnote">The three implemented items are measured on the next
+     "SL improvements" slide.</p>
+</section>
+
+<section>
+  <h2>Eulerian defect-corrected PDE <span class="muted">(2nd)</span></h2>
+  <div class="cols">
+    <div><p class="warn center">Faults</p>
+      <ul class="tight" style="font-size:0.82em">
+        <li>linearUpwind numerical diffusion erodes \(|\nabla\psi|\)
+            (band grad 1.5e-4 @T2 &rarr; 7.7e-2 @T8).</li>
+        <li>2nd order only via the nDefCorr loop = 2&ndash;3 assembles/step (2&times; SL cost).</li>
+        <li>20&times; behind SL shape error @T8/512&sup2;; non-conservative advective form.</li>
+        <li>Cell-limited LSQ gradient can mislimit on coarse meshes.</li>
+      </ul></div>
+    <div><p class="good center">Improvements</p>
+      <ul class="tight" style="font-size:0.82em">
+        <li>Higher-order bounded div (WENO / limited-cubic) to cut diffusion without the
+            defect-correction cost.</li>
+        <li>SDPLS source to hold \(|\nabla\psi|\) (with the resolution caveat).</li>
+        <li>Refinement is the cure for the T=8 filament death (method-independent).</li>
+      </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>SDPLS source (R / &beta;)</h2>
+  <div class="cols">
+    <div><p class="warn center">Faults</p>
+      <ul class="tight" style="font-size:0.82em">
+        <li>Trades signed distance for gradient control (band \(L_2\) &rarr; 0.5&ndash;0.96
+            vs SL 8.4e-5).</li>
+        <li>R over-flattens near the resolution limit (vol 0.488 vs noSource 0.238
+            @T8/N128).</li>
+        <li>R controls steepening, not flattening (band min&rarr;0 unchanged).</li>
+        <li>&beta;+explicit diverges every CFL; strictNegative can lose the M-matrix.</li>
+      </ul></div>
+    <div><p class="good center">Improvements</p>
+      <ul class="tight" style="font-size:0.82em">
+        <li>Resolution-aware (\(\kappa h\)) mollification/gating of R (open work).</li>
+        <li>Strain-limited source strength; &beta; always implicit.</li>
+        <li>Position at its niche: under-resolved production + two-phase zero-displacement
+            coupling &mdash; not a pure-advection default.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>Velocity extension (closestPoint + family) <span class="bad">(dominated)</span></h2>
+  <div class="cols">
+    <div><p class="warn center">Faults</p>
+      <ul class="tight" style="font-size:0.82em">
+        <li>Worst accuracy at 12&ndash;27&times; the cost (16,100 s @T8/512&sup2;) &mdash; the
+            per-step extension solve is the overhead.</li>
+        <li>closestPoint geometric failures: colliding rays diverge; needs \(\psi\)
+            near-SDF (circular redistancing dependency); cross-processor feet.</li>
+        <li>Family: anisotropic &epsilon;-floor + one-sided ~2.7; pseudoTime truncated
+            reach/blow-up; steadyUpwindLinear diverges; meshWave O(h).</li>
+      </ul></div>
+    <div><p class="good center">Improvements</p>
+      <ul class="tight" style="font-size:0.82em">
+        <li>Use extension ONLY where genuinely needed (moving contact lines, prescribed
+            non-solenoidal U), not pure advection.</li>
+        <li>Cheaper geometric extension (fast marching) if kept.</li>
+        <li>Narrower band / only-when-needed extension to cut cost.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>Retired geometric redistancing &amp; the shared phase indicator</h2>
+  <div class="cols">
+    <div><p class="warn center">Redistancing (retired)</p>
+      <ul class="tight" style="font-size:0.78em">
+        <li>Zero set and band values are the same DOF &rarr; any band rewrite displaces the
+            interface (O(h&sup2;&kappa;)/event, one-signed, compounds).</li>
+        <li>planeFootWave scalloping; anchoredEikonal 1st-order fill (2nd-order cure
+            diverges); PDE reinit central-Hamiltonian oscillation.</li>
+        <li>Frozen-band bulk-only pseudo-time Eikonal IMPLEMENTED + gated (transported
+            band + 2 guard layers as Dirichlet anchors &rarr; static gate E<sub>geom</sub>
+            = E<sub>vol</sub> = 0 EXACTLY per event; Godunov fill repairs bulk 0.56
+            &rarr; 0.009 where central diverges 0.56 &rarr; 59.7).</li>
+        <li class="warn">...yet MEASURED INJURIOUS in transport (Eulerian line, T=8):
+            E<sub>vol</sub> 0.017&rarr;<b>1.77</b> @256, 0.24&rarr;<b>2.53</b> @128 &mdash;
+            the fill rebuilds distance to linearUpwind's spurious BULK sign-changes, which
+            the indicator reads as spurious phase. Redistancing can't fix what transport
+            corrupted; the static gate misses it. SDPLS (never touches sign structure)
+            stays the only viable mechanism.</li>
+      </ul></div>
+    <div><p class="warn center">Phase indicator (LLS plane)</p>
+      <ul class="tight" style="font-size:0.78em">
+        <li>The plane is a chord &rarr; O(h&sup2;&kappa;) one-signed bias, caps &alpha; at
+            2nd order (both indicators identical).</li>
+        <li>Thin/coplanar clouds &rarr; fall back to sign(&psi;); curvature staircase
+            &rarr; parasitic currents.</li>
+        <li class="good">Fix: curvature-corrected plane distance (chord-bias subtraction,
+            already in the redistancer anchors); PLIC/ELVIRA; plicRDF/height-function
+            curvature.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>SL improvements &mdash; measured</h2>
+  <ul class="tight" style="font-size:0.78em">
+    <li><b>Venkatakrishnan limiter (K=5)</b> <span class="warn">&mdash; costs more than it
+        protects here.</span> Shape-error order 3.0 &rarr; ~0.9 (BETTER than
+        Barth&ndash;Jespersen's 0.1 stall, but NOT order-preserving in the advection
+        setting); \(L_\infty(e_\psi)\) worse at every N except 32; and &alpha; was never
+        out of bounds anyway (E<sub>bound</sub> = 0 &mdash; the geometric indicator bounds
+        &alpha; by construction). Wins: N=32 volume error 40&times; better (2.97e-2 &rarr;
+        7.4e-4), band-gradient control 0.98 &rarr; 0.74. Verdict: keep OFF on hex; use as
+        the softer alternative to the hard clamp on polyhedra.</li>
+    <li><b>Householder-QR fit</b> <span class="good">&mdash; free robustness.</span>
+        Bit-parity with the Cholesky normal equations on hex AND on an
+        &alpha;=0.1-perturbed mesh (errors identical to the last digit; zero degenerate
+        fallbacks in either). The ill-conditioning it guards against was not reachable in
+        these 2D studies &mdash; it remains the safeguard for polyhedral/CFC stencils.</li>
+    <li><b>Flux-form (conservative) SL</b> <span class="good">&mdash; competitive at
+        resolved conditions.</span> A distinct conservative scheme (own RTS): at T=2 it
+        matches point-value's convergence order with errors within ~2&times; AND conserves
+        \(\int\psi\,dV\) to 2.2e-14 (at 256&sup2; its shape error edges point-value). Its
+        one cost is extra numerical diffusion from the half-step swept flux, which only bites
+        on the T=8 sub-cell filament (volume error 3&ndash;13&times; worse there). Verdict:
+        an attractive conservative alternative when the interface is resolved; point-value
+        still wins the extreme long-horizon.</li>
+  </ul>
+  <p class="footnote">Pitfall found on the way: <code>leiaPerturbMesh</code> was a NO-OP on
+     2D meshes (every point lies on the empty patches, and the boundary reset reverted the
+     whole perturbation) &mdash; fixed (pin physical patches only, zero the empty-direction
+     component, deterministic seed). The perturbed study is the first to actually run on a
+     perturbed mesh. Reproduce: <code>benchVortexSLimproved / ...Perturbed / ...flux</code>.</p>
+</section>
+
+<section>
+  <h2>SL improvements &mdash; the measurement</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_slimprovements.png"
+       style="max-height:600px; width:100%">
+  <p class="footnote">T = 8 (the hardest case for flux-form). Left: the Venkatakrishnan
+     limiter softens the shape-error slope (order ~0.9, above BJ's 0.1 stall) but trails the
+     unlimited baseline; flux-form trails on shape here. Right: flux-form's extra numerical
+     diffusion shows on the T=8 sub-cell filament. At T = 2 (resolved) flux-form instead
+     tracks point-value within ~2&times; at the same order &mdash; see the decision table.</p>
+</section>
+
+<section>
+  <h2>Where the flux-form volume loss comes from</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_fluxvolloss.png"
+       style="max-height:560px; width:100%">
+  <ul class="tight" style="font-size:0.72em">
+    <li><b>Mechanism = upwind finite-volume dissipation</b>, not the invariant mismatch.
+        The flux evaluates the UPWIND cell's reconstruction at the face &mdash; a dissipative
+        (irreversible) operation. When the reversed vortex compresses the interface toward
+        sub-cell scale (band \(|\nabla\psi|\) climbs to ~5), that dissipation smears the
+        steep &psi;.</li>
+    <li><b>Left:</b> flux volume drops MONOTONICALLY (&minus;17% by t=6.5) because
+        dissipation is irreversible; point-value only OSCILLATES (&plusmn;1%) and RECOVERS
+        on flow reversal (its errors are dispersive = reversible).</li>
+    <li><b>Right:</b> flux ends with band \(|\nabla\psi|\) = 0.72 &lt; 1 (flattened
+        interface) + fewer interface cells; point-value stays steeper (0.96).</li>
+    <li>\(\int\psi\,dV\) is machine-conserved throughout &mdash; but &alpha; = H(&minus;&psi;)
+        is nonlinear, so a smeared &psi; shifts the zero contour inward. At T = 2 the interface
+        never compresses far, dissipation is negligible, flux = point-value.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Frozen-band redistancing &mdash; measured injurious</h2>
+  <img src="../method-comparison-article/data/figures/benchVortex_frozen.png"
+       style="max-height:600px; width:100%">
+  <p class="footnote">Eulerian line, T = 8. The redistancer engineered for zero interface
+     displacement (static gate: E<sub>geom</sub> = E<sub>vol</sub> = 0) still inflates the
+     volume error 10&ndash;100&times; in transport &mdash; it rebuilds distance to
+     linearUpwind's spurious BULK sign-changes, which the indicator reads as phase.
+     Redistancing can't fix what transport corrupted. The GRL line is closed; SDPLS stays
+     the only viable &psi;-maintenance.</p>
+</section>
+</section>
+
+<section data-track="Capillary balance">
+<section>
+  <p class="part-kicker">Part 7 of 8</p>
+  <h2>Surface tension now has one enforceable face-flux contract</h2>
+  <p style="font-size:1.0em; margin:0.35em 0">
+    model &nbsp;&rarr;&nbsp;
+    \(G_{\sigma,f}=\int_{S_f}\mathbf f_\sigma\!\cdot\mathbf n_f\,dS\)
+    <span class="muted">[N/m]</span>
+    &nbsp;&rarr;&nbsp; pressure flux &nbsp;&rarr;&nbsp; <code>fvc::reconstruct</code>
+  </p>
+  <div class="cols" style="align-items:flex-start; margin-top:0.7em">
+    <div>
+      <h3 class="accent">What changed</h3>
+      <ul class="tight" style="font-size:0.78em">
+        <li>Every model integrates over \(|S_f|\) before returning.</li>
+        <li>The base API rejects wrong dimensions or unoriented fluxes.</li>
+        <li>The direct cell-vector source has been removed.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="accent">What PIMPLE sees</h3>
+      <p style="font-size:0.78em">
+        \(\phi_g=r_{AU,f}\,[G_{\sigma,f}-g h_f\,\mathrm{snGrad}(\rho)|S_f|]\)
+      </p>
+      <p style="font-size:0.78em">
+        \(\mathbf U=\mathbf H/A+r_{AU}\,\mathrm{reconstruct}[(\phi_g-\phi_p)/r_{AU,f}]\)
+      </p>
+    </div>
+  </div>
+  <p class="footnote">The same evaluated \(G_{\sigma,f}\) is reused in the momentum
+     predictor and pressure corrector. A production model can no longer enter through
+     a discretely inequivalent cell source.</p>
+</section>
+
+<section>
+  <h2>Only the exact-curvature control remains capillary-balanced</h2>
+  <table class="num" style="margin:auto; font-size:0.62em">
+    <thead><tr><th>model</th><th>outcome</th><th>max \(|U-U_{trans}|\)</th>
+               <th>final \(|U-U_{trans}|\)</th></tr></thead>
+    <tbody>
+      <tr><td><b>constant curvature 1/R</b></td><td class="good">t=0.05</td>
+          <td class="good"><b>2.17e-7</b></td><td>4.89e-8</td></tr>
+      <tr><td>div(grad &psi;/|grad &psi;|)</td><td>t=0.05</td>
+          <td>9.06e-2</td><td>6.56e-2</td></tr>
+      <tr><td>trace(grad n<sub>&psi;</sub>)</td><td>t=0.05</td>
+          <td>9.06e-2</td><td>6.56e-2</td></tr>
+      <tr><td>trace(grad n<sub>geo</sub>)</td><td>t=0.05</td>
+          <td>9.06e-2</td><td>6.56e-2</td></tr>
+      <tr><td>Kang interface interpolation</td><td>t=0.05</td>
+          <td class="warn">1.67e-1</td><td>1.63e-1</td></tr>
+    </tbody>
+  </table>
+  <p class="warn" style="font-size:0.78em">Survival is not equilibrium: the best
+     computed-curvature survivor peaks at 0.0906 m/s, larger than the imposed
+     0.05 m/s translation.</p>
+  <p class="footnote">N=64, U<sub>trans</sub>=(0.05,0,0) m/s, quadratic SL, rhoLENT,
+     central geometric face density, capillary max &Delta;t=2.12129e-5 s. Metric is
+     the maximum cell-centred velocity disturbance over the complete trajectory.</p>
+</section>
+
+<section>
+  <h2>Five geometric or reconstructed models fail before 4 ms</h2>
+  <table class="num" style="margin:auto; font-size:0.62em">
+    <thead><tr><th>model</th><th>last valid t [s]</th>
+               <th>max \(|U-U_{trans}|\) [m/s]</th></tr></thead>
+    <tbody>
+      <tr><td>reconstructed curvature</td><td>3.776e-3</td>
+          <td class="bad">6.905</td></tr>
+      <tr><td>alpha-smoothed CSF curvature</td><td>9.546e-4</td>
+          <td class="bad">1.075</td></tr>
+      <tr><td>structured integral surface tension</td><td>9.334e-4</td>
+          <td class="bad">4.631</td></tr>
+      <tr><td>integral conormal &rarr; face flux</td><td>9.546e-4</td>
+          <td class="bad">3.538</td></tr>
+      <tr><td>iso-conormal CSF curvature</td><td>1.421e-3</td>
+          <td class="bad">0.903</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.8em"><b>Conclusion:</b> the face-flux contract removes a
+     coupling ambiguity, but it does not repair curvature/noise or force localisation.
+     The exact control proves the pressure&ndash;velocity path can preserve translating
+     equilibrium; the next research gate must improve the computed capillary flux itself.</p>
+  <p class="footnote"><code>data/tables/transISTN64ForceFluxModelMatrix.csv</code> &middot;
+     failed cases report the maximum over every finite CSV row before FPE.</p>
+</section>
+
+<section>
+  <h2>Spatial curvature variation is the active defect</h2>
+  <table class="num" style="margin:auto; font-size:0.54em">
+    <thead><tr><th>one-step replay</th><th>t=0</th><th>t&asymp;0.01</th>
+               <th>t&asymp;0.025</th><th>t&asymp;0.05</th></tr></thead>
+    <tbody>
+      <tr><td>exact constant</td><td class="good">7.60e-9</td><td class="good">5.07e-9</td>
+          <td class="good">9.50e-9</td><td class="good">7.37e-9</td></tr>
+      <tr><td><b>computed interface mean</b></td><td class="good"><b>7.66e-9</b></td>
+          <td class="good"><b>5.11e-9</b></td><td class="good"><b>9.60e-9</b></td>
+          <td class="good"><b>3.84e-9</b></td></tr>
+      <tr><td>quadratic cell centre</td><td>7.11e-3</td><td>8.47e-3</td>
+          <td class="bad">1.08e-1</td><td class="bad">2.03</td></tr>
+      <tr><td>closest-point quadratic</td><td>7.07e-3</td><td>8.43e-3</td>
+          <td class="bad">1.14e-1</td><td class="bad">1.25</td></tr>
+      <tr><td>foot-point height function</td><td class="good">1.49e-4</td><td>2.98e-3</td>
+          <td class="bad">1.18e-1</td><td class="bad">1.87e-1</td></tr>
+      <tr><td>quadratic + Kang face value</td><td>1.19e-3</td><td>2.06e-3</td>
+          <td class="bad">1.01e-1</td><td class="bad">1.08</td></tr>
+      <tr><td>FVM + Kang</td><td>1.91e-3</td><td>2.89e-3</td>
+          <td>1.64e-2</td><td class="warn">2.50e-2</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.75em; margin:0.45em 0"><b>Mechanism isolated:</b> the computed
+     mean curvature itself can change while PIMPLE remains balanced; it is the spatial
+     variation of κ on the CSF support that leaves a velocity-producing component.
+     The foot-point fit is excellent on the clean interface, but its advantage disappears
+     as the transported ψ profile deteriorates.</p>
+  <p class="footnote">Quiet exact-curvature, uncached-quadratic-SL snapshots; U reset to
+     U<sub>trans</sub>; interface frozen; one complete PIMPLE timestep. Entries are maximum
+     cell-centred ∣U−U<sub>trans</sub>∣ [m/s]. Decision data:
+     <code>transISTN64CurvatureDeliveryReplay.csv</code>.</p>
+</section>
+
+<section>
+  <h2>The old representation fitted many interfaces, not one interface</h2>
+  <div class="cols" style="align-items:flex-start; margin-top:0.45em">
+    <div>
+      <h3 class="warn">Independent-cell construction</h3>
+      <ul class="tight" style="font-size:0.73em">
+        <li><code>signChange</code> is two cells thick; it is not the set of cut cells.</li>
+        <li>Each cell reconstructed its own LSQ zero plane and its own foot.</li>
+        <li>CPC clouds and parabola fits differed from one cell to the next.</li>
+        <li>Normal delivery copied inconsistent curvature values into the same
+            CSF support.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="accent">Observed consequence</h3>
+      <p style="font-size:0.76em">
+        The clean circle could have a good local fit in every cell while still having
+        no single ordering, no shared nodes and no tangential smoothness constraint.
+      </p>
+      <p style="font-size:0.76em">
+        Transport-profile noise changed the local feet independently; the resulting
+        \(\kappa_f\) variation was not a discrete pressure gradient.
+      </p>
+    </div>
+  </div>
+  <p class="resultline"><b>Design change:</b> define the zero surface globally first;
+     only then fit and deliver curvature.</p>
+</section>
+
+<section>
+  <h2>One shared face crossing now connects the complete zero contour</h2>
+  <div class="flowline">
+    <div class="step"><b>1. Vertex field</b><br>
+      \(\psi_p=I_{v\leftarrow c}\psi_c\)</div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><b>2. Cross each face once</b><br>
+      \(q=x_0+\frac{\psi_0}{\psi_0-\psi_1}(x_1-x_0)\)</div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><b>3. Reuse the node</b><br>
+      owner and neighbour receive the identical \(x_f^\Gamma\)</div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><b>4. Form an element</b><br>
+      two crossed faces of cell \(c\): \(e_c=[x_a^\Gamma,x_b^\Gamma]\)</div>
+  </div>
+  <ul class="tight" style="font-size:0.73em; margin-top:0.55em">
+    <li>The geometry is a continuous piecewise-linear iso-contour of the
+        point-interpolated level set.</li>
+    <li>The LSQ reconstruction still supplies an outward normal, but no longer
+        decides independent segment endpoints.</li>
+    <li>At all four N=64 replay snapshots: <b>52 elements, one component, zero open
+        ends</b>.</li>
+  </ul>
+  <p class="footnote">Current implementation is serial and pseudo-2D. Multiple physical
+     components, processor boundaries and connected 3-D surface patches are later work.</p>
+</section>
+
+<section>
+  <h2>Curvature is now one degree of freedom per interface element</h2>
+  <div class="eqblock">
+    For element midpoint \(x_i\), gather the ordered chain stencil
+    \(i-w,\ldots,i,\ldots,i+w\). Align and length-average the LSQ normals to obtain
+    \(\bar n_i\), then set \(t_i=e_z\times\bar n_i\).
+  </div>
+  <div class="cols" style="align-items:flex-start; margin-top:0.4em">
+    <div>
+      <h3 class="accent">Tangential coordinates</h3>
+      <p style="font-size:0.76em">
+        \(\tau_j=t_i\cdot(x_j-x_i)/h_i,\quad
+          \zeta_j=\bar n_i\cdot(x_j-x_i)/h_i\)
+      </p>
+      <p style="font-size:0.76em">
+        Fit \(\zeta(\tau)=\tfrac12 A_i\tau^2+B_i\tau+C_i\) by least squares.
+      </p>
+    </div>
+    <div>
+      <h3 class="accent">Element curvature</h3>
+      <p style="font-size:0.82em">
+        \[\kappa_i^{raw}=-\frac{A_i/h_i}{(1+B_i^2)^{3/2}}\]
+      </p>
+      <p class="muted" style="font-size:0.7em">Sign convention:
+         \(\nabla\psi\) points outward, so a circular drop has \(+1/R\).</p>
+    </div>
+  </div>
+  <p class="resultline">Unlike the foot-point model, every stencil follows the same
+     ordered chain. Half-widths \(w=3,4,5\) were replayed.</p>
+</section>
+
+<section>
+  <h2>Tangential regularization removes grid modes without normal mixing</h2>
+  <div class="eqblock">
+    Chain Laplacian:
+    \( (L_s\kappa)_i=2\kappa_i-\kappa_{i-1}-\kappa_{i+1} \)
+  </div>
+  <div class="cols" style="align-items:flex-start; margin-top:0.35em">
+    <div>
+      <h3 class="accent">Helmholtz candidate</h3>
+      <p style="font-size:0.78em">
+        \[(I+\lambda L_s)\kappa=\kappa^{raw}\]
+      </p>
+      <p style="font-size:0.7em">Jacobi iteration; tested
+         \((w,\lambda)=(3,1),(4,4),(5,16)\).</p>
+    </div>
+    <div>
+      <h3 class="accent">Biharmonic candidate</h3>
+      <p style="font-size:0.78em">
+        \[\kappa\leftarrow\kappa-\theta L_s^2\kappa,\qquad\theta\le1/16\]
+      </p>
+      <p style="font-size:0.7em">Higher selectivity for grid modes; tested 20 and
+         50 passes with \(w=3,\theta=0.05\).</p>
+    </div>
+  </div>
+  <p style="font-size:0.75em; margin:0.3em 0"><b>Closed-curve constraint:</b>
+     after filtering, add one constant so
+     \(\sum_i\kappa_i\,\ell_i=\pm2\pi\). This fixes the global curvature null mode
+     without deleting spatially varying physical modes.</p>
+</section>
+
+<section>
+  <h2>Normal extension now terminates directly on the CSF faces</h2>
+  <div class="eqblock">
+    For face centre \(x_f\), select the interface element whose normal ray is closest:
+    \[
+      j(f)=\arg\min_j\left[d_{t,j}^2+0.01\,d_{n,j}^2\right],\qquad
+      |x_f-x_j|\le6h_j .
+    \]
+  </div>
+  <div class="flowline" style="margin-top:0.45em">
+    <div class="step"><b>Element value</b><br>\(\kappa_j\)</div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><b>Normal-ray delivery</b><br>
+      \(\kappa_f^\Gamma=\kappa_{j(f)}\)</div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><b>Registered surface field</b><br>
+      <code>kappaInterfaceFace</code></div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><b>Integrated face flux</b><br>
+      \(G_{\sigma,f}=\sigma\kappa_f^\Gamma\,\mathrm{snGrad}(\alpha)|S_f|\)</div>
+  </div>
+  <p style="font-size:0.75em"><code>reconstructedCurvature</code> looks up the surface
+     field directly. The cell field <code>kappa</code> is filled only for diagnostics;
+     <span class="warn">no cell curvature is interpolated back to the force faces.</span></p>
+</section>
+
+<section>
+  <h2>The replay now rejects falsely quiet candidates</h2>
+  <div class="cols" style="align-items:flex-start; margin-top:0.4em">
+    <div>
+      <h3 class="warn">Failure caught during development</h3>
+      <p style="font-size:0.76em">The first implementation reported
+         \(|U-U_{trans}|\approx2\times10^{-17}\) m/s&mdash;apparently better than the
+         exact-curvature control.</p>
+      <p style="font-size:0.76em">It was false: all reconstructed elements had been
+         rejected, <code>kappaInterfaceFace</code> was zero, and no capillary force was
+         applied.</p>
+    </div>
+    <div>
+      <h3 class="accent">Mandatory validity audit</h3>
+      <ul class="tight" style="font-size:0.74em">
+        <li>non-empty reconstruction;</li>
+        <li>exactly one component for this one-drop case;</li>
+        <li>zero open endpoints;</li>
+        <li>successful fits = interface elements;</li>
+        <li>zero fallbacks and solver status 0.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="resultline"><b>Decision metric remains only maximum cell-centred
+     \(|U-U_{trans}|\).</b> Topology is a validity condition, not a substitute force-error
+     norm.</p>
+</section>
+
+<section>
+  <h2>Every connected candidate completed a topology-valid replay</h2>
+  <table class="num" style="margin:auto; font-size:0.53em">
+    <thead><tr><th>candidate</th><th>t=0</th><th>t&asymp;0.01</th>
+               <th>t&asymp;0.025</th><th>t&asymp;0.05</th></tr></thead>
+    <tbody>
+      <tr><td>Helmholtz \(w=3,\lambda=1\)</td><td>1.67e-3</td><td>1.66e-3</td>
+          <td>1.79e-2</td><td>5.01e-2</td></tr>
+      <tr><td>Helmholtz \(w=4,\lambda=4\)</td><td>9.98e-4</td><td>7.05e-4</td>
+          <td>7.88e-3</td><td>1.60e-2</td></tr>
+      <tr><td><b>Helmholtz \(w=5,\lambda=16\)</b></td>
+          <td class="good"><b>6.01e-4</b></td><td class="good"><b>4.38e-4</b></td>
+          <td class="good"><b>1.79e-3</b></td><td class="good"><b>4.55e-3</b></td></tr>
+      <tr><td>biharmonic \(w=3,\theta=.05,\;20\times\)</td><td>1.74e-3</td><td>9.44e-4</td>
+          <td>1.62e-2</td><td>5.21e-2</td></tr>
+      <tr><td>biharmonic \(w=3,\theta=.05,\;50\times\)</td><td>1.31e-3</td><td>1.18e-3</td>
+          <td>8.47e-3</td><td>3.50e-2</td></tr>
+      <tr><td class="muted">FVM + Kang reference</td><td>1.91e-3</td><td>2.89e-3</td>
+          <td>1.64e-2</td><td>2.50e-2</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.73em; margin:0.4em 0">At the hardest snapshot the selected
+     candidate is <b>5.5&times;</b> quieter than FVM&ndash;Kang,
+     <b>41&times;</b> quieter than the independent foot-point fit, and
+     <b>447&times;</b> quieter than cell-centred quadratic curvature.</p>
+  <p class="footnote">Every connected row: 52 elements &middot; one component &middot;
+     zero open ends &middot; 52/52 fits &middot; zero fallbacks. Entries are maximum
+     cell-centred |U&minus;U<sub>trans</sub>| [m/s] &middot;
+     <code>transISTN64CurvatureDeliveryReplay.csv</code>.</p>
+</section>
+
+<section>
+  <h2>The quietest circle candidate may erase the oscillation we need</h2>
+  <div class="eqblock">
+    On a periodic chain with \(N_\Gamma\) elements, Helmholtz filtering transfers
+    Fourier mode \(m\) by
+    \[
+       H_m=\frac{1}{1+\lambda\mu_m},\qquad
+       \mu_m=4\sin^2\!\left(\frac{\pi m}{N_\Gamma}\right).
+    \]
+  </div>
+  <div class="cols" style="align-items:flex-start; margin-top:0.4em">
+    <div>
+      <h3 class="good">Replay benefit</h3>
+      <p style="font-size:0.78em">For \(N_\Gamma=52,w=5,\lambda=16\), the transported
+         circle has element curvature only about \([978,1034]\) m<sup>&minus;1</sup>
+         at \(t\approx0.05\).</p>
+    </div>
+    <div>
+      <h3 class="warn">Physical cost</h3>
+      <p style="font-size:0.78em">For the oscillating-drop mode \(m=2\), the filter
+         alone gives \(H_2\approx0.52\). The wide local fit attenuates it further.</p>
+    </div>
+  </div>
+  <p class="resultline"><b>Therefore:</b> replay quietness is necessary but not sufficient.
+     The selected candidate is not yet an oscillating-droplet model.</p>
+</section>
+
+<section>
+  <h2>For CSF models, connected face curvature becomes a shared service</h2>
+  <table style="margin:auto; font-size:0.55em; width:96%">
+    <thead><tr><th>model family</th><th>what changes</th><th>what remains distinct</th></tr></thead>
+    <tbody>
+      <tr><td><b>reconstructedCurvature</b></td>
+          <td><code>faceCurvatureSource registered</code> consumes
+              <code>kappaInterfaceFace</code> directly.</td>
+          <td>Geometric \(\alpha\) localises the force.</td></tr>
+      <tr><td>divGradPsi / traceGrad / traceGradGeo</td>
+          <td>The registered path now bypasses cell differentiation and interpolation.</td>
+          <td>The native estimator remains available with
+              <code>faceCurvatureSource model</code>.</td></tr>
+      <tr><td>quadratic or FVM + Kang</td>
+          <td>Kang explicitly bypasses owner/neighbour interpolation when the
+              face-native service is selected.</td>
+          <td>Sharp-Heaviside versus geometric-\(\alpha\) force support remains testable.</td></tr>
+      <tr><td>alpha-smoothed / correction CSF</td>
+          <td>Consumes the same \(\kappa_f\) through the common assembly.</td>
+          <td>Retains <code>snGrad(alphaS)</code>; density and \(r_{AU,f}\) errors
+              remain solver-side.</td></tr>
+      <tr><td>exact constant curvature</td>
+          <td>No production change.</td>
+          <td>Retains its role as the pressure-flux null-space oracle.</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">The reusable object is \(\kappa_f^\Gamma\), not a new cell source.
+     The base class assembles and validates integrated scalar \(G_{\sigma,f}\).</p>
+</section>
+
+<section>
+  <h2>The shared service removes the model-name variable</h2>
+  <p style="font-size:0.72em">All rows use the same connected half-width-3,
+     20-pass biharmonic face curvature. The observable is one complete
+     frozen-interface PIMPLE step: maximum cell-centred \(|U-U_{trans}|\) [m/s].</p>
+  <table style="margin:auto; font-size:0.58em; width:94%">
+    <thead><tr><th>consumer / localisation</th><th>t=0</th><th>t~0.01</th><th>t~0.025</th><th>t~0.05</th></tr></thead>
+    <tbody>
+      <tr><td>reconstructed + geometric \(\alpha\)</td><td>1.7449e-3</td><td>9.4418e-4</td><td>1.6189e-2</td><td>5.2088e-2</td></tr>
+      <tr class="good"><td>div / both trace / Kang / iso + geometric \(\alpha\)</td><td>1.7449e-3</td><td>9.4418e-4</td><td>1.6189e-2</td><td>5.2088e-2</td></tr>
+      <tr class="warn"><td>alpha-CSF + smoothed \(\alpha_S\)</td><td>2.8929e-3</td><td>5.2182e-3</td><td>2.5169e-2</td><td>1.1393e-1</td></tr>
+      <tr><td>exact constant oracle</td><td>7.60e-9</td><td>5.07e-9</td><td>9.50e-9</td><td>7.37e-9</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline"><b>Meaning:</b> once \(\kappa_f\) and localisation match,
+     reconstructed, divergence, trace, Kang and iso-CSF are numerically the same
+     force model. The remaining alpha-CSF difference is localisation, not curvature.</p>
+</section>
+
+<section>
+  <h2>Integral traction models inherit the geometry, not automatic balance</h2>
+  <div class="cols" style="align-items:flex-start; margin-top:0.4em">
+    <div>
+      <h3 class="accent">What they can reuse</h3>
+      <ul class="tight" style="font-size:0.73em">
+        <li>shared zero-crossing nodes;</li>
+        <li>consistent element ordering and orientation;</li>
+        <li>element tangents, normals and lengths;</li>
+        <li>the same element curvature if a pressure-jump correction is retained.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="warn">What remains unsolved</h3>
+      <ul class="tight" style="font-size:0.73em">
+        <li><code>integralConormal</code> is curvature-free; forcing it through
+            \(\kappa_f\nabla\alpha\) changes the model.</li>
+        <li>A globally conservative cell traction is not necessarily integrable as a
+            scalar pressure jump on OpenFOAM faces.</li>
+        <li>Its own face-native traction-to-\(G_{\sigma,f}\) derivation must still
+            cancel the \(r_{AU,f}\)-weighted pressure flux face by face.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="resultline"><b>Implication:</b> connected geometry removes one major source
+     of inconsistency across all models; it does not make every surface-tension
+     discretisation balanced.</p>
+</section>
+
+<section>
+  <h2>The manufactured mode gate now tests the production reconstruction</h2>
+  <div class="eqblock">
+    Manufacture perturbed circles
+    \(r(\theta)=R[1+\varepsilon\cos(m\theta)]\), \(m=2,3,4\), with exact curvature
+    \[
+      \kappa(\theta)=\frac{r^2+2(r')^2-r r''}{[r^2+(r')^2]^{3/2}}.
+    \]
+  </div>
+  <ol style="font-size:0.69em; margin-top:0.35em">
+    <li><code>leiaTestConnectedCurvatureModes</code> calls the same C++ function as
+        the coupled solver and exports its actual elements and curvatures.</li>
+    <li>Matrix: \(m=2,3,4\); N=32,64,128; uniform and deterministic 10%-perturbed meshes.</li>
+    <li>N=32 is topology/under-resolution evidence. For N&ge;64 the fixed limits are
+        \(0.8\le A_m/A_m^*\le1.2\), phase &le;10&deg;, relative L2 &le;0.25, one closed component.</li>
+    <li>Every candidate is then evaluated on the same four velocity replays.</li>
+  </ol>
+  <p class="footnote">Detailed result: <code>curvatureModeTransferGate.csv</code>;
+     candidate verdicts: <code>curvatureModeTransferGateSummary.csv</code>.</p>
+</section>
+
+<section>
+  <h2>Scalar regularization reaches a Pareto wall</h2>
+  <table style="margin:auto; font-size:0.56em; width:96%">
+    <thead><tr><th>candidate</th><th>min transfer, N&ge;64</th><th>max rel. L2</th><th>late replay [m/s]</th><th>mode gate</th></tr></thead>
+    <tbody>
+      <tr><td>h3 Helmholtz \(\lambda=1\)</td><td>0.716</td><td>0.0689</td><td>0.04205</td><td class="bad">fail</td></tr>
+      <tr><td>h5 Helmholtz \(\lambda=16\)</td><td>0.156</td><td>0.1757</td><td class="good">0.00469</td><td class="bad">fail</td></tr>
+      <tr><td>h3 biharmonic, 20</td><td class="good">0.838</td><td>0.0713</td><td>0.05209</td><td class="good">pass</td></tr>
+      <tr><td>h3 biharmonic, 50</td><td>0.772</td><td>0.0551</td><td>0.03503</td><td class="bad">fail</td></tr>
+      <tr><td>h4 biharmonic, 10</td><td>0.797</td><td>0.0617</td><td>0.03935</td><td class="bad">fail</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline"><b>Conclusion:</b> increasing one scalar smoothing strength
+     suppresses the late replay defect only by erasing resolved \(m=4\) curvature.
+     Parameter tuning alone cannot satisfy both gates.</p>
+</section>
+
+<section>
+  <h2>A constrained filter passes the geometry gate without flattening modes</h2>
+  <div class="eqblock">
+    Apply strong Helmholtz graph smoothing, then restore the weighted arclength
+    projection of the raw-minus-filtered curvature onto modes \(m=2,3,4\):
+    \[
+      \kappa^c=\kappa^H+P_{2:4}(\kappa^{raw}-\kappa^H),\qquad
+      \int_\Gamma \kappa^c\,ds=2\pi.
+    \]
+  </div>
+  <div class="cols" style="align-items:flex-start; margin-top:0.45em">
+    <div><h3 class="good">Manufactured gate: pass</h3>
+      <ul class="tight" style="font-size:0.7em">
+        <li>half-width 4, \(\lambda=16\), 120 iterations;</li>
+        <li>transfer 0.819&ndash;1.134;</li>
+        <li>max phase error 1.426&deg;;</li>
+        <li>max relative L2 0.0390.</li>
+      </ul>
+    </div>
+    <div><h3 class="warn">Replay: improved, not quiet</h3>
+      <ul class="tight" style="font-size:0.7em">
+        <li>t=0: 1.305e-3 m/s;</li>
+        <li>t~0.025: 4.542e-3 m/s;</li>
+        <li>t~0.05: 1.284e-2 m/s;</li>
+        <li>best replay among mode-preserving candidates.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The full translating run rejects the candidate before oscillation</h2>
+  <div class="flowline" style="margin-top:0.7em">
+    <div class="step good"><b>Gate A: pass</b><br>topology + transfer<br>\(m=2,3,4\)</div>
+    <div class="arrow">&rarr;</div>
+    <div class="step warn"><b>Gate B: Pareto winner</b><br>late replay<br>1.284e-2 m/s</div>
+    <div class="arrow">&rarr;</div>
+    <div class="step bad"><b>Coupled N=64: fail</b><br>reached 0.05 s<br>max error 8.93e-2 m/s</div>
+    <div class="arrow">&rarr;</div>
+    <div class="step warn"><b>Oscillation</b><br>executed next<br>as requested</div>
+  </div>
+  <ul class="tight" style="font-size:0.7em; margin-top:0.65em">
+    <li>Transient absolute volume error peaks at 2.376%; final radial Linf is 0.2038 mm.</li>
+    <li>The regularizer now preserves physical low modes, but it also lets capillarity
+        react to low-mode shape errors created by SL transport.</li>
+    <li class="accent"><b>Next controlled test:</b> replay an analytically translated
+        manufactured interface, or maintain a coupled shape/curvature modal budget,
+        to separate physical restoring motion from parasitic imbalance.</li>
+  </ul>
+  <p class="footnote">The translating failure is retained as evidence; it was not
+     promoted into an extra, undocumented gate on the requested oscillating run.</p>
+</section>
+
+<section>
+  <h2>The oscillating benchmark first exposed an initialisation defect</h2>
+  <div class="cols" style="align-items:flex-start; margin-top:0.45em">
+    <div>
+      <h3 class="bad">Legacy implicitEllipsoid</h3>
+      <div class="eqblock" style="font-size:0.72em">
+        \(\psi_A=x^2/a^2+y^2/b^2-1\)
+      </div>
+      <ul class="tight" style="font-size:0.68em">
+        <li>correct zero contour, wrong metric;</li>
+        <li>initial band \(|\nabla\psi|=O(10^3)\);</li>
+        <li>invalid input to Detrixhe&ndash;Aslam and SL transport.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="good">New signedDistanceEllipse</h3>
+      <div class="eqblock" style="font-size:0.72em">
+        \(\psi_D=\operatorname{sgn}(\psi_A)\min_{q\in\Gamma}|x-q|\)
+      </div>
+      <ul class="tight" style="font-size:0.68em">
+        <li>global closest point bracketed and refined;</li>
+        <li>legacy algebraic type remains unchanged;</li>
+        <li>initial band \(|\nabla\psi|=0.9877\ldots0.99997\).</li>
+      </ul>
+    </div>
+  </div>
+  <p class="resultline"><b>Rule:</b> an oscillating level-set benchmark must begin
+     from a metric distance field; matching only the zero contour is insufficient.</p>
+</section>
+
+<section>
+  <h2>The corrected N=64 oscillation still fails after about two periods</h2>
+  <table style="margin:auto; font-size:0.62em; width:92%">
+    <thead><tr><th>observable</th><th>result</th><th>interpretation</th></tr></thead>
+    <tbody>
+      <tr><td>requested / last complete time</td><td>0.1 / 0.020895 s</td><td class="bad">SIGFPE in U solve</td></tr>
+      <tr><td>mode-2 amplitude</td><td>0.0949 &rarr; max 0.5121 mm</td><td class="bad">nonphysical growth</td></tr>
+      <tr><td>maximum cell velocity</td><td>15.46 m/s at 0.01589 s</td><td class="bad">catastrophic</td></tr>
+      <tr><td>maximum volume error</td><td>4.965%</td><td class="bad">coupled transport failure</td></tr>
+      <tr><td>mode-2 period</td><td>8.801 vs 9.508 ms</td><td>&minus;7.44%, before runaway</td></tr>
+      <tr><td>final \(|\nabla\psi|\) band</td><td>0.0858&ndash;7.087</td><td class="bad">distance profile collapses</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">The solver CSV now includes a least-squares polar
+     \(m=2\) decomposition. Publication files:
+     <code>oscISTN64ConnectedModePreserving*.csv</code>.</p>
+</section>
+
+<section>
+  <h2>The exact variable-curvature velocity oracle is now executable</h2>
+  <p class="small"><strong>Provenance:</strong> clean repository-wide rebuild and replay with OpenFOAM v2512.</p>
+  <ol style="font-size:0.71em; margin-top:0.55em">
+    <li><code>curvatureExtension.estimator analyticImplicitSurface</code> evaluates
+        exact ellipse curvature at each reconstructed interface element.</li>
+    <li>Topology, elements, normal-ray face delivery, geometric \(\alpha\),
+        rhoLENT, timestep, pressure tolerances and PIMPLE are unchanged.</li>
+    <li>The candidate uses <code>connectedFit + helmholtzPreserveModes</code> on
+        the same mesh and initial signed-distance field.</li>
+    <li>The runner reads both written cell-centred U fields and reports only
+        \(\max_c|U_c^{candidate}-U_c^{oracle}|\).</li>
+  </ol>
+  <p class="footnote">Executed at N=32,64,128 on identical uniform and
+     deterministic 10%-perturbed mesh pairs. Perturbed pressure solves were
+     rerun with the velocity-converged eight non-orthogonal correctors. No
+     surface-force norm is used.</p>
+</section>
+
+<section>
+  <h2>Uniform-grid curvature error shrinks, but skew meshes reject both paths</h2>
+  <table style="margin:auto; font-size:0.54em; width:98%">
+    <thead>
+      <tr><th rowspan="2">N</th><th colspan="4">uniform mesh [m/s]</th><th colspan="4">10%-perturbed mesh [m/s]</th></tr>
+      <tr><th>oracle |U|max</th><th>candidate |U|max</th><th>max difference</th><th>/ oracle</th>
+          <th>oracle |U|max</th><th>candidate |U|max</th><th>max difference</th><th>/ oracle</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>32</td><td>0.02895</td><td>0.04268</td><td>0.01374</td><td>47.5%</td>
+          <td>2.364</td><td>3.341</td><td>2.230</td><td>94.3%</td></tr>
+      <tr><td>64</td><td>0.03699</td><td>0.04008</td><td>0.004023</td><td class="good">10.9%</td>
+          <td>3.673</td><td>3.648</td><td>0.4643</td><td>12.6%</td></tr>
+      <tr><td>128</td><td>0.008376</td><td>0.009743</td><td>0.001654</td><td>19.7%</td>
+          <td>0.7119</td><td>0.9000</td><td>0.7118</td><td class="bad">100.0%</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline"><b>Decision:</b> candidate curvature is a secondary error
+     on uniform grids. On perturbed grids, exact curvature itself produces
+     82&ndash;99 times the uniform-grid oracle velocity, so this candidate cannot advance.</p>
+</section>
+
+<section>
+  <h2>The second oracle removes numerical geometry before PIMPLE</h2>
+  <ol style="font-size:0.68em; margin-top:0.45em">
+    <li><b>Connected surface:</b> evaluate the signed-distance ellipse directly at
+        every mesh vertex; shared face crossings no longer use cell-to-point
+        interpolation.</li>
+    <li><b>Element normals:</b> evaluate the analytic ellipse normal at each chord
+        centre; no least-squares normal enters normal-ray curvature delivery.</li>
+    <li><b>Cell localisation:</b> build each Detrixhe&ndash;Aslam tangent plane from
+        analytic signed distance and normal at the cell centre.</li>
+    <li><b>Face density:</b> use those same analytic tangent planes for the rhoLENT
+        face area fraction.</li>
+  </ol>
+  <p class="resultline"><b>Still numerical by design:</b>
+     <code>snGrad(alpha)</code>, density weighting, \(r_{AU,f}\), the pressure
+     Laplacian and the common <code>fvc::reconstruct</code> remain unchanged.</p>
+  <p class="footnote">The three paths are candidate, exact curvature on numerical
+     geometry, and exact curvature plus analytic geometry/localisation. Metric:
+     cell-centred velocity only.</p>
+</section>
+
+<section>
+  <h2>Analytic geometry does not rescue the perturbed meshes</h2>
+  <table style="margin:auto; font-size:0.57em; width:96%">
+    <thead>
+      <tr><th rowspan="2">N</th><th colspan="2">uniform max |U| [m/s]</th>
+          <th colspan="3">10%-perturbed mesh [m/s]</th></tr>
+      <tr><th>exact \(\kappa\)</th><th>+ analytic geometry</th>
+          <th>exact \(\kappa\)</th><th>+ analytic geometry</th><th>direct field change</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>32</td><td>0.02895</td><td>0.03858</td><td>2.364</td><td class="bad">3.921</td><td>2.245</td></tr>
+      <tr><td>64</td><td>0.03699</td><td>0.02847</td><td>3.673</td><td class="bad">3.263</td><td>1.281</td></tr>
+      <tr><td>128</td><td>0.008376</td><td>0.006917</td><td>0.7119</td><td class="bad">1.129</td><td>0.5924</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline"><b>Decision:</b> the analytic-geometry oracle remains
+     102&ndash;163 times larger on perturbed than uniform meshes. Removing vertex
+     interpolation and LSQ normals is not the cure.</p>
+  <p class="footnote">All 18 frozen one-step solves completed under OpenFOAM v2512;
+     perturbed rows use eight non-orthogonal correctors. Every reconstruction
+     retained one closed component and no fallback. No force norm is used.</p>
+</section>
+
+<section>
+  <h2>Perturbed mesh entered the CFD programme only in the oracle stage</h2>
+  <table style="margin:auto; font-size:0.62em; width:94%">
+    <thead><tr><th>research stage</th><th>interface</th><th>mesh</th><th>pressure implication</th></tr></thead>
+    <tbody>
+      <tr><td>stationary droplet</td><td>circle</td><td>uniform hex</td><td>no skew-mesh test</td></tr>
+      <tr><td>translating droplet</td><td>translated circle</td><td>uniform hex</td><td>no skew-mesh test</td></tr>
+      <tr><td>oscillating droplet</td><td>perturbed ellipse</td><td>uniform hex</td><td>&ldquo;perturbed&rdquo; meant shape</td></tr>
+      <tr><td>mode-transfer gate</td><td>perturbed circles</td><td>uniform + perturbed</td><td>curvature-only; no PIMPLE</td></tr>
+      <tr><td>velocity oracles</td><td>ellipse / exact circle</td><td>uniform + perturbed</td><td>first skew-mesh capillary gates</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline"><b>Audit:</b> the later perturbed CFD oracle rows initially
+     inherited one non-orthogonal correction. They have now been rerun with the
+     independently converged value of eight.</p>
+</section>
+
+<section>
+  <h2>The constant-curvature gate isolates pressure compatibility</h2>
+  <div class="cols" style="align-items:flex-start; margin-top:0.45em">
+    <div>
+      <h3 class="accent">Constant-curvature control</h3>
+      <ul class="tight" style="font-size:0.65em">
+        <li>frozen analytic circle, exact constant \(\kappa\);</li>
+        <li>N=32,64,128, uniform and perturbed meshes;</li>
+        <li>zero initial velocity and identical PIMPLE settings within each pair;</li>
+        <li>perturbed meshes use eight non-orthogonal corrections;</li>
+        <li>measure only maximum cell-centred |U|.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="accent">Two face-flux paths</h3>
+      <ul class="tight" style="font-size:0.65em">
+        <li>current \(\sigma\kappa\,\mathrm{snGrad}(\alpha)|S_f|\);</li>
+        <li>pressure-potential oracle
+            \(\mathrm{snGrad}(\sigma\kappa\alpha)|S_f|\);</li>
+        <li>both enter the same \(r_{AU,f}\)-weighted pressure equation and
+            common reconstruction.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="resultline"><b>Decision logic:</b> a quiet potential oracle with noisy
+     CSF indicts localisation assembly; equal noisy paths indict the shared
+     pressure/\(r_{AU,f}\)/reconstruction chain.</p>
+</section>
+
+<section>
+  <h2>The two fluxes agree&mdash;the skew-mesh pressure projection does not</h2>
+  <table style="margin:auto; font-size:0.58em; width:96%">
+    <thead>
+      <tr><th rowspan="2">N</th><th colspan="2">uniform max |U| [m/s]</th>
+          <th colspan="2">10%-perturbed max |U| [m/s]</th>
+          <th rowspan="2">max field difference [m/s]</th></tr>
+      <tr><th>CSF product</th><th>pressure potential</th>
+          <th>CSF product</th><th>pressure potential</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>32</td><td>3.770e-9</td><td>3.770e-9</td>
+          <td>8.584e-6</td><td>8.584e-6</td><td>2.02e-14</td></tr>
+      <tr><td>64</td><td>7.635e-9</td><td>7.635e-9</td>
+          <td class="bad">7.328e-4</td><td class="bad">7.328e-4</td><td>4.25e-14</td></tr>
+      <tr><td>128</td><td>1.039e-8</td><td>1.039e-8</td>
+          <td class="bad">1.392e-3</td><td class="bad">1.392e-3</td><td>1.50e-13</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline"><b>Result:</b> for constant \(\kappa\), the two complete
+     CFD solutions agree to roundoff. Localisation product assembly is exonerated;
+     the perturbation-sensitive residual survives in the common pressure path.</p>
+  <p class="footnote">Frozen exact circle; analytic Detrixhe&ndash;Aslam geometry;
+     rhoLENT-central; identical capillary step, PIMPLE, \(r_{AU,f}\) and
+     <code>fvc::reconstruct</code>. Perturbed rows use eight converged non-orthogonal
+     correctors. Decision observable: maximum written cell velocity only.</p>
+</section>
+
+<section>
+  <h2>Eight non-orthogonal corrections converge&mdash;but do not cure</h2>
+  <table style="margin:auto; font-size:0.57em; width:96%">
+    <thead><tr><th>N</th><th>0 corrections</th><th>1</th><th>2</th><th>4</th><th>8</th><th>16</th></tr></thead>
+    <tbody>
+      <tr><td>32</td><td>1.358e-5</td><td>1.006e-5</td><td>8.536e-6</td><td>8.583e-6</td><td class="good">8.584e-6</td><td>8.584e-6</td></tr>
+      <tr><td>64</td><td>1.370e-3</td><td>7.519e-4</td><td>7.378e-4</td><td>7.328e-4</td><td class="good">7.328e-4</td><td>7.328e-4</td></tr>
+      <tr><td>128</td><td>1.183e-2</td><td>1.146e-3</td><td>1.341e-3</td><td>1.388e-3</td><td class="good">1.392e-3</td><td>1.392e-3</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline"><b>Decision:</b> one correction was under-converged;
+     eight is sufficient and is now enforced. The converged residual remains
+     orders of magnitude above the uniform-mesh value and grows with refinement.</p>
+  <p class="footnote">Pressure-potential model, perturbed exact circle,
+     unchanged pressure tolerances; N=32,64,128 also agree at 32 and 64 corrections.
+     Metric: maximum written cell-centred |U| only.</p>
+</section>
+
+<section>
+  <h2>Paired operators do not explain the fine-mesh residual</h2>
+  <table style="margin:auto; font-size:0.62em; width:88%">
+    <thead><tr><th>N</th><th>corrected pair</th><th>uncorrected pair</th><th>uncorrected / corrected</th></tr></thead>
+    <tbody>
+      <tr><td>32</td><td>8.584e-6</td><td class="good">1.044e-6</td><td>0.122</td></tr>
+      <tr><td>64</td><td class="good">7.328e-4</td><td>7.537e-4</td><td>1.029</td></tr>
+      <tr><td>128</td><td class="good">1.392e-3</td><td class="bad">1.815e-3</td><td>1.304</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline"><b>Result:</b> removing the non-orthogonal correction helps
+     only at N=32. It is slightly worse at N=64 and 30% worse at N=128. The
+     corrected face-normal operator is therefore not the sole cause.</p>
+  <p class="footnote">Exact circle; pressure-potential force; physical
+     \(r_{AU,f}\); eight PIMPLE non-orthogonal loops in both variants. Each force
+     and pressure Laplacian uses the same corrected or uncorrected scheme.
+     Observable: maximum written cell-centred |U| [m/s].</p>
+</section>
+
+<section>
+  <h2>Making \(r_{AU,f}\) constant does not cure the projection</h2>
+  <table style="margin:auto; font-size:0.59em; width:94%">
+    <thead><tr><th rowspan="2">N</th><th colspan="2">corrected pair</th><th colspan="2">uncorrected pair</th></tr>
+      <tr><th>physical \(r_{AU,f}\)</th><th>constant \(r_{AU,f}\)</th>
+          <th>physical \(r_{AU,f}\)</th><th>constant \(r_{AU,f}\)</th></tr></thead>
+    <tbody>
+      <tr><td>32</td><td>8.584e-6</td><td class="good">3.163e-6</td><td>1.044e-6</td><td class="good">3.514e-7</td></tr>
+      <tr><td>64</td><td class="good">7.328e-4</td><td>8.582e-4</td><td class="good">7.537e-4</td><td>8.877e-4</td></tr>
+      <tr><td>128</td><td class="good">1.392e-3</td><td>1.603e-3</td><td class="good">1.815e-3</td><td>2.022e-3</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline"><b>Result:</b> constant weighting helps only the coarse
+     mesh. At N=64 and 128 it increases the residual by 15&ndash;18%, so face-varying
+     \(r_{AU,f}\) is not the refinement-growing mechanism.</p>
+  <p class="footnote">The diagnostic replaces only face \(r_{AU,f}\) by the
+     volume-weighted mean; cell \(r_{AU}\), PIMPLE and
+     <code>fvc::reconstruct</code> remain physical. Metric: max cell |U| [m/s].</p>
+</section>
+
+<section>
+  <h2>Pressure solver choice dominates the skew-mesh projection</h2>
+  <table style="margin:auto; font-size:0.56em; width:96%">
+    <thead><tr><th>N</th><th>production GAMG<br>1e-9 / rel 0.01</th>
+      <th>PCG/DIC<br>1e-9 / rel 0</th><th>PCG/DIC<br>1e-11 / rel 0</th>
+      <th>PCG/DIC<br>1e-13 / rel 0</th></tr></thead>
+    <tbody>
+      <tr><td>32</td><td class="good">8.584e-6</td><td>8.992e-6</td><td>9.050e-6</td><td>9.050e-6</td></tr>
+      <tr><td>64</td><td class="bad">7.328e-4</td><td>3.978e-5</td><td class="good">4.029e-5</td><td>4.029e-5</td></tr>
+      <tr><td>128</td><td class="bad">1.392e-3</td><td>4.825e-5</td><td class="good">4.839e-5</td><td>4.839e-5</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline"><b>Decision:</b> PCG removes the refinement-growing GAMG
+     artefact&mdash;18.2&times; at N=64 and 28.8&times; at N=128&mdash;but leaves a
+     tolerance-independent \(\approx4.8\times10^{-5}\) m/s plateau. Strict GAMG
+     is not a remedy: it worsens N=64 and aborts at N=32 and 128.</p>
+  <p class="footnote">Frozen exact-circle pressure-potential gate; corrected
+     operator, physical \(r_{AU,f}\), eight non-orthogonal corrections. No force
+     norm is used. All values are maximum written cell-centred velocity.</p>
+</section>
+
+<section>
+  <h2>Next isolate initialization from reconstruction</h2>
+  <ol style="font-size:0.66em; margin-top:0.38em">
+    <li>Use PCG/DIC as the perturbed-mesh reference pressure solver and repeat its
+        non-orthogonal convergence check.</li>
+    <li>Initialize \(p_{rgh}\) directly with the manufactured capillary potential
+        \(p_\sigma=\sigma\kappa\alpha\), bypassing the startup Young&ndash;Laplace solve.</li>
+    <li>Run the same frozen PIMPLE step and retain only max cell |U|. A collapse
+        indicts pressure initialization; the PCG plateau indicts the remaining
+        projection/reconstruction chain.</li>
+    <li>Only after the exact-circle gate is quiet, rerun the variable-curvature
+        replay, N=64 translating droplet and oscillating droplet.</li>
+  </ol>
+  <p class="resultline"><b>Workflow:</b> the dedicated Snakemake DAG owns every
+     pressure gate. Make targets are convenience aliases only.</p>
+</section>
+</section>
+
+<section data-track="Verdict">
+<section>
+  <p class="part-kicker">Part 8 of 8</p>
+  <h2>Verdict (final, 32&sup2;&ndash;512&sup2;)</h2>
+  <ul class="tight" style="font-size:0.9em">
+    <li class="good"><b>Given sufficient resolution, choose semi-Lagrangian quadratic
+        transport.</b> At 512&sup2;/T=8 it is 20&times; more accurate than the best
+        Eulerian at HALF the wall clock (and 27&times; cheaper than velocity extension);
+        its T = 8 accuracy equals its T = 2 accuracy once the filament is resolved.</li>
+    <li>Second: plain defect-corrected Eulerian transport &mdash; simple, robust,
+        matches SL's shape error at T = 2/512&sup2; but falls 20&times; behind on the
+        long horizon and costs 2&times; more.</li>
+    <li class="warn">SDPLS sources: measurable volume-conservation help under maximal
+        stretching on COARSE meshes only (their regime: under-resolved two-phase
+        production runs + zero-interface-displacement coupling) &mdash; a niche, not a
+        default; they never beat plain Euler at t = T in this benchmark.</li>
+    <li class="bad">Velocity extension (closestPoint): dominated at every resolution and
+        end time &mdash; up to 27&times; the cost for the worst accuracy.</li>
+    <li class="muted">The under-resolution death of the T = 8 filament at N &le; 64 is
+        method-independent; 512&sup2; resolves it for every line &mdash; refinement, not
+        maintenance, is the cure.</li>
+  </ul>
+  <p class="footnote">Every number regenerates with the <code>benchVortex*</code> configs;
+     the table and figures update automatically on re-harvest.</p>
+</section>
+</section>
+
+</div>
+</div>
+
+<!-- reveal.js core + notes plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [ RevealNotes ]
+  });
+
+  // Orientation footer: 'Part k/n - name' from the nearest data-track ancestor.
+  (function () {
+    var tracks = [];
+    document.querySelectorAll('[data-track]').forEach(function (e) {
+      var n = e.getAttribute('data-track');
+      if (tracks.indexOf(n) < 0) { tracks.push(n); }
+    });
+    function trackOf(slide) {
+      var el = slide;
+      while (el && el !== document.body) {
+        if (el.getAttribute && el.getAttribute('data-track')) {
+          return el.getAttribute('data-track');
+        }
+        el = el.parentElement;
+      }
+      return '';
+    }
+    var chips = [];
+    (function buildNav() {
+      var nav = document.getElementById('deckNav');
+      if (!nav) { return; }
+      tracks.forEach(function (name, i) {
+        var target = null;
+        var els = document.querySelectorAll('[data-track]');
+        for (var k = 0; k < els.length; k++) {
+          if (els[k].getAttribute('data-track') === name) {
+            target = els[k].querySelector(':scope > section') || els[k];
+            break;
+          }
+        }
+        var a = document.createElement('a');
+        a.href = '#';
+        a.textContent = (i + 1);
+        a.title = 'Part ' + (i + 1) + ': ' + name;
+        a.onclick = function (ev) {
+          ev.preventDefault();
+          if (target) {
+            var idx = Reveal.getIndices(target);
+            Reveal.slide(idx.h, idx.v || 0);
+          }
+        };
+        nav.appendChild(a);
+        chips.push(a);
+      });
+    })();
+    function upd() {
+      var el = document.getElementById('deckTrack');
+      if (!el) { return; }
+      var name = trackOf(Reveal.getCurrentSlide());
+      chips.forEach(function (a, i) {
+        a.className = (tracks[i] === name) ? 'here' : '';
+      });
+      if (!name) {
+        el.textContent = window.DECK_LINEAR
+          ? '→ / ← to navigate · Esc = overview'
+          : '→ parts · ↓ slides · Esc = overview';
+        return;
+      }
+      el.innerHTML = 'Part ' + (tracks.indexOf(name) + 1) + '/' + tracks.length
+                   + ' · ' + name;
+    }
+    Reveal.on('slidechanged', upd);
+    Reveal.on('ready', upd);
+  })();
+
+</script>
+</body>
+</html>

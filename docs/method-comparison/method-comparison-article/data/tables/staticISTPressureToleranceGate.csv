@@ -1,0 +1,13 @@
+geometry,mesh_variant,N_CELLS,delta_t_s,pressure_nonorthogonal_scheme,nNonOrthogonalCorrectors,pressure_solver,pressure_tolerance,pressure_rel_tol,solver_status,max_cell_velocity_m_per_s,written_time_s
+exactCircle,perturbed,32,5.999911523802416e-05,corrected,8,GAMG,1e-09,0,0,3.485573348823805e-05,5.99991e-05
+exactCircle,perturbed,32,5.999911523802416e-05,corrected,8,GAMG,1e-11,0,-8,nan,nan
+exactCircle,perturbed,32,5.999911523802416e-05,corrected,8,GAMG,1e-13,0,-8,nan,nan
+exactCircle,perturbed,32,5.999911523802416e-05,corrected,8,GAMG,1e-14,0,-8,nan,nan
+exactCircle,perturbed,64,2.1212890625e-05,corrected,8,GAMG,1e-09,0,0,0.0002294639632669883,2.12129e-05
+exactCircle,perturbed,64,2.1212890625e-05,corrected,8,GAMG,1e-11,0,0,0.0013327239300015216,2.12129e-05
+exactCircle,perturbed,64,2.1212890625e-05,corrected,8,GAMG,1e-13,0,-8,nan,nan
+exactCircle,perturbed,64,2.1212890625e-05,corrected,8,GAMG,1e-14,0,-8,nan,nan
+exactCircle,perturbed,128,7.49988940475302e-06,corrected,8,GAMG,1e-09,0,0,9.140595024313468e-05,7.49989e-06
+exactCircle,perturbed,128,7.49988940475302e-06,corrected,8,GAMG,1e-11,0,-8,nan,nan
+exactCircle,perturbed,128,7.49988940475302e-06,corrected,8,GAMG,1e-13,0,-8,nan,nan
+exactCircle,perturbed,128,7.49988940475302e-06,corrected,8,GAMG,1e-14,0,-8,nan,nan

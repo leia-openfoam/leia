@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>leia — SDPLS level set for two-phase flows</title>
+
+  <!-- reveal.js 4.6.x core + black theme, from cdnjs -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css"
+        id="theme">
+
+  <style>
+    :root {
+      --ls-fg:      #f2f2f2;
+      --ls-muted:   #b9c2cc;
+      --ls-accent:  #4fc3f7;
+      --ls-liquid:  #29b6f6;
+      --ls-liquid2: #1565c0;
+      --ls-gas:     #455a64;
+      --ls-warn:    #ffb74d;
+      --ls-good:    #81c784;
+      --ls-line:    #90a4ae;
+    }
+    .reveal h1 { font-size: 1.55em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.25em; color: var(--ls-accent); }
+    .reveal section { font-size: 0.82em; }
+    .reveal p, .reveal li { color: var(--ls-fg); }
+    .reveal .muted { color: var(--ls-muted); }
+    .reveal .accent { color: var(--ls-accent); }
+    .reveal .warn { color: var(--ls-warn); }
+    .reveal .good { color: var(--ls-good); }
+    .reveal small { color: var(--ls-muted); }
+    .reveal em.tag {
+      font-style: normal; color: var(--ls-accent);
+      font-family: monospace; font-size: 0.9em;
+    }
+    .reveal code { color: var(--ls-warn); }
+    .reveal .mjx-container { color: var(--ls-fg) !important; }
+    .reveal svg text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+    .cols { display: flex; gap: 1.2em; align-items: center; justify-content: center; }
+    .cols > div { flex: 1; }
+    .reveal ul.tight { margin: 0; }
+    .reveal ul.tight li { margin: 0.1em 0; }
+    .reveal section img { background: none; border: none; box-shadow: none; }
+    .center { text-align: center; }
+    .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    .deck-footer {
+      position: fixed; bottom: 7px; left: 18px; right: 96px; z-index: 30;
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 14px;
+      font-family: "Source Sans Pro", Helvetica, sans-serif;
+      font-size: 13px; color: var(--ls-muted); opacity: 0.9;
+      pointer-events: none;
+    }
+    .deck-footer .df-track { color: var(--ls-accent); white-space: nowrap; }
+    .deck-footer .df-authors { flex: 1; text-align: center; }
+    .deck-footer .df-nav { white-space: nowrap; }
+    .deck-footer .df-nav a {
+      pointer-events: auto; display: inline-block; min-width: 1.3em;
+      margin-right: 3px; padding: 0 4px; text-align: center;
+      border: 1px solid var(--ls-line); border-radius: 3px;
+      color: var(--ls-muted); text-decoration: none; font-size: 12px;
+      line-height: 1.5; opacity: 0.8;
+    }
+    .deck-footer .df-nav a:hover {
+      color: var(--ls-fg); border-color: var(--ls-fg); opacity: 1;
+    }
+    .deck-footer .df-nav a.here {
+      color: var(--ls-accent); border-color: var(--ls-accent);
+      font-weight: 600; opacity: 1;
+    }
+    .reveal ol.roadmap { list-style: none; margin-left: 0; }
+    .reveal ol.roadmap li {
+      color: var(--ls-muted); margin: 0.14em 0; font-size: 0.92em;
+    }
+    .reveal ol.roadmap li .idx {
+      display: inline-block; width: 1.5em; color: var(--ls-line);
+    }
+    .reveal .part-kicker {
+      font-size: 0.62em; letter-spacing: 0.22em; color: var(--ls-accent);
+      text-transform: uppercase; margin-bottom: 0.1em;
+    }
+    .todo {
+      border-left: 4px solid var(--ls-warn); padding: 0.25em 0.7em;
+      background: rgba(255, 183, 77, 0.08); margin: 0.5em 0;
+      font-size: 0.85em; color: var(--ls-muted);
+    }
+  </style>
+
+  <!-- MathJax 3 (loaded directly from cdnjs) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        macros: { boldsymbol: ['{#1}', 1] }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+
+<div class="deck-footer">
+  <span class="df-nav" id="deckNav" aria-label="jump to part"></span>
+  <span class="df-authors">T. Mari&#263; &middot; M. Fricke &middot; D. Bothe &nbsp;&mdash;&nbsp; Mathematical Modeling &amp; Analysis, TU Darmstadt</span>
+  <span class="df-track" id="deckTrack"></span>
+</div>
+<div class="reveal">
+<div class="slides">
+
+<!-- ==================== TITLE ==================== -->
+<section>
+  <h1>leia</h1>
+  <h2 style="color:var(--ls-fg)">An unstructured Finite-Volume Level Set Method in OpenFOAM</h2>
+  <p class="accent" style="font-size:1.1em">The SDPLS level set for two-phase flows</p>
+  <p class="muted">source-term control of the signed-distance property &middot; zero interface
+     displacement by construction &middot; the method-decision benchmark</p>
+  <p style="margin-top:0.7em; font-size:1.05em"><b>Tomislav Mari&#263; &middot; Mathis Fricke &middot; Dieter Bothe</b>
+     <span class="muted" style="font-weight:normal"><br>MMA, TU Darmstadt</span></p>
+  <p class="footnote"><code>libleiaLevelSet</code> &nbsp;|&nbsp; unified solver <code>leiaLevelSetFoam</code>
+     &nbsp;|&nbsp; companion deck: <code>sdpls-negative-results.template.html</code></p>
+</section>
+
+<section>
+  <h2>Roadmap</h2>
+  <ol class="roadmap" style="font-size:1.05em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator (shared track; see SL/VE decks)</li>
+    <li><span class="idx">2</span>The SDPLS source term &mdash; zero-set invariance, R and beta, discretization &amp; stability</li>
+    <li><span class="idx">3</span>Measured gradient control &mdash; band |&nabla;&psi;| trajectories</li>
+    <li><span class="idx">4</span>The method-decision benchmark &mdash; 32&sup2;&ndash;512&sup2;, wall clock, field atlas</li>
+    <li><span class="idx">5</span>Two-phase coupling &mdash; defect correction under nOuterCorrectors</li>
+    <li><span class="idx">6</span>Software design &mdash; one solver, one dictionary</li>
+  </ol>
+</section>
+
+<section data-track="The SDPLS source term">
+<section>
+  <p class="part-kicker">Part 2 of 6</p>
+  <h2>The SDPLS source term</h2>
+  <ul class="tight">
+    <li>Transport with a source proportional to \(\psi\):
+        \[ \partial_t\psi + \nabla\cdot(\mathbf{v}\psi) - \psi\nabla\cdot\mathbf{v}
+           = f_{nl}(\psi^n)\,\psi \]
+        <b>S vanishes identically on the zero level set</b>: the interface evolution is
+        exactly untouched &mdash; no displacement, no volume change, ever.</li>
+    <li><em class="tag">R</em>: \(f_{nl} = (\hat{\mathbf{n}}\cdot\nabla\mathbf{u}\cdot\hat{\mathbf{n}})\)
+        &mdash; cancels the normal-strain drift \(d\ln|\nabla\psi|/dt\) (SDPLS).</li>
+    <li><em class="tag">beta</em>: \(f_{nl} = \beta - |\nabla\psi|\) &mdash; relaxation to
+        \(|\nabla\psi| = \beta\) (convected level set).</li>
+    <li>Dedicated gradient keywords <code>gradPsiSdpls</code>, <code>gradUSdpls</code> —
+        decoupled from the advection scheme's limited gradient.</li>
+  </ul>
+</section>
+<section>
+  <h2>Discretization &amp; measured stability (N=128, T=2)</h2>
+  <p style="font-size:0.8em">\(S = f_{nl}(\psi^n)\psi^{n+1}\): Sc &rarr; explicit source, Sp &rarr; diagonal.</p>
+  <table class="num" style="margin:auto; font-size:0.72em">
+    <thead><tr><th>discretization</th><th>split</th><th>R</th><th>beta</th></tr></thead>
+    <tbody>
+      <tr><td>explicit</td><td>Sc = f&psi;&#8319;, Sp = 0</td>
+          <td class="good">stable (CFL 0.1&ndash;1)</td>
+          <td class="bad">DIVERGES at all CFL</td></tr>
+      <tr><td>simpleLinearImplicit</td><td>Sp = f (any sign)</td>
+          <td class="good">stable</td>
+          <td class="good"><b>best accuracy measured</b>: shape 4.5e-5, vol 5e-4</td></tr>
+      <tr><td>strictNegativeSpLinearImplicit</td><td>Sp = min(f,0), Sc = max(f,0)&psi;&#8319;</td>
+          <td class="good">stable, best volume (2.5e-3)</td>
+          <td class="good">stable</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">Reproduce: <code>config/sdplsStability.yaml</code>. beta+explicit is a
+     documented negative result (companion deck).</p>
+</section>
+</section>
+
+<section data-track="Measured gradient control">
+<section>
+  <p class="part-kicker">Part 3 of 6</p>
+  <h2>Measured gradient control (reversed vortex)</h2>
+  <ul class="tight">
+    <li class="good">R holds band max\(|\nabla\psi|\) &le; 1.36 through T=8
+        (5.5&ndash;7.4 without any source) &mdash; steepening controlled by the PDE itself.</li>
+    <li class="warn">Flattening (band min \(\to\) 0) is NOT strain-driven: unchanged under R
+        &mdash; filament under-resolution, a mesh limit every method shares.</li>
+    <li>Redistancing that rewrites the interface cells is retired &mdash; measured story in
+        the GRL negative-results deck; the SDPLS source replaces it with zero interface cost.</li>
+  </ul>
+</section>
+</section>
+
+<section data-track="The decision benchmark">
+<section>
+  <p class="part-kicker">Part 4 of 6</p>
+  <h2>The method-decision benchmark</h2>
+  <div class="todo" style="border-left:4px solid var(--ls-warn); padding:0.25em 0.7em;
+       background:rgba(255,183,77,0.08); font-size:0.85em; color:var(--ls-muted)">
+    Populated by <code>config/benchVortex*.yaml</code> (Euler+SDPLS / SL / VE lines,
+    T &isin; {2, 8}, N up to 512&sup2;): convergence panels at t = T and t = T/2 (volume +
+    gradient only at maximal stretching), cost-vs-accuracy (wall clock), decision table,
+    and the field atlas (&alpha;, &psi;, ||&nabla;&psi;|&minus;1| montages 32&sup2;&ndash;512&sup2;)
+    from <code>make_method_comparison.py</code> + <code>make_bench_fields_fig.py</code>.
+  </div>
+  <img src="../../method-comparison/method-comparison-article/data/figures/benchVortex_convergence_T2.png"
+       style="max-height:300px" onerror="this.style.display='none'">
+  <img src="../../method-comparison/method-comparison-article/data/figures/benchVortex_cost_accuracy.png"
+       style="max-height:300px" onerror="this.style.display='none'">
+</section>
+</section>
+
+<section data-track="Two-phase coupling">
+<section>
+  <p class="part-kicker">Part 5 of 6</p>
+  <h2>Two-phase coupling</h2>
+  <ul class="tight">
+    <li>\(\psi\) equation upgraded to the advective form + SDPLS source in
+        <code>leiaLevelSetTwoPhaseFoam</code>; re-assembled <b>every PIMPLE outer
+        corrector</b> &mdash; <code>nOuterCorrectors</code> IS the linearUpwind
+        defect-correction control (verified: 2 steps &times; 3 correctors = 6 &psi; solves).</li>
+    <li>Interface updates (band, redistancing criterion, volume fraction) once per time
+        step, on the final corrector &mdash; the interface is not repeatedly displaced
+        while momentum and pressure iterate.</li>
+  </ul>
+</section>
+</section>
+
+<section data-track="Software design">
+<section>
+  <p class="part-kicker">Part 6 of 6</p>
+  <h2>One solver, one dictionary</h2>
+  <pre style="font-size:0.55em"><code>levelSet
+{
+    advection         { type eulerian; }      // eulerian | semiLagrangian
+    velocityExtension { type none; }          // eulerian composes it
+    sdplsSource       { type R; discretization strictNegativeSpLinearImplicit; }
+    redistancer       { type noRedistancing; }
+    phaseIndicator    { type detrixheAslam; }
+    narrowBand        { type signChange; }
+    reportAtWriteTimesOnly true;              // fair wall-clock reporting
+}</code></pre>
+  <p style="font-size:0.85em">RTS hierarchy <code>levelSetAdvection</code>; equivalence gates:
+     unified eulerian &equiv; pre-refactor solver (final &psi; bitwise), unified
+     semiLagrangian &equiv; <code>leiaSemiLagrangeLevelSetFoam</code> (CSV + &psi; bitwise).</p>
+</section>
+</section>
+
+</div>
+</div>
+
+<!-- reveal.js core + notes plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [ RevealNotes ]
+  });
+
+  // Orientation footer: 'Part k/n - name' from the nearest data-track ancestor.
+  (function () {
+    var tracks = [];
+    document.querySelectorAll('[data-track]').forEach(function (e) {
+      var n = e.getAttribute('data-track');
+      if (tracks.indexOf(n) < 0) { tracks.push(n); }
+    });
+    function trackOf(slide) {
+      var el = slide;
+      while (el && el !== document.body) {
+        if (el.getAttribute && el.getAttribute('data-track')) {
+          return el.getAttribute('data-track');
+        }
+        el = el.parentElement;
+      }
+      return '';
+    }
+    var chips = [];
+    (function buildNav() {
+      var nav = document.getElementById('deckNav');
+      if (!nav) { return; }
+      tracks.forEach(function (name, i) {
+        var target = null;
+        var els = document.querySelectorAll('[data-track]');
+        for (var k = 0; k < els.length; k++) {
+          if (els[k].getAttribute('data-track') === name) {
+            target = els[k].querySelector(':scope > section') || els[k];
+            break;
+          }
+        }
+        var a = document.createElement('a');
+        a.href = '#';
+        a.textContent = (i + 1);
+        a.title = 'Part ' + (i + 1) + ': ' + name;
+        a.onclick = function (ev) {
+          ev.preventDefault();
+          if (target) {
+            var idx = Reveal.getIndices(target);
+            Reveal.slide(idx.h, idx.v || 0);
+          }
+        };
+        nav.appendChild(a);
+        chips.push(a);
+      });
+    })();
+    function upd() {
+      var el = document.getElementById('deckTrack');
+      if (!el) { return; }
+      var name = trackOf(Reveal.getCurrentSlide());
+      chips.forEach(function (a, i) {
+        a.className = (tracks[i] === name) ? 'here' : '';
+      });
+      if (!name) {
+        el.textContent = window.DECK_LINEAR
+          ? '→ / ← to navigate · Esc = overview'
+          : '→ parts · ↓ slides · Esc = overview';
+        return;
+      }
+      el.innerHTML = 'Part ' + (tracks.indexOf(name) + 1) + '/' + tracks.length
+                   + ' · ' + name;
+    }
+    Reveal.on('slidechanged', upd);
+    Reveal.on('ready', upd);
+  })();
+
+</script>
+</body>
+</html>

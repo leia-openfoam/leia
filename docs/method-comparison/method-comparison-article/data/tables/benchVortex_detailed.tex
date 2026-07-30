@@ -1,0 +1,25 @@
+\begin{tabular}{l c c c c c c c}
+\hline
+method & $T$ & $N$ & $E_{geom}$ & $p_{geom}$ & $E_{vol}$ & $p_{vol}$ & clock [s] \\
+\hline
+SL quad (cached) & 2 & 512 & 1.72e-05 & -0.98 & 2.70e-04 & -1.94 & 160.00 \\
+SL quad (uncached) & 2 & 512 & 1.72e-05 & -0.98 & 2.70e-04 & -1.94 & 190.00 \\
+SL quad (uncached) + flux-form & 2 & 256 & 1.46e-05 & -1.91 & 1.49e-04 & -2.53 & 25.00 \\
+euler & 2 & 512 & 1.68e-05 & -1.52 & 3.24e-04 & -1.98 & 323.00 \\
+euler + SDPLS:R & 2 & 512 & 2.56e-05 & -1.45 & 8.09e-04 & -1.57 & 327.00 \\
+euler + SDPLS:beta & 2 & 512 & 2.40e-05 & -1.48 & 5.93e-04 & -1.46 & 329.00 \\
+euler + VE:closestPoint & 2 & 512 & 5.91e-05 & -1.30 & 4.80e-03 & -1.73 & 6630.00 \\
+SL quad (uncached) + venk & 2 & 256 & 3.74e-05 & -1.02 & 2.48e-03 & 0.54 & 30.00 \\
+SL quad (uncached) + QR [pert mesh] & 2 & 128 & 6.44e-05 & -1.07 & 4.08e-04 & -3.07 & 3.00 \\
+SL quad (uncached) [pert mesh] & 2 & 128 & 6.44e-05 & -1.07 & 4.08e-04 & -3.07 & 2.00 \\
+SL quad (cached) & 8 & 512 & 1.49e-05 & -1.97 & 3.77e-04 & -2.29 & 595.00 \\
+SL quad (uncached) & 8 & 512 & 1.49e-05 & -1.97 & 3.77e-04 & -2.29 & 722.00 \\
+SL quad (uncached) + flux-form & 8 & 256 & 7.66e-04 & -1.13 & 1.98e-02 & -1.92 & 88.00 \\
+euler & 8 & 512 & 3.04e-04 & -1.18 & 2.11e-02 & -1.70 & 1167.00 \\
+euler + SDPLS:R & 8 & 512 & 5.83e-04 & -0.89 & 6.79e-02 & -0.95 & 1171.00 \\
+euler + SDPLS:beta & 8 & 512 & 9.75e-04 & -0.75 & 1.36e-01 & -0.75 & 1179.00 \\
+euler + VE:closestPoint & 8 & 512 & 1.44e-03 & -0.53 & 1.11e-02 & -1.39 & 16131.00 \\
+SL quad (uncached) + venk & 8 & 256 & 4.45e-04 & -1.15 & 4.94e-02 & -1.03 & 101.00 \\
+euler + frozen-redist & 8 & 256 & 1.33e-02 & 0.24 & 1.77e+00 & 2.15 & 1259.00 \\
+\hline
+\end{tabular}

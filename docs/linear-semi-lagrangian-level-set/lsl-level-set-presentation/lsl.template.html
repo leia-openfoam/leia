@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>leia — linear semi-Lagrangian level set</title>
+
+  <!-- reveal.js 4.6.x core + black theme, from cdnjs -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css"
+        id="theme">
+
+  <style>
+    :root {
+      /* Palette — chosen to read on the dark (black) theme.               */
+      --ls-fg:      #f2f2f2; /* primary text / strokes                    */
+      --ls-muted:   #b9c2cc; /* secondary text                            */
+      --ls-accent:  #4fc3f7; /* interface / psi = 0                       */
+      --ls-liquid:  #29b6f6; /* phase A  (psi < 0)                        */
+      --ls-liquid2: #1565c0; /* liquid fill (translucent used inline)     */
+      --ls-gas:     #455a64; /* phase B  (psi > 0)                        */
+      --ls-warn:    #ffb74d; /* highlights / normals                      */
+      --ls-good:    #81c784; /* "correct" / outputs                       */
+      --ls-line:    #90a4ae; /* mesh / guide lines                        */
+    }
+    .reveal h1 { font-size: 1.55em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.25em; color: var(--ls-accent); }
+    .reveal section { font-size: 0.82em; }
+    .reveal p, .reveal li { color: var(--ls-fg); }
+    .reveal .muted { color: var(--ls-muted); }
+    .reveal .accent { color: var(--ls-accent); }
+    .reveal .warn { color: var(--ls-warn); }
+    .reveal .good { color: var(--ls-good); }
+    .reveal small { color: var(--ls-muted); }
+    .reveal em.tag {
+      font-style: normal; color: var(--ls-accent);
+      font-family: monospace; font-size: 0.9em;
+    }
+    .reveal code { color: var(--ls-warn); }
+    .reveal .mjx-container { color: var(--ls-fg) !important; }
+    .reveal svg text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+    .cols { display: flex; gap: 1.2em; align-items: center; justify-content: center; }
+    .cols > div { flex: 1; }
+    .reveal ul.tight { margin: 0; }
+    .reveal ul.tight li { margin: 0.1em 0; }
+    .reveal section img { background: none; border: none; box-shadow: none; }
+    .center { text-align: center; }
+    .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    .reveal table.small { font-size: 0.72em; }
+    .reveal table.small th { color: var(--ls-accent); }
+    /* --- deck orientation: persistent footer + roadmap / part intros --- */
+    .deck-footer {
+      position: fixed; bottom: 7px; left: 18px; right: 96px; z-index: 30;
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 14px;
+      font-family: "Source Sans Pro", Helvetica, sans-serif;
+      font-size: 13px; color: var(--ls-muted); opacity: 0.9;
+      pointer-events: none;
+    }
+    .deck-footer .df-track { color: var(--ls-accent); white-space: nowrap; }
+    .deck-footer .df-authors { flex: 1; text-align: center; }
+    .deck-footer .df-nav { white-space: nowrap; }
+    .deck-footer .df-nav a {
+      pointer-events: auto; display: inline-block; min-width: 1.3em;
+      margin-right: 3px; padding: 0 4px; text-align: center;
+      border: 1px solid var(--ls-line); border-radius: 3px;
+      color: var(--ls-muted); text-decoration: none; font-size: 12px;
+      line-height: 1.5; opacity: 0.8;
+    }
+    .deck-footer .df-nav a:hover {
+      color: var(--ls-fg); border-color: var(--ls-fg); opacity: 1;
+    }
+    .deck-footer .df-nav a.here {
+      color: var(--ls-accent); border-color: var(--ls-accent);
+      font-weight: 600; opacity: 1;
+    }
+    .reveal ol.roadmap { list-style: none; margin-left: 0; }
+    .reveal ol.roadmap li {
+      color: var(--ls-muted); margin: 0.14em 0; font-size: 0.92em;
+    }
+    .reveal ol.roadmap li .idx {
+      display: inline-block; width: 1.5em; color: var(--ls-line);
+    }
+    .reveal ol.roadmap li.here { color: var(--ls-fg); font-weight: 600; }
+    .reveal ol.roadmap li.here .idx { color: var(--ls-accent); }
+    .reveal ol.roadmap li.here::after { content: "  \25C0  you are here";
+      color: var(--ls-accent); font-size: 0.8em; letter-spacing: 0.06em; }
+    .reveal .part-kicker {
+      font-size: 0.62em; letter-spacing: 0.22em; color: var(--ls-accent);
+      text-transform: uppercase; margin-bottom: 0.1em;
+    }
+    .reveal .part-prevnext { font-size: 0.55em; color: var(--ls-muted); }
+  </style>
+
+  <!-- MathJax 3 (loaded directly from cdnjs) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        // \boldsymbol is NOT in the inlined tex-svg bundle; leaving it as-is makes
+        // MathJax try to autoload it from the CDN, which fails in the offline,
+        // self-contained deck and ABORTS the whole typeset run. Alias it to a
+        // base-supported no-op so it renders without any network fetch.
+        macros: { boldsymbol: ['{#1}', 1] }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+      // fontCache 'local' (not 'global'): a global cache emits one shared <defs>
+      // inside ONE (hidden) slide, so cross-slide <use> references resolve into a
+      // display:none subtree and glyphs render blank. 'local' keeps each equation
+      // self-contained.
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+
+<div class="deck-footer">
+  <span class="df-nav" id="deckNav" aria-label="jump to part"></span>
+  <span class="df-authors">T. Mari&#263; &nbsp;&mdash;&nbsp; Mathematical Modeling &amp; Analysis, TU Darmstadt</span>
+  <span class="df-track" id="deckTrack"></span>
+</div>
+<div class="reveal">
+<div class="slides">
+
+<!-- ==================== TITLE ==================== -->
+<section>
+  <h1>leia</h1>
+  <h2 style="color:var(--ls-fg)">Linear semi-Lagrangian level set</h2>
+  <p class="accent" style="font-size:1.1em">least-squares reconstruction &mdash; and why the raw Taylor extrapolation is not enough</p>
+  <p class="muted">a stable, memory-light linear transport method &middot; and a cautionary tale</p>
+  <p style="margin-top:0.7em; font-size:1.05em">
+     <b>Tomislav Marić</b>
+     <span class="muted" style="font-weight:normal"><br>MMA, TU Darmstadt</span></p>
+  <p class="footnote"><code>libleiaLevelSet</code> &nbsp;|&nbsp; solver <code>leiaSemiLagrangeLevelSetFoam</code>
+     &nbsp;|&nbsp; <code>reconstruction nestedLSQ;</code></p>
+  <p class="footnote">Independent method line next to the quadratic (UQWLSR) companion deck &mdash;
+     same foot, same phase indicator, different reconstruction.</p>
+  <aside class="notes">
+    The linear semi-Lagrangian method is promoted to a first-class method line: its own
+    studies (config/linearConv*.yaml), its own paper and this deck. One command: make sl-linear.
+  </aside>
+</section>
+
+<!-- ==================== ROADMAP ==================== -->
+<section>
+  <h2>Roadmap</h2>
+  <ol class="roadmap" style="font-size:1.05em">
+    <li><span class="idx">1</span>Method &mdash; the semi-Lagrangian update, the Taylor foot, the linear reconstruction and its four properties</li>
+    <li><span class="idx">2</span>2D verification &mdash; reversed vortex: ALL error measures + the volume-fraction field</li>
+    <li><span class="idx">3</span>3D verification &mdash; shear &amp; deformation, hexahedral &amp; polyhedral</li>
+    <li><span class="idx">4</span>The three reconstructions &mdash; two design points and one cautionary tale</li>
+    <li><span class="idx">5</span>Conclusions &amp; one-command reproduction</li>
+  </ol>
+  <p class="footnote muted">Navigation: &rarr; next part &middot; &darr; slides within a part &middot;
+     Esc = overview &middot; the footer always shows where you are.</p>
+</section>
+
+<section data-track="Method">  <!-- ############ TRACK 1: method ############ -->
+<section>
+  <p class="part-kicker">Part 1 of 5</p>
+  <h2>Method</h2>
+  <p class="muted" style="font-size:0.85em">semi-Lagrangian update &middot; second-order departure foot &middot; least-squares linear reconstruction (and the Taylor trap)</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li class="here"><span class="idx">1</span>Method</li>
+    <li><span class="idx">2</span>2D verification</li>
+    <li><span class="idx">3</span>3D verification</li>
+    <li><span class="idx">4</span>Three reconstructions</li>
+    <li><span class="idx">5</span>Conclusions &amp; reproduction</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Semi-Lagrangian update &mdash; no fluxes, no limiters</h2>
+  <p>The level set \(\psi\) is constant along characteristics of
+     \(\partial_t\psi + \mathbf{u}\cdot\nabla\psi = 0\). Trace the characteristic arriving
+     at a cell centre \(\mathbf{x}_c\) one step backward to its <b>departure foot</b>
+     \(\mathbf{x}_d\):</p>
+  \[ \psi^{\,n+1}(\mathbf{x}_c) \;=\; \psi^{\,n}(\mathbf{x}_d) \]
+  <ul class="tight">
+    <li>no flux, no divergence scheme, no linear system &mdash; one reconstruction per cell</li>
+    <li>exactly <b>two ingredients</b>: locate \(\mathbf{x}_d\), reconstruct \(\psi^n\) there</li>
+    <li class="muted">the foot and everything downstream (phase indicator, band, error
+        function objects) are <em>shared verbatim</em> with the quadratic companion line</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Second-order departure foot (shared)</h2>
+  \[ \mathbf{x}_d = \mathbf{x}_c - \mathbf{u}^{\,n+1}\Delta t
+     + \tfrac12\left[\frac{\mathbf{u}^{\,n+1}-\mathbf{u}^{\,n}}{\Delta t}
+     + (\mathbf{u}^{\,n+1}\!\cdot\nabla)\,\mathbf{u}^{\,n+1}\right]\Delta t^{2} \]
+  <ul class="tight">
+    <li>backward Taylor expansion of the arriving characteristic; the bracket approximates the
+        material acceleration \(\mathrm{D}\mathbf{u}/\mathrm{D}t\)</li>
+    <li>dropped terms are \(O(\Delta t^{3})\) per step &rarr; the foot is <b>second order in time</b></li>
+    <li><span class="warn">foot-radius guard</span>: if \(|\mathbf{x}_d-\mathbf{x}_c|\) leaves the
+        neighbour-stencil hull, the operational limit \(\mathrm{CFL}\le 1\) is violated and the run warns</li>
+  </ul>
+  <p class="footnote">Identical for the linear and the quadratic line &mdash; the reconstruction is
+     the ONLY difference between the two methods.</p>
+</section>
+
+<section>
+  <h2>Two ways to reconstruct a linear field &mdash; and they behave oppositely</h2>
+  <div class="cols">
+    <div>
+      <p class="accent" style="margin:0"><b>nestedLSQ</b> (the method)</p>
+      \[ R_c = \psi^{\,n}_c + \mathbf{g}_c\cdot(\mathbf{x}_d-\mathbf{x}_c) \]
+      <p style="font-size:0.8em">\(\mathbf{g}_c\) = <b>least-squares slope over the neighbour
+         stencil</b> \(\mathcal S_c\) (linear-basis restriction of the quadratic fit):</p>
+      \[ \mathbf{g}_c = \arg\min_{\mathbf g}\!\sum_{i\in\mathcal S_c}\! w_i^2
+         (\psi_c+\mathbf g\!\cdot\!\mathbf d_i-\psi_i)^2 \]
+      <p class="good" style="font-size:0.8em">stencil averaging &rarr; STABLE</p>
+    </div>
+    <div>
+      <p class="warn" style="margin:0"><b>linearTaylor</b> (the trap)</p>
+      \[ R_c^{\mathrm T} = \psi^{\,n}_c + (\nabla\psi^{\,n})_c\cdot(\mathbf{x}_d-\mathbf{x}_c) \]
+      <p style="font-size:0.8em">gradient = the arrival cell's <b>single</b> cell gradient,
+         extrapolated across the whole foot displacement &mdash; no stencil averaging</p>
+      <p class="warn" style="font-size:0.8em">single-cell extrapolation &rarr; UNSTABLE in advection
+         (next slide)</p>
+    </div>
+  </div>
+  <p class="footnote">Both are degree-1 reconstructions of \(\psi^n\); the method line uses <code>reconstruction nestedLSQ;</code></p>
+</section>
+
+<section>
+  <h2>linearTaylor is unstable in pure advection</h2>
+  <p style="font-size:0.88em">Reversed 2D vortex, CFL \(\tfrac12\), integrated to full reversal
+     \(t=T\). The raw single-cell extrapolation overshoots where \(|\nabla\psi|\) is already too
+     steep &rarr; steepens it further &rarr; <b>positive feedback</b>, worse on finer meshes (more steps):</p>
+  <table class="small" style="margin:0.3em auto">
+    <thead><tr><th>N</th><th>band \(\||\nabla\psi|-1\|\) &mdash; nestedLSQ</th><th>&mdash; linearTaylor</th><th>shape &mdash; nestedLSQ</th><th>&mdash; linearTaylor</th></tr></thead>
+    <tbody>
+      <tr><td>32</td><td class="good">3.6e&minus;2</td><td>1.1e+1</td><td class="good">9.2e&minus;4</td><td>5.4e&minus;3</td></tr>
+      <tr><td>64</td><td class="good">5.8e&minus;3</td><td>2.9e+3</td><td class="good">4.2e&minus;4</td><td>9.9e&minus;3</td></tr>
+      <tr><td>128</td><td class="good">1.5e&minus;3</td><td class="warn">1.4e+9</td><td class="good">1.6e&minus;4</td><td>2.2e&minus;2</td></tr>
+      <tr><td>256</td><td class="good">4.8e&minus;4</td><td class="warn">2.0e+21</td><td class="good">9.2e&minus;5</td><td>3.1e&minus;2</td></tr>
+    </tbody>
+  </table>
+  <ul class="tight" style="font-size:0.82em">
+    <li>nestedLSQ: band defect <b>converges</b>; linearTaylor: <b>diverges geometrically</b> (to \(10^{21}\))</li>
+    <li><code>clipToStencilBounds</code> does NOT cure it &mdash; the value near \(\psi=0\) stays in
+        range while \(|\nabla\psi|\) explodes in the field around it</li>
+  </ul>
+</section>
+
+<section>
+  <h2>nestedLSQ &mdash; three properties</h2>
+  <ul class="tight" style="font-size:0.95em">
+    <li><b class="accent">Accuracy</b> &mdash; exact for linear fields &rarr; per-step error
+        \(O(h^2)\); over \(T/\Delta t\propto 1/h\) steps the transport error is first-to-second
+        order (2D shape \(\approx\)1.1, volume \(\approx\)1.5, band gradient \(\approx\)2.1) &mdash;
+        below UQWLSR's \(\approx\)3, but a genuine monotone convergence</li>
+    <li><b class="accent">Conditionally stable</b> &mdash; the stencil-averaged slope does not
+        amplify shear steepening at CFL \(\le\tfrac12\); at CFL 1 it destabilizes on the finest
+        meshes (Part 2). <span class="warn">Not CFL-independent like the quadratic line</span> &rarr;
+        run CFL \(\le\tfrac12\)</li>
+    <li><b class="accent">Memory-light &amp; local</b> &mdash; a \(2\times2\) / \(3\times3\) solve
+        per cell, no cached pseudo-inverse &rarr; \(O(1)\) memory, no fine-mesh ceiling; the only
+        parallel comm is the standard \(\psi^n\) halo</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Safeguards &amp; phase indicator (shared machinery)</h2>
+  <ul class="tight">
+    <li><b>Slope limiter</b> (Barth&ndash;Jespersen on the increment): measured on the
+        benchmarks &mdash; costs accuracy, buys nothing for the linear fit &rarr; <span class="warn">OFF by default</span></li>
+    <li><b><code>clipToStencilBounds</code></b>: monotone clamp of the reconstructed value to
+        the stencil \([\min,\max]\) &mdash; <span class="good">required on polyhedra</span>
+        (irregular stencils), inactive in smooth regions &rarr; order preserved</li>
+    <li><b>Face-neighbour stencil</b> (<code>stencil face;</code>) for the polyhedral gradient:
+        12&ndash;16 face neighbours already over-determine the fit &mdash; compact, better conditioned</li>
+    <li><b>Phase indicator</b>: Detrixhe&ndash;Aslam tetrahedral decomposition &mdash; exact wet
+        volume of each tetrahedron from vertex sign patterns, evaluated in the narrow band;
+        identical to the quadratic line</li>
+  </ul>
+</section>
+
+<section>
+  <h2>linearTaylor's redemption: the two-phase workhorse</h2>
+  <p style="font-size:0.88em">The unstable variant is not discarded &mdash; it is the reconstruction of
+     the two-phase <b>consistent-linear</b> pipeline. In coupled flow, cell-centred curvature feeds
+     surface tension back into the flow; a reinitialization-free <em>high-order</em> transport gives
+     that loop <b>zero damping</b>. linearTaylor's dissipation damps it &mdash; and the coupled
+     solver's own dissipation + short pre-equilibrium horizon keep linearTaylor in its stable regime:</p>
+  <table class="small" style="margin:0.3em auto">
+    <thead><tr><th>2D stationary droplet, blow-up time [s]</th><th>N=64</th><th>N=128</th><th>N=256</th></tr></thead>
+    <tbody>
+      <tr><td>quadratic pipeline (UQWLSR + reconstructed &kappa;)</td><td>0.44</td><td>0.105</td><td class="warn">0.035</td></tr>
+      <tr><td>consistent linear pipeline (linearTaylor + FVM &kappa;)</td><td>0.80</td><td>0.125</td><td class="good">&gt; 0.1</td></tr>
+    </tbody>
+  </table>
+  <ul class="tight" style="font-size:0.82em">
+    <li>no contradiction: the coupled result is <b>relative</b> (linear less destabilizing than
+        quadratic in the loop, short horizon); the kinematic instability is <b>absolute</b>
+        (unbounded growth over long reversible integration)</li>
+    <li>linearTaylor outlives quadratic at <b>every</b> N and breaks the finer-blows-first trend</li>
+  </ul>
+  <p class="footnote">Details: two-phase part of the quadratic companion deck + its negative-results deck.</p>
+</section>
+</section>
+
+<section data-track="2D verification">  <!-- ############ TRACK 2: 2D ############ -->
+<section>
+  <p class="part-kicker">Part 2 of 5</p>
+  <h2>2D verification &mdash; reversed vortex</h2>
+  <p class="muted" style="font-size:0.85em">all error measures + the volume-fraction field itself</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>Method</li>
+    <li class="here"><span class="idx">2</span>2D verification</li>
+    <li><span class="idx">3</span>3D verification</li>
+    <li><span class="idx">4</span>Three reconstructions</li>
+    <li><span class="idx">5</span>Conclusions &amp; reproduction</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Benchmark &amp; the complete error picture</h2>
+  <div class="cols">
+    <div>
+      <p style="font-size:0.85em"><b>Reversed single vortex</b> (Rider&ndash;Kothe): circle
+         \(r=0.15\) at \((0.5, 0.75)\), sheared, reversed at \(T/2\), exact solution at
+         \(t=T=2\) = the initial circle.<br>
+         Ladder \(N = 32 \dots 256\) (ratio \(\sqrt2\)), CFL 0.5 <em>and</em> 1.0.</p>
+    </div>
+    <div>
+      <ul class="tight" style="font-size:0.72em">
+        <li><b>shape error</b>: geometric \(L_1\) of \(\alpha-\alpha^{\rm exact}\)</li>
+        <li><b>volume error</b>: relative signed residual (SL is non-conservative &rarr; bounded diagnostic, no fitted order)</li>
+        <li><b>gradient defect</b> \(\||\nabla\psi|-1\|_{L_2}\): global <em>and</em> in the narrow band</li>
+        <li><b>half-time variants</b> at \(t=T/2\) (maximum stretching): gradient defect (global + band), volume</li>
+        <li><b>health</b>: \(\min|\nabla\psi|\) in the band (flattening watchdog)</li>
+      </ul>
+    </div>
+  </div>
+  <p class="footnote">Every number on the following slides regenerates from
+     <code>data/tables/lsl_convergence.csv</code> + <code>lsl_convergence_orders.csv</code>
+     (single pipeline source, mirrored to the paper).</p>
+</section>
+
+<section>
+  <h2>2D convergence &mdash; primary errors ($t=T$)</h2>
+  <img src="data/figures/lsl_2Dvortex_convergence.png" alt="2D vortex convergence, primary errors"
+       style="max-height:520px">
+  <ul class="tight" style="font-size:0.72em">
+    <li><b>CFL \(\tfrac12\)</b>: converges &mdash; shape \(\approx\)1.1, volume \(\approx\)1.5,
+        band gradient \(\approx\)2.1; monotone over the whole ladder</li>
+    <li><b>CFL 1</b>: converges on coarse meshes, then <span class="warn">turns UP at N\(\ge\)128</span>
+        &mdash; the method is <b>conditionally stable</b> (unlike the CFL-independent quadratic line)
+        &rarr; production runs use CFL \(\le\tfrac12\)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>2D convergence &mdash; the remaining error measures</h2>
+  <img src="data/figures/lsl_2Dvortex_convergence_diagnostics.png" alt="2D vortex diagnostics errors"
+       style="max-height:540px">
+  <ul class="tight" style="font-size:0.75em">
+    <li>band gradient defect at \(t=T\): what the numerics actually see near the interface</li>
+    <li>half-time (\(t=T/2\), maximum deformation) gradient defect grows toward \(O(1)\) on
+        <b>all</b> meshes &mdash; neither SL line maintains the signed-distance property through
+        maximal stretching (transport accuracy converges regardless)</li>
+  </ul>
+</section>
+
+<section>
+  <h2>The volume-fraction field &mdash; the method made visible</h2>
+  <img src="data/figures/alpha_field_2Dvortex_hex.png" alt="alpha field montage 2D vortex"
+       style="max-height:540px">
+  <p class="footnote">\(\alpha\) at \(t=0,\,T/2,\,T\) (rows) across the ladder (columns), CFL \(\tfrac12\).
+     Black: \(\psi=0\). Dashed red on the \(t=T\) row: the exact reversed circle. The widened
+     \(\alpha\) transition at \(T/2\) on coarse meshes is the first-order transport smearing;
+     the under-resolved tail is lost irreversibly, and refinement recovers the reversed circle
+     at the measured orders &mdash; the field-level picture behind the convergence plots.</p>
+</section>
+</section>
+
+<section data-track="3D verification">  <!-- ############ TRACK 3: 3D ############ -->
+<section>
+  <p class="part-kicker">Part 3 of 5</p>
+  <h2>3D verification &mdash; shear &amp; deformation</h2>
+  <p class="muted" style="font-size:0.85em">hexahedral AND polyhedral (cfMesh) ladders, same error battery</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>Method</li>
+    <li><span class="idx">2</span>2D verification</li>
+    <li class="here"><span class="idx">3</span>3D verification</li>
+    <li><span class="idx">4</span>Three reconstructions</li>
+    <li><span class="idx">5</span>Conclusions &amp; reproduction</li>
+  </ol>
+  <p class="footnote" style="margin-top:0.8em">3D shear \([0,1]^3\) and 3D deformation (unit cube,
+     Enright), \(T=3\), CFL 0.5; hex \(N=32,50,80,128(,160)\) (ratio \(\sqrt[3]{4}\)); poly
+     \(h = \texttt{maxCellSize} = 1/32 \dots 1/128\) &mdash; \(h\) is the shared axis, so hex and
+     poly overlay directly. Poly runs: <code>stencil face; clipToStencilBounds true;</code></p>
+</section>
+
+<section>
+  <h2>3D convergence &mdash; the headline result</h2>
+  <ul class="tight" style="font-size:0.9em">
+    <li><b class="good">3D deformation converges on BOTH meshes</b> &mdash; hex shape order 2.28
+        (5 levels to N=160), poly 1.52; volume 3.6/2.9; band-gradient DECREASES with refinement</li>
+    <li><b class="good">3D shear-poly converges</b> &mdash; shape 1.78, band-gradient 2.10 (full ladder)</li>
+    <li><b class="warn">3D shear-HEX destabilizes</b> &mdash; converges over the stable envelope
+        (shape order <b>1.18</b>, h≥2e&minus;2), then the |∇ψ| defect runs away (→1e5 by N=128); the
+        figures fit + draw the stable envelope only and mark the limit separately</li>
+  </ul>
+  <p style="font-size:0.85em">Same conditional-stability limit as 2D CFL 1 (stable-envelope shape order 0.97), here at CFL \(\tfrac12\):
+     the LeVeque&ndash;Liovic shear sustains stronger strain than deformation, steepening ∇ψ until
+     the least-squares slope can't damp it. <b>Flow-dependent</b>: 2D vortex (N=256) + 3D
+     deformation (N=160) stay inside it; strong 3D shear on hex does not, past N=80.</p>
+  <p class="footnote">The poly face-neighbour stencil's stronger averaging pushes the shear limit
+     past reach &mdash; a lower CFL, the face stencil, or band redistancing is needed to go finer on hex.</p>
+</section>
+
+<section>
+  <h2>3D shear &mdash; primary errors</h2>
+  <img src="data/figures/lsl_3Dshear_convergence.png" alt="3D shear convergence" style="max-height:500px">
+  <p class="footnote">hex solid, poly dashed. <span class="warn">Only the stable envelope is drawn + fitted</span>;
+     the first destabilized resolution is marked separately (red ×) with the runaway values off the axis.
+     Hex shape order 1.18 (h≥2e&minus;2) then |∇ψ| defect &rarr; 1e5; poly converges throughout (1.78).</p>
+</section>
+
+<section>
+  <h2>3D shear &mdash; remaining error measures</h2>
+  <img src="data/figures/lsl_3Dshear_convergence_diagnostics.png" alt="3D shear diagnostics" style="max-height:520px">
+</section>
+
+<section>
+  <h2>3D deformation &mdash; primary errors (converges, both meshes)</h2>
+  <img src="data/figures/lsl_3Ddeformation_convergence.png" alt="3D deformation convergence" style="max-height:500px">
+  <p class="footnote">Clean convergence on hex (shape 2.28, 5 levels to N=160) and poly (1.52); the band
+     gradient defect DECREASES with refinement. The half-time thin scroll is the hardest
+     gradient-quality state but the transport errors converge regardless.</p>
+</section>
+
+<section>
+  <h2>3D deformation &mdash; remaining error measures</h2>
+  <img src="data/figures/lsl_3Ddeformation_convergence_diagnostics.png" alt="3D deformation diagnostics" style="max-height:520px">
+</section>
+
+<section>
+  <h2>Interface evolution &mdash; 3D shear</h2>
+  <div class="cols">
+    <div><img src="data/figures/isosurface_3Dshear_hex.png" alt="3D shear isosurfaces hex"></div>
+    <div><img src="data/figures/isosurface_3Dshear_poly.png" alt="3D shear isosurfaces poly"></div>
+  </div>
+  <p class="footnote">\(\psi=0\) at \(t=0, T/2, T\) (rows) on the three finest resolutions
+     (columns); hexahedral (left) and polyhedral (right). The hex finest column (N=128) carries the
+     <span class="warn">corrupted interface of the runaway gradient</span> (the destabilization above);
+     the poly montage recovers the sheet at every resolution.</p>
+</section>
+
+<section>
+  <h2>Interface evolution &mdash; 3D deformation</h2>
+  <div class="cols">
+    <div><img src="data/figures/isosurface_3Ddeformation_hex.png" alt="3D deformation isosurfaces hex"></div>
+    <div><img src="data/figures/isosurface_3Ddeformation_poly.png" alt="3D deformation isosurfaces poly"></div>
+  </div>
+  <p class="footnote">The scroll's trailing edge thins below the cell size at \(T/2\); what
+     survives reverses back into the sphere at the measured convergence rates.</p>
+</section>
+</section>
+
+<section data-track="Three reconstructions">  <!-- ############ TRACK 4: comparison ############ -->
+<section>
+  <p class="part-kicker">Part 4 of 5</p>
+  <h2>Three reconstructions &mdash; two design points, one cautionary tale</h2>
+  <p class="muted" style="font-size:0.85em">one framework, one keyword apart</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>Method</li>
+    <li><span class="idx">2</span>2D verification</li>
+    <li><span class="idx">3</span>3D verification</li>
+    <li class="here"><span class="idx">4</span>Three reconstructions</li>
+    <li><span class="idx">5</span>Conclusions &amp; reproduction</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Three positions, not two</h2>
+  <table class="small" style="margin:0.2em auto; font-size:0.62em">
+    <thead><tr><th></th><th>nestedLSQ (this deck)</th><th>UQWLSR (companion)</th><th>linearTaylor</th></tr></thead>
+    <tbody>
+      <tr><td>fit</td><td>LSQ linear over stencil</td><td>per-cell quadratic WLSQ</td><td>arrival cell's 1st-order Taylor</td></tr>
+      <tr><td>pure-advection stability</td><td class="good">stable, CFL \(\le\tfrac12\)</td><td class="good">stable, CFL-independent</td><td class="warn">UNSTABLE (|\(\nabla\psi\)| \(\to10^{21}\))</td></tr>
+      <tr><td>kinematic order (2D shape)</td><td>\(\approx\)1.1</td><td class="good">\(\approx\)3</td><td class="warn">\(-\)0.9 (diverges)</td></tr>
+      <tr><td>memory / cost</td><td class="good">\(O(1)\)/cell, small solve</td><td>uncached recompute / cached PInv</td><td>gradient + dot product</td></tr>
+      <tr><td>two-phase capillary coupling</td><td>&mdash;</td><td class="warn">loop undamped, finer blows first</td><td class="good">workhorse: outlives at every N</td></tr>
+    </tbody>
+  </table>
+  <ul class="tight" style="font-size:0.72em">
+    <li><b class="accent">nestedLSQ</b>: the low-cost, memory-light stable linear transport method (CFL \(\le\tfrac12\))</li>
+    <li><b class="accent">UQWLSR</b>: the kinematic-accuracy champion</li>
+    <li><b class="warn">linearTaylor</b>: never for reinit-free advection &mdash; but the two-phase workhorse (Part 1)</li>
+  </ul>
+  <p class="footnote">Stencil averaging, not the polynomial degree, is what makes an SL reconstruction stable:
+     nestedLSQ (linear + stencil) is stable; linearTaylor (linear, single cell) is not.</p>
+</section>
+
+<section>
+  <h2>When to use which</h2>
+  <ul>
+    <li><b class="accent">Kinematic studies, interface-accuracy-critical work</b> &rarr;
+        <code>reconstruction uncachedQuadraticWeightedLeastSquares;</code> &mdash; the accuracy champion</li>
+    <li><b class="accent">Low-cost stable kinematic transport</b> &rarr;
+        <code>reconstruction nestedLSQ;</code> at CFL \(\le\tfrac12\) &mdash; memory-light, no ceiling</li>
+    <li><b class="accent">Two-phase Navier&ndash;Stokes with explicit surface tension</b> &rarr;
+        <code>reconstruction linearTaylor;</code> &mdash; its dissipation damps the coupled loop,
+        its instability held in check by the short horizon</li>
+    <li><b class="accent">Every way</b>: the switch is ONE dictionary keyword &mdash; foot, phase
+        indicator, band, error metrics, pipeline: shared and identical</li>
+  </ul>
+  <p class="footnote">Permanence under strong stretching (the \(O(1)\) half-time gradient defect)
+     is an open problem for ALL lines &mdash; band-limited signed-distance maintenance is the
+     subject of the redistancing line.</p>
+</section>
+</section>
+
+<section data-track="Conclusions &amp; reproduction">  <!-- ############ TRACK 5 ############ -->
+<section>
+  <p class="part-kicker">Part 5 of 5</p>
+  <h2>Conclusions &amp; reproduction</h2>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>Method</li>
+    <li><span class="idx">2</span>2D verification</li>
+    <li><span class="idx">3</span>3D verification</li>
+    <li><span class="idx">4</span>Three reconstructions</li>
+    <li class="here"><span class="idx">5</span>Conclusions &amp; reproduction</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Conclusions</h2>
+  <ul class="tight">
+    <li>The linear line turns on ONE choice: <b>nestedLSQ</b> (least-squares linear over the
+        stencil) is a stable, convergent, memory-light transport method &mdash; the naive
+        <b>linearTaylor</b> (single-cell Taylor) is unstable in advection and must not be used for it</li>
+    <li>nestedLSQ converges at <b>first-to-second order in every error measure</b> within its
+        stable envelope &mdash; 2D vortex (N=256), 3D deformation (N=160, hex+poly), 3D shear-poly &mdash;
+        the complete error battery</li>
+    <li><b>Conditionally + flow-dependently stable</b>: strong 3D shear on hex bounds it at N=80
+        (unlike the CFL/flow-independent quadratic line) &mdash; go finer with a lower CFL, the
+        face stencil, or band redistancing</li>
+    <li><b>\(O(1)\) memory</b>, no fine-mesh ceiling, local (gradient halo only), robust on
+        polyhedra with the base-class safeguards</li>
+    <li>The lesson: <b>stencil averaging, not polynomial degree</b>, is what makes a
+        semi-Lagrangian reconstruction stable &mdash; and it defers, not removes, the steepening limit</li>
+  </ul>
+</section>
+
+<section>
+  <h2>One-command reproduction &mdash; always-consistent documents</h2>
+  <pre style="font-size:0.6em"><code>make sl-linear      # runs the 5 linearConv* studies (2D + 3D shear/deformation, hex + poly),
+                    # regenerates every figure + table, mirrors them into BOTH
+                    # lsl-level-set-article/data/ and lsl-level-set-presentation/data/,
+                    # rebuilds this deck and compiles the paper PDF</code></pre>
+  <ul class="tight" style="font-size:0.85em">
+    <li>each study alone auto-refreshes the documents on completion
+        (<code>export_slides: true</code> &rarr; figures &rarr; dual-copy &rarr; deck rebuild)</li>
+    <li>the deck reads its LOCAL <code>data/</code> &mdash; a verbatim, pipeline-maintained mirror
+        of the article's <code>data/</code>: slides and paper can never disagree</li>
+    <li>quadratic companion line: <code>make sl-quadratic</code> &mdash; same machinery, its own
+        theme (<code>docs/semi-lagrangian-level-set/</code>)</li>
+  </ul>
+  <p class="footnote"><code>workflow/Snakefile.sl-linear</code> &middot;
+     <code>config/linearConv*.yaml</code> &middot; paper:
+     <code>../lsl-level-set-article/linearSemiLagrangianLevelSet.tex</code></p>
+</section>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [ RevealNotes ]
+  });
+
+  // Orientation footer: 'Part k/n - name' from the nearest data-track ancestor.
+  (function () {
+    var tracks = [];
+    document.querySelectorAll('[data-track]').forEach(function (e) {
+      var n = e.getAttribute('data-track');
+      if (tracks.indexOf(n) < 0) { tracks.push(n); }
+    });
+    function trackOf(slide) {
+      var el = slide;
+      while (el && el !== document.body) {
+        if (el.getAttribute && el.getAttribute('data-track')) {
+          return el.getAttribute('data-track');
+        }
+        el = el.parentElement;
+      }
+      return '';
+    }
+    // Clickable part-navigation chips (bottom-left).
+    var chips = [];
+    (function buildNav() {
+      var nav = document.getElementById('deckNav');
+      if (!nav) { return; }
+      tracks.forEach(function (name, i) {
+        var target = null;
+        var els = document.querySelectorAll('[data-track]');
+        for (var k = 0; k < els.length; k++) {
+          if (els[k].getAttribute('data-track') === name) {
+            target = els[k].querySelector(':scope > section') || els[k];
+            break;
+          }
+        }
+        var a = document.createElement('a');
+        a.href = '#';
+        a.textContent = (i + 1);
+        a.title = 'Part ' + (i + 1) + ': ' + name;
+        a.onclick = function (ev) {
+          ev.preventDefault();
+          if (target) {
+            var idx = Reveal.getIndices(target);
+            Reveal.slide(idx.h, idx.v || 0);
+          }
+        };
+        nav.appendChild(a);
+        chips.push(a);
+      });
+    })();
+    function upd() {
+      var el = document.getElementById('deckTrack');
+      if (!el) { return; }
+      var name = trackOf(Reveal.getCurrentSlide());
+      chips.forEach(function (a, i) {
+        a.className = (tracks[i] === name) ? 'here' : '';
+      });
+      if (!name) {
+        el.textContent = window.DECK_LINEAR
+          ? '→ / ← to navigate · Esc = overview'
+          : '→ parts · ↓ slides · Esc = overview';
+        return;
+      }
+      el.innerHTML = 'Part ' + (tracks.indexOf(name) + 1) + '/' + tracks.length
+                   + ' · ' + name;
+    }
+    Reveal.on('slidechanged', upd);
+    Reveal.on('ready', upd);
+  })();
+
+</script>
+</body>
+</html>

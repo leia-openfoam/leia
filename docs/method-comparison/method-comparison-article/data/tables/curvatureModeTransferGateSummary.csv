@@ -1,0 +1,9 @@
+candidate,fit_half_width,regularization_operator,tangential_regularization,regularization_iterations,preserve_modes_through,gate_pass,row_limits_pass,refinement_pass,reason,minimum_amplitude_transfer_Nge64,maximum_amplitude_transfer_Nge64,maximum_phase_error_deg_Nge64,maximum_relative_L2_Nge64
+h3_helmholtz_l1,3,helmholtz,1,30,,0,0,1,amplitude,0.716126734204,1.05070099081,4.3627313373,0.0688889614112
+h4_helmholtz_l4,4,helmholtz,4,60,,0,0,1,amplitude,0.427219229804,0.950366917674,1.55578527947,0.119606600734
+h5_helmholtz_l16,5,helmholtz,16,120,,0,0,1,amplitude,0.155559932918,0.828337604662,1.50650706416,0.175717984619
+h3_biharmonic_20,3,biharmonic,0.05,20,,1,1,1,ok,0.838359354152,1.08827315811,3.48165525222,0.0712787253825
+h3_biharmonic_50,3,biharmonic,0.05,50,,0,0,1,amplitude,0.772157358134,1.07737326278,3.18738366614,0.0551483999962
+h4_biharmonic_10,4,biharmonic,0.05,10,,0,0,1,amplitude,0.796617302183,1.13265288367,1.87118333816,0.0616612693904
+h4_biharmonic_20,4,biharmonic,0.05,20,,0,0,1,amplitude,0.776199303249,1.13109898734,1.77851827213,0.056769439172
+h4_helmholtz_l16_preserve_m2_m4,4,helmholtzPreserveModes,16,120,4,1,1,1,ok,0.818992656604,1.13415584186,1.42629067861,0.0389734313624

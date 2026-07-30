@@ -1,0 +1,679 @@
+% The LINEAR (least-squares nestedLSQ) semi-Lagrangian level-set method as an
+% INDEPENDENT method line: its own studies (config/linearConv*.yaml), its own
+% reveal deck (../lsl-level-set-presentation/lsl.template.html) and this
+% article. Single data source: data/{figures,tables} is written by the
+% snakemake pipeline (make sl-linear) and mirrored verbatim into the
+% presentation's data/ (dual-copy, workflow/scripts/propagate_data.py), so the
+% deck and this paper always show the same, newest results.
+%
+% Figures/tables are guarded with \IfFileExists so the article compiles before
+% the first study run and simply grows as results land.
+\documentclass[preprint,3p,11pt]{elsarticle}
+
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{data/figures/}}
+
+% notation shared with the companion quadratic semi-Lagrangian article
+\newcommand{\psilev}{\psi}
+\newcommand{\uvec}{\mathbf{u}}
+\newcommand{\xc}{\mathbf{x}_c}
+\newcommand{\xd}{\mathbf{x}_d}
+\newcommand{\gc}{\mathbf{g}_c}
+
+% guarded figure/table inputs: compile cleanly before the data exists
+% (\path renders the raw file names -- underscores included -- in the fallback)
+\newcommand{\guardedgraphics}[2][width=\linewidth]{%
+  \IfFileExists{data/figures/#2}{\includegraphics[#1]{#2}}{%
+    \fbox{\parbox{0.9\linewidth}{\centering\small pending pipeline output:\\
+      \path{data/figures/#2}\\(run \texttt{make sl-linear})}}}}
+\newcommand{\guardedinput}[1]{%
+  \IfFileExists{#1}{\input{#1}}{%
+    \fbox{\parbox{0.9\linewidth}{\centering\small pending pipeline output:\\
+      \path{#1}\\(run \texttt{make sl-linear})}}}}
+
+\begin{document}
+\begin{frontmatter}
+
+\title{A linear semi-Lagrangian level-set method on unstructured meshes:
+least-squares reconstruction, and why the raw Taylor extrapolation is not
+enough}
+
+\author[tuda]{Tomislav Mari\'{c}}
+\address[tuda]{Mathematical Modeling and Analysis, TU Darmstadt, Germany}
+
+\begin{abstract}
+We document the linear semi-Lagrangian level-set method as an independent
+method line next to its higher-order companion, the uncached quadratic
+weighted least-squares reconstruction (UQWLSR). All three reconstructions of
+the framework share the same backward, second-order Taylor departure foot and
+the same tetrahedral-decomposition phase indicator; they differ in exactly
+one ingredient --- how the old-time level set is reconstructed at the
+departure foot. We study the two \emph{linear} choices and find them to be
+qualitatively opposite. The raw first-order Taylor extrapolation
+(\texttt{linearTaylor}), which evaluates the arrival cell's own gradient at
+the foot, is unstable in pure advection: the signed-distance gradient defect
+$\||\nabla\psi|-1\|$ grows geometrically under mesh refinement (to
+$\mathcal{O}(10^{9})$ at $N=128$ on the reversed vortex) and even the
+interface shape error mildly diverges, because the single-cell extrapolation
+has no mechanism to damp the steepening it induces. The least-squares linear
+reconstruction (\texttt{nestedLSQ}), which fits a linear polynomial over the
+neighbour stencil, is stable and convergent: the stencil averaging removes
+the runaway, and the shape, volume and \emph{band} gradient errors all
+decrease with refinement. We therefore build the linear method line on
+\texttt{nestedLSQ} and verify it on the reversed 2D vortex and the 3D shear
+and deformation benchmarks, hexahedral and polyhedral, reporting the
+convergence of \emph{all} error measures together with volume-fraction field
+visualizations. The method is convergent but only \emph{conditionally}
+stable, and its safe resolution is flow-dependent: it converges to $256^2$
+(2D vortex) and to $N=160$ (3D deformation, both mesh types) at
+$\mathrm{CFL}=\tfrac12$, but the strongest sustained 3D shear destabilizes it
+on hexahedra past $N=80$ --- a limit the polyhedral face-neighbour stencil
+pushes beyond reach. The unstable \texttt{linearTaylor} variant is documented
+as a characterized limitation --- and as the reconstruction that nonetheless
+serves the two-phase solver, where its dissipation and the short integration
+times keep it in its stable regime. The picture is two design points of one
+framework plus one cautionary tale: \texttt{nestedLSQ} the robust, low-cost
+linear transport method; UQWLSR the kinematic-accuracy champion;
+\texttt{linearTaylor} a reconstruction that must never be used for
+reinitialization-free advection.
+\end{abstract}
+
+\begin{keyword}
+level set \sep semi-Lagrangian advection \sep unstructured meshes
+\sep OpenFOAM \sep least-squares reconstruction
+\end{keyword}
+\end{frontmatter}
+
+% ============================================================================
+\section{Introduction}
+\label{sec:intro}
+
+The level-set method \cite{osher1988,sethian1999,sussman1994} transports a
+scalar field $\psilev$ whose zero set is the fluid interface. On unstructured
+finite-volume meshes, Eulerian discretizations of the level-set equation
+couple the interface accuracy to flux limiters and to the divergence scheme;
+semi-Lagrangian schemes \cite{staniforth1991,strain1999} avoid this
+altogether by tracing characteristics backward and reconstructing the
+old-time field at the departure foot. In our companion work, a per-cell
+quadratic weighted least-squares reconstruction (UQWLSR) provides a
+high-order reconstruction on arbitrary polyhedral stencils; that line
+delivers the best kinematic accuracy of the framework.
+
+This article documents the \emph{linear} reconstruction --- the natural,
+low-cost sibling of the quadratic fit --- as an independent method line, and
+in doing so reports a result that is easy to get wrong. There are two ways to
+reconstruct a linear approximation of $\psilev$ at the departure foot, and on
+a reinitialization-free semi-Lagrangian scheme they behave in opposite ways.
+The obvious one, which we call \texttt{linearTaylor}, evaluates the arrival
+cell's own gradient as a first-order Taylor expansion at the foot; it needs a
+single cell-gradient evaluation and nothing else. We find it to be
+\emph{unstable} in pure advection: the signed-distance gradient defect
+$\bigl\||\nabla\psilev|-1\bigr\|$ grows geometrically under mesh refinement
+(to $\mathcal{O}(10^{9})$ at $N=128$ and $\mathcal{O}(10^{21})$ at $N=256$ on
+the reversed vortex) and even the interface shape error mildly diverges,
+because a single-cell extrapolation across the foot displacement has no
+mechanism to damp the gradient steepening it induces, and the reversed-vortex
+shear steepens gradients relentlessly. The stencil-bounds clamp does not cure
+it. The second choice, \texttt{nestedLSQ}, fits a linear polynomial over the
+neighbour stencil by least squares --- the same stencil averaging that makes
+the quadratic fit well behaved --- and is stable and convergent: shape,
+volume and the band-restricted gradient defect all decrease with refinement.
+
+We therefore build the linear method line on \texttt{nestedLSQ}. It keeps the
+attractions that motivate a linear scheme --- a compact least-squares solve
+with no cached per-cell pseudo-inverse, $O(1)$ memory per cell, and no
+fine-mesh memory ceiling --- while remaining a genuine, convergent transport
+method. The unstable \texttt{linearTaylor} variant is not discarded but
+documented (Section~\ref{sec:lintaylor}): it is the reconstruction used in the
+two-phase ``consistent-linear'' pipeline, where the coupled dissipation and
+the short integration times before capillary equilibrium keep it inside its
+stable regime, and where it was measured to outlive the quadratic pipeline at
+every resolution. Its pure-advection instability and its two-phase utility are
+both real and not in tension: the coupled comparison is relative (linear less
+destabilizing than quadratic in the curvature-feedback loop), the kinematic
+result absolute (unbounded gradient growth over a long reversible integration).
+
+The contributions here are: (i) a complete description of the linear method
+--- departure foot, least-squares linear reconstruction, safeguards, phase
+indicator --- and a characterization of why the raw Taylor extrapolation
+fails; (ii) verification of \texttt{nestedLSQ} on the standard 2D and 3D
+kinematic benchmarks \cite{rider1998,leveque1996,enright2002,liovic2006} on
+hexahedral \emph{and} polyhedral \cite{juretic_cfmesh} meshes with the
+convergence of \emph{all} error measures, not only the headline shape error;
+and (iii) volume-fraction field visualizations that make the method's
+behaviour and its resolution dependence directly visible.
+
+% ============================================================================
+\section{Method}
+\label{sec:method}
+
+\subsection{Level-set transport and semi-Lagrangian update}
+The interface $\Sigma(t)$ is the zero set of $\psilev(\mathbf{x},t)$,
+transported by
+\begin{equation}
+  \partial_t \psilev + \uvec\cdot\nabla\psilev = 0 ,
+  \label{eq:levelset}
+\end{equation}
+which keeps $\psilev$ constant along characteristics
+$\dot{\mathbf{x}}=\uvec$. Tracing the characteristic that arrives at a cell
+centre $\xc$ at $t^{n+1}$ backward over one time step to its departure foot
+$\xd$ turns conservation-along-trajectories into an exact one-step update,
+\begin{equation}
+  \psilev^{\,n+1}(\xc) = \psilev^{\,n}(\xd),
+  \label{eq:sl}
+\end{equation}
+evaluated at every cell centre. No flux, no divergence scheme and no linear
+system appear; the scheme has exactly two ingredients --- locating $\xd$
+(Section~\ref{sec:foot}) and reconstructing $\psilev^{\,n}$ there
+(Section~\ref{sec:recon}).
+
+\subsection{Second-order departure foot}
+\label{sec:foot}
+The foot is located by the backward Taylor expansion of the arriving
+characteristic,
+\begin{equation}
+  \xd = \xc - \uvec^{\,n+1}\,\Delta t
+        + \tfrac12\!\left[\frac{\uvec^{\,n+1}-\uvec^{\,n}}{\Delta t}
+                 + \left(\uvec^{\,n+1}\!\cdot\nabla\right)\uvec^{\,n+1}\right]\!\Delta t^{2},
+  \label{eq:foot}
+\end{equation}
+in which the bracket approximates the material acceleration
+$\mathrm{D}\uvec/\mathrm{D}t$ with a one-sided temporal difference and a
+Gauss-linear cell gradient. The dropped terms are $O(\Delta t^{3})$ per
+step, so the foot is second-order accurate in time; this foot is shared
+verbatim with the quadratic companion line and is held fixed throughout. A
+foot-radius guard warns when $|\xd-\xc|$ exceeds the neighbour-stencil
+radius, i.e.\ when the operational Courant limit ($\mathrm{CFL}\le 1$) is
+violated.
+
+\subsection{Least-squares linear reconstruction (\texttt{nestedLSQ})}
+\label{sec:recon}
+The linear method reconstructs the old-time field at the foot from a linear
+polynomial fitted over the arrival cell's neighbour stencil $\mathcal{S}_c$ by
+weighted least squares --- the linear-basis restriction of the quadratic fit
+of the companion line:
+\begin{equation}
+  R_c(\mathbf{x}) = \psilev^{\,n}_c + \mathbf{g}_c\cdot(\mathbf{x}-\xc),
+  \qquad
+  \mathbf{g}_c = \arg\min_{\mathbf{g}} \sum_{i\in\mathcal{S}_c}
+      w_i^{2}\bigl(\psilev^{\,n}_c + \mathbf{g}\cdot\mathbf{d}_i - \psilev^{\,n}_i\bigr)^2 ,
+  \label{eq:nestedlsq}
+\end{equation}
+with $\mathbf{d}_i=\mathbf{x}_i-\xc$ and inverse-distance weights
+$w_i=1/\lvert\mathbf{d}_i\rvert$; the constant term is dropped so
+$R_c(\xc)=\psilev^{\,n}_c$ exactly, and $\psilev^{\,n}(\xd)\approx R_c(\xd)$.
+The gradient $\mathbf{g}_c$ is thus the \emph{least-squares} slope over the
+whole stencil rather than a single-cell difference; that stencil averaging is
+the decisive difference from the raw Taylor extrapolation of
+Section~\ref{sec:lintaylor}. Three properties follow.
+
+\paragraph{Accuracy.} The fit is exact for linear fields, so the per-step
+reconstruction error is $O(h^{2})$ (the quadratic remainder is dropped). Over
+$T/\Delta t \propto 1/h$ steps the accumulated transport error is first order
+in $h$; the measured 2D shape order is $\approx1.1$ and the volume order
+$\approx1.5$ (Section~\ref{sec:conv2d}), well below the quadratic line's
+$\approx3$ but a genuine, monotone convergence.
+
+\paragraph{Stability and its CFL limit.} Because the slope is a stencil
+average, the reconstruction does not amplify the gradient steepening that the
+reversed-vortex shear induces, and the band gradient defect
+$\bigl\||\nabla\psilev|-1\bigr\|$ \emph{decreases} with refinement at
+$\mathrm{CFL}=\tfrac12$. The method is, however, only \emph{conditionally}
+stable: at $\mathrm{CFL}=1$ it converges on the coarse meshes but
+destabilizes on the finest (Section~\ref{sec:conv2d}), unlike the quadratic
+line, whose order is CFL-independent up to the stability bound. All
+production linear studies therefore run at $\mathrm{CFL}\le\tfrac12$.
+
+\paragraph{Cost and memory.} The per-cell solve is a single small symmetric
+system ($2\times2$ in 2D, $3\times3$ in 3D) assembled and factorised on the
+fly; there is no cached pseudo-inverse, so the memory footprint is $O(1)$ per
+cell and the fine-mesh memory ceiling of the cached quadratic reconstruction
+does not exist. The reconstruction is local: it uses only the arrival cell's
+stencil, so the only parallel communication is the standard halo exchange of
+$\psilev^{\,n}$.
+
+\subsection{The \texttt{linearTaylor} variant and its instability}
+\label{sec:lintaylor}
+The obvious alternative linear reconstruction is the arrival cell's own
+first-order Taylor expansion,
+\begin{equation}
+  R_c^{\mathrm{T}}(\xd) = \psilev^{\,n}_c + (\nabla\psilev^{\,n})_c\cdot(\xd-\xc),
+  \label{eq:lintaylor}
+\end{equation}
+with $(\nabla\psilev^{\,n})_c$ a point-cell least-squares \emph{cell} gradient
+(\texttt{gradPsi pointCellsLeastSquares}). It looks cheaper still --- one
+gradient field, one dot product --- but on the reinitialization-free scheme it
+is \emph{unstable in pure advection}. Table~\ref{tab:lintaylor} contrasts the
+two linear reconstructions on the reversed 2D vortex at $\mathrm{CFL}=\tfrac12$:
+where \texttt{nestedLSQ} holds the band gradient defect bounded and decreasing,
+\texttt{linearTaylor} lets it grow geometrically, reaching $\mathcal{O}(10^{9})$
+at $N=128$ and $\mathcal{O}(10^{21})$ at $N=256$, and the shape error grows too
+(fitted order $-0.9$). The mechanism is a positive feedback: the single-cell
+extrapolation across the foot displacement overshoots where $|\nabla\psilev|$
+is already too steep, steepening it further, with no stencil averaging to damp
+it; finer meshes take more steps, so the runaway is worse, not better. The
+stencil-bounds clamp (Section~\ref{sec:safeguards}) does not cure it --- the
+reconstructed \emph{value} near the interface stays within the stencil range
+while the \emph{gradient} explodes in the field around it.
+
+\begin{table}[t]
+  \centering
+  \caption{The two linear reconstructions on the reversed 2D vortex,
+  $\mathrm{CFL}=\tfrac12$: band gradient defect
+  $\bigl\||\nabla\psilev|-1\bigr\|^{\mathrm{band}}$ and interface shape error at
+  $t=T$. \texttt{nestedLSQ} converges; \texttt{linearTaylor} diverges
+  geometrically. Measured; reproduce by setting \texttt{reconstruction
+  linearTaylor} in \texttt{config/linearConv2Dvortex.yaml}.}
+  \label{tab:lintaylor}
+  \begin{tabular}{lcccc}
+  \toprule
+   & \multicolumn{2}{c}{band gradient defect} & \multicolumn{2}{c}{shape error} \\
+  $N$ & \texttt{nestedLSQ} & \texttt{linearTaylor} & \texttt{nestedLSQ} & \texttt{linearTaylor} \\
+  \midrule
+  32  & $3.6\times10^{-2}$ & $1.1\times10^{1}$  & $9.2\times10^{-4}$ & $5.4\times10^{-3}$ \\
+  64  & $5.8\times10^{-3}$ & $2.9\times10^{3}$  & $4.2\times10^{-4}$ & $9.9\times10^{-3}$ \\
+  128 & $1.5\times10^{-3}$ & $1.4\times10^{9}$  & $1.6\times10^{-4}$ & $2.2\times10^{-2}$ \\
+  256 & $4.8\times10^{-4}$ & $2.0\times10^{21}$ & $9.2\times10^{-5}$ & $3.1\times10^{-2}$ \\
+  \bottomrule
+  \end{tabular}
+\end{table}
+
+The variant is not merely a cautionary tale: \texttt{linearTaylor} is the
+reconstruction of the two-phase ``consistent-linear'' pipeline, where it was
+measured to outlive the quadratic pipeline at every resolution and to break
+its finer-blows-first blow-up trend. There is no contradiction with the
+instability reported here. That coupled result is \emph{relative} --- linear
+less destabilizing than quadratic in the curvature-feedback loop, over the
+short integration before capillary equilibrium --- while the kinematic result
+is \emph{absolute}, an unbounded gradient growth over a long reversible
+integration. Under two-phase coupling the solver's own dissipation and the
+short time horizon keep \texttt{linearTaylor} inside its stable regime; in pure
+transport to full vortex reversal, nothing does. For pure advection the linear
+method of record is therefore \texttt{nestedLSQ}.
+
+\subsection{Safeguards}
+\label{sec:safeguards}
+Two optional safeguards live in the reconstruction base class and are shared
+by every reconstruction of the framework. (i) A Barth--Jespersen-type slope
+limiter on the reconstruction increment; measured on the benchmarks it costs
+accuracy without improving robustness for the linear method, and it is OFF
+by default. (ii) \texttt{clipToStencilBounds}, a monotone clamp of the
+reconstructed value to the stencil's $[\min,\max]$; it is required on
+polyhedral meshes --- where irregular stencils can produce outlying
+gradients --- and inactive in smooth regions, so the measured order is
+unaffected. The polyhedral studies additionally select the compact
+face-neighbour stencil (\texttt{stencil face}) for the gradient, the
+mesh-appropriate choice when a polyhedron has 12--16 face neighbours.
+
+\subsection{Phase indicator and narrow band}
+\label{sec:indicator}
+The volume fraction $\alpha$ is computed from $\psilev$ by the
+tetrahedral-decomposition phase indicator of Detrixhe and Aslam
+\cite{detrixhe2016}: each cell is decomposed into tetrahedra from its
+centroid and face centroids, $\psilev$ is interpolated to the tetrahedron
+vertices from a linear least-squares reconstruction, and the wet volume of
+each tetrahedron is integrated exactly from the vertex values' sign
+pattern. The indicator is evaluated in a narrow band around the interface
+($\alpha$ is $0/1$ outside), and all band-restricted error measures of
+Section~\ref{sec:metrics} use this band. The indicator and band machinery
+are shared verbatim with the quadratic companion line.
+
+% ============================================================================
+\section{Software design and reproducibility}
+\label{sec:software}
+
+The reconstruction is a run-time-selectable strategy behind the
+\texttt{slReconstruction} interface: the case dictionary entry
+\begin{center}
+\texttt{levelSet \{ semiLagrangian \{ reconstruction nestedLSQ; \} \}}
+\end{center}
+is the \emph{only} difference between the linear and the quadratic study ---
+the foot, the phase indicator, the band, the error function objects and the
+whole study pipeline are shared, and swapping \texttt{nestedLSQ} for
+\texttt{linearTaylor} (or the quadratic \texttt{uncachedQuadraticWeighted\-Least\-Squares})
+is a one-word change. The method line reproduces with one command,
+\begin{center}
+  \texttt{make sl-linear}
+\end{center}
+which runs the five convergence studies
+(\texttt{config/linearConv*.yaml}: 2D vortex hex; 3D shear and deformation,
+hexahedral and polyhedral), aggregates the error tables, regenerates every
+figure and table of this article, mirrors them into the companion
+presentation's data folder (so slides and paper are always consistent), and
+rebuilds both documents. Completing any \emph{single} study auto-refreshes
+the documents as well; the meta-workflow only re-harvests.
+
+% ============================================================================
+\section{Verification}
+\label{sec:verification}
+
+\subsection{Benchmarks and error measures}
+\label{sec:metrics}
+
+\paragraph{Benchmarks.} The 2D reversed (single) vortex of Rider and Kothe
+\cite{rider1998}: a circle of radius $0.15$ centred at $(0.5,0.75)$ in the
+unit box, sheared by the vortex stream function and reversed at $T/2$ so the
+exact solution at $t=T=2$ is the initial circle; resolutions
+$N = 32 \dots 256$ on a $\sqrt2$ ladder, at $\mathrm{CFL}=0.5$ and $1.0$.
+The 3D shear \cite{leveque1996,liovic2006} and 3D deformation
+\cite{leveque1996,enright2002} benchmarks in the unit cube with $T=3$,
+$\mathrm{CFL}=0.5$, on hexahedral ladders ($N = 32,50,80,128(,160)$, ratio
+$\sqrt[3]{4}$) and on polyhedral (cfMesh \cite{juretic_cfmesh}) ladders with
+matching characteristic sizes $h = \texttt{maxCellSize} =
+1/32 \dots 1/128$; for the polyhedral meshes $h$ is the direct analogue of
+$1/N$, so hex and poly lines are plotted on the same axes.
+
+\paragraph{Error measures.} All errors are reported at the end time $t=T$
+(reversed state, exact solution known) and the key ones additionally at the
+half time $t=T/2$ (maximally deformed state):
+\begin{itemize}
+\item \emph{shape error}: the geometric $L_1$ distance between the computed
+  and exact volume-fraction fields,
+  $E_{\mathrm{shape}} = \sum_c |\alpha_c - \alpha_c^{\mathrm{exact}}|\,V_c$
+  (at $t=T$ the exact field is the initial one);
+\item \emph{volume-conservation error}: the relative signed residual
+  $E_{\mathrm{vol}} = (\sum_c \alpha_c V_c - V^0)/V^0$; semi-Lagrangian
+  advection is non-conservative by construction, so this is a diagnostic
+  bound, not a telescoping conservation identity --- it is bounded and
+  non-monotone, and we plot its magnitude without quoting a fitted order;
+\item \emph{gradient (signed-distance) defect}:
+  $E_{\nabla\psi} = \| |\nabla\psilev| - 1 \|_{L_2}$, globally and
+  restricted to the narrow band (superscript ``band'') that the numerics
+  actually use;
+\item \emph{half-time variants}: $E_{\nabla\psi}(T/2)$,
+  $E^{\mathrm{band}}_{\nabla\psi}(T/2)$ and $E_{\mathrm{vol}}(T/2)$ probe
+  the maximally stretched interface, where the level set is furthest from a
+  signed-distance field;
+\item \emph{health metrics}: $\min|\nabla\psilev|$ in the band (at $T$ and
+  $T/2$) monitors flattening --- a value approaching zero signals imminent
+  loss of the interface, before any error norm reacts.
+\end{itemize}
+The complete per-resolution data are in
+\texttt{data/tables/lsl\_convergence.csv}; least-squares convergence orders
+over each ladder are in \texttt{data/tables/lsl\_convergence\_orders.csv}
+and Tables~\ref{tab:orders} and \ref{tab:orders-ext}.
+
+\begin{table}[t]
+  \centering
+  \caption{Measured least-squares convergence orders of the primary error
+  measures (shape, volume, gradient defect at $t=T$), per case, mesh type
+  and CFL. Volume-conservation is a signed, bounded residual; its fitted
+  slope is reported for completeness only.}
+  \label{tab:orders}
+  \guardedinput{data/tables/convergence_orders.tex}
+\end{table}
+
+\begin{table}[t]
+  \centering
+  \caption{Measured least-squares convergence orders of \emph{all} error
+  measures, including the band-restricted gradient defect and the half-time
+  ($t=T/2$, maximum deformation) variants.}
+  \label{tab:orders-ext}
+  \guardedinput{data/tables/convergence_orders_extended.tex}
+\end{table}
+
+\subsection{Two-dimensional convergence}
+\label{sec:conv2d}
+Figure~\ref{fig:conv2d} shows the primary errors of the reversed 2D vortex
+at both CFL numbers, with $O(h)$ and $O(h^{2})$ guides;
+Figure~\ref{fig:conv2d-diag} completes the picture with the band-restricted
+and half-time measures. Three behaviours stand out. First, at
+$\mathrm{CFL}=\tfrac12$ the method converges: the shape error at order
+$\approx1.1$, the volume error at $\approx1.5$, and the band gradient defect
+at $\approx2.1$ (Table~\ref{tab:orders}) --- monotone over the whole ladder.
+Second, the absolute errors sit well above the quadratic line's at equal $h$
+--- the price of the missing curvature term --- so the linear line buys
+accuracy at first-to-second-order rates rather than the quadratic line's
+$\approx3$. Third, and unlike the quadratic line, the method is
+\emph{conditionally} stable in the Courant number: at $\mathrm{CFL}=1$ it
+converges over a bounded envelope (shape order $0.97$ through $N=90$) but
+destabilizes on the finest three levels ($N\ge128$), where the same
+gradient-steepening feedback that destroys the \texttt{linearTaylor} variant
+(Section~\ref{sec:lintaylor}) begins to bite the least-squares slope as well.
+The figure fits and draws only the stable envelope of each series and marks
+the first destabilized resolution separately (red cross); the quadratic
+reconstruction shows no such CFL sensitivity. Production linear studies ---
+including all 3D cases below --- run at $\mathrm{CFL}=\tfrac12$. The half-time
+gradient defect (maximum stretching) grows toward $O(1)$ on all meshes for
+\emph{both} the linear and the quadratic line: neither reconstruction
+maintains the signed-distance property through the maximally deformed state.
+
+\begin{figure}[t]
+  \centering
+  \guardedgraphics{lsl_2Dvortex_convergence.png}
+  \caption{Reversed 2D vortex ($T=2$), least-squares linear (\texttt{nestedLSQ})
+  semi-Lagrangian method: gradient defect, shape error and volume-conservation
+  error at $t=T$ vs $h=1/N$, $\mathrm{CFL}=0.5$ and $1.0$, with measured
+  least-squares orders in the legends. Only the stable envelope of each series
+  is drawn and fitted; at $\mathrm{CFL}=1$ the first destabilized resolution
+  ($N=128$) is marked separately (red cross), the runaway values kept off the
+  axis.}
+  \label{fig:conv2d}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \guardedgraphics{lsl_2Dvortex_convergence_diagnostics.png}
+  \caption{Reversed 2D vortex, all remaining error measures: band-restricted
+  gradient defect at $t=T$, global and band-restricted gradient defect at
+  the maximally deformed half time $t=T/2$, and the half-time volume error.}
+  \label{fig:conv2d-diag}
+\end{figure}
+
+\subsection{Three-dimensional convergence, hexahedral and polyhedral}
+\label{sec:conv3d}
+Figures~\ref{fig:conv3dshear} and~\ref{fig:conv3ddef} overlay the hexahedral
+and polyhedral ladders of the 3D shear and deformation benchmarks (hex solid,
+poly dashed); polyhedral runs use the face-neighbour gradient stencil and the
+stencil-bounds clamp (Section~\ref{sec:safeguards}). The two benchmarks
+separate cleanly, and the separation is the central 3D result.
+
+The 3D \emph{deformation} case (Figure~\ref{fig:conv3ddef}) converges on both
+mesh types: shape order $2.28$ (hex, five levels to $N=160$) and $1.52$
+(poly), volume $3.6$/$2.9$, and the band gradient defect \emph{decreases} with
+refinement --- the same well-behaved picture as the 2D vortex, at higher
+order. The 3D \emph{shear} case (Figure~\ref{fig:conv3dshear}) converges on the
+hexahedral mesh over a bounded envelope and then destabilizes: it refines
+cleanly through $N=50$ (shape order $1.18$ over the stable levels) but by the
+finer resolutions the gradient defect has run away (to $\mathcal{O}(10^{5})$ at
+$N=128$, where the shape error itself jumps to $3.7\times10^{-2}$). The figure
+and Table~\ref{tab:orders} therefore fit and report the hexahedral shear order
+over the \emph{stable envelope} only ($h\ge2\times10^{-2}$) and mark the first
+destabilized resolution separately as the stability limit; the runaway values
+are deliberately kept off the axis. This is the same conditional-stability
+limit seen at $\mathrm{CFL}=1$ in 2D (Section~\ref{sec:conv2d}), here reached
+at $\mathrm{CFL}=\tfrac12$ because the LeVeque--Liovic shear
+\cite{leveque1996,liovic2006} sustains a stronger, non-reversing strain than
+the deformation field over most of the period, and that strain steepens
+$\nabla\psilev$ until the least-squares slope can no longer damp it. The limit
+is therefore \emph{flow-dependent}: the 2D vortex (to $N=256$) and the 3D
+deformation (to $N=160$) stay inside it at $\mathrm{CFL}=\tfrac12$; the 3D
+shear on hexahedra does not, past $N=50$. Notably the \emph{polyhedral} shear
+run converges over its full ladder (shape order $1.78$, band gradient $2.10$):
+the face-neighbour stencil's stronger averaging and the stencil-bounds clamp
+push the limit past the reachable resolution. The practical rule is that
+\texttt{nestedLSQ} is a conditionally stable method whose safe resolution
+depends on the flow; for the strongest sustained shear on hexahedra it is
+bounded, and either a lower Courant number, the face-neighbour stencil, or
+band-limited redistancing is required to go finer.
+
+\begin{figure}[t]
+  \centering
+  \guardedgraphics{lsl_3Dshear_convergence.png}
+  \guardedgraphics{lsl_3Dshear_convergence_diagnostics.png}
+  \caption{3D shear ($[0,1]^3$, $T=3$, $\mathrm{CFL}=0.5$), hexahedral and
+  polyhedral meshes: primary errors (top) and remaining error measures
+  (bottom) vs $h$. Only the stable envelope is drawn and fitted: the
+  hexahedral run converges over $h\ge2\times10^{-2}$ (shape order $1.18$) and
+  then destabilizes (gradient defect $\mathcal{O}(10^{5})$ by $N=128$), the
+  first destabilized resolution marked separately (red cross) with the runaway
+  values off the axis; the polyhedral run converges throughout.}
+  \label{fig:conv3dshear}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \guardedgraphics{lsl_3Ddeformation_convergence.png}
+  \guardedgraphics{lsl_3Ddeformation_convergence_diagnostics.png}
+  \caption{3D deformation (unit cube, $T=3$, $\mathrm{CFL}=0.5$), hexahedral
+  ($N=32\!\to\!160$) and polyhedral meshes: primary errors (top) and remaining
+  error measures (bottom) vs $h$. Both mesh types converge (shape order $2.28$
+  hex, $1.52$ poly); the band gradient defect decreases with refinement.}
+  \label{fig:conv3ddef}
+\end{figure}
+
+\subsection{Volume-fraction field evolution}
+\label{sec:fields}
+Figure~\ref{fig:alpha2d} shows the volume-fraction field of the 2D vortex at
+$t=0$, $T/2$ and $T$ across the resolution ladder ($\mathrm{CFL}=\tfrac12$).
+This is the method's behaviour made visible: at $T/2$ the filament tail thins
+below the local cell size on the coarse meshes and the graded $\alpha$
+transition widens, while the reversed state at $t=T$ shows how much of the
+initial circle is recovered (exact circle dashed). The under-resolved tail is
+lost irreversibly, exactly as in every interface-capturing method at these
+resolutions \cite{enright2002}; the convergence of Section~\ref{sec:conv2d}
+quantifies the recovery rate, and the sharpening of the $\alpha$ transition
+with refinement is its field-level counterpart.
+
+\begin{figure}[t]
+  \centering
+  \guardedgraphics{alpha_field_2Dvortex_hex.png}
+  \caption{Volume fraction $\alpha$ of the reversed 2D vortex
+  ($\mathrm{CFL}=0.5$) at $t=0$, $T/2$, $T$ (rows) across the resolution
+  ladder (columns; coarsest, median, finest). Black line: the $\psilev=0$
+  level set; dashed red circle on the $t=T$ row: the exact reversed
+  interface.}
+  \label{fig:alpha2d}
+\end{figure}
+
+\subsection{Interface evolution in 3D}
+\label{sec:iso3d}
+Figures~\ref{fig:iso3dshear} and~\ref{fig:iso3ddef} render the
+$\psilev = 0$ iso-surface of the 3D benchmarks at $t=0$, $T/2$ and $T$ on
+the three finest resolutions of each ladder (hexahedral and polyhedral), all
+at $\mathrm{CFL}=\tfrac12$. The deformation interface recovers cleanly at
+$t=T$ on both meshes, and the qualitative signature of the linear method is
+the earlier loss of the thin scroll edge than the quadratic companion at equal
+resolution --- the first-order transport error made visible. The hexahedral
+\emph{shear} montage additionally shows the destabilization of
+Section~\ref{sec:conv3d}: its finest column ($N=128$) carries the corrupted
+interface of the runaway gradient, whereas the polyhedral shear montage
+recovers the sheet at every resolution.
+
+\begin{figure}[t]
+  \centering
+  \guardedgraphics[width=0.49\linewidth]{isosurface_3Dshear_hex.png}
+  \guardedgraphics[width=0.49\linewidth]{isosurface_3Dshear_poly.png}
+  \caption{3D shear: $\psilev=0$ iso-surfaces at $t=0$, $T/2$, $T$ (rows) on
+  the three finest resolutions (columns); hexahedral (left) and polyhedral
+  (right) meshes.}
+  \label{fig:iso3dshear}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \guardedgraphics[width=0.49\linewidth]{isosurface_3Ddeformation_hex.png}
+  \guardedgraphics[width=0.49\linewidth]{isosurface_3Ddeformation_poly.png}
+  \caption{3D deformation: $\psilev=0$ iso-surfaces at $t=0$, $T/2$, $T$
+  (rows) on the three finest resolutions (columns); hexahedral (left) and
+  polyhedral (right) meshes.}
+  \label{fig:iso3ddef}
+\end{figure}
+
+\subsection{The three reconstructions: two design points and one cautionary tale}
+\label{sec:comparison}
+The framework's reconstructions occupy three positions, not two. The quadratic
+UQWLSR is the kinematic-accuracy champion: it carries the curvature term the
+linear fits drop, its 2D shape order is $\approx3$ against the linear
+$\approx1.1$, and its order is CFL-independent up to the stability bound.
+The least-squares linear \texttt{nestedLSQ} is the low-cost, memory-light
+transport method documented here: convergent at $\mathrm{CFL}\le\tfrac12$,
+$O(1)$ memory per cell, no fine-mesh ceiling --- the choice when accuracy is
+adequate at first-to-second order and the mesh is large. The raw Taylor
+\texttt{linearTaylor} is the cautionary tale: unstable in pure advection
+(Section~\ref{sec:lintaylor}), it must never be used for
+reinitialization-free transport.
+
+The coupling to two-phase flow reorders these, and it is worth being precise
+about how, because it is the origin of the linear line. There, cell-centred
+curvature estimated from the level set feeds surface-tension forces back into
+the flow; a reinitialization-free, high-order transport provides \emph{zero}
+damping for the level-set perturbations this feedback loop injects, and the
+loop's gain grows with resolution. In that setting the dissipative
+\texttt{linearTaylor} transport --- unstable on its own over a long reversible
+integration --- is measured to \emph{outlive} the quadratic pipeline at every
+resolution and to break its finer-blows-first blow-up trend, because the
+coupled solver's own dissipation and the short pre-equilibrium time horizon
+keep it inside its stable regime while its damping suppresses the feedback the
+quadratic transport amplifies. The two facts coexist without contradiction
+(Section~\ref{sec:lintaylor}). The practical recipe of the framework is
+therefore: quadratic transport for kinematic studies and
+interface-accuracy-critical work; \texttt{nestedLSQ} for low-cost stable
+kinematic transport at $\mathrm{CFL}\le\tfrac12$; and \texttt{linearTaylor}
+reserved for the explicit-capillary two-phase solver, where its instability is
+held in check and its dissipation is an asset.
+
+% ============================================================================
+\section{Limitations and outlook}
+\label{sec:limitations}
+The method inherits the two structural limitations of the framework. First,
+semi-Lagrangian point updates are non-conservative; the volume error is
+bounded and converges with resolution but never telescopes to zero, and
+applications that require discrete conservation need a conservative
+correction on top. Second, neither reconstruction maintains the
+signed-distance property through strong stretching (the half-time gradient
+defect is $O(1)$ on all meshes); downstream consumers that assume
+$|\nabla\psilev|=1$ --- curvature estimators above all --- need either
+band-limited redistancing or estimators that tolerate the defect. Third, and
+specific to the linear line, the stability is only conditional and
+flow-dependent: \texttt{nestedLSQ} converges to $256^2$ (2D vortex) and $N=160$
+(3D deformation) at $\mathrm{CFL}=\tfrac12$, but the strongest sustained 3D
+shear destabilizes it on hexahedra past $N=80$ --- the same gradient-steepening
+feedback that destroys \texttt{linearTaylor}, here merely deferred by the
+stencil averaging rather than removed. The quadratic line is CFL- and
+flow-independent up to the stability bound. The natural outlook is the
+combination measured in the two-phase companion work: dissipative linear
+transport for damping the curvature-feedback loop, plus targeted
+signed-distance maintenance in the band, which would also lift the shear
+resolution limit by preventing the gradient runaway at its source.
+
+% ============================================================================
+\section{Conclusions}
+\label{sec:conclusions}
+The linear semi-Lagrangian level-set method is the low-cost sibling of the
+quadratic reconstruction, and getting it right turns on a single choice. The
+least-squares linear fit \texttt{nestedLSQ} --- a compact per-cell solve, no
+cached pseudo-inverse, $O(1)$ memory, no fine-mesh ceiling --- is a genuine,
+convergent transport method: at $\mathrm{CFL}\le\tfrac12$ it converges
+monotonically in shape, volume and the band gradient defect on the standard
+2D and 3D benchmarks, hexahedral and polyhedral, at first-to-second order. The
+naive alternative, the raw single-cell Taylor extrapolation
+\texttt{linearTaylor}, is unstable in pure advection --- its gradient defect
+grows geometrically under refinement --- and must not be used for
+reinitialization-free transport, even though it is precisely the
+reconstruction that serves the two-phase solver, where coupled dissipation and
+short integration keep it in check. \texttt{nestedLSQ}'s stability is
+conditional and flow-dependent (it converges to $256^2$ and $N=160$ but the
+strongest sustained 3D shear bounds it on hexahedra at $N=80$), which is the
+same steepening feedback deferred rather than removed. Documented as an
+independent method line with its own one-command reproduction, the linear
+line is both a practical, memory-light kinematic transport method within its
+stable envelope and a clean demonstration that stencil averaging, not the
+polynomial degree alone, is what makes a semi-Lagrangian reconstruction
+stable.
+
+\section*{Code and data availability}
+The method, the studies and this document reproduce from the public
+repository with \texttt{make sl-linear} (OpenFOAM v2506, snakemake); every
+figure and table in this article is pipeline-generated and mirrored
+verbatim into the companion presentation.
+
+\bibliographystyle{elsarticle-num}
+\bibliography{refs}
+\end{document}
