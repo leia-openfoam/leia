@@ -7,9 +7,45 @@
     if (pimple.firstIter())
     {
         // Semi-Lagrangian advection: psi holds psi^n on entry, psi^{n+1} on exit.
-        // u^{n+1}=Uext and u^n=UextOld; both are normal-constant extensions of
-        // the corresponding physical velocity. No mesh-motion flux subtraction:
-        // SL currently runs on a static mesh (cached stencil).
+        //
+        // TIME LEVELS -- the coupled solver has only OLD-TIME velocity here.
+        // slAdvection::advect(psi, Unew, Uold) documents Unew = u^{n+1}, and the
+        // pointValue kernel therefore builds the arrival-time-centred foot
+        //   x_d = x_c - Unew dt + 1/2 [ (Unew-Uold)/dt + (Unew.grad)Unew ] dt^2.
+        // But this include runs BEFORE UEqn.H/pEqn.H, so the registered U is still
+        // u^n (the velocity converged at the end of the previous step) and UextOld
+        // is u^{n-1}. Feeding (u^n, u^{n-1}) into slots that require (u^{n+1}, u^n)
+        // leaves an O(dt^2 d_t u) foot error -- the arrival-centred expansion needs
+        // the NEW-time velocity in its linear term, and substituting the old one
+        // adds +dt^2 d_t u that the temporal correction then reinforces instead of
+        // cancelling. Per-step position error O(dt^2) instead of O(dt^3), i.e. the
+        // transport degrades to FIRST order in time. It is invisible in every
+        // steady or uniform test (d_t u = 0 makes the two forms identical) and only
+        // bites once the interface velocity is genuinely unsteady.
+        //
+        // The departure-time-centred trace built from the two old levels is second
+        // order and needs no u^{n+1} (the method is explicit in the current and the
+        // previous velocity field by design):
+        //   x_d = x_c - dt/2 (3 u^n - u^{n-1}) + 1/2 dt^2 (u^n.grad)u^n
+        //       = x_c - dt u^{n+1/2} + 1/2 dt^2 (u.grad)u,
+        // i.e. the LINEAR displacement must use the time-centred velocity, obtained
+        // by Adams-Bashforth extrapolation from the two available levels; only the
+        // temporal-derivative term changes sign relative to the arrival form, the
+        // convective term keeps its plus sign under both centrings.
+        //
+        // Rather than branch the shared kernel (the prescribed-velocity solvers
+        // genuinely do supply u^{n+1} after ++runTime, and the + sign is correct
+        // for them), we hand the kernel the AB2 estimate of the arrival velocity,
+        //   UextStar = u^n + (dt/dt0)(u^n - u^{n-1}) = u^{n+1} + O(dt^2),
+        // and u^n as the old level. The unchanged kernel then reduces algebraically
+        // to the expression above, with the dt/dt0 ratio making the temporal
+        // difference quotient correct when the step size varies (the kernel divides
+        // by the CURRENT step while the difference spans the PREVIOUS one). On the
+        // first step UextOld == Uext, so the extrapolation is the identity -- the
+        // usual one-off AB2 startup, inside the second-order budget.
+        //
+        // No mesh-motion flux subtraction: SL runs on a static mesh (cached
+        // stencil).
         //
         // Diagnostic hook (default off): setting the environment variable
         // SL_FREEZE_INTERFACE=1 skips the advection so psi is held at its initial
@@ -26,7 +62,20 @@
 
         if (Foam::getEnv("SL_FREEZE_INTERFACE").empty())
         {
-            slAdv->advect(psi, slVelExt->Uext(), UextOld);
+            // dt/dt0: deltaT0 equals deltaT on a fixed step and is guarded here
+            // because it is not guaranteed to be set on the very first step.
+            const scalar dtRatio =
+                runTime.deltaT0Value() > SMALL
+              ? runTime.deltaTValue()/runTime.deltaT0Value()
+              : 1.0;
+
+            const volVectorField UextStar
+            (
+                "UextStar",
+                slVelExt->Uext() + dtRatio*(slVelExt->Uext() - UextOld)
+            );
+
+            slAdv->advect(psi, UextStar, slVelExt->Uext());
         }
         // Preserve the pre-momentum extension as the old velocity level for
         // the next time step's second-order departure-foot calculation.

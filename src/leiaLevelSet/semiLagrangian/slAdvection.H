@@ -132,6 +132,17 @@ public:
 
         //- Advect one step: psi holds psi^n on entry, psi^{n+1} on exit.
         //  Unew = u^{n+1}, Uold = u^n at cell centres.
+        //
+        //  The foot is expanded about the ARRIVAL time, so Unew really must be the
+        //  NEW-time velocity: passing u^n there instead leaves an O(dt^2 d_t u)
+        //  foot error and drops the transport to first order in time (invisible in
+        //  any steady or uniform test, where d_t u = 0 makes the two identical).
+        //  A caller that cannot supply u^{n+1} -- e.g. a coupled solver advecting
+        //  before its momentum solve -- must pass the Adams-Bashforth estimate
+        //  u^n + (dt/dt0)(u^n - u^{n-1}) as Unew and u^n as Uold, which reduces the
+        //  kernel to the equivalent departure-time-centred second-order trace
+        //  x_d = x_c - dt/2 (3u^n - u^{n-1}) + 1/2 dt^2 (u.grad)u. See
+        //  leiaSemiLagrangianLevelSetTwoPhaseFoam/slAlphaEqn.H.
         void advect
         (
             volScalarField& psi,
