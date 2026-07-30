@@ -29,8 +29,9 @@ Description
     Cell-centred semi-Lagrangian level-set advection: psi is constant along
     characteristics, so psi^{n+1}(x_c) = psi^n(x_d) with x_d the Taylor backward
     foot and psi^n at x_d reconstructed by a runtime-selectable slReconstruction
-    (linearTaylor | nestedLSQ | quadraticWeightedLeastSquares). No flux, no divergence, no linear
-    solve; no reinitialization (the signed-distance property is not maintained).
+    (linearTaylor | linearWeightedLeastSquares | quadraticTaylor |
+    quadraticWeightedLeastSquares). No flux, no divergence, no linear solve; no
+    reinitialization (the signed-distance property is not maintained).
 
     The parallel research line to the velocity-extension solver
     (leiaLevelSetFoam): same prescribed-velocity verification, same reversed

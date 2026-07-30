@@ -73,6 +73,11 @@ autoPtr<phaseIndicator> phaseInd = phaseIndicator::New(mesh);
 phaseInd->calcPhaseIndicator(alpha, psi);
 alpha.write();
 
+// SDPLS Source term
+autoPtr<sdplsSource> source = sdplsSource::New(mesh);
+source->update(psi, U);
+source->write();
+
 // Advection velocity model
 autoPtr<velocityModel> velocityModel = velocityModel::New(mesh);
 
@@ -83,18 +88,3 @@ phi.write();
 
 velocityModel->setVelocity(U);
 U.write();
-
-// Level Set advection method (eulerian | semiLagrangian). The eulerian
-// model composes the velocityExtension and sdplsSource models internally.
-autoPtr<levelSetAdvection> adv =
-    levelSetAdvection::New(mesh, U, phi, *velocityModel);
-adv->initialise(psi);
-
-// Gate the phase-indicator / error reporting to write times (the advection
-// itself uses neither; recomputing the per-cell-LLS + tet-fill indicator
-// every step dominates the cost of the matrix-free semi-Lagrangian method
-// on fine meshes).
-const fvSolution& fvSolutionDict(mesh);
-const bool reportAtWriteTimesOnly =
-    fvSolutionDict.subDict("levelSet")
-        .getOrDefault<bool>("reportAtWriteTimesOnly", false);

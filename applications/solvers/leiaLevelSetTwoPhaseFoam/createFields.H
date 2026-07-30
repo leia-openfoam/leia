@@ -147,6 +147,12 @@ volScalarField psi
 // Leve Set re-distancing model
 autoPtr<redistancer> redist = redistancer::New(mesh);
 
+// SDPLS source (S = f_nl(psi^n)*psi, vanishes on the zero level set;
+// default noSource = off): the psi-maintenance mechanism of the two-phase
+// level-set transport (alphaEqn.H).
+autoPtr<sdplsSource> source = sdplsSource::New(mesh);
+source->update(psi, U);
+
 // Level Set narrowBand model
 autoPtr<narrowBand> narrowBand = narrowBand::New(mesh, psi); 
 narrowBand->calc();

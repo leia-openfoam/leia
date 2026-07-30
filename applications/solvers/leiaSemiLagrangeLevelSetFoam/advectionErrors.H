@@ -85,7 +85,8 @@ void reportErrors
             << alphaGeomErr << ","
             << alphaGeomErrRel << ","
             << alphaBoundErr << "," 
-            << runTime.elapsedCpuTime() << "," 
+            << runTime.elapsedCpuTime() << ","
+            << runTime.elapsedClockTime() << "," 
             << maxCoNum << ","
             << maxSumVolFlux << "\n";
     }

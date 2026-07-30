@@ -1,0 +1,240 @@
+{
+    // Advect the level set ONCE per time step, on the first outer corrector: the
+    // semi-Lagrangian update mutates psi in place (psi^n -> psi^{n+1}), so running
+    // it again on later PIMPLE iterations would compound. The interface is then
+    // held fixed while the pressure-velocity system is corrected (as interFoam
+    // holds alpha fixed across the inner correctors).
+    if (pimple.firstIter())
+    {
+        // Semi-Lagrangian advection: psi holds psi^n on entry, psi^{n+1} on exit.
+        // u^{n+1}=Uext and u^n=UextOld; both are normal-constant extensions of
+        // the corresponding physical velocity. No mesh-motion flux subtraction:
+        // SL currently runs on a static mesh (cached stencil).
+        //
+        // Diagnostic hook (default off): setting the environment variable
+        // SL_FREEZE_INTERFACE=1 skips the advection so psi is held at its initial
+        // value. On the stationary droplet this pins psi to the clean signed
+        // distance and isolates the parasitic current driven by the fixed
+        // curvature error from the transport-coupled feedback -- the controlled
+        // experiment behind workflow/scripts/droplet_mechanism_probe.sh. Unset in
+        // every production run, so the transport is byte-for-byte unchanged.
+        // Compute an interface-normal-constant velocity from the CURRENT
+        // physical U and pre-advection psi. The extension is used only in the
+        // characteristic update; momentum continues to use U and phi. For
+        // velocityExtension type none this is exactly the identity path.
+        slVelExt->correct();
+
+        if (Foam::getEnv("SL_FREEZE_INTERFACE").empty())
+        {
+            slAdv->advect(psi, slVelExt->Uext(), UextOld);
+        }
+        // Preserve the pre-momentum extension as the old velocity level for
+        // the next time step's second-order departure-foot calculation.
+        UextOld == slVelExt->Uext();
+
+        // Narrow band FIRST, then the phase indicator: the geometric indicator
+        // reads the registered NarrowBand field to decide which cells get the
+        // geometric volume fraction, so the band must be current with the freshly
+        // advected psi (previously it lagged one step, giving cells that had just
+        // entered the band a sign-based 0/1 alpha for one step).
+        narrowBand->calc();
+
+        // Optional grid-scale psi filter (default off; psiFilterEqn.H) --
+        // the explicit delta-psi damping term of the stability inequality.
+        #include "psiFilterEqn.H"
+
+        // Optional redistancing (fvSolution levelSet.redistancer; default
+        // noRedistancing = the original reinit-free pipeline, byte-identical).
+        // The plane-anchored models (anchoredEikonal, planeFootWave) realign
+        // psi to the SAME linear LSQ interface planes the phase indicator and
+        // the geometric mass flux read, so redistancing is consistency with
+        // the discrete interface, not displacement of it. With trigger
+        // gradPsiThreshold events are rare (Abu-Al-Saud et al. 2018, Eq. 12) --
+        // both papers show every-step reinit destroys the capillary
+        // equilibrium. Anchors need the CURRENT band (hence after calc()); an
+        // event may realign a cut-cell centre sub-cell, so the band is
+        // refreshed afterwards, keeping the indicator consistent.
+        if (redist->redistance(psi))
+        {
+            narrowBand->calc();
+        }
+
+        phaseInd->calcPhaseIndicator(alpha1, psi);
+
+        // Previous-step curvature, captured BEFORE any refill: needed by the
+        // optional temporal under-relaxation of the foot-point path below.
+        const scalarField kappaPrevStep(kappa.primitiveField());
+
+        // Mean curvature evaluated SYMBOLICALLY from the quadratic reconstruction
+        // (fit gradient + Hessian): default at the CELL CENTRE (no normal
+        // extension); with curvatureExtension type closestPointNewton the
+        // evaluation point is the TRUE closest point of the cell's own
+        // quadratic (trust-region KKT Newton -- NOT the gradient-projection
+        // flow of the retired meanCurvature extension), giving the
+        // normal-constant delivery in the force-support layer with per-cell
+        // fallback to the centre value.
+        if (fvmCurvature)
+        {
+            // The force model computes its own curvature (FVM operators);
+            // the symbolic fill would FatalError on non-quadratic
+            // reconstructions (linearTaylor). kappa stays 0.
+        }
+        else if (closestPointCurvatureExtension)
+        {
+            slAdv->meanCurvatureClosestPoint(psi, kappa);
+        }
+        else
+        {
+            slAdv->meanCurvatureNoExtension(psi, kappa);
+        }
+
+        // Optional harmonic (Laplace) smoothing of the cell-centred curvature,
+        // pinning the interface cells (no foot-point extension). No-op unless
+        // enabled in fvSolution (levelSet.curvatureExtension.type harmonicLaplace).
+        #include "harmonicMeanCurvatureExtensionEqn.H"
+
+        // Optional foot-point height-function curvature: overwrites the band
+        // (+2 rings) with the normal-constant height-function kappa; deficient
+        // interface cells keep the symbolic value above (footPointCurvature.H).
+        // Optional temporal under-relaxation (curvatureExtension.relax in (0,1]):
+        // kappa^n = relax*kappa_new + (1-relax)*kappa^{n-1} -- filters the
+        // per-step discrete switching of feet/parents (diagnostic for the
+        // coupled instability trigger; 1 = no relaxation).
+        if (footPointCurvatureExtension)
+        {
+            computeFootPointCurvature
+            (
+                mesh, psi,
+                mesh.lookupObject<volScalarField>("NarrowBand"),
+                kappa
+            );
+            const scalar krlx =
+                static_cast<const fvSolution&>(mesh).subDict("levelSet")
+                .subOrEmptyDict("curvatureExtension")
+                .getOrDefault<scalar>("relax", 1.0);
+            if (krlx < 1.0)
+            {
+                // TRUE temporal under-relaxation: blend against the previous
+                // TIME STEP's delivered curvature (captured before the symbolic
+                // refill above), low-pass filtering the per-step discrete
+                // switching of feet/parents.
+                kappa.primitiveFieldRef() =
+                    krlx*kappa.primitiveField() + (1.0 - krlx)*kappaPrevStep;
+                kappa.correctBoundaryConditions();
+            }
+        }
+
+        // Connected reconstruction candidate: replace the independent cell
+        // fits by one conforming zero-surface chain, regularise curvature only
+        // along that chain, attach one value to each segment, and deliver it
+        // directly along normals to the face-native CSF field.
+        if (connectedInterfaceCurvatureExtension)
+        {
+            computeConnectedInterfaceCurvature
+            (
+                mesh, psi,
+                mesh.lookupObject<volScalarField>("NarrowBand"),
+                kappa,
+                kappaInterfaceFace
+            );
+        }
+
+        // Controlled pressure-null-space experiment: use the curvature computed
+        // above only through its CSF-support-weighted interface mean.  The force
+        // remains on the production Gsigma face-flux path; only the spatial
+        // curvature fluctuations are removed.
+        if (interfaceMeanCurvatureExtension)
+        {
+            applyInterfaceMeanCurvature(mesh, alpha1, kappa);
+        }
+
+        // Optional DIAGNOSTIC clamp (levelSet.curvatureClamp {min; max;}): caps the
+        // grid-scale sign-indefinite kappa excursions to a physical range to test
+        // whether they are load-bearing for the parasitic runaway. Off by default.
+        if (kappaClampOn)
+        {
+            kappa.primitiveFieldRef() =
+                min(max(kappa.primitiveField(), kappaClampMin), kappaClampMax);
+            kappa.correctBoundaryConditions();
+        }
+
+        // Diagnostic hook (default off): SL_SMOOTH_RHO=1 replaces the sharp
+        // geometric indicator by the erf-smoothed Heaviside of the level set,
+        // H = 0.5*(1 - erf(psi/eps)) with eps = 1.5*h, exactly the mixture rule
+        // of Abu-Al-Saud, Popinet & Tchelepi (2018, Eqs. 10-11), BEFORE the
+        // mixture properties are formed. Probe for the CST force model: their
+        // MAC reference never exposes pure light-phase density at faces that
+        // receive the off-diagonal (corner) stress divergence one row away
+        // from the alpha jump; our sharp indicator does (rho_f = rho_air at
+        // those faces, 839x the blended inertia). Unset in production.
+        if (!Foam::getEnv("SL_SMOOTH_RHO").empty())
+        {
+            const scalar h =
+                1.0/gMax(mesh.deltaCoeffs().primitiveField());
+            const scalar eps = 1.5*h;
+            scalarField& aIn = alpha1.primitiveFieldRef();
+            const scalarField& psiIn = psi.primitiveField();
+            forAll(aIn, celli)
+            {
+                aIn[celli] = 0.5*(1.0 - Foam::erf(psiIn[celli]/eps));
+            }
+            alpha1.correctBoundaryConditions();
+        }
+
+        alpha2 = 1.0 - alpha1;
+        mixture.correct();
+
+        // Geometrical face density at the NEW interface location. In rhoLENT
+        // this remains fixed during the outer iterations while phi^o changes;
+        // the same rhof*phi^o then appears in the auxiliary density equation
+        // and in div(rhoPhi,U). The older comparison modes also reuse rhof.
+        if (!freezeRhoPhi && massFluxType != "interpolatedDensity")
+        {
+            const volScalarField& nb =
+                mesh.lookupObject<volScalarField>("NarrowBand");
+            computeFaceAreaFractions
+            (
+                mesh, psi, nb, phi, alphaf, massFluxUpwind
+            );
+            rhof = alphaf*rho1 + (scalar(1) - alphaf)*rho2;
+        }
+
+        // The non-rhoLENT modes use the geometrical cell density immediately.
+        // rhoLENT deliberately keeps rho.oldTime() as the previous geometrical
+        // state and computes the current auxiliary rho below.
+        if (!freezeRhoPhi && !useRhoLENT)
+        {
+            rho == alpha1*rho1 + alpha2*rho2;
+            rho.correctBoundaryConditions();
+        }
+    }
+
+    // Mass flux and auxiliary density are updated on EVERY PIMPLE outer
+    // iteration. This is load-bearing: pEqn changes phi^o, so rhoPhi and the
+    // rhoLENT continuity update must be reassembled before the next UEqn.
+    if (!freezeRhoPhi)
+    {
+        if (massFluxType == "interpolatedDensity")
+        {
+            rhoPhi = fvc::interpolate(rho)*phi;
+        }
+        else
+        {
+            rhoPhi = rhof*phi;
+        }
+
+        if (useRhoLENT)
+        {
+            #include "rhoLENTEqn.H"
+        }
+    }
+}
+
+scalar domainFraction = 0;
+domainFraction = alpha1.weightedAverage(mesh.Vsc()).value();
+
+Info<< "Phase-1 volume fraction = "
+    << domainFraction
+    << "  Min(" << alpha1.name() << ") = " << min(alpha1).value()
+    << "  Max(" << alpha1.name() << ") = " << max(alpha1).value()
+    << endl;

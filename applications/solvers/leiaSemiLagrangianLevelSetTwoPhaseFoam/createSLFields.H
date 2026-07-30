@@ -1,0 +1,145 @@
+// Registered mean-curvature field (1/length), filled each step from the
+// semi-Lagrangian quadratic reconstruction (symbolic gradient + Hessian, evaluated
+// at the CELL CENTRE with NO foot-point normal extension) and consumed by the
+// reconstructedCurvature surfaceTensionForce model. Also filled once at t=0 during
+// initialisation (see the solver .C) so the initial Young-Laplace balance uses it
+// and the curvature on the clean signed-distance field can be inspected.
+// Created BEFORE createFields.H so the force's constructor can look it up.
+Info<< "Creating field kappa\n" << endl;
+volScalarField kappa
+(
+    IOobject
+    (
+        "kappa",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("kappa", dimless/dimLength, 0.0),
+    "zeroGradient"
+);
+
+// Face-native interface curvature.  connectedInterfaceCurvature fills this
+// directly by extending one value per connected zero-surface element along its
+// normal ray.  reconstructedCurvature consumes it without cell-to-face
+// interpolation when faceInterpolation=connectedInterface.
+Info<< "Creating field kappaInterfaceFace\n" << endl;
+surfaceScalarField kappaInterfaceFace
+(
+    IOobject
+    (
+        "kappaInterfaceFace",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("kappaInterfaceFace", dimless/dimLength, 0.0)
+);
+
+// Semi-Lagrangian level-set advection + symbolic curvature evaluator. Selects the
+// reconstruction/correction from fvSolution levelSet.semiLagrangian.
+autoPtr<slAdvection> slAdv = slAdvection::New(mesh);
+
+// Optional harmonic (Laplace) smoothing of the mean curvature (see
+// harmonicMeanCurvatureExtensionEqn.H): pin kappa at the interface cells and solve
+// laplacian(kappa)=0 to replace the run-time oscillating band curvature with a
+// smooth harmonic extension. Toggled by fvSolution:
+//   levelSet { curvatureExtension { type harmonicLaplace; } }   // "none" disables
+word curvatureExtensionType("none");
+{
+    const fvSolution& fvSol = mesh;   // fvMesh is-a fvSolution
+    const dictionary& lsDict = fvSol.subDict("levelSet");
+    curvatureExtensionType =
+        lsDict.subOrEmptyDict("curvatureExtension").getOrDefault<word>("type", "none");
+}
+const bool harmonicCurvatureExtension = (curvatureExtensionType == "harmonicLaplace");
+// Foot-point height-function curvature (footPointCurvature.H): kappa from a
+// local parabola (height-function) fit of the interface feet of the linear
+// LSQ planes, delivered normal-constant by uniform nearest-foot assignment --
+// the unstructured-compatible height function (geometry-only, integral,
+// normal-constant), the equilibrium-restoring option.
+const bool footPointCurvatureExtension =
+    (curvatureExtensionType == "footPointHeightFunction");
+// Closest-point Newton foot on the cell's OWN quadratic (type
+// closestPointNewton): symbolic kappa evaluated at the TRUE closest point of
+// {P=0}, found by a trust-region KKT Newton (fit Hessian) instead of the
+// gradient-projection flow of the original meanCurvature extension; per-cell
+// fallback to the cell-centre value on guard failure.
+const bool closestPointCurvatureExtension =
+    (curvatureExtensionType == "closestPointNewton");
+// Diagnostic null-space control: retain the CSF-support-weighted mean of the
+// reconstructed curvature, but make it spatially constant.  This distinguishes
+// curvature fluctuations from mean-curvature bias using the complete pressure
+// and momentum solve.
+const bool interfaceMeanCurvatureExtension =
+    (curvatureExtensionType == "interfaceMean");
+// Connected zero-surface reconstruction: one curvature per conforming 2-D
+// interface segment, tangential Helmholtz regularisation on the segment chain,
+// and normal-ray delivery directly to kappaInterfaceFace for the CSF force.
+const bool connectedInterfaceCurvatureExtension =
+    (curvatureExtensionType == "connectedInterface");
+// type fvm: the selected surfaceTensionForce model computes its own curvature
+// with FVM operators (e.g. divGradPsiSnGradAlpha) -- SKIP the symbolic
+// quadratic-fit kappa fill entirely. Required for non-quadratic
+// reconstructions (linearTaylor has no Hessian; the symbolic fill would
+// FatalError with NotImplemented). kappa stays 0 (the kErr CSV columns are
+// then meaningless -- ignore them for such runs).
+const bool fvmCurvature = (curvatureExtensionType == "fvm");
+Info<< "Curvature extension: " << curvatureExtensionType
+    << (harmonicCurvatureExtension ? " (harmonic Laplace smoothing ON)" : "")
+    << (footPointCurvatureExtension ? " (foot-point height function ON)" : "")
+    << (closestPointCurvatureExtension ? " (closest-point Newton foot ON)" : "")
+    << (interfaceMeanCurvatureExtension ? " (interface-mean diagnostic ON)" : "")
+    << (connectedInterfaceCurvatureExtension ? " (connected face-native curvature ON)" : "")
+    << (fvmCurvature ? " (symbolic kappa fill OFF -- force model computes its own)" : "")
+    << nl << endl;
+
+// Optional grid-scale psi filter (fvSolution levelSet.psiFilter): the damping
+// term the reinit-free SL transport lacks. type biharmonicBand applies
+// psi -= theta * L(L(psi)) in the narrow band + 1 ring each step, with
+// L(psi) = psi - average(interpolate(psi)). L annihilates linear fields and
+// maps quadratics to a constant, so L(L(.)) annihilates smooth curved signed
+// distances to leading order (no systematic interface displacement); the 2h
+// checkerboard mode -- the carrier of the parasitic feedback (Defect 2) --
+// is damped at near-maximal rate. Default: none (off, byte-identical).
+word psiFilterType("none");
+scalar psiFilterTheta = 0;
+{
+    const fvSolution& fvSol = mesh;
+    const dictionary& lsDict = fvSol.subDict("levelSet");
+    const dictionary& pfDict = lsDict.subOrEmptyDict("psiFilter");
+    psiFilterType = pfDict.getOrDefault<word>("type", "none");
+    psiFilterTheta = pfDict.getOrDefault<scalar>("theta", 0.05);
+}
+const bool psiFilterOn = (psiFilterType == "biharmonicBand");
+if (psiFilterOn)
+{
+    Info<< "psi filter: biharmonicBand, theta = " << psiFilterTheta
+        << nl << endl;
+}
+
+// Optional curvature clamp (DIAGNOSTIC probe, not a fix): if fvSolution provides
+//   levelSet { curvatureClamp { min <scalar>; max <scalar>; } }
+// the cell-centred kappa is clamped to [min,max] after each evaluation. Purpose:
+// discriminate whether the sign-indefinite grid-scale kappa excursions (the
+// aliasing channel) are load-bearing for the parasitic runaway -- if clamping to
+// a physical range (e.g. [0, 2/R]) stabilises, they are. Absent dict = off.
+bool kappaClampOn = false;
+scalar kappaClampMin = 0, kappaClampMax = 0;
+{
+    const fvSolution& fvSol = mesh;
+    const dictionary& ccDict =
+        fvSol.subDict("levelSet").subOrEmptyDict("curvatureClamp");
+    if (ccDict.found("min") && ccDict.found("max"))
+    {
+        kappaClampOn = true;
+        kappaClampMin = ccDict.get<scalar>("min");
+        kappaClampMax = ccDict.get<scalar>("max");
+        Info<< "Curvature clamp (diagnostic): kappa in ["
+            << kappaClampMin << ", " << kappaClampMax << "] 1/m" << nl << endl;
+    }
+}

@@ -15,9 +15,10 @@ Description
 
       (a) centre reproduction  -- evaluate(c, x_c) == psiOld[c] to machine
           precision, all reconstructions;
-      (b) polynomial exactness -- with psi a global quadratic, nestedLSQ and
-          quadraticWeightedLeastSquares reproduce it at an interior off-centre point to ~1e-10;
-          with psi a global linear field, linearTaylor reproduces it;
+      (b) polynomial exactness -- with psi a global quadratic, quadraticTaylor
+          and quadraticWeightedLeastSquares reproduce it at an interior off-centre
+          point to ~1e-10; with psi a global linear field, linearTaylor and
+          linearWeightedLeastSquares reproduce it exactly;
       (c) constant-velocity foot -- for uniform U the Taylor acceleration term
           (du/dt + (u.grad)u) vanishes, so the foot reduces to x_d = x_c - u*dt.
 
@@ -29,9 +30,11 @@ Description
 
 #include "fvCFD.H"
 #include "linearTaylorReconstruction.H"
-#include "nestedLSQReconstruction.H"
+#include "linearWeightedLeastSquaresReconstruction.H"
+#include "quadraticTaylorReconstruction.H"
 #include "quadraticWeightedLeastSquaresReconstruction.H"
 #include "uncachedQuadraticWeightedLeastSquaresReconstruction.H"
+#include "signedDistanceQuadraticWeightedLeastSquaresReconstruction.H"
 #include "bandQuadraticWeightedLeastSquaresReconstruction.H"
 #include "defectCorrectedIDWReconstruction.H"
 #include "slReconstruction.H"
@@ -88,7 +91,9 @@ int main(int argc, char *argv[])
 
     scalar worstCentre = 0;   // over all reconstructions, both fields
     scalar errLinInterp = 0;  // linearTaylor on the linear field
-    scalar errNestQuad = 0;   // nestedLSQ on the quadratic field
+    scalar errLinWLSLin = 0;  // linearWeightedLeastSquares on the linear field (exact)
+    scalar errLinWLSQuad = 0; // linearWeightedLeastSquares on the quadratic field (O(h^2))
+    scalar errNestQuad = 0;   // quadraticTaylor (was nestedLSQ) on the quadratic field
     scalar errQuadQuad = 0;   // quadraticWeightedLeastSquares on the quadratic field
     scalar errUncachedQuad = 0;   // uncachedQuadraticWeightedLeastSquares on quadratic
     scalar errUncachedVsCached = 0; // uncached vs cached quad, cell-for-cell (parity gate)
@@ -139,22 +144,29 @@ int main(int argc, char *argv[])
     // ================= (a)+(b) reconstruction tests ==================== //
     {
         linearTaylorReconstruction lin(mesh);
-        nestedLSQReconstruction    nst(mesh);
+        linearWeightedLeastSquaresReconstruction lwls(mesh);
+        quadraticTaylorReconstruction    nst(mesh);
         quadraticWeightedLeastSquaresReconstruction quad(mesh);
         uncachedQuadraticWeightedLeastSquaresReconstruction uq(mesh);
         defectCorrectedIDWReconstruction defect(mesh);
 
-        // Linear field: linearTaylor + defectCorrectedIDW must be exact.
-        // (defectCorrectedIDW is 2nd-order ACCURATE, not quadratic-exact, so it is
-        // asserted on the linear field only; on quadratics it is O(h^2), not zero.)
+        // Linear field: linearTaylor + linearWeightedLeastSquares + defectCorrectedIDW
+        // must be exact. (defectCorrectedIDW is 2nd-order ACCURATE, not quadratic-exact,
+        // so it is asserted on the linear field only; on quadratics it is O(h^2), not 0.
+        // linearWeightedLeastSquares fits a linear polynomial to VALUES -> exact on a
+        // globally linear field; on the quadratic field it is only O(h^2), asserted
+        // with a loose bound below.)
         setPsi(fLin);
         errLinInterp = testExactness(lin, fLin);
+        errLinWLSLin = testExactness(lwls, fLin);
         errDefectLin = testExactness(defect, fLin);
 
-        // Quadratic field: nestedLSQ + quadraticWeightedLeastSquares must be exact.
+        // Quadratic field: quadraticTaylor + quadraticWeightedLeastSquares must be exact.
         // uncachedQuadraticWeightedLeastSquares is the SAME weighted LS fit, so it
         // must be quadratic-exact too AND match the cached quad cell-for-cell.
+        // linearWeightedLeastSquares is NOT exact on a quadratic (loose O(h^2) bound).
         setPsi(fQuad);
+        errLinWLSQuad = testExactness(lwls, fQuad);
         errNestQuad = testExactness(nst, fQuad);
         errQuadQuad = testExactness(quad, fQuad);
         errUncachedQuad = testExactness(uq, fQuad);
@@ -229,6 +241,41 @@ int main(int argc, char *argv[])
         worstCentre = Foam::max(worstCentre, wc);
     }
 
+    // === (b'') signedDistanceQuadraticWeightedLeastSquares: reproject a clean SDF === //
+    // On an EXACT sphere signed-distance field the value fit has |grad P| ~ 1, so the
+    // reprojection d = P0/|grad P| must reproduce the true distance (to ~O(h^2)) near
+    // the interface. U is absent in this harness, so the normal-strain rescaling is
+    // skipped -- this isolates the reprojection itself. Cells near the SDF's central
+    // kink (excluded via the near-interface band) are not tested.
+    scalar errSDF = 0;
+    {
+        const point x0(0.5, 0.5, 0.0);
+        const scalar Rsdf = 0.25;
+        auto fSDF = [&](const point& x) -> scalar { return Foam::mag(x - x0) - Rsdf; };
+        setPsi(fSDF);
+
+        signedDistanceQuadraticWeightedLeastSquaresReconstruction sd(mesh);
+        sd.update(psi);
+
+        const scalar bandW = 4.0*h;   // near the interface, away from the centre kink
+        forAll(C, c)
+        {
+            const point& xc = C[c];
+            const bool interior =
+                (xc.x() - bb.min().x() > 4*h) && (bb.max().x() - xc.x() > 4*h)
+             && (xc.y() - bb.min().y() > 4*h) && (bb.max().y() - xc.y() > 4*h);
+            if (!interior || Foam::mag(psi[c]) > bandW) { continue; }
+
+            const scalar r = sd.stencilRadius(c);
+            vector dir(1.0, 1.0, 0.0);
+            if (gd[2] == 1) { dir.z() = 1.0; }
+            dir /= Foam::mag(dir);
+            const point xe = xc + 0.25*r*dir;
+            errSDF = Foam::max(errSDF, Foam::mag(sd.evaluate(c, xe) - fSDF(xe)));
+        }
+        reduce(errSDF, maxOp<scalar>());
+    }
+
     // ================= (c) constant-velocity foot ====================== //
     volVectorField U
     (
@@ -254,6 +301,9 @@ int main(int argc, char *argv[])
     const scalar tol = 1e-9;
     const bool passCentre = worstCentre < tol;
     const bool passLin    = errLinInterp < 1e-8;
+    const bool passLinWLS = errLinWLSLin < 1e-8;    // linearWLSQ exact on a linear field
+    // linearWLSQ on a quadratic is only O(h^2) (a linear fit): loose bound, like the SDF gate.
+    const bool passLinWLSQuad = errLinWLSQuad < 5e-2;
     const bool passNest   = errNestQuad < 1e-7;
     const bool passQuad   = errQuadQuad < 1e-5;
     const bool passUncached = errUncachedQuad < 1e-5;        // same fit -> quadratic-exact
@@ -262,16 +312,24 @@ int main(int argc, char *argv[])
     const bool passFoot   = maxAccel < 1e-8;
     const bool passBandExact = errBandExact < 1e-7;
     const bool passBandVsFull = errBandVsFull < 1e-5;
+    // SDF reprojection is only O(h^2)-accurate (SDF is non-polynomial): assert a loose
+    // bound that a correct reprojection meets easily but a broken one (O(1)) fails.
+    const bool passSDF = errSDF < 5e-2;
     const bool allPass =
-        passCentre && passLin && passNest && passQuad && passDefect && passFoot
-        && passBandExact && passBandVsFull && passUncached && passParity;
+        passCentre && passLin && passLinWLS && passLinWLSQuad
+        && passNest && passQuad && passDefect && passFoot
+        && passBandExact && passBandVsFull && passUncached && passParity && passSDF;
 
     Info<< nl << "=== leiaTestSLReconstruction ===" << nl
         << "  (a) centre reproduction  max|e| = " << worstCentre
         << "  [" << (passCentre ? "PASS" : "FAIL") << "]" << nl
         << "  (b) linearTaylor  (linear field)    = " << errLinInterp
         << "  [" << (passLin ? "PASS" : "FAIL") << "]" << nl
-        << "  (b) nestedLSQ     (quadratic field) = " << errNestQuad
+        << "  (b) linearWeightedLeastSquares (linear field, exact) = " << errLinWLSLin
+        << "  [" << (passLinWLS ? "PASS" : "FAIL") << "]" << nl
+        << "  (b) linearWeightedLeastSquares (quadratic field, O(h^2)) = " << errLinWLSQuad
+        << "  [" << (passLinWLSQuad ? "PASS" : "FAIL") << "]" << nl
+        << "  (b) quadraticTaylor (quadratic field) = " << errNestQuad
         << "  [" << (passNest ? "PASS" : "FAIL") << "]" << nl
         << "  (b) quadraticWeightedLeastSquares (quadratic field) = " << errQuadQuad
         << "  [" << (passQuad ? "PASS" : "FAIL") << "]" << nl
@@ -285,6 +343,8 @@ int main(int argc, char *argv[])
         << "  [" << (passBandExact ? "PASS" : "FAIL") << "]" << nl
         << "  (b')bandQuadraticWeightedLeastSquares == full quad  = " << errBandVsFull
         << "  [" << (passBandVsFull ? "PASS" : "FAIL") << "]" << nl
+        << "  (b'')signedDistanceQuadratic SDF reproject = " << errSDF
+        << "  [" << (passSDF ? "PASS" : "FAIL") << "]" << nl
         << "  (c) const-velocity foot accel |max| = " << maxAccel
         << " (gradU max " << maxGradU << ")"
         << "  [" << (passFoot ? "PASS" : "FAIL") << "]" << nl
@@ -298,7 +358,11 @@ int main(int argc, char *argv[])
            << (passCentre ? 1 : 0) << "\n";
         os << "linearTaylorLinear," << errLinInterp << ",1e-8,"
            << (passLin ? 1 : 0) << "\n";
-        os << "nestedLSQQuadratic," << errNestQuad << ",1e-7,"
+        os << "linearWeightedLeastSquaresLinear," << errLinWLSLin << ",1e-8,"
+           << (passLinWLS ? 1 : 0) << "\n";
+        os << "linearWeightedLeastSquaresQuadratic," << errLinWLSQuad << ",5e-2,"
+           << (passLinWLSQuad ? 1 : 0) << "\n";
+        os << "quadraticTaylorQuadratic," << errNestQuad << ",1e-7,"
            << (passNest ? 1 : 0) << "\n";
         os << "quadraticWeightedLeastSquaresQuadratic," << errQuadQuad << ",1e-5,"
            << (passQuad ? 1 : 0) << "\n";
@@ -314,6 +378,8 @@ int main(int argc, char *argv[])
            << (passBandVsFull ? 1 : 0) << "\n";
         os << "constVelocityFootAccel," << maxAccel << ",1e-8,"
            << (passFoot ? 1 : 0) << "\n";
+        os << "signedDistanceSDFReproject," << errSDF << ",5e-2,"
+           << (passSDF ? 1 : 0) << "\n";
     }
 
     Info<< "End\n" << endl;

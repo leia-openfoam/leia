@@ -1,5 +1,13 @@
     MRF.correctBoundaryVelocity(U);
 
+    // Evaluate the integrated scalar capillary force flux once and reuse this
+    // exact field in both the momentum predictor and pressure corrector.
+    // G_sigma already includes |Sf|; no downstream code may reinterpret a
+    // model result as a pointwise face force density.
+    tmp<surfaceScalarField> tGSigma =
+        fSigma->faceSurfaceTensionForceFlux();
+    const surfaceScalarField& GSigma = tGSigma();
+
     fvVectorMatrix UEqn
     (
         fvm::ddt(rho, U) + fvm::div(rhoPhi, U)
@@ -21,11 +29,9 @@
          ==
             fvc::reconstruct
             (
-                (
-                    fSigma->faceSurfaceTensionForce()
-                  - ghf*fvc::snGrad(rho)
-                  - fvc::snGrad(p_rgh)
-                ) * mesh.magSf()
+                GSigma
+              - ghf*fvc::snGrad(rho)*mesh.magSf()
+              - fvc::snGrad(p_rgh)*mesh.magSf()
             )
         );
 

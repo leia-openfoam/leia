@@ -30,9 +30,14 @@ volScalarField alpha
     dimensionedScalar("alpha", dimless, 0)
 );
 
-// RTS 
+// Narrow band model (registers "NarrowBand": band-based phase indicators
+// look it up at CONSTRUCTION, the plane-anchored redistancer models at use).
+autoPtr<narrowBand> nBand = narrowBand::New(mesh, psi);
+nBand->calc();
+
+// RTS
 //- redistancer selection
 autoPtr<redistancer> redist = redistancer::New(mesh);
 
 //- phase-indicator selection
-autoPtr<phaseIndicator> phaseInd = phaseIndicator::New(mesh); 
+autoPtr<phaseIndicator> phaseInd = phaseIndicator::New(mesh);

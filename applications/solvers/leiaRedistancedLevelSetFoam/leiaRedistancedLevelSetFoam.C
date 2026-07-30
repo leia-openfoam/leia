@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2021 Tomislav Maric, TU Darmstadt
+    Copyright (C) 2026 Tomislav Maric, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,30 +24,24 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    leiaLevelSetFoam
+    leiaRedistancedLevelSetFoam
 
 Description
-    The UNIFIED level-set advection solver: the complete method is
-    configured from the fvSolution levelSet dictionary --
+    Level-set advection with criterion-gated geometric redistancing.
 
-    \verbatim
-    levelSet
-    {
-        advection         { type eulerian; }   // eulerian | semiLagrangian
-        velocityExtension { type none; ... }   // eulerian only
-        sdplsSource       { type noSource; ... } // eulerian only
-        redistancer       { type noRedistancing; ... }
-        phaseIndicator    { type detrixheAslam; }
-        narrowBand        { type signChange; }
-        reportAtWriteTimesOnly false;          // gate alpha/error reporting
-    }
-    \endverbatim
+    The advective (Hamilton-Jacobi) law Dpsi/Dt = 0 is assembled in the
+    conservative-minus-compression form
 
-    eulerian: implicit FV transport in the advective form
-    ddt(psi) + div(v psi) - psi div(v) = S_SDPLS with a deferred-correction
-    loop (controlDict nDefCorr) for second-order (linearUpwind) div schemes.
-    semiLagrangian: characteristic update psi^{n+1}(x_c) = psi^n(x_d) with a
-    runtime-selectable foot-point reconstruction.
+    \f[
+        \ddt{\psi} + \div(\vec{v} \psi) - \psi \div{\vec{v}} = 0
+    \f]
+
+    with the plain prescribed volumetric flux (optionally Helmholtz-projected
+    to a solenoidal flux with -fluxCorrection). No velocity extension: the
+    signed-distance property of psi is restored by the levelSet.redistancer
+    model instead (e.g. planeFootWave -- the linear least-squares interface
+    planes of the Detrixhe-Aslam phase indicator, propagated by MeshWave),
+    gated by the levelSet.redistancer.trigger criterion.
 
     \heading Required fields
     \plaintable
@@ -63,10 +57,10 @@ Description
 #include "phaseIndicator.H"
 #include "redistancer.H"
 #include "narrowBand.H"
+#include "sdplsSource.H"
 #include "velocityModel.H"
 #include "prescribedVelocityModels.H"
 #include "fluxCorrection.H"
-#include "levelSetAdvection.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -101,7 +95,7 @@ int main(int argc, char *argv[])
 {
     argList::addNote
     (
-        "Unified level set equation solver (dictionary-configured method)."
+        "Level set equation solver with geometric redistancing."
     );
 
     argList::addBoolOption
@@ -119,12 +113,10 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-    // CFL based deltaT setting from the flux that actually advects psi
-    // (extension flux for eulerian-with-extension, base flux otherwise).
+    // CFL based deltaT setting
     if (runTime.controlDict().getOrDefault<bool>("adjustTimeStep", false))
     {
-        runTime.setDeltaT(
-            maxDeltaT(adv->advectingFlux(), runTime.controlDict()), false);
+        runTime.setDeltaT(maxDeltaT(phi, runTime.controlDict()), false);
     }
 
     Info<< "\nCalculating scalar transport\n" << endl;
@@ -139,68 +131,79 @@ int main(int argc, char *argv[])
         Info<< "Time = " << runTime.timeName() << endl;
         Info<< "deltaT = " << runTime.deltaT().value() << nl << endl;
 
-        // u^{n+1}: rescale U (and phi) by cos(pi t^{n+1}/tau) for the
-        // reversed (oscillating) tests; identity for steady velocities.
         if (velocityModel->isOscillating())
         {
             velocityModel->oscillateVelocity(U, U0, phi, phi0, runTime);
         }
 
-        // psi^n -> psi^{n+1} by the dictionary-selected advection method.
-        adv->advance(psi);
+        // The level set obeys the ADVECTIVE (Hamilton-Jacobi) law Dpsi/Dt = 0,
+        // not a conservation law. The conservative fvm::div(phi, psi) equals
+        // (v.grad)psi only for solenoidal v; prescribed verification
+        // velocities are solenoidal analytically but not discretely.
+        // Assemble the advective derivative exactly,
+        //   (v.grad)psi = div(phi psi) - psi (div phi),
+        // so the residual discrete divergence cannot act as a spurious
+        // compression source (-fluxCorrection additionally projects phi).
+        const volScalarField divPhi("divPhi", fvc::div(phi));
 
-        // Fresh sign-change band BEFORE redistancing (the plane-anchored
-        // redistancer models and the signedDistanceBounds criterion read
-        // the registered "NarrowBand" field).
-        narrowBand->calc();
-
-        const bool reportNow =
-            !reportAtWriteTimesOnly || runTime.writeTime();
-
-        if (reportNow)
+        // Defect-correction loop for the deferred second-order (linearUpwind)
+        // spatial term: each pass re-assembles with the latest psi so the
+        // explicit (linearUpwind - upwind) correction converges (~2-3 passes
+        // -> formal 2nd order). fvm::ddt reuses psi.oldTime(), which is fixed
+        // within the step, so re-solving does not corrupt the time derivative.
+        const label nDefCorr =
+            runTime.controlDict().getOrDefault<label>("nDefCorr", 2);
+        for (label corr = 0; corr < nDefCorr; ++corr)
         {
-            phaseInd->calcPhaseIndicator(alpha, psi);
+            fvScalarMatrix psiEqn
+            (
+                fvm::ddt(psi)
+                + fvm::div(phi, psi)
+                - fvm::Sp(divPhi, psi)
+            ==
+                source->fvmsdplsSource(psi, U)
+            );
+
+            psiEqn.solve();
         }
 
-        const scalar Valpha0 =
-            reportNow
-          ? gSum(alpha.primitiveField()*mesh.V().field())
-          : 0.0;
+        // Fresh sign-change band BEFORE redistancing: the plane-anchored
+        // redistancer models read the registered "NarrowBand" field to
+        // select their anchor cells.
+        narrowBand->calc();
+
+        phaseInd->calcPhaseIndicator(alpha, psi);
+
+        const scalar Valpha0 = gSum(alpha.primitiveField()*mesh.V().field());
 
         if (redist->redistance(psi))
         {
-            // A redistance event may realign cut cells sub-h: refresh the
+            // A redistance event realigns cut-cell psi to the LLS planes:
+            // the sign pattern in band cells may change sub-h -- refresh the
             // band and the volume fraction, and report the interface volume
             // the event shifted.
             narrowBand->calc();
             phaseInd->calcPhaseIndicator(alpha, psi);
 
-            if (reportNow)
-            {
-                const scalar Valpha1 =
-                    gSum(alpha.primitiveField()*mesh.V().field());
+            const scalar Valpha1 =
+                gSum(alpha.primitiveField()*mesh.V().field());
 
-                Info<< "redistance volume shift: " << Valpha0
-                    << " -> " << Valpha1
-                    << " (dV = " << Valpha1 - Valpha0
-                    << ", dV/V = "
-                    << (Valpha1 - Valpha0)/max(Valpha0, VSMALL)
-                    << ")" << endl;
-            }
+            Info<< "redistance volume shift: " << Valpha0
+                << " -> " << Valpha1
+                << " (dV = " << Valpha1 - Valpha0
+                << ", dV/V = " << (Valpha1 - Valpha0)/max(Valpha0, VSMALL)
+                << ")" << endl;
         }
 
-        if (reportNow)
-        {
-            reportErrors(
-                errorFile,
-                psi,
-                psi0,
-                alpha,
-                alpha0,
-                phi,
-                CoNum
-            );
-        }
+        reportErrors(
+            errorFile,
+            psi,
+            psi0,
+            alpha,
+            alpha0,
+            phi,
+            CoNum
+        );
 
         runTime.write();
         runTime.printExecutionTime(Info);
@@ -208,9 +211,7 @@ int main(int argc, char *argv[])
         // CFL based deltaT setting
         if (runTime.controlDict().getOrDefault<bool>("adjustTimeStep", false))
         {
-            runTime.setDeltaT(
-                maxDeltaT(adv->advectingFlux(), runTime.controlDict()),
-                false);
+            runTime.setDeltaT(maxDeltaT(phi, runTime.controlDict()), false);
         }
 
         // if last timestep would overshoot endTime, set deltaT

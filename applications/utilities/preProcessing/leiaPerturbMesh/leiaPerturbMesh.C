@@ -36,6 +36,7 @@ Author
 
 #include "fvCFD.H"
 #include "pointFields.H"
+#include "emptyPolyPatch.H"
 
 #include <omp.h>
 #include <random>
@@ -46,6 +47,7 @@ Author
 int main(int argc, char* argv[])
 {
     argList::addOption("alpha", "scalar < 0.5", "Amount of point pertubation.");
+    argList::addOption("seed", "label", "RNG seed (default 0, deterministic).");
 
     #include "setRootCase.H"
     #include "createTime.H"
@@ -72,29 +74,48 @@ int main(int argc, char* argv[])
 
     scalar deltaX = pow(deltaCoeffAverage,-1);
 
-    // Perturb new points.
-    std::random_device rd;  
-    std::mt19937 gen(rd()); 
+    // Perturb new points. Deterministic seed (option -seed, default 0) so a
+    // perturbed-mesh study is bit-reproducible.
+    std::mt19937 gen(args.getOrDefault<label>("seed", 0));
     std::uniform_real_distribution<> dis(-alpha, alpha);
     forAll(newPoints, pointI)
     {
         newPoints[pointI] += deltaX * vector(dis(gen), dis(gen), dis(gen));
     }
 
+    // Keep empty (pseudo-2D) directions exact: on a one-cell-thick mesh every
+    // point must stay on its z-plane, but its in-plane (x,y) perturbation is
+    // legitimate.
+    const Vector<label> gd = mesh.geometricD();
+    forAll(newPoints, pointI)
+    {
+        for (direction d = 0; d < 3; ++d)
+        {
+            if (gd[d] == -1)
+            {
+                newPoints[pointI][d] = meshPoints[pointI][d];
+            }
+        }
+    }
+
     Info << Foam::max(newPoints - meshPoints) << endl;
 
-    pointMesh pMesh (mesh);
-    const auto& pBoundaryMesh = pMesh.boundary(); 
-    forAll(pBoundaryMesh, patchI)
+    // Pin PHYSICAL boundary points only. NOT the empty patches: on a 2D mesh
+    // every point belongs to the front/back empty patches, so resetting them
+    // (as the pointMesh loop formerly did) silently reverted the whole
+    // perturbation -- the utility was a no-op on 2D meshes.
+    const polyBoundaryMesh& patches = mesh.boundaryMesh();
+    forAll(patches, patchI)
     {
-        const auto& pPatch = pBoundaryMesh[patchI];
-        if (! pPatch.coupled())
+        const polyPatch& pp = patches[patchI];
+        if (pp.coupled() || isA<emptyPolyPatch>(pp))
         {
-            const auto& pointLabels = pPatch.meshPoints(); 
-            forAll(pointLabels, pI)
-            {
-                newPoints[pointLabels[pI]] = meshPoints[pointLabels[pI]];
-            }
+            continue;
+        }
+        const labelList& pointLabels = pp.meshPoints();
+        forAll(pointLabels, pI)
+        {
+            newPoints[pointLabels[pI]] = meshPoints[pointLabels[pI]];
         }
     }
 

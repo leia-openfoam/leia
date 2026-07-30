@@ -54,6 +54,7 @@ errorFile << "TIME,"
     << "E_GEOM_ALPHA_REL,"
     << "E_BOUND_ALPHA,"
     << "ELAPSED_CPU_TIME,"
+    << "ELAPSED_CLOCK_TIME,"
     << "MAX_CFL,"
     << "MAX_ABS_SUM_VOL_FLUXES\n";
 

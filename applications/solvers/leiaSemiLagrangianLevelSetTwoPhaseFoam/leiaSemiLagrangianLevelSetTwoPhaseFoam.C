@@ -5,7 +5,7 @@
     \\  /    A nd           | www.openfoam.com
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-    Copyright (C) 2022 Tomislav Maric, TU Darmstadt 
+    Copyright (C) 2026 Tomislav Maric, TU Darmstadt
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,21 +24,29 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
-    leiaLevelSetTwoPhaseFoam  
+    leiaSemiLagrangianLevelSetTwoPhaseFoam
 
 Group
     grpMultiphaseSolvers
 
 Description
-    A solver for two incompressible, isothermal immiscible fluids using the
-    Linear Least-Squares 0-Level Set (LLS0LS) method.  
+    A solver for two incompressible, isothermal immiscible fluids using a
+    SEMI-LAGRANGIAN level set. It is leiaLevelSetTwoPhaseFoam with
+    the Eulerian psi transport swapped for the cell-centred semi-Lagrangian
+    advection (slAdvection); the interface curvature that drives the CSF surface-
+    tension force is evaluated SYMBOLICALLY from the quadratic reconstruction
+    (fit gradient + Hessian), constant-extended along the normal, and consumed by
+    the reconstructedCurvature surfaceTensionForce model. The level-set
+    transport can use an interface-normal-constant velocity extension without
+    changing the physical momentum velocity. The optional rhoLENT mass-flux
+    mode solves an auxiliary conservative density equation with exactly the
+    mass flux used by momentum, then resets cell density from the geometric
+    Detrixhe-Aslam indicator after pressure-velocity convergence.
 
-    Reference:
-    \verbatim
-
-    \endverbatim
-
-    Implementation based off the interIsoFoam solver. 
+    All momentum/pressure/mesh machinery (createFields.H, UEqn.H, pEqn.H,
+    YoungLaplaceEqn.H, error headers) is reused verbatim from the sibling solver
+    via -I; only the level-set advection file (slAlphaEqn.H) and the extra fields
+    (createSLFields.H) are local.
 
 \*---------------------------------------------------------------------------*/
 
@@ -60,9 +68,26 @@ Description
 // Leia Level Set Method
 #include "phaseIndicator.H"
 #include "redistancer.H"
-#include "sdplsSource.H"
+#include "sdplsSource.H"     // reused sibling createFields.H constructs an sdplsSource
 #include "surfaceTensionForce.H"
 #include "narrowBand.H"
+
+// Semi-Lagrangian level-set advection.
+#include "slAdvection.H"
+#include "velocityExtension.H"
+
+// Geometric face liquid-area fractions -> consistent two-phase mass flux.
+#include "faceAreaFraction.H"
+
+// Foot-point height-function curvature (normal-constant, geometry-only).
+#include "footPointCurvature.H"
+
+// Connected zero-surface curvature (one value per interface element, tangential
+// regularisation, normal extension directly to CSF faces).
+#include "connectedInterfaceCurvature.H"
+
+// Spatially constant, CSF-support-weighted curvature diagnostic.
+#include "interfaceMeanCurvature.H"
 
 #include "advectionErrors.H"
 
@@ -72,7 +97,7 @@ int main(int argc, char *argv[])
 {
     argList::addNote
     (
-        "A solver for two incompressible, isothermal immiscible fluids using the Least-Squares 0-Level Set (LLS0LS) method."
+        "A solver for two incompressible, isothermal immiscible fluids using a geometrically maintained semi-Lagrangian level set."
     );
 
     #include "postProcess.H"
@@ -83,21 +108,86 @@ int main(int argc, char *argv[])
     #include "createDynamicFvMesh.H"
     #include "initContinuityErrs.H"
     #include "createDyMControls.H"
+    // Semi-Lagrangian fields FIRST: kappa must be registered before createFields
+    // constructs the reconstructedCurvature force (its ctor looks kappa up).
+    #include "createSLFields.H"
     #include "createFields.H"
+    #include "createTransportFields.H"
     #include "initCorrectPhi.H"
     #include "createUfIfPresent.H"
 
     // #include "CourantNo.H"
     const volScalarField& alpha = alpha1;
     #include "errorCalculation.H"
-    
+
+    // Parasitic-current + Laplace-jump metrics for the stationary-droplet study.
+    #include "createDropletMetricsFile.H"
+
     #include "setInitialDeltaT.H"
 
-    
+
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     Info<< "\nStarting time loop\n" << endl;
-    
+
+    // Mean curvature on the INITIALISED (t=0) interface: cell-centred, computed
+    // symbolically from the quadratic reconstruction with NO foot-point normal
+    // extension. Done here so (a) the initial Young-Laplace pressure balance below
+    // uses the actual curvature (kappa was zero at construction), and (b) kappa is
+    // stored at t=0 for inspection of the curvature on the clean signed-distance
+    // field. It is only first-order accurate in the interface cells (the cell
+    // centre is offset ~h/2 from the interface) -- that is accepted; no foot-point
+    // correction is applied.
+    if (fvmCurvature)
+    {
+        // Force model computes its own curvature; no symbolic fill (see
+        // createSLFields.H) -- required for non-quadratic reconstructions.
+    }
+    else if (closestPointCurvatureExtension)
+    {
+        slAdv->meanCurvatureClosestPoint(psi, kappa);
+    }
+    else
+    {
+        slAdv->meanCurvatureNoExtension(psi, kappa);
+    }
+
+    // Optional harmonic (Laplace) curvature smoothing on the initialised field, so
+    // the stored t=0 kappa and the initial Young-Laplace balance use the smoothed
+    // field when enabled (no-op otherwise).
+    #include "harmonicMeanCurvatureExtensionEqn.H"
+
+    // Optional foot-point height-function curvature at t=0 (same path as the
+    // time loop), so the initial Young-Laplace pressure is consistent with the
+    // run-time force -- otherwise the first steps start from a polluted balance.
+    if (footPointCurvatureExtension)
+    {
+        computeFootPointCurvature
+        (
+            mesh, psi,
+            mesh.lookupObject<volScalarField>("NarrowBand"),
+            kappa
+        );
+    }
+
+    if (connectedInterfaceCurvatureExtension)
+    {
+        computeConnectedInterfaceCurvature
+        (
+            mesh, psi,
+            mesh.lookupObject<volScalarField>("NarrowBand"),
+            kappa,
+            kappaInterfaceFace
+        );
+    }
+
+    if (interfaceMeanCurvatureExtension)
+    {
+        applyInterfaceMeanCurvature(mesh, alpha1, kappa);
+    }
+
     #include "YoungLaplaceEqn.H"
+    kappa.write();
+    kappaInterfaceFace.write();
     p_rgh.write();
 
     while (runTime.run())
@@ -118,7 +208,7 @@ int main(int argc, char *argv[])
             {
                 if (isA<dynamicRefineFvMesh>(mesh))
                 {
-                    // TODO(TM): recover the fluid interface on refined mesh. 
+                    // TODO(TM): recover the fluid interface on refined mesh.
                 }
 
                 mesh.update();
@@ -165,13 +255,13 @@ int main(int argc, char *argv[])
                 }
             }
 
-            // TODO(TM): enable time-step sub-cycling. 
+            // TODO(TM): enable time-step sub-cycling.
             // #include "alphaControls.H"
             // #include "alphaEqnSubcycle.H"
-            // Solve for the phase indicator.
-            #include "alphaEqn.H"
+            // Semi-Lagrangian level-set advection + symbolic curvature.
+            #include "slAlphaEqn.H"
 
-            // Update viscosity. 
+            // Update viscosity.
             mixture.correct();
 
             if (pimple.frozenFlow())
@@ -193,15 +283,23 @@ int main(int argc, char *argv[])
             }
         }
 
+        // The auxiliary rho is used only while pressure and velocity are
+        // coupled; restore interface-consistent cell density for output and
+        // for the next time level (rhoLENT Algorithm 1, step 13).
+        #include "resetRhoLENT.H"
+
         reportErrors(
-            errorFile, 
-            psi, 
-            psi0, 
-            alpha, 
-            alpha0, 
+            errorFile,
+            psi,
+            psi0,
+            alpha,
+            alpha0,
             phi,
             CoNum
         );
+
+        // Append the parasitic-current + Laplace-jump row for this step.
+        #include "writeDropletMetrics.H"
 
         runTime.write();
 

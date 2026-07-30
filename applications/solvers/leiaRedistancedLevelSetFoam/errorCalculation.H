@@ -1,4 +1,4 @@
-// Initialize fields for error analysis 
+// Initialize fields for error analysis
 surfaceScalarField phi0 ("phi0", phi);
 volVectorField U0("U0", U);
 
@@ -29,14 +29,15 @@ volScalarField alpha0
     ),
     alpha
 );
-// For example psiEnd, alphaEnd get written in the 3Dtranslation test case by the Allrun scripts. 
-// leiaSetFiels is called in a different context for creating psiEnd and alphaEnd. See 3Dtranslation/system/init_End/ for further info. 
+// For example psiEnd, alphaEnd get written in the 3Dtranslation test case by the Allrun scripts.
+// leiaSetFiels is called in a different context for creating psiEnd and alphaEnd. See 3Dtranslation/system/init_End/ for further info.
 
 
-// Open error file for output 
-OFstream errorFile("leiaLevelSetFoam.csv"); 
+// Open error file for output (same columns as leiaLevelSetFoam.csv /
+// leiaSemiLagrangeLevelSetFoam.csv for cross-solver comparison).
+OFstream errorFile("leiaRedistancedLevelSetFoam.csv");
 
-// CSV Header 
+// CSV Header
 errorFile << "TIME,"
     << "DELTA_X,"
     << "L_INF_E_PSI,"
@@ -49,8 +50,8 @@ errorFile << "TIME,"
     << "ELAPSED_CLOCK_TIME,"
     << "MAX_CFL,"
     << "MAX_ABS_SUM_VOL_FLUXES\n";
-    
+
 #include "CourantNo.H"
 
-// Report initial errors 
+// Report initial errors
 reportErrors(errorFile, psi, psi0, alpha, alpha0, phi, CoNum);
