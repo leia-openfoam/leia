@@ -154,7 +154,8 @@ uncachedQuadraticWeightedLeastSquaresReconstruction
     ridgeEps_(slDict_.getOrDefault<scalar>("ridgeEps", 0)),
     fit_(slDict_.getOrDefault<word>("fit", "normalEquations")),
     curvatureNewtonIters_(slDict_.getOrDefault<label>("curvatureNewtonIters", 3)),
-    closestPointIters_(slDict_.getOrDefault<label>("closestPointNewtonIters", 10))
+    closestPointIters_(slDict_.getOrDefault<label>("closestPointNewtonIters", 10)),
+    offsetCorrection_(slDict_.getOrDefault<word>("offsetCorrection", "none"))
 {
     if (fit_ != "normalEquations" && fit_ != "householderQR")
     {
@@ -506,7 +507,8 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::meanCurvature
         const scalar gm = Foam::mag(gf);
         if (gm < SMALL) { continue; }
 
-        k[c] = (tr(H)*gm*gm - (gf & (H & gf)))/(gm*gm*gm);
+        const scalar kd = (tr(H)*gm*gm - (gf & (H & gf)))/(gm*gm*gm);
+        k[c] = offsetCorrected(kd, psiC, gm);
     }
 
     kappa.correctBoundaryConditions();
@@ -544,7 +546,10 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::meanCurvatureLap
         }
         symmTensor H;
         hessianFromCoeffs(cf, nc, H);
-        k[c] = tr(H);
+        vector d0(Zero), g0(Zero);
+        gradFromCoeffs(cf, nc, d0, g0);
+        const scalar gm0 = max(Foam::mag(g0), SMALL);
+        k[c] = offsetCorrected(tr(H), psiC, gm0);
     }
 
     kappa.correctBoundaryConditions();
@@ -584,7 +589,8 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::meanCurvatureNoE
         // Iso-agnostic band gate (distance ~ |psi|/|grad psi|; see meanCurvature).
         if (Foam::mag(psiC)/gm > 3.0*stencilRadius(c)) { continue; }
 
-        k[c] = (tr(H)*gm*gm - (gc & (H & gc)))/(gm*gm*gm);
+        const scalar kd = (tr(H)*gm*gm - (gc & (H & gc)))/(gm*gm*gm);
+        k[c] = offsetCorrected(kd, psiC, gm);
     }
 
     kappa.correctBoundaryConditions();

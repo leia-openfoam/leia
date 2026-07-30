@@ -117,6 +117,52 @@ class uncachedQuadraticWeightedLeastSquaresReconstruction
     //- Iteration cap for the closest-point (KKT) Newton foot
     label closestPointIters_;
 
+    //- Parallel-curve (offset) correction of a cell-centred curvature.
+    //
+    //  Curvature evaluated at a cell centre is the curvature of the level
+    //  contour THROUGH THAT CENTRE, not of the interface. For parallel curves at
+    //  signed normal offset d, kappa_d = kappa/(1 + d kappa), so the exact
+    //  inverse is kappa = kappa_d/(1 - d kappa_d). Over a force band about three
+    //  cells thick this contributes mean|d| kappa ~ (3/4) h/R, i.e. a FIRST-ORDER
+    //  error that dominates the measured band norms on a clean circle.
+    //
+    //  Modes:
+    //    none            d = 0 (default; byte-identical to the previous behaviour)
+    //    psi             d = psi_c. Correct only where psi is a true signed
+    //                    distance, since psi_c is then the distance to the
+    //                    interface. Reinitialisation-free transport does not
+    //                    maintain that.
+    //    psiOverGradPsi  d = psi_c/|grad P(0)|, the first-order distance to the
+    //                    zero contour of the fit. Needs no |grad psi| = 1
+    //                    assumption and uses only coefficients the fit already
+    //                    produced, so it is the form that survives a drifted psi.
+    const word offsetCorrection_;
+
+    //- Apply the offset correction to a cell-centred curvature kd, given the
+    //  cell's psi and the fitted gradient magnitude. Guarded: the correction is
+    //  singular where the offset reaches the local centre of curvature
+    //  (1 - d kd -> 0), so it is skipped once the denominator leaves a safe band.
+    inline scalar offsetCorrected
+    (
+        const scalar kd,
+        const scalar psiC,
+        const scalar gm
+    ) const
+    {
+        if (offsetCorrection_ == "none") { return kd; }
+
+        const scalar d =
+            (offsetCorrection_ == "psiOverGradPsi") ? psiC/gm : psiC;
+
+        const scalar denom = 1 - d*kd;
+
+        // |denom| < 1/2 means the cell centre is past half the local radius of
+        // curvature: the parallel-curve map is no longer invertible there in any
+        // useful sense, so fall back to the uncorrected value rather than
+        // amplify.
+        return (Foam::mag(denom) > 0.5) ? kd/denom : kd;
+    }
+
     //- Constant-free quadratic basis at displacement d (identical to quad).
     void basis(const vector& d, const label ncoeff, scalar* b) const;
 
