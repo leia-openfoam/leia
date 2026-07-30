@@ -1,0 +1,18 @@
+// STATIC redistancing convergence case (no advection): circle in the unit
+// square, psi initialized as a tanh profile (exact zero set, |grad psi| != 1),
+// redistanced ONCE by leiaTestRedistance and measured against the analytic
+// signed distance (config/redistanceCircle2D.yaml).
+values
+{
+    solver (leiaTestRedistance);
+
+    N_CELLS (32 64 128 256);
+
+    PHASE_INDICATOR (detrixheAslam);
+
+    // Initial psi profile: tanh(d/(limit*eps)) scaled by limit -- interface
+    // gradient 1/eps, saturates to +-limit away from the circle.
+    PROFILE (tanh);
+    TANH_LIMIT (0.1);
+    TANH_EPS (0.5);
+}

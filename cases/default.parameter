@@ -12,7 +12,7 @@ OSCILLATION on;      // velocityModel: on = reversed test (cos(pi t/tau) factor)
 SL_RECONSTRUCTION quadraticWeightedLeastSquares; // leiaSemiLagrangeLevelSetFoam foot reconstruction;
                      // single value here (constant for velocity-extension studies,
                      // which ignore it) -> the SL configs axes_override the sweep
-                     // [linearTaylor nestedLSQ quadraticWeightedLeastSquares].
+                     // [linearTaylor linearWeightedLeastSquares quadraticTaylor quadraticWeightedLeastSquares].
 SL_CORRECTION direct; // leiaSemiLagrangeLevelSetFoam slCorrector: how psi^n is
                      // assembled at the feet. direct = one reconstruction pass
                      // (default); deferredCorrection = fixed-point iteration
@@ -22,6 +22,21 @@ SL_STENCIL point;    // leiaSemiLagrangeLevelSetFoam departure-foot reconstructi
                      // neighbours < 9 for a 3D quadratic). face = cell-face-cell
                      // (polyhedra only: ~12-16 faces suffice, ~3-4x smaller/faster
                      // + better conditioned). Sweepable per SL config.
+REDISTANCER noRedistancing; // leiaRedistancedLevelSetFoam levelSet.redistancer.type:
+                     // noRedistancing | PDE | planeFootWave | anchoredEikonal.
+                     // Default keeps every non-redistancing study byte-identical;
+                     // the GRL configs axes_override the sweep.
+REDIST_TRIGGER interval; // redistancer trigger: interval (every REDIST_INTERVAL
+                     // steps, original behaviour) | gradPsiThreshold (band L1 of
+                     // ||grad psi|-1| > threshold; Abu-Al-Saud et al. 2018 --
+                     // keeps redistance events rare).
+REDIST_THRESHOLD -1; // gradPsiThreshold criterion threshold; -1 = auto (h/L)^2.
+REDIST_INTERVAL 1;   // interval-trigger period (timeIndex % interval == 0).
+REDIST_GRADBOUND 2.0; // signedDistanceBounds trigger: redistance when band
+                     // |grad psi| leaves [1/g, g] -- case- and resolution-
+                     // independent usability bounds of the signed distance
+                     // (|grad|->0: zero crossing unlocatable; |grad|->1/h:
+                     // one-cell Heaviside jump = algebraic VOF).
 SL_CLIP false;       // leiaSemiLagrangeLevelSetFoam clipToStencilBounds: tight
                      // monotone clamp of the reconstructed psi^n to the stencil
                      // [min,max]. false = default (structured hex is well-
@@ -29,3 +44,38 @@ SL_CLIP false;       // leiaSemiLagrangeLevelSetFoam clipToStencilBounds: tight
                      // near-singular per-cell fit can otherwise let psi run away
                      // geometrically; the clamp is inactive in smooth regions so
                      // it preserves the 2nd-order convergence.
+REDIST_VIOLFRAC 0;   // signedDistanceBounds robust variant: fire only when more
+                     // than this fraction of band cells violates [1/g, g]
+                     // (0 = strict min/max). Localized under-resolved tails
+                     // (kappa*h ~ 1) cannot be repaired by redistancing and
+                     // must not re-trigger it.
+SDPLS_BETA 1.0;      // sdplsBeta target gradient: f_nl = beta - |grad psi|
+                     // (drives |grad psi| -> beta; beta = 1 = signed distance).
+ADVECTION eulerian;  // unified leiaLevelSetFoam advection method:
+                     // eulerian (implicit FV, advective form, nDefCorr
+                     // deferred correction) | semiLagrangian (backward foot
+                     // point + levelSet.semiLagrangian reconstruction).
+REPORT_WRITE_ONLY false; // unified solver: compute the phase indicator and
+                     // error rows only at write times ({0, T/2, T}). true in
+                     // the decision-benchmark configs so every method pays
+                     // the same reporting cost (fair ELAPSED_CLOCK_TIME).
+SL_LIMITER none;     // slReconstruction slope limiter: none | barthJespersen |
+                     // venkatakrishnan (order-preserving smooth cap).
+SL_VENKK 5;          // venkatakrishnan threshold K (eps^2 = (K*h)^3).
+SL_FIT normalEquations; // uncachedQuadratic least-squares solver:
+                     // normalEquations (Cholesky) | householderQR (better conditioned).
+SL_SCHEME pointValue; // semiLagrangian scheme: pointValue (non-conservative) |
+                     // fluxForm (conservative swept-face flux, CFL<=1).
+REDIST_REGION band;  // signedDistanceBounds criterion region: band (interface
+                     // quality, default) | bulk (frozen-band fill region;
+                     // REQUIRES REDIST_VIOLFRAC > 0 -- SDF skeleton has grad 0).
+REDIST_FREEZE false; // PDE redistancer frozen-band variant: freeze sign-change
+                     // band + REDIST_ANCHOR_LAYERS guard layers (transported
+                     // values = Dirichlet anchors, zero interface displacement
+                     // BY CONSTRUCTION); fill the bulk only.
+REDIST_ANCHOR_LAYERS 2; // guard layers beyond the sign-change band (keeps fill
+                     // error out of band-cell reconstruction stencils).
+REDIST_HAMILTONIAN central; // PDE reinit |grad psi|: central (fvSchemes grad;
+                     // MEASURED divergent, bulk 0.56->59.7) | godunov
+                     // (Rouy-Tourin upwind, monotone+causal -- classical cure).
+REDIST_NITER 30;     // PDE pseudo-time iterations (reach = niter*deltaTCoeff*h).

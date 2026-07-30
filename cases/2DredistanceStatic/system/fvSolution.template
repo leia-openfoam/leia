@@ -1,0 +1,128 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    psi
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-10;
+        relTol          0;
+    }
+
+    p
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-12;
+        relTol          0.;
+    }
+
+    // anchoredEikonal redistancer fill solve: ASYMMETRIC advection-diffusion
+    // linearization -> PBiCGStab/DILU (never PCG/DIC).
+    "psiDist.*"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         500;
+    }
+}
+
+PISO
+{
+    nCorrectors     -1; // Disables p-v coupling.
+    nNonOrthogonalCorrectors 0;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+velocityModel
+{
+    type none;
+}
+
+// Interface variants selected by the SURFACE study token (same $-alias
+// mechanism as the fvSolution "Uext.*" / fvSchemes aliasDict expansions).
+// Both are EXACT signed distances: |x-c|-R and n.(x-p) with |n| = 1.
+circleSurface
+{
+    type implicitSphere;
+    center (0.5 0.5 0);
+    radius 0.15;
+}
+
+planeSurface
+{
+    type implicitPlane;
+    position (0.5 0.5 0);
+    normal (0.7071067811865476 0.7071067811865476 0);
+}
+
+levelSet
+{
+    narrowBand
+    {
+      type  signChange;
+    }
+
+    // IDEMPOTENCY gate: the input psi IS the exact signed distance
+    // (unclipped). A perfect redistancer changes NOTHING: the measured
+    // volume/shape/gradient deviations are the PER-EVENT systematic error
+    // of each model.
+    profile
+    {
+      type  signedDistance;
+    }
+
+    implicitSurface
+    {
+        $@!SURFACE!@Surface;
+    }
+
+    phaseIndicator
+    {
+        type @!PHASE_INDICATOR!@;
+    }
+
+    redistancer
+    {
+        type                @!REDISTANCER!@;
+        trigger             @!REDIST_TRIGGER!@;
+        threshold           @!REDIST_THRESHOLD!@;
+        redistanceInterval  @!REDIST_INTERVAL!@;
+        gradBound           @!REDIST_GRADBOUND!@;
+        // PDE baseline (ignored by the geometric models)
+        deltaTCoeff 0.5;
+        niterations 30;
+        write       false;
+        // anchoredEikonal fill budget
+        epsilon     0.1;
+        tolerance   1e-4;
+        maxIter     100;
+    }
+
+    sdplsSource
+    {
+        type noSource;
+        discretization none;
+    }
+}
+
+
+// ************************************************************************* //

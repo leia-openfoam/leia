@@ -1,0 +1,347 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    // Required by immiscibleIncompressibleTwoPhaseMixture at construction; the
+    // level set is advected semi-Lagrangian, so MULES is never actually invoked.
+    "alpha.water.*"
+    {
+        nAlphaCorr      1;
+        nAlphaSubCycles 1;
+        cAlpha          1;
+
+        MULESCorr       yes;
+        nLimiterIter    3;
+
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-8;
+        relTol          0;
+    }
+
+    "pcorr.*"
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-08;
+        relTol          0;
+    }
+
+    p_rgh
+    {
+        solver          @!PRESSURE_SOLVER!@;
+        // PCG reads preconditioner; GAMG ignores it and reads smoother.
+        preconditioner  @!PRESSURE_PRECONDITIONER!@;
+        smoother        DIC;
+        // 1e-9 is sufficient: tightening to a strict 1e-12/relTol 0 leaves the settled
+        // parasitic currents unchanged to 4 sig figs (max|U| = 5.709e-4 and 1.250e-5 at
+        // N=32,64 either way), so they are curvature-error-limited, NOT solver-limited.
+        // The strict solve does ~13x the GAMG iterations per step for no change in the
+        // result, so the fast tolerance is the default (verified equivalent).
+        tolerance       @!PRESSURE_TOLERANCE!@;
+        relTol          @!PRESSURE_REL_TOL!@;
+    }
+
+    p_rghFinal
+    {
+        $p_rgh;
+        relTol          0;
+    }
+
+    U
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-08;
+        relTol          0;
+    }
+
+    "rho.*"
+    {
+        solver          diagonal;
+    }
+
+    "Uext.*"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         500;
+    }
+
+    // Harmonic (Laplace) curvature extension solve (harmonicMeanCurvatureExtensionEqn.H),
+    // used only when levelSet.curvatureExtension.type == harmonicLaplace.
+    kappa
+    {
+        solver          GAMG;
+        smoother        DIC;
+        tolerance       1e-09;
+        relTol          0;
+    }
+
+    // Working field of the anchoredEikonal redistancer (inert while the
+    // redistancer type is noRedistancing). REGEX key: a bare "psiDist" entry
+    // is skipped by the Final-suffix solver lookup on final PIMPLE
+    // iterations. The Tucker matrix is ASYMMETRIC (fvm::div): PBiCGStab/DILU
+    // or smoothSolver/GaussSeidel -- never PCG/DIC.
+    "psiDist.*"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-8;
+        relTol          0.1;
+    }
+
+    UFinal
+    {
+        $U;
+        relTol          0;
+    }
+}
+
+// Equation under-relaxation for the anchoredEikonal iteration (OpenFOAM's
+// advectionDiffusion wall-distance tutorial value; without this entry the
+// redistancer's yEqn.relax() is a silent no-op). Inert unless the
+// anchoredEikonal redistancer is selected -- no flow equation is listed.
+relaxationFactors
+{
+    equations
+    {
+        "psiDist.*"     0.7;
+    }
+}
+
+PIMPLE
+{
+    momentumPredictor   yes;
+    nOuterCorrectors    3;
+    nCorrectors         2;
+    // A perturbed mesh must override this through the study configuration with
+    // a correction count demonstrated converged by the frozen-circle velocity
+    // gate.  One correction is retained only as the uniform-mesh default.
+    nNonOrthogonalCorrectors @!N_NON_ORTHOGONAL_CORRECTORS!@;
+
+    pRefCell            0;
+    pRefValue           0;
+}
+
+// Leia level-set configuration.
+levelSet
+{
+    velocityExtension
+    {
+        type            @!VELOCITY_EXTENSION!@;
+        U               U;
+        flux            phi;
+        levelSet        psi;
+        alpha           alpha.water;
+        nLayers         4;
+        nAnchorLayers   1;
+        nDescent        4;
+        nDefCorrExt     5;
+        defCorrRelax    0.7;
+        zeroInflowGuard 1e-6;
+        maxScale        5;
+        projectFlux     false;
+    }
+
+    // Symbolic curvature from the SL quadratic reconstruction (normal-extended),
+    // consumed as sigma * interpolate(kappa) * snGrad(alpha.water).
+    //
+    // reconstructedCurvature options (defaults = the committed behaviour):
+    //   faceInterpolation arithmetic|interfaceWeighted -- kappa_f face value;
+    //       interfaceWeighted = Kang/GFM (kP|psiN|+kN|psiP|)/(|psiP|+|psiN|).
+    //       MEASURED: better static balance but destabilizes the coupled loop
+    //       (N=64 settled 1.3e-5 arithmetic vs 4.4e-3 rising Kang).
+    //   forceWeight alpha|sharpHeaviside -- pair kappa_f with snGrad(alpha) or
+    //       with the sharp sign-Heaviside of psi (LS-SSF). MEASURED: 58x better
+    //       initial balance, blows at t=0.073 (N=64) -- do not use coupled.
+    //
+    // ALTERNATIVE (2D uniform-hex prototype, MEASURED SUPERIOR on the static
+    // droplet): the conservative integral surface-tension model of
+    // Abu-Al-Saud, Popinet & Tchelepi (JCP 371:896, 2018) -- surface tension
+    // as -div(pI+sigma) from interface tangents at face intersections + the
+    // gamma*kappa~*s jump corrections; kappa enters ONLY at the psi=0
+    // crossings. Reaches the discrete equilibrium reinit-free: N=64 currents
+    // DECAY 3.3e-3 -> 3.1e-6 by t=0.1 (CSF settles at 1.3e-5), Laplace jump
+    // +72.72 vs exact 72.74 (0.02%). NOTE the printed relations in the paper
+    // (their Eq. 8 vs their -div(pI+sigma) identity) carry an inverted overall
+    // sign; the implementation uses the physical sign (see
+    // integralSurfaceTension.C).
+    //   surfaceTensionForce { type integralSurfaceTension; levelSet psi; kappa kappa; }
+    // linearWeightedLeastSquares supplies NO curvature (a linear fit has zero
+    // Hessian), so surface tension takes curvature from the FVM path:
+    // kappa = div( grad(psi)/|grad(psi)| ), consumed as sigma*interpolate(kappa)*
+    // snGrad(alpha.water). Needs div(nPsi) in fvSchemes divSchemes and
+    // curvatureExtension { type fvm; } below (skips the reconstruction kappa fill).
+    surfaceTensionForce
+    {
+        // Conservative integral surface tension (CST; Abu-Al-Saud, Popinet &
+        // Tchelepi, JCP 2018): surface tension from interface tangents at the
+        // psi=0 face crossings, curvature entering only at those crossings.
+        // Reads levelSet + kappa; requires a uniform single-block 2D mesh.
+        type     @!SURFACE_TENSION_FORCE!@;
+        levelSet psi;
+        kappa    kappa;
+        curvatureSource @!SURFACE_TENSION_CURVATURE_SOURCE!@;
+        curvature @!SURFACE_TENSION_CURVATURE!@;
+        sign      @!SURFACE_TENSION_SIGN!@;
+        method    @!SURFACE_TENSION_GEOMETRIC_METHOD!@;
+        faceInterpolation @!CURVATURE_FACE_INTERPOLATION!@;
+        faceCurvatureSource @!CURVATURE_FACE_SOURCE!@;
+        faceCurvatureField kappaInterfaceFace;
+        forceWeight @!CURVATURE_FORCE_WEIGHT!@;
+        alpha     alpha.water;
+    }
+
+    narrowBand
+    {
+        type    signChange;
+    }
+
+    // Two-phase mass flux rhoPhi for the momentum convection div(rhoPhi,U):
+    //   interpolatedDensity  -> rhoPhi = interpolate(rho)*phi (step 2a, arithmetic)
+    //   geometricFaceDensity -> rho_f from the geometric face liquid-area fraction
+    //       alpha_f (owner/neighbour level-set-plane average, consistent with the
+    //       Detrixhe-Aslam cell Heaviside), rhoPhi = (alpha_f*rho1+(1-alpha_f)*rho2)*phi
+    //       -- the rhoLENT-style consistent flux (step 2b).
+    massFlux
+    {
+        type                @!MASS_FLUX!@;
+        faceInterpolation   @!MASS_FLUX_FACE_INTERPOLATION!@;
+    }
+
+    // Harmonic (Laplace) smoothing of the mean curvature: pin the cell-centred
+    // kappa at the interface cells (psi sign-change) and solve laplacian(kappa)=0
+    // to extend a smooth field into the band (harmonicMeanCurvatureExtensionEqn.H).
+    //
+    // MEASURED (2026-07-14): harmonicLaplace DESTABILISES this problem -- N=64
+    // blows up at t~0.05 vs t~0.44 for plain cell-local curvature (type none).
+    // Like the foot-point Newton extension, COUPLING the curvature (here via the
+    // Laplace solve) correlates the curvature-error force over a wider region and
+    // accelerates the parasitic-current feedback. The plain cell-LOCAL curvature
+    // (type none) is the most stable, so it is the default. harmonicLaplace is
+    // available (set type below) for experimentation.
+    // footPointHeightFunction: the unstructured-compatible height function --
+    // kappa from a local parabola fit of the interface feet of the linear LSQ
+    // planes (geometry-only, integral, staircase-immune), delivered NORMAL-
+    // CONSTANT by uniform nearest-foot assignment (the balanced-force
+    // requirement; footPointCurvature.H). The equilibrium-restoring option.
+    curvatureExtension
+    {
+        // integralSurfaceTension computes curvature geometrically at the psi=0
+        // crossings, so no reconstruction/FVM kappa fill is needed.
+        type    @!CURVATURE_EXTENSION!@;
+        relax   @!CURVATURE_EXTENSION_RELAX!@;
+        estimator                 @!CURVATURE_ESTIMATOR!@;
+        geometrySource             @!CURVATURE_GEOMETRY_SOURCE!@;
+        fitHalfWidth              @!CURVATURE_FIT_HALF_WIDTH!@;
+        regularizationOperator    @!CURVATURE_REGULARIZATION_OPERATOR!@;
+        tangentialRegularization  @!CURVATURE_TANGENTIAL_REGULARIZATION!@;
+        regularizationIterations  @!CURVATURE_REGULARIZATION_ITERATIONS!@;
+        preserveModesThrough      @!CURVATURE_PRESERVE_MODES_THROUGH!@;
+    }
+
+    profile
+    {
+        type    signedDistance;
+        limit   0.1;
+    }
+
+    // Default: mode-2 perturbed ellipse, area-preserving (a*b = R^2).  The
+    // pressure-compatibility gate overrides both in-plane axes with R = 1 mm
+    // to obtain an exact circle without introducing a second case template.
+    // z-axis = 1 m >> box z-thickness, so the surface is two-dimensional.
+    implicitSurface
+    {
+        type    signedDistanceEllipse;
+        center  (0.005 0.005 0);
+        axes    (@!DROPLET_AXIS_X!@ @!DROPLET_AXIS_Y!@ 1);
+        // Equivalent-circle radius (a*b = R^2), read by createDropletMetricsFile.H
+        // for the rest-state reference curvature 1/R; ignored by the surface.
+        radius  1e-3;
+    }
+
+    phaseIndicator
+    {
+        type    detrixheAslam;
+        geometrySource @!PHASE_INDICATOR_GEOMETRY_SOURCE!@;
+    }
+
+    // Redistancing. Default noRedistancing = the validated reinit-free
+    // pipeline. Plane-anchored geometric options (MEASURED gates in the
+    // article's balanced-force delivery study):
+    //   type anchoredEikonal  -- band+ring Dirichlet anchors from the SAME
+    //       linear LSQ interface planes the phase indicator and geometric
+    //       mass flux read (normalized to true signed distances), remaining
+    //       field from Tucker's regularized steady Eikonal iteration
+    //       (OpenFOAM wallDist advectionDiffusion discretization; needs the
+    //       "psiDist.*" solver entry + div(yPhi,psiDist) scheme below;
+    //       options epsilon 0.1; tolerance 1e-3; maxIter 10).
+    //   type planeFootWave    -- same anchors; the rest by geometric
+    //       closest-foot MeshWave propagation (no solves, no parameters).
+    // Trigger (both models + the legacy PDE type):
+    //   trigger interval          -- every redistanceInterval steps (legacy).
+    //   trigger gradPsiThreshold  -- Abu-Al-Saud/Popinet/Tchelepi (2018,
+    //       Eq. 12): fire only when the band-mean ||grad psi|-1| exceeds
+    //       'threshold' (default (h/L)^2). Every-step reinit destroys the
+    //       capillary equilibrium (their Table 1) -- the criterion keeps
+    //       events rare; the criterion value is logged every step.
+    redistancer
+    {
+        type    noRedistancing;
+    }
+
+    // Optional grid-scale psi filter (default absent = off): the explicit
+    // delta-psi damping term the reinit-free SL transport lacks.
+    //   psiFilter { type biharmonicBand; theta 0.05; }
+    // applies psi -= theta*L(L(psi)) in the band + 1 ring, with
+    // L = I - average(interpolate(.)) -- annihilates smooth curved signed
+    // distances to leading order, damps the 2h profile modes (the parasitic
+    // feedback carrier). Also: curvatureExtension { type fvm; } skips the
+    // symbolic quadratic kappa fill for FVM force models
+    // (divGradPsiSnGradAlpha) -- REQUIRED with reconstruction linearTaylor.
+
+    // DECOUPLED pipeline (separate the two roles of the reconstruction):
+    //   ADVECTION  -> quadratic value fit (uncachedQuadraticWeightedLeastSquares):
+    //                 stable, preserves |grad psi| ~ 1 (no advection-mode runaway).
+    //   CURVATURE  -> FVM path (surfaceTensionForce divGradPsiSnGradAlpha +
+    //                 curvatureExtension fvm above): kappa = div(grad psi/|grad psi|),
+    //                 order-matched to the 2nd-order FVM Navier-Stokes discretization,
+    //                 NOT the reconstruction's Hessian (which drove the N>=128 divergence
+    //                 of the reconstructedCurvature pipeline). curvatureExtension fvm
+    //                 skips the reconstruction kappa fill, so the quadratic fit is used
+    //                 ONLY to transport psi.
+    semiLagrangian
+    {
+        reconstruction      @!SL_RECONSTRUCTION!@;
+        correction          direct;
+        CFLmax              0.5;
+        limitSlope          false;
+        clipToStencilBounds false;
+        trajectoryVelocity  @!TRAJECTORY_VELOCITY!@;
+        trajectoryU         U;
+        trajectoryNormalEpsilon       1e-12;
+        trajectoryProjectionIterations 4;
+        trajectoryProjectionTolerance  0.1;
+        trajectoryProjectionMaxDistance 6;
+    }
+}
+
+// ************************************************************************* //

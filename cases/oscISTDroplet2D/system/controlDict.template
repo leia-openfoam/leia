@@ -1,0 +1,66 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     leiaSemiLagrangianLevelSetTwoPhaseFoam;
+
+startFrom       startTime;
+startTime       0;
+
+stopAt          endTime;
+endTime         @!END_TIME!@;
+
+// FIXED CAPILLARY time step (not CFL/Courant): the explicit surface-tension
+// stability limit is the binding constraint, so dt is pinned to the capillary
+// value from step 1 (avoids the CFL-adjusted ramp and the too-large initial dt
+// that seeded the moving-interface divergence at fine N).
+deltaT          @!MAX_DELTA_T!@;
+
+writeControl    runTime;
+writeInterval   @!WRITE_INTERVAL!@;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+writePrecision  12;
+writeCompression off;
+
+timeFormat      general;
+timePrecision   8;
+
+runTimeModifiable no;
+
+// Explicit surface tension => the CAPILLARY step is the binding stability limit
+//   dt_sigma = sqrt((rho1+rho2) dx^3 / (2 pi sigma)) ~ 2.6e-4 s at 32^2.
+// The parasitic-current feedback is only STABLE well below dt_sigma; deltaT above
+// is fixed to MAX_DELTA_T = CAPILLARY_DT_COEFF / N_CELLS^1.5 (coeff =
+// @!CAPILLARY_DT_COEFF!@ s, calibrated so dt(N=32) ~ dt_sigma/4; scales dt ~ dx^1.5).
+// adjustTimeStep OFF: the step is capillary-limited, NOT CFL/Courant-limited -- the
+// physically correct stiff constraint for explicit capillary two-phase flow, and it
+// removes the Courant-adjusted ramp (whose too-large initial dt seeded the
+// moving-interface divergence at fine N). The maxCo/maxAlphaCo/maxDeltaT entries
+// below are REQUIRED by the solver at construction, but are INERT for the step
+// (dt stays fixed at deltaT) because adjustTimeStep is off.
+adjustTimeStep  no;
+maxCo           @!MAX_CO!@;
+maxAlphaCo      @!MAX_CO!@;
+maxDeltaT       @!MAX_DELTA_T!@;
+
+// Parasitic-current metrics (max|U|, mean|U|) + the Laplace jump are written every
+// step to leiaSemiLagrangianLevelSetTwoPhaseFoam.csv by the solver (probe-free,
+// mesh-robust); that CSV is what the study aggregates. No function objects needed.
+
+// ************************************************************************* //

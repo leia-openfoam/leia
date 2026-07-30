@@ -1,0 +1,74 @@
+// Stationary-droplet parasitic-current study (arXiv:2212.02904, Sec. 3.3.1).
+// One swept axis: the mesh resolution N_CELLS. maxDeltaT is NOT swept -- it is a
+// derived token, MAX_DELTA_T = CAPILLARY_DT_COEFF / N_CELLS^1.5 (dt ~ dx^1.5,
+// the capillary stability limit), computed per case by materialize.
+values
+{
+    solver (leiaSemiLagrangianLevelSetTwoPhaseFoam);
+
+    // Mesh refinement ladder (cells double each level): the convergence axis.
+    N_CELLS
+    (
+        32
+        64
+        128
+        256
+    );
+
+    // End time of the benchmark [s].
+    END_TIME ( 0.1 );
+
+    // Physical-time interval between field snapshots.  Replay studies override
+    // this without changing the standard production output cadence.
+    WRITE_INTERVAL ( 0.02 );
+
+    // Advective + interface Courant ceiling (adjustTimeStep). Low, because the
+    // capillary limit -- not advection -- binds the step for this static droplet.
+    MAX_CO ( 0.1 );
+
+    // Capillary time-step coefficient [s]: maxDeltaT = CAPILLARY_DT_COEFF/N^1.5,
+    // calibrated so maxDeltaT(N=32) = 6e-5 s ~ dt_sigma/4 for water/air, sigma=0.07274.
+    //   0.010861 = 6e-5 * 32^1.5.
+    CAPILLARY_DT_COEFF ( 0.010861 );
+
+    // Time-step derivation. Coupled cases retain capillary mode. Sigma=0
+    // kinematic configs override TIME_STEP_CONTROL and TARGET_ADVECTIVE_CO.
+    TIME_STEP_CONTROL ( capillary );
+    TARGET_ADVECTIVE_CO ( 0.1 );
+    DOMAIN_LENGTH ( 0.01 );
+    REFERENCE_SPEED ( 0.05 );
+
+    // Uniform-mesh default. workflow/scripts/materialize.py raises this to at
+    // least 8 whenever mesh: perturbed is selected.
+    N_NON_ORTHOGONAL_CORRECTORS ( 1 );
+
+    // Transport/mass-consistency gates. Single defaults keep the standard
+    // study compact; config files may override them for A/B campaigns.
+    VELOCITY_EXTENSION ( steadyUpwind );
+    TRAJECTORY_VELOCITY ( input );
+    MASS_FLUX ( rhoLENT );
+    MASS_FLUX_FACE_INTERPOLATION ( central );
+
+    // Mechanism-gate controls. kappa=1/R=1000 1/m for this 2-D circle.
+    SURFACE_TENSION_FORCE ( integralSurfaceTension );
+    SURFACE_TENSION_CURVATURE_SOURCE ( field );
+    SURFACE_TENSION_CURVATURE ( 1000 );
+    SURFACE_TENSION_SIGN ( 1 );
+    SURFACE_TENSION_GEOMETRIC_METHOD ( conormal );
+    SURFACE_TENSION_SIGMA ( 0.07274 );
+
+    // Curvature evaluation/delivery controls used by reconstructedCurvature.
+    CURVATURE_EXTENSION ( none );
+    CURVATURE_EXTENSION_RELAX ( 1 );
+    CURVATURE_ESTIMATOR ( connectedFit );
+    CURVATURE_GEOMETRY_SOURCE ( levelSetField );
+    PHASE_INDICATOR_GEOMETRY_SOURCE ( levelSetField );
+    CURVATURE_FACE_INTERPOLATION ( arithmetic );
+    CURVATURE_FACE_SOURCE ( model );
+    CURVATURE_FORCE_WEIGHT ( alpha );
+    CURVATURE_FIT_HALF_WIDTH ( 5 );
+    CURVATURE_REGULARIZATION_OPERATOR ( helmholtz );
+    CURVATURE_TANGENTIAL_REGULARIZATION ( 16 );
+    CURVATURE_REGULARIZATION_ITERATIONS ( 120 );
+    CURVATURE_PRESERVE_MODES_THROUGH ( 4 );
+}

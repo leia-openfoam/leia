@@ -32,6 +32,18 @@ solvers
         tolerance       1e-12;
         relTol          0.;
     }
+
+    // anchoredEikonal redistancer fill solve (leiaRedistancedLevelSetFoam):
+    // ASYMMETRIC advection-diffusion linearization -> PBiCGStab/DILU
+    // (never PCG/DIC).
+    "psiDist.*"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         500;
+    }
 }
 
 PISO
@@ -50,6 +62,14 @@ velocityModel
 
 levelSet
 {
+    // Advection method: how psi^n becomes psi^{n+1} (unified solver).
+    reportAtWriteTimesOnly @!REPORT_WRITE_ONLY!@;
+
+    advection
+    {
+        type @!ADVECTION!@;   // eulerian | semiLagrangian
+    }
+
     narrowBand  
     {
       type  signChange;
@@ -59,7 +79,7 @@ levelSet
     profile
     {
       type  @!PROFILE!@;
-      limit  @!TANH_LIMIT!@;
+      limit  @!TANH_LIMIT!@;  // tanh profile ONLY -- signedDistance ignores it
     }
 
 
@@ -79,14 +99,38 @@ levelSet
         type @!PHASE_INDICATOR!@;
     }
 
-    redistancer 
+    redistancer
     {
-        type noRedistancing;
+        type                @!REDISTANCER!@;
+        trigger             @!REDIST_TRIGGER!@;
+        threshold           @!REDIST_THRESHOLD!@;
+        redistanceInterval  @!REDIST_INTERVAL!@;
+        gradBound           @!REDIST_GRADBOUND!@;
+        bandViolationFraction @!REDIST_VIOLFRAC!@;
+        criterionRegion     @!REDIST_REGION!@;
+        freezeBand          @!REDIST_FREEZE!@;
+        anchorLayers        @!REDIST_ANCHOR_LAYERS!@;
+        // PDE baseline (ignored by the geometric models): mesh-relative
+        // pseudo-time step -- the explicit reinit equation is CFL-limited
+        // by h, a fixed deltaT stable on one mesh diverges on finer ones
+        // (measured: deltaT 0.1 at h = 1/64 -> band error 7.5e6). 30 steps
+        // of 0.5h reinitialize the trigger's 6h band.
+        deltaTCoeff 0.5;
+        hamiltonian @!REDIST_HAMILTONIAN!@;
+        niterations @!REDIST_NITER!@;
+        write       false;
+        // anchoredEikonal fill budget: the frozen-direction Tucker
+        // iteration plateaus if stopped early (measured: maxIter 10 left
+        // the band WORSE than pre-event).
+        epsilon     0.1;
+        tolerance   1e-4;
+        maxIter     100;
     }
 
     sdplsSource
     {
         type            @!SDPLS_SOURCE!@;
+        beta            @!SDPLS_BETA!@;  // sdplsBeta only: f_nl = beta - |grad psi|
         discretization  @!SOURCE_SCHEME!@;
         gradPsi         @!GRAD_PSI!@;
         mollifier
@@ -107,7 +151,8 @@ levelSet
     {
         // ---- reconstruction of psi^n at the foot (RTS slReconstruction) ----
         //   linearTaylor                      : psi_c + grad_c.(x-x_c). O(h); gradient injected.
-        //   nestedLSQ                         : nested least squares. O(h^2) at CFL<=1/2.
+        //   quadraticTaylor (was nestedLSQ)   : field-diff Taylor+Hessian. O(h^2), needs clip.
+        //   linearWeightedLeastSquares        : linear VALUE fit. O(h); no curvature.
         //   quadraticWeightedLeastSquares     : IDW-weighted quadratic VALUE fit. O(h^2..3),
         //                                       STABLE. PRODUCTION. Memory-bound (per-cell
         //                                       pseudo-inverse cache).
@@ -118,6 +163,10 @@ levelSet
         //   bandQuadraticWeightedLeastSquares : quadratic in the band, linear far field.
         //   defectCorrectedIDW                : IDW + iterated gradient/defect correction.
         //                                       Cheap/CPU-bound but UNSTABLE here. Research.
+        scheme              @!SL_SCHEME!@;
+        slopeLimiter        @!SL_LIMITER!@;
+        venkK               @!SL_VENKK!@;
+        fit                 @!SL_FIT!@;
         reconstruction      @!SL_RECONSTRUCTION!@;
 
         // Reconstruction stencil: point = cell-point-cell (default; required on

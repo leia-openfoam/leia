@@ -1,0 +1,37 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+// Uniform translation velocity: the droplet coasts through the periodic box at
+// U0 = 0.05 m/s in x. With zero gravity and no forcing, the exact solution is
+// rigid translation at U0 (interface stays circular, Laplace jump sigma/R);
+// deviation = spurious currents. Periodic (cyclic) box so the droplet re-enters.
+internalField   uniform (0.05 0 0);
+
+boundaryField
+{
+    inlet   { type fixedValue; value uniform (0.05 0 0); }
+    outlet  { type zeroGradient; }
+    walls   { type slip; }   // free-slip: uniform stream, no wall shear
+
+    frontAndBack
+    {
+        type            empty;
+    }
+}
+
+// ************************************************************************* //

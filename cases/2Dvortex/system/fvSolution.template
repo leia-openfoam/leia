@@ -81,6 +81,18 @@ solvers
     noneUext               { $pseudoTimeUext }     // identity model: never solved
 
     "Uext.*" { $@!VELOCITY_EXTENSION!@Uext; }
+
+    // anchoredEikonal redistancer fill solve (leiaRedistancedLevelSetFoam):
+    // ASYMMETRIC advection-diffusion linearization -> PBiCGStab/DILU
+    // (never PCG/DIC).
+    "psiDist.*"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         500;
+    }
 }
 
 PISO
@@ -103,6 +115,14 @@ velocityModel
 
 levelSet
 {
+    // Advection method: how psi^n becomes psi^{n+1} (unified solver).
+    reportAtWriteTimesOnly @!REPORT_WRITE_ONLY!@;
+
+    advection
+    {
+        type @!ADVECTION!@;   // eulerian | semiLagrangian
+    }
+
     narrowBand
     {
       type  signChange;
@@ -112,7 +132,7 @@ levelSet
     profile
     {
       type  @!PROFILE!@;
-      limit  @!TANH_LIMIT!@;
+      limit  @!TANH_LIMIT!@;  // tanh profile ONLY -- signedDistance ignores it
     }
 
 
@@ -131,12 +151,36 @@ levelSet
 
     redistancer
     {
-        type noRedistancing;
+        type                @!REDISTANCER!@;
+        trigger             @!REDIST_TRIGGER!@;
+        threshold           @!REDIST_THRESHOLD!@;
+        redistanceInterval  @!REDIST_INTERVAL!@;
+        gradBound           @!REDIST_GRADBOUND!@;
+        bandViolationFraction @!REDIST_VIOLFRAC!@;
+        criterionRegion     @!REDIST_REGION!@;
+        freezeBand          @!REDIST_FREEZE!@;
+        anchorLayers        @!REDIST_ANCHOR_LAYERS!@;
+        // PDE baseline (ignored by the geometric models): mesh-relative
+        // pseudo-time step -- the explicit reinit equation is CFL-limited
+        // by h, a fixed deltaT stable on one mesh diverges on finer ones
+        // (measured: deltaT 0.1 at h = 1/64 -> band error 7.5e6). 30 steps
+        // of 0.5h reinitialize the trigger's 6h band.
+        deltaTCoeff 0.5;
+        hamiltonian @!REDIST_HAMILTONIAN!@;
+        niterations @!REDIST_NITER!@;
+        write       false;
+        // anchoredEikonal fill budget: the frozen-direction Tucker
+        // iteration plateaus if stopped early (measured: maxIter 10 left
+        // the band WORSE than pre-event).
+        epsilon     0.1;
+        tolerance   1e-4;
+        maxIter     100;
     }
 
     sdplsSource
     {
         type @!SDPLS_SOURCE!@;
+        beta            @!SDPLS_BETA!@;  // sdplsBeta only: f_nl = beta - |grad psi|
         discretization @!SOURCE_SCHEME!@;
     }
 
@@ -182,9 +226,20 @@ levelSet
     semiLagrangian
     {
         // ---- reconstruction of psi^n at the foot (RTS slReconstruction) ----
-        //   linearTaylor                      : psi_c + grad_c.(x-x_c). O(h) baseline;
-        //                                       |grad psi| drifts (gradient injected).
-        //   nestedLSQ                         : nested least squares. O(h^2) at CFL<=1/2.
+        // 2x2 taxonomy: {linear, quadratic} x {Taylor = field-diff, WLSQ = value-fit}.
+        //   linearTaylor                      : psi_c + grad_c.(x-x_c), grad_c=fvc::grad(psi).
+        //                                       O(h) baseline; |grad psi| drifts (field
+        //                                       differentiation injects a gradient).
+        //   quadraticTaylor  (was nestedLSQ)  : psi_c + grad_c.d + 1/2 d.H.d, grad_c and
+        //                                       H=fvc::grad(grad_c) from field differentiation.
+        //                                       O(h^2) but CONDITIONALLY stable: the grad-of-grad
+        //                                       Hessian amplifies 2h-mode noise -> |grad psi|
+        //                                       runaway on fine meshes unless clipToStencilBounds.
+        //   linearWeightedLeastSquares        : IDW-weighted LINEAR VALUE fit over the stencil.
+        //                                       O(h), STABLE BY CONSTRUCTION (no field diff, the
+        //                                       fit is bounded by the stencil data range), no clip
+        //                                       needed, CFL-independent. NO curvature (H==0) -> a
+        //                                       two-phase run must take curvature from the FVM path.
         //   quadraticWeightedLeastSquares     : IDW-weighted quadratic VALUE fit. O(h^2..3),
         //                                       STABLE. PRODUCTION. Memory-bound (caches a
         //                                       per-cell pseudo-inverse).
@@ -198,6 +253,10 @@ levelSet
         //   defectCorrectedIDW                : IDW + iterated gradient/defect correction.
         //                                       Cheap/CPU-bound but UNSTABLE here (gradient
         //                                       injection amplifies |grad psi|). Research.
+        scheme              @!SL_SCHEME!@;
+        slopeLimiter        @!SL_LIMITER!@;
+        venkK               @!SL_VENKK!@;
+        fit                 @!SL_FIT!@;
         reconstruction      @!SL_RECONSTRUCTION!@;
 
         // ---- correction strategy (RTS slCorrector) ----
@@ -217,7 +276,10 @@ levelSet
         limitSlope          false;     // Barth-Jespersen limiter on the increment. MEASURED
                                        // to cost convergence order -> off; the always-on
                                        // value cap in the corrector handles overflow.
-        clipToStencilBounds false;     // extra tight monotone clip to the stencil min/max.
+        clipToStencilBounds @!SL_CLIP!@;  // monotone clip of the reconstructed value to the
+                                       // stencil [min,max]; forbids the overshoot that drives
+                                       // the quadraticTaylor steepening instability (not needed
+                                       // by the value-fitting reconstructions, which are bounded).
 
         // ---- uncachedQuadraticWeightedLeastSquares control ----
         ridgeEps            0;         // Tikhonov ridge on the normal-equations diagonal

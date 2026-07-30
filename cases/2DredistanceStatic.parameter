@@ -1,0 +1,17 @@
+// STATIC IDEMPOTENCY gate (no advection): psi initialized as the EXACT
+// signed distance (circle R=0.15 centered in the unit square, or the
+// diagonal plane through the centre), ONE redistance event applied by
+// leiaTestRedistance, output compared with the input over mesh resolutions:
+// volume error, shape error, band psi/gradient errors. A perfect
+// redistancer is idempotent -- every deviation is the per-event systematic
+// error of the model (config/redistanceStatic2D.yaml).
+values
+{
+    solver (leiaTestRedistance);
+
+    N_CELLS (32 64 128 256);
+
+    PHASE_INDICATOR (detrixheAslam);
+
+    SURFACE (circle plane);
+}

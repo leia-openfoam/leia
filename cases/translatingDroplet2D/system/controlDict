@@ -1,0 +1,60 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     leiaSemiLagrangianLevelSetTwoPhaseFoam;
+
+startFrom       startTime;
+startTime       0;
+
+stopAt          endTime;
+endTime         0.1;
+
+deltaT          1e-5;
+
+writeControl    adjustableRunTime;
+writeInterval   0.02;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+writePrecision  8;
+writeCompression off;
+
+timeFormat      general;
+timePrecision   8;
+
+runTimeModifiable no;
+
+// Explicit surface tension => capillary time-step limit
+//   dt_sigma = sqrt((rho1+rho2) dx^3 / (2 pi sigma)) ~ 2.6e-4 s at 32^2.
+// The parasitic-current feedback is only STABLE well below dt_sigma: running at
+// maxDeltaT ~ dt_sigma with maxCo 0.5 diverges (max|U| -> O(10) m/s); at
+// maxDeltaT ~ dt_sigma/4 with maxCo 0.1 the currents stay bounded and CONVERGE
+// under refinement (max|U| ~ 5e-3 at 32^2 -> ~3e-4 at 64^2). Scale maxDeltaT with
+// dx^1.5: 6e-5 (32^2) -> ~2e-5 (64^2) -> ~8e-6 (128^2).
+adjustTimeStep  yes;
+maxCo           0.1;
+maxAlphaCo      0.1;
+maxDeltaT       6e-5;
+
+// The parasitic-current metrics (max|U|, mean|U|) and the Laplace pressure jump
+// are written every step to leiaSemiLagrangianLevelSetTwoPhaseFoam.csv by the
+// solver (see createDropletMetricsFile.H / writeDropletMetrics.H) -- a mesh-robust,
+// probe-free measurement that is also what the reproducible study aggregates. No
+// function objects are needed here.
+
+// ************************************************************************* //

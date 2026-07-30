@@ -1,0 +1,121 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    psi
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-10;
+        relTol          0;
+    }
+
+    p
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-12;
+        relTol          0.;
+    }
+
+    // anchoredEikonal redistancer fill solve: ASYMMETRIC advection-diffusion
+    // linearization -> PBiCGStab/DILU (never PCG/DIC).
+    "psiDist.*"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         500;
+    }
+}
+
+PISO
+{
+    nCorrectors     -1; // Disables p-v coupling.
+    nNonOrthogonalCorrectors 0;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+velocityModel
+{
+    type none;
+}
+
+levelSet
+{
+    narrowBand
+    {
+      type  signChange;
+    }
+
+    // Initial psi: tanh profile of the circle's signed distance -- exact zero
+    // set, |grad psi|(Sigma) = 1/eps != 1, saturating to +-limit in the bulk.
+    // The redistanced field is measured against the ANALYTIC signed distance
+    // (leiaTestRedistance reads implicitSurface below).
+    profile
+    {
+      type   @!PROFILE!@;
+      eps    @!TANH_EPS!@;
+      limit  @!TANH_LIMIT!@;
+    }
+
+    implicitSurface
+    {
+        type implicitSphere;
+        center (0.5 0.5 0);
+        radius 0.25;
+    }
+
+    phaseIndicator
+    {
+        type @!PHASE_INDICATOR!@;
+    }
+
+    redistancer
+    {
+        type                @!REDISTANCER!@;
+        trigger             @!REDIST_TRIGGER!@;
+        threshold           @!REDIST_THRESHOLD!@;
+        redistanceInterval  @!REDIST_INTERVAL!@;
+        gradBound           @!REDIST_GRADBOUND!@;
+        // PDE baseline (ignored by the geometric models): mesh-relative
+        // pseudo-time step -- the explicit reinit equation is CFL-limited
+        // by h, a fixed deltaT stable on one mesh diverges on finer ones
+        // (measured: deltaT 0.1 at h = 1/64 -> band error 7.5e6). 30 steps
+        // of 0.5h reinitialize the trigger's 6h band.
+        deltaTCoeff 0.5;
+        niterations 30;
+        write       false;
+        // anchoredEikonal fill budget: the frozen-direction Tucker
+        // iteration plateaus if stopped early (measured: maxIter 10 left
+        // the band WORSE than pre-event).
+        epsilon     0.1;
+        tolerance   1e-4;
+        maxIter     100;
+    }
+
+    sdplsSource
+    {
+        type noSource;
+        discretization none;
+    }
+}
+
+
+// ************************************************************************* //

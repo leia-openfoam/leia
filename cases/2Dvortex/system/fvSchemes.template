@@ -26,6 +26,13 @@ ddtSchemes
 
 gradSchemes
 {
+    // SDPLS source-term gradients: dedicated keywords, decoupled from the
+    // psi advection gradient (grad(psi)) and the unnamed grad(U) fallback.
+    gradPsiSdpls    leastSquares;
+    gradUSdpls      Gauss linear;
+    // signedDistanceBounds redistancing criterion gradient (decoupled from
+    // the psi advection scheme's limiter)
+    redistGradPsi   leastSquares;
     default         Gauss linear;
     grad(p)         Gauss linear;
     // Cell-limited least-squares gradient used by the linearUpwind advection of
@@ -43,7 +50,7 @@ gradSchemes
     // (point-neighbour) LSQ gradient, linear-exact on arbitrary stencils
     // (nested => quadratic-exact => O(h^2)); parallel- and 2D-safe.
     gradPsi         pointCellsLeastSquares;   // g_c = grad(psi^n)
-    gradGradPsi     pointCellsLeastSquares;   // H_c = grad(g_c) (nestedLSQ)
+    gradGradPsi     pointCellsLeastSquares;   // H_c = grad(g_c) (quadraticTaylor)
     gradU           Gauss linear;   // grad(u^{n+1}) for the SL foot (Gauss linear: no run-long LSQ cache)
 }
 
@@ -59,6 +66,10 @@ divSchemes
     // LinearUpwindUext (deferred second-order correction converged by the
     // nDefCorrExt loop, O(h^2) extension) via the aliasDict expansion.
     div(velExtPhiW,Uext) Gauss $@!UEXT_DIV!@;
+    // anchoredEikonal redistancer: steady-Eikonal fill transport along nHat
+    // (upwind: the characteristic graph is acyclic; no ddt to damp a deferred
+    // correction).
+    div(yPhi,psiDist) Gauss upwind;
 }
 
 laplacianSchemes

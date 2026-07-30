@@ -37,7 +37,7 @@ gradSchemes
     // gradient keys so the sub-steps never share the grad(psi) advection
     // scheme. pointCellsLeastSquares = cell-point-cell LSQ gradient.
     gradPsi         pointCellsLeastSquares;   // g_c = grad(psi^n)
-    gradGradPsi     pointCellsLeastSquares;   // H_c = grad(g_c) (nestedLSQ)
+    gradGradPsi     pointCellsLeastSquares;   // H_c = grad(g_c) (quadraticTaylor)
     gradU           Gauss linear;   // grad(u^{n+1}) for the SL foot (Gauss linear: no run-long LSQ cache)
 }
 

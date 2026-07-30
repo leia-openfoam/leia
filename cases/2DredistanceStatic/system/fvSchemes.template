@@ -1,0 +1,57 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+ddtSchemes
+{
+    default         Euler;
+}
+
+gradSchemes
+{
+    // signedDistanceBounds redistancing criterion gradient (decoupled from
+    // the psi advection scheme's limiter)
+    redistGradPsi   leastSquares;
+    default         Gauss linear;
+    // Boundary-value-free gradient (libleiafiniteVolume): zeroGradient psi
+    // boundaries would otherwise bias the one-sided boundary gradients used
+    // by the PDE redistancer and the error metrics (same as 1DredistanceTest).
+    grad(psi)       noBvGrad Gauss linear;
+}
+
+divSchemes
+{
+    default         Gauss upwind;
+    // anchoredEikonal redistancer: steady-Eikonal fill transport along nHat.
+    div(yPhi,psiDist) Gauss upwind;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear orthogonal;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         orthogonal;
+}
+
+// ************************************************************************* //

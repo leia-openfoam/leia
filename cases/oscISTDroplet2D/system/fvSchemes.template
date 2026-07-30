@@ -1,0 +1,71 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+ddtSchemes
+{
+    // Euler remains the validated capillary momentum scheme. Higher-order
+    // momentum time schemes need a smaller capillary step and are outside the
+    // pressure-operator compatibility gate.
+    default         Euler;
+}
+
+gradSchemes
+{
+    gradPsiSdpls    leastSquares;
+    gradUSdpls      Gauss linear;
+    default         Gauss linear;
+    grad(U)         Gauss linear;
+    grad(p_rgh)     Gauss linear;
+    gradU           Gauss linear;
+}
+
+divSchemes
+{
+    default         none;
+    div(rhoPhi,U)                       Gauss linearUpwind grad(U);
+    div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;
+    div(nPsi)                           Gauss linear;
+    div(yPhi,psiDist)                   Gauss upwind;
+    div(velExtPhiW,Uext)                Gauss upwind;
+}
+
+laplacianSchemes
+{
+    // Pressure-compatibility contract: this correction keyword and the
+    // snGrad keyword below are always materialised from the SAME token.
+    // Never compare a corrected capillary flux with an uncorrected pressure
+    // Laplacian (or vice versa).
+    default         Gauss linear @!PRESSURE_NONORTHOGONAL_SCHEME!@;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         @!PRESSURE_NONORTHOGONAL_SCHEME!@;
+}
+
+fluxRequired
+{
+    default         no;
+    p_rgh;
+}
+
+// ************************************************************************* //

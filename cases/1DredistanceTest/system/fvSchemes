@@ -22,6 +22,7 @@ ddtSchemes
 
 gradSchemes
 {
+    default         Gauss linear;   // anchoredEikonal fill: grad(psiDist)
     grad(psi)       noBvGrad Gauss linear;
 }
 
