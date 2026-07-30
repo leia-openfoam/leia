@@ -21,7 +21,11 @@ The repository contains six method lines rather than one finished method:
 
 - the quadratic semi-Lagrangian (SL) reconstruction is the best measured pure
   advection method once the interface is resolved;
-- the linear `nestedLSQ` SL method is the cheaper, more dissipative fallback;
+- the `quadraticTaylor` SL reconstruction (formerly named `nestedLSQ`) builds the
+  same quadratic expansion from twice-differentiated `psi` instead of from stencil
+  values, and needs the stencil clip to stay bounded; no genuinely linear
+  reconstruction measured here is both stable and convergent for
+  reinitialisation-free SL advection;
 - SDPLS controls steepening without moving the zero set, but does not repair
   under-resolution flattening;
 - geometric redistancing has useful local constructions, but the full method

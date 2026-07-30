@@ -814,7 +814,7 @@ command.
     \node[umlbox, anchor=north, align=left] (conc) at (3.1,1.55)
       {\ttfamily\scriptsize linearTaylor\\ quadraticWeightedLeastSquares\\
        uncachedQuadraticWeightedLeastSquares\\ bandQuadraticWeightedLeastSquares\\
-       nestedLSQ\\ defectCorrectedIDW};
+       quadraticTaylor\\ defectCorrectedIDW};
     \draw[inherit] (conc.north) -- (base.south);
     \draw[-{Latex[length=2mm]}, dashed, black!55] (app.south) to[out=-150,in=90] (pkg.north);
     \draw[-{Latex[length=2mm]}, dashed, black!55] (app.south) to[out=-30,in=90] (base.north);

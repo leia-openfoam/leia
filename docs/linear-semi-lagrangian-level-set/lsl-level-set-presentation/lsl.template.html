@@ -138,7 +138,7 @@
      <b>Tomislav Marić</b>
      <span class="muted" style="font-weight:normal"><br>MMA, TU Darmstadt</span></p>
   <p class="footnote"><code>libleiaLevelSet</code> &nbsp;|&nbsp; solver <code>leiaSemiLagrangeLevelSetFoam</code>
-     &nbsp;|&nbsp; <code>reconstruction nestedLSQ;</code></p>
+     &nbsp;|&nbsp; <code>reconstruction quadraticTaylor;</code></p>
   <p class="footnote">Independent method line next to the quadratic (UQWLSR) companion deck &mdash;
      same foot, same phase indicator, different reconstruction.</p>
   <aside class="notes">
@@ -509,7 +509,7 @@
     <li><b class="accent">Kinematic studies, interface-accuracy-critical work</b> &rarr;
         <code>reconstruction uncachedQuadraticWeightedLeastSquares;</code> &mdash; the accuracy champion</li>
     <li><b class="accent">Low-cost stable kinematic transport</b> &rarr;
-        <code>reconstruction nestedLSQ;</code> at CFL \(\le\tfrac12\) &mdash; memory-light, no ceiling</li>
+        <code>reconstruction quadraticTaylor;</code> at CFL \(\le\tfrac12\) &mdash; memory-light, no ceiling</li>
     <li><b class="accent">Two-phase Navier&ndash;Stokes with explicit surface tension</b> &rarr;
         <code>reconstruction linearTaylor;</code> &mdash; its dissipation damps the coupled loop,
         its instability held in check by the short horizon</li>
