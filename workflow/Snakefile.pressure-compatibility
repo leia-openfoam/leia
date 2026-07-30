@@ -1,0 +1,163 @@
+# =============================================================================
+# Capillary pressure-compatibility gates in one reproducible DAG:
+#
+#   snakemake -s workflow/Snakefile.pressure-compatibility \
+#     --workflow-profile profiles/local
+#
+# The rules deliberately call the focused Python matrix runners.  Snakemake
+# owns freshness, provenance and dependencies; the runners own safe study-case
+# materialisation and the velocity-only aggregation.
+# =============================================================================
+import os
+
+REPO = os.path.abspath(os.path.join(workflow.basedir, ".."))
+SCRIPTS = os.path.join(workflow.basedir, "scripts")
+CONFIG = os.path.join(REPO, "config", "staticISTPressureCompatibilityGate.yaml")
+TABLES = os.path.join(
+    REPO,
+    "docs",
+    "method-comparison",
+    "method-comparison-article",
+    "data",
+    "tables",
+)
+OF_ENV = os.path.expanduser("~/OpenFOAM/OpenFOAM-v2512/etc/bashrc")
+
+NONORTH_TABLE = os.path.join(TABLES, "staticISTNonOrthogonalCorrectionSweep.csv")
+COMPAT_TABLE = os.path.join(TABLES, "staticISTPressureCompatibilityGate.csv")
+OPERATOR_TABLE = os.path.join(TABLES, "staticISTPressureOperatorPairGate.csv")
+RAUF_TABLE = os.path.join(TABLES, "staticISTPressureRAUfGate.csv")
+TOLERANCE_TABLE = os.path.join(TABLES, "staticISTPressureToleranceGate.csv")
+SOLVER_TABLE = os.path.join(TABLES, "staticISTPressureSolverGate.csv")
+
+CASE_INPUTS = [
+    os.path.join(REPO, "cases", "oscISTDroplet2D.parameter"),
+    os.path.join(REPO, "cases", "oscISTDroplet2D", "system", "fvSchemes.template"),
+    os.path.join(REPO, "cases", "oscISTDroplet2D", "system", "fvSolution.template"),
+    os.path.join(REPO, "workflow", "scripts", "foam_param.py"),
+    os.path.join(REPO, "workflow", "scripts", "materialize.py"),
+    os.path.join(REPO, "workflow", "scripts", "run_pressure_compatibility_gate.py"),
+    os.path.join(
+        REPO,
+        "applications",
+        "solvers",
+        "leiaLevelSetTwoPhaseFoam",
+        "pEqn.H",
+    ),
+]
+
+
+def of_shell(command):
+    """Source OpenFOAM leniently, matching workflow/Snakefile, then fail fast."""
+    return (
+        "set +eu\n"
+        f"source {OF_ENV}\n"
+        "set -e\n"
+        f"cd {REPO}\n"
+        + command
+    )
+
+
+rule all:
+    input:
+        NONORTH_TABLE,
+        COMPAT_TABLE,
+        OPERATOR_TABLE,
+        RAUF_TABLE,
+        TOLERANCE_TABLE,
+        SOLVER_TABLE,
+
+
+rule nonorthogonal_sweep:
+    input:
+        CONFIG,
+        CASE_INPUTS,
+        os.path.join(SCRIPTS, "run_nonorthogonal_correction_sweep.py"),
+    output:
+        NONORTH_TABLE,
+    resources:
+        tasks=1
+    shell:
+        of_shell(
+            f"python3 {SCRIPTS}/run_nonorthogonal_correction_sweep.py "
+            f"{CONFIG} --fresh"
+        )
+
+
+rule pressure_compatibility_gate:
+    input:
+        CONFIG,
+        CASE_INPUTS,
+    output:
+        COMPAT_TABLE,
+    resources:
+        tasks=1
+    shell:
+        of_shell(
+            f"python3 {SCRIPTS}/run_pressure_compatibility_gate.py "
+            f"{CONFIG} --fresh"
+        )
+
+
+rule pressure_operator_pair_gate:
+    input:
+        CONFIG,
+        CASE_INPUTS,
+        os.path.join(SCRIPTS, "run_pressure_operator_pair_gate.py"),
+    output:
+        OPERATOR_TABLE,
+    resources:
+        tasks=1
+    shell:
+        of_shell(
+            f"python3 {SCRIPTS}/run_pressure_operator_pair_gate.py "
+            f"{CONFIG} --fresh"
+        )
+
+
+rule pressure_rauf_gate:
+    input:
+        CONFIG,
+        CASE_INPUTS,
+        os.path.join(SCRIPTS, "run_pressure_rauf_gate.py"),
+    output:
+        RAUF_TABLE,
+    resources:
+        tasks=1
+    shell:
+        of_shell(
+            f"python3 {SCRIPTS}/run_pressure_rauf_gate.py "
+            f"{CONFIG} --fresh"
+        )
+
+
+rule pressure_tolerance_gate:
+    input:
+        CONFIG,
+        CASE_INPUTS,
+        os.path.join(SCRIPTS, "run_pressure_tolerance_gate.py"),
+    output:
+        TOLERANCE_TABLE,
+    resources:
+        tasks=1
+    shell:
+        of_shell(
+            f"python3 {SCRIPTS}/run_pressure_tolerance_gate.py "
+            f"{CONFIG} --fresh"
+        )
+
+
+rule pressure_solver_gate:
+    input:
+        CONFIG,
+        CASE_INPUTS,
+        os.path.join(SCRIPTS, "run_pressure_solver_gate.py"),
+    output:
+        SOLVER_TABLE,
+    resources:
+        tasks=1
+    shell:
+        of_shell(
+            f"python3 {SCRIPTS}/run_pressure_solver_gate.py "
+            f"{CONFIG} --fresh"
+        )

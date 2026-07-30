@@ -1,0 +1,37 @@
+# linearWeightedLeastSquares stationary-droplet parasitic-current test.
+#
+# Same water/air droplet as config/stationaryDroplet2D.yaml (R = 1 mm, sigma =
+# 0.07274 N/m, 0.01 x 0.01 m box, g = 0; exact U = 0, Laplace jump sigma/R =
+# 72.74 Pa), but the level set is reconstructed with linearWeightedLeastSquares.
+# Because a linear fit has zero Hessian (no curvature), surface tension takes
+# curvature from the FVM path instead of the reconstruction:
+#   surfaceTensionForce  divGradPsiSnGradAlpha   (kappa = div(grad psi/|grad psi|))
+#   curvatureExtension   fvm                      (skips the reconstruction kappa fill)
+#   fvSchemes divSchemes div(nPsi) Gauss linear
+# (all set in cases/linWLSdroplet2D). This tests the user's motivation: a LINEAR
+# reconstruction consistent with an FVM curvature / Navier-Stokes discretization.
+# The droplet is near-stationary (U ~ 0), so the foot is at the cell centre and
+# the advection-mode |grad psi| runaway of the linear fit (see linearConv2Dvortex)
+# is not exercised -- this is the regime where linearWLSQ might still be usable.
+#
+# Capillary-limited explicit step: maxDeltaT = CAPILLARY_DT_COEFF / N^1.5 (derived).
+# N = 32,64,128 (the blow-up onset for the quadratic pipeline was N >= 128).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/linWLSdroplet2D.yaml
+study_name: linWLSdroplet2D
+case: linWLSdroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+
+export_slides: false   # diagnostic; does not drive the theme droplet table/figure
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

@@ -1,0 +1,26 @@
+# Single-case smoke test: reversed 2D vortex, QUADRATIC semi-Lagrangian advection
+# (quadraticWeightedLeastSquares) at one resolution, on 4 MPI ranks. Purpose:
+# validate the Lichtenberg parallel launch path end-to-end (blockMesh ->
+# decomposePar -> N-rank solve -> aggregate) via the slurm profile.
+#
+#   snakemake --workflow-profile profiles/slurm --configfile config/vortexSLsmoke.yaml
+#
+# mpi_launcher + env_preamble intentionally omitted here -- the slurm profile
+# supplies them (srun + OpenFOAM-v2512).
+study_name: vortexSLsmoke
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME:          [2]
+  N_CELLS:           [64]
+  CFL:               [0.5]
+  SL_RECONSTRUCTION: [quadraticWeightedLeastSquares]
+  PHASE_INDICATOR:   [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false

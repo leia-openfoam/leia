@@ -1,0 +1,35 @@
+# STATIC IDEMPOTENCY gate: exact-SDF input (circle R=0.15 centered, and the
+# diagonal plane), ONE redistance event, output vs input over N -- volume
+# error, shape error, band psi/gradient errors, for ALL redistancer models.
+#
+# A perfect redistancer is IDEMPOTENT on a signed-distance input: every
+# measured deviation is the model's per-event systematic error -- exactly the
+# quantity that compounds when events fire during advection. noRedistancing
+# is the control (must be identically zero). Convergence table/figure +
+# per-field plots land in the geometrically-redistanced-levelset theme data/.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/redistanceStatic2D.yaml
+
+study_name: redistanceStatic2D
+case: 2DredistanceStatic
+mesh: hex
+mode: serial          # one redistance per case -- no decomposition needed
+np: 1
+
+solver: leiaTestRedistance
+theme: geometrically-redistanced-levelset
+study_kind: staticIdempotency   # report rule: convergence table + FIELD plots
+
+axes_override:
+  END_TIME: [1]                          # unused by the app; controlDict needs it
+  N_CELLS:  [32, 64, 128, 256]
+  SURFACE:  [circle, plane]
+  REDISTANCER: [noRedistancing, PDE, planeFootWave, anchoredEikonal]
+  REDIST_TRIGGER: [interval]             # the app calls redistance() once at t=0
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: true
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

@@ -1,0 +1,32 @@
+# Decision benchmark (one method line, T = 8): reversed 2D vortex,
+# 32^2..128^2 tier (256/512 added after tier-1 verification). Metrics:
+# shape/volume/gradient at t = T; volume + gradient at t = T/2 (maximal
+# stretching -- no shape reference there); ELAPSED_CLOCK_TIME wall clock.
+# Reporting gated to write times in EVERY line (fair wall-clock).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/benchVortexSLT8.yaml
+
+study_name: benchVortexSLT8
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: method-comparison
+
+axes_override:
+  END_TIME: [8]
+  N_CELLS:  [32, 64, 128, 256, 512]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [semiLagrangian]
+  SL_RECONSTRUCTION: [quadraticWeightedLeastSquares, uncachedQuadraticWeightedLeastSquares]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

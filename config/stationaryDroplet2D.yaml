@@ -1,0 +1,38 @@
+# Stationary-droplet parasitic-current study (arXiv:2212.02904, Sec. 3.3.1).
+#
+# A water/air drop (R = 1 mm, sigma = 0.07274 N/m) sits at rest in a 0.01 x 0.01 m
+# box with g = 0. The exact solution is U = 0 with a Laplace pressure jump
+# sigma/R = 72.74 Pa across the interface. The metrics are the spurious ("parasitic")
+# currents max|U| (L_inf) and mean|U| (L_1) and the measured jump; a good
+# curvature/surface-tension model keeps the currents bounded and convergent under
+# refinement and reproduces the jump. The level set is advected semi-Lagrangian
+# (reinit-free) and the interface curvature is taken symbolically from the
+# uncachedQuadraticWeightedLeastSquares (UQWLSR) reconstruction, extended constant
+# along the normal (reconstructedCurvature surface-tension model).
+#
+# Mesh ladder N = 32,64,128,256 (cells x4 per level). Surface tension is explicit,
+# so the step is capillary-limited: maxDeltaT = CAPILLARY_DT_COEFF / N^1.5 is a
+# DERIVED token (materialize), scaling as dt ~ dx^1.5 so the study is stable at
+# every refinement. 256^2 is the long pole (~33k steps).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDroplet2D.yaml
+study_name: stationaryDroplet2D
+case: stationaryDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+# leiaSetFields must initialise alpha.water (the mixture's phase-1 fraction), not
+# the default field name "alpha".
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64, 128, 256]
+
+# Regenerate the paper/deck droplet table + figure into the theme data source.
+export_slides: true
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

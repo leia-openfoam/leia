@@ -1,0 +1,34 @@
+# Geometrically redistanced level set (GRL) on the reversed 3D shear flow.
+# The 3D companion to config/bulkVortexGRL.yaml: same solver
+# (leiaRedistancedLevelSetFoam), same error norms, its own study dir. Domain
+# [0,1]x[0,1]x[0,2] -> N x N x 2N cubic cells (h = 1/N); shear3D with
+# oscillation on reverses at T = END_TIME, so exact(T) = initial. Interface:
+# sphere r = 0.15 @ (0.35,0.75,0.25).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/3DshearGRL.yaml
+#   # smoke tier:  ... --config axes_override='{N_CELLS: [32]}' (or edit below)
+
+study_name: 3DshearGRL
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaRedistancedLevelSetFoam
+
+axes_override:
+  END_TIME: [3.0]                        # T = period = end time (reversible)
+  N_CELLS:  [32, 64, 128]                # h = 1/N; 128 = 4.2M cells (expensive tier)
+  CFL:      [0.5, 1.0]
+  REDISTANCER: [noRedistancing, PDE, planeFootWave, anchoredEikonal]
+  REDIST_TRIGGER: [gradPsiThreshold]
+  PHASE_INDICATOR: [detrixheAslam]
+  # 3D fvSchemes references @!DIV!@ (Eulerian psi flux scheme); pin it so the
+  # base config.yaml sweep (DIV: [linear, upwind]) does not merge in.
+  DIV: [linear]
+collapse_other_axes: true
+
+export_slides: true
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

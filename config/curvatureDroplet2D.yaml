@@ -1,0 +1,32 @@
+# Mean-curvature accuracy study (standalone, no flow solve).
+#
+# Measures the error of the interface curvature evaluated symbolically from the
+# UQWLSR reconstruction (slAdvection::meanCurvature = div(grad psi/|grad psi|)) on
+# the initialised circular droplet (leiaSetFields signed distance), against the
+# exact kappa = 1/R. The error is taken over the snGrad(alpha) band -- the cells
+# that carry the surface-tension force in the momentum equation -- in L1/L2/Linf.
+# leiaTestMeanCurvature also reports the SDF-assuming curvature tr(H)=Laplacian(psi)
+# for comparison (equal to div(n) on a signed-distance field).
+#
+# There is NO time loop, so each resolution is a single curvature evaluation
+# (seconds); the ladder therefore reaches N=512 cheaply and isolates the curvature
+# discretisation error from the parasitic-current dynamics of the coupled run.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/curvatureDroplet2D.yaml
+study_name: curvatureDroplet2D
+case: stationaryDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestMeanCurvature
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64, 128, 256, 512]
+
+export_slides: true
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

@@ -1,0 +1,23 @@
+# Translating-droplet mechanism gate A: no capillary force (sigma=0).
+# A failure here is interface-advection/free-stream preservation, not force balance.
+study_name: transISTFreeStreamGate
+case: transISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [32]
+  END_TIME: [0.05]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [normalProjection]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [constantCurvatureSurfaceTension]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGMA: [0]
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

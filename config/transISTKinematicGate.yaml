@@ -1,0 +1,25 @@
+# Translating-droplet Gate-1 ablation with capillarity disabled.  Uniform U is
+# held by rhoLENT/PIMPLE; only the velocity inserted into the Taylor trajectory
+# changes.  This separates normal-projection error from the underlying
+# quadratic semi-Lagrangian + Detrixhe-Aslam transport error.
+study_name: transISTKinematicGate
+case: transISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [32]
+  END_TIME: [0.05]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input, normalProjection]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [constantCurvatureSurfaceTension]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGMA: [0]
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

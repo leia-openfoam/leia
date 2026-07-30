@@ -8,16 +8,17 @@ them into a single montage:
 
     columns = resolution (coarse -> fine),  rows = t=0 / T/2 / T
 
-written to the semi-Lagrangian theme's data/figures as
+written to the study's theme data/figures (default: the quadratic semi-Lagrangian
+theme; the linear line passes its own theme) as
 
     isosurface_<case>_<mesh>.png     (e.g. isosurface_3Dshear_hex.png)
 
-so both the reveal deck and the article can show the interface evolution + its
-convergence with resolution. foamlib is used to locate the case; VTK's
+so the article can show the interface evolution and its convergence with resolution.
+foamlib is used to locate the case; VTK's
 vtkOpenFOAMReader (robust on polyhedra) reads psi and vtkContourFilter extracts the
 iso-surface, rendered offscreen with a shared camera so all panels are comparable.
 
-Usage:  python3 make_isosurface_fig.py <study_dir>
+Usage:  python3 make_isosurface_fig.py <study_dir> [--theme <docs theme>]
 """
 import glob
 import json
@@ -44,8 +45,23 @@ def _f(x):
         return None
 
 
+def _complete(case_dir):
+    """True if the case advanced past t=0, i.e. has >=2 reconstructed numeric time
+    directories. Guards the montage against a case that failed mid-solve (only t=0),
+    which would otherwise be tiled as a broken column."""
+    n = 0
+    for e in os.listdir(case_dir):
+        if os.path.isdir(os.path.join(case_dir, e)):
+            try:
+                float(e); n += 1
+            except ValueError:
+                pass
+    return n >= 2
+
+
 def study_cases(study_dir):
-    """Return [(h, label, case_dir, case, mesh)] for a study, finest last."""
+    """Return [(h, label, case_dir, case, mesh)] for a study, finest last.
+    Cases that did not advance past t=0 (failed solves) are skipped."""
     rows = []
     for cp in sorted(glob.glob(os.path.join(study_dir, "*_[0-9]*", "case_params.json"))):
         d = json.load(open(cp))
@@ -56,8 +72,13 @@ def study_cases(study_dir):
         else:
             n = _f(tok.get("N_CELLS")); h = (1.0 / n) if n else None
             label = f"$N={int(n)}$" if n else "?"
-        if h:
-            rows.append((h, label, os.path.dirname(cp), case, mesh))
+        case_dir = os.path.dirname(cp)
+        if not h:
+            continue
+        if not _complete(case_dir):
+            print(f"[iso] skip incomplete case (only t=0): {case_dir}")
+            continue
+        rows.append((h, label, case_dir, case, mesh))
     rows.sort(key=lambda r: r[0], reverse=True)     # coarse (large h) -> fine
     return rows
 
@@ -85,13 +106,15 @@ def render_iso(case_dir, target_times, camera, out_prefix):
     mapper.ScalarVisibilityOff()
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(0.30, 0.55, 0.90)  # steel blue interface
+    actor.GetProperty().SetColor(0.66, 0.81, 0.97)  # light blue interface
+    actor.GetProperty().SetAmbient(0.55)            # flatter, lighter shading
+    actor.GetProperty().SetDiffuse(0.55)
     actor.GetProperty().SetInterpolationToPhong()
 
     ren = vtk.vtkRenderer()
     ren.SetBackground(1, 1, 1)
     ren.AddActor(actor)
-    ren.AddLight(_light(0.3))
+    ren.AddLight(_light(0.55))
     win = vtk.vtkRenderWindow()
     win.SetOffScreenRendering(1)
     win.AddRenderer(ren)
@@ -107,15 +130,10 @@ def render_iso(case_dir, target_times, camera, out_prefix):
         internal.GetPointData().SetActiveScalars("psi")
         contour.SetInputData(internal)
         contour.Update()
-        # add a domain outline once (first time) for spatial reference
-        if not ren.GetActors2D().GetNumberOfItems():
-            outline = vtk.vtkOutlineFilter(); outline.SetInputData(internal)
-            om = vtk.vtkPolyDataMapper(); om.SetInputConnection(outline.GetOutputPort())
-            oa = vtk.vtkActor(); oa.SetMapper(om)
-            oa.GetProperty().SetColor(0.6, 0.6, 0.6); oa.GetProperty().SetLineWidth(1)
-            ren.AddActor(oa)
+        # No domain bounding box: frame the interface itself so features are visible.
         ren.ResetCamera()
         _apply_camera(ren.GetActiveCamera(), camera)
+        ren.ResetCameraClippingRange()
         win.Render()
         w2i = vtk.vtkWindowToImageFilter(); w2i.SetInput(win); w2i.Update()
         png = f"{out_prefix}_t{t:g}.png"
@@ -145,17 +163,48 @@ def _light(intensity):
 
 
 def _apply_camera(cam, camera):
-    az, el, zoom = camera
-    cam.Azimuth(az); cam.Elevation(el)
-    cam.OrthogonalizeViewUp()
+    """Position the camera. With an explicit view-up (camera[3]) the camera is placed on
+    an orbit around the focal point at (azimuth, elevation) with that up-vector, so the
+    chosen axis stays vertical in the image (SetViewUp alone degenerates when it is
+    parallel to the default view direction). Without a view-up, azimuth/elevation are
+    applied as increments from the default view. The caller resets the clipping range."""
+    import math
+    az, el, zoom = camera[0], camera[1], camera[2]
+    viewup = camera[3] if len(camera) > 3 else None
+    if viewup is not None:
+        fp, pos0 = cam.GetFocalPoint(), cam.GetPosition()
+        dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(pos0, fp))) or 1.0
+        a, e = math.radians(az), math.radians(el)
+        d = (math.cos(e) * math.cos(a), math.cos(e) * math.sin(a), math.sin(e))
+        cam.SetPosition(fp[0] + dist * d[0], fp[1] + dist * d[1], fp[2] + dist * d[2])
+        cam.SetViewUp(*viewup)
+    else:
+        cam.Azimuth(az); cam.Elevation(el)
+        cam.OrthogonalizeViewUp()
     cam.Zoom(zoom)
 
 
-def make(study_dir, camera=(30.0, 20.0, 1.25)):
+def _camera_for(case):
+    """Canonical camera per case: (azimuth, elevation, zoom, viewUp).
+
+    The 3D shear domain is tall in z ([0,1]^2 x [0,2]); it is viewed from the side with
+    z vertical so the sheared interface stretches vertically downward, as reported in the
+    literature. The unit-cube deformation keeps a three-quarter view. z is the view-up in
+    both, so the interface is upright."""
+    c = (case or "").lower()
+    if "shear" in c:
+        return (-72.0, 8.0, 0.9, (0.0, 0.0, 1.0))   # zoom<1 fits the tall vertical profile
+    # deformation: az=90 opens the double-scroll so both curled "ears" are visible at T/2
+    return (90.0, 25.0, 1.0, (0.0, 0.0, 1.0))
+
+
+def make(study_dir, camera=None, theme="semi-lagrangian-level-set"):
     cases = study_cases(study_dir)
     if not cases:
         print(f"[iso] no cases in {study_dir}; skip"); return None
     case, mesh = cases[0][3], cases[0][4]
+    if camera is None:
+        camera = _camera_for(case)
     finest3 = cases[-3:] if len(cases) >= 3 else cases   # coarse->fine of the finest 3
     end = None
     # end time from any case's controlDict token (END_TIME) via case_params
@@ -185,7 +234,7 @@ def make(study_dir, camera=(30.0, 20.0, 1.25)):
                 ax.set_ylabel(lab, fontsize=13, rotation=90, labelpad=8)
     fig.suptitle(rf"$\psi=0$ interface — {case} ({mesh})", fontsize=15)
     fig.tight_layout(rect=(0, 0, 1, 0.96))
-    out = os.path.join(paths.figs_dir("semi-lagrangian-level-set"),
+    out = os.path.join(paths.figs_dir(theme),
                        f"isosurface_{case}_{mesh}.png")
     fig.savefig(out, dpi=150); plt.close(fig)
     print(f"[iso] wrote {out}  ({ncol} resolutions x {nrow} times, camera={camera})")
@@ -193,6 +242,10 @@ def make(study_dir, camera=(30.0, 20.0, 1.25)):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("usage: make_isosurface_fig.py <study_dir>"); sys.exit(2)
-    sys.exit(0 if make(sys.argv[1]) else 1)
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("study_dir")
+    ap.add_argument("--theme", default="semi-lagrangian-level-set",
+                    help="docs theme receiving the figure (see paths.py)")
+    args = ap.parse_args()
+    sys.exit(0 if make(args.study_dir, theme=args.theme) else 1)

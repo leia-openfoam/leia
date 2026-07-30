@@ -41,6 +41,9 @@ THEME       = paths.theme_of(SOLVER, config.get("theme"))
 STUDIES_DIR = os.path.abspath(config.get("studies_dir", os.path.join(REPO, "studies")))
 MPI         = config.get("mpi_launcher", "mpirun -np {np}")
 PREAMBLE    = (config.get("env_preamble") or "").strip()
+# Extra leiaSetFields arguments (e.g. "-alphaName alpha.water" for the two-phase
+# mixture field, whose name is not the leiaSetFields default "alpha").
+SETFIELDS_ARGS = (config.get("setfields_args") or "").strip()
 
 assert MESH in ("hex", "perturbed", "poly"), f"bad mesh: {MESH}"
 assert MODE in ("serial", "parallel"), f"bad mode: {MODE}"
@@ -116,9 +119,12 @@ INIT_END   = f"./system/init_End/init_End.{MODE}" if CASE == "3Dtranslation" els
 # The gradPsiErrorCSV / leiaSetFields function objects APPEND to their CSVs: a
 # re-run of an interrupted case would otherwise stack a second time series onto
 # the stale one (TIME jumps backward, plots and half-time extraction break).
+_setfields = " ".join(
+    filter(None, [f"{MPI_PREFIX}leiaSetFields".strip(), SETFIELDS_ARGS, PAR]))
 _solve = ["cd {params.d}",
-          "rm -f gradPsiError.csv leiaSetFields.csv leiaLevelSetFoam.csv",
-          f"{MPI_PREFIX}leiaSetFields {PAR}".rstrip()]
+          "rm -f gradPsiError.csv leiaSetFields.csv leiaLevelSetFoam.csv"
+          " leiaRedistancedLevelSetFoam.csv leiaTestRedistance.csv",
+          _setfields]
 if INIT_END:
     _solve.append(INIT_END)
 _solve.append(f"{MPI_PREFIX}{SOLVER} {PAR}{FLUX}".rstrip())
@@ -232,23 +238,83 @@ rule report:
         # 1. curated error table -> theme data/tables
         for _csv in _glob.glob(os.path.join(STUDY_DIR, f"{STUDY}_errors.csv")):
             _shutil.copy(_csv, TABLES_DIR)
+        # The two semi-Lagrangian METHOD LINES are independent methods sharing the
+        # kinematic figure scripts: each line has its own theme, study set and
+        # figure prefix (sl_* / lsl_*), selected via --method / --theme.
+        _SL_THEMES = {"semi-lagrangian-level-set": "quadratic",
+                      "linear-semi-lagrangian-level-set": "linear"}
         if config.get("export_slides", True):
             # 2. theme-specific figures -> theme data/figures
-            if THEME == "semi-lagrangian-level-set":
-                # cross-study convergence triptychs + curated tables (idempotent,
-                # skip-missing), + per-study psi=0 iso-surface montage (3D cases).
-                for _s in ("make_sl_3d_fig.py", "make_convergence_table.py"):
-                    _sp.run(["python3", os.path.join(_scripts, _s)], check=False)
-                if CASE in ("3Dshear", "3Ddeformation"):
-                    _sp.run(["python3", os.path.join(_scripts, "make_isosurface_fig.py"),
+            if THEME in _SL_THEMES:
+                _method = _SL_THEMES[THEME]
+                if SOLVER == "leiaSemiLagrangianLevelSetTwoPhaseFoam":
+                    if config.get("study_kind") == "dropletFields":
+                        # field-visualisation job: velocity-glyph-over-alpha + curvature
+                        # montages across resolution (mesh drawn on every panel).
+                        _sp.run(["python3", os.path.join(_scripts, "make_droplet_fields_fig.py"),
+                                 STUDY_DIR], check=False)
+                    else:
+                        # parasitic-current CONVERGENCE study: table + log-log figure.
+                        _sp.run(["python3", os.path.join(_scripts, "make_droplet_table.py"),
+                                 STUDY_DIR], check=False)
+                elif SOLVER == "leiaTestMeanCurvature":
+                    # curvature-accuracy study: band L1/L2 error table + log-log figure.
+                    _sp.run(["python3", os.path.join(_scripts, "make_curvature_table.py"),
                              STUDY_DIR], check=False)
+                else:
+                    # cross-study convergence triptychs + all-errors diagnostics +
+                    # curated tables for THIS method line (idempotent, skip-missing),
+                    # + per-study psi=0 iso-surface montage (3D cases) and the
+                    # volume-fraction field montage (2D vortex).
+                    for _s in ("make_sl_3d_fig.py", "make_convergence_table.py"):
+                        _sp.run(["python3", os.path.join(_scripts, _s),
+                                 "--method", _method], check=False)
+                    if CASE in ("3Dshear", "3Ddeformation"):
+                        _sp.run(["python3", os.path.join(_scripts, "make_isosurface_fig.py"),
+                                 STUDY_DIR, "--theme", THEME], check=False)
+                    if CASE == "2Dvortex":
+                        _sp.run(["python3", os.path.join(_scripts, "make_alpha_field_fig.py"),
+                                 STUDY_DIR, "--theme", THEME], check=False)
+            elif THEME == "geometrically-redistanced-levelset":
+                if SOLVER == "leiaTestRedistance":
+                    # STATIC redistancing gates: convergence table + log-log
+                    # figure from the study database; the idempotency gate
+                    # (exact-SDF input) additionally renders per-model FIELD
+                    # plots (zero sets + |psi_out - psi_in| maps).
+                    _sp.run(["python3", os.path.join(_scripts, "make_redistance_table.py"),
+                             STUDY_DIR], check=False)
+                    if config.get("study_kind") == "staticIdempotency":
+                        _sp.run(["python3",
+                                 os.path.join(_scripts, "make_redistance_fields_fig.py"),
+                                 STUDY_DIR], check=False)
+                else:
+                    # advection studies: per-redistancer convergence figures +
+                    # curated order tables from the theme's *_errors.csv.
+                    _sp.run(["python3", os.path.join(_scripts, "make_grl_fig.py")],
+                            check=False)
+                    if CASE in ("3Dshear", "3Ddeformation"):
+                        _sp.run(["python3", os.path.join(_scripts, "make_isosurface_fig.py"),
+                                 STUDY_DIR], check=False)
+            elif THEME in ("sdpls-level-set", "method-comparison"):
+                # method-decision benchmark: cross-study comparison panels,
+                # cost-vs-accuracy, decision table + per-method field atlases.
+                _sp.run(["python3", os.path.join(_scripts, "make_method_comparison.py")],
+                        check=False)
+                _sp.run(["python3", os.path.join(_scripts, "make_bench_fields_fig.py")],
+                        check=False)
             else:
                 # velocity-extension: field montages + convergence figures.
                 plots.main(STUDY_DIR, FIGS_DIR)
-            # 3. rebuild THIS theme's self-contained deck (figures inlined from data/)
+            # 3. dual-copy: mirror the article data/ into the presentation data/
+            # (dual-copy themes only), so slides + article stay consistent.
+            paths.propagate(THEME)
+            # 4. rebuild THIS theme's self-contained deck (figures inlined from data/)
             export_html.export(PRES_DIR, DECK_TPL)
         else:
             plots.main(STUDY_DIR, "")
+            # keep the presentation-side data mirror current even when the deck
+            # rebuild is skipped (the errors.csv above landed in the article data/).
+            paths.propagate(THEME)
 
 
 # --- optional: non-parametric utility tests (1D/2D), run on demand -----------

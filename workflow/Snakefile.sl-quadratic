@@ -1,0 +1,91 @@
+# =============================================================================
+# QUADRATIC semi-Lagrangian method line (UQWLSR reconstruction) in ONE command:
+#
+#   snakemake -s workflow/Snakefile.sl-quadratic --workflow-profile profiles/local
+#
+# Runs the five config/uncachedConv*.yaml kinematic convergence studies
+# (2D reversed vortex hex; 3D shear + deformation, hex AND polyhedral),
+# harvests ALL cross-study figures + tables (primary convergence triptychs,
+# all-errors diagnostics, iso-surface montages, 2D volume-fraction field
+# montage), dual-copies the results into the article AND presentation data/
+# folders, rebuilds the theme's reveal deck and compiles the article PDF.
+#
+# The LINEAR line (workflow/Snakefile.sl-linear) is an INDEPENDENT method with
+# its own studies, docs theme and paper -- the two lines never share outputs.
+#
+# Each study is a self-contained sub-workflow (workflow/Snakefile driven by its
+# own configfile); this meta-workflow shells out to it once per config. The
+# studies set export_slides:true, so any SINGLE study completion already
+# refreshes figures + deck; `finalize` here re-harvests everything so a full
+# run always ends consistent. Re-running with data present skips the solves.
+# =============================================================================
+import os
+import sys
+
+REPO    = os.path.abspath(os.path.join(workflow.basedir, ".."))
+SCRIPTS = os.path.join(workflow.basedir, "scripts")
+PROFILE = "profiles/local"
+METHOD  = "quadratic"
+
+CONFIGS = [
+    "uncachedConv2Dvortex",
+    "uncachedConv3Dshear",
+    "uncachedConv3Ddeformation",
+    "uncachedConv3DshearPoly",
+    "uncachedConv3DdeformationPoly",
+]
+CONFIGS_3D = [c for c in CONFIGS if "3D" in c]
+CONFIG_2D  = "uncachedConv2Dvortex"
+
+# Theme output locations (single source of truth: workflow/scripts/paths.py).
+sys.path.insert(0, SCRIPTS)
+import paths
+THEME    = "semi-lagrangian-level-set"
+PRES_DIR = paths.presentation_dir(THEME)
+ARTS     = paths.article_dir(THEME)
+DECK     = os.path.join(PRES_DIR, "sl.html")
+PDF      = os.path.join(ARTS, "semiLagrangianLevelSet.pdf")
+
+
+rule all:
+    input:
+        DECK,
+        PDF
+
+
+rule run_study:
+    # Run one study through the main workflow. Marker output so the meta-DAG
+    # can depend on "this study is up to date".
+    output:
+        touch(os.path.join(REPO, "studies", "{cfg}", ".sl.done"))
+    shell:
+        "cd {REPO} && "
+        "PATH=$HOME/.local/bin:$PATH snakemake --workflow-profile {PROFILE} "
+        "--nolock --keep-going --resources tasks=12 --rerun-triggers mtime "
+        "--configfile config/{wildcards.cfg}.yaml"
+
+
+rule finalize:
+    # Harvest all studies -> figures + tables -> dual-copy -> deck + article PDF.
+    input:
+        expand(os.path.join(REPO, "studies", "{cfg}", ".sl.done"), cfg=CONFIGS)
+    output:
+        DECK,
+        PDF
+    params:
+        iso=" && ".join(
+            f"python3 {SCRIPTS}/make_isosurface_fig.py studies/{c} --theme {THEME}"
+            for c in CONFIGS_3D),
+    shell:
+        "cd {REPO} && "
+        "python3 {SCRIPTS}/make_sl_3d_fig.py --method {METHOD} && "
+        "python3 {SCRIPTS}/make_convergence_table.py --method {METHOD} && "
+        "{params.iso} && "
+        "python3 {SCRIPTS}/make_alpha_field_fig.py studies/" + CONFIG_2D +
+        " --theme {THEME} && "
+        "python3 {SCRIPTS}/propagate_data.py {THEME} && "
+        "python3 {SCRIPTS}/export_html.py {PRES_DIR} sl.template.html && "
+        "( command -v latexmk >/dev/null "
+        "  && ( cd {ARTS} && latexmk -pdf -interaction=nonstopmode -halt-on-error "
+        "       semiLagrangianLevelSet.tex ) "
+        "  || echo '[skip] latexmk not found; install a LaTeX toolchain for the PDF' )"

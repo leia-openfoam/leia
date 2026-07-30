@@ -1,0 +1,24 @@
+# Static droplet with the iso-value-agnostic geometric surface-tension model
+# (isoCurvature). SANITY GATE for the new model: on the static implicitSphere
+# droplet the curvature-normal must give kappa ~ +1/R = +1000 1/m, a Laplace jump
+# ~ sigma/R = 72.74 Pa, and bounded parasitic currents comparable to the other CSF
+# models -- verifying the sign/scale before the moving cases.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/isoStaticDroplet2D.yaml
+study_name: isoStaticDroplet2D
+case: isoStaticDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

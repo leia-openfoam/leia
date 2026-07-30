@@ -1,0 +1,31 @@
+# linearWeightedLeastSquares 2D reversed-vortex convergence WITH clipToStencilBounds.
+# Companion to config/linearConv2Dvortex.yaml (no clip): the no-clip run showed the
+# LINEAR value fit destabilizes the signed-distance gradient (|grad psi| runs away
+# to 1e21..1e38 under refinement) because a linear polynomial cannot represent the
+# locally-curved signed-distance field -- an irreducible O(h^2 * curvature) residual
+# is injected each step and compounds. This run tests whether the monotone value
+# clamp (clipToStencilBounds) bounds that overshoot the way it cured quadraticTaylor.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/linearConv2DvortexClip.yaml --resources tasks=4
+study_name: linearConv2DvortexClip
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+theme: linear-semi-lagrangian-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5, 1.0]
+  SL_RECONSTRUCTION: [linearWeightedLeastSquares]
+  SL_CLIP: ["true"]   # monotone value clamp to stencil [min,max]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false   # diagnostic companion; does not drive the theme figures
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

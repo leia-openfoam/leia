@@ -1,0 +1,29 @@
+# Preliminary head-to-head on the 2D reversed shear vortex: the value-copy control
+# (uncachedQuadraticWeightedLeastSquares) vs the signed-distance-preserving variant
+# (signedDistanceQuadraticWeightedLeastSquares), which reprojects each foot value to
+# a distance d = P0/|grad P| and rescales by the normal strain (1 + eps_nn*dt).
+# Expectation: ~equal shape error (reprojection does not move the interface), but a
+# markedly lower and non-growing ||grad psi| - 1| for the SD variant vs the drifting
+# control. Small 2-level ladder (N = 32, 64), CFL 0.5 -> 4 cases.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/sdCompare2D.yaml
+study_name: sdCompare2D
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 64]
+  CFL:      [0.5, 1.0]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares, signedDistanceQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

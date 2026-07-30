@@ -1,0 +1,39 @@
+# N=64 mode-2 oscillating droplet using the candidate admitted by the
+# manufactured m=2,3,4 gate and the frozen-interface velocity replay.
+study_name: oscISTN64ConnectedModePreservingSDF
+case: oscISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+collapse_other_axes: true
+axes_override:
+  N_CELLS: [64]
+  END_TIME: [0.1]
+  WRITE_INTERVAL: [0.002]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  SURFACE_TENSION_CURVATURE_SOURCE: [field]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGN: [-1]
+  SURFACE_TENSION_GEOMETRIC_METHOD: [conormalCSF]
+  SURFACE_TENSION_SIGMA: [0.07274]
+  CURVATURE_EXTENSION: [connectedInterface]
+  CURVATURE_EXTENSION_RELAX: [1]
+  CURVATURE_FACE_INTERPOLATION: [connectedInterface]
+  CURVATURE_FACE_SOURCE: [registered]
+  CURVATURE_FORCE_WEIGHT: [alpha]
+  CURVATURE_FIT_HALF_WIDTH: [4]
+  CURVATURE_REGULARIZATION_OPERATOR: [helmholtzPreserveModes]
+  CURVATURE_TANGENTIAL_REGULARIZATION: [16]
+  CURVATURE_REGULARIZATION_ITERATIONS: [120]
+  CURVATURE_PRESERVE_MODES_THROUGH: [4]
+
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

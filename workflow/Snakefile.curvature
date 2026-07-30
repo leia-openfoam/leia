@@ -1,0 +1,58 @@
+# =============================================================================
+# CURVATURE-ONLY convergence study in ONE command:
+#
+#   make curvature
+#   # or, equivalently:
+#   snakemake -s workflow/Snakefile.curvature --workflow-profile profiles/local
+#
+# Runs the standalone mean-curvature accuracy study (config/curvatureDroplet2D.yaml:
+# leiaTestMeanCurvature on the static circle, N=32..512, NO flow solve -- isolates the
+# curvature discretisation error from the parasitic-current dynamics), then harvests
+# the table + log-log convergence figure comparing all curvature models
+# (symbolic div-family, tr(H), foot-point HF, iso-agnostic geometric parabola) into the
+# semi-Lagrangian theme's data source:
+#     docs/semi-lagrangian-level-set/sl-level-set-article/data/tables/curvature_error.{csv,tex}
+#     docs/semi-lagrangian-level-set/sl-level-set-article/data/figures/sl_curvature_error.png
+#
+# Each resolution is a single curvature evaluation (seconds), so a full clean run is a
+# couple of minutes. Re-running with data present skips the evaluations.
+# =============================================================================
+import os
+import sys
+
+REPO    = os.path.abspath(os.path.join(workflow.basedir, ".."))
+SCRIPTS = os.path.join(workflow.basedir, "scripts")
+PROFILE = "profiles/local"
+
+sys.path.insert(0, SCRIPTS)
+import paths
+THEME = "semi-lagrangian-level-set"
+FIG   = os.path.join(paths.figs_dir(THEME), "sl_curvature_error.png")
+DONE  = os.path.join(REPO, "studies", "curvatureDroplet2D", ".curv.done")
+
+
+rule all:
+    input:
+        FIG
+
+
+rule run_study:
+    # Run the curvature study through the main per-case workflow.
+    output:
+        touch(DONE)
+    shell:
+        "cd {REPO} && "
+        "PATH=$HOME/.local/bin:$PATH snakemake --workflow-profile {PROFILE} "
+        "--nolock --keep-going --resources tasks=6 --rerun-triggers mtime "
+        "--configfile config/curvatureDroplet2D.yaml"
+
+
+rule finalize:
+    # Harvest -> convergence table + figure (all curvature models).
+    input:
+        DONE
+    output:
+        FIG
+    shell:
+        "cd {REPO} && "
+        "python3 {SCRIPTS}/make_curvature_table.py studies/curvatureDroplet2D"

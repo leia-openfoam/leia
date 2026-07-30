@@ -1,0 +1,27 @@
+# Direct trajectory-velocity experiment: keep the Eulerian velocity extension
+# off and insert either physical U, its local normal projection, or the normal
+# speed sampled at the closest interpolated psi=0 point into the same
+# second-order Taylor characteristic formula.
+study_name: transISTTrajectoryGate
+case: transISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32]
+  END_TIME: [0.03]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input, normalProjection, normalClosestPoint]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

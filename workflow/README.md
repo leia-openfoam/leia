@@ -28,7 +28,7 @@ config/steadyVortex2D.yaml   NON-REVERSING stress test: steady vortex (oscillati
 config/steadyVortex2DHighRes.yaml  + N=256 tier (opt-in; refreshes the deck's steady_* figures)
 config/bulkVortexSL.yaml     SEMI-LAGRANGIAN solver (solver: leiaSemiLagrangeLevelSetFoam)
                              on the reversed vortex; sweeps SL_RECONSTRUCTION
-                             (linearTaylor/nestedLSQ/quadraticWeightedLeastSquares) x CFL{0.5,1.0} -- the SL
+                             (linearTaylor/linearWeightedLeastSquares/quadraticTaylor/quadraticWeightedLeastSquares) x CFL{0.5,1.0} -- the SL
                              analog of the VELOCITY_EXTENSION model sweep. plots.py emits the
                              reconstruction-convergence figure + an sl_vs_extension cross-study
                              overlay (reads the bulkVortexHighRes velocity-extension study).
@@ -106,7 +106,10 @@ default smoke config sweeps both; drop it from `axes_override` to fix one.
   the reversed benchmark's final row credits `none` with error cancellation
   that no extension model receives.
 - `mesh` ∈ {hex, perturbed, poly}; `poly` is 3D-only and uses
-  `cases/<Case>_poly.parameter`. `perturbed` adds `-fluxCorrection`.
+  `cases/<Case>_poly.parameter`. `perturbed` adds `-fluxCorrection`. If the
+  case exposes `N_NON_ORTHOGONAL_CORRECTORS`, materialisation also enforces a
+  minimum of 8: the frozen-circle velocity sweep is converged at 8--64 on
+  deterministic 10%-perturbed N=32,64,128 meshes, whereas 1 is insufficient.
 - `np` is the single source of truth: it regenerates `system/decomposeParDict`,
   drives `mpirun -np {np}` / SLURM `--ntasks`, so the rank count and the
   decomposition can never disagree.
@@ -116,6 +119,20 @@ default smoke config sweeps both; drop it from `axes_override` to fix one.
   (requires the `leiaTestRedistance` / `leiaTestGradScheme` apps to be built).
 - On SLURM, edit the account and the module/`source` lines in
   `profiles/slurm/config.yaml` for your cluster.
+
+### Capillary pressure-compatibility workflow
+
+The canonical entry point for the frozen-circle pressure studies is Snakemake:
+
+    snakemake -s workflow/Snakefile.pressure-compatibility \
+      --workflow-profile profiles/local
+
+Its DAG runs the non-orthogonal-correction convergence sweep, the constant-
+curvature CSF/pressure-potential comparison, the paired corrected versus
+uncorrected `snGrad`/pressure-Laplacian gate, the physical/constant `rAUf`
+oracle, the pressure-algebra tolerance sweep, and the GAMG/PCG solver gate.
+The similarly named Make targets are thin aliases only; they do not own study
+logic or freshness.
 
 ## 3D semi-Lagrangian convergence (quadraticWeightedLeastSquares)
 
@@ -150,3 +167,46 @@ solver directly instead:
     reconstructPar -withZero                                 # then re-run snakemake to aggregate
 
 Regenerate the deck figures: `python3 workflow/scripts/make_sl_3d_fig.py`
+
+## Geometrically redistanced level set (leiaRedistancedLevelSetFoam)
+
+The third research line: Eulerian psi advection + criterion-gated geometric
+redistancing from the phase indicator's own least-squares planes. Theme
+`geometrically-redistanced-levelset`; results agglomerate into
+`docs/geometrically-redistanced-levelset/grl-level-set-article/data/` and both
+decks (`grl.template.html`, `grl-negative-results.template.html`).
+
+Studies (each config header documents its axes and purpose):
+
+    # static redistancing gate (circle vs analytic SDF; the acceptance test
+    # every fill change must pass: post-event band L1 <= pre-event)
+    snakemake --workflow-profile profiles/local --configfile config/redistanceCircle2D.yaml
+
+    # trigger ablation: every-step (interval) vs gradPsiThreshold criterion
+    snakemake --workflow-profile profiles/local --configfile config/vortexTriggerGRL.yaml
+
+    # advection: reversed 2D vortex / 3D shear / 3D deformation,
+    # REDISTANCER axis = [noRedistancing, PDE, planeFootWave, anchoredEikonal]
+    snakemake --workflow-profile profiles/local --configfile config/bulkVortexGRL.yaml
+    snakemake --workflow-profile profiles/local --configfile config/3DshearGRL.yaml
+    snakemake --workflow-profile profiles/local --configfile config/3DdeformationGRL.yaml
+
+or all of them: `make studies-grl` (repo root). Sweep tokens live in
+`cases/default.parameter` (`REDISTANCER`, `REDIST_TRIGGER`, `REDIST_THRESHOLD`,
+`REDIST_INTERVAL`) and render into the `levelSet.redistancer` subdict of the
+case `fvSolution.template`s. Report scripts: `make_redistance_table.py`
+(static gate table + figure), `make_grl_fig.py` (advection convergence).
+
+Unit/acceptance tests outside snakemake: `leiaTestRedistance` (single event,
+band errors vs the analytic SDF from `levelSet.implicitSurface` -> CSV),
+`leiaTestLevelSet` (planar invariance per model contract),
+`cases/1DredistanceTest/Allrun_variants.sh` (all models on the 1D plane).
+The per-case `Allrun.sh`/`Allclean` scripts are DEBUG conveniences for a
+single variant; snakemake is the canonical, reproducible path.
+
+CALIBRATION NOTE (measured, 2026-07-17): the automatic gradPsiThreshold
+default (h/L)^2 lies far BELOW the geometric fill's achievable post-event
+band floor (~5e-3 at N=64 on the static gate) -> the criterion fires every
+step and per-event interface displacements compound over long runs
+(bulkVortexGRL T=8: volume drift for every redistancer). Set REDIST_THRESHOLD
+explicitly above the measured floor for long advection studies.

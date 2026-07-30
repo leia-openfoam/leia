@@ -1,0 +1,44 @@
+# Geometrically redistanced level set (GRL) on the reversed single (shear) vortex.
+# >>> The PDE-advection + criterion-gated geometric-redistancing research line. <<<
+#
+# The THIRD research line next to velocity extension and semi-Lagrangian
+# advection: leiaRedistancedLevelSetFoam advects psi with the PLAIN prescribed
+# flux in the advective form ddt(psi) + div(phi,psi) - psi*div(phi), and
+# restores the signed-distance property with the runtime-selected
+# levelSet.redistancer model -- the sweepable axis of this study:
+#
+#   noRedistancing  -- baseline: how fast |grad psi| degrades without help
+#   PDE             -- Sussman-Smereka-Osher reinitialization (classic baseline)
+#   planeFootWave   -- geometric: LLS interface-plane foot points (the SAME
+#                      planes the Detrixhe-Aslam indicator reads) propagated
+#                      by MeshWave; band+ring anchored, parameter-free
+#   anchoredEikonal -- plane-anchored steady-Eikonal fill (Tucker linearization)
+#
+# All redistancers fire through the gradPsiThreshold criterion (band L1 of
+# ||grad psi|-1| > (h/L)^2; Abu-Al-Saud, Popinet & Tchelepi 2018) -- events
+# stay rare; per-event interface volume shift is logged by the solver.
+# Same 2Dvortex case files, same error norms as the SL/VE studies.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/bulkVortexGRL.yaml
+
+study_name: bulkVortexGRL
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaRedistancedLevelSetFoam
+
+axes_override:
+  END_TIME: [0.5, 2, 4, 8]                              # T = period = end time
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5, 1.0]                                  # stability-bound sweep
+  REDISTANCER: [noRedistancing, PDE, planeFootWave, anchoredEikonal]
+  REDIST_TRIGGER: [gradPsiThreshold]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: true   # main 2D study: convergence figures + deck rebuild
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

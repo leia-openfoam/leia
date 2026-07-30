@@ -1,0 +1,36 @@
+# Threshold calibration (secondary study): gradPsiThreshold ABOVE the fill's
+# measured post-event floor.
+#
+# Measured (bulkVortexGRL + vortexTriggerGRL, 2026-07-17): the automatic
+# threshold (h/L)^2 ~ 2.4e-4 lies far BELOW planeFootWave's achievable
+# post-event band floor (~5e-3 @ N=64, static gate) -> the criterion fires
+# EVERY step (ablation: identical errors to interval/1) and the per-event
+# O(h^2*kappa) interface displacement compounds (volErrRel ~ 6 within
+# t < 0.05). This study sets the threshold explicitly above the floor so
+# events become RARE; pass criterion: volume drift collapses and shape error
+# approaches the noRedistancing baseline while |grad psi| stays bounded.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/vortexThresholdGRL.yaml
+
+study_name: vortexThresholdGRL
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaRedistancedLevelSetFoam
+
+axes_override:
+  END_TIME: [2, 8]
+  N_CELLS:  [64]
+  CFL:      [0.5]
+  REDISTANCER: [planeFootWave]
+  REDIST_TRIGGER: [gradPsiThreshold]
+  REDIST_THRESHOLD: [0.01, 0.05]         # ~2x and ~10x the measured floor
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false  # secondary calibration study: figures stay in the study dir
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

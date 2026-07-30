@@ -2,9 +2,12 @@
 #   pip install snakemake-executor-plugin-slurm
 #   snakemake --workflow-profile profiles/slurm
 #
-# Requires nothing else: the module environment and the srun launcher are
-# injected through `config:` below, overriding config/config.yaml. Edit the
-# account and the OpenFOAM/module lines for your cluster.
+# Configured for the Lichtenberg cluster (TU Darmstadt) -- see CLUSTER.md.
+# The module environment and launcher are injected through `config:` below,
+# overriding config/config.yaml. Lichtenberg's job_submit plugin REQUIRES
+# --mem-per-cpu (supplied here via mem_mb_per_cpu) and auto-routes the partition
+# from the runtime. Edit the account / module / OpenFOAM lines for a different
+# cluster or project.
 executor: slurm
 jobs: 200                  # max sbatch jobs in flight
 printshellcmds: true
@@ -24,9 +27,14 @@ set-resources:
     runtime: 30
     mem_mb_per_cpu: 3000
 
-# Override execution knobs from config/config.yaml. srun inherits --ntasks from
-# the allocation (resources.tasks), so no -np is needed. The preamble re-sources
-# OpenFOAM in every job exactly like the original .sbatch files did.
+# Override execution knobs from config/config.yaml. The preamble loads the
+# Lichtenberg toolchain, forces the OpenMPI transport that is known-good on the
+# interconnect (from the group's proven isoAdv.sbatch), and sources the OpenFOAM
+# the leia binaries are built against ($HOME/OpenFOAM/OpenFOAM-v2512).
+# LAUNCHER: mpirun -np {np}, NOT srun. srun inside snakemake's grouped sbatch
+# fails with "CPU binding outside of job step allocation / Unable to satisfy cpu
+# bind request" (verified 2026-07-28); mpirun places {np} ranks on the job's
+# allocated cores and matches the group's proven job scripts.
 config:
-  - "mpi_launcher=srun"
-  - "env_preamble=module purge; ml gcc/10.2.0 openmpi/4.1.4 python; source /work/groups/da_mma_b/OpenFOAM-v2212/etc/bashrc"
+  - "mpi_launcher=mpirun -np {np}"
+  - "env_preamble=module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv; export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2; source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

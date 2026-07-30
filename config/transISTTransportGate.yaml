@@ -1,0 +1,28 @@
+# Controlled Gate-2 matrix for the translating capillary droplet. It separates
+# normal-constant level-set transport from rhoLENT mass/momentum consistency.
+# The N=32, t=0.03 campaign is intentionally diagnostic: a passing run must
+# complete and retain a well-conditioned |grad(psi)| profile; survival alone is
+# not evidence of capillary stability.
+study_name: transISTTransportGate
+case: transISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32]
+  END_TIME: [0.03]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none, meshWave, closestPoint, steadyUpwind]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [geometricFaceDensity, rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

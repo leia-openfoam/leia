@@ -1,0 +1,33 @@
+# Flux-form (conservative) SL vs point-value SL on the reversed 2D vortex.
+# Headline: does the conservative swept-face flux update cut the volume-
+# conservation error E_VOL_ALPHA relative to the (non-conservative) point-value
+# scheme, and at what shape-error cost? Method rows:
+# SL:uncachedQuadraticWeightedLeastSquares (point-value) and ...+flux.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/benchVortexSLflux.yaml
+
+study_name: benchVortexSLflux
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: method-comparison
+
+axes_override:
+  END_TIME: [2, 8]
+  N_CELLS:  [32, 64, 128, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [semiLagrangian]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_SCHEME: [pointValue, fluxForm]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

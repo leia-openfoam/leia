@@ -1,0 +1,47 @@
+# Frozen-band bulk-only pseudo-time Eikonal redistancing vs no redistancing,
+# on the Eulerian line (the line whose bulk |grad psi| actually erodes), T = 8.
+# Anchors = sign-change band + 2 guard layers FROZEN (transported values as
+# Dirichlet data -> zero interface displacement BY CONSTRUCTION, static gate:
+# E_GEOM = E_VOL = 0 exactly); fill = Godunov (Rouy-Tourin) pseudo-time Eikonal
+# (central MEASURED divergent: bulk grad-err 0.56 -> 59.7); trigger =
+# signedDistanceBounds over the BULK (anchors + junction excluded), violation
+# fraction 0.02 (the SDF skeleton has |grad psi| = 0 by construction).
+# gradBound 1.3 is deliberately TIGHT so events actually fire within T = 8
+# (g = 2 is the production usability bound). Headline: with zero interface
+# displacement enforced, is bulk re-extension a WIN or merely HARMLESS?
+#
+#   snakemake --workflow-profile profiles/local --configfile config/benchVortexGRLfrozen.yaml
+
+study_name: benchVortexGRLfrozen
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: method-comparison
+
+axes_override:
+  END_TIME: [8]
+  N_CELLS:  [64, 128, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  SDPLS_SOURCE: [noSource]
+  REDISTANCER: [noRedistancing, PDE]
+  REDIST_TRIGGER: [signedDistanceBounds]
+  REDIST_REGION: [bulk]
+  REDIST_FREEZE: ["true"]
+  REDIST_ANCHOR_LAYERS: [2]
+  REDIST_HAMILTONIAN: [godunov]
+  REDIST_NITER: [800]
+  REDIST_GRADBOUND: [1.3]
+  REDIST_VIOLFRAC: [0.02]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

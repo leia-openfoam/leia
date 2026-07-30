@@ -13,10 +13,15 @@ import os
 
 PER_CASE_CSVS = [
     "leiaLevelSetFoam.csv",
+    "leiaRedistancedLevelSetFoam.csv",   # geometric-redistancing solver (same columns)
     "leiaSemiLagrangeLevelSetFoam.csv",  # semi-Lagrangian solver (same columns)
+    "leiaSemiLagrangianLevelSetTwoPhaseFoam.csv",  # two-phase droplet metrics
+                                         # (TIME,maxMagU,meanMagU,pLaplace)
     "leiaSetFields.csv",
     "gradPsiError.csv",
     "leiaTestVelocityExtension.csv",   # static t=0 extension verification
+    "leiaTestMeanCurvature.csv",       # static curvature-accuracy test
+    "leiaTestRedistance.csv",          # static redistancing gate (circle)
 ]
 
 
@@ -71,18 +76,60 @@ def _write_error_table(records, database_path):
     def solver_of(rec):
         if rec.get("leiaSemiLagrangeLevelSetFoam.E_GEOM_ALPHA", "") != "":
             return "leiaSemiLagrangeLevelSetFoam"
+        if rec.get("leiaRedistancedLevelSetFoam.E_GEOM_ALPHA", "") != "":
+            return "leiaRedistancedLevelSetFoam"
+        if rec.get("leiaTestRedistance.E_LINF_BAND_PSI", "") != "":
+            return "leiaTestRedistance"
         return "leiaLevelSetFoam"
 
     def sget(rec, key):
         s = solver_of(rec)
         return rec.get(f"{s}.{key}", "")
 
+    def method_of(rec):
+        """Composite method label for the unified solver's token set."""
+        adv = rec.get("ADVECTION", "eulerian")
+        if adv == "semiLagrangian":
+            label = f"SL:{rec.get('SL_RECONSTRUCTION', '')}"
+            # SL-improvement variants get distinct labels so they are separate
+            # rows in the comparison (defaults append nothing).
+            if rec.get("SL_SCHEME", "pointValue") == "fluxForm":
+                label += "+flux"
+            lim = rec.get("SL_LIMITER", "none")
+            if lim not in ("", "none"):
+                label += "+lim:" + ("venk" if lim == "venkatakrishnan" else lim)
+            if rec.get("SL_FIT", "normalEquations") == "householderQR":
+                label += "+qr"
+            # A perturbed-mesh study must not blend into the hex convergence
+            # lines of the same method.
+            if rec.get("mesh") == "perturbed":
+                label += "/pert"
+            return label
+        parts = ["euler"]
+        ve = rec.get("VELOCITY_EXTENSION", "none")
+        if ve and ve != "none":
+            parts.append(f"VE:{ve}")
+        ss = rec.get("SDPLS_SOURCE", "noSource")
+        if ss and ss != "noSource":
+            parts.append(f"SDPLS:{ss}")
+        rd = rec.get("REDISTANCER", "noRedistancing")
+        if rd and rd != "noRedistancing":
+            if rd == "PDE" and rec.get("REDIST_FREEZE", "false") == "true":
+                rd = "PDEfrozen"   # bulk-only fill, frozen Dirichlet anchors
+            parts.append(f"RD:{rd}")
+        return "+".join(parts)
+
     def shget(rec, key):
         s = solver_of(rec)
         return rec.get(f"half.{s}.{key}", "")
 
-    cols = ["velocityExtension", "reconstruction", "solver", "phaseIndicator",
+    cols = ["method", "velocityExtension", "reconstruction", "redistancer",
+            "redistTrigger", "solver", "phaseIndicator",
             "T", "h", "maxCellSize", "cfl",
+            # Wall-clock cost: total seconds and seconds per unit simulated
+            # time (row-count-independent -- reporting may be gated to write
+            # times, so per-CSV-row is NOT per-time-step).
+            "totalClockTime", "clockPerSimTime",
             "gradientError", "shapeError", "volumeError",
             # Band-restricted gradient error + the same metrics at maximal
             # deformation t = T/2 (before any reversal cancellation) + the
@@ -105,11 +152,25 @@ def _write_error_table(records, database_path):
             h = mcs if (mcs and mcs > 0) else ""
         else:
             h = (1.0 / n) if n else ""
+        clk = _num(sget(rec, "ELAPSED_CLOCK_TIME"))
+        tfin = _num(sget(rec, "TIME"))
         rows.append({
+            "method": method_of(rec),
+            "totalClockTime": clk if clk is not None else "",
+            "clockPerSimTime":
+                (clk/tfin) if (clk is not None and tfin) else "",
             "velocityExtension": rec.get("VELOCITY_EXTENSION", "none"),
             # semi-Lagrangian reconstruction (blank for the Eulerian solver).
             "reconstruction": rec.get("SL_RECONSTRUCTION", "")
             if solver_of(rec) == "leiaSemiLagrangeLevelSetFoam" else "",
+            # Geometric-redistancing solver / static gate: which redistancer
+            # model and trigger produced the row (blank for other solvers).
+            "redistancer": rec.get("REDISTANCER", "")
+            if solver_of(rec) in ("leiaRedistancedLevelSetFoam",
+                                  "leiaTestRedistance") else "",
+            "redistTrigger": rec.get("REDIST_TRIGGER", "")
+            if solver_of(rec) in ("leiaRedistancedLevelSetFoam",
+                                  "leiaTestRedistance") else "",
             "solver": solver_of(rec),
             "phaseIndicator": rec.get("PHASE_INDICATOR", ""),
             "T": rec.get("END_TIME", ""),                 # oscillation period / end time

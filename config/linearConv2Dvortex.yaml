@@ -1,0 +1,40 @@
+# linearWeightedLeastSquares 2D reversed-vortex convergence -- the LINEAR
+# semi-Lagrangian line, run as an INDEPENDENT METHOD next to the quadratic
+# (uncachedConv*) line. linearWeightedLeastSquares fits a LINEAR polynomial
+# directly to the neighbour-stencil psi VALUES by IDW-weighted least squares
+# (the linear sibling of uncachedQuadraticWeightedLeastSquares): it never
+# differentiates the psi field, so the reconstruction stays bounded within the
+# stencil data range and is STABLE BY CONSTRUCTION -- no clip needed, and
+# CFL-independent. This is the value-fit counterpart to the Taylor family
+# (linearTaylor, quadraticTaylor) whose fvc::grad-based extrapolation amplifies
+# high-wavenumber error and drives the |grad psi| runaway. Same ladder / period
+# as config/uncachedConv2Dvortex.yaml so the methods are directly comparable.
+# Results -> docs/linear-semi-lagrangian-level-set/.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/linearConv2Dvortex.yaml --resources tasks=12
+study_name: linearConv2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+theme: linear-semi-lagrangian-level-set
+
+axes_override:
+  END_TIME: [2]                                    # reversed period (matches deck Tpick)
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]        # sqrt(2) ladder, cells x2/level
+  CFL:      [0.5, 1.0]                              # value-fit is stable at CFL 1 without clip
+  SL_RECONSTRUCTION: [linearWeightedLeastSquares]
+  # No clip: the value fit is bounded by construction (no field differentiation),
+  # so it does not need clipToStencilBounds to be stable.
+  SL_CLIP: ["false"]  # quoted so it renders lowercase (OpenFOAM Switch)
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false  # exploratory: linearWLSQ no-clip is UNSTABLE in advection (|grad psi|
+                      # runaway) -- do NOT auto-push blow-up figures into the theme docs.
+                      # Re-enable only once the linear-line framing is decided.
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

@@ -1,0 +1,24 @@
+# Translating-droplet mechanism gate C: current conservative integral force.
+# Compare its first divergence time with gates A and B.
+study_name: transISTIntegralForceGate
+case: transISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [32]
+  END_TIME: [0.05]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [normalProjection]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [integralSurfaceTension]
+  SURFACE_TENSION_CURVATURE_SOURCE: [field]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGMA: [0.07274]
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

@@ -1,0 +1,26 @@
+# Oscillating droplet with the iso-value-agnostic geometric surface-tension model
+# (isoCurvature; interface = alpha.water iso 0.5). The moving-interface test: does
+# the geometric curvature-normal (independent of the non-SDF ellipsoid psi that
+# broke integralSurfaceTension) tame the polar parasitic current? Fixed
+# per-resolution capillary dt; quad reconstruction (advection); curvatureExtension
+# fvm so isoCurvature owns kappa.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/oscISODroplet2D.yaml
+study_name: oscISODroplet2D
+case: oscISODroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

@@ -1,0 +1,80 @@
+# =============================================================================
+# Level-set METHOD-COMPARISON reproduction in ONE command:
+#
+#   snakemake -s workflow/Snakefile.comparison --workflow-profile profiles/local
+#
+# Runs the six config/benchVortex*.yaml studies (reversed 2D vortex, 32^2..512^2,
+# T in {2,8}, all method lines, np=4), harvests the shared figures + decision
+# table, rebuilds the comparison reveal deck AND compiles the article PDF.
+#
+# Each study is a self-contained sub-workflow (workflow/Snakefile driven by its
+# own configfile); this meta-workflow shells out to it once per config (the
+# bench configs set export_slides:false, so each study only copies its
+# <study>_errors.csv into the theme tables dir -- the deck/figures/PDF are built
+# ONCE here in `finalize`). Re-running with data present skips the solves.
+# =============================================================================
+import os
+
+REPO    = os.path.abspath(os.path.join(workflow.basedir, ".."))
+SCRIPTS = os.path.join(workflow.basedir, "scripts")
+PROFILE = "profiles/local"
+
+CONFIGS = [
+    "benchVortexEulerT2", "benchVortexSLT2", "benchVortexVET2",
+    "benchVortexEulerT8", "benchVortexSLT8", "benchVortexVET8",
+    # SL improvements (G3/G4): Venkatakrishnan limiter, Householder-QR fit,
+    # flux-form conservative scheme.
+    "benchVortexSLimproved", "benchVortexSLimprovedPerturbed", "benchVortexSLflux",
+    # Frozen-band bulk-only pseudo-time Eikonal redistancing (zero interface
+    # displacement by construction) vs no redistancing, Eulerian line T=8.
+    "benchVortexGRLfrozen",
+]
+
+# Theme output locations (single source of truth: workflow/scripts/paths.py).
+import sys
+sys.path.insert(0, SCRIPTS)
+import paths
+THEME    = "method-comparison"
+PRES_DIR = paths.presentation_dir(THEME)
+FIGS_DIR = paths.figs_dir(THEME)
+TABLES   = paths.tables_dir(THEME)
+ARTS     = paths.article_dir(THEME)
+DECK     = os.path.join(PRES_DIR, "comparison.html")
+PDF      = os.path.join(ARTS, "methodComparison.pdf")
+
+
+rule all:
+    input:
+        DECK,
+        PDF
+
+
+rule run_study:
+    # Run one benchmark study through the main workflow. Marker output so the
+    # meta-DAG can depend on "this study is up to date".
+    output:
+        touch(os.path.join(REPO, "studies", "{cfg}", ".bench.done"))
+    shell:
+        "cd {REPO} && "
+        "PATH=$HOME/.local/bin:$PATH snakemake --workflow-profile {PROFILE} "
+        "--nolock --keep-going --resources tasks=12 "
+        "--configfile config/{wildcards.cfg}.yaml"
+
+
+rule finalize:
+    # Harvest all six studies -> figures + decision table -> deck + article PDF.
+    input:
+        expand(os.path.join(REPO, "studies", "{cfg}", ".bench.done"), cfg=CONFIGS)
+    output:
+        DECK,
+        PDF
+    shell:
+        "cd {REPO} && "
+        "python3 {SCRIPTS}/make_method_comparison.py && "
+        "python3 {SCRIPTS}/make_bench_fields_fig.py && "
+        "python3 {SCRIPTS}/make_flux_volloss_fig.py && "
+        "python3 {SCRIPTS}/export_html.py {PRES_DIR} comparison.template.html && "
+        "( command -v latexmk >/dev/null "
+        "  && ( cd {ARTS} && latexmk -pdf -interaction=nonstopmode -halt-on-error "
+        "       methodComparison.tex ) "
+        "  || echo '[skip] latexmk not found; install a LaTeX toolchain for the PDF' )"

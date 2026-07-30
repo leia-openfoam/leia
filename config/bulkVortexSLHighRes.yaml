@@ -10,7 +10,7 @@
 # jobs can exhaust memory and get cases killed intermittently (fluctuating
 # incompletes, NOT numerical divergence). bandQuadraticWeightedLeastSquares fits per step in the
 # band only (memory O(band)) and runs fine at full concurrency; linearTaylor /
-# nestedLSQ use fvc::grad (no cache). Because the full quadraticWeightedLeastSquares member is in
+# quadraticTaylor use fvc::grad (no cache). Because the full quadraticWeightedLeastSquares member is in
 # the sweep, run this mixed tier at reduced concurrency, e.g.
 #   snakemake --workflow-profile profiles/local --configfile config/bulkVortexSLHighRes.yaml \
 #             --cores 12 --jobs 3
@@ -29,7 +29,7 @@ axes_override:
   END_TIME: [0.5, 2, 4, 8]
   N_CELLS:  [32, 64, 128, 256]
   CFL:      [0.5, 1.0]
-  SL_RECONSTRUCTION: [linearTaylor, nestedLSQ, quadraticWeightedLeastSquares, bandQuadraticWeightedLeastSquares]
+  SL_RECONSTRUCTION: [linearTaylor, linearWeightedLeastSquares, quadraticTaylor, quadraticWeightedLeastSquares, bandQuadraticWeightedLeastSquares]
   PHASE_INDICATOR: [detrixheAslam]
 collapse_other_axes: true
 

@@ -1,0 +1,33 @@
+# Trigger-criterion ablation (secondary study): every-step redistancing vs the
+# gradPsiThreshold criterion, planeFootWave on the reversed 2D vortex at N=64.
+#
+# The literature (Abu-Al-Saud, Popinet & Tchelepi 2018; and the capillary-
+# equilibrium argument) says redistancing EVERY step is harmful -- this study
+# measures it: interval (redistanceInterval 1 = every step) against
+# gradPsiThreshold (auto (h/L)^2), same case, same redistancer. Figures stay in
+# the study dir (export_slides false); the deck cites the numbers.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/vortexTriggerGRL.yaml
+
+study_name: vortexTriggerGRL
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaRedistancedLevelSetFoam
+
+axes_override:
+  END_TIME: [2, 8]
+  N_CELLS:  [64]
+  CFL:      [0.5]
+  REDISTANCER: [planeFootWave]
+  REDIST_TRIGGER: [interval, gradPsiThreshold]
+  REDIST_INTERVAL: [1]                   # interval mode: redistance EVERY step
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false  # secondary comparison: figures stay in the study dir
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

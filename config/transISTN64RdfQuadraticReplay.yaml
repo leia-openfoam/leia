@@ -1,0 +1,72 @@
+# Curvature-delivery replay gate for the rdfQuadratic estimator.
+#
+# Trimmed four-variant matrix around the new candidate: the exact-constant
+# floor, the quiet interface-mean control, the best previously measured
+# computed candidate (connected fit + mode-preserving Helmholtz, h4/l16, late
+# replay 0.0128 m/s), and rdfQuadratic -- curvature from per-cell quadratic
+# fits of the STATELESS signed-distance function to the connected polyline
+# (parameter-free: no tangential filter; Gauss--Bonnet additive mode only),
+# delivered face-natively by blended owner/neighbour foot-point evaluation.
+#
+#   python3 workflow/scripts/run_curvature_delivery_replay.py \
+#       config/transISTN64RdfQuadraticReplay.yaml
+study_name: transISTN64RdfQuadraticReplay
+case: transISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+collapse_other_axes: true
+axes_override:
+  N_CELLS: [64]
+  END_TIME: [0.05002]
+  WRITE_INTERVAL: [0.005]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  TIME_STEP_CONTROL: [capillary]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [constantCurvatureSurfaceTension]
+  SURFACE_TENSION_CURVATURE_SOURCE: [field]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGN: [-1]
+  SURFACE_TENSION_GEOMETRIC_METHOD: [conormalCSF]
+  SURFACE_TENSION_SIGMA: [0.07274]
+  CURVATURE_EXTENSION: [none]
+  CURVATURE_EXTENSION_RELAX: [1]
+  CURVATURE_FACE_INTERPOLATION: [arithmetic]
+  CURVATURE_FORCE_WEIGHT: [alpha]
+  CURVATURE_FIT_HALF_WIDTH: [3]
+  CURVATURE_REGULARIZATION_OPERATOR: [helmholtz]
+  CURVATURE_TANGENTIAL_REGULARIZATION: [1]
+  CURVATURE_REGULARIZATION_ITERATIONS: [30]
+
+replay:
+  snapshots: [0.0, 0.01, 0.025, 0.05]
+  variants:
+    - id: exactConstant
+      surface_tension_force: constantCurvatureSurfaceTension
+      curvature_extension: none
+      face_interpolation: arithmetic
+    - id: interfaceMean
+      surface_tension_force: reconstructedCurvature
+      curvature_extension: interfaceMean
+      face_interpolation: arithmetic
+    - id: connectedInterface_h4_l16preserve
+      surface_tension_force: reconstructedCurvature
+      curvature_extension: connectedInterface
+      face_interpolation: connectedInterface
+      face_curvature_source: registered
+      fit_half_width: 4
+      regularization_operator: helmholtzPreserveModes
+      tangential_regularization: 16
+      regularization_iterations: 120
+      preserve_modes_through: 4
+    - id: rdfQuadratic
+      surface_tension_force: reconstructedCurvature
+      curvature_extension: connectedInterface
+      face_interpolation: connectedInterface
+      face_curvature_source: registered
+      estimator: rdfQuadratic

@@ -16,14 +16,27 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # theme key -> (theme directory, subfolder slug, deck template name)
 _THEMES = {
-    "semi-lagrangian-level-set": ("semi-lagrangian-level-set", "sl-level-set",       "sl.template.html"),
-    "velocity-extension":        ("velocity-extension",        "velocity-extension", "index.template.html"),
+    "semi-lagrangian-level-set":          ("semi-lagrangian-level-set",          "sl-level-set",       "sl.template.html"),
+    "linear-semi-lagrangian-level-set":   ("linear-semi-lagrangian-level-set",   "lsl-level-set",      "lsl.template.html"),
+    "velocity-extension":                 ("velocity-extension",                 "velocity-extension", "index.template.html"),
+    "geometrically-redistanced-levelset": ("geometrically-redistanced-levelset", "grl-level-set",      "grl.template.html"),
+    "sdpls-level-set":                    ("sdpls-level-set",                    "sdpls",              "sdpls.template.html"),
+    "method-comparison":                  ("method-comparison",                  "method-comparison",  "comparison.template.html"),
 }
+
+# Themes whose deck reads figures/tables from ITS OWN presentation data/ folder
+# (a verbatim mirror of the article data/). For these, propagate() copies the
+# article data into the presentation data after every report, so a completed
+# study leaves BOTH documents current. Deliberate duplication: the two folders
+# are kept byte-identical, never edited by hand.
+_DUAL_COPY = {"semi-lagrangian-level-set", "linear-semi-lagrangian-level-set"}
 
 # Default theme for a solver when a study config does not set `theme:` explicitly.
 _SOLVER_THEME = {
-    "leiaSemiLagrangeLevelSetFoam": "semi-lagrangian-level-set",
-    "leiaLevelSetFoam":             "velocity-extension",
+    "leiaSemiLagrangeLevelSetFoam":            "semi-lagrangian-level-set",
+    "leiaSemiLagrangianLevelSetTwoPhaseFoam":  "semi-lagrangian-level-set",
+    "leiaLevelSetFoam":                        "velocity-extension",
+    "leiaRedistancedLevelSetFoam":             "geometrically-redistanced-levelset",
 }
 
 
@@ -72,3 +85,42 @@ def presentation_dir(theme):
 
 def deck_template(theme):
     return _theme(theme)[2]
+
+
+def pres_data_dir(theme):
+    return os.path.join(presentation_dir(theme), "data")
+
+
+def pres_figs_dir(theme, make=True):
+    d = os.path.join(pres_data_dir(theme), "figures")
+    if make:
+        os.makedirs(d, exist_ok=True)
+    return d
+
+
+def pres_tables_dir(theme, make=True):
+    d = os.path.join(pres_data_dir(theme), "tables")
+    if make:
+        os.makedirs(d, exist_ok=True)
+    return d
+
+
+def propagate(theme):
+    """Mirror the theme's article data/ (figures + tables) into its presentation
+    data/, so the deck and the article consume identical, current results.
+    No-op for themes whose deck references the article data/ directly."""
+    import shutil
+    if theme not in _DUAL_COPY:
+        return []
+    copied = []
+    for src_dir, dst_dir in ((figs_dir(theme, make=False), pres_figs_dir(theme)),
+                             (tables_dir(theme, make=False), pres_tables_dir(theme))):
+        if not os.path.isdir(src_dir):
+            continue
+        for name in sorted(os.listdir(src_dir)):
+            src = os.path.join(src_dir, name)
+            if os.path.isfile(src):
+                shutil.copy2(src, os.path.join(dst_dir, name))
+                copied.append(name)
+    print(f"[paths] propagate {theme}: {len(copied)} file(s) -> presentation data/")
+    return copied

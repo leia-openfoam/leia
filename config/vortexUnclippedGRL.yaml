@@ -1,0 +1,33 @@
+# Is the T=8 interface death an initialization artifact? The 2Dvortex profile
+# clips |psi| at TANH_LIMIT = 0.1 from t = 0 (a zero-gradient plateau over
+# most of the domain); as the interface deforms, plateau cells enter the
+# narrow band with |grad psi| = 0 exactly -- the measured "flattening" that
+# neither redistancing nor the SDPLS source can (or should) repair. This
+# study removes the clip (TANH_LIMIT 10 >> domain size) and compares
+# noSource vs the strain-cancelling R source at T = 8.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/vortexUnclippedGRL.yaml
+
+study_name: vortexUnclippedGRL
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaRedistancedLevelSetFoam
+
+axes_override:
+  END_TIME: [8]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5]
+  TANH_LIMIT: [10]                       # unclipped signed-distance init
+  REDISTANCER: [noRedistancing]
+  SDPLS_SOURCE: [noSource, R]
+  SOURCE_SCHEME: [strictNegativeSpLinearImplicit]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

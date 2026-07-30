@@ -1,0 +1,37 @@
+# Manufactured mode-transfer gate for the rdfQuadratic estimator only.
+#
+# Same manufactured interfaces as config/curvatureModeTransferGate.yaml
+# (r(theta) = R [1 + epsilon cos(m theta)], m=2,3,4; N=32,64,128; uniform +
+# perturbed meshes). Single candidate: curvature from per-cell quadratic fits
+# of the stateless signed distance to the connected polyline (rdfQuadratic).
+# The regularization fields below are required by the driver schema but are
+# ignored by the estimator (it is parameter-free by design).
+#
+#   python3 workflow/scripts/run_curvature_mode_transfer_gate.py \
+#       config/curvatureModeTransferGateRdf.yaml
+study_name: curvatureModeTransferGateRdf
+case: transISTDroplet2D
+epsilon: 0.02
+radius: 0.001
+center: [0.005, 0.005, 0.0]
+resolutions: [32, 64, 128]
+mesh_variants: [uniform, perturbed]
+perturbation_alpha: 0.1
+perturbation_seed: 0
+modes: [2, 3, 4]
+
+quantitative_gate:
+  minimum_resolution: 64
+  amplitude_transfer_min: 0.8
+  amplitude_transfer_max: 1.2
+  maximum_phase_error_deg: 10.0
+  maximum_relative_L2: 0.25
+  require_refinement_nonincrease: false
+
+candidates:
+  - id: rdfQuadratic
+    estimator: rdfQuadratic
+    fit_half_width: 3
+    regularization_operator: helmholtz
+    tangential_regularization: 1
+    regularization_iterations: 30

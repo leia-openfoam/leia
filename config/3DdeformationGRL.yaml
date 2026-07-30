@@ -1,0 +1,31 @@
+# Geometrically redistanced level set (GRL) on the reversed 3D (LeVeque)
+# deformation flow -- the hardest advection benchmark of the suite (thin
+# stretched sheet at t = T/2). Same solver and error norms as
+# config/bulkVortexGRL.yaml / config/3DshearGRL.yaml. Domain unit cube,
+# deformation3D with oscillation on; interface: sphere r = 0.15 @
+# (0.35,0.35,0.35).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/3DdeformationGRL.yaml
+
+study_name: 3DdeformationGRL
+case: 3Ddeformation
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaRedistancedLevelSetFoam
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5, 1.0]
+  REDISTANCER: [noRedistancing, PDE, planeFootWave, anchoredEikonal]
+  REDIST_TRIGGER: [gradPsiThreshold]
+  PHASE_INDICATOR: [detrixheAslam]
+  DIV: [linear]                          # pin: see 3DshearGRL.yaml
+collapse_other_axes: true
+
+export_slides: true
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

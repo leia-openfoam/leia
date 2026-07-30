@@ -1,0 +1,30 @@
+# Oscillating droplet with the CONSERVATIVE INTEGRAL surface-tension model
+# (integralSurfaceTension, Abu-Al-Saud/Popinet/Tchelepi 2018) instead of the FVM
+# divGradPsiSnGradAlpha curvature -- testing whether a balanced-force model tames
+# the polar parasitic current that drives the divGradPsi moving-droplet failure.
+# Reconstruction fixed to uncachedQuadratic (established irrelevant at capillary dt);
+# fixed per-resolution capillary time step (adjustTimeStep no).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/oscISTDroplet2D.yaml
+study_name: oscISTDroplet2D
+case: oscISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [steadyUpwind]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

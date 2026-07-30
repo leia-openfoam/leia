@@ -1,0 +1,35 @@
+# Translating-droplet reconstruction comparison (2D). A circular water droplet
+# (R=1mm) coasts through a PERIODIC (cyclic) box at U0 = 0.05 m/s with zero gravity.
+# Exact solution: rigid translation, interface stays circular, Laplace jump sigma/R
+# = 72.74 Pa; deviation = spurious currents. The interface crosses ~2.5 diameters
+# over t=0.1 s, so this exercises SL advection of a MOVING interface (milder, rigid
+# motion vs the oscillating droplet's deformation) -- the regime where linear
+# advection is expected to degrade |grad psi| while quadratic stays stable.
+#
+# Curvature is the FVM path (divGradPsiSnGradAlpha + curvatureExtension fvm), fixed;
+# the ONLY swept variable is the advection reconstruction (the transport-vs-curvature
+# decoupling):
+#   SL_RECONSTRUCTION = linearWeightedLeastSquares  vs  uncachedQuadraticWeightedLeastSquares
+# Discriminator = minGradPsiBand (level-set health) + run reaching endTime; note that
+# maxMagU ~ U0 here (dominated by translation), so read minGradPsiBand / kErr for the
+# reconstruction signal.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/translatingDroplet2D.yaml
+study_name: translatingDroplet2D
+case: translatingDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  SL_RECONSTRUCTION: [linearWeightedLeastSquares, uncachedQuadraticWeightedLeastSquares]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

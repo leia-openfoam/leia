@@ -1,0 +1,42 @@
+# SDPLS source-term stability sweep (feeds the SDPLS article's
+# "Discretization and stability" subsection + negative-results deck).
+#
+# The source S = f_nl(psi^n)*psi^{n+1} is linearized three ways
+# (src/leiaLevelSet/sdplsSource/discretization/):
+#   explicit                       : Sc = f_nl*psi^n, Sp = 0
+#                                    -> explicit stability bound dt*max(f_nl) <~ 1
+#   simpleLinearImplicit           : Sp = f_nl (any sign)
+#                                    -> f_nl > 0 REDUCES diagonal dominance
+#   strictNegativeSpLinearImplicit : Sp = min(f_nl,0), Sc = max(f_nl,0)*psi^n
+#                                    -> diagonally dominant by construction
+# Sweep: {R, beta} x 3 discretizations x CFL {0.1, 0.5, 1.0} at N=128, T=2
+# (reversed vortex; f_nl ~ strain ~ O(pi) for R, O(1) for beta).
+# Expected: strictNegative stable everywhere; explicit stable at these dt
+# (dt*|f_nl| << 1); simpleLinearImplicit the interesting case. Divergent rows
+# are RESULTS (negative-results deck), not failures: --keep-going.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/sdplsStability.yaml
+
+study_name: sdplsStability
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaRedistancedLevelSetFoam
+theme: geometrically-redistanced-levelset   # pre-unification home; tables move to sdpls theme later
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [128]
+  CFL:      [0.1, 0.5, 1.0]
+  REDISTANCER: [noRedistancing]
+  SDPLS_SOURCE: [R, beta]
+  SOURCE_SCHEME: [explicit, simpleLinearImplicit, strictNegativeSpLinearImplicit]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

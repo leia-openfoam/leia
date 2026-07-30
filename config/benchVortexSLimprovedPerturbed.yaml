@@ -1,0 +1,34 @@
+# SL-quadratic conditioning study: Householder-QR vs normal-equations least
+# squares on a PERTURBED (non-orthogonal) mesh, where the normal equations are
+# ill-conditioned and the Cholesky path falls back to a constant fit. Headline:
+# does QR cut the constant-fallback count and improve accuracy? Method rows:
+# SL:uncachedQuadraticWeightedLeastSquares (baseline) and ...+qr.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/benchVortexSLimprovedPerturbed.yaml
+
+study_name: benchVortexSLimprovedPerturbed
+case: 2Dvortex
+mesh: perturbed
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: method-comparison
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [semiLagrangian]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_STENCIL: [point]
+  SL_FIT: [normalEquations, householderQR]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

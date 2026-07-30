@@ -1,0 +1,67 @@
+# Frozen one-step velocity separation on the signed-distance ellipse:
+# candidate -> exact curvature -> exact curvature plus analytic geometry and
+# localization.  Every case retains the same mesh, face-flux contract,
+# timestep, PIMPLE solve and cell-centred velocity metric.
+study_name: oscISTVariableCurvatureOracle
+case: oscISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+collapse_other_axes: true
+axes_override:
+  N_CELLS: [64]
+  END_TIME: [0.1]
+  WRITE_INTERVAL: [0.002]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  SURFACE_TENSION_CURVATURE_SOURCE: [field]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGN: [-1]
+  SURFACE_TENSION_GEOMETRIC_METHOD: [conormalCSF]
+  SURFACE_TENSION_SIGMA: [0.07274]
+  CURVATURE_EXTENSION: [connectedInterface]
+  CURVATURE_EXTENSION_RELAX: [1]
+  CURVATURE_ESTIMATOR: [connectedFit]
+  CURVATURE_GEOMETRY_SOURCE: [levelSetField]
+  PHASE_INDICATOR_GEOMETRY_SOURCE: [levelSetField]
+  CURVATURE_FACE_INTERPOLATION: [connectedInterface]
+  CURVATURE_FACE_SOURCE: [registered]
+  CURVATURE_FORCE_WEIGHT: [alpha]
+  CURVATURE_FIT_HALF_WIDTH: [4]
+  CURVATURE_REGULARIZATION_OPERATOR: [helmholtzPreserveModes]
+  CURVATURE_TANGENTIAL_REGULARIZATION: [16]
+  CURVATURE_REGULARIZATION_ITERATIONS: [120]
+  CURVATURE_PRESERVE_MODES_THROUGH: [4]
+
+oracle_gate:
+  resolutions: [32, 64, 128]
+  mesh_variants: [uniform, perturbed]
+  perturbation_alpha: 0.1
+  perturbation_seed: 0
+  # Established by staticISTPressureCompatibilityGateNonOrthSweep: corrected
+  # perturbed-mesh pressure flux is converged by 8; one was under-corrected.
+  nonorthogonal_correctors:
+    uniform: 1
+    perturbed: 8
+  variants:
+    - id: analyticCurvatureNumericalGeometry
+      curvature_estimator: analyticImplicitSurface
+      curvature_geometry_source: levelSetField
+      phase_indicator_geometry_source: levelSetField
+    - id: analyticGeometryLocalizationOracle
+      curvature_estimator: analyticImplicitSurface
+      curvature_geometry_source: analyticImplicitSurface
+      phase_indicator_geometry_source: analyticImplicitSurface
+    - id: connectedModePreservingCandidate
+      curvature_estimator: connectedFit
+      curvature_geometry_source: levelSetField
+      phase_indicator_geometry_source: levelSetField
+
+publication_table: docs/method-comparison/method-comparison-article/data/tables/oscISTVariableCurvatureVelocityOracle.csv
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

@@ -21,6 +21,12 @@ _IGNORE = shutil.ignore_patterns(
     "processor*", "*.foam", "postProcessing", "*.csv", "log", "log.*",
     "out.*", "err.*", "case_params.json")
 
+# Frozen exact-circle pressure-potential velocity convergence on deterministic
+# 10%-perturbed N=32,64,128 meshes is unchanged between 8,16,32,64 corrected
+# passes.  Never let a general perturbed-mesh study silently inherit the
+# uniform-mesh default of one correction.
+_MIN_PERTURBED_NONORTHOGONAL_CORRECTORS = 8
+
 
 def _render_templates(case_dir, tokens):
     for root, _dirs, files in os.walk(case_dir):
@@ -77,19 +83,80 @@ def _assert_no_residual_tokens(case_dir):
 
 def _with_derived_tokens(tokens):
     """Add tokens that are computed from the sweep values, so templates can use
-    them directly. Currently: HALF_END_TIME = END_TIME/2, used by controlDict to
-    write a snapshot at maximum deformation (t = T/2) as well as t = 0 and t = T."""
+    them directly:
+
+      * HALF_END_TIME = END_TIME/2 -- controlDict writes a snapshot at maximum
+        deformation (t = T/2) as well as t = 0 and t = T (advection studies).
+      * MAX_DELTA_T uses one of two explicit modes selected by
+        TIME_STEP_CONTROL:
+
+          capillary: CAPILLARY_DT_COEFF / N_CELLS^1.5
+          advective: TARGET_ADVECTIVE_CO*DOMAIN_LENGTH /
+                     (N_CELLS*REFERENCE_SPEED)
+
+        The capillary mode remains the default for coupled surface-tension runs.
+        The advective mode is for sigma=0 kinematic convergence tests, where
+        retaining the capillary limit would add progressively more unnecessary
+        point-value remaps and confound the spatial study."""
     out = dict(tokens)
     if "END_TIME" in out:
         try:
             out["HALF_END_TIME"] = "{:g}".format(float(out["END_TIME"]) / 2.0)
         except (TypeError, ValueError):
             pass
+    time_step_control = out.get("TIME_STEP_CONTROL", "capillary")
+    if time_step_control == "advective":
+        required = (
+            "N_CELLS",
+            "TARGET_ADVECTIVE_CO",
+            "DOMAIN_LENGTH",
+            "REFERENCE_SPEED",
+        )
+        missing = [key for key in required if key not in out]
+        if missing:
+            raise SystemExit(
+                "[materialize] advective TIME_STEP_CONTROL requires: "
+                + ", ".join(missing)
+            )
+        try:
+            n = float(out["N_CELLS"])
+            co = float(out["TARGET_ADVECTIVE_CO"])
+            length = float(out["DOMAIN_LENGTH"])
+            speed = float(out["REFERENCE_SPEED"])
+            if n <= 0 or co <= 0 or length <= 0 or speed <= 0:
+                raise ValueError("all advective timestep inputs must be positive")
+            out["MAX_DELTA_T"] = "{:.10g}".format(co * length / (n * speed))
+        except (TypeError, ValueError) as exc:
+            raise SystemExit(f"[materialize] invalid advective timestep: {exc}")
+    elif time_step_control == "capillary" and "N_CELLS" in out and "CAPILLARY_DT_COEFF" in out:
+        try:
+            n = float(out["N_CELLS"])
+            coeff = float(out["CAPILLARY_DT_COEFF"])
+            if n > 0:
+                out["MAX_DELTA_T"] = "{:.6g}".format(coeff / n**1.5)
+        except (TypeError, ValueError):
+            pass
+    elif time_step_control != "capillary":
+        raise SystemExit(
+            "[materialize] TIME_STEP_CONTROL must be capillary or advective, got "
+            + repr(time_step_control)
+        )
     return out
 
 
 def materialize(base_case, tokens, out_dir, np_, mesh, mode, dims, case_name, index):
     tokens = _with_derived_tokens(tokens)
+    if mesh == "perturbed" and "N_NON_ORTHOGONAL_CORRECTORS" in tokens:
+        try:
+            current = int(tokens["N_NON_ORTHOGONAL_CORRECTORS"])
+        except (TypeError, ValueError) as exc:
+            raise SystemExit(
+                "[materialize] N_NON_ORTHOGONAL_CORRECTORS must be an integer: "
+                + str(exc)
+            )
+        tokens["N_NON_ORTHOGONAL_CORRECTORS"] = str(
+            max(current, _MIN_PERTURBED_NONORTHOGONAL_CORRECTORS)
+        )
     if os.path.exists(out_dir):
         shutil.rmtree(out_dir)
     shutil.copytree(base_case, out_dir, ignore=_IGNORE)
@@ -102,4 +169,8 @@ def materialize(base_case, tokens, out_dir, np_, mesh, mode, dims, case_name, in
     }
     with open(os.path.join(out_dir, "case_params.json"), "w") as fh:
         json.dump(meta, fh, indent=2)
+    # ParaView case marker: an empty ``<caseName>.foam`` lets the OpenFOAM reader
+    # open this study case directly (File > Open <caseName>.foam). One per case, in
+    # the results dir, named after the case so it is identifiable in the file dialog.
+    open(os.path.join(out_dir, f"{case_name}.foam"), "w").close()
     return meta

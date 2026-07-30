@@ -1,0 +1,170 @@
+# Frozen exact-circle pressure-compatibility gate.
+#
+# The interface, material properties, Detrixhe-Aslam phase indicator, rhoLENT
+# mass flux, timestep, PIMPLE controls, rAUf scaling, reconstruct path and
+# cell-centred velocity metric are identical.  Only the construction of the
+# strict integrated capillary face flux Gsigma,f changes.
+study_name: staticISTPressureCompatibilityGate
+case: oscISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+collapse_other_axes: true
+axes_override:
+  N_CELLS: [64]
+  END_TIME: [0.1]
+  WRITE_INTERVAL: [0.002]
+  DROPLET_AXIS_X: [1.0e-3]
+  DROPLET_AXIS_Y: [1.0e-3]
+  N_NON_ORTHOGONAL_CORRECTORS: [1]
+  PRESSURE_NONORTHOGONAL_SCHEME: [corrected]
+  PRESSURE_SOLVER: [GAMG]
+  PRESSURE_PRECONDITIONER: [DIC]
+  PRESSURE_TOLERANCE: [1.0e-9]
+  PRESSURE_REL_TOL: [0.01]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [constantCurvatureSurfaceTension]
+  SURFACE_TENSION_CURVATURE_SOURCE: [field]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGN: [-1]
+  SURFACE_TENSION_GEOMETRIC_METHOD: [conormalCSF]
+  CURVATURE_EXTENSION: [fvm]
+  CURVATURE_EXTENSION_RELAX: [1]
+  CURVATURE_ESTIMATOR: [analyticImplicitSurface]
+  CURVATURE_GEOMETRY_SOURCE: [analyticImplicitSurface]
+  PHASE_INDICATOR_GEOMETRY_SOURCE: [analyticImplicitSurface]
+  CURVATURE_FACE_INTERPOLATION: [arithmetic]
+  CURVATURE_FACE_SOURCE: [model]
+  CURVATURE_FORCE_WEIGHT: [alpha]
+  CURVATURE_FIT_HALF_WIDTH: [4]
+  CURVATURE_REGULARIZATION_OPERATOR: [helmholtzPreserveModes]
+  CURVATURE_TANGENTIAL_REGULARIZATION: [16]
+  CURVATURE_REGULARIZATION_ITERATIONS: [120]
+  CURVATURE_PRESERVE_MODES_THROUGH: [4]
+
+pressure_compatibility_gate:
+  resolutions: [32, 64, 128]
+  mesh_variants: [uniform, perturbed]
+  perturbation_alpha: 0.1
+  perturbation_seed: 0
+  # The velocity sweep below is converged by 8 on N=32,64,128. Uniform meshes
+  # retain the inexpensive legacy value; perturbed meshes never inherit 1.
+  nonorthogonal_correctors:
+    uniform: 1
+    perturbed: 8
+  variants:
+    - id: constantCurvatureCSF
+      surface_tension_force: constantCurvatureSurfaceTension
+      description: sigma*kappa*snGrad(alpha)*magSf
+    - id: capillaryPressurePotential
+      surface_tension_force: constantCurvaturePressurePotential
+      description: snGrad(sigma*kappa*alpha)*magSf
+
+nonorthogonal_correction_sweep:
+  study_name: staticISTPressureCompatibilityGateNonOrthSweep
+  resolutions: [32, 64, 128]
+  correction_counts: [0, 1, 2, 4, 8, 16, 32, 64]
+  perturbation_alpha: 0.1
+  perturbation_seed: 0
+  surface_tension_force: constantCurvaturePressurePotential
+  publication_table: docs/method-comparison/method-comparison-article/data/tables/staticISTNonOrthogonalCorrectionSweep.csv
+
+pressure_operator_pair_gate:
+  study_name: staticISTPressureOperatorPairGate
+  resolutions: [32, 64, 128]
+  perturbation_alpha: 0.1
+  perturbation_seed: 0
+  surface_tension_force: constantCurvaturePressurePotential
+  variants:
+    - id: corrected
+      pressure_nonorthogonal_scheme: corrected
+      nonorthogonal_correctors: 8
+    - id: uncorrected
+      pressure_nonorthogonal_scheme: uncorrected
+      # Keep the PIMPLE loop count identical; repeated orthogonal solves should
+      # only converge the same paired operator more tightly.
+      nonorthogonal_correctors: 8
+  publication_table: docs/method-comparison/method-comparison-article/data/tables/staticISTPressureOperatorPairGate.csv
+
+pressure_rauf_gate:
+  study_name: staticISTPressureRAUfGate
+  resolutions: [32, 64, 128]
+  perturbation_alpha: 0.1
+  perturbation_seed: 0
+  surface_tension_force: constantCurvaturePressurePotential
+  variants:
+    - id: correctedPhysicalRAUf
+      pressure_nonorthogonal_scheme: corrected
+      nonorthogonal_correctors: 8
+      constant_rauf: false
+    - id: correctedConstantRAUf
+      pressure_nonorthogonal_scheme: corrected
+      nonorthogonal_correctors: 8
+      constant_rauf: true
+    - id: uncorrectedPhysicalRAUf
+      pressure_nonorthogonal_scheme: uncorrected
+      nonorthogonal_correctors: 8
+      constant_rauf: false
+    - id: uncorrectedConstantRAUf
+      pressure_nonorthogonal_scheme: uncorrected
+      nonorthogonal_correctors: 8
+      constant_rauf: true
+  publication_table: docs/method-comparison/method-comparison-article/data/tables/staticISTPressureRAUfGate.csv
+
+pressure_tolerance_gate:
+  study_name: staticISTPressureToleranceGate
+  resolutions: [32, 64, 128]
+  perturbation_alpha: 0.1
+  perturbation_seed: 0
+  surface_tension_force: constantCurvaturePressurePotential
+  pressure_nonorthogonal_scheme: corrected
+  nonorthogonal_correctors: 8
+  pressure_solver: GAMG
+  pressure_rel_tol: 0
+  pressure_tolerances: [1.0e-9, 1.0e-11, 1.0e-13, 1.0e-14]
+  publication_table: docs/method-comparison/method-comparison-article/data/tables/staticISTPressureToleranceGate.csv
+
+pressure_solver_gate:
+  study_name: staticISTPressureSolverGate
+  resolutions: [32, 64, 128]
+  perturbation_alpha: 0.1
+  perturbation_seed: 0
+  surface_tension_force: constantCurvaturePressurePotential
+  pressure_nonorthogonal_scheme: corrected
+  nonorthogonal_correctors: 8
+  variants:
+    - id: productionGAMG
+      pressure_solver: GAMG
+      pressure_preconditioner: DIC
+      pressure_tolerance: 1.0e-9
+      pressure_rel_tol: 0.01
+    - id: strictGAMG
+      pressure_solver: GAMG
+      pressure_preconditioner: DIC
+      pressure_tolerance: 1.0e-11
+      pressure_rel_tol: 0
+    - id: strictPCG1e9
+      pressure_solver: PCG
+      pressure_preconditioner: DIC
+      pressure_tolerance: 1.0e-9
+      pressure_rel_tol: 0
+    - id: strictPCG1e11
+      pressure_solver: PCG
+      pressure_preconditioner: DIC
+      pressure_tolerance: 1.0e-11
+      pressure_rel_tol: 0
+    - id: strictPCG1e13
+      pressure_solver: PCG
+      pressure_preconditioner: DIC
+      pressure_tolerance: 1.0e-13
+      pressure_rel_tol: 0
+  publication_table: docs/method-comparison/method-comparison-article/data/tables/staticISTPressureSolverGate.csv
+
+publication_table: docs/method-comparison/method-comparison-article/data/tables/staticISTPressureCompatibilityGate.csv
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

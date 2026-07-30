@@ -1,0 +1,24 @@
+# Extended N=128 linearWLSQ droplet: is the late-time parasitic-current rise seen in
+# linWLSdroplet2D (bottoms ~2e-4 at t=0.07, rises to 5e-3 by t=0.1) a genuine
+# fine-grid instability ONSET, or a bounded transient bump? Run N=128 to t=0.3 to
+# settle it. Serial (1 core) -- safe alongside the 3D advection campaign.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/linWLSdroplet2D_long.yaml
+study_name: linWLSdroplet2D_long
+case: linWLSdroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS:  [128]
+  END_TIME: [0.3]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

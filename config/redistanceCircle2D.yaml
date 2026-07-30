@@ -1,0 +1,34 @@
+# STATIC redistancing convergence (no advection): circle, tanh-profiled psi.
+#
+# cases/2DredistanceCircle initializes psi as a tanh profile of a circle (the
+# zero set is exact, |grad psi| != 1 by construction); leiaTestRedistance
+# applies the runtime-selected redistancer ONCE and measures the band psi- and
+# gradient-errors against the ANALYTIC signed distance |x-c|-R evaluated from
+# levelSet.implicitSurface (no reference field files needed). Expected orders:
+#   planeFootWave / anchoredEikonal : band Linf(psi - psiExact) = O(h^2)
+#                                     (LLS plane-fit error ~ h^2 * kappa)
+#   PDE                             : the classic interface-displacement floor
+#
+#   snakemake --workflow-profile profiles/local --configfile config/redistanceCircle2D.yaml
+
+study_name: redistanceCircle2D
+case: 2DredistanceCircle
+mesh: hex
+mode: serial          # one redistance per case -- no decomposition needed
+np: 1
+
+solver: leiaTestRedistance   # replaces the advection solver in the solve rule
+theme: geometrically-redistanced-levelset
+
+axes_override:
+  END_TIME: [1]                          # unused by the app; controlDict needs it
+  N_CELLS:  [32, 64, 128, 256]
+  REDISTANCER: [PDE, planeFootWave, anchoredEikonal]
+  REDIST_TRIGGER: [interval]             # the app calls redistance() once at t=0
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: true   # static convergence table + figure feed the deck
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

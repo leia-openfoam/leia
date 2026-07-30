@@ -1,0 +1,33 @@
+# Resolved translating-droplet capillary gate. The equations remain in the
+# laboratory frame and physically advect the drop at U=(0.05,0,0); diagnostics
+# report max_c |U_c-(0.05,0,0)|. Four force deliveries share the same N=64
+# quadratic SL transport, rhoLENT coupling, mesh and capillary timestep.
+study_name: transISTN64QuadraticCapillaryGate
+case: transISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [64]
+  END_TIME: [0.05]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  TIME_STEP_CONTROL: [capillary]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE:
+    - constantCurvatureSurfaceTension
+    - integralSurfaceTension
+    - integralConormalSurfaceTension
+    - isoCurvature
+  SURFACE_TENSION_CURVATURE_SOURCE: [field]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGN: [-1]
+  SURFACE_TENSION_GEOMETRIC_METHOD: [conormalCSF]
+  SURFACE_TENSION_SIGMA: [0.07274]
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

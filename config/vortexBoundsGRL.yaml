@@ -1,0 +1,37 @@
+# signedDistanceBounds criterion validation on the reversed 2D vortex:
+# redistance ONLY when the band |grad psi| leaves [1/g, g] (g = 2) -- the
+# case- and resolution-independent usability bounds of the signed distance.
+#
+# Pre-registered hypotheses (with the curvature-corrected planeFootWave):
+#   H1: N=128 -- few/zero redistancing steps; errors ~ noRedistancing.
+#   H2: N=32/64, T=8 -- O(1..10) steps, fired BEFORE the interface loss that
+#       kills the noRedistancing rows (volume error = 1, empty band).
+#   H3: volume conservation error ~ (number of steps) x per-step change
+#       (measured: 0.02% of phase volume per step at N=64).
+# Event counts: grep "EVENT (signedDistanceBounds)" in the solver logs.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/vortexBoundsGRL.yaml
+
+study_name: vortexBoundsGRL
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaRedistancedLevelSetFoam
+
+axes_override:
+  END_TIME: [2, 8]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5]
+  REDISTANCER: [noRedistancing, planeFootWave]
+  REDIST_TRIGGER: [signedDistanceBounds]
+  REDIST_GRADBOUND: [2.0]
+  REDIST_VIOLFRAC: [0.02]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false  # validation study: figures stay in the study dir
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

@@ -1,0 +1,34 @@
+# Oscillating-droplet reconstruction comparison (2D). Mode-2 perturbed ellipse
+# (a=1.1mm, b=0.909mm, area-preserving; R=1mm) relaxes toward a circle under
+# surface tension (Lamb capillary oscillation). Unlike the STATIC droplet, the
+# interface MOVES + DEFORMS every step, so this is the moving-interface test that
+# actually exercises the SL reconstruction -- the regime where linear advection is
+# expected to destabilize |grad psi| while quadratic stays stable.
+#
+# Curvature is the FVM path (divGradPsiSnGradAlpha + curvatureExtension fvm), fixed
+# across the sweep, so the ONLY variable is the advection reconstruction:
+#   SL_RECONSTRUCTION = linearWeightedLeastSquares  vs  uncachedQuadraticWeightedLeastSquares
+# This isolates the transport scheme (the decoupling: transport vs curvature).
+# Primary discriminator = minGradPsiBand (level-set health) + whether the run stays
+# bounded to endTime; also maxMagU / meanMagU (physical oscillation velocity) and
+# pLaplace. sigma/R = 72.74 Pa; 2D mode-2 period ~ 9.5 ms, endTime 0.1 s ~ 10 periods.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/oscillatingDroplet2D.yaml
+study_name: oscillatingDroplet2D
+case: oscillatingDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  SL_RECONSTRUCTION: [linearWeightedLeastSquares, uncachedQuadraticWeightedLeastSquares]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

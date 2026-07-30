@@ -35,7 +35,10 @@ _TOKEN = re.compile(r"@!([A-Z0-9_]+)!@")
 
 # Tokens computed by materialize._with_derived_tokens from another token (so they
 # must NOT be a sweep axis or require a .parameter value); skip them in the grid.
-_DERIVED_TOKENS = {"HALF_END_TIME"}
+#   HALF_END_TIME = END_TIME/2 (t=T/2 snapshot for the advection studies)
+#   MAX_DELTA_T   = capillary or fixed-advective-Co law selected during
+#                   materialization (see materialize._with_derived_tokens)
+_DERIVED_TOKENS = {"HALF_END_TIME", "MAX_DELTA_T"}
 
 
 def _strip_comments(text):

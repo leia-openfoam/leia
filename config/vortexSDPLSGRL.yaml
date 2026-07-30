@@ -1,0 +1,36 @@
+# SDPLS source-term gradient control on the reversed 2D vortex -- NO
+# redistancing. The source S = f_nl(psi^n)*psi vanishes identically on the
+# zero level set (the interface evolution is exactly untouched) while
+# cancelling the normal-strain drift of |grad psi|:
+#   R    : f_nl = (nHat . grad(u) . nHat)  -- strain cancellation (SDPLS)
+#   beta : f_nl = beta - |grad psi|        -- relaxation to unit gradient
+#                                             (convected level set)
+# Read-out: band min/max |grad psi| trajectories (gradPsiError.csv) vs the
+# noRedistancing death rows of bulkVortexGRL (min -> 0 by t~1, band dead by
+# t~5 at N=64, T=8). Success = band |grad psi| held inside O(1) bounds
+# through T=8 with NO events, NO interface displacement, ZERO new code.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/vortexSDPLSGRL.yaml
+
+study_name: vortexSDPLSGRL
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaRedistancedLevelSetFoam
+
+axes_override:
+  END_TIME: [2, 8]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5]
+  REDISTANCER: [noRedistancing]
+  SDPLS_SOURCE: [R, beta]
+  SOURCE_SCHEME: [strictNegativeSpLinearImplicit]  # keeps the matrix diagonally dominant
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false  # decisive experiment: figures stay in the study dir
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

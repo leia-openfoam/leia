@@ -1,0 +1,45 @@
+# quadraticTaylor (quadratic Taylor + clip) 3D deformation convergence on a POLYHEDRAL
+# (cfMesh pMesh) mesh -- the mesh-generality companion to the hex study
+# config/linearConv3Ddeformation.yaml, mirroring
+# config/uncachedConv3DdeformationPoly.yaml.
+#
+# The Snakefile poly path runs pMesh and reads cases/3Ddeformation_poly.parameter
+# (cfMesh maxCellSize + SURFACE_FILE); the solver, reconstruction and SL controls
+# come from this config + cases/default.parameter. h = maxCellSize, so the ladder
+# mirrors the hex 1/N ladder: maxCellSize = 1/32,1/50,1/80,1/128. The
+# reconstruction safeguards (clipToStencilBounds, face stencil) live in the
+# slReconstruction BASE class and apply to linearTaylor unchanged.
+# Results agglomerate into docs/linear-semi-lagrangian-level-set/ (theme key).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/linearConv3DdeformationPoly.yaml --resources tasks=12
+study_name: linearConv3DdeformationPoly
+case: 3Ddeformation
+mesh: poly
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangeLevelSetFoam
+theme: linear-semi-lagrangian-level-set
+
+axes_override:
+  END_TIME: [3.0]
+  # h = maxCellSize; 1/32,1/50,1/80,1/128 (mirrors the hex cbrt(4) ladder).
+  MAX_CELL_SIZE: [0.03125, 0.02, 0.0125, 0.0078125]
+  CFL: [0.1, 0.2, 0.4, 0.8]              # CFL sweep (clip already on for poly)
+  SL_RECONSTRUCTION: [quadraticTaylor]
+  # clipToStencilBounds bounds the reconstruction on irregular polyhedral
+  # stencils (base-class safeguard; inactive in smooth regions -> order kept).
+  SL_CLIP: ["true"]   # quoted so it renders lowercase (OpenFOAM Switch; unquoted YAML true -> "True" -> parse error)
+  # Face-neighbour (cell-face-cell) stencil: the mesh-appropriate choice on polyhedra.
+  SL_STENCIL: [face]
+  PHASE_INDICATOR: [detrixheAslam]
+  SURFACE_FILE: [box-edges.stl]
+  DIV: [linear]
+  # N_CELLS unused by pMesh; pin to a dummy so the base [32,64] does not multiply runs.
+  N_CELLS: [64]
+collapse_other_axes: true
+
+export_slides: true   # publication study: auto-refresh theme figures + deck on completion
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

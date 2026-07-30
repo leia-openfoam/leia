@@ -7,11 +7,10 @@
 # this config + cases/default.parameter. The convergence spacing h = maxCellSize
 # (aggregate.py maps mesh==poly -> h = maxCellSize).
 #
-# Shear is [0,1]^2x[0,2] (2x the deformation volume) so it hits the 15 GB ceiling at
-# a coarser maxCellSize: the hex-equivalent 1/128 = 0.0078 would be ~3.4M polyhedra
-# (~OOM), so the ladder stops at 1/100 = 0.01 (finest, ~1.7M, tight). maxCellSize =
-# 1/32,1/50,1/80,1/100. The sanity run calibrates the finest level; drop 0.01 if it
-# is too tight. LSQ order over the ladder.
+# Shear is now [0,1]^3 (z reduced from 2 to 1 -- the interface stays at z<0.8, so the
+# upper half of the old [0,2] box was always empty). Halving the volume ~halves the
+# polyhedron count, so the full 1/32,1/50,1/80,1/128 ladder (matching deformation-poly)
+# now fits in memory, giving a 4-level hex<->poly shear comparison. LSQ order over the ladder.
 #
 #   snakemake --workflow-profile profiles/local --configfile config/uncachedConv3DshearPoly.yaml --resources tasks=12
 study_name: uncachedConv3DshearPoly
@@ -24,13 +23,11 @@ solver: leiaSemiLagrangeLevelSetFoam
 
 axes_override:
   END_TIME: [3.0]
-  # h = maxCellSize; 1/32,1/50. Shear is 1x1x2 (2x deformation volume) AND the
-  # CPU-bound uncached reconstruction is slow on the large polyhedral point-
-  # neighbour stencils, so on this 15 GB / desktop box the finer levels are
-  # prohibitive: 1/80 (0.0125, ~0.8M polyhedra) ~80 min/run, 1/100 thrashes swap,
-  # 1/128 OOMs. Two levels here corroborate the (4-level) deformation-poly result;
-  # extend on a larger machine by re-adding 0.0125, 0.01, 0.0078125.
-  MAX_CELL_SIZE: [0.03125, 0.02]
+  # h = maxCellSize; 1/32,1/50,1/80,1/128 on the reduced [0,1]^3 shear domain. The
+  # halved volume brings the finest level within the 15 GB box, giving a 4-level
+  # hex<->poly shear comparison (matching deformation-poly). --keep-going salvages the
+  # coarser levels if the finest is still too tight.
+  MAX_CELL_SIZE: [0.03125, 0.02, 0.0125, 0.0078125]
   CFL: [0.5]
   SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
   # clipToStencilBounds: REQUIRED on polyhedra (bounds a near-singular per-cell WLSQ
@@ -46,7 +43,7 @@ axes_override:
   N_CELLS: [64]
 collapse_other_axes: true
 
-export_slides: false
+export_slides: true   # publication study: auto-refresh theme figures + deck on completion
 
 mpi_launcher: "mpirun -np {np}"
 env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

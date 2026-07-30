@@ -1,0 +1,40 @@
+# Stationary-droplet FIELD-VISUALISATION job (companion to stationaryDroplet2D.yaml).
+#
+# Runs the same water/air droplet with the two-phase SL solver at THREE resolutions
+# (N = 32, 64, 128) to a short, representative time (END_TIME = 0.02 s), retaining a
+# field snapshot, and renders two montage figures into the SL theme data source:
+#
+#   sl_droplet_velocity_field.png   volume-fraction background + velocity glyphs
+#                                   (parasitic-current pattern vs resolution)
+#   sl_droplet_curvature_field.png  reconstructed curvature kappa in the band
+#
+# with the mesh drawn on every panel. This is a light, self-contained job (short end
+# time, N<=128), separate from the parasitic-current CONVERGENCE study
+# (stationaryDroplet2D.yaml, which sweeps to t=0.1 for the settled table/figure).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/dropletFields2D.yaml
+study_name: dropletFields2D
+case: stationaryDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+# Report renders field montages (make_droplet_fields_fig.py), not the settled table.
+study_kind: dropletFields
+
+setfields_args: "-alphaName alpha.water"
+
+# Three resolutions; END_TIME overridden to a short representative time (a snapshot
+# with a developed parasitic pattern, before the N=128 run destabilises ~t=0.048).
+# MAX_DELTA_T stays a derived token (CAPILLARY_DT_COEFF / N^1.5), so each case is
+# stable at its own capillary step.
+axes_override:
+  N_CELLS:  [32, 64, 128]
+  END_TIME: [0.02]
+
+export_slides: true
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

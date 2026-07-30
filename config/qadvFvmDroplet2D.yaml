@@ -1,0 +1,29 @@
+# DECOUPLED droplet: quadratic (stable) SL advection + FVM curvature.
+#
+# The user's proposal: advect psi with the STABLE quadratic value-fit
+# (uncachedQuadraticWeightedLeastSquares, which preserves |grad psi|~1), but take
+# CURVATURE from the FVM path (divGradPsiSnGradAlpha, kappa=div(grad psi/|grad psi|)
+# + curvatureExtension fvm), matching the curvature order to the 2nd-order FVM
+# Navier-Stokes discretization rather than using the reconstruction's Hessian.
+# Direct comparison to config/linWLSdroplet2D.yaml (same FVM curvature, but LINEAR
+# advection) and to the stationaryDroplet2D UQWLSR+reconstructedCurvature baseline
+# (same quadratic advection, but symbolic-Hessian curvature that diverged at N>=128).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/qadvFvmDroplet2D.yaml
+study_name: qadvFvmDroplet2D
+case: qadvFvmDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"

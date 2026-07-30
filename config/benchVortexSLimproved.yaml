@@ -1,0 +1,34 @@
+# SL-quadratic IMPROVEMENT study: order-preserving Venkatakrishnan slope
+# limiter vs the unlimited baseline, on the reversed 2D vortex. Headline:
+# does the limiter cut the boundedness error (E_BOUND_ALPHA) WITHOUT collapsing
+# the shape-error convergence order the way Barth-Jespersen does (measured 3.0
+# -> 0.1)? Method rows: SL:uncachedQuadraticWeightedLeastSquares (baseline) and
+# ...+lim:venk (see aggregate.method_of).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/benchVortexSLimproved.yaml
+
+study_name: benchVortexSLimproved
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: method-comparison
+
+axes_override:
+  END_TIME: [2, 8]
+  N_CELLS:  [32, 64, 128, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [semiLagrangian]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_LIMITER: [none, venkatakrishnan]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"
