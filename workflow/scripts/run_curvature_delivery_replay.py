@@ -87,7 +87,18 @@ def base_tokens(config: dict) -> dict[str, str]:
         raise SystemExit(
             f"curvature replay base must materialize one case, got {len(variations)}"
         )
-    return dict(variations[0])
+    base = dict(variations[0])
+    override = os.environ.get("LEIA_MOMENTUM_PREDICTOR")
+    if override:
+        if override not in ("yes", "no"):
+            raise SystemExit(
+                "LEIA_MOMENTUM_PREDICTOR must be 'yes' or 'no', got "
+                f"'{override}'"
+            )
+        base["MOMENTUM_PREDICTOR"] = override
+        print(f"[replay] MOMENTUM_PREDICTOR override -> {override}")
+    return base
+
 
 
 def make_case(case_dir: Path, tokens: dict[str, str], index: str) -> dict:

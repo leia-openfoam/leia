@@ -28,6 +28,11 @@ values
     // value established by the exact-circle non-orthogonal-correction sweep.
     N_NON_ORTHOGONAL_CORRECTORS ( 1 );
 
+    // PIMPLE momentum predictor. 'no' is the conventional interFoam choice
+    // for surface-tension-dominated low-Re flow; runners override via the
+    // LEIA_MOMENTUM_PREDICTOR environment variable.
+    MOMENTUM_PREDICTOR ( yes );
+
     // Paired pressure-normal operator used by both fvc::snGrad(pSigma) and the
     // pressure Laplacian: corrected | uncorrected.
     PRESSURE_NONORTHOGONAL_SCHEME ( corrected );

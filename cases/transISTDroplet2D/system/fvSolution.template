@@ -130,7 +130,10 @@ relaxationFactors
 
 PIMPLE
 {
-    momentumPredictor   yes;
+    // Toggled by studies: 'no' removes the capillary force from the
+    // momentum predictor, so it reaches the velocity ONLY as the
+    // face-normal flux where the balanced-force cancellation is exact.
+    momentumPredictor   @!MOMENTUM_PREDICTOR!@;
     nOuterCorrectors    3;
     nCorrectors         2;
     // General perturbed-mesh materialisation enforces a minimum of 8, as
