@@ -1,0 +1,211 @@
+# Running leia on Lichtenberg (TU Darmstadt)
+
+Canonical, agent-readable description of the laptop <-> cluster workflow. All
+values below are **verified** against the live cluster (2026-07-27).
+
+The KISS rule that dissolves every "two machines, one branch" headache:
+
+> **Git carries code. rsync carries raw output. Neither carries the other.**
+>
+> The laptop (WSL) and Lichtenberg are two *equal clones* of the GitHub repo
+> (`git@github.com:leia-openfoam/leia.git`). GitHub is the only hub — you never
+> `scp` code and never `git push` into the cluster. Heavy simulation output
+> (`studies/`, `runs/`) is git-ignored and lives on the cluster; it comes to the
+> laptop by `rsync`, on demand, only to look at it.
+
+## Why there is no "two commits for one milestone" problem
+
+Laptop and cluster commit **disjoint paths**, so git merges them and
+`git pull --rebase` keeps history linear:
+
+| Machine    | Role                                    | Commits these paths                                           |
+|------------|-----------------------------------------|---------------------------------------------------------------|
+| Laptop/WSL | method dev (with Claude), viewing decks | solver/library `src/`, `*.template.html`, prose, plot scripts |
+| Lichtenberg| heavy runs + BO orchestration           | regenerated results `docs/**/data/{figures,tables,mechanism}` |
+
+`docs/**/data/*.{csv,png,svg}` are the small tracked results the decks + papers
+consume (re-included past the global `*.csv`/`*.png` ignore). Built deck HTML is
+git-ignored — rebuild it locally in seconds with `make docs`. So slides are
+*authored* on the laptop but *fed* by data the cluster committed. Discipline:
+**`git pull --rebase` before you start and before you push.**
+
+## Verified cluster environment (Lichtenberg / HHLR)
+
+- **User / login:** `tm83tomy@lclusterN.hrz.tu-darmstadt.de`. Helper `~/bin/licht N`
+  opens `ssh -vvX tm83tomy@lclusterN...`. Login nodes: **1–7** (Phase 2 / i02),
+  **13–19** (Phase 1 / i01); any is fine for submission. Passwordless (SSH key).
+- **SLURM account:** `special00004` (current default for runs). Also available:
+  `special00005`, `project00186/00450/00524/00727/01204/01456`.
+- **SLURM gotcha:** the `job_submit` plugin **rejects any job without
+  `--mem-per-cpu`**; partition is auto-routed from the time limit (default
+  `deflt`, 24 h; `deflt_short` 30 min; `long` 7 d). The snakemake slurm profile
+  supplies `--mem-per-cpu` via `mem_mb_per_cpu`.
+- **Filesystems:** `$HOME` (=/home/tm83tomy) and `/work/home/tm83tomy` share a
+  268 G quota (lots free); `/work/scratch/tm83tomy` has ~40 T for run output;
+  the group tree is `/work/groups/da_mma_b`.
+- **Toolchain modules:** `gcc/11.5.0-z7mc` (also 13.4.0, 14.3.0),
+  `openmpi/4.1.8-6xzv`. `cmake 4.2`, `flex 2.6.4`, `bison 3.7.4`, `git 2.52`.
+- **Login `.bashrc` noise:** it tries to `module load gcc/11.4.1 python/3.11.9`
+  which don't exist on every node — harmless Lmod errors. Batch jobs ignore it
+  (`module purge` + explicit loads in the job).
+- **OpenFOAM:** built from source in **`$HOME/OpenFOAM/OpenFOAM-v2512`**
+  (matches the WSL laptop version). Defaults `WM_COMPILER=Gcc`,
+  `WM_COMPILER_TYPE=system`, `WM_MPLIB=SYSTEMOPENMPI` — uses the module gcc +
+  module OpenMPI, no ThirdParty compiler/MPI build. A system spack module
+  `openfoam/2512` also exists but does NOT populate the classic `wmake`
+  environment, so we use the source build.
+
+### How OpenFOAM-v2512 was built (reproduce with `$HOME/OpenFOAM/build-of2512-rebuild.sbatch`)
+
+```bash
+# on a login node (internet only exists here):
+cd $HOME/OpenFOAM
+curl -L -o OpenFOAM-v2512.tgz     https://dl.openfoam.com/source/v2512/OpenFOAM-v2512.tgz
+curl -L -o ThirdParty-v2512.tar.gz https://dl.openfoam.com/source/v2512/ThirdParty-v2512.tar.gz   # NOTE: .tar.gz
+tar xzf OpenFOAM-v2512.tgz && tar xzf ThirdParty-v2512.tar.gz
+mv OpenFOAM-v2512/modules/OpenQBMM OpenFOAM-v2512/OpenQBMM.disabled   # see gotcha below
+sbatch build-of2512-rebuild.sbatch   # -A special00004, -c 48, --mem-per-cpu=3600
+```
+
+The job does: `module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv`,
+`source etc/bashrc`, then `./Allwmake -j 48 -s -l`. Result (verified 2026-07-27):
+**270 apps, 128 libs, `foamInstallationTest` = "Critical systems ok".**
+
+> **BUILD GOTCHA (cost one failed build).** Do **not** use `Allwmake`'s `-q`
+> (queue / `wmakeCollect`) mode here. `-q` batches src+applications+modules into
+> one parallel make, so when the bundled **OpenQBMM** module (population balance,
+> unused by leia) fails a compile, `make` aborts scheduling and the standard
+> solver *links* never run — you get all 128 libraries but `icoFoam`/`interFoam`
+> missing. Fix = disable OpenQBMM **and** drop `-q` (build src -> applications ->
+> modules in order, so a module failure can't poison the solvers). The other
+> bundled modules (adios, visualization, external-solver) are optional and their
+> ADIOS2/CGAL warnings are harmless.
+
+### Runtime MPI (proven on the interconnect)
+
+OpenMPI on Lichtenberg wants these (from the group's working job scripts); the
+slurm profile exports them:
+
+```bash
+export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2
+```
+
+## Where leia lives on the cluster
+
+**`/work/scratch/tm83tomy/leia`** — the checkout is on the **parallel file
+system**, because that is where simulations must run (fast parallel I/O).
+`/work/scratch` is periodically **purged**; that is fine because the repo is only
+ever a clone of the GitHub hub and its heavy output is regenerable — if scratch
+is wiped, re-clone. The OpenFOAM install and leia's compiled binaries
+(`$FOAM_USER_APPBIN`) live in the persistent `$HOME`, so only the source + run
+output are at risk.
+
+## GitHub SSH from the cluster (git protocol, so push+pull work)
+
+The cluster authenticates to GitHub with its **own** key
+`~/.ssh/id_github_ed25519` (pinned for github.com in `~/.ssh/config` with
+`IdentitiesOnly yes`, so the ~15 other keys in `~/.ssh` don't cause
+"too many authentication failures"). The matching public key is registered on
+GitHub. Regenerate + re-register only if it is ever lost:
+```bash
+ssh-keygen -t ed25519 -C "tm83tomy@lichtenberg-github" -f ~/.ssh/id_github_ed25519 -N ""
+cat ~/.ssh/id_github_ed25519.pub   # add to GitHub -> Settings -> SSH keys
+```
+
+## One-time laptop setup
+
+`~/.ssh/config` (so the Makefile's `CLUSTER=lichtenberg` and rsync helpers work):
+
+```
+Host lichtenberg
+    HostName lcluster5.hrz.tu-darmstadt.de
+    User tm83tomy
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+Clone on the cluster once (into scratch, over SSH):
+
+```bash
+ssh lichtenberg
+cd /work/scratch/tm83tomy
+git clone git@github.com:leia-openfoam/leia.git && cd leia
+git checkout feature/velocity-extension
+git submodule update --init --recursive        # pyFoamStudy (legacy)
+python3 -m pip install --user --break-system-packages "snakemake>=8" snakemake-executor-plugin-slurm
+source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc && ./Allwmake     # build leia against v2512
+```
+
+## Parallel-run status (verified 2026-07-28)
+
+A single reversed 2D-vortex case with quadratic semi-Lagrangian advection
+(`quadraticWeightedLeastSquares`) **runs to completion on 4 MPI ranks** on
+Lichtenberg (`mpirun -np 4 leiaSemiLagrangeLevelSetFoam -parallel`, OpenFOAM-v2512
++ leia, account `special00004`). The proven pattern is a **standalone `#SBATCH -n 4`
+job** (like the group's `isoAdv.sbatch`): `blockMesh -> decomposePar -force ->
+mpirun -np {np} <solver> -parallel -> reconstructPar`.
+
+> **KNOWN GAP — `make studies PROFILE=profiles/slurm` does NOT yet drive parallel
+> solves.** snakemake's slurm executor wraps the grouped `mesh+decompose+solve`
+> job in its own single-task `srun` jobstep; launching the OpenFOAM MPI solve
+> inside it fails either way — `srun` → "CPU binding outside of job step
+> allocation / Unable to satisfy cpu bind request"; `mpirun` → too few slots.
+> The serial steps (blockMesh, decomposePar) work. Fixing the study workflow on
+> SLURM needs the solve rule ungrouped from the serial steps and its `tasks={np}`
+> propagated to the jobstep (a `workflow/Snakefile` change), or the plugin's MPI
+> resources (`resources: mpi=..., tasks=...`) used instead of an inline launcher.
+> Until then, run parallel cases on the cluster via a standalone sbatch as above.
+
+## The daily loop
+
+```bash
+# --- laptop: develop with Claude, then hand off ---
+git pull --rebase && <edit / build / smoke-test in WSL> && git commit -am "..." && git push
+
+# --- cluster: pull + run (this is all "run on Lichtenberg" means) ---
+ssh lichtenberg
+cd /work/scratch/tm83tomy/leia && git pull --rebase && ./Allwmake
+make studies PROFILE=profiles/slurm                       # one sbatch per case
+git commit -am "results: <study>" docs/**/data && git push  # only the tracked data
+
+# --- laptop: see the new results ---
+git pull --rebase && make docs        # rebuild decks + papers from docs/**/data
+make pull-runs                        # OR rsync raw fields back to visualise
+```
+
+`make studies` swaps backend purely via `PROFILE` — identical study, local
+(`mpirun`, WSL smoke test) vs Lichtenberg (`sbatch`/case).
+
+## The three workflows
+
+**(3) Method development (interactive, with Claude).** Edit + commit on the
+laptop; smoke-test in WSL with `profiles/local`. Push. On the cluster
+`git pull && ./Allwmake`, run the real resolution with `profiles/slurm`. `rsync`
+raw fields back only to visualise (`make pull-runs`).
+
+**(2) Automated BO runs.** Snakemake + SLURM fans out one iteration's candidate
+simulations as independent `sbatch` jobs. Launch inside `tmux` on a login node so
+it survives disconnect:
+```bash
+ssh lichtenberg && tmux new -s bo
+cd /work/scratch/tm83tomy/leia && python3 workflow/scripts/bo_driver.py
+```
+
+**(1) Sequential BO (each sim triggered by the previous argmax).** BO is
+inherently sequential, so the **outer loop is a thin Python driver**, not the
+snakemake DAG. Per iteration: render candidate -> `snakemake --workflow-profile
+profiles/slurm` (submit + wait) -> read objective from the study database CSV ->
+fit GP -> argmax -> repeat. Snakemake still runs the inner simulation (reusing
+caching/resume/launcher); it just doesn't decide the next point. DAG for fan-out,
+Python for the feedback loop.
+
+## rsync helpers (Makefile)
+
+Raw output is git-ignored and stays on the cluster; pull it only to visualise:
+
+```bash
+make pull-runs                    # all of studies/ from the cluster
+make pull-study STUDY=bulkVortexSL
+```
+
+`CLUSTER` (default `lichtenberg`) is the ssh alias; `REMOTE` the repo path.
+Everything that feeds a deck or paper already travels via git as `docs/**/data`.

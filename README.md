@@ -47,8 +47,18 @@ The level-set components are **runtime-selectable** (chosen in `system/fvSolutio
   ~O(h^2)-convergent geometric reference), `meshWave` (parallel-robust wave). See
   [Velocity extension](#velocity-extension).
 
-Solvers (`applications/solvers/`): **`leiaLevelSetFoam`** (advection verification) and
-**`leiaLevelSetTwoPhaseFoam`** (two-phase flow with surface tension).
+Solvers (`applications/solvers/`):
+
+- **`leiaLevelSetFoam`** — Eulerian advection verification;
+- **`leiaLevelSetTwoPhaseFoam`** — Eulerian two-phase flow with surface tension;
+- **`leiaSemiLagrangeLevelSetFoam`** — semi-Lagrangian advection verification (transports
+  `psi` along characteristics, `psi^{n+1}(x_c) = psi^n(x_d)`, with a value least-squares
+  reconstruction at the departure foot — no flux, no linear solve);
+- **`leiaSemiLagrangianLevelSetTwoPhaseFoam`** — semi-Lagrangian two-phase flow: the same
+  reinitialisation-free transport coupled to one-field incompressible Navier–Stokes, with
+  the interface curvature evaluated **symbolically** from the quadratic reconstruction
+  (gradient + Hessian) and extended constant along the normal for the continuum
+  surface-tension force.
 
 ## Authors
 
@@ -60,8 +70,10 @@ Solvers (`applications/solvers/`): **`leiaLevelSetFoam`** (advection verificatio
 ### Dependencies
 
 - A C++17 compiler (tested with GCC 10.x / 11.x).
-- **OpenFOAM** — tested with OpenFOAM-v2206 and OpenFOAM-v2506/v2512. Source it before
-  building (`source .../OpenFOAM-vXXXX/etc/bashrc`).
+- **OpenFOAM-v2512** (current standard version; also builds against v2206/v2506).
+  Source it before building (`source .../OpenFOAM-v2512/etc/bashrc`). On the
+  laptop (WSL) it lives in `$HOME/OpenFOAM/OpenFOAM-v2512`; on Lichtenberg it is
+  the source build in `$HOME/OpenFOAM/OpenFOAM-v2512` — see [CLUSTER.md](CLUSTER.md).
 - [cfmesh](https://cfmesh.com/cfmesh/) (OpenFOAM sub-module) — polyhedral (`pMesh`) cases.
 
 ### Build
@@ -76,6 +88,24 @@ This builds the libraries (`libleiaLevelSet`, …) and the solvers/utilities
 into `$FOAM_USER_*BIN`. Doxygen docs: <https://leia-openfoam.github.io/leia/>.
 
 ## Running the verification test suite (Snakemake)
+
+**One-command reproduction.** The repo-root `Makefile` rebuilds everything from source —
+the library and solvers, every convergence/verification study, and the figures, tables,
+slide decks and article PDFs they feed (source OpenFOAM first, and have `snakemake`,
+`foamlib`, `vtk`, `numpy`, `matplotlib` and `latexmk` on `PATH`):
+
+```
+leia> make build        # ./Allwmake: library + all solvers
+leia> make studies      # run every study (SL advection, two-phase droplet, velocity-ext)
+leia> make docs         # rebuild the reveal decks + compile the articles from the data
+leia> make all          # build + studies + docs
+```
+
+`make studies` runs three groups: `studies-sl` (semi-Lagrangian convergence),
+`studies-droplet` (the two-phase stationary droplet), and `studies-ve` (velocity
+extension). Each study's results agglomerate into its theme's single data source
+(`docs/<theme>/<slug>-article/data/{figures,tables}`), which both the deck and the
+article consume, so slides and paper always reflect the newest numbers.
 
 The parameter-study test suite is driven by **Snakemake** (replacing the old
 `pyFoamStudy` flow). The same workflow runs locally (`mpirun`) or on SLURM (one job per
@@ -144,10 +174,31 @@ leia> snakemake --workflow-profile profiles/local --configfile config/steadyVort
 # line to velocity extension. Instead of correcting the velocity it solves
 # Dpsi/Dt = 0 along characteristics (psi^{n+1}(x_c) = psi^n(x_d)); the reconstruction
 # of psi^n at the departure foot is the swept axis (linearTaylor O(h) baseline,
-# nestedLSQ / quadraticWeightedLeastSquares O(h^2)). Same reversed 2Dvortex study; quadraticWeightedLeastSquares
+# quadraticTaylor / quadraticWeightedLeastSquares O(h^2)). Same reversed 2Dvortex study; quadraticWeightedLeastSquares
 # beats every velocity-extension model on shape AND |grad psi| with no linear solve.
 leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortexSL.yaml
 leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortexSLHighRes.yaml
+
+# TWO-PHASE stationary droplet (leiaSemiLagrangianLevelSetTwoPhaseFoam): the
+# parasitic-current benchmark of Lippert et al. (2022). A water/air drop (R=1 mm,
+# sigma/R = 72.74 Pa, g=0) is at rest; the metrics are the spurious currents max|U|,
+# mean|U| and the measured Laplace jump, written every step to the solver CSV. Mesh
+# ladder N = 32/64/128/256; the report step fits the log-log order of max|U| vs h and
+# regenerates data/tables/droplet_parasitic.tex + data/figures/sl_droplet_parasitic.png.
+# Surface tension is explicit, so the step is capillary-limited: maxDeltaT is a DERIVED
+# token, CAPILLARY_DT_COEFF / N^1.5 (~dt_sigma/4). 256^2 is the long pole (~33k serial
+# steps, hours); use the slurm profile or reduce the ladder for a quick check.
+leia> snakemake --workflow-profile profiles/local --configfile config/stationaryDroplet2D.yaml
+# or, standalone at the base resolution:  cases/stationaryDroplet2D> ./Allrun.sh
+
+# Fine-mesh DIVERGENCE MECHANISM probe (why the currents grow at N>=128): reruns the
+# droplet at N=64 (stable) and N=128 (diverging) with the solver logging, per step,
+# min|grad psi| and the band curvature error alongside max|U|, plus an N=128 control
+# with the interface FROZEN (SL_FREEZE_INTERFACE=1, advection skipped). Shows the
+# signed-distance loss LEADS the current runaway, and that freezing psi removes it --
+# a transport-coupled feedback, not a force imbalance. Writes the compact CSVs under
+# docs/.../data/mechanism/ and (via make_droplet_mechanism.py) sl_droplet_mechanism.png.
+leia> bash workflow/scripts/droplet_mechanism_probe.sh   # WSL, OpenFOAM sourced
 ```
 
 The two vortex configs write to **separate study directories**
