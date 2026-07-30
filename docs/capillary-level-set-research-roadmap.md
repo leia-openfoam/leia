@@ -1145,3 +1145,151 @@ frozen one-step maximum cell velocity collapses, the startup pressure solve is
 responsible.  If the PCG plateau remains, isolate the common
 `fvc::reconstruct` projection.  Variable-curvature, translating and
 oscillating cases remain blocked until this manufactured gate is quiet.
+
+## The momentum predictor, and why it does not compose with the linear solver (2026-07-30)
+
+### The manufactured-pressure-initialisation gate declared above is null
+
+Before running it: the solved `p_rgh` already *is* the manufactured field.  On the
+perturbed exact-circle cases the written `p_rgh` differs from
+`72.74*alpha.water` plus a reference constant by at most `5.35e-6` Pa at
+N=128, and `pEqn.H` already prints the exact observable the gate proposes to
+measure -- `rAU/rAUf capillary-pressure velocity residual: max=0.00139183637045
+m/s` -- matching the written `max|U|` to seven digits.  Because the one-step run
+re-solves `fvm::laplacian(rAUf, p_rgh) == fvc::div(phiHbyA)` from scratch, a
+manufactured initial field acts only as a Krylov initial guess plus, through
+`momentumPredictor yes`, the first outer iteration's `HbyA`.  Whoever runs it will
+spend the build confirming a null.  It is superseded by the facewise gate at the
+end of this section, and the standing block on droplet runs should be re-scoped
+accordingly rather than waiting on it.
+
+### The predictor was hardcoded and never varied
+
+`momentumPredictor yes` was fixed in all sixteen droplet dictionaries and appears
+nowhere in the negative-result record.  With the predictor on, the capillary force
+reaches the velocity twice per outer iteration: once as a cell source obtained by
+`fvc::reconstruct` of the face-normal force inside the momentum predictor, where
+no pressure gradient yet exists to cancel against, and once through the pressure
+correction, where it enters as a facewise *difference* that nearly vanishes for a
+compatible force.  The balanced-force cancellation is exact in the scalar
+face-normal flux space, so the predictor is the one place in the loop that pushes
+the un-cancelled force, of magnitude `sigma*kappa/h ~ 4.6e5` N/m^3, through a
+reconstruction at full strength.  It is now the materialised token
+`MOMENTUM_PREDICTOR` (default `yes`, so every existing study is unchanged), with a
+`LEIA_MOMENTUM_PREDICTOR=yes|no` override honoured by the gate runners.
+
+Frozen exact-circle pressure-compatibility gate, exact constant curvature,
+analytic geometry, production GAMG, eight non-orthogonal correctors.  Maximum
+written cell velocity [m/s], predictor on -> off:
+
+| N | uniform | perturbed |
+|---:|---|---|
+| 32 | `3.770e-9` -> `6.766e-9` | `8.584e-6` -> `2.725e-6` |
+| 64 | `7.635e-9` -> `6.770e-9` | `7.328e-4` -> `3.137e-5` |
+| 128 | `1.039e-8` -> `4.081e-9` | `1.392e-3` -> `6.121e-5` |
+
+Two distinct effects.  The perturbed-mesh response falls by `23x` on both
+resolved meshes, comparable to the linear-solver gain reported above and reached
+by a one-word dictionary change.  And the uniform sequence stops growing under
+refinement and starts falling, so on orthogonal meshes the predictor was the
+entire source of the (small) refinement growth.  The product and potential force
+forms still agree to roundoff, `4e-16` to `1e-13`.
+
+### The predictor is irrelevant to curvature-variation-driven currents
+
+The four-snapshot replay was rerun with the predictor off, reusing the existing
+transported baseline so the `psi` snapshots are byte-identical and only the
+one-step solve differs.  At `t=0.05`, predictor on -> off:
+
+| curvature delivery | on | off |
+|---|---:|---:|
+| exact constant | `7.37e-9` | `1.33e-9` |
+| interface mean | `3.84e-9` | `6.94e-10` |
+| quadratic cell centre | `2.03` | `2.031` |
+| closest-point Newton | `1.25` | `1.252` |
+| foot-point height function | `1.87e-1` | `1.870e-1` |
+| quadratic + Kang | `1.08` | `1.083` |
+| FVM + Kang | `2.50e-2` | `2.496e-2` |
+| mode-preserving connected fit | `1.28448e-2` | `1.28448e-2` |
+
+Every variable-curvature arm is unchanged to four significant figures; only the
+two controls move, and only within solver tolerance.  This dissociates the two
+incompatibilities.  The predictor's extra reconstruction amplifies
+**mesh-induced** force/gradient incompatibility, which is the entire residual when
+the curvature is exact and constant.  It does nothing for
+**curvature-variation-induced** incompatibility, because there the force genuinely
+lies outside the range of the discrete gradient and removing a reconstruction pass
+cannot change the range of an operator.  Tangential curvature variation remains
+the velocity-producing defect of the coupled problem, and it sits upstream of the
+predictor.
+
+### The two levers do not compose: a common floor
+
+Registered before running: if the predictor and the linear solver attack
+independent channels the combination should reach about `2e-6` at N=128; if they
+attack the same residual both land on a common floor near `5e-5`.  Perturbed mesh,
+exact constant curvature, eight correctors, `strictPCG1e11` (PCG/DIC, tolerance
+`1e-11`, `relTol 0`).  Maximum cell velocity [m/s]:
+
+| N | GAMG, pred. on | PCG, pred. on | GAMG, pred. off | PCG, pred. off |
+|---:|---:|---:|---:|---:|
+| 32 | `8.584e-6` | `9.050e-6` | `2.725e-6` | `1.914e-6` |
+| 64 | `7.328e-4` | `4.029e-5` | `3.137e-5` | `3.509e-5` |
+| 128 | `1.392e-3` | `4.839e-5` | `6.121e-5` | `7.658e-5` |
+
+The second branch holds.  At N=64 all three corrected variants land in
+`3.1e-5`--`4.0e-5`; at N=128 the combination is `1.58x` *worse* than PCG/DIC
+alone.  Only at N=32, where the drop spans `6.4` cells, is the combination the
+best of the four.  Both levers were therefore removing amplification of one and
+the same underlying residual, which is now exposed at roughly `3.5e-5` at N=64 and
+`7.7e-5` at N=128 -- still growing with refinement, and about `O(h^-1)` over that
+pair.
+
+The exposed floor is not algebraic.  PCG/DIC at tolerances `1e-9`, `1e-11` and
+`1e-13` agrees to better than `0.4%` in every row (`1.901/1.914/1.914e-6`,
+`3.510/3.509/3.509e-5`, `7.646/7.658/7.657e-5`).  Strict GAMG remains unusable
+with the predictor off as well: floating-point exception at N=32 and N=128, and
+`1.172e-3` at N=64.
+
+### What is left
+
+For an exact, constant curvature on a skewed mesh the residual is now insensitive
+to the force form (product versus pressure potential, roundoff), the geometry
+(analytic vertices, normals and tangent planes), the non-orthogonal corrector
+count (converged at eight), `rAUf` variability, the momentum predictor, the
+pressure solver, and the solver tolerance.  One operator is common to all four
+cells of the table above and has never been removed: the `fvc::reconstruct` that
+recovers the cell velocity from the face-normal flux difference in the pressure
+correction.  It assumes the face values are samples of one smooth cell-centred
+field and that `sum_f Sf (x) Sf` is well conditioned; at an interface cell in a
+water/air system the first fails, because the velocity is only C0 there while
+`grad(p)/rho` jumps by the density ratio, and on a skewed mesh the second fails
+too, so the inverse mixes tangential into normal information.  That is consistent
+with the observed signature: the same operator gives `1e-8` on uniform meshes and
+`1.4e-3` on 10%-perturbed ones with exact curvature and analytic geometry.
+
+The next gate separates source from gain and is a print statement.  Measure the
+facewise residual `phig - p_rghEqn.flux()` *before* the common
+`fvc::reconstruct`, and report it alongside the post-reconstruct maximum cell
+velocity, on the frozen exact circle, uniform versus 10%-perturbed, N=32/64/128.
+If the face residual sits at solver tolerance while the cell velocity is `1e-5`
+or larger, the reconstruction is the gain and the fix is the velocity-recovery
+operator -- an interface-aware or least-squares reconstruction, or keeping the
+correction in flux space.  If the face residual is itself of that order, the
+capillary and pressure operators do not cancel facewise on skewed meshes and the
+reconstruction is innocent.
+
+`momentumPredictor no` should not yet be adopted as a default.  It is `1.8x`
+worse at N=32 uniform, both values being at tolerance, and with the predictor off
+the viscous and convective terms act only through `HbyA`, which changes the
+effective time integration.  That is benign for a frozen gate and a near-static
+drop, but it must be reassessed before any oscillating-droplet frequency or
+damping number is quoted.
+
+Reproduction: `LEIA_MOMENTUM_PREDICTOR=no` with
+`workflow/scripts/run_pressure_compatibility_gate.py`,
+`workflow/scripts/run_pressure_solver_gate.py` and
+`workflow/scripts/run_curvature_delivery_replay.py` (the last one without
+`--fresh`, so the transported baseline is reused).  The predictor-off tables are
+kept out of `docs/**/data/` so the committed tables continue to describe the
+predictor-on production configuration.
