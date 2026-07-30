@@ -38,4 +38,4 @@ axes_override:
   CURVATURE_PRESERVE_MODES_THROUGH: [4]
 
 export_slides: false
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

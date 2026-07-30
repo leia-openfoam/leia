@@ -201,4 +201,4 @@ replay:
 
 export_slides: false
 publication_table: docs/method-comparison/method-comparison-article/data/tables/transISTN64CurvatureDeliveryReplay.csv
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

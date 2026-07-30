@@ -25,4 +25,4 @@ collapse_other_axes: true
 export_slides: true   # publication study: auto-refresh theme figures + deck on completion
 
 mpi_launcher: "mpirun -np {np}"
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

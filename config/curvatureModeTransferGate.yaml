@@ -71,4 +71,4 @@ candidates:
 
 publication_table: docs/method-comparison/method-comparison-article/data/tables/curvatureModeTransferGate.csv
 publication_summary: docs/method-comparison/method-comparison-article/data/tables/curvatureModeTransferGateSummary.csv
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2506/etc/bashrc"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
