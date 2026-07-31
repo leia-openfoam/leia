@@ -136,14 +136,35 @@
     const scalar m2Phase =
         0.5*Foam::atan2(m2SinCoefficient, m2CosCoefficient);
 
-    // Laplace jump: alpha-partitioned mean pressure, drop (alpha1>1/2) minus
-    // ambient (alpha1<1/2). Volume-weighted so it is independent of the mesh and
-    // of any probe location.
+    // Laplace jump: alpha-partitioned mean pressure, drop minus ambient,
+    // volume-weighted so it is independent of the mesh and of any probe location.
+    //
+    // The two means are taken over the PURE phases (alpha1 > 1-eps and
+    // alpha1 < eps), NOT over alpha1 >/< 1/2. Partitioning at 1/2 puts the whole
+    // interface transition into the "drop" average, and those cells sit partway
+    // across the pressure jump, so the reported jump is biased LOW by a few
+    // percent -- an artefact of the probe, not of the solver.
+    //
+    // Measured on a frozen circle at N=128 with EXACT constant curvature
+    // (kappa = 1000 exactly, max|U| ~ 3e-11 m/s, i.e. nothing physical moving):
+    //   alpha1 >/< 1/2          : 70.4456 Pa  (-3.15% vs sigma/R = 72.74 Pa)
+    //   alpha1 > 0.99 / < 0.01  : 72.7394 Pa  (-0.00%)
+    //   pure phases             : 72.7400 Pa  (-0.00%)
+    // The discrete Laplace jump is therefore EXACT to five significant figures;
+    // the old partition was measuring the width of the alpha transition. It was
+    // also non-monotone in solver quality -- at N=64 a computed curvature scored
+    // -1.63% against -2.74% for an exact one, because the curvature error
+    // partially cancelled the probe bias, and improving the curvature 27x made
+    // the reported jump worse. Any earlier reported Laplace-jump convergence
+    // (e.g. 4.2% -> 1.5% over a mesh ladder) is that artefact and not a solver
+    // result.
+    const scalar alphaPure = 1e-2;
     scalar vIn = 0, vOut = 0, pvIn = 0, pvOut = 0;
     forAll(alpha1, c)
     {
-        if (alpha1[c] > 0.5) { vIn  += V[c]; pvIn  += V[c]*p[c]; }
-        else                 { vOut += V[c]; pvOut += V[c]*p[c]; }
+        if (alpha1[c] > 1 - alphaPure) { vIn  += V[c]; pvIn  += V[c]*p[c]; }
+        else if (alpha1[c] < alphaPure) { vOut += V[c]; pvOut += V[c]*p[c]; }
+        // cells inside the transition contribute to neither mean
     }
     reduce(vIn,   sumOp<scalar>());
     reduce(vOut,  sumOp<scalar>());
