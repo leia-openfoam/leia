@@ -105,9 +105,10 @@ class slAdvection
     Switch analyticVelocity_;
 
     //- Advection scheme (RTS): pointValue (default; the Lagrange interpolation
-    //  psi^{n+1}(x_c) = psi^n(x_d), non-conservative) or fluxForm (conservative
-    //  swept-face finite-volume semi-Lagrangian, CFL <= 1). Selected by
-    //  levelSet.semiLagrangian.scheme.
+    //  psi^{n+1}(x_c) = psi^n(x_d), non-conservative), fluxForm (conservative
+    //  swept-face finite-volume semi-Lagrangian, CFL <= 1), or normalProjected
+    //  (the geometric nSL update d_c + delta along (u.n)n with per-step
+    //  distance renormalization). Selected by levelSet.semiLagrangian.scheme.
     autoPtr<slScheme> scheme_;
 
 public:

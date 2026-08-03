@@ -155,7 +155,8 @@ uncachedQuadraticWeightedLeastSquaresReconstruction
     fit_(slDict_.getOrDefault<word>("fit", "normalEquations")),
     curvatureNewtonIters_(slDict_.getOrDefault<label>("curvatureNewtonIters", 3)),
     closestPointIters_(slDict_.getOrDefault<label>("closestPointNewtonIters", 10)),
-    offsetCorrection_(slDict_.getOrDefault<word>("offsetCorrection", "none"))
+    offsetCorrection_(slDict_.getOrDefault<word>("offsetCorrection", "none")),
+    offsetBeta_(slDict_.getOrDefault<scalar>("offsetBeta", 0.25))
 {
     if (fit_ != "normalEquations" && fit_ != "householderQR")
     {
@@ -163,7 +164,27 @@ uncachedQuadraticWeightedLeastSquaresReconstruction
             << "fit must be normalEquations or householderQR, got '"
             << fit_ << "'" << exit(FatalIOError);
     }
-    Info<< "uncachedQuadraticWeightedLeastSquares: fit = " << fit_ << endl;
+    if
+    (
+        offsetCorrection_ != "none"
+     && offsetCorrection_ != "psi"
+     && offsetCorrection_ != "psiOverGradPsi"
+     && offsetCorrection_ != "quadraticRoot"
+    )
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "offsetCorrection must be none, psi, psiOverGradPsi or "
+            << "quadraticRoot, got '" << offsetCorrection_ << "'"
+            << exit(FatalIOError);
+    }
+    if (offsetBeta_ <= 0 || offsetBeta_ >= 1)
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "offsetBeta must lie in (0,1), got " << offsetBeta_
+            << exit(FatalIOError);
+    }
+    Info<< "uncachedQuadraticWeightedLeastSquares: fit = " << fit_
+        << ", offsetCorrection = " << offsetCorrection_ << endl;
 }
 
 // * * * * * * * * * * * * * * * Private Members * * * * * * * * * * * * * * //
@@ -508,7 +529,10 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::meanCurvature
         if (gm < SMALL) { continue; }
 
         const scalar kd = (tr(H)*gm*gm - (gf & (H & gf)))/(gm*gm*gm);
-        k[c] = offsetCorrected(kd, psiC, gm);
+        k[c] =
+            (offsetCorrection_ == "none")
+          ? kd
+          : offsetCorrected(kd, curvatureOffset(psiC, gf, gm, H));
     }
 
     kappa.correctBoundaryConditions();
@@ -549,7 +573,10 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::meanCurvatureLap
         vector d0(Zero), g0(Zero);
         gradFromCoeffs(cf, nc, d0, g0);
         const scalar gm0 = max(Foam::mag(g0), SMALL);
-        k[c] = offsetCorrected(tr(H), psiC, gm0);
+        k[c] =
+            (offsetCorrection_ == "none")
+          ? tr(H)
+          : offsetCorrected(tr(H), curvatureOffset(psiC, g0, gm0, H));
     }
 
     kappa.correctBoundaryConditions();
@@ -590,7 +617,10 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::meanCurvatureNoE
         if (Foam::mag(psiC)/gm > 3.0*stencilRadius(c)) { continue; }
 
         const scalar kd = (tr(H)*gm*gm - (gc & (H & gc)))/(gm*gm*gm);
-        k[c] = offsetCorrected(kd, psiC, gm);
+        k[c] =
+            (offsetCorrection_ == "none")
+          ? kd
+          : offsetCorrected(kd, curvatureOffset(psiC, gc, gm, H));
     }
 
     kappa.correctBoundaryConditions();
@@ -755,6 +785,62 @@ meanCurvatureClosestPoint
     }
 
     kappa.correctBoundaryConditions();
+}
+
+
+Foam::label
+Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::fitDerivatives
+(
+    const label c,
+    vector& g,
+    symmTensor& H
+) const
+{
+    g = Zero;
+    H = Zero;
+
+    const label nc = ncoeff_[c];
+    if (nc == 0) { return 0; }                        // constant fallback
+
+    const scalar* cf = &coeffsFlat_[c*ncoeffFull_];
+
+    // Gradient at the cell centre = the linear coefficients (d = 0).
+    const vector d0(Zero);
+    gradFromCoeffs(cf, nc, d0, g);
+
+    if (nc < ncoeffFull_) { return 1; }               // linear fallback: H = 0
+
+    hessianFromCoeffs(cf, nc, H);
+    return 2;
+}
+
+
+Foam::scalar
+Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::signedOffset
+(
+    const label c,
+    bool& fallback
+) const
+{
+    vector g(Zero);
+    symmTensor H(Zero);
+    const label order = fitDerivatives(c, g, H);
+
+    const scalar psiC = (*psiOldPtr_)[c];
+    const scalar gm = Foam::mag(g);
+
+    if (order == 0 || gm < SMALL)
+    {
+        // No usable normal ray: report the fallback branch; the caller (the
+        // nSL scheme freezes such cells before asking) decides what to do.
+        fallback = true;
+        return 0;
+    }
+
+    const vector n = g/gm;
+    const scalar hnn = n & (H & n);                   // 0 for a linear fit
+
+    return offsetDistance(psiC, gm, hnn, fallback);
 }
 
 // ************************************************************************* //

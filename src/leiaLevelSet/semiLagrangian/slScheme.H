@@ -33,11 +33,17 @@ Description
     `levelSet { semiLagrangian { scheme ...; } }` (default pointValue -- every
     existing case dictionary stays valid).
 
-      - pointValue : psi^{n+1}(x_c) = psi^n(x_d), the Lagrange interpolation of
-                     the reconstructed departure value (non-conservative).
-      - fluxForm   : a conservative finite-volume semi-Lagrangian -- a
-                     swept-face flux update that conserves the discrete integral
-                     of psi for a divergence-free flux (CFL <= 1).
+      - pointValue      : psi^{n+1}(x_c) = psi^n(x_d), the Lagrange
+                          interpolation of the reconstructed departure value
+                          (non-conservative).
+      - fluxForm        : a conservative finite-volume semi-Lagrangian -- a
+                          swept-face flux update that conserves the discrete
+                          integral of psi for a divergence-free flux (CFL <= 1).
+      - normalProjected : the geometric nSL update psi^{n+1}(x_c) = d_c + delta
+                          along the normal-projected velocity (u.n)n -- no
+                          value is ever resampled at the foot, and |grad psi|
+                          is renormalized toward 1 per cell per step
+                          (normalProjectedScheme.H).
 
     The scheme is handed the reconstruction and the correction strategy owned by
     slAdvection, so both variants reuse the SAME per-cell quadratic fit.

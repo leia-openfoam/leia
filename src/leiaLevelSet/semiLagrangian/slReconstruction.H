@@ -268,6 +268,42 @@ public:
         {
             NotImplemented;
         }
+
+        //- Fitted gradient and Hessian of the local polynomial AT THE CELL
+        //  CENTRE, read from the fit coefficients (no FVM re-differentiation).
+        //  Returns the fit order actually available in this cell:
+        //    2  full quadratic (g and H valid),
+        //    1  linear fallback (g valid, H = 0),
+        //    0  constant fallback (g = H = 0).
+        //  Requires a prior update() on the current psi. Only the quadratic
+        //  value-fit models provide this; used by the normal-projected SL
+        //  scheme, which consults the fit for directions and geometry only.
+        virtual label fitDerivatives
+        (
+            const label c,
+            vector& g,
+            symmTensor& H
+        ) const
+        {
+            NotImplemented;
+            return 0;
+        }
+
+        //- Signed geometric offset from the cell centre to the zero set of the
+        //  cell's own fit along the normal ray: the stable quadratic root
+        //      d_c = 2 psi_c / (|g| + sqrt(D)),  D = |g|^2 - 2 psi_c h_nn,
+        //  with h_nn = n.H.n, accepted while D >= offsetBeta*|g|^2 and replaced
+        //  by the first-order d_c = psi_c/|g| otherwise (normal-projected SL
+        //  design note, Sec. 5). Exactly zero-preserving: psi_c = 0 => d_c = 0.
+        //  fallback reports whether the first-order branch was taken. This is
+        //  the SINGLE offset-distance definition shared by the nSL transport
+        //  and the curvature offsetCorrection quadraticRoot mode, so transport
+        //  and curvature never disagree about a cell's offset.
+        virtual scalar signedOffset(const label c, bool& fallback) const
+        {
+            NotImplemented;
+            return 0;
+        }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -79,6 +79,7 @@ semiLagrangian/deferredCorrector.C
 semiLagrangian/slScheme.C
 semiLagrangian/pointValueScheme.C
 semiLagrangian/fluxFormScheme.C
+semiLagrangian/normalProjectedScheme.C
 semiLagrangian/slAdvection.C
 
 LIB = $(FOAM_USER_LIBBIN)/libleiaLevelSet

@@ -136,24 +136,56 @@ class uncachedQuadraticWeightedLeastSquaresReconstruction
     //                    zero contour of the fit. Needs no |grad psi| = 1
     //                    assumption and uses only coefficients the fit already
     //                    produced, so it is the form that survives a drifted psi.
+    //    quadraticRoot   d from the stable quadratic root along the normal ray
+    //                    (offsetDistance below) -- second order in the offset,
+    //                    and the SAME d the normal-projected SL transport uses,
+    //                    so transport and curvature never disagree about a
+    //                    cell's offset (nSL design note, Sec. 5.4).
     const word offsetCorrection_;
 
-    //- Apply the offset correction to a cell-centred curvature kd, given the
-    //  cell's psi and the fitted gradient magnitude. Guarded: the correction is
-    //  singular where the offset reaches the local centre of curvature
-    //  (1 - d kd -> 0), so it is skipped once the denominator leaves a safe band.
-    inline scalar offsetCorrected
+    //- Acceptance threshold beta for the quadratic-root offset conversion:
+    //  the root is used while D = |g|^2 - 2 psi_c h_nn >= beta |g|^2, i.e.
+    //  comfortably before the local model's turning point, where the
+    //  conversion becomes ill-conditioned (d(d_c)/d(psi_c) -> inf). Below the
+    //  threshold the first-order psi_c/|g| fallback applies (nSL note, 5.3).
+    scalar offsetBeta_;
+
+    //- Signed offset from the cell centre to the zero set of the local model
+    //  along the normal ray. Restricting the fit to the ray, R(s) = psi_c
+    //  + s|g| + (1/2) s^2 h_nn, the signed distance is d_c = -s* with
+    //  R(s*) = 0, taking the root that reduces to psi_c/|g| as h_nn -> 0; in
+    //  cancellation-free form d_c = 2 psi_c/(|g| + sqrt(D)). Exactly
+    //  zero-preserving (psi_c = 0 => d_c = 0 for any g, H). fallback reports
+    //  the first-order branch. NOTE the sign convention: d_c has the sign of
+    //  psi_c (distance measured FROM the interface TO the cell), matching
+    //  psi_c/|g| and the psi/psiOverGradPsi curvature modes.
+    inline scalar offsetDistance
     (
-        const scalar kd,
         const scalar psiC,
-        const scalar gm
+        const scalar gm,
+        const scalar hnn,
+        bool& fallback
     ) const
     {
-        if (offsetCorrection_ == "none") { return kd; }
+        const scalar D = gm*gm - 2.0*psiC*hnn;
 
-        const scalar d =
-            (offsetCorrection_ == "psiOverGradPsi") ? psiC/gm : psiC;
+        if (D >= offsetBeta_*gm*gm)
+        {
+            fallback = false;
+            return 2.0*psiC/(gm + Foam::sqrt(D));
+        }
 
+        fallback = true;
+        return psiC/gm;
+    }
+
+    //- Apply the parallel-curve correction to a cell-centred curvature kd,
+    //  given the signed offset d of the evaluation point. Guarded: the
+    //  correction is singular where the offset reaches the local centre of
+    //  curvature (1 - d kd -> 0), so it is skipped once the denominator
+    //  leaves a safe band.
+    inline scalar offsetCorrected(const scalar kd, const scalar d) const
+    {
         const scalar denom = 1 - d*kd;
 
         // |denom| < 1/2 means the cell centre is past half the local radius of
@@ -161,6 +193,35 @@ class uncachedQuadraticWeightedLeastSquaresReconstruction
         // useful sense, so fall back to the uncorrected value rather than
         // amplify.
         return (Foam::mag(denom) > 0.5) ? kd/denom : kd;
+    }
+
+    //- Per-mode offset distance for the curvature correction (H = fit Hessian
+    //  of the cell, needed only by quadraticRoot).
+    inline scalar curvatureOffset
+    (
+        const scalar psiC,
+        const vector& g,
+        const scalar gm,
+        const symmTensor& H
+    ) const
+    {
+        if (offsetCorrection_ == "psi")
+        {
+            return psiC;
+        }
+        else if (offsetCorrection_ == "psiOverGradPsi")
+        {
+            return psiC/gm;
+        }
+        else if (offsetCorrection_ == "quadraticRoot")
+        {
+            const vector n = g/gm;
+            const scalar hnn = n & (H & n);
+            bool fb = false;
+            return offsetDistance(psiC, gm, hnn, fb);
+        }
+
+        return 0;   // "none" (call sites shortcut this case anyway)
     }
 
     //- Constant-free quadratic basis at displacement d (identical to quad).
@@ -216,6 +277,22 @@ public:
     //  Newton (KKT system with the fit Hessian) instead of the
     //  gradient-projection flow; per-cell fallback to the cell-centre value.
     virtual void meanCurvatureClosestPoint(volScalarField& kappa) const override;
+
+    //- Fitted gradient and Hessian at the cell centre, read from the fit
+    //  coefficients. Returns the fit order available: 2 (full quadratic),
+    //  1 (linear fallback, H = 0), 0 (constant fallback, g = H = 0).
+    virtual label fitDerivatives
+    (
+        const label c,
+        vector& g,
+        symmTensor& H
+    ) const override;
+
+    //- Signed offset from the cell centre to the fit's zero set along the
+    //  normal ray (stable quadratic root, first-order fallback; see
+    //  offsetDistance). Shared by the nSL transport and the curvature
+    //  offsetCorrection quadraticRoot mode.
+    virtual scalar signedOffset(const label c, bool& fallback) const override;
 };
 
 } // End namespace Foam
