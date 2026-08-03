@@ -143,6 +143,22 @@ class uncachedQuadraticWeightedLeastSquaresReconstruction
     //                    cell's offset (nSL design note, Sec. 5.4).
     const word offsetCorrection_;
 
+    //- Stabilized foot-point controls (footPointDistance; the nSL Variant (a)
+    //  offset engine, stable-foot-point-3d.md). All runtime-configurable:
+    //    footPointTolRel      convergence tolerance, relative to
+    //                         stencilRadius(c) (default 1e-6, the note's
+    //                         "1e-6 in units of the geometry");
+    //    footPointAlphaMax    guard interval for the parabola extrapolation
+    //                         (default 20);
+    //    footPointCycles      cap on tangent-plane/surfacepoint cycles
+    //                         (default 10);
+    //    footPointSurfIters   cap on surfacepoint Newton iterations
+    //                         (default 20).
+    scalar fpTolRel_;
+    scalar fpAlphaMax_;
+    label fpCycles_;
+    label fpSurfIters_;
+
     //- Acceptance threshold beta for the quadratic-root offset conversion:
     //  the root is used while D = |g|^2 - 2 psi_c h_nn >= beta |g|^2, i.e.
     //  comfortably before the local model's turning point, where the
@@ -293,6 +309,18 @@ public:
     //  offsetDistance). Shared by the nSL transport and the curvature
     //  offsetCorrection quadraticRoot mode.
     virtual scalar signedOffset(const label c, bool& fallback) const override;
+
+    //- Signed distance from p to the iso-surface {R_c = level} of the cell's
+    //  own quadratic model by the stabilized foot-point algorithm (see the
+    //  base declaration and stable-foot-point-3d.md). Polynomial arithmetic
+    //  only; the foot must stay inside the stencil trust region.
+    virtual scalar footPointDistance
+    (
+        const label c,
+        const point& p,
+        const scalar level,
+        bool& ok
+    ) const override;
 };
 
 } // End namespace Foam

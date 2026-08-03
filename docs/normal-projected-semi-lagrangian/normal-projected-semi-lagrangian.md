@@ -455,3 +455,47 @@ construction; inert on this uniform-translation gate since grad(u) = 0 --
 untested where it acts), and the shared second-order offset conversion, which
 remains valid WHERE THE FIT SAMPLES THE ZERO SET and is available to the
 curvature path as `offsetCorrection quadraticRoot`.
+
+## 12. Variant (a) measured (2026-08-03): the instability is engine-independent
+
+Variant (a) is implemented: `offsetEngine footPoint` runs the stabilized
+foot-point algorithm (stable-foot-point-3d.md) on the cell's own quadratic
+model for BOTH legs of the geometric update -- d_c as the foot-point distance
+of x_c to {R_c = 0}, and the normal displacement as the foot-point distance of
+x_d to the cell's own iso-surface {R_c = psi_c}, replacing the flat projection
+(x_d - x_c).n. All controls are runtime dictionary entries; per-cell fallback
+to the ray root when a search fails its guards (counted; measured 0-2 cells
+per step out of ~112 band cells, i.e. the engine genuinely ran).
+
+Band error after 100 steps of the sigma = 0 rigid translation (N = 64,
+velocity exact free stream in all runs):
+
+| in-band update                      | band error |
+|---|---|
+| geometric, quadratic-root engine    | 1.107 h    |
+| geometric, first-order conversion   | 1.11 h     |
+| geometric, stabilized foot-point    | 1.113 h    |
+| raw transport (no renormalization)  | 0.012 h    |
+
+Three offset engines of very different accuracy, one divergence rate. The
+write-back of ANY fit-derived offset into psi is the amplifier; the engine's
+accuracy is irrelevant to the loop gain. On the drifted-profile translation
+(psi scaled by 1.3) the foot-point variant ends with front error -0.43 h at
+t = 0.0031 -- the renormalization moves the front through the same feedback.
+
+Reversed 2D vortex, N = 64, CFL 0.5, T = 2 (the first basic advection test):
+
+| scheme | shape error | volume error | band min per-cell gradient magnitude at T |
+|---|---|---|---|
+| pointValue baseline        | 4.29e-4 | 1.56e-2 | 0.98 |
+| nSL, geometric + footPoint | 2.28e-2 | 2.12    | 0.00 |
+| nSL, strain (full ladder)  | anti-convergent, order -1.18 | up to 4.7 | 0.00 |
+
+Status: the value path (full quadratic resampling at the foot) remains the
+most accurate transport measured in this framework; every geometric
+substitute tested so far -- including Variant (a) -- is worse on deforming
+flows, and every per-step renormalizing write-back diverges regardless of the
+offset engine. Next per plan: the third configuration -- the UNCHANGED
+baseline value transport with the Sec. 7.1 strain factor applied in the band
+as a runtime switch -- which changes exactly one thing relative to the
+verified scheme and whose correction carries the O(dt) noise gain.

@@ -48,6 +48,7 @@ Foam::normalProjectedScheme::normalProjectedScheme(const fvMesh& mesh)
     minGradPsi_(0.05),
     bandRadii_(1.0),
     renormalization_("strain"),
+    offsetEngine_("rayRoot"),
     haveHistory_
     (
         // Restart detection: a previous run wrote uProjOld.nSL (AUTO_WRITE
@@ -98,6 +99,15 @@ Foam::normalProjectedScheme::normalProjectedScheme(const fvMesh& mesh)
             << renormalization_ << "'" << exit(FatalIOError);
     }
 
+    offsetEngine_ = slDict.getOrDefault<word>("offsetEngine", "rayRoot");
+
+    if (offsetEngine_ != "rayRoot" && offsetEngine_ != "footPoint")
+    {
+        FatalIOErrorInFunction(slDict)
+            << "offsetEngine must be rayRoot or footPoint, got '"
+            << offsetEngine_ << "'" << exit(FatalIOError);
+    }
+
     if (minGradPsi_ <= 0 || bandRadii_ <= 0)
     {
         FatalIOErrorInFunction(slDict)
@@ -107,6 +117,7 @@ Foam::normalProjectedScheme::normalProjectedScheme(const fvMesh& mesh)
     Info<< "normalProjected SL scheme: minGradPsi = " << minGradPsi_
         << ", bandRadii = " << bandRadii_
         << ", renormalization = " << renormalization_
+        << ", offsetEngine = " << offsetEngine_
         << ", previous-step projection "
         << (haveHistory_ ? "read from disk" : "not found (AB2 startup)")
         << endl;
@@ -155,6 +166,7 @@ void Foam::normalProjectedScheme::advance
     label nFrozen = 0;
     label nFar = 0;
     label nFallback = 0;
+    label nFpFallback = 0;
     label nOutside = 0;
     label nNonFinite = 0;
     scalar maxRatio = 0;
@@ -243,13 +255,36 @@ void Foam::normalProjectedScheme::advance
          && ratio <= bandRadii_*radius
         )
         {
-            // Band: renormalizing geometric update d_c + delta. MEASURED
-            // UNSTABLE as a per-step write-back (see the header); retained as
-            // a selectable mode for the record and for future damped variants.
-            bool fb = false;
-            const scalar dC = recon.signedOffset(c, fb);
-            if (fb) { ++nFallback; }
-            v = dC + delta;
+            // Band: renormalizing geometric update. The rayRoot engine was
+            // MEASURED UNSTABLE as a per-step write-back (see the header);
+            // footPoint is Variant (a) -- the stabilized foot-point on the
+            // local model for BOTH legs: d_c = distance of x_c to {R_c = 0},
+            // and the normal displacement as the distance of x_d to the
+            // cell's own iso-surface {R_c = psi_c} (curvature-aware, replacing
+            // the flat projection delta).
+            bool engineOk = false;
+            if (offsetEngine_ == "footPoint")
+            {
+                bool ok1 = false, ok2 = false;
+                const scalar dC = recon.footPointDistance(c, C[c], 0.0, ok1);
+                const scalar s = recon.footPointDistance(c, xd, psiC, ok2);
+                if (ok1 && ok2)
+                {
+                    v = dC + s;
+                    engineOk = true;
+                }
+                else
+                {
+                    ++nFpFallback;
+                }
+            }
+            if (!engineOk)
+            {
+                bool fb = false;
+                const scalar dC = recon.signedOffset(c, fb);
+                if (fb) { ++nFallback; }
+                v = dC + delta;
+            }
         }
         else if
         (
@@ -315,6 +350,7 @@ void Foam::normalProjectedScheme::advance
     reduce(nFrozen, sumOp<label>());
     reduce(nFar, sumOp<label>());
     reduce(nFallback, sumOp<label>());
+    reduce(nFpFallback, sumOp<label>());
     reduce(nOutside, sumOp<label>());
     reduce(nNonFinite, sumOp<label>());
     reduce(maxRatio, maxOp<scalar>());
@@ -322,6 +358,7 @@ void Foam::normalProjectedScheme::advance
     Info<< "normalProjected SL: frozen " << nFrozen
         << ", far-field first-order " << nFar
         << ", offset fallback " << nFallback
+        << ", footPoint fallback " << nFpFallback
         << ", feet outside stencil " << nOutside
         << " (max |x_d - x_c|/radius = " << maxRatio << ")"
         << ", non-finite reset " << nNonFinite << endl;

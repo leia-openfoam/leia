@@ -178,6 +178,22 @@ class normalProjectedScheme
         //  Raw transport is stable (0.012 h after the same 100 steps).
         word renormalization_;
 
+        //- Offset engine of the geometric renormalization (Variant (a) vs (b)
+        //  of the design note Sec. 7.2):
+        //    rayRoot    the closed-form stable quadratic root along the
+        //               normal ray (slReconstruction::signedOffset), and
+        //               delta as the flat projection (x_d - x_c).n;
+        //    footPoint  the stabilized foot-point algorithm on the local
+        //               model (slReconstruction::footPointDistance,
+        //               stable-foot-point-3d.md): d_c as the foot-point
+        //               distance of x_c to {R_c = 0}, and the normal
+        //               displacement as the foot-point distance of x_d to the
+        //               cell's own iso-surface {R_c = psi_c} -- curvature-
+        //               aware on both legs. Per-cell fallback to rayRoot when
+        //               either search fails its guards (counted).
+        //  Read only when renormalization is geometric.
+        word offsetEngine_;
+
         //- True once uProjOld_ holds a valid previous-step projection --
         //  either read from disk on restart or written by a completed step.
         //  While false, the first step runs with u_n^{n-1} = u_n^n (the

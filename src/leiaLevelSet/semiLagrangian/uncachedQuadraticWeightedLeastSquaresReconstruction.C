@@ -156,8 +156,25 @@ uncachedQuadraticWeightedLeastSquaresReconstruction
     curvatureNewtonIters_(slDict_.getOrDefault<label>("curvatureNewtonIters", 3)),
     closestPointIters_(slDict_.getOrDefault<label>("closestPointNewtonIters", 10)),
     offsetCorrection_(slDict_.getOrDefault<word>("offsetCorrection", "none")),
+    fpTolRel_(slDict_.getOrDefault<scalar>("footPointTolRel", 1e-6)),
+    fpAlphaMax_(slDict_.getOrDefault<scalar>("footPointAlphaMax", 20)),
+    fpCycles_(slDict_.getOrDefault<label>("footPointCycles", 10)),
+    fpSurfIters_(slDict_.getOrDefault<label>("footPointSurfIters", 20)),
     offsetBeta_(slDict_.getOrDefault<scalar>("offsetBeta", 0.25))
 {
+    if
+    (
+        fpTolRel_ <= 0 || fpAlphaMax_ <= 0 || fpCycles_ < 1 || fpSurfIters_ < 1
+    )
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "footPoint controls must be positive "
+            << "(footPointTolRel " << fpTolRel_
+            << ", footPointAlphaMax " << fpAlphaMax_
+            << ", footPointCycles " << fpCycles_
+            << ", footPointSurfIters " << fpSurfIters_ << ")"
+            << exit(FatalIOError);
+    }
     if (fit_ != "normalEquations" && fit_ != "householderQR")
     {
         FatalIOErrorInFunction(slDict_)
@@ -841,6 +858,128 @@ Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::signedOffset
     const scalar hnn = n & (H & n);                   // 0 for a linear fit
 
     return offsetDistance(psiC, gm, hnn, fallback);
+}
+
+
+Foam::scalar
+Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::footPointDistance
+(
+    const label c,
+    const point& p,
+    const scalar level,
+    bool& ok
+) const
+{
+    // Stabilized foot-point on the cell's own quadratic model
+    // (stable-foot-point-3d.md). The shifted residual is
+    // G(d) = R_c(x_c + d) - level with grad G(d) = g + H d, both read from the
+    // fit coefficients -- pure polynomial arithmetic, no field access. All
+    // positions are displacements d from the cell centre.
+    ok = false;
+
+    const label nc = ncoeff_[c];
+    if (nc == 0) { return 0; }
+
+    const scalar* cf = &coeffsFlat_[c*ncoeffFull_];
+    const scalar psiC = (*psiOldPtr_)[c];
+    const point& xc = mesh_.C()[c];
+    const scalar radius = stencilRadius(c);
+    if (radius < SMALL) { return 0; }
+
+    const scalar eps = fpTolRel_*radius;
+    const vector dp = p - xc;                          // query displacement
+
+    // G(d) = psiC + sum_k cf_k b_k(d) - level.
+    auto G = [&](const vector& d) -> scalar
+    {
+        scalar b[9];
+        basis(d, nc, b);
+        scalar v = psiC - level;
+        for (label k = 0; k < nc; ++k) { v += cf[k]*b[k]; }
+        return v;
+    };
+
+    // surfacepoint: Newton along the local gradient onto {G = 0} (note Sec. 2).
+    // Returns false on a degenerate gradient or non-convergence.
+    auto surfacepoint = [&](vector& d) -> bool
+    {
+        for (label k = 0; k < fpSurfIters_; ++k)
+        {
+            vector gr(Zero);
+            gradFromCoeffs(cf, nc, d, gr);
+            const scalar g2 = gr & gr;
+            if (g2 < SMALL) { return false; }
+
+            const vector step = -(G(d)/g2)*gr;
+            d += step;
+            if (Foam::mag(step) < eps) { return true; }
+        }
+        return false;
+    };
+
+    // Initial on-surface point: surfacepoint of the query itself (Sec. 4.3).
+    vector dpi = dp;
+    if (!surfacepoint(dpi)) { return 0; }
+
+    bool converged = false;
+    for (label cycle = 0; cycle < fpCycles_ && !converged; ++cycle)
+    {
+        // (1) foot point of the query on the tangent plane at p_i.
+        vector gi(Zero);
+        gradFromCoeffs(cf, nc, dpi, gi);
+        const scalar gi2 = gi & gi;
+        if (gi2 < SMALL) { return 0; }
+
+        const scalar lam = ((dp - dpi) & gi)/gi2;
+        vector dqi = dp - lam*gi;
+
+        // (2) back to the surface.
+        vector dpn = dqi;
+        if (!surfacepoint(dpn)) { return 0; }
+
+        // (3) parabola correction from the two step vectors (Sec. 4).
+        const vector f1 = dqi - dpi;
+        const vector f2 = dpn - dqi;
+
+        if (Foam::mag(f1) > eps)
+        {
+            const vector rel = dp - dpi;               // p - p_i
+            const scalar a0 = rel & f1;
+            const scalar a1 = 2.0*(f2 & rel) - magSqr(f1);
+            const scalar a2 = -3.0*(f1 & f2);
+            const scalar a3 = -2.0*magSqr(f2);
+            const scalar den = a1 + 2.0*a2 + 3.0*a3;
+
+            if (Foam::mag(den) > SMALL)
+            {
+                const scalar alpha = 1.0 - (a0 + a1 + a2 + a3)/den;
+
+                if (alpha > 0 && alpha < fpAlphaMax_)
+                {
+                    dqi = dpi + alpha*f1 + sqr(alpha)*f2;
+                    dpn = dqi;
+                    if (!surfacepoint(dpn)) { return 0; }
+                }
+                // else: keep the plain-cycle dpn (degenerate guard, Sec. 4.3)
+            }
+        }
+
+        converged = (Foam::mag(dpn - dpi) < eps);
+        dpi = dpn;
+    }
+
+    // Trust region: the model is only meaningful where the stencil sampled it.
+    if (!converged || Foam::mag(dpi) > radius) { return 0; }
+
+    vector gS(Zero);
+    gradFromCoeffs(cf, nc, dpi, gS);
+    const scalar gSm = Foam::mag(gS);
+    if (gSm < SMALL) { return 0; }
+
+    // Signed distance, sign along the model gradient (positive on the +psi
+    // side), consistent with signedOffset's convention.
+    ok = true;
+    return ((dp - dpi) & gS)/gSm;
 }
 
 // ************************************************************************* //

@@ -304,6 +304,30 @@ public:
             NotImplemented;
             return 0;
         }
+
+        //- Signed geometric distance from the query point p to the iso-surface
+        //  {R_c = level} of cell c's own local model, by the STABILIZED
+        //  FOOT-POINT algorithm (docs/normal-projected-semi-lagrangian/
+        //  stable-foot-point-3d.md): alternating tangent-plane/surfacepoint
+        //  projections accelerated by the parabola correction built from the
+        //  two step vectors of each cycle -- curvature-aware at the price of
+        //  first derivatives only. All evaluations are polynomial arithmetic
+        //  in the fit coefficients; no field access. The sign follows the
+        //  model gradient at the foot (positive on the +psi side). ok reports
+        //  convergence AND the foot staying inside the stencil trust region;
+        //  on ok = false the returned value must not be used. This is the
+        //  offset engine of nSL Variant (a).
+        virtual scalar footPointDistance
+        (
+            const label c,
+            const point& p,
+            const scalar level,
+            bool& ok
+        ) const
+        {
+            NotImplemented;
+            return 0;
+        }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
