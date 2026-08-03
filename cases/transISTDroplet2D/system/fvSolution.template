@@ -349,11 +349,20 @@ levelSet
     //                 ONLY to transport psi.
     semiLagrangian
     {
+        // pointValue (default) | fluxForm | normalProjected (the geometric nSL
+        // update d_c + delta along (u.n)n, with per-step renormalization of
+        // the distance property; normalProjectedScheme.H).
+        scheme              @!SL_SCHEME!@;
         reconstruction      @!SL_RECONSTRUCTION!@;
         correction          direct;
         CFLmax              0.5;
         limitSlope          false;
         clipToStencilBounds false;
+
+        // Parallel-curve offset correction of the cell-centred curvature:
+        // none | psi | psiOverGradPsi | quadraticRoot (the same offset the
+        // normalProjected transport uses -- pair them for consistency).
+        offsetCorrection    @!SL_OFFSET_CORRECTION!@;
 
         // Velocity inserted into the locally third-order Taylor departure
         // displacement (globally second-order trajectory):

@@ -95,6 +95,8 @@ def _write_error_table(records, database_path):
             # rows in the comparison (defaults append nothing).
             if rec.get("SL_SCHEME", "pointValue") == "fluxForm":
                 label += "+flux"
+            elif rec.get("SL_SCHEME", "pointValue") == "normalProjected":
+                label += "+nSL"
             lim = rec.get("SL_LIMITER", "none")
             if lim not in ("", "none"):
                 label += "+lim:" + ("venk" if lim == "venkatakrishnan" else lim)

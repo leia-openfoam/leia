@@ -1,0 +1,41 @@
+# Closed-loop corrugation gate for the nSL scheme (design note Sec. 9.1 -- THE
+# go/no-go): sigma = 0 rigid translation at N = 64, capillary-scale Courant
+# number, both schemes. The decision observable is the growth rate of the
+# m > 4 zero-set corrugation, d ln A_{m>4} / d(s/h), measured by
+# runs/zero_set_noise2.py; baseline pointValue measures 0.185-0.28 per cell of
+# displacement. Acceptance for nSL: amplification <= 1 (the mode must not
+# grow), NOT "the mode is small".
+study_name: nslKinematicGate
+case: transISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64]
+  END_TIME: [0.05]
+  WRITE_INTERVAL: [0.005]
+  TIME_STEP_CONTROL: [advective]
+  TARGET_ADVECTIVE_CO: [0.01]
+  DOMAIN_LENGTH: [0.01]
+  REFERENCE_SPEED: [0.05]
+  MAX_CO: [0.5]
+  SL_SCHEME: [pointValue, normalProjected]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [constantCurvatureSurfaceTension]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGMA: [0]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

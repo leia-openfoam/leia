@@ -1,0 +1,26 @@
+# Normal-projected SL (nSL) vs baseline pointValue on the reversed 2D vortex,
+# same uncached quadratic reconstruction, paired in ONE study so
+# <study>_errors.csv compares the two schemes row for row. First verification
+# ladder of the nSL scheme (docs/normal-projected-semi-lagrangian/).
+study_name: nslConv2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+theme:  semi-lagrangian-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 64, 128, 256]
+  CFL:      [0.5, 1.0]
+  SL_SCHEME: [pointValue, normalProjected]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

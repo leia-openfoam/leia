@@ -65,7 +65,11 @@ SL_VENKK 5;          // venkatakrishnan threshold K (eps^2 = (K*h)^3).
 SL_FIT normalEquations; // uncachedQuadratic least-squares solver:
                      // normalEquations (Cholesky) | householderQR (better conditioned).
 SL_SCHEME pointValue; // semiLagrangian scheme: pointValue (non-conservative) |
-                     // fluxForm (conservative swept-face flux, CFL<=1).
+                     // fluxForm (conservative swept-face flux, CFL<=1) |
+                     // normalProjected (geometric nSL update along (u.n)n with
+                     // per-step distance renormalization).
+SL_OFFSET_CORRECTION none; // parallel-curve curvature offset correction:
+                     // none | psi | psiOverGradPsi | quadraticRoot.
 REDIST_REGION band;  // signedDistanceBounds criterion region: band (interface
                      // quality, default) | bulk (frozen-band fill region;
                      // REQUIRES REDIST_VIOLFRAC > 0 -- SDF skeleton has grad 0).

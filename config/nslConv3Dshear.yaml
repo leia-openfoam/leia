@@ -1,0 +1,25 @@
+# nSL vs pointValue on the 3D 3Dshear flow (see nslConv2Dvortex.yaml).
+# DIV pinned: the SL solver never advects psi by flux, the token is inert.
+study_name: nslConv3Dshear
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangeLevelSetFoam
+theme:  semi-lagrangian-level-set
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5]
+  SL_SCHEME: [pointValue, normalProjected]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+  DIV: [linear]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
