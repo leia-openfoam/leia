@@ -499,3 +499,23 @@ offset engine. Next per plan: the third configuration -- the UNCHANGED
 baseline value transport with the Sec. 7.1 strain factor applied in the band
 as a runtime switch -- which changes exactly one thing relative to the
 verified scheme and whose correction carries the O(dt) noise gain.
+
+## 13. Full vortex convergence study (2026-08-03, studies/npslConv2Dvortex)
+
+Reversed single (shear) 2D vortex, T = 2, sqrt(2) ladder N = 32..256,
+Co = 0.5 and 1.0, both nSL variants against the committed pointValue baseline
+on the identical case/ladder/CFL. Shape error at Co = 0.5:
+
+| N   | pointValue | nSL strain | nSL geometric+footPoint |
+|-----|-----------|-----------|------------------------|
+| 32  | 3.05e-4   | 2.26e-3   | 2.06e-2 |
+| 64  | 4.39e-5   | 5.14e-3   | 2.35e-2 |
+| 128 | 4.61e-6   | 1.29e-2   | 2.63e-2 |
+| 256 | 7.85e-7   | 2.53e-2   | 2.95e-2 |
+| order | ~2.9    | -1.24     | -0.17 |
+
+strain: anti-convergent, volume error to O(1), band min |grad psi| -> 0
+everywhere. geometric+footPoint: resolution-INDEPENDENT stagnation at
+~2-3e-2 (an error set by the update construction, not by h). Co = 1 repeats
+the picture (orders -0.84 / -0.20). Both nSL variants fail the deforming-flow
+test at every resolution; the value path remains the transport of record.

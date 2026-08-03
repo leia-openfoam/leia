@@ -447,16 +447,36 @@ gain as the resampling it replaced. The pre-registered acceptance rule
 (closed-loop amplification $\le1$ at $\lambda\approx2h$) is therefore not
 met.
 
-\paragraph{Deforming flow.} On the reversed single (shear) vortex at $T=2$
-the strain-mode nSL is anti-convergent over $N=32..256$ (shape-error order
-$-1.18$ at $\mathrm{Co}=0.5$, volume errors up to $O(1)$, band minimum
-$\gradpsi\to0$), while the paired \texttt{pointValue} rows reproduce the
-committed baseline to all printed digits. Variant (a) at $N=64$,
-$\mathrm{Co}=0.5$: shape error $2.28\times10^{-2}$ against the baseline's
-$4.29\times10^{-4}$. An earlier, unscoped application of \eqref{eq:strain} to
-the whole domain compounded $\exp(\int\varepsilon\,\mathrm dt)$ in the far
-field (band gradient errors $10^{6}$--$10^{34}$ across the ladder) and is the
-measured reason for the band gate on the strain factor.
+\paragraph{Deforming flow: the full convergence study.} The definitive test
+is the reversed single (shear) vortex at $T=2$ on the $\sqrt2$ publication
+ladder ($N=32,45,64,90,128,181,256$; $\mathrm{Co}=\tfrac12$ and $1$; study
+\texttt{npslConv2Dvortex}), identical in case, ladder and Courant numbers to
+the committed \texttt{pointValue} baseline. Geometric shape error at
+$\mathrm{Co}=\tfrac12$:
+\begin{center}\small
+\begin{tabular}{rccc}
+\toprule
+$N$ & \texttt{pointValue} & nSL \texttt{strain} & nSL \texttt{geometric}+foot point \\
+\midrule
+ 32 & $3.05\times10^{-4}$ & $2.26\times10^{-3}$ & $2.06\times10^{-2}$ \\
+ 64 & $4.39\times10^{-5}$ & $5.14\times10^{-3}$ & $2.35\times10^{-2}$ \\
+128 & $4.61\times10^{-6}$ & $1.29\times10^{-2}$ & $2.63\times10^{-2}$ \\
+256 & $7.85\times10^{-7}$ & $2.53\times10^{-2}$ & $2.95\times10^{-2}$ \\
+\midrule
+order & $\approx 2.9$ & $-1.24$ & $-0.17$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Both variants fail: the strain mode is anti-convergent (its volume error grows
+to $O(1)$ and the band minimum $\gradpsi\to0$ at every resolution), and
+variant (a) stagnates at a resolution-independent $\approx2$--$3\times10^{-2}$
+-- the signature of an error set by the update construction itself, not by
+$h$. At $N=256$ the gap to the baseline is over four orders of magnitude. The
+$\mathrm{Co}=1$ columns repeat the picture. An earlier, unscoped application
+of \eqref{eq:strain} to the whole domain compounded
+$\exp(\int\varepsilon\,\mathrm dt)$ in the far field (band gradient errors
+$10^{6}$--$10^{34}$ across the ladder) and is the measured reason for the band
+gate on the strain factor.
 
 \paragraph{Status.} The value path -- the full quadratic resampling at the
 foot -- remains the most accurate transport measured in this framework; every
