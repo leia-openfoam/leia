@@ -403,3 +403,55 @@ value.
    pinning band $|\nabla\psi|$ restores convergence under refinement.
 5. **Oscillating droplet** — the case that currently fails; also exercises
    §9.5.
+
+---
+
+## 11. First measured results (2026-08-03, sigma = 0 rigid translation, N = 64)
+
+Implementation: `slScheme normalProjected` with `renormalization
+geometric|strain|none` (normalProjectedScheme.{H,C}); the Sec. 5 conversion is
+`slReconstruction::signedOffset`, shared with the curvature path's new
+`offsetCorrection quadraticRoot` mode. All numbers below from the sigma = 0
+rigid-translation gate (transISTDroplet2D, N = 64, Co = 0.01, 1600 steps,
+16 h total displacement; velocity exact free stream to ~3e-15 m/s in every
+run, so all effects are pure transport).
+
+**The Sec. 5 geometric write-back is unstable, for both conversion orders.**
+Band error after 100 steps: quadratic root 1.11 h, first-order fallback
+1.11 h, raw transport (no renormalization) 0.012 h. Writing ANY fit-derived
+offset back into psi feeds neighbour noise into the next step's fit at order
+one per step -- d(d_c) ~ psi_c d|g|/|g|^2 is not multiplied by dt -- and the
+loop compounds at roughly x1.7 per 10 steps. Two further amplification
+channels of the same conversion were measured and gated before that
+conclusion: at large offsets the root's psi_c h_nn term amplifies
+fitted-Hessian noise linearly in the offset (~30 h one-step errors at 45 h
+offset, domain-corner cells), and cells whose stencils reach a level-set
+skeleton (a circle's cone tip) seed the runaway even at 3.8 h offset -- hence
+the shipped gates (root only where |psi_c|/|g| <= 1 stencil radius) and the
+raw far field. The `geometric` mode is retained selectable for the record.
+
+**The trace itself is clean.** One full step of the normal-projected update
+against the exact translated distance field: 0.017 h in the band, 0.027 h
+everywhere. Over the full 1600-step gate the front radius, phase volume,
+zero-set error and band |grad psi| match the pointValue baseline
+(volume 1.17e-2 vs 1.02e-2; band |grad psi| [0.82, 1.38] vs [0.84, 1.37];
+zero-set L2 8.7e-5 vs 7.5e-5 m).
+
+**The Sec. 8 corrugation hypothesis is falsified.** The m > 4 zero-set
+corrugation at 16 h displacement: pointValue 0.209 h, normalProjected
+0.223 h -- the SAME exponential growth. Removing the value resampling does
+not remove the amplifier, because the corrugation re-enters through the
+fitted normals, which steer both the trace and the written increment
+delta . n with the same per-displacement gain. Open question 9.1 is answered:
+the closed-loop amplification of the lambda ~ 2h mode is the same as the
+baseline's, not <= 1.
+
+**Status.** Per the pre-registered acceptance rule (amplification <= 1 at
+lambda ~ 2h), the scheme in its present form does not pass the go/no-go gate;
+the advection ladders and droplet tests were not run. What survives: the
+normal-projected trace (exact free-stream preservation, baseline-equal
+transport), the strain-renormalization mode (noise gain O(dt) by
+construction; inert on this uniform-translation gate since grad(u) = 0 --
+untested where it acts), and the shared second-order offset conversion, which
+remains valid WHERE THE FIT SAMPLES THE ZERO SET and is available to the
+curvature path as `offsetCorrection quadraticRoot`.

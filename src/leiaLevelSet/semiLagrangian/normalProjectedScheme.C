@@ -46,6 +46,8 @@ Foam::normalProjectedScheme::normalProjectedScheme(const fvMesh& mesh)
 :
     slScheme(mesh),
     minGradPsi_(0.05),
+    bandRadii_(1.0),
+    renormalization_("strain"),
     haveHistory_
     (
         // Restart detection: a previous run wrote uProjOld.nSL (AUTO_WRITE
@@ -80,15 +82,31 @@ Foam::normalProjectedScheme::normalProjectedScheme(const fvMesh& mesh)
         fvSol.subDict("levelSet").subOrEmptyDict("semiLagrangian");
 
     minGradPsi_ = slDict.getOrDefault<scalar>("minGradPsi", 0.05);
+    bandRadii_ = slDict.getOrDefault<scalar>("bandRadii", 1.0);
+    renormalization_ =
+        slDict.getOrDefault<word>("renormalization", "strain");
 
-    if (minGradPsi_ <= 0)
+    if
+    (
+        renormalization_ != "geometric"
+     && renormalization_ != "strain"
+     && renormalization_ != "none"
+    )
     {
         FatalIOErrorInFunction(slDict)
-            << "minGradPsi must be positive, got " << minGradPsi_
-            << exit(FatalIOError);
+            << "renormalization must be geometric, strain or none, got '"
+            << renormalization_ << "'" << exit(FatalIOError);
     }
 
+    if (minGradPsi_ <= 0 || bandRadii_ <= 0)
+    {
+        FatalIOErrorInFunction(slDict)
+            << "minGradPsi and bandRadii must be positive, got "
+            << minGradPsi_ << ", " << bandRadii_ << exit(FatalIOError);
+    }
     Info<< "normalProjected SL scheme: minGradPsi = " << minGradPsi_
+        << ", bandRadii = " << bandRadii_
+        << ", renormalization = " << renormalization_
         << ", previous-step projection "
         << (haveHistory_ ? "read from disk" : "not found (AB2 startup)")
         << endl;
@@ -135,6 +153,7 @@ void Foam::normalProjectedScheme::advance
     vectorField uProj(mesh_.nCells(), Zero);
 
     label nFrozen = 0;
+    label nFar = 0;
     label nFallback = 0;
     label nOutside = 0;
     label nNonFinite = 0;
@@ -191,27 +210,76 @@ void Foam::normalProjectedScheme::advance
         const point xd =
             C[c] - dt*(un + 0.5*r*(un - unOld)) + 0.5*dt*dt*conv;
 
+        const scalar radius = recon.stencilRadius(c);
+
         // Foot-radius guard (inline replica of slCorrector::footRadiusGuard,
         // which is protected there): warn-only, no clamp.
         const scalar disp = Foam::mag(xd - C[c]);
-        const scalar radius = recon.stencilRadius(c);
         if (radius > SMALL)
         {
             maxRatio = Foam::max(maxRatio, disp/radius);
             if (disp > radius) { ++nOutside; }
         }
 
-        // Geometric offset of the cell from the fit's zero set (stable
-        // quadratic root; first-order fallback) plus the normal displacement
-        // of the trace. Zero-preservation of the conversion guarantees the
-        // renormalization never moves the front.
-        bool fb = false;
-        const scalar dC = recon.signedOffset(c, fb);
-        if (fb) { ++nFallback; }
-
+        // Geometric offset of the cell from the fit's zero set, plus the
+        // normal displacement of the trace. Zero-preservation of the
+        // conversion guarantees the renormalization never moves the front.
+        //
+        // Conversion ladder (see the header): the quadratic root is meaningful
+        // only for BAND-SCALE offsets -- its psi_c*h_nn term amplifies fitted-
+        // Hessian noise linearly in the offset -- so it is gated to
+        // |psi_c|/|g| <= bandRadii*stencilRadius (the curvature path's
+        // iso-agnostic band gate). Outside, the first-order psi_c/|g| is exact
+        // on a clean signed distance and Hessian-free; it needs |g| inside the
+        // trust region, else the cell is geometrically degenerate (cone tip,
+        // skeleton) and freezes for the step.
+        const scalar ratio = Foam::mag(psiC)/gm;
         const scalar delta = (xd - C[c]) & n;
 
-        scalar v = dC + delta;
+        scalar v;
+        if
+        (
+            renormalization_ == "geometric"
+         && ratio <= bandRadii_*radius
+        )
+        {
+            // Band: renormalizing geometric update d_c + delta. MEASURED
+            // UNSTABLE as a per-step write-back (see the header); retained as
+            // a selectable mode for the record and for future damped variants.
+            bool fb = false;
+            const scalar dC = recon.signedOffset(c, fb);
+            if (fb) { ++nFallback; }
+            v = dC + delta;
+        }
+        else if (renormalization_ == "strain")
+        {
+            // Raw ray transport + the exact gradient-magnitude ODE
+            // D|grad psi|/Dt = -|grad psi| eps_nn, integrated one step:
+            // distances stretch by (1 + eps_nn dt) under normal strain
+            // (design note Sec. 7.1). eps_nn comes from grad(u) -- smooth,
+            // solver-supplied -- and the fit enters only through n, with the
+            // whole correction multiplied by dt: noise gain O(dt), unlike the
+            // geometric write-back.
+            const tensor& gU = gradU[c];
+            const scalar epsNN = n & (symm(gU) & n);
+            v = (psiC + delta*gm)*(1.0 + epsNN*dt);
+            ++nFar;
+        }
+        else
+        {
+            // Far field: RAW first-order transport along the normal ray,
+            // psi^{n+1} = psi(x_c + delta n) = psi_c + delta |g| + O(delta^2).
+            // Deliberately NOT renormalized: any conversion divides by the
+            // fitted |g| and so amplifies fit error linearly in the offset
+            // (measured ~30 h one-step errors at boundary-ring cells with
+            // one-sided stencils). Here fit error enters only through
+            // delta*|g| -- a per-step transport increment of ~1e-2 h -- and
+            // a plateau cell (|g| ~ 0) freezes automatically. The far field
+            // keeps its own |grad psi| like the baseline scheme; only the
+            // band is renormalized, and only the band feeds the physics.
+            v = psiC + delta*gm;
+            ++nFar;
+        }
         if (!std::isfinite(v))
         {
             v = psiC;
@@ -233,12 +301,14 @@ void Foam::normalProjectedScheme::advance
     haveHistory_ = true;
 
     reduce(nFrozen, sumOp<label>());
+    reduce(nFar, sumOp<label>());
     reduce(nFallback, sumOp<label>());
     reduce(nOutside, sumOp<label>());
     reduce(nNonFinite, sumOp<label>());
     reduce(maxRatio, maxOp<scalar>());
 
     Info<< "normalProjected SL: frozen " << nFrozen
+        << ", far-field first-order " << nFar
         << ", offset fallback " << nFallback
         << ", feet outside stencil " << nOutside
         << " (max |x_d - x_c|/radius = " << maxRatio << ")"

@@ -139,6 +139,45 @@ class normalProjectedScheme
         //  their value unchanged for the step.
         scalar minGradPsi_;
 
+        //- Band gate in stencil radii: the quadratic-root conversion applies
+        //  where |psi_c|/|g| <= bandRadii_*stencilRadius(c), i.e. ONLY where
+        //  the local fit actually SAMPLES the zero set it converts to
+        //  (default 1.0). Beyond one stencil radius the fit extrapolates to a
+        //  zero set it never saw, and the root's psi_c*h_nn term amplifies
+        //  fitted-Hessian noise linearly in the offset -- measured: ~30 h
+        //  one-step errors at 45 h offset (domain corners), and a closed-loop
+        //  runaway seeded at 2.6 h from a circle's cone tip when the gate
+        //  admitted offsets up to 3 stencil radii (the tip kink pollutes the
+        //  fitted h_nn of cells whose stencils reach it; the written error
+        //  re-enters the next fit and compounds at ~1 h per step). Outside the gate
+        //  the field is transported RAW, first order along the normal ray
+        //  (psi_c + delta |g|): no division by the fitted |g| anywhere, so fit
+        //  error enters only through the per-step increment (~1e-2 h), and a
+        //  plateau cell (|g| ~ 0) freezes automatically. Only the band is
+        //  renormalized -- and only the band feeds the physics. Any far-field
+        //  RENORMALIZATION was measured to amplify fitted-|g| error linearly
+        //  in the offset (boundary-ring cells with one-sided stencils: ~37 h
+        //  one-step errors), so it is deliberately absent.
+        scalar bandRadii_;
+
+        //- In-band renormalization mode:
+        //    geometric  write d_c + delta from the fit's signed offset (the
+        //               design note's Sec. 5 mechanism);
+        //    strain     transport the raw value along the ray and integrate
+        //               the exact gradient-magnitude ODE instead,
+        //               D|grad psi|/Dt = -|grad psi| eps_nn: the written value
+        //               is (psi_c + delta |g|) (1 + eps_nn dt) with
+        //               eps_nn = n.D.n from grad(u) (note Sec. 7.1). Fit noise
+        //               enters this correction only MULTIPLIED BY dt;
+        //    none       raw ray transport everywhere (no renormalization).
+        //  MEASURED (sigma = 0 rigid translation, N = 64, 100 steps): the
+        //  geometric write-back diverges -- band error 1.1 h and growing, for
+        //  BOTH the quadratic-root and the first-order conversion -- because
+        //  writing any fit-derived offset back into psi feeds neighbour noise
+        //  into the next step's fit at order one per step, independent of dt.
+        //  Raw transport is stable (0.012 h after the same 100 steps).
+        word renormalization_;
+
         //- True once uProjOld_ holds a valid previous-step projection --
         //  either read from disk on restart or written by a completed step.
         //  While false, the first step runs with u_n^{n-1} = u_n^n (the
