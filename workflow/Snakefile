@@ -87,7 +87,7 @@ REPORT      = os.path.join(STUDY_DIR, "figures", ".report.done")
 wildcard_constraints:
     idx=r"\d{5}",
 
-localrules: all, generate_case, aggregate, report, utilities
+localrules: all, generate_case, aggregate, report, utilities, paraview_stub
 
 
 def case_path(w):
@@ -146,7 +146,8 @@ onstart:
 rule all:
     input:
         DATABASE,
-        REPORT
+        REPORT,
+        expand(os.path.join(CASE_DIR, CASE + "_{idx}.foam"), idx=IDX),
 
 
 rule generate_case:
@@ -208,6 +209,22 @@ rule solve:
         "case"
     shell:
         sh(*_solve)
+
+
+# ParaView case marker, named after the CASE FOLDER so tabs are identifiable
+# across a study's variations (2Dvortex_00009.foam, not 2Dvortex.foam).
+# Depends on the solver CSV: the stub appears once the case has results.
+# materialize.py writes the same stub at generation time for new cases; this
+# rule backfills studies materialised before that and is a no-op otherwise.
+rule paraview_stub:
+    input:
+        os.path.join(CASE_DIR, f"{SOLVER}.csv"),
+    output:
+        os.path.join(CASE_DIR, CASE + "_{idx}.foam"),
+    group:
+        "case"
+    shell:
+        "touch {output}"
 
 
 rule aggregate:

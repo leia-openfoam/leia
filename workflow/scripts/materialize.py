@@ -169,8 +169,11 @@ def materialize(base_case, tokens, out_dir, np_, mesh, mode, dims, case_name, in
     }
     with open(os.path.join(out_dir, "case_params.json"), "w") as fh:
         json.dump(meta, fh, indent=2)
-    # ParaView case marker: an empty ``<caseName>.foam`` lets the OpenFOAM reader
-    # open this study case directly (File > Open <caseName>.foam). One per case, in
-    # the results dir, named after the case so it is identifiable in the file dialog.
-    open(os.path.join(out_dir, f"{case_name}.foam"), "w").close()
+    # ParaView case marker: an empty ``<folderName>.foam`` lets the OpenFOAM
+    # reader open this study case directly (File > Open <folderName>.foam).
+    # Named after the CASE FOLDER (e.g. 2Dvortex_00009.foam), not the base case:
+    # a study materialises many variations of one base case, and identically
+    # named stubs make ParaView tabs indistinguishable across variations.
+    stub = os.path.basename(os.path.normpath(out_dir))
+    open(os.path.join(out_dir, f"{stub}.foam"), "w").close()
     return meta
