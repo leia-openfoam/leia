@@ -176,3 +176,7 @@ log.*
 *.foam
 cases/**/results.variants/
 cases/**/psi.redistanced.*
+
+# Windows alternate-data-stream copy artifacts (appear when files are copied
+# from Windows into WSL as "<name>:Zone.Identifier")
+*:Zone.Identifier
