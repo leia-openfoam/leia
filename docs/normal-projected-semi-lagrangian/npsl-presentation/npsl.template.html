@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>leia — normal-projected semi-Lagrangian level set (nSL)</title>
+
+  <!-- reveal.js 4.6.x core + black theme, from cdnjs -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css"
+        id="theme">
+
+  <style>
+    :root {
+      --ls-fg:      #f2f2f2;
+      --ls-muted:   #b9c2cc;
+      --ls-accent:  #4fc3f7;
+      --ls-warn:    #ffb74d;
+      --ls-good:    #81c784;
+      --ls-bad:     #e57373;
+    }
+    .reveal h1 { font-size: 1.5em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.2em; color: var(--ls-accent); }
+    .reveal section { font-size: 0.8em; }
+    .reveal p, .reveal li { color: var(--ls-fg); }
+    .reveal .muted { color: var(--ls-muted); }
+    .reveal .accent { color: var(--ls-accent); }
+    .reveal .warn { color: var(--ls-warn); }
+    .reveal .good { color: var(--ls-good); }
+    .reveal .bad { color: var(--ls-bad); }
+    .reveal code { color: var(--ls-warn); }
+    .reveal .mjx-container { color: var(--ls-fg) !important; }
+    .cols { display: flex; gap: 1.2em; align-items: flex-start; justify-content: center; }
+    .cols > div { flex: 1; }
+    .reveal ul.tight { margin: 0; }
+    .reveal ul.tight li { margin: 0.12em 0; }
+    .center { text-align: center; }
+    .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    .reveal table { font-size: 0.85em; margin: 0.4em auto; }
+    .reveal table th { color: var(--ls-accent); }
+    .reveal table td, .reveal table th { padding: 0.14em 0.6em; border-bottom: 1px solid #444; }
+    .reveal .box {
+      border: 1px solid var(--ls-accent); border-radius: 6px;
+      padding: 0.4em 0.8em; margin: 0.5em auto; display: inline-block;
+    }
+  </style>
+
+  <!-- MathJax 3 (loaded directly from cdnjs) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        macros: { boldsymbol: ['{#1}', 1] }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ===== TITLE ===== -->
+<section>
+  <h1>Normal-projected semi-Lagrangian level set (nSL)</h1>
+  <p class="muted">geometric transport along \((\mathbf u\cdot\mathbf n)\,\mathbf n\)
+     with per-step renormalization of the distance property</p>
+  <p><b>Tomislav Marić</b><br>
+     <span class="muted">MMA, TU Darmstadt · Focused Energy</span></p>
+  <p class="footnote"><code>libleiaLevelSet</code> · <code>scheme normalProjected;</code> ·
+     design note + measured record: <code>docs/normal-projected-semi-lagrangian/</code></p>
+</section>
+
+<!-- ===== MOTIVATION ===== -->
+<section>
+  <h2>Why: two measured defects of the value path</h2>
+  <ul class="tight">
+    <li><b>Grid-scale corrugation.</b> On an <em>exact</em> rigid translation
+        (\(\sigma=0\), free stream preserved to \(3\times10^{-15}\) m/s) the
+        \(\psi=0\) contour grows a \(\lambda\approx 2h\) corrugation at
+        <span class="warn">0.19&ndash;0.28 per cell of displacement</span>,
+        nearly independent of Co over \([0.007, 0.5]\) — a property of the
+        per-step reconstruct-and-evaluate resampling.</li>
+    <li><b>\(|\nabla\psi|\) collapse orders every coupled failure.</b> Across a
+        10-run droplet matrix, band \(\min|\nabla\psi|\) ranks all outcomes and
+        its collapse <em>precedes</em> the parasitic-current growth by ~8 ms.</li>
+  </ul>
+  <p class="accent">nSL removes the value resampling entirely and renormalizes the
+     band every step — locally, zero-set-preservingly, without redistancing
+     (measured to rebuild distance to advection noise).</p>
+</section>
+
+<!-- ===== EXACTNESS ===== -->
+<section>
+  <h2>The tangential velocity is exactly redundant</h2>
+  \[
+    \mathbf u = v_n\mathbf n + \mathbf u_t,\qquad
+    \mathbf n = \frac{\nabla\psi}{|\nabla\psi|},\qquad
+    \mathbf u_t\cdot\nabla\psi \equiv 0
+  \]
+  \[
+    \Rightarrow\quad
+    \frac{\partial\psi}{\partial t} + \mathbf u_n\cdot\nabla\psi = 0,
+    \qquad \mathbf u_n = (\mathbf u\cdot\mathbf n)\,\mathbf n
+  \]
+  <ul class="tight">
+    <li>\(\psi\) is constant along trajectories of \(\mathbf u_n\) —
+        for <em>any</em> field, drifted or not</li>
+    <li>pure tangential motion is an exact no-op:
+        \(\mathbf u_n = 0 \Rightarrow \mathbf x_d = \mathbf x_c\)</li>
+    <li>the normal comes from the <b>quadratic fit</b>:
+        \(\mathbf n = \mathbf g/|\mathbf g|\), \(\mathbf g = \nabla R_c(\mathbf x_c)\)
+        — never from an FVM gradient of \(\psi\)</li>
+  </ul>
+</section>
+
+<!-- ===== TRACE ===== -->
+<section>
+  <h2>The discrete trace — departure-centred, AB2</h2>
+  <p class="muted">the coupled solver advects <em>before</em> its momentum solve:
+     only \(\mathbf u^{n}\) and the <b>stored</b> projection
+     \(\mathbf u_n^{\,n-1}\) exist (previous step's normals — never re-projected)</p>
+  \[
+    \mathbf x_d = \mathbf x_c
+    - \Delta t\left[\mathbf u_n^{\,n} + \tfrac{r}{2}\left(\mathbf u_n^{\,n}-\mathbf u_n^{\,n-1}\right)\right]
+    + \tfrac{\Delta t^2}{2}\,(\mathbf u_n^{\,n}\cdot\nabla)\,\mathbf u_n^{\,n},
+    \quad r = \tfrac{\Delta t}{\Delta t_0}
+  \]
+  <p>\(\nabla\mathbf u_n\) assembled <b>analytically</b> — never by differencing
+     the projected field (OpenFOAM convention \((\nabla u)_{ij}=\partial_i u_j\)):</p>
+  \[
+    \partial_i n_j = \frac{H_{ij} - (\mathbf H\mathbf n)_i n_j}{|\mathbf g|},\quad
+    \nabla v_n = \nabla\mathbf u\cdot\mathbf n + \nabla\mathbf n\cdot\mathbf u,\quad
+    \nabla\mathbf u_n = \nabla v_n\otimes\mathbf n + v_n\nabla\mathbf n
+  \]
+  <p class="footnote">\(|\mathbf u_n|\le|\mathbf u|\): the nSL trace is never longer
+     than the baseline trace; same stencil guard.</p>
+</section>
+
+<!-- ===== UPDATE ===== -->
+<section>
+  <h2>The geometric update</h2>
+  <p class="box">\(\;\psi^{n+1}(\mathbf x_c) = d_c + \delta,\qquad
+     \delta = (\mathbf x_d - \mathbf x_c)\cdot\mathbf n\;\)</p>
+  <ul class="tight">
+    <li>\(d_c\): signed offset of \(\mathbf x_c\) from the <b>cell's own</b>
+        model zero set — never interpolates \(\psi\) at \(\mathbf x_d\)</li>
+    <li>exactly zero-preserving: \(\psi_c = 0 \Rightarrow d_c = 0\) —
+        renormalization never moves the front</li>
+    <li>clean SDF + uniform \(v_n\):
+        \(d_c + \delta = \psi_c - v_n\Delta t\) exactly</li>
+  </ul>
+  <p><b>Offset engine (b), stable quadratic root</b> (ray-restricted model
+     \(R(s)=\psi_c + s|\mathbf g| + \tfrac12 s^2 h_{nn}\)):</p>
+  \[
+    d_c = \frac{2\psi_c}{|\mathbf g| + \sqrt{D}},\qquad
+    D = |\mathbf g|^2 - 2\psi_c h_{nn},\qquad
+    \text{accept iff } D \ge \beta|\mathbf g|^2
+  \]
+  <p class="footnote">first-order fallback \(\psi_c/|\mathbf g|\) otherwise;
+     the same conversion serves the curvature path
+     (<code>offsetCorrection quadraticRoot</code>) — transport and curvature never
+     disagree about a cell's offset.</p>
+</section>
+
+<!-- ===== FOOT POINT ===== -->
+<section>
+  <h2>Offset engine (a): the stabilized foot-point</h2>
+  <p class="muted">both legs curvature-aware, on the local model:
+     \(d_c\) = distance of \(\mathbf x_c\) to \(\{R_c=0\}\);
+     displacement = distance of \(\mathbf x_d\) to the cell's own iso-surface
+     \(\{R_c=\psi_c\}\)</p>
+  <ul class="tight">
+    <li>alternate tangent-plane projection and Newton
+        <code>surfacepoint</code> pulls; the two step vectors
+        \(\mathbf f_1, \mathbf f_2\) of each cycle define a parabola —
+        an <em>empirical curvature sample</em> at first-derivative cost</li>
+    <li>one Newton step on the distance-minimizing cubic:
+        \(\alpha = 1 - \frac{a_0+a_1+a_2+a_3}{a_1+2a_2+3a_3}\),
+        guarded \(0<\alpha<\alpha_{\max}\)</li>
+    <li>pure polynomial arithmetic in the fit coefficients; foot must stay
+        inside the stencil trust region; per-cell fallback to the ray root
+        (counted)</li>
+  </ul>
+  <p class="footnote">full algorithm + failure modes:
+     <code>stable-foot-point-3d.md</code></p>
+</section>
+
+<!-- ===== LADDER ===== -->
+<section>
+  <h2>The update ladder — every gate bought by a measurement</h2>
+  <table>
+    <thead><tr><th>where</th><th>update</th><th>forced by (measured)</th></tr></thead>
+    <tbody>
+    <tr><td>band: \(|\psi_c|/|\mathbf g| \le 1\times\)stencil radius</td>
+        <td>renormalizing \(d_c+\delta\)</td>
+        <td>root beyond 1 radius: \(\psi_c h_{nn}\) amplifies Hessian noise
+            <b>linearly in the offset</b> (~30 h at 45 h); skeleton stencils
+            seed runaway from 2.6 h</td></tr>
+    <tr><td>far field</td>
+        <td class="good">raw ray transport \(\psi_c + \delta|\mathbf g|\)</td>
+        <td>any far-field <em>renormalization</em> divides by fitted
+            \(|\mathbf g|\): ~37 h one-step errors at boundary rings</td></tr>
+    <tr><td>degenerate (\(|\mathbf g| <\) <code>minGradPsi</code>)</td>
+        <td>frozen</td>
+        <td>cone tips / plateau — no usable normal ray</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">strain mode: \((\psi_c+\delta|\mathbf g|)(1+\varepsilon_{nn}\Delta t)\),
+     \(\varepsilon_{nn}=\mathbf n\cdot\mathbf D\cdot\mathbf n\) from the smooth
+     \(\nabla\mathbf u\) — the only renormalization whose noise gain carries
+     \(\Delta t\); band-gated (global application compounds
+     \(e^{\int\varepsilon\,dt}\): measured \(10^{6}\)–\(10^{34}\) on the vortex).</p>
+</section>
+
+<!-- ===== IMPLEMENTATION ===== -->
+<section>
+  <h2>Implementation — RTS, dictionary-only configuration</h2>
+  <ul class="tight">
+    <li><code>slScheme</code> hierarchy: <code>scheme normalProjected;</code>
+        (default <code>pointValue</code> — every existing dict stays valid);
+        study token <code>SL_SCHEME</code></li>
+    <li>reconstruction capabilities via <code>NotImplemented</code>-default
+        virtuals (no <code>dynamic_cast</code>):
+        <code>fitDerivatives(c,g,H)</code> → fit order 2/1/0 (degradation
+        ladder for free), <code>signedOffset</code>,
+        <code>footPointDistance</code></li>
+    <li>every control validated at runtime:
+        <code>renormalization geometric|strain|none</code>,
+        <code>offsetEngine rayRoot|footPoint</code>,
+        <code>bandRadii</code>, <code>minGradPsi</code>, <code>offsetBeta</code>,
+        <code>footPointTolRel|AlphaMax|Cycles|SurfIters</code></li>
+    <li><code>Unew</code> deliberately unused; previous projection persisted as
+        <code>uProjOld.nSL</code> (<code>READ_IF_PRESENT/AUTO_WRITE</code> —
+        restart parity); scratch-field update + one halo, same comms as
+        baseline; per-step counters reduced and reported</li>
+  </ul>
+</section>
+
+<!-- ===== RESULTS 1 ===== -->
+<section>
+  <h2>Measured: the trace is clean…</h2>
+  <ul class="tight">
+    <li>one full step vs exact translated SDF:
+        <span class="good">0.017 h band, 0.027 h everywhere</span></li>
+    <li>1600 steps (16 h travel): front, volume, zero-set, band
+        \(|\nabla\psi|\) all <b>equal to pointValue</b></li>
+    <li>free stream exact to \(3\times10^{-15}\) m/s in every run
+        (\(\sigma=0\): transport-only attribution)</li>
+  </ul>
+  <h2 style="margin-top:0.5em">…the write-back is not</h2>
+  <table>
+    <thead><tr><th>in-band update</th><th>band error @100 steps</th></tr></thead>
+    <tbody>
+      <tr><td>geometric — quadratic root</td><td class="bad">1.107 h</td></tr>
+      <tr><td>geometric — first-order</td><td class="bad">1.11 h</td></tr>
+      <tr><td>geometric — stabilized foot-point</td><td class="bad">1.113 h</td></tr>
+      <tr><td>raw transport (no renormalization)</td><td class="good">0.012 h</td></tr>
+    </tbody>
+  </table>
+  <p class="accent">engine-independent: writing <em>any</em> fit-derived offset
+     into \(\psi\) has \(O(1)\)/step noise gain
+     (\(\delta d_c \sim \psi_c\,\delta|\mathbf g|/|\mathbf g|^2\) — no
+     \(\Delta t\)); accuracy of the engine is irrelevant to the loop gain.</p>
+</section>
+
+<!-- ===== RESULTS 2 ===== -->
+<section>
+  <h2>Measured: the corrugation hypothesis is falsified</h2>
+  <table>
+    <thead><tr><th>scheme</th><th>\(m>4\) corrugation @ 16 h</th></tr></thead>
+    <tbody>
+      <tr><td>pointValue (value resampling)</td><td>0.209 h</td></tr>
+      <tr><td>normalProjected</td><td>0.223 h</td></tr>
+    </tbody>
+  </table>
+  <p>same exponential growth — the \(\lambda\approx 2h\) mode re-enters through
+     the <b>fitted normals</b> (they steer the trace <em>and</em> the written
+     increment \(\delta\cdot\mathbf n\)) with the same per-displacement gain as
+     the resampling they replaced.</p>
+  <p class="warn">consequence: the corrugation instability is a property of
+     consulting the local fit at all — cures must target the fit, not the
+     update formula.</p>
+  <p class="footnote">pre-registered acceptance (amplification \(\le 1\) at
+     \(\lambda\approx 2h\)): <b>not met</b>.</p>
+</section>
+
+<!-- ===== RESULTS 3 ===== -->
+<section>
+  <h2>Measured: deforming flow (reversed 2D shear vortex, T = 2)</h2>
+  <table>
+    <thead><tr><th>scheme (N=64, Co=0.5)</th><th>shape error</th>
+      <th>volume error</th><th>band min \(|\nabla\psi|\)</th></tr></thead>
+    <tbody>
+      <tr><td>pointValue</td><td class="good">4.29e-4</td><td>1.56e-2</td><td>0.98</td></tr>
+      <tr><td>nSL geometric + footPoint</td><td class="bad">2.28e-2</td><td class="bad">2.12</td><td class="bad">0.00</td></tr>
+    </tbody>
+  </table>
+  <ul class="tight">
+    <li>strain-mode ladder \(N=32..256\): <span class="bad">anti-convergent
+        (shape order −1.18)</span>; paired pointValue rows reproduce the
+        committed baseline to all digits</li>
+    <li>the value path — full quadratic resampling at the foot — remains the
+        most accurate transport measured in this framework</li>
+  </ul>
+</section>
+
+<!-- ===== STATUS ===== -->
+<section>
+  <h2>Status &amp; what survives</h2>
+  <ul class="tight">
+    <li class="good">the normal-projected trace: exact free-stream preservation,
+        baseline-equal translation transport</li>
+    <li class="good">the second-order offset conversion for the <b>curvature</b>
+        path (<code>offsetCorrection quadraticRoot</code>) — valid where the fit
+        samples the zero set</li>
+    <li class="good">the stabilized foot-point as a reusable geometric kernel</li>
+    <li class="warn">every per-step renormalizing write-back diverges,
+        engine-independently; geometric mode retained selectable for the
+        record</li>
+  </ul>
+  <p class="box">next: the <b>third configuration</b> — the unchanged baseline
+     value transport with the band-gated strain factor
+     \((1+\varepsilon_{nn}\Delta t)\) as a runtime switch: one change against
+     the verified scheme, noise gain \(O(\Delta t)\).</p>
+</section>
+
+</div>
+</div>
+
+<!-- reveal.js core + notes plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [ RevealNotes ]
+  });
+</script>
+</body>
+</html>

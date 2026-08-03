@@ -70,6 +70,10 @@ SL_SCHEME pointValue; // semiLagrangian scheme: pointValue (non-conservative) |
                      // per-step distance renormalization).
 SL_OFFSET_CORRECTION none; // parallel-curve curvature offset correction:
                      // none | psi | psiOverGradPsi | quadraticRoot.
+SL_RENORMALIZATION strain; // normalProjected in-band renormalization:
+                     // geometric | strain | none.
+SL_OFFSET_ENGINE rayRoot; // normalProjected geometric offset engine:
+                     // rayRoot | footPoint (stabilized foot-point, Variant a).
 REDIST_REGION band;  // signedDistanceBounds criterion region: band (interface
                      // quality, default) | bulk (frozen-band fill region;
                      // REQUIRES REDIST_VIOLFRAC > 0 -- SDF skeleton has grad 0).

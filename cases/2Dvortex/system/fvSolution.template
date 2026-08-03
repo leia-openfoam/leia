@@ -254,6 +254,9 @@ levelSet
         //                                       Cheap/CPU-bound but UNSTABLE here (gradient
         //                                       injection amplifies |grad psi|). Research.
         scheme              @!SL_SCHEME!@;
+        // normalProjected only (inert for pointValue/fluxForm):
+        renormalization     @!SL_RENORMALIZATION!@;   // geometric | strain | none
+        offsetEngine        @!SL_OFFSET_ENGINE!@;     // rayRoot | footPoint
         slopeLimiter        @!SL_LIMITER!@;
         venkK               @!SL_VENKK!@;
         fit                 @!SL_FIT!@;

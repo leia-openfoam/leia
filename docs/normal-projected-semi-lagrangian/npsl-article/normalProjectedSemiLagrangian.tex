@@ -1,0 +1,485 @@
+%% The normal-projected semi-Lagrangian (nSL) level-set method: derivation,
+%% implementation, and first verification results (including the measured
+%% negative results that bound its present form).
+%% Build:  latexmk -pdf normalProjectedSemiLagrangian.tex
+\documentclass[preprint,3p,11pt]{elsarticle}
+
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+% --- notation ----------------------------------------------------------------
+\newcommand{\psilev}{\psi}
+\newcommand{\xc}{\mathbf{x}_c}
+\newcommand{\xd}{\mathbf{x}_d}
+\newcommand{\uvec}{\mathbf{u}}
+\newcommand{\un}{\mathbf{u}_n}
+\newcommand{\nv}{\mathbf{n}}
+\newcommand{\gv}{\mathbf{g}}
+\newcommand{\Hm}{\mathbf{H}}
+\newcommand{\gradpsi}{\lvert\nabla\psilev\rvert}
+
+\journal{a computational physics journal (method-line note)}
+
+\begin{document}
+\begin{frontmatter}
+
+\title{A normal-projected semi-Lagrangian level-set update with per-step
+geometric renormalization: derivation, implementation, and measured limits}
+
+\author[tud,fe]{Tomislav Mari\'c}
+\address[tud]{Mathematical Modeling and Analysis, Technische Universit\"at
+Darmstadt, Germany}
+\address[fe]{Focused Energy, Darmstadt, Germany}
+
+\begin{abstract}
+The baseline semi-Lagrangian level-set transport
+$\psilev^{n+1}(\xc)=\psilev^{n}(\xd)$ resamples the transported field through a
+per-cell quadratic reconstruction at every step; on rigid-translation tests this
+reconstruct-and-evaluate operator amplifies a grid-scale ($\lambda\approx 2h$)
+corrugation of the zero set at a rate that is fixed per unit interface
+displacement. The normal-projected semi-Lagrangian update (nSL) examined here
+replaces the value resampling by a purely geometric update: the departure foot
+is traced along the normal-projected velocity $\un=(\uvec\cdot\nv)\nv$ -- exact
+for the continuous problem, since the tangential velocity carries no information
+about $\psilev$ -- and the written value is composed of the cell's geometric
+offset from its own local model's zero set plus the normal displacement of the
+trace, renormalizing $\gradpsi\to1$ in the interface band at every step without
+any global redistancing operator. We give the complete discrete formulation:
+the departure-centred second-order trace built from the current and previous
+projected velocities, the analytic assembly of $\nabla\un$ from the fit, the
+stable quadratic-root offset conversion with its acceptance guard, the
+stabilized foot-point algorithm as an alternative curvature-aware offset
+engine, and a strain-rescaling alternative that integrates the exact
+gradient-magnitude transport equation. The implementation is a
+runtime-selectable advection scheme in OpenFOAM with every control a validated
+dictionary entry. The verification record is reported in full, including its
+negative results: the trace itself is clean and preserves an exact free stream
+to machine precision, but every per-step \emph{write-back} of a fit-derived
+offset diverges at an engine-independent rate -- the quadratic root, a
+first-order conversion, and the stabilized foot-point produce the same band
+error growth -- and the grid-scale corrugation amplification is unchanged
+relative to the baseline, because the noise re-enters through the fitted
+normals rather than through the value resampling. The measured gates that
+bound each design choice are stated so that subsequent variants can be judged
+against them.
+\end{abstract}
+
+\begin{keyword}
+level set \sep semi-Lagrangian \sep signed distance \sep renormalization
+\sep foot point \sep OpenFOAM
+\end{keyword}
+\end{frontmatter}
+
+% =============================================================================
+\section{Motivation}
+\label{sec:motivation}
+
+Two measured properties of the baseline quadratic semi-Lagrangian transport
+motivate this method line. First, on an essentially exact rigid translation
+(coupled solver, surface tension coefficient $\sigma=0$, velocity a uniform
+free stream to $\sim\!3\times10^{-15}$\,m/s), the $\psilev=0$ contour develops
+a high-wavenumber corrugation ($\lambda\approx2h$, azimuthal modes $m>4$) that
+grows exponentially at a rate fixed per unit interface displacement
+($\approx0.19$--$0.28$ per cell of travel), essentially independent of the
+Courant number over $\mathrm{Co}\in[0.007,0.5]$. Second, in the two-phase
+coupling the band gradient magnitude $\gradpsi$ orders every observed
+stationary/translating/oscillating-droplet outcome, and its collapse
+\emph{precedes} the parasitic-current growth. The nSL design targets both: it
+removes the per-step polynomial resampling of $\psilev$ from the value path,
+and it renormalizes the band toward a signed distance at every step by a
+purely local, zero-set-preserving construction -- explicitly avoiding global
+redistancing, which was measured (in this framework) to rebuild distance to
+advection artefacts.
+
+% =============================================================================
+\section{Mathematical formulation}
+\label{sec:method}
+
+\subsection{Continuous foundation: the tangential velocity is redundant}
+\label{sec:exact}
+
+Decompose the velocity at any point into components normal and tangential to
+the local level set of $\psilev$,
+\begin{equation}
+  \uvec = v_n\,\nv + \uvec_t,
+  \qquad v_n=\uvec\cdot\nv,
+  \qquad \nv=\frac{\nabla\psilev}{\gradpsi}.
+\end{equation}
+Because $\nabla\psilev$ is normal to its own level sets,
+$\uvec_t\cdot\nabla\psilev=0$ \emph{identically}, so
+\begin{equation}
+  \uvec\cdot\nabla\psilev
+  = v_n\,\gradpsi
+  = \un\cdot\nabla\psilev,
+  \qquad \un := v_n\,\nv,
+\end{equation}
+and the level-set equation is equivalent to
+\begin{equation}
+  \frac{\partial\psilev}{\partial t} + \un\cdot\nabla\psilev = 0 .
+  \label{eq:nsl-pde}
+\end{equation}
+$\psilev$ is therefore exactly constant along trajectories of $\un$, for any
+field, drifted or not: tracing backward along $\un$ solves the same continuous
+transport problem as tracing along $\uvec$, and the tangential velocity is
+discarded without loss. Two consequences fix the design: pure tangential
+motion is an exact no-op ($\un=\mathbf 0\Rightarrow\xd=\xc$), and the update
+never needs the tangential component of the flow.
+
+\subsection{The discrete trace}
+\label{sec:trace}
+
+Per cell $c$ with centre $\xc$, the quadratic weighted least-squares fit of
+$\psilev^{n}$ over the cell's stencil (identical to the baseline
+reconstruction) supplies the value $\psilev_c$, the gradient
+$\gv=\nabla R_c(\xc)$ and the constant Hessian $\Hm=\nabla\nabla R_c$ of the
+local model $R_c$. The unit normal is $\nv=\gv/\lvert\gv\rvert$, and the
+normal-projected velocity at the current level is
+\begin{equation}
+  \un^{\,n} = \bigl(\uvec^{\,n}\cdot\nv\bigr)\,\nv .
+\end{equation}
+
+The coupled solver advances the interface \emph{before} its momentum solve, so
+only $\uvec^{\,n}$ and the stored projection $\un^{\,n-1}$ are available. The
+departure foot is therefore the \emph{departure-centred} second-order backward
+trace -- the only centring whose normals exist at their own time level:
+\begin{equation}
+  \boxed{\;
+  \xd=\xc
+  -\Delta t\Bigl[\un^{\,n}
+      +\tfrac12\,r\,\bigl(\un^{\,n}-\un^{\,n-1}\bigr)\Bigr]
+  +\tfrac12\,\Delta t^{2}\,\bigl(\un^{\,n}\!\cdot\nabla\bigr)\un^{\,n},
+  \qquad r=\frac{\Delta t}{\Delta t_0} \; }
+  \label{eq:foot}
+\end{equation}
+which at uniform step ($r=1$) is
+$\xd=\xc-\tfrac{\Delta t}{2}\,(3\un^{\,n}-\un^{\,n-1})
++\tfrac12\Delta t^2(\un^{\,n}\cdot\nabla)\un^{\,n}$: the linear displacement
+uses the time-centred midpoint velocity, obtained by Adams--Bashforth
+extrapolation of the two available levels. $\un^{\,n-1}$ is the projected
+velocity \emph{stored at the end of the previous step, projected with that
+step's normals}; re-projecting the old velocity with the new normals mixes
+time levels of the geometry and is not equivalent.
+
+The velocity gradient of the projected field, needed by the convective term,
+is assembled \emph{analytically} from the fit and the solver-supplied
+$\nabla\uvec$ -- never by differencing the projected field. With the
+convention $(\nabla\uvec)_{ij}=\partial_i u_j$ (OpenFOAM's
+\texttt{fvc::grad}; the transpose of the convention
+$\mathrm d\uvec=(\nabla\uvec)\,\mathrm d\mathbf x$):
+\begin{align}
+  \partial_i n_j &= \frac{H_{ij}-(\Hm\nv)_i\,n_j}{\lvert\gv\rvert},
+  \label{eq:gradn}\\
+  \partial_i v_n &= (\nabla\uvec\cdot\nv)_i+(\nabla\nv\cdot\uvec)_i,\\
+  \partial_i (u_n)_j &= (\nabla v_n)_i\,n_j + v_n\,\partial_i n_j,
+\end{align}
+and $\bigl(\un\cdot\nabla\bigr)\un$ is the contraction
+$(u_n)_i\,\partial_i(u_n)_j$. Equation~\eqref{eq:gradn} follows from
+$\nabla R_c=\gv+\Hm\mathbf d$ and the quotient rule; for a signed-distance
+field it reduces to the classical $\nabla\nv=(\mathbf I-\nv\nv^{\mathsf T})
+\Hm/\lvert\gv\rvert$ written with the projector on the appropriate side of the
+symmetric $\Hm$.
+
+The trace obeys the baseline stencil restriction
+$\lvert\xd-\xc\rvert\le$ stencil radius (warn-only guard); since
+$\lvert\un\rvert\le\lvert\uvec\rvert$ pointwise, the nSL trace is never longer
+than the baseline trace.
+
+\subsection{The geometric update and the offset conversion}
+\label{sec:update}
+
+The update writes
+\begin{equation}
+  \boxed{\;\psilev^{n+1}(\xc)=d_c+\delta,\qquad
+  \delta=(\xd-\xc)\cdot\nv\;}
+  \label{eq:update}
+\end{equation}
+where $d_c$ is the signed geometric offset from $\xc$ to the zero set of the
+cell's \emph{own} local model, and $\delta$ is the normal projection of the
+trace displacement (the arc-length alternative differs at
+$O(\Delta t^{3})$ and is deferred). No value of $\psilev$ is interpolated at
+$\xd$: the reconstruction is consulted for directions, speeds and geometry
+only. Sign conventions: $\nv$ points toward increasing $\psilev$; $d_c$
+carries the sign of $\psilev_c$; a flow moving the interface in the $+\nv$
+direction has $v_n>0$ and $\delta<0$. Limiting cases: $v_n=0$ gives
+renormalization only; on a clean signed distance with uniform $v_n$,
+$d_c+\delta=\psilev_c-v_n\Delta t$ exactly.
+
+\paragraph{Offset engine (b): the stable quadratic root.}
+Restricting the model to the normal ray, $R(s)=\psilev_c+s\lvert\gv\rvert
++\tfrac12 s^2 h_{nn}$ with $h_{nn}=\nv^{\mathsf T}\Hm\,\nv$, the signed
+distance to the model's zero level is, in cancellation-free form,
+\begin{equation}
+  d_c=\frac{2\,\psilev_c}{\;\lvert\gv\rvert+\sqrt{D}\;},
+  \qquad D=\lvert\gv\rvert^{2}-2\,\psilev_c\,h_{nn},
+  \label{eq:root}
+\end{equation}
+taking the root that reduces to $\psilev_c/\lvert\gv\rvert$ as $h_{nn}\to0$.
+It is exactly zero-preserving ($\psilev_c=0\Rightarrow d_c=0$ for any
+$\gv,\Hm$): the renormalization never moves the front. The root is accepted
+while $D\ge\beta\lvert\gv\rvert^{2}$ (default $\beta=\tfrac14$) -- comfortably
+before the model's turning point, where the conversion becomes
+ill-conditioned -- and replaced by the first-order $\psilev_c/\lvert\gv\rvert$
+otherwise. The identical conversion serves the curvature path
+(\texttt{offsetCorrection quadraticRoot}), so transport and curvature never
+disagree about a cell's offset.
+
+\paragraph{Offset engine (a): the stabilized foot-point.}
+The curvature-aware alternative computes both legs of \eqref{eq:update} as
+foot-point distances on the local model: $d_c$ as the signed distance of
+$\xc$ to $\{R_c=0\}$, and the displacement as the signed distance of $\xd$ to
+the cell's own iso-surface $\{R_c=\psilev_c\}$, replacing the flat projection
+$\delta$. The foot point of a query $\mathbf p$ on $\{G=0\}$,
+$G(\mathbf d)=R_c(\xc+\mathbf d)-\text{level}$, is found by alternating two
+projections -- the tangent-plane foot point at the current surface iterate and
+a Newton \texttt{surfacepoint} pull back to the surface -- accelerated by a
+parabola correction: with $\mathbf f_1$ the tangential step and $\mathbf f_2$
+the measured pull-back of one cycle, the curve
+$\mathbf x(\alpha)=\mathbf p_i+\alpha\mathbf f_1+\alpha^2\mathbf f_2$ is a
+local quadratic model of the surface path, the minimizer of
+$\lvert\mathbf p-\mathbf x(\alpha)\rvert^2$ satisfies a cubic whose one Newton
+step from $\alpha=1$ is
+\begin{equation}
+  \alpha=1-\frac{a_0+a_1+a_2+a_3}{a_1+2a_2+3a_3},
+  \quad
+  \begin{aligned}
+  a_0&=(\mathbf p-\mathbf p_i)\cdot\mathbf f_1, &
+  a_1&=2\mathbf f_2\cdot(\mathbf p-\mathbf p_i)-\lvert\mathbf f_1\rvert^2,\\
+  a_2&=-3\,\mathbf f_1\cdot\mathbf f_2, &
+  a_3&=-2\lvert\mathbf f_2\rvert^2,
+  \end{aligned}
+\end{equation}
+accepted inside a guard interval $0<\alpha<\alpha_{\max}$. The signed distance
+is $(\mathbf p-\mathbf x^{\Sigma})\cdot\nv^{\Sigma}$ with the sign along the
+model gradient at the foot. All evaluations are polynomial arithmetic in the
+fit coefficients; the foot must remain inside the stencil trust region. The
+complete algorithm, its failure modes and tolerances are documented in the
+companion note \texttt{stable-foot-point-3d.md}.
+
+\subsection{The update ladder: where each branch applies, and why}
+\label{sec:ladder}
+
+Each gate below was forced by a measured failure; the numbers are in
+Section~\ref{sec:results}.
+\begin{enumerate}
+\item \textbf{Band} ($\lvert\psilev_c\rvert/\lvert\gv\rvert\le
+  k_{\mathrm{band}}\,\times$ stencil radius, default $k_{\mathrm{band}}=1$):
+  the renormalizing update \eqref{eq:update}. The root \eqref{eq:root} is
+  meaningful only where the local fit \emph{samples} the zero set it converts
+  to: beyond one stencil radius its $\psilev_c h_{nn}$ term amplifies
+  fitted-Hessian noise linearly in the offset, and cells whose stencils reach
+  a level-set skeleton (a circle's cone tip) seed a closed-loop runaway.
+\item \textbf{Far field}: raw first-order transport along the ray,
+  $\psilev^{n+1}=\psilev_c+\delta\,\lvert\gv\rvert$ -- no division by the
+  fitted gradient anywhere, so fit error enters only through the per-step
+  increment, and a clamped-plateau cell ($\lvert\gv\rvert\approx0$) freezes
+  automatically. Any far-field \emph{renormalization} divides by the fitted
+  $\lvert\gv\rvert$ and amplifies its error linearly in the offset.
+\item \textbf{Degenerate cells} (constant-fit fallback, or
+  $\lvert\gv\rvert<$ \texttt{minGradPsi}): frozen for the step,
+  $\psilev^{n+1}=\psilev_c$; they re-activate when the geometry regularizes.
+\end{enumerate}
+
+\subsection{Strain renormalization: the $O(\Delta t)$-gain alternative}
+\label{sec:strain}
+
+The exact transport of the gradient magnitude along trajectories,
+$\mathrm D\gradpsi/\mathrm Dt=-\gradpsi\,\varepsilon_{nn}$ with
+$\varepsilon_{nn}=\nv\cdot\mathbf D\cdot\nv$ and
+$\mathbf D=\tfrac12(\nabla\uvec+\nabla\uvec^{\mathsf T})$, implies that
+band-scale distances stretch by $(1+\varepsilon_{nn}\Delta t)$ per step. The
+\texttt{strain} mode therefore writes, in the band,
+\begin{equation}
+  \psilev^{n+1}(\xc)
+  =\bigl(\psilev_c+\delta\,\lvert\gv\rvert\bigr)
+   \bigl(1+\varepsilon_{nn}\,\Delta t\bigr),
+  \label{eq:strain}
+\end{equation}
+with raw transport outside. Its decisive structural property is the noise
+gain: $\varepsilon_{nn}$ comes from the solver's smooth $\nabla\uvec$, the fit
+enters only through $\nv$, and the whole correction is multiplied by
+$\Delta t$ -- unlike the geometric write-back \eqref{eq:update}, whose
+fit-derived offset carries no factor of $\Delta t$. The band gate on
+\eqref{eq:strain} is essential: the ODE describes the stretching of a
+band-scale distance whose ray foot experiences $\varepsilon_{nn}$; applied to
+the large far-field $\psilev$ with the \emph{local} $\varepsilon_{nn}$, the
+factor compounds $\exp(\int\varepsilon\,\mathrm dt)$ over the run.
+
+% =============================================================================
+\section{Implementation}
+\label{sec:implementation}
+
+The scheme is the runtime-selectable class \texttt{normalProjectedScheme}
+(\texttt{TypeName "normalProjected"}) in the \texttt{slScheme} hierarchy of
+\texttt{libleiaLevelSet}, selected by
+\texttt{levelSet\{semiLagrangian\{scheme normalProjected;\}\}} in
+\texttt{fvSolution}; the default \texttt{pointValue} keeps every existing case
+dictionary valid. The scheme is handed the reconstruction and corrector owned
+by \texttt{slAdvection}; the corrector is deliberately unused (there is no
+reconstruction evaluation at the foot to correct, and its stencil-bounds clip
+would be wrong for a renormalized value), and the foot-radius and non-finite
+guards are applied inline.
+
+\paragraph{Reconstruction interface.} Three optional capabilities were added
+to the abstract \texttt{slReconstruction}, following the library's
+\texttt{NotImplemented}-default pattern (no \texttt{dynamic\_cast} anywhere):
+\texttt{fitDerivatives(c, g, H)} returning the per-cell fit order actually
+available (2 full quadratic, 1 linear fallback with $\Hm=\mathbf 0$, 0
+constant fallback -- the scheme's degradation ladder for free);
+\texttt{signedOffset(c, fallback)} implementing \eqref{eq:root} with its
+guard; and \texttt{footPointDistance(c, p, level, ok)} implementing the
+stabilized foot-point on the local model. All are overridden by the
+production \texttt{uncachedQuadraticWeightedLeastSquares} reconstruction and
+read exclusively from the already-fitted coefficient buffer.
+
+\paragraph{Dictionary controls.} Everything is a validated runtime entry in
+\texttt{levelSet.semiLagrangian}; nothing is hardcoded:
+\begin{center}\small
+\begin{tabular}{llp{0.52\linewidth}}
+\toprule
+entry & default & meaning \\
+\midrule
+\texttt{scheme} & \texttt{pointValue} & \texttt{normalProjected} selects nSL \\
+\texttt{renormalization} & \texttt{strain} & \texttt{geometric} $\vert$
+  \texttt{strain} $\vert$ \texttt{none} (Sections~\ref{sec:update},
+  \ref{sec:strain}) \\
+\texttt{offsetEngine} & \texttt{rayRoot} & \texttt{rayRoot} $\vert$
+  \texttt{footPoint}; read in \texttt{geometric} mode only \\
+\texttt{bandRadii} & 1.0 & band gate in stencil radii
+  (Section~\ref{sec:ladder}) \\
+\texttt{minGradPsi} & 0.05 & freeze threshold on the fitted
+  $\lvert\gv\rvert$ \\
+\texttt{offsetBeta} & 0.25 & root acceptance threshold $\beta$
+  in \eqref{eq:root} \\
+\texttt{footPointTolRel} & $10^{-6}$ & foot-point tolerance, relative to the
+  stencil radius \\
+\texttt{footPointAlphaMax} & 20 & parabola-extrapolation guard interval \\
+\texttt{footPointCycles} & 10 & cap on tangent-plane/surfacepoint cycles \\
+\texttt{footPointSurfIters} & 20 & cap on \texttt{surfacepoint} Newton steps \\
+\bottomrule
+\end{tabular}
+\end{center}
+The study pipeline exposes \texttt{scheme} as the token \texttt{SL\_SCHEME}
+(and the curvature conversion as \texttt{SL\_OFFSET\_CORRECTION}), so the
+scheme is a first-class study axis.
+
+\paragraph{Time levels and storage.} \texttt{advance(psi, Unew, Uold, recon,
+corrector)} deliberately ignores \texttt{Unew}: the departure-centred trace
+\eqref{eq:foot} needs only the time-$n$ velocity (the \texttt{Uold} argument
+at every call site) and the stored projection of the previous step. That
+projection lives in the registered field \texttt{uProjOld.nSL}
+(\texttt{READ\_IF\_PRESENT}/\texttt{AUTO\_WRITE}), so a restarted trace uses
+the same two levels as an uninterrupted run; on a cold start (and per cell on
+re-activation after a freeze) the extrapolation degenerates to the identity --
+the standard one-off Adams--Bashforth startup within the second-order budget.
+
+\paragraph{Update discipline and parallelism.} The fit coefficients are
+increments about the \emph{live} $\psilev[c]$, so the per-cell loop assembles
+$\psilev^{n+1}$ into a scratch field and assigns it once at the end, followed
+by \texttt{correctBoundaryConditions()} and the reconstruction's
+\texttt{postAdvect} hook. The communication pattern is unchanged from the
+baseline: one stencil halo of $\psilev$ (inside \texttt{recon.update}) plus
+the standard halo of \texttt{fvc::grad(Uold)}; everything else is cell-local,
+so the scheme is dimension-independent (one implementation covers 2D
+one-cell-thick and 3D meshes; the fitted $\gv,\Hm$ have identically zero
+components in empty directions) and embarrassingly parallel. Per-step counters
+(frozen, far-field, conversion fallback, foot-point fallback, feet outside the
+stencil, non-finite resets) are reduced and reported every step.
+
+% =============================================================================
+\section{Measured verification record}
+\label{sec:results}
+
+All transport measurements use the $\sigma=0$ rigid-translation rig (coupled
+solver, water/air droplet geometry, $N=64$, drop radius $R=1$\,mm $=6.4h$,
+$\mathbf U=(0.05,0,0)$\,m/s): with the capillary force identically zero the
+velocity remains an exact free stream ($\max\lvert\mathbf U-\mathbf
+U_{\mathrm{trans}}\rvert\approx3\times10^{-15}$\,m/s in every run quoted), so
+every interface error is attributable to the transport scheme alone.
+
+\paragraph{The trace is clean.} One full step of the update against the exact
+translated distance field: $0.017h$ maximum error in the band, $0.027h$
+everywhere. Over 1600 steps (16$h$ of travel) the front radius, phase volume,
+zero-set error and band $\gradpsi$ match the \texttt{pointValue} baseline
+(volume error $1.17\times10^{-2}$ vs $1.02\times10^{-2}$; band $\gradpsi$
+$[0.82,1.38]$ vs $[0.84,1.37]$; zero-set $L_2$ $8.7\times10^{-5}$ vs
+$7.5\times10^{-5}$\,m).
+
+\paragraph{The geometric write-back diverges, engine-independently.} Band
+error after 100 steps:
+\begin{center}\small
+\begin{tabular}{lc}
+\toprule
+in-band update & band error \\
+\midrule
+geometric, quadratic-root engine \eqref{eq:root} & $1.107\,h$ \\
+geometric, first-order conversion $\psilev_c/\lvert\gv\rvert$ & $1.11\,h$ \\
+geometric, stabilized foot-point engine & $1.113\,h$ \\
+raw transport (no renormalization) & $0.012\,h$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Three offset engines of very different accuracy, one divergence rate
+($\times1.7$ per 10 steps, independent of $\Delta t$): writing \emph{any}
+fit-derived offset back into $\psilev$ feeds neighbour noise into the next
+step's fit at order one per step
+($\delta d_c\sim\psilev_c\,\delta\lvert\gv\rvert/\lvert\gv\rvert^{2}$ carries
+no factor of $\Delta t$), and the offset engine's accuracy is irrelevant to
+the loop gain. The foot-point engine was genuinely engaged (0--2 per-cell
+fallbacks per step out of $\approx$112 band cells). Two further amplification
+channels were isolated on the way and are now gated
+(Section~\ref{sec:ladder}): offset-linear Hessian-noise amplification
+($\sim$30$h$ one-step errors at 45$h$ offset, domain-corner cells) and
+skeleton-stencil seeding (runaway from $2.6h$ off the circle's cone tip even
+when the root was gated at three stencil radii).
+
+\paragraph{The corrugation hypothesis is falsified.} The design expectation
+was that removing the value resampling removes the $\lambda\approx2h$
+amplifier. Measured $m>4$ corrugation at $16h$ displacement:
+\texttt{pointValue} $0.209h$, nSL $0.223h$ -- the same exponential growth.
+The corrugation re-enters through the \emph{fitted normals}: a grid-scale
+wiggle in $\psilev$ perturbs $\gv$, hence $\nv$, hence both the trace
+direction and the written increment $\delta$, with the same per-displacement
+gain as the resampling it replaced. The pre-registered acceptance rule
+(closed-loop amplification $\le1$ at $\lambda\approx2h$) is therefore not
+met.
+
+\paragraph{Deforming flow.} On the reversed single (shear) vortex at $T=2$
+the strain-mode nSL is anti-convergent over $N=32..256$ (shape-error order
+$-1.18$ at $\mathrm{Co}=0.5$, volume errors up to $O(1)$, band minimum
+$\gradpsi\to0$), while the paired \texttt{pointValue} rows reproduce the
+committed baseline to all printed digits. Variant (a) at $N=64$,
+$\mathrm{Co}=0.5$: shape error $2.28\times10^{-2}$ against the baseline's
+$4.29\times10^{-4}$. An earlier, unscoped application of \eqref{eq:strain} to
+the whole domain compounded $\exp(\int\varepsilon\,\mathrm dt)$ in the far
+field (band gradient errors $10^{6}$--$10^{34}$ across the ladder) and is the
+measured reason for the band gate on the strain factor.
+
+\paragraph{Status.} The value path -- the full quadratic resampling at the
+foot -- remains the most accurate transport measured in this framework; every
+geometric substitute tested so far is worse on deforming flows, and every
+per-step renormalizing write-back diverges regardless of the offset engine.
+What survives and is retained: the normal-projected trace itself (exact
+free-stream preservation, baseline-equal transport on translation), the
+shared second-order offset conversion for the \emph{curvature} path
+(\texttt{offsetCorrection quadraticRoot}, valid where the fit samples the
+zero set), the stabilized foot-point as a reusable geometric kernel, and the
+strain mode as the only renormalization whose noise gain carries a factor of
+$\Delta t$. The next configuration in this line applies the strain factor
+\eqref{eq:strain} on top of the \emph{unchanged} baseline value transport --
+one change against the verified scheme.
+
+% =============================================================================
+\section*{Code and data availability}
+Implementation: \texttt{src/leiaLevelSet/semiLagrangian/normalProjectedScheme.\{H,C\}},
+reconstruction extensions in
+\texttt{uncachedQuadraticWeightedLeastSquaresReconstruction.\{H,C\}}; design
+notes and the foot-point companion in
+\texttt{docs/normal-projected-semi-lagrangian/}; study configurations
+\texttt{config/nsl*.yaml}, \texttt{config/npsl*.yaml}. Repository:
+\url{https://github.com/leia-openfoam/leia}.
+
+\end{document}

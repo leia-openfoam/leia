@@ -1,0 +1,33 @@
+# FULL convergence study of the normal-projected SL (nSL) scheme on the
+# reversed single (shear) 2D vortex, T = 2, sqrt(2) publication ladder --
+# the same case/ladder/CFL pair as the committed uncachedConv2Dvortex baseline,
+# so rows compare directly against the committed pointValue tables.
+# Two nSL variants in one study (no duplicate runs: offsetEngine is read only
+# in geometric mode):
+#   SL_RENORMALIZATION strain     -- raw ray transport + band strain factor
+#   SL_RENORMALIZATION geometric  -- d_c + delta with the stabilized foot-point
+#                                    engine (Variant a)
+study_name: npslConv2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+theme:  semi-lagrangian-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5, 1.0]
+  SL_SCHEME: [normalProjected]
+  SL_RENORMALIZATION: [strain, geometric]
+  SL_OFFSET_ENGINE: [footPoint]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
