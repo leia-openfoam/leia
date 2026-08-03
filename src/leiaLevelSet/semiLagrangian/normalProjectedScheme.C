@@ -251,8 +251,20 @@ void Foam::normalProjectedScheme::advance
             if (fb) { ++nFallback; }
             v = dC + delta;
         }
-        else if (renormalization_ == "strain")
+        else if
+        (
+            renormalization_ == "strain"
+         && ratio <= bandRadii_*radius
+        )
         {
+            // BAND ONLY -- the gate is essential: the ODE below describes the
+            // stretching of a band-scale DISTANCE whose ray foot experiences
+            // eps_nn. Applied to the large far-field psi with the LOCAL
+            // eps_nn, the factor compounds exp(int eps dt) over the run --
+            // measured on the reversed 2D vortex as an exponential far-field
+            // blow-up (band gradient error 1e6..1e34 across the ladder)
+            // before this gate existed.
+
             // Raw ray transport + the exact gradient-magnitude ODE
             // D|grad psi|/Dt = -|grad psi| eps_nn, integrated one step:
             // distances stretch by (1 + eps_nn dt) under normal strain
