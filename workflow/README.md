@@ -51,7 +51,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ```
 
 OpenFOAM must be sourced for the run steps. Locally this is done by
-`env_preamble` in `config/config.yaml` (defaults to OpenFOAM-v2506 — adjust to
+`env_preamble` in `config/config.yaml` (defaults to OpenFOAM-v2512 — adjust to
 your install, or set it to `""` if you already source OpenFOAM in your shell).
 
 ## Run
