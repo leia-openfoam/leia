@@ -302,6 +302,14 @@
      instability cascades to the shortest UNDAMPED scale.</p>
   <p class="nr"><b class="l">Lesson:</b> grid-scale dissipation buys constant factors, not a sign flip of the eigenvalue —
      the damping must be BROADBAND in the band (i.e. SDF maintenance), not mode-selective.</p>
+  <p class="nr"><b class="m">UPDATE (2026-08-06) — negative ALONE, partial positive PAIRED:</b> with the
+     <b>second-order stabilized foot-point face delivery</b> (seed 30&times; lower) the same \(\theta{=}0.05\) filter
+     carries the stationary droplet through the full \(t{=}0.1\) at \(N{=}64/128/256\) with the band
+     \(|\nabla\psi|\) pinned (\([0.93,1.06]\)) and the \(\kappa\)-error flat — where the unfiltered
+     second-order runs blow at \(t{=}0.035\) (\(N{=}256\)) / onset \(0.010\) (\(N{=}512\)). Residual: a slow
+     localized \(m{=}1\)-like drift (\(\max|U|\to10^{-2}\) by \(t{=}0.1\)), weakening 6&ndash;25&times; per
+     refinement level; the \(t{=}0.3\) horizon runs (in flight) decide whether the longer-wavelength
+     migration above re-emerges.</p>
 </section>
 
 <section>
@@ -354,7 +362,7 @@
     <tr><td>CST integral (sign-fixed)</td><td class="bad">\(N{=}128\): 0.047</td><td>\(\gamma(|\nabla\psi|-1)/h^2\) channel, no reinit cap</td></tr>
     <tr><td>consistent rhoPhi (2a/2b)</td><td class="warn">onset unchanged</td><td>cures cascade violence (&minus;97 orders), not trigger</td></tr>
     <tr><td>every-step / floor-locked reinit</td><td class="warn">preliminary</td><td>metric floor 28&times; the paper threshold</td></tr>
-    <tr><td>band \(\psi\)-filter (2h-selective damping)</td><td class="warn">delays 4.2&times;, no sign flip</td><td>feedback migrates to longer undamped modes</td></tr>
+    <tr><td>band \(\psi\)-filter (2h-selective damping)</td><td class="warn">alone: delays 4.2&times;; <span class="good">paired with the \(h^2\) face delivery: full \(t{=}0.1\), \(N{=}64\!-\!256\)</span></td><td>feedback migrates to longer undamped modes; pairing verdict at \(t{=}0.3\) pending</td></tr>
     <tr><td>consistent-linear pipeline + resolution</td><td class="good">TREND FLIPPED (0.80/0.125/&gt;0.1)</td><td>broadband transport diffusion; damping/gain \(\sim h^{-1/2}\)</td></tr>
   </table>
   <p class="footnote">Living document — every failed idea, its numbers, its mechanism. Companion: <code>sl.html</code>.</p>

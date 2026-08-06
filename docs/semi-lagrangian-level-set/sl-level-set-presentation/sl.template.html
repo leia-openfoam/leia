@@ -951,9 +951,12 @@
     <thead><tr><th>2D stationary droplet, blow-up time [s]</th><th>N=64</th><th>N=128</th><th>N=256</th></tr></thead>
     <tbody>
       <tr><td>quadratic pipeline (UQWLSR + reconstructed &kappa;)</td><td>0.44</td><td>0.105</td><td class="warn">0.035</td></tr>
+      <tr><td>quadratic + 2nd-order face delivery (stabilized foot point), unfiltered</td><td>&mdash;</td><td>&mdash;</td><td class="warn">0.035</td></tr>
+      <tr style="background:rgba(0,158,115,0.12)"><td>quadratic + 2nd-order face delivery + biharmonic &psi;-filter (&theta;=0.05)</td><td class="good">&gt; 0.1</td><td class="good">&gt; 0.1</td><td class="good">&gt; 0.1</td></tr>
       <tr><td>consistent-linear (linearTaylor + FVM &kappa;)</td><td>0.80</td><td>0.125</td><td class="good">&gt; 0.1</td></tr>
     </tbody>
   </table>
+  <p class="footnote muted" style="font-size:0.62em">unfiltered 2nd-order delivery: runaway onset (\(\max|U|{>}0.1\) m/s) at \(t{=}0.033\) (N=256) and \(t{=}0.010\) (N=512) &mdash; the seed shrinks 30&times;, the onset does not move; filtered N=512 and the \(t{=}0.3\) horizon runs pending.</p>
   <ul class="tight" style="font-size:0.8em">
     <li>no contradiction: coupled result is <b>relative</b> (linear less destabilizing in the loop);
         kinematic instability is <b>absolute</b> (long reversible integration)</li>
@@ -1237,17 +1240,40 @@ psi.correctBoundaryConditions();
 
 <!-- surface tension from reconstructed curvature -->
 <section>
-  <h2>Surface tension from the reconstructed curvature</h2>
-  <p>Continuum surface force (CSF), with curvature taken <b>symbolically</b> from the same quadratic fit \(R_c=\psi_c+\mathbf g\!\cdot\mathbf d+\tfrac12\mathbf d^{\!\top}\mathbf H\mathbf d\):</p>
+  <h2>Curvature estimation &mdash; the fit's own derivatives, at the cell centre</h2>
+  <p style="font-size:0.92em">CSF needs the interface curvature; the estimator reads it <b>symbolically</b> off the same quadratic WLS fit the transport already builds, \(R_c(\mathbf d)=\psi_c+\mathbf g\!\cdot\mathbf d+\tfrac12\mathbf d^{\!\top}\mathbf H\mathbf d\):</p>
   \[ \mathbf f_\sigma=\sigma\,\kappa\,\nabla\alpha,\qquad
      \kappa=\nabla\!\cdot\!\Big(\tfrac{\nabla\psi}{|\nabla\psi|}\Big)
-          =\frac{\operatorname{tr}(\mathbf H)\,|\mathbf g|^2-\mathbf g^{\!\top}\mathbf H\mathbf g}{|\mathbf g|^3} \]
-  <ul style="font-size:0.88em">
-    <li>\(\mathbf g,\mathbf H\) are <b>read off the fit coefficients</b> &mdash; no FVM re-differentiation of the (noisy, non-signed-distance) \(\psi\).</li>
-    <li><b>Normal-constant extension</b>: Newton-project the cell centre onto \(\{R_c=0\}\), \(\;\boldsymbol\delta\leftarrow\boldsymbol\delta-\dfrac{R_c}{|\nabla R_c|^2}\nabla R_c\), and evaluate \(\kappa\) there &mdash; cells on one normal ray share a foot, so \(\kappa\) is constant along the normal.</li>
-    <li>Computed only in the narrow band (\(\nabla\alpha\neq0\)); interpolated linearly to faces.</li>
-    <li><b>Balanced-force</b> [Francois&nbsp;2006]: \(\sigma\kappa_f\,\mathrm{snGrad}(\alpha)\) enters the pressure Poisson on the same faces as \(\mathrm{snGrad}(p)\) and is differenced against it &mdash; constant \(\kappa\) is absorbed exactly, so spurious currents track only the curvature error.</li>
+          =\frac{\operatorname{tr}(\mathbf H)\,|\mathbf g|^2-\mathbf g^{\!\top}\mathbf H\mathbf g}{|\mathbf g|^3}
+     \quad\text{at the cell centre, }\mathbf d=\mathbf 0. \]
+  <ul style="font-size:0.82em">
+    <li>\(\mathbf g,\mathbf H\) are <b>read off the fit coefficients</b> (CPC stencil, IDW weights, per-cell quadratic&rarr;linear&rarr;constant fallback) &mdash; no FVM re-differentiation of the (noisy, non-signed-distance) \(\psi\); computed in the narrow band, far cells keep \(\kappa=0\).</li>
+    <li><b>No foot-point extension.</b> \(\mathbf H\) is constant over a cell's fit, so the fit's curvature is pinned to the stencil centre wherever it is evaluated: at the faces, the Newton gradient-flow foot measures \(O(h^{1.08})\), the trust-region closest-point foot \(O(h^{1.13})\) &mdash; indistinguishable from no extension at all (\(O(h^{1.13})\)).</li>
+    <li>The cell value is therefore the curvature of the <b>\(\psi\)-contour through the evaluation point</b>, a parallel curve of the interface: \(\kappa_d=\kappa/(1+d\kappa)\). This \(O(h)\) offset is the leading, structural error of every classical delivery &mdash; it is removed at the <b>faces</b> (next slide), where the force lives, not at the cells.</li>
+    <li><b>Balanced-force</b> [Francois&nbsp;2006]: \(\sigma\kappa_f\,\mathrm{snGrad}(\alpha)\) enters the pressure Poisson on the same faces as \(\mathrm{snGrad}(p)\) and is differenced against it &mdash; constant \(\kappa_f\) is absorbed exactly, so spurious currents track only the \(\kappa_f\) error.</li>
   </ul>
+</section>
+
+<!-- curvature delivery: the measured best combination (face-centered gate, 2026-08-06) -->
+<section>
+  <h2>Curvature delivery &mdash; stabilized foot-point re-referencing at the faces</h2>
+  <p class="muted" style="font-size:0.8em">the measured best combination: quadratic WLS estimation + interface re-referencing of the face value &mdash; exactly what the solver does, step by step</p>
+  <div class="cols" style="align-items:flex-start">
+    <div style="flex:1.15">
+      <ol style="font-size:0.7em; line-height:1.35; padding-left:1.2em">
+        <li>\(\kappa_f=\) <b>linear face interpolation</b> of the cell \(\kappa\) (the classical CSF value) &mdash; \(\approx\) the contour curvature at the face centre \(\mathbf x_f\), so it carries the offset defect: measured \(O(h^{1.13})\).</li>
+        <li>On each <b>active</b> face (\(|\mathrm{snGrad}\,\alpha|>0\) &mdash; the only faces the force uses; all others keep the plain value): each adjacent cell computes the signed distance \(d_P,\,d_N\) from \(\mathbf x_f\) to <b>its own</b> zero set \(\{R_c=0\}\) with the <b>stabilized foot-point algorithm</b> &mdash; surface-point Newton onto \(\{R_c=0\}\), foot of \(\mathbf x_f\) on the tangent plane there, parabola-corrected step from the two step vectors, re-project; converged at \(|\Delta|<10^{-6}r_{\text{stencil}}\); the foot must stay inside the stencil trust region; signed along the model gradient.</li>
+        <li>Inverse-\(|\psi|\) side weighting \(\;d_f=\dfrac{d_P|\psi_N|+d_N|\psi_P|}{|\psi_P|+|\psi_N|}\) &mdash; the near-interface cell's fit dominates.</li>
+        <li><b>Parallel-curve inverse</b> \(\;\kappa_f^\Gamma=\dfrac{\kappa_f}{1-d_f\,\kappa_f}\) &mdash; algebraically exact for a circle; skipped where \(|1-d_f\kappa_f|\le\tfrac12\) (past half the local curvature radius) or where both foot searches fail. It must act on the <b>face-combined</b> \(\kappa_f\): correcting each side before combining loses the order (measured \(O(h^{1.40})\)).</li>
+        <li>The result is the registered face field <em class="tag">kappaStableFootFace</em>, consumed by the balanced-force flux \(G_{\sigma,f}=\sigma\,\kappa_f^\Gamma\,\mathrm{snGrad}(\alpha)\,|S_f|\) in the momentum predictor <b>and</b> the pressure corrector. Preconditions: <em class="tag">offsetCorrection none</em> (anything else double-corrects &mdash; the solver refuses to run) and a quadratic reconstruction.</li>
+      </ol>
+    </div>
+    <div style="flex:1">
+      <img src="data/figures/face_curvature_convergence.png" alt="face-centered curvature convergence, every delivery, with and without the stabilized foot point" style="max-height:48vh; max-width:100%; border-radius:6px">
+      <p class="footnote muted center" style="font-size:0.6em">Static circle, exact SDF, \(|S_f|\)-weighted \(L_2\) on the active faces: every classical delivery \(\approx O(h^{1.1})\); re-referenced \(O(h^{2.04})\) (\(R^2{=}0.999\)), \(11.35\to0.105\) m\(^{-1}\) at \(N{=}512\) &mdash; 108&times;.</p>
+    </div>
+  </div>
+  <p class="footnote muted" style="font-size:0.66em">Selected by <em class="tag">levelSet.curvatureExtension { type stabilizedFootPointFace; }</em> + <em class="tag">surfaceTensionForce { faceCurvatureSource registered; }</em> &mdash; the face field plugs into the existing registered-curvature hook; no force-model change.</p>
 </section>
 
 <!-- curvature accuracy (standalone) -->
@@ -1257,9 +1283,9 @@ psi.correctBoundaryConditions();
   <img src="data/figures/sl_curvature_error.png" style="max-height:300px">
   <ul style="font-size:0.83em">
     <li>Circle SDF; error of \(\kappa\) vs exact \(1/R\) in the \(\mathrm{snGrad}(\alpha)\) band (the NS-relevant cells), \(N=32\to512\).</li>
-    <li><b>Converges at \(\approx\)first order</b>, \(\|\kappa-\kappa_e\|_2=O(h^{1.2})\) (rel.\ \(L_2\) \(35\%\to1\%\)) &mdash; as expected for the 2nd derivative of a quadratic fit.</li>
-    <li><b>With vs without the normal extension</b> (foot-point vs cell-centre) the error is coincident on a clean SDF (\(O(h^{1.22})\) vs \(O(h^{1.29})\), extension marginally better only at \(N{=}32\)); the <b>face-averaged</b> force-effective \(\mathrm{avg}(\mathrm{interp}\,\kappa)\) tracks it too (\(O(h^{1.18})\)). \(\mathrm{tr}(H)=\Delta\psi\) coincides as \(h\to0\). The extension is a <b>run-time</b> device, not a clean-SDF accuracy improver &mdash; and at run-time, dropping it only <b>delays</b> the coupled \(N{=}128\) divergence (\(t{\approx}0.06\to0.11\)), it does not cure it.</li>
-    <li>So the curvature is <b>consistent</b> by every measure on a clean interface &mdash; the coupled-run fine-mesh growth is \(\psi\) leaving the SDF at run time (mechanism slide), not the formula.</li>
+    <li>Cell-centred \(\kappa\): <b>first order as delivered</b>, \(\|\kappa-\kappa_e\|_2=O(h^{1.07})\) (\(R^2{=}0.995\); rel.\ \(L_2\) \(35.4\%\to1.7\%\)). The earlier \(N{=}512\) reading (\(1.0\%\)) was biased low by a plane-LSQ degeneracy-guard bug that silently halved the \(\mathrm{snGrad}(\alpha)\) band at fine \(h\) (fixed; the honest full-band value is \(1.7\%\)).</li>
+    <li><b>The \(O(h)\) error is the parallel-contour offset, not the estimator</b>: the Newton-foot and closest-point extensions leave the face-centered error unchanged (\(O(h^{1.08})/O(h^{1.13})\) vs \(O(h^{1.13})\) plain) &mdash; the fit's constant Hessian pins its curvature to the stencil centre no matter where the foot lands. \(\mathrm{tr}(H)=\Delta\psi\) coincides as \(h\to0\).</li>
+    <li>Re-referencing the interpolated <b>face</b> value to the interface with the stabilized foot point restores <b>second order</b>, \(O(h^{2.04})\) (previous slide) &mdash; the delivery, not the fit, was the bottleneck.</li>
   </ul>
 </section>
 
@@ -1286,7 +1312,7 @@ psi.correctBoundaryConditions();
       <p style="font-size:0.8em; margin:0 0 0.15em"><b>Ruled out &mdash; each verified:</b></p>
       <ul style="font-size:0.74em; line-height:1.3">
         <li><b>Not</b> a force imbalance &mdash; balanced-force: constant \(\kappa\Rightarrow\) zero current.</li>
-        <li><b>Not</b> the curvature formula &mdash; on a clean SDF \(\kappa\) converges \(O(h^2)\); the residual is a small \(\cos4\theta\) grid-anisotropy bias (\(0.2\%\) at \(N{=}128\)).</li>
+        <li><b>Not</b> the curvature formula &mdash; on a clean SDF the classical delivery converges \(O(h^{1.1})\) (the parallel-contour offset) and the foot-point re-referenced \(\kappa_f\) reaches \(O(h^{2.04})\), yet <b>both</b> blow up unfiltered; the residual angular seed is a small \(\cos4\theta\) grid-anisotropy bias.</li>
         <li><b>Not</b> a capillary-CFL violation &mdash; \(\Delta t{=}\tfrac14\Delta t_\sigma\) is inside Brackbill's sum-density limit; coarser mesh uses <i>bigger</i> \(\Delta t\) yet is <i>more</i> stable \(\Rightarrow\) \(h\)-driven, not \(\Delta t\).</li>
         <li><b>Not</b> \(|\nabla\psi|\)-degeneracy &mdash; \(|\nabla\psi|\approx0.85\!-\!1.1\) at the spikes (\({>}1\) at the poles); the no-extension run diverges with \(|\nabla\psi|\approx0.94\).</li>
         <li><b>Not</b> the density ratio &mdash; equal-\(\rho\) still diverges (it sets the amplitude, not the onset).</li>
@@ -1322,8 +1348,10 @@ psi.correctBoundaryConditions();
     <tr style="background:rgba(0,158,115,0.12)"><td style="padding:0.15em 0.5em">consistent geometric mass flux (upwind \(\alpha_f\))</td><td>blow-up <b>\(97\) orders gentler</b>; onset unchanged</td></tr>
     <tr><td style="padding:0.15em 0.5em">Kang/GFM interface-weighted \(\kappa_f\)</td><td>statics \(58\times\) better, coupled loop <b>worse</b> (blows \(0.07\) vs \(0.44\))</td></tr>
     <tr><td style="padding:0.15em 0.5em">CST integral model (sign-corrected)</td><td><b>first reachable equilibrium</b> at \(N{=}64\); \(N{=}128\) blows at \(0.047\)</td></tr>
+    <tr style="background:rgba(0,158,115,0.12)"><td style="padding:0.15em 0.5em">stabilized foot-point <b>face</b> re-referencing</td><td>statics \(O(h^{2.04})\), \(108\times\) at \(N{=}512\); coupled seed \(30\times\) lower, onset <b>unchanged</b> (\(0.035\) at \(N{=}256\))</td></tr>
+    <tr style="background:rgba(0,158,115,0.12)"><td style="padding:0.15em 0.5em">+ biharmonic band \(\psi\)-filter (\(\theta{=}0.05\))</td><td><b>closes the loop</b>: full \(t{=}0.1\) at \(N{=}64\!-\!256\), band \(|\nabla\psi|\) pinned, \(\kappa\)-error flat</td></tr>
   </table>
-  <p style="font-size:0.7em; line-height:1.3"><b>Verdict:</b> the <i>onset</i> is a curvature-error-seed + parasitic feedback (spatial, universal). Time order, \(\Delta t\), curvature <i>coupling</i>, and every published <i>delivery</i> cure fail — the sharper the static balance, the higher the feedback gain. Open levers: <b>signed-distance consistency</b> + a <b>profile-robust estimator</b>.</p>
+  <p style="font-size:0.7em; line-height:1.3"><b>Verdict:</b> the <i>seed</i> is the curvature-delivery error (fixed: foot-point re-referencing, \(O(h^{2.04})\)); the <i>exponent</i> is the transported-\(\psi\) profile feedback, untouched by any delivery accuracy &mdash; the sharper the static balance, the higher the feedback gain. The pairing that survives is <b>second-order delivery + minimal profile maintenance</b> (the band \(\psi\)-filter); signed-distance consistency remains the structural lever.</p>
 </section>
 
 <!-- ============ DIDACTIC ARC: force balance, equilibrium, accuracy, stability ============ -->
@@ -1460,7 +1488,7 @@ psi.correctBoundaryConditions();
     <tr><td style="padding:0.12em 0.4em"><b>parallel-contour \(\kappa\)</b>: the cell reads its OWN isosurface, \(\kappa_d = \kappa/(1{+}d\kappa)\)</td>
         <td>static, structural</td><td>8&ndash;30% of \(1/R\) across the force support (N=128)</td><td>&rarr; parallel curves</td></tr>
     <tr><td style="padding:0.12em 0.4em">arithmetic face average mixes the two contour values</td>
-        <td>static, delivery</td><td>same origin, face level</td><td>&rarr; Kang cure</td></tr>
+        <td>static, delivery</td><td>\(O(h^{1.13})\) at the faces</td><td>&rarr; cured by the stabilized foot-point re-referencing (\(O(h^{2.04})\)); Kang measured \(O(h^{1.14})\) &mdash; not a cure</td></tr>
     <tr><td style="padding:0.12em 0.4em">grid-anisotropy \(\cos4\theta\) bias of the CPC fit (poles vs diagonals)</td>
         <td>static, convergent</td><td>0.6% &rarr; 0.05% (N=64&rarr;256)</td><td>the angular seed</td></tr>
     <tr><td style="padding:0.12em 0.4em"><b>2h profile modes aliasing into the tangential Hessian</b></td>
@@ -1892,8 +1920,10 @@ psi.correctBoundaryConditions();
           <b>symbolically</b> from the same reconstruction, giving a <b>converging Laplace jump</b>
           and currents that decay on coarse meshes (static droplet, reinit-free). The coupling is
           <b>balanced-force</b>; instrumented + frozen-interface tests trace the fine-mesh growth to a
-          <b>transport-coupled feedback</b>, so signed-distance consistency <i>and</i> curvature-error
-          reduction (not a force-discretisation change) are the levers (future work).</li>
+          <b>transport-coupled feedback</b>. The curvature-delivery lever is now closed &mdash; the
+          stabilized foot-point face re-referencing delivers \(O(h^{2.04})\) &mdash; and the surviving
+          pairing is that delivery <b>plus</b> minimal \(\psi\)-profile maintenance (the biharmonic
+          band filter); signed-distance consistency remains the structural lever.</li>
       <li>Open item: no reinitialization, so \(|\nabla\psi|=1\) is not maintained over long
           integrations (a redistancing partner is future work); explicit surface tension imposes a
           capillary time-step limit.</li>
