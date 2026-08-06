@@ -39,7 +39,7 @@ PRES_DIR = paths.presentation_dir(THEME)
 FIGS_DIR = paths.figs_dir(THEME)
 TABLES   = paths.tables_dir(THEME)
 ARTS     = paths.article_dir(THEME)
-DECK     = os.path.join(PRES_DIR, "comparison.html")
+DECK     = os.path.join(PRES_DIR, "level-set-method-comparison.html")
 PDF      = os.path.join(ARTS, "methodComparison.pdf")
 
 
@@ -73,7 +73,7 @@ rule finalize:
         "python3 {SCRIPTS}/make_method_comparison.py && "
         "python3 {SCRIPTS}/make_bench_fields_fig.py && "
         "python3 {SCRIPTS}/make_flux_volloss_fig.py && "
-        "python3 {SCRIPTS}/export_html.py {PRES_DIR} comparison.template.html && "
+        "python3 {SCRIPTS}/export_html.py {PRES_DIR} level-set-method-comparison.template.html && "
         "( command -v latexmk >/dev/null "
         "  && ( cd {ARTS} && latexmk -pdf -interaction=nonstopmode -halt-on-error "
         "       methodComparison.tex ) "

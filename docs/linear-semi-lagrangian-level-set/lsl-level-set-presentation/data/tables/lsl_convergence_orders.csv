@@ -1,7 +1,10 @@
 case,mesh,reconstruction,cfl,nLevels,stableLevels,hMin,hMax,hLimit,shapeOrder,volumeOrder,gradientOrder,gradientBandOrder,gradientHalfOrder,gradientBandHalfOrder,volumeHalfOrder
-2Dvortex,hex,nestedLSQ,0.5,7,7,0.00390625,0.03125,,1.070,1.452,0.516,2.082,-0.023,-0.050,2.925
-2Dvortex,hex,nestedLSQ,1.0,7,4,0.0111111,0.03125,0.0078125,0.966,3.494,-0.906,-2.659,-0.050,-1.407,2.154
-3Dshear,hex,nestedLSQ,0.5,4,2,0.02,0.03125,0.0125,1.180,-1.698,-2.982,-8.649,-0.093,-0.148,1.345
+2Dvortex,hex,linearWeightedLeastSquares,0.5,7,1,0.03125,0.03125,0.0222222,,,,,,,
+2Dvortex,hex,linearWeightedLeastSquares,1.0,7,0,,,0.03125,,,,,,,
+3Dshear,hex,nestedLSQ,0.1,4,4,0.0078125,0.03125,,2.672,3.344,-1.295,0.266,-0.079,-0.171,1.373
+3Dshear,hex,nestedLSQ,0.2,4,4,0.0078125,0.03125,,2.561,2.588,-1.255,0.122,-0.087,0.052,1.368
+3Dshear,hex,nestedLSQ,0.4,4,4,0.0078125,0.03125,,2.451,1.071,-1.245,0.175,-0.096,-0.175,1.370
+3Dshear,hex,nestedLSQ,0.8,4,4,0.0078125,0.03125,,2.358,2.290,-1.078,0.335,-0.100,-0.181,1.322
 3Ddeformation,hex,nestedLSQ,0.5,5,5,0.00625,0.03125,,2.282,3.635,0.539,1.547,-0.254,-1.000,2.022
 3Dshear,poly,nestedLSQ,0.5,4,4,0.0078125,0.03125,,1.775,4.374,-0.812,2.098,-0.594,-0.113,2.226
 3Ddeformation,poly,nestedLSQ,0.5,4,4,0.0078125,0.03125,,1.521,2.937,-0.084,-0.790,-0.356,-1.044,2.738

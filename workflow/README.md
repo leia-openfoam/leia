@@ -199,7 +199,7 @@ The third research line: Eulerian psi advection + criterion-gated geometric
 redistancing from the phase indicator's own least-squares planes. Theme
 `geometrically-redistanced-levelset`; results agglomerate into
 `docs/geometrically-redistanced-levelset/grl-level-set-article/data/` and both
-decks (`grl.template.html`, `grl-negative-results.template.html`).
+decks (`geometrically-redistanced-level-set.template.html`, `geometrically-redistanced-level-set-negative-results.template.html`).
 
 Studies (each config header documents its axes and purpose):
 

@@ -146,8 +146,8 @@ leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortex
 # HIGH-RES opt-in (adds N = 256; 6 models, 96 cases): ~46 min measured, floored by the
 # heaviest cases (T=8, N=256 ~ 12k steps). THE deck-regeneration run: rebuilds the
 # triptychs, the alpha / |grad psi|-1 field atlas and BOTH standalone deck variants:
-# doc/slides/index.html (vertical section stacks: -> parts, v slides within a part)
-# and doc/slides/index-linear.html (flat linear flow for front-to-back reading).
+# docs/velocity-extension/velocity-extension-presentation/velocity-extension.html
+# (vertical section stacks) and its -linear variant (flat front-to-back flow).
 leia> snakemake --workflow-profile profiles/local --configfile config/bulkVortexHighRes.yaml
 
 # Phase-indicator comparison (geometric vs detrixheAslam), N <= 128 by design:

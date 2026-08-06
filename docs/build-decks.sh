@@ -7,8 +7,8 @@
 # the CDN assets (reveal.js, MathJax) so the built *.html opens offline and is
 # shareable standalone. Built *.html are NOT tracked (regenerated in seconds).
 #
-#   docs/semi-lagrangian-level-set/sl-level-set-presentation/sl.template.html    -> sl.html
-#   docs/velocity-extension/velocity-extension-presentation/index.template.html  -> index.html
+#   docs/semi-lagrangian-level-set/sl-level-set-presentation/quadratic-semi-lagrangian-level-set.template.html -> quadratic-semi-lagrangian-level-set.html
+#   docs/velocity-extension/velocity-extension-presentation/velocity-extension.template.html -> velocity-extension.html
 #
 # Regenerating the FIGURES/tables is a separate, heavier step (the Snakemake
 # studies) -- see the repo Makefile / README.

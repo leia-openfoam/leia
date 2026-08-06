@@ -1357,4 +1357,4 @@ and needs the manufactured-spectrum gate before any parameter is promoted.
 
 Reproduction: `snakemake --workflow-profile profiles/local --configfile
 config/faceCurvatureDroplet2D.yaml`; slide in
-`docs/method-comparison/method-comparison-presentation/comparison.template.html`.
+`docs/method-comparison/method-comparison-presentation/level-set-method-comparison.template.html`.

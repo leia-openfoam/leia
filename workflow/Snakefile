@@ -81,7 +81,7 @@ DATABASE  = os.path.join(STUDY_DIR, f"{STUDY}_database.csv")
 PRES_DIR    = paths.presentation_dir(THEME)   # docs/<theme>/<slug>-presentation
 FIGS_DIR    = paths.figs_dir(THEME)           # docs/<theme>/<slug>-article/data/figures
 TABLES_DIR  = paths.tables_dir(THEME)         # docs/<theme>/<slug>-article/data/tables
-DECK_TPL    = paths.deck_template(THEME)      # sl.template.html | index.template.html
+DECK_TPL    = paths.deck_template(THEME)      # quadratic-semi-lagrangian-level-set.template.html | velocity-extension.template.html
 REPORT      = os.path.join(STUDY_DIR, "figures", ".report.done")
 
 wildcard_constraints:

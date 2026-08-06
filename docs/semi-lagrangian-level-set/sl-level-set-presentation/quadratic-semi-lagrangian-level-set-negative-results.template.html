@@ -109,7 +109,7 @@
   <p style="margin-top:0.7em; font-size:0.9em">Every entry: a reasonable idea, implemented and <b>verified correct</b>, that failed for a mechanistic reason worth remembering.<br>
   Reference problem: the universal \(h\)-driven blow-up, \(t_{\mathrm{blow}} = 0.466/0.444/0.105/0.032\) at \(N=32/64/128/256\) (Euler, \(\Delta t_\sigma/4\), cell-local symbolic \(\kappa\), CSF).</p>
   <p class="footnote">Root cause (verified): Defect&nbsp;1 — no discrete equilibrium (cell \(\kappa\) is the parallel-contour value, \(\kappa_d=\kappa/(1+d\kappa)\) varies across the force support);
-  Defect&nbsp;2 — grid-scale \(\psi\)-profile modes alias into the tangential Hessian (sign-flipping \(\kappa\) errors, diagonal-dominant). Companion deck: <code>sl.html</code>.</p>
+  Defect&nbsp;2 — grid-scale \(\psi\)-profile modes alias into the tangential Hessian (sign-flipping \(\kappa\) errors, diagonal-dominant). Companion deck: <code>quadratic-semi-lagrangian-level-set.html</code>.</p>
 </section>
 
 <!-- ==================== PART 1: time ==================== -->
@@ -365,7 +365,7 @@
     <tr><td>band \(\psi\)-filter (2h-selective damping)</td><td class="warn">alone: delays 4.2&times;; <span class="good">paired with the \(h^2\) face delivery: full \(t{=}0.1\), \(N{=}64\!-\!256\)</span></td><td>feedback migrates to longer undamped modes; pairing verdict at \(t{=}0.3\) pending</td></tr>
     <tr><td>consistent-linear pipeline + resolution</td><td class="good">TREND FLIPPED (0.80/0.125/&gt;0.1)</td><td>broadband transport diffusion; damping/gain \(\sim h^{-1/2}\)</td></tr>
   </table>
-  <p class="footnote">Living document — every failed idea, its numbers, its mechanism. Companion: <code>sl.html</code>.</p>
+  <p class="footnote">Living document — every failed idea, its numbers, its mechanism. Companion: <code>quadratic-semi-lagrangian-level-set.html</code>.</p>
 </section>
 </section>
 

@@ -16,12 +16,12 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # theme key -> (theme directory, subfolder slug, deck template name)
 _THEMES = {
-    "semi-lagrangian-level-set":          ("semi-lagrangian-level-set",          "sl-level-set",       "sl.template.html"),
-    "linear-semi-lagrangian-level-set":   ("linear-semi-lagrangian-level-set",   "lsl-level-set",      "lsl.template.html"),
-    "velocity-extension":                 ("velocity-extension",                 "velocity-extension", "index.template.html"),
-    "geometrically-redistanced-levelset": ("geometrically-redistanced-levelset", "grl-level-set",      "grl.template.html"),
-    "sdpls-level-set":                    ("sdpls-level-set",                    "sdpls",              "sdpls.template.html"),
-    "method-comparison":                  ("method-comparison",                  "method-comparison",  "comparison.template.html"),
+    "semi-lagrangian-level-set":          ("semi-lagrangian-level-set",          "sl-level-set",       "quadratic-semi-lagrangian-level-set.template.html"),
+    "linear-semi-lagrangian-level-set":   ("linear-semi-lagrangian-level-set",   "lsl-level-set",      "linear-semi-lagrangian-level-set.template.html"),
+    "velocity-extension":                 ("velocity-extension",                 "velocity-extension", "velocity-extension.template.html"),
+    "geometrically-redistanced-levelset": ("geometrically-redistanced-levelset", "grl-level-set",      "geometrically-redistanced-level-set.template.html"),
+    "sdpls-level-set":                    ("sdpls-level-set",                    "sdpls",              "sdpls-level-set.template.html"),
+    "method-comparison":                  ("method-comparison",                  "method-comparison",  "level-set-method-comparison.template.html"),
 }
 
 # Themes whose deck reads figures/tables from ITS OWN presentation data/ folder

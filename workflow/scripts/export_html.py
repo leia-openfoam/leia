@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Build the reveal.js deck into a single self-contained (standalone) HTML file.
 
-The editable source is ``index.template.html`` (references ``figures/*.png`` and
+The editable source is ``velocity-extension.template.html`` (references ``figures/*.png`` and
 CDN CSS/JS). This inlines the local figures (as base64 data URIs) and the CDN
-assets (reveal.js, theme, notes plugin, MathJax) into ``index.html`` -- ONE
+assets (reveal.js, theme, notes plugin, MathJax) into ``velocity-extension.html`` -- ONE
 shareable file that opens offline, with no figures/ directory or network needed.
 Stdlib only (urllib + base64) -- no browser/Playwright dependency.
 
@@ -17,8 +17,8 @@ import re
 import sys
 import urllib.request
 
-DEFAULT_SRC = "index.template.html"   # editable source (external figure/CDN refs)
-DEFAULT_OUT = "index.html"            # single self-contained, shareable deck
+DEFAULT_SRC = "velocity-extension.template.html"   # editable source (external figure/CDN refs)
+DEFAULT_OUT = "velocity-extension.html"            # single self-contained, shareable deck
 
 
 def _fetch(url, timeout=30):

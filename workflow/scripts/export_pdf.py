@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export the reveal.js deck (doc/slides/index.html) to a shareable PDF.
+"""Export the reveal.js deck (doc/slides/velocity-extension.html) to a shareable PDF.
 
 Uses Playwright's headless Chromium. Reveal's ``?print-pdf`` mode lays every
 slide out as its own page; we wait for network idle + MathJax typesetting before
@@ -22,7 +22,7 @@ def _render(slides_dir, pdf_name):
     with NO running asyncio loop (see export())."""
     from playwright.sync_api import sync_playwright
 
-    index = os.path.join(slides_dir, "index.html")
+    index = os.path.join(slides_dir, "velocity-extension.html")
     out = os.path.join(slides_dir, pdf_name)
     url = "file://" + os.path.abspath(index) + "?print-pdf"
     with sync_playwright() as p:
@@ -50,7 +50,7 @@ def export(slides_dir, pdf_name=DEFAULT_NAME):
     subprocess: Snakemake run: blocks execute inside an asyncio loop, where the
     Playwright *sync* API refuses to run. Best-effort -- a failure only skips the
     PDF (with a warning); the figures and deck HTML are already produced."""
-    index = os.path.join(slides_dir, "index.html")
+    index = os.path.join(slides_dir, "velocity-extension.html")
     if not os.path.isfile(index):
         print(f"[pdf] no {index}; skip PDF export")
         return None

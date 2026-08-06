@@ -43,7 +43,7 @@ import paths
 THEME    = "semi-lagrangian-level-set"
 PRES_DIR = paths.presentation_dir(THEME)
 ARTS     = paths.article_dir(THEME)
-DECK     = os.path.join(PRES_DIR, "sl.html")
+DECK     = os.path.join(PRES_DIR, "quadratic-semi-lagrangian-level-set.html")
 PDF      = os.path.join(ARTS, "semiLagrangianLevelSet.pdf")
 
 
@@ -84,7 +84,7 @@ rule finalize:
         "python3 {SCRIPTS}/make_alpha_field_fig.py studies/" + CONFIG_2D +
         " --theme {THEME} && "
         "python3 {SCRIPTS}/propagate_data.py {THEME} && "
-        "python3 {SCRIPTS}/export_html.py {PRES_DIR} sl.template.html && "
+        "python3 {SCRIPTS}/export_html.py {PRES_DIR} quadratic-semi-lagrangian-level-set.template.html && "
         "( command -v latexmk >/dev/null "
         "  && ( cd {ARTS} && latexmk -pdf -interaction=nonstopmode -halt-on-error "
         "       semiLagrangianLevelSet.tex ) "

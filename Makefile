@@ -177,8 +177,8 @@ docs: decks articles
 all: build studies docs
 
 clean:
-	rm -f docs/*/*-presentation/*.html docs/*/*-presentation/*-linear.html \
-	      docs/*/*-article/*.pdf docs/*/*-article/*.aux docs/*/*-article/*.log \
+	find docs -path '*-presentation/*.html' ! -name '*.template.html' -delete
+	rm -f docs/*/*-article/*.pdf docs/*/*-article/*.aux docs/*/*-article/*.log \
 	      docs/*/*-article/*.bbl docs/*/*-article/*.blg docs/*/*-article/*.out
 
 # --- cluster sync (git-ignored raw output only; see CLUSTER.md) --------------
