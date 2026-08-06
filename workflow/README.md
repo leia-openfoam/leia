@@ -24,6 +24,11 @@ config/faceCurvatureDroplet2D.yaml  FACE-CENTERED curvature convergence: kappa_f
                              circle, exact SDF), every curvature model with/without the
                              stabilized foot point (leiaTestMeanCurvature, serial,
                              seconds; figure + orders into the method-comparison theme)
+config/stationaryDropletStableFoot.yaml  parasitic currents with the SECOND-ORDER face
+                             curvature (curvatureExtension stabilizedFootPointFace +
+                             faceCurvatureSource registered): N=256,512 (both >20
+                             cells/radius), np 4; observable = per-step maxMagU
+                             evolution vs the arithmetic-delivery baseline
 config/staticExtension.yaml  static t=0 extension verification: e=|n.grad(Uext)| vs h
                              (solver: leiaTestVelocityExtension; 7 models x 2 div schemes)
 config/steadyVortex2D.yaml   NON-REVERSING stress test: steady vortex (oscillation off,

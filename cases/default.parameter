@@ -74,6 +74,14 @@ SL_RENORMALIZATION strain; // normalProjected in-band renormalization:
                      // geometric | strain | none.
 SL_OFFSET_ENGINE rayRoot; // normalProjected geometric offset engine:
                      // rayRoot | footPoint (stabilized foot-point, Variant a).
+CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
+                     // none | harmonicLaplace | footPointHeightFunction |
+                     // closestPointNewton | connectedInterface | interfaceMean
+                     // | stabilizedFootPointFace (face kappa re-referenced to
+                     // the interface at the stabilized foot-point offset) | fvm.
+FACE_CURVATURE_SOURCE model; // reconstructedCurvature kappa_f source: model
+                     // (its own arithmetic/Kang assembly) | registered (the
+                     // solver-registered face field, e.g. kappaStableFootFace).
 REDIST_REGION band;  // signedDistanceBounds criterion region: band (interface
                      // quality, default) | bulk (frozen-band fill region;
                      // REQUIRES REDIST_VIOLFRAC > 0 -- SDF skeleton has grad 0).

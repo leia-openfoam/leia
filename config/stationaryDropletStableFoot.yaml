@@ -1,0 +1,41 @@
+# Stationary-droplet parasitic currents with the SECOND-ORDER face curvature:
+# balanced CSF (reconstructedCurvature) consuming the solver-registered
+# stabilized foot-point face field (curvatureExtension stabilizedFootPointFace
+# + faceCurvatureSource registered) -- the winning delivery of the
+# face-centered curvature gate (h^2.0 active-face L2 on the static circle,
+# docs/method-comparison face_curvature_convergence) -- with the quadratic
+# semi-Lagrangian level-set transport (uncachedQuadraticWeightedLeastSquares).
+#
+# Two successive resolutions, both resolving the R = 1 mm drop above 20 cells
+# per radius: N = 256 (25.6 cells/R) and N = 512 (51.2 cells/R). The decision
+# observable is the EVOLUTION of max|U| (per-step maxMagU in the solver CSV):
+# where the parasitic currents originate in this method combination, whether
+# they settle, and how the settled level scales under refinement against the
+# committed arithmetic-delivery baseline (stationaryDroplet2D study).
+#
+# Capillary-limited explicit step: maxDeltaT = CAPILLARY_DT_COEFF/N^1.5
+# (derived token) -> ~38k steps at 256^2, ~107k steps at 512^2 (the long pole).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletStableFoot.yaml
+study_name: stationaryDropletStableFoot
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [256, 512]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+
+# Diagnostic gate: keep the committed droplet_parasitic tables (arithmetic
+# baseline) untouched; the evolution figure is produced by
+# make_droplet_evolution_fig.py from the per-step CSVs.
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

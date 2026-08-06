@@ -207,6 +207,21 @@
             kappa.correctBoundaryConditions();
         }
 
+        // Stabilized foot-point FACE delivery: re-reference the interpolated
+        // face curvature to the interface (parallel-curve inverse at the
+        // stabilized foot-point offset of each active face centre). Runs LAST
+        // so it consumes the final cell kappa; the reconstruction's fits are
+        // current (the symbolic fill above updated them for this psi).
+        if (stabilizedFootPointFaceExtension)
+        {
+            computeStabilizedFootPointFaceCurvature
+            (
+                mesh, psi, alpha1, kappa,
+                slAdv->reconstruction(),
+                kappaStableFootFace
+            );
+        }
+
         // Diagnostic hook (default off): SL_SMOOTH_RHO=1 replaces the sharp
         // geometric indicator by the erf-smoothed Heaviside of the level set,
         // H = 0.5*(1 - erf(psi/eps)) with eps = 1.5*h, exactly the mixture rule

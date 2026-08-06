@@ -40,6 +40,27 @@ surfaceScalarField kappaInterfaceFace
     dimensionedScalar("kappaInterfaceFace", dimless/dimLength, 0.0)
 );
 
+// Stabilized foot-point FACE curvature (stabilizedFootPointFaceCurvature.H):
+// the arithmetic kappa_f re-referenced to the interface with the stabilized
+// foot-point offset of each active face centre. Filled each step when
+// curvatureExtension type == stabilizedFootPointFace; consumed by
+// reconstructedCurvature via faceCurvatureSource registered /
+// faceCurvatureField kappaStableFootFace.
+Info<< "Creating field kappaStableFootFace\n" << endl;
+surfaceScalarField kappaStableFootFace
+(
+    IOobject
+    (
+        "kappaStableFootFace",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("kappaStableFootFace", dimless/dimLength, 0.0)
+);
+
 // Semi-Lagrangian level-set advection + symbolic curvature evaluator. Selects the
 // reconstruction/correction from fvSolution levelSet.semiLagrangian.
 autoPtr<slAdvection> slAdv = slAdvection::New(mesh);
@@ -89,12 +110,39 @@ const bool connectedInterfaceCurvatureExtension =
 // FatalError with NotImplemented). kappa stays 0 (the kErr CSV columns are
 // then meaningless -- ignore them for such runs).
 const bool fvmCurvature = (curvatureExtensionType == "fvm");
+// Stabilized foot-point FACE delivery: keep the raw contour-referenced cell
+// fill (the default meanCurvatureNoExtension branch) and re-reference the
+// interpolated FACE value to the interface with the stabilized foot-point
+// offset (stabilizedFootPointFaceCurvature.H). The measured face-centered
+// curvature gate: h^2.0 active-face L2 vs h^1.1 for the plain arithmetic
+// delivery on the static exact-SDF circle.
+const bool stabilizedFootPointFaceExtension =
+    (curvatureExtensionType == "stabilizedFootPointFace");
+if (stabilizedFootPointFaceExtension)
+{
+    // The parallel-curve inverse acts at the FACE: a cell-level
+    // offsetCorrection would be applied twice -- silently wrong curvature.
+    const word oc =
+        static_cast<const fvSolution&>(mesh).subDict("levelSet")
+        .subOrEmptyDict("semiLagrangian")
+        .getOrDefault<word>("offsetCorrection", "none");
+    if (oc != "none")
+    {
+        FatalErrorInFunction
+            << "curvatureExtension stabilizedFootPointFace requires "
+            << "semiLagrangian offsetCorrection none (found " << oc
+            << "): the face delivery applies the parallel-curve inverse "
+            << "itself and would double-correct."
+            << exit(FatalError);
+    }
+}
 Info<< "Curvature extension: " << curvatureExtensionType
     << (harmonicCurvatureExtension ? " (harmonic Laplace smoothing ON)" : "")
     << (footPointCurvatureExtension ? " (foot-point height function ON)" : "")
     << (closestPointCurvatureExtension ? " (closest-point Newton foot ON)" : "")
     << (interfaceMeanCurvatureExtension ? " (interface-mean diagnostic ON)" : "")
     << (connectedInterfaceCurvatureExtension ? " (connected face-native curvature ON)" : "")
+    << (stabilizedFootPointFaceExtension ? " (stabilized foot-point FACE delivery ON)" : "")
     << (fvmCurvature ? " (symbolic kappa fill OFF -- force model computes its own)" : "")
     << nl << endl;
 

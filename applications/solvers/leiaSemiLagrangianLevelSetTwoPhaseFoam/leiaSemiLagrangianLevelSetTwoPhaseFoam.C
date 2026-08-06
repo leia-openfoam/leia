@@ -89,6 +89,10 @@ Description
 // Spatially constant, CSF-support-weighted curvature diagnostic.
 #include "interfaceMeanCurvature.H"
 
+// Stabilized foot-point re-referencing of the FACE curvature (the balanced-CSF
+// delivery measured second-order on the face-centered curvature gate).
+#include "stabilizedFootPointFaceCurvature.H"
+
 #include "advectionErrors.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -185,9 +189,23 @@ int main(int argc, char *argv[])
         applyInterfaceMeanCurvature(mesh, alpha1, kappa);
     }
 
+    // Face delivery LAST (it consumes the final cell kappa), so the initial
+    // Young-Laplace balance below uses the same corrected face curvature the
+    // run-time force applies.
+    if (stabilizedFootPointFaceExtension)
+    {
+        computeStabilizedFootPointFaceCurvature
+        (
+            mesh, psi, alpha1, kappa,
+            slAdv->reconstruction(),
+            kappaStableFootFace
+        );
+    }
+
     #include "YoungLaplaceEqn.H"
     kappa.write();
     kappaInterfaceFace.write();
+    kappaStableFootFace.write();
     p_rgh.write();
 
     while (runTime.run())
