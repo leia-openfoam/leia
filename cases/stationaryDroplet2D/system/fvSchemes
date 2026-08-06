@@ -59,6 +59,12 @@ divSchemes
     // Lagrangian (no fvm div for psi/alpha), so no div(phi,alpha)/MULES entries.
     div(rhoPhi,U)                       Gauss linearUpwind grad(U);
     div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;
+    // FVM curvature kappa = div( grad(psi)/|grad(psi)| ) for the
+    // divGradPsiSnGradAlpha surface-tension model and the face-centered
+    // curvature rows of leiaTestMeanCurvature.
+    div(nPsi)                           Gauss linear;
+    // Alpha-normal curvature used by divGradAlphaSnGradAlpha (same consumers).
+    div(nAlpha)                         Gauss linear;
     // anchoredEikonal redistancer working equation (inert unless selected;
     // upwind matches the outward Eikonal characteristics).
     div(yPhi,psiDist)                   Gauss upwind;

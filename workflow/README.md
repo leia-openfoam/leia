@@ -19,6 +19,11 @@ config/config.yaml          which case/mesh/mode/np + scope (smoke subset by def
 config/bulkVortex.yaml      FAST reversed-vortex suite (N<=128, 6 models, ~5 min; export_slides: false)
 config/bulkVortexHighRes.yaml  opt-in deep convergence (+N=256, 6 models, ~46 min; regenerates the deck)
 config/phaseIndicatorConvergence.yaml  geometric vs detrixheAslam (N<=128 by design)
+config/faceCurvatureDroplet2D.yaml  FACE-CENTERED curvature convergence: kappa_f as the
+                             CSF force applies it (active snGrad(alpha) faces, static
+                             circle, exact SDF), every curvature model with/without the
+                             stabilized foot point (leiaTestMeanCurvature, serial,
+                             seconds; figure + orders into the method-comparison theme)
 config/staticExtension.yaml  static t=0 extension verification: e=|n.grad(Uext)| vs h
                              (solver: leiaTestVelocityExtension; 7 models x 2 div schemes)
 config/steadyVortex2D.yaml   NON-REVERSING stress test: steady vortex (oscillation off,

@@ -123,7 +123,8 @@ _setfields = " ".join(
     filter(None, [f"{MPI_PREFIX}leiaSetFields".strip(), SETFIELDS_ARGS, PAR]))
 _solve = ["cd {params.d}",
           "rm -f gradPsiError.csv leiaSetFields.csv leiaLevelSetFoam.csv"
-          " leiaRedistancedLevelSetFoam.csv leiaTestRedistance.csv",
+          " leiaRedistancedLevelSetFoam.csv leiaTestRedistance.csv"
+          " leiaTestFaceCurvature.csv",
           _setfields]
 if INIT_END:
     _solve.append(INIT_END)
@@ -252,9 +253,14 @@ rule report:
     run:
         import glob as _glob, shutil as _shutil, subprocess as _sp
         _scripts = os.path.join(workflow.basedir, "scripts")
-        # 1. curated error table -> theme data/tables
-        for _csv in _glob.glob(os.path.join(STUDY_DIR, f"{STUDY}_errors.csv")):
-            _shutil.copy(_csv, TABLES_DIR)
+        # 1. curated error table -> theme data/tables. The generic advection
+        # error table is meaningless for the static curvature test app (every
+        # metric column blank, solver misattributed by the fallback label) --
+        # its studies publish their own face_curvature_orders/curvature_error
+        # tables instead.
+        if SOLVER != "leiaTestMeanCurvature":
+            for _csv in _glob.glob(os.path.join(STUDY_DIR, f"{STUDY}_errors.csv")):
+                _shutil.copy(_csv, TABLES_DIR)
         # The two semi-Lagrangian METHOD LINES are independent methods sharing the
         # kinematic figure scripts: each line has its own theme, study set and
         # figure prefix (sl_* / lsl_*), selected via --method / --theme.
@@ -313,12 +319,19 @@ rule report:
                         _sp.run(["python3", os.path.join(_scripts, "make_isosurface_fig.py"),
                                  STUDY_DIR], check=False)
             elif THEME in ("sdpls-level-set", "method-comparison"):
-                # method-decision benchmark: cross-study comparison panels,
-                # cost-vs-accuracy, decision table + per-method field atlases.
-                _sp.run(["python3", os.path.join(_scripts, "make_method_comparison.py")],
-                        check=False)
-                _sp.run(["python3", os.path.join(_scripts, "make_bench_fields_fig.py")],
-                        check=False)
+                if SOLVER == "leiaTestMeanCurvature":
+                    # FACE-CENTERED curvature convergence (static circle): the
+                    # kappa_f the CSF force applies, all models, with/without
+                    # the stabilized foot point -> figure + order table.
+                    _sp.run(["python3", os.path.join(_scripts, "make_face_curvature_fig.py"),
+                             STUDY_DIR], check=False)
+                else:
+                    # method-decision benchmark: cross-study comparison panels,
+                    # cost-vs-accuracy, decision table + per-method field atlases.
+                    _sp.run(["python3", os.path.join(_scripts, "make_method_comparison.py")],
+                            check=False)
+                    _sp.run(["python3", os.path.join(_scripts, "make_bench_fields_fig.py")],
+                            check=False)
             else:
                 # velocity-extension: field montages + convergence figures.
                 plots.main(STUDY_DIR, FIGS_DIR)

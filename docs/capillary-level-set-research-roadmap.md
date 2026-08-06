@@ -1293,3 +1293,68 @@ Reproduction: `LEIA_MOMENTUM_PREDICTOR=no` with
 `--fresh`, so the transported baseline is reused).  The predictor-off tables are
 kept out of `docs/**/data/` so the committed tables continue to describe the
 predictor-on production configuration.
+
+## Face-centered curvature convergence gate (2026-08-06)
+
+The replay gates measure how quiet a curvature delivery leaves the flow; this
+gate measures how accurate the delivered quantity itself is.  The observable is
+the face curvature the CSF force actually applies, `kappa_f` in
+`G_sigma,f = sigma kappa_f snGrad(alpha) |Sf|`, on the active
+`|snGrad(alpha)| > 0` faces of the static R = 1 mm circle initialised as an
+exact signed distance, N = 32..512.  `leiaTestMeanCurvature` now assembles
+`kappa_f` for every model exactly as its `surfaceTensionForce` path does and
+writes tidy `leiaTestFaceCurvature.csv`; the study is
+`config/faceCurvatureDroplet2D.yaml` (serial, seconds), the figure and order
+table land in `docs/method-comparison/method-comparison-article/data/`.
+
+| face curvature (`|Sf|`-weighted band L2) | order | L2 at N=512 [1/m] |
+|---|---:|---:|
+| quadratic cell centre, arithmetic (production CSF) | `h^1.13` | `11.35` |
+| + stabilized foot point at the face | **`h^2.04`** | **`0.105`** |
+| FVM div(grad psi/|grad psi|) | `h^1.16` | `11.36` |
+| + stabilized foot point | `h^1.97` | `0.315` |
+| Kang face interpolation | `h^1.14` | `8.42` |
+| Newton-foot / closest-point extensions | `h^1.08` / `h^1.13` | `11.35` |
+| foot-point height function | `h^1.75` | `0.56` |
+| stabilized foot point, per-side variant | `h^1.40` | `2.02` |
+| connected interface (defaults w=3, lambda=1) | `h^0.48` | `4.30` |
+| interface mean (constant diagnostic) | `h^2.03` | `0.15` |
+| FVM -div(grad alpha/|grad alpha|), 2x smoothed | diverges (`h^-0.4`) | `824` |
+
+Three mechanism results.  First, the O(h) defect of the production face
+curvature is the parallel-contour offset, not the estimator: the Newton-foot
+and closest-point normal extensions leave the face error unchanged because a
+quadratic fit's Hessian is constant per cell, so its curvature is pinned to the
+stencil centre no matter where the foot lands.  Second, re-referencing the SAME
+interpolated `kappa_f` to the interface through the stabilized foot point
+(`footPointDistance` of the face centre, inverse-|psi| side weighting, then the
+parallel-curve inverse `kappa_d/(1 - d_f kappa_d)`) restores clean second
+order -- a 100x accuracy gain at N=512 for one extra scalar per active face.
+Applying the same correction per side BEFORE the face combination is worse
+(`h^1.4`): the correction must act on the face-combined value.  Third, the
+CSF-support-weighted mean converges at `h^2`, so mean-curvature bias is second
+order even when the facewise field is first order -- consistent with the replay
+verdict that spatial variation, not bias, drives the parasitic velocity.
+
+Pitfall found on the way, worth its own line: `leastSquaresPlaneCoeffs`
+guarded its 4x4 normal-equations solve with `|det| < 1e-10 prod(diag)` on the
+ABSOLUTE-coordinate matrix.  That ratio shrinks like `(h/|x|)^4` under
+refinement, so at N = 512 on the 0.01 m box the guard silently returned the
+flat-plane fallback for EVERY band cell: the geometric/Detrixhe-Aslam
+indicators degraded to `sign(psi)` (the snGrad(alpha) band halved), and the
+plane-based curvature models (foot-point height function, connectedInterface)
+fell back to the symbolic cell value with no error or warning.  The guard now
+runs on a centered, variance-normalised copy of the matrix -- a scale-free
+shape test of the stencil cloud -- while the solve is untouched, so every
+previously passing cell is byte-identical (verified: the refreshed
+`curvatureDroplet2D` table changed in the N=512 row only).  The committed
+`curvature_error.csv` N=512 row was biased LOW by the narrow corrupted band
+(10.2 vs the honest 17.4 on the full band); both themes' tables are refreshed.
+
+The connected-interface stall (`h^0.48` with the default half-width-3,
+lambda=1 chain fit) is a static-accuracy counterpart to its replay quietness
+and needs the manufactured-spectrum gate before any parameter is promoted.
+
+Reproduction: `snakemake --workflow-profile profiles/local --configfile
+config/faceCurvatureDroplet2D.yaml`; slide in
+`docs/method-comparison/method-comparison-presentation/comparison.template.html`.

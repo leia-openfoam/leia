@@ -1,0 +1,45 @@
+# FACE-CENTERED mean-curvature accuracy study (standalone, no flow solve).
+#
+# The CSF surface-tension force applies curvature at FACES,
+#     G_sigma,f = sigma * kappa_f * snGrad(alpha) * |Sf|,
+# so the force-relevant accuracy is that of kappa_f on the ACTIVE faces
+# (|snGrad(alpha)| > 0) -- not the cell-centred kappa the curvatureDroplet2D
+# study measures. leiaTestMeanCurvature assembles kappa_f for EVERY curvature
+# model exactly as its surfaceTensionForce path does (arithmetic interpolation,
+# Kang/GFM inverse-|psi| weighting, connectedInterface native face delivery,
+# the FVM div/trace face formulas) and measures |Sf|-weighted L1/L2/Linf plus
+# the force-weighted L2 of kappa_f - 1/R over the active faces of the
+# initialised circular droplet (leiaSetFields exact signed distance).
+#
+# Each contour-referenced model is measured WITH and WITHOUT the stabilized
+# foot-point delivery (slReconstruction::footPointDistance,
+# stable-foot-point-3d.md): the signed face-centre offset d_f feeds the
+# parallel-curve inverse kappa = kappa_d/(1 - d_f kappa_d). Interface-
+# referenced models (Kang, foot extensions, foot-point height function,
+# connectedInterface, iso-geometric, interface mean) evaluate at d ~ 0 by
+# construction and appear once. Results: leiaTestFaceCurvature.csv per case,
+# figure + order table by workflow/scripts/make_face_curvature_fig.py into
+# docs/method-comparison/method-comparison-article/data/.
+#
+# There is NO time loop: each resolution is a single curvature evaluation, so
+# the ladder reaches N=512 in seconds. Serial by requirement (the connected
+# zero-surface reconstruction is serial).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/faceCurvatureDroplet2D.yaml
+study_name: faceCurvatureDroplet2D
+case: stationaryDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestMeanCurvature
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64, 128, 256, 512]
+
+export_slides: true
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

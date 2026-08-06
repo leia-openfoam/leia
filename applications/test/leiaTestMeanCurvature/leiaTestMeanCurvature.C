@@ -26,6 +26,34 @@ Description
       * lap  : kappa = Laplacian(psi) = tr(H)        (the signed-distance simplification),
     and writes leiaTestMeanCurvature.csv (one row) for the study aggregator.
 
+    FACE-CENTERED section (leiaTestFaceCurvature.csv, tidy: one row per
+    MODEL x FOOT_POINT): the quantity the CSF force actually applies is the FACE
+    curvature kappa_f in G_sigma,f = sigma*kappa_f*snGrad(alpha)*|Sf|, on the
+    ACTIVE faces (|snGrad(alpha)| > 0). For every curvature model the app
+    assembles kappa_f exactly as the corresponding surfaceTensionForce path
+    does (arithmetic fvc::interpolate for cell models, the Kang/GFM inverse-psi
+    weighting, the connectedInterface native face field, the FVM div/trace face
+    formulas) and measures |Sf|-weighted L1/L2/Linf plus the force-weighted
+    (|snGrad(alpha)||Sf|) L2 of kappa_f - kappa_exact over the active faces.
+
+    FOOT_POINT = 1 rows re-deliver the same kappa_f at the interface through
+    the STABILIZED FOOT-POINT algorithm (slReconstruction::footPointDistance,
+    stable-foot-point-3d.md): the signed face-centre offset d_f (owner/
+    neighbour fits, inverse-|psi| Kang weighting) feeds the parallel-curve
+    inverse kappa = kappa_d/(1 - d_f*kappa_d) (|1 - d*kappa| > 1/2 guarded).
+    The correction is emitted only for CONTOUR-referenced models (their kappa_f
+    is the curvature of the level contour through the face centre); interface-
+    referenced models (Kang, foot extensions, foot-point HF, connected, iso,
+    interface mean) evaluate at d ~ 0 by construction, so the correction does
+    not apply to them and only the FOOT_POINT = 0 row is written. The
+    stableFootPoint model is fully foot-point-native: the fit curvature of each
+    adjacent cell evaluated AT the face centre, offset-inverted with that
+    cell's own stabilized foot-point distance, then Kang-combined.
+
+    2D only (footPointCurvature/connectedInterfaceCurvature requirement) and
+    meant to run SERIAL (the connected reconstruction is serial; face rows are
+    computed over internal faces).
+
     Run in a meshed, leiaSetFields-initialised case:
         blockMesh; leiaSetFields -alphaName alpha.water; leiaTestMeanCurvature
 
@@ -40,6 +68,10 @@ Description
 #include "footPointCurvature.H"
 // Iso-agnostic geometric (multi-cell circle-fit) curvature (library header).
 #include "isoGeometricCurvature.H"
+// Connected zero-surface curvature with native face delivery (solver-side).
+#include "connectedInterfaceCurvature.H"
+// CSF-support-weighted spatially constant curvature diagnostic (solver-side).
+#include "interfaceMeanCurvature.H"
 
 using namespace Foam;
 
@@ -58,6 +90,21 @@ int main(int argc, char *argv[])
     #include "createMesh.H"
 
     const word alphaName = args.getOrDefault<word>("alphaName", "alpha.water");
+
+    // The face-centered section covers INTERNAL faces only: in a decomposed
+    // run the processor-seam faces (active faces of a centered droplet!)
+    // would silently vanish from every norm while the reduce() scaffolding
+    // still produced plausible global numbers. Enforce the serial contract
+    // instead of documenting it away.
+    if (Pstream::parRun())
+    {
+        FatalErrorInFunction
+            << "leiaTestMeanCurvature is a SERIAL test: the face-centered "
+            << "curvature norms cover internal faces only, so a parallel run "
+            << "drops the processor-seam part of the CSF force support "
+            << "(and the connected-interface model is serial anyway)."
+            << exit(FatalError);
+    }
 
     Info<< "Reading level set psi and volume fraction " << alphaName << nl << endl;
     volScalarField psi
@@ -82,6 +129,27 @@ int main(int argc, char *argv[])
     const scalar kappaExact = scalar(nd - 1)/R;   // 1/R in 2D, 2/R in 3D
     Info<< "R = " << R << ", geometric dims = " << nd
         << ", kappa_exact = " << kappaExact << nl << endl;
+
+    // The FOOT_POINT = 1 face rows apply the parallel-curve inverse to the
+    // interpolated CELL curvature, which must therefore be the raw
+    // contour-referenced value: with fvSolution levelSet.semiLagrangian
+    // offsetCorrection != none the reconstruction ALREADY offset-corrects at
+    // the cell level and the face correction would be applied twice --
+    // silently wrong "with foot point" rows. Fail loud instead.
+    {
+        const word offsetCorrection =
+            fvSol.subDict("levelSet").subOrEmptyDict("semiLagrangian")
+                 .getOrDefault<word>("offsetCorrection", "none");
+        if (offsetCorrection != "none")
+        {
+            FatalErrorInFunction
+                << "leiaTestMeanCurvature requires offsetCorrection none "
+                << "(found " << offsetCorrection << "): the face-centered "
+                << "FOOT_POINT rows apply the parallel-curve inverse "
+                << "themselves and would double-correct."
+                << exit(FatalError);
+        }
+    }
 
     // Curvature from the reconstruction: full div(n) and the SDF simplification tr(H).
     autoPtr<slAdvection> slAdv = slAdvection::New(mesh);
@@ -111,6 +179,16 @@ int main(int argc, char *argv[])
     slAdv->meanCurvature(psi, kappaDiv);              // div(n), normal-extended (foot)
     slAdv->meanCurvatureLaplacian(psi, kappaLap);     // tr(H), SDF simplification
     slAdv->meanCurvatureNoExtension(psi, kappaNoExt); // div(n) at cell centre, no extension
+
+    // Trust-region closest-point (KKT) Newton foot on the cell's own quadratic
+    // (the solver's curvatureExtension closestPointNewton path).
+    volScalarField kappaCP
+    (
+        IOobject("kappaCP", runTime.timeName(), mesh,
+                 IOobject::NO_READ, IOobject::AUTO_WRITE),
+        mesh, dimensionedScalar("k", dimless/dimLength, 0.0), "zeroGradient"
+    );
+    slAdv->meanCurvatureClosestPoint(psi, kappaCP);
 
     // Foot-point HEIGHT-FUNCTION curvature (footPointCurvature.H): local parabola
     // fit of the linear-plane interface feet, delivered normal-constant by uniform
@@ -175,6 +253,59 @@ int main(int argc, char *argv[])
         kappaIso.correctBoundaryConditions();
         kappaParab.correctBoundaryConditions();
     }
+
+    // CONNECTED zero-surface curvature (connectedInterfaceCurvature.H): one
+    // value per conforming interface element, tangential regularisation along
+    // the chain (fvSolution levelSet.curvatureExtension controls; defaults
+    // fitHalfWidth 3, helmholtz lambda 1, 30 iterations, estimator
+    // connectedFit), Gauss-Bonnet additive-mode fix, and NORMAL-RAY delivery
+    // directly to the face field -- the production faceInterpolation
+    // connectedInterface path of reconstructedCurvature. Serial only.
+    volScalarField kappaConn
+    (
+        IOobject("kappaConn", runTime.timeName(), mesh,
+                 IOobject::NO_READ, IOobject::AUTO_WRITE),
+        kappaNoExt   // fallback for deficient elements = the symbolic value
+    );
+    kappaConn.rename("kappaConn");
+    surfaceScalarField kappaConnFace
+    (
+        IOobject("kappaConnFace", runTime.timeName(), mesh,
+                 IOobject::NO_READ, IOobject::NO_WRITE),
+        mesh, dimensionedScalar("k", dimless/dimLength, 0.0)
+    );
+    bool haveConnected = false;
+    if (!Pstream::parRun())
+    {
+        const label nConnDeficient = computeConnectedInterfaceCurvature
+        (
+            mesh, psi,
+            mesh.lookupObject<volScalarField>("NarrowBand"),
+            kappaConn,
+            kappaConnFace
+        );
+        haveConnected = true;
+        Info<< "connected-interface curvature: " << nConnDeficient
+            << " deficient fits/open endpoints" << nl;
+    }
+    else
+    {
+        Info<< "connected-interface curvature: SKIPPED (serial only)" << nl;
+    }
+
+    // CSF-support-weighted spatially CONSTANT curvature (the interfaceMean
+    // diagnostic): the |snGrad(alpha)||Sf|-weighted mean of the reconstructed
+    // cell curvature, uniform over the whole domain.
+    volScalarField kappaMean
+    (
+        IOobject("kappaMean", runTime.timeName(), mesh,
+                 IOobject::NO_READ, IOobject::NO_WRITE),
+        kappaNoExt
+    );
+    kappaMean.rename("kappaMean");
+    const scalar kappaBar = applyInterfaceMeanCurvature(mesh, alpha, kappaMean);
+    Info<< "interface-mean curvature kappaBar = " << kappaBar
+        << " (exact " << kappaExact << ")" << nl << endl;
 
     // Band of cells that feed the CSF force: those touching an internal face with
     // a non-zero snGrad(alpha). Only there does the curvature enter the momentum
@@ -264,6 +395,277 @@ int main(int argc, char *argv[])
         << "  iso-CONORMAL    : " << Vi2 << " / " << Vii << nl
         << "  iso-PARABOLA    : " << Vb2 << " / " << Vbi << nl << endl;
 
+    // ======================= FACE-CENTERED CURVATURE =======================
+    // The CSF force applies curvature at FACES:
+    //     G_sigma,f = sigma * kappa_f * snGrad(alpha) * |Sf|,
+    // so the force-relevant accuracy is that of kappa_f on the ACTIVE faces
+    // (|snGrad(alpha)| > 0) -- measured here for every model's face delivery,
+    // each with and without the stabilized foot-point interface referencing.
+
+    const label nIntFaces = mesh.nInternalFaces();
+    boolList activeFace(nIntFaces, false);
+    label nActive = 0;
+    forAll(activeFace, f)
+    {
+        if (mag(snI[f]) > 1e-8*snMax) { activeFace[f] = true; ++nActive; }
+    }
+    reduce(nActive, sumOp<label>());
+
+    const vectorField& Cf = mesh.Cf().primitiveField();
+    const scalarField& magSfIn = mesh.magSf().primitiveField();
+    const scalarField& psiIn = psi.primitiveField();
+
+    // Stabilized foot-point signed offset of every active face centre from the
+    // interface (stable-foot-point-3d.md engine on the owner/neighbour fits,
+    // slReconstruction::footPointDistance), combined with the inverse-|psi|
+    // Kang weighting so the near-interface side's fit dominates.
+    const slReconstruction& recon = slAdv->reconstruction();
+    scalarField dFace(nIntFaces, 0.0);
+    boolList dOk(nIntFaces, false);
+    label nFootFail = 0;
+    forAll(activeFace, f)
+    {
+        if (!activeFace[f]) { continue; }
+
+        bool okO = false, okN = false;
+        const scalar dO = recon.footPointDistance(own[f], Cf[f], 0.0, okO);
+        const scalar dN = recon.footPointDistance(nei[f], Cf[f], 0.0, okN);
+        if (okO && okN)
+        {
+            const scalar wP = mag(psiIn[nei[f]]);   // weight of the OWNER value
+            const scalar wN = mag(psiIn[own[f]]);
+            dFace[f] = (dO*wP + dN*wN)/(wP + wN + VSMALL);
+            dOk[f] = true;
+        }
+        else if (okO) { dFace[f] = dO; dOk[f] = true; }
+        else if (okN) { dFace[f] = dN; dOk[f] = true; }
+        else { ++nFootFail; }
+    }
+    reduce(nFootFail, sumOp<label>());
+
+    // Parallel-curve inverse kappa = kappa_d/(1 - d kappa_d) at the face,
+    // guarded exactly like the cell-level offsetCorrected(): past half the
+    // local curvature radius the map is not usefully invertible -- keep the
+    // uncorrected value. Faces without a converged foot stay uncorrected.
+    auto footCorrect = [&](const scalarField& kf) -> tmp<scalarField>
+    {
+        auto tres = tmp<scalarField>::New(kf);
+        scalarField& res = tres.ref();
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f] || !dOk[f]) { continue; }
+            const scalar denom = 1.0 - dFace[f]*kf[f];
+            if (mag(denom) > 0.5) { res[f] = kf[f]/denom; }
+        }
+        return tres;
+    };
+
+    // Arithmetic (fvc::interpolate) face values of the cell models -- the
+    // reconstructedCurvature faceInterpolation=arithmetic CSF path.
+    const scalarField kfQ(fvc::interpolate(kappaNoExt)().primitiveField());
+    const scalarField kfLap(fvc::interpolate(kappaLap)().primitiveField());
+    const scalarField kfExt(fvc::interpolate(kappaDiv)().primitiveField());
+    const scalarField kfCP(fvc::interpolate(kappaCP)().primitiveField());
+    const scalarField kfFoot(fvc::interpolate(kappaFoot)().primitiveField());
+    const scalarField kfIso(fvc::interpolate(kappaIso)().primitiveField());
+    const scalarField kfParab(fvc::interpolate(kappaParab)().primitiveField());
+    const scalarField kfMean(fvc::interpolate(kappaMean)().primitiveField());
+
+    // Kang/GFM inverse-|psi| interpolation TO the psi=0 crossing -- the
+    // reconstructedCurvature faceInterpolation=interfaceWeighted path.
+    scalarField kfKang(nIntFaces, 0.0);
+    {
+        const scalarField& kIn = kappaNoExt.primitiveField();
+        forAll(kfKang, f)
+        {
+            const scalar wP = mag(psiIn[nei[f]]);
+            const scalar wN = mag(psiIn[own[f]]);
+            kfKang[f] = (kIn[own[f]]*wP + kIn[nei[f]]*wN)/(wP + wN + VSMALL);
+        }
+    }
+
+    // FVM face curvatures exactly as the divGrad*/traceGrad* force models
+    // assemble them (epsilon-guarded normal fields, then interpolate).
+    tmp<volVectorField> tgradPsi = fvc::grad(psi);
+    const dimensionedScalar deltaNP("deltaN", tgradPsi().dimensions(), SMALL);
+    const volVectorField nPsi("nPsi", tgradPsi()/(mag(tgradPsi()) + deltaNP));
+    const scalarField kfFvmDivPsi
+    (
+        fvc::interpolate(fvc::div(nPsi))().primitiveField()
+    );
+    const scalarField kfFvmTracePsi
+    (
+        fvc::interpolate(tr(fvc::grad(nPsi)))().primitiveField()
+    );
+
+    // interFoam-style alpha curvature: smoothed alpha (the divGradAlpha model
+    // default nSmooth = 2), mesh-scale deltaN, kappa_f = interpolate(-div(n)).
+    volScalarField alphaS("alphaS", alpha);
+    for (label k = 0; k < 2; ++k)
+    {
+        alphaS = fvc::average(fvc::interpolate(alphaS));
+    }
+    tmp<volVectorField> tgradA = fvc::grad(alphaS);
+    const dimensionedScalar deltaNA
+    (
+        "deltaN",
+        tgradA().dimensions(),
+        1e-8/Foam::cbrt(average(mesh.V()).value())
+    );
+    const volVectorField nAlpha("nAlpha", tgradA()/(mag(tgradA()) + deltaNA));
+    const scalarField kfFvmDivAlpha
+    (
+        fvc::interpolate(-fvc::div(nAlpha))().primitiveField()
+    );
+
+    // Fully foot-point-NATIVE face curvature. A quadratic fit has a CONSTANT
+    // Hessian, so its curvature is trustworthy only where the fit is centred:
+    // evaluating kappa at the face centre and correcting with the face
+    // centre's offset leaves an O(h) referencing residual (measured p ~ 1.1).
+    // Instead each adjacent cell contributes its CELL-CENTRE fit curvature,
+    // offset-inverted to the interface with that cell's own stabilized
+    // foot-point distance OF THE CELL CENTRE -- per-side interface curvature
+    // BEFORE the face combination -- then the two sides are Kang-combined.
+    scalarField kfStable(nIntFaces, 0.0);
+    label nStableUnset = 0;
+    {
+        const vectorField& C = mesh.C().primitiveField();
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+
+            scalar kSide[2] = {0, 0};
+            bool okSide[2] = {false, false};
+            const label cells[2] = {own[f], nei[f]};
+            for (label s = 0; s < 2; ++s)
+            {
+                const label c = cells[s];
+                vector g(Zero);
+                symmTensor H(Zero);
+                if (recon.fitDerivatives(c, g, H) < 2) { continue; }
+
+                const scalar gm = mag(g);
+                if (gm < SMALL) { continue; }
+
+                scalar kd = (tr(H)*gm*gm - (g & (H & g)))/(gm*gm*gm);
+                bool okD = false;
+                const scalar d = recon.footPointDistance(c, C[c], 0.0, okD);
+                if (okD)
+                {
+                    const scalar denom = 1.0 - d*kd;
+                    if (mag(denom) > 0.5) { kd /= denom; }
+                }
+                kSide[s] = kd;
+                okSide[s] = true;
+            }
+
+            if (okSide[0] && okSide[1])
+            {
+                const scalar wP = mag(psiIn[nei[f]]);
+                const scalar wN = mag(psiIn[own[f]]);
+                kfStable[f] = (kSide[0]*wP + kSide[1]*wN)/(wP + wN + VSMALL);
+            }
+            else if (okSide[0]) { kfStable[f] = kSide[0]; }
+            else if (okSide[1]) { kfStable[f] = kSide[1]; }
+            else { ++nStableUnset; }
+        }
+    }
+    reduce(nStableUnset, sumOp<label>());
+
+    // |Sf|-weighted error norms over the active faces (plus the force-weighted
+    // |snGrad(alpha)||Sf| L2 -- the norm in which the error enters G_sigma,f).
+    // An active face without a computed value (kappa_f = 0) contributes its
+    // full error: that is exactly what the momentum equation would see there.
+    scalar sumAf = 0, sumWf = 0;
+    forAll(activeFace, f)
+    {
+        if (!activeFace[f]) { continue; }
+        sumAf += magSfIn[f];
+        sumWf += mag(snI[f])*magSfIn[f];
+    }
+    reduce(sumAf, sumOp<scalar>()); reduce(sumWf, sumOp<scalar>());
+
+    struct faceRow
+    {
+        word model;
+        label footPoint;
+        scalar L1, L2, Linf, L2w;
+        label nZero;
+    };
+    DynamicList<faceRow> faceRows;
+
+    auto addFaceRow =
+        [&](const word& model, const label fp, const scalarField& kf)
+    {
+        scalar s1 = 0, s2 = 0, li = 0, sw2 = 0;
+        label nZero = 0;
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+            if (kf[f] == 0) { ++nZero; }
+            const scalar e = mag(kf[f] - kappaExact);
+            s1 += magSfIn[f]*e;
+            s2 += magSfIn[f]*e*e;
+            li = max(li, e);
+            sw2 += mag(snI[f])*magSfIn[f]*e*e;
+        }
+        reduce(s1, sumOp<scalar>()); reduce(s2, sumOp<scalar>());
+        reduce(li, maxOp<scalar>()); reduce(sw2, sumOp<scalar>());
+        reduce(nZero, sumOp<label>());
+        faceRows.append
+        ({
+            model, fp,
+            (sumAf > 0) ? s1/sumAf : 0,
+            (sumAf > 0) ? Foam::sqrt(s2/sumAf) : 0,
+            li,
+            (sumWf > 0) ? Foam::sqrt(sw2/sumWf) : 0,
+            nZero
+        });
+    };
+
+    // Contour-referenced models: kappa_f is the curvature of the level contour
+    // through the face centre -> the stabilized foot-point correction applies.
+    addFaceRow("quadraticCellCentre", 0, kfQ);
+    addFaceRow("quadraticCellCentre", 1, footCorrect(kfQ)());
+    addFaceRow("trHessian", 0, kfLap);
+    addFaceRow("trHessian", 1, footCorrect(kfLap)());
+    addFaceRow("fvmDivGradPsi", 0, kfFvmDivPsi);
+    addFaceRow("fvmDivGradPsi", 1, footCorrect(kfFvmDivPsi)());
+    addFaceRow("fvmTraceGradGradPsi", 0, kfFvmTracePsi);
+    addFaceRow("fvmTraceGradGradPsi", 1, footCorrect(kfFvmTracePsi)());
+    addFaceRow("fvmDivGradAlpha", 0, kfFvmDivAlpha);
+    addFaceRow("fvmDivGradAlpha", 1, footCorrect(kfFvmDivAlpha)());
+
+    // Interface-referenced models: the evaluation offset is ~0 by the model's
+    // own construction, so the parallel-curve correction does not apply
+    // (FOOT_POINT = 0 rows only).
+    addFaceRow("kangQuadratic", 0, kfKang);
+    addFaceRow("quadraticNewtonFoot", 0, kfExt);
+    addFaceRow("quadraticClosestPoint", 0, kfCP);
+    addFaceRow("footPointHeightFunction", 0, kfFoot);
+    if (haveConnected)
+    {
+        addFaceRow("connectedInterface", 0, kappaConnFace.primitiveField());
+    }
+    addFaceRow("interfaceMean", 0, kfMean);
+    addFaceRow("isoConormal", 0, kfIso);
+    addFaceRow("isoParabola", 0, kfParab);
+
+    // The fully foot-point-native delivery (defined only WITH the algorithm).
+    addFaceRow("stableFootPoint", 1, kfStable);
+
+    Info<< "face-centered curvature, " << nActive << " active faces"
+        << " (foot-point unset: " << nFootFail
+        << ", stableFootPoint unset: " << nStableUnset << "):" << nl;
+    for (const auto& r : faceRows)
+    {
+        Info<< "  " << r.model << (r.footPoint ? " +footPoint" : "")
+            << "  L1/L2/Linf = " << r.L1 << " / " << r.L2 << " / " << r.Linf
+            << "  (forceW L2 = " << r.L2w
+            << ", zero faces = " << r.nZero << ")" << nl;
+    }
+    Info<< endl;
+
     // Representative cell size h for a 2D square domain (informational; the study
     // uses N_CELLS): h = sqrt(area / nCells2D).
     const boundBox bb(mesh.points());
@@ -307,6 +709,23 @@ int main(int argc, char *argv[])
            << L1p << ',' << L2p << ',' << linfp << ',' << nFootFallback << ','
            << L1i << ',' << L2i << ',' << linfi << ','
            << L1b << ',' << L2b << ',' << linfb << nl;
+    }
+
+    // Face-centered curvature errors, tidy (one row per MODEL x FOOT_POINT),
+    // for make_face_curvature_fig.py.
+    if (Pstream::master())
+    {
+        OFstream osF("leiaTestFaceCurvature.csv");
+        osF.precision(10);
+        osF << "MODEL,FOOT_POINT,N_ACTIVE_FACES,DELTA_X,KAPPA_EXACT,"
+               "E_L1,E_L2,E_LINF,E_L2_FORCEW,N_ZERO_FACES,N_FOOT_FAIL" << nl;
+        for (const auto& r : faceRows)
+        {
+            osF << r.model << ',' << r.footPoint << ',' << nActive << ','
+                << dx << ',' << kappaExact << ','
+                << r.L1 << ',' << r.L2 << ',' << r.Linf << ','
+                << r.L2w << ',' << r.nZero << ',' << nFootFail << nl;
+        }
     }
 
     runTime.writeNow();   // write kappaDiv/kappaNoExt/kappaFaceAvg/kappaLap fields

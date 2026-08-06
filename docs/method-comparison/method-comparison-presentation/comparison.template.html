@@ -680,6 +680,40 @@
 </section>
 
 <section>
+  <h2>Face-centered curvature: the offset is the defect, the stabilized foot point removes it</h2>
+  <img src="../method-comparison-article/data/figures/face_curvature_convergence.png"
+       style="max-height:540px; width:100%">
+  <ul class="tight" style="font-size:0.68em; margin-top:0.25em">
+    <li>What the CSF force actually applies &mdash; \(\kappa_f\) on the
+        \(|\mathrm{snGrad}\,\alpha|>0\) faces &mdash; converges at only
+        \(h^{1.1}\) for EVERY contour-referenced delivery (cell quadratic, FVM
+        \(\psi\)-curvature, Kang); the Newton-foot and closest-point extensions do not
+        help, because a quadratic fit's constant Hessian pins its curvature to the
+        stencil centre.</li>
+    <li class="good">Re-referencing the same \(\kappa_f\) to the interface through the
+        <b>stabilized foot point</b> (parallel-curve inverse
+        \(\kappa=\kappa_d/(1-d_f\kappa_d)\), \(d_f\) from
+        <code>footPointDistance</code>) restores clean <b>2nd order</b>:
+        \(L_2 = 0.10\) vs \(11.4\;\mathrm{m}^{-1}\) at \(N{=}512\) &mdash; 100&times;.
+        Order matters: the per-side variant (correct each cell, then combine)
+        reaches only \(h^{1.4}\) &mdash; the inverse must act on the
+        face-combined value.</li>
+    <li>Foot-point height function reaches \(h^{1.75}\); the CSF-support mean converges
+        at \(h^{2}\) (bias is 2nd order &mdash; variation is the defect, consistent with
+        the replay); connected-interface stalls at \(h^{0.5}\) with its default
+        \(w{=}3,\lambda{=}1\) chain fit; \(\alpha\)-based FVM curvature diverges.</li>
+  </ul>
+  <p class="footnote">Static circle R = 1 mm in the 0.01 m box, exact SDF (leiaSetFields),
+     N = 32&ndash;512, |S<sub>f</sub>|-weighted L<sub>2</sub> over active faces.
+     Pitfall found on the way: the plane-LSQ degeneracy guard compared an
+     absolute-coordinate determinant against a fixed threshold and silently zeroed EVERY
+     band-cell plane at N = 512 (killing the plane-based indicators and curvature models
+     at fine h) &mdash; fixed with a centered, scale-free test.
+     <code>config/faceCurvatureDroplet2D.yaml</code> &middot;
+     <code>data/tables/face_curvature_orders.csv</code>.</p>
+</section>
+
+<section>
   <h2>The old representation fitted many interfaces, not one interface</h2>
   <div class="cols" style="align-items:flex-start; margin-top:0.45em">
     <div>
