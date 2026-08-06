@@ -82,6 +82,9 @@ CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
 FACE_CURVATURE_SOURCE model; // reconstructedCurvature kappa_f source: model
                      // (its own arithmetic/Kang assembly) | registered (the
                      // solver-registered face field, e.g. kappaStableFootFace).
+PSI_FILTER none;     // grid-scale psi filter (psiFilterEqn.H): none |
+                     // biharmonicBand (psi -= theta*L(L(psi)) in band+1 ring).
+PSI_FILTER_THETA 0.05; // filter strength theta (biharmonicBand only).
 REDIST_REGION band;  // signedDistanceBounds criterion region: band (interface
                      // quality, default) | bulk (frozen-band fill region;
                      // REQUIRES REDIST_VIOLFRAC > 0 -- SDF skeleton has grad 0).

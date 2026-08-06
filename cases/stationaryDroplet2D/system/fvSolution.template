@@ -255,6 +255,19 @@ levelSet
     // symbolic quadratic kappa fill for FVM force models
     // (divGradPsiSnGradAlpha) -- REQUIRED with reconstruction linearTaylor.
 
+    // Grid-scale psi filter (psiFilterEqn.H): none = off (identical to an
+    // absent dict); biharmonicBand applies psi -= theta*L(L(psi)) in the
+    // narrow band + 1 ring each step, with L = I - average(interpolate(.)) --
+    // the explicit damping term the reinit-free SL transport lacks. L
+    // annihilates linear fields and maps smooth quadratics to a constant, so
+    // curved signed distances are untouched to leading order while the 2h
+    // corrugation (the parasitic-feedback carrier) is damped near-maximally.
+    psiFilter
+    {
+        type    @!PSI_FILTER!@;
+        theta   @!PSI_FILTER_THETA!@;
+    }
+
     // Semi-Lagrangian advection: value-copy uncached quadratic WLSQ reconstruction.
     semiLagrangian
     {

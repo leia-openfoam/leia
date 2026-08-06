@@ -1,0 +1,40 @@
+# The profile-control gate: stationaryDropletStableFoot PLUS the biharmonic
+# band psi filter (psiFilter { type biharmonicBand; theta 0.05; }).
+#
+# The unfiltered gate measured the verdict: with the SECOND-ORDER stabilized
+# foot-point face curvature, the N=256 stationary droplet still blows up at
+# t = 0.0348 (arithmetic delivery: t = 0.0526; N=64 arithmetic: t ~ 0.44) --
+# the reinit-free psi profile corrugates and flattens under the parasitic flow
+# itself, and every psi-derivative curvature amplifies it (kappa noise ~
+# eps/h^2, 1/|grad psi|^3). The delivery is solved; the profile is the sole
+# remaining channel. THIS gate asks whether the minimal profile maintenance --
+# per-step biharmonic damping of the 2h band modes, no interface displacement
+# to leading order, no redistancing -- closes the feedback loop.
+#
+# Decision observables, per resolution (N = 64..512, fuse-vs-N curve):
+#   - blow-up time vs the unfiltered twins (absent = loop closed);
+#   - settled max|U| level and its scaling under refinement;
+#   - band min/max |grad psi| staying pinned near 1 (the carrier diagnostic).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletStableFootFiltered.yaml
+study_name: stationaryDropletStableFootFiltered
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256, 512]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+  PSI_FILTER: [biharmonicBand]
+
+# Diagnostic gate: evolution figures via make_droplet_evolution_fig.py.
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

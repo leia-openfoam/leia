@@ -28,7 +28,15 @@ config/stationaryDropletStableFoot.yaml  parasitic currents with the SECOND-ORDE
                              curvature (curvatureExtension stabilizedFootPointFace +
                              faceCurvatureSource registered): N=256,512 (both >20
                              cells/radius), np 4; observable = per-step maxMagU
-                             evolution vs the arithmetic-delivery baseline
+                             evolution vs the arithmetic-delivery baseline.
+                             MEASURED: N=256 blows up at t=0.0348 (arithmetic twin
+                             t=0.0526) -- the reinit-free psi-profile feedback, not
+                             the delivery, is the active channel.
+config/stationaryDropletStableFootFiltered.yaml  the profile-control gate: same
+                             delivery + psiFilter biharmonicBand theta 0.05,
+                             N=64..512 -- does minimal per-step band damping close
+                             the parasitic feedback loop? (evolution CSVs;
+                             make_droplet_evolution_fig.py)
 config/staticExtension.yaml  static t=0 extension verification: e=|n.grad(Uext)| vs h
                              (solver: leiaTestVelocityExtension; 7 models x 2 div schemes)
 config/steadyVortex2D.yaml   NON-REVERSING stress test: steady vortex (oscillation off,
