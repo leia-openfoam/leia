@@ -206,32 +206,132 @@ Foam::scalarList Foam::leastSquaresPlaneCoeffs
     // narrow-band cell can have a face-neighbour cloud whose centres are (near)
     // coplanar, making the 4x4 LLSQ system rank-deficient; simpleMatrix::solve()
     // then divides by a ~0 pivot and returns non-finite coefficients, which blow
-    // up downstream (nc/|nc| = inf/inf = NaN -> SIGFPE). Detect this with a
-    // scale-free Hadamard ratio |det|/prod(diag) (~1 for well-spread rows, -> 0
-    // for a coplanar/degenerate cloud) and return a flat (zero) plane; the
-    // callers treat |n| ~ 0 as "degenerate" and fall back to the sign of psi.
-    // Well-conditioned (e.g. hexahedral) cells have |det|/prod(diag) ~ O(1e-2),
-    // far above the threshold, so their fit is untouched (bit-identical).
+    // up downstream (nc/|nc| = inf/inf = NaN -> SIGFPE). Detect this with the
+    // Hadamard ratio |det|/prod(diag) (~1 for well-spread rows, -> 0 for a
+    // coplanar/degenerate cloud) and return a flat (zero) plane; the callers
+    // treat |n| ~ 0 as "degenerate" and fall back to the sign of psi.
+    //
+    // The test matrix is assembled in CENTERED coordinates (displacements from
+    // the cell centre), NOT from LLSQ itself: with the absolute coordinates of
+    // the solve matrix the ratio shrinks like (h/|x|)^4 as the mesh refines --
+    // the columns (x, y, 1) become collinear -- and a fixed threshold misfires
+    // on perfectly regular stencils (measured: every N=512 band cell of the
+    // 0.01 m stationary-droplet case returned the flat-plane fallback, killing
+    // the plane-based phase indicators and curvature models at fine h).
+    // Centered displacements make the ratio a pure shape measure of the
+    // neighbour cloud: scale-free, ~O(1e-1) on hexahedral stencils at any N,
+    // -> 0 exactly for the coplanar clouds the guard exists to catch. The
+    // SOLVE still uses the absolute system, so every cell that passed before
+    // keeps byte-identical coefficients.
+    scalar Mc[4][4] = {{0}};
+    {
+        const vector& xc = cellCenters[cellI];
+
+        auto addSample = [&](const vector& x)
+        {
+            const vector dx = x - xc;
+            for (char row = 0; row < 3; ++row)
+            {
+                for (char col = 0; col < 3; ++col)
+                {
+                    Mc[row][col] += dx[col]*dx[row];
+                }
+                Mc[row][3] += dx[row];
+                Mc[3][row] += dx[row];
+            }
+            Mc[3][3] += 1;
+        };
+
+        addSample(cellCenters[cellI]);
+        forAll(Nc, cellK)
+        {
+            addSample(cellCenters[Nc[cellK]]);
+        }
+        forAll(nBandCell, faceI)
+        {
+            const label faceJ = nBandCell[faceI];
+            if (mesh.isInternalFace(faceJ))
+            {
+                continue;
+            }
+            const label patchL = pbm.whichPatch(faceJ);
+            if ((patchL < 0) || !coupledNei.valid(patchL))
+            {
+                continue;
+            }
+            addSample(coupledNei.C(patchL)[faceJ - pbm[patchL].start()]);
+        }
+
+        // Same empty-direction pinning as the solve matrix.
+        for (direction cmpt = 0; cmpt < 3; ++cmpt)
+        {
+            if (geomD[cmpt] < 0)
+            {
+                for (label k = 0; k < 4; ++k)
+                {
+                    Mc[cmpt][k] = 0;
+                    Mc[k][cmpt] = 0;
+                }
+                Mc[cmpt][cmpt] = 1;
+            }
+        }
+
+        // Scale away the mixed length dimensions so the ratio compares like
+        // with like: row/column 0..2 carry one length factor each relative to
+        // row/column 3. Normalising by the mean squared displacement makes
+        // every entry O(1) on a healthy stencil.
+        scalar h2 = 0;
+        label nS = 0;
+        for (direction cmpt = 0; cmpt < 3; ++cmpt)
+        {
+            if (geomD[cmpt] > 0) { h2 += Mc[cmpt][cmpt]; ++nS; }
+        }
+        h2 = (nS > 0 && Mc[3][3] > 0) ? h2/(nS*Mc[3][3]) : 0;
+        if (h2 <= VSMALL)
+        {
+            return scalarList(4, scalar(0));   // all samples coincide
+        }
+        const scalar hs = Foam::sqrt(h2);
+        for (direction cmpt = 0; cmpt < 3; ++cmpt)
+        {
+            if (geomD[cmpt] < 0) { continue; }
+            for (label k = 0; k < 4; ++k)
+            {
+                Mc[cmpt][k] /= hs;
+                Mc[k][cmpt] /= hs;
+            }
+        }
+    }
+
     const scalar diagProd =
-        LLSQ(0, 0)*LLSQ(1, 1)*LLSQ(2, 2)*LLSQ(3, 3);
+        Mc[0][0]*Mc[1][1]*Mc[2][2]*Mc[3][3];
     const scalar detLLSQ =
-        LLSQ(0, 0)*det3x3(LLSQ(1,1),LLSQ(1,2),LLSQ(1,3),
-                          LLSQ(2,1),LLSQ(2,2),LLSQ(2,3),
-                          LLSQ(3,1),LLSQ(3,2),LLSQ(3,3))
-      - LLSQ(0, 1)*det3x3(LLSQ(1,0),LLSQ(1,2),LLSQ(1,3),
-                          LLSQ(2,0),LLSQ(2,2),LLSQ(2,3),
-                          LLSQ(3,0),LLSQ(3,2),LLSQ(3,3))
-      + LLSQ(0, 2)*det3x3(LLSQ(1,0),LLSQ(1,1),LLSQ(1,3),
-                          LLSQ(2,0),LLSQ(2,1),LLSQ(2,3),
-                          LLSQ(3,0),LLSQ(3,1),LLSQ(3,3))
-      - LLSQ(0, 3)*det3x3(LLSQ(1,0),LLSQ(1,1),LLSQ(1,2),
-                          LLSQ(2,0),LLSQ(2,1),LLSQ(2,2),
-                          LLSQ(3,0),LLSQ(3,1),LLSQ(3,2));
+        Mc[0][0]*det3x3(Mc[1][1],Mc[1][2],Mc[1][3],
+                        Mc[2][1],Mc[2][2],Mc[2][3],
+                        Mc[3][1],Mc[3][2],Mc[3][3])
+      - Mc[0][1]*det3x3(Mc[1][0],Mc[1][2],Mc[1][3],
+                        Mc[2][0],Mc[2][2],Mc[2][3],
+                        Mc[3][0],Mc[3][2],Mc[3][3])
+      + Mc[0][2]*det3x3(Mc[1][0],Mc[1][1],Mc[1][3],
+                        Mc[2][0],Mc[2][1],Mc[2][3],
+                        Mc[3][0],Mc[3][1],Mc[3][3])
+      - Mc[0][3]*det3x3(Mc[1][0],Mc[1][1],Mc[1][2],
+                        Mc[2][0],Mc[2][1],Mc[2][2],
+                        Mc[3][0],Mc[3][1],Mc[3][2]);
     if (diagProd <= VSMALL || mag(detLLSQ) < 1e-10*mag(diagProd))
     {
         return scalarList(4, scalar(0));   // degenerate -> flat plane
     }
 
+    // KNOWN LIMIT: the shape test certifies the stencil cloud, not the
+    // conditioning of the ABSOLUTE-coordinate solve below, which degrades
+    // like (|x|/h)^2. Fine for domains near the origin (relative error
+    // ~1e-6 at |x|/h = 1e5); a mesh sitting ~1e7 cell sizes away from the
+    // coordinate origin would get finite-but-inaccurate normals that the
+    // isfinite backstop cannot catch. The clean fix -- assemble and solve in
+    // centered coordinates and shift d back -- changes every result at
+    // rounding level, so it must land together with a revalidation of the
+    // phase-indicator gates, not as a drive-by.
     planeCoeffs = LLSQ.solve(); // TODO: Improve this. Gauss substitution. TM.
 
     // Belt-and-suspenders: a near-singular (but above-threshold) solve can still
