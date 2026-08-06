@@ -1249,8 +1249,21 @@ psi.correctBoundaryConditions();
   <ul style="font-size:0.82em">
     <li>\(\mathbf g,\mathbf H\) are <b>read off the fit coefficients</b> (CPC stencil, IDW weights, per-cell quadratic&rarr;linear&rarr;constant fallback) &mdash; no FVM re-differentiation of the (noisy, non-signed-distance) \(\psi\); computed in the narrow band, far cells keep \(\kappa=0\).</li>
     <li><b>No foot-point extension.</b> \(\mathbf H\) is constant over a cell's fit, so the fit's curvature is pinned to the stencil centre wherever it is evaluated: at the faces, the Newton gradient-flow foot measures \(O(h^{1.08})\), the trust-region closest-point foot \(O(h^{1.13})\) &mdash; indistinguishable from no extension at all (\(O(h^{1.13})\)).</li>
-    <li>The cell value is therefore the curvature of the <b>\(\psi\)-contour through the evaluation point</b>, a parallel curve of the interface: \(\kappa_d=\kappa/(1+d\kappa)\). This \(O(h)\) offset is the leading, structural error of every classical delivery &mdash; it is removed at the <b>faces</b> (next slide), where the force lives, not at the cells.</li>
+    <li>The cell value is therefore the curvature of the <b>\(\psi\)-contour through the evaluation point</b>, a parallel curve of the interface: \(\kappa_d=\kappa/(1+d\kappa)\). This \(O(h)\) offset is the leading, structural error of every classical delivery &mdash; the next two slides measure it at the cells, then remove it at the <b>faces</b>, where the force lives.</li>
     <li><b>Balanced-force</b> [Francois&nbsp;2006]: \(\sigma\kappa_f\,\mathrm{snGrad}(\alpha)\) enters the pressure Poisson on the same faces as \(\mathrm{snGrad}(p)\) and is differenced against it &mdash; constant \(\kappa_f\) is absorbed exactly, so spurious currents track only the \(\kappa_f\) error.</li>
+  </ul>
+</section>
+
+<!-- curvature accuracy (standalone) -->
+<section>
+  <h2>Curvature accuracy at the cells &mdash; first order, by geometry</h2>
+  <p class="muted" style="font-size:0.85em">currents are curvature-error-limited &rArr; measure the curvature error directly, no flow solve (<code>leiaTestMeanCurvature</code>). NOTE: this slide measures the <b>cell field</b> vs \(1/R\); the delivered <b>face</b> value is the next slide.</p>
+  <img src="data/figures/sl_curvature_error.png" style="max-height:300px">
+  <ul style="font-size:0.83em">
+    <li>Circle SDF; error of \(\kappa\) vs exact \(1/R\) in the \(\mathrm{snGrad}(\alpha)\) band (the NS-relevant cells), \(N=32\to512\).</li>
+    <li><b>First order by geometry, not by estimator quality</b>: every band cell sits at offset \(|d|\sim h\) from the interface, so its \(\kappa\) is the parallel-contour value \(\kappa/(1+d\kappa)\) &mdash; an \(O(h)\) term no cell-side improvement can remove. Measured: \(\|\kappa-\kappa_e\|_2=O(h^{1.07})\) (\(R^2{=}0.995\); rel.\ \(L_2\) \(35.4\%\to1.7\%\)). The earlier \(N{=}512\) reading (\(1.0\%\)) was biased low by a plane-LSQ degeneracy-guard bug that silently halved the \(\mathrm{snGrad}(\alpha)\) band at fine \(h\) (fixed; the honest full-band value is \(1.7\%\)).</li>
+    <li><b>The \(O(h)\) error is the parallel-contour offset, not the estimator</b>: the Newton-foot and closest-point extensions leave the face-centered error unchanged (\(O(h^{1.08})/O(h^{1.13})\) vs \(O(h^{1.13})\) plain) &mdash; the fit's constant Hessian pins its curvature to the stencil centre no matter where the foot lands. \(\mathrm{tr}(H)=\Delta\psi\) coincides as \(h\to0\).</li>
+    <li>Re-referencing the interpolated <b>face</b> value to the interface with the stabilized foot point removes exactly that offset term and restores <b>second order</b>, \(O(h^{2.04})\) &mdash; the delivery, not the fit, is the bottleneck (<b>next slide</b>).</li>
   </ul>
 </section>
 
@@ -1276,18 +1289,6 @@ psi.correctBoundaryConditions();
   <p class="footnote muted" style="font-size:0.66em">Selected by <em class="tag">levelSet.curvatureExtension { type stabilizedFootPointFace; }</em> + <em class="tag">surfaceTensionForce { faceCurvatureSource registered; }</em> &mdash; the face field plugs into the existing registered-curvature hook; no force-model change.</p>
 </section>
 
-<!-- curvature accuracy (standalone) -->
-<section>
-  <h2>Curvature accuracy (standalone test)</h2>
-  <p class="muted" style="font-size:0.85em">currents are curvature-error-limited &rArr; measure the curvature error directly, no flow solve (<code>leiaTestMeanCurvature</code>)</p>
-  <img src="data/figures/sl_curvature_error.png" style="max-height:300px">
-  <ul style="font-size:0.83em">
-    <li>Circle SDF; error of \(\kappa\) vs exact \(1/R\) in the \(\mathrm{snGrad}(\alpha)\) band (the NS-relevant cells), \(N=32\to512\).</li>
-    <li>Cell-centred \(\kappa\): <b>first order as delivered</b>, \(\|\kappa-\kappa_e\|_2=O(h^{1.07})\) (\(R^2{=}0.995\); rel.\ \(L_2\) \(35.4\%\to1.7\%\)). The earlier \(N{=}512\) reading (\(1.0\%\)) was biased low by a plane-LSQ degeneracy-guard bug that silently halved the \(\mathrm{snGrad}(\alpha)\) band at fine \(h\) (fixed; the honest full-band value is \(1.7\%\)).</li>
-    <li><b>The \(O(h)\) error is the parallel-contour offset, not the estimator</b>: the Newton-foot and closest-point extensions leave the face-centered error unchanged (\(O(h^{1.08})/O(h^{1.13})\) vs \(O(h^{1.13})\) plain) &mdash; the fit's constant Hessian pins its curvature to the stencil centre no matter where the foot lands. \(\mathrm{tr}(H)=\Delta\psi\) coincides as \(h\to0\).</li>
-    <li>Re-referencing the interpolated <b>face</b> value to the interface with the stabilized foot point restores <b>second order</b>, \(O(h^{2.04})\) (previous slide) &mdash; the delivery, not the fit, was the bottleneck.</li>
-  </ul>
-</section>
 
 <!-- stationary droplet results -->
 <section>
