@@ -37,6 +37,13 @@ config/stationaryDropletStableFootFiltered.yaml  the profile-control gate: same
                              N=64..512 -- does minimal per-step band damping close
                              the parasitic feedback loop? (evolution CSVs;
                              make_droplet_evolution_fig.py)
+                             MEASURED: N=64/128/256 all reach the full t=0.1 with
+                             the band |grad psi| pinned and the curvature error
+                             flat -- the loop is closed; residual slow m=1-like
+                             drift, weakening under refinement.
+config/stationaryDropletStableFootLong.yaml  horizon extension of the filtered
+                             gate: N=128,256 to t=0.3 (np 8) -- does the residual
+                             drift saturate, oscillate, or grow?
 config/staticExtension.yaml  static t=0 extension verification: e=|n.grad(Uext)| vs h
                              (solver: leiaTestVelocityExtension; 7 models x 2 div schemes)
 config/steadyVortex2D.yaml   NON-REVERSING stress test: steady vortex (oscillation off,

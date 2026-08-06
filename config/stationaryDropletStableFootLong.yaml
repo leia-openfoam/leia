@@ -1,0 +1,35 @@
+# HORIZON EXTENSION of the profile-control gate: the filtered combination
+# (stabilized foot-point face curvature + psiFilter biharmonicBand theta 0.05)
+# run to t = 0.3 (3x the benchmark horizon) at N = 128 and 256.
+#
+# The t=0.1 gate closed the runaway loop at every resolution (band |grad psi|
+# pinned, curvature error flat, Laplace jump convergent), leaving one residual:
+# a slow, localized max|U| growth to ~1e-2 by t=0.1 at all N, carried by a
+# quasi-exponential m=1-like centroid drift that WEAKENS 6-25x per refinement
+# level while every integral metric (disturbance KE ~1e-11 J, m2 amplitude,
+# volume, jump) stays clean. This gate decides whether that drift saturates,
+# oscillates, or keeps growing on a 3x horizon -- i.e. whether the filtered
+# combination is long-horizon viable or the residual is a slower second loop.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletStableFootLong.yaml
+study_name: stationaryDropletStableFootLong
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [128, 256]
+  END_TIME: [0.3]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+  PSI_FILTER: [biharmonicBand]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
