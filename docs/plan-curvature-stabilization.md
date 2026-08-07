@@ -454,3 +454,62 @@ CONSEQUENCES for the program:
 - Figure: docs/method-comparison/.../figures/wp0_retrodiction_N128.png
   (workflow/scripts/make_wp0_retrodiction_fig.py); trace in
   runs/wp0Retro128 (gitignored).
+
+## 7. WP0 retrodiction (b) — measured 2026-08-07, N=256 filtered, t -> 0.3
+
+Run: stationaryDroplet2D, stabilized foot-point delivery + psiFilter
+biharmonicBand theta = 0.05, np 8 (seam-synchronized), WP0 spectrum on.
+Blow-up at t = 0.167 — reproducing the pre-instrumentation rerun to three
+digits (deterministic).
+
+Onsets (first 10x-floor crossing; floors = median of the first 2000 steps):
+
+| observable | onset t |
+|---|---:|
+| max|U| | **0.0677** |
+| minGradPsiBand < 0.95 | 0.0980 |
+| kErrL2Band | 0.1159 |
+| A2h band L2 | 0.1270 |
+| A4h band L2 | 0.1417 |
+| A8h band L2 | 0.1536 |
+| blow-up (FPE) | 0.1672 |
+
+Also: the filtered N=128 fuse datum (seam-fixed rerun, wall-limited at
+t = 0.191): onset max|U| > 0.1 at t = 0.163. Filtered onsets therefore
+still shrink under refinement (0.163 at N=128 vs 0.113 at N=256, ~1.4x per
+doubling — milder than the unfiltered ~3.3x, but the trend is unchanged).
+
+VERDICT:
+1. Same ordering as the unfiltered N=128 case: max|U| leads EVERYTHING.
+   During the whole growth phase (t = 0.05 -> 0.13, max|U| 6e-4 -> 1.7e-1)
+   the band-profile second differences sit at their floors (A2h
+   8.7e-8 -> 8e-7 m) and the band |grad psi| is healthy (0.993 at t = 0.05,
+   0.945 at t = 0.10). The grid-scale profile corrugation and the |grad psi|
+   collapse are consequences of the strong late flow, not its cause.
+2. Carrier identification: NO wavelength of the band psi-profile carries the
+   filtered growth phase — the mode amplitudes explode only in the endgame,
+   in the order 2h, then 4h, then 8h. The earlier "migration to longer
+   wavelengths" hypothesis is not supported for the paired combination.
+3. The hard consequence: the growth phase is driven by the RESIDUAL SMOOTH
+   spatial variation of the delivered kappa_f — present even at h^2 accuracy
+   on a healthy signed-distance field. With the loop gain rising under
+   refinement, no fixed-order accuracy improvement can close it for all N;
+   this elevates the deck's Defect-1 argument (a face-constant kappa_f is
+   unreachable for any interface shape, so pressure can never absorb the
+   force error exactly) from statics to the measured driver of the coupled
+   growth phase.
+
+PROGRAM RETARGETING:
+- WP1 remains justified as the ENDGAME breaker (the sawtooth amplification is
+  real and kills the runs), but it cannot be expected to change the
+  growth-phase exponent.
+- The frozen-band reset (WP6) attacks bulk profile drift — measured here to
+  LAG the velocity onset in the filtered pairing; it may extend the fuse but
+  the same reasoning as for the filter applies. Keep, but with damped
+  expectations; the moving-interface gates (v0.3 rule) still apply.
+- The lever class that now matters for the EXPONENT: force-side
+  reformulations that let the pressure absorb the residual kappa_f variation
+  exactly (discrete-gradient / potential-form capillary flux), or per-N loop
+  damping that scales with the gain. This is a NEW work package to be
+  designed (WP8 candidate) — not covered by WPs 0-7.
+- Figure: docs/method-comparison/.../figures/wp0_retrodiction_N256filtered.png.
