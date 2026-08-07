@@ -95,6 +95,9 @@ Description
 
 #include "advectionErrors.H"
 
+// WP0 band mode-spectrum diagnostic (normal-profile 2h/4h/8h amplitudes).
+#include "bandModeSpectrum.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])

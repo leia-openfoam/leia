@@ -74,5 +74,11 @@ if (Pstream::master())
         << "pLaplace,kErrL2Band,kErrLinfBand,"
         << "minGradPsiBand,maxGradPsiBand,gradPsiL2ErrorBand,"
         << "gradPsiRatioBand,rhoMassResidualL1,rhoMassResidualLinf,"
-        << "rhoMassResidualRelL1,rhoLENTResetL1" << nl;
+        << "rhoMassResidualRelL1,rhoLENTResetL1,"
+        // WP0 band mode spectrum (bandModeSpectrum.H): normal-profile mode
+        // amplitudes A(kh) = |psi_{+k} - 2 psi_0 + psi_{-k}|/4 along the
+        // LLS-plane normal, k = 1 (2h), 2 (4h), 4 (8h); band max and
+        // volume-weighted L2 per mode; A4h/A8h chain-truncation exclusions.
+        << "A2hMaxBand,A2hL2Band,A4hMaxBand,A4hL2Band,"
+        << "A8hMaxBand,A8hL2Band,A4hExcluded,A8hExcluded" << nl;
 }

@@ -209,6 +209,14 @@
     const scalar gradPsiRatio =
         (bV > 0) ? gMax/Foam::max(gMin, VSMALL) : 0;
 
+    // --- WP0: band normal-profile mode spectrum (bandModeSpectrum.H) -------
+    // A{2h,4h,8h} amplitudes along the LLS-plane normal; the leading
+    // indicator candidates for the parasitic feedback (minGradPsiBand lags).
+    const bandModeSpectrumNorms modeSpec = computeBandModeSpectrum
+    (
+        mesh, psi, mesh.lookupObject<volScalarField>("NarrowBand")
+    );
+
     if (Pstream::master())
     {
         dropletFilePtr()
@@ -227,6 +235,10 @@
             << gMin << ',' << gMax << ',' << gradPsiL2Error << ','
             << gradPsiRatio << ',' << rhoMassResidualL1 << ','
             << rhoMassResidualLinf << ',' << rhoMassResidualRelL1 << ','
-            << rhoLENTResetL1 << nl;
+            << rhoLENTResetL1 << ','
+            << modeSpec.aMax[0] << ',' << modeSpec.aL2[0] << ','
+            << modeSpec.aMax[1] << ',' << modeSpec.aL2[1] << ','
+            << modeSpec.aMax[2] << ',' << modeSpec.aL2[2] << ','
+            << modeSpec.nExcluded[1] << ',' << modeSpec.nExcluded[2] << nl;
     }
 }
