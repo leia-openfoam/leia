@@ -1369,6 +1369,79 @@ a time or on separate nodes.
   \label{fig:mechanism}
 \end{figure}
 
+\subsection{What the pressure projection can absorb: the flux-space residual}
+\label{sec:fluxresidual}
+The parasitic current is a property of the \emph{discrete} force--pressure pair, not of the
+curvature alone, so it is measured where the two operators meet: in the integrated face-flux
+space. The capillary model returns the face flux
+\begin{equation}
+  G_{\sigma,f} = \sigma\,\kappa_f\,(\nabla\alpha)^n_f\,\lvert\mathbf{S}_f\rvert ,
+  \label{eq:gsigmaface}
+\end{equation}
+with $(\nabla\alpha)^n_f$ the surface-normal gradient (\texttt{snGrad}, \texttt{corrected}: the
+orthogonal difference plus the explicit non-orthogonal correction). It never becomes a cell force
+vector: the pressure equation sees its discrete divergence $\sum_f G_{\sigma,f} r_{AU,f}$ over the
+faces of each cell, and the velocity receives only the part the pressure flux fails to match,
+\begin{equation}
+  \mathbf{u} = \mathbf{H}/A + r_{AU}\,\mathrm{reconstruct}\!\left(R_f / r_{AU,f}\right),
+  \qquad R_f = \phi_{g,f} - (\text{pressure flux})_f .
+  \label{eq:fluxresidual}
+\end{equation}
+Because pressure is a scalar cell field, the projection can only remove the component of
+$\phi_g$ that lies in the range of the discrete gradient operator; on a uniform mesh with linear
+face interpolation the product rule is exact,
+$\sigma\langle\kappa\rangle_f\,\mathrm{snGrad}(\alpha) =
+ \sigma\,\mathrm{snGrad}(\kappa\alpha) - \sigma\langle\alpha\rangle_f\,\mathrm{snGrad}(\kappa)$,
+so the first term is absorbed identically and the entire driver is the second: the
+$\alpha$-weighted face-normal \emph{gradient} of the curvature field. Two consequences follow
+directly. The driver differentiates $\kappa$, so a delivery that is second-order accurate in
+$\kappa_f$ produces a first-order force error; and only the tangential part of
+$\mathrm{snGrad}(\kappa)$ is physical, since for constant $\sigma$ the exact capillary force is
+purely normal and $\kappa$ is constant along interface normals within the force support.
+
+Table~\ref{tab:fluxresidual} isolates the two candidate origins of $R_f$ on the $N=128$
+stationary droplet: a residual that is not absorbable \emph{in principle} (the non-gradient
+component of $G_\sigma$), or one that is merely not \emph{yet} absorbed (linear-solver residual).
+The gate crosses the two deliveries with two pressure algebras, production GAMG (four to
+seventeen iterations per solve) against a strict \texttt{DICPCG} at tolerance $10^{-11}$ and
+$\mathrm{relTol}=0$ (approximately $265$ iterations per solve).
+\begin{table}[t]
+  \centering
+  \caption{Capillary flux residual on the active $\mathrm{snGrad}(\alpha)$ faces, $N=128$
+  stationary droplet to $t=0.02$~s. $R_f/G_\sigma$ is
+  $\max\lvert R_f\rvert / \max\lvert\phi_g\rvert$ over those faces;
+  $\uvec_{\mathrm{res}} = r_{AU}\,\mathrm{reconstruct}(R_f/r_{AU,f})$ is the velocity the residual
+  produces. Tightening the pressure solve by a factor $30$ in final residual changes every entry
+  by at most $2.4\times10^{-4}$ relative over the whole run.}
+  \label{tab:fluxresidual}
+  \input{data/tables/capillary_flux_residual.tex}
+\end{table}
+
+Three results follow. First, the projection is converged: the strict solve reduces the pressure
+residual from $2.9\times10^{-10}$ to $8.6\times10^{-12}$ and leaves the non-absorbable fraction,
+the velocity residual and $\max\lvert\uvec\rvert$ unchanged to within $2.4\times10^{-4}$
+relative. $R_f$ is therefore the genuine non-gradient component of the capillary flux, and no
+amount of linear-solver work removes it. (On non-orthogonal meshes the ordering can reverse: the
+same gate on perturbed meshes previously showed an $18$--$29\times$ gain from the strict solve,
+because there the solver residual can exceed the structural one.) Second, the projection absorbs
+$99.85$--$99.98\%$ of the capillary flux and \texttt{fvc::reconstruct} is proportional rather
+than amplifying (velocity-residual fraction $1.4\times10^{-3}$ against flux-residual fraction
+$1.5\times10^{-3}$ at $t_0$); the residual is dangerous only because the absorbed quantity is
+large, the capillary predictor velocity $r_{AU}\,\mathrm{reconstruct}(\phi_g/r_{AU,f})$ being of
+order $1.7$~m/s at this resolution. Third, the advantage of the second-order delivery is
+transient under coupling: it starts $8.3\times$ smaller in the non-absorbable fraction
+($1.80\times10^{-4}$ against $1.49\times10^{-3}$), is $1.78\times$ smaller at $t=0.02$~s, and
+differs by six percent in the run median. Once the flow perturbs $\psilev$, the response of the
+fit to the perturbed field, not the offset the re-referencing removes, sets the residual.
+
+The practical consequence for the discretisation is that improving the accuracy of $\kappa_f$ and
+tightening the pressure algebra both act on quantities that are already sub-dominant. What
+remains is structural: the fraction of $G_{\sigma,f}$ that lies outside the range of the discrete
+gradient operator. Reducing it requires either a delivery that attaches one curvature degree of
+freedom to each interface element and extends it along normals, so that no variation of $\kappa_f$
+exists across the force support to be differentiated, or a formulation in which the jump enters
+the pressure operator directly instead of as a smeared face flux.
+
 % =============================================================================
 \section{Limitations and outlook}
 \label{sec:limitations}
