@@ -295,6 +295,8 @@
     <thead><tr><th>2D stationary droplet, blow-up time [s]</th><th>N=64</th><th>N=128</th><th>N=256</th></tr></thead>
     <tbody>
       <tr><td>quadratic pipeline (UQWLSR + reconstructed &kappa;)</td><td>0.44</td><td>0.105</td><td class="warn">0.035</td></tr>
+      <tr><td>quadratic + 2nd-order face delivery (stabilized foot point), unfiltered</td><td>&mdash;</td><td>&mdash;</td><td class="warn">0.035</td></tr>
+      <tr><td>quadratic + 2nd-order face delivery + biharmonic &psi;-filter (&theta;=0.05)</td><td class="good">&gt; 0.1</td><td class="good">&gt; 0.1</td><td class="good">&gt; 0.1</td></tr>
       <tr><td>consistent linear pipeline (linearTaylor + FVM &kappa;)</td><td>0.80</td><td>0.125</td><td class="good">&gt; 0.1</td></tr>
     </tbody>
   </table>
