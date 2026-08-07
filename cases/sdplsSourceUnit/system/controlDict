@@ -1,0 +1,41 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     leiaTestSdplsSource;
+
+startFrom       startTime;
+startTime       0;
+stopAt          endTime;
+endTime         1;
+
+// FIXED step: the test compares one implicit-Euler update against a closed
+// form, so deltaT must be exactly what runTime reports. Do not enable
+// adjustTimeStep here.
+deltaT          0.01;
+adjustTimeStep  no;
+
+writeControl    runTime;
+writeInterval   1;
+purgeWrite      0;
+writeFormat     ascii;
+writePrecision  12;
+writeCompression off;
+timeFormat      general;
+timePrecision   6;
+runTimeModifiable false;
+
+// ************************************************************************* //

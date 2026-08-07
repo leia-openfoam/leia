@@ -11,9 +11,30 @@
 #                                    -> diagonally dominant by construction
 # Sweep: {R, beta} x 3 discretizations x CFL {0.1, 0.5, 1.0} at N=128, T=2
 # (reversed vortex; f_nl ~ strain ~ O(pi) for R, O(1) for beta).
-# Expected: strictNegative stable everywhere; explicit stable at these dt
-# (dt*|f_nl| << 1); simpleLinearImplicit the interesting case. Divergent rows
-# are RESULTS (negative-results deck), not failures: --keep-going.
+#
+# ROLE AFTER THE 2026-08 SIGN FIX: this is now the AGREEMENT GATE, not a
+# stability curiosity. All three linearizations discretize the SAME continuum
+# source, so they must now agree to the time-integration order at a given
+# (N, CFL). Before the fix they did not, and the disagreement was the tell:
+#   explicit                       reversed sign throughout -> band max
+#                                  |grad psi| reached 14.99 against 3.82 for no
+#                                  source: the drift was DOUBLED, not cancelled
+#   strictNegativeSpLinearImplicit reversed on its f_nl > 0 (Sc) branch only ->
+#                                  band min |grad psi| collapsed to ~0.05,
+#                                  mesh-independently, while the implicit
+#                                  branch correctly held the max near 1.1
+#   simpleLinearImplicit           Sc == 0, never affected -- the reference arm
+#
+# The mesh LADDER for the corrected source lives in benchVortexEulerT{2,8},
+# which now sweep SOURCE_SCHEME too. This study stays single-mesh and keeps the
+# CFL axis, which is what established that the residual is CFL-independent to
+# 3-4 significant digits -- hence purely SPATIAL, hence expected to converge
+# under refinement.
+#
+# Still expected to diverge, for its own reason and NOT the sign defect:
+# beta + explicit. An explicitly lagged relaxation source turns the stable fixed
+# point |grad psi| = beta into an anti-damped oscillator, dt-independently.
+# Divergent rows are RESULTS (negative-results deck), not failures: --keep-going.
 #
 #   snakemake --workflow-profile profiles/local --configfile config/sdplsStability.yaml
 

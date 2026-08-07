@@ -29,6 +29,8 @@ License
 #include "gradPsiErrorCSV.H"
 #include "addToRunTimeSelectionTable.H"
 
+#include <limits>
+
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 namespace Foam
@@ -98,8 +100,18 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
     const auto gradPsiError = field_;
     const auto max_gradPsiError = gMax(gradPsiError);
     const auto mean_gradPsiError = gAverage(gradPsiError);
-    scalar max_narrowGradPsiError = 0.0;
-    scalar mean_narrowGradPsiError = 0.0;
+
+    // Empty-band sentinel. An empty narrow band means the phase has been
+    // annihilated (no psi sign change anywhere) -- it does NOT mean the error
+    // is zero. Reporting 0.0 made a dead interface read as a perfect one, and
+    // the downstream ">0" filters in the plotting/order-fitting scripts then
+    // dropped those rows silently, so a fitted order could be computed over an
+    // unannounced subset of the ladder. NaN is both honest in the CSV and still
+    // excluded by those same filters (NaN > 0 is false).
+    const scalar undefined = std::numeric_limits<scalar>::quiet_NaN();
+
+    scalar max_narrowGradPsiError = undefined;
+    scalar mean_narrowGradPsiError = undefined;
 
     // Volume-weighted L1 and L2 (RMS) norms of e = ||grad psi| - 1|:
     //   L1 = sum(e V)/sum(V),  L2 = sqrt(sum(e^2 V)/sum(V)).
@@ -110,17 +122,19 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
         gSum(eField*cellV)/Foam::max(sumV, VSMALL);
     const scalar L2_gradPsiError =
         Foam::sqrt(gSum(Foam::sqr(eField)*cellV)/Foam::max(sumV, VSMALL));
-    scalar L1_narrowGradPsiError = 0.0;
-    scalar L2_narrowGradPsiError = 0.0;
+    scalar L1_narrowGradPsiError = undefined;
+    scalar L2_narrowGradPsiError = undefined;
 
-    const volScalarField magGradPsi = mag(fvc::grad(psi_));
-    // const volScalarField magGradPsi = mag(gradPsi_);
+    // Same dedicated, unlimited keyword the gradPsiError field object uses --
+    // the two must measure with the SAME operator, and it must not be the
+    // advection scheme's limited `grad(psi)` (see gradPsiError.C).
+    const volScalarField magGradPsi = mag(fvc::grad(psi_, "gradPsiMetric"));
     const auto max_magGradPsi = gMax(magGradPsi);
     const auto mean_magGradPsi = gAverage(magGradPsi);
     const auto min_magGradPsi = gMin(magGradPsi);
-    scalar max_narrowMagGradPsi = 0.0;
-    scalar mean_narrowMagGradPsi = 0.0;
-    scalar min_narrowMagGradPsi = 0.0;
+    scalar max_narrowMagGradPsi = undefined;
+    scalar mean_narrowMagGradPsi = undefined;
+    scalar min_narrowMagGradPsi = undefined;
 
     if (mesh.objectRegistry::found("NarrowBand"))
     {
@@ -128,7 +142,7 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
         List<scalar> narrowGradPsiError = subset(narrowBand, gradPsiError);
         // The band is EMPTY once the phase is fully annihilated (no psi sign
         // change): g{Max,Min} on an empty list return -/+VGREAT garbage.
-        // Report zeros instead so the CSV stays plottable.
+        // Leave the NaN sentinel in place instead -- see `undefined` above.
         const label nBand =
             returnReduce(narrowGradPsiError.size(), sumOp<label>());
         if (nBand > 0)

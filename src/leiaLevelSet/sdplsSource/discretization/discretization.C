@@ -80,7 +80,28 @@ discretize(const volScalarField& nonLinearPart, const volScalarField& psi) const
     fvScalarMatrix& fvm = tfvm.ref();
     const fvMesh& mesh = psi.mesh();
 
-    fvm.source()    = mesh.V().field() * Sc(nonLinearPart, psi);
+    // SIGN CONVENTION (this cost every published SDPLS number once).
+    //
+    // The caller writes  ddt + div - Sp(divPhi) == fvmsdplsSource(psi, U),
+    // and fvMatrix::operator== is A - B with diag_ and source_ subtracted
+    // termwise. Solving (A-B) gives
+    //
+    //     (A.M psi - A.source) - (B.M psi - B.source) = 0
+    //  => V * Dpsi/Dt = B.diag * psi - B.source
+    //
+    // so the physical source represented by THIS matrix is
+    // (diag*psi - source)/V, NOT (diag*psi + source): a term placed in
+    // source_ enters the transport equation with a MINUS. OpenFOAM's own
+    // fvm::Su(su, vf) encodes exactly this by doing `source_ -= V*su`.
+    //
+    // The intended model is S = Sc + Sp*psi^{n+1} (see the class docs), hence
+    // the negation below. Without it, `explicit` solved Dpsi/Dt = -f_nl*psi --
+    // DOUBLING the gradient drift instead of cancelling it -- and
+    // `strictNegativeSpLinearImplicit` did so on its f_nl > 0 branch only,
+    // which is why its band min |grad psi| collapsed to ~0.05 (mesh
+    // independently) while the implicit branch correctly held the band max
+    // near 1. `simpleLinearImplicit` (Sc = 0) was never affected.
+    fvm.source()    = -mesh.V().field() * Sc(nonLinearPart, psi);
     fvm.diag()      = mesh.V().field() * Sp(nonLinearPart);
     return tfvm;
 }

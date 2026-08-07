@@ -113,7 +113,20 @@ def _write_error_table(records, database_path):
             parts.append(f"VE:{ve}")
         ss = rec.get("SDPLS_SOURCE", "noSource")
         if ss and ss != "noSource":
-            parts.append(f"SDPLS:{ss}")
+            # The LINEARIZATION is part of the method, not a detail: the three
+            # discretizations of the same continuum source are separate arms and
+            # must not collide into one label when a study sweeps them (they
+            # disagreed badly until the 2026-08 sign fix, and every SDPLS row
+            # published before it came from strictNegativeSpLinearImplicit
+            # alone). Appended ONLY when a source is active, so the `euler`,
+            # `euler+VE:*` and `euler+RD:*` labels stay byte-identical to the
+            # historical ones.
+            tag = {
+                "explicit": "expl",
+                "simpleLinearImplicit": "simpleImp",
+                "strictNegativeSpLinearImplicit": "strictNegSp",
+            }.get(rec.get("SOURCE_SCHEME", ""), rec.get("SOURCE_SCHEME", ""))
+            parts.append(f"SDPLS:{ss}/{tag}" if tag else f"SDPLS:{ss}")
         rd = rec.get("REDISTANCER", "noRedistancing")
         if rd and rd != "noRedistancing":
             if rd == "PDE" and rec.get("REDIST_FREEZE", "false") == "true":

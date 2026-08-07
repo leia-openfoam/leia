@@ -60,7 +60,13 @@ Sc(const volScalarField& nonLinearPart, const volScalarField& psi) const
 Foam::tmp<scalarField> 
 Foam::simpleLinearImplicit::Sp(const volScalarField& nonLinearPart) const
 {
-    return nonLinearPart.field();
+    // Owning copy. A non-owning tmp over nonLinearPart.field() happens to be
+    // safe here (the argument outlives discretize()'s full-expression), but the
+    // same idiom applied to a TEMPORARY is a use-after-free -- exactly the bug
+    // that was live in explicitDiscretization::Sc. Keep every Sc/Sp in this
+    // hierarchy owning, so the safe and unsafe spellings are not separated by
+    // an invisible lifetime argument.
+    return tmp<scalarField>(new scalarField(nonLinearPart.primitiveField()));
 }
 
 // ************************************************************************* //

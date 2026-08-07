@@ -49,7 +49,26 @@ Foam::tmp<scalarField>
 Foam::explicitDiscretization::
 Sc(const volScalarField& nonLinearPart, const volScalarField& psi) const
 {
-    return (nonLinearPart * psi)().field();
+    // OWNING copy, deliberately.
+    //
+    // The previous form was
+    //     return (nonLinearPart * psi)().field();
+    // which is a use-after-free: `nonLinearPart * psi` yields a
+    // tmp<volScalarField> whose lifetime ends with the full-expression, while
+    // `.field()` hands back a const reference into it. Binding that reference
+    // to the returned tmp<scalarField> produces a NON-OWNING tmp pointing at
+    // memory released before discretize() ever reads it, so the values then
+    // multiplied by the cell volumes were whatever was left in the freed
+    // block -- plausible-looking, allocator-dependent garbage.
+    //
+    // Caught by leiaTestSdplsSource: on an exactly affine field, `explicit`
+    // disagreed with strictNegativeSpLinearImplicit in the regime where the
+    // two have IDENTICAL Sc and Sp by construction (f_nl > 0), which no
+    // legitimate discretization difference can produce.
+    return tmp<scalarField>
+    (
+        new scalarField((nonLinearPart*psi)().primitiveField())
+    );
 }
 
 Foam::tmp<scalarField> 

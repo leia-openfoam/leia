@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2012                                 |
+|  \\    /   O peration     | Version:  v2512                                 |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -15,28 +15,28 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "aliasDict"
-
 ddtSchemes
 {
-    default         CrankNicolson 1; 
+    // Euler, NOT CrankNicolson: leiaTestSdplsSource asserts the exact
+    // one-step implicit-Euler update against a closed form.
+    default         Euler;
 }
 
 gradSchemes
 {
-    // Metric-only gradient for the gradPsiError / gradPsiErrorCSV function
-    // objects. MUST stay UNLIMITED and MUST NOT be the advection scheme's
-    // grad(psi): a cell-limited gradient returns exactly 0 at a local
-    // extremum, which the metric then reports as |grad psi| = 0.
+    // The SDPLS source path. leastSquares is linear-exact, so on the affine
+    // test fields grad(psi) and grad(U) carry no truncation error and the
+    // measured source coefficient is exactly n.(grad U).n.
+    gradPsiSdpls    leastSquares;
+    gradUSdpls      leastSquares;
     gradPsiMetric   leastSquares;
-    default         Gauss linear;
-    grad(p)         Gauss linear;
+    default         leastSquares;
 }
 
 divSchemes
 {
+    // The unit test assembles ddt + source only; there is no advective term.
     default         none;
-    div(phi,psi)    Gauss linear;
 }
 
 laplacianSchemes
@@ -52,11 +52,6 @@ interpolationSchemes
 snGradSchemes
 {
     default         orthogonal;
-}
-
-fluxRequired
-{
-    p;
 }
 
 // ************************************************************************* //

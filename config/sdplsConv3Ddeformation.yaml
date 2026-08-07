@@ -1,0 +1,55 @@
+# SDPLS convergence study on the reversed 3D (LeVeque) deformation flow -- the
+# hardest advection benchmark of the suite (thin stretched sheet at t = T/2),
+# and therefore the case where the t = T/2 band-gradient column is most
+# informative.
+#
+# WHY. See config/sdplsConv3Dshear.yaml. Same arm matrix, same pins, so the two
+# 3D cases and the 2D ladders are read on identical footing. Copied from
+# config/3DdeformationGRL.yaml with the redistancer axis replaced by the SDPLS
+# arm matrix; the sibling lines already scored on this case are
+# bench3Ddeformation (semi-Lagrangian, np 12) and 3DdeformationGRL (np 8).
+#
+# Case: unit cube, deformation3D with oscillation on (reverses at
+# T = END_TIME, so exact(T) = initial); interface sphere r = 0.15 @
+# (0.35,0.35,0.35). 128^3 = 2.1M cells.
+#
+#   snakemake --workflow-profile profiles/slurm --configfile config/sdplsConv3Ddeformation.yaml -n
+#   snakemake --workflow-profile profiles/slurm --configfile config/sdplsConv3Ddeformation.yaml
+
+study_name: sdplsConv3Ddeformation
+case: 3Ddeformation
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [32, 64, 128]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  ADVECTION: [eulerian]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+
+  # --- the SDPLS arm matrix ---------------------------------------------- #
+  SDPLS_SOURCE: [noSource, R, beta]
+  SOURCE_SCHEME: [simpleLinearImplicit, strictNegativeSpLinearImplicit]
+
+  # --- pins, each for a measured reason (see sdplsConv3Dshear.yaml) -------- #
+  MOLLIFIER: [none]
+  GRAD_PSI: [fvc]
+  DIV: [linear]
+  # This template DOES expose the narrow band. Pin signChange to match 2D:
+  # `distance` is broken (it tests signed psi, not |psi|, so its "band" contains
+  # the whole negative-psi bulk and does not shrink with h) and `neighbours` has
+  # no processor-boundary exchange, so the measured cell set depends on np.
+  NARROWBAND: [signChange]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

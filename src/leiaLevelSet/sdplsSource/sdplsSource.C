@@ -63,6 +63,30 @@ Foam::sdplsSource::New(const fvMesh& mesh)
         ) << exit(FatalIOError);
     }
 
+    // A source with no discretization is a silent no-op: `discretization none`
+    // resolves to the BASE discretization, whose Sc and Sp are both zero, so
+    // the assembled matrix contributes nothing to psiEqn -- while the log still
+    // reports "Selecting SDPLS source term type: R". Refuse the combination
+    // rather than let a study measure an inactive source and call it SDPLS.
+    const word& discretizationType =
+        sourceTermDict.getOrDefault<word>("discretization", "none");
+
+    if (type != "noSource" && discretizationType == "none")
+    {
+        FatalIOErrorInFunction(sourceTermDict)
+            << "sdplsSource type '" << type << "' was selected with"
+            << " discretization 'none'." << nl
+            << "That combination assembles a zero matrix: the source term is"
+            << " inactive and the run is indistinguishable from 'noSource'," << nl
+            << "which is exactly the kind of silently-null study this guard"
+            << " exists to prevent." << nl
+            << "Set levelSet.sdplsSource.discretization to one of"
+            << " simpleLinearImplicit | strictNegativeSpLinearImplicit |"
+            << " explicit," << nl
+            << "or set type to noSource if an inactive source is intended."
+            << exit(FatalIOError);
+    }
+
     Info << "Selecting SDPLS source term type: " << type << nl << endl;
     return autoPtr<sdplsSource>(ctorPtr(sourceTermDict, mesh));
 }

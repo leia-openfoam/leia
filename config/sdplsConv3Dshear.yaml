@@ -1,0 +1,69 @@
+# SDPLS convergence study on the reversed 3D shear flow -- the 3D companion to
+# config/benchVortexEulerT2.yaml, and the first 3D SDPLS measurement in the repo.
+#
+# WHY. Every SDPLS number published before 2026-08 came from a source whose
+# explicit (Sc) branch carried a reversed sign, and from a single 2D case. This
+# study puts the corrected source on the SAME 3D advection benchmark the other
+# method lines are already scored on -- bench3Dshear (semi-Lagrangian, np 12)
+# and 3DshearGRL (redistanced line, np 8) -- so the arms are directly
+# comparable. Copied from config/3DshearGRL.yaml with the redistancer axis
+# replaced by the SDPLS arm matrix.
+#
+# Case: domain [0,1]x[0,1]x[0,2] -> N x N x 2N cubic cells (h = 1/N); shear3D
+# with oscillation on reverses at T = END_TIME, so exact(T) = initial and the
+# t = T band gradient is a PURE RESIDUAL METER (the sourceless drift cancels by
+# time-reversal symmetry). Report t = T/2 as well: that is where the interface
+# is maximally stretched and where the source is actually asked to do something.
+# Interface: sphere r = 0.15 @ (0.35,0.75,0.25).
+#
+#   snakemake --workflow-profile profiles/slurm --configfile config/sdplsConv3Dshear.yaml -n
+#   snakemake --workflow-profile profiles/slurm --configfile config/sdplsConv3Dshear.yaml
+
+study_name: sdplsConv3Dshear
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [3.0]                  # T = period = end time (reversible)
+  N_CELLS:  [32, 64, 128]          # 128 = 4.2M cells (expensive tier)
+  CFL:      [0.5]                  # matches bench3Dshear; the SDPLS residual is
+                                   # CFL-independent to 3-4 digits (sdplsStability)
+  REPORT_WRITE_ONLY: ["true"]      # fair wall clock, as in every bench* line
+  ADVECTION: [eulerian]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+
+  # --- the SDPLS arm matrix ---------------------------------------------- #
+  SDPLS_SOURCE: [noSource, R, beta]
+  # BOTH linearizations: simpleLinearImplicit is the reference arm (Sc == 0, so
+  # it was never touched by the sign defect); strictNegativeSpLinearImplicit is
+  # the corrected variant that every published row used. They must now agree.
+  SOURCE_SCHEME: [simpleLinearImplicit, strictNegativeSpLinearImplicit]
+
+  # --- pins, each for a measured reason ----------------------------------- #
+  # The 3D templates DO carry a mollifier block (2D does not), and its w2
+  # default (1e-3) is smaller than the configured w1 (0.05), which the squared
+  # difference in mollifier1.C silently reinterprets as a ~0.099 outer width.
+  # Enabling the mollifier is a separate question; leaving it on here would
+  # confound the sign-fix measurement and break comparability with the 2D
+  # ladders, which have no mollifier at all.
+  MOLLIFIER: [none]
+  # narrowLS fatals with detrixheAslam: it looks up a registered `nc` field that
+  # only geometricPhaseIndicator provides.
+  GRAD_PSI: [fvc]
+  # Pin the Eulerian psi flux scheme, or the base config.yaml sweep
+  # (DIV: [linear, upwind]) merges in -- the same pin 3DshearGRL.yaml documents.
+  DIV: [linear]
+  # (3Dshear hardcodes narrowBand type signChange; there is no NARROWBAND token
+  #  in its template, unlike 3Ddeformation.)
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

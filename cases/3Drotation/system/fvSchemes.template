@@ -24,6 +24,11 @@ ddtSchemes
 
 gradSchemes
 {
+    // Metric-only gradient for the gradPsiError / gradPsiErrorCSV function
+    // objects. MUST stay UNLIMITED and MUST NOT be the advection scheme's
+    // grad(psi): a cell-limited gradient returns exactly 0 at a local
+    // extremum, which the metric then reports as |grad psi| = 0.
+    gradPsiMetric   leastSquares;
     default         Gauss linear;
     grad(p)         Gauss linear;
 }

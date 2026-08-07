@@ -25,7 +25,14 @@ axes_override:
   ADVECTION: [eulerian]
   VELOCITY_EXTENSION: [none]
   SDPLS_SOURCE: [noSource, R, beta]
-  SOURCE_SCHEME: [strictNegativeSpLinearImplicit]
+  # BOTH linearizations. Every SDPLS row ever published from this study used
+  # strictNegativeSpLinearImplicit alone -- the variant whose explicit (Sc)
+  # branch carried a reversed sign until 2026-08, so it DOUBLED the gradient
+  # drift wherever f_nl > 0 instead of cancelling it. simpleLinearImplicit
+  # (Sc == 0) was never affected and is therefore the reference arm; the two
+  # must now agree to the time-integration order. The `noSource` rows are
+  # identical across both and serve as a free consistency check.
+  SOURCE_SCHEME: [simpleLinearImplicit, strictNegativeSpLinearImplicit]
 collapse_other_axes: true
 
 export_slides: false

@@ -25,7 +25,12 @@ axes_override:
   ADVECTION: [eulerian]
   VELOCITY_EXTENSION: [none]
   SDPLS_SOURCE: [noSource, R, beta]
-  SOURCE_SCHEME: [strictNegativeSpLinearImplicit]
+  # BOTH linearizations -- see config/benchVortexEulerT2.yaml for why the
+  # strictNegativeSpLinearImplicit-only history is not usable.
+  # NOTE for the T = 8 ladder: N = 32 and N = 64 annihilate the phase, so their
+  # band rows are empty-band sentinels (now written as NaN, not 0). Fit orders
+  # over N >= 128 only.
+  SOURCE_SCHEME: [simpleLinearImplicit, strictNegativeSpLinearImplicit]
 collapse_other_axes: true
 
 export_slides: false

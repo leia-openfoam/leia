@@ -48,10 +48,25 @@ bool Foam::functionObjects::gradPsiError::calc()
     if (foundObject<volScalarField>(fieldName_, false))
     {
         volScalarField const psi = lookupObject<volScalarField>(fieldName_);
+        // DEDICATED, UNLIMITED scheme keyword -- never the unnamed
+        // fvc::grad(psi), which resolves to the advection scheme's
+        // `grad(psi)` (cellLimited leastSquares 1 in the 2D cases,
+        // and nothing at all -> `default` in the 3D ones).
+        //
+        // Two reasons this matters, both measured:
+        //  1. A cell-limited (minmod) gradient returns EXACTLY ZERO at any
+        //     local extremum of psi, so the metric reports |grad psi| = 0 and
+        //     e = 1 there regardless of the true gradient. On an EXACT
+        //     analytic signed distance at t = 0 the old metric reported
+        //     E_MAX_GRAD_PSI = 1.000 and MIN_MAG_GRAD_PSI = 0.000 at every
+        //     resolution from N = 32 to 512.
+        //  2. The SDPLS source steers `gradPsiSdpls` (unlimited). Measuring
+        //     with a different operator than the one being controlled makes
+        //     the metric a statement about the limiter, not about psi.
         return store
         (
             resultName_,
-            Foam::mag(Foam::mag(fvc::grad(psi)()) - 1)
+            Foam::mag(Foam::mag(fvc::grad(psi, "gradPsiMetric")()) - 1)
         );
     }
     else
