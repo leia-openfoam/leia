@@ -128,7 +128,12 @@ _solve = ["cd {params.d}",
           _setfields]
 if INIT_END:
     _solve.append(INIT_END)
-_solve.append(f"{MPI_PREFIX}{SOLVER} {PAR}{FLUX}".rstrip())
+# The curvature test app reads the SAME -alphaName flag as leiaSetFields (its
+# default alpha.water fits the droplet cases; the 3D cases name the field
+# "alpha") -- forward the study's setfields_args to it.
+_solver_args = SETFIELDS_ARGS if SOLVER == "leiaTestMeanCurvature" else ""
+_solve.append(
+    " ".join(filter(None, [f"{MPI_PREFIX}{SOLVER}".strip(), _solver_args, PAR, FLUX.strip()])))
 # Parallel runs write decomposed fields into processor*/; reconstruct them so the
 # post-processing (foamlib montage) can read alpha at the case root. -withZero
 # also reconstructs time 0 (default skips it), overwriting the uniform 0.org copy

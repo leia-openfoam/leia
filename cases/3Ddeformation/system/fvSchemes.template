@@ -45,6 +45,11 @@ divSchemes
 {
     default         none;
     div(phi,psi)    Gauss @!DIV!@;
+    // FVM curvature kappa = div( grad(psi)/|grad(psi)| ) rows of
+    // leiaTestMeanCurvature (and the divGradPsiSnGradAlpha force model).
+    div(nPsi)       Gauss linear;
+    // Alpha-normal curvature (divGradAlphaSnGradAlpha / the fvm test rows).
+    div(nAlpha)     Gauss linear;
     // anchoredEikonal redistancer: steady-Eikonal fill transport along nHat.
     div(yPhi,psiDist) Gauss upwind;
 }

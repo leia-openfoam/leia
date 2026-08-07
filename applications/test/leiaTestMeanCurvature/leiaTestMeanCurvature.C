@@ -72,6 +72,11 @@ Description
 #include "connectedInterfaceCurvature.H"
 // CSF-support-weighted spatially constant curvature diagnostic (solver-side).
 #include "interfaceMeanCurvature.H"
+// The production face delivery's shared helpers (solver-side): the implicit
+// Gaussian curvature of a cell's fit and the dimension-seamless
+// parallel-surface inverse -- reused here so the gate measures EXACTLY the
+// formula the solver applies.
+#include "stabilizedFootPointFaceCurvature.H"
 
 using namespace Foam;
 
@@ -190,6 +195,12 @@ int main(int argc, char *argv[])
     );
     slAdv->meanCurvatureClosestPoint(psi, kappaCP);
 
+    // 2D-only models (foot-point height function, iso-geometric,
+    // connectedInterface) FatalError on 3D meshes -- gate them and skip their
+    // rows/columns in 3D (sentinel-empty CSV cells; the fig script tolerates
+    // missing rows).
+    const bool is2D = (mesh.nGeometricD() == 2);
+
     // Foot-point HEIGHT-FUNCTION curvature (footPointCurvature.H): local parabola
     // fit of the linear-plane interface feet, delivered normal-constant by uniform
     // nearest-foot assignment. Needs the NarrowBand field (signChange model).
@@ -202,12 +213,15 @@ int main(int argc, char *argv[])
         kappaNoExt   // fallback = the symbolic cell-centre curvature
     );
     kappaFoot.rename("kappaFoot");
-    const label nFootFallback = computeFootPointCurvature
-    (
-        mesh, psi,
-        mesh.lookupObject<volScalarField>("NarrowBand"),
-        kappaFoot
-    );
+    const label nFootFallback =
+        is2D
+      ? computeFootPointCurvature
+        (
+            mesh, psi,
+            mesh.lookupObject<volScalarField>("NarrowBand"),
+            kappaFoot
+        )
+      : -1;
 
     // Face-average, cell-centred curvature: interpolate the normal-extended kappa to
     // the faces (as the CSF force does, sigma*interpolate(kappa)*snGrad(alpha)) and
@@ -236,6 +250,7 @@ int main(int argc, char *argv[])
                  IOobject::NO_READ, IOobject::AUTO_WRITE),
         mesh, dimensionedScalar("k", dimless/dimLength, 0.0), "zeroGradient"
     );
+    if (is2D)
     {
         boolList fl; label hole = 0;
         const label gCon = computeIsoGeometricCurvature
@@ -275,7 +290,7 @@ int main(int argc, char *argv[])
         mesh, dimensionedScalar("k", dimless/dimLength, 0.0)
     );
     bool haveConnected = false;
-    if (!Pstream::parRun())
+    if (!Pstream::parRun() && is2D)
     {
         const label nConnDeficient = computeConnectedInterfaceCurvature
         (
@@ -290,7 +305,8 @@ int main(int argc, char *argv[])
     }
     else
     {
-        Info<< "connected-interface curvature: SKIPPED (serial only)" << nl;
+        Info<< "connected-interface curvature: SKIPPED ("
+            << (is2D ? "serial only" : "2D only") << ")" << nl;
     }
 
     // CSF-support-weighted spatially CONSTANT curvature (the interfaceMean
@@ -386,14 +402,18 @@ int main(int argc, char *argv[])
     };
     scalar Vd2, Vdi, Vp2, Vpi, Vi2, Vii, Vb2, Vbi;
     vortDriver(kappaDiv,   Vd2, Vdi);
-    vortDriver(kappaFoot,  Vp2, Vpi);
-    vortDriver(kappaIso,   Vi2, Vii);
-    vortDriver(kappaParab, Vb2, Vbi);
     Info<< "vortical driver |grad(kappa) x grad(alpha)| (band L2 / Linf) [1/m^3]:" << nl
-        << "  div(n) extended : " << Vd2 << " / " << Vdi << nl
-        << "  foot-point HF   : " << Vp2 << " / " << Vpi << nl
-        << "  iso-CONORMAL    : " << Vi2 << " / " << Vii << nl
-        << "  iso-PARABOLA    : " << Vb2 << " / " << Vbi << nl << endl;
+        << "  div(n) extended : " << Vd2 << " / " << Vdi << nl;
+    if (is2D)
+    {
+        vortDriver(kappaFoot,  Vp2, Vpi);
+        vortDriver(kappaIso,   Vi2, Vii);
+        vortDriver(kappaParab, Vb2, Vbi);
+        Info<< "  foot-point HF   : " << Vp2 << " / " << Vpi << nl
+            << "  iso-CONORMAL    : " << Vi2 << " / " << Vii << nl
+            << "  iso-PARABOLA    : " << Vb2 << " / " << Vbi << nl;
+    }
+    Info<< endl;
 
     // ======================= FACE-CENTERED CURVATURE =======================
     // The CSF force applies curvature at FACES:
@@ -417,36 +437,52 @@ int main(int argc, char *argv[])
 
     // Stabilized foot-point signed offset of every active face centre from the
     // interface (stable-foot-point-3d.md engine on the owner/neighbour fits,
-    // slReconstruction::footPointDistance), combined with the inverse-|psi|
-    // Kang weighting so the near-interface side's fit dominates.
+    // slReconstruction::footPointDistance) PLUS the implicit-surface GAUSSIAN
+    // curvature of the adjacent fits (fitGaussianCurvature) -- both combined
+    // with the inverse-|psi| Kang weighting so the near-interface side's fit
+    // dominates. K is exactly +0 on pseudo-2D fits, so the general
+    // parallel-SURFACE inverse below is bit-identical to the measured 2D
+    // parallel-curve form there; in 3D K is load-bearing (without it the
+    // inverse converges to 2/(R - d) on a sphere -- first order).
     const slReconstruction& recon = slAdv->reconstruction();
     scalarField dFace(nIntFaces, 0.0);
+    scalarField KFace(nIntFaces, 0.0);
     boolList dOk(nIntFaces, false);
-    label nFootFail = 0;
+    label nFootFail = 0, nGaussFallback = 0;
     forAll(activeFace, f)
     {
         if (!activeFace[f]) { continue; }
+
+        const scalar wP = mag(psiIn[nei[f]]);   // weight of the OWNER values
+        const scalar wN = mag(psiIn[own[f]]);
 
         bool okO = false, okN = false;
         const scalar dO = recon.footPointDistance(own[f], Cf[f], 0.0, okO);
         const scalar dN = recon.footPointDistance(nei[f], Cf[f], 0.0, okN);
         if (okO && okN)
         {
-            const scalar wP = mag(psiIn[nei[f]]);   // weight of the OWNER value
-            const scalar wN = mag(psiIn[own[f]]);
             dFace[f] = (dO*wP + dN*wN)/(wP + wN + VSMALL);
             dOk[f] = true;
         }
         else if (okO) { dFace[f] = dO; dOk[f] = true; }
         else if (okN) { dFace[f] = dN; dOk[f] = true; }
         else { ++nFootFail; }
+
+        bool okKO = false, okKN = false;
+        const scalar KO = fitGaussianCurvature(recon, own[f], okKO);
+        const scalar KN = fitGaussianCurvature(recon, nei[f], okKN);
+        if (okKO && okKN) { KFace[f] = (KO*wP + KN*wN)/(wP + wN + VSMALL); }
+        else if (okKO)    { KFace[f] = KO; }
+        else if (okKN)    { KFace[f] = KN; }
+        else              { ++nGaussFallback; }   // K = 0: the 2D form
     }
     reduce(nFootFail, sumOp<label>());
+    reduce(nGaussFallback, sumOp<label>());
 
-    // Parallel-curve inverse kappa = kappa_d/(1 - d kappa_d) at the face,
-    // guarded exactly like the cell-level offsetCorrected(): past half the
-    // local curvature radius the map is not usefully invertible -- keep the
-    // uncorrected value. Faces without a converged foot stay uncorrected.
+    // Dimension-seamless parallel-SURFACE inverse at the face (the exact
+    // formula the solver delivery applies -- parallelSurfaceInverse from
+    // stabilizedFootPointFaceCurvature.H), guarded past half the local
+    // curvature radius. Faces without a converged foot stay uncorrected.
     auto footCorrect = [&](const scalarField& kf) -> tmp<scalarField>
     {
         auto tres = tmp<scalarField>::New(kf);
@@ -454,8 +490,22 @@ int main(int argc, char *argv[])
         forAll(activeFace, f)
         {
             if (!activeFace[f] || !dOk[f]) { continue; }
-            const scalar denom = 1.0 - dFace[f]*kf[f];
-            if (mag(denom) > 0.5) { res[f] = kf[f]/denom; }
+            res[f] = parallelSurfaceInverse(kf[f], dFace[f], KFace[f]);
+        }
+        return tres;
+    };
+
+    // CONTROL: the 2D scalar inverse WITHOUT the Gaussian term. In 2D it is
+    // identical to footCorrect (K = +0 exactly); in 3D it must FAIL at first
+    // order (2/(R - d) on the sphere) -- the gate asserts that failure.
+    auto footCorrectScalar2D = [&](const scalarField& kf) -> tmp<scalarField>
+    {
+        auto tres = tmp<scalarField>::New(kf);
+        scalarField& res = tres.ref();
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f] || !dOk[f]) { continue; }
+            res[f] = parallelSurfaceInverse(kf[f], dFace[f], scalar(0));
         }
         return tres;
     };
@@ -548,12 +598,12 @@ int main(int argc, char *argv[])
                 if (gm < SMALL) { continue; }
 
                 scalar kd = (tr(H)*gm*gm - (g & (H & g)))/(gm*gm*gm);
+                const scalar Kc = (g & (cof(H) & g))/(gm*gm*gm*gm);
                 bool okD = false;
                 const scalar d = recon.footPointDistance(c, C[c], 0.0, okD);
                 if (okD)
                 {
-                    const scalar denom = 1.0 - d*kd;
-                    if (mag(denom) > 0.5) { kd /= denom; }
+                    kd = parallelSurfaceInverse(kd, d, Kc);
                 }
                 kSide[s] = kd;
                 okSide[s] = true;
@@ -636,26 +686,35 @@ int main(int argc, char *argv[])
     addFaceRow("fvmDivGradAlpha", 0, kfFvmDivAlpha);
     addFaceRow("fvmDivGradAlpha", 1, footCorrect(kfFvmDivAlpha)());
 
+    // CONTROL: the 2D scalar inverse without the Gaussian term -- identical to
+    // the corrected row in 2D (K = +0 exactly), first-order-wrong in 3D
+    // (2/(R - d) on the sphere). The 3D gate asserts this failure.
+    addFaceRow("scalarInverse2D", 1, footCorrectScalar2D(kfQ)());
+
     // Interface-referenced models: the evaluation offset is ~0 by the model's
     // own construction, so the parallel-curve correction does not apply
     // (FOOT_POINT = 0 rows only).
     addFaceRow("kangQuadratic", 0, kfKang);
     addFaceRow("quadraticNewtonFoot", 0, kfExt);
     addFaceRow("quadraticClosestPoint", 0, kfCP);
-    addFaceRow("footPointHeightFunction", 0, kfFoot);
+    if (is2D)
+    {
+        addFaceRow("footPointHeightFunction", 0, kfFoot);
+        addFaceRow("isoConormal", 0, kfIso);
+        addFaceRow("isoParabola", 0, kfParab);
+    }
     if (haveConnected)
     {
         addFaceRow("connectedInterface", 0, kappaConnFace.primitiveField());
     }
     addFaceRow("interfaceMean", 0, kfMean);
-    addFaceRow("isoConormal", 0, kfIso);
-    addFaceRow("isoParabola", 0, kfParab);
 
     // The fully foot-point-native delivery (defined only WITH the algorithm).
     addFaceRow("stableFootPoint", 1, kfStable);
 
     Info<< "face-centered curvature, " << nActive << " active faces"
         << " (foot-point unset: " << nFootFail
+        << ", Gaussian fallbacks: " << nGaussFallback
         << ", stableFootPoint unset: " << nStableUnset << "):" << nl;
     for (const auto& r : faceRows)
     {
@@ -666,12 +725,19 @@ int main(int argc, char *argv[])
     }
     Info<< endl;
 
-    // Representative cell size h for a 2D square domain (informational; the study
-    // uses N_CELLS): h = sqrt(area / nCells2D).
+    // Representative cell size h (informational; the study uses N_CELLS):
+    // sqrt(area/n) on pseudo-2D meshes, cbrt(volume/n) in 3D -- getting this
+    // wrong corrupts every order fitted against DELTA_X by a factor 1.5.
     const boundBox bb(mesh.points());
     const scalar Lx = bb.max().x() - bb.min().x();
     const scalar Ly = bb.max().y() - bb.min().y();
-    const scalar dx = (mesh.nCells() > 0) ? Foam::sqrt(Lx*Ly/mesh.nCells()) : 0;
+    const scalar Lz = bb.max().z() - bb.min().z();
+    const scalar dx =
+        (mesh.nCells() > 0)
+      ? (is2D
+         ? Foam::sqrt(Lx*Ly/mesh.nCells())
+         : Foam::cbrt(Lx*Ly*Lz/mesh.nCells()))
+      : 0;
 
     Info<< "band cells                    : " << label(nBand) << nl
         << "kappa_exact                   : " << kappaExact << nl
@@ -705,10 +771,20 @@ int main(int argc, char *argv[])
            << kappaExact << ',' << L1d << ',' << L2d << ',' << linfd << ','
            << L1l << ',' << L2l << ',' << linfl << ','
            << L1n << ',' << L2n << ',' << linfn << ','
-           << L1f << ',' << L2f << ',' << linff << ','
-           << L1p << ',' << L2p << ',' << linfp << ',' << nFootFallback << ','
-           << L1i << ',' << L2i << ',' << linfi << ','
-           << L1b << ',' << L2b << ',' << linfb << nl;
+           << L1f << ',' << L2f << ',' << linff << ',';
+        // 2D-only models: sentinel-empty cells in 3D (their fields hold the
+        // fallback copy of kappaNoExt there -- writing those numbers would
+        // silently mislabel them).
+        if (is2D)
+        {
+            os << L1p << ',' << L2p << ',' << linfp << ',' << nFootFallback << ','
+               << L1i << ',' << L2i << ',' << linfi << ','
+               << L1b << ',' << L2b << ',' << linfb << nl;
+        }
+        else
+        {
+            os << ",,," << nFootFallback << ",,,,,," << nl;
+        }
     }
 
     // Face-centered curvature errors, tidy (one row per MODEL x FOOT_POINT),

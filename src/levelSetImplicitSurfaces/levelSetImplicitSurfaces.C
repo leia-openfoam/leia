@@ -206,6 +206,10 @@ scalar implicitSphere::radius() const
     return radius_; 
 }
 
+// NOTE the 2D (circle) convention: div(n) of a CIRCLE is 1/R; a 3D sphere's
+// div(n) is 2/R. The only consumer today is the 2D-only connectedInterface
+// analytic oracle, which expects exactly this value -- any future 3D consumer
+// must use (nGeometricD - 1)/R instead of this member.
 scalar implicitSphere::curvature(const vector& x) const
 {
     return 1 / radius_;

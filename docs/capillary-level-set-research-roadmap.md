@@ -1358,3 +1358,57 @@ and needs the manufactured-spectrum gate before any parameter is promoted.
 Reproduction: `snakemake --workflow-profile profiles/local --configfile
 config/faceCurvatureDroplet2D.yaml`; slide in
 `docs/method-comparison/method-comparison-presentation/level-set-method-comparison.template.html`.
+
+## Dimension-seamless foot-point curvature + the seam-consistency fix (2026-08-07)
+
+The stabilized foot-point face delivery is now 3D-correct and 2D/3D-seamless.
+The 2D parallel-CURVE inverse `kappa/(1 - d kappa)` is provably first-order
+WRONG in 3D (on a sphere it converges pointwise to `2/(R - d)`); the correct
+parallel-SURFACE inverse needs the GAUSSIAN curvature:
+
+    kappa^G = (kappa_f - 2 K_f d_f) / (1 - kappa_f d_f + K_f d_f^2),
+    K = (g . (cof H) . g)/|g|^4  from the fit's own derivatives.
+
+Exact on a sphere; K = +0 EXACTLY on pseudo-2D fits, so all committed 2D
+results are byte-identical (verified: full faceCurvatureDroplet2D rerun, zero
+diffs on every shared order-table row). Measured on the new static-sphere gate
+(`config/faceCurvatureSphere3D.yaml`, 3Ddeformation base, exact SDF, serial,
+N = 32/50/80/128, ladder = the repo's cbrt(4) convention):
+
+| face curvature, 3D sphere (active-face L2) | order | L2 at N=128 [1/m] |
+|---|---:|---:|
+| quadratic cell centre, arithmetic (raw) | `h^0.98` | `0.419` |
+| + stabilized foot point (K-aware) | **`h^1.95`** | **`5.25e-3`** (80x) |
+| FVM div(grad psi/|grad psi|) raw / corrected | `h^0.97` / `h^1.91` | `0.419` / `1.55e-2` |
+| per-side variant (K-aware) | `h^1.98` | `5.18e-3` |
+| 2D scalar inverse CONTROL (no K) | `h^1.02` | `0.421` = raw |
+
+The control row seals the argument: without the Gaussian term the correction
+buys NOTHING in 3D (order 1.02, magnitude equal to the uncorrected delivery,
+opposite sign) -- K is load-bearing, not a refinement. Wiring facts that were
+load-bearing: SL_RECONSTRUCTION must be the uncached quadratic (the cached
+default has no footPointDistance/fitDerivatives), SL_STENCIL point on hex
+(CFC's 6 neighbours < 9 coefficients silently zero every Hessian), PROFILE
+signedDistance, and the test app now forwards -alphaName (3D cases name the
+field `alpha`). The 2D-only models (foot-point HF, iso-geometric,
+connectedInterface) are dimension-gated in leiaTestMeanCurvature with sentinel
+CSV cells; dx is nd-aware (the 2D sqrt formula corrupted 3D orders by 1.5x).
+
+PITFALL, found via the horizon runs: the coupled-patch branch of the face
+delivery corrected processor-seam faces with each rank's OWN side only -- the
+two ranks held DIFFERENT kappa_f for the same physical face, an inconsistent
+capillary flux. Measured: np 8 runs ~7-10x noisier than np 4 at identical
+(N, t) on the filtered stationary droplet. Fixed by swap-and-average across
+the seam (syncTools); after the fix np 4 vs np 8 agree to 1.1% at t = 5e-3
+(N=128 filtered). CONSEQUENCE: every np-8 verdict taken before the fix is
+contaminated and must be re-measured -- specifically the filtered N=512 run
+(max|U| = 0.10 at its 8 h wall limit, t = 0.073, band |grad psi| eroding: the
+apparent "theta = 0.05 filter insufficient at N=512" signal) and both t = 0.3
+horizon-extension runs (wall-limited at t = 0.060 / 0.044 with max|U| 7-10x
+their np-4 twins). The np-4 gates (fuse curve, filtered N=64..256 full-horizon
+survival) are unaffected.
+
+Reproduction: `snakemake --workflow-profile profiles/local --configfile
+config/faceCurvatureSphere3D.yaml` (3D gate);
+`config/faceCurvatureDroplet2D.yaml` (2D regression); the seam check =
+stationaryDroplet2D N=128 filtered at np 4 vs np 8 to t = 5e-3.

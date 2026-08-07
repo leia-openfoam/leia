@@ -1,0 +1,51 @@
+# FACE-CENTERED mean-curvature accuracy, 3D (static sphere, exact SDF) -- the
+# dimension-seamless companion of faceCurvatureDroplet2D.
+#
+# Same observable: kappa_f as the CSF force applies it, on the active
+# |snGrad(alpha)| > 0 faces, error vs the exact sphere mean curvature 2/R.
+# The delivery under test is the GAUSSIAN-curvature-aware parallel-surface
+# inverse kappa^G = (kappa_f - 2 K_f d_f)/(1 - kappa_f d_f + K_f d_f^2) with
+# d_f from the stabilized foot point and K_f = (g.(cof H).g)/|g|^4 from the
+# fit -- exact on a sphere, reducing bit-identically to the 2D form (K = +0)
+# on pseudo-2D meshes. The scalarInverse2D control row (the K-less 2D formula)
+# must FAIL here at ~first order (it converges to 2/(R - d) pointwise):
+# asserting that failure is the point of the control.
+#
+# Pinned axes that are LOAD-BEARING:
+#   SL_RECONSTRUCTION uncachedQuadraticWeightedLeastSquares -- the only
+#     reconstruction with footPointDistance/fitDerivatives (the cached default
+#     FatalErrors), and the O(1)-memory choice that fits 128^3 serial.
+#   SL_STENCIL point -- CFC on hex gives 6 neighbours < 9 quadratic coeffs
+#     (every cell would silently drop to the linear fallback, zero Hessian).
+#   PROFILE signedDistance -- tanh would silently break the parallel-surface
+#     premise. DIV linear -- inert (no advection), pinned against axis merge.
+#
+# 2D-only models (foot-point HF, iso-geometric, connectedInterface) are gated
+# off by the app in 3D (sentinel CSV cells; rows absent). Serial; ladder
+# [32, 50, 80, 128] = the repo's cbrt(4) 3D convention; 128^3 = 2.1M cells.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/faceCurvatureSphere3D.yaml
+study_name: faceCurvatureSphere3D
+case: 3Ddeformation
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestMeanCurvature
+theme:  method-comparison
+
+# The 3D cases initialise the field named "alpha" (not alpha.water).
+setfields_args: "-alphaName alpha"
+
+axes_override:
+  N_CELLS: [32, 50, 80, 128]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_STENCIL: [point]
+  PROFILE: [signedDistance]
+  DIV: [linear]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+
+export_slides: true
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

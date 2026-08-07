@@ -1,0 +1,10 @@
+label,t_end,onset_t,blowup_t,maxU_end,survived
+"unfiltered foot point, N=256",0.03475799994,0.03302929869,0.03475766296,,False
+"unfiltered arithmetic, N=256",0.05259234886,0.04476203102,0.05259190131,,False
+"unfiltered foot point, N=512 (cancelled in terminal runaway)",0.01170994656,0.01020249367,,0.508197963,False
+"filtered foot point, N=64",0.1,,,0.009621339546,True
+"filtered foot point, N=128",0.1,,,0.007743357603,True
+"filtered foot point, N=256",0.1,,,0.01241267576,True
+"filtered foot point, N=512 (np8, PRE-seam-fix, wall-limited)",0.07275053905,0.07235398894,,0.1010373768,False
+"filtered horizon, N=128 t->0.3 (np8, PRE-seam-fix, wall-limited)",0.06014998125,,,0.02240999428,True
+"filtered horizon, N=256 t->0.3 (np8, PRE-seam-fix, wall-limited)",0.04394803129,,,0.006324588818,True
