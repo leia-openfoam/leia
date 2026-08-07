@@ -513,3 +513,61 @@ PROGRAM RETARGETING:
   damping that scales with the gain. This is a NEW work package to be
   designed (WP8 candidate) — not covered by WPs 0-7.
 - Figure: docs/method-comparison/.../figures/wp0_retrodiction_N256filtered.png.
+
+## 8. WP8.0 — measured 2026-08-07: the projection is converged; the residual is structural
+
+Instrumentation (`applications/solvers/leiaLevelSetTwoPhaseFoam/pEqn.H`, shared
+by both two-phase solvers): at the final pressure corrector, the residual
+capillary face flux R_f = phig - p_rghEqn.flux() is measured on the ACTIVE
+faces (|snGrad(alpha)| > 0) against phig itself, together with the pressure
+solver's iterations and initial/final residual and the velocity residual
+fvc::reconstruct produces from it. Per-corrector rows in
+`capillaryFluxResidual.csv`.
+
+Four arms, N=128 stationary droplet to t = 0.02, np 4:
+delivery {arithmetic, stabilized foot point} x pressure algebra {production
+GAMG (1e-9, relTol 0.01, 4-17 iterations/solve), strict DICPCG (1e-11,
+relTol 0, ~265 iterations/solve)}.
+
+| arm | R_f/phig at t=0 | median over run | max\|U_res\| at t=0 | max\|U\| peak |
+|---|---:|---:|---:|---:|
+| arithmetic, GAMG | 1.49e-3 | 4.13e-5 | 2.49e-3 | 4.44e-3 |
+| arithmetic, PCG 1e-11 | 1.49e-3 | 4.13e-5 | 2.49e-3 | 4.44e-3 |
+| foot point, GAMG | 1.80e-4 | 3.89e-5 | 3.04e-4 | 1.10e-3 |
+| foot point, PCG 1e-11 | 1.80e-4 | 3.89e-5 | 3.04e-4 | 1.10e-3 |
+
+FINDINGS:
+1. **The pressure projection is not the constraint.** Tightening the pressure
+   solve by ~30x in final residual (2.9e-10 -> 8.6e-12) and ~20x in iteration
+   count changes the non-absorbable flux fraction, the velocity residual and
+   max|U| by at most 2.4e-4 RELATIVE over the whole run. The residual R_f is
+   therefore the genuine non-gradient component of the capillary flux, not an
+   unconverged projection. (This does not contradict the 2026-07-28
+   perturbed-mesh gate where strict PCG gained 18-29x: that was a NON-
+   ORTHOGONAL mesh, where the Laplacian is harder and the solver residual can
+   exceed the structural residual. On uniform orthogonal hex it cannot.)
+2. **The pressure solve absorbs 99.85-99.98% of the capillary flux**, and
+   fvc::reconstruct is proportional, not amplifying (velocity-residual
+   fraction 1.4e-3 vs flux-residual fraction 1.5e-3 at t=0). The parasitic
+   velocity is large only because the absorbed quantity is large: the
+   capillary predictor velocity rAU*reconstruct(phig/rAUf) is ~1.7 m/s at
+   N=128, so 1.5e-3 of it is 2.5e-3 m/s.
+3. **The delivery's static advantage is transient in the coupled run.** The
+   foot-point delivery starts 8.3x better in the non-absorbable fraction
+   (1.80e-4 vs 1.49e-3) but by t = 0.02 the gap is 1.78x, and the median over
+   the run is only 6% (3.89e-5 vs 4.13e-5). Once the flow perturbs psi, both
+   deliveries' kappa_f error is dominated by the response to the perturbed
+   field, not by the offset the re-referencing removes. This is independent
+   confirmation of the WP0 retrodiction verdict and further deprioritizes
+   accuracy work as an exponent lever.
+
+CONSEQUENCES:
+- Mechanism (i) of the WP8.0 hypothesis set is confirmed: the driver is the
+  non-gradient part of G_sigma, irreducible by solver work or by delivery
+  accuracy. The remaining lever classes are (a) force-side structural -- make
+  more of the flux lie in the range of snGrad (element-DOF delivery with one
+  curvature per interface element, or a ghost-fluid pressure-jump assembly);
+  (b) gain-side -- semi-implicit capillarity.
+- Pressure algebra can be left at production GAMG for orthogonal-mesh droplet
+  studies (no accuracy penalty, ~20x cheaper per solve); the strict-PCG
+  requirement stands only for non-orthogonal meshes.
