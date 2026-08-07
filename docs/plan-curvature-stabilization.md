@@ -291,6 +291,18 @@ displacement vs h AND the sign histogram, plane-based vs quadratic-based.
   below transport order. One-signed O(h²) (expected for plane): confirms the
   retirement.
 
+**[v0.3] BINDING METHODOLOGICAL RULE (user, 2026-08-07):** psi advection is
+never modified, suspended, or specialized for the static test case — the full
+semi-Lagrangian transport runs every step exactly as for a moving interface.
+Any reset/stabilization candidate must be machinery that works identically for
+a deforming, translating interface. PROMOTION of any candidate therefore
+requires, beyond the static-droplet score: (1) the kinematic transport suite
+(reversed vortex, 3D shear/deformation) with the candidate ACTIVE and the §0
+transport orders unchanged; (2) a coupled gate in which the interface moves
+through cells under capillary coupling (translating droplet,
+transISTKinematic-type) with no degradation relative to the static verdict.
+This applies to the frozen-band reset, the psi-filter, and every WP7 arm.
+
 Frozen-band arm (runs after the WP0 diagnostic + a cheap static event
 characterization):
 1. Event trigger: WP0's A-spectrum leaving a healthy window (NOT a fixed
