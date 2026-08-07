@@ -80,5 +80,11 @@ if (Pstream::master())
         // LLS-plane normal, k = 1 (2h), 2 (4h), 4 (8h); band max and
         // volume-weighted L2 per mode; A4h/A8h chain-truncation exclusions.
         << "A2hMaxBand,A2hL2Band,A4hMaxBand,A4hL2Band,"
-        << "A8hMaxBand,A8hL2Band,A4hExcluded,A8hExcluded" << nl;
+        << "A8hMaxBand,A8hL2Band,A4hExcluded,A8hExcluded,"
+        // WP8.1 (capillaryDriverSplit.H): relative variation rate [1/m] of the
+        // delivered face curvature ACROSS the force support (separations along
+        // the interface normal) and ALONG the interface, plus the pair counts.
+        << "driverAcrossSupportL2,driverAlongInterfaceL2,"
+        << "driverAcrossSupportMax,driverAlongInterfaceMax,"
+        << "driverNAcross,driverNAlong" << nl;
 }

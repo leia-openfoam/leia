@@ -98,6 +98,9 @@ Description
 // WP0 band mode-spectrum diagnostic (normal-profile 2h/4h/8h amplitudes).
 #include "bandModeSpectrum.H"
 
+// WP8.1: across-support vs along-interface split of the delivered kappa_f.
+#include "capillaryDriverSplit.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])

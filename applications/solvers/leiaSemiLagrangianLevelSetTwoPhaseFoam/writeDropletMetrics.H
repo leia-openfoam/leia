@@ -217,6 +217,15 @@
         mesh, psi, mesh.lookupObject<volScalarField>("NarrowBand")
     );
 
+    // --- WP8.1: where the delivered curvature varies (across the support
+    // along the interface normal, or along the interface). Re-evaluates the
+    // force model's face flux with the current fields and recovers kappa_f
+    // from it, so the measure is model-agnostic.
+    const capillaryDriverSplitNorms driverSplit = computeCapillaryDriverSplit
+    (
+        mesh, psi, alpha1, fSigma->faceSurfaceTensionForceFlux()()
+    );
+
     if (Pstream::master())
     {
         dropletFilePtr()
@@ -239,6 +248,11 @@
             << modeSpec.aMax[0] << ',' << modeSpec.aL2[0] << ','
             << modeSpec.aMax[1] << ',' << modeSpec.aL2[1] << ','
             << modeSpec.aMax[2] << ',' << modeSpec.aL2[2] << ','
-            << modeSpec.nExcluded[1] << ',' << modeSpec.nExcluded[2] << nl;
+            << modeSpec.nExcluded[1] << ',' << modeSpec.nExcluded[2] << ','
+            << driverSplit.acrossSupportL2 << ','
+            << driverSplit.alongInterfaceL2 << ','
+            << driverSplit.acrossSupportMax << ','
+            << driverSplit.alongInterfaceMax << ','
+            << driverSplit.nAcross << ',' << driverSplit.nAlong << nl;
     }
 }
