@@ -391,3 +391,54 @@ characterization):
    the normal-variation map.
 6. **[v0.2]** Which wavelength carries the FILTERED runaway (WP0 retrodiction
    (b)) — the single most retargeting-relevant unknown in the program.
+
+---
+
+## 6. WP0 retrodiction (a) — measured 2026-08-07, N=128 arithmetic baseline
+
+Run: stationaryDroplet2D, arithmetic delivery, np 4, WP0 spectrum on;
+FPE blow-up at t = 0.0803 (10 823 steps; the historical serial measurement was
+0.105–0.11 — chaotic variance across decompositions).
+
+Onsets (first 10x-floor crossing; floors from the first 1000 steps):
+
+| observable | onset t |
+|---|---:|
+| minGradPsiBand < 0.95 (slow drift) | **0.028** |
+| max|U| | 0.0655 |
+| A2h band L2 | 0.0763 |
+| kErrL2Band | 0.0784 |
+| A4h band L2 | 0.0791 |
+| A8h band L2 | never (floor 5.6e-6) |
+| blow-up (FPE) | 0.0803 |
+
+VERDICT vs the WP0 hypothesis:
+1. **A_band is NOT a leading indicator of the growth phase** — the velocity
+   onset precedes A2h by ~11 ms. The exponential growth (t ≈ 0.04–0.065,
+   max|U| 3e-4 → 1e-2) happens with the 2h/4h/8h band amplitudes AT THEIR
+   FLOORS and kErrL2Band nearly flat (79 → 104 1/m): the loop's early carrier
+   is low-mode/coherent (consistent with the m=1-like drift seen in the
+   filtered runs), and the grid-scale mode explosion is the ENDGAME
+   (t > 0.07), not the driver. max|U| itself is the most sensitive integrator
+   of the feedback.
+2. A2h still leads the BLOW-UP by ~4 ms (~600 steps at N=128) — usable as a
+   last-resort event trigger, but a reset fired there may be too late.
+3. The ground-truth statement "minGradPsiBand does not lead" needs refinement:
+   it does not predict the κ spikes locally (|∇ψ| ≈ 0.9 at spike cells), but
+   its band-min DRIFT leads everything (0.96 → 0.91 over t = 0.02–0.06) — as a
+   slow profile-health trigger for the FROZEN-BAND reset it is the earliest
+   available signal, firing decades of steps before the endgame.
+
+CONSEQUENCES for the program:
+- WP6 trigger design inverts: primary trigger = the slow profile drift
+  (minGradPsiBand or gradPsiL2ErrorBand window), NOT the A-spectrum;
+  the A-spectrum stays as the endgame/carrier diagnostic and the WP3/WP7
+  carrier-identification instrument (retrodiction (b) pending).
+- WP1's target is unchanged (the diagonal-stencil aliasing is measured and
+  real) but its expected effect shifts: it should weaken the ENDGAME
+  amplification; whether the low-mode growth phase also feeds through the
+  fitted H at sub-floor mode amplitudes is exactly what the WP7 fit arm will
+  reveal.
+- Figure: docs/method-comparison/.../figures/wp0_retrodiction_N128.png
+  (workflow/scripts/make_wp0_retrodiction_fig.py); trace in
+  runs/wp0Retro128 (gitignored).
