@@ -124,7 +124,7 @@ _setfields = " ".join(
 _solve = ["cd {params.d}",
           "rm -f gradPsiError.csv leiaSetFields.csv leiaLevelSetFoam.csv"
           " leiaRedistancedLevelSetFoam.csv leiaTestRedistance.csv"
-          " leiaTestFaceCurvature.csv",
+          " leiaTestFaceCurvature.csv leiaTestCurvatureNoiseGain.csv",
           _setfields]
 if INIT_END:
     _solve.append(INIT_END)
@@ -134,6 +134,15 @@ if INIT_END:
 _solver_args = SETFIELDS_ARGS if SOLVER == "leiaTestMeanCurvature" else ""
 _solve.append(
     " ".join(filter(None, [f"{MPI_PREFIX}{SOLVER}".strip(), _solver_args, PAR, FLUX.strip()])))
+# The static gate measures kappa_f ACCURACY on an exact signed distance field.
+# In the coupled solve psi is never exact, and MEASURED (plan sec. 10) accuracy
+# does not predict coupled stability -- the two orders are inverted. The second
+# number that does track the instability's growth rate is the GAIN, how far
+# kappa_f moves per unit perturbation of psi, so the gate runs both apps on the
+# same case and publishes both columns.
+if SOLVER == "leiaTestMeanCurvature":
+    _solve.append(
+        " ".join(filter(None, ["leiaTestCurvatureNoiseGain", _solver_args])))
 # Parallel runs write decomposed fields into processor*/; reconstruct them so the
 # post-processing (foamlib montage) can read alpha at the case root. -withZero
 # also reconstructs time 0 (default skips it), overwriting the uniform 0.org copy
@@ -329,6 +338,10 @@ rule report:
                     # kappa_f the CSF force applies, all models, with/without
                     # the stabilized foot point -> figure + order table.
                     _sp.run(["python3", os.path.join(_scripts, "make_face_curvature_fig.py"),
+                             STUDY_DIR], check=False)
+                    # ... and the companion GAIN table: d kappa_f / d psi on the
+                    # same faces, the number that tracks the coupled growth rate.
+                    _sp.run(["python3", os.path.join(_scripts, "make_curvature_gain_table.py"),
                              STUDY_DIR], check=False)
                 else:
                     # method-decision benchmark: cross-study comparison panels,

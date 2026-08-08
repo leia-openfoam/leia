@@ -633,3 +633,106 @@ and the moving-interface promotion gates of the v0.3 rule.
 
 Figure: docs/method-comparison/.../figures/wp81_driver_split_N128.png
 (workflow/scripts/make_driver_split_fig.py).
+
+## 10. WP8.2 — measured 2026-08-08: the cut-cell delivery falsifies the WP8.1 consequence
+
+The construction §9 called for was built (`curvatureExtension cutCellFootPointFace`,
+commit 44c9a84): one curvature per CUT cell (0 < alpha < 1) — that cell's own
+quadratic-fit curvature at its centre, inverted to the interface with that
+cell's own stabilized foot-point distance through the parallel-surface inverse
+(Gaussian term included, so 2D and 3D are one code path) — assigned to every
+active face of the cell, the mean where both sides are cut. No `geometricD`
+branching anywhere: cut cells, `fitDerivatives`, `cof(H)` and the foot search
+are dimension-independent, and K is exactly +0 on a pseudo-2D fit.
+
+STATIC GATES (Lichtenberg 54005348, serial). It is the most accurate delivery
+in the table:
+
+| gate | N ladder | order (L2) | L2 at the finest N | best competitor |
+|---|---|---|---|---|
+| 2D circle | 32-512 | h^2.00 | 0.0761 1/m (N=512) | per-face inverse 0.105, h^2.04 |
+| 3D sphere | 32-128 | h^1.95 | 0.00518 1/m (N=128) | per-face inverse 0.00518, h^1.96 |
+
+It beats the per-face inversion at EVERY 2D resolution (1.3-1.4x lower L2) and
+ties it in 3D, with zero foot-search failures and zero active faces left
+without a cut-cell side at every resolution in both dimensions.
+
+FORCE STRUCTURE (coupled, N=128, np 8). It does what §9 asked for, and keeps
+doing it:
+
+| quantity | per-face inverse | cut-cell inverse |
+|---|---|---|
+| across-support driver L2 at t=0 [1/m] | 16.96 | 2.35 (7.2x lower) |
+| across/along ratio at t=0 | 1.33 | 0.41 |
+| across/along ratio at 0.5 t_blow | 5.34 | 0.97 |
+| max abs U at the first step [m/s] | 2.83e-4 | 1.48e-5 (19x lower) |
+
+The across-support component never regains dominance — the structural claim of
+§9 holds for the whole run, not only at t=0.
+
+COUPLED VERDICT (Lichtenberg 54005349/54005350). The droplet blows up SOONER:
+
+| delivery | E_L2 at N=128 [1/m] | max abs U(t=0) | t_blow N=128 | t_blow N=256 | late growth rate [1/s] |
+|---|---|---|---|---|---|
+| arithmetic | 45.8 | 2.31e-3 | 0.0803 | — | 186 |
+| per-face inverse | 1.67 | 2.83e-4 | 0.0668 | 0.0348 | 189 |
+| cut-cell inverse | 1.18 | 1.48e-5 | 0.0202 | 0.0145 | 454 |
+
+Both cut-cell runs ended in a floating-point exception with max abs U past
+1e50 and the time step collapsed — a genuine blow-up, not a code fault. Growth
+is smooth exponential in every arm (median step-to-step change of max abs U
+1.4%, no step above 50%), so this is not a switching artefact of the
+membership of the cut-cell set.
+
+CONSEQUENCE 1 — the WP8.1 consequence is FALSIFIED. Removing the across-support
+variation of kappa_f, which §9 measured to be the dominant part of the driver,
+made the instability faster, not slower. The variation of the delivered face
+curvature is therefore NOT what sets the growth rate: at t = 0.0103 the
+cut-cell run carries roughly TEN times less total delivered-curvature variation
+than the per-face run at the same physical time and has twice the velocity.
+No further work should be justified by "it reduces the spurious component of
+the capillary driver" — that lever is now measured and it is the wrong one.
+
+CONSEQUENCE 2 — accuracy on an exact psi is ANTI-correlated with coupled
+stability. Over the three deliveries above, static L2 falls 45.8 -> 1.67 ->
+1.18 while t_blow falls 0.0803 -> 0.0668 -> 0.0202. Every static gate in this
+program has been scoring deliveries on a number that does not order them the
+way the coupled run does.
+
+THE NUMBER THAT DOES TRACK IT: the gain, how far kappa_f moves per unit
+perturbation of psi on the force support (new utility
+`applications/test/leiaTestCurvatureNoiseGain`, run by the gate study on every
+case; curated table `data/tables/curvature_gain.csv`). Reported as G h^2, the
+amplification relative to the h^-2 that any curvature operator must pay:
+
+| delivery | E_L2 (N=128) | G h^2 | late growth rate [1/s] |
+|---|---|---|---|
+| arithmetic | 45.8 | 0.644 | 186 |
+| per-face inverse | 1.67 | 0.643 | 189 |
+| cut-cell inverse | 1.18 | 0.821 | 454 |
+
+The gain is constant to ~3% over the N = 64-256 ladder and linear in the
+perturbation amplitude over a 100x range (eps = 1e-3 to 1e-1), so it is a
+property of the delivery, not of the mesh or of the probe. The two deliveries
+with equal gain (0.2% apart) have equal growth rate (1.6% apart) despite a 27x
+difference in accuracy; the delivery with 28% more gain grows 2.4x faster. The
+gain therefore ORDERS the deliveries correctly but does not predict the
+magnitude — a 28% gain increase buying a 2.4x rate increase is the signature of
+a loop operating near its stability threshold, and that nonlinearity is
+recorded as an observation, not a model.
+
+The mechanism the numbers support: the per-face inversion computes an
+independent inversion per face, so a cell's four (2D) active faces average four
+partly independent foot-distance errors; the cut-cell delivery puts the whole
+cell's force on ONE inversion of ONE foot distance d_c, whose error is
+amplified by the inverse's 1/(1 - kappa_d d + K d^2) and then applied to every
+face with full weight. On an exact signed distance field d_c is exact and the
+concentration is pure gain in accuracy; under transport it is pure gain in
+noise.
+
+WHAT THIS OPENS: the cheap offline predictor the program has been missing. Any
+candidate delivery can now be scored in seconds, serially, on a static circle,
+by two numbers — its convergence order AND its gain — and only those that do
+not raise the gain are worth a coupled run. The next constructions should be
+selected to LOWER G h^2 below 0.643 (more averaging, not less), which is the
+opposite of the direction WP8.1 pointed.

@@ -1344,7 +1344,7 @@ psi.correctBoundaryConditions();
 
 <!-- where the inverse is applied -->
 <section>
-  <h2>Where the inverse is applied: per face (now) vs per cut cell (candidate)</h2>
+  <h2>Where the inverse is applied: per face vs per cut cell</h2>
   <div class="cols" style="align-items:flex-start">
     <div style="flex:1">
       <svg viewBox="0 0 250 200" style="width:100%; max-width:250px">
@@ -1390,10 +1390,54 @@ psi.correctBoundaryConditions();
         changes \(L_2\) from 11.3502 to 11.3492 (2D, \(N{=}512\)) and 0.4191 to 0.4184 (3D, \(N{=}128\)) &mdash;
         it keeps the \(O(h)\) offset. The interface value must be produced <b>algebraically</b>, not by
         re-evaluating.</li>
-    <li>Open: the static order of the cut-cell delivery is not predictable from the face-combined
-        (\(h^{2.04}\)) or per-side (\(h^{1.40}\), 2D) variants &mdash; it must be measured, together with its
-        across/along split, before it enters the solver.</li>
+    <li class="good"><b>Both were built and measured</b> (<code>curvatureExtension stabilizedFootPointFace</code>
+        and <code>cutCellFootPointFace</code>). The cut-cell delivery wins every static number and loses the
+        coupled run &mdash; next slide.</li>
   </ul>
+</section>
+
+<!-- the verdict: accuracy and coupled stability are anti-correlated -->
+<section>
+  <h2>The cut-cell delivery: every static number better, blow-up 3.3&times; sooner</h2>
+  <div class="cols" style="align-items:flex-start">
+    <div style="flex:1.15">
+      <table style="font-size:0.62em; width:100%">
+        <tr><th>stationary droplet, \(N{=}128\)</th><th>per face</th><th>per cut cell</th></tr>
+        <tr><td>static \(L_2(\kappa_f)\) [1/m]</td><td>1.67</td><td class="good">1.18</td></tr>
+        <tr><td>convergence order (2D / 3D)</td><td>\(h^{2.04}\) / \(h^{1.96}\)</td><td class="good">\(h^{2.00}\) / \(h^{1.95}\)</td></tr>
+        <tr><td>across-support driver, \(t{=}0\) [1/m]</td><td>16.96</td><td class="good">2.35</td></tr>
+        <tr><td>across/along at \(0.5\,t_\mathrm{blow}\)</td><td>5.34</td><td class="good">0.97</td></tr>
+        <tr><td>\(\max|\mathbf{u}|\) at the first step [m/s]</td><td>2.83e&minus;4</td><td class="good">1.48e&minus;5</td></tr>
+        <tr><td><b>\(t_\mathrm{blow}\) [s]</b></td><td><b>0.0668</b></td><td class="warn"><b>0.0202</b></td></tr>
+        <tr><td>growth rate, late window [1/s]</td><td>189</td><td class="warn">454</td></tr>
+      </table>
+      <p style="font-size:0.62em; margin-top:0.35em">Same at \(N{=}256\): \(t_\mathrm{blow}\) 0.0348 &rarr; 0.0145.
+        Growth is smooth exponential in both (median step change of \(\max|\mathbf{u}|\) 1.4%), so this is not
+        a switching artefact of the cut-cell set.</p>
+    </div>
+    <div style="flex:1">
+      <p style="font-size:0.68em"><b>The across-support variation is not the driver.</b> It was removed
+        &mdash; 7.2&times; at \(t{=}0\) and never regaining dominance &mdash; and the instability got
+        <i>faster</i>. At \(t={0.0103}\) the cut-cell run carries \(\sim\)10&times; less total delivered-curvature
+        variation than the per-face run and twice the velocity.</p>
+      <p style="font-size:0.68em"><b>Accuracy on an exact \(\psi\) is anti-correlated with coupled stability.</b>
+        Static \(L_2\): 45.8 &rarr; 1.67 &rarr; 1.18. \(t_\mathrm{blow}\): 0.0803 &rarr; 0.0668 &rarr; 0.0202.</p>
+      <p style="font-size:0.68em"><b>The number that does track it</b> is the gain \(G=\|\delta\kappa_f\|_2/\|\delta\psi\|_\infty\)
+        on the force support, reported as \(Gh^2\) (amplification relative to the \(h^{-2}\) any curvature
+        operator must pay):</p>
+      <table style="font-size:0.62em; width:100%">
+        <tr><th>delivery</th><th>\(L_2\)</th><th>\(Gh^2\)</th><th>rate [1/s]</th></tr>
+        <tr><td>arithmetic</td><td>45.8</td><td>0.644</td><td>186</td></tr>
+        <tr><td>per face</td><td>1.67</td><td>0.643</td><td>189</td></tr>
+        <tr><td>per cut cell</td><td>1.18</td><td class="warn">0.821</td><td class="warn">454</td></tr>
+      </table>
+      <p style="font-size:0.62em; margin-top:0.3em">Equal gain &rarr; equal growth rate (1.6% apart) despite a
+        27&times; accuracy difference; +28% gain &rarr; 2.4&times; the rate. The per-face inverse averages four
+        partly independent foot-distance errors per cell; the cut-cell delivery applies ONE amplified inversion
+        to all four faces. <code>leiaTestCurvatureNoiseGain</code>, seconds per mesh &mdash; a candidate delivery
+        can now be rejected before any coupled run.</p>
+    </div>
+  </div>
 </section>
 
 <section>
