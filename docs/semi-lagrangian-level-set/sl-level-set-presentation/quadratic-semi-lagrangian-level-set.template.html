@@ -1291,6 +1291,111 @@ psi.correctBoundaryConditions();
 
 
 <!-- stationary droplet results -->
+<!-- derivation of the interface value -->
+<section>
+  <h2>Deriving the interface value: the parallel-surface inverse</h2>
+  <div class="cols" style="align-items:flex-start">
+    <div style="flex:1.15; font-size:0.72em; line-height:1.5">
+      <p>A surface offset by a signed normal distance \(d\) has principal radii \(R_i\to R_i+d\), so each
+         principal curvature maps as \(k_i\mapsto k_i/(1+d\,k_i)\). With
+         \(\kappa=k_1+k_2\) (what the CSF force needs) and \(K=k_1k_2\), and writing
+         \(Q=(1{+}dk_1)(1{+}dk_2)=1+\kappa d+Kd^2\):</p>
+      <p style="text-align:center; margin:0.25em 0">
+         \(\kappa_d=\dfrac{\kappa+2Kd}{Q},\qquad K_d=\dfrac{K}{Q}\)</p>
+      <p><b>What we have</b> is \(\kappa_d,K_d\) at the CELL CENTRE (the fit's contour there) and the
+         distance \(d\) from the foot-point algorithm. <b>What we need</b> is \(\kappa\) on the
+         interface. Eliminating \(Q\):</p>
+      <p style="text-align:center; margin:0.25em 0">
+         \(Q=\dfrac{1}{1-\kappa_d d+K_d d^{2}},\qquad
+           \boxed{\;\kappa^\Gamma=\dfrac{\kappa_d-2K_d\,d}{1-\kappa_d d+K_d d^{2}}\;}\)</p>
+      <ul class="tight" style="margin-top:0.35em">
+        <li><b>Sphere check</b>: \(\kappa_d=2/(R{+}d),\,K_d=1/(R{+}d)^2\Rightarrow\) numerator
+            \(2R/(R{+}d)^2\), denominator \(R^2/(R{+}d)^2\), ratio \(=2/R\) <b>exactly</b>, both signs of \(d\).</li>
+        <li><b>2D reduction</b>: pseudo-2D fits give \(K=+0\) <i>exactly</i> (every adjugate term carries a
+            zero \(z\)-component), so \(\kappa^\Gamma=\kappa_d/(1-d\kappa_d)\) &mdash; one code path, byte-identical in 2D.</li>
+        <li><b>Guard</b>: the denominator factorises as \((1-dk_{1,d})(1-dk_{2,d})\); skip the inverse when
+            \(|1-\kappa_d d+K_d d^2|\le\tfrac12\) (past half the local curvature radius).</li>
+        <li class="warn">Dropping \(K\) in 3D is <b>not</b> a simplification: on a sphere it returns
+            \(2/(R-d)\) &mdash; measured \(O(h^{1.02})\) at the raw error magnitude.</li>
+      </ul>
+    </div>
+    <div style="flex:0.85">
+      <svg viewBox="0 0 260 250" style="width:100%; max-width:270px">
+        <!-- interface arc and the offset contour through the cell centre -->
+        <path d="M 20 210 A 170 170 0 0 1 190 40" fill="none" stroke="var(--ls-accent)" stroke-width="3"/>
+        <path d="M 20 245 A 205 205 0 0 1 225 40" fill="none" stroke="var(--ls-line)" stroke-width="1.6" stroke-dasharray="6 4"/>
+        <text x="150" y="86" font-size="10" fill="var(--ls-accent)">&Gamma;: &psi; = 0, &kappa;</text>
+        <text x="150" y="128" font-size="10" fill="var(--ls-line)">contour at offset d, &kappa;&#8305;</text>
+        <!-- normal ray with foot and cell centre -->
+        <line x1="112" y1="118" x2="140" y2="151" stroke="var(--ls-warn)" stroke-width="2"/>
+        <circle cx="112" cy="118" r="4" fill="var(--ls-accent)"/>
+        <circle cx="140" cy="151" r="4" fill="var(--ls-warn)"/>
+        <text x="60" y="112" font-size="10" fill="var(--ls-accent)">foot point</text>
+        <text x="148" y="158" font-size="10" fill="var(--ls-warn)">cell centre</text>
+        <text x="118" y="142" font-size="11" fill="var(--ls-warn)">d</text>
+        <!-- the mapping -->
+        <text x="18" y="30" font-size="11" fill="var(--ls-good)">&kappa;&#8305;, K&#8305; measured here &rarr; &kappa;&#915; on &Gamma;</text>
+      </svg>
+      <p class="footnote muted center" style="font-size:0.58em">the fit supplies \(\kappa_d,K_d\) at the cell
+         centre; the stabilized foot point supplies \(d\); the algebra supplies the interface value.</p>
+    </div>
+  </div>
+</section>
+
+<!-- where the inverse is applied -->
+<section>
+  <h2>Where the inverse is applied: per face (now) vs per cut cell (candidate)</h2>
+  <div class="cols" style="align-items:flex-start">
+    <div style="flex:1">
+      <svg viewBox="0 0 250 200" style="width:100%; max-width:250px">
+        <g stroke="var(--ls-line)" fill="none" stroke-width="1">
+          <rect x="30" y="30" width="60" height="55"/><rect x="90" y="30" width="60" height="55"/><rect x="150" y="30" width="60" height="55"/>
+          <rect x="30" y="85" width="60" height="55"/><rect x="90" y="85" width="60" height="55"/><rect x="150" y="85" width="60" height="55"/>
+        </g>
+        <path d="M 30 120 Q 120 92 210 64" fill="none" stroke="var(--ls-accent)" stroke-width="3"/>
+        <text x="150" y="160" font-size="10" fill="var(--ls-accent)">&Gamma;</text>
+        <!-- face-centre dots with DIFFERENT values (current) -->
+        <circle cx="90" cy="112" r="3.5" fill="var(--ls-warn)"/><text x="66" y="108" font-size="9" fill="var(--ls-warn)">&kappa;&#8321;</text>
+        <circle cx="150" cy="112" r="3.5" fill="var(--ls-warn)"/><text x="156" y="108" font-size="9" fill="var(--ls-warn)">&kappa;&#8322;</text>
+        <circle cx="120" cy="85" r="3.5" fill="var(--ls-warn)"/><text x="124" y="80" font-size="9" fill="var(--ls-warn)">&kappa;&#8323;</text>
+        <circle cx="120" cy="140" r="3.5" fill="var(--ls-warn)"/><text x="124" y="153" font-size="9" fill="var(--ls-warn)">&kappa;&#8324;</text>
+        <text x="30" y="192" font-size="10" fill="var(--ls-warn)">now: one inverse per FACE &rarr; 4 different values</text>
+      </svg>
+    </div>
+    <div style="flex:1">
+      <svg viewBox="0 0 250 200" style="width:100%; max-width:250px">
+        <g stroke="var(--ls-line)" fill="none" stroke-width="1">
+          <rect x="30" y="30" width="60" height="55"/><rect x="90" y="30" width="60" height="55"/><rect x="150" y="30" width="60" height="55"/>
+          <rect x="30" y="85" width="60" height="55"/><rect x="90" y="85" width="60" height="55"/><rect x="150" y="85" width="60" height="55"/>
+        </g>
+        <rect x="90" y="85" width="60" height="55" fill="rgba(129,199,132,0.15)" stroke="var(--ls-good)" stroke-width="2"/>
+        <path d="M 30 120 Q 120 92 210 64" fill="none" stroke="var(--ls-accent)" stroke-width="3"/>
+        <circle cx="90" cy="112" r="3.5" fill="var(--ls-good)"/><circle cx="150" cy="112" r="3.5" fill="var(--ls-good)"/>
+        <circle cx="120" cy="85" r="3.5" fill="var(--ls-good)"/><circle cx="120" cy="140" r="3.5" fill="var(--ls-good)"/>
+        <text x="60" y="176" font-size="10" fill="var(--ls-good)">candidate: one inverse per CUT CELL</text>
+        <text x="60" y="190" font-size="10" fill="var(--ls-good)">&rarr; all four faces get &kappa;&#915;,c</text>
+      </svg>
+    </div>
+  </div>
+  <ul class="tight" style="font-size:0.7em; margin-top:0.3em">
+    <li><b>Now</b>: \(\kappa_f=\mathrm{interpolate}(\kappa_c)\) (mean-value weights), then ONE inverse per face
+        with the face-centre distance \(d_f\) (inverse-\(|\psi|\) weighted between the two sides). Each face
+        ends with its own number &rarr; \(\mathrm{snGrad}(\kappa)\neq0\) across the support.</li>
+    <li><b>Candidate</b>: invert ONCE per cut cell, \(\kappa^\Gamma_c\) from \(\kappa_c,K_c,d_c\); assign it to
+        every active face of that cell; faces between two cut cells take the mean. Then
+        \(\kappa_{f_1}-\kappa_{f_2}=0\) identically within a column &mdash; the across-support driver
+        vanishes <i>algebraically</i>, at every step, however \(\psi\) has degraded.</li>
+    <li class="warn"><b>Why not simply evaluate the fit ON \(\Gamma\)?</b> Measured: the fitted \(\kappa\) is
+        nearly constant along the normal (constant Hessian), so evaluating at the foot instead of the centre
+        changes \(L_2\) from 11.3502 to 11.3492 (2D, \(N{=}512\)) and 0.4191 to 0.4184 (3D, \(N{=}128\)) &mdash;
+        it keeps the \(O(h)\) offset. The interface value must be produced <b>algebraically</b>, not by
+        re-evaluating.</li>
+    <li>Open: the static order of the cut-cell delivery is not predictable from the face-combined
+        (\(h^{2.04}\)) or per-side (\(h^{1.40}\), 2D) variants &mdash; it must be measured, together with its
+        across/along split, before it enters the solver.</li>
+  </ul>
+</section>
+
 <section>
   <h2>Verification: the stationary droplet</h2>
   <p class="muted" style="font-size:0.85em">water/air, \(R=1\)&thinsp;mm, \(\sigma/R=72.74\)&thinsp;Pa (Lippert et&nbsp;al. 2022) &mdash; the exact solution is quiescent</p>
