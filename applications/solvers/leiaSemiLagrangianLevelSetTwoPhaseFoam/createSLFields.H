@@ -118,7 +118,14 @@ const bool fvmCurvature = (curvatureExtensionType == "fvm");
 // delivery on the static exact-SDF circle.
 const bool stabilizedFootPointFaceExtension =
     (curvatureExtensionType == "stabilizedFootPointFace");
-if (stabilizedFootPointFaceExtension)
+// CUT-CELL variant: the same parallel-surface inverse, but applied ONCE PER
+// CUT CELL (0 < alpha < 1) and assigned to that cell's active faces, so the
+// curvature difference across the force support is identically zero rather
+// than merely small (WP8.1). Dimension-agnostic: cut cells, the fit
+// derivatives and the Gaussian term are defined identically in 2D and 3D.
+const bool cutCellFootPointFaceExtension =
+    (curvatureExtensionType == "cutCellFootPointFace");
+if (stabilizedFootPointFaceExtension || cutCellFootPointFaceExtension)
 {
     // The parallel-curve inverse acts at the FACE: a cell-level
     // offsetCorrection would be applied twice -- silently wrong curvature.
@@ -143,6 +150,7 @@ Info<< "Curvature extension: " << curvatureExtensionType
     << (interfaceMeanCurvatureExtension ? " (interface-mean diagnostic ON)" : "")
     << (connectedInterfaceCurvatureExtension ? " (connected face-native curvature ON)" : "")
     << (stabilizedFootPointFaceExtension ? " (stabilized foot-point FACE delivery ON)" : "")
+    << (cutCellFootPointFaceExtension ? " (CUT-CELL foot-point delivery ON)" : "")
     << (fvmCurvature ? " (symbolic kappa fill OFF -- force model computes its own)" : "")
     << nl << endl;
 

@@ -622,6 +622,58 @@ int main(int argc, char *argv[])
     }
     reduce(nStableUnset, sumOp<label>());
 
+    // CUT-CELL delivery (dimension-agnostic, 2D and 3D identical): ONE
+    // interface curvature per cut cell (0 < alpha < 1), obtained by inverting
+    // that cell's own centre curvature with its own foot-point distance, then
+    // ASSIGNED to the cell's active faces -- the mean where both sides are cut
+    // cells. All active faces of a cut cell then carry the same value, so the
+    // curvature difference across the force support is identically zero.
+    scalarField kfCutCell(kfQ);        // fallback: the interpolated value
+    label nCutCells = 0, nNoCutSide = 0, nCutFootFail = 0;
+    {
+        const vectorField& C = mesh.C().primitiveField();
+        const scalarField& aIn = alpha.primitiveField();
+        scalarField kappaGamma(mesh.nCells(), 0.0);
+        boolList isCut(mesh.nCells(), false);
+
+        forAll(aIn, c)
+        {
+            if (aIn[c] <= SMALL || aIn[c] >= 1 - SMALL) { continue; }
+
+            vector g(Zero);
+            symmTensor H(Zero);
+            if (recon.fitDerivatives(c, g, H) < 2) { continue; }
+            const scalar gm = mag(g);
+            if (gm < SMALL) { continue; }
+
+            const scalar kc = (tr(H)*gm*gm - (g & (H & g)))/(gm*gm*gm);
+            const scalar Kc = (g & (cof(H) & g))/(gm*gm*gm*gm);
+            bool okD = false;
+            const scalar dc = recon.footPointDistance(c, C[c], 0.0, okD);
+            if (!okD) { ++nCutFootFail; continue; }
+
+            kappaGamma[c] = parallelSurfaceInverse(kc, dc, Kc);
+            isCut[c] = true;
+            ++nCutCells;
+        }
+
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+            const bool cO = isCut[own[f]], cN = isCut[nei[f]];
+            if (cO && cN)
+            {
+                kfCutCell[f] = 0.5*(kappaGamma[own[f]] + kappaGamma[nei[f]]);
+            }
+            else if (cO) { kfCutCell[f] = kappaGamma[own[f]]; }
+            else if (cN) { kfCutCell[f] = kappaGamma[nei[f]]; }
+            else { ++nNoCutSide; }
+        }
+        reduce(nCutCells, sumOp<label>());
+        reduce(nNoCutSide, sumOp<label>());
+        reduce(nCutFootFail, sumOp<label>());
+    }
+
     // |Sf|-weighted error norms over the active faces (plus the force-weighted
     // |snGrad(alpha)||Sf| L2 -- the norm in which the error enters G_sigma,f).
     // An active face without a computed value (kappa_f = 0) contributes its
@@ -712,10 +764,16 @@ int main(int argc, char *argv[])
     // The fully foot-point-native delivery (defined only WITH the algorithm).
     addFaceRow("stableFootPoint", 1, kfStable);
 
+    // One interface curvature per CUT CELL, assigned to its active faces.
+    addFaceRow("cutCellInverse", 1, kfCutCell);
+
     Info<< "face-centered curvature, " << nActive << " active faces"
         << " (foot-point unset: " << nFootFail
         << ", Gaussian fallbacks: " << nGaussFallback
-        << ", stableFootPoint unset: " << nStableUnset << "):" << nl;
+        << ", stableFootPoint unset: " << nStableUnset
+        << "; cut cells: " << nCutCells
+        << ", active faces with no cut side: " << nNoCutSide
+        << ", cut-cell foot failures: " << nCutFootFail << "):" << nl;
     for (const auto& r : faceRows)
     {
         Info<< "  " << r.model << (r.footPoint ? " +footPoint" : "")

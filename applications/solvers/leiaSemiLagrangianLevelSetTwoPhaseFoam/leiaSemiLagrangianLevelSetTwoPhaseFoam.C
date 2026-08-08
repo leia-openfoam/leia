@@ -207,6 +207,15 @@ int main(int argc, char *argv[])
             kappaStableFootFace
         );
     }
+    else if (cutCellFootPointFaceExtension)
+    {
+        computeCutCellFootPointFaceCurvature
+        (
+            mesh, psi, alpha1, kappa,
+            slAdv->reconstruction(),
+            kappaStableFootFace
+        );
+    }
 
     #include "YoungLaplaceEqn.H"
     kappa.write();

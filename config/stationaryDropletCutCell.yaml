@@ -1,0 +1,40 @@
+# Stationary-droplet parasitic currents with the CUT-CELL curvature delivery.
+#
+# One interface curvature per CUT CELL (0 < alpha < 1): the cell's own
+# quadratic-fit curvature at its centre, inverted to the interface with that
+# cell's own stabilized foot-point distance (parallel-surface inverse, the
+# Gaussian term included so 2D and 3D are one code path), then ASSIGNED to
+# every active face of that cell -- the mean where both sides are cut cells.
+#
+# Motivation (WP8.1, docs/plan-curvature-stabilization.md sec. 9): the
+# component of the delivered kappa_f variation ACROSS the force support
+# dominates the along-interface component by 4-6x and, with the per-FACE
+# inversion, regrows from 57x below the arithmetic delivery to parity within
+# ~0.05 s. Assigning ONE value per cut cell makes that component identically
+# zero at every step, however far psi has drifted from a signed distance --
+# a structural property of the delivery rather than an accuracy property of
+# the estimator.
+#
+# Compare against config/stationaryDropletStableFoot.yaml (per-face inversion)
+# at the same resolutions.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletCutCell.yaml
+study_name: stationaryDropletCutCell
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [128, 256]
+  CURVATURE_EXTENSION: [cutCellFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

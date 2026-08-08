@@ -252,6 +252,153 @@ inline void computeStabilizedFootPointFaceCurvature
         << "synchronized, counted from both sides)" << endl;
 }
 
+
+
+//- CUT-CELL delivery (dimension-agnostic): invert ONCE PER CUT CELL and assign
+//  that single interface value to every active face of the cell.
+//
+//  Per cut cell (0 < alpha < 1 -- the geometric indicator's own definition,
+//  identical in 2D and 3D):
+//      kappa_c, K_c  from the cell's own quadratic fit AT ITS CENTRE,
+//      d_c           = stabilized foot-point distance of the cell centre,
+//      kappa^Gamma_c = parallelSurfaceInverse(kappa_c, d_c, K_c).
+//  Per active face: the value of its cut-cell side; the mean of the two if both
+//  sides are cut cells; the face-based construction as a fallback if neither is
+//  (counted -- with a sharp geometric indicator every active face has at least
+//  one cut side, so this should stay at zero).
+//
+//  The point is structural, not accuracy: all active faces of one cut cell
+//  carry the SAME number, so the difference of kappa_f taken across the force
+//  support vanishes identically at every step, however far psi has drifted from
+//  a signed distance. WP8.1 measured that across-support difference to be the
+//  dominant part of the driver (4-6x the along-interface part) and to regrow to
+//  parity within ~0.05 s when only the accuracy is improved.
+//
+//  Evaluating the fit's curvature ON the interface instead would NOT do this:
+//  the fitted kappa is nearly constant along the normal (constant Hessian), so
+//  it keeps the O(h) offset -- measured 11.3492 vs 11.3502 (2D) and 0.4184 vs
+//  0.4191 (3D). The interface value has to be produced algebraically.
+inline void computeCutCellFootPointFaceCurvature
+(
+    const fvMesh& mesh,
+    const volScalarField& psi,
+    const volScalarField& alpha,
+    const volScalarField& kappa,
+    const slReconstruction& recon,
+    surfaceScalarField& kappaFace
+)
+{
+    // start from the classical delivery: only the ACTIVE faces are overwritten
+    kappaFace = fvc::interpolate(kappa);
+
+    const surfaceScalarField snA(fvc::snGrad(alpha));
+    const scalarField& snIn = snA.primitiveField();
+    const scalar snMax = max(gMax(mag(snIn)()), VSMALL);
+
+    const labelUList& own = mesh.owner();
+    const labelUList& nei = mesh.neighbour();
+    const vectorField& CIn = mesh.C().primitiveField();
+    const scalarField& aIn = alpha.primitiveField();
+
+    // --- one interface curvature per cut cell -----------------------------
+    scalarField kappaGamma(mesh.nCells(), 0.0);
+    scalarField isCut(mesh.nCells(), 0.0);
+    label nCut = 0, nFootFail = 0, nGaussFallback = 0;
+
+    forAll(aIn, c)
+    {
+        if (aIn[c] <= SMALL || aIn[c] >= 1 - SMALL) { continue; }
+
+        vector g(Zero);
+        symmTensor H(Zero);
+        if (recon.fitDerivatives(c, g, H) < 2) { continue; }
+        const scalar gm = mag(g);
+        if (gm < SMALL) { continue; }
+
+        const scalar kc = (tr(H)*gm*gm - (g & (H & g)))/(gm*gm*gm);
+        bool okK = false;
+        const scalar Kc = fitGaussianCurvature(recon, c, okK);
+        if (!okK) { ++nGaussFallback; }
+
+        bool okD = false;
+        const scalar dc = recon.footPointDistance(c, CIn[c], 0.0, okD);
+        if (!okD) { ++nFootFail; continue; }
+
+        kappaGamma[c] = parallelSurfaceInverse(kc, dc, okK ? Kc : scalar(0));
+        isCut[c] = 1.0;
+        ++nCut;
+    }
+
+    // --- assign to the active faces ---------------------------------------
+    scalarField& kfIn = kappaFace.primitiveFieldRef();
+    label nActive = 0, nAssigned = 0, nNoCutSide = 0;
+
+    forAll(kfIn, f)
+    {
+        if (mag(snIn[f]) <= 1e-8*snMax) { continue; }
+        ++nActive;
+
+        const bool cO = (isCut[own[f]] > 0.5);
+        const bool cN = (isCut[nei[f]] > 0.5);
+        if (cO && cN)
+        {
+            kfIn[f] = 0.5*(kappaGamma[own[f]] + kappaGamma[nei[f]]);
+            ++nAssigned;
+        }
+        else if (cO) { kfIn[f] = kappaGamma[own[f]]; ++nAssigned; }
+        else if (cN) { kfIn[f] = kappaGamma[nei[f]]; ++nAssigned; }
+        else { ++nNoCutSide; }   // keeps the interpolated value
+    }
+
+    // --- coupled patches: the neighbour cell lives on another rank ---------
+    scalarField kappaGammaNei, isCutNei;
+    syncTools::swapBoundaryCellList(mesh, kappaGamma, kappaGammaNei);
+    syncTools::swapBoundaryCellList(mesh, isCut, isCutNei);
+
+    surfaceScalarField::Boundary& kfBf = kappaFace.boundaryFieldRef();
+    const surfaceScalarField::Boundary& snBf = snA.boundaryField();
+
+    forAll(kfBf, patchI)
+    {
+        const fvPatch& patch = mesh.boundary()[patchI];
+        if (!patch.coupled()) { continue; }
+
+        fvsPatchScalarField& kfp = kfBf[patchI];
+        const labelUList& fc = patch.faceCells();
+        const label bStart = patch.start() - mesh.nInternalFaces();
+
+        forAll(kfp, i)
+        {
+            if (mag(snBf[patchI][i]) <= 1e-8*snMax) { continue; }
+            ++nActive;
+
+            const bool cO = (isCut[fc[i]] > 0.5);
+            const bool cN = (isCutNei[bStart + i] > 0.5);
+            if (cO && cN)
+            {
+                // both ranks compute the same mean -> seam-consistent
+                kfp[i] = 0.5*(kappaGamma[fc[i]] + kappaGammaNei[bStart + i]);
+                ++nAssigned;
+            }
+            else if (cO) { kfp[i] = kappaGamma[fc[i]]; ++nAssigned; }
+            else if (cN) { kfp[i] = kappaGammaNei[bStart + i]; ++nAssigned; }
+            else { ++nNoCutSide; }
+        }
+    }
+
+    reduce(nCut, sumOp<label>());
+    reduce(nActive, sumOp<label>());
+    reduce(nAssigned, sumOp<label>());
+    reduce(nNoCutSide, sumOp<label>());
+    reduce(nFootFail, sumOp<label>());
+    reduce(nGaussFallback, sumOp<label>());
+    Info<< "cutCellFootPointFace curvature: " << nCut << " cut cells, "
+        << nAssigned << "/" << nActive << " active faces assigned ("
+        << nNoCutSide << " with no cut side, " << nFootFail
+        << " foot searches failed, " << nGaussFallback
+        << " Gaussian fallbacks)" << endl;
+}
+
 } // End namespace Foam
 
 #endif

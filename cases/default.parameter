@@ -78,7 +78,9 @@ CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
                      // none | harmonicLaplace | footPointHeightFunction |
                      // closestPointNewton | connectedInterface | interfaceMean
                      // | stabilizedFootPointFace (face kappa re-referenced to
-                     // the interface at the stabilized foot-point offset) | fvm.
+                     // the interface at the stabilized foot-point offset)
+                     // | cutCellFootPointFace (ONE inverted curvature per cut
+                     // cell, assigned to its active faces) | fvm.
 FACE_CURVATURE_SOURCE model; // reconstructedCurvature kappa_f source: model
                      // (its own arithmetic/Kang assembly) | registered (the
                      // solver-registered face field, e.g. kappaStableFootFace).
