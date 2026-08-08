@@ -37,6 +37,13 @@ gradSchemes
     // the psi advection scheme's limiter)
     redistGradPsi   leastSquares;
     default         Gauss linear;
+    // Level-set ADVECTION gradient: the reconstruction gradient of the
+    // linearUpwind div(phi,psi) scheme above, and the gradient the
+    // redistancers resolve for their unnamed fvc::grad(psi). Cell-limited
+    // so the second-order reconstruction stays bounded. Deliberately NOT
+    // the SDPLS source gradient (gradPsiSdpls) nor the metric gradient
+    // (gradPsiMetric), both of which must stay unlimited.
+    grad(psi)       cellLimited leastSquares 1;
     grad(p)         Gauss linear;
     // Semi-Lagrangian reconstruction (leiaSemiLagrangeLevelSetFoam): dedicated
     // point-cell-point least-squares gradient keys for the foot reconstruction,
@@ -49,7 +56,7 @@ gradSchemes
 divSchemes
 {
     default         none;
-    div(phi,psi)    Gauss @!DIV!@;
+    div(phi,psi)    Gauss linearUpwind grad(psi);
     // FVM curvature kappa = div( grad(psi)/|grad(psi)| ) rows of
     // leiaTestMeanCurvature (and the divGradPsiSnGradAlpha force model).
     div(nPsi)       Gauss linear;

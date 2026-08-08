@@ -16,11 +16,13 @@ same theme's data/:
 import csv
 import glob
 import os
+import re
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+import method_label  # shared method label: precise form + LaTeX escaping
 import paths
 
 THEME = "method-comparison"
@@ -56,6 +58,22 @@ def load():
 # conservative advection scheme (its own RTS slScheme), so it IS a core method
 # line and appears in the decision table + convergence panels.
 _VARIANT_TAGS = ("+lim", "+qr", "PDEfrozen", "/pert")
+
+# The method label now carries the DISCRETIZATION it ran with (+div:.../+dc:N),
+# because two arms that differ only in div(phi,psi) are different methods. Those
+# components are constant across a comparison (every Eulerian study runs one
+# discretization), so for matching against a known method line we compare the
+# BASE label with them stripped -- otherwise every hardcoded literal below would
+# silently stop matching and its figure would vanish without an error.
+_DISC_RE = re.compile(r"\+(?:div|dc):[^+]*")
+
+
+def base_label(method):
+    return _DISC_RE.sub("", method)
+
+
+def matches(method, base):
+    return base_label(method) == base
 
 
 def is_core(method):
@@ -183,7 +201,7 @@ def decision_table(rows, tables_dir):
                 v = _num(finest.get(c))
                 return f"{v:.2e}" if v is not None else "--"
             lines.append(
-                f"{m} & {T} & {round(1/_num(finest['h']))} & "
+                f"{method_label.latex_escape(m)} & {T} & {round(1/_num(finest['h']))} & "
                 f"{g('shapeError')} & {g('volumeError')} & "
                 f"{g('gradientErrorBand')} & {g('volumeErrorHalf')} & "
                 f"{g('totalClockTime')} \\\\")
@@ -212,7 +230,9 @@ def improvements_fig(rows, figs_dir):
         (base + "+lim:venk", "+ Venkatakrishnan",  "s--"),
         (base + "+flux",     "+ flux-form",         "^--"),
     ]
-    if not any(any(r["method"] == m for r in rows) for m, _, _ in variants[1:]):
+    if not any(any(matches(r["method"], m) for r in rows) for m, _, _ in variants[1:]):
+        print("[method_comparison] improvements_fig: no SL variant rows matched "
+              f"{[m for m, _, _ in variants[1:]]} -- skipping")
         return
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.6))
     for ax, (col, lab) in zip(
@@ -239,15 +259,17 @@ def frozen_fig(rows, figs_dir):
     line, T = 8: volume error vs N (the redistancer injures the transport)."""
     pairs = [("euler", "no redistancing", "o-"),
              ("euler+RD:PDEfrozen", "frozen-band redistancing", "s--")]
-    if not any(r["method"] == "euler+RD:PDEfrozen" for r in rows):
+    if not any(matches(r["method"], "euler+RD:PDEfrozen") for r in rows):
+        print("[method_comparison] frozen_fig: no euler+RD:PDEfrozen rows "
+              "-- skipping")
         return
     # Restrict to the N range the frozen study actually covers.
     Nfrozen = {round(1/_num(r["h"])) for r in rows
-               if r["method"] == "euler+RD:PDEfrozen" and r["T"] == "8"}
+               if matches(r["method"], "euler+RD:PDEfrozen") and r["T"] == "8"}
     fig, ax = plt.subplots(figsize=(7.0, 5.0))
     for m, lg, st in pairs:
         pts = sorted((round(1/_num(r["h"])), _num(r.get("volumeError")))
-                     for r in rows if r["method"] == m and r["T"] == "8"
+                     for r in rows if matches(r["method"], m) and r["T"] == "8"
                      and round(1/_num(r["h"])) in Nfrozen
                      and _num(r.get("volumeError")) is not None)
         if pts:
@@ -295,6 +317,12 @@ def _short(m):
     m = m.replace("euler+SDPLS:R", "euler + SDPLS:R")
     m = m.replace("euler+SDPLS:beta", "euler + SDPLS:beta")
     m = m.replace("euler+RD:PDEfrozen", "euler + frozen-redist")
+    # Discretization components: keep them, but compress. They are constant
+    # across a comparison, so the long form only costs column width; the
+    # unabbreviated string is the `method` column of the curated CSV.
+    m = m.replace("+div:linearUpwind/grad(psi)", " [lU/grad(psi)]")
+    m = re.sub(r"\+div:([^+\s]+)", r" [\1]", m)
+    m = re.sub(r"\+dc:(\d+)", r" dc\1", m)
     return m
 
 
@@ -335,7 +363,7 @@ def detailed_table(rows, tables_dir):
              r"$p_{vol}$ & clock [s] \\", r"\hline"]
     for r in recs:
         lines.append(
-            f"{_short(r['method'])} & {r['T']} & {r['N']} & "
+            f"{method_label.latex_escape(_short(r['method']))} & {r['T']} & {r['N']} & "
             f"{f(r['E_geom'])} & {f(r['p_geom'], e=False)} & "
             f"{f(r['E_vol'])} & {f(r['p_vol'], e=False)} & "
             f"{f(r['clock'], e=False)} \\\\")

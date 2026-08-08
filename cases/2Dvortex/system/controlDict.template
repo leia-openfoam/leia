@@ -54,7 +54,7 @@ runTimeModifiable true;
 
 // Defect-correction passes for the deferred second-order (linearUpwind) psi
 // advection; ~2-3 converge to formal second order.
-nDefCorr        2;
+nDefCorr        @!N_DEF_CORR!@;
 
 libs ("libleiafiniteVolume.so");
 

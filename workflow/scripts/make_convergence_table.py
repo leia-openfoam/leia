@@ -41,6 +41,7 @@ import sys
 
 import numpy as np
 
+import method_label  # shared, LaTeX-safe method label
 import paths  # thematic docs layout (single source of truth for output dirs)
 
 REPO = paths.REPO
@@ -275,7 +276,7 @@ def main(argv=None):
         for r in order_rows:
             fh.write(" & ".join([
                 pretty.get(r["case"], r["case"]), r["mesh"]]
-                + ([r["arm"]] if arm_col else [])
+                + ([method_label.latex_escape(r["arm"])] if arm_col else [])
                 + [str(r["cfl"]),
                 _levels(r),
                 r["shapeOrder"] or "--", r["volumeOrder"] or "--",
@@ -298,7 +299,7 @@ def main(argv=None):
             mesh_cell = r["mesh"] + ("$^\\dagger$" if r.get("hLimit") else "")
             fh.write(" & ".join(
                 [pretty.get(r["case"], r["case"]), mesh_cell]
-                + ([r["arm"]] if arm_col else [])
+                + ([method_label.latex_escape(r["arm"])] if arm_col else [])
                 + [str(r["cfl"])]
                 + [(r[oc] or "--") for _c, oc, _lbl in METRICS]) + " \\\\\n")
         fh.write("\\midrule\n" + ext_note if ext_note else "")

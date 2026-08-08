@@ -11,6 +11,9 @@ import csv
 import json
 import os
 
+import fvschemes    # discretization actually used, read from the rendered case dicts
+import method_label  # the single definition of a method label
+
 PER_CASE_CSVS = [
     "leiaLevelSetFoam.csv",
     "leiaRedistancedLevelSetFoam.csv",   # geometric-redistancing solver (same columns)
@@ -86,53 +89,11 @@ def _write_error_table(records, database_path):
         s = solver_of(rec)
         return rec.get(f"{s}.{key}", "")
 
+    # Method label: the single definition lives in method_label.py, shared
+    # with make_bench_fields_fig.py so the CSV label and the figure filenames
+    # can never diverge again.
     def method_of(rec):
-        """Composite method label for the unified solver's token set."""
-        adv = rec.get("ADVECTION", "eulerian")
-        if adv == "semiLagrangian":
-            label = f"SL:{rec.get('SL_RECONSTRUCTION', '')}"
-            # SL-improvement variants get distinct labels so they are separate
-            # rows in the comparison (defaults append nothing).
-            if rec.get("SL_SCHEME", "pointValue") == "fluxForm":
-                label += "+flux"
-            elif rec.get("SL_SCHEME", "pointValue") == "normalProjected":
-                label += "+nSL"
-            lim = rec.get("SL_LIMITER", "none")
-            if lim not in ("", "none"):
-                label += "+lim:" + ("venk" if lim == "venkatakrishnan" else lim)
-            if rec.get("SL_FIT", "normalEquations") == "householderQR":
-                label += "+qr"
-            # A perturbed-mesh study must not blend into the hex convergence
-            # lines of the same method.
-            if rec.get("mesh") == "perturbed":
-                label += "/pert"
-            return label
-        parts = ["euler"]
-        ve = rec.get("VELOCITY_EXTENSION", "none")
-        if ve and ve != "none":
-            parts.append(f"VE:{ve}")
-        ss = rec.get("SDPLS_SOURCE", "noSource")
-        if ss and ss != "noSource":
-            # The LINEARIZATION is part of the method, not a detail: the three
-            # discretizations of the same continuum source are separate arms and
-            # must not collide into one label when a study sweeps them (they
-            # disagreed badly until the 2026-08 sign fix, and every SDPLS row
-            # published before it came from strictNegativeSpLinearImplicit
-            # alone). Appended ONLY when a source is active, so the `euler`,
-            # `euler+VE:*` and `euler+RD:*` labels stay byte-identical to the
-            # historical ones.
-            tag = {
-                "explicit": "expl",
-                "simpleLinearImplicit": "simpleImp",
-                "strictNegativeSpLinearImplicit": "strictNegSp",
-            }.get(rec.get("SOURCE_SCHEME", ""), rec.get("SOURCE_SCHEME", ""))
-            parts.append(f"SDPLS:{ss}/{tag}" if tag else f"SDPLS:{ss}")
-        rd = rec.get("REDISTANCER", "noRedistancing")
-        if rd and rd != "noRedistancing":
-            if rd == "PDE" and rec.get("REDIST_FREEZE", "false") == "true":
-                rd = "PDEfrozen"   # bulk-only fill, frozen Dirichlet anchors
-            parts.append(f"RD:{rd}")
-        return "+".join(parts)
+        return method_label.method_label(rec)
 
     def shget(rec, key):
         s = solver_of(rec)
@@ -154,7 +115,11 @@ def _write_error_table(records, database_path):
             # Static t=0 extension verification (leiaTestVelocityExtension;
             # blank for advection studies).
             "anchorLayers", "uextDiv", "eNormalL2", "eNormalLinf",
-            "eNormalRawL2", "ratioL2", "eNormalL2In", "eNormalL2Out"]
+            "eNormalRawL2", "ratioL2", "eNormalL2In", "eNormalL2Out",
+            # Discretization provenance -- what the solver actually read, not
+            # what a token requested. Without these, two runs that differ only
+            # in div(phi,psi) are indistinguishable in the curated CSV.
+            ] + fvschemes.COLUMNS
     rows = []
     for rec in records:
         n = _num(rec.get("N_CELLS"))
@@ -209,6 +174,7 @@ def _write_error_table(records, database_path):
             "ratioL2": rec.get("leiaTestVelocityExtension.RATIO_L2", ""),
             "eNormalL2In": rec.get("leiaTestVelocityExtension.E_NORMAL_L2_IN", ""),
             "eNormalL2Out": rec.get("leiaTestVelocityExtension.E_NORMAL_L2_OUT", ""),
+            **{c: rec.get(c, "") for c in fvschemes.COLUMNS},
         })
     rows.sort(key=lambda r: (r["velocityExtension"], r["phaseIndicator"],
                              _num(r["T"]) or 0.0,
@@ -241,6 +207,13 @@ def build_database(case_dirs, out_path):
         else:
             rec["index"] = os.path.basename(case_dir)
         rec["case_dir"] = os.path.relpath(case_dir, os.path.dirname(out_path) or ".")
+
+        # The discretization the solver ACTUALLY read, parsed from the rendered
+        # system/fvSchemes + system/controlDict. Study tokens are not a reliable
+        # record: 2Dvortex hardcodes div(phi,psi) with no DIV token, a DIV token
+        # may hold an unexpanded $alias, and gradPsiSdpls/gradUSdpls are not
+        # tokens at all. See workflow/scripts/fvschemes.py.
+        rec.update(fvschemes.read_discretization(case_dir))
 
         t_end = _num(rec.get("END_TIME"))
         for csv_name in PER_CASE_CSVS:

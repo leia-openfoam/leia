@@ -30,13 +30,20 @@ gradSchemes
     // extremum, which the metric then reports as |grad psi| = 0.
     gradPsiMetric   leastSquares;
     default         Gauss linear;
+    // Level-set ADVECTION gradient: the reconstruction gradient of the
+    // linearUpwind div(phi,psi) scheme above, and the gradient the
+    // redistancers resolve for their unnamed fvc::grad(psi). Cell-limited
+    // so the second-order reconstruction stays bounded. Deliberately NOT
+    // the SDPLS source gradient (gradPsiSdpls) nor the metric gradient
+    // (gradPsiMetric), both of which must stay unlimited.
+    grad(psi)       cellLimited leastSquares 1;
     grad(p)         Gauss linear;
 }
 
 divSchemes
 {
     default         none;
-    div(phi,psi)    Gauss linear;
+    div(phi,psi)    Gauss linearUpwind grad(psi);
 }
 
 laplacianSchemes

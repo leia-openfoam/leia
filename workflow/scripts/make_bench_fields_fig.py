@@ -9,6 +9,7 @@ sdpls-level-set theme data/figures for the deck field atlas and the article.
 
     python3 make_bench_fields_fig.py [studies_glob]   (default studies/benchVortex*)
 """
+import method_label
 import glob
 import json
 import os
@@ -39,14 +40,11 @@ def _num(x):
 
 
 def method_of(t):
-    if t.get("ADVECTION") == "semiLagrangian":
-        return f"SL_{t.get('SL_RECONSTRUCTION','')}"
-    parts = ["euler"]
-    if t.get("VELOCITY_EXTENSION", "none") != "none":
-        parts.append(f"VE_{t['VELOCITY_EXTENSION']}")
-    if t.get("SDPLS_SOURCE", "noSource") != "noSource":
-        parts.append(f"SDPLS_{t['SDPLS_SOURCE']}")
-    return "_".join(parts)
+    """Filename component. Delegates to the SHARED definition so it can never
+    drift from the curated CSV's `method` column again -- this function used to
+    ignore SOURCE_SCHEME, so a study sweeping both SDPLS linearizations wrote
+    both arms to the SAME PNG and the second silently overwrote the first."""
+    return method_label.method_slug(t)
 
 
 def snapshots(case, T):

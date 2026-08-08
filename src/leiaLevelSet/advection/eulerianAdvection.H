@@ -35,7 +35,7 @@ Description
         = S_{SDPLS}(\psi),
     \f]
 
-    with a DEFERRED-CORRECTION loop (controlDict nDefCorr, default 2)
+    with a DEFERRED-CORRECTION loop (controlDict nDefCorr, default 3)
     re-assembling the equation so the explicit part of a second-order
     deferred div scheme (linearUpwind) converges within the time step.
     Composes the runtime-selected velocityExtension (advecting flux

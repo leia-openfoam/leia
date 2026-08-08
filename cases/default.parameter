@@ -100,3 +100,10 @@ REDIST_HAMILTONIAN central; // PDE reinit |grad psi|: central (fvSchemes grad;
                      // MEASURED divergent, bulk 0.56->59.7) | godunov
                      // (Rouy-Tourin upwind, monotone+causal -- classical cure).
 REDIST_NITER 30;     // PDE pseudo-time iterations (reach = niter*deltaTCoeff*h).
+
+// Defect-correction passes of the EULERIAN psi advection loop
+// (controlDict nDefCorr; eulerianAdvection.C + leiaRedistancedLevelSetFoam.C).
+// >= 3: linearUpwind's second-order part is an explicit RHS source AND the
+// SDPLS source is re-linearized every pass. UNRELATED to the semi-Lagrangian
+// deferredCorrector's own nDefCorr, which lives in fvSolution.levelSet.
+N_DEF_CORR 3;

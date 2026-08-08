@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
         // -> formal 2nd order). fvm::ddt reuses psi.oldTime(), which is fixed
         // within the step, so re-solving does not corrupt the time derivative.
         const label nDefCorr =
-            runTime.controlDict().getOrDefault<label>("nDefCorr", 2);
+            runTime.controlDict().getOrDefault<label>("nDefCorr", 3);
         for (label corr = 0; corr < nDefCorr; ++corr)
         {
             fvScalarMatrix psiEqn

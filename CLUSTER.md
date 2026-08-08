@@ -144,16 +144,63 @@ Lichtenberg (`mpirun -np 4 leiaSemiLagrangeLevelSetFoam -parallel`, OpenFOAM-v25
 job** (like the group's `isoAdv.sbatch`): `blockMesh -> decomposePar -force ->
 mpirun -np {np} <solver> -parallel -> reconstructPar`.
 
-> **KNOWN GAP — `make studies PROFILE=profiles/slurm` does NOT yet drive parallel
-> solves.** snakemake's slurm executor wraps the grouped `mesh+decompose+solve`
-> job in its own single-task `srun` jobstep; launching the OpenFOAM MPI solve
-> inside it fails either way — `srun` → "CPU binding outside of job step
-> allocation / Unable to satisfy cpu bind request"; `mpirun` → too few slots.
-> The serial steps (blockMesh, decomposePar) work. Fixing the study workflow on
-> SLURM needs the solve rule ungrouped from the serial steps and its `tasks={np}`
-> propagated to the jobstep (a `workflow/Snakefile` change), or the plugin's MPI
-> resources (`resources: mpi=..., tasks=...`) used instead of an inline launcher.
-> Until then, run parallel cases on the cluster via a standalone sbatch as above.
+### RESOLVED 2026-08-08 — parallel studies now run under `profiles/slurm`
+
+The former gap ("`make studies PROFILE=profiles/slurm` does NOT drive parallel
+solves") is **fixed**. The launcher in `profiles/slurm/config.yaml` is now:
+
+```yaml
+  - "mpi_launcher=srun --ntasks={np} --overlap"
+```
+
+Diagnosis, because the symptom points the wrong way. snakemake's
+`slurm-jobstep` executor wraps every rule in an `srun` step with **one task**.
+The group sbatch itself is allocated correctly — measured `NCPUS=4, ReqCPUS=4` —
+but `mpirun -np 4`, launched *inside* that one-task step, sees a single slot and
+aborts with *"There are not enough slots available in the system to satisfy the
+4 slots that were requested"*. Because a plain `sbatch -n 4` runs the identical
+case fine (verified: `SLURM_NTASKS=4`, whole case in < 60 s), this reads as an
+allocation problem and is not one.
+
+`--overlap` lets the inner step share the allocation rather than demand
+exclusive resources — which is also what produced the original 2026-07-28
+"CPU binding outside of job step allocation" failure with bare `srun`.
+
+Measured on `sdplsStability` (18 parallel np=4 cases, one command):
+
+| launcher | solver CSVs produced |
+|---|---|
+| `mpirun -np {np}` | **0 / 18** |
+| `srun --ntasks={np} --overlap` | **18 / 18** |
+
+`profiles/local` keeps `mpirun -np {np}` and needs no change — there is no
+`srun` nesting there. The same study therefore runs both ways, switching only
+`PROFILE`:
+
+```bash
+make studies-sdpls PROFILE=profiles/local     # laptop / WSL
+make studies-sdpls PROFILE=profiles/slurm     # Lichtenberg, one sbatch per case
+```
+
+### Study groups, and when they must be re-run together
+
+`make studies-euler` runs **every** study whose level-set transport is a
+finite-volume `div(phi,psi)` — the SDPLS line plus the GRL, velocity-extension
+and remaining comparison lines. They share one discretization
+(`div(phi,psi) Gauss linearUpwind grad(psi)`, `grad(psi) cellLimited leastSquares 1`,
+`nDefCorr >= 3`), so **whenever that changes they must be re-run together**:
+mixing discretizations inside one comparison table is exactly how the 2D/3D
+SDPLS confound happened (2D ran `linearUpwind grad(psi)`, the newer 3D configs
+ran `linear`, and nothing in the curated CSV recorded the difference).
+
+The ~82 semi-Lagrangian studies have no `div(phi,psi)` term at all — that update
+is a pointwise assignment — so they are unaffected and are not in the group.
+
+What each run actually used is now recorded per case in the curated CSV
+(`divPsi`, `divPsiGrad`, `divPsiGradScheme`, `gradPsiSdpls`, `gradUSdpls`,
+`nDefCorr`), parsed from the **rendered** `system/fvSchemes` rather than from
+study tokens — see `workflow/scripts/fvschemes.py` for why the tokens are not
+trustworthy (2Dvortex hardcodes its div scheme and has no `DIV` token at all).
 
 ## The daily loop
 
