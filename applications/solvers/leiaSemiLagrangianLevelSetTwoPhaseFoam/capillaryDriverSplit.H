@@ -23,13 +23,27 @@
 //      so the measurement is valid for EVERY model that returns the integrated
 //      face flux -- including the registered face-curvature path, where
 //      kappa_f is not the interpolate of any cell field.
-//   2. n_hat from the cell's linear least-squares interface plane (the same
-//      reconstruction the phase indicator uses; halo-only, fit-free).
+//   2. n_hat from the SAME quadratic fit the curvature is computed from,
+//      n_hat = g/|g| with g the fit gradient at the cell centre
+//      (slReconstruction::fitDerivatives). Using the piecewise-LINEAR plane
+//      normal here would be inconsistent -- that fit cannot represent
+//      curvature, so its gradient carries an O(h) error whose size and sign
+//      depend on the interface orientation relative to the mesh, i.e. on
+//      exactly the quantity this measure decomposes; near the bin thresholds
+//      it would move pairs between bins in an orientation-correlated way.
+//      The linear plane normal is still computed, but only as the fallback
+//      for cells without a full quadratic fit and to report how far the two
+//      normals disagree (columns driverNormalDisagreement*).
 //   3. for every pair of active faces of that cell, the difference quotient
 //         q = |Q_f1 - Q_f2| / |x_f1 - x_f2|
 //      is assigned to the ACROSS-SUPPORT bin when the separation is aligned
-//      with n_hat (|dx.n_hat|/|dx| > 0.7) and to the ALONG-INTERFACE bin when
+//      with n_hat (|dx.n_hat|/|dx| > 0.9) and to the ALONG-INTERFACE bin when
 //      it is orthogonal to it (< 0.3); pairs in between are not counted.
+//      The 0.9 threshold is deliberate: on a Cartesian cell the face-pair
+//      separations sit at 0, 45 and 90 degrees to n_hat, and a looser bound
+//      (0.7) puts the 45-degree pairs into the ACROSS bin, over-counting it by
+//      construction. At 0.9 each pair is unambiguous for every interface
+//      orientation.
 //   4. both are normalised by the mean |Q| over the active faces, so the
 //      reported numbers are relative variation rates [1/m] and are directly
 //      comparable with each other.
@@ -54,6 +68,11 @@ struct capillaryDriverSplitNorms
     scalar alongInterfaceMax = 0;
     label nAcross = 0;             // pairs counted per bin
     label nAlong = 0;
+    // angle between the quadratic-fit normal and the linear-plane normal,
+    // over the cells where both exist [degrees]
+    scalar normalDisagreementMeanDeg = 0;
+    scalar normalDisagreementMaxDeg = 0;
+    label nPlaneNormalFallback = 0;
 };
 
 
@@ -62,7 +81,8 @@ inline capillaryDriverSplitNorms computeCapillaryDriverSplit
     const fvMesh& mesh,
     const volScalarField& psi,
     const volScalarField& alpha,
-    const surfaceScalarField& GSigma
+    const surfaceScalarField& GSigma,
+    const slReconstruction& recon
 )
 {
     capillaryDriverSplitNorms out;
@@ -97,6 +117,14 @@ inline capillaryDriverSplitNorms computeCapillaryDriverSplit
     const coupledFaceNeighbours coupledNei(mesh, psi);
     scalar sAcross = 0, sAlong = 0;
 
+    // fitDerivatives is implemented by the uncached quadratic reconstruction
+    // only (the base class aborts); other reconstructions fall back to the
+    // plane normal for every cell, which is then reported as a fallback count.
+    const bool fitNormals =
+        (recon.type() == "uncachedQuadraticWeightedLeastSquares");
+    scalar angleSum = 0;
+    label nAngle = 0;
+
     forAll(mesh.cells(), c)
     {
         const cell& cFaces = mesh.cells()[c];
@@ -110,11 +138,42 @@ inline capillaryDriverSplitNorms computeCapillaryDriverSplit
         }
         if (act.size() < 2) { continue; }
 
+        // the normal of the SAME fit the curvature comes from
+        vector nHat(Zero);
+        bool haveFitNormal = false;
+        if (fitNormals)
+        {
+            vector g(Zero);
+            symmTensor H(Zero);
+            if (recon.fitDerivatives(c, g, H) >= 1 && mag(g) > SMALL)
+            {
+                nHat = g/mag(g);
+                haveFitNormal = true;
+            }
+        }
+
+        // the linear-plane normal: fallback, and the disagreement measure
         const scalarList pc = leastSquaresPlaneCoeffs(mesh, psi, c, coupledNei);
-        vector nHat(pc[0], pc[1], pc[2]);
-        const scalar nMag = mag(nHat);
-        if (nMag < SMALL) { continue; }
-        nHat /= nMag;
+        vector nPlane(pc[0], pc[1], pc[2]);
+        const scalar nPlaneMag = mag(nPlane);
+        const bool havePlane = (nPlaneMag > SMALL);
+        if (havePlane) { nPlane /= nPlaneMag; }
+
+        if (!haveFitNormal)
+        {
+            if (!havePlane) { continue; }
+            nHat = nPlane;
+            ++out.nPlaneNormalFallback;
+        }
+        else if (havePlane)
+        {
+            const scalar cosA = min(mag(nHat & nPlane), scalar(1));
+            angleSum += Foam::acos(cosA)*180.0/constant::mathematical::pi;
+            out.normalDisagreementMaxDeg =
+                max(out.normalDisagreementMaxDeg,
+                    Foam::acos(cosA)*180.0/constant::mathematical::pi);
+            ++nAngle;
+        }
 
         for (label a = 0; a < act.size(); ++a)
         {
@@ -127,7 +186,7 @@ inline capillaryDriverSplitNorms computeCapillaryDriverSplit
                 const scalar align = mag(nHat & dx)/dmag;
                 const scalar q = mag(Q[act[a]] - Q[act[b]])/(dmag*qBar);
 
-                if (align > 0.7)
+                if (align > 0.9)
                 {
                     sAcross += q*q;
                     out.acrossSupportMax = max(out.acrossSupportMax, q);
@@ -149,6 +208,11 @@ inline capillaryDriverSplitNorms computeCapillaryDriverSplit
     reduce(out.nAlong, sumOp<label>());
     reduce(out.acrossSupportMax, maxOp<scalar>());
     reduce(out.alongInterfaceMax, maxOp<scalar>());
+    reduce(angleSum, sumOp<scalar>());
+    reduce(nAngle, sumOp<label>());
+    reduce(out.normalDisagreementMaxDeg, maxOp<scalar>());
+    reduce(out.nPlaneNormalFallback, sumOp<label>());
+    out.normalDisagreementMeanDeg = (nAngle > 0) ? angleSum/nAngle : 0;
 
     out.acrossSupportL2 =
         (out.nAcross > 0) ? Foam::sqrt(sAcross/out.nAcross) : 0;

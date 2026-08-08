@@ -86,5 +86,9 @@ if (Pstream::master())
         // the interface normal) and ALONG the interface, plus the pair counts.
         << "driverAcrossSupportL2,driverAlongInterfaceL2,"
         << "driverAcrossSupportMax,driverAlongInterfaceMax,"
-        << "driverNAcross,driverNAlong" << nl;
+        << "driverNAcross,driverNAlong,"
+        // angle between the quadratic-fit normal (used for the split) and
+        // the linear-plane normal, over band cells [deg], + fallback count
+        << "driverNormalDisagreementMeanDeg,driverNormalDisagreementMaxDeg,"
+        << "driverNPlaneNormalFallback" << nl;
 }

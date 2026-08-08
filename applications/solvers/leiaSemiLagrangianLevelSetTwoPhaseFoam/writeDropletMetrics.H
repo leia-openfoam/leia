@@ -223,7 +223,8 @@
     // from it, so the measure is model-agnostic.
     const capillaryDriverSplitNorms driverSplit = computeCapillaryDriverSplit
     (
-        mesh, psi, alpha1, fSigma->faceSurfaceTensionForceFlux()()
+        mesh, psi, alpha1, fSigma->faceSurfaceTensionForceFlux()(),
+        slAdv->reconstruction()
     );
 
     if (Pstream::master())
@@ -253,6 +254,9 @@
             << driverSplit.alongInterfaceL2 << ','
             << driverSplit.acrossSupportMax << ','
             << driverSplit.alongInterfaceMax << ','
-            << driverSplit.nAcross << ',' << driverSplit.nAlong << nl;
+            << driverSplit.nAcross << ',' << driverSplit.nAlong << ','
+            << driverSplit.normalDisagreementMeanDeg << ','
+            << driverSplit.normalDisagreementMaxDeg << ','
+            << driverSplit.nPlaneNormalFallback << nl;
     }
 }
