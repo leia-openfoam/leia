@@ -571,3 +571,65 @@ CONSEQUENCES:
 - Pressure algebra can be left at production GAMG for orthogonal-mesh droplet
   studies (no accuracy penalty, ~20x cheaper per solve); the strict-PCG
   requirement stands only for non-orthogonal meshes.
+
+## 9. WP8.1 — measured 2026-08-08: the across-support variation regrows and dominates
+
+Instrumentation (`capillaryDriverSplit.H`, per step in the droplet metrics):
+kappa_f is recovered from the delivered flux itself
+(Q_f = G_sigma,f/(snGrad(alpha)_f |Sf|)), the interface normal is taken from
+the SAME quadratic fit the curvature comes from (g/|g| via fitDerivatives --
+the linear-plane normal would carry an orientation-correlated O(h) error into
+a threshold-based classification; it is retained only as a fallback and as a
+measured disagreement), and for every pair of active faces of a cell the
+difference quotient is binned by the alignment of the pair separation with
+that normal (> 0.9 ACROSS the support, < 0.3 ALONG the interface).
+
+N=128 stationary droplet, np 4, both arms to blow-up:
+
+| t [s] | arithmetic across / along [1/m] | foot point across / along [1/m] |
+|---|---|---|
+| 0.000 | 967 / 179 (5.4) | **17.0 / 12.8 (1.3)** |
+| 0.005 | 968 / 276 (3.5) | 154 / 31.8 (4.9) |
+| 0.010 | 990 / 247 (4.0) | 280 / 46.8 (6.0) |
+| 0.020 | 1076 / 252 (4.3) | 491 / 92.0 (5.3) |
+| 0.040 | 1201 / 276 (4.4) | 733 / 155 (4.7) |
+| 0.060 | 1346 / 291 (4.6) | 2969 / 730 (4.1) |
+| blow-up | 0.0803 | 0.0668 |
+
+FINDINGS:
+1. **Outcome 1 of the WP8.1 hypothesis set.** The across-support variation of
+   the delivered curvature -- the component that is unphysical by
+   construction, since the exact curvature is constant along interface normals
+   within the support -- dominates the along-interface component by a factor
+   4-6 for BOTH deliveries throughout the growth phase. The two components
+   only equalise in the final decade before FPE, where everything diverges.
+2. **The foot-point delivery's structural advantage is destroyed by the
+   coupling, fast.** It starts 57x below the arithmetic delivery in the
+   across-support component (17.0 vs 967) and reaches the same magnitude
+   within ~0.05 s: x9 in the first 5 ms, x43 by t = 0.04. The re-referencing
+   removes the parallel-contour offset of a CLEAN field; it does not prevent
+   across-support variation from regenerating once the transported psi
+   deviates from a signed distance, because every ingredient (foot distances,
+   fit gradients, the |1-d kappa| guard branch) is recomputed from that psi.
+3. The normal used for the classification is not a source of doubt: the
+   quadratic-fit normal and the linear-plane normal agree to 0.04-0.07 degrees
+   through the entire quiet phase, diverging to ~4 degrees only in the last
+   milliseconds. The correction was methodologically necessary but numerically
+   minor here.
+
+CONSEQUENCE (this settles the WP8 ordering):
+A delivery that attaches ONE curvature degree of freedom to each interface
+element and extends it along that element's normal sets the across-support
+component to zero IDENTICALLY, at every time step, regardless of how psi
+degrades -- it is a structural property of the delivery, not an accuracy
+property of the estimator. Since that component is measured to be the
+dominant part of the driver in the coupled state, and since the accuracy-based
+route demonstrably loses its advantage within milliseconds, the element-DOF
+delivery is now the justified next construction. The machinery exists
+(connectedInterfaceCurvature fills kappaInterfaceFace, consumed via
+faceCurvatureSource registered); what it needs is the accurate estimator
+(foot-point re-referenced quadratic) in place of its tangential chain fit,
+and the moving-interface promotion gates of the v0.3 rule.
+
+Figure: docs/method-comparison/.../figures/wp81_driver_split_N128.png
+(workflow/scripts/make_driver_split_fig.py).
