@@ -674,6 +674,50 @@ int main(int argc, char *argv[])
         reduce(nCutFootFail, sumOp<label>());
     }
 
+    // CELL-MEAN delivery: the PER-FACE inversion (footCorrect, i.e. exactly the
+    // production stabilizedFootPointFace values), averaged over the active faces
+    // of each cut cell and assigned back to them. Structurally identical to
+    // cutCellInverse -- one value per cut cell -- but assembled from n averaged
+    // inversions instead of one concentrated inversion. Measured separately
+    // because the gain, not the across-support structure, is what governs the
+    // coupled growth rate (plan sec. 10), and averaging lowers the gain.
+    const scalarField kfPerFace(footCorrect(kfQ)());
+    scalarField kfCellMean(kfPerFace);
+    label nMeanCells = 0, nMeanNoCutSide = 0;
+    {
+        const scalarField& aIn = alpha.primitiveField();
+        scalarField fSum(mesh.nCells(), 0.0), fCnt(mesh.nCells(), 0.0);
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+            fSum[own[f]] += kfPerFace[f]; fCnt[own[f]] += 1.0;
+            fSum[nei[f]] += kfPerFace[f]; fCnt[nei[f]] += 1.0;
+        }
+
+        scalarField cellMean(mesh.nCells(), 0.0);
+        boolList isCutM(mesh.nCells(), false);
+        forAll(aIn, c)
+        {
+            if (aIn[c] <= SMALL || aIn[c] >= 1 - SMALL) { continue; }
+            if (fCnt[c] < 0.5) { continue; }
+            cellMean[c] = fSum[c]/fCnt[c];
+            isCutM[c] = true;
+            ++nMeanCells;
+        }
+
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+            const bool cO = isCutM[own[f]], cN = isCutM[nei[f]];
+            if (cO && cN) { kfCellMean[f] = 0.5*(cellMean[own[f]] + cellMean[nei[f]]); }
+            else if (cO)  { kfCellMean[f] = cellMean[own[f]]; }
+            else if (cN)  { kfCellMean[f] = cellMean[nei[f]]; }
+            else          { ++nMeanNoCutSide; }
+        }
+        reduce(nMeanCells, sumOp<label>());
+        reduce(nMeanNoCutSide, sumOp<label>());
+    }
+
     // |Sf|-weighted error norms over the active faces (plus the force-weighted
     // |snGrad(alpha)||Sf| L2 -- the norm in which the error enters G_sigma,f).
     // An active face without a computed value (kappa_f = 0) contributes its
@@ -766,6 +810,7 @@ int main(int argc, char *argv[])
 
     // One interface curvature per CUT CELL, assigned to its active faces.
     addFaceRow("cutCellInverse", 1, kfCutCell);
+    addFaceRow("cellMeanInverse", 1, kfCellMean);
 
     Info<< "face-centered curvature, " << nActive << " active faces"
         << " (foot-point unset: " << nFootFail

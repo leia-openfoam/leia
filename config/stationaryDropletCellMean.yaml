@@ -1,0 +1,52 @@
+# Stationary-droplet parasitic currents with the CELL-MEAN curvature delivery.
+#
+# The PER-FACE parallel-surface inversion (curvatureExtension
+# stabilizedFootPointFace) -- each active face inverted with its own foot
+# distance d_f -- followed by one averaging pass: the corrected values are
+# averaged over the active faces of each cut cell (0 < alpha < 1) and assigned
+# back to them, the mean of the two cell values where both sides are cut.
+#
+# Motivation (WP8.2, docs/plan-curvature-stabilization.md sec. 10): static
+# accuracy is ANTI-correlated with coupled stability, and the quantity that
+# tracks the growth rate is the GAIN G = ||d kappa_f||/||d psi|| on the force
+# support. The cut-cell delivery concentrated the whole cell's force on ONE
+# inversion of ONE foot distance, RAISED the gain from 0.643 to 0.821, and blew
+# up 3.3x sooner. This delivery has the same across-support structure -- one
+# value per cut cell -- but averages n per-face inversions instead of applying
+# one n times, which LOWERS the gain:
+#
+#   delivery            2D G h^2   3D G h^2   2D L2 (N=512)   3D L2 (N=128)
+#   arithmetic            0.638      0.823        11.35 1/m      0.4191 1/m
+#   per-face inverse      0.639      0.826       0.1049 1/m     0.005254 1/m
+#   cut-cell inverse      0.829      1.005      0.07608 1/m     0.005176 1/m
+#   cell-mean inverse     0.402      0.534      0.08422 1/m     0.004093 1/m
+#
+# It is the lowest gain of every delivery measured (36-38% below the per-face
+# inversion) at equal or better accuracy in both dimensions. If the gain is the
+# governing quantity, this is the arm that should survive longest; if it is not,
+# this run falsifies the gain hypothesis as cleanly as the cut-cell run
+# falsified the across-support one.
+#
+# Compare against config/stationaryDropletStableFoot.yaml (per-face) and
+# config/stationaryDropletCutCell.yaml (cut-cell) at the same resolutions.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletCellMean.yaml
+study_name: stationaryDropletCellMean
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [128, 256]
+  CURVATURE_EXTENSION: [cellMeanFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

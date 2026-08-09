@@ -48,6 +48,7 @@ COLORS = {
     "connectedInterface":      "#CC79A7",
     "kangQuadratic":           "#882255",
     "cutCellInverse":          "#117733",
+    "cellMeanInverse":         "#44AA99",
 }
 MARKERS = {
     "quadraticCellCentre":     "o",
@@ -58,6 +59,7 @@ MARKERS = {
     "connectedInterface":      "P",
     "kangQuadratic":           "X",
     "cutCellInverse":          "*",
+    "cellMeanInverse":         "h",
 }
 LABELS = {
     "quadraticCellCentre":     "quadratic cell centre",
@@ -76,12 +78,13 @@ LABELS = {
     "stableFootPoint":         "stabilized foot point (per-side variant)",
     "scalarInverse2D":         "2D scalar inverse (control, no Gaussian term)",
     "cutCellInverse":          "one inverted value per cut cell",
+    "cellMeanInverse":         "cut-cell mean of per-face inversions",
 }
 # (entity, foot_point) pairs drawn in the figure; the rest go to the table.
 PLOT_PAIRED = ["quadraticCellCentre", "fvmDivGradPsi", "fvmDivGradAlpha"]
 PLOT_SINGLE = [("stableFootPoint", 1), ("footPointHeightFunction", 0),
                ("connectedInterface", 0), ("kangQuadratic", 0),
-               ("cutCellInverse", 1)]
+               ("cutCellInverse", 1), ("cellMeanInverse", 1)]
 
 
 def _f(x):

@@ -125,7 +125,17 @@ const bool stabilizedFootPointFaceExtension =
 // derivatives and the Gaussian term are defined identically in 2D and 3D.
 const bool cutCellFootPointFaceExtension =
     (curvatureExtensionType == "cutCellFootPointFace");
-if (stabilizedFootPointFaceExtension || cutCellFootPointFaceExtension)
+// CELL-MEAN variant: the PER-FACE inversion (each face keeps its own foot
+// distance), then averaged over the active faces of each cut cell. Structurally
+// the same delivery as cutCellFootPointFace -- one value per cut cell -- but
+// built from n averaged inversions instead of one concentrated inversion, which
+// is what separates them numerically: WP8.2 measured that the gain, not the
+// across-support structure, governs the coupled growth rate, and averaging
+// lowers the gain where concentrating raises it.
+const bool cellMeanFootPointFaceExtension =
+    (curvatureExtensionType == "cellMeanFootPointFace");
+if (stabilizedFootPointFaceExtension || cutCellFootPointFaceExtension
+ || cellMeanFootPointFaceExtension)
 {
     // The parallel-curve inverse acts at the FACE: a cell-level
     // offsetCorrection would be applied twice -- silently wrong curvature.
@@ -151,6 +161,7 @@ Info<< "Curvature extension: " << curvatureExtensionType
     << (connectedInterfaceCurvatureExtension ? " (connected face-native curvature ON)" : "")
     << (stabilizedFootPointFaceExtension ? " (stabilized foot-point FACE delivery ON)" : "")
     << (cutCellFootPointFaceExtension ? " (CUT-CELL foot-point delivery ON)" : "")
+    << (cellMeanFootPointFaceExtension ? " (CELL-MEAN of per-face inversions ON)" : "")
     << (fvmCurvature ? " (symbolic kappa fill OFF -- force model computes its own)" : "")
     << nl << endl;
 

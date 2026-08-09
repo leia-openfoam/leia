@@ -3,22 +3,23 @@
 \toprule
 face curvature & foot point & $L_2$ ($N{=}128$) & $L_\infty$ ($N{=}128$) & $p(L_2)$ & $R^2$ \\
 \midrule
-quadratic cell centre & no & 4.191e-01 & 9.144e-01 & 1.03 & 1.000 \\
-quadratic cell centre & yes & 5.254e-03 & 2.249e-02 & 1.96 & 1.000 \\
-tr(H) Laplacian & no & 4.187e-01 & 9.093e-01 & 1.02 & 1.000 \\
-tr(H) Laplacian & yes & 7.248e-03 & 1.801e-02 & 1.98 & 1.000 \\
-FVM div($\nabla\psi/|\nabla\psi|$) & no & 4.189e-01 & 9.214e-01 & 1.03 & 1.000 \\
+quadratic cell centre & no & 4.191e-01 & 9.144e-01 & 0.98 & 0.998 \\
+quadratic cell centre & yes & 5.254e-03 & 2.249e-02 & 1.95 & 1.000 \\
+tr(H) Laplacian & no & 4.187e-01 & 9.093e-01 & 0.97 & 0.998 \\
+tr(H) Laplacian & yes & 7.248e-03 & 1.801e-02 & 1.96 & 1.000 \\
+FVM div($\nabla\psi/|\nabla\psi|$) & no & 4.189e-01 & 9.214e-01 & 0.97 & 0.997 \\
 FVM div($\nabla\psi/|\nabla\psi|$) & yes & 1.549e-02 & 4.737e-02 & 1.91 & 1.000 \\
-FVM tr(grad $n_\psi$) & no & 4.189e-01 & 9.214e-01 & 1.03 & 1.000 \\
+FVM tr(grad $n_\psi$) & no & 4.189e-01 & 9.214e-01 & 0.97 & 0.997 \\
 FVM tr(grad $n_\psi$) & yes & 1.549e-02 & 4.737e-02 & 1.91 & 1.000 \\
-FVM $-$div($\nabla\alpha/|\nabla\alpha|$) & no & 4.269e+00 & 1.434e+01 & -0.39 & 0.843 \\
-FVM $-$div($\nabla\alpha/|\nabla\alpha|$) & yes & 4.020e+00 & 1.498e+01 & -0.47 & 0.887 \\
-Kang face interpolation & no & 3.461e-01 & 8.186e-01 & 1.03 & 1.000 \\
-Newton-foot extension & no & 4.184e-01 & 9.127e-01 & 1.00 & 1.000 \\
-closest-point extension & no & 4.184e-01 & 9.127e-01 & 1.00 & 1.000 \\
+FVM $-$div($\nabla\alpha/|\nabla\alpha|$) & no & 4.269e+00 & 1.434e+01 & -0.40 & 0.845 \\
+FVM $-$div($\nabla\alpha/|\nabla\alpha|$) & yes & 4.020e+00 & 1.498e+01 & -0.60 & 0.945 \\
+Kang face interpolation & no & 3.461e-01 & 8.186e-01 & 0.96 & 0.996 \\
+Newton-foot extension & no & 4.184e-01 & 9.127e-01 & 0.95 & 0.998 \\
+closest-point extension & no & 4.184e-01 & 9.127e-01 & 0.95 & 0.998 \\
 interface mean (constant) & no & 1.410e-02 & 1.410e-02 & 2.02 & 1.000 \\
-stabilized foot point (per-side variant) & yes & 5.178e-03 & 1.347e-02 & 1.96 & 1.000 \\
-2D scalar inverse (control, no Gaussian term) & yes & 4.207e-01 & 8.963e-01 & 1.06 & 0.999 \\
-one inverted value per cut cell & yes & 5.176e-03 & 1.345e-02 & 1.95 & 1.000 \\
+stabilized foot point (per-side variant) & yes & 5.178e-03 & 1.347e-02 & 1.98 & 1.000 \\
+2D scalar inverse (control, no Gaussian term) & yes & 4.207e-01 & 8.963e-01 & 1.02 & 0.997 \\
+one inverted value per cut cell & yes & 5.176e-03 & 1.345e-02 & 1.97 & 1.000 \\
+cut-cell mean of per-face inversions & yes & 4.093e-03 & 1.039e-02 & 1.79 & 0.999 \\
 \bottomrule
 \end{tabular}

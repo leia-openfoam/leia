@@ -80,7 +80,12 @@ CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
                      // | stabilizedFootPointFace (face kappa re-referenced to
                      // the interface at the stabilized foot-point offset)
                      // | cutCellFootPointFace (ONE inverted curvature per cut
-                     // cell, assigned to its active faces) | fvm.
+                     // cell, assigned to its active faces)
+                     // | cellMeanFootPointFace (the PER-FACE inversions,
+                     // averaged over each cut cell's active faces -- same
+                     // one-value-per-cut-cell structure, but built by
+                     // AVERAGING n inversions rather than concentrating on
+                     // one, which lowers the psi-to-kappa_f gain) | fvm.
 FACE_CURVATURE_SOURCE model; // reconstructedCurvature kappa_f source: model
                      // (its own arithmetic/Kang assembly) | registered (the
                      // solver-registered face field, e.g. kappaStableFootFace).

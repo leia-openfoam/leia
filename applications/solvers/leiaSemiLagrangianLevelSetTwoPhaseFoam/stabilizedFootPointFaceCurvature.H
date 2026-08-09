@@ -399,6 +399,162 @@ inline void computeCutCellFootPointFaceCurvature
         << " Gaussian fallbacks)" << endl;
 }
 
+//- CELL-MEAN delivery: keep the PER-FACE inversion, then average the corrected
+//  values over the active faces that come from the same cell fit.
+//
+//  This is the per-face delivery followed by one averaging pass, NOT the
+//  cut-cell delivery. The distinction is the whole point:
+//
+//    cutCellFootPointFace : ONE inversion per cell, from kappa_c, K_c and ONE
+//                           foot distance d_c, applied to all n active faces.
+//                           MEASURED G h^2 = 0.821, late growth rate 454 1/s.
+//    cellMeanFootPointFace: n inversions, each with its OWN d_f, then averaged.
+//                           n partly independent foot-distance errors are
+//                           averaged instead of one being applied n times.
+//
+//  Both give every active face of a cut cell the same number, so both make the
+//  across-support variation of kappa_f vanish within a cut cell. WP8.2 measured
+//  that this structural property is NOT what governs the instability; what
+//  governs it is the gain, how far kappa_f moves per unit perturbation of psi.
+//  Averaging n estimates lowers the gain, concentrating on one raises it, which
+//  is why these two structurally identical deliveries are expected to behave
+//  very differently in the coupled run.
+//
+//  Accuracy cost: averaging over a cell's faces is a local smoothing over a
+//  stencil of size h, whose error is O(h^2 d^2 kappa) -- second order, so it
+//  does not degrade the h^2 convergence on an interface whose curvature varies.
+//  A static circle cannot show this either way (its exact curvature is
+//  constant), so the accuracy claim must be checked on a shape with
+//  non-constant curvature.
+//
+//  Faces with no cut-cell side keep their per-face corrected value (counted).
+inline void computeCellMeanFootPointFaceCurvature
+(
+    const fvMesh& mesh,
+    const volScalarField& psi,
+    const volScalarField& alpha,
+    const volScalarField& kappa,
+    const slReconstruction& recon,
+    surfaceScalarField& kappaFace
+)
+{
+    // 1. the per-face inversion, seam-synchronized (this is the current
+    //    production delivery, unchanged)
+    computeStabilizedFootPointFaceCurvature
+    (
+        mesh, psi, alpha, kappa, recon, kappaFace
+    );
+
+    const surfaceScalarField snA(fvc::snGrad(alpha));
+    const scalarField& snIn = snA.primitiveField();
+    const surfaceScalarField::Boundary& snBf = snA.boundaryField();
+    const scalar snMax = max(gMax(mag(snIn)()), VSMALL);
+
+    const labelUList& own = mesh.owner();
+    const labelUList& nei = mesh.neighbour();
+    const scalarField& aIn = alpha.primitiveField();
+
+    scalarField& kfIn = kappaFace.primitiveFieldRef();
+    surfaceScalarField::Boundary& kfBf = kappaFace.boundaryFieldRef();
+
+    // 2. accumulate each cell's corrected ACTIVE-face values. Coupled-patch
+    //    faces are included so a cut cell straddling a processor boundary
+    //    averages over the same face set it would in serial.
+    scalarField fSum(mesh.nCells(), 0.0);
+    scalarField fCnt(mesh.nCells(), 0.0);
+
+    forAll(kfIn, f)
+    {
+        if (mag(snIn[f]) <= 1e-8*snMax) { continue; }
+        fSum[own[f]] += kfIn[f]; fCnt[own[f]] += 1.0;
+        fSum[nei[f]] += kfIn[f]; fCnt[nei[f]] += 1.0;
+    }
+    forAll(kfBf, patchI)
+    {
+        const fvPatch& patch = mesh.boundary()[patchI];
+        if (!patch.coupled()) { continue; }
+        const labelUList& fc = patch.faceCells();
+        forAll(fc, i)
+        {
+            if (mag(snBf[patchI][i]) <= 1e-8*snMax) { continue; }
+            fSum[fc[i]] += kfBf[patchI][i]; fCnt[fc[i]] += 1.0;
+        }
+    }
+
+    // 3. one averaged interface curvature per CUT cell (0 < alpha < 1: the
+    //    geometric indicator's own definition, identical in 2D and 3D)
+    scalarField cellMean(mesh.nCells(), 0.0);
+    scalarField isCut(mesh.nCells(), 0.0);
+    label nCut = 0;
+
+    forAll(aIn, c)
+    {
+        if (aIn[c] <= SMALL || aIn[c] >= 1 - SMALL) { continue; }
+        if (fCnt[c] < 0.5) { continue; }
+        cellMean[c] = fSum[c]/fCnt[c];
+        isCut[c] = 1.0;
+        ++nCut;
+    }
+
+    // 4. assign, exactly as the cut-cell delivery does
+    label nActive = 0, nAssigned = 0, nNoCutSide = 0;
+
+    forAll(kfIn, f)
+    {
+        if (mag(snIn[f]) <= 1e-8*snMax) { continue; }
+        ++nActive;
+
+        const bool cO = (isCut[own[f]] > 0.5);
+        const bool cN = (isCut[nei[f]] > 0.5);
+        if (cO && cN) { kfIn[f] = 0.5*(cellMean[own[f]] + cellMean[nei[f]]); ++nAssigned; }
+        else if (cO)  { kfIn[f] = cellMean[own[f]]; ++nAssigned; }
+        else if (cN)  { kfIn[f] = cellMean[nei[f]]; ++nAssigned; }
+        else          { ++nNoCutSide; }   // keeps its per-face corrected value
+    }
+
+    scalarField cellMeanNei, isCutNei;
+    syncTools::swapBoundaryCellList(mesh, cellMean, cellMeanNei);
+    syncTools::swapBoundaryCellList(mesh, isCut, isCutNei);
+
+    forAll(kfBf, patchI)
+    {
+        const fvPatch& patch = mesh.boundary()[patchI];
+        if (!patch.coupled()) { continue; }
+
+        fvsPatchScalarField& kfp = kfBf[patchI];
+        const labelUList& fc = patch.faceCells();
+        const label bStart = patch.start() - mesh.nInternalFaces();
+
+        forAll(kfp, i)
+        {
+            if (mag(snBf[patchI][i]) <= 1e-8*snMax) { continue; }
+            ++nActive;
+
+            const bool cO = (isCut[fc[i]] > 0.5);
+            const bool cN = (isCutNei[bStart + i] > 0.5);
+            if (cO && cN)
+            {
+                // both ranks form the same mean -> the seam stays consistent
+                kfp[i] = 0.5*(cellMean[fc[i]] + cellMeanNei[bStart + i]);
+                ++nAssigned;
+            }
+            else if (cO) { kfp[i] = cellMean[fc[i]]; ++nAssigned; }
+            else if (cN) { kfp[i] = cellMeanNei[bStart + i]; ++nAssigned; }
+            else { ++nNoCutSide; }
+        }
+    }
+
+    reduce(nCut, sumOp<label>());
+    reduce(nActive, sumOp<label>());
+    reduce(nAssigned, sumOp<label>());
+    reduce(nNoCutSide, sumOp<label>());
+    Info<< "cellMeanFootPointFace curvature: " << nCut << " cut cells, "
+        << nAssigned << "/" << nActive << " active faces assigned the mean of "
+        << "their cell's per-face inversions (" << nNoCutSide
+        << " with no cut side, kept per-face)" << endl;
+}
+
+
 } // End namespace Foam
 
 #endif

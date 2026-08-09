@@ -212,8 +212,16 @@ int main(int argc, char *argv[])
         FatalErrorInFunction << "no active faces." << exit(FatalError);
     }
 
-    // The three deliveries with coupled stationary-droplet blow-up times.
-    const wordList models({"arithmetic", "perFaceInverse", "cutCellInverse"});
+    // The three deliveries with coupled stationary-droplet blow-up times, plus
+    // the cell-mean variant: the SAME per-face inversions as perFaceInverse,
+    // averaged over each cut cell's active faces. It has the same across-support
+    // structure as cutCellInverse but is built by averaging n inversions rather
+    // than concentrating on one, so its gain is the direct test of whether
+    // averaging lowers the gain.
+    const wordList models
+    (
+        {"arithmetic", "perFaceInverse", "cutCellInverse", "cellMeanInverse"}
+    );
 
     // kappa_f for every delivery, from the CURRENT psi in the reconstruction.
     auto deliver = [&](const volScalarField& psiUse, List<scalarField>& kf)
@@ -243,6 +251,14 @@ int main(int argc, char *argv[])
             mesh, psiUse, alpha, kappa, recon(), kappaFace
         );
         kf[2] = kappaFace.primitiveField();
+
+        // per-face inversions, averaged over each cut cell's active faces
+        // (curvatureExtension cellMeanFootPointFace)
+        computeCellMeanFootPointFaceCurvature
+        (
+            mesh, psiUse, alpha, kappa, recon(), kappaFace
+        );
+        kf[3] = kappaFace.primitiveField();
     };
 
     List<scalarField> kfBase;
