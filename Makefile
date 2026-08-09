@@ -81,7 +81,7 @@ ART_SL := docs/semi-lagrangian-level-set/sl-level-set-article
 ART_LSL := docs/linear-semi-lagrangian-level-set/lsl-level-set-article
 ART_GRL := docs/geometrically-redistanced-levelset/grl-level-set-article
 
-.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler docs decks articles article-sl article-lsl article-sdpls article-grl comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
+.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler print-sdpls-studies print-euler-studies docs decks articles article-sl article-lsl article-sdpls article-grl comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
 .DEFAULT_GOAL := help
 
 help:
@@ -126,6 +126,12 @@ studies-grl:
 	@for cfg in $(GRL_STUDIES); do echo ">>> $$cfg"; $(SNAKE) --configfile config/$$cfg.yaml; done
 # SDPLS source line: the 2D reversed-vortex arm matrix (both linearizations x
 # {noSource,R,beta}) plus the 3D shear/deformation companions.
+# Enumerate a study group (scripts and humans: `make -s print-euler-studies`).
+print-sdpls-studies:
+	@echo $(SDPLS_STUDIES)
+print-euler-studies:
+	@echo $(EULER_STUDIES)
+
 studies-sdpls:
 	@for cfg in $(SDPLS_STUDIES); do echo ">>> $$cfg"; $(SNAKE) --configfile config/$$cfg.yaml; done
 # EVERY study whose psi transport is a finite-volume div(phi,psi). These share
