@@ -19,7 +19,15 @@
 # =============================================================================
 SHELL   := /bin/bash
 PROFILE ?= profiles/local
+# `--resources tasks=N` is a LOCAL cap on concurrent MPI ranks -- it stops a
+# laptop oversubscribing its cores. On SLURM the scheduler already does that,
+# and the cap would instead serialise the solves (an np=8 study would run one
+# case at a time). Lift it for the cluster profile.
+ifeq ($(PROFILE),profiles/slurm)
+TASKS   ?= 10000
+else
 TASKS   ?= 12
+endif
 
 # Cluster sync (see CLUSTER.md). CLUSTER is an ssh alias; REMOTE_DIR is the leia
 # checkout on the cluster's PARALLEL file system (/work/scratch, where sims run).
