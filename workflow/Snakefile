@@ -119,13 +119,16 @@ INIT_END   = f"./system/init_End/init_End.{MODE}" if CASE == "3Dtranslation" els
 # The gradPsiErrorCSV / leiaSetFields function objects APPEND to their CSVs: a
 # re-run of an interrupted case would otherwise stack a second time series onto
 # the stale one (TIME jumps backward, plots and half-time extraction break).
-_setfields = " ".join(
-    filter(None, [f"{MPI_PREFIX}leiaSetFields".strip(), SETFIELDS_ARGS, PAR]))
-_solve = ["cd {params.d}",
-          "rm -f gradPsiError.csv leiaSetFields.csv leiaLevelSetFoam.csv"
-          " leiaRedistancedLevelSetFoam.csv leiaTestRedistance.csv"
-          " leiaTestFaceCurvature.csv leiaTestCurvatureNoiseGain.csv",
-          _setfields]
+# PREPROCESSING IS SERIAL, and runs BEFORE decomposePar -- the standard OpenFOAM
+# order (blockMesh -> setFields -> decomposePar -> solver -> reconstructPar).
+# Only the CFD solve is an MPI job; see the rule comments below.
+_preprocess = ["cd {params.d}",
+               "rm -f gradPsiError.csv leiaSetFields.csv leiaLevelSetFoam.csv"
+               " leiaRedistancedLevelSetFoam.csv leiaTestRedistance.csv"
+               " leiaTestFaceCurvature.csv leiaTestCurvatureNoiseGain.csv",
+               " ".join(filter(None, ["leiaSetFields", SETFIELDS_ARGS]))]
+
+_solve = ["cd {params.d}", f"rm -f {SOLVER}.csv"]
 if INIT_END:
     _solve.append(INIT_END)
 # The curvature test app reads the SAME -alphaName flag as leiaSetFields (its
@@ -147,8 +150,7 @@ if SOLVER == "leiaTestMeanCurvature":
 # post-processing (foamlib montage) can read alpha at the case root. -withZero
 # also reconstructs time 0 (default skips it), overwriting the uniform 0.org copy
 # with the leiaSetFields-initialised field so the montage's initial contour is right.
-if PARALLEL:
-    _solve.append("reconstructPar -withZero")
+# reconstructPar is SERIAL post-processing -> its own rule (see `reconstruct`).
 
 
 onstart:
@@ -183,8 +185,10 @@ rule mesh:
         os.path.join(CASE_DIR, "constant", "polyMesh", "owner"),
     params:
         d=case_path,
+    resources:
+        tasks=1,
     group:
-        "case"
+        "case_pre"
     shell:
         sh("cd {params.d}",
            "rm -rf 0 && cp -r 0.org 0",
@@ -192,11 +196,31 @@ rule mesh:
            MESH_CMD)
 
 
+# Field initialisation: SERIAL, on the undecomposed case. Running it before
+# decomposePar (rather than as an MPI step afterwards) is both the standard
+# OpenFOAM order and free of parallel artefacts -- the signed distance and the
+# narrow band are built without any processor-boundary exchange.
+rule preprocess:
+    input:
+        os.path.join(CASE_DIR, "constant", "polyMesh", "owner"),
+    output:
+        touch(os.path.join(CASE_DIR, ".leia_preprocessed")),
+    params:
+        d=case_path,
+    resources:
+        tasks=1,
+    group:
+        "case_pre"
+    shell:
+        sh(*_preprocess)
+
+
 if PARALLEL:
 
+    # Domain decomposition: SERIAL. Distributes the already-initialised fields.
     rule decompose:
         input:
-            os.path.join(CASE_DIR, "constant", "polyMesh", "owner"),
+            os.path.join(CASE_DIR, ".leia_preprocessed"),
         output:
             os.path.join(CASE_DIR, "processor0", "constant", "polyMesh", "owner"),
         params:
@@ -204,26 +228,52 @@ if PARALLEL:
         resources:
             tasks=1,
         group:
-            "case"
+            "case_pre"
         shell:
             sh("cd {params.d}", "decomposePar -force")
 
 
+# THE ONLY PARALLEL RULE, and deliberately UNGROUPED.
+#
+# Grouping it with the serial steps made snakemake submit one sbatch for the
+# whole group, whose allocation did not reliably carry the solve's tasks={np}:
+# the inner jobstep then failed with "srun: error: Unable to create step ...
+# More processors requested than permitted" (or, with mpirun, "not enough
+# slots"). Ungrouped, the solve is its own sbatch with --ntasks={np}, so the
+# launcher always has exactly the ranks it asks for.
 rule solve:
     input:
         (os.path.join(CASE_DIR, "processor0", "constant", "polyMesh", "owner")
          if PARALLEL else
-         os.path.join(CASE_DIR, "constant", "polyMesh", "owner")),
+         os.path.join(CASE_DIR, ".leia_preprocessed")),
     output:
         os.path.join(CASE_DIR, f"{SOLVER}.csv"),
     params:
         d=case_path,
     resources:
         tasks=(NP if PARALLEL else 1),
-    group:
-        "case"
     shell:
         sh(*_solve)
+
+
+if PARALLEL:
+
+    # Field reconstruction: SERIAL post-processing. -withZero also reconstructs
+    # time 0 (default skips it), overwriting the uniform 0.org copy with the
+    # leiaSetFields-initialised field so a montage's initial contour is right.
+    rule reconstruct:
+        input:
+            os.path.join(CASE_DIR, f"{SOLVER}.csv"),
+        output:
+            touch(os.path.join(CASE_DIR, ".leia_reconstructed")),
+        params:
+            d=case_path,
+        resources:
+            tasks=1,
+        group:
+            "case_post"
+        shell:
+            sh("cd {params.d}", "reconstructPar -withZero")
 
 
 # ParaView case marker, named after the CASE FOLDER so tabs are identifiable
@@ -236,8 +286,10 @@ rule paraview_stub:
         os.path.join(CASE_DIR, f"{SOLVER}.csv"),
     output:
         os.path.join(CASE_DIR, CASE + "_{idx}.foam"),
+    resources:
+        tasks=1,
     group:
-        "case"
+        "case_post"
     shell:
         "touch {output}"
 
@@ -245,6 +297,10 @@ rule paraview_stub:
 rule aggregate:
     input:
         expand(os.path.join(CASE_DIR, f"{SOLVER}.csv"), idx=IDX),
+        # Reconstruction must finish before `report` reads the cases: report
+        # depends on DATABASE, so the dependency belongs here.
+        *([expand(os.path.join(CASE_DIR, ".leia_reconstructed"), idx=IDX)]
+          if PARALLEL else []),
     output:
         DATABASE,
     run:

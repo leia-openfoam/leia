@@ -18,14 +18,31 @@ default-resources:
   mem_mb_per_cpu: 4000
   runtime: 1440            # minutes (24 h), matches the old Allrun_*_parallel.sbatch
 
-# Cheap steps need little; the solve step inherits default runtime + tasks.
+# ONLY the CFD solve is an MPI job. Meshing, field initialisation, domain
+# decomposition, field reconstruction and the ParaView stub are all SERIAL
+# (tasks=1 in the Snakefile) and are grouped into one cheap sbatch per case
+# ("case_pre" / "case_post"); `solve` is ungrouped so it gets its own
+# allocation with exactly --ntasks={np}. Keeping the parallel step out of the
+# serial group is what makes this profile work: a mixed group's allocation did
+# not carry the solve's task count, and the jobstep failed with "More
+# processors requested than permitted".
+# The solve step inherits the default runtime + its rule's tasks.
 set-resources:
   mesh:
+    runtime: 30
+    mem_mb_per_cpu: 3000
+  preprocess:
     runtime: 30
     mem_mb_per_cpu: 3000
   decompose:
     runtime: 30
     mem_mb_per_cpu: 3000
+  reconstruct:
+    runtime: 60
+    mem_mb_per_cpu: 3000
+  paraview_stub:
+    runtime: 10
+    mem_mb_per_cpu: 1000
 
 # Override execution knobs from config/config.yaml. The preamble loads the
 # Lichtenberg toolchain, forces the OpenMPI transport that is known-good on the

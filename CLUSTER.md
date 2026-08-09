@@ -166,6 +166,33 @@ allocation problem and is not one.
 exclusive resources — which is also what produced the original 2026-07-28
 "CPU binding outside of job step allocation" failure with bare `srun`.
 
+**The launcher alone was not enough.** With every rule still bundled into one
+`group: "case"` sbatch, the group's allocation did not reliably carry the
+solve's `tasks={np}`, and ~4% of jobs died with *"srun: error: Unable to create
+step ...: More processors requested than permitted"* — scattered across all
+arms, including `noSource` at N=32, so plainly not physics. The structural fix
+is the rule layout below.
+
+### Serial steps and the parallel step are separate jobs
+
+Only the CFD solve is an MPI job:
+
+| rule | parallelism | group | what it does |
+|---|---|---|---|
+| `mesh` | serial | `case_pre` | `blockMesh` / `pMesh` |
+| `preprocess` | serial | `case_pre` | `leiaSetFields` on the **undecomposed** case |
+| `decompose` | serial | `case_pre` | `decomposePar -force` |
+| **`solve`** | **MPI, `tasks={np}`** | **ungrouped** | the solver — its own sbatch |
+| `reconstruct` | serial | `case_post` | `reconstructPar -withZero` |
+| `paraview_stub` | serial | `case_post` | `.foam` marker |
+
+This is the standard OpenFOAM order — `blockMesh -> setFields -> decomposePar ->
+solver -> reconstructPar` — and `leiaSetFields` running serially before
+decomposition is also free of processor-boundary artefacts in the signed
+distance and the narrow band. Because `solve` is ungrouped it gets its own
+allocation with exactly `--ntasks={np}`, so the launcher always has the ranks it
+asks for; the cheap serial steps still share one sbatch per case at each end.
+
 Measured on `sdplsStability` (18 parallel np=4 cases, one command):
 
 | launcher | solver CSVs produced |
