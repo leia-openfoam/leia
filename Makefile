@@ -81,7 +81,7 @@ ART_SL := docs/semi-lagrangian-level-set/sl-level-set-article
 ART_LSL := docs/linear-semi-lagrangian-level-set/lsl-level-set-article
 ART_GRL := docs/geometrically-redistanced-levelset/grl-level-set-article
 
-.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler print-sdpls-studies print-euler-studies docs decks articles article-sl article-lsl article-sdpls article-grl comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
+.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
 .DEFAULT_GOAL := help
 
 help:
@@ -108,6 +108,7 @@ help:
 	@echo "  make studies-sdpls - SDPLS source line (2D arm matrix + 3D shear/deformation)"
 	@echo "  make studies-euler - EVERY FV div(phi,psi) study; re-run together when the"
 	@echo "                   discretization changes.  PROFILE=profiles/slurm on Lichtenberg."
+	@echo "  make check-discretization - assert all FV studies ran ONE discretization"
 	@echo "  make all       - build + studies + docs"
 	@echo "  make clean     - remove regenerable built decks + article PDFs"
 
@@ -127,6 +128,11 @@ studies-grl:
 # SDPLS source line: the 2D reversed-vortex arm matrix (both linearizations x
 # {noSource,R,beta}) plus the 3D shear/deformation companions.
 # Enumerate a study group (scripts and humans: `make -s print-euler-studies`).
+# Gate: every FV div(phi,psi) case ran ONE discretization. This is the check
+# that would have caught the 2D-vs-3D confound. Exits non-zero on a mismatch.
+check-discretization:
+	@python3 workflow/scripts/check_discretization.py $(STUDY)
+
 print-sdpls-studies:
 	@echo $(SDPLS_STUDIES)
 print-euler-studies:
