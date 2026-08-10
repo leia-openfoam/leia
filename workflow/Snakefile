@@ -128,15 +128,39 @@ _preprocess = ["cd {params.d}",
                " leiaTestFaceCurvature.csv leiaTestCurvatureNoiseGain.csv",
                " ".join(filter(None, ["leiaSetFields", SETFIELDS_ARGS]))]
 
-_solve = ["cd {params.d}", f"rm -f {SOLVER}.csv"]
+_solve = ["cd {params.d}", f"rm -f {SOLVER}.csv .leia_solver_failed"]
 if INIT_END:
     _solve.append(INIT_END)
 # The curvature test app reads the SAME -alphaName flag as leiaSetFields (its
 # default alpha.water fits the droplet cases; the 3D cases name the field
 # "alpha") -- forward the study's setfields_args to it.
 _solver_args = SETFIELDS_ARGS if SOLVER == "leiaTestMeanCurvature" else ""
-_solve.append(
-    " ".join(filter(None, [f"{MPI_PREFIX}{SOLVER}".strip(), _solver_args, PAR, FLUX.strip()])))
+_solver_cmd = " ".join(
+    filter(None, [f"{MPI_PREFIX}{SOLVER}".strip(), _solver_args, PAR, FLUX.strip()]))
+# A DIVERGED RUN IS A RESULT, NOT A WORKFLOW ERROR.
+#
+# `beta` (f_nl = beta - |grad psi|) relaxes towards g* = beta - a, which is the
+# wrong target wherever the interface strains -- it is EXPECTED to blow up on
+# the reversed vortex, and config/sdplsStability.yaml says so ("Divergent rows
+# are RESULTS ... --keep-going"). But `aggregate` needs every case's CSV, so a
+# single divergent arm used to leave the study with NO curated table at all.
+#
+# So: run the solver with its output captured per case, and on a non-zero exit
+# record the code and ensure the output file exists. Nothing is swallowed --
+# the exit code lands in .leia_solver_failed, the tail is echoed into the job
+# log, the full log stays in the case directory, and aggregate.py emits a
+# `solverFailed` column. An EMPTY csv is treated as absent by the aggregator,
+# so the row appears with blank metrics instead of vanishing.
+_solve += [
+    "set +e",
+    f"{_solver_cmd} > log.{SOLVER} 2>&1",
+    "rc=$?",
+    "set -e",
+    "if [ $rc -ne 0 ]; then "
+    f"echo $rc > .leia_solver_failed; touch {SOLVER}.csv; "
+    f"echo \"[leia] SOLVER EXITED $rc (diverged or crashed) -- recorded; tail of log.{SOLVER}:\"; "
+    f"tail -15 log.{SOLVER}; fi",
+]
 # The static gate measures kappa_f ACCURACY on an exact signed distance field.
 # In the coupled solve psi is never exact, and MEASURED (plan sec. 10) accuracy
 # does not predict coupled stability -- the two orders are inverted. The second

@@ -119,6 +119,10 @@ def _write_error_table(records, database_path):
             # Discretization provenance -- what the solver actually read, not
             # what a token requested. Without these, two runs that differ only
             # in div(phi,psi) are indistinguishable in the curated CSV.
+            # Non-empty = the solver exited non-zero for this case (its exit
+            # code). The metric columns are then blank BY MEASUREMENT, not by
+            # omission -- e.g. `beta` legitimately blows up on the vortex.
+            "solverFailed",
             ] + fvschemes.COLUMNS
     rows = []
     for rec in records:
@@ -174,6 +178,7 @@ def _write_error_table(records, database_path):
             "ratioL2": rec.get("leiaTestVelocityExtension.RATIO_L2", ""),
             "eNormalL2In": rec.get("leiaTestVelocityExtension.E_NORMAL_L2_IN", ""),
             "eNormalL2Out": rec.get("leiaTestVelocityExtension.E_NORMAL_L2_OUT", ""),
+            "solverFailed": rec.get("solverFailed", ""),
             **{c: rec.get(c, "") for c in fvschemes.COLUMNS},
         })
     rows.sort(key=lambda r: (r["velocityExtension"], r["phaseIndicator"],
@@ -214,6 +219,17 @@ def build_database(case_dirs, out_path):
         # may hold an unexpanded $alias, and gradPsiSdpls/gradUSdpls are not
         # tokens at all. See workflow/scripts/fvschemes.py.
         rec.update(fvschemes.read_discretization(case_dir))
+
+        # A diverged/crashed solve is a RESULT: the Snakefile records the exit
+        # code here rather than stalling the study, and the row survives with
+        # blank metrics. Blank = the solver exited 0.
+        _failed = os.path.join(case_dir, ".leia_solver_failed")
+        rec["solverFailed"] = ""
+        if os.path.isfile(_failed):
+            try:
+                rec["solverFailed"] = open(_failed).read().strip() or "1"
+            except OSError:
+                rec["solverFailed"] = "1"
 
         t_end = _num(rec.get("END_TIME"))
         for csv_name in PER_CASE_CSVS:
