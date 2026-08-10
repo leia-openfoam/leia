@@ -736,3 +736,196 @@ by two numbers — its convergence order AND its gain — and only those that do
 not raise the gain are worth a coupled run. The next constructions should be
 selected to LOWER G h^2 below 0.643 (more averaging, not less), which is the
 opposite of the direction WP8.1 pointed.
+
+## 11. WP8.3 — measured 2026-08-10: what the inverse assumes, and the cell-mean delivery
+
+### 11.1 The parallel-surface inverse does NOT assume a signed distance
+
+Verified in code and by derivation. With g = grad psi, H = Hess psi, beta = |g|,
+n = g/beta, P = I - n n:
+
+  kappa_d = (tr(H)|g|^2 - g.(H.g))/|g|^3 = tr(S),  S = P H P/beta
+  K_d     = (g.cof(H).g)/|g|^4           = det(S)
+  d       = root-found Euclidean distance to the fitted zero surface
+
+None of the three uses |grad psi| = 1. footPointDistance
+(src/leiaLevelSet/.../uncachedQuadraticWeightedLeastSquaresReconstruction.C:865-983)
+Newton-projects onto the cell's own fitted zero surface and returns the
+query-to-foot vector on the UNIT model normal, so |d| is a length in metres, not
+|psi| and not |psi|/|grad psi|. Under psi -> f(psi), f(0) = 0: K_d is exactly
+invariant, kappa_d is equivariant (flips sign with f'), d flips too, and the
+inverse is exactly equivariant -- so the delivered kappa_Gamma is invariant,
+PROVIDED f' neither vanishes nor changes sign anywhere in the band. Checked
+numerically on a torus (R = 1.0, r = 0.35) with f(t) = 2.5t + 7t^2 + 40t^3, so
+|grad psi| in [2.5, 4]: the inverse recovers kappa = 1/r + cos(th)/(R + r cos(th))
+to 7 digits at both K > 0 and K < 0.
+
+WEAKEST SUFFICIENT HYPOTHESIS: the level sets in the band are the PARALLEL
+(offset) surfaces of Gamma -- equivalently psi = f(phi) with phi the exact signed
+distance and f' > 0; equivalently a := (n.grad)n = 0; equivalently beta is
+constant ON each level set (not equal to 1). That is strictly weaker than a
+signed distance and no rescaling of psi can violate it.
+
+Caveat: the invariance is a CONTINUUM statement. kappa_d and K_d are read off a
+weighted least-squares quadratic of raw psi differences, and LS projection does
+not commute with a nonlinear f. Measured (sphere, cell centre half a cell out,
+N=128): delivered kappa_Gamma = 22.795 / 22.770 / 22.580 for phi, phi + 2phi^2,
+phi + 20phi^2 against exact 22.727. The ORDER is reparametrization-robust (~h^2);
+the CONSTANT is not. Fit conditioning, not the algebra, is why a near-signed-
+distance psi is preferred.
+
+### 11.2 The exact residual, and why no free version of it exists
+
+Along an integral curve of n, for ANY smooth psi with g != 0:
+
+  dkappa/ds = -(kappa^2 - 2K) + D,   D := div(a) = Lap_Gamma(ln beta)
+                                            - |grad_Gamma ln beta|^2
+                                          = -beta Lap_Gamma(1/beta)
+
+The inverse integrates the Riccati part EXACTLY and drops D, so
+
+  kappa_Gamma(inverse) - kappa_Gamma(true) = int_0^d D ds = d D|_Gamma + O(d^2).
+
+Verified: psi = (|x|-R)(1 + 0.3 z/|x|) on R=1 gives err/d = -0.3928 for
+d = 0.08 ... 0.005 (clean first order) against D = -0.3536 - 0.0392 = -0.3928.
+
+CORRECTION TO AN EARLIER STATEMENT IN THIS THREAD: the residual was first written
+as +Lap_Gamma(d), which has the WRONG SIGN and omits the -|grad_Gamma ln beta|^2
+term. A correction built from that form would add the error instead of removing
+it.
+
+Three consequences:
+
+(a) The residual is FIRST order in d. Non-parallelism does not degrade the
+    correction gracefully -- it returns kappa_f to the uncorrected h^1.13/h^1.03
+    regime.
+
+(b) THE INVERSE CAN BE WORSE THAN NOT CORRECTING. Uncorrected error is
+    -(kappa^2 - 2K - D)d; corrected error is +D d. So it improves kappa iff
+    |D| < |kappa^2 - 2K - D|. On the 2:1 ellipse psi = x^2/A^2 + y^2/B^2 - 1 at
+    the major-axis vertex (kappa = 2, D = 3, kappa^2 - 2K = 4): at d = 1e-3 the
+    uncorrected error is 9.995e-4 and the corrected error 3.005e-3 -- the inverse
+    is 3.01x WORSE than doing nothing there. At the co-vertex it still helps.
+    Every static gate in this program is a circle or a sphere, where D = 0
+    identically, so this failure mode has never been exercised.
+
+(c) D contains n.grad(Lap psi) and n_i n_j n_k psi_ijk -- genuine THIRD
+    derivatives. Two fields with identical (psi, g, H) at x_f but different third
+    derivatives give different kappa_Gamma at O(d).
+
+THE FREE-LOOKING VERSION IS DEGENERATE. For a quadratic model H is constant, so
+D_fit is closed-form in (g, H) at no extra derivative order. But for an exact
+signed distance H n = 0, whence
+
+  D_fit = tr(H^2) - n.H^2.n = k1^2 + k2^2 = kappa^2 - 2K,   while  D_true = 0,
+
+so subtracting d D_fit cancels the Riccati term exactly and returns the
+UNCORRECTED value. This was measured independently on the exact circle before the
+derivation: the projected Laplace-Beltrami of 1/|grad psi| computed from the fit
+returns -kappa^2 where the truth is 0, converging to a ratio of -1.000 over
+N = 32-512 at both grid-aligned and diagonal placement. The same objection kills
+every same-fit two-point construction, including re-evaluating the fit's kappa at
+a second station along its own normal.
+
+A CUBIC FIT IS NOT MERELY EXPENSIVE, IT IS RANK-DEFICIENT ON THE CURRENT STENCIL:
+with offsets in {-h, 0, h}, delta^3 = h^2 delta identically, so the 2D design
+matrix is 8x9 with rank 7. It needs a stencil that does not exist here.
+
+### 11.3 Where a signed-distance assumption DOES survive in the delivered force
+
+Not in the curvature. The CSF face force is sigma kappa_f snGrad(alpha)_f, and the
+alpha side locates the interface with a LINEAR least-squares fit and the
+first-order offset d = pc[3]/nmag, i.e. psi/|grad psi|:
+
+  applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/faceAreaFraction.H:154-161
+  src/leiaLevelSet/phaseIndicator/geometricPhaseIndicator.C:130-140
+
+That estimator carries e_d = -(1/2) b_n d^2 + O(d^3) with b_n = (n.H.n)/beta --
+exactly the offset error the curvature channel removed by root-finding. The
+Hessian-corrected root d = 2 psi_c/(|g| + sqrt(|g|^2 - 2 psi_c h_nn)) already
+exists as offsetDistance, and h_nn is already inside kappa_d, so the fix is ZERO
+extra derivative order. It moves alpha, hence the force support and the cut-cell
+set, so it must be re-gated on transport and volume conservation. Not yet
+measured; recorded as the next structural candidate.
+
+Minor, free: the Kang blend weights in the per-face path use |psi| as a length
+(stabilizedFootPointFaceCurvature.H:130-131). Replacing them with the already
+computed |d_O|, |d_N| makes the no-signed-distance claim exactly true. Predicted
+effect on any measured number: none (the two foot distances agree to fit
+truncation, moving kappa_Gamma by O(h^2-h^3)).
+
+### 11.4 The gain mechanism, corrected: averaging versus concentrating
+
+The earlier reading of the ladder -- that gain tracks derivative count -- is NOT
+supported by the measurements:
+
+  arithmetic -> perFaceInverse ADDS the cof(H) contraction and the foot-point
+    Newton solve, and G h^2 is unchanged (0.6443 -> 0.6428, 0.2%) while static
+    L2 changes 27x;
+  cutCellInverse has IDENTICAL derivative content to perFaceInverse and 28%
+    more gain.
+
+The measured discriminator is how many independent estimates the delivered value
+averages, not how many derivatives it takes. Concentrating one cell's force on a
+single inversion of a single foot distance raises the gain; averaging n per-face
+inversions lowers it.
+
+### 11.5 The cell-mean delivery: the first arm to move the coupled behaviour
+
+curvatureExtension cellMeanFootPointFace -- the per-face inversions, averaged over
+each cut cell's active faces and assigned back to them.
+
+| delivery | 2D G h^2 | 3D G h^2 | 2D L2 (N=512) | 3D L2 (N=128) |
+|---|---|---|---|---|
+| arithmetic | 0.638 | 0.823 | 11.35 | 0.4191 |
+| per-face inverse | 0.639 | 0.826 | 0.1049 | 0.005254 |
+| cut-cell inverse | 0.829 | 1.005 | 0.07608 | 0.005176 |
+| cell-mean inverse | 0.402 | 0.534 | 0.08422 | 0.004093 |
+
+Coupled stationary droplet (np 8, capillary time step):
+
+| arm | max abs U(t=0) | t_blow [s] |
+|---|---|---|
+| arithmetic N=128 | 2.31e-3 | 0.0803 |
+| per-face N=128 | 2.83e-4 | 0.0668 |
+| cut-cell N=128 | 1.48e-5 | 0.0202 |
+| cell-mean N=128 | 1.13e-5 | > 0.0892 (wall clock, still finite) |
+| per-face N=256 | 4.71e-5 | 0.0348 |
+| cut-cell N=256 | 2.96e-6 | 0.0145 |
+| cell-mean N=256 | 3.26e-6 | 0.0493 |
+
+Growth rate of max abs U over MATCHED physical windows at N=128 [1/s]:
+
+| window [s] | arithmetic | per-face | cell-mean |
+|---|---|---|---|
+| 0.020-0.035 | -11 | 56 | 31 |
+| 0.035-0.050 | 21 | 134 | 72 |
+| 0.050-0.066 | 180 | 238 | 100 |
+
+The cell-mean delivery grows more slowly than the per-face inversion in every
+matched window and survives 1.42x longer at N=256. Its delivered curvature
+variation at t = 0.05 is 5.8 (across) and 4.2 (along) 1/m against 1404 and 385
+for the per-face inversion -- smaller by a factor ~240 and not growing.
+
+WHAT THIS DOES NOT ESTABLISH. It is not stability: at t = 0.0892 the N=128 run was
+still exponential at ~100 1/s, extrapolating to blow-up near t ~ 0.12, i.e. ~1.8x
+the per-face value. And the gain does not order everything: arithmetic and
+per-face have the same gain to 0.2%, yet arithmetic grows more slowly in every
+matched window and outlives it. Gain is a strong predictor, not a complete one.
+
+A rate extrapolation from the two-point exponent d ln(rate)/d ln(G h^2) = 3.586
+predicted a late rate of ~34 1/s for the cell-mean arm; the measured matched-window
+rate is ~100 1/s. Direction right, magnitude over-predicted 3x -- the exponent is
+a local two-point fit and must not be extrapolated.
+
+OPEN, AND REQUIRED BEFORE ANY ACCURACY CLAIM IS GENERAL: the circle and the sphere
+both have constant exact curvature, so the O(h^2 d^2 kappa) cost of the averaging
+is identically zero on both static gates, and D = 0 there so 11.2(b) is never
+exercised. A varying-curvature static gate (the perturbed circle
+r = R[1 + eps cos(m theta)] harness, whose exact curvature is not the constant the
+gate app assumes) is needed for both.
+
+ACCEPTANCE CRITERION for any future "signed-distance-free" correction, checked in
+the same table: G h^2 <= 0.65 AND fitted E_L2 order >= 1.9 at the Pi of the
+coupled run. A candidate that meets only the second is, on this evidence, a
+regression.
