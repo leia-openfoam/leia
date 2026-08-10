@@ -209,6 +209,20 @@ make studies-sdpls PROFILE=profiles/local     # laptop / WSL
 make studies-sdpls PROFILE=profiles/slurm     # Lichtenberg, one sbatch per case
 ```
 
+**On the cluster, submit the orchestrator as a job — do not run it on a login
+node.** A login-node `make studies-euler` was SIGTERMed after ~5.5 h mid-sweep
+(login nodes reap long-lived processes), losing the driver while its submitted
+case jobs kept running:
+
+```bash
+sbatch run-studies.sbatch                                   # TARGET=studies-euler
+sbatch --export=ALL,TARGET=studies-sdpls run-studies.sbatch
+```
+
+The orchestrator takes one core and only submits work. Resuming is free —
+snakemake skips cases whose outputs exist — so re-submitting after any
+interruption continues where it stopped.
+
 ### Study groups, and when they must be re-run together
 
 `make studies-euler` runs **every** study whose level-set transport is a
