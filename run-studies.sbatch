@@ -15,8 +15,9 @@
 # long-lived user processes). This job only orchestrates -- one core, little
 # memory -- while snakemake submits the real work as separate jobs.
 #
-#   sbatch run-studies.sbatch                 # default: TARGET=studies-euler
+#   sbatch run-studies.sbatch                              # TARGET=studies-euler
 #   sbatch --export=ALL,TARGET=studies-sdpls run-studies.sbatch
+#   sbatch --export=ALL,STUDY=sdplsConv3Dshear run-studies.sbatch   # one study
 #
 # Resuming is free: snakemake skips cases whose outputs already exist, so
 # re-submitting after any interruption continues where it stopped.
@@ -29,8 +30,15 @@ export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2
 source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
 export PATH="$HOME/.local/bin:$PATH"
 
-TARGET="${TARGET:-studies-euler}"
-echo "===== BEGIN $TARGET  $(date) on $(hostname) ====="
-make "$TARGET" PROFILE=profiles/slurm
-echo "===== END $TARGET rc=$?  $(date) ====="
+# STUDY runs exactly one config; TARGET runs a whole group.
+if [ -n "$STUDY" ]; then
+    echo "===== BEGIN study $STUDY  $(date) on $(hostname) ====="
+    make studies-one STUDY="$STUDY" PROFILE=profiles/slurm
+    echo "===== END study $STUDY rc=$?  $(date) ====="
+else
+    TARGET="${TARGET:-studies-euler}"
+    echo "===== BEGIN $TARGET  $(date) on $(hostname) ====="
+    make "$TARGET" PROFILE=profiles/slurm
+    echo "===== END $TARGET rc=$?  $(date) ====="
+fi
 echo "ALL-STUDIES-DONE"

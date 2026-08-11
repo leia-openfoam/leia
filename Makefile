@@ -81,7 +81,7 @@ ART_SL := docs/semi-lagrangian-level-set/sl-level-set-article
 ART_LSL := docs/linear-semi-lagrangian-level-set/lsl-level-set-article
 ART_GRL := docs/geometrically-redistanced-levelset/grl-level-set-article
 
-.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
+.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler studies-one print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
 .DEFAULT_GOAL := help
 
 help:
@@ -137,6 +137,11 @@ print-sdpls-studies:
 	@echo $(SDPLS_STUDIES)
 print-euler-studies:
 	@echo $(EULER_STUDIES)
+
+# Run ONE study by name: make studies-one STUDY=sdplsConv3Dshear
+studies-one:
+	@test -n "$(STUDY)" || { echo "usage: make studies-one STUDY=<name>"; exit 1; }
+	$(SNAKE) --configfile config/$(STUDY).yaml
 
 studies-sdpls:
 	@for cfg in $(SDPLS_STUDIES); do echo ">>> $$cfg"; $(SNAKE) --configfile config/$$cfg.yaml; done
