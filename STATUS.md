@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-08-10.
+Last updated: 2026-08-11.
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -94,7 +94,7 @@ Coupled stationary droplet, np 8, capillary time step:
 | arithmetic N=128 | 2.31e-3 | 0.0803 |
 | per-face N=128 | 2.83e-4 | 0.0668 |
 | cut-cell N=128 | 1.48e-5 | 0.0202 |
-| cell-mean N=128 | 1.13e-5 | **> 0.0892 — being measured now** |
+| cell-mean N=128 | 1.13e-5 | **0.1049 — longest of the four** |
 | per-face N=256 | 4.71e-5 | 0.0348 |
 | cut-cell N=256 | 2.96e-6 | 0.0145 |
 | cell-mean N=256 | 3.26e-6 | 0.0493 |
@@ -106,9 +106,17 @@ Growth rate of `max|U|` over matched physical windows, N=128 [1/s]:
 | 0.020–0.035 | −11 | 56 | 31 |
 | 0.035–0.050 | 21 | 134 | 72 |
 | 0.050–0.066 | 180 | 238 | 100 |
+| 0.066–0.080 | 280 | 9529 | 59 |
+| 0.080–0.100 | 386412 | dead | 69 |
 
-**Not established:** the cell-mean arm is *not* stable — at t = 0.0892 it was still
-exponential at ~100 1/s. And both static gates have constant exact curvature, so
+The cell-mean arm is the only one that does not enter a runaway acceleration: its
+rate stays at 59–100 1/s from t = 0.05 to 0.10. Its delivered curvature variation is
+flat at 4–9 1/m through t = 0.05 and then rises three orders **in step with
+`minGradPsiBand` leaving 1** (0.998 → 0.858 at t = 0.08 → 0.256 at the end), which
+is the non-parallelism residual of plan section 11.2. One run, so a correlation —
+but a testable one.
+
+**Not established:** the cell-mean arm is *not* stable — it blows up, just later. And both static gates have constant exact curvature, so
 the averaging cost `O(h^2 d^2 kappa)` and the non-parallelism term of section 11.2
 are both identically zero there. A varying-curvature static gate is still missing.
 
@@ -122,12 +130,12 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
-| **54037280** `cmLong128` | cell-mean coupled droplet, N=128, horizon extended to t=0.2 s to find the actual blow-up (the first attempt reached 0.0892 s and hit a 3 h wall) | 8 h | `studies/stationaryDropletCellMean/stationaryDroplet2D_00000/` |
+| *(none from this thread)* | The cell-mean N=128 horizon run finished: blow-up measured at t = 0.1049 s. Nothing of ours is queued. | — | `studies/stationaryDropletCellMean/stationaryDroplet2D_00000/` |
 
-Check it:
+Check what is yours at any time:
 
 ```
-ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de "squeue -u tm83tomy -j 54037280"
+ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de "squeue -u tm83tomy"
 ```
 
 Watch the parasitic-current trace grow (`TIME,maxMagU` is the first two columns):
@@ -208,10 +216,7 @@ Available configs for this thread: `config/stationaryDropletStableFoot.yaml`
 
 ## 7. Next, in order
 
-1. **Finish the open measurement.** Job 54037280 gives the cell-mean `t_blow` at
-   N=128. Extrapolation from the truncated run says ~0.12 s; that needs replacing
-   with the measured value in section 11.5 of the plan document.
-2. **Fix the signed-distance assumption where it actually survives.** It is not in
+1. **Fix the signed-distance assumption where it actually survives.** It is not in
    the curvature — it is in the phase indicator, which locates the interface with a
    *linear* least-squares fit and a first-order `psi/|grad psi|` offset
    (`applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/faceAreaFraction.H:154-161`
@@ -219,14 +224,14 @@ Available configs for this thread: `config/stationaryDropletStableFoot.yaml`
    sits in `snGrad(alpha)`, the other factor of the CSF force. The Hessian-corrected
    root already exists as `offsetDistance` and costs zero extra derivatives. It
    moves `alpha`, so it must be re-gated on transport and volume conservation.
-3. **Build a varying-curvature static gate.** Both existing gates are a circle and
+2. **Build a varying-curvature static gate.** Both existing gates are a circle and
    a sphere, where the exact curvature is constant — so they cannot distinguish
    helpful averaging from over-smoothing, and the non-parallelism term is
    identically zero. The perturbed-circle harness
    (`config/curvatureModeTransferGate.yaml`, `r = R[1 + eps cos(m theta)]`) is the
    natural base, but `leiaTestMeanCurvature` assumes a constant exact curvature and
    needs extending.
-4. Still open from the program document: T1.3 (frozen-band event characterization)
+3. Still open from the program document: T1.3 (frozen-band event characterization)
    and T2 (offline anisotropic-fit study).
 
 **Acceptance criterion** for any future curvature delivery, checked in the same

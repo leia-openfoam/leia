@@ -1440,6 +1440,50 @@ psi.correctBoundaryConditions();
   </div>
 </section>
 
+<!-- the arm that follows from the gain: average, do not concentrate -->
+<section>
+  <h2>Averaging the same inversions: lowest gain, longest survival</h2>
+  <p style="font-size:0.72em; margin-bottom:0.35em"><code>cellMeanFootPointFace</code>: the per-face inversion is
+    unchanged &mdash; every active face keeps its own \(d_f\) &mdash; and the corrected values are then
+    <b>averaged over the active faces of each cut cell</b> and assigned back. Same one-value-per-cut-cell
+    structure as the cut-cell delivery; \(n\) inversions <i>averaged</i> instead of one applied \(n\) times.</p>
+  <div class="cols" style="align-items:flex-start">
+    <div style="flex:1">
+      <table style="font-size:0.6em; width:100%">
+        <tr><th>delivery</th><th>2D \(Gh^2\)</th><th>3D \(Gh^2\)</th><th>2D \(L_2\) (512)</th><th>3D \(L_2\) (128)</th><th>\(t_\mathrm{blow}\) (128)</th></tr>
+        <tr><td>arithmetic</td><td>0.638</td><td>0.823</td><td>11.35</td><td>0.4191</td><td>0.0803</td></tr>
+        <tr><td>per face</td><td>0.639</td><td>0.826</td><td>0.1049</td><td>0.005254</td><td>0.0668</td></tr>
+        <tr><td>per cut cell</td><td class="warn">0.829</td><td class="warn">1.005</td><td>0.07608</td><td>0.005176</td><td class="warn">0.0202</td></tr>
+        <tr><td><b>cut-cell mean</b></td><td class="good"><b>0.402</b></td><td class="good"><b>0.534</b></td><td>0.08422</td><td class="good">0.004093</td><td class="good"><b>0.1049</b></td></tr>
+      </table>
+      <p style="font-size:0.6em; margin-top:0.3em">\(N{=}256\): \(t_\mathrm{blow}\) 0.0348 (per face) &rarr;
+        0.0145 (per cut cell) &rarr; <b>0.0493</b> (cut-cell mean).</p>
+      <table style="font-size:0.58em; width:100%; margin-top:0.3em">
+        <tr><th>rate of \(\max|\mathbf{u}|\) [1/s]</th><th>arith.</th><th>per face</th><th>cell mean</th></tr>
+        <tr><td>0.035&ndash;0.050 s</td><td>21</td><td>134</td><td>72</td></tr>
+        <tr><td>0.050&ndash;0.066 s</td><td>180</td><td>238</td><td>100</td></tr>
+        <tr><td>0.066&ndash;0.080 s</td><td>280</td><td>9529</td><td class="good">59</td></tr>
+        <tr><td>0.080&ndash;0.100 s</td><td>386412</td><td>dead</td><td class="good">69</td></tr>
+      </table>
+    </div>
+    <div style="flex:1">
+      <p style="font-size:0.68em"><b>The discriminator is averaging versus concentrating, not derivative
+        count.</b> arithmetic &rarr; per face <i>adds</i> the \(\mathrm{cof}(H)\) contraction and the foot-point
+        Newton solve and the gain is unchanged (0.6443 &rarr; 0.6428) while \(L_2\) changes 27&times;; per cut
+        cell has <i>identical</i> derivative content to per face and 28% more gain.</p>
+      <p style="font-size:0.68em"><b>It is the only arm that does not run away.</b> Its rate stays at
+        59&ndash;100 1/s from \(t{=}0.05\) to 0.10 while the others accelerate by orders. The delivered
+        curvature variation is flat at 4&ndash;9 1/m through \(t{=}0.05\), then rises three orders
+        <i>in step with</i> \(\min|\nabla\psi|_\mathrm{band}\) leaving 1 (0.998 &rarr; 0.858 at \(t{=}0.08\)
+        &rarr; 0.256 at the end) &mdash; i.e. with the loss of the parallel foliation the inverse assumes.</p>
+      <p style="font-size:0.68em" class="warn"><b>Not a cure, and not yet general.</b> It still blows up, just
+        1.57&times; later. And a circle and a sphere have constant \(\kappa\), so on both static gates the
+        averaging cost \(O(h^2\partial^2\kappa)\) and the non-parallelism residual are identically zero &mdash;
+        a varying-curvature gate is still missing.</p>
+    </div>
+  </div>
+</section>
+
 <section>
   <h2>Verification: the stationary droplet</h2>
   <p class="muted" style="font-size:0.85em">water/air, \(R=1\)&thinsp;mm, \(\sigma/R=72.74\)&thinsp;Pa (Lippert et&nbsp;al. 2022) &mdash; the exact solution is quiescent</p>

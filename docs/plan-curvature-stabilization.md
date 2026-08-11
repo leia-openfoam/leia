@@ -889,34 +889,62 @@ Coupled stationary droplet (np 8, capillary time step):
 | arithmetic N=128 | 2.31e-3 | 0.0803 |
 | per-face N=128 | 2.83e-4 | 0.0668 |
 | cut-cell N=128 | 1.48e-5 | 0.0202 |
-| cell-mean N=128 | 1.13e-5 | > 0.0892 (wall clock, still finite) |
+| cell-mean N=128 | 1.13e-5 | 0.1049 |
 | per-face N=256 | 4.71e-5 | 0.0348 |
 | cut-cell N=256 | 2.96e-6 | 0.0145 |
 | cell-mean N=256 | 3.26e-6 | 0.0493 |
 
-Growth rate of max abs U over MATCHED physical windows at N=128 [1/s]:
+Growth rate of max abs U over MATCHED physical windows at N=128 [1/s]
+(nan = that arm had already blown up):
 
-| window [s] | arithmetic | per-face | cell-mean |
-|---|---|---|---|
-| 0.020-0.035 | -11 | 56 | 31 |
-| 0.035-0.050 | 21 | 134 | 72 |
-| 0.050-0.066 | 180 | 238 | 100 |
+| window [s] | arithmetic | per-face | cut-cell | cell-mean |
+|---|---|---|---|---|
+| 0.002-0.010 | -157 | -25 | 104 | -13 |
+| 0.010-0.020 | -36 | -9 | 560 | 7 |
+| 0.020-0.035 | -11 | 56 | 295937 | 31 |
+| 0.035-0.050 | 21 | 134 | nan | 72 |
+| 0.050-0.066 | 180 | 238 | nan | 100 |
+| 0.066-0.080 | 280 | 9529 | nan | 59 |
+| 0.080-0.100 | 386412 | nan | nan | 69 |
 
-The cell-mean delivery grows more slowly than the per-face inversion in every
-matched window and survives 1.42x longer at N=256. Its delivered curvature
-variation at t = 0.05 is 5.8 (across) and 4.2 (along) 1/m against 1404 and 385
-for the per-face inversion -- smaller by a factor ~240 and not growing.
+The cell-mean delivery is the LONGEST-SURVIVING of the four at N=128 (1.57x the
+per-face inversion, 1.31x arithmetic, 5.2x cut-cell) and survives 1.42x longer than
+the per-face inversion at N=256. It grows more slowly than every other arm in every
+matched window from t = 0.02 on, and -- the qualitative difference -- it does not
+enter the runaway acceleration the others do: its rate stays at 59-100 1/s from
+t = 0.05 to 0.10 while per-face goes 238 -> 9529 and arithmetic 280 -> 386412.
 
-WHAT THIS DOES NOT ESTABLISH. It is not stability: at t = 0.0892 the N=128 run was
-still exponential at ~100 1/s, extrapolating to blow-up near t ~ 0.12, i.e. ~1.8x
-the per-face value. And the gain does not order everything: arithmetic and
-per-face have the same gain to 0.2%, yet arithmetic grows more slowly in every
-matched window and outlives it. Gain is a strong predictor, not a complete one.
+MECHANISM, OBSERVED IN THIS RUN. The delivered curvature variation stays tiny for
+most of the run and then grows together with the loss of the parallel foliation:
+
+| t [s] | max abs U | across L2 | along L2 | kErrL2Band | minGradPsiBand |
+|---|---|---|---|---|---|
+| 0.005 | 1.75e-4 | 4.07 | 7.41 | 70.2 | 0.9975 |
+| 0.020 | 4.45e-4 | 6.01 | 9.10 | 70.4 | 0.9983 |
+| 0.050 | 2.73e-3 | 5.83 | 4.24 | 70.1 | 0.9881 |
+| 0.080 | 2.13e-2 | 203 | 297 | 187 | 0.858 |
+| 0.100 | 0.199 | 1721 | 1720 | 1100 | 0.724 |
+| 0.1045 | 0.535 | 8095 | 10850 | 3308 | 0.256 |
+
+The driver is flat at 4-9 1/m through t = 0.05 and then rises by three orders,
+and it does so in step with minGradPsiBand leaving 1. That is exactly the
+non-parallelism of sec. 11.2: the inverse's residual is the integral of
+D = Lap_Gamma(ln beta) - |grad_Gamma ln beta|^2 along the normal, which is zero
+only while the level sets stay parallel. It is one run and therefore a correlation,
+not a demonstrated causal chain -- but it is a testable one, and the measurement
+that would settle it is the Pi = |Lap_Gamma ln beta|/(kappa^2 - 2K) sweep of
+sec. 11.2(b) run on the coupled trace.
+
+WHAT THIS DOES NOT ESTABLISH. It is not stability: the arm blows up, just later.
+And the gain does not order everything -- arithmetic and per-face have the same
+gain to 0.2%, yet arithmetic grows more slowly in every early window and outlives
+it. Gain is a strong predictor, not a complete one.
 
 A rate extrapolation from the two-point exponent d ln(rate)/d ln(G h^2) = 3.586
-predicted a late rate of ~34 1/s for the cell-mean arm; the measured matched-window
-rate is ~100 1/s. Direction right, magnitude over-predicted 3x -- the exponent is
-a local two-point fit and must not be extrapolated.
+predicted a late rate of ~34 1/s for the cell-mean arm; the measured rate is
+59-100 1/s. Direction right, magnitude over-predicted ~2-3x -- the exponent is a
+local two-point fit and must not be extrapolated. The t_blow extrapolation made
+from the truncated run (~0.12 s) came out 13% above the measured 0.1049 s.
 
 OPEN, AND REQUIRED BEFORE ANY ACCURACY CLAIM IS GENERAL: the circle and the sphere
 both have constant exact curvature, so the O(h^2 d^2 kappa) cost of the averaging
