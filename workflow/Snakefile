@@ -156,10 +156,23 @@ _solve += [
     f"{_solver_cmd} > log.{SOLVER} 2>&1",
     "rc=$?",
     "set -e",
-    "if [ $rc -ne 0 ]; then "
+    # DISCRIMINATE: a launch failure is NOT a result.
+    #
+    # A diverged solver runs and then dies; a job that could not start its MPI
+    # step never ran at all. Recording the latter as `solverFailed` would dress
+    # an infrastructure fault as physics -- which is exactly what happened when
+    # SLURM spread an np=8 allocation over two nodes and this branch logged six
+    # "divergences" that were nothing of the kind. So: if the log carries a
+    # launcher error, FAIL THE RULE LOUDLY (no marker, no touched output) and
+    # let snakemake report it; otherwise record the exit code as a result.
+    f"if [ $rc -ne 0 ]; then "
+    f"if grep -qE 'Unable to create step|not enough slots|srun: error|mpirun.*(error|Error)' log.{SOLVER}; then "
+    f"echo \"[leia] LAUNCH FAILURE (rc=$rc) -- the solver never ran; NOT recorded as a result:\"; "
+    f"tail -15 log.{SOLVER}; exit $rc; "
+    f"else "
     f"echo $rc > .leia_solver_failed; touch {SOLVER}.csv; "
     f"echo \"[leia] SOLVER EXITED $rc (diverged or crashed) -- recorded; tail of log.{SOLVER}:\"; "
-    f"tail -15 log.{SOLVER}; fi",
+    f"tail -15 log.{SOLVER}; fi; fi",
 ]
 # The static gate measures kappa_f ACCURACY on an exact signed distance field.
 # In the coupled solve psi is never exact, and MEASURED (plan sec. 10) accuracy
@@ -276,6 +289,12 @@ rule solve:
         d=case_path,
     resources:
         tasks=(NP if PARALLEL else 1),
+        # ONE NODE. SLURM was satisfying --ntasks=8 across TWO nodes, leaving the
+        # batch step with only 7 CPUs, so `srun --ntasks=8` inside it failed with
+        # "Unable to create step ...: More processors requested than permitted".
+        # Measured allocations before this: 8, 7, 6, 5 and 4 CPUs for the same
+        # np=8 rule. The ranks must share a node for the jobstep to be creatable.
+        **({"slurm_extra": "'--nodes=1'"} if PARALLEL else {}),
     shell:
         sh(*_solve)
 
