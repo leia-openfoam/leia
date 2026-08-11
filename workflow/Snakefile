@@ -294,7 +294,12 @@ rule solve:
         # "Unable to create step ...: More processors requested than permitted".
         # Measured allocations before this: 8, 7, 6, 5 and 4 CPUs for the same
         # np=8 rule. The ranks must share a node for the jobstep to be creatable.
-        **({"slurm_extra": "'--nodes=1'"} if PARALLEL else {}),
+        #
+        # This MUST be the plugin's own `nodes` resource, not slurm_extra: the
+        # executor rejects --nodes there outright ("The --number-of-nodes option
+        # is not allowed in the 'slurm_extra' parameter"), and the rejection is a
+        # submission-time exception, so no solve job is created at all.
+        **({"nodes": 1} if PARALLEL else {}),
     shell:
         sh(*_solve)
 
