@@ -193,6 +193,40 @@ distance and the narrow band. Because `solve` is ungrouped it gets its own
 allocation with exactly `--ntasks={np}`, so the launcher always has the ranks it
 asks for; the cheap serial steps still share one sbatch per case at each end.
 
+#### The solve must also be pinned to ONE node (`resources: nodes=1`)
+
+Ungrouping fixed np=4 but **not** np=8. SLURM satisfied `--ntasks=8` across
+**two** nodes, so the `.batch` step held only 7 CPUs and `srun --ntasks=8`
+inside it failed:
+
+```
+srun: error: Unable to create step for job 54042738:
+      More processors requested than permitted
+```
+
+Measured allocations for that one rule before the pin: 8, 7, 6, 5 and 4 CPUs.
+After `resources: nodes=1`: `ReqCPUS=8, NNodes=1` on every solve, and the study
+went 12/18 -> 18/18.
+
+> **Do NOT write this as `slurm_extra='--nodes=1'`.** The executor plugin
+> rejects it — *"The --number-of-nodes option is not allowed in the
+> 'slurm_extra' parameter. The number of nodes is set by the snakemake executor
+> plugin"* — and the rejection is a **submission-time exception**, so no solve
+> job is created at all and the study simply stalls with zero allocations. Use
+> the plugin's own `nodes` resource.
+
+#### A diverged solve is a result; a launch failure is not
+
+`aggregate` needs every case's CSV, so one divergent arm used to leave a study
+with no curated table. The solve rule therefore records a non-zero solver exit
+(`.leia_solver_failed`, a `solverFailed` CSV column, blank metrics) instead of
+stalling — **but only when the solver actually ran**. If the per-case
+`log.<solver>` carries a launcher error the rule fails loudly with no marker and
+no touched output. Without that discrimination the np=8 launch failures above
+were logged as 11 "divergences", including the `euler` baseline at N=32, which
+cannot fail for physical reasons. Infrastructure faults must never enter the
+record as physics.
+
 Measured on `sdplsStability` (18 parallel np=4 cases, one command):
 
 | launcher | solver CSVs produced |
