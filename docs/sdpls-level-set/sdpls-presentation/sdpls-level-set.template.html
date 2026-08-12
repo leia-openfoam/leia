@@ -278,6 +278,45 @@
 </section>
 </section>
 
+<section data-track="Where the missing order is not">
+<section>
+  <h2>Where the missing order is <em>not</em></h2>
+  <p class="tight"><code>R</code> converges at <b>+0.74</b> &mdash; short of the formal order
+     of the discretization. A 56-case ablation
+     (<code>sdplsOrderAblation</code>) swaps only the <code>grad(psi)</code>
+     reconstruction inside <code>linearUpwind</code>, everything else held fixed.
+     Band gradient error at <em>t</em>&nbsp;=&nbsp;<em>T</em>:</p>
+  <table style="font-size:0.78em; margin:0 auto">
+    <tr><th style="text-align:left"><code>grad(psi)</code></th>
+        <th>32</th><th>45</th><th>64</th><th>90</th><th>128</th><th>181</th><th>order</th></tr>
+    <tr><td>cellLimited leastSquares <em>(default)</em></td><td>0.451</td><td>0.392</td>
+        <td>0.292</td><td>0.230</td><td>0.188</td><td>0.152</td><td>0.649</td></tr>
+    <tr><td>cellLimited Gauss linear</td><td>0.451</td><td>0.392</td><td>0.292</td>
+        <td>0.230</td><td>0.188</td><td>0.152</td><td>0.649</td></tr>
+    <tr><td><b>leastSquares (unlimited)</b></td><td>0.430</td><td>0.353</td><td>0.268</td>
+        <td>0.216</td><td>0.180</td><td>0.135</td><td><b>0.661</b></td></tr>
+    <tr><td>faceLimited leastSquares</td><td>0.559</td><td>0.423</td><td>0.311</td>
+        <td>0.247</td><td>0.199</td><td>&mdash;</td><td>0.753</td></tr>
+  </table>
+  <ul class="tight" style="font-size:0.85em">
+    <li class="warn"><b>Not the limiter.</b> Removing it entirely moves the order by
+        <b>0.012</b>. It buys ~5% accuracy at every rung and no order. The sourceless arm is
+        equally indifferent (&minus;0.328 &rarr; &minus;0.306).</li>
+    <li class="warn"><b>Not the time scheme.</b> These runs use <code>CrankNicolson</code>,
+        second order &mdash; there is no first-order Euler cap to blame.</li>
+    <li><b>Still open, and two different things.</b> <em>Measurement:</em> the band is the
+        set of sign-change cells, so its physical width shrinks like <em>O</em>(<em>h</em>)
+        and the norm is taken over a different region at every rung.
+        <em>Method:</em> the cancellation is built from
+        \(\mathbf{n}=\nabla\psi/|\nabla\psi|\), so the source cannot cancel the stretching
+        more accurately than it can estimate it.</li>
+  </ul>
+  <p class="tight" style="font-size:0.78em; opacity:0.75">
+    Orders over <em>N</em>&nbsp;=&nbsp;32&hellip;181; the <em>N</em>&nbsp;=&nbsp;256 rungs
+    were still running and their partial rows are excluded, not averaged in.</p>
+</section>
+</section>
+
 <section data-track="Why beta fails">
 <section>
   <h2>Why <code>beta</code> fails &mdash; it targets the wrong gradient</h2>

@@ -276,6 +276,36 @@ the method: it is the difference between a level set that degrades as the mesh
 improves and one that does not. It is also invisible on a reversed flow, which
 is why it went unmeasured for so long.
 
+\paragraph{Where the missing order is not.}
+\label{par:ablation}
+\textbf{R} converges, but at $+0.74$ --- well short of the formal order of the
+discretization, and the shortfall needs an explanation rather than a caveat.
+Two candidates can be eliminated by measurement. The first is the
+\emph{reconstruction gradient} of the \texttt{linearUpwind} advection: it is
+cell-limited by default, and a limiter that clips at local extrema is an
+obvious order-killer for a quantity whose extrema are the thing being measured.
+A 56-case ablation replacing it with cell-limited Gauss, unlimited least
+squares and face-limited least squares, holding everything else fixed, gives
+fitted orders of $0.649$, $0.649$, $0.661$ and $0.753$ over $N = 32\ldots181$.
+Removing the limiter entirely moves the order by $0.012$. It also improves the
+error by about $5\%$ at every rung, so the limiter costs a little accuracy and
+no order. The sourceless arm is equally indifferent ($-0.328$ against
+$-0.306$). The second candidate is the time integration, and it is excluded by
+inspection: these runs use \texttt{CrankNicolson}, which is second order, not
+first-order Euler, so there is no first-order temporal cap to explain a
+sub-unit slope.
+
+What remains is not yet resolved, and two things are worth separating. On the
+measurement side, the narrow band is the set of sign-change cells, so it is
+attached to the interface and its physical width shrinks like $O(h)$: the norm
+is taken over a different region at every rung, which is the right region to
+care about but not a fixed domain on which a classical order is defined. On the
+method side, the cancellation is built from $\mathbf{n} = \nabla\psilev/\gradpsi$,
+so the accuracy of the strain that the source cancels is bounded by the accuracy
+of the gradient it is computed from --- the source cannot cancel a stretching
+term more precisely than it can estimate it. Distinguishing these requires a
+fixed-width band and a normal-error measurement, and neither is claimed here.
+
 \paragraph{Why \texttt{beta} fails.}
 \label{par:beta}
 \texttt{beta} is not unstable on this flow and it is not under-resolved; it
