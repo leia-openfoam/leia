@@ -254,8 +254,17 @@ def main():
     print(f"       d(mean)/d(beta) = {slope:.4f}   "
           f"(1.0 => the target IS beta - a; 0.0 => beta does not set the level)")
     print()
-    print("  (i) drift of the band mean across the whole ladder "
-          "(small => h-INDEPENDENT => a target, not a residual)")
+    print("  (i) drift of the band mean across the ladder "
+          "-- DIAGNOSTIC, NOT EVIDENCE FOR THE HYPOTHESIS")
+    print("      Originally framed as 'small drift => h-independent => a target'.")
+    print("      It cannot carry that weight, and the measured numbers are why:")
+    print("      the coarse rungs have not equilibrated. beta=1 runs 1.600, 1.851,")
+    print("      2.023, 2.080, 2.001, 1.922, 1.927 over N=32..256 -- rising, then")
+    print("      settling near 1.93 -- so the ladder RANGE mixes the approach with")
+    print("      the level, and comes out LARGER for beta than for the control that")
+    print("      starts at its own answer. Refinement is what reveals the target.")
+    print("      The evidence is test (ii): the slope, and the residual")
+    print("      mean-(beta-a) shrinking at a fixed fine h.")
     for b in betas:
         print(f"       beta={b:<5.2f} drift={drift[b]:.4f}")
     print(f"       control {CONTROL_ARM} (no target): drift={ctrl_drift:.4f} "
