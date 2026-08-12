@@ -57,7 +57,7 @@ PISO
 velocityModel
 {
     type shear3D; 
-    oscillation on;
+    oscillation @!OSCILLATION!@;
 }
 
 levelSet

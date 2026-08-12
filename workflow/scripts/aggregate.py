@@ -237,13 +237,22 @@ def _write_error_table(records, database_path):
             # print a meaningless "shape order". The raw value is untouched in
             # <study>_database.csv; only the curated table blanks it, and the
             # `oscillation` column below says why.
-            "shapeError": ("" if rec.get("OSCILLATION", "on") == "off"
+            # Judged on the RENDERED value for the same reason as `oscillation`
+            # below: a case whose template hardcodes the setting has no token.
+            "shapeError": ("" if (rec.get("oscillationRendered")
+                                  or rec.get("OSCILLATION", "on")) == "off"
                            else sget(rec, "E_GEOM_ALPHA")),
             # Volume error stays valid either way: it measures conservation
             # against the initial volume, which a divergence-free velocity
             # preserves regardless of reversal. So does the gradient error, which
             # is intrinsic and needs no reference solution at all.
-            "oscillation": rec.get("OSCILLATION", ""),
+            # PREFER THE RENDERED DICTIONARY over the token. The 3D cases
+            # hardcode `oscillation on` with no @!OSCILLATION!@ placeholder, so
+            # their config's OSCILLATION is dropped as an unreferenced token and
+            # this column would be blank -- which defeats the reversed-metric
+            # suppression downstream. fvschemes reads what the solver parsed.
+            "oscillation": (rec.get("oscillationRendered")
+                            or rec.get("OSCILLATION", "")),
             # 1 = reached END_TIME, 0 = still running or cut short (see
             # _reached()); blank when there is no per-step CSV to judge from.
             "endTimeReached": rec.get("endTimeReached", ""),

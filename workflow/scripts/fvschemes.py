@@ -30,7 +30,9 @@ __all__ = ["read_discretization", "COLUMNS"]
 
 #: Column order for the curated error CSV.
 COLUMNS = ["divPsi", "divPsiGrad", "divPsiGradScheme",
-           "gradPsiSdpls", "gradUSdpls", "nDefCorr"]
+           "gradPsiSdpls", "gradUSdpls", "nDefCorr",
+           # Whether the velocity ACTUALLY reversed -- see read_discretization.
+           "oscillationRendered"]
 
 _COMMENT_BLOCK = re.compile(r"/\*.*?\*/", re.S)
 _COMMENT_LINE = re.compile(r"//[^\n]*")
@@ -138,6 +140,27 @@ def read_discretization(case_dir):
         # Absent key => the C++ default in eulerianAdvection.C /
         # leiaRedistancedLevelSetFoam.C, which is 3.
         out["nDefCorr"] = ent.get("nDefCorr", "3 (solver default)")
+
+    # DID THE FLOW ACTUALLY REVERSE? Same reason as everything above: the token
+    # is not the truth. cases/3Dshear and cases/3Ddeformation HARDCODE
+    # `oscillation on` in their fvSolution.template and have no @!OSCILLATION!@
+    # placeholder, so setting OSCILLATION in those studies' configs is a silent
+    # no-op -- materialize drops it as an unreferenced token, it never reaches
+    # case_params.json, and the curated `oscillation` column comes out blank.
+    #
+    # That blank is not harmless. The reversed t=T gradient error is suppressed
+    # on rows recording oscillation=on (make_convergence_table.REVERSED_INVALID);
+    # a blank sails straight through and gets published as a convergence order.
+    # Read the rendered dictionary instead, which is what the solver parsed.
+    fvsol = os.path.join(case_dir, "system", "fvSolution")
+    if os.path.isfile(fvsol):
+        try:
+            body = _strip_comments(open(fvsol).read())
+        except OSError:
+            body = ""
+        m = re.search(r"^\s*oscillation\s+([^;]+);", body, re.M)
+        if m:
+            out["oscillationRendered"] = m.group(1).strip()
 
     return out
 
