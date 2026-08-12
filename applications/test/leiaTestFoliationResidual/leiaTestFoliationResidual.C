@@ -111,7 +111,16 @@ int main(int argc, char *argv[])
 
         const volVectorField gLn(fvc::grad(lnBeta));
         const volTensorField HLn(fvc::grad(gLn));
-        const volScalarField kappa(fvc::div(n));
+
+        // kappa = div(grad psi/|grad psi|) from the field gradient and Hessian
+        // rather than fvc::div(n): the same algebraic convention the solver uses,
+        // and it needs no divScheme entry in the case's fvSchemes (the saved
+        // droplet cases do not carry one for this expression).
+        const volTensorField Hpsi(fvc::grad(g));
+        const volScalarField kappa
+        (
+            (tr(Hpsi)*magSqr(g) - (g & (Hpsi & g)))/pow3(beta)
+        );
 
         // tangential part of grad(ln beta): the non-parallelism vector a
         const volVectorField aT(gLn - (n & gLn)*n);
