@@ -131,16 +131,30 @@ def collect():
     return out
 
 
+# The control must be ONE arm. `benchVortexEulerT2` sweeps SOURCE_SCHEME over
+# both admissible linearizations, and both label as `...SDPLS:R/...`, so a
+# substring test on "SDPLS:R" silently pools two different methods into one
+# series -- two points per h, and a drift computed across arms rather than
+# across resolutions. Match the linearization the sweep itself uses, so the
+# control is like-for-like.
+CONTROL_ARM = "SDPLS:R/simpleImp"
+
+
 def control():
-    """The `R` arm of the control study: (h, mean) sorted by h."""
-    pts = []
+    """The single `R` control arm: (h, mean) sorted by h, one point per h."""
+    pts = {}
     for r in _rows(CONTROL):
-        if r.get("solverFailed") or "SDPLS:R" not in r.get("method", ""):
+        if r.get("solverFailed") or CONTROL_ARM not in r.get("method", ""):
             continue
         h, mean = _f(r.get("h")), _f(r.get(MEAN))
-        if h is not None and mean is not None:
-            pts.append((h, mean))
-    return sorted(pts)
+        if h is None or mean is None:
+            continue
+        if h in pts:
+            print(f"[beta_target] WARNING: two control rows at h={h:g} "
+                  f"({CONTROL_ARM}); keeping the first")
+            continue
+        pts[h] = mean
+    return sorted(pts.items())
 
 
 def main():
@@ -204,8 +218,8 @@ def main():
           "(small => h-INDEPENDENT => a target, not a residual)")
     for b in betas:
         print(f"       beta={b:<5.2f} drift={drift[b]:.4f}")
-    print(f"       control R (no target): drift={ctrl_drift:.4f} over "
-          f"{len(ctrl)} resolutions")
+    print(f"       control {CONTROL_ARM} (no target): drift={ctrl_drift:.4f} "
+          f"over {len(ctrl)} resolutions")
     print()
     print("  (v) unreachable target: max band strain a vs beta. Where a > beta the")
     print("      fixed point beta - a is NEGATIVE, so |grad psi| is driven to 0")
@@ -276,7 +290,7 @@ def main():
         ax[0].axhline(b, ls=":", lw=0.8, color="grey")
     if ctrl:
         ax[0].semilogx([h for h, _ in ctrl], [m for _, m in ctrl], "k^--",
-                       label="R (control)")
+                       label=f"{CONTROL_ARM} (control)")
     ax[0].axhline(1.0, color="k", lw=0.8)
     ax[0].set_xlabel("h"); ax[0].set_ylabel(r"band mean $|\nabla\psi|$ at $T/2$")
     ax[0].set_title("(i) h-independence\n(flat = a target, not a residual)",

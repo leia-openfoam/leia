@@ -30,6 +30,8 @@ License
 #include "addToRunTimeSelectionTable.H"
 
 #include <limits>
+#include <fstream>
+#include <string>
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -60,42 +62,88 @@ Foam::functionObjects::gradPsiErrorCSV::gradPsiErrorCSV
     csvFile_(fileName("gradPsiError.csv"),  IOstreamOption(), IOstreamOption::appendType::APPEND)
 
 {
-    if ( !fileSize("gradPsiError.csv") && Pstream::myProcNo() == 0)
+    if (Pstream::myProcNo() == 0)
     {
-            // CSV Header 
-            csvFile_ << "TIME,"
-                << "MAX_DELTA_X,"
-                << "MEAN_DELTA_X,"
-                << "E_MAX_GRAD_PSI,"
-                << "E_MEAN_GRAD_PSI,"
-                << "E_NARROW_MAX_GRAD_PSI,"
-                << "E_NARROW_MEAN_GRAD_PSI,"
-                << "E_L1_GRAD_PSI,"
-                << "E_L2_GRAD_PSI,"
-                << "E_NARROW_L1_GRAD_PSI,"
-                << "E_NARROW_L2_GRAD_PSI,"
-                << "MAX_MAG_GRAD_PSI,"
-                << "MEAN_MAG_GRAD_PSI,"
-                << "NARROW_MAX_MAG_GRAD_PSI,"
-                << "NARROW_MEAN_MAG_GRAD_PSI,"
-                // Conditioning diagnostic: the interface position error scales
-                // like err_psi / |grad psi|, so a FLATTENING level set
-                // (min |grad psi| -> 0 near the interface) amplifies psi noise
-                // into O(1) position noise.
-                << "MIN_MAG_GRAD_PSI,"
-                << "NARROW_MIN_MAG_GRAD_PSI,"
-                // Interfacial normal strain a = n . grad(U) . n, registered as
-                // `R` by the SDPLS source. The `beta` variant relaxes the
-                // interfacial gradient toward g* = beta - a, i.e. a target set
-                // by the FLOW and not by the mesh, so it cannot converge under
-                // refinement. Reporting the band statistics of R next to those
-                // of |grad psi| turns that from an inference into a per-step
-                // measurement. Empty (NaN) when no SDPLS source is active.
-                << "NARROW_MIN_R,"
-                << "NARROW_MEAN_R,"
-                << "NARROW_MAX_R\n";
+        const fileName csvName("gradPsiError.csv");
+        if (!fileSize(csvName))
+        {
+            csvFile_ << csvHeader().c_str() << "\n";
+        }
+        else
+        {
+            // The file is opened in APPEND mode and the header defines the
+            // column schema, so a file written by an older build silently
+            // receives rows with MORE fields than its header names -- every
+            // column read by name downstream then refers to the wrong data.
+            // This is reachable without a full re-materialisation: `rule solve`
+            // removes only <solver>.csv, while `rm -f gradPsiError.csv` lives in
+            // `rule preprocess`, whose marker may still be up to date. Fail
+            // loudly; the file is cheap to delete and impossible to repair.
+            std::ifstream existing(csvName);
+            std::string firstLine;
+            std::getline(existing, firstLine);
+            while (!firstLine.empty()
+                && (firstLine.back() == '\r' || firstLine.back() == '\n'))
+            {
+                firstLine.pop_back();
+            }
+            if (firstLine != csvHeader())
+            {
+                FatalErrorInFunction
+                    << "Existing " << csvName << " was written with a different"
+                    << " column schema and is being appended to." << nl
+                    << "  found  : " << firstLine.c_str() << nl
+                    << "  expect : " << csvHeader().c_str() << nl
+                    << "Appending would misalign every column read by name."
+                    << " Delete the file (or re-run the case from a clean"
+                    << " directory) and start again."
+                    << exit(FatalError);
+            }
+        }
     }
     write();
+}
+
+
+const std::string&
+Foam::functionObjects::gradPsiErrorCSV::csvHeader()
+{
+    // ONE definition of the column schema: it is both written and, for an
+    // existing file, checked against. Keep in step with write() below.
+    //
+    // *_MAG_GRAD_PSI are |grad psi| itself, not the error. MIN_MAG_GRAD_PSI is a
+    // conditioning diagnostic: the interface position error scales like
+    // err_psi / |grad psi|, so a FLATTENING level set (min |grad psi| -> 0 near
+    // the interface) amplifies psi noise into O(1) position noise.
+    //
+    // NARROW_*_R are the interfacial normal strain a = n . grad(U) . n,
+    // registered as `R` by the SDPLS source. The `beta` variant relaxes the
+    // interfacial gradient toward g* = beta - a, a target set by the FLOW and
+    // not by the mesh, so it cannot converge under refinement. Reporting the
+    // band statistics of R next to those of |grad psi| turns that from an
+    // inference into a per-step measurement. NaN when no SDPLS source is active.
+    static const std::string header =
+        "TIME,"
+        "MAX_DELTA_X,"
+        "MEAN_DELTA_X,"
+        "E_MAX_GRAD_PSI,"
+        "E_MEAN_GRAD_PSI,"
+        "E_NARROW_MAX_GRAD_PSI,"
+        "E_NARROW_MEAN_GRAD_PSI,"
+        "E_L1_GRAD_PSI,"
+        "E_L2_GRAD_PSI,"
+        "E_NARROW_L1_GRAD_PSI,"
+        "E_NARROW_L2_GRAD_PSI,"
+        "MAX_MAG_GRAD_PSI,"
+        "MEAN_MAG_GRAD_PSI,"
+        "NARROW_MAX_MAG_GRAD_PSI,"
+        "NARROW_MEAN_MAG_GRAD_PSI,"
+        "MIN_MAG_GRAD_PSI,"
+        "NARROW_MIN_MAG_GRAD_PSI,"
+        "NARROW_MIN_R,"
+        "NARROW_MEAN_R,"
+        "NARROW_MAX_R";
+    return header;
 }
 
 bool Foam::functionObjects::gradPsiErrorCSV::write()

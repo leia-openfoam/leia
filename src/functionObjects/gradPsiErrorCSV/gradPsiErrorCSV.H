@@ -125,6 +125,12 @@ class gradPsiErrorCSV
     // const volVectorField& gradPsi_;
     OFstream csvFile_;
 
+    //- The CSV column schema, without the trailing newline. Single definition:
+    //  written for a new file, and compared against the first line of an
+    //  existing one so a file from an older build cannot be appended to with a
+    //  different number of fields.
+    static const std::string& csvHeader();
+
 public:
 
     //- Runtime type information

@@ -379,6 +379,19 @@ rule report:
         if SOLVER != "leiaTestMeanCurvature":
             for _csv in _glob.glob(os.path.join(STUDY_DIR, f"{STUDY}_errors.csv")):
                 _shutil.copy(_csv, TABLES_DIR)
+        # 1b. The SDPLS convergence + order tables are a DATA product that
+        # docs/sdpls-level-set/.../sdplsLevelSet.tex \input{}s, not a slide, so
+        # they must not sit behind `export_slides` -- 89 of 117 study configs set
+        # that to false (it means "this is a secondary study, do not publish its
+        # figures"), which is exactly why phase 2 had to build these tables by
+        # hand and why `make studies-sdpls` did not reproduce them.
+        # make_convergence_table.py refuses to overwrite the published tables
+        # from an incomplete study set, so running it after every SDPLS study is
+        # safe: it is a no-op until the whole suite is on disk.
+        if THEME in ("sdpls-level-set", "method-comparison") \
+                and SOLVER != "leiaTestMeanCurvature":
+            _sp.run(["python3", os.path.join(_scripts, "make_convergence_table.py"),
+                     "--method", "sdpls"], check=False)
         # The two semi-Lagrangian METHOD LINES are independent methods sharing the
         # kinematic figure scripts: each line has its own theme, study set and
         # figure prefix (sl_* / lsl_*), selected via --method / --theme.
@@ -450,19 +463,23 @@ rule report:
                 else:
                     # method-decision benchmark: cross-study comparison panels,
                     # cost-vs-accuracy, decision table + per-method field atlases.
-                    _sp.run(["python3", os.path.join(_scripts, "make_method_comparison.py")],
-                            check=False)
-                    _sp.run(["python3", os.path.join(_scripts, "make_bench_fields_fig.py")],
-                            check=False)
-                    # SDPLS convergence + order tables. Every study of the
-                    # `sdpls` suite sits in one of these two themes
-                    # (benchVortexEulerT* are method-comparison), so regenerate
-                    # them here instead of by hand: in phase 2 this was a manual
-                    # step, which meant `make studies-sdpls` did NOT reproduce
-                    # the tables the article \input{}s. Reads each study's
-                    # *_errors.csv and skips whichever are not present yet.
-                    _sp.run(["python3", os.path.join(_scripts, "make_convergence_table.py"),
-                             "--method", "sdpls"], check=False)
+                    # make_method_comparison.py globs the benchVortex* studies
+                    # and publishes into the method-comparison theme, so it must
+                    # NOT be driven from an sdpls-level-set study -- that would
+                    # rewrite another theme's figures from whatever subset of
+                    # benchVortex* happens to be on this machine.
+                    if THEME == "method-comparison":
+                        _sp.run(["python3", os.path.join(_scripts, "make_method_comparison.py")],
+                                check=False)
+                    # Same scoping rule for the field atlases: pass the study
+                    # glob for THIS theme so an sdpls run cannot rewrite the
+                    # method-comparison atlases (and vice versa) from a partial
+                    # set of the other theme's studies.
+                    _atlas_glob = os.path.join(
+                        STUDIES_DIR,
+                        "sdplsBetaSweep" if THEME == "sdpls-level-set" else "benchVortex*")
+                    _sp.run(["python3", os.path.join(_scripts, "make_bench_fields_fig.py"),
+                             _atlas_glob], check=False)
                     # 3D SDPLS studies had NO field figure at all. One psi=0
                     # iso-surface montage per method arm, so the 3D interface is
                     # inspectable the way the 2D atlases make the 2D one.

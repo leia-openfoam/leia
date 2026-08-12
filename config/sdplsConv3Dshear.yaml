@@ -71,7 +71,12 @@ axes_override:
   #  in its template, unlike 3Ddeformation.)
 collapse_other_axes: true
 
-export_slides: false
+# Publish: this is a PRIMARY study of the sdpls theme. `export_slides:
+# false` gates the whole theme-figures block (89 of 117 configs set it,
+# meaning "secondary study, do not publish"), which is why the sdpls
+# figures directory was empty. The theme's figures are ours alone, so
+# nothing of another method line can be overwritten.
+export_slides: true
 
 mpi_launcher: "mpirun -np {np}"
 env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

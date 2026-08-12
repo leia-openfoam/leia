@@ -188,6 +188,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--method", choices=sorted(METHODS), default="quadratic",
                     help="semi-Lagrangian method line (default: quadratic)")
+    ap.add_argument("--allow-partial", action="store_true",
+                    help="publish even when studies are missing or an arm fits "
+                         "no order at all (overwrites the durable docs/ record)")
     args = ap.parse_args(argv)
     m = METHODS[args.method]
     outdir, prefix = paths.tables_dir(m["theme"]), m["prefix"]
@@ -198,10 +201,12 @@ def main(argv=None):
     arm_col = (groupby != "reconstruction")
 
     conv_rows, order_rows = [], []
+    missing = []
     for study, case, mesh in m["studies"]:
         path = os.path.join(REPO, "studies", study, f"{study}_errors.csv")
         if not os.path.isfile(path):
             print(f"[convtable] no {path}; skip {case}/{mesh}")
+            missing.append(study)
             continue
         rows = _rows(path)
         # per (reconstruction, cfl) group + its stable prefix
@@ -215,6 +220,7 @@ def main(argv=None):
             key = (r.get(groupby, ""), r.get("cfl", ""))
             stable_h = stable.get(key, (set(), None))[0]
             out = {"case": case, "mesh": mesh,
+                   "study": study,
                    "arm": r.get(groupby, ""),
                    "reconstruction": r.get("reconstruction", ""),
                    "cfl": r.get("cfl", ""),
@@ -236,6 +242,16 @@ def main(argv=None):
                    # T=2 and T=8 reversed-vortex studies share case AND mesh, so
                    # without this the reader cannot tell them apart.
                    "T": (grp[0].get("T", "") if grp else ""),
+                   # ...and T is NOT enough once two studies run the same arm on
+                   # the same case at the same T. sdplsBetaSweep's beta = 1.0
+                   # rung is deliberately identical in configuration to
+                   # benchVortexEulerT2's beta/simpleImp arm (it is the
+                   # cross-check), and method_label suppresses the default beta,
+                   # so both label identically. Their ladders differ (5 rungs to
+                   # N=512 vs 7 rungs to N=256), hence so do their fitted
+                   # orders, and the published table would have shown two rows
+                   # with the same visible key and different numbers.
+                   "study": study,
                    "reconstruction": rec, "cfl": cfl,
                    "nLevels": len(grp), "stableLevels": len(sgrp),
                    "hMin": f"{min(hs):.6g}" if hs else "",
@@ -252,6 +268,32 @@ def main(argv=None):
     if not conv_rows:
         print(f"[convtable] no {args.method} studies found; nothing written")
         return 1
+
+    # PUBLISHED-TABLE GUARD. These outputs live under docs/**/data and ARE the
+    # durable record: the article and deck build from them without re-running
+    # anything. Regenerating them from a partial `studies/` tree silently
+    # replaces good published orders with rows of "--" -- measured, not
+    # hypothetical: a local run with an incomplete LSL study set rewrote a
+    # 7-level 2D vortex row as `1$^\dagger$ & -- & -- & --`. Refuse unless the
+    # whole configured study set is present, or the caller says it means it.
+    if missing and not args.allow_partial:
+        print(f"[convtable] REFUSING to overwrite the published {args.method} "
+              f"tables: {len(missing)} of {len(m['studies'])} studies are "
+              f"absent from studies/ ({', '.join(missing)}).")
+        print("[convtable] These files are the durable record that docs/ builds "
+              "from. Pull the missing studies (make pull-study STUDY=<name>) or "
+              "re-run them, then retry. Pass --allow-partial to override.")
+        return 2
+    # Even with a complete set, never publish an arm whose fit collapsed to
+    # nothing -- that is the same failure wearing a different hat.
+    empty_arms = [r for r in order_rows
+                  if all(not r.get(oc) for _c, oc, _l in METRICS)]
+    if empty_arms and not args.allow_partial:
+        print(f"[convtable] REFUSING: {len(empty_arms)} arm(s) fitted NO order "
+              f"at all (e.g. {empty_arms[0].get('study','?')} / "
+              f"{empty_arms[0].get('arm','?')} at CFL {empty_arms[0].get('cfl','?')}) "
+              f"-- the study data is incomplete. Pass --allow-partial to override.")
+        return 2
 
     os.makedirs(outdir, exist_ok=True)
     conv_path = os.path.join(outdir, f"{prefix}_convergence.csv")
@@ -294,7 +336,14 @@ def main(argv=None):
     # published artifacts of other method lines and must stay byte-identical.
     t_hdr = "$T$ & " if arm_col else ""
     t_spec = "c" if arm_col else ""
-    note = ("\\multicolumn{%d}{l}{\\footnotesize $^\\dagger$stable envelope only; " % (7 + int(arm_col))
+    # Study column, same reasoning as T and under the same arm_col guard: two
+    # studies can contribute the SAME arm at the same case/mesh/T/CFL (the
+    # sdplsBetaSweep beta = 1.0 cross-check against benchVortexEulerT2), and
+    # without this the two rows are visually identical while their fitted orders
+    # differ because their ladders do.
+    s_hdr = "Study & " if arm_col else ""
+    s_spec = "l" if arm_col else ""
+    note = ("\\multicolumn{%d}{l}{\\footnotesize $^\\dagger$stable envelope only; " % (7 + 2*int(arm_col))
             + "finer resolutions destabilized (excluded from the fit).}\\\\\n"
             if any_limit else "")
 
@@ -302,13 +351,14 @@ def main(argv=None):
     tex_path = os.path.join(outdir, "convergence_orders.tex")
     with open(tex_path, "w") as fh:
         fh.write("% Auto-generated by workflow/scripts/make_convergence_table.py -- do not edit.\n")
-        fh.write("\\begin{tabular}{ll" + arm_spec + t_spec + "ccccc}\n\\toprule\n")
-        fh.write("Case & Mesh & " + arm_hdr + t_hdr + "CFL & Levels & shape & volume & "
+        fh.write("\\begin{tabular}{ll" + arm_spec + s_spec + t_spec + "ccccc}\n\\toprule\n")
+        fh.write("Case & Mesh & " + arm_hdr + s_hdr + t_hdr + "CFL & Levels & shape & volume & "
                  "$\\bigl\\|\\,|\\nabla\\psi|-1\\bigr\\|$ \\\\\n\\midrule\n")
         for r in order_rows:
             fh.write(" & ".join([
                 pretty.get(r["case"], r["case"]), r["mesh"]]
                 + ([method_label.latex_escape(_arm(r["arm"]))] if arm_col else [])
+                + ([method_label.latex_escape(r.get("study", ""))] if arm_col else [])
                 + ([str(r.get("T", ""))] if arm_col else [])
                 + [str(r["cfl"]),
                 _levels(r),
@@ -319,20 +369,21 @@ def main(argv=None):
     print(f"[convtable] wrote {tex_path}")
 
     # 2. extended table: ALL convergent metrics incl. band + half-time variants
-    ncol = 3 + 2*int(arm_col) + len(METRICS)
+    ncol = 3 + 3*int(arm_col) + len(METRICS)
     ext_note = ("\\multicolumn{%d}{l}{\\footnotesize $^\\dagger$orders over the stable "
                 "envelope only; finer resolutions destabilized.}\\\\\n" % ncol) if any_limit else ""
     ext_path = os.path.join(outdir, "convergence_orders_extended.tex")
     with open(ext_path, "w") as fh:
         fh.write("% Auto-generated by workflow/scripts/make_convergence_table.py -- do not edit.\n")
-        fh.write("\\begin{tabular}{ll" + arm_spec + t_spec + "c" + "c" * len(METRICS) + "}\n\\toprule\n")
-        fh.write("Case & Mesh & " + arm_hdr + t_hdr + "CFL & "
+        fh.write("\\begin{tabular}{ll" + arm_spec + s_spec + t_spec + "c" + "c" * len(METRICS) + "}\n\\toprule\n")
+        fh.write("Case & Mesh & " + arm_hdr + s_hdr + t_hdr + "CFL & "
                  + " & ".join(lbl for _c, _o, lbl in METRICS) + " \\\\\n\\midrule\n")
         for r in order_rows:
             mesh_cell = r["mesh"] + ("$^\\dagger$" if r.get("hLimit") else "")
             fh.write(" & ".join(
                 [pretty.get(r["case"], r["case"]), mesh_cell]
                 + ([method_label.latex_escape(_arm(r["arm"]))] if arm_col else [])
+                + ([method_label.latex_escape(r.get("study", ""))] if arm_col else [])
                 + ([str(r.get("T", ""))] if arm_col else [])
                 + [str(r["cfl"])]
                 + [(r[oc] or "--") for _c, oc, _lbl in METRICS]) + " \\\\\n")
