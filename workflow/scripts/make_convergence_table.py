@@ -86,12 +86,14 @@ METHODS = {
         "prefix": "sdpls",
         "groupby": "method",
         "studies": [
-            # benchVortexEulerT2 / benchVortexEulerT8 are DELIBERATELY ABSENT.
-            # They are reversed (oscillating) runs, and a reversed t=T error is
-            # not an accuracy measurement -- see _drop_reversed() below. They
-            # stay on disk as evidence of the artifact itself; they contribute
-            # no published order.
-            #
+            # The reversed (oscillating) vortex. It is the ONLY configuration
+            # that can supply a shape error: that error is measured against the
+            # initial condition, which is the right answer at t=T only if the
+            # flow returns the interface there. It contributes shape, volume and
+            # the t=T/2 gradient orders; its t=T gradient metrics are suppressed
+            # by _blank_reversed_metrics(). See REVERSED_INVALID.
+            ("benchVortexEulerT2",     "2Dvortex",      "hex"),
+            ("benchVortexEulerT8",     "2Dvortex",      "hex"),
             # The beta-target sweep. Its arms are separable here ONLY because
             # method_label._beta() renders an off-default beta into the label --
             # without that they collapse to one series per h and the
@@ -168,11 +170,47 @@ def _rows(path):
 # error at t=T is defined against the initial condition, and there is no t=T
 # shape reference without the return leg -- so voiding those published tables is
 # a separate decision from this one, and not one to take silently.
-def _drop_reversed(rows):
-    """Split rows into (publishable, excluded-because-reversed)."""
-    rev = [r for r in rows if (r.get("oscillation") or "").strip() == "on"]
-    keep = [r for r in rows if (r.get("oscillation") or "").strip() != "on"]
-    return keep, rev
+# The cancellation corrupts ONE COLUMN, not the whole run. Which columns:
+#
+#   t = T/2  maximal ACCUMULATED deformation. The velocity factor cos(pi t/tau)
+#            is positive throughout the first half, so \int_0^{T/2} a dt is at
+#            its MAXIMUM here -- nothing has cancelled. Gradient and volume
+#            error are both honest measurements. (The instantaneous strain a is
+#            ~0 at this instant, because the flow is momentarily at rest as it
+#            turns around; that makes T/2 the wrong place to read `a` itself for
+#            the beta-target test, which is a separate matter from reading an
+#            accumulated error here.)
+#   t = T    the interface has returned to its starting position. Shape error is
+#            DEFINED only here, and volume conservation is still a valid check.
+#            But the accumulated stretching has integrated to zero, so the t=T
+#            GRADIENT error compares a source's residual against an
+#            exactly-cancelling control and inverts the ranking.
+#
+# Verified by control: on the 2D vortex the reversed t=T/2 orders (R +1.228,
+# no source -0.094, beta +0.087) agree in sign and ranking with the SAME case
+# run non-reversing to t=T (+0.74, -0.26, -0.04), while the reversed t=T
+# gradient column disagrees with both (no source +2.63, winning). The corruption
+# is isolated to the t=T gradient metrics, so only those are suppressed.
+REVERSED_INVALID = ("gradientError", "gradientErrorBand")
+
+
+def _blank_reversed_metrics(rows):
+    """Blank the t=T gradient metrics on reversed rows; keep everything else.
+
+    Returns (rows, n_blanked). Rows are copied, so the caller's data is intact.
+    """
+    out, n = [], 0
+    for r in rows:
+        if (r.get("oscillation") or "").strip() == "on":
+            r = dict(r)
+            hit = False
+            for col in REVERSED_INVALID:
+                if (r.get(col) or "").strip():
+                    r[col] = ""
+                    hit = True
+            n += bool(hit)
+        out.append(r)
+    return out, n
 
 
 # STALE-LADDER DETECTION.
@@ -379,14 +417,11 @@ def main(argv=None):
         foreign = _ladder_complaints(study, rows)
         if foreign:
             stale.append((study, foreign))
-        rows, reversed_rows = _drop_reversed(rows)
-        if reversed_rows:
-            print(f"[convtable] {study}: EXCLUDED {len(reversed_rows)} reversed "
-                  f"(oscillation=on) row(s) -- a reversed t=T error is a "
-                  f"time-reversal symmetry check, not an accuracy measurement")
-        if not rows:
-            print(f"[convtable] {study}: every row was reversed; no order fitted")
-            continue
+        rows, n_rev = _blank_reversed_metrics(rows)
+        if n_rev:
+            print(f"[convtable] {study}: reversed (oscillation=on) -- suppressed "
+                  f"the t=T gradient metrics {REVERSED_INVALID} on {n_rev} row(s); "
+                  f"shape, volume and the t=T/2 metrics are kept")
         rows, n_dup, dup_conflicts = _collapse_duplicates(rows, groupby)
         if n_dup:
             print(f"[convtable] {study}: collapsed {n_dup} exactly-duplicated "

@@ -193,16 +193,27 @@ deformation, each on a uniform refinement ladder at $\mathrm{CFL} = 0.5$, with
 linearizations. The reversal is switched off deliberately, and the reason is
 the subject of the next paragraph.
 
-\paragraph{Why the reversed benchmark was retired.}
+\paragraph{Which instant measures what.}
 \label{par:reversal}
 On a reversed flow the velocity carries a $\cos(\pi t/\tau)$ factor, so
-$\int_0^T a\,\mathrm dt = 0$ along every interfacial trajectory. At $t=T$ a
+$\int_0^T a\,\mathrm dt = 0$ along every interfacial trajectory. That
+cancellation corrupts one column, and it is worth being precise about which,
+because the reversal is also the only thing that makes a shape error definable.
+
+At $t=T/2$ the factor has been positive throughout, so $\int_0^{T/2} a\,\mathrm dt$
+is at its \emph{maximum}: the interface is maximally deformed and nothing has
+cancelled. Gradient and volume error are both honest measurements there. At
+$t=T$ the interface has returned to its starting position, which is what makes
+the shape error --- measured against the initial condition --- meaningful at
+all; volume conservation remains a valid check. But the $t=T$ \emph{gradient}
+error compares a source's residual against an exactly-cancelling control: a
 passively advected level set is carried back to its initial signed-distance
 state, while \emph{any} source does work on $\psilev$ along the trajectory that
-the return leg does not undo. The $t=T$ column therefore compares a residual
-against an exactly-cancelling control, and rewards whichever scheme accumulated
-the most \emph{recoverable} error. This is not a small distortion. On the 2D
-vortex at $T=2$, band gradient error at $t=T$ with the reversal on:
+the return leg does not undo. That column rewards whichever scheme accumulated
+the most \emph{recoverable} error, and it is not reported in this work.
+
+The distortion is not small. On the 2D vortex at $T=2$, band gradient error at
+$t=T$:
 \begin{center}
 \begin{tabular}{lcccccr}
 \toprule
@@ -217,11 +228,28 @@ no source     & 0.122 & 0.072 & 0.012 & 0.0013 & \textbf{0.0001} & $+2.63$ \\
 Read at face value this says the baseline is $477\times$ more accurate than
 \textbf{R} and that no source term is warranted. Removing the reversal and
 changing nothing else inverts it: the baseline's order goes $+2.63 \to -0.26$
-while \textbf{R}'s is unchanged at $+0.74$. A reversed flow read at $t=T$
-cannot answer the question this method exists to answer, so no convergence
-order in this work is fitted to one. The reversed runs are retained only as the
-evidence in this paragraph and as the field atlases of
-Section~\ref{sec:atlas}.
+while \textbf{R}'s is unchanged at $+0.74$.
+
+That non-reversing run is retained as a \emph{control}, and it establishes that
+the corruption is confined to the $t=T$ gradient column rather than
+contaminating the reversed run as a whole. Compare the reversed $t=T/2$ orders
+against the same case run non-reversing to $t=T$:
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+band gradient order & reversed, $t=T/2$ & non-reversing, $t=T$ \\
+\midrule
+\textbf{R}    & $+1.228$ & $+0.74$ \\
+no source     & $-0.094$ & $-0.26$ \\
+\texttt{beta} & $+0.087$ & $-0.04$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Two independent configurations, agreeing in sign and in ranking on all three
+arms, against a reversed $t=T$ column that disagrees with both. The measurement
+protocol follows: the gradient error is read at $t=T/2$, the shape error at
+$t=T$, and volume conservation at both. The $t=T$ gradient error is suppressed
+in the generated tables rather than left to the reader's judgement.
 
 \paragraph{The measurement.}
 On the non-reversing 2D vortex, $T=2$, over a seven-rung ladder
@@ -258,11 +286,16 @@ $N \ge 64$: at $N=32$ the sourceless baseline itself loses $24.5\%$ of the
 phase volume, and a run that has lost a quarter of its volume is not a
 convergence data point whatever its gradient error reads.
 
-Geometric (shape) error is \emph{not} reported at $t=T$ on these flows, and
-cannot be: it is defined against the initial condition, which is the correct
-answer at $t=T$ only if the flow returns the interface to where it started.
-That is a real cost of retiring the reversal, and volume error carries the
-interface-integrity check in its place.
+Geometric (shape) error is \emph{not} reportable on this non-reversing control:
+it is defined against the initial condition, which is the correct answer at
+$t=T$ only if the flow returns the interface there. That is precisely why the
+reversed configuration is retained for the shape measurement rather than
+discarded --- the two configurations answer different questions, and the
+protocol above assigns each metric to the instant at which it is defined.
+Shape error at $t=T$ does benefit from the return leg, in the same way the
+gradient error does; it is reported as the conventional benchmark it is, and
+the signed-distance claim of this work rests on the $t=T/2$ column and on the
+non-reversing control, neither of which does.
 
 The full per-arm order table, including the $t=T$ columns and both
 linearizations, is generated from the curated data:

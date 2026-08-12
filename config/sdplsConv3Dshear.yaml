@@ -69,22 +69,33 @@ axes_override:
   # check-discretization` reads the RENDERED fvSchemes and is the gate.
   # (3Dshear hardcodes narrowBand type signChange; there is no NARROWBAND token
   #  in its template, unlike 3Ddeformation.)
-  # NON-REVERSING STRESS TEST. With `oscillation on` the flow reverses and
-  # int a dt = 0 over the period, so at t=T the sourceless drift cancels by
-  # time-reversal symmetry -- measured: the baseline beats R by 477x there,
-  # purely because the exact solution at t=T is "undo everything". A reversed
-  # flow read at t=T rewards inaction and cannot justify a source term. Off, the
-  # vortex is steady: strain is sustained, nothing cancels, and t=T is a real
-  # measurement of whether the source holds the signed-distance property.
-  # NOTE: shape error is NOT meaningful here -- E_GEOM_ALPHA compares against the
-  # INITIAL alpha, and the interface never returns. aggregate.py blanks it in the
-  # curated table for oscillation=off rows and records `oscillation` alongside.
-  # Volume error (conservation) and the gradient error (intrinsic) stay valid.
-  # QUOTED: YAML 1.1 parses bare `off` as the boolean false, which
-  # materialize stringifies as "False" -- and OpenFOAM's Switch rejects it
+  # REVERSED, AND READ AT TWO INSTANTS. The cancellation that makes a reversed
+  # flow untrustworthy corrupts exactly ONE column, not the whole run:
+  #
+  #   t = T/2  maximal ACCUMULATED deformation. cos(pi t/tau) is positive
+  #            throughout the first half, so int_0^{T/2} a dt is at its MAXIMUM
+  #            and nothing has cancelled. Gradient AND volume error are honest
+  #            here. (The instantaneous strain a is ~0 at this instant because
+  #            the flow is turning around -- that makes T/2 the wrong place to
+  #            read `a` itself, which is a different question.)
+  #   t = T    the interface has returned to its start, so the SHAPE error is
+  #            defined -- this is the only configuration that can supply one,
+  #            since E_GEOM_ALPHA compares against the INITIAL alpha. Volume
+  #            conservation is still valid. The t=T GRADIENT error is NOT: it
+  #            cancels by time-reversal symmetry and the sourceless baseline
+  #            beats R by 477x purely because "undo everything" is the exact
+  #            answer. make_convergence_table.py suppresses that column on
+  #            oscillation=on rows (REVERSED_INVALID) and keeps the rest.
+  #
+  # Verified by control: the reversed t=T/2 orders agree in sign and ranking
+  # with the same case run NON-REVERSING to t=T (R +1.228 vs +0.74, no source
+  # -0.094 vs -0.26, beta +0.087 vs -0.04), while the reversed t=T gradient
+  # column disagrees with both. sdplsConv2Dvortex is kept as that control.
+  # QUOTED: YAML 1.1 parses bare `on`/`off` as booleans, which materialize
+  # stringifies as "True"/"False" -- and OpenFOAM's Switch rejects those
   # ("Expected true/false, on/off... found False"). Every existing config
   # quotes these for the same reason (REPORT_WRITE_ONLY: ["true"]).
-  OSCILLATION: ["off"]
+  OSCILLATION: ["on"]
 collapse_other_axes: true
 
 # Publish: this is a PRIMARY study of the sdpls theme. `export_slides:

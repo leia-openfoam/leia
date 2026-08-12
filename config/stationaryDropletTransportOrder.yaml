@@ -1,0 +1,79 @@
+# TRANSPORT-ORDER arm: does the ORDER OF THE psi TRANSPORT set the t_blow
+# exponent of the parasitic-current instability?
+#
+# WHY (the measured asymmetry that motivates this arm).
+# docs/semi-lagrangian-level-set/sl-level-set-article/data/tables/
+# sl_convergence_orders.csv, 2Dvortex hex, uncachedQuadraticWeightedLeastSquares,
+# CFL 0.5:
+#
+#     shapeOrder            2.965      <- THIRD order in the zero set
+#     volumeOrder           2.978      <- THIRD order in the enclosed volume
+#     gradientOrder         0.527
+#     gradientHalfOrder    -0.029      <- ZERO order in the foliation
+#     gradientBandHalfOrder -0.065     <- ZERO order in the band
+#
+# (3Dshear hex: shape 2.955 / volume 2.922 / gradientHalf -0.048; 3Ddeformation
+# hex: gradientBandHalf -0.734, i.e. the foliation error GROWS with refinement.)
+#
+# The balanced-CSF force reads kappa_f = f(grad psi, grad grad psi) -- only the
+# foliation, never the zero set. So the scheme is third order in a quantity the
+# coupling does not consume and ZERO order in the quantity it entirely depends
+# on. With |grad psi| error h-INDEPENDENT and its grid-scale variation at
+# wavelength ~h, the non-parallelism P grad(ln beta) ~ delta_beta/h and the
+# curvature error ~ delta_beta/h: it GROWS as h -> 0. Parasitic velocity scales
+# with the curvature error, so t_blow ~ N^-1.
+#
+# RETRODICTION (plan-curvature-stabilization.md sec. 13, WP7 refit): the measured
+# exponents are p = -0.94 (per-face) and -1.09 (cell-mean) -- both bracketing the
+# predicted -1. Every arm blows up EARLIER under refinement, as this predicts.
+#
+# WHAT THIS ARM TESTS. The quadratic SL reconstruction is essentially
+# non-dissipative, so grid-scale foliation noise is neither removed by the
+# transport nor reduced by refinement. The linear fit is dissipative at the grid
+# scale. If the noise-retention of the high-order transport is what feeds the
+# instability, the linear arm must have a BENIGN exponent (p -> 0 or positive)
+# while losing the third-order zero set (shape/volume order -> ~1).
+#
+#   PREDICTION, recorded BEFORE the run:
+#     linearWeightedLeastSquares      -> t_blow rises with N, or no blow-up to
+#                                        END_TIME; volume/shape error much worse
+#     uncachedQuadraticWeightedLeastSquares (control) -> p ~ -1, reproducing
+#                                        the committed stationaryDropletStableFoot
+#                                        t_blow ladder
+#
+#   FALSIFIED IF the linear arm also blows up with p ~ -1: then the driver is not
+#   transport noise-retention but the curvature operator's 1/h amplification of
+#   whatever foliation error is present, and no choice of transport order helps.
+#
+# REPORTING (memory: always volume AND shape, never a single headline metric):
+# per-step maxMagU + minGradPsiBand from the solver CSV give t_blow; shapeError
+# and volumeError give the price paid. Both go in the result table.
+#
+# Delivery is held FIXED at the winning stabilizedFootPointFace + registered
+# face source, so the only thing varying is the transport order.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletTransportOrder.yaml
+study_name: stationaryDropletTransportOrder
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128]                  # 256 -> Lichtenberg (np 8), once 64/128 rank
+  SL_RECONSTRUCTION:
+    - linearWeightedLeastSquares
+    - uncachedQuadraticWeightedLeastSquares
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+collapse_other_axes: true
+
+# Diagnostic gate: leave the committed droplet_parasitic tables alone.
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

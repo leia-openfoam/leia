@@ -244,9 +244,9 @@
 </section>
 
 <section>
-  <h3 class="warn">Retracted: the reversed benchmark, and why</h3>
-  <p class="tight">The same case with <code>oscillation on</code> reported the
-     <em>opposite</em> ranking at <em>t</em>&nbsp;=&nbsp;<em>T</em>:</p>
+  <h3 class="warn">Which instant measures what</h3>
+  <p class="tight">The cancellation corrupts <b>one column</b>, not the whole run.
+     The same case with <code>oscillation on</code>, at <em>t</em>&nbsp;=&nbsp;<em>T</em>:</p>
   <table style="font-size:0.82em; margin:0 auto">
     <tr><th style="text-align:left">reversed, at <em>t</em>&nbsp;=&nbsp;<em>T</em></th>
         <th>32</th><th>64</th><th>128</th><th>256</th><th>512</th><th>order</th></tr>
@@ -267,13 +267,28 @@
     <b>The reversal rewards inaction</b>, and it rewards it most where the most recoverable
     error was accumulated.
   </p>
-  <p class="tight" style="font-size:0.82em; border-left:3px solid var(--ls-warn); padding-left:0.6em">
+  <p class="tight" style="font-size:0.82em">
     Same case, same solver, same ladder &mdash; only the reversal removed &mdash; and the
-    ranking inverts: <code>+2.63 &rarr; &minus;0.26</code> for the baseline,
-    <code>+0.70 &rarr; +0.74</code> for <code>R</code>. The reversed benchmark is
-    structurally incapable of showing what a signed-distance source term is for, so it
-    supplies no accuracy number here. It is retained only as the evidence above.
-    <b>All SDPLS studies now run <code>oscillation off</code>.</b>
+    ranking inverts: <code>+2.63 &rarr; &minus;0.26</code> for the baseline.
+    But the corruption is <b>confined to this column</b>, and the non-reversing run proves it.
+    Band gradient order, two independent configurations:
+  </p>
+  <table style="font-size:0.84em; margin:0 auto">
+    <tr><th style="text-align:left"></th><th>reversed, <em>t</em>&nbsp;=&nbsp;<em>T</em>/2</th>
+        <th>non-reversing, <em>t</em>&nbsp;=&nbsp;<em>T</em></th></tr>
+    <tr><td><code>R</code></td><td class="good">+1.228</td><td class="good">+0.74</td></tr>
+    <tr><td>no source</td><td class="warn">&minus;0.094</td><td class="warn">&minus;0.26</td></tr>
+    <tr><td><code>beta</code></td><td>+0.087</td><td>&minus;0.04</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.82em; border-left:3px solid var(--ls-good); padding-left:0.6em">
+    Agreement in sign and ranking on all three arms &mdash; against a reversed
+    <em>t</em>&nbsp;=&nbsp;<em>T</em> column that disagrees with both. At
+    <em>t</em>&nbsp;=&nbsp;<em>T</em>/2 the factor cos(&pi;<em>t</em>/&tau;) has been positive
+    throughout, so &int;<em>a</em>&nbsp;d<em>t</em> is at its <b>maximum</b> and nothing has
+    cancelled. <b>The protocol:</b> gradient error at <em>T</em>/2, shape error at <em>T</em>
+    (the only instant it is defined &mdash; the interface has returned), volume conservation
+    at both. The <em>t</em>&nbsp;=&nbsp;<em>T</em> gradient column is suppressed in the
+    generated tables, not left to the reader.
   </p>
 </section>
 </section>
