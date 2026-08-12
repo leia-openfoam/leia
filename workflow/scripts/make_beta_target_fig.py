@@ -28,6 +28,24 @@ and one direct check that needs no inference at all:
         a number we can subtract from the measured `meanGradPsiBand`. If the
         mechanism is right, that residual is small and does not grow with beta.
 
+and one consequence that is sharper than any of them:
+
+  (v)   UNREACHABLE TARGET. Taking the gradient of the transport equation and
+        evaluating at psi = 0 gives, for g = |grad psi| and a = n.grad(U).n,
+
+            D g / Dt = g (f_nl - a)
+
+        so `R` (f_nl = a) cancels stretching EXACTLY -- its error is purely
+        numerical, which is why it converges -- while `beta` (f_nl = beta - g)
+        has the fixed point g* = beta - a. Wherever a > beta that fixed point is
+        NEGATIVE and a magnitude cannot reach it, so g is driven toward ZERO:
+        the level set FLATTENS exactly where the flow stretches hardest. The
+        band strain measured on this benchmark spans roughly +-2.9 against
+        beta = 1, so this is not a corner case. maxStrainBand > beta is a direct
+        test, and it predicts that the damage concentrates at t = T/2 and shows
+        up in the band MINIMUM -- which is what the min collapsing to ~0.42
+        while the mean sits near 0.84 already looks like.
+
 Falsification is a real outcome and is reported as such: if the error is
 minimised at some intermediate beta, or the slope in (ii) is not ~1, the
 g* = beta - a story is wrong and the script says so.
@@ -62,6 +80,10 @@ CONTROL = "benchVortexEulerT2"
 # sourceless one. See the SDPLS article's "Why T/2".
 MEAN, MINC, MAXC, STRAIN = ("meanGradPsiBandHalf", "minGradPsiBandHalf",
                             "maxGradPsiBandHalf", "meanStrainBandHalf")
+# The largest interfacial stretching anywhere in the band. Where a > beta the
+# fixed point g* = beta - a is negative and a magnitude cannot reach it, so g is
+# driven to zero instead -- test (v).
+STRAIN_MAX = "maxStrainBandHalf"
 
 
 def _f(x):
@@ -102,7 +124,8 @@ def collect():
         mean, lo, hi = _f(r.get(MEAN)), _f(r.get(MINC)), _f(r.get(MAXC))
         if b is None or h is None or mean is None:
             continue
-        out.setdefault(b, []).append((h, mean, lo, hi, _f(r.get(STRAIN))))
+        out.setdefault(b, []).append((h, mean, lo, hi, _f(r.get(STRAIN)),
+                                      _f(r.get(STRAIN_MAX))))
     for b in out:
         out[b].sort(key=lambda t: t[0])
     return out
@@ -142,12 +165,15 @@ def main():
     # ---- (iii) spread, and (iv) the predicted-target residual ---------------
     rows = []
     for b in betas:
-        h, mean, lo, hi, strain = at_fine[b]
+        h, mean, lo, hi, strain, smax = at_fine[b]
         spread = (hi - lo) if (hi is not None and lo is not None) else None
         pred = (b - strain) if strain is not None else None
+        # (v) the target is unreachable wherever a > beta.
+        unreachable = (smax is not None and smax > b)
         rows.append(dict(beta=b, h=h, mean=mean, min=lo, max=hi,
                          spread=spread, strain=strain, predicted=pred,
-                         residual=(mean - pred) if pred is not None else None))
+                         residual=(mean - pred) if pred is not None else None,
+                         maxStrain=smax, targetUnreachable=int(unreachable)))
 
     # ---- (i) h-independence: how much does the mean move over the ladder? ---
     drift = {}
@@ -181,6 +207,19 @@ def main():
     print(f"       control R (no target): drift={ctrl_drift:.4f} over "
           f"{len(ctrl)} resolutions")
     print()
+    print("  (v) unreachable target: max band strain a vs beta. Where a > beta the")
+    print("      fixed point beta - a is NEGATIVE, so |grad psi| is driven to 0")
+    print("      (flattening) instead of to a finite level.")
+    for r in rows:
+        if r["maxStrain"] is None:
+            print(f"       beta={r['beta']:<5.2f} max a = --   (strain not recorded)")
+            continue
+        mark = "UNREACHABLE over part of the band" if r["targetUnreachable"] \
+            else "target reachable everywhere"
+        print(f"       beta={r['beta']:<5.2f} max a={r['maxStrain']:>7.3f}  "
+              f"band min |grad psi|={r['min'] if r['min'] is None else round(r['min'], 4)}"
+              f"   -> {mark}")
+    print()
     # State the verdict, including the falsifying outcome.
     if np.isfinite(slope):
         if abs(slope - 1.0) < 0.2:
@@ -201,7 +240,8 @@ def main():
     with open(csv_path, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=["beta", "h", "mean", "min", "max",
                                            "spread", "strain", "predicted",
-                                           "residual"])
+                                           "residual", "maxStrain",
+                                           "targetUnreachable"])
         w.writeheader()
         for r in rows:
             w.writerow({k: ("" if v is None else v) for k, v in r.items()})
@@ -211,15 +251,17 @@ def main():
     tex = os.path.join(tabs, "sdpls_beta_target.tex")
     with open(tex, "w") as fh:
         fh.write("% generated by workflow/scripts/make_beta_target_fig.py\n")
-        fh.write("\\begin{tabular}{rrrrrr}\n\\toprule\n")
+        fh.write("\\begin{tabular}{rrrrrrrc}\n\\toprule\n")
         fh.write(r"$\beta$ & band mean $|\nabla\psi|$ & spread & "
-                 r"$a$ & $\beta-a$ & residual \\" "\n\\midrule\n")
+                 r"$\bar a$ & $\beta-\bar a$ & residual & $\max a$ & "
+                 r"$g^*<0$ somewhere \\" "\n\\midrule\n")
         for r in rows:
             def c(x):
                 return f"{x:.4f}" if x is not None else "--"
             fh.write(f"{r['beta']:.2f} & {c(r['mean'])} & {c(r['spread'])} & "
                      f"{c(r['strain'])} & {c(r['predicted'])} & "
-                     f"{c(r['residual'])} \\\\\n")
+                     f"{c(r['residual'])} & {c(r['maxStrain'])} & "
+                     f"{'yes' if r['targetUnreachable'] else 'no'} \\\\\n")
         fh.write("\\bottomrule\n\\end{tabular}\n")
     print(f"[beta_target] wrote {tex}")
 
