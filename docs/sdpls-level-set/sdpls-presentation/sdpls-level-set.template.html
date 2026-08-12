@@ -194,6 +194,47 @@
         the GRL negative-results deck; the SDPLS source replaces it with zero interface cost.</li>
   </ul>
 </section>
+
+<section>
+  <h3>Read the right instant &mdash; at <em>t</em>&nbsp;=&nbsp;<em>T</em>, doing nothing wins</h3>
+  <p class="tight">Band gradient error \(\|\,|\nabla\psi|-1\|_{L_2}\), 2D vortex, <em>T</em>&nbsp;=&nbsp;2:</p>
+  <table style="font-size:0.82em; margin:0 auto">
+    <tr><th style="text-align:left">at <em>t</em>&nbsp;=&nbsp;<em>T</em></th>
+        <th>32</th><th>64</th><th>128</th><th>256</th><th>512</th><th>order</th></tr>
+    <tr><td>no source</td><td>0.122</td><td>0.072</td><td>0.012</td><td>0.0013</td>
+        <td><b>0.0001</b></td><td><b>+2.63</b></td></tr>
+    <tr><td><code>R</code></td><td>0.306</td><td>0.258</td><td>0.148</td><td>0.084</td>
+        <td>0.048</td><td>+0.70</td></tr>
+    <tr><td><code>beta</code></td><td>0.275</td><td>0.330</td><td>0.361</td><td>2.805</td>
+        <td>6.897</td><td>&minus;1.24</td></tr>
+    <tr><td colspan="7" style="height:0.5em"></td></tr>
+    <tr><th style="text-align:left">at <em>t</em>&nbsp;=&nbsp;<em>T</em>/2</th>
+        <th>32</th><th>64</th><th>128</th><th>256</th><th>512</th><th></th></tr>
+    <tr><td>no source</td><td>1.222</td><td>1.637</td><td>1.675</td><td>1.673</td>
+        <td>1.672</td><td></td></tr>
+    <tr><td><code>R</code></td><td>0.344</td><td>0.172</td><td>0.096</td><td>0.031</td>
+        <td><b>0.0115</b></td><td></td></tr>
+    <tr><td><code>beta</code></td><td>0.683</td><td>0.596</td><td>0.536</td><td>0.536</td>
+        <td>0.533</td><td></td></tr>
+  </table>
+  <p class="tight" style="font-size:0.82em">
+    At <em>t</em>&nbsp;=&nbsp;<em>T</em> the baseline is <b>477&times;</b> better than
+    <code>R</code>. That is not a defect of <code>R</code>: &int;<em>a</em>&nbsp;d<em>t</em>&nbsp;=&nbsp;0
+    over the period, so a passively advected &psi; is returned to its initial signed-distance
+    state, while <em>any</em> source does work along the trajectory the reversal does not undo.
+    <b>A reversed flow read only at <em>t</em>&nbsp;=&nbsp;<em>T</em> rewards inaction and
+    cannot justify a source term.</b>
+    The case for the source is at <em>T</em>/2 &mdash; <b>145&times;</b>, converging while the
+    baseline stalls &mdash; which is the state a non-reversible flow leaves behind and the state
+    a coupled run reads &psi; in at every step.
+  </p>
+  <p class="tight" style="font-size:0.8em; opacity:0.8">
+    Full trade: <code>R</code> buys 145&times; at maximal deformation, pays with a worse
+    return-to-start and volume error 4.0e&minus;4 vs 2.2e&minus;5 at <em>t</em>&nbsp;=&nbsp;<em>T</em>.
+    Shape error indistinguishable (~1.7e&minus;5) across all three. <code>beta</code> buys
+    nothing at either instant and pays with a divergence.
+  </p>
+</section>
 </section>
 
 <section data-track="The decision benchmark">
