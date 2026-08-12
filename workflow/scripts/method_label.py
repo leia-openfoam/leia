@@ -214,4 +214,14 @@ def method_slug(rec):
         if rd == "PDE" and rec.get("REDIST_FREEZE", "false") == "true":
             rd = "PDEfrozen"
         parts.append(f"RD_{rd}")
+    # OFF-DEFAULT reconstruction gradient only, exactly as _beta() renders only
+    # an off-default beta. sdplsOrderAblation sweeps this, and without it all
+    # four variants of an arm collapse to ONE filename -- make_bench_fields_fig
+    # then picks among genuinely different discretizations by glob order and
+    # labels the atlas for a configuration it is not. Suppressing the default
+    # keeps every pre-ablation filename byte-identical, which matters because
+    # these names are referenced by hand from methodComparison.tex and the decks.
+    resolved = " ".join((rec.get("divPsiGradScheme") or "").split())
+    if resolved and resolved != _DEFAULT_DIV_GRAD_SCHEME:
+        parts.append(_GRAD_TAG.get(resolved, resolved.replace(" ", "-")))
     return re.sub(r"[^A-Za-z0-9_]+", "_", "_".join(parts)).strip("_")

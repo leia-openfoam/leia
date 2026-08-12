@@ -35,6 +35,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from foamlib import FoamCase
 
+import fvschemes  # what the case ACTUALLY ran with (see the collision check)
 import paths
 
 THEME = "method-comparison"
@@ -60,12 +61,20 @@ def _num(x):
         return None
 
 
-def method_of(t):
+def method_of(t, case_dir=None):
     """Filename component. Delegates to the SHARED definition so it can never
     drift from the curated CSV's `method` column again -- this function used to
     ignore SOURCE_SCHEME, so a study sweeping both SDPLS linearizations wrote
-    both arms to the SAME PNG and the second silently overwrote the first."""
-    return method_label.method_slug(t)
+    both arms to the SAME PNG and the second silently overwrote the first.
+
+    The rendered discretization is merged in because the reconstruction gradient
+    is NOT a token -- sdplsOrderAblation sweeps it, and method_slug can only
+    render what it is given. Without this the four ablation variants of an arm
+    share one filename."""
+    rec = dict(t)
+    if case_dir:
+        rec.update(fvschemes.read_discretization(case_dir))
+    return method_label.method_slug(rec)
 
 
 def snapshots(case, T):
@@ -143,19 +152,50 @@ def main():
             if not os.path.isfile(pj):
                 continue
             t = json.load(open(pj))["tokens"]
-            key = (theme, method_of(t), t["END_TIME"])
+            key = (theme, method_of(t, d), t["END_TIME"])
             n = int(t["N_CELLS"])
             prev = groups.setdefault(key, {}).get(n)
             if prev is not None and prev != d:
                 # Two cases share (method, T, N): some axis the key does not
-                # carry (CFL, say) is being swept. Say so -- silently keeping one
-                # would publish an atlas labelled for a configuration it is not.
-                print(f"[bench_fields] COLLISION {key} N={n}: "
-                      f"{os.path.basename(prev)} vs {os.path.basename(d)} -- "
-                      f"keeping the first; the study sweeps an axis the figure "
-                      f"filename does not encode")
+                # carry is being swept. Whether that is harmless depends on
+                # whether the two cases actually DIFFER.
+                #
+                # Harmless: a study crossing SOURCE_SCHEME (the source
+                # LINEARIZATION) with SDPLS_SOURCE=noSource, which has no source
+                # to linearize -- the pair is bit-identical, so either is the
+                # atlas.
+                # NOT harmless: sdplsOrderAblation sweeps the linearUpwind
+                # reconstruction gradient, which method_of() does not encode.
+                # "Keeping the first" there picks one of four DIFFERENT
+                # discretizations by glob order and names the file as though
+                # there were only one -- a mislabelled published figure, and the
+                # warning scrolls past in a log nobody reads at the time.
+                #
+                # Discriminate on the rendered discretization: it is exactly
+                # what separates those cases, and fvschemes already parses it
+                # from the dictionaries the solver read.
+                same = (fvschemes.read_discretization(prev)
+                        == fvschemes.read_discretization(d))
+                if same:
+                    print(f"[bench_fields] duplicate {key} N={n}: "
+                          f"{os.path.basename(prev)} / {os.path.basename(d)} "
+                          f"share a discretization (an inert axis crossed "
+                          f"against this arm); keeping the first")
+                else:
+                    print(f"[bench_fields] COLLISION {key} N={n}: "
+                          f"{os.path.basename(prev)} vs {os.path.basename(d)} "
+                          f"DIFFER in discretization, and the filename does not "
+                          f"encode it -- DROPPING this resolution rather than "
+                          f"publishing an atlas labelled for a configuration it "
+                          f"is not")
+                    groups[key][n] = None
                 continue
             groups[key][n] = d
+    # Drop the resolutions poisoned by a real collision above.
+    for key in list(groups):
+        groups[key] = {n: d for n, d in groups[key].items() if d is not None}
+        if not groups[key]:
+            del groups[key]
     if not groups:
         print(f"[bench_fields] no 2Dvortex cases under {patterns}; nothing to do")
         return
