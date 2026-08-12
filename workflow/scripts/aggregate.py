@@ -42,6 +42,32 @@ def _final_row(path):
     return rows[-1] if rows else {}
 
 
+def _last_time(path):
+    """TIME on the last row, or None if the CSV is empty or has no TIME."""
+    row = _final_row(path)
+    return _num(row.get("TIME")) if row else None
+
+
+# A RUNNING CASE IS NOT A FINISHED CASE.
+# The per-step CSV is created when the solver STARTS, so its presence proves
+# nothing, and _final_row() returns whatever last row it happens to contain. For
+# a case still in flight -- or one killed by a walltime limit, which leaves no
+# .leia_solver_failed marker because nothing exited non-zero -- that row is a
+# mid-trajectory state published under the t=T column heading.
+#
+# Measured: aggregating sdplsOrderAblation while its N=256 rungs were still
+# running gave the sourceless arm a "final" band gradient error of 1.92 at
+# N=256 against 2.84 at N=181, read off a case sitting at t=0.72 of 1.0. That
+# reads as the error turning over at the fine end -- a convergence claim -- when
+# it is only an earlier time. Blank those metrics and record why.
+_END_TIME_TOL = 0.99
+
+
+def _reached(t_last, t_target):
+    return (t_last is not None and t_target is not None
+            and t_last >= _END_TIME_TOL * t_target)
+
+
 def _half_time_row(path, t_half):
     """Row whose TIME is nearest t_half (the per-step CSVs log every step).
     At maximal deformation (t = T/2) no reversal cancellation has happened yet,
@@ -160,6 +186,9 @@ def _write_error_table(records, database_path):
             # a row came from decides whether its t=T column means anything, so
             # it belongs in the curated table.
             "oscillation",
+            # Did the run actually get to END_TIME? A per-step CSV exists from
+            # the first time step, so its presence never proved completion.
+            "endTimeReached", "lastTime",
             ] + fvschemes.COLUMNS
     rows = []
     for rec in records:
@@ -215,6 +244,10 @@ def _write_error_table(records, database_path):
             # preserves regardless of reversal. So does the gradient error, which
             # is intrinsic and needs no reference solution at all.
             "oscillation": rec.get("OSCILLATION", ""),
+            # 1 = reached END_TIME, 0 = still running or cut short (see
+            # _reached()); blank when there is no per-step CSV to judge from.
+            "endTimeReached": rec.get("endTimeReached", ""),
+            "lastTime": rec.get("lastTime", ""),
             "volumeError": sget(rec, "E_VOL_ALPHA_REL"),
             "gradientErrorBand": rec.get("gradPsiError.E_NARROW_L2_GRAD_PSI", ""),
             "gradientErrorHalf": rec.get("half.gradPsiError.E_L2_GRAD_PSI", ""),
@@ -264,6 +297,20 @@ def _write_error_table(records, database_path):
 
 
 def build_database(case_dirs, out_path):
+    # AN EMPTY INPUT MUST NOT PRODUCE AN EMPTY TABLE.
+    # Writing zero rows over an existing curated CSV destroys it silently, and
+    # the caller most likely mis-globbed rather than genuinely having no cases.
+    # Measured: re-aggregating studies/sdplsBetaSweep, whose case directories
+    # had never been pulled locally (only its tables had), replaced a complete
+    # 28-row table with a header. Refuse instead; a study with no cases is a
+    # bug in the caller, not a result.
+    case_dirs = list(case_dirs)
+    if not case_dirs:
+        raise ValueError(
+            f"aggregate: no case directories given for {out_path!r}. Refusing "
+            f"to write an empty table over an existing one -- check the glob, "
+            f"or that the study was pulled with its case directories.")
+
     records, columns = [], []
 
     def add_col(c):
@@ -304,18 +351,34 @@ def build_database(case_dirs, out_path):
                 rec["solverFailed"] = "1"
 
         t_end = _num(rec.get("END_TIME"))
+        rec["endTimeReached"] = ""
+        rec["lastTime"] = ""
         for csv_name in PER_CASE_CSVS:
             path = _find_csv(case_dir, csv_name)
             if not path:
                 continue
             prefix = csv_name[:-len(".csv")]
-            for k, v in _final_row(path).items():
-                if k is not None:
-                    rec[f"{prefix}.{k.strip()}"] = (v or "").strip()
+            # See _reached(): a per-step CSV exists from the first time step, so
+            # only a row that actually reached t_end may fill the t=T columns.
+            t_last = _last_time(path)
+            if t_last is not None:
+                rec["lastTime"] = f"{t_last:.6g}"
+                rec["endTimeReached"] = ("1" if _reached(t_last, t_end)
+                                         else "0" if t_end else "")
+            # Fill the final-time columns only for a run that got there. Still
+            # running, or cut short without a non-zero exit, leaves them blank
+            # rather than publishing an earlier state as the final one. The
+            # half-time block below is judged separately: a run that reached T/2
+            # but not T still has a valid T/2 row.
+            if not t_end or _reached(t_last, t_end):
+                for k, v in _final_row(path).items():
+                    if k is not None:
+                        rec[f"{prefix}.{k.strip()}"] = (v or "").strip()
             # Also the row at maximal deformation (t = T/2): the reversal has
             # not cancelled anything yet, so these columns carry the honest
-            # forward-deformation error of the advection studies.
-            if t_end:
+            # forward-deformation error of the advection studies. Same rule --
+            # a run that never got to T/2 has no T/2 row to report.
+            if t_end and _reached(t_last, 0.5*t_end):
                 for k, v in _half_time_row(path, 0.5*t_end).items():
                     if k is not None:
                         rec[f"half.{prefix}.{k.strip()}"] = (v or "").strip()
