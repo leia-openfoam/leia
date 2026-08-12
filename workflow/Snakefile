@@ -490,9 +490,15 @@ rule report:
                     # glob for THIS theme so an sdpls run cannot rewrite the
                     # method-comparison atlases (and vice versa) from a partial
                     # set of the other theme's studies.
-                    _atlas_glob = os.path.join(
-                        STUDIES_DIR,
-                        "sdplsBetaSweep" if THEME == "sdpls-level-set" else "benchVortex*")
+                    # For the sdpls theme, render THIS study's own cases. There
+                    # are now several 2D sdpls studies (the beta sweep, the
+                    # non-reversing convergence run, the order ablation), and the
+                    # previous hardcoded single-study glob would have silently
+                    # produced no atlases at all for the others.
+                    # method-comparison keeps its cross-study glob, which is what
+                    # its T2/T8 panels expect.
+                    _atlas_glob = (STUDY_DIR if THEME == "sdpls-level-set"
+                                   else os.path.join(STUDIES_DIR, "benchVortex*"))
                     _run([_PY, os.path.join(_scripts, "make_bench_fields_fig.py"),
                              _atlas_glob], "make_bench_fields_fig.py")
                     # 3D SDPLS studies had NO field figure at all. One psi=0
