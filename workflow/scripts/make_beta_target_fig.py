@@ -97,6 +97,13 @@ MEAN, MINC, MAXC, STRAIN = ("meanGradPsiBandHalf", "minGradPsiBandHalf",
 # where the interface is maximally deformed; the strain is a property of the
 # FLOW and is sampled where the flow is strongest.
 STRAIN_MAX = "maxStrainBand"
+# Band max |grad psi| at t = T. This is where sdplsBeta's failure is loudest:
+# measured 1.6 -> 50.9 -> 123.5 over N = 128/256/512 at T = 2, and 98 -> 211 ->
+# 3673 at T = 8, with onset at t/T ~ 0.51 both times, i.e. just after the flow
+# reverses. Near g = 0 the growth rate in D g/Dt = g(beta - g - a) is (beta - a),
+# so a LARGER beta should escape the unstable fixed point faster and blow up
+# harder -- test (vi).
+BLOWUP = "maxGradPsiBand"
 
 
 def _f(x):
@@ -138,7 +145,8 @@ def collect():
         if b is None or h is None or mean is None:
             continue
         out.setdefault(b, []).append((h, mean, lo, hi, _f(r.get(STRAIN)),
-                                      _f(r.get(STRAIN_MAX))))
+                                      _f(r.get(STRAIN_MAX)),
+                                      _f(r.get(BLOWUP))))
     for b in out:
         out[b].sort(key=lambda t: t[0])
     return out
@@ -192,7 +200,7 @@ def main():
     # ---- (iii) spread, and (iv) the predicted-target residual ---------------
     rows = []
     for b in betas:
-        h, mean, lo, hi, strain, smax = at_fine[b]
+        h, mean, lo, hi, strain, smax, blow = at_fine[b]
         spread = (hi - lo) if (hi is not None and lo is not None) else None
         pred = (b - strain) if strain is not None else None
         # (v) the target is unreachable wherever a > beta.
@@ -200,7 +208,8 @@ def main():
         rows.append(dict(beta=b, h=h, mean=mean, min=lo, max=hi,
                          spread=spread, strain=strain, predicted=pred,
                          residual=(mean - pred) if pred is not None else None,
-                         maxStrain=smax, targetUnreachable=int(unreachable)))
+                         maxStrain=smax, targetUnreachable=int(unreachable),
+                         blowup=blow))
 
     # ---- (i) h-independence: how much does the mean move over the ladder? ---
     drift = {}
@@ -246,6 +255,30 @@ def main():
         print(f"       beta={r['beta']:<5.2f} max a={r['maxStrain']:>7.3f}  "
               f"band min |grad psi|={r['min'] if r['min'] is None else round(r['min'], 4)}"
               f"   -> {mark}")
+    print("  (vi) blow-up vs beta: band max |grad psi| at t = T. Near g = 0 the growth")
+    print("       rate is (beta - a), so a LARGER beta should escape the unstable fixed")
+    print("       point faster and blow up harder.")
+    bl = [(r["beta"], r["blowup"]) for r in rows if r["blowup"] is not None]
+    for b, v in bl:
+        flag = "  <-- BLOW-UP" if v > 10.0 else ""
+        print(f"       beta={b:<5.2f} band max at T = {v:12.3f}{flag}")
+    if len(bl) > 1:
+        vals = [v for _b, v in bl]
+        # STRICT increase, and a spread ratio. `<=` would report a perfectly flat
+        # series as "monotone increasing" and let a null result read as
+        # confirmation -- the growth-rate argument predicts a real spread, not
+        # merely a non-decreasing one.
+        strict = all(vals[i] < vals[i + 1] for i in range(len(vals) - 1))
+        ratio = max(vals) / max(min(vals), 1e-30)
+        print(f"       strictly increasing in beta: {strict}   "
+              f"max/min across beta = {ratio:.2f}")
+        if strict and ratio > 2.0:
+            print("       -> consistent with the (beta - a) escape rate.")
+        elif ratio < 1.2:
+            print("       -> band max is essentially INDEPENDENT of beta; the "
+                  "growth-rate argument does NOT explain the blow-up.")
+        else:
+            print("       -> inconclusive: neither a clean increase nor flat.")
     print()
     # State the verdict, including the falsifying outcome.
     if np.isfinite(slope):
@@ -268,7 +301,7 @@ def main():
         w = csv.DictWriter(fh, fieldnames=["beta", "h", "mean", "min", "max",
                                            "spread", "strain", "predicted",
                                            "residual", "maxStrain",
-                                           "targetUnreachable"])
+                                           "targetUnreachable", "blowup"])
         w.writeheader()
         for r in rows:
             w.writerow({k: ("" if v is None else v) for k, v in r.items()})
