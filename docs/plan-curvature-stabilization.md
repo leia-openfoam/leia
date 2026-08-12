@@ -1031,3 +1031,56 @@ Sec. 10 said accuracy does not predict stability; sec. 12 says stability on a
 circle does not predict accuracy on anything else. Both gates are needed, and the
 coupled droplet needs a non-circular companion before any delivery is promoted on
 coupled evidence alone.
+
+## 13. WP7 refit — measured 2026-08-12: no delivery has changed the scaling
+
+The programme's scoring criterion (sec. WP7) is whether an arm changes the
+t_blow(N) EXPONENT, not its prefactor. Refit on the three deliveries that now have
+two resolutions each (t_blow ~ N^p, capillary time step throughout):
+
+| delivery | t_blow N=128 [s] | t_blow N=256 [s] | p |
+|---|---|---|---|
+| per-face inverse | 0.0668 | 0.0348 | -0.94 |
+| cut-cell inverse | 0.0202 | 0.0145 | -0.48 |
+| cell-mean inverse | 0.1049 | 0.0493 | -1.09 |
+
+Every arm blows up SOONER in physical time as the mesh refines, and the cell-mean
+arm's exponent is WORSE than the per-face one it beat on prefactor. Extrapolating
+on the fitted exponents, its advantage decays:
+
+| N | cell-mean [s] | per-face [s] | ratio |
+|---|---|---|---|
+| 128 | 0.1049 | 0.0668 | 1.57 |
+| 256 | 0.0493 | 0.0348 | 1.42 |
+| 512 | 0.0232 | 0.0181 | 1.28 |
+| 1024 | 0.0109 | 0.0094 | 1.15 |
+| 2048 | 0.0051 | 0.0049 | 1.04 |
+
+So the cell-mean result was a PREFACTOR win that vanishes under refinement -- which
+is what the WP7 criterion exists to catch, and a second independent reason (beside
+its first-order accuracy, sec. 12) not to promote it. Solving for the resolution at
+which each arm would survive to the 0.3 s horizon gives N < 50 for all three, i.e.
+coarser than every mesh run: no delivery is on a path to the horizon, they all get
+worse with refinement.
+
+CONSEQUENCE FOR THE PROGRAMME. The curvature-DELIVERY lever is, on this evidence,
+exhausted apart from one untested candidate: symmetric averaging about each face
+(sec. 12), which is the only construction that could lower the gain without the
+cell-centred lumping that costs an order. Everything else in the delivery space has
+been measured. After that candidate is scored on the ellipse gate and the gain, the
+programme should move to the two levers never yet touched:
+  - the psi side: keep |grad psi| constant along level sets, so the parallel-
+    foliation hypothesis the inverse needs is TRUE rather than corrected for;
+  - the alpha side: the phase indicator's first-order psi/|grad psi| interface
+    offset (sec. 11.3), which sits in snGrad(alpha), the other factor of the CSF
+    face force, and has never been touched by any arm.
+The foliation-residual diagnostic of sec. 11.2 run on the ALREADY SAVED psi fields
+decides between those two at zero simulation cost, and should be done before either
+is built.
+
+SCORING NOTE, BINDING FROM HERE: an arm is not to be promoted on t_blow at a single
+resolution. Two resolutions give a two-point exponent, which is the minimum, and
+three (N = 128, 256, 512) are needed for the exponent to be a claim rather than an
+estimate. That is the real cost of a decision and it is affordable for one or two
+arms, not for a sweep -- which is exactly why the offline gates (order + gain,
+minutes, serial) exist to reject candidates first.
