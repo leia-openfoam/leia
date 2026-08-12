@@ -1,0 +1,66 @@
+# Stationary droplet with BAND RENORMALIZATION of psi (the psi-side lever).
+#
+# WHY. The curvature-DELIVERY lever is measured out (plan sec. 12-14.1): every
+# construction that lowered the psi-to-kappa_f gain below the per-face value lost
+# an order on a varying-curvature interface, and the WP7 refit (sec. 13) shows no
+# delivery changed the t_blow EXPONENT -- only its prefactor, and the best
+# prefactor came from a delivery that is first order and therefore unusable.
+#
+# The measured driver is the OPERAND. From the foliation-residual diagnostic run
+# on the saved fields of the longest-surviving arm (sec. 14.2), in the band:
+#
+#   t [s]   |grad psi| range      |a_T| [1/m]   inverse bias [1/m]   measured error
+#   0.02    [0.9983, 0.9999]           2.2             0.48               70.4
+#   0.06    [0.974,  1.025]           31               8.7               ~75
+#   0.08    [0.858,  1.089]          164              54.5              187
+#   0.10    [0.724,  1.373]          583             212               1100
+#
+# The parallel-surface inverse every foot-point delivery uses is exact only while
+# |grad psi| is constant ALONG each level set. That property decays through the
+# run: the inverse's residual grows 600x and reaches 19-37% of the band curvature
+# error by blow-up, and the other ~80% of the error growth is the least-squares
+# quadratic itself degrading under the SAME |grad psi| spread. One cause, one fix.
+#
+# WHAT THIS ARM DOES. psi <- psi/beta_Gamma on the band every step, with
+# beta_Gamma = |grad psi| evaluated at the cell's own foot point on its own
+# quadratic fit. It is NOT redistancing: nothing is propagated or marched, and no
+# extra derivative of psi is taken -- beta_Gamma comes from the same gradient and
+# Hessian the curvature already uses. Being a multiplication by a strictly
+# positive field it preserves the zero set EXACTLY and cannot flip a sign, which
+# is what licenses an in-band rewrite at all (the programme otherwise forbids
+# them); both properties are asserted at run time.
+#
+# COST: one extra per-cell quadratic fit per step, roughly doubling the
+# reconstruction cost of a step. Reported, not hidden.
+#
+# HOW IT IS SCORED. Per the binding rule of sec. 13, an arm is NOT promoted on
+# t_blow at a single resolution. Three resolutions, so the exponent is a claim
+# rather than an estimate. The per-face references are t_blow = 0.0668 s (N=128)
+# and 0.0348 s (N=256), exponent -0.94. Success is a SHALLOWER exponent, not a
+# larger t_blow.
+#
+# The delivery is held at the production default (stabilizedFootPointFace, the
+# only one passing the amended accuracy criterion), so this run isolates the psi
+# side alone.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletRenorm.yaml
+study_name: stationaryDropletRenorm
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [128, 256, 512]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+  PSI_RENORM: [footPointGradient]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

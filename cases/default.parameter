@@ -86,6 +86,14 @@ CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
                      // one-value-per-cut-cell structure, but built by
                      // AVERAGING n inversions rather than concentrating on
                      // one, which lowers the psi-to-kappa_f gain) | fvm.
+PSI_RENORM none;     // levelSet.psiRenormalization.type: none |
+                     // footPointGradient (psi <- psi/|grad psi| at the foot
+                     // point, on the band, every step). Restores the PARALLEL
+                     // FOLIATION the parallel-surface curvature inverse
+                     // assumes; a strictly positive rescaling, so the zero set
+                     // and every sign are preserved exactly. MEASURED driver
+                     // (plan sec. 14.2): beta spreads to [0.72, 1.37] by
+                     // blow-up and the inverse's residual grows 600x.
 FACE_CURVATURE_SOURCE model; // reconstructedCurvature kappa_f source: model
                      // (its own arithmetic/Kang assembly) | registered (the
                      // solver-registered face field, e.g. kappaStableFootFace).

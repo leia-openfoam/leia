@@ -139,6 +139,32 @@ const bool cellMeanFootPointFaceExtension =
 // about that face and therefore annihilates linear fields -- second order is
 // preserved where the cell-centred lumping of the two variants above loses an
 // order (plan sec. 12: 1.02 and 1.03 against 1.98 on the varying-curvature gate).
+// BAND RENORMALIZATION (fvSolution levelSet.psiRenormalization.type):
+//   none            -- default, byte-identical to every previous run
+//   footPointGradient -- psi <- psi/|grad psi at the foot point| on the band each
+//                      step. Restores the property the parallel-surface inverse
+//                      assumes; a strictly positive rescaling, so the zero set and
+//                      every sign are preserved exactly (bandRenormalization.H).
+// COST: one extra per-cell quadratic fit per step, because the fit must be
+// refreshed on the freshly advected psi before the foot-point gradient is read,
+// and the curvature fill later fits the renormalized psi. Roughly doubles the
+// reconstruction cost of a step; reported rather than hidden.
+word psiRenormalizationType("none");
+{
+    const fvSolution& fvSol = mesh;
+    psiRenormalizationType =
+        fvSol.subDict("levelSet").subOrEmptyDict("psiRenormalization")
+             .getOrDefault<word>("type", "none");
+}
+const bool bandRenormalization = (psiRenormalizationType == "footPointGradient");
+if (psiRenormalizationType != "none" && !bandRenormalization)
+{
+    FatalErrorInFunction
+        << "levelSet.psiRenormalization.type must be none or footPointGradient "
+        << "(found " << psiRenormalizationType << ")." << exit(FatalError);
+}
+Info<< "psi renormalization: " << psiRenormalizationType << nl << endl;
+
 const bool symmetricFaceMeanExtension =
     (curvatureExtensionType == "symmetricFaceMeanFootPointFace");
 const scalar symmetricFaceMeanTheta =

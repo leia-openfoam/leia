@@ -197,6 +197,15 @@ levelSet
     // planes (geometry-only, integral, staircase-immune), delivered NORMAL-
     // CONSTANT by uniform nearest-foot assignment (the balanced-force
     // requirement; footPointCurvature.H). The equilibrium-restoring option.
+    // Band renormalization: psi <- psi/|grad psi at the foot point| on the band
+    // each step, restoring the PARALLEL FOLIATION the parallel-surface curvature
+    // inverse assumes. A strictly positive rescaling, so the zero set and every
+    // sign are preserved exactly (bandRenormalization.H, plan sec. 14.2).
+    psiRenormalization
+    {
+        type    @!PSI_RENORM!@;   // none | footPointGradient
+    }
+
     curvatureExtension
     {
         type    @!CURVATURE_EXTENSION!@;   // none | harmonicLaplace | footPointHeightFunction | closestPointNewton | connectedInterface | interfaceMean | stabilizedFootPointFace | fvm

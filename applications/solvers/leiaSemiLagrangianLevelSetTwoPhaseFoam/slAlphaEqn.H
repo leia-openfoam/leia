@@ -108,6 +108,24 @@
             narrowBand->calc();
         }
 
+        // Band renormalization (default off): psi <- psi/beta_Gamma on the band,
+        // restoring the parallel foliation the parallel-surface inverse assumes.
+        // Placed BEFORE the phase indicator and the curvature fill so both read
+        // the renormalized field; the zero set is unchanged by construction, so
+        // the band computed above stays valid and needs no recalc. The fit is
+        // refreshed first (meanCurvatureNoExtension updates the reconstruction on
+        // the current psi; the kappa it writes is overwritten by the fill below).
+        if (bandRenormalization)
+        {
+            slAdv->meanCurvatureNoExtension(psi, kappa);
+            renormalizeBandPsi
+            (
+                mesh, psi,
+                mesh.lookupObject<volScalarField>("NarrowBand"),
+                slAdv->reconstruction()
+            );
+        }
+
         phaseInd->calcPhaseIndicator(alpha1, psi);
 
         // Previous-step curvature, captured BEFORE any refill: needed by the

@@ -93,6 +93,11 @@ Description
 // delivery measured second-order on the face-centered curvature gate).
 #include "stabilizedFootPointFaceCurvature.H"
 
+// Band renormalization: restore the parallel foliation of psi (psi <- psi/beta_Gamma)
+// without moving the zero set. See plan sec. 14.2 for why the operand, not the
+// operator, is the measured driver of the curvature-error growth.
+#include "bandRenormalization.H"
+
 #include "advectionErrors.H"
 
 // WP0 band mode-spectrum diagnostic (normal-profile 2h/4h/8h amplitudes).
