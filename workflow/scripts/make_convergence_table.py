@@ -164,6 +164,22 @@ def _order(pts):
 GRAD_CEILING = 10.0
 SHAPE_TOL    = 1.30
 
+# UNDER-RESOLVED COARSE PREFIX. The envelope above drops UNSTABLE FINE rungs --
+# the semi-Lagrangian failure mode, where refinement destabilizes. Non-reversing
+# flows fail the other way round: the steady vortex winds the interface into a
+# filament the coarse meshes cannot represent, so the COARSE end is invalid and
+# refinement cures it. Measured on sdplsConv2Dvortex, relative volume error of
+# the sourceless baseline: 0.245, 0.079, 0.019, 0.0064 at N = 32/45/64/90. A run
+# that has lost a quarter of its phase volume is not a convergence data point
+# whatever its gradient error reads.
+#
+# SCOPED DELIBERATELY: applied only when `shapeError` is blank, which
+# aggregate.py does exactly for oscillation=off rows. On a reversed flow the
+# shape error is a valid interface-integrity check and the existing envelope
+# already covers it, so the semi-Lagrangian and reversed tables cannot be
+# touched by this gate.
+VOL_CEILING = 0.05
+
 
 def _stable_hset(grp):
     """Set of stable h for one (reconstruction, CFL) group, and the first
@@ -187,6 +203,22 @@ def _stable_hset(grp):
             stable.add(h)
         else:
             limit = h
+            break
+
+    # Drop the under-resolved COARSE prefix (non-reversing runs only -- see
+    # VOL_CEILING). Walk coarse -> fine and discard until the volume error comes
+    # under the ceiling; everything finer is kept, since volume error decreases
+    # monotonically once the interface is represented at all.
+    vol = sorted(((_f(r.get("h")), _f(r.get("volumeError")),
+                   (r.get("shapeError") or "").strip())
+                  for r in grp),
+                 key=lambda t: (t[0] if t[0] else 0.0), reverse=True)
+    for h, v, shape_str in vol:
+        if h is None or shape_str != "":
+            break          # reversed / SL rows: leave the existing behaviour
+        if v is not None and abs(v) > VOL_CEILING:
+            stable.discard(h)
+        else:
             break
     return stable, limit
 
