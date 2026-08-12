@@ -333,8 +333,40 @@ towards a value that is $O(1)$ away from unity.
 \section{Negative results}
 Measured and documented in the companion deck. Retained:
 \begin{itemize}
-  \item \textbf{beta's target is structurally wrong.} Not a tuning failure:
-    $g_\ast = \beta - a$ cannot equal one wherever $a \neq 0$.
+  \item \textbf{beta's target is structurally wrong}, and this is now measured
+    rather than argued. Differentiating the transport equation and evaluating at
+    $\psilev=0$ gives, for $g=\gradpsi$ and the interfacial normal strain
+    $a = \nhat\cdot\nabla\mathbf{u}\cdot\nhat$,
+    \[
+      \frac{\mathrm{D}g}{\mathrm{D}t} \;=\; g\,(f_{nl} - a),
+    \]
+    so the strain-cancelling choice $f_{nl}=a$ makes $\mathrm{D}g/\mathrm{D}t=0$
+    identically --- whatever error remains is numerical, which is why it
+    converges --- while $f_{nl} = \beta - g$ has the fixed point
+    $g_\ast = \beta - a$, set by the flow rather than by the mesh. Three
+    consequences, all observed on the 2D reversed vortex:
+    \begin{enumerate}
+      \item The band mean $\gradpsi$ at maximal deformation is
+        $1.516, 1.498, 1.478, 1.485, 1.481$ for $N = 32\ldots512$ --- flat to
+        about $2\%$ over a sixteenfold refinement, against $1.071 \to 1.002$ for
+        the strain-cancelling source. A residual vanishes with $h$; this does
+        not.
+      \item The measured band strain reaches $\max a = 2.77$ against $\beta=1$,
+        so over part of the interface the fixed point $\beta - a$ is
+        \emph{negative}. A magnitude cannot reach it, and $g$ is driven toward
+        zero instead: the level set flattens hardest exactly where the flow
+        stretches hardest. The band minimum, $0.423$ against $0.883$ for
+        \texttt{R} at $N=512$, is that effect
+        (Figure~\ref{fig:graderr-atlas}).
+      \item On this reversible flow the sourceless drift cancels by
+        time-reversal symmetry --- band mean $1.0000$ at $t=T$, $N=512$, with
+        \texttt{R} at $0.9991$. \texttt{beta} gives $1.2562$ and degrades under
+        refinement. It is the only arm that makes the reversal worse than doing
+        nothing.
+    \end{enumerate}
+    None of this is interface displacement: volume and shape errors are at the
+    $10^{-4}$ level or below for every arm at fine resolution
+    (Figure~\ref{fig:alpha-atlas}).
   \item \textbf{A source term does not repair resolution.} Strain cancellation
     is exact only while the interface is resolved; near $\kappa h \sim 1$ the
     reconstructed normal, and hence $f_{nl}$, is unreliable.
