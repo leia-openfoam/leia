@@ -82,7 +82,15 @@ import paths
 
 THEME = "sdpls-level-set"
 SWEEP = "sdplsBetaSweep"
-CONTROL = "benchVortexEulerT2"
+# The control MUST run the same flow as the sweep. When the sweep moved to the
+# non-reversing vortex (OSCILLATION off), this still pointed at
+# benchVortexEulerT2, which is REVERSED -- so the drift comparison put a steady
+# vortex at t=T/2 against a reversed one at the instant its velocity passes
+# through zero. Not like-for-like, and exactly the confound this project has
+# already paid for twice. sdplsConv2Dvortex is the non-reversing study and
+# carries its own R arm on the identical flow.
+CONTROL = "sdplsConv2Dvortex"
+CONTROL_FALLBACK = "benchVortexEulerT2"   # reversed; only if the above is absent
 # t = T/2 is the meaningful meter on a reversed flow: at t = T the integral of
 # the strain over the period is zero, which flatters every arm including the
 # sourceless one. See the SDPLS article's "Why T/2".
@@ -162,9 +170,19 @@ CONTROL_ARM = "SDPLS:R/simpleImp"
 
 
 def control():
-    """The single `R` control arm: (h, mean) sorted by h, one point per h."""
+    """The single `R` control arm: (h, mean) sorted by h, one point per h.
+
+    Falls back to the reversed study only if the non-reversing one is absent,
+    and says so, because a drift compared across two different flows is not a
+    control at all.
+    """
+    study = CONTROL if _rows(CONTROL) else CONTROL_FALLBACK
+    if study != CONTROL:
+        print(f"[beta_target] WARNING: {CONTROL} not present; falling back to "
+              f"{CONTROL_FALLBACK}, which runs a REVERSED flow while the sweep "
+              f"does not. The drift comparison below is NOT like-for-like.")
     pts = {}
-    for r in _rows(CONTROL):
+    for r in _rows(study):
         if r.get("solverFailed") or CONTROL_ARM not in r.get("method", ""):
             continue
         h, mean = _f(r.get("h")), _f(r.get(MEAN))
@@ -258,6 +276,11 @@ def main():
     print("  (vi) blow-up vs beta: band max |grad psi| at t = T. Near g = 0 the growth")
     print("       rate is (beta - a), so a LARGER beta should escape the unstable fixed")
     print("       point faster and blow up harder.")
+    print("       CAVEAT on a NON-REVERSING flow: the blow-up needs the strain to change")
+    print("       sign, which is what makes g = 0 unstable. A steady vortex never")
+    print("       supplies that, so band max here tracks the equilibrium beta - a rather")
+    print("       than an escape, and this test cannot discriminate. It is decisive only")
+    print("       on the reversed studies, where the excursion appears at t/T ~ 0.51.")
     bl = [(r["beta"], r["blowup"]) for r in rows if r["blowup"] is not None]
     for b, v in bl:
         flag = "  <-- BLOW-UP" if v > 10.0 else ""
