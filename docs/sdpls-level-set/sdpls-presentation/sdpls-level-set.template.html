@@ -184,7 +184,7 @@
 <section data-track="Measured gradient control">
 <section>
   <p class="part-kicker">Part 3 of 6</p>
-  <h2>Measured gradient control (reversed vortex)</h2>
+  <h2>Measured gradient control (non-reversing vortex)</h2>
   <ul class="tight">
     <li class="good">R holds band max\(|\nabla\psi|\) &le; 1.36 through T=8
         (5.5&ndash;7.4 without any source) &mdash; steepening controlled by the PDE itself.</li>
@@ -196,10 +196,59 @@
 </section>
 
 <section>
-  <h3>Read the right instant &mdash; at <em>t</em>&nbsp;=&nbsp;<em>T</em>, doing nothing wins</h3>
-  <p class="tight">Band gradient error \(\|\,|\nabla\psi|-1\|_{L_2}\), 2D vortex, <em>T</em>&nbsp;=&nbsp;2:</p>
+  <h3>The measurement &mdash; non-reversing vortex, <em>t</em>&nbsp;=&nbsp;<em>T</em></h3>
+  <p class="tight">Band gradient error \(\|\,|\nabla\psi|-1\|_{L_2}\), 2D vortex,
+     <code>oscillation off</code>, <em>T</em>&nbsp;=&nbsp;2, 7-rung ladder
+     (<code>sdplsConv2Dvortex</code>, 42 cases):</p>
+  <table style="font-size:0.8em; margin:0 auto">
+    <tr><th style="text-align:left"><em>N</em></th>
+        <th>32</th><th>45</th><th>64</th><th>90</th><th>128</th><th>181</th><th>256</th>
+        <th>order</th></tr>
+    <tr><td>no source</td><td>1.600</td><td>2.048</td><td>2.415</td><td>2.720</td>
+        <td>2.860</td><td>2.839</td><td>2.778</td><td class="warn"><b>&minus;0.26</b></td></tr>
+    <tr><td><code>R</code></td><td>0.451</td><td>0.392</td><td>0.292</td><td>0.230</td>
+        <td>0.188</td><td>0.152</td><td><b>0.089</b></td><td class="good"><b>+0.74</b></td></tr>
+    <tr><td><code>beta</code></td><td>0.850</td><td>1.002</td><td>1.147</td><td>1.188</td>
+        <td>1.087</td><td>0.991</td><td>0.984</td><td class="warn"><b>&minus;0.04</b></td></tr>
+    <tr><td colspan="9" style="height:0.5em"></td></tr>
+    <tr><th style="text-align:left">volume error</th>
+        <th>32</th><th>45</th><th>64</th><th>90</th><th>128</th><th>181</th><th>256</th>
+        <th>order<sup>&ddagger;</sup></th></tr>
+    <tr><td>no source</td><td>0.245</td><td>0.079</td><td>0.019</td><td>6.4e&minus;3</td>
+        <td>3.8e&minus;3</td><td>3.5e&minus;3</td><td>2.3e&minus;3</td><td>+1.39</td></tr>
+    <tr><td><code>R</code></td><td>0.138</td><td>9.6e&minus;3</td><td>0.058</td><td>0.049</td>
+        <td>0.026</td><td>6.1e&minus;3</td><td>4.8e&minus;4</td><td class="good">+3.37</td></tr>
+    <tr><td><code>beta</code></td><td>0.040</td><td>0.072</td><td>0.053</td><td>0.020</td>
+        <td>2.1e&minus;3</td><td>2.8e&minus;3</td><td><b>9.3e&minus;5</b></td>
+        <td class="good">+4.22</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.82em">
+    <b>Doing nothing diverges.</b> Without a source the level set loses the signed-distance
+    property monotonically as the mesh is refined &mdash; band mean |&nabla;&psi;| goes
+    2.15&nbsp;&rarr;&nbsp;3.52 &mdash; because the vortex winds the interface into a filament
+    and nothing restores the gradient. Only <code>R</code> converges, and it is
+    <b>31&times;</b> more accurate than the baseline at <em>N</em>&nbsp;=&nbsp;256.
+    It also conserves volume better from <em>N</em>&nbsp;=&nbsp;128 up and converges faster
+    in volume (+3.37 vs +1.39).
+  </p>
+  <p class="tight" style="font-size:0.78em; opacity:0.85">
+    <sup>&ddagger;</sup>Volume order fitted over <em>N</em>&nbsp;&ge;&nbsp;64. At
+    <em>N</em>&nbsp;=&nbsp;32 the sourceless baseline itself loses <b>24.5%</b> of the phase
+    volume: the filament is under-resolved, and a run that has lost a quarter of its volume
+    is not a convergence data point whatever its gradient error reads.
+    <b>Shape error is not reported here and cannot be</b> &mdash; it is defined at
+    <em>t</em>&nbsp;=&nbsp;<em>T</em> against the initial condition, which exists only if
+    the flow returns the interface to its starting position. Volume error is the
+    interface-integrity check on a non-reversing flow.
+  </p>
+</section>
+
+<section>
+  <h3 class="warn">Retracted: the reversed benchmark, and why</h3>
+  <p class="tight">The same case with <code>oscillation on</code> reported the
+     <em>opposite</em> ranking at <em>t</em>&nbsp;=&nbsp;<em>T</em>:</p>
   <table style="font-size:0.82em; margin:0 auto">
-    <tr><th style="text-align:left">at <em>t</em>&nbsp;=&nbsp;<em>T</em></th>
+    <tr><th style="text-align:left">reversed, at <em>t</em>&nbsp;=&nbsp;<em>T</em></th>
         <th>32</th><th>64</th><th>128</th><th>256</th><th>512</th><th>order</th></tr>
     <tr><td>no source</td><td>0.122</td><td>0.072</td><td>0.012</td><td>0.0013</td>
         <td><b>0.0001</b></td><td><b>+2.63</b></td></tr>
@@ -207,32 +256,97 @@
         <td>0.048</td><td>+0.70</td></tr>
     <tr><td><code>beta</code></td><td>0.275</td><td>0.330</td><td>0.361</td><td>2.805</td>
         <td>6.897</td><td>&minus;1.24</td></tr>
-    <tr><td colspan="7" style="height:0.5em"></td></tr>
-    <tr><th style="text-align:left">at <em>t</em>&nbsp;=&nbsp;<em>T</em>/2</th>
-        <th>32</th><th>64</th><th>128</th><th>256</th><th>512</th><th></th></tr>
-    <tr><td>no source</td><td>1.222</td><td>1.637</td><td>1.675</td><td>1.673</td>
-        <td>1.672</td><td></td></tr>
-    <tr><td><code>R</code></td><td>0.344</td><td>0.172</td><td>0.096</td><td>0.031</td>
-        <td><b>0.0115</b></td><td></td></tr>
-    <tr><td><code>beta</code></td><td>0.683</td><td>0.596</td><td>0.536</td><td>0.536</td>
-        <td>0.533</td><td></td></tr>
   </table>
   <p class="tight" style="font-size:0.82em">
-    At <em>t</em>&nbsp;=&nbsp;<em>T</em> the baseline is <b>477&times;</b> better than
-    <code>R</code>. That is not a defect of <code>R</code>: &int;<em>a</em>&nbsp;d<em>t</em>&nbsp;=&nbsp;0
-    over the period, so a passively advected &psi; is returned to its initial signed-distance
-    state, while <em>any</em> source does work along the trajectory the reversal does not undo.
-    <b>A reversed flow read only at <em>t</em>&nbsp;=&nbsp;<em>T</em> rewards inaction and
-    cannot justify a source term.</b>
-    The case for the source is at <em>T</em>/2 &mdash; <b>145&times;</b>, converging while the
-    baseline stalls &mdash; which is the state a non-reversible flow leaves behind and the state
-    a coupled run reads &psi; in at every step.
+    Read at face value this says the baseline is <b>477&times;</b> better than <code>R</code>
+    and no source term is warranted. It is an artifact. The oscillating velocity carries a
+    \(\cos(\pi t/\tau)\) factor, so the interfacial stretching integrates to zero over the
+    period, \(\int_0^T a\,dt = 0\) with \(a = \mathbf{n}\cdot\nabla\mathbf{U}\cdot\mathbf{n}\).
+    A passively advected &psi; is carried back to its initial signed-distance state, while
+    <em>any</em> source does work along the trajectory that the return leg does not undo.
+    <b>The reversal rewards inaction</b>, and it rewards it most where the most recoverable
+    error was accumulated.
   </p>
-  <p class="tight" style="font-size:0.8em; opacity:0.8">
-    Full trade: <code>R</code> buys 145&times; at maximal deformation, pays with a worse
-    return-to-start and volume error 4.0e&minus;4 vs 2.2e&minus;5 at <em>t</em>&nbsp;=&nbsp;<em>T</em>.
-    Shape error indistinguishable (~1.7e&minus;5) across all three. <code>beta</code> buys
-    nothing at either instant and pays with a divergence.
+  <p class="tight" style="font-size:0.82em; border-left:3px solid var(--ls-warn); padding-left:0.6em">
+    Same case, same solver, same ladder &mdash; only the reversal removed &mdash; and the
+    ranking inverts: <code>+2.63 &rarr; &minus;0.26</code> for the baseline,
+    <code>+0.70 &rarr; +0.74</code> for <code>R</code>. The reversed benchmark is
+    structurally incapable of showing what a signed-distance source term is for, so it
+    supplies no accuracy number here. It is retained only as the evidence above.
+    <b>All SDPLS studies now run <code>oscillation off</code>.</b>
+  </p>
+</section>
+</section>
+
+<section data-track="Why beta fails">
+<section>
+  <h2>Why <code>beta</code> fails &mdash; it targets the wrong gradient</h2>
+  <p class="tight">Differentiate the level-set equation along the interface. With
+     \(g=|\nabla\psi|\) and \(a=\mathbf{n}\cdot\nabla\mathbf{U}\cdot\mathbf{n}\) the
+     interfacial stretching, the source \(f_{nl}\) obeys</p>
+  <p style="text-align:center">\(\dfrac{Dg}{Dt} = g\,(f_{nl}-a)\)</p>
+  <table style="font-size:0.84em; margin:0 auto">
+    <tr><th></th><th style="text-align:left">source</th>
+        <th style="text-align:left">gradient law</th>
+        <th style="text-align:left">where it drives \(g\)</th></tr>
+    <tr><td><code>R</code></td><td>\(f_{nl}=a\)</td><td>\(Dg/Dt = 0\)</td>
+        <td class="good">nowhere &mdash; \(g\) is left at 1, exactly</td></tr>
+    <tr><td><code>beta</code></td><td>\(f_{nl}=\beta-g\)</td>
+        <td>\(Dg/Dt = g\,(\beta-g-a)\)</td>
+        <td class="warn">to \(g^{*}=\beta-a\)</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.86em">
+    <b>\(g^{*}=\beta-a\) is a target set by the flow, not by the signed-distance
+    condition.</b> It equals the value we actually want, \(g=1\), only where
+    \(\beta = 1+a\). But \(a\) varies over the interface and over time, so
+    <b>no constant \(\beta\) is correct anywhere except by coincidence</b> &mdash; and where
+    it is wrong, the source is actively driving the level set away from a signed distance.
+    <code>R</code> escapes this by using the local strain itself as the source, which cancels
+    the stretching term identically instead of competing with it.
+  </p>
+</section>
+
+<section>
+  <h3>Measured, on the non-reversing vortex</h3>
+  <p class="tight">Band mean |&nabla;&psi;| at <em>t</em>&nbsp;=&nbsp;<em>T</em> against the
+     predicted target \(\beta-a\), with \(\beta=1\) and \(a\) measured per step from the
+     registered strain field:</p>
+  <table style="font-size:0.8em; margin:0 auto">
+    <tr><th><em>N</em></th><th>32</th><th>45</th><th>64</th><th>90</th><th>128</th>
+        <th>181</th><th>256</th></tr>
+    <tr><td style="text-align:left">measured \(g\)</td>
+        <td>1.600</td><td>1.851</td><td>2.023</td><td>2.080</td><td>2.001</td>
+        <td>1.922</td><td>1.927</td></tr>
+    <tr><td style="text-align:left">predicted \(\beta-a\)</td>
+        <td>1.820</td><td>1.790</td><td>1.804</td><td>1.836</td><td>1.841</td>
+        <td>1.872</td><td>1.866</td></tr>
+    <tr><td style="text-align:left">error</td>
+        <td>12.1%</td><td>3.4%</td><td>12.1%</td><td>13.3%</td><td>8.7%</td>
+        <td>2.7%</td><td>3.3%</td></tr>
+    <tr><td colspan="8" style="height:0.4em"></td></tr>
+    <tr><td style="text-align:left"><code>R</code> control</td>
+        <td>0.953</td><td>0.995</td><td>1.041</td><td>1.075</td><td>1.109</td>
+        <td>1.073</td><td>1.021</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.84em">
+    <code>beta</code> converges &mdash; to <b>1.87</b>. It is not unstable here and it is not
+    under-resolved; it is <b>accurately solving for the wrong target</b>, which is why its band
+    gradient error saturates near 0.98 and its order is <b>&minus;0.04</b>: refinement cannot
+    remove an error the equation is asking for. The <code>R</code> control on the same flow,
+    with the same strain, holds \(g\) at 1.02.
+  </p>
+  <p class="tight" style="font-size:0.84em; border-left:3px solid var(--ls-warn); padding-left:0.6em">
+    Confirmed independently by a 28-case &beta; sweep
+    (<code>sdplsBetaSweep</code>, &beta; &isin; {0.5, 1.0, 1.5, 2.0}): the band mean shifts
+    <b>one-for-one</b> with &beta;, measured slope
+    <code>d&#8202;g&#8202;/d&beta; = 0.938</code> against a predicted 1. Nothing about the
+    target is a mesh effect.
+  </p>
+  <p class="tight" style="font-size:0.84em">
+    <b>And where \(\beta-a<0\) the target is negative.</b> The source then drives
+    \(g\rightarrow 0\), but \(g=0\) is the <em>unstable</em> fixed point of the logistic law
+    above, so those cells blow up as soon as the strain changes sign &mdash; band max
+    |&nabla;&psi;| reaching <b>154.9</b>. Flattening and blow-up are one mechanism, not two.
   </p>
 </section>
 </section>
@@ -261,7 +375,10 @@
      2D reversed vortex, <em>T</em>&nbsp;=&nbsp;2, <code>simpleLinearImplicit</code>.
      Rows <em>N</em>&nbsp;=&nbsp;32&hellip;512; columns <em>t</em>&nbsp;=&nbsp;0,
      <em>T</em>/2 (maximal deformation), <em>T</em> (flow reversed).
-     Blue curve is the &psi;&nbsp;=&nbsp;0 contour.</p>
+     Blue curve is the &psi;&nbsp;=&nbsp;0 contour.
+     <b class="warn">From the retired reversed benchmark</b> &mdash; kept because it shows
+     <em>where</em> the error lives and how the <code>beta</code> blow-up starts, which is a
+     mechanism, not an accuracy claim. No convergence order on this slide is published.</p>
   <div style="display:flex; gap:1em; justify-content:center; align-items:flex-start">
     <figure style="margin:0">
       <img src="../../method-comparison/method-comparison-article/data/figures/bench_euler_SDPLS_R_simpleImp_T2_graderr.png"
