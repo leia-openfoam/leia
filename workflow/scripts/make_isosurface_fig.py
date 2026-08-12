@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""Paper-quality psi=0 iso-surface montage for ONE 3D semi-Lagrangian study.
+"""Paper-quality psi=0 iso-surface montage for ONE 3D advection study.
 
-A study is one case x one mesh (e.g. uncachedConv3Dshear = 3D shear, hex). This
-renders the zero level set of psi -- the fluid interface -- at t=0, T/2 and T on
-the study's finest THREE resolutions, in a fixed canonical orientation, and tiles
-them into a single montage:
+A study is one case x one mesh (e.g. uncachedConv3Dshear = 3D shear, hex), but
+it may hold several METHOD ARMS -- an SDPLS study is six (noSource/R/beta x two
+linearizations). One montage is rendered PER ARM: the zero level set of psi --
+the fluid interface -- at t=0, T/2 and T on that arm's finest THREE resolutions,
+in a fixed canonical orientation, tiled as
 
     columns = resolution (coarse -> fine),  rows = t=0 / T/2 / T
 
 written to the study's theme data/figures (default: the quadratic semi-Lagrangian
-theme; the linear line passes its own theme) as
+theme; other lines pass their own theme) as
 
-    isosurface_<case>_<mesh>.png     (e.g. isosurface_3Dshear_hex.png)
+    isosurface_<case>_<mesh>.png            single-arm study (unchanged name,
+                                            referenced by the SL/LSL articles)
+    isosurface_<case>_<mesh>_<arm>.png      multi-arm study, e.g.
+                                            ..._euler_SDPLS_R_simpleImp.png
 
 so the article can show the interface evolution and its convergence with resolution.
 foamlib is used to locate the case; VTK's
@@ -32,6 +36,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import vtk
 
+import method_label
 import paths
 
 PANEL_PX = 900          # per-panel render resolution
@@ -60,13 +65,20 @@ def _complete(case_dir):
 
 
 def study_cases(study_dir):
-    """Return [(h, label, case_dir, case, mesh)] for a study, finest last.
-    Cases that did not advance past t=0 (failed solves) are skipped."""
+    """Return [(h, label, case_dir, case, mesh, arm)] for a study, finest last.
+    Cases that did not advance past t=0 (failed solves) are skipped.
+
+    `arm` is the method slug. A semi-Lagrangian study is one arm and behaves
+    exactly as before; an SDPLS study is six (noSource/R/beta x two
+    linearizations), and without this the "finest three cases" below would have
+    mixed methods into a single montage and labelled it with none of them.
+    """
     rows = []
     for cp in sorted(glob.glob(os.path.join(study_dir, "*_[0-9]*", "case_params.json"))):
         d = json.load(open(cp))
         tok = d.get("tokens", {})
         case, mesh = d.get("case"), d.get("mesh")
+        arm = method_label.method_slug(tok)
         if mesh == "poly":
             h = _f(tok.get("MAX_CELL_SIZE")); label = f"$h={h:g}$" if h else "?"
         else:
@@ -78,7 +90,7 @@ def study_cases(study_dir):
         if not _complete(case_dir):
             print(f"[iso] skip incomplete case (only t=0): {case_dir}")
             continue
-        rows.append((h, label, case_dir, case, mesh))
+        rows.append((h, label, case_dir, case, mesh, arm))
     rows.sort(key=lambda r: r[0], reverse=True)     # coarse (large h) -> fine
     return rows
 
@@ -199,9 +211,26 @@ def _camera_for(case):
 
 
 def make(study_dir, camera=None, theme="semi-lagrangian-level-set"):
+    """One montage per ARM. Returns the list of PNGs written.
+
+    Single-arm studies keep the historical `isosurface_<case>_<mesh>.png` name
+    byte-identically -- the SL and LSL articles reference it directly.
+    """
     cases = study_cases(study_dir)
     if not cases:
-        print(f"[iso] no cases in {study_dir}; skip"); return None
+        print(f"[iso] no cases in {study_dir}; skip"); return []
+    arms = {}
+    for row in cases:
+        arms.setdefault(row[5], []).append(row)
+    outs = []
+    for arm, arm_cases in sorted(arms.items()):
+        out = _make_one(arm_cases, arm, len(arms) > 1, camera, theme)
+        if out:
+            outs.append(out)
+    return outs
+
+
+def _make_one(cases, arm, tag_arm, camera, theme):
     case, mesh = cases[0][3], cases[0][4]
     if camera is None:
         camera = _camera_for(case)
@@ -216,7 +245,7 @@ def make(study_dir, camera=None, theme="semi-lagrangian-level-set"):
     fig, axes = plt.subplots(nrow, ncol, figsize=(3.2 * ncol, 3.2 * nrow), squeeze=False)
     import tempfile
     tmp = tempfile.mkdtemp(prefix="iso_")
-    for j, (h, label, cdir, _c, _m) in enumerate(finest3):
+    for j, (h, label, cdir, _c, _m, _a) in enumerate(finest3):
         panels = dict(render_iso(cdir, targets, camera, os.path.join(tmp, f"c{j}")))
         for i, t in enumerate(targets):
             ax = axes[i][j]; ax.set_xticks([]); ax.set_yticks([])
@@ -232,10 +261,14 @@ def make(study_dir, camera=None, theme="semi-lagrangian-level-set"):
             if j == 0:
                 lab = {0: r"$t=0$", 1: r"$t=T/2$", 2: r"$t=T$"}.get(i, f"t={t:g}")
                 ax.set_ylabel(lab, fontsize=13, rotation=90, labelpad=8)
-    fig.suptitle(rf"$\psi=0$ interface — {case} ({mesh})", fontsize=15)
+    title = rf"$\psi=0$ interface — {case} ({mesh})"
+    if tag_arm:
+        title += f" — {arm}"
+    fig.suptitle(title, fontsize=15)
     fig.tight_layout(rect=(0, 0, 1, 0.96))
+    suffix = f"_{arm}" if tag_arm else ""
     out = os.path.join(paths.figs_dir(theme),
-                       f"isosurface_{case}_{mesh}.png")
+                       f"isosurface_{case}_{mesh}{suffix}.png")
     fig.savefig(out, dpi=150); plt.close(fig)
     print(f"[iso] wrote {out}  ({ncol} resolutions x {nrow} times, camera={camera})")
     return out
@@ -249,3 +282,5 @@ if __name__ == "__main__":
                     help="docs theme receiving the figure (see paths.py)")
     args = ap.parse_args()
     sys.exit(0 if make(args.study_dir, theme=args.theme) else 1)
+# make() returns the LIST of montages (one per arm); an empty list is the
+# failure case, which is what the exit status above reports.

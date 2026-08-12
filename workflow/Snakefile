@@ -463,6 +463,12 @@ rule report:
                     # *_errors.csv and skips whichever are not present yet.
                     _sp.run(["python3", os.path.join(_scripts, "make_convergence_table.py"),
                              "--method", "sdpls"], check=False)
+                    # 3D SDPLS studies had NO field figure at all. One psi=0
+                    # iso-surface montage per method arm, so the 3D interface is
+                    # inspectable the way the 2D atlases make the 2D one.
+                    if CASE in ("3Dshear", "3Ddeformation"):
+                        _sp.run(["python3", os.path.join(_scripts, "make_isosurface_fig.py"),
+                                 STUDY_DIR, "--theme", THEME], check=False)
             else:
                 # velocity-extension: field montages + convergence figures.
                 plots.main(STUDY_DIR, FIGS_DIR)
