@@ -21,12 +21,20 @@ distinguish them (`R`, which has no target at all, is the control arm):
   (iii) SPREAD INVARIANCE. The band spread (max - min) is set by the RANGE of a
         over the interface, so shifting beta must not widen it.
 
-and one direct check that needs no inference at all:
+and one direct check, with a caveat the data forced:
 
-  (iv)  RESIDUAL vs the PREDICTED TARGET. gradPsiErrorCSV now reports the band
-        statistics of the strain field `R` itself, so `beta - meanStrainBand` is
-        a number we can subtract from the measured `meanGradPsiBand`. If the
-        mechanism is right, that residual is small and does not grow with beta.
+  (iv)  RESIDUAL vs the PREDICTED TARGET, `beta - meanStrainBand`. Read this one
+        with care. The band MEAN of a is ~0 at both reported instants (measured:
+        -0.0003 at T, +0.0095 at T/2 on benchVortexEulerT2 N=512) because a is
+        very nearly antisymmetric over a closed interface -- it stretches in one
+        place and compresses in another. So `beta - mean(a)` is just `beta`, and
+        it does NOT predict the measured band mean: at beta = 1 the measured
+        mean is 1.48, not 1.0. That is not a refutation of g* = beta - a, which
+        is a POINTWISE relation: the dynamics D g / Dt = g(beta - g - a) are
+        nonlinear, regions with a > beta collapse toward 0 while regions with
+        a < 0 overshoot upward, and the band mean is a nonlinear mixture of the
+        two, not the mean of the fixed points. The mean-based check is therefore
+        reported as a diagnostic, not a test; (ii) and (v) carry the argument.
 
 and one consequence that is sharper than any of them:
 
@@ -39,12 +47,12 @@ and one consequence that is sharper than any of them:
         numerical, which is why it converges -- while `beta` (f_nl = beta - g)
         has the fixed point g* = beta - a. Wherever a > beta that fixed point is
         NEGATIVE and a magnitude cannot reach it, so g is driven toward ZERO:
-        the level set FLATTENS exactly where the flow stretches hardest. The
-        band strain measured on this benchmark spans roughly +-2.9 against
-        beta = 1, so this is not a corner case. maxStrainBand > beta is a direct
-        test, and it predicts that the damage concentrates at t = T/2 and shows
-        up in the band MINIMUM -- which is what the min collapsing to ~0.42
-        while the mean sits near 0.84 already looks like.
+        the level set FLATTENS exactly where the flow stretches hardest.
+        Measured on benchVortexEulerT2: max band a = 2.77 at t = T against
+        beta = 1, so a large part of the interface spends the period chasing an
+        unreachable target. This is not a corner case, and it is what the band
+        MINIMUM shows -- 0.42 for beta against 0.88 for R at N=512, while the
+        two studies see the identical flow.
 
 Falsification is a real outcome and is reported as such: if the error is
 minimised at some intermediate beta, or the slope in (ii) is not ~1, the
@@ -80,10 +88,15 @@ CONTROL = "benchVortexEulerT2"
 # sourceless one. See the SDPLS article's "Why T/2".
 MEAN, MINC, MAXC, STRAIN = ("meanGradPsiBandHalf", "minGradPsiBandHalf",
                             "maxGradPsiBandHalf", "meanStrainBandHalf")
-# The largest interfacial stretching anywhere in the band. Where a > beta the
-# fixed point g* = beta - a is negative and a magnitude cannot reach it, so g is
-# driven to zero instead -- test (v).
-STRAIN_MAX = "maxStrainBandHalf"
+# The largest interfacial stretching anywhere in the band, read at t = T and NOT
+# at T/2. The reversed vortex carries an oscillation factor cos(pi t / T), so at
+# t = T/2 the flow is momentarily AT REST and the instantaneous strain is ~0
+# everywhere by construction (measured on benchVortexEulerT2: max a = 0.02 at
+# T/2 against 2.77 at T). Reading the strain at T/2 therefore samples the one
+# instant that says nothing about stretching. The gradient metrics stay at T/2,
+# where the interface is maximally deformed; the strain is a property of the
+# FLOW and is sampled where the flow is strongest.
+STRAIN_MAX = "maxStrainBand"
 
 
 def _f(x):
