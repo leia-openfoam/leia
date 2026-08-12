@@ -82,7 +82,12 @@ int main(int argc, char *argv[])
     autoPtr<OFstream> os;
     if (Pstream::master())
     {
-        os.reset(new OFstream(runTime.path()/"leiaTestFoliationResidual.csv"));
+        // globalPath, not path(): in a decomposed run the latter is the
+        // processor0 directory and the CSV would hide inside it.
+        os.reset
+        (
+            new OFstream(runTime.globalPath()/"leiaTestFoliationResidual.csv")
+        );
         os() << "TIME,DELTA_X,N_BAND,BETA_MIN,BETA_MAX,BETA_ERR_L2,"
              << "AT_L2,AT_LINF,D_L2,D_LINF,BIAS_HALFH_L2,BIAS_PSI_L2" << nl;
     }

@@ -1084,3 +1084,97 @@ three (N = 128, 256, 512) are needed for the exponent to be a claim rather than 
 estimate. That is the real cost of a decision and it is affordable for one or two
 arms, not for a sweep -- which is exactly why the offline gates (order + gain,
 minutes, serial) exist to reject candidates first.
+
+## 14. WP8.5 — measured 2026-08-12: the delivery lever is closed, and psi degradation is the driver
+
+### 14.1 Symmetric face averaging: the last delivery candidate, and it fails too
+
+Sec. 12 left one construction untested: keep the per-face inversion and smooth it
+over each face's OWN owner+neighbour active-face set, which is symmetric about that
+face (owner and neighbour are mirror images through it). The prediction was that a
+symmetric mean annihilates linear fields, so the smoothing error would be
+O(h^2 d^2 kappa) and second order would survive while the gain still fell.
+
+Measured on the 2:1 ellipse gate (order fitted on N >= 128):
+
+| delivery | L2 at N=512 [1/m] | order | G h^2 |
+|---|---|---|---|
+| per-face inverse | 0.2785 | 1.98 | 0.647 |
+| symmetric face-mean, theta = 0.5 | 2.014 | 1.10 | 0.445 |
+| symmetric face-mean, theta = 1.0 | 4.009 | 1.07 | -- |
+| cut-cell inverse | 5.848 | 1.02 | 0.818 |
+| cell-mean inverse | 5.851 | 1.03 | 0.395 |
+
+THE PREDICTION IS WRONG, and the reason is worth recording. The stencil is
+symmetric GEOMETRICALLY but it is restricted to ACTIVE faces, and the active mask
+depends on where the interface sits inside the cell. That asymmetry is O(1) in
+which faces are included, so the mean is offset at O(h) and the order is lost
+anyway. The variant is 3x better in absolute error than the cut-cell family and
+does cut the gain by 31%, but it does not pass the amended criterion.
+
+On the circle every delivery is second order (1.97-2.00), the third independent
+confirmation that a constant-curvature gate cannot rank deliveries.
+
+CONCLUSION. Within face-value averaging, gain and order trade against each other:
+every construction that lowered G h^2 below the per-face value lost an order on a
+varying-curvature interface. The curvature-DELIVERY lever is closed. The production
+per-face inversion (order 1.98, G h^2 0.647) stands. One structurally different
+variant remains unmeasured -- smoothing a CELL field, whose stencil does not depend
+on the interface position -- and it is recorded as low expected value beside the
+psi-side result below.
+
+### 14.2 The foliation residual, measured on the saved coupled fields
+
+`applications/test/leiaTestFoliationResidual` evaluates
+D = Lap_Gamma(ln beta) - |grad_Gamma ln beta|^2 (beta = |grad psi|) on written psi
+fields through the volumetric-plus-projection identity, band-restricted to
+|psi| < 2h. Run on the cell-mean N=128 coupled case (the arm that survived
+longest, t_blow = 0.1049 s), against the band curvature error the solver itself
+recorded. The decision rule was written into the app header BEFORE the run.
+
+| t [s] | beta range in band | \|a_T\| L2 [1/m] | D L2 [1/m^2] | bias at h/2 [1/m] | bias at psi/beta [1/m] | measured kErrL2Band [1/m] |
+|---|---|---|---|---|---|---|
+| 0.00 | [1.000, 1.000] | 2.28 | 8.99e3 | 0.35 | 0.77 | ~70 |
+| 0.02 | [0.9983, 0.9999] | 2.20 | 1.22e4 | 0.48 | 0.97 | 70.4 |
+| 0.04 | [0.9966, 1.0036] | 4.27 | 2.63e4 | 1.03 | 2.38 | ~70 |
+| 0.06 | [0.974, 1.025] | 30.6 | 2.24e5 | 8.73 | 22.7 | ~75 |
+| 0.08 | [0.858, 1.089] | 164 | 1.39e6 | 54.5 | 131 | 187 |
+| 0.10 | [0.724, 1.373] | 583 | 5.44e6 | 212 | 411 | 1100 |
+
+READING, BY THE PRE-REGISTERED RULE. The rule was: same order as the measured
+error and growing with it => the foliation residual explains the growth; one or
+more orders below => spurious. The outcome is the first, with an important
+qualification:
+
+- EARLY the residual is negligible: 0.35-1.0 1/m against a 70 1/m error, under 1.5%.
+  The early curvature error is the ordinary O(h^2) delivery error, exactly the
+  static-gate value, and has nothing to do with the foliation.
+- The residual then grows 600x (0.35 -> 212) while the total error grows only 16x
+  (70 -> 1100). It is by far the FASTEST-GROWING term.
+- By blow-up it is order-parity with the total: 212-411 against 1100, i.e. 19-37%.
+  At t = 0.08 it is 29-70% of the 187 that the solver measured.
+
+So the foliation residual accounts for roughly a quarter of the error at blow-up
+and none of it at the start -- it is the term that takes over, not the term that
+was always there. Decomposing the GROWTH rather than the total: of the +1030 1/m
+increase from t = 0.02 to 0.10, the residual supplies +212, about 21%. The other
+~80% is the fit error itself degrading, which is driven by the SAME cause: beta
+spreading from [0.998, 1.000] to [0.724, 1.373] corrupts the least-squares
+quadratic, not only the inverse that follows it.
+
+CONSEQUENCE, AND THE NEXT LEVER. psi losing its signed-distance character is the
+driver of the curvature-error growth, by two mechanisms that a single fix
+addresses: the inverse's parallel-foliation hypothesis stops holding (measured,
+21% of the growth) and the fit that feeds it degrades (the remainder). The lever is
+therefore the OPERAND, not the operator: hold |grad psi| constant along the level
+sets in the band. That is the only remaining candidate with a mechanism, a measured
+magnitude, and a plausible route to the t_blow EXPONENT rather than its prefactor
+(sec. 13) -- because it removes a term that grows 600x over a run rather than
+rescaling one that does not.
+
+CAVEAT, STATED PLAINLY. This is one run, one resolution, one delivery. The
+attribution is a magnitude accounting, not a controlled experiment. The controlled
+version is to hold the foliation parallel and re-measure: if the curvature error
+stops growing and t_blow moves, the chain is demonstrated; if the error still
+grows, the fit degradation is the whole story and the band renormalization only
+buys the 21%.
