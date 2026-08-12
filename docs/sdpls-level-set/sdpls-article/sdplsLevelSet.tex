@@ -273,6 +273,42 @@ it, and the two are not expected to agree digit for digit.}
 \label{fig:graderr-atlas}
 \end{figure}
 
+\paragraph{What two instants cannot show.}
+The tables report $t=T/2$ and $t=T$. That suffices to fit an order and is not
+enough to see a mechanism. Figure~\ref{fig:trajectory} plots the band statistics
+at \emph{every} time step, together with the strain the source is reacting to,
+and it exposes a failure the aggregates conceal. The band \emph{maximum} of
+$\gradpsi$ peaks at $3.81$ for no source and at $1.23$ for \texttt{R}; for
+\texttt{beta} it reaches $154.9$, and it is still $123.5$ at $t=T$. The band
+mean at $t=T$ is $1.256$, so the blow-up is confined to a few cells and the mean
+never reveals it.
+
+It begins at $t \approx 1.03$ --- immediately after the flow reverses at $T/2$
+--- and the gradient law says why. Where $a > \beta$ the source drives $g$ toward
+zero, but $g=0$ is an \emph{unstable} fixed point of
+$\mathrm{D}g/\mathrm{D}t = g(\beta - g - a)$ as soon as the strain changes sign
+and $\beta - a > 0$: the flattened cells then grow exponentially. Flattening and
+blow-up are the same mechanism seen on either side of the reversal, and the
+right-hand panel shows the target $\beta - a$ is negative over part of the band
+for $93\%$ of the time steps.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{sdpls_trajectory.png}
+\caption{Per-time-step band statistics on the 2D reversed vortex, $N=512$,
+$T=2$, \texttt{simpleLinearImplicit}. Left, logarithmic: band mean $\gradpsi$
+(solid) with the min/max envelope (shaded). \texttt{R} holds the envelope tight
+about unity for the whole trajectory; the sourceless run drifts to $\approx2.4$
+and returns to $1.000$ by time-reversal symmetry; \texttt{beta} both flattens
+(band min $\approx0.05$) and blows up (band max $\approx155$) after the
+reversal. Right: the interfacial strain $a$ over the band and the target
+$\beta-a$ that \texttt{beta} chases. Both pinch to a point at $t=T/2$, where the
+oscillating vortex is momentarily at rest --- which is why the instantaneous
+strain must not be read at that instant. The red curve marks where
+$\beta - a < 0$, a target no magnitude can reach.}
+\label{fig:trajectory}
+\end{figure}
+
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.49\linewidth]{bench_euler_SDPLS_R_simpleImp_T2_alpha.png}

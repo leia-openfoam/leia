@@ -269,6 +269,41 @@
     norms &mdash; it localizes the error, the tables measure it.
   </p>
 </section>
+
+<section>
+  <h3>What two instants cannot show</h3>
+  <img src="../sdpls-article/data/figures/sdpls_trajectory.png"
+       style="max-height:400px; width:100%; object-fit:contain"
+       onerror="this.style.display='none'">
+  <div class="cols" style="font-size:0.8em">
+    <div>
+      <p class="tight">The tables report <em>t</em>&nbsp;=&nbsp;<em>T</em>/2 and
+      <em>T</em> &mdash; enough to fit an order, not enough to see a mechanism.
+      Band <b>maximum</b> |&nabla;&psi;| over the trajectory:</p>
+      <ul class="tight">
+        <li>no source &rarr; peaks <b>3.81</b>, ends <b>1.000</b></li>
+        <li><code>R</code> &rarr; peaks <b>1.23</b>, ends <b>1.105</b></li>
+        <li><code>beta</code> &rarr; peaks <b>154.9</b>, still <b>123.5</b> at <em>t</em>&nbsp;=&nbsp;<em>T</em></li>
+      </ul>
+      <p class="tight">The band <em>mean</em> at <em>t</em>&nbsp;=&nbsp;<em>T</em> is 1.256:
+      the blow-up is a few cells, and the mean never reveals it.</p>
+    </div>
+    <div>
+      <p class="tight">It starts at <em>t</em>&nbsp;&asymp;&nbsp;1.03, right after the flow
+      reverses, and the gradient law says why. Where <em>a</em>&nbsp;&gt;&nbsp;&beta; the
+      source drives <em>g</em>&nbsp;&rarr;&nbsp;0; but <em>g</em>&nbsp;=&nbsp;0 is an
+      <b>unstable</b> fixed point of
+      <code>Dg/Dt = g(&beta;&minus;g&minus;a)</code> once the strain flips sign and
+      &beta;&minus;<em>a</em>&nbsp;&gt;&nbsp;0, so the flattened cells grow exponentially.</p>
+      <p class="tight"><b>Flattening and blow-up are the same mechanism</b>, seen on either
+      side of the reversal. The target &beta;&minus;<em>a</em> is negative somewhere in the
+      band for <b>93%</b> of the time steps.</p>
+      <p class="tight" style="opacity:0.75">Both strain curves pinch at
+      <em>t</em>&nbsp;=&nbsp;<em>T</em>/2: the oscillating vortex is momentarily at rest, so
+      the instantaneous strain must not be read there.</p>
+    </div>
+  </div>
+</section>
 </section>
 
 <section data-track="Two-phase coupling">
