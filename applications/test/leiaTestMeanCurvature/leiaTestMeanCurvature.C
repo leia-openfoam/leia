@@ -774,6 +774,37 @@ int main(int argc, char *argv[])
         reduce(nMeanNoCutSide, sumOp<label>());
     }
 
+    // SYMMETRIC FACE-MEAN delivery: the same per-face inversions, smoothed over
+    // each face's OWN owner+neighbour active-face set. That set is symmetric about
+    // the face (owner and neighbour are mirror images through it), so the mean
+    // annihilates linear fields and the smoothing error is O(h^2 d^2 kappa) --
+    // unlike the cell-centred assignment of cutCellInverse/cellMeanInverse, which
+    // gives a face a value centred on the CELL and costs an order wherever the
+    // curvature varies along the interface.
+    auto symFaceMean = [&](const scalar theta) -> scalarField
+    {
+        scalarField sum(mesh.nCells(), 0.0), cnt(mesh.nCells(), 0.0);
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+            sum[own[f]] += kfPerFace[f]; cnt[own[f]] += 1.0;
+            sum[nei[f]] += kfPerFace[f]; cnt[nei[f]] += 1.0;
+        }
+        scalarField res(kfPerFace);
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+            const scalar s = (sum[own[f]] - kfPerFace[f])
+                           + (sum[nei[f]] - kfPerFace[f]);
+            const scalar n = (cnt[own[f]] - 1.0) + (cnt[nei[f]] - 1.0);
+            if (n < 0.5) { continue; }
+            res[f] = (1.0 - theta)*kfPerFace[f] + theta*(s/n);
+        }
+        return res;
+    };
+    const scalarField kfSym050(symFaceMean(0.5));
+    const scalarField kfSym100(symFaceMean(1.0));
+
     // |Sf|-weighted error norms over the active faces (plus the force-weighted
     // |snGrad(alpha)||Sf| L2 -- the norm in which the error enters G_sigma,f).
     // An active face without a computed value (kappa_f = 0) contributes its
@@ -891,6 +922,8 @@ int main(int argc, char *argv[])
     // One interface curvature per CUT CELL, assigned to its active faces.
     addFaceRow("cutCellInverse", 1, kfCutCell);
     addFaceRow("cellMeanInverse", 1, kfCellMean);
+    addFaceRow("symFaceMean050", 1, kfSym050);
+    addFaceRow("symFaceMean100", 1, kfSym100);
 
     Info<< "face-centered curvature, " << nActive << " active faces"
         << " (foot-point unset: " << nFootFail

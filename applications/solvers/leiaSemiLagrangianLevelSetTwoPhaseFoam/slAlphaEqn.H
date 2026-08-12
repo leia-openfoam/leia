@@ -239,6 +239,16 @@
                 kappaStableFootFace
             );
         }
+        else if (symmetricFaceMeanExtension)
+        {
+            computeSymmetricFaceMeanCurvature
+            (
+                mesh, psi, alpha1, kappa,
+                slAdv->reconstruction(),
+                kappaStableFootFace,
+                symmetricFaceMeanTheta
+            );
+        }
 
         // Diagnostic hook (default off): SL_SMOOTH_RHO=1 replaces the sharp
         // geometric indicator by the erf-smoothed Heaviside of the level set,

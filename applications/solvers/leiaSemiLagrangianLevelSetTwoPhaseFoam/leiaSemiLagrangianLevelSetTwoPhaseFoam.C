@@ -225,6 +225,16 @@ int main(int argc, char *argv[])
             kappaStableFootFace
         );
     }
+    else if (symmetricFaceMeanExtension)
+    {
+        computeSymmetricFaceMeanCurvature
+        (
+            mesh, psi, alpha1, kappa,
+            slAdv->reconstruction(),
+            kappaStableFootFace,
+            symmetricFaceMeanTheta
+        );
+    }
 
     #include "YoungLaplaceEqn.H"
     kappa.write();

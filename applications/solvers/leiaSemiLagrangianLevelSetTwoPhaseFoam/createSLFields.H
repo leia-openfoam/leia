@@ -134,8 +134,19 @@ const bool cutCellFootPointFaceExtension =
 // lowers the gain where concentrating raises it.
 const bool cellMeanFootPointFaceExtension =
     (curvatureExtensionType == "cellMeanFootPointFace");
+// SYMMETRIC FACE-MEAN variant: the per-face inversion followed by a smoothing
+// pass over each face's own owner+neighbour active-face set, which is symmetric
+// about that face and therefore annihilates linear fields -- second order is
+// preserved where the cell-centred lumping of the two variants above loses an
+// order (plan sec. 12: 1.02 and 1.03 against 1.98 on the varying-curvature gate).
+const bool symmetricFaceMeanExtension =
+    (curvatureExtensionType == "symmetricFaceMeanFootPointFace");
+const scalar symmetricFaceMeanTheta =
+    static_cast<const fvSolution&>(mesh).subDict("levelSet")
+    .subOrEmptyDict("curvatureExtension")
+    .getOrDefault<scalar>("faceSmoothing", 0.5);
 if (stabilizedFootPointFaceExtension || cutCellFootPointFaceExtension
- || cellMeanFootPointFaceExtension)
+ || cellMeanFootPointFaceExtension || symmetricFaceMeanExtension)
 {
     // The parallel-curve inverse acts at the FACE: a cell-level
     // offsetCorrection would be applied twice -- silently wrong curvature.
@@ -162,6 +173,7 @@ Info<< "Curvature extension: " << curvatureExtensionType
     << (stabilizedFootPointFaceExtension ? " (stabilized foot-point FACE delivery ON)" : "")
     << (cutCellFootPointFaceExtension ? " (CUT-CELL foot-point delivery ON)" : "")
     << (cellMeanFootPointFaceExtension ? " (CELL-MEAN of per-face inversions ON)" : "")
+    << (symmetricFaceMeanExtension ? " (SYMMETRIC face-mean smoothing ON)" : "")
     << (fvmCurvature ? " (symbolic kappa fill OFF -- force model computes its own)" : "")
     << nl << endl;
 

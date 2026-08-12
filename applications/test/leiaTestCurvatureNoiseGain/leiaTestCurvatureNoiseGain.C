@@ -240,7 +240,8 @@ int main(int argc, char *argv[])
     // averaging lowers the gain.
     const wordList models
     (
-        {"arithmetic", "perFaceInverse", "cutCellInverse", "cellMeanInverse"}
+        {"arithmetic", "perFaceInverse", "cutCellInverse", "cellMeanInverse",
+         "symFaceMean050"}
     );
 
     // kappa_f for every delivery, from the CURRENT psi in the reconstruction.
@@ -279,6 +280,14 @@ int main(int argc, char *argv[])
             mesh, psiUse, alpha, kappa, recon(), kappaFace
         );
         kf[3] = kappaFace.primitiveField();
+
+        // per-face inversions smoothed SYMMETRICALLY about each face
+        // (curvatureExtension symmetricFaceMeanFootPointFace, theta = 0.5)
+        computeSymmetricFaceMeanCurvature
+        (
+            mesh, psiUse, alpha, kappa, recon(), kappaFace, 0.5
+        );
+        kf[4] = kappaFace.primitiveField();
     };
 
     List<scalarField> kfBase;

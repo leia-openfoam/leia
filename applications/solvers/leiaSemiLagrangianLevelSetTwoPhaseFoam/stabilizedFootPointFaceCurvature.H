@@ -555,6 +555,166 @@ inline void computeCellMeanFootPointFaceCurvature
 }
 
 
+//- SYMMETRIC FACE-MEAN delivery: the per-face inversion, then a smoothing pass
+//  that is symmetric ABOUT EACH FACE.
+//
+//  Measured motivation (plan sec. 12 and 13): lowering the gain helps the coupled
+//  run, but every construction that lowered it so far did so by giving all active
+//  faces of a cut cell ONE value, and that lumping is first order on any interface
+//  whose curvature varies -- a face at the edge of a cell receives a value centred
+//  on the CELL, an O(h) offset. Measured on the 2:1 ellipse gate: order 1.02
+//  (cut-cell) and 1.03 (cell-mean) against 1.98 for the per-face inversion.
+//
+//  The distinction that matters is not "averaging" versus "not averaging", it is
+//  whether the average is CENTRED ON THE FACE. For face f between cells P and N,
+//  the neighbour set
+//
+//      {active faces of P} + {active faces of N} - {f}
+//
+//  is symmetric about x_f by construction, because P and N are mirror images
+//  through f. A mean over a symmetric set annihilates linear fields exactly on a
+//  uniform mesh, so the smoothing error is O(h^2 d^2 kappa) -- second order
+//  preserved -- while the noise is reduced by the averaging. That is precisely
+//  what the cell-centred assignment cannot do.
+//
+//      kappa_f <- (1 - theta) kappa_f + theta * mean(neighbour set)
+//
+//  theta = 0 recovers the per-face inversion exactly; theta = 1 is the pure
+//  symmetric neighbour mean.
+//
+//  Parallel: the neighbour set of an INTERNAL face is rank-local (both adjacent
+//  cells are owned). For a coupled-patch face the far cell lives on another rank,
+//  so each rank contributes its own side's (sum, count) and the two are combined
+//  after a swap -- both ranks then form the same mean and the seam stays
+//  consistent, the same discipline as the inversion itself.
+inline void computeSymmetricFaceMeanCurvature
+(
+    const fvMesh& mesh,
+    const volScalarField& psi,
+    const volScalarField& alpha,
+    const volScalarField& kappa,
+    const slReconstruction& recon,
+    surfaceScalarField& kappaFace,
+    const scalar theta = 0.5
+)
+{
+    // 1. the per-face inversion, seam-synchronized (unchanged production path)
+    computeStabilizedFootPointFaceCurvature
+    (
+        mesh, psi, alpha, kappa, recon, kappaFace
+    );
+
+    if (theta <= 0) { return; }
+
+    const surfaceScalarField snA(fvc::snGrad(alpha));
+    const scalarField& snIn = snA.primitiveField();
+    const surfaceScalarField::Boundary& snBf = snA.boundaryField();
+    const scalar snMax = max(gMax(mag(snIn)()), VSMALL);
+
+    const labelUList& own = mesh.owner();
+    const labelUList& nei = mesh.neighbour();
+
+    const scalarField& kfIn = kappaFace.primitiveField();
+    const surfaceScalarField::Boundary& kfBf0 = kappaFace.boundaryField();
+
+    // 2. per-cell sum and count over that cell's ACTIVE faces
+    scalarField cSum(mesh.nCells(), 0.0);
+    scalarField cCnt(mesh.nCells(), 0.0);
+
+    forAll(kfIn, f)
+    {
+        if (mag(snIn[f]) <= 1e-8*snMax) { continue; }
+        cSum[own[f]] += kfIn[f]; cCnt[own[f]] += 1.0;
+        cSum[nei[f]] += kfIn[f]; cCnt[nei[f]] += 1.0;
+    }
+    forAll(kfBf0, patchI)
+    {
+        const fvPatch& patch = mesh.boundary()[patchI];
+        if (!patch.coupled()) { continue; }
+        const labelUList& fc = patch.faceCells();
+        forAll(fc, i)
+        {
+            if (mag(snBf[patchI][i]) <= 1e-8*snMax) { continue; }
+            cSum[fc[i]] += kfBf0[patchI][i]; cCnt[fc[i]] += 1.0;
+        }
+    }
+
+    scalarField cSumNei, cCntNei;
+    syncTools::swapBoundaryCellList(mesh, cSum, cSumNei);
+    syncTools::swapBoundaryCellList(mesh, cCnt, cCntNei);
+
+    // 3. the symmetric neighbour mean, then the blend. Written into a copy so
+    //    every face averages the UNSMOOTHED field (a single Jacobi sweep, not a
+    //    sweep whose result depends on face ordering).
+    scalarField kfNew(kfIn);
+    label nActive = 0, nSmoothed = 0, nNoNeighbour = 0;
+
+    forAll(kfIn, f)
+    {
+        if (mag(snIn[f]) <= 1e-8*snMax) { continue; }
+        ++nActive;
+
+        const scalar s = (cSum[own[f]] - kfIn[f]) + (cSum[nei[f]] - kfIn[f]);
+        const scalar n = (cCnt[own[f]] - 1.0) + (cCnt[nei[f]] - 1.0);
+        if (n < 0.5) { ++nNoNeighbour; continue; }
+
+        kfNew[f] = (1.0 - theta)*kfIn[f] + theta*(s/n);
+        ++nSmoothed;
+    }
+
+    surfaceScalarField::Boundary& kfBf = kappaFace.boundaryFieldRef();
+    scalarField bNew(mesh.nBoundaryFaces(), 0.0);
+    boolList bSet(mesh.nBoundaryFaces(), false);
+
+    forAll(kfBf, patchI)
+    {
+        const fvPatch& patch = mesh.boundary()[patchI];
+        if (!patch.coupled()) { continue; }
+        const labelUList& fc = patch.faceCells();
+        const label bStart = patch.start() - mesh.nInternalFaces();
+
+        forAll(fc, i)
+        {
+            if (mag(snBf[patchI][i]) <= 1e-8*snMax) { continue; }
+            ++nActive;
+
+            const scalar kf = kfBf0[patchI][i];
+            const scalar s = (cSum[fc[i]] - kf)
+                           + (cSumNei[bStart + i] - kf);
+            const scalar n = (cCnt[fc[i]] - 1.0)
+                           + (cCntNei[bStart + i] - 1.0);
+            if (n < 0.5) { ++nNoNeighbour; continue; }
+
+            // both ranks form the same s and n -> the seam value agrees exactly
+            bNew[bStart + i] = (1.0 - theta)*kf + theta*(s/n);
+            bSet[bStart + i] = true;
+            ++nSmoothed;
+        }
+    }
+
+    kappaFace.primitiveFieldRef() = kfNew;
+    forAll(kfBf, patchI)
+    {
+        const fvPatch& patch = mesh.boundary()[patchI];
+        if (!patch.coupled()) { continue; }
+        const label bStart = patch.start() - mesh.nInternalFaces();
+        fvsPatchScalarField& kfp = kfBf[patchI];
+        forAll(kfp, i)
+        {
+            if (bSet[bStart + i]) { kfp[i] = bNew[bStart + i]; }
+        }
+    }
+
+    reduce(nActive, sumOp<label>());
+    reduce(nSmoothed, sumOp<label>());
+    reduce(nNoNeighbour, sumOp<label>());
+    Info<< "symmetricFaceMean curvature: theta = " << theta << ", "
+        << nSmoothed << "/" << nActive << " active faces smoothed over their "
+        << "owner+neighbour active-face set (" << nNoNeighbour
+        << " with no neighbour, left per-face)" << endl;
+}
+
+
 } // End namespace Foam
 
 #endif
