@@ -86,8 +86,12 @@ METHODS = {
         "prefix": "sdpls",
         "groupby": "method",
         "studies": [
-            ("benchVortexEulerT2",     "2Dvortex",      "hex"),
-            ("benchVortexEulerT8",     "2Dvortex",      "hex"),
+            # benchVortexEulerT2 / benchVortexEulerT8 are DELIBERATELY ABSENT.
+            # They are reversed (oscillating) runs, and a reversed t=T error is
+            # not an accuracy measurement -- see _drop_reversed() below. They
+            # stay on disk as evidence of the artifact itself; they contribute
+            # no published order.
+            #
             # The beta-target sweep. Its arms are separable here ONLY because
             # method_label._beta() renders an off-default beta into the label --
             # without that they collapse to one series per h and the
@@ -141,6 +145,130 @@ def _f(x):
 def _rows(path):
     with open(path, newline="") as fh:
         return list(csv.DictReader(fh))
+
+
+# REVERSED FLOW IS NOT AN ACCURACY MEASUREMENT.
+# On the oscillating vortex/shear the velocity carries a cos(pi t/tau) factor,
+# so the interfacial stretching integrates to zero over the period:
+#     \int_0^T n.grad(U).n dt = 0.
+# Error accumulated on the forward half is undone on the return half, so the t=T
+# state flatters whichever scheme accumulated the most RECOVERABLE error. Not
+# hypothetical: at t=T the reversed 2D vortex made sourceless transport look
+# 477x more accurate than SDPLS-R, while the SAME case run non-reversing has
+# sourceless DIVERGING (order -0.26) and only R converging (+0.74). The reversal
+# inverted the ranking outright.
+#
+# So a row that ran with oscillation ON never contributes a published order.
+# Keyed on the RECORDED value rather than on a study name, so a config that
+# forgets `OSCILLATION: "off"` is caught by its own data instead of by whoever
+# remembers to update a list here.
+#
+# Rows predating the column (value absent) are deliberately left alone. The
+# semi-Lagrangian shape-error benchmark is reversed BY CONSTRUCTION -- shape
+# error at t=T is defined against the initial condition, and there is no t=T
+# shape reference without the return leg -- so voiding those published tables is
+# a separate decision from this one, and not one to take silently.
+def _drop_reversed(rows):
+    """Split rows into (publishable, excluded-because-reversed)."""
+    rev = [r for r in rows if (r.get("oscillation") or "").strip() == "on"]
+    keep = [r for r in rows if (r.get("oscillation") or "").strip() != "on"]
+    return keep, rev
+
+
+# STALE-LADDER DETECTION.
+# `studies/` is git-ignored, survives config edits, and case directories are
+# named by ORDINAL index over the axis product -- so changing N_CELLS renumbers
+# them and a stale tree can masquerade as a fresh one. Measured: after the 3D
+# ladder became 64/81/102/128/161/203, studies/sdplsConv3Dshear still held a
+# complete 3-rung 32/64/128 table from the previous ladder AND a previous code
+# version, and the only reason it was not published as the new result is that
+# someone happened to read the row count. The missing-study guard cannot see
+# this -- the study is present, just wrong.
+#
+# So compare the resolutions IN THE DATA against the ladder the config declares.
+# h is written as 1/N by aggregate.py, so N comes back exactly.
+def _config_ladder(study):
+    """Declared N_CELLS for a study, or None when it cannot be determined."""
+    path = os.path.join(REPO, "config", f"{study}.yaml")
+    if not os.path.isfile(path):
+        return None
+    try:
+        import yaml
+        with open(path) as fh:
+            cfg = yaml.safe_load(fh) or {}
+    except Exception:
+        return None
+    # POLYHEDRAL studies are sized by cfMesh's MAX_CELL_SIZE, not by N_CELLS,
+    # and aggregate.py sets h = maxCellSize for them -- so 1/h is not a cell
+    # count and comparing it to a ladder is meaningless. Worse, those configs
+    # pin `N_CELLS: [64]` as an explicit dummy ("unused by pMesh; pin so the
+    # base [32,64] does not multiply runs"), which reads as a one-rung ladder
+    # and made this guard reject all four healthy poly studies on first run.
+    if (cfg.get("mesh") or "").strip() == "poly":
+        return None
+
+    # N_CELLS lives under `axes_override` today, but has moved before. Search
+    # the whole tree rather than a guessed key list: a lookup that silently
+    # returns None disables this guard, which is exactly how the stale 3D tree
+    # got past it on the first attempt.
+    def _find(node):
+        if isinstance(node, dict):
+            for key, val in node.items():
+                if key == "N_CELLS" and isinstance(val, (list, tuple)):
+                    return {int(v) for v in val}
+                found = _find(val)
+                if found:
+                    return found
+        elif isinstance(node, list):
+            for item in node:
+                found = _find(item)
+                if found:
+                    return found
+        return None
+    return _find(cfg)
+
+
+def _ladder_complaints(study, rows):
+    """Resolutions present in the data but absent from the declared ladder."""
+    declared = _config_ladder(study)
+    if not declared:
+        return []
+    found = set()
+    for r in rows:
+        h = _f(r.get("h"))
+        if h and h > 0:
+            found.add(int(round(1.0 / h)))
+    return sorted(found - declared)
+
+
+def _collapse_duplicates(rows, groupby):
+    """Collapse rows identical in (arm, h, CFL) AND in every metric.
+
+    A study that crosses an INERT token against an arm runs that arm twice:
+    sdplsConv2Dvortex crosses SOURCE_SCHEME (the source LINEARIZATION) with
+    SDPLS_SOURCE=noSource, which has no source to linearize, so the pair is
+    bit-identical (band gradient error 1.59990364597 from both) and the arm
+    appears at 14 rungs on a 7-rung ladder. The least-squares slope is unchanged
+    by exact duplicates, but the published per-resolution table would print
+    every rung of that arm twice.
+
+    Collapsing is safe ONLY where the duplicates agree exactly. Differing values
+    under one (arm, h) mean the label is hiding a real degree of freedom -- a
+    labelling bug -- so those stay visible and are reported, never averaged.
+    """
+    seen, out, collapsed, conflicts = {}, [], 0, []
+    for r in rows:
+        key = (r.get(groupby, ""), r.get("h", ""), r.get("cfl", ""))
+        sig = tuple(r.get(c, "") for c, _o, _l in METRICS)
+        if key not in seen:
+            seen[key] = sig
+            out.append(r)
+        elif seen[key] == sig:
+            collapsed += 1
+        else:
+            conflicts.append(key)
+            out.append(r)
+    return out, collapsed, conflicts
 
 
 def _order(pts):
@@ -240,7 +368,7 @@ def main(argv=None):
     arm_col = (groupby != "reconstruction")
 
     conv_rows, order_rows = [], []
-    missing = []
+    missing, stale = [], []
     for study, case, mesh in m["studies"]:
         path = os.path.join(REPO, "studies", study, f"{study}_errors.csv")
         if not os.path.isfile(path):
@@ -248,6 +376,25 @@ def main(argv=None):
             missing.append(study)
             continue
         rows = _rows(path)
+        foreign = _ladder_complaints(study, rows)
+        if foreign:
+            stale.append((study, foreign))
+        rows, reversed_rows = _drop_reversed(rows)
+        if reversed_rows:
+            print(f"[convtable] {study}: EXCLUDED {len(reversed_rows)} reversed "
+                  f"(oscillation=on) row(s) -- a reversed t=T error is a "
+                  f"time-reversal symmetry check, not an accuracy measurement")
+        if not rows:
+            print(f"[convtable] {study}: every row was reversed; no order fitted")
+            continue
+        rows, n_dup, dup_conflicts = _collapse_duplicates(rows, groupby)
+        if n_dup:
+            print(f"[convtable] {study}: collapsed {n_dup} exactly-duplicated "
+                  f"row(s) (an inert axis crossed against an arm re-runs it)")
+        for key in dup_conflicts:
+            print(f"[convtable] {study}: WARNING two DIFFERENT results share "
+                  f"arm/h/CFL {key} -- the method label is hiding a real "
+                  f"degree of freedom; both rows kept")
         # per (reconstruction, cfl) group + its stable prefix
         groups = {}
         for r in rows:
@@ -315,6 +462,17 @@ def main(argv=None):
     # hypothetical: a local run with an incomplete LSL study set rewrote a
     # 7-level 2D vortex row as `1$^\dagger$ & -- & -- & --`. Refuse unless the
     # whole configured study set is present, or the caller says it means it.
+    # Stale data is worse than missing data: it publishes silently. Refuse hard,
+    # and do NOT let --allow-partial through -- "publish anyway" is a statement
+    # about COVERAGE, never a licence to publish rungs from a superseded ladder.
+    if stale:
+        for study, foreign in stale:
+            print(f"[convtable] REFUSING: studies/{study} contains resolution(s) "
+                  f"{foreign} that config/{study}.yaml does not declare. That "
+                  f"tree is left over from a previous ladder; its rungs and the "
+                  f"current ones would be published as one table.")
+        print("[convtable] Move or delete the stale study tree(s) and re-pull.")
+        return 3
     if missing and not args.allow_partial:
         print(f"[convtable] REFUSING to overwrite the published {args.method} "
               f"tables: {len(missing)} of {len(m['studies'])} studies are "
