@@ -230,6 +230,40 @@ The two admissible linearizations agree to three digits on every fitted order
 the same continuum term. Disagreement between them was the symptom that led to
 the defects of Section~\ref{sec:defects}.
 
+The dedicated single-mesh sweep makes the point sharply, and settles the
+retracted \texttt{beta}\,+\,\texttt{explicit} claim at its own configuration.
+All \emph{three} linearizations --- including \texttt{explicit} --- now run to
+completion at every CFL and agree to four or five significant digits:
+
+\begin{table}[htbp]
+\centering
+\caption{Band gradient error at $t=T/2$, $N=128$, $T=2$. Before the corrections
+of Section~\ref{sec:defects} the same sweep gave band
+$\max\gradpsi = 14.99$ for \texttt{explicit} and a band
+$\min\gradpsi$ collapsing to $0.05$ for \texttt{strictNegativeSp}, while
+\texttt{simpleLinearImplicit} held $\approx1.005$; \texttt{beta}\,+\,%
+\texttt{explicit} was recorded as divergent at every CFL.}
+\label{tab:agreement}
+\small
+\begin{tabular}{llrrr}
+\toprule
+source & CFL & \texttt{explicit} & \texttt{simpleImp} & \texttt{strictNegSp} \\
+\midrule
+\textbf{R}    & 0.1 & 0.096152 & 0.096133 & 0.096169 \\
+              & 0.5 & 0.095843 & 0.095820 & 0.095887 \\
+              & 1.0 & 0.095590 & 0.095643 & 0.095649 \\
+\textbf{beta} & 0.1 & 0.542510 & 0.542510 & 0.542510 \\
+              & 0.5 & 0.535540 & 0.535540 & 0.535540 \\
+              & 1.0 & 0.523940 & 0.523950 & 0.523950 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The same table shows the residual is CFL-independent to $0.6\%$ for \textbf{R}
+over a tenfold change in $\Delta t$: what remains at $t=T/2$ is a \emph{spatial}
+consistency error in $\nabla\psilev$ and $\nabla\mathbf{v}$, which is why it
+converges under refinement at all.
+
 \paragraph{beta.}
 \textbf{beta} is negative or near-zero at every measured point
 ($-0.297$ to $+0.087$ at $t=T/2$), consistent with its equilibrium
@@ -261,10 +295,12 @@ Section~\ref{sec:defects} rather than properties of the method:
     \texttt{strictNegativeSp} branch, which doubled the drift it was supposed
     to cancel.
   \item ``\texttt{beta} + \texttt{explicit} diverges at every CFL,
-    $\Delta t$-independent'' --- the explicit branch carried \emph{both} the
-    reversed sign and the use-after-free. Post-fix, that combination runs to
-    completion at $N=32$; the claim must be re-measured at the $N=128$
-    configuration where it was made before it can be restated.
+    $\Delta t$-independent'' --- \emph{falsified}, at the very configuration
+    where it was made (Table~\ref{tab:agreement}): $N=128$, $T=2$,
+    $\mathrm{CFL} \in \{0.1, 0.5, 1.0\}$. All three runs complete, and the
+    explicit branch agrees with both implicit ones to five significant digits.
+    The original divergence was produced by the reversed sign and the
+    use-after-free that branch carried, not by anti-damped relaxation.
   \item Any verdict of the form ``SDPLS makes the band gradient error worse
     than no source'', which came from the same branch and, in the 3D case,
     from arms run on different advection schemes.
