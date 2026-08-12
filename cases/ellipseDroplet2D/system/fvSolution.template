@@ -197,6 +197,20 @@ levelSet
     // planes (geometry-only, integral, staircase-immune), delivered NORMAL-
     // CONSTANT by uniform nearest-foot assignment (the balanced-force
     // requirement; footPointCurvature.H). The equilibrium-restoring option.
+    // Velocity extension for the LEVEL-SET transport only (the momentum velocity
+    // is untouched): psi is advected by a normal-extended, interface-derived
+    // velocity instead of the raw cell velocity. type none = the original path.
+    // This is the one lever that attacks the AMPLIFICATION rather than either
+    // operator: it removes the route by which grid-scale velocity noise reaches
+    // psi at all (plan sec. 15).
+    velocityExtension
+    {
+        type          @!VELOCITY_EXTENSION!@;   // none | closestPoint | meshWaveExt | ...
+        nLayers       3;
+        nAnchorLayers @!ANCHOR_LAYERS!@;
+        UextDiv       @!UEXT_DIV!@;
+    }
+
     // Band renormalization: psi <- psi/|grad psi at the foot point| on the band
     // each step, restoring the PARALLEL FOLIATION the parallel-surface curvature
     // inverse assumes. A strictly positive rescaling, so the zero set and every
@@ -204,6 +218,9 @@ levelSet
     psiRenormalization
     {
         type    @!PSI_RENORM!@;   // none | footPointGradient
+        threshold       @!PSI_RENORM_THRESHOLD!@;  // gate on band |P H n|/beta * h
+        smoothingSweeps @!PSI_RENORM_SWEEPS!@;
+        relaxation      @!PSI_RENORM_RELAX!@;      // psi <- psi/beta^omega
     }
 
     curvatureExtension

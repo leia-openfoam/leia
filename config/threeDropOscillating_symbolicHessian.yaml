@@ -1,0 +1,46 @@
+# OSCILLATING mode-2 droplet (oscISTDroplet2D) on a uniform hex mesh, N = 128
+# (12.8 cells per radius), with the symbolicHessian curvature delivery:
+# kappa taken symbolically from the gradient + Hessian of the per-cell quadratic
+# LSQ fit of psi at the cell centre (curvatureExtension type none, so the
+# connectedInterface-only tokens are inert), arithmetically interpolated to faces.
+# Token set copied from config/oscISTN64ConnectedModePreserving.yaml; only the
+# curvature delivery, N and the output cadence differ.
+study_name: threeDropOscillating_symbolicHessian
+case: oscISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+collapse_other_axes: true
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.05]
+  WRITE_INTERVAL: [0.005]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  SURFACE_TENSION_CURVATURE_SOURCE: [field]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGN: [-1]
+  SURFACE_TENSION_GEOMETRIC_METHOD: [conormalCSF]
+  SURFACE_TENSION_SIGMA: [0.07274]
+  # --- symbolicHessian curvature delivery -------------------------------------
+  CURVATURE_EXTENSION: [none]
+  CURVATURE_FACE_INTERPOLATION: [arithmetic]
+  CURVATURE_FACE_SOURCE: [model]
+  # ---------------------------------------------------------------------------
+  CURVATURE_EXTENSION_RELAX: [1]
+  CURVATURE_FORCE_WEIGHT: [alpha]
+  CURVATURE_FIT_HALF_WIDTH: [5]
+  CURVATURE_REGULARIZATION_OPERATOR: [helmholtz]
+  CURVATURE_TANGENTIAL_REGULARIZATION: [16]
+  CURVATURE_REGULARIZATION_ITERATIONS: [120]
+  CURVATURE_PRESERVE_MODES_THROUGH: [4]
+
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

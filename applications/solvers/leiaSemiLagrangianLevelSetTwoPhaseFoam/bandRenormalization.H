@@ -106,6 +106,7 @@ inline bandRenormalizationStats renormalizeBandPsi
     const slReconstruction& recon,
     const scalar thresholdRel = 5e-3,
     const label nSmooth = 2,
+    const scalar relaxation = 1.0,
     const scalar betaMin = 0.2,
     const scalar betaMax = 5.0
 )
@@ -200,8 +201,24 @@ inline bandRenormalizationStats renormalizeBandPsi
         st.betaGammaMin = min(st.betaGammaMin, b);
         st.betaGammaMax = max(st.betaGammaMax, b);
 
+        // RELAXED correction: divide by b^omega rather than b.
+        //
+        // MEASURED (plan sec. 14.3): the unrelaxed version rescales psi by up to
+        // 2% in a single step once the gate opens, fires 607 times, and blows the
+        // droplet up at t = 0.0195 against 0.0668 for the untouched reference --
+        // 3.4x WORSE. A finite-amplitude kick to psi is amplified by the capillary
+        // loop faster than the systematic drift it removes.
+        //
+        // Relaxation separates the two by their statistics rather than their size.
+        // The drift being corrected is SMOOTH and its correction accumulates
+        // COHERENTLY over n steps (proportional to omega*n); the fit error that
+        // rides along is grid-scale and accumulates INCOHERENTLY (omega*sqrt(n)).
+        // Spreading the same total correction over n steps therefore improves the
+        // correction-to-injected-noise ratio by sqrt(n), at no cost in the final
+        // amount corrected. omega = 1 recovers the one-shot behaviour.
         const scalar before = psiIn[c];
-        const scalar after = before/b;
+        const scalar after =
+            (relaxation >= 1.0) ? before/b : before/Foam::pow(b, relaxation);
         if ((before > 0) != (after > 0) && before != 0) { ++st.nSignChange; }
         if (mag(before) > SMALL)
         {
@@ -235,7 +252,8 @@ inline bandRenormalizationStats renormalizeBandPsi
         << thresholdRel << "): " << st.nRenormalized << "/" << st.nBand
         << " band cells rescaled by 1/beta_Gamma in ["
         << st.betaGammaMin << ", " << st.betaGammaMax
-        << "] after " << nSmooth << " smoothing sweeps, max |dpsi|/|psi| = "
+        << "] after " << nSmooth << " smoothing sweeps, relaxation "
+        << relaxation << ", max |dpsi|/|psi| = "
         << st.maxRelChange << " (" << st.nFitFallback << " no full fit, "
         << st.nFootFail << " foot failed, " << st.nGuardReject
         << " guard-rejected; 0 sign changes by construction)" << endl;

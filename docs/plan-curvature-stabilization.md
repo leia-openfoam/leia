@@ -1178,3 +1178,92 @@ version is to hold the foliation parallel and re-measure: if the curvature error
 stops growing and t_blow moves, the chain is demonstrated; if the error still
 grows, the fit degradation is the whole story and the band renormalization only
 buys the 21%.
+
+## 15. WP9 — measured 2026-08-12: the psi-side lever closes too, and what that means
+
+### 15.1 Band renormalization, coupled: 3.4x WORSE
+
+Arm: `psiRenormalization { type footPointGradient; }` with the divisor smoothed
+over each band cell's face neighbours and the operation gated on the band L2 of
+the dimensionless non-parallelism |P H n|/beta * h (threshold 5e-3). Delivery held
+at the production per-face inversion, so the psi side is isolated. N=128, np 8.
+
+| arm | t_blow [s] |
+|---|---|
+| per-face reference (no renormalization) | 0.0668 |
+| + band renormalization | **0.0195** |
+
+The gate behaved exactly as designed -- while the foliation is healthy the run is
+BYTE-IDENTICAL to the control (verified at N=64 on max abs U, min|grad psi| and the
+band curvature error at every sampled time). It then fired 799 times, each firing
+rescaling psi by up to 2% in a single step, and the droplet died at t = 0.0195.
+The N=256 twin was cancelled at t = 0.0072 rather than burning 8 h on a
+configuration already 3.4x worse on the prefactor; no exponent is reported for it.
+
+### 15.2 Relaxation does not rescue it, and the reason is quantitative
+
+Predicted remedy: spread the same total correction over many steps
+(psi <- psi/beta_Gamma^omega), so the SMOOTH drift being corrected accumulates
+coherently (omega*n) while the grid-scale fit error rides along incoherently
+(omega*sqrt(n)) -- a sqrt(n) gain in correction-to-noise. Measured at N=64, gate
+forced open, over 2 ms:
+
+| arm | max psi kick | max abs U at 2 ms | min\|grad psi\| at 2 ms | kErrL2Band |
+|---|---|---|---|---|
+| control (no renormalization) | -- | 1.63e-3 | 0.9877 | 141 |
+| omega = 1.00 | 5.96e-3 | 5.36e-3 | 0.9716 | 153 |
+| omega = 0.20 | 1.19e-3 | 4.08e-3 | 0.9751 | 149 |
+| omega = 0.05 | 2.97e-4 | 3.33e-3 | 0.9800 | 145 |
+
+The kick scales EXACTLY linearly with omega, as designed. The harm does not: a 20x
+smaller kick removes only 2.2x of the excess velocity. And the decisive number is
+min|grad psi| -- the operation whose entire purpose is to hold |grad psi| near 1
+makes it drift FASTER than doing nothing, at EVERY relaxation level tested.
+
+WHY, quantitatively. beta_Gamma is estimated from the same quadratic fit, and its
+error at N=64 is 0.3-0.6% (measured directly: on the EXACT signed-distance initial
+field, where beta is identically 1, the fit returns beta_Gamma in [0.9936, 0.9972]).
+The drift being corrected over this window is ~0.1%. The correction is therefore
+dominated by the error of the estimator that computes it, at any omega. It can only
+pay off once the drift greatly exceeds 0.5% -- which is exactly the late phase where
+the loop amplifies any injection fastest.
+
+### 15.3 The finding, across four levers
+
+Four structurally different attempts have now been measured out:
+
+| lever | what it did | outcome |
+|---|---|---|
+| cut-cell / cell-mean delivery | remove the across-support kappa_f variation | earlier blow-up (sec. 10); first order on varying curvature (sec. 12) |
+| symmetric face averaging | lower the gain without lumping | first order anyway, active-mask asymmetry (sec. 14.1) |
+| band renormalization | restore the parallel foliation | 3.4x earlier blow-up; drift made worse at every relaxation (this section) |
+| accuracy of the inverse itself | remove the O(h) offset | 27x accuracy for 0.2% gain change; no stability effect (sec. 10) |
+
+The pattern is one statement: THIS SYSTEM IS NOT LIMITED BY SYSTEMATIC ERROR IN ANY
+OPERATOR. IT IS LIMITED BY ITS SENSITIVITY TO PERTURBATIONS OF psi. Every corrective
+built from the same quadratic fit necessarily injects that fit's error into the
+field, and the injection is amplified faster than the systematic error it removes.
+Accuracy improvements are free (they do not change the gain) and stability
+improvements bought by averaging cost an order. No arm has changed the t_blow
+exponent (sec. 13).
+
+CONSEQUENCE FOR WHAT TO TRY NEXT. If neither operator nor operand can be corrected
+without injecting noise, the remaining target is the AMPLIFICATION PATH itself:
+force -> velocity -> interface displacement -> psi -> fit -> force. The one element
+of that loop never touched is the velocity the level set is advected BY. Advecting
+psi with a normal-extended, interface-derived velocity instead of the raw cell
+velocity removes the route by which grid-scale velocity noise reaches psi at all,
+while leaving the momentum velocity untouched. The programme's own non-goal list
+made this conditional on WP1 and WP6 both failing; both have now failed, so it is
+licensed.
+
+STATUS OF THAT ARM: the machinery is fully wired in this solver
+(`velocityExtension::New`, `slVelExt->correct()`, and `slAdv->advect(psi, UextStar,
+slVelExt->Uext())`), the default is `none`, and the token plus dictionary block are
+now in the droplet cases. But all three models tried -- closestPoint, steadyUpwind,
+meshWaveExt -- abort immediately with "failed lookup of alpha": they assume the
+phase field is named `alpha`, while the two-phase cases name it `alpha.water`. That
+is precisely the "unmeasured-for-maintenance" status the programme recorded for
+velocity extension in the two-phase solver. It is a small fix -- make the phase-field
+name configurable in the extension models -- but it is a CODE change, not a config
+change, and it must be done before the arm can be measured.

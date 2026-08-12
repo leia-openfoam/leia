@@ -1,0 +1,55 @@
+# Stationary droplet (u == 0 exact), uniform hex mesh, N = 64 and 128, with the
+# parameter-free rdfQuadratic curvature estimator: per-time-step signed distance
+# to the connected zero set from C1 per-element parabola fits, then per-cell
+# quadratic fits of that distance, no tangential filter.
+#
+# Copied from config/transISTN64ConnectedModePreserving.yaml; only the mesh
+# ladder, end time / write interval, REFERENCE_SPEED and the curvature
+# estimator/delivery entries differ.
+#
+# NOTE (measured 2026-07-30): REFERENCE_SPEED is NOT substituted into
+# cases/transISTDroplet2D/0.org/U (which hardcodes uniform (0.05 0 0)) nor into
+# the fvSolution dropletReferenceVelocity entry. REFERENCE_SPEED: [0] alone does
+# NOT produce a stationary droplet. The stationary initial/boundary state is
+# imposed by patching the MATERIALISED case (studies/, gitignored) after
+# generate_case -- see runs/threeDropStationary_rdfQuadratic/run.sh.
+study_name: threeDropStationary_rdfQuadratic
+case: transISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+collapse_other_axes: true
+axes_override:
+  N_CELLS: [64, 128]
+  END_TIME: [0.05]
+  WRITE_INTERVAL: [0.005]
+  REFERENCE_SPEED: [0]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  TIME_STEP_CONTROL: [capillary]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  SURFACE_TENSION_CURVATURE_SOURCE: [field]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGN: [-1]
+  SURFACE_TENSION_GEOMETRIC_METHOD: [conormalCSF]
+  SURFACE_TENSION_SIGMA: [0.07274]
+  CURVATURE_ESTIMATOR: [rdfQuadratic]
+  CURVATURE_EXTENSION: [connectedInterface]
+  CURVATURE_EXTENSION_RELAX: [1]
+  CURVATURE_FACE_INTERPOLATION: [connectedInterface]
+  CURVATURE_FACE_SOURCE: [registered]
+  CURVATURE_FORCE_WEIGHT: [alpha]
+  CURVATURE_FIT_HALF_WIDTH: [4]
+  CURVATURE_REGULARIZATION_OPERATOR: [helmholtzPreserveModes]
+  CURVATURE_TANGENTIAL_REGULARIZATION: [16]
+  CURVATURE_REGULARIZATION_ITERATIONS: [120]
+  CURVATURE_PRESERVE_MODES_THROUGH: [4]
+
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

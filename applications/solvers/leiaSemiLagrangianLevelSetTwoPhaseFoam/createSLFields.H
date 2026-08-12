@@ -157,6 +157,27 @@ word psiRenormalizationType("none");
              .getOrDefault<word>("type", "none");
 }
 const bool bandRenormalization = (psiRenormalizationType == "footPointGradient");
+// Gate threshold on the dimensionless band non-parallelism |P H n|/beta * h
+// (<= 0 fires every step), smoothing sweeps on the divisor, and the RELAXATION
+// exponent omega: psi <- psi/beta_Gamma^omega. See bandRenormalization.H for why
+// omega < 1 is the difference between removing the drift and kicking the field.
+scalar psiRenormThreshold = 5e-3;
+label  psiRenormSweeps = 2;
+scalar psiRenormRelaxation = 1.0;
+{
+    const dictionary& d =
+        static_cast<const fvSolution&>(mesh).subDict("levelSet")
+        .subOrEmptyDict("psiRenormalization");
+    psiRenormThreshold = d.getOrDefault<scalar>("threshold", 5e-3);
+    psiRenormSweeps = d.getOrDefault<label>("smoothingSweeps", 2);
+    psiRenormRelaxation = d.getOrDefault<scalar>("relaxation", 1.0);
+}
+if (bandRenormalization)
+{
+    Info<< "  gate threshold (aT*h) = " << psiRenormThreshold
+        << ", smoothing sweeps = " << psiRenormSweeps
+        << ", relaxation = " << psiRenormRelaxation << nl;
+}
 if (psiRenormalizationType != "none" && !bandRenormalization)
 {
     FatalErrorInFunction

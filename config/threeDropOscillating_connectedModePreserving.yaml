@@ -1,0 +1,46 @@
+# OSCILLATING mode-2 droplet (oscISTDroplet2D) on a uniform hex mesh, N = 128
+# (12.8 cells per radius), with the connectedModePreserving curvature delivery:
+# connectedInterface curvature extension, connectedFit estimator, face-native
+# (registered) curvature delivery, mode-preserving Helmholtz tangential
+# regularization. Token set copied from config/oscISTN64ConnectedModePreserving.yaml.
+study_name: threeDropOscillating_connectedModePreserving
+case: oscISTDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme: semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+collapse_other_axes: true
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.05]
+  WRITE_INTERVAL: [0.005]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  VELOCITY_EXTENSION: [none]
+  TRAJECTORY_VELOCITY: [input]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_FACE_INTERPOLATION: [central]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  SURFACE_TENSION_CURVATURE_SOURCE: [field]
+  SURFACE_TENSION_CURVATURE: [1000]
+  SURFACE_TENSION_SIGN: [-1]
+  SURFACE_TENSION_GEOMETRIC_METHOD: [conormalCSF]
+  SURFACE_TENSION_SIGMA: [0.07274]
+  # --- connectedModePreserving curvature delivery ------------------------------
+  CURVATURE_EXTENSION: [connectedInterface]
+  CURVATURE_ESTIMATOR: [connectedFit]
+  CURVATURE_GEOMETRY_SOURCE: [levelSetField]
+  CURVATURE_FACE_INTERPOLATION: [connectedInterface]
+  CURVATURE_FACE_SOURCE: [registered]
+  CURVATURE_FIT_HALF_WIDTH: [4]
+  CURVATURE_REGULARIZATION_OPERATOR: [helmholtzPreserveModes]
+  CURVATURE_TANGENTIAL_REGULARIZATION: [16]
+  CURVATURE_REGULARIZATION_ITERATIONS: [120]
+  CURVATURE_PRESERVE_MODES_THROUGH: [4]
+  # ---------------------------------------------------------------------------
+  CURVATURE_EXTENSION_RELAX: [1]
+  CURVATURE_FORCE_WEIGHT: [alpha]
+
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

@@ -3,6 +3,11 @@ N_CELLS       -1.0; // blockMesh not used
 CFL           0.3;
 SURFACE_FILE  none; // cfmesh pMesh (polyhedral mesh) not used
 PHASE_INDICATOR geometric;
+VELOCITY_EXTENSION none; // levelSet.velocityExtension.type for the LEVEL-SET
+                     // transport only (momentum velocity untouched):
+                     // none | closestPoint | meshWaveExt | pseudoTime |
+                     // steadyUpwind | steadyUpwindLinear |
+                     // anisotropicDiffusion. none = original path.
 ANCHOR_LAYERS 0;    // velocityExtension: extra foot-pointed Dirichlet layers
 UEXT_DIV UpwindUext; // steadyUpwind div scheme alias; MEASURED: the linearUpwind
                      // deferred correction DIVERGES on the steady extension
@@ -94,6 +99,17 @@ PSI_RENORM none;     // levelSet.psiRenormalization.type: none |
                      // and every sign are preserved exactly. MEASURED driver
                      // (plan sec. 14.2): beta spreads to [0.72, 1.37] by
                      // blow-up and the inverse's residual grows 600x.
+PSI_RENORM_THRESHOLD 5e-3; // gate: fire only when the band L2 of the
+                     // dimensionless non-parallelism |P H n|/beta * h exceeds
+                     // this (<= 0 = every step). MEASURED over a reference run:
+                     // 2e-4 at t=0.02, 1.3e-2 at 0.08, 4.5e-2 at 0.10.
+PSI_RENORM_SWEEPS 2; // symmetric smoothing sweeps on the divisor beta_Gamma,
+                     // separating the smooth drift from grid-scale fit noise.
+PSI_RENORM_RELAX 1.0; // relaxation omega: psi <- psi/beta_Gamma^omega. omega=1
+                     // is the one-shot correction, MEASURED 3.4x worse than no
+                     // correction (2% psi kick per firing). omega << 1 spreads
+                     // the same total correction over many steps, so the smooth
+                     // part accumulates coherently and the fit noise does not.
 FACE_CURVATURE_SOURCE model; // reconstructedCurvature kappa_f source: model
                      // (its own arithmetic/Kang assembly) | registered (the
                      // solver-registered face field, e.g. kappaStableFootFace).

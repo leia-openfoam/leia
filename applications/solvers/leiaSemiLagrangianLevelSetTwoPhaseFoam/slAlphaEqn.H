@@ -122,7 +122,10 @@
             (
                 mesh, psi,
                 mesh.lookupObject<volScalarField>("NarrowBand"),
-                slAdv->reconstruction()
+                slAdv->reconstruction(),
+                psiRenormThreshold,
+                psiRenormSweeps,
+                psiRenormRelaxation
             );
         }
 
