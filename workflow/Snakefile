@@ -371,6 +371,23 @@ rule report:
     run:
         import glob as _glob, shutil as _shutil, subprocess as _sp
         _scripts = os.path.join(workflow.basedir, "scripts")
+        # RUN THE FIGURE/TABLE SCRIPTS ON SNAKEMAKE'S OWN INTERPRETER, not on
+        # whatever `python3` PATH happens to resolve to. On Lichtenberg there
+        # are three: the module python snakemake itself runs on (numpy,
+        # matplotlib, foamlib -- but no vtk), ~/miniconda3 (none of them, and
+        # FIRST on PATH in a login shell), and /usr/bin/python3 (numpy only).
+        # `env_preamble` does `module purge`, so inside a job a bare "python3"
+        # picked an interpreter without numpy and every figure script died on
+        # ImportError -- silently, because these calls pass check=False.
+        _PY = sys.executable
+        def _run(args, what):
+            """Run a helper script and SAY SO when it fails. A silent no-op here
+            is how the SDPLS theme ended up with an empty figures directory."""
+            rc = _sp.run(args, check=False).returncode
+            if rc != 0:
+                print(f"[report] {what} FAILED (rc={rc}); "
+                      f"figures/tables from it were NOT produced", file=sys.stderr)
+            return rc
         # 1. curated error table -> theme data/tables. The generic advection
         # error table is meaningless for the static curvature test app (every
         # metric column blank, solver misattributed by the fallback label) --
@@ -390,8 +407,8 @@ rule report:
         # safe: it is a no-op until the whole suite is on disk.
         if THEME in ("sdpls-level-set", "method-comparison") \
                 and SOLVER != "leiaTestMeanCurvature":
-            _sp.run(["python3", os.path.join(_scripts, "make_convergence_table.py"),
-                     "--method", "sdpls"], check=False)
+            _run([_PY, os.path.join(_scripts, "make_convergence_table.py"),
+                     "--method", "sdpls"], "make_convergence_table.py")
         # The two semi-Lagrangian METHOD LINES are independent methods sharing the
         # kinematic figure scripts: each line has its own theme, study set and
         # figure prefix (sl_* / lsl_*), selected via --method / --theme.
@@ -405,61 +422,60 @@ rule report:
                     if config.get("study_kind") == "dropletFields":
                         # field-visualisation job: velocity-glyph-over-alpha + curvature
                         # montages across resolution (mesh drawn on every panel).
-                        _sp.run(["python3", os.path.join(_scripts, "make_droplet_fields_fig.py"),
-                                 STUDY_DIR], check=False)
+                        _run([_PY, os.path.join(_scripts, "make_droplet_fields_fig.py"),
+                                 STUDY_DIR], "make_droplet_fields_fig.py")
                     else:
                         # parasitic-current CONVERGENCE study: table + log-log figure.
-                        _sp.run(["python3", os.path.join(_scripts, "make_droplet_table.py"),
-                                 STUDY_DIR], check=False)
+                        _run([_PY, os.path.join(_scripts, "make_droplet_table.py"),
+                                 STUDY_DIR], "make_droplet_table.py")
                 elif SOLVER == "leiaTestMeanCurvature":
                     # curvature-accuracy study: band L1/L2 error table + log-log figure.
-                    _sp.run(["python3", os.path.join(_scripts, "make_curvature_table.py"),
-                             STUDY_DIR], check=False)
+                    _run([_PY, os.path.join(_scripts, "make_curvature_table.py"),
+                             STUDY_DIR], "make_curvature_table.py")
                 else:
                     # cross-study convergence triptychs + all-errors diagnostics +
                     # curated tables for THIS method line (idempotent, skip-missing),
                     # + per-study psi=0 iso-surface montage (3D cases) and the
                     # volume-fraction field montage (2D vortex).
                     for _s in ("make_sl_3d_fig.py", "make_convergence_table.py"):
-                        _sp.run(["python3", os.path.join(_scripts, _s),
-                                 "--method", _method], check=False)
+                        _run([_PY, os.path.join(_scripts, _s),
+                              "--method", _method], _s)
                     if CASE in ("3Dshear", "3Ddeformation"):
-                        _sp.run(["python3", os.path.join(_scripts, "make_isosurface_fig.py"),
-                                 STUDY_DIR, "--theme", THEME], check=False)
+                        _run([_PY, os.path.join(_scripts, "make_isosurface_fig.py"),
+                                 STUDY_DIR, "--theme", THEME], "make_isosurface_fig.py")
                     if CASE == "2Dvortex":
-                        _sp.run(["python3", os.path.join(_scripts, "make_alpha_field_fig.py"),
-                                 STUDY_DIR, "--theme", THEME], check=False)
+                        _run([_PY, os.path.join(_scripts, "make_alpha_field_fig.py"),
+                                 STUDY_DIR, "--theme", THEME], "make_alpha_field_fig.py")
             elif THEME == "geometrically-redistanced-levelset":
                 if SOLVER == "leiaTestRedistance":
                     # STATIC redistancing gates: convergence table + log-log
                     # figure from the study database; the idempotency gate
                     # (exact-SDF input) additionally renders per-model FIELD
                     # plots (zero sets + |psi_out - psi_in| maps).
-                    _sp.run(["python3", os.path.join(_scripts, "make_redistance_table.py"),
-                             STUDY_DIR], check=False)
+                    _run([_PY, os.path.join(_scripts, "make_redistance_table.py"),
+                             STUDY_DIR], "make_redistance_table.py")
                     if config.get("study_kind") == "staticIdempotency":
-                        _sp.run(["python3",
-                                 os.path.join(_scripts, "make_redistance_fields_fig.py"),
-                                 STUDY_DIR], check=False)
+                        _run([_PY,
+                              os.path.join(_scripts, "make_redistance_fields_fig.py"),
+                              STUDY_DIR], "make_redistance_fields_fig.py")
                 else:
                     # advection studies: per-redistancer convergence figures +
                     # curated order tables from the theme's *_errors.csv.
-                    _sp.run(["python3", os.path.join(_scripts, "make_grl_fig.py")],
-                            check=False)
+                    _run([_PY, os.path.join(_scripts, "make_grl_fig.py")], "make_grl_fig.py")
                     if CASE in ("3Dshear", "3Ddeformation"):
-                        _sp.run(["python3", os.path.join(_scripts, "make_isosurface_fig.py"),
-                                 STUDY_DIR], check=False)
+                        _run([_PY, os.path.join(_scripts, "make_isosurface_fig.py"),
+                                 STUDY_DIR], "make_isosurface_fig.py")
             elif THEME in ("sdpls-level-set", "method-comparison"):
                 if SOLVER == "leiaTestMeanCurvature":
                     # FACE-CENTERED curvature convergence (static circle): the
                     # kappa_f the CSF force applies, all models, with/without
                     # the stabilized foot point -> figure + order table.
-                    _sp.run(["python3", os.path.join(_scripts, "make_face_curvature_fig.py"),
-                             STUDY_DIR], check=False)
+                    _run([_PY, os.path.join(_scripts, "make_face_curvature_fig.py"),
+                             STUDY_DIR], "make_face_curvature_fig.py")
                     # ... and the companion GAIN table: d kappa_f / d psi on the
                     # same faces, the number that tracks the coupled growth rate.
-                    _sp.run(["python3", os.path.join(_scripts, "make_curvature_gain_table.py"),
-                             STUDY_DIR], check=False)
+                    _run([_PY, os.path.join(_scripts, "make_curvature_gain_table.py"),
+                             STUDY_DIR], "make_curvature_gain_table.py")
                 else:
                     # method-decision benchmark: cross-study comparison panels,
                     # cost-vs-accuracy, decision table + per-method field atlases.
@@ -469,8 +485,7 @@ rule report:
                     # rewrite another theme's figures from whatever subset of
                     # benchVortex* happens to be on this machine.
                     if THEME == "method-comparison":
-                        _sp.run(["python3", os.path.join(_scripts, "make_method_comparison.py")],
-                                check=False)
+                        _run([_PY, os.path.join(_scripts, "make_method_comparison.py")], "make_method_comparison.py")
                     # Same scoping rule for the field atlases: pass the study
                     # glob for THIS theme so an sdpls run cannot rewrite the
                     # method-comparison atlases (and vice versa) from a partial
@@ -478,14 +493,14 @@ rule report:
                     _atlas_glob = os.path.join(
                         STUDIES_DIR,
                         "sdplsBetaSweep" if THEME == "sdpls-level-set" else "benchVortex*")
-                    _sp.run(["python3", os.path.join(_scripts, "make_bench_fields_fig.py"),
-                             _atlas_glob], check=False)
+                    _run([_PY, os.path.join(_scripts, "make_bench_fields_fig.py"),
+                             _atlas_glob], "make_bench_fields_fig.py")
                     # 3D SDPLS studies had NO field figure at all. One psi=0
                     # iso-surface montage per method arm, so the 3D interface is
                     # inspectable the way the 2D atlases make the 2D one.
                     if CASE in ("3Dshear", "3Ddeformation"):
-                        _sp.run(["python3", os.path.join(_scripts, "make_isosurface_fig.py"),
-                                 STUDY_DIR, "--theme", THEME], check=False)
+                        _run([_PY, os.path.join(_scripts, "make_isosurface_fig.py"),
+                                 STUDY_DIR, "--theme", THEME], "make_isosurface_fig.py")
             else:
                 # velocity-extension: field montages + convergence figures.
                 plots.main(STUDY_DIR, FIGS_DIR)
