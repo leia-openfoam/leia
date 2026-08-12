@@ -194,6 +194,44 @@ $t=T$ column therefore compares a residual against an exactly-cancelling
 control and flatters the baseline by construction. The meaningful instant is
 $t = T/2$, the state of maximal stretching.
 
+That argument should be made with the numbers in view rather than in place of
+them, because at $t=T$ \emph{doing nothing wins, and by a wide margin}. On the
+2D vortex, $T=2$, band gradient error at $t=T$:
+\begin{center}
+\begin{tabular}{lcccccr}
+\toprule
+$N$ & 32 & 64 & 128 & 256 & 512 & order \\
+\midrule
+no source     & 0.122 & 0.072 & 0.012 & 0.0013 & \textbf{0.0001} & $+2.63$ \\
+\textbf{R}    & 0.306 & 0.258 & 0.148 & 0.084  & 0.048           & $+0.70$ \\
+\texttt{beta} & 0.275 & 0.330 & 0.361 & 2.805  & 6.897           & $-1.24$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The baseline is $477\times$ better than \textbf{R} on the finest mesh and
+converges nearly four times as fast. This is not a defect of \textbf{R}; it is
+what the identity above forces. A passively advected level set is returned to
+its initial signed-distance state by the reversal, while \emph{any} source does
+work on $\psilev$ along the trajectory that the reversal does not undo, and that
+work survives as a residue. A reversed flow evaluated only at $t=T$ therefore
+rewards inaction, and cannot on its own justify a source term.
+
+The case for the source has to be made at $t=T/2$, where the interface is
+actually far from a signed distance --- there \textbf{R} is $145\times$ better
+than the baseline (Table~\ref{tab:half}) and converges while the baseline
+diverges. That is also the state a non-reversible flow leaves behind
+permanently, and the state a coupled two-phase computation reads $\psilev$ in at
+every step, since curvature and the phase indicator are evaluated continuously
+and not only at the end of a period.
+
+The honest summary of the trade is therefore narrower than ``the source
+improves the level set''. \textbf{R} buys a $145\times$ better signed-distance
+property at maximal deformation and pays for it with a worse return-to-start
+and, at $t=T$ on the finest mesh, a volume error of $4.0\times10^{-4}$ against
+the baseline's $2.2\times10^{-5}$. Shape error is indistinguishable across the
+three arms ($\approx1.7\times10^{-5}$). \texttt{beta} buys nothing at either
+instant and pays with a divergence.
+
 \begin{table}[htbp]
 \centering
 \caption{Band gradient error $\bigl\|\gradpsi-1\bigr\|_{L_2}$ at $t=T/2$ on the
