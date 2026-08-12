@@ -136,3 +136,9 @@ REDIST_NITER 30;     // PDE pseudo-time iterations (reach = niter*deltaTCoeff*h)
 // SDPLS source is re-linearized every pass. UNRELATED to the semi-Lagrangian
 // deferredCorrector's own nDefCorr, which lives in fvSolution.levelSet.
 N_DEF_CORR 3;
+
+// linearUpwind reconstruction gradient for div(phi,psi), as an aliasDict name
+// (the value has spaces; see cases/2Dvortex/system/aliasDict). CellLimitedLSQ is
+// the historical value, so every existing study renders unchanged.
+// Swept by config/sdplsOrderAblation.yaml.
+DIV_GRAD CellLimitedLSQ;

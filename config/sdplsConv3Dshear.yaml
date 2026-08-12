@@ -69,6 +69,18 @@ axes_override:
   # check-discretization` reads the RENDERED fvSchemes and is the gate.
   # (3Dshear hardcodes narrowBand type signChange; there is no NARROWBAND token
   #  in its template, unlike 3Ddeformation.)
+  # NON-REVERSING STRESS TEST. With `oscillation on` the flow reverses and
+  # int a dt = 0 over the period, so at t=T the sourceless drift cancels by
+  # time-reversal symmetry -- measured: the baseline beats R by 477x there,
+  # purely because the exact solution at t=T is "undo everything". A reversed
+  # flow read at t=T rewards inaction and cannot justify a source term. Off, the
+  # vortex is steady: strain is sustained, nothing cancels, and t=T is a real
+  # measurement of whether the source holds the signed-distance property.
+  # NOTE: shape error is NOT meaningful here -- E_GEOM_ALPHA compares against the
+  # INITIAL alpha, and the interface never returns. aggregate.py blanks it in the
+  # curated table for oscillation=off rows and records `oscillation` alongside.
+  # Volume error (conservation) and the gradient error (intrinsic) stay valid.
+  OSCILLATION: [off]
 collapse_other_axes: true
 
 # Publish: this is a PRIMARY study of the sdpls theme. `export_slides:

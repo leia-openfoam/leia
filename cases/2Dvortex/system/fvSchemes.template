@@ -40,10 +40,14 @@ gradSchemes
     redistGradPsi   leastSquares;
     default         Gauss linear;
     grad(p)         Gauss linear;
-    // Cell-limited least-squares gradient used by the linearUpwind advection of
-    // psi below (deferred second-order correction). Fallbacks if it mislimits on
-    // the coarse vortex: "faceLimited leastSquares 1" or "cellLimited Gauss linear 1".
-    grad(psi)       cellLimited leastSquares 1;
+    // Reconstruction gradient used by the linearUpwind advection of psi below
+    // (deferred second-order correction). TOKENISED so the order-loss ablation
+    // (config/sdplsOrderAblation.yaml) can vary the LIMITER while holding
+    // everything else fixed: a cell-limited gradient returns exactly 0 at a
+    // local extremum, which is where a level set sits near its interface, so it
+    // is the leading suspect for the sub-second-order band gradient error.
+    // DEFAULT IS THE HISTORICAL VALUE -- every other study renders unchanged.
+    grad(psi)       $@!DIV_GRAD!@;
     // Reconstruction gradient for the linearUpwind steady velocity extension.
     grad(Uext)      leastSquares;
     // Pure least-squares gradient for the Aslam cascade's normal derivative

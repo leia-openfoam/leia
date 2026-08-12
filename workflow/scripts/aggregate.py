@@ -153,6 +153,13 @@ def _write_error_table(records, database_path):
             # benchVortexEulerT2's 30-row errors CSV sits next to a 15-row
             # database from a different run. Nothing in either file said so.
             "study", "caseDir", "np", "gitCommit", "runDate",
+            # `on` = reversed flow (cos(pi t/tau)); the interface returns to its
+            # initial shape at t=T and the sourceless drift cancels by symmetry,
+            # which flatters doing nothing. `off` = steady vortex, sustained
+            # strain, no cancellation -- the non-reversing stress test. Which one
+            # a row came from decides whether its t=T column means anything, so
+            # it belongs in the curated table.
+            "oscillation",
             ] + fvschemes.COLUMNS
     rows = []
     for rec in records:
@@ -192,7 +199,22 @@ def _write_error_table(records, database_path):
             "maxCellSize": (mcs if (mcs and mcs > 0) else ""),  # cfMesh target size (poly only)
             "cfl": rec.get("CFL", ""),                     # max Courant (SL sweeps 0.5/1.0)
             "gradientError": rec.get("gradPsiError.E_L2_GRAD_PSI", ""),
-            "shapeError": sget(rec, "E_GEOM_ALPHA"),
+            # SHAPE ERROR IS ONLY AN ERROR ON A REVERSED FLOW. E_GEOM_ALPHA
+            # compares alpha against alpha0, which errorCalculation.H sets to the
+            # INITIAL field (unless a case supplies an explicit alphaEnd). With
+            # `oscillation off` the vortex is steady, the interface never returns,
+            # and that difference measures how far the interface travelled -- not
+            # an error. Publishing it would let make_convergence_table fit and
+            # print a meaningless "shape order". The raw value is untouched in
+            # <study>_database.csv; only the curated table blanks it, and the
+            # `oscillation` column below says why.
+            "shapeError": ("" if rec.get("OSCILLATION", "on") == "off"
+                           else sget(rec, "E_GEOM_ALPHA")),
+            # Volume error stays valid either way: it measures conservation
+            # against the initial volume, which a divergence-free velocity
+            # preserves regardless of reversal. So does the gradient error, which
+            # is intrinsic and needs no reference solution at all.
+            "oscillation": rec.get("OSCILLATION", ""),
             "volumeError": sget(rec, "E_VOL_ALPHA_REL"),
             "gradientErrorBand": rec.get("gradPsiError.E_NARROW_L2_GRAD_PSI", ""),
             "gradientErrorHalf": rec.get("half.gradPsiError.E_L2_GRAD_PSI", ""),

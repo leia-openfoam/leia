@@ -1,0 +1,90 @@
+# WHERE DOES THE SDPLS CONVERGENCE ORDER GO?
+#
+# The strain-cancelling source converges, but slowly: the band gradient error
+# fits order +1.23 at t = T/2 and +0.70 at t = T on the 2D reversed vortex, well
+# short of the formal second order of the discretization. This study isolates
+# the cause by ablation -- one factor varied, everything else pinned.
+#
+# WHAT IS ALREADY EXCLUDED, by measurement rather than by argument:
+#
+#   TIME INTEGRATION. ddtSchemes is `CrankNicolson 1`, i.e. pure Crank-Nicolson,
+#   second order -- not first-order Euler.
+#
+#   TEMPORAL ERROR IN GENERAL, and with it the defect-correction count. On
+#   config/sdplsStability.yaml at fixed N=128, a TENFOLD change in CFL
+#   (0.1 -> 1.0) moves the band gradient error at T/2 from 0.096152 to 0.095590
+#   -- 0.5%. An error that is invariant under a tenfold change of the time step
+#   is not a time-stepping error, and a deferred correction that had not
+#   converged would not be either. The loss is SPATIAL.
+#
+# THE LEADING SUSPECT is therefore the reconstruction gradient that
+# `div(phi,psi) Gauss linearUpwind grad(psi)` uses. A CELL-LIMITED gradient
+# returns EXACTLY ZERO at a local extremum, and near an interface a level set is
+# full of them, so the second-order reconstruction degrades to plain first-order
+# upwind precisely in the narrow band where the error is measured. The case
+# template has suspected this in a comment for some time ("Fallbacks if it
+# mislimits on the coarse vortex"); nobody had measured it.
+#
+# THE ABLATION. `DIV_GRAD` selects the reconstruction gradient through the
+# aliasDict (the value has spaces; see cases/2Dvortex/system/aliasDict):
+#
+#   CellLimitedLSQ    cellLimited leastSquares 1    the historical default
+#   UnlimitedLSQ      leastSquares                  no limiter at all
+#   CellLimitedGauss  cellLimited Gauss linear 1    limiter, different base
+#   FaceLimitedLSQ    faceLimited leastSquares 1    less aggressive limiter
+#
+# WHAT EACH OUTCOME WOULD MEAN:
+#   * order recovers toward 2 without the limiter -> the limiter IS the loss,
+#     and the fix is a gentler limiter or an unlimited reconstruction (at some
+#     cost in boundedness, which the volume error column will show).
+#   * order unchanged across all four -> the limiter is exonerated and the loss
+#     is elsewhere: band definition, interface under-resolution, or the source
+#     discretization itself. That is a real result and closes off the most
+#     plausible explanation.
+#   * unlimited runs go unstable -> the limiter is buying boundedness that the
+#     scheme needs, and the order loss is the price. Divergent rows are RESULTS
+#     here, and --keep-going records them.
+#
+# The `noSource` arm is included deliberately: if the limiter costs order for
+# plain advection too, the loss belongs to the transport scheme rather than to
+# SDPLS, and the SDPLS record should stop claiming it.
+#
+# Non-reversing flow (OSCILLATION off), so t = T is a real measurement rather
+# than a symmetry check -- see config/sdplsConv2Dvortex.yaml for why. Shape error
+# is not meaningful here and aggregate.py blanks it.
+#
+#   make studies-one STUDY=sdplsOrderAblation PROFILE=profiles/slurm
+
+study_name: sdplsOrderAblation
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [1]
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  OSCILLATION: [off]
+
+  # --- the ablation axis --------------------------------------------------- #
+  DIV_GRAD: [CellLimitedLSQ, UnlimitedLSQ, CellLimitedGauss, FaceLimitedLSQ]
+
+  # One source arm plus the baseline. The linearization is settled (all three
+  # agree to five digits), so it is pinned rather than swept.
+  SDPLS_SOURCE: [noSource, R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+collapse_other_axes: true
+
+export_slides: true
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

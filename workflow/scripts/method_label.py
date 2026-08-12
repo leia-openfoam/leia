@@ -77,13 +77,28 @@ def _sl_parts(rec):
     return label
 
 
+# The historical reconstruction gradient for div(phi,psi). Anything else is an
+# ABLATION arm and must be visible in the label, or the variants collapse to one
+# `method` string at each h and the order fit runs straight through them -- the
+# same defect the beta sweep had before _beta() existed.
+_DEFAULT_DIV_GRAD_SCHEME = "cellLimited leastSquares 1"
+_GRAD_TAG = {
+    "leastSquares":               "lsq",
+    "cellLimited Gauss linear 1": "clGauss",
+    "faceLimited leastSquares 1": "flLsq",
+    "Gauss linear":               "gauss",
+}
+
+
 def _compact_div(rec):
     """`Gauss linearUpwind grad(psi)` -> `linearUpwind/grad(psi)`.
 
     The named gradient is load-bearing, not decoration: `linearUpwind grad(psi)`
     means something different depending on what `grad(psi)` resolves to, and in
     a case with no `grad(psi)` key it silently falls back to gradSchemes
-    `default`."""
+    `default`. When that resolution is not the historical default, the RESOLVED
+    scheme is appended too -- omitted otherwise, so every pre-ablation label
+    stays byte-identical."""
     div = (rec.get("divPsi") or "").strip()
     if not div:
         return ""
@@ -94,7 +109,11 @@ def _compact_div(rec):
         return ""
     scheme = toks[0]
     named = (rec.get("divPsiGrad") or "").strip()
-    return f"{scheme}/{named}" if named else scheme
+    out = f"{scheme}/{named}" if named else scheme
+    resolved = " ".join((rec.get("divPsiGradScheme") or "").split())
+    if resolved and resolved != _DEFAULT_DIV_GRAD_SCHEME:
+        out += ":" + _GRAD_TAG.get(resolved, resolved.replace(" ", "-"))
+    return out
 
 
 def _dc(rec):

@@ -1,0 +1,81 @@
+# SDPLS 2D convergence on the NON-REVERSING vortex -- the test that can actually
+# justify a source term.
+#
+# WHY THIS EXISTS. Every other SDPLS benchmark runs `oscillation on`, i.e. a
+# reversed flow with velocity factor cos(pi t / tau). On such a flow
+# int_0^T a dt = 0 along every interfacial trajectory, so at t = T the sourceless
+# drift cancels by time-reversal symmetry and only a source's RESIDUAL survives.
+# Measured on benchVortexEulerT2 (N=512, band gradient error at t=T):
+#
+#     no source  0.0001   order +2.63
+#     R          0.0477   order +0.70
+#     beta       6.8970   order -1.24
+#
+# The baseline beats R by 477x there -- not because it is better, but because
+# the exact solution at t = T is "undo everything", and a passively advected psi
+# is returned to its initial signed-distance state while ANY source does work
+# along the trajectory that the reversal does not undo. A reversed flow read at
+# t = T rewards inaction. The whole case for the source consequently rested on a
+# single column, t = T/2.
+#
+# With `oscillation off` the vortex is STEADY: strain is sustained, nothing
+# cancels on the way back, and t = T is a genuine measurement of whether the
+# source holds |grad psi| = 1 under continuous stretching. That is also the
+# regime a real (non-reversible) flow leaves behind, and the regime a coupled
+# two-phase run lives in, since curvature and the phase indicator read psi at
+# every step rather than at the end of a period.
+#
+# END_TIME. The steady vortex deforms linearly in time, while the reversed one
+# carries |cos(pi t/tau)|; the reversed T=2 case reaches its maximum deformation
+# at t=1 having accumulated int_0^1 |cos(pi t/2)| dt = 2/pi ~ 0.637 of the peak
+# rate. T = 1 here is therefore about 1.6x the deformation of the reversed
+# study's worst instant -- a real stress test, still short of winding the
+# interface into a filament the coarse meshes cannot represent.
+#
+# WHAT IS AND IS NOT MEASURABLE HERE:
+#   gradient error  VALID -- intrinsic, needs no reference solution
+#   volume error    VALID -- conservation against the initial volume, which a
+#                   divergence-free velocity preserves regardless of reversal
+#   shape  error    NOT VALID -- E_GEOM_ALPHA compares against the INITIAL alpha
+#                   (errorCalculation.H) and the interface never returns, so the
+#                   difference measures travel, not error. aggregate.py blanks it
+#                   for oscillation=off rows rather than let a meaningless
+#                   "shape order" be fitted and published.
+#
+#   make studies-one STUDY=sdplsConv2Dvortex PROFILE=profiles/slurm
+
+study_name: sdplsConv2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [1]
+  # sqrt(2) ladder, cells x2 per level -- seven points for a clean least-squares
+  # order, and it contains 32/64/128/256 so the rows line up with the reversed
+  # benchVortexEulerT2 study at the shared resolutions.
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+
+  # The non-reversing stress test. See the header.
+  OSCILLATION: [off]
+
+  # Full arm matrix: the baseline is the control that matters here, because on a
+  # non-reversing flow it no longer gets the symmetry cancellation for free.
+  SDPLS_SOURCE: [noSource, R, beta]
+  SOURCE_SCHEME: [simpleLinearImplicit, strictNegativeSpLinearImplicit]
+collapse_other_axes: true
+
+export_slides: true
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

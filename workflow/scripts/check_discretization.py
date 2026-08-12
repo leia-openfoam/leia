@@ -39,6 +39,12 @@ EXPECTED = {
 }
 EXPECTED_MIN_NDEFCORR = 3
 
+# Studies that vary the discretization ON PURPOSE. For these, "the cases used N
+# different discretizations" is the experiment, not the bug this gate exists to
+# catch -- but they are still checked for everything else, and the deviation is
+# printed so an ablation can never be mistaken for a uniform study.
+ABLATION_STUDIES = {"sdplsOrderAblation"}
+
 
 def _is_semi_lagrangian(case_dir):
     """A semi-Lagrangian case never assembles div(phi,psi) -- its update is a
@@ -85,7 +91,8 @@ def check_study(study_dir):
     if not seen:
         return 0, []      # no FV-advection case here (e.g. a semi-Lagrangian study)
 
-    if len(seen) > 1:
+    ablation = name in ABLATION_STUDIES
+    if len(seen) > 1 and not ablation:
         complaints.append(
             f"{name}: cases used {len(seen)} DIFFERENT discretizations -- "
             "arms are not comparable:")
@@ -94,8 +101,27 @@ def check_study(study_dir):
                 f"    {len(names):3d} case(s)  div={key[0]!r} "
                 f"grad={key[1]!r} nDefCorr={key[2]!r}"
                 f"   e.g. {names[0]}")
+    elif ablation:
+        # Say what it varied. Silence here would make an ablation study
+        # indistinguishable from a uniform one in the gate's output.
+        print(f"[check-disc] {name}: ABLATION study, {len(seen)} discretization(s) "
+              f"by design:")
+        for key, names in sorted(seen.items(), key=lambda kv: -len(kv[1])):
+            print(f"    {len(names):3d} case(s)  grad={key[1]!r}")
 
     for (div, grad, ndc), names in seen.items():
+        if ablation and div == EXPECTED["divPsi"]:
+            # The div scheme is still pinned; only the reconstruction gradient
+            # is swept, so check everything except that one field.
+            try:
+                n = int(str(ndc).split()[0])
+            except (ValueError, IndexError):
+                n = -1
+            if n < EXPECTED_MIN_NDEFCORR:
+                complaints.append(
+                    f"{name}: nDefCorr = {ndc!r}, expected >= "
+                    f"{EXPECTED_MIN_NDEFCORR}  ({len(names)} case(s))")
+            continue
         if div != EXPECTED["divPsi"]:
             complaints.append(
                 f"{name}: div(phi,psi) = {div!r}, expected "

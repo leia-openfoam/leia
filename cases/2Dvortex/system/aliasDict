@@ -18,3 +18,19 @@ Gamma1            Gamma 1;
 
 UpwindUext        upwind;
 LinearUpwindUext  linearUpwind grad(Uext);
+
+// ## linearUpwind reconstruction gradient for div(phi,psi), selected by the
+// DIV_GRAD study token. The order-loss ablation
+// (config/sdplsOrderAblation.yaml) varies ONLY this, holding the divergence
+// scheme, the time scheme and everything else fixed.
+//
+// Why it is the leading suspect: a cell-limited gradient returns EXACTLY ZERO at
+// a local extremum, and near an interface the level set is full of them, so the
+// linearUpwind reconstruction degrades to first-order upwind precisely where the
+// band gradient error is measured. The measured error is CFL-independent to 0.5%
+// over a tenfold CFL change, so the loss is spatial, not temporal.
+
+CellLimitedLSQ    cellLimited leastSquares 1;   // historical default
+UnlimitedLSQ      leastSquares;                 // no limiter at all
+CellLimitedGauss  cellLimited Gauss linear 1;   // limiter, different base gradient
+FaceLimitedLSQ    faceLimited leastSquares 1;   // face-limited: less aggressive

@@ -93,6 +93,13 @@ METHODS = {
             # without that they collapse to one series per h and the
             # least-squares slope below gets fitted straight through them.
             ("sdplsBetaSweep",         "2Dvortex",      "hex"),
+            # Non-reversing vortex: the only 2D study whose t=T column is a
+            # measurement rather than a time-reversal symmetry check.
+            ("sdplsConv2Dvortex",      "2Dvortex",      "hex"),
+            # Order ablation. Its arms differ in the linearUpwind reconstruction
+            # gradient, which method_label now renders (`...grad(psi):lsq`), so
+            # the four variants stay separate series here.
+            ("sdplsOrderAblation",     "2Dvortex",      "hex"),
             ("sdplsConv3Dshear",       "3Dshear",       "hex"),
             ("sdplsConv3Ddeformation", "3Ddeformation", "hex"),
         ],
