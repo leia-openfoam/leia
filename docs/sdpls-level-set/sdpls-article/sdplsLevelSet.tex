@@ -318,15 +318,20 @@ Two candidates can be eliminated by measurement. The first is the
 cell-limited by default, and a limiter that clips at local extrema is an
 obvious order-killer for a quantity whose extrema are the thing being measured.
 A 56-case ablation replacing it with cell-limited Gauss, unlimited least
-squares and face-limited least squares, holding everything else fixed, gives
-fitted orders of $0.649$, $0.649$, $0.661$ and $0.753$ over $N = 32\ldots181$.
-Removing the limiter entirely moves the order by $0.012$. It also improves the
-error by about $5\%$ at every rung, so the limiter costs a little accuracy and
-no order. The sourceless arm is equally indifferent ($-0.328$ against
-$-0.306$). The second candidate is the time integration, and it is excluded by
-inspection: these runs use \texttt{CrankNicolson}, which is second order, not
-first-order Euler, so there is no first-order temporal cap to explain a
-sub-unit slope.
+squares and face-limited least squares, holding everything else fixed over the
+full $N = 32\ldots256$ ladder, gives fitted orders of $0.740$, $0.740$, $0.743$
+and $0.658$. Removing the limiter entirely moves the order by $0.003$. It does
+improve the error by about $5\%$ at every rung, so the limiter costs a little
+accuracy and no order at all. The sourceless arm is equally indifferent
+($-0.255$ against $-0.240$). Face limiting is the only variant that changes
+anything, and it is worse in both order and error. The second candidate is the
+time integration, and it is excluded by inspection: these runs use
+\texttt{CrankNicolson}, which is second order, not first-order Euler, so there
+is no first-order temporal cap to explain a sub-unit slope.
+
+The default arm of this ablation reproduces the $+0.74$ of the main ladder to
+three digits from an independently configured study, which is the cross-check
+that the two are measuring the same thing.
 
 What remains is not yet resolved, and two things are worth separating. On the
 measurement side, the narrow band is the set of sign-change cells, so it is

@@ -301,22 +301,26 @@
      (<code>sdplsOrderAblation</code>) swaps only the <code>grad(psi)</code>
      reconstruction inside <code>linearUpwind</code>, everything else held fixed.
      Band gradient error at <em>t</em>&nbsp;=&nbsp;<em>T</em>:</p>
-  <table style="font-size:0.78em; margin:0 auto">
+  <table style="font-size:0.76em; margin:0 auto">
     <tr><th style="text-align:left"><code>grad(psi)</code></th>
-        <th>32</th><th>45</th><th>64</th><th>90</th><th>128</th><th>181</th><th>order</th></tr>
+        <th>32</th><th>45</th><th>64</th><th>90</th><th>128</th><th>181</th><th>256</th>
+        <th>order</th></tr>
     <tr><td>cellLimited leastSquares <em>(default)</em></td><td>0.451</td><td>0.392</td>
-        <td>0.292</td><td>0.230</td><td>0.188</td><td>0.152</td><td>0.649</td></tr>
+        <td>0.292</td><td>0.230</td><td>0.188</td><td>0.152</td><td>0.090</td>
+        <td>0.740</td></tr>
     <tr><td>cellLimited Gauss linear</td><td>0.451</td><td>0.392</td><td>0.292</td>
-        <td>0.230</td><td>0.188</td><td>0.152</td><td>0.649</td></tr>
+        <td>0.230</td><td>0.188</td><td>0.152</td><td>0.090</td><td>0.740</td></tr>
     <tr><td><b>leastSquares (unlimited)</b></td><td>0.430</td><td>0.353</td><td>0.268</td>
-        <td>0.216</td><td>0.180</td><td>0.135</td><td><b>0.661</b></td></tr>
+        <td>0.216</td><td>0.180</td><td>0.135</td><td><b>0.084</b></td>
+        <td><b>0.743</b></td></tr>
     <tr><td>faceLimited leastSquares</td><td>0.559</td><td>0.423</td><td>0.311</td>
-        <td>0.247</td><td>0.199</td><td>&mdash;</td><td>0.753</td></tr>
+        <td>0.247</td><td>0.199</td><td>0.182</td><td>0.136</td><td>0.658</td></tr>
   </table>
   <ul class="tight" style="font-size:0.85em">
     <li class="warn"><b>Not the limiter.</b> Removing it entirely moves the order by
-        <b>0.012</b>. It buys ~5% accuracy at every rung and no order. The sourceless arm is
-        equally indifferent (&minus;0.328 &rarr; &minus;0.306).</li>
+        <b>0.003</b>. It buys ~5% accuracy at every rung and no order at all. The sourceless
+        arm is equally indifferent (&minus;0.255 &rarr; &minus;0.240). Face limiting is the
+        only variant that moves anything, and it is worse in both order and error.</li>
     <li class="warn"><b>Not the time scheme.</b> These runs use <code>CrankNicolson</code>,
         second order &mdash; there is no first-order Euler cap to blame.</li>
     <li><b>Still open, and two different things.</b> <em>Measurement:</em> the band is the
@@ -327,8 +331,11 @@
         more accurately than it can estimate it.</li>
   </ul>
   <p class="tight" style="font-size:0.78em; opacity:0.75">
-    Orders over <em>N</em>&nbsp;=&nbsp;32&hellip;181; the <em>N</em>&nbsp;=&nbsp;256 rungs
-    were still running and their partial rows are excluded, not averaged in.</p>
+    Full 7-rung ladder, all 56 cases at <em>t</em>&nbsp;=&nbsp;<em>T</em>. The default arm
+    reproduces the <b>+0.74</b> of the main ladder to three digits from an independently
+    configured study. On a partial ladder (<em>N</em>&nbsp;&le;&nbsp;181) faceLimited read
+    <em>0.753</em> and looked best &mdash; a missing-rung artifact, and the reason the
+    completeness gate blanks unfinished rows rather than fitting through them.</p>
 </section>
 </section>
 
