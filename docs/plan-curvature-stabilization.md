@@ -957,3 +957,77 @@ ACCEPTANCE CRITERION for any future "signed-distance-free" correction, checked i
 the same table: G h^2 <= 0.65 AND fitted E_L2 order >= 1.9 at the Pi of the
 coupled run. A candidate that meets only the second is, on this evidence, a
 regression.
+
+## 12. WP8.4 — measured 2026-08-12: the varying-curvature gate kills the cut-cell family
+
+New gate: `config/faceCurvatureEllipse2D.yaml`, case `cases/ellipseDroplet2D`, a
+2:1 signed-distance ellipse (semi-axes 2 mm x 1 mm in the 0.01 m box, N=64-512).
+`signedDistanceEllipse` is a TRUE signed distance -- level sets stay parallel and
+the foliation residual D of sec. 11.2 is still zero -- so this gate isolates ONE
+thing: the exact curvature now VARIES along the interface,
+kappa(theta) = ab/(a^2 sin^2 theta + b^2 cos^2 theta)^{3/2}, from 250 1/m at the
+minor-axis vertex to 2000 1/m at the major-axis vertex, a ratio of 8. The gate app
+takes every error against the LOCAL exact value queried from the surface at the
+face centre. implicitSphere is left on the radius-based constant, since its
+curvature() returns 1/R in 3D too; the circle and sphere gates are verified
+BIT-IDENTICAL after the change.
+
+RESULT — active-face L2 of kappa_f [1/m], and the fitted order:
+
+| delivery | N=64 | N=128 | N=256 | N=512 | order (N>=128) | circle order |
+|---|---|---|---|---|---|---|
+| arithmetic | 102.7 | 52.38 | 28.57 | 13.66 | 0.97 | 1.13 |
+| per-face inverse | 14.17 | 4.323 | 1.116 | 0.2785 | **1.98** | 2.04 |
+| cut-cell inverse | 41.64 | 24.13 | 11.79 | 5.848 | **1.02** | 2.00 |
+| cell-mean inverse | 43.44 | 24.27 | 11.81 | 5.851 | **1.03** | 2.05 |
+| interface mean (control) | 472.2 | 497.4 | 509.1 | 505.6 | -0.01 | 2.03 |
+
+BOTH one-value-per-cut-cell deliveries COLLAPSE TO FIRST ORDER, and are 21x less
+accurate than the per-face inversion at N=512. The per-face inversion keeps
+h^1.98. The circle gate showed the exact opposite ranking (2.00 and 2.05 against
+2.04), and the interface-mean control -- exact on a circle by symmetry -- is
+revealed as zeroth order, which is the same defect in its extreme form.
+
+WHY, AND WHY IT IS STRUCTURAL. Assigning ONE value to every active face of a cut
+cell forces kappa_f to be constant across a cell. Where the exact curvature
+varies along the interface, the variation within one cell is O(h dkappa/ds), so a
+face at the edge of the cell receives a value centred on the CELL, not on itself:
+an O(h) offset, first order by construction. It cannot be repaired by averaging
+better, because the defect is the lumping, not the estimator. Note that this is
+NOT the same as symmetric smoothing: a symmetric average about each FACE stays
+second order (its error is O(h^2 d^2 kappa)); it is the one-sided, cell-centred
+assignment that costs an order.
+
+The gain is unchanged by the geometry -- cell-mean 0.370-0.416, per-face
+0.612-0.673, cut-cell 0.779-0.849 across the ellipse ladder, the same values as
+on the circle -- confirming that G h^2 is a property of the delivery and not of
+the shape.
+
+CONSEQUENCE. The cell-mean delivery, adopted in sec. 11.5 on the strength of the
+longest coupled survival (t_blow 0.1049 s against 0.0668 s), is FIRST ORDER on any
+interface whose curvature varies and therefore cannot be used in a general case.
+Its coupled advantage was measured on a CIRCLE, whose constant curvature hides the
+defect exactly as the static circle gate did. The stationary-droplet test is blind
+to this by construction. Both cut-cell-family deliveries are hereby retired from
+consideration as production deliveries; they remain useful as the two extreme
+points that established the gain-versus-accuracy dissociation.
+
+THE ACCEPTANCE CRITERION OF sec. 11.5 IS AMENDED: G h^2 <= 0.65 AND fitted E_L2
+order >= 1.9 ON THE VARYING-CURVATURE GATE, not on the circle. Under the amended
+criterion the only delivery that passes today is the per-face inverse
+(order 1.98, G h^2 0.647) -- which is the production default.
+
+WHAT THIS OPENS. The direction that remains is to lower the gain WITHOUT lumping:
+average each face's inversion symmetrically about THAT FACE (its interface-adjacent
+face neighbours), so every face keeps a value centred on itself. Predicted to keep
+h^2 while reducing the gain, and it is now cheap to falsify -- both gates plus the
+gain are one command each. The cut-cell result says nothing against this variant;
+it says the failure was the cell-centred assignment.
+
+METHODOLOGICAL NOTE. This is the standing rule of the programme paying off: a
+static test case must not be simpler than the interfaces the method is meant to
+run on, or the method that wins is the one that exploits the simplification.
+Sec. 10 said accuracy does not predict stability; sec. 12 says stability on a
+circle does not predict accuracy on anything else. Both gates are needed, and the
+coupled droplet needs a non-circular companion before any delivery is promoted on
+coupled evidence alone.

@@ -152,7 +152,15 @@ def main(argv):
         print(f"[facecurv] no completed cases under {argv[0]}"); return 1
 
     # 3D sphere gate -> its own artifact names (auto from the study name).
-    suffix = "_3d" if "3d" in os.path.basename(os.path.normpath(argv[0])).lower() else ""
+    # Artifact suffix per GATE, so the circle, sphere and varying-curvature
+    # gates write side by side instead of overwriting one another.
+    _base = os.path.basename(os.path.normpath(argv[0])).lower()
+    if "3d" in _base or "sphere" in _base:
+        suffix = "_3d"
+    elif "ellipse" in _base:
+        suffix = "_ellipse"
+    else:
+        suffix = ""
 
     figs, tables = paths.figs_dir(THEME), paths.tables_dir(THEME)
     orders = {k: _fit(s["h"], s["L2"]) for k, s in recs.items()}

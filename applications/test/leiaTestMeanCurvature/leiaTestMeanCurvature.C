@@ -77,6 +77,9 @@ Description
 // parallel-surface inverse -- reused here so the gate measures EXACTLY the
 // formula the solver applies.
 #include "stabilizedFootPointFaceCurvature.H"
+// Analytic surfaces: supply the POSITION-DEPENDENT exact curvature on the
+// varying-curvature gates (a circle and a sphere cannot exercise averaging).
+#include "levelSetImplicitSurfaces.H"
 
 using namespace Foam;
 
@@ -125,15 +128,66 @@ int main(int argc, char *argv[])
         mesh
     );
 
-    // Exact interface curvature of the initialised circle/sphere.
+    // Exact interface curvature.
+    //
+    // A circle and a sphere have CONSTANT exact curvature, so neither gate can
+    // see the cost of a delivery that averages (over-smoothing is free when
+    // there is nothing to smooth) nor the non-parallel-foliation residual of
+    // plan sec. 11.2 (identically zero on an exact signed distance). Shapes
+    // whose curvature VARIES along the interface therefore supply a
+    // POSITION-DEPENDENT exact value, queried from the implicit surface at the
+    // point where the error is taken.
+    //
+    // implicitSphere::curvature() returns 1/R in BOTH dimensions, which is the
+    // 2D convention -- it disagrees with kappa = div(n) = 2/R on a 3D sphere.
+    // So the radius-based constant is kept for that surface (bit-identical to
+    // every previously published row) and the surface is only queried for the
+    // types whose curvature() is known to be div(n) in this convention.
     const fvSolution& fvSol(mesh);
     const dictionary& implSurf =
         fvSol.subDict("levelSet").subDict("implicitSurface");
-    const scalar R = implSurf.get<scalar>("radius");
     const label nd = mesh.nGeometricD();
-    const scalar kappaExact = scalar(nd - 1)/R;   // 1/R in 2D, 2/R in 3D
-    Info<< "R = " << R << ", geometric dims = " << nd
-        << ", kappa_exact = " << kappaExact << nl << endl;
+    const word surfType = implSurf.get<word>("type");
+    const bool varyingKappa = (surfType == "signedDistanceEllipse");
+
+    autoPtr<implicitSurface> exactSurf;
+    scalar R = 0, kappaExact = 0;
+    if (varyingKappa)
+    {
+        exactSurf = implicitSurface::New(surfType, implSurf);
+    }
+    else
+    {
+        R = implSurf.get<scalar>("radius");
+        kappaExact = scalar(nd - 1)/R;            // 1/R in 2D, 2/R in 3D
+    }
+
+    // The exact curvature of the interface at the foot point of x. For the
+    // constant-curvature surfaces this is the same number everywhere, so every
+    // norm below reduces EXACTLY to what it computed before.
+    auto kappaExactAt = [&](const point& x) -> scalar
+    {
+        return varyingKappa ? exactSurf->curvature(x) : kappaExact;
+    };
+
+    // One number to report in the CSV and to normalise the relative prints.
+    // Constant-curvature surfaces: the exact value. Varying: the |Sf|-weighted
+    // mean of the exact face values over the force support, filled once the
+    // active-face set exists (a mean is the only honest single number, and the
+    // per-face errors above never use it).
+    scalar kappaRef = kappaExact;
+
+    if (varyingKappa)
+    {
+        Info<< "exact surface = " << surfType << " (curvature VARIES along the "
+            << "interface; errors are taken against the local exact value), "
+            << "geometric dims = " << nd << nl << endl;
+    }
+    else
+    {
+        Info<< "R = " << R << ", geometric dims = " << nd
+            << ", kappa_exact = " << kappaExact << nl << endl;
+    }
 
     // The FOOT_POINT = 1 face rows apply the parallel-curve inverse to the
     // interpolated CELL curvature, which must therefore be the raw
@@ -321,7 +375,9 @@ int main(int argc, char *argv[])
     kappaMean.rename("kappaMean");
     const scalar kappaBar = applyInterfaceMeanCurvature(mesh, alpha, kappaMean);
     Info<< "interface-mean curvature kappaBar = " << kappaBar
-        << " (exact " << kappaExact << ")" << nl << endl;
+        << " (exact " << (varyingKappa ? kappaExactAt(mesh.C()[0]) : kappaExact)
+        << (varyingKappa ? ", position-dependent -- see kappaRef below" : "")
+        << ")" << nl << endl;
 
     // Band of cells that feed the CSF force: those touching an internal face with
     // a non-zero snGrad(alpha). Only there does the curvature enter the momentum
@@ -356,7 +412,7 @@ int main(int argc, char *argv[])
         forAll(band, c)
         {
             if (!band[c]) { continue; }
-            const scalar e = mag(kf[c] - kappaExact);
+            const scalar e = mag(kf[c] - kappaExactAt(mesh.C()[c]));
             s1 += V[c]*e; s2 += V[c]*e*e; li = max(li, e);
         }
         reduce(s1, sumOp<scalar>()); reduce(s2, sumOp<scalar>());
@@ -731,6 +787,30 @@ int main(int argc, char *argv[])
     }
     reduce(sumAf, sumOp<scalar>()); reduce(sumWf, sumOp<scalar>());
 
+    if (varyingKappa && sumAf > 0)
+    {
+        scalar sk = 0;
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+            sk += magSfIn[f]*kappaExactAt(Cf[f]);
+        }
+        reduce(sk, sumOp<scalar>());
+        kappaRef = sk/sumAf;
+
+        scalar kMin = GREAT, kMax = -GREAT;
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+            const scalar ke = kappaExactAt(Cf[f]);
+            kMin = min(kMin, ke); kMax = max(kMax, ke);
+        }
+        reduce(kMin, minOp<scalar>()); reduce(kMax, maxOp<scalar>());
+        Info<< "exact face curvature over the force support: mean " << kappaRef
+            << ", range [" << kMin << ", " << kMax << "] 1/m (ratio "
+            << kMax/max(kMin, VSMALL) << ")" << nl << endl;
+    }
+
     struct faceRow
     {
         word model;
@@ -749,7 +829,7 @@ int main(int argc, char *argv[])
         {
             if (!activeFace[f]) { continue; }
             if (kf[f] == 0) { ++nZero; }
-            const scalar e = mag(kf[f] - kappaExact);
+            const scalar e = mag(kf[f] - kappaExactAt(Cf[f]));
             s1 += magSfIn[f]*e;
             s2 += magSfIn[f]*e*e;
             li = max(li, e);
@@ -843,22 +923,22 @@ int main(int argc, char *argv[])
       : 0;
 
     Info<< "band cells                    : " << label(nBand) << nl
-        << "kappa_exact                   : " << kappaExact << nl
+        << "kappa_exact (reference)       : " << kappaRef << nl
         << "div(n) extended  L1/L2/Linf   : " << L1d << " / " << L2d << " / " << linfd
-        << "   (rel L2 = " << L2d/kappaExact << ")" << nl
+        << "   (rel L2 = " << L2d/kappaRef << ")" << nl
         << "div(n) NO extension L1/L2/Linf: " << L1n << " / " << L2n << " / " << linfn
-        << "   (rel L2 = " << L2n/kappaExact << ")" << nl
+        << "   (rel L2 = " << L2n/kappaRef << ")" << nl
         << "face-avg extended  L1/L2/Linf : " << L1f << " / " << L2f << " / " << linff
-        << "   (rel L2 = " << L2f/kappaExact << ")" << nl
+        << "   (rel L2 = " << L2f/kappaRef << ")" << nl
         << "tr(H)             L1/L2/Linf  : " << L1l << " / " << L2l << " / " << linfl
-        << "   (rel L2 = " << L2l/kappaExact << ")" << nl
+        << "   (rel L2 = " << L2l/kappaRef << ")" << nl
         << "foot-point HF     L1/L2/Linf  : " << L1p << " / " << L2p << " / " << linfp
-        << "   (rel L2 = " << L2p/kappaExact << ", fallbacks = " << nFootFallback
+        << "   (rel L2 = " << L2p/kappaRef << ", fallbacks = " << nFootFallback
         << ")" << nl
         << "iso-CONORMAL     L1/L2/Linf   : " << L1i << " / " << L2i << " / " << linfi
-        << "   (rel L2 = " << L2i/kappaExact << ")" << nl
+        << "   (rel L2 = " << L2i/kappaRef << ")" << nl
         << "iso-PARABOLA     L1/L2/Linf   : " << L1b << " / " << L2b << " / " << linfb
-        << "   (rel L2 = " << L2b/kappaExact << ")" << nl << endl;
+        << "   (rel L2 = " << L2b/kappaRef << ")" << nl << endl;
 
     if (Pstream::master())
     {
@@ -871,7 +951,7 @@ int main(int argc, char *argv[])
               "E_L1_FOOT,E_L2_FOOT,E_LINF_FOOT,N_FOOT_FALLBACK,"
               "E_L1_ISO,E_L2_ISO,E_LINF_ISO,E_L1_PARAB,E_L2_PARAB,E_LINF_PARAB" << nl;
         os << runTime.value() << ',' << dx << ',' << label(nBand) << ','
-           << kappaExact << ',' << L1d << ',' << L2d << ',' << linfd << ','
+           << kappaRef << ',' << L1d << ',' << L2d << ',' << linfd << ','
            << L1l << ',' << L2l << ',' << linfl << ','
            << L1n << ',' << L2n << ',' << linfn << ','
            << L1f << ',' << L2f << ',' << linff << ',';
@@ -901,7 +981,7 @@ int main(int argc, char *argv[])
         for (const auto& r : faceRows)
         {
             osF << r.model << ',' << r.footPoint << ',' << nActive << ','
-                << dx << ',' << kappaExact << ','
+                << dx << ',' << kappaRef << ','
                 << r.L1 << ',' << r.L2 << ',' << r.Linf << ','
                 << r.L2w << ',' << r.nZero << ',' << nFootFail << nl;
         }

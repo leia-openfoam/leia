@@ -1,0 +1,44 @@
+// VARYING-CURVATURE static curvature gate: a 2:1 signed-distance ellipse.
+//
+// The circle and sphere gates have CONSTANT exact curvature, so they cannot see
+// a delivery that smooths curvature ALONG the interface -- there is nothing to
+// smooth. This gate's exact curvature runs from 250 to 2000 1/m (ratio 8), so an
+// over-smoothing delivery loses order here even though it looked second order on
+// the circle. psi is a TRUE signed distance, so the level sets stay parallel and
+// the foliation residual of plan sec. 11.2 is still zero -- this gate isolates
+// the averaging cost alone.
+//
+// Resolution: the tightest radius of curvature is 1/2000 = 0.5 mm, so R_min/h is
+// 3.2 / 6.4 / 12.8 / 25.6 cells at N = 64 / 128 / 256 / 512. Treat N=64 as a
+// trend point; fit orders on N >= 128.
+//
+// Adapted from the stationary-droplet parasitic-current study
+// (arXiv:2212.02904, Sec. 3.3.1).
+// One swept axis: the mesh resolution N_CELLS. maxDeltaT is NOT swept -- it is a
+// derived token, MAX_DELTA_T = CAPILLARY_DT_COEFF / N_CELLS^1.5 (dt ~ dx^1.5,
+// the capillary stability limit), computed per case by materialize.
+values
+{
+    solver (leiaTestMeanCurvature);
+
+    // Mesh refinement ladder (cells double each level): the convergence axis.
+    N_CELLS
+    (
+        64
+        128
+        256
+        512
+    );
+
+    // End time of the benchmark [s].
+    END_TIME ( 0.1 );
+
+    // Advective + interface Courant ceiling (adjustTimeStep). Low, because the
+    // capillary limit -- not advection -- binds the step for this static droplet.
+    MAX_CO ( 0.1 );
+
+    // Capillary time-step coefficient [s]: maxDeltaT = CAPILLARY_DT_COEFF/N^1.5,
+    // calibrated so maxDeltaT(N=32) = 6e-5 s ~ dt_sigma/4 for water/air, sigma=0.07274.
+    //   0.010861 = 6e-5 * 32^1.5.
+    CAPILLARY_DT_COEFF ( 0.010861 );
+}

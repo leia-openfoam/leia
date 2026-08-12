@@ -65,6 +65,7 @@ Description
 
 // The production face deliveries, measured exactly as the solver applies them.
 #include "stabilizedFootPointFaceCurvature.H"
+#include "levelSetImplicitSurfaces.H"
 
 using namespace Foam;
 
@@ -143,10 +144,28 @@ int main(int argc, char *argv[])
     const fvSolution& fvSol(mesh);
     const dictionary& implSurf =
         fvSol.subDict("levelSet").subDict("implicitSurface");
-    const scalar R = implSurf.get<scalar>("radius");
     const label nd = mesh.nGeometricD();
-    const scalar kappaExact = scalar(nd - 1)/R;
     const bool is2D = (nd == 2);
+    // Position-dependent exact curvature on the varying-curvature gates; the
+    // radius-based constant elsewhere (implicitSphere::curvature() returns 1/R
+    // in 3D too, so it must not be used there). Only the E_L2 accuracy column
+    // depends on this -- the GAIN never references the exact value.
+    const word surfType = implSurf.get<word>("type");
+    const bool varyingKappa = (surfType == "signedDistanceEllipse");
+    autoPtr<implicitSurface> exactSurf;
+    scalar kappaExact = 0;
+    if (varyingKappa)
+    {
+        exactSurf = implicitSurface::New(surfType, implSurf);
+    }
+    else
+    {
+        kappaExact = scalar(nd - 1)/implSurf.get<scalar>("radius");
+    }
+    auto kappaExactAt = [&](const point& x) -> scalar
+    {
+        return varyingKappa ? exactSurf->curvature(x) : kappaExact;
+    };
 
     // The deliveries measured here apply the parallel-surface inverse
     // themselves; a reconstruction that already offset-corrects would be
@@ -190,6 +209,7 @@ int main(int argc, char *argv[])
     const surfaceScalarField snA(fvc::snGrad(alpha));
     const scalarField& snI = snA.primitiveField();
     const scalarField& magSfIn = mesh.magSf().primitiveField();
+    const vectorField& CfIn = mesh.Cf().primitiveField();
     const label nIntFaces = mesh.nInternalFaces();
     const scalar snMax = max(gMax(mag(snI)()), VSMALL);
     boolList activeFace(nIntFaces, false);
@@ -273,7 +293,7 @@ int main(int argc, char *argv[])
         forAll(activeFace, f)
         {
             if (!activeFace[f]) { continue; }
-            const scalar e = kfBase[m][f] - kappaExact;
+            const scalar e = kfBase[m][f] - kappaExactAt(CfIn[f]);
             s2 += magSfIn[f]*e*e;
         }
         eL2[m] = Foam::sqrt(s2/sumAf);

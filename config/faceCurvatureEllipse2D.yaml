@@ -1,0 +1,54 @@
+# VARYING-CURVATURE face-centered curvature gate: a 2:1 signed-distance ellipse.
+#
+# WHY THIS EXISTS. Every static gate in the curvature program so far is a circle
+# or a sphere, whose exact curvature is CONSTANT. Two things are therefore
+# invisible on them:
+#
+#   1. the cost of a delivery that AVERAGES. Averaging over a cut cell's faces
+#      is free when the exact curvature does not vary; on a real interface it
+#      costs O(h^2 d^2 kappa). The cell-mean delivery (curvatureExtension
+#      cellMeanFootPointFace) was adopted on the strength of circle and sphere
+#      numbers alone -- this gate is what tests whether its second order
+#      survives when there is genuine curvature variation to smooth away.
+#   2. the position dependence of the error itself: on a circle every active
+#      face has the same exact value, so a delivery cannot be caught
+#      redistributing curvature from one part of the interface to another.
+#
+# WHAT IT DOES NOT TEST. signedDistanceEllipse is a TRUE signed distance, so the
+# level sets remain the parallel offsets of the interface and the foliation
+# residual D of plan sec. 11.2 is still identically zero. Non-parallelism is the
+# separate psi-transform arm, not this gate.
+#
+# GEOMETRY. Semi-axes 2 mm x 1 mm centred in the 0.01 m box, so
+#     kappa(theta) = a b/(a^2 sin^2 theta + b^2 cos^2 theta)^{3/2}
+# runs from b/a^2 = 250 1/m at the minor-axis vertex to a/b^2 = 2000 1/m at the
+# major-axis vertex -- a ratio of 8. The tightest radius of curvature is 0.5 mm,
+# giving R_min/h = 3.2 / 6.4 / 12.8 / 25.6 cells at N = 64 / 128 / 256 / 512.
+# N=64 is a trend point; fit orders on N >= 128.
+#
+# The gate app takes each error against the LOCAL exact curvature, queried from
+# the surface at the face centre (implicitSphere is left on the radius-based
+# constant, since its curvature() returns 1/R in 3D too). leiaTestCurvatureNoiseGain
+# runs on every case as well, so accuracy and gain arrive together as usual.
+#
+# No time loop: each resolution is a single curvature evaluation. Serial by
+# requirement (the connected zero-surface reconstruction is serial).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/faceCurvatureEllipse2D.yaml
+study_name: faceCurvatureEllipse2D
+case: ellipseDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestMeanCurvature
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256, 512]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

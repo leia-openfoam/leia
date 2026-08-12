@@ -1,0 +1,41 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      transportProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Water / air at the arXiv:2212.02904 benchmark conditions.
+//   water: rho 998.2 kg/m^3, mu 9.982e-4 Pa.s -> nu = mu/rho = 1.0e-6 m^2/s
+//   air:   rho 1.19  kg/m^3, mu 1.8207e-5 Pa.s -> nu = mu/rho = 1.53e-5 m^2/s
+//   sigma 0.07274 N/m  -> Laplace jump sigma/R = 72.74 Pa for R = 1e-3 m.
+
+phases (water air);
+
+water
+{
+    transportModel  Newtonian;
+    nu              1e-06;
+    rho             998.2;
+}
+
+air
+{
+    transportModel  Newtonian;
+    nu              1.53e-05;
+    rho             1.19;
+}
+
+sigma           0.07274;
+
+// ************************************************************************* //

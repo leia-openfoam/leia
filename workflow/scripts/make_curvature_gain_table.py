@@ -42,6 +42,7 @@ LABELS = {
     "arithmetic":     "arithmetic (interpolated cell curvature)",
     "perFaceInverse": "per-face parallel-surface inverse",
     "cutCellInverse": "one inverted value per cut cell",
+    "cellMeanInverse": "cut-cell mean of per-face inversions",
 }
 
 
@@ -57,7 +58,15 @@ def main(argv):
         print("usage: make_curvature_gain_table.py <study_dir>")
         return 1
     study = argv[0]
-    suffix = "_3d" if "3d" in os.path.basename(os.path.normpath(study)).lower() else ""
+    # Artifact suffix per GATE, so the circle, sphere and varying-curvature
+    # gates write side by side instead of overwriting one another.
+    _base = os.path.basename(os.path.normpath(study)).lower()
+    if "3d" in _base or "sphere" in _base:
+        suffix = "_3d"
+    elif "ellipse" in _base:
+        suffix = "_ellipse"
+    else:
+        suffix = ""
 
     rows = []
     for meta in sorted(glob.glob(os.path.join(study, "*", "case_params.json"))):
