@@ -1,6 +1,6 @@
 # uncachedQuadraticWeightedLeastSquares 3D shear convergence, CFL 0.5.
 # Uniform refinement ladder N = 32,50,80,128 (ratio r = cbrt(4) per direction ->
-# cells x4 per level; domain [0,1]^2x[0,2] so cells = N*N*2N). N=128 = 4.2M cells
+# cells x4 per level; unit cube so cells = N^3). N=128 = 2.10M cells
 # (~9.2 GB, the memory ceiling on this 15 GB box; the next uniform step N=160 =
 # 8.2M ~18 GB OOMs, so shear caps at 128). Least-squares order over the ladder.
 #

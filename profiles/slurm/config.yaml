@@ -27,19 +27,31 @@ default-resources:
 # not carry the solve's task count, and the jobstep failed with "More
 # processors requested than permitted".
 # The solve step inherits the default runtime + its rule's tasks.
+#
+# SIZING THE SERIAL RULES. These are tasks=1, so mem_mb_per_cpu IS the job's
+# total memory -- and being serial, they do NOT get cheaper when the solve's np
+# goes up. They were 3000 MB / 30 min, which is ample at 128^3 (2.10M cells) and
+# fails outright on the cell-doubling ladder's top rungs: 203^3 = 8.37M cells is
+# ~18 GB for the solver spread over np ranks, but blockMesh, leiaSetFields and a
+# scotch decomposePar each hold the WHOLE mesh in ONE process. decompose and
+# reconstruct get the largest share -- scotch partitioning holds the cell
+# connectivity graph on top of the mesh, and reconstructPar merges np processor
+# meshes plus every written time.
+# Lichtenberg nodes are 96+ cores / 364800 MB with no MaxMemPerCPU, so a fat
+# single-core request is cheap: it pins one core, not a node.
 set-resources:
   mesh:
-    runtime: 30
-    mem_mb_per_cpu: 3000
+    runtime: 120
+    mem_mb_per_cpu: 16000
   preprocess:
-    runtime: 30
-    mem_mb_per_cpu: 3000
+    runtime: 120
+    mem_mb_per_cpu: 16000
   decompose:
-    runtime: 30
-    mem_mb_per_cpu: 3000
+    runtime: 240
+    mem_mb_per_cpu: 24000
   reconstruct:
-    runtime: 60
-    mem_mb_per_cpu: 3000
+    runtime: 240
+    mem_mb_per_cpu: 24000
   paraview_stub:
     runtime: 10
     mem_mb_per_cpu: 1000

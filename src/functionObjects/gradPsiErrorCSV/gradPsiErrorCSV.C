@@ -83,7 +83,17 @@ Foam::functionObjects::gradPsiErrorCSV::gradPsiErrorCSV
                 // (min |grad psi| -> 0 near the interface) amplifies psi noise
                 // into O(1) position noise.
                 << "MIN_MAG_GRAD_PSI,"
-                << "NARROW_MIN_MAG_GRAD_PSI\n";
+                << "NARROW_MIN_MAG_GRAD_PSI,"
+                // Interfacial normal strain a = n . grad(U) . n, registered as
+                // `R` by the SDPLS source. The `beta` variant relaxes the
+                // interfacial gradient toward g* = beta - a, i.e. a target set
+                // by the FLOW and not by the mesh, so it cannot converge under
+                // refinement. Reporting the band statistics of R next to those
+                // of |grad psi| turns that from an inference into a per-step
+                // measurement. Empty (NaN) when no SDPLS source is active.
+                << "NARROW_MIN_R,"
+                << "NARROW_MEAN_R,"
+                << "NARROW_MAX_R\n";
     }
     write();
 }
@@ -136,6 +146,15 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
     scalar mean_narrowMagGradPsi = undefined;
     scalar min_narrowMagGradPsi = undefined;
 
+    // The SDPLS normal strain. `foundObject<volScalarField>` and not the
+    // untyped `found`: OpenFOAM's turbulence models register a Reynolds-stress
+    // field under the same name `R`, and an untyped hit followed by a scalar
+    // lookup would abort on it rather than skip it.
+    const bool haveR = mesh.foundObject<volScalarField>("R");
+    scalar max_narrowR = undefined;
+    scalar mean_narrowR = undefined;
+    scalar min_narrowR = undefined;
+
     if (mesh.objectRegistry::found("NarrowBand"))
     {
         const auto narrowBand = mesh.lookupObject<volScalarField>("NarrowBand");
@@ -154,6 +173,15 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
             max_narrowMagGradPsi = gMax(narrowMagGradPsi);
             mean_narrowMagGradPsi = gAverage(narrowMagGradPsi);
             min_narrowMagGradPsi = gMin(narrowMagGradPsi);
+
+            if (haveR)
+            {
+                const auto& R = mesh.lookupObject<volScalarField>("R");
+                List<scalar> narrowR = subset(narrowBand, R);
+                max_narrowR = gMax(narrowR);
+                mean_narrowR = gAverage(narrowR);
+                min_narrowR = gMin(narrowR);
+            }
         }
 
         // Volume-weighted L1/L2 of the error restricted to the narrow band.
@@ -190,7 +218,10 @@ bool Foam::functionObjects::gradPsiErrorCSV::write()
             << max_narrowMagGradPsi << ","
             << mean_narrowMagGradPsi << ","
             << min_magGradPsi << ","
-            << min_narrowMagGradPsi << "\n";
+            << min_narrowMagGradPsi << ","
+            << min_narrowR << ","
+            << mean_narrowR << ","
+            << max_narrowR << "\n";
     }
     return true;
 }

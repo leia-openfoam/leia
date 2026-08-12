@@ -73,11 +73,6 @@ autoPtr<phaseIndicator> phaseInd = phaseIndicator::New(mesh);
 phaseInd->calcPhaseIndicator(alpha, psi);
 alpha.write();
 
-// SDPLS Source term
-autoPtr<sdplsSource> source = sdplsSource::New(mesh);
-source->update(psi, U);
-source->write();
-
 // Advection velocity model
 autoPtr<velocityModel> velocityModel = velocityModel::New(mesh);
 
@@ -88,3 +83,12 @@ phi.write();
 
 velocityModel->setVelocity(U);
 U.write();
+
+// SDPLS Source term. MUST come after setVelocity: the source's strain field
+// R = n . grad(U) . n is evaluated by update(), so constructing it against the
+// still-zero U wrote an identically-zero R into 0/ and made the t=0 strain
+// diagnostic useless. Only t=0 was affected -- every later update() sees the
+// real U -- so no published result changes.
+autoPtr<sdplsSource> source = sdplsSource::New(mesh);
+source->update(psi, U);
+source->write();

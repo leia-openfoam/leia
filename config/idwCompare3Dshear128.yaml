@@ -1,4 +1,4 @@
-# 3D shear at N=128 (128x128x256 = 4.2M cells) -- completes the 32/64/128
+# 3D shear at N=128 (unit cube, 128^3 = 2.10M cells) -- completes the 32/64/128
 # convergence order for quadraticWeightedLeastSquares. Memory-heavy: one case at a time.
 #
 #   snakemake --workflow-profile profiles/local --configfile config/idwCompare3Dshear128.yaml --resources tasks=8

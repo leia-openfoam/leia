@@ -58,8 +58,10 @@ BENCH_STUDIES ?= benchVortexEulerT2 benchVortexEulerT8 benchVortexSLT2 benchVort
                  benchVortexSLimproved benchVortexSLimprovedPerturbed benchVortexSLflux benchVortexGRLfrozen
 GRL_STUDIES ?= redistanceStatic2D redistanceCircle2D vortexTriggerGRL vortexBoundsGRL bulkVortexGRL 3DshearGRL 3DdeformationGRL
 # SDPLS source line: the 2D reversed-vortex arm matrix (noSource/R/beta x both
-# admissible linearizations) + the 3D shear/deformation companions.
+# admissible linearizations), the beta-target sweep that separates a residual
+# from a wrong target, and the 3D shear/deformation companions.
 SDPLS_STUDIES ?= sdplsStability benchVortexEulerT2 benchVortexEulerT8 \
+                 sdplsBetaSweep \
                  sdplsConv3Dshear sdplsConv3Ddeformation
 # EVERY study whose psi transport is an FV div(phi,psi) -- i.e. solver is
 # leiaRedistancedLevelSetFoam / leiaLevelSetTwoPhaseFoam, or leiaLevelSetFoam

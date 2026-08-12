@@ -47,6 +47,13 @@ Description
     in columns E_L1_GRAD_PSI, E_L2_GRAD_PSI, E_NARROW_L1_GRAD_PSI,
     E_NARROW_L2_GRAD_PSI.
 
+    When an SDPLS source is active it registers the interfacial normal strain
+    a = n . grad(U) . n as the field \c R; its narrow-band min/mean/max are then
+    written to NARROW_MIN_R, NARROW_MEAN_R and NARROW_MAX_R (NaN otherwise).
+    These pair with NARROW_*_MAG_GRAD_PSI to test the sdplsBeta equilibrium
+    g* = beta - a directly, per time step, rather than inferring it from a
+    refinement study.
+
 Usage
     Minimal example by using \c system/controlDict.functions:
     \verbatim

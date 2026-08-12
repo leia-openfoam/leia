@@ -1,4 +1,4 @@
-# Benchmark: 3D shear (reversed), N=32/64/128 (128 = 4.2M cells), CFL 0.5, at np=12.
+# Benchmark: 3D shear (reversed), N=32/64/128 (128 = 2.10M cells), CFL 0.5, at np=12.
 # quad vs uncached -- same errors, wall-clock comparison at 12 cores.
 study_name: bench3Dshear
 case: 3Dshear

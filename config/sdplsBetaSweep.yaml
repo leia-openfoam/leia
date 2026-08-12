@@ -1,0 +1,87 @@
+# SDPLS `beta` diagnosis: is the residual a RESIDUAL or a wrong TARGET?
+#
+# THE QUESTION. On the corrected source, the `R` arm's band gradient converges
+# toward the signed-distance value 1 under refinement while `beta` stalls. Band
+# min |grad psi| at t = T/2 on this very case (2D reversed vortex, T = 2):
+#
+#     N        32      64     128     256     512
+#     R      0.128   0.464   0.647   0.772   0.883    -> converging toward 1
+#     beta   0.252   0.346   0.400   0.414   0.423    -> plateaus at ~0.42
+#
+# A discretization RESIDUAL vanishes with h. A wrong TARGET does not. The theory
+# says which one this is: sdplsBeta uses f_nl = beta - |grad psi|, a relaxation
+# whose fixed point competes with the interfacial stretching a = n.grad(U).n, so
+# the interfacial gradient relaxes toward
+#
+#     g* = beta - a
+#
+# i.e. a target set by the FLOW and not by the mesh. Refining cannot fix it.
+#
+# THE TEST. If g* = beta - a, then the band |grad psi| distribution must
+#   (i)   be h-independent            -- the ladder below,
+#   (ii)  shift ONE-FOR-ONE with beta -- this sweep,
+#   (iii) have a SPREAD set by the range of `a` over the interface, and
+#         therefore NOT widen as beta moves.
+# (ii) is the decisive one and is what this study exists for. Falsification is a
+# real outcome: if instead the error is minimised at some intermediate beta, the
+# mechanism is something else and the g* = beta - a story is wrong.
+#
+# READ THE MEAN, NOT THE MIN. A target offset moves the CENTRE of the band
+# distribution; the min is a flattening sentinel and barely registers it. The
+# columns that matter here are meanGradPsiBand{,Half} and maxGradPsiBand{,Half},
+# and the strain itself is now reported per time step as
+# {min,mean,max}StrainBand{,Half} -- so `beta - meanStrainBand` can be compared
+# against `meanGradPsiBand` directly instead of being inferred.
+#
+# CONTROLS come from config/benchVortexEulerT2.yaml, NOT from extra arms here:
+# it runs noSource and R on the SAME case, T, CFL, solver and discretization at
+# N in {32,64,128,256,512}. Adding an R arm to this sweep would run FOUR
+# bit-identical cases, because sdplsR never reads the `beta` dictionary entry
+# (only sdplsBeta.C does) -- four identical rows carrying one method label.
+# The beta = 1.0 rung here IS benchVortexEulerT2's beta/simpleImp arm at the
+# shared resolutions, so the two studies must agree there: a free cross-check.
+#
+# LADDER: the sqrt(2) 2D ladder (cells x2 per level), chosen to CONTAIN
+# benchVortexEulerT2's 32/64/128/256 so that cross-check is exact, while the
+# intermediate rungs 45/90/181 tighten the least-squares order fit.
+#
+# ONE linearization: post-sign-fix, the three discretizations of this source
+# agree to 5 significant digits at fixed (N, CFL) -- measured in
+# config/sdplsStability.yaml, which is the agreement gate. simpleLinearImplicit
+# is the reference arm (Sc == 0, never touched by the sign defect).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/sdplsBetaSweep.yaml -n
+#   make studies-one STUDY=sdplsBetaSweep PROFILE=profiles/slurm
+
+study_name: sdplsBetaSweep
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+
+  # --- the sweep ----------------------------------------------------------- #
+  SDPLS_SOURCE: [beta]
+  # beta = 1 is the signed-distance target (|grad psi| -> 1). The others are
+  # deliberately wrong targets: under g* = beta - a the whole band distribution
+  # should translate by exactly the beta increment.
+  SDPLS_BETA: [0.5, 1.0, 1.5, 2.0]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

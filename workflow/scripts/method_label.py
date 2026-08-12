@@ -103,6 +103,28 @@ def _dc(rec):
     return m.group(1) if m else ""
 
 
+def _beta(rec):
+    """The sdplsBeta target ``beta``, rendered ONLY when it differs from the
+    default 1.0.
+
+    Same idiom as every other component in this module -- ``VELOCITY_EXTENSION
+    none`` and ``REDISTANCER noRedistancing`` are likewise omitted -- so every
+    label produced before a beta sweep existed stays byte-identical, and only a
+    genuinely off-default arm introduces a new string.
+
+    Without this the arms of a beta sweep collapse to ONE ``method`` at one
+    ``h``, and ``make_convergence_table.py`` fits a single regression straight
+    through them and reports the slope as a convergence order.
+    """
+    if rec.get("SDPLS_SOURCE", "noSource") != "beta":
+        return ""
+    try:
+        v = float(rec.get("SDPLS_BETA", 1.0))
+    except (TypeError, ValueError):
+        return ""
+    return "" if v == 1.0 else f"{v:g}"
+
+
 def _euler_parts(rec):
     parts = ["euler"]
     ve = rec.get("VELOCITY_EXTENSION", "none")
@@ -115,7 +137,9 @@ def _euler_parts(rec):
         # until the 2026-08 sign fix.
         raw = rec.get("SOURCE_SCHEME", "")
         tag = _LIN_TAG.get(raw, raw)
-        parts.append(f"SDPLS:{ss}/{tag}" if tag else f"SDPLS:{ss}")
+        b = _beta(rec)
+        name = f"{ss}({b})" if b else ss
+        parts.append(f"SDPLS:{name}/{tag}" if tag else f"SDPLS:{name}")
     rd = rec.get("REDISTANCER", "noRedistancing")
     if rd and rd != "noRedistancing":
         if rd == "PDE" and rec.get("REDIST_FREEZE", "false") == "true":
@@ -163,7 +187,9 @@ def method_slug(rec):
     if ss and ss != "noSource":
         raw = rec.get("SOURCE_SCHEME", "")
         tag = _LIN_TAG.get(raw, raw)
-        parts.append(f"SDPLS_{ss}_{tag}" if tag else f"SDPLS_{ss}")
+        b = _beta(rec)
+        name = f"{ss}_{b}" if b else ss
+        parts.append(f"SDPLS_{name}_{tag}" if tag else f"SDPLS_{name}")
     rd = rec.get("REDISTANCER", "noRedistancing")
     if rd and rd != "noRedistancing":
         if rd == "PDE" and rec.get("REDIST_FREEZE", "false") == "true":

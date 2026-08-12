@@ -88,6 +88,11 @@ METHODS = {
         "studies": [
             ("benchVortexEulerT2",     "2Dvortex",      "hex"),
             ("benchVortexEulerT8",     "2Dvortex",      "hex"),
+            # The beta-target sweep. Its arms are separable here ONLY because
+            # method_label._beta() renders an off-default beta into the label --
+            # without that they collapse to one series per h and the
+            # least-squares slope below gets fitted straight through them.
+            ("sdplsBetaSweep",         "2Dvortex",      "hex"),
             ("sdplsConv3Dshear",       "3Dshear",       "hex"),
             ("sdplsConv3Ddeformation", "3Ddeformation", "hex"),
         ],
@@ -108,7 +113,15 @@ METRICS = [
     ("volumeErrorHalf",      "volumeHalfOrder",       r"volume$(T/2)$"),
 ]
 # Health (not convergence) metrics carried through the per-resolution CSV.
-HEALTH = ["minGradPsiBand", "minGradPsiBandHalf"]
+# The band MEAN and MAX join the min because a source relaxing toward a wrong
+# TARGET (sdplsBeta drives |grad psi| -> beta - a) shifts the centre of the band
+# distribution, which the min barely registers; max - min is the spread, which a
+# pure target offset should NOT change. meanStrainBand is `a` itself, so
+# `beta - meanStrainBand` can be checked against meanGradPsiBand directly.
+HEALTH = ["minGradPsiBand", "minGradPsiBandHalf",
+          "meanGradPsiBand", "meanGradPsiBandHalf",
+          "maxGradPsiBand", "maxGradPsiBandHalf",
+          "meanStrainBand", "meanStrainBandHalf"]
 
 
 def _f(x):

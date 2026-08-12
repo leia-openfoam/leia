@@ -1,6 +1,6 @@
 # quadraticTaylor (quadratic Taylor + clip) 3D shear convergence, CFL 0.5 -- the LINEAR
 # semi-Lagrangian line, run as an INDEPENDENT METHOD next to the quadratic line.
-# Same ladder as config/uncachedConv3Dshear.yaml (N=128 = 4.2M cells; the linear
+# Same ladder as config/uncachedConv3Dshear.yaml (N=128 = 2.10M cells; the linear
 # fit is memory-light -- no cached per-cell pseudo-inverse -- so the hex ceiling
 # is set by the fields, not the reconstruction).
 # Results agglomerate into docs/linear-semi-lagrangian-level-set/ (theme key).

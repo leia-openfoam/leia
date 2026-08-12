@@ -74,6 +74,11 @@ def _write_error_table(records, database_path):
     """
     err_path = database_path[:-len("_database.csv")] + "_errors.csv" \
         if database_path.endswith("_database.csv") else database_path + ".errors.csv"
+    # Curated CSVs are copied verbatim into docs/**/data/tables, where the study
+    # name survives only in the filename -- and filenames get renamed. Carry it
+    # in the data.
+    _base = os.path.basename(err_path)
+    study = _base[:-len("_errors.csv")] if _base.endswith("_errors.csv") else _base
     # Shape/volume errors come from whichever advection solver ran; both write
     # identical column names, so pick the CSV that is present.
     def solver_of(rec):
@@ -112,6 +117,24 @@ def _write_error_table(records, database_path):
             # narrow-band min |grad psi| flattening diagnostic.
             "gradientErrorBand", "gradientErrorHalf", "gradientErrorBandHalf",
             "volumeErrorHalf", "minGradPsiBand", "minGradPsiBandHalf",
+            # The band MEAN and MAX of |grad psi|. The min alone is a
+            # flattening sentinel; a source that relaxes toward a wrong TARGET
+            # (sdplsBeta drives |grad psi| -> beta - a) shifts the CENTRE of the
+            # band distribution, which the min barely registers. The spread
+            # (max - min) is the second half of that test: a target offset moves
+            # the mean without widening the spread.
+            "meanGradPsiBand", "meanGradPsiBandHalf",
+            "maxGradPsiBand", "maxGradPsiBandHalf",
+            # Band statistics of the SDPLS normal strain a = n.grad(U).n, so
+            # `beta - strain` can be compared against the measured band
+            # |grad psi| directly. Blank when no SDPLS source is active.
+            "minStrainBand", "meanStrainBand", "maxStrainBand",
+            "minStrainBandHalf", "meanStrainBandHalf", "maxStrainBandHalf",
+            # The sdplsBeta target. Without it every beta value collapses to the
+            # same `method` string at the same h, and make_convergence_table.py
+            # would fit ONE regression straight through a beta sweep and report
+            # it as an order.
+            "sdplsBeta",
             # Static t=0 extension verification (leiaTestVelocityExtension;
             # blank for advection studies).
             "anchorLayers", "uextDiv", "eNormalL2", "eNormalLinf",
@@ -123,6 +146,13 @@ def _write_error_table(records, database_path):
             # code). The metric columns are then blank BY MEASUREMENT, not by
             # omission -- e.g. `beta` legitimately blows up on the vortex.
             "solverFailed",
+            # Provenance. Without these a curated CSV cannot be traced back to
+            # the run that produced it -- and that has already gone wrong here:
+            # sdplsStability_errors.csv reports the POST-sign-fix band min while
+            # the case directories beside it are pre-fix, and
+            # benchVortexEulerT2's 30-row errors CSV sits next to a 15-row
+            # database from a different run. Nothing in either file said so.
+            "study", "caseDir", "np", "gitCommit", "runDate",
             ] + fvschemes.COLUMNS
     rows = []
     for rec in records:
@@ -170,6 +200,20 @@ def _write_error_table(records, database_path):
             "volumeErrorHalf": shget(rec, "E_VOL_ALPHA_REL"),
             "minGradPsiBand": rec.get("gradPsiError.NARROW_MIN_MAG_GRAD_PSI", ""),
             "minGradPsiBandHalf": rec.get("half.gradPsiError.NARROW_MIN_MAG_GRAD_PSI", ""),
+            "meanGradPsiBand": rec.get("gradPsiError.NARROW_MEAN_MAG_GRAD_PSI", ""),
+            "meanGradPsiBandHalf": rec.get("half.gradPsiError.NARROW_MEAN_MAG_GRAD_PSI", ""),
+            "maxGradPsiBand": rec.get("gradPsiError.NARROW_MAX_MAG_GRAD_PSI", ""),
+            "maxGradPsiBandHalf": rec.get("half.gradPsiError.NARROW_MAX_MAG_GRAD_PSI", ""),
+            "minStrainBand": rec.get("gradPsiError.NARROW_MIN_R", ""),
+            "meanStrainBand": rec.get("gradPsiError.NARROW_MEAN_R", ""),
+            "maxStrainBand": rec.get("gradPsiError.NARROW_MAX_R", ""),
+            "minStrainBandHalf": rec.get("half.gradPsiError.NARROW_MIN_R", ""),
+            "meanStrainBandHalf": rec.get("half.gradPsiError.NARROW_MEAN_R", ""),
+            "maxStrainBandHalf": rec.get("half.gradPsiError.NARROW_MAX_R", ""),
+            # Only meaningful for the sdplsBeta source; blank elsewhere so the
+            # column does not imply a target the other arms never had.
+            "sdplsBeta": rec.get("SDPLS_BETA", "")
+            if rec.get("SDPLS_SOURCE", "noSource") == "beta" else "",
             "anchorLayers": rec.get("ANCHOR_LAYERS", ""),
             "uextDiv": rec.get("UEXT_DIV", ""),
             "eNormalL2": rec.get("leiaTestVelocityExtension.E_NORMAL_L2", ""),
@@ -179,6 +223,11 @@ def _write_error_table(records, database_path):
             "eNormalL2In": rec.get("leiaTestVelocityExtension.E_NORMAL_L2_IN", ""),
             "eNormalL2Out": rec.get("leiaTestVelocityExtension.E_NORMAL_L2_OUT", ""),
             "solverFailed": rec.get("solverFailed", ""),
+            "study": study,
+            "caseDir": rec.get("case_dir", ""),
+            "np": rec.get("np", ""),
+            "gitCommit": rec.get("gitCommit", ""),
+            "runDate": rec.get("runDate", ""),
             **{c: rec.get(c, "") for c in fvschemes.COLUMNS},
         })
     rows.sort(key=lambda r: (r["velocityExtension"], r["phaseIndicator"],
@@ -205,7 +254,8 @@ def build_database(case_dirs, out_path):
         if os.path.isfile(meta_path):
             with open(meta_path) as fh:
                 meta = json.load(fh)
-            for key in ("case", "index", "mesh", "mode", "np"):
+            for key in ("case", "index", "mesh", "mode", "np",
+                        "gitCommit", "runDate"):
                 rec[key] = meta.get(key, "")
             for k, v in meta.get("tokens", {}).items():
                 rec[k] = v

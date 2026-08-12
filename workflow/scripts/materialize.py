@@ -11,12 +11,20 @@ Steps:
   4. write a ``case_params.json`` sidecar (the parameter vector + metadata),
   5. abort if any unsubstituted ``@!...!@`` token remains.
 """
+import datetime
+import functools
 import json
 import os
 import re
 import shutil
+import subprocess
 
 _TOKEN = re.compile(r"@!([A-Z0-9_]+)!@")
+_REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+# Paths whose state can change what a run computes. Deliberately NOT the whole
+# tree: docs/**/data churns on every figure regeneration, so a whole-tree
+# dirtiness check would mark every run dirty and the flag would mean nothing.
+_CODE_PATHS = ("src", "applications", "workflow", "cases", "config")
 _IGNORE = shutil.ignore_patterns(
     "processor*", "*.foam", "postProcessing", "*.csv", "log", "log.*",
     "out.*", "err.*", "case_params.json")
@@ -41,6 +49,31 @@ def _render_templates(case_dir, tokens):
             with open(os.path.join(root, f[:-len(".template")]), "w") as fh:
                 fh.write(text)
             os.remove(src)
+
+
+@functools.lru_cache(maxsize=1)
+def _git_commit():
+    """Short commit of the code building this case, ``-dirty`` if any of
+    ``_CODE_PATHS`` has uncommitted changes.
+
+    Cached: the commit cannot change within one snakemake invocation, and
+    ``materialize`` runs once per variation. Returns "" when this is not a git
+    checkout or git is unavailable -- provenance is worth recording, not worth
+    failing a study over.
+
+    This is the field that would have caught the phase-2 confusion where
+    ``sdplsStability_errors.csv`` reported post-sign-fix numbers while the case
+    directories beside it were built before the fix.
+    """
+    def _git(*args):
+        return subprocess.run(("git",) + args, cwd=_REPO, check=True,
+                              capture_output=True, text=True).stdout.strip()
+    try:
+        commit = _git("rev-parse", "--short", "HEAD")
+        dirty = _git("status", "--porcelain", "--", *_CODE_PATHS)
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+    return commit + ("-dirty" if dirty else "")
 
 
 def _write_decompose_par_dict(case_dir, np_):
@@ -165,7 +198,13 @@ def materialize(base_case, tokens, out_dir, np_, mesh, mode, dims, case_name, in
     _assert_no_residual_tokens(out_dir)
     meta = {
         "case": case_name, "mesh": mesh, "mode": mode, "np": int(np_),
-        "dims": dims, "index": index, "tokens": dict(tokens),
+        "dims": dims, "index": index,
+        # Stamped when the case is BUILT, so it describes the code that produced
+        # the run rather than whatever is checked out when it is aggregated.
+        "gitCommit": _git_commit(),
+        "runDate": datetime.datetime.now(
+            datetime.timezone.utc).isoformat(timespec="seconds"),
+        "tokens": dict(tokens),
     }
     with open(os.path.join(out_dir, "case_params.json"), "w") as fh:
         json.dump(meta, fh, indent=2)

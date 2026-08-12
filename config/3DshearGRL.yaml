@@ -1,7 +1,7 @@
 # Geometrically redistanced level set (GRL) on the reversed 3D shear flow.
 # The 3D companion to config/bulkVortexGRL.yaml: same solver
 # (leiaRedistancedLevelSetFoam), same error norms, its own study dir. Domain
-# [0,1]x[0,1]x[0,2] -> N x N x 2N cubic cells (h = 1/N); shear3D with
+# unit cube [0,1]^3 -> N^3 cubic cells (h = 1/N); shear3D with
 # oscillation on reverses at T = END_TIME, so exact(T) = initial. Interface:
 # sphere r = 0.15 @ (0.35,0.75,0.25).
 #
@@ -18,7 +18,7 @@ solver: leiaRedistancedLevelSetFoam
 
 axes_override:
   END_TIME: [3.0]                        # T = period = end time (reversible)
-  N_CELLS:  [32, 64, 128]                # h = 1/N; 128 = 4.2M cells (expensive tier)
+  N_CELLS:  [32, 64, 128]                # h = 1/N; 128 = 2.10M cells (expensive tier)
   CFL:      [0.5, 1.0]
   REDISTANCER: [noRedistancing, PDE, planeFootWave, anchoredEikonal]
   REDIST_TRIGGER: [gradPsiThreshold]
