@@ -1,13 +1,27 @@
 #!/usr/bin/env python3
 """Field atlases for the method-decision benchmark (uniform 2D hex cases).
 
-For every method in the benchVortex* studies and every field in
+For every method in the benchVortex* / sdpls* studies and every field in
 {alpha, psi, graderr}, one montage: rows = resolutions N (32..512), cols =
 snapshots {0, T/2, T}. Rendering follows plots.py::_field_montage (foamlib
-FoamCase + reshape; ||grad psi|-1| via np.gradient). PNGs land in the
-sdpls-level-set theme data/figures for the deck field atlas and the article.
+FoamCase + reshape; ||grad psi|-1| via np.gradient).
 
-    python3 make_bench_fields_fig.py [studies_glob]   (default studies/benchVortex*)
+These are DEBUGGING atlases: alpha shows where the phase indicator smears, psi
+where the level set deforms, and graderr where the signed-distance error lives.
+A convergence order says a method got better; only these say WHERE.
+
+CAVEAT, and it belongs in every caption: `graderr` here is ||grad psi|-1|
+computed with np.gradient on the reshaped uniform grid. That is NOT the solver's
+`gradPsiMetric` operator, which is what the curated CSV's gradientError columns
+measure. The atlas localises the error; the CSV measures it. They will not agree
+digit-for-digit and must not be presented as if they do.
+
+Output theme follows the STUDY, matching the repo's per-theme data convention:
+sdpls* studies feed docs/sdpls-level-set, everything else method-comparison
+(where methodComparison.tex and the comparison deck already reference 36
+existing bench_*.png by name -- do not move those).
+
+    python3 make_bench_fields_fig.py [studies_glob ...]   (default: both groups)
 """
 import method_label
 import glob
@@ -24,6 +38,13 @@ from foamlib import FoamCase
 import paths
 
 THEME = "method-comparison"
+SDPLS_THEME = "sdpls-level-set"
+
+
+def theme_of(study_dir):
+    """Per-theme data, keyed on the study that produced the case."""
+    return SDPLS_THEME if os.path.basename(study_dir.rstrip("/")).startswith("sdpls") \
+        else THEME
 
 FIELDS = {
     "alpha":   dict(cmap="Blues", title=r"$\alpha$"),
@@ -103,22 +124,43 @@ def montage(cases, T, field, out):
 
 
 def main():
-    pattern = sys.argv[1] if len(sys.argv) > 1 else None
     repo = paths.REPO
-    figs_dir = paths.figs_dir(THEME)
-    study_dirs = glob.glob(pattern) if pattern else \
-        glob.glob(os.path.join(repo, "studies", "benchVortex*"))
-    # (method, T) -> {N: case_dir}
+    # Deliberately NOT `sdpls*`: sdplsStability is single-resolution and sweeps
+    # CFL, which is not part of the group key below, so its cases would collide
+    # on (method, T, N) and silently overwrite each other. Only resolution
+    # ladders with a pinned CFL belong here.
+    patterns = sys.argv[1:] or [
+        os.path.join(repo, "studies", "benchVortex*"),
+        os.path.join(repo, "studies", "sdplsBetaSweep"),
+    ]
+    study_dirs = [d for p in patterns for d in glob.glob(p)]
+    # (theme, method, T) -> {N: case_dir}
     groups = {}
     for sd in study_dirs:
+        theme = theme_of(sd)
         for d in glob.glob(os.path.join(sd, "2Dvortex_*")):
             pj = os.path.join(d, "case_params.json")
             if not os.path.isfile(pj):
                 continue
             t = json.load(open(pj))["tokens"]
-            key = (method_of(t), t["END_TIME"])
-            groups.setdefault(key, {})[int(t["N_CELLS"])] = d
-    for (m, T), cases in sorted(groups.items()):
+            key = (theme, method_of(t), t["END_TIME"])
+            n = int(t["N_CELLS"])
+            prev = groups.setdefault(key, {}).get(n)
+            if prev is not None and prev != d:
+                # Two cases share (method, T, N): some axis the key does not
+                # carry (CFL, say) is being swept. Say so -- silently keeping one
+                # would publish an atlas labelled for a configuration it is not.
+                print(f"[bench_fields] COLLISION {key} N={n}: "
+                      f"{os.path.basename(prev)} vs {os.path.basename(d)} -- "
+                      f"keeping the first; the study sweeps an axis the figure "
+                      f"filename does not encode")
+                continue
+            groups[key][n] = d
+    if not groups:
+        print(f"[bench_fields] no 2Dvortex cases under {patterns}; nothing to do")
+        return
+    for (theme, m, T), cases in sorted(groups.items()):
+        figs_dir = paths.figs_dir(theme)
         for field in FIELDS:
             out = os.path.join(figs_dir, f"bench_{m}_T{T}_{field}.png")
             try:

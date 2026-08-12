@@ -454,6 +454,15 @@ rule report:
                             check=False)
                     _sp.run(["python3", os.path.join(_scripts, "make_bench_fields_fig.py")],
                             check=False)
+                    # SDPLS convergence + order tables. Every study of the
+                    # `sdpls` suite sits in one of these two themes
+                    # (benchVortexEulerT* are method-comparison), so regenerate
+                    # them here instead of by hand: in phase 2 this was a manual
+                    # step, which meant `make studies-sdpls` did NOT reproduce
+                    # the tables the article \input{}s. Reads each study's
+                    # *_errors.csv and skips whichever are not present yet.
+                    _sp.run(["python3", os.path.join(_scripts, "make_convergence_table.py"),
+                             "--method", "sdpls"], check=False)
             else:
                 # velocity-extension: field montages + convergence figures.
                 plots.main(STUDY_DIR, FIGS_DIR)
