@@ -298,6 +298,14 @@
       <p class="tight"><b>Flattening and blow-up are the same mechanism</b>, seen on either
       side of the reversal. The target &beta;&minus;<em>a</em> is negative somewhere in the
       band for <b>93%</b> of the time steps.</p>
+      <p class="tight" style="border-left:3px solid var(--ls-warn); padding-left:0.6em">
+      <b>And refinement triggers it.</b> Band max |&nabla;&psi;| at <em>t</em>&nbsp;=&nbsp;<em>T</em>:
+      <code>1.68, 1.51, 1.62, <b>50.9</b>, <b>123.5</b></code> for
+      <em>N</em>&nbsp;=&nbsp;32&hellip;512. Absent at <em>N</em>&nbsp;&le;&nbsp;128, appears
+      between 128 and 256. <code>beta</code> is acceptable on coarse meshes and fails on fine
+      ones &mdash; the opposite of convergence, and invisible if you only run the coarse end
+      of a ladder. Over the same range <code>R</code> tightens monotonically
+      (1.40&rarr;1.11) and no source converges to 1.0003.</p>
       <p class="tight" style="opacity:0.75">Both strain curves pinch at
       <em>t</em>&nbsp;=&nbsp;<em>T</em>/2: the oscillating vortex is momentarily at rest, so
       the instantaneous strain must not be read there.</p>

@@ -292,6 +292,33 @@ blow-up are the same mechanism seen on either side of the reversal, and the
 right-hand panel shows the target $\beta - a$ is negative over part of the band
 for $93\%$ of the time steps.
 
+\paragraph{And it is triggered by refinement.}
+The band maximum at $t=T$ across the ladder is the sharpest statement in this
+paper about \texttt{beta}:
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+$N$ & 32 & 64 & 128 & 256 & 512 \\
+\midrule
+\texttt{beta}     & 1.68 & 1.51 & 1.62 & \textbf{50.9} & \textbf{123.5} \\
+\texttt{R}        & 1.40 & 1.42 & 1.22 & 1.15 & 1.11 \\
+no source         & 1.10 & 1.18 & 1.03 & 1.002 & 1.0003 \\
+\bottomrule
+\end{tabular}
+\end{center}
+The blow-up is \emph{absent} at $N \le 128$ and appears between $N=128$ and
+$N=256$, growing thereafter; the band minimum at $t=T$ falls to $0.0585$ at
+$N=512$. \texttt{beta} is therefore acceptable on coarse meshes and fails on
+fine ones, which is the opposite of convergence and cannot be detected by
+running the coarse end of a ladder. Over the same refinement the
+strain-cancelling source tightens monotonically toward unity from both sides,
+and the sourceless run converges to $1.0003$ by time-reversal symmetry.
+
+A caveat on the statistic: the band maximum is an extreme-value estimate, and
+the band holds $O(N)$ cells, so a finer mesh samples the tail more thoroughly.
+That cannot account for what is measured here --- a factor $31$ between $N=128$
+and $N=256$ for a twofold refinement, against a twofold growth in sample size.
+
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{sdpls_trajectory.png}
