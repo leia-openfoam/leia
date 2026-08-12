@@ -1,16 +1,18 @@
-% SKELETON — parallel structure to the SL/GRL articles. Compiles now; the
-% verification section fills from the benchVortex* studies (single data
-% source: data/{figures,tables} feeds this article AND both reveal decks).
+%% The SDPLS level-set method: source-term control of the signed-distance
+%% property without interface displacement.
+%% Build:  latexmk -pdf sdplsLevelSet.tex
 \documentclass[preprint,3p,11pt]{elsarticle}
 
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{url}
 
 \graphicspath{{data/figures/}}
 
 \newcommand{\psilev}{\psi}
 \newcommand{\nhat}{\hat{\mathbf{n}}}
+\newcommand{\gradpsi}{\lvert\nabla\psilev\rvert}
 
 \begin{document}
 \begin{frontmatter}
@@ -31,12 +33,18 @@ spurious volume change per redistancing step. The SDPLS method avoids the
 trade entirely: a source term $S = f_{nl}(\psilev^n)\,\psilev$ that
 vanishes identically on the zero level set controls the gradient of
 $\psilev$ through the transport equation itself --- zero interface
-displacement by construction. We analyze and measure the stability of
-three source-term linearizations, control the source gradients through
-dedicated discretization keywords, and benchmark the method against
-semi-Lagrangian transport and interface-normal velocity extension on the
-reversed vortex at resolutions up to $512^2$, including wall-clock cost
-and the maximally-stretched state at $t = T/2$. TODO: benchmark numbers.
+displacement by construction. We report the first valid measurement of what
+that source does to the level-set gradient error in this framework. Two
+implementation defects had to be removed first: the source was applied with a
+\emph{reversed sign} on its explicit branch, so it doubled the gradient drift
+instead of cancelling it, and the error metric measured $\gradpsi$ with a
+\emph{cell-limited} gradient operator that returns exactly zero at a local
+extremum --- a different operator from the one the source controls. With both
+corrected, and with every arm run on one discretization, the strain-cancelling
+source reduces the band gradient error at maximal interface stretching by
+$145\times$ (2D reversed vortex, $T=2$) to $12\times$ (3D LeVeque deformation)
+and, decisively, \emph{converges under refinement where the sourceless baseline
+diverges}.
 \end{abstract}
 
 \begin{keyword}
@@ -47,9 +55,14 @@ level set \sep two-phase flow \sep reinitialization \sep signed distance
 
 % ============================================================================
 \section{Introduction}
-TODO: level-set transport degrades $|\nabla\psilev|$; classical
-reinitialization \cite{sussman1994,russo2000} and its measured
-interface-displacement cost (companion GRL line); the SDPLS idea.
+Level-set transport degrades $\gradpsi$: the gradient magnitude obeys
+$\mathrm d\ln\gradpsi/\mathrm dt = -(\nhat\cdot\nabla\mathbf{v}\cdot\nhat)$
+along characteristics, so an initially signed-distance field stops being one as
+soon as the interface strains. Classical reinitialization
+\cite{sussman1994,russo2000} restores $\gradpsi\approx1$ by rewriting the band,
+and pays for it with interface displacement --- the cost measured in the
+companion GRL line. The SDPLS idea is to leave the interface alone and act
+only where the level set is free: a source proportional to $\psilev$ itself.
 
 % ============================================================================
 \section{Method}
@@ -60,73 +73,224 @@ interface-displacement cost (companion GRL line); the SDPLS idea.
   \label{eq:sdpls}
 \end{equation}
 Because $S \propto \psilev$, the source vanishes identically on the zero
-level set: the interface evolves by transport alone. Along characteristics
-$d\ln|\nabla\psilev|/dt = -(\nhat\cdot\nabla\mathbf{v}\cdot\nhat)$, so
+level set: the interface evolves by transport alone. Two choices are
+implemented:
 \begin{itemize}
   \item \textbf{R}: $f_{nl} = (\nhat\cdot\nabla\mathbf{v}\cdot\nhat)$
-    cancels the normal-strain drift of $|\nabla\psilev|$ (the SDPLS model);
-  \item \textbf{beta}: $f_{nl} = \beta - |\nabla\psilev|$ relaxes
-    $|\nabla\psilev| \to \beta$ (the convected level-set idea
-    \cite{ville2011}).
+    cancels the normal-strain drift of $\gradpsi$ (the SDPLS model);
+  \item \textbf{beta}: $f_{nl} = \beta - \gradpsi$ relaxes
+    $\gradpsi \to \beta$ (the convected level-set idea \cite{ville2011}).
 \end{itemize}
+The two differ structurally, and the difference is visible in the results.
+\textbf{R} cancels the drift and leaves no preferred value, so its interfacial
+equilibrium is set only by the cancellation residual. \textbf{beta} relaxes
+towards $g_\ast = \beta - a$ with $a = \nhat\cdot\nabla\mathbf{v}\cdot\nhat$:
+its target is \emph{velocity dependent}, and therefore wrong wherever the
+interface strains.
+
 The source gradients are discretized under dedicated scheme keywords
 (\texttt{gradPsiSdpls}, \texttt{gradUSdpls}) --- never silently coupled to
-the advection scheme's limited $\nabla\psilev$.
+the advection scheme's limited $\nabla\psilev$, which is a different operator
+serving a different purpose (Section~\ref{sec:metric}).
 
 \subsection{Linearization and stability}
 $S = f_{nl}(\psilev^n)\,\psilev^{n+1}$ splits into an explicit part
-$S_c$ and an implicit diagonal part $S_p$:
-\begin{center}
-\begin{tabular}{l l l}
-\hline
-discretization & split & stability (measured, $N{=}128$, CFL 0.1--1.0) \\
-\hline
-explicit & $S_c = f_{nl}\psilev^n$, $S_p = 0$ &
-  R: stable; \textbf{beta: diverges at every CFL} \\
-simpleLinearImplicit & $S_p = f_{nl}$ (any sign) &
-  both stable; beta: best accuracy (4.5e-5) \\
-strictNegativeSp & $S_p = \min(f_{nl},0)$, $S_c = \max(f_{nl},0)\psilev^n$ &
-  both stable; diagonally dominant by construction \\
-\hline
-\end{tabular}
-\end{center}
-The beta+explicit divergence is dt-independent: the relaxation source turns
-its stable fixed point into an anti-damped oscillation when lagged
-explicitly --- the implicit diagonal must carry it. R is mild
-($|f_{nl}| \le \max\|\nabla\mathbf{v}\|$), stable in all variants.
+$S_c$ and an implicit diagonal part $S_p$: \texttt{explicit}
+($S_c = f_{nl}\psilev^n$, $S_p = 0$), \texttt{simpleLinearImplicit}
+($S_p = f_{nl}$) and \texttt{strictNegativeSpLinearImplicit}
+($S_p = \min(f_{nl},0)$, $S_c = \max(f_{nl},0)\psilev^n$, diagonally dominant
+by construction).
 
-\subsection{Defect correction and the two-phase coupling}
-Second-order deferred div schemes (linearUpwind) require re-assembly of
-(\ref{eq:sdpls}): \texttt{nDefCorr} passes in pure advection; in the
-two-phase solver the equation is re-assembled \emph{every PIMPLE outer
-corrector} (verified: steps $\times$ correctors $=$ $\psilev$ solves), so
-\texttt{nOuterCorrectors} is the defect-correction control. Interface
-updates (band, redistancing criterion, volume fraction) run once per time
-step on the final corrector.
+All three discretize the \emph{same} continuum term, so at $\psilev=\psilev^n$
+they must apply the same physical source. That identity is now asserted by a
+standalone unit test on an affine exact solution
+(\texttt{leiaTestSdplsSource}); it is what exposed the two defects of
+Section~\ref{sec:defects}, and it is the reason the measured orders of
+Section~\ref{sec:verification} agree to three digits between linearizations.
+
+\subsection{Defect correction}
+Second-order deferred div schemes (\texttt{linearUpwind}) carry their
+second-order part as an explicit right-hand-side source, so one pass is
+first-order in practice. The same loop also Picard-iterates the SDPLS
+nonlinearity, because $f_{nl}$ is relinearized from the current iterate at
+every pass. Both argue for at least three passes; all results below use
+\texttt{nDefCorr} $=3$.
 
 % ============================================================================
-\section{Verification: the method-decision benchmark}
-TODO (from \texttt{config/benchVortex*.yaml}): reversed vortex, $N =
-32^2..512^2$, $T \in \{2, 8\}$; Euler+SDPLS \{noSource, R, beta\} vs
-semi-Lagrangian \{cached, uncached quadratic\} vs velocity extension
-\{closestPoint\}; shape/volume/gradient at $t{=}T$, volume+gradient at
-$t{=}T/2$, wall clock.
-% \input{data/tables/benchVortex_decision.tex}
-% \includegraphics[width=\linewidth]{benchVortex_convergence_T2.png}
-% \includegraphics[width=\linewidth]{benchVortex_cost_accuracy.png}
+\section{Two defects that invalidated the previous record}
+\label{sec:defects}
+
+\subsection{A reversed sign on the explicit branch}
+\texttt{fvMatrix::operator==} subtracts the right-hand matrix termwise, so a
+contribution written into \texttt{source\_} enters the transport equation with
+a \emph{minus} --- OpenFOAM's own \texttt{fvm::Su} encodes this by doing
+\texttt{source\_ -= V*su}. The assembled equation was therefore
+$\mathrm D\psilev/\mathrm Dt = S_p\psilev^{n+1} - S_c$. Consequently
+\texttt{explicit} \emph{doubled} the gradient drift instead of cancelling it,
+and \texttt{strictNegativeSpLinearImplicit} did so on its $f_{nl}>0$ branch
+only. \texttt{simpleLinearImplicit} ($S_c=0$) was never affected --- which is
+precisely why the defect survived, because every published mesh ladder used
+\texttt{strictNegativeSp}.
+
+The signature is unambiguous in the stored output: with no source
+$\ln g = -\!\int\! a$, with correct SDPLS $0$, and with a reversed sign
+$-2\!\int\! a$. Measured at $N=512$, the ratio
+$\ln g(\text{SDPLS:R})/\ln g(\text{noSource})$ was
+$2.003,\ 2.002,\ 2.001,\ 1.997$ at $t = 0.05,\ 0.10,\ 0.20,\ 0.30$.
+
+\subsection{A use-after-free in the same branch}
+\texttt{explicitDiscretization::Sc} returned a \texttt{tmp} bound to a
+temporary destroyed at the end of the return statement, so the values later
+multiplied by the cell volumes were whatever remained in the freed block. It
+was caught by the affine unit test: \texttt{explicit} disagreed with
+\texttt{strictNegativeSp} in the regime where the two have identical $S_c$ and
+$S_p$ by construction, which no legitimate discretization difference can
+produce.
+
+\subsection{The metric measured the wrong operator}
+\label{sec:metric}
+The gradient-error function objects called the \emph{unnamed}
+\texttt{fvc::grad(psi)}, which resolves to the advection scheme's
+\texttt{grad(psi)} --- \texttt{cellLimited leastSquares 1}. A cell-limited
+(minmod) gradient returns \emph{exactly zero} at a local extremum, so the
+metric reported $\gradpsi = 0$ and $e = 1$ there regardless of the true
+gradient. On an \emph{exact analytic signed distance} the old metric reported
+$E^{\max}_{\nabla\psi} = 1.000$ and $\min\gradpsi = 0.000$ at every resolution
+from $N=32$ to $512$. Both objects now use a dedicated unlimited keyword; on
+the same exact field the maximum error becomes $0.667$ (the circle-centre
+kink, finite and mesh-independent) and the band $L_2$ error retains its
+$O(h^2)$ behaviour ($6.4\times10^{-3} \to 2.5\times10^{-5}$ over
+$N=32\to512$; fitted orders $1.97,\ 2.04,\ 2.01$).
+
+\subsection{One discretization, or no comparison}
+Arms run with different level-set advection schemes are different methods. An
+earlier attempt at the 3D studies pinned \texttt{div(phi,psi) Gauss linear}
+while the 2D studies used \texttt{Gauss linearUpwind grad(psi)}, and nothing in
+the curated output recorded the difference; the 3D result appeared to show the
+source achieving nothing. Every run reported here records the discretization it
+actually used, parsed from its rendered \texttt{fvSchemes}, and a gate
+(\texttt{make check-discretization}) asserts that a study group used one:
+114 finite-volume cases, one discretization, for the results below.
+
+% ============================================================================
+\section{Verification}
+\label{sec:verification}
+
+Reversed flows: the 2D single-vortex ($T=2$ and $T=8$), the 3D shear and the
+3D LeVeque deformation ($T=3$), each on a uniform refinement ladder at
+$\mathrm{CFL} = 0.5$, with \texttt{noSource}, \textbf{R} and \textbf{beta}
+$\times$ the two admissible linearizations.
+
+\paragraph{Where the source must work.}
+On a reversed flow $\int_0^T a\,\mathrm dt = 0$ along every interfacial
+trajectory, so at $t=T$ the sourceless baseline's gradient error cancels by
+time-reversal symmetry and only the \emph{source's residual} survives. The
+$t=T$ column therefore compares a residual against an exactly-cancelling
+control and flatters the baseline by construction. The meaningful instant is
+$t = T/2$, the state of maximal stretching.
+
+\begin{table}[htbp]
+\centering
+\caption{Band gradient error $\bigl\|\gradpsi-1\bigr\|_{L_2}$ at $t=T/2$ on the
+finest mesh of each ladder, and its fitted convergence order. \textbf{R}
+converges in all four cases; the sourceless baseline diverges in all four.}
+\label{tab:half}
+\small
+\begin{tabular}{llrrrr}
+\toprule
+case & & \textbf{R} & no source & factor & order \\
+\midrule
+2D vortex $T=2$   & error & 0.01151 & 1.6721 & $145\times$ & \\
+                  & order & $+1.228$ & $-0.094$ & & \\
+2D vortex $T=8$   & error & 0.19655 & 8.4993 & $43\times$ & \\
+                  & order & $+0.533$ & $-0.944$ & & \\
+3D shear $T=3$    & error & 0.15905 & 2.5487 & $16\times$ & \\
+                  & order & $+0.813$ & $-0.282$ & & \\
+3D deform.\ $T=3$ & error & 0.39277 & 4.7513 & $12\times$ & \\
+                  & order & $+0.178$ & $-0.916$ & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The full per-arm order table, including the $t=T$ columns and both
+linearizations, is generated from the curated data:
+
+\input{data/tables/convergence_orders_extended.tex}
+
+\paragraph{The result.}
+At maximal stretching the sourceless band gradient error \emph{grows} under
+refinement --- negative order in every case --- while the strain-cancelling
+source's \emph{shrinks}. That inversion is the substance of the method, and it
+holds in 3D as well as 2D. The magnitude of the gain is smaller in 3D
+($16\times$, $12\times$) than in 2D ($145\times$, $43\times$).
+
+\paragraph{Linearization agreement.}
+The two admissible linearizations agree to three digits on every fitted order
+($0.698/0.699$, $0.477/0.478$, $-0.169/-0.169$), as they must: they discretize
+the same continuum term. Disagreement between them was the symptom that led to
+the defects of Section~\ref{sec:defects}.
+
+\paragraph{beta.}
+\textbf{beta} is negative or near-zero at every measured point
+($-0.297$ to $+0.087$ at $t=T/2$), consistent with its equilibrium
+$g_\ast = \beta - a$ being the wrong target wherever the interface strains:
+with $\beta=1$ and $a = O(\pi)$ in the vortex, the relaxation drives $\gradpsi$
+towards a value that is $O(1)$ away from unity.
 
 % ============================================================================
 \section{Negative results}
-Measured and documented in the companion deck: beta+explicit divergence
-(all CFL); the missing-coefficient construction failure; R over-flattening
-near the resolution limit ($T{=}8$, $N{=}128$: volume error 0.488 vs 0.238
-without source, final band $\max|\nabla\psilev| = 0.19$); R's scope limit
-(controls steepening --- band max $5.5{-}7.4 \to 1.36$ --- but not
-under-resolution flattening); the dead \texttt{limit} entry pitfall.
+Measured and documented in the companion deck. Retained:
+\begin{itemize}
+  \item \textbf{beta's target is structurally wrong.} Not a tuning failure:
+    $g_\ast = \beta - a$ cannot equal one wherever $a \neq 0$.
+  \item \textbf{A source term does not repair resolution.} Strain cancellation
+    is exact only while the interface is resolved; near $\kappa h \sim 1$ the
+    reconstructed normal, and hence $f_{nl}$, is unreliable.
+  \item \textbf{The dead \texttt{limit} entry.} \texttt{limit} is read only by
+    the tanh profile; \texttt{signedDistance} ignores it, so two studies built
+    on it compared identical initial fields.
+  \item \textbf{\texttt{sdplsBeta} requires an explicit \texttt{beta}} --- the
+    missing-coefficient construction failure; explicit beats a hidden default.
+\end{itemize}
+
+Retracted, because they were artefacts of the defects of
+Section~\ref{sec:defects} rather than properties of the method:
+\begin{itemize}
+  \item ``R over-flattening near the resolution limit'' and ``R controls
+    steepening, not flattening'' --- both measured with the reversed-sign
+    \texttt{strictNegativeSp} branch, which doubled the drift it was supposed
+    to cancel.
+  \item ``\texttt{beta} + \texttt{explicit} diverges at every CFL,
+    $\Delta t$-independent'' --- the explicit branch carried \emph{both} the
+    reversed sign and the use-after-free. Post-fix, that combination runs to
+    completion at $N=32$; the claim must be re-measured at the $N=128$
+    configuration where it was made before it can be restated.
+  \item Any verdict of the form ``SDPLS makes the band gradient error worse
+    than no source'', which came from the same branch and, in the 3D case,
+    from arms run on different advection schemes.
+\end{itemize}
 
 % ============================================================================
 \section{Conclusions}
-TODO after the benchmark.
+The SDPLS source controls $\gradpsi$ through the transport equation with zero
+interface displacement by construction, and --- once the sign, the lifetime bug
+and the measuring operator are corrected, and once every arm is run on one
+discretization --- it converges at maximal interface stretching where the
+sourceless baseline diverges, in 2D and in 3D. The two linearizations agree,
+which is the internal consistency check the defects had been violating. What a
+source term still cannot do is manufacture resolution: the cancellation is only
+as good as the normal it is built from.
+
+\section*{Reproducibility}
+\begin{verbatim}
+make studies-sdpls PROFILE=profiles/local     # laptop
+make studies-sdpls PROFILE=profiles/slurm     # Lichtenberg
+make check-discretization                     # gate: one discretization
+python3 workflow/scripts/make_convergence_table.py --method sdpls
+\end{verbatim}
+Tables are regenerated from the curated study output into
+\texttt{data/tables/}; the affine unit test is
+\texttt{cases/sdplsSourceUnit/Allrun.sh}.
 
 \bibliographystyle{elsarticle-num}
 \bibliography{refs}
