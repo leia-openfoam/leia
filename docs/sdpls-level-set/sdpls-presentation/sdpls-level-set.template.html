@@ -213,6 +213,62 @@
   <img src="../../method-comparison/method-comparison-article/data/figures/benchVortex_cost_accuracy.png"
        style="max-height:300px" onerror="this.style.display='none'">
 </section>
+
+<section>
+  <h3>Where the error lives</h3>
+  <p class="tight">Signed-distance error <code>log<sub>10</sub>||&nabla;&psi;|&minus;1|</code>,
+     2D reversed vortex, <em>T</em>&nbsp;=&nbsp;2, <code>simpleLinearImplicit</code>.
+     Rows <em>N</em>&nbsp;=&nbsp;32&hellip;512; columns <em>t</em>&nbsp;=&nbsp;0,
+     <em>T</em>/2 (maximal deformation), <em>T</em> (flow reversed).
+     Blue curve is the &psi;&nbsp;=&nbsp;0 contour.</p>
+  <div style="display:flex; gap:1em; justify-content:center; align-items:flex-start">
+    <figure style="margin:0">
+      <img src="../../method-comparison/method-comparison-article/data/figures/bench_euler_SDPLS_R_simpleImp_T2_graderr.png"
+           style="max-height:430px" onerror="this.style.display='none'">
+      <figcaption style="font-size:0.8em"><code>R</code> &mdash; strain-cancelling</figcaption>
+    </figure>
+    <figure style="margin:0">
+      <img src="../../method-comparison/method-comparison-article/data/figures/bench_euler_SDPLS_beta_simpleImp_T2_graderr.png"
+           style="max-height:430px" onerror="this.style.display='none'">
+      <figcaption style="font-size:0.8em"><code>beta</code></figcaption>
+    </figure>
+  </div>
+  <p class="tight" style="font-size:0.82em">
+    <code>R</code>: the error collapses over a growing neighbourhood of the recovered
+    interface as the mesh refines, and the <em>t</em>&nbsp;=&nbsp;<em>T</em> contour closes on
+    a clean circle. <code>beta</code>: the bulk error stays <em>O</em>(1) at every resolution
+    and the recovered contour carries extra internal structure &mdash; the signature of a
+    flattening level set, since the interface position error scales like
+    <code>e<sub>&psi;</sub>/|&nabla;&psi;|</code>. The same statement as the band minimum
+    (0.423 vs 0.883 at <em>N</em>&nbsp;=&nbsp;512), seen in space rather than as one number.
+  </p>
+</section>
+
+<section>
+  <h3>&hellip; and it is not interface displacement</h3>
+  <p class="tight">Volume fraction &alpha;, same cases and layout. The graded fill shows the
+     width of the indicator transition region directly.</p>
+  <div style="display:flex; gap:1em; justify-content:center; align-items:flex-start">
+    <figure style="margin:0">
+      <img src="../../method-comparison/method-comparison-article/data/figures/bench_euler_SDPLS_R_simpleImp_T2_alpha.png"
+           style="max-height:430px" onerror="this.style.display='none'">
+      <figcaption style="font-size:0.8em"><code>R</code></figcaption>
+    </figure>
+    <figure style="margin:0">
+      <img src="../../method-comparison/method-comparison-article/data/figures/bench_euler_SDPLS_beta_simpleImp_T2_alpha.png"
+           style="max-height:430px" onerror="this.style.display='none'">
+      <figcaption style="font-size:0.8em"><code>beta</code></figcaption>
+    </figure>
+  </div>
+  <p class="tight" style="font-size:0.82em">
+    Neither source thickens the transition region appreciably relative to the other, and the
+    volume and shape errors agree: whatever <code>beta</code> does to the signed-distance
+    property, it does <em>not</em> do it by displacing the interface.
+    <em>Caveat:</em> the atlas differentiates &psi; with a uniform-grid finite difference for
+    visualization, not with the <code>gradPsiMetric</code> operator behind the tabulated
+    norms &mdash; it localizes the error, the tables measure it.
+  </p>
+</section>
 </section>
 
 <section data-track="Two-phase coupling">

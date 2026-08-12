@@ -8,7 +8,12 @@
 \usepackage{booktabs}
 \usepackage{url}
 
-\graphicspath{{data/figures/}}
+% Second path: the 2D reversed-vortex field atlases come from the
+% benchVortexEulerT* studies, whose theme is method-comparison. Referencing them
+% here keeps the repository's one-data-folder-per-theme rule; the alternative is
+% duplicating multi-megabyte PNGs into a second theme.
+\graphicspath{{data/figures/}%
+              {../../method-comparison/method-comparison-article/data/figures/}}
 
 \newcommand{\psilev}{\psi}
 \newcommand{\nhat}{\hat{\mathbf{n}}}
@@ -229,6 +234,59 @@ The two admissible linearizations agree to three digits on every fitted order
 ($0.698/0.699$, $0.477/0.478$, $-0.169/-0.169$), as they must: they discretize
 the same continuum term. Disagreement between them was the symptom that led to
 the defects of Section~\ref{sec:defects}.
+
+\subsection{Where the error lives}
+\label{sec:atlas}
+A fitted order says that a method improved; it does not say \emph{where}.
+Figure~\ref{fig:graderr-atlas} maps the signed-distance error
+$\bigl|\gradpsi-1\bigr|$ over the whole domain for the strain-cancelling source
+and for \texttt{beta}, across the refinement ladder, at the initial instant, at
+maximal deformation, and after the flow has reversed.
+
+The two behave differently in a way the aggregate norms compress away. For
+\texttt{R} the error collapses over a growing neighbourhood of the recovered
+interface as the mesh refines --- at $N=512$, $t=T$ the field around the zero
+level set is four to five decades below unity --- and the recovered
+$\psilev=0$ contour is a clean circle. For \texttt{beta} the bulk error stays
+at $O(1)$ at every resolution, and the recovered contour carries additional
+internal structure rather than closing on the initial circle. That is the
+expected signature of a flattening level set: where $\gradpsi$ collapses, the
+interface position error scales like $e_\psilev/\gradpsi$, so small value noise
+produces spurious zero crossings. It is the same statement as the band minimum,
+$0.423$ for \texttt{beta} against $0.883$ for \texttt{R} at $N=512$, seen in
+space instead of as a single number.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.49\linewidth]{bench_euler_SDPLS_R_simpleImp_T2_graderr.png}
+\hfill
+\includegraphics[width=0.49\linewidth]{bench_euler_SDPLS_beta_simpleImp_T2_graderr.png}
+\caption{Signed-distance error $\log_{10}\bigl|\gradpsi-1\bigr|$ on the 2D
+reversed vortex, $T=2$, \texttt{simpleLinearImplicit}. Left: the
+strain-cancelling source \texttt{R}. Right: \texttt{beta}. Rows are the
+refinement ladder $N=32\ldots512$; columns are $t=0$, $t=T/2$ (maximal
+deformation) and $t=T$ (flow reversed). The blue curve is the $\psilev=0$
+contour. \emph{Caveat:} this field is differentiated with a uniform-grid finite
+difference for visualization, not with the \texttt{gradPsiMetric} operator that
+produces the tabulated norms; the atlas localizes the error, the tables measure
+it, and the two are not expected to agree digit for digit.}
+\label{fig:graderr-atlas}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.49\linewidth]{bench_euler_SDPLS_R_simpleImp_T2_alpha.png}
+\hfill
+\includegraphics[width=0.49\linewidth]{bench_euler_SDPLS_beta_simpleImp_T2_alpha.png}
+\caption{The volume fraction $\alpha$ that the level set carries, same cases and
+layout as Figure~\ref{fig:graderr-atlas}. The graded fill makes the width of the
+indicator transition region --- the numerical smearing of the phase indicator
+--- visible directly. Neither source thickens it appreciably relative to the
+other, consistent with the volume and shape orders in the generated table of
+Section~\ref{sec:verification}: whatever \texttt{beta} does to the
+signed-distance property, it does not do it by displacing the interface.}
+\label{fig:alpha-atlas}
+\end{figure}
 
 The dedicated single-mesh sweep makes the point sharply, and settles the
 retracted \texttt{beta}\,+\,\texttt{explicit} claim at its own configuration.
