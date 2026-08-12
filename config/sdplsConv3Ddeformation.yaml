@@ -60,7 +60,11 @@ axes_override:
   # INITIAL alpha, and the interface never returns. aggregate.py blanks it in the
   # curated table for oscillation=off rows and records `oscillation` alongside.
   # Volume error (conservation) and the gradient error (intrinsic) stay valid.
-  OSCILLATION: [off]
+  # QUOTED: YAML 1.1 parses bare `off` as the boolean false, which
+  # materialize stringifies as "False" -- and OpenFOAM's Switch rejects it
+  # ("Expected true/false, on/off... found False"). Every existing config
+  # quotes these for the same reason (REPORT_WRITE_ONLY: ["true"]).
+  OSCILLATION: ["off"]
 collapse_other_axes: true
 
 # Publish: this is a PRIMARY study of the sdpls theme. `export_slides:

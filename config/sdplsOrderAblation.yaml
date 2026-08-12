@@ -73,7 +73,11 @@ axes_override:
   REDISTANCER: [noRedistancing]
   ADVECTION: [eulerian]
   VELOCITY_EXTENSION: [none]
-  OSCILLATION: [off]
+  # QUOTED: YAML 1.1 parses bare `off` as the boolean false, which
+  # materialize stringifies as "False" -- and OpenFOAM's Switch rejects it
+  # ("Expected true/false, on/off... found False"). Every existing config
+  # quotes these for the same reason (REPORT_WRITE_ONLY: ["true"]).
+  OSCILLATION: ["off"]
 
   # --- the ablation axis --------------------------------------------------- #
   DIV_GRAD: [CellLimitedLSQ, UnlimitedLSQ, CellLimitedGauss, FaceLimitedLSQ]

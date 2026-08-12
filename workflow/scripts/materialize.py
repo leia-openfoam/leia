@@ -177,7 +177,35 @@ def _with_derived_tokens(tokens):
     return out
 
 
+def _reject_yaml_booleans(tokens):
+    """Fail fast on a token whose value is a Python bool.
+
+    YAML 1.1 parses the BARE words `off`, `on`, `no`, `yes`, `true` and `false`
+    as booleans, so `OSCILLATION: [off]` in a study config arrives here as
+    `False` and renders as the string "False". OpenFOAM's Switch is
+    case-sensitive and rejects it -- `Expected true/false, on/off... found
+    False` -- but only once the solver is already running on a compute node, so
+    the mistake costs a whole study's queue time before it surfaces. Measured:
+    98 cases across two studies died this way.
+
+    Every value here is destined for a dictionary that OpenFOAM parses as text,
+    so a bool is always a quoting accident. Quote it in the config
+    (`OSCILLATION: ["off"]`), which is what the existing configs already do for
+    REPORT_WRITE_ONLY.
+    """
+    bad = {k: v for k, v in tokens.items() if isinstance(v, bool)}
+    if bad:
+        raise SystemExit(
+            "[materialize] token(s) parsed as YAML booleans: "
+            + ", ".join(f"{k}={v}" for k, v in sorted(bad.items()))
+            + ".\n[materialize] YAML 1.1 reads bare off/on/no/yes/true/false as "
+            "booleans; they render as \"False\"/\"True\", which OpenFOAM's Switch "
+            "rejects.\n[materialize] Quote the value in the study config, e.g. "
+            'OSCILLATION: ["off"].')
+
+
 def materialize(base_case, tokens, out_dir, np_, mesh, mode, dims, case_name, index):
+    _reject_yaml_booleans(tokens)
     tokens = _with_derived_tokens(tokens)
     if mesh == "perturbed" and "N_NON_ORTHOGONAL_CORRECTORS" in tokens:
         try:
