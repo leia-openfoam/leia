@@ -160,6 +160,7 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 | job | what | limit | output |
 |---|---|---|---|
 | *(none from this thread)* | The cell-mean N=128 horizon run finished: blow-up measured at t = 0.1049 s. Nothing of ours is queued. | — | `studies/stationaryDropletCellMean/stationaryDroplet2D_00000/` |
+| `54089264` `leia-studies` | **SDPLS thread**, separate from the curvature work above: `make studies-sdpls`, six studies — `sdplsStability`, `benchVortexEulerT{2,8}`, `sdplsBetaSweep`, `sdplsConv3D{shear,deformation}`. The two 3D ones are a six-rung cell-doubling ladder (N = 64, 81, 102, 128, 161, 203) at np=16. | 7 d | `leia-studies.54089264.out`, `studies/sdpls*/`, `studies/benchVortexEuler*/` |
 
 Check what is yours at any time:
 
