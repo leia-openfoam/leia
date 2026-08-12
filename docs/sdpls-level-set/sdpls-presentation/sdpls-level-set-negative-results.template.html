@@ -148,7 +148,7 @@
 <section>
   <h2>Roadmap</h2>
   <ol class="roadmap" style="font-size:1.05em">
-    <li><span class="idx">1</span>beta + explicit discretization: divergent at every CFL</li>
+    <li><span class="idx">1</span>Why <code>beta</code> fails &mdash; the mechanism, measured</li>
     <li><span class="idx">2</span>beta without a coefficient: construction failure</li>
     <li><span class="idx">3</span>R near the resolution limit: over-flattening</li>
     <li><span class="idx">4</span>R controls steepening, not flattening: the scope limit</li>
@@ -156,21 +156,152 @@
   </ol>
 </section>
 
-<section data-track="beta + explicit">
+<section data-track="why beta fails">
 <section>
   <p class="part-kicker">Stack 1 of 5</p>
-  <h2>beta + explicit: divergent at every CFL</h2>
-  <div class="verdict">
-    <span class="v-kicker">measured verdict — diverged</span>
-    N=128, T=2, CFL &isin; {0.1, 0.5, 1.0}: ALL beta+explicit runs blow up;
-    every implicit variant of the same source is stable
-    (<code>config/sdplsStability.yaml</code>).
+  <h2>Why <code>beta</code> fails &mdash; start from the gradient law</h2>
+  <p class="tight">Differentiate \(\partial_t\psi + \mathbf u\cdot\nabla\psi = f_{nl}\,\psi\)
+     and evaluate at \(\psi = 0\). With \(g = |\nabla\psi|\) and the interfacial normal
+     strain \(a = \hat n\cdot\nabla\mathbf u\cdot\hat n\):</p>
+  <p class="center" style="font-size:1.15em">\[\frac{\mathrm D g}{\mathrm D t} = g\,(f_{nl} - a)\]</p>
+  <div class="cols" style="font-size:0.86em">
+    <div>
+      <p class="tight"><b><code>R</code>: \(f_{nl} = a\)</b></p>
+      <p class="tight">\(\mathrm D g/\mathrm D t = 0\) &mdash; <b>identically</b>. The source
+      cancels interfacial stretching exactly. There is no target to chase and no fixed
+      point to be unstable about; whatever error remains is numerical, which is why it
+      converges under refinement.</p>
+    </div>
+    <div>
+      <p class="tight"><b><code>beta</code>: \(f_{nl} = \beta - g\)</b></p>
+      <p class="tight">\(\mathrm D g/\mathrm D t = g\,(\beta - g - a)\) &mdash; a logistic
+      equation in \(g\) with <b>two</b> fixed points:</p>
+      <ul class="tight">
+        <li>\(g^\ast = \beta - a\) &mdash; stable, but set by the <b>flow</b></li>
+        <li>\(g = 0\) &mdash; <b>unstable</b> whenever \(\beta - a &gt; 0\)</li>
+      </ul>
+      <p class="tight">Both of them are trouble, and for different reasons.</p>
+    </div>
   </div>
-  <p style="font-size:0.85em"><b>Mechanism:</b> \(f_{nl} = \beta - |\nabla\psi|\) is a
-     RELAXATION source: explicit treatment turns the stable fixed point
-     \(|\nabla\psi| = \beta\) into an anti-damped oscillator through the
-     \(|\nabla\psi|\)-feedback &mdash; dt-independent, hence divergence at every CFL.
-     Sp must carry the relaxation implicitly.</p>
+  <p class="tight" style="font-size:0.84em; opacity:0.85">The same law is why the two
+     sources are not variants of one idea: one sets the right-hand side to zero, the other
+     sets up a competition against the flow.</p>
+</section>
+
+<section>
+  <h2>Failure 1 &mdash; the target is set by the flow, so refinement cannot fix it</h2>
+  <div class="verdict">
+    <span class="v-kicker">measured — h-independent</span>
+    Band mean \(|\nabla\psi|\) at maximal deformation, <em>N</em> = 32&hellip;512:
+    <b>1.516, 1.498, 1.478, 1.485, 1.481</b> &mdash; flat to ~2% over a
+    <b>sixteenfold</b> refinement. <code>R</code> over the same ladder:
+    1.071 &rarr; <b>1.002</b>.
+  </div>
+  <p class="tight" style="font-size:0.86em">
+    \(g^\ast = \beta - a\) contains no mesh spacing. A discretization <em>residual</em>
+    vanishes as \(h\to0\); a wrong <em>target</em> does not. This is the cleanest
+    discriminator in the record, and it says the offset is structural rather than
+    numerical &mdash; so no amount of resolution, and no better limiter, will remove it.
+  </p>
+  <p class="tight" style="font-size:0.86em">
+    Note what it is <em>not</em>: volume and shape errors sit at \(10^{-5}\)&ndash;\(10^{-4}\)
+    for every arm. <code>beta</code> is not displacing the interface. It is holding
+    \(|\nabla\psi|\) at the wrong level.
+  </p>
+</section>
+
+<section>
+  <h2>Failure 2 &mdash; over most of the interface the target is <em>unreachable</em></h2>
+  <div class="verdict">
+    <span class="v-kicker">measured — target negative</span>
+    Band strain reaches \(\max a = 2.77\) against \(\beta = 1\). The target
+    \(\beta - a\) is <b>negative somewhere in the band for 93% of the time steps</b>.
+  </div>
+  <p class="tight" style="font-size:0.86em">
+    Wherever \(a &gt; \beta\), the stable fixed point \(\beta - a\) is negative &mdash; and
+    \(g = |\nabla\psi|\) is a <b>magnitude</b>. It cannot reach it. The logistic dynamics
+    then drive \(g\) toward the only reachable fixed point, \(g = 0\):
+    <b>the level set flattens hardest exactly where the flow stretches hardest.</b>
+  </p>
+  <div class="verdict">
+    <span class="v-kicker">consequence</span>
+    Band minimum \(|\nabla\psi|\) at <em>N</em> = 512: <b>0.423</b> for <code>beta</code>
+    against <b>0.883</b> for <code>R</code> &mdash; the two seeing the identical flow.
+  </div>
+  <p class="tight" style="font-size:0.84em; opacity:0.85">
+    Choosing a bigger \(\beta\) does not escape this: \(a\) is a property of the flow, and
+    on any stretching interface it will exceed whatever constant you pick somewhere.
+  </p>
+</section>
+
+<section>
+  <h2>Failure 3 &mdash; \(g=0\) is <em>unstable</em>, so the flattening rebounds</h2>
+  <p class="tight" style="font-size:0.9em">
+    Near \(g = 0\) the logistic equation linearises to
+    \(\mathrm D g/\mathrm D t \approx (\beta - a)\,g\). While \(a &gt; \beta\) that rate is
+    negative and \(g\) collapses. <b>When the strain reverses sign, the rate turns
+    positive and the collapsed cells grow exponentially.</b>
+  </p>
+  <div class="verdict">
+    <span class="v-kicker">measured — onset at the reversal</span>
+    Band max \(|\nabla\psi|\): <b>154.9</b> at <em>t</em> = 1.025 for <em>T</em> = 2, and
+    <b>98.0</b> at <em>t</em> = 4.063 for <em>T</em> = 8 &mdash; i.e. at
+    <em>t/T</em> = <b>0.5125</b> and <b>0.508</b>. The <em>same fraction of the period</em>,
+    four times the absolute time: the trigger is the <b>reversal</b>, not a clock.
+  </div>
+  <p class="tight" style="font-size:0.86em">
+    So flattening and blow-up are not two problems. They are <b>one mechanism seen on
+    either side of the reversal</b>: collapse toward an unstable fixed point, then
+    exponential escape from it.
+  </p>
+</section>
+
+<section>
+  <h2>The verdict: refinement makes it <em>worse</em></h2>
+  <table style="font-size:0.82em; margin:0 auto">
+    <tr><th style="text-align:left">band max \(|\nabla\psi|\) at <em>t</em>=<em>T</em></th>
+        <th>32</th><th>64</th><th>128</th><th>256</th><th>512</th></tr>
+    <tr><td><code>beta</code>, <em>T</em>=2</td><td>1.68</td><td>1.51</td><td>1.62</td>
+        <td><b>50.9</b></td><td><b>123.5</b></td></tr>
+    <tr><td><code>beta</code>, <em>T</em>=8</td><td>2.81</td><td>2.74</td><td><b>98.0</b></td>
+        <td><b>211</b></td><td><b>3673</b></td></tr>
+    <tr><td><code>R</code>, <em>T</em>=2</td><td>1.40</td><td>1.42</td><td>1.22</td>
+        <td>1.15</td><td>1.11</td></tr>
+    <tr><td>no source, <em>T</em>=2</td><td>1.10</td><td>1.18</td><td>1.03</td>
+        <td>1.002</td><td>1.0003</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.86em">
+    The blow-up is <b>absent on coarse meshes</b> and appears under refinement &mdash; between
+    <em>N</em>=128 and 256 at <em>T</em>=2, already at <em>N</em>=128 at <em>T</em>=8, because
+    longer exposure needs less resolution to trigger it. <b>Running the coarse end of a ladder
+    cannot detect this.</b>
+  </p>
+  <div class="verdict">
+    <span class="v-kicker">bottom line</span>
+    Band gradient error at <em>t</em>=<em>T</em>, <em>N</em>=512: no source <b>0.0001</b>
+    (order +2.63), <code>R</code> 0.048 (+0.70), <code>beta</code> <b>6.897</b>
+    (<b>&minus;1.24</b>). <code>beta</code> is worse than applying no source at all, and
+    its error <em>grows</em> with resolution. <b>It should not be used.</b>
+  </div>
+</section>
+
+<section>
+  <h2>Retracted: &ldquo;beta + explicit diverges at every CFL&rdquo;</h2>
+  <div class="verdict" style="border-left-color:var(--ls-warn)">
+    <span class="v-kicker">retracted — falsified at its own configuration</span>
+    The earlier claim was that <code>beta</code>+<code>explicit</code> blew up at
+    <em>N</em>=128, <em>T</em>=2 for CFL &isin; {0.1, 0.5, 1.0} through an anti-damped
+    oscillation, dt-independently. Re-run after the 2026-08 source fixes: <b>all three
+    linearizations complete at every CFL and agree to five significant digits.</b>
+  </div>
+  <p class="tight" style="font-size:0.86em">
+    The original divergence came from the two defects that branch carried &mdash; a reversed
+    sign on the explicit contribution and a use-after-free returning a dangling
+    <code>tmp</code> &mdash; not from the relaxation being explicitly lagged. The
+    <em>real</em> reason to reject <code>beta</code> is the mechanism above, and it has
+    nothing to do with the linearization: all three fail identically, because they
+    discretize the same wrong continuum source.
+  </p>
 </section>
 </section>
 
