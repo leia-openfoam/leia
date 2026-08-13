@@ -293,6 +293,45 @@
 </section>
 </section>
 
+<section data-track="3D">
+<section>
+  <h2>3D &mdash; and where the claim weakens</h2>
+  <p class="tight">Both 3D cases on a 6-rung <b>cell-doubling</b> ladder
+     (<em>N</em> = 64, 81, 102, 128, 161, 203 &mdash; each level doubles the cell count,
+     8.37M at the top), 72 cases, zero failures. Band gradient error order at
+     <em>t</em>&nbsp;=&nbsp;<em>T</em>/2:</p>
+  <table style="font-size:0.84em; margin:0 auto">
+    <tr><th style="text-align:left"></th><th>2D vortex</th><th>3D shear</th>
+        <th>3D LeVeque deformation</th></tr>
+    <tr><td>no source</td><td class="warn">&minus;0.26</td><td class="warn">&minus;0.094</td>
+        <td class="warn">&minus;0.914</td></tr>
+    <tr><td><code>R</code></td><td class="good">+0.74</td><td class="good">+0.668</td>
+        <td><b>&minus;0.045</b></td></tr>
+    <tr><td><code>beta</code></td><td>&minus;0.04</td><td>+0.292</td>
+        <td class="warn">&minus;0.442</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.85em">
+    <b>On deformation <code>R</code> does not converge.</b> It holds the error <em>flat</em>
+    at 0.39&ndash;0.41 across the whole ladder while the baseline diverges 2.65&nbsp;&rarr;&nbsp;7.73,
+    ending <b>18.6&times;</b> more accurate. That is boundedness, not convergence, and it is
+    a weaker claim than the other two cases support.
+  </p>
+  <p class="tight" style="font-size:0.82em; border-left:3px solid var(--ls-warn); padding-left:0.6em">
+    <b>Volume conservation inverts between the two 3D cases.</b> On shear <code>R</code> is
+    <b>18&times; worse</b> than doing nothing (order +0.96 vs +2.57); on deformation it is
+    <b>13&times; better</b> (+3.56 vs +1.26). Case-dependent, not systematic, and unexplained
+    by the present data. Shape error separates the arms hardly at all
+    (+1.07&hellip;+1.14 on deformation).
+  </p>
+  <p class="tight" style="font-size:0.78em; opacity:0.8">
+    Caveat on every deformation number: the sourceless baseline still loses <b>11%</b> of its
+    phase volume at 203&sup3; and <b>51%</b> at 64&sup3;. At <em>T</em>&nbsp;=&nbsp;3 the
+    LeVeque field draws the interface into sheets thinner than the cell size across this
+    entire ladder &mdash; these orders describe an under-resolved regime.
+  </p>
+</section>
+</section>
+
 <section data-track="Where the missing order is not">
 <section>
   <h2>Where the missing order is <em>not</em></h2>
