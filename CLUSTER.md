@@ -331,3 +331,21 @@ make pull-study STUDY=bulkVortexSL
 
 `CLUSTER` (default `lichtenberg`) is the ssh alias; `REMOTE` the repo path.
 Everything that feeds a deck or paper already travels via git as `docs/**/data`.
+
+> **Check the size before pulling a 3D study.** These targets rsync the whole
+> tree, raw fields included. `sdplsConv3Dshear` is **195 GB** — 17 GB for the
+> single 203³ case — while everything the tables and figures need is **9 MB** of
+> CSV. `make pull-study` there is a mistake, not a slow success.
+>
+> Aggregate in place and pull only the curated result:
+>
+> ```bash
+> ssh $CLUSTER "cd $REMOTE && python3 -c \"
+> import sys, glob; sys.path.insert(0,'workflow/scripts'); import aggregate
+> d = sorted(glob.glob('studies/<study>/<case>_[0-9]*'))
+> aggregate.build_database(d, 'studies/<study>/<study>_database.csv')\""
+> rsync $CLUSTER:$REMOTE/studies/<study>/'<study>_*.csv' studies/<study>/
+> ```
+>
+> Pull raw fields only for the one case you actually intend to visualise. The 3D
+> iso-surface montages are generated locally regardless (no vtk on the cluster).
