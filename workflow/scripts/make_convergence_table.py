@@ -518,8 +518,16 @@ def main(argv=None):
         return 2
     # Even with a complete set, never publish an arm whose fit collapsed to
     # nothing -- that is the same failure wearing a different hat.
+    #
+    # UNLESS the arm has fewer than two STABLE levels. Then no order is fittable
+    # by construction and the blank is a physical result, not missing data:
+    # benchVortexEulerT8's beta arms destabilize at T=8, leaving a one-rung
+    # stable prefix, and the published table already marks exactly this with a
+    # dagger. Refusing there would block the table on the strength of a finding
+    # it is supposed to report. Judge only arms that HAD the data to fit.
     empty_arms = [r for r in order_rows
-                  if all(not r.get(oc) for _c, oc, _l in METRICS)]
+                  if all(not r.get(oc) for _c, oc, _l in METRICS)
+                  and int(r.get("stableLevels") or 0) >= 2]
     if empty_arms and not args.allow_partial:
         print(f"[convtable] REFUSING: {len(empty_arms)} arm(s) fitted NO order "
               f"at all (e.g. {empty_arms[0].get('study','?')} / "
