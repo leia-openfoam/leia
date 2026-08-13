@@ -302,12 +302,35 @@ linearizations, is generated from the curated data:
 
 \input{data/tables/convergence_orders_extended.tex}
 
+\paragraph{3D shear.}
+The reversed 3D shear ladder ($N = 64, 81, 102, 128, 161, 203$, each level
+doubling the cell count) reproduces the 2D result and prices it. Band gradient
+error at $t=T/2$: the sourceless baseline stalls at order $-0.094$ while
+\textbf{R} converges at $+0.668$, within striking distance of the 2D $+0.74$,
+and is $21.4\times$ more accurate on the finest mesh ($0.119$ against $2.535$).
+\texttt{beta} converges weakly, $+0.292$.
+
+The cost is real and runs the other way from 2D. At $t=T$, where shape error is
+defined, \textbf{R} is $3.7\times$ worse in shape than the baseline
+($5.4\times10^{-4}$ against $1.5\times10^{-4}$, orders $+1.34$ and $+2.21$) and
+$18\times$ worse in volume conservation ($2.5\times10^{-2}$ against
+$1.4\times10^{-3}$, orders $+0.96$ and $+2.57$). On the non-reversing 2D vortex
+\textbf{R} conserved volume \emph{better} than the baseline from $N=128$ up; on
+3D shear it does not. \texttt{beta} is the best of the three in both volume
+($+4.12$) and shape ($+2.00$) while being the worst source term for the
+gradient --- which is the whole point of reporting all three metrics rather
+than the headline one. The two linearizations agree to four digits on every
+entry.
+
 \paragraph{The result.}
 The sourceless band gradient error \emph{grows} under refinement while the
-strain-cancelling source's \emph{shrinks}. That inversion is the substance of
-the method: it is the difference between a level set that degrades as the mesh
-improves and one that does not. It is also invisible on a reversed flow, which
-is why it went unmeasured for so long.
+strain-cancelling source's \emph{shrinks}, in 2D and in 3D. That inversion is
+the substance of the method: it is the difference between a level set that
+degrades as the mesh improves and one that does not. It is also invisible on a
+reversed flow read at $t=T$, which is why it went unmeasured for so long. What
+the source buys is the signed-distance property; on 3D shear it pays for it in
+volume conservation and interface position, and that trade is not yet
+understood.
 
 \paragraph{Where the missing order is not.}
 \label{par:ablation}
@@ -385,6 +408,29 @@ $-0.04$: refinement cannot remove an error that the equation is asking for. A
 28-case sweep over $\beta \in \{0.5, 1.0, 1.5, 2.0\}$ confirms the target
 independently --- the band mean shifts one-for-one with $\beta$, measured slope
 $0.938$ against a predicted $1$.
+
+\paragraph{The equilibrium is only measurable on a steady flow.}
+That evidence is deliberately drawn from the \emph{non-reversing} vortex, and
+the reversed 3D shear shows why it has to be. Equation~\eqref{eq:betalogistic}
+is pointwise and instantaneous, so $g^{*} = \beta - a$ is a target that moves
+whenever $a$ does. Over the 3D shear trajectory at $N=203$ the interfacial
+strain has time-mean $-0.005$ --- zero, as $\int_0^T a\,\mathrm dt = 0$
+requires --- but mean magnitude $0.78$, ranging over $[-1.22, +1.21]$ and
+changing sign at the turnaround. \texttt{beta} therefore chases a target that
+reverses under it: its band mean runs $1.000 \to 1.542 \to 0.723$ from $t=0$
+through $T/2$ to $T$, settling at neither $1$ nor $\beta - a$ for any $a$ the
+run ever had. A steady flow holds $a$ still long enough for the equilibrium to
+be reached, and is the only configuration in which the target can be measured
+at all.
+
+The same trajectory makes the cancellation argument of
+Section~\ref{par:reversal} concrete rather than algebraic. The sourceless band
+mean runs $1.000 \to 3.162 \to 1.003$: the level set loses the signed-distance
+property by a factor of three and is then carried all the way back, so a
+measurement taken only at $t=T$ would score it as very nearly perfect.
+\textbf{R} over the same trajectory runs $1.000 \to 1.050 \to 1.008$ with a
+maximum of $1.070$ --- it does not merely arrive in a good state, it never
+leaves one.
 
 Equation~\eqref{eq:betalogistic} also accounts for the failure mode seen on the
 reversed runs. Where $\beta - a < 0$ the target is negative, so the source
