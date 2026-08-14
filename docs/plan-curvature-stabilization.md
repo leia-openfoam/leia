@@ -1267,3 +1267,136 @@ is precisely the "unmeasured-for-maintenance" status the programme recorded for
 velocity extension in the two-phase solver. It is a small fix -- make the phase-field
 name configurable in the extension models -- but it is a CODE change, not a config
 change, and it must be done before the arm can be measured.
+
+## 16. The loop model and the time axis -- measured 2026-08-13/14: the growth rate decomposes, and every coupling lever is exonerated
+
+### 16.1 The assembled loop model and the capillary-dt sweep
+
+Assembling the programme's measured numbers into one causal chain -- delta_psi
+(grid scale, amplitude eps) -> delta_kappa_f = 0.647*eps/h^2 (the measured gain)
+-> CSF flux -> one explicit step -> interface displacement -> delta_psi -- gives
+a per-step loop gain gamma ~ 0.647*sigma*dt^2/(rho*h^3), h-INDEPENDENT under the
+capillary-scaled step. The discriminating test is a capillary-dt sweep at fixed
+N (config/stationaryDropletDtSweep.yaml, N=128, coeff = dt_sigma/{4,8,16}; then
+config/stationaryDropletDtScaling.yaml, N=64/256). Growth rates r are fitted
+directly from ln(maxMagU) vs t in the window [3e-3, 3e-1] -- t_blow is NOT a
+valid proxy (incubation and e-fold count vary; the e-fold count K = r*t_blow
+runs 5.4..13.3 across arms).
+
+    r(N, dt) = r0(N) + c(N)*dt          (per-N fits, <= 6% residual)
+
+    N=64 :  r = 30.0/30.4/32.5  -> r0 ~ 31,  c ~ 0 (NO dt term)
+    N=128:  r = 202.9/104.4/70.0 -> r0 = 20.8, c = 2.40e7 (dt term = 90%)
+    N=256:  r = 249.5/181.8/125.6 -> r0 = 91.7, c = 6.07e7 (dt term = 65%)
+
+The first halving at N=128 halves r within 3% -- the dt-linearity is real. But
+the crude model's c ~ N^3 is falsified (measured N^1.3 from 128->256, absent at
+64: the mechanism SWITCHES ON between N=64 and N=128, and omega_2h*dt is
+N-independent at fixed coeff, so no naive per-mode explicit threshold explains
+that). The floor r0 does not vanish and rises toward fine grids. Volume and
+shape error at matched times IMPROVE monotonically with smaller dt (dt/16 at
+N=128: volume 73x, shape 33x better) -- smaller dt is pure gain except cost.
+
+Bonus falsifications: smaller dt = 2-4x MORE remaps and fits per unit time yet
+LESS growth, so per-step noise injection is not the driver; at N=64 the maxU
+amplitude at matched time scales LINEARLY with dt while r is flat -- there the
+dt-dependence is all SEED (the quasi-static balanced-CSF residual ~ dt), not
+rate.
+
+### 16.2 Exonerations (each by direct experiment)
+
+- ADAPTIVITY: fixed-dt re-run of the full 9-cell matrix (deltaT = coeff/N^1.5,
+  adjustTimeStep no, writeControl runTime -- now the case standard per
+  cases/stationaryDroplet2D/system/controlDict.template): 7/9 cells within
+  +-3% on r, no systematic shift. The two +13/+21% outliers calibrate the
+  seed-sensitivity of single-cell r fits.
+- GAMG: p_rgh swapped to PCG+DIC at np4 reproduces the trajectory to 4-5
+  significant digits in t_blow after ~9000 steps THROUGH a chaotic amplifier
+  (probes p128_pcg/p64_pcg). The linear solver's internal path is irrelevant at
+  our tolerances. (The docs' "parallel inconsistent" flag concerns GAMG as a
+  PRECONDITIONER inside PCG -- a code path we do not use.)
+- DECOMPOSITION: serial runs blow ~2x later at BOTH N (0.118 vs 0.065 at 128;
+  0.367 vs 0.181 at 64) with r nearly unchanged at 128 (-5%) -- decomposition
+  acts through the SEED, not the rate. It is NOT the linear solver (PCG
+  reproduces the parallel trajectory exactly). Caveat: at N=64 serial r is +38%
+  -- floor-rate fits carry that much decomposition/seed sensitivity.
+- FORCE TIME-LAG (the implicit-Euler consistency argument): implemented as
+  PIMPLE.psiOuterCorrectors (dictionary-driven, default no = byte-identical;
+  createTransportFields.H + slAlphaEqn.H): every outer corrector restores
+  psi^n and re-advects with the CURRENT velocity iterate, re-running band ->
+  indicator -> kappa -> face delivery, so sigma*kappa_f*snGrad(alpha) converges
+  to its t^{n+1} value within the step. Gates: switch-off bit-identical to the
+  fixed-dt matrix (all rows, through blow-up); switch-on verified 3.00
+  pipelines/step. RESULT: r = 202.8 vs 198.9 (+2%, noise). Coupling-depth
+  bracket (config/stationaryDropletCouplingDepth.yaml): nOuter = 1/3/6, frozen
+  or iterated -> r in [185, 203]. The ENTIRE outer-coupling axis is flat; the
+  frozen-force lag is not the c*dt term. Six Picard passes bound any
+  convergence shortfall out.
+- THE x_d KERNEL: applications/test/leiaTestDeparturePoint drives the shipped
+  slAdvection::advect with u = cos(omega t)*Omega ez^(x-c) (exact backward
+  characteristic) and reads the feet off advected psi = x, y. Per-step foot
+  error: order 3.00 at omega = 0; rel error = 0.07*(omega*dt)^2 (exact-supply)
+  and 0.35*(omega*dt)^2 (AB2 substitution) -- clean quadratics with the
+  theoretical constants. At the capillary operating point (omega_max*dt = 0.52
+  at EVERY N) the AB2 path mislocates the stiffest mode's foot by 9.5% of its
+  per-step displacement -- real, quantified, and NOT the growth carrier (the
+  iterated arm used the true velocity iterate on passes >= 2; r unchanged).
+
+### 16.3 The mode-resolved reframing
+
+Fitting the SAME windows on the WP0 band-mode amplitudes and the curvature
+error (columns already in the per-step CSV):
+
+    r(maxU) ~ 1.5-2x r(A2h) at every cell; r(kErr) tracks r(A2h), not r(maxU).
+    r(A2h) is far less dt-sensitive than r(maxU): at N=256 nearly
+    dt-INDEPENDENT (160 -> 140 across 4x dt) while r(maxU) halves twice;
+    r(A2h) = 22.6/15.1/13.9 at N=64, 99.7/68.8/51.4 at N=128.
+
+The velocity observable grows at ~2x the rate of the psi corrugation
+(superlinear response), and the "c*dt term" lives largely in maxU, much less
+in the corrugation itself. THE ORDER PARAMETER OF THE INSTABILITY IS THE
+CORRUGATION GROWTH RATE r(A2h) -- ~14-160 1/s across N=64..256 -- and it is
+the quantity every so-far-successful lever (dt, filter, seed) only bought
+prefactor against. The spatial loop psi -> fit -> kappa_f -> quasi-static
+velocity response -> displacement, per unit physical time, is the one
+mechanism left standing.
+
+## 17. The foliation gate -- measured 2026-08-14: each ellipse arm isolates one term of the kappa_f error budget
+
+config/faceCurvatureEllipsoidPsi2D.yaml runs the 2:1 ellipse with psi
+initialized as the TRUE signed distance (parallel foliation, D == 0 -- the fit
+error alone) and as the QUADRATIC FORM (x/a)^2+(y/b)^2-1 (beta varies by
+a/b = 2 along the interface; psi exactly quadratic so the fit is EXACT and the
+error is the inverse's foliation bias alone). Reference in both arms: the
+zero-set ellipse's curvature at the closest point. Curated:
+docs/method-comparison/method-comparison-article/data/tables/
+face_curvature_orders_foliation.csv. Orders fitted on N >= 128 (L2, active
+faces):
+
+    model (foot-corrected)        SDF psi (D=0)      quadratic-form psi (D!=0)
+    quadraticCellCentre + foot    0.278, order 1.98   8.69, order 0.94
+    trHessian + foot              0.276, order 1.98   7.1e5, diverging
+    stableFootPoint (PRODUCTION)  4.95,  order 0.93   7.12, order 0.95
+    quadraticNewtonFoot           13.7,  order 0.97   0.187, order 1.95
+
+Findings:
+
+1. THE ANSWER TO "WHAT ORDER IS THE PRODUCTION DELIVERY ON THE ELLIPSE": FIRST
+   order, in BOTH foliations (0.93 / 0.95), errors 4.95 / 7.12 at N=512. The
+   circle's h^2.04 was constant-curvature luck (already recorded for the
+   averaging family in sec. 12; this row extends it to stableFootPoint
+   itself). The non-parallel foliation costs only a 1.4x prefactor on top.
+2. The error budget separates exactly as sec. 11 predicts: with D = 0 the
+   foot-corrected plain quadratic is SECOND order (fit error only); with the
+   fit exact and D != 0 it drops to FIRST order with the D*d bias alone --
+   the inverse's model error measured in isolation for the first time.
+3. quadraticNewtonFoot INVERTS between the arms: first order under the SDF
+   (fit Hessian error dominates at its foot evaluation) but SECOND order,
+   with a 46x smaller constant than the production delivery, under the
+   quadratic form (exact fit + evaluation AT the interface point needs no
+   parallel-surface correction at all). Evaluating at the foot beats
+   correcting to the foot precisely when the foliation is the problem --
+   the curvatureExtension closestPointNewton path already exists in the
+   solver and becomes the natural candidate the moment the fit can be made
+   exact enough (WP1/WP2 territory), with its noise gain still unmeasured.
+

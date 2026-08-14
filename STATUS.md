@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-08-12.
+Last updated: 2026-08-14.
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -105,6 +105,27 @@ order fitted on N >= 128:
 | cut-cell inverse | 1.02 | 5.848 | 0.818 | 2.00 |
 | cell-mean inverse | 1.03 | 5.851 | 0.395 | 2.05 |
 | interface mean (control) | −0.01 | 506 | — | 2.03 |
+
+**The foliation gate** (2026-08-14, plan sec. 17,
+`config/faceCurvatureEllipsoidPsi2D.yaml`): same ellipse, psi as TRUE signed
+distance (fit error only) vs the QUADRATIC form (fit exact, inverse's foliation
+bias only; beta varies 2x along the interface). Production `stableFootPoint` is
+FIRST order in both arms (L2 4.95 / 7.12 at N=512, orders 0.93 / 0.95 — the
+non-parallel foliation costs only a 1.4x prefactor); the foot-corrected plain
+quadratic is 2nd order only while D = 0 (0.278 → 8.69 when D != 0); and
+`quadraticNewtonFoot` INVERTS — 2nd order, 0.187 at N=512, when the fit is
+exact, because evaluating AT the interface point needs no parallel-surface
+correction at all. Curated:
+`docs/method-comparison/.../tables/face_curvature_orders_foliation.csv`.
+
+**The time/coupling axis** (2026-08-13/14, plan sec. 16): r(N,dt) = r0 + c·dt
+measured at N = 64/128/256; GAMG, decomposition (seed only), adaptivity (now
+disabled by construction — fixed capillary deltaT is the case standard), the
+frozen-force lag (psiOuterCorrectors, at any Picard depth) and the x_d kernel
+(leiaTestDeparturePoint: order 3, correct constants at omega·dt = 0.52) are all
+exonerated by direct experiment. Mode-resolved: r(maxU) ≈ 2·r(A2h);
+the corrugation rate r(A2h) is the order parameter and is nearly
+dt-independent at N=256.
 
 Constant-curvature gates — exact circle (N=32–512) and exact sphere (N=32–128).
 These cannot rank accuracy; they are kept for the gain and for regression:
@@ -246,12 +267,20 @@ Available configs for this thread: `config/stationaryDropletStableFoot.yaml`
 
 ## 7. Next, in order
 
-1. **Lower the gain without lumping.** The per-face inversion is the only delivery
-   that passes, at `G h^2` = 0.647. Average each face's inversion **symmetrically
-   about that face** (over its interface-adjacent face neighbours), so every face
-   keeps a value centred on itself. A symmetric average costs O(h^2 d^2 kappa) and
-   should keep second order, unlike the cell-centred lumping that just failed. Both
-   gates plus the gain are one command each, so it is cheap to falsify.
+*(2026-08-14: items 1 and the psi-transform half of item 3 are DONE and measured
+— symmetric face averaging lost the order (plan sec. 14), and the non-parallel
+foliation is now gated directly by `config/faceCurvatureEllipsoidPsi2D.yaml`
+(plan sec. 17). The time/coupling axis is closed: capillary-dt sweeps, GAMG/
+decomposition/adaptivity exonerations, the psiOuterCorrectors falsification and
+the x_d kernel verification are plan sec. 16. THE order parameter is now the
+corrugation growth rate r(A2h) ~ 14–160 1/s (N = 64–256), nearly dt-independent
+at N=256 — every successful lever so far bought prefactor only. Leads: the
+closestPointNewton evaluation inverts to 2nd order with a 46x smaller constant
+than the production delivery when the fit is exact (sec. 17.3, noise gain
+unmeasured); and item 2 below remains untouched.)*
+
+1. **Done — superseded.** (Symmetric face averaging: measured order 1.10, plan
+   sec. 14. The gain–order trade-off on the delivery axis is closed.)
 2. **Fix the signed-distance assumption where it actually survives.** It is not in
    the curvature — it is in the phase indicator, which locates the interface with a
    *linear* least-squares fit and a first-order `psi/|grad psi|` offset
