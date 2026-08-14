@@ -60,7 +60,9 @@ void reportErrors
         // Max undershoot
         // Max positive value over c for  
         // -alpha_c > 0, otherwise 0.
-        Foam::max(Foam::gMax((alpha - 1)()), 0.)  
+        // Was a copy of the overshoot branch above, so alphaBoundErr was
+        // max(over, over) and alpha < 0 was never reported.
+        Foam::max(Foam::gMax((-alpha)()), 0.)  
     );
 
 

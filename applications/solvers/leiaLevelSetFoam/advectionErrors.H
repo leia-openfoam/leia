@@ -39,12 +39,23 @@ void reportErrors
 
     scalar alphaV0 = gSum((alpha0 * V)());
 
-    scalar alphaVolErr = Foam::mag
-    (
-        gSum((alpha * V)()) - alphaV0
-    );
-    
-    scalar alphaVolErrRel = alphaVolErr / alphaV0; 
+    // SIGNED first. A magnitude cannot distinguish systematic volume LOSS from
+    // an error that oscillates in sign, and those are different failure modes
+    // with different causes. Measured on the 2D steady vortex at t=T: the
+    // sourceless baseline is negative at all seven resolutions (monotone loss,
+    // -0.245 -> -0.0023) while SDPLS:R changes sign twice (-0.138, +0.0096,
+    // +0.058, +0.049, +0.026, +0.0061, -0.00048) -- it GAINS volume over most
+    // of the ladder. mag() of that produces exactly the non-monotone sequence
+    // that reads as noise, including a dip to 0.0096 at N=45 that is a zero
+    // crossing rather than a convergent point. The signed value is emitted
+    // ALONGSIDE the magnitude, so every existing column keeps its meaning.
+    scalar alphaVolErrSigned = gSum((alpha * V)()) - alphaV0;
+
+    scalar alphaVolErrSignedRel = alphaVolErrSigned / alphaV0;
+
+    scalar alphaVolErr = Foam::mag(alphaVolErrSigned);
+
+    scalar alphaVolErrRel = alphaVolErr / alphaV0;
 
     scalar alphaGeomErr = 
         gSum((V * Foam::mag(alpha - alpha0))());
@@ -54,13 +65,18 @@ void reportErrors
     scalar alphaBoundErr = Foam::max
     (
         // Max overshoot
-        // Max positive value over c for  
+        // Max positive value over c for
         // alpha_c - 1 > 0, otherwise 0.
-        Foam::max(Foam::gMax((alpha - 1)()), 0.),  
+        Foam::max(Foam::gMax((alpha - 1)()), 0.),
         // Max undershoot
-        // Max positive value over c for  
+        // Max positive value over c for
         // -alpha_c > 0, otherwise 0.
-        Foam::max(Foam::gMax((alpha - 1)()), 0.)  
+        //
+        // This branch was a copy of the overshoot branch -- it computed
+        // gMax(alpha - 1) a second time, so alphaBoundErr was max(over, over)
+        // and an UNDERSHOOT (alpha < 0) could never be reported by any study
+        // using this solver. The comment above already said what it should be.
+        Foam::max(Foam::gMax((-alpha)()), 0.)
     );
 
 
@@ -82,6 +98,8 @@ void reportErrors
             << lInfEpsi << "," 
             << alphaVolErr << ","
             << alphaVolErrRel << ","
+            << alphaVolErrSigned << ","
+            << alphaVolErrSignedRel << ","
             << alphaGeomErr << ","
             << alphaGeomErrRel << ","
             << alphaBoundErr << "," 

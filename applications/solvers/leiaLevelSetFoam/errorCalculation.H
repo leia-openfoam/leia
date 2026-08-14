@@ -42,6 +42,10 @@ errorFile << "TIME,"
     << "L_INF_E_PSI,"
     << "E_VOL_ALPHA,"
     << "E_VOL_ALPHA_REL,"
+    // SIGNED volume error: mag() alone cannot tell systematic loss from an
+    // error that oscillates in sign. See advectionErrors.H.
+    << "E_VOL_ALPHA_SIGNED,"
+    << "E_VOL_ALPHA_SIGNED_REL,"
     << "E_GEOM_ALPHA,"
     << "E_GEOM_ALPHA_REL,"
     << "E_BOUND_ALPHA,"
