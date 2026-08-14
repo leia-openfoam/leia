@@ -144,6 +144,28 @@ def _beta(rec):
     return "" if v == 1.0 else f"{v:g}"
 
 
+def _mollifier(rec):
+    """The SDPLS cut-off, rendered ONLY when one is active.
+
+    ``mollifier1`` (dictionary name ``m1``) is eq. (24) of arXiv:2208.01269: it
+    forces the source to zero away from the interface. Turning it on changes the
+    equation being solved, so a mollified arm is a DIFFERENT method and must not
+    share a label with an unmollified one -- otherwise a study that sweeps it
+    collapses both arms into one series per h and the fitted slope is a
+    regression through two different methods. Exactly the failure `_beta` and
+    the reconstruction-gradient tag already guard against.
+
+    Widths are part of the identity: they are physical lengths that set where
+    the source stops acting, not a solver tolerance.
+    """
+    m = (rec.get("MOLLIFIER") or "none").strip()
+    if not m or m == "none":
+        return ""
+    w1 = (rec.get("SDPLS_W1") or "").strip()
+    w2 = (rec.get("SDPLS_W2") or "").strip()
+    return f"{m}({w1},{w2})" if (w1 and w2) else m
+
+
 def _euler_parts(rec):
     parts = ["euler"]
     ve = rec.get("VELOCITY_EXTENSION", "none")
@@ -159,6 +181,9 @@ def _euler_parts(rec):
         b = _beta(rec)
         name = f"{ss}({b})" if b else ss
         parts.append(f"SDPLS:{name}/{tag}" if tag else f"SDPLS:{name}")
+        moll = _mollifier(rec)
+        if moll:
+            parts.append(f"moll:{moll}")
     rd = rec.get("REDISTANCER", "noRedistancing")
     if rd and rd != "noRedistancing":
         if rd == "PDE" and rec.get("REDIST_FREEZE", "false") == "true":
@@ -224,4 +249,9 @@ def method_slug(rec):
     resolved = " ".join((rec.get("divPsiGradScheme") or "").split())
     if resolved and resolved != _DEFAULT_DIV_GRAD_SCHEME:
         parts.append(_GRAD_TAG.get(resolved, resolved.replace(" ", "-")))
+    # Same reason as in method_label: a mollified arm is a different method, and
+    # two arms sharing a filename means one montage silently overwrites the other.
+    moll = _mollifier(rec)
+    if moll:
+        parts.append("moll" + moll.split("(")[0])
     return re.sub(r"[^A-Za-z0-9_]+", "_", "_".join(parts)).strip("_")

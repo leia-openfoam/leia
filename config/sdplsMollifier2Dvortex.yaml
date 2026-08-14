@@ -1,0 +1,99 @@
+# Does the SDPLS cut-off fix the far field? 2D reversed vortex.
+#
+# WHAT THIS TESTS. The R source converges in the narrow band and is catastrophic
+# outside it. Measured on the steady 2D vortex (sdplsConv2Dvortex, R/simpleImp,
+# no mollifier), global max ||grad psi| - 1| at t = T:
+#
+#     N        32     45     64     90    128    181    256
+#     global  6.25   9.07  16.12  26.72  40.46  75.17 119.60   order -1.44
+#     band    0.45   0.39   0.29   0.23   0.19   0.15   0.09   order +0.74
+#
+# The band improves while the far field diverges, and REFINEMENT MAKES IT WORSE.
+# The mechanism is not subtle: S = a*psi acts wherever psi is large and the
+# normal strain does not cancel, so it amplifies psi in proportion to itself and
+# nothing bounds it away from the interface. Every published SDPLS metric is
+# band-restricted and therefore blind to this. It matters for two-phase
+# coupling, where psi is read outside the band.
+#
+# The cut-off of arXiv:2208.01269 eq. (24) exists precisely to stop this. The
+# reference motivates it differently -- an inflow-boundary normal discontinuity
+# degenerating the regularity of r(x) -- so this is a second, independent reason
+# for the same function. It was `none` in every study run before 2026-08.
+#
+# HYPOTHESIS. With the cut-off active: gradientErrorMax stops growing with
+# refinement (order >= 0), while gradientErrorBand and volumeError are
+# essentially unchanged, because G == 1 over the band and the source there is
+# untouched. If the BAND metrics move materially, the plateau w1 is too narrow
+# and is clipping the source where it is supposed to act.
+#
+# WIDTHS ARE PHYSICAL, NOT MESH-SCALED. w1, w2 are lengths. Scaling them with h
+# (|psi| <= 3h, say) would make the modified PDE mesh-dependent, and an order
+# fitted across such a ladder is not the order of any one continuum problem.
+# w1 and w2 are separate axes, so this is a 2x2 FACTORIAL, not two paired
+# settings -- and that is the better experiment, because it separates the two
+# things the cut-off does. w1 sets how far the source acts at full strength;
+# w2 - w1 sets how abruptly it stops. Referred to the initial radius R0 = 0.15:
+#
+#   w1 in {0.025, 0.05}   = {R0/6, R0/3}   plateau half-width
+#   w2 in {0.075, 0.15}   = {R0/2, R0}     decay to 1e-3
+#
+# (0.025, 0.075) reproduces the reference's ratios at our R0; (0.05, 0.15) its
+# literal values, which are wider relative to our drop since our R0 is half
+# theirs. (0.05, 0.075) is the sharpest transition of the four and is the corner
+# most likely to misbehave. All four satisfy the w2 > w1 constructor guard.
+#
+# The coarse end constrains this. At N=32, h = 0.031, so w1=0.025 is a plateau
+# UNDER ONE CELL wide -- the cut-off would start decaying inside the interface
+# cells and clip the source where it must act. The ladder therefore starts at
+# N=64 (w1 = 1.6h) and the wide setting is the one expected to behave at the
+# coarse end (w1 = 3.2h).
+#
+# REVERSED, and read under the two-instant protocol: gradient at t=T/2, shape at
+# t=T, volume at both. The unmollified control at these resolutions already
+# exists in benchVortexEulerT2, so only the mollified arms are run here.
+#
+#   make studies-one STUDY=sdplsMollifier2Dvortex PROFILE=profiles/slurm
+
+study_name: sdplsMollifier2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [2]
+  # Starts at 64: see the plateau-width note in the header.
+  N_CELLS:  [64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+
+  # QUOTED: YAML 1.1 parses bare `on`/`off` as booleans, which materialize
+  # stringifies as "True"/"False", and OpenFOAM's Switch rejects those.
+  OSCILLATION: ["on"]
+
+  # R only. beta chases a flow-set target and is not a candidate; noSource has
+  # no source for a cut-off to act on. One linearization: the two agree to four
+  # digits on every entry of the 3D tables.
+  SDPLS_SOURCE: [R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+
+  # THE SWEPT AXIS. `m1` is the dictionary name of mollifier1 (eq. 24), not the
+  # class name. method_label renders it, so mollified and unmollified arms
+  # cannot collapse into one series -- the failure the beta sweep and the
+  # reconstruction-gradient ablation both had to be guarded against.
+  MOLLIFIER: [m1]
+  SDPLS_W1: [0.025, 0.05]
+  SDPLS_W2: [0.075, 0.15]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

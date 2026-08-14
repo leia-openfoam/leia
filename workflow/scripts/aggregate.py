@@ -142,6 +142,14 @@ def _write_error_table(records, database_path):
             # deformation t = T/2 (before any reversal cancellation) + the
             # narrow-band min |grad psi| flattening diagnostic.
             "gradientErrorBand", "gradientErrorHalf", "gradientErrorBandHalf",
+            # GLOBAL max ||grad psi| - 1| -- the far field, which every band
+            # metric is blind to. The SDPLS source acts wherever psi is large
+            # and the strain does not cancel, amplifying psi in proportion to
+            # itself: measured 119.6 at N=256 on the 2D steady vortex, GROWING
+            # under refinement (order -1.44). This is the column the mollifier
+            # (arXiv:2208.01269 eq. 24) is supposed to fix, so a study of it
+            # that does not carry this column cannot show its own result.
+            "gradientErrorMax", "gradientErrorMaxHalf",
             "volumeErrorHalf", "minGradPsiBand", "minGradPsiBandHalf",
             # The band MEAN and MAX of |grad psi|. The min alone is a
             # flattening sentinel; a source that relaxes toward a wrong TARGET
@@ -260,6 +268,8 @@ def _write_error_table(records, database_path):
             "volumeError": sget(rec, "E_VOL_ALPHA_REL"),
             "gradientErrorBand": rec.get("gradPsiError.E_NARROW_L2_GRAD_PSI", ""),
             "gradientErrorHalf": rec.get("half.gradPsiError.E_L2_GRAD_PSI", ""),
+            "gradientErrorMax": rec.get("gradPsiError.E_MAX_GRAD_PSI", ""),
+            "gradientErrorMaxHalf": rec.get("half.gradPsiError.E_MAX_GRAD_PSI", ""),
             "gradientErrorBandHalf": rec.get("half.gradPsiError.E_NARROW_L2_GRAD_PSI", ""),
             "volumeErrorHalf": shget(rec, "E_VOL_ALPHA_REL"),
             "minGradPsiBand": rec.get("gradPsiError.NARROW_MIN_MAG_GRAD_PSI", ""),

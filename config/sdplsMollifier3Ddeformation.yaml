@@ -1,0 +1,60 @@
+# Does the SDPLS cut-off fix the far field? 3Ddeformation, small verification.
+#
+# Companion to config/sdplsMollifier2Dvortex.yaml, which carries the full
+# rationale. In short: the R source converges in the narrow band and diverges
+# outside it -- on the 2D steady vortex the global max ||grad psi| - 1| reaches
+# 119.6 at N=256 and GROWS under refinement (order -1.44) while the band error
+# falls (+0.74). S = a*psi amplifies psi in proportion to itself wherever the
+# normal strain does not cancel, and every published SDPLS metric is
+# band-restricted and blind to it. The cut-off of arXiv:2208.01269 eq. (24) is
+# what stops it, and it was `none` in every study run before 2026-08.
+#
+# DELIBERATELY SMALL. One width setting (the reference's literal w1 = 0.05,
+# w2 = 0.15) and the four cheap rungs of the production ladder. The point is to
+# see whether the far-field divergence stops in 3D, not to fit a publication
+# order -- 3Ddeformation at 203^3 costs ~13 h of wall clock and 195 GB, and there is no
+# reason to pay that before the 2D answer is in. The unmollified control at
+# these resolutions already exists in sdplsConv3Ddeformation.
+#
+# Read under the two-instant protocol: gradient at t=T/2, shape at t=T, volume
+# at both.
+#
+#   make studies-one STUDY=sdplsMollifier3Ddeformation PROFILE=profiles/slurm
+
+study_name: sdplsMollifier3Ddeformation
+case: 3Ddeformation
+mesh: hex
+mode: parallel
+np: 16
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [3.0]
+  # The four cheapest rungs of the 6-rung cell-doubling ladder; 161 and 203 are
+  # omitted on cost, and their absence is the reason no order is published here.
+  N_CELLS:  [64, 81, 102, 128]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+
+  # QUOTED: bare on/off are YAML booleans that OpenFOAM's Switch rejects.
+  OSCILLATION: ["on"]
+
+  SDPLS_SOURCE: [R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+
+  # `m1` is the dictionary name of mollifier1 (eq. 24), not the class name.
+  MOLLIFIER: [m1]
+  SDPLS_W1: [0.05]
+  SDPLS_W2: [0.15]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
