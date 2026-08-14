@@ -130,10 +130,17 @@ levelSet
         beta            @!SDPLS_BETA!@;  // sdplsBeta only: f_nl = beta - |grad psi|
         discretization   @!SOURCE_SCHEME!@;
         gradPsi          @!GRAD_PSI!@;
+        // Cut-off: eq. (24) of arXiv:2208.01269. w1/w2 are PHYSICAL lengths and
+        // BOTH must be tokens -- w1 was hardcoded here with no w2 at all, so w2
+        // fell back to its 1e-3 default, which is smaller than w1 and is now a
+        // FatalError. Before that guard existed it silently produced a cut-off
+        // whose decay length was |w2 - w1| rather than anything the dictionary
+        // stated.
         mollifier
         {
-          type   @!MOLLIFIER!@;
-          w1    0.05;
+          type    @!MOLLIFIER!@;
+          w1      @!SDPLS_W1!@;
+          w2      @!SDPLS_W2!@;
         }
     }
 
