@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-08-14.
+Last updated: 2026-08-15.
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -120,6 +120,24 @@ only where the foliation is non-parallel (8.69, order 0.94: the d*D bias); and
 exact, because evaluating AT the interface point needs no parallel-surface
 correction at all. Curated:
 `docs/method-comparison/.../tables/face_curvature_orders_foliation.csv`.
+
+**The foot-point-EVALUATED delivery** (2026-08-15,
+`curvatureExtension footPointEvaluatedFace`, plan sec. 17.4): each adjacent cell
+finds the foot point of the FACE CENTRE on its own quadratic's zero set and
+evaluates that fit's curvature there; the face takes the linear interpolation of
+the two. No parallel-surface conversion, so no foliation assumption. It is the
+exact complement of production — where one is second order the other is first:
+
+| psi (geometry) | production | footPointEvaluatedFace |
+|---|---|---|
+| circle, exact SDF (N=512) | 0.105, order 2.0 | 10.5, order ~1.0 |
+| 2:1 ellipse, SDF (N=512) | 0.278, order 1.98 | 12.7, order ~1.0 |
+| 2:1 ellipse, quadratic form (N=512) | 8.69, order 0.94 | **4.8e-4 (exact)** |
+| oscillating geom, a/b=1.21 (N=256) | 6.24, order ~1.07 | **3.3e-4 (exact)** |
+
+`G h^2` is EQUAL to production within 3% (0.657 vs 0.642, circle at N=512), so a
+coupled difference is an accuracy difference, not an amplification one. The two
+studies in section 5 are measuring exactly that.
 
 **The time/coupling axis** (2026-08-13/14, plan sec. 16): r(N,dt) = r0 + c·dt
 measured at N = 64/128/256; GAMG, decomposition (seed only), adaptivity (now
