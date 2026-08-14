@@ -1,10 +1,20 @@
 {
-    // Advect the level set ONCE per time step, on the first outer corrector: the
-    // semi-Lagrangian update mutates psi in place (psi^n -> psi^{n+1}), so running
-    // it again on later PIMPLE iterations would compound. The interface is then
-    // held fixed while the pressure-velocity system is corrected (as interFoam
-    // holds alpha fixed across the inner correctors).
-    if (pimple.firstIter())
+    // DEFAULT (psiOuterCorrectors no): advect the level set ONCE per time step,
+    // on the first outer corrector: the semi-Lagrangian update mutates psi in
+    // place (psi^n -> psi^{n+1}), so running it again on later PIMPLE iterations
+    // would compound. The interface is then held fixed while the pressure-
+    // velocity system is corrected (as interFoam holds alpha fixed across the
+    // inner correctors) -- which FREEZES the capillary force at its once-per-
+    // step AB2-predicted value against the implicit-Euler momentum LHS.
+    //
+    // ITERATED COUPLING (psiOuterCorrectors yes): every outer corrector
+    // restores psi^n (from the psiN snapshot taken below) and re-advects it
+    // with the CURRENT outer iterate of the velocity, then re-runs the whole
+    // band -> indicator -> curvature -> face-delivery pipeline, so the force
+    // the next UEqn sees converges to its t^{n+1} value. At outer-loop
+    // convergence the step is backward-Euler consistent in ALL terms; the AB2
+    // estimate is demoted to the pass-1 initial guess.
+    if (pimple.firstIter() || psiOuterCorrectors)
     {
         // Semi-Lagrangian advection: psi holds psi^n on entry, psi^{n+1} on exit.
         //
@@ -60,26 +70,51 @@
         // velocityExtension type none this is exactly the identity path.
         slVelExt->correct();
 
-        if (Foam::getEnv("SL_FREEZE_INTERFACE").empty())
+        if (pimple.firstIter())
         {
-            // dt/dt0: deltaT0 equals deltaT on a fixed step and is guarded here
-            // because it is not guaranteed to be set on the very first step.
-            const scalar dtRatio =
-                runTime.deltaT0Value() > SMALL
-              ? runTime.deltaTValue()/runTime.deltaT0Value()
-              : 1.0;
+            // Snapshot psi^n BEFORE the in-place advection: later outer passes
+            // (psiOuterCorrectors) re-advect from this level.
+            psiN == psi;
 
-            const volVectorField UextStar
-            (
-                "UextStar",
-                slVelExt->Uext() + dtRatio*(slVelExt->Uext() - UextOld)
-            );
+            if (Foam::getEnv("SL_FREEZE_INTERFACE").empty())
+            {
+                // dt/dt0: deltaT0 equals deltaT on a fixed step and is guarded
+                // here because it is not guaranteed to be set on the very
+                // first step.
+                const scalar dtRatio =
+                    runTime.deltaT0Value() > SMALL
+                  ? runTime.deltaTValue()/runTime.deltaT0Value()
+                  : 1.0;
 
-            slAdv->advect(psi, UextStar, slVelExt->Uext());
+                const volVectorField UextStar
+                (
+                    "UextStar",
+                    slVelExt->Uext() + dtRatio*(slVelExt->Uext() - UextOld)
+                );
+
+                slAdv->advect(psi, UextStar, slVelExt->Uext());
+            }
+            // Preserve the pre-momentum extension as the old velocity level.
+            // Under psiOuterCorrectors this is also the OLD slot of every
+            // later pass this step: after this line UextOld holds ext(u^n).
+            // NOT updated on passes >= 2 -- the old level must stay u^n.
+            UextOld == slVelExt->Uext();
         }
-        // Preserve the pre-momentum extension as the old velocity level for
-        // the next time step's second-order departure-foot calculation.
-        UextOld == slVelExt->Uext();
+        else
+        {
+            // psiOuterCorrectors pass >= 2: restore psi^n and re-advect it by
+            // the CURRENT outer iterate of the velocity. slVelExt->correct()
+            // above re-read the registered U, which the previous pass's
+            // momentum+pressure solve left at u^{n+1,(k-1)} -- so the kernel's
+            // documented (u^{n+1}, u^n) slots are finally both genuine: NO
+            // extrapolation, arrival-centred foot with the actual iterate.
+            psi == psiN;
+
+            if (Foam::getEnv("SL_FREEZE_INTERFACE").empty())
+            {
+                slAdv->advect(psi, slVelExt->Uext(), UextOld);
+            }
+        }
 
         // Narrow band FIRST, then the phase indicator: the geometric indicator
         // reads the registered NarrowBand field to decide which cells get the
@@ -133,6 +168,10 @@
 
         // Previous-step curvature, captured BEFORE any refill: needed by the
         // optional temporal under-relaxation of the foot-point path below.
+        // NOTE under psiOuterCorrectors: on passes >= 2 this holds the previous
+        // PASS's kappa, not the previous time step's -- the footPointCurvature
+        // relax < 1 diagnostic then blends against the current-step iterate,
+        // which is the consistent choice inside an iterated coupling.
         const scalarField kappaPrevStep(kappa.primitiveField());
 
         // Mean curvature evaluated SYMBOLICALLY from the quadratic reconstruction

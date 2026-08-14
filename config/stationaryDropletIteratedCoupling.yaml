@@ -1,0 +1,69 @@
+# ITERATED INTERFACE-FORCE COUPLING (PIMPLE.psiOuterCorrectors) on the
+# stationary droplet, fixed capillary dt.
+#
+# THE MECHANISM BEING ATTACKED. The momentum LHS is fvm::ddt (implicit Euler,
+# everything at t^{n+1}); the capillary RHS sigma*kappa_f*snGrad(alpha)*|Sf| is
+# evaluated ONCE per step from the AB2-predicted trajectory and FROZEN across
+# the outer correctors (slAlphaEqn.H historical firstIter guard). MEASURED
+# consequence (stationaryDropletDtSweep + DtScaling, fits <=6% residual):
+#
+#   r(N, dt) = r0(N) + c(N)*dt
+#   N=128: r = 202.9 1/s at dt_sigma/4, of which 90% is the c*dt term
+#   N=64:  r =  30.0 1/s, NO dt-term (floor only)
+#   N=256: r = 249.5 1/s, ~65% c*dt
+#
+# WITH psiOuterCorrectors yes, every outer corrector restores psi^n and
+# re-advects it with the current velocity iterate (pass 1 = AB2 predictor,
+# passes >= 2 = the actual u^{n+1,(k-1)} in the kernel's arrival slot), then
+# re-runs band -> indicator -> curvature -> face delivery, so the force the
+# next UEqn sees converges to its t^{n+1} value: at outer-loop convergence the
+# step is backward-Euler consistent in ALL terms. The Picard contraction of
+# the capillary coupling scales like (omega_max*dt)^2, comfortable at the
+# fixed operating point dt = dt_sigma/3.05 (deltaT = 0.010861/N^1.5, adaptivity
+# disabled).
+#
+#   PREDICTION, recorded BEFORE the run:
+#     N=128 yes: r collapses from ~203 toward the dt-independent floor
+#                (20-90 1/s) -- the c*dt term is the frozen-force lag.
+#     N=64  yes: r unchanged (~30) -- no dt-term exists there to remove.
+#     Control cells (no): reproduce the fixed-dt matrix bit-identically --
+#                the switch off must be a byte-identical code path; this gates
+#                the whole study (same discipline as the geometryFit
+#                regression cell).
+#   FALSIFIED IF r(N=128, yes) stays ~200: the dt-term is not the frozen-force
+#     lag, and the ON-HOLD semi-implicit operator (dictionary-driven) returns
+#     as the lever.
+#
+# REPORTING: r from the exponential fit of maxMagU(t) (window [3e-3, 3e-1]),
+# PLUS volume and shape error at matched times -- never a single metric.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletIteratedCoupling.yaml
+study_name: stationaryDropletIteratedCoupling
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128]
+  # QUOTED: bare no/yes are YAML booleans and would render Python's
+  # False/True, which OpenFOAM's Switch parser rejects.
+  PSI_OUTER_CORRECTORS: ["no", "yes"]
+  N_OUTER_CORRECTORS: [3]
+  END_TIME: [0.4]     # matches the fixed-dt matrix cells exactly, so the `no`
+                      # cells are config twins of matrix cells (bit-identity
+                      # gate on the NEW binary with the switch off); and gives
+                      # the `yes` cells room -- at the floor rate ~30 1/s a
+                      # successful arm may not blow up before 0.4 at all.
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

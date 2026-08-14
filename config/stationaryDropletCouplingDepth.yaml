@@ -1,0 +1,46 @@
+# COUPLING-DEPTH bracket after the psiOuterCorrectors falsification.
+#
+# MEASURED (stationaryDropletIteratedCoupling, all gates passed: no-cells
+# bit-identical to the fixed-dt matrix on the new binary; yes-cells verified
+# 3.00 interface pipelines per step):
+#
+#   N=128, 3 outer, force frozen   : r = 198.9 1/s
+#   N=128, 3 outer, force ITERATED : r = 202.8 1/s   <- +2%, within noise
+#
+# The frozen-force lag is NOT the c*dt term. Two cells close the question:
+#
+#   6-outer yes : if r ~ 200 persists, Picard-convergence shortfall is ruled
+#     out (the (omega*dt)^2 ~ 0.27/pass contraction estimate says 6 passes cut
+#     any lag ~2500x) and the force-lag hypothesis is completely dead. If r
+#     drops, the contraction was just slow and pass count is the lever.
+#   1-outer no  : pure PISO control -- brackets whether the momentum-side
+#     outer iterations matter at all for the growth rate (the entire measured
+#     program ran at 3 outer correctors).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletCouplingDepth.yaml
+study_name: stationaryDropletCouplingDepth
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [128]
+  # Two meaningful cells of this 2x2 (the other two were measured in
+  # stationaryDropletIteratedCoupling); the cross product costs one redundant
+  # cell (3-outer equivalents) -- acceptable, it doubles as a reproduction.
+  PSI_OUTER_CORRECTORS: ["no", "yes"]   # QUOTED: bare no/yes are YAML booleans
+  N_OUTER_CORRECTORS: [1, 6]
+  END_TIME: [0.4]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

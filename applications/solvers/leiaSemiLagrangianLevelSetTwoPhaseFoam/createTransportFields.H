@@ -26,6 +26,49 @@ volVectorField UextOld
     slVelExt->Uext()
 );
 
+// Iterated interface-force coupling (PIMPLE.psiOuterCorrectors, default no):
+// re-advect psi from psi^n on EVERY outer corrector with the CURRENT outer
+// iterate of the velocity, re-running band -> phase indicator -> curvature ->
+// face delivery per pass, so the capillary force converges to its t^{n+1}
+// value within the step. The momentum LHS is fvm::ddt (implicit Euler, all at
+// t^{n+1}); with the default `no` the sigma*kappa_f*snGrad(alpha) RHS is
+// evaluated ONCE per step from the AB2-predicted trajectory and then FROZEN
+// across the outer correctors -- the once-lagged explicit coupling MEASURED as
+// the dt-proportional 90% of the parasitic growth rate at N=128 (r = r0 + c*dt,
+// config/stationaryDropletDtSweep.yaml). With `yes`, pass 1 keeps the AB2
+// predictor and every later pass advects psi^n by the actual momentum iterate
+// (the kernel's documented (u^{n+1}, u^n) slots, no extrapolation), so at
+// outer-loop convergence the step is backward-Euler consistent in ALL terms.
+// Default no = advect once on the first outer corrector = byte-identical.
+const Switch psiOuterCorrectors
+(
+    static_cast<const fvSolution&>(mesh).subOrEmptyDict("PIMPLE")
+        .getOrDefault<Switch>("psiOuterCorrectors", false)
+);
+
+// psi^n snapshot for psiOuterCorrectors: the semi-Lagrangian update mutates
+// psi in place (psi^n -> psi^{n+1}), so outer passes >= 2 must restore the
+// old-time level before re-advecting -- otherwise the passes would compound.
+// Registered NO_WRITE: an in-step working copy, never a result.
+volScalarField psiN
+(
+    IOobject
+    (
+        "psiN",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    psi
+);
+
+if (psiOuterCorrectors)
+{
+    Info<< "PIMPLE.psiOuterCorrectors ON: psi re-advected from psi^n on every"
+        << " outer corrector with the current velocity iterate" << endl;
+}
+
 // Two-phase mass-flux models for div(rhoPhi,U):
 //   interpolatedDensity  : geometric rho_c, interpolate(rho_c)*phi
 //   geometricFaceDensity : geometric rho_c, geometric rho_f*phi
