@@ -982,4 +982,120 @@ Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::footPointDistance
     return ((dp - dpi) & gS)/gSm;
 }
 
+
+Foam::scalar
+Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::curvatureAtFootPoint
+(
+    const label c,
+    const point& p,
+    bool& ok
+) const
+{
+    // Fit curvature AT the closest point of p on the cell's own quadratic
+    // zero set. The foot search below DUPLICATES footPointDistance on purpose:
+    // that function sits inside every measured production path (the parallel-
+    // surface delivery, nSL Variant (a)) and must stay byte-untouched; a
+    // shared-helper refactor would re-generate its code and forfeit the
+    // bit-identity gates. Keep the two in sync when the algorithm changes.
+    ok = false;
+
+    const label nc = ncoeff_[c];
+    if (nc == 0) { return 0; }
+
+    const scalar* cf = &coeffsFlat_[c*ncoeffFull_];
+    const scalar psiC = (*psiOldPtr_)[c];
+    const point& xc = mesh_.C()[c];
+    const scalar radius = stencilRadius(c);
+    if (radius < SMALL) { return 0; }
+
+    const scalar eps = fpTolRel_*radius;
+    const vector dp = p - xc;
+
+    auto G = [&](const vector& d) -> scalar
+    {
+        scalar b[9];
+        basis(d, nc, b);
+        scalar v = psiC;                                // level = 0: zero set
+        for (label k = 0; k < nc; ++k) { v += cf[k]*b[k]; }
+        return v;
+    };
+
+    auto surfacepoint = [&](vector& d) -> bool
+    {
+        for (label k = 0; k < fpSurfIters_; ++k)
+        {
+            vector gr(Zero);
+            gradFromCoeffs(cf, nc, d, gr);
+            const scalar g2 = gr & gr;
+            if (g2 < SMALL) { return false; }
+
+            const vector step = -(G(d)/g2)*gr;
+            d += step;
+            if (Foam::mag(step) < eps) { return true; }
+        }
+        return false;
+    };
+
+    vector dpi = dp;
+    if (!surfacepoint(dpi)) { return 0; }
+
+    bool converged = false;
+    for (label cycle = 0; cycle < fpCycles_ && !converged; ++cycle)
+    {
+        vector gi(Zero);
+        gradFromCoeffs(cf, nc, dpi, gi);
+        const scalar gi2 = gi & gi;
+        if (gi2 < SMALL) { return 0; }
+
+        const scalar lam = ((dp - dpi) & gi)/gi2;
+        vector dqi = dp - lam*gi;
+
+        vector dpn = dqi;
+        if (!surfacepoint(dpn)) { return 0; }
+
+        const vector f1 = dqi - dpi;
+        const vector f2 = dpn - dqi;
+
+        if (Foam::mag(f1) > eps)
+        {
+            const vector rel = dp - dpi;
+            const scalar a0 = rel & f1;
+            const scalar a1 = 2.0*(f2 & rel) - magSqr(f1);
+            const scalar a2 = -3.0*(f1 & f2);
+            const scalar a3 = -2.0*magSqr(f2);
+            const scalar den = a1 + 2.0*a2 + 3.0*a3;
+
+            if (Foam::mag(den) > SMALL)
+            {
+                const scalar alpha = 1.0 - (a0 + a1 + a2 + a3)/den;
+
+                if (alpha > 0 && alpha < fpAlphaMax_)
+                {
+                    dqi = dpi + alpha*f1 + sqr(alpha)*f2;
+                    dpn = dqi;
+                    if (!surfacepoint(dpn)) { return 0; }
+                }
+            }
+        }
+
+        converged = (Foam::mag(dpn - dpi) < eps);
+        dpi = dpn;
+    }
+
+    if (!converged || Foam::mag(dpi) > radius) { return 0; }
+
+    // kappa = div(grad R/|grad R|) of the fit AT the foot: gradient there from
+    // the coefficients, the (constant) quadratic Hessian likewise.
+    vector g(Zero);
+    gradFromCoeffs(cf, nc, dpi, g);
+    const scalar gm = Foam::mag(g);
+    if (gm < SMALL) { return 0; }
+
+    symmTensor H(Zero);
+    hessianFromCoeffs(cf, nc, H);
+
+    ok = true;
+    return (tr(H)*gm*gm - (g & (H & g)))/(gm*gm*gm);
+}
+
 // ************************************************************************* //

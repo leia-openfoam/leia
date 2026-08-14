@@ -253,6 +253,144 @@ inline void computeStabilizedFootPointFaceCurvature
 }
 
 
+//- FOOT-POINT-EVALUATED delivery: for each active face, each adjacent cell
+//  with a valid fit finds the foot point OF THE FACE CENTRE on its own
+//  quadratic's zero set and evaluates the fit's curvature AT that point --
+//  the value belongs to the interface point itself, so NO parallel-surface
+//  conversion (and no assumption about the spacing of the level sets) enters.
+//  Where both sides deliver, the face takes the LINEAR interpolation of the
+//  two values (the mesh interpolation weights -- both sides estimate the SAME
+//  interface point, the face centre's closest point, so the combination is
+//  consistent); one-sided where only one fit converges; the arithmetic
+//  interpolate(kappa) fallback where neither does. Coupled faces are
+//  synchronized by the same swap-and-average convention as the stabilized
+//  delivery.
+inline void computeFootPointEvaluatedFaceCurvature
+(
+    const fvMesh& mesh,
+    const volScalarField& psi,
+    const volScalarField& alpha,
+    const volScalarField& kappa,
+    const slReconstruction& recon,
+    surfaceScalarField& kappaFace
+)
+{
+    // Fallback everywhere; replaced on the active faces below.
+    kappaFace = fvc::interpolate(kappa);
+
+    const surfaceScalarField snA(fvc::snGrad(alpha));
+    const scalarField& snIn = snA.primitiveField();
+    const scalar snMax = max(gMax(mag(snIn)()), VSMALL);
+
+    const labelUList& own = mesh.owner();
+    const labelUList& nei = mesh.neighbour();
+    const vectorField& CfIn = mesh.Cf().primitiveField();
+    const scalarField& wIn = mesh.weights().primitiveField();
+
+    scalarField& kfIn = kappaFace.primitiveFieldRef();
+
+    label nActive = 0, nSet = 0, nOneSided = 0, nFail = 0;
+
+    forAll(kfIn, f)
+    {
+        if (mag(snIn[f]) <= 1e-8*snMax) { continue; }
+        ++nActive;
+
+        bool okO = false, okN = false;
+        const scalar kO = recon.curvatureAtFootPoint(own[f], CfIn[f], okO);
+        const scalar kN = recon.curvatureAtFootPoint(nei[f], CfIn[f], okN);
+
+        if (okO && okN)
+        {
+            // Linear face interpolation: w*owner + (1-w)*neighbour.
+            kfIn[f] = wIn[f]*kO + (1.0 - wIn[f])*kN;
+            ++nSet;
+        }
+        else if (okO) { kfIn[f] = kO; ++nSet; ++nOneSided; }
+        else if (okN) { kfIn[f] = kN; ++nSet; ++nOneSided; }
+        else          { ++nFail; }   // keep the interpolated fallback
+    }
+
+    // Coupled (processor) seams: each rank evaluates its own side's fit at
+    // the shared face centre, values are swapped, and both ranks form the
+    // same weighted combination (w on this side, 1-w on the other: the two
+    // ranks' weights are complementary, so the results agree exactly).
+    surfaceScalarField::Boundary& kfBf = kappaFace.boundaryFieldRef();
+    const surfaceScalarField::Boundary& snBf = snA.boundaryField();
+
+    const label nBndFaces = mesh.nBoundaryFaces();
+    scalarField bVal(nBndFaces, 0.0);
+    scalarField bOk(nBndFaces, 0.0);
+    label nSeamActive = 0;
+
+    forAll(kfBf, patchI)
+    {
+        const fvPatch& patch = mesh.boundary()[patchI];
+        if (!patch.coupled()) { continue; }
+
+        const labelUList& fc = patch.faceCells();
+        const vectorField& Cfp = patch.Cf();
+        const label bStart = patch.start() - mesh.nInternalFaces();
+
+        forAll(fc, i)
+        {
+            if (mag(snBf[patchI][i]) <= 1e-8*snMax) { continue; }
+            ++nSeamActive;
+
+            bool okP = false;
+            const scalar kP =
+                recon.curvatureAtFootPoint(fc[i], Cfp[i], okP);
+            if (okP) { bVal[bStart + i] = kP; bOk[bStart + i] = 1.0; }
+        }
+    }
+
+    scalarField bValNei(bVal);
+    scalarField bOkNei(bOk);
+    syncTools::swapBoundaryFaceList(mesh, bValNei);
+    syncTools::swapBoundaryFaceList(mesh, bOkNei);
+
+    label nSeamFail = 0;
+    forAll(kfBf, patchI)
+    {
+        const fvPatch& patch = mesh.boundary()[patchI];
+        if (!patch.coupled()) { continue; }
+
+        fvsPatchScalarField& kfp = kfBf[patchI];
+        const scalarField wP(patch.weights());
+        const label bStart = patch.start() - mesh.nInternalFaces();
+
+        forAll(kfp, i)
+        {
+            if (mag(snBf[patchI][i]) <= 1e-8*snMax) { continue; }
+
+            const label j = bStart + i;
+            const bool ownOk = (bOk[j] > 0.5);
+            const bool neiOk = (bOkNei[j] > 0.5);
+
+            if (ownOk && neiOk)
+            {
+                kfp[i] = wP[i]*bVal[j] + (1.0 - wP[i])*bValNei[j];
+            }
+            else if (ownOk) { kfp[i] = bVal[j]; ++nOneSided; }
+            else if (neiOk) { kfp[i] = bValNei[j]; ++nOneSided; }
+            else            { ++nSeamFail; }
+        }
+    }
+
+    nActive += nSeamActive;
+    nFail += nSeamFail;
+
+    reduce(nActive, sumOp<label>());
+    reduce(nSet, sumOp<label>());
+    reduce(nOneSided, sumOp<label>());
+    reduce(nFail, sumOp<label>());
+    Info<< "footPointEvaluatedFace curvature: " << nSet << "/" << nActive
+        << " active faces set (" << nOneSided << " one-sided, "
+        << nFail << " with no converged foot -> interpolated fallback; "
+        << "seam faces synchronized)" << endl;
+}
+
+
 
 //- CUT-CELL delivery (dimension-agnostic): invert ONCE PER CUT CELL and assign
 //  that single interface value to every active face of the cell.

@@ -321,6 +321,17 @@ public:
         const scalar level,
         bool& ok
     ) const override;
+
+    //- Fit curvature AT the foot point of p on the cell's own quadratic zero
+    //  set (see the base declaration). The foot search DUPLICATES the
+    //  footPointDistance algorithm deliberately: footPointDistance is inside
+    //  every measured production path and stays byte-untouched.
+    virtual scalar curvatureAtFootPoint
+    (
+        const label c,
+        const point& p,
+        bool& ok
+    ) const override;
 };
 
 } // End namespace Foam

@@ -67,6 +67,9 @@ divSchemes
     // FVM curvature kappa = div( grad(psi)/|grad(psi)| ) for the
     // divGradPsiSnGradAlpha surface-tension model (linearWLSQ has no Hessian).
     div(nPsi)                           Gauss linear;
+    // interFoam-style smoothed-alpha curvature of the STATIC GATE APP
+    // (leiaTestMeanCurvature's fvmDivGradAlpha row); inert for the solvers.
+    div(nAlpha)                         Gauss linear;
     // anchoredEikonal redistancer working equation (inert unless selected;
     // upwind matches the outward Eikonal characteristics).
     div(yPhi,psiDist)                   Gauss upwind;

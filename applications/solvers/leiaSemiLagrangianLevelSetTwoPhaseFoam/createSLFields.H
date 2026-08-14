@@ -134,6 +134,18 @@ const bool cutCellFootPointFaceExtension =
 // lowers the gain where concentrating raises it.
 const bool cellMeanFootPointFaceExtension =
     (curvatureExtensionType == "cellMeanFootPointFace");
+// FOOT-POINT-EVALUATED variant: each adjacent cell finds the foot point OF THE
+// FACE CENTRE on its own quadratic's zero set and evaluates the fit curvature
+// AT that point -- the value belongs to the interface point itself, so no
+// parallel-surface conversion (and no level-set-spacing assumption) enters.
+// The face takes the LINEAR interpolation of the two per-cell values (both
+// estimate the SAME interface point), one-sided where only one fit converges.
+// Measured motivation (plan sec. 17): the conversion-based delivery drops to
+// first order when the level sets are not normal offsets of the interface;
+// foot evaluation holds second order there (0.187 vs 8.69 at N=512 on the
+// quadratic-form ellipse) and loses where the fit error dominates instead.
+const bool footPointEvaluatedFaceExtension =
+    (curvatureExtensionType == "footPointEvaluatedFace");
 // SYMMETRIC FACE-MEAN variant: the per-face inversion followed by a smoothing
 // pass over each face's own owner+neighbour active-face set, which is symmetric
 // about that face and therefore annihilates linear fields -- second order is
@@ -193,7 +205,8 @@ const scalar symmetricFaceMeanTheta =
     .subOrEmptyDict("curvatureExtension")
     .getOrDefault<scalar>("faceSmoothing", 0.5);
 if (stabilizedFootPointFaceExtension || cutCellFootPointFaceExtension
- || cellMeanFootPointFaceExtension || symmetricFaceMeanExtension)
+ || cellMeanFootPointFaceExtension || symmetricFaceMeanExtension
+ || footPointEvaluatedFaceExtension)
 {
     // The parallel-curve inverse acts at the FACE: a cell-level
     // offsetCorrection would be applied twice -- silently wrong curvature.
@@ -221,6 +234,7 @@ Info<< "Curvature extension: " << curvatureExtensionType
     << (cutCellFootPointFaceExtension ? " (CUT-CELL foot-point delivery ON)" : "")
     << (cellMeanFootPointFaceExtension ? " (CELL-MEAN of per-face inversions ON)" : "")
     << (symmetricFaceMeanExtension ? " (SYMMETRIC face-mean smoothing ON)" : "")
+    << (footPointEvaluatedFaceExtension ? " (FOOT-POINT-EVALUATED face delivery ON)" : "")
     << (fvmCurvature ? " (symbolic kappa fill OFF -- force model computes its own)" : "")
     << nl << endl;
 

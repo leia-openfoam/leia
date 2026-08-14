@@ -39,4 +39,10 @@ values
 
     // One reconstruction object for transport and geometry, as before.
     GEOMETRY_FIT ( none );
+
+    // Pin the UNCACHED quadratic (the only reconstruction implementing the
+    // symbolic curvature path) so gate configs that do NOT sweep the
+    // transport axis resolve to a curvature-capable fit. Every committed
+    // coupled study overrides this axis explicitly, so nothing re-renders.
+    SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
 }

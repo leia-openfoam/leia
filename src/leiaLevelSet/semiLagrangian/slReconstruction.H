@@ -340,6 +340,26 @@ public:
             NotImplemented;
             return 0;
         }
+
+        //- Mean curvature of the cell's own fit evaluated AT THE FOOT POINT of
+        //  an arbitrary query point p: the closest point of p on the fit's
+        //  zero set (same stabilized foot-point algorithm as
+        //  footPointDistance), with kappa = div(grad R/|grad R|) of the fit at
+        //  that point. The returned value belongs to the INTERFACE point
+        //  itself -- no parallel-surface conversion is involved and no
+        //  assumption about the spacing of the level sets enters. ok = false
+        //  on non-convergence, a degenerate gradient, or the foot leaving the
+        //  stencil trust region; the value must not be used then.
+        virtual scalar curvatureAtFootPoint
+        (
+            const label c,
+            const point& p,
+            bool& ok
+        ) const
+        {
+            NotImplemented;
+            return 0;
+        }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

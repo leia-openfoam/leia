@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
     const wordList models
     (
         {"arithmetic", "perFaceInverse", "cutCellInverse", "cellMeanInverse",
-         "symFaceMean050"}
+         "symFaceMean050", "footEvalFace"}
     );
 
     // kappa_f for every delivery, from the CURRENT psi in the reconstruction.
@@ -303,6 +303,15 @@ int main(int argc, char *argv[])
             mesh, psiUse, alpha, kappa, recon(), kappaFace, 0.5
         );
         kf[4] = kappaFace.primitiveField();
+
+        // fit curvature EVALUATED at the face centre's foot on each adjacent
+        // cell's own zero set, linearly interpolated -- no parallel-surface
+        // conversion (curvatureExtension footPointEvaluatedFace)
+        computeFootPointEvaluatedFaceCurvature
+        (
+            mesh, psiUse, alpha, kappa, recon(), kappaFace
+        );
+        kf[5] = kappaFace.primitiveField();
     };
 
     List<scalarField> kfBase;

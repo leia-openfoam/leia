@@ -116,7 +116,13 @@ CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
                      // averaged over each cut cell's active faces -- same
                      // one-value-per-cut-cell structure, but built by
                      // AVERAGING n inversions rather than concentrating on
-                     // one, which lowers the psi-to-kappa_f gain) | fvm.
+                     // one, which lowers the psi-to-kappa_f gain)
+                     // | footPointEvaluatedFace (each adjacent cell evaluates
+                     // its fit curvature AT the foot point of the FACE CENTRE
+                     // on its own zero set -- no parallel-surface conversion;
+                     // linear interpolation of the two per-cell values;
+                     // second order where the level sets are NOT normal
+                     // offsets, fit-error-limited where they are) | fvm.
 N_OUTER_CORRECTORS 3; // PIMPLE.nOuterCorrectors (historical hardcoded value 3).
 PSI_OUTER_CORRECTORS no; // PIMPLE.psiOuterCorrectors: no = psi advected once
                      // per step on the first outer corrector, capillary force

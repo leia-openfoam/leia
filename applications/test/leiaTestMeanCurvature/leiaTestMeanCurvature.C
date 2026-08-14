@@ -969,6 +969,28 @@ int main(int argc, char *argv[])
         addFaceRow("solverStabFootFace", 1, kfProd.primitiveField());
     }
 
+    // The foot-point-EVALUATED delivery, likewise called through the solver
+    // header: per adjacent cell the fit curvature AT the foot point of the
+    // FACE CENTRE on that cell's own zero set, linearly interpolated; no
+    // parallel-surface conversion involved (FOOT_POINT = 0 by the same
+    // convention as the other interface-referenced models).
+    {
+        surfaceScalarField kfFPE
+        (
+            IOobject
+            (
+                "kappaFootEvalFaceGate", runTime.timeName(), mesh,
+                IOobject::NO_READ, IOobject::NO_WRITE
+            ),
+            fvc::interpolate(kappaNoExt)
+        );
+        computeFootPointEvaluatedFaceCurvature
+        (
+            mesh, psi, alpha, kappaNoExt, recon, kfFPE
+        );
+        addFaceRow("solverFootEvalFace", 0, kfFPE.primitiveField());
+    }
+
     // One interface curvature per CUT CELL, assigned to its active faces.
     addFaceRow("cutCellInverse", 1, kfCutCell);
     addFaceRow("cellMeanInverse", 1, kfCellMean);

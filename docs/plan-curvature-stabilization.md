@@ -1412,3 +1412,43 @@ Findings:
    solver and becomes the natural candidate the moment the fit can be made
    exact enough (WP1/WP2 territory), with its noise gain still unmeasured.
 
+
+### 17.4 footPointEvaluatedFace -- measured 2026-08-14: the foot-evaluated delivery on four geometries
+
+Implemented as curvatureExtension footPointEvaluatedFace (dictionary-selected;
+slReconstruction::curvatureAtFootPoint + computeFootPointEvaluatedFaceCurvature):
+each adjacent cell finds the foot point OF THE FACE CENTRE on its own
+quadratic's zero set and evaluates the fit curvature AT that point -- the value
+belongs to the interface point itself, no parallel-surface conversion, no
+level-set-spacing assumption; LINEAR face interpolation of the two per-cell
+values (both estimate the SAME interface point); one-sided fallback; seam
+sync. Gated through the solver header on every geometry (the shipped code
+path, not an in-app variant). E_L2 over active faces at the finest N:
+
+    geometry (psi)                       production      footPointEvaluatedFace
+    circle, exact SDF (N=512)            0.105 (2.0)     10.5  (order ~1.0)
+    2:1 ellipse, SDF (N=512)             0.278 (1.98)    12.7  (order ~1.0)
+    2:1 ellipse, quadratic form (N=512)  8.69  (0.94)    4.8e-4 (EXACT: fit
+                                                          reproduces psi, foot =
+                                                          true closest point;
+                                                          residual = Newton tol)
+    oscillating geometry, a/b = 1.21,
+    quadratic form (N=256)               6.24  (~1.07)   3.3e-4 (EXACT)
+
+Noise gain: footEvalFace = perFaceInverse within 3% on both the circle
+(0.657 vs 0.642 at N=512) and the oscillating geometry (ratio 1.03; on the
+quadratic-form psi the *_DIMLESS column is scaled by |grad psi| ~ 2000 --
+compare models within a case, not across psi scalings). By the equal-gain =>
+equal-growth finding, the construction carries NO measured stability penalty
+and NO stability gain.
+
+VERDICT: the exact mirror of the production delivery, now measured on the
+shipped path across four geometries. Evaluation at the foot is EXACT whenever
+the fit reproduces psi (both quadratic-form initializations, including the
+oscillating droplet's own t=0 field) and fit-error-limited (first order,
+~100x the production constant) on true signed distances, where production is
+second order. Neither dominates; the complementarity is now fully
+quantified, and a per-face selection or blend between the two -- both already
+computed from the same fit -- is the natural next construction, with the
+arc-regression D-correction (sec. 17.3) as the alternative that upgrades the
+conversion instead of switching the evaluation point.

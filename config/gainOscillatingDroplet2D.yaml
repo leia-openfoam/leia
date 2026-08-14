@@ -1,0 +1,38 @@
+# STATIC curvature accuracy + noise gain on the OSCILLATING-DROPLET geometry:
+# the mode-2 perturbed ellipse (a = 1.1 mm, b = 0.90909 mm) initialized as the
+# QUADRATIC FORM (implicitEllipsoid) -- the psi the coupled oscillating runs
+# actually start from, with beta = |grad psi| varying by a/b = 1.21 along the
+# interface (the parallel-surface conversion outside its hypothesis, mildly).
+#
+# Companion to config/faceCurvatureDroplet2D.yaml (the stationary droplet's
+# circle, exact SDF: conversion inside its hypothesis, fit inexact) and
+# config/faceCurvatureEllipsoidPsi2D.yaml (2:1 ellipse, both psi forms). This
+# one adds the CASE-RELEVANT geometry: the accuracy ladder AND the psi-noise
+# gain G h^2 of every face delivery -- including footPointEvaluatedFace, the
+# foot-point-EVALUATED construction (fit curvature at the face centre's foot
+# on each adjacent cell's own zero set, linearly interpolated, no
+# parallel-surface conversion) -- on the exact field the oscillating runs
+# start from.
+#
+# The exact-curvature reference is the zero-set ellipse at the closest point
+# (the gate apps construct a signedDistanceEllipse reference for
+# implicitEllipsoid psi). Three resolutions: R_equiv/h = 6.4 / 12.8 / 25.6.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/gainOscillatingDroplet2D.yaml
+study_name: gainOscillatingDroplet2D
+case: oscillatingDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestMeanCurvature
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

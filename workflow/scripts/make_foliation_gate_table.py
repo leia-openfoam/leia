@@ -30,14 +30,18 @@ from collections import defaultdict
 
 
 def main(argv):
-    if len(argv) != 2:
+    if len(argv) not in (2, 3):
         print(__doc__)
         return 1
-    study, outdir = argv
+    study, outdir = argv[0], argv[1]
+    # Optional third argument: output basename (default the foliation gate's).
+    base = argv[2] if len(argv) == 3 else "face_curvature_orders_foliation"
 
     # (surface, model, footPoint) -> {N: (E_L2, E_LINF)}
     data = defaultdict(dict)
-    for d in sorted(glob.glob(os.path.join(study, "ellipseDroplet2D_0*"))):
+    for d in sorted(glob.glob(os.path.join(study, "*_0*"))):
+        if not os.path.isdir(d):
+            continue
         fv = open(os.path.join(d, "system", "fvSolution")).read()
         surf = re.search(
             r"implicitSurface\s*\{[^}]*type\s+(\w+)", fv, re.S
@@ -73,14 +77,14 @@ def main(argv):
         ))
 
     os.makedirs(outdir, exist_ok=True)
-    out = os.path.join(outdir, "face_curvature_orders_foliation.csv")
+    out = os.path.join(outdir, base + ".csv")
     with open(out, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader()
         w.writerows(rows)
     print(f"[foliation-gate] wrote {out} ({len(rows)} rows)")
 
-    tex = os.path.join(outdir, "face_curvature_orders_foliation.tex")
+    tex = os.path.join(outdir, base + ".tex")
     with open(tex, "w") as f:
         f.write("\\begin{tabular}{l l c r r r}\n\\hline\n"
                 "$\\psi$ & model & foot & $E_{L_2}$ ($N{=}512$) & "
