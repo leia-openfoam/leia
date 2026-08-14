@@ -1,0 +1,71 @@
+# COUPLED gate for the FOOT-POINT-EVALUATED face-curvature delivery on the
+# OSCILLATING droplet -- the DISCRIMINATING case of the pair whose control is
+# config/stationaryDropletFootEvalFace.yaml.
+#
+# WHY THIS CASE SEPARATES THE TWO DELIVERIES
+# psi is initialized by implicitEllipsoid, i.e. the QUADRATIC FORM
+# sum (x_i - c_i)^2/a_i^2 - 1 with a/b = 1.21, NOT a signed distance. Along the
+# interface beta = |grad psi| therefore varies by 1.21, so the foliation is NOT
+# parallel and the parallel-surface inverse is OUTSIDE its hypothesis: its bias
+# is the foliation residual D = Laplace_Gamma(ln beta) - |grad_Gamma ln beta|^2
+# integrated over the offset, first order in the offset distance. The
+# foot-evaluated delivery never performs that conversion, and on a psi that IS
+# exactly quadratic the fit is exact, so its curvature is exact.
+#
+# Static gate on this exact geometry (config/gainOscillatingDroplet2D.yaml,
+# N=256): production E_L2 = 6.24 (order ~1.07); footPointEvaluatedFace
+# E_L2 = 3.3e-4 -- exact to fit precision. Noise gain G h^2 on the force support
+# is EQUAL between the two within 3% (0.657 vs 0.642 on the circle at N=512), so
+# any coupled difference is an ACCURACY difference, not an amplification one.
+#
+# PREDICTION (recorded before the run)
+# Because the gain is matched and only the accuracy differs, the honest
+# expectation is: a much smaller INITIAL capillary imbalance for
+# footPointEvaluatedFace (the t=0 force is built on an exact curvature), and NO
+# change in the parasitic growth RATE r = r0 + c*dt once the transport has
+# degraded psi away from the initial quadratic form -- the fit is exact only for
+# the initial field. If the growth rate DOES drop, the delivered-curvature error
+# was seeding the loop and this is a real lever; if only the prefactor drops,
+# the delivery is an accuracy improvement and the amplifier is elsewhere.
+# Score on r(A2h) (the corrugation growth rate, the order parameter), NOT on
+# t_blow -- the e-fold count to blow-up varies 5.4-13.3 across the matrix.
+# Report volume AND shape error together; m2Amplitude is the physical signal
+# and must be separated from the parasitic one.
+#
+# FORCE MODEL. The committed oscillatingDroplet2D study runs the FVM force
+# (divGradPsiSnGradAlpha + curvatureExtension fvm), which is curvature-free and
+# reads NEITHER delivery. Both arms here therefore override it to the balanced
+# CSF (reconstructedCurvature + faceCurvatureSource registered), which is the
+# only force model that consumes a registered face-curvature field. That is a
+# NEW combination for this case: the fvSolution comment records that the
+# reconstructedCurvature pipeline is what drove the historical N>=128 divergence
+# here, so a diverged arm is an expected outcome, recorded as a result.
+#
+# DISCIPLINE. Fixed capillary step, adaptivity OFF: deltaT = 0.010861/N^1.5.
+# Steps to END_TIME = 0.1: 4714 (N=64), 13333 (N=128), 37714 (N=256).
+# SIZING: see stationaryDropletFootEvalFace.yaml -- same mesh ladder, same step
+# count, same np, so the same 240 min solve limit.
+#
+#   sbatch --export=ALL,STUDY=oscillatingDropletFootEvalFace run-studies.sbatch
+study_name: oscillatingDropletFootEvalFace
+case: oscillatingDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace, footPointEvaluatedFace]
+  FACE_CURVATURE_SOURCE: [registered]
+
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

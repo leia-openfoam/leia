@@ -40,6 +40,9 @@ SOLVER      = config.get("solver", "leiaLevelSetFoam")
 THEME       = paths.theme_of(SOLVER, config.get("theme"))
 STUDIES_DIR = os.path.abspath(config.get("studies_dir", os.path.join(REPO, "studies")))
 MPI         = config.get("mpi_launcher", "mpirun -np {np}")
+# Optional per-study SLURM time limit (MINUTES) for the solve rule only; see the
+# `solve` rule. None => the workflow profile's default.
+SOLVE_RUNTIME = config.get("solve_runtime")
 PREAMBLE    = (config.get("env_preamble") or "").strip()
 # Extra leiaSetFields arguments (e.g. "-alphaName alpha.water" for the two-phase
 # mixture field, whose name is not the leiaSetFields default "alpha").
@@ -300,6 +303,14 @@ rule solve:
         # is not allowed in the 'slurm_extra' parameter"), and the rejection is a
         # submission-time exception, so no solve job is created at all.
         **({"nodes": 1} if PARALLEL else {}),
+        # Optional per-study SLURM time limit for the solve, in MINUTES. Absent
+        # (the default) => the workflow profile's default-resources.runtime, so
+        # every committed study is submitted exactly as before. Set it in a study
+        # config (`solve_runtime: 150`) to size a job to its MEASURED pace instead
+        # of padding to the partition default: an oversized limit routes the job
+        # to a slower partition and holds the allocation long after a diverged
+        # solve has stopped producing steps.
+        **({"runtime": int(SOLVE_RUNTIME)} if SOLVE_RUNTIME else {}),
     shell:
         sh(*_solve)
 

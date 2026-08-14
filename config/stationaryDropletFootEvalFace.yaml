@@ -1,0 +1,75 @@
+# COUPLED gate for the FOOT-POINT-EVALUATED face-curvature delivery
+# (curvatureExtension footPointEvaluatedFace) against the production
+# interpolate-then-invert delivery (stabilizedFootPointFace), on the stationary
+# droplet, at three resolutions.
+#
+# THE TWO DELIVERIES
+#   stabilizedFootPointFace : cell-centred kappa from each cell's quadratic,
+#       interpolated to the face, then converted from the OFFSET level set back
+#       to the interface by the parallel-surface inverse. The conversion assumes
+#       a PARALLEL foliation, psi = f(signed distance) -- equivalently
+#       a := P grad(ln|grad psi|) == 0 along each level set.
+#   footPointEvaluatedFace  : each adjacent cell finds the foot point OF THE FACE
+#       CENTRE on its own quadratic's zero set and evaluates that fit's curvature
+#       THERE; the face takes the linear interpolation of the two values. The
+#       value already belongs to the interface, so NO conversion -- and no
+#       foliation assumption -- enters.
+#
+# WHAT THIS CASE MEASURES, AND WHY IT IS THE CONTROL, NOT THE TEST
+# psi is initialized by implicitSphere, i.e. the EXACT signed distance: a
+# parallel foliation, D == 0. That is precisely where the parallel-surface
+# inverse is INSIDE its hypothesis and the foot-evaluated construction is only
+# first order. Static gates (docs/method-comparison .../face_curvature_*):
+#   circle, exact SDF, N=512:  production E_L2 = 0.105 (order 2.0)
+#                              footEval    E_L2 = 10.5  (order ~1.0)
+# so this study is expected to FAVOUR PRODUCTION. It is committed as the matched
+# control for config/oscillatingDropletFootEvalFace.yaml, whose psi is the
+# quadratic form (foliation NOT parallel) and where the ranking inverts.
+#
+# PREDICTION (recorded before the run, per the gate discipline)
+#   max|U| and mean|U| higher for footPointEvaluatedFace at every N; the Laplace
+#   jump error larger; the zero-set shape error larger; VOLUME conservation
+#   better. The N=64 local smoke over 236 steps measured exactly this:
+#   max|U| 1.86e-3 vs 1.33e-3, mean|U| 9.53e-5 vs 4.49e-5, p_Laplace +1.23% vs
+#   +0.60%, shape L2 1.05e-6 vs 7.50e-7 -- and volume 6.10e-5 vs 2.04e-4, i.e.
+#   3.3x BETTER. The open question this study answers is whether that ordering
+#   survives to the growth-rate regime (the smoke horizon, t = 5e-3, is far
+#   short of the N=64 blow-up at t ~ 0.44) and how it scales with h.
+#   Report volume AND shape error, never a single headline metric.
+#
+# DISCIPLINE
+#   Fixed capillary step, adaptivity OFF: deltaT = MAX_DELTA_T =
+#   CAPILLARY_DT_COEFF/N^1.5 = 0.010861/N^1.5 (= dt_sigma/3.05 at every N).
+#   Steps to END_TIME = 0.1: 4714 (N=64), 13333 (N=128), 37714 (N=256).
+#
+# SIZING (solve_runtime, minutes). Measured pace, N=64 on np4 (WSL): 101
+# steps/s at 4096 cells. N=256 is 16x the cells on 2x the ranks -> ~8x per step
+# -> ~50 min for 37714 steps; doubled for the heavier GAMG solve at 65536 cells
+# -> ~100 min. 240 min is ~2.4x that headroom and stays on the `deflt`
+# partition -- deliberately NOT the profile's 24 h default, which would hold an
+# allocation long after a diverged solve has stopped stepping.
+#
+#   sbatch --export=ALL,STUDY=stationaryDropletFootEvalFace run-studies.sbatch
+study_name: stationaryDropletFootEvalFace
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace, footPointEvaluatedFace]
+  FACE_CURVATURE_SOURCE: [registered]
+
+solve_runtime: 240
+
+# Diagnostic gate: the committed droplet_parasitic tables (arithmetic-delivery
+# baseline) stay untouched; this study is read from its per-step solver CSVs.
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
