@@ -349,7 +349,7 @@ inline void computeFootPointEvaluatedFaceCurvature
     syncTools::swapBoundaryFaceList(mesh, bValNei);
     syncTools::swapBoundaryFaceList(mesh, bOkNei);
 
-    label nSeamFail = 0;
+    label nSeamFail = 0, nSeamSet = 0;
     forAll(kfBf, patchI)
     {
         const fvPatch& patch = mesh.boundary()[patchI];
@@ -370,14 +370,19 @@ inline void computeFootPointEvaluatedFaceCurvature
             if (ownOk && neiOk)
             {
                 kfp[i] = wP[i]*bVal[j] + (1.0 - wP[i])*bValNei[j];
+                ++nSeamSet;
             }
-            else if (ownOk) { kfp[i] = bVal[j]; ++nOneSided; }
-            else if (neiOk) { kfp[i] = bValNei[j]; ++nOneSided; }
+            else if (ownOk) { kfp[i] = bVal[j]; ++nSeamSet; ++nOneSided; }
+            else if (neiOk) { kfp[i] = bValNei[j]; ++nSeamSet; ++nOneSided; }
             else            { ++nSeamFail; }
         }
     }
 
+    // Seam faces enter BOTH counters from both ranks (the stabilized delivery's
+    // convention), so a fully delivered field reads N/N rather than a deficit
+    // equal to the seam count.
     nActive += nSeamActive;
+    nSet += nSeamSet;
     nFail += nSeamFail;
 
     reduce(nActive, sumOp<label>());
