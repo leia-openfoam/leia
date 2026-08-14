@@ -1373,19 +1373,31 @@ docs/method-comparison/method-comparison-article/data/tables/
 face_curvature_orders_foliation.csv. Orders fitted on N >= 128 (L2, active
 faces):
 
-    model (foot-corrected)        SDF psi (D=0)      quadratic-form psi (D!=0)
-    quadraticCellCentre + foot    0.278, order 1.98   8.69, order 0.94
-    trHessian + foot              0.276, order 1.98   7.1e5, diverging
-    stableFootPoint (PRODUCTION)  4.95,  order 0.93   7.12, order 0.95
-    quadraticNewtonFoot           13.7,  order 0.97   0.187, order 1.95
+    model (foot-corrected)          SDF psi (D=0)      quadratic-form psi (D!=0)
+    solverStabFootFace (PRODUCTION,
+      the shipped header, bit-equal
+      to quadraticCellCentre+foot)  0.278, order 1.98   8.69, order 0.94
+    trHessian + foot                0.276, order 1.98   7.1e5, diverging
+    stableFootPoint (GATE-ONLY
+      foot-point-native variant)    4.95,  order 0.93   7.12, order 0.95
+    quadraticNewtonFoot             13.7,  order 0.97   0.187, order 1.95
 
 Findings:
 
-1. THE ANSWER TO "WHAT ORDER IS THE PRODUCTION DELIVERY ON THE ELLIPSE": FIRST
-   order, in BOTH foliations (0.93 / 0.95), errors 4.95 / 7.12 at N=512. The
-   circle's h^2.04 was constant-curvature luck (already recorded for the
-   averaging family in sec. 12; this row extends it to stableFootPoint
-   itself). The non-parallel foliation costs only a 1.4x prefactor on top.
+1. CORRECTED 2026-08-14 (the first write-up of this section mislabeled the
+   rows): the gate's `stableFootPoint` row is a GATE-ONLY experimental variant
+   (per-side inversion at the cell centres, Kang-combined) that never calls
+   the solver; the SHIPPED curvatureExtension stabilizedFootPointFace is
+   interpolate(kappa) + ONE inversion at the face centre's own foot, and the
+   new `solverStabFootFace` row -- which calls the actual solver header --
+   is bit-equal to `quadraticCellCentre + foot` in both arms. THE PRODUCTION
+   DELIVERY IS SECOND ORDER wherever the foliation is parallel (2.04 circle,
+   ~1.95 sphere, 1.98 varying-curvature SDF ellipse) and FIRST order only
+   where the foliation itself is non-parallel (0.94: the d*D model bias).
+   The gate-only native variant is first order in both arms (tangential O(h)
+   mislocation: its two per-side values belong to two different interface
+   points); every coupled stability number of this programme was produced by
+   the second-order delivery.
 2. The error budget separates exactly as sec. 11 predicts: with D = 0 the
    foot-corrected plain quadratic is SECOND order (fit error only); with the
    fit exact and D != 0 it drops to FIRST order with the D*d bias alone --

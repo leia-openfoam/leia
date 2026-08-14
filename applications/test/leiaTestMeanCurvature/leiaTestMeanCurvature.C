@@ -937,7 +937,37 @@ int main(int argc, char *argv[])
     addFaceRow("interfaceMean", 0, kfMean);
 
     // The fully foot-point-native delivery (defined only WITH the algorithm).
+    // NAMING WARNING, learned the hard way: this row is a GATE-ONLY
+    // experimental variant (per-side inversion at the cell centres, then
+    // Kang-combined) and is NOT the solver's curvatureExtension
+    // stabilizedFootPointFace, despite the similar name. It is FIRST order on
+    // varying-curvature interfaces (tangential O(h) mislocation: the two
+    // sides' values belong to two different interface points).
     addFaceRow("stableFootPoint", 1, kfStable);
+
+    // The ACTUAL production delivery, called through the solver header --
+    // interpolate(kappa) then ONE parallel-surface inversion at the face
+    // centre's own foot. Algorithmically the quadraticCellCentre/footCorrect
+    // row (second order on parallel foliations); this row exists so the gate
+    // always scores the SHIPPED code path (mask, fallbacks, seam handling
+    // included) and a mislabeled in-app variant can never again stand in for
+    // production in a results table.
+    {
+        surfaceScalarField kfProd
+        (
+            IOobject
+            (
+                "kappaStableFootFaceGate", runTime.timeName(), mesh,
+                IOobject::NO_READ, IOobject::NO_WRITE
+            ),
+            fvc::interpolate(kappaNoExt)
+        );
+        computeStabilizedFootPointFaceCurvature
+        (
+            mesh, psi, alpha, kappaNoExt, recon, kfProd
+        );
+        addFaceRow("solverStabFootFace", 1, kfProd.primitiveField());
+    }
 
     // One interface curvature per CUT CELL, assigned to its active faces.
     addFaceRow("cutCellInverse", 1, kfCutCell);

@@ -109,10 +109,13 @@ order fitted on N >= 128:
 **The foliation gate** (2026-08-14, plan sec. 17,
 `config/faceCurvatureEllipsoidPsi2D.yaml`): same ellipse, psi as TRUE signed
 distance (fit error only) vs the QUADRATIC form (fit exact, inverse's foliation
-bias only; beta varies 2x along the interface). Production `stableFootPoint` is
-FIRST order in both arms (L2 4.95 / 7.12 at N=512, orders 0.93 / 0.95 — the
-non-parallel foliation costs only a 1.4x prefactor); the foot-corrected plain
-quadratic is 2nd order only while D = 0 (0.278 → 8.69 when D != 0); and
+bias only; beta varies 2x along the interface). CORRECTED 2026-08-14: the gate
+row `stableFootPoint` is a GATE-ONLY foot-point-native variant, NOT the solver
+delivery; the new `solverStabFootFace` row calls the shipped
+stabilizedFootPointFace header and is bit-equal to the foot-corrected plain
+quadratic — so PRODUCTION IS SECOND ORDER while the foliation is parallel
+(0.278, order 1.98 on this ellipse; 2.04 circle, ~1.95 sphere) and first order
+only where the foliation is non-parallel (8.69, order 0.94: the d*D bias); and
 `quadraticNewtonFoot` INVERTS — 2nd order, 0.187 at N=512, when the fit is
 exact, because evaluating AT the interface point needs no parallel-surface
 correction at all. Curated:
@@ -276,8 +279,10 @@ the x_d kernel verification are plan sec. 16. THE order parameter is now the
 corrugation growth rate r(A2h) ~ 14–160 1/s (N = 64–256), nearly dt-independent
 at N=256 — every successful lever so far bought prefactor only. Leads: the
 closestPointNewton evaluation inverts to 2nd order with a 46x smaller constant
-than the production delivery when the fit is exact (sec. 17.3, noise gain
-unmeasured); and item 2 below remains untouched.)*
+than the production delivery under the broken foliation, when the fit is exact
+(sec. 17.3, noise gain unmeasured); production itself is CONFIRMED second order
+wherever the foliation is parallel — sec. 17.1 corrected; and item 2 below
+remains untouched.)*
 
 1. **Done — superseded.** (Symmetric face averaging: measured order 1.10, plan
    sec. 14. The gain–order trade-off on the delivery axis is closed.)
