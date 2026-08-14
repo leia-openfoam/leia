@@ -1,3 +1,8 @@
+// The CSV schema this file writes, defined once so the header and the write
+// block below cannot drift apart. Included HERE rather than from
+// errorCalculation.H, which is included inside main().
+#include "advectionErrorsCsv.H"
+
 template<typename Ostream>
 void reportErrors
 (
@@ -39,10 +44,15 @@ void reportErrors
 
     scalar alphaV0 = gSum((alpha0 * V)());
 
-    scalar alphaVolErr = Foam::mag
-    (
-        gSum((alpha * V)()) - alphaV0
-    );
+    // SIGNED first -- same reason as the Eulerian solver: a magnitude cannot
+    // separate a systematic volume LOSS from an error that oscillates in sign,
+    // and those are different failure modes. Emitted alongside the magnitude,
+    // so every existing column keeps its meaning.
+    scalar alphaVolErrSigned = gSum((alpha * V)()) - alphaV0;
+
+    scalar alphaVolErrSignedRel = alphaVolErrSigned / alphaV0;
+
+    scalar alphaVolErr = Foam::mag(alphaVolErrSigned);
     
     scalar alphaVolErrRel = alphaVolErr / alphaV0; 
 
@@ -84,6 +94,8 @@ void reportErrors
             << lInfEpsi << "," 
             << alphaVolErr << ","
             << alphaVolErrRel << ","
+            << alphaVolErrSigned << ","
+            << alphaVolErrSignedRel << ","
             << alphaGeomErr << ","
             << alphaGeomErrRel << ","
             << alphaBoundErr << "," 

@@ -45,18 +45,7 @@ volScalarField alpha0
 OFstream errorFile("leiaSemiLagrangeLevelSetFoam.csv");
 
 // CSV Header (same columns as leiaLevelSetFoam.csv for direct comparison)
-errorFile << "TIME,"
-    << "DELTA_X,"
-    << "L_INF_E_PSI,"
-    << "E_VOL_ALPHA,"
-    << "E_VOL_ALPHA_REL,"
-    << "E_GEOM_ALPHA,"
-    << "E_GEOM_ALPHA_REL,"
-    << "E_BOUND_ALPHA,"
-    << "ELAPSED_CPU_TIME,"
-    << "ELAPSED_CLOCK_TIME,"
-    << "MAX_CFL,"
-    << "MAX_ABS_SUM_VOL_FLUXES\n";
+errorFile << Foam::advectionErrorsCsvHeader();
 
 #include "CourantNo.H"
 

@@ -1,3 +1,8 @@
+// The CSV schema this file writes, defined once so the header and the write
+// block below cannot drift apart. Included HERE rather than from
+// errorCalculation.H, which is included inside main().
+#include "advectionErrorsCsv.H"
+
 template<typename Ostream>
 void reportErrors
 (
