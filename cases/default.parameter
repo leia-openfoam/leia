@@ -79,6 +79,24 @@ SL_RENORMALIZATION strain; // normalProjected in-band renormalization:
                      // geometric | strain | none.
 SL_OFFSET_ENGINE rayRoot; // normalProjected geometric offset engine:
                      // rayRoot | footPoint (stabilized foot-point, Variant a).
+GEOMETRY_FIT none;   // levelSet.geometryFit.type: a SECOND slReconstruction
+                     // serving the GEOMETRY path (curvature, fitDerivatives,
+                     // footPointDistance) while SL_RECONSTRUCTION serves
+                     // TRANSPORT. none = one object for both (the historical
+                     // behaviour, byte-identical: no second fit is built and no
+                     // second stencil is gathered).
+                     //
+                     // WHY: the symbolic curvature path is implemented ONLY by
+                     // uncachedQuadraticWeightedLeastSquares -- the base class
+                     // throws NotImplemented -- so lowering the TRANSPORT order
+                     // previously removed the curvature model with it. Setting
+                     // GEOMETRY_FIT uncachedQuadraticWeightedLeastSquares keeps
+                     // the quadratic kappa while SL_RECONSTRUCTION varies.
+                     //
+                     // CAVEAT when the two differ: the two objects hold
+                     // different fits of the same psi, so the foot-point
+                     // distance feeding the curvature inverse is consistent
+                     // with the interface motion only to the TRANSPORT's order.
 CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
                      // none | harmonicLaplace | footPointHeightFunction |
                      // closestPointNewton | connectedInterface | interfaceMean
@@ -91,6 +109,20 @@ CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
                      // one-value-per-cut-cell structure, but built by
                      // AVERAGING n inversions rather than concentrating on
                      // one, which lowers the psi-to-kappa_f gain) | fvm.
+N_OUTER_CORRECTORS 3; // PIMPLE.nOuterCorrectors (historical hardcoded value 3).
+PSI_OUTER_CORRECTORS no; // PIMPLE.psiOuterCorrectors: no = psi advected once
+                     // per step on the first outer corrector, capillary force
+                     // frozen across the outer loop (historical behaviour,
+                     // byte-identical). yes = iterated interface-force
+                     // coupling: every outer corrector restores psi^n and
+                     // re-advects with the current velocity iterate (pass 1
+                     // keeps the AB2 predictor), re-running band/indicator/
+                     // curvature/face delivery so sigma*kappa_f*snGrad(alpha)
+                     // converges to its t^{n+1} value -- backward-Euler
+                     // consistency of the force with the fvm::ddt momentum
+                     // LHS. MEASURED motivation: r = r0 + c*dt with the c*dt
+                     // (explicit-coupling) term = 90% of the parasitic growth
+                     // rate at N=128 (stationaryDropletDtSweep).
 PSI_RENORM none;     // levelSet.psiRenormalization.type: none |
                      // footPointGradient (psi <- psi/|grad psi| at the foot
                      // point, on the band, every step). Restores the PARALLEL
@@ -113,6 +145,16 @@ PSI_RENORM_RELAX 1.0; // relaxation omega: psi <- psi/beta_Gamma^omega. omega=1
 FACE_CURVATURE_SOURCE model; // reconstructedCurvature kappa_f source: model
                      // (its own arithmetic/Kang assembly) | registered (the
                      // solver-registered face field, e.g. kappaStableFootFace).
+SURFACE_TENSION_FORCE reconstructedCurvature; // levelSet.surfaceTensionForce.type:
+                     // reconstructedCurvature (kappa from the quadratic fit,
+                     // delivered per-face; the high-order path) |
+                     // divGradPsiSnGradAlpha (kappa = div(grad psi/|grad psi|)
+                     // from the FVM operators -- ORDER-MATCHED to the 2nd-order
+                     // FVM momentum discretization, and curvature-free so it
+                     // works with a linear transport fit) | integralSurfaceTension.
+                     // Cases that hardcoded a model pin their historical value in
+                     // their own <Case>.parameter, so this default only applies
+                     // where a template newly reads the token.
 PSI_FILTER none;     // grid-scale psi filter (psiFilterEqn.H): none |
                      // biharmonicBand (psi -= theta*L(L(psi)) in band+1 ring).
 PSI_FILTER_THETA 0.05; // filter strength theta (biharmonicBand only).

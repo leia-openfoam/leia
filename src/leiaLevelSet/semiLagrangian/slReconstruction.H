@@ -195,6 +195,18 @@ public:
         //  quadraticWeightedLeastSquares).
         static autoPtr<slReconstruction> New(const fvMesh& mesh);
 
+        //- Select an EXPLICITLY named type, independent of any dictionary
+        //  entry. Used to build a second fit object that serves the geometry
+        //  (curvature / foot-point) path while the transport keeps its own --
+        //  see slAdvection's geometryFit. Kept separate from New(mesh) so the
+        //  dictionary-driven path above stays the single source of truth for
+        //  the transport reconstruction.
+        static autoPtr<slReconstruction> New
+        (
+            const fvMesh& mesh,
+            const word& modelType
+        );
+
     //- Destructor
     virtual ~slReconstruction() = default;
 

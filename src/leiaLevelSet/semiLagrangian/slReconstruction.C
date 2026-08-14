@@ -124,12 +124,25 @@ Foam::autoPtr<Foam::slReconstruction> Foam::slReconstruction::New
     const dictionary& slDict = levelSetDict.subOrEmptyDict("semiLagrangian");
     const word modelType =
         slDict.getOrDefault<word>("reconstruction", "quadraticWeightedLeastSquares");
+
+    return New(mesh, modelType);
+}
+
+
+Foam::autoPtr<Foam::slReconstruction> Foam::slReconstruction::New
+(
+    const fvMesh& mesh,
+    const word& modelType
+)
+{
     Info<< "Selecting slReconstruction " << modelType << endl;
 
     auto* ctorPtr = MeshConstructorTable(modelType);
 
     if (!ctorPtr)
     {
+        const fvSolution& fvSolution(mesh);
+
         FatalIOErrorInLookup
         (
             fvSolution,

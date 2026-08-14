@@ -88,8 +88,30 @@ class slAdvection
     const dictionary& levelSetDict_;
     dictionary slDict_;
 
-    //- The reconstruction of psi^n at the foot.
+    //- The reconstruction of psi^n at the foot. TRANSPORT ONLY.
     autoPtr<slReconstruction> recon_;
+
+    //- Optional SECOND fit object serving the GEOMETRY path (curvature, the
+    //  fitted derivatives and the foot-point distance) while recon_ above
+    //  serves transport. Selected by
+    //
+    //      levelSet { geometryFit { type <slReconstruction type>; } }
+    //
+    //  An absent dict, or type `none`, leaves this INVALID and every geometry
+    //  read falls through to recon_() -- one object, one fit, byte-identical
+    //  to the behaviour before this option existed.
+    //
+    //  WHY the split exists: the symbolic curvature path (meanCurvature*,
+    //  fitDerivatives, footPointDistance) is implemented only by the quadratic
+    //  reconstructions -- the base class throws NotImplemented -- so choosing a
+    //  lower-order TRANSPORT previously removed the curvature model along with
+    //  it. Separating the two makes the transport order an independent axis
+    //  while the curvature keeps the quadratic fit it requires.
+    //
+    //  CAVEAT when the two differ: the objects hold different fits of the same
+    //  psi, so the foot-point distance feeding the curvature inverse is
+    //  consistent with the interface motion only to the TRANSPORT's order.
+    autoPtr<slReconstruction> geomRecon_;
 
     //- The strategy that assembles psi^{n+1} from the reconstruction at the feet
     //  (direct single pass | deferred correction). Selected by `correction`.
@@ -111,6 +133,18 @@ class slAdvection
     //  distance renormalization). Selected by levelSet.semiLagrangian.scheme.
     autoPtr<slScheme> scheme_;
 
+    //- The fit that serves the GEOMETRY path: the dedicated geometryFit object
+    //  when one was selected, otherwise the transport reconstruction itself.
+    slReconstruction& geom()
+    {
+        return geomRecon_.valid() ? geomRecon_() : recon_();
+    }
+
+    const slReconstruction& geom() const
+    {
+        return geomRecon_.valid() ? geomRecon_() : recon_();
+    }
+
 public:
 
     //- Runtime type information
@@ -129,7 +163,17 @@ public:
 
     // Member Functions
 
-        const slReconstruction& reconstruction() const { return recon_(); }
+        //- The fit the GEOMETRY path must use: this is what supplies
+        //  fitDerivatives / footPointDistance to the face-curvature models.
+        //  Aliases the transport reconstruction unless geometryFit is set.
+        const slReconstruction& reconstruction() const { return geom(); }
+
+        //- The TRANSPORT reconstruction, explicitly. Only advection may use
+        //  this; every geometric consumer wants reconstruction() above.
+        const slReconstruction& transportReconstruction() const
+        {
+            return recon_();
+        }
 
         //- Advect one step: psi holds psi^n on entry, psi^{n+1} on exit.
         //  Unew = u^{n+1}, Uold = u^n at cell centres.

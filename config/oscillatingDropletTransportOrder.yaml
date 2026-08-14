@@ -1,0 +1,69 @@
+# TRANSPORT-ORDER arm on the MOVING interface, with the HIGH-ORDER curvature
+# delivery. The cell the committed oscillatingDroplet2D study cannot reach.
+#
+# WHY THIS CASE, NOT THE STATIONARY DROPLET.
+# The first attempt put this arm on stationaryDroplet2D and measured nothing:
+# transport CFL there is 9.1e-4 (max|U| 6.7e-3 m/s, dt 2.12e-5 s, h 1.56e-4 m),
+# so the departure foot sits 0.09% of a cell from the cell centre and EVERY
+# reconstruction returns essentially psi(cell centre). Linear and quadratic
+# agreed to 0.17% in t_blow because the transport is nearly the identity map --
+# a null by construction of the case, not a result. The oscillating droplet
+# moves and deforms every step, so the reconstruction is actually exercised.
+#
+# WHY NOT JUST config/oscillatingDroplet2D.yaml.
+# That study already sweeps linear vs quadratic TRANSPORT, but it holds curvature
+# on the FVM path (divGradPsiSnGradAlpha + curvatureExtension fvm) -- kappa =
+# div(grad psi/|grad psi|), ORDER-MATCHED to the 2nd-order FVM momentum
+# discretization. Its own case comments record why: the reconstruction's Hessian
+# curvature "drove the N>=128 divergence of the reconstructedCurvature pipeline".
+# So it answers "does transport order matter when kappa is order-matched?" -- a
+# different question from the one under test here.
+#
+# THIS study holds the HIGH-ORDER delivery (reconstructedCurvature consuming the
+# registered stabilizedFootPointFace field -- the configuration in which the
+# parasitic instability was characterized, t_blow exponent p ~ -1) and varies
+# ONLY the transport order. That combination was unrunnable until
+# levelSet.geometryFit existed: the symbolic curvature path is implemented only
+# by uncachedQuadraticWeightedLeastSquares, so a linear TRANSPORT previously
+# removed the curvature model along with it (NotImplemented). GEOMETRY_FIT is
+# therefore pinned to the quadratic in BOTH arms -- it is not swept here.
+#
+#   PREDICTION, recorded BEFORE the run:
+#     If retained grid-scale psi noise is what feeds the instability, the linear
+#     (dissipative) transport should hold |grad psi| closer to 1 and stay bounded
+#     longer than the quadratic at the same N, while paying in shape/volume error.
+#   FALSIFIED IF the two transports track each other on minGradPsiBand and on
+#     boundedness at N=128 -- then transport dissipation is not the lever and the
+#     amplification is entirely in the curvature operator's 1/h response.
+#
+# REPORTING: minGradPsiBand (foliation health) AND shapeError/volumeError (the
+# price), never a single metric. Serial, so no seam questions.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/oscillatingDropletTransportOrder.yaml
+study_name: oscillatingDropletTransportOrder
+case: oscillatingDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128]
+  SL_RECONSTRUCTION:                       # the ONLY swept axis of interest
+    - linearWeightedLeastSquares
+    - uncachedQuadraticWeightedLeastSquares
+  # Held FIXED: the high-order curvature delivery, and the quadratic geometry fit
+  # that makes it available regardless of the transport order.
+  GEOMETRY_FIT:            [uncachedQuadraticWeightedLeastSquares]
+  SURFACE_TENSION_FORCE:   [reconstructedCurvature]
+  CURVATURE_EXTENSION:     [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE:   [registered]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

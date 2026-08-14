@@ -64,10 +64,33 @@ theme:  semi-lagrangian-level-set
 
 setfields_args: "-alphaName alpha.water"
 
+# THE 2x2. SL_RECONSTRUCTION is the TRANSPORT fit; GEOMETRY_FIT is the separate
+# curvature/foot-point fit (none = alias the transport object, the historical
+# single-object behaviour). The cross product gives four meaningful cells:
+#
+#   transport   geometry   cell
+#   ---------   --------   ----------------------------------------------------
+#   quadratic   none       CONTROL -- exactly the committed stabilizedFootPointFace
+#                          configuration; MEASURED N=64 survives to 0.1, N=128
+#                          blows at t=0.0661 (matches the 0.0668 per-face ref)
+#   quadratic   quadratic  REGRESSION -- two objects, both quadratic. MUST be
+#                          bit-identical to CONTROL; if it is not, the two-object
+#                          machinery perturbs the result and the arm below is
+#                          uninterpretable. This is the gate on the whole study.
+#   linear      none       NEGATIVE CONTROL -- aborts at startup with
+#                          "Not implemented ... meanCurvatureNoExtension". This
+#                          is the constraint that made the arm unrunnable before
+#                          geometryFit existed; kept so the study records it.
+#   linear      quadratic  THE ARM -- dissipative transport, quadratic kappa.
+#
+# Only the ARM tests the hypothesis; the other three make it interpretable.
 axes_override:
   N_CELLS: [64, 128]                  # 256 -> Lichtenberg (np 8), once 64/128 rank
   SL_RECONSTRUCTION:
     - linearWeightedLeastSquares
+    - uncachedQuadraticWeightedLeastSquares
+  GEOMETRY_FIT:
+    - none
     - uncachedQuadraticWeightedLeastSquares
   CURVATURE_EXTENSION: [stabilizedFootPointFace]
   FACE_CURVATURE_SOURCE: [registered]

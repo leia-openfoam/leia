@@ -114,7 +114,18 @@ relaxationFactors
 PIMPLE
 {
     momentumPredictor   yes;
-    nOuterCorrectors    3;
+    nOuterCorrectors    @!N_OUTER_CORRECTORS!@;
+
+    // Iterated interface-force coupling. no (default) = psi advected ONCE per
+    // step on the first outer corrector (AB2-predicted trajectory) and the
+    // capillary force FROZEN across the outer correctors -- the once-lagged
+    // explicit coupling measured as the dt-proportional 90% of the parasitic
+    // growth rate at N=128. yes = every outer corrector restores psi^n and
+    // re-advects it with the current velocity iterate, re-running band ->
+    // indicator -> curvature -> face delivery, so the force converges to its
+    // t^{n+1} value and the step becomes backward-Euler consistent throughout.
+    psiOuterCorrectors  @!PSI_OUTER_CORRECTORS!@;
+
     nCorrectors         2;
     nNonOrthogonalCorrectors 1;
 
@@ -294,10 +305,25 @@ levelSet
         theta   @!PSI_FILTER_THETA!@;
     }
 
-    // Semi-Lagrangian advection: value-copy uncached quadratic WLSQ reconstruction.
+    // Dedicated GEOMETRY fit: the curvature / fitDerivatives / footPointDistance
+    // path uses THIS object, while semiLagrangian.reconstruction below advects.
+    // none = one object for both (byte-identical to before this block existed).
+    // Set to uncachedQuadraticWeightedLeastSquares to keep the symbolic
+    // quadratic kappa while the TRANSPORT order is varied -- the base class
+    // throws NotImplemented for meanCurvatureNoExtension, so a lower-order
+    // transport otherwise takes the curvature model down with it.
+    geometryFit
+    {
+        type    @!GEOMETRY_FIT!@;
+    }
+
+    // Semi-Lagrangian advection: value-copy reconstruction at the departure foot.
+    // Tokenized for the transport-order arm; the default pinned in
+    // cases/stationaryDroplet2D.parameter is the historical
+    // uncachedQuadraticWeightedLeastSquares, so untouched studies are unchanged.
     semiLagrangian
     {
-        reconstruction      uncachedQuadraticWeightedLeastSquares;
+        reconstruction      @!SL_RECONSTRUCTION!@;
         correction          direct;
         CFLmax              0.5;
         limitSlope          false;

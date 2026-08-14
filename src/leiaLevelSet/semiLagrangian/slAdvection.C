@@ -43,11 +43,31 @@ Foam::slAdvection::slAdvection(const fvMesh& mesh)
     levelSetDict_(fvSolution_.subDict("levelSet")),
     slDict_(levelSetDict_.subOrEmptyDict("semiLagrangian")),
     recon_(slReconstruction::New(mesh)),
+    geomRecon_(nullptr),
     corrector_(slCorrector::New(mesh, slDict_)),
     CFLmax_(slDict_.getOrDefault<scalar>("CFLmax", 1.0)),
     analyticVelocity_(slDict_.getOrDefault<Switch>("analyticVelocity", true)),
     scheme_(slScheme::New(mesh))
 {
+    // Optional dedicated GEOMETRY fit (see slAdvection.H). Absent dict or the
+    // word `none` leaves geomRecon_ invalid, so geom() aliases recon_() and
+    // nothing about the single-object behaviour changes -- no second fit is
+    // constructed and no second stencil is gathered.
+    const word geomFitType
+    (
+        levelSetDict_.subOrEmptyDict("geometryFit")
+            .getOrDefault<word>("type", "none")
+    );
+
+    if (geomFitType != "none")
+    {
+        geomRecon_ = slReconstruction::New(mesh, geomFitType);
+
+        Info<< "slAdvection: geometryFit = " << geomFitType
+            << " (curvature/foot-point path), transport reconstruction = "
+            << recon_->type() << endl;
+    }
+
     Info<< "slAdvection: scheme = " << scheme_->type()
         << ", CFLmax = " << CFLmax_
         << ", clipToStencilBounds = " << recon_->clipToStencilBounds()
@@ -84,8 +104,9 @@ void Foam::slAdvection::meanCurvature
 {
     // Re-fit the CURRENT psi so the stored per-cell quadratic reflects the new
     // interface, then let the (quadratic) reconstruction fill kappa symbolically.
-    recon_->update(psi);
-    recon_->meanCurvature(kappa);
+    // geom() is recon_ unless a separate geometryFit was selected.
+    geom().update(psi);
+    geom().meanCurvature(kappa);
 }
 
 
@@ -95,8 +116,8 @@ void Foam::slAdvection::meanCurvatureLaplacian
     volScalarField& kappa
 )
 {
-    recon_->update(psi);
-    recon_->meanCurvatureLaplacian(kappa);
+    geom().update(psi);
+    geom().meanCurvatureLaplacian(kappa);
 }
 
 
@@ -106,8 +127,8 @@ void Foam::slAdvection::meanCurvatureNoExtension
     volScalarField& kappa
 )
 {
-    recon_->update(psi);
-    recon_->meanCurvatureNoExtension(kappa);
+    geom().update(psi);
+    geom().meanCurvatureNoExtension(kappa);
 }
 
 
@@ -117,8 +138,8 @@ void Foam::slAdvection::meanCurvatureClosestPoint
     volScalarField& kappa
 )
 {
-    recon_->update(psi);
-    recon_->meanCurvatureClosestPoint(kappa);
+    geom().update(psi);
+    geom().meanCurvatureClosestPoint(kappa);
 }
 
 // ************************************************************************* //

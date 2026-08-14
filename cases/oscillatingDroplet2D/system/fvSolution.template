@@ -154,11 +154,29 @@ levelSet
     // kappa = div( grad(psi)/|grad(psi)| ), consumed as sigma*interpolate(kappa)*
     // snGrad(alpha.water). Needs div(nPsi) in fvSchemes divSchemes and
     // curvatureExtension { type fvm; } below (skips the reconstruction kappa fill).
+    // Tokenized for the TRANSPORT-ORDER arm. The historical value
+    // divGradPsiSnGradAlpha is pinned in cases/oscillatingDroplet2D.parameter,
+    // so the committed oscillatingDroplet2D study is unchanged. Entries below
+    // are a superset: divGradPsiSnGradAlpha reads alpha/levelSet and ignores
+    // kappa/faceCurvatureSource; reconstructedCurvature reads alpha/kappa/
+    // faceCurvatureSource and ignores levelSet. Unused dictionary entries are
+    // inert in OpenFOAM, so one block serves both models.
     surfaceTensionForce
     {
-        type     divGradPsiSnGradAlpha;
-        alpha    alpha.water;
-        levelSet psi;
+        type                @!SURFACE_TENSION_FORCE!@;
+        alpha               alpha.water;
+        levelSet            psi;
+        kappa               kappa;
+        faceCurvatureSource @!FACE_CURVATURE_SOURCE!@;
+        // REQUIRED whenever faceCurvatureSource is `registered`: the name of the
+        // face field to consume. The default is kappaInterfaceFace, which EXISTS
+        // (registered by the solver) but is only filled by the connectedInterface
+        // / interfaceMean extensions -- so omitting this entry with
+        // curvatureExtension stabilizedFootPointFace silently consumes a field of
+        // ZEROS: no surface tension, U == 0, psi bit-identical for the whole run.
+        // surfaceTensionForce.C:132 only guards against an ABSENT field, not a
+        // present-but-unfilled one, so this is a silent failure, not a fatal one.
+        faceCurvatureField  kappaStableFootFace;
     }
 
     narrowBand
@@ -199,10 +217,13 @@ levelSet
     // requirement; footPointCurvature.H). The equilibrium-restoring option.
     curvatureExtension
     {
-        // fvm: skip the reconstruction's symbolic kappa fill entirely (linearWLSQ
-        // has no Hessian) -- curvature comes from the FVM divGradPsiSnGradAlpha
-        // force above. REQUIRED with a curvature-free reconstruction.
-        type    fvm;    // none | harmonicLaplace | footPointHeightFunction | fvm
+        // fvm: skip the reconstruction's symbolic kappa fill entirely -- curvature
+        // comes from the FVM divGradPsiSnGradAlpha force above. REQUIRED with a
+        // curvature-free TRANSPORT fit unless levelSet.geometryFit supplies a
+        // separate quadratic for the geometry path (see semiLagrangian below),
+        // which is what lets stabilizedFootPointFace run with a linear transport.
+        // Historical value fvm is pinned in cases/oscillatingDroplet2D.parameter.
+        type    @!CURVATURE_EXTENSION!@;
     }
 
     profile
@@ -276,6 +297,18 @@ levelSet
     //                 of the reconstructedCurvature pipeline). curvatureExtension fvm
     //                 skips the reconstruction kappa fill, so the quadratic fit is used
     //                 ONLY to transport psi.
+    // Dedicated GEOMETRY fit: curvature / fitDerivatives / footPointDistance read
+    // THIS object while semiLagrangian.reconstruction below advects psi. none =
+    // one object for both (byte-identical to before this block existed; pinned in
+    // cases/oscillatingDroplet2D.parameter). Setting it to the uncached quadratic
+    // keeps the symbolic quadratic kappa available while the TRANSPORT order is
+    // varied -- otherwise a linear transport takes the curvature model down with
+    // it (slReconstruction::meanCurvatureNoExtension throws NotImplemented).
+    geometryFit
+    {
+        type    @!GEOMETRY_FIT!@;
+    }
+
     semiLagrangian
     {
         reconstruction      @!SL_RECONSTRUCTION!@;

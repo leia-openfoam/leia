@@ -26,4 +26,18 @@ values
     // calibrated so maxDeltaT(N=32) = 6e-5 s ~ dt_sigma/4 for water/air, sigma=0.07274.
     //   0.010861 = 6e-5 * 32^1.5.
     CAPILLARY_DT_COEFF ( 0.010861 );
+
+    // Departure-foot reconstruction of the psi transport. Pinned HERE (not left
+    // to default.parameter, whose value is the CACHED quadratic) so that every
+    // existing stationaryDroplet2D study stays byte-identical now that the case
+    // template reads the token instead of hardcoding the type.
+    //
+    // This is the swept axis of the TRANSPORT-ORDER arm: the measured SL orders
+    // (docs/semi-lagrangian-level-set/.../sl_convergence_orders.csv) are
+    // shape 2.97 / volume 2.98 but gradientHalf -0.03 -- third order in the zero
+    // set, ZERO order in the foliation, and the CSF force reads only the
+    // foliation. Dropping to the linear fit trades the third-order zero set for
+    // a dissipative transport that damps the grid-scale |grad psi| error the
+    // curvature operator amplifies as 1/h.
+    SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
 }
