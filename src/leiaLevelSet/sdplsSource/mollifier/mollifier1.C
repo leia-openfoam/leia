@@ -43,7 +43,24 @@ Foam::mollifier1::mollifier1(const dictionary& dict)
         mollifier(dict),
         w1_(dict.get<scalar>("w1")),
         w2_(dict.getOrDefault<scalar>("w2", 1e-3))
-{}
+{
+    // w2 is "the distance at which G = 1e-3" (eq. 24 of arXiv:2208.01269), so
+    // it must lie OUTSIDE the flat region. The default of 1e-3 is smaller than
+    // any sensible w1 -- cases/3Dshear set w1 = 0.05 and no w2 at all, which
+    // silently gave a decay length |w2 - w1| = 0.049 that happened to be
+    // reasonable and was in no way what the dictionary said. Refuse instead:
+    // the mollifier width is a modelling choice and must be stated.
+    if (w2_ <= w1_)
+    {
+        FatalErrorInFunction
+            << "SDPLS mollifier1 requires w2 > w1, got w1 = " << w1_
+            << ", w2 = " << w2_ << "." << nl
+            << "w1 is the half-width of the region where the cut-off is unity;"
+            << " w2 is the distance at which it has decayed to 1e-3." << nl
+            << "Both are PHYSICAL lengths, not multiples of the cell size."
+            << exit(FatalError);
+    }
+}
 
 // * * * * * * * * * * * * * *  Member functions  * * * * * * * * * * * * * * //
 

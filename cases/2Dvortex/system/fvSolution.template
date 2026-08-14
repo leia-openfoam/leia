@@ -182,6 +182,31 @@ levelSet
         type @!SDPLS_SOURCE!@;
         beta            @!SDPLS_BETA!@;  // sdplsBeta only: f_nl = beta - |grad psi|
         discretization @!SOURCE_SCHEME!@;
+
+        // Cut-off (mollifier) that forces f_nl to zero away from the interface.
+        // This is eq. (24) of the SDPLS preprint (arXiv:2208.01269): G is unity
+        // on |psi| <= w1, decays as exp(-ln(1000) (|psi|-w1)^2/(w2-w1)^2) beyond
+        // it, and is EVEN in psi. Both properties matter:
+        //   - even, and flat at psi = 0, so the cut-off adds no variation of the
+        //     effective source coefficient ACROSS the interface cell. That
+        //     variation is what displaces the discrete zero crossing, so a
+        //     taper with a kink at psi = 0 would introduce interface motion the
+        //     source is specifically designed not to have.
+        //   - w1, w2 are PHYSICAL lengths, not multiples of h. Scaling them
+        //     with the mesh would make the modified PDE mesh-dependent, and a
+        //     convergence order over such a ladder is not the order of anything.
+        //
+        // Without it the source acts wherever psi is large and the strain does
+        // not cancel, and amplifies psi in proportion to itself: measured on the
+        // 2D steady vortex, global max ||grad psi|-1| reaches 119.6 at N=256 and
+        // GROWS under refinement (order -1.44) while the band stays controlled.
+        // `none` reproduces every study run before 2026-08.
+        mollifier
+        {
+          type    @!MOLLIFIER!@;
+          w1      @!SDPLS_W1!@;
+          w2      @!SDPLS_W2!@;
+        }
     }
 
     // Runtime-selectable interface-normal velocity extension used to advect psi.

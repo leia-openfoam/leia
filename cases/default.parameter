@@ -55,6 +55,14 @@ REDIST_VIOLFRAC 0;   // signedDistanceBounds robust variant: fire only when more
                      // (kappa*h ~ 1) cannot be repaired by redistancing and
                      // must not re-trigger it.
 SDPLS_BETA 1.0;      // sdplsBeta target gradient: f_nl = beta - |grad psi|
+// SDPLS cut-off (mollifier), eq. (24) of arXiv:2208.01269. `none` disables it
+// and reproduces every study run before 2026-08. mollifier1 forces the source
+// to zero away from the interface: G = 1 for |psi| <= w1, decaying to 1e-3 at
+// |psi| = w2. w1/w2 are PHYSICAL lengths -- scaling them with h would make the
+// modified PDE mesh-dependent and its convergence order meaningless.
+MOLLIFIER  none;
+SDPLS_W1   0.05;     // preprint value (initial radius R0 = 0.3)
+SDPLS_W2   0.15;     // preprint value; MUST be > w1
                      // (drives |grad psi| -> beta; beta = 1 = signed distance).
 ADVECTION eulerian;  // unified leiaLevelSetFoam advection method:
                      // eulerian (implicit FV, advective form, nDefCorr
