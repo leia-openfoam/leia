@@ -141,6 +141,11 @@ levelSet
           type    @!MOLLIFIER!@;
           w1      @!SDPLS_W1!@;
           w2      @!SDPLS_W2!@;
+          // `band` cut-off only: dilation passes beyond the seed layer.
+          // A CELL COUNT -- it needs no assumption about |grad psi|,
+          // unlike the w1/w2 lengths above, which only mark a fixed
+          // distance while psi is a signed distance function.
+          nLayers @!SDPLS_NLAYERS!@;
         }
     }
 

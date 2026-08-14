@@ -90,10 +90,20 @@ public:
 
     // Member functions
 
-        //- Calculates the mollifier field 
+        //- Calculates the mollifier field
+        //
+        //  VIRTUAL because not every cut-off is a pointwise function of psi.
+        //  The default implementation evaluates mollify(psi[cellI]) per cell,
+        //  which presupposes that |psi| is a usable DISTANCE from the interface.
+        //  That presupposition fails exactly where it matters: on the 3D LeVeque
+        //  deformation |grad psi| departs far from 1, so a fixed |psi| threshold
+        //  no longer marks a fixed distance and the cut-off clips the source
+        //  where it is still needed -- measured, the band error then DIVERGES
+        //  (order -0.54 against -0.02 unmollified). A topology-based band
+        //  overrides this member instead.
         //
         //  @param psi is the Level Set field
-        tmp<volScalarField> field(const volScalarField& psi) const;
+        virtual tmp<volScalarField> field(const volScalarField& psi) const;
 
 protected:
 
