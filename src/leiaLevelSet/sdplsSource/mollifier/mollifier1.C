@@ -64,18 +64,38 @@ Foam::mollifier1::mollifier1(const dictionary& dict)
 
 // * * * * * * * * * * * * * *  Member functions  * * * * * * * * * * * * * * //
 
+// Equation (24) of Fricke, Marić, Vučković, Roisman & Bothe, "A locally
+// signed-distance preserving level set method (SDPLS) for moving interfaces",
+// arXiv:2208.01269 (\cite fricke_locally_2022):
+//
+//              / 1                                        if 0 <= x <= w1,
+//     G(x) =  |  exp( -ln(10^3) (x-w1)^2 / (w2-w1)^2 )     if w1 < x,
+//              \ G(-x)                                     if x < 0,
+//
+// so G(w2) = 10^-3 exactly: at x = w2 the exponent evaluates to -ln(10^3).
+// G reaches the transported field through eq. (23) of the same reference, where
+// it multiplies the interfacial normal strain n.grad(v).n.
+//
+// The branch structure is the equation's and is kept literal so the code can be
+// read against the paper. `s` is the Gaussian rate ln(10^3)/(w2-w1)^2; the
+// constructor guarantees w2 > w1, so it is finite and positive.
 double Foam::mollifier1::mollify(double x) const
 {
-    double s = log(1000.0)/pow((w2_-w1_),2); // help variable  
+    const double s = log(1000.0)/pow((w2_-w1_), 2);
+
     if (x >= 0) {
         if (x < w1_) {
+            // Plateau: G == 1 on |x| <= w1. Being flat here (not merely
+            // continuous) is what stops the cut-off from displacing the
+            // discrete interface -- see the Description in mollifier1.H.
             return 1.0;
-        } 
+        }
         else {
             return exp(- s*pow(x-w1_, 2));
         }
-    } 
+    }
     else {
+        // G is even; the negative side mirrors the positive one.
         return mollify(-x);
     }
 }
