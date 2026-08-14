@@ -62,7 +62,9 @@ GRL_STUDIES ?= redistanceStatic2D redistanceCircle2D vortexTriggerGRL vortexBoun
 # from a wrong target, and the 3D shear/deformation companions.
 SDPLS_STUDIES ?= sdplsStability benchVortexEulerT2 benchVortexEulerT8 \
                  sdplsBetaSweep sdplsConv2Dvortex sdplsOrderAblation \
-                 sdplsConv3Dshear sdplsConv3Ddeformation
+                 sdplsConv3Dshear sdplsConv3Ddeformation \
+                 sdplsConvMoll2Dvortex sdplsConvMoll3Dshear \
+                 sdplsConvMoll3Ddeformation
 # EVERY study whose psi transport is an FV div(phi,psi) -- i.e. solver is
 # leiaRedistancedLevelSetFoam / leiaLevelSetTwoPhaseFoam, or leiaLevelSetFoam
 # without ADVECTION=semiLagrangian. These share ONE discretization

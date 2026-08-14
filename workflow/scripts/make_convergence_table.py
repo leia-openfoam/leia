@@ -108,6 +108,15 @@ METHODS = {
             ("sdplsOrderAblation",     "2Dvortex",      "hex"),
             ("sdplsConv3Dshear",       "3Dshear",       "hex"),
             ("sdplsConv3Ddeformation", "3Ddeformation", "hex"),
+            # The same three ladders with the SDPLS cut-off active (mollifier1,
+            # eq. 24 of arXiv:2208.01269, w1=0.05 w2=0.15 as selected by the
+            # 2x2 factorial in sdplsMollifier2Dvortex). SEPARATE studies, not
+            # replacements: the unmollified ones above are the control the
+            # comparison rests on. noSource is absent from these by design --
+            # it has no source to scale, so it would duplicate rows above.
+            ("sdplsConvMoll2Dvortex",      "2Dvortex",      "hex"),
+            ("sdplsConvMoll3Dshear",       "3Dshear",       "hex"),
+            ("sdplsConvMoll3Ddeformation", "3Ddeformation", "hex"),
         ],
     },
 }

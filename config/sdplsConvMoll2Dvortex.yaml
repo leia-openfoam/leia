@@ -1,0 +1,81 @@
+# PRODUCTION re-run of sdplsConv2Dvortex with the SDPLS cut-off active.
+#
+# WHY. The R source converges in the narrow band and degrades the far field: on
+# the reversed 2D vortex, global max ||grad psi| - 1| at t=T/2 reaches 96.5 at
+# N=256 and grows under refinement (order -1.233). The cut-off of
+# arXiv:2208.01269 eq. (24) was `none` in every study run before 2026-08.
+#
+# MEASURED on sdplsMollifier2Dvortex (20 cases, 2x2 factorial in w1 x w2),
+# comparing (0.05, 0.15) against the unmollified control at N=256, with orders
+# fitted over the SHARED rungs 64/128/256:
+#
+#                     unmollified      w1=0.05, w2=0.15
+#   global Linf T/2      96.46             7.96      12x better, -1.233 -> -0.556
+#   band L2     T/2      0.0309            0.0390    26% worse,  +1.237 -> +2.017
+#   volume      T        1.37e-3           1.34e-3   equal,      +2.698 -> +2.780
+#   shape       T        3.73e-3           4.58e-3   23% worse,  +2.168 -> +2.039
+#
+# w2 dominates and w1 barely matters: both w2=0.075 arms wrecked the volume and
+# shape orders (+0.41, +0.29) for marginally better far-field numbers. The
+# factorial is what separated the two; a paired sweep would have confounded them.
+# The cut-off MITIGATES the far-field divergence, it does not cure it -- the
+# order is still negative.
+#
+# WHAT IS NOT RE-RUN. SDPLS_SOURCE=noSource is excluded: it has no source for a
+# cut-off to scale, so those runs would be bit-identical to the ones already in
+# sdplsConv2Dvortex and would enter the tables as duplicate rows differing only by a label.
+# The baseline rows come from sdplsConv2Dvortex, which is preserved untouched as the control
+# -- this study deliberately uses a NEW name rather than overwriting it.
+#
+# Everything else -- ladder, END_TIME, oscillation setting, linearizations --
+# is inherited unchanged from sdplsConv2Dvortex so the two are comparable row for row.
+#
+#   make studies-one STUDY=sdplsConvMoll2Dvortex PROFILE=profiles/slurm
+
+
+study_name: sdplsConvMoll2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [1]
+  # sqrt(2) ladder, cells x2 per level -- seven points for a clean least-squares
+  # order, and it contains 32/64/128/256 so the rows line up with the reversed
+  # benchVortexEulerT2 study at the shared resolutions.
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+
+  # The non-reversing stress test. See the header.
+  # QUOTED: YAML 1.1 parses bare `off` as the boolean false, which
+  # materialize stringifies as "False" -- and OpenFOAM's Switch rejects it
+  # ("Expected true/false, on/off... found False"). Every existing config
+  # quotes these for the same reason (REPORT_WRITE_ONLY: ["true"]).
+  OSCILLATION: ["off"]
+
+  # Full arm matrix: the baseline is the control that matters here, because on a
+  # non-reversing flow it no longer gets the symmetry cancellation for free.
+  # noSource excluded -- see the header.
+  SDPLS_SOURCE: [R, beta]
+  SOURCE_SCHEME: [simpleLinearImplicit, strictNegativeSpLinearImplicit]
+
+  # The cut-off, at the widths the 2x2 factorial selected.
+  # `m1` is the dictionary name of mollifier1 (eq. 24), not the class name.
+  MOLLIFIER: [m1]
+  SDPLS_W1: [0.05]
+  SDPLS_W2: [0.15]
+collapse_other_axes: true
+
+export_slides: true
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
