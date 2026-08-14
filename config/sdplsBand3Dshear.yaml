@@ -1,0 +1,75 @@
+# nLayers sweep for the TOPOLOGY-based SDPLS cut-off -- 3Dshear.
+#
+# WHY THIS PARAMETERISATION. The |psi|-threshold cut-off (mollifier1, eq. 24 of
+# arXiv:2208.01269) assumes |psi| is a usable distance from the interface. That
+# is the property SDPLS maintains only approximately, and where it fails the
+# cut-off fails with it. Measured against the unmollified control at N=128:
+#
+#                     far field     band L2       volume         shape
+#   2D vortex        12x better   26% worse     equal          23% worse
+#   3D shear        8.6x better  3.4x worse   +0.23 -> -0.97  +0.92 -> -0.58
+#   3D deformation  1.5x better  7.8x worse   +2.36 -> +1.07  +0.99 -> +0.58
+#                                order -0.54
+#
+# The failure tracks the deformation: on the LeVeque case the interface is drawn
+# into sheets thinner than a cell, |grad psi| leaves 1, and a fixed |psi|
+# threshold no longer marks a fixed distance -- it clips the source out of the
+# region where it is still needed and the band error DIVERGES.
+#
+# `band` (interfaceBandMollifier) never asks how far a cell is from the
+# interface. It seeds from faces where |snGrad(alpha)| > 0 -- alpha is 0 or 1 in
+# the bulk, so this is pure topology, immune to |grad psi| -- dilates nLayers
+# times ACROSS PROCESSOR BOUNDARIES, and tapers with a raised cosine that is
+# unity on the seed layer and zero one layer past the last.
+#
+# THE SWEPT AXIS is therefore a CELL COUNT, and needs no signed-distance
+# assumption. nLayers = 1 acts on the interface cells and one ring; 5 reaches
+# about five cells either side. method_label renders it, so the arms cannot
+# collapse into one series.
+#
+# CONTROLS ALREADY ON DISK, at the same rungs, so none is re-run here:
+#   unmollified   sdplsConv3Dshear
+#   |psi| cut-off sdplsMollifier3Dshear
+#
+# Read under the two-instant protocol: gradient at t=T/2, shape at t=T, volume
+# at both. The metric to watch is gradientErrorMax (the far field) against
+# gradientErrorBand / volume / shape, which is where the |psi| cut-off paid.
+#
+#   make studies-one STUDY=sdplsBand3Dshear PROFILE=profiles/slurm
+
+study_name: sdplsBand3Dshear
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 16
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [64, 81, 102, 128]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+
+  # QUOTED: bare on/off are YAML booleans that OpenFOAM's Switch rejects.
+  OSCILLATION: ["on"]
+
+  # R only: beta chases a flow-set target and is not a candidate, and noSource
+  # has no source for a cut-off to scale. One linearization -- the two agree to
+  # four digits on every entry of the 3D tables.
+  SDPLS_SOURCE: [R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+
+  MOLLIFIER: [band]
+  SDPLS_NLAYERS: [1, 2, 3, 5]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

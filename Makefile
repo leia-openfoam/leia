@@ -64,7 +64,8 @@ SDPLS_STUDIES ?= sdplsStability benchVortexEulerT2 benchVortexEulerT8 \
                  sdplsBetaSweep sdplsConv2Dvortex sdplsOrderAblation \
                  sdplsConv3Dshear sdplsConv3Ddeformation \
                  sdplsConvMoll2Dvortex sdplsConvMoll3Dshear \
-                 sdplsConvMoll3Ddeformation
+                 sdplsConvMoll3Ddeformation \
+                 sdplsBand2Dvortex sdplsBand3Dshear sdplsBand3Ddeformation
 # EVERY study whose psi transport is an FV div(phi,psi) -- i.e. solver is
 # leiaRedistancedLevelSetFoam / leiaLevelSetTwoPhaseFoam, or leiaLevelSetFoam
 # without ADVECTION=semiLagrangian. These share ONE discretization

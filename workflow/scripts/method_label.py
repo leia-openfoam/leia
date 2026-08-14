@@ -161,6 +161,12 @@ def _mollifier(rec):
     m = (rec.get("MOLLIFIER") or "none").strip()
     if not m or m == "none":
         return ""
+    # The `band` cut-off is parameterised by a CELL COUNT, not by lengths: its
+    # w1/w2 are inert, and rendering them would make every nLayers arm look
+    # identical -- the collision this function exists to prevent.
+    if m == "band":
+        n = (rec.get("SDPLS_NLAYERS") or "").strip()
+        return f"{m}({n})" if n else m
     w1 = (rec.get("SDPLS_W1") or "").strip()
     w2 = (rec.get("SDPLS_W2") or "").strip()
     return f"{m}({w1},{w2})" if (w1 and w2) else m
