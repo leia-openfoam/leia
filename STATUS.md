@@ -183,8 +183,15 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
-| *(none from this thread)* | The cell-mean N=128 horizon run finished: blow-up measured at t = 0.1049 s. Nothing of ours is queued. | — | `studies/stationaryDropletCellMean/stationaryDroplet2D_00000/` |
-| `54089264` `leia-studies` | **SDPLS thread**, separate from the curvature work above: `make studies-sdpls`, six studies — `sdplsStability`, `benchVortexEulerT{2,8}`, `sdplsBetaSweep`, `sdplsConv3D{shear,deformation}`. The two 3D ones are a six-rung cell-doubling ladder (N = 64, 81, 102, 128, 161, 203) at np=16. | 7 d | `leia-studies.54089264.out`, `studies/sdpls*/`, `studies/benchVortexEuler*/` |
+| `54140311` `leia-studies` | **stationaryDropletFootEvalFace** — the foot-point-EVALUATED face curvature against production `stabilizedFootPointFace`, N = 64/128/256, np 8, fixed capillary step. This is the **control**: psi is the exact signed distance, so the parallel-surface inverse is inside its hypothesis and production is expected to win. 6 solve jobs, 4 h each. | 7 d (orchestrator) | `leia-studies.54140311.out`, `studies/stationaryDropletFootEvalFace/` |
+| `54140312` `leia-studies` | **oscillatingDropletFootEvalFace** — same two arms, same ladder. This is the **test**: psi is the quadratic form (beta varies 1.21 along the interface), where the inverse carries its foliation bias and the foot-evaluated fit is exact. Static gate at N=256: 6.24 vs 3.3e-4. 6 solve jobs, 4 h each. | 7 d (orchestrator) | `leia-studies.54140312.out`, `studies/oscillatingDropletFootEvalFace/` |
+| `54140180/181/182` `leia-studies` | **SDPLS thread, not from this work**: `sdplsBand{2Dvortex,3Dshear,3Ddeformation}` — the nLayers topological cut-off sweeps. Plus the still-running `sdplsConvMoll3D{shear,deformation}` solves from 2026-08-14. Do not cancel. | 7 d | `studies/sdplsBand*/`, `studies/sdplsConvMoll3D*/` |
+
+Score the two footEval studies on **r(A2h)** — the corrugation growth rate, the
+order parameter — not on t_blow, whose e-fold count varies 5.4–13.3 across the
+matrix. Report **volume and shape error together**; the N=64 local smoke already
+showed them disagreeing in sign (footEval 3.3x better on volume, 1.4x worse on
+shape, on the stationary control).
 
 Check what is yours at any time:
 
@@ -195,7 +202,7 @@ ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de "squeue -u tm83tomy"
 Watch the parasitic-current trace grow (`TIME,maxMagU` is the first two columns):
 
 ```
-ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de "tail -1 /work/scratch/tm83tomy/leia/studies/stationaryDropletCellMean/stationaryDroplet2D_00000/leiaSemiLagrangianLevelSetTwoPhaseFoam.csv | cut -d, -f1,2"
+ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de "tail -1 /work/scratch/tm83tomy/leia/studies/stationaryDropletFootEvalFace/stationaryDroplet2D_00000/leiaSemiLagrangianLevelSetTwoPhaseFoam.csv | cut -d, -f1,2"
 ```
 
 A finished run either **blows up** — a floating-point exception with `maxMagU`
