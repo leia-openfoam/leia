@@ -1,0 +1,82 @@
+# CAPILLARY-DT SWEEP at fixed N: the discriminating test of the LOOP model of
+# the parasitic instability.
+#
+# THE MODEL BEING TESTED. Assembling every measured number of the program into
+# one causal chain (each arrow measured separately):
+#
+#   delta_psi (grid-scale, amplitude eps)
+#     --[quadratic fit + face delivery: G*h^2 = 0.647 measured]-->
+#   delta_kappa_f ~ 0.647*eps/h^2
+#     --[CSF flux G_sigma = sigma*kappa_f*snGrad(alpha)*|Sf|, snGrad(alpha)~1/h]-->
+#   acceleration ~ sigma*0.647*eps/(rho*h^3)
+#     --[one EXPLICIT step dt; GSigma is a fully explicit flux in UEqn+pEqn]-->
+#   delta_u ~ sigma*0.647*eps*dt/(rho*h^3)
+#     --[interface displacement, psi near-SDF]-->
+#   delta_psi' ~ delta_u*dt
+#
+# Per-step loop gain:  gamma ~ 0.647 * sigma * dt^2 / (rho * h^3).
+# With the capillary-scaled step dt = coeff/N^1.5 (dt^2 proportional to h^3),
+# gamma is h-INDEPENDENT: refinement does not change the per-step gain, it only
+# adds more steps per unit physical time (~N^1.5). Growth rate per unit time
+# r = gamma/dt ~ sigma*dt/(rho*h^3). Crude prediction t_blow ~ 1/r ~ N^-1.5;
+# measured -0.94..-1.09 -- right direction, mild gap (a weak N-dependence of
+# gamma), which THIS sweep disentangles by varying dt at FIXED h.
+#
+# Retrodictions the model already passes:
+#   - equal gain => equal growth; +28% gain => 2.4x rate (WP8 gain study)
+#   - best static kappa accuracy blows EARLIEST (accuracy is not in the loop)
+#   - fixed-theta biharmonic filter: theta and gamma are both per-step and both
+#     h-independent => prefactor delay only, NO exponent change. MEASURED: ~5x
+#     delay, exponent unchanged.
+#   - order-matched FVM curvature also blows up (oscillating case N>=64):
+#     the loop closes for ANY consistent kappa operator, since d2/dx2 of
+#     grid-scale noise is eps/h^2 regardless of the operator's order.
+#
+# THE TEST. r ~ dt at fixed N: halving CAPILLARY_DT_COEFF must ~DOUBLE t_blow
+# (in physical time), quartering it ~4x. This separates the two hypotheses:
+#
+#   PREDICTION (loop model): t_blow(N=128) ~ 0.066 / 0.13 / 0.26 s for
+#     coeff = 0.010861 / 0.0054305 / 0.00271525 (dt_sigma/4, /8, /16).
+#     The baseline cell must reproduce the measured 0.0661 (internal control).
+#   FALSIFIED IF t_blow is dt-independent: the growth is then set by
+#     physical-time dynamics, not by the explicit capillary coupling, and a
+#     semi-implicit force would NOT change the exponent.
+#   SUPERLINEAR delay (e.g. /4 stabilizes outright) => we sit near a hard
+#     explicit-coupling stability threshold; even stronger case for the
+#     semi-implicit treatment.
+#
+# WHY THIS MATTERS: every arm so far (delivery, fit accuracy, psi repairs,
+# transport order) attacked the SPATIAL construction. gamma has a second,
+# untouched factor: dt^2 -- the TIME integration of the force. GSigma enters
+# UEqn.H:8 / pEqn.H:64 as a fully explicit flux; the repo contains no
+# semi-implicit capillary treatment (verified by search). If this sweep
+# confirms r ~ dt, the licensed fix is the semi-implicit capillary force
+# (interfacial-stiffness term treated implicitly in UEqn), which lowers the
+# loop gain without touching the h^2 spatial delivery.
+#
+# REPORTING: t_blow from per-step maxMagU, PLUS volume and shape error at the
+# last common time (never a single headline metric).
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletDtSweep.yaml
+study_name: stationaryDropletDtSweep
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [128]
+  CAPILLARY_DT_COEFF: [0.010861, 0.0054305, 0.00271525]   # dt_sigma/4, /8, /16
+  END_TIME: [0.4]              # room for the predicted 0.26 s of the /16 arm
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

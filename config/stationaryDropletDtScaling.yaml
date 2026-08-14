@@ -1,0 +1,65 @@
+# N-SCALING of the two-term growth-rate decomposition r(N, dt) = r0(N) + c(N)*dt.
+#
+# CONTEXT. The N=128 capillary-dt sweep (config/stationaryDropletDtSweep.yaml)
+# measured, by direct exponential fit of maxMagU(t) in the window [3e-3, 3e-1]:
+#
+#     dt_sigma/4 :  r = 202.9 1/s          r = r0 + c*dt with
+#     dt_sigma/8 :  r = 104.4 1/s   =>     r0 = 20.8 1/s, c = 2.40e7 1/s^2
+#     dt_sigma/16:  r =  70.0 1/s          (max rel err 6%)
+#
+# 90% of the growth rate at the operating point is the dt-proportional term:
+# the EXPLICIT capillary coupling. The dt-independent floor r0 is the second
+# mechanism. This study measures how BOTH terms scale with N, which decides
+# what a semi-implicit force (killing the dt-term) can deliver:
+#
+#   t_blow with the implicit force ~ K/r0(N).
+#   r0 ~ N^1.5 (same as the dt-term at fixed coeff) => prefactor gain only,
+#     exponent unchanged;
+#   r0 ~ N^p with p < 1.5 => the implicit force IMPROVES the t_blow exponent
+#     to -p;
+#   r0 ~ N^0 => refinement-uniform stability ceiling.
+#
+# PREDICTIONS, recorded BEFORE the run:
+#   - loop model: c = 0.647*sigma/(rho*h^3)*(closure const) => c ~ N^3, so at
+#     fixed coeff the explicit term r_expl = c*dt ~ N^1.5:
+#       c(64) ~ 3.0e6 1/s^2 (= c(128)/8),  c(256) ~ 1.9e8 1/s^2 (= 8*c(128)).
+#   - r0(N): NO prediction -- this is the measurement. (The e-fold count K is
+#     NOT constant across arms -- incubation varies -- so fit r directly from
+#     ln(maxMagU) vs t; never infer it from t_blow.)
+#
+# Runs that do not blow up within END_TIME still yield r from the exponential
+# window; blow-up is not required (N=64 at small dt may only grow).
+# END_TIME 0.4 gives room; arms that blow terminate themselves (SIGFPE ->
+# .leia_solver_failed, an expected outcome here, not a fault).
+#
+# The N=128 row is NOT repeated: config/stationaryDropletDtSweep.yaml already
+# measured it with the same binary and the identical case; its baseline arm
+# reproduced the saved control bit-identically.
+#
+# REPORTING: r per (N, dt) cell, the (r0, c) fit per N with residuals, PLUS
+# volume and shape error at a matched pre-blow time per N -- never a single
+# headline metric.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/stationaryDropletDtScaling.yaml
+study_name: stationaryDropletDtScaling
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 256]
+  CAPILLARY_DT_COEFF: [0.010861, 0.0054305, 0.00271525]   # dt_sigma/4, /8, /16
+  END_TIME: [0.4]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

@@ -23,9 +23,16 @@ startTime       0;
 stopAt          endTime;
 endTime         @!END_TIME!@;
 
-deltaT          1e-5;
+// FIXED time step: the per-resolution capillary step (derived token,
+// MAX_DELTA_T = CAPILLARY_DT_COEFF / N_CELLS^1.5). Time-step adaptivity is a
+// potential instability source of its own, so it is DISABLED for this test:
+// dt is constant for the entire run by construction, not by observation.
+deltaT          @!MAX_DELTA_T!@;
 
-writeControl    adjustableRunTime;
+// runTime (not adjustableRunTime): with a fixed dt, adjustableRunTime would
+// still let Time trim deltaT to land on write instants -- a residual
+// adaptivity. runTime writes at the first step past each instant instead.
+writeControl    runTime;
 writeInterval   0.02;
 
 purgeWrite      0;
@@ -40,16 +47,21 @@ timePrecision   8;
 runTimeModifiable no;
 
 // Explicit surface tension => capillary time-step limit
-//   dt_sigma = sqrt((rho1+rho2) dx^3 / (2 pi sigma)) ~ 2.6e-4 s at 32^2.
-// The parasitic-current feedback is only STABLE well below dt_sigma; the study
-// runs at maxDeltaT ~ dt_sigma/4 with maxCo 0.1, and maxDeltaT is scaled with the
-// mesh as dt ~ dx^1.5 by the derived token below (materialize computes
-//   MAX_DELTA_T = CAPILLARY_DT_COEFF / N_CELLS^1.5,  coeff = @!CAPILLARY_DT_COEFF!@ s
-// calibrated so maxDeltaT(N=32) ~ dt_sigma/4). Diverges if run at ~dt_sigma.
-adjustTimeStep  yes;
-maxCo           @!MAX_CO!@;
-maxAlphaCo      @!MAX_CO!@;
-maxDeltaT       @!MAX_DELTA_T!@;
+//   dt_sigma = sqrt((rho1+rho2) dx^3 / (4 pi sigma)) = 0.033066/N^1.5 s here;
+//   deltaT = MAX_DELTA_T = coeff/N_CELLS^1.5, coeff = @!CAPILLARY_DT_COEFF!@ s
+//   (baseline 0.010861 = dt_sigma/3.05 at EVERY N). NOTE: this comment's token
+//   reference is LOAD-BEARING -- foam_param drops tokens no template references,
+//   and materialize derives MAX_DELTA_T only when CAPILLARY_DT_COEFF survives
+//   into the token grid.
+// ADAPTIVITY DISABLED (was: adjustTimeStep yes, maxCo 0.1). Measured before the
+// switch: dt sat at maxDeltaT with <0.01% variation inside every growth window
+// anyway (the Courant bound only engaged past U~1, i.e. after blow-up), so the
+// fixed step changes the METHOD, and any change in the measured growth rates
+// falsifies the assumption that the adaptivity machinery was inert.
+adjustTimeStep  no;
+maxCo           @!MAX_CO!@;      // inert with adjustTimeStep no (kept for reference)
+maxAlphaCo      @!MAX_CO!@;      // inert
+maxDeltaT       @!MAX_DELTA_T!@; // inert; deltaT above IS this value
 
 // Parasitic-current metrics (max|U|, mean|U|) + the Laplace jump are written every
 // step to leiaSemiLagrangianLevelSetTwoPhaseFoam.csv by the solver (probe-free,
