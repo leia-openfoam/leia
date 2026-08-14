@@ -246,11 +246,22 @@ levelSet
     // major-axis vertex, a ratio of 8. A circle cannot detect a delivery that
     // smooths curvature ALONG the interface, because there is nothing to smooth;
     // this gate can.
+    // Tokenized for the FOLIATION arm of the gate. signedDistanceEllipse (the
+    // pinned historical value) initializes psi as the TRUE signed distance:
+    // parallel level sets, D == 0, so the gate isolates the along-interface
+    // curvature VARIATION alone. implicitEllipsoid initializes psi as the
+    // QUADRATIC FORM (x/a)^2 + (y/b)^2 - 1: concentric similar ellipses are
+    // NOT normal offsets of each other, beta = |grad psi| varies by a/b = 2
+    // ALONG the interface, and the parallel-surface inverse carries its
+    // first-order-in-d foliation bias (plan sec. 11.2) from the first
+    // evaluation -- the arm that measures the inverse OUTSIDE its hypothesis.
+    // The axes z-entry is 1 (not 0) because implicitEllipsoid divides by it;
+    // signedDistanceEllipse reads only x,y, so the SDF arm is unchanged.
     implicitSurface
     {
-        type    signedDistanceEllipse;
+        type    @!PSI_SURFACE!@;
         center  (0.005 0.005 0);
-        axes    (2e-3 1e-3 0);
+        axes    (2e-3 1e-3 1);
     }
 
     phaseIndicator

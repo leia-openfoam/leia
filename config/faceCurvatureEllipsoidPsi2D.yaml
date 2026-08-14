@@ -1,0 +1,52 @@
+# NON-PARALLEL-FOLIATION face-curvature gate: the SAME 2:1 ellipse interface as
+# faceCurvatureEllipse2D, but psi initialized as the QUADRATIC FORM
+# (x/a)^2 + (y/b)^2 - 1 (implicitEllipsoid) instead of the signed distance.
+#
+# WHAT THIS ISOLATES. Concentric similar ellipses are NOT normal offsets of
+# each other: beta = |grad psi| varies by a/b = 2 ALONG the interface (2/a at
+# the major vertices, 2/b at the minor), so the parallel-surface hypothesis of
+# the foot-point inverse (plan sec. 11.2: a := P grad(ln beta) == 0) is
+# violated from the start. Every previous static gate had D == 0 by
+# construction; this is the first one that measures the inverse OUTSIDE its
+# hypothesis -- the same regime the COUPLED runs drift into (beta spreads to
+# [0.72, 1.37] by blow-up) and the oscillating-droplet case starts in.
+#
+# A CLEAN property of this arm: psi is EXACTLY quadratic, so the quadratic WLS
+# fit reproduces it to machine precision -- gradient, Hessian, and foot
+# distance carry NO fit error. What remains in the delivered kappa_f error is
+# the MODEL error of the parallel-surface inverse alone: the foliation bias
+# integral D ds over the foot offset d = O(h) (plan sec. 11.2), FIRST order
+# in h wherever D != 0.
+#
+#   PREDICTION, recorded BEFORE the run: the foot-point-corrected deliveries
+#   drop to O(h) on this arm (they are h^2 on the SDF ellipse where their
+#   hypothesis holds); the measured prefactor directly calibrates the
+#   D-sensitivity of the inverse. The reference for the error is the zero-set
+#   ellipse's curvature at the closest point in BOTH arms (the gate app
+#   constructs a signedDistanceEllipse reference when psi is the quadratic
+#   form -- implicitEllipsoid::curvature(x) is the curvature of the level set
+#   THROUGH x, a different quantity).
+#
+# Both arms run here from ONE binary: signedDistanceEllipse re-measures the
+# committed parallel gate (regression against the committed
+# face_curvature_orders_ellipse.csv rows), implicitEllipsoid is the new arm.
+#
+#   snakemake --workflow-profile profiles/local --configfile config/faceCurvatureEllipsoidPsi2D.yaml
+study_name: faceCurvatureEllipsoidPsi2D
+case: ellipseDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestMeanCurvature
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256, 512]
+  PSI_SURFACE: [signedDistanceEllipse, implicitEllipsoid]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

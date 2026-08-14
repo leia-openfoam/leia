@@ -151,10 +151,25 @@ int main(int argc, char *argv[])
     // in 3D too, so it must not be used there). Only the E_L2 accuracy column
     // depends on this -- the GAIN never references the exact value.
     const word surfType = implSurf.get<word>("type");
-    const bool varyingKappa = (surfType == "signedDistanceEllipse");
+    const bool varyingKappa =
+        (surfType == "signedDistanceEllipse" || surfType == "implicitEllipsoid");
     autoPtr<implicitSurface> exactSurf;
     scalar kappaExact = 0;
-    if (varyingKappa)
+    if (surfType == "implicitEllipsoid")
+    {
+        // Quadratic-form psi (non-parallel foliation): the reference is still
+        // the zero-set ellipse's curvature at the closest point -- see the
+        // identical branch in leiaTestMeanCurvature.C.
+        exactSurf.reset
+        (
+            new signedDistanceEllipse
+            (
+                implSurf.get<vector>("center"),
+                implSurf.get<vector>("axes")
+            )
+        );
+    }
+    else if (varyingKappa)
     {
         exactSurf = implicitSurface::New(surfType, implSurf);
     }

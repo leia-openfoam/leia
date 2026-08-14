@@ -148,11 +148,31 @@ int main(int argc, char *argv[])
         fvSol.subDict("levelSet").subDict("implicitSurface");
     const label nd = mesh.nGeometricD();
     const word surfType = implSurf.get<word>("type");
-    const bool varyingKappa = (surfType == "signedDistanceEllipse");
+    const bool varyingKappa =
+        (surfType == "signedDistanceEllipse" || surfType == "implicitEllipsoid");
 
     autoPtr<implicitSurface> exactSurf;
     scalar R = 0, kappaExact = 0;
-    if (varyingKappa)
+    if (surfType == "implicitEllipsoid")
+    {
+        // psi is the QUADRATIC FORM (x/a)^2 + (y/b)^2 - 1 -- a NON-PARALLEL
+        // foliation (beta = |grad psi| varies by a/b along the interface,
+        // D != 0). The delivered kappa_f still claims the INTERFACE curvature
+        // at the foot, so the reference is the zero-set ellipse itself:
+        // implicitEllipsoid::curvature(x) would be the curvature of the level
+        // set THROUGH x, which is a different (and here unwanted) quantity.
+        // signedDistanceEllipse reads only the x,y axes entries, so the z = 1
+        // the ellipsoid needs is inert in the reference.
+        exactSurf.reset
+        (
+            new signedDistanceEllipse
+            (
+                implSurf.get<vector>("center"),
+                implSurf.get<vector>("axes")
+            )
+        );
+    }
+    else if (varyingKappa)
     {
         exactSurf = implicitSurface::New(surfType, implSurf);
     }

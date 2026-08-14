@@ -21,6 +21,16 @@ values
 {
     solver (leiaTestMeanCurvature);
 
+    // psi initialization (see the implicitSurface block of the template):
+    // signedDistanceEllipse = TRUE signed distance (parallel foliation, D == 0;
+    // the historical value, so committed studies are unchanged) |
+    // implicitEllipsoid = the quadratic form (NON-parallel foliation,
+    // beta varies by a/b = 2 along the interface -- the inverse outside its
+    // hypothesis). The gate app references the zero-set ellipse's curvature at
+    // the closest point for BOTH (the delivered kappa_f claims the interface
+    // value regardless of how psi is parameterized).
+    PSI_SURFACE ( signedDistanceEllipse );
+
     // Mesh refinement ladder (cells double each level): the convergence axis.
     N_CELLS
     (
