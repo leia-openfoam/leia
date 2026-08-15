@@ -215,6 +215,36 @@ went 12/18 -> 18/18.
 > job is created at all and the study simply stalls with zero allocations. Use
 > the plugin's own `nodes` resource.
 
+#### The inner srun must also be given the CPUs (`--cpu-bind=none`)
+
+**Added 2026-08-15, and it is the single largest performance fact on this page.**
+`--overlap` lets the inner step share the outer jobstep's allocation -- including
+its **CPU mask**. snakemake's slurm-jobstep wrapper creates that outer step with
+one task, so every rank of the inner `srun --ntasks={np}` inherited a **1-CPU**
+mask. OpenMPI's busy-wait progress engine then collapses: each rank spins its
+whole timeslice waiting for ranks that are not scheduled.
+
+There is **no error message**. The run is simply ~4 orders of magnitude slower,
+and the CPU time looks plausible because spinning *is* CPU time.
+
+Measured on `stationaryDroplet2D` N=64, np 8, everything else identical:
+
+| launcher | steps/s | wall/CPU |
+|---|---|---|
+| `srun --ntasks=8 --overlap` | 0.0077 | 9.05 |
+| `srun --ntasks=8 --overlap --cpu-bind=none` | **86** | **1.08** |
+
+> **The diagnostic is the RATIO.** OpenFOAM prints `ExecutionTime` (CPU) and
+> `ClockTime` (wall) every step. `wall/CPU ~= np` means the ranks are sharing one
+> core; `~1` means they are not. Check this on any new cluster study before
+> trusting its pace, and size time limits only from a ratio-1 measurement.
+
+This is why a plain `sbatch -n 8` was always fast (60 steps in 1 s) while the
+same case under snakemake needed 4 h for 111 steps -- which reads as a cluster
+load or filesystem problem and is neither. Studies run under `profiles/slurm`
+before 2026-08-15 were all affected; their results are unchanged (it is a pace
+bug, not a numerics one) but their measured runtimes mean nothing.
+
 #### A diverged solve is a result; a launch failure is not
 
 `aggregate` needs every case's CSV, so one divergent arm used to leave a study

@@ -81,7 +81,32 @@ set-resources:
 # sdplsStability (18 parallel np=4 cases): 0 solver CSVs with mpirun, 18 with
 # `srun --ntasks={np} --overlap`.
 #
+# `--cpu-bind=none` ADDED 2026-08-15, and it is not cosmetic: without it every
+# parallel study since the launcher switch has been running with ALL {np} ranks
+# confined to ONE CPU.
+#
+# `--overlap` lets the inner step share the outer jobstep's resources -- but it
+# shares its CPU MASK too, and snakemake's slurm-jobstep wrapper creates that
+# outer step with a single task. So the 8 ranks inherited a 1-CPU mask, and
+# OpenMPI's busy-wait progress engine then collapses: every rank spins its full
+# timeslice waiting for ranks that are not scheduled. The symptom is not an
+# error, which is why it survived so long -- the run just goes 4 orders of
+# magnitude slower, and the CPU time looks plausible because spinning IS CPU.
+#
+# MEASURED on the stationaryDroplet2D N=64 case, np 8, identical in every other
+# respect (config/stationaryDropletFootEvalFace.yaml):
+#
+#   launcher                                   steps/s    wall/CPU
+#   srun --ntasks=8 --overlap                   0.0077       9.05
+#   srun --ntasks=8 --overlap --cpu-bind=none   86           1.08
+#
+# 11000x. The diagnostic to watch is the RATIO: OpenFOAM's ExecutionTime is CPU
+# and ClockTime is wall, so `wall/CPU ~= np` means the ranks are sharing one
+# core, and `~1` means they are not. A plain `sbatch -n 8` outside snakemake was
+# always fast (60 steps in 1 s), which is what made this look like a cluster
+# load problem rather than a launcher one.
+#
 # profiles/local keeps `mpirun -np {np}` -- there is no srun nesting there.
 config:
-  - "mpi_launcher=srun --ntasks={np} --overlap"
+  - "mpi_launcher=srun --ntasks={np} --overlap --cpu-bind=none"
   - "env_preamble=module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv; export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2; source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
