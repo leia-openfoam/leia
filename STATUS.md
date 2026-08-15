@@ -201,9 +201,16 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
-| `54140311` `leia-studies` | **stationaryDropletFootEvalFace** — the foot-point-EVALUATED face curvature against production `stabilizedFootPointFace`, N = 64/128/256, np 8, fixed capillary step. This is the **control**: psi is the exact signed distance, so the parallel-surface inverse is inside its hypothesis and production is expected to win. 6 solve jobs, 4 h each. | 7 d (orchestrator) | `leia-studies.54140311.out`, `studies/stationaryDropletFootEvalFace/` |
-| `54140312` `leia-studies` | **oscillatingDropletFootEvalFace** — same two arms, same ladder. This is the **test**: psi is the quadratic form (beta varies 1.21 along the interface), where the inverse carries its foliation bias and the foot-evaluated fit is exact. Static gate at N=256: 6.24 vs 3.3e-4. 6 solve jobs, 4 h each. | 7 d (orchestrator) | `leia-studies.54140312.out`, `studies/oscillatingDropletFootEvalFace/` |
+| `54144174` `leia-studies` | **stationaryDropletFootEvalFace** — the foot-point-EVALUATED face curvature against production `stabilizedFootPointFace`, N = 64/128/256, np 8, fixed capillary step. This is the **control**: psi is the exact signed distance, so the parallel-surface inverse is inside its hypothesis and production is expected to win. 6 solve jobs, 4 h each. | 7 d (orchestrator) | `leia-studies.54144174.out`, `studies/stationaryDropletFootEvalFace/` |
+| `54144175` `leia-studies` | **oscillatingDropletFootEvalFace** — same two arms, same ladder. This is the **test**: psi is the quadratic form (beta varies 1.21 along the interface), where the inverse carries its foliation bias and the foot-evaluated fit is exact. Static gate at N=256: 6.24 vs 3.3e-4. 6 solve jobs, 4 h each. | 7 d (orchestrator) | `leia-studies.54144175.out`, `studies/oscillatingDropletFootEvalFace/` |
 | `54140180/181/182` `leia-studies` | **SDPLS thread, not from this work**: `sdplsBand{2Dvortex,3Dshear,3Ddeformation}` — the nLayers topological cut-off sweeps. Plus the still-running `sdplsConvMoll3D{shear,deformation}` solves from 2026-08-14. Do not cancel. | 7 d | `studies/sdplsBand*/`, `studies/sdplsConvMoll3D*/` |
+
+> **First launch of these two (jobs 54140311/312) was thrown away.** Both timed
+> out at 4 h having advanced 111 of 4714 steps — not physics: snakemake's
+> jobstep wrapper was confining all 8 ranks to one CPU. Fixed in
+> `profiles/slurm` (`--cpu-bind=none`, commit `aad3284`); measured 0.0077 ->
+> 86 steps/s. Check `wall/CPU` (ClockTime/ExecutionTime) on any cluster study:
+> `~np` means confined, `~1` means healthy.
 
 Score the two footEval studies on **r(A2h)** — the corrugation growth rate, the
 order parameter — not on t_blow, whose e-fold count varies 5.4–13.3 across the
