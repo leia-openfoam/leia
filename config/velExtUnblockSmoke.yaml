@@ -1,0 +1,48 @@
+# SMOKE: does the velocity-extension arm construct at all in the two-phase solver?
+#
+# Plan sec. 15.3 records this arm as the ONE element of the amplification loop
+# never touched -- advect psi with a normal-extended, interface-derived velocity
+# so grid-scale velocity noise never reaches psi -- and records it as BLOCKED:
+# "all three models tried -- closestPoint, steadyUpwind, meshWaveExt -- abort
+# immediately with 'failed lookup of alpha' ... It is a small fix -- make the
+# phase-field name configurable in the extension models -- but it is a CODE
+# change, not a config change".
+#
+# That diagnosis is STALE. interfaceExtension.C reads the phase indicator as
+#     velExtDict_.getOrDefault<word>("alpha", "alpha")
+# i.e. the dictionary KEY is `alpha` and the DEFAULT VALUE is the name "alpha".
+# closestPoint -> steadyUpwind -> interfaceExtension and meshWaveExt ->
+# interfaceExtension all inherit that constructor, so the name has been
+# configurable the whole time; the two-phase case template simply never set it.
+# The block was one missing dictionary line, now added to
+# cases/stationaryDroplet2D/system/fvSolution.template.
+#
+# This run only asks: does it CONSTRUCT and step? It is not a stability
+# measurement -- END_TIME is ~6 capillary steps at N=64. The three veSmoke
+# tables (docs/semi-lagrangian-level-set .../veSmoke*_errors.csv) recorded
+# solverFailed=1 for all three models; the gate here is solverFailed=0 and a
+# non-zero Uext band.
+study_name: velExtUnblockSmoke
+case: stationaryDroplet2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+  # NOTE: the registered type is `meshWave`, NOT `meshWaveExt`. The plan's
+  # sec. 15.3 record of "meshWaveExt aborts" was a wrong type NAME in the
+  # attempt, not a defect in the model.
+  VELOCITY_EXTENSION: [none, closestPoint, steadyUpwind, meshWave, steadyUpwindLinear, pseudoTime]
+  END_TIME: [1.3e-4]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

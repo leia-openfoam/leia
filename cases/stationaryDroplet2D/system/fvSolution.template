@@ -69,6 +69,18 @@ solvers
         relTol          0;
     }
 
+    // Steady velocity-extension solve (steadyUpwind/closestPoint, inert unless
+    // levelSet.velocityExtension.type selects them). Third and last of the
+    // missing dictionary entries that made the velocity-extension arm look like
+    // a code block in plan sec. 15.3.
+    Uext
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-09;
+        relTol          0;
+    }
+
     // Harmonic (Laplace) curvature extension solve (harmonicMeanCurvatureExtensionEqn.H),
     // used only when levelSet.curvatureExtension.type == harmonicLaplace.
     kappa
@@ -217,6 +229,15 @@ levelSet
     velocityExtension
     {
         type          @!VELOCITY_EXTENSION!@;   // none | closestPoint | meshWaveExt | ...
+        // REQUIRED in the two-phase cases: interfaceExtension looks the phase
+        // indicator up by the dictionary key `alpha`, DEFAULTING to the name
+        // "alpha". These cases name it alpha.water, so without this entry every
+        // extension model aborts at construction with "failed lookup of alpha"
+        // -- which is what killed the veSmoke closestPoint/steadyUpwind/
+        // meshWaveExt attempts (all three recorded solverFailed=1). The name has
+        // been configurable all along (interfaceExtension.C); the block was a
+        // MISSING DICTIONARY ENTRY, not a code limitation.
+        alpha         alpha.water;
         nLayers       3;
         nAnchorLayers @!ANCHOR_LAYERS!@;
         UextDiv       @!UEXT_DIV!@;

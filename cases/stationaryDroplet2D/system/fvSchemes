@@ -73,6 +73,13 @@ divSchemes
     // anchoredEikonal redistancer working equation (inert unless selected;
     // upwind matches the outward Eikonal characteristics).
     div(yPhi,psiDist)                   Gauss upwind;
+    // Steady velocity-extension convection (steadyUpwind/closestPoint, inert
+    // unless levelSet.velocityExtension.type selects them). Upwind matches the
+    // outward extension characteristics, as in cases/oscISTDroplet2D. Without
+    // this entry steadyUpwind and meshWaveExt exit at the first step with
+    // "Entry 'div(velExtPhiW,Uext)' not found" -- the second half of the
+    // velocity-extension block recorded in plan sec. 15.3.
+    div(velExtPhiW,Uext)                Gauss upwind;
 }
 
 laplacianSchemes
