@@ -991,6 +991,31 @@ int main(int argc, char *argv[])
         addFaceRow("solverFootEvalFace", 0, kfFPE.primitiveField());
     }
 
+    // The CELL-foot-evaluated delivery: the SAME stabilized foot-point
+    // evaluation as the row above, but ONCE PER SUPPORT CELL at that cell's own
+    // centre, then plain arithmetic interpolation to the faces. Same accuracy
+    // family (interface-referenced, so FOOT_POINT = 0), but the delivered field
+    // is the interpolate of a CELL field, which is what the pressure projection
+    // can absorb: only the face-to-face VARIATION of kappa_f reaches the
+    // velocity, and a per-face evaluation resamples the fitted conic at a
+    // different point of its own zero set for every face.
+    {
+        surfaceScalarField kfCFPE
+        (
+            IOobject
+            (
+                "kappaCellFootEvalFaceGate", runTime.timeName(), mesh,
+                IOobject::NO_READ, IOobject::NO_WRITE
+            ),
+            fvc::interpolate(kappaNoExt)
+        );
+        computeCellFootPointEvaluatedFaceCurvature
+        (
+            mesh, psi, alpha, kappaNoExt, recon, kfCFPE
+        );
+        addFaceRow("solverCellFootEvalFace", 0, kfCFPE.primitiveField());
+    }
+
     // One interface curvature per CUT CELL, assigned to its active faces.
     addFaceRow("cutCellInverse", 1, kfCutCell);
     addFaceRow("cellMeanInverse", 1, kfCellMean);

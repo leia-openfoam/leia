@@ -396,6 +396,127 @@ inline void computeFootPointEvaluatedFaceCurvature
 }
 
 
+//- CELL-foot-evaluated delivery: ONE stabilized foot-point evaluation per
+//  support CELL, at that cell's OWN centre, delivered to the faces by plain
+//  arithmetic interpolation.
+//
+//      kappa_c = curvature of cell c's own fit AT the foot point of C_c
+//                on that fit's zero set (the same stabilized foot-point
+//                algorithm footPointDistance uses -- alternating
+//                tangent-plane/surface-point projections with the parabola
+//                correction, trust-region guarded),
+//      kappa_f = fvc::interpolate(kappa_c).
+//
+//  WHY THIS SHAPE. What the momentum equation consumes is not kappa_f but its
+//  face-to-face DIFFERENCE: writing kappa_f = kappaBar + dKappa_f, the flux
+//  splits as snGrad(sigma kappaBar alpha)|Sf| + sigma dKappa_f snGrad(alpha)|Sf|
+//  and the first term is snGrad of a CELL field -- in the range of the same
+//  discrete operator the pressure equation inverts, so the projection cancels
+//  it exactly and a UNIFORM curvature error costs nothing but a shift of the
+//  Laplace jump. Only the part outside that range reaches the velocity.
+//
+//  footPointEvaluatedFace above evaluates the SAME quadratic at a DIFFERENT
+//  point for each of the cell's faces (each face centre's own foot). A
+//  quadratic's zero set is a conic, whose curvature is not constant along
+//  itself, so that delivery injects the fitted conic's own along-arc variation
+//  into the face field at a rate independent of h. Measured on the exact-SDF
+//  circle at t = 0 (WP8.1 driver split, relative face-to-face jump):
+//      production stabilizedFootPointFace  4.9e-3 / 1.3e-3 / 3.2e-4  (O(h^2))
+//      footPointEvaluatedFace              0.137  / 0.072  / 0.035   (O(h))
+//  at N = 64/128/256 -- 112x apart at the finest, and widening. Both arms carry
+//  the IDENTICAL cell curvature field (kErrL2Band equal to all digits), so the
+//  whole gap is the delivery.
+//
+//  Evaluating once per cell restores the cell-field structure: the two faces of
+//  a cell differ only through their far-side neighbours, so the differences
+//  telescope at the cell field's own variation rate. It keeps what the
+//  face-evaluated construction was for -- no parallel-surface inverse, hence no
+//  psi = f(signed distance) hypothesis and no offset bias d.D -- and gives it
+//  back the structure the projection can absorb.
+//
+//  Parallel: the delivered field is fvc::interpolate of a CELL field, so the
+//  processor seams are consistent BY CONSTRUCTION (halo swap in
+//  correctBoundaryConditions, complementary patch weights on the two ranks).
+//  No swap-and-average convention is needed here, unlike the two face-based
+//  deliveries above.
+//
+//  Support set: cells owning at least one ACTIVE face, coupled-patch faces
+//  INCLUDED -- a cell whose only active face lies on a seam must be evaluated
+//  on its own rank too, or the two ranks would disagree about that face. Every
+//  active face then has both of its cells foot-evaluated, by construction.
+inline void computeCellFootPointEvaluatedFaceCurvature
+(
+    const fvMesh& mesh,
+    const volScalarField& psi,
+    const volScalarField& alpha,
+    const volScalarField& kappa,
+    const slReconstruction& recon,
+    surfaceScalarField& kappaFace
+)
+{
+    const surfaceScalarField snA(fvc::snGrad(alpha));
+    const scalarField& snIn = snA.primitiveField();
+    const scalar snMax = max(gMax(mag(snIn)()), VSMALL);
+
+    const labelUList& own = mesh.owner();
+    const labelUList& nei = mesh.neighbour();
+
+    // Cells owning at least one active face (internal or coupled).
+    boolList supportCell(mesh.nCells(), false);
+    forAll(snIn, f)
+    {
+        if (mag(snIn[f]) <= 1e-8*snMax) { continue; }
+        supportCell[own[f]] = true;
+        supportCell[nei[f]] = true;
+    }
+
+    const surfaceScalarField::Boundary& snBf = snA.boundaryField();
+    forAll(snBf, patchI)
+    {
+        const fvPatch& patch = mesh.boundary()[patchI];
+        if (!patch.coupled()) { continue; }
+
+        const labelUList& fc = patch.faceCells();
+        forAll(fc, i)
+        {
+            if (mag(snBf[patchI][i]) <= 1e-8*snMax) { continue; }
+            supportCell[fc[i]] = true;
+        }
+    }
+
+    // The cell field: the foot-evaluated value where the guards pass, the
+    // cell-centre curvature everywhere else.
+    volScalarField kappaCell(kappa);
+    scalarField& kcIn = kappaCell.primitiveFieldRef();
+    const vectorField& CIn = mesh.C().primitiveField();
+
+    label nSupport = 0, nSet = 0, nFail = 0;
+    forAll(kcIn, c)
+    {
+        if (!supportCell[c]) { continue; }
+        ++nSupport;
+
+        bool ok = false;
+        const scalar kc = recon.curvatureAtFootPoint(c, CIn[c], ok);
+        if (ok) { kcIn[c] = kc; ++nSet; }
+        else    { ++nFail; }   // keep the cell-centre value
+    }
+
+    // Halo swap: the coupled patch fields must carry the neighbouring rank's
+    // UPDATED cell values before the interpolation.
+    kappaCell.correctBoundaryConditions();
+
+    kappaFace = fvc::interpolate(kappaCell);
+
+    reduce(nSupport, sumOp<label>());
+    reduce(nSet, sumOp<label>());
+    reduce(nFail, sumOp<label>());
+    Info<< "cellFootPointEvaluatedFace curvature: " << nSet << "/" << nSupport
+        << " support cells foot-evaluated (" << nFail
+        << " with no converged foot -> cell-centre fallback; "
+        << "seam-consistent by construction)" << endl;
+}
+
 
 //- CUT-CELL delivery (dimension-agnostic): invert ONCE PER CUT CELL and assign
 //  that single interface value to every active face of the cell.

@@ -146,6 +146,20 @@ const bool cellMeanFootPointFaceExtension =
 // quadratic-form ellipse) and loses where the fit error dominates instead.
 const bool footPointEvaluatedFaceExtension =
     (curvatureExtensionType == "footPointEvaluatedFace");
+// CELL-foot-evaluated variant: the same stabilized foot-point evaluation, but
+// ONCE PER SUPPORT CELL at that cell's OWN centre, the resulting CELL field
+// delivered to the faces by plain arithmetic interpolation. Keeps what the
+// face-evaluated variant is for (no parallel-surface inverse, hence no
+// psi = f(signed distance) hypothesis) and restores the structure the pressure
+// projection can absorb: sigma kappaBar snGrad(alpha)|Sf| is snGrad of a CELL
+// field, so a uniform curvature error is cancelled exactly and only the
+// face-to-face VARIATION reaches the velocity. Evaluating per FACE resamples
+// the same quadratic at a different point of its own zero set for every face
+// -- a conic's curvature is not constant along itself -- which is why that
+// delivery's relative face-to-face jump is O(h) where production's is O(h^2)
+// (measured 112x apart at N=256 on the exact-SDF circle, WP8.1 driver split).
+const bool cellFootPointEvaluatedFaceExtension =
+    (curvatureExtensionType == "cellFootPointEvaluatedFace");
 // SYMMETRIC FACE-MEAN variant: the per-face inversion followed by a smoothing
 // pass over each face's own owner+neighbour active-face set, which is symmetric
 // about that face and therefore annihilates linear fields -- second order is
@@ -206,7 +220,7 @@ const scalar symmetricFaceMeanTheta =
     .getOrDefault<scalar>("faceSmoothing", 0.5);
 if (stabilizedFootPointFaceExtension || cutCellFootPointFaceExtension
  || cellMeanFootPointFaceExtension || symmetricFaceMeanExtension
- || footPointEvaluatedFaceExtension)
+ || footPointEvaluatedFaceExtension || cellFootPointEvaluatedFaceExtension)
 {
     // The parallel-curve inverse acts at the FACE: a cell-level
     // offsetCorrection would be applied twice -- silently wrong curvature.
@@ -235,6 +249,7 @@ Info<< "Curvature extension: " << curvatureExtensionType
     << (cellMeanFootPointFaceExtension ? " (CELL-MEAN of per-face inversions ON)" : "")
     << (symmetricFaceMeanExtension ? " (SYMMETRIC face-mean smoothing ON)" : "")
     << (footPointEvaluatedFaceExtension ? " (FOOT-POINT-EVALUATED face delivery ON)" : "")
+    << (cellFootPointEvaluatedFaceExtension ? " (CELL-foot-evaluated delivery ON)" : "")
     << (fvmCurvature ? " (symbolic kappa fill OFF -- force model computes its own)" : "")
     << nl << endl;
 
