@@ -136,8 +136,34 @@ exact complement of production — where one is second order the other is first:
 | oscillating geom, a/b=1.21 (N=256) | 6.24, order ~1.07 | **3.3e-4 (exact)** |
 
 `G h^2` is EQUAL to production within 3% (0.657 vs 0.642, circle at N=512), so a
-coupled difference is an accuracy difference, not an amplification one. The two
-studies in section 5 are measuring exactly that.
+coupled difference is an accuracy difference, not an amplification one.
+
+**COUPLED VERDICT (2026-08-15): the prediction is FALSIFIED and the delivery does
+NOT promote.** On the OSCILLATING case -- the discriminating one, where its static
+curvature is EXACT (3.3e-4 vs 6.24, four orders better than production) -- the
+foot-evaluated delivery blows up EARLIER at every resolution:
+
+| N | t_blow production | t_blow footEval | ratio | volume error at common t |
+|---|---|---|---|---|
+| 64 | 0.02132 | 0.00772 | **0.36** | 2.41e-2 vs 3.36e-3 |
+| 128 | 0.01454 | 0.00613 | **0.42** | 1.28e-2 vs 2.51e-3 |
+| 256 | 0.01258 | 0.00398 | **0.32** | 6.65e-3 vs 4.36e-4 |
+
+Volume error is 5-15x worse at every N; SHAPE error is comparable and at N=128
+slightly better (2.59e-5 vs 4.36e-5), so the two disagree -- read together, never
+singly. On the stationary CONTROL there is no consistent ordering at all
+(t_blow ratio 0.95 / 1.12 / 0.50 at N=64/128/256).
+
+This is the THIRD delivery for which static accuracy is anti-correlated with
+coupled stability, and the second pair the gain `G h^2` fails to order (equal
+within 3%, blow-up 3x apart). Curated:
+`docs/method-comparison/.../tables/foot_evaluated_face_coupled.csv`.
+
+NOTE ON SCORING: r(A2h) was the intended order parameter, but these runs blow up
+within 400-9400 steps, so its fit window is too short to be stable (ratios swing
+from 0.07 to 16.9 on the control). t_blow is the robust discriminator here --
+monotone across all three resolutions on the test case -- and is what the verdict
+rests on.
 
 **The time/coupling axis** (2026-08-13/14, plan sec. 16): r(N,dt) = r0 + c·dt
 measured at N = 64/128/256; GAMG, decomposition (seed only), adaptivity (now

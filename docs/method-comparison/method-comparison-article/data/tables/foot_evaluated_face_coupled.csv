@@ -1,0 +1,13 @@
+case,psi,N,delivery,tEnd,reachedEndTime,tCompare,maxMagU,volumeRelError,shapeL2
+stationary,exactSignedDistance,64,stabilizedFootPointFace,0.0999976,yes,0.0946307,0.000266086,8.75959e-05,3.24294e-06
+stationary,exactSignedDistance,64,footPointEvaluatedFace,0.0946307,no,0.0946307,16.1483,0.0165672,4.82057e-05
+stationary,exactSignedDistance,128,stabilizedFootPointFace,0.0629241,no,0.0629241,7.63523,0.0221401,0.000186919
+stationary,exactSignedDistance,128,footPointEvaluatedFace,0.070319,no,0.0629241,0.0093178,0.000199792,1.24453e-05
+stationary,exactSignedDistance,256,stabilizedFootPointFace,0.0333758,no,0.0166203,0.000640132,5.10402e-05,1.05019e-07
+stationary,exactSignedDistance,256,footPointEvaluatedFace,0.0166203,no,0.0166203,0.193426,0.000861686,7.26677e-06
+oscillating,quadraticForm,64,stabilizedFootPointFace,0.021319,no,0.0077215,0.0655707,0.00335757,6.01004e-06
+oscillating,quadraticForm,64,footPointEvaluatedFace,0.0077215,no,0.0077215,0.147358,0.0240672,2.03076e-05
+oscillating,quadraticForm,128,stabilizedFootPointFace,0.0145423,no,0.00613491,0.0871727,0.00250714,4.35452e-05
+oscillating,quadraticForm,128,footPointEvaluatedFace,0.00613491,no,0.00613491,0.161621,0.0127809,2.5909e-05
+oscillating,quadraticForm,256,stabilizedFootPointFace,0.0125766,no,0.00398272,0.0486477,0.000435778,5.92009e-05
+oscillating,quadraticForm,256,footPointEvaluatedFace,0.00398272,no,0.00398272,0.441017,0.00664926,5.34294e-05
