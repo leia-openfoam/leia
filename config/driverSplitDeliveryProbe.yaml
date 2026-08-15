@@ -1,0 +1,64 @@
+# t = 0 DRIVER-SPLIT PROBE for the three foot-point face deliveries.
+#
+# WHAT THIS MEASURES, AND WHY IT IS NOT A STATIC GATE
+# The static gates (docs/method-comparison .../face_curvature_orders*) score the
+# ACCURACY of kappa_f. That is not the quantity the momentum equation consumes.
+# Writing kappa_f = kappaBar + dKappa_f, the CSF flux splits as
+#     sigma kappa_f snGrad(alpha)|Sf|
+#         = snGrad(sigma kappaBar alpha)|Sf|  +  sigma dKappa_f snGrad(alpha)|Sf|
+# and the first term is snGrad of a CELL field -- in the range of the same
+# discrete operator the pressure equation inverts, so the projection cancels it
+# to solver tolerance and a UNIFORM curvature error costs nothing but a shift of
+# the Laplace jump. Only dKappa_f reaches the velocity.
+#
+# WP8.1 (capillaryDriverSplit.H) measures exactly that surviving part: the
+# normalised face-pair variation RATE of the delivered sigma*kappa_f, binned
+# ACROSS the force support and ALONG the interface. On the exact-SDF circle the
+# exact curvature is constant, so BOTH bins are pure delivery error.
+#
+# The run is 6 steps: the columns wanted are at the FIRST step, on the clean
+# initial psi, before any feedback. END_TIME is set to ~6 capillary steps at
+# N = 64; the finer N reach fewer steps in the same interval, which is fine --
+# only the first row is read.
+#
+# PREDICTION (recorded before the run)
+#   stabilizedFootPointFace   : driverAcrossSupportL2 * h = O(h^2)  -- measured
+#                               4.9e-3 / 1.3e-3 / 3.2e-4 at N = 64/128/256
+#   footPointEvaluatedFace    : O(h)                       -- measured
+#                               0.137 / 0.072 / 0.035
+#   cellFootPointEvaluatedFace: should track PRODUCTION, not footEval, because
+#                               the delivered field is the interpolate of a CELL
+#                               field and the differences telescope -- even
+#                               though its STATIC accuracy is first order on
+#                               both foliations (circle N=512: L2 = 11.35 at
+#                               order 1.13 against production's 0.105 at 2.04).
+#   If the new delivery instead reads O(h) here, the cell-field argument is
+#   wrong and no coupled run is justified.
+#
+# NOTE: run on the binary that carries the t=0 dispatch fix. Before it,
+# footPointEvaluatedFace had no branch in the initial face-delivery chain, so
+# kappaStableFootFace was ZERO when YoungLaplaceEqn initialised p_rgh and that
+# arm alone started with no Laplace jump.
+study_name: driverSplitDeliveryProbe
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256]
+  CURVATURE_EXTENSION:
+    - stabilizedFootPointFace
+    - footPointEvaluatedFace
+    - cellFootPointEvaluatedFace
+  FACE_CURVATURE_SOURCE: [registered]
+  END_TIME: [1.3e-4]
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
