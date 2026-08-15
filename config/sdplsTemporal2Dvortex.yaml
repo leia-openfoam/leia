@@ -1,0 +1,77 @@
+# Is the SDPLS order loss SPATIAL or TEMPORAL? 2D reversed vortex.
+#
+# THE GAP THIS FILLS. Every SDPLS study to date runs CFL 0.5 with nDefCorr 3 and
+# varies neither. Two things follow that no existing run can separate:
+#
+#   1. With CFL FIXED, dt is proportional to h, so a mesh ladder measures
+#      min(spatial order, temporal order). The fitted +0.74 (2D vortex) and
+#      +0.668 (3D shear) for R are as consistent with a first-order-in-time
+#      component as with a spatial deficiency, and nothing distinguishes them.
+#
+#   2. The source is SEMI-IMPLICIT in a way that is easy to miss. f_nl depends
+#      on psi through n = grad(psi)/|grad(psi)|, so S = f_nl(psi^n) psi^{n+1} is
+#      a lagged nonlinearity; the nDefCorr loop Picard-iterates it (the same loop
+#      that converges the linearUpwind deferred correction). If 3 passes do not
+#      converge that iteration, the source is effectively first order in time no
+#      matter that ddt is CrankNicolson, and the mesh ladder inherits the cap.
+#
+# THE DESIGN separates them because the two axes are orthogonal:
+#
+#   CFL at FIXED h    -- if the error falls, temporal error is significant and
+#                        the fixed-CFL ladder was temporally limited. If it is
+#                        flat, the error is spatial and the ladder measured what
+#                        it claimed to.
+#   nDefCorr at FIXED h and CFL
+#                     -- if the error falls, 3 passes do not converge the source
+#                        nonlinearity, and the fix is more passes (or a Newton
+#                        treatment), not a finer mesh.
+#
+# Two meshes, so the conclusion is not an artefact of one resolution. Both are on
+# the existing ladder, and the (N, CFL 0.5, nDefCorr 3) corners reproduce
+# benchVortexEulerT2 exactly -- a built-in consistency check.
+#
+# R only: this is about the source's own convergence. One linearization, since
+# the two agree to four digits everywhere. Reversed, read under the two-instant
+# protocol (gradient at T/2).
+#
+# method_label already renders nDefCorr as `dc:N`, and CFL is its own column that
+# make_convergence_table groups on, so no arm can collapse into another.
+#
+#   make studies-one STUDY=sdplsTemporal2Dvortex PROFILE=profiles/slurm
+
+study_name: sdplsTemporal2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [64, 128]
+  # 0.5 is the value every previous study used; each step halves dt at fixed h.
+  CFL:      [0.5, 0.25, 0.125]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+
+  # QUOTED: bare on/off are YAML booleans that OpenFOAM's Switch rejects.
+  OSCILLATION: ["on"]
+
+  SDPLS_SOURCE: [R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+
+  # 3 is the production value. 10 is "converged enough that the difference is
+  # not the Picard iteration". If 3 and 10 agree, the nonlinearity is converged
+  # and this whole avenue is closed.
+  N_DEF_CORR: [3, 10]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
