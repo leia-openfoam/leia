@@ -108,15 +108,15 @@ METHODS = {
             ("sdplsOrderAblation",     "2Dvortex",      "hex"),
             ("sdplsConv3Dshear",       "3Dshear",       "hex"),
             ("sdplsConv3Ddeformation", "3Ddeformation", "hex"),
-            # The same three ladders with the SDPLS cut-off active (mollifier1,
-            # eq. 24 of arXiv:2208.01269, w1=0.05 w2=0.15 as selected by the
-            # 2x2 factorial in sdplsMollifier2Dvortex). SEPARATE studies, not
-            # replacements: the unmollified ones above are the control the
-            # comparison rests on. noSource is absent from these by design --
-            # it has no source to scale, so it would duplicate rows above.
-            ("sdplsConvMoll2Dvortex",      "2Dvortex",      "hex"),
-            ("sdplsConvMoll3Dshear",       "3Dshear",       "hex"),
-            ("sdplsConvMoll3Ddeformation", "3Ddeformation", "hex"),
+            # NOT LISTED, deliberately: the sdplsConvMoll* ladders, which run
+            # the |psi|-threshold cut-off at w1=0.05, w2=0.15. That configuration
+            # is NOT VALIDATED -- it degrades 3D shear (volume +0.23 -> -0.97,
+            # shape +0.92 -> -0.58) and fails outright on 3D deformation, where
+            # the band error diverges at -0.54 against -0.02 unmollified. The 3D
+            # ladders were cancelled for that reason and the 2D one alone would
+            # publish a mixed record. They return here when a cut-off
+            # parameterisation is validated on all three cases -- currently the
+            # topological band (sdplsBand*) is being screened for exactly that.
         ],
     },
 }
