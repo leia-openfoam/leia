@@ -378,6 +378,100 @@
 </section>
 </section>
 
+<section data-track="A conservative implicit form">
+<section>
+  <h2>The source is exactly a surface divergence</h2>
+  <p class="tight">Two identities, both exact, neither an approximation.</p>
+  <p class="tight"><b>(i) The surface gradient of \(\psi\) vanishes.</b>
+     With \(\mathbf{n}=\nabla\psi/|\nabla\psi|\),</p>
+  <p style="text-align:center">
+     \(\nabla_{\!s}\psi=(\mathbf{I}-\mathbf{n}\otimes\mathbf{n})\cdot\nabla\psi
+       =\nabla\psi-\mathbf{n}\,(\mathbf{n}\cdot\nabla\psi)
+       =\nabla\psi-\mathbf{n}\,|\nabla\psi| = 0.\)</p>
+  <p class="tight"><b>(ii) The strain is the compressive part of the surface divergence.</b>
+     Since \((\mathbf{n}\otimes\mathbf{n}):\nabla\mathbf{v}=a\),</p>
+  <p style="text-align:center">
+     \(a=\mathbf{n}\cdot\nabla\mathbf{v}\cdot\mathbf{n}
+       =\nabla\cdot\mathbf{v}-\nabla_{\!s}\cdot\mathbf{v}
+       \;\;\xrightarrow{\ \nabla\cdot\mathbf{v}=0\ }\;\; a=-\nabla_{\!s}\cdot\mathbf{v},\)</p>
+  <p class="tight">which is the <em>rate of interfacial area generation</em> the
+     SDPLS preprint describes. Combining, and using (i) to kill the
+     \(\mathbf{v}\cdot\nabla_{\!s}\psi\) term:</p>
+  <p style="text-align:center; font-size:1.15em">
+     \(S=a\,\psi=-\psi\,\nabla_{\!s}\cdot\mathbf{v}
+       =-\nabla_{\!s}\cdot(\psi\,\mathbf{v}).\)</p>
+  <p class="tight">The algebraic source <b>is</b> a surface divergence &mdash; so it can be
+     discretised as a <b>flux</b>, conservatively and implicitly, instead of as a lagged
+     coefficient on \(\psi\).</p>
+</section>
+
+<section>
+  <h3>Projection of the volumetric gradient, plus a remainder</h3>
+  <p class="tight">\(\nabla_{\!s}\cdot\) is the volumetric divergence minus its
+     normal&ndash;normal projection, \(\nabla_{\!s}\cdot\mathbf{X}
+     =\nabla\cdot\mathbf{X}-\mathbf{n}\cdot\nabla\mathbf{X}\cdot\mathbf{n}\).
+     Expanding the remainder on \(\mathbf{X}=\psi\mathbf{v}\):</p>
+  <p style="text-align:center">
+     \(\mathbf{n}\cdot\nabla(\psi\mathbf{v})\cdot\mathbf{n}
+       =(\mathbf{n}\cdot\mathbf{v})(\mathbf{n}\cdot\nabla\psi)+\psi\,a
+       =\underbrace{(\mathbf{n}\cdot\mathbf{v})\,|\nabla\psi|}_{=\;\mathbf{w}\cdot\nabla\psi}+\;\psi\,a,
+       \qquad \mathbf{w}\equiv(\mathbf{n}\cdot\mathbf{v})\,\mathbf{n}.\)</p>
+  <p class="tight">The first piece is an advection along the <b>normal velocity</b>
+     \(\mathbf{w}\), so \(\mathbf{w}\cdot\nabla\psi=\nabla\cdot(\mathbf{w}\psi)-\psi\,\nabla\cdot\mathbf{w}\)
+     &mdash; a divergence again. Substituting into
+     \(\partial_t\psi+\nabla\cdot(\mathbf{v}\psi)+\nabla_{\!s}\cdot(\psi\mathbf{v})=0\):</p>
+  <p style="text-align:center; font-size:1.2em; border:1px solid var(--ls-muted); padding:0.4em 0.8em; display:inline-block">
+     \(\partial_t\psi \;+\; 2\,\nabla\cdot(\mathbf{v}\psi)\;-\;\nabla\cdot(\mathbf{w}\psi)
+       \;+\;\psi\,\bigl(\nabla\cdot\mathbf{w}-a\bigr)\;=\;0\)</p>
+  <table style="font-size:0.86em; margin:0.6em auto 0">
+    <tr><th style="text-align:left">term</th><th style="text-align:left">OpenFOAM</th><th style="text-align:left">character</th></tr>
+    <tr><td>\(\partial_t\psi\)</td><td><code>fvm::ddt(psi)</code></td><td>implicit</td></tr>
+    <tr><td>\(2\nabla\cdot(\mathbf{v}\psi)\)</td><td><code>2*fvm::div(phi, psi)</code></td><td><b>implicit</b>, conservative</td></tr>
+    <tr><td>\(-\nabla\cdot(\mathbf{w}\psi)\)</td><td><code>-fvm::div(phiN, psi)</code></td><td><b>implicit</b>, conservative</td></tr>
+    <tr><td>\(\psi(\nabla\cdot\mathbf{w}-a)\)</td><td><code>fvm::Sp(divW - a, psi)</code></td><td>implicit diagonal</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.85em">Only \(\mathbf{n}\) is lagged, exactly as now
+     (measured converged: <code>nDefCorr</code> 3&nbsp;&rarr;&nbsp;10 changes the band error
+     by &lt;0.4%). Sanity check &mdash; uniform translation of a plane, \(a=0\),
+     \(\mathbf{w}\) constant, \(|\nabla\psi|=1\): the form collapses to
+     \(\partial_t\psi+\mathbf{v}\cdot\mathbf{n}=0\), pure advection.</p>
+</section>
+
+<section>
+  <h3 class="warn">What this would and would not buy &mdash; a proposal, not a result</h3>
+  <div style="display:flex; gap:1.4em">
+    <div style="flex:1">
+      <p class="tight"><b class="good">The case for it.</b> R's measured weakness is
+      <em>not</em> the gradient &mdash; it is conservation. On 3D shear, volume order
+      <b>+0.96</b> against the sourceless <b>+2.57</b>, and the signed volume error
+      <em>oscillates</em> rather than accumulating. A flux form is conservative by
+      construction, which is the right instrument for exactly that defect.</p>
+      <p class="tight">It also removes the algebraic source entirely: the discrete interface
+      displacement we traced to the <em>variation</em> of \(a\) across the two cells
+      straddling \(\psi=0\) no longer has that form.</p>
+    </div>
+    <div style="flex:1">
+      <p class="tight"><b class="warn">The risk, and it is the thing to test first.</b>
+      Today \(S\propto\psi\) guarantees zero interface displacement <em>pointwise</em> &mdash;
+      the source cannot move the interface because it vanishes identically at \(\psi=0\).
+      In flux form the property survives analytically
+      (\(\nabla_{\!s}\cdot(\psi\mathbf{v})=\psi\,\nabla_{\!s}\cdot\mathbf{v}\to0\)) but
+      <b>not cell by cell</b>: discrete fluxes into an interface cell need not cancel.
+      We may be trading guaranteed-zero displacement for guaranteed conservation.</p>
+      <p class="tight">The \(2\nabla\cdot(\mathbf{v}\psi)-\nabla\cdot(\mathbf{w}\psi)\)
+      pair is also cancellation-prone: two fluxes of similar magnitude with opposite sign.</p>
+    </div>
+  </div>
+  <p class="tight" style="font-size:0.86em; border-left:3px solid var(--ls-muted); padding-left:0.6em">
+    <b>It will not fix the order.</b> \(\psi\) converges at \(\approx1.7\) (2D) while the band
+    gradient error converges at \(+1.23\): differentiating a numerical solution costs one
+    order, so a gradient metric near first order is what second-order transport looks like.
+    Second order <em>in the gradient</em> needs third-order transport, not a rearranged
+    source. Judge this reformulation on <b>volume and shape</b>.
+  </p>
+</section>
+</section>
+
 <section data-track="Why beta fails">
 <section>
   <h2>Why <code>beta</code> fails &mdash; it targets the wrong gradient</h2>
