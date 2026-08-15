@@ -82,7 +82,10 @@ def _sl_parts(rec):
 # `method` string at each h and the order fit runs straight through them -- the
 # same defect the beta sweep had before _beta() existed.
 _DEFAULT_DIV_GRAD_SCHEME = "cellLimited leastSquares 1"
+# The historical SDPLS source gradient. Anything else is an ablation arm.
+_DEFAULT_SDPLS_GRAD = "leastSquares"
 _GRAD_TAG = {
+    "pointCellsLeastSquares":     "pcLsq",
     "leastSquares":               "lsq",
     "cellLimited Gauss linear 1": "clGauss",
     "faceLimited leastSquares 1": "flLsq",
@@ -172,6 +175,29 @@ def _mollifier(rec):
     return f"{m}({w1},{w2})" if (w1 and w2) else m
 
 
+def _sdpls_grad(rec):
+    """The SDPLS source's own gradient, rendered ONLY when off-default.
+
+    The normal n = grad(psi)/|grad(psi)| that the source cancels the strain with
+    is only as accurate as this gradient, and it was hardcoded to the most
+    compact stencil available until it was tokenised. An ablation over it needs
+    the arms separable, or they collapse to one series per h -- the collision
+    this module guards against for beta, the reconstruction gradient, the
+    mollifier widths and nLayers.
+
+    Reads the RENDERED scheme (fvschemes.py), not the token, for the same reason
+    those do: the token is not what the solver parsed.
+    """
+    out = []
+    g = " ".join((rec.get("gradPsiSdpls") or "").split())
+    if g and g != _DEFAULT_SDPLS_GRAD:
+        out.append("n:" + _GRAD_TAG.get(g, g.replace(" ", "-")))
+    m = (rec.get("GRAD_PSI") or "").strip()
+    if m and m != "fvc":
+        out.append("nmod:" + m)
+    return "+".join(out)
+
+
 def _euler_parts(rec):
     parts = ["euler"]
     ve = rec.get("VELOCITY_EXTENSION", "none")
@@ -190,6 +216,9 @@ def _euler_parts(rec):
         moll = _mollifier(rec)
         if moll:
             parts.append(f"moll:{moll}")
+        sg = _sdpls_grad(rec)
+        if sg:
+            parts.append(sg)
     rd = rec.get("REDISTANCER", "noRedistancing")
     if rd and rd != "noRedistancing":
         if rd == "PDE" and rec.get("REDIST_FREEZE", "false") == "true":

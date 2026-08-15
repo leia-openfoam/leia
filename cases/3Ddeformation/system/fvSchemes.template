@@ -31,8 +31,8 @@ gradSchemes
     gradPsiMetric   leastSquares;
     // SDPLS source-term gradients: dedicated keywords, decoupled from the
     // psi advection gradient (grad(psi)) and the unnamed grad(U) fallback.
-    gradPsiSdpls    leastSquares;
-    gradUSdpls      Gauss linear;
+    gradPsiSdpls    $@!GRAD_PSI_SDPLS!@;
+    gradUSdpls      $@!GRAD_U_SDPLS!@;
     // signedDistanceBounds redistancing criterion gradient (decoupled from
     // the psi advection scheme's limiter)
     redistGradPsi   leastSquares;

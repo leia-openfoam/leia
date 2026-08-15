@@ -180,6 +180,12 @@ levelSet
     sdplsSource
     {
         type @!SDPLS_SOURCE!@;
+        // Strategy for grad(psi) in the source: `fvc` = fvc::grad with the
+        // gradPsiSdpls scheme; `narrowLS` = the normals of the LLSQ plane fit
+        // in the narrow band, fvc::grad outside. The latter is fitted to locate
+        // the interface, so it is the better candidate for the normal the
+        // strain cancellation is built from -- and no study had ever used it.
+        gradPsi @!GRAD_PSI!@;
         beta            @!SDPLS_BETA!@;  // sdplsBeta only: f_nl = beta - |grad psi|
         discretization @!SOURCE_SCHEME!@;
 

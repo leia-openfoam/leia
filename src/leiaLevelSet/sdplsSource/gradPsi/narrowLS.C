@@ -30,6 +30,34 @@ License
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+namespace
+{
+
+//- Look up the per-cell LLSQ plane normal, failing with the REQUIREMENT rather
+//  than with "failed lookup of nc". Must be a free function called from the
+//  member initializer list: a check in the constructor body runs too late,
+//  because the reference member is bound first.
+const Foam::volVectorField& checkedNc(const Foam::fvMesh& mesh)
+{
+    if (!mesh.foundObject<Foam::volVectorField>("nc"))
+    {
+        FatalErrorInFunction
+            << "gradPsi type `narrowLS` needs the per-cell LLSQ plane normal "
+            << "field `nc`, which is registered ONLY by phaseIndicator type "
+            << "`geometric`. The selected phase indicator does not provide it."
+            << nl
+            << "Either set phaseIndicator to `geometric`, or use gradPsi type "
+            << "`fvc`." << nl
+            << "NOTE: switching the phase indicator also changes alpha, and so "
+            << "the volume and shape errors -- a comparison that changes both "
+            << "is not an ablation of the normal alone."
+            << Foam::exit(Foam::FatalError);
+    }
+    return mesh.lookupObject<Foam::volVectorField>("nc");
+}
+
+} // End anonymous namespace
+
 namespace Foam
 {
     defineTypeNameAndDebug(narrowLS, false);
@@ -42,7 +70,7 @@ Foam::narrowLS::narrowLS(const fvMesh& mesh)
     :
         gradPsi(mesh),
         narrowBand_(mesh.lookupObject<volScalarField>("NarrowBand")),
-        nc_(mesh.lookupObject<volVectorField>("nc"))
+        nc_(checkedNc(mesh))
 {}
 
 // * * * * * * * * * * * * * *  Member functions  * * * * * * * * * * * * * * //

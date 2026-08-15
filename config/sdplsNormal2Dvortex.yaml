@@ -1,0 +1,92 @@
+# Does a better NORMAL improve SDPLS accuracy? 2D reversed vortex.
+#
+# WHY THIS IS THE LAST CANDIDATE. R converges at +1.23 (2D reversed vortex) and
+# +0.67 (3D shear) against a nominally second-order discretization. Everything
+# cheaper has been eliminated by measurement:
+#
+#   advection limiter   the linearUpwind reconstruction gradient: cellLimited
+#                       LSQ 0.740, cellLimited Gauss 0.740, UNLIMITED LSQ 0.743,
+#                       faceLimited 0.658 over the full N=32..256 ladder.
+#                       Removing the limiter moves the order by 0.003.
+#   time scheme         already CrankNicolson, second order.
+#   time step           4x smaller dt at fixed h moves the band error by 0.3-1.6%,
+#                       and in the wrong direction. Temporally converged.
+#   Picard iteration    nDefCorr 3 -> 10 moves it by under 0.4%. The lagged
+#                       nonlinearity in f_nl is converged at 3 passes.
+#
+# What remains is the accuracy of the normal itself. The cancellation
+# Dg/Dt = g (f_nl - a) can be no more exact than f_nl matches a, and
+# a = n.grad(v).n is built from n = grad(psi)/|grad(psi)|.
+#
+# THE NORMAL WAS ON THE NARROWEST STENCIL IN THE FILE, and hardcoded. The same
+# fvSchemes defines four gradients; `gradPsiSdpls` had the compact
+# face-neighbour leastSquares while the semi-Lagrangian `gradPsi` key already
+# used pointCellsLeastSquares. The wider stencil was present in the same case,
+# serving a different method. Until now a config asking for anything else was
+# silently dropped as an unreferenced token.
+#
+# TWO AXES, both about the normal and nothing else:
+#   GRAD_PSI_SDPLS  the scheme: compact LSQ (historical), extended point-cell
+#                   LSQ, or Green-Gauss -- a different family, to separate
+#                   "wider stencil" from "least squares specifically".
+#   GRAD_PSI        the strategy: `fvc` (fvc::grad with the scheme above) or
+#                   `narrowLS` (normals of the LLSQ plane fit inside the narrow
+#                   band, fvc::grad outside). narrowLS is fitted to LOCATE the
+#                   interface, so it is the most interface-aware normal
+#                   available -- and no SDPLS study has ever selected it.
+#
+# NOT SWEPT, deliberately: gradUSdpls (the grad(v) in a = n.grad(v).n). v is
+# prescribed and analytic here, so its gradient is smooth and second-order;
+# psi is only piecewise smooth near a winding interface. The normal is the
+# suspect. It is tokenised so it CAN be swept if this comes back flat.
+#
+# NOT A TOKEN, deliberately: gradPsiMetric. It is the measurement. Letting it
+# move with the source would change the ruler and the thing measured together.
+#
+# Reversed, read under the two-instant protocol (gradient at T/2). The
+# (SdplsLSQ, fvc) arm reproduces benchVortexEulerT2 exactly as a consistency
+# check. Winner goes to 3D shear.
+#
+#   make studies-one STUDY=sdplsNormal2Dvortex PROFILE=profiles/slurm
+
+study_name: sdplsNormal2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+
+  # QUOTED: bare on/off are YAML booleans that OpenFOAM's Switch rejects.
+  OSCILLATION: ["on"]
+
+  # R only, one linearization: this is about the normal, not the source form.
+  SDPLS_SOURCE: [R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+
+  # aliasDict names -- multi-word schemes cannot be passed as bare tokens.
+  GRAD_PSI_SDPLS: [SdplsLSQ, SdplsPointLSQ, SdplsGauss]
+  # `narrowLS` is NOT swept here, and the reason is a genuine confound rather
+  # than caution: it reads the per-cell LLSQ plane normal `nc`, which only
+  # geometricPhaseIndicator registers. Our studies use detrixheAslam, so
+  # selecting narrowLS would also change the phase indicator -- and hence alpha,
+  # and hence the volume and shape errors. That is two changes, not one. It
+  # deserves its own paired comparison against a geometric-indicator control.
+  GRAD_PSI: [fvc]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

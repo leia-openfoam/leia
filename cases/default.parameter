@@ -66,6 +66,15 @@ SDPLS_W2   0.15;     // preprint value; MUST be > w1
 // `band` cut-off only: cells either side of the interface that the
 // source acts over. Topological -- no |grad psi| assumption.
 SDPLS_NLAYERS 3;
+// SDPLS source gradients, as aliasDict names. The NORMAL that the strain
+// cancellation is built from is only as good as GRAD_PSI_SDPLS; it was
+// hardcoded to the most compact stencil in the file until 2026-08-15.
+// GRAD_PSI selects the strategy: `fvc` (fvc::grad with the scheme below) or
+// `narrowLS` (LLSQ plane-fit normals in the band). gradPsiMetric is NOT a
+// token on purpose -- it is the measurement and must not move with the source.
+GRAD_PSI_SDPLS SdplsLSQ;
+GRAD_U_SDPLS   SdplsUGauss;
+GRAD_PSI       fvc;
                      // (drives |grad psi| -> beta; beta = 1 = signed distance).
 ADVECTION eulerian;  // unified leiaLevelSetFoam advection method:
                      // eulerian (implicit FV, advective form, nDefCorr
