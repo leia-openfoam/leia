@@ -60,6 +60,24 @@ protected:
     const fvMesh& mesh_;
     const volScalarField& psi_;
 
+    //- psi with GUARANTEED-CURRENT coupled-patch values.
+    //
+    //  Every narrow-band criterion is a statement about psi across a face, and
+    //  on a processor boundary the far side of that face comes from
+    //  patchNeighbourField(), which returns whatever was last exchanged. If the
+    //  band is built at a point where psi changed without a subsequent boundary
+    //  update -- after an explicit source, a redistancing pass, an intermediate
+    //  defect-correction iterate -- then the parallel run tests against a STALE
+    //  neighbour value while the serial run always sees the current one. The
+    //  band then depends on the DECOMPOSITION, and silently: no error, just a
+    //  different set of cells on 16 ranks than on 1.
+    //
+    //  Deriving the criterion from this copy removes the dependence on whatever
+    //  the caller happened to do beforehand. It is cheap next to the face loops
+    //  that follow, and it is the only way to make the guarantee hold for a
+    //  criterion nobody has written yet.
+    tmp<volScalarField> psiSynced() const;
+
 
 public:
 

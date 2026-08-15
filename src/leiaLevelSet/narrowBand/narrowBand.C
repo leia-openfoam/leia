@@ -77,6 +77,21 @@ const volScalarField& narrowBand::psi() const
     return psi_;
 }
 
+
+tmp<volScalarField> narrowBand::psiSynced() const
+{
+    // A COPY: psi_ is held by const reference and other users depend on its
+    // current boundary state, so it must not be mutated here.
+    // correctBoundaryConditions() performs the coupled-patch exchange on the
+    // copy, so every subsequent patchNeighbourField() sees the CURRENT far-side
+    // values instead of whatever happened to be exchanged last. See the
+    // declaration in narrowBand.H for why that is the difference between a band
+    // that depends on the decomposition and one that does not.
+    tmp<volScalarField> tpsi(new volScalarField(psi_));
+    tpsi.ref().correctBoundaryConditions();
+    return tpsi;
+}
+
 void narrowBand::calc()
 {}
 

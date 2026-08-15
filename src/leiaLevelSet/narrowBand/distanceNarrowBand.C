@@ -46,12 +46,27 @@ namespace Foam
     {
         field() = dimensionedScalar(field().dimensions(), 0.);
 
+        // gMin is a global reduction, so deltaX_min is already identical on
+        // every rank -- the band width does not depend on the decomposition.
         const auto deltaX = pow(mesh().deltaCoeffs(),-1).cref();
         const auto deltaX_min = gMin(deltaX);
 
+        // mag(). Without it the test reads `psi/dx < ncells`, which every cell
+        // with psi < 0 satisfies -- and psi < 0 is the ENTIRE interior phase.
+        // The "narrow band" was therefore the whole drop plus a one-sided shell
+        // of ncells on the outside: not narrow, not a band, and not symmetric
+        // about the interface. This is a purely local criterion, so it was
+        // wrong identically on every rank, which is why it never showed up as a
+        // parallel inconsistency.
+        //
+        // Note the criterion still presupposes that |psi| is a DISTANCE, i.e.
+        // that psi is a signed distance function. Where |grad psi| leaves 1 the
+        // marked width is not ncells cells -- see interfaceBandMollifier for a
+        // band that makes no such assumption.
+        const volScalarField& psiRef = psi();
         forAll(field(), cellID)
         {
-            if (psi()[cellID]/deltaX_min < ncells_)
+            if (mag(psiRef[cellID])/deltaX_min < ncells_)
             {
                 field()[cellID] = 1.0;
             }

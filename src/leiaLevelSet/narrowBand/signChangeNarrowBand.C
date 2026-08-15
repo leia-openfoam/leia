@@ -43,7 +43,12 @@ namespace Foam
     {
         const auto& own = mesh().owner();  
         const auto& nei = mesh().neighbour(); 
-        const volScalarField& psi = this->psi();
+        // psiSynced(), NOT psi(): the coupled-patch values must be current, or
+        // the sign test below compares against a STALE neighbour on a processor
+        // boundary while the serial run compares against the live one, and the
+        // band silently depends on the decomposition. See narrowBand.H.
+        const tmp<volScalarField> tpsi = this->psiSynced();
+        const volScalarField& psi = tpsi();
         volScalarField& NarrowBand = field();
         NarrowBand = dimensionedScalar(NarrowBand.dimensions(), 0.);
 
