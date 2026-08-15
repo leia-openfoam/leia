@@ -240,6 +240,50 @@ int main(int argc, char *argv[])
             symmetricFaceMeanTheta
         );
     }
+    else if (footPointEvaluatedFaceExtension)
+    {
+        computeFootPointEvaluatedFaceCurvature
+        (
+            mesh, psi, alpha1, kappa,
+            slAdv->reconstruction(),
+            kappaStableFootFace
+        );
+    }
+    else if (cellFootPointEvaluatedFaceExtension)
+    {
+        computeCellFootPointEvaluatedFaceCurvature
+        (
+            mesh, psi, alpha1, kappa,
+            slAdv->reconstruction(),
+            kappaStableFootFace
+        );
+    }
+
+    // GUARD (added after footPointEvaluatedFace shipped WITHOUT its branch in
+    // the chain above while having one in slAlphaEqn.H): a selected face
+    // delivery that never ran here leaves kappaStableFootFace at its
+    // construction value of ZERO, so YoungLaplaceEqn below initialises p_rgh
+    // with NO capillary force at all and the first momentum step sees the full
+    // unbalanced sigma*kappa. The run does not fail -- it silently starts from
+    // a droplet with no Laplace jump, and the resulting impulse scales as
+    // h^0.5 where a balanced start leaves an O(h^2) residual, which is exactly
+    // large enough to corrupt a t_blow comparison between deliveries.
+    if
+    (
+        (stabilizedFootPointFaceExtension || cutCellFootPointFaceExtension
+      || cellMeanFootPointFaceExtension || symmetricFaceMeanExtension
+      || footPointEvaluatedFaceExtension || cellFootPointEvaluatedFaceExtension)
+     && gMax(mag(kappaStableFootFace.primitiveField())) <= VSMALL
+    )
+    {
+        FatalErrorInFunction
+            << "curvatureExtension " << curvatureExtensionType
+            << " selected, but kappaStableFootFace is identically zero after "
+            << "the t=0 face delivery: the initial Young-Laplace balance would "
+            << "be solved with no surface tension. The delivery is missing its "
+            << "branch in this dispatch chain."
+            << exit(FatalError);
+    }
 
     #include "YoungLaplaceEqn.H"
     kappa.write();
