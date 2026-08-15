@@ -76,43 +76,33 @@ struct capillaryDriverSplitNorms
 };
 
 
-inline capillaryDriverSplitNorms computeCapillaryDriverSplit
+//- The shared core: the binned face-pair variation RATE of an arbitrary
+//  per-internal-face quantity Q over the cells that own at least two active
+//  faces, divided by `scale`.
+//
+//  Factored out so the solver diagnostic below and leiaTestCurvatureNoiseGain
+//  measure the variation with ONE implementation. The gain utility feeds it the
+//  perturbation RESPONSE d kappa_f with scale = ||d psi||_inf, which is the
+//  functional the pressure projection cannot remove; the plain
+//  ||d kappa_f||_2/||d psi||_inf gain includes the mean and smooth parts the
+//  projection annihilates exactly, and is therefore blind to the difference
+//  between deliveries whose coupled blow-up times are 3x apart.
+inline capillaryDriverSplitNorms computeFacePairVariation
 (
     const fvMesh& mesh,
     const volScalarField& psi,
-    const volScalarField& alpha,
-    const surfaceScalarField& GSigma,
-    const slReconstruction& recon
+    const scalarField& Q,            // per internal face
+    const boolList& activeFace,      // per internal face
+    const slReconstruction& recon,
+    const scalar scale
 )
 {
     capillaryDriverSplitNorms out;
+    if (scale <= VSMALL) { return out; }
 
-    const surfaceScalarField snA(fvc::snGrad(alpha));
-    const scalarField& snIn = snA.primitiveField();
-    const scalarField& gIn = GSigma.primitiveField();
-    const scalarField& magSfIn = mesh.magSf().primitiveField();
     const vectorField& CfIn = mesh.Cf().primitiveField();
-    const scalar snMax = max(gMax(mag(snIn)), VSMALL);
-
-    // Q_f = sigma kappa_f on the active faces.
+    const scalar qBar = scale;
     const label nIf = mesh.nInternalFaces();
-    scalarField Q(nIf, 0.0);
-    boolList activeFace(nIf, false);
-    scalar qSum = 0;
-    label nAct = 0;
-    for (label f = 0; f < nIf; ++f)
-    {
-        if (mag(snIn[f]) <= 1e-8*snMax) { continue; }
-        activeFace[f] = true;
-        Q[f] = gIn[f]/(snIn[f]*magSfIn[f]);
-        qSum += mag(Q[f]);
-        ++nAct;
-    }
-    scalar qSumG = qSum, nActG = nAct;
-    reduce(qSumG, sumOp<scalar>());
-    reduce(nActG, sumOp<scalar>());
-    const scalar qBar = (nActG > 0) ? qSumG/nActG : 0;
-    if (qBar <= VSMALL) { return out; }
 
     const coupledFaceNeighbours coupledNei(mesh, psi);
     scalar sAcross = 0, sAlong = 0;
@@ -220,6 +210,44 @@ inline capillaryDriverSplitNorms computeCapillaryDriverSplit
         (out.nAlong > 0) ? Foam::sqrt(sAlong/out.nAlong) : 0;
 
     return out;
+}
+
+
+inline capillaryDriverSplitNorms computeCapillaryDriverSplit
+(
+    const fvMesh& mesh,
+    const volScalarField& psi,
+    const volScalarField& alpha,
+    const surfaceScalarField& GSigma,
+    const slReconstruction& recon
+)
+{
+    const surfaceScalarField snA(fvc::snGrad(alpha));
+    const scalarField& snIn = snA.primitiveField();
+    const scalarField& gIn = GSigma.primitiveField();
+    const scalarField& magSfIn = mesh.magSf().primitiveField();
+    const scalar snMax = max(gMax(mag(snIn)), VSMALL);
+
+    // Q_f = sigma kappa_f on the active faces.
+    const label nIf = mesh.nInternalFaces();
+    scalarField Q(nIf, 0.0);
+    boolList activeFace(nIf, false);
+    scalar qSum = 0;
+    label nAct = 0;
+    for (label f = 0; f < nIf; ++f)
+    {
+        if (mag(snIn[f]) <= 1e-8*snMax) { continue; }
+        activeFace[f] = true;
+        Q[f] = gIn[f]/(snIn[f]*magSfIn[f]);
+        qSum += mag(Q[f]);
+        ++nAct;
+    }
+    scalar qSumG = qSum, nActG = nAct;
+    reduce(qSumG, sumOp<scalar>());
+    reduce(nActG, sumOp<scalar>());
+    const scalar qBar = (nActG > 0) ? qSumG/nActG : 0;
+
+    return computeFacePairVariation(mesh, psi, Q, activeFace, recon, qBar);
 }
 
 } // End namespace Foam

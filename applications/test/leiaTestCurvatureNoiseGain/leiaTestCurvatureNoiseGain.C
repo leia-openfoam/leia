@@ -65,6 +65,7 @@ Description
 
 // The production face deliveries, measured exactly as the solver applies them.
 #include "stabilizedFootPointFaceCurvature.H"
+#include "capillaryDriverSplit.H"
 #include "levelSetImplicitSurfaces.H"
 
 using namespace Foam;
@@ -256,7 +257,7 @@ int main(int argc, char *argv[])
     const wordList models
     (
         {"arithmetic", "perFaceInverse", "cutCellInverse", "cellMeanInverse",
-         "symFaceMean050", "footEvalFace"}
+         "symFaceMean050", "footEvalFace", "cellFootEvalFace"}
     );
 
     // kappa_f for every delivery, from the CURRENT psi in the reconstruction.
@@ -312,6 +313,16 @@ int main(int argc, char *argv[])
             mesh, psiUse, alpha, kappa, recon(), kappaFace
         );
         kf[5] = kappaFace.primitiveField();
+
+        // the SAME stabilized foot-point evaluation, but once per support CELL
+        // at that cell's own centre, delivered by plain interpolation
+        // (curvatureExtension cellFootPointEvaluatedFace) -- the interpolate of
+        // a cell field, which is what the pressure projection can absorb
+        computeCellFootPointEvaluatedFaceCurvature
+        (
+            mesh, psiUse, alpha, kappa, recon(), kappaFace
+        );
+        kf[6] = kappaFace.primitiveField();
     };
 
     List<scalarField> kfBase;
@@ -334,7 +345,9 @@ int main(int argc, char *argv[])
 
     OFstream os(runTime.path()/"leiaTestCurvatureNoiseGain.csv");
     os << "MODEL,N_ACTIVE_FACES,DELTA_X,KAPPA_EXACT,EPS,N_SEEDS,"
-       << "E_L2,GAIN_L2,GAIN_LINF,GAIN_DIMLESS" << nl;
+       << "E_L2,GAIN_L2,GAIN_LINF,GAIN_DIMLESS,"
+       << "GAIN_DRIVER_ACROSS,GAIN_DRIVER_ALONG,"
+       << "GAIN_DRIVER_ACROSS_DIMLESS,GAIN_DRIVER_ALONG_DIMLESS" << nl;
 
     volScalarField psiPerturbed("psiPerturbed", psi);
 
@@ -344,6 +357,12 @@ int main(int argc, char *argv[])
 
         scalarList gL2(models.size(), scalar(0));
         scalarList gLi(models.size(), scalar(0));
+        // The part of the response the pressure projection CANNOT remove: the
+        // face-pair variation RATE of d kappa_f, binned across the force
+        // support and along the interface exactly as the solver's WP8.1
+        // diagnostic bins the delivered curvature itself.
+        scalarList gDrAcross(models.size(), scalar(0));
+        scalarList gDrAlong(models.size(), scalar(0));
 
         for (label seed = 0; seed < nSeeds; ++seed)
         {
@@ -355,18 +374,33 @@ int main(int argc, char *argv[])
             List<scalarField> kfP;
             deliver(psiPerturbed, kfP);
 
+            // Restore the BASELINE fit before the driver split, so the normals
+            // that assign each face pair to a bin are a property of the
+            // geometry and not of the particular noise realisation.
+            recon->update(psi);
+
             forAll(models, m)
             {
                 scalar s2 = 0, li = 0;
+                scalarField dK(nIntFaces, 0.0);
                 forAll(activeFace, f)
                 {
                     if (!activeFace[f]) { continue; }
                     const scalar d = kfP[m][f] - kfBase[m][f];
+                    dK[f] = d;
                     s2 += magSfIn[f]*d*d;
                     li = max(li, mag(d));
                 }
                 gL2[m] += Foam::sqrt(s2/sumAf)/a;
                 gLi[m] = max(gLi[m], li/a);
+
+                const capillaryDriverSplitNorms dr =
+                    computeFacePairVariation
+                    (
+                        mesh, psi, dK, activeFace, recon(), a
+                    );
+                gDrAcross[m] += dr.acrossSupportL2;
+                gDrAlong[m] += dr.alongInterfaceL2;
             }
         }
 
@@ -374,16 +408,20 @@ int main(int argc, char *argv[])
         forAll(models, m)
         {
             const scalar g2 = gL2[m]/scalar(nSeeds);
+            const scalar dAc = gDrAcross[m]/scalar(nSeeds);
+            const scalar dAl = gDrAlong[m]/scalar(nSeeds);
             os  << models[m] << ',' << nActive << ',' << h << ','
                 << kappaExact << ',' << eps << ',' << nSeeds << ','
                 << eL2[m] << ',' << g2 << ',' << gLi[m] << ','
-                << g2*h*h << nl;
+                << g2*h*h << ',' << dAc << ',' << dAl << ','
+                << dAc*h*h*h << ',' << dAl*h*h*h << nl;
 
             Info<< "  " << models[m]
                 << ": E_L2 = " << eL2[m] << " 1/m"
                 << ", gain = " << g2 << " 1/m^2"
                 << " (x" << g2*h*h << " a plain second difference)"
-                << ", max gain = " << gLi[m] << " 1/m^2" << nl;
+                << ", driver gain across/along = "
+                << dAc*h*h*h << " / " << dAl*h*h*h << " (dimensionless)" << nl;
         }
         Info<< endl;
     }

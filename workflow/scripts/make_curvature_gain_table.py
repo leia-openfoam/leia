@@ -88,6 +88,19 @@ def main(argv):
                     "EPS": _f(r.get("EPS")), "N_SEEDS": r.get("N_SEEDS"),
                     "E_L2": _f(r.get("E_L2")), "GAIN_L2": _f(r.get("GAIN_L2")),
                     "GAIN_LINF": _f(r.get("GAIN_LINF")), "GAIN_DIMLESS": gd,
+                    # The part of the response the pressure projection cannot
+                    # remove: sigma*kappa_f enters the momentum equation only
+                    # through face-to-face DIFFERENCES, so the mean and smooth
+                    # parts of d kappa_f are absorbed exactly and GAIN_DIMLESS
+                    # over-counts them. Measured: these two do NOT separate the
+                    # deliveries either (0.799/0.800/0.806 for arithmetic /
+                    # per-face inverse / footEval, whose coupled blow-up times
+                    # are 3x apart) -- what differs by 112x is the delivered
+                    # field's own roughness on a clean psi, not its response.
+                    "GAIN_DRIVER_ACROSS_DIMLESS":
+                        _f(r.get("GAIN_DRIVER_ACROSS_DIMLESS")),
+                    "GAIN_DRIVER_ALONG_DIMLESS":
+                        _f(r.get("GAIN_DRIVER_ALONG_DIMLESS")),
                 })
     if not rows:
         print(f"[curvgain] no {CSV_NAME} under {study}")
@@ -96,7 +109,8 @@ def main(argv):
     tables = paths.tables_dir(THEME)
     out_csv = os.path.join(tables, f"curvature_gain{suffix}.csv")
     cols = ["MODEL", "N_CELLS", "DELTA_X", "EPS", "N_SEEDS",
-            "E_L2", "GAIN_L2", "GAIN_LINF", "GAIN_DIMLESS"]
+            "E_L2", "GAIN_L2", "GAIN_LINF", "GAIN_DIMLESS",
+            "GAIN_DRIVER_ACROSS_DIMLESS", "GAIN_DRIVER_ALONG_DIMLESS"]
     rows.sort(key=lambda r: (r["MODEL"], r["N_CELLS"], r["EPS"]))
     with open(out_csv, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols)
