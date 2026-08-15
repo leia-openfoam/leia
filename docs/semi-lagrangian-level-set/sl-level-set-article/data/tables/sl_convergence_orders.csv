@@ -1,7 +1,7 @@
-case,mesh,reconstruction,cfl,nLevels,stableLevels,hMin,hMax,hLimit,shapeOrder,volumeOrder,gradientOrder,gradientBandOrder,gradientHalfOrder,gradientBandHalfOrder,volumeHalfOrder
-2Dvortex,hex,uncachedQuadraticWeightedLeastSquares,0.5,7,7,0.00390625,0.03125,,2.965,2.978,0.527,2.895,-0.029,-0.065,1.782
-2Dvortex,hex,uncachedQuadraticWeightedLeastSquares,1.0,7,7,0.00390625,0.03125,,2.593,2.940,0.532,2.699,-0.036,-0.089,1.992
-3Dshear,hex,uncachedQuadraticWeightedLeastSquares,0.5,4,4,0.0078125,0.03125,,2.955,2.922,-0.002,1.969,-0.048,-0.188,1.246
-3Ddeformation,hex,uncachedQuadraticWeightedLeastSquares,0.5,5,5,0.00625,0.03125,,1.360,1.859,-0.396,0.083,-0.285,-0.734,1.336
-3Dshear,poly,uncachedQuadraticWeightedLeastSquares,0.5,4,4,0.0078125,0.03125,,3.285,3.498,-0.862,0.719,-0.326,-0.105,2.058
-3Ddeformation,poly,uncachedQuadraticWeightedLeastSquares,0.5,4,4,0.0078125,0.03125,,1.464,2.513,-0.062,-0.745,-0.360,-1.037,2.613
+case,mesh,arm,T,study,reconstruction,cfl,nLevels,stableLevels,hMin,hMax,hLimit,shapeOrder,volumeOrder,gradientOrder,gradientBandOrder,gradientHalfOrder,gradientBandHalfOrder,volumeHalfOrder
+2Dvortex,hex,uncachedQuadraticWeightedLeastSquares,2,uncachedConv2Dvortex,uncachedQuadraticWeightedLeastSquares,0.5,7,7,0.00390625,0.03125,,2.965,2.978,0.527,2.895,-0.029,-0.065,1.782
+2Dvortex,hex,uncachedQuadraticWeightedLeastSquares,2,uncachedConv2Dvortex,uncachedQuadraticWeightedLeastSquares,1.0,7,7,0.00390625,0.03125,,2.593,2.940,0.532,2.699,-0.036,-0.089,1.992
+3Dshear,hex,uncachedQuadraticWeightedLeastSquares,3.0,uncachedConv3Dshear,uncachedQuadraticWeightedLeastSquares,0.5,4,4,0.0078125,0.03125,,2.955,2.922,-0.002,1.969,-0.048,-0.188,1.246
+3Ddeformation,hex,uncachedQuadraticWeightedLeastSquares,3.0,uncachedConv3Ddeformation,uncachedQuadraticWeightedLeastSquares,0.5,5,5,0.00625,0.03125,,1.360,1.859,-0.396,0.083,-0.285,-0.734,1.336
+3Dshear,poly,uncachedQuadraticWeightedLeastSquares,3.0,uncachedConv3DshearPoly,uncachedQuadraticWeightedLeastSquares,0.5,4,4,0.0078125,0.03125,,3.285,3.498,-0.862,0.719,-0.326,-0.105,2.058
+3Ddeformation,poly,uncachedQuadraticWeightedLeastSquares,3.0,uncachedConv3DdeformationPoly,uncachedQuadraticWeightedLeastSquares,0.5,4,4,0.0078125,0.03125,,1.464,2.513,-0.062,-0.745,-0.360,-1.037,2.613
