@@ -378,6 +378,69 @@
 </section>
 </section>
 
+<section data-track="Where the order is lost">
+<section>
+  <h2>Where the order is lost</h2>
+  <p class="tight">Error estimate in the Jasak / Jureti&#263; framework: expand every
+     discrete operator about the centroid, then separate what acts on the <em>exact</em>
+     field from what acts on the <em>solution error</em>
+     \(e=\psi_h-\psi\).</p>
+  <p class="tight">On uniform orthogonal hexes the gradient is second order
+     <b>for a smooth field</b>:
+     \((\nabla\phi)_h=\nabla\phi+C_2h^2\nabla^3\phi+O(h^3)\).
+     Apply it to \(\psi_h=\psi+e\):</p>
+  <p style="text-align:center; font-size:1.1em">
+     \(\delta\mathbf{g}=(\nabla\psi_h)_h-\nabla\psi
+       =\underbrace{C_2h^2\nabla^3\psi}_{O(h^2)\ \text{truncation}}
+       +\underbrace{(\nabla e)_h}_{O(h^{p-1})}\)</p>
+  <p class="tight"><b>The two terms are not the same order.</b> \(e\) is \(O(h^p)\) in
+     magnitude but is <em>not smooth on the scale \(h\)</em> &mdash; it lives at cell
+     centres and varies cell to cell at its own size &mdash; so
+     \(|(\nabla e)_h|\sim|e|/h=O(h^{p-1})\). With second-order transport
+     \((p=2)\) that term is \(O(h)\) and it <b>dominates</b>.</p>
+  <p class="tight">Only the tangential part perturbs the normal,
+     \(\delta\mathbf{n}=(\mathbf{I}-\mathbf{n}\otimes\mathbf{n})\cdot\delta\mathbf{g}/|\nabla\psi|\),
+     so
+     \(\delta a = 2\,\mathbf{n}\cdot\nabla\mathbf{v}\cdot\delta\mathbf{n}
+       + \mathbf{n}\cdot\delta(\nabla\mathbf{v})\cdot\mathbf{n}=O(h^{p-1})+O(h^2)\),
+     and since \(D(\ln g)/Dt=a_h-a=\delta a\):</p>
+  <p style="text-align:center; font-size:1.25em; border:1px solid var(--ls-muted); padding:0.3em 0.8em; display:inline-block">
+     \(\bigl\||\nabla\psi|-1\bigr\| = \Bigl\|\int_0^T\delta a\,dt\Bigr\| = O(h^{p-1}) = O(h)\)</p>
+</section>
+
+<section>
+  <h3>The estimate is falsifiable &mdash; and the data test it</h3>
+  <p class="tight">At \(t=0\) the discrete field <b>is</b> the sampled exact signed
+     distance, so \(e=0\) identically: the error-field term vanishes and only the
+     \(O(h^2)\) truncation survives. <b>Prediction:</b> order 2 before the first step,
+     falling to 1 the moment transport creates \(e\) &mdash; immediately, not gradually.</p>
+  <table style="font-size:0.86em; margin:0 auto">
+    <tr><th style="text-align:left">\(t/T\)</th><th>0</th><th>0.02</th><th>0.05</th>
+        <th>0.10</th><th>0.25</th><th>0.50</th></tr>
+    <tr><td>2D reversed vortex</td><td class="good"><b>+2.010</b></td><td>+1.071</td><td>+1.108</td>
+        <td>+1.195</td><td>+1.323</td><td>+1.227</td></tr>
+    <tr><td>3D shear</td><td class="good"><b>+2.006</b></td><td>+1.122</td><td>+1.143</td>
+        <td>+1.301</td><td>+0.896</td><td>+0.668</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.86em">Exactly 2 before the first step; \(\approx\)1.1
+     within <b>2%</b> of the period. That is the predicted collapse, and it is not what a
+     slowly growing \(\nabla^3\psi\) would look like. The later decay on 3D shear is the
+     separate under-resolution effect &mdash; where the interface nears the cell size the
+     expansion has no validity, and \(L_\infty\) degrades faster than \(L_1\)
+     (+0.27 vs +0.72 at \(T/2\)).</p>
+  <ul class="tight" style="font-size:0.88em">
+    <li><b>The gradient scheme cannot help.</b> It changes \(C_2\), not the exponent in
+        \((\nabla e)_h\). Measured: compact LSQ <b>+1.256</b>, point-cell LSQ
+        <b>+1.254</b>, Green&ndash;Gauss <b>+1.253</b>.</li>
+    <li><b>Second order in the gradient needs \(p=3\)</b> &mdash; third-order transport,
+        not a rearranged source.</li>
+    <li class="good"><b>The one escape:</b> the estimate bounds \(\delta a\) via
+        \((\nabla e)_h\). A normal that never differentiates \(\psi_h\) &mdash;
+        reconstructed from an interface fit &mdash; is not covered by it.</li>
+  </ul>
+</section>
+</section>
+
 <section data-track="A conservative implicit form">
 <section>
   <h2>The source is exactly a surface divergence</h2>

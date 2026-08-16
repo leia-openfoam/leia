@@ -395,6 +395,125 @@ of the gradient it is computed from --- the source cannot cancel a stretching
 term more precisely than it can estimate it. Distinguishing these requires a
 fixed-width band and a normal-error measurement, and neither is claimed here.
 
+\subsection{Where the order is lost: an error estimate for the source}
+\label{sec:sourceerror}
+
+The measurements of the previous paragraph exclude every implementation-side
+cause, so the remaining explanation has to be structural. It is, and it follows
+from the error-estimation framework of Jasak \cite{jasak1996} and Jureti\'{c}
+\cite{juretic2004,juretic2010}: expand every discrete operator about the cell
+centroid, and separate what acts on the \emph{exact} field from what acts on the
+\emph{solution error}.
+
+Write $\psilev$ for the exact solution and $\psilev_h$ for the discrete one, and
+let $e = \psilev_h - \psilev$ be the solution error. On the uniform orthogonal
+hexahedral meshes used here the gradient reconstruction is second order
+\emph{for a smooth field},
+\begin{equation}
+  (\nabla\phi)_h = \nabla\phi + C_2\,h^2\,\nabla^3\phi + O(h^3),
+  \label{eq:gradtrunc}
+\end{equation}
+with the non-orthogonality and skewness contributions of
+\cite{juretic2004,juretic2010} absent by construction. Applying it to
+$\psilev_h = \psilev + e$ and using linearity,
+\begin{equation}
+  \underbrace{(\nabla\psilev_h)_h - \nabla\psilev}_{\displaystyle \delta\mathbf{g}}
+  \;=\; \underbrace{C_2 h^2 \nabla^3\psilev}_{\text{smooth part, } O(h^2)}
+  \;+\; \underbrace{(\nabla e)_h}_{\text{error field}} .
+  \label{eq:gradsplit}
+\end{equation}
+The two terms are not the same order. The first is the classical truncation
+term. The second differentiates a field that is $O(h^p)$ in magnitude but is
+\emph{not smooth on the scale $h$}: $e$ is defined only at cell centres and
+generically varies from one cell to the next at its own magnitude, so
+$|(\nabla e)_h| \sim |e|/h = O(h^{p-1})$. For the second-order transport used
+here, $p=2$ and the error-field term is $O(h)$ --- it dominates.
+
+The consequence propagates directly to the source. Only the \emph{tangential}
+part of a gradient perturbation moves the normal,
+$\delta\mathbf{n} = (\mathbf{I}-\nhat\otimes\nhat)\cdot\delta\mathbf{g}/\gradpsi$,
+so
+\begin{equation}
+  \delta a \;=\; 2\,\nhat\cdot\nabla\mathbf{v}\cdot\delta\mathbf{n}
+              \;+\; \nhat\cdot\delta(\nabla\mathbf{v})\cdot\nhat
+        \;=\; O(h^{p-1}) + O(h^2),
+  \label{eq:straerr}
+\end{equation}
+the second term being second order because $\mathbf{v}$ is prescribed and
+smooth. With the numerical source $f_{nl}=a_h$, the gradient law of
+Section~\ref{par:beta} becomes $D(\ln g)/Dt = a_h - a = \delta a$, so
+\begin{equation}
+  \bigl\|\,\gradpsi-1\,\bigr\| \;=\; \Bigl\|\int_0^T \delta a\,\mathrm dt\Bigr\|
+  \;=\; O(h^{p-1}) \;=\; O(h) .
+  \label{eq:sdplsorder}
+\end{equation}
+
+\paragraph{The estimate is falsifiable, and the data test it.}
+Equation~\eqref{eq:gradsplit} predicts something sharp: at $t=0$ the discrete
+field \emph{is} the sampled exact signed distance, so $e=0$ identically, the
+error-field term vanishes, and only the $O(h^2)$ truncation term survives. The
+order must therefore be $2$ at $t=0$ and fall to $1$ as soon as transport
+creates a nonzero $e$ --- not gradually as the interface deforms, but
+immediately. Fitting the band error at successive instants:
+
+\begin{center}
+\begin{tabular}{lrrrrrr}
+\toprule
+$t/T$ & $0$ & $0.02$ & $0.05$ & $0.10$ & $0.25$ & $0.50$ \\
+\midrule
+2D reversed vortex & $+2.010$ & $+1.071$ & $+1.108$ & $+1.195$ & $+1.323$ & $+1.227$ \\
+3D shear           & $+2.006$ & $+1.122$ & $+1.143$ & $+1.301$ & $+0.896$ & $+0.668$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Both cases sit at exactly $2$ before the first step and drop to $\approx1.1$
+within $2\%$ of the period, which is the predicted behaviour and not what a
+slowly growing $\nabla^3\psilev$ would produce. The later decay on 3D shear is
+the separate under-resolution effect of Section~\ref{par:ablation}: where the
+interface approaches the cell size the expansion \eqref{eq:gradtrunc} has no
+validity at all, and the $L_\infty$ norm degrades faster than $L_1$
+($+0.27$ against $+0.72$ at $t=T/2$) exactly as a few unresolved cells would
+predict.
+
+\paragraph{A direct measurement of $\delta a$, and where it disagrees.}
+The estimate above is inferred from the band gradient error. Measuring
+$\delta a = a_h - a$ directly --- comparing the solver's registered strain field
+at $t=0$ against $\nhat\cdot\nabla\mathbf{v}\cdot\nhat$ evaluated with the exact
+circle normal and the analytic Rider--Kothe velocity --- gives a partly
+different picture. Over the narrow band of the 2D ladder ($N=32\ldots512$) the
+fields agree closely, correlation $0.99994$ and r.m.s.\ matching to $0.05\%$,
+and the error converges at $L_1$ order $+1.25$. But two cells out of $868$ at
+the finest resolution carry errors of order $20\%$ that do not converge at all,
+so $L_2$ and $L_\infty$ fall to $+0.63$ and $+0.12$.
+
+Two things follow, and the second is an open question rather than a result.
+The bulk order $+1.25$ is consistent with \eqref{eq:sdplsorder}, but it is
+\emph{not} the $O(h^2)$ that \eqref{eq:gradsplit} predicts at $t=0$, where
+$e=0$ by construction. The resolution is that the two projections of
+$\delta\mathbf{g}$ need not share an order: the band metric
+$\gradpsi-1$ senses the \emph{normal} component $\nhat\cdot\delta\mathbf{g}$,
+which is second order at $t=0$ as measured, while $\delta\nhat$ --- and hence
+$\delta a$ --- senses only the \emph{tangential} component. The estimate as
+written does not separate them, and the direct measurement says it should. That
+refinement, and the identity of the few non-converging cells, are left open
+here; what is established is that the source error and the band gradient error
+share the same $O(h)$ bulk behaviour, which is what
+\eqref{eq:sdplsorder} needs.
+
+\paragraph{What the estimate implies.}
+Three things, and they are all consequences of $p-1$ rather than of any choice
+we made. \emph{First}, the gradient scheme cannot help: it changes $C_2$ in
+\eqref{eq:gradtrunc}, not the exponent in $(\nabla e)_h$. Measured --- compact
+least squares, extended point-cell least squares and Green--Gauss give
+$+1.256$, $+1.254$ and $+1.253$. \emph{Second}, second order in the
+\emph{gradient} error requires $p=3$: a third-order transport scheme, not a
+rearranged source. \emph{Third}, the estimate bounds $\delta a$, so a normal
+that does not differentiate $\psilev_h$ at all --- one reconstructed from an
+interface fit rather than from the discrete field --- is not covered by
+\eqref{eq:gradsplit} and is the one remaining avenue that could beat $O(h)$
+without changing the transport.
+
 \paragraph{Why \texttt{beta} fails.}
 \label{par:beta}
 \texttt{beta} is not unstable on this flow and it is not under-resolved; it
