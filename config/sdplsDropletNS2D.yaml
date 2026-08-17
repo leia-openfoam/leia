@@ -46,6 +46,18 @@ axes_override:
   SDPLS_SOURCE: [noSource, R]
   SOURCE_SCHEME: [simpleLinearImplicit]
 
+  # THE COUPLED CUT-OFF TEST. Without one, R drains the droplet completely
+  # (relative volume error -1.0 by t=0.1 at every N) while noSource conserves to
+  # 4e-4 -- the far-field amplification that was harmless under a prescribed
+  # velocity is fatal under a computed one, where parasitic currents make the
+  # strain noisy everywhere. `band` is the scale-free cut-off (a cell count, not
+  # a physical width -- m1's w1/w2 would need rescaling to this geometry) and it
+  # flattened the far field completely in the kinematic tests (-0.02). The band
+  # error cost that disqualified it kinematically is moot here: a destroyed
+  # droplet has no band error worth protecting. noSource x band is inert
+  # (nothing to cut off) but keeps the matrix full and the renumbering simple.
+  MOLLIFIER: [none, band]
+
   # Self-contained psi-based CSF: kappa = div(grad psi/|grad psi|). The case
   # default (reconstructedCurvature) needs the SL quadratic reconstruction's
   # registered kappa, which the Eulerian solver does not build.

@@ -318,6 +318,11 @@ levelSet
             w1      @!SDPLS_W1!@;
             w2      @!SDPLS_W2!@;
             nLayers @!SDPLS_NLAYERS!@;
+            // `band` only: the phase field to seed |snGrad(alpha)| > 0 from.
+            // This case names it alpha.water; without this the band type falls
+            // back to psi's own sign change (still topological, but the point
+            // is to seed from the field the solver actually advects).
+            alpha   alpha.water;
         }
     }
 
