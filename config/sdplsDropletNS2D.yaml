@@ -35,6 +35,9 @@ mode: parallel
 np: 8
 
 solver: leiaLevelSetTwoPhaseFoam
+# The two-phase field is alpha.water, not alpha; every droplet config sets this
+# and omitting it fails leiaSetFields at launch (measured -- first submission).
+setfields_args: "-alphaName alpha.water" 
 theme: sdpls-level-set
 
 axes_override:
