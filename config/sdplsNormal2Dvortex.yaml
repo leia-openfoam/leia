@@ -77,13 +77,14 @@ axes_override:
 
   # aliasDict names -- multi-word schemes cannot be passed as bare tokens.
   GRAD_PSI_SDPLS: [SdplsLSQ, SdplsPointLSQ, SdplsGauss]
-  # `narrowLS` is NOT swept here, and the reason is a genuine confound rather
-  # than caution: it reads the per-cell LLSQ plane normal `nc`, which only
-  # geometricPhaseIndicator registers. Our studies use detrixheAslam, so
-  # selecting narrowLS would also change the phase indicator -- and hence alpha,
-  # and hence the volume and shape errors. That is two changes, not one. It
-  # deserves its own paired comparison against a geometric-indicator control.
-  GRAD_PSI: [fvc]
+  # `narrowLS` uses the per-cell LLSQ plane-fit normal `nc` INSIDE the band and
+  # fvc::grad outside. detrixheAslam now registers that normal itself (it always
+  # computed it to build alpha; it used to discard it), so this is a
+  # SINGLE-VARIABLE ablation: alpha, and hence volume and shape, are identical
+  # between the arms. The fitted normal never differentiates psi_h, so it is not
+  # covered by the O(h^(p-1)) bound on delta_a -- it is the one remaining
+  # candidate for beating O(h) without third-order transport.
+  GRAD_PSI: [fvc, narrowLS]
 collapse_other_axes: true
 
 export_slides: false
