@@ -1,0 +1,50 @@
+# SOLENOIDALITY AUDIT: is the field that transports psi divergence-free?
+#
+# psi is advected along characteristics with the CELL velocity U (slAlphaEqn.H,
+# the identity path when velocityExtension is none), while incompressibility is
+# enforced on the FACE flux phi. div(phi) = 0 to solver tolerance by
+# construction; div(U_cell), which comes out of fvc::reconstruct in pEqn.H:102,
+# is not. interFoam and Basilisk both advect the colour function with the flux
+# that satisfies discrete continuity exactly. A reinit-free level set has no
+# bounded quantity to absorb the mismatch, so it accumulates in |grad psi| --
+# and the delivered-curvature error is slaved to that drift (measured slope
+# 1.00, r^2 = 0.98).
+#
+# LOCAL SMOKE (N=128, 20 steps, production delivery) that motivated this run:
+#     div(U)   band L2 0.040 -> 0.158,  Linf 0.15 -> 0.47   [1/s]
+#     div(phi) band L2 ~3e-7,           Linf ~1e-6
+# i.e. FIVE ORDERS apart, and div(U) growing monotonically. Relative to the
+# velocity-gradient scale max|U|/h ~ 0.5 1/s, the advecting field carries a
+# ~30% divergence error.
+#
+# This study takes it to the full horizon at three resolutions and asks:
+#   (a) how does ||div(U)||_band scale with h?
+#   (b) does the implied per-step spurious normal displacement
+#       (spuriousDispPerStepOverH) account for the measured |grad psi| drift
+#       rate, in magnitude AND in its h-scaling?
+# If yes, the remedy is a flux-consistent transport velocity, not another
+# curvature model -- and that would reframe the whole campaign.
+#
+# The columns are emitted by every run of the solver now (writeDropletMetrics.H),
+# so this config is the production arm re-run with the instrumented binary; the
+# delivery and every other setting are unchanged.
+study_name: solenoidalityAudit
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+
+solve_runtime: 240
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

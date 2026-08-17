@@ -227,6 +227,65 @@
         slAdv->reconstruction()
     );
 
+    // ---- solenoidality of the ADVECTING field (see createDropletMetricsFile.H)
+    // div(phi) is zero to solver tolerance by construction; div(U_cell) from
+    // fvc::reconstruct is not, and psi is transported with U_cell. Both are
+    // measured on the same band (|psi| < 2h) so the ratio is meaningful, and
+    // the last column converts div(U) into the per-step spurious normal
+    // displacement it implies, in units of the cell size.
+    scalar divUBandL2 = 0, divUBandLinf = 0;
+    scalar divPhiBandL2 = 0, divPhiBandLinf = 0;
+    scalar spuriousDispPerStepOverH = 0;
+    {
+        // fvc::div(volVectorField) would require a div(U) scheme entry in
+        // every case; the flux form needs none (fvc::div of a
+        // surfaceScalarField is surfaceIntegrate) and is the DIRECTLY
+        // comparable quantity: the same discrete divergence operator applied
+        // to the interpolated cell velocity and to the pressure-corrected
+        // face flux.
+        const volScalarField divU
+        (
+            fvc::div(fvc::interpolate(U) & mesh.Sf())
+        );
+        const volScalarField divPhi(fvc::div(phi));
+        const scalarField& dU = divU.primitiveField();
+        const scalarField& dP = divPhi.primitiveField();
+        const scalarField& psiIn = psi.primitiveField();
+        const scalarField& Vc = mesh.V();
+
+        // Use the SAME band the other metrics use (the registered NarrowBand
+        // field) rather than a |psi| threshold against a guessed cell size: on
+        // a 2D mesh the cell volume is h^2*Lz, so no root of V is the cell
+        // size, and a first attempt with pow(V, 1/nGeometricD) selected an
+        // EMPTY band and silently reported zeros.
+        const scalarField& nb =
+            mesh.lookupObject<volScalarField>("NarrowBand").primitiveField();
+        const scalar hCell = Foam::sqrt(gAverage(mesh.magSf()));
+
+        scalar sU = 0, sP = 0, vSum = 0;
+        forAll(psiIn, c)
+        {
+            if (nb[c] < 0.5) { continue; }
+            sU += Vc[c]*sqr(dU[c]);
+            sP += Vc[c]*sqr(dP[c]);
+            vSum += Vc[c];
+            divUBandLinf = max(divUBandLinf, mag(dU[c]));
+            divPhiBandLinf = max(divPhiBandLinf, mag(dP[c]));
+        }
+        reduce(sU, sumOp<scalar>());
+        reduce(sP, sumOp<scalar>());
+        reduce(vSum, sumOp<scalar>());
+        reduce(divUBandLinf, maxOp<scalar>());
+        reduce(divPhiBandLinf, maxOp<scalar>());
+        if (vSum > VSMALL)
+        {
+            divUBandL2 = Foam::sqrt(sU/vSum);
+            divPhiBandL2 = Foam::sqrt(sP/vSum);
+        }
+        spuriousDispPerStepOverH =
+            divUBandL2*hCell*runTime.deltaTValue()/max(hCell, VSMALL);
+    }
+
     if (Pstream::master())
     {
         dropletFilePtr()
@@ -257,6 +316,9 @@
             << driverSplit.nAcross << ',' << driverSplit.nAlong << ','
             << driverSplit.normalDisagreementMeanDeg << ','
             << driverSplit.normalDisagreementMaxDeg << ','
-            << driverSplit.nPlaneNormalFallback << nl;
+            << driverSplit.nPlaneNormalFallback << ','
+            << divUBandL2 << ',' << divUBandLinf << ','
+            << divPhiBandL2 << ',' << divPhiBandLinf << ','
+            << spuriousDispPerStepOverH << nl;
     }
 }

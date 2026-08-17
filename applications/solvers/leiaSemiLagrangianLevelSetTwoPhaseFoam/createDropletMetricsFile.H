@@ -90,5 +90,17 @@ if (Pstream::master())
         // angle between the quadratic-fit normal (used for the split) and
         // the linear-plane normal, over band cells [deg], + fallback count
         << "driverNormalDisagreementMeanDeg,driverNormalDisagreementMaxDeg,"
-        << "driverNPlaneNormalFallback" << nl;
+        << "driverNPlaneNormalFallback" << ','
+        // SOLENOIDALITY OF THE ADVECTING FIELD. psi is transported along
+        // characteristics with the CELL velocity U (slAlphaEqn.H, identity path
+        // when velocityExtension is none), while incompressibility is enforced
+        // on the FACE flux phi: div(phi) = 0 to solver tolerance, div(U_cell)
+        // is NOT. interFoam/Basilisk advect the colour function with the flux
+        // that satisfies discrete continuity exactly; a reinit-free level set
+        // has no bounded quantity to absorb the mismatch, so it accumulates in
+        // |grad psi|. These columns measure it: the band L2/Linf of div(U),
+        // the same for div(phi) as the reference floor, and the implied
+        // per-step spurious normal displacement div(U)*h*dt in units of h.
+        << "divUBandL2,divUBandLinf,divPhiBandL2,divPhiBandLinf,"
+        << "spuriousDispPerStepOverH" << nl;
 }
