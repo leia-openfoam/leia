@@ -63,6 +63,10 @@ Description
 #include "sdplsSource.H"
 #include "surfaceTensionForce.H"
 #include "narrowBand.H"
+// Production curvature: the SL reconstruction machinery reused READ-ONLY as a
+// spatial kappa evaluator (see reconstructedCurvatureFields.H).
+#include "slReconstruction.H"
+#include "stabilizedFootPointFaceCurvature.H"
 
 #include "advectionErrors.H"
 
@@ -170,6 +174,9 @@ int main(int argc, char *argv[])
             // #include "alphaEqnSubcycle.H"
             // Solve for the phase indicator.
             #include "alphaEqn.H"
+            // Production curvature refresh: psi is current, the momentum
+            // predictor below reads the force built from kappa.
+            #include "reconstructedCurvatureUpdate.H"
 
             // Update viscosity. 
             mixture.correct();

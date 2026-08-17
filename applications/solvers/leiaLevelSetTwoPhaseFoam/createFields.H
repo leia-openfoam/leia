@@ -164,5 +164,10 @@ autoPtr<phaseIndicator> phaseInd = phaseIndicator::New(mesh);
 phaseInd->calcPhaseIndicator(alpha1, psi);
 alpha1.write();
 
+// Production curvature (SL reconstruction), constructed ONLY when the force
+// below is reconstructedCurvature -- whose constructor looks `kappa` up, so
+// these fields must be registered first.
+#include "reconstructedCurvatureFields.H"
+
 // Surface Tension Force Model 
 autoPtr<surfaceTensionForce> fSigma = surfaceTensionForce::New(mesh); 

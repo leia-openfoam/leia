@@ -61,7 +61,15 @@ axes_override:
   # Self-contained psi-based CSF: kappa = div(grad psi/|grad psi|). The case
   # default (reconstructedCurvature) needs the SL quadratic reconstruction's
   # registered kappa, which the Eulerian solver does not build.
-  SURFACE_TENSION_FORCE: [divGradPsiSnGradAlpha]
+  # PRODUCTION curvature: the SL line's reconstructedCurvature, fed by the
+  # quadratic LSQ fit + stabilized foot-point face delivery -- now constructible
+  # in the Eulerian solver (reconstructedCurvatureFields.H). kappa comes from a
+  # smooth local fit rather than raw FV derivatives of psi, so the
+  # source-curvature feedback that drained the droplet with
+  # divGradPsiSnGradAlpha does not pass high-wavenumber psi perturbations
+  # straight through to the force. The divGradPsiSnGradAlpha arms already ran;
+  # their data stands as the feedback measurement.
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
 collapse_other_axes: true
 
 export_slides: false
