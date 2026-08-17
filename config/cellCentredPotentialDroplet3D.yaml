@@ -1,0 +1,62 @@
+# The 3D twin of config/cellCentredPotentialDroplet.yaml: does dimensionality
+# change the cell-centred (potential-form) construction's coupled behaviour?
+#
+# Two things are structurally different in 3D and neither has ever been measured
+# coupled in this campaign:
+#   1. The delivered kappa_f error is a single-valued function of the angle
+#      between the CSF face normal and the interface normal. On a 2D Cartesian
+#      mesh that angle sweeps 0-90 deg four times around the circle -- the
+#      cos(4 theta) pole bias, m=4 carrying 99.7% of the smooth fluctuation. In
+#      3D it is a solid-angle effect over THREE face orientations, so the
+#      forcing is not a single resolved ring mode and the m=2 shape mode that
+#      carries the 2D instability has no reason to be the carrier.
+#   2. The parallel-surface inverse consumes the Gaussian curvature K, which is
+#      identically zero in 2D. The static 3D sphere gate scores it at h^1.95;
+#      this is the first COUPLED exercise of that term.
+# Mean curvature is 2/R, so the exact Laplace jump is 145.48 Pa (72.74 in 2D).
+#
+# RESOLUTIONS AND COST. Cells go as N^3 while the capillary step and the step
+# COUNT are unchanged at equal N (MAX_DELTA_T = CAPILLARY_DT_COEFF/N^1.5 holds
+# in any dimension), so only per-step cost grows: N=32 is 32768 cells / 1667
+# steps to t=0.1, N=64 is 262144 cells / 4714 steps. np 16 rather than the 2D
+# standard 8, justified by the cell count, not by padding. N=96 (884736 cells,
+# 8664 steps) is deliberately EXCLUDED here -- it needs its own sizing and
+# would not finish inside a limit set from the N=64 pace.
+#
+# PREDICTION (recorded before the run).
+#   a. The 2D finding that arithmetic outlives the per-face inverse should
+#      SURVIVE into 3D if the mechanism is the delivery's face-to-face
+#      variation, since that argument is dimension-independent.
+#   b. Absolute t_blow should be EARLIER than 2D at equal N: the N=32 smoke
+#      already shows kErrL2Band = 678 on kappa = 2000 (34%, against a few
+#      percent in 2D at equal N) and min|grad psi| = 0.940 after ten steps.
+#   c. If the ordering INVERTS in 3D, the 2D conclusion is dimension-specific
+#      and the K term in the inverse is the first place to look.
+#   Report volume AND shape error, never a single metric.
+study_name: cellCentredPotentialDroplet3D
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 16
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [32, 64]
+  # model-based arms ONLY. stabilizedFootPointFace writes the registered face
+  # field kappaStableFootFace and REQUIRES faceCurvatureSource registered;
+  # pairing it with `model` would compute the delivery and then ignore it,
+  # silently duplicating the arithmetic arm. The production 3D reference is
+  # therefore its own study (cellCentredPotentialDroplet3Dprod.yaml) rather than
+  # a third value on this axis -- snakemake takes the cross product, so the
+  # (extension, source) pairing cannot be expressed as two independent axes.
+  CURVATURE_EXTENSION: [none, closestPointNewton]
+  FACE_CURVATURE_SOURCE: [model]
+
+solve_runtime: 180
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
