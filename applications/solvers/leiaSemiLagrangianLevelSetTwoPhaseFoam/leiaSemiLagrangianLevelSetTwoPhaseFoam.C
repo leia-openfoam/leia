@@ -92,6 +92,7 @@ Description
 // Stabilized foot-point re-referencing of the FACE curvature (the balanced-CSF
 // delivery measured second-order on the face-centered curvature gate).
 #include "stabilizedFootPointFaceCurvature.H"
+#include "cellCentreInverseCurvature.H"
 
 // Band renormalization: restore the parallel foliation of psi (psi <- psi/beta_Gamma)
 // without moving the zero set. See plan sec. 14.2 for why the operand, not the
@@ -164,6 +165,13 @@ int main(int argc, char *argv[])
     else
     {
         slAdv->meanCurvatureNoExtension(psi, kappa);
+    }
+
+    // Same cell-centre inverse at t=0, so the initial Young-Laplace balance uses
+    // the curvature the run-time force will use (the defect fixed in 7ad635d).
+    if (cellCentreInverseExtension)
+    {
+        applyCellCentreInverseCurvature(mesh, slAdv->reconstruction(), kappa);
     }
 
     // Optional harmonic (Laplace) curvature smoothing on the initialised field, so

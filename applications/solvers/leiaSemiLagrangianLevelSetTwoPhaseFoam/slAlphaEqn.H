@@ -197,6 +197,15 @@
             slAdv->meanCurvatureNoExtension(psi, kappa);
         }
 
+        // CELL-CENTRE parallel-surface inverse, in place on the cell field, so
+        // everything downstream (interpolation to faces, the metrics, the
+        // driver split) sees an interface-referenced curvature without any
+        // face-side conversion.
+        if (cellCentreInverseExtension)
+        {
+            applyCellCentreInverseCurvature(mesh, slAdv->reconstruction(), kappa);
+        }
+
         // Optional harmonic (Laplace) smoothing of the cell-centred curvature,
         // pinning the interface cells (no foot-point extension). No-op unless
         // enabled in fvSolution (levelSet.curvatureExtension.type harmonicLaplace).

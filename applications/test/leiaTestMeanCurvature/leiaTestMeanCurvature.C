@@ -1113,8 +1113,12 @@ int main(int argc, char *argv[])
         os << "cellCurvatureModel,alphaFace,nActiveFaces,deltaX,"
               "R_L2,R_Linf,R_forceWeightedL2" << nl;
 
-        auto scoreRemainder =
-            [&](const word& name, const volScalarField& kappaCell)
+        const labelUList& ownR = mesh.owner();
+        const labelUList& neiR = mesh.neighbour();
+
+        auto scoreRemainderMasked =
+            [&](const word& name, const volScalarField& kappaCell,
+                const boolList* cellValid)
         {
             const surfaceScalarField snK(fvc::snGrad(kappaCell));
             const scalarField& sk = snK.primitiveField();
@@ -1123,9 +1127,20 @@ int main(int argc, char *argv[])
                 const scalarField& af = (variant == 0) ? aLin : aGeom;
                 const word tag = (variant == 0) ? "lin" : "geom";
                 scalar s2 = 0, li = 0, sw2 = 0;
+                label nScored = 0;
                 forAll(activeFace, f)
                 {
                     if (!activeFace[f]) { continue; }
+                    // Score only where the model is DEFINED on both sides.
+                    // Without this, snGrad straddles the boundary between
+                    // inverted and uninverted cells and reports that jump --
+                    // which is an artefact of the mask, not of the curvature.
+                    if (cellValid
+                     && (!(*cellValid)[ownR[f]] || !(*cellValid)[neiR[f]]))
+                    {
+                        continue;
+                    }
+                    ++nScored;
                     const scalar R = af[f]*sk[f];
                     s2 += magSfRIn[f]*R*R;
                     li = max(li, mag(R));
@@ -1134,18 +1149,109 @@ int main(int argc, char *argv[])
                 reduce(s2, sumOp<scalar>());
                 reduce(li, maxOp<scalar>());
                 reduce(sw2, sumOp<scalar>());
+                reduce(nScored, sumOp<label>());
                 const scalar L2 = (sumAf > 0) ? Foam::sqrt(s2/sumAf) : 0;
                 const scalar L2w = (sumWf > 0) ? Foam::sqrt(sw2/sumWf) : 0;
-                os  << name << ',' << tag << ',' << nActive << ','
+                os  << name << ',' << tag << ',' << nScored << ','
                     << dxR << ',' << L2 << ',' << li << ',' << L2w << nl;
                 Info<< "  remainder " << name << " x alpha_f:" << tag
                     << "  L2 = " << L2 << " 1/m^2, Linf = " << li
-                    << ", forceWeighted = " << L2w << endl;
+                    << ", forceWeighted = " << L2w
+                    << " (" << nScored << " faces scored)" << endl;
             }
+        };
+
+        // The CELL-CENTRE parallel-surface inverse: per cell take kappa_c and
+        // K_c from the fit AT ITS CENTRE, d_c as the stabilized foot-point
+        // distance of the cell centre, and apply the SAME algebraic inverse the
+        // face delivery uses -- i.e. the cutCellFootPointFace construction, but
+        // kept as a CELL field instead of being pushed onto the cell's faces.
+        // This is the one cell curvature that is genuinely SECOND order on
+        // constant curvature (the circle gate scores cutCellInverse at order
+        // 1.998, L2 0.0761 at N=512 -- the best accuracy of any model), so if
+        // any cell field can make alpha_f*snGrad(kappa_c) converge, it is this
+        // one. It has only ever been tested as a face DELIVERY, never as the
+        // cell field of a potential-form assembly.
+        // TWO offset definitions, because they are different functions and the
+        // choice matters here:
+        //   footPointDistance : the STABILIZED foot-point algorithm (alternating
+        //       tangent-plane/surface-point projections + parabola correction),
+        //       trust-region guarded, CAN FAIL -- and correctly does fail for a
+        //       cell whose zero set lies outside its fit's trusted stencil. This
+        //       is what the shipped cutCellFootPointFace uses, and that delivery
+        //       only ever visits CUT cells, where failure is rare.
+        //   signedOffset    : the algebraic stable quadratic root along the
+        //       normal ray, d_c = 2 psi_c/(|g| + sqrt(D)); always returns, falls
+        //       back to first order when the discriminant is small. This is the
+        //       single offset definition the nSL transport and the curvature
+        //       offsetCorrection share.
+        volScalarField kappaCellInv
+        (
+            IOobject("kappaCellInvGate", runTime.timeName(), mesh,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            kappaNoExt
+        );
+        volScalarField kappaCellInvSO
+        (
+            IOobject("kappaCellInvSOGate", runTime.timeName(), mesh,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            kappaNoExt
+        );
+        boolList invValid(mesh.nCells(), false);
+        boolList invSOValid(mesh.nCells(), false);
+        {
+            scalarField& kci = kappaCellInv.primitiveFieldRef();
+            scalarField& kcs = kappaCellInvSO.primitiveFieldRef();
+            const vectorField& Cc = mesh.C().primitiveField();
+            label nInv = 0, nKeep = 0, nSO = 0;
+            forAll(kci, c)
+            {
+                bool okK = false;
+                const scalar KC = fitGaussianCurvature(recon, c, okK);
+                const scalar Kuse = okK ? KC : 0.0;
+
+                bool okD = false;
+                const scalar dC = recon.footPointDistance(c, Cc[c], 0.0, okD);
+                if (okD)
+                {
+                    kci[c] = parallelSurfaceInverse(kci[c], dC, Kuse);
+                    invValid[c] = true;
+                    ++nInv;
+                }
+                else { ++nKeep; }
+
+                bool fb = false;
+                const scalar dSO = recon.signedOffset(c, fb);
+                if (std::isfinite(dSO))
+                {
+                    kcs[c] = parallelSurfaceInverse(kcs[c], dSO, Kuse);
+                    invSOValid[c] = true;
+                    ++nSO;
+                }
+            }
+            reduce(nInv, sumOp<label>());
+            reduce(nKeep, sumOp<label>());
+            reduce(nSO, sumOp<label>());
+            kappaCellInv.correctBoundaryConditions();
+            kappaCellInvSO.correctBoundaryConditions();
+            Info<< "cell-centre inverse: stabilized foot " << nInv
+                << " cells (" << nKeep << " refused by the trust region), "
+                << "signedOffset " << nSO << " cells" << endl;
+        }
+
+        auto scoreRemainder =
+            [&](const word& name, const volScalarField& kappaCell)
+        {
+            scoreRemainderMasked(name, kappaCell, nullptr);
         };
 
         Info<< nl << "REMAINDER TERM alpha_f*snGrad(kappa_c) on the active faces"
             << " (exact value 0 on constant curvature):" << endl;
+        // masked: only faces whose BOTH cells carry an inverted value
+        scoreRemainderMasked("cellCentreInverse_stabFoot", kappaCellInv,
+                             &invValid);
+        scoreRemainderMasked("cellCentreInverse_signedOffset", kappaCellInvSO,
+                             &invSOValid);
         scoreRemainder("quadraticCellCentre", kappaNoExt);
         scoreRemainder("newtonFoot", kappaDiv);
         scoreRemainder("closestPointNewton", kappaCP);

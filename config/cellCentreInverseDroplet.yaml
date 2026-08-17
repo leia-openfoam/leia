@@ -1,0 +1,77 @@
+# COUPLED test of the CELL-CENTRE parallel-surface inverse, 2D stationary
+# droplet, against production and the arithmetic control on the SAME binary.
+#
+# THE CONSTRUCTION (user's proposal). Per cell take kappa_c and K_c from the
+# cell's own quadratic fit AT ITS CENTRE and d_c as the signed offset from the
+# centre to the fit's zero set, then apply the SAME dimension-seamless algebraic
+# inverse the face delivery uses:
+#     kappa_c^Gamma = (kappa_c - 2 K_c d_c)/(1 - d_c kappa_c + K_c d_c^2)
+# and deliver that CELL field by ordinary arithmetic interpolation
+# (faceCurvatureSource model). By the exact discrete product rule at w = 1/2,
+# that IS the potential-form assembly -- so this is the potential form with the
+# one cell curvature that satisfies the convergence criterion.
+#
+# NOT cutCellFootPointFace, which computes the identical inverse and then lumps
+# the single cell value onto every active face of the cell. That lumping is what
+# makes it first order on varying curvature and is exactly the smoothness this
+# construction exists to keep. Here the inverted cell field is interpolated.
+#
+# WHY d_c = signedOffset AND NOT footPointDistance. footPointDistance is the
+# stabilized foot-point search: trust-region guarded, and it correctly REFUSES
+# cells whose zero set lies outside the fit's trusted stencil -- at N=512 that
+# is 261232 of 262144 cells. Leaving those uninverted makes the cell field
+# discontinuous at the band edge, and snGrad across that edge reports the jump.
+# signedOffset is the algebraic stable quadratic root along the normal ray and
+# always returns, so the field is defined in every cell. Confirmed in the
+# coupled smoke: 16384/16384 cells inverted, 0 on the first-order branch,
+# 0 left uninverted.
+#
+# MEASURED MOTIVATION (leiaTestRemainderTerm.csv, exact-SDF circle, over the
+# FULL CSF force support, where the exact grad(kappa) is zero so the term is
+# pure error):
+#     cell curvature            N=64    N=128   N=256   N=512   order
+#     quadraticCellCentre      5.14e5   5.03e5  4.56e5  4.46e5  +0.09
+#     closestPointNewton       5.11e5   5.02e5  4.56e5  4.46e5  +0.09
+#     THIS (signedOffset)        9647     2273   539.7   139.3  +2.01
+#     THIS (stabilized foot)     9095     2192   520.7   133.1  +2.02
+# Second order against ~zeroth, 3200x smaller at N=512, both offset definitions
+# agreeing, and it survives the GEOMETRIC (mass-flux-consistent) alpha_f at
+# 149.1 / +2.016 -- an 8% cost with convergence intact.
+#
+# PREDICTIONS (recorded before the run).
+#   a. By the criterion the campaign agreed on -- make the non-gradient content
+#      converge and the h-trend should invert -- this arm should survive LONGER
+#      at N=256 than at N=64, reversing the finer-blows-first behaviour that has
+#      held for every previous arm.
+#   b. It should outlive production at every N (production: 0.100/0.067/0.033).
+#   c. Coupled smoke at N=128 already shows kErrL2Band = 6.27 against
+#      production's 70.09 (11x), and p_Laplace 72.7476 vs the exact 72.74.
+#   COUNTER-INDICATION, recorded honestly: that same smoke reads
+#   driverAcrossSupportL2 = 62.5 against production's 16.9. That diagnostic
+#   measures neighbour-to-neighbour variation among a cell's active faces rather
+#   than the face-normal snGrad the remainder term measures, and it is read at
+#   40 steps rather than t=0, so it is not directly comparable -- but it does
+#   not point the way the remainder result does. If (a) and (b) fail while the
+#   driver stays high, the remainder term is measuring the wrong roughness and
+#   the criterion itself needs revisiting.
+#   Report volume AND shape error, never a single metric.
+study_name: cellCentreInverseDroplet
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256]
+  CURVATURE_EXTENSION: [cellCentreInverse, none]
+  FACE_CURVATURE_SOURCE: [model]
+
+solve_runtime: 240
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

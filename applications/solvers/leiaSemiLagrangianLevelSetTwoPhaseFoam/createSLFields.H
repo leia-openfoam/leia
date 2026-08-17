@@ -160,6 +160,17 @@ const bool footPointEvaluatedFaceExtension =
 // (measured 112x apart at N=256 on the exact-SDF circle, WP8.1 driver split).
 const bool cellFootPointEvaluatedFaceExtension =
     (curvatureExtensionType == "cellFootPointEvaluatedFace");
+// CELL-CENTRE parallel-surface inverse applied IN PLACE to the cell curvature,
+// then delivered by ordinary interpolation (faceCurvatureSource model). NOT the
+// cut-cell delivery: that computes the same inverse and then lumps one value
+// onto every active face of the cell, discarding the cell-to-cell smoothness.
+// Measured motivation (cellCentreInverseCurvature.H): the non-gradient content
+// alpha_f*snGrad(kappa_c) converges at order +2.01 over the full CSF support,
+// against +0.09 for every other cell curvature model, and is 3200x smaller at
+// N=512 -- the only cell field that makes the unbalanceable part of the force
+// converge under refinement.
+const bool cellCentreInverseExtension =
+    (curvatureExtensionType == "cellCentreInverse");
 // SYMMETRIC FACE-MEAN variant: the per-face inversion followed by a smoothing
 // pass over each face's own owner+neighbour active-face set, which is symmetric
 // about that face and therefore annihilates linear fields -- second order is
@@ -250,6 +261,7 @@ Info<< "Curvature extension: " << curvatureExtensionType
     << (symmetricFaceMeanExtension ? " (SYMMETRIC face-mean smoothing ON)" : "")
     << (footPointEvaluatedFaceExtension ? " (FOOT-POINT-EVALUATED face delivery ON)" : "")
     << (cellFootPointEvaluatedFaceExtension ? " (CELL-foot-evaluated delivery ON)" : "")
+    << (cellCentreInverseExtension ? " (CELL-CENTRE parallel-surface inverse ON)" : "")
     << (fvmCurvature ? " (symbolic kappa fill OFF -- force model computes its own)" : "")
     << nl << endl;
 
