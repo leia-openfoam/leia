@@ -85,6 +85,25 @@ protected:
     word geometrySource_;
     autoPtr<implicitSurface> analyticSurface_;
 
+    //- The per-cell LLSQ plane normal, REGISTERED as `nc`.
+    //
+    //  calcPhaseIndicator() already fits a least-squares plane to psi in every
+    //  narrow-band cell and takes its normal -- that is how the volume fraction
+    //  is built. Until now that normal was a local variable and was discarded.
+    //
+    //  Registering it makes it available to gradPsi type `narrowLS`, and so
+    //  lets the SDPLS source use an interface-FITTED normal instead of one
+    //  obtained by differentiating psi_h. That distinction is the point: the
+    //  source error is bounded by (grad e)_h = O(h^(p-1)) precisely BECAUSE the
+    //  normal differentiates the discrete field, and a fitted normal is not
+    //  covered by that bound.
+    //
+    //  geometricPhaseIndicator registers the same quantity, but selecting it
+    //  would also change alpha -- and so the volume and shape errors -- turning
+    //  a one-variable ablation into a two-variable one. Registering it here
+    //  keeps the phase indicator fixed.
+    autoPtr<volVectorField> ncTmp_;
+
 public:
 
     // Static Data Members

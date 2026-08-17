@@ -98,7 +98,23 @@ detrixheAslamPhaseIndicator::detrixheAslamPhaseIndicator(const fvMesh& mesh)
     (
         phaseIndDict_.getOrDefault<word>("geometrySource", "levelSetField")
     ),
-    analyticSurface_()
+    analyticSurface_(),
+    ncTmp_
+    (
+        new volVectorField
+        (
+            IOobject
+            (
+                "nc",
+                mesh.time().timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            mesh,
+            dimensionedVector("nc", dimless, vector(0, 0, 0))
+        )
+    )
 {
     if
     (
@@ -142,6 +158,13 @@ void detrixheAslamPhaseIndicator::calcPhaseIndicator
           : psi[cellID];
         alpha[cellID] = (signValue < 0) ? 1 : 0;
     }
+
+    // Reset the published normal every call. The band loop below `continue`s on
+    // non-band cells, so without this a cell the interface has MOVED AWAY from
+    // would keep the normal it had when it was last in the band -- a stale
+    // direction, silently, in exactly the cells where nothing should be
+    // reported.
+    ncTmp_() = dimensionedVector("nc", dimless, vector(0, 0, 0));
 
     const volScalarField& narrowBand = narrowBand_;
 
@@ -199,6 +222,13 @@ void detrixheAslamPhaseIndicator::calcPhaseIndicator
 
         // Signed-distance plane: phi(x) = n & x + d, |n| = 1.
         const vector n = nc/nmag;
+
+        // Publish the fitted normal (see ncTmp_ in the header). This sits at
+        // the SHARED normalization, after both the production LLSQ branch and
+        // the analytic oracle, so what is registered is exactly the normal that
+        // builds alpha in this cell -- on every path, degenerate cells excluded
+        // by the guard above.
+        ncTmp_()[cellI] = n;
 
         const point& xc   = cellCentres[cellI];
         const scalar phic = (n & xc) + d;
