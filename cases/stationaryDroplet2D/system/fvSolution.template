@@ -96,6 +96,20 @@ solvers
     // is skipped by the Final-suffix solver lookup on final PIMPLE
     // iterations. The Tucker matrix is ASYMMETRIC (fvm::div): PBiCGStab/DILU
     // or smoothSolver/GaussSeidel -- never PCG/DIC.
+    // Linear solver for the EULERIAN psi transport (leiaLevelSetTwoPhaseFoam:
+    // fvm::ddt + fvm::div + the SDPLS source). INERT for the semi-Lagrangian
+    // solver, whose psi update is a pointwise assignment with no linear solve.
+    // Asymmetric matrix (fvm::div): PBiCGStab/DILU, never PCG/DIC. Same
+    // settings as the kinematic 2Dvortex case. The "psi.*" regex also covers
+    // psiFinal on final PIMPLE iterations.
+    "psi.*"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-10;
+        relTol          0;
+    }
+
     "psiDist.*"
     {
         solver          PBiCGStab;
@@ -174,7 +188,12 @@ levelSet
     //   surfaceTensionForce { type integralSurfaceTension; levelSet psi; kappa kappa; }
     surfaceTensionForce
     {
-        type    reconstructedCurvature;
+        // Tokenised 2026-08-17 (value-preserving: the default renders exactly
+        // the line that was here). The Eulerian SDPLS studies select
+        // divGradPsiSnGradAlpha -- curvature from div(grad psi/|grad psi|),
+        // self-contained, no SL reconstruction -- because psi-based curvature
+        // is what maintaining |grad psi| = 1 exists to improve.
+        type    @!SURFACE_TENSION_FORCE!@;
         alpha   alpha.water;
         kappa   kappa;
         // model = the force's own kappa_f assembly (arithmetic interpolate,
@@ -277,6 +296,29 @@ levelSet
     phaseIndicator
     {
         type    detrixheAslam;
+    }
+
+    // SDPLS source (S = f_nl(psi^n) psi, vanishes identically on psi = 0).
+    // Default noSource = OFF: the semi-Lagrangian runs of this case are
+    // unaffected -- their solver constructs the same model and noSource is
+    // inert. Verified on the kinematic ladders before any coupled use:
+    // R converges the band gradient error where sourceless transport diverges
+    // (+1.23 2D / +0.67 3D shear vs -0.09), pays in volume/shape on 3D shear,
+    // and its order ceiling within 2nd-order transport is ~1.2 (measured
+    // elimination: limiter, dt, Picard, gradient scheme, fitted normal).
+    sdplsSource
+    {
+        type            @!SDPLS_SOURCE!@;
+        discretization  @!SOURCE_SCHEME!@;
+        beta            @!SDPLS_BETA!@;
+        gradPsi         @!GRAD_PSI!@;
+        mollifier
+        {
+            type    @!MOLLIFIER!@;
+            w1      @!SDPLS_W1!@;
+            w2      @!SDPLS_W2!@;
+            nLayers @!SDPLS_NLAYERS!@;
+        }
     }
 
     // Redistancing. Default noRedistancing = the validated reinit-free

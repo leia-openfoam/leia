@@ -1,0 +1,55 @@
+# SDPLS under Navier-Stokes coupling: the 2D stationary droplet.
+#
+# FIRST COUPLED TEST of the source. Everything so far is kinematic (prescribed
+# velocity); this runs the full two-phase solver, where psi feeds curvature and
+# the phase indicator every PIMPLE iteration, and the velocity the source reads
+# is the computed one -- spurious currents included. The stationary droplet is
+# the standard instrument: the exact solution is u = 0 with the Laplace pressure
+# jump, so every velocity is error, and the question is whether maintaining the
+# signed-distance property (R) reduces or amplifies the parasitic currents
+# against the identical solver with the source off.
+#
+# WHAT IS KNOWN GOING IN (kinematic ladders, measured):
+#   R converges the band gradient error where sourceless transport diverges
+#   (+1.23 2D / +0.67 3D shear vs -0.09), its ceiling within second-order
+#   transport is ~1.2 (complete elimination: limiter, dt, Picard, gradient
+#   scheme, fitted normal), and on 3D shear it pays in volume (+2.57 -> +0.96)
+#   and shape. Whether that trade helps or hurts a coupled run is exactly what
+#   this study measures -- per the standing rule, volume AND shape are reported
+#   alongside every headline metric.
+#
+# NO CONFLICT WITH THE SEMI-LAGRANGIAN LINE, by construction: this uses the
+# EULERIAN two-phase solver (leiaLevelSetTwoPhaseFoam); the SL sessions run
+# leiaSemiLagrangianLevelSetTwoPhaseFoam from their own clone
+# (/work/scratch/tm83tomy/leia-curvature). The shared case template gained one
+# additive sdplsSource block whose default (noSource) is inert for both solvers,
+# and SDPLS_SOURCE defaults to noSource in cases/default.parameter, so every
+# existing SL config renders behaviourally identical dictionaries.
+#
+#   make studies-one STUDY=sdplsDropletNS2D PROFILE=profiles/slurm
+
+study_name: sdplsDropletNS2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaLevelSetTwoPhaseFoam
+theme: sdpls-level-set
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  # The paired comparison: identical solver, source off vs on.
+  SDPLS_SOURCE: [noSource, R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+
+  # Self-contained psi-based CSF: kappa = div(grad psi/|grad psi|). The case
+  # default (reconstructedCurvature) needs the SL quadratic reconstruction's
+  # registered kappa, which the Eulerian solver does not build.
+  SURFACE_TENSION_FORCE: [divGradPsiSnGradAlpha]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

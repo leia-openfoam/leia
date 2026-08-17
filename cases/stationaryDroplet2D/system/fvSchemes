@@ -42,6 +42,9 @@ ddtSchemes
 
 gradSchemes
 {
+    // Reconstruction gradient for div(phi,psi) above; INERT for SL.
+    grad(psi)       cellLimited leastSquares 1;
+
     // Metric-only gradient for the gradPsiError / gradPsiErrorCSV function
     // objects. MUST stay UNLIMITED and MUST NOT be the advection scheme's
     // grad(psi): a cell-limited gradient returns exactly 0 at a local
@@ -59,6 +62,12 @@ gradSchemes
 
 divSchemes
 {
+    // Eulerian level-set advection (leiaLevelSetTwoPhaseFoam). INERT for the
+    // semi-Lagrangian solver, which never assembles an FV divergence of psi.
+    // Same discretization as every kinematic SDPLS study: linearUpwind with
+    // the named cell-limited LSQ reconstruction gradient below.
+    div(phi,psi)    Gauss linearUpwind grad(psi);
+
     default         none;
     // Momentum convection (interFoam-style). The level set is advected semi-
     // Lagrangian (no fvm div for psi/alpha), so no div(phi,alpha)/MULES entries.

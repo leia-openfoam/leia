@@ -54,6 +54,11 @@ REDIST_VIOLFRAC 0;   // signedDistanceBounds robust variant: fire only when more
                      // (0 = strict min/max). Localized under-resolved tails
                      // (kappa*h ~ 1) cannot be repaired by redistancing and
                      // must not re-trigger it.
+// SDPLS source selection. noSource = OFF, which keeps every study that does
+// not set these tokens byte-identical in behaviour -- both two-phase solvers
+// construct an sdplsSource, and noSource is inert by construction.
+SDPLS_SOURCE  noSource;
+SOURCE_SCHEME simpleLinearImplicit;
 SDPLS_BETA 1.0;      // sdplsBeta target gradient: f_nl = beta - |grad psi|
 // SDPLS cut-off (mollifier), eq. (24) of arXiv:2208.01269. `none` disables it
 // and reproduces every study run before 2026-08. mollifier1 forces the source
