@@ -1,0 +1,97 @@
+# THE OPERATING ENVELOPE: transport dissipation vs capillary survival.
+#
+# WHY THIS STUDY EXISTS. The campaign has established, by elimination over ~15
+# levers, that the parasitic-current instability is not caused by systematic
+# error in any operator. The mechanism now measured is:
+#   * the pressure-velocity coupling is EXACT -- with an imposed constant
+#     curvature an m=2 interface perturbation stays frozen to 1.0000 over 3200
+#     steps, and the coupled solver reports Courant max 1.2e-10;
+#   * so the instability is entirely curvature-driven, and specifically it lives
+#     in the part of the delivered face curvature that is NOT the gradient of a
+#     cell field (the part the pressure projection cannot absorb);
+#   * curvature is a second derivative of psi, so it amplifies any roughness in
+#     psi by 1/h^2 -- which is why refining the mesh makes things WORSE;
+#   * and being reinitialization-free, this method has NO mechanism that removes
+#     roughness from psi. The only damping present anywhere is the interpolation
+#     error of the semi-Lagrangian step, and with a quadratic reconstruction that
+#     damping is almost zero -- which is exactly WHY the transport is accurate
+#     (h^2.9-3.0 on the kinematic benchmarks).
+# The method's virtue and its vice are therefore the same property: the
+# reconstruction is too good to dissipate anything. That is not a bug to be
+# found; it is a trade-off to be MAPPED.
+#
+# THE TWO PARTIAL POSITIVES IN THE RECORD, NEVER COMBINED.
+#   1. The consistent piecewise-LINEAR pipeline is the ONLY configuration that
+#      ever broke the finer-blows-first trend (N=256 outlived N=128). The deck
+#      names the mechanism: "the linear transport's interpolation diffusion is
+#      BROADBAND delta-psi damping."
+#   2. The band-limited psi filter at theta = 0.05, PAIRED with the second-order
+#      face delivery, carried N = 64/128/256 through the full t = 0.1 horizon
+#      with the band |grad psi| pinned in [0.93, 1.06].
+# Neither has been swept as a continuous knob, and they have never been run
+# together. This study does both.
+#
+# WHY THE TRADE MAY BE MUCH CHEAPER THAN THE KINEMATIC ORDERS SUGGEST. The
+# momentum equation is first-order Euler and must stay so: backward and
+# CrankNicolson both DESTABILISE this problem at the capillary step (measured;
+# Euler's L-stability is load-bearing). The SL trajectory integrator is
+# separately second order (its own du/dt from U and U.oldTime(); the
+# departure-point unit test gives order 3.00 in the foot position). But the
+# VELOCITY it integrates is only first-order accurate in time, so the coupled
+# interface motion is capped at first order in time -- and with the capillary
+# step dt ~ h^1.5 that is a temporal error ~ h^1.5, which DOMINATES the O(h^2)
+# spatial error of the second-order delivery. So in the coupled setting the
+# high-order transport is already not the limiting factor, and dropping it to
+# linear should cost far less than the pure-advection convergence tables imply.
+# That is the hypothesis this study tests rather than asserts.
+#
+# THE CONTROLLED AXIS. GEOMETRY_FIT is pinned to the quadratic fit in BOTH arms,
+# so the curvature model and its delivery are byte-identical while only the
+# TRANSPORT order varies. Without this, linearTaylor transport would drag the
+# curvature model down with it (the base class throws NotImplemented for
+# meanCurvatureNoExtension) and the comparison would confound two changes.
+# PSI_FILTER stays biharmonicBand throughout with theta = 0 as the no-op arm, so
+# the code path is identical across the filter axis too.
+#
+# PREDICTIONS (recorded before the run, per the gate discipline).
+#   a. theta = 0, quadratic transport reproduces the known baseline: t_blow
+#      ~ 0.10 / 0.067 / 0.033 at N = 64/128/256 (finer blows first).
+#   b. Raising theta delays blow-up monotonically at every N (the deck measured
+#      4.2x at theta = 0.2, N=128).
+#   c. Linear transport at theta = 0 breaks or weakens the h-trend.
+#   d. The COMBINATION (linear + theta > 0) is the one cell that could survive
+#      all three resolutions. If it does, that is the operating point.
+#   e. Volume and shape error will DEGRADE with theta and with linear transport.
+#      The deliverable is the trade curve, not a winner -- report volume AND
+#      shape error at matched times, never one alone.
+#   If (b) fails, or if survival improves while shape error does NOT degrade,
+#   something other than dissipation is acting and the framing is wrong.
+#
+# REPRODUCE:
+#   snakemake --workflow-profile profiles/local --configfile config/capillaryEnvelope.yaml -n
+#   sbatch --time=04:00:00 --partition=deflt --export=ALL,STUDY=capillaryEnvelope run-studies.sbatch
+#   python3 workflow/scripts/make_capillary_envelope.py studies/capillaryEnvelope <out_dir>
+study_name: capillaryEnvelope
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares, linearTaylor]
+  GEOMETRY_FIT: [uncachedQuadraticWeightedLeastSquares]
+  PSI_FILTER: [biharmonicBand]
+  PSI_FILTER_THETA: [0.0, 0.05, 0.2]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+
+solve_runtime: 240
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

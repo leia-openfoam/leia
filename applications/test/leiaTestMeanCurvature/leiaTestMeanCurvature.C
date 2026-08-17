@@ -77,6 +77,7 @@ Description
 // parallel-surface inverse -- reused here so the gate measures EXACTLY the
 // formula the solver applies.
 #include "stabilizedFootPointFaceCurvature.H"
+#include "faceAreaFraction.H"
 // Analytic surfaces: supply the POSITION-DEPENDENT exact curvature on the
 // varying-curvature gates (a circle and a sphere cannot exercise averaging).
 #include "levelSetImplicitSurfaces.H"
@@ -1034,6 +1035,123 @@ int main(int argc, char *argv[])
     addFaceRow("cellMeanInverse", 1, kfCellMean);
     addFaceRow("symFaceMean050", 1, kfSym050);
     addFaceRow("symFaceMean100", 1, kfSym100);
+
+    // ---- REMAINDER-TERM CONVERGENCE ---------------------------------------
+    // The user's decomposition splits the capillary force as
+    //     sigma*kappa*grad(alpha) = grad(sigma*kappa*alpha) - sigma*alpha*grad(kappa)
+    // The first term is snGrad of a CELL field, hence an EXACT discrete gradient
+    // on any mesh: the pressure solve absorbs it completely and it contributes
+    // no velocity. So ALL of the force's non-absorbable (non-gradient) content
+    // sits in the second term. On a constant-curvature interface grad(kappa) is
+    // identically zero, so whatever this term returns IS the error, and its
+    // convergence order is the quantity that decides whether the scheme's
+    // parasitic forcing vanishes under refinement.
+    //
+    // Measured here per CELL-CENTRED curvature model, because that is the only
+    // freedom the potential form leaves (there is no face kappa to choose):
+    //     R_f = alpha_f * snGrad(kappa_c)          [1/m^2]
+    // with TWO choices of alpha_f, which are NOT the same field:
+    //   lin  = fvc::interpolate(alpha), the plain linear face value;
+    //   geom = the GEOMETRIC face liquid-area fraction of faceAreaFraction.H,
+    //          triangulated from the per-cell least-squares planes -- the SAME
+    //          alpha_f the rhoLENT mass flux uses for rhof = alpha_f rho1 +
+    //          (1-alpha_f) rho2. Using `geom` makes the capillary term and the
+    //          mass flux agree about where the interface is (mass-momentum
+    //          consistency applied to the capillary term, not just the
+    //          convective one), and it also breaks the exact product-rule
+    //          identity that makes the `lin` choice collapse to arithmetic CSF
+    //          -- so it is a genuinely distinct scheme, not a rearrangement.
+    {
+        const surfaceScalarField& magSfR = mesh.magSf();
+        const scalarField& magSfRIn = magSfR.primitiveField();
+
+        // representative cell size, computed locally: the app's `dx` is defined
+        // further down, after this block
+        const boundBox bbR(mesh.points());
+        const scalar LxR = bbR.max().x() - bbR.min().x();
+        const scalar LyR = bbR.max().y() - bbR.min().y();
+        const scalar LzR = bbR.max().z() - bbR.min().z();
+        const scalar dxR =
+            (mesh.nCells() > 0)
+          ? (is2D ? Foam::sqrt(LxR*LyR/mesh.nCells())
+                  : Foam::cbrt(LxR*LyR*LzR/mesh.nCells()))
+          : 0;
+
+        // linear face alpha
+        const surfaceScalarField alphaFlin(fvc::interpolate(alpha));
+        const scalarField& aLin = alphaFlin.primitiveField();
+
+        // geometric face alpha (rhoLENT). Needs a flux only to pick the upwind
+        // side; the CENTRAL average is used here so the measure carries no
+        // dependence on a velocity field this static gate does not have.
+        surfaceScalarField alphaFgeom
+        (
+            IOobject("alphaFgeomGate", runTime.timeName(), mesh,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            mesh, dimensionedScalar("a", dimless, Zero)
+        );
+        surfaceScalarField zeroPhi
+        (
+            IOobject("zeroPhiGate", runTime.timeName(), mesh,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            mesh, dimensionedScalar("p", dimVolume/dimTime, Zero)
+        );
+        bool haveGeom = false;
+        if (mesh.foundObject<volScalarField>("NarrowBand"))
+        {
+            computeFaceAreaFractions
+            (
+                mesh, psi,
+                mesh.lookupObject<volScalarField>("NarrowBand"),
+                zeroPhi, alphaFgeom, false   // central, not upwind
+            );
+            haveGeom = true;
+        }
+        const scalarField& aGeom = alphaFgeom.primitiveField();
+
+        OFstream os(runTime.path()/"leiaTestRemainderTerm.csv");
+        os << "cellCurvatureModel,alphaFace,nActiveFaces,deltaX,"
+              "R_L2,R_Linf,R_forceWeightedL2" << nl;
+
+        auto scoreRemainder =
+            [&](const word& name, const volScalarField& kappaCell)
+        {
+            const surfaceScalarField snK(fvc::snGrad(kappaCell));
+            const scalarField& sk = snK.primitiveField();
+            for (label variant = 0; variant < (haveGeom ? 2 : 1); ++variant)
+            {
+                const scalarField& af = (variant == 0) ? aLin : aGeom;
+                const word tag = (variant == 0) ? "lin" : "geom";
+                scalar s2 = 0, li = 0, sw2 = 0;
+                forAll(activeFace, f)
+                {
+                    if (!activeFace[f]) { continue; }
+                    const scalar R = af[f]*sk[f];
+                    s2 += magSfRIn[f]*R*R;
+                    li = max(li, mag(R));
+                    sw2 += mag(snI[f])*magSfRIn[f]*R*R;
+                }
+                reduce(s2, sumOp<scalar>());
+                reduce(li, maxOp<scalar>());
+                reduce(sw2, sumOp<scalar>());
+                const scalar L2 = (sumAf > 0) ? Foam::sqrt(s2/sumAf) : 0;
+                const scalar L2w = (sumWf > 0) ? Foam::sqrt(sw2/sumWf) : 0;
+                os  << name << ',' << tag << ',' << nActive << ','
+                    << dxR << ',' << L2 << ',' << li << ',' << L2w << nl;
+                Info<< "  remainder " << name << " x alpha_f:" << tag
+                    << "  L2 = " << L2 << " 1/m^2, Linf = " << li
+                    << ", forceWeighted = " << L2w << endl;
+            }
+        };
+
+        Info<< nl << "REMAINDER TERM alpha_f*snGrad(kappa_c) on the active faces"
+            << " (exact value 0 on constant curvature):" << endl;
+        scoreRemainder("quadraticCellCentre", kappaNoExt);
+        scoreRemainder("newtonFoot", kappaDiv);
+        scoreRemainder("closestPointNewton", kappaCP);
+        scoreRemainder("trHessian", kappaLap);
+        Info<< endl;
+    }
 
     // ---- per-active-face dump (see dumpNames/dumpFields above) -------------
     {

@@ -1,0 +1,54 @@
+# The TRANSPORT-COST arm of the operating envelope
+# (config/capillaryEnvelope.yaml is the capillary-survival arm).
+#
+# The envelope needs BOTH halves of the trade: what dropping the transport order
+# buys in capillary survival, and what it COSTS in pure-advection accuracy. This
+# arm measures the cost, on the standard reversed 2D vortex at the standard
+# ladder, with the SAME two reconstructions the capillary arm sweeps:
+#     uncachedQuadraticWeightedLeastSquares  (the production transport)
+#     linearTaylor                           (the dissipative alternative)
+#
+# Pure advection with a PRESCRIBED velocity, so this arm isolates the transport
+# operator: no capillary force, no pressure-velocity coupling, no first-order
+# Euler momentum. That matters for interpreting it -- the orders measured here
+# are an UPPER BOUND on what the transport contributes in the coupled problem,
+# where the interface motion is capped at first order in time by the Euler
+# momentum solve on a dt ~ h^1.5 capillary step (temporal error ~ h^1.5, which
+# dominates O(h^2) spatial). So a gap between the two reconstructions HERE
+# overstates the gap in the coupled setting; the envelope reads the two arms
+# together, not separately.
+#
+# The psi filter is deliberately ABSENT from this arm: psiFilterEqn.H lives in
+# the two-phase solver only, so its transport cost cannot be measured on this
+# benchmark. It is measured instead from the capillary arm's own shape and
+# volume errors against the known stationary exact solution, which is arguably
+# the more relevant number since it is measured under coupled conditions.
+#
+# PREDICTION: quadratic reproduces the published h^2.9-3.0; linearTaylor lands
+# near h^1 with a substantially larger volume error. The size of that gap is the
+# price side of the envelope.
+#
+# REPRODUCE:
+#   snakemake --workflow-profile profiles/local --configfile config/capillaryEnvelopeKinematic.yaml -n
+#   sbatch --time=04:00:00 --partition=deflt --export=ALL,STUDY=capillaryEnvelopeKinematic run-studies.sbatch
+study_name: capillaryEnvelopeKinematic
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangeLevelSetFoam
+theme:  semi-lagrangian-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 64, 128, 256]
+  CFL:      [0.5]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares, linearTaylor]
+  PHASE_INDICATOR: [detrixheAslam]
+
+collapse_other_axes: true
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
