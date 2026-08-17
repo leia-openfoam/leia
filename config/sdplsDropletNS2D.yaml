@@ -43,7 +43,12 @@ theme: sdpls-level-set
 axes_override:
   N_CELLS: [32, 64, 128]
   # The paired comparison: identical solver, source off vs on.
-  SDPLS_SOURCE: [noSource, R]
+  # Rdiv = the CONSERVATIVE (divergence-form) source. The algebraic R drains
+  # the droplet under coupling regardless of curvature model (raw FV or fitted
+  # production) and cut-off (none or band); its failure is a conservation
+  # failure, and Rdiv removes it structurally -- what enters through fvm::div
+  # fluxes cannot drain. Continuum-identical to R for incompressible flow.
+  SDPLS_SOURCE: [noSource, R, Rdiv]
   SOURCE_SCHEME: [simpleLinearImplicit]
 
   # THE COUPLED CUT-OFF TEST. Without one, R drains the droplet completely
@@ -56,7 +61,10 @@ axes_override:
   # error cost that disqualified it kinematically is moot here: a destroyed
   # droplet has no band error worth protecting. noSource x band is inert
   # (nothing to cut off) but keeps the matrix full and the renumbering simple.
-  MOLLIFIER: [none, band]
+  # band's answer is in (irrelevant to the drain; data preserved in
+  # sdplsDropletNS2D-bandCutoffRun). Rdiv refuses a mollifier by construction
+  # (a cut-off on a flux breaks conservation), so the axis returns to none.
+  MOLLIFIER: [none]
 
   # Self-contained psi-based CSF: kappa = div(grad psi/|grad psi|). The case
   # default (reconstructedCurvature) needs the SL quadratic reconstruction's

@@ -67,6 +67,9 @@ divSchemes
     // Same discretization as every kinematic SDPLS study: linearUpwind with
     // the named cell-limited LSQ reconstruction gradient below.
     div(phi,psi)    Gauss linearUpwind grad(psi);
+    // Conservative SDPLS source (type Rdiv): the normal-velocity flux term.
+    // Same discretization family as div(phi,psi); INERT for every other source.
+    div(phiW,psi)   Gauss linearUpwind grad(psi);
 
     default         none;
     // Momentum convection (interFoam-style). The level set is advected semi-

@@ -164,6 +164,12 @@ private:
 
 protected:
 
+        //- The current strain field a = n.grad(v).n, as filled by update().
+        //  For derived sources that assemble their own matrix (sdplsRdiv) and
+        //  need a without re-deriving it. Read-only: R_ stays private.
+        const volScalarField& strain() const { return R_; }
+
+
     const dictionary& sourceDict_; 
 
 public:
@@ -205,7 +211,10 @@ public:
         //
         //  @param psi is the Level Set field
         //  @param U is the velocity field
-        tmp<fvScalarMatrix> 
+        //- VIRTUAL: the conservative (divergence-form) source assembles
+        //  transport operators, not an algebraic coefficient -- it cannot be
+        //  expressed through nonLinearPart()/discretization().
+        virtual tmp<fvScalarMatrix>
         fvmsdplsSource(const volScalarField& psi, const volVectorField& U);
 
 
