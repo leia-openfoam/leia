@@ -1452,3 +1452,112 @@ quantified, and a per-face selection or blend between the two -- both already
 computed from the same fit -- is the natural next construction, with the
 arc-regression D-correction (sec. 17.3) as the alternative that upgrades the
 conversion instead of switching the evaluation point.
+
+## 18. The source, measured -- 2026-08-17: a neutral semi-discrete loop, destabilized by the explicit capillary coupling of its m=2 mode
+
+Sections 15-16 closed every operator lever and left "the spatial loop per unit
+physical time" as the suspect by elimination. This section replaces the
+elimination argument with direct spectral measurements on the shipped solver
+(new harnesses: `workflow/scripts/loop_spectrum.py`,
+`interface_mode_trajectory.py`, `mode_rate_vs_drift.py`; curated:
+`docs/method-comparison/.../tables/mode_rate_vs_drift.csv`,
+`mode_rate_dt_series.csv`, figure `mode_rate_vs_drift.png`).
+
+### 18.1 The delivered error is ONE function, and its shape explains the statics
+
+leiaTestMeanCurvature now dumps every delivery per active face
+(`leiaTestFaceCurvatureField.csv`). Production at N=128 on the exact-SDF
+circle: the signed error collapses onto a single-valued function of the angle
+between the CSF face normal and the interface normal (bin sd 0.10-0.43 against
+an overall 1.53) -- +3.33 at alignment falling to -0.99 at 45-60 deg. The mesh
+offers two face orientations while the interface normal rotates, so the
+misalignment sweeps 0-90 four times per revolution: that IS the cos(4 theta)
+pole bias (m=4 carries 99.7% of the smooth fluctuation, 20 cells/wave at
+N=128 -- resolved, and mesh-locked, so refinement only shrinks its amplitude at
+h^2). The narrow peak at alignment sits on the faces with the LARGEST
+|snGrad(alpha)| (force-weighted mean error +0.97 vs plain +0.68), and the
+peak/trough asymmetry is the whole skew of the distribution. Resolvability
+lesson applied retroactively: interface-mode fits at N=64 are valid for
+m <= 4 only (40 cells around the circumference).
+
+### 18.2 The level-set gauge is exactly neutral -- measured, not asserted
+
+Power iteration on the raw one-step delta-psi map converges to lambda = 1 with
+|Mv - v| -> 0: perturbations that leave the zero set in place (a subspace
+containing delta-psi ~ psi) change alpha, force, velocity NOT AT ALL, and are
+neither damped nor amplified. This is the stability inequality's "zero damping
+for delta-psi" as an operator property -- and it is the reservoir the
+|grad psi| drift accumulates in. Corollary for measurement: the instability is
+invisible to power iteration in raw delta-psi; the physical perturbation space
+is INTERFACE DISPLACEMENT.
+
+### 18.3 r_m(drift): the mode spectrum along the run's own death trajectory
+
+Harness: perturb psi by eps*h*cos(m theta), restart the shipped solver from
+snapshot base states with U and p_rgh RESET (isolating the psi-profile's
+effect), fit a_m(t) = A0 exp(r_m t) cos(omega t + phi); validity = fit
+residual AND omega against the capillary dispersion relation (on-plateau
+m=2 fits: residual 0.002-0.005, omega within 1.5%). Base states: an N=128
+serial production run to its own FPE at t = 0.1158 (the deck's serial
+t_blow ~ 0.118 reproduced), snapshots labelled by their own band min|grad psi|.
+
+    minGrad   t_snap    r_2      r_4      r_6    [1/s]
+    0.9942    0.002    +18.8    +18.1    -45.3
+    0.9773    0.009    +12.2     +7.0    -47.8
+    0.9589    0.021    +10.5    +13.9    -51.2
+    0.9568    0.073     +9.4     +2.9    -51.6   (same level, 50 ms older)
+    0.9503    0.090    +19.8    +10.1    -58.2
+    0.9371    0.096     +7.6    +15.3    -78.8
+    0.8771    0.101    +29.2    -27.2    -84.9
+    0.7076    0.107    +53.4   (+72.4)*  -29.4   (* fit residual 0.166)
+
+Findings. (1) NO zero crossing in drift: m=2 is unstable ALREADY on the
+near-clean profile at N=128 (+19 1/s) where the same mode at N=64 is damped
+(-11 1/s) -- the N=64->128 switch of sec. 16.1, located: it is the m=2
+capillary mode crossing neutral. (2) Drift AMPLIFIES (x3 by minGrad 0.71) but
+does not trigger; m=6 stays damped everywhere, so the unstable content is
+low-m SHAPE, not grid-scale corrugation. (3) Level-not-age holds for m=2
+(+10.5 vs +9.4 at the same drift 50 ms apart). (4) The coupled trajectory's
+quasi-stable plateau (minGrad 0.95-0.96 for 50 ms, serial) matches the weak
+phase's e-folding time 1/r_2; the acceleration knee sits at the same LEVEL
+(~0.94-0.95) in serial and np8 runs that leave it 2.3x apart in time.
+
+### 18.4 The dt series: r_0 -> 0. The instability IS the explicit coupling
+
+r_2 at fixed horizon, deltaT halved three times (clean state, minGrad 0.994):
+
+    dt        7.5e-6   3.75e-6   1.875e-6   9.375e-7
+    r_2 [1/s]  18.8      12.7      8.01       4.02      (omega identical, 1.001-1.006 of theory)
+
+The finest halving halves the rate exactly; Richardson r_0 = 2*4.02 - 8.01 =
++0.03 1/s -- ZERO within noise against an operating rate of 18.8, with
+c = r/dt consistent to 0.5% between the two finest points (4.29e6 vs 4.27e6).
+On the drifted state (minGrad 0.877): 29.2 / 22.65 / 12.39 at dt/1/2/4,
+two-point Richardson r_0 = +2.1 (an upper bound by the clean-state precedent),
+c = 6.6e6: DRIFT RAISES THE COUPLING GAIN ~55%, NOT THE INTERCEPT. The
+softened omega (0.92-0.93 of theory at every dt) is a physical property of the
+drifted profile -- the delivered restoring force weakens as the foliation
+degrades.
+
+THE STATEMENT: the semi-discrete psi-loop is NEUTRAL (18.2 for the gauge
+directions, r_0 ~ 0 for the interface modes); the parasitic-current
+instability at N=128 is the EXPLICIT TIME COUPLING of the capillary force to
+the m=2 interface mode, rate c*dt, with c raised by profile drift. This
+supersedes sec. 16.1's "r0 does not vanish and rises toward fine grids" --
+that intercept was fitted from max|U| over windows in which the drift (hence
+c) was itself growing; at the mode level, on a held profile, the intercept is
+zero. It also explains, at last, why L-stable Euler was load-bearing
+(negative-results deck) and why N=64 is stable (the mode's physical/numerical
+damping exceeds c*dt there).
+
+CONSEQUENCES FOR THE PROGRAMME. (a) The semi-implicit / deferred-correction
+capillary force -- shelved as task 24, argued against while r_0 looked finite
+-- is now the PRINCIPAL licensed lever: the instability lives exactly in the
+channel an implicit treatment closes. Dictionary-driven if revived, per the
+standing rule. (b) SDF maintenance (WP6 frozen-band) is the c-reducer, not the
+cure: budget = the measured c(drift) curve. (c) Delivery work is floor-only
+(18.1): it sets the standing-current amplitude, not the exponent.
+CAVEATS: one geometry (stationary droplet), N=128 primary; drifted-state r_0
+from a two-point Richardson; the sec. 17.4 note "NO stability penalty" for
+footEvalFace predates the coupled falsification (see STATUS sec. 4) and is
+superseded.

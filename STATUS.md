@@ -174,6 +174,28 @@ exonerated by direct experiment. Mode-resolved: r(maxU) ≈ 2·r(A2h);
 the corrugation rate r(A2h) is the order parameter and is nearly
 dt-independent at N=256.
 
+**THE SOURCE, MEASURED (2026-08-17, plan sec. 18).** New spectral harnesses
+(`interface_mode_trajectory.py`, `mode_rate_vs_drift.py`) perturb the interface
+by cos(m·theta) and fit growth + frequency per mode on the shipped solver, U/p
+reset, validated by omega matching the capillary dispersion within 1.5%.
+Result: the instability is the **m=2 capillary mode**, damped at N=64
+(−11 1/s), unstable at N=128 already on a NEAR-CLEAN profile (+19 1/s at
+minGradPsiBand 0.994) — that is the N=64→128 switch. Profile drift AMPLIFIES
+(×3 by minGrad 0.71) but does not trigger; m=6 is damped everywhere. The dt
+series pins the nature: r_2 = 18.8/12.7/8.0/4.0 at dt/1/2/4/8, Richardson
+intercept **r0 = +0.03 1/s ≈ 0** (clean state; +2.1 upper bound on the drifted
+one, where the coupling coefficient c rises 4.3e6 → 6.6e6). The semi-discrete
+loop is NEUTRAL — the raw delta-psi map is exactly gauge-neutral (power
+iteration: lambda = 1) — and the instability is the **explicit capillary
+coupling**, rate c·dt. Supersedes sec. 16.1's finite-r0 reading (that fit
+integrated over growing drift). Consequences: the semi-implicit capillary
+force is un-shelved as the principal lever; SDF maintenance is the c-reducer
+with a measured budget; delivery work is floor-only (the production face error
+is one function of face-normal/interface-normal misalignment — the m=4 pole
+bias — largest exactly on the highest-|snGrad(alpha)| faces). Curated:
+`docs/method-comparison/.../tables/mode_rate_vs_drift.csv`,
+`mode_rate_dt_series.csv`.
+
 Constant-curvature gates — exact circle (N=32–512) and exact sphere (N=32–128).
 These cannot rank accuracy; they are kept for the gain and for regression:
 
