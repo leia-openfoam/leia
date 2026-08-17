@@ -1,0 +1,71 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// 2D stationary-droplet benchmark (arXiv:2212.02904, Sec. 3.3.1): a
+// 0.01^3 m^3 CUBE, n_cells in every direction (the 3D twin of
+// stationaryDroplet2D). n_cells is swept by the study.
+// (@!N_CELLS!@ = 32, 64, 128, 256); z thickness is fixed (empty front/back => 2D).
+
+scale   1;
+
+n_cells @!N_CELLS!@;
+
+vertices
+(
+    (0     0     0    )
+    (0.01  0     0    )
+    (0.01  0.01  0    )
+    (0     0.01  0    )
+    (0     0     0.01 )
+    (0.01  0     0.01 )
+    (0.01  0.01  0.01 )
+    (0     0.01  0.01 )
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($n_cells $n_cells $n_cells) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    // 3D: no empty direction, so all six faces are one wall patch. The 2D twin
+    // has a `frontAndBack` empty patch; it is absent here and correspondingly
+    // absent from 0.org/*.
+    walls
+    {
+        type wall;
+        faces
+        (
+            (0 4 7 3)   // x-min
+            (2 6 5 1)   // x-max
+            (1 5 4 0)   // y-min
+            (3 7 6 2)   // y-max
+            (0 3 2 1)   // z-min
+            (4 5 6 7)   // z-max
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

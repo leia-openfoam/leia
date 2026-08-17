@@ -1,0 +1,66 @@
+# COUPLED test of the CELL-CENTRED (potential-form) capillary construction,
+# stationary droplet, against the arithmetic control on the SAME binary.
+#
+# THE CONSTRUCTION. The user's decomposition,
+#     sigma*kappa*grad(alpha) = grad(sigma*kappa*alpha) - sigma*alpha*grad(kappa)
+# evaluated with the SAME two-point stencil for both terms (snGrad for the
+# gradient, linear interpolation for the face factors) needs kappa only at CELL
+# centres -- no face value of kappa, hence no delivery choice, no
+# parallel-surface inverse, no foliation hypothesis. Verified identity (machine
+# precision at interpolation weight w = 1/2, residual
+# (2w-1)(k_N-k_P)(a_N-a_P)/d otherwise):
+#     snGrad(sigma*kappa*alpha) - sigma*alpha_f*snGrad(kappa)
+#         == sigma*kappa_f^linear*snGrad(alpha)
+# so on this uniform orthogonal mesh the split IS arithmetic delivery of
+# whatever cell field is supplied, and needs no new force model:
+#     CURVATURE_EXTENSION closestPointNewton  -> interface-referenced cell
+#         curvature (meanCurvatureClosestPoint: KKT-Newton true closest point on
+#         the cell's own quadratic, trust-region guarded)
+#     FACE_CURVATURE_SOURCE model             -> arithmetic interpolate
+# The control arm is CURVATURE_EXTENSION none (meanCurvatureNoExtension, the
+# cell-centre curvature), i.e. plain arithmetic CSF, run on the SAME binary so
+# the comparison carries no cross-build ambiguity.
+#
+# WHY RUN IT WHEN THE OPEN-LOOP NUMBERS SAY IT CHANGES NOTHING. Measured on the
+# circle at N=512, the interface-referenced cell fields are indistinguishable
+# from arithmetic: E_L2 11.349 vs 11.350, gain*h^2 0.6332 vs 0.6329, driver gain
+# 0.822 vs 0.821 -- all to four digits, exactly as the product-rule identity
+# predicts (smoothness is a property of the interpolation, not of the field).
+# But EVERY open-loop predictor in this campaign has failed to order the coupled
+# runs: static accuracy (six replications, anti-correlated), the noise gain
+# (0.647/0.647/0.666 against blow-up times 3x apart), and the t=0 driver split.
+# So the open-loop equivalence is not evidence of coupled equivalence, and the
+# arm it is equivalent TO is the MORE stable one: at N=128, arithmetic reaches
+# t_blow 0.0803 against production's 0.0668.
+#
+# PREDICTION (recorded before the run, per the gate discipline).
+#   1. closestPointNewton + model tracks the arithmetic control closely -- same
+#      t_blow to within the seed sensitivity of a single-cell fit (the deck's
+#      decomposition/seed spread is ~5-38%) -- because the two differ only in
+#      the cell field, and both are delivered by the same interpolation.
+#   2. Both survive LONGER than production's 0.0668 at N=128.
+#   3. Neither changes the h-scaling: finer still blows first.
+#   If (1) fails, the cell field matters coupled in a way no open-loop measure
+#   sees, which would be the first such case in the campaign and worth the run
+#   on its own.
+#   Report volume AND shape error, never a single metric.
+study_name: cellCentredPotentialDroplet
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256]
+  CURVATURE_EXTENSION: [none, closestPointNewton]
+  FACE_CURVATURE_SOURCE: [model]
+
+solve_runtime: 240
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

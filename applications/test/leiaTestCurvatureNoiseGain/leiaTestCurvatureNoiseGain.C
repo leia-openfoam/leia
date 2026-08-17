@@ -257,7 +257,16 @@ int main(int argc, char *argv[])
     const wordList models
     (
         {"arithmetic", "perFaceInverse", "cutCellInverse", "cellMeanInverse",
-         "symFaceMean050", "footEvalFace", "cellFootEvalFace"}
+         "symFaceMean050", "footEvalFace", "cellFootEvalFace",
+         // INTERFACE-REFERENCED CELL curvature, delivered arithmetically. This
+         // is the cell field the potential-form construction would consume
+         // (plan sec. 17 finding 3: quadraticNewtonFoot is SECOND order at
+         // 0.187 on the quadratic-form ellipse, 46x better than production,
+         // "with its noise gain still unmeasured"). Measured here so the
+         // construction can be judged before it is built: the potential form
+         // needs a cell curvature that is BOTH accurate and smooth, and this
+         // column is the smoothness half.
+         "newtonFootCell", "closestPointCell"}
     );
 
     // kappa_f for every delivery, from the CURRENT psi in the reconstruction.
@@ -323,6 +332,26 @@ int main(int argc, char *argv[])
             mesh, psiUse, alpha, kappa, recon(), kappaFace
         );
         kf[6] = kappaFace.primitiveField();
+
+        // meanCurvature = the fit curvature at the foot point of the CELL
+        // centre, normal-extended (the gate's quadraticNewtonFoot row);
+        // meanCurvatureClosestPoint = the KKT-Newton true closest point (the
+        // solver's closestPointNewton path). Both are CELL fields, delivered
+        // by plain arithmetic interpolation -- which by the exact discrete
+        // product rule at w = 1/2 is precisely what a potential-plus-remainder
+        // assembly reduces to.
+        {
+            volScalarField kappaCell("kappaCellNG", kappa);
+            recon->meanCurvature(kappaCell);
+            kappaCell.correctBoundaryConditions();
+            kappaFace = fvc::interpolate(kappaCell);
+            kf[7] = kappaFace.primitiveField();
+
+            recon->meanCurvatureClosestPoint(kappaCell);
+            kappaCell.correctBoundaryConditions();
+            kappaFace = fvc::interpolate(kappaCell);
+            kf[8] = kappaFace.primitiveField();
+        }
     };
 
     List<scalarField> kfBase;

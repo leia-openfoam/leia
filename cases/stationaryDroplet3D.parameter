@@ -1,0 +1,39 @@
+// Case-level defaults for the 3D stationary droplet (sphere R = 1 mm in a
+// 0.01^3 m^3 cube) -- the 3D twin of stationaryDroplet2D.parameter.
+//
+// WHY A 3D TWIN. Everything the curvature campaign has measured coupled is 2D,
+// and two of its central objects are dimension-specific:
+//   * the delivered kappa_f error is a single-valued function of the angle
+//     between the CSF face normal and the interface normal, and on a Cartesian
+//     2D mesh that angle sweeps 0-90 deg FOUR times around the circle -- the
+//     cos(4 theta) pole bias. In 3D the same mechanism is a solid-angle
+//     effect over three face orientations, not a 4-fold ring.
+//   * the parallel-surface inverse needs the Gaussian curvature K in 3D
+//     (K = 0 identically in 2D), so the delivery exercises a term the 2D runs
+//     never touch. The static 3D sphere gate already scores it (h^1.95); this
+//     case is what makes the COUPLED 3D behaviour measurable.
+// Mean curvature is 2/R here, so the exact Laplace jump is sigma*2/R = 145.5 Pa
+// against 72.7 Pa in 2D. createDropletMetricsFile.H already computes
+// kappaExactDrop = (nGeometricD - 1)/R, so the metrics are dimension-aware
+// without a change.
+//
+// RESOLUTIONS. Cost is N^3, so the 2D ladder does not carry over: N=32 is
+// 32768 cells (cheap), N=64 is 262144, N=96 is 884736. The capillary step is
+// unchanged in FORM -- dt_sigma ~ sqrt(rho h^3 / (2 pi sigma)) gives
+// MAX_DELTA_T = CAPILLARY_DT_COEFF/N^1.5 in any dimension -- so the step and
+// the step COUNT to a given END_TIME are the same as 2D at equal N; only the
+// per-step cost grows.
+values
+{
+    solver (leiaSemiLagrangianLevelSetTwoPhaseFoam);
+    N_CELLS
+    (
+        32
+        64
+        96
+    );
+    END_TIME ( 0.1 );
+    MAX_CO ( 0.1 );
+    CAPILLARY_DT_COEFF ( 0.010861 );
+    SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
+}
