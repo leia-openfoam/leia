@@ -541,11 +541,25 @@ we made. \emph{First}, the gradient scheme cannot help: it changes $C_2$ in
 least squares, extended point-cell least squares and Green--Gauss give
 $+1.256$, $+1.254$ and $+1.253$. \emph{Second}, second order in the
 \emph{gradient} error requires $p=3$: a third-order transport scheme, not a
-rearranged source. \emph{Third}, the estimate bounds $\delta a$, so a normal
-that does not differentiate $\psilev_h$ at all --- one reconstructed from an
-interface fit rather than from the discrete field --- is not covered by
-\eqref{eq:gradsplit} and is the one remaining avenue that could beat $O(h)$
-without changing the transport.
+rearranged source. \emph{Third}, the estimate bounds $\delta a$ through
+$(\nabla e)_h$, so a normal that does not differentiate $\psilev_h$ at all ---
+one reconstructed from an interface fit --- is not covered by
+\eqref{eq:gradsplit}. That avenue has now been measured and it closes. The
+Detrixhe--Aslam phase indicator already fits a least-squares plane to
+$\psilev$ in every band cell to construct the volume fraction; registering that
+fitted normal and using it as the source's $\nhat$ (with the phase indicator,
+and hence $\alpha$, unchanged --- a single-variable ablation) gives band
+gradient orders of $+1.19$ against $+1.25$ for the differentiated normal, with
+the absolute error $40\%$ larger at every resolution and the shape order
+falling from $+2.21$ to $+1.61$. The fitted normal is \emph{less} smooth
+tangentially than the gradient it replaces --- it is a per-cell fit over a
+compact stencil --- and it is the tangential perturbation that drives
+$\delta a$. With this, every implementation-side candidate is measured: the
+advection limiter ($0.003$), the time scheme (Crank--Nicolson), the time step
+($\le1.6\%$), the Picard iteration ($\le0.4\%$), three gradient schemes for the
+normal ($0.003$), and the interface-fitted normal (worse). Within second-order
+transport, the band gradient order of $\approx1.2$ is the ceiling, and second
+order in the gradient requires third-order transport.
 
 \paragraph{Why \texttt{beta} fails.}
 \label{par:beta}

@@ -454,9 +454,14 @@
         <b>+1.254</b>, Green&ndash;Gauss <b>+1.253</b>.</li>
     <li><b>Second order in the gradient needs \(p=3\)</b> &mdash; third-order transport,
         not a rearranged source.</li>
-    <li class="good"><b>The one escape:</b> the estimate bounds \(\delta a\) via
-        \((\nabla e)_h\). A normal that never differentiates \(\psi_h\) &mdash;
-        reconstructed from an interface fit &mdash; is not covered by it.</li>
+    <li class="warn"><b>The one escape &mdash; measured, and it closes.</b> The
+        Detrixhe&ndash;Aslam indicator already fits an LLSQ plane per band cell to build
+        \(\alpha\); registering that fitted normal and using it as the source's
+        \(\mathbf{n}\) (single-variable: \(\alpha\) unchanged) gives band order
+        <b>+1.19</b> vs <b>+1.25</b>, absolute error 40% larger, shape
+        +2.21&nbsp;&rarr;&nbsp;+1.61. A per-cell fit is <em>less</em> smooth tangentially
+        than the gradient it replaces &mdash; and the tangential part drives
+        \(\delta a\). <b>Within second-order transport, &asymp;1.2 is the ceiling.</b></li>
   </ul>
 </section>
 </section>
