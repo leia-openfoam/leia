@@ -871,9 +871,22 @@ int main(int argc, char *argv[])
     };
     DynamicList<faceRow> faceRows;
 
+    // Per-ACTIVE-FACE dump of every delivered kappa_f alongside the exact face
+    // value, so the error DISTRIBUTION (spatial pattern, angular dependence,
+    // tails) can be inspected rather than only its norms. The norms in
+    // leiaTestFaceCurvature.csv answer "how big"; this answers "where, and what
+    // shape" -- which is the question that separates a uniform bias (absorbed
+    // exactly by the pressure projection, since sigma*kappaBar*snGrad(alpha) is
+    // snGrad of a cell field) from face-to-face variation (which is not, and
+    // reaches the velocity at full strength).
+    DynamicList<word> dumpNames;
+    DynamicList<scalarField> dumpFields;
+
     auto addFaceRow =
         [&](const word& model, const label fp, const scalarField& kf)
     {
+        dumpNames.append(model + (fp ? "_fp1" : "_fp0"));
+        dumpFields.append(kf);
         scalar s1 = 0, s2 = 0, li = 0, sw2 = 0;
         label nZero = 0;
         forAll(activeFace, f)
@@ -1021,6 +1034,42 @@ int main(int argc, char *argv[])
     addFaceRow("cellMeanInverse", 1, kfCellMean);
     addFaceRow("symFaceMean050", 1, kfSym050);
     addFaceRow("symFaceMean100", 1, kfSym100);
+
+    // ---- per-active-face dump (see dumpNames/dumpFields above) -------------
+    {
+        OFstream os(runTime.path()/"leiaTestFaceCurvatureField.csv");
+        os << "x,y,z,theta,r,snGradAlpha,magSf,kappaExact";
+        forAll(dumpNames, i) { os << ',' << dumpNames[i]; }
+        os << nl;
+
+        // droplet centre: the area-weighted centroid of the active faces, so
+        // theta is measured about the interface itself and needs no case input
+        vector cAcc(Zero);
+        scalar aAcc = 0;
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+            cAcc += magSfIn[f]*Cf[f];
+            aAcc += magSfIn[f];
+        }
+        reduce(cAcc, sumOp<vector>());
+        reduce(aAcc, sumOp<scalar>());
+        const vector ctr = (aAcc > 0) ? cAcc/aAcc : vector::zero;
+
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+            const vector d = Cf[f] - ctr;
+            os  << Cf[f].x() << ',' << Cf[f].y() << ',' << Cf[f].z() << ','
+                << Foam::atan2(d.y(), d.x()) << ',' << Foam::mag(d) << ','
+                << snI[f] << ',' << magSfIn[f] << ',' << kappaExactAt(Cf[f]);
+            forAll(dumpFields, i) { os << ',' << dumpFields[i][f]; }
+            os << nl;
+        }
+        Info<< "wrote leiaTestFaceCurvatureField.csv ("
+            << dumpNames.size() << " deliveries x " << nActive
+            << " active faces)" << endl;
+    }
 
     Info<< "face-centered curvature, " << nActive << " active faces"
         << " (foot-point unset: " << nFootFail
