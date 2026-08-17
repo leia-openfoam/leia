@@ -18,6 +18,7 @@ advection/semiLagrangianAdvection.C
 surfaceTensionForce/surfaceTensionForce.C
 surfaceTensionForce/constantCurvatureSurfTension.C
 surfaceTensionForce/constantCurvaturePressurePotential.C
+surfaceTensionForce/curvaturePressurePotential.C
 surfaceTensionForce/traceGradGeoNormalSnGradAlpha.C
 surfaceTensionForce/traceGradGradPsiSnGradAlpha.C
 surfaceTensionForce/divGradPsiSnGradAlpha.C

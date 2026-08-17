@@ -1,0 +1,51 @@
+# REMAINDER-OFF BALANCE DIAGNOSTIC (user's decomposition, 2026-08-17).
+#
+#   sigma*kappa*grad(alpha) = grad(sigma*kappa*alpha) - sigma*alpha*grad(kappa)
+#
+# curvaturePressurePotential delivers ONLY the first term, as
+# snGrad(sigma*kappa*alpha)*|Sf| with the COMPUTED kappa field -- an exact
+# discrete gradient for any kappa, so the pressure equation reproduces it
+# identically and the velocity contribution is zero to solver tolerance. It
+# cannot relax a deformed interface: the discarded term is the entire
+# shape-relaxation driver. This is a DIAGNOSTIC arm, not a candidate method.
+#
+# WHAT IT SEPARATES. The constant-curvature pair
+# (constantCurvatureSurfaceTension / constantCurvaturePressurePotential) already
+# established operator co-location, and it PASSES: on the coupled stationary
+# droplet, Courant max 1.2e-10, continuity errors ~1e-12, and an m=2 interface
+# perturbation stays EXACTLY frozen (a_m/a_m(0) = 1.0000 over 3200 steps).
+# But those use a CONSTANT kappa, for which snGrad(sigma*kappa*alpha) and
+# sigma*kappa*snGrad(alpha) are algebraically identical. This arm uses the
+# VARYING computed kappa and therefore answers a different question: is the
+# non-absorbable capillary flux measured for production (1.7e-5 of |phig| on the
+# healthy plateau, at a pressure-solver residual of 1.5e-10, so genuinely
+# non-gradient) a consequence of kappa varying AT ALL, or specifically of the
+# sigma*kappa_f*snGrad(alpha) ASSEMBLY?
+#
+# PREDICTION (recorded before the run): RfFracL2 in capillaryFluxResidual.csv
+# collapses from 1.7e-5 to the linear-solver floor (~1e-9), and max|U| with it,
+# at every N -- because the delivered flux is in the range of snGrad by
+# construction. If it does NOT collapse, the operators are not as co-located as
+# pEqn.H:102 implies (rAUf cancels between phig and p_rghEqn.flux()), and that
+# is a more serious finding than the diagnostic was built to look for.
+study_name: remainderOffBalance
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256]
+  SURFACE_TENSION_FORCE: [curvaturePressurePotential]
+  CURVATURE_EXTENSION: [stabilizedFootPointFace]
+  FACE_CURVATURE_SOURCE: [registered]
+
+solve_runtime: 240
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
