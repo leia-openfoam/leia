@@ -174,6 +174,54 @@ exonerated by direct experiment. Mode-resolved: r(maxU) ≈ 2·r(A2h);
 the corrugation rate r(A2h) is the order parameter and is nearly
 dt-independent at N=256.
 
+**THE COMBINATION WORKS (2026-08-18, 28 coupled arms). Curated:
+`docs/method-comparison/.../tables/capillary_envelope_coupled.csv`.**
+
+*cellCentreInverse + psiFilter biharmonicBand theta=0.2, 2D*: all of
+N=64/128/256 reach t=0.1 and EVERY metric improves monotonically under
+refinement --
+
+    N        max|U|      volume      shape       min|grad psi|
+    64       2.24e-3     4.96e-3     3.78e-5     0.9520
+    128      4.15e-4     2.57e-5     5.24e-6     0.9955
+    256      1.02e-4     7.33e-6     8.14e-8     0.9996
+    order    +2.43,+2.02 +7.6,+1.8   +2.9,+6.0
+
+This is the first configuration in the campaign in which a stationary droplet
+with a LIVE surface-tension force survives at every resolution AND converges in
+current, volume and shape simultaneously. At N=256 it beats production+filter
+1.3x on current, 13x on VOLUME and 8.5x on SHAPE, with the profile essentially
+undrifted (0.9996 vs 0.9931). Production+filter at the same theta is NOT
+monotone (1.94e-4 -> 1.71e-3 -> 1.34e-4): it survives but does not converge.
+
+*The theta=0.05 arm does not converge* for either delivery (production
+5.6e-4/5.4e-3/3.4e-2; inverse 1.3e-2/4.9e-4/9.3e-3), so theta=0.2 is not merely
+"more damping is better" -- theta=0.05 is below what the loop needs.
+
+*3D, N=64 works and N=32 does not.* theta=0.2 at N=64 reaches t=0.1 (max|U|
+5.89e-3, volume 1.77e-4, shape 4.41e-5, min|grad psi| 0.964) while BOTH filtered
+N=32 arms die EARLIER than the unfiltered N=32 (0.0546/0.0548 vs 0.0613) -- and
+the theta=0.2 one dies hardest (max|U| 22.5 vs 0.244). At N=32 in 3D the drop is
+only R/h = 3.2, so the filter's band+1-ring support spans a large fraction of it
+and its grid-scale injection is amplified rather than damped: the failure mode
+recorded in the config header before the run. Working requirement so far:
+**R/h >~ 6**.
+
+*THE TRANSPORT-ORDER AXIS IS FLAT, which confirms the temporal-cap argument.*
+Nine matched (N, theta) pairs of quadratic vs linearTaylor TRANSPORT with the
+curvature fit pinned quadratic (GEOMETRY_FIT) agree to 3-4 significant digits in
+every FILTERED arm -- e.g. N=256 theta=0.2: max|U| 1.335e-4 vs 1.341e-4, volume
+9.65e-5 vs 9.73e-5, shape 6.94e-7 vs 6.99e-7. Only the unfiltered arms differ
+at all, and mildly/inconsistently (N=128 linearTaylor dies later, N=256 earlier
+-- within the 5-38% seed spread). This is the predicted consequence of the
+coupled interface motion being capped at FIRST order in time by the Euler
+momentum solve on a dt ~ h^1.5 capillary step (temporal error ~ h^1.5 dominating
+the O(h^2) spatial error): in the coupled problem the transport order is not the
+limiting factor. Combined with the kinematic arm, where linearTaylor's errors
+GROW under refinement (volume 340% at N=256 on the reversed vortex), the verdict
+is that dropping transport order buys NOTHING coupled and costs everything
+kinematic -- the filter is the damping mechanism, not the transport order.
+
 **THE CELL-CENTRE INVERSE AND THE FILTER (2026-08-18).** Two constructions the
 user proposed now hold the best coupled results on record; curated:
 `docs/method-comparison/.../tables/cell_centre_inverse_coupled.csv`.
