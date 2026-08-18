@@ -1,0 +1,63 @@
+# FOURTH POINT of the 2D convergence claim: cellCentreInverse x biharmonicBand
+# theta = 0.2 at N = 512, on the REFERENCE box (L = 10R = 0.01 m).
+#
+# WHAT IT COMPLETES. The combination is the first configuration in this campaign
+# whose parasitic current, volume error and shape error converge SIMULTANEOUSLY
+# and monotonically with a live capillary force (measured 2026-08-18):
+#     N       max|U|      volume      shape      min|grad psi|
+#     64    2.24e-3     4.96e-3    3.78e-5      0.952
+#    128    4.15e-4     2.57e-5    5.24e-6      0.996
+#    256    1.02e-4     7.33e-6    8.14e-8      0.9996
+#   orders   +2.43/+2.02 in max|U|. Three points fit two orders, which is one
+#   fit per pair and no redundancy: N = 512 is what turns that into an
+#   over-determined fit, and it spans h by 8 end to end (error ratio 64 for a
+#   second-order method) -- the widest, best-conditioned lever in the paper, and
+#   the one the 3D ladder cannot match at any affordable cost.
+#
+# N = 512 ALSO CONNECTS TO THE HISTORICAL DATASET: the unfiltered N = 512 onset
+# (t_blow 0.010) is already measured, so this arm places the new construction on
+# the existing t_blow(N) axis rather than beside it.
+#
+# WHY np = 8 AND NOT 16, despite 16 halving the wall clock. The three existing
+# points ran at np = 8. Decomposition is not inert here -- np8 was 7-10x noisier
+# than np4 before the processor-seam fix -- so changing the rank count at the
+# finest level would put a decomposition difference inside the convergence fit,
+# exactly where it is least recoverable. Same np across the ladder; the cost in
+# core-hours is identical (79) and only wall clock doubles, to ~9-10 h from the
+# measured N=256 pace (0.073-0.083 s/step at np8, x4 cells x2.83 steps).
+#
+# theta = 0.05 is deliberately NOT run: it converges for neither delivery (the
+# residual current grows ~10x per refinement level), so it has no fourth point
+# to contribute and would double the cost.
+#
+# PREDICTIONS (recorded before the run).
+#   a. Reaches t = 0.1. Failure here would bound the combination's survival at
+#      R/h = 51.2 and is the single most important thing this arm can report.
+#   b. max|U| ~ 2.5e-5 (order +2.0 continued from 1.02e-4 at N=256), volume
+#      below 7.33e-6, shape below 8.14e-8, min|grad psi| above 0.9996.
+#   c. If max|U| falls but volume or shape RISES, the convergence is not joint
+#      and the three-point monotonicity was luck -- report both regardless.
+study_name: cellCentreInverseFiltered512
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  DOMAIN_LENGTH: [0.01]
+  N_CELLS: [512]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [biharmonicBand]
+  PSI_FILTER_THETA: [0.2]
+
+# 106689 steps at dt = 9.37303e-07; measured np8 pace scales to ~9-10 h.
+solve_runtime: 720
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
