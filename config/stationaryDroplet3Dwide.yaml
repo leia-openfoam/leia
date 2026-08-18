@@ -1,62 +1,86 @@
 # THE 3D LADDER: 4 resolutions, R/h >= 10 at the coarsest, cell count doubling
-# per level -- on a TRUNCATED UNIFORM box (L = 4R = 4e-3 m), not the 0.01 m one.
+# per level -- on a TRUNCATED UNIFORM box at the domain size the control
+# CERTIFIED, L = 6R = 6e-3 m.
 #
-#   N_L    h [m]      R/h    cells    ratio   N_ref    dt [s]     steps   core-h
-#    40  1.0000e-04  10.00    64000     --    100.0  1.0861e-05    9207      3.3
-#    51  7.8431e-05  12.75   132651   2.073   127.5  7.5440e-06   13255      9.7
-#    64  6.2500e-05  16.00   262144   1.976   160.0  5.3665e-06   18634     27.0
-#    80  5.0000e-05  20.00   512000   1.953   200.0  3.8399e-06   26042     73.7
-#                                                            total       114 core-h
+#   N_L    h [m]      R/h     cells    ratio   N_ref    dt [s]     steps   core-h
+#    60  1.0000e-04  10.00    216000    --     100.0  1.0861e-05    9207     11.0
+#    76  7.8947e-05  12.67    438976   2.032   126.7  7.6186e-06   13126     31.9
+#    95  6.3158e-05  15.83    857375   1.953   158.3  5.4514e-06   18344     86.9
+#   120  5.0000e-05  20.00   1728000   2.015   200.0  3.8399e-06   26042    248.8
+#                                                             total      379 core-h
 #
-# The SAME FOUR CELL SIZES on the 0.01 m box are 1e6/2e6/4.1e6/8e6 cells and
-# 1776 core-h: 15.6x more, for identical h, identical dt, identical step counts
-# and -- if the domain-size control certifies it -- identical metrics. N_ref is
-# the reference-equivalent cell count 0.01/h that materialize uses for the
-# capillary step, so each arm here runs at exactly the dt its h deserves.
+# The same four cell sizes on the 0.01 m box are 1e6/2e6/4.1e6/8e6 cells and
+# 1776 core-h: 4.7x more, for identical h, identical dt, identical step counts
+# and -- now MEASURED, not argued -- identical metrics. N_ref is the
+# reference-equivalent cell count 0.01/h that materialize uses for the capillary
+# step, so each arm runs at exactly the dt its h deserves.
+#
+# WHY L = 6R AND NOT 4R. Measured, docs/.../data/tables/domain_size_control.csv,
+# three domain sizes x two matched cell sizes, all six arms reaching t = 0.1 with
+# the predicted step counts (9207 at h = 1e-4, 26042 at h = 5e-5):
+#
+#   h        L      max|U|      vs 10R     volume       shape       min|grad psi|
+#   1e-4    10R   1.56067e-05     --      4.2177e-04   3.2808e-07     0.99568
+#   1e-4     6R   1.55901e-05   -0.11%    4.2191e-04   3.2859e-07     0.995679
+#   1e-4     4R   1.92075e-04  +1130%     2.8629e-04   3.7515e-07     0.996438
+#   5e-5    10R   1.80287e-05     --      2.1758e-05   5.2553e-08     0.999292
+#   5e-5     6R   1.80234e-05   -0.03%    2.1756e-05   5.2553e-08     0.999292
+#   5e-5     4R   2.91047e-04  +1514%     8.4839e-07   1.0848e-06     0.998045
+#
+# 6R reproduces the reference box to 0.16% on EVERY metric at BOTH cell sizes,
+# and its h-refinement ratio of max|U| matches to 0.865 vs 0.865 (4R gives
+# 0.660 -- the trend itself is altered, not just the level). 4R fails by 12-16x
+# and fails UPWARD: the near walls INJECT rather than clip, so this is the
+# reflected-pressure-mode failure and not the flattering one (walls damping the
+# recirculation, which would have looked like an improvement). Diagnostic detail
+# worth keeping: at 4R the Laplace jump is still exact (72.7508 vs 72.7505 Pa)
+# and min|grad psi| is intact, while max|U| and shape blow up and the volume
+# error DROPS 96%. The interface and the jump are fine; the outer velocity field
+# is not, which places the parasitic recirculation's extent beyond 1R.
 #
 # WHY TRUNCATION AND NOT OCTREE REFINEMENT. Two levels of 2:1 refinement on the
-# 0.01 m box would give ~7.8x fewer cells than uniform, i.e. still 3x MORE than
-# this, and it would put hanging-node faces in the mesh. Those cost the two
-# properties this campaign's result rests on: w = 1/2 at every face (the
-# potential-form identity kappa*grad(alpha) = grad(kappa*alpha) - alpha*grad(kappa)
-# is exact only there) and exact absorption of a uniform kappa error by the
-# pressure solve (measured: constant kappa leaves an m=2 perturbation frozen at
-# 1.0000 over 3200 steps). On a truncated UNIFORM mesh both hold by construction,
-# with no gate to run and no caveat to write into the paper.
+# 0.01 m box lands at ~340 core-h, i.e. the SAME cost as this -- while putting
+# hanging-node faces in the mesh. Those cost the two properties the campaign's
+# result rests on: w = 1/2 at every face (the potential-form identity
+# kappa*grad(alpha) = grad(kappa*alpha) - alpha*grad(kappa) is exact only there)
+# and exact absorption of a uniform kappa error by the pressure solve (measured:
+# constant kappa leaves an m=2 perturbation frozen at 1.0000 over 3200 steps).
+# Equal cost, strictly better mesh, and no gate to run.
 #
-# WHY NOT COARSER, WHY NOT FINER. R/h >= 10 forbids a coarser coarse end (and
-# the filter's band+1-ring support needs R/h >~ 6 -- the 3D N=32 failures at
-# R/h = 3.2 were support starvation, not convergence). Each further level costs
-# 2^1.5 = 2.83x. So the price of the R/h floor with cell doubling is a SHORT
-# LEVER: h spans only a factor 2 across these four points, an error ratio of 4
-# end to end, and a 10% endpoint perturbation moves a fitted order by ~0.14.
-# Treat the fitted 3D order as INDICATIVE; the 2D ladder (h x8, error ratio 64)
-# carries the order claim. Extending to N_L = 101/127/160 widens h to x4 and
-# costs 2468 core-h -- a separate decision, deliberately not bundled here.
+# WHY NOT COARSER, WHY NOT FINER. R/h >= 10 forbids a coarser coarse end (and the
+# filter's band+1-ring support needs R/h >~ 6; the 3D N=32 failures at R/h = 3.2
+# were support starvation). Each further level costs 2^1.5 = 2.83x. So the price
+# of the R/h floor with cell doubling is a SHORT LEVER: h spans only a factor 2
+# over these four points, an error ratio of 4 end to end, and a 10% endpoint
+# perturbation moves a fitted order by ~0.14. Treat the fitted 3D order as
+# INDICATIVE; the 2D ladder (h x8, error ratio 64) carries the order claim.
+# Widening h to x4 here needs N_L = 151/190/240 at ~8300 core-h -- a separate
+# decision, and the one place where probing 5R (untested; 4R and 6R bracket it)
+# would pay for itself.
 #
-# np = 16 matches the existing 3D arms (N = 32, 64), so the new ladder is
-# comparable to them and no decomposition difference enters the fit.
+# np = 32 CONSTANT across all four levels: 6750..54000 cells/rank, largest arm
+# ~7.8 h, every arm inside the 24 h deflt wall, and no decomposition difference
+# inside the convergence fit. The existing 3D arms (N = 32, 64 at np16, L = 10R)
+# sit below the filter's support requirement and on a different box, so they are
+# historical context rather than points of this ladder.
 #
 # PREDICTIONS (recorded before the run).
-#   a. All four reach t = 0.1. The two existing 3D points are BELOW the filter's
-#      support requirement (R/h = 3.2 died at t = 0.055; R/h = 6.4 reached 0.1),
-#      so this is the first 3D ladder entirely inside the working regime.
-#   b. The h-trend is monotone DOWN in max|U|, volume and shape. The unfiltered
-#      3D pair already inverted the finer-blows-first trend (0.0613 -> 0.0786);
-#      if the filtered ladder is non-monotone here while 2D was monotone, the
-#      difference is dimensional and that is exactly what this case was built
-#      to find out.
+#   a. All four reach t = 0.1. This is the first 3D ladder entirely inside the
+#      filter's working regime (R/h = 10..20 vs the previous 3.2 and 6.4).
+#   b. Monotone DOWN in max|U|, volume and shape. If 3D is non-monotone where 2D
+#      was monotone, the difference is dimensional -- exactly what this case was
+#      built to answer.
 #   c. min|grad psi| stays above 0.96 at every level (3D N=64 gave 0.964).
-#   d. Failure mode: if the coarsest level (R/h = 10) is the one that dies, the
-#      working requirement is stricter in 3D than the R/h >~ 6 measured in 2D,
-#      and the whole ladder has to move up -- expensive, but it would be a
-#      finding about the filter's support and not about the delivery.
+#   d. Failure mode: if the COARSEST level (R/h = 10) is the one that dies, the
+#      filter's support requirement is stricter in 3D than the R/h >~ 6 measured
+#      in 2D and the whole ladder must move up -- a finding about the filter's
+#      support, not about the delivery.
 #   Report volume AND shape error, never a single metric.
 study_name: stationaryDroplet3Dwide
 case: stationaryDroplet3D
 mesh: hex
 mode: parallel
-np: 16
+np: 32
 
 solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
 theme:  method-comparison
@@ -64,16 +88,16 @@ theme:  method-comparison
 setfields_args: "-alphaName alpha.water"
 
 axes_override:
-  DOMAIN_LENGTH: [0.004]
-  N_CELLS: [40, 51, 64, 80]
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60, 76, 95, 120]
   CURVATURE_EXTENSION: [cellCentreInverse]
   FACE_CURVATURE_SOURCE: [model]
   PSI_FILTER: [biharmonicBand]
   PSI_FILTER_THETA: [0.2]
 
-# largest arm: 512000 cells x 26042 steps at np16 ~ 4.6 h from the measured 3D
-# rate (1.99e-5 core-s per cell-step, N=64 3D at np16).
-solve_runtime: 420
+# largest arm: 1728000 cells x 26042 steps at np32 ~ 7.8 h from the measured 3D
+# rate (1.99e-5 core-s per cell-step, 3D N=64 at np16: 1538 s / 4714 steps).
+solve_runtime: 600
 export_slides: false
 
 env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
