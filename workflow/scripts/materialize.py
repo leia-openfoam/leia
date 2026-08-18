@@ -120,12 +120,25 @@ def _with_derived_tokens(tokens):
 
       * HALF_END_TIME = END_TIME/2 -- controlDict writes a snapshot at maximum
         deformation (t = T/2) as well as t = 0 and t = T (advection studies).
+      * DOMAIN_HALF_LENGTH = DOMAIN_LENGTH/2 -- the box centre, so a case that
+        centres its droplet in the domain does not hardcode the box size a
+        second time in the implicitSurface dict.
       * MAX_DELTA_T uses one of two explicit modes selected by
         TIME_STEP_CONTROL:
 
-          capillary: CAPILLARY_DT_COEFF / N_CELLS^1.5
+          capillary: CAPILLARY_DT_COEFF / nRef^1.5,
+                     nRef = CAPILLARY_REF_LENGTH*N_CELLS/DOMAIN_LENGTH
           advective: TARGET_ADVECTIVE_CO*DOMAIN_LENGTH /
                      (N_CELLS*REFERENCE_SPEED)
+
+        The capillary limit is set by the CELL SIZE, dt < sqrt(rho h^3/2 pi
+        sigma), NOT by the cell count. CAPILLARY_DT_COEFF was calibrated on the
+        0.01 m reference box, where h = L_ref/N_CELLS and the limit reads
+        coeff/N_CELLS^1.5. On a truncated (or enlarged) domain N_CELLS no
+        longer fixes h, so the formula is evaluated at the reference-EQUIVALENT
+        cell count nRef = CAPILLARY_REF_LENGTH/h with h = DOMAIN_LENGTH/N_CELLS.
+        This reduces to N_CELLS identically whenever DOMAIN_LENGTH equals
+        CAPILLARY_REF_LENGTH, so every pre-existing study is bit-unchanged.
 
         The capillary mode remains the default for coupled surface-tension runs.
         The advective mode is for sigma=0 kinematic convergence tests, where
@@ -135,6 +148,13 @@ def _with_derived_tokens(tokens):
     if "END_TIME" in out:
         try:
             out["HALF_END_TIME"] = "{:g}".format(float(out["END_TIME"]) / 2.0)
+        except (TypeError, ValueError):
+            pass
+    if "DOMAIN_LENGTH" in out:
+        try:
+            out["DOMAIN_HALF_LENGTH"] = "{:.10g}".format(
+                float(out["DOMAIN_LENGTH"]) / 2.0
+            )
         except (TypeError, ValueError):
             pass
     time_step_control = out.get("TIME_STEP_CONTROL", "capillary")
@@ -165,8 +185,18 @@ def _with_derived_tokens(tokens):
         try:
             n = float(out["N_CELLS"])
             coeff = float(out["CAPILLARY_DT_COEFF"])
-            if n > 0:
-                out["MAX_DELTA_T"] = "{:.6g}".format(coeff / n**1.5)
+            # Reference-equivalent cell count: nRef = L_ref/h, h = L/N_CELLS.
+            # Identity when DOMAIN_LENGTH == CAPILLARY_REF_LENGTH (or when
+            # either token is absent), so existing studies are untouched.
+            nRef = n
+            length = out.get("DOMAIN_LENGTH")
+            if length is not None:
+                length = float(length)
+                refLength = float(out.get("CAPILLARY_REF_LENGTH", length))
+                if length > 0 and refLength > 0:
+                    nRef = refLength*n/length
+            if nRef > 0:
+                out["MAX_DELTA_T"] = "{:.6g}".format(coeff / nRef**1.5)
         except (TypeError, ValueError):
             pass
     elif time_step_control != "capillary":

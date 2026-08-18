@@ -23,16 +23,23 @@ scale   1;
 
 n_cells @!N_CELLS!@;
 
+// domain = @!DOMAIN_LENGTH!@ is the box side [m], default 0.01. Tokenised for
+// the DOMAIN-SIZE CONTROL: truncating the far field at fixed h keeps every
+// metric and the step count while cutting the cell count as (L/0.01)^3, which
+// buys the wide-h ladder on a uniform mesh. maxDeltaT follows h, not n_cells
+// (materialize evaluates the capillary limit at nRef = CAPILLARY_REF_LENGTH/h).
+domain  @!DOMAIN_LENGTH!@;
+
 vertices
 (
-    (0     0     0    )
-    (0.01  0     0    )
-    (0.01  0.01  0    )
-    (0     0.01  0    )
-    (0     0     0.01 )
-    (0.01  0     0.01 )
-    (0.01  0.01  0.01 )
-    (0     0.01  0.01 )
+    (0        0        0       )
+    ($domain  0        0       )
+    ($domain  $domain  0       )
+    (0        $domain  0       )
+    (0        0        $domain )
+    ($domain  0        $domain )
+    ($domain  $domain  $domain )
+    (0        $domain  $domain )
 );
 
 blocks

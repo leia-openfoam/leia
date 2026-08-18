@@ -32,6 +32,30 @@ values
         64
         96
     );
+    // ---- Domain size (the far field), [m] --------------------------------
+    // DOMAIN_LENGTH is the box side; the droplet R = 1 mm is centred in it
+    // (blockMeshDict reads it directly, implicitSurface via the derived
+    // DOMAIN_HALF_LENGTH = DOMAIN_LENGTH/2). 0.01 is the reference box every
+    // published run used, so existing studies stay bit-identical.
+    //
+    // This is the axis the DOMAIN-SIZE CONTROL varies. In 3D the droplet fills
+    // 0.1% of the reference box volume, so the cell count falls as (L/0.01)^3
+    // at fixed h: an L = 4R = 4e-3 box needs (0.4 N)^3 cells for the h that the
+    // reference box needs N^3 for, i.e. 6.4% of them, with h, the step count
+    // and every metric unchanged (volume error is relative to the initial
+    // discrete volume, shape error is crossing-radius vs radius). That is what
+    // makes a wide-h ladder affordable on a UNIFORM mesh, avoiding the hanging
+    // nodes -- and the exact-balance caveat -- of an octree-refined one.
+    //
+    // CAPILLARY_REF_LENGTH is the box size at which CAPILLARY_DT_COEFF was
+    // calibrated. materialize evaluates the capillary step at the
+    // reference-EQUIVALENT cell count nRef = CAPILLARY_REF_LENGTH/h with
+    // h = DOMAIN_LENGTH/N_CELLS, because dt < sqrt(rho h^3/2 pi sigma) is set
+    // by the CELL SIZE, not the cell count. Equal tokens reproduce
+    // MAX_DELTA_T = CAPILLARY_DT_COEFF/N_CELLS^1.5 exactly.
+    DOMAIN_LENGTH ( 0.01 );
+    CAPILLARY_REF_LENGTH ( 0.01 );
+
     END_TIME ( 0.1 );
     MAX_CO ( 0.1 );
     CAPILLARY_DT_COEFF ( 0.010861 );

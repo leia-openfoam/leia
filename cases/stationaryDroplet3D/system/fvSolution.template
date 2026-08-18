@@ -285,11 +285,14 @@ levelSet
         limit   0.1;
     }
 
-    // Water droplet, R = 1 mm centred in the 0.01 x 0.01 m box.
+    // Water droplet, R = 1 mm centred in the box (DOMAIN_HALF_LENGTH =
+    // DOMAIN_LENGTH/2, derived by materialize). R is FIXED at 1 mm for
+    // every domain size -- the domain-size control varies only the far
+    // field, never the droplet.
     implicitSurface
     {
         type    implicitSphere;
-        center  (0.005 0.005 0.005);
+        center  (@!DOMAIN_HALF_LENGTH!@ @!DOMAIN_HALF_LENGTH!@ @!DOMAIN_HALF_LENGTH!@);
         radius  1e-3;
     }
 

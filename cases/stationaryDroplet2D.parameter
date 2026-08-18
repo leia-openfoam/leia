@@ -15,6 +15,25 @@ values
         256
     );
 
+    // ---- Domain size (the far field), [m] --------------------------------
+    // DOMAIN_LENGTH is the box side; the droplet R = 1 mm is centred in it
+    // (blockMeshDict reads it directly, implicitSurface via the derived
+    // DOMAIN_HALF_LENGTH = DOMAIN_LENGTH/2). 0.01 is the reference box that
+    // every published run of this case used, so leaving it here keeps all
+    // existing studies bit-identical.
+    //
+    // CAPILLARY_REF_LENGTH is the box size at which CAPILLARY_DT_COEFF was
+    // calibrated. materialize evaluates the capillary step at the
+    // reference-EQUIVALENT cell count nRef = CAPILLARY_REF_LENGTH/h with
+    // h = DOMAIN_LENGTH/N_CELLS, because the capillary limit
+    // dt < sqrt(rho h^3/2 pi sigma) is set by the CELL SIZE and not by the
+    // cell count. With DOMAIN_LENGTH = CAPILLARY_REF_LENGTH the two are the
+    // same number and MAX_DELTA_T = CAPILLARY_DT_COEFF/N_CELLS^1.5 as before;
+    // a truncated domain then gets the dt its h deserves rather than one that
+    // is (0.01/L)^1.5 too large.
+    DOMAIN_LENGTH ( 0.01 );
+    CAPILLARY_REF_LENGTH ( 0.01 );
+
     // End time of the benchmark [s].
     END_TIME ( 0.1 );
 

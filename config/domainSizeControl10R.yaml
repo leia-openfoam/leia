@@ -1,0 +1,75 @@
+# DOMAIN-SIZE CONTROL, reference arm (L = 10R = 0.01 m, the published box).
+#
+# WHY THIS STUDY EXISTS. The 3D ladder that has to carry the dimensional
+# confirmation is pinned at its coarse end by R/h >= 10 (h = L/N, R = 1 mm, so
+# R/h = N*L^-1*1e-3; at L = 0.01 that is N/10 and R/h >= 10 forces N >= 100).
+# With cell-count doubling per level the whole ladder then spans only a factor
+# 2 in h -- an error ratio of 4 end to end for a second-order method, which is
+# the weakest number the paper would contain. Widening the lever on the
+# reference box is not affordable: uniform L = 10R at h = 2.5e-5 is 6.4e7 cells.
+#
+# In 3D the droplet occupies 0.1% of the reference box volume; the rest carries
+# a smooth outer pressure field (g = (0 0 0), so there is no hydrostatic
+# structure at all and the exact solution p_in - p_out = sigma*2/R is
+# INDEPENDENT of L). Truncating the far field to L = 4R at FIXED h therefore
+# cuts the cell count as (L/0.01)^3 = 6.4% while leaving h, the step count and
+# every metric alone -- which buys the wide-h ladder on a UNIFORM mesh and
+# avoids the hanging nodes, and the exact-balance caveat, of an octree-refined
+# one. The alternative (2 levels of 2:1 refinement) costs 3x more and needs a
+# constant-kappa balance gate plus a refined-vs-uniform equivalence point.
+#
+# THIS STUDY MEASURES WHETHER THAT TRUNCATION IS LEGITIMATE, in 2D where it is
+# cheap. Three domain sizes (10R here, 6R, 4R in the sibling configs), each at
+# TWO matched cell sizes h = 1e-4 and 5e-5, so the comparison is at equal h and
+# equal dt (materialize now evaluates the capillary limit at the
+# reference-equivalent cell count nRef = CAPILLARY_REF_LENGTH/h, verified:
+# L=0.004,N=40 and L=0.01,N=100 both give dt = 1.0861e-05, 9207 steps).
+#
+# WHY THE METRICS ARE COMPARABLE ACROSS DOMAIN SIZES, by construction:
+#   * phaseVolumeRelError is relative to the INITIAL DISCRETE volume, not an
+#     analytic one -- a conservation error, domain-independent.
+#   * shape error is crossing-radius minus `radius` -- domain-independent.
+#   * max|U| and min|grad psi| over the band are band-local.
+#   * the z half-thickness is held at 1.5625e-4 for EVERY domain size, so any
+#     V-derived quantity is affected identically in all three arms.
+#
+# PREDICTIONS (recorded before the run).
+#   a. At matched h all four metrics agree across 10R/6R/4R: max|U| and
+#      min|grad psi| within 5%, volume and shape within 15% (they are
+#      second-order small and more mesh-sensitive). The h-refinement ratio
+#      max|U|(5e-5)/max|U|(1e-4) agrees across domains within 10%.
+#   b. FAILURE MODE THAT MATTERS MOST -- 4R gives systematically LOWER max|U|.
+#      No-slip walls 1R from the interface would clip the parasitic
+#      recirculation, so the truncation would be FLATTERING the method. That
+#      disqualifies it even though the numbers look better, and the 3-point
+#      trend is what distinguishes it from noise: a wall effect must be
+#      monotone in L, scatter must not.
+#   c. Second failure mode -- 4R WORSE, a reflected pressure mode off the near
+#      wall. Also disqualifying, less seductive.
+#   d. If 6R is clean but 4R is not, 6R is the answer: it still cuts 3D cells
+#      to 21.6% of uniform, most of the win.
+#   Report volume AND shape error, never a single metric.
+study_name: domainSizeControl10R
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+# N chosen so that h = DOMAIN_LENGTH/N is 1e-4 and 5e-5, matching every arm.
+axes_override:
+  DOMAIN_LENGTH: [0.01]
+  N_CELLS: [100, 200]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [biharmonicBand]
+  PSI_FILTER_THETA: [0.2]
+
+solve_runtime: 60
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

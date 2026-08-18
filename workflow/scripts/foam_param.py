@@ -38,7 +38,10 @@ _TOKEN = re.compile(r"@!([A-Z0-9_]+)!@")
 #   HALF_END_TIME = END_TIME/2 (t=T/2 snapshot for the advection studies)
 #   MAX_DELTA_T   = capillary or fixed-advective-Co law selected during
 #                   materialization (see materialize._with_derived_tokens)
-_DERIVED_TOKENS = {"HALF_END_TIME", "MAX_DELTA_T"}
+#   DOMAIN_HALF_LENGTH = DOMAIN_LENGTH/2, the box centre. Derived so that a case
+#                   centring its droplet in the box states the box size ONCE
+#                   (blockMeshDict) instead of restating it in implicitSurface.
+_DERIVED_TOKENS = {"HALF_END_TIME", "MAX_DELTA_T", "DOMAIN_HALF_LENGTH"}
 
 
 def _strip_comments(text):
