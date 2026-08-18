@@ -327,6 +327,63 @@ but a testable one.
 the averaging cost `O(h^2 d^2 kappa)` and the non-parallelism term of section 11.2
 are both identically zero there. A varying-curvature static gate is still missing.
 
+### Domain size is now an axis, and 6R is certified equivalent (2026-08-18)
+
+The 3D ladder that has to carry the dimensional confirmation is pinned at its
+coarse end by `R/h >= 10`, so with cell-count doubling it spans only a **factor 2
+in h** — error ratio 4 end to end, and a 10% endpoint perturbation moves a fitted
+order by ~0.14. Widening it on the 0.01 m box is unaffordable (uniform
+`h = 2.5e-5` is 6.4e7 cells, ~50 000 core-h).
+
+The droplet fills 0.1% of that box in 3D and `g = (0 0 0)`, so
+`p_in - p_out = sigma*2/R` does **not** depend on the box size. Truncating the far
+field at fixed h therefore cuts cells as `(L/0.01)^3` while leaving h, dt, the
+step count and every metric alone — on a **uniform** mesh, so `w = 1/2` at every
+face (where the potential-form identity is exact) and the exact absorption of a
+uniform kappa error by the pressure solve both hold by construction. Measured,
+three box sizes x two matched cell sizes, all six arms reaching t = 0.1 with the
+predicted step counts (9207 at `h = 1e-4`, 26042 at `h = 5e-5`):
+
+| h | L | max&#124;U&#124; | vs 10R | volume | shape | min&#124;grad psi&#124; |
+|---|---|---|---|---|---|---|
+| 1e-4 | 10R | 1.56067e-05 | — | 4.2177e-04 | 3.2808e-07 | 0.99568 |
+| 1e-4 | **6R** | **1.55901e-05** | **-0.11%** | 4.2191e-04 | 3.2859e-07 | 0.995679 |
+| 1e-4 | 4R | 1.92075e-04 | **+1130%** | 2.8629e-04 | 3.7515e-07 | 0.996438 |
+| 5e-5 | 10R | 1.80287e-05 | — | 2.1758e-05 | 5.2553e-08 | 0.999292 |
+| 5e-5 | **6R** | **1.80234e-05** | **-0.03%** | 2.1756e-05 | 5.2553e-08 | 0.999292 |
+| 5e-5 | 4R | 2.91047e-04 | **+1514%** | 8.4839e-07 | 1.0848e-06 | 0.998045 |
+
+6R reproduces the reference box to **0.16% on every metric at both cell sizes**,
+h-refinement ratio 0.865 vs 0.865. **4R fails by 12–16x and fails UPWARD** — the
+near walls inject rather than clip, so this is the reflected-pressure-mode
+failure and not the flattering one (wall damping would have masqueraded as an
+improvement). At 4R the Laplace jump is still exact (72.7508 vs 72.7505 Pa) and
+`min|grad psi|` is intact while `max|U|` and shape blow up and the volume error
+*drops* 96%: the interface and the jump are fine, the outer velocity field is
+not, which places the parasitic recirculation's extent **beyond 1R**. Its ratio
+0.660 vs 0.865 also shows confinement alters the h-trend itself, not just its
+level.
+
+Curated: `docs/method-comparison/method-comparison-article/data/tables/domain_size_control.csv`,
+scored by `workflow/scripts/domain_size_control.py` (gates: max&#124;U&#124; and
+min&#124;grad psi&#124; 5%, volume and shape 15%, refinement-ratio spread 10%, plus the
+monotone-in-L direction test — which is why the control needed three box sizes and
+not one pair).
+
+Consequence: the 3D ladder runs at **L = 6R** for **379 core-h against 1776** for
+the identical four cell sizes on the reference box — 4.7x, uniform mesh,
+equivalence measured rather than argued, and the same cost as the octree-refined
+alternative, which would have bought hanging-node faces and a constant-kappa gate
+for nothing.
+
+The plumbing: `DOMAIN_LENGTH` is a case token (`DOMAIN_HALF_LENGTH` derived for
+the droplet centre) and **the capillary step now follows h, not the cell count** —
+materialize evaluates it at `nRef = CAPILLARY_REF_LENGTH/h`. The N-based form gave
+a truncated box a dt `(0.01/L)^1.5` too large; measured before the fix,
+`L = 4e-3, N = 40` got 4.29e-5 instead of 1.0861e-5. Verified bit-identical for
+every pre-existing token shape, and `blockMesh` polyMesh output byte-identical at
+`DOMAIN_LENGTH = 0.01` in 2D and 3D.
+
 ---
 
 ## 5. Lichtenberg — what is running
@@ -337,9 +394,15 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
-| `54144174` `leia-studies` | **stationaryDropletFootEvalFace** — the foot-point-EVALUATED face curvature against production `stabilizedFootPointFace`, N = 64/128/256, np 8, fixed capillary step. This is the **control**: psi is the exact signed distance, so the parallel-surface inverse is inside its hypothesis and production is expected to win. 6 solve jobs, 4 h each. | 7 d (orchestrator) | `leia-studies.54144174.out`, `studies/stationaryDropletFootEvalFace/` |
-| `54144175` `leia-studies` | **oscillatingDropletFootEvalFace** — same two arms, same ladder. This is the **test**: psi is the quadratic form (beta varies 1.21 along the interface), where the inverse carries its foliation bias and the foot-evaluated fit is exact. Static gate at N=256: 6.24 vs 3.3e-4. 6 solve jobs, 4 h each. | 7 d (orchestrator) | `leia-studies.54144175.out`, `studies/oscillatingDropletFootEvalFace/` |
-| `54140180/181/182` `leia-studies` | **SDPLS thread, not from this work**: `sdplsBand{2Dvortex,3Dshear,3Ddeformation}` — the nLayers topological cut-off sweeps. Plus the still-running `sdplsConvMoll3D{shear,deformation}` solves from 2026-08-14. Do not cancel. | 7 d | `studies/sdplsBand*/`, `studies/sdplsConvMoll3D*/` |
+| `54282043` `leia-curv` | **stationaryDroplet3Dwide** — THE 3D LADDER, 4 levels on the certified L = 6R box: `N_L` = 60/76/95/120, cells 216000/438976/857375/1728000 (ratios 2.03/1.95/2.02), `R/h` = 10.0/12.7/15.8/20.0, `cellCentreInverse` + biharmonicBand theta = 0.2, np 32 constant. 379 core-h; largest arm ~7.8 h. First 3D ladder entirely inside the filter's support requirement (`R/h >~ 6`). | 12 h (orchestrator) | `leia-studies.54282043.out`, `studies/stationaryDroplet3Dwide/` |
+| `54281349` `leia-curv` | **cellCentreInverseFiltered512** — the 2D fourth point, N = 512 (`R/h` = 51.2), 106689 steps at dt = 9.373e-07, **np 8 to match the three existing points** (decomposition is not inert: np8 was 7–10x noisier than np4 before the seam fix). ~9–10 h. Turns two fitted orders into an over-determined fit and connects to the historical unfiltered N = 512 onset (t_blow 0.010). | 13 h (orchestrator) | `leia-studies.54281349.out`, `studies/cellCentreInverseFiltered512/` |
+| DONE `54281172/173/174` | **domainSizeControl10R/6R/4R** — the domain-size control, verdict in section 4: 6R equivalent to 0.16%, 4R rejected at +1130/+1514%. | — | `studies/domainSizeControl*/` |
+
+Not from this work, do not cancel: the SDPLS session's jobs in
+`/work/scratch/tm83tomy/leia` (`of-bo-cht-*`, `23fbd13d-*`, `leia-studies` on
+`long`). **Curvature work runs only from `/work/scratch/tm83tomy/leia-curvature`
+with `$HOME/OpenFOAM/curvature-v2512` binaries and job name `leia-curv`;** never
+pull, stash, `Allwmake` or edit `profiles/*` in theirs.
 
 > **First launch of these two (jobs 54140311/312) was thrown away.** Both timed
 > out at 4 h having advanced 111 of 4714 steps — not physics: snakemake's
