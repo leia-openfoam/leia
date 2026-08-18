@@ -32,13 +32,29 @@ configuration pays nothing and behaves exactly as before.
 
 // Is the production curvature selected? Read the same dict the force model
 // will read, before constructing it.
+//
+// SECOND CONDITION (2026-08-18): construct ONLY when no `kappa` field is
+// registered yet. The semi-Lagrangian two-phase solver shares this
+// createFields.H and registers kappa/kappaInterfaceFace/kappaStableFootFace in
+// its own createSLFields.H BEFORE this include runs, and it fills them itself
+// (with the geometryFit decoupling, so a linearTaylor TRANSPORT still gets a
+// quadratic CURVATURE fit). Without this guard the block below constructed a
+// SECOND standalone slReconstruction of the TRANSPORT type and called
+// meanCurvatureClosestPoint on it unconditionally -- a NotImplemented abort at
+// startup for every non-quadratic transport (measured: all nine linearTaylor
+// arms of the capillaryEnvelope study died before step one), and for quadratic
+// transports a redundant duplicate fit plus a duplicate field registration.
+// In the Eulerian solver nothing registers kappa before this include, so its
+// behaviour is unchanged.
 const bool useReconstructedCurvature = []
 (const fvMesh& m)
 {
     const fvSolution& fvSol(m);
-    return fvSol.subDict("levelSet")
-        .subOrEmptyDict("surfaceTensionForce")
-        .getOrDefault<word>("type", "none") == "reconstructedCurvature";
+    return
+        fvSol.subDict("levelSet")
+            .subOrEmptyDict("surfaceTensionForce")
+            .getOrDefault<word>("type", "none") == "reconstructedCurvature"
+     && !m.foundObject<volScalarField>("kappa");
 }(mesh);
 
 autoPtr<volScalarField> kappaPtr;

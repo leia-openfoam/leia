@@ -1,0 +1,61 @@
+# THE COMBINATION: cell-centre parallel-surface inverse x band-limited psi
+# filter -- the campaign's two best-measured levers, never run together.
+#
+# WHAT EACH BRINGS, from the completed studies (2026-08-18):
+#   * curvatureExtension cellCentreInverse (UNFILTERED) owns the parasitic
+#     FLOOR: at N=64 it reached t=0.1 with max|U| = 8.05e-6, volume error
+#     7.2e-6, shape 7.2e-7 -- the lowest ever measured here with a live force,
+#     4x/220x better than the arithmetic control on current/volume and 40x
+#     better than production on current. It outlives production at every N in
+#     2D, and in 3D it inverted the finer-blows-first trend between N=32 and
+#     N=64 (0.0613 -> 0.0786) while beating production 2.6x. But in 2D the fine
+#     meshes still blow (0.0782 at N=128, 0.0359 at N=256): the floor improved,
+#     the growth survived.
+#   * psiFilter biharmonicBand theta=0.2 (with the PRODUCTION delivery) owns
+#     fine-mesh SURVIVAL: all three N reached t=0.1, and at N=256 it ended
+#     healthier than N=64 (max|U| 1.3e-4, volume 9.7e-5, shape 6.9e-7,
+#     min|grad psi| 0.993) -- the h-trend inverted. At theta=0.05 everything
+#     survives but the residual current grows 10x per refinement level.
+# The two act on different parts of the loop: the inverse makes the
+# NON-GRADIENT CONTENT of the delivered force converge under refinement
+# (order +2.01 where every other cell field is +0.09); the filter drains the
+# psi-roughness reservoir the curvature differentiates. Nothing in either
+# mechanism excludes the other.
+#
+# PREDICTIONS (recorded before the run).
+#   a. theta=0.2 x cellCentreInverse survives everywhere AND carries the
+#      inverse's floor: at N=64 max|U| at or below the unfiltered 8.05e-6 and
+#      at N=256 below the production-filtered 1.3e-4.
+#   b. theta=0.05 x cellCentreInverse: whether the x10-per-level growth of the
+#      residual current is reduced relative to production x theta=0.05 decides
+#      whether that growth is fed by the delivery's non-gradient error (then
+#      the inverse should slow it) or by filter-exempt long wavelengths (then
+#      it stays).
+#   c. Failure mode worth watching: the filter perturbs psi at grid scale each
+#      step, and the inverse DIFFERENTIATES psi twice through the fit plus once
+#      through d_c. If the combination is WORSE than either alone, the filter's
+#      injection is being amplified by the inverse's extra sensitivity, and the
+#      two levers are incompatible -- also worth knowing.
+#   Report volume AND shape error, never a single metric.
+study_name: cellCentreInverseFiltered
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [64, 128, 256]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [biharmonicBand]
+  PSI_FILTER_THETA: [0.05, 0.2]
+
+solve_runtime: 240
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
