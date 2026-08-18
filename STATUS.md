@@ -174,6 +174,46 @@ exonerated by direct experiment. Mode-resolved: r(maxU) ≈ 2·r(A2h);
 the corrugation rate r(A2h) is the order parameter and is nearly
 dt-independent at N=256.
 
+**THE CELL-CENTRE INVERSE AND THE FILTER (2026-08-18).** Two constructions the
+user proposed now hold the best coupled results on record; curated:
+`docs/method-comparison/.../tables/cell_centre_inverse_coupled.csv`.
+
+*curvatureExtension cellCentreInverse* -- the parallel-surface inverse applied
+per CELL (kappa_c, K_c at the centre, d_c = signedOffset, same dimension-
+seamless algebra), the transformed cell field delivered by plain interpolation.
+Its non-gradient force content converges at order +2.01 over the full CSF
+support where every other cell curvature is +0.09 (leiaTestRemainderTerm.csv).
+Coupled, UNFILTERED: at N=64 the lowest parasitic floor ever measured with a
+live force (max|U| 8.05e-6, volume 7.2e-6, shape 7.2e-7 at t=0.1); outlives
+production at every N in 2D (0.100/0.078/0.036 vs 0.100/0.063/0.033); in 3D it
+beats production 2.6x at N=64 AND inverts the finer-blows-first trend between
+N=32 and N=64 (0.0613 -> 0.0786; two points, seed sensitivity 5-38%). In 2D the
+fine meshes still blow, and at N=256 plain arithmetic outlives it (0.049 vs
+0.036): the floor improved, the growth survived.
+
+*psiFilter biharmonicBand theta=0.2, production delivery* (capillaryEnvelope,
+quadratic half): ALL of N=64/128/256 reach t=0.1, and at N=256 the run ends
+healthier than N=64 (max|U| 1.3e-4, volume 9.7e-5, shape 6.9e-7, min|grad psi|
+0.993) -- the h-trend inverted with a live force. theta=0.05 survives everywhere
+but the residual current grows ~10x per refinement level.
+
+*The kinematic price arm settles the linear-transport idea*: on the reversed 2D
+vortex linearTaylor's errors GROW under refinement (volume 340% at N=256, shape
+diverging) -- its interpolation diffusion is only useful where the flow is
+near-quiescent, so the theta filter is the damping mechanism of choice, not the
+transport order.
+
+*Regression found and fixed en route*: since 4c4f7f1 the shared createFields.H
+constructed a standalone TRANSPORT-type reconstruction and called
+meanCurvatureClosestPoint on it whenever the force is reconstructedCurvature --
+an instant NotImplemented abort for every non-quadratic transport (all nine
+linearTaylor envelope arms died at startup). Guarded on `kappa` not yet being
+registered (2625a19); Eulerian solver byte-identical.
+
+IN FLIGHT: capillaryEnvelope rerun on the fixed binary (54249071; its quadratic
+arms double as the regression check) and the COMBINATION
+cellCentreInverse x theta={0.05,0.2} in 2D (54249072) and 3D (54249073).
+
 **THE SOURCE, MEASURED (2026-08-17, plan sec. 18).** New spectral harnesses
 (`interface_mode_trajectory.py`, `mode_rate_vs_drift.py`) perturb the interface
 by cos(m·theta) and fit growth + frequency per mode on the shipped solver, U/p

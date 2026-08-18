@@ -1,0 +1,11 @@
+study,case,N,curvatureExtension,tEnd,reachedEndTime,diverged,maxMagU_end,volumeRelError_end,shapeL2_end,minGradPsiBand_end
+cellCentreInverseDroplet,stationaryDroplet2D_00000,64,cellCentreInverse,0.0999976,1,0,8.05302e-06,7.18181e-06,7.18406e-07,0.989144
+cellCentreInverseDroplet,stationaryDroplet2D_00001,128,cellCentreInverse,0.0782314,0,1,0.717531,0.00368692,3.26809e-05,0
+cellCentreInverseDroplet,stationaryDroplet2D_00002,256,cellCentreInverse,0.0359479,0,1,0.617742,0.00271141,3.37786e-05,0.140053
+cellCentreInverseDroplet,stationaryDroplet2D_00003,64,none,0.0999976,1,0,3.16554e-05,0.00157988,1.79453e-06,0.963694
+cellCentreInverseDroplet,stationaryDroplet2D_00004,128,none,0.0749764,0,1,1.33309,0.0260705,0.000167512,0
+cellCentreInverseDroplet,stationaryDroplet2D_00005,256,none,0.0485616,0,1,3743.13,0.00122163,3.86888e-05,0
+cellCentreInverseDroplet3D,stationaryDroplet3D_00000,32,cellCentreInverse,0.0613191,0,1,0.725063,0.0368134,0.000418544,0.428177
+cellCentreInverseDroplet3D,stationaryDroplet3D_00001,64,cellCentreInverse,0.0785514,0,1,3.22309,0.00360815,4.77496e-05,0.347493
+cellCentreInverseDroplet3D,stationaryDroplet3D_00002,32,none,0.064379,0,1,1.66184,0.0151065,0.000447741,0
+cellCentreInverseDroplet3D,stationaryDroplet3D_00003,64,none,0.0571051,0,1,6.97702,0.0258665,8.43282e-05,0
