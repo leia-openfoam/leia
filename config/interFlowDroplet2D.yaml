@@ -1,0 +1,68 @@
+# interFlow (DLR twophaseflow) REFERENCE ARM, 2D stationary droplet, sweeping the
+# curvature model: RDF against fitParaboloid.
+#
+# THE THIRD ANSWER TO THE SAME QUESTION. Where the curvature comes from:
+#   interFoam            kappa = -div(nHat), nHat from interpolate(grad(alpha))
+#                        -- differentiates the volume fraction twice, and differences
+#                        the SAME field again in the force via snGrad(alpha).
+#   leia (ours)          kappa from a per-cell quadratic WLS fit of the level set psi,
+#                        while the force differences an alpha built from a per-cell
+#                        LINEAR plane fit of the same psi -- two different fits.
+#   interFlow RDF        kappa from a signed distance REBUILT from the PLIC planes.
+#   interFlow paraboloid kappa from a paraboloid fit to the reconstructed interface
+#                        centres.
+# All four are balanced-force CSF with the same rAUf cancellation, so the
+# comparison isolates the curvature source almost cleanly.
+#
+# HELD IDENTICAL to the other arms: mesh and patches, water/air with sigma = 0.07274,
+# g = (0 0 0), zeroGradient wall pressure with pRefCell, the same FIXED capillary dt
+# with adjustTimeStep off, and the SAME initialiser (leiaSetFields) so the initial
+# alpha.water is bit-identical across all three solvers. isoAdvector controls and
+# fvSchemes are the DLR reference case's, unmodified.
+#
+# PREDICTIONS (recorded before the run).
+#   a. Both models are STABLE at every resolution -- geometric VOF bounds alpha in
+#      [0,1] by construction and cannot run away the way a level set can.
+#   b. Volume conservation is excellent for both, as it was for interFoam (2.2e-7).
+#      Which is exactly why volume must never be the headline metric.
+#   c. The discriminating metric is max|U| under refinement. RDF rebuilds a distance
+#      field, so it is the closest analogue to our construction and the most likely
+#      to show a converging parasitic current; fitParaboloid fits the surface
+#      directly and should be at least as good on a sphere, where a paraboloid is an
+#      excellent local model.
+#   d. FALSIFICATION OF OUR FRAMING: if either model converges in max|U| AND stays
+#      stable through R/h = 15.8 in 3D, then the difficulty is NOT intrinsic to
+#      balanced-force CSF at this resolution -- it is specific to our
+#      semi-Lagrangian level set, and the paper has to say so plainly.
+#   Report volume AND shape error, never a single metric. NOTE the shape caveat in
+#   workflow/scripts/interfoam_droplet_metrics.py: the isosurface-based shape error
+#   is comparable across resolutions and across the two VOF solvers, but not against
+#   the psi-zero-set number.
+study_name: interFlowDroplet2D
+case: interFlowDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: interFlow
+theme:  method-comparison
+
+# The SHARED initialiser, so the initial alpha.water is bit-identical to the
+# level-set and interFoam arms.
+setfields_app: leiaSetFields
+setfields_args: "-alphaName alpha.water"
+
+# interFlow writes no metrics CSV; this converts its function-object output into the
+# same schema the level-set solver writes, so one analysis path reads all three.
+post_solve: "python3 {REPO}/workflow/scripts/interfoam_droplet_metrics.py --case . --out interFlow.csv --radius 1e-3"
+
+axes_override:
+  DOMAIN_LENGTH: [0.01]
+  N_CELLS: [64, 128, 256]
+  STF_MODEL: [RDF, fitParaboloid]
+  C_ALPHA: [1]
+
+solve_runtime: 480
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

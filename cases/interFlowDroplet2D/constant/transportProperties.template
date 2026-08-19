@@ -1,0 +1,62 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      transportProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// IDENTICAL to cases/stationaryDroplet2D/constant/transportProperties. Water/air
+// at sigma = 0.07274 N/m, so the exact Laplace jump is sigma/R = 72.74 Pa in 2D
+// and 2 sigma/R = 145.48 Pa in 3D -- the same reference both solvers are scored
+// against.
+phases (water air);
+
+water
+{
+    transportModel  Newtonian;
+    nu              1e-06;
+    rho             998.2;
+}
+
+air
+{
+    transportModel  Newtonian;
+    nu              1.53e-05;
+    rho             1.19;
+}
+
+sigma           0.07274;
+
+// DLR twophaseflow's surfaceForces dict. THE CURVATURE MODEL IS THE SWEPT AXIS:
+//   RDF           -- curvature from the Reconstructed Distance Function of the
+//                    PLIC interface (plicRDF): a signed distance is rebuilt from
+//                    the reconstructed planes and differentiated, so the
+//                    curvature comes from a DISTANCE field rather than from the
+//                    volume fraction.
+//   fitParaboloid -- a paraboloid least-squares fit to the reconstructed
+//                    interface centres; curvature from the fitted quadratic.
+// Both are geometric and both take their curvature from the RECONSTRUCTED
+// INTERFACE rather than from derivatives of alpha, which is what makes them the
+// interesting comparison for this campaign: interFoam differentiates alpha twice
+// (kappa from interpolate(grad(alpha)), force from snGrad(alpha)), our level-set
+// method fits psi, and these two fit the PLIC surface. Three different answers to
+// the same question.
+// Other available models: gradAlpha, heightFunction, constantCurvature.
+surfaceForces
+{
+    sigma                     0.07274;
+    surfaceTensionForceModel  @!STF_MODEL!@;
+    accelerationForceModel    gravity;
+    deltaFunctionModel        alphaCSF;
+}
+
+// ************************************************************************* //

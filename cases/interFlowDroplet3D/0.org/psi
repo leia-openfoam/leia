@@ -1,0 +1,42 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      psi;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// PLACEHOLDER, overwritten by leiaSetFields, and interFoam never reads it.
+//
+// WHY IT IS HERE AT ALL. The comparison is only meaningful if both solvers start
+// from the SAME interface. Using OpenFOAM's setAlphaField (type sphere) instead
+// looked equivalent but is not: on a one-cell-thick 2D mesh it integrates the
+// volume of a SPHERE SLAB, giving sum(alpha*V) = 9.5260e-10 against the circle's
+// pi R^2 t = 9.8175e-10, a 3% error -- while the level-set case evaluates psi at
+// cell centres, which all lie at z = 0, and therefore sees a CYLINDER. A 2D
+// droplet must be a cylinder: its exact Laplace jump is sigma/R, not 2 sigma/R.
+// Running leiaSetFields for the interFoam case as well makes the initial
+// alpha.water BIT-IDENTICAL between the two solvers by construction, which is a
+// far stronger basis for the comparison than two geometric routes that agree to
+// within a per cent.
+dimensions      [0 1 0 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    walls
+    {
+        type            zeroGradient;
+    }
+}
+
+// ************************************************************************* //

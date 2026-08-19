@@ -1,0 +1,33 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      p;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [1 -1 -2 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    walls
+    {
+        // Static pressure. interFlow reads it READ_IF_PRESENT and writes p = p_rgh
+        // + rho*gh; with g = 0 the two coincide.
+        // (PIMPLE pRefCell/pRefValue). IDENTICAL to the level-set case, so the
+        // pressure boundary treatment cannot differ between the two solvers.
+        type            zeroGradient;
+    }
+}
+
+// ************************************************************************* //

@@ -1,0 +1,48 @@
+// interFlow (DLR twophaseflow) REFERENCE ARM for the 3D stationary droplet.
+// Rationale: see cases/interFlowDroplet2D.parameter.
+//
+// The ladder and DOMAIN_LENGTH match the level-set 3D study
+// (config/stationaryDroplet3Dwide.yaml): L = 6R = 6e-3 m, N_L = 60/76/95, giving
+// h = 1.00e-4/7.89e-5/6.32e-5 and R/h = 10.0/12.7/15.8 -- which brackets the
+// R/h ~ 16 onset where our own method destabilises. The L = 6R truncation is
+// measured-equivalent to the 0.01 m reference box to 0.16% on every metric
+// (docs/.../data/tables/domain_size_control.csv), and using the same box for all
+// three solvers means the comparison cannot be confounded by it either way.
+//
+// N_L = 120 is omitted for cost, as is 2D N = 512; the three levels here already
+// span the onset.
+values
+{
+    solver ( interFlow );
+
+    N_CELLS ( 60 76 95 );
+
+    END_TIME ( 0.1 );
+
+    DOMAIN_LENGTH ( 0.006 );
+
+    // Same capillary step as every other arm: MAX_DELTA_T is derived as
+    // CAPILLARY_DT_COEFF/nRef^1.5 with nRef = CAPILLARY_REF_LENGTH/h, so all three
+    // solvers advance on an identical time grid and adjustTimeStep is off
+    // everywhere. FIXED_DELTA_T > 0 overrides it (unused here).
+    CAPILLARY_DT_COEFF ( 0.010861 );
+    CAPILLARY_REF_LENGTH ( 0.01 );
+    FIXED_DELTA_T ( 0 );
+    MAX_CO ( 0.1 );
+
+    // isoAdvector's interface-compression coefficient, the DLR reference value.
+    C_ALPHA ( 1 );
+
+    WRITE_INTERVAL ( 0.02 );
+
+    // THE SWEPT AXIS: which curvature the capillary force is built from.
+    //   RDF           -- from the Reconstructed Distance Function of the PLIC
+    //                    interface: a signed distance rebuilt from the
+    //                    reconstructed planes, then differentiated.
+    //   fitParaboloid -- from a paraboloid least-squares fit to the reconstructed
+    //                    interface centres.
+    // Both take curvature from the RECONSTRUCTED SURFACE, which is what makes them
+    // the interesting third answer: interFoam differentiates alpha twice, our
+    // level-set method fits psi, these fit the PLIC surface.
+    STF_MODEL ( RDF fitParaboloid );
+}

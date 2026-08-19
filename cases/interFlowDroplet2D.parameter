@@ -1,0 +1,62 @@
+// interFlow (DLR twophaseflow) REFERENCE ARM for the 2D stationary droplet.
+//
+// WHY A THIRD SOLVER. interFoam answers "is a stable algebraic VOF also
+// convergent" (measured: no -- its max|U| GREW 0.310 -> 0.444 from N=64 to 128).
+// interFlow answers a different and sharper question: it is GEOMETRIC VOF
+// (isoAdvector transport, plicRDF reconstruction) whose curvature comes from the
+// reconstructed interface rather than from derivatives of the volume fraction. So
+// it shares our method's premise -- curvature from a reconstructed geometric
+// object -- while conserving volume by construction the way interFoam does. If it
+// is both stable and convergent, the campaign's difficulty is specific to taking
+// curvature from a level set advected semi-Lagrangian; if it is stable but not
+// convergent, the difficulty is intrinsic to balanced-force CSF at this
+// resolution range.
+//
+// Everything except the interface method is held identical to the other two arms:
+// same blockMesh box and patches, same water/air properties and sigma = 0.07274,
+// g = (0 0 0), zeroGradient wall pressure with pRefCell, the same FIXED capillary
+// time step, and the SAME initialiser (leiaSetFields) so the initial alpha.water
+// is bit-identical rather than merely similar. fvSchemes and the isoAdvector
+// controls are the DLR reference case's (run/velocityStaticCircle), unmodified --
+// that case is this benchmark, so its author's own settings are the right
+// reference.
+values
+{
+    solver ( interFlow );
+
+    // The 2D ladder of the level-set study. N = 512 is deliberately NOT included
+    // yet: plicRDF reconstruction makes interFlow roughly 3x interFoam's per-step
+    // cost, so that one point would cost ~140 core-h across the two curvature
+    // models -- more than the rest of the ladder put together. Add it once the
+    // trend at 64/128/256 says whether it would change anything.
+    N_CELLS ( 64 128 256 );
+
+    END_TIME ( 0.1 );
+
+    DOMAIN_LENGTH ( 0.01 );
+
+    // Same capillary step as every other arm: MAX_DELTA_T is derived as
+    // CAPILLARY_DT_COEFF/nRef^1.5 with nRef = CAPILLARY_REF_LENGTH/h, so all three
+    // solvers advance on an identical time grid and adjustTimeStep is off
+    // everywhere. FIXED_DELTA_T > 0 overrides it (unused here).
+    CAPILLARY_DT_COEFF ( 0.010861 );
+    CAPILLARY_REF_LENGTH ( 0.01 );
+    FIXED_DELTA_T ( 0 );
+    MAX_CO ( 0.1 );
+
+    // isoAdvector's interface-compression coefficient, the DLR reference value.
+    C_ALPHA ( 1 );
+
+    WRITE_INTERVAL ( 0.02 );
+
+    // THE SWEPT AXIS: which curvature the capillary force is built from.
+    //   RDF           -- from the Reconstructed Distance Function of the PLIC
+    //                    interface: a signed distance rebuilt from the
+    //                    reconstructed planes, then differentiated.
+    //   fitParaboloid -- from a paraboloid least-squares fit to the reconstructed
+    //                    interface centres.
+    // Both take curvature from the RECONSTRUCTED SURFACE, which is what makes them
+    // the interesting third answer: interFoam differentiates alpha twice, our
+    // level-set method fits psi, these fit the PLIC surface.
+    STF_MODEL ( RDF fitParaboloid );
+}
