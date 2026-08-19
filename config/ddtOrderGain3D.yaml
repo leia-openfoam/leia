@@ -1,63 +1,72 @@
-# RETRY OF THE MOMENTUM TIME ORDER, as a gain gate.
+# SECOND ORDER IN TIME: the 2x2 that separates the ddt order from where the force is
+# evaluated. Supersedes the first version of this config, which omitted the decisive arm.
 #
-# THE ORDER MISMATCH THIS IS AIMED AT. The semi-Lagrangian departure point is a
-# second-order Taylor expansion (pointValueScheme.C:367-368):
-#     x_d = x_c - u dt + 0.5 a dt^2,   a = (u^{n+1} - u^n)/dt + (u . grad u)
-# which is 2nd-order accurate GIVEN u. With Euler momentum, u carries O(dt) error,
-# so x_d carries O(dt^2) per step and the interface position accumulates O(dt) over
-# a fixed time: the level set is FIRST order in time. A second-order trajectory is
-# being fed a first-order velocity, and that is worth removing.
+# THE ORDER CHAIN, corrected. OpenFOAM's `backward` is BDF2:
+#     (3 u^{n+1} - 4 u^n + u^{n-1})/(2 dt) = F(u^{n+1}, t^{n+1})
+# All fluxes and sources sit at n+1; only the temporal term is the 3-level difference.
+# So BDF2 IS globally second order -- provided F really is evaluated at n+1. There is
+# no inherent first-order barrier from the capillary force; the barrier is whether the
+# implementation places it at n+1.
 #
-# WHY THE 2026-07-14 REJECTION IS WORTH RE-TESTING. It recorded, at N=64 and
-# dt = dt_sigma/4: Euler stable at max|U| ~1e-5, backward DIVERGES with peak ~48,
-# CrankNicolson 0.9 diverges to ~1e+102, and backward usable only at dt_sigma/8.
-# That test predates three fixes landed today, and one is directly implicated: the
-# t=0 Young-Laplace solve was UNREFERENCED on a singular system and inherited
-# relTol 0.01, leaving the initial pressure ~1% off and handing step 1 an impulse of
-# order 0.01*sigma*kappa. A divergence to ~48 m/s is the signature of an amplified
-# STARTUP transient, not of slow parasitic growth -- and Euler's L-stability damps
-# exactly that, where a higher-order scheme does not. So the July verdict may have
-# been a measurement of the impulse rather than of the scheme.
+# It does not, by default. With psiOuterCorrectors = no, slAlphaEqn.H:17 gates the whole
+# interface pipeline to pimple.firstIter(), so sigma*kappa_f is computed once from an
+# AB2-EXTRAPOLATED trajectory, UextStar = Uext + (dt/dt0)(Uext - UextOld), and then
+# frozen. That is an O(dt) placement of the force and an O(dt) trajectory velocity, so
+# the scheme stays first order whatever ddt does.
 #
-# WHAT THIS CANNOT DELIVER, stated up front so the result is not over-read.
-# `backward` alone does NOT make the coupled scheme 2nd order in time. The capillary
-# force is evaluated once per step from the interface at t^n -- explicit, hence 1st
-# order, whatever ddt does. Iterating it to convergence (psiOuterCorrectors) makes it
-# backward-Euler, which is ALSO 1st order, and that switch was measured INERT here
-# (max|U| within 0.4%, config/psiOuterCorrectorsGain3D.yaml). Genuine 2nd order needs
-# BOTH a 2nd-order ddt AND a MIDPOINT (t^{n+1/2}) capillary force. The midpoint force
-# is not implemented and is a DIFFERENT item from task #24, which changes implicitness
-# and not order. If this study shows backward is usable, the midpoint force becomes
-# the natural follow-on and the first genuinely 2nd-order-in-time configuration.
+# With psiOuterCorrectors = yes, pass >= 2 restores psi^n and calls
+# slAdv->advect(psi, Uext(), UextOld) with Uext() = u^{n+1,(k-1)}, i.e. the kernel's
+# (u^{n+1}, u^n) slots are both genuine with NO extrapolation -- the semi-Lagrangian
+# foot is traced backwards from the arrival time using the converged outer-loop
+# velocity, which is what an SL scheme is supposed to do. At outer convergence the
+# force is therefore at t^{n+1}.
 #
-# THE DESIGN. One resolution, R/h = 15.8 (N_L = 95) -- the arm that AMPLIFIES
-# post-fix (gAvg +2.70e-04, max|U| 5.82e-03), so a change in the gain is measurable
-# there. Two schemes x two steps, quarter horizon, scored on the per-step gain:
-#   Euler    at dt = 5.4514e-6  -- the control, and the same run as the post-fix
-#                                 ladder's N_L=95 arm, so it cross-validates
-#   backward at dt = 5.4514e-6  -- does it still diverge post-fix?
-#   Euler    at dt = 2.7257e-6  -- the dt control, needed because e-folds ~ dt^0.35
-#                                 means halving the step improves things ANYWAY, and
-#                                 without this arm a stable backward-at-half-dt would
-#                                 be indistinguishable from that effect
-#   backward at dt = 2.7257e-6  -- July's claim was that backward needs dt_sigma/8
-# CrankNicolson is excluded: it is A-stable but NOT L-stable, its amplification factor
-# tends to -1 for stiff modes so grid-scale capillary oscillations are not damped at
-# all, and July measured 1e+102. Excluding it is a physics judgement, not an oversight.
+# So the genuinely second-order-in-time configuration is backward + psiOuterCorrectors
+# yes, and nothing less. The trajectory's own acceleration term needs no change:
+# a = (u^{n+1}-u^n)/dt is only O(dt) accurate as du/dt at t^{n+1}, but it enters as
+# 0.5*a*dt^2, so it contributes O(dt^3) per step and O(dt^2) globally -- sufficient.
+# What must be O(dt^2) is u itself, which is what BDF2 + a force at n+1 delivers.
+#
+# WHY THE EARLIER psiOuterCorrectors NULL RESULT DOES NOT APPLY HERE. That gate
+# (config/psiOuterCorrectorsGain3D.yaml) measured the switch as inert, max|U| within
+# 0.4%. But it was run under EULER, where a lagged force and a converged force are
+# BOTH first order, so iterating can only change an error constant -- which is exactly
+# what 0.4% is. Under BDF2 the same switch is the difference between first and second
+# order. The null result was therefore not evidence that force placement is irrelevant,
+# and using it to drop this axis was a mistake.
+#
+# THE 2x2, all at the native capillary step for R/h = 15.8 (dt = 5.4514e-6, 4586 steps):
+#   Euler    + outer no   the control; identical to the post-fix ladder's N_L=95 arm,
+#                         so it cross-validates the two studies (max|U| 5.8169e-03)
+#   Euler    + outer yes  iteration under a 1st-order ddt: expected inert, and a
+#                         consistency check against the earlier gate's 0.4%
+#   backward + outer no   BDF2 ddt with a LAGGED force: still 1st order overall, so
+#                         this isolates whether the ddt change alone is even survivable
+#   backward + outer yes  THE SECOND-ORDER CONFIGURATION
+# The diagonal is the answer; the two off-diagonal arms are what make it attributable.
+#
+# BDF2 STARTUP, worth recording because it may be what July actually measured. On the
+# first step there is no u^{n-1} and OpenFOAM's backward scheme degrades. Combined with
+# the t=0 impulse that was fixed today -- the Young-Laplace solve was unreferenced on a
+# singular system and inherited relTol 0.01, leaving the initial pressure ~1% off -- a
+# scheme without Euler's L-stability would be hit hard in exactly the first few steps.
+# July recorded backward diverging to a peak of ~48 m/s, which looks far more like an
+# amplified startup transient than like slow parasitic growth.
 #
 # PREDICTIONS (recorded before the run).
-#   a. If backward is now usable at the native step and gAvg is unchanged or lower,
-#      the July divergence was the t=0 impulse, and the momentum order can be raised
-#      free -- which makes the midpoint capillary force the next step and a genuinely
-#      2nd-order-in-time scheme reachable.
-#   b. If backward still diverges at the native step but is stable at half, the July
-#      result stands on its own physics: Euler's L-stability is load-bearing and the
-#      price of 2nd order is 2x the steps. Then compare gAvg of backward-at-half
-#      against EULER-at-half, not against Euler-at-native, or the dt^0.35 effect will
-#      be misread as a scheme win.
-#   c. If backward diverges at both steps, the order mismatch cannot be fixed from the
-#      momentum side at this resolution and the trajectory's 2nd order is unreachable
-#      while the force stays 1st order.
+#   a. backward + outer yes is stable AND lowers the per-step gain: the order mismatch
+#      was real and removable, and this becomes the first genuinely 2nd-order-in-time
+#      configuration of the method. Then re-measure the transport orders and the
+#      oscillating-droplet frequency, where a 2nd-order velocity should show up as
+#      accuracy rather than as stability.
+#   b. backward + outer yes is stable but the gain is UNCHANGED: the time order is not
+#      what feeds the parasitic amplification -- worth knowing, and it would still be
+#      worth adopting for the accuracy of moving-interface cases.
+#   c. backward diverges with outer yes as well: Euler's L-stability is load-bearing
+#      independently of the startup impulse, and second order in time is unreachable
+#      from the momentum side at this resolution. Then the half-step arms (dt_sigma/6.1
+#      and /12) become Stage 2, with an Euler-at-half control, because e-folds ~ dt^0.35
+#      means halving the step helps anyway and would otherwise be misread as a win.
 #   Report volume AND shape error alongside the gain, never the gain alone.
 study_name: ddtOrderGain3D
 case: stationaryDroplet3D
@@ -74,17 +83,19 @@ axes_override:
   DOMAIN_LENGTH: [0.006]
   N_CELLS: [95]
   MOMENTUM_DDT_SCHEME: [Euler, backward]
-  # native capillary step for R/h = 15.8, and half of it (dt_sigma/6.1)
-  FIXED_DELTA_T: [5.4514e-6, 2.7257e-6]
+  # QUOTED: bare yes/no are YAML 1.1 booleans and would render as "True"/"False".
+  PSI_OUTER_CORRECTORS: ["no", "yes"]
+  FIXED_DELTA_T: [5.4514e-6]
   CURVATURE_EXTENSION: [cellCentreInverse]
   FACE_CURVATURE_SOURCE: [model]
   PSI_FILTER: [biharmonicBand]
   PSI_FILTER_THETA: [0.2]
   END_TIME: [0.025]
 
-# 4586 steps at the native dt, 9172 at half; 857375 cells; ~2 h for the longest
-# at np32 from the measured 2.97e-5 core-s per cell-step.
-solve_runtime: 300
+# 4 arms, 4586 steps each, 857375 cells. The outer-corrector arms re-run the whole
+# interface pipeline 3x per step, so they cost ~2.5x their twins: ~32 core-h each for
+# outer=no and ~81 for outer=yes, ~227 core-h total, longest ~2.5 h at np32.
+solve_runtime: 360
 export_slides: false
 
 env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
