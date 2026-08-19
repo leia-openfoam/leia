@@ -36,6 +36,7 @@ sdplsSource/discretization/discretization.C
 sdplsSource/discretization/explicitDiscretization.C
 sdplsSource/discretization/simpleLinearImplicit.C
 sdplsSource/discretization/strictNegativeSpLinearImplicit.C
+sdplsSource/discretization/exponentialDiscretization.C
 sdplsSource/mollifier/mollifier.C
 sdplsSource/mollifier/mollifier1.C
 sdplsSource/mollifier/interfaceBandMollifier.C
@@ -84,5 +85,12 @@ semiLagrangian/pointValueScheme.C
 semiLagrangian/fluxFormScheme.C
 semiLagrangian/normalProjectedScheme.C
 semiLagrangian/slAdvection.C
+
+/* Per-time-step phase-volume correction. The base class IS the no-op default
+   (noVolumeCorrection), exactly as sdplsSource's base is noSource, so an absent
+   levelSet/volumeCorrection sub-dictionary costs nothing. */
+volumeCorrection/volumeCorrection.C
+volumeCorrection/newtonShiftVolumeCorrection.C
+
 
 LIB = $(FOAM_USER_LIBBIN)/libleiaLevelSet

@@ -45,9 +45,13 @@ Description
     exactly why the defect survived: the one variant that worked was never the
     one swept over a mesh ladder.
 
-    A single assertion catches the whole family: ALL THREE DISCRETIZATIONS ARE
-    LINEARIZATIONS OF THE SAME CONTINUUM TERM, so at psi = psi^n they must apply
-    the SAME physical source. That is Layer 1 below.
+    A single assertion catches the whole family: EVERY LINEARIZATION OF THE
+    SAME CONTINUUM TERM must apply the SAME physical source at psi = psi^n.
+    That is Layer 1 below, and it covers `explicit`, `simpleLinearImplicit` and
+    `strictNegativeSpLinearImplicit`. `exponential` is deliberately OUTSIDE
+    that family -- it delivers the exact amplification factor exp(f dt) rather
+    than the tangent coefficient f -- so it is measured against its own closed
+    form instead, and is exempt from the cross-discretization agreement check.
 
     THE SETUP is affine, so every discrete operator involved is exact and the
     test has no truncation error to tolerate:
@@ -73,10 +77,13 @@ Description
 
         Sc-carried (explicit branch):  psi^{n+1} = psi^n (1 + f dt)
         Sp-carried (implicit branch):  psi^{n+1} = psi^n / (1 - f dt)
+        exponential (exact factor):    psi^{n+1} = psi^n e^{f dt}
 
-    both first-order consistent with the exact psi^n e^{f dt}. Running BOTH
-    signs of alpha exercises both branches of strictNegativeSpLinearImplicit,
-    whose split is by the sign of f_nl.
+    the first two first-order consistent with the exact psi^n e^{f dt} and the
+    third equal to it. Running BOTH signs of alpha exercises both branches of
+    strictNegativeSpLinearImplicit, whose split is by the sign of f_nl. The
+    case fvSchemes pins `ddt(psi) Euler`, which is also the pairing under which
+    `exponential` is exact.
 
     LAYER 3 -- the gradient law, which is what SDPLS is actually for.
     On the interface the exact statement is D|grad psi|/Dt = |grad psi| (F - a).
@@ -224,11 +231,16 @@ int main(int argc, char *argv[])
         return d;
     };
 
+    // `explicit` MUST stay first: it is the reference of the
+    // cross-discretization agreement check below. `exponential` is appended
+    // last and is measured against its OWN contract -- it is the only member
+    // that does not apply f_nl*psi at psi = psi^n (see exactFactor below).
     const List<word> discs
     {
         "explicit",
         "simpleLinearImplicit",
-        "strictNegativeSpLinearImplicit"
+        "strictNegativeSpLinearImplicit",
+        "exponential"
     };
 
     // ------------------------------------------------------------------ //
@@ -298,15 +310,33 @@ int main(int argc, char *argv[])
                         (B.diag()[c]*psi[c] - B.source()[c])/V[c];
                 }
 
+                // `exponential` is NOT a linearization of the continuum
+                // coefficient: it delivers the EXACT one-step amplification
+                // factor exp(f dt), so the source it applies at psi = psi^n is
+                // psi (e^{f dt} - 1)/dt, not f psi. The two differ at
+                // O(f^2 dt): 2.5e-3 at f = 0.7, dt = 0.01, seven orders above
+                // the 1e-10 tolerance, so it gets its own expectation here and
+                // is exempt from the agreement check below. It is still gated
+                // on the SIGN (the defect this test exists for) and on the
+                // consistency layer, which it passes with zero deviation.
+                const bool exactFactor = (disc == "exponential");
+                const scalar appliedCoeff =
+                    exactFactor
+                  ? (Foam::exp(m.f*dt) - 1.0)/dt
+                  : m.f;
+
                 scalarField expected(mesh.nCells());
                 forAll(expected, c)
                 {
-                    expected[c] = m.f*psi[c];
+                    expected[c] = appliedCoeff*psi[c];
                 }
 
                 check
                 (
-                    id + " : applied source == f_nl*psi",
+                    id
+                  + (exactFactor
+                        ? " : applied source == psi (e^{f dt} - 1)/dt"
+                        : " : applied source == f_nl*psi"),
                     maxDiff(applied, expected),
                     0.0,
                     1e-10
@@ -317,7 +347,7 @@ int main(int argc, char *argv[])
                 {
                     appliedRef = applied;
                 }
-                else
+                else if (!exactFactor)
                 {
                     check
                     (
@@ -346,9 +376,19 @@ int main(int argc, char *argv[])
                 forAll(psiNew, c)
                 {
                     psiNew[c] = eqn.source()[c]/eqn.diag()[c];
-                    psiWant[c] = implicitBranch
-                        ? psi[c]/(1.0 - m.f*dt)
-                        : psi[c]*(1.0 + m.f*dt);
+
+                    // `exponential` is neither branch: Sp = 0 and
+                    // Sc = psi^n (e^{f dt} - 1)/dt, so the Euler step
+                    // psi^n + dt Sc collapses to the EXACT factor. This is the
+                    // assertion that would fail if the class ever reverted to
+                    // a truncated factor or read the outer ITERATE instead of
+                    // psi.oldTime().
+                    psiWant[c] =
+                        exactFactor
+                      ? psi[c]*Foam::exp(m.f*dt)
+                      : (implicitBranch
+                            ? psi[c]/(1.0 - m.f*dt)
+                            : psi[c]*(1.0 + m.f*dt));
                 }
 
                 check

@@ -1,0 +1,59 @@
+# A1 -- the exponential / integrating-factor SDPLS source discretization.
+#
+# The source is d(psi)/dt = f_nl(psi^n) psi, a LINEAR ODE in psi whose exact
+# solution over a step is the multiplicative factor psi^{n+1} = psi^n exp(a dt).
+# The three pre-existing linearizations are all first-order truncations of it:
+#   explicit                 -> (1 + a dt)
+#   simpleLinearImplicit     -> 1/(1 - a dt)
+#   strictNegativeSp         -> a sign-split hybrid
+# Each carries an |a| dt restriction the exact factor removes, and each is
+# ASYMMETRIC: over one +/- pair of a zero-mean oscillating strain, implicit
+# Euler gives 1/(1 - z^2) > 1 with z = a dt, i.e. it RECTIFIES the oscillation
+# into one-sided growth of |psi| at O(z^2) per pair, while exp(+z)exp(-z) = 1
+# exactly. The new `exponential` member delivers the exact factor as
+# Sc = psi^n (exp(a dt) - 1)/dt with Sp = 0.
+#
+# UNIT-TESTED: leiaTestSdplsSource asserts the one-step update against the
+# closed form to 1.11e-16 (89 passed, 0 failed).
+#
+# WHAT TO EXPECT, stated in advance so the result is falsifiable: the
+# rectification is a TEMPORAL effect and the SDPLS order loss is a SPATIAL one
+# ((grad e)_h = O(h^{p-1}), ceiling ~1.2 within second-order transport, closed
+# by a complete elimination). So the exponential factor should buy robustness
+# and remove the dt restriction, NOT restore second order. The N=32 smoke is
+# already consistent with that and mildly negative on volume: volumeError
+# 8.59e-4 (simpleLinearImplicit) vs 2.61e-3 (exponential) at t=0.05.
+# If band-gradient order is unchanged, the honest report is "no order gain",
+# and the value of the member is that it is exact in time and unconditionally
+# sign-preserving (a strictly positive multiplier cannot flip the sign of psi
+# in any cell, so the discrete zero contour's topology is preserved at any dt).
+#
+#   make studies-one STUDY=sdplsExpSource2Dvortex PROFILE=profiles/slurm
+
+study_name: sdplsExpSource2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [1]
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  OSCILLATION: ["off"]
+  SDPLS_SOURCE: [R]
+  # The paired linearization comparison, everything else held fixed.
+  SOURCE_SCHEME: [simpleLinearImplicit, exponential]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
