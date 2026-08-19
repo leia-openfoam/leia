@@ -1,0 +1,81 @@
+# The DISCRIMINATING third time-scheme point: BDF2 on ddt(psi).
+#
+# Small by design -- 6 cases on exactly the grid the mechanism study already
+# ran, so the three-way table completes without re-running anything.
+#
+# WHAT IT DECIDES. sdplsDropletMechanism2D measured Euler vs CrankNicolson on
+# fvm::ddt(psi) (momentum on Euler in both), production reconstructedCurvature
+# force, relative signed volume error at t = 0.1 or at divergence:
+#
+#   N     noSource(Euler)  noSource(CN)   R(Euler)              R(CN)
+#   32     2.810e-03        2.829e-03     -1.000                -0.949
+#   64     1.843e-04        1.867e-04     +27.7 div t=0.0584    +26.2 div t=0.0456
+#   128    1.204e-05        7.647e-06     +19.3 div t=0.0398          div t=0.0304
+#
+# CrankNicolson helped marginally at N=32 and made things WORSE at N=64 and 128,
+# diverging EARLIER than Euler at both. Two readings survive that:
+#
+#   (a) LOSS OF DAMPING. CrankNicolson is A-stable but NOT L-stable: its
+#       amplification factor tends to -1 as z -> -inf, so grid-scale modes ring
+#       undamped forever, while Euler is L-stable and damps them. On this reading
+#       the L-stable damping Euler provides is worth more than the O(z^2)
+#       rectification CrankNicolson removes.
+#   (b) SECOND ORDER ITSELF. A second-order, lower-dissipation scheme resolves
+#       and propagates the mode-4 perturbation that Euler's numerical
+#       dissipation smears, so ANY second-order treatment of ddt(psi) is worse
+#       here regardless of stability class.
+#
+# backward (BDF2) separates them, because it is second order AND L-stable
+# (stiffly accurate: amplification -> 0 as z -> -inf), with the same O(z^3)
+# leading rectification as CrankNicolson:
+#
+#   backward tracks Euler or beats it  => reading (a); the damping is what
+#                                         matters, and the ~20% rectification
+#                                         gain predicted from the 4x dt
+#                                         refinement should finally appear.
+#   backward tracks CrankNicolson      => reading (b); second order in ddt(psi)
+#                                         is itself harmful on this problem, and
+#                                         Euler's dissipation was load-bearing.
+#
+# NOT EXPECTED TO BE A FIX, and this must not be read as an attempt at one. The
+# same study established that the drain is seeded ENTIRELY by curvature error:
+# with the exact-curvature force (constantCurvatureSurfaceTension, kappa = 1/R =
+# 1000 exact for this circle) the relative signed volume error is 0.000e+00 at
+# every N, for BOTH time schemes, with the source ON -- 12 of 12 cases. No time
+# scheme addresses that. This arm is mechanism, not remedy.
+#
+# MOMENTUM STAYS ON Euler. `backward` on MOMENTUM is measured to diverge on this
+# capillary problem at the calibrated step (N=64, dt=2e-5: peak ~48) and is
+# stable only at dt_sigma/8. Only ddt(psi) is switched, via the aliasDict token.
+#
+# NO REBUILD NEEDED: this adds a dictionary alias and a config, no C++, so it
+# can be launched alongside the running wave-2 studies without touching binaries
+# they have mapped.
+#
+#   make studies-one STUDY=sdplsDropletBdf2Droplet2D PROFILE=profiles/slurm
+
+study_name: sdplsDropletBdf2Droplet2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaLevelSetTwoPhaseFoam
+setfields_args: "-alphaName alpha.water"
+theme: sdpls-level-set
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  SDPLS_SOURCE: [noSource, R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+  # Production curvature: the arm where the failure lives. The exact-curvature
+  # arm is already known to be identically zero for every time scheme, so
+  # repeating it here would only confirm a null.
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  PSI_DDT: [BackwardDdt]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

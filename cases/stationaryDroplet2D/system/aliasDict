@@ -38,7 +38,41 @@
 // dt=2e-5: backward peaks ~48, CrankNicolson 0.9 ~1e+102 -- see the ddtSchemes
 // comment in fvSchemes). Only ddt(psi) is switched.
 
+// BackwardDdt (BDF2) is the DISCRIMINATING third point, added 2026-08-19 after
+// the CrankNicolson arm failed. The three schemes separate ORDER from DAMPING:
+//
+//   scheme          order   A-stable   L-stable   rectification of an
+//                                                 oscillating zero-mean strain
+//   Euler             1        yes       YES      O(z^2), one-sided
+//   CrankNicolson     2        yes       no       O(z^3)
+//   backward (BDF2)   2        yes       YES      O(z^3)
+//
+// CrankNicolson removed the O(z^2) rectification and made the coupled droplet
+// WORSE at N >= 64 (diverged at t = 0.046 / 0.030 against Euler's 0.058 /
+// 0.040), which says the L-stable damping it gave up was worth more than the
+// rectification it removed -- its amplification factor tends to -1 as z -> -inf,
+// so it never damps the grid-scale mode-4 capillary noise that Euler does.
+//
+// backward is the scheme that has BOTH properties: second order in time AND
+// L-stable (stiffly accurate, amplification -> 0 as z -> -inf). So it decides
+// between the two readings of the CrankNicolson failure:
+//   * if the failure was LOSS OF DAMPING, backward should behave like Euler or
+//     better, and the ~20% rectification gain should finally show up;
+//   * if the failure was SECOND ORDER ITSELF -- e.g. the wider stencil
+//     resolving and propagating the mode-4 perturbation that Euler's numerical
+//     dissipation smears -- backward should fail like CrankNicolson.
+//
+// Neither outcome is expected to be a FIX: the mechanism study established that
+// the drain is seeded entirely by curvature error (with the exact-curvature
+// force, relative volume error is 0.000e+00 at every N for both Euler and CN,
+// with the source ON). This arm is mechanism, not remedy.
+//
+// MOMENTUM STAYS ON Euler here as in every other arm. That is not a detail:
+// `backward` on MOMENTUM is measured to diverge on this capillary problem at
+// the calibrated step (N=64, dt=2e-5: peak ~48), and is stable only at
+// dt_sigma/8. Only ddt(psi) is switched.
 EulerDdt          Euler;
 CrankNicolsonDdt  CrankNicolson 1;
+BackwardDdt       backward;
 
 // ************************************************************************* //

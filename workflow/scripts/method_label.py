@@ -104,7 +104,8 @@ _STF_TAG = {
 }
 _DEFAULT_PSI_DDT = "EulerDdt"
 _DEFAULT_VOL_CORR = "noVolumeCorrection"
-_PSI_DDT_TAG = {"EulerDdt": "Euler", "CrankNicolsonDdt": "CN"}
+_PSI_DDT_TAG = {"EulerDdt": "Euler", "CrankNicolsonDdt": "CN",
+                "BackwardDdt": "BDF2"}
 _GRAD_TAG = {
     "pointCellsLeastSquares":     "pcLsq",
     "leastSquares":               "lsq",
