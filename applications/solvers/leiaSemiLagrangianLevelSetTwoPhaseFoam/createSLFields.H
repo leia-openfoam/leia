@@ -171,6 +171,39 @@ const bool cellFootPointEvaluatedFaceExtension =
 // converge under refinement.
 const bool cellCentreInverseExtension =
     (curvatureExtensionType == "cellCentreInverse");
+// GAUSSIAN-CURVATURE TERM of the parallel-surface inverse, on/off:
+//   levelSet { curvatureExtension { type cellCentreInverse; gaussianCurvature no; } }
+// Default YES = the K-aware inverse, byte-identical to every previous run.
+//
+// WHY THIS SWITCH EXISTS. The inverse is one dimension-seamless expression,
+//     kappa^Gamma = (kappa - 2 K d)/(1 - d kappa + K d^2),
+// in which K is IDENTICALLY ZERO in 2D and active only in 3D. Setting it to no
+// runs the 3D case through the same algebra 2D uses, so it is the one available
+// control that isolates a dimension-specific term of the delivery. It is
+// motivated by measurement, not symmetry: with the K-aware form the coupled 3D
+// ladder is stable at R/h = 10.0 and 12.7 (max|U| 1.00e-3, 1.06e-3) and
+// destabilises at 15.8 (7.04e-2, growth rate 90.6 1/s against 40.5 and 52.3),
+// while the WP0 normal-direction band spectrum stays pinned at 1.00x of its t=0
+// value in every arm -- so whatever feeds the 3D growth is NOT the corrugation
+// the filter damps, and K is one of only two dimension-specific candidates.
+//
+// EXPECTED COST if K is innocent: the static 3D sphere gate scored the K-aware
+// inverse at h^1.95 and the K-less control at h^1.02, so switching K off should
+// lose an order in the delivery. If the 3D instability disappears ANYWAY, the
+// growth is being fed by K's fit noise rather than by the delivery's order, and
+// the two can then be traded deliberately. If it persists at h^1.02, K is
+// exonerated and the tangential-structure candidate is the remaining one.
+bool cellCentreInverseGaussian = true;
+if (cellCentreInverseExtension)
+{
+    const fvSolution& fvSolK = mesh;
+    cellCentreInverseGaussian =
+        fvSolK.subDict("levelSet").subOrEmptyDict("curvatureExtension")
+            .getOrDefault<bool>("gaussianCurvature", true);
+    Info<< "cellCentreInverse: Gaussian-curvature term "
+        << (cellCentreInverseGaussian ? "ON (K-aware, 3D-active)"
+                                      : "OFF (K == 0, the 2D algebra)") << endl;
+}
 // SYMMETRIC FACE-MEAN variant: the per-face inversion followed by a smoothing
 // pass over each face's own owner+neighbour active-face set, which is symmetric
 // about that face and therefore annihilates linear fields -- second order is

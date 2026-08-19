@@ -122,6 +122,18 @@ GEOMETRY_FIT none;   // levelSet.geometryFit.type: a SECOND slReconstruction
                      // different fits of the same psi, so the foot-point
                      // distance feeding the curvature inverse is consistent
                      // with the interface motion only to the TRANSPORT's order.
+// Gaussian-curvature term of the cellCentreInverse parallel-surface inverse.
+// yes (default) = the K-aware, dimension-seamless form every previous run used;
+// K is identically zero in 2D and active only in 3D, so `no` runs a 3D case
+// through the 2D algebra. That is the only available control isolating a
+// dimension-specific term of the delivery, and the 3D ladder needs it: the
+// coupled run is stable at R/h = 10.0 and 12.7 and destabilises at 15.8 with a
+// growth rate rising 40.5 -> 52.3 -> 90.6 1/s, while the WP0 normal-direction
+// band spectrum stays pinned -- so the driver is not the corrugation the psi
+// filter damps. Static cost if K is innocent: the 3D sphere gate scores the
+// K-aware inverse h^1.95 and the K-less control h^1.02.
+CURVATURE_INVERSE_GAUSSIAN yes;
+
 CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
                      // none | harmonicLaplace | footPointHeightFunction |
                      // closestPointNewton | connectedInterface | interfaceMean

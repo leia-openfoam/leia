@@ -171,7 +171,11 @@ int main(int argc, char *argv[])
     // the curvature the run-time force will use (the defect fixed in 7ad635d).
     if (cellCentreInverseExtension)
     {
-        applyCellCentreInverseCurvature(mesh, slAdv->reconstruction(), kappa);
+        applyCellCentreInverseCurvature
+            (
+                mesh, slAdv->reconstruction(), kappa,
+                cellCentreInverseGaussian
+            );
     }
 
     // Optional harmonic (Laplace) curvature smoothing on the initialised field, so

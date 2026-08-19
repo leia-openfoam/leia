@@ -276,7 +276,13 @@ levelSet
 
     curvatureExtension
     {
-        type    @!CURVATURE_EXTENSION!@;   // none | harmonicLaplace | footPointHeightFunction | closestPointNewton | connectedInterface | interfaceMean | stabilizedFootPointFace | fvm
+        type    @!CURVATURE_EXTENSION!@;
+        // Gaussian-curvature term of the parallel-surface inverse (cellCentreInverse
+        // only; inert for every other type). yes = the K-aware inverse, the default
+        // and byte-identical to every previous run. no forces K == 0, i.e. runs 3D
+        // through the algebra 2D uses -- the one control that isolates a
+        // DIMENSION-SPECIFIC term of the delivery.
+        gaussianCurvature @!CURVATURE_INVERSE_GAUSSIAN!@;   // none | harmonicLaplace | footPointHeightFunction | closestPointNewton | connectedInterface | interfaceMean | stabilizedFootPointFace | fvm
     }
 
     profile

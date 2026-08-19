@@ -70,7 +70,8 @@ inline void applyCellCentreInverseCurvature
 (
     const fvMesh& mesh,
     const slReconstruction& recon,
-    volScalarField& kappa
+    volScalarField& kappa,
+    const bool useGaussianCurvature = true
 )
 {
     scalarField& k = kappa.primitiveFieldRef();
@@ -78,8 +79,12 @@ inline void applyCellCentreInverseCurvature
     label nInv = 0, nFirstOrder = 0, nNoFit = 0;
     forAll(k, c)
     {
+        // useGaussianCurvature = false forces K == 0, i.e. runs 3D through the
+        // 2D algebra of the same expression. The fit is then skipped entirely,
+        // so its noise cannot enter through any other path either.
         bool okK = false;
-        const scalar Kc = fitGaussianCurvature(recon, c, okK);
+        const scalar Kc =
+            useGaussianCurvature ? fitGaussianCurvature(recon, c, okK) : scalar(0);
 
         bool fallback = false;
         const scalar dc = recon.signedOffset(c, fallback);
@@ -90,7 +95,10 @@ inline void applyCellCentreInverseCurvature
         }
         if (fallback) { ++nFirstOrder; }
 
-        k[c] = parallelSurfaceInverse(k[c], dc, okK ? Kc : scalar(0));
+        k[c] = parallelSurfaceInverse
+        (
+            k[c], dc, (useGaussianCurvature && okK) ? Kc : scalar(0)
+        );
         ++nInv;
     }
     kappa.correctBoundaryConditions();

@@ -203,7 +203,11 @@
         // face-side conversion.
         if (cellCentreInverseExtension)
         {
-            applyCellCentreInverseCurvature(mesh, slAdv->reconstruction(), kappa);
+            applyCellCentreInverseCurvature
+            (
+                mesh, slAdv->reconstruction(), kappa,
+                cellCentreInverseGaussian
+            );
         }
 
         // Optional harmonic (Laplace) smoothing of the cell-centred curvature,

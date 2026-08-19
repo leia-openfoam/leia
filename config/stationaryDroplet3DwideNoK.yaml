@@ -1,0 +1,158 @@
+# K-TERM TEST: the 3D ladder with the GAUSSIAN-CURVATURE TERM OF THE INVERSE OFF.
+#
+# WHAT IT DECIDES. The parallel-surface inverse is one dimension-seamless
+# expression, kappa^Gamma = (kappa - 2 K d)/(1 - d kappa + K d^2), in which K is
+# IDENTICALLY ZERO in 2D and active only in 3D. Measured with K ON, the coupled
+# ladder is stable at R/h = 10.0 and 12.7 (max|U| 1.0035e-3, 1.0574e-3, almost
+# resolution-independent) and destabilises at 15.8 (7.0362e-2, min|grad psi|
+# 0.8586), with the exponential growth rate over t = 0.05..0.1 rising
+# 40.47 -> 52.32 -> 90.55 1/s (R^2 0.89/0.94/0.98), i.e. roughly h^-1.75.
+#
+# Meanwhile the WP0 band mode spectrum is FLAT at 1.00x of its t = 0 value in
+# every arm including the unstable one, so the growth is NOT the normal-direction
+# corrugation the psi filter damps -- the filter is working and the instability
+# proceeds anyway. That leaves exactly two dimension-specific candidates: the
+# tangential directions (one in 2D, two in 3D, and the WP0 normal chain is blind
+# to both) and this K term. This study tests the second by running the 3D case
+# through the algebra 2D uses.
+#
+# The delivery itself is NOT suspect: its non-gradient content converges at
+# +2.03 (R^2 0.9997) in 3D and +2.04 (R^2 0.9987) in 2D, and t=0 max|U| at +3.59.
+# What diverges is the amplification, not the accuracy.
+#
+# PREDICTIONS (recorded before the run).
+#   a. If the R/h = 15.8 arm becomes STABLE with K off, K's fit noise is feeding
+#      the 3D growth. The static 3D sphere gate scores the K-aware inverse at
+#      h^1.95 and this K-less control at h^1.02, so that outcome buys stability
+#      at the price of an order -- a trade to make deliberately, and it would
+#      also explain why 2D (where K is absent) survives to R/h = 51.2.
+#   b. If it still destabilises at 15.8, K is EXONERATED and the tangential
+#      structure is the remaining candidate -- which needs a new diagnostic,
+#      because nothing currently instrumented measures it.
+#   c. Either way the t=0 delivery order should drop to ~1 (the h^1.02 control),
+#      so a stable-but-first-order result must NOT be reported as an improvement.
+#   Report volume AND shape error, never a single metric.
+#
+# Validated before submission: with gaussianCurvature yes vs no, a 2D run is
+# BIT-IDENTICAL in every metric (K is identically zero there, so the switch
+# cannot perturb any 2D study) and a 3D run differs. The switch is therefore
+# doing exactly one thing.
+#
+# THE 3D LADDER: 4 resolutions, R/h >= 10 at the coarsest, cell count doubling
+# per level -- on a TRUNCATED UNIFORM box at the domain size the control
+# CERTIFIED, L = 6R = 6e-3 m.
+#
+#   N_L    h [m]      R/h     cells    ratio   N_ref    dt [s]     steps   core-h
+#    60  1.0000e-04  10.00    216000    --     100.0  1.0861e-05    9207     11.0
+#    76  7.8947e-05  12.67    438976   2.032   126.7  7.6186e-06   13126     31.9
+#    95  6.3158e-05  15.83    857375   1.953   158.3  5.4514e-06   18344     86.9
+#   120  5.0000e-05  20.00   1728000   2.015   200.0  3.8399e-06   26042    248.8
+#                                                             total      379 core-h
+#
+# The same four cell sizes on the 0.01 m box are 1e6/2e6/4.1e6/8e6 cells and
+# 1776 core-h: 4.7x more, for identical h, identical dt, identical step counts
+# and -- now MEASURED, not argued -- identical metrics. N_ref is the
+# reference-equivalent cell count 0.01/h that materialize uses for the capillary
+# step, so each arm runs at exactly the dt its h deserves.
+#
+# WHY L = 6R AND NOT 4R. Measured, docs/.../data/tables/domain_size_control.csv,
+# three domain sizes x two matched cell sizes, all six arms reaching t = 0.1 with
+# the predicted step counts (9207 at h = 1e-4, 26042 at h = 5e-5):
+#
+#   h        L      max|U|      vs 10R     volume       shape       min|grad psi|
+#   1e-4    10R   1.56067e-05     --      4.2177e-04   3.2808e-07     0.99568
+#   1e-4     6R   1.55901e-05   -0.11%    4.2191e-04   3.2859e-07     0.995679
+#   1e-4     4R   1.92075e-04  +1130%     2.8629e-04   3.7515e-07     0.996438
+#   5e-5    10R   1.80287e-05     --      2.1758e-05   5.2553e-08     0.999292
+#   5e-5     6R   1.80234e-05   -0.03%    2.1756e-05   5.2553e-08     0.999292
+#   5e-5     4R   2.91047e-04  +1514%     8.4839e-07   1.0848e-06     0.998045
+#
+# 6R reproduces the reference box to 0.16% on EVERY metric at BOTH cell sizes,
+# and its h-refinement ratio of max|U| matches to 0.865 vs 0.865 (4R gives
+# 0.660 -- the trend itself is altered, not just the level). 4R fails by 12-16x
+# and fails UPWARD: the near walls INJECT rather than clip, so this is the
+# reflected-pressure-mode failure and not the flattering one (walls damping the
+# recirculation, which would have looked like an improvement). Diagnostic detail
+# worth keeping: at 4R the Laplace jump is still exact (72.7508 vs 72.7505 Pa)
+# and min|grad psi| is intact, while max|U| and shape blow up and the volume
+# error DROPS 96%. The interface and the jump are fine; the outer velocity field
+# is not, which places the parasitic recirculation's extent beyond 1R.
+#
+# WHY TRUNCATION AND NOT OCTREE REFINEMENT. Two levels of 2:1 refinement on the
+# 0.01 m box lands at ~340 core-h, i.e. the SAME cost as this -- while putting
+# hanging-node faces in the mesh. Those cost the two properties the campaign's
+# result rests on: w = 1/2 at every face (the potential-form identity
+# kappa*grad(alpha) = grad(kappa*alpha) - alpha*grad(kappa) is exact only there)
+# and exact absorption of a uniform kappa error by the pressure solve (measured:
+# constant kappa leaves an m=2 perturbation frozen at 1.0000 over 3200 steps).
+# Equal cost, strictly better mesh, and no gate to run.
+#
+# WHY NOT COARSER, WHY NOT FINER. R/h >= 10 forbids a coarser coarse end (and the
+# filter's band+1-ring support needs R/h >~ 6; the 3D N=32 failures at R/h = 3.2
+# were support starvation). Each further level costs 2^1.5 = 2.83x. So the price
+# of the R/h floor with cell doubling is a SHORT LEVER: h spans only a factor 2
+# over these four points, an error ratio of 4 end to end, and a 10% endpoint
+# perturbation moves a fitted order by ~0.14. Treat the fitted 3D order as
+# INDICATIVE; the 2D ladder (h x8, error ratio 64) carries the order claim.
+# Widening h to x4 here needs N_L = 151/190/240 at ~8300 core-h -- a separate
+# decision, and the one place where probing 5R (untested; 4R and 6R bracket it)
+# would pay for itself.
+#
+# np = 32 CONSTANT across all four levels: 6750..54000 cells/rank, largest arm
+# ~7.8 h, every arm inside the 24 h deflt wall, and no decomposition difference
+# inside the convergence fit. The existing 3D arms (N = 32, 64 at np16, L = 10R)
+# sit below the filter's support requirement and on a different box, so they are
+# historical context rather than points of this ladder.
+#
+# PREDICTIONS (recorded before the run).
+#   a. All four reach t = 0.1. This is the first 3D ladder entirely inside the
+#      filter's working regime (R/h = 10..20 vs the previous 3.2 and 6.4).
+#   b. Monotone DOWN in max|U|, volume and shape. If 3D is non-monotone where 2D
+#      was monotone, the difference is dimensional -- exactly what this case was
+#      built to answer.
+#   c. min|grad psi| stays above 0.96 at every level (3D N=64 gave 0.964).
+#   d. Failure mode: if the COARSEST level (R/h = 10) is the one that dies, the
+#      filter's support requirement is stricter in 3D than the R/h >~ 6 measured
+#      in 2D and the whole ladder must move up -- a finding about the filter's
+#      support, not about the delivery.
+#   Report volume AND shape error, never a single metric.
+study_name: stationaryDroplet3DwideNoK
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60, 76, 95]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [biharmonicBand]
+  PSI_FILTER_THETA: [0.2]
+  # QUOTED: bare `no` is a YAML 1.1 boolean and would render as "False".
+  CURVATURE_INVERSE_GAUSSIAN: ["no"]
+
+# MEASURED, and the first estimate was wrong. The 1.99e-5 core-s per cell-step
+# anchor (3D N=64 at np16, 262144 cells) does NOT extrapolate to a 1.7e6-cell
+# mesh: arm N_L=120 ran 22213 steps in 35631 s at np32, i.e. 2.97e-5 core-s per
+# cell-step, 1.49x the anchor. The extra is the pressure solve -- GAMG needs more
+# coarsening levels and more iterations on 1.7e6 cells (25 iterations on one
+# solve in that log) -- and it is superlinear in cells, so it does not appear in
+# a per-cell rate measured on a 6.6x smaller mesh. The curvature fit itself is
+# linear: applyCellCentreInverseCurvature touches every cell once (that log shows
+# all 1728000 inverted, 2330 on the first-order offset branch, 0 uninverted).
+#
+# Consequence for the ladder: 565 core-h, not 379. The comparison is unaffected
+# -- uniform L=10R at the same four h pays the same 1.49x, i.e. 2647 core-h, so
+# truncation still saves 4.7x.
+#
+# largest arm: 1728000 x 26042 steps at np32 = 11.6 h at the measured rate.
+solve_runtime: 900
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
