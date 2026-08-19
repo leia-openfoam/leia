@@ -1,0 +1,77 @@
+# PHASE 1, ITEM 2: does iterating the capillary force change the PER-STEP GAIN?
+#
+# THE HYPOTHESIS BEING TESTED. gAvg diverges as h^-1.9 in 3D and converges as h^+0.8
+# in 2D (docs/plan-shannon-parasitic-currents.md sec. 0b). An h-independent -- let
+# alone h-divergent -- per-step gain cannot be a spatial truncation error; it is the
+# signature of something that does not refine. The prime candidate is the once-per-step
+# force lag: psiOuterCorrectors defaults OFF, so slAlphaEqn.H:17 gates the ENTIRE
+# interface pipeline (SL advection, band, filter, phase indicator, curvature fill, the
+# cell-centre inverse, every delivery) to pimple.firstIter(). The consequence is that
+# sigma*kappa_f is evaluated ONCE per step from the AB2-predicted trajectory and then
+# FROZEN across all three outer correctors, while the momentum LHS is implicit Euler.
+# The solver's own header records the cost already measured: "the once-lagged explicit
+# coupling MEASURED as the dt-proportional 90% of the parasitic growth rate at N=128".
+#
+# With the switch ON, passes >= 2 restore psi from the snapshot psiN and re-advect with
+# the current velocity iterate, then re-run the whole chain, so at outer convergence the
+# step is backward-Euler consistent in every term and the lag term vanishes.
+#
+# WHY THIS IS A GATE AND NOT A LADDER. gAvg is a PER-STEP quantity, so it does not need
+# a run to blow up -- it needs enough steps to average. END_TIME is therefore 0.025,
+# a quarter of the usual horizon: 2302 steps at N_L = 60 and 4586 at N_L = 95. That is
+# ~128 core-h for four arms instead of ~1000 for two full ladders. This is the first
+# real use of the gate from plan sec. 6, and the whole argument for it: a lever that
+# does not move gAvg cannot fix the instability, and 25% of a run is enough to see that.
+#
+# THE CONTROL IS IN THE STUDY. Both arms are run with the switch OFF as well, at the
+# same END_TIME and with the same binary. The existing baselines predate the psi-filter
+# seam fix (f83a1ab) and are decomposition-contaminated, so comparing against them
+# would confound two changes. Comparing gAvg within this study cannot.
+#
+# PREDICTIONS (recorded before the run).
+#   a. LAG CONFIRMED: with outer correctors ON, gAvg falls substantially -- ideally
+#      towards the 4e-5 scale that keeps 26042 steps O(1) -- and it falls MORE at the
+#      finer arm, i.e. the h-dependence of the gain weakens. That would identify the
+#      splitting as the mechanism and make the semi-implicit force (task #24) the
+#      obvious next step, with a quantitative target instead of a hope.
+#   b. LAG EXONERATED: gAvg is unchanged within noise. Then the gain is not a temporal
+#      splitting artefact at all, the tangential-structure diagnostic comes back onto
+#      the table, and 3 outer correctors iterating against a frozen force are simply
+#      wasted work that should be turned off to save 3x the interface cost.
+#   c. WORSE: gAvg rises with the switch ON. That would mean re-advecting psi from the
+#      snapshot each pass injects more than the lag costs -- worth knowing, and it would
+#      point at the re-advection path rather than at the coupling.
+#   Report volume AND shape error alongside, never the gain alone.
+#
+# NOTE the cost asymmetry: with the switch ON the interface pipeline runs 3x per step,
+# and the curvature fit over every cell dominates, so the ON arms cost roughly 2.5x
+# their OFF twins. Sized accordingly.
+study_name: psiOuterCorrectorsGain3D
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60, 95]
+  # QUOTED: bare yes/no are YAML 1.1 booleans and would render as "True"/"False".
+  PSI_OUTER_CORRECTORS: ["yes", "no"]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [biharmonicBand]
+  PSI_FILTER_THETA: [0.2]
+  # A quarter horizon: enough steps to average a per-step gain, not enough to blow up.
+  END_TIME: [0.025]
+
+# longest arm: N_L=95 with the switch ON, ~4586 steps at ~2.5x the base per-step cost,
+# ~2.5 h at np32 from the measured 2.97e-5 core-s per cell-step.
+solve_runtime: 300
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
