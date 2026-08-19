@@ -1,0 +1,68 @@
+# Rdiv, the LEAST-TESTED source, in the two configurations that were never run.
+#
+# THE GAP. Every Rdiv run on record -- sdplsDropletNS2D, sdplsPsiBudgetDroplet2D
+# -- is the SAME single configuration: implicit Euler on ddt(psi), production
+# reconstructedCurvature, coupled. Rdiv has never seen CrankNicolson, backward,
+# or the exact-curvature force. That is the wrong source to have tested least,
+# because Rdiv is the one whose failure mode is DIVERGENCE rather than drain:
+#   sdplsDropletNS2D    N=32 -8.4e-03 | N=64 -1.0 | N=128 +16.9 DIVERGED t=0.031
+#   sdplsPsiBudget      N=32 -9.8e-03 | N=64 +6.03 DIVERGED t=0.0656
+#
+# TWO AXES, TWO SEPARATE QUESTIONS.
+#
+# PSI_DDT [EulerDdt, BackwardDdt] -- is Rdiv's divergence a TIME-STABILITY
+# failure? There is a specific reason to think it might be. Rdiv assembles
+#     fvm::div(phiW, psi) - fvm::div(phi, psi) - fvm::Sp(fvc::div(phiW) - a, psi)
+# in which (i) the two div terms nearly cancel, so the operator is a difference
+# of large numbers, and (ii) the Sp coefficient (div(w) - a) has NO SIGN
+# GUARANTEE, so a positive value subtracts from the diagonal and destroys the
+# M-matrix property -- exactly the mechanism strictNegativeSpLinearImplicit
+# exists to avoid for the algebraic source. And backward has just been measured
+# to rescue a run the other two schemes could not: at N=128 with source R it ran
+# the full t=0.1 (13 335 steps) where Euler diverged at t=0.0398 and
+# CrankNicolson at t=0.0304. backward is second order AND L-stable; if Rdiv's
+# divergence is temporal, this is the arm that shows it.
+#
+# SURFACE_TENSION_FORCE [reconstructedCurvature, constantCurvatureSurfaceTension]
+# -- is Rdiv's failure the SAME seeded feedback loop as R's, or a different
+# defect? The mechanism study settled this for R: against the exact-curvature
+# force (kappa = 1/R = 1000, exact for this circle, parasitic current machine
+# zero) the relative signed volume error is 0.000e+00 at every N with the source
+# ON, 12 of 12 cases. If Rdiv is ALSO identically zero there, its failure is the
+# same curvature-error-seeded loop and the fix is the same one. If Rdiv still
+# diverges with a machine-zero seed, it has an INDEPENDENT numerical instability
+# in its own assembly -- which would be a different finding, and would mean the
+# conservative rewrite is unsound rather than merely unhelpful.
+#
+# Rdiv refuses a mollifier by construction (a cut-off multiplying a flux breaks
+# the conservation the form exists to provide), so MOLLIFIER stays none.
+#
+# noSource and R are NOT repeated here: both are already measured on this exact
+# grid for Euler, CrankNicolson and backward, and for both forces. Comparison is
+# across studies, which is sound because case, code and every other token are
+# identical -- the curated CSVs carry gitCommit and runDate to check that.
+#
+#   make studies-one STUDY=sdplsRdivDroplet2D PROFILE=profiles/slurm
+
+study_name: sdplsRdivDroplet2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaLevelSetTwoPhaseFoam
+setfields_args: "-alphaName alpha.water"
+theme: sdpls-level-set
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  SDPLS_SOURCE: [Rdiv]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature, constantCurvatureSurfaceTension]
+  PSI_DDT: [EulerDdt, BackwardDdt]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

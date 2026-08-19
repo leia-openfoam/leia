@@ -1,0 +1,64 @@
+# The Rdiv KINEMATIC convergence study that has never existed.
+#
+# Rdiv was not merely untested on the prescribed-velocity ladders -- it was
+# UNRUNNABLE there until 2026-08-19, because cases/2Dvortex/system/
+# fvSchemes.template carried no div(phiW,psi) entry and fvm::div(phiW, psi)
+# aborts at step one without one. So the conservative source has only ever been
+# judged under Navier-Stokes coupling, where it drains at N=64 and DIVERGES at
+# N=128, with no kinematic baseline to say whether the source itself is sound.
+#
+# WHAT THIS MUST SHOW. Rdiv is continuum-identical to R for incompressible flow:
+# substituting the surface-divergence identity S = a psi = -div_s(psi v) into the
+# base equation and moving back everything the base already assembles leaves
+#     div(phiW, psi) - div(phi, psi) - Sp(div(w) - a, psi),
+# which collapses at the continuum to psi(a - div v). On a PRESCRIBED
+# divergence-free velocity the two arms must therefore agree to discretization
+# error. R's measured band-gradient order on this ladder is +1.34.
+#   Rdiv matches R  => the conservative rewrite is discretely sound, and its
+#                      coupled failure is a property of the COUPLING, consistent
+#                      with the R result that the drain is curvature-seeded.
+#   Rdiv differs    => the discrete conservative form is not equivalent to the
+#                      algebraic one, and the difference is measurable in the
+#                      absence of any feedback -- a discretization finding that
+#                      would explain the coupled divergence without invoking the
+#                      capillary loop at all.
+# Either way the answer is unavailable from coupled runs, which is why this gate
+# should have existed before the coupled study, not after it.
+#
+# REVERSED PROTOCOL (END_TIME 2, OSCILLATION on), deliberately, unlike
+# sdplsConv2Dvortex: it returns the interface to its initial position so
+# shapeError is defined, and the standing rule is that gradient, shape and
+# volume are reported together. The gradient error is read at t = T/2 (maximal
+# deformation, before reversal cancellation) and shape at t = T.
+#
+# noSource and R are carried as the two reference arms so all three are fitted
+# on identical rungs in one table.
+#
+#   make studies-one STUDY=sdplsRdivConv2Dvortex PROFILE=profiles/slurm
+
+study_name: sdplsRdivConv2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  OSCILLATION: ["on"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  SDPLS_SOURCE: [noSource, R, Rdiv]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

@@ -1,0 +1,73 @@
+# The Rdiv KINEMATIC convergence study on 3D SHEAR -- the case that decides.
+#
+# 2D vortex cannot settle this: there the source is essentially free (psi order
+# +1.68 with the source vs +1.66 without), so R and Rdiv can agree there and
+# still differ where it matters. 3D shear is where the algebraic source PAYS:
+# adding R moved the volume-error order +2.57 -> +0.96 and shape +2.21 -> +1.35
+# while converging the band gradient (+0.67) where sourceless transport DIVERGED
+# (-0.09). If the conservative form is worth anything kinematically, it is worth
+# it here -- Rdiv exists precisely to remove that volume cost structurally.
+#
+# Rdiv was not merely untested on the prescribed-velocity ladders -- it was
+# UNRUNNABLE there until 2026-08-19, because cases/2Dvortex/system/
+# fvSchemes.template carried no div(phiW,psi) entry and fvm::div(phiW, psi)
+# aborts at step one without one. So the conservative source has only ever been
+# judged under Navier-Stokes coupling, where it drains at N=64 and DIVERGES at
+# N=128, with no kinematic baseline to say whether the source itself is sound.
+#
+# WHAT THIS MUST SHOW. Rdiv is continuum-identical to R for incompressible flow:
+# substituting the surface-divergence identity S = a psi = -div_s(psi v) into the
+# base equation and moving back everything the base already assembles leaves
+#     div(phiW, psi) - div(phi, psi) - Sp(div(w) - a, psi),
+# which collapses at the continuum to psi(a - div v). On a PRESCRIBED
+# divergence-free velocity the two arms must therefore agree to discretization
+# error. R's measured band-gradient order on this ladder is +1.34.
+#   Rdiv matches R  => the conservative rewrite is discretely sound, and its
+#                      coupled failure is a property of the COUPLING, consistent
+#                      with the R result that the drain is curvature-seeded.
+#   Rdiv differs    => the discrete conservative form is not equivalent to the
+#                      algebraic one, and the difference is measurable in the
+#                      absence of any feedback -- a discretization finding that
+#                      would explain the coupled divergence without invoking the
+#                      capillary loop at all.
+# Either way the answer is unavailable from coupled runs, which is why this gate
+# should have existed before the coupled study, not after it.
+#
+# REVERSED PROTOCOL (END_TIME 2, OSCILLATION on), deliberately, unlike
+# sdplsConv2Dvortex: it returns the interface to its initial position so
+# shapeError is defined, and the standing rule is that gradient, shape and
+# volume are reported together. The gradient error is read at t = T/2 (maximal
+# deformation, before reversal cancellation) and shape at t = T.
+#
+# noSource and R are carried as the two reference arms so all three are fitted
+# on identical rungs in one table.
+#
+#   make studies-one STUDY=sdplsRdivConv3Dshear PROFILE=profiles/slurm
+
+study_name: sdplsRdivConv3Dshear
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 16
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [64, 81, 102, 128]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  OSCILLATION: ["on"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  GRAD_PSI: [fvc]
+  SDPLS_SOURCE: [noSource, R, Rdiv]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
