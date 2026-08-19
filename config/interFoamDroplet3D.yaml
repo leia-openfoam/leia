@@ -70,6 +70,9 @@ axes_override:
   N_CELLS: [60, 76, 95, 120]
   C_ALPHA: [1]
 
+# MEASURED pace at np=32, from the completed arms: 5.73 / 3.67 / 2.25 steps/s at
+# N_L = 60/76/95, and 0.893 steps/s at N_L = 120 (8351 steps in 9356 s), so that arm
+# needs 26042/0.893 = 29160 s = 8.1 h. The first submission gave the driver 6 h.
 solve_runtime: 900
 export_slides: false
 

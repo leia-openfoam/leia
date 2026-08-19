@@ -70,7 +70,12 @@ axes_override:
   N_CELLS: [64, 128, 256, 512]
   C_ALPHA: [1]
 
-solve_runtime: 720
+# MEASURED pace at np=8, from the completed arms: 55.6 / 29.9 / 7.2 steps/s at
+# N = 64/128/256, and 2.06 steps/s at N = 512 (19334 steps in 9390 s). The N = 512
+# arm therefore needs 106689/2.06 = 51800 s = 14.4 h; the first submission gave the
+# driver only 6 h and lost it. Note interFoam is NOT cheaper than the level-set
+# solver here: at N = 256 it took 5234 s against 2758-3142 s for ours.
+solve_runtime: 1080
 export_slides: false
 
 env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
