@@ -53,6 +53,26 @@
             narrowBand->calc();
         }
 
+        // Uniform-shift volume correction, AFTER redistancing and BEFORE the
+        // phase indicator. After, because redistancing rebuilds psi from the
+        // zero level set and is NOT volume preserving -- the shift must be
+        // the last operation of the step that touches psi, or a redistance
+        // event discards the eps just chosen. It cannot undo what
+        // redistancing established: eps is spatially constant, so
+        // grad(psi + eps) = grad(psi) and both redistancing triggers
+        // (signedDistanceBounds, gradPsiThreshold) are functions of
+        // |grad psi| only. Before the indicator, because alpha1 -- and
+        // through it alpha2, the mixture, rho/mu in UEqn/pEqn, and the CSV
+        // row -- must be built from the corrected field.
+        //
+        // Default noVolumeCorrection returns false without touching psi.
+        if (volCorr->correct(psi, phaseInd()))
+        {
+            // The zero crossing moved sub-h: the sign-change band can gain
+            // or lose a cell, exactly as after a redistance event above.
+            narrowBand->calc();
+        }
+
         phaseInd->calcPhaseIndicator(alpha1, psi);
 
         alpha2 = 1.0 - alpha1;

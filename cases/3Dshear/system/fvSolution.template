@@ -127,6 +127,38 @@ levelSet
         maxIter     100;
     }
 
+    // Per-time-step phase-volume correction (Song, Long, Cai & Pan,
+    // Phys. Fluids 37(9):092109, 2025; preprint arXiv:2202.10275). A single
+    // scalar eps is found by Newton-Raphson so that the phase volume is
+    // restored, and psi <- psi + eps is applied. Because eps is spatially
+    // CONSTANT, grad(psi + eps) = grad(psi), so |grad psi| is untouched: the
+    // correction conserves volume WITHOUT spending the signed-distance
+    // property SDPLS exists to maintain. That is why it is worth having here
+    // and not in a generic level-set code.
+    //
+    // KNOWN LIMITS, which must be stated wherever a result using it is
+    // reported:
+    //   * a single global eps conserves TOTAL phase volume only, and is
+    //     ILL-POSED for multiple disconnected bodies -- one eps cannot
+    //     conserve each body separately. Connected-component labelling with a
+    //     per-body eps_i is the documented remedy and is NOT implemented.
+    //   * it fixes the total while DISTORTING local interface position, so
+    //     shape error must always be reported alongside volume error. An arm
+    //     that improves volume while degrading shape is reported as such.
+    //   * it must NOT be used to "fix" the coupled Navier-Stokes drain: that
+    //     failure is a 260x-amplified mode-4 parasitic current physically
+    //     squaring and destroying the droplet, not a bookkeeping error.
+    //     Restoring the volume NUMBER would leave a square droplet of correct
+    //     area -- worse than a visible failure, because it hides the
+    //     instability.
+    //
+    // Default noVolumeCorrection is the base class itself and is a true no-op,
+    // so every study that does not set this token is bit-unchanged.
+    volumeCorrection
+    {
+        type @!VOLUME_CORRECTION!@;
+    }
+
     sdplsSource
     {
         type            @!SDPLS_SOURCE!@;

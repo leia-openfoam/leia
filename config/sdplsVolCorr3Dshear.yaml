@@ -1,0 +1,62 @@
+# A4 on the case where the SDPLS source ACTUALLY COSTS VOLUME.
+#
+# This is the decisive rung for the global volume correction, because 3D shear
+# is where the measured trade lives: adding the source moved the volume-error
+# order from +2.57 to +0.96 and the shape order from +2.21 to +1.35, while the
+# band gradient error converged (+0.67) where sourceless transport DIVERGED
+# (-0.09). On 2D vortex the source is essentially free (psi order +1.68 vs
+# +1.66), so 2D alone cannot show whether the correction recovers anything
+# worth recovering.
+#
+# HYPOTHESIS: the volume order collapse is a conservation defect the uniform
+# shift can repair without touching the gradient property, because eps is
+# spatially constant and |grad(psi + eps)| = |grad psi| exactly. If so, the
+# corrected R arm should show volume error at machine-zero-per-step while
+# KEEPING the +0.67 band gradient convergence -- i.e. the trade that
+# disqualified the source in 3D is removable.
+#
+# ACCEPTANCE CRITERION IS SHAPE, NOT VOLUME. Volume going to machine zero is
+# guaranteed by construction and proves nothing on its own. The question is
+# whether shapeError order degrades below the uncorrected arm's +1.35: a global
+# eps conserves TOTAL volume while displacing the interface locally, and if it
+# buys volume by moving the zero contour the correct report is that it trades
+# shape for volume, with the narrow-band node-wise correction (Ausas et al.
+# 2011) as the documented alternative. All three metrics reported, per the
+# standing rule.
+#
+# Ladder truncated to the four rungs below (64..128, cell-doubling) rather than
+# the full six of sdplsConv3Dshear: this is a paired A/B on a mechanism, not a
+# headline convergence table, and 161/203 cost more than the question is worth
+# until the 64-128 trend is known. If the trend is ambiguous, extend it then --
+# and say in the write-up that it was truncated, rather than presenting four
+# rungs as if six had been run.
+#
+#   make studies-one STUDY=sdplsVolCorr3Dshear PROFILE=profiles/slurm
+
+study_name: sdplsVolCorr3Dshear
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 16
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS:  [64, 81, 102, 128]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  ADVECTION: [eulerian]
+  REDISTANCER: [noRedistancing]
+  PHASE_INDICATOR: [detrixheAslam]
+  SDPLS_SOURCE: [noSource, R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+  GRAD_PSI: [fvc]
+  OSCILLATION: ["on"]
+  VOLUME_CORRECTION: [noVolumeCorrection, newtonShift]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

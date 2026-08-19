@@ -1,0 +1,57 @@
+# A4 -- the distance-preserving global volume correction, on the PRESCRIBED-
+# VELOCITY track where it belongs.
+#
+# Song, Long, Cai & Pan (Phys. Fluids 37(9):092109, 2025; arXiv:2202.10275):
+# find one scalar eps by Newton-Raphson so the phase volume is restored, apply
+# psi <- psi + eps. eps is spatially CONSTANT, so grad(psi + eps) = grad(psi)
+# and |grad psi| is untouched -- it buys volume conservation WITHOUT spending
+# the signed-distance property SDPLS exists to maintain. That is the whole
+# reason it is worth having in THIS method and not merely in a generic
+# level-set code.
+#
+# SMOKE-MEASURED already (N=32, t=0.05, source R): volumeError 8.59e-4 ->
+# 3.74e-16 with simpleLinearImplicit and 2.61e-3 -> 2.47e-13 with the
+# exponential factor, converging in 2 Newton iterations, with |eps| ~ 0.001-0.003
+# CELL WIDTHS and the band gradient error unmoved (1.2093e-2 -> 1.2082e-2).
+#
+# WHAT THIS STUDY MUST ANSWER, and it is NOT "is volume error smaller" -- that
+# is already known to be yes, by construction. It is whether the correction
+# COSTS anything: the standing house rule is that gradient, shape and volume
+# error are reported together, and a global shift conserves TOTAL volume while
+# displacing the interface locally. So the acceptance criterion is
+#   shapeError order must NOT degrade.
+# If it does, the finding is that the global shift trades shape for volume on
+# this method, and the documented remedy is a narrow-band node-wise correction
+# (Ausas, Dari & Buscaglia, IJNMF 65:989-1010, 2011) rather than a uniform eps.
+#
+# PAIRED noSource CONTROL at every rung, because the correction must be judged
+# against the baseline's own volume loss, not only against the source arm's.
+#
+#   make studies-one STUDY=sdplsVolCorr2Dvortex PROFILE=profiles/slurm
+
+study_name: sdplsVolCorr2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [1]
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  OSCILLATION: ["off"]
+  SDPLS_SOURCE: [noSource, R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  VOLUME_CORRECTION: [noVolumeCorrection, newtonShift]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

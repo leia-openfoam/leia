@@ -67,6 +67,7 @@ Description
 #include "prescribedVelocityModels.H"
 #include "fluxCorrection.H"
 #include "levelSetAdvection.H"
+#include "volumeCorrection.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -116,6 +117,20 @@ int main(int argc, char *argv[])
     #include "createMesh.H"
 
     #include "createFields.H"
+
+    // Per-time-step uniform-shift phase-volume correction. THE PRESCRIBED-
+    // VELOCITY TRACK is this model's legitimate home: it restores total phase
+    // volume by a spatially CONSTANT shift psi <- psi + eps, and because eps is
+    // constant, grad(psi + eps) = grad(psi), so |grad psi| is untouched -- it
+    // conserves volume without spending the signed-distance property SDPLS
+    // exists to maintain. Target captured here, from the alpha createFields.H
+    // has just built, so it is the SAME functional advectionErrors.H reports.
+    //
+    // Default noVolumeCorrection: an absent levelSet/volumeCorrection
+    // sub-dictionary leaves psi untouched for the whole run, so every existing
+    // kinematic study is bit-unchanged.
+    autoPtr<volumeCorrection> volCorr = volumeCorrection::New(mesh);
+    volCorr->setTargetVolume(alpha);
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -186,6 +201,25 @@ int main(int argc, char *argv[])
                     << ", dV/V = "
                     << (Valpha1 - Valpha0)/max(Valpha0, VSMALL)
                     << ")" << endl;
+            }
+        }
+
+        // Uniform-shift volume correction, AFTER redistancing (which rebuilds
+        // psi from the zero level set and is NOT volume preserving, so it
+        // would discard an eps chosen before it) and BEFORE reportErrors, so
+        // the volume AND shape errors describe the field the method actually
+        // delivers. This ordering matters for honesty as much as correctness:
+        // the correction trades local interface position for global volume by
+        // construction, and measuring before it would hide the trade.
+        if (volCorr->correct(psi, phaseInd()))
+        {
+            // The zero crossing moved sub-h: the sign-change band can gain or
+            // lose a cell, exactly as after a redistance event.
+            narrowBand->calc();
+
+            if (reportNow)
+            {
+                phaseInd->calcPhaseIndicator(alpha, psi);
             }
         }
 
