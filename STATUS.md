@@ -501,6 +501,92 @@ normal direction, which is why it reads flat at 1.00x while the current grows 70
 Nothing currently instrumented can see it — that diagnostic does not exist yet and
 is the next thing to build.
 
+### INVALIDATION: every filtered result predates a psi-filter seam bug (2026-08-19)
+
+An interFoam-vs-leia coupling audit found, and measurement confirmed, that the psi
+filter was **decomposition-dependent**. Two defects in `psiFilterEqn.H`:
+
+1. `Lpsi = psi - fvc::average(fvc::interpolate(psi))` inherits its patch types from
+   the SECOND operand, and `fvc::average` carries `calculated` patch fields, so on a
+   processor patch `Lpsi` was **uncoupled**: the second application of `L`
+   interpolated a stored face value instead of the neighbour cell's `L(psi)`,
+   injecting a seam-localised perturbation every step into the field whose second
+   derivative the curvature model differentiates.
+2. The band dilation looped internal faces only, so the filtered **cell set** itself
+   depended on the decomposition.
+
+Measured, 3D `N_L = 60` on L = 6R, 20 steps, serial against np=4, **filter OFF as
+the control**:
+
+| metric (filter ON) | before | after fix | filter OFF |
+|---|---|---|---|
+| max&#124;U&#124; | 2.43e-04 | **1.72e-06** | 1.55e-06 |
+| A2hL2Band | 8.38e-07 | **3.72e-10** | 4.09e-09 |
+| volumeRelError | 1.92e-05 | **6.55e-07** | 3.64e-07 |
+
+53–205× worse than the unfiltered control before; matching it after, with the
+control bit-unchanged. Fixed in `f83a1ab`; `config/seamConsistency3D{serial,par4}.yaml`
+make it a one-command regression.
+
+**Consequence: the 2D ladder (np=8, 4714–106689 steps) and the 3D ladder (np=32,
+9207–18344 steps) both ran with this defect.** The convergence orders, the
+`R/h ~ 16` onset and the K verdict all rest on filtered runs. Those numbers are
+**not method properties** until re-run. Re-runs are in flight (section 5).
+
+### The 3D "instability under refinement" may not be an h effect at all
+
+| N_L | R/h | dt [s] | steps | r [1/s] | **r·dt per step** | e-folds |
+|---|---|---|---|---|---|---|
+| 60 | 10.0 | 1.0861e-05 | 9207 | 40.47 | **4.395e-04** | 4.05 |
+| 76 | 12.7 | 7.6186e-06 | 13126 | 52.32 | **3.986e-04** | 5.23 |
+| 95 | 15.8 | 5.4514e-06 | 18344 | 90.55 | **4.936e-04** | 9.05 |
+
+The rate rises 2.2× but the amplification **per step is constant to 24%**, because
+`dt = CAPILLARY_DT_COEFF/nRef^1.5` shrinks with h. So `r ~ 1/dt`, and the e-folds
+accumulated by t = 0.1 grow only because a finer mesh takes more steps to get there.
+That is an operator-splitting / force-lag signature rather than a spatial-truncation
+one, consistent with the delivered non-gradient content converging at +2.03
+(R² 0.9997) while the response diverges, and with the earlier capillary-dt sweep
+measuring ~90% of the growth rate as dt-proportional at N = 128.
+
+`stationaryDroplet3DwideFixedDt` tests it: all three meshes at one fixed
+dt = 5.45144e-6 (the finest arm's own value, so that arm cross-validates both
+studies), 18344 steps each. If the two coarse meshes — stable at their native dt —
+destabilise purely by taking more, smaller steps, the mechanism is the once-per-step
+frozen capillary force and "finer is less stable" is an artefact of tying dt to h.
+Note `psiOuterCorrectors` defaults **off**, so the three outer correctors currently
+converge momentum and pressure against a force that cannot change.
+
+### Two further defects found by the audit and fixed
+
+- **93.5% of cells were being inverted having never been filled.**
+  `applyCellCentreInverseCurvature` looped all cells; for an unfilled one (kappa
+  exactly 0) the inverse returns `-2Kd/(1+Kd²)` — identically zero in 2D, but in 3D
+  a curvature manufactured from nothing, peaking at 1/R around d ~ R. At 3D
+  `N_L = 60`: 201888 of 216000 cells. `nNoFit` read 0 throughout because it counts
+  non-finite offsets, which `signedOffset` never returns. A/B (serial): the coupled
+  metrics move ~1e-7, so it was benign for the FORCE — alpha is 0/1 that far out —
+  but the written kappa field was 93.5% spurious in 3D, and it stops being benign
+  the moment the force support widens.
+- **The t=0 Young–Laplace solve was unreferenced and under-converged.** Singular
+  system (zeroGradient p_rgh everywhere, `needReference()` true) solved without
+  `setReference` — it converged only because a closed-domain flux divergence sums to
+  zero — and a bare `solve()` inherited `relTol 0.01`, leaving the initial pressure
+  ~1% off and handing the first predictor an impulse of order 0.01·sigma·kappa. Both
+  fixed. The third asymmetry, unit Laplacian coefficient vs pEqn's rAUf-weighted one,
+  is recorded but unfixable without 1/A, which does not exist before the first UEqn.
+
+**The pressure–velocity coupling itself is clean.** Read independently in both
+codebases and diffed: UEqn structure, viscous stress (both carry `grad(U)` and
+`grad(U)ᵗ`), capillary force in the momentum RHS and `phig` but never the matrix,
+`rAUf` cancelling exactly, `p_rghEqn.flux() = rAUf*magSf*snGrad(p_rgh)`, the same
+velocity update line, the same `ddtCorr` multiplier outside the cancellation. Ours is
+tighter than interFoam's in one respect: it evaluates `GSigma` once into a `tmp` at
+pimple scope, where interFoam re-evaluates it in both places. Also corrected: the
+"kappa and the differenced indicator come from different discrete objects" issue is
+**not** unique to us — interFoam builds kappa from `interpolate(grad(alpha))` while
+differencing the same field with `snGrad(alpha)`.
+
 ---
 
 ## 5. Lichtenberg — what is running
