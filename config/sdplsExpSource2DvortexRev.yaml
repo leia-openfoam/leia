@@ -1,0 +1,82 @@
+# sdplsExpSource2DvortexRev: sdplsExpSource2Dvortex re-run under the REVERSED protocol, to report all three metrics.
+#
+# WHY THIS EXISTS AS A SEPARATE STUDY. sdplsExpSource2Dvortex was configured with
+# END_TIME 1 and OSCILLATION off. In a NON-reversing vortex the interface never
+# returns to its initial position, so shapeError is undefined and its column is
+# blank -- that study therefore reports only TWO of the three metrics the
+# standing rule requires (gradient, shape, volume together, never a headline
+# metric alone). This run sets END_TIME 2 with OSCILLATION on, the standard
+# reversed vortex, so the interface returns to its initial position at t = T and
+# shapeError is defined.
+#
+# The original study is NOT deleted and NOT edited. Its axes are unchanged, so
+# its case ordinals keep their meaning and its completed data stays valid -- a
+# non-reversed vortex is a legitimate (if less informative) gate, and editing a
+# study's axes in place is precisely how this project has previously produced
+# two contradictory result sets in one directory. This one supersedes it for
+# reporting; both remain reproducible.
+#
+# PROTOCOL, per the standing rule: gradient error read at t = T/2 (maximal
+# deformation, before the reversal cancels error), shape at t = T, volume at
+# both. Reversal cancellation corrupts ONLY the t = T gradient error, which is
+# why the gradient is never read there.
+#
+# A1 -- the exponential / integrating-factor SDPLS source discretization.
+#
+# The source is d(psi)/dt = f_nl(psi^n) psi, a LINEAR ODE in psi whose exact
+# solution over a step is the multiplicative factor psi^{n+1} = psi^n exp(a dt).
+# The three pre-existing linearizations are all first-order truncations of it:
+#   explicit                 -> (1 + a dt)
+#   simpleLinearImplicit     -> 1/(1 - a dt)
+#   strictNegativeSp         -> a sign-split hybrid
+# Each carries an |a| dt restriction the exact factor removes, and each is
+# ASYMMETRIC: over one +/- pair of a zero-mean oscillating strain, implicit
+# Euler gives 1/(1 - z^2) > 1 with z = a dt, i.e. it RECTIFIES the oscillation
+# into one-sided growth of |psi| at O(z^2) per pair, while exp(+z)exp(-z) = 1
+# exactly. The new `exponential` member delivers the exact factor as
+# Sc = psi^n (exp(a dt) - 1)/dt with Sp = 0.
+#
+# UNIT-TESTED: leiaTestSdplsSource asserts the one-step update against the
+# closed form to 1.11e-16 (89 passed, 0 failed).
+#
+# WHAT TO EXPECT, stated in advance so the result is falsifiable: the
+# rectification is a TEMPORAL effect and the SDPLS order loss is a SPATIAL one
+# ((grad e)_h = O(h^{p-1}), ceiling ~1.2 within second-order transport, closed
+# by a complete elimination). So the exponential factor should buy robustness
+# and remove the dt restriction, NOT restore second order. The N=32 smoke is
+# already consistent with that and mildly negative on volume: volumeError
+# 8.59e-4 (simpleLinearImplicit) vs 2.61e-3 (exponential) at t=0.05.
+# If band-gradient order is unchanged, the honest report is "no order gain",
+# and the value of the member is that it is exact in time and unconditionally
+# sign-preserving (a strictly positive multiplier cannot flip the sign of psi
+# in any cell, so the discrete zero contour's topology is preserved at any dt).
+#
+#   make studies-one STUDY=sdplsExpSource2DvortexRev PROFILE=profiles/slurm
+
+study_name: sdplsExpSource2DvortexRev
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  OSCILLATION: ["on"]
+  SDPLS_SOURCE: [R]
+  # The paired linearization comparison, everything else held fixed.
+  SOURCE_SCHEME: [simpleLinearImplicit, exponential]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
