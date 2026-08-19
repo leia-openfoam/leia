@@ -1,3 +1,26 @@
+# RERUN of the FINEST arm of the 3D ladder (N_L = 120) only. Everything else --
+# rationale, the domain-size evidence, the predictions -- is in
+# config/stationaryDroplet3Dwide.yaml, whose other three arms COMPLETED
+# (N_L = 60/76/95, exactly 9207/13126/18344 steps, none failed).
+#
+# WHY A SEPARATE STUDY AND NOT A RESUBMIT OF THE SAME ONE. The driver runs
+# snakemake with --rerun-triggers mtime; editing the parent config to raise
+# solve_runtime risks retriggering the three arms that already finished (~120
+# core-h and 5.4 h of wall clock for nothing). A separate study dir cannot touch
+# them. workflow/scripts/domain_size_control.py and the ladder analysis both take
+# several study dirs, so the four arms still score as one ladder.
+#
+# WHY A CLEAN RERUN AND NOT A RESTART FROM THE t = 0.08 CHECKPOINT. The arm was
+# killed by its 10 h wall at t = 0.0853 of 0.1 -- 85% done and completely
+# healthy (Courant 0.0084, continuity 8.6e-13, GAMG 2-25 iterations, all 1728000
+# cells inverted, 0 left uninverted). NOT a divergence. Restarting from the saved
+# 0.08 fields would cost only ~2.3 h, but OpenFOAM writes fields at
+# writePrecision digits, so a restart re-enters the run with psi truncated at
+# ~1e-9 absolute -- about 2e-5 relative in the band gradient at h = 5e-5, which
+# is the same order as the metrics this arm exists to measure. That perturbation
+# would sit inside the FINEST point of a convergence claim and be undetectable
+# afterwards. 11.6 h of machine time is the cheaper mistake.
+#
 # THE 3D LADDER: 4 resolutions, R/h >= 10 at the coarsest, cell count doubling
 # per level -- on a TRUNCATED UNIFORM box at the domain size the control
 # CERTIFIED, L = 6R = 6e-3 m.
@@ -76,7 +99,7 @@
 #      in 2D and the whole ladder must move up -- a finding about the filter's
 #      support, not about the delivery.
 #   Report volume AND shape error, never a single metric.
-study_name: stationaryDroplet3Dwide
+study_name: stationaryDroplet3Dwide120
 case: stationaryDroplet3D
 mesh: hex
 mode: parallel
@@ -89,7 +112,7 @@ setfields_args: "-alphaName alpha.water"
 
 axes_override:
   DOMAIN_LENGTH: [0.006]
-  N_CELLS: [60, 76, 95, 120]
+  N_CELLS: [120]
   CURVATURE_EXTENSION: [cellCentreInverse]
   FACE_CURVATURE_SOURCE: [model]
   PSI_FILTER: [biharmonicBand]
