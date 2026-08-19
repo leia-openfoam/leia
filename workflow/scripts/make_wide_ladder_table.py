@@ -53,6 +53,16 @@ def main():
                 continue
             tok = json.load(open(pp))["tokens"]
             hist = list(csv.DictReader(open(mp)))
+            # A DIVERGED ARM'S LAST LINE IS TRUNCATED MID-WRITE: the solver dies
+            # on a floating-point exception part-way through the row, so the final
+            # record has None for the columns after the break. Scoring an arm on a
+            # half-written row would silently mix a real value with a missing one,
+            # so keep only fully-parseable rows and remember how many were dropped.
+            need = [c for _, c in METRICS] + ["TIME"]
+            full = [r for r in hist
+                    if all(r.get(c) not in (None, "") for c in need)]
+            truncated = len(hist) - len(full)
+            hist = full
             if not hist:
                 continue
             # Arms predating the DOMAIN_LENGTH token all ran on the 0.01 m
@@ -69,9 +79,15 @@ def main():
                        curvatureExtension=tok.get("CURVATURE_EXTENSION", ""),
                        psiFilter=tok.get("PSI_FILTER", ""),
                        psiFilterTheta=tok.get("PSI_FILTER_THETA", ""),
+                       # The K switch is part of the SCHEME, so it must key the
+                       # grouping: without it the K-on and K-off 3D ladders merge
+                       # into one series with duplicated h and the order fit
+                       # divides by a zero log-ratio.
+                       gaussianCurvature=tok.get("CURVATURE_INVERSE_GAUSSIAN", "yes"),
                        np=tok.get("np", ""), nSteps=len(hist),
                        tEnd=float(hist[-1]["TIME"]),
-                       reachedEndTime=int(float(hist[-1]["TIME"]) >= 0.999*float(tok["END_TIME"])))
+                       reachedEndTime=int(float(hist[-1]["TIME"]) >= 0.999*float(tok["END_TIME"])),
+                       truncatedRows=truncated)
             for out, col in METRICS:
                 rec[out] = abs(float(hist[-1][col])) if col in hist[-1] else ""
             for out, col in T0:
@@ -91,14 +107,14 @@ def main():
     # Group by (dim, delivery, filter, theta): an order fit across different
     # filter strengths would be meaningless, and theta = 0.05 and 0.2 arms of the
     # same ladder sit side by side in these studies.
-    keys = sorted({(r["dim"], r["curvatureExtension"], r["psiFilter"],
-                    r["psiFilterTheta"]) for r in rows})
-    for dim, ext, filt, th in keys:
-        sub = [r for r in rows if (r["dim"], r["curvatureExtension"], r["psiFilter"],
-                                   r["psiFilterTheta"]) == (dim, ext, filt, th)]
+    key = lambda r: (r["dim"], r["curvatureExtension"], r["psiFilter"],
+                     r["psiFilterTheta"], r["gaussianCurvature"])
+    for k in sorted({key(r) for r in rows}):
+        sub = [r for r in rows if key(r) == k]
         if len(sub) < 2:
             continue
-        print(f"\n  {dim}D  {ext} + {filt} theta={th}  orders:")
+        dim, ext, filt, th, gk = k
+        print(f"\n  {dim}D  {ext} + {filt} theta={th}  K={gk}  orders:")
         for a, b in zip(sub, sub[1:]):
             lr = math.log(a["h"]/b["h"])
             f = lambda k: (math.log(a[k]/b[k])/lr

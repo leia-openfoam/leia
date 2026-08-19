@@ -455,6 +455,52 @@ on the 10R box, same h) is available at ~598 core-h / 19 h if wanted.
 The same configuration converges monotonically in 2D through R/h = 51.2 and
 destabilises in 3D between R/h = 12.7 and 15.8.
 
+### K is EXONERATED, and it is load-bearing (2026-08-19)
+
+`stationaryDroplet3DwideNoK` — the same 3D ladder with the Gaussian-curvature
+term of the parallel-surface inverse switched off, i.e. 3D run through the algebra
+2D uses. K is identically zero in 2D, so the switch was validated as
+**bit-identical in 2D** and different in 3D before use.
+
+| N_L | R/h | K | reached | max&#124;U&#124; | volume | shape | min&#124;grad psi&#124; | driver t=0 |
+|---|---|---|---|---|---|---|---|---|
+| 60 | 10.0 | yes | 0.1 | 1.0035e-03 | 1.6314e-04 | 4.9531e-06 | 0.9936 | 3.184 |
+| 76 | 12.7 | yes | 0.1 | 1.0574e-03 | 1.0514e-04 | 1.8848e-06 | 0.9965 | 1.942 |
+| 95 | 15.8 | yes | 0.1 | 7.0362e-02 | 6.1514e-04 | 1.2074e-05 | 0.8586 | 1.252 |
+| 60 | 10.0 | **no** | 0.1 | **3.0343e-01** | **5.5017e-02** | 2.1370e-05 | 0.7798 | **962.6** |
+| 76 | 12.7 | **no** | **DIED 0.0955** | 9.2909e-01 | 8.4954e-02 | 1.5291e-03 | 0.0000 | **964.1** |
+| 95 | 15.8 | **no** | **DIED 0.0772** | 1.2781e+00 | 2.0926e-02 | 7.2732e-04 | 0.6334 | **959.2** |
+
+Both K-off failures are genuine divergences, not wall-clock kills: arm 00002
+logged `task 21: Floating point exception (core dumped)`, arm 00001 a task failure
+with rank 19 absent from the terminated list.
+
+**Removing K does not stabilise anything — it destroys the delivery.** The t = 0
+delivered non-gradient content goes from 3.184 -> 1.942 -> 1.252 at order **+2.03**
+with K, to 962.6 / 964.1 / 959.2 at order **+0.01** without it: 770x larger in
+absolute terms and ZEROTH order. Every coupled arm degrades — even the surviving
+`R/h = 10` one is 300x worse in current and 340x worse in volume — and the two
+finer ones diverge where the K-aware form reached t = 0.1.
+
+The zeroth order is analytically expected, which is worth stating because it means
+the measurement is understood and not merely observed. On a sphere kappa = 2/R and
+K = 1/R^2, and the inverse reduces exactly:
+
+    with K:     (2/R - 2d/R^2)/(1 - 2d/R + d^2/R^2) = (2/R)/(1 - d/R) = 2/(R - d)
+    with K = 0: (2/R)/(1 - 2d/R)                                      = 2/(R - 2d)
+
+so dropping K makes a relative curvature error of `d/(R - 2d) ~ d/R = O(h)`, and
+the non-gradient content — which differences kappa across a face — is then `O(h)/h
+= O(1)`. Zeroth order, as measured.
+
+**Verdict: the 3D instability at R/h ~ 16 happens DESPITE a second-order K-aware
+delivery, and the K term is not the amplifier.** Of the two dimension-specific
+candidates, K is eliminated and the **tangential structure** is the one left: 2D
+has one tangential direction, 3D has two, and the WP0 chain measures only the
+normal direction, which is why it reads flat at 1.00x while the current grows 70x.
+Nothing currently instrumented can see it — that diagnostic does not exist yet and
+is the next thing to build.
+
 ---
 
 ## 5. Lichtenberg — what is running
