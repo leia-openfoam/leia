@@ -118,9 +118,12 @@ Description
           mollifier_->field(psi) INSIDE fvmsdplsSource; the field left on the
           registry is the UNmollified f_nl. gSum(f_nl psi V) would then overstate
           the source by the cut-off it never applied.
-      (b) Rdiv. sdplsRdiv.C:88-112 overrides fvmsdplsSource and assembles
+      (b) THE DIVERGENCE-FORM FAMILY: Rdiv and RdivStrictSp. sdplsRdiv
+          overrides fvmsdplsSource and assembles
           fvm::div(phiW, psi) - fvm::div(phi, psi) - fvm::Sp(fvc::div(phiW) - a, psi)
-          with w = (n.v) n and phiW = fvc::flux(w). It still fills
+          with w = (n.v) n and phiW = fvc::flux(w); sdplsRdivStrictSp assembles
+          the same two div terms with the coefficient f = a - div(w) sign-split,
+          fvm::Su(max(f,0) psi^n) + fvm::Sp(min(f,0)). Both still fill
           SDPLS_nonLinearPart (= a, inherited from sdplsR), so the algebraic
           formula would report a number that is NOT the source that ran, and
           phiW is a local that is never registered, so this object cannot rebuild

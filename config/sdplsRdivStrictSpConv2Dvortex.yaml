@@ -1,0 +1,73 @@
+# Does the UNSIGNED Sp coefficient explain Rdiv's divergence?
+#
+# THE MEASURED DEFECT. On the 2D reversed vortex with a PRESCRIBED
+# divergence-free velocity -- no capillary force, no curvature, no feedback of
+# any kind -- Rdiv diverges under mesh refinement, while R converges and the
+# sourceless baseline behaves as documented. Band gradient error at t = T/2:
+#   N          32      45      64      90     128     181     256    order
+#   noSource  1.222   1.529   1.637   1.666  1.675   1.663   1.673   -0.116
+#   R         0.344   0.240   0.172   0.135  0.0958  0.0536  0.0309  +1.112
+#   Rdiv      0.391   0.256   1.564   8.002  20.48   103.3   668.9   -3.800
+# with shape order -1.306 and volume order -1.544, EVERY RUN COMPLETING
+# (solverFailed blank throughout). These are converged solutions that are wrong
+# and get worse, not crashes; Rdiv's relative volume error reaches 136% at N=256.
+#
+# THE HYPOTHESIS. Rdiv assembles
+#     div(phiW,psi) - div(phi,psi) - Sp(div(w) - a, psi),   w = (n.U)n,
+# i.e. + Sp(f, psi) with f = a - div(w). The coefficient f has NO SIGN
+# GUARANTEE, and wherever f > 0 the Sp term ADDS to the diagonal in the
+# destabilising direction -- exactly the failure Patankar's positive-Sp rule
+# forbids and the reason this library already ships
+# strictNegativeSpLinearImplicit for the algebraic source.
+#
+# RdivStrictSp is the SAME operator with only that treatment changed:
+#     + Su(max(f,0) psi^n, psi) + Sp(min(f,0), psi)
+# so the destabilising positive part is delivered explicitly against psi^n and
+# only the sign-safe negative part remains implicit. The two div terms are
+# untouched. Continuum-identical to Rdiv; a single-variable change.
+#
+# WHAT THIS DECIDES, either way:
+#   converges (order approaching R's +1.112) => the unsigned Sp WAS the defect,
+#       Rdiv is rescuable, and RdivStrictSp becomes the conservative source.
+#   still diverges => the defect is elsewhere. The two remaining suspects are
+#       named and NOT tested by this study: div(phiW) contains grad(nHat), i.e.
+#       SECOND derivatives of psi, whose noise grows as h shrinks (consistent
+#       with a defect that worsens under refinement); and the two div terms
+#       nearly cancel, so the operator is a difference of large numbers. In that
+#       case Rdiv should be RETIRED rather than carried as a half-tested option.
+# The solver prints the count of cells with f > 0 and max(f)dt / min(f)dt every
+# step, so the premise of the hypothesis is checkable directly from the log
+# rather than only through the convergence table.
+#
+# Rdiv and R are carried as reference arms so all four are fitted on identical
+# rungs in one table. Reversed protocol (END_TIME 2, OSCILLATION on): gradient
+# at T/2, shape at T, volume at both -- all three metrics, per the standing rule.
+#
+#   make studies-one STUDY=sdplsRdivStrictSpConv2Dvortex PROFILE=profiles/slurm
+
+study_name: sdplsRdivStrictSpConv2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 45, 64, 90, 128, 181, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  OSCILLATION: ["on"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  SDPLS_SOURCE: [R, Rdiv, RdivStrictSp]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

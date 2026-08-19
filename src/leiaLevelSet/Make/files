@@ -43,6 +43,7 @@ sdplsSource/mollifier/interfaceBandMollifier.C
 sdplsSource/gradPsi/gradPsi.C
 sdplsSource/gradPsi/narrowLS.C
 sdplsSource/sdplsRdiv.C
+sdplsSource/sdplsRdivStrictSp.C
 
 narrowBand/narrowBand.C
 narrowBand/emptyNarrowBand.C

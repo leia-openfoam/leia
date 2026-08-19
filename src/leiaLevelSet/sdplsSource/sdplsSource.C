@@ -71,7 +71,38 @@ Foam::sdplsSource::New(const fvMesh& mesh)
     const word& discretizationType =
         sourceTermDict.getOrDefault<word>("discretization", "none");
 
-    if (type != "noSource" && discretizationType == "none")
+    // ...EXCEPT for the divergence-form family, which does not go through the
+    // discretization hierarchy at all. `Rdiv` (sdplsRdiv) and `RdivStrictSp`
+    // (sdplsRdivStrictSp, the same operator with the algebraic coefficient
+    // sign-split in the Patankar sense) override fvmsdplsSource and assemble
+    // fvm::div/fvm::Su/fvm::Sp directly; discretization()->discretize() is
+    // never called. For them `discretization none` is NOT a null study, and
+    // any other value is read by NOTHING. The names are spelled as literals
+    // rather than as <derived>::typeName so that this base-class translation
+    // unit keeps no include dependency on its own derived classes.
+    const bool divergenceFormSource =
+        (type == "Rdiv") || (type == "RdivStrictSp");
+
+    if (divergenceFormSource && discretizationType != "none")
+    {
+        // Not fatal: every committed Rdiv study carries a discretization
+        // keyword (the case templates always render one), and those runs must
+        // stay runnable and behaviourally unchanged. But the keyword is inert
+        // here, while aggregate.py and method_label.py copy SOURCE_SCHEME into
+        // the curated CSV and the method label -- so without this line a table
+        // row would claim a linearization the assembly never performed.
+        WarningInFunction
+            << "sdplsSource type '" << type << "' assembles its own matrix"
+            << " (divergence form) and IGNORES"
+            << " levelSet.sdplsSource.discretization, which is set to '"
+            << discretizationType << "'." << nl
+            << "The run is unaffected; the dictionary entry and any method"
+            << " label derived from it are not descriptive of what was"
+            << " assembled." << endl;
+    }
+
+    if (type != "noSource" && !divergenceFormSource
+     && discretizationType == "none")
     {
         FatalIOErrorInFunction(sourceTermDict)
             << "sdplsSource type '" << type << "' was selected with"

@@ -148,11 +148,20 @@ Foam::functionObjects::psiConservationCSV::psiConservationCSV
     //   - a mollifier multiplies nonLinearPart_ INSIDE fvmsdplsSource
     //     (sdplsSource.C:139-148) and the registered SDPLS_nonLinearPart stays
     //     UNmollified, so the algebraic integral overstates it by the cut-off;
-    //   - `Rdiv` (sdplsRdiv.C:88-112) assembles div(phiW,psi) - div(phi,psi)
-    //     - Sp(div(phiW) - a, psi) and still fills SDPLS_nonLinearPart with a,
-    //     so the algebraic integral would be a number that is NOT the source
-    //     that ran; phiW = fvc::flux((nHat & U)*nHat) is a local and is never
-    //     registered, so it cannot be rebuilt here.
+    //   - the DIVERGENCE-FORM family assembles fluxes, not an algebraic
+    //     coefficient, and still fills SDPLS_nonLinearPart with a, so the
+    //     algebraic integral would be a number that is NOT the source that ran;
+    //     phiW = fvc::flux((nHat & U)*nHat) is a local and is never registered,
+    //     so it cannot be rebuilt here. Two types are in that family:
+    //       `Rdiv`         (sdplsRdiv.C)          div(phiW,psi) - div(phi,psi)
+    //                                             - Sp(div(phiW) - a, psi);
+    //       `RdivStrictSp` (sdplsRdivStrictSp.C)  the same two div terms with
+    //                                             the coefficient f = a -
+    //                                             div(w) sign-split, Su for
+    //                                             max(f,0) and Sp for min(f,0).
+    //     BOTH must be excluded. Testing only for "Rdiv" would silently mark an
+    //     RdivStrictSp run SOURCE_ALGEBRAIC 1 and publish a BUDGET_SOURCE
+    //     column computed from a coefficient that never entered the matrix.
     // Both cases NaN the source and residual columns and set SOURCE_ALGEBRAIC 0.
     const fvSolution& fvSol(mesh_);
     const dictionary levelSetDict(fvSol.subOrEmptyDict("levelSet"));
@@ -162,7 +171,9 @@ Foam::functionObjects::psiConservationCSV::psiConservationCSV
     (
         sourceDict.subOrEmptyDict("mollifier").getOrDefault<word>("type", "none")
     );
-    algebraicSource_ = (sourceType != "Rdiv") && (mollifierType == "none");
+    const bool divergenceFormSource =
+        (sourceType == "Rdiv") || (sourceType == "RdivStrictSp");
+    algebraicSource_ = !divergenceFormSource && (mollifierType == "none");
 
     // The t=0 row. Function objects are constructed from
     // functionObjectList::read(), which Time::run() reaches at the top of the
@@ -218,8 +229,9 @@ Foam::functionObjects::psiConservationCSV::csvHeader()
     // for strictNegativeSpLinearImplicit and explicit. It is quiet_NaN, together
     // with BUDGET_SOURCE_BAND and BUDGET_RESIDUAL, whenever a mollifier is active
     // (sdplsSource.C:139-148 mollifies inside the assembly and leaves the
-    // registered field UNmollified) or the source is Rdiv (sdplsRdiv.C:88-112
-    // assembles fluxes whose phiW is never registered). SOURCE_ALGEBRAIC records
+    // registered field UNmollified) or the source is one of the divergence-form
+    // family, Rdiv (sdplsRdiv.C) or RdivStrictSp (sdplsRdivStrictSp.C), which
+    // assemble fluxes whose phiW is never registered. SOURCE_ALGEBRAIC records
     // which regime the row is in.
     //
     // int(psi dV) IS NOT A PHYSICAL INVARIANT: psi is a signed distance, so the
