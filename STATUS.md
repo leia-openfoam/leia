@@ -384,6 +384,77 @@ a truncated box a dt `(0.01/L)^1.5` too large; measured before the fix,
 every pre-existing token shape, and `blockMesh` polyMesh output byte-identical at
 `DOMAIN_LENGTH = 0.01` in 2D and 3D.
 
+### The wide ladders (2026-08-19): 2D completes, 3D destabilises at R/h ~ 16
+
+`cellCentreInverse` + biharmonicBand theta = 0.2, curated in
+`docs/method-comparison/method-comparison-article/data/tables/wide_ladder_coupled.csv`
+via `workflow/scripts/make_wide_ladder_table.py`.
+
+**2D (L = 10R, np 8), now four points — h halves each level:**
+
+| N | R/h | max&#124;U&#124; | volume | shape | min&#124;grad psi&#124; |
+|---|---|---|---|---|---|
+| 64 | 6.4 | 2.2400e-03 | 4.9600e-03 | 3.7800e-05 | 0.952 |
+| 128 | 12.8 | 4.1500e-04 | 2.5700e-05 | 5.2400e-06 | 0.996 |
+| 256 | 25.6 | 1.0200e-04 | 7.3300e-06 | 8.1400e-08 | 0.9996 |
+| **512** | **51.2** | **5.0993e-05** | **1.9658e-07** | **1.4690e-08** | **0.999883** |
+
+Orders: max&#124;U&#124; **+2.43, +2.02, +1.01**; volume +7.59, +1.81, +5.22; shape
++2.85, +6.01, +2.47. Laplace jump 72.7405 against the exact 72.7400 Pa (7e-6).
+
+The fourth point **falsified prediction (b)**: max&#124;U&#124; was predicted at ~2.5e-5
+(order 2 continued) and came in at 5.10e-5, **order 1.01**. Volume and shape keep
+falling (nothing rose, so the joint-convergence failure mode did not occur), but
+the current is now first order. With three points this looked like clean second
+order — this is precisely what the fourth point was for.
+
+**3D (L = 6R, np 32), three of four points; N_L = 120 rerunning (54304158):**
+
+| N_L | R/h | max&#124;U&#124; | volume | shape | min&#124;grad psi&#124; |
+|---|---|---|---|---|---|
+| 60 | 10.0 | 1.0035e-03 | 1.6314e-04 | 4.9531e-06 | 0.9936 |
+| 76 | 12.7 | 1.0574e-03 | 1.0514e-04 | 1.8848e-06 | 0.9965 |
+| 95 | 15.8 | **7.0362e-02** | 6.1514e-04 | 1.2074e-05 | **0.8586** |
+
+All three reached t = 0.1. **The delivery itself is fine and second order in 3D:**
+the WP8.1 delivered-curvature variation at t = 0 falls 3.184 -> 1.942 -> 1.252,
+order **+2.09 / +1.97**, and t = 0 max&#124;U&#124; falls 2.12e-4 -> 7.82e-5 -> 4.09e-5
+(order +3.58 over the span). The cellCentreInverse property transfers to the
+coupled solver in both dimensions (2D t = 0 driver orders +2.12 / +2.14 / +1.83).
+
+**What breaks is amplification, not delivery.** N_L = 60 and 76 follow an almost
+identical trajectory (dip to ~1.2e-4 at t = 0.05, rise to ~1.0e-3 at t = 0.1 —
+resolution-independent). N_L = 95 departs at t ~ 0.04 and grows exponentially at
+**r ~ 79 1/s** (x2.2 per 0.01 s), passing 5e-3 at t = 0.068; min&#124;grad psi&#124;
+only leaves 0.95 at t = 0.087, i.e. the profile degradation **follows** the current,
+as established.
+
+**The WP0 band mode spectrum is FLAT in every arm, including the unstable one:**
+A2h/A4h/A8h stay at 1.00x of their t = 0 values for the whole run. The theta = 0.2
+filter holds the normal-direction corrugation pinned even while max&#124;U&#124; grows
+70x. What grows instead is the delivered curvature variation: acrossSupport
+**182x** and alongInterface **143x** at N_L = 95, against 1.5x/0.9x at N_L = 60 and
+4.4x/3.2x at N_L = 76.
+
+So the 3D instability is **not** fed by normal-direction psi roughness — the only
+thing the WP0 chain measures. Candidates it leaves open, both dimension-specific:
+the two tangential directions along which psi can develop structure the
+normal-chain diagnostic is blind to (2D has one, 3D has two), and the Gaussian
+curvature term K of the parallel-surface inverse, which is identically zero in 2D
+and active in 3D. Neither is measured yet.
+
+**Confinement is ruled out as the cause.** The wall sits 2R = 2e-3 m from the
+interface at every level (L is fixed), i.e. 20, 25 and 32 cells at N_L = 60, 76,
+95 — the wall gets *further* in cell units under refinement, so a confinement
+effect would improve, not degrade. The 2D control measured 6R equivalent to 10R at
+0.03–0.11% at h = 1e-4 and 5e-5, bracketing N_L = 95's h = 6.32e-5, and N_L = 60
+and 76 sit in the same box and are stable. The definitive 3D cross-check (N = 158
+on the 10R box, same h) is available at ~598 core-h / 19 h if wanted.
+
+**Answer to the question the 3D case was built for: dimension matters, sharply.**
+The same configuration converges monotonically in 2D through R/h = 51.2 and
+destabilises in 3D between R/h = 12.7 and 15.8.
+
 ---
 
 ## 5. Lichtenberg — what is running
