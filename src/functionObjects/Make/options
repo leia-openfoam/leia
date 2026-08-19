@@ -9,4 +9,5 @@ LIB_LIBS = \
     -lOpenFOAM \
     -lfiniteVolume \
     -lmeshTools \
+    -lfieldFunctionObjects \
 
