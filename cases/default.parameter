@@ -134,6 +134,16 @@ GEOMETRY_FIT none;   // levelSet.geometryFit.type: a SECOND slReconstruction
 // K-aware inverse h^1.95 and the K-less control h^1.02.
 CURVATURE_INVERSE_GAUSSIAN yes;
 
+// Explicit fixed time step, overriding the h-derived capillary step. 0 = derive
+// (the default, so every existing study is unchanged). Set > 0 only for the
+// fixed-dt experiment: because the capillary law ties dt to h as dt ~ h^1.5, a
+// refinement ladder moves the mesh and the step together and cannot tell a
+// spatial effect from a per-step one. Measured on the 3D ladder, r*dt is constant
+// to 24% while r itself rises 2.2x, so running one fixed dt across the ladder is
+// what separates the two.
+FIXED_DELTA_T 0;
+
+
 CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
                      // none | harmonicLaplace | footPointHeightFunction |
                      // closestPointNewton | connectedInterface | interfaceMean

@@ -76,9 +76,39 @@ inline void applyCellCentreInverseCurvature
 {
     scalarField& k = kappa.primitiveFieldRef();
 
-    label nInv = 0, nFirstOrder = 0, nNoFit = 0;
+    label nInv = 0, nFirstOrder = 0, nNoFit = 0, nUnfilled = 0;
     forAll(k, c)
     {
+        // NEVER INVERT A CELL THE CURVATURE FILL SKIPPED.
+        //
+        // meanCurvatureNoExtension zeroes the whole field and then fills only
+        // cells that have a full-rank quadratic fit, a non-degenerate gradient,
+        // and satisfy the band gate |psi_c|/|g| <= 3*stencilRadius. Every other
+        // cell keeps EXACTLY 0. Feeding such a cell to the inverse gives
+        //     parallelSurfaceInverse(0, d, K) = -2 K d/(1 + K d^2),
+        // which is identically 0 in 2D (K vanishes there) but in 3D manufactures
+        // a curvature out of nothing: for a sphere K = 1/(R+d)^2, so the
+        // magnitude peaks at 1/R -- HALF the exact 2/R, with the wrong sign --
+        // around d ~ R. This header used to claim "it always returns, so the
+        // inverted field is defined in EVERY cell and no edge exists"; that is
+        // false in 3D. The fill's edge is still there, and inverting across it
+        // decorated the edge with a large negative curvature instead of leaving
+        // the zero the fill produced, i.e. it made the jump WORSE.
+        //
+        // It is currently benign for the force, because the Detrixhe-Aslam alpha
+        // is exactly 0/1 that far out so snGrad(alpha) = 0 there. It is not
+        // benign for the written kappa field, for any diagnostic that norms over
+        // more than the active faces, or for any change that widens the force
+        // support (forceWeight sharpHeaviside, or a mollified indicator).
+        //
+        // An unfilled cell is exactly 0.0; a fitted curvature is not, so testing
+        // against VSMALL identifies the fill's own gate without duplicating it.
+        if (mag(k[c]) <= VSMALL)
+        {
+            ++nUnfilled;
+            continue;
+        }
+
         // useGaussianCurvature = false forces K == 0, i.e. runs 3D through the
         // 2D algebra of the same expression. The fit is then skipped entirely,
         // so its noise cannot enter through any other path either.
@@ -106,9 +136,14 @@ inline void applyCellCentreInverseCurvature
     reduce(nInv, sumOp<label>());
     reduce(nFirstOrder, sumOp<label>());
     reduce(nNoFit, sumOp<label>());
+    reduce(nUnfilled, sumOp<label>());
+    // nNoFit counts only non-finite offsets, which signedOffset essentially never
+    // returns -- so it used to read 0 while a large unfilled population was being
+    // inverted silently. nUnfilled is the number that matters and is now reported.
     Info<< "cellCentreInverse curvature: " << nInv << " cells inverted ("
         << nFirstOrder << " on the first-order offset branch, "
-        << nNoFit << " left uninverted)" << endl;
+        << nUnfilled << " skipped as unfilled by the curvature gate, "
+        << nNoFit << " skipped on a non-finite offset)" << endl;
 }
 
 } // End namespace Foam

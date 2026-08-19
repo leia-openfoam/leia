@@ -31,6 +31,8 @@ endTime         @!END_TIME!@;
 // CAPILLARY_DT_COEFF/N_CELLS^1.5 on the reference box). Time-step adaptivity is a
 // potential instability source of its own, so it is DISABLED for this test:
 // dt is constant for the entire run by construction, not by observation.
+// FIXED_DELTA_T = @!FIXED_DELTA_T!@ s overrides the derived step when > 0;
+// this reference is LOAD-BEARING (foam_param drops unreferenced tokens).
 deltaT          @!MAX_DELTA_T!@;
 
 // runTime (not adjustableRunTime): with a fixed dt, adjustableRunTime would

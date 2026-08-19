@@ -196,6 +196,18 @@ def _with_derived_tokens(tokens):
             # Reference-equivalent cell count: nRef = L_ref/h, h = L/N_CELLS.
             # Identity when DOMAIN_LENGTH == CAPILLARY_REF_LENGTH (or when
             # either token is absent), so existing studies are untouched.
+            # FIXED_DELTA_T > 0 overrides the derived step entirely. This exists
+            # for one specific experiment: the capillary law ties dt to h as
+            # dt ~ h^1.5, so a refinement ladder changes the mesh AND the step
+            # together and cannot separate a spatial effect from a per-step one.
+            # Measured on the 3D ladder, the growth rate rises 40.5 -> 52.3 -> 90.6
+            # 1/s under refinement while r*dt is constant to 24% (4.40, 3.99,
+            # 4.94 e-4) -- i.e. the amplification PER STEP does not move and the
+            # rate rises only because dt shrinks. Running the same ladder at one
+            # FIXED dt decides between the two: equal e-folds means the mechanism
+            # is the once-per-step force lag, not resolution.
+            fixedDt = out.get("FIXED_DELTA_T")
+            useFixed = fixedDt is not None and float(fixedDt) > 0
             nRef = n
             length = out.get("DOMAIN_LENGTH")
             if length is not None:
@@ -203,7 +215,9 @@ def _with_derived_tokens(tokens):
                 refLength = float(out.get("CAPILLARY_REF_LENGTH", length))
                 if length > 0 and refLength > 0:
                     nRef = refLength*n/length
-            if nRef > 0:
+            if useFixed:
+                out["MAX_DELTA_T"] = "{:.6g}".format(float(fixedDt))
+            elif nRef > 0:
                 out["MAX_DELTA_T"] = "{:.6g}".format(coeff / nRef**1.5)
         except (TypeError, ValueError):
             pass

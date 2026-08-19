@@ -1,0 +1,67 @@
+# THE FIXED-dt TEST: is the 3D "instability under refinement" an h effect at all?
+#
+# THE OBSERVATION IT TESTS. On the L = 6R ladder the exponential growth rate of
+# max|U| over t = 0.05..0.1 rises 40.47 -> 52.32 -> 90.55 1/s at R/h = 10.0/12.7/
+# 15.8 (R^2 0.89/0.94/0.98), a factor 2.2. But the capillary law ties the step to
+# the cell size, dt = CAPILLARY_DT_COEFF/nRef^1.5, so those arms ran at
+# dt = 1.086e-5/7.619e-6/5.451e-6. Multiplying through:
+#
+#   N_L    dt [s]      steps    r [1/s]    r*dt (per step)   e-folds r*T
+#    60  1.0861e-05     9207      40.47       4.395e-04         4.05
+#    76  7.6186e-06    13126      52.32       3.986e-04         5.23
+#    95  5.4514e-06    18344      90.55       4.936e-04         9.05
+#
+# The amplification PER STEP is constant to 24% while the rate rises 2.2x. In
+# other words r ~ 1/dt, and the e-folds accumulated by t = 0.1 grow only because a
+# finer mesh takes more steps to get there. That is the signature of an
+# operator-splitting / force-lag mechanism, NOT of a spatial truncation error --
+# and it is consistent with the delivered non-gradient content converging at +2.03
+# (R^2 0.9997) while the coupled response diverges. It also matches the earlier
+# capillary-dt sweep, which measured ~90% of the growth rate as dt-proportional at
+# N = 128.
+#
+# THE TEST. Run the same three meshes at ONE fixed dt = 5.45144e-6 s (the value
+# the finest arm derives, so that arm is bit-identical to its native-dt twin and
+# cross-validates the two studies). All three then take 18344 steps to t = 0.1.
+#
+# PREDICTIONS (recorded before the run).
+#   a. PER-STEP HYPOTHESIS: all three arms accumulate the same ~9 e-folds and all
+#      three degrade like the native-dt N_L = 95 arm did -- i.e. the two COARSE
+#      meshes, which were stable at their native dt, become unstable purely by
+#      being made to take more, smaller steps. That would be decisive: the
+#      mechanism is the once-per-step frozen capillary force, and "finer is less
+#      stable" is an artefact of tying dt to h.
+#   b. SPATIAL HYPOTHESIS: the coarse arms stay stable and their growth rates stay
+#      near 40 and 52 1/s regardless of dt, so the rate is a property of h.
+#   c. Mixed outcome -- rates move but not in proportion to 1/dt -- means both
+#      mechanisms are live and the split needs the per-step gain reported as the
+#      primary quantity rather than the rate.
+#   Report volume AND shape error, never a single metric.
+#
+# NOTE: run with the psi-filter seam fix (f83a1ab) in place. Every earlier filtered
+# result predates it and is decomposition-contaminated.
+study_name: stationaryDroplet3DwideFixedDt
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60, 76, 95]
+  FIXED_DELTA_T: [5.45144e-6]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [biharmonicBand]
+  PSI_FILTER_THETA: [0.2]
+
+# 18344 steps for every arm; largest (N_L=95, 857375 cells) ~4.1 h at np32.
+solve_runtime: 600
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
