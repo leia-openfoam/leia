@@ -58,6 +58,19 @@ REDIST_VIOLFRAC 0;   // signedDistanceBounds robust variant: fire only when more
 // not set these tokens byte-identical in behaviour -- both two-phase solvers
 // construct an sdplsSource, and noSource is inert by construction.
 SDPLS_SOURCE  noSource;
+
+// Level-set time scheme for the coupled droplet cases, via
+// cases/stationaryDroplet2D/system/aliasDict. EulerDdt renders `Euler`, which
+// is exactly what the bare `default Euler` gave before the token existed, so
+// every pre-existing study renders a behaviourally identical fvSchemes.
+// CrankNicolsonDdt renders `CrankNicolson 1` for ddt(psi) ONLY -- momentum
+// stays on Euler, whose L-stability is what keeps this capillary problem stable
+// at the calibrated step.
+PSI_DDT       EulerDdt;
+
+// Exact circle curvature 1/R for constantCurvatureSurfaceTension (R = 1e-3 m).
+// Unread by every other surface-tension model.
+CONST_CURVATURE 1000;
 SOURCE_SCHEME simpleLinearImplicit;
 SDPLS_BETA 1.0;      // sdplsBeta target gradient: f_nl = beta - |grad psi|
 // SDPLS cut-off (mollifier), eq. (24) of arXiv:2208.01269. `none` disables it

@@ -1,0 +1,96 @@
+# SDPLS coupled-drain MECHANISM study: the seed and the time scheme, factorially.
+#
+# WHAT THIS DECIDES. The first coupled study (sdplsDropletNS2D) established the
+# negative result: with the production reconstructedCurvature force, SDPLS `R`
+# destroys the stationary droplet (relative signed volume error -1.0 at t=0.1 at
+# N=32/64/128) while the identical solver with the source off conserves to
+# 2.8e-3 / 1.8e-4 / 1.2e-5. Glyphs established the mechanism: the sourceless run
+# carries a four-lobed diagonal mesh-locked CSF parasitic current at 3.9e-4 m/s
+# with a CIRCULAR interface; R amplifies the same pattern to 1.0e-1 m/s (260x)
+# and squares the interface. Every implementation escape was closed (CSF sign,
+# band cut-off, fitted production curvature, conservative Rdiv rewrite, and a 4x
+# dt refinement over 11 315 steps).
+#
+# Two things that verdict did NOT control, both varied here:
+#
+# AXIS 1 -- SURFACE_TENSION_FORCE: is the mode-4 curvature error the SEED?
+#   The stationary droplet is a circle of R = 1e-3 m, so
+#   constantCurvatureSurfaceTension with curvature = 1/R = 1000 1/m is EXACT.
+#   With kappa constant the force sigma*kappa*snGrad(alpha)*|Sf| is an exact
+#   discrete gradient, the pressure equation absorbs it, and the parasitic
+#   current is machine zero (1.09e-8 m/s first step, 3.94e-8 m/s over a whole
+#   run on the N=64 translating gate). So this arm starves the loop of its seed
+#   BY CONSTRUCTION, with committed code and no new model.
+#     R still drains  => the drain is intrinsic to the source under two-way
+#                        coupling; no surface-tension work can fix it.
+#     R does not drain => the seed IS curvature error and the fix belongs in the
+#                        force.
+#   NOTE this demotes the obvious candidate: integralSurfaceTension (Abu-Al-Saud,
+#   Popinet & Tchelepi 2018) is ALREADY implemented here and measured DYNAMICALLY
+#   UNSTABLE -- 1.003e-2 m/s first step, FPE at t = 9.33e-4 s, against the exact
+#   control's 1.09e-8 m/s reaching t = 0.05. Better static balance coexists with
+#   larger dynamic feedback gain
+#   (docs/capillary-level-set-research-roadmap.md).
+#
+# AXIS 2 -- PSI_DDT: was the kinematic-vs-coupled comparison confounded?
+#   YES. alphaEqn.H assembles fvm::ddt(psi), and this case had only
+#   `default Euler` in ddtSchemes, so the LEVEL SET was first order in time here
+#   while every kinematic ladder (2Dvortex, 3Dshear, 3Ddeformation) runs
+#   CrankNicolson 1. Mechanism, not just order: with simpleLinearImplicit the
+#   per-step factor is 1/(1 - a*dt), and over one +/- pair of a zero-mean
+#   oscillating strain that is 1/(1 - z^2) > 1 -- implicit Euler RECTIFIES the
+#   mode-4 strain into one-sided growth of |psi| at O(z^2) per pair. The
+#   Crank-Nicolson (1,1) Pade factor is symmetric: the pair product is exactly 1,
+#   leading rectification O(z^3).
+#   PREDICTION: the 4x dt refinement moved the drain half-life 0.046-0.049 ->
+#   0.052-0.060 (+~20%), which is what this same O(z^2) term predicts at
+#   z ~ 0.023. CrankNicolson attacks the SAME term, so it should buy ~20% and no
+#   more. Much more => the model is incomplete. Worse => CrankNicolson's lack of
+#   grid-scale damping (A-stable, amplification -> -1) beats the rectification it
+#   removes. Both outcomes are informative; neither is the expected "fix".
+#   Momentum stays on Euler in every arm -- raising the MOMENTUM time order is
+#   measured to diverge on this problem at the calibrated capillary step.
+#
+# FULL FACTORIAL, deliberately: the EulerDdt x reconstructedCurvature block
+# reproduces sdplsDropletNS2D, which is the provenance check that the new
+# fvSchemes.template renders behaviourally identical dictionaries; and the cross
+# terms give the INTERACTION (does the time scheme matter more once the seed is
+# starved?), which neither axis alone can show.
+#
+# NO CONFLICT WITH THE SEMI-LAGRANGIAN LINE: this is the EULERIAN solver; the SL
+# sessions run leiaSemiLagrangianLevelSetTwoPhaseFoam from their own clone
+# (/work/scratch/tm83tomy/leia-curvature). Both new tokens default to the
+# pre-existing behaviour (PSI_DDT -> Euler, and `curvature` is unread by every
+# force model except constantCurvatureSurfaceTension), so every existing config
+# renders behaviourally identical dictionaries.
+#
+#   make studies-one STUDY=sdplsDropletMechanism2D PROFILE=profiles/slurm
+
+study_name: sdplsDropletMechanism2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: leiaLevelSetTwoPhaseFoam
+# The two-phase field is alpha.water; omitting this fails leiaSetFields at
+# launch (measured -- the first sdplsDropletNS2D submission died on all 6 cases).
+setfields_args: "-alphaName alpha.water"
+theme: sdpls-level-set
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  # noSource is the control arm in EVERY block: it measures the seed amplitude
+  # that the source is or is not amplifying, under that block's force and time
+  # scheme. R is the algebraic source whose coupled failure is established.
+  SDPLS_SOURCE: [noSource, R]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature, constantCurvatureSurfaceTension]
+  PSI_DDT: [EulerDdt, CrankNicolsonDdt]
+collapse_other_axes: true
+
+export_slides: false
+
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

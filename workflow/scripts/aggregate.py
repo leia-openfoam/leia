@@ -132,6 +132,10 @@ def _write_error_table(records, database_path):
 
     cols = ["method", "velocityExtension", "reconstruction", "redistancer",
             "redistTrigger", "solver", "phaseIndicator",
+            # Coupled capillary force and LEVEL-SET time scheme. Both are in the
+            # method label too; carried raw here so a reader can group on them
+            # without parsing the label string.
+            "surfaceTensionForce", "psiDdt",
             "T", "h", "maxCellSize", "cfl",
             # Wall-clock cost: total seconds and seconds per unit simulated
             # time (row-count-independent -- reporting may be gated to write
@@ -288,6 +292,12 @@ def _write_error_table(records, database_path):
             # column does not imply a target the other arms never had.
             "sdplsBeta": rec.get("SDPLS_BETA", "")
             if rec.get("SDPLS_SOURCE", "noSource") == "beta" else "",
+            # Two-phase only; blank for the single-phase kinematic ladders,
+            # which have no capillary force.
+            "surfaceTensionForce": rec.get("SURFACE_TENSION_FORCE", ""),
+            # fvm::ddt(psi) in alphaEqn.H -- NOT the momentum time scheme, which
+            # stays Euler in every coupled droplet arm.
+            "psiDdt": rec.get("PSI_DDT", ""),
             "anchorLayers": rec.get("ANCHOR_LAYERS", ""),
             "uextDiv": rec.get("UEXT_DIV", ""),
             "eNormalL2": rec.get("leiaTestVelocityExtension.E_NORMAL_L2", ""),

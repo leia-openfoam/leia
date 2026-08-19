@@ -196,6 +196,28 @@ levelSet
         type    @!SURFACE_TENSION_FORCE!@;
         alpha   alpha.water;
         kappa   kappa;
+        // EXACT curvature for constantCurvatureSurfaceTension ONLY; every other
+        // force model leaves this entry unread, so the default is inert.
+        //
+        // The stationary droplet is a CIRCLE of radius 1e-3 m, so kappa = 1/R =
+        // 1000 1/m is exact everywhere on the interface. With kappa constant the
+        // delivered force sigma*kappa*snGrad(alpha)*|Sf| is an EXACT discrete
+        // gradient, the pressure equation absorbs it entirely, and the parasitic
+        // current collapses to solver tolerance: 1.09e-8 m/s on the first step
+        // and 3.94e-8 m/s over an entire run on the N=64 translating gate
+        // (docs/capillary-level-set-research-roadmap.md), against 1.003e-2 m/s
+        // for the well-balanced integralSurfaceTension model.
+        //
+        // That makes it the instrument for the seed-starvation question: run
+        // SDPLS R against a force whose spurious current is machine zero BY
+        // CONSTRUCTION. If R still drains, the drain is intrinsic to the source
+        // under two-way coupling and no surface-tension work can fix it; if it
+        // does not, the mode-4 curvature error IS the seed.
+        //
+        // SCOPE: a constant kappa cannot relax a DEFORMED interface, so this is
+        // a mechanism DIAGNOSTIC, not a production model -- the same distinction
+        // curvaturePressurePotential.H draws for itself.
+        curvature @!CONST_CURVATURE!@;
         // model = the force's own kappa_f assembly (arithmetic interpolate,
         // the committed default); registered = consume the solver-registered
         // face field named below (the stabilizedFootPointFace delivery).

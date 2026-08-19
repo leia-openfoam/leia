@@ -84,6 +84,21 @@ def _sl_parts(rec):
 _DEFAULT_DIV_GRAD_SCHEME = "cellLimited leastSquares 1"
 # The historical SDPLS source gradient. Anything else is an ablation arm.
 _DEFAULT_SDPLS_GRAD = "leastSquares"
+
+# The committed default capillary force and level-set time scheme. Anything else
+# is a distinct method and must be visible in the label.
+_DEFAULT_STF = "reconstructedCurvature"
+_STF_TAG = {
+    "reconstructedCurvature": "recon",
+    "constantCurvatureSurfaceTension": "kConst",
+    "divGradPsiSnGradAlpha": "divGradPsi",
+    "divGradAlphaSnGradAlpha": "divGradAlpha",
+    "integralSurfaceTension": "IST",
+    "integralConormalSurfaceTension": "ISTconormal",
+    "curvaturePressurePotential": "kPressPot",
+}
+_DEFAULT_PSI_DDT = "EulerDdt"
+_PSI_DDT_TAG = {"EulerDdt": "Euler", "CrankNicolsonDdt": "CN"}
 _GRAD_TAG = {
     "pointCellsLeastSquares":     "pcLsq",
     "leastSquares":               "lsq",
@@ -224,6 +239,28 @@ def _euler_parts(rec):
         if rd == "PDE" and rec.get("REDIST_FREEZE", "false") == "true":
             rd = "PDEfrozen"   # bulk-only fill, frozen Dirichlet anchors
         parts.append(f"RD:{rd}")
+
+    # The COUPLED capillary force. Rendered only when it is off-default, so
+    # every single-phase kinematic label (which carries the default token and no
+    # surface tension at all) is byte-identical to before this was added.
+    #
+    # WHY IT MUST BE IN THE LABEL (2026-08-19): config/sdplsDropletMechanism2D
+    # crosses two forces with two level-set time schemes. Without these two
+    # components all four blocks collapse to ONE method string at the same h,
+    # and make_convergence_table.py would fit a single regression straight
+    # through four different methods and report it as an order -- exactly the
+    # silent-corruption failure the beta sweep had to fix for SDPLS_BETA.
+    stf = rec.get("SURFACE_TENSION_FORCE", _DEFAULT_STF)
+    if stf and stf != _DEFAULT_STF:
+        parts.append(f"STF:{_STF_TAG.get(stf, stf)}")
+
+    # The LEVEL-SET time scheme (fvm::ddt(psi) in alphaEqn.H), which is NOT the
+    # momentum time scheme: the coupled droplet keeps momentum on Euler in every
+    # arm because raising the momentum time order is measured to diverge at the
+    # calibrated capillary step. Default EulerDdt renders nothing.
+    pd = rec.get("PSI_DDT", _DEFAULT_PSI_DDT)
+    if pd and pd != _DEFAULT_PSI_DDT:
+        parts.append(f"ddtPsi:{_PSI_DDT_TAG.get(pd, pd)}")
     return parts
 
 
