@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """Materialize one study variation into a runnable OpenFOAM case directory.
 
+NOTE ON ERROR TYPE. Every failure here raises RuntimeError, never SystemExit.
+This module is imported and called from a snakemake ``run:`` block, which
+executes in-process: a SystemExit there terminates the worker instead of
+propagating, and the parent then blocks on a futex forever. A single missing
+token reference produced a silent 4.5-hour deadlock on the cluster before this
+was changed -- the configuration error was correct and clean, only the way it was
+raised was not.
+
 Steps:
   1. copy the template case (``cases/<Case>``) into the study output dir,
   2. render every ``*.template`` by replacing ``@!TOKEN!@`` with the variation's
@@ -111,7 +119,7 @@ def _assert_no_residual_tokens(case_dir):
             except OSError:
                 continue
     if bad:
-        raise SystemExit(f"[materialize] unsubstituted @!TOKEN!@ remain in: {bad}")
+        raise RuntimeError(f"[materialize] unsubstituted @!TOKEN!@ remain in: {bad}")
 
 
 def _with_derived_tokens(tokens):
@@ -167,7 +175,7 @@ def _with_derived_tokens(tokens):
         )
         missing = [key for key in required if key not in out]
         if missing:
-            raise SystemExit(
+            raise RuntimeError(
                 "[materialize] advective TIME_STEP_CONTROL requires: "
                 + ", ".join(missing)
             )
@@ -180,7 +188,7 @@ def _with_derived_tokens(tokens):
                 raise ValueError("all advective timestep inputs must be positive")
             out["MAX_DELTA_T"] = "{:.10g}".format(co * length / (n * speed))
         except (TypeError, ValueError) as exc:
-            raise SystemExit(f"[materialize] invalid advective timestep: {exc}")
+            raise RuntimeError(f"[materialize] invalid advective timestep: {exc}")
     elif time_step_control == "capillary" and "N_CELLS" in out and "CAPILLARY_DT_COEFF" in out:
         try:
             n = float(out["N_CELLS"])
@@ -200,7 +208,7 @@ def _with_derived_tokens(tokens):
         except (TypeError, ValueError):
             pass
     elif time_step_control != "capillary":
-        raise SystemExit(
+        raise RuntimeError(
             "[materialize] TIME_STEP_CONTROL must be capillary or advective, got "
             + repr(time_step_control)
         )
@@ -225,7 +233,7 @@ def _reject_yaml_booleans(tokens):
     """
     bad = {k: v for k, v in tokens.items() if isinstance(v, bool)}
     if bad:
-        raise SystemExit(
+        raise RuntimeError(
             "[materialize] token(s) parsed as YAML booleans: "
             + ", ".join(f"{k}={v}" for k, v in sorted(bad.items()))
             + ".\n[materialize] YAML 1.1 reads bare off/on/no/yes/true/false as "
@@ -241,7 +249,7 @@ def materialize(base_case, tokens, out_dir, np_, mesh, mode, dims, case_name, in
         try:
             current = int(tokens["N_NON_ORTHOGONAL_CORRECTORS"])
         except (TypeError, ValueError) as exc:
-            raise SystemExit(
+            raise RuntimeError(
                 "[materialize] N_NON_ORTHOGONAL_CORRECTORS must be an integer: "
                 + str(exc)
             )

@@ -161,34 +161,40 @@ def main():
     if centre is None:
         sys.exit("[interfoam-metrics] could not determine the droplet centre")
 
-    # fieldMinMax, mode magnitude, writes one line per FIELD per time:
+    # fieldMinMax, mode magnitude, writes one TAB-DELIMITED line per FIELD per
+    # time, and the column set DEPENDS ON THE RUN BEING PARALLEL:
     #
-    #   # Time   field   min   location(min)   max   location(max)
-    #   2.12e-05   mag(U)   0.0   (0 7.8e-05 0)   3.47e-02   (4.6e-03 6.0e-03 0)
+    #   serial:   # Time  field  min  location(min)  max  location(max)
+    #   parallel: # Time  field  min  location(min)  processor  max  location(max)  processor
     #
-    # Two traps, both hit on the first attempt: the field is named `mag(U)` and
-    # not `U` under mode magnitude, and the location columns contain SPACES inside
-    # their parentheses, so a whitespace split does not line up with the header.
-    # Stripping every parenthesised group first collapses `mag(U)` -> `mag` and
-    # each location -> nothing, leaving exactly [time, field, min, max].
+    # Three traps, all three hit before this was right: under mode magnitude the
+    # field is named `mag(U)` and not `U`; the location columns contain SPACES
+    # inside their parentheses, so a whitespace split does not align with the
+    # header; and the extra `processor` columns in parallel shift `max` by one, so
+    # ANY fixed index silently reads a processor id instead of a velocity -- which
+    # is exactly what happened, reporting max|U| = 0 for a run whose serial twin
+    # gave 0.108. The columns are tab-delimited and the header is aligned with the
+    # data, so the only safe reader looks `max` up in the header by name.
     umax = {}
     for d in _latest_dir(os.path.join(case, "postProcessing", "parasiticU", "*")):
         for f in sorted(glob.glob(os.path.join(d, "*.dat"))):
+            cols = None
             for line in open(f):
-                if line.startswith("#") or not line.strip():
+                if line.startswith("#"):
+                    parts = [c.strip() for c in line.lstrip("#").rstrip("\n").split("\t")]
+                    if "max" in parts:
+                        cols = parts
                     continue
-                raw = line.split()
-                if len(raw) < 2:
+                if not line.strip():
                     continue
-                field = raw[1]
-                if field not in ("mag(U)", "U"):
+                cells = [c.strip() for c in line.rstrip("\n").split("\t")]
+                if len(cells) < 3 or cells[1] not in ("mag(U)", "U"):
                     continue
-                flat = re.sub(r"\([^)]*\)", " ", line).split()
-                if len(flat) < 4:
+                if cols is None or len(cells) != len(cols):
                     continue
                 try:
-                    umax[round(float(flat[0]), 12)] = abs(float(flat[3]))
-                except ValueError:
+                    umax[round(float(cells[0]), 12)] = abs(float(cells[cols.index("max")]))
+                except (ValueError, IndexError):
                     continue
     vol = {round(r[0], 12): r[1] for r in collect(case, "phaseVolume",
                                                  "volFieldValue.dat")}

@@ -27,6 +27,16 @@ endTime         @!END_TIME!@;
 // solvers advance on an identical time grid and any difference in the parasitic
 // current is spatial, not temporal. maxCo/maxAlphaCo are inert with
 // adjustTimeStep no and are kept only for reference.
+//
+// THE TWO TOKEN REFERENCES IN THIS COMMENT ARE LOAD-BEARING. foam_param keeps
+// only tokens that some template mentions, and materialize derives MAX_DELTA_T
+// from CAPILLARY_DT_COEFF (= @!CAPILLARY_DT_COEFF!@ s) evaluated at the
+// reference-equivalent cell count nRef = CAPILLARY_REF_LENGTH/h with
+// CAPILLARY_REF_LENGTH = @!CAPILLARY_REF_LENGTH!@ m. Without these references
+// both are dropped, MAX_DELTA_T is never computed, and the case fails to
+// materialise -- which is exactly what happened on the first submission of this
+// arm and cost two cluster jobs, because snakemake DEADLOCKS rather than
+// reporting the error (see the SystemExit fix in materialize.py).
 deltaT          @!MAX_DELTA_T!@;
 adjustTimeStep  no;
 maxCo           @!MAX_CO!@;
