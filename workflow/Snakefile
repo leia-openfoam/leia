@@ -188,6 +188,18 @@ _solve += [
     # launcher error, FAIL THE RULE LOUDLY (no marker, no touched output) and
     # let snakemake report it; otherwise record the exit code as a result.
     #
+    # THE DIVERGENCE PATTERN WAS ALSO TOO LOOSE, fixed 2026-08-19. Every healthy
+    # OpenFOAM log contains the startup banner
+    #     trapFpe: Floating point exception trapping enabled (FOAM_SIGFPE).
+    # so the bare alternatives `Floating point exception` and `core dumped` matched
+    # ALWAYS. The branch is only reached on a non-zero exit, so a successful run was
+    # never affected -- but it meant EVERY failure was labelled "diverged", including
+    # wall-clock kills and exit-time aborts. That mislabelled two real cases today: a
+    # 3D arm killed by its solve limit at 85% of the run, and interFlow's heap
+    # corruption at teardown. The patterns now require the actual death signatures --
+    # OpenFOAM's own signal handlers, or a "(core dumped)" that is attached to the
+    # exception rather than free-floating.
+    #
     # THE PATTERNS MUST BE SPECIFIC. A bare `srun: error` was matched here until
     # 2026-08-15, and srun prints exactly that when the SOLVER dies:
     #
@@ -201,7 +213,7 @@ _solve += [
     # physics") has a converse that costs just as much: physics must never be
     # discarded as an infrastructure fault. Solver deaths are checked FIRST.
     f"if [ $rc -ne 0 ]; then "
-    f"if grep -qE 'Floating point exception|Segmentation fault|core dumped|FOAM FATAL' log.{SOLVER}; then "
+    f"if grep -qE 'sigFpe::sigHandler|sigSegv::sigHandler|Floating point exception \(core dumped\)|Segmentation fault \(core dumped\)|FOAM FATAL' log.{SOLVER}; then "
     f"echo $rc > .leia_solver_failed; touch {SOLVER}.csv; "
     f"echo \"[leia] SOLVER DIED $rc (FPE/segfault/FATAL = diverged) -- recorded; tail of log.{SOLVER}:\"; "
     f"tail -15 log.{SOLVER}; "
