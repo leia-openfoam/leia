@@ -180,6 +180,16 @@ CURVATURE_INVERSE_GAUSSIAN yes;
 // what separates the two.
 FIXED_DELTA_T 0;
 
+// Momentum ddt(rho,U) scheme. Euler is the default and what every validated result
+// uses, so nothing changes unless a study sweeps it. backward is BDF2;
+// CrankNicolson takes a blending coefficient. Raising this ALONE does not make the
+// scheme 2nd order in time: the capillary force is evaluated once per step from the
+// interface at t^n, which is 1st order whatever ddt does, and making it implicit
+// instead (psiOuterCorrectors) is also 1st order and was measured inert. Genuine
+// 2nd order needs a MIDPOINT capillary force as well.
+MOMENTUM_DDT_SCHEME Euler;
+
+
 
 CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
                      // none | harmonicLaplace | footPointHeightFunction |
