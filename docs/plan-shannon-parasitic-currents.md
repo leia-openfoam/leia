@@ -169,6 +169,78 @@ Brute-force step reduction is therefore **not** a practical fix; removing the sp
 is. That is what the `psiOuterCorrectorsGain3D` gate tests, and it is now the pivot of
 the whole plan.
 
+### Post-fix results, and what they retract (2026-08-19)
+
+**Both headline claims from earlier in the session were seam-bug artefacts.** The
+psi-filter fix (f83a1ab) changed every filtered number by 84-98%.
+
+3D native-dt ladder, pre-fix against post-fix, same dt per arm and same horizon:
+
+| N_L | R/h | | max&#124;U&#124; | volume | shape | min&#124;grad psi&#124; | gAvg |
+|---|---|---|---|---|---|---|---|
+| 60 | 10.0 | pre | 1.0035e-03 | 1.6314e-04 | 4.9531e-06 | 0.993619 | |
+| | | **post** | **3.6708e-05** (−96.3%) | 1.3599e-04 | 5.8797e-07 (−88.1%) | 0.996648 | **−1.905e-04** |
+| 76 | 12.7 | pre | 1.0574e-03 | 1.0514e-04 | 1.8848e-06 | 0.996480 | |
+| | | **post** | **2.6153e-05** (−97.5%) | 9.8525e-05 | 3.5640e-07 (−81.1%) | 0.997886 | **−8.346e-05** |
+| 95 | 15.8 | pre | 7.0362e-02 | 6.1514e-04 | 1.2074e-05 | 0.858594 | |
+| | | **post** | **5.8169e-03** (−91.7%) | 4.2324e-04 | 1.8674e-06 (−84.5%) | 0.984926 | **+2.703e-04** |
+
+Precisely what is retracted and what survives:
+
+- **2D "converges in every metric" — WITHDRAWN.** Post-fix max&#124;U&#124; is
+  2.24e-05 → 2.81e-05 → 8.83e-05, i.e. it *grows* (orders −0.32, −1.65). Shape and
+  volume still converge (+3.41/+1.38, +5.00/+4.09).
+- **3D "destabilises at R/h ~ 16" — the LOCATION survives, the SEVERITY does not.**
+  The onset still sits between R/h = 12.7 and 15.8, but the finest arm ends at
+  5.82e-03 rather than 7.04e-02 with min&#124;grad psi&#124; 0.985 rather than 0.859. It is a
+  mild amplification, not a blow-up. Nothing in the post-fix 3D ladder diverges.
+- **The gain changes sign with resolution in BOTH dimensions.** 2D gAvg −7.61e-04,
+  −6.41e-05, **+7.22e-05** at N = 64/128/256; 3D gAvg −1.91e-04, −8.35e-05,
+  **+2.70e-04** at R/h = 10.0/12.7/15.8. The coarse arms genuinely *damp*. So this is
+  a stability boundary in resolution, not a monotone trend — near R/h ≈ 20 in 2D and
+  ≈ 14 in 3D.
+
+Cross-validation that the two 3D studies agree: N_L = 95's native dt IS 5.4514e-6, so
+that arm appears in both the native and the fixed-dt study, and both give
+max&#124;U&#124; = 5.8169e-03 — identical, as designed.
+
+### The gate result: two candidates eliminated for ~128 core-h
+
+`psiOuterCorrectorsGain3D`, quarter horizon, control inside the study:
+
+| N_L | R/h | outerCorr | max&#124;U&#124; end | gAvg | e-folds |
+|---|---|---|---|---|---|
+| 60 | 10.0 | no | 2.7722e-04 | +1.164e-04 | +0.27 |
+| 60 | 10.0 | **yes** | 2.7844e-04 (**+0.4%**) | +1.807e-04 | +0.42 |
+| 95 | 15.8 | no | 2.3627e-04 | +3.828e-04 | +1.76 |
+| 95 | 15.8 | **yes** | 2.3600e-04 (**−0.1%**) | +4.082e-04 | +1.87 |
+
+Volume, shape and min&#124;grad psi&#124; agree to 3-4 digits, and the delivered non-gradient
+content grows by the same factor either way (0.93x vs 0.92x at N_L=60, 2.33x vs 2.33x
+at N_L=95). **Prediction (b) confirmed: the lag is exonerated.**
+
+This eliminates TWO mechanisms in one test, because the switch changes both:
+
+1. the **once-per-step force lag** — with it on, the interface pipeline re-runs on
+   every outer iteration so sigma*kappa_f is no longer frozen against an implicit
+   momentum LHS;
+2. the **AB2 velocity extrapolation** — passes >= 2 discard `Uext + (dt/dt0)(Uext -
+   UextOld)` and re-advect with the genuine current iterate.
+
+Neither moves the answer by more than 0.4%.
+
+**Consequence for Phase 3.** The semi-implicit / deferred-correction capillary force
+(task #24) is the same class of fix — make the force implicit within the step — and
+the gate says that class buys nothing here. It should be dropped from the plan unless
+some other evidence revives it. That is ~128 core-h spent to avoid a much larger
+implementation, which is exactly what the gate was built for.
+
+**What remains.** dt reduction does help (e-folds ~ dt^0.35), so the continuous-time
+limit appears stable, but neither of the two temporal candidates the switch tests is
+responsible, and the coupling itself was already exonerated by the interFoam diff.
+The sub-map gain decomposition (sec. 4) is now the priority: it is the only remaining
+instrument that can localise a per-step gain to one arrow of the loop.
+
 ## 1. Cut it down
 
 Eleven things are being tracked. **Two matter.**
