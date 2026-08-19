@@ -58,6 +58,21 @@ interfacial stretching integrates to zero over the period, the final-time error
 of a passively advected level set cancels by construction, and the same case
 run reversed reports the sourceless baseline as $477\times$ \emph{more}
 accurate. Every measurement here is therefore made on a non-reversing flow.
+Coupled to momentum on a stationary droplet, the same source fails, and the
+failure is now attributed: against a surface-tension force built from the
+\emph{exact} curvature of a circle, whose spurious current is machine zero by
+construction, the source produces $0.000$ relative volume error and $0.000$ shape
+error at every resolution and on both level-set time discretizations, twelve
+cases out of twelve, while against the production curvature it destroys the
+droplet at $N=32$ and diverges at $N=64$ and $N=128$. The capillary feedback loop
+therefore has exactly one seed --- curvature error --- and the repair belongs in
+the surface-tension force rather than in the source; three time discretizations
+of the level set, spanning first-order L-stable, second-order A-stable and
+second-order L-stable, change when the coupled run fails but not whether it does.
+A conservative divergence-form rewrite of the source is retracted as evidence
+about that loop: it diverges under a \emph{prescribed} divergence-free velocity
+with no capillary force at all, at band gradient order $-3.800$, with every run
+completing.
 \end{abstract}
 
 \begin{keyword}
@@ -796,8 +811,920 @@ with $\beta=1$ and $a = O(\pi)$ in the vortex, the relaxation drives $\gradpsi$
 towards a value that is $O(1)$ away from unity.
 
 % ============================================================================
+\section{The source under two-way coupling: the stationary droplet}
+\label{sec:coupled}
+
+Every measurement reported so far was made under a \emph{prescribed} velocity.
+That is the correct configuration in which to measure what the source does to
+$\gradpsi$: the velocity is exact, so every error in the band is the level set's
+own, and the fitted orders of Section~\ref{sec:verification} mean what they say.
+It is also structurally blind to one thing. Under a prescribed velocity the path
+$\psilev \rightarrow \mathbf{v}$ does not exist. In a two-phase flow it does: the
+level set produces the curvature, the curvature produces the surface-tension
+force, the force produces the velocity, and the velocity produces the interfacial
+normal strain $a = \nhat\cdot\nabla\mathbf{v}\cdot\nhat$ that the source reads
+back,
+\begin{equation}
+  \psilev \;\longrightarrow\; \kappa \;\longrightarrow\; \mathbf{f}_\sigma
+  \;\longrightarrow\; \mathbf{v} \;\longrightarrow\; a \;\longrightarrow\; \psilev .
+  \label{eq:capillaryloop}
+\end{equation}
+A source term that reads $a$ therefore closes a feedback loop that no kinematic
+ladder can exercise. This section measures the source on that loop, and the
+result is negative, specific, and --- this is the part that was not established
+before --- attributable to a single seed.
+
+\subsection{Configuration, and what counts as an error}
+\label{sec:coupled-setup}
+
+The case is the two-dimensional stationary droplet
+(\texttt{cases/stationaryDroplet2D}): a water droplet of radius
+$R = 10^{-3}\,\mathrm{m}$ centred in a square box of side
+$L = 10^{-2}\,\mathrm{m}$ filled with air, on a uniform Cartesian mesh of
+$N \times N$ cells, $N \in \{32, 64, 128\}$. Water and air are
+$\rho = 998.2$ and $1.19\,\mathrm{kg/m^3}$, $\nu = 10^{-6}$ and
+$1.53\times10^{-5}\,\mathrm{m^2/s}$, the surface-tension coefficient is
+$\sigma = 0.07274\,\mathrm{N/m}$, gravity is zero, the four side walls are
+\texttt{noSlip} and the front and back patches are \texttt{empty}. The solver is
+\texttt{leiaLevelSetTwoPhaseFoam} (PIMPLE, level set advected in the same outer
+loop as momentum and pressure), every run is on $8$ MPI ranks, the end time is
+$0.1\,\mathrm{s}$, and the time step is fixed at
+$\Delta t = 0.010861\,\mathrm{s} \cdot N^{-3/2}$ --- the capillary limit
+$\Delta t \sim h^{3/2}$, calibrated to $6\times10^{-5}\,\mathrm{s}$ at $N=32$ and
+therefore about $2\times10^{-5}\,\mathrm{s}$ at $N=64$. No time-step adjustment
+is used, so the step is the same in every arm at a given $N$ and cannot silently
+differ between them.
+
+The exact solution is known in closed form and is trivial: $\mathbf{v} = \mathbf{0}$
+everywhere, with a pressure jump $\sigma\kappa = \sigma/R$ across a circular
+interface that never moves. \emph{Every velocity the solver produces on this case
+is error.} That is what makes the configuration diagnostic rather than merely
+demanding: there is no physical motion for a numerical artefact to hide behind.
+
+The reported metric is the relative \emph{signed} phase-volume error
+\begin{equation}
+  E^{\mathrm{vol}}_{\mathrm{rel}}(t) \;=\;
+  \frac{\sum_c \alpha_c(t)\,|\Omega_c| \;-\; \sum_c \alpha_c(0)\,|\Omega_c|}
+       {\sum_c \alpha_c(0)\,|\Omega_c|},
+  \label{eq:evolsigned}
+\end{equation}
+written as \texttt{E\_VOL\_ALPHA\_SIGNED\_REL} in the curated output, with
+$\alpha$ the phase indicator the level set carries. The sign is retained
+deliberately: a magnitude cannot distinguish systematic volume \emph{loss} from
+an error that oscillates in sign, and on this case those are different failure
+modes. $E^{\mathrm{vol}}_{\mathrm{rel}} = -1$ means the droplet is gone --- the
+indicator is zero in every cell --- and a large positive value means the run has
+diverged and $\alpha$ has left $[0,1]$. The companion shape error is
+$E^{\mathrm{geom}} = \sum_c |\alpha_c(t) - \alpha_c(0)|\,|\Omega_c|$, reported
+relative to the same denominator.
+
+\paragraph{Which metrics exist here, and which do not.} The protocol of this
+paper is to report gradient, shape and volume error together, so it must be said
+plainly where a column is absent. The coupled studies report the volume error
+\eqref{eq:evolsigned} at every write time and the shape error alongside it; the
+band gradient error $\|\gradpsi - 1\|$ was \emph{not} measured in any of the
+coupled droplet studies, and no gradient order is claimed anywhere in this
+section. For the production-curvature arms below the shape column is likewise not
+restated, because it was not extracted for this record. Where an arm reports
+$E^{\mathrm{vol}}_{\mathrm{rel}} = -1.000$ the interface has ceased to exist, and
+no shape number is needed to establish that the run failed.
+
+\subsection{With the production curvature, the source destroys the droplet}
+\label{sec:coupled-production}
+
+The production configuration takes the surface-tension force from
+\texttt{reconstructedCurvature}: the solver's registered cell curvature is
+extended to faces and assembled as the continuum-surface-force flux
+$G_{\sigma,f} = \sigma\,\kappa_f\,\mathrm{snGrad}(\alpha)_f\,|\mathbf{S}_f|$,
+which is the flux the pressure equation sees. Table~\ref{tab:coupled-production}
+gives the volume error at $t=0.1\,\mathrm{s}$, or at the time the run diverged,
+for the sourceless control and for the strain-cancelling source \textbf{R}, on
+each of the three time discretizations of $\partial_t\psilev$ that were run.
+
+\begin{table}[htbp]
+\centering
+\caption{Coupled stationary droplet, production curvature
+(\texttt{reconstructedCurvature}): relative signed phase-volume error
+\eqref{eq:evolsigned} at $t=0.1\,\mathrm{s}$, or at the time of divergence where
+one is given. Source linearization \texttt{simpleLinearImplicit} throughout;
+momentum time discretization Euler in every arm; only $\partial_t\psilev$
+varies. Studies \texttt{sdplsDropletMechanism2D} (Euler, Crank--Nicolson) and
+\texttt{sdplsDropletBdf2Droplet2D} (backward/BDF2). $-1.000$ means the droplet
+has been destroyed; a large positive value means the run diverged.}
+\label{tab:coupled-production}
+\small
+\begin{tabular}{llrrr}
+\toprule
+source & $\partial_t\psilev$ & $N=32$ & $N=64$ & $N=128$ \\
+\midrule
+\texttt{noSource} & \texttt{Euler}          & $2.810\times10^{-3}$ & $1.843\times10^{-4}$ & $1.204\times10^{-5}$ \\
+\texttt{noSource} & \texttt{CrankNicolson}  & $2.829\times10^{-3}$ & $1.867\times10^{-4}$ & $7.647\times10^{-6}$ \\
+\texttt{noSource} & \texttt{backward}       & $2.829\times10^{-3}$ & $1.869\times10^{-4}$ & $1.210\times10^{-5}$ \\
+\addlinespace
+\textbf{R} & \texttt{Euler}         & $-1.000$ & $+27.7$ diverged $t=0.0584$ & $+19.3$ diverged $t=0.0398$ \\
+\textbf{R} & \texttt{CrankNicolson} & $-0.949$ & $+26.2$ diverged $t=0.0456$ & diverged $t=0.0304$ \\
+\textbf{R} & \texttt{backward}      & $-0.837$ & $+30.4$ diverged $t=0.0563$ & $-1.000$, full run \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three readings, in order of how much they constrain the explanation.
+
+\emph{The solver and the force are sound.} The sourceless control converges
+cleanly and rapidly: on Euler, $2.810\times10^{-3} \to 1.843\times10^{-4} \to
+1.204\times10^{-5}$ is a factor of $15.2$ and then $15.3$ per mesh doubling. The
+other two time discretizations of $\psilev$ reproduce that control to about one
+per cent at $N=32$ and $N=64$; only at $N=128$ do they separate, where
+Crank--Nicolson reaches $7.647\times10^{-6}$ against Euler's
+$1.204\times10^{-5}$ and backward's $1.210\times10^{-5}$, which is a difference
+between three good answers and not a difference in kind. A discretization that
+conserves the phase volume to one part in $10^5$ at $N=128$ while carrying a
+parasitic current is not the thing that destroys the droplet when a source term
+is switched on.
+
+\emph{The failure is not a blow-up at coarse resolution and a mild error at fine
+resolution; it is worse under refinement.} At $N=32$ the source drains the
+droplet to nothing over the run, $-1.000$, on a mesh whose cell size
+$h = L/N = 3.125\times10^{-4}\,\mathrm{m}$ puts $6.4$ cells across the droplet
+diameter; at $N=128$ that becomes $25.6$ cells, four times better resolved. At
+$N=64$ and $N=128$ the run does not survive to the end time at all on either
+Euler or Crank--Nicolson: the volume error passes
+through zero from below and reaches $+27.7$ and $+19.3$ before the solver fails,
+and it fails \emph{earlier} on the finer mesh ($t=0.0398$ against $t=0.0584$).
+Refinement makes this worse, monotonically, which excludes every explanation
+resting on under-resolution of the interface.
+
+\emph{The failure is not the time step.} The step is set by the capillary limit
+and shrinks like $N^{-3/2}$, so the $N=128$ arm takes about eight times as many
+steps per unit time as the $N=32$ arm and still fails soonest. A violated
+temporal stability limit would be relieved by that, not aggravated. (A fourfold
+refinement of $\Delta t$ at fixed mesh, reported in the companion deck and not
+repeated here, likewise left the drain rate essentially unchanged.)
+
+\paragraph{The mechanism: a mesh-locked mode-4 parasitic current, amplified.}
+Figures~\ref{fig:mode4-glyphs} and~\ref{fig:mode4-structure} show the velocity
+field at $t=0.030\,\mathrm{s}$, $N=64$, for the sourceless control and for
+\textbf{R}, from otherwise identical runs. The sourceless field is the familiar
+continuum-surface-force artefact on a Cartesian mesh: a four-lobed (mode-4)
+spurious current, aligned with the mesh axes and diagonals, with
+$\max|\mathbf{v}| = 3.9\times10^{-4}\,\mathrm{m/s}$, and an interface that
+remains circular. Switching on \textbf{R} does not change the \emph{structure} of
+that field at all --- the same four lobes in the same places --- and multiplies
+its amplitude by $260$, to
+$\max|\mathbf{v}| = 1.0\times10^{-1}\,\mathrm{m/s}$, while the interface deforms
+into a rounded square aligned with the lobes.
+
+That is loop \eqref{eq:capillaryloop} operating as an amplifier rather than as a
+transport. The discrete force inherits the four-fold symmetry of the mesh and
+supplies a \emph{bounded} mode-4 velocity error; the source reads the strain of
+that error and rewrites $\psilev$ in the band; the rewritten band changes
+$\kappa = \nabla\cdot(\nabla\psilev/\gradpsi)$ at the cell centres; the changed
+curvature changes the force; and the loop closes with a gain greater than one.
+The interface becomes a square because the seed has square symmetry, not because
+anything in the source prefers squares.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{sdpls_coupled_mode4_glyphs.png}
+\caption{Coupled stationary droplet, $N=64$, $t=0.030\,\mathrm{s}$, velocity
+glyphs on a \emph{shared} colour scale; the red curve is the $\psilev=0$ contour.
+Left: sourceless control, $\max|\mathbf{v}| = 3.93\times10^{-4}\,\mathrm{m/s}$
+--- at this scale the glyphs are invisible and the interface is circular. Centre:
+the same solver with the strain-cancelling source \textbf{R},
+$\max|\mathbf{v}| = 1.02\times10^{-1}\,\mathrm{m/s}$, a factor of $260$ larger,
+with the interface deformed into a rounded square. Right: detail of the same
+field at the interface, showing the four-lobed pattern aligned with the mesh axes
+and diagonals.}
+\label{fig:mode4-glyphs}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{sdpls_coupled_mode4_ownscale.png}
+\caption{The same two fields as Figure~\ref{fig:mode4-glyphs}, each normalized to
+its own maximum, so that the \emph{structure} rather than the amplitude is
+compared. The four-lobed mesh-locked pattern is identical in the sourceless
+control (left, $3.9\times10^{-4}\,\mathrm{m/s}$) and with the source (right,
+$1.0\times10^{-1}\,\mathrm{m/s}$). The source amplifies the existing spurious
+mode; it does not create a new one.}
+\label{fig:mode4-structure}
+\end{figure}
+
+\subsection{Why the time discretization of $\psilev$ is not the driver}
+\label{sec:coupled-time}
+
+There is a specific reason to suspect the time discretization on this case, and
+it is worth writing out because it is quantitative, because it predicted the
+right sign of an effect, and because the measurement then refused it as the
+explanation.
+
+With the \texttt{simpleLinearImplicit} linearization the source contributes only
+a diagonal coefficient $S_p = f_{nl} = a$. Paired with implicit Euler on
+$\partial_t\psilev$, the cell update is
+$(\psilev^{n+1} - \psilev^{n})/\Delta t = a\,\psilev^{n+1}$, i.e.
+\begin{equation}
+  \psilev^{n+1} = G(z)\,\psilev^{n}, \qquad G(z) = \frac{1}{1-z},
+  \qquad z \equiv a\,\Delta t .
+  \label{eq:amp}
+\end{equation}
+On the stationary droplet the strain $a$ that the source reads is not a
+mean-valued deformation rate: it is the strain of an oscillating parasitic
+current, so it changes sign at the parasitic frequency with a near-zero mean.
+What matters is therefore not the accuracy of $G$ over one step but how a $+z$
+step and a $-z$ step \emph{compose}:
+\begin{equation}
+  \begin{aligned}
+    \text{exact:} \quad & e^{+z}e^{-z} = 1, \\
+    \text{implicit Euler:} \quad & \frac{1}{1-z}\cdot\frac{1}{1+z}
+      = \frac{1}{1-z^2} = 1 + z^2 + O(z^4) \;>\; 1, \\
+    \text{Crank--Nicolson:} \quad &
+      \frac{1+z/2}{1-z/2}\cdot\frac{1-z/2}{1+z/2} = 1 .
+  \end{aligned}
+  \label{eq:rectify}
+\end{equation}
+Implicit Euler therefore \emph{rectifies} a zero-mean oscillating strain into
+one-sided growth of $|\psilev|$ at $O(z^2)$ per $\pm$ pair, purely as an artefact
+of the linearization; the Crank--Nicolson $(1,1)$ Pad\'{e} factor is symmetric
+and its pair product is exactly $1$, so the leading rectification is
+$O(z^3)$. The prediction is unambiguous: replacing Euler by Crank--Nicolson on
+$\partial_t\psilev$ removes a real, identified amplification term, and it should
+help.
+
+It does not. Reading Table~\ref{tab:coupled-production} across its rows,
+Crank--Nicolson is marginally better than Euler at $N=32$ ($-0.949$ against
+$-1.000$: the droplet survives with $5\%$ of its volume instead of none) and
+\emph{worse} at both finer resolutions --- it diverges at $t=0.0456$ against
+Euler's $t=0.0584$ at $N=64$, and at $t=0.0304$ against $t=0.0398$ at $N=128$.
+The rectification term is real, and removing it is not worth what removing it
+costs: Crank--Nicolson is A-stable but not L-stable, its amplification factor
+tends to $-1$ rather than to $0$ for stiff modes, and the grid-scale damping it
+gives up is doing more work on this problem than the $O(z^2)$ rectification it
+removes.
+
+The backward (BDF2) discretization is the discriminating arm, because it is
+second order \emph{and} L-stable: it removes the first-order temporal error
+without giving up grid-scale damping. It is the best of the three overall, and
+decisively so where it matters most. At $N=32$ it retains the most volume,
+$-0.837$ against $-0.949$ for Crank--Nicolson and $-1.000$ for Euler. At $N=64$
+all three diverge and the ordering is mixed: backward fails at $t=0.0563$,
+between Crank--Nicolson's $t=0.0456$ and Euler's $t=0.0584$, reaching $+30.4$
+against $+26.2$ and $+27.7$ --- no scheme is better than the others there in any
+useful sense. At $N=128$, the finest and most demanding rung, backward is the
+only one of the three that does not diverge at all: it completes the full
+$13\,335$ steps to $t=0.1$ where Euler failed at $t=0.0398$ and Crank--Nicolson
+at $t=0.0304$. It is also not a fix: the $N=128$
+backward run that completes reports
+$E^{\mathrm{vol}}_{\mathrm{rel}} = -1.000$, which is to say it integrates
+stably to the end time and arrives there with no droplet. Note that the pair
+argument \eqref{eq:rectify} does not extend to BDF2 as written --- a two-step
+operator has no single-step amplification factor that is a rational function of
+$z$ alone --- so its advantage here is attributed to L-stability at second order
+rather than to a rectification count.
+
+Raising the time order of the \emph{momentum} equation is a separate question,
+and it was measured separately: at $N=64$ with the calibrated capillary step
+$\Delta t = 2\times10^{-5}\,\mathrm{s}$, backward on momentum peaks at about
+$48$ in the reported error metric and Crank--Nicolson with coefficient $0.9$
+reaches $10^{102}$.
+Momentum therefore stays on Euler in every arm of
+Table~\ref{tab:coupled-production}, and only $\partial_t\psilev$ varies, so the
+comparison across rows is a single-variable one.
+
+\paragraph{Conclusion of this subsection.} Three time discretizations of the
+level set, spanning first-order L-stable, second-order A-stable and second-order
+L-stable, change when the run fails and by how much, and none of them changes
+\emph{whether} it fails. The time discretization is not the driver of the coupled
+failure.
+
+\subsection{The drain is seeded entirely by curvature error}
+\label{sec:coupled-headline}
+
+The remaining hypotheses were two, and they are mutually exclusive. Either the
+failure is intrinsic to the source under two-way coupling --- the loop
+\eqref{eq:capillaryloop} has gain greater than one for any surface-tension force,
+because the source reads a computed velocity and no computed velocity is exact
+--- or the loop requires a specific seed, namely the curvature error, and would
+be harmless without it. The two differ in what would have to be repaired, so the
+experiment that separates them is the one worth running.
+
+It can be run with committed code and no new model, because this case has an
+exact discrete curvature. The interface is a circle of radius $R$, so
+$\kappa = 1/R = 1000\,\mathrm{m^{-1}}$ everywhere on it, and
+\texttt{constantCurvatureSurfaceTension} assembles the force flux with $\kappa$
+pinned to that value. With $\kappa$ constant the capillary flux
+$\sigma\,\kappa\,\mathrm{snGrad}(\alpha)_f\,|\mathbf{S}_f|$ is
+$\sigma\kappa$ times a discrete surface-normal gradient of a cell field, i.e.\ an
+exact discrete gradient; it lies in the range of the same operator the pressure
+Laplacian inverts, so the pressure equation absorbs it and the residual velocity
+is zero to round-off. This arm therefore starves loop
+\eqref{eq:capillaryloop} of its seed by construction, while changing nothing else
+--- the same solver, the same level-set transport, the same source, the same time
+step.
+
+\paragraph{The seed is measurably absent.} Three independent quantities, measured
+at $N=32$ with the exact-curvature force, confirm that the arm does what it is
+supposed to do rather than merely appearing to:
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+quantity & exact curvature & production curvature \\
+\midrule
+interface Courant number, max & $9.1\times10^{-11}$ & not measured \\
+$\mathrm{rAU}/\mathrm{rAU}_f$ capillary-pressure velocity residual, max
+  & $3.0\times10^{-9}\,\mathrm{m/s}$ & not measured \\
+non-absorbable capillary flux fraction $\max|R_f|/\max|\phi_g|$
+  & $6.5\times10^{-11}$ & $1.7\times10^{-5}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The third row is the sharpest of the three and needs its definition.
+$\phi_g$ is the capillary face flux delivered to the pressure equation and
+$R_f = \phi_g - \phi_{p}$ is what remains of it after the pressure projection has
+subtracted the flux of the solved pressure field, evaluated on the faces that
+carry the force ($|\mathrm{snGrad}(\alpha)_f| > 0$). It is exactly the part of
+the capillary flux that the projection \emph{cannot} absorb, and it is what
+\texttt{fvc::reconstruct} turns into a spurious velocity. With the exact
+curvature that fraction is $6.5\times10^{-11}$ --- round-off --- against
+$1.7\times10^{-5}$ for the production delivery, six orders of magnitude larger.
+The interface Courant number of $9.1\times10^{-11}$ says the same thing in the
+transport variable: the interface does not move.
+
+\paragraph{The result.} Against that force, the strain-cancelling source does not
+drain the droplet at all.
+
+\begin{table}[htbp]
+\centering
+\caption{Coupled stationary droplet with the \emph{exact} curvature force
+(\texttt{constantCurvatureSurfaceTension}, $\kappa = 1/R = 1000\,\mathrm{m^{-1}}$,
+which is exact for a circle): relative signed phase-volume error
+\eqref{eq:evolsigned} and relative shape error at $t = 0.1\,\mathrm{s}$. Study
+\texttt{sdplsDropletMechanism2D}. The tabulated number is the relative signed
+volume error; the relative geometric (shape) error is $0.000$ in every one of the
+same cells. All twelve cases --- both source settings, both time discretizations
+of $\psilev$, all three meshes --- run the full $0.1\,\mathrm{s}$. The band
+gradient error was not measured in this study.}
+\label{tab:coupled-exact}
+\small
+\begin{tabular}{llrrr}
+\toprule
+source & $\partial_t\psilev$ & $N=32$ & $N=64$ & $N=128$ \\
+\midrule
+\texttt{noSource} & \texttt{Euler}         & $0.000$ & $0.000$ & $0.000$ \\
+\texttt{noSource} & \texttt{CrankNicolson} & $0.000$ & $0.000$ & $0.000$ \\
+\textbf{R}        & \texttt{Euler}         & $0.000$ & $0.000$ & $0.000$ \\
+\textbf{R}        & \texttt{CrankNicolson} & $0.000$ & $0.000$ & $0.000$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Every entry of Table~\ref{tab:coupled-exact} is $0.000\times10^{0}$ in the
+relative signed volume error and $0.000\times10^{0}$ in the relative geometric
+error, and every one of the twelve runs completes the full $0.1\,\mathrm{s}$.
+Compare row by row against Table~\ref{tab:coupled-production}. The same source,
+in the same solver, on the same meshes, with the same time steps, differing from
+these runs only in where the curvature comes from, destroys the droplet at $N=32$
+and diverges at $N=64$ and $N=128$.
+
+\medskip
+\noindent\fbox{\parbox{0.97\linewidth}{%
+\textbf{The coupled drain is seeded entirely by curvature error.} With a
+surface-tension force whose spurious current is machine zero by construction, the
+SDPLS source \textbf{R} produces no phase-volume error and no shape error at any
+resolution, on either time discretization, in twelve cases out of twelve. With
+the production curvature the same source destroys the droplet at $N=32$ and
+diverges at $N=64$ and $N=128$. The alternative hypothesis --- that the failure is
+intrinsic to the source under two-way coupling --- is falsified. The loop
+$\psilev \rightarrow \kappa \rightarrow \mathbf{f}_\sigma \rightarrow \mathbf{v}
+\rightarrow a \rightarrow \psilev$ has no other seed: remove the curvature error
+and the source is harmless.}}
+\medskip
+
+This is the single most consequential measurement in the coupled investigation,
+because it moves the defect. The prior record established the \emph{mechanism} of
+the failure --- a mesh-locked mode-4 parasitic current at
+$3.9\times10^{-4}\,\mathrm{m/s}$ with a circular interface in the sourceless run,
+amplified $260\times$ to $1.0\times10^{-1}\,\mathrm{m/s}$ with a squared
+interface when the source is on --- and left open whether the source or the
+coupling was to blame. It is neither: it is the curvature.
+
+\paragraph{Scope limit, which must be stated with the result.} With $\kappa$
+pinned to a constant the velocity is of order $10^{-11}\,\mathrm{m/s}$ and the
+interface never moves. That is a degenerate configuration, and it must not be
+read as a demonstration that \textbf{R} behaves well under two-way coupling in
+general. What it proves is a necessary condition: the loop \emph{requires} the
+curvature-error seed, and with the seed removed the source is inert rather than
+destructive. What it does not prove is that \textbf{R} is well behaved against an
+accurate but imperfect force, because no such force was run here. The correct
+reading is that the repair belongs on the force side of the loop --- not that any
+particular force performs the repair.
+
+That distinction is not academic, and this codebase already contains the
+counterexample. The well-balanced conservative surface-tension model of
+Abu-Al-Saud, Popinet and Tchelepi \cite{abualsaud2018} is implemented here as
+\texttt{integralSurfaceTension}, and on the $N=64$ lab-frame translating
+capillary gate it is dynamically \emph{unstable}: the first-step maximum of
+$|\mathbf{v} - \mathbf{v}_{\mathrm{trans}}|$ is
+$1.003\times10^{-2}\,\mathrm{m/s}$ and the run terminates with a
+floating-point exception at $t = 9.33\times10^{-4}\,\mathrm{s}$, against
+$1.09\times10^{-8}\,\mathrm{m/s}$ and a run reaching $t=0.05$ for the
+exact-curvature control on the same gate. Better static balance can coexist with
+larger dynamic feedback gain. Identifying a force that both reduces the curvature
+error and keeps the loop gain below one is open work, and nothing here claims it
+is easy.
+
+\subsection{The conservative (divergence-form) source, and a retraction}
+\label{sec:rdiv}
+
+\texttt{Rdiv} is a rewrite of the same continuum source in divergence form. With
+$\mathbf{w} = (\nhat\cdot\mathbf{v})\,\nhat$ the interface-normal part of the
+velocity and $\phi_{\mathbf{w}} = \mathrm{flux}(\mathbf{w})$ its face flux, the
+matrix it assembles is
+\begin{equation}
+  \mathcal{S}_{\mathrm{div}} \;=\;
+    \mathrm{div}(\phi_{\mathbf{w}}, \psilev)
+  - \mathrm{div}(\phi, \psilev)
+  - \mathrm{Sp}\bigl(\nabla\cdot\mathbf{w} - a,\; \psilev\bigr),
+  \label{eq:rdivassembly}
+\end{equation}
+which at the continuum collapses to $\psilev\,(a - \nabla\cdot\mathbf{v})$, i.e.\
+to the algebraic source plus the compressibility correction the base equation
+already carries. The motivation was structural: the two divergence terms are
+conservative, their global sum telescoping to boundary fluxes, which is a
+property the algebraic form lacks.
+
+\paragraph{It had never been run kinematically.} This has to be said before any
+result is quoted from it. The verification cases
+(\texttt{cases/\{2Dvortex,3Dshear,3Ddeformation\}/system/fvSchemes.template})
+carried no \texttt{div(phiW,psi)} entry, so \texttt{fvm::div(phiW,psi)} aborted
+at the first time step. \texttt{Rdiv} was therefore not merely untested on the
+prescribed-velocity ladders --- it was \emph{unrunnable} on them, and every
+statement ever made about it came from coupled runs alone.
+
+\paragraph{Run kinematically, it does not converge.} Study
+\texttt{sdplsRdivConv2Dvortex} is the 2D reversed vortex at $T=2$, oscillation
+on, $\mathrm{CFL}=0.5$, solver \texttt{leiaLevelSetFoam} with a
+\emph{prescribed, divergence-free} velocity: no momentum equation, no pressure
+equation, no surface-tension force, no curvature, and therefore no capillary
+feedback loop of any kind. Table~\ref{tab:rdiv-kinematic} gives all three
+metrics, at the instants the protocol of Section~\ref{par:reversal} assigns them.
+
+\begin{table}[htbp]
+\centering
+\caption{Kinematic convergence of the divergence-form source. 2D reversed vortex,
+$T=2$, $\mathrm{CFL}=0.5$, prescribed divergence-free velocity, study
+\texttt{sdplsRdivConv2Dvortex}. Band gradient error read at $t=T/2$, shape and
+volume error at $t=T$, per the reversed-flow protocol. Fitted orders over the
+full seven-rung ladder. \emph{Every run completed}: the \texttt{solverFailed}
+column is blank throughout, so these are converged solutions that are wrong and
+get worse under refinement, not crashes.}
+\label{tab:rdiv-kinematic}
+\small
+\begin{tabular}{lrrrrrrrr}
+\toprule
+$N$ & 32 & 45 & 64 & 90 & 128 & 181 & 256 & order \\
+\midrule
+\multicolumn{9}{l}{\emph{band gradient error} $\bigl\|\gradpsi-1\bigr\|$ at $t=T/2$}\\
+\texttt{noSource} & 1.222 & 1.529 & 1.637 & 1.666 & 1.675 & 1.663 & 1.673 & $-0.116$ \\
+\textbf{R}        & 0.344 & 0.240 & 0.172 & 0.135 & 0.0958 & 0.0536 & \textbf{0.0309} & $\mathbf{+1.112}$ \\
+\texttt{Rdiv}     & 0.391 & 0.256 & 1.564 & 8.002 & 20.48 & 103.3 & \textbf{668.9} & $\mathbf{-3.800}$ \\
+\addlinespace
+\multicolumn{9}{l}{\emph{fitted orders of the other two metrics}}\\
+\multicolumn{9}{l}{shape error at $t=T$:\quad \texttt{noSource} $+2.134$,\quad \textbf{R} $+1.883$,\quad \texttt{Rdiv} $-1.306$} \\
+\multicolumn{9}{l}{volume error at $t=T$:\quad \texttt{noSource} $+2.733$,\quad \textbf{R} $+2.090$,\quad \texttt{Rdiv} $-1.544$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All three metrics agree, and they agree in the direction that matters. The
+divergence form starts competitive with \textbf{R} on the two coarsest meshes
+($0.391$ against $0.344$ at $N=32$, $0.256$ against $0.240$ at $N=45$) and then
+diverges without bound, reaching a band gradient error of $668.9$ at $N=256$
+where \textbf{R} is at $0.0309$: a fitted order of $-3.800$ against $+1.112$. The
+shape error at $t=T$ diverges at $-1.306$ where both other arms converge above
+$+1.8$, and the volume error diverges at $-1.544$, reaching a relative volume
+error of $1.36$ --- $136\%$ --- at $N=256$. (\textbf{R}'s $+1.112$ here and the
+$+1.228$ quoted in Section~\ref{sec:verification} are the same source on the same
+case, fitted over different refinement ladders in independently configured
+studies; the difference between them is the spread of a least-squares fit over
+different rungs, not a disagreement.) Every one of these runs completed. No
+solver failed, no time step was rejected, no field went to \texttt{NaN}. These are
+converged discrete solutions of a wrong equation, and refinement makes them
+worse.
+
+\medskip
+\noindent\fbox{\parbox{0.97\linewidth}{%
+\textbf{Retraction.} The companion deck's section \emph{Coupled: the negative
+result} presents the coupled \texttt{Rdiv} results --- competitive at $N=32$,
+draining at $N=64$, diverging at $N=128$ --- as evidence about the coupled
+capillary feedback loop, and describes \texttt{Rdiv} as the conservative rewrite
+that should have removed the drain structurally. \emph{That reading is
+falsified.} \texttt{Rdiv} fails in the same qualitative pattern --- acceptable
+on the coarsest meshes, divergent as the mesh refines --- on a prescribed,
+divergence-free velocity field with no momentum equation, no surface-tension
+force, no curvature and no feedback of any kind
+(Table~\ref{tab:rdiv-kinematic}: band gradient order $-3.800$, shape $-1.306$,
+volume $-1.544$, with every run completing). Its coupled behaviour is therefore
+explained by a defect in the discrete operator \eqref{eq:rdivassembly} itself and
+requires no appeal to the capillary loop at all. The corrected reading is that
+\texttt{Rdiv} is not admissible as evidence about the loop --- in either
+direction --- until it converges kinematically. The row \emph{``conservative
+(divergence) rewrite''} in the deck's table of eliminated candidates is withdrawn
+on the same ground.}}
+\medskip
+
+\paragraph{Coupled behaviour, for the record, with one arm labelled as a null
+test.} Study \texttt{sdplsRdivDroplet2D} ran the divergence form on the same
+coupled droplet, against both surface-tension forces and both admissible time
+discretizations of $\psilev$ (Table~\ref{tab:rdiv-coupled}).
+
+\begin{table}[htbp]
+\centering
+\caption{Coupled stationary droplet with the divergence-form source
+\texttt{Rdiv}: relative signed phase-volume error \eqref{eq:evolsigned} at
+$t=0.1\,\mathrm{s}$ or at termination. Study \texttt{sdplsRdivDroplet2D}, 12
+cases. \emph{The exact-curvature rows are a null test} --- see the text: the
+\texttt{Rdiv} operator is not exercised there.}
+\label{tab:rdiv-coupled}
+\small
+\begin{tabular}{llrrr}
+\toprule
+force & $\partial_t\psilev$ & $N=32$ & $N=64$ & $N=128$ \\
+\midrule
+exact curvature (null test) & \texttt{Euler}    & $0.000$ & $0.000$ & $0.000$ \\
+exact curvature (null test) & \texttt{backward} & $0.000$ & $0.000$ & $0.000$ \\
+\addlinespace
+production curvature & \texttt{Euler}    & $-9.795\times10^{-3}$ & $+17.8$ diverged $t=0.0649$ & crashed $t=0.0288$ \\
+production curvature & \texttt{backward} & $-8.371\times10^{-3}$ & $-1.000$, full run & $+19.7$ diverged $t=0.0412$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The exact-curvature rows must be labelled for what they are, and the label is not
+a formality. With the exact-curvature force the velocity is of order
+$10^{-11}\,\mathrm{m/s}$, so $\mathbf{w} = (\nhat\cdot\mathbf{v})\nhat \approx
+\mathbf{0}$, $\phi_{\mathbf{w}} \approx 0$, and \emph{every term} of
+\eqref{eq:rdivassembly} is approximately zero. Those six cases show that the drain
+needs the curvature seed --- which is the same conclusion
+Section~\ref{sec:coupled-headline} draws, and it is worth having twice --- but
+they \emph{cannot} validate the discretization, because the operator is never
+exercised. Reporting them as a decisive result for \texttt{Rdiv}, as was done
+when they were first obtained, was an error and is corrected here.
+
+The same caveat applies to the exact-curvature arms of
+Table~\ref{tab:coupled-exact}: with the velocity at machine zero the strain $a$
+is also at machine zero, so the algebraic source is likewise inert there. The
+difference between the two --- and it is the whole difference --- is that
+\textbf{R} is independently validated on the kinematic ladders, converging the
+band gradient error at $+1.112$ on this very study
+(Table~\ref{tab:rdiv-kinematic}) and at $+0.74$ and $+0.668$ on the ladders of
+Section~\ref{sec:verification}, whereas \texttt{Rdiv} fails there. A null test is
+evidence about the \emph{seed}; it is never evidence about the \emph{operator},
+and an operator that has passed no other test has nothing to fall back on.
+
+\paragraph{A hypothesis for the defect, stated as a hypothesis.} Two features of
+\eqref{eq:rdivassembly} are candidates, and neither has been tested.
+
+\emph{The implicit coefficient has no sign guarantee.} In the Patankar
+decomposition $S = S_C + S_P\,\psilev$ the last term of
+\eqref{eq:rdivassembly} contributes
+\begin{equation}
+  S_P \;=\; a - \nabla\cdot\mathbf{w},
+  \label{eq:rdivsp}
+\end{equation}
+and Patankar's positive-coefficient rule \cite{patankar1980} requires
+$S_P \le 0$ for the assembled system to retain its M-matrix property: a positive
+$S_P$ subtracts from the diagonal and can destroy diagonal dominance. Nothing in
+\eqref{eq:rdivsp} bounds its sign --- wherever the interfacial stretching exceeds
+the divergence of the normal velocity, $S_P > 0$. This is precisely the failure
+the library's \texttt{strictNegativeSpLinearImplicit} member exists to prevent
+for the algebraic source, by taking $S_p = \min(f_{nl},0)$ and moving the
+positive part to the explicit side; the divergence form has no such clamp,
+because its coefficient is assembled from two fields rather than chosen.
+
+\emph{The coefficient contains second derivatives of $\psilev$.} With
+$\mathbf{w} = (\nhat\cdot\mathbf{v})\nhat$ and $\nhat =
+\nabla\psilev/\gradpsi$, the term $\nabla\cdot\mathbf{w}$ contains
+$\nabla\nhat$, i.e.\ second derivatives of the discrete level set. By the
+argument of Section~\ref{sec:sourceerror}, a first derivative of the solution
+error behaves like $|e|/h$; a second behaves like $|e|/h^2$, so the coefficient
+gets \emph{noisier} as $h$ shrinks. That is consistent with a defect that worsens
+under refinement, which is what Table~\ref{tab:rdiv-kinematic} measures, and it
+is consistent with the algebraic form --- which differentiates $\psilev$ once,
+not twice --- converging on the same ladder.
+
+Both are conjectures. Neither is established by anything measured here, and the
+observation that a defect worsens under refinement is consistent with many
+causes. The experiment that would test the first is a sign-split variant of
+\eqref{eq:rdivassembly} that clamps \eqref{eq:rdivsp} the way
+\texttt{strictNegativeSpLinearImplicit} clamps the algebraic coefficient, moving
+$\max(S_P,0)\,\psilev^n$ to the explicit side and leaving $\min(S_P,0)$ on the
+diagonal, run on the same seven-rung ladder. If the divergence appears at the
+same rung with the clamp in place, the sign hypothesis is dead and the second
+candidate is the one to pursue. That experiment has not been run.
+
+\subsection{Two invariants, and the measurement that separates them}
+\label{sec:budget}
+
+A conservative source form conserves $\int\psilev\,\mathrm dV$. The quantity the
+droplet studies measure is $\mathrm{vol}\{\psilev < 0\}$. These are different
+functionals of the same field, and the confusion between them is what motivated
+\eqref{eq:rdivassembly} in the first place. The per-step diagnostic
+\texttt{psiConservationCSV} now emits both in the same row, together with a
+term-by-term budget of the discrete transport equation
+\begin{equation}
+  \sum_c \bigl(\psilev^{n+1}_c - \psilev^{n}_c\bigr)\,|\Omega_c|
+  \;=\; \underbrace{-\Delta t \!\!\sum_{f \in \partial\Omega}\!\! \phi_f\psilev_f}_{\text{flux}}
+  \;+\; \underbrace{\Delta t \sum_c (\nabla\cdot\phi)_c\,\psilev_c\,|\Omega_c|}_{\text{the non-flux } \mathrm{Sp} \text{ term}}
+  \;+\; \underbrace{\Delta t \sum_c S_c\,|\Omega_c|}_{\text{source}},
+  \label{eq:psibudget}
+\end{equation}
+in which the flux term telescopes over interior and processor faces and survives
+only on the non-coupled boundary --- which, on this closed case with
+\texttt{noSlip} walls, is identically zero.
+
+\begin{table}[htbp]
+\centering
+\caption{Stage-0 budget of $\int\psilev\,\mathrm dV$ on the coupled stationary
+droplet, production curvature, study \texttt{sdplsPsiBudgetDroplet2D}. Column 1:
+relative drift of $\int\psilev\,\mathrm dV$. Column 2: relative signed phase
+volume error \eqref{eq:evolsigned}, the same metric as
+Table~\ref{tab:coupled-production}. Column 3: the accumulated non-flux
+$\mathrm{Sp}$ contribution of \eqref{eq:psibudget}, with
+$(\nabla\cdot\phi)_c$ the discrete divergence of the volumetric face flux.
+Gradient and shape errors were not measured in this study.}
+\label{tab:psibudget}
+\small
+\begin{tabular}{llrrr}
+\toprule
+source & $N$ & $\Delta\!\int\!\psilev\,\mathrm dV / \!\int\!\psilev\,\mathrm dV$
+       & $E^{\mathrm{vol}}_{\mathrm{rel}}$ & \texttt{BUDGET\_DIVPHI} \\
+\midrule
+\texttt{noSource} & 32 & $-3.221\times10^{-12}$ & $+2.810\times10^{-3}$ & $-2.137\times10^{-22}$ \\
+\texttt{noSource} & 64 & $+2.893\times10^{-13}$ & $+1.843\times10^{-4}$ & $+2.561\times10^{-23}$ \\
+\textbf{R}        & 32 & $-2.188\times10^{-4}$  & $-1.000$              & $+3.280\times10^{-26}$ \\
+\texttt{Rdiv}     & 32 & $-1.293\times10^{-6}$  & $-9.795\times10^{-3}$ & $+2.251\times10^{-23}$ \\
+\texttt{Rdiv}     & 64 & $-1.142\times10^{-2}$  & $+6.026$ (diverged $t=0.0656$) & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three conclusions follow from Table~\ref{tab:psibudget}, and all three close
+questions that had been open.
+
+\emph{There is no flux-consistency bug.} With the source off,
+$\int\psilev\,\mathrm dV$ is conserved to machine precision ---
+$-3.2\times10^{-12}$ at $N=32$ and $+2.9\times10^{-13}$ at $N=64$, relative ---
+so the assembled transport operator conserves what it is supposed to conserve and
+the drain cannot be attributed to a defect in the flux assembly.
+
+\emph{The non-flux term costs nothing measurable.} The
+$-$\texttt{fvm::Sp}$(\nabla\cdot\phi,\psilev)$ term of the advective
+(Hamilton--Jacobi) form does not telescope, and the concern was that it breaks
+conservation at a level that matters. It does not: its accumulated contribution
+is between $10^{-22}$ and $10^{-26}$ in every row, which is to say the
+intermediate PIMPLE fluxes on this case are discretely solenoidal to round-off.
+The earlier worry was wrong, and it can be retired.
+
+\emph{The two invariants are decoupled, by four orders of magnitude, and this is
+now measured rather than argued.} At $N=32$ the \textbf{R} arm drifts
+$\int\psilev\,\mathrm dV$ by only $-2.2\times10^{-4}$ while destroying the
+droplet entirely, $E^{\mathrm{vol}}_{\mathrm{rel}} = -1.000$. Conversely
+\texttt{Rdiv} conserves $\int\psilev\,\mathrm dV$ \emph{better} than the
+algebraic form does --- $-1.3\times10^{-6}$ at $N=32$, as a flux form should ---
+while still losing about $1\%$ of the phase volume, and at $N=64$ it drifts
+$\int\psilev\,\mathrm dV$ by $-1.1\times10^{-2}$ and diverges. Conservation of
+$\int\psilev\,\mathrm dV$ was never evidence about $\mathrm{vol}\{\psilev<0\}$:
+$\psilev$ can be conserved globally while its zero contour sweeps through cells.
+The design argument that a flux form ``cannot drain'' the droplet is retracted on
+this measurement, as it already is in the source documentation, and the
+diagnostic now emits both integrals in the same row so that no future claim can
+be built on one of them alone.
+
+One column of the budget is deliberately absent. \texttt{BUDGET\_SOURCE} is
+\texttt{NaN} for \texttt{Rdiv}, because the decomposition \eqref{eq:psibudget}
+assumes an algebraic $S = f_{nl}\,\psilev$ and the divergence form is not one; the
+diagnostic flags the row rather than reporting a number it cannot compute. The
+$N=64$ \texttt{Rdiv} row's \texttt{BUDGET\_DIVPHI} is likewise not reported here
+because that run diverged.
+
+% ============================================================================
+\section{Two models measured in response, and what they do not fix}
+\label{sec:remedies}
+
+Two models were implemented and measured in response to the coupled result. Both
+are useful; neither addresses the failure of Section~\ref{sec:coupled}, and
+saying so precisely is more informative than either promoting or discarding them.
+
+\subsection{Exact-in-time delivery of the source: the exponential linearization}
+\label{sec:exp}
+
+The rectification identified in \eqref{eq:rectify} is a property of the rational
+one-step factor $G(z) = 1/(1-z)$, not of the continuum source. With the
+coefficient frozen at the old time level --- which is what every member of this
+hierarchy does, since $f_{nl}$ is evaluated from $\psilev^n$ and $\mathbf{v}$
+before the matrix is assembled --- the source is the linear scalar ordinary
+differential equation $\mathrm d\psilev/\mathrm dt = a\,\psilev$, whose exact
+one-step solution is the multiplicative integrating factor $\psilev^{n+1} =
+\psilev^n e^{z}$. The three existing linearizations are rational approximations
+of that same factor. The \texttt{exponential} member delivers it directly, by
+setting
+\begin{equation}
+  S_p = 0, \qquad
+  S_c = \psilev^n\,\frac{\exp(a\,\Delta t) - 1}{\Delta t},
+  \label{eq:expsource}
+\end{equation}
+so that, paired with implicit Euler on $\partial_t\psilev$, the assembled step
+returns $\psilev^{n+1} = \psilev^n \exp(a\Delta t)$ exactly, at any $\Delta t$.
+The unit test \texttt{leiaTestSdplsSource} asserts precisely that: the one-step
+update matches the closed form to $1.11\times10^{-16}$, with $89$ assertions
+passed and $0$ failed. In practice $S_c$ is formed as
+$\psilev^n a\,\varphi_1(z)$ with $\varphi_1(z) = (e^z-1)/z$, so the $z\to0$ limit
+is exactly $a\,\psilev^n$ in floating point rather than a cancellation of two
+nearly equal numbers.
+
+Two consequences are worth separating, because one of them is a real property and
+the other is a measurement that came back negative.
+
+\paragraph{What it gives.} Exactness in time, and unconditional sign
+preservation. $\exp(z)$ is strictly positive and finite for every real $z$,
+whereas $1+z$ changes sign at $z=-1$ and $1/(1-z)$ has a pole at $z=1$. A
+strictly positive multiplicative factor cannot flip the sign of $\psilev$ in any
+cell, so the topology of the discrete zero contour is preserved at any time step
+--- $\psilev G = 0 \iff \psilev = 0$ for $G>0$. That is the SDPLS design property
+itself, and this member is the only linearization that holds it unconditionally.
+It also removes the $\pm z$ rectification identically rather than to leading
+order, because $e^{+z}e^{-z}=1$ is an algebraic identity and not a truncation.
+The exactness is conditioned on $\partial_t\psilev$ being discretized with Euler;
+with Crank--Nicolson the exponential coefficient is still delivered but the pair
+no longer cancels exactly. The price is that a multiplicative factor has no exact
+representation as a linear diagonal coefficient --- $S_p$ can only produce
+$1/(1-S_p\Delta t)$ --- so the whole term goes onto $S_c$ and the member has no
+diagonal support: the M-matrix property of the assembled system must come from
+the transport operator alone \cite{patankar1980}.
+
+\paragraph{What it does not give: any change in convergence order.} Study
+\texttt{sdplsExpSource2Dvortex} runs the 2D vortex, $T=1$, oscillation off,
+$\mathrm{CFL}=0.5$, over the same seven-rung ladder $N=32\ldots256$, with
+\textbf{R} delivered by \texttt{simpleLinearImplicit} and by
+\texttt{exponential}:
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+fitted order & \texttt{simpleLinearImplicit} & \texttt{exponential} \\
+\midrule
+band gradient error       & $+1.343$ & $+1.331$ \\
+volume error at $t=T$     & $+1.925$ & $+2.409$ \\
+volume error at $t=T/2$   & $+3.391$ & $+2.103$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Both volume instants are quoted because the study reports both, and the band
+gradient order is quoted as the study reports it; with the reversal switched off
+none of these columns suffers the final-time cancellation of
+Section~\ref{par:reversal}, so the choice of instant does not decide the
+comparison. The gradient orders are identical within the noise of a seven-point
+fit, and the two volume columns move in opposite directions, so no consistent
+direction can be read from them either. The shape error is \emph{not populated} in this study,
+because it was configured with the oscillation off and the shape error is defined
+against the initial condition; that column is missing rather than favourable, and
+the comparison is therefore two metrics wide, not three.
+
+That result is what the error estimate of Section~\ref{sec:sourceerror} predicts,
+and it is worth stating as a confirmation rather than as a disappointment. The
+rectification the exponential factor removes is a \emph{temporal} artefact, of
+size $O(z^2)$ per $\pm$ pair with $z = a\Delta t$. The order loss established in
+Section~\ref{sec:sourceerror} is \emph{spatial}, and it comes from
+$(\nabla e)_h = O(h^{p-1})$ --- a term the time discretization cannot touch. A
+temporal correction cannot repair a spatial order, and this measurement is the
+direct test of that statement. The exponential member's value is exactness in
+time and unconditional sign preservation, and the honest verdict is that it buys
+nothing in convergence order on the kinematic ladders.
+
+\subsection{Global volume correction by a uniform level-set shift}
+\label{sec:volcorr}
+
+The second model is the global volume correction of Song, Long, Cai and Pan
+\cite{song2025}, implemented as \texttt{newtonShiftVolumeCorrection}. A single
+scalar $\varepsilon$, one number for the whole mesh, is added to the level set,
+\begin{equation}
+  \psilev \;\leftarrow\; \psilev + \varepsilon,
+  \qquad
+  \varepsilon \;\text{ the root of }\;
+  f(\varepsilon) = \sum_c \alpha_c(\psilev + \varepsilon)\,|\Omega_c| - V_{\text{target}},
+  \label{eq:newtonshift}
+\end{equation}
+found by Newton--Raphson from $\varepsilon_0 = 0$ and safeguarded by bisection.
+The reason this model belongs in a paper about the signed-distance property is
+that $\varepsilon$ is spatially \emph{constant}, so
+$\nabla(\psilev + \varepsilon) = \nabla\psilev$ --- and not only in the
+continuum. The discrete Gauss gradient of a cell is
+$|\Omega_c|^{-1}\sum_f \mathbf{S}_f\psilev_f$ with $\sum_f \mathbf{S}_f =
+\mathbf{0}$ for a closed cell, and the least-squares gradient is a linear
+combination of differences $\psilev_N - \psilev_P$; both are invariant under a
+uniform shift bit for bit, provided the boundary values shift with the interior,
+which \texttt{zeroGradient} does. The correction therefore restores the phase
+volume \emph{without spending} the quantity this paper is about: $\gradpsi$ is
+untouched, and neither redistancing trigger --- both are functions of $\gradpsi$
+alone --- can be provoked by it.
+
+\paragraph{The finding is a crossover.} It helps where the uncorrected volume
+error is large and hurts where it is already small.
+
+\begin{table}[htbp]
+\centering
+\caption{Global volume correction, fitted orders. Upper block: 3D shear,
+$T=3$, oscillation on, four rungs $N = 64, 81, 102, 128$, study
+\texttt{sdplsVolCorr3Dshear}; band gradient error at $t=T/2$, shape and volume at
+$t=T$. Lower block: 2D vortex, oscillation off, seven rungs $N=32\ldots256$,
+study \texttt{sdplsVolCorr2Dvortex}; the shape column does not exist there, and
+is marked accordingly. The entry $5.923$ is \emph{not} a convergence rate --- see
+the warning below the table.}
+\label{tab:volcorr}
+\small
+\begin{tabular}{lrrr}
+\toprule
+arm & gradient $(T/2)$ & shape $(T)$ & volume $(T)$ \\
+\midrule
+\multicolumn{4}{l}{\emph{3D shear}, \texttt{sdplsVolCorr3Dshear}}\\
+\texttt{noSource}                     & $-0.171$ & $+1.866$ & $+3.928$ \\
+\texttt{noSource} + \texttt{newtonShift} & $-0.161$ & $+1.745$ & $+1.050$ \\
+\textbf{R}                            & $+0.679$ & $+0.916$ & $+0.230$ \\
+\textbf{R} + \texttt{newtonShift}     & $+0.707$ & $+1.293$ & $5.923$ (floor) \\
+\addlinespace
+\multicolumn{4}{l}{\emph{2D vortex}, \texttt{sdplsVolCorr2Dvortex}}\\
+\texttt{noSource}                     & $-0.053$ & not measured & $+2.245$ \\
+\texttt{noSource} + \texttt{newtonShift} & $-0.053$ & not measured & $+0.507$ \\
+\textbf{R}                            & $+1.343$ & not measured & $+1.925$ \\
+\textbf{R} + \texttt{newtonShift}     & $+1.360$ & not measured & $+0.231$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The gradient column behaves exactly as the construction requires: $-0.171$ against
+$-0.161$, $+0.679$ against $+0.707$, $-0.053$ against $-0.053$, $+1.343$ against
+$+1.360$. Within the resolution of a four- or seven-point fit the correction does
+not touch the signed-distance property in either direction, which is the claim
+the uniform shift makes and the first thing that had to be checked. The
+uncorrected \textbf{R} arm of the 2D block reproduces the $+1.343$ band gradient
+order and the $+1.925$ volume order of the independently configured exponential
+study of Section~\ref{sec:exp} digit for digit --- the two studies pin the same
+case, ladder and linearization, so that agreement is the cross-check that they
+measure the same thing.
+
+Where the uncorrected volume error is large, the correction converts it into
+shape accuracy. On 3D shear with the source, whose volume order is a poor $+0.230$,
+adding the shift raises the \emph{shape} order from $+0.916$ to $+1.293$ with the
+gradient order unchanged. That is the intended trade working in the intended
+direction: the volume that was being lost was being lost as a systematic
+interface displacement, and restoring it moves the interface back.
+
+Where the uncorrected volume error is already small, the correction is a net
+loss. The sourceless 3D shear arm converges in volume at $+3.928$ without help,
+and the shift drops it to $+1.050$ while also lowering the shape order from
+$+1.866$ to $+1.745$. The 2D vortex says the same thing twice: $+2.245 \to
++0.507$ without the source, $+1.925 \to +0.231$ with it. A correction that drives
+an already-converging error down to a fixed floor destroys its convergence
+\emph{rate} while improving its absolute value, and on an arm that was converging
+at nearly fourth order the rate is the thing worth having.
+
+\paragraph{The floor artifact, which must not be read as an order.} Two entries in
+the record --- the $5.923$ in Table~\ref{tab:volcorr} and a $0.016$ seen
+elsewhere in the same study group --- are not convergence rates and must never be
+quoted as such. They are the signature of an error that has been driven to the
+tolerance floor of the correction itself, where a least-squares fit through four
+or seven points is measuring nothing but noise. The smoke measurement makes the
+size of that floor explicit: at $N=32$, $t=0.05$, the relative volume error goes
+from $8.5917\times10^{-4}$ to $3.7357\times10^{-16}$ with the
+\texttt{simpleLinearImplicit} source and from $2.6103\times10^{-3}$ to
+$2.4693\times10^{-13}$ with the exponential source, converging in two Newton
+iterations, with $|\varepsilon|$ of order $0.001$ to $0.003$ cell widths. An
+error at $10^{-16}$ is at round-off; the correct report is ``no longer
+converging, pinned at the correction floor'', and the fitted number should be
+suppressed rather than printed.
+
+\paragraph{Documented limits.} Three, and they bound the model's use rather than
+qualify it. \emph{First}, a single global $\varepsilon$ conserves the
+\emph{total} phase volume and nothing else. \emph{Second}, it is therefore
+ill-posed for several disconnected bodies: with bodies $B_1,\dots,B_m$ the honest
+problem is $m$ equations $V_i(\varepsilon_i) = V_{i,\text{target}}$ in $m$
+unknowns, and one $\varepsilon$ solves their sum --- a run in which one droplet
+loses volume while another gains it reports zero total volume error while both
+bodies are wrong, and the shift inflates every body when the total is short,
+including those already too large. The remedy is a connected-component labelling
+of $\{\psilev<0\}$ with a per-body $\varepsilon_i$; it is not implemented here.
+\emph{Third}, and most important for this paper: it must not be used on the
+coupled droplet of Section~\ref{sec:coupled}. That failure is a mode-4 parasitic
+current amplified $260\times$ that squares and destroys the interface; the volume
+loss is its symptom, not a bookkeeping error. Applying the correction there would
+restore the volume \emph{number} and leave a square droplet of the correct area
+--- strictly worse than the visible failure, because a metric table would then
+show a converged volume column for a run whose interface has been destroyed. Any
+study that uses this model is required to report the shape error alongside the
+volume error and the applied shift, for exactly that reason.
+
+% ============================================================================
 \section{Negative results}
-Measured and documented in the companion deck. Retained:
+Measured and documented here and in the companion deck. Retained:
 \begin{itemize}
   \item \textbf{beta's target is structurally wrong}, and this is now measured
     rather than argued. Differentiating the transport equation and evaluating at
@@ -841,10 +1768,33 @@ Measured and documented in the companion deck. Retained:
     on it compared identical initial fields.
   \item \textbf{\texttt{sdplsBeta} requires an explicit \texttt{beta}} --- the
     missing-coefficient construction failure; explicit beats a hidden default.
+  \item \textbf{Kinematic verification is structurally blind to the coupled
+    failure.} Under a prescribed velocity the return path
+    $\psilev \rightarrow \mathbf{v}$ of \eqref{eq:capillaryloop} does not exist,
+    so no ladder of Section~\ref{sec:verification} --- however many rungs, however
+    many arms --- could have detected what Section~\ref{sec:coupled} measures. A
+    source term that reads the computed velocity must be verified on both tracks,
+    and a method paper that reports only the kinematic one is incomplete by
+    construction rather than by omission.
+  \item \textbf{A temporal correction cannot repair a spatial order.} The
+    \texttt{exponential} linearization delivers the source's one-step factor
+    exactly and removes the $O(z^2)$ rectification of \eqref{eq:rectify}
+    identically, and it changes the band gradient order by $0.012$
+    (Section~\ref{sec:exp}). The order loss of Section~\ref{sec:sourceerror} is
+    $(\nabla e)_h = O(h^{p-1})$, which no time discretization touches.
+  \item \textbf{Volume correction is a crossover, not an improvement.} Restoring
+    the phase volume with a uniform level-set shift raises the shape order where
+    the uncorrected volume error is large ($+0.916 \rightarrow +1.293$ on 3D
+    shear with the source) and destroys the convergence rate where it is already
+    small ($+3.928 \rightarrow +1.050$ on the sourceless arm of the same ladder),
+    while leaving $\gradpsi$ untouched in every arm (Section~\ref{sec:volcorr}).
 \end{itemize}
 
-Retracted, because they were artefacts of the defects of
-Section~\ref{sec:defects} rather than properties of the method:
+Retracted. The first three were artefacts of the defects of
+Section~\ref{sec:defects} rather than properties of the method; the last three
+were falsified or corrected by the coupled and conservation measurements of
+Sections~\ref{sec:coupled}, \ref{sec:rdiv} and \ref{sec:budget}, and are
+recorded here rather than deleted, at the place the original claims were made:
 \begin{itemize}
   \item ``R over-flattening near the resolution limit'' and ``R controls
     steepening, not flattening'' --- both measured with the reversed-sign
@@ -860,6 +1810,35 @@ Section~\ref{sec:defects} rather than properties of the method:
   \item Any verdict of the form ``SDPLS makes the band gradient error worse
     than no source'', which came from the same branch and, in the 3D case,
     from arms run on different advection schemes.
+  \item ``A flux form of the source \emph{cannot} drain the droplet, because its
+    fluxes telescope'' --- \emph{falsified}, and the retraction is now quantified
+    rather than argued. A conservative form conserves
+    $\int\psilev\,\mathrm dV$; the droplet lives in
+    $\mathrm{vol}\{\psilev<0\}$, and $\psilev$ can be conserved globally while
+    its zero contour sweeps through cells. The two invariants are measured to be
+    decoupled by four orders of magnitude on the very case where the claim was
+    made (Table~\ref{tab:psibudget}).
+  \item ``The coupled \texttt{Rdiv} results --- competitive at $N=32$, draining
+    at $N=64$, diverging at $N=128$ --- are evidence about the coupled capillary
+    feedback loop, and \texttt{Rdiv} is the conservative rewrite that should have
+    removed the drain structurally'' --- \emph{falsified}, at a configuration the
+    original claim never ran. \texttt{Rdiv} fails in the same pattern under a
+    \emph{prescribed}, divergence-free velocity with no momentum equation, no
+    surface-tension force, no curvature and no feedback of any kind: band
+    gradient order $-3.800$, shape $-1.306$, volume $-1.544$, with every run
+    completing (Table~\ref{tab:rdiv-kinematic}). Its coupled behaviour is a
+    property of the discrete operator \eqref{eq:rdivassembly}, and needs no
+    appeal to the loop. The corrected reading, and the reason the divergence form
+    had never been run kinematically at all --- \texttt{fvm::div(phiW,psi)}
+    aborted at the first step for want of a scheme entry --- are recorded in
+    Section~\ref{sec:rdiv}.
+  \item ``The exact-curvature \texttt{Rdiv} runs are decisive'' ---
+    \emph{corrected}: they are a \emph{null test}. With the exact-curvature force
+    the velocity is $O(10^{-11})\,\mathrm{m/s}$, so
+    $\mathbf{w} = (\nhat\cdot\mathbf{v})\nhat \approx \mathbf{0}$ and every term
+    of \eqref{eq:rdivassembly} is approximately zero. Those runs are evidence
+    about the seed, not about the operator, and they are labelled as such wherever
+    they appear (Table~\ref{tab:rdiv-coupled}).
 \end{itemize}
 
 % ============================================================================
@@ -883,14 +1862,71 @@ set cancels by time-reversal symmetry --- it reported the sourceless baseline
 as $477\times$ more accurate than the source that, on the same case without the
 reversal, is the only arm that converges.
 
+Under two-way coupling the source fails, and the failure has a single seed. On
+the stationary droplet, with the production curvature, \textbf{R} drains the
+droplet to nothing at $N=32$ and diverges at $N=64$ and $N=128$, while the
+identical solver with the source off conserves the phase volume to
+$1.2\times10^{-5}$ at $N=128$; the mechanism is a mesh-locked four-lobed
+parasitic current that the source amplifies by $260\times$ through the loop
+$\psilev \rightarrow \kappa \rightarrow \mathbf{f}_\sigma \rightarrow
+\mathbf{v} \rightarrow a \rightarrow \psilev$. Against a surface-tension force
+built from the exact curvature $\kappa = 1/R$ of the circle --- for which the
+capillary flux is an exact discrete gradient that the pressure equation absorbs,
+leaving a non-absorbable flux fraction of $6.5\times10^{-11}$ against
+$1.7\times10^{-5}$ for the production delivery --- the same source produces
+$0.000$ volume error and $0.000$ shape error at every resolution, on both time
+discretizations of $\psilev$, in twelve cases out of twelve. The loop has no
+other seed. The hypothesis that the failure is intrinsic to the source under
+two-way coupling is therefore dead, and the repair belongs on the force side.
+The scope limit belongs in the same breath: with $\kappa$ pinned constant the
+velocity is $O(10^{-11})\,\mathrm{m/s}$ and the interface never moves, so this
+proves that the loop \emph{requires} the curvature-error seed and not that
+\textbf{R} is well behaved against an accurate but imperfect force. That the
+distinction is real is shown by the well-balanced model of
+\cite{abualsaud2018}, implemented here and measured dynamically unstable on a
+translating capillary gate: better static balance can coexist with larger
+dynamic feedback gain.
+
+The time discretization is not the driver of that failure, and the divergence-form
+source is not a fix for it. Three discretizations of $\partial_t\psilev$ ---
+first-order L-stable Euler, second-order A-stable Crank--Nicolson, second-order
+L-stable backward --- change when the coupled run fails and by how much, with
+backward the best of the three (it retains the most volume at $N=32$ and is the
+only one that integrates the finest mesh to the end time at all), and none of
+them changes whether it fails; the $O(z^2)$ rectification that implicit Euler applies
+to a zero-mean oscillating strain is real, identified and removable, and removing
+it is not enough. The conservative rewrite \texttt{Rdiv} is withdrawn as evidence
+about the coupled loop entirely: it diverges on a prescribed divergence-free
+velocity with no capillary force at all, at band gradient order $-3.800$, shape
+$-1.306$ and volume $-1.544$, with every run completing --- converged solutions of
+a wrong equation rather than crashes. Its coupled behaviour needs no appeal to
+the loop, and it had never been run kinematically because the verification cases
+carried no scheme entry for its flux, so it aborted at the first step. Finally,
+the two invariants that the conservative argument had conflated are now measured
+apart: with the source off $\int\psilev\,\mathrm dV$ is conserved to machine
+precision, while the \textbf{R} arm drifts it by $-2.2\times10^{-4}$ and destroys
+the droplet in the same run --- four orders of magnitude between the quantity a
+flux form conserves and the quantity the droplet lives in.
+
 What a source term still cannot do is manufacture resolution: the cancellation
 is only as good as the normal it is built from.
 
-\paragraph{Open.} The non-reversing 3D shear and LeVeque deformation ladders,
-and an ablation isolating how much of the sub-unit convergence order
-($+0.74$, short of the discretization's formal order) belongs to the source and
-how much to the reconstruction gradient of the transport scheme, are in
-progress and are not claimed here.
+\paragraph{Open.} Four things, none of them claimed here. \emph{First}, the
+kinematic 3D shear ladder for the divergence-form source is still running, so the
+$-3.800$ of Table~\ref{tab:rdiv-kinematic} rests on the 2D vortex alone.
+\emph{Second}, the mechanism of that divergence is a hypothesis and not a result:
+the implicit coefficient \eqref{eq:rdivsp} has no sign guarantee and the
+assembly contains second derivatives of $\psilev$ through
+$\nabla\cdot\mathbf{w}$, and the experiment that would separate them is a
+sign-split variant that clamps \eqref{eq:rdivsp} the way
+\texttt{strictNegativeSpLinearImplicit} clamps the algebraic coefficient, on the
+same seven-rung ladder. \emph{Third}, the coupled result names the force as the
+place to work, and does not name a force: a model whose curvature error is small
+\emph{and} whose dynamic loop gain stays below one has not been identified, and
+the one obvious candidate in the literature is measured unstable here.
+\emph{Fourth}, the non-reversing 3D shear and LeVeque deformation ladders are
+still outstanding, and no coupled study reported here measures the band gradient
+error at all.
 
 \section*{Reproducibility}
 \begin{verbatim}
