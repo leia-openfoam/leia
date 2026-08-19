@@ -68,6 +68,30 @@ SDPLS_SOURCE  noSource;
 // at the calibrated step.
 PSI_DDT       EulerDdt;
 
+// int(psi dV) conservation drift diagnostic (psiConservationCSV function object,
+// cases/stationaryDroplet2D/system/controlDict.template). `false` = the entry is
+// present but `enabled false`, for which functionObjectList::read() never calls
+// functionObject::New and never dlopens libleiaFunctionObjects -- so every study
+// that does not set this token runs and renders exactly as before the object
+// existed, the same inert-by-default contract as SDPLS_SOURCE noSource above.
+// `true` writes psiConservation.csv, one row per time step: int(psi dV) and its
+// drift, the flux/divPhi/source decomposition of the assembled psi equation, the
+// discrete solenoidality of phi, and -- deliberately in the same row -- the phase
+// volume vol{psi < 0}, which is a DIFFERENT invariant (conflating the two is what
+// the sdplsRdiv "fluxes cannot drain" claim did, before N=64 drained and N=128
+// diverged at relative volume error +16.9).
+PSI_CONSERVATION_CSV false;
+
+// Per-time-step phase-volume correction (levelSet.volumeCorrection.type).
+// noVolumeCorrection is the base class itself and a true no-op -- an unset
+// token leaves psi untouched for the whole run, so every existing study is
+// bit-unchanged. newtonShift applies the distance-preserving uniform shift
+// psi <- psi + eps of Song et al. (2025). Read the block in the case
+// fvSolution.template before using it: it conserves TOTAL volume only, is
+// ill-posed for disconnected bodies, trades local shape for global volume, and
+// must never be used to mask the coupled-drain instability.
+VOLUME_CORRECTION noVolumeCorrection;
+
 // Exact circle curvature 1/R for constantCurvatureSurfaceTension (R = 1e-3 m).
 // Unread by every other surface-tension model.
 CONST_CURVATURE 1000;

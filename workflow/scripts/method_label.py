@@ -40,6 +40,11 @@ _LIN_TAG = {
     "explicit": "expl",
     "simpleLinearImplicit": "simpleImp",
     "strictNegativeSpLinearImplicit": "strictNegSp",
+    # NOT "exp": that is one keystroke from "expl" above, and the two are
+    # opposite arms -- explicit truncates the amplification factor to 1 + z,
+    # exponential delivers e^z exactly. A label that can be misread as the
+    # other arm is worse than no label.
+    "exponential": "expFactor",
 }
 
 # LaTeX specials that break a tabular cell.
@@ -98,6 +103,7 @@ _STF_TAG = {
     "curvaturePressurePotential": "kPressPot",
 }
 _DEFAULT_PSI_DDT = "EulerDdt"
+_DEFAULT_VOL_CORR = "noVolumeCorrection"
 _PSI_DDT_TAG = {"EulerDdt": "Euler", "CrankNicolsonDdt": "CN"}
 _GRAD_TAG = {
     "pointCellsLeastSquares":     "pcLsq",
@@ -220,9 +226,11 @@ def _euler_parts(rec):
         parts.append(f"VE:{ve}")
     ss = rec.get("SDPLS_SOURCE", "noSource")
     if ss and ss != "noSource":
-        # The linearization is part of the method: the three discretizations of
-        # the same continuum source are separate arms, and they disagreed badly
-        # until the 2026-08 sign fix.
+        # The linearization is part of the method: the discretizations of the
+        # same continuum source are separate arms, and they disagreed badly
+        # until the 2026-08 sign fix. `exponential` is not even a linearization
+        # of the same coefficient -- it applies the exact factor e^{f dt} -- so
+        # it must never be pooled with the others in a mesh ladder.
         raw = rec.get("SOURCE_SCHEME", "")
         tag = _LIN_TAG.get(raw, raw)
         b = _beta(rec)
@@ -261,6 +269,14 @@ def _euler_parts(rec):
     pd = rec.get("PSI_DDT", _DEFAULT_PSI_DDT)
     if pd and pd != _DEFAULT_PSI_DDT:
         parts.append(f"ddtPsi:{_PSI_DDT_TAG.get(pd, pd)}")
+
+    # The per-step phase-volume correction. A corrected arm and an uncorrected
+    # one are DIFFERENT METHODS -- the correction moves the interface to buy
+    # volume -- so they must never share a method string and be fitted as one
+    # convergence sequence. Default noVolumeCorrection renders nothing.
+    vc = rec.get("VOLUME_CORRECTION", _DEFAULT_VOL_CORR)
+    if vc and vc != _DEFAULT_VOL_CORR:
+        parts.append(f"volCorr:{vc}")
     return parts
 
 

@@ -146,7 +146,8 @@ SETFIELDS_APP = config.get("setfields_app", "leiaSetFields")
 _preprocess = ["cd {params.d}",
                "rm -f gradPsiError.csv leiaSetFields.csv leiaLevelSetFoam.csv"
                " leiaRedistancedLevelSetFoam.csv leiaTestRedistance.csv"
-               " leiaTestFaceCurvature.csv leiaTestCurvatureNoiseGain.csv",
+               " leiaTestFaceCurvature.csv leiaTestCurvatureNoiseGain.csv"
+               " psiConservation.csv",
                " ".join(filter(None, [SETFIELDS_APP, SETFIELDS_ARGS]))]
 
 _solve = ["cd {params.d}", f"rm -f {SOLVER}.csv .leia_solver_failed"]

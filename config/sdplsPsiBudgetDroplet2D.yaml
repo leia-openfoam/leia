@@ -1,0 +1,60 @@
+# STAGE-0 HYGIENE: how far is the assembled psi equation from conserving
+# integral(psi dV), and what does the NON-FLUX term cost?
+#
+# The Eulerian level-set equation (alphaEqn.H) is
+#     fvm::ddt(psi) + fvm::div(phi, psi) - fvm::Sp(divPhi, psi) == S.
+# For a PURE flux form, summing over cells telescopes interior faces pairwise
+# and integral(psi dV) is conserved EXACTLY at any time order -- implicit Euler
+# just as much as Crank-Nicolson. But -fvm::Sp(divPhi, psi) is a VOLUME source,
+# not a flux. It is there deliberately (the advective/Hamilton-Jacobi form
+# equals the conservative one only for a discretely solenoidal flux, which the
+# intermediate PIMPLE fluxes are not), and it breaks that conservation by an
+# amount set by how far fvc::div(phi) is from zero discretely. NOBODY HAS
+# MEASURED IT. Neither has the source's own contribution been separated.
+#
+# The new psiConservationCSV function object emits, every step: PSI_INT and its
+# drift, MAX/L2 of div(phi), the BUDGET_FLUX / BUDGET_DIVPHI / BUDGET_SOURCE /
+# BUDGET_RESIDUAL decomposition of the assembled equation, and -- in the same
+# row, deliberately -- VOL_PSI_NEG.
+#
+# WHY THE SAME ROW. integral(psi dV) and vol{psi < 0} are DIFFERENT invariants,
+# and conflating them is a mistake this project has already made and retracted:
+# the argument that a divergence-form source "cannot drain" the droplet, which
+# died when sdplsRdiv drained at N=64 and DIVERGED at N=128 (relative volume
+# error +16.9 at t=0.031). Putting both numbers in one row makes the confusion
+# impossible to repeat silently.
+#
+# WHY THE DROPLET AND NOT A KINEMATIC LADDER: under a PRESCRIBED velocity phi
+# is analytically solenoidal and the Sp term is near-zero by construction, so
+# the measurement is uninteresting there. It is the COUPLED run, where phi
+# comes from a pressure solve and carries continuity error, that can actually
+# show a cost. Rdiv is included because the retraction above is about it.
+#
+# Deliberately small: two rungs, three sources, no ladder. This answers "is
+# there a conservation leak, and how big" -- a yes/no with a magnitude, not a
+# convergence order.
+#
+#   make studies-one STUDY=sdplsPsiBudgetDroplet2D PROFILE=profiles/slurm
+
+study_name: sdplsPsiBudgetDroplet2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+solver: leiaLevelSetTwoPhaseFoam
+setfields_args: "-alphaName alpha.water"
+theme: sdpls-level-set
+
+axes_override:
+  N_CELLS: [32, 64]
+  SDPLS_SOURCE: [noSource, R, Rdiv]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  # The whole point of this study.
+  PSI_CONSERVATION_CSV: ["true"]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

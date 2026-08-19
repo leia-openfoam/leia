@@ -25,6 +25,11 @@ PER_CASE_CSVS = [
     "leiaTestVelocityExtension.csv",   # static t=0 extension verification
     "leiaTestMeanCurvature.csv",       # static curvature-accuracy test
     "leiaTestRedistance.csv",          # static redistancing gate (circle)
+    "psiConservation.csv",             # int(psi dV) drift + flux/divPhi/source
+                                       # budget + vol{psi<0}; written only when
+                                       # PSI_CONSERVATION_CSV is true, and a
+                                       # missing file simply leaves the columns
+                                       # empty (see _find_csv below)
 ]
 
 

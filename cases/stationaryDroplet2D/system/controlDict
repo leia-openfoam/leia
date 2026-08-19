@@ -54,7 +54,55 @@ maxDeltaT       6e-5;
 // The parasitic-current metrics (max|U|, mean|U|) and the Laplace pressure jump
 // are written every step to leiaSemiLagrangianLevelSetTwoPhaseFoam.csv by the
 // solver (see createDropletMetricsFile.H / writeDropletMetrics.H) -- a mesh-robust,
-// probe-free measurement that is also what the reproducible study aggregates. No
-// function objects are needed here.
+// probe-free measurement that is also what the reproducible study aggregates. It
+// needs no function object; the entry below is a separate, default-OFF
+// conservation diagnostic.
+
+// int(psi dV) CONSERVATION DRIFT DIAGNOSTIC -- OFF BY DEFAULT.
+//
+// `enabled false` with PSI_CONSERVATION_CSV defaulting to `false` in
+// cases/default.parameter makes this entry byte-identical to not having it:
+// functionObjectList::read() reads `enabled` BEFORE it selects the type
+// (OpenFOAM-v2512 db/functionObjects/functionObjectList/functionObjectList.C:1047,
+// 1100, 1108), so for a disabled entry functionObject::New is never called --
+// and the per-entry `libs` is opened inside New (functionObject.C:91-105), so
+// libleiaFunctionObjects is not even dlopened. No CSV is created, no field is
+// looked up, no MPI reduction is executed.
+//
+// GATED rather than simply switched on, because this ONE case directory is
+// shared by 29 study configs: 2 Eulerian arms (config/sdplsDropletNS2D.yaml,
+// config/sdplsDropletMechanism2D.yaml, solver leiaLevelSetTwoPhaseFoam) and 27
+// semi-Lagrangian ones, and workflow/Snakefile runs config["solver"] rather than
+// the `application` entry above. The BUDGET_* columns decompose
+//   fvm::ddt(psi) + fvm::div(phi, psi) - fvm::Sp(divPhi, psi) == S,
+// which only the Eulerian solver assembles (applications/solvers/
+// leiaLevelSetTwoPhaseFoam/alphaEqn.H:20-29). Under the SL solver PSI_INT,
+// D_PSI_INT, VOL_PSI_NEG and the DIVPHI_* columns remain honest measurements
+// while BUDGET_FLUX/BUDGET_DIVPHI/BUDGET_SOURCE/BUDGET_RESIDUAL describe an
+// equation that solver never assembles -- switch it on per study
+// (axes_override: PSI_CONSERVATION_CSV: [true]) and read those rows knowing that.
+//
+// The object writes psiConservation.csv; workflow/Snakefile rule preprocess
+// deletes it (APPEND mode would stack a second time series onto a re-run) and
+// workflow/scripts/aggregate.py PER_CASE_CSVS lifts it into the study database
+// under the psiConservation.<COLUMN> prefix.
+functions
+{
+    psiConservationCSV
+    {
+        type            psiConservationCSV;
+        libs            ( leiaFunctionObjects );
+        enabled         false;
+        writeControl    timeStep;
+        writeInterval   1;
+
+        // Defaults, shown for reference -- all three inputs are looked up by
+        // name and NaN their columns instead of aborting when absent:
+        // psi     psi;
+        // phi     phi;          // no flux registered => flux/divPhi columns NaN
+        // alpha   alpha.water;  // VOL_PSI_NEG = gSum(alpha V)
+    }
+}
+
 
 // ************************************************************************* //
