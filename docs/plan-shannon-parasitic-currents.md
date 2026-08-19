@@ -114,6 +114,61 @@ every 2D resolution (5.93e-4 / 1.50e-4 / 1.96e-4 against 2.16e-4 / 1.37e-4 /
 7.61e-5), which is the mechanism behind its known non-convergence, now expressed in
 the order parameter rather than in survival times.
 
+## 0c. First results under the plan (2026-08-19, post-fix)
+
+### The seam fix reverses the 2D convergence claim
+
+The 2D ladder re-run with the fixed filter, against the contaminated pre-fix numbers:
+
+| N | pre-fix max&#124;U&#124; | POST-fix max&#124;U&#124; | change | pre-fix shape | POST-fix shape |
+|---|---|---|---|---|---|
+| 64 | 2.2400e-03 | **2.2433e-05** | −99.0% | 3.78e-05 | 1.6252e-06 |
+| 128 | 4.1500e-04 | **2.8073e-05** | −93.2% | 5.24e-06 | 1.5318e-07 |
+| 256 | 1.0200e-04 | **8.8277e-05** | −13.5% | 8.14e-08 | 5.8863e-08 |
+
+The contamination **fell with refinement** (−99.0%, −93.2%, −13.5%), because at fixed
+np = 8 a finer mesh puts proportionally less interface on processor seams. Removing it
+therefore lowered the coarse values far more than the fine ones, which turns the
+apparent convergence into growth: post-fix max&#124;U&#124; is 2.24e-5 → 2.81e-5 → 8.83e-5,
+pairwise orders −0.32 and −1.65.
+
+**The "first configuration to converge in every metric" result was an artefact of the
+seam bug.** Shape and volume still converge cleanly (+3.41/+1.38 and +5.00/+4.09);
+the parasitic current does not. That is qualitatively the same signature as interFoam
+— interface converges, current does not — at four orders smaller magnitude.
+
+In the order parameter the post-fix 2D gain **changes sign** with resolution:
+gAvg = −7.606e-04 (N=64), −6.410e-05 (128), **+7.219e-05** (256). The loop damps at
+coarse resolution and amplifies at fine, so there is a genuine stability boundary near
+R/h ≈ 20 rather than a monotone trend. N = 512 still running.
+
+### The fixed-dt test: prediction falsified, in the useful direction
+
+Same three meshes, one dt = 5.4514e-6:
+
+| N_L | R/h | native dt | gAvg | e-folds | fixed dt | gAvg | e-folds |
+|---|---|---|---|---|---|---|---|
+| 60 | 10.0 | 1.086e-05 | +1.688e-04 | +1.55 | 5.451e-06 | **+6.656e-05** | **+1.22** |
+| 76 | 12.7 | 7.619e-06 | +1.984e-04 | +2.60 | 5.451e-06 | **−2.233e-05** | **−0.40** |
+| 95 | 15.8 | 5.451e-06 | +4.061e-04 | +7.45 | 5.451e-06 | +2.984e-04 | +2.93 (53% done) |
+
+The recorded prediction was that all three arms would accumulate the same ~9 e-folds,
+so the coarse meshes would destabilise purely by taking more steps. **Falsified, and in
+the opposite direction:** at the smaller step the coarse arms became *more* stable, and
+N_L = 76 went from +2.60 e-folds to **−0.40**, i.e. from growth to decay, at unchanged h.
+
+At fixed h (N_L = 60), halving the step gives gAvg ~ dt^+1.35 and e-folds ~ dt^+0.35.
+So the per-step gain is **not** dt-independent, and the earlier "r·dt constant" across
+the native ladder was h and dt covarying rather than a law. Reducing dt genuinely
+helps — a temporal-splitting signature — which supports the mechanism but not the
+earlier framing.
+
+**The actionable part is the exponent.** e-folds ~ dt^0.35 means halving the
+accumulated amplification requires dt smaller by 2^(1/0.35) = 7.2×, i.e. 7.2× the cost.
+Brute-force step reduction is therefore **not** a practical fix; removing the splitting
+is. That is what the `psiOuterCorrectorsGain3D` gate tests, and it is now the pivot of
+the whole plan.
+
 ## 1. Cut it down
 
 Eleven things are being tracked. **Two matter.**
