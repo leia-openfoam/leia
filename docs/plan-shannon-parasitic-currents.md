@@ -70,6 +70,50 @@ solve uses `laplacian(p_rgh)` with unit coefficient while every step projects wi
 
 ---
 
+## 0b. What the order parameter immediately showed (no new runs)
+
+`workflow/scripts/per_step_gain.py` scores every existing arm on the per-step gain.
+The estimator to quote is **gAvg = ln(u_end/u_0)/nSteps** -- no window, no fit, and it
+predicts the end state by identity:
+
+    u_end = u_0(h) * exp( gAvg(h) * nSteps(h) )
+
+Verified: 3D N_L = 95 starts at 4.091e-05 with 7.45 e-folds -> 7.06e-02 against
+7.04e-02 measured; 2D N = 512 starts at 4.672e-07 with 4.69 e-folds -> 5.08e-05
+against 5.10e-05 measured.
+
+Fitting the three factors against h over the ladders:
+
+| | u_0 (initial error) | gAvg (per-step gain) | nSteps | e-folds |
+|---|---|---|---|---|
+| **2D** | h^+3.58 (R² 1.0000) | **h^+0.77** (R² 0.9975) | h^-1.50 | 1.02, 1.83, 2.87, 4.69 |
+| **3D** | h^+3.59 (R² 0.9890) | **h^-1.90** (R² 0.8716) | h^-1.50 | 1.55, 2.60, 7.45 |
+
+**The entire instability is the sign of one exponent.** The initial error converges at
+h^3.6 in both dimensions and the step count grows as h^-1.5 in both. The only thing
+that differs is the per-step gain: it CONVERGES in 2D (h^+0.8, so refinement wins) and
+DIVERGES in 3D (h^-1.9, so refinement loses). That is the 2D/3D difference, stated as
+one number.
+
+Caveat on the 3D exponent: three points, R² 0.87, so -1.90 is not tightly determined.
+The sign is, though: gAvg rises monotonically 1.688e-4 -> 1.984e-4 -> 4.061e-4.
+
+This also CORRECTS the specification in section 5. The target is not "10x smaller g"
+at one resolution -- it is **reverse the sign of the gain exponent**, from h^-1.9 to
+positive. A constant-factor improvement in g buys a fixed number of levels and then
+loses again.
+
+**Falsifiable prediction for the N_L = 120 arm now running**, from extrapolating the
+two fitted exponents: gAvg ~ 6.3e-4, e-folds ~ 16.5, u_0 ~ 1.8e-05, so
+u_end ~ 2.7e+02 m/s, i.e. catastrophic divergence. If instead it lands near the
+R/h = 15.8 arm's 7e-2, the h^-1.9 gain exponent is wrong, the 3D gain SATURATES, and
+the target reverts to lowering a constant -- which would be much better news.
+
+Also visible in the same table: theta = 0.05 has a HIGHER gAvg than theta = 0.2 at
+every 2D resolution (5.93e-4 / 1.50e-4 / 1.96e-4 against 2.16e-4 / 1.37e-4 /
+7.61e-5), which is the mechanism behind its known non-convergence, now expressed in
+the order parameter rather than in survival times.
+
 ## 1. Cut it down
 
 Eleven things are being tracked. **Two matter.**
