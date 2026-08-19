@@ -1,0 +1,282 @@
+# Attacking the parasitic-current instability, Shannon-style
+
+Written from measured data only, no new runs. Every number below already exists in
+this repository or in this session's measurements.
+
+---
+
+## 0. The evidence base, stated once
+
+**Things that converge cleanly** (these are discretisation quantities):
+
+| quantity | 2D | 3D |
+|---|---|---|
+| delivered non-gradient content at t=0 | +2.04, R² 0.9987 | +2.03, R² 0.9997 |
+| band 2h mode amplitude at t=0 | +2.05, R² 0.9999 | +1.98, R² 0.9999 |
+| max&#124;U&#124; at t=0 | +3.58, R² 1.0000 | +3.59 |
+| div(U_cell) at t=0 | — | +3.46, +2.74 |
+
+**Things that do not follow a power law at all** (these are growth-integrated):
+2D end-state max&#124;U&#124; has local slopes 2.43 → 2.02 → 1.01 and a global fit of
++1.84 at R² 0.970; volume and shape global fits exceed 2, which is formally
+impossible. A two-term model `A h² + B h` was fitted and **rejected** (requires
+B < 0, misses N=512 by 112%).
+
+**The per-step amplification is constant.** 3D ladder, growth rate of max&#124;U&#124;
+fitted over t = 0.05..0.1:
+
+| N_L | R/h | dt [s] | steps | r [1/s] | **r·dt** | e-folds r·T |
+|---|---|---|---|---|---|---|
+| 60 | 10.0 | 1.0861e-05 | 9207 | 40.47 | **4.395e-04** | 4.05 |
+| 76 | 12.7 | 7.6186e-06 | 13126 | 52.32 | **3.986e-04** | 5.23 |
+| 95 | 15.8 | 5.4514e-06 | 18344 | 90.55 | **4.936e-04** | 9.05 |
+
+r rises 2.2× under refinement; r·dt is constant to ±24%. Since
+`dt = CAPILLARY_DT_COEFF/nRef^1.5`, r ∝ 1/dt, and the e-folds accumulated by a fixed
+physical time grow only because a finer mesh takes more steps to get there. The
+earlier capillary-dt sweep independently measured ~90% of the growth rate as
+dt-proportional at N = 128.
+
+**Eliminated as the amplifier, each by measurement:**
+
+- *The pressure–velocity coupling.* Imposed constant κ holds an m=2 perturbation at
+  1.0000 over 3200 steps, Courant 1.2e-10, continuity 1e-12. Read independently
+  against interFoam this session: same UEqn, same `phig`, same
+  `p_rghEqn.flux() = rAUf·magSf·snGrad(p_rgh)`, same velocity update, `rAUf` cancels
+  exactly, `grad(U)ᵗ` present in both, snGrad schemes matched on both fields.
+- *Normal-direction ψ corrugation.* The WP0 band spectrum stays at 1.00× of its t=0
+  value in every 3D arm **including the unstable one**, while max&#124;U&#124; grows 70×.
+  The filter does what it was built to do and the instability proceeds anyway.
+- *The Gaussian-curvature term K.* Removing it takes the delivered non-gradient
+  content from order +2.03 to **+0.01** and 770× larger, and two arms diverge that
+  previously reached t = 0.1. K is load-bearing, not the amplifier.
+- *Solenoidality of the advecting field.* div(U_cell) converges at +2.7 to +3.5.
+- *|∇ψ| drift.* Established downstream of the currents, not an independent driver.
+
+**What the damage is.** Replacing the force by a pure discrete gradient drops
+max&#124;U&#124; from 3.6e-5 to 1.3e-9. `σκ_f·snGrad(α)·|S_f|` is a discrete gradient of the
+cell field `σκα` **if and only if κ is constant**, so the non-absorbable part is
+`α_f·snGrad(κ_c)`. That is the one quantity the pressure solve cannot absorb, and the
+only one with a clean second-order convergence.
+
+**Bugs found this session.** The ψ filter was decomposition-dependent (53–205× worse
+np-agreement than the unfiltered control) — fixed, and it **invalidates every
+filtered result on record** pending the re-runs. The cell-centre inverse was applied
+to 93.5% of cells that the curvature fill never populated — fixed, ~1e-7 effect on
+the force. The t=0 Young–Laplace solve was unreferenced on a singular system and
+inherited relTol 0.01, leaving the initial pressure ~1% off — fixed. Still open: that
+solve uses `laplacian(p_rgh)` with unit coefficient while every step projects with
+`laplacian(rAUf, p_rgh)`, and rAUf varies by roughly the density ratio, 839×.
+
+---
+
+## 1. Cut it down
+
+Eleven things are being tracked. **Two matter.**
+
+Being tracked, and demonstrably not the order parameter:
+
+| tracked | why it can be dropped |
+|---|---|
+| `t_blow` | already abandoned: e-fold count at blow-up varies 5.4–13.3 across the matrix |
+| end-state max&#124;U&#124; as *the* metric | not a discretisation error; it is a growth integral, and its "order" is a category error |
+| min&#124;∇ψ&#124; | measured downstream of the currents (it leaves 0.95 at t=0.087, the current passes 5e-3 at t=0.068) |
+| A2h/A4h/A8h band spectrum | flat at 1.00× in the unstable 3D arm — currently uninformative there |
+| div(U) vs div(φ) | converges at +2.7 to +3.5 |
+| transport order (linear vs quadratic) | measured flat to 3–4 digits coupled; closed by the Δt^1.5 temporal cap |
+| the K term | exonerated and load-bearing |
+| 27 curvature deliveries × 11 extension branches | an option space, not a mechanism |
+| filter strength θ | the damping knob, not the driver |
+| volume and shape error | mandatory to report, but not the instability's order parameter |
+
+The two that matter:
+
+1. **g = r·dt, the per-step amplification** — dt-normalised, dimension-agnostic,
+   measured constant to 24% across the 3D ladder, and dt-proportional per the
+   earlier sweep. This is the order parameter.
+2. **‖α_f·snGrad(κ_c)‖, the non-absorbable force content** — the only thing the
+   projection cannot remove, and the only quantity with a clean +2.0 convergence.
+
+Everything else is downstream, exonerated, or a knob. **Score on those two only.**
+
+---
+
+## 2. Look at problems already solved
+
+Three neighbouring problems are solved, and this session measured two of them.
+
+| solver | stable? | parasitic current converges? | why |
+|---|---|---|---|
+| interFoam | yes, everywhere | **no — it grows**: 2D 0.310 → 0.444 → 0.662 (orders −0.52, −0.57); Laplace jump 14% low and not improving | α bounded in [0,1] by MULES; `rhoPhi` built from the *same limited flux* that advanced α, so `ddt(ρ)+div(ρφ)=0` discretely |
+| interFlow (geometric VOF, PLIC-RDF) | yes | volume exact to 12 digits; max&#124;U&#124; ≈ half interFoam's at N=64 (early, 20 steps) | bounded PLIC interface; curvature from a **reconstructed surface** — our premise |
+| ours | no beyond R/h ≈ 16 in 3D | delivered force converges at +2.03 | unbounded ψ that drifts, no conservation law anchoring it |
+
+**What the solved ones have in common: a bounded interface representation that cannot
+drift, combined with whatever curvature you like.** interFoam pays for stability with
+a non-convergent curvature. interFlow keeps a good curvature *and* a bounded
+representation — and is the closest published analogue of what we want. The
+balanced-force refined-level-set-grid line is the other precedent.
+
+Shannon's two-small-jumps: stop trying to jump from "semi-Lagrangian level set with a
+fitted curvature" straight to "stable and second order". Jump twice — (i) bound or
+anchor the representation, (ii) keep the fitted curvature. That is literally the
+interFlow architecture, and we now have it built and running for comparison.
+
+---
+
+## 3. Say the question a different way
+
+The sunk cost is explicit: the campaign has produced 27 curvature deliveries. The
+best of them, `cellCentreInverse`, achieved exactly what it was designed for — the
+non-gradient content converges at +2.03 where every other cell field is +0.09 — **and
+it did not buy stability.** That is the signal that the question is wrong, not the
+answer.
+
+Three reframings, in increasing sharpness:
+
+- **A.** From "which delivery makes the non-gradient content converge?" (answered) to
+  "what is the per-step gain of the closed loop, and what sets it?" This is an
+  amplification question, and the loop-spectrum power-iteration harness already
+  exists.
+- **B.** "Why does a force converging at h² drive a response that does not converge?"
+  Because the response accumulates over `N_steps ∝ h^-1.5` at a fixed per-step gain.
+  So the real question is: **why is the per-step gain h-independent?** An
+  h-independent per-step gain cannot come from a spatial truncation error. It comes
+  from something that does not refine: an operator splitting, a once-per-step lag, a
+  fixed relative error like the 1% initial pressure, or a solver tolerance.
+- **C, the sharpest.** The exact solution is U = 0 for all time. So ask: **is the
+  discrete equilibrium a fixed point of the one-step map at all?** If not, the
+  per-step residual *is* g and everything else is bookkeeping. This is a static
+  question — answerable in one step, not in 18,344.
+
+Reframing B has an immediate consequence that **reverses a recommendation I made
+earlier in this session**: I proposed building the tangential-structure diagnostic as
+the next thing, on the grounds that K was exonerated and tangential structure was the
+last dimension-specific candidate. But if the gain is h-independent and
+dt-proportional, the driver is *temporal*, and a spatial mode diagnostic is the wrong
+next instrument. Deprioritise it until the fixed-dt result is in.
+
+---
+
+## 4. Break it up and let yourself wander
+
+The step is a composition of five sub-maps:
+
+```
+ψ ──fit──> κ_c ──deliver──> σκ_f ──force+project──> (φ, U) ──SL advect──> ψ
+                                                        └──filter──┘
+```
+
+Measure the gain of **each sub-map in isolation** on the same perturbation, rather
+than the gain of the whole loop. The harness for this exists (the quasi-static
+power iteration). Sub-map gains are cheap — tens of steps, not tens of thousands —
+and they localise the amplification to one arrow.
+
+The wandering has already paid once and the result is under-used: the **gauge-freedom
+measurement**. A δψ that vanishes on Γ is exactly neutral, power iteration converges
+to λ = 1. That says the amplification lives entirely in the component of δψ that
+*moves the zero set* — the normal displacement at the interface — and not in the
+profile away from it. That is a large narrowing of the search space obtained from an
+apparently unrelated poke, and it argues for decomposing δψ into (displacement of Γ)
+⊕ (gauge) and measuring the gain of the displacement component alone.
+
+---
+
+## 5. Flip it
+
+Assume the method **is** stable and second order at R/h = 40 in 3D. What must be true?
+
+Working backwards from the numbers: at N_L = 120, t = 0.1 is 26,042 steps. For the
+accumulated amplification to stay O(1) we need `g · N_steps ≲ 1`, i.e.
+
+> **g ≲ 4e-5, against the measured 4.4e-4 — a 10× reduction in per-step gain.**
+
+That is a *specification*, not an aspiration, and it is the most useful single number
+this exercise produces. It tells us:
+
+- a lever that improves the delivered force by 2 orders but leaves g alone is worthless
+  for stability (which is exactly what `cellCentreInverse` did);
+- a lever that reduces g by 10× wins even if it costs an order of accuracy;
+- and the two candidate levers with a plausible 10× on g are both *temporal*:
+  making the capillary force implicit or iterated (so the lag term vanishes at
+  convergence), or adding a per-step damping that scales with g.
+
+Second flip, on reframing C: assume the discrete equilibrium **is** a fixed point.
+Then at equilibrium `σκ_f·snGrad(α)·|S_f|` must lie in the range of `snGrad` applied
+to some cell field. For constant κ that field is `σκα`. So the admissible set of face
+curvatures at equilibrium is
+
+> `{ κ_f : σ κ_f snGrad(α) |S_f| ∈ range(snGrad) }`
+
+and the **distance of our delivered κ_f from that set** is the cleanest possible order
+parameter — static, per-step, no long run, and it subsumes the non-gradient content
+measurement we already make. Note this is a *diagnostic*, not a scheme: the
+potential form itself is closed as a scheme, and re-opening it is not proposed.
+
+---
+
+## 6. Make it bigger
+
+Generalise from "make this configuration stable" to "score any configuration
+cheaply".
+
+1. **Make g a solver-computed column.** dt-normalised, dimension-agnostic, valid for
+   2D and 3D, stationary and oscillating, any delivery. Every future run then scores
+   itself on the order parameter instead of on t_blow.
+2. **A gain gate before any long run.** Any new delivery, filter, or coupling must
+   demonstrate a reduction in g over ~200 steps before it earns a ladder. This turns
+   a 12-hour experiment into a two-minute one, and it is the difference between a job
+   and an asset. It would have saved most of this campaign: every lever that bought
+   prefactor and not exponent would have been rejected on day one.
+3. **State the paper's claim at class level, not solver level.** "For balanced-force
+   CSF with a reconstructed curvature, the parasitic current's growth is set by a
+   per-step amplification of the non-absorbable force content `α_f·snGrad(κ_c)`; we
+   measure that amplification and show it is h-independent under a once-per-step
+   explicit coupling, so refinement at fixed capillary CFL accumulates more
+   amplification, not less." That is a statement about the method class, and it is
+   supported by interFoam and interFlow as the two comparison points.
+
+---
+
+## Execution order, by information per unit cost
+
+**Phase 0 — restore a trustworthy baseline.** Already running: the four post-fix
+studies. Nothing filtered can be interpreted until these land, because of the seam
+bug.
+
+**Phase 1 — cheap, decisive, no new code.**
+
+1. **The fixed-dt ladder** (running). Three meshes at one dt. If the two coarse
+   meshes destabilise purely by taking more, smaller steps, the mechanism is the
+   once-per-step lag and reframing B is confirmed.
+2. **`psiOuterCorrectors yes` at one resolution.** The switch exists and defaults off,
+   so three outer correctors currently converge momentum and pressure against a force
+   that cannot change. Predicted to change **g**, not merely t_blow — a sharper test
+   than any survival comparison.
+3. **The first-ten-step impulse**, free from the re-runs: the fixed Young–Laplace
+   solve should reduce it. Quantifies how much of g is the ~1% initial pressure error.
+
+**Phase 2 — small new measurement, high leverage.**
+
+4. **g as a solver column** (item 6.1), plus the gain gate.
+5. **Sub-map gain decomposition** (§4) on the existing power-iteration harness,
+   restricted to the interface-displacement component of δψ that the gauge result
+   already isolated.
+6. **Distance from the admissible κ_f set** (§5), as a static per-step residual.
+
+**Phase 3 — structural, only if Phase 1 confirms the lag.**
+
+7. **Semi-implicit or iterated capillary force** (task #24, currently on hold at the
+   user's direction). The specification from §5 is now quantitative: it must deliver
+   g ≤ 4e-5. Its earlier licence rested on r₀ = 0, which was invalidated; the
+   objection that it adds artificial σΔt interfacial dissipation stands and must be
+   measured against the transport orders, not assumed away.
+8. **The bounded-representation jump** (§2): anchor or bound the interface field the
+   way interFoam and interFlow do, keeping the fitted curvature. The interFlow arm now
+   built gives the reference numbers to judge whether it is worth the architectural
+   cost.
+
+**Deprioritised, with reason stated:** the tangential-structure diagnostic. It was my
+previous recommendation; §3B argues it is the wrong instrument for an h-independent,
+dt-proportional gain. Revisit if and only if the fixed-dt ladder shows the rates are
+h-set after all.
