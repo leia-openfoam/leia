@@ -1,0 +1,58 @@
+# SEAM-CONSISTENCY TEST, 3D, parallel np=4.
+#
+# WHY. Two decomposition-dependent constructs were found by inspection in the
+# ACTIVE production path (cellCentreInverse + biharmonicBand theta=0.2):
+#
+#   1. psiFilterEqn.H:39-46 forms  Lpsi = psi - fvc::average(fvc::interpolate(psi))
+#      and then interpolates Lpsi AGAIN for L2psi. The result of "field minus tmp"
+#      inherits its patch types from the SECOND operand, and fvc::average is built
+#      with 'calculated' patch fields, so on a processor patch Lpsi would be
+#      UNCOUPLED: the second application of L reads a stored face value instead of
+#      the neighbour cell's Lpsi. If so, the filter injects a seam-localised psi
+#      perturbation every step -- and the filter is the damping mechanism the whole
+#      3D result depends on.
+#   2. psiFilterEqn.H:28-36 dilates the filter band by looping mesh.owner() and
+#      mesh.neighbour() only, i.e. INTERNAL faces. A cell whose only band neighbour
+#      lives on another rank is never added, so the filtered CELL SET itself
+#      depends on the decomposition.
+#
+# Also relevant: faceAreaFraction.H:201-212 takes the face area fraction from the
+# patch-INTERNAL cell on every boundary patch including processor, so two ranks can
+# hold different rhof, hence different rhoPhi, for the same seam face.
+#
+# THE TEST. Identical case, identical fixed dt, run serial and at np=4, with the
+# filter ON and OFF. A method with no seam defect is np-invariant to solver
+# tolerance. The filter-OFF arm is the CONTROL: it separates a filter seam bug
+# (the ON pair diverges much more than the OFF pair) from any other seam
+# inconsistency (both pairs diverge alike).
+#
+# Deliberately SHORT, 20 steps: a consistency check must not let a real
+# instability amplify the very difference it is trying to measure.
+#
+# PREDICTION. If defect 1 is real, minGradPsiBand and the A2h band amplitude differ
+# between serial and np=4 with the filter ON by far more than the ~1e-12
+# continuity/solver floor, and the filter-OFF pair agrees much better.
+study_name: seamConsistency3Dpar4
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 4
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [biharmonicBand, none]
+  PSI_FILTER_THETA: [0.2]
+  END_TIME: [2.2e-4]
+
+solve_runtime: 60
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
