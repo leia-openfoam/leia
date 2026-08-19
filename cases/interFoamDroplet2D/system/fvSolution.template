@@ -1,0 +1,120 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    "alpha.water.*"
+    {
+        nAlphaCorr      2;
+        nAlphaSubCycles 1;
+        // INTERFACE COMPRESSION. cAlpha = 1 is the interFoam default and the
+        // value every shipped tutorial uses; it adds an artificial
+        // counter-diffusion that keeps the algebraic-VOF interface sharp. It is a
+        // TOKEN because that term is also a stabiliser, so cAlpha = 0 is the
+        // honest "no artificial sharpening" arm -- if interFoam's stability on
+        // this case rests on compression, that is worth knowing before drawing
+        // any conclusion about the level-set method.
+        cAlpha          @!C_ALPHA!@;
+
+        MULESCorr       yes;
+        nLimiterIter    5;
+
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-8;
+        relTol          0;
+    }
+
+    "pcorr.*"
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-10;
+        relTol          0;
+    }
+
+    p_rgh
+    {
+        solver          GAMG;
+        tolerance       1e-09;
+        relTol          0;
+        smoother        DIC;
+    }
+
+    p_rghFinal
+    {
+        $p_rgh;
+        relTol          0;
+    }
+
+    "U.*"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-09;
+        relTol          0;
+    }
+}
+
+// Read ONLY by leiaSetFields, which initialises this case so that its initial
+// alpha.water is bit-identical to the level-set case's. interFoam itself never
+// looks at this dictionary. The three entries are the same ones
+// cases/stationaryDroplet2D/system/fvSolution.template carries: an exact signed
+// distance to the 1 mm sphere, centred in the box, converted to a volume fraction
+// by the Detrixhe-Aslam phase indicator.
+levelSet
+{
+    profile
+    {
+        type    signedDistance;
+        limit   0.1;
+    }
+
+    implicitSurface
+    {
+        type    implicitSphere;
+        center  (@!DOMAIN_HALF_LENGTH!@ @!DOMAIN_HALF_LENGTH!@ 0);
+        radius  1e-3;
+    }
+
+    phaseIndicator
+    {
+        type    detrixheAslam;
+    }
+
+    // leiaSetFields constructs a narrowBand model and looks up the registered
+    // NarrowBand field even when the type is none, so it must be declared. Same
+    // value the level-set case uses.
+    narrowBand
+    {
+        type    signChange;
+    }
+}
+
+PIMPLE
+{
+    momentumPredictor   no;
+    nOuterCorrectors    1;
+    nCorrectors         3;
+    nNonOrthogonalCorrectors 0;
+
+    // Closed box with zeroGradient wall pressure: the pressure level needs a
+    // reference cell. Same treatment as the level-set case.
+    pRefCell            0;
+    pRefValue           0;
+}
+
+// ************************************************************************* //

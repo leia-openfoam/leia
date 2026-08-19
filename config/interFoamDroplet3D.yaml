@@ -1,0 +1,76 @@
+# interFoam REFERENCE ARM, 3D stationary droplet -- the same case the level-set
+# study runs, at the same resolutions, so "interFoam stays stable on this case" is
+# MEASURED rather than assumed.
+#
+# WHAT IS HELD IDENTICAL between the two solvers, so the comparison isolates the
+# interface method and nothing else:
+#   * mesh              same blockMesh box, same patches, same cell counts
+#   * physics           water/air, nu 1e-6/1.53e-5, rho 998.2/1.19, sigma 0.07274
+#   * gravity           (0 0 0) -- the exact solution is U = 0, p piecewise const
+#   * pressure BC       zeroGradient walls + pRefCell/pRefValue (closed box)
+#   * time step         FIXED at the capillary limit MAX_DELTA_T =
+#                       CAPILLARY_DT_COEFF/nRef^1.5, adjustTimeStep no on BOTH
+#                       sides, so both advance on an identical time grid
+#   * initial interface exact geometric volume fraction of the same 1 mm sphere
+#                       (leiaSetFields on both sides there -- the same quantity by two
+#                       routes, neither smeared)
+#
+# WHAT DIFFERS, deliberately: interFoam is algebraic VOF with MULES and interface
+# compression, and its curvature is kappa = -div(grad(alpha)/|grad(alpha)|)
+# computed from THE SAME alpha that appears in the force. That self-consistency is
+# what makes it well balanced. The level-set method takes kappa from a fit of psi,
+# a DIFFERENT discrete object than the alpha in snGrad(alpha), which is the
+# structural reason its balance is harder to achieve.
+#
+# fvSchemes is the shipped damBreak set, unmodified, so the reference arm is
+# interFoam AS DISTRIBUTED and a reader need not trust any tuning of ours.
+#
+# PREDICTIONS (recorded before the run).
+#   a. interFoam does NOT blow up at any of these resolutions.
+#   b. Its max|U| does NOT converge -- flat or nearly flat under refinement.
+#      That is the documented behaviour of algebraic VOF with a compressive
+#      interface, and it is the other half of the comparison: if the level-set
+#      method converges in the delivered force (+2.04, R^2 0.9987) while
+#      interFoam does not converge at all, then "interFoam is stable" and "the
+#      level-set method is more accurate" can both be true and the paper must say
+#      so, rather than treating stability as the only axis.
+#   c. Volume conservation: interFoam's MULES limiter is conservative by
+#      construction, so expect a very small volume error -- which is exactly why
+#      volume alone must never be the headline metric.
+#   d. Falsification of the whole comparison: if interFoam ALSO destabilises at
+#      the finest resolutions, the instability is not specific to the level-set
+#      delivery and the campaign's framing needs revisiting.
+#   Report volume AND shape error, never a single metric. NOTE the shape caveat in
+#   workflow/scripts/interfoam_droplet_metrics.py: the isosurface-based shape error
+#   is comparable ACROSS RESOLUTIONS but not against the psi-zero-set number.
+study_name: interFoamDroplet3D
+case: interFoamDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+
+solver: interFoam
+theme:  method-comparison
+
+# THE SAME initialiser the level-set study uses, so the initial alpha.water is
+# bit-identical between the two solvers. setAlphaField was tried first and
+# rejected: type sphere on a one-cell-thick 2D mesh integrates a sphere SLAB
+# (sum(alpha*V) 9.5260e-10 vs the circle's pi R^2 t = 9.8175e-10, 3% off) while
+# the level-set case, evaluating psi at cell centres that all lie at z = 0, sees a
+# CYLINDER -- which is what a 2D droplet must be, its exact jump being sigma/R.
+setfields_app: leiaSetFields
+setfields_args: "-alphaName alpha.water"
+
+# interFoam writes no metrics CSV; this converts its function-object output into
+# the same schema the level-set solver writes, so one analysis path reads both.
+post_solve: "python3 {REPO}/workflow/scripts/interfoam_droplet_metrics.py --case . --out interFoam.csv --radius 1e-3"
+
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60, 76, 95, 120]
+  C_ALPHA: [1]
+
+solve_runtime: 900
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

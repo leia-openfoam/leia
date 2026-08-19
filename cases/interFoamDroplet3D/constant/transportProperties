@@ -1,0 +1,39 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      transportProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// IDENTICAL to cases/stationaryDroplet3D/constant/transportProperties. Water/air
+// at sigma = 0.07274 N/m, so the exact Laplace jump is sigma/R = 72.74 Pa in 2D
+// and 2 sigma/R = 145.48 Pa in 3D -- the same reference both solvers are scored
+// against.
+phases (water air);
+
+water
+{
+    transportModel  Newtonian;
+    nu              1e-06;
+    rho             998.2;
+}
+
+air
+{
+    transportModel  Newtonian;
+    nu              1.53e-05;
+    rho             1.19;
+}
+
+sigma           0.07274;
+
+// ************************************************************************* //

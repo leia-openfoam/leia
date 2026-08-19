@@ -1,0 +1,70 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// BYTE-FOR-BYTE THE SAME MESH as cases/stationaryDroplet3D: same box, same
+// patches, same z half-thickness in 2D. The interFoam comparison must differ from
+// the level-set runs in the INTERFACE METHOD ONLY, so the mesh, the physics, the
+// pressure boundary treatment and the time step are all copied rather than
+// re-chosen.
+
+scale   1;
+
+n_cells @!N_CELLS!@;
+domain  @!DOMAIN_LENGTH!@;
+
+vertices
+(
+    (0        0        0       )
+    ($domain  0        0       )
+    ($domain  $domain  0       )
+    (0        $domain  0       )
+    (0        0        $domain )
+    ($domain  0        $domain )
+    ($domain  $domain  $domain )
+    (0        $domain  $domain )
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($n_cells $n_cells $n_cells) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    walls
+    {
+        type wall;
+        faces
+        (
+            (0 4 7 3)
+            (2 6 5 1)
+            (3 7 6 2)
+            (1 5 4 0)
+            (0 3 2 1)
+            (4 5 6 7)
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

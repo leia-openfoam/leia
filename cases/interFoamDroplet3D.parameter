@@ -1,0 +1,37 @@
+// interFoam REFERENCE ARM for the 3D stationary droplet. Rationale: see
+// cases/interFoamDroplet2D.parameter.
+//
+// The N ladder and DOMAIN_LENGTH match the level-set 3D study exactly
+// (config/stationaryDroplet3Dwide.yaml): L = 6R = 6e-3 m, N_L = 60/76/95/120,
+// giving h = 1.00e-4/7.89e-5/6.32e-5/5.00e-5 and R/h = 10.0/12.7/15.8/20.0. The
+// L = 6R truncation is measured-equivalent to the 0.01 m reference box to 0.16%
+// on every metric (docs/.../data/tables/domain_size_control.csv), and using the
+// same box for both solvers means the comparison cannot be confounded by it
+// either way.
+values
+{
+    solver ( interFoam );
+
+    N_CELLS ( 60 76 95 120 );
+
+    END_TIME ( 0.1 );
+
+    DOMAIN_LENGTH ( 0.006 );
+
+    // Same capillary step as the level-set cases: MAX_DELTA_T is derived as
+    // CAPILLARY_DT_COEFF/nRef^1.5 with nRef = CAPILLARY_REF_LENGTH/h and
+    // h = DOMAIN_LENGTH/N_CELLS, so BOTH solvers advance on an identical time grid
+    // and any difference in the parasitic current is spatial, not temporal.
+    CAPILLARY_DT_COEFF ( 0.010861 );
+    CAPILLARY_REF_LENGTH ( 0.01 );
+    MAX_CO ( 0.1 );
+
+    // Interface-compression coefficient. 1 is the interFoam default and what every
+    // shipped tutorial uses. It is an axis because compression is also a
+    // stabiliser: if interFoam's stability on the stationary droplet rests on it,
+    // that must be established before any conclusion is drawn about the level-set
+    // method, so cAlpha = 0 is the control arm.
+    C_ALPHA ( 1 );
+
+    WRITE_INTERVAL ( 0.02 );
+}

@@ -1,0 +1,124 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     interFoam;
+
+startFrom       startTime;
+startTime       0;
+stopAt          endTime;
+endTime         @!END_TIME!@;
+
+// FIXED time step, THE SAME capillary step the level-set cases use:
+// MAX_DELTA_T = CAPILLARY_DT_COEFF/nRef^1.5 with nRef = CAPILLARY_REF_LENGTH/h.
+// Time-step adaptivity is disabled on BOTH sides of the comparison, so the two
+// solvers advance on an identical time grid and any difference in the parasitic
+// current is spatial, not temporal. maxCo/maxAlphaCo are inert with
+// adjustTimeStep no and are kept only for reference.
+deltaT          @!MAX_DELTA_T!@;
+adjustTimeStep  no;
+maxCo           @!MAX_CO!@;
+maxAlphaCo      @!MAX_CO!@;
+maxDeltaT       @!MAX_DELTA_T!@;
+
+writeControl    runTime;
+writeInterval   @!WRITE_INTERVAL!@;
+purgeWrite      0;
+writeFormat     ascii;
+writePrecision  12;
+writeCompression off;
+timeFormat      general;
+timePrecision   12;
+runTimeModifiable no;
+
+domain  @!DOMAIN_LENGTH!@;
+half    @!DOMAIN_HALF_LENGTH!@;
+
+functions
+{
+    // max|U| over the whole domain, EVERY step. This is the headline parasitic
+    // current and is defined identically for both solvers (the level-set solver
+    // writes it as maxMagU in its own CSV).
+    parasiticU
+    {
+        type            fieldMinMax;
+        libs            (fieldFunctionObjects);
+        writeControl    timeStep;
+        writeInterval   1;
+        mode            magnitude;
+        fields          (U p_rgh);
+        log             false;
+    }
+
+    // Liquid volume, every step: integral of alpha over the domain. The volume
+    // error is then relative to this quantity at t = 0, i.e. a CONSERVATION
+    // error, which is the same definition the level-set cases use and is
+    // independent of the domain size.
+    phaseVolume
+    {
+        type            volFieldValue;
+        libs            (fieldFunctionObjects);
+        writeControl    timeStep;
+        writeInterval   1;
+        operation       volIntegrate;
+        fields          (alpha.water);
+        regionType      all;
+        writeFields     false;
+        log             false;
+    }
+
+    // Laplace jump, secondary metric: p_rgh at the droplet centre against a point
+    // in the far field. Exact value sigma/R = 72.74 Pa in 2D, 2 sigma/R = 145.48
+    // in 3D.
+    pressureProbes
+    {
+        type            probes;
+        libs            (sampling);
+        writeControl    timeStep;
+        writeInterval   1;
+        fields          (p_rgh);
+        probeLocations
+        (
+            ($half $half $half)
+            (#eval{0.08*$domain} #eval{0.08*$domain} $half)
+        );
+        log             false;
+    }
+
+    // alpha = 0.5 isosurface, at the write instants only (it is not cheap): the
+    // input for the SHAPE error. Written as raw ASCII points so the metrics
+    // script needs no VTK reader.
+    interface
+    {
+        type            surfaces;
+        libs            (sampling);
+        writeControl    runTime;
+        writeInterval   @!WRITE_INTERVAL!@;
+        surfaceFormat   raw;
+        fields          (alpha.water);
+        surfaces
+        {
+            isoInterface
+            {
+                type            isoSurfaceCell;
+                isoField        alpha.water;
+                isoValue        0.5;
+                interpolate     true;
+            }
+        }
+    }
+}
+
+// ************************************************************************* //
