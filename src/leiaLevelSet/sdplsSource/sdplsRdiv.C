@@ -103,6 +103,59 @@ sdplsRdiv::fvmsdplsSource(const volScalarField& psi, const volVectorField& U)
     // two div terms are CONSERVATIVE -- their global sum telescopes to
     // boundary fluxes -- which is the property the algebraic source lacks and
     // the coupled droplet measurements show it needs.
+    // ---- PRODUCT-RULE RESIDUAL DIAGNOSTIC (added 2026-08-20) ----------------
+    //
+    // WHY THIS IS MEASURED HERE AND NOT INFERRED FROM A CONVERGENCE TABLE.
+    // Rdiv and the algebraic source R are CONTINUUM-IDENTICAL for incompressible
+    // flow, yet on the 2D reversed vortex with a prescribed divergence-free
+    // velocity -- no capillary force, no curvature, no feedback of any kind --
+    // R converges at +1.112 in the band gradient error while Rdiv DIVERGES at
+    // -3.800 (0.391, 0.256, 1.56, 8.00, 20.5, 103, 669 over N = 32..256, every
+    // run COMPLETING, relative volume error reaching 136% at N=256). The only
+    // structural difference between them is that Rdiv routes part of the
+    // operator through fvm::div FLUXES. So the defect must lie in that routing.
+    //
+    // The sign-split variant RdivStrictSp tested and FALSIFIED the first
+    // hypothesis, that the unsigned Sp coefficient f = a - div(w) destroys
+    // diagonal dominance: it demonstrably removed the M-matrix violation (512 of
+    // 1024 cells carried f > 0 at N=32) and the divergence barely moved (-3.554
+    // against -3.800, 635 against 669 at the finest rung).
+    //
+    // WHAT THIS RESIDUAL TESTS. At the continuum the product rule gives
+    //     div(w psi) - psi div(w) - w . grad(psi) = 0
+    // identically. Rdiv RELIES on that identity: the psi*div(w) content carried
+    // implicitly inside fvm::div(phiW, psi) is supposed to cancel against the
+    // -Sp(div(phiW), psi) term, leaving only the convective part. Discretely
+    // there is NO guarantee that it does -- fvm::div(phiW, psi) interpolates psi
+    // to faces with the div(phiW,psi) scheme while fvc::div(phiW) is a plain
+    // flux divergence, and the two need not be consistent. If this residual
+    // fails to vanish, and worse GROWS with refinement, then the cancellation
+    // Rdiv is built on does not happen discretely, and that is the defect.
+    //
+    // The reference norm is printed alongside deliberately: the two terms nearly
+    // cancel, so a residual is only meaningful relative to the magnitude of what
+    // is being differenced.
+    {
+        volScalarField const prDiv("prDiv", fvc::div(phiW, psi));
+        volScalarField const prPsiDivW("prPsiDivW", psi*fvc::div(phiW));
+        volScalarField const prConv("prConv", w & gradPsi);
+        volScalarField const prResid("prResid", prDiv - prPsiDivW - prConv);
+
+        const scalarField& r = prResid.primitiveField();
+        const scalarField& d = prDiv.primitiveField();
+        const scalarField& V = mesh.V();
+        const scalar Vtot = gSum(V);
+
+        Info<< "sdplsRdiv product-rule residual"
+            << " |div(w psi) - psi div w - w.grad psi|:"
+            << " Linf = " << gMax(mag(r))
+            << ", L2 = " << Foam::sqrt(gSum(sqr(r)*V)/Vtot)
+            << " | reference |div(w psi)|: Linf = " << gMax(mag(d))
+            << ", L2 = " << Foam::sqrt(gSum(sqr(d)*V)/Vtot)
+            << endl;
+    }
+    // -------------------------------------------------------------------------
+
     return
     (
         fvm::div(phiW, psi)

@@ -1,0 +1,70 @@
+# CLOSEOUT PROBE for Rdiv: does the discrete identity it is built on hold?
+#
+# THE QUESTION. Rdiv and the algebraic source R are CONTINUUM-IDENTICAL for
+# incompressible flow, yet on the 2D reversed vortex with a PRESCRIBED
+# divergence-free velocity -- no capillary force, no curvature, no feedback of
+# any kind -- R converges at +1.112 in the band gradient error while Rdiv
+# DIVERGES at -3.800. The only structural difference is that Rdiv routes part of
+# the operator through fvm::div FLUXES, so the defect must be in that routing.
+# The first hypothesis (an unsigned Sp coefficient destroying diagonal
+# dominance) was tested by the sign-split variant RdivStrictSp and FALSIFIED:
+# the split demonstrably acted -- 512 of 1024 cells carried f > 0 at N=32 -- and
+# the divergence barely moved, -3.554 against -3.800.
+#
+# WHAT IS MEASURED. At the continuum the product rule gives
+#     div(w psi) - psi div(w) - w . grad(psi) = 0
+# identically, and Rdiv RELIES on it: the psi*div(w) content carried implicitly
+# inside fvm::div(phiW, psi) must cancel against the -Sp(div(phiW), psi) term,
+# leaving only the convective part. Discretely there is no guarantee -- fvm::div
+# interpolates psi to faces with the div(phiW,psi) scheme while fvc::div(phiW)
+# is a plain flux divergence. sdplsRdiv now prints the residual of that identity
+# and, alongside it, the reference norm |div(w psi)|, because the two terms
+# nearly cancel and a residual is only meaningful relative to what is differenced.
+#
+# MEASURED (this study, END_TIME 0.1, serial):
+#   N     h        resid Linf   resid L2    ref L2     resid/ref (L2)
+#   32    0.0312   2.276e-01    1.515e-02   4.791e-01  0.0316
+#   64    0.0156   1.868e-01    8.802e-03   5.268e-01  0.0167
+#   128   0.0078   1.287e+00    2.260e-02   6.057e-01  0.0373
+#   256   0.0039   4.657e+00    6.852e-02   8.033e-01  0.0853
+# Fitted orders in h: residual L2 -0.789, residual Linf -1.585, and the RELATIVE
+# residual -0.545. A consistent discretisation would drive this to zero as
+# h -> 0. It GROWS, absolutely and relative to the terms being cancelled.
+#
+# AND THE TURNING POINT MATCHES. The residual falls from N=32 to N=64 and grows
+# monotonically thereafter -- exactly where Rdiv's own band gradient error turns
+# (0.391, 0.256, then 1.56, 8.00, 20.5, 103, 669). The defect appears where the
+# identity starts failing.
+#
+# VERDICT: the conservative divergence form relies on a discrete identity that
+# its own discretisation violates, increasingly under refinement. Rdiv is
+# withdrawn. A consistent formulation would have to compute div(w) FROM the same
+# face interpolation that fvm::div(phiW, psi) uses, so the cancellation is exact
+# by construction; that is a research direction, not a patch.
+#
+#   make studies-one STUDY=sdplsRdivProductRule2Dvortex PROFILE=profiles/local
+#
+study_name: sdplsRdivProductRule2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+axes_override:
+  END_TIME: [0.1]
+  N_CELLS:  [32, 64, 128, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  OSCILLATION: ["on"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  SDPLS_SOURCE: [Rdiv]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
