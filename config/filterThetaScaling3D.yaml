@@ -1,0 +1,54 @@
+# DOES THE STABILITY BOUNDARY MOVE WITH theta? The balance law's second prediction.
+#
+# If g(h) = A(h) - D with D proportional to theta and A ~ h^-0.66 (measured beyond the
+# boundary), then the root scales as h* ~ theta^(1/0.66) = theta^1.52:
+#     theta 0.2 -> 0.4 : R/h* 13 -> 38
+#     theta 0.2 -> 0.6 : R/h* 13 -> 71
+#     theta 0.2 -> 1.0 : R/h* 13 -> 155
+# So the theta route should buy roughly 2-3 refinement levels and then die at the
+# theta <= 1 ceiling. This study tests the scaling and pins D's exponent.
+#
+# Two resolutions BRACKETING the measured root at R/h* = 13.4 -- R/h = 12.7 (currently
+# damping, gAvg -8.346e-05) and 15.8 (currently amplifying, +2.703e-04). If the law
+# holds, raising theta should push the 15.8 arm negative and lower the 12.7 arm further;
+# lowering theta should push 12.7 positive.
+#
+# THE HONEST TENSION THIS EXPOSES, worth stating whatever the result. A filter whose
+# strength must GROW as the mesh refines is artificial dissipation that does not vanish
+# under refinement, so it compromises the scheme's formal order. If h* only moves by
+# strengthening theta, then the method is stabilised rather than convergent in the
+# parasitic current, and that belongs in the paper as a limitation rather than being
+# absorbed into a tuned default.
+#
+# PREDICTIONS.
+#   a. h* moves with theta roughly as theta^1.5, and the 15.8 arm turns negative at
+#      theta = 0.4. Then D ~ theta is confirmed and the ceiling calculation applies.
+#   b. h* barely moves: D is not simply theta-proportional, the filter is not the
+#      damper, and something else is holding the coarse arms stable.
+#   c. theta = 0.4 degrades volume or shape materially even where it stabilises. That is
+#      the cost of the route and must be reported next to the gain, never instead of it.
+study_name: filterThetaScaling3D
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [76, 95]
+  PSI_FILTER: [biharmonicBand]
+  PSI_FILTER_THETA: [0.1, 0.2, 0.4]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  END_TIME: [0.025]
+
+# 6 arms, quarter horizon: 3281 steps at R/h=12.7, 4586 at 15.8; ~133 core-h.
+solve_runtime: 300
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

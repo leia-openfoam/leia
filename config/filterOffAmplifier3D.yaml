@@ -1,0 +1,55 @@
+# SEPARATE THE AMPLIFIER FROM THE DAMPER: the same 3D ladder with the psi filter OFF.
+#
+# WHY. Post-fix the per-step gain CHANGES SIGN with resolution: gAvg = -1.905e-04,
+# -8.346e-05, +2.703e-04, +3.156e-04 at R/h = 10.0/12.7/15.8/20.0, so the root sits at
+# R/h* ~ 13.4 (and ~17.7 in 2D). A sign change means two competing mechanisms, not one
+# instability, and we have only ever measured their DIFFERENCE.
+#
+# There is exactly one explicit dissipation in the scheme: the psi filter,
+# theta*L^2(psi), applied once per step. So the decomposition to test is
+#     g(h) = A(h) - D,   A = amplification of the non-absorbable force content,
+#                        D = the filter, theta-proportional and h-INDEPENDENT per step
+# with the root at A(h*) = D. Turning the filter off measures A(h) directly; subtracting
+# the filtered gains gives D.
+#
+# The existing 2D data already supports the decomposition: at every resolution
+# theta = 0.05 gives a HIGHER gain than theta = 0.2 (5.93e-4 vs 2.16e-4, 1.50e-4 vs
+# 1.37e-4, 1.96e-4 vs 7.61e-5). More damping, less gain.
+#
+# PREDICTIONS (recorded before the run).
+#   a. A(h) > 0 at EVERY resolution including the two that currently damp. Then nothing
+#      here is intrinsically stable and every stable arm we have is stable only because
+#      the filter outruns the amplifier -- which is a statement the paper has to make.
+#   b. D comes out h-independent per step, within noise, across all four arms. That
+#      confirms the balance law and makes h*(theta) predictable.
+#   c. A continues as h^-0.66 below the boundary too, rather than changing character
+#      there. If A instead changes slope near R/h ~ 13 the "two mechanisms" reading is
+#      wrong and the sign change is one mechanism reversing.
+#   d. Failure mode to watch: with no filter at all the fine arms may diverge inside the
+#      quarter horizon, which would still give A over the early window but would need a
+#      shorter fit. gAvg is per-step, so a truncated arm is still scorable.
+#   Report volume AND shape error alongside the gain.
+study_name: filterOffAmplifier3D
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60, 76, 95, 120]
+  PSI_FILTER: [none]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  END_TIME: [0.025]
+
+# quarter horizon: 2302/3281/4586/6511 steps; ~141 core-h, longest ~2.9 h at np32.
+solve_runtime: 300
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
