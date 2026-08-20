@@ -187,7 +187,20 @@ FIXED_DELTA_T 0;
 // interface at t^n, which is 1st order whatever ddt does, and making it implicit
 // instead (psiOuterCorrectors) is also 1st order and was measured inert. Genuine
 // 2nd order needs a MIDPOINT capillary force as well.
-MOMENTUM_DDT_SCHEME Euler;
+// BDF2 IS NOW THE DEFAULT (2026-08-20, at the user's direction). It is formally the
+// right choice: the semi-Lagrangian departure point is a second-order Taylor
+// expansion and Euler was feeding it a first-order velocity. Measured in the 2x2
+// (config/ddtOrderGain3D.yaml) at 3D R/h = 15.8: backward no longer diverges -- the
+// 2026-07-14 peak of ~48 m/s is gone and its peak here is 6% BELOW Euler's -- and it
+// improves the volume error by 20% (1.092e-05 -> 8.744e-06) and the shape error by
+// 0.8%. It does NOT change the per-step gain (+1.1%), so it is an accuracy choice,
+// not a stability fix. Every result predating this line used Euler.
+MOMENTUM_DDT_SCHEME backward;
+
+// Momentum convection. `linearUpwind gradU` reproduces the historical
+// `linearUpwind grad(U)` exactly (both gradSchemes entries are Gauss linear); the
+// alternative is `upwind`. Paren-free so the .parameter scalar parser accepts it.
+MOMENTUM_DIV_SCHEME linearUpwind gradU;
 
 
 

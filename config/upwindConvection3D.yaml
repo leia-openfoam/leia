@@ -1,0 +1,66 @@
+# UPWIND CONVECTION TEST: is linearUpwind an AMPLIFIER via grad(U) at the interface?
+#
+# THE ARGUMENT. In the one-field formulation the velocity is continuous across Gamma
+# but its GRADIENT is not -- the viscosity and density jumps make the normal derivative
+# of the tangential velocity discontinuous. A cell straddling the interface therefore
+# computes a grad(U) set by the jump structure rather than by the flow, and linearUpwind
+# uses exactly that cell gradient to extrapolate to the face:
+#     U_f = U_upwind + grad(U)|_upwind . (x_f - x_C)
+# so the correction is large IN RELATIVE TERMS precisely at the interface, and the
+# velocity in the lighter phase is always the larger one, which steepens it further.
+# That makes linearUpwind a candidate amplifier of the parasitic field rather than the
+# dissipative stabiliser an upwind-biased scheme is usually assumed to be. `upwind`
+# drops the gradient correction entirely: first order, more dissipative, no dependence
+# on a discontinuous quantity.
+#
+# Run with BDF2, which is now the default -- so this is the combination the method
+# should arguably have had all along: second-order time, no reliance on grad(U) in the
+# convective face value.
+#
+# SCORED ON THE PER-STEP GAIN at a quarter horizon, and at resolutions BRACKETING the
+# measured stability boundary (R/h* ~ 13.4 in 3D, ~17.7 in 2D), because that is where a
+# change of sign is visible rather than a change of magnitude.
+#
+# PREDICTIONS.
+#   a. upwind lowers the gain, and pushes the amplifying arms negative. Then grad(U) at
+#      the interface was feeding the loop and the fix is a scheme choice, not a filter.
+#      The follow-up is immediate: the viscous term div((rho*nuEff)*dev2(T(grad(U))))
+#      is explicit and built on the same discontinuous quantity.
+#   b. upwind lowers the gain but only as much as any added dissipation would. Then it
+#      is a mitigation like theta, and the honest comparison is against the theta sweep
+#      at matched artificial dissipation, not against the linearUpwind baseline.
+#   c. No change. grad(U) is not the amplifier and linearUpwind can stay, which also
+#      removes an explanation and leaves the orientation route.
+#   d. upwind makes it WORSE. Possible: first-order convection also smears the momentum
+#      field the pressure solve has to balance, and the parasitic field is all
+#      grid-scale. Worth knowing either way.
+#   Report volume AND shape error alongside -- upwind's dissipation will cost accuracy
+#   on moving interfaces even if it helps here, and that trade must be visible.
+study_name: upwindConvection3D
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [76, 95]
+  # paren-free; "linearUpwind gradU" is bit-identical to the historical
+  # "linearUpwind grad(U)" (verified: 10-step 3D run, byte-equal metrics CSV)
+  MOMENTUM_DIV_SCHEME: ["linearUpwind gradU", "upwind"]
+  MOMENTUM_DDT_SCHEME: [backward]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [biharmonicBand]
+  PSI_FILTER_THETA: [0.2]
+  END_TIME: [0.025]
+
+solve_runtime: 300
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

@@ -105,7 +105,30 @@ divSchemes
     default         none;
     // Momentum convection (interFoam-style). The level set is advected semi-
     // Lagrangian (no fvm div for psi/alpha), so no div(phi,alpha)/MULES entries.
-    div(rhoPhi,U)                       Gauss linearUpwind grad(U);
+    // MOMENTUM CONVECTION div(rhoPhi,U), tokenised. Values are paren-free so the
+    // .parameter scalar parser accepts them; `linearUpwind gradU` is functionally
+    // identical to the historical `linearUpwind grad(U)` because gradSchemes defines
+    // both gradU and grad(U) as `Gauss linear`.
+    //
+    // WHY UPWIND IS BEING TESTED. In the ONE-FIELD formulation the velocity is
+    // continuous across the interface but its GRADIENT is not: the viscosity and
+    // density jumps make the normal derivative of the tangential velocity
+    // discontinuous, so a cell straddling Gamma computes a grad(U) that mixes both
+    // sides and is set by the jump structure rather than by the flow. linearUpwind
+    // uses exactly that cell gradient to extrapolate the upwind value to the face,
+    // face value = U_upwind + grad(U)|_upwind . (x_f - x_C), so the correction is
+    // LARGE IN RELATIVE TERMS precisely at the interface -- and the velocity in the
+    // lighter phase is always the larger one, which steepens it further. That makes
+    // linearUpwind a candidate AMPLIFIER of the parasitic field rather than the
+    // dissipative stabiliser an upwind-biased scheme is usually assumed to be.
+    // `upwind` drops the gradient correction entirely: first order, more dissipative,
+    // but with no dependence on a discontinuous quantity.
+    //
+    // NOTE the same exposure exists in the viscous term,
+    // div((rho*nuEff)*dev2(T(grad(U)))), which is explicit and also built on grad(U).
+    // It is NOT changed here because it is needed for the correct deviatoric stress;
+    // if upwind convection helps, that term becomes the next thing to look at.
+    div(rhoPhi,U)                       Gauss @!MOMENTUM_DIV_SCHEME!@;
     div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;
     // FVM curvature kappa = div( grad(psi)/|grad(psi)| ) for the
     // divGradPsiSnGradAlpha surface-tension model and the face-centered
