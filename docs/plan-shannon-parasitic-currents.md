@@ -241,6 +241,160 @@ responsible, and the coupling itself was already exonerated by the interFoam dif
 The sub-map gain decomposition (sec. 4) is now the priority: it is the only remaining
 instrument that can localise a per-step gain to one arrow of the loop.
 
+## 0d. The amplifier measured bare, and the two-factor law (2026-08-20)
+
+`filterOffAmplifier3D` completed all four arms: the certified `L = 6R` box, `R/h`
+= 10.0/12.7/15.8/20.0, `cellCentreInverse` delivery, **psi filter entirely off**,
+quarter horizon `T = 0.025 s` so every arm is compared at the same *physical*
+time. This is the run that separates the amplifier `A` from the filter's damping
+`D`, because with the filter off the measured per-step rate *is* `A`.
+
+| R/h | steps | u_0 (one-step kick) | max&#124;U&#124;(T) | A [1/step] | G = A*n [e-folds] | volume | shape |
+|---|---|---|---|---|---|---|---|
+| 10.0 | 2302 | 2.1203e-04 | 1.7249e-04 | **−8.965e-05** | **−0.21** | 1.402e-06 | 5.412e-07 |
+| 12.7 | 3281 | 7.8220e-05 | 6.5617e-05 | **−5.355e-05** | **−0.18** | 1.232e-06 | 3.285e-07 |
+| 15.8 | 4586 | 4.0848e-05 | 1.3838e-03 | **+7.681e-04** | **+3.52** | 1.795e-05 | 3.597e-07 |
+| 20.0 | 6511 | 1.8911e-05 | 3.6447e-02 | **+1.162e-03** | **+7.56** | 5.450e-04 | 2.141e-06
+
+**First conclusion: the filter is not the source.** With it removed entirely the
+two fine arms still grow, at `A` = +7.68e-04 and +1.16e-03 per step — 3.5 and 7.6
+e-folds over a quarter horizon. Whatever amplifies, it sits upstream of the
+filter, and `A` changes sign between `R/h` = 12.7 and 15.8, the same place the
+filtered ladder's root sits. The stability boundary is a property of `A`, not of
+the filter.
+
+### The two-factor law
+
+Every arm's endpoint factorises exactly — this is an identity, not a fit:
+
+```
+max|U|(T)  =  u_0(h) * exp( G(h) ),        G(h) = A(h) * n(h) = A(h) * T/dt(h)
+```
+
+`u_0` is the first row of the metrics CSV: the velocity the interface acquires in
+**one step** from the delivered curvature error. It should scale as the product of
+the force error and the step over which it acts,
+
+```
+u_0  ~  (h^2 delivered-kappa error) * (h^1.5 capillary step)  =  h^3.5
+```
+
+and it does, in both dimensions and without tuning:
+
+| pair | 3D, filter off | 2D, BDF2/upwind |
+|---|---|---|
+| coarse→mid | h^+4.22 | h^+3.62 |
+| mid→fine | h^+2.91 | h^+3.51 |
+| fine→finest | h^+3.30 | h^+3.69 |
+
+The 2D triple (3.62, 3.51, 3.69) is tight enough to call `u_0 ~ h^3.5` measured.
+So the *initial condition* of the instability converges at third-to-fourth order —
+better than the h^2 delivery, because the capillary step shrinks too.
+
+`G` is the exponent, and it goes the other way:
+
+| | exponent of G in h | source |
+|---|---|---|
+| 3D, filter OFF | **h^−3.27** (G: +3.52 → +7.56) | `filterOffAmplifier3D` |
+| 2D, BDF2/upwind | **h^−0.95, then h^−0.56** (G: +1.30 → +2.51 → +3.69) | `upwindConvection2D` |
+
+**This is the sharpest statement of the problem so far.** Under refinement the
+kick gets ~11x smaller per doubling while the number of e-folds acting on it gets
+~1.5–2.1x bigger. Whether the parasitic current appears to *converge* or to
+*diverge* is a race between a power law and an exponential, and the race is
+decided by one number — the exponent `p` in `G ~ h^-p`:
+
+```
+d ln max|U|(T) / d ln h  =  3.5  −  p * G       currents still converge while  G < 3.5/p
+```
+
+- 2D, `p ~ 0.75`: the budget is `G < 4.7`. At `N = 512` and T = 0.025 s, `G` =
+  3.69 — **just inside it**, which is exactly why the 2D ladder still shows
+  max&#124;U&#124; falling (1.80e-05, the smallest on the ladder) while its growth rate is
+  positive. Extrapolated to the full 0.1 s horizon at the same rate, `G ~ 14.8`
+  and the sign of the trend reverses.
+- 3D, `p = 3.27`: the budget is `G < 1.07`, and it was spent between `R/h` = 12.7
+  and 15.8. Past it, refining by 1.26x makes the endpoint **26x worse**.
+
+So 2D and 3D do not differ in *whether* the mechanism is unstable — both have `A
+> 0` at fine h. They differ in `p`, by a factor of ~4.3. **That factor, not the
+sign of `A`, is the quantity a fix has to change.** Any candidate can now be
+scored on `p` at a quarter horizon instead of on `t_blow` at a full one, which is
+4x cheaper per data point and immune to the e-fold-count spread that made
+`t_blow` a poor score.
+
+### The filter's damping has a sign flip
+
+Matched against the θ = 0.2 arms of `psiOuterCorrectorsGain3D` (same box, same
+horizon, same delivery) — and the initial kicks agree to 4 digits, 2.120e-04 vs
+2.118e-04 at `R/h` = 10.0 and 4.085e-05 vs 4.061e-05 at 15.8, so the two arms
+start from the same state and the endpoint ratio is the filter's whole effect:
+
+| R/h | max&#124;U&#124;(T) filter OFF | max&#124;U&#124;(T) θ = 0.2 | G off → G on | filter verdict |
+|---|---|---|---|---|
+| 10.0 | 1.7249e-04 | 2.7722e-04 | −0.21 → **+0.27** | **1.61x WORSE** |
+| 15.8 | 1.3838e-03 | 2.3627e-04 | +3.52 → **+1.76** | **5.86x BETTER** |
+
+At `R/h` = 15.8 the filter removes half the growth rate. At `R/h` = 10.0, where
+the amplifier is absent, it *creates* growth from a damped state. The biharmonic
+band filter is therefore not a pure sink: it is a sink whose strength tracks the
+corrugation content plus **its own weak source**, and the source is what is left
+over where there is nothing to remove.
+
+This answers the standing question of whether θ must be resolution-dependent:
+**yes, and not as a tuning convenience.** At fixed θ the filter's own source term
+sets a floor that dominates wherever `A < 0`, so θ must vanish with the
+corrugation content it is meant to damp. It also explains the non-monotone θ
+sweep — two terms of opposite sign scaling differently in θ cannot give a
+monotone response.
+
+### BDF2 and the convective scheme, on a matched window
+
+`upwindConvection2D` ran the full 2D ladder twice, `upwind` against
+`linearUpwind gradU`, both under BDF2. The two schemes agree to 4–5 significant
+figures at every resolution — `u_0` identical to 5 digits, max&#124;U&#124; within 0.8% at
+`N` = 64 and within 0.06% for `N >= 128`, volume and shape within 0.01%. **The
+momentum convective scheme is inert on the stationary droplet**, now on a 4-point
+2D ladder as well as the 3D pair. (This is the measurement that closed the
+∇U-singularity hypothesis for the *stationary* case; it says nothing about
+translating or oscillating interfaces, where the hypothesis stands.)
+
+BDF2 vs Euler, re-scored **on a matched window** — the same step count, 1179 /
+3333 / 9428, against `cellCentreInverseFilteredPostFix`:
+
+| N | g Euler/linUpwind | g BDF2/upwind | Δg | Δmax&#124;U&#124; | Δvolume | Δshape |
+|---|---|---|---|---|---|---|
+| 64 | −2.600e-03 | −2.312e-03 | **+11.1%** | +40.5% | +1.1% | +1.2% |
+| 128 | +3.790e-04 | +3.899e-04 | **+2.9%** | +3.7% | +0.4% | +0.4% |
+| 256 | +2.744e-04 | +2.661e-04 | **−3.0%** | −7.5% | +0.4% | −0.2% |
+
+Within ±3% and **sign-flipping** for `N >= 128`. `u_0` is identical to 4 digits
+(OpenFOAM's `backward` starts up on Euler, so the first step is by construction
+the same). The momentum time discretisation is not the amplifier, in either
+dimension. Keeping BDF2 as the default is justified on formal grounds — the SL
+foot-point trace is second-order in time and should not be fed a first-order
+velocity — and it costs nothing measurable here.
+
+> **A retraction of my own arithmetic.** An unmatched comparison of these same
+> arms made BDF2 look 3.1x worse than Euler at `N` = 512. That was the horizon,
+> not the scheme: `gAvg` is an endpoint estimator, the growth rate decays over the
+> run, and a quarter-horizon window therefore reads higher than a full-horizon
+> one for the *same* trace. Matched windows give ±3%. Any two arms compared on
+> `gAvg` must have equal step counts.
+
+### 2D volume error converges at fourth order
+
+Worth recording because it is the one metric that is unambiguously good, and
+because a single-metric view of this ladder would be misleading in the opposite
+direction from usual — max&#124;U&#124; is non-monotone here while volume is clean:
+
+| N | volume rel. error | order | shape (zero-set L2) | order |
+|---|---|---|---|---|
+| 64 | 3.059e-03 | — | 1.219e-06 | — |
+| 128 | 1.442e-04 | **4.41** | 1.520e-07 | 3.00 |
+| 256 | 8.933e-06 | **4.01** | 5.846e-08 | 1.38 |
+| 512 | 4.978e-07 | **4.17** | 1.296e-08 | 2.17 |
+
 ## 1. Cut it down
 
 Eleven things are being tracked. **Two matter.**

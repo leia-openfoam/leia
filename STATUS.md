@@ -589,6 +589,75 @@ differencing the same field with `snGrad(alpha)`.
 
 ---
 
+### The two-factor law, and what it does to the score (2026-08-20)
+
+`filterOffAmplifier3D` (4/4) and `upwindConvection2D` (8/8) both completed. Full
+tables and derivations: `docs/plan-shannon-parasitic-currents.md` sec. 0d.
+
+**The filter is not the source.** With the psi filter removed entirely, the two
+fine 3D arms still grow: `A` = +7.68e-04 (R/h = 15.8) and +1.16e-03 per step
+(R/h = 20.0), i.e. 3.5 and 7.6 e-folds over a quarter horizon. `A` changes sign
+between `R/h` = 12.7 and 15.8 — the stability boundary belongs to the amplifier.
+
+**Every endpoint factorises exactly** as `max|U|(T) = u_0(h)*exp(G(h))`, `u_0` the
+one-step kick and `G = A*T/dt` the e-fold count at fixed physical time. Measured:
+
+| | u_0 (should be h^2 force x h^1.5 step = h^3.5) | G |
+|---|---|---|
+| 3D, filter off | h^+4.22, h^+2.91, h^+3.30 | **h^−3.27** |
+| 2D, BDF2/upwind | h^+3.62, h^+3.51, h^+3.69 | **h^−0.95, h^−0.56** |
+
+So refinement shrinks the kick ~11x per doubling and grows the exponent acting on
+it ~1.5–2.1x. Currents keep converging only while `G < 3.5/p`, `p` the exponent of
+`G` in `h`: budget 4.7 in 2D (spent at `G` = 3.69, `N` = 512 — hence max&#124;U&#124; still
+falling, 1.80e-05, the ladder's smallest) and 1.07 in 3D (spent between `R/h` =
+12.7 and 15.8 — past it, refining 1.26x costs 26x). **2D and 3D differ in `p` by
+~4.3x, not in the sign of `A`. `p` is the number a fix must change** — and it is
+scoreable at a quarter horizon, 4x cheaper than `t_blow`.
+
+**The filter's damping flips sign.** Against the θ = 0.2 arms at matched `u_0`
+(2.120e-04 vs 2.118e-04 and 4.085e-05 vs 4.061e-05, so same starting state):
+`R/h` = 15.8 → the filter is **5.86x better** (G 3.52 → 1.76, half the rate
+removed); `R/h` = 10.0 → **1.61x worse** (G −0.21 → +0.27, damping turned into
+growth). The biharmonic band filter carries its own weak source, which dominates
+wherever there is no corrugation to remove. **θ must therefore be
+resolution-dependent** — not as tuning, but because the source term has to vanish
+with the content it accompanies. It also explains the non-monotone θ sweep.
+
+**Convective scheme: inert.** `upwind` vs `linearUpwind gradU` agree to 4–5
+significant figures across the whole 2D ladder (`u_0` to 5 digits, max&#124;U&#124; ≤0.8% at
+`N` = 64 and ≤0.06% for `N >= 128`, volume/shape ≤0.01%). Closes the ∇U hypothesis
+for the *stationary* droplet only — it stands for translating and oscillating.
+
+**BDF2 vs Euler, matched window** (1179/3333/9428 steps): Δg = +11.1% / +2.9% /
+**−3.0%**, sign-flipping, ±3% for `N >= 128`; volume and shape within 1.2%. The
+momentum time discretisation is not the amplifier. BDF2 stays the default on
+formal grounds (a second-order foot-point trace should not be fed a first-order
+velocity) at no measurable cost. *Retracted:* an unmatched comparison of these
+same arms made BDF2 look 3.1x worse at `N` = 512 — that was the horizon, since
+`gAvg` is an endpoint estimator and the rate decays. **Never compare `gAvg`
+across unequal step counts.**
+
+**2D volume error converges at fourth order**: 3.059e-03 / 1.442e-04 / 8.933e-06
+/ 4.978e-07 → orders 4.41 / 4.01 / 4.17; shape 1.219e-06 / 1.520e-07 / 5.846e-08
+/ 1.296e-08 → 3.00 / 1.38 / 2.17.
+
+### Two process failures to not repeat (2026-08-20)
+
+1. **`squeue` returning nothing is not an empty queue.** Lichtenberg's primary
+   controller `mssd0001` was DOWN (both backups UP) and `squeue` returned zero
+   rows, which I read as "all drivers finished". They were all running.
+   `scontrol ping` distinguishes the two; the filesystem always does — step count
+   from `grep -c '^Time = ' log.*` and the log's mtime.
+2. **I deleted a live case directory.** A cleanup loop tested completeness as
+   "does the arm have its metrics CSV?", but for interFoam that file is written by
+   `post_solve` and so exists *only after* the run ends — every in-progress
+   interFoam arm classified as dead. `interFoamDroplet2D_00003` was removed at
+   90404/106689 steps (~16 h lost; it was minutes from its wall limit anyway).
+   The leia studies were untouched because their solver appends to the CSV every
+   step. **Liveness comes from log mtime, never from a declared output, and
+   destructive cleanup must not run while any driver may be alive.**
+
 ## 5. Lichtenberg — what is running
 
 Login: `ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de`
@@ -597,9 +666,9 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
-| `54282043` `leia-curv` | **stationaryDroplet3Dwide** — THE 3D LADDER, 4 levels on the certified L = 6R box: `N_L` = 60/76/95/120, cells 216000/438976/857375/1728000 (ratios 2.03/1.95/2.02), `R/h` = 10.0/12.7/15.8/20.0, `cellCentreInverse` + biharmonicBand theta = 0.2, np 32 constant. 379 core-h; largest arm ~7.8 h. First 3D ladder entirely inside the filter's support requirement (`R/h >~ 6`). | 12 h (orchestrator) | `leia-studies.54282043.out`, `studies/stationaryDroplet3Dwide/` |
-| `54281349` `leia-curv` | **cellCentreInverseFiltered512** — the 2D fourth point, N = 512 (`R/h` = 51.2), 106689 steps at dt = 9.373e-07, **np 8 to match the three existing points** (decomposition is not inert: np8 was 7–10x noisier than np4 before the seam fix). ~9–10 h. Turns two fitted orders into an over-determined fit and connects to the historical unfiltered N = 512 onset (t_blow 0.010). | 13 h (orchestrator) | `leia-studies.54281349.out`, `studies/cellCentreInverseFiltered512/` |
-| DONE `54281172/173/174` | **domainSizeControl10R/6R/4R** — the domain-size control, verdict in section 4: 6R equivalent to 0.16%, 4R rejected at +1130/+1514%. | — | `studies/domainSizeControl*/` |
+| `54354379` `leia-curv` `long` | **interFoamDroplet2D** — re-running the `N` = 512 arm only (the other three are complete at the full 0.1 s horizon with `interFoam.csv` present). 106689 steps at the measured 1.52 steps/s = ~19.5 h. Replaces the arm lost to the cleanup bug above. | 28 h | `studies/interFoamDroplet2D/` |
+| DONE | **filterOffAmplifier3D** 4/4, **upwindConvection2D** 8/8, **upwindConvection3D** 4/4, **filterThetaScaling3D** 6/6 — all analysed, section 4. | — | `studies/*/` |
+| DONE | **stationaryDroplet3Dwide**, **cellCentreInverseFiltered512**, **domainSizeControl10R/6R/4R**, **psiOuterCorrectorsGain3D**, **ddtOrderGain3D** | — | `studies/*/` |
 
 Not from this work, do not cancel: the SDPLS session's jobs in
 `/work/scratch/tm83tomy/leia` (`of-bo-cht-*`, `23fbd13d-*`, `leia-studies` on
