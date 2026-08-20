@@ -200,7 +200,18 @@ MOMENTUM_DDT_SCHEME backward;
 // Momentum convection. `linearUpwind gradU` reproduces the historical
 // `linearUpwind grad(U)` exactly (both gradSchemes entries are Gauss linear); the
 // alternative is `upwind`. Paren-free so the .parameter scalar parser accepts it.
-MOMENTUM_DIV_SCHEME linearUpwind gradU;
+// Momentum convection. DEFAULT IS NOW `upwind` (2026-08-20, at the user's direction).
+// Measured INERT on the stationary droplet: against `linearUpwind gradU` at 3D
+// R/h = 12.7 and 15.8 with BDF2, max U agrees to four significant figures
+// (8.0915e-05 vs 8.0944e-05; 2.4093e-04 vs 2.4084e-04) and the per-step gain to 0.03%.
+// The convective term is negligible at these velocities, so dropping the gradient
+// correction costs nothing HERE. It is the default anyway because the exposure it
+// removes is real -- U is continuous across Gamma but its GRADIENT is not, and
+// linearUpwind extrapolates the face value with that discontinuous cell gradient -- and
+// that exposure will matter for the TRANSLATING and OSCILLATING droplet, where the
+// convective term is no longer negligible. The alternative remains
+// `linearUpwind gradU`, verified bit-identical to the historical `linearUpwind grad(U)`.
+MOMENTUM_DIV_SCHEME upwind;
 
 
 

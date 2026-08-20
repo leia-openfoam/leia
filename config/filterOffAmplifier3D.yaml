@@ -49,7 +49,10 @@ axes_override:
   END_TIME: [0.025]
 
 # quarter horizon: 2302/3281/4586/6511 steps; ~141 core-h, longest ~2.9 h at np32.
-solve_runtime: 300
+# N_L=120 was cut mid-arm on the first submission: 6511 steps x 1.728e6 cells needs
+# ~2.9 h at np32 from the measured rate, but observed pace ran ~35% slower under node
+# contention (interFoam's N=512 arm did 1.52 steps/s against 2.06 measured earlier).
+solve_runtime: 480
 export_slides: false
 
 env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

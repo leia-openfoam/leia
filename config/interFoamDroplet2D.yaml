@@ -75,7 +75,12 @@ axes_override:
 # arm therefore needs 106689/2.06 = 51800 s = 14.4 h; the first submission gave the
 # driver only 6 h and lost it. Note interFoam is NOT cheaper than the level-set
 # solver here: at N = 256 it took 5234 s against 2758-3142 s for ours.
-solve_runtime: 1080
+# N=512 has now been cut TWICE. Observed pace is 1.52 steps/s, not the 2.06 measured
+# from the coarser arms, so 106689 steps needs ~19.5 h -- more than the deflt 24 h wall
+# leaves room for once queueing and setup are counted. It goes to `long` with a limit
+# sized to that measurement, which is the one case where `long` is justified rather
+# than padding.
+solve_runtime: 1500
 export_slides: false
 
 env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

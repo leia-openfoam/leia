@@ -60,7 +60,9 @@ axes_override:
   PSI_FILTER_THETA: [0.2]
   END_TIME: [0.025]
 
-solve_runtime: 300
+# N=512 was cut on the first submission: 26667 steps at np8, ~2.5 h nominal and ~3.4 h
+# at the observed pace.
+solve_runtime: 480
 export_slides: false
 
 env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

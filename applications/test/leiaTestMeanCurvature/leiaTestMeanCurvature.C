@@ -512,6 +512,163 @@ int main(int argc, char *argv[])
     const scalarField& magSfIn = mesh.magSf().primitiveField();
     const scalarField& psiIn = psi.primitiveField();
 
+    // ================= ORIENTATION-BINNED NON-GRADIENT CONTENT =================
+    // THE DIAGONAL-CELL TEST. On a Cartesian mesh the interface normal is parallel
+    // to a face normal only in special directions, and the MEASURE of well-aligned
+    // interface differs sharply between the dimensions: taking "within 15 degrees of
+    // a coordinate axis" as the criterion, a 2D circle has 4*30/360 = 33% of its
+    // length well aligned, while a 3D sphere has 6*2pi(1-cos15)/4pi = 10% of its
+    // area. That factor of three is a candidate explanation for the measured shift of
+    // the coupled stability boundary, R/h* ~ 17.7 in 2D against ~13.4 in 3D.
+    //
+    // The orientation DISTRIBUTION is h-invariant -- a sphere samples every
+    // direction at every resolution -- so orientation cannot produce an h-dependent
+    // gain, only a constant offset between dimensions. That is why this is measured
+    // per-orientation at FIXED h rather than along a refinement ladder, and why a
+    // mesh rotation would prove nothing (a sphere is rotationally invariant).
+    //
+    // The binning variable is the alignment of the exact interface normal with the
+    // nearest coordinate axis,
+    //     a = max_i |nhat . e_i|,
+    // which is 1 for an axis-aligned interface, 1/sqrt(2) = 0.707 at a 2D diagonal
+    // and 1/sqrt(3) = 0.577 at a 3D body diagonal.
+    //
+    // The scored quantity is the ERROR in the non-absorbable part of the capillary
+    // force, alpha_f*snGrad(kappa)*|Sf| -- the only content the pressure solve cannot
+    // absorb. Its exact value is built from the exact curvature at the two adjacent
+    // cell centres, so it is identically zero on a sphere (constant kappa) and
+    // genuinely non-zero on an ellipse, and in both cases what is reported is the
+    // deviation from it.
+    //
+    // The interface MEASURE per bin is reported alongside: a bin holding little area
+    // would otherwise look quiet merely for being empty, and the measured populations
+    // also check the binning against the analytic expectation (uniform in angle in
+    // 2D, uniform in solid angle in 3D).
+    {
+        const label nBins = 6;
+        const scalar aMin = 1.0/Foam::sqrt(scalar(nd));
+        List<label>  binN(nBins, 0);
+        scalarField  binArea(nBins, 0.0);
+        scalarField  binErrSum(nBins, 0.0);      // |Sf|-weighted
+        scalarField  binErrMax(nBins, 0.0);
+        scalarField  binExactSum(nBins, 0.0);    // |Sf|-weighted exact magnitude
+        scalarField  binKappaRelSum(nBins, 0.0); // relative cell curvature error
+
+        // Exact interface normal, from the analytic surface rather than from the fit,
+        // so the binning variable carries no discretisation error of its own.
+        const vector sc = implSurf.getOrDefault<vector>("center", Zero);
+        const vector sax = implSurf.getOrDefault<vector>("axes", vector::one);
+        auto exactNormalAt = [&](const point& x) -> vector
+        {
+            vector n(Zero);
+            if (surfType == "implicitSphere" || surfType == "implicitSlottedSphere")
+            {
+                n = x - sc;
+            }
+            else if (surfType == "implicitEllipsoid"
+                  || surfType == "signedDistanceEllipse")
+            {
+                // gradient of (x_i - c_i)^2/a_i^2 is 2(x_i - c_i)/a_i^2
+                for (direction i = 0; i < 3; ++i)
+                {
+                    const scalar ai = (mag(sax[i]) > VSMALL ? sax[i] : 1.0);
+                    n[i] = 2.0*(x[i] - sc[i])/(ai*ai);
+                }
+            }
+            else
+            {
+                n = x - sc;   // fallback: radial
+            }
+            // Only the GEOMETRIC directions may enter the alignment: on a pseudo-2D
+            // mesh the empty direction would otherwise contribute a spurious
+            // component and drag every face towards "aligned".
+            for (direction i = 0; i < 3; ++i)
+            {
+                if (i >= direction(nd)) { n[i] = 0.0; }
+            }
+            const scalar m = mag(n);
+            return (m > VSMALL ? n/m : vector(1, 0, 0));
+        };
+
+        forAll(activeFace, f)
+        {
+            if (!activeFace[f]) { continue; }
+
+            const vector nh = exactNormalAt(Cf[f]);
+            scalar a = 0.0;
+            for (direction i = 0; i < direction(nd); ++i)
+            {
+                a = Foam::max(a, mag(nh[i]));
+            }
+            label b = label((a - aMin)/((1.0 - aMin)/scalar(nBins)));
+            b = Foam::min(Foam::max(b, label(0)), nBins - 1);
+
+            const label o = own[f], n2 = nei[f];
+            const scalar dOwnNei = mag(mesh.C()[n2] - mesh.C()[o]) + VSMALL;
+            const scalar alphaF = 0.5*(alpha[o] + alpha[n2]);
+
+            // measured and exact non-gradient content on this face
+            const scalar rMeas =
+                alphaF*(kappaNoExt[n2] - kappaNoExt[o])/dOwnNei*magSfIn[f];
+            const scalar rExact =
+                alphaF*(kappaExactAt(mesh.C()[n2]) - kappaExactAt(mesh.C()[o]))
+                /dOwnNei*magSfIn[f];
+            const scalar err = mag(rMeas - rExact);
+
+            const scalar kEx = 0.5*(kappaExactAt(mesh.C()[o])
+                                  + kappaExactAt(mesh.C()[n2]));
+            const scalar kMe = 0.5*(kappaNoExt[o] + kappaNoExt[n2]);
+
+            ++binN[b];
+            binArea[b]       += magSfIn[f];
+            binErrSum[b]     += err*magSfIn[f];
+            binErrMax[b]      = Foam::max(binErrMax[b], err);
+            binExactSum[b]   += mag(rExact)*magSfIn[f];
+            binKappaRelSum[b] += mag(kMe - kEx)/(mag(kEx) + VSMALL)*magSfIn[f];
+        }
+        Pstream::listCombineReduce(binN, plusEqOp<label>());
+        forAll(binArea, b)
+        {
+            reduce(binArea[b], sumOp<scalar>());
+            reduce(binErrSum[b], sumOp<scalar>());
+            reduce(binErrMax[b], maxOp<scalar>());
+            reduce(binExactSum[b], sumOp<scalar>());
+            reduce(binKappaRelSum[b], sumOp<scalar>());
+        }
+
+        scalar areaTot = 0.0;
+        forAll(binArea, b) { areaTot += binArea[b]; }
+
+        if (Pstream::master())
+        {
+            OFstream os("leiaTestOrientationBins.csv");
+            os.precision(10);
+            os << "surface,nGeometricD,nCells,alignLo,alignHi,nFaces,areaFrac,"
+               << "errPerArea,errMax,exactPerArea,kappaRelErr" << nl;
+            Info<< nl << "ORIENTATION-BINNED non-gradient content error, "
+                << surfType << " (" << nd << "D). alignment a = max_i|nhat.e_i|, "
+                << "a = 1 axis-aligned, " << aMin << " at the body diagonal." << nl
+                << "   a range      faces  areaFrac   err/area      errMax  "
+                << "exact/area  kappaRelErr" << endl;
+            forAll(binN, b)
+            {
+                const scalar lo = aMin + scalar(b)*(1.0 - aMin)/scalar(nBins);
+                const scalar hi = lo + (1.0 - aMin)/scalar(nBins);
+                const scalar A = binArea[b] + VSMALL;
+                const scalar frac = binArea[b]/(areaTot + VSMALL);
+                os  << surfType << ',' << nd << ',' << mesh.nCells() << ','
+                    << lo << ',' << hi << ',' << binN[b] << ',' << frac << ','
+                    << binErrSum[b]/A << ',' << binErrMax[b] << ','
+                    << binExactSum[b]/A << ',' << binKappaRelSum[b]/A << '\n';
+                Info<< "  " << lo << "-" << hi << "  " << binN[b]
+                    << "  " << frac << "  " << binErrSum[b]/A
+                    << "  " << binErrMax[b] << "  " << binExactSum[b]/A
+                    << "  " << binKappaRelSum[b]/A << endl;
+            }
+            Info<< endl;
+        }
+    }
+
     // Stabilized foot-point signed offset of every active face centre from the
     // interface (stable-foot-point-3d.md engine on the owner/neighbour fits,
     // slReconstruction::footPointDistance) PLUS the implicit-surface GAUSSIAN
