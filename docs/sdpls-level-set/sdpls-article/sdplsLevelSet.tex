@@ -70,9 +70,13 @@ the surface-tension force rather than in the source; three time discretizations
 of the level set, spanning first-order L-stable, second-order A-stable and
 second-order L-stable, change when the coupled run fails but not whether it does.
 A conservative divergence-form rewrite of the source is retracted as evidence
-about that loop: it diverges under a \emph{prescribed} divergence-free velocity
-with no capillary force at all, at band gradient order $-3.800$, with every run
-completing.
+about that loop and then withdrawn outright: it diverges under a \emph{prescribed}
+divergence-free velocity with no capillary force at all, at band gradient order
+$-3.800$ on the 2D vortex and $-3.383$ on 3D shear, with every run completing, and
+a sign-split variant that demonstrably removes the M-matrix violation of its
+implicit coefficient --- the one mechanism its failure analysis had named ---
+leaves the divergence essentially where it was ($-3.554$), falsifying that
+mechanism without supplying a replacement.
 \end{abstract}
 
 \begin{keyword}
@@ -1420,7 +1424,224 @@ causes. The experiment that would test the first is a sign-split variant of
 $\max(S_P,0)\,\psilev^n$ to the explicit side and leaving $\min(S_P,0)$ on the
 diagonal, run on the same seven-rung ladder. If the divergence appears at the
 same rung with the clamp in place, the sign hypothesis is dead and the second
-candidate is the one to pursue. That experiment has not been run.
+candidate is the one to pursue. That experiment has now been run, and the
+remainder of this section reports it.
+
+\paragraph{The sign hypothesis, tested and falsified.} The experiment named in the
+previous paragraph exists in the library as the source type
+\texttt{RdivStrictSp}. It leaves the two \texttt{fvm::div} flux terms of
+\eqref{eq:rdivassembly} exactly as they are and splits only the implicit
+coefficient $f \equiv S_P = a - \nabla\cdot\mathbf{w}$ of \eqref{eq:rdivsp} by
+sign, assembling
+\begin{equation}
+  +\,\mathrm{Su}\bigl(\max(f,0)\,\psilev^{n},\;\psilev\bigr)
+  \;+\;\mathrm{Sp}\bigl(\min(f,0),\;\psilev\bigr)
+  \qquad\text{in place of}\qquad
+  +\,\mathrm{Sp}\bigl(f,\;\psilev\bigr).
+  \label{eq:rdivstrictsp}
+\end{equation}
+That is a single-variable change and it is the clamp exactly: the positive part of
+the coefficient is moved to the explicit side at the old time level, the remaining
+diagonal contribution is non-positive cell by cell, and Patankar's
+positive-coefficient rule \cite{patankar1980} is satisfied everywhere by
+construction. Study \texttt{sdplsRdivStrictSpConv2Dvortex} runs it on the same
+seven-rung reversed 2D vortex as Table~\ref{tab:rdiv-kinematic}, with all three
+arms fitted over identical rungs.
+
+\begin{table}[htbp]
+\centering
+\caption{The sign-split divergence form. 2D reversed vortex, $T=2$,
+$\mathrm{CFL}=0.5$, prescribed divergence-free velocity, study
+\texttt{sdplsRdivStrictSpConv2Dvortex}. Band gradient error at $t=T/2$; shape and
+volume orders at $t=T$; all three arms fitted over the same seven rungs. The
+\textbf{R} and \texttt{Rdiv} rows repeat Table~\ref{tab:rdiv-kinematic} and are
+carried here so that the clamp can be read against both the algebraic source and
+the unclamped divergence form on one ladder.}
+\label{tab:rdiv-strictsp}
+\small
+\begin{tabular}{lrrrrrrrr}
+\toprule
+$N$ & 32 & 45 & 64 & 90 & 128 & 181 & 256 & order \\
+\midrule
+\multicolumn{9}{l}{\emph{band gradient error} $\bigl\|\gradpsi-1\bigr\|$ at $t=T/2$}\\
+\textbf{R}            & 0.344 & 0.240 & 0.172 & 0.135 & 0.0958 & 0.0536 & \textbf{0.0309} & $\mathbf{+1.112}$ \\
+\texttt{Rdiv}         & 0.391 & 0.256 & 1.564 & 8.002 & 20.48 & 103.3 & 668.9 & $-3.800$ \\
+\texttt{RdivStrictSp} & 0.392 & 0.280 & 2.66  & 6.05  & 15.1  & 56.3  & 635   & $-3.554$ \\
+\addlinespace
+\multicolumn{9}{l}{\emph{fitted orders of the other two metrics}}\\
+\multicolumn{9}{l}{shape error at $t=T$:\quad \textbf{R} $+1.883$,\quad \texttt{Rdiv} $-1.306$,\quad \texttt{RdivStrictSp} $-0.951$} \\
+\multicolumn{9}{l}{volume error at $t=T$:\quad \textbf{R} $+2.090$,\quad \texttt{Rdiv} $-1.544$,\quad \texttt{RdivStrictSp} $-0.863$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The clamp is not inert, and that has to be established before its failure to help
+means anything: a repair that changed nothing because it was never triggered would
+test nothing. It is triggered heavily. The solver logs $512$ of $1024$ cells with
+$f > 0$ at $N=32$ --- half the domain was on the branch that violates the
+positive-coefficient rule, and after the split none of it is. The M-matrix
+violation is demonstrably removed.
+
+The divergence barely moves. The fitted band gradient order goes from $-3.800$ to
+$-3.554$ and the finest-mesh error from $668.9$ to $635$; the shape order goes
+from $-1.306$ to $-0.951$ and the volume order from $-1.544$ to $-0.863$.
+\texttt{RdivStrictSp} is marginally less bad on every one of the three metrics and
+still strongly divergent on every one of them, on a ladder where the algebraic
+source \textbf{R} converges at $+1.112$, $+1.883$ and $+2.090$. Half the domain
+changed how its coefficient is delivered, and the fitted band gradient order moved
+by $0.246$ while remaining strongly negative. \emph{Loss of diagonal dominance is not the mechanism of
+the divergence-form failure.} The first of the two hypotheses of the previous
+paragraph is dead, killed by the experiment that paragraph named and in the
+direction that paragraph said would kill it.
+
+\paragraph{What that eliminates, and what it does not.} The scope of the
+falsification must be stated narrowly, because the sign split does one thing and
+not another. It \emph{redistributes} the coefficient $f$ between explicit and
+implicit delivery; it does not \emph{reduce} the noise in $\nabla\cdot\mathbf{w}$,
+which is the same field, computed the same way, before and after the split. What
+is eliminated is therefore the diagonal-dominance mechanism specifically --- the
+proposition that the assembled system loses its M-matrix property and that this is
+what diverges --- and nothing beyond it. Both previously named suspects remain
+live, and the second is worth restating more sharply than it was above.
+
+\emph{(i) The coefficient carries second derivatives of $\psilev$.} With
+$\mathbf{w} = (\nhat\cdot\mathbf{v})\nhat$ and $\nhat = \nabla\psilev/\gradpsi$,
+the field $\nabla\cdot\mathbf{w}$ is formed as $\mathrm{fvc::div}(\phi_{\mathbf{w}})$
+and contains $\nabla\nhat$, that is, second derivatives of the discrete level set.
+By the argument of Section~\ref{sec:sourceerror} a first derivative of the
+solution error behaves like $|e|/h$ and a second like $|e|/h^2$, so this
+coefficient gets noisier as $h$ shrinks --- the correct qualitative signature for
+a defect that worsens under refinement, and one the algebraic form avoids because
+it differentiates $\psilev$ once and not twice. The sign split leaves this
+untouched: it moves $\max(f,0)$ to the explicit side, and $\max$ of a noisy field
+is exactly as noisy as the field.
+
+\emph{(ii) The two flux terms nearly cancel, so the operator is a difference of
+large numbers.} This is the sharper statement of the two, and it follows from an
+identity rather than from a scaling argument. \texttt{Rdiv} and \textbf{R} are
+\emph{continuum-identical}: \eqref{eq:rdivassembly} collapses to
+$\psilev\,(a - \nabla\cdot\mathbf{v})$, which is the algebraic source plus the
+compressibility correction the base equation already carries. The only structural
+difference between the two is therefore not what they represent but how they are
+assembled --- \texttt{Rdiv} routes part of the operator through the two
+\texttt{fvm::div} flux terms, whose discrete $\psilev\,\nabla\cdot\mathbf{w}$
+content must cancel against the $\mathrm{Sp}$ term for the assembly to reproduce
+the continuum result, and nothing in the discretization guarantees that it does.
+Two large, nearly equal contributions whose difference is the small quantity of
+interest is the classical setting for catastrophic cancellation, the residual of
+such a cancellation need not converge, and the sign split does not address it
+because it does not touch the flux terms at all.
+
+\paragraph{The probe, and what it found.} That measurement has since been made.
+It is sharper than the assembly-difference residual first proposed: instead of
+differencing the whole discrete assembly against the algebraic form --- a
+quantity that mixes every discretization in the operator and so localises
+nothing --- it registers the discrete failure of the one \emph{identity} the
+assembly depends on, the product rule. At the
+continuum
+\begin{equation}
+  \nabla\cdot(\mathbf{w}\psilev)
+  \;-\; \psilev\,\nabla\cdot\mathbf{w}
+  \;-\; \mathbf{w}\cdot\nabla\psilev \;=\; 0
+  \label{eq:productrule}
+\end{equation}
+holds identically, and \texttt{Rdiv} relies on it: the
+$\psilev\,\nabla\cdot\mathbf{w}$ content carried implicitly inside
+$\mathrm{div}(\phi_{\mathbf{w}},\psilev)$ is precisely what the
+$-\mathrm{Sp}(\nabla\cdot\mathbf{w},\psilev)$ term exists to cancel, leaving the
+convective part. Discretely nothing enforces \eqref{eq:productrule}:
+$\mathrm{fvm::div}(\phi_{\mathbf{w}},\psilev)$ interpolates $\psilev$ to faces
+with the $\mathrm{div}(\phi_{\mathbf{w}},\psilev)$ scheme, while
+$\mathrm{fvc::div}(\phi_{\mathbf{w}})$ is a plain flux divergence, and the two
+need not be consistent with each other.
+
+Table~\ref{tab:rdiv-productrule} reports the residual of \eqref{eq:productrule} on
+the 2D vortex. The reference norm $\|\nabla\cdot(\mathbf{w}\psilev)\|$ is quoted
+beside it deliberately: the two terms nearly cancel, so a residual carries no
+information without the magnitude of what is being differenced.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Residual of the discrete product rule \eqref{eq:productrule} inside the
+  \texttt{Rdiv} assembly, 2D vortex, study
+  \texttt{sdplsRdivProductRule2Dvortex}. A consistent discretization drives this
+  to zero as $h\to0$. It grows, both absolutely and relative to the terms being
+  cancelled.}
+  \label{tab:rdiv-productrule}
+  \begin{tabular}{rrrrrr}
+    \hline
+    $N$ & $h$ & $\|r\|_\infty$ & $\|r\|_2$ & $\|\nabla\cdot(\mathbf{w}\psilev)\|_2$
+        & $\|r\|_2/\|\cdot\|_2$ \\
+    \hline
+    $32$  & $0.0312$ & $2.276\times10^{-1}$ & $1.515\times10^{-2}$ & $4.791\times10^{-1}$ & $0.0316$ \\
+    $64$  & $0.0156$ & $1.868\times10^{-1}$ & $8.802\times10^{-3}$ & $5.268\times10^{-1}$ & $0.0167$ \\
+    $128$ & $0.0078$ & $1.287\times10^{0}$  & $2.260\times10^{-2}$ & $6.057\times10^{-1}$ & $0.0373$ \\
+    $256$ & $0.0039$ & $4.657\times10^{0}$  & $6.852\times10^{-2}$ & $8.033\times10^{-1}$ & $0.0853$ \\
+    \hline
+    \multicolumn{2}{r}{fitted order in $h$} & $-1.585$ & $-0.789$ & $-0.244$ & $-0.545$ \\
+    \hline
+  \end{tabular}
+\end{table}
+
+The identity fails, and the failure grows under refinement: $-0.789$ in the
+volume-weighted $L_2$ norm, $-1.585$ in $L_\infty$, and $-0.545$ in the residual
+taken \emph{relative} to the reference, so the growth is not an artefact of the
+differenced terms themselves growing. And the turning point matches the failure it
+is supposed to explain. The residual falls from $N=32$ to $N=64$ and grows
+monotonically thereafter --- exactly where the band gradient error of
+\texttt{Rdiv} turns, $0.391$, $0.256$, then $1.56$, $8.00$, $20.5$, $103$, $669$
+(Table~\ref{tab:rdiv-kinematic}). The error appears where the identity starts
+failing.
+
+\paragraph{What the probe does and does not establish.} It establishes that the
+discrete identity the divergence form is built on is violated, and increasingly
+so. Because the residual uses the \emph{same} $\nabla\cdot\mathbf{w}$ on both
+sides of \eqref{eq:productrule}, a coefficient that is noisy but used
+\emph{consistently} would cancel out of it; what the residual isolates is
+therefore inconsistency between the face-interpolated flux divergence and the
+plain one, which is suspect~(ii). It does not exclude suspect~(i) as a
+contributor: the coefficient error
+$\nabla\cdot\mathbf{w} - (\nabla\cdot\mathbf{w})_{\text{exact}}$ against the
+analytic Rider--Kothe velocity was \emph{not} measured separately, so the
+second-derivative noise may still be feeding the inconsistency rather than acting
+independently of it. Separating the two would need that second measurement, and
+nothing here rests on which of them dominates: both are properties of routing the
+source through fluxes, and neither is repairable by a change of coefficient alone.
+
+One further caveat on the residual as constructed: the three terms in
+\eqref{eq:productrule} are evaluated with three different discrete operators ---
+the $\mathrm{div}(\phi_{\mathbf{w}},\psilev)$ scheme, a plain flux divergence, and
+the least-squares gradient the source already uses for $\hat{\mathbf{n}}$ --- so
+the residual measures the mutual consistency of that triple rather than the error
+of any one of them. That is the right quantity for the question asked, because the
+assembly's correctness depends on exactly that mutual consistency, but it should
+not be read as an accuracy measurement of any individual operator.
+
+\paragraph{Consequence for the method.} The conservative divergence-form source
+has now failed a kinematic gate at both dimensionalities. On the 2D reversed
+vortex the band gradient order is $-3.800$, the shape order $-1.306$ and the
+volume order $-1.544$ (Table~\ref{tab:rdiv-kinematic}); the 3D shear ladder, which
+was outstanding when that table was first reported, has since completed and
+reproduces the failure on all three metrics --- band gradient order $-3.383$ at
+$t=T/2$, shape $-2.571$ and volume $-3.381$ at $t=T$. Two cases, two
+dimensionalities, three metrics each, six divergent orders, with every run
+completing and no solver failure anywhere. And the one targeted repair that the
+method's own failure analysis named has been implemented, run on the full ladder,
+and has not rescued it.
+
+The reporting consequence follows and is stronger than the retraction above. That
+retraction withdrew \texttt{Rdiv} as \emph{evidence about the coupled loop}, which
+left it standing as a source model whose kinematic behaviour was merely
+unfavourable. The 3D result and the falsified sign hypothesis together withdraw it
+as a \emph{method}: it is reported here as withdrawn pending an explanation, not
+carried as an available option. No result in this paper rests on it, no comparison
+uses it as a baseline, and it should not be selected in a production configuration
+until a mechanism for \eqref{eq:rdivassembly}'s divergence has been identified and
+removed. Recording it as withdrawn rather than deleting it is deliberate: the
+operator, the two hypotheses, the falsification of one of them and the measurement
+that falsified it are the useful content, and a reader who proposes a
+divergence-form source in future should be able to find out what happened to this
+one.
 
 \subsection{Two invariants, and the measurement that separates them}
 \label{sec:budget}
@@ -1543,7 +1764,7 @@ is exactly $a\,\psilev^n$ in floating point rather than a cancellation of two
 nearly equal numbers.
 
 Two consequences are worth separating, because one of them is a real property and
-the other is a measurement that came back negative.
+the other is a measurement that came back negative on two of the three metrics.
 
 \paragraph{What it gives.} Exactness in time, and unconditional sign
 preservation. $\exp(z)$ is strictly positive and finite for every real $z$,
@@ -1562,43 +1783,103 @@ $1/(1-S_p\Delta t)$ --- so the whole term goes onto $S_c$ and the member has no
 diagonal support: the M-matrix property of the assembled system must come from
 the transport operator alone \cite{patankar1980}.
 
-\paragraph{What it does not give: any change in convergence order.} Study
-\texttt{sdplsExpSource2Dvortex} runs the 2D vortex, $T=1$, oscillation off,
-$\mathrm{CFL}=0.5$, over the same seven-rung ladder $N=32\ldots256$, with
-\textbf{R} delivered by \texttt{simpleLinearImplicit} and by
-\texttt{exponential}:
-\begin{center}
-\begin{tabular}{lrr}
+\paragraph{The first measurement of it was two metrics wide, and was re-run for
+that reason.} Study \texttt{sdplsExpSource2Dvortex} ran the 2D vortex at $T=1$
+with the oscillation \emph{off}, $\mathrm{CFL}=0.5$, over the seven-rung ladder
+$N=32\ldots256$, with \textbf{R} delivered by \texttt{simpleLinearImplicit} and by
+\texttt{exponential}. It reported band gradient orders of $+1.343$ against
+$+1.331$ and volume orders of $+1.925$ against $+2.409$ at $t=T$ and $+3.391$
+against $+2.103$ at $t=T/2$, and it reported no shape order at all. The reason is
+structural rather than accidental: the shape error is defined against the initial
+condition, which is the correct answer only where the flow returns the interface
+to it, so a configuration with the oscillation switched off cannot populate that
+column at any resolution. The protocol of this paper is three metrics wide, the
+missing one was the third, and --- as the re-run shows --- it is the one in which
+the two deliveries actually differ. The study was therefore repeated under the
+reversed protocol of Section~\ref{par:reversal}:
+\texttt{sdplsExpSource2DvortexRev}, $T=2$, oscillation on, $\mathrm{CFL}=0.5$,
+the same seven rungs $N = 32\ldots256$ on four MPI ranks, solver
+\texttt{leiaLevelSetFoam}, band gradient error read at $t=T/2$ and shape and
+volume error at $t=T$. Table~\ref{tab:expsource} is that measurement.
+
+\begin{table}[htbp]
+\centering
+\caption{Exact-in-time delivery of the source: fitted orders over the seven-rung
+ladder $N = 32\ldots256$, 2D reversed vortex, $T=2$, oscillation on,
+$\mathrm{CFL}=0.5$, prescribed velocity, solver \texttt{leiaLevelSetFoam} on four
+MPI ranks, study \texttt{sdplsExpSource2DvortexRev}. Both arms carry the same
+strain-cancelling source \textbf{R}; only the linearization that delivers it
+differs, so this is a single-variable comparison. Band gradient error at $t=T/2$,
+shape and volume error at $t=T$, per the protocol of Section~\ref{par:reversal};
+the volume error at $t=T/2$ is quoted in addition because the study reports it and
+because $t=T/2$ is an honest instant for volume on a reversed flow.}
+\label{tab:expsource}
+\small
+\begin{tabular}{lrrrr}
 \toprule
-fitted order & \texttt{simpleLinearImplicit} & \texttt{exponential} \\
+delivery of \textbf{R} & gradient $(T/2)$ & shape $(T)$ & volume $(T)$ & volume $(T/2)$ \\
 \midrule
-band gradient error       & $+1.343$ & $+1.331$ \\
-volume error at $t=T$     & $+1.925$ & $+2.409$ \\
-volume error at $t=T/2$   & $+3.391$ & $+2.103$ \\
+\texttt{simpleLinearImplicit} & $+1.112$ & $+1.883$ & $+2.090$ & $+3.294$ \\
+\texttt{exponential}          & $+1.109$ & $+1.256$ & $+1.718$ & $+2.398$ \\
 \bottomrule
 \end{tabular}
-\end{center}
-Both volume instants are quoted because the study reports both, and the band
-gradient order is quoted as the study reports it; with the reversal switched off
-none of these columns suffers the final-time cancellation of
-Section~\ref{par:reversal}, so the choice of instant does not decide the
-comparison. The gradient orders are identical within the noise of a seven-point
-fit, and the two volume columns move in opposite directions, so no consistent
-direction can be read from them either. The shape error is \emph{not populated} in this study,
-because it was configured with the oscillation off and the shape error is defined
-against the initial condition; that column is missing rather than favourable, and
-the comparison is therefore two metrics wide, not three.
+\end{table}
 
-That result is what the error estimate of Section~\ref{sec:sourceerror} predicts,
-and it is worth stating as a confirmation rather than as a disappointment. The
-rectification the exponential factor removes is a \emph{temporal} artefact, of
-size $O(z^2)$ per $\pm$ pair with $z = a\Delta t$. The order loss established in
-Section~\ref{sec:sourceerror} is \emph{spatial}, and it comes from
-$(\nabla e)_h = O(h^{p-1})$ --- a term the time discretization cannot touch. A
-temporal correction cannot repair a spatial order, and this measurement is the
-direct test of that statement. The exponential member's value is exactness in
-time and unconditional sign preservation, and the honest verdict is that it buys
-nothing in convergence order on the kinematic ladders.
+\paragraph{What it does not give: any change in the gradient order.} The gradient
+column is flat, $+1.109$ against $+1.112$ --- a difference of $0.003$, which is
+inside the spread of a seven-point least-squares fit and is the same size as the
+$0.003$ that separates three different gradient schemes for the normal in
+Section~\ref{sec:sourceerror}. That is what the error estimate of that section
+predicts, and it is worth stating as a confirmation rather than as a
+disappointment. The rectification the exponential factor removes is a
+\emph{temporal} artefact, of size $O(z^2)$ per $\pm$ pair with $z = a\Delta t$.
+The order loss established in Section~\ref{sec:sourceerror} is \emph{spatial}, and
+it comes from $(\nabla e)_h = O(h^{p-1})$ --- a term no time discretization
+touches. A temporal correction cannot repair a spatial order, and with the two
+deliveries differing by an exact integrating factor against a rational
+approximation of it, this is the most direct test of that statement available.
+
+\paragraph{What it costs: shape and volume order.} The two remaining columns are
+not flat, and they move the same way. The shape order at $t=T$ falls from $+1.883$
+to $+1.256$, and the volume order at $t=T$ from $+2.090$ to $+1.718$; the volume
+order at $t=T/2$ falls in the same direction and by more, $+3.294$ to $+2.398$.
+Three metrics, one direction: the exactness in time is paid for in the accuracy of
+the zero contour's position and of the phase volume it encloses. The earlier
+two-metric comparison could not see this, because the one column that separates
+the deliveries unambiguously is the one it did not have and the two volume
+instants it did have moved in opposite directions.
+
+The mechanism is visible in \eqref{eq:expsource} itself and does not require a
+further experiment to name. The exponential member sets $S_p = 0$ and puts the
+entire source on $S_c$, evaluated from $\psilev^n$ before the matrix is assembled:
+the source is delivered \emph{explicitly}. The rational members do not. With
+\texttt{simpleLinearImplicit} the coefficient $f_{nl}$ sits on the diagonal of the
+same matrix that carries the convection, so within one linear solve the source and
+the transport operator act on the \emph{same} $\psilev^{n+1}$ and are coupled;
+with the exponential delivery the transport operator is handed a fixed
+right-hand-side field and the two act in sequence. Exactness of the source factor
+\emph{in isolation} is therefore bought by giving up the implicit coupling between
+the source and the transport operator, and it is precisely the metrics that
+measure where the zero contour ends up --- shape and volume --- that record the
+loss, while the metric that measures the strain balance the source was built to
+enforce --- the band gradient --- does not.
+
+\paragraph{The revised verdict.} The exponential member was previously reported
+here as neutral: identical gradient order, no order gain in either direction, and
+value residing in exactness and sign preservation. With the shape column measured
+that reading does not survive. It costs shape and volume order on the kinematic
+ladder, and it should be selected only where the property it uniquely holds is
+specifically required. That property is unconditional sign preservation:
+$\exp(z) > 0$ for every real $z$, so a strictly positive multiplicative factor
+cannot flip the sign of $\psilev$ in any cell, and the topology of the discrete
+zero contour is preserved at any $\Delta t$ --- no cell can be moved across the
+interface by the source, at any time step, on any mesh. No rational member holds
+that unconditionally, since $1+z$ changes sign at $z=-1$ and $1/(1-z)$ has a pole
+at $z=1$. Where a run must be guaranteed against a source-induced topology change
+--- a coarse mesh, a large $\Delta t$, or a strain field with large excursions ---
+that guarantee is worth a fraction of an order in shape and volume. Where it is
+not required, \texttt{simpleLinearImplicit} is the better-converging delivery of
+the same continuum source, and Table~\ref{tab:expsource} is the price list.
 
 \subsection{Global volume correction by a uniform level-set shift}
 \label{sec:volcorr}
@@ -1634,11 +1915,14 @@ error is large and hurts where it is already small.
 \centering
 \caption{Global volume correction, fitted orders. Upper block: 3D shear,
 $T=3$, oscillation on, four rungs $N = 64, 81, 102, 128$, study
-\texttt{sdplsVolCorr3Dshear}; band gradient error at $t=T/2$, shape and volume at
-$t=T$. Lower block: 2D vortex, oscillation off, seven rungs $N=32\ldots256$,
-study \texttt{sdplsVolCorr2Dvortex}; the shape column does not exist there, and
-is marked accordingly. The entry $5.923$ is \emph{not} a convergence rate --- see
-the warning below the table.}
+\texttt{sdplsVolCorr3Dshear}. Lower block: 2D reversed vortex, $T=2$, oscillation
+on, seven rungs $N=32\ldots256$ on four MPI ranks, study
+\texttt{sdplsVolCorr2DvortexRev}. Band gradient error at $t=T/2$, shape and volume
+error at $t=T$ in both blocks. An earlier configuration of the lower block ran
+with the oscillation off and could not populate the shape column at all; it was
+re-run under the reversed protocol for that reason, and the numbers below are the
+re-run. The entries $5.923$, $6.432$ and $0.835$ are \emph{not} convergence
+rates --- see the warning below the table.}
 \label{tab:volcorr}
 \small
 \begin{tabular}{lrrr}
@@ -1651,25 +1935,29 @@ arm & gradient $(T/2)$ & shape $(T)$ & volume $(T)$ \\
 \textbf{R}                            & $+0.679$ & $+0.916$ & $+0.230$ \\
 \textbf{R} + \texttt{newtonShift}     & $+0.707$ & $+1.293$ & $5.923$ (floor) \\
 \addlinespace
-\multicolumn{4}{l}{\emph{2D vortex}, \texttt{sdplsVolCorr2Dvortex}}\\
-\texttt{noSource}                     & $-0.053$ & not measured & $+2.245$ \\
-\texttt{noSource} + \texttt{newtonShift} & $-0.053$ & not measured & $+0.507$ \\
-\textbf{R}                            & $+1.343$ & not measured & $+1.925$ \\
-\textbf{R} + \texttt{newtonShift}     & $+1.360$ & not measured & $+0.231$ \\
+\multicolumn{4}{l}{\emph{2D reversed vortex}, \texttt{sdplsVolCorr2DvortexRev}}\\
+\texttt{noSource}                     & $-0.116$ & $+2.134$ & $+2.733$ \\
+\texttt{noSource} + \texttt{newtonShift} & $-0.107$ & $+2.106$ & $6.432$ (floor) \\
+\textbf{R}                            & $+1.112$ & $+1.883$ & $+2.090$ \\
+\textbf{R} + \texttt{newtonShift}     & $+1.119$ & $+1.671$ & $0.835$ (near floor) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The gradient column behaves exactly as the construction requires: $-0.171$ against
-$-0.161$, $+0.679$ against $+0.707$, $-0.053$ against $-0.053$, $+1.343$ against
-$+1.360$. Within the resolution of a four- or seven-point fit the correction does
+$-0.161$, $+0.679$ against $+0.707$, $-0.116$ against $-0.107$, $+1.112$ against
+$+1.119$. Within the resolution of a four- or seven-point fit the correction does
 not touch the signed-distance property in either direction, which is the claim
 the uniform shift makes and the first thing that had to be checked. The
-uncorrected \textbf{R} arm of the 2D block reproduces the $+1.343$ band gradient
-order and the $+1.925$ volume order of the independently configured exponential
-study of Section~\ref{sec:exp} digit for digit --- the two studies pin the same
-case, ladder and linearization, so that agreement is the cross-check that they
-measure the same thing.
+uncorrected \textbf{R} arm of the 2D block reproduces $+1.112$, $+1.883$ and
+$+2.090$ --- gradient, shape and volume --- digit for digit against the
+exponential study of Section~\ref{sec:exp} (Table~\ref{tab:expsource}) and against
+the \textbf{R} arm of the divergence-form study of Section~\ref{sec:rdiv}
+(Table~\ref{tab:rdiv-kinematic}), and the sourceless arm likewise reproduces
+$-0.116$, $+2.134$ and $+2.733$ against the latter. Three independently configured
+studies pin the same case, the same ladder and the same linearization, and agree
+on all three metrics; that is the cross-check that they are measuring the same
+thing and not three similar things.
 
 Where the uncorrected volume error is large, the correction converts it into
 shape accuracy. On 3D shear with the source, whose volume order is a poor $+0.230$,
@@ -1681,16 +1969,57 @@ interface displacement, and restoring it moves the interface back.
 Where the uncorrected volume error is already small, the correction is a net
 loss. The sourceless 3D shear arm converges in volume at $+3.928$ without help,
 and the shift drops it to $+1.050$ while also lowering the shape order from
-$+1.866$ to $+1.745$. The 2D vortex says the same thing twice: $+2.245 \to
-+0.507$ without the source, $+1.925 \to +0.231$ with it. A correction that drives
-an already-converging error down to a fixed floor destroys its convergence
-\emph{rate} while improving its absolute value, and on an arm that was converging
-at nearly fourth order the rate is the thing worth having.
+$+1.866$ to $+1.745$. The sourceless 2D arm says the same thing more sharply
+still: $+2.733$ without the shift, and with it a fitted $6.432$ that is not a rate
+at all but the signature of an error pinned at the correction's tolerance floor.
+A correction that drives an already-converging error down to a fixed floor
+destroys its convergence \emph{rate} while improving its absolute value, and on an
+arm that was converging at nearly fourth order the rate is the thing worth having.
 
-\paragraph{The floor artifact, which must not be read as an order.} Two entries in
-the record --- the $5.923$ in Table~\ref{tab:volcorr} and a $0.016$ seen
-elsewhere in the same study group --- are not convergence rates and must never be
-quoted as such. They are the signature of an error that has been driven to the
+\paragraph{The 2D block sharpens the crossover, and supplies the piece that was
+missing.} With the shape column populated, the 2D vortex is not a second copy of
+the 3D result but its mirror image, and the pair is one mechanism rather than two
+observations. On the 2D source arm the correction \emph{does} trade shape for
+volume: the shape order falls from $+1.883$ to $+1.671$, while the volume order
+goes from $+2.090$ to a fitted $0.835$ that is at or near the same tolerance floor
+and must not be read as a rate. Shape degrading under the correction is exactly
+the behaviour the model was feared to have, and it is exactly what did \emph{not}
+happen on 3D shear, where the same correction applied to the same source
+\emph{raised} the shape order from $+0.916$ to $+1.293$. The two results are
+opposite in sign and they are not in conflict.
+
+They are one story, and the discriminating variable is the size of the uncorrected
+volume error rather than the dimensionality of the case. The shift is a single
+scalar $\varepsilon$ added to the whole field, so it displaces the zero contour by
+$\varepsilon/\gradpsi$ everywhere at once: it can only remove a volume error that
+is itself a nearly uniform interface displacement. Where the uncorrected volume
+error is large --- 3D shear with the source, volume order $+0.230$ --- that is
+what the error is, the shift is the right shape of correction for it, and
+restoring the volume moves the interface back, which is why the shape order rises.
+Where the uncorrected volume error is already small --- the 2D reversed vortex
+with the source, volume order $+2.090$; the sourceless arms of both cases at
+$+3.928$ and $+2.733$ --- there is no systematic displacement left to remove, the
+root of \eqref{eq:newtonshift} is fitted to what remains, which is residual noise,
+and the shift displaces the interface by that noise. The shape order then falls
+because the correction is making the interface position worse in order to make one
+scalar exact. On 3D shear the sourceless shape order falls $+1.866 \to +1.745$ and
+on the 2D vortex $+2.134 \to +2.106$ for the same reason and by less, because
+those arms have less volume error for the shift to chase.
+
+The gradient column is untouched at both dimensionalities and in all four pairs of
+arms --- $+1.112 \to +1.119$ and $-0.116 \to -0.107$ on the 2D vortex,
+$+0.679 \to +0.707$ and $-0.171 \to -0.161$ on 3D shear --- which is the empirical
+confirmation of the construction argument above. A spatially constant
+$\varepsilon$ leaves $\gradpsi$ unchanged in the discrete operators as well as in
+the continuum, and the measurement now says so on four independent pairs of fits
+spanning two cases, two dimensionalities and both source settings. Whatever the
+correction costs, it does not cost the signed-distance property, which is the one
+guarantee this paper needs from it.
+
+\paragraph{The floor artifact, which must not be read as an order.} Four entries in
+the record --- the $5.923$, the $6.432$ and the $0.835$ in
+Table~\ref{tab:volcorr}, and a $0.016$ seen elsewhere in the same study group ---
+are not convergence rates and must never be quoted as such. They are the signature of an error that has been driven to the
 tolerance floor of the correction itself, where a least-squares fit through four
 or seven points is measuring nothing but noise. The smoke measurement makes the
 size of that floor explicit: at $N=32$, $t=0.05$, the relative volume error goes
@@ -1776,25 +2105,66 @@ Measured and documented here and in the companion deck. Retained:
     source term that reads the computed velocity must be verified on both tracks,
     and a method paper that reports only the kinematic one is incomplete by
     construction rather than by omission.
-  \item \textbf{A temporal correction cannot repair a spatial order.} The
-    \texttt{exponential} linearization delivers the source's one-step factor
-    exactly and removes the $O(z^2)$ rectification of \eqref{eq:rectify}
-    identically, and it changes the band gradient order by $0.012$
-    (Section~\ref{sec:exp}). The order loss of Section~\ref{sec:sourceerror} is
-    $(\nabla e)_h = O(h^{p-1})$, which no time discretization touches.
-  \item \textbf{Volume correction is a crossover, not an improvement.} Restoring
-    the phase volume with a uniform level-set shift raises the shape order where
-    the uncorrected volume error is large ($+0.916 \rightarrow +1.293$ on 3D
-    shear with the source) and destroys the convergence rate where it is already
-    small ($+3.928 \rightarrow +1.050$ on the sourceless arm of the same ladder),
-    while leaving $\gradpsi$ untouched in every arm (Section~\ref{sec:volcorr}).
+  \item \textbf{A temporal correction cannot repair a spatial order --- and this
+    one is not free.} The \texttt{exponential} linearization delivers the
+    source's one-step factor exactly and removes the $O(z^2)$ rectification of
+    \eqref{eq:rectify} identically, and it changes the band gradient order by
+    $0.003$: $+1.109$ against $+1.112$ on the reversed 2D vortex
+    (Table~\ref{tab:expsource}). The order loss of Section~\ref{sec:sourceerror}
+    is $(\nabla e)_h = O(h^{p-1})$, which no time discretization touches, and
+    this is the most direct test of that statement in the paper. The same
+    measurement, once the shape column exists, shows that the exactness is paid
+    for elsewhere: \eqref{eq:expsource} sets $S_p = 0$ and delivers the whole
+    source explicitly, giving up the implicit coupling between source and
+    transport operator, and the shape order falls from $+1.883$ to $+1.256$ and
+    the volume order at $t=T$ from $+2.090$ to $+1.718$. The member is retained
+    for the one property it holds unconditionally --- a strictly positive
+    multiplicative factor cannot flip the sign of $\psilev$ in any cell, so the
+    topology of the discrete zero contour survives any $\Delta t$ --- and not as
+    a free improvement.
+  \item \textbf{Volume correction is a crossover, not an improvement, and the
+    discriminating variable is the size of the uncorrected volume error.}
+    Restoring the phase volume with a uniform level-set shift raises the shape
+    order where the uncorrected volume error is large ($+0.916 \rightarrow
+    +1.293$ on 3D shear with the source, whose uncorrected volume order is a poor
+    $+0.230$) and \emph{lowers} it where the uncorrected volume error is already
+    small ($+1.883 \rightarrow +1.671$ on the reversed 2D vortex with the source,
+    whose uncorrected volume order is $+2.090$). On arms that were converging in
+    volume it also destroys the convergence rate itself: $+3.928 \rightarrow
+    +1.050$ on the sourceless 3D shear arm, and $+2.733 \rightarrow 6.432$ on the
+    sourceless 2D arm, the latter a tolerance floor and not a rate. A single
+    scalar $\varepsilon$ displaces the zero contour by $\varepsilon/\gradpsi$
+    everywhere at once, so it can only remove a volume error that is itself a
+    nearly uniform interface displacement; where no such displacement remains it
+    is fitted to residual noise and moves the interface by that noise instead.
+    $\gradpsi$ is untouched in all four pairs of arms and at both
+    dimensionalities (Section~\ref{sec:volcorr}).
+  \item \textbf{Loss of diagonal dominance is not the mechanism of the
+    divergence-form failure.} The implicit coefficient \eqref{eq:rdivsp} of
+    \texttt{Rdiv} has no sign guarantee, and this was the leading hypothesis for
+    its divergence. The sign-split variant \texttt{RdivStrictSp}
+    \eqref{eq:rdivstrictsp} removes the violation, and demonstrably so: at $N=32$
+    the solver logs $512$ of $1024$ cells with $f = a - \nabla\cdot\mathbf{w} >
+    0$, so half the domain was on the destabilising branch and after the split
+    none of it is. The divergence barely moves --- band gradient order $-3.554$
+    against $-3.800$, ending at $635$ against $668.9$ at $N=256$, shape $-0.951$
+    against $-1.306$, volume $-0.863$ against $-1.544$
+    (Table~\ref{tab:rdiv-strictsp}). The scope of this is narrow and must be
+    stated as such: the split \emph{redistributes} $f$ between explicit and
+    implicit delivery and does not \emph{reduce} the noise in
+    $\nabla\cdot\mathbf{w}$, so what it eliminates is the M-matrix mechanism
+    specifically, and the two remaining suspects of Section~\ref{sec:rdiv} ---
+    second derivatives of $\psilev$ inside $\nabla\cdot\mathbf{w}$, and the
+    near-cancellation of two large \texttt{fvm::div} terms in an assembly that is
+    continuum-identical to the algebraic form --- are untouched by it.
 \end{itemize}
 
 Retracted. The first three were artefacts of the defects of
-Section~\ref{sec:defects} rather than properties of the method; the last three
-were falsified or corrected by the coupled and conservation measurements of
-Sections~\ref{sec:coupled}, \ref{sec:rdiv} and \ref{sec:budget}, and are
-recorded here rather than deleted, at the place the original claims were made:
+Section~\ref{sec:defects} rather than properties of the method; the remaining
+four were falsified or corrected by the coupled, conservation and re-run
+kinematic measurements of Sections~\ref{sec:coupled}, \ref{sec:rdiv},
+\ref{sec:budget} and \ref{sec:exp}, and are recorded here rather than deleted, at
+the place the original claims were made:
 \begin{itemize}
   \item ``R over-flattening near the resolution limit'' and ``R controls
     steepening, not flattening'' --- both measured with the reversed-sign
@@ -1832,6 +2202,25 @@ recorded here rather than deleted, at the place the original claims were made:
     had never been run kinematically at all --- \texttt{fvm::div(phiW,psi)}
     aborted at the first step for want of a scheme entry --- are recorded in
     Section~\ref{sec:rdiv}.
+  \item ``The \texttt{exponential} linearization changes nothing: identical
+    gradient order, no order gain in either direction, and its value is exactness
+    in time and unconditional sign preservation'' --- \emph{corrected}, at the
+    configuration where it was made, and recorded here rather than deleted. That
+    verdict was drawn from \texttt{sdplsExpSource2Dvortex}, which ran the 2D
+    vortex at $T=1$ with the oscillation off and therefore could not populate the
+    shape column at any resolution --- the shape error is defined against the
+    initial condition, which is the correct answer only where the flow returns
+    the interface to it. The comparison was two metrics wide, and the missing
+    metric is the one that separates the two deliveries. Re-run under the
+    reversed protocol (\texttt{sdplsExpSource2DvortexRev},
+    Table~\ref{tab:expsource}) the gradient half of the claim survives ---
+    $+1.109$ against $+1.112$, a difference of $0.003$ --- and the neutrality
+    half does not: the shape order falls from $+1.883$ to $+1.256$ and the volume
+    order at $t=T$ from $+2.090$ to $+1.718$. The corrected verdict is in
+    Section~\ref{sec:exp}: the exponential delivery costs shape and volume order,
+    because $S_p=0$ gives up the implicit coupling between the source and the
+    transport operator, and it should be selected only where its unconditional
+    sign preservation is specifically required.
   \item ``The exact-curvature \texttt{Rdiv} runs are decisive'' ---
     \emph{corrected}: they are a \emph{null test}. With the exact-curvature force
     the velocity is $O(10^{-11})\,\mathrm{m/s}$, so
@@ -1901,7 +2290,24 @@ velocity with no capillary force at all, at band gradient order $-3.800$, shape
 $-1.306$ and volume $-1.544$, with every run completing --- converged solutions of
 a wrong equation rather than crashes. Its coupled behaviour needs no appeal to
 the loop, and it had never been run kinematically because the verification cases
-carried no scheme entry for its flux, so it aborted at the first step. Finally,
+carried no scheme entry for its flux, so it aborted at the first step. It is now
+withdrawn as a method as well, on two further measurements. The 3D shear ladder,
+outstanding when that retraction was written, has since completed and reproduces
+the failure on all three metrics --- band gradient order $-3.383$, shape $-2.571$,
+volume $-3.381$ --- so the divergence-form source has failed a kinematic gate at
+both dimensionalities. And the one targeted repair its own failure analysis named
+has been run and does not rescue it: the implicit coefficient \eqref{eq:rdivsp}
+has no sign guarantee, the sign-split variant \texttt{RdivStrictSp} removes that
+violation on the half of the domain that carried it --- $512$ cells of $1024$ at
+$N=32$ --- and the divergence moves from $-3.800$, $-1.306$ and $-1.544$ only to
+$-3.554$, $-0.951$ and $-0.863$. Loss of diagonal dominance is therefore not the
+mechanism, and no replacement mechanism is established, because the split
+redistributes the coefficient between explicit and implicit delivery without
+reducing the noise in $\nabla\cdot\mathbf{w}$: the second-derivative content of
+that field and the near-cancellation of two large \texttt{fvm::div} terms in an
+assembly that is continuum-identical to the algebraic source both remain live.
+The divergence-form source is accordingly reported as withdrawn pending an
+explanation rather than carried as an available option. Finally,
 the two invariants that the conservative argument had conflated are now measured
 apart: with the source off $\int\psilev\,\mathrm dV$ is conserved to machine
 precision, while the \textbf{R} arm drifts it by $-2.2\times10^{-4}$ and destroys
@@ -1912,21 +2318,40 @@ What a source term still cannot do is manufacture resolution: the cancellation
 is only as good as the normal it is built from.
 
 \paragraph{Open.} Four things, none of them claimed here. \emph{First}, the
-kinematic 3D shear ladder for the divergence-form source is still running, so the
-$-3.800$ of Table~\ref{tab:rdiv-kinematic} rests on the 2D vortex alone.
-\emph{Second}, the mechanism of that divergence is a hypothesis and not a result:
-the implicit coefficient \eqref{eq:rdivsp} has no sign guarantee and the
-assembly contains second derivatives of $\psilev$ through
-$\nabla\cdot\mathbf{w}$, and the experiment that would separate them is a
-sign-split variant that clamps \eqref{eq:rdivsp} the way
-\texttt{strictNegativeSpLinearImplicit} clamps the algebraic coefficient, on the
-same seven-rung ladder. \emph{Third}, the coupled result names the force as the
-place to work, and does not name a force: a model whose curvature error is small
-\emph{and} whose dynamic loop gain stays below one has not been identified, and
-the one obvious candidate in the literature is measured unstable here.
-\emph{Fourth}, the non-reversing 3D shear and LeVeque deformation ladders are
-still outstanding, and no coupled study reported here measures the band gradient
-error at all.
+mechanism of the divergence-form failure is one hypothesis shorter and no
+hypothesis nearer. The sign split falsified the diagonal-dominance mechanism
+without displacing the divergence, and the two remaining suspects --- the
+second-derivative content of $\nabla\cdot\mathbf{w}$, and the near-cancellation of
+the two \texttt{fvm::div} terms whose discrete $\psilev\,\nabla\cdot\mathbf{w}$
+content must cancel against the $\mathrm{Sp}$ term with nothing guaranteeing that
+it does --- are logically independent. The probe has since been run and reports
+the residual of the discrete product rule \eqref{eq:productrule} that the
+assembly depends on: it fails, and the failure grows under refinement
+($-0.789$ in $L_2$, $-1.585$ in $L_\infty$, $-0.545$ relative to the terms being
+cancelled), with its turning point at $N=64$ coinciding with the turn in
+\texttt{Rdiv}'s own error (Table~\ref{tab:rdiv-productrule}). Because that
+residual uses the same $\nabla\cdot\mathbf{w}$ on both sides, it isolates
+inconsistency of assembly rather than noise in the coefficient, and it does not
+exclude the second-derivative content as a contributor --- the coefficient error
+was not measured separately. Neither suspect is repairable by a change of
+coefficient alone; both are consequences of routing the source through fluxes.
+A consistent formulation would have to compute $\nabla\cdot\mathbf{w}$ from the
+same face interpolation that $\mathrm{fvm::div}(\phi_{\mathbf{w}},\psilev)$ uses,
+so that the cancellation holds by construction. That is a reformulation, not a
+patch, and it is not attempted here.
+\emph{Second}, the coupled result names the force as the place to work, and does
+not name a force: a model whose curvature error is small \emph{and} whose dynamic
+loop gain stays below one has not been identified, and the one obvious candidate
+in the literature is measured unstable here. \emph{Third}, the cost the
+\texttt{exponential} delivery pays in shape and volume order
+(Table~\ref{tab:expsource}) is attributed above to the loss of implicit coupling
+between the source and the transport operator, and that attribution is an argument
+from the structure of \eqref{eq:expsource} rather than an ablation: no member has
+been constructed that carries the exponential factor \emph{and} retains diagonal
+support, so the explicit delivery has not been isolated from the exactness as a
+single variable. \emph{Fourth}, the non-reversing 3D shear and LeVeque deformation
+ladders are still outstanding, and no coupled study reported here measures the
+band gradient error at all.
 
 \section*{Reproducibility}
 \begin{verbatim}
