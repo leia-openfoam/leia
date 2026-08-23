@@ -1,0 +1,70 @@
+# IS p AN EXPONENT, OR A LOCAL SLOPE NEXT TO A SIGN CHANGE?
+#
+# The fifth rung of filterOffAmplifier3D, and the single most decisive coupled
+# run available. It is separate from that config rather than an added N_CELLS
+# entry so the four completed arms cannot be disturbed.
+#
+# WHY IT IS NEEDED. The net per-step gain A = -sink + amplifier CHANGES SIGN
+# under refinement in both dimensions -- in 3D between R/h = 12.7 and 15.8
+# (-8.965e-05, -5.355e-05, +7.681e-04, +1.162e-03), in 2D between N = 64 and 128.
+# The "exponent" p = 3.27 that describes 3D's e-fold count is therefore fitted on
+# the ONLY TWO arms past the zero, where the local logarithmic slope of a
+# difference of two terms is inflated by the cancellation. Fitting the additive
+# form A = -a + b h^-q to the four 3D points is unidentifiable (12.6% residual,
+# amplifier exponent anywhere from 1.36 to 1.77) and DEGENERATES outright in 2D.
+#
+# And 2D says the inflation is real: there A peaks just past its own crossing and
+# then DECAYS, h^+0.55 then h^+0.94, so p falls 0.95 -> 0.56 as the ladder moves
+# away from the zero. If 3D behaves the same way, A must peak somewhere near
+# R/h = 20-25 and p(20 -> 25) should come out well under 2.
+#
+# THE DISCRIMINATION.
+#   * A(R/h = 25) well BELOW the 1.72e-03 that a pure h^-1.77 law predicts, with
+#     p(20 -> 25) < 2 and volume/shape errors resuming convergence => p was a
+#     local slope near a zero, the two dimensions share one mechanism, and the
+#     3.5/p "budget" statement has to be restated as a local one.
+#   * A(R/h = 25) >= 1.72e-03 with p(20 -> 25) >= 3, G > 12, volume error > 1e-3
+#     => 3D has a genuinely divergent amplifier that 2D does not, and the
+#     dimensional gap is a mechanism difference rather than a fitting artefact.
+# There is no ambiguous middle: the two outcomes are a factor ~2 apart in A and
+# opposite in the sign of dA/dh.
+#
+# Both static gates now say this run is necessary rather than optional. On exact
+# geometry nothing is worse than second order: every channel of the
+# parallel-surface inverse converges h^2.0-2.2 (docs/.../inverse_input_attribution.csv)
+# and the psi filter's own residual is h^4 in 2D and h^6 in 3D
+# (docs/.../psi_filter_residual.csv). So the h-dependence of the coupled gain is
+# not a static-delivery property, and only a coupled arm can locate it.
+#
+# SIZING. N_CELLS 150 on the certified L = 6R box gives h = 4e-5, R/h = 25.0,
+# 3.375e6 cells, dt = 0.010861/250^1.5 = 2.7477e-06 and 9099 steps to the quarter
+# horizon T = 0.025 -- the same horizon and the same fixed-dt time grid as the
+# four existing arms, so A and G are directly comparable. np is held at 32, the
+# configuration the other arms were measured in, so the cost follows from a
+# measured pace rather than from an assumed parallel efficiency: 3.375e6 x 9099 =
+# 3.07e10 cell-steps against the N = 120 arm's 1.125e10, i.e. 2.73x of a run that
+# took about 3.6 h, so ~9.8 h and ~314 core-h. Request 11 h.
+#
+#   sbatch -p deflt -t 11:00:00 --export=ALL,STUDY=filterOffAmplifier3Dx25 run-studies.sbatch
+#
+# Score A and G at MATCHED step counts against the other arms where windows
+# overlap, and report volume error and zero-set radial L2 next to every gain --
+# a single headline metric has misread this case before.
+study_name: filterOffAmplifier3Dx25
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [150]
+  PSI_FILTER: [none]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  END_TIME: [0.025]
+solve_runtime: 660
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

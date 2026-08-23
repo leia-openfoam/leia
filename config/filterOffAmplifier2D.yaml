@@ -1,0 +1,55 @@
+# THE 2D TWIN OF filterOffAmplifier3D -- the dimensional control that was missing.
+#
+# Everything measured about the amplifier so far compares a FILTER-OFF 3D ladder
+# on the L = 6R box against a FILTERED 2D ladder on the L = 10R box, at different
+# R/h and different step counts. That comparison carries three confounds at once,
+# and the headline number it produced -- a 2.52 difference in the exponent of the
+# per-step gain A between the dimensions -- rests on it.
+#
+# This study removes all three. Same box (L = 6R = 0.006 m), same delivery
+# (cellCentreInverse), filter OFF, same quarter horizon (T = 0.025 s), and
+# N_CELLS chosen so R/h matches the 3D arms EXACTLY: 60/76/95/120 give
+# R/h = 10.0/12.7/15.8/20.0. Because the capillary step depends only on h, both
+# dt and the step count then match arm for arm as well (2302/3281/4586/6511), so
+# per-step gains are directly comparable without any window matching -- which
+# matters, since gAvg is an endpoint estimator and comparing it across unequal
+# step counts is what made BDF2 look 3.1x worse than Euler once already.
+#
+# TWO EXTRA RUNGS, which 3D cannot afford. N = 150 and 190 add R/h = 25.0 and
+# 31.7 for 22500 and 36100 cells -- a rounding error in 2D, ~300 core-h per arm
+# in 3D. Their job is the question config/filterOffAmplifier3Dx25.yaml asks
+# expensively: does A PEAK and then decay past the sign change, or keep growing?
+# In the filtered L = 10R 2D ladder A decayed after its crossing (h^+0.55 then
+# h^+0.94); if the filter-off twin does the same out to R/h = 31.7, that is a
+# strong prior for what the 3D R/h = 25 arm will show, bought for minutes on a
+# laptop instead of 314 core-h on the cluster.
+#
+# The 2D droplet is one cell thick with `empty` front and back, so the Gaussian
+# curvature K is identically zero and the parallel-surface inverse reduces to its
+# 2D branch. That is precisely the term this comparison isolates: the static
+# attribution gate measured K carrying 53-62% of the delivered residual in 3D and
+# exactly 0.0% in 2D, while every channel still converged at h^2. If the coupled
+# dimensional gap survives with the box, the delivery, dt, the step count and the
+# filter all held equal, then it is the K channel or the dimension of the
+# velocity field, and nothing else is left.
+#
+# Laptop study: 20 cores, np 4, 5 arms at a time.
+#   make studies-one STUDY=filterOffAmplifier2D PROFILE=profiles/local20
+study_name: filterOffAmplifier2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60, 76, 95, 120, 150, 190]
+  PSI_FILTER: [none]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  END_TIME: [0.025]
+solve_runtime: 240
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

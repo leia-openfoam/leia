@@ -1,0 +1,22 @@
+# LAPTOP profile, core-capped.
+#
+# Same as profiles/local but limited to 20 of the 24 cores so 4 physical cores
+# stay free for interactive use. The machine is an Intel Core Ultra 9 275HX:
+# 24 PHYSICAL cores, 1 thread per core (no SMT), so a core is a core and the cap
+# is exact -- but the cores are heterogeneous (P plus E), so an MPI job runs at
+# the pace of its slowest rank. Keep np small and equal across arms of a study
+# so the arms remain comparable to each other.
+#
+# THE BINDING LIMIT HERE IS MEMORY, NOT CORES: 15 GB total, ~13 GB usable. That
+# rules out the 3D ladder locally -- N_L = 95 is 857k cells and N_L = 120 is
+# 1.73M -- so laptop studies are 2D.
+#
+#   snakemake --workflow-profile profiles/local20 --configfile config/<study>.yaml
+#   make studies-one STUDY=<study> PROFILE=profiles/local20
+executor: local
+cores: 20           # 20 of 24; leaves 4 physical cores free
+jobs: 5             # 5 concurrent arms x np 4 = 20 cores
+resources:
+  - tasks=20
+printshellcmds: true
+rerun-incomplete: true
