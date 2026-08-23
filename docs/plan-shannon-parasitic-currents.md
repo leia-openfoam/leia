@@ -395,6 +395,138 @@ direction from usual — max&#124;U&#124; is non-monotone here while volume is c
 | 256 | 8.933e-06 | **4.01** | 5.846e-08 | 1.38 |
 | 512 | 4.978e-07 | **4.17** | 1.296e-08 | 2.17 |
 
+## 0e. Popinet (2009) reframes the object we have been measuring (2026-08-23)
+
+Popinet, *An accurate adaptive solver for surface-tension-driven interfacial
+flows*, JCP 228:5838-5866 (the Gerris/Balsilisk surface-tension paper), section
+6.2.1 and Figs 7-11. Read in full; the relevant content is not the height-function
+curvature but his **interpretation of the stationary-droplet test**, which we had
+not adopted and which our own data now confirms quantitatively.
+
+### What he establishes
+
+Balanced-force CSF plus height-function curvature recovers exact equilibrium --
+velocity to round-off -- **independently of spatial resolution**, PROVIDED the
+interface is given time to relax to its *numerical* equilibrium shape. The
+initial transient is a train of oscillations of period ~0.4 T_sigma whose
+wavelength, from T_lambda = sqrt(rho lambda^3/(pi sigma)) ~ 0.4 T_sigma, is
+lambda ~ 0.8 D = pi D/4 -- consistent with the FOURFOLD symmetry of both his
+velocity field (his Fig 9) and his curvature error along the circle (his Fig 6).
+
+His reinterpretation, in his words: these oscillations are *not* parasitic
+currents, they are "the result of a physically-consistent numerical solution of
+the evolution of a perturbed initial interface shape", the perturbation being that
+the exact circle imposed as initial condition is **not** the discrete equilibrium.
+The resulting capillary waves are then "exponentially damped by viscosity -- again
+in a physically-consistent manner -- on timescales of order T_v". True parasitic
+currents, by contrast, "are continuously fed energy by an unphysical unbalance, do
+not vanish with time". At La = infinity the oscillation neither grows nor decays:
+constant amplitude, his Fig 8 top curve.
+
+Two supporting measurements: at numerical equilibrium the **standard deviation of
+the curvature along the interface** saturates at O(1e-11), i.e. round-off (his
+Fig 10), which is condition 2 of his balanced-force argument; and the numerical
+equilibrium shape converges to the exact circle at second order (his Fig 11).
+
+And a methodological warning we have been violating: "test cases designed to
+evaluate the accuracy of a given surface-tension implementation (for the
+stationary droplet problem) need to make sure that simulations are run for
+timescales comparable to T_v ... For shorter timescales the results obtained will
+only reflect the accuracy of the initial curvature estimation."
+
+His temporal scheme matters too. The volume fraction is **staggered in time**, c
+at n +/- 1/2 against u at n, and the capillary force is evaluated at **n + 1/2** --
+formally second order with no iteration. The explicit stability limit is
+dt <= sqrt(rho h^3/(pi sigma)).
+
+Finally, his *translating* droplet does NOT converge in time: the velocity norm
+grows (his Fig 12) because advection error continually re-perturbs the shape, and
+both velocity and shape errors are only ~first order (Figs 13, 14).
+
+### Our oscillation is the m = 8 capillary wave
+
+| | our stationary droplet |
+|---|---|
+| T_sigma = sqrt(rho D^3/sigma) | 10.48 ms |
+| T_v(water) = D^2/nu | 4.0 s = 382 T_sigma |
+| our horizon 0.025 s | 2.39 T_sigma = **0.6% of T_v** |
+| our dt / Popinet's limit sqrt(rho h^3/(pi sigma)) | **0.164 at every R/h** |
+
+The measured oscillation period of max&#124;U&#124; in the filter-off 2D twin, from an FFT
+of the detrended log trace, is **resolution independent** across a factor three in
+h -- 1.5626, 1.4704, 1.6667, 1.5626, 1.5625 ms at R/h = 10.0, 12.7, 15.8, 20.0,
+31.7 -- against **1.455 ms predicted for m = 8** from Popinet's T_lambda with
+lambda = 2 pi R/m. That is 7%, and inverting the measured period gives m = 7.6.
+Independently, the azimuthal spectrum of &#124;U&#124; sampled on the ring r = 1.06 R is
+dominated by **m = 8** at every resolution, with m = 4 and 16 harmonics at 16-22%
+of the mean ring velocity, while the grid-scale mode number pi R/h runs 31 -> 79
+over the same ladder. Two independent measurements of the same integer.
+
+So the oscillation we have been calling an instability is the same object Popinet
+identifies -- a capillary wave excited because the exact circle is not the discrete
+equilibrium -- one harmonic higher than his (m = 8 against m = 4).
+
+### The defect, restated
+
+The physically correct envelope for that wave is viscous decay at
+2 nu_water k^2 = **128 1/s**, i.e. 3.2 e-folds of DECAY over our 25 ms horizon.
+The measured envelope rates of the same arms are
+
+  R/h    10.0    12.7    15.8    20.0    25.0    31.7
+  1/s    -5.3   -96.9    +5.7   +74.4  (+212)  +120.3
+
+(the R/h = 25 entry is untrustworthy: its FFT returned the window length rather
+than a period, so its detrending is wrong). Only R/h = 12.7 is near the physical
+value. **The defect is therefore numerical ANTI-DAMPING of a physical capillary
+oscillation, of order +100 to +250 1/s against a physical -128 1/s -- not a
+spurious current fed by force imbalance.** That is a different quantity to fix,
+with a different target: match 2 nu k^2, rather than drive max&#124;U&#124; to zero.
+
+One contribution is quantifiable immediately. For an oscillator, a capillary force
+evaluated explicitly at t^n gives amplification &#124;1 + i omega dt&#124;, i.e. anti-damping
++omega^2 dt/2 per unit time; with omega = 2 pi/1.5626 ms = 4021 rad/s that is
+**+88 1/s at R/h = 10 falling to +22 1/s at R/h = 25**. Right sign, right order,
+and exactly what Popinet's n + 1/2 staggering removes -- centring the force between
+the two velocity levels makes the amplification factor exactly one, leaving
+viscosity to do the damping.
+
+It also explains the standing null result on `psiOuterCorrectors`. Iterating the
+force toward n + 1 does not make the scheme neutral, it swaps anti-damping for
+damping of the same O(omega^2 dt^2) magnitude -- which is 0.1-0.4% per step, the
+size we measured. Neutrality needs the force at n + 1/2, not at n + 1.
+
+Note also that because m = 8 is fixed and h-independent, omega is h-independent
+while dt ~ h^1.5, so this particular anti-damping FALLS under refinement. That
+predicts eventual restabilisation at fine enough h, and the 2D twin's per-step
+gain peaking at R/h = 25 and falling at 31.7 (h^+3.69) is consistent with it.
+
+### What we are missing, in order of cost
+
+1. **The standard deviation of the delivered curvature along the interface.** We
+   record `kErrL2Band` and `kErrLinfBand`, both errors against 1/R, which mix the
+   absorbable uniform offset with the non-absorbable variation -- and the balanced
+   force consumes only the variation. Popinet's Fig 10 plots exactly the variation
+   and shows it must fall to round-off. This is the cheapest high-value metric we
+   do not have.
+2. **One arm run to a viscous timescale.** At 0.6% of T_v every number in this
+   campaign describes a transient. A 2D R/h = 25 arm to t = 0.5 s is 48 T_sigma
+   and 12% of T_v, 182k steps at 22500 cells -- affordable on a laptop. It answers
+   the only question that matters: does the envelope turn over, i.e. does a
+   numerical equilibrium exist for our delivery?
+3. **Time-stagger the capillary force to n + 1/2.** Structural, and the one change
+   with a derived reason to expect neutrality rather than a smaller prefactor.
+4. **Test the fixed-point question directly** (already raised in sec. 5 of this
+   plan, never measured): can any shape make our delivered kappa exactly constant?
+   Popinet's height function has that property by construction; a quadratic WLS fit
+   composed with the parallel-surface inverse may not.
+5. **Set translating/oscillating expectations to first order.** Popinet's
+   translating droplet grows in time and converges at ~first order; ours should not
+   be held to second.
+6. **Azimuthal spectrum of the delivered face-curvature error on the exact
+   circle.** Popinet's height function gives a clean m = 4 pattern; we excite m = 8.
+   If the static gate reproduces m = 8 in the delivered error, that is a specific
+   signature of our delivery and it identifies which omega the anti-damping acts on.
+
 ## 1. Cut it down
 
 Eleven things are being tracked. **Two matter.**
