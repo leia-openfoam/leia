@@ -1409,6 +1409,198 @@ int main(int argc, char *argv[])
                              &invValid);
         scoreRemainderMasked("cellCentreInverse_signedOffset", kappaCellInvSO,
                              &invSOValid);
+
+        // ------------------------------------------------------------------
+        // WHICH INGREDIENT OF THE INVERSE CARRIES THE RESIDUAL?
+        //
+        // kappa_c^Gamma = parallelSurfaceInverse(kappa_c, d_c, K_c) has THREE
+        // fitted inputs, and only their cell-to-cell VARIATION reaches momentum:
+        // the balanced CSF force consumes alpha_f*snGrad(kappa_c), so a spatially
+        // uniform curvature error is snGrad-free and the pressure solve absorbs
+        // it exactly. On an exact sphere or circle every input has a closed form
+        // -- at radius r = |x - c| the parallel surface through the cell has
+        // kappa = (nd-1)/r, K = 1/r^2 in 3D and 0 in 2D, and d = r - R -- so each
+        // input can be replaced by its exact value ONE AT A TIME and the
+        // remainder re-scored on the identical face set. The substitution that
+        // collapses the residual names the culprit; the all-exact row must return
+        // kappa_exact to round-off, which is the harness gate.
+        //
+        // The one-at-a-time CONTRIBUTIONS are obtained by evaluating the inverse
+        // itself, not by linearising it -- no algebra and no sign conventions to
+        // get wrong, and exact at any d:
+        //     T_kappa = PSI(kappa_fit, d_ex , K_ex ) - PSI(kappa_ex, d_ex, K_ex)
+        //     T_d     = PSI(kappa_ex , d_fit, K_ex ) - PSI(kappa_ex, d_ex, K_ex)
+        //     T_K     = PSI(kappa_ex , d_ex , K_fit) - PSI(kappa_ex, d_ex, K_ex)
+        // What reaches the force is alpha_f*snGrad(T_*), scored exactly as the
+        // remainder is; being separable to first order the three should sum to
+        // the full residual, and any shortfall is the cross-term.
+        //
+        // THE HYPOTHESIS UNDER TEST. Differentiating the inverse on a sphere,
+        // df/dK = -2d(R+d)^3/R^3 and df/dd = 2/R^2 exactly, so in R-normalised
+        // form both the K and the d channel carry a factor d/R ~ h/R while the
+        // kappa channel enters at O(1). That makes K a SHRINKING channel under
+        // refinement -- 15.8:1 attenuation at R/h = 15.8, 20:1 at R/h = 20 --
+        // which is the opposite of what a 3D amplifier needs, and it puts d on
+        // exactly the same footing as K while being dimension-neutral in form.
+        // But Delta(d) across the band is a SAWTOOTH: d runs a full cell width
+        // from one side of the band to the other, so |Delta d| ~ h and e_d = O(1)
+        // where e_K and e_kappa are convergent. If that is right, K cannot be
+        // the 3D-specific amplifier and the foot-point distance is the suspect --
+        // which is also where STATUS.md section 7 item 2 independently points.
+        if (!varyingKappa && R > VSMALL)
+        {
+            const vector sCen = implSurf.getOrDefault<vector>("center", Zero);
+            const vectorField& CcA = mesh.C().primitiveField();
+            const scalar kExPar = scalar(nd - 1);          // (nd-1)/r, r below
+
+            auto mkField = [&](const word& nm) -> tmp<volScalarField>
+            {
+                return tmp<volScalarField>::New
+                (
+                    IOobject(nm, runTime.timeName(), mesh,
+                             IOobject::NO_READ, IOobject::NO_WRITE),
+                    kappaNoExt
+                );
+            };
+
+            tmp<volScalarField> tS1 = mkField("kInvKexact");
+            tmp<volScalarField> tS2 = mkField("kInvDexact");
+            tmp<volScalarField> tS3 = mkField("kInvKapExact");
+            tmp<volScalarField> tS4 = mkField("kInvAllExact");
+            tmp<volScalarField> tTk = mkField("contribKappa");
+            tmp<volScalarField> tTd = mkField("contribD");
+            tmp<volScalarField> tTK = mkField("contribK");
+
+            scalarField& s1 = tS1.ref().primitiveFieldRef();
+            scalarField& s2 = tS2.ref().primitiveFieldRef();
+            scalarField& s3 = tS3.ref().primitiveFieldRef();
+            scalarField& s4 = tS4.ref().primitiveFieldRef();
+            scalarField& tk = tTk.ref().primitiveFieldRef();
+            scalarField& td = tTd.ref().primitiveFieldRef();
+            scalarField& tK = tTK.ref().primitiveFieldRef();
+
+            // relative input errors, for the budget report
+            scalar eKap2 = 0, eD2 = 0, eK2 = 0, eDmax = 0, eKmax = 0;
+            label nAttr = 0;
+
+            forAll(s1, c)
+            {
+                if (!invValid[c]) { continue; }
+
+                const scalar r = mag(CcA[c] - sCen);
+                if (r < VSMALL) { continue; }
+
+                const scalar kapEx = kExPar/r;
+                const scalar dEx   = r - R;
+                const scalar KEx   = (nd == 3) ? 1.0/(r*r) : 0.0;
+
+                bool okK = false;
+                const scalar KFit = fitGaussianCurvature(recon, c, okK);
+                const scalar KUse = okK ? KFit : 0.0;
+                bool okD = false;
+                const scalar dFit = recon.footPointDistance(c, CcA[c], 0.0, okD);
+                const scalar kapFit = kappaNoExt[c];
+
+                s1[c] = parallelSurfaceInverse(kapFit, dFit, KEx );
+                s2[c] = parallelSurfaceInverse(kapFit, dEx , KUse);
+                s3[c] = parallelSurfaceInverse(kapEx , dFit, KUse);
+                s4[c] = parallelSurfaceInverse(kapEx , dEx , KEx );
+
+                const scalar base = parallelSurfaceInverse(kapEx, dEx, KEx);
+                tk[c] = parallelSurfaceInverse(kapFit, dEx , KEx ) - base;
+                td[c] = parallelSurfaceInverse(kapEx , dFit, KEx ) - base;
+                tK[c] = parallelSurfaceInverse(kapEx , dEx , KUse) - base;
+
+                const scalar eKap = (kapFit - kapEx)/kapEx;
+                const scalar eD   = (dFit - dEx)/dxR;
+                const scalar eK   = (nd == 3 && KEx > VSMALL)
+                                  ? (KUse - KEx)/KEx : 0.0;
+                eKap2 += eKap*eKap; eD2 += eD*eD; eK2 += eK*eK;
+                eDmax = max(eDmax, mag(eD)); eKmax = max(eKmax, mag(eK));
+                ++nAttr;
+            }
+            reduce(eKap2, sumOp<scalar>()); reduce(eD2, sumOp<scalar>());
+            reduce(eK2, sumOp<scalar>());   reduce(nAttr, sumOp<label>());
+            reduce(eDmax, maxOp<scalar>()); reduce(eKmax, maxOp<scalar>());
+
+            tS1.ref().correctBoundaryConditions();
+            tS2.ref().correctBoundaryConditions();
+            tS3.ref().correctBoundaryConditions();
+            tS4.ref().correctBoundaryConditions();
+            tTk.ref().correctBoundaryConditions();
+            tTd.ref().correctBoundaryConditions();
+            tTK.ref().correctBoundaryConditions();
+
+            // L2 of alpha_f*snGrad(.) on exactly the faces the remainder scores
+            auto bandL2 = [&](const volScalarField& fld) -> scalar
+            {
+                const surfaceScalarField sn(fvc::snGrad(fld));
+                const scalarField& snf = sn.primitiveField();
+                scalar acc = 0;
+                forAll(activeFace, f)
+                {
+                    if (!activeFace[f]) { continue; }
+                    if (!invValid[ownR[f]] || !invValid[neiR[f]]) { continue; }
+                    const scalar q = aLin[f]*snf[f];
+                    acc += magSfRIn[f]*q*q;
+                }
+                reduce(acc, sumOp<scalar>());
+                return (sumAf > 0) ? Foam::sqrt(acc/sumAf) : 0;
+            };
+
+            const scalar rAll  = bandL2(kappaCellInv);
+            const scalar rKex  = bandL2(tS1());
+            const scalar rDex  = bandL2(tS2());
+            const scalar rKapx = bandL2(tS3());
+            const scalar rAllx = bandL2(tS4());
+            const scalar cKap  = bandL2(tTk());
+            const scalar cD    = bandL2(tTd());
+            const scalar cK    = bandL2(tTK());
+
+            const scalar nrm = (nAttr > 0) ? 1.0/scalar(nAttr) : 0.0;
+            Info<< nl
+                << "INVERSE INPUT ATTRIBUTION (exact-geometry substitution, "
+                << nAttr << " cells)" << nl
+                << "  residual L2 of alpha_f*snGrad(kappa_c^Gamma) [1/m^2]:" << nl
+                << "    all fitted (production) : " << rAll  << nl
+                << "    K   -> exact            : " << rKex
+                << "   (x" << (rAll > 0 ? rKex/rAll  : 0) << ")" << nl
+                << "    d   -> exact            : " << rDex
+                << "   (x" << (rAll > 0 ? rDex/rAll  : 0) << ")" << nl
+                << "    kappa -> exact          : " << rKapx
+                << "   (x" << (rAll > 0 ? rKapx/rAll : 0) << ")" << nl
+                << "    all exact (harness gate): " << rAllx
+                << "   (must be ~0)" << nl
+                << "  one-at-a-time contributions, same norm:" << nl
+                << "    from kappa error : " << cKap << nl
+                << "    from d error     : " << cD   << nl
+                << "    from K error     : " << cK   << nl
+                << "  relative input errors over the same cells:" << nl
+                << "    e_kappa L2 = " << Foam::sqrt(eKap2*nrm) << nl
+                << "    e_d     L2 = " << Foam::sqrt(eD2*nrm)
+                << " (in units of h), max = " << eDmax << nl
+                << "    e_K     L2 = " << Foam::sqrt(eK2*nrm)
+                << ", max = " << eKmax << endl;
+
+            OFstream oa(runTime.path()/"leiaTestInverseAttribution.csv");
+            oa << "surface,nGeometricD,nCells,deltaX,radius,nCellsScored,"
+                  "resid_allFitted,resid_Kexact,resid_dexact,resid_kappaExact,"
+                  "resid_allExact,contrib_kappa,contrib_d,contrib_K,"
+                  "eKappaL2,eDL2,eDMax,eKL2,eKMax" << nl;
+            oa  << surfType << ',' << nd << ',' << mesh.globalData().nTotalCells()
+                << ',' << dxR << ',' << R << ',' << nAttr
+                << ',' << rAll << ',' << rKex << ',' << rDex << ',' << rKapx
+                << ',' << rAllx << ',' << cKap << ',' << cD << ',' << cK
+                << ',' << Foam::sqrt(eKap2*nrm) << ',' << Foam::sqrt(eD2*nrm)
+                << ',' << eDmax << ',' << Foam::sqrt(eK2*nrm) << ',' << eKmax
+                << nl;
+        }
+        else
+        {
+            Info<< nl << "INVERSE INPUT ATTRIBUTION skipped: needs a closed-form"
+                << " exact distance and Gaussian curvature, i.e. a circle or"
+                << " sphere (varyingKappa = " << varyingKappa << ")" << endl;
+        }
         scoreRemainder("quadraticCellCentre", kappaNoExt);
         scoreRemainder("newtonFoot", kappaDiv);
         scoreRemainder("closestPointNewton", kappaCP);
