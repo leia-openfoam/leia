@@ -1601,6 +1601,132 @@ int main(int argc, char *argv[])
                 << " exact distance and Gaussian curvature, i.e. a circle or"
                 << " sphere (varyingKappa = " << varyingKappa << ")" << endl;
         }
+
+        // ------------------------------------------------------------------
+        // WHAT THE PSI FILTER INJECTS, AND WHY ITS SIGN DEPENDS ON DIMENSION.
+        //
+        // The biharmonic band filter applies psi <- psi - theta*L(L(psi)) with
+        // L(psi) = psi - average(interpolate(psi)). On a uniform hex mesh that is
+        // L = (1/2)(I - A), A the arithmetic mean of the 2*nd face neighbours, so
+        // to leading order L = -(h^2/4nd) Lap and L^2 is a scaled BIHARMONIC.
+        //
+        // On an exact signed distance Lap(psi) = kappa_tot = (nd-1)/r, so the
+        // ISOTROPIC part of L^2(psi) is proportional to Lap((nd-1)/r):
+        //   2D: Lap(1/r) = 1/r^3 =/= 0  -- a nonzero, radially uniform drift, i.e.
+        //       a CONSTANT-curvature error, which snGrad annihilates and the
+        //       pressure solve absorbs exactly. Predicted h^4/(64 R^3).
+        //   3D: Lap(2/r) == 0 -- 1/r is HARMONIC. The isotropic channel vanishes
+        //       identically and whatever remains is the anisotropic
+        //       Sum_i d^4/dx_i^4 term, i.e. pure MESH-LOCKED content, which is
+        //       exactly the non-absorbable kind.
+        // If that is right, the filter's smooth residual is harmless in 2D by
+        // absorption and non-absorbable in 3D by construction -- a second
+        // dimension-specific mechanism alongside the Gaussian-curvature channel,
+        // and one that would explain why the same theta damps at R/h = 15.8 but
+        // creates growth at R/h = 10.
+        //
+        // Reported: the band-restricted MEAN of L^2(psi) (the isotropic/volume
+        // channel), its RMS (the anisotropic/shape-and-current channel), their
+        // ratio, and the same pair on the NEVER-FILTERED SHELL -- cells the L^2
+        // stencil reaches but the in-band update never corrects, which is the
+        // reservoir a masked filter can pump from. A psi perturbation displaces
+        // the interface by delta_psi at |grad psi| = 1, so theta*RMS/h^2 is the
+        // curvature error it induces on grid-scale structure; that is quoted too,
+        // to make the injection commensurable with the delivery residual above.
+        {
+            const volScalarField L1
+            (
+                "L1psiGate", psi - fvc::average(fvc::interpolate(psi))
+            );
+            const volScalarField L2p
+            (
+                "L2psiGate", L1 - fvc::average(fvc::interpolate(L1))
+            );
+            const scalarField& l2 = L2p.primitiveField();
+
+            // band and the one-ring shell outside it
+            boolList inBand(mesh.nCells(), false);
+            if (mesh.foundObject<volScalarField>("NarrowBand"))
+            {
+                const volScalarField& nb =
+                    mesh.lookupObject<volScalarField>("NarrowBand");
+                forAll(inBand, c) { inBand[c] = (nb[c] > 0.5); }
+            }
+            else
+            {
+                // fall back to the CSF-active support: cells of active faces
+                forAll(activeFace, f)
+                {
+                    if (activeFace[f])
+                    { inBand[ownR[f]] = true; inBand[neiR[f]] = true; }
+                }
+            }
+            boolList inShell(mesh.nCells(), false);
+            forAll(ownR, f)
+            {
+                const label o = ownR[f], n2 = neiR[f];
+                if (inBand[o] && !inBand[n2]) { inShell[n2] = true; }
+                if (inBand[n2] && !inBand[o]) { inShell[o]  = true; }
+            }
+
+            auto stats = [&](const boolList& sel, scalar& mn, scalar& rms,
+                             label& cnt)
+            {
+                scalar s = 0, s2 = 0; label k = 0;
+                forAll(l2, c)
+                {
+                    if (!sel[c]) { continue; }
+                    s += l2[c]; s2 += l2[c]*l2[c]; ++k;
+                }
+                reduce(s, sumOp<scalar>()); reduce(s2, sumOp<scalar>());
+                reduce(k, sumOp<label>());
+                mn = (k > 0) ? s/scalar(k) : 0;
+                rms = (k > 0) ? Foam::sqrt(s2/scalar(k)) : 0;
+                cnt = k;
+            };
+
+            scalar mB = 0, rB = 0, mS = 0, rS = 0;
+            label nB = 0, nS = 0;
+            stats(inBand, mB, rB, nB);
+            stats(inShell, mS, rS, nS);
+
+            const scalar thetaRef = 0.2;
+            const scalar h4R3 = (R > VSMALL)
+                              ? Foam::pow(dxR, 4)/(64.0*Foam::pow(R, 3)) : 0;
+
+            Info<< nl << "PSI FILTER RESIDUAL on the exact level set"
+                << " (theta_ref = " << thetaRef << ")" << nl
+                << "  band cells " << nB << ", never-filtered shell " << nS << nl
+                << "  band  mean(L2 psi) = " << mB
+                << "   rms = " << rB
+                << "   |mean|/rms = " << (rB > 0 ? mag(mB)/rB : 0) << nl
+                << "  shell mean(L2 psi) = " << mS
+                << "   rms = " << rS
+                << "   |mean|/rms = " << (rS > 0 ? mag(mS)/rS : 0) << nl
+                << "  shell/band rms ratio = " << (rB > 0 ? rS/rB : 0) << nl
+                << "  2D isotropic prediction h^4/(64 R^3) = " << h4R3
+                << "   measured band mean / prediction = "
+                << (h4R3 > 0 ? mB/h4R3 : 0) << nl
+                << "  induced curvature error theta*rms/h^2 = "
+                << thetaRef*rB/(dxR*dxR) << " 1/m"
+                << "   (band mean channel: " << thetaRef*mag(mB)/(dxR*dxR)
+                << " 1/m)" << endl;
+
+            OFstream of(runTime.path()/"leiaTestFilterResidual.csv");
+            of << "surface,nGeometricD,nCells,deltaX,radius,thetaRef,"
+                  "nBand,nShell,bandMean,bandRms,bandMeanOverRms,"
+                  "shellMean,shellRms,shellRmsOverBandRms,"
+                  "isoPrediction2D,bandMeanOverPrediction,"
+                  "inducedKappaFromRms,inducedKappaFromMean" << nl;
+            of  << surfType << ',' << nd << ','
+                << mesh.globalData().nTotalCells() << ',' << dxR << ',' << R
+                << ',' << thetaRef << ',' << nB << ',' << nS
+                << ',' << mB << ',' << rB << ',' << (rB > 0 ? mag(mB)/rB : 0)
+                << ',' << mS << ',' << rS << ',' << (rB > 0 ? rS/rB : 0)
+                << ',' << h4R3 << ',' << (h4R3 > 0 ? mB/h4R3 : 0)
+                << ',' << thetaRef*rB/(dxR*dxR)
+                << ',' << thetaRef*mag(mB)/(dxR*dxR) << nl;
+        }
         scoreRemainder("quadraticCellCentre", kappaNoExt);
         scoreRemainder("newtonFoot", kappaDiv);
         scoreRemainder("closestPointNewton", kappaCP);
