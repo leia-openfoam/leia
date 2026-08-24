@@ -189,12 +189,22 @@
     }
     scalar bV = 0, bs2 = 0, kLinf = 0;
     scalar gMinBand = GREAT, gMaxBand = -GREAT, gErrS2 = 0;
+    // Popinet (JCP 228:5838) Fig. 10 quantity: the STANDARD DEVIATION of the
+    // curvature along the interface, not its error against 1/R. The balanced-force
+    // argument says a spatially UNIFORM curvature error is snGrad-free and the
+    // pressure solve absorbs it exactly, so only the variation reaches momentum;
+    // kErrL2Band mixes the two, and at numerical equilibrium Popinet's std dev
+    // falls to round-off (1e-11) while the error against 1/R does NOT (his
+    // equilibrium shape differs from the exact circle at O(h^2)). Accumulated as
+    // raw moments in this same loop so it costs nothing.
+    scalar sK = 0, sK2 = 0;
     forAll(bnd, c)
     {
         if (!bnd[c]) { continue; }
         const scalar e = mag(kappa[c] - kappaExactDrop);
         const scalar gMag = magGradPsi[c];
         bV += V[c]; bs2 += V[c]*e*e; kLinf = max(kLinf, e);
+        sK += V[c]*kappa[c]; sK2 += V[c]*kappa[c]*kappa[c];
         gMinBand = min(gMinBand, gMag);
         gMaxBand = max(gMaxBand, gMag);
         gErrS2 += V[c]*sqr(gMag - 1);
@@ -202,7 +212,36 @@
     reduce(bV, sumOp<scalar>());   reduce(bs2, sumOp<scalar>());
     reduce(kLinf, maxOp<scalar>()); reduce(gMinBand, minOp<scalar>());
     reduce(gMaxBand, maxOp<scalar>()); reduce(gErrS2, sumOp<scalar>());
+    reduce(sK, sumOp<scalar>());   reduce(sK2, sumOp<scalar>());
     const scalar kErrL2 = (bV > 0) ? Foam::sqrt(bs2/bV) : 0;
+    // mean and standard deviation of the CELL curvature over the band. The mean
+    // minus the exact value is the ABSORBABLE part of the error; the standard
+    // deviation is the part the balanced CSF force actually delivers. To
+    // round-off, kErrL2^2 = (mean - exact)^2 + stdDev^2.
+    const scalar kMeanBand = (bV > 0) ? sK/bV : 0;
+    const scalar kStdBand =
+        (bV > 0) ? Foam::sqrt(max(sK2/bV - kMeanBand*kMeanBand, scalar(0))) : 0;
+
+    // The same statistic on the FACES the force is assembled on, |Sf|-weighted
+    // over the CSF-active set -- the closest available analogue of "along the
+    // interface", since the force consumes face values.
+    scalar kStdFaces = 0, kMeanFaces = 0;
+    {
+        const surfaceScalarField kappaF(fvc::interpolate(kappa));
+        const scalarField& kf = kappaF.primitiveField();
+        const scalarField& aSf = mesh.magSf().primitiveField();
+        scalar wSum = 0, wK = 0, wK2 = 0;
+        forAll(snIi, f)
+        {
+            if (mag(snIi[f]) <= 1e-8*snMx) { continue; }
+            wSum += aSf[f]; wK += aSf[f]*kf[f]; wK2 += aSf[f]*kf[f]*kf[f];
+        }
+        reduce(wSum, sumOp<scalar>()); reduce(wK, sumOp<scalar>());
+        reduce(wK2, sumOp<scalar>());
+        kMeanFaces = (wSum > 0) ? wK/wSum : 0;
+        kStdFaces = (wSum > 0)
+            ? Foam::sqrt(max(wK2/wSum - kMeanFaces*kMeanFaces, scalar(0))) : 0;
+    }
     const scalar gMin = (bV > 0) ? gMinBand : 0;
     const scalar gMax = (bV > 0) ? gMaxBand : 0;
     const scalar gradPsiL2Error = (bV > 0) ? Foam::sqrt(gErrS2/bV) : 0;
@@ -301,6 +340,8 @@
             << m2SinCoefficient << ',' << m2Amplitude << ','
             << m2Phase << ','
             << pLaplace << ',' << kErrL2 << ',' << kLinf << ','
+            << kMeanBand << ',' << kStdBand << ','
+            << kMeanFaces << ',' << kStdFaces << ','
             << gMin << ',' << gMax << ',' << gradPsiL2Error << ','
             << gradPsiRatio << ',' << rhoMassResidualL1 << ','
             << rhoMassResidualLinf << ',' << rhoMassResidualRelL1 << ','

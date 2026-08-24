@@ -72,6 +72,20 @@ if (Pstream::master())
         << "m2MeanRadialOffset,m2CosCoefficient,m2SinCoefficient,"
         << "m2Amplitude,m2Phase,"
         << "pLaplace,kErrL2Band,kErrLinfBand,"
+        // Popinet Fig. 10: the STANDARD DEVIATION of the curvature along the
+        // interface. kErrL2Band is an error against 1/R and so mixes the
+        // absorbable uniform offset with the non-absorbable variation; the
+        // balanced CSF force consumes ONLY the variation, because a uniform
+        // kappa error is snGrad of a cell field and the pressure solve absorbs it
+        // exactly. Popinet's std dev falls to 1e-11 (round-off) once the
+        // interface reaches its NUMERICAL equilibrium, while the error against
+        // 1/R does not, because that equilibrium shape differs from the exact
+        // circle at O(h^2). Band = volume-weighted over the snGrad(alpha) band;
+        // Faces = |Sf|-weighted over the CSF-active faces, the set the force is
+        // actually assembled on. To round-off,
+        //   kErrL2Band^2 = (kappaMeanBand - kappaExact)^2 + kappaStdDevBand^2.
+        << "kappaMeanBand,kappaStdDevBand,"
+        << "kappaMeanActiveFaces,kappaStdDevActiveFaces,"
         << "minGradPsiBand,maxGradPsiBand,gradPsiL2ErrorBand,"
         << "gradPsiRatioBand,rhoMassResidualL1,rhoMassResidualLinf,"
         << "rhoMassResidualRelL1,rhoLENTResetL1,"

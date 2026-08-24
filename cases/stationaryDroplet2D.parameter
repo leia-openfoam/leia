@@ -41,9 +41,35 @@ values
     // capillary limit -- not advection -- binds the step for this static droplet.
     MAX_CO ( 0.1 );
 
-    // Capillary time-step coefficient [s]: maxDeltaT = CAPILLARY_DT_COEFF/N^1.5,
-    // calibrated so maxDeltaT(N=32) = 6e-5 s ~ dt_sigma/4 for water/air, sigma=0.07274.
-    //   0.010861 = 6e-5 * 32^1.5.
+    // Capillary time-step coefficient [s]: maxDeltaT = CAPILLARY_DT_COEFF/nRef^1.5
+    // with nRef = CAPILLARY_REF_LENGTH/h, i.e. the step tracks the CELL SIZE as
+    // h^1.5, which is the correct capillary scaling in any dimension.
+    //
+    // SET TO POPINET'S EXPLICIT LIMIT (2026-08-23, at the user's direction).
+    // Popinet, JCP 228:5838 Eq. (18), gives the stability bound for an explicitly
+    // integrated surface-tension term as the period of the shortest capillary wave
+    //     dt <= sqrt(rho h^3/(pi sigma)).
+    // Writing h = L_ref/nRef makes the bound separable, so the coefficient is a
+    // pure property of the fluids and the reference box:
+    //     CAPILLARY_DT_COEFF = sqrt((rho1 + rho2) L_ref^3/(pi sigma))
+    //                        = sqrt(999.39 * 1e-6/(pi * 0.07274)) = 0.0661311 s
+    // for water/air (rho1 = 998.2, rho2 = 1.19, sigma = 0.07274) and L_ref = 0.01 m.
+    // The sum of the densities is the one that enters the capillary dispersion
+    // relation; for water/air it differs from Popinet's literal single rho by 0.06%.
+    //
+    // The previous value was 0.010861 = 6e-5 * 32^1.5, i.e. maxDeltaT(N=32) = 6e-5 s
+    // ~ dt_sigma/4 -- a factor 6.089 BELOW the stability limit, which cost a factor
+    // 6.089 in step count for no accuracy that was ever measured. Restore it to
+    // reproduce any run recorded before this change; every completed study carries
+    // its own value in case_params.json, so old results stay self-documenting.
+    //
+    // CONSEQUENCE TO EXPECT, not a regression: the m = 8 capillary mode of the
+    // stationary droplet is anti-damped by an explicitly evaluated capillary force
+    // at a rate +omega^2 dt/2 (omega = 4021 rad/s measured), so a 6.089x larger step
+    // multiplies that anti-damping by 6.089 -- from +22..88 1/s to +135..535 1/s
+    // against the physical viscous -128 1/s. Growth on the stationary droplet will
+    // therefore get WORSE until the force is centred at n+1/2. That linear scaling
+    // is itself a test of the mechanism.
     CAPILLARY_DT_COEFF ( 0.010861 );
 
     // Departure-foot reconstruction of the psi transport. Pinned HERE (not left

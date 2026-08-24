@@ -1,0 +1,63 @@
+# DOES A NUMERICAL EQUILIBRIUM EXIST? -- the test Popinet's paper says we have
+# never run.
+#
+# Popinet (JCP 228:5838, sec. 6.2.1) shows that balanced-force CSF plus a
+# height-function curvature drives the stationary droplet to an exact discrete
+# equilibrium -- velocity to round-off, curvature standard deviation to 1e-11 --
+# independently of resolution, PROVIDED the interface is given time to relax to
+# its NUMERICAL equilibrium shape, which differs from the exact circle at O(h^2).
+# He warns explicitly that a stationary-droplet test run for less than the viscous
+# timescale T_v = D^2/nu "will only reflect the accuracy of the initial curvature
+# estimation".
+#
+# Our horizon has been 0.025 s. For R = 1 mm water/air, T_sigma = 10.48 ms and
+# T_v(water) = 4.0 s, so 0.025 s is 2.4 T_sigma and 0.6% of T_v. Every number this
+# campaign has produced describes a transient. END_TIME 0.5 s here is 48 T_sigma
+# and 12.5% of T_v -- twenty times longer than anything we have run, and enough for
+# the envelope to turn over if it is going to.
+#
+# IT IS ALSO A SHARP TEST OF THE ANTI-DAMPING MODEL. The oscillation is the m = 8
+# capillary wave (period measured 1.56 ms against 1.455 ms predicted, m = 8 also
+# from the azimuthal spectrum of |U|), whose physical envelope is viscous decay at
+# 2 nu k^2 = -128 1/s. An explicitly evaluated capillary force anti-damps an
+# oscillator at +omega^2 dt/2 with omega = 4021 rad/s. At Popinet's step limit,
+# now the default, that gives a NET predicted envelope rate of
+#   R/h = 25.0  N=150  dt = 1.673e-5  anti-damping +135.2  net   +7 1/s  (marginal)
+#   R/h = 31.7  N=190  dt = 1.174e-5  anti-damping  +94.9  net  -33 1/s  (decay)
+#   R/h = 40.0  N=240  dt = 8.266e-6  anti-damping  +66.8  net  -61 1/s  (decay)
+# so the prediction is that the two finer arms DECAY and the coarse one sits near
+# neutral -- the opposite of the "diverges under refinement" story, and a
+# consequence of dt ~ h^1.5 falling while omega stays fixed because m = 8 is
+# geometric, not grid-scale.
+#
+# Score on kappaStdDevBand and kappaStdDevActiveFaces (new columns, Popinet's
+# Fig. 10 quantity: the NON-ABSORBABLE part of the curvature error, since a
+# uniform offset is snGrad-free and the pressure solve absorbs it exactly) as well
+# as on max|U|, and report volume and zero-set shape error alongside. If a
+# numerical equilibrium exists, kappaStdDev falls toward round-off while
+# kappaMeanBand stays offset from 1/R by O(h^2) -- that combination is the
+# signature, and kErrL2Band alone cannot show it.
+#
+# Filter off, cellCentreInverse, L = 6R -- identical to filterOffAmplifier2D so
+# the arms are directly comparable to its quarter-horizon ladder.
+#
+# Laptop study: 20 of 24 cores, np 4, three arms concurrently.
+#   make studies-one STUDY=viscousHorizon2D PROFILE=profiles/local20
+study_name: viscousHorizon2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [150, 190, 240]
+  PSI_FILTER: [none]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  END_TIME: [0.5]
+solve_runtime: 720
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
