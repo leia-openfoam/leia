@@ -222,6 +222,32 @@
     const scalar kStdBand =
         (bV > 0) ? Foam::sqrt(max(sK2/bV - kMeanBand*kMeanBand, scalar(0))) : 0;
 
+    // WORK DONE BY THE NON-GRADIENT CAPILLARY FORCE.
+    //   dU = rAU*reconstruct((phig - p_rghEqn.flux())/rAUf)
+    // is the velocity increment the pressure solve could NOT absorb. The energy
+    // it puts into the flow over one step is sum_c rho_c V_c (U_c . dU_c), and
+    // the power is that divided by dt. On a stationary droplet the exact
+    // curvature is constant, so the exact force is a pure gradient and this power
+    // would be identically zero; everything measured here is spurious input.
+    //   * capillaryResidualPower  [W]  -- rate of spurious energy input
+    //   * capillaryResidualWork   [J]  -- running time integral of it
+    //   * disturbanceKineticEnergy already gives E, so P/E is a growth rate in
+    //     1/s directly comparable with the measured envelope and with the
+    //     physical viscous decay 2*nu*k^2.
+    scalar capillaryResidualPower = 0;
+    if (mesh.foundObject<volVectorField>("USigmaResStore"))
+    {
+        const vectorField& dU =
+            mesh.lookupObject<volVectorField>("USigmaResStore").primitiveField();
+        const vectorField& Uc = U.primitiveField();
+        const scalarField& rhoc = rho.primitiveField();
+        scalar w = 0;
+        forAll(dU, c) { w += rhoc[c]*V[c]*(Uc[c] & dU[c]); }
+        reduce(w, sumOp<scalar>());
+        capillaryResidualPower = w/max(runTime.deltaTValue(), VSMALL);
+    }
+    capillaryResidualWorkAccum += capillaryResidualPower*runTime.deltaTValue();
+
     // The same statistic on the FACES the force is assembled on, |Sf|-weighted
     // over the CSF-active set -- the closest available analogue of "along the
     // interface", since the force consumes face values.
@@ -342,6 +368,7 @@
             << pLaplace << ',' << kErrL2 << ',' << kLinf << ','
             << kMeanBand << ',' << kStdBand << ','
             << kMeanFaces << ',' << kStdFaces << ','
+            << capillaryResidualPower << ',' << capillaryResidualWorkAccum << ','
             << gMin << ',' << gMax << ',' << gradPsiL2Error << ','
             << gradPsiRatio << ',' << rhoMassResidualL1 << ','
             << rhoMassResidualLinf << ',' << rhoMassResidualRelL1 << ','

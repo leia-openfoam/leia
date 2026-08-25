@@ -55,6 +55,8 @@ forAll(alpha1, c)
 }
 reduce(dropletInitialPhaseVolume, sumOp<scalar>());
 
+scalar capillaryResidualWorkAccum = 0;
+
 autoPtr<OFstream> dropletFilePtr;
 if (Pstream::master())
 {
@@ -86,6 +88,12 @@ if (Pstream::master())
         //   kErrL2Band^2 = (kappaMeanBand - kappaExact)^2 + kappaStdDevBand^2.
         << "kappaMeanBand,kappaStdDevBand,"
         << "kappaMeanActiveFaces,kappaStdDevActiveFaces,"
+        // Work done by the part of the capillary force the pressure projection
+        // cannot absorb -- the only part that can drive flow. Zero for an exact
+        // constant-curvature interface, so on the stationary droplet it is
+        // entirely spurious energy input. Compare P/E against the measured
+        // envelope growth and against the viscous decay 2*nu*k^2.
+        << "capillaryResidualPower,capillaryResidualWork,"
         << "minGradPsiBand,maxGradPsiBand,gradPsiL2ErrorBand,"
         << "gradPsiRatioBand,rhoMassResidualL1,rhoMassResidualLinf,"
         << "rhoMassResidualRelL1,rhoLENTResetL1,"

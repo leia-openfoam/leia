@@ -134,6 +134,34 @@ Info<< "Capillary force centring: " << capillaryForceCentring
 //- Set while slAlphaEqn.H is being re-entered for the SECOND half drift of the
 //  Stormer-Verlet split, after momentum has produced u^{n+1}.
 bool slSecondHalfDrift = false;
+
+// THE NON-GRADIENT CAPILLARY VELOCITY, kept so the WORK it does can be measured.
+//
+// The pressure projection IS a Helmholtz decomposition in the rAUf-weighted
+// metric: it removes exactly the part of the capillary flux that lies in the
+// range of snGrad, and what it leaves, R_f = phig - p_rghEqn.flux(), is the
+// non-gradient remainder that fvc::reconstruct turns into velocity. In CSF form
+// f = sigma*kappa*grad(H), so
+//     curl(f) = sigma * grad(kappa) x grad(H),
+// which vanishes if and only if kappa is CONSTANT ALONG THE INTERFACE. Hence
+// "non-gradient content" and "curvature varying along Gamma" are the same
+// statement -- the quantity kappaStdDevBand measures.
+//
+// On a stationary droplet the exact kappa is constant, so every bit of this
+// residual is discretisation error, and the work it does on the flow is exactly
+// the spurious energy input. pEqn.H already builds the field; this store keeps
+// it alive past pEqn's scope so writeDropletMetrics.H can form
+//     P = sum_c rho_c V_c (U_c . dU_c) / dt
+// and compare the energy it injects per capillary period against the measured
+// growth of the envelope. That comparison is what makes the "the force does net
+// work because the curvature error is mesh-position dependent" claim falsifiable.
+volVectorField USigmaResStore
+(
+    IOobject("USigmaResStore", runTime.timeName(), mesh,
+             IOobject::NO_READ, IOobject::NO_WRITE),
+    mesh,
+    dimensionedVector("USigmaResStore", dimVelocity, Zero)
+);
 // Foot-point height-function curvature (footPointCurvature.H): kappa from a
 // local parabola (height-function) fit of the interface feet of the linear
 // LSQ planes, delivered normal-constant by uniform nearest-foot assignment --

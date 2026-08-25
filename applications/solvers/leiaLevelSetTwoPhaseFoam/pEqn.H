@@ -134,6 +134,17 @@
                     )
                 );
 
+                // Hand the non-gradient part to the metrics writer when the
+                // solver provides a store for it (the SL solver does; the plain
+                // level-set solver does not, hence the registry guard). This is
+                // the ONLY part of the capillary force that survives projection
+                // and therefore the only part that can do work on the flow.
+                if (mesh.foundObject<volVectorField>("USigmaResStore"))
+                {
+                    mesh.lookupObjectRef<volVectorField>("USigmaResStore")
+                        == USigmaPressureResidual;
+                }
+
                 const scalarField& V = mesh.V();
                 const vectorField& uPred =
                     USigmaPredictor.primitiveField();
