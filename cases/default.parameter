@@ -278,7 +278,8 @@ PSI_RENORM_RELAX 1.0; // relaxation omega: psi <- psi/beta_Gamma^omega. omega=1
 FACE_CURVATURE_SOURCE model; // reconstructedCurvature kappa_f source: model
                      // (its own arithmetic/Kang assembly) | registered (the
                      // solver-registered face field, e.g. kappaStableFootFace).
-SURFACE_TENSION_FORCE reconstructedCurvature; // levelSet.surfaceTensionForce.type:
+SURFACE_TENSION_FORCE reconstructedCurvature;
+ST_NSMOOTH 2;        // divGradAlphaSnGradAlpha alpha-smoothing sweeps (class default) // levelSet.surfaceTensionForce.type:
                      // reconstructedCurvature (kappa from the quadratic fit,
                      // delivered per-face; the high-order path) |
                      // divGradPsiSnGradAlpha (kappa = div(grad psi/|grad psi|)

@@ -205,6 +205,13 @@ levelSet
         // self-contained, no SL reconstruction -- because psi-based curvature
         // is what maintaining |grad psi| = 1 exists to improve.
         type    @!SURFACE_TENSION_FORCE!@;
+        // divGradAlphaSnGradAlpha ONLY (inert for every other type): number of
+        // interpolate/average smoothing sweeps applied to alpha before BOTH the
+        // curvature -div(grad a/|grad a|) and the force weight snGrad(a) -- the
+        // same-field pairing interFoam's balanced-force argument needs. The
+        // class default is 2; 0 is the production-honest arm (no smoothing --
+        // smoothing is a research instrument, never what stabilises).
+        nSmooth @!ST_NSMOOTH!@;
         alpha   alpha.water;
         kappa   kappa;
         // EXACT curvature for constantCurvatureSurfaceTension ONLY; every other

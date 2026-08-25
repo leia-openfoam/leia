@@ -582,6 +582,126 @@ The step-limit measurement stands on its own and is unaffected: the practical
 threshold is omega_grid dt ~ 1.0-1.3 against the omega dt < 2 bound of the linear
 analysis, and Popinet's Eq. (18) is omega_grid dt = pi, already past it.
 
+## 0f. Why interFoam stays bounded, verified from source -- and the operator-swap falsification (2026-08-25)
+
+Question asked: interFoam's curvature is crude -- `K = -div(nHatf)` from the
+interpolated, deltaN-regularised gradient of alpha, no extension, no foot point,
+`nAlphaSmoothCurvature` defaulting to 0 -- yet its stationary-droplet currents
+are bounded in time forever, while our h^2 delivery anti-damps the m = 8 mode and
+blows up. The pEqn is line-for-line identical and BOTH solvers build the force
+from the post-advection state, so neither coupling nor placement can answer it.
+
+### The audited answer: pairing, not accuracy
+
+Two independent source audits (v2512, file:line evidence throughout) converge:
+
+**The exact discrete skeleton.** With the conjugate-weight interpolation
+`alphatilde_f = (1-w) alpha_O + w alpha_N` there is an EXACT product rule
+`Kbar_f (D alpha)_f + alphatilde_f (D K)_f = (D(K alpha))_f`, and because the
+projection annihilates every face flux of the form `snGrad(q)` against the
+divergence-free phi, the capillary power collapses -- on any mesh, using no
+smallness and no accuracy of K -- to
+
+    P_sigma = -sigma * sum_c K_c V_c alphadot~_c,   alphadot~ = -div_h(phi alphatilde)
+
+i.e. the force's work IS a discrete time derivative of an interface functional,
+PROVIDED the same alpha that generates K and weights snGrad is advected in
+conservative flux form by the same projected phi. MULES then bounds the state:
+alpha in [0,1]^N, conserved, compression-pinned to a 1-2 cell band -- a COMPACT
+set, so ANY continuous functional of it is bounded, and the reservoir the
+capillary force can draw from is finite.
+
+**The corrections that survive adversarial checking** (the naive claim is
+overstated in two places):
+  * K_c is NOT exactly dE_h/dalpha_c of any discrete functional -- the Jacobian
+    of alpha -> V K[alpha] is provably non-symmetric. The nearest functional is
+    the face-based `E = sum_f |S_f||d_f| Phi_delta(|interp(grad alpha)_f|)` with
+    `Phi_delta(s) = s - delta ln(s + delta)` (the deltaN regularisation is itself
+    EXACTLY variational and supplies |n_f| < 1). The residue R is a skew THIRD
+    difference of the face normal: band-supported, |R| <= 2|S_f|, a few percent
+    of the restoring force, h-INDEPENDENT (the band is always ~3 cells).
+  * Bounded E_h alone does not forbid pumping -- a non-gradient residue can do
+    net positive work around a cycle (curl != 0 in state space), the exact
+    mechanism we measured in our solver. interFoam's boundedness is therefore an
+    INEQUALITY, not a theorem: the residue's pump rate must stay below viscous
+    plus upwind damping for every representable mode, and dt must respect the
+    capillary limit (which v2512 does NOT enforce -- setDeltaT.H caps only the
+    advective Courant numbers).
+  * Every transport-side defect (MULES limiter, the compression flux, the
+    implicit predictor, subcycling) is rectified, band-supported and LINEAR in
+    ||u|| -- the compression flux is velocity-slaved, |F_compr| <= (cAlpha/4)|phi|,
+    exactly zero at rest. Linear pumping against quadratic viscous dissipation
+    gives the classic SATURATED current u* ~ sigma/mu. These defects set the
+    LEVEL of interFoam's parasitic currents (and the 10-14%-low Laplace jump);
+    the pairing sets their BOUNDEDNESS. Accuracy of K only rescales u*.
+
+**Where we sever the pairing, three times at once:** (1) psi is moved POINTWISE
+by the semi-Lagrangian trace with an extended CELL velocity -- no flux form, so
+the summation-by-parts step that turns face work into -sigma dE/dt has no
+analogue; (2) the force weight is snGrad of a SEPARATE geometric alpha(psi);
+(3) kappa comes from the WLS fit + parallel-surface inverse, a long-stencil
+nonlinear map with no generating functional and O(1) Jacobian asymmetry. Hence
+our non-gradient fraction is O(1) where interFoam's is a few percent, its cycle
+work scales with mode energy, and +343.9 1/s beats the -256 1/s of viscosity --
+while our INITIAL currents are 100x smaller, because accuracy sets the level and
+pairing sets the sign of the Lyapunov budget.
+
+**On normal extension** (user: "without extension, quadratic SLLS fails even
+sooner" -- correct, and both facts cohere): in OUR broken-pairing chain the
+constant-normal extension flattens the tangential variation of the delivered
+kappa, i.e. reduces the non-gradient fraction -- an AMPLITUDE lever on the pump,
+which is why removing it fails sooner. In interFoam's chain an extension would
+sever the pairing that does the bounding -- which it never needs, because
+boundedness comes from elsewhere. The audit's closing line: "Normal extension is
+a cure for accuracy; pairing is the cure for boundedness."
+
+### The operator swap alone does not bound: variationalForce2D
+
+`divGradAlphaSnGradAlpha` (interFoam's kappa construction inside our solver,
+same-field pairing kappa/snGrad from one alpha, nSmooth 0 and 2) was run on the
+identical filter-off ladder with ONLY the force model swapped -- SL psi
+transport, geometric alpha, PIMPLE all fixed. Result: ALL EIGHT ARMS reach an
+interFoam-LIKE amplitude immediately -- max|U| after one step 0.14-0.84 m/s,
+the same order as interFoam's own saturated 0.31-0.66 m/s on this benchmark --
+and then, instead of saturating there as interFoam does, amplify exponentially
+to 15-150 m/s and die of FPE within 148-493 steps (advective Courant > 2 at the
+fixed capillary dt; volume and shape errors meaningless past ~1e-2).
+
+Read against the audit's interpretation matrix, this is the second branch: the
+kappa OPERATOR is not the stabiliser. Feeding interFoam's own operator from a
+sharp geometric alpha that is re-manufactured from an unconstrained psi every
+step -- rather than being itself the conserved, bounded, flux-advected state --
+keeps the loop unbounded. What bounds interFoam is the operator-transport-state
+PAIRING, not any property of -div(nHat) in isolation. (Caveat recorded: the
+sharp-alpha input also inflates the initial kick relative to interFoam's smeared
+alpha; that changes the LEVEL, but the departure from an interFoam-like level to
+15-150 m/s is amplification no level-shift explains.)
+
+### Consequences and the two experiments that split the remainder
+
+The audit's bet (D1): the dominant gain element is the unsaturated differentiator
+-- the WLS-fit curvature chain reading an unbounded state -- in the FORCE branch.
+Two config-or-trivial experiments split the hypothesis space, both at R/h = 25:
+
+1. **kappaClamp** (RUNNING; config-only, already wired at createSLFields.H:415 /
+   slAlphaEqn.H:296): clamp the delivered cell curvature to [-2000, 4000] 1/m
+   around the exact 1000 -- pure saturation, nothing else changes. Bounded =>
+   interFoam's stabiliser is demonstrably saturation-not-accuracy and a
+   production-safe stopgap exists; still growing => the loop closes at kappa
+   amplitudes INSIDE the physical range and the phase, not the amplitude, is the
+   problem.
+2. **Freeze kappa in time** (5-line guard, mirrors SL_FREEZE_INTERFACE): bounded
+   => growth requires the kappa feedback specifically; growing => the
+   psi-transport side self-excites through a frozen force, and the fix must
+   target the fit/transport.
+
+For the eventual production method the audit narrows the target to: a curvature
+delivery that is either (a) slaved to a bounded, conserved interface functional
+(the full pairing -- which for a level-set method means deriving the force
+variationally from the state that is actually advected), or (b) saturating and
+phase-benign enough that its pump rate sits below physical damping at every h --
+with (a) the only route that is a theorem rather than an inequality.
+
 ## 1. Cut it down
 
 Eleven things are being tracked. **Two matter.**

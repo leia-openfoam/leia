@@ -1,0 +1,57 @@
+# THE DISCRIMINATING EXPERIMENT: interFoam's curvature inside OUR solver.
+#
+# WHY. interFoam's kappa is crude -- kappa = -div_h(grad a/(|grad a| + deltaN)),
+# no extension, no foot point, first-order at best, Laplace jump measured 10-14%
+# low -- yet its stationary-droplet currents are BOUNDED IN TIME at every
+# resolution, while our h^2-accurate delivery grows exponentially. The coupling
+# (pEqn) is line-for-line identical, and both solvers build the force from the
+# POST-advection state (symplectic-Euler placement), so neither of those is the
+# difference. What interFoam has and we lack is a VARIATIONAL PAIRING:
+# -div(grad a/|grad a|) is the (discrete) variational derivative of the discrete
+# interface energy E_h = sum_c V_c |grad_h a|, taken with respect to THE SAME
+# alpha that weights the force (snGrad a) and that the flow advects. With that
+# pairing the work the capillary force does on the flow is -dE_h/dt up to
+# bounded defects, E_h is bounded for a bounded indicator on a fixed mesh, and
+# the currents saturate instead of growing. Our production force breaks the
+# pairing three ways: kappa from a WLS fit of psi, weight from a separate
+# geometric alpha, psi advected -- no functional relates force to state, so net
+# work is possible, and it was measured: P/E = +343.9 1/s at R/h = 25.
+#
+# THE TEST. src/leiaLevelSet/surfaceTensionForce/divGradAlphaSnGradAlpha is
+# interFoam's construction inside our solver (same-field pairing: kappa and
+# snGrad from one alpha, optionally pre-smoothed TOGETHER). Swap ONLY the force
+# model; the SL psi advection, the geometric alpha, rho/rhoPhi, and everything
+# else stay fixed. Same ladder, box, horizon and filter-off setting as
+# filterOffAmplifier2D, so the arms are directly comparable.
+#
+# PREDICTIONS, recorded before the run:
+#   * variational pairing is the missing structure  =>  every arm BOUNDED on the
+#     quarter horizon; in particular R/h = 25 must NOT depart exponentially at
+#     t ~ 17-20 ms the way the reconstructedCurvature arm did (its max|U| reached
+#     1.48e-02 at t = 25 ms); capillaryResidualPower fluctuates about zero mean
+#     instead of net positive; amplitude may be LARGER than the production arms
+#     (the kappa is low-order) -- boundedness, not accuracy, is what is claimed.
+#   * SL advection inconsistency is the driver  =>  growth persists with the
+#     variational force too.
+#   * nSmooth 0 vs 2 separates the pairing itself from the smoothing interFoam
+#     can add; 0 is the production-honest arm (no filtering in production).
+study_name: variationalForce2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60, 95, 150, 190]
+  SURFACE_TENSION_FORCE: [divGradAlphaSnGradAlpha]
+  ST_NSMOOTH: [0, 2]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  END_TIME: [0.025]
+solve_runtime: 300
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
