@@ -827,6 +827,67 @@ kappa -> force -> velocity -> psi -> kappa closes at the last arrow; growing
 => the transport side self-excites and the amplifier is upstream of the
 curvature entirely.
 
+### The freeze-kappa verdict: the exponential pump is the live curvature refill (2026-08-25)
+
+freezeKappa2D/N150 completed the full quarter horizon (SL_FREEZE_KAPPA=1: the
+cell curvature is filled on step 1 from the near-exact initial state, std 0.316
+1/m against exact 1000, and never refilled; psi, alpha and the flow stay live;
+production delivery, filter off, R/h = 25, exit 0 after 9099 steps).
+
+**No exponential departure.** The run crosses the 17-20 ms window -- where the
+live-kappa production arm departed -- with the envelope still DECAYING:
+
+    window [ms]     log-envelope [1/s]    du/dt [m/s/s]
+     0.0 -  3.1          +808              +0.157
+     3.1 -  6.2          +181              +0.124
+     6.2 -  9.4           +99              +0.103
+     9.4 - 12.5           +65              +0.088
+    12.5 - 15.6           +46              +0.074
+    15.6 - 18.8           +35              +0.063
+    18.8 - 21.9           +26              +0.052
+    21.9 - 25.0           +20              +0.042
+
+du/dt itself decelerates monotonically -- SUB-linear growth heading to
+saturation (extrapolating the du/dt decay, u* ~ 2.5-3e-03 m/s). Endpoints at
+t = 25 ms, same box, same dt, same delivery:
+
+    live kappa      2.59e-02   (departed exponentially at ~17 ms; P/E = +344 1/s)
+    clamped kappa   1.48e-02   (departed; amplitude capped 460x; P/E = +1033)
+    FROZEN kappa    2.20e-03   (no departure; P/E = +93 and falling)
+
+Volume 6.9e-05 (comparable to production's 5.6e-05); shape 2.08e-05 -- 12x
+WORSE than production's 1.6e-06, as expected: a frozen kappa cannot pull the
+interface back to the true equilibrium shape, so the zero set drifts to the
+equilibrium of the frozen force pattern. Both metrics reported per the standing
+rule; the shape cost is the reminder that freezing is a DIAGNOSTIC, not a method.
+
+**The attribution chain is closed.** Three experiments, one loop
+kappa -> force -> velocity -> psi -> kappa, each cutting a different property:
+
+  * clamp (amplitude capped, phase intact): departure PERSISTS -- amplitude is
+    not the driver;
+  * freeze (phase channel cut, amplitude error frozen in): departure GONE,
+    growth collapses to the rectified force-like class that saturates -- the
+    interFoam class;
+  * operator swap (variationalForce2D, pairing absent): immediate runaway --
+    the operator alone bounds nothing.
+
+The exponential, energy-proportional pump therefore lives in exactly one place:
+the PHASE-COHERENT response of the refitted curvature to the interface
+displacement -- delta-kappa correlated with the current oscillation state,
+supplied anew by the WLS-fit refill every step. Freezing removes the
+correlation, clamping does not touch it, and accuracy (h^2, extension,
+parallel-surface inverse) is orthogonal to it. This is the discrete mechanism
+behind the audited statement that our force has an O(1) non-gradient fraction
+whose cycle work is proportional to mode energy: the fraction's PHASE tracks
+the mode because the fit re-reads the displaced interface each step.
+
+Consequence for the fix, now fully constrained: the delivery must make the
+work of the state-correlated part of delta-kappa a total time derivative --
+the variational pairing -- because every non-structural mitigation (amplitude
+limiting, operator choice, time centring, coupling iteration, convective
+scheme, momentum time order) has now been eliminated by direct measurement.
+
 ## 1. Cut it down
 
 Eleven things are being tracked. **Two matter.**
