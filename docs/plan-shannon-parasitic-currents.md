@@ -702,6 +702,131 @@ variationally from the state that is actually advected), or (b) saturating and
 phase-benign enough that its pump rate sits below physical damping at every h --
 with (a) the only route that is a theorem rather than an inequality.
 
+## 0g. SAAMPLE (Tolle, Bothe, Maric 2020) read against this campaign, and the clamp verdict (2026-08-25)
+
+*Computers and Fluids* 200:104450 -- the LENT hybrid Level Set / Front Tracking
+method with the SAAMPLE segregated algorithm, on the same class of benchmarks.
+Read in full. Five transferable findings, one horizon caveat, and the clamp
+experiment's answer, which together sharpen where the fix must act.
+
+### LENT's stationary droplet has our disease; its curvature chain is ours
+
+LENT's curvature delivery is structurally the SAME family as our production
+chain: kappa evaluated compactly at front-intersected cells, propagated
+CONSTANT ALONG THE INTERFACE NORMAL through nearest-triangle maps (their
+Eqs. 13-15 -- a normal extension), then corrected by the SPHERICAL parallel-
+surface map kappa_c = 2/(2/kappa_tilde + phi) (their Eq. 21) -- the sphere-
+specialised version of our dimension-general parallel-surface inverse. And
+with numerically approximated curvature its stationary droplet GROWS IN TIME
+(their Fig. 13b/d): at n_e = 64, La = 12000 climbs from ~2e-4 to ~1e-1 by
+t = 8 (11 T_sigma), La = infinity to ~1, growth onset at ~3.5 T_sigma. Two
+completely different interface representations -- front-tracking vertex
+positions there, an SL level set here -- with the same curvature-delivery
+philosophy and the same slow runaway. Their own attribution (sec. 4.3.2):
+the front is FINER than the volume mesh (8-9 triangles per interface cell),
+so vertex-scale perturbations accumulate and feed back -- an unconstrained
+sub-mesh interface state read by a differentiating operator. That is our
+audit's diagnosis, reached independently, in the user's own earlier work.
+
+### The translating droplet observation, with the caveat that matters
+
+Their translating droplet (Fig. 14, new configuration) holds
+L_inf(|v - v_bg|) flat at ~1e-3 for EVERY La including infinity, while the
+stationary case grows. But the horizons are NOT matched: the translating run
+is t = 0.4 = 0.56 T_sigma -- one droplet diameter of travel -- against t = 8 =
+11.2 T_sigma for the stationary case, whose growth only becomes visible after
+~3.5 T_sigma. So the paper shows translating-bounded-for-half-a-T_sigma, not
+translating-stable-where-stationary-is-not. What IS mechanistically real:
+Lagrangian vertex advection under a CONSTANT background velocity is exact
+("the movement of the front vertices due to v_bg is captured exactly"), so
+translation adds no interface-state excitation of its own -- and the droplet
+sweeping through cells decorrelates the phase between the mesh-locked
+curvature-error pattern and any single interface mode. Both properties carry
+over to our SL trace, whose foot point is exact for uniform velocity
+(du/dt = 0, (u.grad)u = 0 => x_d = x_c - u dt exactly, resampling being the
+only error). PREDICTION, cheap to test with cases/translatingDroplet2D at
+R/h = 25 on a quarter horizon: our translating droplet should grow SLOWER
+than our stationary one -- the opposite of Popinet's VOF, where advection
+error drives the translating case's growth. Either outcome is informative:
+slower confirms phase-decorrelation as a real mitigation channel and makes
+the stationary droplet the WORST case (coherent pumping); faster or equal
+kills the decorrelation picture.
+
+### SAAMPLE itself: the seed is removable, the rate is a different question
+
+Their Table 5 and Fig. 11, exact constant curvature: PISO with a fixed number
+of correctors leaves a spurious velocity of 1e-6..1e-8 after the first step
+that decays over a TRANSIENT; SAAMPLE -- pressure corrections iterated until
+the linear-solve residual criterion is met, outer loop gated on mass-flux
+convergence (their Eq. 35) -- delivers |v| < 1e-13 from the FIRST STEP at
+every La and resolution, at the price of 7-19 pressure corrections in step 1
+(their Table 4; the count is La- and h-dependent, which is exactly why a
+fixed corrector count cannot do it). Our constant-curvature gate measured
+1.09e-8 / 3.94e-8 -- the PISO-like level. So our segregated loop re-seeds the
+current each step with an UNCONVERGED-pressure residue that accuracy-driven
+iteration would remove. Given the psiOuterCorrectors null (0.1-0.4%) this
+seed almost certainly does not set the growth RATE -- but it sets the FLOOR,
+it is what the amplifier amplifies, and removing it is a solved problem with
+a published recipe. Cheap arm: crank nCorrectors/tolerance until the first
+inner residual passes tol, re-measure A at R/h = 25.
+
+### The efficiency route Popinet's limit could not give us
+
+Their time step is dt = 0.5*sqrt(rho h^3/(pi sigma)) -- omega_grid*dt = pi/2 =
+1.571, ABOVE our measured explicit wall of 1.0-1.3 -- run stably. The
+difference is their semi-implicit surface tension (Raessi et al. 2009, their
+Eqs. 22-23): f = sigma*(kappa n)^n delta + sigma*dt*(Delta_Sigma v^{n+1})delta,
+with the Laplace-Beltrami term of the NEW velocity discretised implicitly.
+That term is a consistent O(dt) implicit treatment (vanishes as dt -> 0), it
+is compact-stencil, unstructured-safe and MPI-clean, and it is precisely what
+relaxes the capillary CFL -- the 2-6x step-count saving the Popinet-limit
+attempt could not deliver survives through THIS door. The caveat their own
+paper states (sec. 4.5.2): it is "effectively a diffusion term" and
+contributes to overdamping of large-amplitude oscillations. Under the
+no-filtering rule this sits in a grey zone: it is a published, consistent
+time-integration scheme, not a tuned smoother -- but it damps, so it must be
+scored like everything else with the damping OFF for the stability claim and
+ON only as the documented price of the larger step.
+
+### The fvc::reconstruct warning we inherit verbatim
+
+Their sec. 3.4 proves the OpenFOAM cell-from-face reconstruction operator is
+second order ONLY for C^1 fields (error cancellation Eq. 30, orthogonal
+meshes) and DIVERGES at the interface for fields with a gradient jump -- their
+Fig. 9 shows the error concentrated exactly at the interface; their
+conclusions call it "crucial for the segregated equation coupling in OpenFOAM
+for multiphase flows". We use the SAME operator in the pEqn velocity update
+U = HbyA + rAU*reconstruct((phig - flux)/rAUf) -- the exact line that converts
+the non-gradient capillary flux into the cell velocity that our SL trace then
+advects psi with. So the amplifier's output stage is an operator that is
+formally DIVERGENT across the interface for the non-C^1 velocity the
+capillary jump creates. This compounds the audit's D3: our transport reads
+the interface velocity through a reconstruction that is worst exactly where
+the interface is.
+
+### The clamp verdict: it is the phase, not the amplitude
+
+kappaClamp2D/N150 (production delivery, filter off, kappa clamped to
+[-2000, 4000] 1/m around the exact 1000, quarter horizon, everything else
+identical): the run still grows -- max|U| 6.8e-06 -> 1.48e-02, envelope
++388 1/s over the second half, P/E = +1033 1/s, volume 2.1e-05, shape
+1.12e-06 -- while the clamp holds kappaStdDevBand at 45 1/m (4.5% of exact)
+against the unclamped run's 2.1e4 at blow-up. Growth is IDENTICAL in kind to
+the unclamped arm with the curvature-error amplitude capped 460x lower. Per
+the audit's split: the loop closes at kappa amplitudes far inside the
+physical range, so AMPLITUDE saturation -- the property the clamp added and
+one of the two candidate stabiliser mechanisms -- is not the stabiliser. What
+sustains the pump is the PHASE COHERENCE of the curvature error with the
+oscillating interface. This kills route (b) (a "saturating but non-variational
+delivery") and leaves the pairing route as the only theorem-grade path,
+consistent with variationalForce2D's falsification of the bare operator swap.
+The freeze-kappa arm (SL_FREEZE_KAPPA=1, fill once and never refill --
+RUNNING) cuts the phase channel completely: a frozen kappa cannot correlate
+with the oscillation. Bounded => the attribution chain
+kappa -> force -> velocity -> psi -> kappa closes at the last arrow; growing
+=> the transport side self-excites and the amplifier is upstream of the
+curvature entirely.
+
 ## 1. Cut it down
 
 Eleven things are being tracked. **Two matter.**

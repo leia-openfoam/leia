@@ -135,6 +135,25 @@ Info<< "Capillary force centring: " << capillaryForceCentring
 //  Stormer-Verlet split, after momentum has produced u^{n+1}.
 bool slSecondHalfDrift = false;
 
+// FREEZE-KAPPA DIAGNOSTIC (env SL_FREEZE_KAPPA=1, research only, default off):
+// fill the cell curvature on the FIRST step and never refill it. The force then
+// acts with a frozen, near-exact kappa while psi, alpha and the flow all stay
+// live. This cuts exactly one arrow of the feedback loop
+//     kappa -> force -> velocity -> psi -> kappa
+// (the last one). Bounded => the runaway REQUIRES the kappa feedback, closing
+// the attribution chain; still growing => the transport/state side self-excites
+// through a frozen force, and the amplifier is upstream of the curvature. The
+// companion clamp experiment already showed AMPLITUDE limiting does not help
+// (growth at +388 1/s with kappa clamped to [-2000, 4000] around the exact
+// 1000), so this tests the PHASE: a frozen kappa cannot correlate with the
+// oscillating interface, whatever its amplitude error.
+const bool freezeKappa = !Foam::getEnv("SL_FREEZE_KAPPA").empty();
+if (freezeKappa)
+{
+    Info<< "SL_FREEZE_KAPPA: cell curvature is filled on step 1 "
+        << "and FROZEN afterwards (diagnostic)" << nl << endl;
+}
+
 // THE NON-GRADIENT CAPILLARY VELOCITY, kept so the WORK it does can be measured.
 //
 // The pressure projection IS a Helmholtz decomposition in the rAUf-weighted

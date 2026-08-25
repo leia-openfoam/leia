@@ -194,6 +194,11 @@
         // which is the consistent choice inside an iterated coupling.
         const scalarField kappaPrevStep(kappa.primitiveField());
 
+        // Freeze-kappa diagnostic: skip every refill after the first step so the
+        // force acts with the step-1 curvature for the whole run.
+        if (!(freezeKappa && runTime.timeIndex() > 1))
+        {
+
         // Mean curvature evaluated SYMBOLICALLY from the quadratic reconstruction
         // (fit gradient + Hessian): default at the CELL CENTRE (no normal
         // extension); with curvatureExtension type closestPointNewton the
@@ -299,6 +304,7 @@
                 min(max(kappa.primitiveField(), kappaClampMin), kappaClampMax);
             kappa.correctBoundaryConditions();
         }
+        }   // end of the freeze-kappa guard around the curvature refill
 
         // Stabilized foot-point FACE delivery: re-reference the interpolated
         // face curvature to the interface (parallel-curve inverse at the
