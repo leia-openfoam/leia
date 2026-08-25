@@ -57,7 +57,7 @@ void Foam::fluxFormScheme::advance
     slCorrector& corrector    // unused: the flux form needs no correction pass
 )
 {
-    const scalar dt = mesh_.time().deltaTValue();
+    const scalar dt = mesh_.time().deltaTValue()*dtScale_;
 
     const scalarField psiOld(psi.primitiveField());
 

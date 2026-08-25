@@ -78,6 +78,21 @@ protected:
 
     const fvMesh& mesh_;
 
+    //- Fraction of the time step this advection covers. 1 = a full step, the
+    //  default and the only value any historical run used, so leaving it alone
+    //  is byte-identical. STORMER-VERLET CENTRING of the capillary force needs
+    //  a HALF drift before the momentum solve and a half drift after it, so
+    //  that the interface the force is built from sits at n+1/2, between the
+    //  two velocity levels, which is Popinet's staggered arrangement (JCP
+    //  228:5838, c at n +/- 1/2 with the force at n + 1/2).
+    //
+    //  It scales the characteristic trace, not the field: the foot point is
+    //      x_d = x_c - u dt + (1/2)[du/dt + (u.grad)u] dt^2
+    //  so BOTH the linear and the quadratic term must see the same shortened
+    //  dt. Scaling the velocity instead would shorten the linear term
+    //  correctly and the quadratic one by the wrong factor.
+    scalar dtScale_ = 1.0;
+
 public:
 
     //- Runtime type information
@@ -107,6 +122,12 @@ public:
     virtual ~slScheme() = default;
 
     // Member Functions
+
+        //- Fraction of runTime.deltaT() this advection covers (default 1).
+        scalar dtScale() const noexcept { return dtScale_; }
+
+        //- Set the fraction of runTime.deltaT() the next advection covers.
+        void setDtScale(const scalar s) noexcept { dtScale_ = s; }
 
         //- Advect one step: psi holds psi^n on entry, psi^{n+1} on exit.
         //  recon/corrector are owned by slAdvection (fluxForm ignores the

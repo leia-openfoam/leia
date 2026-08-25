@@ -188,6 +188,16 @@ public:
         //  kernel to the equivalent departure-time-centred second-order trace
         //  x_d = x_c - dt/2 (3u^n - u^{n-1}) + 1/2 dt^2 (u.grad)u. See
         //  leiaSemiLagrangianLevelSetTwoPhaseFoam/slAlphaEqn.H.
+        //- Fraction of runTime.deltaT() the next advect() covers. 1 = a full
+        //  step (default, byte-identical to every historical run). 0.5 is the
+        //  half drift of a Stormer-Verlet split, used to place the interface --
+        //  and therefore the capillary force -- at n+1/2 between the two
+        //  velocity levels.
+        void setDtScale(const scalar s) { scheme_->setDtScale(s); }
+
+        //- Current time-step fraction of the selected scheme.
+        scalar dtScale() const { return scheme_->dtScale(); }
+
         void advect
         (
             volScalarField& psi,

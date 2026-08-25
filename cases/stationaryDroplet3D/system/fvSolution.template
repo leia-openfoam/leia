@@ -162,6 +162,17 @@ PIMPLE
 // Leia level-set configuration.
 levelSet
 {
+    // Where in time the capillary force is evaluated.
+    //   endStep  : force from psi^{n+1} (symplectic Euler) -- the default, and
+    //              what every historical run did. det(M) = 1, |lambda| = 1 for
+    //              omega dt < 2, i.e. already neutrally stable.
+    //   midpoint : force from psi^{n+1/2} (Stormer-Verlet), Popinet's staggered
+    //              arrangement. SPECTRALLY IDENTICAL to endStep for the linear
+    //              oscillator -- same det and same trace -- so it changes the
+    //              accuracy of the coupling, not the stability or the step
+    //              limit. Costs a second interface build per step.
+    capillaryForceCentring  @!CAPILLARY_FORCE_CENTRING!@;
+
     // Symbolic curvature from the SL quadratic reconstruction (normal-extended),
     // consumed as sigma * interpolate(kappa) * snGrad(alpha.water).
     //

@@ -195,6 +195,15 @@ FIXED_DELTA_T 0;
 // improves the volume error by 20% (1.092e-05 -> 8.744e-06) and the shape error by
 // 0.8%. It does NOT change the per-step gain (+1.1%), so it is an accuracy choice,
 // not a stability fix. Every result predating this line used Euler.
+// Time level the capillary force is evaluated at: endStep (force from psi^{n+1},
+// symplectic Euler -- the historical path, byte-identical) or midpoint (force
+// from psi^{n+1/2}, Stormer-Verlet, Popinet's staggering). For the linearised
+// capillary oscillator the two are SPECTRALLY IDENTICAL -- both have det(M) = 1
+// and trace 2 - omega^2 dt^2 -- so this changes the accuracy of the coupling and
+// matches Popinet's arrangement, but it does not change linear stability or the
+// step limit. midpoint runs the interface pipeline twice per step.
+CAPILLARY_FORCE_CENTRING endStep;
+
 MOMENTUM_DDT_SCHEME backward;
 
 // Momentum convection. `linearUpwind gradU` reproduces the historical

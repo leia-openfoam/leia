@@ -396,6 +396,21 @@ int main(int argc, char *argv[])
             }
         }
 
+        // STORMER-VERLET second half drift. With the force centred at n+1/2
+        // the level set left slAlphaEqn.H at n+1/2; carry it to n+1 with the
+        // velocity the pressure solve just produced, and rebuild the interface
+        // so alpha, rho, the curvature and the metrics all describe the end of
+        // the step. Own scope: slAlphaEqn.H declares locals, and this is its
+        // second textual inclusion in this function.
+        if (midpointForceCentring)
+        {
+            slSecondHalfDrift = true;
+            {
+                #include "slAlphaEqn.H"
+            }
+            slSecondHalfDrift = false;
+        }
+
         // The auxiliary rho is used only while pressure and velocity are
         // coupled; restore interface-consistent cell density for output and
         // for the next time level (rhoLENT Algorithm 1, step 13).

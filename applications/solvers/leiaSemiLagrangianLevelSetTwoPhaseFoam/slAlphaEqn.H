@@ -14,7 +14,7 @@
     // the next UEqn sees converges to its t^{n+1} value. At outer-loop
     // convergence the step is backward-Euler consistent in ALL terms; the AB2
     // estimate is demoted to the pass-1 initial guess.
-    if (pimple.firstIter() || psiOuterCorrectors)
+    if (pimple.firstIter() || psiOuterCorrectors || slSecondHalfDrift)
     {
         // Semi-Lagrangian advection: psi holds psi^n on entry, psi^{n+1} on exit.
         //
@@ -70,7 +70,22 @@
         // velocityExtension type none this is exactly the identity path.
         slVelExt->correct();
 
-        if (pimple.firstIter())
+        if (slSecondHalfDrift)
+        {
+            // STORMER-VERLET, second half drift. psi is at n+1/2 and momentum
+            // has just produced u^{n+1}; carry it the remaining dt/2 so the step
+            // ends with psi^{n+1}, and so alpha, rho and the metrics below are at
+            // the step end rather than at the midpoint. slVelExt->correct() above
+            // re-read the registered U, which pEqn left at u^{n+1}, so the (new,
+            // old) slots are (u^{n+1}, u^n) -- no extrapolation is needed here.
+            if (Foam::getEnv("SL_FREEZE_INTERFACE").empty())
+            {
+                slAdv->setDtScale(0.5);
+                slAdv->advect(psi, slVelExt->Uext(), UextOld);
+                slAdv->setDtScale(1.0);
+            }
+        }
+        else if (pimple.firstIter())
         {
             // Snapshot psi^n BEFORE the in-place advection: later outer passes
             // (psiOuterCorrectors) re-advect from this level.
@@ -92,7 +107,12 @@
                     slVelExt->Uext() + dtRatio*(slVelExt->Uext() - UextOld)
                 );
 
+                // midpoint centring drifts only HALF the step here; the other
+                // half runs after the pressure solve. endStep keeps the full
+                // step, so this line is byte-identical with the switch off.
+                slAdv->setDtScale(midpointForceCentring ? 0.5 : 1.0);
                 slAdv->advect(psi, UextStar, slVelExt->Uext());
+                slAdv->setDtScale(1.0);
             }
             // Preserve the pre-momentum extension as the old velocity level.
             // Under psiOuterCorrectors this is also the OLD slot of every

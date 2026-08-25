@@ -16,7 +16,12 @@
 # and 12.5% of T_v -- twenty times longer than anything we have run, and enough for
 # the envelope to turn over if it is going to.
 #
-# IT IS ALSO A SHARP TEST OF THE ANTI-DAMPING MODEL. The oscillation is the m = 8
+# NOTE: an earlier version of this file carried a prediction table derived from
+# "the explicit force anti-damps at +omega^2 dt/2". That mechanism was wrong --
+# the force is built from psi^{n+1}, making the scheme symplectic Euler, which is
+# neutrally stable for omega dt < 2 (see plan sec. 0e retraction). The horizon
+# question this study asks is unaffected: does the envelope turn over, i.e. does a
+# numerical equilibrium exist for our delivery? The oscillation is the m = 8
 # capillary wave (period measured 1.56 ms against 1.455 ms predicted, m = 8 also
 # from the azimuthal spectrum of |U|), whose physical envelope is viscous decay at
 # 2 nu k^2 = -128 1/s. An explicitly evaluated capillary force anti-damps an

@@ -308,7 +308,7 @@ void Foam::pointValueScheme::advance
     slCorrector& corrector
 )
 {
-    const scalar dt = mesh_.time().deltaTValue();
+    const scalar dt = mesh_.time().deltaTValue()*dtScale_;
     const volVectorField& C = mesh_.C();
 
     const volVectorField* trajectoryNew = &Unew;

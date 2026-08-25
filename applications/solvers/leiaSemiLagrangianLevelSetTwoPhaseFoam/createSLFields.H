@@ -78,6 +78,62 @@ word curvatureExtensionType("none");
         lsDict.subOrEmptyDict("curvatureExtension").getOrDefault<word>("type", "none");
 }
 const bool harmonicCurvatureExtension = (curvatureExtensionType == "harmonicLaplace");
+
+// WHERE IN TIME THE CAPILLARY FORCE IS EVALUATED.
+//
+//   endStep  (default, and what every historical run did): slAlphaEqn advects
+//            psi over the FULL step before UEqn, so the curvature -- and hence
+//            the force -- is built from psi^{n+1}. Writing the linearised
+//            capillary oscillator eta' = u, u' = -omega^2 eta, that is
+//              eta^{n+1} = eta^n + dt u^n,  u^{n+1} = u^n - dt omega^2 eta^{n+1}
+//            i.e. SYMPLECTIC EULER: det(M) = 1 exactly, so |lambda| = 1 while
+//            the eigenvalues stay complex, which holds for omega dt < 2. It is
+//            already neutrally stable and area preserving -- NOT the fully
+//            explicit force-at-t^n scheme, whose |1 + i omega dt| > 1 always.
+//
+//   midpoint: Stormer-Verlet. Drift a HALF step to psi^{n+1/2}, build the force
+//            there, solve momentum, then drift the remaining half with u^{n+1}.
+//            This is Popinet's arrangement (JCP 228:5838): the volume fraction
+//            is staggered at n +/- 1/2 against velocity at n, with the force
+//            term (sigma kappa delta_s n)_{n+1/2} between the two velocity
+//            levels.
+//
+// MEASURED EXPECTATION, so nobody reads more into this switch than it carries:
+// for the LINEAR oscillator the two are SPECTRALLY IDENTICAL -- same det = 1 and
+// the same trace 2 - omega^2 dt^2, hence the same eigenvalues, the same
+// amplification and the same phase error per step. Centring the force cannot by
+// itself change linear stability or the step limit. What it changes is the
+// offset between the velocity and interface samples, i.e. the accuracy of the
+// coupling, and it makes our arrangement match Popinet's. The stationary
+// droplet's growth is attributed to the curvature error depending on where the
+// interface sits RELATIVE TO THE MESH (the measured m = 8 mesh-locked mode),
+// which makes the force non-conservative and voids the symplectic guarantee --
+// a defect no time centring addresses. This switch exists to settle that by
+// measurement rather than by argument.
+//
+// Cost: midpoint runs the interface pipeline twice per step (once at n+1/2 for
+// the force, once at n+1 so alpha, rho and the metrics are at the step end), so
+// expect roughly 2x the per-step cost. endStep is untouched and byte-identical.
+word capillaryForceCentring("endStep");
+{
+    const fvSolution& fvSolCfc = mesh;          // fvMesh is-a fvSolution
+    capillaryForceCentring = fvSolCfc.subDict("levelSet")
+        .getOrDefault<word>("capillaryForceCentring", "endStep");
+}
+const bool midpointForceCentring = (capillaryForceCentring == "midpoint");
+if (capillaryForceCentring != "endStep" && !midpointForceCentring)
+{
+    FatalErrorInFunction
+        << "levelSet.capillaryForceCentring must be endStep or midpoint, got "
+        << capillaryForceCentring << exit(FatalError);
+}
+Info<< "Capillary force centring: " << capillaryForceCentring
+    << (midpointForceCentring ? " (Stormer-Verlet, force at n+1/2)"
+                              : " (symplectic Euler, force at n+1)") << endl;
+
+//- Set while slAlphaEqn.H is being re-entered for the SECOND half drift of the
+//  Stormer-Verlet split, after momentum has produced u^{n+1}.
+bool slSecondHalfDrift = false;
 // Foot-point height-function curvature (footPointCurvature.H): kappa from a
 // local parabola (height-function) fit of the interface feet of the linear
 // LSQ planes, delivered normal-constant by uniform nearest-foot assignment --

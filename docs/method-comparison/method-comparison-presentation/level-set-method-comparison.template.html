@@ -1418,6 +1418,263 @@
 </section>
 </section>
 
+<section data-track="Time centring">
+
+<section>
+  <h2>Where the capillary force sits in time</h2>
+  <p style="font-size:0.72em">A stationary droplet oscillates before it settles. Whether that
+     oscillation <em>decays</em>, <em>persists</em>, or <em>grows</em> is decided by which time
+     level the surface-tension force is evaluated at &mdash; and the answer is not the one
+     intuition gives.</p>
+  <div class="cols" style="align-items:flex-start; margin-top:0.4em">
+    <div>
+      <h3 class="accent">What we observe</h3>
+      <ul class="tight" style="font-size:0.62em">
+        <li>max|U| oscillates with period <b>1.56 ms</b>, independent of \(h\)
+            over \(R/h=10\ldots31.7\);</li>
+        <li>the envelope <b>grows</b> instead of decaying;</li>
+        <li>the mode is <b>mesh-locked</b>: azimuthal wavenumber \(m=8\),
+            maximum within \(2.75^\circ\) of a multiple of \(45^\circ\).</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="accent">What Popinet observes</h3>
+      <ul class="tight" style="font-size:0.62em">
+        <li>same oscillation, his \(m=4\), period \(\approx 0.4\,T_\sigma\);</li>
+        <li>amplitude <b>constant</b> at \(\mathrm{La}=\infty\),
+            <b>viscously damped</b> otherwise;</li>
+        <li>he calls it a capillary wave, <em>not</em> a parasitic current.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="resultline"><b>The question:</b> same physical mode, same balanced-force CSF.
+     Why does ours gain energy?</p>
+</section>
+
+<section>
+  <h2>The model problem: one capillary oscillator</h2>
+  <p style="font-size:0.7em">Linearise the interface about the circle. A single azimuthal mode
+     \(m\) with displacement \(\eta\) and interface velocity \(u\) obeys</p>
+  \[ \dot\eta = u, \qquad \dot u = -\omega^2\eta, \qquad
+     \omega^2 = \frac{\sigma k^3}{\rho_1+\rho_2},\quad k=\frac{m}{R} \]
+  <div class="cols" style="align-items:flex-start; font-size:0.62em">
+    <div>
+      <h3 class="accent">Numbers for our case</h3>
+      <ul class="tight">
+        <li>\(m=8\), \(R=1\) mm, \(\sigma=0.07274\);</li>
+        <li>predicted period \(T_\lambda=\sqrt{\rho\lambda^3/\pi\sigma}=1.455\) ms;</li>
+        <li>measured \(1.56\) ms &mdash; agreement to 7%;</li>
+        <li>\(\omega = 2\pi/T \approx 4021\) rad s\(^{-1}\).</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="accent">Why this is the right model</h3>
+      <ul class="tight">
+        <li>the energy \(E=\tfrac12(u^2+\omega^2\eta^2)\) is <b>exactly conserved</b>
+            by the continuous system;</li>
+        <li>so any growth in a simulation is <b>numerical</b>;</li>
+        <li>viscosity adds a known decay \(2\nu k^2 = 128\) s\(^{-1}\).</li>
+      </ul>
+    </div>
+  </div>
+  <p class="resultline">Physics says the envelope must decay at \(128\) s\(^{-1}\).
+     We measure \(-97\) to \(+212\) s\(^{-1}\).</p>
+</section>
+
+<section>
+  <h2>Three places to evaluate the force</h2>
+  <p style="font-size:0.68em">The interface position \(\eta\) sets the curvature, hence the force.
+     The velocity \(u\) advects the interface. Each scheme differs <em>only</em> in which
+     \(\eta\) the force is built from.</p>
+  <table style="margin:auto; font-size:0.56em; width:97%">
+    <thead><tr><th>scheme</th><th>update</th><th>force built from</th></tr></thead>
+    <tbody>
+      <tr><td><b>(a)</b> fully explicit</td>
+          <td>\(\eta^{n+1}=\eta^n+\Delta t\,u^n\)<br>\(u^{n+1}=u^n-\Delta t\,\omega^2\eta^{\,n}\)</td>
+          <td>the <b>old</b> interface \(\eta^n\)</td></tr>
+      <tr><td><b>(b)</b> symplectic Euler</td>
+          <td>\(\eta^{n+1}=\eta^n+\Delta t\,u^n\)<br>\(u^{n+1}=u^n-\Delta t\,\omega^2\eta^{\,n+1}\)</td>
+          <td>the <b>advected</b> interface \(\eta^{n+1}\)</td></tr>
+      <tr><td><b>(c)</b> St&ouml;rmer&ndash;Verlet</td>
+          <td>half kick, drift, half kick</td>
+          <td>the <b>midpoint</b> interface \(\eta^{n+1/2}\)</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline" style="font-size:0.62em"><b>(c) is Popinet's arrangement:</b> the volume
+     fraction is staggered, \(c\) at \(n\pm\tfrac12\) against \(u\) at \(n\), and the force term
+     \((\sigma\kappa\delta_s\mathbf{n})_{n+1/2}\) is evaluated between the two velocity levels.</p>
+</section>
+
+<section>
+  <h2>Read the amplification matrix, not the intuition</h2>
+  <p style="font-size:0.68em">Write each scheme as \([\eta,u]^{n+1}=M\,[\eta,u]^n\). The growth per
+     step is the spectral radius \(|\lambda|_{\max}\).</p>
+  \[ M_a=\begin{pmatrix}1&\Delta t\\-\omega^2\Delta t&1\end{pmatrix}\quad
+     M_b=\begin{pmatrix}1&\Delta t\\-\omega^2\Delta t&1-\omega^2\Delta t^2\end{pmatrix} \]
+  <div class="cols" style="align-items:flex-start; font-size:0.62em">
+    <div>
+      <h3 class="accent">(a) explicit</h3>
+      <p>\(\det M_a = 1+\omega^2\Delta t^2 > 1\)</p>
+      <p>\(|\lambda| = \sqrt{1+(\omega\Delta t)^2}\), <b class="warn">always &gt; 1</b>.
+         Unconditionally amplifying: no time step is small enough, only slow enough.</p>
+    </div>
+    <div>
+      <h3 class="accent">(b) symplectic Euler</h3>
+      <p>\(\det M_b = 1\cdot(1-\omega^2\Delta t^2)+\omega^2\Delta t^2 = 1\)</p>
+      <p>Determinant <b>exactly one</b> &rArr; the map preserves phase-space area. While the
+         eigenvalues stay complex, \(|\lambda|=1\) <b class="good">exactly</b>.</p>
+    </div>
+  </div>
+  <p class="resultline">Complex eigenvalues require \(|\mathrm{tr}\,M_b| = |2-\omega^2\Delta t^2| &lt; 2\),
+     i.e. <b>\(\omega\Delta t &lt; 2\)</b>. Beyond it the pair splits onto the real axis and one root
+     leaves the unit circle.</p>
+</section>
+
+<section>
+  <h2>Computed amplification per step</h2>
+  <table style="margin:auto; font-size:0.6em; width:92%">
+    <thead><tr><th>\(\omega\Delta t\)</th><th>(a) force at \(t^n\)</th>
+       <th>(b) force at \(t^{n+1}\)</th><th>(c) force at \(t^{n+1/2}\)</th></tr></thead>
+    <tbody>
+      <tr><td>0.500</td><td class="warn">1.118034</td><td class="good">1.000000</td><td class="good">1.000000</td></tr>
+      <tr><td>1.047</td><td class="warn">1.447829</td><td class="good">1.000000</td><td class="good">1.000000</td></tr>
+      <tr><td>1.571</td><td class="warn">1.862268</td><td class="good">1.000000</td><td class="good">1.000000</td></tr>
+      <tr><td>2.000</td><td class="warn">2.236068</td><td class="good">1.000000</td><td class="good">1.000000</td></tr>
+      <tr><td>2.500</td><td class="warn">2.692582</td><td class="warn">4.000000</td><td class="warn">4.000000</td></tr>
+      <tr><td>3.142</td><td class="warn">3.297296</td><td class="warn">7.743015</td><td class="warn">7.743015</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline" style="font-size:0.63em"><b>(b) and (c) are spectrally identical.</b>
+     Both have \(\det M=1\) and the same trace \(2-\omega^2\Delta t^2\), so they share
+     eigenvalues &mdash; the same amplification <em>and</em> the same phase error per step. Moving
+     the force from \(n+1\) to \(n+1/2\) does not change linear stability at all.</p>
+</section>
+
+<section>
+  <h2>Which one is our solver?</h2>
+  <p style="font-size:0.68em">Follow the order of operations inside one PIMPLE iteration:</p>
+  <ul class="tight" style="font-size:0.63em">
+    <li><code>slAlphaEqn.H</code> &mdash; semi-Lagrangian advection updates \(\psi\)
+        <b>in place</b>, \(\psi^n\to\psi^{n+1}\), using \(u^n\);</li>
+    <li>the narrow band, phase indicator, \(\alpha\), and the whole curvature chain are then
+        rebuilt <b>from the advected \(\psi^{n+1}\)</b>;</li>
+    <li><code>UEqn.H:8</code> calls <code>fSigma-&gt;faceSurfaceTensionForceFlux()</code>
+        &mdash; i.e. the force is assembled from \(\kappa(\psi^{n+1})\);</li>
+    <li>momentum then advances \(u^n\to u^{n+1}\).</li>
+  </ul>
+  <p class="resultline"><b>That is exactly scheme (b), symplectic Euler.</b> Our capillary
+     coupling is already area-preserving and neutrally stable for \(\omega\Delta t&lt;2\).
+     It was <em>not</em> the fully explicit scheme (a), and the growth is not a
+     force-lag effect.</p>
+</section>
+
+<section>
+  <h2>Then why does the amplitude grow?</h2>
+  <p style="font-size:0.68em">A symplectic integrator conserves energy only when the force is the
+     gradient of a potential. Ours is not.</p>
+  <div class="cols" style="align-items:flex-start; font-size:0.62em">
+    <div>
+      <h3 class="accent">The defect</h3>
+      <p>The delivered curvature carries a discretisation error that depends on <b>where the
+         interface sits relative to the mesh</b>, not on the interface shape alone:</p>
+      \[ \omega^2 \;\longrightarrow\; \omega^2\bigl[\,1+\varepsilon\cos(m\theta(\eta))\,\bigr] \]
+      <p>A position-dependent stiffness is not conservative: it does net work around a cycle,
+         and the symplectic guarantee is void.</p>
+    </div>
+    <div>
+      <h3 class="accent">The evidence</h3>
+      <ul class="tight">
+        <li>mode locked to \(m=8\), harmonics at 4 and 16 &mdash; the symmetry group of the
+            square mesh;</li>
+        <li>\(m\) is <b>independent of \(h\)</b> while \(\pi R/h\) runs 31&rarr;79, so it is
+            geometric, not grid-scale;</li>
+        <li>the maximum sits at \(r=1.06R\), one to two cells into the light phase;</li>
+        <li><code>kappaStdDevBand</code>: <b>83%</b> of the curvature error is
+            non-absorbable variation, not a uniform offset.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="resultline">The target is the <b>work done by the position-dependent curvature
+     error</b>, not the time level of the force.</p>
+</section>
+
+<section>
+  <h2>Absorbable versus non-absorbable curvature error</h2>
+  <p style="font-size:0.68em">Balanced-force CSF consumes only <em>differences</em> of face
+     curvature. A spatially uniform curvature error is \(\mathrm{snGrad}\) of a cell field and the
+     pressure solve absorbs it <b>exactly</b>:</p>
+  \[ \kappa \equiv \text{const} \;\Longrightarrow\;
+     p_{n+1/2} = \sigma\kappa\,c_{n+1/2} + \text{const} \]
+  <div class="cols" style="align-items:flex-start; font-size:0.62em">
+    <div>
+      <h3 class="accent">What we recorded before</h3>
+      <p><code>kErrL2Band</code>, <code>kErrLinfBand</code> &mdash; errors against \(1/R\),
+         which <b>mix</b> the absorbable offset with the variation.</p>
+    </div>
+    <div>
+      <h3 class="accent">What we record now</h3>
+      <p><code>kappaMeanBand</code>, <code>kappaStdDevBand</code>,
+         <code>kappaMeanActiveFaces</code>, <code>kappaStdDevActiveFaces</code> &mdash;
+         Popinet's Fig. 10 quantity, verified to satisfy
+         \(\;\mathrm{kErrL2}^2=(\bar\kappa-\kappa_{\rm ex})^2+\mathrm{std}^2\).</p>
+    </div>
+  </div>
+  <p class="resultline">At numerical equilibrium Popinet's standard deviation falls to
+     \(10^{-11}\) &mdash; round-off &mdash; while the error against \(1/R\) does <b>not</b>, because
+     his equilibrium shape differs from the exact circle at \(O(h^2)\).</p>
+</section>
+
+<section>
+  <h2>The step limit, measured</h2>
+  <p style="font-size:0.66em">\(N=150\) (\(R/h=25\)), filter off, from the exact circle.
+     \(\omega_{\rm grid}=\sqrt{\sigma(\pi/h)^3/(\rho_1+\rho_2)}\) is the 2\(h\) capillary mode.</p>
+  <table style="margin:auto; font-size:0.58em; width:88%">
+    <thead><tr><th>coefficient</th><th>\(\Delta t\) [s]</th><th>\(\omega_{\rm grid}\Delta t\)</th>
+       <th>diverges at step</th></tr></thead>
+    <tbody>
+      <tr><td>0.0661311 (Popinet Eq. 18)</td><td>1.673e-05</td><td>3.142 = \(\pi\)</td><td class="warn">17</td></tr>
+      <tr><td>0.0330656</td><td>8.365e-06</td><td>1.571</td><td class="warn">51</td></tr>
+      <tr><td>0.0275000</td><td>6.957e-06</td><td>1.306</td><td class="warn">112</td></tr>
+      <tr><td>0.0220437</td><td>5.577e-06</td><td>1.047</td><td class="warn">4282</td></tr>
+      <tr><td>0.0108610 (in use)</td><td>2.748e-06</td><td>0.516</td><td class="good">&gt; 9099</td></tr>
+    </tbody>
+  </table>
+  <p class="resultline" style="font-size:0.62em">Popinet's limit is exactly
+     \(\omega_{\rm grid}\Delta t=\pi\), half the period of the 2\(h\) mode &mdash; already past the
+     \(\omega\Delta t&lt;2\) bound of <em>any</em> of the three schemes. Our practical threshold is
+     \(\approx 1.0\)&ndash;\(1.3\), and the step-count-to-failure falls steeply
+     (4282 &rarr; 112 &rarr; 51 &rarr; 17), so a short screen proves nothing.</p>
+</section>
+
+<section>
+  <h2>What this changes</h2>
+  <div class="cols" style="align-items:flex-start; font-size:0.63em">
+    <div>
+      <h3 class="accent">Retracted</h3>
+      <ul class="tight">
+        <li>&ldquo;our force is explicit at \(t^n\), amplification
+            \(|1+i\omega\Delta t|\)&rdquo; &mdash; it is at \(t^{n+1}\);</li>
+        <li>&ldquo;anti-damping \(+\omega^2\Delta t/2 = +22\ldots88\) s\(^{-1}\)&rdquo;;</li>
+        <li>&ldquo;centring at \(n+1/2\) restores neutrality&rdquo; &mdash; (b) and (c) are
+            spectrally identical.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="accent">Stands</h3>
+      <ul class="tight">
+        <li>the oscillation is the \(m=8\) capillary wave (two independent measurements);</li>
+        <li>the physical envelope is \(-128\) s\(^{-1}\); we measure up to \(+212\);</li>
+        <li>the mode is mesh-locked and the curvature error is 83% non-absorbable;</li>
+        <li>our horizon is 0.6% of \(T_v\) &mdash; every ladder measures a transient.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="resultline"><b>Next:</b> measure the work the position-dependent curvature error does
+     per oscillation cycle. That, not the time level of the force, is what has to go to zero.</p>
+</section>
+
+</section>
+
 <section data-track="Verdict">
 <section>
   <p class="part-kicker">Part 8 of 8</p>

@@ -146,7 +146,7 @@ void Foam::normalProjectedScheme::advance
     // it needs -- assemble into scratch fields and assign at the end.
     recon.update(psi);
 
-    const scalar dt = mesh_.time().deltaTValue();
+    const scalar dt = mesh_.time().deltaTValue()*dtScale_;
     const scalar dt0 = mesh_.time().deltaT0Value();
     // The temporal difference u_n^n - u_n^{n-1} spans the PREVIOUS step while
     // the trace spans the CURRENT one; the ratio keeps the Adams-Bashforth

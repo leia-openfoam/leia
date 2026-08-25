@@ -527,6 +527,61 @@ gain peaking at R/h = 25 and falling at 31.7 (h^+3.69) is consistent with it.
    If the static gate reproduces m = 8 in the delivered error, that is a specific
    signature of our delivery and it identifies which omega the anti-damping acts on.
 
+### RETRACTION: our force is at n+1, not n, and the scheme is already symplectic
+
+The mechanism attributed above -- "an explicitly evaluated capillary force
+anti-damps at +omega^2 dt/2, which Popinet's n+1/2 staggering removes" -- is
+WRONG, and so are the numbers derived from it (+22..88 1/s, the psiOuterCorrectors
+explanation, and the prediction table originally written into
+config/viscousHorizon2D.yaml).
+
+Reading the solver settles it. `slAlphaEqn.H` advects psi IN PLACE, psi^n ->
+psi^{n+1}, and the narrow band, phase indicator, alpha and the entire curvature
+chain are rebuilt from the ADVECTED field before `UEqn.H:8` calls
+`fSigma->faceSurfaceTensionForceFlux()`. The force is therefore built from
+psi^{n+1}. For the linearised capillary oscillator that is
+
+    eta^{n+1} = eta^n + dt u^n,      u^{n+1} = u^n - dt omega^2 eta^{n+1}
+
+i.e. SYMPLECTIC EULER, whose amplification matrix has det(M) = 1 exactly, so
+|lambda| = 1 while the eigenvalues remain complex -- which holds for
+omega dt < 2. Computed per step:
+
+| omega dt | (a) force at t^n | (b) force at t^{n+1} = OURS | (c) force at t^{n+1/2} = Popinet |
+|---|---|---|---|
+| 0.500 | 1.118034 | **1.000000** | 1.000000 |
+| 1.047 | 1.447829 | **1.000000** | 1.000000 |
+| 1.571 | 1.862268 | **1.000000** | 1.000000 |
+| 2.000 | 2.236068 | **1.000000** | 1.000000 |
+| 3.142 | 3.297296 | 7.743015 | 7.743015 |
+
+Only (a), the fully explicit force, amplifies unconditionally. And (b) and (c)
+are SPECTRALLY IDENTICAL: both have det = 1 and the same trace 2 - omega^2 dt^2,
+hence the same eigenvalues, the same amplification AND the same phase error per
+step. Centring the force at n+1/2 cannot by itself change linear stability, the
+frequency, or the step limit. It changes the offset between the velocity and
+interface samples -- the accuracy of the coupling -- and it makes our arrangement
+match Popinet's.
+
+WHAT SURVIVES. The measurements: the oscillation is the m = 8 capillary wave
+(period and azimuthal spectrum agree independently), the physical envelope is
+-128 1/s and we measure up to +212, the mode is mesh-locked, 83% of the curvature
+error is non-absorbable variation, and our horizon is 0.6% of T_v.
+
+THE MECHANISM THAT REPLACES IT. A symplectic integrator conserves only for a
+force derived from a potential. Our delivered curvature carries an error that
+depends on WHERE THE INTERFACE SITS RELATIVE TO THE MESH -- exactly the measured
+m = 8 mesh-locked pattern -- so the force is not a gradient of any potential and
+does net work around each oscillation cycle. Substituting
+omega^2 -> omega^2[1 + eps cos(m theta(eta))] into the symplectic-Euler map
+reproduces slow energy drift of either sign, where eps = 0 conserves. That is the
+quantity a fix has to drive to zero: THE WORK DONE PER CYCLE BY THE
+POSITION-DEPENDENT CURVATURE ERROR, not the time level of the force.
+
+The step-limit measurement stands on its own and is unaffected: the practical
+threshold is omega_grid dt ~ 1.0-1.3 against the omega dt < 2 bound of the linear
+analysis, and Popinet's Eq. (18) is omega_grid dt = pi, already past it.
+
 ## 1. Cut it down
 
 Eleven things are being tracked. **Two matter.**
