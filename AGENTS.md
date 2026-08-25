@@ -44,6 +44,24 @@ remains — e.g. do not raise the capillary time-step coefficient for a 2x speed
 when the growth it papers over is still there. That bakes a tuned number into
 every case file for a problem that is about to be removed.
 
+### No filtering in the production method
+
+Filtering is a **research instrument only**. The psi filter (`biharmonicBand`),
+curvature relaxation, and any smoothing of the level set, the curvature or the
+force may be used to understand the defect; none of them may be what makes a
+production run stable. The goal is a **Basilisk-like discretisation that is stable
+on its own** — the stationary droplet relaxing to its numerical equilibrium with
+the velocity falling to round-off because the operators are right.
+
+A filter that stabilises hides the defect behind a coefficient nobody can justify,
+and that coefficient then needs retuning per resolution. Measured: at matched
+initial kick the theta = 0.2 band filter is 5.86x BETTER at R/h = 15.8 and 1.61x
+WORSE at R/h = 10.0, turning damping into growth where there is no corrugation to
+remove. That behaviour is a tuning knob, not a model.
+
+Consequence: **score every candidate with all filters OFF**, and treat a filter's
+benefit as a measurement of the defect's size rather than as a fix.
+
 **How to apply.** When proposing a fix, state explicitly how it behaves on a
 polyhedral unstructured mesh under MPI decomposition *before* proposing it.
 Prefer formulations stated per cell or per face and summed — those are
