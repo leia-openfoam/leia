@@ -53,6 +53,9 @@ addToRunTimeSelectionTable(velocityModel, vortex2D, Mesh);
 defineTypeNameAndDebug(periodic2D, 0);
 addToRunTimeSelectionTable(velocityModel, periodic2D, Mesh);
 
+defineTypeNameAndDebug(uniaxialStrain, 0);
+addToRunTimeSelectionTable(velocityModel, uniaxialStrain, Mesh);
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 vector shear2D::velocity(const vector& p) const
@@ -158,6 +161,41 @@ periodic2D::periodic2D(const fvMesh& mesh)
 vector periodic2D::velocity(const vector& p) const
 {
     return Vector<scalar>(v0_ + c1_*p[0] + c2_*p[1], -c1_*p[1], 0.0);
+}
+
+
+uniaxialStrain::uniaxialStrain(const fvMesh& mesh)
+:
+    velocityModel(mesh),
+    strainRate_(velocityDict_.getOrDefault<scalar>("strainRate", 1)),
+    stagnationPoint_
+    (
+        velocityDict_.getOrDefault<vector>("stagnationPoint", vector::zero)
+    )
+{
+    // The base class reads `oscillation` with default "on", which multiplies U
+    // and phi by cos(pi t / tau) at every step. Uniaxial stretching is a
+    // monotone test whose exact solutions (see prescribedVelocityModels.H)
+    // assume a time-constant a; the cosine factor would silently invalidate
+    // all of them, and the failure would look like a discretization error
+    // rather than a set-up error. Re-read the entry here with default "off" so
+    // the safe behaviour is the default one. An explicit `oscillation on;`
+    // still selects the oscillating variant, and no other model is affected:
+    // this assignment lives in this constructor only.
+    isOscillating_ = velocityDict_.getOrDefault<Switch>("oscillation", "off");
+
+    Info<< "    uniaxialStrain: v(x) = " << strainRate_
+        << " (x - " << stagnationPoint_.x() << ") e_x, div(v) = "
+        << strainRate_ << " 1/s (NOT solenoidal, intrinsic to 1D);"
+        << " oscillation " << isOscillating_ << endl;
+}
+
+vector uniaxialStrain::velocity(const vector& p) const
+{
+    // v_y = v_z = 0 exactly: on an `empty`-patch 1D mesh nothing else may be
+    // non-zero, and d(v_x)/dx = strainRate_ is then the whole velocity
+    // gradient, so nhat . grad(v) . nhat = strainRate_ exactly.
+    return vector(strainRate_*(p.x() - stagnationPoint_.x()), 0, 0);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

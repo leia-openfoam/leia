@@ -158,6 +158,99 @@ scalar hesseNormalPlane::curvature(const vector& x) const
     return 0;
 }
 
+// * * * * * * * * * * * * Class implicitSlab  * * * * * * * * * * * //
+
+// * * * * * * * * * * * * * * Static Members * * * * * * * * * * * * * //
+
+defineTypeNameAndDebug(implicitSlab, false);
+addToRunTimeSelectionTable(implicitSurface, implicitSlab, dictionary);
+
+// * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+void implicitSlab::setDirection(const vector& d)
+{
+    const scalar magD = Foam::mag(d);
+
+    // A zero axis is not recoverable and must not be tolerated: it would give
+    // (x - c).d = 0 for every x, hence psi = -halfWidth everywhere, a field
+    // with no zero contour at all. Every downstream diagnosis (interface
+    // position, |grad psi|, phase volume) would then report a degenerate
+    // result that looks like a solver failure rather than a dictionary typo.
+    if (magD < SMALL)
+    {
+        FatalErrorInFunction
+            << "implicitSlab `direction` is the zero vector " << d << "." << nl
+            << "The slab axis defines psi(x) = |(x - centre).direction|"
+            << " - halfWidth; a zero axis leaves psi = -halfWidth everywhere"
+            << " and the field has no interface." << nl
+            << "Set `direction` to the (non-zero) slab normal, e.g. (1 0 0)."
+            << exit(FatalError);
+    }
+
+    direction_ = d/magD;
+}
+
+implicitSlab::implicitSlab(vector centre, vector direction, scalar halfWidth)
+:
+    centre_(centre),
+    halfWidth_(halfWidth)
+{
+    setDirection(direction);
+}
+
+implicitSlab::implicitSlab(const dictionary& dict)
+:
+    centre_(dict.get<vector>("centre")),
+    halfWidth_(dict.get<scalar>("halfWidth"))
+{
+    setDirection(dict.get<vector>("direction"));
+}
+
+// * * * * * * * * * * * * * Member Functions * * * * * * * * * * * * * //
+
+scalar implicitSlab::value(const vector& x) const
+{
+    // Exact Euclidean signed distance, negative inside: the closest boundary
+    // point of a slab is the orthogonal projection onto the nearer of the two
+    // parallel planes, so no minimisation is needed (contrast
+    // signedDistanceEllipse::closestParameter, which has to search).
+    return Foam::mag(Foam::dot(x - centre_, direction_)) - halfWidth_;
+}
+
+vector implicitSlab::grad(const vector& x) const
+{
+    // grad(|s| - W) = sign(s) d with s = (x - c).d. |grad| = 1 exactly, which
+    // is the property a slab case is initialised for. On the medial axis
+    // s = 0 the exact distance function has a kink and is not
+    // differentiable; the >= 0 branch returns the one-sided limit +d there.
+    const scalar s = Foam::dot(x - centre_, direction_);
+
+    return (s >= 0) ? direction_ : -direction_;
+}
+
+scalar implicitSlab::curvature(const vector& x) const
+{
+    // Both interfaces are planes: every principal curvature is zero, so the
+    // mean curvature is zero everywhere, including (by the same one-sided
+    // convention as grad()) on the medial axis.
+    return 0;
+}
+
+vector implicitSlab::centre() const
+{
+    return centre_;
+}
+
+vector implicitSlab::direction() const
+{
+    return direction_;
+}
+
+scalar implicitSlab::halfWidth() const
+{
+    return halfWidth_;
+}
+
 // * * * * * * * * * * * * Class implicitSphere * * * * * * * * * * * //
 
 // * * * * * * * * * * * * * * Static Members * * * * * * * * * * * * * //

@@ -1,0 +1,60 @@
+# THE 1D UNIAXIAL STRETCHING GATE: the only case here with a closed-form
+# solution for the whole psi field, so the measured error is a TRUE error and
+# not the self-referential | |grad psi| - 1 | surrogate.
+#
+#   v(x) = a(x - x0) e_x,  a = 1 1/s,  d(v_x)/dx = a exactly
+#   strain the source must supply: nhat . grad(v) . nhat = a, an exact CONSTANT
+#   no source: psi = x0 + (x-x0) e^{-a t} - xi0 ,  d(psi)/dx = e^{-a t}
+#   source R : psi = x - x_i(t)                 ,  d(psi)/dx = 1 exactly
+#   interface: x_i(t) = x0 + (xi0-x0) e^{a t}, THE SAME IN BOTH ARMS
+# div(v) = a != 0: a 1D flow cannot be solenoidal. Intrinsic to the test.
+#
+# MEASURED at N=64, T=1 (band mean d(psi)/dx, exact targets in brackets):
+#   noSource  0.367872  [e^-1 = 0.367879]      interface err +0.0002 h
+#   R         1.000000  [1]                    interface err +0.0002 h
+#   Rdiv      0.367872  [predicted = noSource]  interface err +0.0002 h
+#
+# Rdiv REPRODUCES noSource DIGIT FOR DIGIT, as predicted before the run. In 1D
+# v is entirely normal, so w = (nhat.v)nhat = v exactly, phiW = phi, the two
+# fvm::div terms cancel DISCRETELY, and div(w) - a = 0: Rdiv assembles the ZERO
+# MATRIX. Its derivation rests on a = -div_s(v), which its own header states
+# holds for INCOMPRESSIBLE flow; in 1D the interface is a point, div_s(v) = 0
+# identically, and the identity fails. This does NOT explain the 2D/3D
+# divergence, where the flow IS solenoidal -- it shows the precondition is real
+# and unenforced.
+#
+# AND ALL THREE ARMS PUT THE INTERFACE IN THE SAME PLACE, to 2e-4 of a cell.
+# This is the cleanest demonstration in the project that the three metrics are
+# independent: an arm whose distance property has collapsed by a factor e has a
+# perfect zero contour, so a shape-only or volume-only score would rank it as
+# flawless. Gradient, shape and volume, always, together.
+#
+#   make studies-one STUDY=sdpls1Dstretch PROFILE=profiles/local
+
+study_name: sdpls1Dstretch
+case: 1Dstretch
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [1]
+  N_CELLS:  [32, 64, 128, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["false"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  IMPLICIT_SURFACE: [implicitPlane]
+  SDPLS_SOURCE: [noSource, R, Rdiv]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+  N_LAYERS: [3]
+  VELOCITY_EXTENSION: [none]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

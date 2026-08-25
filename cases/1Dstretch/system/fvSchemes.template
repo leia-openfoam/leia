@@ -1,0 +1,116 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Multi-word scheme aliases (UpwindUext, LinearUpwindUext, ...) selected by
+// single-word study tokens (UEXT_DIV).
+#include "aliasDict"
+
+ddtSchemes
+{
+    default         CrankNicolson 1;
+}
+
+gradSchemes
+{
+    // Metric-only gradient for the gradPsiError / gradPsiErrorCSV function
+    // objects. MUST stay UNLIMITED and MUST NOT be the advection scheme's
+    // grad(psi): a cell-limited gradient returns exactly 0 at a local
+    // extremum, which the metric then reports as |grad psi| = 0.
+    gradPsiMetric   leastSquares;
+    // SDPLS source-term gradients: dedicated keywords, decoupled from the
+    // psi advection gradient (grad(psi)) and the unnamed grad(U) fallback.
+    gradPsiSdpls    $@!GRAD_PSI_SDPLS!@;
+    gradUSdpls      $@!GRAD_U_SDPLS!@;
+    // signedDistanceBounds redistancing criterion gradient (decoupled from
+    // the psi advection scheme's limiter)
+    redistGradPsi   leastSquares;
+    default         Gauss linear;
+    grad(p)         Gauss linear;
+    // Reconstruction gradient used by the linearUpwind advection of psi below
+    // (deferred second-order correction). TOKENISED so the order-loss ablation
+    // (config/sdplsOrderAblation.yaml) can vary the LIMITER while holding
+    // everything else fixed: a cell-limited gradient returns exactly 0 at a
+    // local extremum, which is where a level set sits near its interface, so it
+    // is the leading suspect for the sub-second-order band gradient error.
+    // DEFAULT IS THE HISTORICAL VALUE -- every other study renders unchanged.
+    grad(psi)       $@!DIV_GRAD!@;
+    // Reconstruction gradient for the linearUpwind steady velocity extension.
+    grad(Uext)      leastSquares;
+    // Pure least-squares gradient for the Aslam cascade's normal derivative
+    // V = n.grad(U) (steadyUpwindLinear).
+    velExtLSGrad    leastSquares;
+    // Semi-Lagrangian reconstruction (leiaSemiLagrangeLevelSetFoam): dedicated
+    // gradient keys so the sub-steps are unambiguous and never share the
+    // grad(psi) advection scheme. pointCellsLeastSquares = the cell-point-cell
+    // (point-neighbour) LSQ gradient, linear-exact on arbitrary stencils
+    // (nested => quadratic-exact => O(h^2)); parallel- and 2D-safe.
+    gradPsi         pointCellsLeastSquares;   // g_c = grad(psi^n)
+    gradGradPsi     pointCellsLeastSquares;   // H_c = grad(g_c) (quadraticTaylor)
+    gradU           Gauss linear;   // grad(u^{n+1}) for the SL foot (Gauss linear: no run-long LSQ cache)
+}
+
+divSchemes
+{
+    default         none;
+    // Second-order linear-upwind advection of the level set; the deferred
+    // correction (linearUpwind - upwind) is converged by the nDefCorr loop in
+    // leiaLevelSetFoam.C. (phiExt is named "phi", so this key covers it.)
+    div(phi,psi)    Gauss linearUpwind grad(psi);
+    // Conservative SDPLS source (type Rdiv): the normal-velocity flux term
+    // w = (n.U)n. Same discretization family as div(phi,psi) above, and INERT
+    // for every other source -- an unread divSchemes entry costs nothing.
+    //
+    // ADDED 2026-08-19. Without it `fvm::div(phiW, psi)` aborts at step one
+    // with "Entry 'div(phiW,psi)' not found", which is why Rdiv had NEVER been
+    // run on a kinematic convergence ladder: it was not merely untested, it was
+    // unrunnable here. Rdiv is continuum-identical to R for incompressible
+    // flow, so on a PRESCRIBED divergence-free velocity the two must agree to
+    // discretization error -- and any disagreement is a discretization finding,
+    // not physics.
+    div(phiW,psi)   Gauss linearUpwind grad(psi);
+    // Steady velocity extension (steadyUpwind family). The study token
+    // UEXT_DIV selects UpwindUext (first order, O(h) extension) or
+    // LinearUpwindUext (deferred second-order correction converged by the
+    // nDefCorrExt loop, O(h^2) extension) via the aliasDict expansion.
+    div(velExtPhiW,Uext) Gauss $@!UEXT_DIV!@;
+    // anchoredEikonal redistancer: steady-Eikonal fill transport along nHat
+    // (upwind: the characteristic graph is acyclic; no ddt to damp a deferred
+    // correction).
+    div(yPhi,psiDist) Gauss upwind;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear orthogonal;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         orthogonal;
+}
+
+fluxRequired
+{
+    p;
+}
+
+// ************************************************************************* //

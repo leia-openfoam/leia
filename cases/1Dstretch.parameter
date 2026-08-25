@@ -1,0 +1,39 @@
+// Axis values for the 1D uniaxial stretching gate.
+//
+// This is the only case in the repository with a CLOSED-FORM solution for both
+// the interface AND the whole psi field, so it is a VERIFICATION gate: the
+// measured error is a true error, not the self-referential | |grad psi| - 1 |
+// surrogate every other kinematic case has to use.
+//
+//   v(x) = a (x - x0) e_x,  a = STRAIN_RATE [1/s],  d(v_x)/dx = a exactly
+//   strain the source must supply: nhat . grad(v) . nhat = a, an exact constant
+//   no source: psi = x0 + (x - x0) e^{-a t} - xi0,  d(psi)/dx = e^{-a t}
+//   source R : psi = x - x_i(t),                    d(psi)/dx = 1 exactly
+//   interface: x_i(t) = x0 + (xi0 - x0) e^{a t}, IDENTICAL in both arms
+//
+// The last line is why all three metrics must be reported together: the
+// sourceless arm has an EXACT zero contour while its distance property has
+// collapsed by a factor e, so a shape-only or volume-only score would call the
+// failed arm perfect.
+
+values
+{
+    solver          (leiaLevelSetFoam);
+    PHASE_INDICATOR (detrixheAslam);
+    N_CELLS         (32 64 128 256);
+    CFL             (0.5);
+    PROFILE         (signedDistance);
+    TANH_LIMIT      (0.1);
+    BC              (zeroGradient);
+    DIV             ($LinearUpwind);
+
+    STRAIN_RATE        (1);
+    INTERFACE_POSITION (0.25);
+    IMPLICIT_SURFACE   (implicitPlane implicitSlab);
+    SLAB_HALF_WIDTH    (0.25);
+    N_LAYERS           (3);
+
+    SDPLS_SOURCE       (noSource R Rdiv);
+    SOURCE_SCHEME      (simpleLinearImplicit);
+    VELOCITY_EXTENSION (none closestPoint);
+}

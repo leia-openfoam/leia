@@ -37,7 +37,13 @@ The level-set components are **runtime-selectable** (chosen in `system/fvSolutio
   reinitialization, signed-distance-preserving source, and initial-field profiles.
 - **velocityModel** (`src/leiaLevelSet/velocityModel/`) — prescribed *verification*
   velocity (`rotation`, `deformation3D`, `shear3D`, `translation`, `vortex2D`,
-  `periodic2D`); sets `U` and the flux `phi`.
+  `periodic2D`, `uniaxialStrain`); sets `U` and the flux `phi`. All are solenoidal
+  except `uniaxialStrain`, `v(x) = a (x - x0).e_x e_x`, for which `div v = a != 0`
+  intrinsically (a 1D flow has no tangential direction in which to compensate the
+  normal strain); the psi equation is assembled in advective form
+  (`- fvm::Sp(fvc::div(phi), psi)`), so this is handled correctly, but such a case
+  must not be run with the solver option `-fluxCorrection`, which projects `phi`
+  onto `div(phi) = 0`.
 - **velocityExtension** (`src/leiaLevelSet/velocityExtension/`) — optional velocity
   *correction* that, in a narrow band, replaces the advecting velocity with one constant
   along the interface normal (an extension velocity). Non-invasive: it reads `U`, emits a

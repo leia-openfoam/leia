@@ -318,3 +318,46 @@ N_DEF_CORR 3;
 // the historical value, so every existing study renders unchanged.
 // Swept by config/sdplsOrderAblation.yaml.
 DIV_GRAD CellLimitedLSQ;
+
+// ---------------------------------------------------------------------------
+// 1D UNIAXIAL STRETCHING GATE (cases/1Dstretch). The only case in this
+// repository with a CLOSED-FORM solution for both the interface AND the whole
+// psi field, which is what makes it a verification gate rather than a
+// convergence study.
+//
+// v(x) = a (x - x0) e_x with a = STRAIN_RATE [1/s], so d(v_x)/dx = a exactly and
+// the strain the SDPLS source must supply, a_strain = nhat . grad(v) . nhat, is
+// the EXACT CONSTANT a -- any measured deviation is discretization, never a
+// modelling error. NOTE div(v) = a != 0: a one-dimensional flow CANNOT be
+// solenoidal, which is intrinsic to the test and stated wherever it is reported.
+//
+// Exact solutions, along characteristics x(t) = x0 + (x_start - x0) e^{a t}:
+//   no source : psi = x0 + (x - x0) e^{-a t} - xi0,  d(psi)/dx = e^{-a t}
+//   source R  : psi = x - x_i(t),                    d(psi)/dx = 1 exactly
+// with the interface at x_i(t) = x0 + (xi0 - x0) e^{a t} in BOTH arms -- losing
+// the distance property does not move the zero contour, which is why a
+// shape-only or volume-only metric would score the failed arm as perfect.
+STRAIN_RATE   1;        // a [1/s]; 1 gives e^{-1} = 0.36788 at T = 1, a large signal
+INTERFACE_POSITION 0.25; // xi0 [m]; x_i(1) = 0.25 e = 0.67957, well inside the box
+
+// Which initial surface the 1D gate starts from.
+//   implicitPlane -> ONE interface. The closest-point map is smooth everywhere,
+//     every band cell's foot point is the same point, Uext is UNIFORM, and
+//     closestPoint extension is EXACT (not merely second order).
+//   implicitSlab  -> TWO interfaces at (x-c).d = +/- halfWidth. The medial axis
+//     is the plane (x-c).d = 0, where the closest-point map JUMPS and Uext with
+//     it, by a (x_R - x_L). This is the arm that reproduces the failure.
+IMPLICIT_SURFACE implicitPlane;
+SLAB_HALF_WIDTH  0.25;  // W [m]; the medial axis enters the band when nLayers*h > W
+
+// Extension band half-width in cells. TOKENISED because the closestPoint
+// diagnosis sweeps it against SLAB_HALF_WIDTH: the controlling parameter is
+// W/(nLayers*h), and the jump enters the advected region exactly when it drops
+// below one. The static circle gate (radius 0.15, 3 cells) never crosses it,
+// which is why that gate reports O(h^1.98) for a model whose advection is poor.
+N_LAYERS 3;
+
+// closestPoint foot-point acceptance tolerance in CELLS (|psi(x_fp)| < cpTol*h).
+// The shipped default is 0.1; the 1D gate sweeps it to test whether it sets the
+// interface velocity error, which the static extension metric is blind to.
+CP_TOL 0.1;

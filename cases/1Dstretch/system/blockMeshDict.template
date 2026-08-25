@@ -1,0 +1,91 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// GENUINELY ONE-DIMENSIONAL: N_CELLS cells in x, exactly ONE in y and one in z,
+// with every transverse face an `empty` patch, so OpenFOAM solves a 1D problem
+// rather than a thin 3D one.
+//
+// DOMAIN x in [-2, 2] m, HARDCODED rather than tokenised, because the box only
+// has to be large enough to contain the interface for the whole run and nothing
+// in the test depends on its size. The arithmetic: the interface moves as
+// x_i(t) = x0 + (xi0 - x0) e^{a t}, so at the defaults a = 1 1/s, x0 = 0,
+// xi0 = 0.25 m and T = 1 s it reaches 0.25 e = 0.6796 m -- comfortably inside
+// [-2, 2], with room for a x4 longer run (0.25 e^4 = 13.6 m would NOT fit, so a
+// study raising END_TIME past ~2.07 s must lengthen the box; 0.25 e^{2.07} = 1.98).
+//
+// TRANSVERSE THICKNESS 0.05 m, INDEPENDENT OF N_CELLS. Cell volumes are then
+// h*0.05*0.05 with h = 4/N_CELLS, i.e. uniform across the mesh, so every
+// volume-weighted norm reduces to the plain discrete norm and the transverse
+// extent cancels out of every RELATIVE error. It does not cancel from an
+// ABSOLUTE phase volume, which is a length times 0.0025 m^2 -- the analysis
+// script divides it out and reports the interface position in metres and in
+// cell widths instead.
+
+scale   (1 1 1);
+
+vertices
+(
+    (-2 -0.025 -0.025)
+    ( 2 -0.025 -0.025)
+    ( 2  0.025 -0.025)
+    (-2  0.025 -0.025)
+    (-2 -0.025  0.025)
+    ( 2 -0.025  0.025)
+    ( 2  0.025  0.025)
+    (-2  0.025  0.025)
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) (@!N_CELLS!@ 1 1) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    // BOTH x patches are OUTFLOW for this velocity field and need no data:
+    // v_x = a(x - x0) is negative at x = -2 and positive at x = +2, so material
+    // leaves through both ends and nothing enters. zeroGradient is therefore the
+    // correct condition, not a convenience -- there is no inflow state to
+    // prescribe. The single characteristic that never leaves is the one through
+    // the stagnation point x = x0, where v = 0.
+    left
+    {
+        type patch;
+        faces ( (0 4 7 3) );
+    }
+    right
+    {
+        type patch;
+        faces ( (2 6 5 1) );
+    }
+    empties
+    {
+        type empty;
+        faces
+        (
+            (0 3 2 1)   // back   (z-)
+            (4 5 6 7)   // front  (z+)
+            (0 1 5 4)   // bottom (y-)
+            (3 7 6 2)   // top    (y+)
+        );
+    }
+);
+
+// ************************************************************************* //

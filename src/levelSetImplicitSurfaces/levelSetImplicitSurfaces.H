@@ -126,6 +126,93 @@ namespace Foam {
             scalar cutoff() const;
     };
 
+    //- EXACT Euclidean signed distance to an infinite slab of half-width W,
+    //  centred at c, with unit axis d; negative inside the slab:
+    //
+    //      psi(x) = |(x - c) . d| - W
+    //
+    //  Dictionary:
+    //
+    //      type       implicitSlab;
+    //      centre     (0 0 0);
+    //      direction  (1 0 0);
+    //      halfWidth  0.25;
+    //
+    //  The two interfaces are the parallel planes (x - c).d = +W and
+    //  (x - c).d = -W, so the slab thickness is 2W.
+    //
+    //  THIS IS EXACT, NOT AN APPROXIMATION. For a point between two parallel
+    //  planes the closest boundary point is its orthogonal projection onto
+    //  the nearer plane, and for a point outside onto the plane it lies
+    //  beyond; in both cases the distance is | (x - c).d | - W in magnitude,
+    //  so |grad psi| = 1 everywhere except on the single plane named below.
+    //  A slab case therefore STARTS from a true signed-distance field, and any
+    //  |grad psi| - 1 measured afterwards was produced by the run, not
+    //  inherited from the initialisation. Contrast implicitEllipsoid, whose
+    //  value() is the algebraic level set and is NOT a distance;
+    //  signedDistanceEllipse exists for exactly that reason.
+    //
+    //  ITS MEDIAL AXIS IS THE PLANE (x - c).d = 0, midway between the two
+    //  interfaces, and that plane is the entire reason this surface exists.
+    //  There psi attains its minimum -W and is NOT differentiable: grad psi
+    //  jumps from -d to +d, and the closest-point map jumps from the
+    //  (x - c).d = +W interface to the (x - c).d = -W one. A velocity
+    //  extension of closestPoint type, Uext(x) = v(foot point of x), therefore
+    //  carries a JUMP of magnitude |v(x_R) - v(x_L)| across the medial axis
+    //  wherever the medial axis lies inside the extension band, which happens
+    //  exactly when
+    //
+    //      nLayers * h  >  W,
+    //
+    //  i.e. the controlling parameter of the diagnosis is W / (nLayers * h).
+    //  This is what a single-interface case cannot expose: with one interface
+    //  every band cell has the same foot point, closestPoint is exact, and
+    //  |grad psi| = 1 is preserved with no source at all. A circle of radius
+    //  0.15 with a 3-cell band never has its medial axis (its centre) inside
+    //  the band either, which is why the existing static closestPoint gate
+    //  reports O(h^1.98) and never saw this; a filament thinning towards one
+    //  cell does.
+    //
+    //  ON THE MEDIAL AXIS itself grad() returns the one-sided limit +d, and
+    //  curvature() returns 0 there as everywhere else (two parallel planes
+    //  have zero mean curvature). Both are conventions for a measure-zero set
+    //  on which the exact distance function is genuinely non-differentiable.
+    class implicitSlab : public implicitSurface
+    {
+        vector centre_;
+        vector direction_;
+        scalar halfWidth_;
+
+        //- Normalise and store the slab axis; fails loudly on a zero vector,
+        //  which would otherwise make every value() equal to -halfWidth_ and
+        //  produce an interface-free field that looks like a solver failure.
+        void setDirection(const vector& d);
+
+        public:
+
+            TypeName ("implicitSlab");
+
+            implicitSlab() = default;
+
+            implicitSlab(vector centre, vector direction, scalar halfWidth);
+
+            implicitSlab(const dictionary& dict);
+
+            virtual ~implicitSlab() = default;
+
+            virtual scalar value(const vector& x) const;
+
+            virtual vector grad(const vector& x) const;
+
+            virtual scalar curvature(const vector& x) const;
+
+            vector centre() const;
+
+            vector direction() const;
+
+            scalar halfWidth() const;
+    };
+
     class implicitSphere : public implicitSurface
     {
         vector center_; 
