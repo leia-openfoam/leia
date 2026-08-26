@@ -108,10 +108,15 @@ def render_frame(job):
                     extent=[0, L * 1e3, 0, L * 1e3])
     axR.contour(X * 1e3, Y * 1e3, ps, levels=[0.0], colors=INTERFACE,
                 linewidths=1.0)
-    axR.set_title("|U| full domain, shared log scale", fontsize=9, color=INK)
-    cb = fig.colorbar(im, ax=axR, fraction=0.046, pad=0.03)
-    cb.set_label("|U| [m/s]", fontsize=8, color=INK_MUTED)
-    cb.ax.tick_params(colors=INK_MUTED, labelsize=7, length=2)
+    axR.set_title("|U| full domain, shared log scale", fontsize=10, color=INK)
+    # Explicit colorbar axes with RESERVED canvas room. The first cut used
+    # fig.colorbar(..., ax=axR) with subplots_adjust(right=0.99), which pushed
+    # the tick labels off the canvas -- invisible in the rendered frames, worst
+    # after the GIF downscale. Fonts are sized to stay legible at 880 px.
+    cax = fig.add_axes([0.915, 0.13, 0.018, 0.72])
+    cb = fig.colorbar(im, cax=cax)
+    cb.set_label("|U| [m/s]", fontsize=11, color=INK)
+    cb.ax.tick_params(colors=INK, labelsize=10, length=3)
     cb.outline.set_edgecolor(INK_MUTED)
 
     for ax in (axL, axR):
@@ -131,7 +136,7 @@ def render_frame(job):
         sp.set_color(INK_MUTED)
         sp.set_linewidth(0.5)
 
-    fig.subplots_adjust(top=0.88, bottom=0.08, left=0.03, right=0.99,
+    fig.subplots_adjust(top=0.88, bottom=0.08, left=0.03, right=0.90,
                         wspace=0.06)
     out = os.path.join(CFG["framedir"], "f%04d.png" % k)
     fig.savefig(out, dpi=110)
@@ -194,6 +199,21 @@ def main():
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "22", out],
         check=True)
     print("wrote", out, "(%.1f MB)" % (os.path.getsize(out) / 1e6))
+
+    # GIF is THE deliverable format (renders inline and downloads without a
+    # player); the mp4 above stays for decks. Palette-optimised, 880 px wide.
+    gif = os.path.splitext(out)[0] + ".gif"
+    pal = os.path.join(framedir, "pal.png")
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", out,
+         "-vf", "fps=10,scale=880:-1:flags=lanczos,palettegen", pal],
+        check=True)
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", out, "-i", pal,
+         "-lavfi", "fps=10,scale=880:-1:flags=lanczos [x]; "
+         "[x][1:v] paletteuse=dither=bayer:bayer_scale=4", gif],
+        check=True)
+    print("wrote", gif, "(%.1f MB)" % (os.path.getsize(gif) / 1e6))
 
 
 if __name__ == "__main__":
