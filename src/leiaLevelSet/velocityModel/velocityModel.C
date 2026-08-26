@@ -157,7 +157,22 @@ void Foam::velocityModel::setVelocity(volVectorField& U) const
         // The sourceless arm is clean to 1.7e-07 at every processor count
         // because setVolumetricFlux writes phi PER FACE, where the face-centre
         // value IS the correct flux, so advection never sees this. Only
-        // fvc::grad(U) does --- and the SDPLS source is its only consumer.
+        // fvc::grad(U) does.
+        //
+        // CORRECTED 2026-08-26: an earlier version of this comment, and the
+        // commit message of 30e6ba9, said the SDPLS source is the ONLY consumer
+        // of fvc::grad(U). That is wrong, and it under-reported the blast radius
+        // by an order of magnitude. Five sites consume it:
+        //     sdplsSource.C:198                        (the strain a)
+        //     velocityExtension/closestPoint.C:432
+        //     velocityExtension/steadyUpwindLinear.C:75
+        //     semiLagrangian/normalProjectedScheme.C:161
+        //     semiLagrangian/pointValueScheme.C:353    <- THE DEFAULT SL SCHEME
+        // The last one is the dt^2/2 term of the semi-Lagrangian Taylor foot,
+        // x_d = x_c - u dt + 1/2[du/dt + (u.grad)u] dt^2, and SL_SCHEME defaults
+        // to pointValue, so it is on the path of every parallel kinematic
+        // semi-Lagrangian study -- 31 of them, 15 with curated tables already in
+        // the versioned docs. See docs/gradU-coupled-patch-contamination.md.
         // Rdiv is hit twice: w = (nhat & U) nhat inherits the error and
         // fvc::flux(w) then interpolates it, so phiW != phi at coupled faces
         // and the discrete cancellation the form depends on (exact to the last
