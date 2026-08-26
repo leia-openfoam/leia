@@ -1,0 +1,266 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    psi 
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-10;
+        relTol          0;
+    }
+
+    p
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-12;
+        relTol          0.;
+    }
+
+    // anchoredEikonal redistancer fill solve (leiaRedistancedLevelSetFoam):
+    // ASYMMETRIC advection-diffusion linearization -> PBiCGStab/DILU
+    // (never PCG/DIC).
+    "psiDist.*"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         500;
+    }
+}
+
+PISO
+{
+    nCorrectors     -1; // Disables p-v coupling.
+    nNonOrthogonalCorrectors 0;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+velocityModel
+{
+    type deformation3D; 
+    oscillation @!OSCILLATION!@;
+}
+
+levelSet
+{
+    // Advection method: how psi^n becomes psi^{n+1} (unified solver).
+    reportAtWriteTimesOnly @!REPORT_WRITE_ONLY!@;
+
+    advection
+    {
+        type @!ADVECTION!@;   // eulerian | semiLagrangian
+    }
+
+    narrowBand  
+    {
+      type  @!NARROWBAND!@;
+      n      @!NEIGHBOURS!@;
+    }
+
+
+    profile
+    {
+      type  @!PROFILE!@;
+      limit  @!TANH_LIMIT!@;  // tanh profile ONLY -- signedDistance ignores it
+    }
+
+
+    // TRIAXIAL ellipsoid (three distinct half-axes, a > b > c) centred where
+    // the sphere gate's droplet sits. Volume-equivalent radius
+    // (a*b*c)^(1/3) = (0.21*0.15*0.107)^(1/3) ~ 0.1503, i.e. the same size as
+    // the sphere gate's R = 0.15, so the two ladders share R/h rungs. psi is
+    // the IMPLICIT function of the ellipsoid (not a signed distance) -- the
+    // established ellipsoid-psi gate flavour: it exercises the non-parallel
+    // foliation, the regime every SDF gate is blind to. The exact per-point
+    // reference is implicitEllipsoid::curvature (symbolic div(grad f/|grad f|)).
+    implicitSurface
+    {
+        type    @!PSI_SURFACE!@;
+        center  (0.35 0.35 0.35);
+        axes    (0.21 0.15 0.107);
+    }
+
+    phaseIndicator
+    {
+        type @!PHASE_INDICATOR!@;
+    }
+
+    redistancer
+    {
+        type                @!REDISTANCER!@;
+        trigger             @!REDIST_TRIGGER!@;
+        threshold           @!REDIST_THRESHOLD!@;
+        redistanceInterval  @!REDIST_INTERVAL!@;
+        gradBound           @!REDIST_GRADBOUND!@;
+        bandViolationFraction @!REDIST_VIOLFRAC!@;
+        criterionRegion     @!REDIST_REGION!@;
+        freezeBand          @!REDIST_FREEZE!@;
+        anchorLayers        @!REDIST_ANCHOR_LAYERS!@;
+        // PDE baseline (ignored by the geometric models): mesh-relative
+        // pseudo-time step -- the explicit reinit equation is CFL-limited
+        // by h, a fixed deltaT stable on one mesh diverges on finer ones
+        // (measured: deltaT 0.1 at h = 1/64 -> band error 7.5e6). 30 steps
+        // of 0.5h reinitialize the trigger's 6h band.
+        deltaTCoeff 0.5;
+        hamiltonian @!REDIST_HAMILTONIAN!@;
+        niterations @!REDIST_NITER!@;
+        write       false;
+        // anchoredEikonal fill budget: the frozen-direction Tucker
+        // iteration plateaus if stopped early (measured: maxIter 10 left
+        // the band WORSE than pre-event).
+        epsilon     0.1;
+        tolerance   1e-4;
+        maxIter     100;
+    }
+    
+    // Per-time-step phase-volume correction (Song, Long, Cai & Pan,
+    // Phys. Fluids 37(9):092109, 2025; preprint arXiv:2202.10275). A single
+    // scalar eps is found by Newton-Raphson so that the phase volume is
+    // restored, and psi <- psi + eps is applied. Because eps is spatially
+    // CONSTANT, grad(psi + eps) = grad(psi), so |grad psi| is untouched: the
+    // correction conserves volume WITHOUT spending the signed-distance
+    // property SDPLS exists to maintain. That is why it is worth having here
+    // and not in a generic level-set code.
+    //
+    // KNOWN LIMITS, which must be stated wherever a result using it is
+    // reported:
+    //   * a single global eps conserves TOTAL phase volume only, and is
+    //     ILL-POSED for multiple disconnected bodies -- one eps cannot
+    //     conserve each body separately. Connected-component labelling with a
+    //     per-body eps_i is the documented remedy and is NOT implemented.
+    //   * it fixes the total while DISTORTING local interface position, so
+    //     shape error must always be reported alongside volume error. An arm
+    //     that improves volume while degrading shape is reported as such.
+    //   * it must NOT be used to "fix" the coupled Navier-Stokes drain: that
+    //     failure is a 260x-amplified mode-4 parasitic current physically
+    //     squaring and destroying the droplet, not a bookkeeping error.
+    //     Restoring the volume NUMBER would leave a square droplet of correct
+    //     area -- worse than a visible failure, because it hides the
+    //     instability.
+    //
+    // Default noVolumeCorrection is the base class itself and is a true no-op,
+    // so every study that does not set this token is bit-unchanged.
+    volumeCorrection
+    {
+        type @!VOLUME_CORRECTION!@;
+    }
+
+    sdplsSource
+    {
+        type             @!SDPLS_SOURCE!@;
+        beta            @!SDPLS_BETA!@;  // sdplsBeta only: f_nl = beta - |grad psi|
+        discretization   @!SOURCE_SCHEME!@;
+        gradPsi          @!GRAD_PSI!@;
+        // Cut-off: eq. (24) of arXiv:2208.01269. w1/w2 are PHYSICAL lengths and
+        // BOTH must be tokens -- w1 was hardcoded here with no w2 at all, so w2
+        // fell back to its 1e-3 default, which is smaller than w1 and is now a
+        // FatalError. Before that guard existed it silently produced a cut-off
+        // whose decay length was |w2 - w1| rather than anything the dictionary
+        // stated.
+        mollifier
+        {
+          type    @!MOLLIFIER!@;
+          w1      @!SDPLS_W1!@;
+          w2      @!SDPLS_W2!@;
+          // `band` cut-off only: dilation passes beyond the seed layer.
+          // A CELL COUNT -- it needs no assumption about |grad psi|,
+          // unlike the w1/w2 lengths above, which only mark a fixed
+          // distance while psi is a signed distance function.
+          nLayers @!SDPLS_NLAYERS!@;
+        }
+    }
+
+    // ===================================================================== //
+    // Semi-Lagrangian advection (leiaSemiLagrangeLevelSetFoam only; ignored by
+    // leiaLevelSetFoam). psi^{n+1}(x_c) = psi^n(x_d): a fixed Taylor backward
+    // foot x_d, a runtime-selectable reconstruction of psi^n at x_d, applied by
+    // a runtime-selectable correction strategy. All selectable options and their
+    // controls are listed below; unset keys fall back to the defaults shown.
+    // ===================================================================== //
+    semiLagrangian
+    {
+        // ---- reconstruction of psi^n at the foot (RTS slReconstruction) ----
+        //   linearTaylor                      : psi_c + grad_c.(x-x_c). O(h); gradient injected.
+        //   quadraticTaylor (was nestedLSQ)   : field-diff Taylor+Hessian. O(h^2), needs clip.
+        //   linearWeightedLeastSquares        : linear VALUE fit. O(h); no curvature.
+        //   quadraticWeightedLeastSquares     : IDW-weighted quadratic VALUE fit. O(h^2..3),
+        //                                       STABLE. PRODUCTION. Memory-bound (per-cell
+        //                                       pseudo-inverse cache).
+        //   uncachedQuadraticWeightedLeastSquares : SAME fit as quad (identical accuracy +
+        //                                       stability, verified cell-for-cell); recomputes
+        //                                       the normal-equations Cholesky per step ->
+        //                                       CPU-bound, O(1) memory/cell, no large-N ceiling.
+        //   bandQuadraticWeightedLeastSquares : quadratic in the band, linear far field.
+        //   defectCorrectedIDW                : IDW + iterated gradient/defect correction.
+        //                                       Cheap/CPU-bound but UNSTABLE here. Research.
+        scheme              @!SL_SCHEME!@;
+        slopeLimiter        @!SL_LIMITER!@;
+        venkK               @!SL_VENKK!@;
+        fit                 @!SL_FIT!@;
+        reconstruction      @!SL_RECONSTRUCTION!@;
+
+        // Reconstruction stencil: point = cell-point-cell (default; required on
+        // hex), face = cell-face-cell (polyhedra only -- compact, ~3-4x smaller).
+        stencil             @!SL_STENCIL!@;
+
+        // ---- correction strategy (RTS slCorrector) ----
+        //   direct             : one reconstruction pass. Use with quadraticWeightedLeastSquares. DEFAULT.
+        //   deferredCorrection : fixed-point iteration, rebuilding the reconstruction from the
+        //                        current iterate. DIVERGES for defectCorrectedIDW (rho > 1). Research.
+        correction          @!SL_CORRECTION!@;
+
+        CFLmax              @!CFL!@;   // foot-radius guard (operational CFL<=1)
+        analyticVelocity    true;      // prescribed velocityModel IS the cell velocity
+                                       // (no velocity extension for the prescribed-flow tests)
+
+        // ---- reconstruction safeguards (slReconstruction base; every reconstruction) ----
+        limitSlope          false;     // Barth-Jespersen limiter; MEASURED to cost order -> off
+        clipToStencilBounds @!SL_CLIP!@;   // tight monotone clip to stencil [min,max];
+                                       // false on hex, true on polyhedra (REQUIRED: bounds a
+                                       // near-singular per-cell fit that would else run away)
+
+        // ---- uncachedQuadraticWeightedLeastSquares control ----
+        ridgeEps            0;         // Tikhonov ridge on the normal-equations diagonal
+                                       // (0 = off; raise on distorted/polyhedral meshes)
+
+        // ---- bandQuadraticWeightedLeastSquares controls ----
+        nLayersBand         3;         // quadratic where |psi| <= (nLayersBand+bandGuard)*h
+        bandGuard           2;         // guard so band cells' stencils stay inside the band
+
+        // ---- defectCorrectedIDW controls (iterative nodal-defect correction) ----
+        idwPower            2;         // final-blend weight = |x_d - x_C|^{-idwPower}
+        dcIters             3;         // Gauss-Seidel nodal-defect sweeps
+        dcMaxIters          10;        // hard cap on sweeps
+        dcTol               1e-3;      // range-relative residual early-out
+        dcRelax             0.8;       // under-relaxation of the sweep (<= 1)
+        dcRegEps            0.1;       // nugget: wreg = (h^2/(|r|^2 + dcRegEps^2 h^2))^(idwPower/2)
+
+        // ---- deferredCorrection controls (correction = deferredCorrection) ----
+        nDefCorr            3;         // deferred-correction passes
+        nDefCorrMax         10;        // hard cap on passes
+        defCorrRelax        1.0;       // under-relaxation of the fixed-point update (<= 1)
+        defCorrTol          0.0;       // range-relative early-out (0 = run all passes)
+    }
+}
+
+
+// ************************************************************************* //

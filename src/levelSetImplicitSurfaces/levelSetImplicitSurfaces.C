@@ -492,6 +492,174 @@ scalar implicitEllipsoid::curvature(const vector& x) const
            + 4*pow(-O0 + x0, 2)/pow(a0, 4), 3.0/2.0));
 }
 
+// * * * * * * * * Class signedDistanceEllipsoid  * * * * * * * * * * * //
+
+defineTypeNameAndDebug(signedDistanceEllipsoid, false);
+addToRunTimeSelectionTable
+(
+    implicitSurface,
+    signedDistanceEllipsoid,
+    dictionary
+);
+
+signedDistanceEllipsoid::signedDistanceEllipsoid(vector center, vector axes)
+:
+    center_(center),
+    axes_(axes),
+    ellipsoid_(center, axes)
+{}
+
+signedDistanceEllipsoid::signedDistanceEllipsoid(const dictionary& dict)
+:
+    center_(dict.get<vector>("center")),
+    axes_(dict.get<vector>("axes")),
+    ellipsoid_(center_, axes_)
+{}
+
+vector signedDistanceEllipsoid::closestPoint(const vector& x) const
+{
+    // First octant: p_i = |x_i - c_i|; remember the signs to map q back.
+    vector p, sgn;
+    for (direction i = 0; i < 3; ++i)
+    {
+        const scalar d = x[i] - center_[i];
+        sgn[i] = (d < 0) ? -1.0 : 1.0;
+        p[i] = mag(d);
+    }
+
+    // F(t) = sum (a_i p_i/(t + a_i^2))^2 - 1, strictly decreasing.
+    auto F = [&](const scalar t) -> scalar
+    {
+        scalar f = -1.0;
+        for (direction i = 0; i < 3; ++i)
+        {
+            const scalar den = t + sqr(axes_[i]);
+            f += sqr(axes_[i]*p[i]/den);
+        }
+        return f;
+    };
+
+    // Bracket the unique root. Left end: just right of -a_j^2 for the
+    // SMALLEST axis with p_j > 0 (there F -> +inf); if x is the exact centre
+    // every p_i = 0 and the nearest point is the end of the shortest axis.
+    scalar aMinSqr = GREAT;
+    bool anyP = false;
+    for (direction i = 0; i < 3; ++i)
+    {
+        if (p[i] > SMALL*axes_[i])
+        {
+            anyP = true;
+            aMinSqr = min(aMinSqr, sqr(axes_[i]));
+        }
+    }
+    if (!anyP)
+    {
+        direction j = 0;
+        for (direction i = 1; i < 3; ++i)
+        {
+            if (axes_[i] < axes_[j]) j = i;
+        }
+        vector q = center_;
+        q[j] += axes_[j];
+        return q;
+    }
+
+    scalar lo = -aMinSqr*(1.0 - 1e-12);
+    // ensure F(lo) > 0 (roundoff at razor-thin margins)
+    for (label k = 0; k < 60 && F(lo) <= 0; ++k)
+    {
+        lo = -aMinSqr + 0.5*(lo + aMinSqr);   // move closer to the pole
+    }
+    scalar hi = max(max(axes_[0], max(axes_[1], axes_[2]))*mag(p), aMinSqr);
+    for (label k = 0; k < 200 && F(hi) >= 0; ++k)
+    {
+        hi = 2.0*hi + aMinSqr;
+    }
+
+    // Safeguarded Newton (bisection fallback) on the bracketed unique root.
+    scalar t = 0.5*(lo + hi);
+    for (label it = 0; it < 100; ++it)
+    {
+        const scalar f = F(t);
+        if (f > 0) { lo = t; } else { hi = t; }
+        scalar df = 0;
+        for (direction i = 0; i < 3; ++i)
+        {
+            const scalar den = t + sqr(axes_[i]);
+            df -= 2.0*sqr(axes_[i]*p[i])/(den*den*den);
+        }
+        scalar tN = (mag(df) > VSMALL) ? t - f/df : t;
+        if (tN <= lo || tN >= hi)
+        {
+            tN = 0.5*(lo + hi);
+        }
+        if (mag(tN - t) < 1e-14*(mag(t) + aMinSqr)) { t = tN; break; }
+        t = tN;
+    }
+
+    vector q;
+    for (direction i = 0; i < 3; ++i)
+    {
+        q[i] = center_[i] + sgn[i]*sqr(axes_[i])*p[i]/(t + sqr(axes_[i]));
+    }
+    return q;
+}
+
+scalar signedDistanceEllipsoid::value(const vector& x) const
+{
+    const vector q = closestPoint(x);
+    const scalar d = mag(x - q);
+    return (ellipsoid_.value(x) >= 0) ? d : -d;
+}
+
+vector signedDistanceEllipsoid::grad(const vector& x) const
+{
+    const vector q = closestPoint(x);
+    const scalar d = mag(x - q);
+    if (d < SMALL*min(axes_[0], min(axes_[1], axes_[2])))
+    {
+        // On the surface: the SDF gradient is the outward unit normal.
+        const vector g = ellipsoid_.grad(q);
+        return g/max(mag(g), VSMALL);
+    }
+    const scalar s = (ellipsoid_.value(x) >= 0) ? 1.0 : -1.0;
+    return s*(x - q)/d;
+}
+
+scalar signedDistanceEllipsoid::curvature(const vector& x) const
+{
+    // Total curvature (kappa1 + kappa2) of the SURFACE at the closest point --
+    // the interface value the parallel-surface-inverted delivery targets, in
+    // the div(n) convention that gives (nd-1)/R on a sphere, and the same
+    // at-closest-point convention as signedDistanceEllipse in 2D.
+    //
+    // Computed DIRECTLY from the implicit form F = sum x_i^2/A_i - 1
+    // (A_i = a_i^2) via the standard identity, evaluated AT q on the surface:
+    //     kappa1 + kappa2 = div(gradF/|gradF|)
+    //                     = ( lapF - n . HessF . n ) / |gradF|,  n = gradF/|gradF|
+    // with gradF = (2 q_i/A_i), HessF = diag(2/A_i), lapF = sum 2/A_i.
+    // Verified limits: sphere -> 2/R; a-axis end -> a (1/b^2 + 1/c^2).
+    //
+    // Deliberately NOT delegated to implicitEllipsoid::curvature: the
+    // verification gate (leiaTestSignedDistanceEllipsoid) shows that formula
+    // returns 1/R on a degenerate sphere (half the div convention) and values
+    // at triaxial axis ends consistent with neither H nor 2H -- its
+    // machine-generated transcription is suspect and is kept untouched only
+    // because recorded 2D ellipsoid-psi baselines were measured against it.
+    const vector q = closestPoint(x);
+    scalar g2 = 0, lap = 0, nHn = 0;
+    for (direction i = 0; i < 3; ++i)
+    {
+        const scalar A = sqr(axes_[i]);
+        const scalar gi = 2.0*(q[i] - center_[i])/A;
+        g2 += sqr(gi);
+        lap += 2.0/A;
+        nHn += sqr(gi)*(2.0/A);
+    }
+    const scalar gmag = Foam::sqrt(max(g2, VSMALL));
+    return (lap - nHn/g2)/gmag;
+}
+
 // * * * * * * * * * * Class signedDistanceEllipse * * * * * * * * * * * //
 
 defineTypeNameAndDebug(signedDistanceEllipse, false);

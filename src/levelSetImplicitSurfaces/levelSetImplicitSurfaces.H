@@ -315,6 +315,57 @@ namespace Foam {
             vector axes() const;
     };
 
+    //- Exact Euclidean signed distance to an axis-aligned TRIAXIAL ellipsoid
+    //  (three distinct half-axes). The missing 3D twin of
+    //  signedDistanceEllipse, and the reference the curvature campaign named:
+    //  the only way to test orientation and varying curvature together in 3D.
+    //
+    //  closestPoint solves, in the first octant with p_i = |x_i - c_i|,
+    //      F(t) = sum_i (a_i p_i / (t + a_i^2))^2 - 1 = 0
+    //  (Eberly's formulation). F is strictly decreasing on (-a_min^2, inf) with
+    //  F -> +inf at the left end and F -> -1 at t -> inf, so the root is UNIQUE
+    //  and safeguarded bisection + Newton cannot converge to a wrong branch --
+    //  unlike a naive Lagrange iteration, which has spurious stationary points
+    //  for interior x.
+    //
+    //  value()     = +/- |x - q|, sign from the algebraic value (outside > 0);
+    //  grad()      = unit vector sign * (x - q)/|x - q| (|grad| = 1 exactly);
+    //  curvature() = the SURFACE's total curvature (kappa1 + kappa2, the
+    //      div(n) convention that gives 2/R on a sphere) AT THE CLOSEST POINT
+    //      q -- the same convention signedDistanceEllipse uses in 2D. It is
+    //      evaluated by the machine-generated implicitEllipsoid::curvature
+    //      formula at q, so no independently derived differential geometry can
+    //      disagree with the algebraic surface.
+    class signedDistanceEllipsoid : public implicitSurface
+    {
+        vector center_;
+        vector axes_;
+        implicitEllipsoid ellipsoid_;   // supplies value sign + curvature at q
+
+        //- Closest point on the ellipsoid surface to x (world coordinates).
+        vector closestPoint(const vector& x) const;
+
+        public:
+
+            TypeName ("signedDistanceEllipsoid");
+
+            signedDistanceEllipsoid(vector center, vector axes);
+
+            signedDistanceEllipsoid(const dictionary& dict);
+
+            virtual ~signedDistanceEllipsoid() = default;
+
+            virtual scalar value(const vector& x) const;
+
+            virtual vector grad(const vector& x) const;
+
+            virtual scalar curvature(const vector& x) const;
+
+            vector center() const { return center_; }
+
+            vector axes() const { return axes_; }
+    };
+
     //- Exact Euclidean signed distance to an axis-aligned 2-D ellipse.
     //  The z coordinate and axes.z are ignored, making this suitable for the
     //  one-cell-thick empty-patch droplet benchmarks.  This is deliberately a

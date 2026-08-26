@@ -1,0 +1,101 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "aliasDict"
+
+ddtSchemes
+{
+    default         CrankNicolson 1; 
+}
+
+gradSchemes
+{
+    // Metric-only gradient for the gradPsiError / gradPsiErrorCSV function
+    // objects. MUST stay UNLIMITED and MUST NOT be the advection scheme's
+    // grad(psi): a cell-limited gradient returns exactly 0 at a local
+    // extremum, which the metric then reports as |grad psi| = 0.
+    gradPsiMetric   leastSquares;
+    // SDPLS source-term gradients: dedicated keywords, decoupled from the
+    // psi advection gradient (grad(psi)) and the unnamed grad(U) fallback.
+    gradPsiSdpls    $@!GRAD_PSI_SDPLS!@;
+    gradUSdpls      $@!GRAD_U_SDPLS!@;
+    // signedDistanceBounds redistancing criterion gradient (decoupled from
+    // the psi advection scheme's limiter)
+    redistGradPsi   leastSquares;
+    default         Gauss linear;
+    // Level-set ADVECTION gradient: the reconstruction gradient of the
+    // linearUpwind div(phi,psi) scheme above, and the gradient the
+    // redistancers resolve for their unnamed fvc::grad(psi). Cell-limited
+    // so the second-order reconstruction stays bounded. Deliberately NOT
+    // the SDPLS source gradient (gradPsiSdpls) nor the metric gradient
+    // (gradPsiMetric), both of which must stay unlimited.
+    grad(psi)       cellLimited leastSquares 1;
+    grad(p)         Gauss linear;
+    // Semi-Lagrangian reconstruction (leiaSemiLagrangeLevelSetFoam): dedicated
+    // point-cell-point least-squares gradient keys for the foot reconstruction,
+    // so the SL sub-steps never share the grad(psi) advection scheme.
+    gradPsi         pointCellsLeastSquares;   // g_c = grad(psi^n)
+    gradGradPsi     pointCellsLeastSquares;   // H_c = grad(g_c) (quadraticTaylor)
+    gradU           Gauss linear;   // grad(u^{n+1}) for the SL foot (Gauss linear: no run-long LSQ cache)
+}
+
+divSchemes
+{
+    default         none;
+    div(phi,psi)    Gauss linearUpwind grad(psi);
+    // Conservative SDPLS source (type Rdiv): the normal-velocity flux term
+    // w = (n.U)n. Same discretization family as div(phi,psi) above, and INERT
+    // for every other source -- an unread divSchemes entry costs nothing.
+    //
+    // ADDED 2026-08-19. Without it `fvm::div(phiW, psi)` aborts at step one
+    // with "Entry 'div(phiW,psi)' not found", which is why Rdiv had NEVER been
+    // run on a kinematic convergence ladder: it was not merely untested, it was
+    // unrunnable here. Rdiv is continuum-identical to R for incompressible
+    // flow, so on a PRESCRIBED divergence-free velocity the two must agree to
+    // discretization error -- and any disagreement is a discretization finding,
+    // not physics.
+    div(phiW,psi)   Gauss linearUpwind grad(psi);
+    // FVM curvature kappa = div( grad(psi)/|grad(psi)| ) rows of
+    // leiaTestMeanCurvature (and the divGradPsiSnGradAlpha force model).
+    div(nPsi)       Gauss linear;
+    // Alpha-normal curvature (divGradAlphaSnGradAlpha / the fvm test rows).
+    div(nAlpha)     Gauss linear;
+    // anchoredEikonal redistancer: steady-Eikonal fill transport along nHat.
+    div(yPhi,psiDist) Gauss upwind;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear orthogonal;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         orthogonal;
+}
+
+fluxRequired
+{
+    p;
+}
+
+// ************************************************************************* //

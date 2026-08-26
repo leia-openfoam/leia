@@ -1,0 +1,69 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "aliasDict"
+
+ddtSchemes
+{
+    default         CrankNicolson 1; 
+}
+
+gradSchemes
+{
+    // Metric-only gradient for the gradPsiError / gradPsiErrorCSV function
+    // objects. MUST stay UNLIMITED and MUST NOT be the advection scheme's
+    // grad(psi): a cell-limited gradient returns exactly 0 at a local
+    // extremum, which the metric then reports as |grad psi| = 0.
+    gradPsiMetric   leastSquares;
+    default         Gauss linear;
+    // Level-set ADVECTION gradient: the reconstruction gradient of the
+    // linearUpwind div(phi,psi) scheme above, and the gradient the
+    // redistancers resolve for their unnamed fvc::grad(psi). Cell-limited
+    // so the second-order reconstruction stays bounded. Deliberately NOT
+    // the SDPLS source gradient (gradPsiSdpls) nor the metric gradient
+    // (gradPsiMetric), both of which must stay unlimited.
+    grad(psi)       cellLimited leastSquares 1;
+    grad(p)         Gauss linear;
+}
+
+divSchemes
+{
+    default         none;
+    div(phi,psi)    Gauss linearUpwind grad(psi);
+}
+
+laplacianSchemes
+{
+    default         Gauss linear orthogonal;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         orthogonal;
+}
+
+fluxRequired
+{
+    p;
+}
+
+// ************************************************************************* //

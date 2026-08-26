@@ -1,0 +1,46 @@
+# STATIC GATE: delivered face curvature on the TRIAXIAL ELLIPSOID, 3D, POLYHEDRAL mesh
+# (cfMesh pMesh) -- the varying-curvature arm of the poly pair: orientation scatter meets curvature variation, the combination the 2D ellipse showed is where orientation matters.
+#
+# Same droplet as faceCurvatureSphere3D (R = 0.15 at 0.35^3 in the unit box),
+# same norms on the same snGrad(alpha) active-face filter; ONLY the mesh
+# changes. The ladder is MAX_CELL_SIZE = {0.021, 0.015, 0.008} -> R/h ~ {7.1,
+# 10, 18.8}, bracketing the hex ladder's N = {32, 50, 80, 128} -> R/h = {4.8,
+# 7.5, 12, 19.2}. Motivation (measured): the coupled polyhedral droplet at the
+# hex R/h = 10 rung delivered kappaStdDev 13.7 vs hex 2.0 at step 1 -- a 7x
+# accuracy hit of the WLS fit on poly stencils, blowing up in 106 steps where
+# hex damps. This gate separates that statically: how much of the poly penalty
+# is the ESTIMATOR (visible here, no flow) and at what order does it converge.
+#
+# pMesh REQUIRED (user direction; polyDualMesh duals are not the production
+# mesh path). NOTE: the laptop's cfMesh build aborts with glibc heap corruption
+# on every input including the transport suite's own unit box -- run this study
+# where pMesh works (Lichtenberg), or after a local cfMesh rebuild is verified.
+study_name: faceCurvatureEllipsoid3DPoly
+case: ellipsoidDroplet3D
+mesh: poly
+mode: serial
+np: 1
+solver: leiaTestMeanCurvature
+theme:  method-comparison
+setfields_args: "-alphaName alpha"
+axes_override:
+  # N_CELLS is inert under mesh: poly (pMesh reads MAX_CELL_SIZE) but MUST be
+  # pinned: snakemake merges axes_override across config files, and the base
+  # config/config.yaml contributes N_CELLS [32, 64] to any study that omits it,
+  # silently doubling the arm count with duplicate physics.
+  N_CELLS: [32]
+  MAX_CELL_SIZE: [0.021, 0.015, 0.008]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_STENCIL: [point]
+  PROFILE: [signedDistance]
+  DIV: [linear]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+export_slides: false
+# LOCAL (laptop) NOTE: this machine's cfMesh build hits a glibc-2.39 fatal
+# "free(): invalid pointer" inside pMesh on every input; the mesh itself is
+# fine (checkMesh-clean) once the allocator tolerates the bad free. Run locally
+# with:
+#   snakemake ... --config env_preamble='source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; export LD_PRELOAD=$HOME/miniconda3/lib/libjemalloc.so.2'
+# The committed preamble stays clean for the cluster, whose build does not abort.
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

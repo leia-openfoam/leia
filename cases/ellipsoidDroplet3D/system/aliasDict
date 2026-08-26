@@ -1,0 +1,26 @@
+// # Alias Dictionary 
+// ==================
+// 
+// Use this dictionary to specify alias for parameters which should be treated as sinlge paramter but have whitespaces in it.
+// Using alias for these paramters is a solution to the inability of PyFoamRunParameterVariation.py treating them as one parameter.
+// See https://github.com/CRC-1194/zinf
+
+// # Schemes
+
+// ## Convection schemes
+
+LinearUpwind      linearUpwind grad(U);
+Gamma1            Gamma 1;
+
+// --- SDPLS source gradients (added 2026-08-15) ---------------------------
+// The normal n = grad(psi)/|grad(psi)| that the source cancels the strain with
+// is only as accurate as this gradient. It was HARDCODED to leastSquares -- the
+// most compact stencil of the four gradients this file defines -- and a config
+// asking for anything else was silently ignored. Note the semi-Lagrangian
+// `gradPsi` key in fvSchemes already uses pointCellsLeastSquares: the wider
+// stencil was present in the same case, serving a different method.
+SdplsLSQ          leastSquares;              // historical default, compact
+SdplsPointLSQ     pointCellsLeastSquares;    // extended point-cell stencil
+SdplsGauss        Gauss linear;              // Green-Gauss, different family
+SdplsUGauss       Gauss linear;              // grad(v) for a = n.grad(v).n
+SdplsULSQ         leastSquares;

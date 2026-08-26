@@ -1,0 +1,36 @@
+# STATIC GATE: delivered face curvature on a TRIAXIAL ellipsoid, 3D, HEX mesh.
+#
+# The 3D twin of faceCurvatureEllipse2D/faceCurvatureEllipsoidPsi2D and the
+# varying-curvature companion of faceCurvatureSphere3D: three distinct
+# half-axes (0.21, 0.15, 0.107; volume-equivalent radius 0.1503 = the sphere
+# gate's R), psi = the ellipsoid's IMPLICIT function, exact per-point reference
+# from implicitEllipsoid::curvature. Errors are evaluated exactly as in 2D:
+# on the ACTIVE faces of the snGrad(alpha) filter (|snGrad(alpha)| >
+# 1e-8 * max), L2 / Linf / force-weighted norms per delivery model
+# (leiaTestFaceCurvature.csv), the non-gradient remainder alpha_f*snGrad(kappa)
+# (leiaTestRemainderTerm.csv), and the orientation bins -- on the 2D ellipse
+# the diagonal bins were 2.1-2.9x worse, and this is where that result gets its
+# 3D counterpart on hex before the poly comparison.
+study_name: faceCurvatureEllipsoid3D
+case: ellipsoidDroplet3D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestMeanCurvature
+theme:  method-comparison
+setfields_args: "-alphaName alpha"
+axes_override:
+  N_CELLS: [32, 50, 80, 128]
+  # Two psi flavours, mirroring the 2D pair: the exact SDF (parallel foliation,
+  # D = 0) and the raw implicit function (non-parallel foliation) -- BOTH scored
+  # against the interface curvature at the closest point via
+  # signedDistanceEllipsoid (total-curvature div(n) convention, 2/R on a sphere).
+  PSI_SURFACE: [signedDistanceEllipsoid, implicitEllipsoid]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_STENCIL: [point]
+  PROFILE: [signedDistance]
+  DIV: [linear]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

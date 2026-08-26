@@ -150,7 +150,9 @@ int main(int argc, char *argv[])
     const label nd = mesh.nGeometricD();
     const word surfType = implSurf.get<word>("type");
     const bool varyingKappa =
-        (surfType == "signedDistanceEllipse" || surfType == "implicitEllipsoid");
+        (surfType == "signedDistanceEllipse"
+      || surfType == "implicitEllipsoid"
+      || surfType == "signedDistanceEllipsoid");
 
     autoPtr<implicitSurface> exactSurf;
     scalar R = 0, kappaExact = 0;
@@ -162,16 +164,34 @@ int main(int argc, char *argv[])
         // at the foot, so the reference is the zero-set ellipse itself:
         // implicitEllipsoid::curvature(x) would be the curvature of the level
         // set THROUGH x, which is a different (and here unwanted) quantity.
-        // signedDistanceEllipse reads only the x,y axes entries, so the z = 1
-        // the ellipsoid needs is inert in the reference.
-        exactSurf.reset
-        (
-            new signedDistanceEllipse
+        // The closest-point reference must match the DIMENSION. In 2D
+        // signedDistanceEllipse reads only the x,y axes entries (the z = 1 the
+        // ellipsoid psi needs is inert). In 3D that class would score the
+        // delivery against the xy-SECTION's ellipse -- a wrong reference that
+        // showed up as an order-0.00 "stall" identical across all models --
+        // so the triaxial closest-point class is used instead.
+        if (nd == 3)
+        {
+            exactSurf.reset
             (
-                implSurf.get<vector>("center"),
-                implSurf.get<vector>("axes")
-            )
-        );
+                new signedDistanceEllipsoid
+                (
+                    implSurf.get<vector>("center"),
+                    implSurf.get<vector>("axes")
+                )
+            );
+        }
+        else
+        {
+            exactSurf.reset
+            (
+                new signedDistanceEllipse
+                (
+                    implSurf.get<vector>("center"),
+                    implSurf.get<vector>("axes")
+                )
+            );
+        }
     }
     else if (varyingKappa)
     {
