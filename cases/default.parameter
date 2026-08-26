@@ -382,3 +382,11 @@ CP_INTERP cellPoint;
 
 // Rdiv assembled convection operator: off (default) | composite | normal.
 SDPLS_COMPOSITE_FLUX off;
+
+// Rdiv convecting-flux blend: phi_lambda = lambda*phi + (1-lambda)*phiW.
+// lambda = 1 is R's own flux and reproduces the pre-blend assembly to the
+// digit (4923800's self-check: at lambda = 1 the two forms are algebraically
+// the same matrix), so 1.0 is the inert-by-default value. The token was
+// introduced in 4923800 without a default, which broke materialization of
+// EVERY study touching cases/2Dvortex (foam_param aborts on valueless tokens).
+SDPLS_FLUX_BLEND 1.0;
