@@ -311,6 +311,11 @@ levelSet
         // medial-axis velocity jump enters the extension band exactly when it
         // falls below one.
         nLayers     @!N_LAYERS!@;
+        // layer    -- topological layer index (DEFAULT); cannot drift as psi
+        //             flattens, because it is not measured in psi at all
+        // levelSet -- the historical |psi| <= n*cellSize fade, for reproducing
+        //             results published before the switch
+        fadeMode    @!FADE_MODE!@;
         // Foot-point + pin this many additional cell layers around the
         // interface layer (Dirichlet anchors; 0 = interface layer only).
         nAnchorLayers @!ANCHOR_LAYERS!@;

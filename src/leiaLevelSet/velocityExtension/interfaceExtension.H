@@ -107,6 +107,60 @@ protected:
     //  (band/fade widths, tolerances, regularizations).
     scalarField cellSize_;
 
+    //- Topological layer index from the interface: 0 on the geometric seed
+    //  (cells cut by psi = 0), `pass` on the cells reached by the `pass`-th
+    //  owner--neighbour dilation, -1 outside the dilated region.
+    //
+    //  WHY A LAYER INDEX AT ALL. Both the band and the Uext -> U fade used to
+    //  be defined by |psi| <= n*cellSize, which is a DISTANCE criterion only
+    //  if |grad psi| = 1 -- the very property this class exists to maintain.
+    //  When it degrades, the fade boundary drifts through the mesh.
+    //
+    //  MEASURED on cases/1Dstretch (uniaxial stretching, exact solution known,
+    //  psi flattens as e^{-a t}). Band mean |d(psi)/dx| at t = 1 against the
+    //  exact 1, with the MEASUREMENT window held fixed at |psi| <= 3h while
+    //  only the extension width varied:
+    //      nLayers      3          8         32        200
+    //      |dpsi/dx|  0.942131  0.999111  1.000000  1.000000
+    //  The whole gradient error was the fade: widen it until its boundary
+    //  leaves the measurement window and the model reproduces the rigid
+    //  translation exactly. A layer index is purely topological and cannot
+    //  drift, so the same result must hold at the DEFAULT nLayers.
+    labelField layer_;
+
+    //- Which metric the band and the fade use.
+    //    levelSet -- |psi| <= n*cellSize (DEFAULT)
+    //    layer    -- the topological layer index above
+    //
+    //  levelSet REMAINS THE DEFAULT, against the original intent, because the
+    //  measurement did not support the switch. On cases/1Dstretch with the
+    //  closestPoint extension, band mean |d(psi)/dx| against the exact 1, in a
+    //  DRIFT-FREE PHYSICAL window |x - x_i(t)| <= w*h:
+    //
+    //      fadeMode   nLayers   w = 3h     w = 6h
+    //      layer         3      0.915450   0.610511
+    //      levelSet      3      0.949671   0.723300
+    //      layer         8      0.998765   1.010707
+    //      levelSet      8      0.999051   1.008089
+    //      both         32      1.000000   1.000000
+    //
+    //  The layer fade is WORSE at matched nLayers. The reason is that the
+    //  |psi| criterion is circular IN ITS OWN FAVOUR: as psi flattens to
+    //  e^{-a t}, |psi| <= 4h covers ~10.8h physically, so the band silently
+    //  widens exactly as the solution degrades, while a layer band stays a
+    //  fixed 4 cells. Both reach 1.000000 at nLayers = 32.
+    //
+    //  So the deficit at small nLayers is COVERAGE, not the metric -- the
+    //  extension is not acting over enough of the domain -- and switching
+    //  coordinates does not fix it. What the layer path IS good for is
+    //  reproducibility: it cannot drift with the solution and it is
+    //  decomposition-independent. Keep it available, do not impose it.
+    //
+    //  NOTE the earlier measurement of this effect used a |psi| <= 3h window,
+    //  which is the SAME COORDINATE as the levelSet fade and therefore could
+    //  not see it interact. The table above uses a physical window.
+    word fadeMode_;
+
 
     // Backbone steps
 

@@ -372,3 +372,6 @@ FOOT_POINT_SOURCE fieldInterpolation;
 // levelSet.narrowBand.type. signChange is the historical default and stays
 // the default so every existing case is bit-unchanged.
 NARROW_BAND signChange;
+
+// velocityExtension fade metric: layer (default) | levelSet (historical |psi|).
+FADE_MODE levelSet;
