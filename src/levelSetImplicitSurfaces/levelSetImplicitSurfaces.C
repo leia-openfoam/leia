@@ -466,30 +466,34 @@ vector implicitEllipsoid::axes() const
 
 scalar implicitEllipsoid::curvature(const vector& x) const
 {
-    const scalar& x0 = x[0];
-    const scalar& x1 = x[1];
-    const scalar& x2 = x[2];
-
-    const scalar& O0 = center_[0];
-    const scalar& O1 = center_[1];
-    const scalar& O2 = center_[2];
-
-    const scalar& a0 = axesSqr_[0];
-    const scalar& a1 = axesSqr_[1];
-    const scalar& a2 = axesSqr_[2];
-
-    return 1.0/(pow(a2, 2)*sqrt(4*pow(-O2 + x2, 2)/pow(a2, 4) + 4*pow(-O1 + x1, 2)
-           /pow(a1, 4) + 4*pow(-O0 + x0, 2)/pow(a0, 4))) - 2.0*(-2*O2 + 2*x2)*(-O2 + x2)
-           /(pow(a2, 6)*pow(4*pow(-O2 + x2, 2)/pow(a2, 4) + 4*pow(-O1 + x1, 2)
-           /pow(a1, 4) + 4*pow(-O0 + x0, 2)/pow(a0, 4), 3.0/2.0)) + 1.0/(pow(a1, 2)
-           *sqrt(4*pow(-O2 + x2, 2)/pow(a2, 4) + 4*pow(-O1 + x1, 2)/pow(a1, 4)
-           + 4*pow(-O0 + x0, 2)/pow(a0, 4))) - 2.0*(-2*O1 + 2*x1)*(-O1 + x1)/(pow(a1, 6)
-           *pow(4*pow(-O2 + x2, 2)/pow(a2, 4) + 4*pow(-O1 + x1, 2)/pow(a1, 4)
-           + 4*pow(-O0 + x0, 2)/pow(a0, 4), 3.0/2.0)) + 1.0/(pow(a0, 2)*sqrt(4
-           *pow(-O2 + x2, 2)/pow(a2, 4) + 4*pow(-O1 + x1, 2)/pow(a1, 4) + 4
-           *pow(-O0 + x0, 2)/pow(a0, 4))) - 2.0*(-2*O0 + 2*x0)*(-O0 + x0)/(pow(a0, 6)
-           *pow(4*pow(-O2 + x2, 2)/pow(a2, 4) + 4*pow(-O1 + x1, 2)/pow(a1, 4)
-           + 4*pow(-O0 + x0, 2)/pow(a0, 4), 3.0/2.0));
+    // Total curvature (div(gradF/|gradF|), the kappa1 + kappa2 convention that
+    // gives 2/r on a sphere's level set) of the LEVEL SET of the quadratic
+    // form F = sum_i (x_i - O_i)^2/A_i - 1 THROUGH the point x, from the
+    // standard identity
+    //     div(n) = (lapF - n . HessF . n)/|gradF|,   n = gradF/|gradF|,
+    // exact at every x with gradF != 0.
+    //
+    // HISTORY. This replaces a machine-generated SymPy transcription that the
+    // verification gate (leiaTestSignedDistanceEllipsoid) proved wrong: on a
+    // degenerate sphere it returned 1/r (half the div convention) and at the
+    // ends of a triaxial ellipsoid's axes values consistent with neither the
+    // mean nor the total curvature -- symptomatic of squared semi-axes being
+    // substituted where the generated symbols expected plain ones. The 2D
+    // droplet cases use axes = (a, b, 1) with x_z - O_z = 0; the z-axis then
+    // contributes nothing to gradF and only 2/A_z = 2 to lapF, which enters as
+    // 2/|gradF| ~ O(h/R * kappa * (b/R)) -- negligible for every configured
+    // case, so the identity is dimension-consistent under the axes trick.
+    scalar g2 = 0, lap = 0, nHn = 0;
+    for (direction i = 0; i < 3; ++i)
+    {
+        const scalar A = axesSqr_[i];
+        const scalar gi = 2.0*(x[i] - center_[i])/A;
+        g2 += sqr(gi);
+        lap += 2.0/A;
+        nHn += sqr(gi)*(2.0/A);
+    }
+    const scalar gmag = Foam::sqrt(max(g2, VSMALL));
+    return (lap - nHn/max(g2, VSMALL))/gmag;
 }
 
 // * * * * * * * * Class signedDistanceEllipsoid  * * * * * * * * * * * //

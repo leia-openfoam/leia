@@ -121,6 +121,43 @@ int main(int argc, char *argv[])
         }
     }
 
+    // ---- 5. implicitEllipsoid::curvature (level-set-THROUGH-x convention) --
+    {
+        const vector c(0.35, 0.35, 0.35);
+        // degenerate sphere: the level set through x is a sphere of radius r,
+        // so the total curvature there is 2/r (NOT 2/R -- through-x semantics).
+        implicitEllipsoid e(c, vector(0.15, 0.15, 0.15));
+        scalar worst = 0;
+        for (label i = 0; i < 1000; ++i)
+        {
+            const vector d(u(rng), u(rng), u(rng));
+            const vector x = c + 0.12*d/max(mag(d), SMALL)
+                           + 0.06*d*u(rng)*0; // radius in [0.06, 0.2]-ish
+            const scalar r = mag(x - c);
+            if (r < 0.05) continue;
+            worst = max(worst, mag(e.curvature(x) - 2.0/r)*r/2.0);
+        }
+        expect(worst < 1e-10, "implicitEllipsoid sphere-degenerate 2/r", worst, 0);
+
+        // triaxial, ON the surface: through-x == at-closest-point there, so it
+        // must agree with signedDistanceEllipsoid's surface value.
+        const vector ax(0.21, 0.15, 0.107);
+        implicitEllipsoid f(c, ax);
+        signedDistanceEllipsoid sd(c, ax);
+        scalar worstS = 0;
+        for (label i = 0; i < 1000; ++i)
+        {
+            const vector d(u(rng), u(rng), u(rng));
+            const vector x = c + 0.3*d;
+            const vector q = x - sd.value(x)*sd.grad(x);   // on the surface
+            worstS = max(worstS,
+                mag(f.curvature(q) - sd.curvature(q))
+               /max(mag(sd.curvature(q)), SMALL));
+        }
+        expect(worstS < 1e-6, "implicitEllipsoid on-surface vs closest-point",
+               worstS, 0);
+    }
+
     if (nFail)
     {
         Info<< nFail << " FAILURES" << nl;

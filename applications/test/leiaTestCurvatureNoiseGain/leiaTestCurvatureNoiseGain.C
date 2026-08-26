@@ -153,7 +153,9 @@ int main(int argc, char *argv[])
     // depends on this -- the GAIN never references the exact value.
     const word surfType = implSurf.get<word>("type");
     const bool varyingKappa =
-        (surfType == "signedDistanceEllipse" || surfType == "implicitEllipsoid");
+        (surfType == "signedDistanceEllipse"
+      || surfType == "implicitEllipsoid"
+      || surfType == "signedDistanceEllipsoid");
     autoPtr<implicitSurface> exactSurf;
     scalar kappaExact = 0;
     if (surfType == "implicitEllipsoid")
@@ -161,14 +163,31 @@ int main(int argc, char *argv[])
         // Quadratic-form psi (non-parallel foliation): the reference is still
         // the zero-set ellipse's curvature at the closest point -- see the
         // identical branch in leiaTestMeanCurvature.C.
-        exactSurf.reset
-        (
-            new signedDistanceEllipse
+        // Dimension-aware closest-point reference: in 3D the 2D ellipse class
+        // would ignore z and score against the xy-section (the bug the
+        // verification gate caught in leiaTestMeanCurvature).
+        if (nd == 3)
+        {
+            exactSurf.reset
             (
-                implSurf.get<vector>("center"),
-                implSurf.get<vector>("axes")
-            )
-        );
+                new signedDistanceEllipsoid
+                (
+                    implSurf.get<vector>("center"),
+                    implSurf.get<vector>("axes")
+                )
+            );
+        }
+        else
+        {
+            exactSurf.reset
+            (
+                new signedDistanceEllipse
+                (
+                    implSurf.get<vector>("center"),
+                    implSurf.get<vector>("axes")
+                )
+            );
+        }
     }
     else if (varyingKappa)
     {
