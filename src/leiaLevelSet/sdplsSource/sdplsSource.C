@@ -113,7 +113,7 @@ Foam::sdplsSource::New(const fvMesh& mesh)
             << " exists to prevent." << nl
             << "Set levelSet.sdplsSource.discretization to one of"
             << " simpleLinearImplicit | strictNegativeSpLinearImplicit |"
-            << " explicit | exponential," << nl
+            << " explicit | exponential | exponentialImplicit," << nl
             << "or set type to noSource if an inactive source is intended."
             << exit(FatalIOError);
     }

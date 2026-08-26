@@ -37,6 +37,7 @@ sdplsSource/discretization/explicitDiscretization.C
 sdplsSource/discretization/simpleLinearImplicit.C
 sdplsSource/discretization/strictNegativeSpLinearImplicit.C
 sdplsSource/discretization/exponentialDiscretization.C
+sdplsSource/discretization/exponentialImplicit.C
 sdplsSource/mollifier/mollifier.C
 sdplsSource/mollifier/mollifier1.C
 sdplsSource/mollifier/interfaceBandMollifier.C
