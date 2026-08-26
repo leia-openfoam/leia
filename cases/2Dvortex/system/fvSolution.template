@@ -227,14 +227,9 @@ levelSet
         //   composite -- one fvm::div on 2v - w.
         //   normal    -- one fvm::div on w alone (w.grad psi = v.grad psi).
         compositeFlux @!SDPLS_COMPOSITE_FLUX!@;
-        // Rdiv only, INERT for every other source. Which single convection
-        // operator the assembled system carries:
-        //   off       -- 2 div(phi,psi) - div(phiW,psi), a DIFFERENCE of two
-        //                upwind operators, so ~21% of off-diagonals go positive
-        //   composite -- one div on the synthetic flux 2 phi - phiW
-        //   normal    -- one div on phiW, whose sign is sign(n.v): the
-        //                direction the interface actually moves
-        compositeFlux @!SDPLS_COMPOSITE_FLUX!@;
+        //   blend     -- one div on lambda*phi + (1-lambda)*phiW; lambda = 0 is
+        //                `normal`, 1 is R's own flux, 2 is `composite`.
+        fluxBlend @!SDPLS_FLUX_BLEND!@;
 
         // Cut-off (mollifier) that forces f_nl to zero away from the interface.
         // This is eq. (24) of the SDPLS preprint (arXiv:2208.01269): G is unity

@@ -141,11 +141,11 @@ sdplsRdiv::fvmsdplsSource(const volScalarField& psi, const volVectorField& U)
         sourceDict_.getOrDefault<word>("compositeFlux", word("off"))
     );
     if (compositeFlux != "off" && compositeFlux != "composite"
-     && compositeFlux != "normal")
+     && compositeFlux != "normal" && compositeFlux != "blend")
     {
         FatalErrorInFunction
             << "Unknown compositeFlux '" << compositeFlux << "'." << nl
-            << "Valid: off (default) | composite | normal."
+            << "Valid: off (default) | composite | normal | blend."
             << exit(FatalError);
     }
 
@@ -276,6 +276,14 @@ sdplsRdiv::fvmsdplsSource(const volScalarField& psi, const volVectorField& U)
         else if (compositeFlux == "normal")
         {
             tcomp = fvm::div(phiW, psi);
+        }
+        else if (compositeFlux == "blend")
+        {
+            const scalar lam = sourceDict_.getOrDefault<scalar>("fluxBlend", 1.0);
+            tcomp = fvm::div
+            (
+                surfaceScalarField("phiW", lam*phi + (1.0 - lam)*phiW), psi
+            );
         }
         else
         {
@@ -812,6 +820,46 @@ sdplsRdiv::fvmsdplsSource(const volScalarField& psi, const volVectorField& U)
     // operator in the system. That is the mechanism behind every branch here,
     // and it is what removes the positive off-diagonals: one upwind operator
     // has off-diagonals <= 0 for either flux sign, a DIFFERENCE of two does not.
+
+    // ---- ONE-PARAMETER FAMILY OF CONVECTING FLUXES ------------------------
+    //
+    // phi_lambda = lambda*phi + (1 - lambda)*phiW is continuum-equivalent for
+    // EVERY lambda, because the tangential part of v does no work on a level
+    // set: v.grad psi = w.grad psi = (n.v)|grad psi|, hence
+    //     v_lambda.grad psi = lambda v.grad psi + (1-lambda) w.grad psi
+    //                       = v.grad psi.
+    // The named modes are points of this family:
+    //     lambda = 0 -> normal (w),  lambda = 2 -> composite (2v - w),
+    //     lambda = 1 -> phi, which is EXACTLY the flux the algebraic source R
+    //                  convects on.
+    // Sweeping lambda therefore measures, in one experiment with everything
+    // else held fixed, whether the accuracy gap between Rdiv and R is about the
+    // CHOICE OF CONVECTING FLUX or about something else entirely.
+    //
+    // Assembly for any lambda: requiring
+    //     ddt + div(phi_lambda, psi) - Sp(div v_lambda + a, psi) = 0
+    // against the base ddt + div(phi,psi) - Sp(div phi, psi) gives
+    //     S = div(phi,psi) - div(phi_lambda,psi)
+    //         - Sp(div phi - div v_lambda - a, psi)
+    // and the base's div(phi,psi) cancels the one in S EXACTLY, so exactly one
+    // upwind operator survives, with off-diagonals <= 0 by construction.
+    if (compositeFlux == "blend")
+    {
+        const scalar lambda =
+            sourceDict_.getOrDefault<scalar>("fluxBlend", 1.0);
+
+        surfaceScalarField const phiL
+        (
+            "phiW", lambda*phi + (1.0 - lambda)*phiW
+        );
+
+        return
+        (
+            fvm::div(phi, psi)
+          - fvm::div(phiL, psi)
+          - fvm::Sp(fvc::div(phi) - fvc::div(phiL) - strain(), psi)
+        );
+    }
 
     if (compositeFlux == "composite")
     {
