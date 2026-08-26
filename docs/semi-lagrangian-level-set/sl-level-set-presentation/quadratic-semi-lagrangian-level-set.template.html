@@ -1238,6 +1238,284 @@ psi.correctBoundaryConditions();
   </ul>
 </section>
 
+<!-- ############ pressure-velocity coupling, full detail: math ############ -->
+<section>
+  <h2>Pressure&ndash;velocity coupling &mdash; the segregated step</h2>
+  <p class="muted" style="font-size:0.8em">what updates when; every later slide expands one box</p>
+  <p style="font-size:0.8em; line-height:1.55">
+    <b>first outer corrector only</b> <span class="muted">(guard: <code>pimple.firstIter() || psiOuterCorrectors</code>)</span>:<br>
+    &nbsp;&nbsp;\(\psi^{n}\!\xrightarrow{\text{SL, }\tilde{\mathbf u}^{\,n+1}}\!\psi^{n+1}
+      \rightarrow\) band \(\rightarrow \alpha(\psi^{n+1}) \rightarrow \kappa(\psi^{n+1})
+      \rightarrow G_\sigma\) <span class="muted">(face flux)</span>, &nbsp;\(\rho,\mu\)<br>
+    <b>every outer corrector</b> \(k = 1..K\): &nbsp;\(\rho\phi\) reassembled &rarr;
+      momentum predictor \(\mathbf u^{*}\) &rarr;
+      <b>inner loop</b>: pressure \(p_{\mathrm{rgh}}\), flux \(\phi\), velocity update</p>
+  <ul style="font-size:0.75em">
+    <li>\(\tilde{\mathbf u}^{\,n+1} = \mathbf u^n_{\mathrm{ext}} + \tfrac{\Delta t}{\Delta t_0}(\mathbf u^n_{\mathrm{ext}}-\mathbf u^{n-1}_{\mathrm{ext}})\) &mdash; AB2 extrapolation fills the SL kernel's <em>new-time</em> slot; \(\mathbf u^n\) fills the old slot.</li>
+    <li>\(\psi,\alpha,\kappa,G_\sigma\) are <b>value-frozen</b> for correctors \(k\ge 2\) and all inner iterations &mdash; the in-place \(\psi^{n}\!\to\!\psi^{n+1}\) update would compound if re-run; <code>psiOuterCorrectors yes</code> is the \(\psi^n\)-restore variant (measured on the static droplet: 0.1&ndash;0.4%).</li>
+    <li>Force placement: \(G_\sigma\) from \(\psi^{n+1}\) while momentum advances \(\mathbf u^n\!\to\!\mathbf u^{n+1}\) &mdash; symplectic-Euler placement, \(|\lambda|=1\) for \(\omega\Delta t<2\) on the linear capillary oscillator.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Momentum: the matrix, and where the forces are NOT</h2>
+  <p style="font-size:0.8em">Discretising momentum gives one algebraic row per cell,</p>
+  \[ a_P\,\mathbf u_P \;+\; \textstyle\sum_{N} a_N\,\mathbf u_N \;=\; \mathbf b_P
+     \qquad\Longleftrightarrow\qquad
+     \mathbf u_P \;=\; \underbrace{\frac{\mathbf H_P[\mathbf u]}{a_P}}_{\textstyle \mathbf{HbyA}}
+     \;-\; \frac{1}{a_P}\big(\nabla p_{\mathrm{rgh}} - \mathbf f\big)_P \]
+  <p style="font-size:0.8em">with \(\mathbf H_P[\mathbf u] = \mathbf b_P - \sum_N a_N \mathbf u_N\) and
+     \(r_{AU} \equiv 1/a_P\). The matrix carries <b>only</b> \(\partial_t(\rho\mathbf u)\),
+     \(\nabla\!\cdot(\rho\phi\,\mathbf u)\) and the viscous stress.</p>
+  <ul style="font-size:0.78em">
+    <li class="accent">Surface tension, gravity and the pressure gradient never enter the matrix: they are assembled as <b>face scalar fluxes</b> and only reach cells through one common reconstruction. This is the balanced-force principle &mdash; both sides of the near-equilibrium cancellation live in the SAME discrete space.</li>
+    <li>The capillary flux is evaluated once per corrector and reused by predictor and pressure equation:
+      \[ G_{\sigma,f} \;=\; \sigma\,\kappa_f\,\big(\nabla_{\!f}^{\perp}\alpha\big)\,|\mathbf S_f|,
+         \qquad \nabla_{\!f}^{\perp}(\cdot) \equiv \mathrm{snGrad}(\cdot) = \frac{(\cdot)_N-(\cdot)_P}{|\mathbf d_f|} \]
+      with \(\kappa_f\) the linear face interpolate of the WLS-fitted, parallel-surface&ndash;inverted cell curvature.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>The face flux: Rhie&ndash;Chow assembly</h2>
+  <p style="font-size:0.8em">On the collocated mesh the predictor flux is built from the <em>interpolated</em> \(\mathbf{HbyA}\), never from cell velocities:</p>
+  \[ \phi^{*}_f \;=\; (\mathbf{HbyA})_f\!\cdot\!\mathbf S_f \;+\; \phi^{\mathrm{ddtCorr}}_f \]
+  \[ \phi^{g}_f \;=\; \Big( G_{\sigma,f} \;-\; (\mathbf g\!\cdot\!\mathbf h)_f\,
+       \mathrm{snGrad}(\rho)\,|\mathbf S_f| \Big)\, r_{AU\!,f}
+     \qquad\quad \hat\phi_f = \phi^{*}_f + \phi^{g}_f \]
+  <ul style="font-size:0.78em">
+    <li>\(r_{AU\!,f}\) = face interpolate of \(1/a_P\): the force fluxes are pre-multiplied by the SAME mobility the pressure Laplacian will carry, so force and pressure meet with identical weights.</li>
+    <li>\(\phi^{\mathrm{ddtCorr}}\) restores the temporal consistency the interpolation loses (Rhie&ndash;Chow); it prevents pressure&ndash;velocity decoupling on the collocated arrangement.</li>
+    <li>Static droplet: \(\mathbf g = \mathbf 0\), so \(\phi^g_f = G_{\sigma,f}\, r_{AU\!,f}\) exactly.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>The pressure equation and the conservative flux</h2>
+  <p style="font-size:0.8em">Discrete incompressibility \( \sum_f \phi_f = 0\) per cell, imposed on \(\hat\phi - F^p\):</p>
+  \[ \underbrace{\sum_{f\in c} r_{AU\!,f}\,\mathrm{snGrad}(p_{\mathrm{rgh}})_f\,|\mathbf S_f|}_{\texttt{fvm::laplacian}(r_{AU\!,f},\,p_{\mathrm{rgh}})}
+     \;=\; \underbrace{\sum_{f\in c} \hat\phi_f}_{\texttt{fvc::div}(\hat\phi)}
+     \qquad\Longrightarrow\qquad
+     F^{p}_f \equiv r_{AU\!,f}\,\mathrm{snGrad}(p_{\mathrm{rgh}})_f\,|\mathbf S_f| \]
+  \[ \phi_f \;=\; \hat\phi_f - F^p_f, \qquad \textstyle\sum_{f\in c}\phi_f = 0
+     \;\text{ to linear-solver tolerance} \]
+  <ul style="font-size:0.78em">
+    <li>\(F^p = \) <code>p_rghEqn.flux()</code> &mdash; the <em>matrix-consistent</em> pressure flux, the exact face flux the Laplacian removed. Using \(\mathrm{snGrad}\) of the solved \(p\) instead would break conservation at the non-orthogonal-correction level.</li>
+    <li>This step IS a discrete Helmholtz decomposition in the \(r_{AU\!,f}\)-weighted metric: it removes from \(\hat\phi\) exactly the part lying in the range of \(\mathrm{snGrad}\).</li>
+  </ul>
+</section>
+
+<section>
+  <h2>The velocity update, and the exact \(r_{AU\!,f}\) cancellation</h2>
+  \[ \mathbf u^{n+1} \;=\; \mathbf{HbyA} \;+\; r_{AU}\,
+     \mathcal R\!\left[\frac{\phi^{g}_f - F^{p}_f}{r_{AU\!,f}}\right],
+     \qquad
+     \mathcal R[\phi] \equiv \Big(\textstyle\sum_f \hat{\mathbf S}_f\mathbf S_f^{\top}\Big)^{-1}
+     \textstyle\sum_f \hat{\mathbf S}_f\,\phi_f \]
+  <p style="font-size:0.8em">Substituting \(\phi^g\) and \(F^p\):</p>
+  \[ \frac{\phi^{g}_f - F^{p}_f}{r_{AU\!,f}}
+     \;=\; G_{\sigma,f} \;-\; (\mathbf g\!\cdot\!\mathbf h)_f \mathrm{snGrad}(\rho)|\mathbf S_f|
+     \;-\; \mathrm{snGrad}(p_{\mathrm{rgh}})_f\,|\mathbf S_f| \]
+  <ul style="font-size:0.78em">
+    <li class="accent">The mobility weights cancel <b>exactly</b> &mdash; the velocity sees only the raw difference <em>force flux minus pressure flux</em>, reconstructed once. No interpolation asymmetry survives between the two.</li>
+    <li>Consequence: whatever part of \(G_\sigma\) the pressure solve can represent as \(\mathrm{snGrad}\) of a cell field is removed from \(\mathbf u\) <em>identically</em>, independent of \(\rho\)-ratio, \(r_{AU}\) distribution, or mesh grading.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>The balanced-force theorem, discretely, in two lines</h2>
+  <p style="font-size:0.8em">Let \(\kappa_f \equiv \bar\kappa\) (constant) and \(\mathbf g=\mathbf 0\). Then</p>
+  \[ G_{\sigma,f} = \sigma\bar\kappa\,\mathrm{snGrad}(\alpha)_f|\mathbf S_f|
+     = \mathrm{snGrad}(\sigma\bar\kappa\,\alpha)_f\,|\mathbf S_f| \]
+  <p style="font-size:0.8em">so \(p_{\mathrm{rgh}} = \sigma\bar\kappa\,\alpha + C\) makes
+     \(F^p_f = \phi^g_f\) face-by-face: the Poisson equation is solved exactly by a pressure
+     that is a pure function of the state, and</p>
+  \[ \phi_f = \phi^{*}_f, \qquad
+     \mathbf u^{n+1} = \mathbf{HbyA} + r_{AU}\,\mathcal R[0] = \mathbf{HbyA}
+     \;\xrightarrow{\;\mathbf u^n = 0\;}\; \mathbf 0 \]
+  <ul style="font-size:0.78em">
+    <li>Requires all three: the same \(\mathrm{snGrad}\), on the same faces, with the same \(r_{AU\!,f}\) weight &mdash; conditions the assembly above satisfies by construction (Popinet's conditions 1&ndash;2).</li>
+    <li>Measured: constant-curvature gate 1.09e-8 m/s after one step &mdash; the linear-solver residual, not the discretisation. SAAMPLE shows residual-driven pressure iteration pushes this to 1e-13.</li>
+    <li class="warn">A spatially <em>uniform</em> curvature error is therefore invisible to the flow. Only the variation of \(\kappa_f\) along the interface acts &mdash; \(\nabla\times(\sigma\kappa\nabla H)=\sigma\nabla\kappa\times\nabla H\).</li>
+  </ul>
+</section>
+
+<section>
+  <h2>What survives the projection &mdash; and it is measured every step</h2>
+  \[ R_f \;\equiv\; \phi^g_f - F^p_f
+     \qquad
+     \delta\mathbf u \;=\; r_{AU}\,\mathcal R\!\big[R_f/r_{AU\!,f}\big]
+     \qquad
+     P \;=\; \frac{1}{\Delta t}\sum_c \rho_c V_c\, \mathbf u_c\!\cdot\!\delta\mathbf u_c \]
+  <ul style="font-size:0.78em">
+    <li>\(R_f\) is the non-gradient remainder of the capillary flux &mdash; the ONLY part of the force that can move fluid. On the stationary droplet the exact force is a pure gradient, so \(P\) is pure spurious energy input (columns <code>capillaryResidualPower/Work</code>).</li>
+    <li>Measured at \(R/h=25\), filter off: \(\langle P\rangle/\langle E\rangle = +344\,\mathrm{s^{-1}}\) against viscous \(-256\,\mathrm{s^{-1}}\) &mdash; the m=8 anti-damping, resolved into an energy budget.</li>
+    <li>The attribution chain (clamp / freeze-\(\kappa\) / operator swap): the pump is the <b>phase-coherent response of the refitted \(\kappa\)</b> to the displaced interface &mdash; not amplitude, not the coupling above, which is interFoam's line-for-line.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Iteration structure &mdash; and does the freeze cost time accuracy?</h2>
+  <table style="margin:auto; font-size:0.62em; width:96%">
+    <thead><tr><th>quantity</th><th>refreshed</th><th>note</th></tr></thead>
+    <tbody>
+      <tr><td>\(\psi,\ \alpha,\ \kappa,\ G_\sigma,\ \rho,\ \mu\)</td><td>once per step (corrector 1)</td><td>value-frozen for \(k\ge2\); re-evaluated calls return identical values</td></tr>
+      <tr><td>\(\rho\phi\) (mass flux)</td><td>every outer corrector</td><td>load-bearing: \(p\)-solve changes \(\phi\)</td></tr>
+      <tr><td>\(\mathbf u^*\) (momentum)</td><td>every outer corrector</td><td>with the frozen \(G_\sigma\)</td></tr>
+      <tr><td>\(p_{\mathrm{rgh}},\ \phi,\ \mathbf u\)</td><td>every inner corrector</td><td>plus non-orthogonal loop</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.72em; margin-top:0.5em"><b>Formal order for moving interfaces is preserved</b>: the AB2 predictor gives
+     \(\tilde{\mathbf u}^{n+1}=\mathbf u^{n+1}+O(\Delta t^2)\), foot-point error \(O(\Delta t^3)\) local &rArr; the interface stays 2nd-order;
+     the force at \(\psi^{n+1}\) matches BDF2's \(t^{n+1}\) source placement.</p>
+  <ul style="font-size:0.7em">
+    <li class="warn">What IS given up: (i) the interface moves with a <em>predicted</em> velocity while momentum settles on a different \(\mathbf u^{n+1}\) &mdash; an \(O(\Delta t^2)\) kinematic inconsistency per step whose CONSTANT is unmeasured for moving interfaces (the 0.1&ndash;0.4% null is a static-droplet result and must not be generalised); (ii) at the capillary CFL the grid-scale modes have \(\omega\Delta t = O(1)\), where asymptotic order statements govern nothing; (iii) under the historical Euler ddt the step is globally 1st order regardless.</li>
+    <li>The honest gate: translating droplet, <code>psiOuterCorrectors</code> on/off at matched windows &mdash; cheap, not yet run.</li>
+  </ul>
+</section>
+
+<!-- ############ pressure-velocity coupling: the code behind each equation ############ -->
+<section>
+  <h2>Code I &mdash; the step skeleton and the guard</h2>
+  <pre style="font-size:0.42em; line-height:1.22; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>// leiaSemiLagrangianLevelSetTwoPhaseFoam.C -- the PIMPLE loop
+while (pimple.loop())
+{
+    #include "slAlphaEqn.H"        // interface pipeline (guarded, below)
+    mixture.correct();             // viscosity from (frozen) alpha
+    #include "UEqn.H"              // momentum predictor, every corrector
+    while (pimple.correct())
+    {
+        #include "pEqn.H"          // pressure + flux + velocity update
+    }
+}
+
+// slAlphaEqn.H:17 -- the guard that freezes the interface within the step
+if (pimple.firstIter() || psiOuterCorrectors || slSecondHalfDrift)
+{
+    ...
+    // AB2 extrapolation fills the SL kernel's new-time slot (first corrector):
+    const volVectorField UextStar
+    (
+        "UextStar",
+        slVelExt-&gt;Uext() + dtRatio*(slVelExt-&gt;Uext() - UextOld)
+    );
+    slAdv-&gt;advect(psi, UextStar, slVelExt-&gt;Uext());   // psi^n -&gt; psi^{n+1} in place
+    ...
+    // band -&gt; phase indicator -&gt; curvature fill -&gt; face delivery, all inside
+}
+// OUTSIDE the guard, refreshed EVERY outer corrector (p-solve changed phi):
+rhoPhi = rhof*phi;                 // or interpolate(rho)*phi</code></pre>
+  <p class="muted" style="font-size:0.62em">The in-place \(\psi\) update is why re-running would compound; <code>psiOuterCorrectors yes</code> restores the \(\psi^n\) snapshot and re-advects with the current velocity iterate.</p>
+</section>
+
+<section>
+  <h2>Code II &mdash; the capillary face flux \(G_\sigma\)</h2>
+  <pre style="font-size:0.44em; line-height:1.22; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>// src/leiaLevelSet/surfaceTensionForce/surfaceTensionForce.C
+// ONE integrated scalar flux; |Sf| included; every model funnels through here.
+Foam::tmp&lt;Foam::surfaceScalarField&gt;
+Foam::surfaceTensionForce::integratedCSFFlux
+(
+    const surfaceScalarField&amp; kappaFace,     // kappa_f: interp of the WLS +
+    const volScalarField&amp; forceWeight,       //   parallel-surface-inverse kappa
+    const word&amp; resultName
+) const
+{
+    tmp&lt;surfaceScalarField&gt; tFlux
+    (
+        sigma_*kappaFace*fvc::snGrad(forceWeight)*mesh_.magSf()
+    );                                        //  G_sigma = sigma kappa_f snGrad(alpha) |Sf|
+    tFlux.ref().rename(resultName);
+    return tFlux;
+}</code></pre>
+  <p class="muted" style="font-size:0.62em">\(\mathrm{snGrad}(\alpha)\) here and \(\mathrm{snGrad}(p_{\mathrm{rgh}})\) in the pressure equation are the SAME two-point operator on the SAME faces &mdash; balanced-force condition 1, by construction.</p>
+</section>
+
+<section>
+  <h2>Code III &mdash; momentum: forces outside the matrix</h2>
+  <pre style="font-size:0.44em; line-height:1.22; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>// UEqn.H -- evaluate G_sigma ONCE, reuse in predictor and pEqn
+tmp&lt;surfaceScalarField&gt; tGSigma = fSigma-&gt;faceSurfaceTensionForceFlux();
+const surfaceScalarField&amp; GSigma = tGSigma();
+
+fvVectorMatrix UEqn
+(
+    fvm::ddt(rho, U) + fvm::div(rhoPhi, U)     // matrix: inertia + convection
+  + MRF.DDt(rho, U)
+  + turbulence-&gt;divDevRhoReff(rho, U)          //         + viscous stress
+ ==
+    fvOptions(rho, U)
+);
+
+if (pimple.momentumPredictor())
+{
+    solve
+    (
+        UEqn
+     ==
+        fvc::reconstruct                       // forces enter ONLY as face
+        (                                      // fluxes through ONE common
+            GSigma                             // reconstruction
+          - ghf*fvc::snGrad(rho)*mesh.magSf()
+          - fvc::snGrad(p_rgh)*mesh.magSf()
+        )
+    );
+}</code></pre>
+</section>
+
+<section>
+  <h2>Code IV &mdash; pEqn: flux assembly and the Poisson solve</h2>
+  <pre style="font-size:0.42em; line-height:1.22; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>// pEqn.H -- part 1: Rhie-Chow flux + force flux, same rAUf weight
+volVectorField HbyA(constrainHbyA(rAU()*UEqn.H(), U, p_rgh));
+surfaceScalarField phiHbyA
+(
+    "phiHbyA",
+    fvc::flux(HbyA)                                        // phi* = (HbyA)_f . Sf
+  + MRF.zeroFilter(fvc::interpolate(rho*rAU())*fvc::ddtCorr(U, phi, Uf))
+);
+
+// Balanced-force invariant: capillarity and pressure live first in the
+// same integrated scalar face-flux space.
+surfaceScalarField phig
+(
+    (GSigma - ghf*fvc::snGrad(rho)*mesh.magSf())*rAUf      // phi^g
+);
+phiHbyA += phig;                                           // phi-hat
+
+while (pimple.correctNonOrthogonal())
+{
+    fvScalarMatrix p_rghEqn
+    (
+        fvm::laplacian(rAUf, p_rgh) == fvc::div(phiHbyA)   // the Poisson eq
+    );
+    p_rghEqn.setReference(pRefCell, getRefCellValue(p_rgh, pRefCell));
+    p_rghEqn.solve(...);</code></pre>
+</section>
+
+<section>
+  <h2>Code V &mdash; pEqn: conservative flux, velocity, and the measured remainder</h2>
+  <pre style="font-size:0.42em; line-height:1.22; background:rgba(255,255,255,0.04); padding:0.55em; border-radius:6px;"><code>    if (pimple.finalNonOrthogonalIter())
+    {
+        phi = phiHbyA - p_rghEqn.flux();       // div(phi) = 0 to solver tol
+
+        U = HbyA + rAU()*fvc::reconstruct((phig - p_rghEqn.flux())/rAUf);
+        //  ^ the rAUf weights cancel EXACTLY inside the bracket:
+        //    (phig - F^p)/rAUf = GSigma - ghf snGrad(rho)|Sf| - snGrad(p)|Sf|
+        U.correctBoundaryConditions();
+
+        // The non-gradient remainder, kept for the energy budget:
+        const volVectorField USigmaPressureResidual
+        (
+            "USigmaPressureResidual",
+            rAU()*fvc::reconstruct((phig - p_rghEqn.flux())/rAUf)
+        );
+        // -&gt; writeDropletMetrics.H:
+        //    P = sum_c rho_c V_c (U_c . dU_c)/dt   [capillaryResidualPower]
+        //    On the static droplet the exact force is a pure gradient,
+        //    so P is pure spurious energy input; measured P/E = +344 1/s
+        //    at R/h = 25 against viscous -256 1/s -- the anti-damped m=8.
+    }
+}</code></pre>
+</section>
+
 <!-- surface tension from reconstructed curvature -->
 <section>
   <h2>Curvature estimation &mdash; the fit's own derivatives, at the cell centre</h2>
