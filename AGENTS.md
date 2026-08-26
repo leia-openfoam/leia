@@ -28,6 +28,40 @@ gain by +11.1/+2.9/-3.0 percent (sign-flipping, i.e. noise) with volume and
 shape within 1.2 percent — BDF2 costs nothing and is formally right, so it is
 mandatory, not optional.
 
+## Reading OpenFOAM logs: use the classifier, never ad-hoc greps
+
+Every OpenFOAM solver prints, in its STARTUP banner:
+
+    trapFpe: Floating point exception trapping enabled (FOAM_SIGFPE).
+
+so any grep for a bare `Floating point exception` (or bare `core dumped`, which
+SLURM attaches to unrelated kill text) classifies EVERY healthy run as diverged.
+This false positive has bitten three times in this repository -- the original
+Snakefile divergence classifier, a dt-bisection probe, and a completion waiter
+that declared three live studies finished; the same class of mistake once
+deleted a live 16-hour interFoam arm.
+
+**The rule: never write a new grep against a solver log.** Call
+
+    workflow/scripts/foam_log_state.sh <log> [--stall S] [--wait [--poll S]]
+
+which returns COMPLETED / RUNNING / STALLED / DIVERGED / LAUNCH_FAILURE /
+MISSING (distinct exit codes, plus `steps=` and `age=`), using exactly the
+Snakefile's tightened patterns (`sigFpe::sigHandler`, genuine
+`... (core dumped)` signal lines, `FOAM FATAL`; launch failures separated so
+they are never recorded as results). `--wait` replaces hand-rolled completion
+loops. If the patterns ever need changing, change them in BOTH the helper and
+workflow/Snakefile in the same commit.
+
+Corollaries, learned the hard way:
+- **Completeness** comes from OpenFOAM's terminating `^End$` (or the solver's
+  per-step CSV), never from a post-processing output that only exists after a
+  run finishes.
+- **Liveness** comes from log mtime and step count (the helper's `age=`/
+  `steps=`), never from `squeue` alone -- an empty `squeue` during a SLURM
+  controller outage reads exactly like "all jobs finished".
+- A DIVERGED run is a RESULT (a blow-up is data); a LAUNCH_FAILURE is not.
+
 ## Method constraint: unstructured FVM only
 
 **Never propose or pursue a method that depends on a structured or Cartesian
