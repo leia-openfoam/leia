@@ -333,6 +333,14 @@ levelSet
         // metric tests whether Uext is constant along normals, never whether it
         // equals v on the interface.
         cpTol       @!CP_TOL!@;
+        // Where the foot-point descent reads psi:
+        //   fieldInterpolation -> the cell-point interpolation of the RAW psi
+        //   reconstructionFit  -> the quadratic LSQ fit the SL line already
+        //                         builds (slReconstruction::evaluateRaw)
+        // Single-variable: the normal, the guards, the step cap and the
+        // iteration budget are identical in both, so a difference is
+        // attributable to the foot-point DEFINITION alone.
+        footPointSource @!FOOT_POINT_SOURCE!@;
         cpHaloReach 1.5;
         // NO Helmholtz projection: projecting phiExt to div-free would destroy
         // the interface-normal constancy (n.grad)Uext = 0 that preserves

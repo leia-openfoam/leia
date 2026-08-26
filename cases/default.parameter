@@ -361,3 +361,9 @@ N_LAYERS 3;
 // The shipped default is 0.1; the 1D gate sweeps it to test whether it sets the
 // interface velocity error, which the static extension metric is blind to.
 CP_TOL 0.1;
+
+// closestPoint (the GEOMETRIC velocity extension) foot-point definition.
+// fieldInterpolation is the shipped behaviour and stays the default, so every
+// existing study is bit-unchanged. reconstructionFit reuses the quadratic LSQ
+// fit of the semi-Lagrangian line, which is what the 1D gate tests.
+FOOT_POINT_SOURCE fieldInterpolation;

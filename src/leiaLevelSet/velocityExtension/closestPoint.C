@@ -47,8 +47,33 @@ Foam::closestPoint::closestPoint(const fvMesh& mesh)
     steadyUpwind(mesh),
     cpTol_(velExtDict_.getOrDefault<scalar>("cpTol", 0.1)),
     cpMaxDist_(velExtDict_.getOrDefault<scalar>("cpMaxDist", 1.5)),
-    cpHaloReach_(velExtDict_.getOrDefault<scalar>("cpHaloReach", 1.5))
-{}
+    cpHaloReach_(velExtDict_.getOrDefault<scalar>("cpHaloReach", 1.5)),
+    footPointSource_
+    (
+        velExtDict_.getOrDefault<word>("footPointSource", "fieldInterpolation")
+    ),
+    recon_(nullptr)
+{
+    if (footPointSource_ == "reconstructionFit")
+    {
+        // Standalone quadratic LSQ fit, the same object and the same
+        // construction path the Eulerian two-phase solver already uses for the
+        // production curvature. No semi-Lagrangian file is touched, and the
+        // class lives in this library, so nothing in the build changes.
+        recon_ = slReconstruction::New(mesh_);
+
+        Info<< "closestPoint: foot points from the QUADRATIC LSQ FIT"
+            << " (slReconstruction::evaluateRaw), not from the interpolated"
+            << " raw psi." << endl;
+    }
+    else if (footPointSource_ != "fieldInterpolation")
+    {
+        FatalErrorInFunction
+            << "Unknown footPointSource '" << footPointSource_ << "'." << nl
+            << "Valid: fieldInterpolation (default) | reconstructionFit."
+            << exit(FatalError);
+    }
+}
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
@@ -56,6 +81,14 @@ void Foam::closestPoint::extend()
 {
     interpolationCellPoint<scalar> psiInterp(psi_);
     interpolationCellPoint<vector> Uinterp(U_);
+
+    // Rebuild the local fits against the CURRENT psi. The descent below then
+    // reads psi from a smooth polynomial surrogate rather than from the
+    // cell-point interpolation of the raw field.
+    if (recon_)
+    {
+        recon_->update(psi_);
+    }
     const auto& C = mesh_.C();
 
     // Parallel finishing step (zoneDistribute; Scheufler & Roenby JCP 383
@@ -194,7 +227,15 @@ void Foam::closestPoint::extend()
             vector nx;
             if (cx >= 0)
             {
-                psix = psiInterp.interpolate(x, cx);
+                // SINGLE-VARIABLE SWAP: only WHERE psi is read changes. The
+                // normal stays the same discrete nHat_ and every guard,
+                // step cap and iteration budget is untouched, so a difference
+                // in the result is attributable to the foot-point DEFINITION
+                // and to nothing else.
+                psix =
+                    recon_
+                  ? recon_->evaluateRaw(cx, x)
+                  : psiInterp.interpolate(x, cx);
                 nx = nHat_[cx];
             }
             else
