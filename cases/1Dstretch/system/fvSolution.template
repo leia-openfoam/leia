@@ -355,6 +355,11 @@ levelSet
         // iteration budget are identical in both, so a difference is
         // attributable to the foot-point DEFINITION alone.
         footPointSource @!FOOT_POINT_SOURCE!@;
+        // cellPoint (default) -- cell-point interpolation locally, first-order
+        //   Taylor on halo data: TWO operators, so a descent crossing a rank
+        //   boundary evaluates psi differently than the same descent in serial.
+        // taylor -- the linear Taylor reconstruction everywhere, one operator.
+        cpInterp    @!CP_INTERP!@;
         cpHaloReach 1.5;
         // NO Helmholtz projection: projecting phiExt to div-free would destroy
         // the interface-normal constancy (n.grad)Uext = 0 that preserves

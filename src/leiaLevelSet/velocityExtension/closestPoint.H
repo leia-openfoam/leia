@@ -214,6 +214,28 @@ class closestPoint
     //  still damage advection.
     word footPointSource_;
 
+    //- Which discrete operator evaluates psi during the descent.
+    //
+    //  cellPoint (DEFAULT) -- interpolationCellPoint locally, and a FIRST-ORDER
+    //    TAYLOR reconstruction from a cell centre on halo data, because the
+    //    cell-point stencil is not available for a remote cell. Two different
+    //    operators, so serial and parallel descents evaluate psi differently
+    //    wherever a descent crosses a rank boundary.
+    //  taylor -- the linear Taylor reconstruction psi_c + grad(psi)_c . (x - C_c)
+    //    EVERYWHERE, local and halo alike. Same order as cell-point (both are
+    //    linear reconstructions) but now the SAME operator, so the descent no
+    //    longer depends on which rank owns the cell it is passing through.
+    //
+    //  WHY IT MATTERS, measured. After fixing the extension flux at coupled
+    //  patches (which took serial-vs-np=4 from 3.011e-02 to 3.572e-09), the
+    //  residual at np=8 was 2.806e-03 at 8 cells/rank and ~1e-04 at 16-32
+    //  cells/rank -- and ~1e-04 is O(h^2) at h = 1/64, exactly the size of the
+    //  difference between two distinct second-order reconstructions of the same
+    //  field. That is an ALGORITHMIC difference, not round-off, so it is what
+    //  stands between the current state and the acceptance bar of
+    //  "decomposition-independent by construction".
+    word cpInterp_;
+
     //- The quadratic LSQ fit, constructed ONLY when footPointSource_ is
     //  reconstructionFit. slReconstruction::New(mesh) is already proven
     //  constructible standalone outside the semi-Lagrangian solver -- the

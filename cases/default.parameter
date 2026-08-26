@@ -376,3 +376,6 @@ NARROW_BAND signChange;
 
 // velocityExtension fade metric: layer (default) | levelSet (historical |psi|).
 FADE_MODE levelSet;
+
+// closestPoint descent psi operator: cellPoint (default) | taylor.
+CP_INTERP cellPoint;

@@ -67,6 +67,7 @@ Foam::closestPoint::closestPoint(const fvMesh& mesh)
     (
         velExtDict_.getOrDefault<word>("footPointSource", "fieldInterpolation")
     ),
+    cpInterp_(velExtDict_.getOrDefault<word>("cpInterp", "cellPoint")),
     recon_(nullptr)
 {
     if (cpWalkMaxSteps_ <= 0)
@@ -104,6 +105,14 @@ Foam::closestPoint::closestPoint(const fvMesh& mesh)
             << " disagreement. This is SLOWER than the plain octree path."
             << " Regression instrument only -- switch it off for production."
             << endl;
+    }
+
+    if (cpInterp_ != "cellPoint" && cpInterp_ != "taylor")
+    {
+        FatalErrorInFunction
+            << "Unknown cpInterp '" << cpInterp_ << "'." << nl
+            << "Valid: cellPoint (default) | taylor."
+            << exit(FatalError);
     }
 
     if (footPointSource_ == "reconstructionFit")
@@ -341,6 +350,17 @@ void Foam::closestPoint::extend()
     interpolationCellPoint<scalar> psiInterp(psi_);
     interpolationCellPoint<vector> Uinterp(U_);
 
+    // See cpInterp_ in the header. In taylor mode the descent uses the SAME
+    // linear reconstruction locally that the halo branch is forced to use for
+    // remote cells, so it no longer matters which rank owns the cell the
+    // descent is passing through.
+    const bool taylorInterp = (cpInterp_ == "taylor");
+    tmp<volVectorField> tgPsiLocal;
+    if (taylorInterp)
+    {
+        tgPsiLocal = fvc::grad(psi_);
+    }
+
     // Rebuild the local fits against the CURRENT psi. The descent below then
     // reads psi from a smooth polynomial surrogate rather than from the
     // cell-point interpolation of the raw field.
@@ -428,7 +448,7 @@ void Foam::closestPoint::extend()
         // The same gradient flavours the family already uses: grad(psi)
         // resolves the fvSchemes 'grad(psi)' entry (as computeNormals);
         // grad(U) resolves the gradSchemes default.
-        tmp<volVectorField> tgPsi = fvc::grad(psi_);
+        tmp<volVectorField> tgPsi = fvc::grad(psi_);   // halo source
         tmp<volTensorField> tgU = fvc::grad(U_);
 
         mapC = zd->getDatafromOtherProc(zone, C);
@@ -562,10 +582,21 @@ void Foam::closestPoint::extend()
                 // step cap and iteration budget is untouched, so a difference
                 // in the result is attributable to the foot-point DEFINITION
                 // and to nothing else.
-                psix =
-                    recon_
-                  ? recon_->evaluateRaw(cx, x)
-                  : psiInterp.interpolate(x, cx);
+                if (recon_)
+                {
+                    psix = recon_->evaluateRaw(cx, x);
+                }
+                else if (taylorInterp)
+                {
+                    // Same linear reconstruction the halo branch uses, so the
+                    // descent evaluates psi with ONE operator regardless of
+                    // which rank owns the cell it is passing through.
+                    psix = psi_[cx] + (tgPsiLocal()[cx] & (x - C[cx]));
+                }
+                else
+                {
+                    psix = psiInterp.interpolate(x, cx);
+                }
                 nx = nHat_[cx];
             }
             else
@@ -573,7 +604,10 @@ void Foam::closestPoint::extend()
                 const vector& Cj = ccC[jg];
                 const vector& gj = ccGPsi[jg];
                 psix = ccPsi[jg] + (gj & (x - Cj));
-                nx = gj/Foam::max(Foam::mag(gj), SMALL);
+                // nHat_ is g/(mag(g) + SMALL) (computeNormals). Matching that
+                // formula exactly, rather than max(mag(g), SMALL), removes a
+                // second silent difference between the local and halo branches.
+                nx = gj/(Foam::mag(gj) + SMALL);
             }
 
             // Step cap, UNCONDITIONALLY -- see the nIter comment above. Capping
