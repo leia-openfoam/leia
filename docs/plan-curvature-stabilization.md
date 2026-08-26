@@ -31,6 +31,24 @@ numbers; none of them may regress.
 Serial ↔ np=4 agreement ~1e-12 (halo exchange test). Cached and uncached
 QWLSR agree cell-for-cell to ~1e-13.
 
+> **[2026-08-26] CONTAMINATION NOTICE — the transport table above is pending
+> re-measurement and must not be cited until re-run.** Every row came from
+> `leiaSemiLagrangeLevelSetFoam` at np > 1. Its prescribed velocity had
+> FACE-centre values written into coupled (processor) patches — where every
+> coupled-patch operator expects NEIGHBOUR-CELL values — biasing `fvc::grad(U)`
+> by O(1) in every processor-adjacent cell for the life of the code (fixed in
+> `30e6ba9`). The SL Taylor foot consumes that gradient in its dt²/2 term
+> (`pointValueScheme.C:353`), so the per-step foot error at seam cells was
+> O(h²) — the same order as the trajectory truncation — accumulating to O(h)
+> at seams over a run: fitted orders can bend at the fine end, where they are
+> decided. Full analysis and the 31-study affected list:
+> `docs/gradU-coupled-patch-contamination.md`. The 1e-12 halo-exchange
+> agreement above tested the reconstruction exchange, not the `grad(U)` path,
+> so it could hold while this defect was active; end-to-end serial↔parallel
+> equivalence is part of what the re-run re-establishes. First discriminating
+> re-run: `uncachedConv2Dvortex` on the fixed binary, diffed against the
+> git-tracked curated table.
+
 **Curvature statics (exact SDF, |Sf|-weighted L2 on active faces):**
 - 2D circle: every classical delivery ≈ O(h^1.1). Cell-centred κ: O(h^1.07),
   rel. L2 35.4% → 1.7%.

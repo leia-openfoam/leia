@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-08-15.
+Last updated: 2026-08-26.
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -218,9 +218,11 @@ coupled interface motion being capped at FIRST order in time by the Euler
 momentum solve on a dt ~ h^1.5 capillary step (temporal error ~ h^1.5 dominating
 the O(h^2) spatial error): in the coupled problem the transport order is not the
 limiting factor. Combined with the kinematic arm, where linearTaylor's errors
-GROW under refinement (volume 340% at N=256 on the reversed vortex), the verdict
-is that dropping transport order buys NOTHING coupled and costs everything
-kinematic -- the filter is the damping mechanism, not the transport order.
+GROW under refinement (volume 340% at N=256 on the reversed vortex — **number
+suspect, see the 2026-08-26 gradU contamination notice below; np=4 kinematic
+run**), the verdict is that dropping transport order buys NOTHING coupled and
+costs everything kinematic -- the filter is the damping mechanism, not the
+transport order.
 
 **THE CELL-CENTRE INVERSE AND THE FILTER (2026-08-18).** Two constructions the
 user proposed now hold the best coupled results on record; curated:
@@ -249,7 +251,33 @@ but the residual current grows ~10x per refinement level.
 vortex linearTaylor's errors GROW under refinement (volume 340% at N=256, shape
 diverging) -- its interpolation diffusion is only useful where the flow is
 near-quiescent, so the theta filter is the damping mechanism of choice, not the
-transport order.
+transport order. (**Numbers suspect** — see the 2026-08-26 gradU contamination
+notice below. The comparison is partly common-mode, both arms sharing the same
+contaminated foot, so the verdict may survive; the numbers are not defensible
+until re-run.)
+
+### INVALIDATION: parallel kinematic SL baselines predate the gradU coupled-patch fix (2026-08-26)
+
+`velocityModel::setVelocity` wrote FACE-centre values into coupled (processor)
+patches — where every coupled-patch operator expects NEIGHBOUR-CELL values —
+biasing `fvc::grad(U)` by O(1) in every processor-adjacent cell, for the life of
+the code (fixed `30e6ba9`). The default SL foot integrator consumes that
+gradient in its dt²/2 term (`pointValueScheme.C:353`), and the kinematic solver
+`leiaSemiLagrangeLevelSetFoam` feeds it the prescribed velocity — so **all 31
+parallel kinematic SL studies are contaminated, 10 of them with git-tracked
+curated tables** (uncachedConv*, sdCompare2D under the SL theme; six linearConv*
+under the linear-SL theme). The transport ground-truth table in
+`docs/plan-curvature-stabilization.md` sec. 0 is drawn from this set and carries
+its own notice. **NOT affected:** anything serial, and every two-phase SL study —
+`leiaSemiLagrangianLevelSetTwoPhaseFoam` has no `velocityModel` reference and
+takes U from the momentum solve, so the entire coupled parasitic-current
+campaign above stands. Full analysis, affected-study list and the magnitude
+measurement (1D gate: 4.3e-2 at np=8 where serial was exact):
+`docs/gradU-coupled-patch-contamination.md`. Sequencing agreed 2026-08-26: first
+a discriminating re-run of `uncachedConv2Dvortex` on the fixed binary diffed
+against the tracked table; the RK2 foot integrator (gradient-free by
+construction) and any `PSI_OUTER_CORRECTORS` default change wait until the
+baseline is re-established, so studies move once.
 
 *Regression found and fixed en route*: since 4c4f7f1 the shared createFields.H
 constructed a standalone TRANSPORT-type reconstruction and called
