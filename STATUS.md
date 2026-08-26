@@ -256,6 +256,34 @@ notice below. The comparison is partly common-mode, both arms sharing the same
 contaminated foot, so the verdict may survive; the numbers are not defensible
 until re-run.)
 
+### Mesh alignment is EXONERATED for the R/h = 25 departure (2026-08-26)
+
+The 2x2 probe pair designed for the question "is R/h = 25 a degenerate
+pole-on-face alignment?" completed (`studies/alignmentProbe2D/`, quarter horizon
+t = 0.025 s, filter off, np 1):
+
+| arm | geometry | maxU 17 ms | maxU end | r [1/s], 17-25 ms | vol end | shape end |
+|---|---|---|---|---|---|---|
+| rh25 original | N=150 centred, poles ON faces | 3.99e-4 | 2.59e-2 | 598 | 5.55e-5 | 1.65e-6 |
+| rh26_centered | N=156 centred, SAME class | 4.93e-4 | 3.21e-2 | 550 | 2.66e-5 | 4.32e-6 |
+| rh25_shifted | N=150, centre +(h/3, h/7), poles OFF faces | 1.42e-2 | 1.56e-1 | 308 | 3.85e-4 | 4.82e-5 |
+
+**Both probes depart, so per the pre-registered read-out the departure is
+fineness, not alignment.** The same-class control (N = 156) reproduces the
+original's trajectory (departure ~17 ms, r 550 vs 598), so nothing is special
+about 25; and the shifted arm — the one that HAD to stay mild for alignment to
+be load-bearing — is strictly WORSE at every sampled time (50x higher current
+already at 11 ms, 7x worse volume, 29x worse shape at the end): breaking the
+symmetry removes error cancellation instead of removing the pump. The
+symmetric, pole-aligned setup was the FAVOURABLE configuration. Consequences:
+no bug hides in the alignment degeneracy; the "white points" are not tied to
+pole placement; the fix search stays on the amplifier itself (semi-implicit
+capillary coupling / variational pairing), not on mesh positioning. Caveat:
+both probes carry two mid-run restarts (WSL reboots; identical handling in both
+arms, and the same-class control shows no restart inflation, so the comparative
+reading stands); metrics CSVs cover 10-25 ms, joined records preserved as
+`leiaSemiLagrangianLevelSetTwoPhaseFoam.joined.csv` per case.
+
 ### INVALIDATION: parallel kinematic SL baselines predate the gradU coupled-patch fix (2026-08-26)
 
 `velocityModel::setVelocity` wrote FACE-centre values into coupled (processor)
