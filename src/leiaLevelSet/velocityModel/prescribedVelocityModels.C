@@ -182,7 +182,14 @@ uniaxialStrain::uniaxialStrain(const fvMesh& mesh)
     // the safe behaviour is the default one. An explicit `oscillation on;`
     // still selects the oscillating variant, and no other model is affected:
     // this assignment lives in this constructor only.
-    isOscillating_ = velocityDict_.getOrDefault<Switch>("oscillation", "off");
+    // NOT getOrDefault<Switch>(key, "off"). Switch(const char*) is EXPLICIT, so
+    // a string literal cannot convert to Switch directly; it decays to a
+    // non-null const char* and converts to bool as TRUE. That default therefore
+    // means ON -- the exact opposite of what the comment above requires, and it
+    // would silently oscillate a case that omitted the key, destroying the
+    // closed-form solution this model exists to provide. A bool literal is
+    // parsed as written.
+    isOscillating_ = velocityDict_.getOrDefault<Switch>("oscillation", false);
 
     Info<< "    uniaxialStrain: v(x) = " << strainRate_
         << " (x - " << stagnationPoint_.x() << ") e_x, div(v) = "

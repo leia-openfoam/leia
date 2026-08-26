@@ -41,7 +41,12 @@ Foam::velocityModel::velocityModel(const fvMesh& mesh)
 :
     fvSolution_(mesh),
     velocityDict_(fvSolution_.subDict("velocityModel")),
-    isOscillating_(velocityDict_.getOrDefault<Switch>("oscillation", "on")),
+    // A bool literal, not "on": Switch(const char*) is explicit, so a string
+    // literal decays to a non-null pointer and converts to bool as TRUE. Here
+    // that happened to coincide with the intended default, so this site was
+    // benign -- but it is the same construct that made the `off` default in
+    // uniaxialStrain mean ON, so it is written unambiguously.
+    isOscillating_(velocityDict_.getOrDefault<Switch>("oscillation", true)),
     tau_(velocityDict_.getOrDefault<scalar>("tau", mesh.time().endTime().value()))
 {}
 

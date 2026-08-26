@@ -1,0 +1,153 @@
+# COEFFICIENT ERROR vs ASSEMBLY INCONSISTENCY: neither one carries Rdiv's -3.4.
+#
+# THE OPEN QUESTION THIS CLOSES. The product-rule residual measured by
+# config/sdplsRdivProductRule2Dvortex.yaml uses the SAME discrete coefficient
+# div(w) = fvc::div(phiW) on both sides of the identity
+#     div(w psi) - psi div(w) - w.grad(psi) = 0,
+# so a coefficient that is noisy but used CONSISTENTLY cancels out of it. That
+# residual therefore isolates ASSEMBLY inconsistency (suspect ii) and cannot
+# exclude suspect (i): fvc::div(phiW) contains div(nHat), i.e. SECOND
+# derivatives of psi, whose noise grows as h shrinks and could be feeding the
+# inconsistency rather than acting independently. The two imply opposite
+# repairs, so they have to be measured apart.
+#
+# THE CLOSED-FORM REFERENCE sdplsRdiv NOW PRINTS (guarded to implicitSphere +
+# shear2D + serial; derived in full in the source). On cases/2Dvortex the level
+# set starts as the EXACT signed distance to a circle and the velocity is the
+# analytic shear2D field, so (n.grad)n = 0 and
+#     div(w) = n.grad(U).n + (U.n)(d-1)/r,   r = |x - c|,
+# in closed form -- no finite differencing anywhere. Three errors are separated:
+#   divW_err     = fvc::div(fvc::flux(w_h))  - exact   TOTAL coefficient error
+#   divW_opErr   = fvc::div(fvc::flux(w_ex)) - exact   the flux-divergence
+#                  OPERATOR alone, fed an exact smooth w, no discrete normal in
+#                  it anywhere
+#   divW_normalErr = the difference = what the discrete nHat contributes.
+# The product-rule residual is also recomputed with w_ex substituted for w_h,
+# everything else held fixed. Norms are over the FIXED PHYSICAL annulus
+# |psi_exact| <= 0.05, never a multiple of h: a norm whose domain moves with the
+# mesh has no convergence order.
+#
+# MEASURED, first assembly (t = 1.2e-06, psi still the exact circle to 5e-14,
+# and the analytic U verified against the solver's U field to round-off):
+#   N     h         divW_err_L2   divW_opErr_L2  divW_normalErr_L2  prResid_L2
+#   32    0.031250  3.135e-01     2.615e-01      9.130e-02          8.200e-03
+#   64    0.015625  8.383e-02     7.030e-02      2.199e-02          2.026e-03
+#   128   0.007813  2.056e-02     1.727e-02      5.383e-03          5.047e-04
+#   256   0.003906  5.256e-03     4.405e-03      1.379e-03          1.267e-04
+# Fitted orders in h: coefficient error +1.972 (Linf +1.728), operator-only
+# +1.970, normal-only +2.018, band product-rule residual +2.005 (Linf +1.915).
+# EVERYTHING CONVERGES AT SECOND ORDER. The coefficient is not noisy, the
+# divergence operator is not inconsistent, and the discrete normal contributes a
+# steady 26% of a second-order-convergent error. The reference norms are
+# mesh-independent as they must be (divW_exact_L2 3.506/3.453/3.445/3.463).
+#
+# AND THE COEFFICIENT PLAYS NO ROLE IN THE RESIDUAL. Substituting the exact
+# smooth w_ex for w_h changes the product-rule residual by less than 20% at
+# every instant and every resolution (ratio 0.81-1.09 over the whole run): the
+# residual is a property of the operator PAIR and of psi, not of the coefficient.
+#
+# SO NEITHER NAMED SUSPECT EXPLAINS THE DIVERGENCE. This study localizes what
+# does, on the SAME reversed protocol as sdplsRdivConv2Dvortex (END_TIME 2,
+# OSCILLATION on) but in SERIAL -- and the divergence reproduces in serial, so
+# it is not the coupled-patch defect velocityModel::setVelocity documents:
+#   N                       32          64         128         256     order
+#   gradient band L2 T/2  3.863e-01  1.597e+00  1.783e+01  4.993e+02   -3.449
+#   gradient band L2 T    6.367e-01  1.193e+01  2.293e+02  7.996e+05   -6.505
+#   shape  E_GEOM_ALPHA T 1.079e-03  1.628e-03  5.767e-03  1.044e-02   -1.165
+#   volume rel T/2        5.209e-02  5.349e-02  5.605e-02  2.444e-01   -0.676
+#   volume rel T          6.137e-02  1.129e-01  4.074e-01  1.289e+00   -1.503
+# Every run COMPLETED (solverFailed blank, lastTime 2 on all four rungs).
+# The successive error RATIOS are 4.1, 11.2, 28.0 -- they ACCELERATE, and a
+# convergence order is a constant ratio. This is an amplification, not a
+# consistency error.
+#
+# WHERE IT LIVES (second print line, sdplsRdiv exactRefLoc). At t = 0 the global
+# maximum of the residual sits at r/h = 0.71, the cell holding the CIRCLE CENTRE
+# r = 0, where the signed distance has its kink and div(n) = (d-1)/r is singular
+# -- which is why the GLOBAL Linf of the earlier probe was flat at ~0.44 across
+# the whole ladder and told nobody anything. In the band it converges at h^2. By
+# t = 0.25 the band residual has already inverted its h-dependence
+# (6.65e-02 / 1.45e-01 / 4.75e-01 / 2.24e+00 for N = 32..256) and the moving
+# interface band's || |grad psi| - 1 ||_inf with it (0.47 / 0.91 / 5.44 / 28.7).
+# The failure develops IN TIME, faster on finer meshes.
+#
+# THE CAUSE (third print line, sdplsRdiv matrixSign). eulerianAdvection builds
+#     ddt(psi) + div(phi, psi) - Sp(div phi, psi) == S
+# and fvMatrix::operator== subtracts S termwise, so
+#     S = div(phiW,psi) - div(phi,psi) - Sp(div(phiW) - a, psi)
+# leaves the system matrix
+#     ddt + 2 div(phi, psi) - div(phiW, psi) + (diagonal terms):
+# a DIFFERENCE of two upwind convection operators. gaussConvectionScheme gives a
+# single fvm::div off-diagonals <= 0 whatever the sign of the flux; SUBTRACTING
+# one flips its off-diagonal signs, and on a face where sign(phi_f) differs from
+# sign(phiW_f) the two operators upwind from opposite cells and the composite
+# off-diagonal is exactly +|phiW_f|. MEASURED, at every rung and every instant:
+#   ~33-37% of internal faces have sign(phi_f) != sign(phiW_f), carrying ~8-11%
+#   of the flux magnitude, and ~18-21% of the assembled psi matrix's
+#   off-diagonal entries are POSITIVE (799/3968 at N=32, 13842 at N=128).
+#   max(positive off-diagonal row sum) dt/V ~ 0.19 -- MESH-INDEPENDENT, ~0.38 CFL.
+# No row loses diagonal dominance outright (0 of N at every rung), so the linear
+# solves converge and every run completes -- and the discrete maximum principle
+# is lost anyway. Relative strength fixed, number of steps to a fixed T growing
+# as 1/h: the accumulated amplification grows without bound under refinement.
+# THIS IS THE ONE STRUCTURAL DIFFERENCE BETWEEN Rdiv AND R. The algebraic source
+# assembles ddt + div(phi,psi) - Sp(div phi) - Sp(a): a SINGLE fvm::div, so its
+# off-diagonals are <= 0 in every row, on every mesh, at every step, by
+# construction. R cannot have this defect; Rdiv has it structurally. The
+# sign-split RdivStrictSp tested only the ALGEBRAIC Sp coefficient and left this
+# untouched, which is why falsifying it moved nothing (-3.554 against -3.800).
+#
+# CONFIRMED BY A/B (sdplsSource entry `compositeFlux on;`, default off, no
+# other change). Returning instead
+#     S = div(phi,psi) - div(2 phi - phiW, psi) - Sp(div(phiW) - a, psi)
+# leaves ddt + div(2 phi - phiW, psi) + the SAME diagonal terms -- identical at
+# the continuum, because the effective advecting velocity is 2U - w = U + U_t
+# and U_t . grad(psi) = 0 -- but assembled as ONE fvm::div, so nPosOffDiag drops
+# from 799/3382/13842 to 0 at N=32/64/128. Same ladder, serial, END_TIME 2:
+#   metric                Rdiv as committed        Rdiv compositeFlux on
+#   gradient band T/2     -3.449                   +0.711
+#   gradient band T       -6.505                   +0.499
+#   shape E_GEOM_ALPHA T  -1.165                   +1.597
+#   volume rel T/2        -0.676                   +2.248
+#   volume rel T          -1.503                   +1.930
+#   global PR residual T  -5.945                   -0.002 (bounded, 4.3e-02)
+# The product-rule residual is IDENTICAL in both arms at t = 0 (+1.007 global,
+# +2.005 in the band): it was a SYMPTOM of the polluted psi, not the cause.
+# compositeFlux is NOT a finished method -- +0.711 is still below R's +1.112 on
+# this ladder and the global max gradient error still diverges at -1.176 (the
+# far-field amplification the mollifier-none block in the case fvSolution
+# already documents). It removes the divergence, not the remaining error.
+#
+#   make studies-one STUDY=sdplsRdivCoefficientError2Dvortex PROFILE=profiles/local
+#
+# The compositeFlux A/B has no token, so it was run by hand: copy each rendered
+# case, insert `compositeFlux on;` into levelSet/sdplsSource, blockMesh +
+# leiaSetFields + leiaLevelSetFoam. Making it a study axis needs a token in
+# cases/2Dvortex/system/fvSolution.template and cases/default.parameter.
+
+study_name: sdplsRdivCoefficientError2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: serial
+np: 1
+solver: leiaLevelSetFoam
+theme: sdpls-level-set
+
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 64, 128, 256]
+  CFL:      [0.5]
+  REPORT_WRITE_ONLY: ["true"]
+  OSCILLATION: ["on"]
+  PHASE_INDICATOR: [detrixheAslam]
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none]
+  SDPLS_SOURCE: [Rdiv]
+  SOURCE_SCHEME: [simpleLinearImplicit]
+  MOLLIFIER: [none]
+collapse_other_axes: true
+
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
