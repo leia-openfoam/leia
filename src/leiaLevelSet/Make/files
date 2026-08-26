@@ -49,6 +49,7 @@ narrowBand/narrowBand.C
 narrowBand/emptyNarrowBand.C
 narrowBand/signChangeNarrowBand.C
 narrowBand/neighbourNarrowBand.C
+narrowBand/phaseIndicatorNarrowBand.C
 narrowBand/distanceNarrowBand.C
 
 profile/profile.C

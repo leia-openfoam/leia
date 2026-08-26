@@ -143,7 +143,16 @@ levelSet
 
     narrowBand
     {
-      type  signChange;
+      // signChange  -- psi sign change across a face (the historical default)
+      // neighbours  -- the same seed, dilated ntimes by owner-neighbour
+      // phaseIndicator -- seeded from snGrad(alpha) != 0 on the GEOMETRIC
+      //   Detrixhe-Aslam volume fraction, then dilated. Independent of
+      //   |grad psi|, so the band stays the region it claims to be even when
+      //   the signed-distance property degrades.
+      type     @!NARROW_BAND!@;
+      alpha    alpha;
+      alphaTol 1e-8;
+      n        @!N_LAYERS!@;   // dilation layers (key is "n", see neighbourNarrowBand)
     }
 
 

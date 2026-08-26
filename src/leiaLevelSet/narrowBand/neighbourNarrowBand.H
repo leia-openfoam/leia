@@ -60,6 +60,19 @@ public:
     TypeName("neighbours");
     neighbourNarrowBand(const dictionary& dict, const volScalarField& psi);
     virtual ~neighbourNarrowBand() = default;
+
+    //- The SEED that the dilation in calc() grows from. Factored out as a
+    //  virtual so a derived class can change WHICH cells start the band
+    //  without duplicating the dilation, which is subtle and
+    //  parallel-critical: it exchanges once per layer because layer k+1 on
+    //  this rank may only be reachable from a cell that layer k placed on the
+    //  far side of a processor boundary. Duplicating that loop would let the
+    //  two copies drift.
+    //
+    //  Default: the psi sign change, so neighbourNarrowBand itself is
+    //  behaviour-identical to before this was factored out.
+    virtual void seed() { signChangeNarrowBand::calc(); }
+
     virtual void calc();
 };
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

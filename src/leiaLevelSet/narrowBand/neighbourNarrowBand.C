@@ -42,7 +42,9 @@ namespace Foam
 
     void neighbourNarrowBand::calc()
     {
-        signChangeNarrowBand::calc();
+        // Virtual: signChangeNarrowBand::calc() for this class, the
+        // phase-indicator seed for phaseIndicatorNarrowBand.
+        seed();
         if (field().empty())
         {
             FatalErrorInFunction
