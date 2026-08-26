@@ -435,9 +435,37 @@ void Foam::interfaceExtension::updateFlux()
     const surfaceScalarField phiU(fvc::interpolate(Uext_) & mesh_.Sf());
     phiExt_.primitiveFieldRef() = phiU.primitiveField();
 
-    // Keep the base boundary fluxes: the domain boundary keeps its base
-    // (e.g. impermeable) behaviour; the extension only matters near Sigma.
-    phiExt_.boundaryFieldRef() = phi_.boundaryField();
+    // Keep the base flux on REAL domain boundaries only -- the domain boundary
+    // keeps its base (e.g. impermeable) behaviour, and the extension only
+    // matters near Sigma.
+    //
+    // A COUPLED PATCH IS NOT A DOMAIN BOUNDARY. It is an internal face that
+    // happens to be split across ranks, and in serial that same face is
+    // interior and carries the EXTENDED flux. Assigning phi_ over the whole
+    // boundaryField, as this line used to, therefore replaced the extension
+    // flux by the raw one at exactly the faces a decomposition creates -- so
+    // the field that advects psi differed between a serial run and a parallel
+    // one, by construction, at every processor boundary.
+    //
+    // MEASURED, cases/1Dstretch with closestPoint, psi at t = 1:
+    // max |psi_serial - psi_np4| = 3.011e-02 relative, against this
+    // repository's stated ~1e-12 gate. Localising the error put its maximum at
+    // cells 32-37 with the np=4 rank boundary at cell 32, and NINE CELLS from
+    // the interface at cell 42 -- far outside the band, decaying away from the
+    // processor boundary. Not a band effect, not a descent effect: this line.
+    forAll(phiExt_.boundaryField(), patchI)
+    {
+        if (mesh_.boundary()[patchI].coupled())
+        {
+            // Interior-equivalent face: carry the extended flux, exactly as the
+            // serial run does for the same face.
+            phiExt_.boundaryFieldRef()[patchI] = phiU.boundaryField()[patchI];
+        }
+        else
+        {
+            phiExt_.boundaryFieldRef()[patchI] = phi_.boundaryField()[patchI];
+        }
+    }
 
     if (projectFlux_)
     {

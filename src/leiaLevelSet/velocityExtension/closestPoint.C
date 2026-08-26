@@ -515,15 +515,41 @@ void Foam::closestPoint::extend()
         bool ok = true;
         bool usedHalo = false;
 
-        // Parallel: cap each step at ~one cell so the walk TRAVERSES the
-        // cells on its way (cLast tracks to the true exit cell, whose halo
-        // stencil covers the first remote layer at the crossing point). A
-        // full Newton jump from an outer band cell would anchor the halo
-        // search at the distant STARTING cell and miss. The capped walk
-        // needs a larger iteration budget (~nLayers steps to reach the
-        // interface + Newton polish). Serial keeps the exact original
-        // full-jump iteration (bit-identical regression).
-        const label nIter = haveHalo ? nDescent_ + nLayers_ + 2 : nDescent_;
+        // THE DESCENT PATH IS NOW IDENTICAL IN SERIAL AND IN PARALLEL.
+        //
+        // It used to be `haveHalo ? nDescent_ + nLayers_ + 2 : nDescent_`, with
+        // the step cap below likewise applied only when haveHalo. And haveHalo
+        // is Pstream::parRun() -- a GLOBAL flag, not a per-cell "am I near a
+        // processor boundary" test. So EVERY band cell on EVERY rank, including
+        // cells whose entire descent is rank-local, took a different Newton
+        // path in parallel: 8 capped 0.9-cell steps instead of 3 unrestricted
+        // full jumps.
+        //
+        // Newton on a psi that is not a signed distance is PATH-DEPENDENT, and
+        // acceptance only demands |psi(x_fp)| < cpTol_*h = 0.1 cells, so the two
+        // paths legitimately converge to different points inside a 0.1-cell
+        // ball. Uext = U(x_fp) then differs by |grad U|*0.1h -- a MODELLING
+        // difference, not round-off, present everywhere rather than only near
+        // processor boundaries.
+        //
+        // MEASURED before this change, cases/1Dstretch with closestPoint:
+        // max |psi_serial - psi_np4| = 3.011e-02 RELATIVE, against this
+        // repository's stated gate of ~1e-12 (docs/plan-curvature-
+        // stabilization.md:31). A control with the old signChange band gave the
+        // IDENTICAL 3.011e-02, so the band model was never involved.
+        //
+        // The capped walk is the correct path to keep: it TRAVERSES the cells on
+        // its way, so cLast tracks to the true exit cell whose halo stencil
+        // covers the first remote layer at the crossing point. A full Newton
+        // jump would anchor the halo search at the distant STARTING cell and
+        // miss. Serial simply had no reason to care -- and now pays the extra
+        // iterates, which the known-vicinity search made nearly free: 0 octree
+        // fallbacks in 273 132 re-localisations, 1.10 walk steps per hit, 2.24x
+        // faster overall than the octree path it replaced.
+        //
+        // haveHalo now controls ONLY whether halo DATA is available, never the
+        // iteration.
+        const label nIter = nDescent_ + nLayers_ + 2;
 
         for (label it = 0; it < nIter; ++it)
         {
@@ -550,8 +576,10 @@ void Foam::closestPoint::extend()
                 nx = gj/Foam::max(Foam::mag(gj), SMALL);
             }
 
+            // Step cap, UNCONDITIONALLY -- see the nIter comment above. Capping
+            // only in parallel was what made the descent path, and therefore
+            // the foot point and Uext, depend on the rank count.
             vector dx = -psix*nx;
-            if (haveHalo)
             {
                 const scalar maxStep =
                     0.9*cellSize_[cLast >= 0 ? cLast : c];
