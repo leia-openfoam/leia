@@ -135,10 +135,19 @@ sdplsRdiv::fvmsdplsSource(const volScalarField& psi, const volVectorField& U)
     // the safe default is off; it is only masked there because every rendered
     // case writes the key explicitly. Reading a word and constructing the
     // Switch from it has one meaning.
-    const Switch compositeFlux
+    // off (DEFAULT) | composite (2v - w) | normal (w only)
+    const word compositeFlux
     (
         sourceDict_.getOrDefault<word>("compositeFlux", word("off"))
     );
+    if (compositeFlux != "off" && compositeFlux != "composite"
+     && compositeFlux != "normal")
+    {
+        FatalErrorInFunction
+            << "Unknown compositeFlux '" << compositeFlux << "'." << nl
+            << "Valid: off (default) | composite | normal."
+            << exit(FatalError);
+    }
 
     // S_matrix = div(phiW, psi) - div(phi, psi) - Sp(div(phiW) - a, psi).
     //
@@ -257,22 +266,23 @@ sdplsRdiv::fvmsdplsSource(const volScalarField& psi, const volVectorField& U)
         // or the A/B against compositeFlux measures nothing: the whole claim is
         // that the two forms differ in their off-diagonal signs and in nothing
         // else.
-        tmp<fvScalarMatrix> tcomp
-        (
-            compositeFlux
-          ? tmp<fvScalarMatrix>
-            (
-                fvm::div
-                (
-                    surfaceScalarField("phiW", 2*phi - phiW),
-                    psi
-                )
-            )
-          : tmp<fvScalarMatrix>
-            (
-                2*fvm::div(phi, psi) - fvm::div(phiW, psi)
-            )
-        );
+        // Assemble EXACTLY the convection operator this call will produce, or
+        // the off-diagonal census describes a matrix that is never solved.
+        tmp<fvScalarMatrix> tcomp;
+        if (compositeFlux == "composite")
+        {
+            tcomp = fvm::div(surfaceScalarField("phiW", 2*phi - phiW), psi);
+        }
+        else if (compositeFlux == "normal")
+        {
+            tcomp = fvm::div(phiW, psi);
+        }
+        else
+        {
+            // The default Rdiv: a DIFFERENCE of two upwind operators, which is
+            // where the positive off-diagonals come from.
+            tcomp = 2*fvm::div(phi, psi) - fvm::div(phiW, psi);
+        }
         const fvScalarMatrix& comp = tcomp();
 
         const scalarField& up = comp.upper();
@@ -794,8 +804,31 @@ sdplsRdiv::fvmsdplsSource(const volScalarField& psi, const volVectorField& U)
     }
     // -------------------------------------------------------------------------
 
-    if (compositeFlux)
+    // WHY THE ASSEMBLED FLUX CAN BE CHOSEN AT ALL. The base equation already
+    // contributes +fvm::div(phi, psi), so a source containing +fvm::div(phi,
+    // psi) cancels it EXACTLY -- same operator, same flux, same discretisation,
+    // so the fvMatrix difference is identically zero -- and whatever other
+    // single fvm::div the source carries survives as the only convection
+    // operator in the system. That is the mechanism behind every branch here,
+    // and it is what removes the positive off-diagonals: one upwind operator
+    // has off-diagonals <= 0 for either flux sign, a DIFFERENCE of two does not.
+
+    if (compositeFlux == "composite")
     {
+        // Transport on 2v - w. Continuum-identical because
+        // (2v - w).grad psi = 2 v.grad psi - w.grad psi = v.grad psi, using
+        // w.grad psi = (n.v)|grad psi| = v.grad psi.
+        //
+        // MEASURED, serial 2D vortex ladder: it removes the positive
+        // off-diagonals (nPosOffDiag -> 0) and recovers most of the divergence
+        // -- gradient band T/2 -3.449 -> +0.711, shape -1.165 -> +1.597, volume
+        // T/2 -0.676 -> +2.248 -- but +0.711 is still well short of the
+        // algebraic source R's +1.112.
+        //
+        // The likely reason it does not close the gap: 2v - w is a SYNTHETIC
+        // flux. Upwinding is decided by ITS sign, which agrees with neither v
+        // nor w, so the scheme takes its donor cell from a direction that is
+        // not the one transporting the level set.
         surfaceScalarField const phiComposite("phiW", 2*phi - phiW);
 
         return
@@ -803,6 +836,32 @@ sdplsRdiv::fvmsdplsSource(const volScalarField& psi, const volVectorField& U)
             fvm::div(phi, psi)
           - fvm::div(phiComposite, psi)
           - fvm::Sp(fvc::div(phiW) - strain(), psi)
+        );
+    }
+
+    if (compositeFlux == "normal")
+    {
+        // Transport on the NORMAL flux alone. Also continuum-identical, by the
+        // same identity w.grad psi = v.grad psi -- the tangential part of v
+        // does not move a level set, so removing it from the transport changes
+        // nothing at the continuum.
+        //
+        // Assembled as ddt + div(phiW, psi) - Sp(div w - a, psi): the base's
+        // div(phi, psi) is cancelled by the one below, so phiW is the ONLY
+        // convection operator and its off-diagonals are <= 0 by construction.
+        //
+        // WHY IT SHOULD BEAT `composite`: phiW is not synthetic. Its sign is
+        // sign(n.v), which IS the direction the interface moves, so the upwind
+        // donor cell is the one the characteristics actually come from. `2v - w`
+        // has no such interpretation.
+        //
+        //   S = div(phi,psi) - div(phiW,psi) - Sp(div phi - div w - a, psi)
+        // gives base - S = ddt + div(phiW,psi) - Sp(div w - a, psi).
+        return
+        (
+            fvm::div(phi, psi)
+          - fvm::div(phiW, psi)
+          - fvm::Sp(fvc::div(phi) - fvc::div(phiW) - strain(), psi)
         );
     }
 

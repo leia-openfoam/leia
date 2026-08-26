@@ -220,6 +220,21 @@ levelSet
         gradPsi @!GRAD_PSI!@;
         beta            @!SDPLS_BETA!@;  // sdplsBeta only: f_nl = beta - |grad psi|
         discretization @!SOURCE_SCHEME!@;
+        // Rdiv ONLY, unread by every other source type.
+        //   off (default) -- ddt + 2 div(phi,psi) - div(phiW,psi): a DIFFERENCE
+        //     of two upwind operators, so ~21% of off-diagonals go positive and
+        //     the discrete maximum principle is lost.
+        //   composite -- one fvm::div on 2v - w.
+        //   normal    -- one fvm::div on w alone (w.grad psi = v.grad psi).
+        compositeFlux @!SDPLS_COMPOSITE_FLUX!@;
+        // Rdiv only, INERT for every other source. Which single convection
+        // operator the assembled system carries:
+        //   off       -- 2 div(phi,psi) - div(phiW,psi), a DIFFERENCE of two
+        //                upwind operators, so ~21% of off-diagonals go positive
+        //   composite -- one div on the synthetic flux 2 phi - phiW
+        //   normal    -- one div on phiW, whose sign is sign(n.v): the
+        //                direction the interface actually moves
+        compositeFlux @!SDPLS_COMPOSITE_FLUX!@;
 
         // Cut-off (mollifier) that forces f_nl to zero away from the interface.
         // This is eq. (24) of the SDPLS preprint (arXiv:2208.01269): G is unity

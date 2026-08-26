@@ -379,3 +379,6 @@ FADE_MODE levelSet;
 
 // closestPoint descent psi operator: cellPoint (default) | taylor.
 CP_INTERP cellPoint;
+
+// Rdiv assembled convection operator: off (default) | composite | normal.
+SDPLS_COMPOSITE_FLUX off;
