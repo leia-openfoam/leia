@@ -1253,7 +1253,7 @@ psi.correctBoundaryConditions();
   <ul style="font-size:0.75em">
     <li>\(\tilde{\mathbf u}^{\,n+1} = \mathbf u^n_{\mathrm{ext}} + \tfrac{\Delta t}{\Delta t_0}(\mathbf u^n_{\mathrm{ext}}-\mathbf u^{n-1}_{\mathrm{ext}})\) &mdash; AB2 extrapolation fills the SL kernel's <em>new-time</em> slot; \(\mathbf u^n\) fills the old slot.</li>
     <li>\(\psi,\alpha,\kappa,G_\sigma\) are <b>value-frozen</b> for correctors \(k\ge 2\) and all inner iterations &mdash; the in-place \(\psi^{n}\!\to\!\psi^{n+1}\) update would compound if re-run; <code>psiOuterCorrectors yes</code> is the \(\psi^n\)-restore variant (measured on the static droplet: 0.1&ndash;0.4%).</li>
-    <li>Force placement: \(G_\sigma\) from \(\psi^{n+1}\) while momentum advances \(\mathbf u^n\!\to\!\mathbf u^{n+1}\) &mdash; symplectic-Euler placement, \(|\lambda|=1\) for \(\omega\Delta t<2\) on the linear capillary oscillator.</li>
+    <li>Force placement: \(G_\sigma\) from \(\psi^{n+1}\) while momentum advances \(\mathbf u^n\!\to\!\mathbf u^{n+1}\) &mdash; symplectic-Euler placement, \(|\lambda|=1\) for \(\omega\Delta t &lt; 2\) on the linear capillary oscillator.</li>
   </ul>
 </section>
 
