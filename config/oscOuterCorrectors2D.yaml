@@ -1,0 +1,46 @@
+# DOES THE INTERFACE-PIPELINE FREEZE COST TIME ACCURACY WHERE THE VELOCITY
+# GENUINELY CHANGES? -- the 2D oscillating droplet, psiOuterCorrectors on/off.
+#
+# With psiOuterCorrectors no, the whole interface pipeline runs once per step
+# from the AB2-EXTRAPOLATED velocity and is value-frozen across outer
+# correctors. The AB2 predictor keeps the formal order (u~^{n+1} = u^{n+1} +
+# O(dt^2), foot error O(dt^3) local), but the interface then moves with a
+# PREDICTED velocity while momentum settles on a different u^{n+1} -- a
+# kinematic inconsistency whose CONSTANT the stationary droplet cannot measure
+# (u ~ 0 there: the measured 0.1-0.4% null does not generalise). The user's
+# point stands: a TRANSLATING droplet cannot measure it either, because for
+# constant velocity the AB2 extrapolation is exact. The oscillating droplet is
+# the cheapest case where du/dt != 0 through every capillary period, so the
+# predicted-vs-realised velocity mismatch is active.
+#
+# ARMS: 2 resolutions x {no, yes}. Same capillary dt per resolution on both
+# arms, so windows match step-for-step with no estimator caveats. Production
+# delivery, filter OFF (no-filtering rule), BDF2 + Gauss upwind from the
+# repository defaults via the freshly ported templates.
+#
+# SCORE (always volume AND shape): the m=2 amplitude envelope and period
+# (m2Amplitude/m2Cos/m2Sin columns) against Lamb's viscous decay, the on/off
+# DELTA of those at matched steps, phaseVolumeRelError, zeroSetRadialL2, and
+# max|U'|. If the freeze costs accuracy for moving interfaces, it shows here
+# first as a period/amplitude gap that grows with resolution.
+#
+# END_TIME 0.025 s covers ~3 oscillation periods (omega ~ 763 rad/s).
+study_name: oscOuterCorrectors2D
+case: oscillatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [128, 256]
+  PSI_OUTER_CORRECTORS: ["no", "yes"]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  END_TIME: [0.025]
+solve_runtime: 480
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

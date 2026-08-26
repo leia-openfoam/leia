@@ -1,0 +1,78 @@
+// # Alias Dictionary
+// ==================
+//
+// Multi-word dictionary values that a study token must select as ONE word.
+// Same role and same mechanism as cases/2Dvortex/system/aliasDict: the study
+// harness substitutes a single token value, and OpenFOAM's `$name` expansion
+// (which searches enclosing dictionary scopes) turns it back into the
+// multi-word scheme text inside a sub-dictionary.
+
+// ## Level-set time scheme, selected by the PSI_DDT study token.
+//
+// WHY THIS AXIS EXISTS (2026-08-19). The coupled droplet runs `default Euler`
+// in ddtSchemes, and that default reaches fvm::ddt(psi) in alphaEqn.H -- so the
+// LEVEL SET, not just momentum, is integrated first order in time here, while
+// every kinematic ladder (2Dvortex, 3Dshear, 3Ddeformation) runs
+// CrankNicolson 1. The kinematic-vs-coupled comparison therefore differed in
+// TWO things, not one, and this token controls the second.
+//
+// The mechanism that makes it worth a study rather than a footnote: with the
+// simpleLinearImplicit source the per-step factor is 1/(1 - a*dt). For a strain
+// `a` that alternates sign with zero mean -- which is what a standing mode-4
+// parasitic current produces -- one +/- pair gives 1/(1 - z^2) > 1 with
+// z = a*dt, so implicit Euler RECTIFIES a zero-mean oscillating strain into
+// one-sided growth of |psi| at O(z^2) per pair. The Crank-Nicolson factor
+// (1 + z/2)/(1 - z/2) is the (1,1) Pade approximant and is symmetric: the pair
+// product is exactly 1 and the leading rectification is O(z^3).
+//
+// PREDICTION to falsify: the 4x dt refinement already measured moved the drain
+// half-life 0.046-0.049 -> 0.052-0.060 (+~20%), which is what the same O(z^2)
+// term predicts at z ~ 0.023. CrankNicolson attacks the SAME term, so it should
+// buy ~20% and no more. Much more => the rectification model is incomplete.
+// Worse => the competing effect wins: CrankNicolson is only A-stable, with
+// amplification -> -1 at grid scale, so it never damps the mode-4 noise that
+// L-stable Euler does damp.
+//
+// MOMENTUM STAYS ON Euler regardless: raising the momentum time order at the
+// calibrated capillary step is MEASURED to diverge on this problem (N=64,
+// dt=2e-5: backward peaks ~48, CrankNicolson 0.9 ~1e+102 -- see the ddtSchemes
+// comment in fvSchemes). Only ddt(psi) is switched.
+
+// BackwardDdt (BDF2) is the DISCRIMINATING third point, added 2026-08-19 after
+// the CrankNicolson arm failed. The three schemes separate ORDER from DAMPING:
+//
+//   scheme          order   A-stable   L-stable   rectification of an
+//                                                 oscillating zero-mean strain
+//   Euler             1        yes       YES      O(z^2), one-sided
+//   CrankNicolson     2        yes       no       O(z^3)
+//   backward (BDF2)   2        yes       YES      O(z^3)
+//
+// CrankNicolson removed the O(z^2) rectification and made the coupled droplet
+// WORSE at N >= 64 (diverged at t = 0.046 / 0.030 against Euler's 0.058 /
+// 0.040), which says the L-stable damping it gave up was worth more than the
+// rectification it removed -- its amplification factor tends to -1 as z -> -inf,
+// so it never damps the grid-scale mode-4 capillary noise that Euler does.
+//
+// backward is the scheme that has BOTH properties: second order in time AND
+// L-stable (stiffly accurate, amplification -> 0 as z -> -inf). So it decides
+// between the two readings of the CrankNicolson failure:
+//   * if the failure was LOSS OF DAMPING, backward should behave like Euler or
+//     better, and the ~20% rectification gain should finally show up;
+//   * if the failure was SECOND ORDER ITSELF -- e.g. the wider stencil
+//     resolving and propagating the mode-4 perturbation that Euler's numerical
+//     dissipation smears -- backward should fail like CrankNicolson.
+//
+// Neither outcome is expected to be a FIX: the mechanism study established that
+// the drain is seeded entirely by curvature error (with the exact-curvature
+// force, relative volume error is 0.000e+00 at every N for both Euler and CN,
+// with the source ON). This arm is mechanism, not remedy.
+//
+// MOMENTUM STAYS ON Euler here as in every other arm. That is not a detail:
+// `backward` on MOMENTUM is measured to diverge on this capillary problem at
+// the calibrated step (N=64, dt=2e-5: peak ~48), and is stable only at
+// dt_sigma/8. Only ddt(psi) is switched.
+EulerDdt          Euler;
+CrankNicolsonDdt  CrankNicolson 1;
+BackwardDdt       backward;
+
+// ************************************************************************* //

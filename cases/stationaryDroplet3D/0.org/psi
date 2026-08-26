@@ -25,6 +25,10 @@ boundaryField
     {
         type            zeroGradient;
     }
+    "(left|right|front|back|bottom|top)"
+    {
+        type            zeroGradient;
+    }
 }
 
 // ************************************************************************* //

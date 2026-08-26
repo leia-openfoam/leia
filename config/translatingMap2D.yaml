@@ -1,0 +1,42 @@
+# THE TRANSLATING DROPLET AT R/h = 25: the same field-level map used to
+# investigate the stationary R/h = 25 arm (dense frames -> envelope, quiver
+# matrix, animation), now with a constant background velocity U = (0.05,0,0).
+#
+# WHY. Two predictions collide here. From the SAAMPLE reading: Lagrangian/SL
+# advection under CONSTANT velocity is exact for the foot point (du/dt = 0,
+# (u.grad)u = 0 => x_d = x_c - u dt exactly; resampling is the only error), and
+# the droplet sweeping through cells decorrelates the mesh-locked m = 8
+# curvature-error pattern from any single interface mode -- predicting SLOWER
+# growth than the stationary case. From Popinet's VOF: the translating droplet
+# is where advection error continually re-perturbs the interface and the
+# current GROWS, converging only at ~first order. Whichever way it falls is
+# informative: slower confirms phase-decorrelation as a real channel and makes
+# the STATIONARY droplet the worst case (coherent pumping); equal-or-faster
+# kills the decorrelation picture.
+#
+# Travel: 0.05 m/s x 0.025 s = 1.25 mm = 1.25R; the droplet ends 2.75R clear of
+# the right wall of the 0.01 m box. SERIAL and densely written (WRITE_INTERVAL
+# 2e-4 -> 126 frames) so make_parasitic_animation.py / make_parasitic_matrix.py
+# run on it directly, no reconstruction. The metrics subtract the background
+# velocity (dropletReferenceVelocity in the ported fvSolution template), so
+# maxMagUPrime is the parasitic measure and the zero-set errors are against the
+# translated analytic circle.
+study_name: translatingMap2D
+case: translatingDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [250]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  END_TIME: [0.025]
+  WRITE_INTERVAL: [2.0e-4]
+solve_runtime: 480
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

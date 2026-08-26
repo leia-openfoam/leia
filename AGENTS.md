@@ -13,6 +13,21 @@ Read both before making changes or running simulations. Key rules:
 - Build against `$HOME/OpenFOAM/OpenFOAM-v2512`; run studies with
   `make studies PROFILE=profiles/{local,slurm}`.
 
+## Time integration: BDF2 (`backward`) everywhere
+
+**Momentum uses OpenFOAM's `backward` (BDF2) scheme in every leia two-phase
+study — never Euler.** There is no "historical Euler default" to fall back to:
+`MOMENTUM_DDT_SCHEME backward;` is the repository default and any new case
+template must reference the token rather than hardcoding a scheme. The SL
+foot-point trace is second-order in time and must not be fed a first-order
+velocity; BDF2 evaluates fluxes and sources at t^{n+1}, matching the
+interface-pipeline placement (force built from psi^{n+1}).
+
+Measured basis: BDF2 vs Euler on matched windows moved the stationary-droplet
+gain by +11.1/+2.9/-3.0 percent (sign-flipping, i.e. noise) with volume and
+shape within 1.2 percent — BDF2 costs nothing and is formally right, so it is
+mandatory, not optional.
+
 ## Method constraint: unstructured FVM only
 
 **Never propose or pursue a method that depends on a structured or Cartesian

@@ -27,6 +27,13 @@ boundaryField
         // the startup YoungLaplace solve cannot set.
         type            zeroGradient;
     }
+    "(left|right|front|back|bottom|top)"
+    {
+        // Closed box, no gravity: Neumann wall pressure + a reference cell
+        // (PIMPLE pRefCell/pRefValue). Avoids the fixedFluxPressure gradient that
+        // the startup YoungLaplace solve cannot set.
+        type            zeroGradient;
+    }
 }
 
 // ************************************************************************* //

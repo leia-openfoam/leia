@@ -16,6 +16,12 @@ values
     );
 
     // End time of the benchmark [s].
+    // Ported to the stationaryDroplet2D template family (2026-08-26): DOMAIN
+    // tokens for blockMesh + implicitSurface centre, capillary dt referenced to
+    // the 0.01 m calibration box exactly as the stationary case does.
+    DOMAIN_LENGTH ( 0.01 );
+    CAPILLARY_REF_LENGTH ( 0.01 );
+
     END_TIME ( 0.1 );
 
     // Advective + interface Courant ceiling (adjustTimeStep). Low, because the
@@ -26,4 +32,10 @@ values
     // calibrated so maxDeltaT(N=32) = 6e-5 s ~ dt_sigma/4 for water/air, sigma=0.07274.
     //   0.010861 = 6e-5 * 32^1.5.
     CAPILLARY_DT_COEFF ( 0.010861 );
+
+    // Departure-foot reconstruction: pinned HERE exactly as stationaryDroplet2D
+    // pins it -- default.parameter carries the CACHED quadratic, whose
+    // meanCurvatureNoExtension is not implemented, so the curvature fill of the
+    // two-phase solver aborts without this pin.
+    SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
 }

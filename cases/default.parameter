@@ -178,6 +178,7 @@ CURVATURE_INVERSE_GAUSSIAN yes;
 // spatial effect from a per-step one. Measured on the 3D ladder, r*dt is constant
 // to 24% while r itself rises 2.2x, so running one fixed dt across the ladder is
 // what separates the two.
+WRITE_INTERVAL 0.02;    // controlDict writeInterval [s] (runTime write control)
 FIXED_DELTA_T 0;
 
 // Momentum ddt(rho,U) scheme. Euler is the default and what every validated result
@@ -367,3 +368,7 @@ CP_TOL 0.1;
 // existing study is bit-unchanged. reconstructionFit reuses the quadratic LSQ
 // fit of the semi-Lagrangian line, which is what the 1D gate tests.
 FOOT_POINT_SOURCE fieldInterpolation;
+
+// levelSet.narrowBand.type. signChange is the historical default and stays
+// the default so every existing case is bit-unchanged.
+NARROW_BAND signChange;

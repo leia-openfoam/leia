@@ -15,23 +15,43 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 // 2D stationary-droplet benchmark (arXiv:2212.02904, Sec. 3.3.1): a
-// 0.01 x 0.01 m^2 box, one cell thick. n_cells is swept by the study
+// domain x domain box, one cell thick. n_cells is swept by the study
 // (@!N_CELLS!@ = 32, 64, 128, 256); z thickness is fixed (empty front/back => 2D).
+//
+// domain = @!DOMAIN_LENGTH!@ is the box side [m], default 0.01 (the reference
+// box every published run of this case used). It is a token so the DOMAIN-SIZE
+// CONTROL can truncate the far field at FIXED h: the droplet R = 1 mm sits in
+// 0.1% of the 0.01 m box volume in 3D, so most cells only carry a smooth outer
+// pressure field. Shrinking the box to 4R keeps h, the step count and every
+// metric (volume error is relative to the INITIAL DISCRETE volume, shape error
+// is crossing-radius vs radius -- both domain-independent) while cutting the
+// cell count, which is what makes a wide-h 3D ladder affordable on a UNIFORM
+// mesh instead of an octree-refined one.
+//
+// The z half-thickness stays at 1.5625e-4 for EVERY domain size and N. It is
+// inert with empty front/back (no z neighbours in the addressing), and holding
+// it fixed means any V-derived quantity is affected identically in the
+// truncated and the reference arm, so the control comparison stays clean.
+//
+// maxDeltaT tracks h, not n_cells: materialize evaluates the capillary limit at
+// nRef = CAPILLARY_REF_LENGTH/h, so a 4R box at n_cells = 40 gets the SAME dt
+// as the 0.01 m box at N = 100. Both have h = 1e-4.
 
 scale   1;
 
 n_cells @!N_CELLS!@;
+domain  @!DOMAIN_LENGTH!@;
 
 vertices
 (
-    (0     0     -1.5625e-4)
-    (0.01  0     -1.5625e-4)
-    (0.01  0.01  -1.5625e-4)
-    (0     0.01  -1.5625e-4)
-    (0     0      1.5625e-4)
-    (0.01  0      1.5625e-4)
-    (0.01  0.01   1.5625e-4)
-    (0     0.01   1.5625e-4)
+    (0        0        -1.5625e-4)
+    ($domain  0        -1.5625e-4)
+    ($domain  $domain  -1.5625e-4)
+    (0        $domain  -1.5625e-4)
+    (0        0         1.5625e-4)
+    ($domain  0         1.5625e-4)
+    ($domain  $domain   1.5625e-4)
+    (0        $domain   1.5625e-4)
 );
 
 blocks
@@ -43,29 +63,15 @@ edges
 (
 );
 
-// Inflow/outflow channel (NOT cyclic: the SL two-phase solver calls
-// patchNeighbourField on a sliced geometry field, which OpenFOAM does not
-// implement for COUPLED patches -> cyclic is unsupported). Uniform inflow U0 at
-// the left, pressure outlet at the right, slip top/bottom: a uniform stream in
-// which the droplet coasts. The droplet starts at the centre and translates
-// ~2.5 diameters toward the outlet over the run without reaching it.
 boundary
 (
-    inlet
-    {
-        type patch;
-        faces ( (0 4 7 3) );   // left
-    }
-    outlet
-    {
-        type patch;
-        faces ( (2 6 5 1) );   // right
-    }
     walls
     {
         type wall;
         faces
         (
+            (0 4 7 3)   // left
+            (2 6 5 1)   // right
             (3 7 6 2)   // top
             (1 5 4 0)   // bottom
         );

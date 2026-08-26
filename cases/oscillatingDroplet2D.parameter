@@ -16,6 +16,12 @@ values
     );
 
     // End time of the benchmark [s].
+    // Ported to the stationaryDroplet2D template family (2026-08-26): DOMAIN
+    // tokens for blockMesh + implicitSurface centre, capillary dt referenced to
+    // the 0.01 m calibration box exactly as the stationary case does.
+    DOMAIN_LENGTH ( 0.01 );
+    CAPILLARY_REF_LENGTH ( 0.01 );
+
     END_TIME ( 0.1 );
 
     // Advective + interface Courant ceiling (adjustTimeStep). Low, because the
@@ -34,8 +40,6 @@ values
     // FVM curvature: kappa = div(grad psi/|grad psi|), order-matched to the
     // 2nd-order FVM momentum discretization and curvature-FREE, which is what
     // let this case sweep a linear transport fit without a geometryFit object.
-    SURFACE_TENSION_FORCE ( divGradPsiSnGradAlpha );
-    CURVATURE_EXTENSION   ( fvm );
 
     // One reconstruction object for transport and geometry, as before.
     GEOMETRY_FIT ( none );

@@ -1,0 +1,46 @@
+# FACE ORIENTATION AND THE AMPLIFIER: the stationary droplet on a POLYHEDRAL
+# mesh, production delivery, filter off.
+#
+# On hex meshes the parasitic mode is m = 8, locked to the mesh-symmetry angles
+# (maximum within 2.75 deg of a multiple of 45 deg), and the freeze/clamp/swap
+# experiments attribute the exponential pump to the PHASE-coherent response of
+# the refitted curvature to the interface displacement. A polyhedral (cfMesh
+# dual) mesh scatters the face orientations: no angle is preferred, so the
+# question this study asks is whether orientation COHERENCE -- rather than the
+# mere presence -- of the curvature error is what organises the pump. If the
+# growth rate drops (or the mode delocalises into broadband, saturating noise),
+# orientation coherence is load-bearing and any hex-specific analysis
+# under-predicts general-mesh robustness; if the rate is unchanged, the pump is
+# purely local and mesh topology is irrelevant -- both outcomes constrain the
+# variational-pairing design.
+#
+# Same certified 6R box, same capillary dt (MAX_CELL_SIZE = DOMAIN_LENGTH/
+# N_CELLS = 1.0e-4, so dt matches the hex R/h = 10 rung), same quarter horizon.
+# The hex reference at this rung DAMPS (A = -8.965e-05 per step, filter off), so
+# the discriminating readout is the SIGN and size of A on poly at matched steps
+# -- plus, always, volume and shape error. Further rungs (MAX_CELL_SIZE 6.316e-5
+# ~ R/h 15.8 where hex GROWS at +7.681e-04, and 5.0e-5 ~ R/h 20) need cluster
+# memory; the axes here hold the first rung so the laptop can run it while
+# Lichtenberg is closed. Snakemake axes are a cartesian product, so the paired
+# (MAX_CELL_SIZE, N_CELLS) rungs are added by extending BOTH lists together in
+# lockstep -- never one without the other.
+study_name: polyDroplet3D
+case: stationaryDroplet3D
+mesh: poly
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60]
+  MAX_CELL_SIZE: [1.0e-4]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  END_TIME: [0.025]
+solve_runtime: 1200
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
