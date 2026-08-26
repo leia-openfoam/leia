@@ -126,6 +126,47 @@ void Foam::velocityModel::setVelocity(volVectorField& U) const
 
     forAll(meshBoundary, patchI)
     {
+        // COUPLED (processor, cyclic) PATCHES MUST BE SKIPPED.
+        //
+        // A coupled patch field does NOT hold the value at the face: it holds
+        // the value in the NEIGHBOURING CELL CENTRE. That is what
+        // processorFvPatchField::patchNeighbourField() returns, and it is what
+        // every coupled-patch operator interpolates against --- Gauss gradient
+        // forms w*U_own + (1 - w)*U_neighbour and expects the second term to be
+        // a cell value.
+        //
+        // Writing velocity(Cf) here therefore stores a FACE value where a CELL
+        // value is expected. On a uniform mesh with w = 1/2 the interpolation
+        // returns 0.5*U(x_P) + 0.5*U(x_f) instead of U(x_f), an error of
+        // 0.5*(U(x_f) - U(x_P)) = a*h/4 for a linear field of strain a. Divided
+        // by the cell volume in the Gauss sum that is an O(a) --- NOT O(h) ---
+        // error in grad(U) in every cell adjacent to a processor boundary, and
+        // it does not vanish under refinement.
+        //
+        // MEASURED on cases/1Dstretch (v = a x e_x, a = 1 1/s, exact solution
+        // known), band mean d(psi)/dx at t = 1, N = 64:
+        //            serial      np=2       np=4       np=8
+        //   noSource 0.367872  0.367872   0.367872   0.367872   (exact e^-1)
+        //   R        1.000000  1.004681   1.005367   0.956834
+        //   Rdiv     0.367872  0.322012   0.317157   0.312497
+        // The sourceless arm is clean to 1.7e-07 at every processor count
+        // because setVolumetricFlux writes phi PER FACE, where the face-centre
+        // value IS the correct flux, so advection never sees this. Only
+        // fvc::grad(U) does --- and the SDPLS source is its only consumer.
+        // Rdiv is hit twice: w = (nhat & U) nhat inherits the error and
+        // fvc::flux(w) then interpolates it, so phiW != phi at coupled faces
+        // and the discrete cancellation the form depends on (exact to the last
+        // digit in serial) fails.
+        //
+        // Leaving them to correctBoundaryConditions() below is also the more
+        // accurate choice: the halo exchange returns the TRUE neighbour cell
+        // value, not an analytic approximation to it, so a coupled face
+        // interpolates exactly as an internal face does.
+        if (meshBoundary[patchI].coupled())
+        {
+            continue;
+        }
+
         const auto& CfPatchField = CfBoundaryField[patchI];
         auto& UpatchField = UboundaryField[patchI];
         forAll(UpatchField, faceI)
@@ -133,6 +174,9 @@ void Foam::velocityModel::setVelocity(volVectorField& U) const
             UpatchField[faceI] = velocity(CfPatchField[faceI]);
         }
     }
+
+    // Halo exchange: fills every coupled patch with the neighbour cell values.
+    U.correctBoundaryConditions();
 }
 
 
