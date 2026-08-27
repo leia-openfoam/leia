@@ -137,7 +137,7 @@
     <li><span class="idx">3</span>3D &mdash; and where the claim weakens</li>
     <li><span class="idx">4</span>Where the missing order is <em>not</em> &mdash; the 56-case gradient-scheme ablation</li>
     <li><span class="idx">5</span>Where the order <em>is</em> lost &mdash; the O(h<sup>p&minus;1</sup>) estimate and its falsification tests</li>
-    <li><span class="idx">6</span>A conservative implicit form (<code>Rdiv</code>) &mdash; derivation, the measured outcome, and its <b class="warn">withdrawal</b></li>
+    <li><span class="idx">6</span>A conservative implicit form (<code>Rdiv</code>) &mdash; derivation, the measured outcome, and its <b class="warn">withdrawal</b> &mdash; now closed on a structural argument, not pending one</li>
     <li><span class="idx">7</span>Why <code>beta</code> fails &mdash; it targets the wrong gradient</li>
     <li><span class="idx">8</span>The method-decision benchmark &mdash; 32&sup2;&ndash;512&sup2;, wall clock, field atlas</li>
     <li><span class="idx">9</span>Two-phase coupling &mdash; defect correction under <code>nOuterCorrectors</code></li>
@@ -145,11 +145,19 @@
         force the source does no harm at all: 0.000e+00, twelve of twelve cases</li>
     <li><span class="idx">11</span><b>Coupled: the negative result</b> &mdash; mesh-locked mode-4 capillary
         instability, the <b class="warn">retraction</b> of the <code>Rdiv</code> reading, the
-        <b class="warn">falsified</b> diagonal-dominance hypothesis (<code>RdivStrictSp</code>),
-        time schemes, and the &int;&psi;&nbsp;dV budget</li>
+        <b class="warn">falsified</b> diagonal-dominance hypothesis (<code>RdivStrictSp</code>), the
+        <b class="warn">retracted</b> product-rule closeout, <b>the operator-pair cause that
+        replaces it</b> (a difference of two upwind operators, positive off-diagonals), the
+        &lambda;-blend sweep that <b>closes <code>Rdiv</code></b>, time schemes, and the
+        &int;&psi;&nbsp;dV budget</li>
     <li><span class="idx">12</span>Source variants &amp; volume correction &mdash; exponential
-        integration measured on all three metrics, and the global Newton shift</li>
-    <li><span class="idx">13</span>Software design &mdash; one solver, one dictionary</li>
+        integration measured on all three metrics, <b class="good">the new
+        <code>exponentialImplicit</code> member</b> that repairs its shape and volume cost, and the
+        global Newton shift</li>
+    <li><span class="idx">13</span>Two coupled-patch defects &mdash; <code>fvc::grad(U)</code> on
+        processor patches and the raw extension flux; both fixed, both parallel-only, one published
+        claim now <b class="warn">disputed</b></li>
+    <li><span class="idx">14</span>Software design &mdash; one solver, one dictionary</li>
   </ol>
   <p class="footnote">Prerequisite material (the level set, the phase indicator, the narrow band) is
      shared with the SL and velocity-extension decks and is not repeated here.</p>
@@ -157,7 +165,7 @@
 
 <section data-track="The SDPLS source term">
 <section>
-  <p class="part-kicker">Part 1 of 13</p>
+  <p class="part-kicker">Part 1 of 14</p>
   <h2>The SDPLS source term</h2>
   <ul class="tight">
     <li>Transport with a source proportional to \(\psi\):
@@ -197,7 +205,7 @@
 
 <section data-track="Measured gradient control">
 <section>
-  <p class="part-kicker">Part 2 of 13</p>
+  <p class="part-kicker">Part 2 of 14</p>
   <h2>Measured gradient control (non-reversing vortex)</h2>
   <ul class="tight">
     <li class="good">R holds band max\(|\nabla\psi|\) &le; 1.36 through T=8
@@ -580,9 +588,18 @@
     volume &minus;3.381 at <em>T</em>. Of the two candidates named for why &mdash; the
     cancellation-prone flux pair flagged above, and the unrestricted-sign <code>Sp</code>
     coefficient &mdash; the second has now been tested by a sign-split variant
-    (<code>RdivStrictSp</code>) and <b>falsified</b>: &minus;3.554 against &minus;3.800. The flux
-    pair remains live. <em class="tag">Rdiv</em> is therefore <b class="warn">withdrawn pending an
-    explanation</b> and is not offered as an option of the method.</p>
+    (<code>RdivStrictSp</code>) and <b>falsified</b>: &minus;3.554 against &minus;3.800.
+    <b class="warn">Superseded, and quoted so the change is visible:</b> this box previously ended
+    &ldquo;<em>The flux pair remains live. Rdiv is therefore withdrawn pending an
+    explanation.</em>&rdquo; The explanation has since been measured (Part&nbsp;11). The flux pair
+    <em>is</em> the seat of the defect &mdash; but not through cancellation between two nearly equal
+    magnitudes, which was the reason given here. <code>fvMatrix::operator==</code> subtracts the
+    source term by term, so the assembled matrix is a <b>difference of two upwind convection
+    operators</b>: on any face where \(\mathrm{sign}(\phi_f)\ne\mathrm{sign}(\phi_{\mathbf{w},f})\)
+    the composite off-diagonal is \(+|\phi_{\mathbf{w},f}|\), strictly positive, and the discrete
+    maximum principle is gone. <em class="tag">Rdiv</em> is therefore <b class="warn">withdrawn on a
+    structural argument</b> rather than pending one, and is not offered as an option of the
+    method.</p>
 </section>
 </section>
 
@@ -661,7 +678,7 @@
 
 <section data-track="The decision benchmark">
 <section>
-  <p class="part-kicker">Part 8 of 13</p>
+  <p class="part-kicker">Part 8 of 14</p>
   <h2>The method-decision benchmark</h2>
   <div class="todo" style="border-left:4px solid var(--ls-warn); padding:0.25em 0.7em;
        background:rgba(255,183,77,0.08); font-size:0.85em; color:var(--ls-muted)">
@@ -782,7 +799,7 @@
 
 <section data-track="Two-phase coupling">
 <section>
-  <p class="part-kicker">Part 9 of 13</p>
+  <p class="part-kicker">Part 9 of 14</p>
   <h2>Two-phase coupling</h2>
   <ul class="tight">
     <li>\(\psi\) equation upgraded to the advective form + SDPLS source in
@@ -799,7 +816,7 @@
 <!-- ============ THE DRAIN IS CURVATURE-SEEDED (headline result) ============ -->
 <section data-track="The drain is curvature-seeded">
 <section>
-  <p class="part-kicker">Part 10 of 13</p>
+  <p class="part-kicker">Part 10 of 14</p>
   <h2>The coupled drain is seeded entirely by curvature error</h2>
   <p class="tight">One variable is changed: the <b>surface-tension force</b>. Everything else is held
      fixed &mdash; solver <code>leiaLevelSetTwoPhaseFoam</code>, 2D stationary droplet of radius
@@ -935,7 +952,7 @@
 
 <section data-track="Coupled: the negative result">
 <section>
-  <p class="part-kicker">Part 11 of 13</p>
+  <p class="part-kicker">Part 11 of 14</p>
   <h2>With the production curvature, the source destroys the droplet</h2>
   <p class="tight">Same 2D stationary droplet, same solver, <b>production</b>
      <code>reconstructedCurvature</code> force in every arm. The exact solution is
@@ -1167,6 +1184,13 @@
 
 <section>
   <h3>What the falsification eliminates &mdash; and what it does not</h3>
+  <p class="tight" style="font-size:0.78em; border:1px solid var(--ls-warn); padding:0.3em 0.7em">
+     <b class="warn">RETRACTED &mdash; the product-rule closeout at the foot of this slide.</b> Both
+     suspects (i) and (ii) below have since been measured properly &mdash; at the <em>first</em>
+     assembly, and in a fixed physical band &mdash; and <b>both are bounded and second-order
+     convergent</b>: neither explains the divergence. The table below reads a \(\psi\) that a full
+     period of transport has already polluted, and norms pinned by a fixed geometric singularity.
+     Kept verbatim, as this project keeps its retractions; withdrawn on the next slide.</p>
   <p class="tight" style="border-left:3px solid var(--ls-accent); padding-left:0.6em; font-size:0.88em">
      <b>Scope, stated without overclaiming.</b> The sign split <b>redistributes</b> the
      coefficient \(f=a-\nabla\cdot\mathbf{w}\) between explicit and implicit delivery. It does
@@ -1220,7 +1244,13 @@
      artefact of the differenced terms growing. <b>And the turning point matches.</b> The residual
      falls from \(N=32\) to \(N=64\) and grows monotonically after &mdash; exactly where
      <em class="tag">Rdiv</em>&rsquo;s own band gradient error turns (0.391, 0.256, then 1.56,
-     8.00, 20.5, 103, 669). <b>The error appears where the identity starts failing.</b></p>
+     8.00, 20.5, 103, 669). <b>The error appears where the identity starts failing.</b>
+     <b class="warn">This reading is WITHDRAWN &mdash; next slide.</b> The residuals tabulated here
+     are read at <em>t</em>&nbsp;=&nbsp;<em>T</em>, so they measure a polluted \(\psi\) rather than
+     the operator; and a global \(L_\infty\) on this configuration is flat at \(\approx0.44\)
+     across the whole ladder with its argmax at \(r/h=0.71\) &mdash; the cell holding the
+     <b>circle centre</b>, where \(\nabla\cdot\hat{\mathbf{n}}=(d-1)/r\) is singular. It was
+     reading a fixed geometric singularity, not the scheme.</p>
   <p class="tight" style="font-size:0.82em"><b>What this does and does not establish.</b> The
      residual uses the <em>same</em> \(\nabla\cdot\mathbf{w}\) on both sides, so a coefficient
      that is noisy but used <em>consistently</em> cancels out of it: what it isolates is
@@ -1231,7 +1261,12 @@
      neither is repairable by a change of coefficient alone. A consistent formulation would have to
      compute \(\nabla\cdot\mathbf{w}\) from the <em>same</em> face interpolation
      <code>fvm::div(phiW, psi)</code> uses, so the cancellation holds by construction &mdash; a
-     reformulation, not a patch.</p>
+     reformulation, not a patch.
+     <b class="warn">The missing measurement has since been made.</b> The coefficient error against
+     the analytic Rider&ndash;Kothe velocity is the first column of the corrected table on the next
+     slide and converges at <b>+1.972</b>, so suspect (i) is eliminated as well &mdash; and
+     substituting the exact smooth \(\mathbf{w}\) for the discrete one moves the residual by less
+     than 20% at every rung, which eliminates suspect (ii) by the same stroke.</p>
   <p class="tight" style="font-size:0.85em; border:1px solid var(--ls-warn); padding:0.35em 0.7em">
      <b class="warn">Consequence for the method: <em class="tag">Rdiv</em> is withdrawn pending an
      explanation.</b> The conservative divergence-form source has now failed a kinematic gate in
@@ -1241,7 +1276,316 @@
      (&minus;3.554, &minus;0.951, &minus;0.863). It must be reported as <b>withdrawn</b>, not
      carried as an available option of the method. It is not deleted: the derivation of Part 6
      stands, the continuum identity \(S=a\psi=-\nabla_{\!s}\cdot(\psi\mathbf{v})\) is unaffected,
-     and what has failed is <em>this</em> discretization of it.</p>
+     and what has failed is <em>this</em> discretization of it.
+     <b class="warn">Superseded in its reason, not in its verdict:</b> the clause
+     &ldquo;<em>withdrawn pending an explanation</em>&rdquo; no longer holds, because the
+     explanation has been measured. <em class="tag">Rdiv</em> remains withdrawn, on the structural
+     argument the next four slides set out.</p>
+</section>
+
+<section>
+  <h3 class="warn">RETRACTED &mdash; the product-rule closeout on <em class="tag">Rdiv</em></h3>
+  <table style="font-size:0.76em; margin:0.2em auto 0.45em; width:97%">
+    <tr><td style="text-align:left; width:19%; vertical-align:top"><b>What was claimed</b></td>
+        <td style="text-align:left">The previous slide reported the discrete product-rule residual
+        \(r=\nabla\cdot(\mathbf{w}\psi)-\psi\,\nabla\cdot\mathbf{w}-\mathbf{w}\cdot\nabla\psi\)
+        <em>growing</em> under refinement &mdash; &minus;0.789 in \(L_2\), &minus;1.585 in
+        \(L_\infty\), and &minus;0.545 relative to the reference norm &mdash; and concluded that
+        <em class="tag">Rdiv</em> is built on <b>&ldquo;a discrete identity its own discretisation
+        violates, increasingly under refinement&rdquo;</b>. Both named suspects were left live: the
+        noisy coefficient \(\nabla\cdot\mathbf{w}\) (i), and the interpolation inconsistency
+        between <code>fvm::div(phiW, psi)</code> and <code>fvc::div(phiW)</code> (ii).</td></tr>
+    <tr><td style="text-align:left; vertical-align:top"><b class="warn">How it failed</b></td>
+        <td style="text-align:left"><b>Twice over, and both failures are in the measurement, not in
+        the arithmetic.</b> <b>(1) Wrong instant.</b> The tabulated residuals are read at
+        <em>t</em>&nbsp;=&nbsp;<em>T</em>, by which time \(\psi\) has been transported for a whole
+        period and carries the accumulated solution error of the very scheme under test. The probe
+        therefore measures a <b>polluted field</b>, not the operator acting on a known one: any
+        growth in \(r\) is indistinguishable from growth in \(\psi\)'s own error.
+        <b>(2) Wrong domain.</b> The norms are global, and on this configuration a global
+        \(L_\infty\) is pinned by a <b>fixed geometric singularity</b>: it sits flat at
+        \(\approx0.44\) across the entire ladder, and its argmax is always at \(r/h=0.71\) &mdash;
+        the one cell holding the <b>circle centre</b>, where the signed distance has its kink and
+        \(\nabla\cdot\hat{\mathbf{n}}=(d-1)/r\) is singular. A norm whose value is set by a single
+        cell of exact geometry reports the geometry, not the scheme, and it will read the same at
+        every resolution because the singularity does not refine away.</td></tr>
+    <tr><td style="text-align:left; vertical-align:top"><b class="good">Corrected reading</b></td>
+        <td style="text-align:left">Re-measured at the <b>first assembly</b>, while \(\psi\) is
+        still the sampled exact signed distance to \(5\times10^{-14}\), and inside a <b>fixed
+        physical annulus</b> \(|\psi_{\text{exact}}|\le0.05\) &mdash; deliberately <em>not</em> a
+        multiple of \(h\), because a norm whose domain shrinks with the mesh is taken over a
+        different region at every rung and has no convergence order at all &mdash; <b>every
+        quantity in the closeout converges at second order</b>. The identity is not violated
+        increasingly under refinement; it is satisfied to \(O(h^2)\).
+        <b>The conclusion is withdrawn.</b></td></tr>
+  </table>
+  <table style="font-size:0.74em; margin:0 auto">
+    <tr><th style="text-align:left"><em>N</em></th><th>\(h\)</th>
+        <th>coefficient error<br><span class="muted">\(\|\delta(\nabla\cdot\mathbf{w})\|_2\)</span></th>
+        <th>operator only<br><span class="muted">exactly sampled \(\mathbf{w}\)</span></th>
+        <th>discrete normal only<br><span class="muted">its own contribution</span></th>
+        <th>band residual<br><span class="muted">\(\|r\|_2\), fixed annulus</span></th></tr>
+    <tr><td>32</td><td>0.031250</td><td>3.135e&minus;01</td><td>2.615e&minus;01</td>
+        <td>9.130e&minus;02</td><td>8.200e&minus;03</td></tr>
+    <tr><td>64</td><td>0.015625</td><td>8.383e&minus;02</td><td>7.030e&minus;02</td>
+        <td>2.199e&minus;02</td><td>2.026e&minus;03</td></tr>
+    <tr><td>128</td><td>0.007813</td><td>2.056e&minus;02</td><td>1.727e&minus;02</td>
+        <td>5.383e&minus;03</td><td>5.047e&minus;04</td></tr>
+    <tr><td>256</td><td>0.003906</td><td>5.256e&minus;03</td><td>4.405e&minus;03</td>
+        <td>1.379e&minus;03</td><td>1.267e&minus;04</td></tr>
+    <tr><td colspan="2"><b>order in \(h\)</b></td>
+        <td class="good"><b>+1.972</b><br><span class="muted">(\(L_\infty\) +1.728)</span></td>
+        <td class="good"><b>+1.970</b></td>
+        <td class="good"><b>+2.018</b></td>
+        <td class="good"><b>+2.005</b><br><span class="muted">(\(L_\infty\) +1.915)</span></td></tr>
+  </table>
+  <p class="tight" style="font-size:0.8em"><b>What each column isolates, and what it therefore
+     kills.</b> Column&nbsp;1 is the total error of the discrete coefficient
+     \(\nabla\cdot\mathbf{w}\) against the analytic velocity &mdash; the measurement the previous
+     slide said had <em>not</em> been made, and the one that decides <b>suspect (i)</b>: it
+     converges at <b>+1.972</b>, so the coefficient noise is bounded and second order, not growing.
+     Columns&nbsp;2 and 3 split that error in two: the divergence operator fed an <em>exactly
+     sampled</em> \(\mathbf{w}\) (+1.970) and the contribution of the <em>discrete normal</em>
+     alone (+2.018). Neither half is anomalous; the two are the same order, so no single ingredient
+     is the culprit. Column&nbsp;4 is the product-rule residual itself, now in the fixed annulus:
+     <b>+2.005</b>, and \(L_\infty\) <b>+1.915</b>, which decides <b>suspect (ii)</b>. The
+     reference norm \(\|\nabla\cdot(\mathbf{w}\psi)\|_2\) over the same annulus is
+     mesh-independent &mdash; 3.506, 3.453, 3.445, 3.463 &mdash; which is the check that the band
+     and the reference are themselves well posed: a relative order and an absolute order therefore
+     say the same thing here, which was exactly what the retracted table could not guarantee.</p>
+  <p class="tight" style="font-size:0.8em; border:1px solid var(--ls-good); padding:0.35em 0.7em">
+     <b>The direct substitution test closes both suspects at once.</b> Replacing the discrete
+     \(\mathbf{w}\) by the exact smooth \(\mathbf{w}\) and changing <b>nothing else</b> moves the
+     product-rule residual by <b>less than 20% at every instant and every rung</b> (ratio
+     0.81&ndash;1.09). If either the coefficient noise or the assembly inconsistency were driving
+     the divergence, handing the operator an exact coefficient would have changed the residual by
+     orders of magnitude. It changes it by a fifth. <b>Both previously named suspects are bounded,
+     second-order convergent, and eliminated</b> &mdash; which leaves the divergence, measured at
+     orders &minus;3.800 in 2D and &minus;3.383 in 3D shear, entirely unexplained by this slide's
+     line of attack. The explanation is on the next slide, and it is not a consistency error at
+     all.</p>
+</section>
+
+<section>
+  <h3>The actual cause &mdash; <em class="tag">Rdiv</em> assembles a <b>difference of two upwind operators</b></h3>
+  <p class="tight"><code>fvMatrix::operator==</code> subtracts the right-hand side term by term,
+     so the system matrix actually handed to the linear solver is</p>
+  <p style="text-align:center; font-size:1.0em; border:1px solid var(--ls-muted); padding:0.3em 0.8em; display:inline-block">
+     <code>fvm::ddt(psi) &nbsp;+&nbsp; 2*fvm::div(phi, psi) &nbsp;&minus;&nbsp; fvm::div(phiW, psi)
+     &nbsp;+&nbsp; (diagonal terms)</code></p>
+  <p class="tight">A single <code>fvm::div</code> with an upwind-biased face interpolation has
+     <b>off-diagonal coefficients \(\le0\) in every row, whatever the sign of the flux.</b> On a
+     face between \(P\) and \(N\) the face value is taken from the upwind cell, so exactly one of
+     the two rows receives a neighbour coefficient \(-|\phi_f|\) and the other receives zero. That
+     is the property that makes a pure convection operator an M-matrix and gives it a discrete
+     maximum principle. <b>Subtracting such an operator flips every one of its signs.</b> Where
+     \(\mathrm{sign}(\phi_f)\ne\mathrm{sign}(\phi_{\mathbf{w},f})\) the two operators upwind from
+     <b>opposite cells</b>, so their entries land in <em>different</em> rows, nothing cancels, and
+     the composite off-diagonal is exactly \(+|\phi_{\mathbf{w},f}|\) &mdash; strictly positive.
+     \(\phi_f\) and \(\phi_{\mathbf{w},f}\) are the fluxes of two <em>different</em> vector fields
+     through the same face, \(\mathbf{v}\) and its normal projection
+     \(\mathbf{w}=(\hat{\mathbf{n}}\cdot\mathbf{v})\hat{\mathbf{n}}\), and nothing whatever forces
+     them to agree in sign.</p>
+  <p class="tight">Measured in-assembly on the 2D vortex, <em>N</em>&nbsp;=&nbsp;64:</p>
+  <table style="font-size:0.78em; margin:0 auto">
+    <tr><th style="text-align:left">in-assembly census</th><th>count</th><th>share</th></tr>
+    <tr><td>internal faces</td><td>8064</td><td class="muted">&mdash;</td></tr>
+    <tr><td>faces with \(\mathrm{sign}(\phi_f)\ne\mathrm{sign}(\phi_{\mathbf{w},f})\)</td>
+        <td><b>2924</b></td><td class="warn"><b>36.3%</b></td></tr>
+    <tr><td>&hellip; fraction of the total flux magnitude those faces carry</td>
+        <td class="muted">&mdash;</td><td>10.9%</td></tr>
+    <tr><td>positive off-diagonal entries in the assembled matrix</td>
+        <td><b>3382</b></td><td class="warn"><b>21.0%</b></td></tr>
+    <tr><td>\(\max(\text{positive off-diagonal row sum})\,\Delta t/V\)</td>
+        <td colspan="2">\(\approx0.19\), <b>mesh-independent</b> &mdash; about \(0.38\,\)CFL</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.82em">Arithmetic on that census, not a separate measurement:
+     the 21.0% is of the two off-diagonal entries carried by each of the 8064 internal faces, and
+     2924 of the 3382 positive entries are accounted for one-for-one by the sign-mismatched faces.
+     The remaining 458 come from <em>same</em>-sign faces where
+     \(|\phi_{\mathbf{w},f}|>2|\phi_f|\), the other way a composite entry
+     \(-2|\phi_f|+|\phi_{\mathbf{w},f}|\) can turn positive. Sign mismatch is the dominant route
+     but not the only one. Note also that the mismatched faces carry only <b>10.9%</b> of the flux
+     magnitude: this is not a large perturbation of the transport, it is a <em>structural</em>
+     change of the matrix.</p>
+  <p class="tight" style="font-size:0.85em; border:1px solid var(--ls-warn); padding:0.35em 0.7em">
+     <b>Why every run still completes, and why it diverges anyway.</b> The positive off-diagonal
+     row sum is \(\approx0.19\) when scaled by \(\Delta t/V\) against the \(1/\Delta t\) the time
+     derivative puts on the diagonal, so <b>no row loses diagonal dominance outright</b> &mdash;
+     which is exactly why the <code>solverFailed</code> column is blank on every rung, every linear
+     solve converges, and every run reaches <em>t</em>&nbsp;=&nbsp;<em>T</em>. What is gone is the
+     <b>discrete maximum principle</b>: with positive off-diagonals a local extremum of \(\psi\) is
+     no longer bounded by its neighbours and can grow instead of being damped. The ratio is
+     <b>fixed under refinement</b> at about \(0.38\,\)CFL and the CFL number is held constant, so
+     the per-step amplification is the same at every rung &mdash; while the number of steps needed
+     to reach a fixed \(T\) grows like \(1/h\). A fixed per-step gain applied \(1/h\) times
+     <b>grows without bound as the mesh is refined</b>. That is a divergence in time, and it has
+     nothing to do with consistency.</p>
+  <p class="tight" style="font-size:0.85em; border:1px solid var(--ls-accent); padding:0.35em 0.7em">
+     <b>This is the one structural difference between <em class="tag">Rdiv</em> and
+     <em class="tag">R</em>.</b> <em class="tag">R</em> assembles a <b>single</b>
+     <code>fvm::div</code>, so its off-diagonals are \(\le0\) in every row by construction, at
+     every step, on every mesh. The two forms are continuum-identical for a divergence-free
+     \(\mathbf{v}\); they differ in the discrete matrix, and they differ in precisely the property
+     that decides whether local extrema are damped or amplified.</p>
+</section>
+
+<section>
+  <h3>What the operator pair does to the solution &mdash; and why it is not a consistency error</h3>
+  <p class="tight">2D reversed vortex, \(T=2\), measured <b>serially</b> so that the coupled-patch
+     defect of Part&nbsp;13 cannot be a contributor. All three metrics, per protocol &mdash;
+     gradient at <em>T</em>/2, shape at <em>T</em>, volume at both:</p>
+  <table style="font-size:0.78em; margin:0 auto">
+    <tr><th style="text-align:left">metric</th><th>32</th><th>64</th><th>128</th><th>256</th>
+        <th>order</th></tr>
+    <tr><td>band gradient \(L_2\), <em>T</em>/2</td><td>3.863e&minus;01</td><td>1.597e+00</td>
+        <td>1.783e+01</td><td>4.993e+02</td><td class="warn"><b>&minus;3.449</b></td></tr>
+    <tr><td class="muted">band gradient \(L_2\), <em>T</em> <span style="font-size:0.85em">(suppressed column)</span></td>
+        <td class="muted">6.367e&minus;01</td><td class="muted">1.193e+01</td>
+        <td class="muted">2.293e+02</td><td class="muted">7.996e+05</td>
+        <td class="muted"><b>&minus;6.505</b></td></tr>
+    <tr><td>shape <code>E_GEOM_ALPHA</code>, <em>T</em></td><td>1.079e&minus;03</td>
+        <td>1.628e&minus;03</td><td>5.767e&minus;03</td><td>1.044e&minus;02</td>
+        <td class="warn"><b>&minus;1.165</b></td></tr>
+    <tr><td>volume, relative, <em>T</em>/2</td><td>5.209e&minus;02</td><td>5.349e&minus;02</td>
+        <td>5.605e&minus;02</td><td>2.444e&minus;01</td><td class="warn"><b>&minus;0.676</b></td></tr>
+    <tr><td>volume, relative, <em>T</em></td><td>6.137e&minus;02</td><td>1.129e&minus;01</td>
+        <td>4.074e&minus;01</td><td>1.289e+00</td><td class="warn"><b>&minus;1.503</b></td></tr>
+  </table>
+  <p class="tight" style="font-size:0.82em">The <em>t</em>&nbsp;=&nbsp;<em>T</em> gradient row is
+     the column this project suppresses under the reversed protocol, because cancellation over the
+     period corrupts it. It is shown greyed here for one reason only: it is diverging too, in the
+     same direction, so nothing in the verdict depends on the corrupted column. The serial fit
+     &minus;3.449 also stands beside the published seven-rung np&nbsp;=&nbsp;4 fit of
+     <b>&minus;3.800</b> &mdash; different ladder, different parallelism, same conclusion. <b>The
+     <em class="tag">Rdiv</em> divergence is not a parallel artefact.</b></p>
+  <p class="tight" style="font-size:0.85em; border:1px solid var(--ls-warn); padding:0.35em 0.7em">
+     <b>The decisive reading: the successive error ratios accelerate.</b> On the gradient row at
+     <em>T</em>/2 they are <b>4.1</b>, <b>11.2</b>, <b>28.0</b> across the three refinements. A
+     convergence order &mdash; positive or negative &mdash; <em>is</em> a constant ratio: error
+     \(\propto h^{q}\) means each halving of \(h\) multiplies the error by the same \(2^{-q}\).
+     A ratio that grows by a factor of nearly seven across the ladder is not any power of \(h\).
+     It is an <b>amplification in time</b>, exactly what a fixed per-step gain applied \(1/h\)
+     times produces, and it is why fitting a single number like &minus;3.449 to this data
+     understates what is happening rather than describing it. <b>Reporting it as a negative
+     convergence order was always the charitable reading; it is an instability.</b></p>
+  <p class="tight" style="font-size:0.82em; border-left:3px solid var(--ls-good); padding-left:0.6em">
+     <b>Independent corroboration, on the 1D uniaxial-stretch gate.</b> There \(\mathbf{v}\) is
+     entirely normal, so \(\mathbf{w}\equiv\mathbf{U}\) and
+     \(\phi_{\mathbf{w}}\equiv\phi\): the operator pair
+     \(2\,\mathrm{div}(\phi,\cdot)-\mathrm{div}(\phi_{\mathbf{w}},\cdot)\) collapses to the
+     <em>single</em> operator \(\mathrm{div}(\phi,\cdot)\), and in one dimension
+     \(\nabla\cdot\mathbf{w}-a=0\) so the diagonal term vanishes as well. The probe duly reports
+     <code>nSignMismatchFaces = 0</code> and <code>nPosOffDiag = 0</code>, and
+     <em class="tag">Rdiv</em> is <b>exact</b> there: 0.367872, matching the sourceless arm to the
+     digit, with no divergence of any kind at any rung. <b>Remove the sign mismatch and the defect
+     is removed with it</b> &mdash; which is the prediction the mechanism makes, tested on a gate
+     that was never designed for it.</p>
+  <p class="tight" style="font-size:0.82em; border-left:3px solid var(--ls-muted); padding-left:0.6em">
+     <b>And it explains the earlier null.</b> <em class="tag">RdivStrictSp</em> sign-split the
+     <em>algebraic</em> \(S_p\) coefficient and left the <b>operator pair untouched</b> &mdash;
+     same two <code>fvm::div</code> terms, same fluxes, same <code>fvSchemes</code> entries, as
+     that slide states explicitly. It therefore could not remove a single positive off-diagonal,
+     and it did not: &minus;3.554 against &minus;3.800. The sign-split slide's own verdict,
+     &ldquo;loss of diagonal dominance is not the mechanism&rdquo;, was correct as far as it went;
+     what it could not see is that the M-matrix violation it was hunting lives in the
+     <em>convection</em> terms, not in the diagonal one it repaired.</p>
+</section>
+
+<section>
+  <h3>The \(\lambda\)-blend sweep &mdash; which flux the level set actually wants</h3>
+  <p class="tight">The tangential part of \(\mathbf{v}\) does no work on a level set:
+     \(\nabla_{\!s}\psi=0\) gives</p>
+  <p style="text-align:center">
+     \(\mathbf{v}\cdot\nabla\psi=\mathbf{w}\cdot\nabla\psi
+       =(\hat{\mathbf{n}}\cdot\mathbf{v})\,|\nabla\psi|,\qquad
+       \mathbf{w}=(\hat{\mathbf{n}}\cdot\mathbf{v})\,\hat{\mathbf{n}},\)</p>
+  <p class="tight">so the one-parameter family of convecting fluxes</p>
+  <p style="text-align:center; font-size:1.1em">
+     \(\phi_\lambda=\lambda\,\phi+(1-\lambda)\,\phi_{\mathbf{w}}\)</p>
+  <p class="tight">is <b>continuum-equivalent for every</b> \(\lambda\). Three values are named
+     already: \(\lambda=0\) is transport on \(\mathbf{w}\) alone, \(\lambda=2\) is the
+     \(2\mathbf{v}-\mathbf{w}\) composite <em class="tag">Rdiv</em> assembles, and
+     \(\lambda=1\) is \(\phi\) &mdash; <b>exactly the flux the algebraic source
+     <em class="tag">R</em> convects on</b>. Sweeping \(\lambda\) with a <b>single upwind
+     operator throughout</b> separates the two questions cleanly: every member here has
+     off-diagonals \(\le0\) by construction, so whatever it measures is <em>accuracy</em>, with the
+     maximum-principle defect of the previous slides removed by construction.</p>
+  <p class="tight">2D reversed vortex, \(T=2\), <b>serial</b>, three rungs
+     <em>N</em>&nbsp;=&nbsp;32/64/128. Convergence orders, all three metrics, per protocol:</p>
+  <table style="font-size:0.8em; margin:0 auto">
+    <tr><th style="text-align:left">\(\lambda\)</th><th>band gradient (<em>T</em>/2)</th>
+        <th>shape (<em>T</em>)</th><th>volume (<em>T</em>)</th></tr>
+    <tr><td>0.0 &nbsp;<span class="muted">(\(\mathbf{w}\) only)</span></td><td>0.518</td>
+        <td>1.389</td><td>1.127</td></tr>
+    <tr><td>0.5</td><td>0.767</td><td>1.538</td><td>1.314</td></tr>
+    <tr><td><b>1.0</b> &nbsp;<span class="muted">(= <em class="tag">R</em>'s flux)</span></td>
+        <td class="good"><b>0.908</b></td><td class="good"><b>1.600</b></td>
+        <td class="good"><b>1.638</b></td></tr>
+    <tr><td>1.5</td><td>0.858</td><td>1.534</td><td>1.542</td></tr>
+    <tr><td>2.0 &nbsp;<span class="muted">(= \(2\mathbf{v}-\mathbf{w}\))</span></td><td>0.705</td>
+        <td>1.411</td><td>1.213</td></tr>
+    <tr><td colspan="4" style="height:0.4em"></td></tr>
+    <tr><td><em class="tag">Rdiv</em> as shipped</td><td class="warn">&minus;2.764</td>
+        <td class="warn">&minus;1.209</td><td class="warn">&minus;1.365</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.83em"><b>Unimodal, peaked exactly at \(\lambda=1\), on all
+     three metrics simultaneously.</b> Accuracy falls monotonically in <em>both</em> directions
+     away from \(\lambda=1\), and it falls on the gradient, on the shape and on the volume
+     together &mdash; three metrics that this deck has repeatedly shown do <em>not</em> have to
+     move together. The self-check is the \(\lambda=1\) row itself: it reproduces
+     <em class="tag">R</em>'s 0.908 / 1.600 / 1.638 <b>to the digit</b>, as it must, because at
+     \(\lambda=1\) the blended form and the algebraic form are <em>algebraically the same
+     matrix</em>. A sweep that failed that check would be measuring its own implementation.</p>
+  <p class="tight" style="font-size:0.8em; opacity:0.85">Fit window: three rungs
+     (<em>N</em>&nbsp;=&nbsp;32/64/128), serial, which is why the <em class="tag">Rdiv</em> row
+     reads &minus;2.764 here against &minus;3.449 on the four-rung serial fit of the previous slide
+     and &minus;3.800 on the published seven-rung np&nbsp;=&nbsp;4 ladder. Same divergence, three
+     different fit windows; the number to compare within this table is the one fitted on the same
+     rungs as the rest of the table.</p>
+</section>
+
+<section>
+  <h3 class="warn">Three properties, and the divergence form can hold only two &mdash; <em class="tag">Rdiv</em> closed</h3>
+  <p class="tight">The sweep is a <b>structural</b> statement about the level-set equation, not a
+     tuning result. Reading it directly: <b>the best convecting flux for a level set is
+     \(\mathbf{v}\) itself</b>, and any deviation from it costs accuracy monotonically in both
+     directions, on all three metrics at once. That fact collides with what the divergence form
+     exists to provide.</p>
+  <table style="font-size:0.84em; margin:0.3em auto 0.5em; width:92%">
+    <tr><th style="text-align:left; width:6%"></th><th style="text-align:left">property</th>
+        <th style="text-align:left">what it requires</th></tr>
+    <tr><td><b>(a)</b></td><td>a single upwind operator, hence off-diagonals \(\le0\)</td>
+        <td>one <code>fvm::div</code>, never a difference of two</td></tr>
+    <tr><td><b>(b)</b></td><td>conservation carried by the normal flux</td>
+        <td>the operator routed through \(\nabla\cdot(\phi_{\mathbf{w}},\cdot)\), which forces
+            \(\lambda\ne1\)</td></tr>
+    <tr><td><b>(c)</b></td><td>the optimal convecting flux</td>
+        <td>\(\lambda=1\), i.e. \(\phi\), by the sweep above</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.85em; border:1px solid var(--ls-warn); padding:0.35em 0.7em">
+     <b>No divergence-form discretisation holds all three.</b> (b) and (c) are directly
+     incompatible: conservation in this form <em>is</em> the routing through
+     \(\phi_{\mathbf{w}}\), and that routing is exactly what moves \(\lambda\) off 1. Keeping (b)
+     while restoring (a) &mdash; a single operator on \(\phi_{\mathbf{w}}\), \(\lambda=0\) &mdash;
+     buys back the maximum principle and lands on the <b>worst</b> row of the sweep: 0.518 / 1.389
+     / 1.127 against 0.908 / 1.600 / 1.638. Taking (a) and (c) together sets \(\lambda=1\), at
+     which point the scheme <b>is <em class="tag">R</em></b>, with the conservation gone. So
+     repairing the maximum principle recovers <b>stability</b> and cannot recover the
+     <b>accuracy</b>, because the accuracy deficit is not a bug in the assembly &mdash; it is the
+     <em>price of the conservation the form was built to provide</em>.</p>
+  <p class="tight" style="font-size:0.85em; border:1px solid var(--ls-accent); padding:0.35em 0.7em">
+     <b><em class="tag">Rdiv</em> stays withdrawn &mdash; now on a structural argument rather than
+     pending an explanation.</b> The record on this thread now reads: the coupled reading was
+     retracted; the diagonal-dominance hypothesis was falsified; the product-rule closeout is
+     retracted on this part's earlier slide and both of its suspects measured out at second order;
+     the cause is the positive off-diagonals of a subtracted upwind operator; and the accuracy that
+     a repair of that would leave behind is bounded above by the \(\lambda\ne1\) rows of the sweep.
+     <b>What is <em>not</em> withdrawn</b>: the continuum identity
+     \(S=a\psi=-\nabla_{\!s}\cdot(\psi\mathbf{v})\) of Part&nbsp;6 is exact and unaffected, and the
+     open question it leaves is a genuinely different discretisation of it &mdash; one that
+     delivers conservation without differencing two convection operators &mdash; not a repair of
+     this one.</p>
 </section>
 
 <section>
@@ -1288,7 +1632,11 @@
         <td class="warn"><b>withdrawn from this list</b> &mdash; the operator diverges kinematically
         with no coupling present (order &minus;3.800 in 2D, &minus;3.383 in 3D shear); it tests
         nothing about the loop. The sign-split repair <em class="tag">RdivStrictSp</em> was built
-        and run and did <b>not</b> rescue it (&minus;3.554), so it stays withdrawn</td></tr>
+        and run and did <b>not</b> rescue it (&minus;3.554). <b>The cause is now identified</b> &mdash;
+        the operator pair \(2\,\mathrm{div}(\phi,\cdot)-\mathrm{div}(\phi_{\mathbf{w}},\cdot)\)
+        puts positive off-diagonals into the matrix &mdash; and the \(\lambda\)-blend sweep shows
+        the accuracy it would leave behind cannot be recovered either, so it is
+        <b>closed, not pending</b></td></tr>
     <tr><td>static-balance-optimal force<br>
         <span class="muted">Abu-Al-Saud&ndash;Popinet&ndash;Tchelepi 2018, <code>integralSurfaceTension</code></span></td>
         <td class="warn">already implemented; <b>dynamically unstable</b> on the translating-droplet
@@ -1428,7 +1776,7 @@
 <!-- ============ SOURCE VARIANTS & VOLUME CORRECTION ============ -->
 <section data-track="Source variants &amp; volume correction">
 <section>
-  <p class="part-kicker">Part 12 of 13</p>
+  <p class="part-kicker">Part 12 of 14</p>
   <h2>Exponential integration of the source &mdash; exact in time, and it costs shape and volume order</h2>
   <p class="tight">Freezing \(a=\mathbf{n}\cdot\nabla\mathbf{u}\cdot\mathbf{n}\) over one time step,
      the source part of the equation is \(\mathrm{d}\psi/\mathrm{d}t=a\,\psi\), which integrates
@@ -1511,6 +1859,155 @@
      guarantee is required the member is the right choice and the order loss is its price;
      everywhere else <code>simpleLinearImplicit</code> is strictly better on shape and on
      volume.</p>
+  <p class="tight" style="font-size:0.82em; border:1px solid var(--ls-accent); padding:0.35em 0.7em">
+     <b class="good">Superseded by <code>exponentialImplicit</code> &mdash; next slides.</b> The
+     sentence above, &ldquo;<em>Where that guarantee is required the member is the right choice and
+     the order loss is its price</em>&rdquo;, held only while the explicit form was the <em>only</em>
+     sign-preserving member. It no longer is. <code>exponentialImplicit</code> delivers the same
+     update \(\psi^{n+1}=\psi^{n}e^{z}\) through the <b>diagonal</b>, keeps the strictly positive
+     multiplicative factor and with it the sign guarantee, and <b>pays none of the order</b>:
+     shape 1.360&nbsp;&rarr;&nbsp;1.603 and volume 1.439&nbsp;&rarr;&nbsp;1.653 on a common serial
+     ladder, against <code>simpleLinearImplicit</code>&rsquo;s 1.600 and 1.638.
+     <b>The price is withdrawn; the guarantee is not.</b></p>
+</section>
+
+<section>
+  <h3 class="good"><code>exponentialImplicit</code> &mdash; the same exact update, delivered on the diagonal</h3>
+  <p class="tight">The previous two slides establish the cost precisely: <code>exponential</code>
+     reproduces \(e^{a\Delta t}\) exactly but sets \(S_p=0\), <b>giving up the implicit coupling
+     between source and transport</b>, and it pays for that in the two zero-contour metrics. The
+     question this raises is not whether the exponential update is right &mdash; it is &mdash; but
+     whether it has to be delivered <em>explicitly</em>. It does not.</p>
+  <p class="tight">Require the same update, \(\psi^{n+1}=\psi^{n}e^{z}\) with \(z=f_{nl}\Delta t\),
+     but delivered through the diagonal, so that the transport operator sees it in the same linear
+     system. The implicit source delivery is
+     \((\psi^{n+1}-\psi^{n})/\Delta t=S_p\,\psi^{n+1}\), hence
+     \(1-S_p\Delta t=e^{-z}\), hence</p>
+  <p style="text-align:center; font-size:1.2em; border:1px solid var(--ls-accent); padding:0.35em 0.9em; display:inline-block">
+     \(S_p=\dfrac{1-e^{-z}}{\Delta t},\qquad S_c=0,\qquad z=f_{nl}\,\Delta t.\)</p>
+  <p class="tight" style="font-size:0.86em">No linearisation is involved and nothing is lagged
+     beyond what <code>simpleLinearImplicit</code> already lags: the coefficient is built from
+     \(f_{nl}(\psi^{n})\) exactly as before, and the resulting one-step factor is the exponential
+     one, exactly. The difference is only <em>which slot of the matrix</em> carries it.</p>
+  <p class="tight" style="font-size:0.85em; border:1px solid var(--ls-warn); padding:0.35em 0.7em">
+     <b class="warn">The coefficient is NOT \((e^{z}-1)/\Delta t\), and the trap is worth
+     stating.</b> That is the <b>explicit</b> coefficient &mdash; the one <code>exponential</code>
+     correctly puts in \(S_c\). Used <em>implicitly</em> it gives
+     \(\psi^{n+1}\bigl(1-(e^{z}-1)\bigr)=\psi^{n}\), i.e.</p>
+  <p style="text-align:center; font-size:1.05em">
+     \(\psi^{n+1}=\dfrac{\psi^{n}}{\,2-e^{z}\,},\)</p>
+  <p class="tight" style="font-size:0.85em">which has a <b>pole at \(z=\ln 2\)</b> and returns a
+     <b>negative</b> \(\psi\) for every \(z\) beyond it &mdash; sign flips in cells that never
+     crossed the interface, from a member whose entire purpose is sign preservation. The two
+     coefficients differ only in where the minus sign sits in the exponent, and the difference is
+     the whole behaviour of the scheme.</p>
+</section>
+
+<section>
+  <h3>Measured on both gates &mdash; the explicit form's loss reproduces, and the implicit form repairs it</h3>
+  <p class="tight">2D reversed vortex, \(T=2\), <b>serial</b>, three rungs
+     <em>N</em>&nbsp;=&nbsp;32/64/128 &mdash; the same ladder for all three members, so the rows
+     are comparable to each other. Convergence orders, per protocol: gradient at <em>T</em>/2,
+     shape at <em>T</em>, volume at <em>T</em>.</p>
+  <table style="font-size:0.82em; margin:0 auto">
+    <tr><th style="text-align:left">discretization of \(S\)</th>
+        <th>band gradient (<em>T</em>/2)</th><th>shape (<em>T</em>)</th>
+        <th>volume (<em>T</em>)</th></tr>
+    <tr><td><code>simpleLinearImplicit</code></td><td>0.908</td><td>1.600</td><td>1.638</td></tr>
+    <tr><td><code>exponential</code> <span class="muted">(explicit)</span></td><td>0.936</td>
+        <td class="warn"><b>1.360</b></td><td class="warn"><b>1.439</b></td></tr>
+    <tr><td><b><code>exponentialImplicit</code></b></td><td>0.912</td>
+        <td class="good"><b>1.603</b></td><td class="good"><b>1.653</b></td></tr>
+  </table>
+  <p class="tight" style="font-size:0.84em"><b>The explicit form's shape and volume loss
+     reproduces on a second, independent ladder</b> &mdash; 1.600&nbsp;&rarr;&nbsp;1.360 and
+     1.638&nbsp;&rarr;&nbsp;1.439 here, against 1.883&nbsp;&rarr;&nbsp;1.256 and
+     2.090&nbsp;&rarr;&nbsp;1.718 on the seven-rung np&nbsp;=&nbsp;4 ladder of the preceding
+     slides. Different rungs and different parallelism give different absolute orders; the
+     <em>direction and the ranking</em> are the same, which is what a reproduction has to show.
+     <b>And <code>exponentialImplicit</code> repairs it completely</b>: 1.603 and 1.653, at or
+     marginally above <code>simpleLinearImplicit</code> on both. <b>The gradient order is unchanged
+     across all three members</b> (0.908 / 0.936 / 0.912) &mdash; the same control as before, and
+     the same conclusion: <b>a temporal correction cannot repair a spatial order loss</b>, because
+     the \(O(h^{p-1})\) deficit of Part&nbsp;5 lives in \(a\) itself.</p>
+  <p class="tight">1D uniaxial-stretch gate, <em>N</em>&nbsp;=&nbsp;64, \(t=1\), scored against the
+     <b>closed-form solution</b> rather than against a finer mesh &mdash; so these are errors, not
+     orders, and there is nothing to fit:</p>
+  <table style="font-size:0.8em; margin:0 auto">
+    <tr><th style="text-align:left">scheme</th><th>grad \(L_2\) band</th><th>\(\psi\) \(L_2\) band</th>
+        <th>interface position \(x_i\) [\(h\)]</th><th>volume, relative</th></tr>
+    <tr><td><code>simpleLinearImplicit</code></td><td class="good"><b>7.19e&minus;12</b></td>
+        <td>1.34e&minus;05</td><td>2.149e&minus;04</td><td>5.01e&minus;06</td></tr>
+    <tr><td><code>exponential</code></td><td>7.51e&minus;03</td><td>1.02e&minus;02</td>
+        <td class="warn"><b>&minus;1.60e&minus;01</b></td>
+        <td class="warn"><b>&minus;3.74e&minus;03</b></td></tr>
+    <tr><td><b><code>exponentialImplicit</code></b></td><td>7.49e&minus;03</td>
+        <td class="good">8.02e&minus;04</td><td class="good"><b>2.08e&minus;04</b></td>
+        <td class="good"><b>4.85e&minus;06</b></td></tr>
+  </table>
+  <p class="tight" style="font-size:0.84em">On the two metrics that describe the <em>zero
+     contour</em> &mdash; where the interface is, and how much phase is enclosed &mdash; the
+     implicit delivery is <b>770&times; better than the explicit one</b>: \(-1.60\times10^{-1}\)
+     against \(2.08\times10^{-4}\) cell widths of interface displacement, and
+     \(-3.74\times10^{-3}\) against \(4.85\times10^{-6}\) in volume. The band \(\psi\) error
+     improves 13&times; as well. Note that both exponential members sit at the <em>same</em>
+     gradient error, 7.51e&minus;03 and 7.49e&minus;03 &mdash; the next slide explains why that
+     number is the same for both, and why it is not zero.</p>
+</section>
+
+<section>
+  <h3>What only the 1D gate shows &mdash; matching \(a\) beats integrating the ODE exactly</h3>
+  <p class="tight"><code>simpleLinearImplicit</code> is not merely accurate on the 1D gate, it is
+     <b>exact</b> there: \(7.19\times10^{-12}\) on the band gradient, and that is
+     <em>structural</em>, not a lucky cancellation. The exact solution of the gate is
+     \(\psi=x-x_i(t)\), which satisfies</p>
+  <p style="text-align:center; font-size:1.05em">
+     \(\mathbf{v}\cdot\nabla\psi=a\,\psi\)</p>
+  <p class="tight">pointwise &mdash; a <b>steady balance</b> between the transport term and the
+     source, not a transient that an integrator has to track. <code>simpleLinearImplicit</code>
+     sets \(S_p=f_{nl}\), which <em>is</em> the continuum coefficient \(a\), so the discrete
+     system enforces that same balance at time level \(n+1\) to machine precision <b>whatever
+     \(\Delta t\) is</b>. There is no time-integration error to make because there is nothing
+     evolving in the balance.</p>
+  <p class="tight" style="font-size:0.86em; border:1px solid var(--ls-warn); padding:0.35em 0.7em">
+     <b>Every &ldquo;better ODE integrator&rdquo; therefore makes it worse.</b> Expanding the
+     implicit exponential coefficient,
+     \(\;(1-e^{-z})/\Delta t=a-a^{2}\Delta t/2+\dots\;\), so the effective coefficient it puts on
+     the diagonal is <em>not</em> \(a\) but \(a\) perturbed at \(O(a^{2}\Delta t)\). That
+     perturbation breaks the pointwise balance by exactly that amount &mdash; and
+     \(7.5\times10^{-3}\) is what <b>both</b> exponential members read, explicit and implicit
+     alike, because both replace \(a\) with something that integrates the frozen ODE better and
+     the balance worse. <b>For this source, matching \(a\) matters more than integrating
+     \(\mathrm{d}\psi/\mathrm{d}t=a\psi\) exactly.</b> That is a statement no vortex ladder can
+     make, because on a vortex there is no closed form to be exact against; it is the reason the
+     1D gate is run at all.</p>
+  <p class="tight"><b>What the implicit delivery buys is therefore robustness, and it is provable
+     rather than measured:</b></p>
+  <ul class="tight" style="font-size:0.85em">
+    <li><b>The diagonal cannot change sign.</b> \(1-S_p\Delta t=e^{-z}>0\) for every finite
+        \(z\), so the assembled diagonal is \(1/\Delta t-S_p=e^{-z}/\Delta t\), strictly positive
+        at any time-step size. <code>simpleLinearImplicit</code> carries \(1/\Delta t-f_{nl}\),
+        which goes <b>negative</b> once \(f_{nl}\Delta t>1\) &mdash; this is precisely the
+        \(|f_{nl}|\Delta t&lt;1\) restriction the SDPLS preprint states and accepts.
+        <b>Removed by construction, not by clipping</b>, and with no coefficient thrown away.</li>
+    <li><b>No \(\psi\) iterate is ever multiplied by a factor.</b> \(S_c=0\), so the pathological
+        Picard fixed point \(\psi^{n}/(2-e^{z})\) of the wrong coefficient cannot arise at all;
+        there is no explicit branch for it to arise in.</li>
+    <li><b>Sign preservation survives, unconditionally.</b> The update is a strictly positive
+        multiplicative factor on \(\psi\), so it <b>cannot flip the sign of \(\psi\) in any
+        cell</b>: the topology of the discrete zero contour is preserved at any \(\Delta t\), and
+        the source alone can never move a cell across the interface. This is the one property that
+        was the explicit member's sole remaining justification &mdash; it is now available
+        <em>without</em> the shape and volume order loss.</li>
+  </ul>
+  <p class="tight" style="font-size:0.82em; border-left:3px solid var(--ls-good); padding-left:0.6em">
+     <b>Standing on all three metrics.</b> Gradient: unchanged, 0.912 against 0.908 &mdash; as it
+     must be, since the deficit is spatial. Shape and volume: 1.603 and 1.653, at or marginally
+     above <code>simpleLinearImplicit</code>, and the 1D gate puts the interface within
+     \(2.1\times10^{-4}\,h\) of its closed-form position. <b>This is the one positive result on
+     this thread</b>, and the honest limit on it is that the 1D gate says
+     <code>simpleLinearImplicit</code> keeps a structural exactness that no exponential member can
+     have.</p>
 </section>
 
 <section>
@@ -1615,9 +2112,165 @@
 </section>
 </section>
 
+<section data-track="Two coupled-patch defects">
+<section>
+  <p class="part-kicker">Part 13 of 14</p>
+  <h2>Two coupled-patch defects &mdash; both fixed, both parallel-only</h2>
+  <p class="tight">Neither defect can act in a serial run, and both act at <b>every processor
+     face</b> of a decomposed one. They are recorded here because the first of them corrupts
+     \(\nabla\mathbf{U}\), and \(\nabla\mathbf{U}\) is where this deck's source term gets its
+     strain \(a=\hat{\mathbf{n}}\cdot\nabla\mathbf{U}\cdot\hat{\mathbf{n}}\) from.</p>
+  <h3 class="warn">(1) <code>velocityModel::setVelocity</code> wrote a face-centre value into coupled patches</h3>
+  <p class="tight">The routine assigned \(\mathbf{U}(\mathbf{C}_f)\) &mdash; the velocity evaluated
+     at the <b>face centre</b> &mdash; into every boundary patch, <b>including coupled ones</b>.
+     On a coupled (processor) patch OpenFOAM expects the <b>neighbour cell-centre</b> value,
+     because it interpolates the patch's own and neighbour values to reconstruct the face value.
+     Fed a face-centre value on a uniform mesh, that interpolation returns</p>
+  <p style="text-align:center; font-size:1.02em">
+     \(\tfrac12\mathbf{U}(\mathbf{x}_P)+\tfrac12\mathbf{U}(\mathbf{x}_f)\quad\text{instead of}\quad
+       \mathbf{U}(\mathbf{x}_f),\)</p>
+  <p class="tight">an error of \(a\,h/4\) in the face value. The Gauss gradient then multiplies
+     that by the face area and divides by the cell volume, so the \(h\) cancels and what remains is
+     an <b>\(O(a)\) &mdash; not \(O(h)\) &mdash; error in \(\nabla\mathbf{U}\) in every
+     processor-adjacent cell</b>. It does not shrink under refinement, and it scales with the
+     strain the source is trying to cancel.</p>
+  <p class="tight">1D uniaxial-stretch gate, band mean \(\mathrm{d}\psi/\mathrm{d}x\) at
+     \(t=1\), <em>N</em>&nbsp;=&nbsp;64. The exact answer with the source on is <b>1</b>:</p>
+  <table style="font-size:0.82em; margin:0 auto">
+    <tr><th style="text-align:left">arm</th><th>serial</th><th>np&nbsp;=&nbsp;2</th>
+        <th>np&nbsp;=&nbsp;4</th><th>np&nbsp;=&nbsp;8</th></tr>
+    <tr><td>before the fix, <em class="tag">R</em></td><td class="good">1.000000</td>
+        <td class="warn">1.004681</td><td class="warn">1.005367</td>
+        <td class="warn">0.956834</td></tr>
+    <tr><td><b>after the fix, <em class="tag">R</em></b></td><td class="good">1.000000</td>
+        <td class="good"><b>1.000000</b></td><td class="good"><b>1.000000</b></td>
+        <td class="good"><b>1.000000</b></td></tr>
+    <tr><td>no source <span class="muted">(control)</span></td><td>0.367872</td><td>0.367872</td>
+        <td>0.367872</td><td>0.367872</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.84em"><b>The sourceless control is the diagnostic.</b> It is
+     clean at every rank count, before and after, because advection uses \(\phi\) &mdash; written
+     <em>per face</em>, where the face value <em>is</em> the correct flux and no cell-centre
+     interpolation is involved. <b>Only <code>fvc::grad(U)</code> consumers were hit.</b> The
+     serial column is identical before and after in both arms, which is the second half of the
+     same statement: the defect lives entirely on coupled patches.</p>
+</section>
+
+<section>
+  <h3>Five consumers, not one &mdash; the contamination scope</h3>
+  <p class="tight"><code>fvc::grad(U)</code> is read at <b>five</b> sites in this library, and all
+     five sat downstream of the defect:</p>
+  <ol class="tight" style="font-size:0.86em">
+    <li><b>the SDPLS strain</b> &mdash; \(a=\hat{\mathbf{n}}\cdot\nabla\mathbf{U}\cdot\hat{\mathbf{n}}\),
+        i.e. the source term this entire deck is about;</li>
+    <li><code>velocityExtension/closestPoint.C:432</code>;</li>
+    <li><code>velocityExtension/steadyUpwindLinear.C:75</code>;</li>
+    <li><code>semiLagrangian/normalProjectedScheme.C:161</code>;</li>
+    <li><code>semiLagrangian/pointValueScheme.C:353</code> &mdash; the \(\Delta t^{2}/2\) term of
+        the semi-Lagrangian Taylor foot, on the <b>default</b> SL scheme.</li>
+  </ol>
+  <p class="tight" style="font-size:0.85em; border:1px solid var(--ls-warn); padding:0.35em 0.7em">
+     <b>Measured scope: 31 parallel kinematic semi-Lagrangian studies are contaminated, 15 of them
+     with curated tables in the versioned docs.</b> The full post-mortem &mdash; which studies,
+     which tables, and what has been re-measured &mdash; is
+     <code>docs/gradU-coupled-patch-contamination.md</code>, and that document is the record; it is
+     not reproduced here. What matters for <em>this</em> deck is site&nbsp;(1): the SDPLS strain is
+     one of the five consumers, so <b>any SDPLS ladder run in parallel was exposed</b>. How far the
+     np&nbsp;=&nbsp;4 ladders quoted in Parts&nbsp;11&ndash;12 moved has <b>not been measured</b>,
+     and is stated as not measured rather than guessed at.</p>
+  <p class="tight" style="font-size:0.85em; border:1px solid var(--ls-accent); padding:0.35em 0.7em">
+     <b>What this deck did about it.</b> Every measurement added on the preceding slides &mdash;
+     the corrected product-rule ladder, the in-assembly off-diagonal census, the four-rung
+     <em class="tag">Rdiv</em> ladder, the \(\lambda\)-blend sweep, and both exponential gates
+     &mdash; was run <b>serially</b>, where neither defect on this part can act. That is also why
+     the serial <em class="tag">Rdiv</em> fit (&minus;3.449) is reported next to the published
+     parallel one (&minus;3.800): agreement across the two establishes that the
+     <em class="tag">Rdiv</em> verdict does not rest on a contaminated arm.</p>
+</section>
+
+<section>
+  <h3 class="warn">(2) <code>interfaceExtension::updateFlux</code> assigned the raw flux to processor patches</h3>
+  <p class="tight">The routine assigned the <b>raw</b> flux over the whole
+     <code>boundaryField</code> &mdash; processor patches included. But a processor patch face is
+     an <b>interior</b> face in serial, and an interior face carries the <b>extended</b> flux. So
+     the field advecting \(\psi\) differed between a serial run and a parallel run
+     <em>by construction</em>, at every processor face, in every step. This is a
+     serial/parallel equivalence defect, not an accuracy defect: there was no mesh on which the
+     two agreed.</p>
+  <p class="tight"><code>closestPoint</code> on the 1D gate, \(\psi\) at \(t=1\):</p>
+  <table style="font-size:0.84em; margin:0 auto">
+    <tr><th style="text-align:left">comparison</th><th>before</th><th>after</th></tr>
+    <tr><td>serial vs np&nbsp;=&nbsp;2</td><td class="warn">3.011e&minus;02</td>
+        <td class="good"><b>4.141e&minus;08</b></td></tr>
+    <tr><td>serial vs np&nbsp;=&nbsp;4</td><td class="warn">3.011e&minus;02</td>
+        <td class="good"><b>3.572e&minus;09</b></td></tr>
+  </table>
+  <p class="tight" style="font-size:0.85em">Against this repository's stated equivalence gate of
+     \(\approx10^{-12}\), <b>4.1e&minus;08 and 3.6e&minus;09 are an improvement of six to seven
+     orders of magnitude and still short of the gate.</b> Reported as short of it, not as passing
+     it.</p>
+  <p class="tight" style="font-size:0.85em; border-left:3px solid var(--ls-warn); padding-left:0.6em">
+     <b>The np&nbsp;=&nbsp;8 residual is a separate defect and is NOT yet fixed.</b> It is a
+     cells-per-rank artefact: 2.806e&minus;03 at <b>8 cells per rank</b>, falling to
+     \(\approx10^{-4}\) at 16&ndash;32 cells per rank. It is the halo path's <b>first-order Taylor
+     surrogate</b> &mdash; when a rank holds too few cells the halo reconstruction falls back on a
+     first-order extrapolation, and its error stops being negligible against the field it is
+     reconstructing. Recorded as open.</p>
+</section>
+
+<section>
+  <h3>What the fixes did and did not change &mdash; one claim marked DISPUTED, one confirmed</h3>
+  <p class="tight" style="font-size:0.86em; border:1px solid var(--ls-warn); padding:0.35em 0.7em">
+     <b class="warn">DISPUTED &mdash; the &ldquo;closestPoint is 2185&times; worse than plain Euler
+     advection&rdquo; claim.</b> The record states that the <code>closestPoint</code> velocity
+     extension is <b>2185&times; worse</b> than plain Euler advection on the band gradient, on the
+     2D vortex at \(T=2\), <em>N</em>&nbsp;=&nbsp;512 &mdash; measured <em>before</em> both fixes
+     above. Re-measured after them, serially, on the two rungs that have been run:</p>
+  <table style="font-size:0.82em; margin:0 auto">
+    <tr><th style="text-align:left"><em>N</em></th>
+        <th>band gradient, ratio cP&nbsp;/&nbsp;none</th><th>shape</th><th>volume</th></tr>
+    <tr><td>128</td><td class="good"><b>0.172</b> &mdash; 5.8&times; <b>better</b></td>
+        <td class="warn">9.1&times; worse</td><td class="warn">12.6&times; worse</td></tr>
+    <tr><td>256</td><td class="good"><b>0.267</b> &mdash; 3.7&times; <b>better</b></td>
+        <td class="warn">5.7&times; worse</td><td class="warn">7.6&times; worse</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.84em">Shape and volume <b>trend toward</b> the recorded
+     3.5&times; and 14.8&times; as \(h\) shrinks, so those two are consistent with the record and
+     are not in dispute. The <b>band gradient is the outlier</b>: better on two independent rungs
+     where the record says catastrophically worse. But 128 and 256 are <b>not</b> 512, so this is
+     not a like-for-like comparison and it cannot settle the question.
+     <b>The claim is marked DISPUTED and pending an <em>N</em>&nbsp;=&nbsp;512
+     re-measurement; the published number is not replaced.</b> It is not made on any slide of this
+     deck &mdash; it lives in the velocity-extension record, which this deck does not own and does
+     not edit &mdash; and it is marked here because the fixes that put it in dispute are the two
+     above.</p>
+  <p class="tight" style="font-size:0.86em; border:1px solid var(--ls-good); padding:0.35em 0.7em">
+     <b class="good">CONFIRMED, and unchanged &mdash; the medial-axis collapse.</b> 1D slab,
+     <em>N</em>&nbsp;=&nbsp;64, <code>nLayers</code>&nbsp;=&nbsp;3,
+     <code>closestPoint</code>, band mean \(|\mathrm{d}\psi/\mathrm{d}x|\) against the exact
+     value 1:</p>
+  <table style="font-size:0.82em; margin:0 auto">
+    <tr><th style="text-align:left">\(W/(n_{\text{layers}}h)\)</th><th>2.67</th><th>1.33</th>
+        <th>0.67</th><th>0.33</th></tr>
+    <tr><td>after all the fixes above</td><td>0.896349</td><td>0.987887</td>
+        <td class="warn"><b>0.501507</b></td><td class="warn">0.645163</td></tr>
+    <tr><td class="muted">before</td><td class="muted">0.896331</td><td class="muted">0.987680</td>
+        <td class="muted">0.501531</td><td class="muted">0.643606</td></tr>
+  </table>
+  <p class="tight" style="font-size:0.84em">The collapse lands exactly at
+     \(W/(n_{\text{layers}}h)=1\), where the <b>medial axis</b> enters the extension band: the
+     closest-point map becomes double-valued there and jumps by \(a(x_R-x_L)\), and
+     \(\mathbf{U}_{\text{ext}}\) jumps with it. <b>Unchanged to the fourth decimal</b> after all
+     the fixes on this part &mdash; as it must be, because this is a <b>serial</b> measurement and
+     both defects are parallel-only. That invariance is the check: it confirms simultaneously that
+     the fixes are correctly scoped, and that <b>the medial-axis collapse is a genuine geometric
+     failure mode of the closest-point extension, not an artefact of either defect.</b></p>
+</section>
+</section>
+
 <section data-track="Software design">
 <section>
-  <p class="part-kicker">Part 13 of 13</p>
+  <p class="part-kicker">Part 14 of 14</p>
   <h2>One solver, one dictionary</h2>
   <pre style="font-size:0.55em"><code>levelSet
 {

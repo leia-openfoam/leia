@@ -75,8 +75,32 @@ divergence-free velocity with no capillary force at all, at band gradient order
 $-3.800$ on the 2D vortex and $-3.383$ on 3D shear, with every run completing, and
 a sign-split variant that demonstrably removes the M-matrix violation of its
 implicit coefficient --- the one mechanism its failure analysis had named ---
-leaves the divergence essentially where it was ($-3.554$), falsifying that
-mechanism without supplying a replacement.
+leaves the divergence essentially where it was ($-3.554$). The mechanism is
+elsewhere, and is now measured in the assembly: because
+\texttt{fvMatrix::operator==} subtracts the source termwise, the divergence form
+assembles a \emph{difference} of two upwind convection operators, whose composite
+off-diagonal is $+|\phi_{\mathbf{w},f}|$ on every face where the two fluxes
+disagree in sign ($36.3\%$ of internal faces, $21.0\%$ positive off-diagonal
+coefficients, at a mesh-independent strength of about $0.38\,\mathrm{CFL}$), so the
+discrete maximum principle is lost while diagonal dominance --- and hence
+solvability --- is retained, which is why every run completes. Repairing it would
+recover stability and not accuracy: a sweep over the continuum-equivalent
+convecting fluxes $\lambda\phi + (1-\lambda)\phi_{\mathbf{w}}$ peaks at
+$\lambda = 1$, the flux the algebraic source already convects on, on gradient,
+shape and volume simultaneously, while the conservation the divergence form exists
+to provide forces $\lambda \neq 1$. An earlier closeout attributing that failure to
+a violated discrete product rule is retracted here: measured at the first assembly
+rather than at $t=T$, and over a fixed physical band rather than through a global
+$L_\infty$ whose argmax sits on the circle-centre kink, the product-rule residual
+and the coefficient error are both second order. On the source's delivery,
+requiring the exact one-step factor to be applied \emph{implicitly},
+$S_p = (1-e^{-z})/\Delta t$ with $S_c = 0$, recovers in full the shape and volume
+order that the explicit exponential delivery gives up, while keeping unconditional
+sign preservation and removing the $|f_{nl}|\Delta t < 1$ diagonal restriction by
+construction. Two coupled-patch defects --- a face-centre velocity written into
+coupled patches, and the raw flux written over processor faces --- have been fixed;
+they are parallel-only, and every parallel kinematic result carrying an SDPLS
+source predates them and is pending re-measurement.
 \end{abstract}
 
 \begin{keyword}
@@ -1501,8 +1525,12 @@ implicit delivery; it does not \emph{reduce} the noise in $\nabla\cdot\mathbf{w}
 which is the same field, computed the same way, before and after the split. What
 is eliminated is therefore the diagonal-dominance mechanism specifically --- the
 proposition that the assembled system loses its M-matrix property and that this is
-what diverges --- and nothing beyond it. Both previously named suspects remain
-live, and the second is worth restating more sharply than it was above.
+what diverges --- and nothing beyond it. Both previously named suspects were
+therefore left live by it, and the second is worth restating more sharply than it
+was above. (Both have since been measured directly, and both are bounded and
+second-order convergent; the probe that was read as convicting the second is
+retracted below, and the mechanism that does account for the divergence is a third
+thing neither of them named --- Section~\ref{sec:rdiv-mechanism}.)
 
 \emph{(i) The coefficient carries second derivatives of $\psilev$.} With
 $\mathbf{w} = (\nhat\cdot\mathbf{v})\nhat$ and $\nhat = \nabla\psilev/\gradpsi$,
@@ -1532,13 +1560,14 @@ interest is the classical setting for catastrophic cancellation, the residual of
 such a cancellation need not converge, and the sign split does not address it
 because it does not touch the flux terms at all.
 
-\paragraph{The probe, and what it found.} That measurement has since been made.
-It is sharper than the assembly-difference residual first proposed: instead of
-differencing the whole discrete assembly against the algebraic form --- a
-quantity that mixes every discretization in the operator and so localises
-nothing --- it registers the discrete failure of the one \emph{identity} the
-assembly depends on, the product rule. At the
-continuum
+\paragraph{The probe, and the retraction of the closeout drawn from it.}
+\label{par:rdiv-productrule}
+That measurement was made, and the conclusion drawn from it is withdrawn here, at
+the place it was made. The probe is sharper than the assembly-difference residual
+first proposed: instead of differencing the whole discrete assembly against the
+algebraic form --- a quantity that mixes every discretization in the operator and
+so localises nothing --- it registers the discrete failure of the one
+\emph{identity} the assembly depends on, the product rule. At the continuum
 \begin{equation}
   \nabla\cdot(\mathbf{w}\psilev)
   \;-\; \psilev\,\nabla\cdot\mathbf{w}
@@ -1555,18 +1584,35 @@ with the $\mathrm{div}(\phi_{\mathbf{w}},\psilev)$ scheme, while
 $\mathrm{fvc::div}(\phi_{\mathbf{w}})$ is a plain flux divergence, and the two
 need not be consistent with each other.
 
-Table~\ref{tab:rdiv-productrule} reports the residual of \eqref{eq:productrule} on
-the 2D vortex. The reference norm $\|\nabla\cdot(\mathbf{w}\psilev)\|$ is quoted
-beside it deliberately: the two terms nearly cancel, so a residual carries no
-information without the magnitude of what is being differenced.
+\emph{What was claimed.} Table~\ref{tab:rdiv-productrule} reported that residual
+over the 2D vortex ladder and it was read as a closeout: the identity fails, the
+failure grows under refinement ($-0.789$ in the volume-weighted $L_2$ norm,
+$-1.585$ in $L_\infty$, and $-0.545$ in the residual taken \emph{relative} to the
+reference norm), the residual turns upward at $N=64$ where \texttt{Rdiv}'s own
+band gradient error turns, and therefore --- the claim --- the divergence form is
+built on a discrete identity that its own discretisation violates, increasingly
+under refinement. \emph{That conclusion is withdrawn.} It fails twice over, and
+both failures are defects of the norm rather than properties of the operator.
 
 \begin{table}[htbp]
   \centering
-  \caption{Residual of the discrete product rule \eqref{eq:productrule} inside the
-  \texttt{Rdiv} assembly, 2D vortex, study
-  \texttt{sdplsRdivProductRule2Dvortex}. A consistent discretization drives this
-  to zero as $h\to0$. It grows, both absolutely and relative to the terms being
-  cancelled.}
+  \caption{\emph{Retracted measurement, retained for the record; the numbers are
+  unchanged and only the caption and the conclusion drawn from them are.} Residual
+  of the discrete product rule \eqref{eq:productrule} inside the \texttt{Rdiv}
+  assembly, 2D vortex, study \texttt{sdplsRdivProductRule2Dvortex}, evaluated at
+  $t=T$. The reference norm $\|\nabla\cdot(\mathbf{w}\psilev)\|_2$ is quoted beside
+  the residual because the two terms nearly cancel and a residual carries no
+  information without the magnitude of what is being differenced. This was read as
+  showing that a consistent discretisation drives the residual to zero as
+  $h\to0$ and that this one instead grows, both absolutely and relative to the
+  terms being cancelled. \emph{The reading does not survive.} At $t=T$ the field
+  the probe differentiates is no longer the sampled exact signed distance, so the
+  divergent orders below are a property of a polluted $\psilev$ and not of the
+  operator; and the reference norm itself drifts by a factor $1.68$ across the
+  ladder ($-0.244$), which is what a norm taken over a band that moves with the mesh
+  produces and what a fixed physical band does not. Measured at the first assembly
+  and over a fixed physical band, every one of these quantities is second order
+  (Table~\ref{tab:rdiv-coefficient}).}
   \label{tab:rdiv-productrule}
   \begin{tabular}{rrrrrr}
     \hline
@@ -1583,39 +1629,135 @@ information without the magnitude of what is being differenced.
   \end{tabular}
 \end{table}
 
-The identity fails, and the failure grows under refinement: $-0.789$ in the
-volume-weighted $L_2$ norm, $-1.585$ in $L_\infty$, and $-0.545$ in the residual
-taken \emph{relative} to the reference, so the growth is not an artefact of the
-differenced terms themselves growing. And the turning point matches the failure it
-is supposed to explain. The residual falls from $N=32$ to $N=64$ and grows
-monotonically thereafter --- exactly where the band gradient error of
-\texttt{Rdiv} turns, $0.391$, $0.256$, then $1.56$, $8.00$, $20.5$, $103$, $669$
-(Table~\ref{tab:rdiv-kinematic}). The error appears where the identity starts
-failing.
+\emph{First, the instant is wrong.} The tabulated residuals are evaluated at
+$t=T$ of the probe study. By then $\psilev$ is no longer the sampled exact signed
+distance: it is a transported field carrying the solution error of every step
+taken to reach that instant, and the divergence form is the arm whose $\psilev$ is
+worst polluted there, by orders of magnitude (Table~\ref{tab:rdiv-serial}). A probe
+that differentiates $\psilev$ three times over --- once in $\nhat$, once in $\nabla\cdot\mathbf{w}$, once in
+$\mathrm{div}(\phi_{\mathbf{w}},\psilev)$ --- and is evaluated on a polluted field
+measures the pollution and not the operator. The instant at which the operator is
+measurable is the \emph{first assembly}, before any transport has occurred, where
+$\psilev$ is still the sampled exact field to $5\times10^{-14}$ and the only thing
+the residual can contain is the operator's own inconsistency.
 
-\paragraph{What the probe does and does not establish.} It establishes that the
-discrete identity the divergence form is built on is violated, and increasingly
-so. Because the residual uses the \emph{same} $\nabla\cdot\mathbf{w}$ on both
-sides of \eqref{eq:productrule}, a coefficient that is noisy but used
-\emph{consistently} would cancel out of it; what the residual isolates is
-therefore inconsistency between the face-interpolated flux divergence and the
-plain one, which is suspect~(ii). It does not exclude suspect~(i) as a
-contributor: the coefficient error
-$\nabla\cdot\mathbf{w} - (\nabla\cdot\mathbf{w})_{\text{exact}}$ against the
-analytic Rider--Kothe velocity was \emph{not} measured separately, so the
-second-derivative noise may still be feeding the inconsistency rather than acting
-independently of it. Separating the two would need that second measurement, and
-nothing here rests on which of them dominates: both are properties of routing the
-source through fluxes, and neither is repairable by a change of coefficient alone.
+\emph{Second, the norm's domain is wrong, in two separate ways.} Repeated at the
+first assembly but retaining a \emph{global} $L_\infty$, the residual is flat at
+$\approx 0.44$ on every rung of the ladder --- no order at all, in either
+direction --- and its argmax sits at $r/h = 0.71$, the cell that holds the
+\emph{circle centre}. That is where the exact signed distance has its kink, and
+where the exact divergence of its normal,
+$\nabla\cdot\nhat = (d-1)/r$ at distance $r$ from the centre of a sphere in $d$
+dimensions, is singular as $r \to 0$. A norm whose extremum is pinned to a fixed
+geometric singularity of the \emph{exact} solution reports that singularity at every
+resolution and says nothing whatever about the scheme; the flatness at $0.44$ is
+the signature. The second defect is that the band must be a fixed \emph{physical}
+region. A band defined as a multiple of $h$ --- the sign-change band, or any
+$n$-layer band --- shrinks with the mesh, so a norm taken over it is taken over a
+different set at every rung and has no convergence order to fit at all. The
+corrected measurement therefore uses the fixed annulus
+$|\psilev_{\text{exact}}| \le 0.05$, which is the same physical set on every rung
+and is never a multiple of $h$.
 
-One further caveat on the residual as constructed: the three terms in
+\emph{The corrected measurement.} Measured that way --- at the first assembly, in
+the fixed annulus --- every quantity in the probe is second order, and the two
+suspects of the previous paragraph are bounded rather than divergent.
+Table~\ref{tab:rdiv-coefficient} separates them.
+
+\begin{table}[htbp]
+  \centering
+  \caption{The corrected probe: coefficient error and product-rule residual of the
+  \texttt{Rdiv} assembly, measured \emph{at the first assembly}, while $\psilev$ is
+  still the sampled exact signed distance to $5\times10^{-14}$, over the fixed
+  physical annulus $|\psilev_{\text{exact}}| \le 0.05$. 2D vortex, serial, study
+  \texttt{sdplsRdivCoefficientError2Dvortex}. Column 3 is the coefficient error
+  $\|(\nabla\cdot\mathbf{w})_h - \nabla\cdot\mathbf{w}\|_{L_2}$ against the exact
+  $\mathbf{w} = (\nhat\cdot\mathbf{v})\nhat$ built from the analytic circle normal
+  and the analytic Rider--Kothe velocity. Column 4 isolates the divergence operator
+  by feeding it an exactly sampled $\mathbf{w}$; column 5 isolates the discrete
+  normal's own contribution to column 3. Column 6 is the residual of
+  \eqref{eq:productrule} over the same annulus. Fitted orders in $h$ on the last
+  line, with the $L_\infty$ order quoted beside the $L_2$ one where it was fitted.}
+  \label{tab:rdiv-coefficient}
+  \small
+  \begin{tabular}{rrrrrr}
+    \toprule
+    $N$ & $h$ & coefficient error & operator only & normal only & band residual \\
+    \midrule
+    $32$  & $0.031250$ & $3.135\times10^{-1}$ & $2.615\times10^{-1}$ & $9.130\times10^{-2}$ & $8.200\times10^{-3}$ \\
+    $64$  & $0.015625$ & $8.383\times10^{-2}$ & $7.030\times10^{-2}$ & $2.199\times10^{-2}$ & $2.026\times10^{-3}$ \\
+    $128$ & $0.007813$ & $2.056\times10^{-2}$ & $1.727\times10^{-2}$ & $5.383\times10^{-3}$ & $5.047\times10^{-4}$ \\
+    $256$ & $0.003906$ & $5.256\times10^{-3}$ & $4.405\times10^{-3}$ & $1.379\times10^{-3}$ & $1.267\times10^{-4}$ \\
+    \midrule
+    \multicolumn{2}{r}{fitted order in $h$}
+      & $+1.972$ ($L_\infty$ $+1.728$)
+      & $+1.970$
+      & $+2.018$
+      & $+2.005$ ($L_\infty$ $+1.915$) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Four readings, and they close the two hypotheses of the previous paragraphs in
+opposite order to the one they were proposed in.
+
+\emph{The coefficient is not noisy.} Suspect~(i) was that
+$\nabla\cdot\mathbf{w}$ contains second derivatives of the discrete level set and
+therefore gets noisier as $h$ shrinks, like $|e|/h^2$. Measured against the exact
+coefficient it converges at $+1.972$ in $L_2$ and $+1.728$ in $L_\infty$ --- second
+order, and second order in the maximum norm as well, which is the norm a noise
+argument would break first. The argument of Section~\ref{sec:sourceerror} that
+predicted the noise is not wrong; it is inapplicable at the instant the operator
+is assembled for the first time, because there $e = 0$ identically and there is no
+solution error for the second derivative to amplify. Whether the coefficient
+degrades later, on a polluted $\psilev$, is a separate question that the corrected
+probe does not answer and that the failure mechanism of
+Section~\ref{sec:rdiv-mechanism} makes unnecessary.
+
+\emph{Neither half of the coefficient is the culprit.} Columns 4 and 5 split
+column 3 into the divergence operator's own truncation error, obtained by feeding
+it an exactly sampled $\mathbf{w}$ ($+1.970$), and the contribution of the discrete
+normal, obtained by varying only $\nhat$ ($+2.018$). Both are second order, and
+the normal's contribution is the smaller of the two by a factor of about three at
+every rung. There is no hidden first-order term inside the coefficient.
+
+\emph{The assembly is not inconsistent either.} Suspect~(ii) was that the
+face-interpolated flux divergence and the plain one fail to cancel. The residual
+of \eqref{eq:productrule} over the fixed annulus converges at $+2.005$ in $L_2$
+and $+1.915$ in $L_\infty$: the identity is satisfied to second order, which is
+the order of the discretisation and therefore all that consistency requires. The
+reference norm $\|\nabla\cdot(\mathbf{w}\psilev)\|_{L_2}$ over the same annulus is
+mesh-independent --- $3.506$, $3.453$, $3.445$, $3.463$ from $N=32$ to $N=256$ ---
+which validates both the band and the reference: the residual is falling like
+$h^2$ against a quantity that is not moving, so the convergence is not an artefact
+of the differenced terms shrinking.
+
+\emph{And the two are not feeding each other.} The one measurement that the
+retracted probe could not make is the single-variable one: substituting the exact
+smooth $\mathbf{w}$ for the discrete one in the assembly and changing nothing else
+moves the product-rule residual by less than $20\%$ at every instant and every
+rung (ratio between $0.81$ and $1.09$). The residual is therefore not driven by
+the coefficient at all, which settles the question the retracted passage left open
+--- whether the second-derivative noise was feeding the inconsistency --- in the
+only way that closes it: neither quantity is large enough to matter.
+
+Both previously named suspects are consequently dead. Each is bounded, each is
+second-order convergent, and neither can produce an error that grows by three
+orders of magnitude over a fourfold refinement. What diverges is not the
+coefficient and not the consistency of the assembly, and the retracted probe was
+looking in the wrong place because it was reading a polluted field through a norm
+pinned to a geometric singularity. The mechanism is elsewhere, and it is
+identified in Section~\ref{sec:rdiv-mechanism}.
+
+One caveat on the residual as constructed survives the retraction and is repeated
+because it applies to the corrected table as well: the three terms in
 \eqref{eq:productrule} are evaluated with three different discrete operators ---
 the $\mathrm{div}(\phi_{\mathbf{w}},\psilev)$ scheme, a plain flux divergence, and
-the least-squares gradient the source already uses for $\hat{\mathbf{n}}$ --- so
-the residual measures the mutual consistency of that triple rather than the error
-of any one of them. That is the right quantity for the question asked, because the
-assembly's correctness depends on exactly that mutual consistency, but it should
-not be read as an accuracy measurement of any individual operator.
+the least-squares gradient the source already uses for $\nhat$ --- so the residual
+measures the mutual consistency of that triple rather than the error of any one of
+them. That is the right quantity for the question asked, because the assembly's
+correctness depends on exactly that mutual consistency, but it should not be read
+as an accuracy measurement of any individual operator.
 
 \paragraph{Consequence for the method.} The conservative divergence-form source
 has now failed a kinematic gate at both dimensionalities. On the 2D reversed
@@ -1633,15 +1775,303 @@ The reporting consequence follows and is stronger than the retraction above. Tha
 retraction withdrew \texttt{Rdiv} as \emph{evidence about the coupled loop}, which
 left it standing as a source model whose kinematic behaviour was merely
 unfavourable. The 3D result and the falsified sign hypothesis together withdraw it
-as a \emph{method}: it is reported here as withdrawn pending an explanation, not
-carried as an available option. No result in this paper rests on it, no comparison
-uses it as a baseline, and it should not be selected in a production configuration
-until a mechanism for \eqref{eq:rdivassembly}'s divergence has been identified and
-removed. Recording it as withdrawn rather than deleting it is deliberate: the
-operator, the two hypotheses, the falsification of one of them and the measurement
-that falsified it are the useful content, and a reader who proposes a
-divergence-form source in future should be able to find out what happened to this
-one.
+as a \emph{method}: it is not carried as an available option, no result in this
+paper rests on it, and no comparison uses it as a baseline. When this was first
+written the withdrawal was \emph{pending an explanation}; it no longer is. The
+mechanism has since been identified and measured in the assembly
+(Section~\ref{sec:rdiv-mechanism}), and the same section establishes that removing
+it would recover stability without recovering accuracy, so the withdrawal now rests
+on a structural argument rather than on an outstanding question. Recording it as
+withdrawn rather than deleting it is deliberate: the operator, the two hypotheses,
+the falsification of one of them, the measurement that falsified it, the probe that
+was misread and its retraction, and the mechanism that finally accounts for the
+divergence are the useful content, and a reader who proposes a divergence-form
+source in future should be able to find out what happened to this one.
+
+\subsection{The mechanism: a difference of two upwind convection operators}
+\label{sec:rdiv-mechanism}
+
+With both named suspects measured and bounded, the mechanism has to be somewhere
+neither probe looked, and it is: not in any coefficient, and not in the
+consistency of the assembly, but in the \emph{sign pattern of the matrix} that
+\eqref{eq:rdivassembly} produces once \texttt{fvMatrix::operator==} has subtracted
+it from the left-hand side.
+
+\paragraph{The assembled matrix is a difference of two convection operators.}
+\texttt{fvMatrix::operator==} subtracts the right-hand matrix termwise
+(Section~\ref{sec:defects}), so the system actually solved is the base transport
+operator minus \eqref{eq:rdivassembly}:
+\begin{equation}
+  \underbrace{\mathrm{ddt}(\psilev)}_{\text{time}}
+  \;+\; 2\,\mathrm{div}(\phi,\psilev)
+  \;-\; \mathrm{div}(\phi_{\mathbf{w}},\psilev)
+  \;+\; (\text{diagonal terms}) \;=\; 0 .
+  \label{eq:rdivmatrix}
+\end{equation}
+The convection is not one upwind operator with a modified flux. It is a
+\emph{difference of two} upwind operators, on two different fluxes, and that
+difference is the entire structural distance between \texttt{Rdiv} and the
+algebraic source \textbf{R}, which assembles a single $\mathrm{fvm::div}(\phi,
+\psilev)$ and carries its source on the diagonal.
+
+\paragraph{Why the difference loses the sign pattern.} For a single
+$\mathrm{fvm::div}$ with upwind interpolation the off-diagonal coefficients are
+non-positive \emph{whatever the sign of the face flux}: on the internal face $f$
+between owner $P$ and neighbour $N$ the upper coefficient is $\min(\phi_f,0)$ and
+the lower is $-\max(\phi_f,0)$, and exactly one of the two is nonzero. That is the
+property on which the discrete maximum principle of an upwind convection matrix
+rests. Subtracting such an operator flips the signs of its off-diagonals, and the
+composite of \eqref{eq:rdivmatrix} inherits the flipped ones. On a face where
+$\mathrm{sign}(\phi_f) \neq \mathrm{sign}(\phi_{\mathbf{w},f})$ the two operators
+upwind from \emph{opposite} cells, nothing overlaps, and the composite
+off-diagonal is exactly
+\begin{equation}
+  2\min(\phi_f,0) - \min(\phi_{\mathbf{w},f},0) \;=\; +\,|\phi_{\mathbf{w},f}|
+  \qquad\text{(for } \phi_f > 0 > \phi_{\mathbf{w},f}\text{)},
+  \label{eq:posoffdiag}
+\end{equation}
+and symmetrically on the lower coefficient for the opposite mismatch. Sign
+agreement is not sufficient either: with both fluxes positive the lower
+coefficient is $-2\max(\phi_f,0) + \max(\phi_{\mathbf{w},f},0) = \phi_{\mathbf{w},f}
+- 2\phi_f$, which is positive wherever
+$\phi_{\mathbf{w},f} > 2\phi_f$. Both channels are populated in practice, as the
+census below shows. The tangential part of $\mathbf{v}$ that
+$\mathbf{w} = (\nhat\cdot\mathbf{v})\nhat$ discards is exactly what makes the two
+fluxes disagree, and on a vortex that is not a rare event but a bulk property of
+the two fields, as the census immediately below measures it to be.
+
+\paragraph{The census, measured in the assembly.} The probe counts the mismatch
+and the resulting coefficients inside the assembled matrix rather than inferring
+them. On the 2D vortex at $N=64$ --- $4096$ cells, $8064$ internal faces, hence
+$16128$ off-diagonal coefficients:
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+quantity, 2D vortex, $N=64$, in-assembly & value \\
+\midrule
+internal faces & $8064$ \\
+faces with $\mathrm{sign}(\phi_f) \neq \mathrm{sign}(\phi_{\mathbf{w},f})$ & $2924$ \quad($36.3\%$) \\
+share of $\sum_f|\phi_f|$ carried by those faces & $10.9\%$ \\
+positive off-diagonal coefficients & $3382$ \quad($21.0\%$ of $16128$) \\
+$\max_c\bigl(\sum \text{positive off-diagonals in row } c\bigr)\,\Delta t/|\Omega_c|$ & $\approx 0.19$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Every row of that census does work. The $2924$ sign-mismatched faces each contribute
+exactly one positive coefficient through \eqref{eq:posoffdiag}; the remaining
+$3382 - 2924 = 458$ come from the same-sign channel, so both mechanisms in the
+previous paragraph are real and the mismatch channel dominates. The relative
+strength $\approx0.19$ --- the largest positive off-diagonal row sum, scaled by
+$\Delta t/|\Omega_c|$ so that it is directly comparable to a Courant number, and
+equal to about $0.38\,\mathrm{CFL}$ --- is \emph{mesh-independent}. And no row
+loses diagonal dominance outright, which is why every one of these runs completes
+and every linear solve converges, exactly as Table~\ref{tab:rdiv-kinematic}
+reports.
+
+What is lost is not solvability but the discrete maximum principle. A positive
+off-diagonal means the update of a cell is no longer a convex combination of its
+neighbours' values, so the scheme can manufacture a new extremum in $\psilev$
+where the exact solution has none, and a fresh one at every step. The relative
+strength of that mechanism does not fall under refinement --- it is fixed at
+$0.38\,\mathrm{CFL}$ --- while the number of steps taken to reach a fixed end time
+grows like $1/h$. A per-step gain that does not shrink, applied a number of times
+that grows without bound, is an amplification in time; it is not a consistency
+error, and it has no convergence order.
+
+\paragraph{The divergence is an amplification in time, and the data say so.} The
+distinction is testable, because the two leave different fingerprints. A
+consistency error of order $q$ gives a \emph{constant} ratio $2^{q}$ between
+successive rungs. An amplification gives ratios that accelerate. Measured
+serially, so that the coupled-patch defects of Section~\ref{sec:coupledpatch}
+cannot contribute, with all three metrics reported at the instants the protocol of
+Section~\ref{par:reversal} assigns them:
+
+\begin{table}[htbp]
+\centering
+\caption{Divergence of the shipped \texttt{Rdiv} on the 2D reversed vortex,
+$T=2$, $\mathrm{CFL}=0.5$, prescribed divergence-free velocity, \emph{serial},
+study \texttt{sdplsRdivCoefficientError2Dvortex}. Band gradient error at $t=T/2$,
+shape and volume error at $t=T$, volume also at $t=T/2$. The $t=T$ gradient row is
+quoted although Section~\ref{par:reversal} suppresses that column as an accuracy
+measurement: it is carried here only to show that the error grows between $T/2$
+and $T$ on the \emph{same} run, which is the signature of a temporal amplification
+and not of a spatial consistency error. Fitted orders over the four rungs.}
+\label{tab:rdiv-serial}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+metric & $N=32$ & $64$ & $128$ & $256$ & order \\
+\midrule
+band gradient error, $t=T/2$ & $3.863\times10^{-1}$ & $1.597\times10^{0}$ & $1.783\times10^{1}$ & $4.993\times10^{2}$ & $-3.449$ \\
+band gradient error, $t=T$   & $6.367\times10^{-1}$ & $1.193\times10^{1}$ & $2.293\times10^{2}$ & $7.996\times10^{5}$ & $-6.505$ \\
+shape error, $t=T$           & $1.079\times10^{-3}$ & $1.628\times10^{-3}$ & $5.767\times10^{-3}$ & $1.044\times10^{-2}$ & $-1.165$ \\
+relative volume error, $t=T/2$ & $5.209\times10^{-2}$ & $5.349\times10^{-2}$ & $5.605\times10^{-2}$ & $2.444\times10^{-1}$ & $-0.676$ \\
+relative volume error, $t=T$   & $6.137\times10^{-2}$ & $1.129\times10^{-1}$ & $4.074\times10^{-1}$ & $1.289\times10^{0}$ & $-1.503$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The successive ratios of the band gradient error at $t=T/2$ are $4.1$, $11.2$ and
+$28.0$. They are not constant and they are not close to constant: they accelerate
+by a factor of nearly seven over three refinements. No convergence order describes
+that sequence, and the fitted $-3.449$ is a summary of an accelerating growth
+rather than a rate. The same run measured at $t=T$ instead of $t=T/2$ is worse by
+a further factor that itself grows with $N$ --- $1.6$, $7.5$, $12.9$, $1602$ ---
+which is the direct statement that the error is accumulating in time. All three
+metrics diverge, as the protocol requires them to be reported: shape at $-1.165$,
+volume at $-1.503$ at $t=T$ and $-0.676$ at $t=T/2$, and the volume error reaches
+$129\%$ of the initial phase volume at $N=256$. (These serial orders are close to
+but not identical with the $-3.800$, $-1.306$ and $-1.544$ of
+Table~\ref{tab:rdiv-kinematic}, which was fitted over seven rungs on four MPI
+ranks and predates the fixes of Section~\ref{sec:coupledpatch}. The two are not
+like-for-like and must not be differenced; what matters is that the divergence
+reproduces, serially and on a clean binary, at the same magnitude.)
+
+\paragraph{Why \textbf{R} is immune, and why \texttt{RdivStrictSp} was bound to
+change nothing.} \textbf{R} assembles one $\mathrm{fvm::div}(\phi,\psilev)$ and
+adds a diagonal coefficient. Its off-diagonals are $\min(\phi_f,0)$ and
+$-\max(\phi_f,0)$ in every row, non-positive by construction, whatever the flow
+does; nothing in the source can change them, because the source is not an
+operator on $\psilev$'s neighbours. That is the whole of the structural difference
+between the two forms, and it now accounts for the whole of the difference in
+behaviour.
+
+It also explains, retrospectively and exactly, why \texttt{RdivStrictSp}
+\eqref{eq:rdivstrictsp} moved the fitted order from $-3.800$ to $-3.554$ and
+nothing more. An M-matrix requires two things: non-positive off-diagonals, and a
+diagonal that dominates them. The sign split addresses the \emph{diagonal},
+clamping the algebraic coefficient $S_P = a - \nabla\cdot\mathbf{w}$ to be
+non-positive, and it does so demonstrably --- half the domain was on the violating
+branch at $N=32$ and after the split none of it is. The positive off-diagonals of
+\eqref{eq:posoffdiag} are not in $S_P$. They are in the operator pair, which
+\texttt{RdivStrictSp} leaves untouched by construction, and which is where the
+sign violation that matters lives. The earlier verdict --- \emph{loss of diagonal
+dominance is not the mechanism} --- stands as written and is now sharpened: the
+diagonal was never the problem, and the experiment that tested it could not have
+found the defect it was aimed at.
+
+\paragraph{The 1D corroboration, where the mismatch is zero by construction.} The
+uniaxial-stretch gate (\texttt{sdpls1Dstretch}) supplies the control the argument
+needs, because on it the mechanism is switched off by the geometry rather than by
+a code change. There $\mathbf{v}$ is entirely normal to the interface, so
+$\mathbf{w} = (\nhat\cdot\mathbf{v})\nhat = \mathbf{v}$ and
+$\phi_{\mathbf{w}} = \phi$ identically: the two flux terms of
+\eqref{eq:rdivassembly} are the same operator, and the composite of
+\eqref{eq:rdivmatrix} collapses back to a single upwind $\mathrm{fvm::div}$. The
+probe confirms it in the assembly rather than on paper --- zero sign-mismatched
+faces and zero positive off-diagonal coefficients --- and \texttt{Rdiv} is then
+exact on that gate: it reports a band mean $\mathrm{d}\psilev/\mathrm{d}x$ of
+$0.367872$ at $t=1$, matching the sourceless arm to the digit, which is the right
+answer because in a pure uniaxial stretch the coefficient
+$\nabla\cdot\mathbf{w} - a$ of \eqref{eq:rdivsp} vanishes and \texttt{Rdiv}'s
+continuum equation \emph{is} the sourceless one. Same operator, same code path,
+same source model: with $\phi_{\mathbf{w}} = \phi$ it is exact, and it is only
+where the two fluxes differ that it diverges.
+
+\paragraph{The blend sweep, and the property that cannot be recovered.} The
+mechanism identifies a repair --- assemble the composite so that its off-diagonals
+keep their sign --- and the next measurement establishes that the repair cannot
+succeed, for a reason that has nothing to do with stability. The starting point is
+that the tangential part of $\mathbf{v}$ does no work on a level set:
+\begin{equation}
+  \mathbf{v}\cdot\nabla\psilev
+  \;=\; \mathbf{w}\cdot\nabla\psilev
+  \;=\; (\nhat\cdot\mathbf{v})\,\gradpsi ,
+  \label{eq:tangentialnowork}
+\end{equation}
+because $\nabla\psilev$ is parallel to $\nhat$. Every member of the one-parameter
+family of convecting fluxes
+\begin{equation}
+  \phi_\lambda \;=\; \lambda\,\phi \;+\; (1-\lambda)\,\phi_{\mathbf{w}}
+  \label{eq:blend}
+\end{equation}
+is therefore \emph{continuum-equivalent}: they all transport the level set
+identically in the exact equation, and any ranking between them is purely a
+property of the discretisation. Three members are named. $\lambda = 0$ is
+transport on the normal flux alone, which is what the conservative term of
+\eqref{eq:rdivassembly} routes the operator through; $\lambda = 2$ is the
+$2\mathbf{v}-\mathbf{w}$ composite that \eqref{eq:rdivmatrix} actually assembles;
+and $\lambda = 1$ is $\phi$ itself, which is exactly the flux the algebraic source
+\textbf{R} convects on. Run with a \emph{single} upwind operator throughout --- so
+that the maximum-principle defect is absent by construction and the only variable
+is the choice of convecting flux --- on the 2D reversed vortex, $T=2$, serial,
+three rungs $N = 32, 64, 128$:
+
+\begin{table}[htbp]
+\centering
+\caption{The blend sweep: fitted orders over $N = 32, 64, 128$ for the convecting
+flux \eqref{eq:blend}, 2D reversed vortex, $T=2$, serial, one upwind operator
+throughout. Band gradient error at $t=T/2$, shape and volume error at $t=T$. Every
+$\lambda$ is continuum-equivalent by \eqref{eq:tangentialnowork}, so the variation
+across rows is entirely discrete. The last row is the shipped \texttt{Rdiv}, which
+assembles the $\lambda=2$ composite as a \emph{difference} of two operators rather
+than as one; it is fitted over the same three rungs as the sweep, and so is not the
+same fit as Table~\ref{tab:rdiv-serial}, which fits that arm over four.}
+\label{tab:rdiv-blend}
+\small
+\begin{tabular}{lrrr}
+\toprule
+convecting flux & gradient $(T/2)$ & shape $(T)$ & volume $(T)$ \\
+\midrule
+$\lambda = 0.0$ \quad(normal flux $\phi_{\mathbf{w}}$ alone) & $+0.518$ & $+1.389$ & $+1.127$ \\
+$\lambda = 0.5$                                             & $+0.767$ & $+1.538$ & $+1.314$ \\
+$\lambda = 1.0$ \quad($\phi$; the flux \textbf{R} uses)     & $\mathbf{+0.908}$ & $\mathbf{+1.600}$ & $\mathbf{+1.638}$ \\
+$\lambda = 1.5$                                             & $+0.858$ & $+1.534$ & $+1.542$ \\
+$\lambda = 2.0$ \quad($2\mathbf{v}-\mathbf{w}$)             & $+0.705$ & $+1.411$ & $+1.213$ \\
+\addlinespace
+\texttt{Rdiv} as shipped (operator \emph{pair}, $\lambda=2$) & $-2.764$ & $-1.209$ & $-1.365$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The sweep is unimodal, it peaks exactly at $\lambda = 1$, and it does so on all
+three metrics simultaneously --- gradient, shape and volume --- which is a
+stronger statement than any one column could make, because the three are not
+otherwise required to move together anywhere else in this paper. The peak carries
+its own self-check: at $\lambda = 1$ the blended form is algebraically the same
+matrix as \textbf{R}, and it reproduces \textbf{R}'s $+0.908$, $+1.600$ and
+$+1.638$ to the digit on the same ladder. Deviation in either direction costs
+accuracy monotonically, and it costs it on both sides --- $+0.518$ at $\lambda=0$
+and $+0.705$ at $\lambda=2$ against $+0.908$ at $\lambda=1$ --- so this is not a
+one-sided artefact of the normal flux being smaller or noisier than $\phi$; the
+optimum is interior to the family and both neighbours of it are worse.
+
+The last row is the one that separates the two failures. The shipped
+\texttt{Rdiv} is at $\lambda = 2$ as well, and it does not merely lose the
+$0.203$ of gradient order that $\lambda=2$ costs: it diverges at $-2.764$,
+$-1.209$ and $-1.365$. Assembling the same convecting flux as one upwind operator
+converges; assembling it as a difference of two diverges. The mechanism of
+Section~\ref{sec:rdiv-mechanism} is the difference between those two rows, and
+nothing else in the two configurations differs.
+
+\medskip
+\noindent\fbox{\parbox{0.97\linewidth}{%
+\textbf{The divergence form cannot hold three properties at once.} They are:
+\emph{(a)} a single upwind convection operator, hence off-diagonals $\le 0$ in
+every row and a discrete maximum principle; \emph{(b)} conservation, which the
+form obtains precisely by routing the operator through
+$\mathrm{div}(\phi_{\mathbf{w}},\cdot)$ so that the flux telescopes; and
+\emph{(c)} the optimal convecting flux, which \eqref{eq:blend} measures to be
+$\lambda = 1$, i.e.\ $\mathbf{v}$ itself. Property~(b) forces $\lambda \neq 1$ and
+so contradicts~(c); holding~(a) and~(c) together means $\lambda = 1$, at which
+point the form \emph{is} the algebraic source \textbf{R} and the conservation is
+gone. Repairing the maximum principle --- assembling the composite so that its
+off-diagonals keep their sign --- would therefore recover \emph{stability} and
+could not recover \emph{accuracy}, because the accuracy deficit at $\lambda \neq
+1$ is the price of the conservation the form exists to provide.
+\texttt{Rdiv} stays withdrawn, now on a structural argument rather than pending an
+explanation.}}
+\medskip
+
+That closes the divergence-form line. The mechanism is identified and measured,
+the repair its own failure analysis named is falsified, the two suspects that
+survived that falsification are measured bounded and second-order
+(Table~\ref{tab:rdiv-coefficient}), and the property the form was built to deliver
+is shown to be in structural conflict with the property the level set actually
+needs from the convecting flux. What is \emph{not} established, and is left open
+in Section~\ref{sec:conclusions-open}, is whether any conservative source form can
+hold all three at once by some route other than a blended flux; no such form is
+proposed here.
 
 \subsection{Two invariants, and the measurement that separates them}
 \label{sec:budget}
@@ -1864,22 +2294,215 @@ measure where the zero contour ends up --- shape and volume --- that record the
 loss, while the metric that measures the strain balance the source was built to
 enforce --- the band gradient --- does not.
 
-\paragraph{The revised verdict.} The exponential member was previously reported
-here as neutral: identical gradient order, no order gain in either direction, and
-value residing in exactness and sign preservation. With the shape column measured
-that reading does not survive. It costs shape and volume order on the kinematic
-ladder, and it should be selected only where the property it uniquely holds is
-specifically required. That property is unconditional sign preservation:
-$\exp(z) > 0$ for every real $z$, so a strictly positive multiplicative factor
-cannot flip the sign of $\psilev$ in any cell, and the topology of the discrete
-zero contour is preserved at any $\Delta t$ --- no cell can be moved across the
-interface by the source, at any time step, on any mesh. No rational member holds
-that unconditionally, since $1+z$ changes sign at $z=-1$ and $1/(1-z)$ has a pole
-at $z=1$. Where a run must be guaranteed against a source-induced topology change
---- a coarse mesh, a large $\Delta t$, or a strain field with large excursions ---
-that guarantee is worth a fraction of an order in shape and volume. Where it is
-not required, \texttt{simpleLinearImplicit} is the better-converging delivery of
-the same continuum source, and Table~\ref{tab:expsource} is the price list.
+\paragraph{Delivering the same factor implicitly: \texttt{exponentialImplicit}.}
+\label{par:expimplicit}
+The previous paragraph attributes the shape and volume cost to the explicit
+delivery rather than to the exponential factor, and that attribution was an
+argument from the structure of \eqref{eq:expsource} until a member existed that
+carries the factor \emph{and} keeps its diagonal support. One does now, and
+constructing it is a two-line derivation. Require the step to reproduce the exact
+one-step solution $\psilev^{n+1} = \psilev^n e^{z}$, $z \equiv f_{nl}\Delta t$, but
+deliver it through the diagonal, i.e.\ demand
+$(\psilev^{n+1} - \psilev^{n})/\Delta t = S_p\,\psilev^{n+1}$ with the
+\emph{new} time level on the right. Substituting the required $\psilev^{n+1}$ and
+solving for $S_p$ gives $1 - S_p\Delta t = e^{-z}$, hence
+\begin{equation}
+  S_p \;=\; \frac{1 - e^{-z}}{\Delta t}, \qquad S_c \;=\; 0,
+  \qquad z \;=\; f_{nl}\,\Delta t .
+  \label{eq:expimplicit}
+\end{equation}
+The coefficient is \emph{not} $(e^{z}-1)/\Delta t$, and the distinction is not
+cosmetic. That is the \emph{explicit} coefficient of \eqref{eq:expsource}, which is
+correct on $S_c$ and wrong on $S_p$: used implicitly it gives
+$\psilev^{n+1} = \psilev^{n}/(2 - e^{z})$, which has a pole at $z = \ln 2$ and
+returns a \emph{negative} $\psilev$ for every $z$ beyond it --- a sign flip of the
+level set in the cell, which is the one thing the source is built never to do.
+Equation~\eqref{eq:expimplicit} has neither defect: $1 - e^{-z} < 1$ for every
+real $z$, so $1 - S_p\Delta t = e^{-z}$ is strictly positive and no pole exists.
+
+\paragraph{What it measures.} The same reversed 2D vortex, $T=2$, serial, three
+rungs $N = 32, 64, 128$, one ladder for all three deliveries of the same source
+\textbf{R}, all three metrics at the instants Section~\ref{par:reversal} assigns
+them:
+
+\begin{table}[htbp]
+\centering
+\caption{The three deliveries of \textbf{R} compared on one ladder: fitted orders
+over $N = 32, 64, 128$, 2D reversed vortex, $T=2$, \emph{serial}. Band gradient
+error at $t=T/2$, shape and volume error at $t=T$. The rows differ only in how the
+same continuum source is delivered, so this is a single-variable comparison. These
+are three-rung serial fits and are therefore not the same numbers as the four-rank
+seven-rung fits of Table~\ref{tab:expsource}, which predate the fixes of
+Section~\ref{sec:coupledpatch}; the two ladders must not be differenced, and the
+comparison that matters is between the rows of this table.}
+\label{tab:expimplicit}
+\small
+\begin{tabular}{lrrr}
+\toprule
+delivery of \textbf{R} & gradient $(T/2)$ & shape $(T)$ & volume $(T)$ \\
+\midrule
+\texttt{simpleLinearImplicit}  & $+0.908$ & $+1.600$ & $+1.638$ \\
+\texttt{exponential} (explicit)& $+0.936$ & $+1.360$ & $+1.439$ \\
+\texttt{exponentialImplicit}   & $+0.912$ & $+1.603$ & $+1.653$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The explicit exponential's shape and volume loss reproduces on this independent
+ladder --- $+1.360$ and $+1.439$ against $+1.600$ and $+1.638$, the same direction
+and the same rough size as the $+1.256$ and $+1.718$ against $+1.883$ and $+2.090$
+of Table~\ref{tab:expsource} --- and the implicit delivery of the same exponential
+factor repairs it completely: $+1.603$ and $+1.653$, indistinguishable from
+\texttt{simpleLinearImplicit} within the spread of a three-point fit and, if
+anything, marginally above it. That is the ablation the previous verdict called
+for and could not perform. The exponential factor is not what cost the shape and
+volume order; the explicit delivery was, and restoring the diagonal support
+restores the order while keeping the factor exact. The gradient column is flat
+across all three rows --- $+0.908$, $+0.936$, $+0.912$ --- which is the same
+statement as before, made a third time: the order loss of
+Section~\ref{sec:sourceerror} is spatial, and no temporal correction of any kind
+touches it.
+
+\paragraph{And the 1D gate says something the mesh ladder cannot.} The uniaxial
+stretch gate has a closed-form solution, so the arms can be scored against the
+exact answer rather than against each other. At $N=64$, $t=1$
+(\texttt{sdpls1Dstretch}):
+
+\begin{table}[htbp]
+\centering
+\caption{The three deliveries of \textbf{R} on the 1D uniaxial-stretch gate,
+$N=64$, $t=1$, scored against the closed-form solution. $x_i$ is the interface
+position, quoted in cell widths; the volume error is relative and signed. Band
+quantities are $L_2$ over the narrow band. Study \texttt{sdpls1Dstretch}.}
+\label{tab:expimplicit1d}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+delivery of \textbf{R} & grad $L_2$ band & $\psilev$ $L_2$ band & $x_i$ error $[h]$ & volume rel.\ error \\
+\midrule
+\texttt{simpleLinearImplicit}   & $7.19\times10^{-12}$ & $1.34\times10^{-5}$ & $+2.149\times10^{-4}$ & $+5.01\times10^{-6}$ \\
+\texttt{exponential} (explicit) & $7.51\times10^{-3}$  & $1.02\times10^{-2}$ & $-1.60\times10^{-1}$  & $-3.74\times10^{-3}$ \\
+\texttt{exponentialImplicit}    & $7.49\times10^{-3}$  & $8.02\times10^{-4}$ & $+2.08\times10^{-4}$  & $+4.85\times10^{-6}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two results, and they point in opposite directions, which is why both are
+reported.
+
+\emph{The implicit exponential dominates the explicit one on the interface
+metrics, by a factor of $770$ on both.} The interface position error falls from
+$-1.60\times10^{-1}$ cell widths to $+2.08\times10^{-4}$, and the relative volume
+error from $-3.74\times10^{-3}$ to $+4.85\times10^{-6}$ --- ratios of $769$ and
+$771$. The two members deliver the \emph{same} multiplicative factor to the same
+precision; the entire difference is that one of them delivers it on the diagonal
+and the other on the right-hand side. The 2D shape and volume repair and the 1D
+interface repair are the same effect measured two ways.
+
+\emph{And \texttt{simpleLinearImplicit} is exact on this gate, for a structural
+reason that neither exponential member can reproduce.} Its band gradient error is
+$7.19\times10^{-12}$ --- machine precision, not a small number --- against
+$7.5\times10^{-3}$ for both exponential members. The reason is a property of this
+source and this exact solution rather than of the integrator. The closed form
+$\psilev = x - x_i(t)$ satisfies
+\begin{equation}
+  \mathbf{v}\cdot\nabla\psilev \;=\; a\,\psilev
+  \label{eq:steadybalance}
+\end{equation}
+pointwise: the transport term and the source balance each other exactly and at
+every instant, so the exact solution is a \emph{steady balance} rather than a
+trajectory that has to be integrated. \texttt{simpleLinearImplicit} takes
+$S_p = f_{nl}$, which \emph{is} the continuum coefficient $a$, so the discrete
+system enforces \eqref{eq:steadybalance} at time level $n+1$ to machine precision
+whatever $\Delta t$ is. Every member that integrates the source ODE more
+accurately perturbs that coefficient instead of matching it:
+\eqref{eq:expimplicit} expands as
+\begin{equation}
+  \frac{1 - e^{-z}}{\Delta t} \;=\; a - \frac{a^{2}\Delta t}{2} + O(a^{3}\Delta t^{2}),
+  \label{eq:effectivecoeff}
+\end{equation}
+so the effective coefficient is not $a$, the balance \eqref{eq:steadybalance} is
+broken at $O(a^{2}\Delta t)$, and that is the $7.5\times10^{-3}$ that both
+exponential members show. \emph{For this source, matching the continuum
+coefficient matters more than integrating the source ODE exactly.} The statement
+is only visible on a gate with a closed-form steady balance --- on the 2D ladder
+the three deliveries agree to $0.03$ in gradient order --- and it is a property of
+the SDPLS source specifically, whose whole purpose is to cancel a term rather than
+to evolve one.
+
+\paragraph{What the implicit exponential therefore buys: robustness, provably.}
+Not accuracy, on either measurement above: on the 2D ladder it matches
+\texttt{simpleLinearImplicit} and on the 1D gate it is nine orders of magnitude
+behind it in the gradient. What it buys is three guarantees that
+\texttt{simpleLinearImplicit} does not carry, each of them a property of
+\eqref{eq:expimplicit} rather than a measurement.
+
+\emph{The assembled diagonal cannot change sign.} With
+\eqref{eq:expimplicit} the diagonal contribution of the time derivative and the
+source together is $1/\Delta t - S_p = e^{-z}/\Delta t$, strictly positive for
+every finite $z$ and for either sign of $f_{nl}$.
+\texttt{simpleLinearImplicit} carries $1/\Delta t - f_{nl}$ instead, which goes
+negative as soon as $f_{nl}\Delta t > 1$; that is the origin of the
+$|f_{nl}|\Delta t < 1$ restriction the method as originally stated accepts. The
+implicit exponential removes it by construction rather than by clipping the
+coefficient, which is what \texttt{strictNegativeSpLinearImplicit} does at the
+cost of moving part of the source to the explicit side.
+
+\emph{No iterate is ever multiplied by a factor.} Because $S_c = 0$, the
+right-hand side carries no $\psilev$-dependent term at all, so the Picard loop
+that relinearizes $f_{nl}$ at every deferred-correction pass cannot converge to the
+spurious fixed point
+$\psilev^{n}/(2-e^{z})$ that the explicit coefficient used implicitly would
+produce. The failure mode is absent rather than avoided.
+
+\emph{The zero contour cannot change topology.} $e^{-z} > 0$ for every real $z$,
+so the update is a strictly positive multiplicative factor on $\psilev$ in every
+cell, and a strictly positive factor cannot flip a sign. No cell can be carried
+across the interface by the source, at any $\Delta t$, on any mesh. This is the
+same unconditional guarantee the explicit \texttt{exponential} member holds ---
+and it is now available without the shape and volume cost that member pays for it.
+
+\paragraph{The revised verdict, over the whole family.} The exponential member was
+first reported here as neutral: identical gradient order, no order gain in either
+direction, and value residing in exactness and sign preservation. With the shape
+column measured that reading did not survive --- the \emph{explicit} exponential
+costs shape and volume order --- and with \eqref{eq:expimplicit} measured the
+revision goes one step further, because the cost turns out not to be a property of
+the exponential factor at all. Three statements now stand, and they should be read
+together.
+
+\emph{The explicit \texttt{exponential} member is superseded.} It is dominated by
+\texttt{exponentialImplicit} on every metric measured on both configurations: on
+the serial 2D ladder in shape ($+1.360$ against $+1.603$) and volume ($+1.439$
+against $+1.653$) at equal gradient order (Table~\ref{tab:expimplicit}), and on
+the 1D gate by a factor of $770$ in both interface position and phase volume
+(Table~\ref{tab:expimplicit1d}). The unconditional sign preservation that was its
+sole retained justification --- $\exp(z) > 0$ for every real $z$, so a strictly
+positive multiplicative factor cannot flip the sign of $\psilev$ in any cell and
+the topology of the discrete zero contour survives any $\Delta t$ --- is held by
+the implicit member as well, through $1 - S_p\Delta t = e^{-z} > 0$. There is no
+longer a configuration in which the explicit delivery is the right choice, and the
+attribution it was retained under is now confirmed by ablation rather than argued
+from structure: what cost the shape and volume order was $S_p = 0$, not $e^{z}$.
+
+\emph{\texttt{simpleLinearImplicit} remains the most accurate delivery where its
+restriction holds.} It matches \texttt{exponentialImplicit} to $0.004$, $0.003$ and
+$0.015$ in gradient, shape and volume order on the 2D ladder --- indistinguishable
+within a three-point fit --- and it is \emph{exact} on the 1D gate,
+$7.19\times10^{-12}$ against $7.49\times10^{-3}$, because $S_p = f_{nl}$ reproduces
+the continuum coefficient and thereby enforces the steady balance
+\eqref{eq:steadybalance} at time level $n+1$ whatever $\Delta t$ is. Its price is
+the diagonal $1/\Delta t - f_{nl}$, which changes sign once $f_{nl}\Delta t > 1$.
+
+\emph{\texttt{exponentialImplicit} is the delivery to select where that restriction
+cannot be guaranteed.} It buys robustness rather than accuracy: a diagonal
+$e^{-z}/\Delta t$ that is strictly positive for every finite $z$, so the
+$|f_{nl}|\Delta t < 1$ restriction is removed by construction rather than by
+clipping the coefficient; $S_c = 0$, so no iterate is multiplied by a factor and the
+spurious Picard fixed point $\psilev^n/(2-e^{z})$ cannot arise; and unconditional
+sign preservation. It pays for none of that in the kinematic metrics, which is what
+separates it from the member it replaces. Table~\ref{tab:expimplicit} and
+Table~\ref{tab:expimplicit1d} are the price list, and the price is zero.
 
 \subsection{Global volume correction by a uniform level-set shift}
 \label{sec:volcorr}
@@ -2052,6 +2675,190 @@ study that uses this model is required to report the shape error alongside the
 volume error and the applied shift, for exactly that reason.
 
 % ============================================================================
+\section{Two coupled-patch defects, and the results they suspend}
+\label{sec:coupledpatch}
+
+Two further defects have since been found and removed. Both live on
+\emph{coupled} (processor) patches, so both are invisible in serial and affect
+parallel runs only, and neither could have been caught by any of the single-rank
+gates above. They are recorded here because they suspend a class of results rather
+than a single number. The full post-mortem, including the audit of every affected
+study, is in \texttt{docs/gradU-coupled-patch-contamination.md}; what follows is
+what a reader of \emph{this} paper needs in order to know which of its numbers are
+provisional.
+
+\subsection{A face-centre value written into a cell-centre slot}
+\label{sec:gradUdefect}
+
+\texttt{velocityModel::setVelocity} evaluated the prescribed velocity at the face
+centre, $\mathbf{v}(\mathbf{x}_f)$, and wrote it into \emph{every} boundary patch
+--- including the coupled ones, where OpenFOAM expects the value at the
+\emph{neighbouring cell centre} rather than at the face. The consequence is not a
+boundary-condition subtlety, it is an order loss. On a uniform mesh the coupled
+patch's face interpolation then returns
+$\tfrac12\mathbf{v}(\mathbf{x}_P) + \tfrac12\mathbf{v}(\mathbf{x}_f)$ where it
+should return $\mathbf{v}(\mathbf{x}_f)$, an error of $a\,h/4$ for a velocity of
+strain rate $a$; divided by the cell volume in the Gauss sum that error becomes an
+$O(a)$ --- not $O(h)$ --- error in $\nabla\mathbf{v}$ in \emph{every}
+processor-adjacent cell. It does not converge away, and refinement does not dilute
+it, because it is proportional to the strain being measured rather than to the
+mesh spacing.
+
+The 1D uniaxial-stretch gate isolates it, because there the exact band mean of
+$\mathrm{d}\psilev/\mathrm{d}x$ with the source on is $1$ by construction:
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+band mean $\mathrm{d}\psilev/\mathrm{d}x$ at $t=1$, $N=64$ & serial & $np=2$ & $np=4$ & $np=8$ \\
+\midrule
+\textbf{R}, before the fix   & $1.000000$ & $1.004681$ & $1.005367$ & $0.956834$ \\
+\textbf{R}, after the fix    & $1.000000$ & $1.000000$ & $1.000000$ & $1.000000$ \\
+\texttt{noSource} (control)  & $0.367872$ & $0.367872$ & $0.367872$ & $0.367872$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The control row is the diagnostic half of the table. The sourceless arm is clean at
+every rank count, before and after, because advection consumes $\phi$ --- written
+per face, where the face value \emph{is} the correct flux --- and never touches
+$\nabla\mathbf{v}$. Only consumers of $\mathrm{fvc::grad}(\mathbf{U})$ were hit,
+and there are five of them rather than one: the SDPLS strain
+$a = \nhat\cdot\nabla\mathbf{v}\cdot\nhat$ of this paper;
+\texttt{velocityExtension/closestPoint.C:432};
+\texttt{velocityExtension/steadyUpwindLinear.C:75};
+\texttt{semiLagrangian/normalProjectedScheme.C:161}; and
+\texttt{semiLagrangian/pointValueScheme.C:353}, which is the $\Delta t^2/2$ term of
+the semi-Lagrangian Taylor foot on the \emph{default} semi-Lagrangian scheme.
+Thirty-one parallel kinematic semi-Lagrangian studies are contaminated, fifteen of
+them with curated tables in the versioned documentation; those belong to a
+different line and are handled in the post-mortem cited above.
+
+\paragraph{Which results in this paper are suspended.} Every parallel kinematic
+result carrying an SDPLS source predates this fix and is pending re-measurement.
+That is a statement about provenance, not a retraction of a finding, and it must
+be applied with the same precision as everything else here.
+\begin{itemize}
+  \item Table~\ref{tab:expsource} (exponential delivery) and
+    Table~\ref{tab:volcorr} (volume correction) state four MPI ranks in their own
+    captions and predate the fix: their fitted orders are provisional. Every other
+    multi-rank study reported here predates it as well, including the seven-rung
+    divergence-form ladders of Tables~\ref{tab:rdiv-kinematic}
+    and~\ref{tab:rdiv-strictsp}, whose rank count the curated record settles case
+    by case and which the serial re-measurement of Table~\ref{tab:rdiv-serial}
+    makes moot in any case.
+  \item The findings those tables support are \emph{not} suspended where an
+    independent serial measurement reproduces them. The explicit exponential's
+    shape and volume cost reproduces serially on a clean binary
+    (Table~\ref{tab:expimplicit}), and the divergence of \texttt{Rdiv} reproduces
+    serially at the same magnitude (Table~\ref{tab:rdiv-serial}). Both findings
+    stand; the specific fitted orders from the parallel ladders do not.
+  \item The defect is in the \emph{prescribed}-velocity model, so its direct scope
+    is the kinematic ladders. The coupled droplet studies of
+    Section~\ref{sec:coupled} run on eight MPI ranks but obtain $\mathbf{U}$ from
+    the momentum equation, whose coupled-patch values the solver framework fills
+    itself, and they are therefore outside it. Two further observations bound any
+    residual doubt about that section. The exact-curvature arms cannot be affected
+    by any error in $\nabla\mathbf{v}$ at all, because there
+    $|\mathbf{v}| \sim 10^{-11}\,\mathrm{m/s}$ and the strain the source reads is
+    itself at machine zero. And a defect that lives on processor patches produces
+    an artefact locked to the domain decomposition, whereas the failure mechanism
+    of Section~\ref{sec:coupled-production} is a four-lobed pattern locked to the
+    \emph{mesh} axes and diagonals, present at
+    $3.9\times10^{-4}\,\mathrm{m/s}$ in the sourceless control that never reads
+    $\nabla\mathbf{v}$ at all.
+  \item Nothing measured serially is affected, in either direction. That includes
+    Table~\ref{tab:rdiv-coefficient}, Table~\ref{tab:rdiv-serial},
+    Table~\ref{tab:rdiv-blend}, Table~\ref{tab:expimplicit},
+    Table~\ref{tab:expimplicit1d} and the 1D gate throughout.
+\end{itemize}
+
+\subsection{The raw flux written over processor faces}
+\label{sec:extfluxdefect}
+
+The second defect is in \texttt{interfaceExtension::updateFlux}, which assigned the
+\emph{raw} flux over the whole \texttt{boundaryField}, processor patches included.
+Processor faces are \emph{interior} faces in serial, where they carry the
+\emph{extended} flux; the field advecting $\psilev$ therefore differed between a
+serial run and a parallel one by construction, at every processor face, on every
+mesh. Measured on the 1D gate with the \texttt{closestPoint} extension, comparing
+$\psilev$ at $t=1$ against the serial result:
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+$\|\psilev_{\text{parallel}} - \psilev_{\text{serial}}\|$ & before & after \\
+\midrule
+serial against $np=2$ & $3.011\times10^{-2}$ & $4.141\times10^{-8}$ \\
+serial against $np=4$ & $3.011\times10^{-2}$ & $3.572\times10^{-9}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+against this repository's stated serial--parallel gate of about $10^{-12}$. The
+fix moves the discrepancy by six to seven orders of magnitude and does not close
+the gate: the residual at $np=8$ is $2.806\times10^{-3}$ at eight cells per rank,
+falling to about $10^{-4}$ at sixteen to thirty-two cells per rank, so it is a
+cells-per-rank artefact of the halo path's first-order Taylor surrogate rather
+than a remnant of the patch assignment. That surrogate is \emph{not} yet fixed, and
+no result in this paper should be read as depending on serial--parallel agreement
+at better than $10^{-3}$ on very small subdomains.
+
+\subsection{Two consequences for the record}
+\label{sec:coupledpatch-consequences}
+
+\paragraph{A published comparison is now in dispute, and is marked rather than
+overwritten.} The velocity-extension record states that the \texttt{closestPoint}
+extension is $2185\times$ \emph{worse} than plain Euler advection on the band
+gradient error, measured on the 2D vortex at $T=2$, $N=512$ --- that is, before
+either fix above. Re-measured after both, serially, the ratio of
+\texttt{closestPoint} to no extension is:
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+$N$ & band gradient ratio & shape ratio & volume ratio \\
+\midrule
+$128$ & $0.172$ \quad($5.8\times$ \emph{better}) & $9.1\times$ worse & $12.6\times$ worse \\
+$256$ & $0.267$ \quad($3.7\times$ \emph{better}) & $5.7\times$ worse & $7.6\times$ worse \\
+\bottomrule
+\end{tabular}
+\end{center}
+Two of the three columns are consistent with the record and trend toward it: the
+shape and volume ratios fall as $h$ shrinks, toward the recorded $3.5\times$ and
+$14.8\times$. The band gradient column is the outlier --- better on two
+independent rungs where the record says catastrophically worse. The resolutions
+differ, so this is \emph{not} a like-for-like comparison and the published figure
+is not replaced here. The claim is marked \textbf{disputed}, pending an $N=512$
+re-measurement on the fixed binaries, and it is marked in this paper because both
+of the fixes that put it in dispute are recorded in this paper; the claim itself
+belongs to the velocity-extension line and is not restated as a result of this
+work.
+
+\paragraph{A geometric failure mode is confirmed, not an artefact.} The
+counter-check matters as much as the dispute. On the 1D slab with $N=64$,
+\texttt{nLayers}$\,=3$ and the \texttt{closestPoint} extension, the band mean of
+$|\mathrm{d}\psilev/\mathrm{d}x|$ against the exact value of $1$ collapses when
+the extension band reaches the medial axis:
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+$W/(\texttt{nLayers}\,h)$ & $2.67$ & $1.33$ & $0.67$ & $0.33$ \\
+\midrule
+band mean $|\mathrm{d}\psilev/\mathrm{d}x|$ & $0.896349$ & $0.987887$ & $0.501507$ & $0.645163$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The collapse lands exactly at $W/(\texttt{nLayers}\,h) = 1$, where the medial axis
+of the slab enters the extension band and the closest-point map --- and with it the
+extended velocity --- jumps by $a\,(x_R - x_L)$ between the two sides. Re-measured
+after both fixes above, the four numbers reproduce the pre-fix ones
+($0.896331$, $0.987680$, $0.501531$, $0.643606$) to between $1.8\times10^{-5}$ and
+$1.6\times10^{-3}$ --- far below the factor-of-two collapse the table is about ---
+as they must, because this is a serial measurement and both defects are
+parallel-only. The invariance is
+the point: this is a genuine geometric failure mode of the extension and not a
+parallel artefact, and it is the one thing in the extension record that the two
+fixes leave exactly where it was.
+
+% ============================================================================
 \section{Negative results}
 Measured and documented here and in the companion deck. Retained:
 \begin{itemize}
@@ -2105,23 +2912,59 @@ Measured and documented here and in the companion deck. Retained:
     source term that reads the computed velocity must be verified on both tracks,
     and a method paper that reports only the kinematic one is incomplete by
     construction rather than by omission.
-  \item \textbf{A temporal correction cannot repair a spatial order --- and this
-    one is not free.} The \texttt{exponential} linearization delivers the
-    source's one-step factor exactly and removes the $O(z^2)$ rectification of
-    \eqref{eq:rectify} identically, and it changes the band gradient order by
-    $0.003$: $+1.109$ against $+1.112$ on the reversed 2D vortex
-    (Table~\ref{tab:expsource}). The order loss of Section~\ref{sec:sourceerror}
-    is $(\nabla e)_h = O(h^{p-1})$, which no time discretization touches, and
-    this is the most direct test of that statement in the paper. The same
-    measurement, once the shape column exists, shows that the exactness is paid
-    for elsewhere: \eqref{eq:expsource} sets $S_p = 0$ and delivers the whole
-    source explicitly, giving up the implicit coupling between source and
-    transport operator, and the shape order falls from $+1.883$ to $+1.256$ and
-    the volume order at $t=T$ from $+2.090$ to $+1.718$. The member is retained
-    for the one property it holds unconditionally --- a strictly positive
-    multiplicative factor cannot flip the sign of $\psilev$ in any cell, so the
-    topology of the discrete zero contour survives any $\Delta t$ --- and not as
-    a free improvement.
+  \item \textbf{A temporal correction cannot repair a spatial order.} The
+    \texttt{exponential} linearization delivers the source's one-step factor
+    exactly and removes the $O(z^2)$ rectification of \eqref{eq:rectify}
+    identically, and it changes the band gradient order by $0.003$: $+1.109$
+    against $+1.112$ on the reversed 2D vortex (Table~\ref{tab:expsource}), and
+    by $0.028$ on the serial three-rung ladder that carries all three deliveries,
+    $+0.936$ against $+0.908$ (Table~\ref{tab:expimplicit}). The order loss of
+    Section~\ref{sec:sourceerror} is $(\nabla e)_h = O(h^{p-1})$, which no time
+    discretization touches, and this is the most direct test of that statement in
+    the paper --- three deliveries of the same source, spanning a rational
+    approximation of the one-step factor, the exact factor delivered explicitly
+    and the exact factor delivered implicitly, all landing within $0.03$ of each
+    other in gradient order.
+  \item \textbf{What cost the shape and volume order was the explicit delivery,
+    not the exponential factor --- and the ablation now says so.} The explicit
+    \texttt{exponential} member sets $S_p = 0$ and delivers the whole source from
+    $\psilev^n$, giving up the implicit coupling between source and transport
+    operator, and it pays in the two metrics that measure where the zero contour
+    ends up: shape $+1.883 \rightarrow +1.256$ and volume $+2.090 \rightarrow
+    +1.718$ on the four-rank seven-rung ladder (Table~\ref{tab:expsource}), and
+    $+1.600 \rightarrow +1.360$ and $+1.638 \rightarrow +1.439$ on the serial
+    three-rung one (Table~\ref{tab:expimplicit}). That attribution was an argument
+    from the structure of \eqref{eq:expsource} until a member existed that carries
+    the same factor \emph{with} diagonal support. \texttt{exponentialImplicit}
+    \eqref{eq:expimplicit}, $S_p = (1-e^{-z})/\Delta t$ with $S_c = 0$, is that
+    member, and it repairs the loss completely: $+0.912$, $+1.603$ and $+1.653$
+    against \texttt{simpleLinearImplicit}'s $+0.908$, $+1.600$ and $+1.638$ on one
+    serial ladder, and a factor of $770$ better than the explicit form in both
+    interface position and phase volume on the 1D gate
+    (Table~\ref{tab:expimplicit1d}). The coefficient is $(1-e^{-z})/\Delta t$ and
+    not $(e^{z}-1)/\Delta t$: the latter is the \emph{explicit} coefficient, and
+    used implicitly it gives $\psilev^{n+1} = \psilev^n/(2-e^{z})$, with a pole at
+    $z = \ln 2$ and a sign-flipped $\psilev$ beyond it. The explicit member is
+    superseded; the implicit one holds the unconditional sign preservation that
+    was the explicit member's sole retained justification, through
+    $1 - S_p\Delta t = e^{-z} > 0$, and pays nothing for it.
+  \item \textbf{For this source, matching the continuum coefficient matters more
+    than integrating the source ODE exactly.} On the 1D uniaxial-stretch gate
+    \texttt{simpleLinearImplicit} is exact --- band gradient error
+    $7.19\times10^{-12}$ --- while both exponential members sit at
+    $7.5\times10^{-3}$, nine orders of magnitude behind, despite reproducing the
+    one-step factor to machine precision. The reason is structural rather than a
+    property of the integrator: the closed-form solution satisfies
+    $\mathbf{v}\cdot\nabla\psilev = a\,\psilev$ pointwise
+    \eqref{eq:steadybalance}, a steady balance, and $S_p = f_{nl}$ reproduces the
+    continuum coefficient $a$ exactly, so the balance is enforced at time level
+    $n+1$ to machine precision whatever $\Delta t$ is. A more accurate ODE
+    integrator perturbs that coefficient instead of matching it ---
+    $(1-e^{-z})/\Delta t = a - a^2\Delta t/2 + O(a^3 \Delta t^2)$ --- and breaks
+    the balance at $O(a^2\Delta t)$, which is exactly the $7.5\times10^{-3}$ both
+    exponential members show. The effect is invisible on the 2D ladder, where the
+    three deliveries agree to $0.03$ in gradient order, and it is a property of a
+    source whose purpose is to cancel a term rather than to evolve one.
   \item \textbf{Volume correction is a crossover, not an improvement, and the
     discriminating variable is the size of the uncorrected volume error.}
     Restoring the phase volume with a uniform level-set shift raises the shape
@@ -2150,21 +2993,75 @@ Measured and documented here and in the companion deck. Retained:
     against $-3.800$, ending at $635$ against $668.9$ at $N=256$, shape $-0.951$
     against $-1.306$, volume $-0.863$ against $-1.544$
     (Table~\ref{tab:rdiv-strictsp}). The scope of this is narrow and must be
-    stated as such: the split \emph{redistributes} $f$ between explicit and
-    implicit delivery and does not \emph{reduce} the noise in
-    $\nabla\cdot\mathbf{w}$, so what it eliminates is the M-matrix mechanism
-    specifically, and the two remaining suspects of Section~\ref{sec:rdiv} ---
-    second derivatives of $\psilev$ inside $\nabla\cdot\mathbf{w}$, and the
-    near-cancellation of two large \texttt{fvm::div} terms in an assembly that is
-    continuum-identical to the algebraic form --- are untouched by it.
+    stated as such, and it is now sharper than it was when first written. An
+    M-matrix requires two things: a dominant diagonal, and non-positive
+    off-diagonals. The sign split addresses the \emph{diagonal}, and the diagonal
+    was never the problem --- no row of the \texttt{Rdiv} system loses dominance
+    outright, which is why every run completes. The sign violation that matters is
+    in the \emph{off-diagonals}, which the split leaves untouched by construction
+    because they belong to the operator pair and not to $f$
+    (Section~\ref{sec:rdiv-mechanism}). The experiment could not have found the
+    defect it was aimed at, and the two suspects it left standing have since been
+    measured and are bounded and second-order (Table~\ref{tab:rdiv-coefficient}).
+  \item \textbf{The divergence-form failure is a maximum-principle violation in a
+    difference of two upwind operators, and it cannot be repaired without giving up
+    the conservation the form exists to provide.} Because
+    \texttt{fvMatrix::operator==} subtracts termwise, \texttt{Rdiv} assembles
+    $\mathrm{ddt} + 2\,\mathrm{div}(\phi,\psilev) -
+    \mathrm{div}(\phi_{\mathbf{w}},\psilev)$ \eqref{eq:rdivmatrix} --- a
+    \emph{difference} of two upwind convection operators rather than one. A single
+    upwind $\mathrm{fvm::div}$ has non-positive off-diagonals whatever the sign of
+    the face flux; subtracting one flips them, and on a face where
+    $\mathrm{sign}(\phi_f) \neq \mathrm{sign}(\phi_{\mathbf{w},f})$ the composite
+    off-diagonal is exactly $+|\phi_{\mathbf{w},f}|$ \eqref{eq:posoffdiag}.
+    Measured in the assembly at $N=64$: $2924$ of $8064$ internal faces
+    sign-mismatched ($36.3\%$, carrying $10.9\%$ of the flux magnitude), $3382$ of
+    $16128$ off-diagonal coefficients positive ($21.0\%$), and a largest positive
+    off-diagonal row sum of $\approx 0.19$ in units of $|\Omega_c|/\Delta t$ ---
+    about $0.38\,\mathrm{CFL}$, and mesh-independent. No row loses diagonal
+    dominance, so every run completes; the discrete maximum principle is
+    nonetheless gone, and with the per-step gain fixed and the number of steps to a
+    fixed end time growing like $1/h$, the amplification grows without bound under
+    refinement. The measured error ratios accelerate --- $4.1$, $11.2$, $28.0$ over
+    the serial ladder (Table~\ref{tab:rdiv-serial}) --- where a convergence order
+    would give a constant ratio, so this is an amplification in time and not a
+    consistency error. Two controls close it. On the 1D uniaxial-stretch gate
+    $\mathbf{w} = \mathbf{v}$, hence $\phi_{\mathbf{w}} = \phi$, the probe reports
+    zero sign-mismatched faces and zero positive off-diagonals, and \texttt{Rdiv}
+    is exact. And the blend sweep over $\phi_\lambda = \lambda\phi +
+    (1-\lambda)\phi_{\mathbf{w}}$ \eqref{eq:blend}, every member of which is
+    continuum-equivalent because the tangential velocity does no work on a level
+    set \eqref{eq:tangentialnowork}, is unimodal and peaks at $\lambda = 1$ ---
+    i.e.\ at $\phi$, the flux the algebraic source \textbf{R} convects on --- on
+    gradient, shape and volume simultaneously (Table~\ref{tab:rdiv-blend}).
+    Conservation requires routing the operator through
+    $\mathrm{div}(\phi_{\mathbf{w}},\cdot)$ and therefore forces $\lambda \neq
+    1$: a single upwind operator, conservation on the normal flux, and the optimal
+    convecting flux cannot hold together, and at $\lambda = 1$ the form \emph{is}
+    \textbf{R} with the conservation gone.
+  \item \textbf{Two coupled-patch defects suspend every parallel kinematic result
+    carrying an SDPLS source.} \texttt{velocityModel::setVelocity} wrote a face-centre
+    velocity into coupled patches, where the neighbouring cell-centre value is
+    expected, giving an $O(a)$ --- not $O(h)$ --- error in
+    $\mathrm{fvc::grad}(\mathbf{U})$ in every processor-adjacent cell and hence in
+    the strain $a$ the source reads; and \texttt{interfaceExtension::updateFlux}
+    wrote the raw flux over processor patches, which are interior faces in serial,
+    so the field advecting $\psilev$ differed between serial and parallel by
+    construction. Both are fixed; both were parallel-only; neither could be caught
+    by a serial gate. Fitted orders from multi-rank ladders are provisional until
+    re-measured, and the findings they support stand only where a serial
+    measurement reproduces them --- which, for the two that matter here, it does
+    (Tables~\ref{tab:rdiv-serial} and~\ref{tab:expimplicit}). Full post-mortem:
+    \texttt{docs/gradU-coupled-patch-contamination.md}, and
+    Section~\ref{sec:coupledpatch}.
 \end{itemize}
 
 Retracted. The first three were artefacts of the defects of
 Section~\ref{sec:defects} rather than properties of the method; the remaining
-four were falsified or corrected by the coupled, conservation and re-run
-kinematic measurements of Sections~\ref{sec:coupled}, \ref{sec:rdiv},
-\ref{sec:budget} and \ref{sec:exp}, and are recorded here rather than deleted, at
-the place the original claims were made:
+six were falsified or corrected by the coupled, conservation, re-run kinematic and
+in-assembly measurements of Sections~\ref{sec:coupled}, \ref{sec:rdiv},
+\ref{sec:rdiv-mechanism}, \ref{sec:budget} and \ref{sec:exp}, and are recorded
+here rather than deleted, at the place the original claims were made:
 \begin{itemize}
   \item ``R over-flattening near the resolution limit'' and ``R controls
     steepening, not flattening'' --- both measured with the reversed-sign
@@ -2202,6 +3099,41 @@ the place the original claims were made:
     had never been run kinematically at all --- \texttt{fvm::div(phiW,psi)}
     aborted at the first step for want of a scheme entry --- are recorded in
     Section~\ref{sec:rdiv}.
+  \item ``The residual of the discrete product rule \eqref{eq:productrule} grows
+    under refinement, so \texttt{Rdiv} is built on a discrete identity that its own
+    discretisation violates, increasingly under refinement'' --- \emph{withdrawn},
+    at the place it was made (Section~\ref{par:rdiv-productrule}), and the table it
+    was drawn from is retained and re-captioned rather than deleted
+    (Table~\ref{tab:rdiv-productrule}). The closeout failed twice over, and both
+    failures are defects of the norm rather than properties of the operator. The
+    tabulated residuals are evaluated at $t=T$, by which time the field the probe
+    differentiates is no longer the sampled exact signed distance, so they measure a
+    polluted $\psilev$ and not the operator. And the same residual measured at the
+    first assembly but in a \emph{global} $L_\infty$ is flat at $\approx0.44$ on
+    every rung, with its argmax on the cell holding the circle centre, at
+    $r/h = 0.71$, where the signed distance has its kink and
+    $\nabla\cdot\nhat = (d-1)/r$ is singular: a fixed geometric singularity of the
+    exact solution, read at every resolution. Measured at the first assembly, while
+    $\psilev$ is still exact to $5\times10^{-14}$, and over the fixed physical
+    annulus $|\psilev_{\text{exact}}| \le 0.05$ --- never a multiple of $h$, since a
+    norm whose domain moves with the mesh has no convergence order --- the residual
+    converges at $+2.005$ in $L_2$ and $+1.915$ in $L_\infty$, the coefficient error
+    at $+1.972$, the divergence operator fed an exactly sampled $\mathbf{w}$ at
+    $+1.970$ and the discrete normal's own contribution at $+2.018$, against
+    mesh-independent reference norms (Table~\ref{tab:rdiv-coefficient}).
+    Substituting the exact smooth $\mathbf{w}$ for the discrete one and changing
+    nothing else moves the residual by less than $20\%$ at every instant and rung
+    (ratio $0.81$ to $1.09$). \emph{Both} previously named suspects --- coefficient
+    noise and assembly inconsistency --- are therefore bounded and second-order
+    convergent, and neither explains the divergence; the mechanism that does is in
+    Section~\ref{sec:rdiv-mechanism}.
+  \item ``The two remaining suspects for the divergence-form failure ---
+    second derivatives of $\psilev$ inside $\nabla\cdot\mathbf{w}$, and the
+    near-cancellation of two large \texttt{fvm::div} terms --- remain live'' ---
+    \emph{corrected} by the same measurement. Both are dead. The divergence is not
+    in any coefficient and not in the consistency of the assembly; it is in the
+    sign pattern of the assembled matrix, which \eqref{eq:rdivmatrix} makes a
+    difference of two upwind convection operators.
   \item ``The \texttt{exponential} linearization changes nothing: identical
     gradient order, no order gain in either direction, and its value is exactness
     in time and unconditional sign preservation'' --- \emph{corrected}, at the
@@ -2217,10 +3149,16 @@ the place the original claims were made:
     $+1.109$ against $+1.112$, a difference of $0.003$ --- and the neutrality
     half does not: the shape order falls from $+1.883$ to $+1.256$ and the volume
     order at $t=T$ from $+2.090$ to $+1.718$. The corrected verdict is in
-    Section~\ref{sec:exp}: the exponential delivery costs shape and volume order,
-    because $S_p=0$ gives up the implicit coupling between the source and the
-    transport operator, and it should be selected only where its unconditional
-    sign preservation is specifically required.
+    Section~\ref{sec:exp}: the \emph{explicit} exponential delivery costs shape and
+    volume order, because $S_p=0$ gives up the implicit coupling between the source
+    and the transport operator. The recommendation that followed that correction ---
+    ``select it where its unconditional sign preservation is specifically required''
+    --- has since been superseded in its turn, and is recorded here for the same
+    reason. \texttt{exponentialImplicit} \eqref{eq:expimplicit} carries the same
+    exponential factor on the diagonal, holds the same unconditional sign
+    preservation through $1 - S_p\Delta t = e^{-z} > 0$, and does not pay the shape
+    and volume order (Table~\ref{tab:expimplicit}). There is no remaining
+    configuration in which the explicit member is the right choice.
   \item ``The exact-curvature \texttt{Rdiv} runs are decisive'' ---
     \emph{corrected}: they are a \emph{null test}. With the exact-curvature force
     the velocity is $O(10^{-11})\,\mathrm{m/s}$, so
@@ -2301,57 +3239,122 @@ has no sign guarantee, the sign-split variant \texttt{RdivStrictSp} removes that
 violation on the half of the domain that carried it --- $512$ cells of $1024$ at
 $N=32$ --- and the divergence moves from $-3.800$, $-1.306$ and $-1.544$ only to
 $-3.554$, $-0.951$ and $-0.863$. Loss of diagonal dominance is therefore not the
-mechanism, and no replacement mechanism is established, because the split
-redistributes the coefficient between explicit and implicit delivery without
-reducing the noise in $\nabla\cdot\mathbf{w}$: the second-derivative content of
-that field and the near-cancellation of two large \texttt{fvm::div} terms in an
-assembly that is continuum-identical to the algebraic source both remain live.
-The divergence-form source is accordingly reported as withdrawn pending an
-explanation rather than carried as an available option. Finally,
+mechanism --- and the replacement mechanism is now established, which is the one
+substantive change to this account since it was first written. The two suspects
+that the sign split left standing, second-derivative noise in
+$\nabla\cdot\mathbf{w}$ and inconsistency between the two \texttt{fvm::div} terms,
+have both been measured directly at the first assembly and over a fixed physical
+band, and both are bounded and second-order convergent ($+1.972$ for the
+coefficient error, $+2.005$ for the product-rule residual, and less than $20\%$
+change when the exact $\mathbf{w}$ is substituted for the discrete one); the
+earlier probe that was read as convicting the second of them is withdrawn, because
+it was evaluated at $t=T$ on a polluted $\psilev$ and through a global $L_\infty$
+whose argmax sits on the circle-centre kink, where $\nabla\cdot\nhat = (d-1)/r$ is
+singular. What diverges is the sign pattern of the assembled matrix. Because
+\texttt{fvMatrix::operator==} subtracts termwise, \texttt{Rdiv} assembles
+$\mathrm{ddt} + 2\,\mathrm{div}(\phi,\psilev) -
+\mathrm{div}(\phi_{\mathbf{w}},\psilev)$: a \emph{difference} of two upwind
+convection operators, whose composite off-diagonal is exactly
+$+|\phi_{\mathbf{w},f}|$ on every face where the two fluxes disagree in sign
+($36.3\%$ of internal faces at $N=64$, giving $21.0\%$ positive off-diagonal
+coefficients at a mesh-independent strength of about $0.38\,\mathrm{CFL}$). No row
+loses diagonal dominance, which is why every run completes; the discrete maximum
+principle is gone, and the measured error ratios accelerate --- $4.1$, $11.2$,
+$28.0$ --- where a convergence order would hold them constant. The algebraic source
+\textbf{R} assembles a single \texttt{fvm::div} and cannot do this, which is the
+whole of the structural difference between the two forms; on the 1D gate, where
+$\phi_{\mathbf{w}} = \phi$ and the mismatch count is zero, \texttt{Rdiv} is exact.
+Repairing the sign pattern would nevertheless not rescue the form. Every member of
+the blended flux $\phi_\lambda = \lambda\phi + (1-\lambda)\phi_{\mathbf{w}}$ is
+continuum-equivalent, because the tangential velocity does no work on a level set,
+and the measured optimum over gradient, shape and volume simultaneously is
+$\lambda = 1$ --- the flux \textbf{R} already convects on --- with monotone loss in
+both directions. Conservation is obtained precisely by routing the operator through
+$\mathrm{div}(\phi_{\mathbf{w}},\cdot)$, which forces $\lambda \neq 1$, so a
+single upwind operator, conservation on the normal flux and the optimal convecting
+flux cannot hold together; fixing the maximum principle would recover stability and
+not accuracy. The divergence-form source is accordingly withdrawn on a structural
+argument rather than pending an explanation, and is not carried as an available
+option. Finally,
 the two invariants that the conservative argument had conflated are now measured
 apart: with the source off $\int\psilev\,\mathrm dV$ is conserved to machine
 precision, while the \textbf{R} arm drifts it by $-2.2\times10^{-4}$ and destroys
 the droplet in the same run --- four orders of magnitude between the quantity a
 flux form conserves and the quantity the droplet lives in.
 
+Two further results belong in the summary because they change what should be
+selected and what should be believed. On the delivery of the source, the cost that
+the exact-in-time \texttt{exponential} member pays in shape and volume order is
+now known not to be a property of the exponential factor: requiring the exact
+one-step factor to be delivered \emph{implicitly} gives
+$S_p = (1 - e^{-z})/\Delta t$ with $S_c = 0$ and $z = f_{nl}\Delta t$ --- not
+$(e^{z}-1)/\Delta t$, which is the explicit coefficient and, used implicitly, has a
+pole at $z = \ln 2$ and returns a negative $\psilev$ beyond it --- and that member
+recovers the shape and volume order in full ($+1.603$ and $+1.653$ against
+$+1.600$ and $+1.638$ for \texttt{simpleLinearImplicit} on one serial ladder) while
+keeping the unconditional sign preservation and removing the
+$|f_{nl}|\Delta t < 1$ diagonal restriction by construction. The explicit member is
+superseded by it. What the same comparison also shows, on the 1D uniaxial-stretch
+gate where the answer is known in closed form, is that
+\texttt{simpleLinearImplicit} is \emph{exact} there --- $7.19\times10^{-12}$
+against $7.5\times10^{-3}$ for both exponential members --- because the exact
+solution is a steady balance $\mathbf{v}\cdot\nabla\psilev = a\,\psilev$ and
+$S_p = f_{nl}$ reproduces the continuum coefficient exactly, while any more
+accurate ODE integrator perturbs it at $O(a^2\Delta t)$. For this source, matching
+the coefficient matters more than integrating the ODE exactly. And on what should
+be believed: two coupled-patch defects have been found and fixed --- a face-centre
+velocity written into coupled patches, giving an $O(a)$ error in
+$\mathrm{fvc::grad}(\mathbf{U})$ in every processor-adjacent cell and hence in the
+strain the source reads, and the raw flux written over processor faces in the
+interface extension --- so every parallel kinematic result carrying an SDPLS source
+predates the fixes and its fitted orders are provisional. Both defects are
+parallel-only, nothing measured serially moves, and the two findings that matter most here have
+been reproduced serially on clean binaries: the divergence of the divergence-form
+source, and the shape and volume cost of the explicit exponential delivery.
+
 What a source term still cannot do is manufacture resolution: the cancellation
 is only as good as the normal it is built from.
 
-\paragraph{Open.} Four things, none of them claimed here. \emph{First}, the
-mechanism of the divergence-form failure is one hypothesis shorter and no
-hypothesis nearer. The sign split falsified the diagonal-dominance mechanism
-without displacing the divergence, and the two remaining suspects --- the
-second-derivative content of $\nabla\cdot\mathbf{w}$, and the near-cancellation of
-the two \texttt{fvm::div} terms whose discrete $\psilev\,\nabla\cdot\mathbf{w}$
-content must cancel against the $\mathrm{Sp}$ term with nothing guaranteeing that
-it does --- are logically independent. The probe has since been run and reports
-the residual of the discrete product rule \eqref{eq:productrule} that the
-assembly depends on: it fails, and the failure grows under refinement
-($-0.789$ in $L_2$, $-1.585$ in $L_\infty$, $-0.545$ relative to the terms being
-cancelled), with its turning point at $N=64$ coinciding with the turn in
-\texttt{Rdiv}'s own error (Table~\ref{tab:rdiv-productrule}). Because that
-residual uses the same $\nabla\cdot\mathbf{w}$ on both sides, it isolates
-inconsistency of assembly rather than noise in the coefficient, and it does not
-exclude the second-derivative content as a contributor --- the coefficient error
-was not measured separately. Neither suspect is repairable by a change of
-coefficient alone; both are consequences of routing the source through fluxes.
-A consistent formulation would have to compute $\nabla\cdot\mathbf{w}$ from the
-same face interpolation that $\mathrm{fvm::div}(\phi_{\mathbf{w}},\psilev)$ uses,
-so that the cancellation holds by construction. That is a reformulation, not a
-patch, and it is not attempted here.
-\emph{Second}, the coupled result names the force as the place to work, and does
-not name a force: a model whose curvature error is small \emph{and} whose dynamic
-loop gain stays below one has not been identified, and the one obvious candidate
-in the literature is measured unstable here. \emph{Third}, the cost the
-\texttt{exponential} delivery pays in shape and volume order
-(Table~\ref{tab:expsource}) is attributed above to the loss of implicit coupling
-between the source and the transport operator, and that attribution is an argument
-from the structure of \eqref{eq:expsource} rather than an ablation: no member has
-been constructed that carries the exponential factor \emph{and} retains diagonal
-support, so the explicit delivery has not been isolated from the exactness as a
-single variable. \emph{Fourth}, the non-reversing 3D shear and LeVeque deformation
-ladders are still outstanding, and no coupled study reported here measures the
-band gradient error at all.
+\paragraph{Open.}
+\label{sec:conclusions-open}
+Five things, none of them claimed here. \emph{First}, the mechanism of the
+divergence-form failure is identified and the line is closed, but the question the
+form was raised to answer is not. A conservative source that keeps a single upwind
+convection operator, carries its conservation on the normal flux, and convects on
+the optimal flux $\lambda = 1$ cannot exist in the family \eqref{eq:blend}, and no
+formulation outside that family is proposed here. Whether conservation of
+$\int\psilev\,\mathrm dV$ can be obtained by some other route without paying the
+accuracy that $\lambda \neq 1$ costs is open, and it is a reformulation rather than
+a patch. \emph{Second}, the coupled result names the force as the place to work,
+and does not name a force: a model whose curvature error is small \emph{and} whose
+dynamic loop gain stays below one has not been identified, and the one obvious
+candidate in the literature is measured unstable here. \emph{Third}, the ablation
+that the previous version of this paragraph called for --- a member carrying the
+exponential factor \emph{with} diagonal support, isolating the explicit delivery
+from the exactness as a single variable --- has been built and run, and it confirms
+the attribution (Table~\ref{tab:expimplicit}). What is open is the regime in which
+the member is worth selecting: the guarantee it adds is a diagonal that cannot
+change sign when $f_{nl}\Delta t > 1$, and no ladder reported here runs in that
+regime, so the robustness is established by construction and not by measurement.
+The exactness of \texttt{simpleLinearImplicit} is likewise established only on the
+1D gate, which is the only configuration here whose exact solution is a steady
+balance; there is no 2D or 3D analogue of that measurement. \emph{Fourth}, the
+non-reversing 3D shear and LeVeque deformation ladders are still outstanding, and
+no coupled study reported here measures the band gradient error at all.
+\emph{Fifth}, the two coupled-patch defects of Section~\ref{sec:coupledpatch}
+leave three things pending. Every multi-rank ladder in this paper is awaiting
+re-measurement on the fixed binaries. The serial--parallel gate is improved by six
+to seven orders of magnitude but not closed: the residual at $np=8$ is
+$2.806\times10^{-3}$ at eight cells per rank, about $10^{-4}$ at sixteen to
+thirty-two, and it is the halo path's first-order Taylor surrogate, which is not
+yet fixed. And the velocity-extension record's claim that \texttt{closestPoint} is
+$2185\times$ worse than plain Euler advection on the band gradient error, measured
+at $N=512$ before both fixes, is marked disputed rather than replaced: re-measured
+after them the ratio is $0.172$ at $N=128$ and $0.267$ at $N=256$ --- better, not
+worse --- while shape and volume remain worse and trend toward the recorded
+$3.5\times$ and $14.8\times$. The resolutions differ, so the comparison is not
+like-for-like, and the published number stands until an $N=512$ re-measurement
+settles it.
 
 \section*{Reproducibility}
 \begin{verbatim}
