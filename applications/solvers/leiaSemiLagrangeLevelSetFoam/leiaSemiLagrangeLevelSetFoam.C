@@ -101,6 +101,23 @@ int main(int argc, char *argv[])
 
     Info<< "\nCalculating semi-Lagrangian scalar transport\n" << endl;
 
+    // Per-step metrics by default. 4044f47 gated them to writeTime() for speed
+    // on fine/polyhedral meshes, but (a) this solver overrides deltaT AFTER
+    // Time's write-time adjustment, so adjustableRunTime never lands on the
+    // write instants, and (b) the endTime step is not a writeTime(), so the
+    // reversal endpoint t = T -- the only instant the reversed benchmarks are
+    // scored on -- was never logged and the aggregation scored t = T - dt: a
+    // dt ~ h gap that manufactures a fake first order (measured 2026-08-27,
+    // shape 9.18e-05 at T - dt vs 1.11e-06 at T, N = 256). The template knob
+    // reportAtWriteTimesOnly (fvSolution/levelSet, REPORT_WRITE_ONLY) existed
+    // but was never read; it now does what it says. The final step is logged
+    // unconditionally in either mode.
+    const Switch reportAtWriteTimesOnly
+    (
+        mesh.solutionDict().subOrEmptyDict("levelSet")
+            .getOrDefault<Switch>("reportAtWriteTimesOnly", false)
+    );
+
     #include "errorCalculation.H"
 
     while (runTime.run())
@@ -134,15 +151,18 @@ int main(int argc, char *argv[])
         // Semi-Lagrangian update: psi holds psi^n on entry, psi^{n+1} on exit.
         slAdv->advect(psi, U, Uold);
 
-        // Diagnostics (phase indicator alpha, narrow band, error norms + CSV row)
-        // are needed only at write times: the advection above uses neither alpha
-        // nor the narrow band (no file in src/leiaLevelSet/semiLagrangian reads
-        // "NarrowBand"). Recomputing the per-cell-LLS + tet-fill phase indicator
-        // every step otherwise dominates the cost on fine / polyhedral meshes
-        // (small deltaT -> thousands of steps). Gating to writeTime leaves the
-        // reported error at t=0 / T/2 / T unchanged (those are the write times)
-        // and only drops the unused per-step rows.
-        if (runTime.writeTime())
+        // Diagnostics (phase indicator alpha, narrow band, error norms + CSV
+        // row). The advection above uses neither alpha nor the narrow band, so
+        // with reportAtWriteTimesOnly true they can be skipped between write
+        // times (the per-cell-LLS + tet-fill indicator dominates the cost on
+        // fine/polyhedral meshes) -- but the final step is ALWAYS logged: the
+        // reversed benchmarks are scored exactly at t = endTime, and this
+        // solver's own deltaT override keeps adjustableRunTime from ever
+        // landing a writeTime() there.
+        const bool finalStep =
+            (runTime.endTime().value() - runTime.value())
+          < 0.5*runTime.deltaTValue();
+        if (!reportAtWriteTimesOnly || runTime.writeTime() || finalStep)
         {
             phaseInd->calcPhaseIndicator(alpha, psi);
 

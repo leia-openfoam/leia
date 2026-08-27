@@ -58,6 +58,12 @@ def latex_escape(s):
 
 
 def _is_semi_lagrangian(rec):
+    # The dedicated kinematic SL solver ignores the unified ADVECTION dict
+    # entry and always advects semi-Lagrangian; trusting the token labelled
+    # every such run "euler+div:..." (found 2026-08-27 when the re-run of
+    # uncachedConv2Dvortex came back mislabelled).
+    if str(rec.get("solver", "")).strip() == "leiaSemiLagrangeLevelSetFoam":
+        return True
     return rec.get("ADVECTION", "eulerian") == "semiLagrangian"
 
 
