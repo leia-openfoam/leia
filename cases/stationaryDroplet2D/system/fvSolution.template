@@ -152,6 +152,12 @@ PIMPLE
     // t^{n+1} value and the step becomes backward-Euler consistent throughout.
     psiOuterCorrectors  @!PSI_OUTER_CORRECTORS!@;
 
+    // Accuracy-driven outer loop, OPT-IN BY FILE (see residualControl.off for
+    // why presence alone is not inert): residualControl.off renders the
+    // historical dictionary byte-identically; residualControl.on activates
+    // SAAMPLE-style residual-driven outer correctors with OUTER_{U,P}_TOL.
+    #include "@!PIMPLE_RESIDUAL_CONTROL_FILE!@"
+
     nCorrectors         2;
     nNonOrthogonalCorrectors 1;
 

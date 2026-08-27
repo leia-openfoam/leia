@@ -390,3 +390,28 @@ SDPLS_COMPOSITE_FLUX off;
 // introduced in 4923800 without a default, which broke materialization of
 // EVERY study touching cases/2Dvortex (foam_param aborts on valueless tokens).
 SDPLS_FLUX_BLEND 1.0;
+
+// Semi-implicit (Hysing/Raessi/SAAMPLE) capillary term, an fvOption rendered
+// into system/fvOptions (cases/stationaryDroplet2D/system/fvOptions.template).
+// `off` = addSup returns without touching the momentum matrix -- verified
+// bit-identical, so every pre-existing study is unchanged. `value` = the
+// SAAMPLE arrangement (pairs with PSI_OUTER_CORRECTORS no); `increment` = the
+// deferred-Jacobian form that vanishes at outer-loop convergence (pairs with
+// PSI_OUTER_CORRECTORS yes + residual-controlled outer iterations). The
+// coefficient multiplies sigma*dt (2/3 = the exact BDF2 Jacobian scale).
+SEMI_IMPLICIT_CAPILLARY off;
+SEMI_IMPLICIT_CAPILLARY_COEFF 1.0;
+SEMI_IMPLICIT_LB true;
+
+// PIMPLE.residualControl tolerances for the accuracy-driven outer loop
+// (SAAMPLE Algorithm 1 in OpenFOAM vocabulary). 0 = the criterion can never
+// be satisfied, so the loop runs the fixed nOuterCorrectors count -- the
+// committed behaviour, bit-identical. The semi-implicit `increment` candidate
+// raises these together with N_OUTER_CORRECTORS and PSI_OUTER_CORRECTORS yes.
+OUTER_U_TOL 0;
+OUTER_P_TOL 0;
+// Which include the PIMPLE dict pulls: residualControl.off (empty -- the
+// byte-identical historical dictionary) or residualControl.on (the block).
+// A block with tolerance 0 is NOT equivalent to no block -- measured, see
+// cases/*/system/residualControl.off.
+PIMPLE_RESIDUAL_CONTROL_FILE residualControl.off;

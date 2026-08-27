@@ -1,0 +1,9 @@
+// Accuracy-driven outer loop -- SAAMPLE's conv(v_f) criterion in OpenFOAM
+// vocabulary: stop the outer correctors once the INITIAL residuals of U and
+// p_rgh fall below these tolerances, up to nOuterCorrectors. relTol 0 disables
+// the relative criterion. Selected by PIMPLE_RESIDUAL_CONTROL_FILE.
+residualControl
+{
+    U       { tolerance @!OUTER_U_TOL!@; relTol 0; }
+    p_rgh   { tolerance @!OUTER_P_TOL!@; relTol 0; }
+}

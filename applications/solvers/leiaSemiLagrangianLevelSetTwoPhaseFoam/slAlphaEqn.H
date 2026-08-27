@@ -235,6 +235,39 @@
             );
         }
 
+        // Publish the fit normal alongside the curvature it belongs to: the
+        // normalised gradient of the SAME per-cell quadratic, over the narrow
+        // band (zero elsewhere). Consumed by name (`nHatFit`) by the
+        // semiImplicitCapillaryForce fvOption; cost is one fitDerivatives
+        // sweep of the band, negligible against the fit itself. Filled inside
+        // the freeze-kappa guard so a frozen curvature keeps its matching
+        // frozen normal.
+        {
+            const slReconstruction& siRecon = slAdv->reconstruction();
+            const volScalarField& siBand =
+                mesh.lookupObject<volScalarField>("NarrowBand");
+            nHatFit == dimensionedVector("nHatFit", dimless, vector::zero);
+            if (siRecon.type() == "uncachedQuadraticWeightedLeastSquares")
+            {
+                vectorField& nRef = nHatFit.primitiveFieldRef();
+                vector g(Zero);
+                symmTensor H(Zero);
+                forAll(nRef, celli)
+                {
+                    if (siBand[celli] == 0) continue;
+                    if
+                    (
+                        siRecon.fitDerivatives(celli, g, H) >= 1
+                     && mag(g) > SMALL
+                    )
+                    {
+                        nRef[celli] = g/mag(g);
+                    }
+                }
+                nHatFit.correctBoundaryConditions();
+            }
+        }
+
         // Optional harmonic (Laplace) smoothing of the cell-centred curvature,
         // pinning the interface cells (no foot-point extension). No-op unless
         // enabled in fvSolution (levelSet.curvatureExtension.type harmonicLaplace).

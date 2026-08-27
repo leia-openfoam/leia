@@ -21,6 +21,30 @@ volScalarField kappa
     "zeroGradient"
 );
 
+// Interface normal of the SAME quadratic fit the curvature comes from,
+// normalised, filled over the narrow band after each curvature update
+// (slAlphaEqn.H) from slReconstruction::fitDerivatives -- the loop pattern of
+// capillaryDriverSplit.H:113. Zero outside the band. Registered NO_WRITE: an
+// in-step geometric field consumed by name (default `nHatFit`) by the
+// semiImplicitCapillaryForce fvOption's Laplace-Beltrami projector terms,
+// which the tubular derivation requires to be the normal-extended fit normal,
+// not an FVM gradient of psi. Under the parallel-foliation hypothesis the SL
+// chain already assumes, this normal IS constant along interface normals.
+volVectorField nHatFit
+(
+    IOobject
+    (
+        "nHatFit",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedVector("nHatFit", dimless, vector::zero),
+    "zeroGradient"
+);
+
 // Face-native interface curvature.  connectedInterfaceCurvature fills this
 // directly by extending one value per connected zero-surface element along its
 // normal ray.  reconstructedCurvature consumes it without cell-to-face

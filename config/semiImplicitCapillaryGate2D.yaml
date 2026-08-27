@@ -1,0 +1,67 @@
+# THE FALSIFICATION GATE FOR THE SEMI-IMPLICIT CAPILLARY COUPLING (A/B/C plan).
+#
+# WHAT IS TESTED. The mode-rate dt series (docs/method-comparison/.../tables/
+# mode_rate_dt_series.csv, plan sec. 18) measured the m = 2 capillary mode on
+# the CLEAN state at N = 128: r_2 = 18.8 / 12.7 / 8.0 / 4.0 1/s at dt/1/2/4/8,
+# Richardson intercept r0 ~ 0, raw delta-psi map exactly neutral. The
+# instability is the EXPLICIT capillary coupling, rate c*dt -- the class the
+# semi-implicit (Hysing/Raessi/SAAMPLE) term targets. Predictions per arm are
+# sharp and falsifiable (see below).
+#
+# DESIGN: the FULL 3 x 2 matrix (form x interface-in-loop), all six arms under
+# ONE outer-loop policy (residual-controlled, up to 12 outer correctors), so
+# the only variables are the term and the interface placement:
+#
+#   arm  form       psiOuter  reading
+#   ---  ---------  --------  ------------------------------------------------
+#   0    off        no        baseline: must reproduce r ~ c*dt (18.8 -> 4.0)
+#   1    off        yes       the OLD falsification re-run: un-preconditioned
+#                             Picard, contraction ~ (dt/dt_cap)^2 -> no effect
+#   2    value      no        SAAMPLE arrangement: r reduced; omega_ratio must
+#                             stay ~ 1 (a distorted omega = overdamping)
+#   3    value      yes       double-counted implicitness (demonstration):
+#                             expected over-damped
+#   4    increment  no        control: converges to the EXPLICIT scheme;
+#                             term norm -> round-off per step
+#   5    increment  yes       THE CANDIDATE. PASS = r flat ~ r0 ~ 0 at EVERY
+#                             dt AND outer loop converges in a small,
+#                             dt-independent number of passes. r shifted but
+#                             still ~ dt = incomplete (position lag
+#                             co-driving); r unchanged = FAIL.
+#
+# This config only MATERIALISES the six base cases (run --until preprocess).
+# The rates come from the committed harness, per arm and dt divisor:
+#
+#   python3 workflow/scripts/interface_mode_trajectory.py \
+#     studies/semiImplicitCapillaryGate2D/stationaryDroplet2D_<idx> \
+#     --modes 2 --dt-divisor {1,2,4,8} --steps 700 --sample 10 --out <csv>
+#
+# N = 128 on the 0.01 m reference box reproduces the curated series' dt
+# (7.49989e-06) exactly. Production chain, FILTER OFF (standing rule: score
+# candidates with every filter off). Per-outer diagnostics land in each work
+# case's semiImplicitCapillary.csv (written by the fvOption itself).
+study_name: semiImplicitCapillaryGate2D
+case: stationaryDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [128]
+  DOMAIN_LENGTH: [0.01]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SEMI_IMPLICIT_CAPILLARY: ["off", "value", "increment"]
+  PSI_OUTER_CORRECTORS: ["no", "yes"]
+  N_OUTER_CORRECTORS: [12]
+  PIMPLE_RESIDUAL_CONTROL_FILE: ["residualControl.on"]
+  OUTER_U_TOL: [1.0e-7]
+  OUTER_P_TOL: [1.0e-7]
+  END_TIME: [0.0075]
+collapse_other_axes: true
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

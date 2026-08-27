@@ -96,4 +96,11 @@ volumeCorrection/volumeCorrection.C
 volumeCorrection/newtonShiftVolumeCorrection.C
 
 
+/* Semi-implicit (Hysing/Raessi/SAAMPLE) capillary term as an fvOption. Inside
+   libleiaLevelSet so every leia solver that links the library has the RTS
+   entry with no controlDict libs() plumbing; enabled per case from
+   system/fvOptions, `form off` (and an absent fvOptions file) is inert. */
+fvOptions/semiImplicitCapillaryForce.C
+
+
 LIB = $(FOAM_USER_LIBBIN)/libleiaLevelSet

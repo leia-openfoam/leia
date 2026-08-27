@@ -108,6 +108,12 @@ gradSchemes
 
 divSchemes
 {
+    // Explicit Laplace-Beltrami projector correction of the semi-implicit
+    // capillary fvOption (value form): divergence of the NAMED tensor
+    // (nHat & grad(U))*nHat. Unreferenced unless the option runs with
+    // laplaceBeltrami true, so this entry is inert for every other study.
+    div(semiImplicitNormalFlux) Gauss linear;
+
     // Eulerian level-set advection (leiaLevelSetTwoPhaseFoam). INERT for the
     // semi-Lagrangian solver, which never assembles an FV divergence of psi.
     // Same discretization as every kinematic SDPLS study: linearUpwind with
