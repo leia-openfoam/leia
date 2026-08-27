@@ -48,6 +48,17 @@ QWLSR agree cell-for-cell to ~1e-13.
 > equivalence is part of what the re-run re-establishes. First discriminating
 > re-run: `uncachedConv2Dvortex` on the fixed binary, diffed against the
 > git-tracked curated table.
+>
+> **[2026-08-27] RE-ESTABLISHED for the 2D reversed vortex row.** On the fixed
+> binaries (gradU fix + the per-step metrics writer of `84906ee`) the full
+> 14-arm study gives shape/volume orders **2.84 / 3.30** at CFL 0.5 and
+> 2.38 / 3.54 at CFL 1.0 (was 2.97/2.98 and 2.59/2.94) — second-order shape
+> confirmed as a method property; the N=256 endpoint equals the bug-free
+> serial run to all digits (1.1053645831e-06 / 3.9509e-05), i.e. parallel is
+> now seam-clean end-to-end. The gradU bug's whole endpoint effect was <= 2x
+> (STATUS.md 2026-08-27); the "117x collapse" of the first re-run was a
+> diagnostics-gate artifact (stale band + scoring at T - dt), fully retracted.
+> The 3D shear / deformation / poly rows above remain pending re-run.
 
 **Curvature statics (exact SDF, |Sf|-weighted L2 on active faces):**
 - 2D circle: every classical delivery ≈ O(h^1.1). Cell-centred κ: O(h^1.07),
