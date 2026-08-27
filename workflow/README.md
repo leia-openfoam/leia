@@ -59,6 +59,10 @@ config/bulkVortexSL.yaml     SEMI-LAGRANGIAN solver (solver: leiaSemiLagrangeLev
                              overlay (reads the bulkVortexHighRes velocity-extension study).
 config/bulkVortexSLHighRes.yaml  + N=256 tier (opt-in; refreshes the deck's sl_* figures)
 profiles/local/config.yaml  executor: local   (mpirun; jobs x np = 24 ranks, no oversubscription)
+profiles/local20/config.yaml executor: local  (20 of 24 cores; leaves 4 free for interactive use)
+profiles/local8/config.yaml executor: local   (8 of 24 cores, ONE arm at a time: the tier to use
+                             while another session holds the rest of the machine; memory, not
+                             cores, is what bounds 3D here -- see the profile's header)
 profiles/slurm/config.yaml  executor: slurm    (one sbatch per case; srun + module env)
 studies/<study>/            generated cases + <study>_database.csv  (git-ignored)
 ```

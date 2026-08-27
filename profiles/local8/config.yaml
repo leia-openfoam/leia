@@ -1,0 +1,37 @@
+# LAPTOP profile, 8-core budget -- the tier to use while another session holds
+# the rest of this machine.
+#
+# Same machine as profiles/local20 (Intel Core Ultra 9 275HX, 24 PHYSICAL cores,
+# no SMT, heterogeneous P+E cores) but capped at 8 cores because the other 16 are
+# reserved for a parallel session. Keep np small and EQUAL across the arms of one
+# study: an MPI job runs at the pace of its slowest rank, and on a P/E-mixed CPU
+# unequal np makes arms incomparable to each other.
+#
+# ONE ARM AT A TIME. jobs: 1 and tasks: 8 mean a single solve occupies the budget,
+# which is deliberate for the memory reason below, and also what keeps a study's
+# arms comparable: two concurrent MPI solves contend for memory bandwidth and the
+# slower arm's wall time is then not a property of the discretisation.
+#
+# THE BINDING LIMIT IS MEMORY, NOT CORES: 15 GB total, ~13 GB usable, shared with
+# whatever the other session runs. That is what rules the 3D tiers here:
+#   * 3D poly droplet R/h = 10 / 12.7 / 15.8 (167k / 340k / 660k cells)  -- fits
+#   * cfMesh pMesh above ~2M cells, and the fine 3D curvature gates (~6M cells)
+#     -- does NOT fit; those OOM the box and need the cluster.
+# A run that dies with an EMPTY solver log and exit 139 is usually not physics:
+# check first that the solver binary is newer than libleiaLevelSet.so (a stale
+# solver against a rebuilt library segfaults at startup -- measured 2026-08-27).
+#
+# cfMesh (pMesh) aborts on glibc 2.39 with `free(): invalid pointer` unless
+# jemalloc is preloaded, so poly-mesh studies add it to the preamble:
+#   --config env_preamble="source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; \
+#            export LD_PRELOAD=$HOME/miniconda3/lib/libjemalloc.so.2"
+#
+#   snakemake --workflow-profile profiles/local8 --configfile config/<study>.yaml
+#   make studies-one STUDY=<study> PROFILE=profiles/local8
+executor: local
+cores: 8            # 8 of 24; the other 16 belong to the parallel session
+jobs: 1             # one arm at a time -- see the comment above
+resources:
+  - tasks=8         # the solve rule declares tasks=<np>, so np <= 8 and one solve
+printshellcmds: true
+rerun-incomplete: true

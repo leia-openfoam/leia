@@ -39,7 +39,7 @@ deltaT          @!MAX_DELTA_T!@;
 // still let Time trim deltaT to land on write instants -- a residual
 // adaptivity. runTime writes at the first step past each instant instead.
 writeControl    runTime;
-writeInterval   0.02;
+writeInterval   @!WRITE_INTERVAL!@;
 
 purgeWrite      0;
 

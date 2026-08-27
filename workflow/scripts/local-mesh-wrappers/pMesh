@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# jemalloc-preloading wrapper for cfMesh's pMesh -- LOCAL WORKAROUND, scoped.
+#
+# WHY: on this laptop (Ubuntu 24.04, glibc 2.39) cfMesh aborts on EVERY input
+# with `free(): invalid pointer`; under a preloaded jemalloc it runs to
+# completion and the meshes check out (max non-orthogonality ~60 deg, avg 4.2).
+#
+# WHY A WRAPPER AND NOT env_preamble: the preamble is study-global, so exporting
+# LD_PRELOAD there also injects jemalloc into the MPI SOLVER, which SEGFAULTS it
+# instantly (measured 2026-08-27: rc 139, empty solver log, no FOAM banner --
+# a failure that reads exactly like a diverged run but is a launch failure).
+# Scoping the preload to the mesher is what lets one `snakemake` invocation both
+# mesh and solve. Put this directory FIRST in PATH:
+#
+#   env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; \
+#                  export PATH=$PWD/workflow/scripts/local-mesh-wrappers:$PATH"
+#
+# (the Snakefile runs the preamble with cwd = repo root, before cd-ing into the
+# case, so $PWD resolves correctly). On the cluster the preload is unnecessary
+# and this wrapper is simply never put on PATH.
+set -u
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve the REAL pMesh, with this wrapper's directory removed from PATH.
+real="$(PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$here" | paste -sd:)" \
+        command -v pMesh)"
+if [ -z "${real:-}" ]; then
+    echo "pMesh wrapper: no real pMesh on PATH" >&2
+    exit 127
+fi
+jem="${LEIA_JEMALLOC:-$HOME/miniconda3/lib/libjemalloc.so.2}"
+if [ ! -f "$jem" ]; then
+    echo "pMesh wrapper: jemalloc not found at $jem; running unwrapped" >&2
+    exec "$real" "$@"
+fi
+exec env LD_PRELOAD="$jem" "$real" "$@"

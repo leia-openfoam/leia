@@ -1,0 +1,53 @@
+# POLYHEDRAL 3D stationary droplet, rung C of the poly ladder: R/h = 15.8.
+#
+# Companion to the HEX wide ladder (stationaryDroplet3Dwide, STATUS.md): same
+# certified 6R box, same production chain (cellCentreInverse + reconstructedCurvature),
+# FILTER OFF, same quarter horizon END_TIME = 0.025, and the SAME three rungs
+# N_CELLS = 60 / 76 / 95, so every poly arm is directly comparable to its hex
+# twin at matched h, matched capillary dt and matched step count. The hex twins
+# read: R/h 10 and 12.7 bounded/damped, R/h 15.8 departing at t ~ 0.04 (r ~ 79 1/s).
+#
+# The question: on a mesh whose face orientations are scattered (cfMesh pMesh
+# dual), does the parasitic pump keep the phase coherence the hex m = 8 mode
+# has? Earlier single poly arm (studies/polyDroplet3D) DIVERGED at step 106 with
+# a 114x larger first-step kick -- but that arm ran on the gmsh + polyDualMesh
+# fallback Voronoi mesh, which is far harsher than pMesh (checkMesh: pMesh gives
+# max non-orthogonality ~60 deg, avg 4.2). This ladder re-asks the question on
+# pMesh, at three resolutions, with animation frames.
+#
+# LOCKSTEP: MAX_CELL_SIZE must equal DOMAIN_LENGTH/N_CELLS -- the capillary dt is
+# evaluated from N_CELLS, so equality is what makes dt match the hex rung. The
+# axes are a CARTESIAN product, which is why each rung is its own config file
+# rather than three-element lists in one.
+#
+# WRITE_INTERVAL 0.0025 (against the 0.02 default) writes 11 field frames over
+# the horizon: the glyph-over-alpha panels and the |U| animation need them.
+#
+# LOCAL RUN -- nothing extra needed, the env_preamble below handles cfMesh:
+#   snakemake --workflow-profile profiles/local8 --configfile config/<this>.yaml
+#
+# cfMesh aborts on glibc 2.39 unless jemalloc is preloaded, but a study-global
+# LD_PRELOAD also injects it into the MPI solver and SEGFAULTS it (rc 139, empty
+# log -- reads like divergence, is not). The preamble therefore puts a wrapper
+# dir first on PATH which preloads jemalloc for pMesh ONLY.
+study_name: polyDroplet3Dr15p8
+case: stationaryDroplet3D
+mesh: poly
+mode: parallel
+np: 6
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [95]
+  MAX_CELL_SIZE: [6.315789e-5]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  END_TIME: [0.025]
+  WRITE_INTERVAL: [0.0025]
+solve_runtime: 86400
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; export PATH=$PWD/workflow/scripts/local-mesh-wrappers:$PATH"
