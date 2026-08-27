@@ -284,6 +284,36 @@ arms, and the same-class control shows no restart inflation, so the comparative
 reading stands); metrics CSVs cover 10-25 ms, joined records preserved as
 `leiaSemiLagrangianLevelSetTwoPhaseFoam.joined.csv` per case.
 
+### gradU contamination CLOSED for the 2D vortex arm: published orders stand (2026-08-27)
+
+Forensic chain on `uncachedConv2Dvortex` N=256 CFL 0.5 (raw July run preserved in
+`studies/uncachedConv2Dvortex.preGradUfix-20260826`, all new runs on pinned
+binaries, `studies/gradUserialCheck/`):
+
+1. **Bug effect on the endpoint: <= 2x, no order change.** July-10 code
+   (`230b1dc`, isolated worktree build) run SERIAL — bug-free by construction —
+   on the exact July inputs gives shape 1.105e-06 / volume 3.95e-05 at t=2,
+   against the curated buggy-parallel 7.851e-07 / 8.01e-05: the seam bias moved
+   shape 1.4x (flatteringly) and volume 2x. The published second-order
+   transport table is a method property, not a bug artifact. (One arm, np=4;
+   np=8+ 3D arms have more seam area — re-runs stay worthwhile, not urgent.)
+2. **The transport has not changed since July: psi at t=2 is BIT-IDENTICAL**
+   (max|diff| = 0.0 over 65k cells) between the July-10 build and today's, same
+   inputs, serial.
+3. **Everything alarming in the first re-run was the measurement layer:**
+   (a) LOGGING REGRESSION — the solver now writes metric rows only at write
+   times and never logs the final step, so the aggregation scored t=1.99970
+   instead of t=2; the reversal cancellation collapses shape 20x in that last
+   dt, and the missing gap ~ dt ~ h manufactures a fake order ~1. Also
+   `L_INF_E_PSI` now reads 0 (metric dead) and the errors-CSV `method` column
+   echoes the inert Eulerian `ADVECTION` dict entry for SL runs.
+   (b) INDICATOR CHANGE — alpha reconstructed from the bit-identical psi
+   differs in exactly the ~300 interface-cut cells (max 0.56), so
+   E_GEOM/E_VOL_ALPHA semantics shifted ~5x at matched time. Old-vs-new
+   comparisons must be field-level or same-indicator; the curated tables and
+   any re-run are not directly comparable until the logging regression is
+   fixed. nDefCorr 2 vs 3 and the grad(psi) macro: bit-identical, exonerated.
+
 ### INVALIDATION: parallel kinematic SL baselines predate the gradU coupled-patch fix (2026-08-26)
 
 `velocityModel::setVelocity` wrote FACE-centre values into coupled (processor)
