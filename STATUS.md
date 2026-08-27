@@ -307,12 +307,21 @@ binaries, `studies/gradUserialCheck/`):
    dt, and the missing gap ~ dt ~ h manufactures a fake order ~1. Also
    `L_INF_E_PSI` now reads 0 (metric dead) and the errors-CSV `method` column
    echoes the inert Eulerian `ADVECTION` dict entry for SL runs.
-   (b) INDICATOR CHANGE — alpha reconstructed from the bit-identical psi
-   differs in exactly the ~300 interface-cut cells (max 0.56), so
-   E_GEOM/E_VOL_ALPHA semantics shifted ~5x at matched time. Old-vs-new
-   comparisons must be field-level or same-indicator; the curated tables and
-   any re-run are not directly comparable until the logging regression is
-   fixed. nDefCorr 2 vs 3 and the grad(psi) macro: bit-identical, exonerated.
+   (b) RETRACTED (2026-08-27, same day): the "indicator change" was the SAME
+   gate. In the gated run alpha and the narrow band were last computed at
+   t = 1.9997 with a band FROZEN at t ~ 1.0018 (maximum deformation), and the
+   endTime field write dumped that stale alpha as 2/alpha — the wrong-side 0/1
+   snaps in ~300 cut cells were stale-band artifacts, not algorithm changes.
+   With the fixed writer (per-step alpha + band), HEAD's alpha(t=2) is
+   referee-exact against analytic circle fractions (mean 2.3e-3, max 1.05e-2,
+   zero cells off by >0.1 — indistinguishable from the July build), and every
+   logged metric row matches the July-code serial run TO ALL DIGITS (t=1.9997:
+   3.6890740384e-05 / 1.66685002663e-05 in both). The detrixheAslam indicator,
+   922eb41 and a903db4 are all exonerated (1-step referee runs at both commits:
+   mean 2.1e-3, max 4.5e-3). The coupled two-phase campaign was NEVER exposed —
+   its solver computes alpha and the band every step in its own loop.
+   nDefCorr 2 vs 3 and the grad(psi) macro: bit-identical, exonerated.
+   One true kinematic-solver defect chain remains fixed in 84906ee: the gate.
 
 ### INVALIDATION: parallel kinematic SL baselines predate the gradU coupled-patch fix (2026-08-26)
 
