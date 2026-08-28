@@ -245,7 +245,41 @@ CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
                      // second order where the level sets are NOT normal
                      // offsets, fit-error-limited where they are) | fvm.
 N_OUTER_CORRECTORS 3; // PIMPLE.nOuterCorrectors (historical hardcoded value 3).
-PSI_OUTER_CORRECTORS no; // PIMPLE.psiOuterCorrectors: no = psi advected once
+PSI_OUTER_CORRECTORS yes; // DEFAULT CHANGED 2026-08-28: the interface is
+                     // re-advected on EVERY outer corrector, not only the
+                     // first. Advecting once and then running N-1 further
+                     // momentum/pressure iterations against a FROZEN interface
+                     // makes the outer loop inconsistent with its own force:
+                     // if the loop is worth iterating, the interface it is
+                     // iterating towards has to move with it.
+                     //
+                     // The consistency question this settles (asked 2026-08-28):
+                     // does re-advecting with the CURRENT iterate wrongly feed
+                     // u^{n+1} to a trace that wants u^n? No. The kernel
+                     // (pointValueScheme.C) computes
+                     //   x_d = x_c - u_new dt + (dt^2/2)[(u_new-u_old)/dt
+                     //                                   + (u_new.grad)u_new]
+                     //       = x_c - dt/2 (u_new + u_old) + O(dt^2 grad u)
+                     // so its LINEAR displacement is the AVERAGE of the two
+                     // slots: it is arrival-centred and WANTS (u^{n+1}, u^n),
+                     // forming u^{n+1/2} itself. The AB2 extrapolation on pass 1
+                     // is the FALLBACK for u^{n+1} not existing yet, so a later
+                     // pass carrying the real iterate is strictly more
+                     // consistent, not less. The failure mode that WOULD break
+                     // it -- refreshing the OLD slot on later passes, leaving
+                     // the average between two new-time iterates and collapsing
+                     // the trace to backward Euler -- is guarded in
+                     // slAlphaEqn.H:121 (UextOld is written only on pass 1).
+                     //
+                     // MEASURED cost/benefit at N=128, m=2 mode rate, 12 outer
+                     // correctors either way: r_2 = 3.906 (yes) vs 3.908 (no)
+                     // at dt and -1.267 vs -1.269 at dt/2 -- INERT on stability
+                     // to four digits, which is the un-preconditioned-Picard
+                     // result (the loop contracts like (dt/dt_cap)^2). It costs
+                     // one transport -> band -> indicator -> curvature ->
+                     // delivery chain per extra outer pass.
+                     //
+                     // no = psi advected once
                      // per step on the first outer corrector, capillary force
                      // frozen across the outer loop (historical behaviour,
                      // byte-identical). yes = iterated interface-force
