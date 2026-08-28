@@ -449,3 +449,11 @@ OUTER_P_TOL 0;
 // A block with tolerance 0 is NOT equivalent to no block -- measured, see
 // cases/*/system/residualControl.off.
 PIMPLE_RESIDUAL_CONTROL_FILE residualControl.off;
+
+// Semi-Lagrangian foot-point integrator and trace velocity (levelSet.
+// semiLagrangian). Both defaults are the historical behaviour and are verified
+// bit-identical; see the fvSolution.template comments for what each does.
+//   footIntegrator: taylor | rk2
+//   traceVelocity : cellCentred | projectedFlux
+SL_FOOT_INTEGRATOR taylor;
+SL_TRACE_VELOCITY cellCentred;

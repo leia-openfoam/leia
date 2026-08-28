@@ -13,6 +13,40 @@ volVectorField U0("U0", U);
 // (updated each step; = U0 scaled by the oscillation factor at t^n).
 volVectorField Uold("Uold", U);
 
+// Trace-velocity source (levelSet.semiLagrangian.traceVelocity):
+//   cellCentred   -- (default) trace with the prescribed CELL velocity.
+//   projectedFlux -- trace with fvc::reconstruct(phi), the cell field of the
+//                    DISCRETELY DIVERGENCE-FREE face flux. This is what
+//                    Basilisk-style advection transports with. The prescribed
+//                    cell velocity is only analytically solenoidal; its
+//                    discrete divergence is not zero, and a semi-Lagrangian
+//                    map preserves the enclosed volume exactly only when the
+//                    tracing field is discretely divergence-free. The reversed
+//                    vortex, whose exact answer is the initial condition, is
+//                    the sharpest test of the difference.
+const word slTraceVelocity
+(
+    static_cast<const fvSolution&>(mesh).subDict("levelSet")
+        .subOrEmptyDict("semiLagrangian")
+        .getOrDefault<word>("traceVelocity", "cellCentred")
+);
+if (slTraceVelocity != "cellCentred" && slTraceVelocity != "projectedFlux")
+{
+    FatalErrorInFunction
+        << "levelSet.semiLagrangian.traceVelocity = '" << slTraceVelocity
+        << "'. Valid: cellCentred, projectedFlux." << exit(FatalError);
+}
+const bool traceFromFlux = (slTraceVelocity == "projectedFlux");
+autoPtr<volVectorField> UtracePtr;
+autoPtr<volVectorField> UtraceOldPtr;
+if (traceFromFlux)
+{
+    Info<< "SL trace velocity: reconstruct(phi) -- divergence-free face flux"
+        << nl << endl;
+    UtracePtr.reset(new volVectorField("Utrace", fvc::reconstruct(phi)));
+    UtraceOldPtr.reset(new volVectorField("UtraceOld", UtracePtr()));
+}
+
 // Use psiEnd if present as field, otherwise copy psi
 volScalarField psi0
 (

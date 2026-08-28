@@ -26,6 +26,54 @@ volVectorField UextOld
     slVelExt->Uext()
 );
 
+// TRACE VELOCITY SOURCE (levelSet.semiLagrangian.traceVelocity):
+//   cellCentred   -- (default) the velocity-extension field Uext, i.e. the
+//                    cell-centred momentum velocity. Historical behaviour,
+//                    byte-identical.
+//   projectedFlux -- the cell field RECONSTRUCTED FROM THE PROJECTED FACE FLUX,
+//                    fvc::reconstruct(phi). This is the Basilisk property: the
+//                    interface is advected by the DISCRETELY DIVERGENCE-FREE
+//                    velocity, not by a cell field that only approximates one.
+//                    For a semi-Lagrangian scheme the enclosed volume is
+//                    preserved exactly when the flow map is volume-preserving,
+//                    which requires a solenoidal tracing velocity; phi is
+//                    discretely solenoidal after the pressure correction and
+//                    the cell-centred U is not.
+const word slTraceVelocity
+(
+    static_cast<const fvSolution&>(mesh).subDict("levelSet")
+        .subOrEmptyDict("semiLagrangian")
+        .getOrDefault<word>("traceVelocity", "cellCentred")
+);
+if (slTraceVelocity != "cellCentred" && slTraceVelocity != "projectedFlux")
+{
+    FatalErrorInFunction
+        << "levelSet.semiLagrangian.traceVelocity = '" << slTraceVelocity
+        << "'. Valid: cellCentred, projectedFlux." << exit(FatalError);
+}
+const bool traceFromFlux = (slTraceVelocity == "projectedFlux");
+if (traceFromFlux)
+{
+    Info<< "SL trace velocity: reconstruct(phi) -- divergence-free face flux"
+        << nl << endl;
+}
+
+// Trace-velocity levels used when traceFromFlux; allocated only then. Utrace
+// mirrors Uext's role (new level) and UtraceOld mirrors UextOld (u^n).
+autoPtr<volVectorField> UtracePtr;
+autoPtr<volVectorField> UtraceOldPtr;
+if (traceFromFlux)
+{
+    UtracePtr.reset
+    (
+        new volVectorField("Utrace", fvc::reconstruct(phi))
+    );
+    UtraceOldPtr.reset
+    (
+        new volVectorField("UtraceOld", UtracePtr())
+    );
+}
+
 // Iterated interface-force coupling (PIMPLE.psiOuterCorrectors, default no):
 // re-advect psi from psi^n on EVERY outer corrector with the CURRENT outer
 // iterate of the velocity, re-running band -> phase indicator -> curvature ->

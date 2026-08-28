@@ -101,17 +101,29 @@
                   ? runTime.deltaTValue()/runTime.deltaT0Value()
                   : 1.0;
 
+                // Trace-velocity source: the extension field (default) or
+                // the divergence-free reconstruct(phi) (Basilisk property).
+                // Refresh the flux-based levels for this step before use.
+                if (traceFromFlux)
+                {
+                    UtracePtr() == fvc::reconstruct(phi);
+                }
+                const volVectorField& UtrNew =
+                    traceFromFlux ? UtracePtr() : slVelExt->Uext();
+                const volVectorField& UtrOld =
+                    traceFromFlux ? UtraceOldPtr() : UextOld;
+
                 const volVectorField UextStar
                 (
                     "UextStar",
-                    slVelExt->Uext() + dtRatio*(slVelExt->Uext() - UextOld)
+                    UtrNew + dtRatio*(UtrNew - UtrOld)
                 );
 
                 // midpoint centring drifts only HALF the step here; the other
                 // half runs after the pressure solve. endStep keeps the full
                 // step, so this line is byte-identical with the switch off.
                 slAdv->setDtScale(midpointForceCentring ? 0.5 : 1.0);
-                slAdv->advect(psi, UextStar, slVelExt->Uext());
+                slAdv->advect(psi, UextStar, UtrNew);
                 slAdv->setDtScale(1.0);
             }
             // Preserve the pre-momentum extension as the old velocity level.
@@ -119,6 +131,12 @@
             // later pass this step: after this line UextOld holds ext(u^n).
             // NOT updated on passes >= 2 -- the old level must stay u^n.
             UextOld == slVelExt->Uext();
+            if (traceFromFlux)
+            {
+                // Same contract as UextOld: the OLD slot holds the t^n level
+                // for the whole step and is never refreshed on passes >= 2.
+                UtraceOldPtr() == UtracePtr();
+            }
         }
         else
         {
@@ -132,7 +150,17 @@
 
             if (Foam::getEnv("SL_FREEZE_INTERFACE").empty())
             {
-                slAdv->advect(psi, slVelExt->Uext(), UextOld);
+                if (traceFromFlux)
+                {
+                    // phi now carries the PROJECTED flux of the previous outer
+                    // iterate, so this is the divergence-free u^{n+1,(k-1)}.
+                    UtracePtr() == fvc::reconstruct(phi);
+                    slAdv->advect(psi, UtracePtr(), UtraceOldPtr());
+                }
+                else
+                {
+                    slAdv->advect(psi, slVelExt->Uext(), UextOld);
+                }
             }
         }
 

@@ -426,6 +426,22 @@ levelSet
     {
         reconstruction      @!SL_RECONSTRUCTION!@;
         correction          direct;
+
+        // Foot-point integrator. taylor (default, historical) needs a velocity
+        // GRADIENT for its dt^2 term; rk2 is the classical midpoint using only
+        // velocity SAMPLES along the trajectory -- same formal order, and it
+        // consumes no grad(U), the operator that was silently wrong in every
+        // processor-adjacent cell for the life of the code.
+        footIntegrator      @!SL_FOOT_INTEGRATOR!@;
+
+        // Velocity the trajectory is traced with. cellCentred (default,
+        // historical) uses the velocity-extension field. projectedFlux uses
+        // fvc::reconstruct(phi), i.e. the DISCRETELY DIVERGENCE-FREE projected
+        // face flux -- the Basilisk property: a semi-Lagrangian map preserves
+        // the enclosed volume only when the tracing velocity is solenoidal,
+        // which phi is after the pressure correction and the cell-centred
+        // velocity is not.
+        traceVelocity       @!SL_TRACE_VELOCITY!@;
         CFLmax              0.5;
         limitSlope          false;
         clipToStencilBounds false;

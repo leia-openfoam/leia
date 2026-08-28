@@ -46,6 +46,7 @@ Foam::pointValueScheme::pointValueScheme(const fvMesh& mesh)
     slScheme(mesh),
     trajectoryVelocity_("input"),
     trajectoryUName_("U"),
+    footIntegrator_("taylor"),
     normalEpsilon_(1e-12),
     projectionIterations_(4),
     projectionTolerance_(0.1),
@@ -58,6 +59,14 @@ Foam::pointValueScheme::pointValueScheme(const fvMesh& mesh)
     trajectoryVelocity_ =
         slDict.getOrDefault<word>("trajectoryVelocity", "input");
     trajectoryUName_ = slDict.getOrDefault<word>("trajectoryU", "U");
+    footIntegrator_ =
+        slDict.getOrDefault<word>("footIntegrator", "taylor");
+    if (footIntegrator_ != "taylor" && footIntegrator_ != "rk2")
+    {
+        FatalErrorInFunction
+            << "levelSet.semiLagrangian.footIntegrator = '" << footIntegrator_
+            << "'. Valid: taylor, rk2." << exit(FatalError);
+    }
     normalEpsilon_ =
         slDict.getOrDefault<scalar>("trajectoryNormalEpsilon", 1e-12);
     projectionIterations_ =
@@ -350,7 +359,6 @@ void Foam::pointValueScheme::advance
     // Gradient of the ACTUAL velocity inserted into Taylor. For the direct
     // normal modes this includes spatial variation of both the normal speed and
     // the projection tensor n*n; using grad(physical U) would lose second order.
-    const volTensorField gradU(fvc::grad(*trajectoryNew, "gradU"));
 
     // ------------------------------------------------------------------ //
     // Departure (foot) points: computed ONCE. The Taylor backward-foot
@@ -360,12 +368,67 @@ void Foam::pointValueScheme::advance
     //   x_d = x_c - u^{n+1} dt + 1/2 [ du/dt + (u^{n+1}.grad)u^{n+1} ] dt^2
     // ------------------------------------------------------------------ //
     pointField feet(mesh_.nCells());
-    forAll(C, c)
+    if (footIntegrator_ == "rk2")
     {
-        const vector& uNew = (*trajectoryNew)[c];
-        const vector& uOld = (*trajectoryOld)[c];
-        const vector accel = (uNew - uOld)/dt + (uNew & gradU[c]);
-        feet[c] = C[c] - uNew*dt + 0.5*accel*dt*dt;
+        // ---- MIDPOINT RK2, velocity SAMPLES only (Basilisk-style) --------
+        //
+        //   u_h = (u^{n+1} + u^n)/2      (the time-centred field)
+        //   x_m = x_c - (dt/2) u_h(x_c)
+        //   x_d = x_c -  dt    u_h(x_m)
+        //
+        // Second order in dt, like the Taylor foot, but it never touches
+        // grad(U). Note the Taylor branch below is ALSO midpoint-centred in
+        // its linear term -- it forms (u_new + u_old)/2 internally -- so the
+        // two differ only in HOW the dt^2 correction is obtained: from a
+        // velocity gradient at the arrival cell (taylor) or from a second
+        // velocity sample along the trajectory (rk2).
+        const volVectorField uHalf
+        (
+            "uHalfTrace",
+            0.5*(*trajectoryNew + *trajectoryOld)
+        );
+        interpolationCellPoint<vector> uHalfInterp(uHalf);
+        const vectorField& uH = uHalf.primitiveField();
+
+        label nOffProc = 0;
+        forAll(C, c)
+        {
+            const point xm = C[c] - 0.5*dt*uH[c];
+            // The midpoint lies at most half a cell away at CFL <= 1, so the
+            // arrival cell is nearly always the right one; findCell returns -1
+            // only when it has crossed a processor boundary, where evaluating
+            // in cell c is a local extrapolation of under half a cell rather
+            // than a wrong-rank lookup. Counted, never silent.
+            label cm = mesh_.findCell(xm);
+            if (cm < 0) { cm = c; ++nOffProc; }
+            const vector um = uHalfInterp.interpolate(xm, cm);
+            feet[c] = C[c] - dt*(std::isfinite(magSqr(um)) ? um : uH[c]);
+        }
+        reduce(nOffProc, sumOp<label>());
+        if (nOffProc > 0 && mesh_.time().writeTime())
+        {
+            Info<< "    rk2 foot: " << nOffProc
+                << " midpoints outside the local decomposition, evaluated in"
+                << " the arrival cell" << endl;
+        }
+    }
+    else
+    {
+        // The gradient is built HERE, not above: rk2 must neither pay for it
+        // nor depend on it, and keeping the declaration and the loop in their
+        // original stack form keeps this branch generating the same code as
+        // before the integrator switch existed (an autoPtr dereference inside
+        // the loop changed the compiler's FP contraction and moved the answer
+        // in the 9th digit -- round-off, but a bit-identity contract is a
+        // bit-identity contract).
+        const volTensorField gradU(fvc::grad(*trajectoryNew, "gradU"));
+        forAll(C, c)
+        {
+            const vector& uNew = (*trajectoryNew)[c];
+            const vector& uOld = (*trajectoryOld)[c];
+            const vector accel = (uNew - uOld)/dt + (uNew & gradU[c]);
+            feet[c] = C[c] - uNew*dt + 0.5*accel*dt*dt;
+        }
     }
 
     // ------------------------------------------------------------------ //

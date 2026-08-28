@@ -148,8 +148,37 @@ int main(int argc, char *argv[])
             Uold == U0;
         }
 
+        // Trace-velocity source. With projectedFlux the SAME two time levels
+        // are built from the prescribed FLUX instead of the prescribed cell
+        // velocity: phi is already rescaled to t^{n+1} above, and the old level
+        // is the base flux rescaled to t^n (identity for the steady field).
+        if (traceFromFlux)
+        {
+            UtracePtr() == fvc::reconstruct(phi);
+            if (velocityModel->isOscillating())
+            {
+                const scalar tn = runTime.value() - runTime.deltaT().value();
+                UtraceOldPtr() == fvc::reconstruct
+                (
+                    phi0Ptr()
+                   *velocityModel->oscillationFactor(tn, velocityModel->tau())
+                );
+            }
+            else
+            {
+                UtraceOldPtr() == UtracePtr();
+            }
+        }
+
         // Semi-Lagrangian update: psi holds psi^n on entry, psi^{n+1} on exit.
-        slAdv->advect(psi, U, Uold);
+        if (traceFromFlux)
+        {
+            slAdv->advect(psi, UtracePtr(), UtraceOldPtr());
+        }
+        else
+        {
+            slAdv->advect(psi, U, Uold);
+        }
 
         // Diagnostics (phase indicator alpha, narrow band, error norms + CSV
         // row). The advection above uses neither alpha nor the narrow band, so
