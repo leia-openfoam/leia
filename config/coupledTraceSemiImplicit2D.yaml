@@ -57,6 +57,15 @@ axes_override:
   PSI_OUTER_CORRECTORS: ["yes"]
   N_OUTER_CORRECTORS: [12]
   END_TIME: [0.025]
+# JOB SIZING, from the measured local pace rather than a default. N=128 2D is
+# 3333 steps at dt = 7.49989e-06; the serial reference run took 0.865 s/step
+# with 12 outer correctors but the interface advected ONCE. Here
+# psiOuterCorrectors is yes, so the transport -> band -> indicator -> curvature
+# -> delivery chain runs 12x per step, putting an arm at roughly 1.5-2 h on
+# 4 ranks. 6 h is a 3x margin and short enough to backfill; the 24 h profile
+# default would only delay scheduling.
+solve_runtime: 360
+
 collapse_other_axes: true
 export_slides: false
 mpi_launcher: "mpirun -np {np}"
