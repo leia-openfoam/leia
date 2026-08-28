@@ -1,17 +1,55 @@
-# Agent guide
+# leia — agent guide
 
-This repo's agent instructions live in **[CLAUDE.md](CLAUDE.md)** (execution
-environment, git discipline, running studies) and the cluster workflow in
-**[CLUSTER.md](CLUSTER.md)** (Lichtenberg / TU Darmstadt: SSH, SLURM account
-`special00004`, OpenFOAM-v2512, rsync helpers).
+> **CLAUDE.md and AGENTS.md are byte-identical duplicates of this guide.**
+> Claude Code auto-loads `CLAUDE.md`; other agent tools auto-load `AGENTS.md`;
+> neither one loads the other, and a markdown link is documentation, not a load
+> instruction. Both files therefore carry the complete guide.
+> **Any edit must be applied to both in the same commit** — `diff CLAUDE.md
+> AGENTS.md` must print nothing. `CLUSTER.md` (cluster workflow) and
+> `STATUS.md` (current state of the work) stay separate and are read on demand.
 
-Read both before making changes or running simulations. Key rules:
+OpenFOAM level-set library + solvers, a Snakemake verification suite, and
+thematic docs (reveal decks + Elsevier articles) fed by a single per-theme
+`docs/<theme>/<slug>-article/data/`.
+## Execution environment
 
-- Run OpenFOAM/Python/Snakemake in **WSL**, not Windows (`wsl bash -lc '...'`).
-- Code moves by **git** (hub: GitHub `leia-openfoam/leia`); raw simulation output
-  (`studies/`, `runs/`) is git-ignored and moves by **rsync** — never `git add` it.
-- Build against `$HOME/OpenFOAM/OpenFOAM-v2512`; run studies with
-  `make studies PROFILE=profiles/{local,slurm}`.
+- **All OpenFOAM / Python / Snakemake runs happen in WSL (Ubuntu), never Windows.**
+  From a Windows shell, prefix commands with `wsl bash -lc '...'`. When passing a
+  script to a remote host, pipe a file (`ssh host 'bash -s' < script.sh`) rather
+  than a heredoc — nested Windows→WSL→ssh quoting expands `$VAR`/`$(...)` in the
+  wrong shell.
+- **Build:** `source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc && ./Allwmake`
+  (OpenFOAM-v2512 is the current standard version, in `$HOME/OpenFOAM` on both
+  the WSL laptop and Lichtenberg).
+
+## Repo layout & git discipline
+
+- Versioned: `src/`, `applications/`, `workflow/`, `cases/`, `config/`, and the
+  small results `docs/**/data/{figures,tables,mechanism}` (decks/papers build
+  from these without re-running studies).
+- Git-ignored (never `git add`): `studies/`, `runs/`, `.snakemake/`, built deck
+  `*.html` (keep `*.template.html`), article PDFs.
+- Hub is GitHub `leia-openfoam/leia`. Code moves by git; raw simulation output
+  moves by rsync. See **[CLUSTER.md](CLUSTER.md)**.
+
+## Running studies
+
+```bash
+make studies PROFILE=profiles/local     # WSL, mpirun (smoke tests, small N)
+make studies PROFILE=profiles/slurm     # Lichtenberg, one sbatch per case
+snakemake --workflow-profile profiles/local --configfile config/<study>.yaml -n   # preview
+```
+
+One study = one `(case, mesh, mode)`; backend switches purely via `PROFILE`.
+`workflow/README.md` documents every `config/*.yaml` study.
+
+## Cluster (Lichtenberg, TU Darmstadt)
+
+Full, verified workflow in **[CLUSTER.md](CLUSTER.md)**. Essentials:
+`ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de` (passwordless; `~/bin/licht N` helper);
+SLURM account `special00004`; jobs **must** set `--mem-per-cpu` (the slurm
+profile does); OpenFOAM-v2512 source-built in `$HOME/OpenFOAM`; pull raw output
+back with `make pull-runs` / `make pull-study STUDY=<name>`.
 
 ## Time integration: BDF2 (`backward`) everywhere
 
@@ -119,3 +157,160 @@ variational capillary force, `f_c = -sigma * dA_h/dpsi_c` derived from a discret
 surface-energy functional `A_h = sum_c V_c |grad_h alpha_c|` — a sum over cells,
 compact stencil, no structure assumed, no modes named, and zero net work around
 any closed cycle by construction.
+
+## Developing a numerical method for multiphase flow: the research loop
+
+Six steps per experiment. They are cheap; the re-runs they prevent are not.
+Every rule below is written from an incident in this repository's own history.
+
+**1. Name the number, after decomposing the error.** State which measured
+quantity the change must move, and its current value. Multiphase error metrics
+almost always mix mechanisms, so decompose first — into *consistency* (the error
+one step commits) and *stability* (how the scheme amplifies it), or into source
+and amplifier. `max|U|(T) = u_0(h)*exp(G(h))` split a stalled question into a
+converging kick and a growing amplifier, and showed that implicitness attacks
+`G` while variational pairing attacks `u_0`. A proposal that cannot name its
+target factor is not ready to run.
+
+**2. Pre-register the read-out.** Prediction, pass/fail threshold, and what
+result would *falsify* the idea — written in the config header BEFORE launching.
+Then the data decides. Campaign-turning results came from gates written this way
+(the 2x2 alignment probe, the varying-curvature ellipse gate that retracted an
+adopted delivery); every expensive retraction came from a run launched without
+one.
+
+**3. Cheapest discriminator first.** The multiphase ladder is fixed:
+
+    exact-solution unit gate    seconds  curvature of a sphere, alpha of a plane,
+                                        closest point on an ellipsoid; the app
+                                        exits nonzero on failure
+    static field gate           minutes  no flow: estimator accuracy and its
+                                        noise gain on a frozen interface
+    kinematic transport         min-hrs  prescribed velocity, reversed flow:
+                                        transport order with NO force in the loop
+    well-balanced coupled gate  hours    coupled, but with EXACT or prescribed
+                                        curvature: isolates the force balance
+                                        from the estimator
+    coupled 2D                  hours
+    coupled 3D, then polyhedral core-hrs
+
+Escalate only on a pass, and never spend a coupled run on a question a static
+gate answers. Two rungs are multiphase-specific and are the ones most often
+skipped: **kinematics before dynamics** (a coupled failure is otherwise
+ambiguous between transport and force), and the **well-balanced gate**
+(prescribed exact curvature gave identically zero velocity in all six arms,
+cleanly separating force-balance bugs from estimator error). Prefer a case with
+a closed-form answer over one without.
+
+**4. One variable, plus controls.** Audit every arm for a second difference
+before launching — confounded verdicts have cost two full studies (a 3D verdict
+confounded with a divergence scheme; a volume-conservation comparison confounded
+with the psi time scheme). Multiphase arms are matched on mesh, time step AND
+ITS LAW (`dt ~ h^p` hides an h-dependence inside a dt sweep), phase indicator,
+and horizon. Put controls in the same matrix — a null arm, and where relevant a
+re-run of the prior falsification — so the matrix validates itself.
+
+**5. Check the measurement before believing it.** Is the perturbation mode
+resolvable at this resolution (m <= 4 at N = 64)? Is `R/h >= 10`? Is the fit
+window at least one capillary period? Are there enough ladder points — a fourth
+point falsified a trend that three had made look like clean second order? Is
+each metric read at the right instant (reversed flows: gradient at T/2, shape at
+T, volume at both, because the reversal cancels errors at the endpoint)? Are the
+compared runs at equal step counts (endpoint estimators are not comparable
+across unequal horizons)? A number failing these is not a result.
+
+**6. Report the whole vector.** Never a headline metric alone. For an interface
+method that vector is **shape/geometric error, volume conservation error, the
+interface-profile diagnostic (`|grad psi|`, or boundedness of alpha), the
+spurious-current level, and the pressure-jump error** — reported together. A
+candidate improved volume order while failing the gradient; a single-metric view
+would have called it a win. State where it ran, on which commit, and with which
+binaries.
+
+## Constraints that gate what may even be proposed
+
+- **Unstructured FVM only** (see the section above), compact stencils,
+  MPI-decomposable. A fix that does not survive a polyhedral mesh under domain
+  decomposition is not a fix.
+- **2D and 3D from one implementation.** A model is written once and must work
+  in both; dimension-specific code paths are how a method acquires a defect that
+  only one geometry ever sees.
+- **Every new model is runtime-selectable and inert by default** (dictionary
+  entry / case token, never a hardcoded switch), so it can be swept as a study
+  axis and so every existing study is unaffected.
+- **Regularisation is an instrument, not a fix** (see "No filtering in the
+  production method"). Score every candidate with filters, smoothing and
+  reinitialisation OFF.
+- **No partial solutions.** Do not bank a tuned coefficient that papers over a
+  defect that is still there.
+
+## Retraction is a first-class action
+
+When data contradicts a previous claim, retract it explicitly and propagate the
+retraction the same day: `STATUS.md`, the plan document, the slides, and any
+curated table. The record has twice carried a retracted mechanism while the real
+one sat only in a commit message — the reader then gets the wrong story with no
+signal. Write "I was wrong about X, the measurement is Y" in plain terms: a
+retraction that is easy to find is worth more than one that is well hedged.
+
+Corollary: **never report a number you have not seen land.** If a run is
+incomplete, say so and give the partial state; do not extrapolate a verdict from
+arms that have not finished.
+
+## Nothing is inert until measured
+
+A new template token ships with its inert default **in the same commit** — a
+valueless token once broke materialization of every study sharing that case. And
+"this default changes nothing" is a claim to be TESTED, not asserted: a
+`residualControl` block with `tolerance 0` is NOT equivalent to no block, because
+its presence changes which corrector PIMPLE treats as final and therefore which
+solver settings (`U`/`p_rgh` vs `*Final`) the last pass uses. The gate is a
+bit-identity run against the pre-change state on a committed case, run before any
+physics.
+
+## Solver convergence in a cancellation-dominated problem
+
+A balanced-force formulation is a **catastrophic-cancellation problem**: the net
+force is a small difference of two large fluxes, and the parasitic current is
+the fraction the pressure projection fails to absorb — measured here at
+0.02-0.15%, i.e. 2.5e-3 m/s out of a 1.7 m/s capillary predictor at N = 128.
+OpenFOAM normalises the linear-solver residual by
+`sum(|A psi - A psibar| + |b - A psibar|)`, which at convergence is `2 sum|b|`:
+THE LARGE QUANTITY. A relative tolerance is therefore safe only when
+
+    tolerance  <<  (fraction of the source that carries the signal)
+
+and that fraction must be MEASURED, not assumed. On uniform orthogonal hex the
+margin is six orders and the exoneration is direct: a ~30x tighter pressure
+solve moved max|U|, the velocity residual and the non-absorbable fraction by at
+most 2.4e-4 RELATIVE over a whole run. **That result does not transfer to
+non-orthogonal meshes** — the same measurement records that there the solver
+residual CAN exceed the structural residual, and strict PCG once gained 18-29x.
+Re-establish the margin before quoting solver-converged results on polyhedral or
+strongly non-orthogonal meshes.
+
+Two corollaries. Only the final corrector of the final outer iteration uses
+`relTol 0`; with the interface re-advected inside the outer loop, an
+under-converged intermediate velocity moves psi and kappa before any tight solve
+happens. And a **diverging smoother destroys diagnosability**: a momentum
+`smoothSolver` reaching 1e+98 at 1000 iterations makes a physical blow-up
+indistinguishable from a linear-algebra one in the log (there it was a symptom —
+max|U| had already grown 3.5x per step for six steps — but establishing that
+took a timing analysis that a robust Krylov solver would have made unnecessary).
+
+## Provenance and preservation
+
+- Raw output that a re-run will overwrite is preserved FIRST (rename the study
+  directory with a dated suffix); solvers truncate their metrics CSV on restart.
+- Every curated number under `docs/**/data/` is regenerated by a committed
+  script from committed configs. A number nobody can regenerate is a number
+  nobody can defend.
+- Destructive cleanup never runs while any driver may be alive, and liveness
+  comes from log mtime and step count via `workflow/scripts/foam_log_state.sh` —
+  never from a declared output, never from `squeue` alone.
+- Rebuild the library **and relink every solver that links it**: a stale solver
+  against a rebuilt library segfaults at startup with an EMPTY log, which reads
+  exactly like a divergence. When sessions share `$FOAM_USER_LIBBIN`, pin
+  binaries into a session-local directory for anything being measured.
+- Environment workarounds are scoped to the tool that needs them: a
+  study-global `LD_PRELOAD` for the mesher segfaulted the MPI solver.
