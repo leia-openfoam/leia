@@ -74,6 +74,50 @@ $USER` lists every session's jobs on the shared account); a job you did not
 submit is not yours to kill even when it looks stale; and if a driver must be
 replaced, cancel it by id and resubmit rather than clearing the queue.
 
+## Run it on 4 ranks before it leaves the laptop
+
+**No new or changed algorithm is submitted to the cluster -- and above all not
+as a parameter study -- until it has run on at least FOUR MPI RANKS locally and
+the result has been looked at.** Serial success proves nothing about the code
+paths that only exist in parallel: processor-patch values, halo exchange, and
+above all COLLECTIVE calls.
+
+MEASURED 2026-08-28. `semiImplicitCapillaryForce` was gated on bit-identity,
+equilibrium behaviour and cost -- all in SERIAL, because the gate config is
+`mode: serial, np: 1` -- and shipped. Its diagnostics block called `gAverage`,
+`gMax` and `gSum`, every one of them COLLECTIVE, from inside a
+`Pstream::master()` guard: rank 0 blocked in the reduction and the other ranks
+never entered it. Four cluster arms sat ALIVE BUT SILENT for 76 minutes inside
+the first momentum assembly before anyone noticed, and the failure is invisible
+in every serial test that could have been run.
+
+That is one instance of a class this repository has hit repeatedly, always the
+same way -- code that is correct on one rank and wrong on several:
+`setVelocity` writing FACE values into coupled patches, biasing `fvc::grad(U)`
+by O(1) at every processor boundary; `interfaceExtension::updateFlux` assigning
+the raw flux over the whole boundary field; the psi filter's `fvc::average`
+inheriting `calculated` patch types so `L(psi)` was uncoupled across seams; a
+narrow-band dilation looping internal faces only, making the filtered CELL SET
+decomposition-dependent.
+
+**The gate.** Before `sbatch`, on the laptop:
+
+```bash
+decomposePar -force            # numberOfSubdomains >= 4 -- a serial case
+mpirun -np 4 <solver> -parallel  # decomposes to ONE domain and proves nothing
+```
+
+and then CHECK the result rather than the exit code: a deadlock leaves the job
+alive with a truncated log and rc = 0 nowhere in sight, so read the step count
+and the metrics CSV. Where the study is itself parallel, add the
+serial-vs-np=4 equivalence check (`config/seamConsistency3D{serial,par4}.yaml`
+is the committed pattern); a decomposition-dependent answer is a defect even
+when both runs complete.
+
+Specifically for anything that touches an `fvMatrix` -- an `fvOption`, a new
+term, a new solver -- the parallel smoke test is part of the inertness gate,
+not an extra.
+
 ## Time integration: BDF2 (`backward`) everywhere
 
 **Momentum uses OpenFOAM's `backward` (BDF2) scheme in every leia two-phase
@@ -218,7 +262,9 @@ one.
     coupled 3D, then polyhedral core-hrs
 
 Escalate only on a pass, and never spend a coupled run on a question a static
-gate answers. Two rungs are multiphase-specific and are the ones most often
+gate answers. **Anything new crosses the 4-rank gate before the cluster rung**
+(see "Run it on 4 ranks before it leaves the laptop") -- a serial pass says
+nothing about collectives, halo exchange or coupled patches. Two rungs are multiphase-specific and are the ones most often
 skipped: **kinematics before dynamics** (a coupled failure is otherwise
 ambiguous between transport and force), and the **well-balanced gate**
 (prescribed exact curvature gave identically zero velocity in all six arms,
