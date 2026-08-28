@@ -1,0 +1,63 @@
+# THE COUPLED MATRIX: the two Basilisk-style advection options against the
+# semi-implicit capillary coupling, one variable per axis, 2x2x2 factorial.
+#
+# WHAT EACH AXIS HAS ALREADY BEEN MEASURED TO DO, SEPARATELY:
+#   SL_FOOT_INTEGRATOR taylor|rk2 -- on the reversed vortex (exact answer) rk2
+#       is 2.4x better in shape at N=256 and HOLDS order 3.01 where taylor
+#       degrades to 2.09, at 25% lower cost, because it takes a velocity SAMPLE
+#       instead of a differentiated field (config/traceGate2Dvortex.yaml).
+#   SL_TRACE_VELOCITY cellCentred|projectedFlux -- INERT on the kinematic gate
+#       (0.02%: for a prescribed field U and phi discretise the same analytic
+#       solenoidal velocity), but on the coupled stationary droplet it HALVED
+#       the volume error (1.337e-6 -> 5.764e-7, 30 steps, N=128), because there
+#       U comes from the momentum solve and phi from the pressure projection --
+#       two different discrete operators.
+#   SEMI_IMPLICIT_CAPILLARY off|increment -- the deferred-Jacobian form, which
+#       vanishes to round-off at outer-loop convergence and so leaves NO
+#       artificial dissipation in the converged momentum equation.
+#
+# WHAT THIS MATRIX ASKS. The instability is the explicit capillary coupling,
+# rate r = r0 + c*dt with r0 ~ 0 (plan sec. 18.4). None of these three options
+# changes the FORCE, so none should move r0; the question is whether any of them
+# changes c, and whether they compose. Pre-registered readings:
+#   * rk2 and projectedFlux are TRANSPORT changes -- prediction: they move the
+#     floor (volume, shape) but NOT the growth rate. If either moves the growth
+#     rate materially, transport accuracy feeds the amplifier, which would be a
+#     new mechanism and the most interesting outcome here.
+#   * semi-implicit increment -- prediction: it is the only axis that moves the
+#     growth rate (measured alone on the mode gate: it flips the coupling slope
+#     c negative).
+#   * If the effects are additive, the best arm is rk2 + projectedFlux +
+#     increment, and it should be better than the sum of the parts only if
+#     there is a genuine interaction -- which nothing so far predicts.
+#
+# Scored at a quarter horizon with FILTERS OFF on the standing metric vector:
+# max|U|, volume error, shape error, min|grad psi| -- reported together.
+#
+#   snakemake --workflow-profile profiles/local8 \
+#     --configfile config/coupledTraceSemiImplicit2D.yaml
+study_name: coupledTraceSemiImplicit2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [128]
+  DOMAIN_LENGTH: [0.01]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SL_FOOT_INTEGRATOR: ["taylor", "rk2"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+  SEMI_IMPLICIT_CAPILLARY: ["off", "increment"]
+  PSI_OUTER_CORRECTORS: ["yes"]
+  N_OUTER_CORRECTORS: [12]
+  END_TIME: [0.025]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

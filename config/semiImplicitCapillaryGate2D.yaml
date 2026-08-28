@@ -58,7 +58,7 @@ axes_override:
   SEMI_IMPLICIT_CAPILLARY: ["off", "value", "increment"]
   PSI_OUTER_CORRECTORS: ["no", "yes"]
   N_OUTER_CORRECTORS: [12]
-  PIMPLE_RESIDUAL_CONTROL_FILE: ["residualControl.on"]
+  PIMPLE_RESIDUAL_CONTROL_FILE: ["residualControl.off"]
   OUTER_U_TOL: [1.0e-7]
   OUTER_P_TOL: [1.0e-7]
   END_TIME: [0.0075]
