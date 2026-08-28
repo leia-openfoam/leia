@@ -90,6 +90,42 @@ slurm profile exports them:
 export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2
 ```
 
+## Cancelling jobs: only your own, never the account
+
+`scancel -u $USER` is FORBIDDEN on this cluster. The `tm83tomy` account is
+shared by several concurrent sessions (curvature / SDPLS / DED), so an
+account-wide cancel destroys other people's running work.
+
+MEASURED 2026-08-28: the 2x2x2 coupled matrix died 19 minutes into its run.
+`sacct` gave the reason as
+
+    54425589  leia-curv  deflt  CANCELLED by 64+  ...  DUE to SIGNAL Terminated
+
+and `64+` is not an administrator -- it is how sacct truncates uid 643395244,
+i.e. `tm83tomy` itself. Five `ded-*` jobs of another session died the same way
+half an hour earlier. Roughly two hours of cluster time was lost to a cleanup
+aimed at a different session's jobs.
+
+**How to do it instead.** Record the ids you submit and cancel from that list;
+each study driver appends its id to `.my_jobs` in the clone:
+
+```bash
+sbatch --parsable ... >> .my_jobs      # record at submission
+scancel 54426007                        # explicit id: always safe
+scancel -n leia-curv                    # by JOB NAME (this session's name)
+```
+
+Identify your work by **job name**, never by user: `squeue -u $USER` lists
+every session's jobs, which is why the job-name filter matters --
+
+```bash
+squeue -u $USER -n leia-curv -o "%.10i %.10P %.16j %.9T %.10M %R"
+```
+
+A job you did not submit is not yours to kill, even when it looks stale: what
+looks like a leftover is usually another session's live run. If a driver has to
+be replaced, cancel it **by id** and resubmit; never clear the queue.
+
 ## Where leia lives on the cluster
 
 **`/work/scratch/tm83tomy/leia`** — the checkout is on the **parallel file

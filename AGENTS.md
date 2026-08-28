@@ -51,6 +51,29 @@ SLURM account `special00004`; jobs **must** set `--mem-per-cpu` (the slurm
 profile does); OpenFOAM-v2512 source-built in `$HOME/OpenFOAM`; pull raw output
 back with `make pull-runs` / `make pull-study STUDY=<name>`.
 
+### Never cancel jobs you did not start
+
+**`scancel -u $USER` is forbidden.** Several sessions share the `tm83tomy`
+account, so an account-wide cancel destroys other people's running work, not
+just your own. MEASURED 2026-08-28: the 2x2x2 coupled matrix was killed 19
+minutes in by exactly this -- `sacct` recorded `CANCELLED by 64+`, which is the
+truncation of uid 643395244 = `tm83tomy`, NOT an administrator; the same signal
+took out five `ded-*` jobs of another session at 18:08. Two hours of cluster
+time, lost to a cleanup that was aimed at somebody else's jobs.
+
+**Keep a ledger and cancel from it.** Record every job id you submit -- the
+studies append theirs to `.my_jobs` in the clone -- and cancel only those:
+
+```bash
+scancel <jobid> [<jobid> ...]        # explicit ids: always safe
+scancel -n leia-curv                 # by JOB NAME, this session's own name
+```
+
+Corollaries: identify your work by **job name**, never by user (`squeue -u
+$USER` lists every session's jobs on the shared account); a job you did not
+submit is not yours to kill even when it looks stale; and if a driver must be
+replaced, cancel it by id and resubmit rather than clearing the queue.
+
 ## Time integration: BDF2 (`backward`) everywhere
 
 **Momentum uses OpenFOAM's `backward` (BDF2) scheme in every leia two-phase

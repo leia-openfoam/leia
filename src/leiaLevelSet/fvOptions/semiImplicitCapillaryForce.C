@@ -102,18 +102,30 @@ void Foam::fv::semiImplicitCapillaryForce::addTerm(fvMatrix<vector>& eqn)
         eqn += fvm::laplacian(muf, U);
         eqn -= fvc::laplacian(muf, U);
 
-        if (diagnostics_ && csvPtr_ && Pstream::master())
+        if (diagnostics_)
         {
             // The lagged residual of the term: mu*Lap(u^(k)) in L2/Linf over
             // the domain. At outer-loop convergence the ADDED term is the
             // difference of two of these at consecutive iterates -> the
             // per-iterate CHANGE of this norm is the vanishing check.
+            //
+            // EVERY RANK must reach the reductions: gAverage/gMax are
+            // COLLECTIVE. Guarding them behind Pstream::master() deadlocks the
+            // run -- rank 0 blocks in the reduction and the others never enter
+            // it. Measured 2026-08-28 on Lichtenberg: four arms sat alive but
+            // silent for 76 minutes inside the first momentum assembly, which
+            // is invisible in serial and is why local testing never saw it.
+            // Reduce on all ranks; write on master only.
             const volVectorField lag(fvc::laplacian(muf, U));
             const scalarField magLag(mag(lag)());
-            csvPtr_() << mesh_.time().timeOutputValue() << ","
-                << outerCall_ << ",increment,"
-                << Foam::sqrt(gAverage(magSqr(magLag))) << ","
-                << gMax(magLag) << "," << 0.0 << "\n";
+            const scalar termL2 = Foam::sqrt(gAverage(magSqr(magLag)));
+            const scalar termLinf = gMax(magLag);
+            if (csvPtr_ && Pstream::master())
+            {
+                csvPtr_() << mesh_.time().timeOutputValue() << ","
+                    << outerCall_ << ",increment,"
+                    << termL2 << "," << termLinf << "," << 0.0 << "\n";
+            }
         }
         return;
     }
@@ -175,18 +187,24 @@ void Foam::fv::semiImplicitCapillaryForce::addTerm(fvMatrix<vector>& eqn)
 
         eqn -= muC*normalPart;
 
-        if (diagnostics_ && csvPtr_ && Pstream::master())
+        if (diagnostics_)
         {
             // Damping power of the value form: integral mu_c |grad U|^2 dV --
-            // the overdamping instrument (must be ~0 at equilibrium).
+            // the overdamping instrument (must be ~0 at equilibrium). As above:
+            // gSum/gAverage/gMax are COLLECTIVE, so all ranks reduce and only
+            // master writes.
             const scalar power =
                 gSum((mesh_.V()*muC.primitiveField()
                      *magSqr(gradU.primitiveField()))());
             const scalarField magNP(mag(muC*normalPart)());
-            csvPtr_() << mesh_.time().timeOutputValue() << ","
-                << outerCall_ << ",value,"
-                << Foam::sqrt(gAverage(magSqr(magNP))) << ","
-                << gMax(magNP) << "," << power << "\n";
+            const scalar termL2 = Foam::sqrt(gAverage(magSqr(magNP)));
+            const scalar termLinf = gMax(magNP);
+            if (csvPtr_ && Pstream::master())
+            {
+                csvPtr_() << mesh_.time().timeOutputValue() << ","
+                    << outerCall_ << ",value,"
+                    << termL2 << "," << termLinf << "," << power << "\n";
+            }
         }
     }
     else if (diagnostics_ && csvPtr_ && Pstream::master())
