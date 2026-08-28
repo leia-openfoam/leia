@@ -2646,6 +2646,160 @@ while (pimple.correctNonOrthogonal())
   <p class="footnote muted center">Single geometry, single resolution, one mode &mdash; not yet a verdict on the method.</p>
 </section>
 
+<!-- ===== Residual norms: how OpenFOAM measures convergence, and what that
+         means for a balanced-force droplet ===== -->
+
+<section>
+  <h2>Interlude: what a solver residual actually measures</h2>
+  <p class="muted" style="font-size:0.85em">Every number in this deck comes from a run whose linear solves were
+     declared &ldquo;converged&rdquo;. It is worth knowing exactly what that word means &mdash; because in a
+     balanced-force problem it means something less reassuring than it looks.</p>
+  <div class="cols">
+    <div>
+      <p>We solve \(A\psi = b\). The raw residual of an iterate is</p>
+      \[ r \;=\; \textstyle\sum_c \left| b_c - (A\psi)_c \right| \]
+      <p>but this number is <b>useless as a stopping test</b>:</p>
+      <ul class="tight">
+        <li>it carries the units of the equation &mdash; pressure and velocity
+            residuals are not comparable;</li>
+        <li>it scales with the number of cells, so the same solution
+            &ldquo;converges&rdquo; differently at \(N=64\) and \(N=256\);</li>
+        <li>it scales with the source, so a stronger surface tension would need
+            a different tolerance for the same physics.</li>
+      </ul>
+      <p>So the residual must be divided by something that carries the same
+         units and the same scale: a <b>normalisation factor</b>.</p>
+    </div>
+    <div>
+      <p><b>What should the reference be?</b></p>
+      <p class="muted">OpenFOAM's answer: measure how far the system is from the most
+         trivial possible solution &mdash; a <b>uniform field</b> equal to the current
+         mean \(\bar\psi\). Anything a solver could achieve by doing nothing should
+         not count as convergence.</p>
+      <div class="notes" style="font-size:0.88em">
+        <p>The normalisation is therefore built from the <b>spread</b> of the two
+           sides of the equation about that uniform reference &mdash; how much
+           genuine variation the solve actually has to produce.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The normalisation factor, exactly</h2>
+  <p class="muted" style="font-size:0.8em"><code>lduMatrixSolver.C</code> &mdash; <code>lduMatrix::solver::normFactor</code>, DEFAULT_NORM</p>
+  <div class="cols">
+    <div>
+      <p>With \(\bar\psi = \texttt{gAverage}(\psi)\) and \(A\bar\psi\) the row-sum of \(A\)
+         times that mean:</p>
+      \[ \boxed{\;n \;=\; \sum_c \Big( \big|A\psi - A\bar\psi\big|_c
+                 + \big|b - A\bar\psi\big|_c \Big) \;+\; \varepsilon\;} \]
+      <p>and every solver reports</p>
+      \[ \text{residual} \;=\; \frac{\sum_c |b - A\psi|_c}{n} \]
+      <p class="muted">The \(\varepsilon\) exists only to stop a division by zero for a
+         field that is exactly uniform.</p>
+      <p>OpenFOAM's own comment records the useful simplification &mdash;
+         at convergence \(A\psi \to b\), so</p>
+      \[ n \;\longrightarrow\; 2\sum_c |b_c| \]
+      <p class="accent"><b>The residual is the equation&rsquo;s imbalance measured in units of
+         its own source.</b></p>
+    </div>
+    <div>
+      <p><b>Three consequences to keep in mind</b></p>
+      <ul class="tight" style="font-size:0.95em">
+        <li><b>It is relative, never absolute.</b> <code>tolerance 1e-9</code> does not
+            mean &ldquo;the answer is right to \(10^{-9}\)&rdquo;; it means the leftover
+            imbalance is \(10^{-9}\) of \(\sum|b|\).</li>
+        <li><b>A uniform field has no scale.</b> As \(\psi\) approaches uniformity,
+            \(n\to\varepsilon\) and the reported residual stops being meaningful.</li>
+        <li><b>Residuals are not comparable between cases.</b> Two runs both at
+            \(10^{-9}\) can differ by orders of magnitude in absolute error if
+            their sources differ.</li>
+      </ul>
+      <p class="footnote muted">Initial residual exactly \(1.0\) is the fingerprint of a solve
+         starting from \(\psi = 0\): then \(A\psi = 0\), \(n = \sum|b|\), and the ratio is one.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Now put a stationary droplet in it</h2>
+  <div class="cols">
+    <div>
+      <p>The pressure equation exists to <b>annihilate the capillary flux</b>.
+         Its source is the divergence of the predicted flux, which contains that
+         flux in full:</p>
+      \[ \sum_c |b_c| \;\sim\; \big\| \nabla\!\cdot\!\phi_\sigma \big\| \quad\text{(large)} \]
+      <p>but the quantity we actually care about is what the projection
+         <b>fails</b> to absorb &mdash; and that is tiny:</p>
+      <table style="font-size:0.72em; border-collapse:collapse; margin:0.3em auto; width:96%">
+        <tr style="border-bottom:1px solid var(--ls-muted)"><th style="text-align:left">measured at \(N=128\)</th><th></th></tr>
+        <tr><td>capillary predictor velocity</td><td>\(\approx 1.7\) m/s</td></tr>
+        <tr><td>absorbed by the pressure solve</td><td>99.85&ndash;99.98&#37;</td></tr>
+        <tr><td><b>not absorbed</b> &rarr; the parasitic current</td><td><b>\(2.5\times10^{-3}\) m/s</b></td></tr>
+      </table>
+      <p class="warn"><b>This is a catastrophic-cancellation problem.</b> The physics we
+         are chasing is a \(10^{-3}\) remainder of a quantity the solver normalises by.</p>
+    </div>
+    <div>
+      <p><b>So how much margin does the tolerance actually have?</b></p>
+      \[ \frac{\text{solver leftover}}{\text{parasitic signal}}
+         \;=\; \frac{\text{tol}\cdot\sum|b|}{10^{-3}\cdot\sum|b|}
+         \;=\; \frac{10^{-9}}{10^{-3}} \;=\; 10^{-6} \]
+      <p class="good">Six orders of margin &mdash; <b>on uniform orthogonal hex</b>, where this
+         was measured directly: tightening the pressure solve ~30&times; in final
+         residual moved max\(|U|\), the velocity residual and the non-absorbable
+         fraction by at most \(2.4\times10^{-4}\) <i>relative</i>, over the whole run.</p>
+      <div class="notes" style="font-size:0.86em">
+        <p><b>The lesson is the method, not the number.</b> In a cancellation problem a
+           relative tolerance is safe only if
+           \(\text{tol} \ll\) (the fraction of the source that carries the signal).
+           That fraction has to be measured before the tolerance can be called safe.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Where that margin is <em>not</em> established</h2>
+  <div class="cols">
+    <div>
+      <p>The exoneration above holds on <b>uniform orthogonal hex</b>, at
+         \(N = 32/64\), with the caveat stated in the same measurement:</p>
+      <blockquote class="muted" style="font-size:0.85em; border-left:3px solid var(--ls-muted); padding-left:0.7em">
+        &ldquo;On a <b>non-orthogonal</b> mesh the Laplacian is harder and the solver
+        residual <b>can exceed the structural residual</b>. On uniform orthogonal
+        hex it cannot.&rdquo;
+      </blockquote>
+      <p>And on exactly such a mesh, strict PCG once gained <b>18&ndash;29&times;</b>.</p>
+      <p class="bad"><b>Polyhedral and 3D are that regime.</b> Larger curvature scatter means a
+         larger \(\sum|b|\), so the same relative tolerance leaves proportionally
+         more absolute error &mdash; and the non-orthogonal Laplacian makes it harder
+         to reach in the first place.</p>
+    </div>
+    <div>
+      <p><b>Two further openings on the same theme</b></p>
+      <ul class="tight" style="font-size:0.93em">
+        <li><b>Intermediate correctors are loose by design.</b> Only the last
+            corrector of the last outer iteration uses <code>relTol 0</code>; the others run at
+            <code>relTol 0.01</code>. With the interface re-advected inside the outer loop,
+            an under-converged intermediate velocity moves \(\psi\) &mdash; and therefore
+            \(\kappa\) &mdash; before the tight solve ever happens.</li>
+        <li><b>A diverging smoother hides the failure mode.</b> On the polyhedral
+            droplet the momentum <code>smoothSolver</code> ran to 1000 iterations and a final
+            residual of \(10^{+98}\). Timed against the physics it is a
+            <span class="good">symptom</span> &mdash; max\(|U|\) was already growing
+            \(\times 3.5\) per step for six steps &mdash; but it makes a physical blow-up
+            and a linear-algebra blow-up indistinguishable in the log.</li>
+      </ul>
+      <p class="accent" style="font-size:0.9em"><b>Queued test.</b> Polyhedral \(R/h=10\), 25 steps, three arms:
+         baseline; every solve at \(10^{-12}\) with no <code>relTol</code> slack anywhere; and a
+         Krylov momentum solver. Read-out: the per-step growth factor of max\(|U|\).
+         Unchanged &rArr; the coupling is the whole story in the harsh regime too.</p>
+    </div>
+  </div>
+</section>
+
 <!-- R6: open points -------------------------------------------------------->
 <section>
   <h2>Open points</h2>
