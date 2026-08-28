@@ -171,7 +171,7 @@
 <section data-track="The level set &amp; the phase indicator">  <!-- ############ TRACK: level set & phase indicator ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 1 of 5</p>
+  <p class="part-kicker">Part 1 of 6</p>
   <h2>The level set &amp; the phase indicator</h2>
   <p class="muted" style="font-size:0.85em">\(\psi\), its advection, and recovering \(\alpha\) geometrically / analytically</p>
   <ol class="roadmap" style="font-size:0.8em">
@@ -179,7 +179,8 @@
     <li><span class="idx">2</span>Semi-Lagrangian advection</li>
     <li><span class="idx">3</span>Two-phase flow</li>
     <li><span class="idx">4</span>Conclusions</li>
-    <li><span class="idx">5</span>Software design</li>
+    <li><span class="idx">5</span>Roadmap: the capillary coupling</li>
+    <li><span class="idx">6</span>Software design</li>
   </ol>
   <p class="part-prevnext">Previously: Title &amp; roadmap &nbsp;&middot;&nbsp; Next: Semi-Lagrangian advection</p>
 </section>
@@ -516,7 +517,7 @@
 <section data-track="Semi-Lagrangian advection">  <!-- ############ TRACK: semi-Lagrangian ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 2 of 5</p>
+  <p class="part-kicker">Part 2 of 6</p>
   <h2>Semi-Lagrangian advection</h2>
   <p class="muted" style="font-size:0.85em">the parallel research line: don't fix the velocity &mdash; follow the characteristic</p>
   <ol class="roadmap" style="font-size:0.8em">
@@ -524,7 +525,8 @@
     <li class="here"><span class="idx">2</span>Semi-Lagrangian advection</li>
     <li><span class="idx">3</span>Two-phase flow</li>
     <li><span class="idx">4</span>Conclusions</li>
-    <li><span class="idx">5</span>Software design</li>
+    <li><span class="idx">5</span>Roadmap: the capillary coupling</li>
+    <li><span class="idx">6</span>Software design</li>
   </ol>
   <p class="part-prevnext">Previously: The level set &amp; the phase indicator &nbsp;&middot;&nbsp; Next: Two-phase flow</p>
 </section>
@@ -1190,7 +1192,7 @@ psi.correctBoundaryConditions();
 <section data-track="Two-phase flow">  <!-- ############ TRACK: two-phase flow ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 3 of 5</p>
+  <p class="part-kicker">Part 3 of 6</p>
   <h2>Two-phase flow</h2>
   <p class="muted" style="font-size:0.85em">same transport, now driven by Navier&ndash;Stokes &mdash; surface tension from the reconstructed curvature</p>
   <ol class="roadmap" style="font-size:0.8em">
@@ -1198,7 +1200,8 @@ psi.correctBoundaryConditions();
     <li><span class="idx">2</span>Semi-Lagrangian advection</li>
     <li class="here"><span class="idx">3</span>Two-phase flow</li>
     <li><span class="idx">4</span>Conclusions</li>
-    <li><span class="idx">5</span>Software design</li>
+    <li><span class="idx">5</span>Roadmap: the capillary coupling</li>
+    <li><span class="idx">6</span>Software design</li>
   </ol>
   <p class="part-prevnext">Previously: Semi-Lagrangian advection &nbsp;&middot;&nbsp; Next: Conclusions</p>
 </section>
@@ -2335,7 +2338,7 @@ while (pimple.correctNonOrthogonal())
 <section data-track="Conclusions">
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 4 of 5</p>
+  <p class="part-kicker">Part 4 of 6</p>
   <h2>Conclusions</h2>
   <p class="muted" style="font-size:0.85em">the working method &mdash; convergence on hex &amp; polyhedral meshes, and two-phase coupling</p>
   <ol class="roadmap" style="font-size:0.8em">
@@ -2343,9 +2346,10 @@ while (pimple.correctNonOrthogonal())
     <li><span class="idx">2</span>Semi-Lagrangian advection</li>
     <li><span class="idx">3</span>Two-phase flow</li>
     <li class="here"><span class="idx">4</span>Conclusions</li>
-    <li><span class="idx">5</span>Software design</li>
+    <li><span class="idx">5</span>Roadmap: the capillary coupling</li>
+    <li><span class="idx">6</span>Software design</li>
   </ol>
-  <p class="part-prevnext">Previously: Two-phase flow &nbsp;&middot;&nbsp; Next: Software design</p>
+  <p class="part-prevnext">Previously: Two-phase flow &nbsp;&middot;&nbsp; Next: Roadmap</p>
 </section>
 
 
@@ -2447,10 +2451,249 @@ while (pimple.correctNonOrthogonal())
 
 </section>
 
+<section data-track="Roadmap: the capillary coupling">  <!-- ####### TRACK: Roadmap ####### -->
+<!-- part intro (auto-pattern) -->
+<section>
+  <p class="part-kicker">Part 5 of 6</p>
+  <h2>Roadmap: the capillary coupling</h2>
+  <p class="muted" style="font-size:0.85em">where the parasitic currents come from, what is being built, and what is still open</p>
+  <ol class="roadmap" style="font-size:0.8em">
+    <li><span class="idx">1</span>The level set &amp; the phase indicator</li>
+    <li><span class="idx">2</span>Semi-Lagrangian advection</li>
+    <li><span class="idx">3</span>Two-phase flow</li>
+    <li><span class="idx">4</span>Conclusions</li>
+    <li class="here"><span class="idx">5</span>Roadmap: the capillary coupling</li>
+    <li><span class="idx">6</span>Software design</li>
+  </ol>
+  <p class="part-prevnext">Previously: Conclusions &nbsp;&middot;&nbsp; Next: Software design</p>
+</section>
+
+<!-- R1: the question ------------------------------------------------------->
+<section>
+  <h2>The one open problem</h2>
+  <div class="cols">
+    <div>
+      <p>Transport converges. Curvature converges. <b>Coupled</b>, a droplet
+         that should stand still develops a current that <b>grows in time</b>.</p>
+      <p class="muted">The stationary droplet is the hardest test precisely because
+         the exact answer is \(\mathbf u \equiv \mathbf 0\): every measured
+         velocity is error.</p>
+      <p>Every endpoint we measured factorises:</p>
+      \[ \max|\mathbf u|(T) \;=\; \underbrace{u_0(h)}_{\text{one-step kick}}\;
+         \underbrace{e^{\,G(h)}}_{\text{amplification}} \]
+      <ul class="tight">
+        <li>\(u_0 \sim h^{3.5}\) &mdash; <span class="good">converges</span>,
+            it is the unbalanced-force floor</li>
+        <li>\(G \sim h^{-1}\) (2D), \(h^{-3.3}\) (3D) &mdash;
+            <span class="bad">grows under refinement</span></li>
+      </ul>
+      <p><b>Refinement helps only while \(G\) stays small.</b> The exponent of
+         \(G\) is the number a fix has to change.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 300 250" width="100%" role="img" aria-label="two-factor law">
+        <text x="150" y="18" text-anchor="middle" font-size="12" fill="currentColor">amplitude over one run</text>
+        <line x1="40" y1="210" x2="285" y2="210" stroke="currentColor" stroke-width="1"/>
+        <line x1="40" y1="210" x2="40" y2="30" stroke="currentColor" stroke-width="1"/>
+        <text x="163" y="232" text-anchor="middle" font-size="11" fill="currentColor">time</text>
+        <text x="16" y="120" text-anchor="middle" font-size="11" fill="currentColor" transform="rotate(-90 16 120)">log |u|</text>
+        <path d="M40 190 C 110 186, 170 178, 285 170" fill="none" stroke="#2e7d32" stroke-width="2.5"/>
+        <text x="212" y="163" font-size="10" fill="#2e7d32">u₀ alone: bounded</text>
+        <path d="M40 190 C 120 180, 200 130, 285 45" fill="none" stroke="#c62828" stroke-width="2.5"/>
+        <text x="150" y="80" font-size="10" fill="#c62828">u₀·e^G: what we measure</text>
+        <circle cx="40" cy="190" r="3" fill="currentColor"/>
+        <text x="46" y="203" font-size="10" fill="currentColor">u₀ = kick</text>
+      </svg>
+      <p class="footnote muted center">The fix must attack \(G\), not \(u_0\).</p>
+    </div>
+  </div>
+</section>
+
+<!-- R2: the measurement that names the cause -------------------------------->
+<section>
+  <h2>What the growth rate depends on</h2>
+  <p class="muted" style="font-size:0.8em">Perturb the interface by \(\varepsilon h\cos(m\theta)\), fit
+     \(a_m(t) = A_0 e^{r t}\cos(\omega t + \varphi)\). Growth \(r\) and frequency \(\omega\) come out separately;
+     \(\omega\) must reproduce the capillary dispersion relation &mdash; that is the harness's own validity check.</p>
+  <div class="cols">
+    <div>
+      <p><b>Halve the time step, three times</b> (\(m=2\), \(N=128\), same state):</p>
+      <table style="font-size:0.72em; border-collapse:collapse; margin:0.3em auto; width:95%">
+        <tr style="border-bottom:1px solid var(--ls-muted)">
+          <th style="text-align:left">\(\Delta t\)</th><th>\(\Delta t\)</th><th>\(/2\)</th><th>\(/4\)</th><th>\(/8\)</th></tr>
+        <tr><td>\(r_2\) [1/s]</td><td>3.9</td><td>&minus;1.3</td><td>&minus;4.9</td><td>&minus;7.5</td></tr>
+      </table>
+      <p>The rate is <b>linear in the time step</b>:</p>
+      \[ r \;=\; \underbrace{r_0}_{\approx\,-10\ \text{(damped)}} \;+\; c\,\Delta t \]
+      <p class="good">Extrapolated to \(\Delta t \to 0\) the mode is <b>damped</b>.
+         The spatial operator is not the problem.</p>
+      <p>Independently: the discrete \(\delta\psi\) map has spectral radius
+         \(\lambda = 1\) &mdash; <b>neutral</b>.</p>
+    </div>
+    <div>
+      <p><b>The instability is the explicit-in-time coupling.</b></p>
+      <p class="muted">The force is built from the interface at \(t^n\) and applied to
+         move it to \(t^{n+1}\). That one-step lag is the whole \(c\,\Delta t\).</p>
+      <div class="notes" style="font-size:0.85em">
+        <p><b>Why this is good news.</b> An error that vanishes with \(\Delta t\)
+           is a <em>time-integration</em> defect, not a discretisation defect.
+           It has a standard cure: make the coupling implicit.</p>
+      </div>
+      <p class="muted" style="font-size:0.8em">Corollary, also measured: profile drift raises \(c\) by
+         ~55&#37; but leaves \(r_0\) at zero &mdash; keeping \(\psi\) a signed distance
+         reduces the gain; it does not remove the mechanism.</p>
+    </div>
+  </div>
+</section>
+
+<!-- R3: the model ---------------------------------------------------------->
+<section>
+  <h2>The remedy: linearise the force in time</h2>
+  <p class="muted" style="font-size:0.8em">Hysing (2006); Raessi et al. (2009); used in LENT by
+     Tolle, Bothe &amp; Marić, <i>SAAMPLE</i>, Comput. Fluids 200 (2020) &sect;3.4.</p>
+  <div class="cols">
+    <div>
+      <p>The interface will move with the <b>new</b> velocity:</p>
+      \[ \mathbf x^{n+1} = \mathbf x^{n} + \Delta t\,\mathbf u^{n+1} \]
+      <p>Expanding the force about that position (Laplace&ndash;Beltrami identity):</p>
+      \[ \mathbf f_\Sigma^{n+1} = \underbrace{\sigma(\kappa\mathbf n)^n\delta_\Sigma}_{\text{explicit, unchanged}}
+         + \underbrace{\sigma\,\Delta t\,\Delta_\Sigma\mathbf u^{n+1}\,\delta_\Sigma}_{\text{new implicit term}} \]
+      <p>The new term is an interface-concentrated diffusion with coefficient</p>
+      \[ \mu_\sigma = \sigma\,\Delta t\,|\nabla\alpha| \qquad [\text{Pa}\cdot\text{s}] \]
+      <p class="good">It is <b>proportional to \(\mathbf u\)</b>: at equilibrium it vanishes
+         identically and cannot move the Young&ndash;Laplace balance.
+         A linearisation &mdash; <b>not</b> a filter.</p>
+    </div>
+    <div>
+      <p><b>Assembling \(\Delta_\Sigma\) implicitly.</b> Split it as</p>
+      \[ \Delta_\Sigma = \underbrace{\Delta}_{\text{implicit}}
+         \;-\;\underbrace{\partial^2_{nn} \;-\; \kappa\,\partial_n}_{\text{explicit correction}} \]
+      <p class="muted">One symmetric Laplacian in the matrix; the projector terms lagged
+         by one outer iteration. Legitimate <b>only</b> inside an iterative
+         pressure&ndash;velocity loop &mdash; then the converged operator is the true
+         \(\Delta_\Sigma\).</p>
+      <p class="warn" style="font-size:0.9em"><b>The known price.</b> SAAMPLE &sect;5 records
+         <b>overdamping</b>: the term is still a diffusion term in the converged
+         equation, and it damps physical oscillations too.</p>
+      <p class="muted" style="font-size:0.8em">In leia the coefficient uses \(|\mathrm{snGrad}(\alpha)|_f\) &mdash;
+        the same discrete object the balanced force differences, so damping support
+        \(=\) force support; \(\kappa\) and \(\mathbf n\) come from the quadratic fit,
+        normal-extended, consistently with the tubular derivation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- R4: the increment idea -------------------------------------------------->
+<section>
+  <h2>Paying for stability without paying dissipation</h2>
+  <div class="cols">
+    <div>
+      <p>Assemble the term on the <b>outer-loop increment</b> instead of on the velocity:</p>
+      \[ \mu_\sigma\,\Delta_\Sigma\!\left(\mathbf u^{n+1}-\mathbf u^{(k)}\right) \]
+      <p>At outer-loop convergence \(\mathbf u^{n+1}=\mathbf u^{(k)}\) and the whole
+         term <b>vanishes to round-off</b>.</p>
+      <ul class="tight">
+        <li>converged momentum equation carries <b>zero</b> artificial dissipation</li>
+        <li>first outer pass (\(\mathbf u^{(0)}=\mathbf u^{n}\)) still applies the
+            <b>full</b> \(\sigma\Delta t\) damping</li>
+        <li>no ramp factor, no tuned coefficient &mdash; it self-schedules</li>
+      </ul>
+      <p class="muted">SAAMPLE lags <em>part</em> of the operator by one outer iteration;
+         this lags <em>all</em> of it.</p>
+    </div>
+    <div>
+      <p><b>What it becomes when the interface is inside the loop.</b></p>
+      <p class="muted">With \(\psi\) re-advected every outer pass, the step is a Picard
+         iteration on the coupled system, and the term is exactly the Jacobian
+         \(\Delta t\,\partial\mathbf f_\sigma/\partial\mathbf x\):</p>
+      <div class="notes" style="font-size:0.85em">
+        <p>A Jacobian belongs in the <b>iteration matrix</b>, not in the residual.
+           At convergence it contributes nothing &mdash; the overdamping disappears
+           by itself, and the converged step is the fully implicit coupling.</p>
+      </div>
+      <p><b>This reframes an old negative result.</b> Iterating the interface
+         <em>alone</em> never helped &mdash; expected: un-preconditioned Picard on this
+         coupling contracts like \((\Delta t/\Delta t_{\rm cap})^2\).
+         <span class="accent">The two pieces were never tested together.</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- R5: status ------------------------------------------------------------->
+<section>
+  <h2>Where the implementation stands</h2>
+  <p class="muted" style="font-size:0.8em">Built as an <code>fvOption</code>: any solver whose momentum equation
+     folds in <code>fvOptions</code> selects it from <code>system/fvOptions</code> &mdash; no solver code changes.
+     Verified <b>bit-identical</b> to the previous solver when not selected.</p>
+  <table style="font-size:0.68em; border-collapse:collapse; margin:0.3em auto; width:97%">
+    <tr style="border-bottom:1px solid var(--ls-muted)">
+      <th style="text-align:left">arm (\(m=2\), \(N=128\))</th><th>\(r_0\) as \(\Delta t\to 0\)</th>
+      <th>\(c=\mathrm{d}r/\mathrm{d}\Delta t\)</th><th>reading</th></tr>
+    <tr><td>explicit force (baseline)</td><td>&minus;10.1</td><td>+1.7e6</td>
+        <td class="muted">the law, reproduced</td></tr>
+    <tr><td>interface iterated, no new term</td><td colspan="2" style="text-align:center">indistinguishable from baseline</td>
+        <td class="muted">old falsification, reproduced</td></tr>
+    <tr><td><b>value</b> form (SAAMPLE)</td><td>&minus;4.3</td><td class="bad">+5.6e6</td>
+        <td class="bad">worse &mdash; suspected sign bug</td></tr>
+    <tr><td><b>increment</b> form</td><td>&minus;8.2</td><td class="good">&minus;6.2e5</td>
+        <td class="good">coupling slope flips negative</td></tr>
+    <tr style="border-top:1px solid var(--ls-muted)"><td>increment + interface in loop</td>
+        <td colspan="3" style="text-align:center"><i>the candidate &mdash; running</i></td></tr>
+  </table>
+  <p style="font-size:0.85em"><b>Reading so far.</b> The increment form does not merely cancel the
+     \(c\,\Delta t\) growth &mdash; it turns the slope negative, i.e. a larger step damps more,
+     while leaving the \(\Delta t\to 0\) limit at the baseline value.</p>
+  <p class="footnote muted center">Single geometry, single resolution, one mode &mdash; not yet a verdict on the method.</p>
+</section>
+
+<!-- R6: open points -------------------------------------------------------->
+<section>
+  <h2>Open points</h2>
+  <div class="cols">
+    <div>
+      <p><b>To resolve next</b></p>
+      <ol class="tight" style="font-size:0.9em">
+        <li><b>The value form&rsquo;s sign.</b> A dissipative operator cannot raise a
+            growth rate. The \(\kappa\) projector term is <em>linear</em> in \(\mathbf n\),
+            so it flips with the normal&rsquo;s orientation &mdash; ours points outward
+            (\(\nabla\psi\)), SAAMPLE&rsquo;s inward (\(\nabla\alpha\)).
+            <span class="muted">Discriminator: run with the projector terms off.</span></li>
+        <li><b>Why the increment form damps at all</b> when the interface is frozen.
+            It should have been inert. The implicit Laplacian also enters the
+            <em>pressure</em> equation through \(1/A\) &mdash; stabilisation through the
+            splitting, at zero converged momentum dissipation.
+            <span class="muted">Real, but unplanned: needs its own verification.</span></li>
+        <li><b>Does it damp the physics?</b> The overdamping question SAAMPLE left open
+            is answered only by moving interfaces: oscillating droplet against Lamb
+            &mdash; <b>period and decay rate</b> &mdash; and the translating droplet.</li>
+      </ol>
+    </div>
+    <div>
+      <p><b>Then, in order</b></p>
+      <ul class="tight" style="font-size:0.9em">
+        <li>the \(h\)-ladder: does the exponent of \(G\) actually change?
+            <span class="muted">2D hex \(N=64/128/256\), quarter horizon, no filters</span></li>
+        <li>3D hex <em>and</em> polyhedral, three resolutions each
+            <span class="muted">&mdash; polyhedral is the harshest signal available:
+            explicit blows up in ~20 steps at every rung</span></li>
+        <li>cost per unit physical time at fixed accuracy &mdash; iterating the interface
+            re-runs transport &rarr; curvature &rarr; delivery every outer pass;
+            the gain has to be a <b>larger step</b>, not just a stable one</li>
+      </ul>
+      <p class="warn" style="font-size:0.9em"><b>What this cannot fix.</b> Implicitness attacks the
+         amplification \(G\). The kick \(u_0\) is set by the force not being the
+         gradient of a discrete energy &mdash; a separate, structural question
+         (variational pairing).</p>
+    </div>
+  </div>
+</section>
+
+</section>
+
 <section data-track="Software design">  <!-- ############ TRACK: Software Design ############ -->
 <!-- part intro (auto-pattern) -->
 <section>
-  <p class="part-kicker">Part 5 of 5</p>
+  <p class="part-kicker">Part 6 of 6</p>
   <h2>Software design</h2>
   <p class="muted" style="font-size:0.85em">runtime model selection; add a model without touching existing code</p>
   <ol class="roadmap" style="font-size:0.8em">
@@ -2458,9 +2701,10 @@ while (pimple.correctNonOrthogonal())
     <li><span class="idx">2</span>Semi-Lagrangian advection</li>
     <li><span class="idx">3</span>Two-phase flow</li>
     <li><span class="idx">4</span>Conclusions</li>
-    <li class="here"><span class="idx">5</span>Software design</li>
+    <li><span class="idx">5</span>Roadmap: the capillary coupling</li>
+    <li class="here"><span class="idx">6</span>Software design</li>
   </ol>
-  <p class="part-prevnext">Previously: Conclusions &nbsp;&middot;&nbsp; Next: &mdash; (end)</p>
+  <p class="part-prevnext">Previously: Roadmap &nbsp;&middot;&nbsp; Next: &mdash; (end)</p>
 </section>
 
 <!-- Software Design overview -->
