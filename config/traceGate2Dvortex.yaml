@@ -1,0 +1,48 @@
+# TRANSPORT GATE for the two Basilisk-style advection options, on the case with
+# an EXACT answer: the reversed single vortex at T = 2, where exact(T) = the
+# initial condition, so shape and volume error are true accuracy measures.
+#
+# WHY THIS CASE AND NOT THE DROPLET. On the stationary droplet the trace
+# velocity is ~0, so the trace-velocity axis is nearly inert there -- and it
+# STILL halved the volume error (1.34e-6 -> 5.76e-7 at N=128, 30 steps). This
+# case runs a real flow with a closed-form answer, which is where the
+# divergence-free trace should show its true size.
+#
+# THE TWO AXES, one variable each:
+#   SL_FOOT_INTEGRATOR  taylor | rk2
+#       Same formal order; rk2 obtains the dt^2 correction from a second
+#       velocity sample instead of grad(U). PREDICTION: shape and volume orders
+#       unchanged within fit noise, at ~25% lower cost (measured on the droplet:
+#       19.6 s vs 25.9 s for 30 steps). A LOSS of order here falsifies the rk2
+#       foot as a drop-in replacement.
+#   SL_TRACE_VELOCITY   cellCentred | projectedFlux
+#       PREDICTION: volume error improves -- the prescribed cell velocity is
+#       only analytically solenoidal, while phi is discretely so, and the SL
+#       flow map preserves the enclosed volume only for a solenoidal trace.
+#       Shape error should be unchanged or better. A DEGRADED shape order would
+#       say reconstruct(phi) costs interpolation accuracy, which is the
+#       trade-off to watch.
+#
+# Scored on the committed metrics: E_GEOM_ALPHA (shape) and E_VOL_ALPHA_REL
+# (volume) at t = T, with the fitted order over the ladder. CFL 0.5 only --
+# the CFL axis is already closed (order independent of step size up to the
+# stability bound), so it would only quadruple the cost.
+study_name: traceGate2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme:  semi-lagrangian-level-set
+axes_override:
+  END_TIME: [2]
+  N_CELLS:  [32, 64, 128, 256]
+  CFL:      [0.5]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_FOOT_INTEGRATOR: ["taylor", "rk2"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

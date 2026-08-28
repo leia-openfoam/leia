@@ -338,6 +338,19 @@ levelSet
         slopeLimiter        @!SL_LIMITER!@;
         venkK               @!SL_VENKK!@;
         fit                 @!SL_FIT!@;
+        // Foot-point integrator: taylor (historical, needs grad(U) for its
+        // dt^2 term) | rk2 (midpoint, velocity SAMPLES only -- Basilisk-style).
+        footIntegrator      @!SL_FOOT_INTEGRATOR!@;
+
+        // Trajectory velocity: cellCentred (historical, the prescribed cell
+        // field) | projectedFlux (fvc::reconstruct(phi), the discretely
+        // DIVERGENCE-FREE face flux). The reversed vortex, whose exact answer
+        // is its own initial condition, is the sharpest test of the difference:
+        // a semi-Lagrangian map preserves the enclosed volume only when the
+        // tracing field is discretely solenoidal, and the prescribed cell
+        // velocity is only ANALYTICALLY so.
+        traceVelocity       @!SL_TRACE_VELOCITY!@;
+
         reconstruction      @!SL_RECONSTRUCTION!@;
 
         // ---- correction strategy (RTS slCorrector) ----
