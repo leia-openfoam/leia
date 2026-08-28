@@ -1,0 +1,46 @@
+# INITIALISATION-ACCURACY GATE: does the phase indicator's volume converge to
+# the ANALYTIC volume of the shape it was given?
+#
+# WHY THIS GATE HAD TO BE BUILT. Every volume error the solvers report is
+# referenced to the DISCRETE initial volume -- `dropletInitialPhaseVolume` in the
+# two-phase solver, `alphaV0 = gSum(alpha0*V)` in the kinematic one. That is the
+# correct reference for conservation DRIFT, but it means the initialisation error
+# CANCELS OUT of every reported metric by construction and can never show up
+# there. The accuracy of alpha(psi) at t = 0 therefore has to be measured
+# separately, against a closed-form volume. `leiaSetFields` already writes the
+# number (leiaSetFields.csv: H, VOL_ALPHA_0) in every case ever run -- it had
+# simply never been compared with the exact value.
+#
+# The study runs leiaSetFields AS the solver over a refinement ladder;
+# make_init_volume_table.py reads the analytic shape out of each case's own
+# levelSet/implicitSurface dictionary (one-cell-thick mesh -> pi a b t;
+# genuinely 3D -> 4/3 pi a b c), fits the order and curates the table + figure.
+#
+# MEASURED (2026-08-28, from the pre-existing gate studies before this config
+# existed): SECOND ORDER for every shape and mesh tried --
+#   circle    2D hex, N = 60..240      3.08e-3 -> 2.00e-4, orders 1.89-2.04
+#   ellipse   2D hex, N = 64..512      3.81e-3 -> 6.06e-5, orders 1.95-2.03
+#   ellipsoid 3D hex, exact SDF psi    2.82e-2 -> 1.75e-3, orders 1.99-2.02
+#   ellipsoid 3D hex, implicit quadric 4.53e-2 -> 2.86e-3, orders 1.96-2.01
+#   ellipsoid 3D POLYHEDRAL (cfMesh)   1.36e-2 -> 1.97e-3, orders 1.84-1.98
+# so the Detrixhe-Aslam indicator holds second order for varying curvature, in
+# 3D, and on polyhedral meshes -- where the CURVATURE estimator degrades.
+#
+#   snakemake --workflow-profile profiles/local8 --configfile config/initVolumeEllipse2D.yaml
+#
+# THIS CONFIG: 2:1 ellipse -- VARYING curvature, exact signed distance.
+study_name: initVolumeEllipse2D
+case: ellipseDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSetFields
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [64, 128, 256, 512]
+  PSI_SURFACE: ["signedDistanceEllipse"]
+
+collapse_other_axes: true
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

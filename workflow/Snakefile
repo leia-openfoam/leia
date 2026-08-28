@@ -156,7 +156,11 @@ if INIT_END:
 # The curvature test app reads the SAME -alphaName flag as leiaSetFields (its
 # default alpha.water fits the droplet cases; the 3D cases name the field
 # "alpha") -- forward the study's setfields_args to it.
-_solver_args = SETFIELDS_ARGS if SOLVER == "leiaTestMeanCurvature" else ""
+# leiaSetFields is also usable AS the study solver (initialisation-accuracy
+# gates): it needs the same -alphaName the preprocess step passes.
+_solver_args = (SETFIELDS_ARGS
+                if SOLVER in ("leiaTestMeanCurvature", "leiaSetFields")
+                else "")
 _solver_cmd = " ".join(
     filter(None, [f"{MPI_PREFIX}{SOLVER}".strip(), _solver_args, PAR, FLUX.strip()]))
 # A DIVERGED RUN IS A RESULT, NOT A WORKFLOW ERROR.
@@ -474,6 +478,15 @@ rule report:
         # make_convergence_table.py refuses to overwrite the published tables
         # from an incomplete study set, so running it after every SDPLS study is
         # safe: it is a no-op until the whole suite is on disk.
+        # INITIALISATION-ACCURACY gate (solver: leiaSetFields). Verifies the
+        # phase indicator's volume against the ANALYTIC volume of the initialised
+        # shape -- a property no solver metric can see, because every reported
+        # volume error is referenced to the DISCRETE initial volume and the
+        # initialisation error cancels out of it by construction. Theme-agnostic,
+        # and outside the export_slides gate because it is a data product.
+        if SOLVER == "leiaSetFields":
+            _run([_PY, os.path.join(_scripts, "make_init_volume_table.py"),
+                     STUDY_DIR, "--theme", THEME], "make_init_volume_table.py")
         if THEME in ("sdpls-level-set", "method-comparison") \
                 and SOLVER != "leiaTestMeanCurvature":
             _run([_PY, os.path.join(_scripts, "make_convergence_table.py"),
