@@ -26,10 +26,34 @@ REF_TRACE = "projectedFlux"
 METRICS = "leiaSemiLagrangianLevelSetTwoPhaseFoam.csv"
 
 
+def fnum(v):
+    """float() that tolerates a missing/short field (nan), never raises."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return float("nan")
+
+
+def complete(rows, keys):
+    """Drop truncated rows.
+
+    A live run's last CSV line is usually half-written -- csv.DictReader then
+    yields None for the fields past the truncation and float() raises. Scoring
+    a partial row would also be wrong even when it parses, so require every
+    field this script reads to be present and numeric.
+    """
+    ok = []
+    for r in rows:
+        if all(r.get(k) not in (None, "") and math.isfinite(fnum(r[k]))
+               for k in keys):
+            ok.append(r)
+    return ok
+
+
 def at(rows, t, key="maxMagU"):
     """Value of `key` at the sample nearest time t, with that sample's time."""
-    i = min(range(len(rows)), key=lambda j: abs(float(rows[j]["TIME"]) - t))
-    return float(rows[i][key]), float(rows[i]["TIME"])
+    i = min(range(len(rows)), key=lambda j: abs(fnum(rows[j]["TIME"]) - t))
+    return fnum(rows[i][key]), fnum(rows[i]["TIME"])
 
 
 def read_arm(d):
@@ -37,14 +61,19 @@ def read_arm(d):
     cp = os.path.join(d, "case_params.json")
     if not (os.path.exists(mp) and os.path.exists(cp)):
         return None
-    rows = list(csv.DictReader(open(mp)))
+    NEEDED = ["TIME", "maxMagU", "phaseVolumeRelError", "zeroSetRadialL2",
+              "minGradPsiBand"]
+    raw = list(csv.DictReader(open(mp)))
+    rows = complete(raw, NEEDED)
     if len(rows) < 10:
         return None
     tok = json.load(open(cp))
     u_ref, t_ref = at(rows, T_REF)
     u_end, t_end = at(rows, T_END)
     # A blown-up arm is a result: report it, do not fit through it.
-    diverged = not all(math.isfinite(float(r["maxMagU"])) for r in rows)
+    diverged = not all(math.isfinite(fnum(r["maxMagU"])) for r in rows)
+    t_last = fnum(rows[-1]["TIME"])
+    partial = t_last < 0.995*T_END
     G = math.log(u_end / u_ref) if (u_ref > 0 and u_end > 0) else float("nan")
     return dict(
         arm=os.path.basename(d),
@@ -54,10 +83,10 @@ def read_arm(d):
         t_ref=t_ref, t_end=t_end,
         u_ref=u_ref, u_end=u_end, G=G,
         r=G / (t_end - t_ref) if t_end > t_ref else float("nan"),
-        volErr=float(rows[-1]["phaseVolumeRelError"]),
-        shapeL2=float(rows[-1]["zeroSetRadialL2"]),
-        minGradPsi=float(rows[-1]["minGradPsiBand"]),
-        diverged=diverged,
+        volErr=fnum(rows[-1]["phaseVolumeRelError"]),
+        shapeL2=fnum(rows[-1]["zeroSetRadialL2"]),
+        minGradPsi=fnum(rows[-1]["minGradPsiBand"]),
+        diverged=diverged, partial=partial, t_last=t_last,
     )
 
 
@@ -90,7 +119,7 @@ def main():
         "trace_amplifier_dt.csv")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     cols = ["arm", "trace", "dt", "steps", "u_ref", "u_end", "G", "r", "dr",
-            "volErr", "shapeL2", "minGradPsi", "diverged"]
+            "volErr", "shapeL2", "minGradPsi", "diverged", "partial", "t_last"]
     with open(out, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
@@ -103,7 +132,8 @@ def main():
     for x in arms:
         print("%-16s %12.6g %8d %10.4f %10.2f %10.2f%s" %
               (x["trace"], x["dt"], x["steps"], x["G"], x["r"], x["dr"],
-               "  DIVERGED" if x["diverged"] else ""))
+               "  DIVERGED" if x["diverged"]
+               else ("  PARTIAL t=%.4f" % x["t_last"]) if x["partial"] else ""))
 
     # PREDICTION 1: dr_cellCentred halves with dt.
     print("\n-- PREDICTION 1: dr proportional to dt (ratio 2.0 per rung) --")
