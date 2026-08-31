@@ -455,6 +455,7 @@ PIMPLE_RESIDUAL_CONTROL_FILE residualControl.off;
 // bit-identical; see the fvSolution.template comments for what each does.
 //   footIntegrator: taylor | rk2
 //   traceVelocity : cellCentred | projectedFlux | reconstructedU
+//                 | reconstructedMomentum
 // reconstructedU is the CONFOUND CONTROL for projectedFlux: same extension
 // field, same reconstruct operator, but an unprojected (non-solenoidal) face
 // flux. It exists to decide whether projectedFlux wins because the traced

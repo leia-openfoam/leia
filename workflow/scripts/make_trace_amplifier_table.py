@@ -191,6 +191,45 @@ def main():
               % (100*(1 - rho0)))
         print("    dropping the extension and/or by the reconstruct smoothing,")
         print("    which THIS matrix does not separate from each other.")
+    # ---- LADDER: split the amplifier when all four traces are present -------
+    # Every step of the ladder changes exactly one thing, so the three gaps in
+    # dr attribute the cellCentred amplifier to three mechanisms:
+    #   cellCentred -> reconstructedU        : the reconstruct SMOOTHING
+    #   reconstructedU -> reconstructedMomentum : the off-interface EXTENSION
+    #   reconstructedMomentum -> projectedFlux  : SOLENOIDALITY
+    by = {}
+    for x in arms:
+        by.setdefault(round(x["dt"], 12), {})[x["trace"]] = x["dr"]
+    need = ["cellCentred", "reconstructedU", "reconstructedMomentum"]
+    rung = [k for k in sorted(by, reverse=True) if all(t in by[k] for t in need)]
+    if rung:
+        print("\n-- LADDER: where the cellCentred amplifier actually goes --")
+        print("   (shares of dr_cellCentred; each ladder step changes ONE thing)")
+        print("   %-12s %9s %11s %11s %11s" %
+              ("dt", "dr_cc", "smoothing", "extension", "solenoidal"))
+        for k in rung:
+            cc_, ru_, rm_ = (by[k]["cellCentred"], by[k]["reconstructedU"],
+                             by[k]["reconstructedMomentum"])
+            if not cc_:
+                continue
+            sm, ex, so = (cc_ - ru_)/cc_, (ru_ - rm_)/cc_, rm_/cc_
+            mono = cc_ >= ru_ >= rm_ >= 0
+            print("   %-12.6g %9.2f %10.1f%% %10.1f%% %10.1f%%%s"
+                  % (k, cc_, 100*sm, 100*ex, 100*so,
+                     "" if mono else "   NON-MONOTONE -- ladder void at this dt"))
+        k0 = rung[0]
+        cc_, ru_, rm_ = (by[k0]["cellCentred"], by[k0]["reconstructedU"],
+                         by[k0]["reconstructedMomentum"])
+        if cc_:
+            order = sorted(
+                [("the reconstruct smoothing", (cc_ - ru_)/cc_),
+                 ("dropping the velocity extension", (ru_ - rm_)/cc_),
+                 ("solenoidality of the traced field", rm_/cc_)],
+                key=lambda t: -t[1])
+            print("\n   AT THE BASE STEP dt=%g, largest share first:" % k0)
+            for name, share in order:
+                print("     %5.1f%%  %s" % (100*share, name))
+
     print("\nwrote %s" % out)
 
 

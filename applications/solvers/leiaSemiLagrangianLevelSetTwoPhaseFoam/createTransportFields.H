@@ -53,6 +53,35 @@ volVectorField UextOld
 //                    mechanism; if it tracks projectedFlux, the mechanism is
 //                    the reconstruct smoothing and the divergence-free reading
 //                    is wrong.
+//   reconstructedMomentum -- the SECOND control, which completes a ladder in
+//                    which every step changes exactly ONE thing:
+//                      cellCentred           Uext,          no reconstruct
+//                      reconstructedU        Uext,          reconstruct
+//                      reconstructedMomentum U (raw),       reconstruct
+//                      projectedFlux         phi (projected), reconstruct
+//                    so cellCentred -> reconstructedU isolates the RECONSTRUCT
+//                    SMOOTHING, reconstructedU -> reconstructedMomentum isolates
+//                    the off-interface EXTENSION, and reconstructedMomentum ->
+//                    projectedFlux isolates SOLENOIDALITY (the only difference
+//                    being whether the face field is the pressure-projected flux
+//                    or the plain interpolated one).
+//                    MEASURED 2026-08-31 on config/traceAmplifierDt2D: at the
+//                    base step reconstructedU already removes 70% of the
+//                    cellCentred amplifier with no solenoidality whatsoever
+//                    (dr 85.85 -> 26.05), so the divergence-free property is a
+//                    minority share and this arm is what splits the other 70%
+//                    between extension and smoothing.
+//                    NOTE none of these carries a tunable coefficient: they are
+//                    fixed discretisation operators, not filters.
+//                    MEASURED 2026-08-31: with levelSet.velocityExtension.type
+//                    = none -- the default, and what every stationary-droplet
+//                    study uses -- the extension is the IDENTITY, so Uext == U
+//                    bitwise and reconstructedMomentum is BYTE-IDENTICAL to
+//                    reconstructedU (verified on 267 steps, np 4). The extension
+//                    rung of the ladder is therefore a null step in that
+//                    configuration and the whole non-solenoidal share belongs to
+//                    the reconstruct operator. This arm only separates from
+//                    reconstructedU when an extension model is actually active.
 const word slTraceVelocity
 (
     static_cast<const fvSolution&>(mesh).subDict("levelSet")
@@ -64,24 +93,46 @@ if
     slTraceVelocity != "cellCentred"
  && slTraceVelocity != "projectedFlux"
  && slTraceVelocity != "reconstructedU"
+ && slTraceVelocity != "reconstructedMomentum"
 )
 {
     FatalErrorInFunction
         << "levelSet.semiLagrangian.traceVelocity = '" << slTraceVelocity
-        << "'. Valid: cellCentred, projectedFlux, reconstructedU."
-        << exit(FatalError);
+        << "'. Valid: cellCentred, projectedFlux, reconstructedU,"
+        << " reconstructedMomentum." << exit(FatalError);
 }
 const bool traceReconstructU = (slTraceVelocity == "reconstructedU");
+const bool traceReconstructMom = (slTraceVelocity == "reconstructedMomentum");
+if
+(
+    traceReconstructMom
+ && static_cast<const fvSolution&>(mesh).subDict("levelSet")
+        .subOrEmptyDict("velocityExtension")
+        .getOrDefault<word>("type", "none") == "none"
+)
+{
+    // Not fatal -- it is a legitimate selection -- but running it as a study
+    // ARM alongside reconstructedU wastes a job on a bit-identical duplicate.
+    WarningInFunction
+        << "traceVelocity reconstructedMomentum with velocityExtension type"
+        << " none: the extension is the identity, so Uext == U and this is"
+        << " BIT-IDENTICAL to reconstructedU. It separates from it only when"
+        << " an extension model is active." << nl << endl;
+}
 // Both non-default sources trace a RECONSTRUCTED cell field and so share the
 // Utrace/UtraceOld two-level machinery; they differ only in the face field.
 const bool traceFromFlux =
-    (slTraceVelocity == "projectedFlux") || traceReconstructU;
+    (slTraceVelocity == "projectedFlux") || traceReconstructU
+ || traceReconstructMom;
 if (traceFromFlux)
 {
     Info<< "SL trace velocity: "
         << (traceReconstructU
               ? "reconstruct(interpolate(Uext)&Sf) -- NOT divergence-free"
-                " (confound control)"
+                " (smoothing+extension control)"
+              : traceReconstructMom
+              ? "reconstruct(interpolate(U)&Sf) -- NOT divergence-free,"
+                " NO extension (smoothing-only control)"
               : "reconstruct(phi) -- divergence-free face flux")
         << nl << endl;
 }
@@ -90,9 +141,18 @@ if (traceFromFlux)
 // site so the two sources can never drift apart.
 auto slTraceField = [&]() -> tmp<volVectorField>
 {
-    return traceReconstructU
-        ? fvc::reconstruct(linearInterpolate(slVelExt->Uext()) & mesh.Sf())
-        : fvc::reconstruct(phi);
+    if (traceReconstructU)
+    {
+        return fvc::reconstruct(linearInterpolate(slVelExt->Uext()) & mesh.Sf());
+    }
+    if (traceReconstructMom)
+    {
+        // Raw momentum U, NOT the extension: identical operator chain to
+        // reconstructedU, so the only difference between the two is whether the
+        // field was extended off the interface.
+        return fvc::reconstruct(linearInterpolate(U) & mesh.Sf());
+    }
+    return fvc::reconstruct(phi);
 };
 
 // Trace-velocity levels used when traceFromFlux; allocated only then. Utrace
