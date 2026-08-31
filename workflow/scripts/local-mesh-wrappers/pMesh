@@ -16,8 +16,18 @@
 #                  export PATH=$PWD/workflow/scripts/local-mesh-wrappers:$PATH"
 #
 # (the Snakefile runs the preamble with cwd = repo root, before cd-ing into the
-# case, so $PWD resolves correctly). On the cluster the preload is unnecessary
-# and this wrapper is simply never put on PATH.
+# case, so $PWD resolves correctly).
+#
+# RETRACTED 2026-08-31: this file used to claim "on the cluster the preload is
+# unnecessary and this wrapper is simply never put on PATH". That is FALSE.
+# Lichtenberg (glibc 2.34) aborts in pMesh with the SAME `free(): invalid
+# pointer`, rc 134, as the laptop (glibc 2.39) -- which is why every polyhedral
+# study there died at the mesh step, first with "command not found" (cfMesh was
+# not installed at all) and then with the abort once it was. Under the preload
+# pMesh completes on the cluster: 572k cells, non-orthogonality max 61.8 deg,
+# average 5.7. profiles/slurm now puts this directory first in PATH and sets
+# LEIA_JEMALLOC, because the cluster has no jemalloc at the laptop's miniconda3
+# path (it is installed to a separate conda-forge-only prefix).
 set -u
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Resolve the REAL pMesh, with this wrapper's directory removed from PATH.

@@ -109,4 +109,16 @@ set-resources:
 # profiles/local keeps `mpirun -np {np}` -- there is no srun nesting there.
 config:
   - "mpi_launcher=srun --ntasks={np} --overlap --cpu-bind=none"
-  - "env_preamble=module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv; export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2; source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+# CFMESH NEEDS A PRELOADED JEMALLOC ON THIS CLUSTER TOO (2026-08-31).
+# The wrapper workflow/scripts/local-mesh-wrappers/pMesh used to say the preload
+# was "unnecessary on the cluster". That was WRONG and is retracted: pMesh aborts
+# here with `free(): invalid pointer` (rc 134) on glibc 2.34 exactly as it does on
+# the laptop's 2.39, which is why every polyhedral study died at the mesh step.
+# Under the preload it completes -- 572k cells, non-orthogonality max 61.8 avg 5.7.
+# The wrapper dir goes FIRST in PATH; it shadows ONLY pMesh, so hex studies that
+# never invoke the mesher are unaffected. LD_PRELOAD is NOT exported globally:
+# doing that injects jemalloc into the MPI solver and segfaults it instantly
+# (rc 139, empty log -- a launch failure that reads like a divergence).
+# jemalloc lives outside miniconda3's base env, installed from conda-forge only
+# so no Anaconda channel terms are involved.
+  - "env_preamble=module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv; export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2; source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; export PATH=$PWD/workflow/scripts/local-mesh-wrappers:$PATH; export LEIA_JEMALLOC=/work/scratch/tm83tomy/jemalloc-env/lib/libjemalloc.so.2"
