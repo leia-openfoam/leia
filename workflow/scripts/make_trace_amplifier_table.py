@@ -163,12 +163,34 @@ def main():
     print("\n-- PREDICTION 2: rho = dr_reconstructedU / dr_cellCentred --")
     cc = {round(x["dt"], 12): x["dr"] for x in arms if x["trace"] == "cellCentred"}
     ru = {round(x["dt"], 12): x["dr"] for x in arms if x["trace"] == "reconstructedU"}
-    for k in sorted(set(cc) & set(ru), reverse=True):
+    # rho is only meaningful where the amplifier it normalises by is LARGE.
+    # dr_cc -> 0 as dt -> 0 by construction (all three traces converge to the
+    # same physics), so at the fine end rho is a ratio of two small numbers and
+    # its verdict is noise, not evidence. Score it at the coarsest step -- the
+    # one where the instability actually manifests -- and mark the rest.
+    ks = sorted(set(cc) & set(ru), reverse=True)
+    dr_max = max((abs(cc[k]) for k in ks), default=0.0)
+    for k in ks:
         rho = ru[k] / cc[k] if cc[k] else float("nan")
-        verdict = ("SOLENOIDALITY (hypothesis confirmed)" if rho >= 0.7 else
-                   "SMOOTHING (hypothesis falsified)" if rho <= 0.3 else
-                   "MIXED -- claim neither")
-        print("  dt=%-12.6g rho=%6.3f  -> %s" % (k, rho, verdict))
+        weak = abs(cc[k]) < 0.25*dr_max
+        if weak:
+            note = "dr_cc only %.1f%% of its coarsest value -- rho is noise here" \
+                   % (100*abs(cc[k])/dr_max if dr_max else float("nan"))
+        else:
+            note = ("SOLENOIDALITY (hypothesis confirmed)" if rho >= 0.7 else
+                    "SMOOTHING (hypothesis falsified)" if rho <= 0.3 else
+                    "MIXED -- claim neither")
+        print("  dt=%-12.6g rho=%6.3f  dr_cc=%7.2f  -> %s" % (k, rho, cc[k], note))
+    if ks:
+        k0 = ks[0]
+        rho0 = ru[k0] / cc[k0] if cc[k0] else float("nan")
+        print("\n  SCORED AT THE COARSEST STEP dt=%g (largest signal):" % k0)
+        print("    rho = %.3f -- solenoidality accounts for %.0f%% of the"
+              % (rho0, 100*rho0))
+        print("    cellCentred amplifier; the other %.0f%% is removed by"
+              % (100*(1 - rho0)))
+        print("    dropping the extension and/or by the reconstruct smoothing,")
+        print("    which THIS matrix does not separate from each other.")
     print("\nwrote %s" % out)
 
 
