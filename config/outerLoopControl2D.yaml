@@ -1,0 +1,69 @@
+# CONTROL: did the OUTER-LOOP configuration remove the growth, or did the
+# physics options?
+#
+# WHY THIS EXISTS. The 2x2x2 coupled matrix (config/coupledTraceSemiImplicit2D)
+# came back with ALL EIGHT arms stable: every one peaks at t ~ 2.2 ms and decays
+# to 29-33% of peak by 25 ms. That is not what the historical N=128 filter-off
+# configuration does, and it makes the matrix's stability ranking unreadable --
+# a matrix cannot discriminate on stability if nothing in it is unstable. The
+# matrix differed from the historical setup in ONE respect that has nothing to
+# do with its three axes: it ran 12 outer correctors with the interface
+# RE-ADVECTED on every pass (PSI_OUTER_CORRECTORS yes), where the historical
+# runs used 3 correctors with the interface advected once and the capillary
+# force frozen across the loop.
+#
+# THE CONTROL. The two extreme arms of that matrix, rerun at the historical
+# loop -- 3 outer correctors, interface frozen -- and nothing else changed.
+# Same case, same mesh, same commit, same binaries, same physics tokens, so the
+# only difference against the matrix rows below is the outer loop.
+#
+# THE PARTNERS ALREADY MEASURED (coupledTraceSemiImplicit2D, 12 outer
+# correctors, PSI_OUTER_CORRECTORS yes, quarter horizon, taylor/cellCentred):
+#     semi-implicit off        max|U| 1.2598e-04  volume 8.2734e-06
+#     semi-implicit increment  max|U| 9.8155e-05  volume 9.2580e-07
+# both DECAYING, peak 4.29e-04 / 3.22e-04 at t ~ 2.2 ms.
+#
+# PRE-REGISTERED READ-OUT:
+#   * If these arms GROW where the matrix arms decayed, the outer-loop
+#     configuration is what suppressed the instability. The matrix then did NOT
+#     measure what it was built to measure -- its axes were compared in a
+#     regime with no instability in it -- and the iterated loop becomes a
+#     stability result in its own right, to be separated afterwards into "more
+#     correctors" versus "interface re-advected" (they are two knobs, varied
+#     together here because that is the historical pairing).
+#   * If these arms also DECAY, the outer loop is exonerated: the stability
+#     belongs to the physics options (cellCentreInverse delivery, filters off,
+#     this dt), the matrix measured its axes honestly, and the growth seen
+#     historically must come from a difference not yet identified.
+#   * Either way the FLOOR comparison stands: volume error is 5.7x better with
+#     the divergence-free trace and 8.9x better with the semi-implicit
+#     increment, and those were measured at matched loop settings.
+#
+# Scored on the standing vector -- max|U|, volume, shape, min|grad psi| -- plus
+# the max|U| trajectory, since peak-and-decay versus monotone growth is the
+# whole question and an endpoint number cannot tell them apart.
+study_name: outerLoopControl2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [128]
+  DOMAIN_LENGTH: [0.01]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred"]
+  SEMI_IMPLICIT_CAPILLARY: ["off", "increment"]
+  N_OUTER_CORRECTORS: [3]
+  PSI_OUTER_CORRECTORS: ["no"]
+  END_TIME: [0.025]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
