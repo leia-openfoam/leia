@@ -806,35 +806,99 @@ Two secondary findings, neither load-bearing:
   carries no information independent of `divUBandL2` and must not be quoted as
   a second diagnostic. NOT yet fixed (fixing it changes that column mid-campaign).
 
-### Is the projectedFlux win SOLENOIDALITY or just smoothing? (running, 2026-08-31)
+### ANSWERED: the projectedFlux win is the RECONSTRUCT OPERATOR, not solenoidality (2026-08-31)
 
-The obvious reading of the table above is that the divergence-free trace cuts
-the feedback of the pressure-projection residual into interface displacement,
-i.e. it attacks the amplifier G. **That cannot be concluded from those four
-arms.** cellCentred traces `Uext` and projectedFlux traces `reconstruct(phi)`,
-which differ in THREE ways at once: solenoidality, the off-interface extension,
-and the reconstruct smoothing.
+`config/traceAmplifierDt2D` (driver 54435583, 12 arms, all COMPLETED with exactly
+doubling step counts 13,334 / 26,667 / 53,334 / 106,668). Order parameter on the
+fixed window [0.02, 0.1] s, `dr = [G_x - G_projectedFlux]/(T - t_ref)`:
 
-The per-step diagnostics cannot settle it either -- `divUBandL2` co-varies with
-max|U| (it is downstream of the instability, not upstream), and at t = 0.005 the
-projectedFlux arm actually has HIGHER divU and higher spurious displacement than
-the control while going on to decay.
+| trace | dt | G | r [1/s] | dr [1/s] |
+|---|---|---|---|---|
+| cellCentred | 7.50e-06 | **+3.120** | +38.99 | **85.85** |
+| cellCentred | 3.75e-06 | **+0.880** | +11.00 | 52.75 |
+| cellCentred | 1.87e-06 | -1.529 | -19.12 | 20.31 |
+| cellCentred | 9.37e-07 | -2.640 | -32.99 | 4.92 |
+| projectedFlux | 7.50e-06 -> 9.37e-07 | -3.748 -> -3.033 | -46.85 -> -37.91 | 0 (ref) |
+| reconstructedU | 7.50e-06 | -1.664 | -20.80 | **26.05** |
+| reconstructedU | 3.75e-06 | -1.331 | -16.64 | 25.10 |
+| reconstructedU | 1.87e-06 | -1.697 | -21.21 | 18.22 |
+| reconstructedU | 9.37e-07 | -2.333 | -29.16 | 8.75 |
 
-So `traceVelocity` gained a third option, `reconstructedU` =
-`reconstruct(linearInterpolate(Uext) & Sf)`: same extension field as cellCentred,
-same reconstruct operator as projectedFlux, but an unprojected -- hence NOT
-divergence-free -- face flux. It isolates the one variable. Gated on 4 ranks
-before submission: both legacy traces byte-identical to the pre-change build,
-reconstructedU distinct from both and clean on 4 ranks (commit 4a8a2d4).
+**The hypothesis that solenoidality is the mechanism is FALSIFIED at the step
+that matters.** `reconstructedU` -- smoothed, NOT divergence-free -- already
+removes 70% of the cellCentred amplifier (85.85 -> 26.05) with no solenoidality
+whatsoever. rho = 0.303 at the base step.
 
-`config/traceAmplifierDt2D` (driver **54435583**) sweeps the three traces against
-dt, dt/2, dt/4, dt/8 at FIXED mesh, 12 concurrent arms, ~1 h wall. Pre-registered
-in the config header: `dr` subtracts the shared physical damping to isolate the
-numerical amplifier; `dr_cellCentred` must scale with dt if `r = r0 + c*dt`
-holds, and **rho = dr_recU / dr_cc decides the mechanism -- rho ~ 1 means
-solenoidality, rho ~ 0 means the win is a SMOOTHING**, which the no-filtering
-rule would then bear on directly. Curated by
-`workflow/scripts/make_trace_amplifier_table.py`.
+The second control (`reconstructedMomentum`) was then found to be a NULL STEP,
+and the 4-rank gate established it for free: with `levelSet.velocityExtension.type
+= none` -- the default, and what every stationary-droplet study uses -- the
+extension is the IDENTITY, so `Uext == U` bitwise and the arm came back
+BYTE-IDENTICAL to `reconstructedU`. The split is therefore fully determined and
+proved by bit-identity rather than inferred from a rate:
+
+| mechanism | share of the cellCentred amplifier | how established |
+|---|---|---|
+| **reconstruct operator** | **70%** | dr 85.85 -> 26.05 |
+| velocity extension | **0%** | null step, bit-identity |
+| solenoidality | **30%** | dr 26.05 -> 0 |
+
+**This is not a violation of the no-filtering rule, and the earlier framing of it
+as one was wrong.** `fvc::reconstruct(linearInterpolate(U) & Sf)` carries NO
+tunable coefficient: it restricts the traced velocity to the discrete face-flux
+space -- the same space in which the pressure projection enforces the divergence
+constraint. The rule targets constants that need re-fitting per resolution (the
+theta = 0.2 band filter: 5.86x better at R/h = 15.8, 1.61x WORSE at R/h = 10.0).
+A parameter-free operator is a discretisation choice. The statement the data
+supports is: **advect the interface with a velocity that lives in the space the
+pressure projection actually controls.**
+
+Two method notes worth keeping:
+- rho is only meaningful where `dr_cc` is large. It reads 0.897 at dt/4 and 1.78
+  at dt/8, but `dr_cc -> 0` as dt -> 0 by construction (all traces converge to the
+  same physics), so those are ratios of small numbers -- and rho > 1 means
+  reconstructedU is WORSE than cellCentred, which no version of the hypothesis
+  predicts. Scored at the coarsest step the same data reads 0.303, the opposite
+  verdict. The curation script now refuses to label the weak rungs.
+- `dr_cellCentred` does NOT scale as dt: ratios per halving are 1.63 / 2.60 /
+  4.13 against a predicted 2.00, i.e. the local exponent climbs 0.70 -> 1.38 ->
+  2.05. So `r = r0 + c*dt` with constant c does not describe this. The
+  pre-registered corollary DID hold: `G_cellCentred` changes sign between dt/2
+  and dt/4, so the control stops growing once the step is small enough.
+- `projectedFlux`'s own rate drifts -46.85 -> -37.91 across the sweep, so
+  subtracting it as "the shared physical damping" is only approximately valid;
+  the three traces are converging toward a common intercept but have NOT
+  converged (spread 85.8 -> 8.75). Self-validation is partial.
+
+### RUNNING: does it survive refinement, and does it damp the physical mode? (2026-08-31)
+
+Everything above is N = 128, one case, stationary. Two refinement ladders now on
+the cluster, each carrying its OWN matched `cellCentred` baseline because the
+t_blow retraction means no historical number is a valid reference:
+
+| study | driver | arms |
+|---|---|---|
+| `projFluxStationary2D` | **54436905** | 8 -- N = 32/64/128/256 x {cellCentred, projectedFlux} |
+| `projFluxOscillating2D` | **54436906** | 6 -- N = 32/64/128 x {cellCentred, projectedFlux} |
+
+Stationary asks whether **G stops growing under refinement** or projectedFlux
+merely lowers the floor (the "floor improved, the growth survived" outcome
+already on record for cellCentreInverse). Oscillating is the **moving-interface
+gate** required before promotion, and its discriminator is **period and decay
+rate against Lamb**, not max|U|: the reconstruct operator keeps only face-normal
+components, so if it damps the physical capillary mode this is the case that
+shows it.
+
+Both are NEW configs, not edits: `config/stationaryDroplet2D` carries
+`export_slides: true` and would have overwritten the curated paper table.
+
+**The 4-rank gate caught a silent no-op here too.** The oscillating case's
+`fvSolution.template` had NO `traceVelocity` entry, so every arm would have run
+at the solver default whatever the config said -- a two-arm comparison in which
+the arms differ in nothing, completing cleanly and producing a plausible,
+meaningless table. It surfaced only because materialization reported
+`axes={} -> 1 variations`. Tokens ported; verified afterwards on 4 ranks that the
+axis expands to 2, the arms differ, and the cellCentred arm is BYTE-IDENTICAL to
+the pre-change run.
 
 ## 5. Lichtenberg — what is running
 
