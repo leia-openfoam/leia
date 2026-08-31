@@ -2801,6 +2801,286 @@ while (pimple.correctNonOrthogonal())
 </section>
 
 <!-- R6: open points -------------------------------------------------------->
+<!-- T1: which velocity traces the foot point ------------------------------->
+<section>
+  <h2>Which velocity traces the foot point?</h2>
+  <div class="cols">
+    <div>
+      <p>The semi-Lagrangian update is a <b>value copy</b> along a characteristic:</p>
+      \[ \psi^{n+1}(\mathbf x_c) \;=\; \psi^{n}(\mathbf x_d),\qquad
+         \mathbf x_d \;=\; \mathbf x_c - \int_{t^n}^{t^{n+1}}\!\mathbf u\,\mathrm dt \]
+      <p>Nothing in that formula says <em>which discrete</em> \(\mathbf u\) integrates
+         the trajectory. A two-phase FV solver carries <b>two</b> velocity
+         representations, and they are not the same object:</p>
+      <ul class="tight" style="font-size:0.92em">
+        <li>\(\mathbf u_c\) &mdash; the <b>cell-centred</b> momentum velocity
+            (<code>cellCentred</code>, the historical default; it is the
+            velocity-extension field, and with
+            <code>velocityExtension none</code> that is \(\mathbf u\) itself)</li>
+        <li>\(\phi_f = \mathbf u_f\!\cdot\!\mathbf S_f\) &mdash; the
+            <b>face flux</b>, the object the pressure equation actually solves for</li>
+      </ul>
+      <p><code>projectedFlux</code> traces the foot point with the
+         <b>cell field reconstructed from the projected face flux</b>,
+         \(\mathbf u^{\text{rec}} = \mathrm{reconstruct}(\phi)\), instead of with
+         \(\mathbf u_c\).</p>
+      <p class="muted" style="font-size:0.85em">Runtime-selectable, inert by default:
+         <code>levelSet.semiLagrangian.traceVelocity</code>.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 300 250" width="100%" role="img" aria-label="foot point traced by two different fields">
+        <rect x="55" y="55" width="180" height="140" fill="none" stroke="currentColor" stroke-width="1" opacity="0.45"/>
+        <line x1="145" y1="55" x2="145" y2="195" stroke="currentColor" stroke-width="0.6" opacity="0.3"/>
+        <line x1="55" y1="125" x2="235" y2="125" stroke="currentColor" stroke-width="0.6" opacity="0.3"/>
+        <circle cx="145" cy="125" r="3.5" fill="currentColor"/>
+        <text x="152" y="120" font-size="10" fill="currentColor">\(\mathbf x_c\)</text>
+        <path d="M145 125 L 88 168" stroke="#c62828" stroke-width="2.2" marker-end="url(#ah1)"/>
+        <circle cx="88" cy="168" r="3" fill="#c62828"/>
+        <text x="52" y="184" font-size="10" fill="#c62828">foot from \(\mathbf u_c\)</text>
+        <path d="M145 125 L 96 158" stroke="#2e7d32" stroke-width="2.2" marker-end="url(#ah2)"/>
+        <circle cx="96" cy="158" r="3" fill="#2e7d32"/>
+        <text x="150" y="205" font-size="10" fill="#2e7d32">foot from reconstruct(\(\phi\))</text>
+        <text x="145" y="42" text-anchor="middle" font-size="10" fill="currentColor">face fluxes \(\phi_f\)</text>
+        <line x1="145" y1="55" x2="145" y2="45" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah3)"/>
+        <line x1="235" y1="125" x2="246" y2="125" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah3)"/>
+        <defs>
+          <marker id="ah1" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#c62828"/></marker>
+          <marker id="ah2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#2e7d32"/></marker>
+          <marker id="ah3" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="currentColor"/></marker>
+        </defs>
+      </svg>
+      <p class="footnote muted center">Same scheme, same order, same stencil &mdash;
+         only the field that moves the foot point changes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- T2: what reconstruct() is, exactly -------------------------------------->
+<section>
+  <h2>What <code>reconstruct</code> does, exactly</h2>
+  <p class="muted" style="font-size:0.85em">OpenFOAM&rsquo;s <code>fvc::reconstruct</code>, verbatim from
+     <code>fvcReconstruct.C</code>: sums run over the faces of each cell,
+     \(\hat{\mathbf n}_f = \mathbf S_f/|\mathbf S_f|\).</p>
+  \[ \mathbf u^{\text{rec}}_c \;=\;
+     \Big[\sum_{f\in c} \hat{\mathbf n}_f \otimes \mathbf S_f\Big]^{-1}
+     \cdot \sum_{f\in c} \hat{\mathbf n}_f\, \phi_f \]
+  <div class="cols">
+    <div>
+      <p><b>It is exact for a uniform field.</b> If \(\mathbf u\) is constant then
+         \(\phi_f = \mathbf u\!\cdot\!\mathbf S_f\) and</p>
+      \[ \sum_f \hat{\mathbf n}_f (\mathbf u\!\cdot\!\mathbf S_f)
+         = \Big[\sum_f \hat{\mathbf n}_f \otimes \mathbf S_f\Big]\cdot\mathbf u \]
+      <p>so the inverse returns \(\mathbf u\) exactly. It is a genuine
+         reconstruction, not an average.</p>
+      <p><b>It is a projection, not a bijection.</b> The round trip
+         \(\mathbf u_c \to \phi_f \to \mathbf u^{\text{rec}}_c\) keeps only what the
+         <em>face-normal</em> components can express. Any cell field whose
+         normal projections vanish on every face is in the null space and is
+         annihilated &mdash; that is the checkerboard content.</p>
+    </div>
+    <div>
+      <p><b>Compact, unstructured, MPI-safe by construction.</b> The sums are over
+         the faces of one cell: no structured index space, no wide stencil, no
+         named modes, nothing tuned to a geometry. It is defined for an arbitrary
+         polyhedron and decomposes across ranks like any other face loop.</p>
+      <p class="warn" style="font-size:0.92em"><b>There is no coefficient.</b>
+         <code>reconstruct</code> has no strength, no width, no \(\theta\).
+         It cannot be tuned, and there is nothing to re-fit per resolution.
+         This matters for the scoring rule: a <em>filter</em> is a coefficient
+         that must be re-fitted (the \(\theta=0.2\) band filter is
+         \(5.86\times\) <span class="good">better</span> at \(R/h=15.8\) and
+         \(1.61\times\) <span class="bad">worse</span> at \(R/h=10\)).
+         A fixed discretisation operator is not.</p>
+    </div>
+  </div>
+</section>
+
+<!-- T3: why the two fields differ ------------------------------------------->
+<section>
+  <h2>Why the two fields are not interchangeable</h2>
+  <div class="cols">
+    <div>
+      <p>The pressure equation enforces, <b>per cell</b>, a discrete constraint on the
+         <em>flux</em> and on nothing else:</p>
+      \[ \sum_{f\in c}\phi_f = 0 \qquad\text{(after the projection)} \]
+      <p>The cell-centred velocity satisfies no such identity:
+         \(\sum_f (\mathrm{interp}(\mathbf u)_f\!\cdot\!\mathbf S_f) \neq 0\).
+         That mismatch is not a bug &mdash; it is the Rhie&ndash;Chow situation, the
+         reason a collocated solver needs a separate flux at all.</p>
+      <p><b>Two consequences for a semi-Lagrangian interface.</b></p>
+      <ul class="tight" style="font-size:0.92em">
+        <li>A semi-Lagrangian map is <b>volume preserving only if the field
+            generating it is divergence free.</b> Tracing with \(\mathbf u_c\)
+            gives a flow map that compresses and expands cells, and since
+            \(\psi\) is copied <em>by value</em>, the enclosed volume drifts.</li>
+        <li>The non-solenoidal part of \(\mathbf u_c\) is precisely the part the
+            projection <b>failed to absorb</b> &mdash; the parasitic residual itself.
+            Tracing with it feeds that residual straight back into interface
+            displacement.</li>
+      </ul>
+    </div>
+    <div>
+      <p><b>Measured, in one sentence:</b> the interface is advected by a velocity
+         that lives in the discrete space where the divergence constraint is
+         actually imposed.</p>
+      <table style="font-size:0.72em; border-collapse:collapse; margin:0.6em auto; width:98%">
+        <tr style="border-bottom:1px solid var(--ls-muted)">
+          <th style="text-align:left; padding:0.25em 0.4em">trace option</th>
+          <th style="text-align:left; padding:0.25em 0.4em">field traced</th>
+          <th style="text-align:left; padding:0.25em 0.4em">\(\sum_f\phi_f=0\)?</th>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+          <td style="padding:0.25em 0.4em"><code>cellCentred</code></td>
+          <td style="padding:0.25em 0.4em">\(\mathbf u_{\text{ext}}\) (\(=\mathbf u_c\) when the extension is <code>none</code>)</td>
+          <td style="padding:0.25em 0.4em"><span class="bad">no</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+          <td style="padding:0.25em 0.4em"><code>reconstructedU</code></td>
+          <td style="padding:0.25em 0.4em">\(\mathrm{reconstruct}(\mathrm{interp}(\mathbf u_{\text{ext}})\!\cdot\!\mathbf S_f)\)</td>
+          <td style="padding:0.25em 0.4em"><span class="bad">no</span> &mdash; unprojected flux</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(76,175,80,0.10)">
+          <td style="padding:0.25em 0.4em"><code>projectedFlux</code> <span class="good">&#9733;</span></td>
+          <td style="padding:0.25em 0.4em">\(\mathrm{reconstruct}(\phi)\)</td>
+          <td style="padding:0.25em 0.4em"><span class="good">yes</span></td>
+        </tr>
+      </table>
+      <p class="footnote muted"><code>reconstructedU</code> exists only as a control:
+         same operator, same extension, <em>unprojected</em> flux. It is what makes
+         the next slide a measurement rather than an assumption.</p>
+    </div>
+  </div>
+</section>
+
+<!-- T4: the mechanism, decomposed -------------------------------------------->
+<section>
+  <h2>Which part of it actually works</h2>
+  <p class="muted" style="font-size:0.82em">A <code>projectedFlux</code> win cannot be attributed to the
+     divergence-free property on its own: it differs from <code>cellCentred</code> in
+     <b>three</b> ways at once &mdash; solenoidality, the off-interface extension, and the
+     reconstruct operator. A ladder in which every step changes exactly one thing
+     separates them. Fixed mesh \(N=128\), \(\mathrm{d}t\) swept \(\times\tfrac12\) three times,
+     \(\Delta r\) = growth rate relative to <code>projectedFlux</code> at the same step.</p>
+  <div class="cols">
+    <div>
+      <table style="font-size:0.74em; border-collapse:collapse; width:100%">
+        <tr style="border-bottom:1px solid var(--ls-muted)">
+          <th style="text-align:left; padding:0.25em 0.4em">rung</th>
+          <th style="text-align:left; padding:0.25em 0.4em">\(\Delta r\) [1/s]</th>
+          <th style="text-align:left; padding:0.25em 0.4em">step isolates</th>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+          <td style="padding:0.25em 0.4em"><code>cellCentred</code></td>
+          <td style="padding:0.25em 0.4em"><b>85.85</b></td><td></td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+          <td style="padding:0.25em 0.4em"><code>reconstructedU</code></td>
+          <td style="padding:0.25em 0.4em"><b>26.05</b></td>
+          <td style="padding:0.25em 0.4em">the <b>reconstruct operator</b> &rarr; <b>70&thinsp;%</b></td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+          <td style="padding:0.25em 0.4em"><code>reconstructedMomentum</code></td>
+          <td style="padding:0.25em 0.4em">26.05</td>
+          <td style="padding:0.25em 0.4em">the <b>extension</b> &rarr; <b>0&thinsp;%</b></td>
+        </tr>
+        <tr style="background:rgba(76,175,80,0.10)">
+          <td style="padding:0.25em 0.4em"><code>projectedFlux</code></td>
+          <td style="padding:0.25em 0.4em"><b>0</b></td>
+          <td style="padding:0.25em 0.4em"><b>solenoidality</b> &rarr; <b>30&thinsp;%</b></td>
+        </tr>
+      </table>
+      <p style="font-size:0.9em"><b>The extension rung is exactly zero</b>, and that was
+         established by <b>bit-identity</b>, not by a rate: with
+         <code>velocityExtension none</code> the extension is the identity, so
+         \(\mathbf u_{\text{ext}}\equiv\mathbf u\) and the two arms produced
+         byte-identical output.</p>
+    </div>
+    <div>
+      <p class="warn" style="font-size:0.92em"><b>So the hypothesis was wrong.</b> The
+         divergence-free property is the <em>minority</em> share. Most of the effect is
+         the reconstruct operator &mdash; restricting the traced velocity to the
+         discrete flux space, which happens to be the space the pressure projection
+         controls.</p>
+      <p style="font-size:0.9em">That is still a legitimate discretisation and not a
+         filter, for the reason on the previous slide: no coefficient exists to tune.
+         <b>But it is a different claim</b> from the one the hypothesis made, and the
+         record says so.</p>
+      <p class="footnote muted">Scored at the coarsest step, where the amplifier is largest.
+         At \(\mathrm{d}t/8\) the same ratio reads \(1.78\) &mdash; but \(\Delta r_{\text{cc}}\to0\)
+         as \(\mathrm{d}t\to0\) by construction, so the fine rungs are ratios of small
+         numbers and carry no verdict.</p>
+    </div>
+  </div>
+</section>
+
+<!-- T5: what it does to the measurements ------------------------------------>
+<section>
+  <h2>What it changes, on the standing metric vector</h2>
+  <p class="muted" style="font-size:0.82em">2D hex refinement ladders, filters <b>off</b>, each rung
+     carrying its own matched <code>cellCentred</code> baseline on one commit.
+     \(A_{2h}\) is the grid-scale corrugation, reported as growth over the run;
+     \(|\nabla\psi|\) as a ratio to the arm&rsquo;s own \(t=0\) value.</p>
+  <table style="font-size:0.68em; border-collapse:collapse; margin:0.2em auto; width:99%">
+    <tr style="border-bottom:1px solid var(--ls-muted)">
+      <th style="text-align:left; padding:0.2em 0.4em">\(N\)</th>
+      <th style="text-align:left; padding:0.2em 0.4em">\(\max|\mathbf u|\) cc</th>
+      <th style="text-align:left; padding:0.2em 0.4em">\(\max|\mathbf u|\) pf</th>
+      <th style="text-align:left; padding:0.2em 0.4em">\(A_{2h}\) growth cc</th>
+      <th style="text-align:left; padding:0.2em 0.4em">\(A_{2h}\) growth pf</th>
+      <th style="text-align:left; padding:0.2em 0.4em">\(|\nabla\psi|/|\nabla\psi|_0\) cc &rarr; pf</th>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+      <td style="padding:0.2em 0.4em">32</td><td style="padding:0.2em 0.4em">4.17e&minus;4</td>
+      <td style="padding:0.2em 0.4em">8.70e&minus;5</td><td style="padding:0.2em 0.4em">1.0&times;</td>
+      <td style="padding:0.2em 0.4em">1.3&times;</td><td style="padding:0.2em 0.4em">1.007 &rarr; 0.987</td>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+      <td style="padding:0.2em 0.4em">64</td><td style="padding:0.2em 0.4em">3.16e&minus;5</td>
+      <td style="padding:0.2em 0.4em"><span class="bad">9.98e&minus;4</span></td><td style="padding:0.2em 0.4em">1.2&times;</td>
+      <td style="padding:0.2em 0.4em">1.5&times;</td><td style="padding:0.2em 0.4em">0.977 &rarr; 0.975</td>
+    </tr>
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+      <td style="padding:0.2em 0.4em">128</td><td style="padding:0.2em 0.4em"><span class="bad">1.13e&minus;1</span></td>
+      <td style="padding:0.2em 0.4em"><b>1.14e&minus;5</b></td><td style="padding:0.2em 0.4em"><span class="bad">16.8&times;</span></td>
+      <td style="padding:0.2em 0.4em"><b>1.2&times;</b></td><td style="padding:0.2em 0.4em"><span class="bad">0.316</span> &rarr; <b>0.989</b></td>
+    </tr>
+    <tr style="background:rgba(76,175,80,0.10)">
+      <td style="padding:0.2em 0.4em">256</td>
+      <td style="padding:0.2em 0.4em"><span class="bad">DIVERGED</span> at 53.5&thinsp;%</td>
+      <td style="padding:0.2em 0.4em"><b>5.97e&minus;6</b></td>
+      <td style="padding:0.2em 0.4em"><span class="bad">3.7e6&times;</span></td>
+      <td style="padding:0.2em 0.4em"><b>1.1&times;</b></td>
+      <td style="padding:0.2em 0.4em"><span class="bad">0.000</span> &rarr; <b>0.992</b></td>
+    </tr>
+  </table>
+  <div class="cols" style="margin-top:0.3em">
+    <div>
+      <p style="font-size:0.9em"><b>The amplifier stops growing.</b> \(\max|\mathbf u|\) falls under
+         refinement instead of rising &mdash; the exponent of \(G\) is the number this
+         campaign set out to move.</p>
+      <p style="font-size:0.9em"><b>No corrugation growth at any resolution</b> (1.1&ndash;1.5&times;),
+         where the baseline reaches \(3.7\times10^{6}\) at \(N=256\).</p>
+      <p class="footnote muted">Honest exception: \(N=64\) runs against the trend
+         (pf \(31\times\) worse than cc) and is unexplained.</p>
+    </div>
+    <div>
+      <p style="font-size:0.9em"><b>The moving-interface gate answers the overdamping
+         question.</b> An operator that keeps only face-normal components could buy
+         stability by damping the physical mode. Oscillating droplet against Lamb:</p>
+      <ul class="tight" style="font-size:0.88em">
+        <li>period \(8.43 \to 8.47 \to \mathbf{9.74}\) ms at \(N=32/64/128\),
+            against Lamb \(\approx 9.5\) ms &mdash; <span class="good">converging</span></li>
+        <li>decay \(+0.11\), \(-0.79\ \mathrm{s^{-1}}\) at \(N=64/128\) &mdash;
+            <span class="good">no overdamping</span></li>
+        <li>\(|\mathbf u|\approx 0.08\text{–}0.09\) m/s = the physical mode scale;
+            <code>cellCentred</code> sits at \(5.8\text{–}31\) m/s</li>
+      </ul>
+      <p class="footnote muted">Still open: <code>projectedFlux</code> fails at oscillating
+         \(N=128\), collapsing in the last 6&thinsp;% of the run.</p>
+    </div>
+  </div>
+</section>
+
 <section>
   <h2>Open points</h2>
   <div class="cols">
