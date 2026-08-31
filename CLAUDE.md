@@ -167,6 +167,60 @@ Corollaries, learned the hard way:
   controller outage reads exactly like "all jobs finished".
 - A DIVERGED run is a RESULT (a blow-up is data); a LAUNCH_FAILURE is not.
 
+### Every waiter carries a timeout, and its exit condition must be reachable
+
+Prefer `foam_log_state.sh --wait` over a hand-rolled loop. When a poll loop is
+genuinely needed, three rules -- each written from an orphan this repository
+actually produced:
+
+- **`timeout` is mandatory.** An `until <cond>; do sleep N; done` with no
+  timeout does not fail when its condition never arrives; it polls until the
+  session ends. MEASURED 2026-08-31: THREE such waiters were still spinning
+  hours after the work they watched had finished, and they were found only
+  because someone asked whether anything was obsolete. An unbounded waiter is
+  not a safety net, it is a leak.
+- **Never grep for a pattern your own command line contains.** A waiter whose
+  condition was `! pgrep -f "configfile config/<study>"` could never exit: the
+  `pgrep` matched the shell running it, so the negation was permanently false.
+  Same family as `pkill -f <pattern>` killing its own shell (exit 144), which
+  this repository has hit repeatedly. Match on a file's CONTENT, or on a
+  narrowly anchored process name, never on a string that appears in the
+  invocation itself.
+- **Ask whether the pattern can ever appear.** Two of the three orphans waited
+  for text that the remote command never emitted, because ssh had swallowed it
+  (below). A condition that is unreachable by construction is the same defect
+  as an infinite loop, and it hides as "still running".
+
+Corollary: identify the ORPHAN the way jobs are identified on the cluster --
+from a ledger of what you started, by id. Never sweep by pattern or by user:
+this laptop is shared with other sessions exactly as the `tm83tomy` account is,
+and a `pkill`-style cleanup here takes out another session's container build or
+job waiter. A background task from an earlier turn has a different parent PID
+than the current shell, so "its parent is not my shell" does NOT mean "not
+mine" -- that inference produced a wrong all-clear on 2026-08-31; query the
+task list by id instead.
+
+### ssh loses stdout: redirect on the remote side and read the file back
+
+Long output from `ssh host 'bash -s' < script.sh` can vanish -- the command
+exits 0 with nothing to show, so a build that never ran looks exactly like a
+build that succeeded silently. MEASURED 2026-08-31: a cluster rebuild reported
+nothing and was believed to have run; the binary was still eight days old, and
+the study would have been submitted against stale code. It also cost two
+orphaned waiters (above) that were waiting for text ssh had eaten.
+
+Write the remote output to a file and read that file in a second call:
+
+```bash
+ssh host 'bash -s' < build.sh          # script redirects into /tmp/x.log
+ssh host 'cat /tmp/x.log'
+```
+
+And verify the ARTEFACT, never the exit code: `ls -la` the binary for a current
+timestamp and `strings <binary> | grep -c <a symbol you just added>` for the
+change you expect. This is the same rule as reading a solver log rather than
+`rc` -- exit 0 is not evidence that work happened.
+
 ## Method constraint: unstructured FVM only
 
 **Never propose or pursue a method that depends on a structured or Cartesian
