@@ -42,6 +42,12 @@ solver: leiaSemiLagrangeLevelSetFoam
 theme:  method-comparison
 solve_runtime: 240
 axes_override:
+  # REQUIRED, not optional: 2Dvortex.parameter does NOT define END_TIME, so the
+  # study config must supply it or materialization fails with
+  # "template tokens with no value". 2 is the reversed-vortex period used by
+  # the committed publication study, and the benchmark is scored on it:
+  # gradient error at T/2 where deformation peaks, shape at T.
+  END_TIME: [2]
   N_CELLS: [32, 45, 64, 90, 128, 181, 256]
   # PINNED, not optional: the case declares PHASE_INDICATOR with TWO values and
   # collapse_other_axes does NOT collapse it -- the 4-rank gate reported
