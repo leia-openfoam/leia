@@ -223,6 +223,21 @@ levelSet
         //                        current iterate. DIVERGES for defectCorrectedIDW (rho > 1). Research.
         correction          @!SL_CORRECTION!@;
 
+        // Foot-point integrator. taylor (default, historical) needs a velocity
+        // GRADIENT for its dt^2 term; rk2 is the classical midpoint using only
+        // velocity SAMPLES along the trajectory.
+        footIntegrator      @!SL_FOOT_INTEGRATOR!@;
+
+        // Velocity the trajectory is traced with. cellCentred (default,
+        // historical) traces the prescribed cell velocity; projectedFlux traces
+        // fvc::reconstruct(phi) of the prescribed FLUX. In a kinematic test the
+        // prescribed flux is exactly divergence-free, so the solenoidality
+        // benefit is zero by construction and this axis measures ONLY what the
+        // reconstruct operator costs in transport accuracy -- the question the
+        // coupled droplet cases cannot answer. PORTED FROM 2Dvortex 2026-08-31:
+        // without this entry the case silently ran the solver default whatever
+        // the study config asked for.
+        traceVelocity       @!SL_TRACE_VELOCITY!@;
         CFLmax              @!CFL!@;   // foot-radius guard (operational CFL<=1)
         analyticVelocity    true;      // prescribed velocityModel IS the cell velocity
                                        // (no velocity extension for the prescribed-flow tests)

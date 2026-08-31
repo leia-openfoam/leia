@@ -1,0 +1,47 @@
+# 3D POLYHEDRAL stationary droplet, R/h = 12p7: the harshest discriminator we have.
+#
+# THE EXPLICIT BASELINE DIES HERE IN ~20 STEPS. Measured 2026-08-27 on
+# config/polyDroplet3Dr{10p0,12p7,15p8}: ALL THREE rungs blow up within about
+# twenty steps. That makes this the cheapest and sharpest test in the whole
+# campaign -- a projectedFlux arm surviving even to t = 0.001 where the baseline
+# is already dead is unambiguous, and a full quarter-horizon survival on
+# POLYHEDRA is the strongest single result this line of work can produce.
+#
+# It is also the constraint the method is ultimately judged against: the target
+# is arbitrary unstructured meshes, and a fix that does not survive a polyhedral
+# mesh under MPI decomposition is not a fix. Nothing in the trace is structured
+# or mode-specific -- reconstruct is a sum over a cell's faces -- so it should
+# transfer; this measures whether it does.
+#
+# LOCKSTEP: MAX_CELL_SIZE must equal DOMAIN_LENGTH/N_CELLS, because the
+# capillary dt is derived from N_CELLS and equality is what makes dt match the
+# hex rung of the same name. One config per rung so the pair cannot be broken by
+# a cartesian axis product.
+#
+# solve_runtime sized to a measured pace, NOT the 86400 (= 60 DAYS, beyond the
+# 7-day partition maximum) copied through the committed polyDroplet3D configs.
+study_name: traceStationary3Dpoly_r12p7
+case: stationaryDroplet3D
+mesh: poly
+mode: parallel
+np: 8
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 1440
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [76]
+  MAX_CELL_SIZE: [7.894737e-5]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+  END_TIME: [0.025]
+  WRITE_INTERVAL: [0.0025]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

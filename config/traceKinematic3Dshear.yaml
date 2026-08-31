@@ -1,0 +1,43 @@
+# KINEMATIC COST GATE, 3D: the same question on the 3D shear-deformation flow.
+#
+# Companion to config/traceKinematic2Dvortex -- see that header for why a
+# prescribed-velocity test is the clean isolation of the reconstruct operator's
+# transport cost (the prescribed flux is exactly divergence-free, so the
+# solenoidality share is zero by construction).
+#
+# 3D matters separately because the reconstruct tensor inverse
+# [sum_f nHat_f (x) S_f]^-1 is a 3x3 solve on an arbitrary polyhedron rather
+# than a 2x2 one, and because a 2D-only verification is exactly how this
+# repository has previously acquired a defect that only one geometry sees.
+#
+# SAME PRE-REGISTERED READ-OUT as the 2D gate: PASS = order preserved, FAIL =
+# observed order drops. Ladder and reconstruction are the committed publication
+# ones (config/uncachedConv3Dshear).
+#
+# NOTE cases/3Dshear/system/fvSolution.template had NO traceVelocity entry until
+# 2026-08-31: the axis would have been silently ignored and every arm would have
+# run the solver default, exactly as happened to the oscillating droplet case.
+# The token was ported and gated bit-identical before this study was written.
+study_name: traceKinematic3Dshear
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 8
+solver: leiaSemiLagrangeLevelSetFoam
+theme:  method-comparison
+solve_runtime: 720
+axes_override:
+  N_CELLS: [32, 50, 80, 128]
+  # PINNED, not optional: the case declares PHASE_INDICATOR with TWO values and
+  # collapse_other_axes does NOT collapse it -- the 4-rank gate reported
+  # axes={'PHASE_INDICATOR': 2, 'SL_TRACE_VELOCITY': 2} -> 4 variations, i.e.
+  # the trace would have been compared across two different phase indicators.
+  # detrixheAslam matches the committed publication studies.
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

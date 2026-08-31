@@ -1,0 +1,54 @@
+# 3D HEX stationary droplet: does the trace result survive the dimension?
+#
+# Everything scored on the trace so far is 2D. This is the 3D hex rung of the
+# ladder, on the CERTIFIED 6R box (DOMAIN_LENGTH 0.006, established equivalent
+# to the wide box) at the wide-ladder resolutions N = 60/76/95, i.e.
+# 216k / 439k / 857k cells.
+#
+# WHY 3D IS A SEPARATE QUESTION, not a formality. The measured amplifier grows
+# as G ~ h^-1 in 2D but h^-3.3 in 3D -- the instability is far more aggressive
+# per refinement step in 3D, so a 2D pass says little. And the reconstruct
+# tensor inverse is a 3x3 solve here rather than 2x2.
+#
+# FILTERS OFF. config/stationaryDroplet3Dwide runs PSI_FILTER biharmonicBand
+# theta = 0.2; that is a research instrument and the standing rule is to score
+# every candidate with all filters OFF, because a filter's benefit is a
+# measurement of the defect's size rather than a fix. PSI_FILTER none here.
+#
+# MATCHED BASELINE IN THE STUDY. Each rung carries its own cellCentred arm on
+# the same commit and binaries, run concurrently -- no comparison against any
+# historical table.
+#
+# PRE-REGISTERED READ-OUT, quarter horizon END_TIME = 0.025:
+#   * PASS: projectedFlux max|U| bounded or falling across N = 60/76/95 while
+#     cellCentred rises, WITH volume, shape, min|grad psi| and the grid-scale
+#     corrugation A2h reported alongside (never the headline alone). In 2D the
+#     signature was unmistakable: A2h growth 1.1-1.5x for projectedFlux against
+#     16.8x at N=128 and 3.7e6x at N=256 for cellCentred.
+#   * FAIL: the traces converge under refinement, i.e. the 2D benefit does not
+#     survive the dimension.
+# A DIVERGED arm is a RESULT.
+study_name: traceStationary3Dhex
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 16
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 1440
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60, 76, 95]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+  END_TIME: [0.025]
+  WRITE_INTERVAL: [0.0025]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

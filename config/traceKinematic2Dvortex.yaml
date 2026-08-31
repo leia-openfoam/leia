@@ -1,0 +1,58 @@
+# KINEMATIC COST GATE, 2D: what does the reconstruct trace cost in TRANSPORT?
+#
+# WHY THIS RUNS BEFORE ANY MORE 3D. Every result so far shows projectedFlux
+# improves STABILITY (config/projFluxStationary2D, projFluxOscillating2D).
+# NOTHING measures whether it costs transport ACCURACY -- and there is a
+# specific reason to expect a cost: fvc::reconstruct(phi) is a PROJECTION whose
+# null space is the checkerboard content, so it necessarily discards part of any
+# cell velocity field.
+#
+# A PRESCRIBED-VELOCITY test isolates that cost perfectly. The prescribed flux
+# is EXACTLY divergence-free, so the solenoidality benefit -- the 30% share the
+# mechanism ladder attributed to it -- is ZERO BY CONSTRUCTION here. Whatever
+# difference remains between the two traces is the reconstruct operator's
+# accuracy cost and nothing else. This is the "kinematics before dynamics" rung
+# the research loop names as the one most often skipped.
+#
+# PRE-REGISTERED READ-OUT, on the committed reversed-vortex ladder:
+#   * PASS: projectedFlux holds the SAME observed order as cellCentred (within
+#     the ladder's own scatter) on the shape error at t = T and the gradient
+#     error at t = T/2. The trace is then free: a stability gain at no
+#     transport cost.
+#   * ACCEPTABLE: order preserved, constant degraded by a bounded factor --
+#     report the factor, it is the price of the trace.
+#   * FAIL: the observed ORDER drops. A projection that costs an order in pure
+#     advection cannot be carried into the production method on the strength of
+#     a stability argument, and this would have to be reported next to every
+#     stability number already quoted.
+#
+# READ THE RIGHT INSTANT (standing rule for reversed flows): gradient error at
+# T/2 where the deformation is greatest, shape at T, volume at both -- the
+# reversal cancels errors at the endpoint and corrupts ONLY the t = T gradient.
+#
+# Mesh ladder and reconstruction are the committed publication ones
+# (config/uncachedConv2Dvortex) so the cellCentred arm reproduces the published
+# table and validates the matrix against itself.
+study_name: traceKinematic2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme:  method-comparison
+solve_runtime: 240
+axes_override:
+  N_CELLS: [32, 45, 64, 90, 128, 181, 256]
+  # PINNED, not optional: the case declares PHASE_INDICATOR with TWO values and
+  # collapse_other_axes does NOT collapse it -- the 4-rank gate reported
+  # axes={'PHASE_INDICATOR': 2, 'SL_TRACE_VELOCITY': 2} -> 4 variations, i.e.
+  # the trace would have been compared across two different phase indicators.
+  # detrixheAslam matches the committed publication studies.
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
