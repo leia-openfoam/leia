@@ -1,0 +1,69 @@
+# THE STABILITY GATE: run to the horizon where the instability actually appears.
+#
+# WHY. Every arm of the 2x2x2 coupled matrix decayed -- and the outer-loop
+# control (config/outerLoopControl2D) exonerated the loop as the cause,
+# reproducing those arms to 3-4 significant figures at the historical 3
+# correctors with the interface frozen. The real reason the matrix could not
+# discriminate on stability is simpler and is in our own record: STATUS.md
+# gives cellCentreInverse 2D blow-up times of 0.100 / 0.078 / 0.036 s at
+# N = 64/128/256, so at N = 128 the instability arrives at t ~ 0.078 s and the
+# matrix stopped at 0.025 s -- barely a third of the way there. A quarter
+# horizon cannot see a blow-up that happens at three quarters.
+#
+# THIS STUDY runs the SAME arms to t = 0.1 s, the full horizon, so t_blow is
+# reachable and stability becomes measurable rather than inferred.
+#
+# LOOP SETTING, JUSTIFIED BY MEASUREMENT NOT CONVENIENCE: 3 outer correctors
+# with the interface frozen (the historical pairing). The control study showed
+# this is indistinguishable from 12 correctors with the interface re-advected
+# -- peak, t_peak, final value, volume and shape all agree to 3-4 digits -- and
+# it is ~4x cheaper per arm, which is what makes the full horizon affordable.
+# The foot integrator is dropped as an axis for the same reason: taylor and rk2
+# agree to 4-5 digits on this case (they differ at O(dt^2) on a near-stationary
+# flow), so the axis is carried at taylor and rk2's advantage is documented
+# where it was measured -- the reversed vortex, config/traceGate2Dvortex.
+#
+# ARMS: {semi-implicit off, increment} x {cellCentred, projectedFlux}, run
+# CONCURRENTLY (one sbatch per arm), so wall time is one arm, not four.
+#
+# PRE-REGISTERED READ-OUT, scored on t_blow and on the standing metric vector:
+#   * off + cellCentred is the REPRODUCTION CONTROL: it should blow up at
+#     t ~ 0.078 s. If it survives to 0.1 s, something in the current code has
+#     changed the baseline and every comparison below is against a moving
+#     reference -- that would be the finding, and it would have to be chased
+#     before anything else is believed.
+#   * increment PASSES if it survives to t = 0.1 s where off blows up, or
+#     delays t_blow by a margin far outside the 5-38% seed sensitivity the
+#     campaign has measured for t_blow. A smaller delay is NOT a pass: t_blow
+#     is a noisy statistic and the record already documents how noisy.
+#   * projectedFlux: no stability prediction. It bought 5.7x in volume at the
+#     quarter horizon; whether a divergence-free trace also delays the blow-up
+#     is exactly what has never been measured.
+#   * A DIVERGED arm is a RESULT here, not a failure -- the run records t_blow
+#     and the solver's own CSV carries the trajectory up to it.
+study_name: fullHorizonStability2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 600          # minutes; ~4x the quarter-horizon pace, with margin
+axes_override:
+  N_CELLS: [128]
+  DOMAIN_LENGTH: [0.01]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+  SEMI_IMPLICIT_CAPILLARY: ["off", "increment"]
+  N_OUTER_CORRECTORS: [3]
+  PSI_OUTER_CORRECTORS: ["no"]
+  END_TIME: [0.1]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
