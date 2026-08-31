@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-08-26.
+Last updated: 2026-08-31.
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -752,6 +752,89 @@ across unequal step counts.**
    The leia studies were untouched because their solver appends to the CSV every
    step. **Liveness comes from log mtime, never from a declared output, and
    destructive cleanup must not run while any driver may be alive.**
+
+### The full-horizon stability gate, and a RETRACTION of the t_blow baseline (2026-08-31)
+
+`config/fullHorizonStability2D`: `{semi-implicit off, increment} x {cellCentred,
+projectedFlux}` at N = 128, filters off, run to the FULL horizon t = 0.1 s
+(13,334 steps) on four concurrent Lichtenberg jobs (driver 54434376). Every
+arm COMPLETED; none took a floating-point exception.
+
+**RETRACTION FIRST. The 0.078 s blow-up time for `cellCentreInverse` at N = 128
+quoted in this file does not reproduce on the current code.** The reproduction
+control (off + cellCentred) reached t = 0.1 alive, with max|U| = 4.65e-3 m/s.
+It is unmistakably unstable -- the fitted rate over the last fifth of the run is
+**+118 1/s**, an e-fold every 8.5 ms, accelerating -- so the instability itself
+is intact and reproduces qualitatively; extrapolating that rate puts the blow-up
+near t ~ 0.146 s. What has moved is the ARRIVAL TIME, by about 1.9x, which is
+well outside the 5-38% seed sensitivity this campaign has measured for t_blow.
+Until the cause is found, **no result may be compared against the older t_blow
+table** (the 0.100/0.078/0.036 and 0.100/0.063/0.033 rows above). Comparisons
+WITHIN the new study are unaffected: all four arms ran on one commit, one set of
+binaries, one mesh and one dt law, simultaneously.
+
+| arm | max\|U\| t=0 | final max\|U\| | r, last 20% | volume rel err | shape L2 | min\|grad psi\| |
+|---|---|---|---|---|---|---|
+| off + cellCentred (control) | 6.61e-05 | **4.65e-03** | **+118.3 1/s** | 9.86e-05 | 3.59e-06 | 0.9170 |
+| off + projectedFlux | 6.61e-05 | 3.34e-06 | -52.0 1/s | 1.14e-06 | 1.96e-07 | 0.9980 |
+| increment + cellCentred | 4.21e-05 | 7.53e-06 | +10.5 1/s | 8.18e-07 | 2.00e-07 | 0.9981 |
+| increment + projectedFlux | 4.21e-05 | 4.55e-06 | -45.3 1/s | 1.19e-06 | 1.96e-07 | 0.9980 |
+
+(shape L2 starts at 1.91e-07 and min\|grad psi\| at 0.9981, so the three
+non-control arms end the run essentially where they started after 13,334 steps.)
+
+**The result the campaign was after, and it is not the one the plan predicted.**
+The semi-implicit capillary force was the whole point of the A->B->C plan; the
+arm that wins carries NONE of it. `off + projectedFlux` -- no artificial
+viscosity anywhere, no coefficient to tune -- is the best arm in the matrix on
+every metric. Tracing the semi-Lagrangian foot point with the discretely
+divergence-free face flux instead of the cell-centred extension is what turns
+growth into decay. That is a fix with no tuned constant, which is what the
+no-filtering rule actually demands.
+
+Two secondary findings, neither load-bearing:
+- The increment form's deferred correction does NOT reach round-off at 3 outer
+  correctors. Its lagged term norm contracts ~5x per outer pass but still stands
+  at 0.07% of the term's own magnitude on the last pass, so the "zero artificial
+  dissipation at outer-loop convergence" property the form was designed around
+  is not achieved at this loop setting. The loop axis was dropped on an
+  equivalence measured with the term OFF, where the loop genuinely is inert;
+  with the term ON the loop is what makes that property true or false.
+- `spuriousDispPerStepOverH` in `writeDropletMetrics.H` is computed as
+  `divUBandL2*hCell*deltaT/max(hCell,VSMALL)` -- `hCell` cancels, so the metric
+  is exactly `divUBandL2*deltaT` and has no h-dependence despite its name. It
+  carries no information independent of `divUBandL2` and must not be quoted as
+  a second diagnostic. NOT yet fixed (fixing it changes that column mid-campaign).
+
+### Is the projectedFlux win SOLENOIDALITY or just smoothing? (running, 2026-08-31)
+
+The obvious reading of the table above is that the divergence-free trace cuts
+the feedback of the pressure-projection residual into interface displacement,
+i.e. it attacks the amplifier G. **That cannot be concluded from those four
+arms.** cellCentred traces `Uext` and projectedFlux traces `reconstruct(phi)`,
+which differ in THREE ways at once: solenoidality, the off-interface extension,
+and the reconstruct smoothing.
+
+The per-step diagnostics cannot settle it either -- `divUBandL2` co-varies with
+max|U| (it is downstream of the instability, not upstream), and at t = 0.005 the
+projectedFlux arm actually has HIGHER divU and higher spurious displacement than
+the control while going on to decay.
+
+So `traceVelocity` gained a third option, `reconstructedU` =
+`reconstruct(linearInterpolate(Uext) & Sf)`: same extension field as cellCentred,
+same reconstruct operator as projectedFlux, but an unprojected -- hence NOT
+divergence-free -- face flux. It isolates the one variable. Gated on 4 ranks
+before submission: both legacy traces byte-identical to the pre-change build,
+reconstructedU distinct from both and clean on 4 ranks (commit 4a8a2d4).
+
+`config/traceAmplifierDt2D` (driver **54435583**) sweeps the three traces against
+dt, dt/2, dt/4, dt/8 at FIXED mesh, 12 concurrent arms, ~1 h wall. Pre-registered
+in the config header: `dr` subtracts the shared physical damping to isolate the
+numerical amplifier; `dr_cellCentred` must scale with dt if `r = r0 + c*dt`
+holds, and **rho = dr_recU / dr_cc decides the mechanism -- rho ~ 1 means
+solenoidality, rho ~ 0 means the win is a SMOOTHING**, which the no-filtering
+rule would then bear on directly. Curated by
+`workflow/scripts/make_trace_amplifier_table.py`.
 
 ## 5. Lichtenberg — what is running
 
