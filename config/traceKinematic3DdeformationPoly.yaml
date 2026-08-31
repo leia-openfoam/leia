@@ -1,0 +1,45 @@
+# KINEMATIC COST GATE: 3D deformation, POLYHEDRAL.
+#
+# The unstructured-mesh rung of the transport-cost question, and the one that
+# matters most for the method constraint: the target is arbitrary unstructured
+# meshes, so a trace that holds its order on hex but loses it on polyhedra is
+# not a fix. fvc::reconstruct is a sum over a cell's faces with a 3x3 tensor
+# inverse -- nothing structured -- but that is an argument, and this is the
+# measurement.
+#
+# COMMITTED cellCentred BASELINE for this case+mesh (docs/semi-lagrangian-level-set
+# .../sl_convergence_orders.csv): shapeOrder 1.464, volumeOrder 2.513,
+# gradientOrder -0.062. PASS = projectedFlux holds these within the ladder's own
+# scatter; FAIL = the observed ORDER drops. The gradient order is ~0 or negative
+# across every committed case and mesh because the method maintains no
+# signed-distance property -- scored as "unchanged from baseline", never as a
+# pass on its own.
+#
+# MESH LADDER: pMesh is driven by MAX_CELL_SIZE, not N_CELLS, so the ladder is
+# the maxCellSize sequence and N_CELLS is pinned to a dummy purely to stop the
+# case's own [32,64,128] multiplying the run count -- the committed poly configs
+# do exactly this and the comment is kept.
+#
+# REQUIRES cfMesh, which was ABSENT from Lichtenberg until 2026-08-31: every
+# polyhedral study died at the mesh step with "pMesh: command not found".
+# cfMesh is now built from commit cda7549 into the session-local tree.
+study_name: traceKinematic3DdeformationPoly
+case: 3Ddeformation
+mesh: poly
+mode: parallel
+np: 8
+solver: leiaSemiLagrangeLevelSetFoam
+theme:  method-comparison
+solve_runtime: 1440
+axes_override:
+  END_TIME: [3.0]
+  MAX_CELL_SIZE: [0.03125, 0.02, 0.0125, 0.0078125]
+  N_CELLS: [64]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

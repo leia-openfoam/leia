@@ -1,0 +1,41 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      p_rgh;
+}
+
+dimensions      [1 -1 -2 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    // Mirrors the known-good committed 2D twin exactly: zeroGradient everywhere
+    // except a single fixedValue pressure reference at the outlet.
+    //
+    // NOT fixedFluxPressure. That condition requires
+    // updateCoeffs(const scalarField& snGradp) to be called before
+    // updateCoeffs()/evaluate(), which this solver never does, so every rank
+    // aborted with "MUST be called before updateCoeffs()" and MPI_ABORT on the
+    // first pressure assembly. Measured 2026-08-31 on 4 ranks.
+    left            // inlet
+    {
+        type            zeroGradient;
+    }
+    right           // outlet: the single pressure reference for the domain
+    {
+        type            fixedValue;
+        value           uniform 0;
+    }
+    "(front|back|bottom|top)"
+    {
+        type            zeroGradient;
+    }
+}
+
+// ************************************************************************* //

@@ -1,0 +1,37 @@
+# TRANSLATING DROPLET, 3D POLYHEDRAL, R/h = 12p7: the Galilean test on the
+# harshest mesh. Companion to config/traceStationary3Dpoly_r12p7 at the SAME h and
+# the SAME capillary dt, so the moving and resting results are directly
+# comparable -- in the droplet's own frame they should agree, and any gap is a
+# frame-dependence of the discretisation.
+#
+# READ THE RIGHT QUANTITY: max|U| ~ U0 here, dominated by the translation
+# itself, so the parasitic signal is NOT in max|U|. Score on min|grad psi|,
+# the curvature error, volume and shape, and on A2h -- the grid-scale
+# corrugation that separated the traces most sharply in every 2D ladder.
+#
+# LOCKSTEP: MAX_CELL_SIZE = DOMAIN_LENGTH/N_CELLS. One config per rung so a
+# cartesian axis product cannot break the pair and silently run the wrong dt.
+study_name: traceTranslating3Dpoly_r12p7
+case: translatingDroplet3D
+mesh: poly
+mode: parallel
+np: 8
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 1440
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [76]
+  MAX_CELL_SIZE: [7.894737e-5]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+  END_TIME: [0.02]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

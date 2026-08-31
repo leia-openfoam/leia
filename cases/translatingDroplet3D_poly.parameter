@@ -1,0 +1,37 @@
+// TRANSLATING DROPLET, 3D POLYHEDRAL (cfMesh pMesh).
+//
+// Mesh-specific twin of cases/translatingDroplet3D.parameter. The workflow picks
+// this file when mesh: poly, and it must supply the two tokens the hex path does
+// not need: MAX_CELL_SIZE (cfMesh's target size) and SURFACE_FILE (the box
+// boundary the mesher fills).
+//
+// LOCKSTEP: MAX_CELL_SIZE must equal DOMAIN_LENGTH/N_CELLS. The capillary step
+// is derived from N_CELLS, so equality is what makes dt match the hex rung of
+// the same name -- the per-rung study configs override both together for
+// exactly this reason.
+//
+// The STL box6mm-edges.stl is inherited from the stationary 3D case and carries
+// the six named regions cfMesh renames to left/right/front/back/bottom/top;
+// system/meshDict.template retypes left and right to `patch` so the inlet and
+// outlet conditions in 0.org are legal on the polyhedral boundary too.
+values
+{
+    solver (leiaSemiLagrangianLevelSetTwoPhaseFoam);
+
+    N_CELLS ( 60 76 95 );
+
+    DOMAIN_LENGTH ( 0.006 );
+    CAPILLARY_REF_LENGTH ( 0.01 );
+
+    END_TIME ( 0.02 );
+
+    TRANSLATION_SPEED ( 0.05 );
+
+    MAX_CO ( 0.1 );
+    CAPILLARY_DT_COEFF ( 0.010861 );
+
+    MAX_CELL_SIZE ( 1.0e-4 );
+    SURFACE_FILE ( box6mm-edges.stl );
+
+    SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
+}

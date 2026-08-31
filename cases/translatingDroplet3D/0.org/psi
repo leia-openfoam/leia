@@ -1,0 +1,35 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      psi;
+}
+
+// Level set: signed distance, negative inside the droplet. leiaSetFields
+// overwrites the internal field; the boundary conditions are what matter here.
+
+dimensions      [0 1 0 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    left
+    {
+        type            zeroGradient;
+    }
+    right
+    {
+        type            zeroGradient;
+    }
+    "(front|back|bottom|top)"
+    {
+        type            zeroGradient;
+    }
+}
+
+// ************************************************************************* //

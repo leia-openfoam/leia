@@ -1,0 +1,39 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      alpha.water;
+}
+
+dimensions      [0 0 0 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    left
+    {
+        // fixedValue, NOT inletOutlet. inletOutlet resolves `phi` at
+        // CONSTRUCTION, and phi does not exist when leiaSetFields runs, so the
+        // case aborted with "failed lookup of phi" before a single step. The
+        // inflow is pure ambient phase and the droplet never reaches the inlet
+        // (it travels 1 mm downstream of the box centre), so a fixed 0 is both
+        // sufficient and independent of the flux field.
+        type            fixedValue;
+        value           uniform 0;
+    }
+    right
+    {
+        type            zeroGradient;
+    }
+    "(front|back|bottom|top)"
+    {
+        type            zeroGradient;
+    }
+}
+
+// ************************************************************************* //

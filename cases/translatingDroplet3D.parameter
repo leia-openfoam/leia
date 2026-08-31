@@ -1,0 +1,37 @@
+// TRANSLATING DROPLET, 3D -- hex and polyhedral.
+//
+// A water droplet (R = 1 mm, sigma = 0.07274 N/m) coasts through a 6 mm box at
+// a uniform U0 with g = 0. The exact solution is RIGID TRANSLATION: the sphere
+// keeps its shape, the Laplace jump stays sigma/R = 72.74 Pa, and in the
+// droplet's own frame the problem IS the stationary droplet. That is what makes
+// it worth running: it is the GALILEAN test, and a discretisation that is
+// correct at rest but wrong in a moving frame fails here and nowhere else.
+//
+// GEOMETRY AND HORIZON, sized so the interface never feels the outlet.
+// The droplet starts at the box centre (DOMAIN_HALF_LENGTH = 3 mm) and travels
+// U0*END_TIME = 0.05 * 0.02 = 1 mm, so its downstream edge reaches x = 5 mm in
+// a 6 mm box -- a 1 mm margin, which is 12.7 cells at N = 76 and 15.8 at
+// N = 95. The band and the outlet never overlap.
+//
+// The N ladder and box match config/traceStationary3D{hex,poly} exactly, so the
+// translating and stationary results are read at the SAME h and the SAME
+// capillary dt.
+values
+{
+    solver (leiaSemiLagrangianLevelSetTwoPhaseFoam);
+
+    DOMAIN_LENGTH ( 0.006 );
+    CAPILLARY_REF_LENGTH ( 0.01 );
+
+    N_CELLS ( 60 76 95 );
+
+    // 1 mm of travel; see the margin argument above.
+    END_TIME ( 0.02 );
+
+    TRANSLATION_SPEED ( 0.05 );
+
+    MAX_CO ( 0.1 );
+    CAPILLARY_DT_COEFF ( 0.010861 );
+
+    SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
+}

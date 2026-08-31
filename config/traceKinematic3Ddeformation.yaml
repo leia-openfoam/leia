@@ -1,0 +1,40 @@
+# KINEMATIC COST GATE: 3D DEFORMATION, hex.
+#
+# The third kinematic rung. 3D shear (config/traceKinematic3Dshear) has already
+# answered the transport-cost question on that flow -- orders identical to three
+# digits, raw errors identical to 3-4 significant figures. Deformation is the
+# HARDER kinematic test and the committed baseline says so: cellCentred converges
+# at shapeOrder 1.360 / volumeOrder 1.859 here against 2.955 / 2.922 on shear.
+# A trace that is free on the easy flow can still cost order on the hard one,
+# which is the whole reason to run it rather than infer it.
+#
+# PRE-REGISTERED READ-OUT: PASS = projectedFlux holds the committed cellCentred
+# orders (1.360 shape, 1.859 volume) within the ladder's own scatter. FAIL = the
+# observed ORDER drops. Note the gradient order is ~0 or NEGATIVE in the
+# committed baseline for every case and mesh (-0.002 / -0.396 / -0.862 / -0.062):
+# this method maintains no signed-distance property, so a non-converging
+# gradient is the EXPECTED behaviour and not a trace effect -- it is scored as
+# "unchanged from baseline", never as a pass or a failure on its own.
+#
+# PHASE_INDICATOR pinned: the case declares two values and collapse_other_axes
+# does not collapse it, which would fit every order across a mixture of two
+# interface reconstructions.
+study_name: traceKinematic3Ddeformation
+case: 3Ddeformation
+mesh: hex
+mode: parallel
+np: 8
+solver: leiaSemiLagrangeLevelSetFoam
+theme:  method-comparison
+solve_runtime: 1440
+axes_override:
+  END_TIME: [3.0]
+  N_CELLS: [32, 50, 80, 128]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

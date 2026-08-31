@@ -1,0 +1,40 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+
+// TRANSLATING DROPLET, 3D. Uniform stream U0 in +x; the droplet coasts with it.
+// The exact solution is rigid translation, so in the droplet's own frame this is
+// the stationary droplet -- which is the point: it is the GALILEAN test, and a
+// discretisation that is right at rest but wrong in a moving frame fails only
+// here. Free-slip on the four lateral walls keeps the far field a uniform
+// stream with no wall shear to contaminate the measurement.
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (@!TRANSLATION_SPEED!@ 0 0);
+
+boundaryField
+{
+    left            // inlet
+    {
+        type            fixedValue;
+        value           uniform (@!TRANSLATION_SPEED!@ 0 0);
+    }
+    right           // outlet
+    {
+        type            zeroGradient;
+    }
+    "(front|back|bottom|top)"
+    {
+        type            slip;
+    }
+}
+
+// ************************************************************************* //

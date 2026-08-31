@@ -1,0 +1,178 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+ddtSchemes
+{
+    // Momentum time derivative ddt(rho,U). Euler (first order) is the DEFAULT
+    // and is what the validated N=32/64 results use.
+    //
+    // MEASURED (2026-07-14): raising the momentum time order DESTABILISES this
+    // capillary problem at the calibrated capillary step dt ~ dt_sigma/4. Euler
+    // is L-stable and damps the grid-scale capillary parasitic mode; the
+    // higher-order schemes are only A-stable (backward) or less (CrankNicolson)
+    // and remove that numerical cushion, so the parasitic oscillation grows:
+    //   N=64, dt=2e-5 (dt_sigma/4):  Euler stable (max|U|~1e-5);
+    //                                backward DIVERGES (peak ~48);
+    //                                CrankNicolson 0.9 DIVERGES faster (~1e+102).
+    //   backward becomes stable only at dt=1e-5 (dt_sigma/8): ~2x the steps.
+    // Neither higher-order scheme fixes the separate N>=128 divergence.
+    // The semi-Lagrangian foot integrator forms its own d(u)/dt from U and
+    // U.oldTime() (slAdvection.C), INDEPENDENT of this scheme, so the level-set
+    // transport is unchanged by the momentum time order.
+    //
+    // To use 2nd-order backward, switch the line below AND halve maxDeltaT
+    // (dt_sigma/8) in controlDict:
+    //   default      backward;
+    // MOMENTUM time derivative ddt(rho,U). Tokenised so the time order can be
+    // swept: Euler (default, 1st order, L-stable) | backward (BDF2) |
+    // CrankNicolson <psi>.
+    //
+    // WHY IT IS BEING RETRIED (2026-08-19). The 2026-07-14 rejection above
+    // predates three fixes landed today, one of which is directly implicated: the
+    // t=0 Young-Laplace solve was UNREFERENCED on a singular system and inherited
+    // relTol 0.01, leaving the initial pressure ~1% off and handing step 1 an
+    // impulse of order 0.01*sigma*kappa. A divergence to ~48 m/s is the signature
+    // of an amplified STARTUP transient rather than of slow parasitic growth, and
+    // Euler's L-stability damps exactly that where a higher-order scheme does not.
+    // The July verdict may have been measuring the impulse, not the scheme.
+    //
+    // WHAT SECOND ORDER IN TIME ACTUALLY REQUIRES, because `backward` alone does
+    // NOT deliver it. The trajectory is
+    //   x_d = x_c - u dt + 0.5 a dt^2,  a = (u^{n+1}-u^n)/dt + (u . grad u)
+    // (pointValueScheme.C:367-368), 2nd-order accurate GIVEN u. With Euler
+    // momentum u carries O(dt) error, so x_d carries O(dt^2) per step and the
+    // interface position accumulates O(dt) -- the level set is FIRST order in
+    // time. That is the mismatch worth removing: a 2nd-order trajectory fed a
+    // 1st-order velocity.
+    //
+    // But the momentum error is not set by ddt alone. The capillary force is
+    // evaluated once per step from the interface at t^n, i.e. EXPLICITLY, which is
+    // 1st order whatever ddt does. Iterating it to convergence
+    // (psiOuterCorrectors) makes it backward-Euler, ALSO 1st order -- and that
+    // switch was measured INERT here, max|U| within 0.4%
+    // (config/psiOuterCorrectorsGain3D.yaml). Genuine 2nd order needs BOTH a
+    // 2nd-order ddt AND a MIDPOINT (t^{n+1/2}) capillary force. The midpoint force
+    // is not implemented, and it is a DIFFERENT item from the semi-implicit force
+    // of task #24, which only changes implicitness and not order.
+    //
+    // So this axis answers a narrower question than "is it 2nd order": is backward
+    // usable at all post-fix, and does it move the per-step gain?
+    default         @!MOMENTUM_DDT_SCHEME!@;
+}
+
+gradSchemes
+{
+    // Reconstruction gradient for div(phi,psi) above; INERT for SL.
+    grad(psi)       cellLimited leastSquares 1;
+
+    // Metric-only gradient for the gradPsiError / gradPsiErrorCSV function
+    // objects. MUST stay UNLIMITED and MUST NOT be the advection scheme's
+    // grad(psi): a cell-limited gradient returns exactly 0 at a local
+    // extremum, which the metric then reports as |grad psi| = 0.
+    gradPsiMetric   leastSquares;
+    // SDPLS source-term gradients: dedicated keywords (see single-phase cases).
+    gradPsiSdpls    leastSquares;
+    gradUSdpls      Gauss linear;
+    default         Gauss linear;
+    grad(U)         Gauss linear;
+    grad(p_rgh)     Gauss linear;
+    // grad(u^{n+1}) for the semi-Lagrangian Taylor foot (slAdvection.C).
+    gradU           Gauss linear;
+}
+
+divSchemes
+{
+    // Explicit Laplace-Beltrami projector correction of the semi-implicit
+    // capillary fvOption (value form): divergence of the NAMED tensor
+    // (nHat & grad(U))*nHat. Unreferenced unless the option runs with
+    // laplaceBeltrami true, so this entry is inert for every other study.
+    div(semiImplicitNormalFlux) Gauss linear;
+
+    // Eulerian level-set advection (leiaLevelSetTwoPhaseFoam). INERT for the
+    // semi-Lagrangian solver, which never assembles an FV divergence of psi.
+    // Same discretization as every kinematic SDPLS study: linearUpwind with
+    // the named cell-limited LSQ reconstruction gradient below.
+    div(phi,psi)    Gauss linearUpwind grad(psi);
+
+    default         none;
+    // Momentum convection (interFoam-style). The level set is advected semi-
+    // Lagrangian (no fvm div for psi/alpha), so no div(phi,alpha)/MULES entries.
+    // MOMENTUM CONVECTION div(rhoPhi,U), tokenised. Values are paren-free so the
+    // .parameter scalar parser accepts them; `linearUpwind gradU` is functionally
+    // identical to the historical `linearUpwind grad(U)` because gradSchemes defines
+    // both gradU and grad(U) as `Gauss linear`.
+    //
+    // WHY UPWIND IS BEING TESTED. In the ONE-FIELD formulation the velocity is
+    // continuous across the interface but its GRADIENT is not: the viscosity and
+    // density jumps make the normal derivative of the tangential velocity
+    // discontinuous, so a cell straddling Gamma computes a grad(U) that mixes both
+    // sides and is set by the jump structure rather than by the flow. linearUpwind
+    // uses exactly that cell gradient to extrapolate the upwind value to the face,
+    // face value = U_upwind + grad(U)|_upwind . (x_f - x_C), so the correction is
+    // LARGE IN RELATIVE TERMS precisely at the interface -- and the velocity in the
+    // lighter phase is always the larger one, which steepens it further. That makes
+    // linearUpwind a candidate AMPLIFIER of the parasitic field rather than the
+    // dissipative stabiliser an upwind-biased scheme is usually assumed to be.
+    // `upwind` drops the gradient correction entirely: first order, more dissipative,
+    // but with no dependence on a discontinuous quantity.
+    //
+    // NOTE the same exposure exists in the viscous term,
+    // div((rho*nuEff)*dev2(T(grad(U)))), which is explicit and also built on grad(U).
+    // It is NOT changed here because it is needed for the correct deviatoric stress;
+    // if upwind convection helps, that term becomes the next thing to look at.
+    div(rhoPhi,U)                       Gauss @!MOMENTUM_DIV_SCHEME!@;
+    div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;
+    // FVM curvature kappa = div( grad(psi)/|grad(psi)| ) for the
+    // divGradPsiSnGradAlpha surface-tension model and the face-centered
+    // curvature rows of leiaTestMeanCurvature.
+    div(nPsi)                           Gauss linear;
+    // Alpha-normal curvature used by divGradAlphaSnGradAlpha (same consumers).
+    div(nAlpha)                         Gauss linear;
+    // anchoredEikonal redistancer working equation (inert unless selected;
+    // upwind matches the outward Eikonal characteristics).
+    div(yPhi,psiDist)                   Gauss upwind;
+    // Steady velocity-extension convection (steadyUpwind/closestPoint, inert
+    // unless levelSet.velocityExtension.type selects them). Upwind matches the
+    // outward extension characteristics, as in cases/oscISTDroplet2D. Without
+    // this entry steadyUpwind and meshWaveExt exit at the first step with
+    // "Entry 'div(velExtPhiW,Uext)' not found" -- the second half of the
+    // velocity-extension block recorded in plan sec. 15.3.
+    div(velExtPhiW,Uext)                Gauss upwind;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear corrected;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+
+fluxRequired
+{
+    default         no;
+    p_rgh;
+}
+
+// ************************************************************************* //

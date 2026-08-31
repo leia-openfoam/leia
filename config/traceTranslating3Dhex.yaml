@@ -1,0 +1,36 @@
+# TRANSLATING DROPLET, 3D HEX: the Galilean test at the stationary ladder's own
+# resolutions. Companion to config/traceStationary3Dhex -- same 6 mm box, same
+# N = 60/76/95, same capillary dt -- so the moving and resting measurements are
+# read at matched h. In the droplet's own frame the two are the same problem;
+# a gap between them is a frame-dependence of the discretisation, which is
+# exactly what a trace built from face-normal components could introduce and
+# what neither the stationary nor the oscillating gate can see.
+#
+# READ THE RIGHT QUANTITY: max|U| ~ U0 here, dominated by the translation
+# itself. Score on min|grad psi|, curvature error, volume, shape and A2h.
+#
+# The droplet travels 1 mm and stops 1 mm short of the outlet (12.7 cells at
+# N = 76, 15.8 at N = 95) -- see cases/translatingDroplet3D.parameter.
+study_name: traceTranslating3Dhex
+case: translatingDroplet3D
+mesh: hex
+mode: parallel
+np: 16
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 1440
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60, 76, 95]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+  END_TIME: [0.02]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

@@ -219,6 +219,19 @@ levelSet
         //   deferredCorrection : fixed-point iteration, rebuilding the reconstruction from the
         //                        current iterate. DIVERGES for defectCorrectedIDW (rho > 1). Research.
         correction          @!SL_CORRECTION!@;
+        // Foot-point integrator: taylor (default, historical) | rk2.
+        footIntegrator      @!SL_FOOT_INTEGRATOR!@;
+
+        // Velocity the trajectory is traced with. cellCentred (default) traces
+        // the prescribed cell velocity; projectedFlux traces
+        // fvc::reconstruct(phi) of the prescribed FLUX. In a kinematic test the
+        // prescribed flux is exactly divergence-free, so the solenoidality
+        // benefit is zero by construction and this axis measures ONLY the
+        // reconstruct operator's transport-accuracy cost.
+        // PORTED 2026-08-31: this case had NO traceVelocity entry -- the fifth
+        // case found with that defect in one day.
+        traceVelocity       @!SL_TRACE_VELOCITY!@;
+
 
         CFLmax              @!CFL!@;   // foot-radius guard (operational CFL<=1)
         analyticVelocity    true;      // prescribed velocityModel IS the cell velocity

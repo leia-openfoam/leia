@@ -1,0 +1,100 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// 2D stationary-droplet benchmark (arXiv:2212.02904, Sec. 3.3.1): a
+// 0.01^3 m^3 CUBE, n_cells in every direction (the 3D twin of
+// stationaryDroplet2D). n_cells is swept by the study.
+// (@!N_CELLS!@ = 32, 64, 128, 256); z thickness is fixed (empty front/back => 2D).
+
+scale   1;
+
+n_cells @!N_CELLS!@;
+
+// domain = @!DOMAIN_LENGTH!@ is the box side [m], default 0.01. Tokenised for
+// the DOMAIN-SIZE CONTROL: truncating the far field at fixed h keeps every
+// metric and the step count while cutting the cell count as (L/0.01)^3, which
+// buys the wide-h ladder on a uniform mesh. maxDeltaT follows h, not n_cells
+// (materialize evaluates the capillary limit at nRef = CAPILLARY_REF_LENGTH/h).
+domain  @!DOMAIN_LENGTH!@;
+
+vertices
+(
+    (0        0        0       )
+    ($domain  0        0       )
+    ($domain  $domain  0       )
+    (0        $domain  0       )
+    (0        0        $domain )
+    ($domain  0        $domain )
+    ($domain  $domain  $domain )
+    (0        $domain  $domain )
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($n_cells $n_cells $n_cells) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    // SIX NAMED PATCHES, not the single `walls` of the stationary case. The
+    // names match exactly what cfMesh's renameBoundary emits on the POLYHEDRAL
+    // path (left/right/front/back/bottom/top), so ONE set of boundary
+    // conditions in 0.org serves BOTH mesh types and the hex and poly arms are
+    // boundary-identical by construction rather than by inspection.
+    //
+    // The stream runs +x: left is the inlet, right the outlet, the other four
+    // are free-slip so the far field stays a uniform stream with no wall shear.
+    left
+    {
+        type patch;
+        faces ( (0 4 7 3) );   // x-min, inlet
+    }
+    right
+    {
+        type patch;
+        faces ( (2 6 5 1) );   // x-max, outlet
+    }
+    front
+    {
+        type wall;
+        faces ( (1 5 4 0) );   // y-min
+    }
+    back
+    {
+        type wall;
+        faces ( (3 7 6 2) );   // y-max
+    }
+    bottom
+    {
+        type wall;
+        faces ( (0 3 2 1) );   // z-min
+    }
+    top
+    {
+        type wall;
+        faces ( (4 5 6 7) );   // z-max
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

@@ -460,5 +460,11 @@ PIMPLE_RESIDUAL_CONTROL_FILE residualControl.off;
 // field, same reconstruct operator, but an unprojected (non-solenoidal) face
 // flux. It exists to decide whether projectedFlux wins because the traced
 // field is divergence-free or merely because reconstruct() smooths it.
+// Uniform stream speed for the TRANSLATING droplet cases [m/s]. Referenced only
+// by cases/translatingDroplet3D/0.org/U; 0.05 matches the committed 2D twin so a
+// case that picks the token up by accident gets the intended physics rather than
+// a silently stationary droplet.
+TRANSLATION_SPEED 0.05;
+
 SL_FOOT_INTEGRATOR taylor;
 SL_TRACE_VELOCITY cellCentred;

@@ -1,0 +1,44 @@
+# TRANSLATING DROPLET, 2D hex: the RIGID-MOTION moving-interface gate.
+#
+# Completes the moving-interface evidence for the trace axis. The oscillating
+# droplet exercises DEFORMATION; this exercises rigid TRANSLATION -- a droplet
+# (R = 1 mm) coasting at U0 = 0.05 m/s with zero gravity, exact solution a
+# circle translating unchanged with a Laplace jump sigma/R = 72.74 Pa. The
+# interface crosses about 2.5 diameters over t = 0.1 s.
+#
+# WHY IT IS A DIFFERENT QUESTION FROM THE OTHER TWO. It is the GALILEAN test:
+# the parasitic current in the droplet's own frame should be what the stationary
+# droplet measures, and no more. A trace that is right at rest but wrong in a
+# moving frame shows up here and nowhere else.
+#
+# READ THE RIGHT QUANTITY (this case's own trap, recorded in the committed
+# config): max|U| ~ U0 here because it is dominated by the translation itself,
+# so the parasitic signal is NOT in max|U|. Score on minGradPsiBand (level-set
+# health), the curvature error, volume and shape -- and on A2h, the grid-scale
+# corrugation that separated the traces most sharply in 2D.
+#
+# ONE VARIABLE. The committed study swept SL_RECONSTRUCTION (linear vs
+# quadratic); that question is settled and the axis is FIXED at the production
+# quadratic here so the only difference between arms is the trace.
+#
+# NOTE cases/translatingDroplet2D/system/fvSolution.template had NO
+# traceVelocity entry until 2026-08-31 -- the fourth case found with that
+# defect in one day. Ported and gated before this study was written.
+study_name: traceTranslating2Dhex
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 600
+axes_override:
+  N_CELLS: [32, 64, 128]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
