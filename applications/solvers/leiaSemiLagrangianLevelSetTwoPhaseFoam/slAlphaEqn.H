@@ -106,7 +106,7 @@
                 // Refresh the flux-based levels for this step before use.
                 if (traceFromFlux)
                 {
-                    UtracePtr() == fvc::reconstruct(phi);
+                    UtracePtr() == slTraceField();
                 }
                 const volVectorField& UtrNew =
                     traceFromFlux ? UtracePtr() : slVelExt->Uext();
@@ -154,7 +154,7 @@
                 {
                     // phi now carries the PROJECTED flux of the previous outer
                     // iterate, so this is the divergence-free u^{n+1,(k-1)}.
-                    UtracePtr() == fvc::reconstruct(phi);
+                    UtracePtr() == slTraceField();
                     slAdv->advect(psi, UtracePtr(), UtraceOldPtr());
                 }
                 else

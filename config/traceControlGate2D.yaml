@@ -1,0 +1,52 @@
+# LOCAL 4-RANK GATE for the reconstructedU confound-control trace.
+#
+# This is the gate required before anything goes to the cluster: the code
+# changed, so it must run on >= 4 MPI ranks locally and the RESULT must be
+# looked at, not the exit code.
+#
+# THREE THINGS THIS GATE ESTABLISHES, in order:
+#
+# 1. BIT-IDENTITY of the two pre-existing traces. The refactor replaced two
+#    literal `fvc::reconstruct(phi)` sites with a `slTraceField()` lambda that
+#    returns exactly that for both legacy options. "This changes nothing" is a
+#    claim to be TESTED: an autoPtr dereference in the foot loop once broke
+#    bit-identity at 2.7e-9 relative through floating-point contraction alone.
+#    cellCentred and projectedFlux CSVs must be byte-identical to the same
+#    arms built from the pre-change source.
+#
+# 2. reconstructedU RUNS on 4 ranks -- no deadlock, no crash, no empty log.
+#    It adds linearInterpolate(Uext) & Sf, which touches coupled (processor)
+#    patches; that is the exact class of code that is correct on one rank and
+#    wrong on several, and this repository has hit it repeatedly.
+#
+# 3. reconstructedU is DISTINCT from both legacy arms. A control that silently
+#    reproduces projectedFlux would prove nothing; its CSV must differ.
+#
+# Short horizon on purpose -- this gate answers "does it run and is it inert",
+# not "is it stable". The physics question is config/traceAmplifierDt2D.yaml.
+study_name: traceControlGate2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 30
+axes_override:
+  N_CELLS: [128]
+  DOMAIN_LENGTH: [0.01]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux", "reconstructedU"]
+  SEMI_IMPLICIT_CAPILLARY: ["off"]
+  N_OUTER_CORRECTORS: [3]
+  PSI_OUTER_CORRECTORS: ["no"]
+  END_TIME: [0.002]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

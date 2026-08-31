@@ -39,24 +39,61 @@ volVectorField UextOld
 //                    which requires a solenoidal tracing velocity; phi is
 //                    discretely solenoidal after the pressure correction and
 //                    the cell-centred U is not.
+//   reconstructedU -- THE CONFOUND CONTROL for projectedFlux, and nothing else:
+//                    reconstruct(linearInterpolate(Uext) & Sf). It shares the
+//                    EXTENSION (Uext) with cellCentred and the RECONSTRUCT
+//                    operator with projectedFlux, but its face field is the
+//                    plain interpolated flux, which is NOT the projected one
+//                    and therefore NOT discretely divergence-free.
+//                    Why it exists: cellCentred and projectedFlux differ in
+//                    three ways at once -- solenoidality, extension, and the
+//                    reconstruct smoothing -- so a projectedFlux win cannot be
+//                    attributed to solenoidality without this arm. If
+//                    reconstructedU tracks cellCentred, solenoidality is the
+//                    mechanism; if it tracks projectedFlux, the mechanism is
+//                    the reconstruct smoothing and the divergence-free reading
+//                    is wrong.
 const word slTraceVelocity
 (
     static_cast<const fvSolution&>(mesh).subDict("levelSet")
         .subOrEmptyDict("semiLagrangian")
         .getOrDefault<word>("traceVelocity", "cellCentred")
 );
-if (slTraceVelocity != "cellCentred" && slTraceVelocity != "projectedFlux")
+if
+(
+    slTraceVelocity != "cellCentred"
+ && slTraceVelocity != "projectedFlux"
+ && slTraceVelocity != "reconstructedU"
+)
 {
     FatalErrorInFunction
         << "levelSet.semiLagrangian.traceVelocity = '" << slTraceVelocity
-        << "'. Valid: cellCentred, projectedFlux." << exit(FatalError);
+        << "'. Valid: cellCentred, projectedFlux, reconstructedU."
+        << exit(FatalError);
 }
-const bool traceFromFlux = (slTraceVelocity == "projectedFlux");
+const bool traceReconstructU = (slTraceVelocity == "reconstructedU");
+// Both non-default sources trace a RECONSTRUCTED cell field and so share the
+// Utrace/UtraceOld two-level machinery; they differ only in the face field.
+const bool traceFromFlux =
+    (slTraceVelocity == "projectedFlux") || traceReconstructU;
 if (traceFromFlux)
 {
-    Info<< "SL trace velocity: reconstruct(phi) -- divergence-free face flux"
+    Info<< "SL trace velocity: "
+        << (traceReconstructU
+              ? "reconstruct(interpolate(Uext)&Sf) -- NOT divergence-free"
+                " (confound control)"
+              : "reconstruct(phi) -- divergence-free face flux")
         << nl << endl;
 }
+
+// The single definition of the traced face->cell field, used at every refresh
+// site so the two sources can never drift apart.
+auto slTraceField = [&]() -> tmp<volVectorField>
+{
+    return traceReconstructU
+        ? fvc::reconstruct(linearInterpolate(slVelExt->Uext()) & mesh.Sf())
+        : fvc::reconstruct(phi);
+};
 
 // Trace-velocity levels used when traceFromFlux; allocated only then. Utrace
 // mirrors Uext's role (new level) and UtraceOld mirrors UextOld (u^n).
@@ -66,7 +103,7 @@ if (traceFromFlux)
 {
     UtracePtr.reset
     (
-        new volVectorField("Utrace", fvc::reconstruct(phi))
+        new volVectorField("Utrace", slTraceField())
     );
     UtraceOldPtr.reset
     (

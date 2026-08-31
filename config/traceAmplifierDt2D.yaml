@@ -1,0 +1,111 @@
+# CONFIRMATION GATE: is the projectedFlux trace an attack on the AMPLIFIER G,
+# and is the mechanism SOLENOIDALITY or merely the reconstruct smoothing?
+#
+# ---------------------------------------------------------------------------
+# THE HYPOTHESIS UNDER TEST
+# ---------------------------------------------------------------------------
+# The semi-Lagrangian foot-point trace built from fvc::reconstruct(phi) follows
+# the discretely solenoidal face flux, whereas the cell-centred extension Uext
+# is not discretely divergence-free -- it carries the part of the velocity the
+# pressure projection failed to absorb, which is the parasitic residual itself.
+# Tracing the interface with that field feeds the residual back into interface
+# displacement and closes a feedback loop; tracing with the projected flux cuts
+# it. If true, this acts on G (the amplifier) in max|U|(T) = u0(h)*exp(G(h)),
+# which is the factor the campaign identified as the target.
+#
+# ---------------------------------------------------------------------------
+# WHY A dt SWEEP IS THE TEST
+# ---------------------------------------------------------------------------
+# The campaign established r = r0 + c*dt with r0 ~ 0: the growth rate is set by
+# the EXPLICIT capillary time coupling, so it is proportional to the step. The
+# physical (viscous) damping contributed to the same measured rate is dt-
+# INDEPENDENT. A dt sweep at FIXED MESH therefore separates them by slope --
+# and only by slope. FIXED_DELTA_T overrides the capillary law precisely so the
+# mesh does not move with the step (dt ~ h^1.5 would otherwise hide an
+# h-dependence inside the dt sweep -- the confound this token was added for).
+#
+# ---------------------------------------------------------------------------
+# THE CONFOUND, AND THE ARM THAT REMOVES IT
+# ---------------------------------------------------------------------------
+# cellCentred (traces Uext) and projectedFlux (traces reconstruct(phi)) differ
+# in THREE ways at once: solenoidality, extension, and the reconstruct
+# smoothing. A projectedFlux win therefore cannot be attributed to
+# solenoidality without a control. reconstructedU is that control:
+# reconstruct(linearInterpolate(Uext) & Sf) -- the SAME extension field and the
+# SAME reconstruct operator as projectedFlux, but an UNPROJECTED face flux, so
+# it is NOT discretely divergence-free. It isolates the one variable.
+#
+# ---------------------------------------------------------------------------
+# PRE-REGISTERED READ-OUT (written before launch; the data decides)
+# ---------------------------------------------------------------------------
+# Order parameter, on a FIXED physical window [t_ref, T] = [0.02, 0.1] chosen
+# to start after the startup kick (all arms peak near t = 0.0022):
+#
+#     G_x(dt)  = ln( max|U|_x(T) / max|U|_x(t_ref) )
+#     dr_x(dt) = [ G_x(dt) - G_projectedFlux(dt) ] / (T - t_ref)
+#
+# dr subtracts the shared physical damping, so it is the NUMERICAL amplifier
+# alone. Measured at the base step in config/fullHorizonStability2D:
+# G_cellCentred = +3.61, G_projectedFlux = -3.65, i.e. dr_cc(dt) ~ 91 1/s.
+#
+#   PREDICTION 1 (structure). dr_cellCentred halves with every halving of dt,
+#   within the 25% scatter this campaign has measured on rate quantities.
+#   FALSIFIED IF dr_cc is flat in dt -- then the amplifier is NOT the explicit
+#   capillary time coupling and r = r0 + c*dt has to be retracted.
+#   Corollary that must also hold: G_cellCentred changes SIGN between dt and
+#   dt/4 (predicted zero crossing near dt/2), i.e. the control arm stops
+#   growing when the step is small enough. If it grows at dt/8 too, the
+#   dt-proportional picture is wrong.
+#
+#   PREDICTION 2 (mechanism -- THE DECISIVE ONE). rho = dr_recU / dr_cc.
+#     rho ~ 1 (>= 0.7)  -> the non-solenoidal trace is what drives the
+#                          amplifier: HYPOTHESIS CONFIRMED.
+#     rho ~ 0 (<= 0.3)  -> reconstruct() smoothing is what stabilises, not
+#                          solenoidality: HYPOTHESIS FALSIFIED, and the finding
+#                          becomes that the win is a SMOOTHING -- which the
+#                          no-filtering rule then bears on directly, because a
+#                          smoothing that stabilises is exactly the kind of
+#                          instrument that must not be what makes production
+#                          runs stable.
+#     0.3 < rho < 0.7   -> both contribute; report the split, claim neither.
+#
+#   SELF-VALIDATION built into the matrix: extrapolating r(dt -> 0) for all
+#   three traces must give the SAME intercept (the physical damping). Three
+#   traces disagreeing on the intercept means the arms differ in something
+#   besides the trace, and the verdict is void.
+#
+# A DIVERGED arm is a RESULT, not a failure.
+#
+# COST: 31.9 ms/step measured on 4 ranks at N=128; the dt/8 arm is 106,672
+# steps ~ 57 min. All 12 arms are submitted CONCURRENTLY (one sbatch each), so
+# wall time is one arm, ~1 h, and ~21 core-hours in total.
+study_name: traceAmplifierDt2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 240
+axes_override:
+  N_CELLS: [128]
+  DOMAIN_LENGTH: [0.01]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux", "reconstructedU"]
+  SEMI_IMPLICIT_CAPILLARY: ["off"]
+  N_OUTER_CORRECTORS: [3]
+  PSI_OUTER_CORRECTORS: ["no"]
+  END_TIME: [0.1]
+  # dt, dt/2, dt/4, dt/8 at FIXED mesh. Base is the capillary-law step this
+  # case resolves to at N=128 (CAPILLARY_DT_COEFF/nRef^1.5 = 7.49989e-06 s);
+  # FIXED_DELTA_T > 0 overrides that law so the mesh stays put.
+  FIXED_DELTA_T: [7.49989e-06, 3.749945e-06, 1.8749725e-06, 9.3748625e-07]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
