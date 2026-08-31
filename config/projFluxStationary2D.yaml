@@ -1,0 +1,56 @@
+# projectedFlux vs cellCentred: 2D hex REFINEMENT ladder, STATIONARY droplet.
+#
+# WHY THIS EXISTS AS A NEW CONFIG. config/stationaryDroplet2D is the committed
+# refinement study and carries export_slides: true -- running a trace experiment
+# through it would overwrite the curated paper/deck table with data that is not
+# the published method. This config is that study, unchanged in physics, with
+# the trace as an added axis and slide export OFF.
+#
+# WHY BOTH TRACES, NOT projectedFlux ALONE. The t_blow baseline in STATUS.md was
+# RETRACTED on 2026-08-31: the reproduction control survived to t = 0.1 where
+# the record said it dies at 0.078, a ~1.9x shift outside the 5-38% seed
+# sensitivity. Until that is chased, no historical number is a valid reference,
+# so every comparison must carry its own baseline arm, run on the same commit,
+# same binaries, same mesh, concurrently. cellCentred is that arm.
+#
+# WHAT IS BEING ASKED. The two-factor law is max|U|(T) = u0(h)*exp(G(h)); the
+# campaign measured u0 converging (h^3.5) while G grows under refinement
+# (h^-1 in 2D), which is why finer meshes blow up sooner. The full-horizon gate
+# showed projectedFlux turning growth into decay at N = 128. THE QUESTION HERE
+# IS WHETHER THAT SURVIVES REFINEMENT: does G stop growing with h, or does
+# projectedFlux merely postpone the same h-dependence?
+#
+# PRE-REGISTERED READ-OUT, on the standing metric vector (never max|U| alone):
+#   * PASS: max|U|(T) for projectedFlux is bounded or FALLING across
+#     N = 32/64/128/256 while cellCentred rises. That is G stopping its growth,
+#     which is the number the whole campaign is trying to move.
+#   * PARTIAL: projectedFlux is uniformly lower but still rising with N -- the
+#     floor improved and the growth survived, exactly the outcome recorded for
+#     cellCentreInverse ("the floor improved, the growth survived").
+#   * FAIL: the two traces converge under refinement, i.e. the benefit is a
+#     coarse-mesh artefact.
+#   * Reported alongside, always: volume error, shape error (zeroSetRadialL2),
+#     min|grad psi| and the Laplace jump. A candidate that improves max|U| while
+#     degrading the gradient is not a win.
+#
+# The step follows the committed capillary law dt = CAPILLARY_DT_COEFF/N^1.5, so
+# dt moves WITH the mesh here by design; this is a refinement study, not the
+# fixed-mesh dt sweep (config/traceAmplifierDt2D) that separates the two.
+#
+# Filters OFF (PSI_FILTER none, the default) per the standing scoring rule.
+# N = 256 is the long pole: ~37.7k steps at dt ~ N^-1.5.
+study_name: projFluxStationary2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 600
+axes_override:
+  N_CELLS: [32, 64, 128, 256]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

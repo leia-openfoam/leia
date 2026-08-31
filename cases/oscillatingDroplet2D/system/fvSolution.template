@@ -477,6 +477,22 @@ levelSet
     {
         reconstruction      @!SL_RECONSTRUCTION!@;
         correction          direct;
+
+        // Foot-point integrator. taylor (default, historical) needs a velocity
+        // GRADIENT for its dt^2 term; rk2 is the classical midpoint using only
+        // velocity SAMPLES along the trajectory -- same formal order, and it
+        // consumes no grad(U).
+        footIntegrator      @!SL_FOOT_INTEGRATOR!@;
+
+        // Velocity the trajectory is traced with. cellCentred (default,
+        // historical) uses the velocity-extension field; projectedFlux uses
+        // fvc::reconstruct(phi), the discretely divergence-free projected face
+        // flux. PORTED FROM stationaryDroplet2D 2026-08-31: without these two
+        // entries the case silently ran the solver default whatever the study
+        // config said, so a trace sweep here produced arms that differed in
+        // NOTHING -- caught by the 4-rank gate reporting "axes={} -> 1
+        // variations" instead of two arms.
+        traceVelocity       @!SL_TRACE_VELOCITY!@;
         CFLmax              0.5;
         limitSlope          false;
         clipToStencilBounds false;

@@ -1,0 +1,51 @@
+# projectedFlux vs cellCentred: 2D hex REFINEMENT ladder, OSCILLATING droplet.
+#
+# THE MOVING-INTERFACE GATE. Everything the trace axis has been scored on so far
+# is a STATIONARY droplet, and this repository's standing rule is that a static
+# case is not a shortcut: a candidate must pass a moving-interface gate before
+# promotion. Here the interface MOVES AND DEFORMS every step -- a mode-2
+# perturbed ellipse (a = 1.1 mm, b = 0.909 mm, area-preserving, R = 1 mm)
+# relaxing toward a circle under surface tension, a Lamb capillary oscillation,
+# 2D mode-2 period ~ 9.5 ms, endTime 0.1 s ~ 10 periods.
+#
+# WHY IT IS THE RIGHT SECOND TEST FOR THIS CANDIDATE. projectedFlux traces the
+# foot point with reconstruct(phi) instead of the cell velocity. On a stationary
+# droplet the traced field is nearly zero, so the change is scored on almost
+# pure noise; here it carries the ACTUAL oscillation velocity, which is where a
+# trace that discards part of the velocity field could genuinely cost accuracy.
+# The measured concern is real and specific: the reconstruct operator keeps only
+# the face-normal components, so if it damps the physical mode this is the case
+# that will show it.
+#
+# PRE-REGISTERED READ-OUT:
+#   * PERIOD AND DECAY RATE are the discriminator, not max|U|. An over-damped
+#     trace shows up as a decay rate too high against Lamb, or a lengthened
+#     period -- the same overdamping signature SAAMPLE sec. 5 records for the
+#     semi-implicit force. PASS = period and decay within the cellCentred arm's
+#     own agreement with Lamb; FAIL = projectedFlux visibly damps the mode.
+#   * minGradPsiBand is the level-set health metric this study was built around
+#     and must not degrade.
+#   * Volume and shape error reported alongside, always.
+#
+# ONE VARIABLE. The original study swept SL_RECONSTRUCTION (linear vs quadratic)
+# to isolate the transport scheme; that question is settled and the axis is
+# FIXED here at the production quadratic reconstruction, so the only difference
+# between arms is the trace. Adding it back would confound the verdict.
+#
+# Filters OFF per the standing scoring rule. 6 arms, submitted concurrently.
+study_name: projFluxOscillating2D
+case: oscillatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 600
+axes_override:
+  N_CELLS: [32, 64, 128]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
