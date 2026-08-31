@@ -67,7 +67,10 @@ def read_arm(d):
     rows = complete(raw, NEEDED)
     if len(rows) < 10:
         return None
-    tok = json.load(open(cp))
+    # case_params.json nests the materialized tokens under "tokens"; fall back
+    # to the top level so the script also reads a flat params file.
+    meta = json.load(open(cp))
+    tok = meta.get("tokens", meta)
     u_ref, t_ref = at(rows, T_REF)
     u_end, t_end = at(rows, T_END)
     # A blown-up arm is a result: report it, do not fit through it.
@@ -77,6 +80,7 @@ def read_arm(d):
     G = math.log(u_end / u_ref) if (u_ref > 0 and u_end > 0) else float("nan")
     return dict(
         arm=os.path.basename(d),
+        commit=meta.get("gitCommit", "?"),
         trace=tok.get("SL_TRACE_VELOCITY", "?"),
         dt=float(tok.get("MAX_DELTA_T", "nan")),
         steps=len(rows) - 1,
@@ -105,6 +109,11 @@ def main():
                 arms.append(r)
     if not arms:
         sys.exit("no completed arms in %s" % a.study_dir)
+    bad = [x for x in arms if x["trace"] == "?" or not math.isfinite(x["dt"])]
+    if bad:
+        sys.exit("could not read SL_TRACE_VELOCITY/MAX_DELTA_T for %d arm(s) "
+                 "(e.g. %s) -- a table of '?' and nan is not a result"
+                 % (len(bad), bad[0]["arm"]))
 
     # dr is defined per dt against the reference trace at the SAME dt.
     ref = {round(x["dt"], 12): x["G"] for x in arms if x["trace"] == REF_TRACE}
@@ -119,7 +128,8 @@ def main():
         "trace_amplifier_dt.csv")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     cols = ["arm", "trace", "dt", "steps", "u_ref", "u_end", "G", "r", "dr",
-            "volErr", "shapeL2", "minGradPsi", "diverged", "partial", "t_last"]
+            "volErr", "shapeL2", "minGradPsi", "diverged", "partial", "t_last",
+            "commit"]
     with open(out, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
