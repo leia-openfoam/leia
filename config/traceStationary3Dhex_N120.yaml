@@ -1,0 +1,47 @@
+# STATIONARY DROPLET 3D HEX -- the N=120 EXTENSION RUNG.
+#
+# A SEPARATE config, not an extra entry in config/traceStationary3Dhex, on
+# purpose: adding 120 to that config's N_CELLS list would renumber every arm
+# (4 resolutions x 2 traces = 00000..00007 instead of 00000..00005), so the six
+# COMPLETED arms would silently no longer correspond to the directories holding
+# their results. A new rung goes in its own config and is curated together with
+# the others by study name.
+#
+# WHAT THE FIRST THREE RUNGS SHOWED (quarter horizon, filters off, matched
+# baselines, max|U| at t=0.025):
+#   N=60   cellCentred 1.62e-04   projectedFlux 2.71e-05
+#   N=76   cellCentred 1.11e-04   projectedFlux 3.32e-05
+#   N=95   cellCentred 1.99e-03   projectedFlux 2.41e-05
+# cellCentred jumps 12x between N=76 and N=95 while projectedFlux stays flat.
+# This rung asks whether that divergence continues -- the pre-registered PASS is
+# projectedFlux still bounded at 2-4e-05 while cellCentred rises again.
+#
+# STEP: the capillary law gives dt = 3.840e-06 s at h = 5.0e-05 (1.728M cells,
+# 6510 steps to the quarter horizon). Verified against the Brackbill criterion by
+# workflow/scripts/check_capillary_timestep.py: dt/dt_cap = 0.2323, the same
+# constant safety factor as every other rung, so this rung is on the SAME
+# stability criterion and not merely a smaller number.
+study_name: traceStationary3Dhex_N120
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 1440
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [120]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+  END_TIME: [0.025]
+  WRITE_INTERVAL: [0.0025]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
