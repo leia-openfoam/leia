@@ -1,0 +1,63 @@
+# RE-RUN ON THE SHARED METHOD CONFIGURATION (tag shared-method-config-2026-09-01).
+#
+# WHY. The ladders on record were produced with curvatureExtension NONE, which is
+# not merely a weaker choice -- it is theoretically NOT well-balanced. The
+# balanced-force assembly is kappa_f*snGrad(alpha)_f, and only a kappa CONSTANT
+# over the CSF support makes that the snGrad of something the pressure can absorb.
+# Without extension each cell centre carries the parallel-surface value at its own
+# offset d, kappa(d) = kappa0/(1 + d kappa0), so the band varies in the
+# interface-NORMAL direction and the force is not a discrete gradient. Measured:
+# the non-gradient content alpha_f*snGrad(kappa_c), the UNBALANCEABLE part of the
+# force, converges at +2.01 for cellCentreInverse against +0.09 for every other
+# cell curvature model and is 3200x smaller at N=512.
+#
+# Those ladders are therefore not comparable to anything produced after the tag,
+# and cannot be quoted alongside it.
+#
+# ONE VARIABLE: CURVATURE_EXTENSION. The `none` arms REPRODUCE the old ladder on
+# the current commit, so each rung carries its own matched baseline rather than
+# being compared against a historical number -- the rule this campaign adopted
+# after the t_blow baseline retraction. Everything else is pinned explicitly to
+# the shared configuration so this study does not silently change meaning if a
+# default moves again.
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION: the `none` arms must reproduce the recorded ladder. Stationary,
+#     relL2 capillary residual at projectedFlux: 2.37e-5 / 3.15e-6 / 8.53e-7 /
+#     6.43e-7 at N=32/64/128/256. Oscillating: all three rungs reach the horizon.
+#     If they do not, the baseline moved and nothing below is believed.
+#   * PASS for cellCentreInverse: a LOWER unabsorbed capillary residual at every
+#     rung, and no rung that reaches the horizon under `none` failing to reach it.
+#     Theory says the extension removes the normal-direction variation that makes
+#     the force non-absorbable, so the residual is where it must show.
+#   * WATCH, because it has already happened once: on the TRANSLATING droplet
+#     cellCentreInverse left the residual unchanged and destabilised the two coarse
+#     rungs (config/bestConfigTranslating2D). If that repeats here -- on a case with
+#     no mean flow -- the extension is not doing what theory says on ANY case and
+#     that is a much larger finding than the ladder itself.
+#   * Report the whole vector: capillary residual, volume, shape, |grad psi|,
+#     never max|U| alone.
+study_name: oscillatingLadder2Dshared
+case: oscillatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 600
+axes_override:
+  N_CELLS: [32, 64, 128]
+  CURVATURE_EXTENSION: ["none", "cellCentreInverse"]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  MASS_FLUX: [geometricFaceDensity]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
