@@ -56,6 +56,46 @@
 #     whatever the geometry leaves it, and only a consistent rhoLENT can zero it.
 #     That is the follow-on study and it needs the density-bounding work.
 #   * Report the whole vector: free-stream error, volume, shape, capillary residual.
+#
+# ============================== RESULT, 2026-09-01 ==============================
+# RAN: Lichtenberg, 4 ranks/arm, curvature-v2512 binary verified by the Exec line.
+# All 8 arms ran to completion or FPE.
+#
+#  N    curvatureExtension   momentum ddt   steps  reached End   free-stream max|U-U0|
+#  64   none                 Euler           4714      YES          0.1250
+#  64   none                 backward        4714      YES          0.1533
+#  64   cellCentreInverse    Euler           3401      no           3.578
+#  64   cellCentreInverse    backward        3447      no           7.488
+#  128  none                 Euler           9377      no           33.54
+#  128  none                 backward        9337      no           425.6
+#  128  cellCentreInverse    Euler          10184      no           84.62
+#  128  cellCentreInverse    backward        9331      no           43.29
+#
+# REPRODUCTION CONTROL PASSES for the fourth independent time: backward + none at
+# N=128 fails at exactly 9337.
+#
+# VERDICT: momentum ddt ALONE is not the mechanism, exactly as the argument predicts.
+# Euler is consistently better on the free-stream error -- 1.2x at N=64/none, 2.1x at
+# N=64/cellCentreInverse, 12.8x at N=128/none -- but it changes no outcome: the same
+# arms reach the horizon and the same arms fail, at step counts within 0.5% (9337 vs
+# 9377) and 1.3% (3447 vs 3401), far inside the documented 5-38% t_blow noise.
+#
+# WHY THAT IS THE PREDICTED RESULT AND NOT A NULL ONE. Matching momentum's ddt to the
+# density equation's can only pay if there IS a density equation to match.
+# geometricFaceDensity solves none: it sets rho algebraically from alpha and builds
+# rhoPhi geometrically, so ddt(rho) + div(rhoPhi) is whatever the geometry leaves it
+# -- measured at 4.79e-02 RELATIVE in config/rhoBoundGate2D, against 2.30e-11 for
+# rhoLENT. Both momentum schemes inherit U0 times that same large residual; changing
+# which one only changes a second-order detail of how it is inherited.
+#
+# The improvement Euler does give is real and in the predicted direction, which is
+# worth keeping: the free-stream error falls in all four pairs. It is simply not
+# sufficient on its own.
+#
+# FOLLOWS ON DIRECTLY: config/massConsistencyTranslating2D, which puts the mass flux
+# on the matrix as well, so both conditions -- a vanishing mass residual AND a matched
+# time scheme -- can be separated.
+# ================================================================================
 study_name: consistencyTranslating2D
 case: translatingDroplet2D
 mesh: hex
