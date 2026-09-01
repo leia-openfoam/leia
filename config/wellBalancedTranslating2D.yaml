@@ -1,0 +1,94 @@
+# GATE 3 -- WELL-BALANCED TRANSLATING DROPLET: is the curvature ESTIMATOR the
+# source of the translating failure, or is the force BALANCE?
+#
+# WHY THIS IS THE DECISIVE RUNG. Two cheaper gates have already narrowed it:
+#
+#   config/kinematicTranslation2D (2026-09-01) EXONERATED semi-Lagrangian
+#   transport. Uniform-translation transport is 2nd-3rd order, bounded-alpha error
+#   exactly 0, and cellCentred vs projectedFlux agree to every digit (reconstruct
+#   is exact for uniform fields). At the coupled case's actual interface Courant of
+#   0.0059 the transport error extrapolates to ~1e-08, against a coupled unabsorbed
+#   capillary residual of 1.24e-03. Transport is not the leading term.
+#
+#   config/curvaturePhase2D (2026-09-01) measured the curvature estimator's
+#   dependence on the interface's sub-cell phase, on a frozen field. For THIS
+#   chain -- reconstructedCurvature, faceCurvatureSource model, curvatureExtension
+#   none, i.e. the E_*_NOEXT column -- the mean error is 6.95% of kappa in L2 and
+#   the PHASE-VARYING part is 0.1622%. Post hoc, that is the size of the coupled
+#   translating residual (0.1240%, within 30%), while the coupled STATIONARY
+#   residual sits 1900x lower at 0.0000853% -- same N, trace, dt, force model.
+#
+# The mechanism that reading implies: a droplet centred in the box holds ONE phase
+# relative to the mesh forever, so its kappa error is STATIC and the pressure
+# projection absorbs it as a steady, slightly wrong Laplace jump. A translating
+# droplet sweeps every phase, so the SAME error becomes TIME-VARYING, and an
+# unsteady capillary force cannot be absorbed -- it drives flow. That reading was
+# NOT predicted in advance, so it needs an independent test rather than belief.
+#
+# THIS IS THAT TEST, and it is the cleanest one available: replace the estimated
+# curvature with the EXACT one. constantCurvatureSurfaceTension with
+# CONST_CURVATURE 1000 is exactly 1/R for this droplet's R = 1e-3 m, at every
+# instant and every phase, because a translating circle's curvature never changes.
+# The CSF structure, the delivery, the pressure coupling and the transport are all
+# untouched -- only kappa becomes exact.
+#
+# ONE VARIABLE: SURFACE_TENSION_FORCE. Everything else is pinned to the settings of
+# the run that failed, read back out of its RESOLVED fvSolution rather than assumed:
+# projectedFlux, geometricFaceDensity, faceCurvatureSource model, curvatureExtension
+# none, psiFilter none, N=128, full horizon 0.1 s.
+#
+# MASS FLUX IS geometricFaceDensity ON PURPOSE, agreed 2026-09-01. rhoLENT changes
+# the translating outcome by 0.06% (8066 steps against 8061) while its auxiliary rho
+# goes negative, turning 1/rho in the pressure Laplacian indefinite and ending the
+# run in a GAMG blow-up to 6.6e+70 instead of anything readable. With
+# geometricFaceDensity, rho = alpha1*rho1 + alpha2*rho2 is bounded BY CONSTRUCTION,
+# so whatever ends this run is physics and not linear algebra.
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION CONTROL, and nothing else is believed without it: the
+#     reconstructedCurvature arm must fail near step 9337 (t = 0.0700), where the
+#     original geometricFaceDensity N=128 projectedFlux arm diverged. If it survives
+#     the full horizon the baseline has moved and this gate is void.
+#   * ESTIMATOR INDICTED if the exact-curvature arm reaches t = 0.1 with an
+#     unabsorbed capillary residual near the STATIONARY level (~1e-06 relL2), i.e.
+#     three orders below the control. The fix then belongs in the curvature chain,
+#     and the variational capillary force -- f_c = -sigma dA_h/dpsi_c from
+#     A_h = sum_c V_c |grad_h alpha_c| -- becomes the principled candidate, because
+#     it removes a separately estimated kappa from the loop entirely.
+#   * ESTIMATOR EXONERATED, mechanism FALSIFIED, if the exact-curvature arm still
+#     diverges. The force balance or the delivery is then the source, the sub-cell
+#     phase reading is wrong, and the next rung is the balance itself rather than
+#     kappa. This outcome is as informative as the other and must be reported as
+#     plainly.
+#   * PARTIAL (delay but not cure) is NOT a pass. t_blow carries 5-38% seed noise in
+#     this campaign; only a horizon-reaching arm, or a residual drop of orders,
+#     counts.
+#   * Report the whole vector -- max|U| is dominated by U0 = 0.05 here and cannot
+#     see a parasitic current below it, which is how a 3D arm was once read as
+#     healthy while dying. Score on the capillary residual, volume, shape, and the
+#     translation-aware disturbanceKineticEnergy.
+study_name: wellBalancedTranslating2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 120
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.1]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature", "constantCurvatureSurfaceTension"]
+  CONST_CURVATURE: [1000]
+  FACE_CURVATURE_SOURCE: [model]
+  CURVATURE_EXTENSION: [none]
+  MASS_FLUX: [geometricFaceDensity]
+  PSI_FILTER: [none]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
