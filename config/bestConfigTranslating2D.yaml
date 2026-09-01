@@ -59,6 +59,68 @@
 #     parasitic current below it -- that is how a 3D arm was once read as healthy
 #     while dying. Score on the capillary residual, volume, shape, and the
 #     translation-aware disturbanceKineticEnergy.
+#
+# ============================== RESULT, 2026-09-01 ==============================
+# RAN: laptop, 4 MPI ranks, profiles/local8. All 6 arms ran to completion or FPE.
+#
+#  N    curvatureExtension   steps  reached End   relL2 1st half   relL2 2nd half
+#  32   none                  1667      YES         0.0017165        0.013061
+#  32   cellCentreInverse     1159      no          0.0019294        0.34732
+#  64   none                  4714      YES         0.0013086        0.00082627
+#  64   cellCentreInverse     3447      no          0.0013872        0.18199
+#  128  none                  9337      no          0.0010857        0.026766
+#  128  cellCentreInverse     9331      no          0.00096482       0.027217
+#
+# REPRODUCTION CONTROL PASSES, for the THIRD independent time: none at N=128 dies at
+# exactly 9337 steps -- the original geometricFaceDensity run, wellBalancedTranslating2D's
+# control, and this. The baseline is solid.
+#
+# VERDICT: FAIL, by the pre-registered criterion, and it is a clean negative.
+# cellCentreInverse does not rescue the translating droplet. It makes it WORSE at the
+# two coarse rungs -- where `none` reaches the full horizon, cellCentreInverse diverges
+# at 70% and 73% of it -- and at N=128 the two are indistinguishable (9331 against 9337,
+# 0.06% apart, far inside the 5-38% t_blow noise).
+#
+# AND THE RESIDUALS SAY WHY IT IS NOT A CURVATURE PROBLEM. While the runs are healthy,
+# the unabsorbed capillary residual is the SAME for both deliveries at every rung
+# (first half: 0.0017 vs 0.0019, 0.0013 vs 0.0014, 0.0011 vs 0.0010). The extension
+# changes the curvature delivery substantially and changes the unabsorbable part of the
+# force not at all. What differs is only whether the run later blows up.
+#
+# THIS DOES NOT OVERTURN cellCentreInverse. It is required by theory -- only a kappa
+# constant over the CSF support makes kappa_f*snGrad(alpha)_f a discrete gradient -- and
+# it holds the best coupled results on record for the STATIONARY droplet, with the
+# non-gradient force content converging at +2.01 against +0.09. Both can be true: the
+# extension is right, and the translating failure has a different cause that the
+# extension cannot touch and that its noise gain makes worse at coarse resolution.
+#
+# TAKEN WITH GATE 3, THE CURVATURE CHAIN IS NOW EXONERATED TWICE OVER:
+#   * wellBalancedTranslating2D: EXACT constant curvature -- sigma*kappa0*snGrad(alpha),
+#     a perfect discrete gradient -- still diverged (11741 vs the control's 9337).
+#   * this study: the theoretically-required extension does not help and hurts.
+# Neither the ESTIMATOR nor the DELIVERY is the source.
+#
+# WHAT IS LEFT, and it is the hypothesis recorded under MASS_FLUX in
+# cases/default.parameter. For a droplet translating at uniform U0 the momentum
+# equation's transient plus convection is U0*[ddt(rho) + div(rho_f phi)] -- U0 times the
+# DISCRETE MASS CONSERVATION RESIDUAL. That source is not a gradient, so the pressure
+# cannot absorb it, and it vanishes IDENTICALLY when U0 = 0. It explains the entire
+# stationary/translating asymmetry with no curvature involved, and it explains why
+# rhoLENT -- which exists precisely to enforce that consistency -- was the right
+# instinct even though our implementation does not achieve it (psi is advected by the
+# semi-Lagrangian trace velocity while rho is transported by phi, two different
+# transport operators).
+#
+# NEXT AND SHARP: a U0 sweep at fixed N. If this is the mechanism the spurious current
+# scales LINEARLY with U0 and the droplet dies after a fixed DISTANCE rather than a
+# fixed time, t_blow ~ 1/U0; and U0 -> 0 must recover the stationary droplet, which it
+# must, because it is the same case.
+#
+# SEPARATE, AND NEW: translating WORKS at N=32 and N=64 (full horizon, and N=64 has the
+# lowest late-run residual of any arm at 8.3e-04) and fails only at N=128. Finer blows
+# first, which this campaign has seen before and which a mesh-independent physical
+# instability would not do.
+# ================================================================================
 study_name: bestConfigTranslating2D
 case: translatingDroplet2D
 mesh: hex
