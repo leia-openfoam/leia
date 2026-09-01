@@ -60,4 +60,14 @@ axes_override:
 collapse_other_axes: true
 export_slides: false
 mpi_launcher: "mpirun -np {np}"
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+# MACHINE-LOCAL ENVIRONMENT HOOK. The plain bashrc line resets
+# WM_PROJECT_USER_DIR to the account default, so on a machine where this
+# session builds into its OWN user dir (cluster: curvature-v2512, kept
+# separate because the account is shared) the jobs silently run a DIFFERENT
+# binary -- measured 2026-09-01: 14 arms ran an Aug 19 build that predates
+# the fvOption they need, and were recorded as 14 divergences. The workflow
+# profile carries the right exports, but a study configfile OVERRIDES the
+# profile config: block in this snakemake version (verified by dry-run), so
+# the profile cannot be relied on. ~/.leia_env is machine-local and
+# unversioned; where it does not exist this line is exactly the old one.
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
