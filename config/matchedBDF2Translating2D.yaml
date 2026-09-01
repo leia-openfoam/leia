@@ -1,0 +1,96 @@
+# CAN WE HAVE BOTH -- second-order time AND mass-momentum consistency?
+#
+# WHERE THIS COMES FROM. config/massConsistencyTranslating2D established the strong
+# result: rhoLENT + Euler momentum completes the translating droplet at N=64 AND
+# N=128 (the first N=128 arm this campaign has ever run to t = 0.1), with the
+# travelled fraction rising 0.50 -> 0.89 and the mass residual falling from ~1e-01 to
+# 1.2e-04. Both conditions were necessary: rhoLENT with backward momentum failed at
+# both rungs, Euler with geometricFaceDensity failed at N=128.
+#
+# BUT THE WINNING PAIR IS FIRST ORDER IN TIME, and that collides with a repository
+# rule established for a real reason: the semi-Lagrangian foot-point trace is second
+# order in time and must not be fed a first-order velocity. Adopting Euler momentum
+# globally would trade a known second-order property for the consistency fix.
+#
+# THE ARGUMENT SAYS WE DO NOT HAVE TO. What the free stream requires is that momentum's
+# ddt(rho,U) expand with the SAME time scheme as the density equation's ddt(rho) --
+# MATCHED, not first order. The residual that breaks it is
+#
+#     U0 * [ ddt_mom(rho) - ddt_mass(rho) ],
+#
+# which is zero whenever the two agree, at ANY order. Euler/Euler is one solution;
+# backward/backward is the other, and it keeps second-order time.
+#
+# WHY IT WAS NOT AVAILABLE BEFORE. config/rhoDdtGate2D measured BDF2 on the auxiliary
+# density equation driving rho to -72.28: its homogeneous part is an EXTRAPOLATION,
+# rho^{n+1} = (4/3)rho^n - (1/3)rho^{n-1} - ..., not a convex combination, so it
+# undershoots by construction. A negative rho flips the sign of 1/rho in the pressure
+# Laplacian and ends the run in a GAMG blow-up. massFlux.boundRho now clips exactly
+# that, and reports what it cost -- so the pairing is testable for the first time.
+#
+# ONE VARIABLE: the matched time-scheme PAIR. Both arms are consistent in the
+# mass-momentum sense; they differ only in order.
+# FULL 2x2 OF THE TWO ddt KEYS at each rung, which is a stronger demonstration than
+# testing the matched pair alone: if the two MATCHED arms work and the two MISMATCHED
+# arms fail REGARDLESS OF ORDER, matching is the mechanism and order is not.
+#   Euler    / Euler     matched, 1st order -- the known-good pair (reproduction control)
+#   backward / backward  matched, 2nd order -- the arm this study exists for
+#   backward / Euler     MISMATCHED -- the historical default; known to fail
+#   Euler    / backward  MISMATCHED the other way -- the missing cell, predicted to fail
+#
+# The droplet is started upstream (DROPLET_OFFSET_X -0.0025) so the outlet cannot
+# contaminate the result: config/translatingClearOutlet2D showed that with the droplet
+# centred, geometricFaceDensity at N=128 dies at step 9337 purely from crossing the
+# outlet, and completes all 13334 steps once cleared.
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION CONTROL: Euler/Euler must reach t = 0.1 at both rungs with a
+#     travelled fraction near 0.62 (N=64) and 0.77 (N=128), matching
+#     translatingClearOutlet2D. If it does not, something moved and nothing below holds.
+#   * PASS for backward/backward: reaches t = 0.1 at both rungs with a travelled
+#     fraction AT LEAST as good as Euler/Euler, and a clip that stays small. Then the
+#     method can be both consistent and second order, the BDF2 rule survives intact,
+#     and the shared configuration needs only ddt(rho) set to match.
+#   * THE CLEAN DEMONSTRATION would be both matched arms reaching the horizon and both
+#     mismatched arms failing. Order would then be irrelevant to survival and MATCHING
+#     would be the whole mechanism -- the strongest form of the argument, and it would
+#     retire the momentum-ddt question rather than trading one default for another.
+#   * FAIL if it diverges or if the clip has to do heavy work (clipL1 comparable to
+#     rho2 = 1.19, or a large fraction of cells clipped every step). BDF2's
+#     extrapolation would then be fundamentally incompatible with a bounded density,
+#     and Euler/Euler stands as the only consistent pair -- which would be a genuine
+#     conflict with the BDF2 rule, to be resolved on the measurement rather than by
+#     preference.
+#   * SCORED ON: travelled fraction and centroid error (free-stream preservation),
+#     mass residual (is the mechanism engaged), clipL1 and clipFraction (what
+#     boundedness cost), and volume and shape alongside.
+study_name: matchedBDF2Translating2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 240
+axes_override:
+  N_CELLS: [64, 128]
+  END_TIME: [0.1]
+  DROPLET_OFFSET_X: [-0.0025]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  MOMENTUM_DDT_SCHEME: ["Euler", "backward"]
+  RHO_DDT_SCHEME: ["Euler", "backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
