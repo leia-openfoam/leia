@@ -17,6 +17,15 @@ FoamFile
 
 solvers
 {
+    // rhoLENT's auxiliary mass equation ddt(rho) + div(rhoPhi) = 0 is DIAGONAL
+    // (implicit ddt, explicit div), but fvMatrix::solve() still requires a
+    // solver entry. Without it the run dies immediately on `cannot find
+    // solver for rho`. Same entry the committed IST cases use.
+    "rho.*"
+    {
+        solver          diagonal;
+    }
+
     // Required by immiscibleIncompressibleTwoPhaseMixture at construction; the
     // level set is advected semi-Lagrangian, so MULES is never actually invoked.
     "alpha.water.*"
@@ -180,11 +189,11 @@ levelSet
     //       -- the rhoLENT-style consistent flux (step 2b).
     massFlux
     {
-        type                geometricFaceDensity;   // interpolatedDensity | geometricFaceDensity
+        type                @!MASS_FLUX!@;   // interpolatedDensity | geometricFaceDensity
         // alpha_f from the UPWIND (donor) cell's level-set plane -- the phase
         // composition the flux carries through the face (consistent + stable).
         // "central" = 1/2(owner+neighbour), for comparison only.
-        faceInterpolation   upwind;                 // upwind | central
+        faceInterpolation   @!MASS_FLUX_FACE_INTERPOLATION!@;                 // upwind | central
     }
 
     // Harmonic (Laplace) smoothing of the mean curvature: pin the cell-centred

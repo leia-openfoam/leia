@@ -466,5 +466,28 @@ PIMPLE_RESIDUAL_CONTROL_FILE residualControl.off;
 // a silently stationary droplet.
 TRANSLATION_SPEED 0.05;
 
+// Two-phase mass flux for div(rhoPhi,U). CHANGED TO rhoLENT 2026-09-01 -- and
+// this default is NOT INERT: it changes the momentum flux of every two-phase
+// study that picks it up, so results before and after this commit are NOT
+// comparable.
+//
+// WHY. interpolatedDensity and geometricFaceDensity build rho_f geometrically
+// but solve NO density equation, so the mass actually transported and the mass
+// used in div(rhoPhi,U) need not agree. At the water/air density ratio used
+// here -- 998.2/1.19 = 839 -- that inconsistency is largest exactly where the
+// interface MOVES through the mesh, which is the translating and oscillating
+// droplet. rhoLENT (Liu et al., JCP 493:112426, 2023, Eq. 40 / Algorithm 1)
+// adds the auxiliary conservative equation ddt(rho) + div(rhof^{n+1} phi^o) = 0
+// on every PIMPLE outer iteration, making the mass flux in the density and
+// momentum equations identical, and resets rho_c from the Detrixhe-Aslam alpha
+// after convergence.
+//
+// Requires `"rho.*" { solver diagonal; }` in the case's solvers dict -- the
+// equation is diagonal but fvMatrix::solve() still needs an entry.
+MASS_FLUX rhoLENT;
+// central = symmetric owner/neighbour-plane face fraction (rhoLENT's own
+// default); upwind is the older geometricFaceDensity behaviour.
+MASS_FLUX_FACE_INTERPOLATION central;
+
 SL_FOOT_INTEGRATOR taylor;
 SL_TRACE_VELOCITY cellCentred;
