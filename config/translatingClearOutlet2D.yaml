@@ -1,0 +1,97 @@
+# THE TRANSLATING DROPLET WITH THE OUTLET CLEARED -- and it is a retraction gate.
+#
+# WHAT WAS FOUND, 2026-09-01, and it reframes weeks of work on this case. The
+# translating droplet is posed with the droplet CENTRED in a 0.01 m box, U0 = 0.05
+# and END_TIME 0.1. The arithmetic:
+#
+#     start centre 0.005, radius 0.001  ->  leading edge 0.006
+#     travel at T  = U0*T = 0.005       ->  leading edge 0.011, outlet at 0.010
+#     the leading edge reaches the OUTLET at t = 0.08 s, 80% of the horizon,
+#     and the CENTRE arrives exactly at t = 0.1.
+#
+# So the last fifth of every translating run has the droplet crossing the outlet.
+# Checking where the droplet actually was at the end of each arm of
+# config/consistencyTranslating2D (8 arms, all finished):
+#
+#     N=64  geometricFaceDensity Euler     COMPLETED   edge 10.9 cells INSIDE
+#     N=64  geometricFaceDensity backward  COMPLETED   edge  9.6 cells INSIDE
+#     N=64  cellCentreInverse    x2        FAILED      edge -3.2, -1.9 cells (PAST)
+#     N=128 all four arms                  FAILED      edge -1.5, -1.5, -1.2, -2.5 (PAST)
+#
+# SIX OF SIX failures have the droplet's leading edge at or beyond the outlet, and
+# both survivors have it ~10 cells inside. That is why the "9337-step failure"
+# reproduced to within 0.5% on four independent occasions -- 9331, 9337, 9367, 9324 --
+# a precision no stochastic instability has: it is a GEOMETRIC event. It also inverts
+# the "finer blows first" reading: the finer mesh transports the droplet more
+# accurately, so it REACHES THE OUTLET SOONER. N=64 survives because it lags so badly
+# it never gets there.
+#
+# THE SECOND DEFECT IS REAL AND SEPARATE, and it is the one worth keeping. The
+# droplet LAGS. Over the horizon at N=64 it travels 50% of U0*T under
+# geometricFaceDensity and 89% under rhoLENT, against centroid errors 2.50e-03 and
+# 5.85e-04. The exact solution is U == U0 EVERYWHERE, inside the droplet included, so
+# that lag IS the free-stream preservation failure -- and mass-momentum consistency
+# improves it 4.3x. The mean velocity in the domain is well below U0, i.e. the droplet
+# acts as an obstacle and decelerates a stream it should ride passively.
+#
+# THIS STUDY separates the two. DROPLET_OFFSET_X = -0.0025 starts the droplet at
+# x = 0.0025 through the derived DROPLET_CENTRE_X (default 0 renders byte-identically
+# to the old centred placement, so no existing study moves). Then:
+#
+#     trailing edge at t=0    0.0015  ->  19.2 cells from the inlet   (N=128)
+#     leading edge at t=T     0.0085  ->  19.2 cells from the outlet  (N=128)
+#
+# symmetric, and the droplet never comes near either boundary even if it does NOT lag.
+#
+# ONE VARIABLE: MASS_FLUX. Momentum ddt is pinned to Euler -- matched to the Euler
+# density update, and config/consistencyTranslating2D measured Euler no worse than
+# backward on the free-stream error in all four pairs. boundRho and the mass-residual
+# diagnostic are on everywhere so each arm reports what its momentum equation inherits.
+#
+# PRE-REGISTERED READ-OUT, and both outcomes are informative.
+#   * OUTLET WAS THE KILLER if the N=128 arms now REACH t = 0.1. The historical
+#     failures were then a case-posing artefact, the four-times-reproduced 9337 was
+#     the droplet leaving the domain, and every conclusion drawn from t_blow on this
+#     case has to be re-read -- which is why this config is written as a retraction
+#     gate rather than a tuning run.
+#   * OUTLET WAS NOT THE KILLER if they still fail well inside the domain, with the
+#     edge many cells from the outlet. The correlation would then be coincidence and
+#     the numerics are back in the frame.
+#   * SCORED ON THE LAG, not on t_blow: centroidError and the travelled fraction
+#     (centroidX - centroidX_0)/(U0*t) are what measure free-stream preservation. The
+#     prediction from the mass residual (4.79e-02 relative for geometricFaceDensity
+#     against 2.30e-11 for rhoLENT, measured in config/rhoBoundGate2D) is that rhoLENT
+#     tracks U0 markedly better. It already does by 4.3x at N=64 WITH the outlet
+#     contaminating; cleared, the comparison is finally clean.
+#   * Report the whole vector: centroid error, travelled fraction, mass residual,
+#     clip, volume, shape.
+study_name: translatingClearOutlet2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 240
+axes_override:
+  N_CELLS: [64, 128]
+  END_TIME: [0.1]
+  DROPLET_OFFSET_X: [-0.0025]
+  MASS_FLUX: ["geometricFaceDensity", "rhoLENT"]
+  MOMENTUM_DDT_SCHEME: ["Euler"]
+  RHO_DDT_SCHEME: ["Euler"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

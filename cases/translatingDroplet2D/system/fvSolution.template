@@ -360,7 +360,13 @@ levelSet
     implicitSurface
     {
         type    implicitSphere;
-        center  (@!DOMAIN_HALF_LENGTH!@ @!DOMAIN_HALF_LENGTH!@ 0);
+        // x tokenised through the DERIVED DROPLET_CENTRE_X = DOMAIN_HALF_LENGTH +
+        // DROPLET_OFFSET_X, so the droplet can START UPSTREAM and keep clear of the
+        // outlet. With the default offset 0 this renders byte-identically to the
+        // old centred placement. MEASURED 2026-09-01: with the droplet centred and
+        // END_TIME 0.1 at U0 = 0.05 the leading edge reaches the outlet at t = 0.08,
+        // and EVERY divergence of this case occurred with the edge at or past it.
+        center  (@!DROPLET_CENTRE_X!@ @!DOMAIN_HALF_LENGTH!@ 0);
         radius  1e-3;
     }
 
