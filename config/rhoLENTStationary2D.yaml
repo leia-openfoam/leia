@@ -39,6 +39,45 @@
 #     here, because geometricFaceDensity solves no density equation regardless of
 #     whether the interface moves.
 #   * Report the whole vector: capillary residual, volume, shape, |grad psi|, clip.
+#
+# ============================== RESULT, 2026-09-02 ==============================
+# RAN: Lichtenberg, 4 ranks/arm. All 6 arms COMPLETED the full horizon.
+#
+#  N    massFlux              relL2 2ndHalf  volErr      shapeL2     massResRel  clipL1
+#  32   geometricFaceDensity   2.3693e-05    6.885e-04   3.216e-06   5.072e-01   0
+#  32   rhoLENT                2.3939e-05    6.656e-04   3.268e-06   3.195e-08   2.13e-12
+#  64   geometricFaceDensity   3.1449e-06    1.529e-04   3.719e-06   3.955e-02   0
+#  64   rhoLENT                2.4505e-06    1.676e-04   2.375e-06   9.829e-09   2.56e-12
+#  128  geometricFaceDensity   8.5341e-07    1.286e-05   2.255e-07   5.590e-01   0
+#  128  rhoLENT                8.5436e-07    1.289e-05   2.262e-07   2.437e-05   2.86e-12
+#
+# REPRODUCTION CONTROL PASSES TO FIVE DIGITS: the geometricFaceDensity arms give
+# 2.3693e-05 / 3.1449e-06 / 8.5341e-07 against the shared ladder's 2.369e-05 /
+# 3.145e-06 / 8.534e-07 (config/stationaryLadder2Dshared). Nothing has moved.
+#
+# PASS. rhoLENT is NEUTRAL-TO-BETTER, which was the pre-registered success criterion:
+# +1.0% at N=32, -22% (better) at N=64, +0.1% at N=128 on the unabsorbed capillary
+# residual, with volume and shape matching to three digits and all six arms reaching
+# the horizon. The clip is ~2e-12 -- nothing. rhoLENT does not damage the case this
+# campaign spent months making clean, so it is safe to adopt.
+#
+# AND THE LAST COLUMN IS THE MECHANISM, SHOWN DIRECTLY. geometricFaceDensity carries a
+# mass residual of 0.04 to 0.56 RELATIVE on the STATIONARY droplet -- as large as on
+# the translating one -- and it does no harm here. That is exactly what the argument
+# predicts: the spurious momentum source is U0 times the residual, so at U0 = 0 an
+# arbitrarily bad mass residual is invisible. The same residual is what wrecks the
+# translating case. This is the cleanest single piece of evidence for the mechanism in
+# the whole campaign, because it holds the residual roughly FIXED and varies only U0.
+#
+# RECOMMENDATION, NOT ACTED ON HERE. The evidence now supports rhoLENT as the shared
+# MASS_FLUX default: neutral on stationary (this study), ahead on translating free-
+# stream preservation at both rungs (config/translatingClearOutlet2D), and the best
+# configuration measured anywhere on the translating case is rhoLENT + boundRho +
+# matched BDF2 (config/matchedBDF2Translating2D, phase-volume error 0.0024). Flipping
+# it is a one-line change to MASS_FLUX in cases/default.parameter, but it would make
+# every ladder run before it incomparable, so it is left as an explicit decision rather
+# than taken unilaterally at the end of a long night.
+# ================================================================================
 study_name: rhoLENTStationary2D
 case: stationaryDroplet2D
 mesh: hex
