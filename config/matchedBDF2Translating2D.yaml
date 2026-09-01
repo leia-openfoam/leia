@@ -64,6 +64,48 @@
 #   * SCORED ON: travelled fraction and centroid error (free-stream preservation),
 #     mass residual (is the mechanism engaged), clipL1 and clipFraction (what
 #     boundedness cost), and volume and shape alongside.
+#
+# ============================== RESULT, 2026-09-02 ==============================
+# RAN: Lichtenberg, 4 ranks/arm. All 8 arms finished. Droplet started upstream, so
+# the outlet cannot contaminate anything below.
+#
+#  N=128 (the discriminating rung; at N=64 all four pairings complete)
+#  mom ddt   rho ddt   pair        steps  End  travelFrac  centErr    massResRel  volErr
+#  Euler     Euler     matched     13334  yes    0.7667    1.167e-03  3.765e-04   0.0525
+#  Euler     backward  MISMATCHED  13334  yes    0.8827    5.873e-04  6.625e-04   0.0585
+#  backward  Euler     MISMATCHED  10431  NO     1.3210    1.453e-03  2.085e-01   0.7747
+#  backward  backward  matched     13334  yes    0.8737    6.345e-04  3.042e-03   0.0024
+#
+# PASS for backward/backward, and it is the best arm in the study: matched AND second
+# order, full horizon at both rungs, travelled fraction 0.874, and a phase-volume
+# error of 0.0024 -- 22x better than the next best (0.0525). The repository's BDF2
+# rule survives intact; the method does not have to trade time order for consistency.
+#
+# THE SINGLE FAILURE IS backward/Euler -- AND THAT IS THE PAIRING I CREATED. Before
+# 2026-09-01 no case wrote a ddt(rho) entry, so it inherited `default` and was
+# AUTOMATICALLY MATCHED to momentum. Commit f7307b5 added RHO_DDT_SCHEME with default
+# Euler, on the reasoning that BDF2 on the auxiliary density equation is an
+# extrapolation and drives rho negative -- correct as far as it went, but it broke the
+# matching and produced the one configuration here that diverges. The right fix was
+# never the time scheme: it is massFlux.boundRho, which bounds rho and makes matched
+# BDF2/BDF2 viable for the first time. RHO_DDT_SCHEME's default is corrected to
+# backward in the same commit that records this.
+#
+# MATCHING IS NOT A CLEAN PREDICTOR ON ITS OWN, and saying so matters. One mismatched
+# pair (Euler/backward) completes and scores well; the other (backward/Euler) is the
+# only divergence. The two carry the SAME inconsistency magnitude with OPPOSITE SIGN --
+# the residual is U0*[ddt_mom(rho) - ddt_mass(rho)], so swapping the schemes flips it --
+# which is consistent with the sign deciding whether the spurious source damps or
+# amplifies. That is a hypothesis this study suggests, not one it establishes.
+#
+# AND IT RETRACTS PART OF config/massConsistencyTranslating2D. That matrix ran with the
+# droplet CENTRED and concluded "both conditions necessary". At N=64 here, with the
+# outlet cleared, all four pairings complete, the BEST travelled fraction (0.6905) is a
+# MISMATCHED pair, and the mass residual is ~1e-10 with a ~1e-12 clip in every arm --
+# so the residual is not what orders them. The mass-flux half of the argument survives
+# (config/translatingClearOutlet2D: rhoLENT ahead at both rungs); the claim that a
+# matched momentum time scheme is SEPARATELY necessary does not, and is retracted.
+# ================================================================================
 study_name: matchedBDF2Translating2D
 case: translatingDroplet2D
 mesh: hex

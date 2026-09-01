@@ -109,6 +109,41 @@
 # geometricFaceDensity arms is the point; that the clip is doing that much work is a
 # defect to chase, not a success to bank.
 #
+# ---------------------------------------------------------------------------------
+# CONFOUND, FOUND 2026-09-02 AFTER THIS TABLE WAS WRITTEN, AND IT WEAKENS THE
+# "BOTH CONDITIONS NECESSARY" READING ABOVE. This matrix ran with the droplet CENTRED,
+# so its late run is contaminated by the droplet crossing the outlet -- the defect
+# config/translatingClearOutlet2D then established, where geometricFaceDensity at
+# N=128 completes all 13334 steps once the droplet is started upstream.
+#
+# So what this matrix actually measured at N=128 is partly WHICH ARM BEST TOLERATED
+# CROSSING THE OUTLET, not which arm preserves the free stream. rhoLENT + Euler
+# surviving that crossing is a real robustness result and the travelled-fraction
+# improvement (0.50 -> 0.89) is real, but "both conditions are necessary" does not
+# follow from a contaminated matrix.
+#
+# config/matchedBDF2Translating2D re-ran the ddt question with the outlet cleared, all
+# arms on rhoLENT, as a full 2x2 of the two ddt keys. At N=64 ALL FOUR PAIRINGS
+# COMPLETE, and the ordering does NOT follow matching:
+#
+#   mom/rho              pair         travelFrac   massResRel   clipL1
+#   backward / Euler     MISMATCHED     0.6905      3.01e-11    1.62e-12
+#   Euler    / Euler     matched        0.6159      2.30e-10    3.88e-12
+#   backward / backward  matched        0.5804      2.72e-09    3.76e-12
+#   Euler    / backward  MISMATCHED     0.5493      7.03e-10    7.60e-12
+#
+# The BEST arm is mismatched and both matched arms sit below it. The mass residual is
+# ~1e-10 and the clip ~1e-12 in all four, so every pairing conserves mass essentially
+# perfectly once the outlet is cleared, and the travelled-fraction spread of 0.55-0.69
+# is NOT tracking the residual. The ddt-pairing half of the argument is therefore NOT
+# supported once the confound is removed; the mass-flux half still is
+# (config/translatingClearOutlet2D: 0.616 against 0.433 at N=64, 0.767 against 0.740
+# at N=128, rhoLENT ahead at both rungs).
+#
+# THE CONCLUSION THAT SURVIVES: rhoLENT improves free-stream preservation, measurably
+# and at both rungs. The claim that a matched momentum time scheme is separately
+# necessary does not survive its own clean test and is retracted here.
+# ---------------------------------------------------------------------------------
 # THE COST, reported because the standing rule is never a headline metric alone:
 # rhoLENT is WORSE on phase-volume conservation at these rungs -- 0.159 against 0.107
 # at N=128 and 0.193 against 0.044 at N=64. See config/translatingClearOutlet2D, where
