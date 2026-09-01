@@ -3,11 +3,84 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-08-31.
+Last updated: 2026-09-01.
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
 workflow). This file is the *current state*, not the manual.
+
+---
+
+## 0. READ THIS FIRST — the translating droplet was leaving the domain (2026-09-01)
+
+**The translating-droplet failures this campaign has been chasing were the droplet
+crossing the outlet.** `translatingDroplet2D` starts the droplet at the CENTRE of a
+0.01 m box with `U0 = 0.05` and `END_TIME 0.1`:
+
+    start centre 0.005, radius 0.001  ->  leading edge 0.006
+    travel U0*T = 0.005               ->  leading edge 0.011, outlet at 0.010
+    leading edge reaches the OUTLET at t = 0.08 s -- 80% of the horizon
+
+Where the droplet actually was at the end of each of the 8 arms of
+`config/consistencyTranslating2D`:
+
+| outcome | arms | leading edge vs outlet |
+|---|---|---|
+| COMPLETED | 2 | 10.9 and 9.6 cells **inside** |
+| FAILED | 6 | −1.5, −1.5, −1.2, −2.5, −3.2, −1.9 cells — **past it** |
+
+Six of six. That is why the "9337-step failure" reproduced to within 0.5% on four
+independent occasions (9331 / 9337 / 9367 / 9324): no stochastic instability
+reproduces like that — it is a **geometric event**. It also inverts "finer blows
+first": the finer mesh transports the droplet more accurately, so it reaches the
+outlet **sooner**, and N=64 survives only because it lags so badly it never arrives.
+
+**Consequence: every conclusion this campaign drew from `t_blow` on the translating
+case has to be re-read.** `config/translatingClearOutlet2D` re-runs it with the
+droplet started upstream (19.2 cells of clearance at both boundaries at N=128) and is
+written as a retraction gate.
+
+### The real defect underneath, and it is not curvature
+
+The droplet **lags**. Over the horizon at N=64 it travels **50%** of `U0*T` under
+`geometricFaceDensity` and **89%** under `rhoLENT` — centroid errors 2.50e-03 against
+5.85e-04, a **4.3x** improvement. The exact solution is `U == U0` *everywhere*, the
+droplet included, so the lag **is** the free-stream preservation failure.
+
+The measured cause is mass-momentum inconsistency. `config/rhoBoundGate2D` measured
+the discrete mass residual `ddt(rho) + div(rhoPhi)` directly:
+
+| mass flux | relative residual |
+|---|---|
+| `geometricFaceDensity` (the default; every translating run to date) | **4.79e-02** |
+| `rhoLENT` + `boundRho` | **2.30e-11** |
+
+Nine orders. For a droplet translating at `U0` the momentum equation inherits `U0`
+times that residual — not a gradient, so the pressure cannot absorb it, and
+**identically zero at `U0 = 0`**, which is exactly why the stationary droplet is clean
+and the translating one is not.
+
+### The curvature chain is exonerated, four times over
+
+| gate | result |
+|---|---|
+| `kinematicTranslation2D` | SL transport is 2nd–3rd order, bounded-α error exactly 0 |
+| `wellBalancedTranslating2D` | **exact constant curvature still diverged** |
+| `bestConfigTranslating2D` | the required extension does not help and hurts coarse rungs |
+| `rhoDdtGate2D` | the density ddt scheme is not the mechanism |
+
+### New, runtime-selectable, default-off (so nothing existing moves)
+
+- `massFlux { boundRho true; }` — clip the auxiliary density to `[rho2, rho1]`; the
+  clip is **reported** (`rhoClipL1`, `rhoClipFraction`) because it breaks the very
+  identity rhoLENT enforces.
+- `massFlux { massResidualDiagnostic true; }` — the mass residual for **every**
+  mass-flux model, not just rhoLENT.
+- `DROPLET_OFFSET_X` — sub-cell or gross displacement of the droplet start, via the
+  derived `DROPLET_CENTRE_X`; default 0 renders byte-identically.
+
+Both were gated for bit-identity (every shared metric column to the last digit) and
+on 4 MPI ranks before any cluster use.
 
 ---
 
