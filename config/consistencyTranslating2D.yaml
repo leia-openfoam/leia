@@ -1,0 +1,84 @@
+# MASS-MOMENTUM CONSISTENCY ON THE TRANSLATING DROPLET: does matching the momentum
+# time scheme to the density update recover the free stream?
+#
+# THE ARGUMENT, and it is algebra, not a hunch. A droplet translating at uniform U0
+# is the stationary droplet in a moving frame; the exact solution is U == U0
+# everywhere. A discretisation preserves that only if the momentum transient plus
+# convection collapses, for U = const, to U0 times the DISCRETE MASS RESIDUAL:
+#
+#     ddt(rho U) + div(rhoPhi, U)  ->  U0 * [ ddt(rho) + div(rhoPhi) ].
+#
+# With BDF2 momentum the left side expands as U0 * ddt_BDF2(rho), while an Euler
+# density update enforces div(rhoPhi) = -(rho^{n+1} - rho^n)/dt. The residual is then
+#
+#     U0 * [ ddt_BDF2(rho) - ddt_Euler(rho) ]
+#         = U0 * (1/2)(rho^{n+1} - 2 rho^n + rho^{n-1}) / dt,
+#
+# U0 times HALF THE SECOND DIFFERENCE of rho over dt. In any cell the interface
+# sweeps, rho swings by a large fraction of rho1-rho2 = 997 within a few steps, so
+# this term is O(U0 * drho / dt) -- and it is IDENTICALLY ZERO when U0 = 0.
+#
+# That is the entire stationary/translating asymmetry, with no curvature in it. It
+# fits everything measured: the stationary ladder is clean at every rung and the
+# translating case fails, while four separate gates exonerated the curvature chain --
+# transport (kinematicTranslation2D), the estimator (wellBalancedTranslating2D, where
+# EXACT constant curvature still diverged), the delivery (bestConfigTranslating2D),
+# and the density time scheme (rhoDdtGate2D).
+#
+# NOTE ON THE REPOSITORY'S BDF2 RULE. It was established on the STATIONARY droplet,
+# where this term vanishes identically -- the measurement behind the rule could not
+# have seen this. Nothing here changes a default; the scheme is swept as an axis.
+#
+# 2 x 2 x 2 FACTORIAL, both factors separable, no confound:
+#   MOMENTUM_DDT_SCHEME  backward (current) vs Euler (matched to the density update)
+#   CURVATURE_EXTENSION  none vs cellCentreInverse -- carried because the shared
+#                        default changed to cellCentreInverse today AND because
+#                        bestConfigTranslating2D measured it DESTABILISING this case
+#                        at the coarse rungs. Both need their own momentum-ddt pair.
+#   N_CELLS              64 (currently REACHES the horizon under none) and 128
+#                        (currently fails at 9337, reproduced three times).
+#
+# SCORED ON THE FREE-STREAM ERROR, which is the quantity the argument predicts:
+# maxMagUPrime = max_c |U_c - U_ref| with U_ref = U0. max|U| is useless here -- it is
+# dominated by U0 = 0.05 and cannot see a parasitic current below it, which is how a
+# 3D arm was once read as healthy while dying.
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION CONTROL: backward + none at N=128 must fail near step 9337. If it
+#     survives, the baseline moved and nothing here is believed.
+#   * PASS for Euler: the free-stream error falls by ORDERS at matched step count,
+#     and/or N=128 reaches t = 0.1 where backward fails. The predicted term is
+#     O(U0*drho/dt), so if it is the mechanism the effect must be large, not marginal.
+#   * PARTIAL is not a pass: t_blow carries 5-38% seed noise in this campaign.
+#   * FALSIFIED if Euler changes nothing. The momentum/mass time-scheme mismatch is
+#     then not the leading term, and the next candidate is the mass residual itself --
+#     geometricFaceDensity solves NO density equation, so ddt(rho) + div(rhoPhi) is
+#     whatever the geometry leaves it, and only a consistent rhoLENT can zero it.
+#     That is the follow-on study and it needs the density-bounding work.
+#   * Report the whole vector: free-stream error, volume, shape, capillary residual.
+study_name: consistencyTranslating2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 240
+axes_override:
+  N_CELLS: [64, 128]
+  END_TIME: [0.1]
+  MOMENTUM_DDT_SCHEME: ["backward", "Euler"]
+  CURVATURE_EXTENSION: ["none", "cellCentreInverse"]
+  MASS_FLUX: [geometricFaceDensity]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
