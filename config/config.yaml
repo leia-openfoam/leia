@@ -27,12 +27,32 @@ axes_override:
   PHASE_INDICATOR: [geometric, detrixheAslam]   # compare the two geometric methods
 collapse_other_axes: true
 
-# --- execution (the profiles override these) ------------------------------
-# env_preamble runs at the top of every OpenFOAM rule shell. Locally we source
-# the OpenFOAM install that the leia binaries were built against. Adjust the
-# path/version for your machine, or set it to "" if you always source OpenFOAM
-# before launching snakemake.
+# --- execution ------------------------------------------------------------
+# env_preamble runs at the top of every OpenFOAM rule shell. It sources the
+# OpenFOAM install the leia binaries were built against, then an OPTIONAL,
+# MACHINE-LOCAL $HOME/.leia_env. Set the path/version for your machine, or "" if
+# you always source OpenFOAM before launching snakemake.
+#
+# WHY THE HOOK IS HERE AND NOT ONLY IN A PROFILE (measured 2026-09-01). Sourcing
+# the OpenFOAM bashrc RESETS WM_PROJECT_USER_DIR to the account default. On a
+# machine where a session builds into its own user dir -- as on Lichtenberg,
+# where the tm83tomy account is SHARED and this work builds into curvature-v2512
+# -- that puts the account-default bin dir first on PATH, and the Snakefile calls
+# the solver bare by name, so PATH decides. Fourteen cluster arms silently ran an
+# AUGUST 19 binary that predates the fvOption they need and were recorded as
+# fourteen divergences.
+#
+# It is in THIS file because env_preamble has three possible sources -- this
+# global config, the study configfile, and the workflow profile's `config:` block
+# -- and the effective precedence among them was not what it appeared to be: with
+# the hook in the study config AND the right exports in the slurm profile, the
+# jobs still ran the plain value from here. Putting the hook in the global
+# default makes the machine-local file apply no matter which source wins, and
+# fixes every one of the 237 configs that pins env_preamble at once.
+#
+# Where $HOME/.leia_env does not exist this is exactly the old single-command
+# line, so nothing changes on a machine that does not need it.
 mpi_launcher: "mpirun -np {np}"
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
 
 # studies_dir: studies     # default: <repo>/studies  (already in .gitignore)
