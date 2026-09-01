@@ -139,6 +139,9 @@ int main(int argc, char *argv[])
     // Parasitic-current + Laplace-jump metrics for the stationary-droplet study.
     #include "createDropletMetricsFile.H"
 
+    // One consolidated account of every runtime selection actually in use.
+    #include "printMethodBanner.H"
+
     #include "setInitialDeltaT.H"
 
 
