@@ -70,6 +70,51 @@
 #     the trace velocity while rho is transported by the face flux -- two different
 #     transport operators, which is the consistency rhoLENT assumes and we do not have).
 #   * Report the whole vector: free-stream error, mass residual, clip, volume, shape.
+#
+# ============================== RESULT, 2026-09-02 ==============================
+# RAN: Lichtenberg, 4 ranks/arm, curvature-v2512 verified by the Exec line. All 8
+# arms finished. Droplet CENTRED, so the outlet contaminates the late run.
+#
+#  N    massFlux              momDdt    steps   End   massResRel  travelFrac  centErr
+#  64   geometricFaceDensity  backward   4714   yes   8.942e-02     0.458     2.709e-03
+#  64   geometricFaceDensity  Euler      4714   yes   9.854e-02     0.499     2.502e-03
+#  64   rhoLENT               backward   4306   NO    1.501e-01     0.651     1.824e-03
+#  64   rhoLENT               Euler      4714   yes   1.197e-04     0.895     5.847e-04
+#  128  geometricFaceDensity  backward   9337   NO    6.780e-01       -           -
+#  128  geometricFaceDensity  Euler      9377   NO    8.103e-01       -           -
+#  128  rhoLENT               backward   7648   NO    2.559e-01       -           -
+#  128  rhoLENT               Euler     13334   YES   5.249e-03     0.892     7.223e-04
+#
+# PASS, in the STRONG form that was pre-registered: BOTH conditions are necessary and
+# together they are sufficient at both rungs.
+#   * rhoLENT alone, with backward momentum, fails at N=64 AND N=128.
+#   * Euler alone, with geometricFaceDensity, fails at N=128.
+#   * rhoLENT + Euler completes BOTH -- and rhoLENT + Euler at N=128 is the FIRST
+#     N=128 translating arm in this campaign to reach t = 0.1, where every other arm
+#     ever run died near step 9337.
+#
+# It survives even though the droplet CROSSES THE OUTLET in the last fifth of the run,
+# which killed all six comparable arms of config/consistencyTranslating2D.
+#
+# THE FREE STREAM IS WHAT IMPROVES, which is what the argument predicted. The
+# travelled fraction (centroid displacement over U0*t; the exact solution is 1) goes
+# from 0.458-0.499 under geometricFaceDensity to 0.895 under rhoLENT+Euler, and the
+# centroid error improves 4.3x. The two rhoLENT+Euler rungs agree to 0.3% -- 0.895 at
+# N=64 and 0.892 at N=128 -- so this is a converged property, not a lucky arm.
+#
+# THE MECHANISM IS ENGAGED, not merely selected: the mass residual falls from ~1e-01
+# to 1.2e-04 at N=64. It is 5.2e-03 at N=128 rather than 1e-11 because the clip does
+# real work there (clipL1 0.836 against 0.018 at N=64), and clipping breaks the very
+# identity being enforced. That the arm still completes with a residual 130x below the
+# geometricFaceDensity arms is the point; that the clip is doing that much work is a
+# defect to chase, not a success to bank.
+#
+# THE COST, reported because the standing rule is never a headline metric alone:
+# rhoLENT is WORSE on phase-volume conservation at these rungs -- 0.159 against 0.107
+# at N=128 and 0.193 against 0.044 at N=64. See config/translatingClearOutlet2D, where
+# with the outlet cleared that reverses at N=128 (0.053 against 0.072), which suggests
+# the volume penalty here is outlet contamination rather than the model.
+# ================================================================================
 study_name: massConsistencyTranslating2D
 case: translatingDroplet2D
 mesh: hex

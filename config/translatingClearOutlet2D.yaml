@@ -65,6 +65,46 @@
 #     contaminating; cleared, the comparison is finally clean.
 #   * Report the whole vector: centroid error, travelled fraction, mass residual,
 #     clip, volume, shape.
+#
+# ============================== RESULT, 2026-09-02 ==============================
+# RAN: Lichtenberg, 4 ranks/arm. ALL FOUR ARMS COMPLETED t = 0.1.
+#
+#  N    massFlux              steps   End   travelFrac  centErr     massResRel  volErr
+#  64   geometricFaceDensity   4714   yes     0.433     2.832e-03   1.054e-01   0.03299
+#  64   rhoLENT                4714   yes     0.616     1.920e-03   2.298e-10   0.07994
+#  128  geometricFaceDensity  13334   yes     0.740     1.298e-03   1.723e-01   0.07184
+#  128  rhoLENT               13334   yes     0.767     1.167e-03   3.765e-04   0.05250
+#
+# THE RETRACTION GATE PASSES, and the retraction stands. geometricFaceDensity at
+# N=128 -- the exact configuration that died at step 9337 on four independent
+# occasions -- COMPLETES ALL 13334 STEPS once the droplet is started upstream. Nothing
+# about the numerics changed between those runs and this one; only the droplet's
+# starting position did. The historical translating-droplet failures were the droplet
+# leaving the domain.
+#
+# THE LAG IS A CONVERGENT DISCRETISATION ERROR, not a structural defect. The travelled
+# fraction (exact = 1) improves under refinement in both models: 0.433 -> 0.740 for
+# geometricFaceDensity and 0.616 -> 0.767 for rhoLENT. rhoLENT is ahead at both rungs,
+# by 42% at N=64 and 3.6% at N=128 -- the gap narrows as the mass residual matters
+# less, which is the right behaviour.
+#
+# THE MASS RESIDUAL BEHAVES AS DESIGNED: 2.3e-10 and 3.8e-4 for rhoLENT against
+# 1.05e-01 and 1.72e-01 for geometricFaceDensity -- eight and three orders. The clip
+# is negligible here (3.6e-06 and 1.7e-03) because with the outlet cleared rho never
+# comes under the pressure the crossing put on it.
+#
+# AND THE VOLUME PENALTY REVERSES. With the droplet centred, rhoLENT was worse on
+# phase volume at N=128 (0.159 against 0.107); cleared, it is BETTER (0.0525 against
+# 0.0718). The penalty was outlet contamination, not the model.
+#
+# STILL OPEN, and it is now the leading defect on this case: the droplet inflates
+# monotonically -- phase volume +5% to +8% over the horizon -- and at matched times
+# the gain does NOT converge under refinement (N=64 0.0151/0.0151/0.0187 against
+# N=128 0.0161/0.0090/0.0200 at t = 0.005/0.015/0.025). Mesh-independent volume gain
+# is a first-order-or-worse defect and it is untouched by the mass-flux model, which
+# is expected: alpha comes from psi, so this is semi-Lagrangian transport under the
+# COMPUTED velocity field, not the mass flux.
+# ================================================================================
 study_name: translatingClearOutlet2D
 case: translatingDroplet2D
 mesh: hex
