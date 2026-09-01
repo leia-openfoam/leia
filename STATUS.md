@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-01.
+Last updated: 2026-09-02.
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -11,76 +11,71 @@ workflow). This file is the *current state*, not the manual.
 
 ---
 
-## 0. READ THIS FIRST — the translating droplet was leaving the domain (2026-09-01)
+## 0. READ THIS FIRST — the translating droplet now runs (2026-09-02)
 
-**The translating-droplet failures this campaign has been chasing were the droplet
-crossing the outlet.** `translatingDroplet2D` starts the droplet at the CENTRE of a
-0.01 m box with `U0 = 0.05` and `END_TIME 0.1`:
+**`rhoLENT` + a momentum time scheme MATCHED to the density equation makes the
+translating droplet run the full horizon at N=128 — the first time in this campaign.**
 
-    start centre 0.005, radius 0.001  ->  leading edge 0.006
-    travel U0*T = 0.005               ->  leading edge 0.011, outlet at 0.010
-    leading edge reaches the OUTLET at t = 0.08 s -- 80% of the horizon
+| N | mass flux | mom. ddt | steps | End | mass res. rel | travel fraction |
+|---|---|---|---|---|---|---|
+| 64 | geometric | backward | 4714 | yes | 8.94e-02 | 0.458 |
+| 64 | geometric | Euler | 4714 | yes | 9.85e-02 | 0.499 |
+| 64 | rhoLENT | backward | 4306 | **no** | 1.50e-01 | 0.651 |
+| 64 | **rhoLENT** | **Euler** | 4714 | **yes** | **1.20e-04** | **0.895** |
+| 128 | geometric | backward | 9337 | **no** | 6.78e-01 | — |
+| 128 | geometric | Euler | 9377 | **no** | 8.10e-01 | — |
+| 128 | rhoLENT | backward | 7648 | **no** | 2.56e-01 | — |
+| 128 | **rhoLENT** | **Euler** | **13334** | **YES** | **5.25e-03** | **0.892** |
 
-Where the droplet actually was at the end of each of the 8 arms of
-`config/consistencyTranslating2D`:
+**Both conditions are necessary.** rhoLENT alone fails; Euler alone fails; together
+they complete both rungs. The travelled fraction (centroid displacement over `U0*t`;
+exact = 1) rises 0.50 → 0.89, and the two winning rungs agree to 0.3% — converged.
 
-| outcome | arms | leading edge vs outlet |
-|---|---|---|
-| COMPLETED | 2 | 10.9 and 9.6 cells **inside** |
-| FAILED | 6 | −1.5, −1.5, −1.2, −2.5, −3.2, −1.9 cells — **past it** |
+**Why.** For a droplet translating at `U0` the momentum transient plus convection
+collapses, for constant `U`, to `U0 * [ddt(rho) + div(rhoPhi)]` — not a gradient, so
+the pressure cannot absorb it, and **identically zero at `U0 = 0`**, which is exactly
+why the stationary droplet was always clean. Two things must hold: the mass residual
+must vanish (only rhoLENT does that — 2.3e-11 against 4.8e-02 for
+`geometricFaceDensity`) **and** `ddt(rho,U)` must expand with the same scheme as
+`ddt(rho)`, or momentum inherits `U0 * (1/2)(rho^{n+1} - 2rho^n + rho^{n-1})/dt`.
 
-Six of six. That is why the "9337-step failure" reproduced to within 0.5% on four
-independent occasions (9331 / 9337 / 9367 / 9324): no stochastic instability
-reproduces like that — it is a **geometric event**. It also inverts "finer blows
-first": the finer mesh transports the droplet more accurately, so it reaches the
-outlet **sooner**, and N=64 survives only because it lags so badly it never arrives.
+`config/matchedBDF2Translating2D` is testing whether **backward/backward** works too —
+matched *and* second order, which would keep the BDF2 rule intact.
 
-**Consequence: every conclusion this campaign drew from `t_blow` on the translating
-case has to be re-read.** `config/translatingClearOutlet2D` re-runs it with the
-droplet started upstream (19.2 cells of clearance at both boundaries at N=128) and is
-written as a retraction gate.
+### And a retraction: the historical failures were the droplet leaving the domain
 
-### The real defect underneath, and it is not curvature
+`translatingDroplet2D` centred the droplet in a 0.01 m box with `U0 = 0.05`,
+`END_TIME 0.1`: the leading edge reaches the outlet at **t = 0.08, 80% of the
+horizon**. Six of six failures in `config/consistencyTranslating2D` had the droplet at
+or past the outlet; both survivors had it ~10 cells inside. With the droplet started
+upstream (`config/translatingClearOutlet2D`), **`geometricFaceDensity` at N=128 —
+which died at step 9337 on four independent occasions — completes all 13334 steps.**
+No numerics changed; only the starting position. That is why 9337 reproduced to 0.5%:
+it is a geometric event. It also inverts "finer blows first" — the finer mesh
+transports more accurately, so it reaches the outlet sooner.
 
-The droplet **lags**. Over the horizon at N=64 it travels **50%** of `U0*T` under
-`geometricFaceDensity` and **89%** under `rhoLENT` — centroid errors 2.50e-03 against
-5.85e-04, a **4.3x** improvement. The exact solution is `U == U0` *everywhere*, the
-droplet included, so the lag **is** the free-stream preservation failure.
-
-The measured cause is mass-momentum inconsistency. `config/rhoBoundGate2D` measured
-the discrete mass residual `ddt(rho) + div(rhoPhi)` directly:
-
-| mass flux | relative residual |
-|---|---|
-| `geometricFaceDensity` (the default; every translating run to date) | **4.79e-02** |
-| `rhoLENT` + `boundRho` | **2.30e-11** |
-
-Nine orders. For a droplet translating at `U0` the momentum equation inherits `U0`
-times that residual — not a gradient, so the pressure cannot absorb it, and
-**identically zero at `U0 = 0`**, which is exactly why the stationary droplet is clean
-and the translating one is not.
+**Every conclusion drawn from `t_blow` on the translating case must be re-read.**
 
 ### The curvature chain is exonerated, four times over
 
-| gate | result |
-|---|---|
-| `kinematicTranslation2D` | SL transport is 2nd–3rd order, bounded-α error exactly 0 |
-| `wellBalancedTranslating2D` | **exact constant curvature still diverged** |
-| `bestConfigTranslating2D` | the required extension does not help and hurts coarse rungs |
-| `rhoDdtGate2D` | the density ddt scheme is not the mechanism |
+`kinematicTranslation2D` (transport 2nd–3rd order, bounded-α error exactly 0);
+`wellBalancedTranslating2D` (**exact constant curvature still diverged**);
+`bestConfigTranslating2D` (the required extension does not help, hurts coarse rungs);
+`rhoDdtGate2D` (density ddt is not the mechanism).
 
-### New, runtime-selectable, default-off (so nothing existing moves)
+### Leading open defect
 
-- `massFlux { boundRho true; }` — clip the auxiliary density to `[rho2, rho1]`; the
-  clip is **reported** (`rhoClipL1`, `rhoClipFraction`) because it breaks the very
-  identity rhoLENT enforces.
-- `massFlux { massResidualDiagnostic true; }` — the mass residual for **every**
-  mass-flux model, not just rhoLENT.
-- `DROPLET_OFFSET_X` — sub-cell or gross displacement of the droplet start, via the
-  derived `DROPLET_CENTRE_X`; default 0 renders byte-identically.
+The droplet **inflates** monotonically, +5% to +8% over the horizon, and at matched
+times the gain does **not** converge under refinement. Untouched by the mass-flux
+model — α comes from ψ, so this is semi-Lagrangian transport under the computed
+velocity field.
 
-Both were gated for bit-identity (every shared metric column to the last digit) and
-on 4 MPI ranks before any cluster use.
+### New, runtime-selectable, default-off (nothing existing moves)
+
+`massFlux { boundRho true; }` (clip ρ to `[rho2, rho1]`; the clip is **reported**),
+`massFlux { massResidualDiagnostic true; }` (mass residual for every model),
+`DROPLET_OFFSET_X` (droplet start placement). All three gated for bit-identity and on
+4 MPI ranks before any cluster use.
 
 ---
 
