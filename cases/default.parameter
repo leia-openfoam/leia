@@ -485,7 +485,7 @@ TRANSLATION_SPEED 0.05;
 // Requires `"rho.*" { solver diagonal; }` in the case's solvers dict -- the
 // equation is diagonal but fvMatrix::solve() still needs an entry.
 MASS_FLUX rhoLENT;
-// UPWIND, on the author's instruction (2026-09-01): "only Gauss upwind worked in
+// donorPlane, on the author's instruction (2026-09-01): "only Gauss upwind worked in
 // rhoLENT". This is deliberately NOT the solver's own preference -- createTransport
 // Fields.H defaults rhoLENT to `central`, and the committed IST cases set central
 // explicitly -- so the disagreement is recorded rather than hidden.
@@ -498,7 +498,7 @@ MASS_FLUX rhoLENT;
 //
 // The momentum divergence scheme is separately already Gauss upwind
 // (MOMENTUM_DIV_SCHEME), so div(rhoPhi,U) and the face fraction now agree.
-MASS_FLUX_FACE_INTERPOLATION upwind;
+MASS_FLUX_ALPHAF_SOURCE donorPlane;
 
 SL_FOOT_INTEGRATOR taylor;
 SL_TRACE_VELOCITY cellCentred;

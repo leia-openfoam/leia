@@ -52,7 +52,7 @@ values
     VELOCITY_EXTENSION ( steadyUpwind );
     TRAJECTORY_VELOCITY ( input );
     MASS_FLUX ( rhoLENT );
-    MASS_FLUX_FACE_INTERPOLATION ( central );
+    MASS_FLUX_ALPHAF_SOURCE ( averagedPlanes );   // renamed 2026-09-01; behaviour UNCHANGED
 
     // Mechanism-gate controls. kappa=1/R=1000 1/m for this 2-D circle.
     SURFACE_TENSION_FORCE ( integralSurfaceTension );

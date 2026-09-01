@@ -239,36 +239,61 @@ if
         << exit(FatalIOError);
 }
 
-// FACE FRACTION FOR rhoPhi: upwind (donor-cell) for EVERY mass-flux model.
+// WHICH RECONSTRUCTED PLANE GIVES THE FACE LIQUID-AREA FRACTION alpha_f.
 //
-// CHANGED 2026-09-01. This previously defaulted rhoLENT to `central` -- the
-// symmetric owner/neighbour-plane average, which is the closer approximation to
-// the unique geometric alpha_f of the rhoLENT paper. In practice only the
-// upwind (donor) fraction works here: "only Gauss upwind worked in rhoLENT"
-// (author, 2026-09-01), and it is what every droplet case in cases/ was
-// developed and validated with -- all eight hardcoded `faceInterpolation
-// upwind` before the token existed.
+// This is NOT an interpolation scheme and has nothing to do with the
+// div(rhoPhi,U) discretisation (that is fvSchemes, MOMENTUM_DIV_SCHEME, and is
+// separately Gauss upwind). Each internal face has TWO candidate area
+// fractions -- one from the owner cell's linear least-squares plane and one
+// from the neighbour's -- and this selects between them:
 //
-// The momentum divergence is separately Gauss upwind (MOMENTUM_DIV_SCHEME), so
-// the face fraction and div(rhoPhi,U) now use the same donor cell rather than
-// disagreeing.
+//   donorPlane      alpha_f from the UPWIND (donor) cell's plane: owner if
+//                   phi >= 0 else neighbour. The phase composition of the fluid
+//                   the flux actually carries through the face. DEFAULT.
+//   averagedPlanes  alpha_f = 1/2 (a_owner + a_neighbour), the symmetric
+//                   average of the two independent geometric fractions.
 //
-// This default is INERT for every committed case: all ten cases carrying a
-// massFlux dict set faceInterpolation explicitly (the eight droplet cases via
-// @!MASS_FLUX_FACE_INTERPOLATION!@, transIST/oscIST literally as `central`), so
-// the dictionary entry wins and their results are unchanged. It only decides
-// what a case that omits the entry gets -- and that should be the setting that
-// works, not the one that is theoretically prettier.
-const word faceInterpolation =
-    massFluxDict.getOrDefault<word>("faceInterpolation", "upwind");
-if (faceInterpolation != "upwind" && faceInterpolation != "central")
+// rho_f = alpha_f rho1 + (1 - alpha_f) rho2, and rhoPhi = rho_f phi.
+//
+// RENAMED 2026-09-01. The values used to be `upwind` and `central`, which are
+// OpenFOAM interpolation-scheme words and invited exactly the wrong reading --
+// `central` is NOT OpenFOAM's `linear`, since nothing is interpolated between
+// cell values; two independent GEOMETRIC area fractions are averaged. The old
+// key `faceInterpolation` and the old values are still accepted, with a
+// warning, so committed cases keep working.
+//
+// donorPlane is the default because it is what works: "only Gauss upwind worked
+// in rhoLENT" (author), and every droplet case in cases/ was developed and
+// validated with it.
+word alphaFSource = massFluxDict.getOrDefault<word>
+(
+    "alphaFSource",
+    massFluxDict.getOrDefault<word>("faceInterpolation", "donorPlane")
+);
+if (massFluxDict.found("faceInterpolation") && !massFluxDict.found("alphaFSource"))
+{
+    WarningInFunction
+        << "massFlux.faceInterpolation is DEPRECATED and renamed to "
+        << "massFlux.alphaFSource -- it selects which reconstructed plane gives"
+        << " the face area fraction, not an interpolation scheme." << nl << endl;
+}
+if (alphaFSource == "upwind" || alphaFSource == "central")
+{
+    const word mapped = (alphaFSource == "upwind") ? "donorPlane" : "averagedPlanes";
+    WarningInFunction
+        << "massFlux alpha_f source '" << alphaFSource << "' is DEPRECATED; "
+        << "use '" << mapped << "'." << nl << endl;
+    alphaFSource = mapped;
+}
+if (alphaFSource != "donorPlane" && alphaFSource != "averagedPlanes")
 {
     FatalIOErrorInFunction(massFluxDict)
-        << "Unknown massFlux.faceInterpolation '" << faceInterpolation
-        << "'. Valid values are upwind and central."
+        << "Unknown massFlux.alphaFSource '" << alphaFSource
+        << "'. Valid values are donorPlane and averagedPlanes "
+        << "(deprecated: upwind, central)."
         << exit(FatalIOError);
 }
-const bool massFluxUpwind = (faceInterpolation == "upwind");
+const bool massFluxUpwind = (alphaFSource == "donorPlane");
 const bool useRhoLENT = (massFluxType == "rhoLENT");
 const bool freezeRhoPhi = !Foam::getEnv("SL_FREEZE_RHOPHI").empty();
 
@@ -282,7 +307,7 @@ scalar rhoLENTResetL1 = 0;
 Info<< "Two-phase mass flux (rhoPhi): " << massFluxType;
 if (massFluxType != "interpolatedDensity")
 {
-    Info<< " (" << faceInterpolation << " geometric alpha_f)";
+    Info<< " (alpha_f from " << alphaFSource << ")";
 }
 if (freezeRhoPhi)
 {

@@ -87,10 +87,11 @@
 
     Info<< nl << "-- two-phase mass/momentum coupling --" << nl;
     row("massFlux type",       get(mfD, "type", "interpolatedDensity (default)"));
-    row("massFlux faceInterp", get(mfD, "faceInterpolation",
-                                   get(mfD, "type", "") == "rhoLENT"
-                                   ? "central (rhoLENT default)"
-                                   : "upwind (default)"));
+    // Which reconstructed plane gives the face area fraction -- NOT an
+    // interpolation scheme, and unrelated to div(rhoPhi,U).
+    row("massFlux alpha_f source",
+        get(mfD, "alphaFSource",
+            get(mfD, "faceInterpolation", "donorPlane (default)")));
     row("rho1 / rho2",  Foam::name(r1) + " / " + Foam::name(r2));
     row("DENSITY RATIO", Foam::name(r1/Foam::max(r2, VSMALL)));
     // sigma is read straight from transportProperties: the mixture class

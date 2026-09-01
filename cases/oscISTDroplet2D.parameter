@@ -59,7 +59,7 @@ values
     VELOCITY_EXTENSION ( steadyUpwind );
     TRAJECTORY_VELOCITY ( input );
     MASS_FLUX ( rhoLENT );
-    MASS_FLUX_FACE_INTERPOLATION ( central );
+    MASS_FLUX_ALPHAF_SOURCE ( averagedPlanes );   // renamed 2026-09-01; behaviour UNCHANGED
 
     SURFACE_TENSION_FORCE ( integralSurfaceTension );
     SURFACE_TENSION_CURVATURE_SOURCE ( field );

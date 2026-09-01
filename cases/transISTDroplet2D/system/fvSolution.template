@@ -242,7 +242,7 @@ levelSet
         type                @!MASS_FLUX!@;
         // rhoLENT defaults to the symmetric owner/neighbour-plane face
         // fraction, approximating the paper's unique geometric alpha_f.
-        faceInterpolation   @!MASS_FLUX_FACE_INTERPOLATION!@;
+        alphaFSource        @!MASS_FLUX_ALPHAF_SOURCE!@;
     }
 
     // Harmonic (Laplace) smoothing of the mean curvature: pin the cell-centred

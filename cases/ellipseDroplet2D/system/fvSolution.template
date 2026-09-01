@@ -187,7 +187,7 @@ levelSet
         // alpha_f from the UPWIND (donor) cell's level-set plane -- the phase
         // composition the flux carries through the face (consistent + stable).
         // "central" = 1/2(owner+neighbour), for comparison only.
-        faceInterpolation   @!MASS_FLUX_FACE_INTERPOLATION!@;                 // upwind | central
+        alphaFSource        @!MASS_FLUX_ALPHAF_SOURCE!@;                 // upwind | central
     }
 
     // Harmonic (Laplace) smoothing of the mean curvature: pin the cell-centred
