@@ -1,0 +1,86 @@
+# THE TRANSLATING DROPLET ON THE BEST CONFIGURATION WE HAVE -- with a matched
+# control at every rung, so what the change buys is MEASURED, not asserted.
+#
+# WHY. Every 2D translating run in this campaign used curvatureExtension NONE,
+# while config/traceTranslating3Dhex set cellCentreInverse: the two dimensions were
+# not running the same method. And `none` is not merely a weaker choice, it is
+# theoretically NOT well-balanced. The balanced-force assembly is
+# kappa_f*snGrad(alpha)_f, and only a kappa that is CONSTANT over the CSF support
+# makes that the snGrad of something the pressure can absorb. Without extension each
+# cell centre carries the parallel-surface value at its own offset d,
+# kappa(d) = kappa0/(1 + d kappa0), so the band varies in the interface-NORMAL
+# direction and the force stops being a discrete gradient.
+#
+# Measured, and this is the metric that matters rather than the raw kappa norm: the
+# non-gradient content alpha_f*snGrad(kappa_c) -- the UNBALANCEABLE part of the
+# force -- converges at order +2.01 for cellCentreInverse against +0.09 for every
+# other cell curvature model, and is 3200x smaller at N=512. It is the only cell
+# field that makes the unbalanceable part converge under refinement.
+#
+# WHAT THE CHEAPER GATES ALREADY SETTLED, so this is not a fishing expedition:
+#   kinematicTranslation2D  -- SL transport EXONERATED. Uniform-translation transport
+#                              is 2nd-3rd order, bounded-alpha error exactly 0, and at
+#                              this case's interface Courant of 0.0059 its error
+#                              extrapolates to ~1e-08 against a coupled capillary
+#                              residual of 1.24e-03.
+#   curvaturePhase2D        -- the estimator's sub-cell-phase sensitivity measured on
+#                              a frozen field: 0.1622% of kappa in L2.
+#   wellBalancedTranslating2D -- EXACT constant curvature still diverges (11741 steps
+#                              against the control's 9337, +25.7%, inside the
+#                              documented 5-38% t_blow noise). The curvature ESTIMATOR
+#                              is exonerated; the FORCE BALANCE is where the defect
+#                              lives. curvatureExtension is a force-balance property,
+#                              not an accuracy knob, which is exactly why it is the
+#                              right thing to fix next.
+#
+# ONE VARIABLE: CURVATURE_EXTENSION. Everything else is the shared method
+# configuration now carried by cases/default.parameter -- projectedFlux,
+# geometricFaceDensity (rho bounded by construction), detrixheAslam, psiFilter none,
+# BDF2 momentum -- and it is pinned here explicitly so this study does not silently
+# change meaning when a default moves again.
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION CONTROL: the `none` arm at N=128 must fail near step 9337, which
+#     both the original geometricFaceDensity run and wellBalancedTranslating2D's
+#     control hit exactly. If it survives, the baseline moved and nothing here holds.
+#   * PASS for cellCentreInverse: reaches t = 0.1 at N=128 with an unabsorbed
+#     capillary residual approaching the STATIONARY level (~1e-06 relL2). Then the
+#     translating failure was a well-balancedness defect all along, and the campaign's
+#     2D translating results were measuring a method nobody intended to run.
+#   * PARTIAL is not a pass: t_blow carries 5-38% seed noise here, so only a
+#     horizon-reaching arm or a residual drop of ORDERS counts.
+#   * FAIL: cellCentreInverse also diverges. The force balance is then broken by
+#     something extension cannot repair, and the next hypothesis is the one recorded
+#     in cases/default.parameter under MASS_FLUX -- momentum/mass inconsistency, whose
+#     spurious source is U0 x (discrete mass residual) and which vanishes identically
+#     when U0 = 0. That would explain the stationary/translating asymmetry without
+#     involving curvature at all, and a U0 sweep tests it directly.
+#   * Report the whole vector. max|U| is dominated by U0 = 0.05 here and cannot see a
+#     parasitic current below it -- that is how a 3D arm was once read as healthy
+#     while dying. Score on the capillary residual, volume, shape, and the
+#     translation-aware disturbanceKineticEnergy.
+study_name: bestConfigTranslating2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 180
+axes_override:
+  N_CELLS: [32, 64, 128]
+  END_TIME: [0.1]
+  CURVATURE_EXTENSION: ["none", "cellCentreInverse"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  MASS_FLUX: [geometricFaceDensity]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

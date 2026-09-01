@@ -76,8 +76,32 @@
     row("phaseIndicator",    get(piD, "type", "<unset>"));
 
     Info<< nl << "-- interface force / curvature --" << nl;
-    row("surfaceTensionForce", get(stfD, "type", "<unset>"));
+    const word stfType = get(stfD, "type", "<unset>");
+    row("surfaceTensionForce", stfType);
+    // The FACE curvature the CSF force actually applies is a separate runtime
+    // choice from the cell model, and it was invisible here until 2026-09-01:
+    // `model` is the force's own assembly (plain interpolation of the cell field),
+    // `registered` takes a solver-registered face field, named on the next row.
+    row("  faceCurvatureSource", get(stfD, "faceCurvatureSource", "model"));
+    if (get(stfD, "faceCurvatureSource", "model") == "registered")
+    {
+        row("  faceCurvatureField",
+            get(stfD, "faceCurvatureField", "<unset>"));
+    }
+    // A prescribed-curvature run is the well-balanced gate, not production: say so
+    // loudly, because every error norm in it is measured against an exact kappa.
+    if (stfType.find("onstantCurvature") != std::string::npos)
+    {
+        row("  PRESCRIBED curvature",
+            Foam::name(stfD.getOrDefault<scalar>("curvature", 0)));
+    }
     row("curvatureExtension",  get(ceD, "type", "none (default)"));
+    if (get(ceD, "type", "none") == "cellCentreInverse")
+    {
+        row("  Gaussian-curvature K",
+            ceD.getOrDefault<bool>("gaussianCurvature", true)
+              ? "on (K-aware, 3D-active)" : "off (K == 0, the 2D algebra)");
+    }
     row("geometryFit",         get(gfD, "type", "none (default)"));
     row("psiFilter",           get(pfD, "type", "none (default)"));
     if (get(pfD, "type", "none") != "none")
@@ -100,9 +124,44 @@
         dimensionedScalar("sigma", dimMass/sqr(dimTime),
             mesh.lookupObject<IOdictionary>("transportProperties")).value()));
 
+    // div(rhoPhi,U): the momentum face interpolation, distinct from the alpha_f
+    // source above and repeatedly confused with it. A scheme entry is a TOKEN
+    // STREAM, not a word -- "Gauss upwind" is two tokens, and reading it with
+    // getOrDefault<word> is a FOAM FATAL IO ERROR ("1 excess tokens in stream"),
+    // which is exactly how this line first shipped. Print the tokens.
+    {
+        const dictionary& divD = mesh.schemesDict().subDict("divSchemes");
+        std::string divRhoPhiU("<not set>");
+        if (divD.found("div(rhoPhi,U)"))
+        {
+            OStringStream buf;
+            const ITstream& is = divD.lookup("div(rhoPhi,U)");
+            forAll(is, i)
+            {
+                if (i) buf << ' ';
+                buf << is[i];
+            }
+            divRhoPhiU = buf.str();
+        }
+        row("div(rhoPhi,U)", divRhoPhiU);
+    }
+
     Info<< nl << "-- time integration & loop control --" << nl;
-    row("momentum ddt", mesh.schemesDict().subDict("ddtSchemes")
-                            .getOrDefault<word>("default", "<unset>"));
+    const dictionary& ddtD = mesh.schemesDict().subDict("ddtSchemes");
+    row("momentum ddt", ddtD.getOrDefault<word>("default", "<unset>"));
+    // ddt(rho) is a SEPARATE key from ddt(rho,U) and is read only by the rhoLENT
+    // auxiliary density equation. No case wrote it until 2026-09-01, so it silently
+    // inherited `default` -- BDF2 on an equation whose boundedness argument assumes
+    // Euler. Print it whenever it is actually consumed.
+    if (get(mfD, "type", "geometricFaceDensity") == "rhoLENT")
+    {
+        row("ddt(rho)  [rhoLENT]",
+            ddtD.getOrDefault<word>
+            (
+                "ddt(rho)",
+                ddtD.getOrDefault<word>("default", "<unset>")
+            ));
+    }
     row("deltaT",       Foam::name(runTime.deltaTValue()));
     row("adjustTimeStep", runTime.controlDict()
                             .getOrDefault<bool>("adjustTimeStep", false)

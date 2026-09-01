@@ -2,7 +2,11 @@ MAX_CELL_SIZE -1.0; // cfmesh pMesh (polyhedral mesh) not used
 N_CELLS       -1.0; // blockMesh not used
 CFL           0.3;
 SURFACE_FILE  none; // cfmesh pMesh (polyhedral mesh) not used
-PHASE_INDICATOR geometric;
+// NOT INERT: geometric -> detrixheAslam, which is what every serious study already
+// pinned by hand. The default disagreeing with universal practice is how a
+// convergence order once came within one run of being fitted across a mixture of two
+// interface reconstructions.
+PHASE_INDICATOR detrixheAslam;
 VELOCITY_EXTENSION none; // levelSet.velocityExtension.type for the LEVEL-SET
                      // transport only (momentum velocity untouched):
                      // none | closestPoint | meshWaveExt | pseudoTime |
@@ -226,7 +230,33 @@ MOMENTUM_DIV_SCHEME upwind;
 
 
 
-CURVATURE_EXTENSION none; // two-phase levelSet.curvatureExtension.type:
+// ===================== THE SHARED METHOD CONFIGURATION =====================
+// Set 2026-09-01 on the author's instruction: every test uses ONE configuration of
+// the method, and it is the best one on record. Until now the DEFAULTS were not
+// that configuration -- studies pinned the good values case by case and whatever
+// was left unpinned silently ran something worse. The translating droplet is the
+// case that exposed it: every 2D translating run used curvatureExtension none
+// while the 3D translating config set cellCentreInverse, so the two dimensions
+// were not running the same method.
+//
+// Each change below is NOT INERT and is flagged where it sits. Results produced
+// before this commit are not comparable to results produced after it unless the
+// study pinned the token itself -- most of the recent ones did.
+// ===========================================================================
+// NOT INERT: none -> cellCentreInverse. REQUIRED BY THEORY, not preference. The
+// balanced-force discretisation needs kappa CONSTANT over the CSF support, because
+// the force is assembled as kappa_f*snGrad(alpha)_f and only a constant kappa makes
+// that the snGrad of something the pressure can absorb. Without extension each cell
+// centre carries the parallel-surface value at its OWN offset d, kappa(d) =
+// kappa0/(1 + d kappa0), so the band varies in the interface-NORMAL direction and
+// the force stops being a discrete gradient. Measured (cellCentreInverseCurvature.H,
+// createSLFields.H): the non-gradient content alpha_f*snGrad(kappa_c) converges at
+// order +2.01 over the full CSF support against +0.09 for every other cell curvature
+// model, and is 3200x smaller at N=512 -- the only cell field that makes the
+// UNBALANCEABLE part of the force converge under refinement. Its prerequisite, the
+// uncached quadratic reconstruction, is already declared by every two-phase droplet
+// case; kinematic cases do not reference this token at all.
+CURVATURE_EXTENSION cellCentreInverse; // two-phase levelSet.curvatureExtension.type:
                      // none | harmonicLaplace | footPointHeightFunction |
                      // closestPointNewton | connectedInterface | interfaceMean
                      // | stabilizedFootPointFace (face kappa re-referenced to
@@ -484,7 +514,21 @@ TRANSLATION_SPEED 0.05;
 //
 // Requires `"rho.*" { solver diagonal; }` in the case's solvers dict -- the
 // equation is diagonal but fvMatrix::solve() still needs an entry.
-MASS_FLUX rhoLENT;
+// NOT INERT: rhoLENT -> geometricFaceDensity, agreed 2026-09-01. rho is then
+// alpha1*rho1 + alpha2*rho2 and is bounded in [rho2, rho1] BY CONSTRUCTION -- there
+// is no density equation to go unbounded. Measured: rhoLENT changes the translating
+// outcome by 0.06% (8066 steps against 8061) while driving its auxiliary rho
+// negative, which turns 1/rho in the pressure Laplacian indefinite and ends runs in
+// a GAMG blow-up to 6.6e+70 rather than in anything readable.
+//
+// KNOWN TENSION, recorded rather than hidden: rhoLENT is BETTER on oscillating 2D at
+// N=128 -- it completes the horizon where geometricFaceDensity reaches 98.2%, with
+// shape error 1.26e-5 against 2.51e-4. Its PURPOSE, consistent mass-momentum
+// transport at high density ratio, is sound; our implementation does not achieve it,
+// because psi is advected by the semi-Lagrangian trace velocity while rho is
+// transported by the face flux phi -- two different transport operators, which is
+// exactly the consistency rhoLENT requires. Revisit when that is fixed.
+MASS_FLUX geometricFaceDensity;
 // donorPlane, on the author's instruction (2026-09-01): "only Gauss upwind worked in
 // rhoLENT". This is deliberately NOT the solver's own preference -- createTransport
 // Fields.H defaults rhoLENT to `central`, and the committed IST cases set central
@@ -571,4 +615,11 @@ RHO_DDT_SCHEME Euler;
 DROPLET_OFFSET_X 0;
 
 SL_FOOT_INTEGRATOR taylor;
-SL_TRACE_VELOCITY cellCentred;
+// NOT INERT: cellCentred -> projectedFlux. Measured this campaign, stationary 2D
+// ladder: the unabsorbed capillary residual falls monotonically 2.37e-5 / 3.15e-6 /
+// 8.53e-7 / 6.43e-7 at N=32/64/128/256 for projectedFlux, while cellCentred blows up
+// at the two finest rungs (5.48e-4, 2.79e-2). Oscillating 2D: projectedFlux reaches
+// the full horizon at all three rungs, cellCentred at none of the two finest. And
+// config/kinematicTranslation2D showed the two are BIT-IDENTICAL under uniform
+// translation, so this default costs nothing where the flow cannot tell them apart.
+SL_TRACE_VELOCITY projectedFlux;
