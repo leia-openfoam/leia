@@ -41,7 +41,23 @@ _TOKEN = re.compile(r"@!([A-Z0-9_]+)!@")
 #   DOMAIN_HALF_LENGTH = DOMAIN_LENGTH/2, the box centre. Derived so that a case
 #                   centring its droplet in the box states the box size ONCE
 #                   (blockMeshDict) instead of restating it in implicitSurface.
-_DERIVED_TOKENS = {"HALF_END_TIME", "MAX_DELTA_T", "DOMAIN_HALF_LENGTH"}
+#   DROPLET_CENTRE_X = DOMAIN_HALF_LENGTH + DROPLET_OFFSET_X. Sweep
+#                   DROPLET_OFFSET_X (which IS a normal token) to displace the
+#                   droplet by a sub-cell amount; the centre itself is derived.
+_DERIVED_TOKENS = {
+    "HALF_END_TIME",
+    "MAX_DELTA_T",
+    "DOMAIN_HALF_LENGTH",
+    "DROPLET_CENTRE_X",
+}
+
+# A derived token is computed FROM other tokens, and those inputs are typically
+# named by no template at all -- only the derived result is. Without this map they
+# are invisible to the grid and silently unsweepable: config/curvaturePhase2D asked
+# for nine DROPLET_OFFSET_X values and materialized ONE arm (2026-09-01), which is
+# the same class of silent no-op as the oscillating case's missing traceVelocity.
+# Referencing a derived token therefore pulls its inputs into the grid too.
+_DERIVED_INPUTS = {"DROPLET_CENTRE_X": ("DROPLET_OFFSET_X",)}
 
 
 def _strip_comments(text):
@@ -106,7 +122,11 @@ def build_token_grid(param_file, default_file, case_dir,
     """
     params = parse_parameter_file(param_file)
     defaults = parse_parameter_file(default_file) if os.path.isfile(default_file) else {}
-    referenced = referenced_tokens(case_dir)
+    referenced = set(referenced_tokens(case_dir))
+    # Pull in the inputs of any derived token the case references, so they can be
+    # swept even though no template names them (see _DERIVED_INPUTS).
+    for tok in list(referenced):
+        referenced.update(_DERIVED_INPUTS.get(tok, ()))
     axes_override = {k: [str(x) for x in v] for k, v in (axes_override or {}).items()}
 
     axes, constants, missing = OrderedDict(), OrderedDict(), []

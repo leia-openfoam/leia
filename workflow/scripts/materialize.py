@@ -131,6 +131,14 @@ def _with_derived_tokens(tokens):
       * DOMAIN_HALF_LENGTH = DOMAIN_LENGTH/2 -- the box centre, so a case that
         centres its droplet in the domain does not hardcode the box size a
         second time in the implicitSurface dict.
+      * DROPLET_CENTRE_X = DOMAIN_HALF_LENGTH + DROPLET_OFFSET_X -- the droplet
+        centre's x coordinate. DROPLET_OFFSET_X defaults to 0, so this is
+        byte-identical to DOMAIN_HALF_LENGTH (same format string) for every study
+        that does not set it. It exists so the droplet can be displaced by a
+        SUB-CELL amount without restating the box size: sweeping the offset across
+        one cell width measures how the curvature estimator's error depends on the
+        interface's phase relative to the mesh, which a droplet centred on the box
+        can never see because it sits at one fixed phase forever.
       * MAX_DELTA_T uses one of two explicit modes selected by
         TIME_STEP_CONTROL:
 
@@ -162,6 +170,14 @@ def _with_derived_tokens(tokens):
         try:
             out["DOMAIN_HALF_LENGTH"] = "{:.10g}".format(
                 float(out["DOMAIN_LENGTH"]) / 2.0
+            )
+        except (TypeError, ValueError):
+            pass
+    if "DOMAIN_HALF_LENGTH" in out:
+        try:
+            out["DROPLET_CENTRE_X"] = "{:.10g}".format(
+                float(out["DOMAIN_HALF_LENGTH"])
+                + float(out.get("DROPLET_OFFSET_X", 0.0))
             )
         except (TypeError, ValueError):
             pass

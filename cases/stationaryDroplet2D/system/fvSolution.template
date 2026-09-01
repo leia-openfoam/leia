@@ -353,7 +353,7 @@ levelSet
     implicitSurface
     {
         type    implicitSphere;
-        center  (@!DOMAIN_HALF_LENGTH!@ @!DOMAIN_HALF_LENGTH!@ 0);
+        center  (@!DROPLET_CENTRE_X!@ @!DOMAIN_HALF_LENGTH!@ 0);
         radius  1e-3;
     }
 

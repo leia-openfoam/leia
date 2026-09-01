@@ -549,5 +549,26 @@ MASS_FLUX_ALPHAF_SOURCE donorPlane;
 // nobody's choice. Set to `backward` to reproduce pre-2026-09-01 results.
 RHO_DDT_SCHEME Euler;
 
+// Sub-cell displacement of the droplet centre in x, in METRES. The rendered centre
+// is the DERIVED token DROPLET_CENTRE_X = DOMAIN_HALF_LENGTH + DROPLET_OFFSET_X,
+// so 0 is byte-identical to the old `center (@!DOMAIN_HALF_LENGTH!@ ...)` and every
+// existing study renders exactly as before -- INERT, and gated by bit-identity
+// rather than asserted.
+//
+// WHY IT EXISTS (2026-09-01). A droplet centred in the box sits at ONE fixed phase
+// relative to the mesh for an entire run, and being centred, the most symmetric
+// phase available. A TRANSLATING droplet sweeps through every phase. That is the
+// structural reason the stationary droplet can be clean while the translating one
+// fails -- measured, same N=128, same trace, same dt, same force model: relL2
+// unabsorbed capillary residual 8.53e-07 stationary against 1.24e-03 translating,
+// 1450x -- and it means the stationary droplet is a WEAK test that can pass on
+// alignment luck.
+//
+// Sweeping this token across one cell width, with leiaTestMeanCurvature on a frozen
+// field, measures the curvature estimator's mesh-phase sensitivity directly and in
+// seconds: it is the exact-solution unit rung of the ladder for a defect that has
+// so far only been chased in coupled runs costing hours.
+DROPLET_OFFSET_X 0;
+
 SL_FOOT_INTEGRATOR taylor;
 SL_TRACE_VELOCITY cellCentred;

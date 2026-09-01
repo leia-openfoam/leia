@@ -1,0 +1,125 @@
+# GATE 1 -- CURVATURE vs SUB-CELL PHASE: how much of the estimator's error depends
+# on WHERE the interface sits relative to the mesh?
+#
+# WHY. The coupled translating droplet fails while the coupled stationary droplet at
+# the same N, trace, dt and force model is clean -- relL2 unabsorbed capillary
+# residual 8.53e-07 against 1.24e-03 at N=128, a factor 1450. A translating droplet
+# IS the stationary droplet in a moving frame, so that is a Galilean-invariance
+# defect of the discretisation.
+#
+# The structural asymmetry is this: a droplet centred in the box sits at ONE fixed
+# phase relative to the mesh for the whole run -- and, being centred, the most
+# symmetric phase available. A translating droplet sweeps through EVERY phase. So
+# the stationary case samples one point of the estimator's error distribution and
+# the translating case samples all of it, including the worst. This gate measures
+# that distribution directly, on a frozen field, in seconds -- the exact-solution
+# unit rung for a defect so far chased only in coupled runs costing hours.
+#
+# WHY IT IS NOW ON THE CRITICAL PATH. config/kinematicTranslation2D (2026-09-01)
+# EXONERATED semi-Lagrangian transport: uniform-translation transport is 2nd-3rd
+# order, bounded-alpha error exactly 0, and at the coupled case's actual interface
+# Courant of 0.0059 its transport error extrapolates to ~1e-08 against a coupled
+# capillary residual of 1.24e-03. The defect is in the force chain, and the
+# curvature estimator is the first thing in that chain.
+#
+# ONE VARIABLE: DROPLET_OFFSET_X, the droplet centre displaced in x by a sub-cell
+# amount. N = 128 on the reference box gives h = 7.8125e-05, and the sweep is
+# 0, h/8, h/4, 3h/8, h/2, 5h/8, 3h/4, 7h/8, h -- one full cell, in eighths.
+#
+# PRE-REGISTERED READ-OUT.
+#   * NULL CONTROL, and nothing below is believed without it: offset = h must
+#     reproduce offset = 0 to round-off. Displacing the droplet by exactly one cell
+#     leaves its geometry relative to the mesh unchanged, so any difference is a
+#     harness defect, not physics.
+#   * PHASE-SENSITIVE (the estimator is implicated) if the peak-to-peak variation of
+#     the curvature error across the sweep is comparable to or larger than its mean.
+#     That variation IS the forcing a translating interface feels: the force
+#     perturbation is sigma * delta-kappa, and it would make the estimator a
+#     credible source of the 1450x coupled gap.
+#   * PHASE-INSENSITIVE (the estimator is exonerated) if the error is flat across
+#     offsets. The coupled defect would then have to come from the force balance or
+#     the delivery rather than from kappa, and Gate 3 -- the translating droplet
+#     with exact constant curvature -- would be expected to fail too.
+#   * Report the WHOLE vector, not one norm: the CSV carries L1/L2/Linf for the
+#     div, laplacian, no-extension, face-average, foot-point, iso and parabola
+#     estimators, and a model that is phase-flat where the production chain is not
+#     would itself be the finding.
+#
+# ============================== RESULT, 2026-09-01 ==============================
+# RAN: laptop, serial, profiles/local8. All 9 arms completed. N=128, R/h = 12.8,
+# kappa_exact = 1000.
+#
+# BOTH NULL CONTROLS PASS. offset = h reproduces offset = 0 at rel diff 0.000e+00
+# for every extension-based estimator (2e-10 for the foot-point ones, which run an
+# iterative foot search). And unplanned but exact: the sweep is symmetric about
+# h/2 -- 0.125 == 0.875, 0.250 == 0.750, 0.375 == 0.625 to every printed digit,
+# which is the reflection symmetry the geometry demands. The harness is sound.
+#
+# Curvature error as a fraction of kappa_exact, over the sub-cell sweep:
+#                       mean      peak-to-peak
+#   NOEXT / DIV  (L1)   5.98%       0.0991%      <- the production chain
+#   NOEXT / DIV  (L2)   6.95%       0.1622%
+#   NOEXT / DIV  (Linf) 13.36%      1.2677%
+#   FACEAVG      (L2)   6.96%       0.1696%
+#   FOOT         (L1)   0.45%       0.0266%      <- same kappa, delivered at the
+#   FOOT         (L2)   0.50%       0.0566%         interface, not the face centre
+#   PARAB        (L2)   3.83%       1.7343%
+#   ISO          (L2)   20.55%      5.4359%
+#
+# VERDICT BY THE PRE-REGISTERED CRITERION: PHASE-INSENSITIVE, estimator exonerated.
+# The peak-to-peak variation is 2-10% of the mean error, not "comparable to or
+# larger than" it. That verdict is recorded as written.
+#
+# BUT THE CRITERION WAS BADLY CHOSEN, and saying so is not moving the goalposts --
+# it is naming the error in the pre-registration. What matters is not how the
+# phase-varying part compares to the estimator's MEAN error; it is whether the
+# error VARIES IN TIME AT ALL. A static kappa error is absorbed by the pressure
+# projection as a slightly wrong but steady Laplace jump and drives no flow. A
+# time-varying one cannot be absorbed and drives flow directly. A stationary
+# droplet holds one phase forever, so its kappa error is static; a translating one
+# sweeps every phase, so the SAME error becomes unsteady.
+#
+# POST HOC, AND LABELLED AS SUCH: the phase-varying fraction measured here is the
+# size of the coupled translating failure.
+#   phase-varying kappa (L2, production chain)          0.1622 %
+#   coupled TRANSLATING unabsorbed capillary residual   0.1240 %   (within 30%)
+#   coupled STATIONARY  unabsorbed capillary residual   0.0000853% (1900x below)
+# Same N, same trace, same dt, same force model. This was not predicted in advance
+# and needs an independent test rather than belief.
+#
+# THAT TEST IS GATE 3, unchanged and now with a sharp prediction: the coupled
+# translating droplet with constantCurvatureSurfaceTension and CONST_CURVATURE 1000
+# (exactly 1/R here) removes the time-varying force entirely, so it must run CLEAN.
+# If it still fails, this mechanism is wrong and the force balance is the source.
+#
+# ACTIONABLE, AND INDEPENDENT OF WHICH VERDICT SURVIVES: delivering the SAME model
+# curvature at the interface through the stabilized foot point instead of at the
+# face centre is 13x more accurate in the mean (0.45% against 5.98%) and 3.7x less
+# phase-sensitive (0.0266% against 0.0991%). That is a delivery change, not a new
+# estimator, and it is already runtime-selectable via CURVATURE_EXTENSION
+# stabilizedFootPointFace with FACE_CURVATURE_SOURCE registered.
+#
+# SEPARATE FINDING worth its own chase: the production chain's MEAN curvature error
+# is 6% in L1/L2 and 13% in Linf at R/h = 12.8. That is poor on its own terms,
+# regardless of what it does to a moving interface.
+# ================================================================================
+study_name: curvaturePhase2D
+case: stationaryDroplet2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaTestMeanCurvature
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 30
+axes_override:
+  N_CELLS: [128]
+  DOMAIN_LENGTH: [0.01]
+  DROPLET_OFFSET_X: [0, 9.765625e-06, 1.953125e-05, 2.9296875e-05, 3.90625e-05,
+                     4.8828125e-05, 5.859375e-05, 6.8359375e-05, 7.8125e-05]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  PSI_FILTER: [none]
+collapse_other_axes: true
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
