@@ -1,0 +1,169 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    psi
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-10;
+        relTol          0;
+    }
+
+    p
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-12;
+        relTol          0.;
+    }
+
+    // Velocity-extension solve: per-model settings (see fvSolution.template for
+    // the rationale). anisotropicDiffusion: symmetric near-rank-1 Laplacian ->
+    // cheap DIC iterations to a per-step RELATIVE tolerance (prev Uext = initial
+    // guess) reproduce fully converged errors to 4 digits (A/B validated).
+    // pseudoTime: asymmetric, diagonally dominant -> ~3 DILU iterations.
+    anisotropicDiffusionUext
+    {
+        solver          PBiCGStab;
+        preconditioner  DIC;    // symmetric matrix -> symmetric preconditioner
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         2000;
+    }
+
+    pseudoTimeUext
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-3;
+    }
+
+    steadyUpwindUext
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-09;
+        relTol          1e-4;
+        maxIter         500;
+    }
+
+    steadyUpwindLinearUext { $steadyUpwindUext }
+    closestPointUext       { $steadyUpwindUext }   // fallback fill solve
+    meshWaveUext           { $steadyUpwindUext }   // never solved (wave only)
+    noneUext               { $pseudoTimeUext }     // identity model: never solved
+
+    "Uext.*" { $noneUext; }        // this case runs velocityExtension type none
+}
+
+PISO
+{
+    nCorrectors     -1; // Disables p-v coupling.
+    nNonOrthogonalCorrectors 0;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+velocityModel
+{
+    // Uniform translation: the SIMPLEST kinematic test there is, and the one
+    // rung the ladder was missing. The exact solution is psi(x,t) = psi0(x - U t),
+    // so every error here is transport error alone -- no force, no pressure, no
+    // curvature. |U| = 1 makes the Courant number equal dt/h, so CFL is exactly
+    // the displacement per step in cells, and CFL = 1 lands the semi-Lagrangian
+    // foot ON a cell centre, where the reconstruction has nothing to interpolate.
+    type translation;
+    velocity (1 0 0);
+}
+
+levelSet
+{
+    narrowBand
+    {
+      type  signChange;
+    }
+
+    profile
+    {
+      type  signedDistance;
+      limit  0.1;
+    }
+
+    implicitSurface
+    {
+        type implicitSphere;
+        center (0.25 0.5 0);
+        radius 0.15;
+    }
+
+    phaseIndicator
+    {
+        type detrixheAslam;
+    }
+
+    redistancer
+    {
+        type noRedistancing;
+    }
+
+    sdplsSource
+    {
+        type noSource;
+        discretization explicit;
+    }
+
+    velocityExtension
+    {
+        type        none;
+        nLayers     3;
+        nAnchorLayers 0;       // foot-point + pin N extra layers (0 = interface layer only)
+        // anisotropicDiffusion: eps_c = epsilon*cbrt(V_c) (cellSize -> O(h);
+        // 'fixed' = legacy h-independent floor).
+        epsilon      1.0;
+        epsilonModel cellSize;
+        nIterations 10;        // pseudoTime
+        deltaTau    0.2;       // pseudoTime
+        nDefCorrExt 5;         // steadyUpwind family: relaxed defect-correction passes
+        // closestPoint parallel halo (zoneDistribute): Taylor data from the
+        // one-layer CPC halo is trusted within cpHaloReach*cellSize of the
+        // exit cell; foot points beyond it fall back to the steadyUpwind fill.
+        cpHaloReach 1.5;
+        // NO Helmholtz projection: it would destroy (n.grad)Uext = 0 (the
+        // property that preserves |grad psi| = 1 near Sigma); the psi equation
+        // is solved in its advective form instead (leiaLevelSetFoam.C).
+        projectFlux false;
+        maxScale    5;         // clip |Uext| <= maxScale*max|U| in the band (runaway guard)
+    }
+
+    // Semi-Lagrangian advection (leiaSemiLagrangeLevelSetFoam); ignored by
+    // leiaLevelSetFoam. reconstruction: linearTaylor | linearWeightedLeastSquares | quadraticTaylor | quadraticWeightedLeastSquares.
+    semiLagrangian
+    {
+        reconstruction      quadraticWeightedLeastSquares;
+        CFLmax              0.5;
+        limitSlope          false;
+        clipToStencilBounds false;
+        analyticVelocity    true;
+        nLayersBand         3;
+        bandGuard           2;
+    }
+}
+
+
+// ************************************************************************* //

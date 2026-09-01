@@ -1,0 +1,45 @@
+// Uniform-translation kinematic gate: a circle carried by U = (1,0,0), no force,
+// no pressure, no curvature. The exact solution is psi(x,t) = psi0(x - U t), so
+// EVERY error this case reports is semi-Lagrangian transport error alone.
+//
+// WHY IT EXISTS (2026-09-01). The coupled translating droplet fails while the
+// coupled STATIONARY droplet at the same N, trace, dt and force model is clean --
+// 1450x lower unabsorbed capillary residual at N = 128. A translating droplet is
+// the stationary droplet in a moving frame, so that gap is a Galilean-invariance
+// defect. The ladder rule says kinematics before dynamics, and this rung had
+// never been run for translation: every translating result on record is coupled.
+//
+// Values are SINGLE on purpose. 2Dvortex.parameter declares multi-valued tokens
+// and collapse_other_axes does NOT collapse PHASE_INDICATOR -- that is how the
+// vortex gate once expanded to 4 arms differing in two things at once. Study
+// configs override what they mean to sweep, and nothing sweeps by accident.
+values
+{
+    PHASE_INDICATOR ( detrixheAslam );
+
+    solver ( leiaSemiLagrangeLevelSetFoam );
+
+    // |U| = 1 on a uniform hex mesh makes Co = dt/h, so CFL IS the displacement
+    // per step measured in cells. CFL = 1 puts the foot exactly on a cell centre.
+    CFL ( 0.5 );
+
+    N_CELLS ( 64 );
+
+    // The circle starts at x = 0.25 and travels to x = 0.75 -- 3.3 diameters --
+    // with its far edge at 0.90, clear of the wall.
+    END_TIME ( 0.5 );
+
+    VELOCITY_EXTENSION ( none );
+
+    SOURCE_SCHEME ( simpleLinearImplicit );
+
+    SDPLS_SOURCE ( noSource );
+
+    BC ( zeroGradient );
+
+    DIV ( linear );
+
+    TANH_LIMIT ( 0.1 );
+
+    PROFILE ( signedDistance );
+}

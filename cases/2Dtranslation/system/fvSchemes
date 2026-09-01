@@ -1,0 +1,83 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+ddtSchemes
+{
+    default         CrankNicolson 1;
+}
+
+gradSchemes
+{
+    // Metric-only gradient for the gradPsiError / gradPsiErrorCSV function
+    // objects. MUST stay UNLIMITED and MUST NOT be the advection scheme's
+    // grad(psi): a cell-limited gradient returns exactly 0 at a local
+    // extremum, which the metric then reports as |grad psi| = 0.
+    gradPsiMetric   leastSquares;
+    default         Gauss linear;
+    grad(p)         Gauss linear;
+    // Cell-limited least-squares gradient used by the linearUpwind advection of
+    // psi below (deferred second-order correction). Fallbacks if it mislimits on
+    // the coarse vortex: "faceLimited leastSquares 1" or "cellLimited Gauss linear 1".
+    grad(psi)       cellLimited leastSquares 1;
+    // Reconstruction gradient for the linearUpwind steady velocity extension.
+    grad(Uext)      leastSquares;
+    // Pure least-squares gradient for the Aslam cascade's normal derivative
+    // V = n.grad(U) (steadyUpwindLinear).
+    velExtLSGrad    leastSquares;
+    // Semi-Lagrangian reconstruction (leiaSemiLagrangeLevelSetFoam): dedicated
+    // gradient keys so the sub-steps never share the grad(psi) advection
+    // scheme. pointCellsLeastSquares = cell-point-cell LSQ gradient.
+    gradPsi         pointCellsLeastSquares;   // g_c = grad(psi^n)
+    gradGradPsi     pointCellsLeastSquares;   // H_c = grad(g_c) (quadraticTaylor)
+    gradU           Gauss linear;   // grad(u^{n+1}) for the SL foot (Gauss linear: no run-long LSQ cache)
+}
+
+divSchemes
+{
+    default         none;
+    // Second-order linear-upwind advection of the level set; the deferred
+    // correction (linearUpwind - upwind) is converged by the nDefCorr loop in
+    // leiaLevelSetFoam.C. (phiExt is named "phi", so this key covers it.)
+    div(phi,psi)    Gauss linearUpwind grad(psi);
+    // Steady velocity extension (steadyUpwind family): implicit part = upwind
+    // matrix (one solve = infinite reach along the acyclic characteristics of
+    // w = sign(psi) n); the linearUpwind deferred correction is converged by
+    // the nDefCorrExt loop -> second-order extension quality.
+    div(velExtPhiW,Uext) Gauss linearUpwind grad(Uext);
+}
+
+laplacianSchemes
+{
+    default         Gauss linear orthogonal;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         orthogonal;
+}
+
+fluxRequired
+{
+    p;
+}
+
+// ************************************************************************* //

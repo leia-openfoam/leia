@@ -1,0 +1,101 @@
+# GATE 2 -- KINEMATIC TRANSLATION: is the semi-Lagrangian transport itself
+# Galilean-clean, and does its error come from the foot reconstruction?
+#
+# WHY. The coupled translating droplet fails while the coupled STATIONARY droplet
+# at the same N, the same trace, the same dt and the same force model is clean:
+# measured 2026-09-01 at N = 128, projectedFlux, dt = 7.49989e-06, the unabsorbed
+# capillary residual is relL2 8.53e-07 stationary against 1.24e-03 translating --
+# 1450x. A translating droplet IS the stationary droplet in a moving frame
+# (psi(x,t) = psi0(x - U t), U = U0, p = p0(x - U t), all Galilean covariant), so
+# that gap is a Galilean-invariance defect of the discretisation, not physics.
+#
+# The ladder rule is kinematics before dynamics, and THIS RUNG HAD NEVER BEEN RUN
+# for translation -- every translating result on record is coupled, so a failure
+# there is ambiguous between transport and force. This case has no force, no
+# pressure and no curvature: every error it reports is transport error alone.
+#
+# THE CFL AXIS IS THE MECHANISM TEST, not a stability sweep. |U| = 1 on a uniform
+# hex mesh makes Co = dt/h, so CFL is exactly the displacement per step in cells.
+# The semi-Lagrangian foot is x_d = x_c - U dt, which for constant U is EXACT --
+# the only error left is reconstructing psi^n at x_d. At CFL = 1 the foot lands
+# ON a neighbouring cell centre, where the reconstruction has nothing to
+# interpolate; at CFL = 0.25 and 0.5 it lands mid-cell.
+#
+# PRE-REGISTERED READ-OUT.
+#   * Second order in h at fixed CFL, on L_INF_E_PSI and the geometric alpha error.
+#     Anything less is a defect in its own right and must be chased before Gate 3.
+#   * MECHANISM CONFIRMED if the error COLLAPSES at CFL = 1 relative to CFL = 0.5
+#     and 0.25 -- orders, not percent. That would make the foot reconstruction the
+#     source of the frame-dependent error, and the fix would belong in the
+#     reconstruction rather than the force.
+#   * FALSIFIED if CFL = 1 is no better than CFL = 0.5. The foot reconstruction is
+#     then NOT the source, transport is exonerated, and Gate 3 (well-balanced
+#     translating droplet with exact curvature) becomes the discriminator between
+#     the curvature estimator and the force balance.
+#   * BUILT-IN NULL CONTROL: for uniform U, fvc::reconstruct is exact, so
+#     projectedFlux and cellCentred must agree to round-off. If the two traces
+#     differ here, reconstruct is NOT exact on this mesh/BC combination and that
+#     is itself the finding -- it would apply to every projectedFlux result on
+#     record, so it gets chased before anything else in this config is believed.
+#
+# ============================== RESULT, 2026-09-01 ==============================
+# RAN: laptop, 4 MPI ranks, profiles/local8. All 18 arms COMPLETED (End reached).
+#
+# L_INF_E_PSI (identical for both traces -- see the null control below):
+#      N=32        N=64        N=128     order(32->64, 64->128)
+#   CFL 0.25   4.1473e-04  4.9063e-05  7.0418e-06      3.08, 2.80
+#   CFL 0.50   7.8282e-04  1.0730e-04  1.9871e-05      2.87, 2.43
+#   CFL 1.00   1.2609e-03  3.0593e-04  6.2429e-05      2.04, 2.29
+#
+# geometric alpha error, N=128:  5.07e-05 / 7.95e-05 / 3.04e-04 for CFL .25/.5/1
+# bounded-alpha error: EXACTLY 0 in all 18 arms.
+#
+# NULL CONTROL PASSES EXACTLY. cellCentred and projectedFlux agree to every
+# printed digit in all nine (N, CFL) pairs. fvc::reconstruct IS exact for uniform
+# fields on this mesh and BC set, so the trace axis is a true no-op here -- which
+# is what it should be, and it validates the harness.
+#
+# TRANSPORT ORDER: 2nd to 3rd in h at fixed CFL, on psi, volume and shape alike.
+# No transport-order defect exists.
+#
+# MECHANISM PREDICTION FALSIFIED. CFL = 1 was predicted to COLLAPSE the error by
+# landing the semi-Lagrangian foot on a cell centre. It is the WORST arm instead --
+# monotonically worse with CFL, 9x from CFL 0.25 to 1.0 on psi at N=128 and 23x on
+# shape at N=32 -- and the growth is close to CFL^2 (about 3x per doubling), i.e. a
+# clean truncation error of the reconstruction with NO special behaviour at
+# lattice alignment. The premise was simply wrong: the reconstruction is a WEIGHTED
+# LEAST-SQUARES fit, and a LSQ fit does not interpolate its nodal values, so
+# evaluating it at a cell centre does not return the stored psi there.
+#
+# THE CONSEQUENCE, AND IT IS THE POINT OF THE GATE: the coupled translating droplet
+# runs at interface Courant 0.0059 -- more than 40x BELOW the cheapest arm here.
+# Extrapolating the measured CFL^~1.8 scaling from CFL 0.25 puts its transport error
+# near 1e-08 on psi at N=128, against a coupled unabsorbed capillary residual of
+# 1.24e-03. SEMI-LAGRANGIAN TRANSPORT IS EXONERATED as the source of the
+# translating-droplet failure; it is not close to being the leading term.
+#
+# WHERE IT POINTS: the force chain. Gate 3 -- the coupled translating droplet with
+# constantCurvatureSurfaceTension and CONST_CURVATURE 1000, which is exactly 1/R for
+# this droplet -- now discriminates between the curvature ESTIMATOR and the force
+# BALANCE, and is the necessary next step rather than merely a useful one.
+# ================================================================================
+study_name: kinematicTranslation2D
+case: 2Dtranslation
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme:  method-comparison
+solve_runtime: 60
+axes_override:
+  N_CELLS: [32, 64, 128]
+  CFL: [0.25, 0.5, 1.0]
+  SL_TRACE_VELOCITY: ["cellCentred", "projectedFlux"]
+  END_TIME: [0.5]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
