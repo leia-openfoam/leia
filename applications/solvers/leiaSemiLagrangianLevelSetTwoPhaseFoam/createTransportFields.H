@@ -239,15 +239,28 @@ if
         << exit(FatalIOError);
 }
 
-// rhoLENT uses one geometrical area fraction for each face. A central average
-// of the owner/neighbour planes is the symmetric approximation to the unique
-// face fraction used in the paper. The older geometricFaceDensity experiment
-// retains its upwind default.
-const word faceInterpolation = massFluxDict.getOrDefault<word>
-(
-    "faceInterpolation",
-    massFluxType == "rhoLENT" ? word("central") : word("upwind")
-);
+// FACE FRACTION FOR rhoPhi: upwind (donor-cell) for EVERY mass-flux model.
+//
+// CHANGED 2026-09-01. This previously defaulted rhoLENT to `central` -- the
+// symmetric owner/neighbour-plane average, which is the closer approximation to
+// the unique geometric alpha_f of the rhoLENT paper. In practice only the
+// upwind (donor) fraction works here: "only Gauss upwind worked in rhoLENT"
+// (author, 2026-09-01), and it is what every droplet case in cases/ was
+// developed and validated with -- all eight hardcoded `faceInterpolation
+// upwind` before the token existed.
+//
+// The momentum divergence is separately Gauss upwind (MOMENTUM_DIV_SCHEME), so
+// the face fraction and div(rhoPhi,U) now use the same donor cell rather than
+// disagreeing.
+//
+// This default is INERT for every committed case: all ten cases carrying a
+// massFlux dict set faceInterpolation explicitly (the eight droplet cases via
+// @!MASS_FLUX_FACE_INTERPOLATION!@, transIST/oscIST literally as `central`), so
+// the dictionary entry wins and their results are unchanged. It only decides
+// what a case that omits the entry gets -- and that should be the setting that
+// works, not the one that is theoretically prettier.
+const word faceInterpolation =
+    massFluxDict.getOrDefault<word>("faceInterpolation", "upwind");
 if (faceInterpolation != "upwind" && faceInterpolation != "central")
 {
     FatalIOErrorInFunction(massFluxDict)
