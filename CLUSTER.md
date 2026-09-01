@@ -415,3 +415,61 @@ Everything that feeds a deck or paper already travels via git as `docs/**/data`.
 >
 > Pull raw fields only for the one case you actually intend to visualise. The 3D
 > iso-surface montages are generated locally regardless (no vtk on the cluster).
+
+## The driver's own PATH decides which binary every rank runs
+
+**Source `$HOME/.leia_env` in the shell that launches snakemake, not only inside
+the rules.** On a shared account this session builds into its own
+`WM_PROJECT_USER_DIR` (`curvature-v2512`), and sourcing the OpenFOAM bashrc resets
+that variable to the account default -- so a driver launched with only
+
+```bash
+source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc     # NOT ENOUGH
+```
+
+has the *account-default* bin dir first on PATH. **mpirun resolves the executable
+from the orchestrating process's PATH and bakes the absolute path into the launch**,
+so every rank runs whatever the driver found, and the job's own `env_preamble`
+never gets a say.
+
+MEASURED 2026-09-01: fourteen arms of the two 2D ladders ran an **August 19** binary
+from the account default, failed at 0-1 steps with `Unknown fvOption type
+semiImplicitCapillaryForce`, and were recorded as fourteen divergences. Three
+resubmissions failed identically while I changed `env_preamble` in the study config,
+the global config and via `--config` -- none of which could have helped, because the
+job environment was never the problem. The profile's preamble was correct
+throughout: probed on a compute node it sets `WM_OPTIONS`, exports
+`curvature-v2512`, and resolves `which` to the right binary.
+
+**The check that ends this in one line** -- and the one to run before believing any
+cluster result:
+
+```bash
+grep -m1 '^Exec' studies/<study>/<case>_00000/log.<solver>
+```
+
+OpenFOAM prints the absolute path it was launched as. If it does not name the user
+dir you built into, nothing downstream is about your code. This is the same rule as
+verifying the artefact rather than the exit code -- and note that verifying the
+rebuilt *solver* binary is not enough: I checked the solver's timestamp and new
+symbols, but not the *library*, and not which binary the jobs actually executed.
+
+Launch pattern that works:
+
+```bash
+source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc
+. $HOME/.leia_env                       # the machine-local build location
+export PATH=$HOME/.local/bin:$PATH
+nohup snakemake --workflow-profile profiles/slurm --configfile config/<study>.yaml \
+      --nolock --keep-going --rerun-triggers mtime > driver_<study>.log 2>&1 &
+```
+
+`$HOME/.leia_env` is machine-local and unversioned:
+
+```bash
+export WM_PROJECT_USER_DIR=$HOME/OpenFOAM/curvature-v2512
+export FOAM_USER_APPBIN=$WM_PROJECT_USER_DIR/platforms/$WM_OPTIONS/bin
+export FOAM_USER_LIBBIN=$WM_PROJECT_USER_DIR/platforms/$WM_OPTIONS/lib
+export PATH=$FOAM_USER_APPBIN:$PATH
+export LD_LIBRARY_PATH=$FOAM_USER_LIBBIN:$LD_LIBRARY_PATH
+```
