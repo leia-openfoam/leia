@@ -39,8 +39,49 @@ must vanish (only rhoLENT does that — 2.3e-11 against 4.8e-02 for
 `geometricFaceDensity`) **and** `ddt(rho,U)` must expand with the same scheme as
 `ddt(rho)`, or momentum inherits `U0 * (1/2)(rho^{n+1} - 2rho^n + rho^{n-1})/dt`.
 
-`config/matchedBDF2Translating2D` is testing whether **backward/backward** works too —
-matched *and* second order, which would keep the BDF2 rule intact.
+**The best configuration measured is `rhoLENT` + `boundRho` + MATCHED BDF2** — full
+horizon at N=128 with a phase-volume error of **0.0024**, 22× below the next best:
+
+| mom ddt | ρ ddt | pair | steps | End | travel frac | volume err |
+|---|---|---|---|---|---|---|
+| Euler | Euler | matched | 13334 | yes | 0.767 | 0.0525 |
+| Euler | backward | mismatched | 13334 | yes | 0.883 | 0.0585 |
+| backward | Euler | **mismatched** | **10431** | **NO** | 1.321 | 0.775 |
+| **backward** | **backward** | **matched** | **13334** | **yes** | **0.874** | **0.0024** |
+
+So the BDF2 rule stands — the method does not trade time order for consistency.
+
+**Retraction of my own change.** The single divergence, `backward/Euler`, is the
+pairing commit `f7307b5` created by defaulting `RHO_DDT_SCHEME` to Euler. Before it,
+`ddt(rho)` had no entry, inherited `default`, and was automatically *matched*. The
+right fix for the unbounded ρ was never the time scheme — it is `boundRho`. Both
+defaults are corrected (`RHO_DDT_SCHEME backward`, `MASS_FLUX_BOUND_RHO true`), with
+bit-identity re-verified.
+
+**Also retracted:** "both conditions necessary" from `massConsistencyTranslating2D` —
+that matrix ran with the droplet centred and was outlet-contaminated. With the outlet
+cleared all four N=64 pairings complete and the *best* is a mismatched pair, so
+matching is not a clean predictor on its own. The mass-flux half survives.
+
+### rhoLENT is safe to adopt, and the control shows the mechanism
+
+`config/rhoLENTStationary2D`, all 6 arms complete, control reproducing the shared
+ladder to **five digits**: rhoLENT is neutral-to-better (+1.0% / −22% / +0.1% at
+N=32/64/128), volume and shape matching to three digits.
+
+The decisive column is the mass residual: `geometricFaceDensity` carries **0.04–0.56
+relative on the STATIONARY droplet** — as large as on the translating one — and it
+does no harm, because the momentum source is `U0 ×` residual and `U0 = 0`. That holds
+the residual fixed and varies only `U0`, which no earlier test did.
+
+**Recommendation, not acted on:** make `rhoLENT` the shared `MASS_FLUX` default. One
+line in `cases/default.parameter`. Left as an explicit decision because it makes every
+earlier ladder incomparable.
+
+### The 2D ladders on the shared configuration are complete
+
+Stationary, unabsorbed capillary residual (2nd half), `cellCentreInverse` wins at
+every rung: 4.60× / 3.81× / 1.55× / 1.49× at N=32/64/128/256.
 
 ### And a retraction: the historical failures were the droplet leaving the domain
 
