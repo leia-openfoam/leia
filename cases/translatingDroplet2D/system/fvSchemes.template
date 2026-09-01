@@ -76,6 +76,16 @@ ddtSchemes
     // So this axis answers a narrower question than "is it 2nd order": is backward
     // usable at all post-fix, and does it move the per-step gain?
     default         @!MOMENTUM_DDT_SCHEME!@;
+    // Auxiliary rhoLENT density equation ONLY (momentum is the distinct key
+    // ddt(rho,U) above). Euler, not `default`: rho appears only under fvm::ddt --
+    // div(rhoPhi) is explicit -- so the matrix is diagonal and the ddt scheme picks
+    // nothing but the history coefficients, and Euler is what rhoLENT specifies.
+    // MEASURED (config/rhoDdtGate2D, 2026-09-01): switching backward -> Euler halves
+    // the fraction of outer solves with rho < rho2 (13.1% -> 6.4%) and cuts the worst
+    // excursion 3x (-72.3 -> -23.3), but does NOT stop rho going negative and does not
+    // save the run. Do not read this entry as a fix -- see RHO_DDT_SCHEME in
+    // cases/default.parameter for the retraction and the actual mechanism.
+    ddt(rho)        @!RHO_DDT_SCHEME!@;
 
     // LEVEL-SET time derivative, decoupled from the momentum default above.
     // Rendered from the PSI_DDT token via aliasDict; the DEFAULT value

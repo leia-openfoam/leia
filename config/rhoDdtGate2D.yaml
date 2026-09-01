@@ -1,0 +1,110 @@
+# GATE: does ddt(rho) = Euler restore rhoLENT's density boundedness?
+#
+# WHY. The rhoLENT auxiliary equation is `fvm::ddt(rho) + fvc::div(rhoPhi) = 0`.
+# rho appears ONLY under fvm::ddt -- rhoPhi is a known surfaceScalarField -- so the
+# matrix is diagonal, `solver diagonal` inverts it in one pass, and the ddt scheme
+# selects nothing but the coefficients on the history. No case ever wrote a
+# `ddt(rho)` entry, so it inherited `default backward` (BDF2) and expanded to
+#
+#     rho^{n+1} = (4/3) rho^n - (1/3) rho^{n-1} - (2/3) dt div(rho_f phi)
+#
+# That -1/3 destroys the boundedness rhoLENT is built on, which is a CONVEX-
+# COMBINATION argument, not an accuracy argument: with Euler, alpha_f in [0,1],
+# sum_f phi_f = 0 and CFL <= 1, the update is a convex combination of rho^n and
+# face values in [rho2, rho1], so rho cannot leave that interval. The homogeneous
+# part of BDF2 alone gives rho^{n+1} - rho^n = (1/3)(rho^n - rho^{n-1}), so a cell
+# at rho^n = rho2 = 1.19 goes NEGATIVE once its density drops by more than
+# 3*rho2 = 3.57, i.e. 0.36% of rho1-rho2 = 997 in one step.
+#
+# MEASURED 2026-09-01: min(rho) dipped below rho2 in ALL TWELVE arms of
+# traceTranslating2Dhex + projFluxOscillating2D, including the arm that completes
+# its full 13334-step horizon. Where it went negative, 1/rho in the pressure
+# Laplacian changed sign, GAMG diverged to 6.6e+70 in 1000 iterations and the run
+# took an FPE inside GAMGSolver::scale. traceTranslating2Dhex_00000 (this arm) died
+# exactly that way at step 1074 with min(rho) = -72.28.
+#
+# ONE VARIABLE, PLUS A CONTROL. RHO_DDT_SCHEME is the only axis; `backward` is the
+# reproduction control and must fail the way the cluster arm failed. Everything
+# else is pinned to traceTranslating2Dhex's own settings, and the trace is fixed at
+# cellCentred (the arm with the recorded failure). N = 32 reaches step 1074 in
+# ~12 s of solve time, so this is the cheapest rung that reproduces the defect.
+#
+# PRE-REGISTERED READ-OUT.
+#   * PASS (Euler): min(rho) >= rho2 - O(continuity error) on EVERY step. Courant
+#     max is 0.284 and the reported time-step continuity error is ~1e-11, so the
+#     convex-combination bound should hold to roughly that precision. The GAMG
+#     6.6e+70 blow-up disappears and the run passes step 1074.
+#   * CONTROL (backward): min(rho) goes negative and the run dies near step 1074.
+#     If the control SURVIVES, the baseline has moved and nothing below is believed.
+#   * FALSIFIED: if min(rho) still goes negative under Euler at CFL < 1, the
+#     convex-combination argument is wrong and the defect is instead alpha_f
+#     leaving [0,1] in faceNegativeFraction -- a different bug, chased separately.
+#
+# WHAT THIS GATE DOES NOT CLAIM. Euler removes the tripwire, not the disease. The
+# unabsorbed capillary residual still grows (measured: relative-L2 rising
+# 0.0028 -> 0.0210 across quartiles in the arms that die, flat at ~0.0016 in the
+# arm that completes). A passing Euler arm is expected to run FURTHER and then fail
+# on measurable max|U| growth, which is the outcome wanted: it converts a hard
+# linear-algebra crash into a physical signal.
+#
+# ============================== RESULT, 2026-09-01 ==============================
+# RAN: laptop, 4 MPI ranks, profiles/local8, binary Sep 1 12:08 (no src/ or solver
+# source newer than its build). Both arms DIVERGED with an FPE.
+#
+#   ddt(rho)    steps to FPE   t_blow        min(rho)   outer solves with rho < rho2
+#   backward       1074        0.06443903     -72.28       421/3220  (13.1%)
+#   Euler           879        0.05273921     -23.28       168/2636  ( 6.4%)
+#
+# CONTROL VALID: the `backward` arm reproduces cluster arm traceTranslating2Dhex_00000
+# to five digits -- 1074 steps, t = 0.064439033, min rho = -72.277. The baseline has
+# not moved and the comparison stands.
+#
+# VERDICT: FALSIFIED. Euler does NOT bound rho. It halves the undershoot frequency and
+# cuts the worst excursion 3x, so the -(1/3)rho^{n-1} history term is a real amplifier,
+# but rho still goes negative and the run still dies. The 879-vs-1074 difference is 18%,
+# inside the 5-38% t_blow seed noise this campaign has measured, so Euler is NOT
+# meaningfully worse either -- the ddt scheme is simply not the mechanism.
+#
+# WHY THE PREDICTION WAS WRONG. The convex-combination argument assumed rho_f was an
+# upwind value of rho^n. It is not -- it is a GEOMETRIC face density from the
+# reconstructed plane. With sum_f phi_f = 0 the update is
+#     rho^{n+1}_c = rho^n_c - (dt/V_c) sum_f (rho_f - rho^n_c) phi_f
+# and |rho_f - rho^n_c| reaches the full jump 997 for a cell at rho2 with a face the
+# interface cuts, giving an undershoot ~ CFL*997 ~ 280 at the measured CFL 0.28. No
+# time scheme rescues that.
+#
+# The pre-registered alternative falsifier -- alpha_f leaving [0,1] -- is ruled out by
+# inspection: triNegativeFraction returns p3^2/((p3-p1)(p3-p2)) and p1^2/((p2-p1)(p3-p1))
+# with the sorted signs making both <= 1, and faceNegativeFraction is liqA/totA.
+#
+# WHERE THIS POINTS INSTEAD. Boundedness needs rho_f and rho^n_c to come from the SAME
+# transported interface. In this solver they do not: psi is advected semi-Lagrangian by
+# the TRACE VELOCITY, while rho is transported by the face flux phi -- two different
+# transport operators, which is exactly the consistency rhoLENT requires. Supporting
+# evidence, projFluxOscillating2D (closed box, 6/6 clean split, verified against each
+# arm's rendered fvSolution rather than an inferred index mapping):
+#   cellCentred  arms: min rho = -4.61, -16.83, -6.76   (2 of 3 never reach End)
+#   projectedFlux arms: min rho = +0.63, +0.91, +0.99   (3 of 3 reach End)
+# projectedFlux traces fvc::reconstruct(phi), so interface displacement and mass flux
+# derive from the same discrete phi. That -- not solenoidality alone -- may be what the
+# trace-velocity axis has been measuring all along. NOT YET TESTED as a hypothesis.
+# ================================================================================
+study_name: rhoDdtGate2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 60
+axes_override:
+  N_CELLS: [32]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["cellCentred"]
+  RHO_DDT_SCHEME: ["backward", "Euler"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

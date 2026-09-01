@@ -500,5 +500,54 @@ MASS_FLUX rhoLENT;
 // (MOMENTUM_DIV_SCHEME), so div(rhoPhi,U) and the face fraction now agree.
 MASS_FLUX_ALPHAF_SOURCE donorPlane;
 
+// Time scheme of the rhoLENT AUXILIARY density equation, ddt(rho). Separate from
+// MOMENTUM_DDT_SCHEME on purpose. This default is NOT INERT for any case that had
+// no ddt(rho) entry: it changes `backward` (inherited from `default`) to Euler, so
+// results before and after this commit are NOT comparable.
+//
+// WHY EULER IS THE RIGHT SCHEME HERE, AND WHY IT IS NOT A BDF2-RULE VIOLATION. The
+// repository rule is scoped to MOMENTUM ("Momentum uses OpenFOAM's backward (BDF2)
+// scheme"); the auxiliary density equation acquired BDF2 by accident, through
+// `default`, because no case ever wrote a ddt(rho) entry. There is no implicit
+// solve here to justify a BDF at all: rho appears ONLY under fvm::ddt -- div(rhoPhi)
+// is a known surfaceScalarField -- so the matrix is diagonal-only, `solver diagonal`
+// inverts it in one pass, and the ddt scheme's entire effect is choosing the
+// coefficients on the history. Liu et al. specify Euler.
+//
+// WHAT EULER DOES AND DOES NOT DO -- MEASURED, config/rhoDdtGate2D, 2026-09-01,
+// translatingDroplet2D N=32 cellCentred, 4 ranks, one variable plus control:
+//
+//   ddt(rho)    steps to FPE   min(rho)   outer solves with rho < rho2
+//   backward       1074         -72.28        421/3220  (13.1%)
+//   Euler           879         -23.28        168/2636  ( 6.4%)
+//
+// The `backward` control reproduces the cluster arm traceTranslating2Dhex_00000 to
+// five digits (1074 steps, t = 0.064439033, min rho = -72.277), so the gate is
+// sound. Euler HALVES the undershoot frequency and cuts the worst excursion 3x --
+// the -(1/3)rho^{n-1} history coefficient is real and does amplify -- but rho STILL
+// GOES NEGATIVE and the run still dies. The 879-vs-1074 step difference is 18%,
+// inside the 5-38% t_blow seed noise this campaign has documented, so it is not a
+// meaningful ordering.
+//
+// RETRACTED: the claim that BDF2 CAUSES the rho < 0 crash. It does not; it only
+// makes it worse. The convex-combination argument that predicted Euler would bound
+// rho was wrong, because rho_f is a GEOMETRIC face density from the reconstructed
+// plane, not an upwind value of rho^n. With sum_f phi_f = 0 the update is
+//
+//     rho^{n+1}_c = rho^n_c - (dt/V_c) sum_f (rho_f - rho^n_c) phi_f
+//
+// and |rho_f - rho^n_c| reaches the full jump rho1-rho2 = 997 for a cell sitting at
+// rho2 with a face that the interface cuts. The undershoot is then ~ CFL * 997,
+// which at the measured CFL 0.28 is ~280 -- no time scheme rescues that. Boundedness
+// requires rho_f and rho^n_c to come from the SAME transported interface, which in
+// this solver they do not: psi is advected semi-Lagrangian by the TRACE VELOCITY
+// while rho is transported by the face flux phi. See RHO_DDT_SCHEME's real
+// counterpart, SL_TRACE_VELOCITY, and the 6/6 split recorded there.
+//
+// Euler is kept as the default anyway, on grounds independent of the parasitic
+// current: it is the scheme the method is defined with, and `backward` here was
+// nobody's choice. Set to `backward` to reproduce pre-2026-09-01 results.
+RHO_DDT_SCHEME Euler;
+
 SL_FOOT_INTEGRATOR taylor;
 SL_TRACE_VELOCITY cellCentred;
