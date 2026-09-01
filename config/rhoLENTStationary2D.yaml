@@ -1,0 +1,69 @@
+# CAN rhoLENT BE ADOPTED WITHOUT DAMAGING THE CASE THAT ALREADY WORKS?
+#
+# WHY THIS EXISTS. rhoLENT + massFlux.boundRho + matched BDF2 is now the best
+# configuration measured on the TRANSLATING droplet: full horizon at N=128 with a
+# phase-volume error of 0.0024, 22x below the next best
+# (config/matchedBDF2Translating2D), and rhoLENT ahead of geometricFaceDensity on
+# free-stream preservation at both rungs (config/translatingClearOutlet2D). Before any
+# of that is proposed as a shared default it has to be shown NOT to damage the
+# stationary droplet, which is the case this campaign has spent months making clean
+# and which the shared ladder currently reproduces to four digits.
+#
+# The consistency argument predicts rhoLENT should be NEUTRAL here. The spurious
+# momentum source it removes is U0 times the discrete mass residual, and U0 = 0 for a
+# stationary droplet, so the term it fixes is identically zero. Any DIFFERENCE this
+# study finds is therefore a side effect of rhoLENT -- the auxiliary equation, the
+# end-of-step reset, or the clip -- and not a benefit of consistency. That makes it a
+# clean regression test: the prediction is "no change", and a change is a defect.
+#
+# ONE VARIABLE: MASS_FLUX. Everything else is the shared method configuration, pinned
+# explicitly so the study does not change meaning if a default moves again. Matched
+# BDF2 on both ddt keys, boundRho on (inert for geometricFaceDensity, which solves no
+# density equation), mass-residual diagnostic on so both models report what their
+# momentum equation inherits.
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION CONTROL: the geometricFaceDensity arms must reproduce the shared
+#     ladder's unabsorbed capillary residual -- 2.369e-05 / 3.145e-06 / 8.534e-07 at
+#     N=32/64/128 under curvatureExtension none, from config/stationaryLadder2Dshared.
+#     If they do not, a default moved and nothing here is believed.
+#   * PASS: rhoLENT is within a small factor of geometricFaceDensity at every rung on
+#     the capillary residual, volume and shape, and reaches the horizon at all three.
+#     Neutral is the success criterion; rhoLENT is not expected to help here and a
+#     large improvement would be as suspicious as a large regression.
+#   * FAIL: rhoLENT degrades any rung materially, or fails to complete one. Then it
+#     cannot be a shared default and stays a per-case selection for moving-interface
+#     problems -- which is still a real result, just a narrower one.
+#   * The mass residual is the instrument that says whether the mechanism is engaged
+#     at all: it should be ~1e-10 for rhoLENT and ~1e-01 for geometricFaceDensity even
+#     here, because geometricFaceDensity solves no density equation regardless of
+#     whether the interface moves.
+#   * Report the whole vector: capillary residual, volume, shape, |grad psi|, clip.
+study_name: rhoLENTStationary2D
+case: stationaryDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 240
+axes_override:
+  N_CELLS: [32, 64, 128]
+  MASS_FLUX: ["geometricFaceDensity", "rhoLENT"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
