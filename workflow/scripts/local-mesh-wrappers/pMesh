@@ -18,16 +18,29 @@
 # (the Snakefile runs the preamble with cwd = repo root, before cd-ing into the
 # case, so $PWD resolves correctly).
 #
-# RETRACTED 2026-08-31: this file used to claim "on the cluster the preload is
-# unnecessary and this wrapper is simply never put on PATH". That is FALSE.
-# Lichtenberg (glibc 2.34) aborts in pMesh with the SAME `free(): invalid
-# pointer`, rc 134, as the laptop (glibc 2.39) -- which is why every polyhedral
-# study there died at the mesh step, first with "command not found" (cfMesh was
-# not installed at all) and then with the abort once it was. Under the preload
-# pMesh completes on the cluster: 572k cells, non-orthogonality max 61.8 deg,
-# average 5.7. profiles/slurm now puts this directory first in PATH and sets
-# LEIA_JEMALLOC, because the cluster has no jemalloc at the laptop's miniconda3
-# path (it is installed to a separate conda-forge-only prefix).
+# SUPERSEDED 2026-09-01 -- READ THIS BEFORE USING THIS WRAPPER.
+#
+# On 2026-08-31 this file was edited to say the preload IS needed on the cluster.
+# That edit was itself based on a wrong diagnosis and is now superseded: the
+# abort is an UPSTREAM BUG IN CFMESH MASTER, not a platform property.
+#
+# Located: gdb put the abort in meshSurfaceMapper::preMapVertices; valgrind
+# showed a free of a pointer 8 bytes INSIDE a block allocated by
+# List<labelledPointScalar> -- the post-cookie pointer of an array new[]. It
+# reaches only pMesh because preMapVertices uses DynList<scalar,6> and only
+# Voronoi faces exceed six vertices; Cartesian quads never take the heap path,
+# which is why cartesianMesh was always fine.
+#
+# THE FIX IS THE FIXED SOURCE. cfMesh `development` (b7d96fb) compiles clean and
+# runs the identical case UNWRAPPED -- rc 0, no abort, mesh produced -- on both
+# glibc 2.34 (cluster) and the laptop. Build that branch and this wrapper is
+# unnecessary everywhere. On Lichtenberg it is installed at
+# $HOME/OpenFOAM/cfmesh and linked into the session tree; profiles/slurm no
+# longer references this wrapper at all.
+#
+# KEEP THIS FILE only for a laptop still running a cfMesh MASTER build. jemalloc
+# does not fix the bug; it tolerates it. Prefer upgrading cfMesh.
+
 set -u
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Resolve the REAL pMesh, with this wrapper's directory removed from PATH.
