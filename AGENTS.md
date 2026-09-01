@@ -342,6 +342,19 @@ T, volume at both, because the reversal cancels errors at the endpoint)? Are the
 compared runs at equal step counts (endpoint estimators are not comparable
 across unequal horizons)? A number failing these is not a result.
 
+**Is the interface still inside the domain?** Before any conclusion is drawn from
+`t_blow`, compute where the interface IS at that step and how far it is from the
+nearest boundary. MEASURED 2026-09-02: `translatingDroplet2D` centres a droplet in a
+0.01 m box at `U0 = 0.05` with `END_TIME 0.1`, so its leading edge reaches the OUTLET
+at t = 0.08 -- 80% of the horizon. Six of six divergences had the droplet at or past
+the outlet; both survivors had it ~10 cells inside; and the same configuration that
+died at step 9337 on FOUR independent occasions completes all 13334 steps once the
+droplet is started upstream, with nothing else changed. The reproducibility should
+have been the tell: a blow-up landing on 9331/9337/9367/9324 is a GEOMETRIC event, not
+an instability -- real ones scatter by the 5-38% this campaign has documented. It also
+inverted a refinement reading, "finer blows first", which was really "the finer mesh
+transports the droplet more accurately, so it reaches the outlet sooner".
+
 **6. Report the whole vector.** Never a headline metric alone. For an interface
 method that vector is **shape/geometric error, volume conservation error, the
 interface-profile diagnostic (`|grad psi|`, or boundedness of alpha), the
