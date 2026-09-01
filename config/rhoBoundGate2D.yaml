@@ -1,0 +1,90 @@
+# 4-RANK INERTNESS + COLLECTIVES GATE for the two new runtime options.
+#
+# Required by the repository rule: no new or changed algorithm goes to the cluster
+# until it has run on at least FOUR MPI ranks locally and the result has been looked
+# at. Both additions contain COLLECTIVE reductions -- massFlux.boundRho reduces the
+# clipped mass and cell count, massResidualDiagnostic reduces three integrals -- and
+# a collective reached by some ranks and not others deadlocks silently. This
+# repository has lost 76 minutes of cluster time to exactly that, from reductions
+# placed inside a Pstream::master() guard, and the failure is INVISIBLE in serial.
+#
+# Both options are default-false and were separately gated for bit-identity: a
+# 10-step stationaryDroplet2D run reproduced every shared metric column to the last
+# digit against the pre-change binary, the only difference being the two new columns.
+# This gate is about the ON paths.
+#
+# TWO ARMS, one per new code path, both small and both parallel:
+#   rhoLENT + boundRho + massResidualDiagnostic  -- the clip's reductions
+#   geometricFaceDensity + massResidualDiagnostic -- the new massResidualDiag.H
+#     include, which runs only for models that solve no density equation
+#
+# PRE-REGISTERED READ-OUT.
+#   * PASS: both arms reach t = 0.01 on 4 ranks with a terminating End, no deadlock
+#     and no FPE, and the new CSV columns are populated. Checked by reading the step
+#     count and the metrics CSV, NOT the exit code -- a deadlock leaves the job alive
+#     with a truncated log and no nonzero rc anywhere.
+#   * The rhoLENT arm must show rhoClipFraction > 0 at some step or the clip is not
+#     being exercised and the gate proves nothing about it.
+#   * The geometricFaceDensity arm must report a NON-ZERO mass residual: it solves no
+#     density equation, so ddt(rho) + div(rhoPhi) has no reason to vanish, and that
+#     residual is the quantity the whole consistency argument turns on.
+#
+# ============================== RESULT, 2026-09-01 ==============================
+# RAN: laptop, 4 MPI ranks. BOTH ARMS COMPLETED, 167 steps, terminating End, no
+# deadlock and no FPE. The collectives are safe.
+#
+#   model                       mass residual L1        relative-L1      clip
+#   rhoLENT + boundRho          0.30352 -> 9.5453e-08   2.296e-11        active
+#   geometricFaceDensity        926.7   -> 189.36       4.7944e-02       n/a
+#
+# Both pre-registered checks pass: the clip is exercised (a clip on all 167 steps,
+# up to 72% of cells) and the geometricFaceDensity residual is non-zero.
+#
+# AND THE GAP IS THE FINDING -- NINE ORDERS OF MAGNITUDE. geometricFaceDensity, the
+# current shared default and the model every translating study on record has used,
+# leaves a 4.8% RELATIVE mass-conservation error. rhoLENT drives the same residual to
+# 2.3e-11, i.e. round-off. That residual is precisely the quantity the mass-momentum
+# consistency argument turns on: for a droplet translating at uniform U0 the momentum
+# transient plus convection collapses, for constant U, to U0 times it -- a source the
+# pressure cannot absorb because it is not a gradient, and one that vanishes
+# IDENTICALLY at U0 = 0. It is the stationary/translating asymmetry, measured.
+#
+# THE CLIP COSTS ALMOST NOTHING HERE. It fires on 72% of cells but its magnitude is
+# 1.8e-05 against rho2 = 1.19 -- 0.0015%. Most cells sit a hair below rho2 at
+# round-off and are nudged back; this is not the violent clipping the "do not bound
+# rho" comment warned about, and the residual AFTER the clip is still 2.3e-11, so the
+# clip is not buying boundedness at the price of the identity.
+#
+# NOT YET DISCRIMINATING: the free-stream error max|U-U0| is 0.0785 against 0.0781
+# over this 167-step window -- far too early to separate the models. That is what the
+# long runs are for; this gate only certifies the code.
+# ================================================================================
+study_name: rhoBoundGate2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 30
+axes_override:
+  N_CELLS: [32]
+  END_TIME: [0.01]
+  MASS_FLUX: ["rhoLENT", "geometricFaceDensity"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  MOMENTUM_DDT_SCHEME: ["Euler"]
+  RHO_DDT_SCHEME: ["Euler"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

@@ -497,6 +497,12 @@
         {
             #include "rhoLENTEqn.H"
         }
+        else if (massResidualDiagnostic)
+        {
+            // Same residual, for a model that solves no density equation. Pure
+            // diagnostic; inert unless massResidualDiagnostic is switched on.
+            #include "massResidualDiag.H"
+        }
     }
 }
 

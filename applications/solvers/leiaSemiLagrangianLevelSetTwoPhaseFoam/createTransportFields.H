@@ -304,6 +304,34 @@ scalar rhoMassResidualLinf = 0;
 scalar rhoMassResidualRelL1 = 0;
 scalar rhoLENTResetL1 = 0;
 
+// --- density bounding (rhoLENT only) and the mass-residual diagnostic ---------
+//
+// boundRho: clip the auxiliary density to [rho2, rho1] right after the density
+// solve, before momentum and pressure see it. rho1/rho2 are constants, so a rho
+// outside that interval is unphysical, and a NEGATIVE one flips the sign of 1/rho
+// in the pressure Laplacian and ends the run in a GAMG blow-up. The clip is not
+// free -- it breaks the discrete identity ddt(rho) + div(rhoPhi) = 0 that rhoLENT
+// exists to enforce -- so it is MEASURED, never silent: rhoClipL1 and
+// rhoClipFraction go to the metrics CSV.
+//
+// massResidualDiagnostic: compute ddt(rho) + div(rhoPhi) for EVERY mass-flux model,
+// not only rhoLENT. For a droplet translating at uniform U0 the spurious momentum
+// source is U0 times this residual and it vanishes identically at U0 = 0 -- the
+// stationary/translating asymmetry. geometricFaceDensity solves no density equation,
+// so its residual has never been measured. Pure diagnostic; changes no field.
+const bool boundRhoLENT =
+    massFluxDict.getOrDefault<bool>("boundRho", false);
+const bool massResidualDiagnostic =
+    massFluxDict.getOrDefault<bool>("massResidualDiagnostic", false);
+if (boundRhoLENT && !useRhoLENT)
+{
+    Info<< "massFlux: boundRho requested but type is '" << massFluxType
+        << "' -- there is no auxiliary density equation to bound; ignored."
+        << nl << endl;
+}
+scalar rhoClipL1 = 0;
+scalar rhoClipFraction = 0;
+
 Info<< "Two-phase mass flux (rhoPhi): " << massFluxType;
 if (massFluxType != "interpolatedDensity")
 {

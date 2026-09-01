@@ -243,6 +243,14 @@ levelSet
         // rhoLENT defaults to the symmetric owner/neighbour-plane face
         // fraction, approximating the paper's unique geometric alpha_f.
         alphaFSource        @!MASS_FLUX_ALPHAF_SOURCE!@;
+        // rhoLENT ONLY, inert elsewhere. Clip the auxiliary density to
+        // [rho2, rho1] immediately after the density solve, BEFORE momentum and
+        // pressure see it. rho1 and rho2 are constants, so any rho outside that
+        // interval is unphysical by construction. See MASS_FLUX_BOUND_RHO.
+        boundRho            @!MASS_FLUX_BOUND_RHO!@;
+        // Diagnostic only: write the discrete mass residual ddt(rho)+div(rhoPhi)
+        // for EVERY mass-flux model, not just rhoLENT. Costs one ddt and one div.
+        massResidualDiagnostic @!MASS_RESIDUAL_DIAGNOSTIC!@;
     }
 
     // Harmonic (Laplace) smoothing of the mean curvature: pin the cell-centred

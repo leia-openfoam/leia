@@ -544,6 +544,41 @@ MASS_FLUX geometricFaceDensity;
 // (MOMENTUM_DIV_SCHEME), so div(rhoPhi,U) and the face fraction now agree.
 MASS_FLUX_ALPHAF_SOURCE donorPlane;
 
+// rhoLENT ONLY (inert for every other mass-flux model, which solve no density
+// equation). Clip the auxiliary density to [rho2, rho1] immediately after the
+// density solve, BEFORE the momentum and pressure equations see it.
+//
+// WHY IT IS DEFENSIBLE. rho1 and rho2 are CONSTANTS here, so any rho outside
+// [rho2, rho1] is unphysical by construction, and a NEGATIVE one is worse than
+// unphysical: it flips the sign of 1/rho in the pressure Laplacian, the Poisson
+// operator loses definiteness, and the run ends in a GAMG blow-up to 6.6e+70 with
+// an FPE inside GAMGSolver::scale -- no result at all. Measured 2026-09-01 on the
+// translating and oscillating droplets.
+//
+// WHY IT IS NOT FREE, and why the clip is REPORTED rather than silent. Clipping
+// introduces a source S_clip, so ddt(rho) + div(rhoPhi) = S_clip instead of 0, and
+// the momentum equation inherits U*S_clip -- the very discrete free-stream identity
+// rhoLENT exists to enforce. The solver therefore writes rhoClipL1 (mean |clip| per
+// unit volume) and rhoClipFraction (fraction of cells clipped) to the metrics CSV,
+// so the consistency break is a MEASURED quantity. A run whose clip is at round-off
+// has paid nothing; a run clipping heavily is telling you the auxiliary equation is
+// inconsistent with its own flux, and the answer is to fix that, not to clip harder.
+//
+// Default false = every existing study is byte-unchanged.
+MASS_FLUX_BOUND_RHO false;
+
+// Diagnostic only, no effect on the solution: compute and write the discrete mass
+// residual ddt(rho) + div(rhoPhi) for EVERY mass-flux model rather than only for
+// rhoLENT. It is the quantity the mass-momentum consistency argument turns on --
+// for a droplet translating at uniform U0 the spurious momentum source is U0 times
+// this residual, and it vanishes identically at U0 = 0, which is exactly the
+// stationary/translating asymmetry. geometricFaceDensity solves no density equation
+// at all, so its residual is whatever the geometry leaves it and has never been
+// measured. Costs one ddt and one div per outer iteration.
+//
+// Default false = every existing study is byte-unchanged.
+MASS_RESIDUAL_DIAGNOSTIC false;
+
 // Time scheme of the rhoLENT AUXILIARY density equation, ddt(rho). Separate from
 // MOMENTUM_DDT_SCHEME on purpose. This default is NOT INERT for any case that had
 // no ddt(rho) entry: it changes `backward` (inherited from `default`) to Euler, so

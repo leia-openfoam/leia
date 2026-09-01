@@ -30,6 +30,8 @@
 //   rhoMassResidualL1/Linf  residual of the auxiliary rhoLENT equation
 //   rhoMassResidualRelL1  L1 residual scaled by |ddt(rho)|+|div(rhoPhi)|
 //   rhoLENTResetL1  mean |rho_aux-rho_DA| before the end-step reset
+//   rhoClipL1       volume-mean |clip| applied by massFlux.boundRho   [kg/m3]
+//   rhoClipFraction fraction of cells clipped that step                  [-]
 //
 // The curvature/gradient columns are a diagnostic: they reveal whether the
 // curvature error grows BEFORE (curvature-driven) or AFTER (coupling-driven) the
@@ -96,7 +98,7 @@ if (Pstream::master())
         << "capillaryResidualPower,capillaryResidualWork,"
         << "minGradPsiBand,maxGradPsiBand,gradPsiL2ErrorBand,"
         << "gradPsiRatioBand,rhoMassResidualL1,rhoMassResidualLinf,"
-        << "rhoMassResidualRelL1,rhoLENTResetL1,"
+        << "rhoMassResidualRelL1,rhoLENTResetL1,rhoClipL1,rhoClipFraction,"
         // WP0 band mode spectrum (bandModeSpectrum.H): normal-profile mode
         // amplitudes A(kh) = |psi_{+k} - 2 psi_0 + psi_{-k}|/4 along the
         // LLS-plane normal, k = 1 (2h), 2 (4h), 4 (8h); band max and

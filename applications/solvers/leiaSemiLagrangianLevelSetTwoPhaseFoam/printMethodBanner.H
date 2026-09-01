@@ -113,6 +113,13 @@
     row("massFlux type",       get(mfD, "type", "interpolatedDensity (default)"));
     // Which reconstructed plane gives the face area fraction -- NOT an
     // interpolation scheme, and unrelated to div(rhoPhi,U).
+    row("massFlux boundRho",
+        (get(mfD, "type", "geometricFaceDensity") == "rhoLENT")
+          ? (mfD.getOrDefault<bool>("boundRho", false)
+               ? "true  (rho clipped to [rho2,rho1]; clip is REPORTED)" : "false")
+          : "n/a (no density equation)");
+    row("massFlux massResidualDiag",
+        mfD.getOrDefault<bool>("massResidualDiagnostic", false) ? "on" : "off");
     row("massFlux alpha_f source",
         get(mfD, "alphaFSource",
             get(mfD, "faceInterpolation", "donorPlane (default)")));

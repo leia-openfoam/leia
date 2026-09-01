@@ -373,6 +373,7 @@
             << gradPsiRatio << ',' << rhoMassResidualL1 << ','
             << rhoMassResidualLinf << ',' << rhoMassResidualRelL1 << ','
             << rhoLENTResetL1 << ','
+            << rhoClipL1 << ',' << rhoClipFraction << ','
             << modeSpec.aMax[0] << ',' << modeSpec.aL2[0] << ','
             << modeSpec.aMax[1] << ',' << modeSpec.aL2[1] << ','
             << modeSpec.aMax[2] << ',' << modeSpec.aL2[2] << ','
