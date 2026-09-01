@@ -1,0 +1,101 @@
+# THE DECISIVE MASS-MOMENTUM CONSISTENCY EXPERIMENT ON THE TRANSLATING DROPLET.
+#
+# WHAT IS ALREADY MEASURED, so this is not a fishing expedition:
+#
+#   * Four gates place the failure OUTSIDE the curvature chain: transport
+#     (kinematicTranslation2D), the estimator (wellBalancedTranslating2D -- EXACT
+#     constant curvature still diverged), the delivery (bestConfigTranslating2D --
+#     the theoretically-required extension does not help and hurts), and the density
+#     time scheme (rhoDdtGate2D).
+#   * config/rhoBoundGate2D measured the discrete mass residual ddt(rho)+div(rhoPhi)
+#     directly, and the gap is NINE ORDERS: geometricFaceDensity leaves 4.79e-02
+#     RELATIVE, rhoLENT drives it to 2.30e-11. geometricFaceDensity solves no density
+#     equation at all, so nothing makes that residual small.
+#   * config/consistencyTranslating2D showed momentum ddt ALONE changes nothing at
+#     N=64: Euler and backward both reach the horizon with curvatureExtension none
+#     (4714/4714) and both diverge with cellCentreInverse (3401 vs 3447). Exactly what
+#     the argument predicts -- with no density equation there is nothing to be
+#     consistent WITH, so matching the time scheme buys nothing.
+#
+# THE ARGUMENT. A droplet translating at uniform U0 is the stationary droplet in a
+# moving frame; the exact solution is U == U0. A discretisation preserves it only if
+# momentum's transient plus convection collapses, for constant U, to
+#
+#     U0 * [ ddt(rho) + div(rhoPhi) ]   -- U0 times the discrete mass residual,
+#
+# which is not a gradient, so the pressure projection cannot absorb it, and which
+# vanishes IDENTICALLY at U0 = 0. That is the entire stationary/translating
+# asymmetry. Two things must hold for it to vanish: the mass residual must be zero
+# (only rhoLENT does that), AND momentum's ddt(rho,U) must expand with the same time
+# scheme as the density equation's ddt(rho), or the momentum equation inherits
+# U0 * (1/2)(rho^{n+1} - 2rho^n + rho^{n-1})/dt on top.
+#
+# 2 x 2 x 2 FACTORIAL, separable, testing exactly those two conditions:
+#   MASS_FLUX            geometricFaceDensity (residual 4.8e-2) vs rhoLENT (2.3e-11)
+#   MOMENTUM_DDT_SCHEME  backward (mismatched to the Euler density) vs Euler (matched)
+#   N_CELLS              64 (reaches the horizon today) and 128 (fails at 9337)
+#
+# The FULLY CONSISTENT arm is rhoLENT + Euler momentum + Euler density. The
+# geometricFaceDensity + backward arm is the current default and the reproduction
+# control. The two mixed arms separate the two conditions.
+#
+# curvatureExtension is pinned to NONE, not to the shared default: this case reaches
+# the horizon at N=64 under none and diverges under cellCentreInverse
+# (bestConfigTranslating2D), so none is the clean baseline for a consistency
+# experiment. That is a deliberate deviation from the shared configuration and it is
+# recorded here rather than left implicit.
+#
+# boundRho is ON for every arm (inert where there is no density equation): without it
+# the rhoLENT arms end in a GAMG blow-up from a negative rho and measure nothing. The
+# clip is reported -- rhoBoundGate2D measured it at 1.8e-05 against rho2 = 1.19, i.e.
+# 0.0015%, with the mass residual still 2.3e-11 AFTER clipping, so it is not buying
+# boundedness at the price of the identity. massResidualDiagnostic is ON everywhere
+# so every arm reports the residual its momentum equation actually inherits.
+#
+# PRE-REGISTERED READ-OUT, scored on the FREE-STREAM ERROR maxMagUPrime =
+# max|U - U0|, which is what the argument predicts. max|U| is useless here: U0 = 0.05
+# dominates it and hides any smaller parasitic current.
+#   * REPRODUCTION CONTROL: geometricFaceDensity + backward at N=128 must fail near
+#     step 9337, reproduced three times already. If it survives, nothing here holds.
+#   * PASS: rhoLENT + Euler + Euler reaches t = 0.1 at N=128 AND its free-stream error
+#     is lower by orders. The mass residual it reports must be ~1e-11, confirming the
+#     mechanism is actually engaged rather than merely selected.
+#   * PARTIAL is not a pass: t_blow carries 5-38% seed noise in this campaign.
+#   * SEPARATES THE TWO CONDITIONS: if rhoLENT+backward already fixes it, the mass
+#     residual was the whole story and the ddt pairing is second order. If only
+#     rhoLENT+Euler works, both conditions are necessary -- which is the strong form
+#     of the argument. If neither rhoLENT arm helps, mass-momentum consistency is
+#     FALSIFIED as the mechanism and the next candidate is the semi-Lagrangian
+#     interface displacement itself being inconsistent with phi (psi is advected by
+#     the trace velocity while rho is transported by the face flux -- two different
+#     transport operators, which is the consistency rhoLENT assumes and we do not have).
+#   * Report the whole vector: free-stream error, mass residual, clip, volume, shape.
+study_name: massConsistencyTranslating2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 240
+axes_override:
+  N_CELLS: [64, 128]
+  END_TIME: [0.1]
+  MASS_FLUX: ["geometricFaceDensity", "rhoLENT"]
+  MOMENTUM_DDT_SCHEME: ["backward", "Euler"]
+  RHO_DDT_SCHEME: ["Euler"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
