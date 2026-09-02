@@ -1,0 +1,93 @@
+# TRANSLATING DROPLET on the REPAIRED mesh -- EQUAL-DENSITY CONTROL, ratio 1
+#
+# Supersedes momentumDivScheme2D and momentumDivSchemeEqualRho2D, both VOID: they ran on
+# cases/translatingDroplet2D before 440107f, when the blockMeshDict put all four sides in
+# one `walls` patch. The mesh had no inlet and no outlet, OpenFOAM silently ignored the
+# inlet/outlet entries every 0.org field declares, and the case was a closed slip box
+# whose pressure projection annihilated the uniform stream on step 1. max|U-U0| measured
+# the dead free stream at ~2*U0, not a spurious current. Nothing from those studies is
+# reused. Repair gate: config/translatingFreeStreamGate2D, which took max|U-U0| at step 1
+# from 1.031e-01 to 2.159e-03 and mean|U-U0| from 5.011e-02 to 1.160e-05.
+#
+# THE MATRIX. Two method axes, fully crossed, so neither verdict is confounded:
+#   MASS_FLUX           rhoLENT vs geometricFaceDensity -- the mass-momentum consistency
+#                       axis. rhoLENT solves the auxiliary ddt(rho) + div(rho_f phi) = 0
+#                       so the momentum ddt/div pair matches it discretely;
+#                       geometricFaceDensity builds rho_f from the reconstructed interface
+#                       and carried a relative mass residual of 4.79e-02 where rhoLENT
+#                       carried 2.30e-11.
+#   MOMENTUM_DIV_SCHEME the four best-practice choices for div(rhoPhi,U) taken from the
+#                       interFoam / interIsoFoam tutorials, applied identically to the
+#                       rho equation for consistency.
+# 8 arms. Everything else is the shared default chain, filters OFF.
+#
+# # DENSITY RATIO 1 (499.695 / 499.695). With rho1 = rho2 the single-field density is
+# CONSTANT, so ddt(rho) = 0 and div(rhoPhi) = rho div(phi) = 0 EXACTLY: the discrete mass
+# residual vanishes by construction, rhoLENT's auxiliary equation is trivial, boundRho can
+# never fire, and the spurious momentum source U0*[ddt(rho) + div(rhoPhi)] this campaign
+# has been chasing is identically zero. Anything that still goes wrong here cannot be the
+# mass flux.
+#
+# rho1 + rho2 IS HELD AT 999.39, hence 499.695 each rather than 998.2 or 1.19 each. The
+# capillary limit is dt_cap = sqrt((rho1+rho2) h^3/(2 pi sigma)) while the repository step
+# law dt = 10.861 h^1.5 is density-independent, so the SAFETY FACTOR (0.2323) tracks the
+# density SUM. Holding the sum fixed puts this config at exactly the same fraction of the
+# capillary limit as its ratio-838.8 twin. Viscosities are unchanged, so the control
+# isolates DENSITY alone and the dynamic viscosity ratio moves with rho.
+#
+# PRE-REGISTERED READ-OUT, decided against the ratio-1 twin config
+# (config/translatingRepaired2D.yaml):
+#   * rhoPhi IS THE MECHANISM if the ratio-1 arms collapse toward the parasitic floor
+#     while the ratio-838.8 arms do not, AND the MASS_FLUX axis stops mattering at ratio
+#     1 (it must: with rho constant the two models coincide, so a surviving MASS_FLUX
+#     difference at ratio 1 would falsify the implementation, not the physics).
+#   * rhoPhi IS NOT THE MECHANISM, or not all of it, if max|U-U0| and the volume error
+#     stay the same order at ratio 1. The remaining error would then be capillary,
+#     curvature or transport, none of which the density ratio touches.
+#   * The div-scheme ordering is the secondary read. If it is monotone in numerical
+#     diffusion -- more diffusive scheme, smaller velocity excess -- then no limiter is
+#     fixing anything and the winner wins by damping, which under the repository's
+#     no-partial-solutions rule is a negative result, not a recommendation.
+#
+# REPORTED VECTOR (standing rule, never a headline metric alone): max|U-U0| and
+# mean|U-U0|, phase volume error, zero-set shape error, |grad psi| band diagnostics,
+# the discrete mass residual, and the centroid against center0 + U0*t.
+#
+# GEOMETRY CHECK. DROPLET_OFFSET_X -0.0025 starts the droplet at x = 2.5 mm in the 10 mm
+# box; at U0 = 0.05 and END_TIME 0.1 the exact centre ends at 7.5 mm with the leading
+# edge at 8.5 mm, 19 cells inside the OUTLET, which is now a real outlet.
+study_name: translatingRepairedEqualRho2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 300
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.1]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.05]
+  RHO1: [499.695]
+  RHO2: [499.695]
+  MASS_FLUX: ["rhoLENT", "geometricFaceDensity"]
+  MOMENTUM_DIV_SCHEME: ["upwind", "limitedLinearV 1", "vanLeerV", "linearUpwind gradU"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
