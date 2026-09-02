@@ -1,0 +1,51 @@
+# ANIMATION RUN for the best configuration: rhoLENT + Gauss upwind, density ratio 838.824.
+#
+# "Best" on the repaired 16-arm matrix read at step 5000 (t = 0.0375), where every arm is
+# still healthy: upwind carries the lowest max|U-U0| (8.95e-03) and rhoLENT+upwind is the
+# arm that survived longest before the late instability (9987 steps against 8427-8897).
+#
+# SHORTER HORIZON, as instructed. END_TIME 0.06 instead of 0.1: at the measured travel
+# factor ~1.02 the droplet centre ends near 5.6 mm with its leading edge at 6.6 mm, which
+# is 43 cells inside the outlet at 10 mm. The 0.1 horizon let the droplet leave the
+# domain past t ~ 0.081, after which every phase-derived metric degenerates (volErr -> 1,
+# shape -> 0) and the second half of the run is unreadable.
+#
+# WRITE_INTERVAL 0.0005 gives 120 frames over the horizon -- enough for a smooth GIF
+# without writing 8000 time directories. This run exists to be LOOKED AT; the numbers
+# come from translatingRepaired2D.
+study_name: bestConfigAnim2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 300
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.06]
+  WRITE_INTERVAL: [0.0005]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.05]
+  RHO1: [998.2]
+  RHO2: [1.19]
+  MASS_FLUX: ["rhoLENT"]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

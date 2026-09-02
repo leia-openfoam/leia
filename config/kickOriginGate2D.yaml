@@ -1,0 +1,80 @@
+# WHERE DOES THE FIRST-STEP DISTURBANCE COME FROM?
+#
+# On the repaired mesh the translating droplet starts from a UNIFORM U = (U0,0,0) that is
+# now compatible with its boundaries (step-1 continuity 2.3e-20), and yet one 7.5 us step
+# leaves max|U-U0| = 2.16e-03 = 0.043*U0. This gate decomposes that number. It is 200
+# steps per arm at N=128 -- minutes, not hours.
+#
+# TWO AXES, chosen so each one answers a different half of the question.
+#
+# 1. TRANSLATION_SPEED 0 / 0.0125 / 0.025 / 0.05. For constant U the momentum transient
+#    plus convection collapses to U0 * [ddt(rho) + div(rhoPhi)], which is a mass-momentum
+#    consistency term, is NOT a gradient so the pressure cannot absorb it, and is
+#    IDENTICALLY ZERO at U0 = 0. So:
+#      kick PROPORTIONAL TO U0  -> the disturbance is the consistency term, and the
+#                                  translating case differs from the stationary one in
+#                                  kind, not just in reference frame;
+#      kick INDEPENDENT of U0   -> the disturbance is the capillary force imbalance that
+#                                  the stationary droplet has too, and "translation
+#                                  creates it" is simply wrong. The U0 = 0 arm is also
+#                                  the control this comparison has never had: the 1e-5
+#                                  figure quoted for the stationary droplet is its
+#                                  SETTLED level, not its first step, and the two have
+#                                  been compared as though they were the same thing.
+#
+# 2. SURFACE_TENSION_FORCE reconstructedCurvature vs constantCurvatureSurfaceTension.
+#    The droplet is a circle of R = 1e-3 m, so kappa = 1/R = 1000 1/m is EXACT everywhere
+#    on the interface. With kappa constant the delivered force sigma*kappa*snGrad(alpha)
+#    is an exact discrete gradient, the pressure equation absorbs it entirely, and any
+#    remaining velocity is force DELIVERY error rather than curvature error. So:
+#      exact-kappa kick ~ round-off -> the whole disturbance is the curvature estimator,
+#                                      whose measured error is 7% (kErrL2Band ~ 70
+#                                      against kappa = 1000) at R/h = 12.8;
+#      exact-kappa kick still ~2e-3 -> the estimator is exonerated and the defect is in
+#                                      the delivery, the density interpolation, or the
+#                                      projection.
+#
+# 8 arms, fully crossed, so neither verdict is confounded. Everything else is the shared
+# default chain with filters OFF.
+#
+# PRE-REGISTERED. I expect kick INDEPENDENT of U0 and exact-kappa collapsing to
+# round-off, i.e. the disturbance is curvature-estimator error that exists equally in the
+# stationary case. If the kick instead scales with U0 that falsifies the reading above
+# and puts mass-momentum consistency back as the source term -- which the repaired
+# 16-arm matrix argued against, since nine orders of magnitude in the mass residual moved
+# max|U-U0| by less than 2x.
+study_name: kickOriginGate2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 60
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.0015]        # 200 steps at dt = 7.5e-06
+  WRITE_INTERVAL: [0.0005]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0, 0.0125, 0.025, 0.05]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature", "constantCurvatureSurfaceTension"]
+  CONST_CURVATURE: [1000]   # 1/R, exact for the R = 1e-3 m circle; unread by the other model
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
