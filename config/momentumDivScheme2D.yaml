@@ -1,0 +1,92 @@
+# BEST-PRACTICE LIMITED / TVD SCHEMES FOR div(rhoPhi,U) ON THE TRANSLATING DROPLET.
+#
+# WHY. MOMENTUM_DIV_SCHEME is `upwind` -- bounded but FIRST ORDER, and the campaign has
+# never swept it on this case. Several of the high-density-ratio methods surveyed in the
+# rhoLENT paper's introduction (Nangia et al.; Manik et al.; Patel & Natarajan) replace
+# exactly this term with a limited high-resolution scheme satisfying CBC/TVD.
+#
+# WHAT THE OpenFOAM v2512 TUTORIALS USE for div(rhoPhi,U), surveyed 2026-09-02:
+#
+#   interFoam (44 cases)          interIsoFoam (13 cases)
+#     linearUpwind grad(U)  28      limitedLinearV 1        7
+#     vanLeerV               8      linearUpwind grad(U)    2
+#     upwind                 6      vanLeerV                1
+#     linear                 3      upwind                  1
+#     limitedLinear 0.2      1      linear                  1
+#
+# The per-case list is what informs the choice. linearUpwind dominates interFoam almost
+# entirely through ONE family -- 15 of its 28 are laminar/waves/*, plus the dam breaks
+# and hulls: gravity-driven free surfaces. Every vanLeerV case is instead a SLOSHING or
+# STIRRED tank (sloshingTank2D/3D and DoF variants, sloshingCylinder, floatingObject,
+# testTubeMixer), i.e. sustained interface motion relative to the mesh -- the closest
+# kinematic match to a translating droplet. limitedLinearV 1 is interIsoFoam's choice
+# for 7 of 13 including its pure-advection benchmarks (discInReversedVortexFlow,
+# notchedDiscInSolidBodyRotation, sphereInReversedVortexFlow). Both leaders are the "V"
+# form: one limiter taken from the direction of most rapid change, the recommended
+# treatment for a vector.
+#
+# CONSISTENCY IS NOT AT RISK, and this is why the sweep is legitimate. In this solver
+# rhoPhi is literally the SAME surfaceScalarField in both equations: the mass equation is
+# fvm::ddt(rho) + fvc::div(rhoPhi), a bare sum of face fluxes taking no interpolation
+# scheme at all, and the scheme in fvm::div(rhoPhi,U) interpolates U only. Moreover the
+# free-stream identity needs U_f = U_c for constant U, which EVERY standard scheme
+# satisfies exactly -- the limiter is irrelevant where the gradient vanishes. So the
+# choice cannot reintroduce the mass-momentum inconsistency and can be made on accuracy
+# and boundedness grounds alone.
+#
+# ONE VARIABLE: MOMENTUM_DIV_SCHEME. Everything else is the shared configuration --
+# rhoLENT, boundRho, MATCHED backward/backward, projectedFlux, no volume correction
+# (measured to degrade transport), curvatureExtension none -- and N=128, the admissible
+# rung (R/h = 12.8; the rule is >= 10).
+#
+# `linearUpwind gradU` is used rather than `linearUpwind grad(U)` to keep parentheses
+# out of a token; gradSchemes defines gradU as Gauss linear and the two are verified
+# bit-identical.
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION CONTROL: the upwind arm must reproduce config/translatingLadder2D's
+#     N=128 rhoLENT arm -- travelled fraction 0.874, centroid error 6.3e-04, phase-volume
+#     error 0.0024, max|U-U0| 2.118. If it does not, a default moved.
+#   * THE STANDING CAUTION THIS RE-TESTS: cases/default.parameter records "only Gauss
+#     upwind worked in rhoLENT". That note came from a PLAIN higher-order scheme; the two
+#     leaders here are LIMITED, which is the distinction Nangia's result turns on. If the
+#     limited schemes also fail, the caution generalises and upwind stays.
+#   * PASS: a limited scheme reaches the horizon with a LOWER max|U-U0| and a travelled
+#     fraction closer to 1 than upwind. First order in the convective term is a real
+#     accuracy limit at U0 = 0.05 with a density ratio of 839, and the token's own
+#     comment predicts the exposure "will matter for the TRANSLATING droplet".
+#   * Report the whole vector: travelled fraction, centroid error, max|U-U0|,
+#     ||maxU|-U0|, phase volume, mass residual, clip, density bounds.
+study_name: momentumDivScheme2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 300
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.1]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.05]
+  MOMENTUM_DIV_SCHEME: ["upwind", "limitedLinearV 1", "vanLeerV", "linearUpwind gradU"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
