@@ -45,15 +45,49 @@ edges
 
 boundary
 (
+    // INFLOW / OUTFLOW, split 2026-09-02. Until this commit all four sides were
+    // one `walls` patch of type `wall`, so the mesh had NO inlet and NO outlet --
+    // while every field in 0.org has always declared both. OpenFOAM errors when a
+    // MESH patch is missing from a field but silently ignores a FIELD entry that
+    // matches no mesh patch, so `inlet { fixedValue (U0 0 0); }` was read, parsed
+    // and discarded on every run this case has ever done.
+    //
+    // The case was therefore a CLOSED BOX with slip walls. Slip imposes U.n = 0,
+    // and on the x-normal faces the normal IS x, so the uniform stream the case is
+    // initialised with is incompatible with its own boundaries: the pressure
+    // projection annihilated it on step 1 (first-step local continuity error
+    // 1.0e-05 against 1.6e-12 by step 3), leaving the ambient at rest
+    // (mean Ux = -2.0e-03) and the droplet coasting through still air at
+    // Ux = +6.1e-02, with a domain mean of -7.3e-07 as a closed box must have.
+    // maxMagUPrime = max|U - (U0,0,0)| then measured the ANNIHILATED FREE STREAM,
+    // not a spurious current, and read ~2*U0 from the first step onwards.
+    inlet
+    {
+        type patch;
+        faces
+        (
+            (0 4 7 3)   // left,  x = 0
+        );
+    }
+
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (2 6 5 1)   // right, x = domain
+        );
+    }
+
+    // Free-slip top and bottom: a uniform stream with no wall shear, which is what
+    // the translation gate needs. These two are the ONLY sides that stay `wall`.
     walls
     {
         type wall;
         faces
         (
-            (0 4 7 3)   // left
-            (2 6 5 1)   // right
-            (3 7 6 2)   // top
-            (1 5 4 0)   // bottom
+            (3 7 6 2)   // top,    y = domain
+            (1 5 4 0)   // bottom, y = 0
         );
     }
 

@@ -380,6 +380,52 @@ binaries.
 - **No partial solutions.** Do not bank a tuned coefficient that papers over a
   defect that is still there.
 
+## A wrong setup voids its data. Re-run, do not reuse
+
+**When a case is found to be set up wrong, every number it produced is void --
+including the ones that look unaffected, and including arms that were merely
+"adjacent" to the defect.** Rename the study directory with a `_VOID_<reason>_<date>`
+suffix so it can never be curated by accident, fix the setup, and re-run from
+scratch. Aim at EXACTNESS AT THE COST OF CPU HOURS: cluster time is cheap next to a
+conclusion built on a case that was not what anyone thought it was.
+
+Do NOT reason about which metrics "should still be valid" under the defect. That
+reasoning is exactly as unreliable as the setup was, it cannot be audited later, and
+a partially-trusted table is worse than no table because nobody downstream knows
+which rows to distrust.
+
+MEASURED 2026-09-02. `cases/translatingDroplet2D` had all four sides of its
+blockMeshDict in a single `walls` patch, so the mesh had NO `inlet` and NO `outlet`
+-- while every field in `0.org` had always declared both. OpenFOAM errors when a MESH
+patch is missing from a field, but SILENTLY IGNORES a field entry that matches no
+mesh patch, so `inlet { type fixedValue; value uniform (0.05 0 0); }` was parsed and
+discarded on every run this case ever did. The case was a CLOSED BOX with slip walls;
+slip imposes `U.n = 0`, so on the x-normal faces the uniform stream the case is
+initialised with is incompatible with its own boundaries and the pressure projection
+annihilated it on step 1 (first-step local continuity error 1.0e-05 against 1.6e-12
+by step 3). `maxMagUPrime = max|U - (U0,0,0)|` then measured the ANNIHILATED FREE
+STREAM at ~2*U0 from the first step onward -- not a spurious current. An entire
+`div(rhoPhi,U)` scheme comparison, a droplet-leaves-the-domain mechanism, and a
+"scheme-independent kick" were read off that metric before anyone checked
+`constant/polyMesh/boundary`.
+
+The equal-density control then running on the same case was STOPPED rather than
+allowed to finish, even though its isolation argument (`ddt(rho) = 0` and
+`div(rhoPhi) = rho div(phi) = 0` at ratio 1) does not formally depend on the boundary
+conditions. On the author's decision: a setup that was wrong in one way cannot be
+assumed wrong in only that way.
+
+**Corollary -- verify the mesh has the patches the fields talk about.** After
+`blockMesh`, `constant/polyMesh/boundary` is the authority on what exists; the
+boundaryField entries in `0.org` are a wish list. A one-line check belongs in any new
+case's gate:
+
+```bash
+foamDictionary -entry entry0 -keywords constant/polyMesh/boundary   # what EXISTS
+```
+
+and any field patch name not in that list is silently doing nothing.
+
 ## Retraction is a first-class action
 
 When data contradicts a previous claim, retract it explicitly and propagate the

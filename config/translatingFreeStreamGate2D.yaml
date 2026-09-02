@@ -1,0 +1,55 @@
+# FREE-STREAM GATE for the repaired translatingDroplet2D mesh.
+#
+# WHY. Until 2026-09-02 this case had all four sides in one `walls` patch, so the mesh
+# carried NO inlet and NO outlet while every 0.org field declared both -- OpenFOAM
+# silently ignores a field entry that matches no mesh patch. The case was a closed slip
+# box, the pressure projection annihilated the uniform stream on step 1, and
+# max|U - U0| measured the DEAD FREE STREAM at ~2*U0 rather than any spurious current.
+# blockMeshDict now splits inlet (left) / outlet (right) / walls (top+bottom, free-slip).
+#
+# This gate proves the repair before a single production arm is launched, and it is the
+# cheapest possible discriminator: 200 steps, N = 128, one arm, minutes on the laptop.
+#
+# PRE-REGISTERED READ-OUT. With correct inflow/outflow the ambient MUST sit at U0, so
+#   PASS   max|U-U0| at step 1 is at the parasitic-current floor, order 1e-5..1e-3, AND
+#          mean|U-U0| over the whole domain is <= 1e-3 (it was 5.0e-02 = U0 itself on the
+#          closed box, which is the signature of an ambient at rest), AND
+#          the ambient cell mean of Ux is 0.05 to three digits (it was -2.0e-03).
+#   FAIL   any of those still reads at the closed-box value -- the repair did not take,
+#          and nothing may be launched on this case.
+# The first-step local continuity error is the corroborating read: it was 1.0e-05 against
+# 1.6e-12 by step 3 on the closed box (the projection absorbing an impossible initial
+# field) and must now be at the steady level from the start.
+study_name: translatingFreeStreamGate2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 60
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.0015]        # 200 steps at dt = 7.5e-06
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.05]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
