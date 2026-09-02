@@ -1,5 +1,17 @@
-# THE rhoLENT PAPER'S MISSING PIECE: does the section 3.4 volume correction fix the
-# translating droplet?
+# THE SECTION 3.4 VOLUME CORRECTION, ON THE PAIRING THAT ACTUALLY RUNS.
+#
+# config/volumeCorrectionTranslating2D asked this question with ddt(rho) = Euler while
+# momentum stayed backward -- the ONE pairing that does not run. All four arms diverged
+# at 10084-10437, reproducing config/matchedBDF2Translating2D's backward/Euler arm at
+# 10431. That study therefore could not answer its own question, and this one repeats it
+# with MATCHED backward/backward.
+#
+# It did establish two things before dying, and they carry over:
+#   * newtonShift CONTROLS THE VOLUME as the paper says: |dV|/V0 fell from 0.6492 to
+#     0.004767 with boundRho on, and to 2.22e-16 -- machine zero -- with it off.
+#   * boundRho IS STILL NECESSARY with Euler, falsifying my expectation that the convex-
+#     combination argument would remove the need: without it the density reached -27.7
+#     and -1786 over the horizon. The 4-rank gate that suggested otherwise ran 167 steps.
 #
 # WHAT THE PAPER SAYS (Liu, Tolle, Bothe & Maric, JCP 493 (2023) 112426, sec. 3.4):
 #
@@ -53,37 +65,7 @@
 #     for a reason not yet identified.
 #   * Report the whole vector: travelled fraction, centroid error, phase volume,
 #     max|U-U0|, ||maxU|-U0|, mass residual, clip, density bounds.
-#
-# ============================== RESULT, 2026-09-02 ==============================
-# ALL FOUR ARMS DIVERGED at 10084-10437 steps, and the study CANNOT ANSWER ITS OWN
-# QUESTION -- because I posed it on a broken pairing. It ran ddt(rho) = Euler while
-# MOMENTUM_DDT_SCHEME stayed backward, which config/matchedBDF2Translating2D had
-# already measured as the ONE pairing of four that diverges, at 10431. These four
-# reproduce that number. My fault, from reverting RHO_DDT_SCHEME to Euler on the paper
-# without also moving momentum.
-#
-# TWO THINGS IT DID ESTABLISH, and they carry over.
-#
-#  boundRho  volCorr        |dV|/V0     min rho    bounded   max|U-U0|
-#  true      none           0.6492      1.19       yes        78.79
-#  true      newtonShift    0.004767    1.19       yes        44.42
-#  false     none           0.1369      -27.704    NO          2.402
-#  false     newtonShift    2.22e-16    -1786.1    NO          2.361
-#
-# 1. THE SECTION 3.4 VOLUME CORRECTION WORKS, exactly as the paper says. |dV|/V0 falls
-#    136x with boundRho on (0.6492 -> 0.004767) and to 2.22e-16 -- MACHINE ZERO -- with
-#    it off. The uniform iso-value shift does what eqs. (46)-(49) claim for it.
-#
-# 2. MASS_FLUX_BOUND_RHO IS STILL NECESSARY WITH EULER, which FALSIFIES my expectation.
-#    I argued that Euler restores the convex-combination structure so the clip becomes
-#    unnecessary, and cited a 4-rank gate measuring the clip at 6.6e-07. That gate ran
-#    167 steps. Over the full horizon the density reaches -27.7 and -1786 without the
-#    clip. A 167-step gate is not evidence about a 13334-step run, and I presented it
-#    as though it were.
-#
-# Re-posed with matched backward/backward as config/volumeCorrectionMatched2D.
-# ================================================================================
-study_name: volumeCorrectionTranslating2D
+study_name: volumeCorrectionMatched2D
 case: translatingDroplet2D
 mesh: hex
 mode: parallel
@@ -102,7 +84,7 @@ axes_override:
   MASS_FLUX_BOUND_RHO: ["true", "false"]
   MASS_RESIDUAL_DIAGNOSTIC: ["true"]
   MOMENTUM_DDT_SCHEME: ["backward"]
-  RHO_DDT_SCHEME: ["Euler"]
+  RHO_DDT_SCHEME: ["backward"]
   CURVATURE_EXTENSION: ["none"]
   SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
   FACE_CURVATURE_SOURCE: [model]
