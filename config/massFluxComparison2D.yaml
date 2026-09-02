@@ -1,0 +1,78 @@
+# THE THREE WAYS TO MAKE THE MASS FLUX CONSISTENT, COMPARED ON ONE COMMIT.
+#
+# The translating droplet's free-stream failure traces to the discrete mass residual
+# R = ddt(rho) + div(rhoPhi): for a droplet translating at uniform U0 the momentum
+# equation inherits U0*R, which is not a gradient so the pressure cannot absorb it,
+# and which vanishes identically at U0 = 0 -- the whole stationary/translating
+# asymmetry. Three constructions attack it, and they have never been compared
+# side by side on one commit with the outlet cleared:
+#
+#   geometricFaceDensity, plain      R is whatever the geometry leaves it. Measured
+#                                    4.79e-02 relative. rho bounded by construction.
+#   geometricFaceDensity + PROJECTION  rho stays geometric and bounded; the FLUX is
+#                                    corrected by rhoPhi' = snGrad(lambda)*magSf with
+#                                    laplacian(lambda) = R. One Poisson solve, no
+#                                    auxiliary equation, NO CLIP. 4-rank gate measured
+#                                    the reducible residual falling 47x for an 18%
+#                                    correction to the flux.
+#   rhoLENT + boundRho               R driven to ~1e-11 by SOLVING for an auxiliary
+#                                    rho -- which is then not the geometric one and is
+#                                    UNBOUNDED, so it needs a clip, and the clip breaks
+#                                    the identity being enforced. Last night's answer.
+#
+# The 2x2 of MASS_FLUX x MASS_FLUX_PROJECT covers all three plus the redundant
+# rhoLENT+projection cell, which is carried rather than excluded: if the projection
+# changes a rhoLENT arm at all, the auxiliary equation is not delivering what it claims.
+#
+# Droplet started upstream so the outlet cannot contaminate anything -- with it
+# centred, geometricFaceDensity at N=128 dies at step 9337 purely from crossing it
+# (config/translatingClearOutlet2D). ddt schemes MATCHED at backward/backward, the best
+# pairing measured (config/matchedBDF2Translating2D).
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION CONTROL: the plain geometricFaceDensity arms must reproduce
+#     config/translatingClearOutlet2D -- travelled fraction 0.433 at N=64 and 0.740 at
+#     N=128. If not, a default moved and nothing here holds.
+#   * THE QUESTION: does the projection buy the free-stream improvement that rhoLENT
+#     buys (0.616 at N=64, 0.767 at N=128) WITHOUT giving up a bounded density? If it
+#     does, it is the better construction on every axis and rhoLENT's clip becomes
+#     unnecessary. If it does not, the mass residual was not the whole story and the
+#     remaining gap is the semi-Lagrangian transport's own mass drift -- which the
+#     projection provably cannot fix and which the same runs report directly as
+#     massProjGlobalDrift.
+#   * COST is part of the verdict: one extra Poisson solve per outer iteration. Report
+#     it, since a construction that matches rhoLENT at twice the cost is not obviously
+#     preferable.
+#   * Report the whole vector: travelled fraction, centroid error, residual before and
+#     after projection, irreducible drift, correction fraction, volume, shape.
+study_name: massFluxComparison2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 300
+axes_override:
+  N_CELLS: [64, 128]
+  END_TIME: [0.1]
+  DROPLET_OFFSET_X: [-0.0025]
+  MASS_FLUX: ["geometricFaceDensity", "rhoLENT"]
+  MASS_FLUX_PROJECT: ["false", "true"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
