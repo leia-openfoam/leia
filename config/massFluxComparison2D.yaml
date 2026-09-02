@@ -45,6 +45,50 @@
 #     preferable.
 #   * Report the whole vector: travelled fraction, centroid error, residual before and
 #     after projection, irreducible drift, correction fraction, volume, shape.
+#
+# ============================== RESULT, 2026-09-02 ==============================
+# RAN: Lichtenberg, 4 ranks/arm. All 8 arms COMPLETED the full horizon.
+# ONLY THE N=128 ROWS ARE ADMISSIBLE EVIDENCE: R/h = 12.8 there against 6.4 at N=64,
+# and this repository's rule is R/h >= 10.
+#
+#  N=128    massFlux              proj   travelFrac  centErr     volErr    max|U-U0|  massResRel
+#           geometricFaceDensity  off      0.725     1.373e-03   0.05977   0.6876     2.158e-01
+#           geometricFaceDensity  ON       0.049     4.806e-03   0.02448   0.1396     9.048e-03
+#           rhoLENT               off      0.874     6.345e-04   0.00240   2.1180     3.042e-03
+#           rhoLENT               ON      -0.149     6.060e-03   0.09455   2.0940     3.328e-04
+#
+# THE PROJECTION FAILS, and the way it fails is the useful part. It does everything it
+# was built to do -- mass residual down 24x for geometricFaceDensity, velocity excess
+# down 4.9x, phase-volume error halved -- and it STOPS THE DROPLET: the travelled
+# fraction collapses from 0.725 to 0.049, and with rhoLENT it goes NEGATIVE, the droplet
+# drifting backwards.
+#
+# WHY. The projection enforces ddt(rho) + div(rhoPhi) = 0 with rho the GEOMETRIC density
+# from psi. When psi is already advancing too slowly -- and it is, travelled fraction
+# 0.725 before the projection -- ddt(rho_geom) is too small, so the projection REDUCES
+# the mass flux to match it. It makes the flux consistent with a WRONG interface motion
+# and locks that motion in: a positive feedback on the lag, not a correction of it. A
+# vanishing mass residual is necessary, not sufficient, and enforcing it against an
+# erroneous interface makes matters worse.
+#
+# RETRACTED: the 4-rank gate's 47x reduction of the reducible residual was real and is
+# not evidence of anything useful. I reported it as promising before scoring it on the
+# free stream; that was premature.
+#
+# BEST ARM AT N=128 IS rhoLENT WITHOUT PROJECTION: travelled fraction 0.874, centroid
+# error 6.3e-04, phase-volume error 0.0024 -- the best of all four on all three. It also
+# has the WORST velocity excess, 2.12 against 0.14 for the projected geometric arm.
+#
+# THAT ANTI-CORRELATION IS ITSELF A FINDING and it recurs across the table: whatever
+# transports the droplet correctly carries a large max|U-U0|, and whatever suppresses
+# max|U-U0| also suppresses the motion. The droplet only moves if the velocity field is
+# doing something. Scoring a translating case on max|U| alone will therefore always
+# prefer the arm that does not translate, which is the trap this table was built to
+# avoid and which max|U| alone would have walked straight into.
+#
+# DENSITY IS BOUNDED IN EVERY ARM: min 1.19, max 998.2, exactly rho2 and rho1 --
+# geometricFaceDensity by construction, rhoLENT because boundRho clips it.
+# ================================================================================
 study_name: massFluxComparison2D
 case: translatingDroplet2D
 mesh: hex
