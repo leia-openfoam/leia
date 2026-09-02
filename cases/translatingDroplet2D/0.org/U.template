@@ -19,7 +19,16 @@ dimensions      [0 1 -1 0 0 0 0];
 // Uniform translation velocity: the droplet coasts through the periodic box at
 // U0 = @!TRANSLATION_SPEED!@ m/s in x. With zero gravity and no forcing, the exact
 // rigid translation at U0 (interface stays circular, Laplace jump sigma/R);
-// deviation = spurious currents. Periodic (cyclic) box so the droplet re-enters.
+// deviation = spurious currents.
+//
+// NOT PERIODIC, and it cannot be: the SL two-phase solver calls
+// patchNeighbourField on a sliced geometry field, which OpenFOAM does not
+// implement for COUPLED patches, so cyclic is unsupported (see the boundary
+// comment in transISODroplet2D/system/blockMeshDict.template). This is an
+// INFLOW/OUTFLOW CHANNEL: uniform inflow at the left, pressure outlet at the
+// right, slip top and bottom. An earlier version of this comment claimed a
+// cyclic box in which the droplet re-enters; that was never true and is
+// retracted -- it is what made the droplet leaving the domain look impossible.
 internalField   uniform (@!TRANSLATION_SPEED!@ 0 0);
 
 boundaryField

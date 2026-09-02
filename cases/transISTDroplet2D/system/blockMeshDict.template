@@ -48,7 +48,16 @@ edges
 // implement for COUPLED patches -> cyclic is unsupported). Uniform inflow U0 at
 // the left, pressure outlet at the right, slip top/bottom: a uniform stream in
 // which the droplet coasts. The droplet starts at the centre and translates
-// ~2.5 diameters toward the outlet over the run without reaching it.
+// ~2.5 diameters toward the outlet over the run.
+//
+// MEASURED 2026-09-02, correcting the claim that it does so "without reaching
+// it": starting at the centre of a 0.01 m box with R = 1e-3 and U0 = 0.05, the
+// LEADING EDGE reaches the outlet at t = 0.08 s -- 80% of an END_TIME 0.1
+// horizon -- and the centre arrives exactly at t = 0.1. Six of six divergences
+// of the translatingDroplet2D twin had the droplet at or past the outlet, and
+// the configuration that died at step 9337 four times completes all 13334 steps
+// once started upstream. Use DROPLET_OFFSET_X to keep it clear, or shorten the
+// horizon; do not assume the default placement leaves room.
 boundary
 (
     inlet
