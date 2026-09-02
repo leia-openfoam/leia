@@ -76,7 +76,7 @@ def render_frame(job):
     # Translating cases: the interesting field is the DISTURBANCE U - U_ref, not U.
     # With U_ref = (0.05, 0, 0) the free stream is 0.05 m/s while the parasitic current
     # is ~1e-2, so plotting |U| shows a uniform blue rectangle and nothing else.
-    U = U - np.asarray(CFG["uref"])
+    U = (U - np.asarray(CFG["uref"])) / CFG["vscale"]
     ps = read_field(os.path.join(tdir, "psi"), n * n).reshape(n, n)
     al = read_field(os.path.join(tdir, "alpha.water"), n * n).reshape(n, n)
     mag = np.sqrt(U[..., 0] ** 2 + U[..., 1] ** 2)
@@ -128,7 +128,7 @@ def render_frame(job):
     # after the GIF downscale. Fonts are sized to stay legible at 880 px.
     cax = fig.add_axes([0.915, 0.13, 0.018, 0.72])
     cb = fig.colorbar(im, cax=cax)
-    cb.set_label("%s [m/s]" % CFG["qlabel"], fontsize=11, color=INK)
+    cb.set_label("%s%s" % (CFG["qlabel"], CFG["qunit"]), fontsize=11, color=INK)
     cb.ax.tick_params(colors=INK, labelsize=10, length=3)
     cb.outline.set_edgecolor(INK_MUTED)
 
@@ -138,8 +138,9 @@ def render_frame(job):
             sp.set_color(INK_MUTED)
             sp.set_linewidth(0.6)
 
-    fig.suptitle("%s      t = %6.2f ms      max %s = %.3e m/s"
-                 % (CFG["label"], t * 1e3, CFG["qlabel"], pmax),
+    fig.suptitle("%s      t = %6.2f ms      max %s = %s"
+                 % (CFG["label"], t * 1e3, CFG["qlabel"],
+                    ("%.3f" % pmax) if CFG["vscale"] != 1.0 else ("%.3e m/s" % pmax)),
                  fontsize=12, color=INK, family="monospace")
     # progress bar
     axp = fig.add_axes([0.075, 0.035, 0.85, 0.012])
@@ -167,6 +168,10 @@ def main():
                          "plotted field is the disturbance U - U_ref")
     ap.add_argument("--label", default="Stationary droplet, R/h = 25, filter off",
                     help="suptitle text")
+    ap.add_argument("--normalize", action="store_true",
+                    help="divide the plotted magnitude by |uref|, so the colour bar is "
+                         "the DIMENSIONLESS |U-U0|/U0 rather than m/s -- 0.2 reads as "
+                         "'20 percent of the translation speed', which 1e-2 m/s does not")
     ap.add_argument("--fps", type=int, default=12)
     ap.add_argument("--jobs", type=int, default=10)
     ap.add_argument("--out", default=None)
@@ -193,10 +198,16 @@ def main():
 
     # global colour scale over all frames
     uref = np.asarray(a.uref)
-    qlabel = "|U|" if not uref.any() else "|U-U0|"
+    vscale = float(np.linalg.norm(uref)) if (a.normalize and np.linalg.norm(uref) > 0) else 1.0
+    if not uref.any():
+        qlabel, qunit = "|U|", " [m/s]"
+    elif vscale != 1.0:
+        qlabel, qunit = "|U-U0|/U0", ""
+    else:
+        qlabel, qunit = "|U-U0|", " [m/s]"
     gmax = 0.0
     for t, p in frames[::5] + [frames[-1]]:
-        U = read_field(os.path.join(p, "U"), n * n) - uref
+        U = (read_field(os.path.join(p, "U"), n * n) - uref) / vscale
         gmax = max(gmax, float(np.sqrt((U[:, 0] ** 2 + U[:, 1] ** 2)).max()))
     print("frames: %d   global max %s = %.3e" % (len(frames), qlabel, gmax))
 
@@ -204,7 +215,7 @@ def main():
     CFG.update(n=n, L=L, radius=a.radius, framedir=framedir,
                norm=LogNorm(vmin=gmax / 1e5, vmax=gmax),
                tmax=frames[-1][0], nframes=len(frames),
-               uref=uref, qlabel=qlabel, label=a.label)
+               uref=uref, qlabel=qlabel, qunit=qunit, label=a.label, vscale=vscale)
 
     jobs = [(k, t, p) for k, (t, p) in enumerate(frames)]
     with Pool(a.jobs) as pool:
