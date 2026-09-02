@@ -693,6 +693,31 @@ advanced by a PISO/PIMPLE pressure--velocity coupling with a Rhie--Chow-consiste
 flux. For the static-droplet verification $\mathbf{g}=\mathbf 0$, so $p_{\mathrm{d}}\equiv p$
 and the buoyancy term vanishes.
 
+Two discretisation choices in Eq.~\eqref{eq:momentum} are not free once the interface is
+sharp, and both are fixed here. The convective mass flux $\rho_f\,(\uvec_f\!\cdot\mathbf S_f)$
+must be the flux of an auxiliary discrete mass balance that the momentum transient is
+consistent with, or the momentum equation inherits a source that no pressure field can
+absorb. Writing the constant-velocity limit of Eq.~\eqref{eq:momentum} makes this explicit:
+for $\uvec\equiv\uvec_0$ the transient and convective terms collapse to
+\begin{equation}
+  \frac{\partial(\rho\uvec_0)}{\partial t} + \nabla\cdot(\rho\,\uvec_0\uvec_0)
+  \;=\; \uvec_0\Bigl[\frac{\partial\rho}{\partial t} + \nabla\cdot(\rho\uvec)\Bigr]
+  \;=\; \uvec_0\,\mathcal R ,
+  \label{eq:massmomentum}
+\end{equation}
+so any discrete mass residual $\mathcal R$ enters momentum multiplied by $\uvec_0$. It is
+not a gradient, so the projection cannot remove it, and it vanishes identically at
+$\uvec_0=\mathbf 0$ -- which is why a stationary-droplet benchmark cannot see it at all. We
+therefore build $\rho_f$ from the auxiliary density equation of the \textsc{rhoLENT}
+construction~\cite{liu2023}, advanced explicitly alongside the interface, rather than from
+a geometric face density evaluated on the reconstructed interface; the former carries
+$\mathcal R$ at $10^{-11}$ relative on this benchmark against $10^{-2}$ for the latter.
+Section~\ref{sec:translating} reports what that buys, and what it does not.
+Second, the momentum transient uses the second-order backward (BDF2) scheme throughout. The
+semi-Lagrangian foot trace is second order in time (Section~\ref{sec:foot}) and must not be
+paired with a first-order velocity, and BDF2 evaluates fluxes and sources at $t^{n+1}$,
+matching the placement of the capillary force, which is built from $\psilev^{n+1}$.
+
 The interface is advanced \emph{once} per time step, on the first outer iteration: the
 level set is transported by the semi-Lagrangian update~\eqref{eq:sl} with the current
 velocity, the phase indicator~\eqref{eq:alpha} and the mixture~\eqref{eq:mixture} are
@@ -1369,6 +1394,142 @@ a time or on separate nodes.
   \label{fig:mechanism}
 \end{figure}
 
+\subsection{Two-phase verification: the translating droplet}
+\label{sec:translating}
+The stationary droplet of Section~\ref{sec:droplet} cannot see any error that is
+proportional to the bulk velocity, and Eq.~\eqref{eq:massmomentum} shows that a whole class
+of them is. We therefore repeat the coupled benchmark in a uniform stream. A circular
+droplet of radius $R=1$~mm sits at $x=2.5$~mm in a $10\times10$~mm box with a uniform
+inflow $\uvec_0=(U_0,0)$, $U_0=0.05$~m/s, on the left, a zero-gradient outflow with
+$p_{\mathrm d}=0$ on the right, and free-slip top and bottom so the stream carries no wall
+shear. The exact solution is a rigid translation: $\uvec\equiv\uvec_0$ everywhere, the
+droplet circular and unchanged, its centroid at $x_0+U_0t$. Every departure is numerical.
+We report $\max\lvert\uvec-\uvec_0\rvert$ and its volume average, the phase-volume error,
+the zero-set shape error, and the travelled fraction (centroid displacement over $U_0t$,
+exactly $1$ for the exact solution). Unless stated, $N=128$ ($R/h=12.8$),
+$\Delta t=0.2323\,\Delta t_\sigma$, water and air at $\rho_1/\rho_2=838.8$, and every
+filter, smoothing and volume correction is off.
+
+\paragraph{Free-stream preservation.} The discrete uniform stream must be an exact steady
+state before anything else is measured. It is: the first-step continuity error is
+$2.3\times10^{-20}$, the ambient sits at $U_0$, and the disturbance after one step is
+$\max\lvert\uvec-\uvec_0\rvert=2.16\times10^{-3}$ with volume average
+$1.16\times10^{-5}$.\footnote{This check is not optional. An earlier version of this case
+placed all four sides of the mesh in a single \texttt{wall} patch while the field files
+declared \texttt{inlet} and \texttt{outlet}. A finite-volume code errors when a mesh patch
+is missing from a field but silently ignores a field entry that matches no mesh patch, so
+the inflow condition was parsed and discarded, and the case was a closed slip box whose
+projection annihilated the initial uniform stream on the first step (first-step continuity
+error $10^{-5}$ against $10^{-12}$ three steps later). The disturbance metric then measured
+the destroyed free stream at $\approx 2U_0$ rather than any spurious current. All results
+in this section were re-run after the mesh was corrected.}
+
+\paragraph{The source is the curvature error, and it is not a translation effect.}
+Table~\ref{tab:kickorigin} crosses the translation speed with the capillary model. Two
+readings follow, and together they identify the source term. First, the one-step
+disturbance is \emph{independent of $U_0$ to $0.4\%$} across a fourfold change in
+translation speed. The mass--momentum term $\uvec_0\mathcal R$ of
+Eq.~\eqref{eq:massmomentum} is identically zero at $U_0=0$ and would scale linearly with
+it, so it is not the source; the stationary droplet carries the same initial kick, and its
+often-quoted $10^{-5}$ current level is its \emph{settled} value after that transient
+relaxes, not a comparable quantity. Second, replacing the reconstructed curvature by the
+exact $\kappa=1/R$ of the initial circle -- which makes
+$\sigma\kappa\,\mathrm{snGrad}(\alpha)$ an exact discrete gradient, absorbed whole by
+Eq.~\eqref{eq:ppoisson} -- removes the disturbance by a factor of $1.3\times10^{6}$. The
+source is the curvature error, measured here at $\lVert\kappa-\kappa_{\mathrm
+e}\rVert_{2}=70.6$ against $\kappa_{\mathrm e}=1000$~m$^{-1}$, i.e. $7\%$ at $R/h=12.8$,
+and identical in all eight arms because it is a property of the initial circle.
+
+\begin{table}[t]
+  \centering
+  \caption{Disturbance $\max\lvert\uvec-\uvec_0\rvert$ [m/s] after one step and after
+  $200$ steps, $N=128$. The one-step column is flat in $U_0$ and collapses by six orders
+  under an exact curvature; the $200$-step column grows with $U_0$. Source and amplifier
+  are therefore separate, and only the amplifier knows about the translation.}
+  \label{tab:kickorigin}
+  \begin{tabular}{l r r r}
+    \hline
+    capillary model & $U_0$ [m/s] & step $1$ & step $200$ \\
+    \hline
+    reconstructed $\kappa$ & $0$      & $2.1503\times10^{-3}$ & $2.1147\times10^{-3}$ \\
+                           & $0.0125$ & $2.1530\times10^{-3}$ & $3.1306\times10^{-3}$ \\
+                           & $0.025$  & $2.1559\times10^{-3}$ & $3.9881\times10^{-3}$ \\
+                           & $0.05$   & $2.1590\times10^{-3}$ & $5.3919\times10^{-3}$ \\
+    \hline
+    exact $\kappa=1/R$     & $0$      & $1.6877\times10^{-9}$ & $1.9447\times10^{-11}$ \\
+                           & $0.0125$ & $2.1208\times10^{-9}$ & $1.5421\times10^{-8}$ \\
+                           & $0.025$  & $3.7964\times10^{-9}$ & $1.1702\times10^{-6}$ \\
+                           & $0.05$   & $7.1865\times10^{-9}$ & $1.2842\times10^{-5}$ \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Translation and density ratio act on the amplifier.} The $200$-step column of
+Table~\ref{tab:kickorigin} tells the other half. At $U_0=0$ the disturbance decays
+($2.15\to2.11\times10^{-3}$); at $U_0=0.05$ it grows by $2.5\times$ from the same source.
+In the two-factor form $\max\lvert\uvec-\uvec_0\rvert(T)=u_0\exp(G T)$ used throughout this
+work, the curvature error sets $u_0$ and the translation sets $G$. Translation does not
+create the parasitic current; it prevents it from relaxing.
+
+The density ratio acts on $G$ as well. Crossing the mass-flux model with the momentum
+convection scheme at both $\rho_1/\rho_2=838.8$ and $\rho_1/\rho_2=1$ (sixteen arms, the
+density sum held at $999.39$~kg\,m$^{-3}$ so both sit at the same fraction of the capillary
+limit), all eight arms at ratio $838.8$ destabilise between $8427$ and $9987$ steps while
+all eight at ratio $1$ complete the horizon. Yet read at a common step where every arm is
+still healthy ($5000$, $t=0.0375$~s) the two are far closer than that outcome suggests:
+$\max\lvert\uvec-\uvec_0\rvert$ is $8.95\times10^{-3}$ to $1.20\times10^{-2}$ at ratio
+$838.8$ against $3.04$ to $3.33\times10^{-3}$ at ratio $1$, a factor of $2.7$ to $3.9$,
+with volume errors $2.6$--$3.0\times10^{-3}$ against $7.8$--$8.3\times10^{-4}$, shape errors
+$2.2$--$2.7\times10^{-5}$ against $4.2$--$5.9\times10^{-6}$, and travelled fractions
+$1.017$--$1.021$ against $0.9955$--$0.9968$. The ratio changes the disturbance level by a
+small factor and the \emph{stability} outright. We note one caveat on this comparison: the
+equal-density arms hold the kinematic viscosities fixed, so the dynamic viscosity ratio
+moves from $54.8$ to $15.3$, and a matched-$\mu$ control is required before the isolation
+of density alone is complete.
+
+\paragraph{Mass--momentum consistency is not the mechanism here.} The same matrix holds the
+density ratio fixed and varies only the mass flux, and this is the sharpest available test
+of Eq.~\eqref{eq:massmomentum}. Between the \textsc{rhoLENT} and geometric face densities
+the discrete mass residual $\mathcal R$ changes by a factor of $757$ for upwind convection
+and by nine orders of magnitude ($1.7\times10^{-11}$ to $1.6\times10^{-1}$) for the limited
+schemes, while $\max\lvert\uvec-\uvec_0\rvert$ moves by $0.47$ to $1.19\times$ and not
+consistently in sign. A source term proportional to $\mathcal R$ that large would be
+visible; it is not. Mass--momentum consistency remains necessary for a defensible
+discretisation -- and it is what makes $\mathcal R$ a controlled quantity rather than an
+unknown one -- but at this density ratio and resolution it is not what sets the parasitic
+current. Nor is the momentum convection scheme: upwind, \texttt{limitedLinearV},
+\texttt{vanLeerV} and \texttt{linearUpwind} lie within $30\%$ of one another at step
+$5000$, and their ordering is monotone in numerical diffusion, so the apparently best
+scheme is simply the most dissipative one.
+
+\paragraph{What the current does: it organises into a net propulsion.} A headline
+$\max\lvert\uvec-\uvec_0\rvert$ cannot distinguish a symmetric interfacial jitter, which
+cannot move the droplet, from a biased current, which does. Splitting the disturbance
+per phase into a coherent \emph{drift} (the mean of $\uvec-\uvec_0$ over the phase) and a
+\emph{fluctuation} (the deviation from it) separates them:
+\begin{center}
+  \begin{tabular}{r r r r}
+    \hline
+    $t$ [ms] & droplet drift$/U_0$ & droplet fluct.$/U_0$ & ambient drift$/U_0$ \\
+    \hline
+    $0.5$  & $0.0000$ & $0.0030$ & $0.0000$ \\
+    $20.5$ & $0.0461$ & $0.0166$ & $0.0016$ \\
+    $40.5$ & $0.0181$ & $0.0202$ & $0.0007$ \\
+    $60.0$ & $0.1289$ & $0.0151$ & $0.0046$ \\
+    \hline
+  \end{tabular}
+\end{center}
+At the first frame the drift is \emph{exactly} zero and the disturbance is a pure
+zero-mean multipole on the interface -- the signature of a curvature error, which by
+symmetry exerts no net force. By $60$~ms the drift is $13\%$ of $U_0$ and $8.5\times$ the
+fluctuation, which has barely changed: the ordering has inverted. The motion is
+momentum-conserving between the phases, the ratio of droplet to ambient drift being $28$
+against the $\rho_1V_1/(\rho_2V_2)=27$ that momentum conservation requires. The capillary
+force is internal and cannot change the total momentum, but it is driving the phases apart.
+This is what the travelled fraction of $1.02$ measures, and it is a sharper statement than
+``parasitic currents'': the discrete capillary force is doing \emph{net work} on the
+droplet. Section~\ref{sec:variational} takes that as the design target.
+
 \subsection{What the pressure projection can absorb: the flux-space residual}
 \label{sec:fluxresidual}
 The parasitic current is a property of the \emph{discrete} force--pressure pair, not of the
@@ -1443,6 +1604,180 @@ exists across the force support to be differentiated, or a formulation in which 
 the pressure operator directly instead of as a smeared face flux.
 
 % =============================================================================
+% =============================================================================
+\section{Outlook: a variational capillary force}
+\label{sec:variational}
+This section is a proposal, not a result. It is stated in full because the measurements of
+Sections~\ref{sec:droplet}--\ref{sec:fluxresidual} identify an unusually specific design
+target, and because the construction it suggests is compatible with every structural
+constraint the method operates under.
+
+\subsection{What the measurements ask for}
+Three findings constrain the fix. The parasitic current is seeded by the curvature error
+and by nothing else in the force chain: an exact $\kappa$ removes the one-step disturbance
+by $1.3\times10^{6}$ (Table~\ref{tab:kickorigin}), so the delivery, the density
+interpolation and the projection are all exonerated. The residual that the pressure cannot
+absorb is, on a uniform mesh, exactly the $\alpha$-weighted face-normal gradient of the
+curvature field (Section~\ref{sec:fluxresidual}): the driver \emph{differentiates} $\kappa$,
+so improving the accuracy of $\kappa_f$ attacks a quantity that is then differentiated
+again. And the disturbance does not stay symmetric: it begins as a zero-mean multipole and
+organises into a coherent, momentum-conserving propulsion of the droplet
+(Section~\ref{sec:translating}), which means the discrete force performs net work on the
+interface over a cycle in which the exact force performs none.
+
+That last statement is the sharpest of the three, because it is a statement about a
+\emph{structural} property rather than an accuracy. The exact capillary force is the
+variation of a surface energy, $\mathbf f_\sigma=-\delta(\sigma A)/\delta\mathbf x$, and is
+therefore conservative: the work it does around any closed cycle of interface
+configurations is zero. Nothing in the CSF discretisation~\eqref{eq:csf} enforces that. The
+discrete $\kappa$ comes from one construction and the discrete $\nabla\alpha$ from another,
+and their product is not the variation of any discrete functional. Once it is not, a closed
+cycle can return net energy, and a systematic drift is exactly what that looks like.
+
+\subsection{The construction}
+Take as the discrete surface energy the co-area functional evaluated with the fields the
+solver already carries,
+\begin{equation}
+  A_h \;=\; \sum_{c} V_c\,\lvert\mathbf g_c\rvert ,
+  \qquad
+  \mathbf g_c \;=\; \frac{1}{V_c}\sum_{f\in F(c)} \alpha_f\,\mathbf S_f ,
+  \label{eq:discreteArea}
+\end{equation}
+$F(c)$ the faces of cell $c$ with outward-oriented areas $\mathbf S_f$, and $\alpha_f$ the
+face interpolate of the phase indicator. For a sharp interface $\int\lvert\nabla\alpha\rvert
+\,\mathrm dV$ is the interface area exactly, so $A_h$ is a consistent discrete surface area,
+and $\sigma A_h$ a discrete surface energy.
+
+Now derive the force from it rather than model it. Let the energy be varied through the
+cell values $\alpha_c$, and require that the power delivered by the body force equal the
+rate of energy release for \emph{every} velocity field:
+\begin{equation}
+  \sum_c V_c\,\mathbf f_c\!\cdot\!\uvec_c \;=\; -\,\sigma\,\frac{\mathrm d A_h}{\mathrm dt}
+  \;=\; -\,\sigma\sum_c \frac{\partial A_h}{\partial\alpha_c}\,\frac{\mathrm d\alpha_c}{\mathrm dt},
+  \qquad
+  \frac{\mathrm d\alpha_c}{\mathrm dt} = -(\uvec\!\cdot\!\nabla_{\!h}\alpha)_c .
+  \label{eq:powerbalance}
+\end{equation}
+Matching coefficients of $\uvec_c$ gives a force of \emph{exactly the CSF form},
+\begin{equation}
+  \boxed{\;\mathbf f_c \;=\; \sigma\,\kappa^{\mathrm{var}}_c\,(\nabla_{\!h}\alpha)_c ,
+  \qquad
+  \kappa^{\mathrm{var}}_c \;:=\; -\,\frac{1}{V_c}\,\frac{\partial A_h}{\partial\alpha_c}\; }
+  \label{eq:varforce}
+\end{equation}
+so the entire balanced-force delivery of Eq.~\eqref{eq:ppoisson} is unchanged and only the
+curvature is replaced. The variational curvature is available in closed form. Since each
+face carries $\alpha_f$ into the gradients of its two adjacent cells with opposite
+orientation, differentiating~\eqref{eq:discreteArea} collapses to a loop over the faces of
+one cell,
+\begin{equation}
+  \kappa^{\mathrm{var}}_c
+  \;=\; -\,\frac{1}{V_c}\sum_{f\in F(c)}
+        \frac{\partial\alpha_f}{\partial\alpha_c}\,
+        \bigl(\hat{\mathbf n}_{O(f)}-\hat{\mathbf n}_{N(f)}\bigr)\!\cdot\!\mathbf S_f ,
+  \qquad
+  \hat{\mathbf n}_c=\frac{\mathbf g_c}{\lvert\mathbf g_c\rvert},
+  \label{eq:kappavar}
+\end{equation}
+with $O(f)$, $N(f)$ the owner and neighbour of $f$ and $\partial\alpha_f/\partial\alpha_c$
+the interpolation weight ($w_f$ or $1-w_f$ for linear interpolation).
+
+Equation~\eqref{eq:kappavar} is worth reading twice. It is a divergence of the unit normal,
+as $\kappa$ must be -- but assembled from the \emph{jump} of the cell-centred normal across
+each face, weighted by the same interpolation the gradient uses, rather than from an
+interpolated face normal. That difference is the whole construction: it is what makes the
+force the exact derivative of $A_h$ instead of an approximation to $\nabla\!\cdot\!\hat{\mathbf n}$.
+
+\subsection{What it would buy, and what it would not}
+The properties below follow from~\eqref{eq:powerbalance} by construction, not by truncation
+analysis, which is the reason to consider it at all.
+
+\emph{No net work.} $\mathbf f$ is minus a gradient in the space of degrees of freedom, so
+the work around any closed cycle in $\alpha$-space is identically zero, to round-off, on any
+mesh. The measured drift of Section~\ref{sec:translating} is precisely a violation of this,
+and it is removed by construction rather than reduced by tuning.
+
+\emph{An exact discrete equilibrium.} Any configuration that is a stationary point of $A_h$
+under the discrete volume constraint has $\mathbf f\equiv\mathbf 0$ to round-off, not to
+truncation error. The droplet then has a genuine numerical equilibrium to relax into, with
+the velocity falling to round-off because the operators are consistent with one another --
+the behaviour the method currently lacks and that no amount of filtering can supply. The
+equilibrium shape is the discrete minimiser of $A_h$ at fixed volume, not the exact circle;
+the difference is a consistency error that converges, whereas the drift does not.
+
+\emph{No curvature field to differentiate.} $\kappa^{\mathrm{var}}$ never exists as an
+independently-modelled field: it is defined by the same functional the force comes from. The
+mechanism isolated in Section~\ref{sec:fluxresidual} -- the non-absorbable residual being
+$\sigma\langle\alpha\rangle_f\,\mathrm{snGrad}(\kappa)$ -- is a statement about a $\kappa$
+that varies across the force support independently of $\nabla\alpha$. Here it cannot.
+
+\emph{Mesh-agnostic and parallel.} Equations~\eqref{eq:discreteArea}
+and~\eqref{eq:kappavar} are a sum over cells and a loop over their faces. No structured
+index space, no mesh-aligned columns, no named modes, no assumed interface shape; the
+stencil is the face neighbourhood, and the only parallel requirement is one halo exchange of
+$\hat{\mathbf n}$. It therefore satisfies the same constraints as the rest of the method and
+applies unchanged to arbitrary polyhedra.
+
+What it would \emph{not} buy is accuracy. $\kappa^{\mathrm{var}}$ is not designed to
+approximate the physical curvature well, and it may well be less accurate than
+Eq.~\eqref{eq:kappa}; the construction trades pointwise accuracy for a structural
+conservation property. That trade is only worth making because the evidence says the
+failure is structural: the drift grows while the fluctuation stays flat, and no
+curvature-accuracy improvement tried so far has removed the onset.
+
+\subsection{Open questions for analysis}
+Five points require theoretical work before an implementation is worth its cost, and they
+are the reason this is stated as a proposal.
+
+\emph{(i) The volume constraint and its multiplier.} Minimising $A_h$ alone shrinks the
+droplet; the physical problem fixes the volume, and the constraint is carried in the
+continuous setting by the pressure as a Lagrange multiplier. The discrete question is
+whether the range of the discrete gradient operator contains the constraint direction
+$\partial V_h/\partial\alpha$. If it does, the pressure projection realises the multiplier
+exactly and the constrained stationary point is an exact discrete equilibrium; if it does
+not, a residual survives and the construction inherits a defect of the same kind it was
+built to remove. This is the single question on which the proposal stands or falls.
+
+\emph{(ii) The chain through the level set.} The power balance~\eqref{eq:powerbalance}
+assumes $\mathrm d\alpha_c/\mathrm dt=-(\uvec\cdot\nabla_{\!h}\alpha)_c$, i.e. that
+$\alpha$ is advected. In this method $\alpha$ is \emph{reconstructed} from $\psilev$ each
+step by the plane-fit indicator of Section~\ref{sec:indicator}, and $\psilev$ is resampled
+semi-Lagrangianly rather than advected by a flux. The energy identity therefore holds for
+the force but not automatically for the transport, and the composition of the two is what
+determines whether energy is conserved over a step. Either the variation should be taken
+through $\psilev$ -- giving $\mathbf f_c\propto(\partial A_h/\partial\psilev_c)
+\nabla_{\!h}\psilev_c$, with the $\lvert\nabla\psilev\rvert$ weighting that the CSF form
+assumes away and that a reinitialisation-free level set does not maintain -- or the
+mismatch must be bounded. This is the most method-specific of the five and probably the
+most consequential.
+
+\emph{(iii) Differentiability.} $\lvert\mathbf g_c\rvert$ is not differentiable at
+$\mathbf g_c=\mathbf 0$; this is benign, since those cells lie outside the force support,
+but it needs an explicit band restriction rather than an $\varepsilon$-regularisation, which
+would reintroduce a tuned constant. More seriously, $\alpha(\psilev)$ from a plane-fit
+tetrahedral decomposition is piecewise polynomial and need not be $C^1$ where the cut
+topology of a cell changes. At such configurations the force is a subgradient rather than a
+gradient, and the conservation statement holds only up to those events. Their measure and
+their effect on a long integration need quantifying.
+
+\emph{(iv) Consistency order.} $A_h\to A$ and $\kappa^{\mathrm{var}}\to\kappa$ must be
+established, with orders. The co-area identity is exact for a sharp interface, but
+$\mathbf g_c$ is a Gauss gradient of an interpolated $\alpha$, so first order is the
+expectation and the equilibrium shape's departure from a circle should scale accordingly.
+A first-order force paired with a third-order transport is an odd object and its
+implications for the overall order need stating honestly.
+
+\emph{(v) Relation to known variational methods.} The property being imported is the one
+that makes phase-field methods free of equilibrium parasitic currents: there the force is
+$\mu\nabla c$ with $\mu=\delta F/\delta c$ the variational derivative of a free energy, so
+it is conservative by construction~\cite{jacqmin1999}. The proposal is to obtain the same
+structure in a sharp-interface setting without the diffuse-interface length scale. It is
+also consistent with an observation already in this work: among the balanced-force
+deliveries tested, the conservative integral surface-tension
+model~\cite{abualsaud2018} -- the one closest to a variational statement -- produced the only
+observed decaying equilibrium. Whether Eq.~\eqref{eq:varforce} reduces to a known scheme in
+some limit, and how it relates to that model, should be settled before implementation.
+
 \section{Limitations and outlook}
 \label{sec:limitations}
 Several limitations define the scope. First, the interface transport is
@@ -1467,7 +1802,13 @@ eventually diverges, with a blow-up time $\sim N^{-3/2}$, so the fine meshes des
 (Section~\ref{sec:droplet}). The instrumented and frozen-interface controls trace this to a
 curvature-error-seeded transport feedback -- not a force imbalance (the coupling is
 balanced~\cite{francois2006}), not the curvature formula (convergent on a clean signed distance,
-Section~\ref{sec:curvature}), not a capillary-CFL violation, and not the density ratio. A stabilisation
+Section~\ref{sec:curvature}), not a capillary-CFL violation, and, \emph{on the stationary droplet}, not the density ratio.
+That last exclusion does not carry over to a translating interface: in the uniform stream of
+Section~\ref{sec:translating} all eight arms at $\rho_1/\rho_2=838.8$ destabilise within the
+horizon while all eight at ratio $1$ complete it, even though at a matched healthy step the
+disturbance levels differ only by a factor of $2.7$--$3.9$. The ratio acts on the amplifier,
+not on the source -- subject to the matched-$\mu$ control noted in
+Section~\ref{sec:translating}. A stabilisation
 study (Section~\ref{sec:droplet}) shows that higher-order time integration, a smaller step, and
 curvature smoothing (foot-point or harmonic extension) all fail to remove the onset -- curvature
 \emph{coupling} even accelerates it -- while a mass--momentum-consistent flux~\cite{rudman1998,vaudor2017}
@@ -1505,8 +1846,21 @@ Navier--Stokes solver through a balanced-force continuum surface force, it produ
 converging Young--Laplace pressure jump and parasitic currents that decay to a small settled
 level on the resolved-interface range of the stationary-droplet benchmark, with no
 reinitialisation. As the force coupling is balanced, the residual currents are governed by
-the curvature error, so a more consistent curvature (reinitialisation, filtering) to carry
-this robustness to fine meshes is identified as future work. The method is realised with runtime
+the curvature error. A translating-droplet benchmark (Section~\ref{sec:translating})
+sharpens that statement into a decomposition: the one-step disturbance is independent of the
+translation speed to $0.4\%$ and falls by $1.3\times10^{6}$ under an exact curvature, so the
+curvature error is the \emph{source}, while translation and the density ratio act only as
+\emph{amplifiers}; and a mass flux consistent with an auxiliary density
+equation~\cite{liu2023}, though necessary for a defensible discretisation, is not what sets
+the current -- nine orders of magnitude in the discrete mass residual move it by less than a
+factor of two. The disturbance is moreover not symmetric: it begins as a zero-mean
+interfacial multipole and organises into a momentum-conserving net propulsion of the
+droplet, so the discrete capillary force performs net work where the exact one performs
+none. That is a structural defect rather than an accuracy one, and
+Section~\ref{sec:variational} sets out the corresponding structural candidate -- a capillary
+force derived as the exact variation of a discrete surface energy, which is conservative by
+construction, leaves the balanced-force delivery unchanged, and requires no mesh structure --
+together with the open questions that must be settled before it is implemented. The method is realised with runtime
 model selection in OpenFOAM, and every result is reproducible from the accompanying
 open-source repository with a single command.
 
