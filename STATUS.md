@@ -71,6 +71,53 @@ vanLeerV, linearUpwind gradU), at density ratio 838.824 and at ratio 1 with the 
 sum held at 999.39 so both sit at the same fraction of the capillary limit. 16 jobs,
 ids 54460353-60 and 54460363-70, in `.my_jobs`.
 
+### The source is the curvature estimator; translation and density ratio are amplifiers
+
+`config/kickOriginGate2D` (8 arms, 200 steps, N=128, repaired mesh) decomposed the
+first-step disturbance. Two results, both pre-registered:
+
+**1. The step-1 kick does not depend on the translation speed.**
+
+| U0 | `max\|U-U0\|` @ step 1 | @ step 200 |
+|---|---|---|
+| 0 | 2.1503e-03 | 2.1147e-03 |
+| 0.0125 | 2.1530e-03 | 3.1306e-03 |
+| 0.025 | 2.1559e-03 | 3.9881e-03 |
+| 0.05 | 2.1590e-03 | 5.3919e-03 |
+
+0.4% variation across a 4x change in U0. The mass-momentum consistency term
+`U0 * [ddt(rho) + div(rhoPhi)]` is identically zero at U0 = 0 and would scale linearly,
+so the kick is neither a translation nor a consistency effect. **The stationary droplet
+carries the same kick.** The 1e-5 long quoted for it is its SETTLED level; comparing that
+against a first-step transient was never a valid comparison.
+
+**2. Exact curvature removes it by six orders.** With `constantCurvatureSurfaceTension`
+at kappa = 1/R = 1000 the force `sigma*kappa*snGrad(alpha)` is an exact discrete
+gradient, the pressure equation absorbs it entirely, and the kick falls
+**2.15e-03 -> 1.69e-09**, a factor of 1.27e+06. The curvature error is
+`kErrL2Band = 70.6` against kappa = 1000, i.e. **7%** at R/h = 12.8, identical in all
+eight arms because it is a t = 0 property of the initial circle.
+
+**The decomposition.** In `max|U|(T) = u0(h) * exp(G(h))`:
+
+- **u0, the source** = curvature-estimator error. U0-independent, density-ratio
+  independent, ~2.15e-03 at N = 128.
+- **G, the amplifier** = grows with U0 (step 200: 2.11e-03 at U0 = 0 against 5.39e-03 at
+  U0 = 0.05) and with the density ratio (the repaired 16-arm matrix: both ratios sit at
+  the same order for 8000 steps, then only the ratio-838.8 arms go unstable).
+
+Translation does not create the parasitic current. It stops it from relaxing.
+
+Corollary for the matrix: read at step 5000 (t = 0.0375), where every arm is healthy,
+`max|U-U0|` is 8.95e-03..1.20e-02 at ratio 838.8 against 3.04e-03..3.33e-03 at ratio 1 --
+a factor of 2.7-3.9, NOT the 18x the first curation reported. That table was read at the
+common step 8427, which was set by the first arm to die, so every ratio-838.8 row was
+sampled inside its own blow-up. Corrected; the light-phase amplification argument that
+predicted a factor of 420 is dead.
+
+Open confounder: the equal-density control holds the KINEMATIC viscosities fixed, so the
+dynamic viscosity ratio moved 54.8 -> 15.3. A matched-mu control is still owed.
+
 ### What SURVIVES the retraction
 
 These did not run on `translatingDroplet2D` and are unaffected:
