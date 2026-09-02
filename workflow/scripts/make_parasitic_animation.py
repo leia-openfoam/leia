@@ -73,6 +73,10 @@ def render_frame(job):
     xs = (np.arange(n) + 0.5) * h
     X, Y = np.meshgrid(xs, xs)
     U = read_field(os.path.join(tdir, "U"), n * n).reshape(n, n, 3)
+    # Translating cases: the interesting field is the DISTURBANCE U - U_ref, not U.
+    # With U_ref = (0.05, 0, 0) the free stream is 0.05 m/s while the parasitic current
+    # is ~1e-2, so plotting |U| shows a uniform blue rectangle and nothing else.
+    U = U - np.asarray(CFG["uref"])
     ps = read_field(os.path.join(tdir, "psi"), n * n).reshape(n, n)
     al = read_field(os.path.join(tdir, "alpha.water"), n * n).reshape(n, n)
     mag = np.sqrt(U[..., 0] ** 2 + U[..., 1] ** 2)
@@ -98,8 +102,16 @@ def render_frame(job):
                angles="xy", scale_units="xy", scale=1.0, width=0.0038,
                headwidth=3.2, headlength=3.6, headaxislength=3.2, minlength=0.5)
     pad = 1.9 * R * 1e3
-    axL.set_xlim(L * 1e3 / 2 - pad, L * 1e3 / 2 + pad)
-    axL.set_ylim(L * 1e3 / 2 - pad, L * 1e3 / 2 + pad)
+    # Follow the droplet: a translating case leaves a box centred on L/2 within a few ms.
+    # The centroid is alpha-weighted, and falls back to the domain centre if the phase
+    # has left the domain (alpha sums to ~0), so a frame can never blow up the render.
+    aw = al.sum()
+    if aw > 1e-9:
+        cx, cy = (al * X).sum() / aw * 1e3, (al * Y).sum() / aw * 1e3
+    else:
+        cx = cy = L * 1e3 / 2
+    axL.set_xlim(cx - pad, cx + pad)
+    axL.set_ylim(cy - pad, cy + pad)
     axL.set_title("direction glyphs over $\\alpha$  (length: per-frame, "
                   "colour: shared)", fontsize=9, color=INK)
 
@@ -108,14 +120,15 @@ def render_frame(job):
                     extent=[0, L * 1e3, 0, L * 1e3])
     axR.contour(X * 1e3, Y * 1e3, ps, levels=[0.0], colors=INTERFACE,
                 linewidths=1.0)
-    axR.set_title("|U| full domain, shared log scale", fontsize=10, color=INK)
+    axR.set_title("%s full domain, shared log scale" % CFG["qlabel"],
+                  fontsize=10, color=INK)
     # Explicit colorbar axes with RESERVED canvas room. The first cut used
     # fig.colorbar(..., ax=axR) with subplots_adjust(right=0.99), which pushed
     # the tick labels off the canvas -- invisible in the rendered frames, worst
     # after the GIF downscale. Fonts are sized to stay legible at 880 px.
     cax = fig.add_axes([0.915, 0.13, 0.018, 0.72])
     cb = fig.colorbar(im, cax=cax)
-    cb.set_label("|U| [m/s]", fontsize=11, color=INK)
+    cb.set_label("%s [m/s]" % CFG["qlabel"], fontsize=11, color=INK)
     cb.ax.tick_params(colors=INK, labelsize=10, length=3)
     cb.outline.set_edgecolor(INK_MUTED)
 
@@ -125,8 +138,8 @@ def render_frame(job):
             sp.set_color(INK_MUTED)
             sp.set_linewidth(0.6)
 
-    fig.suptitle("Stationary droplet, R/h = 25, filter off      "
-                 "t = %6.2f ms      max|U| = %.3e m/s" % (t * 1e3, pmax),
+    fig.suptitle("%s      t = %6.2f ms      max %s = %.3e m/s"
+                 % (CFG["label"], t * 1e3, CFG["qlabel"], pmax),
                  fontsize=12, color=INK, family="monospace")
     # progress bar
     axp = fig.add_axes([0.075, 0.035, 0.85, 0.012])
@@ -148,6 +161,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--case", required=True)
     ap.add_argument("--radius", type=float, default=1e-3)
+    ap.add_argument("--uref", type=float, nargs=3, default=[0.0, 0.0, 0.0],
+                    help="reference velocity subtracted before plotting; for a "
+                         "translating droplet pass the translation velocity so the "
+                         "plotted field is the disturbance U - U_ref")
+    ap.add_argument("--label", default="Stationary droplet, R/h = 25, filter off",
+                    help="suptitle text")
     ap.add_argument("--fps", type=int, default=12)
     ap.add_argument("--jobs", type=int, default=10)
     ap.add_argument("--out", default=None)
@@ -173,16 +192,19 @@ def main():
         raise SystemExit("only %d frames in %s" % (len(frames), a.case))
 
     # global colour scale over all frames
+    uref = np.asarray(a.uref)
+    qlabel = "|U|" if not uref.any() else "|U-U0|"
     gmax = 0.0
     for t, p in frames[::5] + [frames[-1]]:
-        U = read_field(os.path.join(p, "U"), n * n)
+        U = read_field(os.path.join(p, "U"), n * n) - uref
         gmax = max(gmax, float(np.sqrt((U[:, 0] ** 2 + U[:, 1] ** 2)).max()))
-    print("frames: %d   global max|U| = %.3e" % (len(frames), gmax))
+    print("frames: %d   global max %s = %.3e" % (len(frames), qlabel, gmax))
 
     framedir = tempfile.mkdtemp(prefix="anim_")
     CFG.update(n=n, L=L, radius=a.radius, framedir=framedir,
                norm=LogNorm(vmin=gmax / 1e5, vmax=gmax),
-               tmax=frames[-1][0], nframes=len(frames))
+               tmax=frames[-1][0], nframes=len(frames),
+               uref=uref, qlabel=qlabel, label=a.label)
 
     jobs = [(k, t, p) for k, (t, p) in enumerate(frames)]
     with Pool(a.jobs) as pool:
@@ -190,7 +212,7 @@ def main():
             if (i + 1) % 25 == 0:
                 print("  rendered %d/%d" % (i + 1, len(jobs)))
 
-    out = a.out or os.path.join(a.case, "figures", "parasitic_Rh25.mp4")
+    out = a.out or os.path.join(a.case, "figures", "parasitic.mp4")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(a.fps),
