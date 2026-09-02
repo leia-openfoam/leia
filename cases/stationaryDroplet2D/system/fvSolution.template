@@ -284,6 +284,9 @@ levelSet
         // Diagnostic only: write the discrete mass residual ddt(rho)+div(rhoPhi)
         // for EVERY mass-flux model, not just rhoLENT. Costs one ddt and one div.
         massResidualDiagnostic @!MASS_RESIDUAL_DIAGNOSTIC!@;
+        // Time level of the geometric face density: new | trapezoid.
+        // See MASS_FLUX_ALPHAF_TIME_LEVEL in cases/default.parameter.
+        alphaFTimeLevel     @!MASS_FLUX_ALPHAF_TIME_LEVEL!@;
     }
 
     // Harmonic (Laplace) smoothing of the mean curvature: pin the cell-centred

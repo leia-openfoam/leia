@@ -120,6 +120,7 @@
           : "n/a (no density equation)");
     row("massFlux massResidualDiag",
         mfD.getOrDefault<bool>("massResidualDiagnostic", false) ? "on" : "off");
+    row("massFlux alpha_f time", get(mfD, "alphaFTimeLevel", "new"));
     row("massFlux alpha_f source",
         get(mfD, "alphaFSource",
             get(mfD, "faceInterpolation", "donorPlane (default)")));

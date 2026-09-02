@@ -589,6 +589,28 @@ MASS_FLUX_BOUND_RHO true;
 // Default false = every existing study is byte-unchanged.
 MASS_RESIDUAL_DIAGNOSTIC false;
 
+// TIME LEVEL OF THE GEOMETRIC FACE DENSITY (author's proposal, 2026-09-02).
+//   new        rho_f from the NEW interface only -- what every run to date used.
+//   trapezoid  1/2 (rho_f^n + rho_f^{n+1}), both geometric reconstructions.
+//
+// WHY IT IS THE RIGHT OBJECT. The density belonging in the mass flux is that of the
+// fluid which actually CROSSES the face during the step -- a time average over the
+// swept region -- not the plane value at t^{n+1}. The trapezoid of the two endpoint
+// reconstructions is a second-order approximation to that swept average. It costs one
+// extra plane reconstruction per outer iteration and NO solve, and unlike rhoLENT it
+// leaves rho purely geometric, hence bounded in [rho2, rho1] by construction with no
+// clipping.
+//
+// WHAT IT CANNOT DO. It cannot drive ddt(rho)+div(rhoPhi) to zero. That balance is
+// ONE CONSTRAINT PER CELL while a two-level blend supplies one value per face from a
+// POINTWISE rule; with more faces than cells a satisfying face field exists, but no
+// local formula reaches it -- closing it exactly needs a projection (solve
+// laplacian(lambda) = residual, then rhoPhi -= snGrad(lambda)). So the expectation is
+// a REDUCTION, and its size is what decides whether that projection is worth building.
+//
+// Default `new` = every existing study is byte-unchanged.
+MASS_FLUX_ALPHAF_TIME_LEVEL new;
+
 // Time scheme of the rhoLENT AUXILIARY density equation, ddt(rho). IT MUST MATCH
 // MOMENTUM_DDT_SCHEME, and `backward` is that match for the repository default.
 //

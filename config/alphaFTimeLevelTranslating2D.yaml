@@ -1,0 +1,78 @@
+# DOES A TIME-AVERAGED GEOMETRIC FACE DENSITY REDUCE THE MASS RESIDUAL?
+#
+# THE PROPOSAL (author, 2026-09-02). The density that belongs in the mass flux is the
+# density of the fluid that actually CROSSES the face during the step -- an average
+# over the SWEPT region -- not the plane value at t^{n+1}, which is what every run to
+# date has used. Reconstructing the interface at BOTH endpoints and taking
+# 1/2(rho_f^n + rho_f^{n+1}) is a second-order approximation to that swept average.
+#
+# WHY IT MATTERS EVEN THOUGH rhoLENT ALREADY WORKS. rhoLENT drives the residual to
+# ~1e-11, but it does so by SOLVING for an auxiliary rho that is no longer the
+# geometric one, and that auxiliary rho is unbounded -- it needed massFlux.boundRho to
+# be usable at all, and the clip breaks the very identity being enforced. The
+# trapezoid form keeps rho PURELY GEOMETRIC, hence bounded in [rho2, rho1] by
+# construction, with no auxiliary equation, no clip, and no extra solve -- one extra
+# plane reconstruction per outer iteration. If it removes most of the residual it is
+# the better construction.
+#
+# WHAT IT CANNOT DO, pre-registered so the number is read honestly. It cannot drive
+# ddt(rho) + div(rhoPhi) to zero. That balance is ONE CONSTRAINT PER CELL, while a
+# two-level blend supplies one value per face from a POINTWISE rule. With more faces
+# than cells a satisfying face field exists, but no local formula reaches it -- closing
+# it exactly requires a projection: solve laplacian(lambda) = residual, then
+# rhoPhi -= snGrad(lambda), which is one Poisson solve of exactly the pressure
+# equation's character (compact, unstructured, MPI-clean). THIS STUDY MEASURES HOW MUCH
+# OF THE RESIDUAL THE FREE VERSION REMOVES, and that decides whether the projection is
+# worth building.
+#
+# ONE VARIABLE: MASS_FLUX_ALPHAF_TIME_LEVEL. Mass flux pinned to geometricFaceDensity
+# -- the whole point is to fix it WITHOUT an auxiliary density equation. ddt schemes
+# matched (backward/backward), which config/matchedBDF2Translating2D measured as the
+# best pairing. Droplet started upstream so the outlet cannot contaminate anything:
+# config/translatingClearOutlet2D showed the centred case dies at step 9337 purely from
+# crossing it.
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION CONTROL: the `new` arms must reproduce
+#     config/translatingClearOutlet2D's geometricFaceDensity numbers -- travelled
+#     fraction 0.433 at N=64 and 0.740 at N=128, mass residual 1.054e-01 and 1.723e-01.
+#     If they do not, a default moved and nothing here holds.
+#   * THE NUMBER THAT DECIDES: the relative mass residual of the trapezoid arms against
+#     their `new` twins. An order or more is a strong result and makes the trapezoid
+#     the preferred construction; a factor of ~2 says the residual is dominated by the
+#     cell-coupling a pointwise rule cannot touch, and the projection is the only way
+#     to close it.
+#   * SCORED ALSO on free-stream preservation -- travelled fraction and centroid error
+#     -- because a smaller residual is only interesting if it moves the physics. rhoLENT
+#     is the yardstick: 0.616 at N=64 and 0.767 at N=128 against geometric's 0.433/0.740.
+#   * Volume and shape reported alongside, never a headline metric alone.
+study_name: alphaFTimeLevelTranslating2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 240
+axes_override:
+  N_CELLS: [64, 128]
+  END_TIME: [0.1]
+  DROPLET_OFFSET_X: [-0.0025]
+  MASS_FLUX: ["geometricFaceDensity"]
+  MASS_FLUX_ALPHAF_TIME_LEVEL: ["new", "trapezoid"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

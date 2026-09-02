@@ -323,6 +323,36 @@ const bool boundRhoLENT =
     massFluxDict.getOrDefault<bool>("boundRho", false);
 const bool massResidualDiagnostic =
     massFluxDict.getOrDefault<bool>("massResidualDiagnostic", false);
+
+// TIME LEVEL OF THE GEOMETRIC FACE DENSITY (author's proposal, 2026-09-02).
+//   new        rho_f from the NEW interface only -- what every run to date used.
+//   trapezoid  1/2 (rho_f^n + rho_f^{n+1}), both from the geometric reconstruction.
+//
+// WHY IT IS THE RIGHT OBJECT. The density that belongs in the mass flux is the
+// density of the fluid that actually CROSSES the face during the step -- a time
+// average over the swept region -- not the plane value at t^{n+1}. The trapezoid of
+// the two endpoint reconstructions is a second-order approximation to that swept
+// average, and it costs one extra plane reconstruction per outer iteration and no
+// solve.
+//
+// WHAT IT CANNOT DO, stated up front so the measurement is read honestly: it cannot
+// drive the discrete mass residual to zero. The balance is ONE CONSTRAINT PER CELL
+// while a two-level blend supplies one value per face from a POINTWISE rule; with
+// more faces than cells a satisfying face field exists, but no local formula reaches
+// it -- that needs a projection. So the pre-registered expectation is a substantial
+// REDUCTION of ddt(rho)+div(rhoPhi), not machine zero, and the size of that reduction
+// is what decides whether the projection is worth building.
+//
+// Default `new` = every existing study is byte-unchanged.
+const word alphaFTimeLevel =
+    massFluxDict.getOrDefault<word>("alphaFTimeLevel", "new");
+if (alphaFTimeLevel != "new" && alphaFTimeLevel != "trapezoid")
+{
+    FatalIOErrorInFunction(massFluxDict)
+        << "Unknown alphaFTimeLevel '" << alphaFTimeLevel
+        << "'. Valid: new, trapezoid." << exit(FatalIOError);
+}
+const bool alphaFTrapezoid = (alphaFTimeLevel == "trapezoid");
 if (boundRhoLENT && !useRhoLENT)
 {
     Info<< "massFlux: boundRho requested but type is '" << massFluxType
@@ -358,6 +388,23 @@ surfaceScalarField alphaf
     ),
     mesh,
     dimensionedScalar("alphaf", dimless, Zero)
+);
+
+// Companion face fraction at the OLD interface, for alphaFTimeLevel trapezoid. It is
+// constructed unconditionally (a surfaceScalarField of zeros costs nothing) and only
+// FILLED when the trapezoid form is selected, so the `new` default touches nothing.
+surfaceScalarField alphafOld
+(
+    IOobject
+    (
+        "alphafOld",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("alphafOld", dimless, Zero)
 );
 
 surfaceScalarField rhof

@@ -74,6 +74,7 @@ axes_override:
   MASS_FLUX: ["rhoLENT", "geometricFaceDensity"]
   MASS_FLUX_BOUND_RHO: ["true"]
   MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  MASS_FLUX_ALPHAF_TIME_LEVEL: ["trapezoid"]
   MOMENTUM_DDT_SCHEME: ["Euler"]
   RHO_DDT_SCHEME: ["Euler"]
   CURVATURE_EXTENSION: ["none"]
