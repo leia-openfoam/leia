@@ -528,7 +528,31 @@ TRANSLATION_SPEED 0.05;
 // because psi is advected by the semi-Lagrangian trace velocity while rho is
 // transported by the face flux phi -- two different transport operators, which is
 // exactly the consistency rhoLENT requires. Revisit when that is fixed.
-MASS_FLUX geometricFaceDensity;
+// CHANGED TO rhoLENT 2026-09-02, on the author's decision. NOT INERT: results before
+// and after are not comparable unless the study pinned the token itself.
+//
+// THE EVIDENCE. On the STATIONARY droplet rhoLENT is neutral-to-better and damages
+// nothing (config/rhoLENTStationary2D, all 6 arms to the horizon, the control
+// reproducing the shared ladder to five digits): the unabsorbed capillary residual
+// moves +1.0% / -22% / +0.1% at N = 32/64/128, with volume and shape matching to three
+// digits. On the TRANSLATING droplet at the only admissible resolution (N=128, R/h =
+// 12.8) it is the best arm measured on every transport metric
+// (config/massFluxComparison2D): travelled fraction 0.874 against 0.725, centroid error
+// 6.3e-04 against 1.4e-03, phase-volume error 0.0024 against 0.0598.
+//
+// WHY IT WORKS, in one line: geometricFaceDensity solves no density equation, so
+// ddt(rho) + div(rhoPhi) is whatever the geometry leaves it -- 4.8e-02 relative --
+// and a droplet translating at U0 inherits a momentum source U0 times that residual,
+// which is not a gradient and which vanishes identically at U0 = 0. That is the entire
+// stationary/translating asymmetry, and rhoLENT drives the residual to ~1e-11.
+//
+// WHAT IT COSTS, recorded rather than buried: rhoLENT's auxiliary density is NOT the
+// geometric one and is unbounded on its own -- it is usable only because
+// MASS_FLUX_BOUND_RHO clips it, and that clip breaks the identity being enforced. It
+// also carries the WORST velocity excess of the four arms compared, max|U-U0| = 2.12
+// against 0.14. Whatever transports the droplet correctly currently carries a large
+// max|U-U0|; that anti-correlation is unresolved and is the open problem.
+MASS_FLUX rhoLENT;
 // donorPlane, on the author's instruction (2026-09-01): "only Gauss upwind worked in
 // rhoLENT". This is deliberately NOT the solver's own preference -- createTransport
 // Fields.H defaults rhoLENT to `central`, and the committed IST cases set central
