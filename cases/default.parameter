@@ -740,6 +740,29 @@ MASS_FLUX_PROJECT false;
 // steps.
 RHO_DDT_SCHEME backward;
 
+// FLUID PROPERTIES, tokenised 2026-09-02 so the DENSITY RATIO can be swept as a
+// control. Defaults are the committed water/air pair, so every existing study renders
+// byte-identically.
+//
+// WHY THE RATIO IS WORTH SWEEPING. With rho1 = rho2 the single-field density is
+// CONSTANT, so ddt(rho) = 0 and div(rhoPhi) = rho div(phi) = 0 EXACTLY: the discrete
+// mass residual vanishes by construction and rhoLENT's auxiliary equation is trivial.
+// Anything that still goes wrong therefore cannot be the mass flux. It is the cleanest
+// available isolation of rhoPhi from the rest of the method.
+//
+// MATCH rho1 + rho2 WHEN SWEEPING THE RATIO. The capillary limit is
+// dt_cap = sqrt((rho1+rho2) h^3 / (2 pi sigma)) while the repository's step law
+// dt = 10.861 h^1.5 is independent of density, so the SAFETY FACTOR (0.2323) moves with
+// the density SUM. Holding the sum fixed at 999.39 keeps every arm at the same fraction
+// of the capillary limit; changing it silently changes the effective time-step
+// stringency and confounds the comparison. Equal densities at the committed sum are
+// therefore 499.695 each, NOT 998.2 or 1.19 each.
+RHO1  998.2;
+RHO2  1.19;
+NU1   1e-06;
+NU2   1.53e-05;
+SIGMA 0.07274;
+
 // Sub-cell displacement of the droplet centre in x, in METRES. The rendered centre
 // is the DERIVED token DROPLET_CENTRE_X = DOMAIN_HALF_LENGTH + DROPLET_OFFSET_X,
 // so 0 is byte-identical to the old `center (@!DOMAIN_HALF_LENGTH!@ ...)` and every
