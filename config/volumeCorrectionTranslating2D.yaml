@@ -1,0 +1,87 @@
+# THE rhoLENT PAPER'S MISSING PIECE: does the section 3.4 volume correction fix the
+# translating droplet?
+#
+# WHAT THE PAPER SAYS (Liu, Tolle, Bothe & Maric, JCP 493 (2023) 112426, sec. 3.4):
+#
+#   "Level Set / Front Tracking methods ... kinematically evolve the fluid interface
+#    WITHOUT UTILIZING FLUXES through control-volume boundaries and are therefore
+#    INHERENTLY NOT MASS(VOLUME)-CONSERVATIVE ... we ensure volume conservation by
+#    extending/contracting the Front with a modified iso-value."
+#
+# eqs. (46)-(49): a uniform normal shift h = (V_target - V_ini)/int dS. rhoLENT does not
+# TOLERATE the interface volume error, it REPAIRS it every step.
+#
+# WE HAD IT SWITCHED OFF -- and worse, not wired in at all. volumeCorrection was
+# constructed only in the EULERIAN solver, whose header stated the semi-Lagrangian
+# solver "would never call correct()". That is exactly backwards: the SL solver is the
+# non-flux-based, non-conservative transport the paper is describing, and
+# pointValueScheme.H says "Non-conservative" in its own header. Measured consequence:
+# the droplet INFLATES +5 to +8 percent over the horizon with the gain NOT converging
+# under refinement, and three separate attempts to remove the resulting mass-flux
+# inconsistency through the FACE-DENSITY construction all failed -- two time levels
+# (2%), an SL-advected donor plane (1%), and a curl-free flux projection which removes
+# the residual but stops the droplet. They failed because the error was never in the
+# face density.
+#
+# ddt(rho) is Euler here, also on the paper: eq. (40) is an explicit two-level update,
+# "solved exactly", and my earlier argument for matching it to the momentum scheme is
+# retracted -- the paper states consistency "does not depend on the implicit or explicit
+# discretization", only on the equivalence of the mass flux.
+#
+# 2x2 AT N=128, the only admissible rung (R/h = 12.8; the rule is >= 10):
+#   VOLUME_CORRECTION     noVolumeCorrection vs newtonShift (the paper's construction:
+#                         one scalar eps with psi <- psi + eps restoring the target
+#                         volume, distance-preserving so grad(psi) is untouched)
+#   MASS_FLUX_BOUND_RHO   true vs false -- with Euler the density update is a convex
+#                         combination again, so the clip SHOULD be unnecessary and the
+#                         paper never needs one. The 4-rank gate already measured the
+#                         clip at 6.6e-07 with Euler, against 38.62 under BDF2.
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION CONTROL: the noVolumeCorrection + boundRho arm must reproduce
+#     config/massFluxComparison2D's rhoLENT N=128 arm -- travelled fraction 0.874,
+#     centroid error 6.3e-04, phase-volume error 0.0024, max|U-U0| 2.12.
+#   * VOLUME: newtonShift must drive the phase-volume error to round-off. The 4-rank
+#     gate already showed +2.5e-11 over 167 steps; the horizon is the real test.
+#   * THE QUESTION THAT MATTERS: does fixing the volume also fix the TRANSPORT? If the
+#     travelled fraction moves toward 1 and max|U-U0| falls, the volume drift was
+#     feeding both and the paper's method is complete once it is repaired. If the
+#     travelled fraction is unchanged, volume conservation is necessary but not
+#     sufficient, and the remaining lag is a separate defect.
+#   * CLIP: with Euler, boundRho true and false should agree. If they do not, the
+#     density is still leaving [rho2, rho1] and the convex-combination argument fails
+#     for a reason not yet identified.
+#   * Report the whole vector: travelled fraction, centroid error, phase volume,
+#     max|U-U0|, ||maxU|-U0|, mass residual, clip, density bounds.
+study_name: volumeCorrectionTranslating2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 300
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.1]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.05]
+  MASS_FLUX: ["rhoLENT"]
+  VOLUME_CORRECTION: ["noVolumeCorrection", "newtonShift"]
+  MASS_FLUX_BOUND_RHO: ["true", "false"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["Euler"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

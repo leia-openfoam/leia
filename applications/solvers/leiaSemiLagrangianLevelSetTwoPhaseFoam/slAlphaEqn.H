@@ -212,6 +212,19 @@
             );
         }
 
+        // PHASE-VOLUME CORRECTION (rhoLENT paper eqs. 46-49). Before the phase
+        // indicator, because alpha1 -- and through it alpha2, the mixture, rho and
+        // mu in UEqn/pEqn, the geometric face density and the CSV row -- must all be
+        // built from the CORRECTED field. eps is spatially constant, so
+        // grad(psi + eps) = grad(psi) and nothing the redistancer established is
+        // undone. Default noVolumeCorrection returns false without touching psi.
+        if (volCorr->correct(psi, phaseInd()))
+        {
+            // The zero crossing moved sub-h: the sign-change band can gain or lose
+            // a cell, exactly as after a redistance event.
+            narrowBand->calc();
+        }
+
         phaseInd->calcPhaseIndicator(alpha1, psi);
 
         // Previous-step curvature, captured BEFORE any refill: needed by the

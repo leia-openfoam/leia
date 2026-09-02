@@ -104,6 +104,10 @@
     }
     row("geometryFit",         get(gfD, "type", "none (default)"));
     row("psiFilter",           get(pfD, "type", "none (default)"));
+    // rhoLENT paper section 3.4: LENT is inherently NOT volume-conservative and the
+    // method repairs it every step with a uniform iso-value shift. Say which.
+    row("volumeCorrection",
+        get(sub("volumeCorrection"), "type", "noVolumeCorrection (default)"));
     if (get(pfD, "type", "none") != "none")
     {
         row("  psiFilter theta", Foam::name(pfD.getOrDefault<scalar>("theta", 0)));

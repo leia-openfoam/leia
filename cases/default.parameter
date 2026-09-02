@@ -702,7 +702,33 @@ MASS_FLUX_PROJECT false;
 // MASS_FLUX_BOUND_RHO below.
 //
 // If MOMENTUM_DDT_SCHEME is changed, change this with it.
-RHO_DDT_SCHEME backward;
+// REVERTED TO Euler 2026-09-02, on the rhoLENT paper (Liu et al., JCP 493 (2023)
+// 112426), which is what this solver's mass-flux model is taken from. Its eq. (40) is
+// an EXPLICIT two-level update and the paper is emphatic about it:
+//
+//   "although rho_f^{n+1} appears in eq. (40), rhoLENT does NOT use an implicit
+//    discretization for eq. (40): rho_f^{n+1} is geometrically computed from the fluid
+//    interface approximation, so eq. (40) is solved EXACTLY."
+//
+// RETRACTION of my own reasoning from earlier today. I set this to `backward` to MATCH
+// MOMENTUM_DDT_SCHEME, arguing that the free stream needs ddt(rho,U) and ddt(rho) to
+// expand with the same scheme. The paper contradicts that directly:
+//
+//   "Numerical consistency ... does NOT depend on the implicit or explicit
+//    discretization: the proportionality between the mass flux and the phase-specific
+//    flux, and the EQUIVALENCE OF THE MASS FLUX in the mass conservation equation and
+//    the momentum transport equation must both hold."
+//
+// The requirement is the SAME MASS FLUX in both equations -- which rhoLENT already
+// enforces by construction -- not matched time schemes. My matching argument
+// over-reached.
+//
+// It also explains MASS_FLUX_BOUND_RHO. BDF2 turns eq. (40) into a three-level
+// EXTRAPOLATION, rho^{n+1} = (4/3)rho^n - (1/3)rho^{n-1} - ..., which is not a convex
+// combination and undershoots by construction -- measured driving rho to -72.28
+// (config/rhoDdtGate2D). With Euler the update is the convex combination the method
+// assumes and the clip should be unnecessary; the paper never needs one.
+RHO_DDT_SCHEME Euler;
 
 // Sub-cell displacement of the droplet centre in x, in METRES. The rendered centre
 // is the DERIVED token DROPLET_CENTRE_X = DOMAIN_HALF_LENGTH + DROPLET_OFFSET_X,

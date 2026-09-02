@@ -68,6 +68,7 @@ Description
 // Leia Level Set Method
 #include "phaseIndicator.H"
 #include "redistancer.H"
+#include "volumeCorrection.H"
 #include "sdplsSource.H"     // reused sibling createFields.H constructs an sdplsSource
 #include "surfaceTensionForce.H"
 #include "narrowBand.H"
@@ -137,6 +138,10 @@ int main(int argc, char *argv[])
     #include "errorCalculation.H"
 
     // Parasitic-current + Laplace-jump metrics for the stationary-droplet study.
+    // Phase-volume correction (rhoLENT paper section 3.4). AFTER
+    // createTransportFields.H so alpha1 carries a real phase indicator.
+    #include "volumeCorrectionFieldsSL.H"
+
     #include "createDropletMetricsFile.H"
 
     // One consolidated account of every runtime selection actually in use.
