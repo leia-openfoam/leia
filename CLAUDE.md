@@ -344,16 +344,21 @@ across unequal horizons)? A number failing these is not a result.
 
 **Is the interface still inside the domain?** Before any conclusion is drawn from
 `t_blow`, compute where the interface IS at that step and how far it is from the
-nearest boundary. MEASURED 2026-09-02: `translatingDroplet2D` centres a droplet in a
-0.01 m box at `U0 = 0.05` with `END_TIME 0.1`, so its leading edge reaches the OUTLET
-at t = 0.08 -- 80% of the horizon. Six of six divergences had the droplet at or past
-the outlet; both survivors had it ~10 cells inside; and the same configuration that
-died at step 9337 on FOUR independent occasions completes all 13334 steps once the
-droplet is started upstream, with nothing else changed. The reproducibility should
-have been the tell: a blow-up landing on 9331/9337/9367/9324 is a GEOMETRIC event, not
-an instability -- real ones scatter by the 5-38% this campaign has documented. It also
-inverted a refinement reading, "finer blows first", which was really "the finer mesh
-transports the droplet more accurately, so it reaches the outlet sooner".
+nearest boundary -- and check what that boundary actually IS, in
+`constant/polyMesh/boundary` rather than in the field files. A blow-up whose step count
+reproduces to better than a percent (9337/9331/9367/9324 on four independent occasions,
+against the 5-38% scatter this campaign documents for genuine instabilities) is a
+GEOMETRIC event, not an instability; the reproducibility is the tell. It can also
+invert a refinement reading -- "finer blows first" was really "the finer mesh transports
+the droplet more accurately, so it reaches the boundary sooner".
+
+RETRACTED 2026-09-02, and kept here because the retraction is the lesson: this rule was
+first written as "the leading edge reaches the OUTLET at t = 0.08". There was no outlet.
+`translatingDroplet2D` had all four sides in one `walls` patch, so every measurement
+behind that text came from a closed slip box (see "A wrong setup voids its data"). The
+general point survives -- proximity to a boundary explains reproducible blow-ups -- but
+the specific mechanism was wrong because nobody checked which patches the mesh actually
+had. Check the mesh first, then the distance.
 
 **6. Report the whole vector.** Never a headline metric alone. For an interface
 method that vector is **shape/geometric error, volume conservation error, the

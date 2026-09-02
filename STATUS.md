@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-02.
+Last updated: 2026-09-02 (translating-droplet closed-box retraction).
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -11,91 +11,84 @@ workflow). This file is the *current state*, not the manual.
 
 ---
 
-## 0. READ THIS FIRST — the translating droplet now runs (2026-09-02)
+## 0. READ THIS FIRST — the translating droplet case was a CLOSED BOX (2026-09-02)
 
-**`rhoLENT` + a momentum time scheme MATCHED to the density equation makes the
-translating droplet run the full horizon at N=128 — the first time in this campaign.**
+**Everything this file previously said about the translating droplet is VOID.** The
+whole of the old section 0 — "rhoLENT + a matched momentum time scheme makes the
+translating droplet run", the pairing table, the best-configuration table, the
+droplet-leaves-the-domain retraction, the `div(rhoPhi,U)` scheme comparison — was read
+off `maxMagUPrime`, `t_blow` and the travelled fraction on a case that had **no inlet
+and no outlet**.
 
-| N | mass flux | mom. ddt | steps | End | mass res. rel | travel fraction |
-|---|---|---|---|---|---|---|
-| 64 | geometric | backward | 4714 | yes | 8.94e-02 | 0.458 |
-| 64 | geometric | Euler | 4714 | yes | 9.85e-02 | 0.499 |
-| 64 | rhoLENT | backward | 4306 | **no** | 1.50e-01 | 0.651 |
-| 64 | **rhoLENT** | **Euler** | 4714 | **yes** | **1.20e-04** | **0.895** |
-| 128 | geometric | backward | 9337 | **no** | 6.78e-01 | — |
-| 128 | geometric | Euler | 9377 | **no** | 8.10e-01 | — |
-| 128 | rhoLENT | backward | 7648 | **no** | 2.56e-01 | — |
-| 128 | **rhoLENT** | **Euler** | **13334** | **YES** | **5.25e-03** | **0.892** |
+`cases/translatingDroplet2D/system/blockMeshDict` put left, right, top and bottom into
+a single `walls` patch. Every field in `0.org` has always declared `inlet` and
+`outlet`; OpenFOAM errors when a **mesh** patch is missing from a field but **silently
+ignores a field entry that matches no mesh patch**, so
+`inlet { type fixedValue; value uniform (0.05 0 0); }` was parsed and discarded on
+every run this campaign ever did on that case.
 
-**Both conditions are necessary.** rhoLENT alone fails; Euler alone fails; together
-they complete both rungs. The travelled fraction (centroid displacement over `U0*t`;
-exact = 1) rises 0.50 → 0.89, and the two winning rungs agree to 0.3% — converged.
+So it was a closed slip-wall box. Slip imposes `U.n = 0`, and on the x-normal faces the
+normal *is* x, so the uniform stream the case initialises with is incompatible with its
+own boundaries. The pressure projection annihilated it on step 1:
 
-**Why.** For a droplet translating at `U0` the momentum transient plus convection
-collapses, for constant `U`, to `U0 * [ddt(rho) + div(rhoPhi)]` — not a gradient, so
-the pressure cannot absorb it, and **identically zero at `U0 = 0`**, which is exactly
-why the stationary droplet was always clean. Two things must hold: the mass residual
-must vanish (only rhoLENT does that — 2.3e-11 against 4.8e-02 for
-`geometricFaceDensity`) **and** `ddt(rho,U)` must expand with the same scheme as
-`ddt(rho)`, or momentum inherits `U0 * (1/2)(rho^{n+1} - 2rho^n + rho^{n-1})/dt`.
+| | closed box | repaired |
+|---|---|---|
+| first-step local continuity error | 1.00e-05 | **2.32e-20** |
+| `max\|U-U0\|` at step 1 | 1.031e-01 | **2.159e-03** |
+| `mean\|U-U0\|` | 5.011e-02 | **1.160e-05** |
+| `maxMagU` | 0.05987 | **0.05207** = U0 |
+| ambient mean Ux at t = 0.02 | -2.04e-03 | at U0 |
+| droplet mean Ux | +6.14e-02 | — |
+| whole-domain mean Ux | -7.3e-07 | — |
 
-**The best configuration measured is `rhoLENT` + `boundRho` + MATCHED BDF2** — full
-horizon at N=128 with a phase-volume error of **0.0024**, 22× below the next best:
+A domain mean of zero is what a closed box must have. `maxMagUPrime = max|U - (U0,0,0)|`
+was therefore measuring the **annihilated free stream** at roughly 2*U0 from the first
+step onward — not a spurious current, on any arm, in any study.
 
-| mom ddt | ρ ddt | pair | steps | End | travel frac | volume err |
-|---|---|---|---|---|---|---|
-| Euler | Euler | matched | 13334 | yes | 0.767 | 0.0525 |
-| Euler | backward | mismatched | 13334 | yes | 0.883 | 0.0585 |
-| backward | Euler | **mismatched** | **10431** | **NO** | 1.321 | 0.775 |
-| **backward** | **backward** | **matched** | **13334** | **yes** | **0.874** | **0.0024** |
+**Fixed** in commit 440107f: `blockMeshDict` and its template now split `inlet` (left),
+`outlet` (right), `walls` (top+bottom, still free-slip). The repair gate is
+`config/translatingFreeStreamGate2D` (200 steps, N=128), whose pre-registered criteria
+are the middle column above; it passes. On the repaired mesh `max|U-U0|` settles around
+5e-03 and `mean|U-U0|` drifts 1.2e-05 -> 7.6e-05 over 200 steps — a real parasitic
+current roughly 50x below the artefact that was hiding it.
 
-So the BDF2 rule stands — the method does not trade time order for consistency.
+**Voided, not reused** (CLAUDE.md, "A wrong setup voids its data"):
 
-**Retraction of my own change.** The single divergence, `backward/Euler`, is the
-pairing commit `f7307b5` created by defaulting `RHO_DDT_SCHEME` to Euler. Before it,
-`ddt(rho)` had no entry, inherited `default`, and was automatically *matched*. The
-right fix for the unbounded ρ was never the time scheme — it is `boundRho`. Both
-defaults are corrected (`RHO_DDT_SCHEME backward`, `MASS_FLUX_BOUND_RHO true`), with
-bit-identity re-verified.
+- cluster study dirs renamed `studies/*_VOID_closedBox_20260902`;
+- eight curated tables moved to
+  `docs/method-comparison/method-comparison-article/data/tables/VOID_closedBox_20260902/`
+  with a README — `alphaFTest_{donorPlane,averagedPlanes}`, `bestConfigTranslating2D`,
+  `rhoBoundGate2D`, `rhoDdtGate2D`, `rhoLENTGate2D`, `translatingMap2D`,
+  `wellBalancedTranslating2D`;
+- the equal-density control that was mid-flight was **stopped by job id** rather than
+  allowed to finish, although its isolation argument is formally boundary-independent.
+  A setup wrong in one way is not assumed wrong in only that way.
 
-**Also retracted:** "both conditions necessary" from `massConsistencyTranslating2D` —
-that matrix ran with the droplet centred and was outlet-contaminated. With the outlet
-cleared all four N=64 pairings complete and the *best* is a mismatched pair, so
-matching is not a clean predictor on its own. The mass-flux half survives.
+**Re-running now.** `config/translatingRepaired2D` and
+`config/translatingRepairedEqualRho2D` — twin 8-arm matrices, `MASS_FLUX` (rhoLENT,
+geometricFaceDensity) crossed with `MOMENTUM_DIV_SCHEME` (upwind, limitedLinearV 1,
+vanLeerV, linearUpwind gradU), at density ratio 838.824 and at ratio 1 with the density
+sum held at 999.39 so both sit at the same fraction of the capillary limit. 16 jobs,
+ids 54460353-60 and 54460363-70, in `.my_jobs`.
 
-### rhoLENT is safe to adopt, and the control shows the mechanism
+### What SURVIVES the retraction
 
-`config/rhoLENTStationary2D`, all 6 arms complete, control reproducing the shared
-ladder to **five digits**: rhoLENT is neutral-to-better (+1.0% / −22% / +0.1% at
-N=32/64/128), volume and shape matching to three digits.
+These did not run on `translatingDroplet2D` and are unaffected:
 
-The decisive column is the mass residual: `geometricFaceDensity` carries **0.04–0.56
-relative on the STATIONARY droplet** — as large as on the translating one — and it
-does no harm, because the momentum source is `U0 ×` residual and `U0 = 0`. That holds
-the residual fixed and varies only `U0`, which no earlier test did.
-
-**Recommendation, not acted on:** make `rhoLENT` the shared `MASS_FLUX` default. One
-line in `cases/default.parameter`. Left as an explicit decision because it makes every
-earlier ladder incomparable.
-
-### The 2D ladders on the shared configuration are complete
-
-Stationary, unabsorbed capillary residual (2nd half), `cellCentreInverse` wins at
-every rung: 4.60× / 3.81× / 1.55× / 1.49× at N=32/64/128/256.
-
-### And a retraction: the historical failures were the droplet leaving the domain
-
-`translatingDroplet2D` centred the droplet in a 0.01 m box with `U0 = 0.05`,
-`END_TIME 0.1`: the leading edge reaches the outlet at **t = 0.08, 80% of the
-horizon**. Six of six failures in `config/consistencyTranslating2D` had the droplet at
-or past the outlet; both survivors had it ~10 cells inside. With the droplet started
-upstream (`config/translatingClearOutlet2D`), **`geometricFaceDensity` at N=128 —
-which died at step 9337 on four independent occasions — completes all 13334 steps.**
-No numerics changed; only the starting position. That is why 9337 reproduced to 0.5%:
-it is a geometric event. It also inverts "finer blows first" — the finer mesh
-transports more accurately, so it reaches the outlet sooner.
-
-**Every conclusion drawn from `t_blow` on the translating case must be re-read.**
+- **`rhoLENT` is safe on the stationary droplet.** `config/rhoLENTStationary2D`, all 6
+  arms complete, control reproducing the shared ladder to five digits; neutral-to-better
+  (+1.0% / -22% / +0.1% at N=32/64/128), volume and shape matching to three digits.
+  `rhoLENT` remains the shared `MASS_FLUX` default.
+- **`geometricFaceDensity` carries a mass residual of 0.04-0.56 relative on the
+  STATIONARY droplet** and does no harm there. That measurement holds the residual fixed
+  and varies only `U0`, and is the reason to expect a `U0 x [ddt(rho) + div(rhoPhi)]`
+  momentum source at all. It is now the *motivation* for the repaired matrix rather than
+  a result about it.
+- **The 2D stationary ladders on the shared configuration.** Unabsorbed capillary
+  residual over the second half: `cellCentreInverse` wins at every rung, 4.60x / 3.81x /
+  1.55x / 1.49x at N=32/64/128/256.
+- **The kinematic transport gates** (prescribed velocity, no momentum solve, different
+  case) — unaffected by pressure boundary conditions.
 
 ### The curvature chain is exonerated, four times over
 
