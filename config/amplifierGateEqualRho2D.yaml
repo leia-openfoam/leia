@@ -1,0 +1,85 @@
+# PURE-AMPLIFIER GATE: does the instability survive a PERFECT capillary force?
+#
+# The campaign now has a clean two-factor split of max|U|(T) = u0(h)*exp(G(h)):
+#   u0, the SOURCE, is curvature-estimator error. kickOriginGate2D measured it at
+#      2.15e-03 independent of U0 to 0.4%, and prescribed exact kappa removed it by a
+#      factor of 1.27e+06 (2.15e-03 -> 1.69e-09), because sigma*kappa*snGrad(alpha) with
+#      kappa constant is an EXACT discrete gradient the pressure equation absorbs whole.
+#   G, the AMPLIFIER, grows with U0 (step 200: 2.11e-03 at U0=0 against 5.39e-03 at
+#      U0=0.05) and with the density ratio (the repaired matrix: both ratios sit at the
+#      same order for 8000 steps, then only ratio 838.8 goes unstable).
+#
+# THE GAP THIS CLOSES. In kickOriginGate2D the EXACT-kappa arms also grew, 1.94e-11 ->
+# 1.28e-05 over 200 steps at U0 = 0.05. That is G measured with the source removed -- but
+# 200 steps is far too short to extrapolate, and growth out of round-off can be a
+# transient filling of the discrete null space rather than a true rate. This runs it to
+# the full 8000-step horizon.
+#
+# 2 x 2 x 2 FACTORIAL, fully crossed so no verdict is confounded:
+#   SURFACE_TENSION_FORCE  reconstructedCurvature (u0 present) vs
+#                          constantCurvatureSurfaceTension at kappa = 1/R = 1000 (u0 ~ 0)
+#   TRANSLATION_SPEED      0 vs 0.05 -- the U0 handle on G, with U0 = 0 as the control
+#                          that has never been run on this case with these defaults
+#   density ratio          838.824 vs 1, one config each
+#
+# PRE-REGISTERED, and this decides what the campaign works on next:
+#   * EXACT KAPPA STAYS BOUNDED to the horizon -> the estimator is the whole story. The
+#     work is u0: the variational capillary force f_c = -sigma dA_h/dpsi_c derived from
+#     the discrete surface-energy functional A_h = sum_c V_c |grad_h alpha_c|. That is
+#     the right target because the drift decomposition showed the discrete force does NET
+#     WORK on the droplet (drift 0 -> 0.129*U0 while the fluctuation stays ~0.015*U0),
+#     and a variational force has zero net work around any closed cycle BY CONSTRUCTION.
+#   * EXACT KAPPA BLOWS UP TOO -> there is an amplifier independent of the source, no
+#     curvature estimator will save it, and the work is G: semi-implicit capillary
+#     coupling. Report the rate against the model-kappa arms at matched dt.
+#   * Either way the U0 = 0 arms give the stationary reference on the SAME case, mesh and
+#     chain -- the comparison this campaign has been making across incompatible setups.
+#
+# SHORTER HORIZON, END_TIME 0.06: the droplet ends near 5.6 mm with its leading edge at
+# 6.6 mm, 43 cells inside the outlet, so no metric is contaminated by the phase leaving.
+#
+# DENSITY RATIO 1 at MATCHED DYNAMIC VISCOSITY -- this closes a confounder I introduced.
+# The earlier equal-density control held the KINEMATIC viscosities fixed, so mu = rho*nu
+# moved with rho and the dynamic viscosity ratio went 54.8 -> 15.3: part of that control's
+# improvement could have been viscous rather than density. Here NU1/NU2 are rescaled so
+# mu1 = 9.982000e-04 and mu2 = 1.820700e-05 are IDENTICAL to the ratio-838.8 arms, and the
+# only thing that changes is rho. rho1 + rho2 is still held at 999.39, so dt_cap and the
+# 0.2323 capillary safety factor are unchanged too.
+study_name: amplifierGateEqualRho2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 300
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.06]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0, 0.05]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature", "constantCurvatureSurfaceTension"]
+  CONST_CURVATURE: [1000]
+  RHO1: [499.695]
+  RHO2: [499.695]
+  NU1: [1.997618547e-06]
+  NU2: [3.643622610e-08]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
