@@ -46,6 +46,43 @@
 #     -- because a smaller residual is only interesting if it moves the physics. rhoLENT
 #     is the yardstick: 0.616 at N=64 and 0.767 at N=128 against geometric's 0.433/0.740.
 #   * Volume and shape reported alongside, never a headline metric alone.
+#
+# ============================== RESULT, 2026-09-02 ==============================
+# RAN: Lichtenberg, 4 ranks/arm. All 4 arms COMPLETED the full horizon.
+#
+#  N    alphaF time  travelFrac  centErr     massResRel  volErr    shapeL2
+#  64   new            0.3330    3.334e-03   1.659e-01   0.03972   2.516e-03
+#  64   trapezoid      0.2760    3.619e-03   2.854e-01   0.01940   2.767e-03
+#  128  new            0.7254    1.373e-03   2.158e-01   0.05977   8.723e-04
+#  128  trapezoid      0.7340    1.330e-03   1.738e-01   0.06788   8.627e-04
+#
+# VERDICT: MARGINAL, and the pre-registered expectation was right. The mass residual
+# stays the SAME ORDER -- 0.17 to 0.29 against 0.17 to 0.22 -- so the two-level blend
+# does not materially reduce it. The 4-rank gate had already measured 4.794e-02 ->
+# 4.699e-02, a 2% reduction over 167 steps; the full horizon agrees.
+#
+# The free-stream score is mixed: trapezoid is WORSE at N=64 (0.276 against 0.333) and
+# marginally better at N=128 (0.734 against 0.725). It does halve the phase-volume
+# error at N=64 (0.0194 against 0.0397), which is worth recording but is not what the
+# construction was aimed at.
+#
+# WHY, AND IT IS THE USEFUL PART. The residual is not about the TIME LEVEL of rho_f.
+# psi is advected by the semi-Lagrangian TRACE while rho is fluxed by phi, so the
+# volume swept by the interface displacement is not the volume swept by the face flux.
+# Blending rho_f between two time levels cannot address a mismatch between two
+# TRANSPORT OPERATORS, and the counting argument says the rest is cell-coupling no
+# pointwise rule reaches. config/massFluxComparison2D tests the construction that DOES
+# reach it -- the curl-free flux projection, which the 4-rank gate measured cutting the
+# reducible residual 47x for an 18% correction.
+#
+# A FLAW IN THIS STUDY'S OWN PRE-REGISTRATION, recorded rather than quietly dropped.
+# The reproduction control above cites config/translatingClearOutlet2D's 0.433 at N=64,
+# but that study ran Euler momentum while this one runs matched backward/backward. The
+# control therefore does not apply and the 0.333 here is not evidence that a baseline
+# moved -- it is evidence that I compared across a changed axis. The correct control
+# for these arms is the plain geometricFaceDensity arm of
+# config/massFluxComparison2D, which shares every setting.
+# ================================================================================
 study_name: alphaFTimeLevelTranslating2D
 case: translatingDroplet2D
 mesh: hex
