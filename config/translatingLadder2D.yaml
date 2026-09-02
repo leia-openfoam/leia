@@ -1,0 +1,82 @@
+# THE 2D TRANSLATING DROPLET AT ADMISSIBLE RESOLUTION -- the ladder that should have
+# been run first.
+#
+# WHY THIS EXISTS. Every translating comparison this campaign has made was at N = 32,
+# 64 or 128. With R = 1 mm in a 10 mm box, R/h = 0.1*N:
+#
+#     N     32    64    100    128    181    256
+#     R/h   3.2   6.4   10.0   12.8   18.1   25.6
+#
+# and this repository's own rule is R/h >= 10. So N = 32 and N = 64 are NOT admissible
+# evidence, and a large part of what has been reported -- the three-way mass-flux table,
+# the matched-BDF2 N=64 arms, the trapezoid N=64 arms -- sits below the bar. This ladder
+# uses only admissible rungs, spaced by sqrt(2) as the repository's other ladders are.
+#
+# THE TIME STEP IS CAPILLARY-LIMITED AT EVERY RUNG, and by the same factor, which is
+# what makes the rungs comparable at all. Verified with
+# workflow/scripts/check_capillary_timestep.py:
+#
+#     N     dt (repo)     dt Brackbill   ratio    steps to t = 0.1
+#     128   7.4999e-06    3.2291e-05     0.2323   13333
+#     181   4.4602e-06    1.9203e-05     0.2323   22420
+#     256   2.6516e-06    1.1416e-05     0.2323   37712
+#
+# dt = 10.861 h^1.5 is exactly Brackbill's sqrt((rho1+rho2) h^3 / (2 pi sigma)) times
+# 0.2323, at every rung, so the ratio to the explicit surface-tension limit is held
+# constant across the ladder rather than drifting with h.
+#
+# ONE VARIABLE: MASS_FLUX. geometricFaceDensity keeps rho bounded by construction and
+# leaves a mass residual of ~5e-02 relative; rhoLENT drives that residual to ~1e-11 by
+# solving an auxiliary density equation, at the price of a density that needs clipping.
+# That is the comparison the campaign now turns on, and it has never been run at
+# admissible resolution across a ladder.
+#
+# The droplet starts upstream (DROPLET_OFFSET_X -0.0025), because with it centred the
+# leading edge reaches the outlet at t = 0.08 -- 80% of the horizon -- and six of six
+# historical failures had the droplet at or past it (config/translatingClearOutlet2D).
+# ddt schemes matched at backward/backward, the best pairing measured
+# (config/matchedBDF2Translating2D), which also keeps the repository's BDF2 rule intact.
+#
+# PRE-REGISTERED READ-OUT.
+#   * REPRODUCTION CONTROL: the N=128 arms must reproduce config/massFluxComparison2D's
+#     N=128 arms, which share every setting. If they do not, something moved.
+#   * CONVERGENCE IS THE POINT, not a single rung. Report the travelled fraction
+#     (exact = 1), max|U-U0|, ||maxU|-U0|, the phase-volume error and the mass residual
+#     at all three rungs and look at the ORDER. A construction that wins at one rung and
+#     does not converge is not a fix.
+#   * The volume gain has previously failed to converge under refinement at N=64 vs 128
+#     (config/translatingClearOutlet2D). Three admissible rungs is the first chance to
+#     see whether that holds where R/h >= 10.
+#   * Density boundedness reported for every arm: geometricFaceDensity is bounded by
+#     construction, rhoLENT only because boundRho clips it, and the clip is reported.
+study_name: translatingLadder2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 600
+axes_override:
+  N_CELLS: [128, 181, 256]
+  END_TIME: [0.1]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.05]
+  MASS_FLUX: ["geometricFaceDensity", "rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
