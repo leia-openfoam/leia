@@ -187,7 +187,10 @@ levelSet
     // Constant background advection velocity: the metrics writer subtracts it
     // (maxMagUPrime = |U - Uref|) and translates the analytic reference circle
     // (centroid/zero-set errors are measured against center0 + Uref*t).
-    dropletReferenceVelocity (0.05 0 0);
+    // MUST track TRANSLATION_SPEED: the disturbance metrics are measured
+    // against this, so a mismatch silently reports the translation itself as
+    // a spurious current.
+    dropletReferenceVelocity (@!TRANSLATION_SPEED!@ 0 0);
 
     // Where in time the capillary force is evaluated.
     //   endStep  : force from psi^{n+1} (symplectic Euler) -- the default, and

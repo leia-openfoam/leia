@@ -1,0 +1,79 @@
+# WHY 0.05 m/s? THE SPEED HAS NEVER BEEN VARIED, AND THE MECHANISM PREDICTS IT MATTERS.
+#
+# WHERE 0.05 CAME FROM: nowhere derived. It was set on 2026-07-30 in the commit that
+# created the droplet benchmarks and the file has been touched once since. No comment
+# derives it. The 3D token's own justification is "0.05 matches the committed 2D twin".
+#
+# WHY IT IS WORTH TESTING. The mechanism this campaign settled on is that for a droplet
+# translating at uniform U0 the momentum equation inherits a spurious source
+#
+#     U0 * R,     R = ddt(rho) + div(rhoPhi),
+#
+# not a gradient so the pressure cannot absorb it, and identically zero at U0 = 0 --
+# which is why the stationary droplet is clean and the translating one is not. If that
+# is right the spurious velocity is LINEAR IN U0, so the RELATIVE error max|U-U0|/U0 is
+# U0-INDEPENDENT and running at 0.1 instead of 0.05 would change nothing in relative
+# terms. That is sharp and falsifiable, and U0 has never been swept.
+#
+# MATCHED PHYSICAL TIME, not matched distance. The prediction is about the INSTANTANEOUS
+# spurious velocity, and parasitic currents grow with time, so holding the horizon fixed
+# is the control that isolates U0. T = 0.05 s = 13.5 capillary times for every arm, and
+# short enough that even U0 = 0.1 keeps the droplet 19 cells clear of the outlet -- which
+# matters, because config/translatingClearOutlet2D showed the outlet crossing is what
+# killed every historical failure.
+#
+# N = 128 ONLY. R/h = 12.8 there; at N=64 it is 6.4, below this repository's own R/h >= 10
+# rule, so N=64 comparisons are not admissible evidence and are not run here.
+#
+# ONE VARIABLE: TRANSLATION_SPEED, which also drives dropletReferenceVelocity so the
+# disturbance metrics are measured against the right frame -- a mismatch there would
+# report the translation itself as a spurious current. geometricFaceDensity because rho
+# is then bounded by construction and the comparison is not entangled with a clip;
+# matched backward/backward, the best pairing measured.
+#
+# PRE-REGISTERED READ-OUT.
+#   * MECHANISM CONFIRMED if max|U-U0| scales LINEARLY with U0, i.e. the ratio
+#     max|U-U0|/U0 is constant across the four arms. Then 0.05 versus 0.1 is immaterial,
+#     the choice of speed was never the issue, and the error is set by R alone.
+#   * MECHANISM FALSIFIED, or incomplete, if the ratio varies systematically. A ratio
+#     that GROWS with U0 means something superlinear -- advective, not the U0*R source.
+#     A ratio that FALLS with U0 means a U0-independent floor dominates at small U0,
+#     i.e. the translating case at 0.05 has been measuring the STATIONARY parasitic
+#     current with a small drift on top, and the speed should be raised.
+#   * The second outcome would be the more consequential one: it would say the case as
+#     posed cannot measure translation, and would set the speed by the requirement that
+#     the signal clear the floor.
+#   * Weber stays negligible throughout: We = rho2 U0^2 D/sigma = 3.3e-04 at U0 = 0.1,
+#     so the droplet cannot deform and rigid translation remains the exact solution.
+#   * Report the whole vector: max|U-U0| and its ratio to U0, ||maxU|-U0|, the mass
+#     residual, volume, shape, and density bounds.
+study_name: translationSpeedSweep2D
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 240
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.05]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.0125, 0.025, 0.05, 0.1]
+  MASS_FLUX: ["geometricFaceDensity"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
