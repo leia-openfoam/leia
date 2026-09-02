@@ -611,6 +611,38 @@ MASS_RESIDUAL_DIAGNOSTIC false;
 // Default `new` = every existing study is byte-unchanged.
 MASS_FLUX_ALPHAF_TIME_LEVEL new;
 
+// MASS-FLUX PROJECTION (author's proposal, 2026-09-02). Correct the geometric mass
+// flux so it satisfies the discrete mass balance EXACTLY, instead of solving for an
+// auxiliary density as rhoLENT does.
+//
+//     rhoPhi* = rhoPhi - rhoPhi',   div(rhoPhi') = R = ddt(rho) + div(rhoPhi)
+//
+// One equation per cell for a face field is underdetermined, so take the curl-free
+// member -- the minimal-L2 correction, the smallest change to the flux that fixes the
+// balance: rhoPhi' = snGrad(lambda)*magSf with laplacian(lambda) = R. lambda is a
+// scalar POTENTIAL for the correction, to the mass flux exactly what pressure is to
+// the volumetric flux; it has no physical identity and its dimensions, kg/(m s),
+// follow from the equation.
+//
+// WHY IT MAY BEAT rhoLENT. rhoLENT zeroes R by solving for an auxiliary rho, which is
+// then no longer the geometric one and is UNBOUNDED -- it needs MASS_FLUX_BOUND_RHO,
+// and that clip breaks the very identity being enforced. The projection zeroes R the
+// other way: rho stays purely geometric, hence bounded in [rho2, rho1] BY
+// CONSTRUCTION, with no auxiliary equation and no clip. The price is one Poisson solve
+// per outer iteration and a rhoPhi that is no longer exactly rho_f*phi.
+//
+// WHAT IT CANNOT FIX, and this is diagnostic rather than incidental. The problem is
+// all-Neumann, so it is solvable only if the volume integral of R vanishes -- and that
+// integral is the rate of change of TOTAL MASS, which is nonzero because the droplet
+// INFLATES by +5 to +8 percent over the horizon, a semi-Lagrangian transport defect no
+// flux redistribution can repair. The mean is subtracted before solving and what is
+// subtracted IS that drift; the solver reports it as massProjGlobalDrift. So this
+// fixes the DISTRIBUTION of the imbalance and leaves its GLOBAL part alone.
+//
+// Requires a `massFluxPotential` entry in the case's solvers dict. Default false, so
+// every existing study is byte-unchanged.
+MASS_FLUX_PROJECT false;
+
 // Time scheme of the rhoLENT AUXILIARY density equation, ddt(rho). IT MUST MATCH
 // MOMENTUM_DDT_SCHEME, and `backward` is that match for the repository default.
 //

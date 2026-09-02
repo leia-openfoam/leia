@@ -99,6 +99,8 @@ if (Pstream::master())
         << "minGradPsiBand,maxGradPsiBand,gradPsiL2ErrorBand,"
         << "gradPsiRatioBand,rhoMassResidualL1,rhoMassResidualLinf,"
         << "rhoMassResidualRelL1,rhoLENTResetL1,rhoClipL1,rhoClipFraction,"
+        << "massProjResidualBefore,massProjResidualAfter,"
+        << "massProjGlobalDrift,massProjCorrFraction,"
         // WP0 band mode spectrum (bandModeSpectrum.H): normal-profile mode
         // amplitudes A(kh) = |psi_{+k} - 2 psi_0 + psi_{-k}|/4 along the
         // LLS-plane normal, k = 1 (2h), 2 (4h), 4 (8h); band max and

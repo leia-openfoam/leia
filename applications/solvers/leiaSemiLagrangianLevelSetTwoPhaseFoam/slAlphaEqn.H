@@ -519,6 +519,14 @@
             rhoPhi = rhof*phi;
         }
 
+        if (projectMassFlux)
+        {
+            // Correct the flux BEFORE anything reads it -- the auxiliary density
+            // equation below and div(rhoPhi,U) must both see the corrected flux, or
+            // the projection fixes a balance nobody uses.
+            #include "massFluxProjection.H"
+        }
+
         if (useRhoLENT)
         {
             #include "rhoLENTEqn.H"

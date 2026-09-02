@@ -120,6 +120,9 @@
           : "n/a (no density equation)");
     row("massFlux massResidualDiag",
         mfD.getOrDefault<bool>("massResidualDiagnostic", false) ? "on" : "off");
+    row("massFlux projection",
+        mfD.getOrDefault<bool>("projectMassFlux", false)
+          ? "on (rhoPhi corrected to satisfy the mass balance)" : "off");
     row("massFlux alpha_f time", get(mfD, "alphaFTimeLevel", "new"));
     row("massFlux alpha_f source",
         get(mfD, "alphaFSource",

@@ -353,6 +353,54 @@ if (alphaFTimeLevel != "new" && alphaFTimeLevel != "trapezoid")
         << "'. Valid: new, trapezoid." << exit(FatalIOError);
 }
 const bool alphaFTrapezoid = (alphaFTimeLevel == "trapezoid");
+
+// MASS-FLUX PROJECTION (author's proposal, 2026-09-02). Correct the geometric mass
+// flux so it satisfies the discrete mass balance exactly, instead of solving for an
+// auxiliary density as rhoLENT does. rho stays purely geometric -- bounded in
+// [rho2, rho1] BY CONSTRUCTION, no auxiliary equation, no clip -- and the imbalance is
+// carried off by a curl-free flux correction rhoPhi' = snGrad(lambda)*magSf, with
+// laplacian(lambda) = ddt(rho) + div(rhoPhi). Costs one Poisson solve of exactly the
+// pressure equation's character per outer iteration.
+//
+// Requires a `massFluxPotential` entry in the case's solvers dict. Default false, so
+// every existing study is byte-unchanged and no case needs that entry unless it opts in.
+const bool projectMassFlux =
+    massFluxDict.getOrDefault<bool>("projectMassFlux", false);
+if (projectMassFlux && useRhoLENT)
+{
+    Info<< "massFlux: projectMassFlux with rhoLENT -- the auxiliary density equation"
+        << " already drives the residual to round-off, so the projection is"
+        << " redundant here. Running it anyway, as selected." << nl << endl;
+}
+scalar massProjResidualBefore = 0;
+scalar massProjResidualAfter = 0;
+scalar massProjGlobalDrift = 0;
+scalar massProjCorrFraction = 0;
+
+// Potential for the mass-flux correction. lambda is to the mass flux what pressure is
+// to the volumetric flux; it has no physical identity, and its dimensions follow from
+// laplacian(lambda) = ddt(rho) + div(rhoPhi): kg/(m s). Constructed unconditionally
+// (a zeroed volScalarField costs nothing) and solved only when the projection is on.
+// zeroGradient everywhere: the correction vanishes where the flux is already right.
+volScalarField massFluxPotential
+(
+    IOobject
+    (
+        "massFluxPotential",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar
+    (
+        "massFluxPotential",
+        dimMass/(dimLength*dimTime),
+        Zero
+    ),
+    zeroGradientFvPatchScalarField::typeName
+);
 if (boundRhoLENT && !useRhoLENT)
 {
     Info<< "massFlux: boundRho requested but type is '" << massFluxType

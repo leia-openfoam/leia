@@ -17,6 +17,19 @@ FoamFile
 
 solvers
 {
+    // Potential for the mass-flux correction rhoPhi' = snGrad(lambda)*magSf, solved
+    // only when massFlux.projectMassFlux is true. A pure Poisson problem of the
+    // pressure equation's character. relTol 0 because the correction IS the small
+    // quantity: a relative tolerance would be measured against the large flux it
+    // corrects, which is the cancellation trap CLAUDE.md documents.
+    "massFluxPotential.*"
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-12;
+        relTol          0;
+    }
+
     // rhoLENT's auxiliary mass equation ddt(rho) + div(rhoPhi) = 0 is DIAGONAL
     // (implicit ddt, explicit div), but fvMatrix::solve() still requires a
     // solver entry. Without it the run dies immediately on `cannot find
@@ -286,6 +299,10 @@ levelSet
         // Time level of the geometric face density: new | trapezoid.
         // See MASS_FLUX_ALPHAF_TIME_LEVEL in cases/default.parameter.
         alphaFTimeLevel     @!MASS_FLUX_ALPHAF_TIME_LEVEL!@;
+        // Correct the mass flux so it satisfies the discrete mass balance exactly,
+        // instead of solving for an auxiliary density. Needs a massFluxPotential
+        // entry in solvers below. See MASS_FLUX_PROJECT in cases/default.parameter.
+        projectMassFlux     @!MASS_FLUX_PROJECT!@;
     }
 
     // Harmonic (Laplace) smoothing of the mean curvature: pin the cell-centred

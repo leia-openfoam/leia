@@ -75,6 +75,7 @@ axes_override:
   MASS_FLUX_BOUND_RHO: ["true"]
   MASS_RESIDUAL_DIAGNOSTIC: ["true"]
   MASS_FLUX_ALPHAF_TIME_LEVEL: ["trapezoid"]
+  MASS_FLUX_PROJECT: ["true"]
   MOMENTUM_DDT_SCHEME: ["Euler"]
   RHO_DDT_SCHEME: ["Euler"]
   CURVATURE_EXTENSION: ["none"]
