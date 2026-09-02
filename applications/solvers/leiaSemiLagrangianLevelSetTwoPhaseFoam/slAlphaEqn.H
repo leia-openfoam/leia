@@ -462,10 +462,30 @@
         {
             const volScalarField& nb =
                 mesh.lookupObject<volScalarField>("NarrowBand");
-            computeFaceAreaFractions
-            (
-                mesh, psi, nb, phi, alphaf, massFluxUpwind
-            );
+            if (alphaFAdvected)
+            {
+                // The face velocity that traces the plane is the SAME field the SL
+                // scheme traces the cell feet with -- reconstruct(phi) for the
+                // projectedFlux setting -- interpolated to faces. Using phi's own
+                // reconstruction keeps the face and cell displacements from being two
+                // different velocity fields, which is the whole point.
+                const surfaceVectorField Uf
+                (
+                    "UfSLtrace", fvc::interpolate(fvc::reconstruct(phi))
+                );
+                computeFaceAreaFractions
+                (
+                    mesh, psi.oldTime(), nb, phi, alphaf, massFluxUpwind,
+                    &Uf, runTime.deltaTValue()
+                );
+            }
+            else
+            {
+                computeFaceAreaFractions
+                (
+                    mesh, psi, nb, phi, alphaf, massFluxUpwind
+                );
+            }
             if (alphaFTrapezoid)
             {
                 // TIME-AVERAGED face density (author's proposal, 2026-09-02). The

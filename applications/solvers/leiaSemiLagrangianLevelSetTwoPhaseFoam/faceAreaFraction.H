@@ -82,6 +82,28 @@ inline scalar faceNegativeFraction
 //  Cells outside the narrow band use their sign (fully one phase). Boundary faces
 //  use the owner-side fraction (exact for walls/empty away from the interface; a
 //  serial-exact first cut on processor patches).
+//- ADVECTED variant (alphaFSource donorPlaneAdvected): pass the OLD level set and a
+//  face velocity, and the donor plane is displaced by the SAME semi-Lagrangian step
+//  the CELL values undergo before it is cut against the face.
+//
+//  The cell update is psi_c^{n+1} = psi^n(x_c - u dt). Its face analogue is
+//
+//      alpha_f^{n+1} = area fraction of { x in f : psi^n(x - u_f dt) < 0 },
+//
+//  and because the reconstruction is a PLANE this needs no geometry at all:
+//
+//      psi^n(x - u_f dt) = n.x + d - (n . u_f) dt,
+//
+//  i.e. a constant shift of the plane offset per face, one dot product. No swept
+//  volumes, no tet clipping -- that would be unsplit geometric VOF, a different and
+//  far more expensive method.
+//
+//  WHY IT SHOULD HELP. Today the cell value comes from psi^n through the quadratic
+//  fit at the traced-back point, while alpha_f comes from a LINEAR plane fit of the
+//  ALREADY-UPDATED psi^{n+1} cut against the face: two different fields, two different
+//  reconstructions, no shared displacement. Advecting the plane makes both "psi^n
+//  sampled at the departure point", so they can then disagree only through u_f versus
+//  u at the cell centre, instead of through the whole construction.
 inline void computeFaceAreaFractions
 (
     const fvMesh& mesh,
@@ -89,9 +111,12 @@ inline void computeFaceAreaFractions
     const volScalarField& narrowBand,
     const surfaceScalarField& phi,
     surfaceScalarField& alphaf,
-    const bool upwind = true
+    const bool upwind = true,
+    const surfaceVectorField* UfPtr = nullptr,   // non-null => advect the plane
+    const scalar dt = 0
 )
 {
+    const bool advectPlane = (UfPtr != nullptr && dt > 0);
     const pointField& points = mesh.points();
     const faceList&   faces  = mesh.faces();
     const vectorField& Cf    = mesh.faceCentres();
@@ -168,10 +193,16 @@ inline void computeFaceAreaFractions
     }
 
     const scalarField& psiIn = psi.primitiveField();
-    auto cellFrac = [&](const label c, const label faceI) -> scalar
+    // dShift displaces the donor plane by the semi-Lagrangian step at THIS face:
+    // psi^n(x - u_f dt) = n.x + d - (n . u_f) dt. Zero unless advecting, so the
+    // default path is bit-identical.
+    auto cellFrac = [&](const label c, const label faceI, const scalar dShift) -> scalar
     {
         return planeSet[c]
-          ? faceNegativeFraction(faces[faceI], points, Cf[faceI], nCell[c], dCell[c])
+          ? faceNegativeFraction
+            (
+                faces[faceI], points, Cf[faceI], nCell[c], dCell[c] + dShift
+            )
           :
             (
                 (analyticGeometry ? analyticSurface->value(C[c]) : psiIn[c]) < 0
@@ -189,12 +220,18 @@ inline void computeFaceAreaFractions
         {
             // Donor cell: phi points owner->neighbour, so phi>=0 => owner upwind.
             const label up = (phiIn[faceI] >= 0) ? own[faceI] : nei[faceI];
-            af[faceI] = cellFrac(up, faceI);
+            const scalar dShift = advectPlane && planeSet[up]
+              ? -(nCell[up] & (*UfPtr)[faceI])*dt : scalar(0);
+            af[faceI] = cellFrac(up, faceI, dShift);
         }
         else
         {
+            const scalar dO = advectPlane && planeSet[own[faceI]]
+              ? -(nCell[own[faceI]] & (*UfPtr)[faceI])*dt : scalar(0);
+            const scalar dN = advectPlane && planeSet[nei[faceI]]
+              ? -(nCell[nei[faceI]] & (*UfPtr)[faceI])*dt : scalar(0);
             af[faceI] =
-                0.5*(cellFrac(own[faceI], faceI) + cellFrac(nei[faceI], faceI));
+                0.5*(cellFrac(own[faceI], faceI, dO) + cellFrac(nei[faceI], faceI, dN));
         }
     }
 
@@ -207,7 +244,10 @@ inline void computeFaceAreaFractions
         fvsPatchScalarField& afp = afbf[patchI];
         forAll(afp, i)
         {
-            afp[i] = cellFrac(fcs[i], start + i);
+            const label c = fcs[i];
+            const scalar dShift = advectPlane && planeSet[c]
+              ? -(nCell[c] & (*UfPtr).boundaryField()[patchI][i])*dt : scalar(0);
+            afp[i] = cellFrac(c, start + i, dShift);
         }
     }
 }

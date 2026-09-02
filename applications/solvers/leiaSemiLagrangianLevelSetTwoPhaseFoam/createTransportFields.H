@@ -285,15 +285,34 @@ if (alphaFSource == "upwind" || alphaFSource == "central")
         << "use '" << mapped << "'." << nl << endl;
     alphaFSource = mapped;
 }
-if (alphaFSource != "donorPlane" && alphaFSource != "averagedPlanes")
+if (alphaFSource != "donorPlane"
+ && alphaFSource != "averagedPlanes"
+ && alphaFSource != "donorPlaneAdvected")
 {
     FatalIOErrorInFunction(massFluxDict)
         << "Unknown massFlux.alphaFSource '" << alphaFSource
-        << "'. Valid values are donorPlane and averagedPlanes "
+        << "'. Valid values are donorPlane, donorPlaneAdvected and averagedPlanes "
         << "(deprecated: upwind, central)."
         << exit(FatalIOError);
 }
-const bool massFluxUpwind = (alphaFSource == "donorPlane");
+// donorPlaneAdvected is donorPlane with the plane displaced by the SAME
+// semi-Lagrangian step the cell values undergo, so it is a donor (upwind) choice too.
+const bool massFluxUpwind =
+    (alphaFSource == "donorPlane" || alphaFSource == "donorPlaneAdvected");
+
+// SL-ADVECTED FACE FRACTION (author's proposal, 2026-09-02).
+//
+// The cell update is psi_c^{n+1} = psi^n(x_c - u dt), reconstructed from the quadratic
+// fit. alpha_f, however, is built from a LINEAR plane fit of the ALREADY-UPDATED
+// psi^{n+1} cut against the face: a different field, a different reconstruction, and no
+// shared displacement. This applies the SAME operator to the face --
+//
+//     alpha_f^{n+1} = area fraction of { x in f : psi^n(x - u_f dt) < 0 }
+//
+// -- which for a plane is one dot product, d -> d - (n . u_f) dt, not a geometric
+// construction. It is deliberately NOT swept-volume flux clipping: that is unsplit
+// geometric VOF, a different and far more expensive method.
+const bool alphaFAdvected = (alphaFSource == "donorPlaneAdvected");
 const bool useRhoLENT = (massFluxType == "rhoLENT");
 const bool freezeRhoPhi = !Foam::getEnv("SL_FREEZE_RHOPHI").empty();
 
