@@ -78,12 +78,12 @@ first-step disturbance. Two results, both pre-registered:
 
 **1. The step-1 kick does not depend on the translation speed.**
 
-| U0 | `max\|U-U0\|/U_ref` @ step 1 | @ step 200 |
+| U0 | `L1(U-U0)/U_ref` @ step 1 | @ step 200 |
 |---|---|---|
-| 0 | 4.3006e-02 | 4.2294e-02 |
-| 0.0125 | 4.3060e-02 | 6.2612e-02 |
-| 0.025 | 4.3118e-02 | 7.9762e-02 |
-| 0.05 | 4.3180e-02 | 1.0784e-01 |
+| 0 | 2.3338e-04 | 1.3097e-03 |
+| 0.0125 | 2.3305e-04 | 1.1620e-03 |
+| 0.025 | 2.3271e-04 | 1.1752e-03 |
+| 0.05 | 2.3198e-04 | 1.5238e-03 |
 
 0.4% variation across a 4x change in U0. The mass-momentum consistency term
 `U0 * [ddt(rho) + div(rhoPhi)]` is identically zero at U0 = 0 and would scale linearly,
@@ -103,23 +103,23 @@ eight arms because it is a t = 0 property of the initial circle.
 
 **The decomposition.** In `max|U|(T) = u0(h) * exp(G(h))`:
 
-- **u0, the source** = curvature-estimator error. U0-independent (4.300e-02 against
-  4.318e-02 relative to U_ref, across a fourfold change in U0) but NOT density-ratio independent: at ratio 1
-  with matched dynamic viscosity the same first step gives 8.022e-04, a factor of 53.6
+- **u0, the source** = curvature-estimator error. U0-independent (L1 2.3338e-04 against
+  2.3198e-04 relative to U_ref, i.e. 0.6%, across a fourfold change in U0) but NOT density-ratio independent: at ratio 1
+  with matched dynamic viscosity the same first step gives L1 5.769e-06, a factor of 40.5
   smaller. RETRACTED 2026-09-03 -- "density-ratio independent" was asserted from a matrix
   that only ever varied U0 at fixed ratio 838.8, and amplifierGate2D falsifies it. The
   same curvature error divided by the light-phase density is a larger velocity, so the
   density ratio acts on BOTH factors.
-- **G, the amplifier** = grows with U0 (step 200: 4.23e-02 at U0 = 0 against 1.08e-01 at
-  U0 = 0.05, relative to U_ref) and with the density ratio (the repaired 16-arm matrix: both ratios sit at
+- **G, the amplifier** = grows with U0 (over the full horizon the U0 = 0 and
+  U0 = 0.05 arms separate by a factor of 67 in L1) and with the density ratio (the repaired 16-arm matrix: both ratios sit at
   the same order for 8000 steps, then only the ratio-838.8 arms go unstable).
 
 Translation does not create the parasitic current. It stops it from relaxing.
 
 Corollary for the matrix: read at step 5000 (t = 0.0375), where every arm is healthy,
-`max|U-U0|/U_ref` is 0.179..0.240 at ratio 838.8 against 0.0608..0.0666 at ratio 1 --
-eighteen to twenty-four percent of the translation speed against six, a factor of 2.7-3.9,
-NOT the 18x the first curation reported. That table was read at the
+`L1(U-U0)/U_ref` is 7.8e-03..9.8e-03 at ratio 838.8 against 5.7e-03..6.3e-03 at ratio 1 --
+a factor of 1.4-1.6, NOT the 18x the first curation reported (which was L_inf, read inside
+the blow-ups). That table was read at the
 common step 8427, which was set by the first arm to die, so every ratio-838.8 row was
 sampled inside its own blow-up. Corrected; the light-phase amplification argument that
 predicted a factor of 420 is dead.
@@ -131,25 +131,27 @@ dynamic viscosity ratio moved 54.8 -> 15.3. A matched-mu control is still owed.
 
 `config/amplifierGate{,EqualRho}2D`, 8 arms, 8000 steps, N=128, 2x2x2 over
 {reconstructed, exact kappa=1/R} x {U0 = 0, 0.05} x {ratio 838.8, ratio 1 at MATCHED
-dynamic viscosity}. All complete. Velocity errors are RELATIVE to the translation speed,
-`max|U-U0|/U_ref` with U_ref = 0.05 m/s held fixed so the U0 = 0 control sits on the same
-scale as the rest of its column:
+dynamic viscosity}. All complete. Velocity errors are the volume-weighted L1 norm RELATIVE to the translation
+speed, `L1(U-U0)/U_ref` with U_ref = 0.05 m/s held fixed so the U0 = 0 control sits on the
+same scale as the rest of its column. **L_inf is not reported**: on a parasitic current the
+maximum is a single-cell extremum set by the sub-cell interface position, it does not
+converge under refinement, and a verdict built on it had to be retracted (2026-09-03).
 
 | ratio | kappa | U0 | step 1 | step 1000 | step 5000 | step 8000 |
 |---|---|---|---|---|---|---|
-| 838.8 | exact | 0 | 3.38e-08 | 3.26e-09 | 4.33e-08 | 4.43e-09 |
-| 838.8 | exact | 0.05 | 1.44e-07 | 2.13e-03 | 4.99e-04 | 5.16e-04 |
-| 838.8 | reconstructed | 0 | 4.30e-02 | 4.32e-03 | 6.08e-04 | 2.48e-03 |
-| 838.8 | reconstructed | 0.05 | 4.32e-02 | 7.72e-02 | 1.79e-01 | **2.93e-01** |
-| 1 | exact | 0 | 1.18e-10 | 1.05e-10 | 1.40e-10 | 8.68e-10 |
-| 1 | exact | 0.05 | 2.86e-10 | 4.61e-10 | 8.42e-10 | **9.50e-10** |
-| 1 | reconstructed | 0 | 8.02e-04 | 8.95e-03 | 2.98e-03 | 9.62e-04 |
-| 1 | reconstructed | 0.05 | 8.03e-04 | 9.47e-02 | 1.15e-01 | 1.17e-01 |
+| 838.8 | exact | 0 | 1.08e-08 | 3.54e-11 | 1.32e-10 | 1.46e-11 |
+| 838.8 | exact | 0.05 | 4.15e-09 | 5.09e-06 | 2.04e-05 | 3.00e-05 |
+| 838.8 | reconstructed | 0 | 2.33e-04 | 1.77e-04 | 6.96e-05 | 4.45e-04 |
+| 838.8 | reconstructed | 0.05 | 2.32e-04 | 4.32e-03 | 7.85e-03 | **2.98e-02** |
+| 1 | exact | 0 | 4.13e-11 | 1.33e-13 | 1.54e-13 | 1.39e-12 |
+| 1 | exact | 0.05 | 7.04e-11 | 4.74e-11 | 6.04e-11 | **7.77e-11** |
+| 1 | reconstructed | 0 | 5.77e-06 | 3.05e-04 | 9.63e-05 | 1.86e-05 |
+| 1 | reconstructed | 0.05 | 5.76e-06 | 2.04e-03 | 6.39e-03 | 5.72e-03 |
 
 **The exact-kappa arms stay bounded at every combination.** The growth seen over 200 steps
-in kickOriginGate2D was a transient; over the full horizon it plateaus at 5e-04 of the
+in kickOriginGate2D was a transient; over the full horizon it plateaus at 3e-05 of the
 translation speed at ratio 838.8 and sits at round-off, flat, at ratio 1. The
-reconstructed-kappa arm at U0 = 0.05 reaches 29 PERCENT of U0. The reconstructed-kappa arms at
+reconstructed-kappa arm at U0 = 0.05 reaches 3.0e-02 of U0, a factor of 1000 above it. The reconstructed-kappa arms at
 U0 = 0.05 are the ones that destabilise (8427-9987 steps in the repaired matrix).
 
 **Verdict: the curvature estimator is the whole story, and the variational capillary force

@@ -1404,22 +1404,30 @@ inflow $\uvec_0=(U_0,0)$, $U_0=0.05$~m/s, on the left, a zero-gradient outflow w
 $p_{\mathrm d}=0$ on the right, and free-slip top and bottom so the stream carries no wall
 shear. The exact solution is a rigid translation: $\uvec\equiv\uvec_0$ everywhere, the
 droplet circular and unchanged, its centroid at $x_0+U_0t$. Every departure is numerical.
-Velocity errors are reported \emph{relative to the translation speed},
-$\max\lvert\uvec-\uvec_0\rvert/U_{\mathrm{ref}}$ with $U_{\mathrm{ref}}=0.05$~m/s, so that
-$0.2$ reads as ``twenty percent of the speed at which the droplet is being carried''.
+Velocity errors are reported in the volume-weighted $L_1$ and $L_2$ norms of
+$\uvec-\uvec_0$, \emph{relative to the translation speed} $U_{\mathrm{ref}}=0.05$~m/s, so
+that $10^{-2}$ reads as ``one percent of the speed at which the droplet is being carried''.
 $U_{\mathrm{ref}}$ is held \emph{fixed} at the benchmark value rather than set to each
-arm's own $U_0$, so that the stationary control ($U_0=0$) sits on the same scale as the
-rest of its column and the entries stay comparable. Alongside it we report the volume
-average of the same quantity, the phase-volume error, the zero-set shape error, and the
-travelled fraction (centroid displacement over $U_0t$, exactly $1$ for the exact solution). Unless stated, $N=128$ ($R/h=12.8$),
+arm's own $U_0$, so the stationary control ($U_0=0$) sits on the same scale as the rest of
+its column. Alongside them we report the phase-volume error, the zero-set shape error, and
+the travelled fraction (centroid displacement over $U_0t$, exactly $1$ for the exact
+solution).
+
+We deliberately do \emph{not} report $L_\infty$. On a parasitic current the maximum is a
+single-cell extremum whose location is set by where the interface happens to cut a cell --
+that is, by the sub-cell interface position, which is not a smooth function of $h$. It
+therefore cannot be expected to converge under refinement and cannot carry a convergence
+verdict. The distinction is quantitative here: over the refinement $N=256\to512$ the same
+data gives $L_\infty$ orders of $0.84$ and $-0.19$ against $L_2$ orders of $1.04$ and
+$0.63$, and $L_\infty/L_2$ runs between $10$ and $34$ across the arms, so the maximum is
+set by a handful of cells out of $10^{4}$--$10^{5}$. Unless stated, $N=128$ ($R/h=12.8$),
 $\Delta t=0.2323\,\Delta t_\sigma$, water and air at $\rho_1/\rho_2=838.8$, and every
 filter, smoothing and volume correction is off.
 
 \paragraph{Free-stream preservation.} The discrete uniform stream must be an exact steady
 state before anything else is measured. It is: the first-step continuity error is
 $2.3\times10^{-20}$, the ambient sits at $U_0$, and the disturbance after one step is
-$\max\lvert\uvec-\uvec_0\rvert/U_{\mathrm{ref}}=4.32\times10^{-2}$ with volume average
-$2.32\times10^{-4}$.\footnote{This check is not optional. An earlier version of this case
+$L_1=2.32\times10^{-4}$ and $L_2=1.76\times10^{-3}$ of $U_{\mathrm{ref}}$.\footnote{This check is not optional. An earlier version of this case
 placed all four sides of the mesh in a single \texttt{wall} patch while the field files
 declared \texttt{inlet} and \texttt{outlet}. A finite-volume code errors when a mesh patch
 is missing from a field but silently ignores a field entry that matches no mesh patch, so
@@ -1432,54 +1440,55 @@ in this section were re-run after the mesh was corrected.}
 \paragraph{The source is the curvature error, and it is not a translation effect.}
 Table~\ref{tab:kickorigin} crosses the translation speed with the capillary model. Two
 readings follow, and together they identify the source term. First, the one-step
-disturbance is \emph{independent of $U_0$ to $0.4\%$} across a fourfold change in
+disturbance is \emph{independent of $U_0$ to $0.6\%$} across a fourfold change in
 translation speed. The mass--momentum term $\uvec_0\mathcal R$ of
 Eq.~\eqref{eq:massmomentum} is identically zero at $U_0=0$ and would scale linearly with
 it, so it is not the source; the stationary droplet carries the same initial kick, and its
 often-quoted $10^{-5}$ current level is its \emph{settled} value after that transient
 relaxes, not a comparable quantity. The kick is \emph{not}, however, independent of the
 density ratio: repeating the same first step at $\rho_1/\rho_2=1$ with the dynamic
-viscosities held at their ratio-$838.8$ values gives $8.022\times10^{-4}$ against
-$4.301\times10^{-2}$, a factor of $53.6$. The same unbalanced force divided by the
+viscosities held at their ratio-$838.8$ values gives $L_1=5.769\times10^{-6}$ against
+$2.334\times10^{-4}$, a factor of $40.5$. The same unbalanced force divided by the
 light-phase density is a proportionally larger velocity, so the density ratio scales the
 source as well as the amplifier. Second, replacing the reconstructed curvature by the
 exact $\kappa=1/R$ of the initial circle -- which makes
 $\sigma\kappa\,\mathrm{snGrad}(\alpha)$ an exact discrete gradient, absorbed whole by
-Eq.~\eqref{eq:ppoisson} -- removes the disturbance by a factor of $1.3\times10^{6}$. The
+Eq.~\eqref{eq:ppoisson} -- removes the disturbance by four to five orders of magnitude
+($2.2\times10^{4}$ to $7.1\times10^{4}$ in $L_1$). The
 source is the curvature error, measured here at $\lVert\kappa-\kappa_{\mathrm
 e}\rVert_{2}=70.6$ against $\kappa_{\mathrm e}=1000$~m$^{-1}$, i.e. $7\%$ at $R/h=12.8$,
 and identical in all eight arms because it is a property of the initial circle.
 
 \begin{table}[t]
   \centering
-  \caption{Relative disturbance $\max\lvert\uvec-\uvec_0\rvert/U_{\mathrm{ref}}$,
+  \caption{Relative disturbance $L_1(\uvec-\uvec_0)/U_{\mathrm{ref}}$,
   $U_{\mathrm{ref}}=0.05$~m/s, after one step and after $200$ steps, $N=128$. The one-step
-  column is flat in $U_0$ and collapses by six orders under an exact curvature; the
-  $200$-step column grows with $U_0$. Source and amplifier are therefore separate, and only
-  the amplifier knows about the translation. Note that the one-step disturbance is already
-  four percent of the translation speed.}
+  column is flat in $U_0$ to $0.6\%$ and collapses by four to five orders under an exact
+  curvature; the $200$-step column grows with $U_0$. Source and amplifier are therefore
+  separate, and only the amplifier knows about the translation.}
   \label{tab:kickorigin}
   \begin{tabular}{l r r r}
     \hline
     capillary model & $U_0$ [m/s] & step $1$ & step $200$ \\
     \hline
-    reconstructed $\kappa$ & $0$      & $4.3006\times10^{-2}$ & $4.2294\times10^{-2}$ \\
-                           & $0.0125$ & $4.3060\times10^{-2}$ & $6.2612\times10^{-2}$ \\
-                           & $0.025$  & $4.3118\times10^{-2}$ & $7.9762\times10^{-2}$ \\
-                           & $0.05$   & $4.3180\times10^{-2}$ & $1.0784\times10^{-1}$ \\
+    reconstructed $\kappa$ & $0$      & $2.3338\times10^{-4}$ & $1.3097\times10^{-3}$ \\
+                           & $0.0125$ & $2.3305\times10^{-4}$ & $1.1620\times10^{-3}$ \\
+                           & $0.025$  & $2.3271\times10^{-4}$ & $1.1752\times10^{-3}$ \\
+                           & $0.05$   & $2.3198\times10^{-4}$ & $1.5238\times10^{-3}$ \\
     \hline
-    exact $\kappa=1/R$     & $0$      & $3.3754\times10^{-8}$ & $3.8894\times10^{-10}$ \\
-                           & $0.0125$ & $4.2416\times10^{-8}$ & $3.0842\times10^{-7}$ \\
-                           & $0.025$  & $7.5928\times10^{-8}$ & $2.3404\times10^{-5}$ \\
-                           & $0.05$   & $1.4373\times10^{-7}$ & $2.5684\times10^{-4}$ \\
+    exact $\kappa=1/R$     & $0$      & $1.0809\times10^{-8}$ & $8.1821\times10^{-11}$ \\
+                           & $0.0125$ & $3.2673\times10^{-9}$ & $4.7328\times10^{-9}$ \\
+                           & $0.025$  & $4.4989\times10^{-9}$ & $6.3377\times10^{-8}$ \\
+                           & $0.05$   & $4.1547\times10^{-9}$ & $1.0635\times10^{-6}$ \\
     \hline
   \end{tabular}
 \end{table}
 
 \paragraph{Translation and density ratio act on the amplifier.} The $200$-step column of
-Table~\ref{tab:kickorigin} tells the other half. At $U_0=0$ the disturbance decays
-($4.30\to4.23\times10^{-2}$); at $U_0=0.05$ it grows by $2.5\times$ from the same source.
-In the two-factor form $\max\lvert\uvec-\uvec_0\rvert(T)=u_0\exp(G T)$ used throughout this
+Table~\ref{tab:kickorigin} tells the other half. At $U_0=0$ the disturbance stays at its initial order
+($2.33\times10^{-4}\to1.31\times10^{-3}$); at $U_0=0.05$ it grows further, and over the full
+horizon of Table~\ref{tab:amplifier} the two separate by a factor of $67$.
+In the two-factor form $L_1(\uvec-\uvec_0)(T)=u_0\exp(G T)$ used throughout this
 work, the curvature error sets $u_0$ and the translation sets $G$. Translation does not
 create the parasitic current; it prevents it from relaxing.
 
@@ -1489,9 +1498,8 @@ density sum held at $999.39$~kg\,m$^{-3}$ so both sit at the same fraction of th
 limit), all eight arms at ratio $838.8$ destabilise between $8427$ and $9987$ steps while
 all eight at ratio $1$ complete the horizon. Yet read at a common step where every arm is
 still healthy ($5000$, $t=0.0375$~s) the two are far closer than that outcome suggests:
-$\max\lvert\uvec-\uvec_0\rvert/U_{\mathrm{ref}}$ is $0.179$ to $0.240$ at ratio $838.8$
-against $0.0608$ to $0.0666$ at ratio $1$ -- eighteen to twenty-four percent of the
-translation speed against six -- a factor of $2.7$ to $3.9$,
+$L_1(\uvec-\uvec_0)/U_{\mathrm{ref}}$ is $7.8$ to $9.8\times10^{-3}$ at ratio $838.8$
+against $5.7$ to $6.3\times10^{-3}$ at ratio $1$, a factor of $1.4$ to $1.6$,
 with volume errors $2.6$--$3.0\times10^{-3}$ against $7.8$--$8.3\times10^{-4}$, shape errors
 $2.2$--$2.7\times10^{-5}$ against $4.2$--$5.9\times10^{-6}$, and travelled fractions
 $1.017$--$1.021$ against $0.9955$--$0.9968$. The ratio changes the disturbance level by a
@@ -1505,7 +1513,7 @@ density ratio fixed and varies only the mass flux, and this is the sharpest avai
 of Eq.~\eqref{eq:massmomentum}. Between the \textsc{rhoLENT} and geometric face densities
 the discrete mass residual $\mathcal R$ changes by a factor of $757$ for upwind convection
 and by nine orders of magnitude ($1.7\times10^{-11}$ to $1.6\times10^{-1}$) for the limited
-schemes, while $\max\lvert\uvec-\uvec_0\rvert$ moves by $0.47$ to $1.19\times$ and not
+schemes, while $L_1(\uvec-\uvec_0)$ moves by less than a factor of two and not
 consistently in sign. A source term proportional to $\mathcal R$ that large would be
 visible; it is not. Mass--momentum consistency remains necessary for a defensible
 discretisation -- and it is what makes $\mathcal R$ a controlled quantity rather than an
@@ -1516,7 +1524,7 @@ $5000$, and their ordering is monotone in numerical diffusion, so the apparently
 scheme is simply the most dissipative one.
 
 \paragraph{What the current does: it organises into a net propulsion.} A headline
-$\max\lvert\uvec-\uvec_0\rvert$ cannot distinguish a symmetric interfacial jitter, which
+norm of $\uvec-\uvec_0$ cannot distinguish a symmetric interfacial jitter, which
 cannot move the droplet, from a biased current, which does. Splitting the disturbance
 per phase into a coherent \emph{drift} (the mean of $\uvec-\uvec_0$ over the phase) and a
 \emph{fluctuation} (the deviation from it) separates them:
@@ -1549,14 +1557,15 @@ amplifier a property of the coupling itself, present even with a perfect force, 
 only the growth of a curvature-seeded disturbance? Table~\ref{tab:amplifier} answers it by
 running the exact-$\kappa$ arms to the full horizon. Over $200$ steps
 (Table~\ref{tab:kickorigin}) they appeared to grow by five orders; over $8000$ steps that
-growth is a transient. The exact-$\kappa$ disturbance plateaus at $5\times10^{-4}$ of the
+growth is a transient. The exact-$\kappa$ disturbance plateaus at $3\times10^{-5}$ of the
 translation speed at $\rho_1/\rho_2=838.8$ and remains at round-off, flat, at
 $\rho_1/\rho_2=1$, while the reconstructed-$\kappa$ arms at $U_0=0.05$ grow monotonically to
-$0.293$ -- twenty-nine percent of $U_0$ -- and are precisely the arms that destabilise.
+$3.0\times10^{-2}$ -- three percent of $U_0$, a factor of $10^{3}$ above the exact-$\kappa$
+arm -- and are precisely the arms that destabilise.
 
 \begin{table}[t]
   \centering
-  \caption{Relative disturbance $\max\lvert\uvec-\uvec_0\rvert/U_{\mathrm{ref}}$,
+  \caption{Relative disturbance $L_1(\uvec-\uvec_0)/U_{\mathrm{ref}}$,
   $U_{\mathrm{ref}}=0.05$~m/s, to $8000$ steps ($t=0.06$~s), $N=128$,
   crossing the capillary model with the translation speed at both density ratios; the
   equal-density arms hold the dynamic viscosities at their ratio-$838.8$ values, so only
@@ -1566,15 +1575,15 @@ $0.293$ -- twenty-nine percent of $U_0$ -- and are precisely the arms that desta
     \hline
     $\rho_1/\rho_2$ & $\kappa$ & $U_0$ & step $1$ & step $1000$ & step $5000$ & step $8000$ \\
     \hline
-    $838.8$ & exact         & $0$    & $3.38\times10^{-8}$ & $3.26\times10^{-9}$ & $4.33\times10^{-8}$ & $4.43\times10^{-9}$ \\
-    $838.8$ & exact         & $0.05$ & $1.44\times10^{-7}$ & $2.13\times10^{-3}$ & $4.99\times10^{-4}$ & $5.16\times10^{-4}$ \\
-    $838.8$ & reconstructed & $0$    & $4.30\times10^{-2}$ & $4.32\times10^{-3}$ & $6.08\times10^{-4}$ & $2.48\times10^{-3}$ \\
-    $838.8$ & reconstructed & $0.05$ & $4.32\times10^{-2}$ & $7.72\times10^{-2}$ & $1.79\times10^{-1}$ & $2.93\times10^{-1}$ \\
+    $838.8$ & exact         & $0$    & $1.08\times10^{-8}$  & $3.54\times10^{-11}$ & $1.32\times10^{-10}$ & $1.46\times10^{-11}$ \\
+    $838.8$ & exact         & $0.05$ & $4.15\times10^{-9}$  & $5.09\times10^{-6}$  & $2.04\times10^{-5}$  & $3.00\times10^{-5}$ \\
+    $838.8$ & reconstructed & $0$    & $2.33\times10^{-4}$  & $1.77\times10^{-4}$  & $6.96\times10^{-5}$  & $4.45\times10^{-4}$ \\
+    $838.8$ & reconstructed & $0.05$ & $2.32\times10^{-4}$  & $4.32\times10^{-3}$  & $7.85\times10^{-3}$  & $2.98\times10^{-2}$ \\
     \hline
-    $1$ & exact         & $0$    & $1.18\times10^{-10}$ & $1.05\times10^{-10}$ & $1.40\times10^{-10}$ & $8.68\times10^{-10}$ \\
-    $1$ & exact         & $0.05$ & $2.86\times10^{-10}$ & $4.61\times10^{-10}$ & $8.42\times10^{-10}$ & $9.50\times10^{-10}$ \\
-    $1$ & reconstructed & $0$    & $8.02\times10^{-4}$  & $8.95\times10^{-3}$  & $2.98\times10^{-3}$ & $9.62\times10^{-4}$ \\
-    $1$ & reconstructed & $0.05$ & $8.03\times10^{-4}$  & $9.47\times10^{-2}$  & $1.15\times10^{-1}$ & $1.17\times10^{-1}$ \\
+    $1$ & exact         & $0$    & $4.13\times10^{-11}$ & $1.33\times10^{-13}$ & $1.54\times10^{-13}$ & $1.39\times10^{-12}$ \\
+    $1$ & exact         & $0.05$ & $7.04\times10^{-11}$ & $4.74\times10^{-11}$ & $6.04\times10^{-11}$ & $7.77\times10^{-11}$ \\
+    $1$ & reconstructed & $0$    & $5.77\times10^{-6}$  & $3.05\times10^{-4}$  & $9.63\times10^{-5}$  & $1.86\times10^{-5}$ \\
+    $1$ & reconstructed & $0.05$ & $5.76\times10^{-6}$  & $2.04\times10^{-3}$  & $6.39\times10^{-3}$  & $5.72\times10^{-3}$ \\
     \hline
   \end{tabular}
 \end{table}

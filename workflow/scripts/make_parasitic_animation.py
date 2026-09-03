@@ -36,6 +36,7 @@ from matplotlib.colors import LogNorm, LinearSegmentedColormap
 INK = "#1f2933"
 INK_MUTED = "#7b8794"
 INTERFACE = "#E8590C"
+MAXMARK = "#C2255C"
 ARROWS = LinearSegmentedColormap.from_list(
     "bluesDark", plt.get_cmap("Blues")(np.linspace(0.38, 1.0, 256)))
 
@@ -81,6 +82,14 @@ def render_frame(job):
     al = read_field(os.path.join(tdir, "alpha.water"), n * n).reshape(n, n)
     mag = np.sqrt(U[..., 0] ** 2 + U[..., 1] ** 2)
     pmax = max(mag.max(), 1e-30)
+    # Where the maximum actually sits. L_inf is a single-cell extremum, so marking the
+    # argmax frame by frame shows directly whether it tracks a structure or hops around:
+    # a max that jumps many cells between frames, while the droplet advances a fraction of
+    # a cell, is noise and cannot be expected to converge.
+    jy, jx = np.unravel_index(int(np.argmax(mag)), mag.shape)
+    mx, my = (jx + 0.5) * h * 1e3, (jy + 0.5) * h * 1e3
+    l2 = float(np.sqrt((mag ** 2).mean()))
+    l1 = float(mag.mean())
 
     fig, (axL, axR) = plt.subplots(1, 2, figsize=(11.2, 5.6))
 
@@ -101,6 +110,12 @@ def render_frame(job):
                (uy * rel * glyph)[keep], Ms[keep], cmap=ARROWS, norm=norm,
                angles="xy", scale_units="xy", scale=1.0, width=0.0038,
                headwidth=3.2, headlength=3.6, headaxislength=3.2, minlength=0.5)
+    for ax in (axL, axR):
+        ax.plot([mx], [my], marker="o", markersize=13, markerfacecolor="none",
+                markeredgecolor=MAXMARK, markeredgewidth=1.8, zorder=6)
+        ax.plot([mx], [my], marker="+", markersize=8, color=MAXMARK,
+                markeredgewidth=1.4, zorder=6)
+
     pad = 1.9 * R * 1e3
     # Follow the droplet: a translating case leaves a box centred on L/2 within a few ms.
     # The centroid is alpha-weighted, and falls back to the domain centre if the phase
@@ -120,8 +135,8 @@ def render_frame(job):
                     extent=[0, L * 1e3, 0, L * 1e3])
     axR.contour(X * 1e3, Y * 1e3, ps, levels=[0.0], colors=INTERFACE,
                 linewidths=1.0)
-    axR.set_title("%s full domain, shared log scale" % CFG["qlabel"],
-                  fontsize=10, color=INK)
+    axR.set_title("%s full domain, shared log scale   (marker: argmax cell, L_inf = %.3e)"
+                  % (CFG["qlabel"], pmax), fontsize=9, color=INK)
     # Explicit colorbar axes with RESERVED canvas room. The first cut used
     # fig.colorbar(..., ax=axR) with subplots_adjust(right=0.99), which pushed
     # the tick labels off the canvas -- invisible in the rendered frames, worst
@@ -138,9 +153,8 @@ def render_frame(job):
             sp.set_color(INK_MUTED)
             sp.set_linewidth(0.6)
 
-    fig.suptitle("%s      t = %6.2f ms      max %s = %s"
-                 % (CFG["label"], t * 1e3, CFG["qlabel"],
-                    ("%.3f" % pmax) if CFG["vscale"] != 1.0 else ("%.3e m/s" % pmax)),
+    fig.suptitle("%s      t = %6.2f ms      L2 = %.3e   L1 = %.3e"
+                 % (CFG["label"], t * 1e3, l2, l1),
                  fontsize=12, color=INK, family="monospace")
     # progress bar
     axp = fig.add_axes([0.075, 0.035, 0.85, 0.012])
@@ -155,7 +169,7 @@ def render_frame(job):
     out = os.path.join(CFG["framedir"], "f%04d.png" % k)
     fig.savefig(out, dpi=110)
     plt.close(fig)
-    return out
+    return (out, k, t, jx, jy, pmax, l2, l1)
 
 
 def main():
@@ -219,9 +233,29 @@ def main():
 
     jobs = [(k, t, p) for k, (t, p) in enumerate(frames)]
     with Pool(a.jobs) as pool:
-        for i, _ in enumerate(pool.imap_unordered(render_frame, jobs)):
+        recs = []
+        for i, rec in enumerate(pool.imap_unordered(render_frame, jobs)):
+            recs.append(rec)
             if (i + 1) % 25 == 0:
                 print("  rendered %d/%d" % (i + 1, len(jobs)))
+    recs.sort(key=lambda r: r[1])
+    trk = os.path.splitext(a.out or "argmax")[0] + "_argmax.csv"
+    with open(trk, "w") as fh:
+        fh.write("frame,time,ix,iy,linf,l2,l1,jump_cells\n")
+        prev = None
+        for _, k, t, ix, iy, li, l2v, l1v in recs:
+            jump = "" if prev is None else "%.3f" % math.hypot(ix - prev[0], iy - prev[1])
+            fh.write("%d,%.9g,%d,%d,%.6e,%.6e,%.6e,%s\n" % (k, t, ix, iy, li, l2v, l1v, jump))
+            prev = (ix, iy)
+    js = [math.hypot(recs[i][3] - recs[i-1][3], recs[i][4] - recs[i-1][4])
+          for i in range(1, len(recs))]
+    dt_f = (recs[-1][2] - recs[0][2]) / max(len(recs) - 1, 1)
+    drift_cells = 0.05 * dt_f / (L / n)
+    print("argmax track -> %s" % trk)
+    print("  median jump between frames: %.1f cells;  mean %.1f;  max %.1f"
+          % (sorted(js)[len(js)//2], sum(js)/len(js), max(js)))
+    print("  droplet advances %.2f cells per frame, so a jump >> that is not a moving structure"
+          % drift_cells)
 
     out = a.out or os.path.join(a.case, "figures", "parasitic.mp4")
     os.makedirs(os.path.dirname(out), exist_ok=True)
