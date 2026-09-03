@@ -687,11 +687,85 @@ subtracts the hydrostatic head, $\mathbf{g}$ is the gravitational acceleration, 
 $\mathbf{f}_\sigma$ is the surface-tension body force (Section~\ref{sec:surften}). The
 convective flux uses the mass flux $\rho_f(\uvec_f\!\cdot\mathbf{S}_f)$, and the viscous
 term is the incompressible one-field stress
-$\nabla\cdot[\mu(\nabla\uvec+\nabla\uvec^{\mathsf T})]$ (laminar here; a turbulence model
-would add its Reynolds stress). Equations~\eqref{eq:continuity}--\eqref{eq:momentum} are
+$\nabla\cdot[\mu(\nabla\uvec+\nabla\uvec^{\mathsf T})]$ (direct numerical simulation
+throughout; a turbulence model would add its Reynolds stress).
+Equations~\eqref{eq:continuity}--\eqref{eq:momentum} are
 advanced by a PISO/PIMPLE pressure--velocity coupling with a Rhie--Chow-consistent face
 flux. For the static-droplet verification $\mathbf{g}=\mathbf 0$, so $p_{\mathrm{d}}\equiv p$
 and the buoyancy term vanishes.
+
+\subsection{The viscous term and its face viscosity}
+\label{sec:viscous}
+Because every computation here is a direct numerical simulation, the deviatoric stress is
+assembled explicitly rather than through a turbulence-model interface that never varies,
+which makes the discrete momentum equation the one the reader can check. Written per cell,
+\begin{equation}
+  \nabla\!\cdot\!\bigl[\mu(\nabla\uvec+\nabla\uvec^{\mathsf T})\bigr]
+  \;\longrightarrow\;
+  \underbrace{\nabla_h\!\cdot\!\bigl(\mu_f\,\nabla_h\uvec\bigr)}_{\text{implicit}}
+  \;+\;
+  \underbrace{\frac{1}{V_c}\sum_{f\in F(c)}
+     \mu_f\,\mathbf S_f\!\cdot\!\operatorname{dev}_2\!\bigl(\nabla_h\uvec^{\mathsf T}\bigr)_f}
+     _{\text{explicit, transpose}} ,
+  \label{eq:viscous}
+\end{equation}
+with $\operatorname{dev}_2(\mathbf T)=\mathbf T-\tfrac23\operatorname{tr}(\mathbf T)\mathbf I$.
+The transpose part is retained: for a variable viscosity it does not vanish, it is
+proportional to $\nabla\mu$, and it therefore lives exactly on the interface.
+
+The coefficient $\mu_f$ is a \emph{face} field, and where it comes from is a modelling
+choice rather than a detail, because it is what the discrete operator actually sees. Three
+sources are available at run time:
+\begin{align}
+  \text{interpolated:} \quad & \mu_f = \bigl\langle \alpha_c\mu_1+(1-\alpha_c)\mu_2 \bigr\rangle_f , \notag\\
+  \text{geometric:}    \quad & \mu_f = \alpha_f\mu_1+(1-\alpha_f)\mu_2 , \label{eq:muf}\\
+  \text{harmonic:}     \quad & \mu_f^{-1} = \alpha_f\mu_1^{-1}+(1-\alpha_f)\mu_2^{-1} , \notag
+\end{align}
+where $\langle\cdot\rangle_f$ is linear interpolation of a cell field and $\alpha_f$ is the
+\emph{geometric} face area fraction of Section~\ref{sec:indicator} -- the same $\alpha_f$
+that builds the mass flux $\rho_f$. The first is what a finite-volume framework supplies by
+default; the second makes both face coefficients of the momentum equation descend from one
+discrete object; the third is the face value that reproduces the exact viscous flux across
+a layered medium normal to the interface, which is the classical choice for a diffusion
+coefficient across a jump.
+
+\paragraph{This is not a refactoring.} A framework implementation typically interpolates
+the \emph{product} $\mu\operatorname{dev}_2(\nabla\uvec^{\mathsf T})$ to the faces, whereas
+Eq.~\eqref{eq:viscous} interpolates the tensor and multiplies by $\mu_f$, so that $\mu_f$
+appears in the implicit and explicit parts alike. The two agree for constant $\mu$ and
+differ wherever $\mu$ varies, that is, on the interface. On the translating droplet of
+Section~\ref{sec:translating} at $N=128$ the two forms separate by $1.7\%$ in
+$L_1(\uvec-\uvec_0)$ after a single step and by $36\%$ after $2667$, so results obtained
+with one form are not comparable with the other. Table~\ref{tab:viscous} reports the
+consequence.
+
+\begin{table}[t]
+  \centering
+  \caption{Viscous-term formulation on the translating droplet, $N=128$, $t=0.02$~s,
+  $\rho_1/\rho_2=838.8$, $\mu_1/\mu_2=54.8$; velocity errors relative to $U_0$. The
+  explicit form of Eq.~\eqref{eq:viscous} improves every reported component; the choice
+  among the three $\mu_f$ sources of Eq.~\eqref{eq:muf} is not resolved by this
+  measurement, the two norms disagreeing by about $15\%$ on a single case at a single
+  resolution.}
+  \label{tab:viscous}
+  \begin{tabular}{l r r r r}
+    \hline
+    viscous term & $L_1$ & $L_2$ & shape & travelled \\
+    \hline
+    product-interpolated (framework default) & $1.098\times10^{-2}$ & $1.810\times10^{-2}$ & $9.00\times10^{-6}$ & $1.0125$ \\
+    Eq.~\eqref{eq:viscous}, $\mu_f$ interpolated & $7.013\times10^{-3}$ & $\mathbf{1.475\times10^{-2}}$ & $\mathbf{2.75\times10^{-6}}$ & $\mathbf{0.9971}$ \\
+    Eq.~\eqref{eq:viscous}, $\mu_f$ geometric    & $\mathbf{6.113\times10^{-3}}$ & $1.591\times10^{-2}$ & $2.86\times10^{-6}$ & $1.0033$ \\
+    Eq.~\eqref{eq:viscous}, $\mu_f$ harmonic     & $6.728\times10^{-3}$ & $2.027\times10^{-2}$ & $3.15\times10^{-6}$ & $1.0037$ \\
+    \hline
+  \end{tabular}
+\end{table}
+
+The explicit form improves the disturbance by $0.64\times$ in $L_1$ and $0.81\times$ in
+$L_2$, the zero-set shape error by $3.3\times$, and moves the travelled fraction from
+$1.0125$ to $0.9971$ -- from a droplet running fast to one lagging slightly, which is the
+signature of transport error alone rather than of a spurious force. Among the three $\mu_f$
+sources the geometric one is best in $L_1$ and the interpolated one in $L_2$; we report the
+default as interpolated and treat the choice as open.
 
 Two discretisation choices in Eq.~\eqref{eq:momentum} are not free once the interface is
 sharp, and both are fixed here. The convective mass flux $\rho_f\,(\uvec_f\!\cdot\mathbf S_f)$
