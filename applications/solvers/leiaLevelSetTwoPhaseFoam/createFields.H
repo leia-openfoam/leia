@@ -57,44 +57,60 @@ rho.oldTime();
 
 
 // Mass flux
-// GEOMETRIC FACE DYNAMIC VISCOSITY, runtime-selectable and INERT by default.
+bool viscosityFaceAlphaGeometric = true;
+word viscosityFaceModelName("linear");
+
+// FACE DYNAMIC VISCOSITY. Two ORTHOGONAL choices, which an earlier single token conflated.
 //
-// OpenFOAM's viscous term, turbulence->divDevRhoReff(rho,U), takes mu from the mixture as
-// a CELL field, mu_c = alpha_c rho1 nu1 + (1-alpha_c) rho2 nu2, and fvm::laplacian then
-// interpolates THAT linearly to the faces. So mu_f descends from a linearly interpolated
-// cell alpha while the mass flux rho_f = alpha_f rho1 + (1-alpha_f) rho2 descends from the
-// GEOMETRIC face area fraction of the reconstructed interface. The two face coefficients
-// of the same momentum equation are therefore built from different discrete objects.
+//   viscosityFaceAlpha : where alpha_f comes from
+//       algebraic   <alpha_c>_f, linear interpolation of the cell phase indicator
+//       geometric   the face area fraction of the reconstructed interface plane -- the
+//                   SAME alpha_f that builds rho_f for the mass flux
 //
-// With viscosityFaceModel = geometric the SL solver overwrites muf below with
-//     muf = alphaf mu1 + (1-alphaf) mu2
-// using exactly the alphaf that produced rho_f, and UEqn.H assembles the viscous term
-// explicitly from it. With "interpolated" (the default) muf is never read and the
-// standard divDevRhoReff path runs unchanged, so every existing study is bit-identical.
-const word viscosityFaceModel =
-    mesh.solutionDict().subOrEmptyDict("levelSet").subOrEmptyDict("massFlux")
-        .getOrDefault<word>("viscosityFaceModel", "interpolated");
-if (viscosityFaceModel != "interpolated"
- && viscosityFaceModel != "geometric"
- && viscosityFaceModel != "geometricHarmonic")
+//   viscosityFaceModel : how mu_f is formed from alpha_f
+//       linear      mu_f   = alpha_f mu1 + (1-alpha_f) mu2
+//       harmonic    1/mu_f = alpha_f/mu1 + (1-alpha_f)/mu2
+//       normalBlend w mu_harmonic + (1-w) mu_linear,  w = |n.Sf|/|Sf|
+//
+// WHY normalBlend HAS NO FREE PARAMETER. Across a layered medium the correct face value
+// depends on the orientation of the layering relative to the flux: NORMAL to the interface
+// the two phases are in SERIES, which is the harmonic mean; TANGENT to it they conduct in
+// PARALLEL, which is the arithmetic mean. The weight is therefore the alignment of the
+// interface normal with the face normal, a geometric quantity, not a tuned coefficient.
+//
+// The old single-valued token still works and maps onto the grid:
+//   interpolated -> (algebraic, linear);  geometric -> (geometric, linear);
+//   geometricHarmonic -> (geometric, harmonic).
 {
-    FatalErrorInFunction
-        << "massFlux.viscosityFaceModel = " << viscosityFaceModel
-        << " is not one of: interpolated, geometric, geometricHarmonic"
-        << exit(FatalError);
+    const dictionary& mfD =
+        mesh.solutionDict().subOrEmptyDict("levelSet").subOrEmptyDict("massFlux");
+    word aSrc = mfD.getOrDefault<word>("viscosityFaceAlpha", "none");
+    word mMod = mfD.getOrDefault<word>("viscosityFaceModel", "none");
+    if (aSrc == "none" || mMod == "none")
+    {
+        // legacy single-token form
+        const word legacy = (mMod != "none") ? mMod : word("geometric");
+        if (legacy == "interpolated")           { aSrc = "algebraic"; mMod = "linear"; }
+        else if (legacy == "geometric")         { aSrc = "geometric"; mMod = "linear"; }
+        else if (legacy == "geometricHarmonic") { aSrc = "geometric"; mMod = "harmonic"; }
+        else if (aSrc == "none")                { aSrc = "geometric"; }
+    }
+    if (aSrc != "algebraic" && aSrc != "geometric")
+    {
+        FatalErrorInFunction << "massFlux.viscosityFaceAlpha = " << aSrc
+            << " is not one of: algebraic, geometric" << exit(FatalError);
+    }
+    if (mMod != "linear" && mMod != "harmonic" && mMod != "normalBlend")
+    {
+        FatalErrorInFunction << "massFlux.viscosityFaceModel = " << mMod
+            << " is not one of: linear, harmonic, normalBlend" << exit(FatalError);
+    }
+    viscosityFaceAlphaGeometric = (aSrc == "geometric");
+    viscosityFaceModelName = mMod;
 }
-// geometric          mu_f = alpha_f mu1 + (1-alpha_f) mu2          (arithmetic)
-// geometricHarmonic  1/mu_f = alpha_f/mu1 + (1-alpha_f)/mu2        (harmonic)
-//
-// Both use the geometric alpha_f. The distinction matters because rho_f and mu_f are not
-// the same kind of coefficient: rho_f is fixed by CONSERVATION -- it must match the mass
-// equation, so the sharp geometric value is required -- whereas mu_f is a DIFFUSION
-// coefficient, and the face value that reproduces the exact flux of a layered medium
-// normal to the interface is the HARMONIC mean, not the arithmetic one. MEASURED
-// 2026-09-03: the arithmetic form made things 2.08x WORSE in L1 than the interpolated
-// default, which is what sharpening the wrong average does.
-const bool geometricFaceViscosity = (viscosityFaceModel != "interpolated");
-const bool harmonicFaceViscosity  = (viscosityFaceModel == "geometricHarmonic");
+Info<< "face viscosity: alpha_f "
+    << (viscosityFaceAlphaGeometric ? "geometric" : "algebraic")
+    << ", model " << viscosityFaceModelName << endl;
 
 surfaceScalarField muf
 (

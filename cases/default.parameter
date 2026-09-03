@@ -574,8 +574,41 @@ MASS_FLUX_ALPHAF_SOURCE donorPlane;
 //   geometric     mu_f = alpha_f mu1 + (1 - alpha_f) mu2 with the SAME geometric face
 //                 area fraction that builds rho_f for the mass flux, so both face
 //                 coefficients of the momentum equation descend from one discrete object.
-// Default is interpolated, so every existing study renders and runs bit-identically.
-VISCOSITY_FACE_MODEL interpolated;
+// FACE DYNAMIC VISCOSITY -- TWO ORTHOGONAL AXES.
+//
+//   VISCOSITY_FACE_ALPHA  algebraic | geometric
+//       algebraic  <alpha_c>_f, linear interpolation of the cell indicator
+//       geometric  the face area fraction of the reconstructed plane -- the SAME alpha_f
+//                  that builds rho_f for the mass flux
+//   VISCOSITY_FACE_MODEL  linear | harmonic | normalBlend
+//       linear      mu_f   = alpha_f mu1 + (1-alpha_f) mu2
+//       harmonic    1/mu_f = alpha_f/mu1 + (1-alpha_f)/mu2
+//       normalBlend w mu_harm + (1-w) mu_lin,  w = |n.Sf|/|Sf|, n the interface normal
+//
+// (algebraic, linear) IS OpenFOAM's default face viscosity: the linear model commutes with
+// interpolation, so mixing then interpolating equals interpolating then mixing. That
+// coincidence is why an earlier single token collapsed the two axes without it showing.
+//
+// normalBlend has NO free parameter: normal to the interface the phases are in SERIES
+// (harmonic), tangent to it in PARALLEL (arithmetic), and the weight is the alignment of
+// the interface normal with the face normal -- geometry, not a tuned coefficient.
+//
+// DEFAULT (geometric, linear), decided 2026-09-03 on ROBUSTNESS. At the water/air jump
+// mu1/mu2 = 54.83 the algebraic form is more accurate and better-converging (N=512:
+// L1 4.00e-03 against 4.95e-03; pairwise 256->512 order 1.50 against 0.75). But at
+// mu1/mu2 = 1000 it DIVERGES at step 3826 of 7543 -- L1 reaching 5.36, i.e. 536% of U0,
+// travelled fraction -0.125, the droplet destroyed -- while the geometric form completes
+// and improves on its own production-jump result (8.34e-03 -> 2.98e-03). A model that
+// explodes at a reachable viscosity contrast is not a model.
+//
+// KNOWN WEAKNESS, recorded not hidden: over N = 128/256/512 the geometric form's zero-set
+// SHAPE error fits a NEGATIVE order, p = -0.597 (R = -0.62), against +0.433 for algebraic.
+// Its L2 converges (p = 0.496, R = 0.977) and phase volume converges (p = 1.393, R = 0.978),
+// but three points -- one the anomalous R/h = 12.8 rung -- cannot settle an order.
+//
+// NOT INERT: changing either token changes every study that renders it.
+VISCOSITY_FACE_ALPHA geometric;
+VISCOSITY_FACE_MODEL linear;
 
 // rhoLENT ONLY (inert for every other mass-flux model, which solve no density
 // equation). Clip the auxiliary density to [rho2, rho1] immediately after the

@@ -1,0 +1,75 @@
+# FACE VISCOSITY: THE FULL 2 x 3 GRID -- prod, mu1/mu2 = 54.83, N = 256
+#
+# An earlier matrix used a single token whose three values silently mixed TWO independent
+# axes and therefore left a combination untested:
+#
+#     token               alpha_f source        mixing model
+#     interpolated        algebraic (linear)    linear
+#     geometric           geometric             linear
+#     geometricHarmonic   geometric             harmonic
+#     -- missing --       algebraic (linear)    harmonic
+#
+# So "harmonic is the worst of the three" was only ever tested on the GEOMETRIC alpha_f,
+# and the comparison that chose the default is confounded with the one that dismissed
+# harmonic. This crosses the axes properly:
+#
+#   VISCOSITY_FACE_ALPHA  algebraic | geometric
+#   VISCOSITY_FACE_MODEL  linear | harmonic | normalBlend
+#
+# normalBlend is new and carries NO free parameter: across a layered medium the phases are
+# in SERIES normal to the interface (harmonic) and in PARALLEL tangent to it (arithmetic),
+# so the weight is w = |n.Sf|/|Sf| -- the alignment of the interface normal with the face
+# normal, a geometric quantity. It is the model the physics actually implies, and neither
+# pure harmonic nor pure linear is right except in the two limits.
+#
+# Note that (algebraic, linear) IS the framework default: the linear model commutes with
+# interpolation, so mixing then interpolating equals interpolating then mixing. That
+# identity is why the two axes could be collapsed unnoticed; it fails for harmonic and for
+# normalBlend.
+#
+# PRE-REGISTERED. Two questions, one matrix. (i) Does the alpha_f source or the mixing model
+# dominate? If rows differ more than columns the source dominates and the mixing model is
+# secondary, or vice versa. (ii) Does normalBlend beat both of its limits? It should, if the
+# series/parallel reasoning applies; if it lands between them without beating either, the
+# orientation weighting is not the missing ingredient. The 54.83 jump is where the models must
+# separate -- they coincide as mu1 -> mu2.
+study_name: mufGrid2D_prod
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 8
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 720
+axes_override:
+  N_CELLS: [256]
+  END_TIME: [0.02]
+  WRITE_INTERVAL: [0.02]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.05]
+  VISCOSITY_FACE_ALPHA: ["algebraic", "geometric"]
+  VISCOSITY_FACE_MODEL: ["linear", "harmonic", "normalBlend"]
+  RHO1: [998.2]
+  RHO2: [1.19]
+  NU1: [1e-06]
+  NU2: [1.53e-05]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
