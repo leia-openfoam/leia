@@ -11,6 +11,13 @@
     scalar totalV = 0;
     scalar maxMagUPrime = 0;
     scalar integralMagUPrime = 0;
+    // Volume-weighted L2 of the disturbance. L_inf on a parasitic current is a single
+    // cell extremum whose location depends on where the interface happens to cut a cell,
+    // i.e. on the SUB-CELL interface position, which is not a smooth function of h -- so
+    // it cannot be expected to converge and must never carry a convergence verdict on its
+    // own. L2 and L1 can. MEASURED 2026-09-03 on the translating ladder: over 256->512
+    // the same data gives L_inf order 0.84 and -0.19 against L2 1.04 and 0.63.
+    scalar integralMagUPrimeSq = 0;
     scalar disturbanceKineticEnergy = 0;
     scalar phaseVolume = 0;
     vector phaseFirstMoment(vector::zero);
@@ -22,6 +29,7 @@
         totalV += V[c];
         maxMagUPrime = max(maxMagUPrime, magUPrime);
         integralMagUPrime += V[c]*magUPrime;
+        integralMagUPrimeSq += V[c]*magUPrime*magUPrime;
         disturbanceKineticEnergy += 0.5*V[c]*rho[c]*magSqr(UPrime);
         phaseVolume += V[c]*alpha1[c];
         phaseFirstMoment += V[c]*alpha1[c]*cellCentres[c];
@@ -29,11 +37,14 @@
     reduce(totalV, sumOp<scalar>());
     reduce(maxMagUPrime, maxOp<scalar>());
     reduce(integralMagUPrime, sumOp<scalar>());
+    reduce(integralMagUPrimeSq, sumOp<scalar>());
     reduce(disturbanceKineticEnergy, sumOp<scalar>());
     reduce(phaseVolume, sumOp<scalar>());
     reduce(phaseFirstMoment, sumOp<vector>());
     const scalar meanMagUPrime =
         (totalV > VSMALL) ? integralMagUPrime/totalV : 0;
+    const scalar l2MagUPrime =
+        (totalV > VSMALL) ? Foam::sqrt(integralMagUPrimeSq/totalV) : 0;
     const scalar phaseVolumeChange =
         (dropletInitialPhaseVolume > VSMALL)
       ? phaseVolume/dropletInitialPhaseVolume - 1 : 0;
@@ -356,6 +367,7 @@
         dropletFilePtr()
             << runTime.value() << ',' << maxMagU << ',' << meanMagU << ','
             << maxMagUPrime << ',' << meanMagUPrime << ','
+            << l2MagUPrime << ','
             << disturbanceKineticEnergy << ',' << phaseVolume << ','
             << phaseVolumeChange << ',' << phaseVolumeRelError << ','
             << phaseCentroid.x() << ','

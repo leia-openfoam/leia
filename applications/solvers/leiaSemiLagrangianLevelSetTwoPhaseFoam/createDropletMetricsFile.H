@@ -8,6 +8,10 @@
 //   meanMagU  volume-averaged |U|                                       [m/s]
 //   maxMagUPrime   max_c |U_c-U_ref|                                    [m/s]
 //   meanMagUPrime  volume-averaged |U-U_ref|                            [m/s]
+//   l2MagUPrime    volume-weighted L2 of |U-U_ref|                      [m/s]
+//                  Report this, not maxMagUPrime alone: L_inf is a single-cell
+//                  extremum set by the sub-cell interface position and cannot be
+//                  expected to converge under refinement.
 //   disturbanceKineticEnergy  integral 0.5*rho*|U-U_ref|^2 dV             [J]
 //   phaseVolume/phaseVolumeChange/phaseVolumeRelError
 //             Detrixhe-Aslam liquid volume and signed/absolute change  [m3,-,-]
@@ -68,7 +72,7 @@ if (Pstream::master())
     );
     dropletFilePtr().precision(10);
     dropletFilePtr()
-        << "TIME,maxMagU,meanMagU,maxMagUPrime,meanMagUPrime,"
+        << "TIME,maxMagU,meanMagU,maxMagUPrime,meanMagUPrime,l2MagUPrime,"
         << "disturbanceKineticEnergy,phaseVolume,phaseVolumeChange,"
         << "phaseVolumeRelError,"
         << "centroidX,centroidY,centroidZ,centroidError,"
