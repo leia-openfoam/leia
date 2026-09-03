@@ -45,7 +45,8 @@ One study = one `(case, mesh, mode)`; backend switches purely via `PROFILE`.
 
 ## Cluster (Lichtenberg, TU Darmstadt)
 
-Full, verified workflow in **[CLUSTER.md](CLUSTER.md)**. Essentials:
+Full, verified workflow in **[CLUSTER.md](CLUSTER.md)**; the site-independent
+recipe (any SLURM cluster, same traps) is **[SLURM.md](SLURM.md)**. Essentials:
 `ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de` (passwordless; `~/bin/licht N` helper);
 SLURM account `special00004`; jobs **must** set `--mem-per-cpu` (the slurm
 profile does); OpenFOAM-v2512 source-built in `$HOME/OpenFOAM`; pull raw output

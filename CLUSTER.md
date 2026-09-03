@@ -3,6 +3,12 @@
 Canonical, agent-readable description of the laptop <-> cluster workflow. All
 values below are **verified** against the live cluster (2026-07-27).
 
+> **[SLURM.md](SLURM.md) is the site-independent version of this file** — the same
+> recipes (a case by hand, then the Snakemake workflow) and the same traps, with every
+> hostname, account, module version and quota replaced by "look this up once". Read that
+> one if you run anywhere other than Lichtenberg, or if you want the workflow without the
+> site detail. This file is its worked instance: it supplies the concrete values.
+
 The KISS rule that dissolves every "two machines, one branch" headache:
 
 > **Git carries code. rsync carries raw output. Neither carries the other.**
