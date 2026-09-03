@@ -526,6 +526,36 @@
             {
                 rhof = alphaf*rho1 + (scalar(1) - alphaf)*rho2;
             }
+
+            // Face dynamic viscosity from the SAME geometric alphaf, when selected.
+            // The mixture exposes rho1/rho2 and the two viscosity MODELS, not mu1/mu2, so
+            // the phase dynamic viscosities are formed as rho_i nu_i and interpolated;
+            // for a Newtonian model nu_i is uniform and the interpolation is exact, and
+            // for a non-Newtonian one this remains the correct face value.
+            if (geometricFaceViscosity)
+            {
+                const surfaceScalarField mu1f
+                    (fvc::interpolate(rho1*mixture.nuModel1().nu()));
+                const surfaceScalarField mu2f
+                    (fvc::interpolate(rho2*mixture.nuModel2().nu()));
+                if (harmonicFaceViscosity)
+                {
+                    // 1/mu_f = alpha_f/mu1 + (1-alpha_f)/mu2 -- the face value that
+                    // reproduces the exact viscous flux across a layered medium normal
+                    // to the interface. stabilise() guards the zero-viscosity case.
+                    muf = scalar(1)/stabilise
+                    (
+                        alphaf/stabilise(mu1f, dimensionedScalar(mu1f.dimensions(), VSMALL))
+                      + (scalar(1) - alphaf)
+                        /stabilise(mu2f, dimensionedScalar(mu2f.dimensions(), VSMALL)),
+                        dimensionedScalar(inv(mu1f.dimensions()), VSMALL)
+                    );
+                }
+                else
+                {
+                    muf = alphaf*mu1f + (scalar(1) - alphaf)*mu2f;
+                }
+            }
         }
 
         // The non-rhoLENT modes use the geometrical cell density immediately.

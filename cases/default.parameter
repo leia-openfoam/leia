@@ -568,6 +568,15 @@ MASS_FLUX rhoLENT;
 // (MOMENTUM_DIV_SCHEME), so div(rhoPhi,U) and the face fraction now agree.
 MASS_FLUX_ALPHAF_SOURCE donorPlane;
 
+// FACE DYNAMIC VISCOSITY for the momentum viscous term.
+//   interpolated  OpenFOAM's default: mu is a CELL field from the cell alpha, and
+//                 fvm::laplacian interpolates it linearly to the faces.
+//   geometric     mu_f = alpha_f mu1 + (1 - alpha_f) mu2 with the SAME geometric face
+//                 area fraction that builds rho_f for the mass flux, so both face
+//                 coefficients of the momentum equation descend from one discrete object.
+// Default is interpolated, so every existing study renders and runs bit-identically.
+VISCOSITY_FACE_MODEL interpolated;
+
 // rhoLENT ONLY (inert for every other mass-flux model, which solve no density
 // equation). Clip the auxiliary density to [rho2, rho1] immediately after the
 // density solve, BEFORE the momentum and pressure equations see it.

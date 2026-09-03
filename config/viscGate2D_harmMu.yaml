@@ -1,0 +1,77 @@
+# VISCOSITY-JUMP GATE -- BASELINE. rho ratio 838.8, mu1/mu2 = 54.83. The configuration every result so far used.
+#
+# WHY. The argmax of the velocity disturbance does NOT sit on the interface: over 120 frames
+# of the best configuration it is an interface cell in 67.5% of frames, in PURE AMBIENT
+# (alpha < 0.01) in 30.8%, and inside the droplet in 1.7% -- median alpha at the argmax cell
+# is 0.054, and 98% of frames put it within 2 cells of the band. So the maximum lives in the
+# FIRST LAYER OF THE LIGHT PHASE, just outside the interface, which is where a jump in the
+# material properties is felt.
+#
+# The density jump has been ruled out as the dominant term, but the VISCOSITY jump never has:
+# mu1/mu2 = 54.83 in every arm this campaign has run, INCLUDING both equal-density controls,
+# because those rescaled nu by rho precisely to hold mu1 and mu2 fixed. That is very likely
+# why ratio 1 behaved like ratio 838.8. This gate varies the quantity that was never varied.
+#
+# OpenFOAM mixes the dynamic viscosity ARITHMETICALLY, mu = alpha*rho1*nu1 + (1-alpha)*rho2*nu2,
+# with linear face interpolation. For a large jump the harmonic mean is the correct face value
+# for flow normal to a layered interface and the arithmetic mean for tangential flow, so an
+# arithmetic-only model over-stiffens the normal direction across the transition. Whether that
+# matters here is what these arms decide; a blended linear/harmonic model is only worth
+# implementing if the jump turns out to matter.
+#
+# THE MATRIX (five configs, one arm each, N=128, END_TIME 0.02 s to match the resolution
+# ladder; errors reported in L1 and L2 relative to U0, never L_inf):
+#   base      rho jump + mu jump          the configuration everything so far used
+#   inviscid  rho jump, no viscous term   is viscosity damping or driving?
+#   muAir     rho jump, mu1 = mu2 = mu_air
+#   muWater   rho jump, mu1 = mu2 = mu_water     muAir+muWater BRACKET the magnitude
+#   noJumps   no rho jump, no mu jump     the floor: neither discontinuity present
+#
+# PRE-REGISTERED READ-OUT.
+#   * muAir AND muWater both well below base -> the VISCOSITY JUMP is a real contributor, and
+#     a blended linear/harmonic face viscosity is worth implementing.
+#   * only one of them improves -> the viscosity MAGNITUDE is what changed, the jump is
+#     exonerated, and the arithmetic mixing is not the problem.
+#   * inviscid >= base -> viscosity was damping the disturbance, so any harmonic model would
+#     be trading damping for accuracy, not removing a source.
+#   * noJumps still shows a disturbance of the same order -> neither jump is the cause and the
+#     defect is in the capillary force or the transport, as previously argued.
+study_name: viscGate2D_harmMu
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 120
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.02]
+  WRITE_INTERVAL: [0.02]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.05]
+  RHO1: [998.2]
+  RHO2: [1.19]
+  NU1: [1e-06]
+  NU2: [1.53e-05]
+  VISCOSITY_FACE_MODEL: ["geometricHarmonic"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

@@ -57,6 +57,51 @@ rho.oldTime();
 
 
 // Mass flux
+// GEOMETRIC FACE DYNAMIC VISCOSITY, runtime-selectable and INERT by default.
+//
+// OpenFOAM's viscous term, turbulence->divDevRhoReff(rho,U), takes mu from the mixture as
+// a CELL field, mu_c = alpha_c rho1 nu1 + (1-alpha_c) rho2 nu2, and fvm::laplacian then
+// interpolates THAT linearly to the faces. So mu_f descends from a linearly interpolated
+// cell alpha while the mass flux rho_f = alpha_f rho1 + (1-alpha_f) rho2 descends from the
+// GEOMETRIC face area fraction of the reconstructed interface. The two face coefficients
+// of the same momentum equation are therefore built from different discrete objects.
+//
+// With viscosityFaceModel = geometric the SL solver overwrites muf below with
+//     muf = alphaf mu1 + (1-alphaf) mu2
+// using exactly the alphaf that produced rho_f, and UEqn.H assembles the viscous term
+// explicitly from it. With "interpolated" (the default) muf is never read and the
+// standard divDevRhoReff path runs unchanged, so every existing study is bit-identical.
+const word viscosityFaceModel =
+    mesh.solutionDict().subOrEmptyDict("levelSet").subOrEmptyDict("massFlux")
+        .getOrDefault<word>("viscosityFaceModel", "interpolated");
+if (viscosityFaceModel != "interpolated"
+ && viscosityFaceModel != "geometric"
+ && viscosityFaceModel != "geometricHarmonic")
+{
+    FatalErrorInFunction
+        << "massFlux.viscosityFaceModel = " << viscosityFaceModel
+        << " is not one of: interpolated, geometric, geometricHarmonic"
+        << exit(FatalError);
+}
+// geometric          mu_f = alpha_f mu1 + (1-alpha_f) mu2          (arithmetic)
+// geometricHarmonic  1/mu_f = alpha_f/mu1 + (1-alpha_f)/mu2        (harmonic)
+//
+// Both use the geometric alpha_f. The distinction matters because rho_f and mu_f are not
+// the same kind of coefficient: rho_f is fixed by CONSERVATION -- it must match the mass
+// equation, so the sharp geometric value is required -- whereas mu_f is a DIFFUSION
+// coefficient, and the face value that reproduces the exact flux of a layered medium
+// normal to the interface is the HARMONIC mean, not the arithmetic one. MEASURED
+// 2026-09-03: the arithmetic form made things 2.08x WORSE in L1 than the interpolated
+// default, which is what sharpening the wrong average does.
+const bool geometricFaceViscosity = (viscosityFaceModel != "interpolated");
+const bool harmonicFaceViscosity  = (viscosityFaceModel == "geometricHarmonic");
+
+surfaceScalarField muf
+(
+    IOobject("muf", runTime.timeName(), mesh, IOobject::NO_READ, IOobject::NO_WRITE),
+    fvc::interpolate(mixture.mu())
+);
+
 surfaceScalarField rhoPhi
 (
     IOobject

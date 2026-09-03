@@ -289,6 +289,9 @@ levelSet
         // composition the flux carries through the face (consistent + stable).
         // "central" = 1/2(owner+neighbour), for comparison only.
         alphaFSource        @!MASS_FLUX_ALPHAF_SOURCE!@;                 // upwind | central
+        // Face dynamic viscosity for the viscous term: interpolated (OpenFOAM's
+        // linearly-interpolated cell mu) | geometric (mu_f from the same alpha_f as rho_f).
+        viscosityFaceModel  @!VISCOSITY_FACE_MODEL!@;
         // rhoLENT ONLY, inert elsewhere. Clip the auxiliary density to
         // [rho2, rho1] immediately after the density solve, BEFORE momentum and
         // pressure see it. rho1 and rho2 are constants, so any rho outside that
