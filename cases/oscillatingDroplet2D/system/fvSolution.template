@@ -283,10 +283,10 @@ levelSet
         // composition the flux carries through the face (consistent + stable).
         // "central" = 1/2(owner+neighbour), for comparison only.
         alphaFSource        @!MASS_FLUX_ALPHAF_SOURCE!@;                 // upwind | central
-        // Face dynamic viscosity, two independent axes:
-        //   viscosityFaceAlpha  algebraic | geometric      -- where alpha_f comes from
-        //   viscosityFaceModel  linear | harmonic | normalBlend -- how mu_f is mixed
-        viscosityFaceAlpha  @!VISCOSITY_FACE_ALPHA!@;
+        // Face dynamic viscosity for the viscous term. One of six:
+        //   alg_lin alg_harm alg_blend | geo_lin geo_harm geo_blend
+        // prefix = where alpha_f comes from (algebraic interpolation | geometric face area
+        // fraction); suffix = how mu_f is mixed (linear | harmonic | normal-weighted blend).
         viscosityFaceModel  @!VISCOSITY_FACE_MODEL!@;
         // rhoLENT ONLY, inert elsewhere. Clip the auxiliary density to
         // [rho2, rho1] immediately after the density solve, BEFORE momentum and

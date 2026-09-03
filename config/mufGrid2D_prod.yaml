@@ -13,8 +13,8 @@
 # and the comparison that chose the default is confounded with the one that dismissed
 # harmonic. This crosses the axes properly:
 #
-#   VISCOSITY_FACE_ALPHA  algebraic | geometric
-#   VISCOSITY_FACE_MODEL  linear | harmonic | normalBlend
+#   VISCOSITY_FACE_MODEL  alg_lin | alg_harm | alg_blend | geo_lin | geo_harm | geo_blend
+#   prefix = where alpha_f comes from; suffix = how mu_f is mixed.
 #
 # normalBlend is new and carries NO free parameter: across a layered medium the phases are
 # in SERIES normal to the interface (harmonic) and in PARALLEL tangent to it (arithmetic),
@@ -48,8 +48,7 @@ axes_override:
   WRITE_INTERVAL: [0.02]
   DROPLET_OFFSET_X: [-0.0025]
   TRANSLATION_SPEED: [0.05]
-  VISCOSITY_FACE_ALPHA: ["algebraic", "geometric"]
-  VISCOSITY_FACE_MODEL: ["linear", "harmonic", "normalBlend"]
+  VISCOSITY_FACE_MODEL: ["alg_lin", "alg_harm", "alg_blend", "geo_lin", "geo_harm", "geo_blend"]
   RHO1: [998.2]
   RHO2: [1.19]
   NU1: [1e-06]

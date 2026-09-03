@@ -60,57 +60,56 @@ rho.oldTime();
 bool viscosityFaceAlphaGeometric = true;
 word viscosityFaceModelName("linear");
 
-// FACE DYNAMIC VISCOSITY. Two ORTHOGONAL choices, which an earlier single token conflated.
+// FACE DYNAMIC VISCOSITY -- ONE token, SIX explicit values naming both halves.
 //
-//   viscosityFaceAlpha : where alpha_f comes from
-//       algebraic   <alpha_c>_f, linear interpolation of the cell phase indicator
-//       geometric   the face area fraction of the reconstructed interface plane -- the
-//                   SAME alpha_f that builds rho_f for the mass flux
+//   alg_lin   alg_harm   alg_blend      alpha_f = <alpha_c>_f, linear interpolation
+//   geo_lin   geo_harm   geo_blend      alpha_f = geometric face area fraction of the
+//                                       reconstructed plane, the SAME one that builds rho_f
 //
-//   viscosityFaceModel : how mu_f is formed from alpha_f
-//       linear      mu_f   = alpha_f mu1 + (1-alpha_f) mu2
-//       harmonic    1/mu_f = alpha_f/mu1 + (1-alpha_f)/mu2
-//       normalBlend w mu_harmonic + (1-w) mu_linear,  w = |n.Sf|/|Sf|
+//   *_lin    mu_f   = alpha_f mu1 + (1-alpha_f) mu2
+//   *_harm   1/mu_f = alpha_f/mu1 + (1-alpha_f)/mu2
+//   *_blend  w mu_harm + (1-w) mu_lin,  w = |n.Sf|/|Sf|
 //
-// WHY normalBlend HAS NO FREE PARAMETER. Across a layered medium the correct face value
-// depends on the orientation of the layering relative to the flux: NORMAL to the interface
-// the two phases are in SERIES, which is the harmonic mean; TANGENT to it they conduct in
-// PARALLEL, which is the arithmetic mean. The weight is therefore the alignment of the
-// interface normal with the face normal, a geometric quantity, not a tuned coefficient.
+// The grid is spelled out rather than expressed as two crossed tokens because an earlier
+// single token with three values (interpolated / geometric / geometricHarmonic) silently
+// mixed the two halves and left alg_harm untested -- so "harmonic is worst" had only ever
+// been measured on the geometric alpha_f. Six names make the missing cell impossible to
+// hide.
 //
-// The old single-valued token still works and maps onto the grid:
-//   interpolated -> (algebraic, linear);  geometric -> (geometric, linear);
-//   geometricHarmonic -> (geometric, harmonic).
+// alg_lin IS the framework default: the linear model commutes with interpolation, so
+// <alpha mu1 + (1-alpha) mu2>_f = <alpha>_f mu1 + (1-<alpha>_f) mu2. That identity is what
+// let the axes collapse unnoticed. It fails for *_harm and *_blend.
+//
+// *_blend carries NO free parameter. Across a layered medium the phases are in SERIES
+// normal to the interface (harmonic) and in PARALLEL tangent to it (arithmetic), so the
+// weight is the alignment of the interface normal with the FINITE-VOLUME FACE normal --
+// geometry, not a tuned coefficient. Pure harmonic applies the series formula even on faces
+// lying nearly IN the interface plane, where arithmetic is the correct average; that is a
+// candidate reason for its poor showing.
 {
     const dictionary& mfD =
         mesh.solutionDict().subOrEmptyDict("levelSet").subOrEmptyDict("massFlux");
-    word aSrc = mfD.getOrDefault<word>("viscosityFaceAlpha", "none");
-    word mMod = mfD.getOrDefault<word>("viscosityFaceModel", "none");
-    if (aSrc == "none" || mMod == "none")
+    word v = mfD.getOrDefault<word>("viscosityFaceModel", "geo_lin");
+    // legacy names from before the grid was spelled out
+    if (v == "interpolated")           v = "alg_lin";
+    else if (v == "geometric")         v = "geo_lin";
+    else if (v == "geometricHarmonic") v = "geo_harm";
+
+    const wordList valid
+    ({"alg_lin","alg_harm","alg_blend","geo_lin","geo_harm","geo_blend"});
+    if (!valid.found(v))
     {
-        // legacy single-token form
-        const word legacy = (mMod != "none") ? mMod : word("geometric");
-        if (legacy == "interpolated")           { aSrc = "algebraic"; mMod = "linear"; }
-        else if (legacy == "geometric")         { aSrc = "geometric"; mMod = "linear"; }
-        else if (legacy == "geometricHarmonic") { aSrc = "geometric"; mMod = "harmonic"; }
-        else if (aSrc == "none")                { aSrc = "geometric"; }
+        FatalErrorInFunction << "massFlux.viscosityFaceModel = " << v
+            << " is not one of " << valid << exit(FatalError);
     }
-    if (aSrc != "algebraic" && aSrc != "geometric")
-    {
-        FatalErrorInFunction << "massFlux.viscosityFaceAlpha = " << aSrc
-            << " is not one of: algebraic, geometric" << exit(FatalError);
-    }
-    if (mMod != "linear" && mMod != "harmonic" && mMod != "normalBlend")
-    {
-        FatalErrorInFunction << "massFlux.viscosityFaceModel = " << mMod
-            << " is not one of: linear, harmonic, normalBlend" << exit(FatalError);
-    }
-    viscosityFaceAlphaGeometric = (aSrc == "geometric");
-    viscosityFaceModelName = mMod;
+    viscosityFaceAlphaGeometric = v.starts_with("geo_");
+    viscosityFaceModelName =
+        v.ends_with("_lin") ? word("linear")
+      : v.ends_with("_harm") ? word("harmonic") : word("normalBlend");
+    Info<< "face viscosity: " << v << "  (alpha_f "
+        << (viscosityFaceAlphaGeometric ? "geometric" : "algebraic")
+        << ", model " << viscosityFaceModelName << ')' << endl;
 }
-Info<< "face viscosity: alpha_f "
-    << (viscosityFaceAlphaGeometric ? "geometric" : "algebraic")
-    << ", model " << viscosityFaceModelName << endl;
 
 surfaceScalarField muf
 (
