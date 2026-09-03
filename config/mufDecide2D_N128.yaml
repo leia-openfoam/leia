@@ -1,4 +1,4 @@
-# DECIDING THE FACE VISCOSITY mu_f -- N128 (N=128, mu1/mu2=54.83)
+# DECIDING THE FACE VISCOSITY mu_f -- N128: N = 128, mu1/mu2 = 54.83
 #
 # The explicit one-field DNS viscous term (article Section 3.2) takes mu_f as the
 # coefficient of the implicit Laplacian, and three sources are runtime-selectable:
@@ -29,7 +29,7 @@
 #
 # L_inf is not reported anywhere: it is a single-cell extremum set by the sub-cell interface
 # position and does not converge.
-study_name: mufDecide2D_N128 (N=128, mu1/mu2=54.83)
+study_name: mufDecide2D_N128
 case: translatingDroplet2D
 mesh: hex
 mode: parallel
