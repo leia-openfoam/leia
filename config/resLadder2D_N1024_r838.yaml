@@ -1,0 +1,78 @@
+# RESOLUTION LADDER for the translating droplet -- N = 1024 (R/h = 102.4), density ratio 838.824, the committed water/air pair
+#
+# WHY THIS RUNS BEFORE ANY NEW FORCE MODEL. Every translating result on record is at
+# N = 128, i.e. R/h = 12.8, barely above this repository's own R/h >= 10 floor. The number
+# the whole diagnosis rests on -- a 7% curvature error (kErrL2Band = 70.6 against
+# kappa = 1/R = 1000) -- was measured at exactly that resolution, and nothing run so far
+# distinguishes "the estimator has a defect refinement will not remove" from "12.8 cells
+# per radius is too coarse for a quadratic fit to resolve kappa".
+#
+# It also repairs a gap in the inference drawn from amplifierGate2D. The
+# constantCurvatureSurfaceTension arm sets kappa = 1000 EVERYWHERE, and a spatially
+# CONSTANT kappa makes sigma*kappa*snGrad(alpha) an exact discrete gradient that the
+# pressure absorbs identically. So that gate showed "a force inside the range of the
+# discrete gradient operator is stable" -- not "an ACCURATE curvature would be stable".
+# For a circle the two coincide, and the conclusion "replace the force model" skipped the
+# difference. A ladder separates them: if the error converges, accuracy was the issue.
+#
+# 4 arms: {reconstructed, exact kappa = 1/R} x this density ratio, at a FIXED PHYSICAL
+# TIME (END_TIME 0.02 s) so every rung is compared at the same instant. dt is derived from
+# the capillary limit and scales as h^1.5, so the step count grows as N^1.5:
+# 2667 / 7542 / 21334 / 60340 steps at N = 128 / 256 / 512 / 1024.
+#
+# PRE-REGISTERED READ-OUT, over the ladder assembled from the four configs:
+#   * u0 (the one-step kick) CONVERGES with a healthy order -> the source is
+#     under-resolution and/or estimator accuracy. A variational force would then be solving
+#     a problem that refinement already solves, and the right work is resolution, a better
+#     fit, or a redistancing partner.
+#   * u0 converges but the GROWTH (and the coherent drift) does NOT -> the source is
+#     resolvable and the defect is structural, which is the case the variational
+#     construction is designed for.
+#   * NEITHER converges -> the estimator has a genuine defect at every resolution, and the
+#     mesh-crossing hypothesis (a static curvature-error pattern the stationary droplet
+#     relaxes into, versus one that changes every step under translation) is the thing to
+#     test next.
+# The exact-kappa arms give the floor at each h: with the force exactly absorbable, the
+# residual volume, shape and travel errors are pure semi-Lagrangian transport, so the
+# ladder also returns the transport convergence order as a by-product.
+#
+# Velocity errors are reported relative to U0 = 0.05 m/s.
+study_name: resLadder2D_N1024_r838
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 64
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 1380
+axes_override:
+  N_CELLS: [1024]
+  END_TIME: [0.02]
+  WRITE_INTERVAL: [0.02]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.05]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature", "constantCurvatureSurfaceTension"]
+  CONST_CURVATURE: [1000]
+  RHO1: [998.2]
+  RHO2: [1.19]
+  NU1: [1e-06]
+  NU2: [1.53e-05]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
