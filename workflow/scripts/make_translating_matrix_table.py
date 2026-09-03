@@ -5,13 +5,23 @@ Both studies are 8 arms: MASS_FLUX (rhoLENT, geometricFaceDensity) crossed with
 MOMENTUM_DIV_SCHEME (upwind, limitedLinearV 1, vanLeerV, linearUpwind gradU), at density
 ratio 838.824 and at ratio 1 with rho1+rho2 held at 999.39.
 
-Every row is read at the SAME step index -- the largest index reached by every arm in
-both studies -- because endpoint estimators are not comparable across unequal horizons
-(CLAUDE.md, research loop step 5). The full-horizon columns are reported separately and
-only where the phase volume still exists: past t ~ 0.081 the droplet leaves through the
-outlet and every phase-derived metric degenerates.
+Every row is read at the SAME step index, because endpoint estimators are not comparable
+across unequal horizons (CLAUDE.md, research loop step 5). That index is NOT the largest
+one every arm reached: at ratio 838.8 the arms terminate between 8427 and 9987 steps, so
+the common maximum (8427) is set by the FIRST ARM TO DIE and samples every other
+ratio-838.8 arm inside its own blow-up. Read there, max|U-U0|/U0 ranges from 4.5 to 89 --
+i.e. up to 8900 percent of the translation speed -- which is a divergence transient, not a
+parasitic-current level, and reporting it as one was a curation error made on 2026-09-02.
+
+--read-step therefore defaults to 5000 (t = 0.0375 s), where every arm in both studies is
+still healthy; the script refuses to run if any arm is shorter than that. Velocity errors
+are reported RELATIVE to the translation speed, since a dimensionless 0.2 reads as "twenty
+percent of the speed the droplet is carried at" and 1e-2 m/s does not. The per-arm
+termination step and final time are carried alongside, so the divergence outcome is still
+visible without contaminating the comparison.
 
 Usage:  python3 workflow/scripts/make_translating_matrix_table.py [--root .] [--out FILE]
+                [--read-step 5000]
 """
 import argparse, csv, glob, os, subprocess, sys
 
@@ -47,13 +57,20 @@ def main():
     p.add_argument("--root", default=".")
     p.add_argument("--out", default="docs/method-comparison/method-comparison-article/"
                                    "data/tables/translatingRepairedMatrix.csv")
+    p.add_argument("--read-step", type=int, default=5000,
+                   help="1-based step index every arm is read at; must be inside the "
+                        "healthy window of EVERY arm, not merely reached by all of them")
     a = p.parse_args()
 
     loaded = [(s, r, load(a.root, s)) for s, r in STUDIES]
     missing = [s for s, _, arms in loaded if len(arms) != 8]
     if missing:
         sys.exit(f"incomplete studies: {missing}")
-    common = min(len(rows) for _, _, arms in loaded for rows in arms.values())
+    shortest = min(len(rows) for _, _, arms in loaded for rows in arms.values())
+    common = a.read_step
+    if shortest < common:
+        sys.exit(f"--read-step {common} exceeds the shortest arm ({shortest} rows); an arm "
+                 f"diverged before the read point, so no comparison is valid there")
 
     try:
         commit = subprocess.check_output(["git", "-C", a.root, "rev-parse", "--short", "HEAD"],
@@ -71,6 +88,11 @@ def main():
                    "stepsReached": len(rows), "tEnd": float(rows[-1]["TIME"]),
                    "completed": int(len(rows) >= 13334), "readStep": common, "readTime": t,
                    "travelFraction": (num(r, "centroidX") - X0) / (U0 * t) if t else float("nan"),
+                   # velocity errors are reported RELATIVE to the translation speed: a
+                   # dimensionless 0.2 reads as "twenty percent of the speed the droplet
+                   # is carried at", which 1e-2 m/s does not.
+                   "maxMagUPrimeRel": num(r, "maxMagUPrime") / U0,
+                   "meanMagUPrimeRel": num(r, "meanMagUPrime") / U0,
                    "gitCommit": commit}
             rec.update({c: num(r, c) for c in COLS})
             out.append(rec)
@@ -81,7 +103,8 @@ def main():
         w = csv.DictWriter(fh, fieldnames=list(out[0]))
         w.writeheader()
         w.writerows(out)
-    print(f"wrote {path}  ({len(out)} rows, read at common step {common})")
+    print(f"wrote {path}  ({len(out)} rows, read at step {common}; "
+          f"shortest arm {shortest} rows)")
 
 
 if __name__ == "__main__":
