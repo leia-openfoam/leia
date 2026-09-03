@@ -104,6 +104,14 @@ log
 *.zip
 *.csv
 !cases/**/reference/*.csv
+# Curated results ARE versioned -- CLAUDE.md: "the small results
+# docs/**/data/{figures,tables,mechanism} (decks/papers build from these without
+# re-running studies)". Without these negations the blanket *.csv above silently excluded
+# them, and every curated table had to be force-added, which is how a diagnostic CSV came
+# to be dropped from a commit that referenced it.
+!docs/**/data/tables/*.csv
+!docs/**/data/figures/*.csv
+!docs/**/data/mechanism/*.csv
 # editor / tool backups
 *.backp
 *.orig
