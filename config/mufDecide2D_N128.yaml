@@ -1,0 +1,70 @@
+# DECIDING THE FACE VISCOSITY mu_f -- N128 (N=128, mu1/mu2=54.83)
+#
+# The explicit one-field DNS viscous term (article Section 3.2) takes mu_f as the
+# coefficient of the implicit Laplacian, and three sources are runtime-selectable:
+#   interpolated       <alpha_c mu1 + (1-alpha_c) mu2>_f   the framework default
+#   geometric          alpha_f mu1 + (1-alpha_f) mu2       same alpha_f that builds rho_f
+#   geometricHarmonic  1/mu_f = alpha_f/mu1 + (1-alpha_f)/mu2
+#
+# A single case at a single resolution did not decide between them: at N=128, mu1/mu2=54.8,
+# geometric won in L1 (6.113e-03 against 7.013e-03) and interpolated won in L2 (1.475e-02
+# against 1.591e-02) -- about 15% apart, with the two norms disagreeing. Two things are
+# needed to settle it, and this matrix supplies both.
+#
+# (1) CONVERGENCE. N = 128 / 256 / 512 at the production jump. A source that wins at one
+#     resolution and loses at another has not won; the criterion is the finest rung AND the
+#     order, in BOTH norms.
+# (2) A DISCRIMINATOR WHERE THEY MUST DIFFER. The three forms coincide as mu1 -> mu2, so a
+#     modest jump cannot separate them. The jump1000 arm raises mu1/mu2 from 54.83 to 1000
+#     at the SAME density ratio, which is where the theory makes a prediction: the harmonic
+#     mean is the face value reproducing the exact viscous flux across a layered medium
+#     normal to the interface, so if that reasoning applies here, harmonic should pull ahead
+#     as the jump grows. It is a numerical discriminator, not a physical case.
+#
+# PRE-REGISTERED DECISION RULE. A source is adopted only if it has the lowest error in BOTH
+# L1 and L2 at N=512, an equal or better convergence order in both, and does not degrade
+# relative to the others at mu1/mu2 = 1000. If no source meets all three, the choice is
+# reported as UNDECIDED and the default stays "interpolated" -- the framework default needs
+# no justification, whereas adopting either alternative does.
+#
+# L_inf is not reported anywhere: it is a single-cell extremum set by the sub-cell interface
+# position and does not converge.
+study_name: mufDecide2D_N128 (N=128, mu1/mu2=54.83)
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 720
+axes_override:
+  N_CELLS: [128]
+  END_TIME: [0.02]
+  WRITE_INTERVAL: [0.02]
+  DROPLET_OFFSET_X: [-0.0025]
+  TRANSLATION_SPEED: [0.05]
+  VISCOSITY_FACE_MODEL: ["interpolated", "geometric", "geometricHarmonic"]
+  RHO1: [998.2]
+  RHO2: [1.19]
+  NU1: [1e-06]
+  NU2: [1.53e-05]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  MASS_RESIDUAL_DIAGNOSTIC: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
