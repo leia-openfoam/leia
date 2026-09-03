@@ -100,8 +100,13 @@ eight arms because it is a t = 0 property of the initial circle.
 
 **The decomposition.** In `max|U|(T) = u0(h) * exp(G(h))`:
 
-- **u0, the source** = curvature-estimator error. U0-independent, density-ratio
-  independent, ~2.15e-03 at N = 128.
+- **u0, the source** = curvature-estimator error. U0-independent (2.150e-03 against
+  2.159e-03 across a fourfold change in U0) but NOT density-ratio independent: at ratio 1
+  with matched dynamic viscosity the same first step gives 4.011e-05, a factor of 53.6
+  smaller. RETRACTED 2026-09-03 -- "density-ratio independent" was asserted from a matrix
+  that only ever varied U0 at fixed ratio 838.8, and amplifierGate2D falsifies it. The
+  same curvature error divided by the light-phase density is a larger velocity, so the
+  density ratio acts on BOTH factors.
 - **G, the amplifier** = grows with U0 (step 200: 2.11e-03 at U0 = 0 against 5.39e-03 at
   U0 = 0.05) and with the density ratio (the repaired 16-arm matrix: both ratios sit at
   the same order for 8000 steps, then only the ratio-838.8 arms go unstable).
@@ -117,6 +122,40 @@ predicted a factor of 420 is dead.
 
 Open confounder: the equal-density control holds the KINEMATIC viscosities fixed, so the
 dynamic viscosity ratio moved 54.8 -> 15.3. A matched-mu control is still owed.
+
+### DECIDED: the instability does not survive a perfect capillary force
+
+`config/amplifierGate{,EqualRho}2D`, 8 arms, 8000 steps, N=128, 2x2x2 over
+{reconstructed, exact kappa=1/R} x {U0 = 0, 0.05} x {ratio 838.8, ratio 1 at MATCHED
+dynamic viscosity}. All complete. `max|U-U0|` [m/s]:
+
+| ratio | kappa | U0 | step 1 | step 1000 | step 5000 | step 8000 |
+|---|---|---|---|---|---|---|
+| 838.8 | exact | 0 | 1.69e-09 | 1.63e-10 | 2.17e-09 | 2.22e-10 |
+| 838.8 | exact | 0.05 | 7.19e-09 | 1.06e-04 | 2.49e-05 | 2.58e-05 |
+| 838.8 | reconstructed | 0 | 2.15e-03 | 2.16e-04 | 3.04e-05 | 1.24e-04 |
+| 838.8 | reconstructed | 0.05 | 2.16e-03 | 3.86e-03 | 8.95e-03 | **1.47e-02** |
+| 1 | exact | 0 | 5.92e-12 | 5.26e-12 | 7.01e-12 | 4.34e-11 |
+| 1 | exact | 0.05 | 1.43e-11 | 2.31e-11 | 4.21e-11 | **4.75e-11** |
+| 1 | reconstructed | 0 | 4.01e-05 | 4.47e-04 | 1.49e-04 | 4.81e-05 |
+| 1 | reconstructed | 0.05 | 4.02e-05 | 4.74e-03 | 5.77e-03 | 5.87e-03 |
+
+**The exact-kappa arms stay bounded at every combination.** The growth seen over 200 steps
+in kickOriginGate2D was a transient; over the full horizon it plateaus at 1e-05..1e-04 at
+ratio 838.8 and sits at round-off, flat, at ratio 1. The reconstructed-kappa arms at
+U0 = 0.05 are the ones that destabilise (8427-9987 steps in the repaired matrix).
+
+**Verdict: the curvature estimator is the whole story, and the variational capillary force
+(article Section "Outlook: a variational capillary force") is the right target.** No
+amplifier independent of the source needs attacking first.
+
+With exact kappa the volume error (4.32e-03), shape error (6.9e-06) and travelled fraction
+(0.9975) are IDENTICAL to three digits at both density ratios -- that residual is pure
+semi-Lagrangian transport error, which cannot see rho. And the net propulsion is gone:
+travel 0.9975 instead of 1.0257. The drift the animation shows is a curvature-error product.
+
+The matched-mu control is now also closed: NU1/NU2 rescaled so mu1 = 9.982e-04 and
+mu2 = 1.8207e-05 match the ratio-838.8 arms exactly, so only rho differs.
 
 ### What SURVIVES the retraction
 

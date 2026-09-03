@@ -1432,7 +1432,12 @@ translation speed. The mass--momentum term $\uvec_0\mathcal R$ of
 Eq.~\eqref{eq:massmomentum} is identically zero at $U_0=0$ and would scale linearly with
 it, so it is not the source; the stationary droplet carries the same initial kick, and its
 often-quoted $10^{-5}$ current level is its \emph{settled} value after that transient
-relaxes, not a comparable quantity. Second, replacing the reconstructed curvature by the
+relaxes, not a comparable quantity. The kick is \emph{not}, however, independent of the
+density ratio: repeating the same first step at $\rho_1/\rho_2=1$ with the dynamic
+viscosities held at their ratio-$838.8$ values gives $4.011\times10^{-5}$ against
+$2.150\times10^{-3}$, a factor of $53.6$. The same unbalanced force divided by the
+light-phase density is a proportionally larger velocity, so the density ratio scales the
+source as well as the amplifier. Second, replacing the reconstructed curvature by the
 exact $\kappa=1/R$ of the initial circle -- which makes
 $\sigma\kappa\,\mathrm{snGrad}(\alpha)$ an exact discrete gradient, absorbed whole by
 Eq.~\eqref{eq:ppoisson} -- removes the disturbance by a factor of $1.3\times10^{6}$. The
@@ -1529,6 +1534,53 @@ force is internal and cannot change the total momentum, but it is driving the ph
 This is what the travelled fraction of $1.02$ measures, and it is a sharper statement than
 ``parasitic currents'': the discrete capillary force is doing \emph{net work} on the
 droplet. Section~\ref{sec:variational} takes that as the design target.
+
+\paragraph{The instability does not survive an exact capillary force.} The decomposition
+above leaves one question open, and it decides where the remaining work belongs: is the
+amplifier a property of the coupling itself, present even with a perfect force, or is it
+only the growth of a curvature-seeded disturbance? Table~\ref{tab:amplifier} answers it by
+running the exact-$\kappa$ arms to the full horizon. Over $200$ steps
+(Table~\ref{tab:kickorigin}) they appeared to grow by five orders; over $8000$ steps that
+growth is a transient. The exact-$\kappa$ disturbance plateaus at $10^{-5}$--$10^{-4}$~m/s
+at $\rho_1/\rho_2=838.8$ and remains at round-off, flat, at $\rho_1/\rho_2=1$, while the
+reconstructed-$\kappa$ arms at $U_0=0.05$ grow monotonically to $1.47\times10^{-2}$ and are
+precisely the arms that destabilise.
+
+\begin{table}[t]
+  \centering
+  \caption{$\max\lvert\uvec-\uvec_0\rvert$ [m/s] to $8000$ steps ($t=0.06$~s), $N=128$,
+  crossing the capillary model with the translation speed at both density ratios; the
+  equal-density arms hold the dynamic viscosities at their ratio-$838.8$ values, so only
+  $\rho$ differs. The exact-$\kappa$ arms are bounded everywhere.}
+  \label{tab:amplifier}
+  \begin{tabular}{l l r r r r r}
+    \hline
+    $\rho_1/\rho_2$ & $\kappa$ & $U_0$ & step $1$ & step $1000$ & step $5000$ & step $8000$ \\
+    \hline
+    $838.8$ & exact         & $0$    & $1.69\times10^{-9}$ & $1.63\times10^{-10}$ & $2.17\times10^{-9}$ & $2.22\times10^{-10}$ \\
+    $838.8$ & exact         & $0.05$ & $7.19\times10^{-9}$ & $1.06\times10^{-4}$  & $2.49\times10^{-5}$ & $2.58\times10^{-5}$ \\
+    $838.8$ & reconstructed & $0$    & $2.15\times10^{-3}$ & $2.16\times10^{-4}$  & $3.04\times10^{-5}$ & $1.24\times10^{-4}$ \\
+    $838.8$ & reconstructed & $0.05$ & $2.16\times10^{-3}$ & $3.86\times10^{-3}$  & $8.95\times10^{-3}$ & $1.47\times10^{-2}$ \\
+    \hline
+    $1$ & exact         & $0$    & $5.92\times10^{-12}$ & $5.26\times10^{-12}$ & $7.01\times10^{-12}$ & $4.34\times10^{-11}$ \\
+    $1$ & exact         & $0.05$ & $1.43\times10^{-11}$ & $2.31\times10^{-11}$ & $4.21\times10^{-11}$ & $4.75\times10^{-11}$ \\
+    $1$ & reconstructed & $0$    & $4.01\times10^{-5}$  & $4.47\times10^{-4}$  & $1.49\times10^{-4}$ & $4.81\times10^{-5}$ \\
+    $1$ & reconstructed & $0.05$ & $4.02\times10^{-5}$  & $4.74\times10^{-3}$  & $5.77\times10^{-3}$ & $5.87\times10^{-3}$ \\
+    \hline
+  \end{tabular}
+\end{table}
+
+Two consequences. First, there is no amplifier that needs attacking independently of the
+source: a force that the projection can absorb exactly produces no instability at either
+density ratio, so the entire remedy lies in the capillary force, which is why
+Section~\ref{sec:variational} addresses that and nothing else. Second, the residual left
+under an exact $\kappa$ is pure transport error. At $t=0.06$~s the volume error
+($4.32\times10^{-3}$), the shape error ($6.9\times10^{-6}$) and the travelled fraction
+($0.9975$) are identical to three digits at both density ratios -- as they must be, since
+the semi-Lagrangian transport does not see $\rho$ -- and the travelled fraction is now
+slightly \emph{below} one, the transport lagging, rather than the $1.026$ of the
+reconstructed-$\kappa$ arm. The net propulsion is a product of the curvature error, not of
+the coupling.
 
 \subsection{What the pressure projection can absorb: the flux-space residual}
 \label{sec:fluxresidual}
@@ -1849,8 +1901,8 @@ reinitialisation. As the force coupling is balanced, the residual currents are g
 the curvature error. A translating-droplet benchmark (Section~\ref{sec:translating})
 sharpens that statement into a decomposition: the one-step disturbance is independent of the
 translation speed to $0.4\%$ and falls by $1.3\times10^{6}$ under an exact curvature, so the
-curvature error is the \emph{source}, while translation and the density ratio act only as
-\emph{amplifiers}; and a mass flux consistent with an auxiliary density
+curvature error is the \emph{source}, while the translation speed acts purely as an
+\emph{amplifier} (the density ratio scales both); and a mass flux consistent with an auxiliary density
 equation~\cite{liu2023}, though necessary for a defensible discretisation, is not what sets
 the current -- nine orders of magnitude in the discrete mass residual move it by less than a
 factor of two. The disturbance is moreover not symmetric: it begins as a zero-mean
