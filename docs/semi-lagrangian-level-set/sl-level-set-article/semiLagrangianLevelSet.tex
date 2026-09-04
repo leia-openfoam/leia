@@ -1423,6 +1423,13 @@ $-1.03$ against $-1.12$ ($L_1$) and $-0.79$ against $-0.80$ ($L_2$). The two-lev
 mesh ($289\,808$ cells) to $0.2\%$ in the peaks and $0.8\%$ or better at the end of the
 run at half its cost, i.e. $13.4$ times fewer core-hours than the uniform mesh of the same
 fine spacing; a second transition, one level further out, changes nothing measurable.
+Neither does the inner one: the ball control, which refines the whole droplet interior so
+that only the outer transition remains ($296\,752$ cells), agrees with the interface-band
+mesh to $0.04\%$ and $0.02\%$ in the peak velocity norms, $0.6\%$ and $0.4\%$ at the end
+of the run, $0.03\%$ in shape and $0.2\%$ in the band curvature error; its volume error
+differs by $2\%$ at the end and by $5.7\%$ at half time, the one nominal excursion beyond a
+tolerance in this study, on a value of $4.6\times10^{-8}$ -- an absolute difference of
+$3\times10^{-9}$.
 
 \paragraph{Polyhedral meshes.}
 The same test on cfMesh polyhedra, with the mesh regenerated around the iso-surface as

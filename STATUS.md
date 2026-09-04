@@ -1238,6 +1238,7 @@ spacing, capillary dt and step count on the 6R box (`stationaryDroplet3Drefined`
 | 96 (16) | 169 000 / 884 736 | 4659 | -0.17 % / -0.02 % | -2.4 % / -0.21 % | -0.11 % | +0.93 % | +1e-4 | -0.36 % | 0 | 7.0 / 25.1 (3.6x) |
 | 120 (20) | 289 808 / 1 728 000 | 6511 | -0.20 % / -0.08 % | -0.79 % / -0.54 % | +1.7 % | +0.13 % | 0 | +0.11 % | 0 | 14.1 / 97.3 (6.9x) |
 | 120, two levels | 125 448 / 1 728 000 | 6511 | -0.4 % / -0.09 % | -0.9 % / -0.6 % | +1.8 % | +0.65 % | +2e-4 | -0.6 % | 0 | 7.3 / 97.3 (**13.4x**) |
+| 120, ball control (vs the band arm) | 296 752 / 289 808 | 6511 | +0.04 % / +0.02 % | +0.61 % / +0.43 % | -2.0 % | -0.03 % | +6e-5 | -0.16 % | 0 | 14.4 / 14.1 |
 
 Pre-registered tolerances (10 % velocity L1/L2, 5 % volume/shape/kappa/A2h, 1 % Laplace jump)
 met at every rung. Fitted orders at t = T over the four rungs, refined vs uniform
@@ -1248,10 +1249,15 @@ never more than 0.09 apart (pre-registered +-0.3). The negative velocity order i
 uniform ladder's own: the end-of-run currents grow with refinement (the campaign's open
 defect), and the refined mesh reproduces it as faithfully as the convergent metrics; the PEAK
 currents converge at 2.2 (L1) / 2.15 (L2) on both meshes. The two-level control matches the
-one-level N = 120 arm to 0.2 % (peaks) and <= 0.8 % (T) at half its cost. The ball control
-is still running (below). **The octree rejection of `stationaryDroplet3Dwide` is retracted in
-full**: its hanging-node argument fell to the constant-curvature gate, its equal-cost
-argument to 3.4-13.4x.
+one-level N = 120 arm to 0.2 % (peaks) and <= 0.8 % (T) at half its cost. **The ball control
+LANDED** (whole droplet interior fine, 296 752 cells, 6511 steps): against the interface-band
+arm, peaks +0.04 % (L1) / +0.02 % (L2); at T L1 +0.61 %, L2 +0.43 %, shape -0.03 %, Laplace
+jump +6e-5, kErrL2Band -0.16 %, A2hL2Band 5e-7; volume error -2.0 % at T and +5.7 % at T/2 --
+the one nominal tolerance excursion of the campaign, on a value of 4.6e-8 (an absolute
+difference of 3e-9), stated as such. The INNER transition, six fine layers inside the
+interface, is as inert as the outer one. **The octree rejection of `stationaryDroplet3Dwide`
+is retracted in full**: its hanging-node argument fell to the constant-curvature gate, its
+equal-cost argument to 3.4-13.4x.
 
 Where the CPU went: refined ladder 25 core-h + two-level 7 core-h against 137 core-h for the
 uniform twins, on the same commit (`b72c7ef` stamps; drivers on disk `24223a2`, identical for
