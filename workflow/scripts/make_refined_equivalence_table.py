@@ -116,7 +116,7 @@ def fit(hs, es):
     return sxy / sxx, sxy / math.sqrt(sxx * syy)
 
 
-def compare(a, b, label_a, label_b, pair, ncell):
+def compare(a, b, label_a, label_b, pair, ncell, source="", levels=""):
     """Rows for one matched pair (a = refined/control, b = reference)."""
     if len(a["rows"]) != len(b["rows"]):
         raise RuntimeError(f"{pair} N={ncell}: unequal step counts {len(a['rows'])} vs "
@@ -124,13 +124,24 @@ def compare(a, b, label_a, label_b, pair, ncell):
     t_end = _f(a["tok"]["END_TIME"])
     out = []
     ch_a, ch_b = core_hours(a), core_hours(b)
+    # maximum over time of the two parasitic-velocity norms (the well-balanced gate's
+    # read-out: the peak of a round-off-level signal, not its endpoint)
+    for m in ("meanMagUPrime", "l2MagUPrime"):
+        va = max(_f(r.get(m), 0.0) for r in a["rows"]); vb = max(_f(r.get(m), 0.0) for r in b["rows"])
+        out.append({"pair": pair, "N_CELLS": ncell, "source": source, "levels": levels,
+                    "t": "max_t", "metric": m, label_a: va, label_b: vb,
+                    "relDiff": ((va - vb) / abs(vb)) if vb else "", "steps": len(a["rows"]),
+                    "coreHours_" + label_a: ch_a if ch_a is not None else "",
+                    "coreHours_" + label_b: ch_b if ch_b is not None else "",
+                    "coreHoursRatio": (ch_b / ch_a) if (ch_a and ch_b) else ""})
     for t in (0.5 * t_end, t_end):
         ra, rb = at_time(a["rows"], t), at_time(b["rows"], t)
         if abs(_f(ra["TIME"]) - _f(rb["TIME"])) > 1e-9 * max(1.0, t):
             raise RuntimeError(f"{pair} N={ncell}: read-out instants differ at t={t}")
         for m in METRICS:
             va, vb = metric(ra, m, a["tok"]), metric(rb, m, b["tok"])
-            out.append({"pair": pair, "N_CELLS": ncell, "t": _f(ra["TIME"]), "metric": m,
+            out.append({"pair": pair, "N_CELLS": ncell, "source": source, "levels": levels,
+                        "t": _f(ra["TIME"]), "metric": m,
                         label_a: va, label_b: vb,
                         "relDiff": ((va - vb) / abs(vb)) if (va is not None and vb) else "",
                         "steps": len(a["rows"]),
@@ -185,7 +196,7 @@ def main():
                 continue
             la = "refined" if kind == "pair" else f"control_{ka[1]}_L{ka[2]}"
             lb = "uniform" if kind == "pair" else "refined"
-            rows.extend(compare(arm_a, arm_b, la, lb, spec, n))
+            rows.extend(compare(arm_a, arm_b, la, lb, spec, n, ka[1], ka[2]))
 
     # orders per ladder (only complete arms; needs >= 2 of them)
     for study, arms in sorted(ladders.items()):

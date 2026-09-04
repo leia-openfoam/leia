@@ -263,7 +263,7 @@ drivers over existing OpenFOAM/leia/cfMesh apps, called from the `mesh` rule
     workflow/scripts/leiaRefinePolyMesh.py   pMesh, then REFINE_LEVELS passes of
                                              [0/ := 0.org; leiaSetFields; psi = 0
                                              iso-surface as STL; pMesh with
-                                             surfaceMeshRefinement { cellSize h/2^i;
+                                             surfaceMeshRefinement { additionalRefinementLevels i;
                                              refinementThickness REFINE_BAND_CELLS*h }]
                                              (cfMesh has no in-place refiner: re-meshed)
     workflow/scripts/leia_refine.py          shared: runner, 0/ reset, ascii readers,

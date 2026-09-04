@@ -130,13 +130,26 @@ _UNIFORM_LIST = re.compile(r"(\d+)\s*\{\s*(-?[\d.eE+-]+)\s*\}")
 
 
 def n_cells(case):
-    """Cell count from the owner file's header note, never from a log."""
-    with open(os.path.join(case, "constant", "polyMesh", "owner"), "rb") as fh:
+    """Cell count of the CURRENT mesh, never from a log.
+
+    blockMesh and refineHexMesh write `note "nCells:..."` into the owner header;
+    cfMesh's pMesh does not. The fallback reads the owner list itself and returns
+    max(owner) + 1, which is exact for any mesh in which every cell owns a face (all
+    OpenFOAM meshes) and cannot be confused by a stale field of another mesh."""
+    path = os.path.join(case, "constant", "polyMesh", "owner")
+    with open(path, "rb") as fh:
         head = fh.read(4096).decode(errors="replace")
     m = _NCELLS.search(head)
+    if m:
+        return int(m.group(1))
+    with open(path) as fh:
+        text = fh.read()
+    _assert_ascii(text, path)
+    body = _strip_comments(text[text.index("}") + 1:])
+    m = re.search(r"(\d+)\s*\(", body)
     if not m:
-        raise RuntimeError("nCells not found in the constant/polyMesh/owner header")
-    return int(m.group(1))
+        raise RuntimeError(f"cannot read the owner list in {path}")
+    return max(int(v) for v in _list_after(body, m.end() - 1)) + 1
 
 
 def _strip_comments(text):
@@ -336,9 +349,25 @@ def band_check(case, mode, band_cells, alpha_name="alpha.water", toks=None,
     coarse_psi = [abs(psi[i]) for i in range(n) if not fine[i]]
     min_psi_over_h = (min(coarse_psi) / h_fine) if coarse_psi else float("inf")
     fine_layers = min_psi_over_h - 1.0     # complete fine layers at the worst point
+    # how far the fine region reaches from the interface (its widest point), in fine
+    # cells -- the cost side of the band: hex ~ requested + 1, cfMesh grades further
+    fine_psi = [abs(psi[i]) for i in range(n) if fine[i]]
     res.update({"hFine": h_fine, "nFine": n_fine, "fracFine": n_fine / n,
                 "nBandOutsideFine": n_band_outside, "minPsiOverHfine": min_psi_over_h,
-                "fineLayersWorst": fine_layers})
+                "fineLayersWorst": fine_layers,
+                "fineExtentOverHfine": (max(fine_psi) / h_fine) if fine_psi else 0.0})
+    # Where the grading ends, without a size threshold: median cell size in bands of
+    # distance from the interface (in fine cells). On a cfMesh mesh the dual cells of one
+    # octree level scatter in size, so a single fine/coarse split over-counts "fine"
+    # cells far away; this profile is the honest picture for both mesh kinds.
+    edges = [0, 3, 6, 9, 12, 18, 24, 36, 48, 72, 1e9]
+    prof = []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        vals = sorted(size[i] for i in range(n) if lo <= abs(psi[i]) / h_fine < hi)
+        if vals:
+            tag = f"{lo:g}-{hi:g}" if hi < 1e8 else f"{lo:g}+"
+            prof.append(f"{tag}:{_median(vals) / h_fine:.2f}")
+    res["sizeProfileOverHfine"] = " ".join(prof)
 
     # The dt handle: N_CELLS must encode the FINE spacing (hex) / be pinned to
     # the measured fine spacing (poly).

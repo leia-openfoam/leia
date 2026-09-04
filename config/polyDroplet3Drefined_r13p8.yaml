@@ -3,9 +3,13 @@
 #
 # Driver workflow/scripts/leiaRefinePolyMesh.py: pMesh at MAX_CELL_SIZE 2.0e-4 (pass 0),
 # then REFINE_LEVELS = 1 pass of [0/ := 0.org; leiaSetFields; psi = 0 iso-surface as
-# STL; pMesh with surfaceMeshRefinement { cellSize 1.0e-4; refinementThickness 6 x 1.0e-4 }],
-# then leiaSetFields on the final mesh. cfMesh has no in-place refiner, so the criterion
-# is geometric and the mesh is regenerated.
+# STL; pMesh with surfaceMeshRefinement { additionalRefinementLevels 1;
+# refinementThickness 6 x 1.0e-4 }], then leiaSetFields on the final mesh. cfMesh has no
+# in-place refiner, so the criterion is geometric and the mesh is regenerated. MEASURED on
+# the R/h = 10 smoke mesh (2026-09-04): a cellSize request of half the base produced cells
+# TWO octree levels finer (2.98e-5 for 7.5e-5 asked, 6x the cells), hence the integer
+# level; and cfMesh grades beyond the thickness (11.8 complete fine layers for 6 asked,
+# 1.78x the coarse cell count at one level).
 #
 # N_CELLS PIN (P0). cfMesh realises 0.63-0.76 x the requested size, so the driver measures
 # the fine spacing on the BUILT mesh and prints N_CELLS_suggested; the first render is the

@@ -14,8 +14,10 @@ loop, per pass i = 1..N, with h_i = MAX_CELL_SIZE / 2^i:
         postProcess -func isoInterface -time 0
                                            (2) the psi = 0 iso-surface as STL
                                                -> constant/triSurface/interface_pass<i>.stl
-        system/meshDict += surfaceMeshRefinement { interface {
-            surfaceFile; cellSize h_i; refinementThickness bandCells*h_i } }
+        system/meshDict += surfaceMeshRefinement { interface { surfaceFile;
+            additionalRefinementLevels i; refinementThickness bandCells*h_i } }
+            (--size-mode cellSize asks for h_i instead; MEASURED: cfMesh rounded a
+            cellSize of half the base to TWO octree levels, so levels is the default)
         pMesh                              (3) the graded mesh, regenerated
     0/ := 0.org ; leiaSetFields            the FINAL fields: cfMesh has no fields, and
                                            nothing is ever mapped
@@ -25,7 +27,10 @@ loop, per pass i = 1..N, with h_i = MAX_CELL_SIZE / 2^i:
 The iso-surface extracted from mesh i-1 is faceted to within h_{i-1} = 2 h_i; the
 thickness bandCells*h_i (6 h_i by default) covers that error, and pass i+1
 re-extracts it from the finer psi. REFINE_LEVELS therefore means the same as for
-hex: the near-interface cell size is halved N times.
+hex: the near-interface cell size is halved N times. cfMesh grades beyond the
+requested thickness (measured: 11.8 complete fine layers for 6 requested at one
+level, 1.78x the coarse cell count) -- a cost the band check reports as
+fineExtentOverHfine, not a defect.
 
 N_CELLS IS THE CAPILLARY-dt HANDLE and cfMesh's realised cell size is 0.63-0.76 x
 the requested one, so the band check measures the fine spacing on the BUILT mesh
@@ -73,13 +78,13 @@ surfaces
 """
 
 REFINEMENT_BLOCK = """{begin}
-// pass {pass_}: cellSize = MAX_CELL_SIZE / 2^{pass_}, refinementThickness = {band} x cellSize
+// pass {pass_}: {size_comment}, refinementThickness = {band} x (MAX_CELL_SIZE / 2^{pass_})
 surfaceMeshRefinement
 {{
     interface
     {{
         surfaceFile         "{stl}";
-        cellSize            {cell_size:.10g};
+        {size_entry}
         refinementThickness {thickness:.10g};
     }}
 }}
@@ -97,12 +102,21 @@ def strip_marked(text):
     return text
 
 
-def set_mesh_dict_refinement(case, pass_, stl_rel, cell_size, thickness, band):
+def set_mesh_dict_refinement(case, pass_, stl_rel, cell_size, thickness, band, size_mode):
     path = os.path.join(case, "system", "meshDict")
     with open(path) as fh:
         text = strip_marked(fh.read())
+    if size_mode == "levels":
+        # cfMesh refines in whole octree levels; asking for the integer directly is what
+        # REFINE_LEVELS means and avoids the mesher's own rounding of a cellSize.
+        size_entry = f"additionalRefinementLevels {pass_};"
+        size_comment = f"additionalRefinementLevels = {pass_} (one octree level per pass)"
+    else:
+        size_entry = f"cellSize            {cell_size:.10g};"
+        size_comment = f"cellSize = MAX_CELL_SIZE / 2^{pass_} = {cell_size:.6g}"
     block = REFINEMENT_BLOCK.format(begin=MARK_BEGIN, end=MARK_END, pass_=pass_, band=band,
-                                    stl=stl_rel, cell_size=cell_size, thickness=thickness)
+                                    stl=stl_rel, size_entry=size_entry, size_comment=size_comment,
+                                    thickness=thickness)
     tail_marker = "// *****"
     i = text.rfind(tail_marker)
     text = (text[:i] + block + "\n" + text[i:]) if i >= 0 else (text.rstrip("\n") + "\n\n" + block)
@@ -156,6 +170,9 @@ def main(argv=None):
     ap.add_argument("--band-cells", type=int,
                     help="refinement thickness in fine cells each side (REFINE_BAND_CELLS)")
     ap.add_argument("--max-cell-size", type=float, help="pass-0 cell size (MAX_CELL_SIZE)")
+    ap.add_argument("--size-mode", choices=("levels", "cellSize"), default="levels",
+                    help="how the near-interface size is requested from cfMesh: whole octree "
+                         "levels (default; what REFINE_LEVELS means) or a cellSize the mesher rounds")
     ap.add_argument("--setfields", default=None,
                     help='field initialiser command, e.g. "leiaSetFields -alphaName alpha.water"')
     ap.add_argument("--alpha-name", default=None)
@@ -196,7 +213,7 @@ def main(argv=None):
         stl_rel = extract_interface(case, i, dry)
         cell_size = mcs / 2 ** i
         thickness = band_cells * cell_size
-        set_mesh_dict_refinement(case, i, stl_rel, cell_size, thickness, band_cells)
+        set_mesh_dict_refinement(case, i, stl_rel, cell_size, thickness, band_cells, a.size_mode)
         lr.run("pMesh", f"log.pMesh.pass{i}", case, dry)
         after = lr.n_cells(case) if not dry else -1
         lr.say(f"pass {i}: {before} -> {after} cells, cellSize {cell_size:g}, "
@@ -216,6 +233,7 @@ def main(argv=None):
                         allow_pin_mismatch=a.allow_pin_mismatch)
     res.update(lr.checkmesh_stats(os.path.join(case, "log.checkMesh")))
     res["levels"] = levels
+    res["sizeMode"] = a.size_mode
     res["maxCellSize"] = mcs
     res["cellSizeRequested"] = mcs / 2 ** levels
     lr.write_csv(os.path.join(case, "refinement.csv"), rows)

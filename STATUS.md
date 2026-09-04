@@ -1162,6 +1162,44 @@ meaningless table. It surfaced only because materialization reported
 axis expands to 2, the arms differ, and the cellCentred arm is BYTE-IDENTICAL to
 the pre-change run.
 
+### DECIDED: hanging nodes do not break the balanced force -- the constant-curvature gate (2026-09-04)
+
+The objection `stationaryDroplet3Dwide` raised against octree refinement (w = 1/2 broken
+at 2:1 transition faces, so the potential-form identity and the exact absorption of a
+uniform kappa no longer hold) was put to the measurement it asked for:
+`constantCurvatureSurfaceTension` with kappa = 2/R = 2000 on the refined N_fine = 60
+meshes (interface band 51 640 cells / 1 688 transition polyhedra; ball control 48 784)
+and on the uniform N = 60 mesh (216 000), 921 steps to t = 0.01, np 4 (+ np 1 for the
+band). Read out with `make_refined_equivalence_table.py` (`max_t` rows and t = T):
+
+| arm | ranks | max_t mean\|u\| | max_t L2\|u\| | mean\|u\|(T) | L2\|u\|(T) | Laplace jump |
+|---|---|---|---|---|---|---|
+| refined, interface band | 4 | 3.1e-10 | 3.8e-10 | 2.2e-11 | 1.3e-10 | 145.470 |
+| refined, ball control | 4 | 3.5e-10 | 4.0e-10 | 2.3e-11 | 1.8e-10 | 145.470 |
+| refined, interface band | 1 | 4.6e-10 | 5.3e-10 | 2.0e-11 | 1.4e-10 | 145.470 |
+| uniform N = 60 | 4 | 7.2e-10 | 8.2e-10 | 3.7e-12 | 6.0e-12 | 145.470 |
+
+Same Laplace jump to the digit (exact 145.48 Pa, -6.9e-5 relative) on refined and
+uniform meshes; the spurious velocity is at the pressure solver's round-off floor in
+every arm -- the refined PEAKS are below the uniform peak, the refined ENDPOINTS
+(1.3-1.8e-10 m/s) are above the uniform's decayed 6e-12 -- all five orders below the
+parasitic currents the real curvature produces on these meshes (~1e-5 m/s). The
+pre-registered falsification (refined > 1e-9 while uniform at round-off) did NOT occur.
+**I mis-set the pass line**: 1e-12 at every step is below the solver's floor and no arm
+reaches it, uniform included; the decision rests on refined-vs-uniform, which was the
+falsifiable half. Volume, shape and kErrL2Band agree to 1.2 % (the shape difference is the
+initial discretisation of the sphere on two meshes). Consequence: the hex route proceeds
+to the production-force ladder (G3/G4); the octree rejection in
+`config/stationaryDroplet3Dwide.yaml` and in section 4 below is AMENDED by this block --
+equal cost was its other argument, and at 4.2x fewer cells that one is gone too.
+
+**G1 on this gate is blind by construction** (every dynamic column is round-off, so np 1
+vs np 4 differ in reduction order only; the Laplace jump and the geometric metrics agree).
+The decomposition test with the PRODUCTION force runs now on the laptop:
+`stationaryDroplet3DrefinedGate4` (np 4) vs `stationaryDroplet3DrefinedGate1` (np 1),
+same refined mesh, 921 steps; PASS = `compare_metrics_csv.py` within 1e-10 relative in
+every column at every step.
+
 ### RUNNING: static local refinement around the interface (2026-09-04)
 
 **Why.** R/h >= 10 on a uniform 3D mesh costs 216k (hex, N = 60) to 3.6M (poly,
@@ -1205,13 +1243,37 @@ gate: `constantCurvatureSurfaceTension` with kappa = 2/R = 2000 on the refined m
 (interface band, ball control), its serial twin (np 1 vs np 4) and the uniform N = 60
 control. Pre-registered: refined arms at the uniform arm's round-off floor -> the
 objection is answered; > 1e-9 m/s while uniform is at round-off -> it stands, stop hex,
-go poly. First reading, interface arm step 732/921: mean|U| 7.9e-12, L2 4.7e-11 m/s --
-the uniform control's floor decides. Laptop chain: `refinedWB` -> `refinedWBserial` ->
-`uniformWB` (profiles/local8). Cluster GC: the same `refinedWB` as a `profiles/slurm`
-study, orchestrator **54477820** (`.my_jobs`), to prove the serial `mesh` job runs the
-driver on a compute node.
+go poly. Refined arms LANDED (laptop, np 4, 921 steps each): interface band max over
+time mean|U'| 3.1e-10, L2 3.8e-10 m/s; ball control 3.5e-10 / 4.0e-10; Laplace jump
+145.470 Pa against the exact 145.48. Round-off scale, above the pre-registered 1e-12 --
+the uniform control's floor decides whether that is the pressure solver's floor or the
+mesh. Laptop chain: `refinedWB` -> `refinedWBserial` -> `uniformWB` (profiles/local8).
+**GC PASSED**: the same `refinedWB` ran as a `profiles/slurm` study (orchestrator
+54477820, solves 54477827/28 in `.my_jobs`): the driver built both meshes in the serial
+`case_pre` job with exactly the laptop's statistics, and the cluster solver CSVs are
+cmp-IDENTICAL to the laptop's -- every one of 66 columns at every one of 921 steps
+(`workflow/scripts/compare_metrics_csv.py`).
 
-**Then (in order).** G3/G4 on the cluster: `stationaryDroplet3Drefined` (fine N =
+**P0 (polyhedral driver) smoke, laptop, `polySmoke3D` box at maxCellSize 1.5e-4.** The
+loop runs end to end: iso-surface STL (4846 facets) from the coarse psi, cfMesh
+`surfaceMeshRefinement` around it, re-initialised fields, band check PASS. Two things
+MEASURED that the plan had assumed: (1) a `cellSize` request of half the base gave cells
+TWO octree levels finer (2.98e-5 for 7.5e-5 asked) and 6x the cells -- cfMesh rounds a
+size to its octree -- so the driver now requests whole levels
+(`additionalRefinementLevels`, the meaning of REFINE_LEVELS): 190 243 -> 337 907 cells
+(1.78x), interface cells at 5.95e-5 = one level below the 1.04e-4 base; (2) cfMesh
+grades beyond the requested thickness: 11.8 complete fine layers for 6 asked. The size
+profile vs distance (`sizeProfileOverHfine` in refinedBand.csv) is the honest picture
+on polyhedra, where one octree level's dual cells scatter in size: median size in fine
+cells, by distance from the interface in fine cells, `0-18: 1.00 | 18-24: 1.56 |
+24-48: 2.0 | 48-72: 1.03` -- fine out to 18 for 7.6 requested, the base level beyond,
+and fine AGAIN at the box edges and corners: cfMesh's feature refinement of the domain
+boundary, present in every pMesh mesh including the uniform rungs (hex, for comparison:
+`0-9: 1.00 | 9+: 2.00`, exactly the requested band). N_CELLS for a polyRefined study is
+pinned from the built mesh (`N_CELLS_suggested`), as for the uniform rungs.
+
+**Then (in order) -- SUBMITTED 2026-09-04 evening after the gate above, orchestrator ids
+in `.my_jobs`.** G3/G4 on the cluster: `stationaryDroplet3Drefined` (fine N =
 60/76/96/120, one level), controls `refinedL2` (two levels at 120) and `refinedBall`,
 uniform twins `stationaryDroplet3Duniform` (60/76/96, RE-RUN on the current code -- the
 wide ladder was filtered and predates alg_lin) and `uniform120` (1.73M cells, ~90
@@ -1242,6 +1304,7 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 | DONE | **filterOffAmplifier3D** 4/4, **upwindConvection2D** 8/8, **upwindConvection3D** 4/4, **filterThetaScaling3D** 6/6 — all analysed, section 4. | — | `studies/*/` |
 | DONE | **stationaryDroplet3Dwide**, **cellCentreInverseFiltered512**, **domainSizeControl10R/6R/4R**, **psiOuterCorrectorsGain3D**, **ddtOrderGain3D** | — | `studies/*/` |
 | `54477820` `leia-curv` `long` | **stationaryDroplet3DrefinedWB** GC (2026-09-04): the static-refinement mesh rule as a serial `case_pre` job + the constant-curvature well-balanced gate on the refined mesh, np 4, two arms x 921 steps. From `/work/scratch/tm83tomy/leia-curvature`. | 7 d (orchestrator) | `studies/stationaryDroplet3DrefinedWB/` |
+| `54477891`-`54477895` `leia-curv` | **static-refinement ladder** (2026-09-04 evening, submitted after the hanging-node gate passed): orchestrators for `stationaryDroplet3Drefined` (fine N = 60/76/96/120, np 8), `stationaryDroplet3DrefinedL2`, `stationaryDroplet3DrefinedBall` (controls at 120), `stationaryDroplet3Duniform` (60/76/96, np 32) and `stationaryDroplet3Duniform120` (1.73M cells, np 64, ~90 core-h). Read with `make_refined_equivalence_table.py` when ALL arms of a pair are complete -- never before. | 7 d (orchestrators) | `studies/stationaryDroplet3D{refined*,uniform*}/` |
 | running | **polyDroplet3D_r18p9** (1.46M cells, np 32) at t = 0.0171 / 0.025 and **polyDroplet3D_r25p6** (3.6M, np 64) at t = 0.0054 / 0.025; **polyDroplet3D_r13p8** DONE (3813 steps, section 4). | 23 h | `studies/polyDroplet3D_*/` |
 
 Not from this work, do not cancel: the SDPLS session's jobs in
