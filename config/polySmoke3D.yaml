@@ -1,0 +1,27 @@
+# 4-RANK SMOKE TEST for the polyhedral 3D stationary droplet on the current code.
+# Coarse on purpose (maxCellSize 1.5e-4, ~50k polyhedra): this gates the CHAIN -- cfMesh,
+# decomposition, the explicit DNS viscous term, alg_lin face viscosity -- not the physics.
+# 60 steps. The resolution study is polyDroplet3Dr*_v2.
+study_name: polySmoke3D
+case: stationaryDroplet3D
+mesh: poly
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 120
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [40]
+  MAX_CELL_SIZE: [1.5e-4]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  END_TIME: [0.0015]
+  WRITE_INTERVAL: [0.0015]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

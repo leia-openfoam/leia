@@ -131,6 +131,17 @@
     row("massFlux alpha_f source",
         get(mfD, "alphaFSource",
             get(mfD, "faceInterpolation", "donorPlane (default)")));
+    // Face dynamic viscosity for the viscous term. Printed because it is a MODEL CHOICE
+    // that changes the answer -- the six values differ by up to a factor of two in L1 and
+    // by their convergence order -- and because the legacy names still parse, so a run
+    // must state which of the six it actually used rather than which token was written.
+    {
+        word vfm = mfD.getOrDefault<word>("viscosityFaceModel", "alg_lin (default)");
+        if (vfm == "interpolated")           vfm = "alg_lin (legacy 'interpolated')";
+        else if (vfm == "geometric")         vfm = "geo_lin (legacy 'geometric')";
+        else if (vfm == "geometricHarmonic") vfm = "geo_harm (legacy 'geometricHarmonic')";
+        row("viscosity face model", vfm);
+    }
     row("rho1 / rho2",  Foam::name(r1) + " / " + Foam::name(r2));
     row("DENSITY RATIO", Foam::name(r1/Foam::max(r2, VSMALL)));
     // sigma is read straight from transportProperties: the mixture class
