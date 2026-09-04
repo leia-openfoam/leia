@@ -1225,6 +1225,38 @@ detectable. G1 PASSED on the refined mesh with the production force. (Aside wort
 keeping: the UNIFORM pair's 1.2 % shape difference is the metric's own decomposition
 sensitivity -- zeroSetRadialL2 is crossing-count weighted -- not the flow's.)
 
+### DECIDED: static refinement around the interface is equivalent to the uniform mesh at matched h (2026-09-04, evening)
+
+The production-force ladder is complete, four rungs, refined vs uniform at matched fine
+spacing, capillary dt and step count on the 6R box (`stationaryDroplet3Drefined` vs
+`stationaryDroplet3Duniform` + `uniform120`; `make_refined_equivalence_table.py`):
+
+| N_fine (R/h) | cells refined / uniform | steps | peak L1 / L2 | L1 / L2 at T | volume | shape | Laplace jump | kErrL2Band | A2h | core-h refined / uniform |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 60 (10) | 51 640 / 216 000 | 2302 | -0.18 % / -0.01 % | +3.9 % / +0.13 % | -0.24 % | +0.91 % | +1e-4 | -0.13 % | 0 | 1.2 / 4.1 (3.4x) |
+| 76 (12.7) | 91 944 / 438 976 | 3281 | -0.20 % / -0.02 % | +3.8 % / +0.33 % | -0.37 % | -0.37 % | -1e-4 | +0.15 % | 0 | 2.7 / 10.6 (4.0x) |
+| 96 (16) | 169 000 / 884 736 | 4659 | -0.17 % / -0.02 % | -2.4 % / -0.21 % | -0.11 % | +0.93 % | +1e-4 | -0.36 % | 0 | 7.0 / 25.1 (3.6x) |
+| 120 (20) | 289 808 / 1 728 000 | 6511 | -0.20 % / -0.08 % | -0.79 % / -0.54 % | +1.7 % | +0.13 % | 0 | +0.11 % | 0 | 14.1 / 97.3 (6.9x) |
+| 120, two levels | 125 448 / 1 728 000 | 6511 | -0.4 % / -0.09 % | -0.9 % / -0.6 % | +1.8 % | +0.65 % | +2e-4 | -0.6 % | 0 | 7.3 / 97.3 (**13.4x**) |
+
+Pre-registered tolerances (10 % velocity L1/L2, 5 % volume/shape/kappa/A2h, 1 % Laplace jump)
+met at every rung. Fitted orders at t = T over the four rungs, refined vs uniform
+(`refined_convergence_orders.tex`): shape **2.08 / 2.08** (R 1.000), Laplace jump 2.30 / 2.30
+(0.998), kErrL2Band 1.80 / 1.80 (0.999), A2hL2Band 1.99 / 1.99 (1.000), volume 2.45 / 2.48
+(R 0.76, non-monotone), parasitic velocity at T **-1.03 / -1.12 (L1), -0.79 / -0.80 (L2)** --
+never more than 0.09 apart (pre-registered +-0.3). The negative velocity order is the
+uniform ladder's own: the end-of-run currents grow with refinement (the campaign's open
+defect), and the refined mesh reproduces it as faithfully as the convergent metrics; the PEAK
+currents converge at 2.2 (L1) / 2.15 (L2) on both meshes. The two-level control matches the
+one-level N = 120 arm to 0.2 % (peaks) and <= 0.8 % (T) at half its cost. The ball control
+is still running (below). **The octree rejection of `stationaryDroplet3Dwide` is retracted in
+full**: its hanging-node argument fell to the constant-curvature gate, its equal-cost
+argument to 3.4-13.4x.
+
+Where the CPU went: refined ladder 25 core-h + two-level 7 core-h against 137 core-h for the
+uniform twins, on the same commit (`b72c7ef` stamps; drivers on disk `24223a2`, identical for
+hex).
+
 ### RUNNING: static local refinement around the interface (2026-09-04)
 
 **Why.** R/h >= 10 on a uniform 3D mesh costs 216k (hex, N = 60) to 3.6M (poly,

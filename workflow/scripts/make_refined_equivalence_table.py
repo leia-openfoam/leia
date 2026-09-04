@@ -40,6 +40,9 @@ DEFAULT_CONTROLS = ("stationaryDroplet3DrefinedL2:stationaryDroplet3Drefined",
                     "stationaryDroplet3DrefinedBall:stationaryDroplet3Drefined")
 METRICS = ("meanMagUPrime", "l2MagUPrime", "phaseVolumeRelError", "zeroSetRadialL2",
            "pLaplaceRelError", "kErrL2Band", "A2hL2Band")
+# Studies that are rungs of the SAME ladder for the order fit (the N = 120 uniform twin runs
+# as its own study because it needs np 64 and ~90 core-hours; it is the fourth uniform rung).
+LADDER_ALIASES = {"stationaryDroplet3Duniform120": "stationaryDroplet3Duniform"}
 
 
 def _f(x, default=None):
@@ -180,8 +183,9 @@ def main():
         left, right = spec.split(":")
         A, B = load_arms(a.root, left), load_arms(a.root, right)
         if kind == "pair":
-            ladders.setdefault(left, {}).update({k: v for k, v in A.items() if k[1] == "interface"})
-            ladders.setdefault(right, {}).update(B)
+            ladders.setdefault(LADDER_ALIASES.get(left, left), {}).update(
+                {k: v for k, v in A.items() if k[1] == "interface"})
+            ladders.setdefault(LADDER_ALIASES.get(right, right), {}).update(B)
         for ka, arm_a in sorted(A.items()):
             n = ka[0]
             # a control is matched with the interface, one-level ladder arm at the same N
