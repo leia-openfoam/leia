@@ -1,0 +1,46 @@
+# UNIFORM CONTROL for the real-force decomposition test, parallel.
+#
+# config/stationaryDroplet3DrefinedGate1 vs Gate4 (production force, refined N_fine = 60 mesh,
+# 921 steps) agree to 1.7e-4 (mean|u'|), 5.8e-5 (L2|u'|), 3.6e-4 (volume), 7.9e-4 (shape),
+# 1.6e-8 (Laplace jump) relative at t = 0.01, and to four digits in the maxima over time --
+# NOT the 1e-10 the gate had pre-registered. That tolerance was unattainable by construction:
+# the pressure solve converges to a RELATIVE tolerance and its GAMG agglomeration depends on
+# the decomposition, and this repository has already measured a 30x tighter pressure solve to
+# move these metrics by 2.4e-4 relative (CLAUDE.md, "Solver convergence in a
+# cancellation-dominated problem"). Whether 1e-4 is that solver-level dependence or something
+# the transition polyhedra add is decided HERE: the same np 1 / np 4 pair on the UNIFORM
+# N = 60 mesh (216 000 cells, no hanging nodes), to t = 0.003 (277 steps; the refined pair is
+# read at the same instant). PASS = the uniform pair's relative differences are of the same
+# order as the refined pair's at t = 0.003; a refined pair 10x or more apart from the uniform
+# pair is a decomposition defect on the refined mesh.
+study_name: stationaryDroplet3DuniformGate4
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60]
+  END_TIME: [0.003]
+  WRITE_INTERVAL: [0.003]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

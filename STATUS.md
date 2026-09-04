@@ -1195,10 +1195,23 @@ equal cost was its other argument, and at 4.2x fewer cells that one is gone too.
 
 **G1 on this gate is blind by construction** (every dynamic column is round-off, so np 1
 vs np 4 differ in reduction order only; the Laplace jump and the geometric metrics agree).
-The decomposition test with the PRODUCTION force runs now on the laptop:
+The decomposition test with the PRODUCTION force ran on the laptop:
 `stationaryDroplet3DrefinedGate4` (np 4) vs `stationaryDroplet3DrefinedGate1` (np 1),
-same refined mesh, 921 steps; PASS = `compare_metrics_csv.py` within 1e-10 relative in
-every column at every step.
+same refined mesh, 921 steps each, both COMPLETED. **Not the 1e-10 I pre-registered**:
+at t = 0.01 the two agree to 1.7e-4 (mean|u'|, 2.838e-6 m/s), 5.8e-5 (L2|u'|, 1.172e-5),
+3.6e-4 (volume error 2.167e-6), 7.9e-4 (shape 5.50e-7 m), 1.6e-8 (Laplace jump
+145.628 Pa), 1.9e-4 (kErrL2Band) relative, and to four digits in the maxima over time
+(1.657e-5 / 5.655e-5 m/s). That tolerance was unattainable by construction -- the
+pressure solve converges to a RELATIVE tolerance and GAMG's agglomeration depends on the
+decomposition -- and this repository has already measured a 30x tighter pressure solve to
+move exactly these metrics by 2.4e-4 relative (CLAUDE.md, cancellation-dominated
+problem). So 1e-4 is the solver's decomposition dependence, PROBABLY; the yardstick that
+turns that into a verdict is the same np 1 / np 4 pair on the UNIFORM N = 60 mesh, running
+now to t = 0.003 (`stationaryDroplet3DuniformGate4/Gate1`): PASS = the uniform pair's
+relative differences are of the same order as the refined pair's at t = 0.003; a refined
+pair 10x or more apart is a defect at the transition polyhedra. Second mis-set threshold
+of the day, same cause: I wrote round-off-level lines for quantities the linear solver
+limits at its tolerance.
 
 ### RUNNING: static local refinement around the interface (2026-09-04)
 
@@ -1271,6 +1284,27 @@ and fine AGAIN at the box edges and corners: cfMesh's feature refinement of the 
 boundary, present in every pMesh mesh including the uniform rungs (hex, for comparison:
 `0-9: 1.00 | 9+: 2.00`, exactly the requested band). N_CELLS for a polyRefined study is
 pinned from the built mesh (`N_CELLS_suggested`), as for the uniform rungs.
+
+**First production-force pair LANDED (cluster, N_fine = 60, refined np 8 vs uniform np 32,
+2302 steps each, t = 0.025).** Read with `make_refined_equivalence_table.py`:
+
+| metric | t | refined | uniform | rel. diff | pre-registered |
+|---|---|---|---|---|---|
+| max_t mean\|u'\| | -- | 1.657e-5 | 1.660e-5 | -0.18 % | 10 % |
+| max_t L2\|u'\| | -- | 5.655e-5 | 5.656e-5 | -0.013 % | 10 % |
+| mean\|u'\| | 0.0125 / 0.025 | 9.10e-7 / 2.59e-7 | 9.10e-7 / 2.49e-7 | +0.011 % / +3.9 % | 10 % |
+| L2\|u'\| | 0.0125 / 0.025 | 4.626e-6 / 1.155e-6 | 4.626e-6 / 1.154e-6 | -0.013 % / +0.13 % | 10 % |
+| volume error | 0.0125 / 0.025 | 2.438e-6 / 6.19e-7 | 2.438e-6 / 6.21e-7 | +0.012 % / -0.24 % | 5 % |
+| shape (zeroSetRadialL2, m) | 0.0125 / 0.025 | 5.45e-7 / 5.47e-7 | 5.41e-7 / 5.42e-7 | +0.81 % / +0.91 % | 5 % |
+| Laplace jump rel. error | 0.025 | 1.010e-3 | 1.010e-3 | +1.4e-4 | 1 % |
+| kErrL2Band | 0.025 | 2.200 | 2.203 | -0.13 % | 5 % |
+| A2hL2Band | 0.025 | 8.073e-7 | 8.073e-7 | ~1e-6 | 5 % |
+| core-hours | -- | 1.22 | 4.12 | 3.4x cheaper | recorded |
+
+Every metric of the vector inside its tolerance; the two meshes are equivalent to the
+level at which two DECOMPOSITIONS of the same mesh differ (1e-4, see G1 above -- refined
+at np 8 against uniform at np 32 sits at exactly that level). Three more rungs and the
+controls are running; the ORDERS wait for all four.
 
 **Then (in order) -- SUBMITTED 2026-09-04 evening after the gate above, orchestrator ids
 in `.my_jobs`.** G3/G4 on the cluster: `stationaryDroplet3Drefined` (fine N =
