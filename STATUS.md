@@ -1365,9 +1365,24 @@ P0-P2 for `polyDroplet3Drefined_r13p8`. Curation:
 (572k cells, N_CELLS 84) COMPLETED its 3813 steps to t = 0.025 without blow-up:
 mean|U'| 7.5e-6, L2|U'| 3.1e-5 m/s, volume error 2.6e-6, shape (zeroSetRadialL2)
 4.9e-7 m = R/2060, Laplace jump 145.546 Pa against the exact 145.48 (+0.045 %),
-kErrL2Band 1.68 of 2000 (0.08 %), min|grad psi| 0.997. `r18p9` at t = 0.0171 of 0.025
-(mean 1.5e-5, L2 5.3e-5) and `r25p6` at t = 0.0054 (mean 1.3e-6, L2 5.7e-6) are still
-running -- compare at EQUAL time when they land, not at their current endpoints.
+kErrL2Band 1.68 of 2000 (0.08 %), min|grad psi| 0.997.
+
+**`r18p9` LANDED (6028 steps to t = 0.025, no blow-up) -- and the finer polyhedral rung is
+WORSE in velocity and curvature while shape converges.** At the interface these rungs are
+R/h = 12.6 and 18.0 (measured, above). At t = 0.025: mean|u'| 7.5e-6 -> 3.5e-5 m/s
+(4.7x larger), L2|u'| 3.1e-5 -> 1.18e-4 (3.7x), kErrL2Band 1.68 -> 4.0 (2.4x), volume
+error 2.6e-6 -> 3.4e-6; shape 4.85e-7 -> 2.46e-7 (order 1.9) and A2hL2Band 4.6e-7 ->
+2.3e-7 (order 2.0) DO converge; Laplace jump 145.55 -> 145.53, min|grad psi| 0.997 ->
+0.998. The time series says why: on r13p8 L2|u'| sits at 2.0-2.6e-5 for the whole run and
+its L1 peaks (8.7e-6 at t = 0.02) then decays; on r18p9 both norms fall to a minimum near
+t = 0.005 (L2 9.6e-6) and then GROW exponentially to the end -- e-folding rate of L2|u'|
+over t = 0.0125-0.025: **29 1/s at R/h = 12.6, 124 1/s at R/h = 18.0** -- with kErrL2Band
+climbing 0.67 -> 4.0 alongside. This is the campaign's open defect (section 4: the hex
+ladders' growth rate rising 40 -> 52 -> 91 1/s under refinement, 'the 3D instability under
+refinement'), now measured on polyhedra with the production chain and no filter. `r25p6`
+(R/h = 25.2, 9651 steps) is at step 3393; the prediction that follows from these two rungs
+is a faster growth still, and possibly a blow-up before t = 0.025 -- to be read when it
+lands, not before. Compare rungs at EQUAL time only.
 
 ## 5. Lichtenberg — what is running
 
