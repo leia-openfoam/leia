@@ -307,7 +307,8 @@ Studies (each config header carries the pre-registered prediction and gate):
     snakemake --workflow-profile profiles/slurm --configfile config/polyDroplet3Drefined_r13p8.yaml
 
 Laptop poly meshes: cfMesh needs jemalloc preloaded on glibc 2.39, scoped to pMesh only
-(`LEIA_PMESH_PREFIX='env LD_PRELOAD=...'` in `env_preamble`; a global `LD_PRELOAD`
+(`LEIA_PMESH_PRELOAD=/path/libjemalloc.so.2` in `env_preamble`, a bare path because
+`--config` strips quotes; a global `LD_PRELOAD`
 segfaults the MPI solver at startup with an empty log -- measured).
 
 Curation: `make_refined_mesh_table.py` (refinement.csv + refinedBand.csv +
