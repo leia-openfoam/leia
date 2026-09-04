@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-02 (translating-droplet closed-box retraction).
+Last updated: 2026-09-04 (static local refinement around the interface: gates G-1/G0 passed, WB gate running; polyhedral 3D rung R/h = 13.8 completed).
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -260,6 +260,20 @@ velocity field.
 ---
 
 ## 1. What is being worked on
+
+**Since 2026-09-04: static local mesh refinement around the interface.** The 3D
+ladders are expensive because the whole 6R box carries the interface's cell size
+(572k / 1.46M / 3.6M polyhedra at R/h = 13.8 / 18.9 / 25.6). The method reads and
+writes the interface only in a narrow band, so the band is refined and the far field
+stays coarse -- as a PRE-PROCESSING step, the solver untouched:
+`workflow/scripts/leiaRefineHexMesh.py` (blockMesh + N passes of [0/ := 0.org;
+leiaSetFields; topoSet seed 0 < alpha < 1 + face dilations; refineHexMesh], then
+leiaSetFields on the final mesh) and `leiaRefinePolyMesh.py` (cfMesh re-meshed around
+the psi = 0 iso-surface). New mesh kinds `hexRefined | polyRefined`, tokens
+`REFINE_LEVELS / REFINE_BAND_CELLS / REFINE_SOURCE`, gates and configs in the
+"RUNNING: static local refinement" block of section 4. The question the campaign
+below left open -- the parasitic-current source and its amplifier -- is unchanged;
+refinement is what makes R/h >= 20 in 3D affordable, on hex first and then polyhedra.
 
 **Question:** where do the parasitic currents in the stationary-droplet test come
 from, in the combination `leiaSemiLagrangianLevelSetTwoPhaseFoam` (quadratic
@@ -1148,6 +1162,74 @@ meaningless table. It surfaced only because materialization reported
 axis expands to 2, the arms differ, and the cellCentred arm is BYTE-IDENTICAL to
 the pre-change run.
 
+### RUNNING: static local refinement around the interface (2026-09-04)
+
+**Why.** R/h >= 10 on a uniform 3D mesh costs 216k (hex, N = 60) to 3.6M (poly,
+R/h = 25.6) cells for a droplet that occupies 0.1 % of the box. The method touches the
+interface only in a band: the phase indicator fills `0 < alpha < 1` cells (layer 1),
+the capillary force acts on their faces (layer 2), each face curvature comes from a CPC
+fit reading one cell-point-cell ring (layer 3), one semi-Lagrangian step and the
+explicit viscous transpose term read one more (layer 4). **Four complete fine layers
+each side is the stencil minimum; `REFINE_BAND_CELLS 6` is the margin.**
+
+**Mechanism -- pre-processing only, solver untouched** (commit `ac77c4a`). Per pass:
+`0/ := 0.org` -> `leiaSetFields` -> `topoSet` (seed = cells with `0 < alpha < 1`,
+i.e. the `snGrad(alpha)` support, plus face dilations) -> `refineHexMesh refineCells
+-overwrite` (hexRef8; `cellLevel`/`pointLevel` PERSIST, so 2:1 holds across passes --
+OpenFOAM's plain `refineMesh` does not persist them and is never used). After the last
+pass `0/ := 0.org` -> `leiaSetFields` on the FINAL mesh: **nothing mapped survives**
+(a mapped alpha is a smeared alpha; verified `U`/`p_rgh` cmp-identical to `0.org`,
+`leiaSetFields` idempotent on the final mesh). Poly: cfMesh has no in-place refiner and
+v2512's only one (hexRef8) is hex-only, so `leiaRefinePolyMesh.py` re-meshes with the
+psi = 0 iso-surface (STL) as a `surfaceMeshRefinement` surface -- not yet exercised.
+
+**MEASURED, and it corrected the plan.** Face dilation is Manhattan growth: at N = 60,
+3 / 4 / 5 dilations leave **4.6 / 5.8 / 7.0** complete fine layers at the worst point
+(the sphere's diagonals), not the 6 / 8 / 10 an axis-aligned count predicts. The driver
+therefore adds dilations until the psi it already has on the current mesh proves
+`2|psi|/h - 1 >= REFINE_BAND_CELLS` for every unselected cell; psi verifies the width,
+the criterion stays the alpha seed. Interface band at N_fine = 60: 5 dilations,
+**51 640 cells against 216 000 uniform (4.2x)**, 6.97 layers, 1 688 transition
+polyhedra, max non-orthogonality 25.2 deg. Ball control (whole interior fine): 3
+dilations, 48 784 cells, 7.19 layers.
+
+**Gates passed (laptop).** G-1 render: five re-rendered studies differ only in two
+blockMeshDict comment lines, the new `curvature` entry (3D case) and the new tokens in
+`case_params.json`. G-1 run: uniform N = 30, 65 steps, HEAD vs new templates --
+**cmp-IDENTICAL** solver CSV. G0: both `refinedWB` arms PASS the band check, `N_CELLS`
+pin exact (the capillary dt handle MUST be the fine spacing; the check fails otherwise).
+
+**Running now.** The hanging-node question that `stationaryDroplet3Dwide` raised
+(w = 1/2 broken at transition faces) is answered by the constant-curvature well-balanced
+gate: `constantCurvatureSurfaceTension` with kappa = 2/R = 2000 on the refined mesh
+(interface band, ball control), its serial twin (np 1 vs np 4) and the uniform N = 60
+control. Pre-registered: refined arms at the uniform arm's round-off floor -> the
+objection is answered; > 1e-9 m/s while uniform is at round-off -> it stands, stop hex,
+go poly. First reading, interface arm step 732/921: mean|U| 7.9e-12, L2 4.7e-11 m/s --
+the uniform control's floor decides. Laptop chain: `refinedWB` -> `refinedWBserial` ->
+`uniformWB` (profiles/local8). Cluster GC: the same `refinedWB` as a `profiles/slurm`
+study, orchestrator **54477820** (`.my_jobs`), to prove the serial `mesh` job runs the
+driver on a compute node.
+
+**Then (in order).** G3/G4 on the cluster: `stationaryDroplet3Drefined` (fine N =
+60/76/96/120, one level), controls `refinedL2` (two levels at 120) and `refinedBall`,
+uniform twins `stationaryDroplet3Duniform` (60/76/96, RE-RUN on the current code -- the
+wide ladder was filtered and predates alg_lin) and `uniform120` (1.73M cells, ~90
+core-h, exactness over CPU hours). Pre-registered tolerances in the config headers:
+volume, shape, kErrL2Band, A2hL2Band within 5 %, pLaplace within 1 %, L1/L2 of |U|
+within 10 % with the same trend; orders within +-0.3 of the uniform ladder's. Then
+P0-P2 for `polyDroplet3Drefined_r13p8`. Curation:
+`make_refined_mesh_table.py`, `make_refined_equivalence_table.py`,
+`make_refined_mesh_fig.py`.
+
+**Polyhedral uniform ladder (the study this refinement work is for).** `polyDroplet3D_r13p8`
+(572k cells, N_CELLS 84) COMPLETED its 3813 steps to t = 0.025 without blow-up:
+mean|U'| 7.5e-6, L2|U'| 3.1e-5 m/s, volume error 2.6e-6, shape (zeroSetRadialL2)
+4.9e-7 m = R/2060, Laplace jump 145.546 Pa against the exact 145.48 (+0.045 %),
+kErrL2Band 1.68 of 2000 (0.08 %), min|grad psi| 0.997. `r18p9` at t = 0.0171 of 0.025
+(mean 1.5e-5, L2 5.3e-5) and `r25p6` at t = 0.0054 (mean 1.3e-6, L2 5.7e-6) are still
+running -- compare at EQUAL time when they land, not at their current endpoints.
+
 ## 5. Lichtenberg — what is running
 
 Login: `ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de`
@@ -1159,6 +1241,8 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 | `54354379` `leia-curv` `long` | **interFoamDroplet2D** — re-running the `N` = 512 arm only (the other three are complete at the full 0.1 s horizon with `interFoam.csv` present). 106689 steps at the measured 1.52 steps/s = ~19.5 h. Replaces the arm lost to the cleanup bug above. | 28 h | `studies/interFoamDroplet2D/` |
 | DONE | **filterOffAmplifier3D** 4/4, **upwindConvection2D** 8/8, **upwindConvection3D** 4/4, **filterThetaScaling3D** 6/6 — all analysed, section 4. | — | `studies/*/` |
 | DONE | **stationaryDroplet3Dwide**, **cellCentreInverseFiltered512**, **domainSizeControl10R/6R/4R**, **psiOuterCorrectorsGain3D**, **ddtOrderGain3D** | — | `studies/*/` |
+| `54477820` `leia-curv` `long` | **stationaryDroplet3DrefinedWB** GC (2026-09-04): the static-refinement mesh rule as a serial `case_pre` job + the constant-curvature well-balanced gate on the refined mesh, np 4, two arms x 921 steps. From `/work/scratch/tm83tomy/leia-curvature`. | 7 d (orchestrator) | `studies/stationaryDroplet3DrefinedWB/` |
+| running | **polyDroplet3D_r18p9** (1.46M cells, np 32) at t = 0.0171 / 0.025 and **polyDroplet3D_r25p6** (3.6M, np 64) at t = 0.0054 / 0.025; **polyDroplet3D_r13p8** DONE (3813 steps, section 4). | 23 h | `studies/polyDroplet3D_*/` |
 
 Not from this work, do not cancel: the SDPLS session's jobs in
 `/work/scratch/tm83tomy/leia` (`of-bo-cht-*`, `23fbd13d-*`, `leia-studies` on

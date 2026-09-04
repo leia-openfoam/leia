@@ -157,7 +157,10 @@ Strain~\cite{strain1999} brought the idea to level-set and Hamilton--Jacobi
 equations, using tree-based Cartesian grids and high-order interpolation at the
 departure point. Subsequent semi-Lagrangian level-set schemes have remained almost
 exclusively on structured or block-adaptive Cartesian meshes, where the
-departure-point interpolant is a tensor-product stencil. Interface transport on the
+departure-point interpolant is a tensor-product stencil (local refinement is
+available here as well, Section~\ref{sec:staticrefine}, but as a property of the
+mesh rather than of the scheme: the transition cells are ordinary polyhedra to the
+discretisation). Interface transport on the
 unstructured polyhedral meshes of industrial finite-volume practice has instead been
 dominated by geometric, flux-based volume-of-fluid and hybrid level-set/front-tracking
 methods~\cite{roenby2016,maric2020,maric2015lent}, which reconstruct and flux the
@@ -919,6 +922,114 @@ $\sigma\kappa\,\mathrm{snGrad}(\alpha)$ a discrete gradient that the pressure ab
 exactly, leaving zero spurious velocity; the parasitic currents that remain are set entirely
 by the \emph{variation} of the discrete curvature -- the curvature error -- not by any
 imbalance in the force discretisation (Section~\ref{sec:droplet}).
+
+\subsection{Local static refinement around the interface}
+\label{sec:staticrefine}
+A uniform mesh pays for the interface resolution everywhere. In three dimensions the
+droplet of Section~\ref{sec:droplet} occupies $0.1\%$ of the $6R$ box, yet $R/h=10$
+already costs $216\,000$ hexahedra and the polyhedral rungs of
+Section~\ref{sec:verification} $572\,000$ to $3.6\times10^6$ cells; $R/h=40$ would need
+$1.4\times10^7$. The method, however, reads and writes the interface only in a narrow
+band: the phase indicator fills the cells cut by the zero level set, the capillary force
+acts on their faces, the curvature is reconstructed from a compact stencil around them,
+and the far field carries a smooth pressure. We therefore refine a band around the
+interface once, before the run, and leave the far field coarse. The solver is not
+changed and neither is any entry of its level-set dictionary; the refined mesh is one
+more unstructured mesh with a few polyhedral (hanging-node) transition cells, which the
+unstructured discretisation of Section~\ref{sec:method} accepts as it stands.
+
+\paragraph{How wide the band must be.}
+Table~\ref{tab:layers} counts, from the code paths of Sections~\ref{sec:recon},
+\ref{sec:indicator} and~\ref{sec:viscous}, how far each ingredient of one time step
+reaches from the interface, in layers of cells. Layer~1 is a cell with $0<\alpha_c<1$.
+The force $\sigma\kappa_f\,\mathrm{snGrad}(\alpha)$ is non-zero only on the faces of
+layer-1 cells, so its support ends in layer~2; each face curvature comes from a
+cell--point--cell least-squares fit that reads one ring further (layer~3); the
+semi-Lagrangian update of a layer-3 value samples a fit whose stencil reaches layer~4,
+and so does the explicit viscous transpose term
+$\nabla\!\cdot\!\big(\mu_f\,(\mathbf S_f\!\cdot\!\mathrm{dev}^2(\nabla\mathbf u)_f^{\mathsf T})\big)$,
+which interpolates a cell gradient. \emph{Four complete fine layers on each side of
+the interface are the minimum}; the default requests six. Every resolution transition
+then lies outside the force support, so the potential-form identity
+$\kappa\nabla\alpha=\nabla(\kappa\alpha)-\alpha\nabla\kappa$, which holds at a face
+only with the central weight $w=\tfrac12$, is never evaluated across a hanging node --
+the question Section~\ref{sec:staticrefine-verif} settles by measurement rather than
+by this argument.
+
+\begin{table}[t]
+  \centering
+  \caption{Reach of one time step from the interface, in cell layers (layer~1: a cell
+  with $0<\alpha_c<1$). The band must be fine, and correct, up to the largest entry.}
+  \label{tab:layers}
+  \begin{tabular}{lc}
+    \hline
+    ingredient & reaches layer \\
+    \hline
+    phase indicator ($0<\alpha_c<1$; Section~\ref{sec:indicator}) & 1 \\
+    capillary force support, $\mathrm{snGrad}(\alpha)\neq0$, and $\mathrm{fvc::reconstruct}$ & 2 \\
+    $\kappa_f$ on those faces from the cell--point--cell fit (Section~\ref{sec:recon}) & 3 \\
+    one semi-Lagrangian step of a layer-3 value & 4 \\
+    implicit $\nabla\!\cdot(\mu_f\nabla\mathbf u)$ & 3 \\
+    explicit transpose term, $(\nabla\mathbf u)_f$ from cell gradients (Section~\ref{sec:viscous}) & 4 \\
+    face area fraction $\alpha_f$ and $\mu_f$ (donor plane) & 2 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{The criterion and the loop.}
+The refinement criterion is the force support itself: the cells with $0<\alpha_c<1$,
+whose faces are exactly the faces where $\mathrm{snGrad}(\alpha)\neq0$, dilated
+outward through faces. The mesh is produced by a pre-processing driver that repeats,
+for each refinement level,
+\begin{enumerate}
+  \item reset the initial fields to their templates and initialise $\psi$ and $\alpha$
+        from the implicit surface on the \emph{current} mesh (Section~\ref{sec:indicator});
+  \item select the cells with $0<\alpha_c<1$ and dilate the selection $k$ times through
+        faces;
+  \item split every selected hexahedron $2\times2\times2$ with OpenFOAM's
+        \texttt{hexRef8} (\texttt{refineHexMesh}), which persists the cell and point
+        levels so that the 2:1 constraint is maintained across passes.
+\end{enumerate}
+After the last pass the fields are reset once more and re-initialised on the final
+mesh. This re-initialisation is the point of the loop, not a detail: a volume fraction
+mapped through a $2\times2\times2$ split is a smeared one, so no field that has been
+mapped is ever used as a criterion or kept as an initial condition, and the solver
+starts from the same sharp $\alpha$ it would have on a uniform mesh of the fine
+spacing. Because $\alpha$ is re-initialised on the current mesh, the band is measured in
+the currently finest cells at every level, and $N$ passes give a nested set of bands
+with a uniform width at the finest level.
+
+The number of dilations is measured, not derived. Selection happens on the mesh before
+the split, so each selected layer becomes two fine layers and an axis-aligned count
+predicts $2k$ fine layers beyond the interface; but face dilation grows a Manhattan
+diamond, and along the diagonals of a sphere one dilation buys only about $1.15$ fine
+cells. At $R/h_{\mathrm{fine}}=10$, $k=3,4,5$ dilations leave $4.6$, $5.8$ and $7.0$
+complete fine layers at the worst point. The driver therefore adds dilations until the
+signed distance it already holds on the current mesh proves the requested width for
+every unselected cell, $2\lvert\psi_c\rvert/h_c-1\ge n_{\mathrm{band}}$, and the band
+check on the final mesh fails when an interface cell lies outside the finest level,
+when fewer than four complete fine layers remain at the worst point, or when the cell
+count that sets the capillary time step (Section~\ref{sec:droplet}) is not the fine
+spacing -- the time step is fixed, so a wrong count is a wrong step for the whole run.
+The signed distance only verifies the width; the criterion stays the $\alpha$ seed.
+
+\paragraph{Polyhedral meshes.}
+cfMesh has no in-place refinement of an existing polyhedral mesh and OpenFOAM's only
+refiner is hexahedral, so the polyhedral analogue regenerates the mesh: the $\psi=0$
+iso-surface of the level set initialised on the current mesh is written as a triangulated
+surface and handed to the mesher as a refinement surface with the target cell size and a
+refinement thickness of $n_{\mathrm{band}}$ fine cells. The same loop, with the criterion
+expressed as geometry rather than as a cell set.
+
+\paragraph{Cost.}
+The capillary step is set by the fine spacing, so a refined mesh and the uniform mesh of
+the same fine spacing take the same step, the same number of steps, and -- if the
+transitions are inert -- the same metrics; only the cell count differs. At $R/h=10$ the
+interface band holds $51\,640$ cells against $216\,000$ uniform ($4.2\times$), and the
+ratio grows with resolution because the band is a surface while the box is a volume.
+The refinement is static: the mesh-adaptive stencil of Section~\ref{sec:stencil} is a
+topological mesh object built once on the refined mesh, so nothing in the solver has to
+follow a changing mesh.
 
 % =============================================================================
 \section{Software design and reproducibility}
@@ -2106,6 +2217,14 @@ flow only to first order within a step -- adequate for the near-static droplet, 
 strongly dynamic interface would want an outer interface--flow iteration. Seventh, the
 per-cell cost is higher on polyhedra than on hexahedra because of the larger neighbour
 valence; the compact face-neighbour stencil mitigates but does not eliminate this.
+Eighth, the local refinement of Section~\ref{sec:staticrefine} is static: the band is
+built once around the initial interface and the mesh-adaptive stencil is a topological
+mesh object constructed once, so a moving interface would leave its band. The
+criterion -- the cells where $\mathrm{snGrad}(\alpha)\neq0$, dilated until the signed
+distance proves the width -- is exactly the marker an adaptive refinement would use,
+but adaptivity needs the reconstruction stencils and the semi-Lagrangian caches
+rebuilt after every topology change, and the re-initialisation that keeps the fields
+sharp here is not available mid-run; both are future work.
 
 % =============================================================================
 \section{Conclusions}

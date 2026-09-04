@@ -1778,6 +1778,39 @@ while (pimple.correctNonOrthogonal())
   </ul>
 </section>
 
+<!-- static local refinement around the interface: the loop and the band (2026-09-04) -->
+<section>
+  <h2>Local static refinement around the interface &mdash; the loop and the band</h2>
+  <p class="muted" style="font-size:0.8em">pre-processing only: the solver and its level-set dictionary are untouched &mdash; the refined mesh is one more unstructured mesh with hanging-node polyhedra at the transitions</p>
+  <div class="cols">
+    <div style="font-size:0.74em">
+      <p style="margin:0 0 0.2em"><b>Per level, on the <i>current</i> mesh:</b></p>
+      <ol class="tight" style="line-height:1.35">
+        <li><code>0/ := 0.org</code>; <code>leiaSetFields</code> &rarr; \(\psi,\alpha\) from the implicit surface</li>
+        <li><code>topoSet</code>: seed = cells with \(0&lt;\alpha_c&lt;1\) (their faces <i>are</i> the \(\mathrm{snGrad}(\alpha)\) support), dilated \(k\) times through faces</li>
+        <li><code>refineHexMesh</code> (hexRef8, levels <b>persisted</b> &rArr; 2:1 across passes); poly: cfMesh re-meshed around the \(\psi=0\) iso-surface</li>
+      </ol>
+      <p style="margin:0.3em 0 0.2em"><b>Then <code>0/ := 0.org; leiaSetFields</code> on the final mesh</b> &mdash; nothing mapped survives (a mapped \(\alpha\) is a smeared \(\alpha\)).</p>
+      <p style="margin:0.3em 0 0.2em"><b>\(k\) is measured, not derived:</b> face dilation is Manhattan growth, so along the sphere's diagonals one dilation buys \(\approx1.15\) fine cells, not 2. At \(R/h=10\): 3/4/5 dilations &rarr; <b>4.6 / 5.8 / 7.0</b> complete fine layers at the worst point. The driver adds dilations until \(2|\psi_c|/h_c-1\ge n_{\rm band}\) for every unselected cell; \(\psi\) verifies the width, the \(\alpha\) seed is the criterion.</p>
+      <p style="margin:0.3em 0 0"><b>Same \(\Delta t\), same steps, fewer cells:</b> <code>N_CELLS</code> is the fine count (the capillary-dt handle); the band check fails when the built fine spacing is not \(L/N\).</p>
+    </div>
+    <div>
+      <table class="num" style="margin:0 auto 0.3em; font-size:0.62em">
+        <thead><tr><th>what one step reads</th><th>reaches layer</th></tr></thead>
+        <tbody>
+          <tr><td>\(0&lt;\alpha_c&lt;1\) (phase indicator)</td><td>1</td></tr>
+          <tr><td>force support \(\mathrm{snGrad}(\alpha)\neq0\), reconstruct</td><td>2</td></tr>
+          <tr><td>\(\kappa_f\) from the cell&ndash;point&ndash;cell fit</td><td>3</td></tr>
+          <tr><td>one semi-Lagrangian step; explicit viscous transpose term</td><td><b>4</b></td></tr>
+        </tbody>
+      </table>
+      <img src="data/figures/refined_mesh_slice.png" style="max-height:250px">
+      <p class="muted" style="font-size:0.68em; margin:0.1em 0 0">mid-plane slice, \(N_{\rm fine}=60\) (\(R/h=10\)): interface band 5 dilations, <b>51,640 cells vs 216,000 uniform (4.2&times;)</b>, 6.97 fine layers at the worst point, 1,688 transition polyhedra, max non-orthogonality 25.2&deg;; ball control (whole interior fine) 48,784 cells.</p>
+    </div>
+  </div>
+  <p class="footnote">Drivers <code>workflow/scripts/leiaRefineHexMesh.py</code> / <code>leiaRefinePolyMesh.py</code>; tokens <code>REFINE_LEVELS</code>, <code>REFINE_BAND_CELLS</code> (default 6; stencil minimum 4), <code>REFINE_SOURCE</code>; mesh kinds <code>hexRefined | polyRefined</code>. Figure by <code>make_refined_mesh_fig.py</code>, statistics in <code>data/tables/refined_mesh_stats.csv</code>.</p>
+</section>
+
 <!-- fine-mesh divergence mechanism (investigated, not assumed) -->
 <section>
   <h2>The parasitic-current instability &mdash; what it is (and isn't)</h2>

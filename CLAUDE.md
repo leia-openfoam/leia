@@ -42,6 +42,11 @@ snakemake --workflow-profile profiles/local --configfile config/<study>.yaml -n 
 
 One study = one `(case, mesh, mode)`; backend switches purely via `PROFILE`.
 `workflow/README.md` documents every `config/*.yaml` study.
+`mesh: hexRefined | polyRefined` = statically refined around the interface by
+`workflow/scripts/leiaRefineHexMesh.py` / `leiaRefinePolyMesh.py` in the `mesh`
+rule (pre-processing only, solver unchanged, fields re-initialised on the final
+mesh; `REFINE_LEVELS >= 1`, `N_CELLS` = the FINE count) -- README section
+"Static local refinement around the interface".
 
 ## Cluster (Lichtenberg, TU Darmstadt)
 
