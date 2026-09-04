@@ -133,23 +133,30 @@ def n_cells(case):
     """Cell count of the CURRENT mesh, never from a log.
 
     blockMesh and refineHexMesh write `note "nCells:..."` into the owner header;
-    cfMesh's pMesh does not. The fallback reads the owner list itself and returns
-    max(owner) + 1, which is exact for any mesh in which every cell owns a face (all
-    OpenFOAM meshes) and cannot be confused by a stale field of another mesh."""
+    cfMesh's pMesh does not. The fallback reads the owner AND neighbour lists and
+    returns the highest label in either plus one: every cell has at least one face,
+    but a cell whose face-adjacent cells all carry lower labels appears only as a
+    NEIGHBOUR (the owner is the lower label), so max(owner) alone undercounts --
+    measured on a 572 039-cell cfMesh mesh, where it gave 572 037. Reading the mesh
+    itself cannot be confused by a stale field of another mesh."""
     path = os.path.join(case, "constant", "polyMesh", "owner")
     with open(path, "rb") as fh:
         head = fh.read(4096).decode(errors="replace")
     m = _NCELLS.search(head)
     if m:
         return int(m.group(1))
-    with open(path) as fh:
-        text = fh.read()
-    _assert_ascii(text, path)
-    body = _strip_comments(text[text.index("}") + 1:])
-    m = re.search(r"(\d+)\s*\(", body)
-    if not m:
-        raise RuntimeError(f"cannot read the owner list in {path}")
-    return max(int(v) for v in _list_after(body, m.end() - 1)) + 1
+    highest = -1
+    for name in ("owner", "neighbour"):
+        p = os.path.join(case, "constant", "polyMesh", name)
+        with open(p) as fh:
+            text = fh.read()
+        _assert_ascii(text, p)
+        body = _strip_comments(text[text.index("}") + 1:])
+        m = re.search(r"(\d+)\s*\(", body)
+        if not m:
+            raise RuntimeError(f"cannot read the label list in {p}")
+        highest = max(highest, max(int(v) for v in _list_after(body, m.end() - 1)))
+    return highest + 1
 
 
 def _strip_comments(text):
