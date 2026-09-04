@@ -1364,8 +1364,14 @@ at t = 0.025, refined vs uniform: shape **2.05 vs 2.05** (R 0.9995 / 0.9999), La
 non-monotone on both), and the parasitic velocity **-1.68 vs -1.81 (L1), -1.46 vs -1.47
 (L2)** -- NEGATIVE on both meshes: at t = 0.025 the currents grow with refinement on the
 uniform hex ladder too (the campaign's open defect), and the refined mesh reproduces it
-order for order. N = 120 (both), the two controls and uniform120 are running; the final
-orders wait for all four.
+order for order.
+
+**uniform120 LANDED (1 728 000 cells, np 64, 6511 steps, 97.3 core-hours) and the TWO-LEVEL
+control (30 -> 60 -> 120, 125 448 cells, 7.25 core-hours) reproduces it:** peaks within
+0.38 % (L1) / 0.09 % (L2); at t = 0.025 L1|u'| -0.93 %, L2|u'| -0.62 %, volume +1.8 % (of
+7.4e-8), shape +0.65 %, Laplace jump +2.4e-4, kErrL2Band -0.58 %, A2hL2Band 6e-6 --
+**13.4x fewer core-hours** at R/h_fine = 20. The one-level N = 120 arm, the ball control,
+r25p6 and the poly P2 study are still running; final orders when the one-level arm lands.
 
 **Then (in order) -- SUBMITTED 2026-09-04 evening after the gate above, orchestrator ids
 in `.my_jobs`.** G3/G4 on the cluster: `stationaryDroplet3Drefined` (fine N =
