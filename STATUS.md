@@ -1238,7 +1238,7 @@ spacing, capillary dt and step count on the 6R box (`stationaryDroplet3Drefined`
 | 96 (16) | 169 000 / 884 736 | 4659 | -0.17 % / -0.02 % | -2.4 % / -0.21 % | -0.11 % | +0.93 % | +1e-4 | -0.36 % | 0 | 7.0 / 25.1 (3.6x) |
 | 120 (20) | 289 808 / 1 728 000 | 6511 | -0.20 % / -0.08 % | -0.79 % / -0.54 % | +1.7 % | +0.13 % | 0 | +0.11 % | 0 | 14.1 / 97.3 (6.9x) |
 | 120, two levels | 125 448 / 1 728 000 | 6511 | -0.4 % / -0.09 % | -0.9 % / -0.6 % | +1.8 % | +0.65 % | +2e-4 | -0.6 % | 0 | 7.3 / 97.3 (**13.4x**) |
-| 120, ball control (vs the band arm) | 296 752 / 289 808 | 6511 | +0.04 % / +0.02 % | +0.61 % / +0.43 % | -2.0 % | -0.03 % | +6e-5 | -0.16 % | 0 | 14.4 / 14.1 |
+| 120, ball control (vs the band arm) | 296 752 / 289 808 | 6511 | +0.04 % / +0.02 % | +0.61 % / +0.43 % | -2.0 % | -0.03 % | +6e-5 | -0.16 % | 0 | 17.7 / 14.1 |
 
 Pre-registered tolerances (10 % velocity L1/L2, 5 % volume/shape/kappa/A2h, 1 % Laplace jump)
 met at every rung. Fitted orders at t = T over the four rungs, refined vs uniform
