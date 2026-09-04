@@ -126,7 +126,10 @@ def sh(*lines):
 if MESH == "hex":
     MESH_CMD = "blockMesh"
 elif MESH == "poly":
-    MESH_CMD = "pMesh"
+    # LEIA_PMESH_PREFIX (e.g. "env LD_PRELOAD=.../libjemalloc.so.2", set in env_preamble)
+    # applies to pMesh ONLY: a study-global LD_PRELOAD segfaults the MPI solver at startup
+    # with an empty log (measured 2026-09-04). Doubled braces: this string is format()ed.
+    MESH_CMD = "${{LEIA_PMESH_PREFIX:-}} pMesh"
 elif MESH == "hexRefined":
     # blockMesh, then REFINE_LEVELS passes of [0/ := 0.org; leiaSetFields; topoSet
     # (0 < alpha < 1 seed + dilations); refineHexMesh], then leiaSetFields on the

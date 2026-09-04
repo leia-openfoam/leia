@@ -52,6 +52,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import leia_refine as lr  # noqa: E402
 
 FUNC = "isoInterface"
+# cfMesh on glibc >= 2.39 aborts with `free(): invalid pointer` unless jemalloc is
+# preloaded, but a STUDY-GLOBAL LD_PRELOAD segfaults the MPI solver at startup (empty log,
+# rc 139 -- measured 2026-09-04 on this very smoke). The workaround is therefore scoped to
+# the one tool that needs it: set LEIA_PMESH_PREFIX="env LD_PRELOAD=/path/libjemalloc.so.2"
+# in the study's env_preamble and only the pMesh command is prefixed.
+PMESH = (os.environ.get("LEIA_PMESH_PREFIX", "").strip() + " pMesh").strip()
 MARK_BEGIN = "// >>> leiaRefinePolyMesh: written by workflow/scripts/leiaRefinePolyMesh.py, do not edit"
 MARK_END = "// <<< leiaRefinePolyMesh"
 
@@ -202,7 +208,7 @@ def main(argv=None):
         clear_mesh_dict_refinement(case)
         if not dry:
             shutil.rmtree(os.path.join(case, "constant", "polyMesh"), ignore_errors=True)
-        lr.run("pMesh", "log.pMesh.pass0", case, dry)
+        lr.run(PMESH, "log.pMesh.pass0", case, dry)
 
     rows = []
     for i in range(1, levels + 1):
@@ -214,7 +220,7 @@ def main(argv=None):
         cell_size = mcs / 2 ** i
         thickness = band_cells * cell_size
         set_mesh_dict_refinement(case, i, stl_rel, cell_size, thickness, band_cells, a.size_mode)
-        lr.run("pMesh", f"log.pMesh.pass{i}", case, dry)
+        lr.run(PMESH, f"log.pMesh.pass{i}", case, dry)
         after = lr.n_cells(case) if not dry else -1
         lr.say(f"pass {i}: {before} -> {after} cells, cellSize {cell_size:g}, "
                f"thickness {thickness:g}, surface {stl_rel}")

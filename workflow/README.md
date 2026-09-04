@@ -306,6 +306,10 @@ Studies (each config header carries the pre-registered prediction and gate):
     # P0-P2: polyhedral twin of polyDroplet3D_r13p8 (pin N_CELLS from the driver first)
     snakemake --workflow-profile profiles/slurm --configfile config/polyDroplet3Drefined_r13p8.yaml
 
+Laptop poly meshes: cfMesh needs jemalloc preloaded on glibc 2.39, scoped to pMesh only
+(`LEIA_PMESH_PREFIX='env LD_PRELOAD=...'` in `env_preamble`; a global `LD_PRELOAD`
+segfaults the MPI solver at startup with an empty log -- measured).
+
 Curation: `make_refined_mesh_table.py` (refinement.csv + refinedBand.csv +
 checkMesh -> `refined_mesh_stats.csv`), `make_refined_equivalence_table.py`
 (refined vs uniform at matched N_CELLS, matched t, equal steps; L1 and L2 only,
