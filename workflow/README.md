@@ -134,8 +134,12 @@ default smoke config sweeps both; drop it from `axes_override` to fix one.
   `maxdef_convergence.png` figure contrasts it with the final-time reading —
   the reversed benchmark's final row credits `none` with error cancellation
   that no extension model receives.
-- `mesh` ∈ {hex, perturbed, poly}; `poly` is 3D-only and uses
-  `cases/<Case>_poly.parameter`. `perturbed` adds `-fluxCorrection`. If the
+- `mesh` ∈ {hex, perturbed, poly, hexRefined, polyRefined}; `poly` and
+  `polyRefined` are 3D-only and use `cases/<Case>_poly.parameter`. `perturbed`
+  adds `-fluxCorrection`. `hexRefined` / `polyRefined` are statically refined
+  around the interface by `workflow/scripts/leiaRefineHexMesh.py` /
+  `leiaRefinePolyMesh.py` (need `REFINE_LEVELS >= 1`; see the static-refinement
+  entries below). If the
   case exposes `N_NON_ORTHOGONAL_CORRECTORS`, materialisation also enforces a
   minimum of 8: the frozen-circle velocity sweep is converged at 8--64 on
   deterministic 10%-perturbed N=32,64,128 meshes, whereas 1 is insufficient.
@@ -239,3 +243,70 @@ band floor (~5e-3 at N=64 on the static gate) -> the criterion fires every
 step and per-event interface displacements compound over long runs
 (bulkVortexGRL T=8: volume drift for every redistancer). Set REDIST_THRESHOLD
 explicitly above the measured floor for long advection studies.
+
+## Static local refinement around the interface (mesh: hexRefined | polyRefined)
+
+Refine ONLY a band around the interface, sized from the stencils the method
+uses, and leave the far field coarse. Pre-processing only -- the solver is not
+changed and `fvSolution.levelSet` is untouched -- realised by two stdlib-Python
+drivers over existing OpenFOAM/leia/cfMesh apps, called from the `mesh` rule
+(under `profiles/slurm` that rule is already a serial `case_pre` job):
+
+    workflow/scripts/leiaRefineHexMesh.py    blockMesh, then REFINE_LEVELS passes of
+                                             [0/ := 0.org; leiaSetFields; topoSet (seed
+                                             0 < alpha < 1 = the snGrad(alpha) support,
+                                             face dilations added until the psi on the
+                                             current mesh proves REFINE_BAND_CELLS
+                                             complete fine layers at the worst point);
+                                             refineHexMesh (hexRef8, cellLevel/pointLevel
+                                             PERSISTED -> 2:1 across passes)]
+    workflow/scripts/leiaRefinePolyMesh.py   pMesh, then REFINE_LEVELS passes of
+                                             [0/ := 0.org; leiaSetFields; psi = 0
+                                             iso-surface as STL; pMesh with
+                                             surfaceMeshRefinement { cellSize h/2^i;
+                                             refinementThickness REFINE_BAND_CELLS*h }]
+                                             (cfMesh has no in-place refiner: re-meshed)
+    workflow/scripts/leia_refine.py          shared: runner, 0/ reset, ascii readers,
+                                             the band check, refinement.csv/refinedBand.csv
+    workflow/scripts/check_refined_band.py   re-check an existing case
+
+Both end with `0/ := 0.org; leiaSetFields` on the FINAL mesh: every field in `0/`
+is either its `0.org` value or freshly computed there -- nothing mapped through a
+refinement survives (a mapped alpha is a smeared alpha). The band check then
+FAILS (exit 2, the mesh rule fails) when an interface cell lies outside the fine
+region, when the first coarse cell centre is < 4 fine cells from the interface,
+or when `N_CELLS` -- the capillary-dt handle, `adjustTimeStep no` -- does not
+encode the FINE spacing (hex: `DOMAIN_LENGTH/N_CELLS` vs the built spacing;
+poly: the pin the driver prints as `N_CELLS_suggested`).
+
+Tokens (`cases/default.parameter`, inert defaults): `REFINE_LEVELS 0`
+(halvings of the near-interface size; >= 1 only with the refined mesh kinds,
+materialize asserts the pairing), `REFINE_BAND_CELLS 6` (complete fine layers
+each side at the worst point -- measured, since face dilation is Manhattan growth
+and buys only ~1.15 fine cells per dilation along a sphere's diagonals; the
+stencil minimum is 4), `REFINE_SOURCE interface | ball` (ball = the control
+that refines the whole droplet interior). Derived: `N_CELLS_BASE =
+N_CELLS/2^REFINE_LEVELS` is what blockMesh renders.
+
+Studies (each config header carries the pre-registered prediction and gate):
+
+    # G-1: uniform N=30 arm run before/after the template change; CSVs cmp-identical
+    snakemake --workflow-profile profiles/local8 --configfile config/stationaryDroplet3DbitIdentity.yaml
+    # G0/G1/G2/GC: constant-curvature (2/R) well-balanced gate on the refined mesh,
+    # interface band + ball control, np 4; its serial twin; its uniform control
+    snakemake --workflow-profile profiles/local8 --configfile config/stationaryDroplet3DrefinedWB.yaml
+    snakemake --workflow-profile profiles/local8 --configfile config/stationaryDroplet3DrefinedWBserial.yaml
+    snakemake --workflow-profile profiles/local8 --configfile config/stationaryDroplet3DuniformWB.yaml
+    # G3/G4 (cluster): refined ladder N = 60/76/96/120, its two controls, uniform twins
+    snakemake --workflow-profile profiles/slurm --configfile config/stationaryDroplet3Drefined.yaml
+    snakemake --workflow-profile profiles/slurm --configfile config/stationaryDroplet3DrefinedL2.yaml
+    snakemake --workflow-profile profiles/slurm --configfile config/stationaryDroplet3DrefinedBall.yaml
+    snakemake --workflow-profile profiles/slurm --configfile config/stationaryDroplet3Duniform.yaml
+    snakemake --workflow-profile profiles/slurm --configfile config/stationaryDroplet3Duniform120.yaml
+    # P0-P2: polyhedral twin of polyDroplet3D_r13p8 (pin N_CELLS from the driver first)
+    snakemake --workflow-profile profiles/slurm --configfile config/polyDroplet3Drefined_r13p8.yaml
+
+Curation: `make_refined_mesh_table.py` (refinement.csv + refinedBand.csv +
+checkMesh -> `refined_mesh_stats.csv`), `make_refined_equivalence_table.py`
+(refined vs uniform at matched N_CELLS, matched t, equal steps; L1 and L2 only,
+never L_inf), `make_refined_mesh_fig.py` (mid-plane slice coloured by cellLevel).

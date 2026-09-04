@@ -1,0 +1,36 @@
+# UNIFORM CONTROL of the well-balanced gate config/stationaryDroplet3DrefinedWB.yaml: the
+# same constantCurvatureSurfaceTension (kappa = 2/R = 2000) on the uniform N = 60 hex mesh
+# (216000 cells). Expected: |U| at round-off (<= 1e-12 m/s) at every step -- this is the
+# level the refined arms must reproduce for the hanging-node objection to be answered.
+study_name: stationaryDroplet3DuniformWB
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60]
+  END_TIME: [0.01]
+  WRITE_INTERVAL: [0.005]
+  SURFACE_TENSION_FORCE: [constantCurvatureSurfaceTension]
+  CONST_CURVATURE: [2000]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

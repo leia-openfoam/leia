@@ -10,7 +10,9 @@
 
 study_name: smoke-3Drotation-hex-serial
 case: 3Drotation          # any directory under cases/
-mesh: hex                 # hex | perturbed | poly   (poly = 3D cases only)
+mesh: hex                 # hex | perturbed | poly | hexRefined | polyRefined
+                          # (poly*, *Refined = 3D only; *Refined = statically refined
+                          # around the interface, REFINE_LEVELS >= 1, see workflow/README.md)
 mode: serial              # serial | parallel
 np: 4                     # MPI ranks for parallel mode; decomposeParDict is
                           # regenerated from this, so they cannot disagree.

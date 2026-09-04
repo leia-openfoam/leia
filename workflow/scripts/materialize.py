@@ -181,6 +181,30 @@ def _with_derived_tokens(tokens):
             )
         except (TypeError, ValueError):
             pass
+    # N_CELLS_BASE: what blockMesh renders on a statically refined hex mesh (mesh:
+    # hexRefined). N_CELLS is the capillary-dt handle (below) and on a refined mesh
+    # means the FINE spacing, so the base mesh is N_CELLS/2^REFINE_LEVELS. With
+    # REFINE_LEVELS 0 (the default) the value is copied VERBATIM, so every existing
+    # study renders byte-identically. A non-positive N_CELLS (the poly placeholder
+    # -1.0) yields no N_CELLS_BASE at all.
+    if "N_CELLS" in out:
+        try:
+            levels = int(float(out.get("REFINE_LEVELS", 0)))
+            n_cells = float(out["N_CELLS"])
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError(f"[materialize] REFINE_LEVELS/N_CELLS not numeric: {exc}")
+        if levels < 0:
+            raise RuntimeError(f"[materialize] REFINE_LEVELS must be >= 0, got {levels}")
+        if levels == 0:
+            out["N_CELLS_BASE"] = out["N_CELLS"]
+        elif n_cells > 0:
+            n_int, factor = int(round(n_cells)), 2 ** levels
+            if n_int % factor:
+                raise RuntimeError(
+                    f"[materialize] N_CELLS={n_int} is not divisible by 2^REFINE_LEVELS={factor}: "
+                    "N_CELLS is the FINE count of the refined mesh and blockMesh needs an "
+                    "integer base count")
+            out["N_CELLS_BASE"] = str(n_int // factor)
     time_step_control = out.get("TIME_STEP_CONTROL", "capillary")
     if time_step_control == "advective":
         required = (
@@ -275,7 +299,18 @@ def _reject_yaml_booleans(tokens):
 def materialize(base_case, tokens, out_dir, np_, mesh, mode, dims, case_name, index):
     _reject_yaml_booleans(tokens)
     tokens = _with_derived_tokens(tokens)
-    if mesh == "perturbed" and "N_NON_ORTHOGONAL_CORRECTORS" in tokens:
+    # The refinement tokens and the mesh kind must agree, or the capillary dt (from
+    # N_CELLS) describes a mesh other than the one the study builds.
+    try:
+        refine_levels = int(float(tokens.get("REFINE_LEVELS", 0)))
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(f"[materialize] REFINE_LEVELS not numeric: {exc}")
+    if mesh in ("hexRefined", "polyRefined") and refine_levels < 1:
+        raise RuntimeError(f"[materialize] mesh: {mesh} needs REFINE_LEVELS >= 1 "
+                           f"(got {refine_levels}); set it in axes_override")
+    if mesh in ("hex", "perturbed", "poly") and refine_levels != 0:
+        raise RuntimeError(f"[materialize] mesh: {mesh} is uniform but REFINE_LEVELS="
+                           f"{refine_levels}; use mesh: hexRefined | polyRefined")
         try:
             current = int(tokens["N_NON_ORTHOGONAL_CORRECTORS"])
         except (TypeError, ValueError) as exc:

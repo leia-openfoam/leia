@@ -85,6 +85,11 @@ def _sl_parts(rec):
         label += "+qr"
     if rec.get("mesh") == "perturbed":
         label += "/pert"
+    elif rec.get("mesh") in ("hexRefined", "polyRefined"):
+        # Statically refined around the interface (workflow/scripts/leiaRefine*.py):
+        # a distinct method string, or the refined arms collapse onto the uniform
+        # ones at equal N_CELLS and the order fit runs through both.
+        label += "/ref"
     return label
 
 

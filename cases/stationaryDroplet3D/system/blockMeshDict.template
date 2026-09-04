@@ -21,7 +21,9 @@ FoamFile
 
 scale   1;
 
-n_cells @!N_CELLS!@;
+// N_CELLS_BASE = N_CELLS/2^REFINE_LEVELS (materialize): the base count of a
+// statically refined mesh (mesh: hexRefined); with REFINE_LEVELS 0 it IS @!N_CELLS!@.
+n_cells @!N_CELLS_BASE!@;
 
 // domain = @!DOMAIN_LENGTH!@ is the box side [m], default 0.01. Tokenised for
 // the DOMAIN-SIZE CONTROL: truncating the far field at fixed h keeps every

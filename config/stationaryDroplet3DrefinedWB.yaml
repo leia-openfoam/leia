@@ -1,0 +1,71 @@
+# STATIC LOCAL REFINEMENT AROUND THE INTERFACE -- WELL-BALANCED GATE (G0, G1, G2, GC), the hanging-node question
+#
+# The mesh is refined ONLY in a band around the interface, by the pre-processing
+# driver workflow/scripts/leiaRefineHexMesh.py (blockMesh, then REFINE_LEVELS passes of
+# [0/ := 0.org; leiaSetFields; topoSet seed 0 < alpha < 1 + face dilations, added until
+# the psi on the current mesh proves REFINE_BAND_CELLS complete fine layers at the
+# worst point; refineHexMesh], then leiaSetFields on the FINAL mesh, so no mapped field
+# survives). The solver is unchanged. N_CELLS is the FINE count: dt comes from it, and
+# the driver's band check FAILS when the built fine spacing is not DOMAIN_LENGTH/N_CELLS.
+#
+# WHY 6 FINE LAYERS. From the code (article, sec. static refinement): the force acts on
+# the faces of the 0 < alpha < 1 cells (layer 2), each face curvature comes from a CPC fit
+# reading one cell-point-cell ring (layer 3), one semi-Lagrangian step and the explicit
+# viscous transpose term read one more (layer 4). Four fine layers each side is the
+# minimum; 6 is the margin. MEASURED at N = 60: face dilation is Manhattan growth, so
+# 3/4/5 dilations leave 4.6/5.8/7.0 complete fine layers at the worst point (along the
+# sphere's diagonals), not 6/8/10 -- which is why the count is measured, not derived.
+#
+# THE QUESTION. config/stationaryDroplet3Dwide.yaml rejected octree refinement because
+# hanging-node faces break w = 1/2, on which the potential-form identity
+# kappa grad(alpha) = grad(kappa alpha) - alpha grad(kappa) and the exact absorption of a
+# uniform-kappa error rest. COUNTER-ARGUMENT, pre-registered: every transition face lies
+# OUTSIDE the force support (snGrad(alpha) = 0 there) when the band holds >= 4 fine
+# layers, so the identity is never evaluated across a hanging node.
+#
+# GATE. constantCurvatureSurfaceTension with kappa = 2/R = 2000 (3D!) on the refined
+# mesh (interface band, and the ball control that refines the whole interior) and on the
+# uniform twin (config/stationaryDroplet3DuniformWB.yaml).
+#   PASS: meanMagUPrime and l2MagUPrime <= 1e-12 m/s at EVERY step in all three arms and
+#         pLaplace at its uniform value -- the objection is answered by measurement.
+#   FAIL: > 1e-9 m/s in a refined arm while the uniform arm is at round-off -- the
+#         objection stands; stop the hex route, write it up, go to polyRefined.
+# Also G0 (driver exits 0: no interface cell outside the fine level, first coarse cell
+# centre >= 4 fine cells away; 0/ re-initialised, nothing mapped), G1 (np 4, 921 steps,
+# metrics identical to the serial twin config/stationaryDroplet3DrefinedWBserial.yaml to
+# 1e-10 relative) and GC (the same study as a profiles/slurm case_pre job).
+study_name: stationaryDroplet3DrefinedWB
+case: stationaryDroplet3D
+mesh: hexRefined
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60]
+  REFINE_LEVELS: [1]
+  REFINE_BAND_CELLS: [6]
+  REFINE_SOURCE: [interface, ball]
+  END_TIME: [0.01]
+  WRITE_INTERVAL: [0.005]
+  SURFACE_TENSION_FORCE: [constantCurvatureSurfaceTension]
+  CONST_CURVATURE: [2000]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

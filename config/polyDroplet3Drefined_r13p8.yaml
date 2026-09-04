@@ -1,0 +1,51 @@
+# POLYHEDRAL STATIC REFINEMENT -- twin of config/polyDroplet3D_r13p8.yaml (uniform pMesh,
+# maxCellSize 1.0e-4, 572k cells, MEASURED R/h = 13.84, N_CELLS 84).
+#
+# Driver workflow/scripts/leiaRefinePolyMesh.py: pMesh at MAX_CELL_SIZE 2.0e-4 (pass 0),
+# then REFINE_LEVELS = 1 pass of [0/ := 0.org; leiaSetFields; psi = 0 iso-surface as
+# STL; pMesh with surfaceMeshRefinement { cellSize 1.0e-4; refinementThickness 6 x 1.0e-4 }],
+# then leiaSetFields on the final mesh. cfMesh has no in-place refiner, so the criterion
+# is geometric and the mesh is regenerated.
+#
+# N_CELLS PIN (P0). cfMesh realises 0.63-0.76 x the requested size, so the driver measures
+# the fine spacing on the BUILT mesh and prints N_CELLS_suggested; the first render is the
+# pinning pass (run the driver by hand with --allow-pin-mismatch, or accept the FAIL and
+# re-render with the suggested value). Expected: the same ~84 as the uniform twin, since
+# the near-interface target is the twin's maxCellSize.
+# P1 = the 4-rank gate; P2 = the G3 equivalence tolerances against polyDroplet3D_r13p8
+# at matched N_CELLS, t and step count; cost ratio recorded.
+study_name: polyDroplet3Drefined_r13p8
+case: stationaryDroplet3D
+mesh: polyRefined
+mode: parallel
+np: 8
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 900
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  MAX_CELL_SIZE: [2.0e-4]
+  REFINE_LEVELS: [1]
+  REFINE_BAND_CELLS: [6]
+  N_CELLS: [84]
+  END_TIME: [0.025]
+  WRITE_INTERVAL: [0.0125]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

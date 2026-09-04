@@ -247,6 +247,10 @@ levelSet
         // face field named below (the stabilizedFootPointFace delivery).
         faceCurvatureSource @!FACE_CURVATURE_SOURCE!@;
         faceCurvatureField  kappaStableFootFace;
+        // constantCurvatureSurfaceTension ONLY (never read by any other type): the
+        // prescribed kappa of the well-balanced gate. 2/R = 2000 for the 3D droplet
+        // (the 2D default 1000 is 1/R); the refined-mesh gate sets CONST_CURVATURE 2000.
+        curvature @!CONST_CURVATURE!@;
     }
 
     narrowBand
@@ -360,7 +364,7 @@ levelSet
     {
         type    implicitSphere;
         center  (@!DOMAIN_HALF_LENGTH!@ @!DOMAIN_HALF_LENGTH!@ @!DOMAIN_HALF_LENGTH!@);
-        radius  1e-3;
+        radius  @!DROPLET_RADIUS!@;
     }
 
     phaseIndicator

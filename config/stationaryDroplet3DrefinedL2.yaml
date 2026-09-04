@@ -1,0 +1,57 @@
+# STATIC LOCAL REFINEMENT AROUND THE INTERFACE -- TWO-LEVEL CONTROL
+#
+# The mesh is refined ONLY in a band around the interface, by the pre-processing
+# driver workflow/scripts/leiaRefineHexMesh.py (blockMesh, then REFINE_LEVELS passes of
+# [0/ := 0.org; leiaSetFields; topoSet seed 0 < alpha < 1 + face dilations, added until
+# the psi on the current mesh proves REFINE_BAND_CELLS complete fine layers at the
+# worst point; refineHexMesh], then leiaSetFields on the FINAL mesh, so no mapped field
+# survives). The solver is unchanged. N_CELLS is the FINE count: dt comes from it, and
+# the driver's band check FAILS when the built fine spacing is not DOMAIN_LENGTH/N_CELLS.
+#
+# WHY 6 FINE LAYERS. From the code (article, sec. static refinement): the force acts on
+# the faces of the 0 < alpha < 1 cells (layer 2), each face curvature comes from a CPC fit
+# reading one cell-point-cell ring (layer 3), one semi-Lagrangian step and the explicit
+# viscous transpose term read one more (layer 4). Four fine layers each side is the
+# minimum; 6 is the margin. MEASURED at N = 60: face dilation is Manhattan growth, so
+# 3/4/5 dilations leave 4.6/5.8/7.0 complete fine layers at the worst point (along the
+# sphere's diagonals), not 6/8/10 -- which is why the count is measured, not derived.
+#
+# N = 120 fine from a base of 30 through TWO passes (30 -> 60 -> 120 near the interface):
+# the nested onion. Compared with the one-level N = 120 arm of
+# config/stationaryDroplet3Drefined.yaml at equal N_CELLS, dt and steps: PASS = within the
+# G3 tolerances (a second transition, one level further out, changes nothing measurable).
+study_name: stationaryDroplet3DrefinedL2
+case: stationaryDroplet3D
+mesh: hexRefined
+mode: parallel
+np: 8
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 600
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [120]
+  REFINE_LEVELS: [2]
+  REFINE_BAND_CELLS: [6]
+  REFINE_SOURCE: [interface]
+  END_TIME: [0.025]
+  WRITE_INTERVAL: [0.0125]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

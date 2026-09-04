@@ -1,0 +1,35 @@
+# UNIFORM TWIN of the refined N = 120 arms at N = 120 on the 6R box: 1728000 cells,
+# ~90 core-h at the measured 2.97e-5 core-s per cell-step. Exactness at the cost of CPU
+# hours: the refined ladder's top rung is compared against a run, not an extrapolation.
+study_name: stationaryDroplet3Duniform120
+case: stationaryDroplet3D
+mesh: hex
+mode: parallel
+np: 64
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 1380
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [120]
+  END_TIME: [0.025]
+  WRITE_INTERVAL: [0.0125]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

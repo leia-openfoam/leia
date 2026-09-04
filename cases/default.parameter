@@ -880,3 +880,13 @@ SL_FOOT_INTEGRATOR taylor;
 // config/kinematicTranslation2D showed the two are BIT-IDENTICAL under uniform
 // translation, so this default costs nothing where the flow cannot tell them apart.
 SL_TRACE_VELOCITY projectedFlux;
+
+// ---- Static local mesh refinement around the interface (pre-processing) ----------
+// Consumed by workflow/scripts/leiaRefineHexMesh.py / leiaRefinePolyMesh.py through
+// case_params.json (mesh: hexRefined | polyRefined) and by materialize, which derives
+// N_CELLS_BASE = N_CELLS / 2^REFINE_LEVELS for blockMesh. N_CELLS stays the capillary
+// dt handle and on a refined mesh means the FINE count. INERT: REFINE_LEVELS 0 renders
+// N_CELLS_BASE verbatim as N_CELLS, so every existing study is byte-identical.
+REFINE_LEVELS     0;          // halvings of the near-interface cell size; >= 1 only with hexRefined | polyRefined
+REFINE_BAND_CELLS 6;          // complete fine layers each side, worst case (hex: face dilations are added until psi proves it)
+REFINE_SOURCE     interface;  // interface (0 < alpha < 1 seed + dilations) | ball (CONTROL: whole droplet interior)

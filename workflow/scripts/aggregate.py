@@ -215,6 +215,10 @@ def _write_error_table(records, database_path):
         # uniform N per direction -> h = 1/N (domain length 1). Polyhedral
         # (cfMesh) meshes have no uniform N (N_CELLS is a dummy pin), so the
         # characteristic length IS the target maxCellSize -> h = maxCellSize.
+        # hexRefined: N_CELLS is the FINE count, so 1/N is the fine spacing.
+        # polyRefined: N_CELLS is PINNED to the measured fine spacing by the
+        # driver's band check (refinedBand.csv), so 1/N is right there too; only
+        # the uniform poly mesh is sized by maxCellSize.
         if rec.get("mesh") == "poly":
             h = mcs if (mcs and mcs > 0) else ""
         else:

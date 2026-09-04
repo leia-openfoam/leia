@@ -58,17 +58,25 @@ PREAMBLE    = (config.get("env_preamble") or "").strip()
 # Extra leiaSetFields arguments (e.g. "-alphaName alpha.water" for the two-phase
 # mixture field, whose name is not the leiaSetFields default "alpha").
 SETFIELDS_ARGS = (config.get("setfields_args") or "").strip()
+# The field initialiser (see the preprocess rule below); the static-refinement
+# drivers call it once per refinement pass and once more on the final mesh.
+SETFIELDS_APP = config.get("setfields_app", "leiaSetFields")
 
-assert MESH in ("hex", "perturbed", "poly"), f"bad mesh: {MESH}"
+# hexRefined | polyRefined: statically refined around the interface by the
+# drivers in workflow/scripts (leiaRefineHexMesh.py / leiaRefinePolyMesh.py),
+# 3D only, and REFINE_LEVELS >= 1 (materialize asserts the pairing).
+assert MESH in ("hex", "perturbed", "poly", "hexRefined", "polyRefined"), f"bad mesh: {MESH}"
 assert MODE in ("serial", "parallel"), f"bad mode: {MODE}"
 PARALLEL = MODE == "parallel"
 DIMS = 1 if CASE.startswith("1D") else (2 if CASE.startswith("2D") else 3)
 
-if MESH == "poly":
+if MESH in ("poly", "polyRefined"):
     assert DIMS == 3, "poly mesh is only available for 3D cases"
     PARAM_FILE = os.path.join(CASES_DIR, f"{CASE}_poly.parameter")
 else:
     PARAM_FILE = os.path.join(CASES_DIR, f"{CASE}.parameter")
+if MESH in ("hexRefined", "polyRefined"):
+    assert DIMS == 3, "static interface refinement is 3D only (refineHexMesh splits 2x2x2)"
 BASE_CASE     = os.path.join(CASES_DIR, CASE)
 DEFAULT_PARAM = os.path.join(CASES_DIR, "default.parameter")
 
@@ -119,6 +127,17 @@ if MESH == "hex":
     MESH_CMD = "blockMesh"
 elif MESH == "poly":
     MESH_CMD = "pMesh"
+elif MESH == "hexRefined":
+    # blockMesh, then REFINE_LEVELS passes of [0/ := 0.org; leiaSetFields; topoSet
+    # (0 < alpha < 1 seed + dilations); refineHexMesh], then leiaSetFields on the
+    # FINAL mesh and the band check (exit 2 on FAIL). Serial, like blockMesh.
+    MESH_CMD = (f"python3 {REPO}/workflow/scripts/leiaRefineHexMesh.py"
+                f" --setfields '{SETFIELDS_APP} {SETFIELDS_ARGS}'")
+elif MESH == "polyRefined":
+    # pMesh, then REFINE_LEVELS passes of [leiaSetFields; psi = 0 iso-surface as
+    # STL; pMesh with surfaceMeshRefinement around it], then the final fields.
+    MESH_CMD = (f"python3 {REPO}/workflow/scripts/leiaRefinePolyMesh.py"
+                f" --setfields '{SETFIELDS_APP} {SETFIELDS_ARGS}'")
 else:  # perturbed
     MESH_CMD = "blockMesh\nleiaPerturbMesh\ncp -r 0/polyMesh/ constant/\nrm -rf 0/polyMesh"
 
@@ -141,7 +160,7 @@ INIT_END   = f"./system/init_End/init_End.{MODE}" if CASE == "3Dtranslation" els
 # setAlphaField instead, which computes the EXACT geometric volume fraction of an
 # implicit sphere -- the same quantity by a different route, so the two solvers
 # start from the same interface and not from one smeared and one sharp.
-SETFIELDS_APP = config.get("setfields_app", "leiaSetFields")
+# (SETFIELDS_APP itself is defined next to SETFIELDS_ARGS above.)
 
 _preprocess = ["cd {params.d}",
                "rm -f gradPsiError.csv leiaSetFields.csv leiaLevelSetFoam.csv"

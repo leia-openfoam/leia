@@ -1,0 +1,39 @@
+# SERIAL TWIN of config/stationaryDroplet3DrefinedWB.yaml (interface band arm only): the
+# serial-vs-np4 equivalence half of gate G1. PASS = leiaSemiLagrangianLevelSetTwoPhaseFoam.csv
+# agrees with the np 4 arm to <= 1e-10 relative at every step; a decomposition-dependent
+# answer on the refined mesh is a defect even when both runs complete.
+study_name: stationaryDroplet3DrefinedWBserial
+case: stationaryDroplet3D
+mesh: hexRefined
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [60]
+  REFINE_LEVELS: [1]
+  REFINE_BAND_CELLS: [6]
+  REFINE_SOURCE: [interface]
+  END_TIME: [0.01]
+  WRITE_INTERVAL: [0.005]
+  SURFACE_TENSION_FORCE: [constantCurvatureSurfaceTension]
+  CONST_CURVATURE: [2000]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

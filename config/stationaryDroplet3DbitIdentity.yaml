@@ -1,0 +1,37 @@
+# BIT-IDENTITY GATE (G-1) for the static-refinement plumbing: a UNIFORM hex arm, run at the
+# commit BEFORE and AFTER the templates changed (blockMeshDict n_cells -> N_CELLS_BASE,
+# fvSolution radius -> DROPLET_RADIUS, + curvature CONST_CURVATURE). PASS = the two
+# leiaSemiLagrangianLevelSetTwoPhaseFoam.csv files are cmp-identical (nothing is inert
+# until measured: a valueless or misplaced entry changes which corrector is final).
+# N = 30 on the 6R box (27000 cells, R/h = 5, deliberately cheap), 0.002 s = 65 steps.
+study_name: stationaryDroplet3DbitIdentity
+case: stationaryDroplet3D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  N_CELLS: [30]
+  END_TIME: [0.002]
+  WRITE_INTERVAL: [0.002]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

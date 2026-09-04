@@ -44,11 +44,16 @@ _TOKEN = re.compile(r"@!([A-Z0-9_]+)!@")
 #   DROPLET_CENTRE_X = DOMAIN_HALF_LENGTH + DROPLET_OFFSET_X. Sweep
 #                   DROPLET_OFFSET_X (which IS a normal token) to displace the
 #                   droplet by a sub-cell amount; the centre itself is derived.
+#   N_CELLS_BASE  = N_CELLS / 2^REFINE_LEVELS, the blockMesh count of a statically
+#                   refined hex mesh (mesh: hexRefined). N_CELLS stays the capillary
+#                   dt handle and means the FINE count; REFINE_LEVELS 0 renders
+#                   N_CELLS verbatim, so existing studies are byte-identical.
 _DERIVED_TOKENS = {
     "HALF_END_TIME",
     "MAX_DELTA_T",
     "DOMAIN_HALF_LENGTH",
     "DROPLET_CENTRE_X",
+    "N_CELLS_BASE",
 }
 
 # A derived token is computed FROM other tokens, and those inputs are typically
@@ -57,7 +62,12 @@ _DERIVED_TOKENS = {
 # for nine DROPLET_OFFSET_X values and materialized ONE arm (2026-09-01), which is
 # the same class of silent no-op as the oscillating case's missing traceVelocity.
 # Referencing a derived token therefore pulls its inputs into the grid too.
-_DERIVED_INPUTS = {"DROPLET_CENTRE_X": ("DROPLET_OFFSET_X",)}
+_DERIVED_INPUTS = {
+    "DROPLET_CENTRE_X": ("DROPLET_OFFSET_X",),
+    # The refinement drivers read REFINE_* from case_params.json, so they must reach
+    # the grid although no template names them; N_CELLS for the dt law.
+    "N_CELLS_BASE": ("N_CELLS", "REFINE_LEVELS", "REFINE_BAND_CELLS", "REFINE_SOURCE"),
+}
 
 
 def _strip_comments(text):
