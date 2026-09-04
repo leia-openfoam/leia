@@ -1319,8 +1319,15 @@ laptop; the full study goes to the cluster on a PASS. **Its first attempt was a 
 FAILURE of my own making, not a result**: I had put `LD_PRELOAD=libjemalloc` (cfMesh's
 glibc-2.39 workaround) in the study-global preamble, and the MPI solver segfaulted at
 startup -- empty log, rc 139 -- exactly the trap CLAUDE.md records; the post-solve step
-recorded it as "diverged". Voided, preload scoped to pMesh only (`LEIA_PMESH_PREFIX`,
-commit after `dacced4`), re-running.
+recorded it as "diverged". Voided; the second attempt lost its quotes in snakemake's
+`--config` parsing (mesh rule failed before running anything); voided. Preload now a bare
+path scoped to pMesh (`LEIA_PMESH_PRELOAD`). **P1 PASSED (third attempt, 458 steps, np 4):**
+against the uniform twin at t = 0.003, mean|u'| 7.593e-6 vs 7.598e-6 (-0.07 %), L2|u'|
+2.420e-5 vs 2.421e-5 (-0.02 %), volume +0.008 %, shape +0.30 %, Laplace jump +1.2e-8,
+kErrL2Band +1.2 %, A2hL2Band +0.10 %, maxima over time within 0.09 % / 0.05 %. The full
+study `polyDroplet3Drefined_r13p8` (np 8, 3813 steps, twin-matched N_CELLS 84) is
+submitted to the cluster (id in `.my_jobs`); P2 = the G3 tolerances against
+`polyDroplet3D_r13p8` at t = 0.0125 and 0.025.
 
 **First production-force pair LANDED (cluster, N_fine = 60, refined np 8 vs uniform np 32,
 2302 steps each, t = 0.025).** Read with `make_refined_equivalence_table.py`:
@@ -1347,7 +1354,18 @@ at np 8 against uniform at np 32 sits at exactly that level).
 shape -0.37 %, Laplace jump -8.7e-5, kErrL2Band +0.15 %, A2hL2Band 2e-6; core-hours 2.66
 vs 10.62 (4.0x cheaper; 91 944 vs 438 976 cells). The one metric that moves at T in both
 rungs, L1|u'| by +3.8-3.9 %, is 2.2e-7 m/s against a peak of 1e-5 -- the decayed tail.
-N = 96, 120 and the controls are running; the ORDERS wait for all four.
+
+**N_fine = 96 pair LANDED (4659 matched steps): the same picture, and three rungs now fit.**
+Maxima within 0.17 % (L1) and 0.024 % (L2); at t = 0.025 L1|u'| -2.4 %, L2|u'| -0.21 %,
+volume -0.11 %, shape +0.93 %, Laplace jump +1.2e-4, kErrL2Band -0.36 %, A2h 4e-8;
+core-hours 6.95 vs 25.09 (3.6x; 169 000 vs 884 736 cells). Provisional three-point orders
+at t = 0.025, refined vs uniform: shape **2.05 vs 2.05** (R 0.9995 / 0.9999), Laplace jump
+2.37 vs 2.37, kErrL2Band 1.75 vs 1.75, A2hL2Band 1.99 vs 1.99, volume 0.36 vs 0.36 (R 0.20,
+non-monotone on both), and the parasitic velocity **-1.68 vs -1.81 (L1), -1.46 vs -1.47
+(L2)** -- NEGATIVE on both meshes: at t = 0.025 the currents grow with refinement on the
+uniform hex ladder too (the campaign's open defect), and the refined mesh reproduces it
+order for order. N = 120 (both), the two controls and uniform120 are running; the final
+orders wait for all four.
 
 **Then (in order) -- SUBMITTED 2026-09-04 evening after the gate above, orchestrator ids
 in `.my_jobs`.** G3/G4 on the cluster: `stationaryDroplet3Drefined` (fine N =
