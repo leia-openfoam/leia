@@ -1,0 +1,29 @@
+// Popinet, JCP 228 (2009) 5838-5866, Section 6.2.2 "Translating droplet".
+//
+// Non-dimensionalisation: rho = 1, sigma = 1, D = 0.4, U = 1, so
+//   We = rho U^2 D / sigma = 0.4   (his value)
+//   La = sigma D / (rho nu^2)      -> nu = sqrt(0.4/La)
+//   T_U = D/U = 0.4                -> END_TIME 0.4 is one full t/T_U
+//
+// dt: the repository law is dt = CAPILLARY_DT_COEFF / nRef^1.5 with
+// nRef = CAPILLARY_REF_LENGTH*N_CELLS/DOMAIN_LENGTH, i.e. dt = coeff*h^1.5/L^1.5.
+// The production water/air value 0.010861 on the 0.01 m box is 10.861*h^1.5, which is
+// 0.2323*sqrt((rho1+rho2)/(2 pi sigma)) -- the Brackbill limit at a 0.2323 safety factor.
+// For rho1+rho2 = 2 and sigma = 1 the same safety factor gives 0.13107*h^1.5, so with
+// DOMAIN_LENGTH = CAPILLARY_REF_LENGTH = 1 the coefficient is 0.13107.
+values
+{
+    solver (leiaSemiLagrangianLevelSetTwoPhaseFoam);
+    N_CELLS
+    (
+        64
+        128
+        256
+    );
+    DOMAIN_LENGTH ( 1 );          // unit HEIGHT; the box is POPINET_XLEN times as long
+    CAPILLARY_REF_LENGTH ( 1 );
+    END_TIME ( 0.4 );
+    MAX_CO ( 0.1 );
+    CAPILLARY_DT_COEFF ( 0.13107 );
+    SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
+}

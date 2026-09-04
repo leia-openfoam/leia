@@ -827,6 +827,29 @@ NU1   1e-06;
 NU2   1.53e-05;
 SIGMA 0.07274;
 
+// --- popinetTranslating2D ONLY. Inert for every other case: no other case template
+// references these tokens, so nothing else renders differently.
+//
+// Reproduction of Popinet, JCP 228 (2009) 5838-5866, Section 6.2.2 "Translating droplet",
+// the test case he introduced for exactly this purpose ("I am not aware of any study using
+// a combination of both"). His configuration, read from the paper:
+//   circular interface D = 0.4 in the unit square, 64x64 effective  -> R/h = 12.8
+//   periodic in x, symmetry top and bottom, uniform background velocity U
+//   We = 0.4;  La = sigma D / (rho nu^2) in {120, 1200, 12000, infinity}
+//   CONSTANT density and CONSTANT viscosity -- Section 6.2.1 says "rho the constant
+//   density" and La carries a single rho and nu, so BOTH ratios are 1. His air/water
+//   ratios (850 and 55.72) appear only in the Section 6.3 capillary wave.
+//   Properties mixed as c*q1 + (1-c)*q2 with c_f "a simple average of the cell-centred
+//   values" -- i.e. our alg_lin, which our own 36-arm ladder also selected.
+//
+// Non-dimensionalisation chosen here: rho = 1, sigma = 1, D = 0.4, U = 1, so
+// We = rho U^2 D / sigma = 0.4 exactly, and nu = sqrt(0.4/La).
+DROPLET_RADIUS 1e-3;    // production radius; popinetTranslating2D overrides to 0.2
+POPINET_XLEN   2;       // box length in x, in units of the unit height
+POPINET_NX     128;     // cells in x = 2*N_CELLS
+POPINET_RHO    1;       // both phases
+POPINET_NU     5.773503e-03;   // both phases; La = 12000
+
 // Sub-cell displacement of the droplet centre in x, in METRES. The rendered centre
 // is the DERIVED token DROPLET_CENTRE_X = DOMAIN_HALF_LENGTH + DROPLET_OFFSET_X,
 // so 0 is byte-identical to the old `center (@!DOMAIN_HALF_LENGTH!@ ...)` and every

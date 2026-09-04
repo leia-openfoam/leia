@@ -1,0 +1,131 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// 2D stationary-droplet benchmark (arXiv:2212.02904, Sec. 3.3.1): a
+// domain x domain box, one cell thick. n_cells is swept by the study
+// (@!N_CELLS!@ = 32, 64, 128, 256); z thickness is fixed (empty front/back => 2D).
+//
+// domain = @!DOMAIN_LENGTH!@ is the box side [m], default 0.01 (the reference
+// box every published run of this case used). It is a token so the DOMAIN-SIZE
+// CONTROL can truncate the far field at FIXED h: the droplet R = 1 mm sits in
+// 0.1% of the 0.01 m box volume in 3D, so most cells only carry a smooth outer
+// pressure field. Shrinking the box to 4R keeps h, the step count and every
+// metric (volume error is relative to the INITIAL DISCRETE volume, shape error
+// is crossing-radius vs radius -- both domain-independent) while cutting the
+// cell count, which is what makes a wide-h 3D ladder affordable on a UNIFORM
+// mesh instead of an octree-refined one.
+//
+// The z half-thickness stays at 1.5625e-4 for EVERY domain size and N. It is
+// inert with empty front/back (no z neighbours in the addressing), and holding
+// it fixed means any V-derived quantity is affected identically in the
+// truncated and the reference arm, so the control comparison stays clean.
+//
+// maxDeltaT tracks h, not n_cells: materialize evaluates the capillary limit at
+// nRef = CAPILLARY_REF_LENGTH/h, so a 4R box at n_cells = 40 gets the SAME dt
+// as the 0.01 m box at N = 100. Both have h = 1e-4.
+
+scale   1;
+
+n_cells @!N_CELLS!@;          // cells across the UNIT HEIGHT -> h = 1/n_cells
+n_cells_x @!POPINET_NX!@;     // = 2*n_cells; the box is twice as long as it is tall
+ylen    @!DOMAIN_LENGTH!@;    // 1, Popinet's unit square height
+xlen    @!POPINET_XLEN!@;     // 2
+
+vertices
+(
+    (0      0      -0.01)
+    ($xlen  0      -0.01)
+    ($xlen  $ylen  -0.01)
+    (0      $ylen  -0.01)
+    (0      0       0.01)
+    ($xlen  0       0.01)
+    ($xlen  $ylen   0.01)
+    (0      $ylen   0.01)
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($n_cells_x $n_cells 1) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    // INFLOW / OUTFLOW, split 2026-09-02. Until this commit all four sides were
+    // one `walls` patch of type `wall`, so the mesh had NO inlet and NO outlet --
+    // while every field in 0.org has always declared both. OpenFOAM errors when a
+    // MESH patch is missing from a field but silently ignores a FIELD entry that
+    // matches no mesh patch, so `inlet { fixedValue (U0 0 0); }` was read, parsed
+    // and discarded on every run this case has ever done.
+    //
+    // The case was therefore a CLOSED BOX with slip walls. Slip imposes U.n = 0,
+    // and on the x-normal faces the normal IS x, so the uniform stream the case is
+    // initialised with is incompatible with its own boundaries: the pressure
+    // projection annihilated it on step 1 (first-step local continuity error
+    // 1.0e-05 against 1.6e-12 by step 3), leaving the ambient at rest
+    // (mean Ux = -2.0e-03) and the droplet coasting through still air at
+    // Ux = +6.1e-02, with a domain mean of -7.3e-07 as a closed box must have.
+    // maxMagUPrime = max|U - (U0,0,0)| then measured the ANNIHILATED FREE STREAM,
+    // not a spurious current, and read ~2*U0 from the first step onwards.
+    inlet
+    {
+        type patch;
+        faces
+        (
+            (0 4 7 3)   // left,  x = 0
+        );
+    }
+
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (2 6 5 1)   // right, x = domain
+        );
+    }
+
+    // Free-slip top and bottom: a uniform stream with no wall shear, which is what
+    // the translation gate needs. These two are the ONLY sides that stay `wall`.
+    walls
+    {
+        type wall;
+        faces
+        (
+            (3 7 6 2)   // top,    y = domain
+            (1 5 4 0)   // bottom, y = 0
+        );
+    }
+
+    frontAndBack
+    {
+        type empty;
+        faces
+        (
+            (0 3 2 1)   // back
+            (4 5 6 7)   // front
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

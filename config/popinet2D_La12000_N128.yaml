@@ -1,0 +1,88 @@
+# POPINET 2009 Section 6.2.2 "TRANSLATING DROPLET" -- convergence rung N = 128 (R/h = 25.6), La = 12000
+#
+# A literature-anchored reproduction of the test case Popinet introduced (JCP 228, 5838-5866)
+# for precisely the question this campaign has been chasing: a droplet advected across a
+# fixed grid, where "errors in interface advection will induce fluctuating errors in
+# curvature estimates and hence -- through surface-tension -- in the velocity field".
+#
+# HIS CONFIGURATION, read from the paper rather than recalled:
+#   D = 0.4 in the unit square, 64x64 effective -> R/h = 12.8
+#   We = 0.4, La = sigma D/(rho nu^2) in {120, 1200, 12000, infinity}
+#   CONSTANT density AND CONSTANT viscosity -- Section 6.2.1 says "rho the constant density"
+#   and La carries a single rho and nu, so BOTH ratios are 1. The air/water ratios (850,
+#   55.72) appear only in his Section 6.3 capillary wave, never in this test.
+#   Face properties from c*q1+(1-c)*q2 with c_f "a simple average of the cell-centred
+#   values" = our alg_lin, which our own 36-arm ladder independently selected.
+#
+# HIS RESULTS, to compare against:
+#   "The maximum errors in velocity are of the order of 5% of U."
+#   "Less than first-order convergence is observed for the maximum error and close to
+#    first-order convergence for the RMS error."
+#   Shape and curvature errors converge at "roughly first order".
+#   "The relative error scales like We^-1/2 ... the ABSOLUTE error in velocity is
+#    essentially independent from U" -- which our own U0 sweep found independently.
+#   "The relative error in velocity is also seen to be weakly dependent on the Laplace
+#    number" -- i.e. viscosity barely matters.
+#   Norms are the MAXIMUM OVER TIME of the spatial L2 and Linf, not endpoint values.
+#
+# TWO DEVIATIONS WE CANNOT REMOVE, both stated rather than hidden:
+#   1. He is PERIODIC in x; the semi-Lagrangian transport has no cyclic support, so this
+#      uses inlet/outlet. To keep that from confining the droplet the box is 2x1 rather
+#      than 1x1: the droplet starts at x = 0.5 and ends at 0.9 after a full t/T_U = 1, so
+#      its leading edge finishes 0.9 clear of the outlet (57 cells at N=64) and starts 19
+#      cells from the inlet. A unit square with inlet/outlet would put the interface within
+#      a few cells of a boundary, which has voided runs in this repository before.
+#      An unbounded far field is arguably closer to periodic than a confining one.
+#   2. His solver is an adaptive quadtree VOF with height-function curvature; this is a
+#      uniform-mesh semi-Lagrangian level set with least-squares curvature. That difference
+#      is the point of the comparison, not a defect of it.
+#
+# Symmetry top/bottom is reproduced exactly: slip walls impose U.n = 0, which IS symmetry
+# on a flat boundary.
+#
+# dt follows the repository capillary law at the SAME safety factor as every production run
+# (0.2323 of the Brackbill limit): with CAPILLARY_REF_LENGTH = 1 and DOMAIN_LENGTH = 1 the
+# formula coeff/nRef^1.5 reduces to coeff*h^1.5, and coeff = 0.13107 = 0.2323/sqrt(pi)
+# reproduces 0.2323*sqrt((rho1+rho2) h^3/(2 pi sigma)) for rho1+rho2 = 2, sigma = 1.
+study_name: popinet2D_La12000_N128
+case: popinetTranslating2D
+mesh: hex
+mode: parallel
+np: 8
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 720
+axes_override:
+  N_CELLS: [128]
+  POPINET_NX: [256]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [1]
+  CAPILLARY_REF_LENGTH: [1]
+  CAPILLARY_DT_COEFF: [0.13107]
+  DROPLET_RADIUS: [0.2]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [1]
+  SIGMA: [1]
+  POPINET_RHO: [1]
+  POPINET_NU: [5.773502692e-03]
+  END_TIME: [0.4]
+  WRITE_INTERVAL: [0.4]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
