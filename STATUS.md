@@ -127,6 +127,57 @@ predicted a factor of 420 is dead.
 Open confounder: the equal-density control holds the KINEMATIC viscosities fixed, so the
 dynamic viscosity ratio moved 54.8 -> 15.3. A matched-mu control is still owed.
 
+### ANCHORED: the translating droplet reproduces Popinet's own benchmark (2026-09-04)
+
+The translating droplet is Popinet's test case, introduced in JCP 228 (2009) 5838-5866
+Sec. 6.2.2 for exactly this coupling -- he notes he was "not aware of any study" combining a
+stationary droplet with surface tension and the advection of a circular interface.
+`cases/popinetTranslating2D` + `config/popinet2D_*` reproduce it as a standalone study.
+
+HIS SETUP, read from the PDF in the repo root rather than recalled: D = 0.4 in the unit
+square at 64x64 (R/h = 12.8), periodic in x with symmetry top/bottom, We = 0.4, and
+La = sigma D/(rho nu^2) over {120, 1200, 12000, infinity}. **Both ratios are 1** -- Sec 6.2.1
+says "rho the constant density" and La carries a single rho and nu. His air/water ratios
+(850, 55.72) appear ONLY in the Sec 6.3 capillary wave. His face properties use the
+volume-fraction mixture with a face fraction that is "a simple average of the cell-centred
+values", i.e. our `alg_lin`, which our own 36-arm ladder independently chose.
+
+RESULT, in his convention (maximum over TIME of the spatial norm, velocity relative to U):
+
+| N | R/h | L2 (his RMS) | Linf (his Max) | shape |
+|---|---|---|---|---|
+| 64 | 12.8 | 4.4e-03 | **4.86e-02** | 8.15e-04 |
+| 128 | 25.6 | 2.5e-03 | 3.36e-02 | 2.08e-04 |
+| 256 | 51.2 | 1.3e-03 | 2.47e-02 | 7.57e-05 |
+| order p (R) | | **0.88 (0.999)** | **0.49 (0.999)** | 1.71 (0.996) |
+
+At his own resolution we get **4.86% of U against his "of the order of 5%"**, and RMS
+4.4e-03 against his figure's ~3e-03 peak. Both of his convergence statements reproduce:
+"less than first-order for the maximum error and close to first-order for the RMS" -- we
+measure 0.49 and 0.88, each with R = 0.999. Shape converges at 1.71, better than his
+"roughly first order".
+
+**This is the empirical basis for not reporting L_inf.** The half-order maximum against
+near-first-order RMS reproduces across two unrelated discretisations, so it is a property of
+the benchmark, not of our scheme.
+
+Laplace sweep at N=64, Linf/U: 2.93e-02 (La=120), 3.96e-02 (1200), 4.86e-02 (12000),
+5.88e-02 (inviscid). A factor of two across two decades of La plus the inviscid limit,
+monotone -- viscosity DAMPS here, and the inviscid case is worst. He calls that "weakly
+dependent on the Laplace number"; the factor is worth quoting rather than the adjective.
+Note this is the constant-property case; with a viscosity jump the balance differs (the
+viscosity gate finds removal of viscosity lowers L1 but raises L2).
+
+Deviations that cannot be removed, stated in the config: no cyclic support in the SL
+transport, so inlet/outlet replaces periodicity and the box is 2x1 to leave the droplet 57
+cells clear of the outlet over a full t/T_U; and his adaptive quadtree VOF with
+height-function curvature against this uniform-mesh level set, which is the point of the
+comparison. Symmetry top/bottom is exact -- slip imposes U.n = 0.
+
+Curated by `workflow/scripts/make_popinet_table.py` into
+`docs/semi-lagrangian-level-set/sl-level-set-article/data/tables/popinetTranslating.csv`;
+written up in the article as "Comparison with the reference translating-droplet benchmark".
+
 ### DECIDED: the instability does not survive a perfect capillary force
 
 `config/amplifierGate{,EqualRho}2D`, 8 arms, 8000 steps, N=128, 2x2x2 over
