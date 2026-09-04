@@ -41,6 +41,14 @@
 # (config/polySmoke3D) completed 75 steps without blow-up, so the question is now open
 # rather than settled. Read L2 and L1 of |u| (never L_inf), the Laplace pressure jump, the
 # phase-volume error and the shape error, and whether they converge under refinement.
+# INTERFACE RESOLUTION, MEASURED 2026-09-04 (workflow/scripts/check_refined_band.py --mode poly on the
+# built mesh, median size of the 0 < alpha < 1 cells): 5.556e-5 m, i.e. R/h = 18.0 AT THE INTERFACE,
+# not the 18.91 quoted from h_eff = (V/N)^(1/3) = 5.289e-5. The average is pulled down by cfMesh's
+# boundary refinement -- the size-vs-distance profile shows the outermost bin at 0.67 -- so the
+# 'uniform' polyhedral mesh carries a finer boundary layer. All three rungs sit at EXACTLY
+# 2^(-1/3) x maxCellSize (the dual cell holds half an octree box), so the ladder's h RATIOS and
+# therefore its fitted orders are unchanged; the quoted R/h moves, and the N_CELLS pin 114
+# (interface-honest value 108) makes the capillary dt 5.3 % conservative. The rung is kept as run.
 study_name: polyDroplet3D_r18p9
 case: stationaryDroplet3D
 mesh: poly

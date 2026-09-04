@@ -1213,6 +1213,18 @@ pair 10x or more apart is a defect at the transition polyhedra. Second mis-set t
 of the day, same cause: I wrote round-off-level lines for quantities the linear solver
 limits at its tolerance.
 
+**DECIDED (uniform yardstick landed, 276 steps to t = 0.003, both pairs read at the same
+instant).** Relative np 1 / np 4 difference, uniform vs refined: mean|u'| 2.5e-6 vs
+1.3e-5 (refined 5.4x), L2|u'| 2.6e-5 vs 2.3e-5 (0.86x), volume 9.3e-5 vs 8.1e-5 (0.87x),
+shape 1.2e-2 vs 3.0e-4 (refined 40x SMALLER), Laplace jump 6e-9 vs 1.6e-8 (2.6x),
+kErrL2Band 1.6e-3 vs 4.2e-3 (2.6x), A2hL2Band 2.6e-7 vs 1.7e-7 (0.66x); maxima over time
+identical to four digits in both. Same order everywhere, nothing near the 10x line, one
+metric better by 40x: the 1e-4 is the linear solver's decomposition dependence, present
+identically on the hanging-node-free mesh, and the transition polyhedra add nothing
+detectable. G1 PASSED on the refined mesh with the production force. (Aside worth
+keeping: the UNIFORM pair's 1.2 % shape difference is the metric's own decomposition
+sensitivity -- zeroSetRadialL2 is crossing-count weighted -- not the flow's.)
+
 ### RUNNING: static local refinement around the interface (2026-09-04)
 
 **Why.** R/h >= 10 on a uniform 3D mesh costs 216k (hex, N = 60) to 3.6M (poly,
@@ -1285,6 +1297,31 @@ boundary, present in every pMesh mesh including the uniform rungs (hex, for comp
 `0-9: 1.00 | 9+: 2.00`, exactly the requested band). N_CELLS for a polyRefined study is
 pinned from the built mesh (`N_CELLS_suggested`), as for the uniform rungs.
 
+**P0 on the real box LANDED, and it CORRECTS the polyhedral ladder's quoted resolution.**
+`polyDroplet3Drefined_r13p8` (maxCellSize 2.0e-4, one level): 88 929 -> 150 362 cells,
+3.8x fewer than the twin's 572 039, interface cells at 7.937e-5 m, 5.9 complete fine
+layers, `N_CELLS_suggested` 76 -- the band check failed the mesh rule on the config's 84,
+as designed. The same tool on the uniform twin `polyDroplet3D_r13p8` finds ITS interface
+cells at 7.937005e-5: IDENTICAL to seven digits (same octree level, same root cube). The
+twin's N_CELLS 84 came from h_eff = (V/N)^(1/3) = 7.228e-5, an average pulled down by
+cfMesh's boundary refinement -- its size profile reads `0-36: 1.00 | 36-72: 0.51-0.55`,
+i.e. the polyhedral "uniform" meshes carry a half-size boundary layer. **Measured on all
+three rungs, the interface cell size is EXACTLY 2^(-1/3) x maxCellSize** (the dual cell
+holds half an octree box): 7.937e-5 / 5.556e-5 / 3.9685e-5 m, i.e. **R/h = 12.6 / 18.0 /
+25.2 at the interface, not the 13.84 / 18.91 / 25.6 quoted from the average**; the h ratios
+and hence the fitted orders are unchanged, the N_CELLS pins 84/114/156 (interface-honest
+76/108/151) make the capillary dt 10 / 5.3 / 3.1 % conservative. Rung headers amended; the
+rungs are kept as run. For a like-for-like P2 the refined arm runs at the twin's N_CELLS 84
+(equal dt, equal 3813 steps) and DECLARES the deviation with the new inert token
+`REFINE_ALLOW_PIN_MISMATCH` (the check still reports it). P1, the 4-rank smoke of the
+graded polyhedral mesh (`polyDroplet3Drefined_r13p8_smoke4`, 458 steps), is running on the
+laptop; the full study goes to the cluster on a PASS. **Its first attempt was a LAUNCH
+FAILURE of my own making, not a result**: I had put `LD_PRELOAD=libjemalloc` (cfMesh's
+glibc-2.39 workaround) in the study-global preamble, and the MPI solver segfaulted at
+startup -- empty log, rc 139 -- exactly the trap CLAUDE.md records; the post-solve step
+recorded it as "diverged". Voided, preload scoped to pMesh only (`LEIA_PMESH_PREFIX`,
+commit after `dacced4`), re-running.
+
 **First production-force pair LANDED (cluster, N_fine = 60, refined np 8 vs uniform np 32,
 2302 steps each, t = 0.025).** Read with `make_refined_equivalence_table.py`:
 
@@ -1303,8 +1340,14 @@ pinned from the built mesh (`N_CELLS_suggested`), as for the uniform rungs.
 
 Every metric of the vector inside its tolerance; the two meshes are equivalent to the
 level at which two DECOMPOSITIONS of the same mesh differ (1e-4, see G1 above -- refined
-at np 8 against uniform at np 32 sits at exactly that level). Three more rungs and the
-controls are running; the ORDERS wait for all four.
+at np 8 against uniform at np 32 sits at exactly that level).
+
+**N_fine = 76 pair LANDED (3281 matched steps): the same picture.** Maxima over time within
+0.20 % (L1) and 0.019 % (L2); at t = 0.025 L1|u'| +3.8 %, L2|u'| +0.33 %, volume -0.37 %,
+shape -0.37 %, Laplace jump -8.7e-5, kErrL2Band +0.15 %, A2hL2Band 2e-6; core-hours 2.66
+vs 10.62 (4.0x cheaper; 91 944 vs 438 976 cells). The one metric that moves at T in both
+rungs, L1|u'| by +3.8-3.9 %, is 2.2e-7 m/s against a peak of 1e-5 -- the decayed tail.
+N = 96, 120 and the controls are running; the ORDERS wait for all four.
 
 **Then (in order) -- SUBMITTED 2026-09-04 evening after the gate above, orchestrator ids
 in `.my_jobs`.** G3/G4 on the cluster: `stationaryDroplet3Drefined` (fine N =
