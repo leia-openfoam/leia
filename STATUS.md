@@ -1257,6 +1257,17 @@ Where the CPU went: refined ladder 25 core-h + two-level 7 core-h against 137 co
 uniform twins, on the same commit (`b72c7ef` stamps; drivers on disk `24223a2`, identical for
 hex).
 
+**P2 -- the POLYHEDRAL refined mesh is equivalent to its uniform twin too** (cluster, np 8 vs
+np 16, N_CELLS 84 both, 3813 matched steps to t = 0.025; `polyDroplet3Drefined_r13p8` vs
+`polyDroplet3D_r13p8`, interface cells 7.937e-5 in both, 150 362 vs 572 039 cells): peaks
+-0.07 % (L1) / -0.014 % (L2); at T L1|u'| -0.09 % (7.485e-6 vs 7.491e-6), L2|u'| -0.014 %
+(3.147e-5 vs 3.148e-5), volume +0.14 %, shape -0.50 %, Laplace jump -2e-4, kErrL2Band
++0.74 %, A2hL2Band -0.13 %; core-hours 6.4 vs 17.7 (**2.7x**; the poly ratio is smaller
+than hex because cfMesh grades ~2x wider than asked, 11.8 fine layers for 6, and because
+its 'uniform' twin already carries a half-size boundary layer). Same octree level at the
+interface, same dt, same steps, same answer -- the graded cfMesh mesh is one more mesh to
+the solver.
+
 ### RUNNING: static local refinement around the interface (2026-09-04)
 
 **Why.** R/h >= 10 on a uniform 3D mesh costs 216k (hex, N = 60) to 3.6M (poly,
@@ -1358,8 +1369,7 @@ against the uniform twin at t = 0.003, mean|u'| 7.593e-6 vs 7.598e-6 (-0.07 %), 
 2.420e-5 vs 2.421e-5 (-0.02 %), volume +0.008 %, shape +0.30 %, Laplace jump +1.2e-8,
 kErrL2Band +1.2 %, A2hL2Band +0.10 %, maxima over time within 0.09 % / 0.05 %. The full
 study `polyDroplet3Drefined_r13p8` (np 8, 3813 steps, twin-matched N_CELLS 84) is
-submitted to the cluster (id in `.my_jobs`); P2 = the G3 tolerances against
-`polyDroplet3D_r13p8` at t = 0.0125 and 0.025.
+submitted to the cluster (orchestrator 54477977) -- **P2 PASSED, see the DECIDED block above.**
 
 **First production-force pair LANDED (cluster, N_fine = 60, refined np 8 vs uniform np 32,
 2302 steps each, t = 0.025).** Read with `make_refined_equivalence_table.py`:

@@ -1424,6 +1424,25 @@ mesh ($289\,808$ cells) to $0.2\%$ in the peaks and $0.8\%$ or better at the end
 run at half its cost, i.e. $13.4$ times fewer core-hours than the uniform mesh of the same
 fine spacing; a second transition, one level further out, changes nothing measurable.
 
+\paragraph{Polyhedral meshes.}
+The same test on cfMesh polyhedra, with the mesh regenerated around the iso-surface as
+described in Section~\ref{sec:staticrefine}: base size $2\times10^{-4}$\,m, one
+additional octree level within six fine cells of the interface, $150\,362$ cells against
+the uniform twin's $572\,039$ (last row of Table~\ref{tab:refined-eq}). The interface
+cells of both meshes measure $7.937\times10^{-5}$\,m -- the same octree level, so
+$R/h=12.6$ at the interface in both -- and both run the same $3813$ steps. The peak
+parasitic velocity agrees to $0.07\%$ ($L_1$) and $0.014\%$ ($L_2$), the end-of-run
+vector to $0.09\%$ and $0.014\%$ (velocity), $0.14\%$ (volume), $0.5\%$ (shape),
+$2\times10^{-4}$ (Laplace jump), $0.7\%$ (band curvature error) and $0.13\%$
+($A_{2h}$), at $2.7$ times fewer core-hours. The smaller saving than on hexahedra has two
+measured causes: the mesher grades about twice as far from the interface as the requested
+thickness ($11.8$ complete fine layers for $6$), and the ``uniform'' polyhedral mesh is
+itself not uniform -- cfMesh refines the domain boundary by one level, so its average
+cell is smaller than its interface cell. The latter also corrects the resolution quoted
+for the uniform polyhedral rungs: measured at the interface they are $R/h=12.6$, $18.0$
+and $25.2$, not $13.8$, $18.9$ and $25.6$ from the cell average; the ratios between
+rungs, and hence every fitted order, are unchanged.
+
 \begin{table}[t]
   \centering
   \caption{Refined against uniform at matched fine spacing, time step and step count:
