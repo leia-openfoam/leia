@@ -1,3 +1,8 @@
+# 4-RANK SMOKE (P1) of the polyRefined mesh: the production solver on the graded cfMesh
+# mesh (150 362 cells, hanging-node-free but graded polyhedra) for 458 steps to t = 0.003 on
+# FOUR ranks, before the full study goes to the cluster. PASS = COMPLETED per
+# foam_log_state.sh with 458 steps and a metrics CSV whose L1/L2 parasitic velocity is of
+# the order of the uniform twin's at the same time (7e-6 / 3e-5 m/s at t = 0.003).
 # POLYHEDRAL STATIC REFINEMENT -- twin of config/polyDroplet3D_r13p8.yaml (uniform pMesh,
 # maxCellSize 1.0e-4, 572k cells, MEASURED R/h = 13.84, N_CELLS 84).
 #
@@ -24,15 +29,14 @@
 # band check still reports it (refinedBand.csv: pinRelError 0.10, N_CELLS_suggested 76).
 # P1 = the 4-rank smoke (config/polyDroplet3Drefined_r13p8_smoke4.yaml); P2 = the G3
 # equivalence tolerances against polyDroplet3D_r13p8 at matched N_CELLS, t and step count.
-study_name: polyDroplet3Drefined_r13p8
+study_name: polyDroplet3Drefined_r13p8_smoke4
 case: stationaryDroplet3D
 mesh: polyRefined
 mode: parallel
-np: 8
+np: 4
 solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
 theme:  semi-lagrangian-level-set
 setfields_args: "-alphaName alpha.water"
-solve_runtime: 900
 axes_override:
   DOMAIN_LENGTH: [0.006]
   MAX_CELL_SIZE: [2.0e-4]
@@ -40,8 +44,8 @@ axes_override:
   REFINE_BAND_CELLS: [6]
   N_CELLS: [84]
   REFINE_ALLOW_PIN_MISMATCH: ["true"]
-  END_TIME: [0.025]
-  WRITE_INTERVAL: [0.0125]
+  END_TIME: [0.003]
+  WRITE_INTERVAL: [0.003]
   SURFACE_TENSION_FORCE: [reconstructedCurvature]
   CURVATURE_EXTENSION: [cellCentreInverse]
   FACE_CURVATURE_SOURCE: [model]

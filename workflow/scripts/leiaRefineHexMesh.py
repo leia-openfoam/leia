@@ -243,7 +243,8 @@ def main(argv=None):
     if dry:
         return 0
     res = lr.band_check(case, "hex", band_cells, alpha_name, toks,
-                        allow_pin_mismatch=a.allow_pin_mismatch)
+                        allow_pin_mismatch=a.allow_pin_mismatch
+                        or lr.tok_bool(toks, "REFINE_ALLOW_PIN_MISMATCH"))
     res.update(lr.checkmesh_stats(os.path.join(case, "log.checkMesh")))
     res["levels"] = levels
     lr.write_csv(os.path.join(case, "refinement.csv"), rows)

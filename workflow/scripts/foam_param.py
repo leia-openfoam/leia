@@ -66,7 +66,8 @@ _DERIVED_INPUTS = {
     "DROPLET_CENTRE_X": ("DROPLET_OFFSET_X",),
     # The refinement drivers read REFINE_* from case_params.json, so they must reach
     # the grid although no template names them; N_CELLS for the dt law.
-    "N_CELLS_BASE": ("N_CELLS", "REFINE_LEVELS", "REFINE_BAND_CELLS", "REFINE_SOURCE"),
+    "N_CELLS_BASE": ("N_CELLS", "REFINE_LEVELS", "REFINE_BAND_CELLS", "REFINE_SOURCE",
+                     "REFINE_ALLOW_PIN_MISMATCH"),
 }
 
 

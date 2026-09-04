@@ -116,6 +116,11 @@ def tok_int(toks, key, default=None):
     return default if v is None else int(round(v))
 
 
+def tok_bool(toks, key, default=False):
+    v = str(toks.get(key, default)).strip().lower()
+    return v in ("true", "yes", "on", "1")
+
+
 def alpha_name_from(setfields_cmd, default="alpha.water"):
     m = re.search(r"-alphaName\s+(\S+)", setfields_cmd or "")
     return m.group(1) if m else default

@@ -890,3 +890,5 @@ SL_TRACE_VELOCITY projectedFlux;
 REFINE_LEVELS     0;          // halvings of the near-interface cell size; >= 1 only with hexRefined | polyRefined
 REFINE_BAND_CELLS 6;          // complete fine layers each side, worst case (hex: face dilations are added until psi proves it)
 REFINE_SOURCE     interface;  // interface (0 < alpha < 1 seed + dilations) | ball (CONTROL: whole droplet interior)
+REFINE_ALLOW_PIN_MISMATCH false; // "true" ONLY to match a twin's N_CELLS on purpose: the band check then reports,
+                                  // but does not fail on, an N_CELLS that is not the measured fine spacing
