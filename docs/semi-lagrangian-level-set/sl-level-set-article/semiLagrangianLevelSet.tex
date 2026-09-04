@@ -765,54 +765,60 @@ $L_2$, the zero-set shape error by $3.3\times$, and moves the travelled fraction
 $1.0125$ to $0.9971$ -- from a droplet running fast to one lagging slightly, which is the
 signature of transport error alone rather than of a spurious force.
 
-\paragraph{Choosing $\mu_f$: robustness decides it, not accuracy.} A single resolution at
-the water/air viscosity ratio cannot separate the three sources of Eq.~\eqref{eq:muf},
-because they coincide as $\mu_1\to\mu_2$. Table~\ref{tab:muf} therefore crosses them with
-resolution and with the size of the viscosity jump. At the production ratio
-$\mu_1/\mu_2=54.8$ the \emph{interpolated} source is both the more accurate and the
-better-converging, reaching $L_1=4.00\times10^{-3}$ at $N=512$ with a pairwise
-$256\to512$ order of $1.50$, against $4.95\times10^{-3}$ and $0.75$ for the geometric one.
-At $\mu_1/\mu_2=1000$, however, it \emph{diverges}: the run fails at step $3826$ of $7543$
-with $L_1$ reaching $5.36$ -- five times the translation speed -- and a travelled fraction
-of $-0.125$, the droplet having been destroyed. The geometric source completes the same
-case and improves on its own production-jump result, $8.34\times10^{-3}\to
-2.98\times10^{-3}$.
+\paragraph{Choosing $\mu_f$.} The three sources of Eq.~\eqref{eq:muf} coincide as
+$\mu_1\to\mu_2$, so neither a single resolution nor the water/air ratio alone can separate
+them. Table~\ref{tab:muf} therefore crosses all six combinations of $\alpha_f$ source and
+mixing model with three resolutions and two viscosity ratios -- thirty-six runs, all with
+the explicit viscous term of Eq.~\eqref{eq:viscous}.
 
-We therefore adopt the geometric $\mu_f$ as the default. A formulation that fails at a
-viscosity contrast an application can plausibly reach is not usable, and a factor of
-$1.2$ in accuracy is a small price for removing that failure mode. The interpolated and
-harmonic sources remain selectable at run time.
+The algebraic--linear source is the clear choice. It is the only one of the six with a
+\emph{positive} convergence order in all three metrics at both viscosity ratios, it is
+lowest in absolute error at $N=512$ in both, and its travelled fraction is closest to unity.
+At $\mu_1/\mu_2=1000$ it attains first order with correlation coefficients of $0.998$ and
+$0.999$. Every other combination except the algebraic blend at the large ratio returns a
+\emph{negative} order for the zero-set shape error, that is, a shape that degrades under
+refinement.
 
-Two qualifications belong with that choice. First, the harmonic source -- which one would
-expect to win, being the face value that reproduces the exact viscous flux across a layered
-medium normal to the interface -- is the worst of the three in every completed comparison;
-that reasoning does not carry over to this discretisation. Second, over $N=128/256/512$ the
-geometric source's zero-set \emph{shape} error fits a \emph{negative} order,
-$p=-0.597$ ($R=-0.62$), against $+0.433$ for the interpolated one, even though its $L_2$
-converges at $p=0.496$ ($R=0.977$) and its phase-volume error at $p=1.393$ ($R=0.978$).
-Three points, one of them the anomalous $R/h=12.8$ rung, cannot settle a convergence order;
-the low correlation coefficients are that fact stated numerically rather than concealed, and
-a fourth rung is owed.
+Two negative results are worth recording. The harmonic mixing, which one would expect to
+win as the face value reproducing the exact viscous flux across a layered medium normal to
+the interface, is among the worst at every resolution and both ratios; so is the
+orientation-weighted blend, which was constructed precisely to interpolate between the
+series and parallel limits without a free parameter. Neither reasoning describes what this
+discretisation requires: the plain arithmetic mixing of a linearly interpolated $\alpha_f$
+outperforms both. Nor does the geometric $\alpha_f$ help here, despite making the two face
+coefficients of the momentum equation descend from one discrete object -- consistency of
+$\mu_f$ with $\rho_f$ is evidently not what limits this term.
 
 \begin{table}[t]
   \centering
-  \caption{Face-viscosity source: resolution at the production jump $\mu_1/\mu_2=54.8$, and
-  a discriminator at $\mu_1/\mu_2=1000$ (same density ratio, $N=256$). Velocity errors are
-  $L_1$ of $\uvec-\uvec_0$ relative to $U_0$ at $t=0.02$~s. Orders $p$ and correlation
-  coefficients $R$ are least-squares fits of $\log(\text{error})$ against $\log h$ over the
-  three resolutions.}
+  \caption{Face-viscosity source over $N=128/256/512$ at two viscosity ratios, explicit
+  viscous term throughout. $L_1$ is of $\uvec-\uvec_0$ relative to $U_0$ at $t=0.02$~s;
+  $p$ and $R$ are least-squares fits of $\log(\text{error})$ against $\log h$.}
   \label{tab:muf}
-  \begin{tabular}{l r r r r r r}
+  \begin{tabular}{l r r r r r r r}
     \hline
-    & \multicolumn{3}{c}{$\mu_1/\mu_2=54.8$} & \multicolumn{2}{c}{fit, $L_2$} & $\mu_1/\mu_2=1000$ \\
-    $\mu_f$ source & $N{=}128$ & $N{=}256$ & $N{=}512$ & $p$ & $R$ & outcome \\
+    & \multicolumn{4}{c}{$\mu_1/\mu_2=54.8$} & \multicolumn{3}{c}{$\mu_1/\mu_2=1000$} \\
+    $\mu_f$ & $L_1(N{=}512)$ & $p(L_1)$ & $p(L_2)$ & $p(\text{shape})$ & $L_1(N{=}512)$ & $p(L_1)$ & $p(\text{shape})$ \\
     \hline
-    interpolated      & $7.01\times10^{-3}$ & $1.13\times10^{-2}$ & $\mathbf{4.00\times10^{-3}}$ & $0.541$ & $0.734$ & \textbf{diverges} \\
-    geometric         & $6.11\times10^{-3}$ & $8.34\times10^{-3}$ & $4.95\times10^{-3}$ & $0.496$ & $0.977$ & $2.98\times10^{-3}$ \\
-    geometricHarmonic & $6.73\times10^{-3}$ & $9.33\times10^{-3}$ & $6.03\times10^{-3}$ & $0.506$ & $0.996$ & $5.63\times10^{-3}$ \\
+    \texttt{alg\_lin}   & $\mathbf{3.49\times10^{-3}}$ & $\mathbf{0.77}$ & $0.70$ & $\mathbf{+0.37}$ & $\mathbf{1.40\times10^{-3}}$ & $\mathbf{1.10}$ & $\mathbf{+0.71}$ \\
+    \texttt{alg\_harm}  & $6.48\times10^{-3}$ & $0.16$ & $0.44$ & $-0.49$ & $6.98\times10^{-3}$ & $0.08$ & $-0.50$ \\
+    \texttt{alg\_blend} & $6.25\times10^{-3}$ & $0.26$ & $0.36$ & $-0.21$ & $3.09\times10^{-3}$ & $0.83$ & $+0.60$ \\
+    \texttt{geo\_lin}   & $4.95\times10^{-3}$ & $0.15$ & $0.50$ & $-0.60$ & $1.83\times10^{-3}$ & $0.46$ & $-0.37$ \\
+    \texttt{geo\_harm}  & $6.03\times10^{-3}$ & $0.08$ & $0.51$ & $-0.72$ & $4.67\times10^{-3}$ & $0.15$ & $-0.56$ \\
+    \texttt{geo\_blend} & $5.67\times10^{-3}$ & $0.11$ & $0.50$ & $-0.65$ & $2.65\times10^{-3}$ & $0.33$ & $-0.36$ \\
     \hline
   \end{tabular}
 \end{table}
+
+\paragraph{Viscosity spreads the spurious current rather than damping it.} Uniform
+translation is an exact solution and requires no viscous momentum exchange: the strain rate
+vanishes identically, so $\mu(\nabla\uvec+\nabla\uvec^{\mathsf T})=0$ in both phases and the
+viscosity jump multiplies zero. The discrete solution is not uniform, however, and the shear
+stress acting on the numerically generated gradient is a genuine force. Removing viscosity
+entirely ($\nu_1=\nu_2=0$, $N=128$) \emph{lowers} $L_1$ by $1.42\times$ while \emph{raising}
+$L_2$ by $2.61\times$, and moves the travelled fraction from $1.0033$ to $0.9947$. Viscosity
+therefore redistributes the interfacial disturbance into cells that were quiet rather than
+removing it, and contributes to the coherent propulsion of Section~\ref{sec:translating}.
 
 Two discretisation choices in Eq.~\eqref{eq:momentum} are not free once the interface is
 sharp, and both are fixed here. The convective mass flux $\rho_f\,(\uvec_f\!\cdot\mathbf S_f)$

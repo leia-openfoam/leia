@@ -597,20 +597,40 @@ MASS_FLUX_ALPHAF_SOURCE donorPlane;
 // normals. Pure harmonic applies the series formula even on faces lying nearly IN the
 // interface plane, where arithmetic is correct -- a candidate reason for its poor showing.
 //
-// DEFAULT geo_lin, chosen 2026-09-03 on ROBUSTNESS. At the water/air jump mu1/mu2 = 54.83
-// alg_lin is more accurate and better-converging (N=512: L1 4.00e-03 against 4.95e-03;
-// pairwise 256->512 order 1.50 against 0.75). At mu1/mu2 = 1000 alg_lin DIVERGES at step
-// 3826 of 7543 -- L1 reaching 536% of U0, travelled fraction -0.125, droplet destroyed --
-// while geo_lin completes and improves on its own production-jump result. A model that
-// explodes at a reachable viscosity contrast is not a model.
+// DEFAULT alg_lin, decided 2026-09-03 on a 36-arm ladder: six models x N = 128/256/512 x
+// mu1/mu2 in {54.83, 1000}, all with the explicit DNS viscous term (config/mufGrid2D_*).
+// Least-squares orders of log(error) against log(h), with correlation coefficients:
 //
-// KNOWN WEAKNESS: over N = 128/256/512 geo_lin's zero-set SHAPE error fits a NEGATIVE order,
-// p = -0.597 (R = -0.62), against +0.433 for alg_lin. Its L2 converges (p = 0.496,
-// R = 0.977) and phase volume converges (p = 1.393, R = 0.978). Three points cannot settle
-// an order; N = 1024 is owed.
+//   mu1/mu2 = 54.83     L1@512     p(L1)   R      p(L2)   R      p(shape)  R     travel
+//     alg_lin          3.494e-03   0.77  0.938    0.70  0.970    +0.37  0.673   1.0064
+//     geo_lin          4.953e-03   0.15  0.401    0.50  0.977    -0.60 -0.623   1.0090
+//     alg_harm         6.479e-03   0.16  0.316    0.44  0.862    -0.49 -0.557   1.0134
+//     geo_harm         6.027e-03   0.08  0.242    0.51  0.996    -0.72 -0.694   1.0119
+//     alg_blend        6.247e-03   0.26  0.454    0.36  0.704    -0.21 -0.319   1.0124
+//     geo_blend        5.669e-03   0.11  0.298    0.50  0.988    -0.65 -0.656   1.0110
 //
-// NOT INERT: changing this changes every study that renders it.
-VISCOSITY_FACE_MODEL geo_lin;
+//   mu1/mu2 = 1000
+//     alg_lin          1.400e-03   1.10  0.998    1.15  0.999    +0.71  0.984   1.0024
+//     alg_blend        3.086e-03   0.83  0.965    0.90  0.978    +0.60  0.896   1.0062
+//     geo_lin          1.834e-03   0.46  0.955    0.77  0.999    -0.37 -0.604   1.0033
+//     geo_harm         4.670e-03   0.15  0.906    0.68  0.980    -0.56 -0.770   1.0105
+//
+// alg_lin is the ONLY model with a positive order in all three metrics at BOTH jumps, is
+// lowest in absolute error at N=512 at both, and has the travelled fraction closest to 1.
+// At the large jump it reaches first order with R = 0.998-0.999, the cleanest convergence
+// this campaign has measured. Every other model except alg_blend at the large jump has a
+// NEGATIVE shape-error order.
+//
+// RETRACTED. This token was briefly set to geo_lin because alg_lin appeared to destroy the
+// droplet at mu1/mu2 = 1000. That divergence was a BUG, not a model property: muf was
+// constructed once in createFields and only updated inside an "if (geometric)" branch, so
+// the algebraic arms ran with a face viscosity FROZEN at the initial condition while the
+// droplet translated away from it. faceViscosity.H now updates muf every step for all six
+// models, and alg_lin is the best of them at that jump rather than the one that fails.
+//
+// harmonic and normalBlend are both worse than linear everywhere here, so the
+// series/parallel argument for them does not describe what this discretisation needs.
+VISCOSITY_FACE_MODEL alg_lin;
 
 // rhoLENT ONLY (inert for every other mass-flux model, which solve no density
 // equation). Clip the auxiliary density to [rho2, rho1] immediately after the

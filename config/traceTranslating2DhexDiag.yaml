@@ -1,0 +1,35 @@
+# DIAGNOSTIC RE-RUN: the diverged projectedFlux arm, written densely enough to
+# animate. Physics identical to config/traceTranslating2Dhex -- same case, same
+# N, same trace, same capillary step -- ONLY the write frequency changes, so the
+# divergence this reproduces is the same event, not a new experiment.
+#
+# WHY IT EXISTS. In traceTranslating2Dhex the N=128 projectedFlux arm DIVERGED at
+# step 9337 (t = 0.0700 s), but WRITE_INTERVAL 0.02 left only four field
+# snapshots in the whole run -- nothing to look at across the blow-up. This rerun
+# writes every 100 steps (7.5e-04 s), giving ~93 frames up to divergence.
+#
+# NOTE this is 2D: the mesh is one cell thick, so there is no clip plane to take.
+# The fields are rendered directly.
+#
+# Single arm on purpose: the cellCentred twin diverged EARLIER (step 2845) and is
+# a separate picture; this one is about what the surviving trace does when it
+# finally fails.
+study_name: traceTranslating2DhexDiag
+case: translatingDroplet2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 600
+axes_override:
+  N_CELLS: [128]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  WRITE_INTERVAL: [7.5e-04]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"

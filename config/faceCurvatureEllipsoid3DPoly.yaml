@@ -29,6 +29,13 @@ axes_override:
   # config/config.yaml contributes N_CELLS [32, 64] to any study that omits it,
   # silently doubling the arm count with duplicate physics.
   N_CELLS: [32]
+  # PSI_SURFACE must be pinned HERE for the same reason as N_CELLS: the token
+  # defaults to signedDistanceEllipse in cases/default.parameter -- the 2D
+  # class, which in a 3D case renders psi as the distance to an elliptic
+  # CYLINDER. The first run of this study shipped exactly that geometry and was
+  # discarded. Both flavours, mirroring the hex study: the exact SDF and the
+  # raw implicit function.
+  PSI_SURFACE: [signedDistanceEllipsoid, implicitEllipsoid]
   MAX_CELL_SIZE: [0.021, 0.015, 0.008]
   SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
   SL_STENCIL: [point]
