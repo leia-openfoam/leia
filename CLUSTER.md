@@ -116,7 +116,9 @@ aimed at a different session's jobs.
 each study driver appends its id to `.my_jobs` in the clone:
 
 ```bash
-sbatch --parsable ... >> .my_jobs      # record at submission
+sbatch --parsable ... 2>/dev/null | tail -1 >> .my_jobs   # record at submission (the LUA submit
+                                                        # plugin now prints three chatter lines to STDOUT
+                                                        # before the id; without tail -1 they land in the ledger)
 scancel 54426007                        # explicit id: always safe
 scancel -n leia-curv                    # by JOB NAME (this session's name)
 ```

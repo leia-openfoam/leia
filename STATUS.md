@@ -1703,6 +1703,22 @@ volume 4.44e-2, Laplace 150.3, kErr 2174 -- the four tolerance variants of this 
 near-blow-up case (pre-fix 1.19e-2 / 1.246e-1 / 4.40e-2 / 153.7 / 2266; 1e-3; 1e-2) scatter
 by a few percent; it is a smoke, not a yardstick, and its export is the 0.3 run's.
 
+### RUNNING: Popinet-3D polyhedral ladder on the 0.3 code (submitted 2026-09-05, cluster time ~18:10)
+
+`popinet3D_La12000_poly_r12p8` (N 64, ~0.66M cells, np 32) -> orchestrator **54482104**;
+`popinet3D_La12000_poly_r19p2` (N 96, ~2.4M, np 64) -> **54482105**; `popinet3D_La12000_poly_r25p6`
+(N 128, ~5.6M, np 96) -> **54482121**, submitted through `run-study-r25p6.sbatch` (a local copy of
+the wrapper whose snakemake line carries the profile's `set-resources` list with the serial mesh
+job at 32 GB / 240 min and pre/post-processing raised in proportion: the 3.6M-cell polyhedral mesh
+step measured 11.7 GB and 71 min against the profile's 16 GB / 120 min; the user's pinned profile
+is untouched). All three in `.my_jobs` (the ledger was cleaned of the submit plugin's stdout
+chatter, see CLUSTER.md). Binary: `curvature-v2512` rebuilt 2026-09-05 at commit 0c5b9db,
+`slFitPivot` symbol present, solvers relinked. Pre-registered read-out (`make_popinet_table.py`,
+to be extended to 3D poly): max over time of L1 and L2 of |u - U0|/U0, volume, shape, Laplace
+jump and band curvature error at T = 0.4; PASS = the L1/L2 disturbance decreases along the
+ladder and sits at parity with the hex twin at matched N (the 78-step smoke: 9.7e-5 / 5.3e-4
+vs 7.3e-5 / 5.4e-4). The L_inf column is reported, not judged.
+
 ## 5. Lichtenberg — what is running
 
 Login: `ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de`
