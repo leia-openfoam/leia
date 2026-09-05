@@ -131,6 +131,17 @@ and the child cancelled by id. Order: read the driver's `.err`, `scancel` the ch
 then the driver -- and record all of them in `.my_jobs`. Never identify the children by
 name or by user: the UUID-named jobs next to yours belong to other sessions.
 
+**A cancelled driver is not gone until `sacct` says so, and its study directory is not
+clean until you clean it.** MEASURED 2026-09-05 (twice in one evening): (1) a driver
+cancelled seconds after submission had already rendered two arms; the corrected driver
+resubmitted next to it found those outputs present and reused them -- two arms of a
+different case, dead at step 0, inside a sweep that looked complete. (2) That first driver
+kept running for two more hours: snakemake's `--keep-going` re-queued the dead arms as new
+SLURM jobs (32 cores each) while its study directory had been renamed away under it. Order
+after any cancel: `sacct -j <id>` until CANCELLED/COMPLETED, then read the `.err` for
+`SLURM jobid` children and cancel those, then rename or delete `studies/<study>`, and only
+then resubmit.
+
 Identify your work by **job name**, never by user: `squeue -u $USER` lists
 every session's jobs, which is why the job-name filter matters --
 
