@@ -1,0 +1,43 @@
+# NON-ORTHOGONAL CORRECTOR SWEEP on the quiet polyhedral STATIONARY rung (2026-09-05): the
+# regress200 config VERBATIM (polyDroplet3D_r13p8, 200 of its 3813 steps, |u| ~ 1e-5) plus ONE
+# axis, nNonOrthogonalCorrectors 1 / 3 / 6 (1 = every polyhedral result so far). cfMesh
+# polyhedra reach ~50 deg non-orthogonality; the polyhedral parasitic current of the stationary
+# ladder grows late and does not converge with h (STATUS 2026-09-04/05). PRE-REGISTERED: if
+# mean|u'|, L2|u'| and the Laplace-jump error at step 200 change by more than the
+# decomposition noise (~1e-4 relative) with the corrector count, the polyhedral parasitic
+# current is partly a Laplacian-correction artefact and the stationary ladder is re-run with
+# the converged count; if they do not, the growth is not non-orthogonality. Read-out at equal
+# step counts; volume and shape reported alongside.
+study_name: polyDroplet3D_r13p8_nonOrth
+case: stationaryDroplet3D
+mesh: poly
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_NON_ORTH_CORRECTORS: [1, 3, 6]
+  DOMAIN_LENGTH: [0.006]
+  MAX_CELL_SIZE: [1.0e-4]
+  N_CELLS: [84]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+  END_TIME: [0.0013113]
+  WRITE_INTERVAL: [0.0013113]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
