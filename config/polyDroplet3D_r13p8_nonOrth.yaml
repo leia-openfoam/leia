@@ -17,7 +17,7 @@ solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
 theme:  method-comparison
 setfields_args: "-alphaName alpha.water"
 axes_override:
-  N_NON_ORTH_CORRECTORS: [1, 3, 6]
+  N_NON_ORTHOGONAL_CORRECTORS: [1, 3, 6]
   DOMAIN_LENGTH: [0.006]
   MAX_CELL_SIZE: [1.0e-4]
   N_CELLS: [84]

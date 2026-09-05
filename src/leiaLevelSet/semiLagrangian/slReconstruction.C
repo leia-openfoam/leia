@@ -255,13 +255,30 @@ void Foam::slReconstruction::buildKeep()
     {
         const surfaceScalarField& phi =
             mesh_.lookupObject<surfaceScalarField>(boundaryFluxName_);
+        // A no-flow face (slip/no-slip wall) carries a ROUND-OFF flux of either
+        // sign (measured 1e-20 against 4e-4 on the outlet): without a tolerance
+        // 24 % of the wall faces were classified outflow at random, the wall and
+        // edge cells got one-sided stencils and the level set blew up there
+        // (2026-09-05, step 464). Outflow = flux above 1e-6 of the largest
+        // boundary flux; the scale is a collective, called uniformly on all ranks.
+        scalar phiScale = 0;
+        forAll(phi.boundaryField(), patchi)
+        {
+            const fvsPatchScalarField& pphi = phi.boundaryField()[patchi];
+            if (!pphi.coupled() && pphi.size())
+            {
+                phiScale = Foam::max(phiScale, Foam::max(Foam::mag(pphi)));
+            }
+        }
+        reduce(phiScale, maxOp<scalar>());
+        const scalar phiTol = 1e-6*phiScale;
         forAll(phi.boundaryField(), patchi)
         {
             const fvsPatchScalarField& pphi = phi.boundaryField()[patchi];
             const label b0 = pphi.patch().start() - mesh_.nInternalFaces();
             forAll(pphi, i)
             {
-                drop[b0 + i] = (pphi[i] > 0);
+                drop[b0 + i] = (pphi[i] > phiTol);
             }
         }
     }

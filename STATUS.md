@@ -1788,10 +1788,41 @@ boundary treatment is fixed; the study directories stay on the cluster as the re
   1.8615e-3, L2 4.4332e-3, volume 1.213e-3, shape 8.152e-4, Laplace 5.0212): the far field
   never touches the droplet. Default stays `include` (bit-identity `A5` cmp-IDENTICAL on the
   final base class); token `SL_STENCIL_BOUNDARY_FACES` in the three Popinet/3D templates.
-- RUNNING: the polyhedral r12p8 case with `inflowOnly` over the full horizon on the laptop
-  (np 8, fields every 0.05): PASS = past the former onset (step 865) and to T = 0.4 with no
-  zero-set jump, outlet fraction ~1.00 at t = 0.05; then the default flips to `inflowOnly`,
-  the cluster rebuilds, and the ladder is resubmitted.
+- **First `inflowOnly` horizon attempt on the polyhedral r12p8 case (laptop, np 8): DIVERGED
+  at step 637, fake zero set at step 464 -- EARLIER than the unmodified stencil (865).** The
+  outlet was fixed (transport fraction 0.240 -> 1.000 at t = 0.05 and 0.10) but the WALL and
+  edge cells blew up instead (wall-layer error +1.05, edges +-0.67 at t = 0.10). Cause, measured
+  on the written flux: slip walls carry a ROUND-OFF flux of either sign (1e-20, against 4e-4 on
+  the outlet) and my outflow test `phi_f > 0` had no tolerance -- 9 719 of 40 960 wall faces
+  (23.7 %) were classified outflow at random, so those cells lost part of their wall faces and
+  got asymmetric one-sided stencils. Fixed: outflow = flux above 1e-6 of the largest boundary
+  flux (a collective, called uniformly). Re-running the horizon; the 2D horizon re-checked
+  first.
+- **Non-orthogonal correction is sufficient -- measured (2026-09-05, evening).** The
+  polyhedral meshes are strongly non-orthogonal (`checkMesh`: Popinet-3D N = 64 max 54.4 deg,
+  average 4.2, skewness 1.7, 8 concave corner cells; stationary r13p8 max 61.8 deg, average
+  5.7, skewness 2.0) and `nNonOrthogonalCorrectors` had been HARDCODED to 1 in every template
+  (hex is orthogonal, so it never showed). Tokenised (`N_NON_ORTHOGONAL_CORRECTORS`, the
+  materialiser's existing name, default 1) and swept 1 / 3 / 6 on the cluster (np 32):
+  - stationary r13p8, 200 steps, all three arms valid (12 / 24 / 42 p_rgh solves per step,
+    verified in the logs): mean|u'| differs by 5e-6 relative between 1 and 6 correctors, L2 by
+    3e-7, the Laplace jump by 3e-9, band curvature by 8e-9, shape by 1e-9, volume error by
+    5e-4 of a 2e-6 quantity. The correction converges in the first pass; the polyhedral
+    parasitic current is NOT a Laplacian-correction artefact.
+  - translating smoke, the 6-corrector arm (valid): max|u'| 9.4568e-2, mean 9.7169e-5, L2
+    5.3311e-4 -- the 1-corrector smoke to four digits (9.457e-2 / 9.717e-5 / 5.331e-4). The
+    constant boundary-cell velocity defect (the 8 concave inlet-corner cells) is not a
+    correction artefact either.
+  - VOID: arms 00000/00001 of the translating sweep carried the DEFAULT tokens (U = 0.05,
+    sigma = 0.07274, N 32, dt 7.2e-4) -- their `case_params.json` says commit bdd3f98,
+    18:48:37: they were rendered by the FIRST, mis-specified driver (54482448, cancelled) before
+    the cancel landed, and the corrected driver found the outputs present and did not re-render
+    them (snakemake reuses existing outputs). A different case, dead at step 0 in the metric
+    writer; not results. Lesson: after cancelling a driver, delete its study directory before
+    resubmitting. Re-run with the stale arms removed (54482459 -> resubmitted).
+- RUNNING (second attempt): the polyhedral r12p8 case with the tolerant `inflowOnly` over the
+  full horizon (np 8, fields every 0.05): PASS = past step 865 and to T = 0.4 with no zero-set
+  jump; then the default flips, the cluster rebuilds, and the ladder is resubmitted.
 - Script: `workflow/scripts/sl_boundary_transport_check.py` (the numbers above).
 
 #### The submission record (superseded by the result above)
