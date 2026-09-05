@@ -1,0 +1,26 @@
+# NON-ORTHOGONAL CORRECTOR SWEEP on the polyhedral Popinet-3D smoke (2026-09-05). The cfMesh
+# N = 64 mesh has non-orthogonality max 54.4 deg (average 4.2), skewness 1.7 and 8 concave
+# corner cells, and every run so far used nNonOrthogonalCorrectors 1 (hardcoded until today).
+# The polyhedral runs carry a CONSTANT velocity defect max|u'| = 0.0945 U from step 20 (hex
+# twin: 0.0134 U), sitting in boundary cells -- an under-corrected pressure Laplacian on the
+# 50-deg cells would look exactly like that. One variable: the corrector count, 1 / 3 / 6,
+# everything else the smoke's (78 steps, t = 0.02, stencilBoundaryFaces include).
+# PRE-REGISTERED: if the plateau of max|u'| falls with the corrector count (and L1/L2 |u'|
+# with it) the defect is non-orthogonality and polyhedral cases need >= 3 correctors (a cost
+# to be measured from clockPerSimTime); if the plateau is unchanged the defect lives in the
+# boundary treatment (stencil / BC), not in the Laplacian. Read-out: max_t of max|u'|,
+# mean|u'|, L2|u'|; volume, shape, Laplace jump at t = 0.02; clock time per step.
+study_name: popinet3D_La12000_poly_smoke_nonOrth
+case: popinetTranslating3D
+mesh: poly
+mode: parallel
+np: 32
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes:
+  N_CELLS: [64]
+  MAX_CELL_SIZE: [0.019685]
+  SURFACE_FILE: [box2x1x1.stl]
+  END_TIME: [0.02]
+  WRITE_INTERVAL: [0.02]
+  N_NON_ORTH_CORRECTORS: [1, 3, 6]

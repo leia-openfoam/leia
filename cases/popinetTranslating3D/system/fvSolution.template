@@ -175,8 +175,7 @@ PIMPLE
     psiOuterCorrectors  @!PSI_OUTER_CORRECTORS!@;
 
     nCorrectors         2;
-    nNonOrthogonalCorrectors 1;
-
+    nNonOrthogonalCorrectors @!N_NON_ORTH_CORRECTORS!@;   // polyhedral meshes: see default.parameter
     pRefCell            0;
     pRefValue           0;
 }

@@ -45,7 +45,18 @@ def main():
     def ex(p, tt):
         dz = 0.0 if twoD else (p[2] - cz) ** 2
         return math.sqrt((p[0] - cx - a.U * tt) ** 2 + (p[1] - cy) ** 2 + dz) - R
-    h = a.h or (1.0 / round(1.0 / (sorted(set(round(c[1], 6) for c in C[:5000]))[1] - sorted(set(round(c[1], 6) for c in C[:5000]))[0])))
+    if a.h:
+        h = a.h
+    else:
+        # median cube-root cell volume (2D: sqrt of volume / thickness) -- mesh-agnostic
+        if not os.path.exists("0/V"):
+            subprocess.run("postProcess -func writeCellVolumes -time 0 > log.writeCellVolumes 2>&1", shell=True)
+        V = sorted(lr.read_scalar_field("0/V", n)); vm = V[len(V) // 2]
+        if twoD:
+            zs = sorted(set(round(c[2], 9) for c in C[:2000])); thick = 2 * abs(zs[0]) if len(zs) == 1 else 1.0
+            h = math.sqrt(vm / thick)
+        else:
+            h = vm ** (1 / 3)
     err = [psi[i] - ex(C[i], T) for i in range(n)]
     def region(c):
         bx = min(c[0], a.xlen - c[0]); wall = min(c[1], 1 - c[1]) if twoD else min(c[1], 1 - c[1], c[2], 1 - c[2])
