@@ -545,6 +545,7 @@ levelSet
         limitSlope          false;
         clipToStencilBounds false;
         curvatureNewtonIters 3;
+        stencilBoundaryFaces @!SL_STENCIL_BOUNDARY_FACES!@;   // include | exclude (see default.parameter)
     }
 }
 

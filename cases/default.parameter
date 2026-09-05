@@ -910,6 +910,24 @@ SL_TRACE_VELOCITY projectedFlux;
 // 12h of an interface. Hex meshes are untouched (bit-identical).
 SL_QUAD_PIVOT_TOL 0.3;
 SL_WRITE_FIT_ORDER false;   // "true": write slFitOrder (2 quadratic / 1 linear / 0 constant) once, a diagnostic field
+// ---- Semi-Lagrangian stencil: physical boundary faces as data (2026-09-05) -----------
+// OpenFOAM's cell-to-cell stencils count every non-coupled, non-empty boundary FACE as a
+// data point. With psi zeroGradient on inlet/outlet/walls each face brings the cell's own
+// value at h/2 (0.19 h in cfMesh's boundary cells) at a 1/d^2 weight four to thirty times a
+// neighbour's, so the fit's boundary-normal gradient collapses toward zero. MEASURED on
+// Popinet's translating droplet (78-step smokes, t = 0.02): the level set moved at 8 % / 24 %
+// (polyhedral inlet / outlet) and 20 % / 49 % (hex) of the exact rate normal to the boundary,
+// tangential transport exact (1.002); the outlet error then grew exponentially behind cfMesh's
+// boundary layer (e-fold ~100 steps), produced a fake zero set at step 865 / 1002 and blew the
+// two ladder rungs up. Invisible on every closed-box case and every kinematic gate (u = 0 at
+// the walls). `exclude` fits CELL data only -- MEASURED in 2D: the outlet becomes exact but the
+// inlet, whose departure foot lies OUTSIDE the domain, extrapolates and blows up (step 716):
+// a control, not a fix. `inflowOnly` decides per face by the sign of the flux: an inflow or
+// no-flow face is data (the boundary condition speaks there), an outflow face is not (the
+// interior determines the value, upwind). Processor patches are remote cells, never boundary
+// slots (MPI untouched); empty patches were never included. Default `include` = the former
+// behaviour until the inflowOnly gates are recorded in STATUS.
+SL_STENCIL_BOUNDARY_FACES include;
 
 REFINE_LEVELS     0;          // halvings of the near-interface cell size; >= 1 only with hexRefined | polyRefined
 REFINE_BAND_CELLS 6;          // complete fine layers each side, worst case (hex: face dilations are added until psi proves it)

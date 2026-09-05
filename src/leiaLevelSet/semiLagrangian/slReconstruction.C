@@ -29,6 +29,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "centredCPCCellToCellStencilObject.H"
 #include "centredCFCCellToCellStencilObject.H"
+#include "surfaceFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -85,6 +86,14 @@ Foam::slReconstruction::slReconstruction(const fvMesh& mesh)
       : static_cast<const extendedCentredCellToCellStencil&>
             (centredCPCCellToCellStencilObject::New(mesh))
     ),
+    boundaryFaceMode_
+    (
+        slDict_.getOrDefault<word>("stencilBoundaryFaces", "include")
+    ),
+    excludeBoundaryFaces_(boundaryFaceMode_ != "include"),
+    boundaryFluxName_(slDict_.getOrDefault<word>("stencilBoundaryFlux", "phi")),
+    keep_(),
+    keepReported_(false),
     nLocal_(mesh.nCells()),
     centreTail_(),
     haveCentres_(false),
@@ -101,9 +110,22 @@ Foam::slReconstruction::slReconstruction(const fvMesh& mesh)
             << "got '" << limiterType_ << "'" << exit(FatalIOError);
     }
 
+    if
+    (
+        boundaryFaceMode_ != "include"
+     && boundaryFaceMode_ != "exclude"
+     && boundaryFaceMode_ != "inflowOnly"
+    )
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "stencilBoundaryFaces must be include, exclude or inflowOnly,"
+            << " got '" << boundaryFaceMode_ << "'" << exit(FatalIOError);
+    }
+
     Info<< "slReconstruction: departure-foot stencil = "
         << slDict_.getOrDefault<word>("stencil", "point")
         << " (point = cell-point-cell, face = cell-face-cell)"
+        << ", boundary faces as data: " << boundaryFaceMode_
         << ", slopeLimiter = " << limiterType_;
     if (limiterType_ == "venkatakrishnan")
     {
@@ -170,6 +192,15 @@ void Foam::slReconstruction::collectStencil(const volScalarField& psiOld)
         // mesh_.C() on demand via stencilC(), so they are not duplicated per
         // stencil entry. Cache the per-cell interpolation radius via the accessor.
         buildCentreTail();
+        if (excludeBoundaryFaces_)
+        {
+            // Once, before any accessor is used (the radius loop below reads
+            // stencilSize/stencilC). inflowOnly classifies each boundary face by
+            // the sign of the flux at THIS first call and keeps that decision:
+            // the stencil must stay static for the once-per-mesh admissibility
+            // (pivot) decision of the models to remain consistent with it.
+            buildKeep();
+        }
         radius_.setSize(mesh_.nCells());
         forAll(radius_, c)
         {
@@ -184,7 +215,89 @@ void Foam::slReconstruction::collectStencil(const volScalarField& psiOld)
         }
         haveCentres_ = true;
     }
+
+    if (excludeBoundaryFaces_)
+    {
+        // Compact each cell's collected values onto the kept positions, in place
+        // (keep_[c] is ascending and keep_[c][k] >= k, so no entry is overwritten
+        // before it is read). stencilPsi_[c][k] then pairs with stencilC(c, k).
+        forAll(stencilPsi_, celli)
+        {
+            List<scalar>& s = stencilPsi_[celli];
+            const labelList& k = keep_[celli];
+            forAll(k, j)
+            {
+                s[j] = s[k[j]];
+            }
+            s.setSize(k.size());
+        }
+    }
     psiOldPtr_ = &psiOld;
+}
+
+
+void Foam::slReconstruction::buildKeep()
+{
+    // Compact indices [nLocal_, nLocal_ + nBoundaryFaces) are the boundary-face
+    // slots of extendedCellToFaceStencil::collectData's layout (buildCentreTail
+    // fills exactly these with the face centres); OpenFOAM never puts coupled or
+    // empty patch faces into a stencil (cellToCellStencil::validBoundaryFaces),
+    // so every referenced slot in that range is a physical patch face.
+    const labelListList& st = stencil_.stencil();
+    const label bStart = nLocal_;
+    const label nBFaces = mesh_.nBoundaryFaces();
+
+    // Which boundary-face slots are dropped: all (exclude) or the outflow faces
+    // of the flux at this (first) call (inflowOnly). A no-flow face (phi_f == 0,
+    // walls) stays: the boundary condition speaks there.
+    boolList drop(nBFaces, true);
+    if (boundaryFaceMode_ == "inflowOnly")
+    {
+        const surfaceScalarField& phi =
+            mesh_.lookupObject<surfaceScalarField>(boundaryFluxName_);
+        forAll(phi.boundaryField(), patchi)
+        {
+            const fvsPatchScalarField& pphi = phi.boundaryField()[patchi];
+            const label b0 = pphi.patch().start() - mesh_.nInternalFaces();
+            forAll(pphi, i)
+            {
+                drop[b0 + i] = (pphi[i] > 0);
+            }
+        }
+    }
+
+    keep_.setSize(st.size());
+    label nDropped = 0, nCellsTouched = 0;
+    forAll(st, celli)
+    {
+        const labelList& s = st[celli];
+        labelList& k = keep_[celli];
+        k.setSize(s.size());
+        label n = 0;
+        forAll(s, i)
+        {
+            const label g = s[i] - bStart;
+            if (i == 0 || g < 0 || g >= nBFaces || !drop[g])
+            {
+                k[n++] = i;
+            }
+        }
+        if (n < s.size())
+        {
+            ++nCellsTouched;
+            nDropped += s.size() - n;
+        }
+        k.setSize(n);
+    }
+    if (!keepReported_)
+    {
+        reduce(nDropped, sumOp<label>());
+        reduce(nCellsTouched, sumOp<label>());
+        Info<< "slReconstruction: stencilBoundaryFaces " << boundaryFaceMode_
+            << " -- dropped " << nDropped << " boundary-face entries from "
+            << nCellsTouched << " cells (decided once, at the first call)" << endl;
+        keepReported_ = true;
+    }
 }
 
 

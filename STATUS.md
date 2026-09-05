@@ -1766,14 +1766,33 @@ ORPHANED (53 minutes), cancelled by id once found in the driver's `.err` (lesson
 CLUSTER.md and the guides). r19p2 had already diverged. The ladder is VOID until the
 boundary treatment is fixed; the study directories stay on the cluster as the record.
 
-**Proposed fix (next):** the reconstruction fits CELL data only -- physical boundary-face
-entries are dropped from the stencil (`stencilBoundaryFaces exclude`, token
-`SL_STENCIL_BOUNDARY_FACES`, default `include` = current behaviour until gated). Mesh-
-agnostic, compact, MPI-safe (processor patches are remote cells, never boundary slots; empty
-patches already excluded). Gates: bit-identity with `include`; with `exclude` the
-inlet/outlet fraction above must read ~1.00 on both smokes; the 2D Popinet N = 64 horizon
-run; the 3D poly smoke; a long local poly run past step ~1000 (the onset) before any rung
-is resubmitted.
+**Controls and the fix, measured (same evening).**
+- **Hex twin over the FULL horizon (`popinet3D_La12000_hex_r12p8`, local np 8, 1563 steps):
+  COMPLETED, no zero-set jump.** max_t mean|u'| 7.4e-4, L2 2.0e-3 (the 2D N = 64 reference:
+  1.9e-3 / 4.4e-3), max 4.4e-2; final volume 1.4e-3, shape 3.0e-4, centroid 4.5e-4, Laplace
+  jump 10.055 (exact 10), band curvature error 0.72. So the boundary defect alone is a
+  bounded, linear error on hex; the AMPLIFIER that turns it into a blow-up is polyhedral --
+  the size-transition cells behind cfMesh's outlet boundary layer.
+- **`stencilBoundaryFaces exclude` (no boundary face as data) is NOT the fix: 2D N = 64
+  DIVERGED at step 716.** The outlet became exact (error 0.000 at x >= 1.6 through t = 0.2)
+  but the inlet -- whose departure foot lies OUTSIDE the domain -- extrapolated from the
+  interior and grew an alternating-sign mode (+-0.1 at t = 0.15, +-1.55 at t = 0.20). With the
+  faces INCLUDED the inlet layer is pinned by its zeroGradient value (transport fraction 0.009
+  in 2D) and stable, and the outlet carries a stationary +-0.015 mode. The correct rule is per
+  boundary face by the sign of its flux: an inflow or no-flow face IS data (the boundary
+  condition speaks there), an outflow face is NOT (the foot lies inside, upwind).
+- **`stencilBoundaryFaces inflowOnly` (implemented in `slReconstruction`, decided once from
+  the flux at the first step so the stencil stays static for the pivot decision): 2D N = 64
+  COMPLETED 1563 steps, outlet transport fraction 0.962 -> 1.000, inlet 0.009 (BC-pinned,
+  unchanged), every droplet metric IDENTICAL to `include` to all printed digits** (mean
+  1.8615e-3, L2 4.4332e-3, volume 1.213e-3, shape 8.152e-4, Laplace 5.0212): the far field
+  never touches the droplet. Default stays `include` (bit-identity `A5` cmp-IDENTICAL on the
+  final base class); token `SL_STENCIL_BOUNDARY_FACES` in the three Popinet/3D templates.
+- RUNNING: the polyhedral r12p8 case with `inflowOnly` over the full horizon on the laptop
+  (np 8, fields every 0.05): PASS = past the former onset (step 865) and to T = 0.4 with no
+  zero-set jump, outlet fraction ~1.00 at t = 0.05; then the default flips to `inflowOnly`,
+  the cluster rebuilds, and the ladder is resubmitted.
+- Script: `workflow/scripts/sl_boundary_transport_check.py` (the numbers above).
 
 #### The submission record (superseded by the result above)
 

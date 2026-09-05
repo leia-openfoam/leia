@@ -385,3 +385,28 @@ class and appends one CSV row per mesh):
     foamDictionary -entry endTime -set <deltaT> system/controlDict
     leiaSemiLagrangianLevelSetTwoPhaseFoam > log.census
     python3 workflow/scripts/sl_fit_pivot_census.py . --label "<mesh>" --csv <table.csv>
+
+### Physical boundary faces in the reconstruction stencil (`SL_STENCIL_BOUNDARY_FACES`, 2026-09-05)
+
+The two Popinet-3D polyhedral ladder rungs diverged late (steps 1151 / 1301) from a fake zero
+level set that appeared near the OUTLET while the velocity was still quiet. Underneath: the
+cell-to-cell stencils count every non-coupled, non-empty boundary FACE as a data point, and
+with `psi zeroGradient` each face brings the cell's own value at h/2 (0.19 h in cfMesh's
+boundary cells) at a 1/d^2 weight four to thirty times a neighbour's -- the fit's
+boundary-normal gradient collapses toward zero. Measured on the two 78-step smokes at
+t = 0.02 (measured / exact change of psi in the first cell layer): side walls 1.002 on both
+meshes (tangential transport exact); inlet 0.082 (poly) / 0.198 (hex); outlet 0.240 / 0.491.
+The polyhedral mesh then amplifies the outlet error in the size-transition cells behind its
+boundary layer (e-fold ~100 steps) until psi changes sign there. Invisible on every
+closed-box case and every kinematic gate (u = 0 on the walls).
+
+    SL_STENCIL_BOUNDARY_FACES include   # the former behaviour (default until the exclude gates are recorded)
+    SL_STENCIL_BOUNDARY_FACES exclude   # the fit uses CELL data only
+
+`exclude` drops the boundary-face entries in `slReconstruction` for every reconstruction model
+(the base-class accessors are the only path to the stencil); processor patches are remote
+cells, never boundary slots, so MPI is untouched, and empty patches were never included. The
+measurement is the transport fraction above (`psi_check`: PASS = ~1.00 at inlet and outlet on
+both smokes with the droplet metrics unchanged to round-off), then the 2D Popinet horizon run,
+then a long polyhedral run past the onset step before any rung is resubmitted.
+

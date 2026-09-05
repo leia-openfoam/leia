@@ -549,6 +549,7 @@ levelSet
         // SL_QUAD_PIVOT_TOL); 0 reproduces the pre-2026-09-05 behaviour
         quadraticPivotTol   @!SL_QUAD_PIVOT_TOL!@;
         writeFitOrder       @!SL_WRITE_FIT_ORDER!@;
+        stencilBoundaryFaces @!SL_STENCIL_BOUNDARY_FACES!@;   // include | exclude (see default.parameter)
     }
 }
 

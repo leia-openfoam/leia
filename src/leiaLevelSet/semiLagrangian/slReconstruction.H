@@ -116,6 +116,35 @@ protected:
     //  neighbours gathered via its mapDistribute in collectStencil().
     const extendedCentredCellToCellStencil& stencil_;
 
+    //- Physical boundary faces as stencil data (2026-09-05). OpenFOAM's
+    //  cell-to-cell stencils treat every non-coupled, non-empty boundary FACE as
+    //  a data point; with psi zeroGradient each such face brings the cell's own
+    //  value at h/2 (0.19 h in cfMesh's boundary cells) with a 1/d^2 weight four
+    //  to thirty times a neighbour's, and the fit's boundary-normal gradient
+    //  collapses toward zero. MEASURED on Popinet's translating droplet (2D and
+    //  3D): with the faces INCLUDED the inlet layer is frozen (1-20 % of the exact
+    //  transport) and the outlet carries a stationary alternating error, stable;
+    //  with ALL faces EXCLUDED the outlet becomes exact but the inlet -- whose
+    //  departure foot lies outside the domain -- extrapolates and blows up (2D
+    //  hex, step 716). The rule that is right on both: a boundary face is data
+    //  where the boundary condition speaks (inflow, phi_f < 0, and no-flow) and
+    //  not where the interior determines the value (outflow, phi_f > 0, upwind).
+    //    stencilBoundaryFaces include     -- every physical face (former behaviour)
+    //    stencilBoundaryFaces exclude     -- none (unstable at inflow; a control)
+    //    stencilBoundaryFaces inflowOnly  -- per face by the sign of the flux
+    //                                        (default once gated); processor
+    //                                        patches are remote cells, never
+    //                                        boundary slots, so MPI is untouched
+    word boundaryFaceMode_;
+    bool excludeBoundaryFaces_;   // true unless mode == include (keep_ in use)
+
+    //- Name of the face flux read for inflowOnly (default phi).
+    word boundaryFluxName_;
+
+    //- Positions i of stencil_[c] that are kept (only built when excluding;
+    //  compact indices in [nLocal_, nLocal_ + nBoundaryFaces) are boundary slots).
+    labelListList keep_;
+
     //- Number of local cells. A compact stencil index g < nLocal_ is a LOCAL
     //  cell whose centre is read directly from mesh_.C() -- so the local stencil
     //  geometry is NOT duplicated per stencil entry (the dominant per-cell saving
@@ -147,10 +176,18 @@ protected:
     //  of the compact distributed cell centres. Called once (mesh static).
     void buildCentreTail();
 
+    //- Build keep_ (positions of the entries that stay data) ONCE, before any
+    //  accessor is used: exclude -> every boundary-face slot dropped; inflowOnly
+    //  -> the outflow-face slots (phi_f > 0 on the flux at the first call).
+    void buildKeep();
+    bool keepReported_;
+
     //- Number of entries in cell c's compact stencil (self + neighbours).
     inline label stencilSize(const label c) const
     {
-        return stencil_.stencil()[c].size();
+        return excludeBoundaryFaces_
+          ? keep_[c].size()
+          : stencil_.stencil()[c].size();
     }
 
     //- Centre of the i-th stencil entry of cell c. Local entries (compact index
@@ -158,7 +195,8 @@ protected:
     //  centreTail_. Reproduces the former stencilC_[c][i] with no per-cell store.
     inline point stencilC(const label c, const label i) const
     {
-        const label g = stencil_.stencil()[c][i];
+        const label g =
+            stencil_.stencil()[c][excludeBoundaryFaces_ ? keep_[c][i] : i];
         return (g < nLocal_) ? mesh_.C()[g] : centreTail_[g - nLocal_];
     }
 
