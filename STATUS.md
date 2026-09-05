@@ -1809,10 +1809,12 @@ boundary treatment is fixed; the study directories stay on the cluster as the re
     3e-7, the Laplace jump by 3e-9, band curvature by 8e-9, shape by 1e-9, volume error by
     5e-4 of a 2e-6 quantity. The correction converges in the first pass; the polyhedral
     parasitic current is NOT a Laplacian-correction artefact.
-  - translating smoke, the 6-corrector arm (valid): max|u'| 9.4568e-2, mean 9.7169e-5, L2
-    5.3311e-4 -- the 1-corrector smoke to four digits (9.457e-2 / 9.717e-5 / 5.331e-4). The
-    constant boundary-cell velocity defect (the 8 concave inlet-corner cells) is not a
-    correction artefact either.
+  - translating smoke, re-run with the stale arms removed (54482746), all three arms valid:
+    1 / 3 / 6 correctors give max|u'| 9.4568e-2, mean 9.7169e-5, L2 5.3311e-4, volume
+    9.434e-6, shape 9.224e-5, Laplace 10.0523 IDENTICAL to every printed digit, at 100 / 109 /
+    119 s. The constant boundary-cell velocity defect (the 8 concave inlet-corner cells) is
+    not a correction artefact either. Non-orthogonality is corrected sufficiently on both
+    polyhedral cases; the count stays 1.
   - VOID: arms 00000/00001 of the translating sweep carried the DEFAULT tokens (U = 0.05,
     sigma = 0.07274, N 32, dt 7.2e-4) -- their `case_params.json` says commit bdd3f98,
     18:48:37: they were rendered by the FIRST, mis-specified driver (54482448, cancelled) before
@@ -1820,9 +1822,24 @@ boundary treatment is fixed; the study directories stay on the cluster as the re
     them (snakemake reuses existing outputs). A different case, dead at step 0 in the metric
     writer; not results. Lesson: after cancelling a driver, delete its study directory before
     resubmitting. Re-run with the stale arms removed (54482459 -> resubmitted).
-- RUNNING (second attempt): the polyhedral r12p8 case with the tolerant `inflowOnly` over the
-  full horizon (np 8, fields every 0.05): PASS = past step 865 and to T = 0.4 with no zero-set
-  jump; then the default flips, the cluster rebuilds, and the ladder is resubmitted.
+- **Second `inflowOnly` horizon attempt (flux tolerance in place): DIVERGED at step 1301, fake
+  zero set at step 839 (t = 0.215) -- the same step as the unmodified stencil (865 / 1151).**
+  The outlet's first layer is now transported exactly (median fraction 1.000 at every write),
+  yet the growing mode is STILL at the outlet: the size-transition cells at x = 1.97 behind
+  cfMesh's boundary layer (error 0.08 at t = 0.10 -> 0.13 at 0.15 -> 0.66 at 0.20, an e-fold
+  every ~200 steps) and the layer itself, where adjacent cells carry OPPOSITE errors (-0.226
+  and +0.225 at (1.986, 0.648, 0.451/0.470)): an alternating-sign mode a minority of cells
+  carries while the median fraction reads 1.00. Boundary-face data (this fix) and the
+  non-orthogonal correction (the 1/3/6 sweep) are both excluded as its cause. What remains is
+  the semi-Lagrangian update itself on systematically ASYMMETRIC stencils: the least-squares
+  gradient of a checkerboard error cancels on a symmetric (hex) stencil and does not on the
+  one-sided, size-graded stencils of the transition slab, and the update feeds it back at a
+  rate of order (U dt/h) x asymmetry per step -- 0.016 x ~0.3 = the observed 0.5 %/step. The hex
+  twin has no such mode (horizon completed). Cheapest discriminator next: the same case on a
+  cfMesh mesh WITHOUT the boundary layer (no transition slab).
+  **Answer to "can the 3D polyhedral Popinet droplet run to T = 0.4": not on this mesh with
+  this scheme -- the far field, not the droplet, fails at step ~840 regardless of the outlet
+  treatment.** `stencilBoundaryFaces` stays selectable, default `include`.
 - Script: `workflow/scripts/sl_boundary_transport_check.py` (the numbers above).
 
 #### The submission record (superseded by the result above)
