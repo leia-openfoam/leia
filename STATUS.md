@@ -1703,7 +1703,79 @@ volume 4.44e-2, Laplace 150.3, kErr 2174 -- the four tolerance variants of this 
 near-blow-up case (pre-fix 1.19e-2 / 1.246e-1 / 4.40e-2 / 153.7 / 2266; 1e-3; 1e-2) scatter
 by a few percent; it is a smoke, not a yardstick, and its export is the 0.3 run's.
 
-### RUNNING: Popinet-3D polyhedral ladder on the 0.3 code (submitted 2026-09-05, cluster time ~18:10)
+### RESULT: the Popinet-3D polyhedral ladder DIVERGES late, from an inlet/outlet level-set transport defect that is NOT the fit fix (2026-09-05, evening)
+
+Two rungs landed, both DIVERGED, both on the right binary (`curvature-v2512`, `slFitPivot`
+present), both with the expected demotion count (7 % of cells, wall boundary layer):
+
+| rung | cells | ranks | demoted | blow-up | zero-set jump | max\|u'\| before onset |
+|---|---|---|---|---|---|---|
+| r12p8 (N 64) | 658 683 | 32 | 47 626 | step 1151, t = 0.29 | step 865, t = 0.222: 1.4e-4 -> 0.28 in ONE step | 0.09451 constant from step 20 |
+| r19p2 (N 96) | 2.4M | 64 | 111 898 | step 1301, t = 0.18 | step 1002, t = 0.140: 5.7e-5 -> 0.34 in ONE step | 0.08833 constant from step 20 |
+
+**Signature, identical on both:** the zero-set error jumps four orders of magnitude in a
+single step while every velocity norm is still quiet (L2|u'| 1.5e-3 / 7e-4, growing only
+0.1-0.16 % per step; max|u'| a CONSTANT boundary-cell value since step 20) and the Laplace
+jump still reads 10.06 -- a fake piece of zero level set appears far from the droplet, its
+radial error of 0.7-0.9 places it near the OUTLET (x ~ 1.8), the curvature there is garbage
+(kErrL2 310 two rows later), the surface tension acts on it, and the velocity explodes 30-60
+steps later. The finer mesh blows EARLIER IN TIME but at a similar STEP count: a per-step
+amplifier, not a physical instability. The interface itself was at x = 0.72 / 0.64, more than
+a diameter from every boundary.
+
+**Where the level set was wrong before the onset (r12p8 field at t = 0.2, `psi_check`,
+|psi - psi_exact| against the translated sphere):** bulk interior median 2e-5 (the transport
+is fine); the first regular cells behind the outlet boundary layer (x = 1.97) at **1.73**
+(psi 2.80 against 1.07, i.e. +0.12 h PER STEP, seven times the translation speed and in the
+wrong direction) -- grown from 1.5e-3 at t = 0.02, an e-folding every ~100 steps; inlet
+layer lagging by 0.16; corners frozen at 0.2 (= U t, the never-updated corner cells of the
+4-step dump). No far cell was within h of zero at t = 0.2; twenty steps later one was.
+
+**The defect underneath, measured on the two 78-step smokes (hex AND poly) at t = 0.02,
+measured / exact change of psi in the first cell layer:**
+
+| layer | polyhedral | hexahedral |
+|---|---|---|
+| side walls (u.n = 0) | 1.002 | 1.002 |
+| inlet | **0.082** | **0.198** |
+| outlet | **0.240** | **0.491** |
+
+uniform across each layer to three digits. Tangential transport is exact; NORMAL to an
+inflow/outflow boundary the level set moves at 8-50 % of the exact rate. Cause, in the
+code: the CPC/CFC stencil (`extendedCentredCellToCellStencil`) treats every physical
+boundary FACE as a data point (`cellToCellStencil::validBoundaryFaces` excludes only coupled
+and empty patches; `slReconstruction::buildCentreTail` stores their centres, `collectData`
+their patch values). With `psi zeroGradient` on inlet/outlet/walls each boundary face brings
+the cell's OWN value at h/2 -- 0.19 h in cfMesh's small boundary cells -- with a 1/d^2 weight
+four to thirty times a neighbour's, and the fit's boundary-normal gradient collapses toward
+zero. The smaller the boundary cell, the closer the face, the worse: 8 % on polyhedra, 20 %
+on hex. The polyhedral mesh then AMPLIFIES the boundary-layer error in the size-transition
+cells behind it (the hex twin over the full horizon is running locally as the control:
+does the boundary defect alone blow up, or does it need the transition?). This defect is
+invisible on every closed-box case (walls, u.n = 0) and every kinematic gate (u = 0 on the
+walls), exactly like the fit defect before it -- and the 2D Popinet run completes T = 0.4
+with the same BC because a 2D hex mesh has no size transition.
+
+**The fit fix stands:** same demotion counts as the laptop smoke, bit-inert on the quiet
+cases, and the divergence route is a different one (far-field transport at the outlet, not
+garbage coefficients: the transition cells there are linear at 0.3).
+
+**Actions.** r25p6 (54482121) cancelled by id 1 h 15 min in -- it would only have measured
+this defect -- and its 96-core solver child 54482215, which the driver's cancellation had
+ORPHANED (53 minutes), cancelled by id once found in the driver's `.err` (lesson in
+CLUSTER.md and the guides). r19p2 had already diverged. The ladder is VOID until the
+boundary treatment is fixed; the study directories stay on the cluster as the record.
+
+**Proposed fix (next):** the reconstruction fits CELL data only -- physical boundary-face
+entries are dropped from the stencil (`stencilBoundaryFaces exclude`, token
+`SL_STENCIL_BOUNDARY_FACES`, default `include` = current behaviour until gated). Mesh-
+agnostic, compact, MPI-safe (processor patches are remote cells, never boundary slots; empty
+patches already excluded). Gates: bit-identity with `include`; with `exclude` the
+inlet/outlet fraction above must read ~1.00 on both smokes; the 2D Popinet N = 64 horizon
+run; the 3D poly smoke; a long local poly run past step ~1000 (the onset) before any rung
+is resubmitted.
+
+#### The submission record (superseded by the result above)
 
 `popinet3D_La12000_poly_r12p8` (N 64, ~0.66M cells, np 32) -> orchestrator **54482104**;
 `popinet3D_La12000_poly_r19p2` (N 96, ~2.4M, np 64) -> **54482105**; `popinet3D_La12000_poly_r25p6`

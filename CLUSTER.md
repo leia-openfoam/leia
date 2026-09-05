@@ -123,6 +123,14 @@ scancel 54426007                        # explicit id: always safe
 scancel -n leia-curv                    # by JOB NAME (this session's name)
 ```
 
+**Cancelling a snakemake driver does NOT cancel its jobs.** MEASURED 2026-09-05: the
+orchestrator of a study was cancelled by id during its mesh phase; its already-submitted
+solver child (96 cores) kept running for 53 minutes as an orphan under a UUID job name
+until the driver's `.err` was read for its `has been submitted with SLURM jobid N` lines
+and the child cancelled by id. Order: read the driver's `.err`, `scancel` the child ids,
+then the driver -- and record all of them in `.my_jobs`. Never identify the children by
+name or by user: the UUID-named jobs next to yours belong to other sessions.
+
 Identify your work by **job name**, never by user: `squeue -u $USER` lists
 every session's jobs, which is why the job-name filter matters --
 

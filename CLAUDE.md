@@ -80,6 +80,13 @@ $USER` lists every session's jobs on the shared account); a job you did not
 submit is not yours to kill even when it looks stale; and if a driver must be
 replaced, cancel it by id and resubmit rather than clearing the queue.
 
+Corollary, MEASURED 2026-09-05: **cancelling a snakemake driver does not cancel the SLURM
+jobs it submitted.** A driver cancelled by id during its mesh phase left its 96-core solver
+child running as an orphan for 53 minutes under a UUID job name. Read the driver's `.err`
+for its `has been submitted with SLURM jobid N` lines, cancel those ids first, then the
+driver, and record every id in `.my_jobs`; the UUID-named jobs next to yours belong to
+other sessions and are not yours to touch.
+
 ## Run it on 4 ranks before it leaves the laptop
 
 **No new or changed algorithm is submitted to the cluster -- and above all not

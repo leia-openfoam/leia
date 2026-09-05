@@ -1,0 +1,57 @@
+# CONTROL for the polyhedral ladder's blow-up (2026-09-05): Popinet's 3D translating droplet on
+# the HEXAHEDRAL twin mesh (blockMesh, N = 64 across the unit height, 2 x 64^3 = 524 288 cells)
+# over the FULL horizon T = 0.4. The polyhedral rung r12p8 diverged at step 1151 (t = 0.29): a
+# fake zero level set appeared near the OUTLET at t = 0.222 while the velocity was still quiet,
+# after the level set in the first regular cells behind cfMesh's half-size outlet boundary
+# layer had grown exponentially (|psi - psi_exact| 1.5e-3 at t = 0.02 -> 1.73 at t = 0.2, an
+# e-folding every ~100 steps). Both 78-step smokes (hex and poly) show the same LINEAR
+# boundary-cell error (inlet layer lags, outlet layer leads, ~0.5 U t) -- the frozen boundary
+# cells of the semi-Lagrangian update -- but only the polyhedral run has been seen to amplify
+# it. PASS (hex healthy to T = 0.4) = the amplifier is the polyhedral size transition behind
+# the boundary layer; FAIL (hex diverges too) = the boundary treatment of the SL update itself.
+# Read-out as for the ladder; the boundary-cell level-set error is measured on the written
+# fields (psi_check: |psi - psi_exact| by region). np 32 on the cluster; locally --config np=8.
+study_name: popinet3D_La12000_hex_r12p8
+case: popinetTranslating3D
+mesh: hex
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 300
+axes_override:
+  N_CELLS: [64]
+  MAX_CELL_SIZE: [0.019685]
+  END_TIME: [0.4]
+  WRITE_INTERVAL: [0.2]
+  POPINET_NX: [128]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [1]
+  CAPILLARY_REF_LENGTH: [1]
+  CAPILLARY_DT_COEFF: [0.13107]
+  DROPLET_RADIUS: [0.2]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [1]
+  SIGMA: [1]
+  POPINET_RHO: [1]
+  POPINET_NU: [5.773502692e-03]
+  SURFACE_FILE: [box2x1x1.stl]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
