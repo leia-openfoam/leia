@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-04 (static local refinement around the interface: gates G-1/G0 passed, WB gate running; polyhedral 3D rung R/h = 13.8 completed).
+Last updated: 2026-09-05 (static local refinement DECIDED on hex and polyhedra, every arm in; polyhedral uniform ladder complete, R/h = 12.6 / 18.0 / 25.2 at the interface).
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -1451,10 +1451,33 @@ t = 0.005 (L2 9.6e-6) and then GROW exponentially to the end -- e-folding rate o
 over t = 0.0125-0.025: **29 1/s at R/h = 12.6, 124 1/s at R/h = 18.0** -- with kErrL2Band
 climbing 0.67 -> 4.0 alongside. This is the campaign's open defect (section 4: the hex
 ladders' growth rate rising 40 -> 52 -> 91 1/s under refinement, 'the 3D instability under
-refinement'), now measured on polyhedra with the production chain and no filter. `r25p6`
-(R/h = 25.2, 9651 steps) is at step 3393; the prediction that follows from these two rungs
-is a faster growth still, and possibly a blow-up before t = 0.025 -- to be read when it
-lands, not before. Compare rungs at EQUAL time only.
+refinement'), now measured on polyhedra with the production chain and no filter.
+
+**`r25p6` LANDED (2026-09-05, 9650 steps to t = 0.025, no blow-up) -- the prediction of a
+faster growth was WRONG in its detail: the finest rung grows, but less than the middle one.**
+The uniform polyhedral ladder at t = 0.025, h = the measured interface cell size:
+
+| rung | R/h | steps | peak L1 / L2 | L1 / L2 (T) | volume | shape (m) | Laplace jump rel. | kErrL2Band | A2hL2Band | min\|grad psi\| |
+|---|---|---|---|---|---|---|---|---|---|---|
+| r13p8 | 12.6 | 3813 | 9.1e-6 / 3.1e-5 | 7.5e-6 / 3.1e-5 | 2.6e-6 | 4.85e-7 | 4.6e-4 | 1.68 | 4.64e-7 | 0.997 |
+| r18p9 | 18.0 | 6028 | 3.5e-5 / 1.18e-4 | 3.5e-5 / 1.18e-4 | 3.4e-6 | 2.46e-7 | 3.6e-4 | 4.01 | 2.33e-7 | 0.998 |
+| r25p6 | 25.2 | 9650 | 1.7e-5 / 5.9e-5 | 1.1e-5 / 4.4e-5 | 2.1e-6 | 1.72e-7 | 1.5e-4 | 2.42 | 1.19e-7 | 0.999 |
+
+Equal-time L2|u'| (kErrL2Band in brackets), r13p8 | r18p9 | r25p6: t = 0.005: 2.2e-5 (1.35) |
+9.6e-6 (0.79) | 4.3e-6 (0.39); t = 0.010: 2.1e-5 (1.34) | 1.7e-5 (1.05) | 1.1e-5 (0.43);
+t = 0.015: 2.4e-5 (1.38) | 3.5e-5 (1.47) | 2.2e-5 (0.53); t = 0.020: 2.9e-5 (1.52) | 6.8e-5
+(2.29) | 3.6e-5 (1.06); t = 0.025: 3.1e-5 (1.68) | 1.18e-4 (4.01) | 4.4e-5 (2.42). L2|u'|
+e-folding rate over t = 0.0125-0.025: **29 / 124 / 82 1/s**; over r25p6's last 5 ms before
+t = 0.0217 it was 209 1/s, and its L1 then PEAKED (1.7e-5) and fell to 1.1e-5 at T -- the
+growth is not monotone in time either. Three-point orders at T against the interface h:
+shape **+1.50** (R 0.987), A2hL2Band **+1.97** (R 1.000), Laplace jump ~1.6, volume +0.33
+(R 0.44), min|grad psi| improving; the parasitic velocity **-0.61 / -0.53** (R -0.26, not a
+power law: the middle rung is the worst) and kErrL2Band -0.54. So on polyhedra, as on hex:
+everything geometric converges at 1.5-2, the Laplace jump converges, and the parasitic
+current at a fixed physical time does not, because a resolution-driven growth sets in after
+an initial decay, at a rate that is not even monotone in h (29 -> 124 -> 82). Every rung sits
+far below blow-up (|u'| <= 1e-4 m/s at t = 0.025). Compare rungs at EQUAL time only. The
+campaign's open defect stands, now with three polyhedral points and the growth-rate line.
 
 ## 5. Lichtenberg — what is running
 
@@ -1469,7 +1492,8 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 | DONE | **stationaryDroplet3Dwide**, **cellCentreInverseFiltered512**, **domainSizeControl10R/6R/4R**, **psiOuterCorrectorsGain3D**, **ddtOrderGain3D** | — | `studies/*/` |
 | `54477820` `leia-curv` `long` | **stationaryDroplet3DrefinedWB** GC (2026-09-04): the static-refinement mesh rule as a serial `case_pre` job + the constant-curvature well-balanced gate on the refined mesh, np 4, two arms x 921 steps. From `/work/scratch/tm83tomy/leia-curvature`. | 7 d (orchestrator) | `studies/stationaryDroplet3DrefinedWB/` |
 | `54477891`-`54477895` `leia-curv` | **static-refinement ladder** (2026-09-04 evening, submitted after the hanging-node gate passed): orchestrators for `stationaryDroplet3Drefined` (fine N = 60/76/96/120, np 8), `stationaryDroplet3DrefinedL2`, `stationaryDroplet3DrefinedBall` (controls at 120), `stationaryDroplet3Duniform` (60/76/96, np 32) and `stationaryDroplet3Duniform120` (1.73M cells, np 64, ~90 core-h). Read with `make_refined_equivalence_table.py` when ALL arms of a pair are complete -- never before. | 7 d (orchestrators) | `studies/stationaryDroplet3D{refined*,uniform*}/` |
-| running | **polyDroplet3D_r18p9** (1.46M cells, np 32) at t = 0.0171 / 0.025 and **polyDroplet3D_r25p6** (3.6M, np 64) at t = 0.0054 / 0.025; **polyDroplet3D_r13p8** DONE (3813 steps, section 4). | 23 h | `studies/polyDroplet3D_*/` |
+| DONE | **polyDroplet3D_r13p8 / r18p9 / r25p6** all complete to t = 0.025 (3813 / 6028 / 9650 steps; section 4) and the **static-refinement ladder + controls + polyDroplet3Drefined_r13p8** all complete (section 4, DECIDED). | — | `studies/polyDroplet3D_*`, `studies/stationaryDroplet3D{refined*,uniform*}` |
+| (superseded) | **polyDroplet3D_r18p9** (1.46M cells, np 32) at t = 0.0171 / 0.025 and **polyDroplet3D_r25p6** (3.6M, np 64) at t = 0.0054 / 0.025; **polyDroplet3D_r13p8** DONE (3813 steps, section 4). | 23 h | `studies/polyDroplet3D_*/` |
 
 Not from this work, do not cancel: the SDPLS session's jobs in
 `/work/scratch/tm83tomy/leia` (`of-bo-cht-*`, `23fbd13d-*`, `leia-studies` on
