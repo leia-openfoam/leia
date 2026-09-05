@@ -1835,8 +1835,15 @@ boundary treatment is fixed; the study directories stay on the cluster as the re
   gradient of a checkerboard error cancels on a symmetric (hex) stencil and does not on the
   one-sided, size-graded stencils of the transition slab, and the update feeds it back at a
   rate of order (U dt/h) x asymmetry per step -- 0.016 x ~0.3 = the observed 0.5 %/step. The hex
-  twin has no such mode (horizon completed). Cheapest discriminator next: the same case on a
-  cfMesh mesh WITHOUT the boundary layer (no transition slab).
+  twin has no such mode (horizon completed). The slab cannot be removed by dictionary: cfMesh's
+  Voronoi generator (`pMesh`) adds an explicit layer only when a `boundaryLayers` block is
+  present, and ours has none -- the half-size boundary cells (0.38-0.45 h) and the size
+  transition behind them are intrinsic to the dual construction. Discriminators that remain:
+  a polyhedral mesh from a different generator (OpenFOAM `polyDualMesh` of a tet mesh, or
+  cfMesh `tetMesh` itself, both without a graded boundary slab) to test "coherent stencil
+  asymmetry"; and at the scheme level an update that cannot amplify a checkerboard -- a
+  reconstruction that interpolates every stencil centre, or the quasi-monotone clip
+  (`clipToStencilBounds`, present, off) restricted to the far field. Neither has run.
   **Answer to "can the 3D polyhedral Popinet droplet run to T = 0.4": not on this mesh with
   this scheme -- the far field, not the droplet, fails at step ~840 regardless of the outlet
   treatment.** `stencilBoundaryFaces` stays selectable, default `include`.
