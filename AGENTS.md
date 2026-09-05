@@ -348,6 +348,18 @@ T, volume at both, because the reversal cancels errors at the endpoint)? Are the
 compared runs at equal step counts (endpoint estimators are not comparable
 across unequal horizons)? A number failing these is not a result.
 
+**A kinematic gate whose velocity vanishes on the walls has not tested the boundary
+stencils.** MEASURED 2026-09-05: the semi-Lagrangian quadratic fit was ill-conditioned
+(condition numbers to 1e12, curvature coefficients to 1e8) on cfMesh's boundary-layer
+polyhedra in every polyhedral study this repository ever ran, and nothing showed --
+the kinematic gates (shear, deformation) have u = 0 on the walls, so the foot never
+leaves the cell centre there, and the stationary droplet moves 1e-10 per step, where
+coefficient x (u dt)^2 is invisible. The first translating polyhedral case (U = 1) put
+the far field 1.4 h wrong after one step and diverged at step 3. A discretisation error
+of the form coefficient x displacement^n needs a gate with O(1) displacement IN THE
+CELLS IT CAN AFFECT; a passing convergence table is not evidence for cells the flow
+never moved.
+
 **Is the interface still inside the domain?** Before any conclusion is drawn from
 `t_blow`, compute where the interface IS at that step and how far it is from the
 nearest boundary -- and check what that boundary actually IS, in
@@ -507,3 +519,15 @@ took a timing analysis that a robust Krylov solver would have made unnecessary).
   binaries into a session-local directory for anything being measured.
 - Environment workarounds are scoped to the tool that needs them: a
   study-global `LD_PRELOAD` for the mesher segfaulted the MPI solver.
+
+- **A finished case's `0/` is not its initial state.** At startup the two-phase solver
+  writes its projected initial pressure AND its recomputed phase indicator back into
+  time 0 of the processor directories, and `reconstructPar -withZero` copies them into
+  the serial `0/` (`psi` and `U` survive untouched). MEASURED 2026-09-05: a same-mesh
+  re-run copied from a completed study's `0/` differed from that study's own CSV from
+  step 1 (first pressure solve: initial residual 6e-7 in 6 iterations against 1 in 27;
+  with the pressure restored, alpha still moved the velocities at 1e-15) and was nearly
+  blamed on a library change that a tolerance-0 control proved bit-inert. For a
+  bit-identity re-run regenerate `0/` exactly as the workflow does -- `0.org` plus the
+  pre-processing (`leiaSetFields`) -- never from the finished `0/`; done that way the
+  re-run reproduced the study byte for byte over 458 steps.

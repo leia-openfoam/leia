@@ -1,0 +1,49 @@
+# 4-RANK SMOKE (the gate every new case crosses before the cluster): the coarsest
+# popinet3D polyhedral mesh (~0.69M cells) for 78 steps to t = 0.02 on FOUR ranks, on
+# the laptop. PASS = COMPLETED per foam_log_state.sh with 78 steps, the mesh has
+# exactly the patches the fields declare (inlet, outlet, walls), the band check pins
+# N_CELLS = 64 on the built mesh, and |u - U0| stays of the order of the 2D N = 64 run at
+# the same time (L1 ~ 1e-3 U0). The full ladder goes to the cluster on a PASS.
+study_name: popinet3D_La12000_poly_smoke4
+case: popinetTranslating3D
+mesh: poly
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [64]
+  MAX_CELL_SIZE: [0.019685]
+  END_TIME: [0.02]
+  WRITE_INTERVAL: [0.02]
+  POPINET_NX: [128]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [1]
+  CAPILLARY_REF_LENGTH: [1]
+  CAPILLARY_DT_COEFF: [0.13107]
+  DROPLET_RADIUS: [0.2]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [1]
+  SIGMA: [1]
+  POPINET_RHO: [1]
+  POPINET_NU: [5.773502692e-03]
+  SURFACE_FILE: [box2x1x1.stl]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

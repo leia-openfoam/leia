@@ -887,6 +887,30 @@ SL_TRACE_VELOCITY projectedFlux;
 // N_CELLS_BASE = N_CELLS / 2^REFINE_LEVELS for blockMesh. N_CELLS stays the capillary
 // dt handle and on a refined mesh means the FINE count. INERT: REFINE_LEVELS 0 renders
 // N_CELLS_BASE verbatim as N_CELLS, so every existing study is byte-identical.
+// ---- Semi-Lagrangian quadratic fit: geometric admissibility (2026-09-05) --------------
+// Smallest Cholesky pivot of the Jacobi-scaled (unit-diagonal) weighted normal matrix a
+// cell's stencil must reach for the QUADRATIC fit; below it the cell uses the linear fit
+// (and a linear stencil below it keeps the cell value). Built from stencil POSITIONS
+// alone, so the decision is made once, per mesh. cfMesh's boundary-layer and
+// size-transition polyhedra (10 point-neighbours for 9 coefficients) had scaled
+// condition numbers > 1e6 and curvature coefficients up to 1e8 -- exact at zero
+// displacement, garbage at U dt: the translating polyhedral droplet blew up at step 3.
+// 0 = never fall back (the behaviour before the fix, the control arm).
+// The value is read off the pivot census of the meshes we run (one-step runs with
+// SL_WRITE_FIT_ORDER true, workflow/scripts/sl_fit_pivot_census.py): band cells
+// (|psi| < 6h) >= 0.94 on every polyhedral mesh and >= 0.77 on hex; near band (6-12h)
+// >= 0.74; hex interior >= 0.64 (hanging-node cells included); polyhedral interior
+// >= 0.50. The degenerate boundary-layer / grading-transition stencils form a tail
+// from 0 to ~0.3 and the 0.3-0.4 bin is nearly empty on all three polyhedral meshes
+// (40 / 32 / 16 cells of 130k / 91k / 147k). Stability requires the admitted
+// condition number c to satisfy c (U dt / h)^2 < 1: 1e-2 (c ~ 1e4) diverged at
+// step 16 of the Popinet translating droplet (U dt / h = 0.016), so pivots up to
+// 3e-2 amplify; 0.3 admits c <~ 100, stable for U dt / h < 0.1, and demotes 7 percent
+// of the cells of a uniform cfMesh box, all in the wall boundary layer, none within
+// 12h of an interface. Hex meshes are untouched (bit-identical).
+SL_QUAD_PIVOT_TOL 0.3;
+SL_WRITE_FIT_ORDER false;   // "true": write slFitOrder (2 quadratic / 1 linear / 0 constant) once, a diagnostic field
+
 REFINE_LEVELS     0;          // halvings of the near-interface cell size; >= 1 only with hexRefined | polyRefined
 REFINE_BAND_CELLS 6;          // complete fine layers each side, worst case (hex: face dilations are added until psi proves it)
 REFINE_SOURCE     interface;  // interface (0 < alpha < 1 seed + dilations) | ball (CONTROL: whole droplet interior)

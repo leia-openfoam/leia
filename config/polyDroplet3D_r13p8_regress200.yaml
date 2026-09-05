@@ -1,0 +1,44 @@
+# 200-step, 8-rank run of the quiet uniform polyhedral rung polyDroplet3D_r13p8 (R/h 12.6 at the
+# interface, |u| ~ 1e-5 m/s, 572 039 cells) on the fixed semi-Lagrangian fit (2026-09-05).
+# WRITTEN as a regression gate against the cluster export "to round-off", and RETRACTED as such:
+# the cluster twin was meshed by the cluster's own cfMesh build (a different mesh to round-off),
+# decomposed on 32 ranks (the linear-solver partition dependence measured earlier) and run on the
+# pre-fix code, so the measured 0.1-0.6 % differences in volume, shape, curvature and A2h are
+# unattributable and decide nothing. The same-mesh, same-decomposition gate is the re-run of
+# polyDroplet3Drefined_r13p8_smoke4 from a REGENERATED initial state (0.org + leiaSetFields --
+# a finished case's 0/ holds the solver's rewritten alpha and projected p_rgh, see STATUS.md
+# 2026-09-05). What this run still shows: the fixed library runs the uniform rung at 8 ranks for
+# 200 steps without incident (quadraticPivotTol 1e-2 at the time; 0.3 demotes 7.1 % of the cells,
+# all in cfMesh's wall boundary layer, none within 12h of the interface).
+study_name: polyDroplet3D_r13p8_regress200
+case: stationaryDroplet3D
+mesh: poly
+mode: parallel
+np: 8
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  DOMAIN_LENGTH: [0.006]
+  MAX_CELL_SIZE: [1.0e-4]
+  N_CELLS: [84]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+  END_TIME: [0.0013113]
+  WRITE_INTERVAL: [0.0013113]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

@@ -81,6 +81,35 @@ static bool choleskySolve(Foam::scalar* A, Foam::scalar* b, const Foam::label n)
     return true;
 }
 
+// Cholesky factorisation of the SPD matrix A (row-major n x n, n <= 9, destroyed)
+// returning its SMALLEST pivot sqrt(d_j); 0 if the factorisation breaks down. On a
+// Jacobi-scaled (unit-diagonal) matrix every pivot is <= 1 and the smallest one
+// measures how nearly the last basis directions are linear combinations of the
+// earlier ones: min pivot ~ 1/sqrt(condition number).
+static Foam::scalar minCholeskyPivot(Foam::scalar* A, const Foam::label n)
+{
+    using Foam::scalar;
+    using Foam::label;
+    scalar minPiv = Foam::GREAT;
+    for (label j = 0; j < n; ++j)
+    {
+        scalar d = A[j*n + j];
+        for (label k = 0; k < j; ++k) { d -= A[j*n + k]*A[j*n + k]; }
+        if (d <= 0) { return 0; }
+        d = Foam::sqrt(d);
+        minPiv = Foam::min(minPiv, d);
+        A[j*n + j] = d;
+        for (label i = j + 1; i < n; ++i)
+        {
+            scalar s = A[i*n + j];
+            for (label k = 0; k < j; ++k) { s -= A[i*n + k]*A[j*n + k]; }
+            A[i*n + j] = s/d;
+        }
+    }
+    return minPiv;
+}
+
+
 // Householder-QR least squares of the m x n (m >= n, n <= 9) system Q R x = y,
 // with the DESIGN matrix Ad stored row-major (m rows, n cols) and rhs y (length
 // m); solution written to x (length n). Solves min ||Ad x - y||_2 WITHOUT
@@ -152,6 +181,8 @@ uncachedQuadraticWeightedLeastSquaresReconstruction
     coeffsFlat_(),
     built_(false),
     ridgeEps_(slDict_.getOrDefault<scalar>("ridgeEps", 0)),
+    quadPivotTol_(slDict_.getOrDefault<scalar>("quadraticPivotTol", 0.3)),
+    writeFitOrder_(slDict_.getOrDefault<bool>("writeFitOrder", false)),
     fit_(slDict_.getOrDefault<word>("fit", "normalEquations")),
     curvatureNewtonIters_(slDict_.getOrDefault<label>("curvatureNewtonIters", 3)),
     closestPointIters_(slDict_.getOrDefault<label>("closestPointNewtonIters", 10)),
@@ -353,6 +384,164 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::build()
         Info<< "uncachedQuadraticWeightedLeastSquares: " << nFallback
             << " cells with under-determined stencils fell back to a linear fit"
             << endl;
+    }
+
+    // GEOMETRIC conditioning of the quadratic fit (2026-09-05). A stencil can be
+    // large enough for the quadratic and still not span it: cfMesh's boundary-layer
+    // and size-transition polyhedra offer 10 point-neighbours for 9 coefficients,
+    // and their weighted normal matrices had condition numbers of 1e7-1e12 with
+    // curvature coefficients of 1e3-1e8 that the absolute pivot test in
+    // choleskySolve (d <= SMALL on entries of order h^4) never sees. Such a fit is
+    // exact at d = 0 and garbage at any displacement -- invisible on the
+    // stationary droplet (|u| ~ 1e-5 m/s, foot displacement 1e-10) and on the
+    // kinematic gates (u = 0 on the walls, where these cells live), catastrophic on
+    // a translating polyhedral case (the interface moved 12 U dt in one step, blow-up
+    // at step 3, measured on popinetTranslating3D). The decision is made ONCE per
+    // mesh from geometry alone: assemble the weighted normal matrix of the full
+    // quadratic, Jacobi-scale it to unit diagonal, take its smallest Cholesky pivot,
+    // and below quadraticPivotTol use the LINEAR fit, whose coefficients are the
+    // first nd of the same buffer (every consumer honours ncoeff_[c]).
+    // quadraticPivotTol 0 reproduces the former behaviour exactly.
+    label nIllCond = 0;
+    label nIllCondLin = 0;
+    label nMarginal = 0;
+    scalar minPivotAll = GREAT;
+    scalarField pivotField(writeFitOrder_ ? nCells : 0, -1.0);   // quadratic pivot per cell (diagnostic)
+    if (quadPivotTol_ > 0)
+    {
+        scalar A[81];
+        scalar brow[9];
+        scalar s[9];
+        for (label c = 0; c < nCells; ++c)
+        {
+            if (ncoeff_[c] != ncoeffFull_) { continue; }
+            const label nc = ncoeffFull_;
+            const label nNbr = nNbr_[c];
+            const point xc = stencilC(c, 0);
+            for (label k = 0; k < nc*nc; ++k) { A[k] = 0; }
+            for (label i = 0; i < nNbr; ++i)
+            {
+                const vector d = stencilC(c, i + 1) - xc;
+                const scalar w2 = 1.0/Foam::max(magSqr(d), SMALL);   // (1/|d|)^2
+                basis(d, nc, brow);
+                for (label k = 0; k < nc; ++k)
+                {
+                    const scalar wb = w2*brow[k];
+                    for (label l = 0; l < nc; ++l) { A[k*nc + l] += wb*brow[l]; }
+                }
+            }
+            scalar minPiv = 0;
+            bool scaled = true;
+            for (label k = 0; k < nc; ++k)
+            {
+                const scalar akk = A[k*nc + k];
+                if (!(akk > 0)) { scaled = false; break; }
+                s[k] = 1.0/Foam::sqrt(akk);
+            }
+            if (scaled)
+            {
+                for (label k = 0; k < nc; ++k)
+                {
+                    for (label l = 0; l < nc; ++l) { A[k*nc + l] *= s[k]*s[l]; }
+                }
+                minPiv = minCholeskyPivot(A, nc);
+            }
+            minPivotAll = Foam::min(minPivotAll, minPiv);
+            if (writeFitOrder_) { pivotField[c] = minPiv; }
+            if (minPiv < quadPivotTol_)
+            {
+                ncoeff_[c] = nd;
+                ++nIllCond;
+            }
+            else if (minPiv < 1.5*quadPivotTol_)
+            {
+                ++nMarginal;   // kept quadratic, but close to the line: reported
+            }
+        }
+        // The same test on the LINEAR fit of every cell that is not quadratic (the
+        // demoted ones and the under-determined ones): a stencil whose neighbours are
+        // nearly coplanar leaves the gradient component normal to that plane free, and
+        // a garbage gradient costs coefficient x |u dt| at FIRST power at the foot.
+        // Measured 2026-09-05 on the translating polyhedral droplet: two boundary-layer
+        // cells survived the quadratic demotion and were wrong by 2.4e-2 after three
+        // steps. Such a cell keeps its own value (constant reconstruction).
+        for (label c = 0; c < nCells; ++c)
+        {
+            if (ncoeff_[c] != nd) { continue; }
+            const label nc = nd;
+            const label nNbr = nNbr_[c];
+            const point xc = stencilC(c, 0);
+            for (label k = 0; k < nc*nc; ++k) { A[k] = 0; }
+            for (label i = 0; i < nNbr; ++i)
+            {
+                const vector d = stencilC(c, i + 1) - xc;
+                const scalar w2 = 1.0/Foam::max(magSqr(d), SMALL);
+                basis(d, nc, brow);
+                for (label k = 0; k < nc; ++k)
+                {
+                    const scalar wb = w2*brow[k];
+                    for (label l = 0; l < nc; ++l) { A[k*nc + l] += wb*brow[l]; }
+                }
+            }
+            scalar minPiv = 0;
+            bool scaled = true;
+            for (label k = 0; k < nc; ++k)
+            {
+                const scalar akk = A[k*nc + k];
+                if (!(akk > 0)) { scaled = false; break; }
+                s[k] = 1.0/Foam::sqrt(akk);
+            }
+            if (scaled)
+            {
+                for (label k = 0; k < nc; ++k)
+                {
+                    for (label l = 0; l < nc; ++l) { A[k*nc + l] *= s[k]*s[l]; }
+                }
+                minPiv = minCholeskyPivot(A, nc);
+            }
+            if (minPiv < quadPivotTol_)
+            {
+                ncoeff_[c] = 0;
+                ++nIllCondLin;
+            }
+        }
+    }
+    reduce(nIllCond, sumOp<label>());
+    reduce(nIllCondLin, sumOp<label>());
+    reduce(nMarginal, sumOp<label>());
+    reduce(minPivotAll, minOp<scalar>());
+    if (quadPivotTol_ > 0)
+    {
+        Info<< "uncachedQuadraticWeightedLeastSquares: " << nIllCond
+            << " cells with ill-conditioned quadratic stencils (scaled Cholesky pivot < "
+            << quadPivotTol_ << ", smallest " << minPivotAll
+            << ") use a linear fit; " << nIllCondLin
+            << " of those with an ill-conditioned linear stencil too keep their cell value; "
+            << nMarginal << " quadratic cells within a factor 1.5 above the tolerance" << endl;
+    }
+    if (writeFitOrder_)
+    {
+        volScalarField fitOrder
+        (
+            IOobject("slFitOrder", mesh_.time().timeName(), mesh_,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            mesh_,
+            dimensionedScalar(dimless, 0)
+        );
+        forAll(ncoeff_, c)
+        {
+            fitOrder[c] = (ncoeff_[c] == ncoeffFull_) ? 2 : (ncoeff_[c] == nd ? 1 : 0);
+        }
+        fitOrder.write();
+        volScalarField fitPivot
+        (
+            IOobject("slFitPivot", mesh_.time().timeName(), mesh_,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            mesh_,
+            dimensionedScalar(dimless, -1)
+        );
+        forAll(pivotField, c) { fitPivot[c] = pivotField[c]; }
+        fitPivot.write();
     }
     built_ = true;
     // NB: do NOT releaseStencilCentres() -- the fit is reassembled every step.

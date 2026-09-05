@@ -104,6 +104,24 @@ class uncachedQuadraticWeightedLeastSquaresReconstruction
     //  M(k,k) += ridgeEps * trace(M)/ncoeff. Conditions distorted-mesh solves.
     scalar ridgeEps_;
 
+    //- Geometric admissibility of the quadratic fit (2026-09-05): the smallest
+    //  Cholesky pivot of the Jacobi-scaled (unit-diagonal) weighted normal matrix,
+    //  built from stencil POSITIONS alone, must exceed this or the cell uses the
+    //  linear fit (a linear stencil below it keeps the cell value). Default 0.3,
+    //  read off the pivot census of the meshes in use: band cells >= 0.74 on every
+    //  mesh, hex >= 0.64 everywhere, polyhedral interior >= 0.50, while cfMesh's
+    //  boundary-layer / grading-transition stencils form a tail from 0 to ~0.3 with
+    //  an almost empty 0.3-0.4 bin. Admits a scaled condition number of ~100, i.e.
+    //  stable for U dt / h < 0.1 (a cell of condition c amplifies a neighbour's
+    //  error by ~c (U dt / h)^2 per step; 1e-2 admitted c ~ 1e4 and diverged at
+    //  U dt / h = 0.016). 0 = never (the behaviour before the fix). Dictionary
+    //  entry quadraticPivotTol.
+    scalar quadPivotTol_;
+
+    //- Write the per-cell fit order (2 quadratic, 1 linear, 0 constant) as the
+    //  volScalarField slFitOrder once at build time (dictionary writeFitOrder).
+    bool writeFitOrder_;
+
     //- Least-squares solver: "normalEquations" (default; A^T W^2 A + Cholesky,
     //  fast but squares the condition number and drops to a constant fit on a
     //  non-SPD/degenerate cell) or "householderQR" (QR of the weighted design

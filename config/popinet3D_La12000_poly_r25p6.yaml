@@ -1,0 +1,67 @@
+# POPINET (2009, Sec. 6.2.2) TRANSLATING DROPLET IN 3D ON A POLYHEDRAL (cfMesh) MESH --
+# rung R/h = 25.6 at the interface (2x Popinet).
+#
+# The 3D twin of the 2D reproduction (config/popinet2D_La12000_N*): D = 0.4 (R = 0.2) in a
+# 2 x 1 x 1 box, uniform inflow U = 1 at x = 0, pressure outlet at x = 2, free-slip sides,
+# rho = 1 and nu = 5.7735e-3 in BOTH phases (La = sigma D/(rho nu^2) = 12000, We = 0.4,
+# sigma = 1), horizon T = D/U = 0.4 (one diameter of travel; the droplet starts at
+# x = 0.5). Production chain: reconstructedCurvature, rhoLENT mass flux, BDF2, alg_lin
+# face viscosity, projectedFlux SL trace, no filter, no curvature extension.
+#
+# RESOLUTION IS SET AT THE INTERFACE. cfMesh's dual cells at the interface measure
+# 2^(-1/3) x maxCellSize (measured on every polyhedral rung of the stationary droplet:
+# 7.937e-5 / 5.556e-5 / 3.9685e-5 for 1e-4 / 7e-5 / 5e-5), so MAX_CELL_SIZE = h/0.7937 for
+# the target h = 1/128, and N_CELLS (the capillary-dt handle, dt = 0.13107/N^1.5, 4419
+# steps) is pinned to 128. The mesh rule's band check (check_refined_band.py --mode poly)
+# verifies that pin on the built mesh; a mismatch > 5 % fails the rule and prints the pin.
+# Expected cells ~2.65 x 2/maxCellSize^3 = 5.56M.
+#
+# PRE-REGISTERED read-out (Popinet's convention, make_popinet_table.py): the maximum over
+# time of the L1 and L2 norms of |u - U0|/U0 (never the maximum norm alone); plus volume,
+# shape, Laplace jump and the band curvature error at t = T. Expectation from 2D: the L1/L2
+# parasitic velocity converges at near first order across the ladder; a rung that grows to
+# blow-up is a RESULT and stays in the table. Compare rungs at EQUAL time only.
+study_name: popinet3D_La12000_poly_r25p6
+case: popinetTranslating3D
+mesh: poly
+mode: parallel
+np: 96
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 900
+axes_override:
+  N_CELLS: [128]
+  MAX_CELL_SIZE: [0.009843]
+  END_TIME: [0.4]
+  WRITE_INTERVAL: [0.2]
+  POPINET_NX: [128]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [1]
+  CAPILLARY_REF_LENGTH: [1]
+  CAPILLARY_DT_COEFF: [0.13107]
+  DROPLET_RADIUS: [0.2]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [1]
+  SIGMA: [1]
+  POPINET_RHO: [1]
+  POPINET_NU: [5.773502692e-03]
+  SURFACE_FILE: [box2x1x1.stl]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

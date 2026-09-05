@@ -1,0 +1,32 @@
+// Case-level defaults for the THREE-dimensional Popinet (2009, Sec. 6.2.2) translating
+// droplet -- the 3D twin of popinetTranslating2D.parameter: D = 0.4 (R = 0.2) in a
+// POPINET_XLEN x 1 x 1 box, U = 1, rho = 1 and nu = 5.7735e-3 in BOTH phases (La = 12000,
+// We = 0.4), sigma = 1, horizon T = D/U = 0.4 (one diameter of travel). N_CELLS is the cell
+// count across the unit height, h = 1/N_CELLS; the capillary step is
+// CAPILLARY_DT_COEFF / N_CELLS^1.5 (CAPILLARY_REF_LENGTH = DOMAIN_LENGTH = 1).
+values
+{
+    solver (leiaSemiLagrangianLevelSetTwoPhaseFoam);
+    N_CELLS
+    (
+        64
+        96
+        128
+    );
+    DOMAIN_LENGTH ( 1 );          // unit height and depth; the box is POPINET_XLEN long
+    CAPILLARY_REF_LENGTH ( 1 );
+    END_TIME ( 0.4 );
+    MAX_CO ( 0.1 );
+    CAPILLARY_DT_COEFF ( 0.13107 );
+    // ---- POLYHEDRAL mesh (mesh: poly -> cfMesh pMesh) ---------------------
+    // This file REPLACES popinetTranslating3D.parameter for mesh: poly studies
+    // (workflow/Snakefile PARAM_FILE). MAX_CELL_SIZE = h_interface / 2^(-1/3):
+    // cfMesh's dual cells at the interface hold half an octree box (measured on
+    // every polyhedral rung of the stationary droplet), so h_interface = 1/64
+    // needs maxCellSize 0.019685, and N_CELLS (the dt handle) is pinned to
+    // 1/h_interface = 64. The driver's band check verifies the pin on the built mesh.
+    MAX_CELL_SIZE ( 0.019685 );
+    SURFACE_FILE ( box2x1x1.stl );
+
+    SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
+}

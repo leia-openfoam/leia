@@ -1479,6 +1479,230 @@ an initial decay, at a rate that is not even monotone in h (29 -> 124 -> 82). Ev
 far below blow-up (|u'| <= 1e-4 m/s at t = 0.025). Compare rungs at EQUAL time only. The
 campaign's open defect stands, now with three polyhedral points and the growth-rate line.
 
+### RUNNING: Popinet's translating droplet in 3D on polyhedral meshes (2026-09-05)
+
+The 2D reproduction (`popinet2D_La12000_N64/128/256`, anchored to Popinet's 5 % at
+R/h = 12.8) is taken to three dimensions on cfMesh polyhedra: `cases/popinetTranslating3D`
+(2 x 1 x 1 box, D = 0.4, U = 1, equal densities and viscosities, La = 12000, We = 0.4, T = D/U
+= 0.4; STL with named solids so the mesh has exactly `inlet`/`outlet`/`walls`), configs
+`popinet3D_La12000_poly_r12p8/r19p2/r25p6` (R/h at the INTERFACE, N_CELLS pinned 64/96/128 via
+the measured dual factor 2^(-1/3); ~0.7M / 2.4M / 5.6M cells; ~9 / 56 / 205 core-hours
+expected). Pre-registered read-out: max over time of L1 and L2 of |u - U0|/U0 (Popinet's
+convention), volume, shape, Laplace jump, kErrL2Band at T; compare rungs at equal time; a
+rung that grows to blow-up is a result.
+
+**The 4-rank smoke (`popinet3D_La12000_poly_smoke4`) BLEW UP at step 3, and the ladder is
+NOT submitted.** The mesh is right (658 683 polyhedra, patches exactly inlet/outlet/walls,
+interface cells 1.5624e-2 -> N_CELLS 64 exact to 0.01 %, checkMesh OK). Steps 1-2 are
+healthy (continuity 1e-14, Courant 0.11); at step 3, in the FIRST outer iteration and
+before any velocity solve, the phase volume jumps +5 % (0.01665 -> 0.01751) -- the
+level-set transport moved the interface ~12x the physical U dt in one SL update -- then
+the momentum residual is 1, the capillary force from the corrupted alpha/kappa drives
+|u| to 3e4 m/s, Courant 3417, FPE at step 8. Not a launch artefact (preload scoped, log
+complete). Two controls, both on four ranks, 78 steps:
+- `popinet3D_La12000_hex_smoke4` -- the SAME 3D case on the hexahedral twin (524 288
+  cells): COMPLETED, phase volume constant to 1e-8, L1|u-U0|/U0 7.3e-5, L2 5.4e-4,
+  Laplace jump 10.044 (exact 10), kErrL2Band 0.71. The 3D translating setup is sound.
+- `popinet3D_La12000_poly_smoke4_ccTrace` -- the polyhedral case with the cell-centred
+  trace velocity: blew up identically (volume 0.0167 -> 0.0294 -> 0.21). The trace velocity
+  is exonerated; the defect is polyhedra + two-phase flow at O(1) velocity (the kinematic
+  polyhedral tests and the stationary polyhedral droplet, both healthy, never exercised
+  that combination: one has no flow coupling, the other |u| ~ 1e-5).
+A per-step field dump with three outer correctors shows only the aftermath (368k cells with
+|dpsi| >> U dt, worst |dpsi| ~ 5 at cells 0.01-0.03 from the SIDE WALLS at the droplet's
+streamwise station). Running now: the same dump with ONE outer corrector (localises the
+first corruption) and the case with `SL_FIT householderQR` (the reconstruction's own
+warning names near-degenerate stencils on the near-wall polyhedra; a normal-equations
+quadratic fit can return huge coefficients there while passing the rank check).
+
+**ROOT CAUSE FOUND (2026-09-05, morning): ill-conditioned quadratic stencils on cfMesh's
+boundary-layer size-transition polyhedra.** Chain of measurements, each one run:
+- QR fit: blows up IDENTICALLY (step-3 phase volume 0.017512193 vs 0.017512208) -> the
+  fit's conditioning-in-arithmetic is not it. One outer corrector: same +5 % from a single
+  SL update. ONE rank: identical (96 / 16 039 / 20 770 bad cells at t1/t2/t3) -> not a
+  decomposition defect. The far-field re-extension belongs to another reconstruction class
+  and never runs here.
+- Against the exact translated signed distance: t0 exact everywhere (1e-8); after ONE step
+  every interior cell is within U dt but 96 cells are wrong by up to 1.4 h -- ALL of them
+  cfMesh boundary-layer cells (size 6.0e-3 = one octree level below the 1.56e-2 interior)
+  in the OUTERMOST layer where they meet the interior, 0.024 from a wall, at arbitrary
+  streamwise positions; 1 of 98 touches a processor patch. The error then multiplies ~15x
+  per step through the stencils (2.2e-2 -> 0.36 -> 3.9), crosses zero in the boundary
+  layer, the phase indicator paints a spurious interface along the WALLS (that is the +5 %
+  phase volume -- the droplet is a bystander), and the capillary force on it blows the flow
+  up.
+- Offline replication from the mesh files: the offenders have **10 point-neighbours for the
+  9-coefficient quadratic** (healthy interior cells 14-16), weighted normal matrices with
+  condition numbers **3e7-6e12** (healthy ~1e2), quadratic coefficients **3e2-3e8**
+  (healthy <= 1.5) while the fitted gradient is right to three digits. Such a fit is exact
+  at d = 0 and wrong by coefficient x (U dt)^2 at the foot: 1e8 x 1e-20 = nothing on the
+  stationary droplet (|u| ~ 1e-5), 7.5e3 x 6.5e-8 = 5e-4 per step at U = 1 offline, and
+  worse in the code's own stencil. The kinematic polyhedral gates never saw it because
+  their velocity vanishes on the walls, exactly where these cells live. The degeneracy test
+  (Cholesky pivot <= 1e-15 ABSOLUTE, on entries of order h^4 ~ 6e-8) cannot see a
+  condition number of 1e12; it caught 1 cell of 660 000.
+
+**FIX (library, `uncachedQuadraticWeightedLeastSquaresReconstruction::build`, this
+morning):** the quadratic fit's admissibility is decided ONCE per mesh from geometry
+alone -- assemble the weighted normal matrix from stencil positions, Jacobi-scale it to
+unit diagonal, take its smallest Cholesky pivot (~ 1/sqrt(condition)); below
+`quadraticPivotTol` (default 1e-2 -- in the measured gap between the pathological ~1e-3 and
+the healthy >= 2.5e-2 stencils) the cell uses the LINEAR
+fit, whose coefficients are the first three of the same buffer (every consumer already
+honours the per-cell coefficient count). A rank decision, not a filter, no shape or mesh
+assumed; `quadraticPivotTol 0` reproduces the former behaviour exactly (the control arm),
+`writeFitOrder true` writes the per-cell order as `slFitOrder`. Tokens
+`SL_QUAD_PIVOT_TOL` / `SL_WRITE_FIT_ORDER` (default.parameter; entries in the two 3D
+templates). This is a change to the LIBRARY, not to the refinement work: a defect of the
+polyhedral reconstruction that any translating polyhedral case would hit.
+
+**Gates for the fix (running):** hex bit-identity (`stationaryDroplet3DbitIdentity`, 65
+steps, cmp against the pre-fix CSV -- the scaled pivots on hex stencils are ~0.1, so the
+fallback must never trigger there), the polyhedral 4-step dump (phase volume constant,
+boundary-layer errors ~1e-4, `slFitOrder` counting the fallback cells and where), the
+polyhedral 78-step smoke, and the uniform polyhedral stationary smoke `polySmoke3D` against
+its committed export (the boundary-layer garbage was 1e-12 there; the result must be the
+same to round-off, else the polyhedral rungs are re-run). The Popinet 3D ladder is
+submitted only after all four.
+
+**Census of the fallback cells (`slFitOrder`, one-step serial runs on the fixed code):**
+- hexRefined N_fine = 60 (51 640 cells, 1 688 hanging-node polyhedra): **0** fallback cells;
+  the smallest scaled pivot over the whole mesh is 0.64. Hanging-node hex transitions are
+  well-conditioned; the hex ladder is untouched by the fix.
+- polyRefined r13p8 (150 362 cells): **3 555 fallback cells (2.4 %), every one in cfMesh's
+  wall boundary layer** (within 1.3-1.8e-4 of the box, sizes 5.6-7.5e-5), the nearest
+  14 fine cells from the interface, none within the band. The graded octree transition
+  AROUND the droplet is well-conditioned; the polyhedral refinement results stand.
+So the answer to 'is it only cells near walls' is: in every mesh this repository has, yes
+-- cfMesh's boundary layer is the only size transition that starves the point-neighbour
+stencil -- but the condition is topological, and the fix decides per cell from geometry
+so it does not depend on that staying true.
+
+**First gate pass with `quadraticPivotTol 1e-3` (recorded, then superseded).** The
+polyhedral four-step dump: 29 255 of 658 683 cells (4.4 %) demoted to linear, phase
+volume constant to 3e-9 (was +5 % at step 3), first-step boundary-layer error 2.2e-4 (was
+2.2e-2, now at the interior level) -- but by step 3 two cells had grown to 2.4e-2 again,
+and the 78-step smoke DIVERGED at step 12 (later than the original step 8, same route).
+Offline replication of those cells: quadratic scaled pivots 1.04e-3 and 1.05e-3 -- a hair
+ABOVE the tolerance, the same 10-neighbour boundary-layer stencils as the demoted ones;
+their linear fits are perfectly conditioned (pivot 1.0). Every healthy cell measured has
+a pivot >= 2.5e-2 (hex: 0.64). The pathological class straddles 1e-3 and there is a clean
+gap up to 2.5e-2, so the default is set to **1e-2**, the count of quadratic cells within a
+factor 3 above the tolerance is printed (the gap must stay visible), and a linear fit
+that fails the same test cascades to the constant reconstruction. Rebuilt; the four gates
+run again on that code (pipeline queued behind the 1e-3 runs).
+
+**`polySmoke3D` is not a round-off yardstick -- its pre-fix reference was itself contaminated.**
+Re-run on the 1e-3 code against the pre-fix run: L1|u'| +0.26 %, L2 +7.4 %, volume -1.1 %,
+Laplace jump -2.7 %. That study is a coarse near-blow-up smoke (R/h 8.4 at the interface,
+currents 0.1 m/s, volume error 4 %): its foot displacements were 2e-6, large enough for the
+former garbage coefficients (1e8 x 4e-12 ~ 4e-4 per step) to have shaped the reference. The
+committed `polySmoke3D_errors.csv` is therefore superseded by the fixed-code export. The
+regression yardstick for the polyhedral rungs is the QUIET one: `polyDroplet3D_r13p8`
+(|u| ~ 1e-5, displacement 6e-11, former contamination ~4e-13) re-run for 200 steps on the
+final code (`polyDroplet3D_r13p8_regress200`) and compared to the cluster CSV row by row;
+PASS = round-off (1e-8 relative). Queued behind the final gates.
+
+**Gates on the 1e-2 + cascade code:** hex bit-identity cmp-IDENTICAL (0 demoted cells,
+smallest pivot 0.64); polyhedral four-step dump CLEAN -- no cell beyond 0.1 h at any step,
+phase volume constant to 3e-9, 34 514 cells demoted (5.2 %), none to constant; the only
+growing errors are the eight box-corner cells, exactly +U dt per step (never updated; a
+bounded nuisance, not an amplifier). `polySmoke3D` re-exported. **But the 78-step smoke
+diverged again, at step 16** (8 -> 12 -> 16 as the tolerance went 0 -> 1e-3 -> 1e-2). The
+dump says why: 3 840 kept-quadratic cells lie within a factor 3 above the tolerance
+(pivots 1e-2..3e-2, condition ~1e3-1e4); their coefficients (~1e3) put ~6.5e-5 per step
+into ~1 % of the cells (the count above 0.01 h grows 5 098 -> 11 873 over four steps), and a
+quadratic cell of condition c amplifies a neighbour's error by ~c (d/h)^2 per step: at
+c ~ 1e4 and d/h = 0.016 that is a gain of ~2.6, which turns the linear accumulation
+exponential after ~8 steps -- step 16. So the admissible condition is set by the CFL,
+c < (h/d)^2, not by the pathological class alone: at the scheme's design point d/h ~ 0.5
+only stencils about as good as a hexahedral one (pivot ~0.5-0.6) are unconditionally
+safe. The threshold is therefore taken from the PIVOT DISTRIBUTION of the meshes we run
+(`slFitPivot`, written next to `slFitOrder`): interior polyhedra measured so far 0.7-0.9,
+boundary-layer / transition cells 1e-3..0.12, hex 0.64 -- and the band cells' pivots are
+checked on every mesh so that no second order is lost where the interface is.
+
+**Pivot census (five meshes, one-step serial runs with `writeFitOrder true`;
+`workflow/scripts/sl_fit_pivot_census.py`, table `sl_fit_pivot_census.csv` in the SL
+article data). Classes: band |psi| < 6h, near 6-12h, far interior, far-small (cfMesh
+boundary-layer / grading-transition cells).**
+
+| mesh | cells | min band | min near | min far interior | far-small: n, min | demoted at 0.3 | cells in [0.3,0.4) |
+|---|---|---|---|---|---|---|---|
+| hex uniform N=60 | 216 000 | 0.789 | 0.789 | 0.637 | none | 0 | 0 |
+| hex refined N=60, L=1 (1 688 hanging-node cells) | 51 640 | 0.773 | 0.769 | 0.637 | none | 0 | 0 |
+| poly refined R/h 13.8, L=1 | 150 362 | 0.935 | 0.736 | 0.000 (grading transition) | 1 879, 3.3e-2 | 9 860 (6.6 %) | 35 |
+| poly uniform R/h 13.8 | 572 039 | 0.949 | 0.949 | 0.615 | 129 888, 0 | 40 317 (7.1 %) | 40 |
+| poly uniform Popinet-3D N=64 | 658 683 | 0.949 | 0.949 | 0.500 | 146 706, 0 | 47 626 (7.2 %) | 16 |
+
+Reading: on every mesh the band cells sit at >= 0.74 (polyhedral >= 0.94), hex never
+falls below 0.64 (hanging-node cells included), the polyhedral interior never below 0.50.
+The degenerate stencils -- cfMesh's wall boundary layer on the uniform boxes, and on the
+graded mesh ALSO the coarse-fine grading transition around the droplet (my size-based
+"interior" class puts those there; they are 12h and more from the interface) -- form a tail
+from 0 up to ~0.3, and the 0.3-0.4 bin is nearly empty on all three polyhedral meshes
+(35 / 40 / 16 cells of 150k / 572k / 659k). Stability requires the admitted scaled condition
+number c to satisfy c (U dt / h)^2 < 1: 1e-2 (c ~ 1e4) diverged at step 16 with
+U dt / h = 0.016, so pivots up to 3e-2 amplify; **0.3 admits c <~ 100, is stable for
+U dt / h < 0.1, sits in the gap, costs no second order within 12h of any interface, and
+leaves every hex mesh bit-identical.** DECIDED: `quadraticPivotTol` default **0.3**
+(code and `SL_QUAD_PIVOT_TOL`); the marginal-class report is `[tol, 1.5 tol)`.
+
+**RETRACTED as a fix gate: `polyDroplet3D_r13p8_regress200` vs the cluster CSV.** The run
+completed (200 steps, np 8, 31 196 cells demoted on the 1e-2 code) but the comparison is
+confounded three ways: the cluster twin was MESHED by the cluster's own cfMesh build (a
+different mesh to round-off), decomposed on 32 ranks (the linear-solver partition
+dependence measured earlier), and run on the pre-fix code. Measured: 0.1-0.6 % on volume,
+shape, curvature and A2h, 1e-2 on max|u'| (L_inf, not a verdict metric), 8e-9 on the
+Laplace jump -- unattributable, so it decides nothing. Directory kept as
+`polyDroplet3D_r13p8_regress200_tol1e-2_20260905` (a valid 200-step np-8 run of the
+uniform polyhedral rung on the 1e-2 code, nothing more). The same-mesh, same-decomposition
+gate replaces it: `polyDroplet3Drefined_r13p8_smoke4` (np 4, 458 steps, pre-fix CSV of
+2026-09-04) re-run on ITS OWN mesh and decomposition with the 0.3 binary.
+
+**Gates on the 0.3 code:** hex bit-identity `stationaryDroplet3DbitIdentity` (65 steps):
+**cmp-IDENTICAL** to the pre-fix CSV, 0 cells demoted, smallest pivot 0.64.
+Same-mesh, same-decomposition polyhedral regression (`polyDroplet3Drefined_r13p8_smoke4`,
+np 4, 458 steps) -- FIRST ATTEMPT VOID, and the reason is a trap worth its own line: the
+copy was taken from the finished study's `0/`, which is NOT the initial state. The solver
+writes its projected initial pressure into time 0 of the processor directories at startup
+and `reconstructPar -withZero` copies it back; the re-run therefore started from a converged
+p_rgh (first solve: initial residual 6e-7 in 6 iterations, against 1 in 27 on 2026-09-04)
+and differed from the study CSV from step 1 in the density/clipping diagnostics (verdict
+metrics at round-off: volume 4e-15 absolute, shape and curvature 1e-10 relative, Laplace
+jump identical). Attribution: `quadraticPivotTol 0` (the pre-fix algorithm) and 0.3 are
+BIT-IDENTICAL on this mesh -- serial one-step fields (psi, U, p_rgh, kappa, alpha, phi)
+identical to the byte, 20 steps on 4 ranks cmp-identical, two independent 4-rank launches
+cmp-identical -- so the fix is inert here and the parallel path deterministic; only the
+copied initial pressure differed. Corrected gate (0/ rebuilt from U, alpha, psi + p_rgh
+from 0.org, same decomposition byte for byte): **cmp-IDENTICAL over all 458
+steps** -- the 0.3 code reproduces the 2026-09-04 pre-fix study CSV byte for byte, first
+pressure solve included (initial residual 1, 27 iterations). Two false starts on the way,
+both in the INITIAL STATE and neither in the code: the finished `0/` holds the solver's
+projected p_rgh AND its recomputed alpha.water (both rewritten into time 0 at startup and
+copied back by `reconstructPar -withZero`; `psi` and `U` were not touched), so a re-run
+copied from it differed from step 1 at 1e-15..1e-11 absolute. Regenerating `0/` from
+`0.org` + `leiaSetFields -alphaName alpha.water`, as the workflow does, closed the gap
+exactly. Pristine HEAD (worktree build, separate user dir) vs today's tolerance-0 path:
+cmp-identical over 20 steps, so recompilation changed nothing either.
+**The fix is bit-inert on every mesh it was measured on: hex (0 demoted cells) and the
+refined polyhedral droplet (6.6 % demoted, none within 12h of the interface).** The
+committed polyhedral `_errors.csv` exports therefore stand as produced.
+
+Popinet-3D polyhedral 78-step smoke `popinet3D_La12000_poly_smoke4` (N = 64, np 4, 47 626
+cells demoted = 7.2 %, none to constant): **COMPLETED all 78 steps** -- the first
+polyhedral translating run to survive (0 -> step 8, 1e-3 -> 12, 1e-2 -> 16, 0.3 -> done).
+Its vector at t = 0.02 (5 % of T) next to the hexahedral twin at equal steps: max over
+time of mean|u'| 9.7e-5 (hex 7.3e-5), L2|u'| 5.3e-4 (hex 5.4e-4), max|u'| 9.5e-2 (hex
+1.3e-2; L_inf, not a verdict metric -- to be located when the ladder lands), volume error
+9.4e-6 (hex 2.5e-6), shape 9.2e-5 (hex 7.0e-5), centroid error 3.0e-5 (hex 5.4e-5),
+Laplace jump 10.052 (hex 10.044, exact 10), band curvature error 0.81 (hex 0.71). L1/L2
+parity with hex at matched N; the ladder decides convergence.
+`polySmoke3D` re-run on 0.3 (17 273 demoted): max_t mean|u'| 1.200e-2 / L2 1.236e-1,
+volume 4.44e-2, Laplace 150.3, kErr 2174 -- the four tolerance variants of this coarse
+near-blow-up case (pre-fix 1.19e-2 / 1.246e-1 / 4.40e-2 / 153.7 / 2266; 1e-3; 1e-2) scatter
+by a few percent; it is a smoke, not a yardstick, and its export is the 0.3 run's.
+
 ## 5. Lichtenberg — what is running
 
 Login: `ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de`

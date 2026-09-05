@@ -315,3 +315,73 @@ Curation: `make_refined_mesh_table.py` (refinement.csv + refinedBand.csv +
 checkMesh -> `refined_mesh_stats.csv`), `make_refined_equivalence_table.py`
 (refined vs uniform at matched N_CELLS, matched t, equal steps; L1 and L2 only,
 never L_inf), `make_refined_mesh_fig.py` (mid-plane slice coloured by cellLevel).
+
+## Popinet's translating droplet in 3D on polyhedral meshes (mesh: poly)
+
+`cases/popinetTranslating3D` is the 3D twin of `cases/popinetTranslating2D` (Popinet 2009,
+Sec. 6.2.2): D = 0.4 in a 2 x 1 x 1 box, inflow U = 1 at x = 0, pressure outlet at x = 2,
+free-slip sides, equal densities and viscosities (La = 12000, We = 0.4, sigma = 1), horizon
+T = D/U = 0.4. The box STL is generated with named solids so that cfMesh produces exactly
+the patches the fields declare (`workflow/scripts/make_box_stl.py --xlen 2 --ylen 1
+--zlen 1`: solids `inlet`, `outlet`, `walls`); `meshDict.template` only sets their types.
+A `blockMeshDict.template` for a hexahedral twin is included.
+
+Resolution is set at the INTERFACE: cfMesh's dual cells there measure 2^(-1/3) x maxCellSize
+(measured on every polyhedral rung of the stationary droplet), so `MAX_CELL_SIZE =
+h/0.7937` and `N_CELLS` (the capillary-dt handle) is pinned to `1/h`; the pin is verified on
+the built mesh with `check_refined_band.py --mode poly`.
+
+    # 4-rank smoke (78 steps) on the coarsest mesh -- the gate before the cluster
+    snakemake --workflow-profile profiles/local8 --configfile config/popinet3D_La12000_poly_smoke4.yaml \
+        --config env_preamble="...; export LEIA_PMESH_PRELOAD=$HOME/miniconda3/lib/libjemalloc.so.2"
+    # the ladder: R/h = 12.8 / 19.2 / 25.6 at the interface (N = 64 / 96 / 128; ~0.7M / 2.4M / 5.6M cells)
+    snakemake --workflow-profile profiles/slurm --configfile config/popinet3D_La12000_poly_r12p8.yaml
+    snakemake --workflow-profile profiles/slurm --configfile config/popinet3D_La12000_poly_r19p2.yaml
+    snakemake --workflow-profile profiles/slurm --configfile config/popinet3D_La12000_poly_r25p6.yaml
+
+Read-out as for the 2D reproduction (`make_popinet_table.py`): maximum over time of the L1
+and L2 norms of |u - U0|/U0, plus volume, shape, Laplace jump and band curvature error at T.
+
+### Geometric admissibility of the quadratic fit (`SL_QUAD_PIVOT_TOL`, 2026-09-05)
+
+The first polyhedral Popinet-3D run diverged at step 3 while its hexahedral twin
+(`config/popinet3D_La12000_hex_smoke4.yaml`) was clean. Root cause, in the library: the
+cell-point-cell quadratic stencil of cfMesh's wall boundary-layer and size-transition
+polyhedra offers as few as 10 point-neighbours for 9 coefficients, so the weighted normal
+matrix has a scaled condition number of 1e7-1e12 and the fit carries curvature
+coefficients of 1e3-1e8: exact at the cell centre, wrong by coefficient x (U dt)^2 at the
+departure foot. The stationary droplet (|u| ~ 1e-5) and the kinematic gates (velocity zero
+on the walls, where these cells sit) cannot see it; a droplet translating at U = 1 through
+those cells can. `uncachedQuadraticWeightedLeastSquaresReconstruction` now decides once
+per mesh, from stencil POSITIONS alone, whether a cell's quadratic fit is admissible: the
+smallest Cholesky pivot of the Jacobi-scaled weighted normal matrix must exceed
+`quadraticPivotTol`; below it the cell uses the linear fit, and a linear stencil that fails
+the same test keeps the cell value.
+
+    SL_QUAD_PIVOT_TOL   0.3     # default; 0 = never fall back (the pre-fix behaviour, the control arm)
+    SL_WRITE_FIT_ORDER  false   # true: write slFitOrder (2/1/0) and slFitPivot once, for the census
+
+The default was read off the pivot census of five meshes (`sl_fit_pivot_census.py`, table
+`docs/semi-lagrangian-level-set/sl-level-set-article/data/tables/sl_fit_pivot_census.csv`):
+band cells >= 0.74 on every mesh, hex >= 0.64 everywhere (hanging-node cells included),
+polyhedral interior >= 0.50, while the degenerate stencils form a tail from 0 to ~0.3 with
+an almost empty 0.3-0.4 bin. Stability needs the admitted condition c to satisfy
+c (U dt / h)^2 < 1 (1e-2, c ~ 1e4, still diverged at step 16 at U dt / h = 0.016); 0.3 admits
+c <~ 100, i.e. U dt / h < 0.1, and demotes ~7 % of a uniform cfMesh box, all in the wall
+boundary layer, none within 12h of an interface. Gates on the 0.3 binary: hex bit-identity
+(`config/stationaryDroplet3DbitIdentity.yaml`) cmp-identical to the pre-fix CSV; the
+polyhedral refined smoke re-run on its own mesh and decomposition; the 78-step polyhedral
+Popinet-3D smoke (`popinet3D_La12000_poly_smoke4`). Diagnostic configs kept as the record
+of the isolation: `popinet3D_La12000_poly_dump4*.yaml` (4-step field dumps; `_oc1` one
+outer corrector + `SL_WRITE_FIT_ORDER true`, `_qr` Householder QR, `_serial` one rank) and
+`popinet3D_La12000_poly_smoke4_ccTrace.yaml` (cell-centred trace) all reproduced the
+divergence, so neither the solver, the trace nor the rank count was the cause.
+
+Census recipe (serial, in a COPY of a rendered case; the script prints the histogram by
+class and appends one CSV row per mesh):
+
+    cp -r <case>/{0,0.org,constant,system} <copy> && cd <copy>
+    foamDictionary -entry levelSet/semiLagrangian/writeFitOrder -set true system/fvSolution
+    foamDictionary -entry endTime -set <deltaT> system/controlDict
+    leiaSemiLagrangianLevelSetTwoPhaseFoam > log.census
+    python3 workflow/scripts/sl_fit_pivot_census.py . --label "<mesh>" --csv <table.csv>

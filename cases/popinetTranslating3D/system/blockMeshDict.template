@@ -1,0 +1,77 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Popinet (2009, Sec. 6.2.2) translating droplet in THREE dimensions: a box
+// POPINET_XLEN x 1 x 1 (unit height and depth), uniform inflow U0 at x = 0,
+// outflow at x = xlen, free-slip on the four sides -- the 3D twin of
+// popinetTranslating2D. n_cells across the unit height -> h = 1/n_cells.
+// This hexahedral mesh is the twin of the cfMesh polyhedral mesh (meshDict.template);
+// N_CELLS_BASE = N_CELLS unless a static refinement is requested (mesh: hexRefined).
+
+scale   1;
+
+n_cells   @!N_CELLS_BASE!@;      // cells across the unit height, = @!N_CELLS!@ / 2^REFINE_LEVELS
+n_cells_x @!POPINET_NX!@;        // = POPINET_XLEN * n_cells at the fine spacing
+ylen      @!DOMAIN_LENGTH!@;     // 1
+xlen      @!POPINET_XLEN!@;      // 2
+
+vertices
+(
+    (0      0      0    )
+    ($xlen  0      0    )
+    ($xlen  $ylen  0    )
+    (0      $ylen  0    )
+    (0      0      $ylen)
+    ($xlen  0      $ylen)
+    ($xlen  $ylen  $ylen)
+    (0      $ylen  $ylen)
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($n_cells_x $n_cells $n_cells) simpleGrading (1 1 1)
+);
+
+edges ();
+
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces ((0 4 7 3));
+    }
+    outlet
+    {
+        type patch;
+        faces ((1 2 6 5));
+    }
+    // free-slip sides: a uniform stream with no wall shear
+    walls
+    {
+        type wall;
+        faces
+        (
+            (0 1 5 4)
+            (3 7 6 2)
+            (0 3 2 1)
+            (4 5 6 7)
+        );
+    }
+);
+
+mergePatchPairs ();
+
+// ************************************************************************* //

@@ -1,0 +1,40 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                |
+| \\      /  F ield         | cfMesh: A library for mesh generation          |
+|  \\    /   O peration     |                                                |
+|   \\  /    A nd           | Author: Franjo Juretic                         |
+|    \\/     M anipulation  | E-mail: franjo.juretic@c-fields.com            |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      meshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// popinetTranslating3D POLYHEDRAL mesh (cfMesh pMesh): the POPINET_XLEN x 1 x 1 box
+// of blockMeshDict.template as polyhedra. The STL (workflow/scripts/make_box_stl.py)
+// carries three named solids -- inlet (x = 0), outlet (x = xlen), walls (the four
+// sides) -- which cfMesh turns into the three patches the 0.org fields declare;
+// renameBoundary only fixes their types. RESOLUTION: cfMesh's dual cells at the
+// interface measure 2^(-1/3) x maxCellSize (measured on every polyhedral rung of
+// the stationary droplet), so MAX_CELL_SIZE = h_interface / 0.7937 and N_CELLS,
+// the capillary-dt handle, is pinned to 1/h_interface -- the driver's band check
+// (check_refined_band.py --mode poly) verifies the pin on the built mesh.
+
+maxCellSize     @!MAX_CELL_SIZE!@;
+surfaceFile     @!SURFACE_FILE!@;
+
+renameBoundary
+{
+    newPatchNames
+    {
+        inlet  { newName inlet;  type patch; }
+        outlet { newName outlet; type patch; }
+        walls  { newName walls;  type wall;  }
+    }
+}
+
+// ************************************************************************* //
