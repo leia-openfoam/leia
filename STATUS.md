@@ -1748,6 +1748,23 @@ the stencil's, not the mesh's, and stays selectable. r12p8 and r19p2 resubmitted
 corrected mesh (ids in `.my_jobs`); the outlet amplifier question is answered by whether
 r12p8 passes step 865.
 
+**Corrected-mesh rungs (2026-09-07): BOTH DIVERGED, at steps 1154 (r12p8) and 1308 (r19p2) --
+the same final steps as on the tilted mesh (1151 / 1301), but by a DIFFERENT route.** The
+quiet phase is now better than hex (r12p8 to step 217: max|u'| 9.7e-3, mean 1.1e-4, L2 4.1e-4;
+hex to step 815: 4.2e-2 / 5.6e-4 / 1.6e-3), then at step 267 (t = 0.069) max|u'| jumps
+8.7e-3 -> 1.6 -> 9.5 in three steps while L2 stays 6e-4: ONE cell. It is the smallest cell of
+the mesh -- 0.153 h on the box edge y = z = 0 at x = 1.749, 280x below a regular cell, the one
+concave cell and the one face with volume ratio < 0.01 that `checkMesh` flags -- a sliver the
+Voronoi dual makes where an edge point sits badly. Its velocity spike throws the SL foot
+several cells, psi there reaches +41 / -38 (t = 0.2, alternating along the edge over x =
+1.70-1.76, 65 cells with |psi| > 3, 1 939 cells with |u'| > 0.1), a fake interface forms, and
+the contamination spreads until the droplet is destroyed (volume error 1.4e-4 at step 600,
+1e-3 at 800, 0.15 at 1000). The coincident final step is the droplet's death by contamination,
+not a geometric event. So: tilted faces (STL) gave the outlet-slab checkerboard; the
+feature-edge dual gives one sliver on an edge; both are boundary-geometry artefacts of
+cfMesh's pMesh, not of the level set. Next: the extruded `boundaryLayers` on the `.fms`
+(regular prisms at edges and corners) -- if its smallest cell is no longer a sliver, re-gate.
+
 ### RESULT: the Popinet-3D polyhedral ladder DIVERGES late, from an inlet/outlet level-set transport defect that is NOT the fit fix (2026-09-05, evening)
 
 Two rungs landed, both DIVERGED, both on the right binary (`curvature-v2512`, `slFitPivot`
