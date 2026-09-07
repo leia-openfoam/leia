@@ -1,0 +1,55 @@
+# EDGE-SLIVER AVOIDANCE TEST (2026-09-07): the same case as the parent config on the feature-edge
+# (.fms) pMesh at maxCellSize 0.0195 instead of 0.019685. cfMesh's Voronoi dual makes cells of
+# 0.15-0.30 h along the box edges at every cell size tried (0.0190 / 0.0195 / 0.0200 / 0.019685:
+# min volume 6.7e-8 / 9.5e-8 / 3.8e-8 / 1.4e-8 against h^3 = 3.8e-6), but only 0.019685 also has
+# an inverted boundary point and a face with volume ratio < 0.01 at x = 1.75 on the edge y = z = 0
+# -- the cell whose velocity spiked to 1.6 U at step 267 and seeded the blow-up of both corrected-
+# mesh rungs. 0.0195 has neither flag (smallest cell 0.29 h). The interface cell is 1 % finer than
+# the N = 64 handle (0.01548 vs 0.015625), so the pin mismatch is allowed. PRE-REGISTERED: PASS =
+# the horizon T = 0.4 without a zero-set jump and L1/L2 |u'| at or below the hex twin's (7.4e-4 /
+# 2.0e-3); a blow-up seeded again on an edge cell = the sliver class is systematic and the
+# polyhedral Popinet benchmark needs a different boundary mesh, not a different cell size.
+study_name: popinet3D_La12000_poly_smoke4_mcs0195
+case: popinetTranslating3D
+mesh: poly
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  N_CELLS: [64]
+  MAX_CELL_SIZE: [0.0195]
+  REFINE_ALLOW_PIN_MISMATCH: ["true"]
+  END_TIME: [0.02]
+  WRITE_INTERVAL: [0.02]
+  POPINET_NX: [128]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [1]
+  CAPILLARY_REF_LENGTH: [1]
+  CAPILLARY_DT_COEFF: [0.13107]
+  DROPLET_RADIUS: [0.2]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [1]
+  SIGMA: [1]
+  POPINET_RHO: [1]
+  POPINET_NU: [5.773502692e-03]
+  SURFACE_FILE: [box2x1x1.fms]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
