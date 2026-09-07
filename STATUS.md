@@ -1633,7 +1633,7 @@ boundary-layer / grading-transition cells).**
 | hex refined N=60, L=1 (1 688 hanging-node cells) | 51 640 | 0.773 | 0.769 | 0.637 | none | 0 | 0 |
 | poly refined R/h 13.8, L=1 | 150 362 | 0.935 | 0.736 | 0.000 (grading transition) | 1 879, 3.3e-2 | 9 860 (6.6 %) | 35 |
 | poly uniform R/h 13.8 | 572 039 | 0.949 | 0.949 | 0.615 | 129 888, 0 | 40 317 (7.1 %) | 40 |
-| poly uniform Popinet-3D N=64 | 658 683 | 0.949 | 0.949 | 0.500 | 146 706, 0 | 47 626 (7.2 %) | 16 |
+| poly uniform Popinet-3D N=64 (feature-edge mesh) | 661 903 | 0.949 | 0.949 | 0.451 | 149 927, 0 | 46 849 (7.1 %) | 15 |
 
 Reading: on every mesh the band cells sit at >= 0.74 (polyhedral >= 0.94), hex never
 falls below 0.64 (hanging-node cells included), the polyhedral interior never below 0.50.
@@ -1641,7 +1641,7 @@ The degenerate stencils -- cfMesh's wall boundary layer on the uniform boxes, an
 graded mesh ALSO the coarse-fine grading transition around the droplet (my size-based
 "interior" class puts those there; they are 12h and more from the interface) -- form a tail
 from 0 up to ~0.3, and the 0.3-0.4 bin is nearly empty on all three polyhedral meshes
-(35 / 40 / 16 cells of 150k / 572k / 659k). Stability requires the admitted scaled condition
+(35 / 40 / 15 cells of 150k / 572k / 662k). Stability requires the admitted scaled condition
 number c to satisfy c (U dt / h)^2 < 1: 1e-2 (c ~ 1e4) diverged at step 16 with
 U dt / h = 0.016, so pivots up to 3e-2 amplify; **0.3 admits c <~ 100, is stable for
 U dt / h < 0.1, sits in the gap, costs no second order within 12h of any interface, and
