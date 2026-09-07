@@ -1737,6 +1737,17 @@ it lived in the slab next to the tilted faces. The case now ships `box2x1x1.fms`
 (`SURFACE_FILE` default in `popinetTranslating3D_poly.parameter`, all poly configs switched);
 the 4-rank smoke on the corrected mesh is the gate, then the r12p8 horizon on the cluster.
 
+**Gate on the corrected mesh (2026-09-07, 8 ranks, 78 steps): PASSED, and the polyhedral case
+is now the BETTER one.** 0 tilted faces on walls/inlet/outlet (43 368 / 5 289 / 5 289 faces);
+max_t max|u'| **8.6e-3** (tilted mesh 9.5e-2, hex 1.3e-2) and it sits at the droplet surface
+(0.19 from the centre, R = 0.2) instead of the box corners; mean|u'| **4.1e-5** (hex 7.3e-5),
+L2|u'| **2.8e-4** (hex 5.4e-4); interface metrics unchanged (volume 9.4e-6, shape 9.2e-5,
+Laplace 10.052, band curvature 0.81); no cell above 0.03 U. The boundary-face transport
+fractions are the same as before (inlet 0.082, outlet 0.240, walls 1.002): that defect is
+the stencil's, not the mesh's, and stays selectable. r12p8 and r19p2 resubmitted on the
+corrected mesh (ids in `.my_jobs`); the outlet amplifier question is answered by whether
+r12p8 passes step 865.
+
 ### RESULT: the Popinet-3D polyhedral ladder DIVERGES late, from an inlet/outlet level-set transport defect that is NOT the fit fix (2026-09-05, evening)
 
 Two rungs landed, both DIVERGED, both on the right binary (`curvature-v2512`, `slFitPivot`
