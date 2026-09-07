@@ -46,7 +46,7 @@ axes_override:
   SIGMA: [1]
   POPINET_RHO: [1]
   POPINET_NU: [5.773502692e-03]
-  SURFACE_FILE: [box2x1x1.stl]
+  SURFACE_FILE: [box2x1x1.fms]
   MOMENTUM_DIV_SCHEME: ["upwind"]
   MASS_FLUX: ["rhoLENT"]
   MASS_FLUX_BOUND_RHO: ["true"]

@@ -1703,6 +1703,40 @@ volume 4.44e-2, Laplace 150.3, kErr 2174 -- the four tolerance variants of this 
 near-blow-up case (pre-fix 1.19e-2 / 1.246e-1 / 4.40e-2 / 153.7 / 2266; 1e-3; 1e-2) scatter
 by a few percent; it is a smoke, not a yardstick, and its export is the 0.3 run's.
 
+### RESULT, and a VOID: the polyhedral Popinet-3D MESH was defective -- four box edges were not feature edges (2026-09-05, night)
+
+The user's single-phase question settled it. OpenFOAM's own `simpleFoam` (laminar, steady,
+the Popinet BCs: inlet U = 1, slip walls, pressure outlet) on the pMesh used for every
+polyhedral Popinet run does NOT keep the uniform stream: after 40 SIMPLE iterations from the
+exact uniform state, |U - U0| = 8.3 % in the eight concave inlet-corner cells (our solver's
+constant 0.0945), 3 % in the wall layer, 1 % in the interior, pressure -0.19..+0.22 where 0
+is exact; a converged 302-iteration solve lands on the same perturbed field. A uniform stream
+is an exact discrete solution whenever every wall face is perpendicular to it, so the mesh
+was checked face by face: **1 984 of the 40 960 wall faces (4.8 %) have normals tilted into
+the flow, up to 8 deg at the box corners.** Cause: `box2x1x1.stl` puts the four side walls in
+ONE solid, so the four edges between them were never feature edges and cfMesh's Voronoi dual
+wrapped faces around them; the stationary box `box6mm-edges.stl` (one solid per plane) has 0
+tilted faces -- the stationary polyhedral ladder is unaffected. An explicit `boundaryLayers`
+block does not cure it (8.6 %, p +-0.18). The cure is the feature-edge surface:
+`surfaceFeatureEdges box2x1x1.stl box2x1x1.fms -angle 45` (12 edges) -> pMesh gives 0
+tilted faces on walls, inlet and outlet, and `simpleFoam` then holds the uniform stream to
+**|U - U0| <= 5.7e-16, p within 1e-14** after the same 40 iterations (its normalised residual
+sits at 0.4 only because the exact solution makes the normalisation degenerate).
+
+**VOID (wrong setup): every polyhedral Popinet-3D result on the STL mesh** -- the two ladder
+rungs, the 78-step smokes and their exports, the field dumps, the corrector sweep's
+translating arms, the census row "poly uniform Popinet-3D N = 64", and the two `inflowOnly`
+horizon attempts. Directories renamed `_VOID_tiltedWallFaces_20260905` (laptop and cluster),
+the committed `popinet3D_La12000_poly_smoke4_errors.csv` removed. What SURVIVES as method
+findings, because each was measured on hex or on the stationary box as well: the quadratic-fit
+admissibility (pivot 0.3, bit-inert everywhere), the boundary-face effect on the SL stencil
+(8-50 % transport fractions on hex too; `inflowOnly` exact at the outlet in 2D), and "the
+non-orthogonal correction converges in one pass" (stationary r13p8). What must be
+RE-MEASURED on the corrected mesh: whether the outlet checkerboard amplifier exists at all --
+it lived in the slab next to the tilted faces. The case now ships `box2x1x1.fms`
+(`SURFACE_FILE` default in `popinetTranslating3D_poly.parameter`, all poly configs switched);
+the 4-rank smoke on the corrected mesh is the gate, then the r12p8 horizon on the cluster.
+
 ### RESULT: the Popinet-3D polyhedral ladder DIVERGES late, from an inlet/outlet level-set transport defect that is NOT the fit fix (2026-09-05, evening)
 
 Two rungs landed, both DIVERGED, both on the right binary (`curvature-v2512`, `slFitPivot`

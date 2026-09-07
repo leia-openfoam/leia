@@ -324,6 +324,14 @@ free-slip sides, equal densities and viscosities (La = 12000, We = 0.4, sigma = 
 T = D/U = 0.4. The box STL is generated with named solids so that cfMesh produces exactly
 the patches the fields declare (`workflow/scripts/make_box_stl.py --xlen 2 --ylen 1
 --zlen 1`: solids `inlet`, `outlet`, `walls`); `meshDict.template` only sets their types.
+**The mesher must be fed the FEATURE-EDGE surface `box2x1x1.fms`** (`surfaceFeatureEdges
+box2x1x1.stl box2x1x1.fms -angle 45`, committed with the case): the plain STL keeps the
+four side walls in one solid, cfMesh's Voronoi dual then wraps faces around the four edges
+between them, and 4.8 % of the wall faces end up tilted into the flow (up to 8 deg) -- a
+uniform stream is no longer a discrete solution (`simpleFoam`: 8 % velocity error at the
+corners, pressure +-0.2). With the `.fms`, 0 tilted faces and the stream is held to 1e-16
+(measured 2026-09-05). Check any new polyhedral box the same way (face normals against the
+patch plane) before trusting a translating case on it.
 A `blockMeshDict.template` for a hexahedral twin is included.
 
 Resolution is set at the INTERFACE: cfMesh's dual cells there measure 2^(-1/3) x maxCellSize

@@ -26,7 +26,7 @@ values
     // needs maxCellSize 0.019685, and N_CELLS (the dt handle) is pinned to
     // 1/h_interface = 64. The driver's band check verifies the pin on the built mesh.
     MAX_CELL_SIZE ( 0.019685 );
-    SURFACE_FILE ( box2x1x1.stl );
+    SURFACE_FILE ( box2x1x1.fms );   // feature-edge surface (surfaceFeatureEdges -angle 45): every boundary face exactly in its plane; the plain STL left 1 984 wall faces tilted up to 8 deg into the flow (2026-09-05)
 
     SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
 }
