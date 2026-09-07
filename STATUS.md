@@ -1762,8 +1762,17 @@ the contamination spreads until the droplet is destroyed (volume error 1.4e-4 at
 1e-3 at 800, 0.15 at 1000). The coincident final step is the droplet's death by contamination,
 not a geometric event. So: tilted faces (STL) gave the outlet-slab checkerboard; the
 feature-edge dual gives one sliver on an edge; both are boundary-geometry artefacts of
-cfMesh's pMesh, not of the level set. Next: the extruded `boundaryLayers` on the `.fms`
-(regular prisms at edges and corners) -- if its smallest cell is no longer a sliver, re-gate.
+cfMesh's pMesh, not of the level set. The extruded `boundaryLayers` on the `.fms` does NOT remove it (smallest cell 1.367e-8 against
+1.378e-8; the concave cell stays). Sensitivity to the cell size (feature-edge mesh, `checkMesh
+-allGeometry`): maxCellSize 0.019685 / 0.0190 / 0.0195 / 0.0200 give a smallest cell of 1.4e-8 /
+6.7e-8 / 9.5e-8 / 3.8e-8 (h^3 = 3.8e-6, i.e. 0.15-0.29 h) -- small edge cells are systematic in
+pMesh's dual at feature edges, but only 0.019685 also carries the inverted boundary point and
+the volume-ratio-0.0095 face at x = 1.75 on the edge y = z = 0, exactly the seed. 0.0195 has
+neither flag (smallest cell 0.29 h, non-orthogonality 58.9 deg). RUNNING (2026-09-07 night):
+smoke at 0.0195 on the laptop as the 4-rank gate, then the r12p8 horizon on the cluster
+(`popinet3D_La12000_poly_*_mcs0195.yaml`, pre-registered in the config). If it too is seeded on
+an edge cell, the polyhedral Popinet benchmark needs a different boundary mesh (e.g. OpenFOAM
+`polyDualMesh` of a tet mesh, or a hex boundary layer with a polyhedral core), not a cell size.
 
 ### RESULT: the Popinet-3D polyhedral ladder DIVERGES late, from an inlet/outlet level-set transport defect that is NOT the fit fix (2026-09-05, evening)
 
