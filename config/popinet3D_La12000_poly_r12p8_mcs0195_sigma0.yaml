@@ -1,0 +1,56 @@
+# KINEMATICS-BEFORE-DYNAMICS CONTROL (2026-09-07): the 0.0195 feature-edge polyhedral r12p8 case with
+# SIGMA 0 -- a PASSIVE level set in a uniform stream (equal densities and viscosities, no surface
+# tension), everything else identical (same mesh, dt, BCs, stencil `include`). On three pMesh
+# variants the far-field level set near the OUTLET developed a growing alternating mode and a
+# fake zero set (steps 865 / 267 / 508) BEFORE any velocity anomaly (0.0195 mesh: fake zero set
+# at step 508, first velocity spike at 530, outlet-corner |u'| = 3e-8 at t = 0.02), and the
+# coupling then destroyed the run. PRE-REGISTERED: if the zero-set error jumps here too, the
+# instability is the semi-Lagrangian transport alone on cfMesh's small asymmetric boundary cells
+# (scheme-level fix needed: a monotone clip away from the band, or an interpolating
+# reconstruction); if the passive level set stays clean to T = 0.4, the growth needs the
+# capillary coupling and the boundary cells only seed it.
+study_name: popinet3D_La12000_poly_r12p8_mcs0195_sigma0
+case: popinetTranslating3D
+mesh: poly
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 300
+axes_override:
+  N_CELLS: [64]
+  MAX_CELL_SIZE: [0.0195]
+  REFINE_ALLOW_PIN_MISMATCH: ["true"]
+  END_TIME: [0.4]
+  WRITE_INTERVAL: [0.2]
+  POPINET_NX: [128]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [1]
+  CAPILLARY_REF_LENGTH: [1]
+  CAPILLARY_DT_COEFF: [0.13107]
+  DROPLET_RADIUS: [0.2]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [1]
+  SIGMA: [0]
+  POPINET_RHO: [1]
+  POPINET_NU: [5.773502692e-03]
+  SURFACE_FILE: [box2x1x1.fms]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

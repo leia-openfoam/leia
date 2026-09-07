@@ -1774,6 +1774,24 @@ smoke at 0.0195 on the laptop as the 4-rank gate, then the r12p8 horizon on the 
 an edge cell, the polyhedral Popinet benchmark needs a different boundary mesh (e.g. OpenFOAM
 `polyDualMesh` of a tet mesh, or a hex boundary layer with a polyhedral core), not a cell size.
 
+**0.0195 mesh (no flagged defects, smallest cell 0.29 h): gate PASSED (max|u'| 7.9e-3, L1 4.1e-5,
+L2 2.7e-4 -- below hex), horizon DIVERGED at step 1026.** And this time the ORDER is measured:
+the outlet-corner flow is perfect in the quiet phase (|u'| 3e-8 at t = 0.02; the field maximum
+sits at the droplet), max|u'| grows only 0.5 %/step from 1e-2, the **fake zero set appears at
+step 508 (t = 0.130) and the first velocity spike at step 530** -- the level set fails first,
+the flow follows. At t = 0.2: 1 544 far cells with psi < 0, edge/corner psi error up to 117,
+velocities of 12-14 U in the outlet-corner cells (x = 1.998, 0.33-0.35 h), while this mesh's
+smallest cells (0.29 h, on the edge near x = 0.5-0.67) are quiet -- so not "the smallest cell"
+but the outlet's small boundary cells. Three pMesh variants, three seeds, one class: **the
+semi-Lagrangian far-field transport develops a growing alternating mode in cfMesh's small,
+asymmetric boundary cells near the outlet (onsets 865 / 267 / 508), independent of wall tilt,
+slivers, corrector count and cell size; the geometry sets where and when.** Pre-registered
+verdict of the 0.0195 test: the polyhedral Popinet benchmark cannot be rescued by a cell size.
+RUNNING: the kinematics-before-dynamics control, the same case with SIGMA 0 (a passive level
+set in a uniform stream, `popinet3D_La12000_poly_r12p8_mcs0195_sigma0`), which separates the
+transport scheme from the capillary coupling; the scheme-level options (monotone clip away
+from the band, interpolating reconstruction) or a different boundary mesh are the user's call.
+
 ### RESULT: the Popinet-3D polyhedral ladder DIVERGES late, from an inlet/outlet level-set transport defect that is NOT the fit fix (2026-09-05, evening)
 
 Two rungs landed, both DIVERGED, both on the right binary (`curvature-v2512`, `slFitPivot`
