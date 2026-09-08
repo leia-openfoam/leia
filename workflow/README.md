@@ -399,6 +399,61 @@ or an edge must pin the step to the smallest BAND cell instead.
 Read-out as for the 2D reproduction (`make_popinet_table.py`): maximum over time of the L1
 and L2 norms of |u - U0|/U0, plus volume, shape, Laplace jump and band curvature error at T.
 
+### The amplification bound of the fit (`fitProbeDisplacement`, 2026-09-08)
+
+The semi-Lagrangian update is LINEAR in the stencil values. With `g_j = b(d)^T M^-1 w_j^2
+b(d_j)` for a departure displacement `d`,
+
+    psi^{n+1}_c = fit_c(x_c + d) = (1 - sum_j g_j) psi_c + sum_j g_j psi_j,
+
+so one step cannot amplify anything by more than the Lebesgue constant of the fit,
+
+    Lambda_c = |1 - sum_j g_j| + sum_j |g_j|.
+
+`Lambda_c = 1` at `d = 0`, and `Lambda_c = 1` whenever every weight is non-negative: the
+update is then a convex combination of the stencil values and creates no new extremum, so no
+mode can grow. `Lambda_c > 1` is the necessary condition for the checkerboard growth that
+destroys the far field of a translating polyhedral case. Lambda depends on the stencil
+GEOMETRY alone, so it costs one mesh pass and no time steps.
+
+    // system/fvSolution, levelSet/semiLagrangian
+    fitProbeDisplacement (-6.3995e-07 0 0);   // = -u dt; default (0 0 0) = diagnostic off
+
+The reconstruction then writes the field `slFitAmplification` once, at construction, and
+prints `max Lambda`. Recipe, in a COPY of a rendered case, serial, one step:
+
+    foamDictionary -entry levelSet/semiLagrangian/writeFitOrder -set true system/fvSolution
+    foamDictionary -entry levelSet/semiLagrangian/fitProbeDisplacement -set "(-6.3995e-07 0 0)" \
+        system/fvSolution
+    foamDictionary -entry endTime -set <deltaT> system/controlDict
+    leiaSemiLagrangianLevelSetTwoPhaseFoam          # slFitAmplification lands in 0/
+
+MEASURED on the SI Popinet meshes at `d = -U dt` (both N = 64, same dt, same h):
+
+| mesh | class | cells | median | p99.9 | max | share > 1.10 |
+|---|---|---|---|---|---|---|
+| hex | band | 26 504 | 1.0164 | 1.0164 | 1.0164 | 0 |
+| hex | far-interior | 497 784 | 1.0164 | 1.0430 | 1.0527 | 0 |
+| poly | band | 27 027 | 1.0205 | 1.0205 | 1.0205 | 0 |
+| poly | far-interior | 495 118 | 1.0205 | 1.0687 | 1.0963 | 0 |
+| poly | far-small (cfMesh slab and edges) | 152 348 | 1.0329 | 1.2348 | 1.2608 | 0.39 % |
+
+The bound is 5 times larger on the polyhedral mesh, and its whole excess sits in the small
+one-sided cells: the five worst cells are all 0.32-0.33 h in size, and Lambda falls
+monotonically with cell size (median excess 0.039 below 0.4 h against 0.021 at h). Those are
+the cells where the sigma = 0 control produced its fake zero set.
+
+`Lambda - 1` is PROPORTIONAL to the displacement, hence to the local Courant number: at
+`|d| / U dt = 0.25 / 0.5 / 1 / 2 / 4` the maximum reads 1.0133 / 1.0265 / 1.0527 / 1.1041 /
+1.2030 (hex) and 1.0684 / 1.1347 / 1.2608 / 1.4871 / 1.8413 (poly). Over a fixed physical
+time the accumulated bound is `Lambda^(T/dt) = exp((Lambda - 1) T/dt) = exp(c U T)`, which
+does not contain dt -- a smaller time step cannot remove the growth. `config/popinet3D_poly_
+sigma0_dtSweep.yaml` tests that prediction directly.
+
+Lambda > 1 does not PROVE instability: it is an upper bound, and the hexahedral mesh reaches
+1.05 and runs the horizon. It proves the opposite, though: a mesh whose Lambda is 1
+everywhere cannot grow a new extremum at all.
+
 ### Geometric admissibility of the quadratic fit (`SL_QUAD_PIVOT_TOL`, 2026-09-05)
 
 The first polyhedral Popinet-3D run diverged at step 3 while its hexahedral twin

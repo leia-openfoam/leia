@@ -2095,6 +2095,69 @@ guards a dimensionless quantity (`alphaTol` 1e-8 on alpha, `trajectoryNormalEpsi
 select (velocity extension, SDPLS source, volume correction, band renormalisation). The
 linear-solver tolerances ARE absolute, and the similarity gate clears them at this scale.
 
+### MEASURED: the amplification bound of the fit, and why a smaller step cannot help (2026-09-08)
+
+The question was whether the polyhedral failure is a Courant-number effect: the near-wall
+cells are small, so their local Courant number is higher, and perhaps they need their own
+step limit. Two measurements answer it.
+
+**1. The local Courant number, from OpenFOAM's own `CourantNo` function object**, on the SI
+smoke meshes (both N = 64, same dt):
+
+| mesh | class | cells | median Co | max Co | min h/h_band |
+|---|---|---|---|---|---|
+| hex | whole mesh | 524 288 | 0.0164 | 0.0166 | 1.000 |
+| poly | band | 27 027 | 0.0230 | 0.0231 | 1.000 |
+| poly | far-interior | 495 118 | 0.0230 | 0.0593 | 0.702 |
+| poly | far-small (cfMesh slab and edges) | 152 348 | 0.0431 | 0.1507 | 0.274 |
+
+So the intuition is right in DIRECTION: the small cells carry 6.5 times the bulk Courant
+number, and 23 % of the mesh is in that class. It is wrong in MAGNITUDE: the largest local
+Courant number on the mesh is 0.15, and the time step is not Courant-controlled at all
+(`adjustTimeStep no`; the step comes from the capillary law).
+
+**2. The amplification bound of the reconstruction** -- the cheap static test, now in the
+library as `fitProbeDisplacement` (inert at its default, writes `slFitAmplification`; see
+workflow/README.md "The amplification bound of the fit"). The update is linear in the stencil
+values, so the Lebesgue constant of the fit at the departure displacement,
+`Lambda_c = |1 - sum_j g_j| + sum_j |g_j|`, bounds what one step can do to any mode.
+Measured at `d = -U dt`:
+
+| mesh | class | median | p99.9 | max | share > 1.10 |
+|---|---|---|---|---|---|
+| hex | band | 1.0164 | 1.0164 | 1.0164 | 0 |
+| hex | far-interior | 1.0164 | 1.0430 | 1.0527 | 0 |
+| poly | band | 1.0205 | 1.0205 | 1.0205 | 0 |
+| poly | far-interior | 1.0205 | 1.0687 | 1.0963 | 0 |
+| poly | far-small | 1.0329 | 1.2348 | 1.2608 | 0.39 % |
+
+The bound is 5 times larger on the polyhedral mesh (1.26 against 1.05), and its whole excess
+sits in the small one-sided cells: the five worst cells are 0.32-0.33 h, and the median
+excess falls monotonically with cell size (0.039 below 0.4 h, 0.021 at h). Those are exactly
+the cells where the sigma = 0 control grew its fake zero set. No cell has a singular normal
+matrix, so the bound is defined everywhere.
+
+**The decisive consequence.** `Lambda - 1` is PROPORTIONAL to the displacement, hence to the
+local Courant number. At `|d|/U dt = 0.25 / 0.5 / 1 / 2 / 4` the maximum reads
+
+    hex   1.0133  1.0265  1.0527  1.1041  1.2030
+    poly  1.0684  1.1347  1.2608  1.4871  1.8413
+
+so over a fixed physical time the accumulated bound is
+`Lambda^(T/dt) = exp((Lambda - 1) T/dt) = exp(c U T)`, which does not contain dt. **A smaller
+time step buys proportionally more steps at proportionally smaller growth per step, so it
+cannot remove the failure.** `config/popinet3D_poly_sigma0_dtSweep.yaml` tests that
+prediction directly: the sigma = 0 control at dt, dt/2 and dt/4, pre-registered to fail at
+the SAME physical time (steps 508 / 1016 / 2032) if the analysis holds, and falsified if the
+failure moves later as dt falls.
+
+**What the bound does not say.** Lambda > 1 is necessary for growth, not sufficient: the
+hexahedral mesh reaches 1.05 and runs the horizon, and the realised growth on the polyhedral
+mesh (0.5 % per step) is a fiftieth of its bound. The bound proves the converse cleanly,
+though: a reconstruction whose Lambda is 1 everywhere cannot create or grow a new extremum.
+That is what a quasi-monotone clip enforces, and it is why the clip removed the failure
+completely while leaving the first 500 steps identical.
+
 ### The capillary time step on polyhedral meshes -- audited (2026-09-08)
 
 The step follows `dt = CAPILLARY_DT_COEFF/nRef^1.5`, which reproduces 0.2323 of the Brackbill

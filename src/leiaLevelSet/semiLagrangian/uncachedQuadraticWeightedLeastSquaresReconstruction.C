@@ -183,6 +183,7 @@ uncachedQuadraticWeightedLeastSquaresReconstruction
     ridgeEps_(slDict_.getOrDefault<scalar>("ridgeEps", 0)),
     quadPivotTol_(slDict_.getOrDefault<scalar>("quadraticPivotTol", 0.3)),
     writeFitOrder_(slDict_.getOrDefault<bool>("writeFitOrder", false)),
+    fitProbe_(slDict_.getOrDefault<vector>("fitProbeDisplacement", vector::zero)),
     fit_(slDict_.getOrDefault<word>("fit", "normalEquations")),
     curvatureNewtonIters_(slDict_.getOrDefault<label>("curvatureNewtonIters", 3)),
     closestPointIters_(slDict_.getOrDefault<label>("closestPointNewtonIters", 10)),
@@ -519,6 +520,97 @@ void Foam::uncachedQuadraticWeightedLeastSquaresReconstruction::build()
             << " of those with an ill-conditioned linear stencil too keep their cell value; "
             << nMarginal << " quadratic cells within a factor 1.5 above the tolerance" << endl;
     }
+    // ------------------------------------------------------------------
+    // DIAGNOSTIC: the per-cell amplification bound of the reconstruction at a probe
+    // displacement d (its Lebesgue constant). Inert unless fitProbeDisplacement is set.
+    //
+    // The semi-Lagrangian update is LINEAR in the stencil values:
+    //     psi^{n+1}_c = fit_c(x_c + d) = (1 - sum_j g_j) psi_c + sum_j g_j psi_j,
+    //     g_j = b(d)^T M^-1 w_j^2 b(d_j),   M = sum_j w_j^2 b(d_j) b(d_j)^T,
+    // so one step obeys |psi^{n+1}_c| <= Lambda_c max_stencil |psi| with
+    //     Lambda_c = |1 - sum_j g_j| + sum_j |g_j|.
+    // Lambda_c = 1 exactly at d = 0, and Lambda_c = 1 whenever every weight is
+    // non-negative: the update is then a convex combination of the stencil values and
+    // cannot create a new extremum, so no mode can grow. Lambda_c > 1 is the necessary
+    // condition for growth, and it comes from the stencil GEOMETRY alone -- no time
+    // step, no field, no flow. On a uniform hexahedral mesh the stencil is symmetric
+    // and Lambda stays at 1 to the displacement's order; the asymmetric, size-graded
+    // stencils of a cfMesh boundary slab are where it exceeds 1.
+    if (mag(fitProbe_) > SMALL)
+    {
+        scalar A[81];
+        scalar z[9];
+        scalar brow[9];
+        scalar b0[9];
+        scalarField amp(nCells, 1.0);
+        label nFail = 0;
+        scalar ampMax = 0;
+        for (label c = 0; c < nCells; ++c)
+        {
+            const label nc = ncoeff_[c];
+            if (nc == 0) { amp[c] = 1.0; continue; }   // constant reconstruction
+            const label nNbr = nNbr_[c];
+            const point xc = stencilC(c, 0);
+            for (label k = 0; k < nc*nc; ++k) { A[k] = 0; }
+            for (label i = 0; i < nNbr; ++i)
+            {
+                const vector d = stencilC(c, i + 1) - xc;
+                const scalar w2 = 1.0/Foam::max(magSqr(d), SMALL);
+                basis(d, nc, brow);
+                for (label k = 0; k < nc; ++k)
+                {
+                    const scalar wb = w2*brow[k];
+                    for (label l = 0; l < nc; ++l) { A[k*nc + l] += wb*brow[l]; }
+                }
+            }
+            if (ridgeEps_ > 0)
+            {
+                scalar tr = 0;
+                for (label k = 0; k < nc; ++k) { tr += A[k*nc + k]; }
+                const scalar r = ridgeEps_*tr/nc;
+                for (label k = 0; k < nc; ++k) { A[k*nc + k] += r; }
+            }
+            basis(fitProbe_, nc, b0);
+            for (label k = 0; k < nc; ++k) { z[k] = b0[k]; }
+            if (!choleskySolve(A, z, nc))   // z := M^-1 b(d)
+            {
+                amp[c] = -1;
+                ++nFail;
+                continue;
+            }
+            scalar sumG = 0;
+            scalar sumAbsG = 0;
+            for (label i = 0; i < nNbr; ++i)
+            {
+                const vector d = stencilC(c, i + 1) - xc;
+                const scalar w2 = 1.0/Foam::max(magSqr(d), SMALL);
+                basis(d, nc, brow);
+                scalar zb = 0;
+                for (label k = 0; k < nc; ++k) { zb += z[k]*brow[k]; }
+                const scalar gj = w2*zb;
+                sumG += gj;
+                sumAbsG += Foam::mag(gj);
+            }
+            amp[c] = Foam::mag(1 - sumG) + sumAbsG;
+            ampMax = Foam::max(ampMax, amp[c]);
+        }
+        reduce(nFail, sumOp<label>());
+        reduce(ampMax, maxOp<scalar>());
+        Info<< "uncachedQuadraticWeightedLeastSquares: amplification bound at the probe"
+            << " displacement " << fitProbe_ << ": max Lambda = " << ampMax
+            << " (" << nFail << " cells with a singular normal matrix, written as -1)"
+            << "; writing slFitAmplification" << endl;
+        volScalarField fitAmp
+        (
+            IOobject("slFitAmplification", mesh_.time().timeName(), mesh_,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            mesh_,
+            dimensionedScalar(dimless, 1)
+        );
+        forAll(amp, c) { fitAmp[c] = amp[c]; }
+        fitAmp.write();
+    }
+
     if (writeFitOrder_)
     {
         volScalarField fitOrder

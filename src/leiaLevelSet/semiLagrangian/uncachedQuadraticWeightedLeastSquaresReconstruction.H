@@ -122,6 +122,21 @@ class uncachedQuadraticWeightedLeastSquaresReconstruction
     //  volScalarField slFitOrder once at build time (dictionary writeFitOrder).
     bool writeFitOrder_;
 
+    //- DIAGNOSTIC ONLY, inert at its default (0 0 0). A probe displacement d for
+    //  the per-cell amplification bound of the reconstruction (its Lebesgue
+    //  constant). The update is linear in the stencil values,
+    //      psi^{n+1}_c = fit_c(x_c + d) = (1 - sum_j g_j) psi_c + sum_j g_j psi_j,
+    //      g_j = b(d)^T M^-1 w_j^2 b(d_j),
+    //  so one step cannot amplify anything by more than
+    //      Lambda_c = |1 - sum_j g_j| + sum_j |g_j|.
+    //  Lambda = 1 at d = 0 and whenever every weight is non-negative: the update is
+    //  then a convex combination of the stencil values and creates no new extremum.
+    //  Lambda > 1 is the necessary condition for the checkerboard growth measured on
+    //  cfMesh boundary cells. Set it to -u dt (the departure displacement) and read
+    //  the written field slFitAmplification; it depends on the stencil GEOMETRY only,
+    //  so it costs one mesh pass and no time steps.
+    vector fitProbe_;
+
     //- Least-squares solver: "normalEquations" (default; A^T W^2 A + Cholesky,
     //  fast but squares the condition number and drops to a constant fit on a
     //  non-SPD/degenerate cell) or "householderQR" (QR of the weighted design
