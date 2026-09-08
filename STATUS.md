@@ -178,6 +178,15 @@ Curated by `workflow/scripts/make_popinet_table.py` into
 `docs/semi-lagrangian-level-set/sl-level-set-article/data/tables/popinetTranslating.csv`;
 written up in the article as "Comparison with the reference translating-droplet benchmark".
 
+RE-RUN IN SI UNITS 2026-09-08 (D = 1 mm, rho = 1000, nu = 1e-6, sigma = 0.012 N/m,
+U = 0.0693 m/s -- see "the Popinet cases run in SI units" below). The whole ladder and the
+Laplace sweep were re-run: N = 128 and N = 256 and the four sweep arms on the cluster
+(54500576 / 54500577 / 54500578), N = 64 on the laptop. All 28 curated entries reproduce the
+numbers above to at most 0.051 %, the step counts match (1563 / 4420 / 12501), and the fitted
+orders are unchanged: L2 0.91 (R = 0.999), Linf 0.49 (R = 0.999), shape 1.71 (R = 0.996). The
+shape column is now normalised by R, so the table reads 4.08e-3 / 1.04e-3 / 3.78e-4 for the
+same measurement. The table is therefore regenerable from the committed SI configs.
+
 ### DECIDED: the instability does not survive a perfect capillary force
 
 `config/amplifierGate{,EqualRho}2D`, 8 arms, 8000 steps, N=128, 2x2x2 over
