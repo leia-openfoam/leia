@@ -2125,9 +2125,19 @@ volume-fraction-weighted mixture used here, with the face fraction ``a simple av
 cell-centred values'' -- the \texttt{alg\_lin} combination of Section~\ref{sec:viscous},
 which the ladder of Table~\ref{tab:muf} independently selected.
 
-We reproduce this with $\rho=\sigma=1$, $D=0.4$ and $U=1$, so that
-$\mathrm{We}=\rho U^{2}D/\sigma=0.4$ exactly and $\nu=\sqrt{0.4/\mathrm{La}}$, and integrate
-one full $t/T_U$ with $T_U=D/U$. Two differences cannot be removed and are stated rather
+We reproduce this benchmark in SI units at his dimensionless groups, so that the case
+describes a physical droplet: $D=1\,\mathrm{mm}$, $\rho=1000\,\mathrm{kg/m^{3}}$ and
+$\nu=10^{-6}\,\mathrm{m^{2}/s}$ in both phases, which gives
+$\sigma=\mathrm{La}\,\rho\nu^{2}/D=0.012\,\mathrm{N/m}$ and
+$U=\sqrt{\mathrm{We}\,\sigma/(\rho D)}=0.0693\,\mathrm{m/s}$ in a
+$5\times2.5\,\mathrm{mm}$ box, and we integrate one full $t/T_U$ with $T_U=D/U=14.4\,$ms.
+Five dimensional quantities carry the two groups, so three are free; the choice above fixes
+the liquid at water at $20^{\circ}$C. The dimensionless problem is unchanged, and the
+equivalence is measured rather than assumed: at $N=64$ the same case in his units
+($\rho=\sigma=U=1$, $D=0.4$) gives the same normalised errors to within $0.07\,\%$, the
+largest difference being the endpoint volume error and the velocity norms agreeing to
+$0.001\,\%$. Errors below are therefore reported dimensionless, velocities relative to $U$
+and lengths relative to $R$. Two differences cannot be removed and are stated rather
 than absorbed. The semi-Lagrangian transport has no periodic support, so inflow and outflow
 replace periodicity and the box is $2\times1$ rather than $1\times1$, which leaves the
 droplet $57$ cells clear of the outflow at $N=64$ after a full $t/T_U$; an unbounded far

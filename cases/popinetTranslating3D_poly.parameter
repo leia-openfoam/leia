@@ -1,9 +1,19 @@
-// Case-level defaults for the THREE-dimensional Popinet (2009, Sec. 6.2.2) translating
-// droplet -- the 3D twin of popinetTranslating2D.parameter: D = 0.4 (R = 0.2) in a
-// POPINET_XLEN x 1 x 1 box, U = 1, rho = 1 and nu = 5.7735e-3 in BOTH phases (La = 12000,
-// We = 0.4), sigma = 1, horizon T = D/U = 0.4 (one diameter of travel). N_CELLS is the cell
-// count across the unit height, h = 1/N_CELLS; the capillary step is
-// CAPILLARY_DT_COEFF / N_CELLS^1.5 (CAPILLARY_REF_LENGTH = DOMAIN_LENGTH = 1).
+// Case-level defaults for the THREE-dimensional Popinet (2009, Sec. 6.2.2)
+// translating droplet -- the 3D twin of popinetTranslating2D.parameter.
+//
+// SI UNITS (2026-09-08), the same set as the 2D case and the same dimensionless
+// groups as Popinet (La = 12000, We = 0.4, density ratio 1, viscosity ratio 1):
+//
+//   D     = 1.0e-3 m       droplet diameter (R = 0.5 mm)
+//   rho   = 1000 kg/m^3    both phases
+//   nu    = 1.0e-6 m^2/s   both phases (mu = 1.0e-3 Pa s)
+//   sigma = 0.012 N/m      U = 0.0692820323 m/s      Re = 69.28
+//   box   = 5 x 2.5 x 2.5 mm (POPINET_XLEN box heights x DOMAIN_LENGTH^2)
+//   T_U   = D/U = 0.01443375673 s -> END_TIME is one diameter of travel
+//
+// N_CELLS is the cell count across the box height, h = DOMAIN_LENGTH/N_CELLS.
+// The capillary step is CAPILLARY_DT_COEFF/N_CELLS^1.5, because
+// CAPILLARY_REF_LENGTH = DOMAIN_LENGTH. See workflow/scripts/popinet_si.py.
 values
 {
     solver (leiaSemiLagrangianLevelSetTwoPhaseFoam);
@@ -13,20 +23,26 @@ values
         96
         128
     );
-    DOMAIN_LENGTH ( 1 );          // unit height and depth; the box is POPINET_XLEN long
-    CAPILLARY_REF_LENGTH ( 1 );
-    END_TIME ( 0.4 );
+    DOMAIN_LENGTH ( 0.0025 );          // box height and depth [m]
+    CAPILLARY_REF_LENGTH ( 0.0025 );
+    END_TIME ( 0.01443375673 );
     MAX_CO ( 0.1 );
-    CAPILLARY_DT_COEFF ( 0.13107 );
+    CAPILLARY_DT_COEFF ( 0.004729265146 );
     // ---- POLYHEDRAL mesh (mesh: poly -> cfMesh pMesh) ---------------------
     // This file REPLACES popinetTranslating3D.parameter for mesh: poly studies
     // (workflow/Snakefile PARAM_FILE). MAX_CELL_SIZE = h_interface / 2^(-1/3):
     // cfMesh's dual cells at the interface hold half an octree box (measured on
-    // every polyhedral rung of the stationary droplet), so h_interface = 1/64
-    // needs maxCellSize 0.019685, and N_CELLS (the dt handle) is pinned to
-    // 1/h_interface = 64. The driver's band check verifies the pin on the built mesh.
-    MAX_CELL_SIZE ( 0.019685 );
-    SURFACE_FILE ( box2x1x1.fms );   // feature-edge surface (surfaceFeatureEdges -angle 45): every boundary face exactly in its plane; the plain STL left 1 984 wall faces tilted up to 8 deg into the flow (2026-09-05)
+    // every polyhedral rung of the stationary droplet), so h_interface =
+    // 2.5e-3/64 = 3.90625e-05 m needs maxCellSize 4.921566601e-05 m. N_CELLS
+    // (the dt handle) is pinned to DOMAIN_LENGTH/h_interface = 64. The band
+    // check verifies the pin on the built mesh
+    // (workflow/scripts/check_refined_band.py --mode poly).
+    MAX_CELL_SIZE ( 4.921566601e-05 );
+    // Feature-edge surface of the 5 x 2.5 x 2.5 mm box (make_box_stl.py, then
+    // surfaceFeatureEdges -angle 45). The plain STL leaves the four side walls in
+    // one solid, and cfMesh then tilts 4.8 % of the wall faces up to 8 deg into
+    // the flow, so a uniform stream is not a discrete solution (2026-09-05).
+    SURFACE_FILE ( box5x2p5x2p5mm.fms );
 
     SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
 }

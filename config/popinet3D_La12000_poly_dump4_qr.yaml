@@ -1,3 +1,13 @@
+# SI UNITS (2026-09-08). This study runs Popinet's benchmark in real units at his own
+# dimensionless groups: D = 1 mm, rho = 1000 kg/m^3 and nu = 1e-6 m^2/s in BOTH phases,
+# sigma = 0.012 N/m, U = 0.0692820323 m/s, box 5 x 2.5 (x 2.5) mm, T_U = D/U = 0.01443375673 s.
+# That gives La = sigma D/(rho nu^2) = 12000, We = rho U^2 D/sigma = 0.4, Re = 69.28, and
+# density and viscosity ratios of 1 -- so every number Popinet reports still applies.
+# Sentences below that use his units (D = 0.4, U = 1, sigma = 1, the unit square, 0.13107)
+# describe the SAME case: multiply a length by 2.5e-3 m, a velocity by 0.0692820323 m/s and
+# a time by 0.03608439182 s. Verify with:
+#     python3 workflow/scripts/popinet_si.py check <this file>
+#
 # HYPOTHESIS TEST (2026-09-05): the reconstruction warns of near-degenerate stencils on
 # cfMesh's near-wall polyhedra and the worst corrupted cells sit 0.01-0.03 from the side
 # walls; the normal-equations quadratic fit can return huge coefficients on such stencils
@@ -15,21 +25,21 @@ setfields_args: "-alphaName alpha.water"
 axes_override:
   SL_FIT: [householderQR]
   N_CELLS: [64]
-  MAX_CELL_SIZE: [0.019685]
-  END_TIME: [0.001024]
-  WRITE_INTERVAL: [0.000255996]
+  MAX_CELL_SIZE: [4.92125e-05]
+  END_TIME: [3.695041723e-05]
+  WRITE_INTERVAL: [9.237459969e-06]
   POPINET_NX: [128]
   POPINET_XLEN: [2]
-  DOMAIN_LENGTH: [1]
-  CAPILLARY_REF_LENGTH: [1]
-  CAPILLARY_DT_COEFF: [0.13107]
-  DROPLET_RADIUS: [0.2]
+  DOMAIN_LENGTH: [0.0025]
+  CAPILLARY_REF_LENGTH: [0.0025]
+  CAPILLARY_DT_COEFF: [0.004729265146]
+  DROPLET_RADIUS: [0.0005]
   DROPLET_OFFSET_X: [0]
-  TRANSLATION_SPEED: [1]
-  SIGMA: [1]
-  POPINET_RHO: [1]
-  POPINET_NU: [5.773502692e-03]
-  SURFACE_FILE: [box2x1x1.fms]
+  TRANSLATION_SPEED: [0.0692820323]
+  SIGMA: [0.012]
+  POPINET_RHO: [1000]
+  POPINET_NU: [1.0e-06]
+  SURFACE_FILE: [box5x2p5x2p5mm.fms]
   MOMENTUM_DIV_SCHEME: ["upwind"]
   MASS_FLUX: ["rhoLENT"]
   MASS_FLUX_BOUND_RHO: ["true"]

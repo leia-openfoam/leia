@@ -842,13 +842,19 @@ SIGMA 0.07274;
 //   Properties mixed as c*q1 + (1-c)*q2 with c_f "a simple average of the cell-centred
 //   values" -- i.e. our alg_lin, which our own 36-arm ladder also selected.
 //
-// Non-dimensionalisation chosen here: rho = 1, sigma = 1, D = 0.4, U = 1, so
-// We = rho U^2 D / sigma = 0.4 exactly, and nu = sqrt(0.4/La).
-DROPLET_RADIUS 1e-3;    // production radius; popinetTranslating2D overrides to 0.2
-POPINET_XLEN   2;       // box length in x, in units of the unit height
-POPINET_NX     128;     // cells in x = 2*N_CELLS
-POPINET_RHO    1;       // both phases
-POPINET_NU     5.773503e-03;   // both phases; La = 12000
+// SI UNITS (2026-09-08). Popinet writes the benchmark in dimensionless form
+// (rho = sigma = U = 1, D = 0.4). This repository runs the DIMENSIONAL twin at the
+// same groups, so that every dictionary holds a real droplet and a real speed:
+//   D = 1.0e-3 m, rho = 1000 kg/m^3, nu = 1.0e-6 m^2/s (water at 20 C, both phases),
+//   sigma = La rho nu^2/D = 0.012 N/m, U = sqrt(We sigma/(rho D)) = 0.0692820323 m/s,
+//   box height 2.5e-3 m (D = 0.4 of it), box length 2 heights, T_U = D/U = 1.443e-2 s.
+// Three of the five dimensional quantities are free; D, rho and nu are the choice.
+// workflow/scripts/popinet_si.py prints the set and checks a config against it.
+DROPLET_RADIUS 1e-3;    // production radius; the Popinet cases override to 5e-4 (D = 1 mm)
+POPINET_XLEN   2;       // box length as a MULTIPLE OF THE BOX HEIGHT (an aspect ratio)
+POPINET_NX     128;     // cells in x = POPINET_XLEN*N_CELLS
+POPINET_RHO    1000;    // kg/m^3, both phases (density ratio 1, as in Popinet)
+POPINET_NU     1e-06;   // m^2/s, both phases (viscosity ratio 1); La = 12000 with sigma 0.012
 
 // Sub-cell displacement of the droplet centre in x, in METRES. The rendered centre
 // is the DERIVED token DROPLET_CENTRE_X = DOMAIN_HALF_LENGTH + DROPLET_OFFSET_X,

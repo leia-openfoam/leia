@@ -316,16 +316,54 @@ checkMesh -> `refined_mesh_stats.csv`), `make_refined_equivalence_table.py`
 (refined vs uniform at matched N_CELLS, matched t, equal steps; L1 and L2 only,
 never L_inf), `make_refined_mesh_fig.py` (mid-plane slice coloured by cellLevel).
 
+## Popinet's translating droplet: the SI parameter set
+
+Popinet (JCP 228, 2009, Sec. 6.2.2) writes the benchmark in dimensionless form
+(rho = sigma = U = 1, D = 0.4 of the box height). This repository ran it that way until
+2026-09-08 and now runs the DIMENSIONAL twin at the same dimensionless groups, so that
+every dictionary holds a real droplet and a real speed:
+
+| quantity | SI value | fixed by |
+|---|---|---|
+| D (droplet diameter) | 1.0e-3 m (R = 5e-4) | chosen |
+| rho, both phases | 1000 kg/m^3 | chosen (density ratio 1, as in Popinet) |
+| nu, both phases | 1.0e-6 m^2/s | chosen (viscosity ratio 1); mu = 1.0e-3 Pa s |
+| sigma | 0.012 N/m | La = sigma D/(rho nu^2) = 12000 |
+| U | 0.0692820323 m/s | We = rho U^2 D/sigma = 0.4 |
+| box | 5 x 2.5 x 2.5 mm | height = D/0.4, length = POPINET_XLEN heights |
+| T_U = D/U | 0.01443375673 s | one diameter of travel |
+| CAPILLARY_DT_COEFF | 4.729265146e-3 | 0.2323 sqrt((rho1+rho2) H^3/(2 pi sigma)) |
+
+Five dimensional quantities carry two groups, so three are free: D, rho and nu are the
+choice (water at 20 C). Re = sqrt(La We) = 69.28 and Oh = 1/sqrt(La) = 9.13e-3 follow, so
+every number Popinet reports still applies. Scale factors from his units: length x 2.5e-3 m,
+velocity x 0.0692820323 m/s, time x 0.03608439182 s.
+
+`workflow/scripts/popinet_si.py` owns the set:
+
+    python3 workflow/scripts/popinet_si.py print                  # the set, dt per rung
+    python3 workflow/scripts/popinet_si.py yaml                   # the axes_override lines
+    python3 workflow/scripts/popinet_si.py check config/popinet*.yaml   # exits 1 on a mismatch
+    python3 workflow/scripts/popinet_si.py rewrite config/x.yaml  # convert a dimensionless config
+
+`check` verifies the density, viscosity, surface tension, speed, radius, box, horizon and
+the polyhedral cell-size pin of a config, and it is the gate to run after any edit.
+`POPINET_XLEN` is an ASPECT RATIO (box length in box heights), not a length: both
+`blockMeshDict.template`s compute `xlen` with `#eval{ POPINET_XLEN * ylen }`.
+
 ## Popinet's translating droplet in 3D on polyhedral meshes (mesh: poly)
 
-`cases/popinetTranslating3D` is the 3D twin of `cases/popinetTranslating2D` (Popinet 2009,
-Sec. 6.2.2): D = 0.4 in a 2 x 1 x 1 box, inflow U = 1 at x = 0, pressure outlet at x = 2,
-free-slip sides, equal densities and viscosities (La = 12000, We = 0.4, sigma = 1), horizon
-T = D/U = 0.4. The box STL is generated with named solids so that cfMesh produces exactly
-the patches the fields declare (`workflow/scripts/make_box_stl.py --xlen 2 --ylen 1
---zlen 1`: solids `inlet`, `outlet`, `walls`); `meshDict.template` only sets their types.
-**The mesher must be fed the FEATURE-EDGE surface `box2x1x1.fms`** (`surfaceFeatureEdges
-box2x1x1.stl box2x1x1.fms -angle 45`, committed with the case): the plain STL keeps the
+`cases/popinetTranslating3D` is the 3D twin of `cases/popinetTranslating2D`: D = 1 mm in a
+5 x 2.5 x 2.5 mm box, inflow U = 0.0692820323 m/s at x = 0, pressure outlet at x = 5 mm,
+free-slip sides, equal densities and viscosities (La = 12000, We = 0.4, sigma = 0.012 N/m),
+horizon T_U = D/U = 0.01443375673 s. The box STL is generated with named solids so that
+cfMesh produces exactly the patches the fields declare
+(`workflow/scripts/make_box_stl.py --xlen 5e-3 --ylen 2.5e-3 --zlen 2.5e-3 --out
+cases/popinetTranslating3D/box5x2p5x2p5mm.stl`: solids `inlet`, `outlet`, `walls`);
+`meshDict.template` only sets their types.
+**The mesher must be fed the FEATURE-EDGE surface `box5x2p5x2p5mm.fms`**
+(`surfaceFeatureEdges box5x2p5x2p5mm.stl box5x2p5x2p5mm.fms -angle 45`, committed with the
+case): the plain STL keeps the
 four side walls in one solid, cfMesh's Voronoi dual then wraps faces around the four edges
 between them, and 4.8 % of the wall faces end up tilted into the flow (up to 8 deg) -- a
 uniform stream is no longer a discrete solution (`simpleFoam`: 8 % velocity error at the
@@ -336,8 +374,19 @@ A `blockMeshDict.template` for a hexahedral twin is included.
 
 Resolution is set at the INTERFACE: cfMesh's dual cells there measure 2^(-1/3) x maxCellSize
 (measured on every polyhedral rung of the stationary droplet), so `MAX_CELL_SIZE =
-h/0.7937` and `N_CELLS` (the capillary-dt handle) is pinned to `1/h`; the pin is verified on
-the built mesh with `check_refined_band.py --mode poly`.
+h/0.7937` and `N_CELLS` (the capillary-dt handle) is pinned to `DOMAIN_LENGTH/h`; the pin is
+verified on the built mesh with `check_refined_band.py --mode poly`. At N = 64 the interface
+cell is h = 2.5e-3/64 = 3.90625e-05 m and `MAX_CELL_SIZE` is 4.921566601e-05 m.
+
+**The capillary time step is pinned to the INTERFACE cell, not to the smallest cell.** The law
+`dt = CAPILLARY_DT_COEFF/N_CELLS^1.5` reproduces 0.2323 of the Brackbill limit
+`sqrt((rho1+rho2) h^3/(2 pi sigma))` at the interface spacing, and the band check confirms the
+pin (measured: interface cells 0.991 h at maxCellSize 0.0195, dt/limit 0.236). cfMesh's dual
+also makes much smaller cells along the box feature edges (0.29 h) and in the boundary slab
+(0.25 h on the stationary box), where the same step is 1.5 to 1.9 times ABOVE the local limit.
+That is harmless while the interface stays away from those cells -- the capillary limit is a
+condition on cells that carry surface tension -- but any case whose interface can reach a wall
+or an edge must pin the step to the smallest BAND cell instead.
 
     # 4-rank smoke (78 steps) on the coarsest mesh -- the gate before the cluster
     snakemake --workflow-profile profiles/local8 --configfile config/popinet3D_La12000_poly_smoke4.yaml \

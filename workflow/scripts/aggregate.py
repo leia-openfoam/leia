@@ -211,18 +211,24 @@ def _write_error_table(records, database_path):
     for rec in records:
         n = _num(rec.get("N_CELLS"))
         mcs = _num(rec.get("MAX_CELL_SIZE"))
-        # Mesh spacing h for the convergence fit. Hexahedral meshes have a
-        # uniform N per direction -> h = 1/N (domain length 1). Polyhedral
-        # (cfMesh) meshes have no uniform N (N_CELLS is a dummy pin), so the
-        # characteristic length IS the target maxCellSize -> h = maxCellSize.
-        # hexRefined: N_CELLS is the FINE count, so 1/N is the fine spacing.
+        # Mesh spacing h for the convergence fit, IN THE UNITS OF THE CASE.
+        # Hexahedral meshes have a uniform N per direction, so
+        # h = DOMAIN_LENGTH/N_CELLS. This reduces to 1/N on the unit-length
+        # kinematic cases (every curated kinematic table is unchanged) and gives
+        # the true cell size on a dimensional case: 0.006/120 = 5e-5 m for the
+        # stationary droplet, 2.5e-3/64 = 3.9e-5 m for the SI Popinet case, where
+        # 1/N would report a cell 400 times too large. Polyhedral (cfMesh) meshes
+        # have no uniform N (N_CELLS is a pin), so the characteristic length IS
+        # the target maxCellSize -> h = maxCellSize, already dimensional.
+        # hexRefined: N_CELLS is the FINE count, so the same formula holds.
         # polyRefined: N_CELLS is PINNED to the measured fine spacing by the
-        # driver's band check (refinedBand.csv), so 1/N is right there too; only
-        # the uniform poly mesh is sized by maxCellSize.
+        # driver's band check (refinedBand.csv), so it holds there too; only the
+        # uniform poly mesh is sized by maxCellSize.
+        length = _num(rec.get("DOMAIN_LENGTH"))
         if rec.get("mesh") == "poly":
             h = mcs if (mcs and mcs > 0) else ""
         else:
-            h = (1.0 / n) if n else ""
+            h = ((length if (length and length > 0) else 1.0) / n) if n else ""
         clk = _num(sget(rec, "ELAPSED_CLOCK_TIME"))
         tfin = _num(sget(rec, "TIME"))
         rows.append({

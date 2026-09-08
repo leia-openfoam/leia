@@ -14,46 +14,42 @@ FoamFile
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-// 2D stationary-droplet benchmark (arXiv:2212.02904, Sec. 3.3.1): a
-// domain x domain box, one cell thick. n_cells is swept by the study
-// (@!N_CELLS!@ = 32, 64, 128, 256); z thickness is fixed (empty front/back => 2D).
+// Popinet (JCP 228, 2009, Sec. 6.2.2) translating droplet, 2D. The box is
+// POPINET_XLEN box heights long and one cell thick (empty front and back).
 //
-// domain = @!DOMAIN_LENGTH!@ is the box side [m], default 0.01 (the reference
-// box every published run of this case used). It is a token so the DOMAIN-SIZE
-// CONTROL can truncate the far field at FIXED h: the droplet R = 1 mm sits in
-// 0.1% of the 0.01 m box volume in 3D, so most cells only carry a smooth outer
-// pressure field. Shrinking the box to 4R keeps h, the step count and every
-// metric (volume error is relative to the INITIAL DISCRETE volume, shape error
-// is crossing-radius vs radius -- both domain-independent) while cutting the
-// cell count, which is what makes a wide-h 3D ladder affordable on a UNIFORM
-// mesh instead of an octree-refined one.
+// SI UNITS (2026-09-08). DOMAIN_LENGTH is the box HEIGHT in metres, 2.5e-3 m.
+// The droplet diameter is 0.4 of that height, D = 1 mm, as in Popinet. The cell
+// size is h = DOMAIN_LENGTH/N_CELLS, and the capillary time step follows
+// materialize.py at nRef = CAPILLARY_REF_LENGTH/h. See workflow/scripts/popinet_si.py
+// for the full parameter set and for the dimensionless groups it holds fixed.
 //
-// The z half-thickness stays at 1.5625e-4 for EVERY domain size and N. It is
-// inert with empty front/back (no z neighbours in the addressing), and holding
-// it fixed means any V-derived quantity is affected identically in the
-// truncated and the reference arm, so the control comparison stays clean.
+// POPINET_XLEN is an ASPECT RATIO, not a length: the box length is
+// POPINET_XLEN * DOMAIN_LENGTH. POPINET_NX is the cell count in x, so
+// POPINET_NX = POPINET_XLEN * N_CELLS keeps the cells cubic.
 //
-// maxDeltaT tracks h, not n_cells: materialize evaluates the capillary limit at
-// nRef = CAPILLARY_REF_LENGTH/h, so a 4R box at n_cells = 40 gets the SAME dt
-// as the 0.01 m box at N = 100. Both have h = 1e-4.
+// The empty direction is 2 % of the box height. It is inert with empty
+// front and back patches, but it must scale with the box, or the cell volume
+// V and every V-derived quantity changes with the unit system.
 
 scale   1;
 
-n_cells @!N_CELLS!@;          // cells across the UNIT HEIGHT -> h = 1/n_cells
-n_cells_x @!POPINET_NX!@;     // = 2*n_cells; the box is twice as long as it is tall
-ylen    @!DOMAIN_LENGTH!@;    // 1, Popinet's unit square height
-xlen    @!POPINET_XLEN!@;     // 2
+n_cells @!N_CELLS!@;          // cells across the box HEIGHT -> h = ylen/n_cells
+n_cells_x @!POPINET_NX!@;     // = POPINET_XLEN*n_cells; keeps the cells cubic
+ylen    @!DOMAIN_LENGTH!@;    // box height [m]; Popinet's unit-square height
+xlen    #eval{ @!POPINET_XLEN!@ * $ylen };   // aspect ratio x height [m]
+zneg    #eval{ -0.01 * $ylen };              // empty direction, 2 % of the height
+zpos    #eval{  0.01 * $ylen };
 
 vertices
 (
-    (0      0      -0.01)
-    ($xlen  0      -0.01)
-    ($xlen  $ylen  -0.01)
-    (0      $ylen  -0.01)
-    (0      0       0.01)
-    ($xlen  0       0.01)
-    ($xlen  $ylen   0.01)
-    (0      $ylen   0.01)
+    (0      0      $zneg)
+    ($xlen  0      $zneg)
+    ($xlen  $ylen  $zneg)
+    (0      $ylen  $zneg)
+    (0      0       $zpos)
+    ($xlen  0       $zpos)
+    ($xlen  $ylen   $zpos)
+    (0      $ylen   $zpos)
 );
 
 blocks

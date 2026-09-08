@@ -13,10 +13,16 @@ with the boundary faces in the stencil (`stencilBoundaryFaces include`): side wa
 0.49 / 0.24. With `inflowOnly` the outlet reads 1.000; the inlet stays pinned by its
 zeroGradient condition (stable, harmless while the incoming level set stays away from 0).
 
+The droplet centre, radius, speed and box length default to the case's OWN
+case_params.json (DROPLET_CENTRE_X / DOMAIN_HALF_LENGTH, DROPLET_RADIUS,
+TRANSLATION_SPEED, POPINET_XLEN * DOMAIN_LENGTH), so the SI Popinet case and the older
+dimensionless one both work without flags. Give the flags only for a case that has no
+case_params.json.
+
     python3 workflow/scripts/sl_boundary_transport_check.py <case> [--time T] [--centre X Y Z]
-                                                            [--radius R] [--U 1] [--xlen 2]
+                                                            [--radius R] [--U ...] [--xlen ...]
 """
-import argparse, math, os, re, subprocess, sys
+import argparse, json, math, os, re, subprocess, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import leia_refine as lr
 
@@ -28,13 +34,42 @@ def read_vectors(path, n):
     return [[float(v) for v in s.split()] for s in re.findall(r"\(([^)]*)\)", body)]
 
 
+def case_defaults(case):
+    """Geometry and speed from the rendered case, or {} when it has no sidecar."""
+    f = os.path.join(case, "case_params.json")
+    if not os.path.isfile(f):
+        return {}
+    t = json.load(open(f))
+    t = t.get("tokens", t)
+    g = lambda k: float(t[k]) if k in t else None
+    L, half = g("DOMAIN_LENGTH"), g("DOMAIN_HALF_LENGTH")
+    cx = g("DROPLET_CENTRE_X")
+    out = {}
+    if cx is not None and half is not None:
+        out["centre"] = [cx, half, half]
+    if g("DROPLET_RADIUS") is not None:
+        out["radius"] = g("DROPLET_RADIUS")
+    if g("TRANSLATION_SPEED") is not None:
+        out["U"] = g("TRANSLATION_SPEED")
+    if L is not None and g("POPINET_XLEN") is not None:
+        out["xlen"] = g("POPINET_XLEN") * L
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("case"); ap.add_argument("--time", default=None)
     ap.add_argument("--centre", nargs=3, type=float, default=[0.5, 0.5, 0.5])
     ap.add_argument("--radius", type=float, default=0.2); ap.add_argument("--U", type=float, default=1.0)
     ap.add_argument("--xlen", type=float, default=2.0); ap.add_argument("--h", type=float, default=None)
-    a = ap.parse_args(); os.chdir(a.case); n = lr.n_cells(".")
+    a = ap.parse_args()
+    # The case's own tokens win over the CLI defaults; an explicitly given flag wins over both.
+    given = {k.lstrip("-").replace("-", "_") for k in sys.argv[1:] if k.startswith("--")}
+    for k, v in case_defaults(a.case).items():
+        if k not in given:
+            setattr(a, k, v)
+    print(f"[reference] centre {a.centre}  R {a.radius}  U {a.U}  xlen {a.xlen}")
+    os.chdir(a.case); n = lr.n_cells(".")
     times = sorted([d for d in os.listdir(".") if re.match(r"^[0-9]*\.?[0-9]+(e-?[0-9]+)?$", d) and float(d) > 0], key=float)
     t = a.time or times[-1]; T = float(t)
     if not os.path.exists(f"{t}/C"):

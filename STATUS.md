@@ -1973,6 +1973,125 @@ jump and band curvature error at T = 0.4; PASS = the L1/L2 disturbance decreases
 ladder and sits at parity with the hex twin at matched N (the 78-step smoke: 9.7e-5 / 5.3e-4
 vs 7.3e-5 / 5.4e-4). The L_inf column is reported, not judged.
 
+### DECIDED: the quasi-monotone clip stops the polyhedral far-field failure (2026-09-08)
+
+Two pre-registered gates ran on the cluster (jobs 54496854 and 54496855). Both COMPLETED.
+
+1. **sigma = 0 passive transport, polyhedral mesh at maxCellSize 0.0195, N = 64, full horizon
+   (1563 steps), clip ON against the clip OFF control of 2026-09-07.** The velocity field is
+   an exact uniform stream in both runs (max|u'| 2.3e-14 and 2.5e-14), so only the transport
+   is under test.
+
+   | | clip OFF | clip ON |
+   |---|---|---|
+   | fake zero set | step 508 (t = 0.130) | NONE |
+   | zero-set error at T | 8.66e-01 (max 1.009) | 3.98e-04 (max 3.99e-04) |
+   | volume error at T | 3.79 (379 %) | 1.08e-06 |
+
+   The two runs agree to every printed digit until step ~500 (zero-set error 9.1462e-05 at
+   step 100 and 1.3261e-04 at step 400 in BOTH). The clip does nothing while the level set
+   stays smooth. It acts only where the semi-Lagrangian update creates a new extremum, which
+   is the checkerboard mode of the one-sided boundary stencils.
+
+2. **Stationary polyhedral droplet R/h = 13.8, 200 steps, clip ON against the control.** Every
+   metric is identical to seven digits: mean, L2 and max |u'|, volume error, shape error,
+   centroid error, Laplace jump, band curvature error and A2h. The clip never fires, because
+   the interface moves 1e-10 per step. This rung proves inertness ONLY for a quiet interface.
+
+**What this does not settle.** The 2D hexahedral translating droplet measured the clip as NOT
+inert at the interface (N = 64: L1 -6 %, L2 -5 %, volume error +30 %, shape +5 %, centroid
++12 %). A global clip is therefore a method change, not a switch to flip. The clean form is a
+BAND-AWARE clip: apply it outside the narrow band only, where the level set carries no
+interface. The interface metrics are then untouched by construction, and the form stays
+mesh-agnostic, compact-stencil and MPI-decomposable. It is not implemented yet. `SL_CLIP`
+stays runtime-selectable and default false.
+
+### DECIDED: the Popinet cases run in SI units, and the conversion is exact (2026-09-08)
+
+Popinet writes the benchmark in dimensionless form (rho = sigma = U = 1, D = 0.4 of the box
+height). This repository ran it that way. Every dictionary therefore held a 0.4 m droplet
+travelling at 1 m/s in a 2 m box, which is not a physical configuration. The cases now run the
+DIMENSIONAL twin at the same dimensionless groups:
+
+| quantity | SI value | fixed by |
+|---|---|---|
+| D | 1.0e-3 m (R = 5e-4) | chosen |
+| rho, both phases | 1000 kg/m^3 | chosen (density ratio 1) |
+| nu, both phases | 1.0e-6 m^2/s | chosen (viscosity ratio 1) |
+| sigma | 0.012 N/m | La = sigma D/(rho nu^2) = 12000 |
+| U | 0.0692820323 m/s | We = rho U^2 D/sigma = 0.4 |
+| box | 5 x 2.5 x 2.5 mm | height = D/0.4, length 2 heights |
+| T_U = D/U | 0.01443375673 s | one diameter of travel |
+| dt at N = 64 | 9.23685e-06 s | 0.2323 of the Brackbill limit |
+
+Five dimensional quantities carry two groups, so three are free. D, rho and nu are the choice
+(water at 20 C); sigma and U follow. Re = sqrt(La We) = 69.28 and Oh = 9.13e-3 are unchanged,
+so every number Popinet reports still applies.
+
+**The similarity gate (the evidence the conversion is exact).** The SI 2D case at N = 64 was
+run against the preserved dimensionless run
+(`studies/popinet2D_La12000_N64_DIMENSIONLESS_20260908`). Both take 1563 steps. Normalised by
+U and R, every metric agrees:
+
+| metric | SI | dimensionless | difference |
+|---|---|---|---|
+| max_t L1\|u'\|/U | 1.861459e-03 | 1.861462e-03 | 0.0002 % |
+| max_t L2\|u'\|/U | 4.433300e-03 | 4.433248e-03 | 0.0012 % |
+| max_t Linf\|u'\|/U | 4.861838e-02 | 4.861816e-02 | 0.0004 % |
+| max_t shape/R | 4.075464e-03 | 4.076008e-03 | 0.0133 % |
+| final volume error | 1.212290e-03 | 1.213101e-03 | 0.0668 % |
+| final centroid error/R | 4.190834e-03 | 4.192087e-03 | 0.0299 % |
+| final pLaplace/(rho U^2) | 5.021250e+00 | 5.021236e+00 | 0.0003 % |
+
+The worst difference is 0.067 %, which is round-off. **This also clears the absolute
+linear-solver tolerances at the new scale** (p_rgh 1e-9, U 1e-8, psi 1e-12): the SI pressure
+is 4.8 times larger and the SI velocity is 14.4 times smaller than in Popinet's units, and
+nothing moved. The published 2D table therefore stands unchanged, in dimensionless form.
+
+What changed: `cases/popinetTranslating{2D,3D,3D_poly}.parameter`, the Popinet block of
+`cases/default.parameter`, both `blockMeshDict.template`s (POPINET_XLEN is now an ASPECT
+RATIO and the box length is `#eval{ POPINET_XLEN * ylen }`; the 2D empty direction scales with
+the height), all 20 `config/popinet*.yaml`, and the box surface
+(`box5x2p5x2p5mm.stl` + `.fms`, made by `make_box_stl.py` and `surfaceFeatureEdges -angle
+45`). `workflow/scripts/popinet_si.py` owns the set and checks a config against it:
+
+    python3 workflow/scripts/popinet_si.py check config/popinet*.yaml
+
+Two curation defects the conversion exposed, both fixed: `make_popinet_table.py` divided by a
+hardcoded `U = 1` and `TU = 0.4` (it now reads TRANSLATION_SPEED, DROPLET_RADIUS and END_TIME
+from `case_params.json`, and normalises the shape error by R); `aggregate.py` reported
+`h = 1/N_CELLS` for every hexahedral study (it now reports `DOMAIN_LENGTH/N_CELLS`, identical
+on the unit-length kinematic cases, and the true cell size on a dimensional one -- the
+stationary-droplet tables carried 1/120 where the cell is 5e-5 m).
+
+### The capillary time step on polyhedral meshes -- audited (2026-09-08)
+
+The step follows `dt = CAPILLARY_DT_COEFF/nRef^1.5`, which reproduces 0.2323 of the Brackbill
+limit `sqrt((rho1+rho2) h^3/(2 pi sigma))` at the spacing `h = DOMAIN_LENGTH/N_CELLS`. On a
+polyhedral mesh `N_CELLS` is a PIN, so the question is which cell it describes. Measured with
+`leia_refine.band_check` on the built meshes:
+
+| case | interface cell | dt/Brackbill there | smallest cell anywhere | dt/Brackbill there |
+|---|---|---|---|---|
+| Popinet 3D poly, maxCellSize 0.0195, N = 64 | 0.991 h_N (all band cells equal) | 0.236 | 0.292 h_N (box edge) | 1.476 |
+| stationary poly r13p8, N_CELLS 84 | 1.111 h_N | 0.198 | 0.247 h_N (boundary slab) | 1.889 |
+
+Reading, in order:
+
+1. **At the interface both cases are inside the limit**, at the intended safety factor. The
+   capillary limit is a condition on cells that CARRY the capillary force, and the band cells
+   of both meshes are uniform to a fraction of a percent.
+2. **The far-field slivers are 1.5 to 1.9 times ABOVE the local limit.** They carry no surface
+   tension, so no capillary wave is under-resolved there. It matters only for a case whose
+   interface can reach a wall or a box edge; such a case must pin the step to the smallest
+   BAND cell, not to the interface cell.
+3. **The stationary polyhedral rung runs 16 % below its own law**: `N_CELLS = 84` describes
+   h = 7.143e-05 m while cfMesh made 7.937e-05 m (the band check reports `pinRelError` 0.100,
+   suggested pin 76). It is conservative, not wrong, but that rung is not dt-matched to its
+   hexahedral twin. Re-pin to 76 before any dt-matched comparison.
+4. The advective and viscous numbers are far from their limits everywhere: Co = 0.0165 and
+   nu dt/h^2 = 0.0062 at the interface, Co = 0.056 in the smallest cell.
+
 ## 5. Lichtenberg — what is running
 
 Login: `ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de`

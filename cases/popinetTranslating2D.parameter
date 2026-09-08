@@ -1,16 +1,32 @@
 // Popinet, JCP 228 (2009) 5838-5866, Section 6.2.2 "Translating droplet".
 //
-// Non-dimensionalisation: rho = 1, sigma = 1, D = 0.4, U = 1, so
-//   We = rho U^2 D / sigma = 0.4   (his value)
-//   La = sigma D / (rho nu^2)      -> nu = sqrt(0.4/La)
-//   T_U = D/U = 0.4                -> END_TIME 0.4 is one full t/T_U
+// SI UNITS (2026-09-08). Popinet writes the benchmark in dimensionless form
+// (rho = sigma = U = 1, D = 0.4 of the box height). This repository runs the
+// DIMENSIONAL twin, so that every dictionary holds a real droplet and a real
+// speed. The dimensionless groups are unchanged:
+//
+//   D     = 1.0e-3 m        droplet diameter (R = 0.5 mm), 0.4 of the box height
+//   rho   = 1000 kg/m^3     both phases (density ratio 1, as in Popinet)
+//   nu    = 1.0e-6 m^2/s    both phases (viscosity ratio 1), mu = 1.0e-3 Pa s
+//   sigma = La rho nu^2 / D = 0.012 N/m
+//   U     = sqrt(We sigma/(rho D)) = 0.0692820323 m/s
+//   We = rho U^2 D/sigma = 0.4       La = sigma D/(rho nu^2) = 12000
+//   Re = rho U D/mu = sqrt(La We) = 69.28      Oh = 1/sqrt(La) = 9.13e-3
+//   box   = 5 mm x 2.5 mm (POPINET_XLEN box heights x DOMAIN_LENGTH)
+//   T_U   = D/U = 0.01443375673 s -> END_TIME is one diameter of travel
+//
+// Five dimensional quantities carry two groups, so three choices are free. We fix
+// D, rho and nu at water at 20 C and let sigma and U follow. A different choice
+// (for example sigma = 0.0727 N/m) keeps the same groups and the same results.
+// workflow/scripts/popinet_si.py prints the set, writes the config axes and
+// checks a config against them.
 //
 // dt: the repository law is dt = CAPILLARY_DT_COEFF / nRef^1.5 with
 // nRef = CAPILLARY_REF_LENGTH*N_CELLS/DOMAIN_LENGTH, i.e. dt = coeff*h^1.5/L^1.5.
-// The production water/air value 0.010861 on the 0.01 m box is 10.861*h^1.5, which is
-// 0.2323*sqrt((rho1+rho2)/(2 pi sigma)) -- the Brackbill limit at a 0.2323 safety factor.
-// For rho1+rho2 = 2 and sigma = 1 the same safety factor gives 0.13107*h^1.5, so with
-// DOMAIN_LENGTH = CAPILLARY_REF_LENGTH = 1 the coefficient is 0.13107.
+// CAPILLARY_REF_LENGTH = DOMAIN_LENGTH gives nRef = N_CELLS. The coefficient
+// 0.004729265146 = 0.2323*sqrt((rho1+rho2) DOMAIN_LENGTH^3/(2 pi sigma)) is the
+// Brackbill limit at the safety factor 0.2323, the same factor as every
+// production run of this repository.
 values
 {
     solver (leiaSemiLagrangianLevelSetTwoPhaseFoam);
@@ -20,10 +36,10 @@ values
         128
         256
     );
-    DOMAIN_LENGTH ( 1 );          // unit HEIGHT; the box is POPINET_XLEN times as long
-    CAPILLARY_REF_LENGTH ( 1 );
-    END_TIME ( 0.4 );
+    DOMAIN_LENGTH ( 0.0025 );          // box HEIGHT [m]; the box is POPINET_XLEN heights long
+    CAPILLARY_REF_LENGTH ( 0.0025 );
+    END_TIME ( 0.01443375673 );        // T_U = D/U, one diameter of travel
     MAX_CO ( 0.1 );
-    CAPILLARY_DT_COEFF ( 0.13107 );
+    CAPILLARY_DT_COEFF ( 0.004729265146 );
     SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
 }

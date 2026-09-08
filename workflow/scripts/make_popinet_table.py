@@ -18,9 +18,24 @@ against L2's near-first order, which is his finding as well as ours.
 
 Usage:  python3 workflow/scripts/make_popinet_table.py [--root .] [--out FILE]
 """
-import argparse, csv, glob, math, os, subprocess, sys
+import argparse, csv, glob, json, math, os, subprocess, sys
 
-U, TU = 1.0, 0.4          # reference velocity and timescale T_U = D/U
+# The case is dimensional (SI) since 2026-09-08, so the reference scales are READ from
+# each arm's case_params.json instead of being assumed: U = TRANSLATION_SPEED [m/s],
+# R = DROPLET_RADIUS [m], T_U = END_TIME [s] (one diameter of travel). Velocity errors
+# are reported relative to U and shape errors relative to R, so the table stays
+# dimensionless and comparable with Popinet's own numbers.
+
+
+def scales(case_dir):
+    """(U, R, T_U, sigma, rho, nu, DOMAIN_LENGTH, N_CELLS) of one rendered case."""
+    with open(os.path.join(case_dir, "case_params.json")) as fh:
+        t = json.load(fh)
+    t = t.get("tokens", t)
+    g = lambda k, d=None: float(t[k]) if k in t else d
+    return dict(U=g("TRANSLATION_SPEED"), R=g("DROPLET_RADIUS"), TU=g("END_TIME"),
+                sigma=g("SIGMA"), rho=g("POPINET_RHO"), nu=g("POPINET_NU"),
+                L=g("DOMAIN_LENGTH"), N=g("N_CELLS"))
 
 
 def load(root, study):
@@ -38,7 +53,7 @@ def load(root, study):
             if line.strip().startswith("nu"):
                 nu = float(line.split()[1].rstrip(";"))
                 break
-        out.append((nu, rows))
+        out.append((nu, rows, scales(d)))
     return out
 
 
@@ -81,23 +96,27 @@ def main():
         if not got:
             sys.stderr.write(f"warning: popinet2D_La12000_N{N} missing\n")
             continue
-        nu, rows = got[0]
-        recs.append({"series": "convergence", "N": N, "RoverH": 0.2 * N, "La": 12000,
+        nu, rows, sc = got[0]
+        U, R, L = sc["U"], sc["R"], sc["L"]
+        La = sc["sigma"] * 2.0 * R / (sc["rho"] * nu ** 2) if nu else float("inf")
+        recs.append({"series": "convergence", "N": N, "RoverH": R * N / L, "La": La,
                      "nu": nu, "steps": len(rows),
                      "maxt_L2": maxcol(rows, "l2MagUPrime") / U,
                      "maxt_Linf": maxcol(rows, "maxMagUPrime") / U,
                      "maxt_L1": maxcol(rows, "meanMagUPrime") / U,
-                     "maxt_shape": maxcol(rows, "zeroSetRadialL2"),
+                     "maxt_shape": maxcol(rows, "zeroSetRadialL2") / R,
                      "gitCommit": commit})
-    for nu, rows in sorted(load(a.root, "popinet2D_LaSweep_N64"),
-                           key=lambda t: -(t[0] or 0.0)):
-        recs.append({"series": "LaSweep", "N": 64, "RoverH": 12.8,
-                     "La": (0.4 / nu ** 2 if nu > 0 else float("inf")), "nu": nu,
+    for nu, rows, sc in sorted(load(a.root, "popinet2D_LaSweep_N64"),
+                               key=lambda t: -(t[0] or 0.0)):
+        U, R, L = sc["U"], sc["R"], sc["L"]
+        recs.append({"series": "LaSweep", "N": 64, "RoverH": R * sc["N"] / L,
+                     "La": (sc["sigma"] * 2.0 * R / (sc["rho"] * nu ** 2)
+                            if nu > 0 else float("inf")), "nu": nu,
                      "steps": len(rows),
                      "maxt_L2": maxcol(rows, "l2MagUPrime") / U,
                      "maxt_Linf": maxcol(rows, "maxMagUPrime") / U,
                      "maxt_L1": maxcol(rows, "meanMagUPrime") / U,
-                     "maxt_shape": maxcol(rows, "zeroSetRadialL2"),
+                     "maxt_shape": maxcol(rows, "zeroSetRadialL2") / R,
                      "gitCommit": commit})
     if not recs:
         sys.exit("no Popinet studies found")
@@ -112,7 +131,8 @@ def main():
 
     conv = [r for r in recs if r["series"] == "convergence"]
     if len(conv) >= 3:
-        H = [1.0 / r["N"] for r in conv]
+        # h in units of R, so the fitted order does not depend on the unit system
+        H = [1.0 / r["RoverH"] for r in conv]
         print("\nconvergence orders (least squares over N = "
               + "/".join(str(r["N"]) for r in conv) + "):")
         for key, label, claim in (("maxt_L2", "L2  (his RMS)", "close to first order"),
