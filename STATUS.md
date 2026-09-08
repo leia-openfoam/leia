@@ -1787,10 +1787,29 @@ semi-Lagrangian far-field transport develops a growing alternating mode in cfMes
 asymmetric boundary cells near the outlet (onsets 865 / 267 / 508), independent of wall tilt,
 slivers, corrector count and cell size; the geometry sets where and when.** Pre-registered
 verdict of the 0.0195 test: the polyhedral Popinet benchmark cannot be rescued by a cell size.
-RUNNING: the kinematics-before-dynamics control, the same case with SIGMA 0 (a passive level
-set in a uniform stream, `popinet3D_La12000_poly_r12p8_mcs0195_sigma0`), which separates the
-transport scheme from the capillary coupling; the scheme-level options (monotone clip away
-from the band, interpolating reconstruction) or a different boundary mesh are the user's call.
+**Kinematics-before-dynamics control (SIGMA 0, 2026-09-08): the transport ALONE fails.** The
+velocity stays an exact uniform stream for all 1563 steps (max|u'| 2.3e-14, L2 3.4e-15 -- the
+flow solver on the feature-edge pMesh is perfect), yet the passive level set develops the fake
+zero set at **step 508, the same step as with surface tension**, and by T = 0.4 the far field
+is destroyed (outlet-layer |psi - psi_exact| 6.7e4, interior 9e3, 61 335 far cells across
+zero, "volume error" 379 %). The capillary coupling played no part in the onset; it only
+turned the level-set failure into a velocity blow-up afterwards. This is the missing
+kinematic gate -- uniform translation THROUGH inlet and outlet on a polyhedral mesh -- and it
+fails; the 3D polyhedral kinematic gates passed because u = 0 on their walls. Mechanism, now
+without alternatives: a point-value semi-Lagrangian update with a least-squares fit amplifies
+a checkerboard error at ~ (U dt / h) x stencil asymmetry per step; on cfMesh's small,
+one-sided boundary cells at the outlet (0.33 h, local U dt / h = 0.05) that is ~0.5-1 %/step,
+on symmetric hex stencils it cancels. The remedy every quasi-monotone SL scheme uses is the
+clip of the reconstructed value to the stencil's bounds -- `clipToStencilBounds`, which this
+repository already carries (token `SL_CLIP`) with the note "REQUIRED on general polyhedra"
+from the KINEMATIC solver, while all three two-phase templates hardcoded it `false` (now the
+token, inert default). **Measured in 2D N = 64 hex before adopting anything: the clip is NOT
+inert at the interface** -- L1/L2 |u'| -6 % / -5 %, volume error +30 %, shape +5 %, centroid
++12 % -- so a global clip is a method change, and the clean form is a band-aware clip (far
+field only), to be implemented only if the clip stabilises the far field at all. RUNNING
+(2026-09-08): the SIGMA-0 passive case with the global clip (`..._sigma0_clip`, the scheme
+test: PASS = no zero-set jump to T = 0.4) and the quiet stationary rung with the clip
+(`polyDroplet3D_r13p8_clip`, 200 steps: what the clip does to a polyhedral band).
 
 ### RESULT: the Popinet-3D polyhedral ladder DIVERGES late, from an inlet/outlet level-set transport defect that is NOT the fit fix (2026-09-05, evening)
 
