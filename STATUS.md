@@ -2064,6 +2064,28 @@ from `case_params.json`, and normalises the shape error by R); `aggregate.py` re
 on the unit-length kinematic cases, and the true cell size on a dimensional one -- the
 stationary-droplet tables carried 1/120 where the cell is 5e-5 m).
 
+**The 3D gates, on 4 ranks locally (the gate before the cluster).** Both smokes COMPLETED at
+78 steps and reproduce their preserved dimensionless twins:
+
+| gate | worst normalised difference | note |
+|---|---|---|
+| 3D hex, 78 steps | 0.056 % (endpoint volume error) | velocity norms 0.005 % |
+| 3D polyhedral (cfMesh, 674 493 cells), 78 steps | 0.33 % (band curvature) | velocity norms 0.014 % |
+
+cfMesh built the same mesh at the new scale: 674 493 cells at maxCellSize 4.875e-05 m against
+674 493 at 0.0195, band 2778 cells in both, interface cell 0.991 h_N in both, band check PASS
+with a 0.96 % pin error. The mesher is not bit-reproducible under a coordinate scaling, so the
+0.33 % on the polyhedral rung is mesh noise, not a unit effect.
+
+**Absolute thresholds in the library, audited by hand.** The gate exercises the whole solver
+path, so a scale-sensitive constant would have shown. A grep confirms why none did: every
+literal in `src/leiaLevelSet` that a length, a velocity or a time is compared against is
+either relative (`footPointTolRel` 1e-6, `1e-8*rTrust`, `1e-10*Uscale`, `1e-8/cbrt(V)`), or it
+guards a dimensionless quantity (`alphaTol` 1e-8 on alpha, `trajectoryNormalEpsilon` 1e-12 on
+|grad psi|, which is 1 for a signed distance), or it belongs to a model this case does not
+select (velocity extension, SDPLS source, volume correction, band renormalisation). The
+linear-solver tolerances ARE absolute, and the similarity gate clears them at this scale.
+
 ### The capillary time step on polyhedral meshes -- audited (2026-09-08)
 
 The step follows `dt = CAPILLARY_DT_COEFF/nRef^1.5`, which reproduces 0.2323 of the Brackbill
