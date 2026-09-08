@@ -542,7 +542,7 @@ levelSet
         traceVelocity       @!SL_TRACE_VELOCITY!@;
         CFLmax              0.5;
         limitSlope          false;
-        clipToStencilBounds false;
+        clipToStencilBounds @!SL_CLIP!@;   // quasi-monotone clip of the reconstructed value to the stencil bounds (see default.parameter)
         curvatureNewtonIters 3;
         // geometric admissibility of the quadratic fit (see default.parameter
         // SL_QUAD_PIVOT_TOL); 0 reproduces the pre-2026-09-05 behaviour

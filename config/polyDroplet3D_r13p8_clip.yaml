@@ -1,0 +1,47 @@
+# QUASI-MONOTONE CLIP GATE (2026-09-08). The sigma-0 control proved the polyhedral far-field failure
+# is the semi-Lagrangian transport ALONE: with an exactly uniform stream (max|u'| 2e-14 for 1563
+# steps) the level set still developed the fake zero set at step 508 -- the same step as with
+# surface tension -- and reached errors of 7e4 by T = 0.4 (61 335 cells across zero). A point-value
+# SL update with a least-squares fit amplifies a checkerboard error at ~ (U dt / h) x stencil
+# asymmetry per step; cfMesh's small boundary cells are the asymmetric ones. The candidate remedy
+# is the quasi-monotone clip of the reconstructed value to the stencil's bounds
+# (clipToStencilBounds, existing, off by default in the two-phase templates). MEASURED in 2D N = 64
+# (hex) before submission: the clip is NOT inert at the interface -- L1/L2 |u'| -6 % / -5 %,
+# volume error +30 %, shape +5 %, centroid +12 % -- so a global clip is a method change; the
+# clean form is a band-aware clip (far field only), to be implemented only if this arm passes.
+# THIS ARM: the quiet polyhedral STATIONARY rung, 200 steps, global clip on -- what the clip does to a
+# polyhedral BAND: compare mean|u'|, L2|u'|, shape, volume, Laplace jump, band curvature at step 200
+# against the 1-corrector nonOrth arm (clip off, same mesh, np 32). 2D hex predicts a few to 30 %.
+study_name: polyDroplet3D_r13p8_clip
+case: stationaryDroplet3D
+mesh: poly
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  SL_CLIP: ["true"]
+  DOMAIN_LENGTH: [0.006]
+  MAX_CELL_SIZE: [1.0e-4]
+  N_CELLS: [84]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+  END_TIME: [0.0013113]
+  WRITE_INTERVAL: [0.0013113]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

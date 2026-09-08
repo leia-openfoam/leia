@@ -1,0 +1,59 @@
+# QUASI-MONOTONE CLIP GATE (2026-09-08). The sigma-0 control proved the polyhedral far-field failure
+# is the semi-Lagrangian transport ALONE: with an exactly uniform stream (max|u'| 2e-14 for 1563
+# steps) the level set still developed the fake zero set at step 508 -- the same step as with
+# surface tension -- and reached errors of 7e4 by T = 0.4 (61 335 cells across zero). A point-value
+# SL update with a least-squares fit amplifies a checkerboard error at ~ (U dt / h) x stencil
+# asymmetry per step; cfMesh's small boundary cells are the asymmetric ones. The candidate remedy
+# is the quasi-monotone clip of the reconstructed value to the stencil's bounds
+# (clipToStencilBounds, existing, off by default in the two-phase templates). MEASURED in 2D N = 64
+# (hex) before submission: the clip is NOT inert at the interface -- L1/L2 |u'| -6 % / -5 %,
+# volume error +30 %, shape +5 %, centroid +12 % -- so a global clip is a method change; the
+# clean form is a band-aware clip (far field only), to be implemented only if this arm passes.
+# THIS ARM: SIGMA 0 (passive level set, exactly uniform stream) + global clip. PRE-REGISTERED: PASS = no
+# zero-set jump to T = 0.4 and far-field |psi - psi_exact| bounded; FAIL = the clip does not stabilise.
+study_name: popinet3D_La12000_poly_r12p8_mcs0195_sigma0_clip
+case: popinetTranslating3D
+mesh: poly
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 300
+axes_override:
+  SL_CLIP: ["true"]
+  N_CELLS: [64]
+  MAX_CELL_SIZE: [0.0195]
+  REFINE_ALLOW_PIN_MISMATCH: ["true"]
+  END_TIME: [0.4]
+  WRITE_INTERVAL: [0.2]
+  POPINET_NX: [128]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [1]
+  CAPILLARY_REF_LENGTH: [1]
+  CAPILLARY_DT_COEFF: [0.13107]
+  DROPLET_RADIUS: [0.2]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [1]
+  SIGMA: [0]
+  POPINET_RHO: [1]
+  POPINET_NU: [5.773502692e-03]
+  SURFACE_FILE: [box2x1x1.fms]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

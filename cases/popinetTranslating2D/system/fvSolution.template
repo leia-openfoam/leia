@@ -542,7 +542,7 @@ levelSet
         traceVelocity       @!SL_TRACE_VELOCITY!@;
         CFLmax              0.5;
         limitSlope          false;
-        clipToStencilBounds false;
+        clipToStencilBounds @!SL_CLIP!@;   // quasi-monotone clip of the reconstructed value to the stencil bounds (see default.parameter)
         curvatureNewtonIters 3;
         stencilBoundaryFaces @!SL_STENCIL_BOUNDARY_FACES!@;   // include | exclude (see default.parameter)
     }
