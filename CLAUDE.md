@@ -11,6 +11,22 @@
 OpenFOAM level-set library + solvers, a Snakemake verification suite, and
 thematic docs (reveal decks + Elsevier articles) fed by a single per-theme
 `docs/<theme>/<slug>-article/data/`.
+
+## Communication: ASD-STE100 Simplified Technical English
+
+All communication uses ASD-STE100 Simplified Technical English (STE): chat replies,
+STATUS.md, README files, commit messages, config headers, code comments and article
+prose. The rules that matter most:
+
+- One topic per sentence. Maximum 20 words in a procedure, 25 words in a description.
+- Active voice. Name the agent: "the solver writes the CSV", not "the CSV is written".
+- One approved meaning per word. Use the technical name of a thing every time (level
+  set, narrow band, BDF2, Brackbill limit). Do not use synonyms for variety.
+- No slang, no idioms, no analogies. No noun cluster of more than three words. Keep the
+  articles: "the mesh", not "mesh".
+- Write a sequence as a numbered list, one instruction per item.
+- Write "the run diverged at step 508", not "the run blew up at 508".
+
 ## Execution environment
 
 - **All OpenFOAM / Python / Snakemake runs happen in WSL (Ubuntu), never Windows.**
