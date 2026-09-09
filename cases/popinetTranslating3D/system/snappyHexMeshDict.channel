@@ -1,0 +1,150 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2512                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+
+// A ROUND CHANNEL: castellate + snap + wall layers on a geometry that does NOT align
+// with the mesh. Companion to system/snappyHexMeshDict, which does layer addition only
+// on the axis-aligned box.
+//
+// WHY. The four-mesher amplification comparison used a BOX, and a box is the easy case:
+// it is axis-aligned with both hexahedral meshers, so cartesianMesh cut nothing and
+// snappyHexMesh's layers sat on flat walls. That result licenses only "the hexahedral
+// family is clean WHERE THE GEOMETRY ALIGNS WITH THE MESH". A microfluidic geometry forces
+// both meshers to CUT and SNAP at a curved wall, and cut cells are small and one-sided --
+// which is the amplifier signature on pMesh (its five worst cells are all 0.32-0.33 h).
+//
+// PATCHES. The cylinder is written OPEN and OVERLONG in x by
+// workflow/scripts/make_channel_stl.py, so it extends past the background mesh at both
+// ends. The region is closed laterally by this surface and in x by the background
+// blockMesh's own inlet and outlet, which survive as the cut circles. The STL solid is
+// named `walls` and patchInfo requests `type wall`, so the snapped faces JOIN the
+// background `walls` patch instead of creating a second one. The case's fields declare
+// inlet, outlet and walls, and all three then exist -- verify in
+// constant/polyMesh/boundary, which is the authority; OpenFOAM silently ignores a field
+// entry that matches no mesh patch.
+//
+// The droplet (R = 5e-4 m, centred on the axis) keeps 4e-4 m of clearance to a 9e-4 m
+// channel wall, so the interface band never touches the wall and the band/far-small cell
+// classification stays clean.
+
+castellatedMesh true;
+snap            true;
+addLayers       true;
+
+geometry
+{
+    walls
+    {
+        type triSurfaceMesh;
+        file "channel_walls.stl";
+    }
+}
+
+castellatedMeshControls
+{
+    maxLocalCells   4000000;
+    maxGlobalCells  20000000;
+    minRefinementCells 0;
+    nCellsBetweenLevels 1;
+
+    features        ();
+
+    refinementSurfaces
+    {
+        walls
+        {
+            // level (0 0): keep the background spacing at the wall. The question is what
+            // CUTTING does to the fit, not what refinement does; adding levels would
+            // change h at the wall and break the matched-h comparison.
+            level (0 0);
+            patchInfo { type wall; }
+        }
+    }
+
+    refinementRegions {}
+
+    resolveFeatureAngle 30;
+    // On the channel axis, inside the fluid.
+    locationInMesh  (0.0025 0.00125 0.00125);
+    allowFreeStandingZoneFaces false;
+}
+
+snapControls
+{
+    nSmoothPatch    3;
+    tolerance       2.0;
+    nSolveIter      50;
+    nRelaxIter      5;
+    nFeatureSnapIter 10;
+    implicitFeatureSnap false;
+    explicitFeatureSnap true;
+    multiRegionFeatureSnap false;
+}
+
+addLayersControls
+{
+    relativeSizes   true;
+
+    layers
+    {
+        walls
+        {
+            nSurfaceLayers 3;
+        }
+    }
+
+    expansionRatio      1.3;
+    finalLayerThickness 0.5;
+    minThickness        0.1;
+
+    nGrow               0;
+    featureAngle        180;
+    slipFeatureAngle    60;
+    nRelaxIter          5;
+    nSmoothSurfaceNormals 1;
+    nSmoothNormals      3;
+    nSmoothThickness    10;
+    maxFaceThicknessRatio 0.5;
+    maxThicknessToMedialRatio 0.6;
+    minMedialAxisAngle  90;
+    nBufferCellsNoExtrude 0;
+    nLayerIter          50;
+}
+
+meshQualityControls
+{
+    maxNonOrtho         65;
+    maxBoundarySkewness 20;
+    maxInternalSkewness 4;
+    maxConcave          80;
+    // ABSOLUTE VOLUME IN CUBIC METRES. The tutorial default 1e-13 is sized for a
+    // metre-scale mesh; at h = 3.9e-05 m a cell holds 5.9e-14 m^3, below it, and
+    // snappyHexMesh then flags EVERY face illegal, removes all extrusion and still exits
+    // 0. See system/snappyHexMeshDict for the measured incident.
+    minVol              1e-30;
+    minTetQuality       -1e30;
+    minArea             -1;
+    minTwist            0.02;
+    minDeterminant      0.001;
+    minFaceWeight       0.02;
+    minVolRatio         0.01;
+    minTriangleTwist    -1;
+    nSmoothScale        4;
+    errorReduction      0.75;
+}
+
+writeFlags ();
+mergeTolerance 1e-6;
+
+// ************************************************************************* //

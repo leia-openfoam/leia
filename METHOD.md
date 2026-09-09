@@ -363,6 +363,26 @@ stage is exactly linear) driven by `workflow/scripts/transport_spectrum_probe.sh
 
 All at matched Courant 0.0164, 2000 power iterations, increment converged to 0.
 
+Two controls, both on the pMesh at 95 969 cells:
+
+| control | ρ(B) | against |
+|---|---|---|
+| trace velocity `projectedFlux` (PRODUCTION) instead of `cellCentred` | 1.0110805 | 1.0110805 — identical to 8 digits |
+| `checkerboard` seed instead of `random` | 1.0109002 | 1.0110805 — 0.02 % |
+
+The seed control is the one that matters for the power iteration: a converged dominant
+mode must not depend on what excited it, and it does not.
+
+The trace control is identical for a reason worth stating, because it BOUNDS what this
+probe can see. The velocity is a frozen UNIFORM stream, and for a uniform field
+`fvc::reconstruct(fvc::flux(U))` returns `U` exactly (`max|Utrace|` = `max|U|` = 0.069282032
+to eight digits). So `projectedFlux` and `cellCentred` CANNOT differ here, on hexahedra or
+polyhedra. The projectedFlux advantage that STATUS records lives in the reconstruct operator
+acting on a SOLVED flux carrying a pressure correction, which a frozen prescribed velocity
+does not have. The probe therefore measures the transport operator's own spectrum and says
+nothing about the trace-velocity choice; it is run with `projectedFlux` because that is
+production, not because it changes this number.
+
 Three things follow, and they change how Sec. 9 item 3 must be read.
 
 1. **ρ > 1 on hexahedra too.** Hexahedral meshes are not stable in the ρ ≤ 1 sense; they
