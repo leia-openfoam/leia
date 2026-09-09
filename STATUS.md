@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-09 (G4 FALSIFIED the candidate: the quasi-monotone bound and the extremum exemption are in direct conflict. Without the exemption the clip removes the polyhedral defect and costs +30.4 % volume error on hex; with it the interface is clean at +1.03 % and the defect returns at step 506. 59 % of the cells the clip must bound on polyhedra are themselves stencil extrema, so no better extremum test can separate them -- SCALE can, and that is the next measurement).
+Last updated: 2026-09-09 (DECIDED: the amplification defect is POLYHEDRAL CELLS. cfMesh's own HEX mesher on the same meshDict gives Lambda 1.0549 against pMesh's 1.2608, and snappyHexMesh WITH wall layers gives 1.0566 -- so a hexahedral unstructured workflow is clear of it and the clip leaves the critical path. Earlier: G4 FALSIFIED the candidate: the quasi-monotone bound and the extremum exemption are in direct conflict. Without the exemption the clip removes the polyhedral defect and costs +30.4 % volume error on hex; with it the interface is clean at +1.03 % and the defect returns at step 506. 59 % of the cells the clip must bound on polyhedra are themselves stencil extrema, so no better extremum test can separate them -- SCALE can, and that is the next measurement).
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -2206,6 +2206,85 @@ Popinet's units. A fixed threshold against them reads every SI run as clean, whi
 first pass over this sweep misread all three arms as passing. Divide by `DROPLET_RADIUS`
 before any threshold, any curated table and any comparison across unit systems. The committed
 curation scripts use relative gates or divide by R already, so none of them carries the defect.
+
+### DECIDED: the amplification defect is POLYHEDRAL CELLS, not cfMesh and not boundary layers (2026-09-09)
+
+**The question.** Every polyhedral conclusion in this campaign rested on ONE mesher: the
+workflow's `mesh: poly` is pMesh, and there was no cartesianMesh and no snappyHexMesh path. So
+"is it only pMesh that is so bad?" was untestable by construction.
+
+**The measurement, and it needs no coupled run.** The amplification bound
+`Lambda_c = |1 - sum_j g_j| + sum_j |g_j|` depends on the stencil GEOMETRY alone, so one mesh
+pass per mesher answers it. All four arms use the SAME box (5 x 2.5 x 2.5 mm), the SAME
+nominal cell size and the SAME probe displacement `d = -U dt = -6.39948e-07 m`, which makes
+them directly comparable to the recorded hex 1.0527 and pMesh 1.2608.
+
+| mesher | cells | Lambda median | Lambda p99.9 | Lambda max | cells > 1.10 | cells demoted | smallest pivot |
+|---|---|---|---|---|---|---|---|
+| blockMesh (hex) | 524 288 | 1.0164 | 1.0430 | 1.0527 | 0 | 0 | 0.637 |
+| cartesianMesh (cfMesh HEX) | 281 216 | 1.0131 | 1.0499 | 1.0549 | 0 | 0 | 0.629 |
+| snappyHexMesh + 3 wall layers | 617 984 | 1.0164 | 1.0430 | 1.0566 | 0 | 0 | 0.410 |
+| pMesh (cfMesh POLYHEDRAL) | 674 493 | 1.0205 | 1.0815 | **1.2608** | **588** | **47 622** | 1.4e-05 |
+
+The excess above 1 is 0.053 / 0.055 / 0.057 / **0.261**. The three hexahedral-family meshers
+cluster within 0.004 of each other; pMesh is 4.6 to 4.9 times worse.
+
+**cartesianMesh is the decisive arm.** It is cfMesh's own HEXAHEDRAL mesher reading the SAME
+`meshDict`, the SAME `box5x2p5x2p5mm.fms` and the SAME `maxCellSize 4.875e-05` as pMesh. It
+lands at 1.0549, indistinguishable from plain blockMesh, with zero cells above 1.10 and zero
+demoted. So the defect is not cfMesh, not the surface-based workflow and not the size grading:
+it is the POLYHEDRAL cells.
+
+**A RETRACTION of my own hypothesis.** I argued the danger was cfMesh's boundary-layer grading,
+and predicted snappyHexMesh with layers would inherit it. The cell-size histogram refutes it:
+cartesianMesh has 8 cells below 0.8 h and NONE below 0.6 h, snappyHexMesh with three wall
+layers has 1536 cells in [0.4, 0.6) h and none below 0.4 h, while pMesh has 27 191 cells below
+0.4 h and its five worst amplifiers are all 0.32-0.33 h. Layer addition on a hexahedral mesh
+costs only +0.004 in the excess. The 0.33 h one-sided cells come from pMesh's polyhedral
+generation.
+
+**quadraticPivotTol and Lambda are essentially UNCORRELATED, and that closes the QR question.**
+On pMesh the top 0.1 % of Lambda -- 674 cells -- are ALL still quadratic, and the worst
+amplifier (cell 14736, Lambda 1.2608, size 0.333 h) has pivot **0.757**, six times the 0.3
+tolerance and perfectly well conditioned. Conversely the 47 622 cells the pivot test DID demote
+to a linear fit reach only Lambda 1.0511; they are harmless. So the pivot test measures
+conditioning, Lambda measures amplification, and they select different cells.
+
+That explains the 2026-09-05 result directly: `SL_FIT householderQR` blew up IDENTICALLY to the
+normal equations (step-3 phase volume 0.017512193 against 0.017512208) because the amplifying
+cells were never badly conditioned. There was nothing for better arithmetic to fix.
+
+**Consequence for a truncated-SVD fit.** A classical truncated SVD keyed on the singular
+spectrum would leave these cells untouched -- at pivot 0.76 there is no small singular value to
+drop. Rank reduction still LOWERS Lambda (it shrinks the pseudo-inverse in the directions that
+make `||g||_1` large, and the rank-1 limit is the weighted mean with every `g_j >= 0`,
+`sum g = 1`, `Lambda = 1` exactly), and the headroom is 100 % of the top amplifiers. But the
+TRIGGER must be Lambda, not the singular values: choose per cell the highest rank whose
+`Lambda <= 1`. `Lambda <= 1` is the non-amplification condition, not a fitted coefficient.
+
+**A trap this measurement produced, and it is the repository's own family.** The first
+snappyHexMesh arm was VACUOUS and looked like a pass. `minVol 1e-13`, the OpenFOAM tutorial
+default, is an ABSOLUTE volume in cubic metres sized for a metre-scale mesh; at h = 3.9e-05 m a
+cell holds 5.9e-14 m^3, below it. snappyHexMesh flagged all 1 593 344 faces illegal, removed
+every extrusion, reported "Added 0 out of 98304 cells (0%)" and EXITED 0 -- and the probe read
+the untouched background blockMesh, reproducing its Lambda to eight digits (1.0527251). Only the
+layer-addition line and the cell count reveal it. Verify the ARTEFACT, never the exit code, and
+never a threshold that carries a length.
+
+**Tools, all committed and regenerable.** `workflow/scripts/fit_amplification_probe.sh` builds
+one mesh with any of the four meshers and runs the one-step probe;
+`workflow/scripts/sl_fit_amplification_census.py` tabulates Lambda by cell class, by fit order
+and by cell size, and writes
+`docs/method-comparison/method-comparison-article/data/tables/sl_fit_amplification.csv`.
+`cases/popinetTranslating3D/system/snappyHexMeshDict` is the layer-addition dictionary.
+
+**What this means for the campaign.** A hexahedral-family unstructured workflow -- cfMesh
+`cartesianMesh` or snappyHexMesh with boundary layers -- is clear of this defect. The clip
+therefore leaves the critical path, and the open work for a spreading-droplet demonstration is
+the two capabilities that do not exist yet: a wetting model (no `contactAngle` anywhere in
+`src/`, `applications/`, `cases/`, `config/`) and, if dynamic refinement is wanted, cache
+invalidation in `slReconstruction` on topology change (`haveCentres_`, `radius_`, `centreTail_`,
+`keep_` and `phi_` are all sized or filled once, and `mesh.update()` is already called).
 
 ### G4 FALSIFIES THE CANDIDATE: the bound and the extremum exemption are in direct conflict (2026-09-09)
 
