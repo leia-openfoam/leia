@@ -1,0 +1,76 @@
+# G3: IS THE CLIP MASK DECOMPOSITION-INDEPENDENT? The SERIAL companion (2026-09-09)
+#
+# The four-rank gate is config/polyDroplet3Drefined_clipRegionGate.yaml. This file runs the
+# same two decisive arms on ONE rank, and the pair is the gate.
+#
+# WHY IT MATTERS. Both clip rules are stated per cell, but they read neighbours:
+#   - clipRegion outsideBand tests the sign of psi across every face. On a processor boundary
+#     the far side comes from patchNeighbourField(), which returns whatever was last
+#     exchanged. slCorrector::buildClipMask derives the test from a SYNCED COPY of psi and
+#     handles the coupled patches explicitly, so a rank boundary must classify its cells
+#     exactly as the serial run does.
+#   - clipKeepExtrema compares psi_c against the min and max over the reconstruction's own
+#     stencil, whose remote entries arrive through the extendedCentredCellToCellStencil map.
+# If either one saw a stale neighbour, a cell would be in the band on one rank count and out
+# of it on another, or an extremum on one and not the other -- silently, with no error, just a
+# different answer. That is a defect even when both runs complete, and this repository has hit
+# the class repeatedly: the psi filter's uncoupled Laplacian, the narrow-band dilation over
+# internal faces only, setVelocity writing face values into coupled patches.
+#
+# THE ARMS. SL_CLIP [false, true] at clipRegion outsideBand and clipKeepExtrema true, np 1.
+#   false -- the serial baseline.
+#   true  -- the serial candidate. Compare against the FOUR-RANK candidate of the companion
+#            study, arm true / outsideBand.
+#
+# PRE-REGISTERED READ-OUT at step 458:
+#   PASS   serial and four-rank agree on meanMagUPrime, l2MagUPrime, phaseVolumeRelError and
+#          zeroSetRadialL2 to the tolerance the uniform-versus-refined equivalence already
+#          carries, AND the cumulative clip counters agree in the number of cell-steps bounded.
+#          The counter is the sharper test: a decomposition-dependent mask changes WHICH cells
+#          are eligible, and that shows in the count before it shows in a norm.
+#   FALSIFIED IF the counts differ. Then the mask is decomposition-dependent and the seam
+#          handling is wrong, whatever the norms say.
+#
+# A serial run of 150 362 cells over 458 steps is slower than the four-rank arm but it is the
+# only way to have a mask with NO processor boundaries at all.
+#
+# Report L1 and L2, never L_inf. Report volume AND shape together.
+#
+study_name: polyDroplet3Drefined_clipRegionGateSerial
+case: stationaryDroplet3D
+mesh: polyRefined
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  SL_CLIP: ["false", "true"]
+  SL_CLIP_REGION: ["outsideBand"]
+  SL_CLIP_KEEP_EXTREMA: ["true"]
+  DOMAIN_LENGTH: [0.006]
+  MAX_CELL_SIZE: [2.0e-4]
+  REFINE_LEVELS: [1]
+  REFINE_BAND_CELLS: [6]
+  N_CELLS: [84]
+  REFINE_ALLOW_PIN_MISMATCH: ["true"]
+  END_TIME: [0.003]
+  WRITE_INTERVAL: [0.003]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: ""
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

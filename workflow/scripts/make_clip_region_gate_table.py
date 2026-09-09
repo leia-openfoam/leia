@@ -37,6 +37,7 @@ Usage:  python3 workflow/scripts/make_clip_region_gate_table.py <study> [--root 
 import argparse
 import csv
 import glob
+import hashlib
 import json
 import os
 import re
@@ -92,8 +93,28 @@ def load_arms(root, study):
             "rows": rows,
             "nsteps": len(rows),
             "radius": _f(tokens.get("DROPLET_RADIUS"), 1.0),
+            "mesh": mesh_digest(d),
         }
     return arms
+
+
+def mesh_digest(arm_dir):
+    """Hash of constant/polyMesh/points, or None when it is absent.
+
+    A bit-identity criterion is only meaningful when the arms SHARE a mesh. blockMesh
+    is deterministic, so hexahedral arms do. cfMesh is NOT bit-reproducible and the
+    workflow rebuilds the mesh per arm, so polyhedral arms each get their own -- and
+    then a byte difference in the metrics measures the mesher, not the tokens. This
+    hash is what separates the two readings.
+    """
+    path = os.path.join(arm_dir, "constant", "polyMesh", "points")
+    if not os.path.isfile(path):
+        return None
+    h = hashlib.md5()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def clip_activity(arm_dir):
@@ -133,9 +154,14 @@ def main():
     if not arms:
         sys.exit(f"no arms with a metrics CSV under studies/{args.study}")
 
-    base_key = ("false", "all", "false")
-    if base_key not in arms:
-        sys.exit("the baseline arm (SL_CLIP false, SL_CLIP_REGION all) is missing")
+    # The baseline is ANY clip-off arm: the region and the extremum exemption are read
+    # only when the clip is on, so every clip-off arm must be bit-identical (which is
+    # criterion 1 below). Prefer region "all" for a stable column order; a study that
+    # holds one of the two tokens fixed is then read without editing this script.
+    off_keys = sorted(k for k in arms if k[0] == "false")
+    if not off_keys:
+        sys.exit("no clip-off arm: there is nothing to compare the clip against")
+    base_key = next((k for k in off_keys if k[1] == "all"), off_keys[0])
     base = arms[base_key]
     radius = base["radius"]
 
@@ -160,7 +186,7 @@ def main():
 
     # ---- 1. token inertness: every clip-off arm must agree bitwise -------
     verdicts = []
-    off = [k for k in arms if k[0] == "false"]
+    off = off_keys
     with open(base["csv"], "rb") as fh:
         ref = fh.read()
     diffs = []
@@ -170,14 +196,34 @@ def main():
         with open(arms[k]["csv"], "rb") as fh:
             if fh.read() != ref:
                 diffs.append(k)
-    if len(off) > 1:
-        ok = not diffs
-        print(f"  1. token inertness   {len(off)} clip-off arms: "
-              f"{'ALL BIT-IDENTICAL -- PASS' if ok else 'DIFFER -- FAIL ' + str(diffs)}")
-        verdicts.append(("token inertness", ok))
-    else:
+    shared_mesh = len({arms[k]["mesh"] for k in off}) == 1 and arms[base_key]["mesh"]
+    if len(off) < 2:
         print("  1. token inertness   only one clip-off arm -- NOT TESTED")
         verdicts.append(("token inertness", None))
+    elif not diffs:
+        print(f"  1. token inertness   {len(off)} clip-off arms: ALL BIT-IDENTICAL -- PASS")
+        verdicts.append(("token inertness", True))
+    elif not shared_mesh:
+        # Each arm built its own mesh, so a byte difference measures the MESHER, not the
+        # tokens. cfMesh is not bit-reproducible. Report the largest relative difference
+        # on the primary metrics instead, and leave the criterion untested.
+        worst, worst_metric = 0.0, "-"
+        for col, label, norm in METRICS:
+            x = _f(arms[base_key]["rows"][-1].get(col))
+            for k in diffs:
+                y = _f(arms[k]["rows"][-1].get(col))
+                r = rel(y, x)
+                if r is not None and abs(r) > worst:
+                    worst, worst_metric = abs(r), label
+        print(f"  1. token inertness   NOT TESTABLE -- the clip-off arms have DIFFERENT"
+              f" MESHES (cfMesh is not bit-reproducible and the workflow rebuilds per arm)."
+              f" Largest relative difference at the last step: {worst:.3e} on {worst_metric}."
+              f" Test bit-identity on a blockMesh study instead.")
+        verdicts.append(("token inertness", None))
+    else:
+        print(f"  1. token inertness   {len(off)} clip-off arms share a mesh but DIFFER"
+              f" -- FAIL {diffs}")
+        verdicts.append(("token inertness", False))
 
     # ---- 2 & 3. the metric table at the last common step ----------------
     print()
@@ -211,16 +257,17 @@ def main():
 
     # ---- the pre-registered verdicts ------------------------------------
     print()
-    for key, name, want_move in (
-        (("true", "all", "false"), "2. control sees the damage    (all, keep=false)", True),
-        (("true", "outsideBand", "false"), "3. control reproduces it (bnd, keep=false)", True),
-        (("true", "all", "true"), "4. extremum exemption alone   (all, keep=true) ", False),
-        (("true", "outsideBand", "true"), "5. THE CANDIDATE          (bnd, keep=true) ", False),
-    ):
-        if key not in complete:
-            print(f"  {name}   arm {key} incomplete or absent -- NOT TESTED")
-            verdicts.append((name, None))
-            continue
+    # Arms with keepExtrema false are CONTROLS and must MOVE the metrics (they flatten the
+    # level set's own extrema); arms with it true are candidates and must NOT move them.
+    checks = []
+    for key in sorted(k for k in complete if k[0] == "true"):
+        region = "bnd" if key[1] == "outsideBand" else "all"
+        if key[2] == "false":
+            checks.append((key, f"control, must move   ({region}, keep=false)", True))
+        else:
+            checks.append((key, f"candidate, must not  ({region}, keep=true) ", False))
+    for i, (key, name, want_move) in enumerate(checks, start=2):
+        name = f"{i}. {name}"
         worst, worst_metric = 0.0, "-"
         for row in table:
             r = row.get(f"{key[0]}/{key[1]}/{key[2]}_rel")
@@ -243,7 +290,10 @@ def main():
     elif any(v is False for _, v in verdicts):
         print("  GATE: FAIL -- see the failing criterion above.")
     else:
-        print("  GATE: UNDECIDED -- an arm has not landed. Do not read a verdict.")
+        untested = [n for n, v in verdicts if v is None]
+        print(f"  GATE: PARTIAL -- every criterion that could be tested PASSED;"
+              f" not tested here: {', '.join(untested)}."
+              f" Do not read the untested criterion as a pass.")
 
     if args.out:
         os.makedirs(args.out, exist_ok=True)
