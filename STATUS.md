@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-09 (RETRACTED: the clip's interface damage is not the narrow band, it is the level set's own extrema. The classical extremum exemption cuts it 30x, from +30.4 % to +1.03 % volume error, and the clip's activity from 600+ cell-steps to 3. G4 is now the critical path and it can falsify the approach).
+Last updated: 2026-09-09 (G4 FALSIFIED the candidate: the quasi-monotone bound and the extremum exemption are in direct conflict. Without the exemption the clip removes the polyhedral defect and costs +30.4 % volume error on hex; with it the interface is clean at +1.03 % and the defect returns at step 506. 59 % of the cells the clip must bound on polyhedra are themselves stencil extrema, so no better extremum test can separate them -- SCALE can, and that is the next measurement).
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -2206,6 +2206,83 @@ Popinet's units. A fixed threshold against them reads every SI run as clean, whi
 first pass over this sweep misread all three arms as passing. Divide by `DROPLET_RADIUS`
 before any threshold, any curated table and any comparison across unit systems. The committed
 curation scripts use relative gates or divide by R already, so none of them carries the defect.
+
+### G4 FALSIFIES THE CANDIDATE: the bound and the extremum exemption are in direct conflict (2026-09-09)
+
+**The gate ran and its pre-registered falsifier occurred.** `popinet3D_poly_sigma0_clipGate`,
+four arms, np 32, all COMPLETED at 650 steps on the polyhedral mesh, sigma = 0 so only the
+transport is under test. Every arm ran the `curvature-v2512` binary (the `Exec` line is
+checked). Job ids 54506624-27 and 54506640-43, in `.my_jobs`.
+
+| arm | clip / keepExtrema | failure step | failure time [s] | zeroSet/R at T | volume err at T |
+|---|---|---|---|---|---|
+| 00000 | false / false | **527** | 4.8771e-03 | 3.4268e-01 | 1.0112e-04 |
+| 00001 | false / true | **527** | 4.8771e-03 | 3.4268e-01 | 1.0112e-04 |
+| 00002 | true / false | **NONE** | -- | 8.9732e-04 | 3.9322e-06 |
+| 00003 | true / true | **506** | 4.6831e-03 | 1.2678e-01 | 2.2880e-05 |
+
+Failure = the first step at which `zeroSetRadialL2/DROPLET_RADIUS` exceeds 1e-3, the fake zero
+set in the far field.
+
+**The controls hold, so the verdict is readable.** Arm 00000 reproduces the recorded failure
+at step 528 to one step, which also proves the amplification diagnostic and the whole clip
+code bit-inert on a POLYHEDRAL mesh. Arms 00000 and 00001 are BIT-IDENTICAL, so
+`clipKeepExtrema` is unread when the clip is off. Arm 00002 re-establishes in SI that the
+global clip removes the defect: no failure in 650 steps, the zero-set error suppressed by a
+factor 380 and the volume error by 26.
+
+**And the candidate fails at essentially the same step as no clip at all.** 506 against 527 is
+4 %, inside the 5-38 % scatter this campaign documents for genuine instabilities. The extremum
+exemption returns the growth the bound removed.
+
+**Why, and it is not repairable by a better extremum test.** The exemption withheld 59.2 % of
+the clip's firings on this mesh -- 2 680 917 cell-steps against 6 578 187 over 1950 corrector
+calls. So **59 % of the cells the clip must bound on a polyhedral mesh ARE THEMSELVES stencil
+extrema of psi.** That is the mechanism stated in the gate's own falsifier text: a growing
+checkerboard has extrema at its own peaks, and any rule that exempts "a cell that is its
+stencil's extremum" hands the defect exactly the cells it needs to grow in. The spurious
+extremum and the genuine one are not separated by BEING an extremum.
+
+The two requirements are therefore in direct conflict under this formulation:
+
+| | hexahedral interface | polyhedral far field |
+|---|---|---|
+| clip, no exemption | +30.4 % volume error | defect REMOVED |
+| clip + exemption | +1.03 % volume error | defect RETURNS at step 506 |
+
+**RETRACTION of my own next step.** The repair I proposed and the author agreed to -- exempt a
+cell whose own quadratic has a stationary point INSIDE the cell -- is now doubtful for a
+measured reason, and it should not be built as stated. A checkerboard peak's own fit also has
+a stationary point inside its cell, so that test would very likely withhold the same 59 % and
+fail G4 the same way. The stationary-point test is a better DETECTOR of an extremum; the
+measurement says the problem is not detecting extrema.
+
+**What actually separates them is SCALE, and that is where to look next.** The level set's
+genuine extrema are the medial axis of the signed distance -- the apex of the distance cone at
+the droplet centre, the box corner farthest from the interface. They are wide: the apex sits
+12.8 cells from the interface and the curvature of psi there is of order 1/R. A spurious
+extremum is one cell wide, wavelength 2h. Two properties follow that a threshold-free rule
+could use, and neither is tested yet:
+- At a genuine extremum of a signed distance `|grad psi|` falls toward 0, because the field is
+  smooth and stationary there. At a checkerboard peak `|grad psi|` is of order 1 or larger,
+  because the oscillation steepens the gradient. `|grad psi| = 1` is the normalisation the
+  signed distance already carries, so this is a statement about a dimensionless number, not a
+  tuned length.
+- A genuine extremum survives widening the stencil by one layer; a mesh-scale oscillation does
+  not. The layer count is discrete geometry, not a fitted coefficient.
+
+**The other honest option, and it must be stated.** Arm 00002 shows the global clip works on
+polyhedra, and the hexahedral firing probe shows its whole cost on hex comes from SIX cells.
+So a rule that names those six cells correctly would satisfy both requirements at once. The
+above two properties are candidates for naming them. Until one is measured, the state is: the
+clip removes the polyhedral defect and costs +30.4 % volume error on the hexahedral
+translating droplet, and no formulation yet does both.
+
+One caveat on arm 00002 that must not be lost: its zero-set error is still GROWING slowly --
+4.46e-04 at step 1, 7.38e-04 at 500, 8.97e-04 at 649 -- and 8.97e-04 sits just below the 1e-3
+threshold. The global clip suppresses the growth by a factor 380; it does not stop it. A longer
+horizon may still cross. That is a measurement to make before the clip is called a fix, and it
+is cheap: extend END_TIME on arm 00002 alone.
 
 ### RETRACTED AND REPLACED: the clip's damage is not the narrow band, it is the level set's own extrema (2026-09-09)
 

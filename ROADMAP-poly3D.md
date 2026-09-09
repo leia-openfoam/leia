@@ -97,15 +97,8 @@ pushes it further off. Three cell-steps of clipping in the first steps then ampl
 volume error by step 1562: identical to eleven digits through step 100, first byte difference
 at step 20, then growth.
 
-Two candidate repairs, neither started:
-1. **A coefficient-free apex detector from the fit itself**: exempt a cell whose own quadratic
-   has a stationary point INSIDE the cell. The gradient and Hessian already exist (the
-   curvature path computes them), the test is "is the stationary point within the cell", and
-   the cell's own size is geometry, not a tuned number. Works in 2D and 3D, compact stencil.
-2. Accept +1 % on hex and record it. Not acceptable under requirement 1 as written.
-
-**Do not build either until G4 has run.** A growing checkerboard has extrema at its own peaks,
-so the exemption may hand the polyhedral defect exactly the cells it needs.
+G4 has now settled what to do about this residual: nothing, until the conflict in section 2a
+is resolved. The apex detector proposed here is retracted as stated — see 2a.
 
 ### One diagnosis that was tested and did NOT hold
 
@@ -136,6 +129,63 @@ create a new extremum, because the update is then a convex combination of the st
 The clip enforces that property where the fit does not have it — and the exemption keeps it
 from destroying the extrema the level set genuinely has.
 
+## 2a. G4 FAILED: the bound and the exemption are in direct conflict (2026-09-09)
+
+`popinet3D_poly_sigma0_clipGate`, four arms, np 32, all COMPLETED at 650 steps, sigma = 0 so
+only the transport is under test. Every arm ran the `curvature-v2512` binary.
+
+| arm | clip / keepExtrema | failure step | zeroSet/R at T | volume err at T |
+|---|---|---|---|---|
+| 00000 | false / false | **527** | 3.4268e-01 | 1.0112e-04 |
+| 00001 | false / true | **527** | 3.4268e-01 | 1.0112e-04 |
+| 00002 | true / false | **NONE** | 8.9732e-04 | 3.9322e-06 |
+| 00003 | true / true | **506** | 1.2678e-01 | 2.2880e-05 |
+
+The controls hold: arm 00000 reproduces the recorded failure at step 528 to one step (so the
+clip code is bit-inert on a polyhedral mesh too), arms 00000 and 00001 are bit-identical, and
+arm 00002 re-establishes in SI that the global clip removes the defect.
+
+**The candidate fails at essentially the same step as no clip at all** — 506 against 527 is
+4 %, inside the 5-38 % scatter this campaign documents for genuine instabilities.
+
+**Why, and it is not repairable by a better extremum test.** The exemption withheld 59.2 % of
+the clip's firings on this mesh (2 680 917 cell-steps against 6 578 187 over 1950 corrector
+calls). So **59 % of the cells the clip must bound on a polyhedral mesh are themselves stencil
+extrema of psi.** A growing checkerboard has extrema at its own peaks; any rule that exempts
+"a cell that is its stencil's extremum" hands the defect exactly the cells it needs.
+
+| | hexahedral interface | polyhedral far field |
+|---|---|---|
+| clip, no exemption | +30.4 % volume error | defect REMOVED |
+| clip + exemption | +1.03 % volume error | defect RETURNS at step 506 |
+
+**RETRACTED: the apex detector as proposed.** "Exempt a cell whose own quadratic has a
+stationary point inside the cell" would very likely withhold the same 59 % and fail G4 the
+same way, because a checkerboard peak's fit also has a stationary point inside its cell. It is
+a better DETECTOR of an extremum, and the measurement says detecting extrema is not the problem.
+
+**What separates them is SCALE, and that is the next measurement.** The genuine extrema are the
+medial axis of the signed distance — the apex of the distance cone, the far box corner. They
+are WIDE: the apex sits 12.8 cells from the interface and the curvature of psi there is of
+order 1/R. A spurious extremum is one cell wide, wavelength 2h. Two threshold-free properties
+follow, neither tested:
+
+1. **`|grad psi|` falls toward 0 at a genuine extremum** of a signed distance, because the
+   field is smooth and stationary there; at a checkerboard peak it is of order 1 or larger,
+   because the oscillation steepens the gradient. `|grad psi| = 1` is the normalisation the
+   signed distance already carries, so this is a dimensionless statement, not a tuned length.
+2. **A genuine extremum survives widening the stencil by one layer**; a mesh-scale oscillation
+   does not. A layer count is discrete geometry, not a fitted coefficient.
+
+**Also worth naming**: the hexahedral firing probe found the clip's WHOLE cost on hex in SIX
+cells. A rule that names those six correctly satisfies both requirements at once, and the two
+properties above are candidates for naming them.
+
+**A caveat on arm 00002 that must not be lost.** Its zero-set error is still GROWING slowly —
+4.46e-04 at step 1, 7.38e-04 at 500, 8.97e-04 at 649 — and 8.97e-04 sits just below the 1e-3
+threshold. The global clip suppresses the growth by a factor 380; it does not stop it. Extend
+END_TIME on that arm alone before the clip is called a fix. That is cheap.
+
 ## 3. The gate ladder for the fix, cheapest first
 
 | # | gate | command / config | pass criterion | state 2026-09-09 |
@@ -144,14 +194,13 @@ from destroying the extrema the level set genuinely has.
 | G1 | inertness, 2D hex | `config/popinet2D_La12000_N64.yaml` | metric CSV **bit-identical** to the pre-change run | **PASS** — 1563 steps, bit-identical |
 | G2 | inertness, 3D hex | `config/popinet3D_La12000_hex_smoke4.yaml` (R/h 12.8) | metric CSV bit-identical | **PASS** — 78 steps, bit-identical |
 | G3 | 4-rank parallel gate | `config/polyDroplet3Drefined_clipRegionGate.yaml`, `mpirun -np 4` | serial and np4 agree; see CLAUDE.md | code path exercised on 4 ranks; serial companion open |
-| G4 | the defect is removed | `config/popinet3D_poly_sigma0_clipGate.yaml`, sigma = 0 | no failure to END_TIME; `zeroSetRadialL2/R` stays below 1e-3 | **NOT RUN — the decisive gate, needs the cluster** |
-| G5 | inertness at a MOVING interface | `config/popinet2D_clipRegionGate.yaml` (hex), `config/polyDroplet3Drefined_clipRegionGate.yaml` (poly) | volume error unchanged to 1 % | hex **+1.03 %**, at the threshold; poly open |
+| G4 | the defect is removed | `config/popinet3D_poly_sigma0_clipGate.yaml`, sigma = 0 | no failure to END_TIME; `zeroSetRadialL2/R` stays below 1e-3 | **FAILED — the candidate fails at step 506, the control at 527** |
+| G5 | inertness at a MOVING interface | `config/popinet2D_clipRegionGate.yaml` (hex), `config/polyDroplet3Drefined_clipRegionGate.yaml` (poly) | volume error unchanged to 1 % | hex **+1.03 %** at the threshold; poly **PASS**, 0 cells bounded in 458 steps |
 | G6 | the coupled polyhedral case runs | `config/popinet3D_La12000_poly_r12p8_mcs0195.yaml` in SI | COMPLETED at 1563 steps | not run |
 | G7 | order is preserved | the poly ladder, section 5 | orders within +-0.3 of the hexahedral ladder | not run |
 
-G1 and G2 gate everything else, and they PASS. **G4 is now the critical path**: it is the only
-gate that can show the clip still does what it exists for, and it is the one the extremum
-exemption can plausibly break. Do not build the apex detector before G4 has run.
+G1 and G2 gate everything else, and they PASS. **G4 RAN AND FAILED**, exactly as its
+pre-registered falsifier said it might. See section 2a.
 
 The baselines for G1 and G2 were re-run at HEAD before any clip code existed, and both came
 back bit-identical to the studies of 2026-09-08 — which also proves commit `7bf52eb`, the
