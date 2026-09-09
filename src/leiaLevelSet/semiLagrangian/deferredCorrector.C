@@ -68,8 +68,16 @@ void Foam::deferredCorrector::correct
 {
     scalarField newPsi(mesh_.nCells());
     label nNonFinite = 0;
+    boolList firedCell(mesh_.nCells(), false);
     scalar deltaRel = 0;
     label nPasses = 0;
+
+    // The clip region is the interface position at t^n, so the mask is built ONCE
+    // from psi^n and held fixed over the passes. Rebuilding it from each iterate
+    // would let a pass move the protected region, and the answer would then depend
+    // on the pass count.
+    boolList clipCell;
+    buildClipMask(psi, recon, clipCell);
 
     for (label it = 0; it < maxIters_; ++it)
     {
@@ -79,7 +87,6 @@ void Foam::deferredCorrector::correct
         // so any gradient it uses is consistent with the reconstructed field.
         recon.update(psi);
         const slReconstruction& R = recon;
-        const bool clip = R.clipToStencilBounds();
 
         if (it == 0)
         {
@@ -87,12 +94,14 @@ void Foam::deferredCorrector::correct
         }
 
         nNonFinite = 0;                      // report the delivered pass's quality
+        firedCell = false;
         scalar deltaMax = 0;
         scalar rangeMax = SMALL;
 
         forAll(feet, c)
         {
-            const scalar v0 = robustEvaluate(R, c, feet[c], clip, nNonFinite);
+            const scalar v0 =
+                robustEvaluate(R, c, feet[c], clipCell[c], nNonFinite, firedCell);
             const scalar vOld = psi[c];
             const scalar v = vOld + relax_*(v0 - vOld);   // under-relaxed update
             scalar lo, hi;
@@ -118,6 +127,7 @@ void Foam::deferredCorrector::correct
     }
 
     warnNonFinite(nNonFinite);
+    reportClipActivity(recon, clipCell, firedCell);
 
     if (mesh_.time().writeTime())
     {

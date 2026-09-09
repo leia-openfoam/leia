@@ -1,0 +1,138 @@
+# IS THE BAND-AWARE CLIP INERT AT A MOVING INTERFACE? (G5, 2026-09-09)
+#
+# THE DEFECT THIS SERVES. The semi-Lagrangian quadratic fit amplifies the level set in
+# cfMesh's small one-sided cells. The far field grows a false zero set and the run then
+# fails. The amplification bound of the fit (slFitAmplification, workflow/README.md "The
+# amplification bound of the fit") reaches Lambda = 1.2608 on the polyhedral mesh against
+# 1.0527 on hex, and the whole polyhedral excess sits in cells of 0.32-0.33 h. The dt sweep
+# (config/popinet3D_poly_sigma0_dtSweep.yaml) proved a smaller step cannot repair it, so the
+# fix must change the update operator.
+#
+# THE CANDIDATE. The quasi-monotone clip of the reconstructed value to the stencil bounds,
+# withheld from the sign-change narrow band. The clip carries NO coefficient: it changes a
+# value only when the fit puts it outside the stencil range, which is exactly when the update
+# creates a new extremum. Lambda = 1 means the update is a convex combination of the stencil
+# values, and the clip enforces that property where the fit does not have it.
+#
+# WHY THE BAND MUST BE EXCLUDED. A clip cannot preserve an extremum, and the fit AT the
+# interface must be free to overshoot its stencil bounds. MEASURED 2026-09-08 on this exact
+# case (N = 64, hex): the GLOBAL clip moves L1|u'| -6 %, L2|u'| -5 %, the volume error +30 %,
+# the shape error +5 % and the centroid error +12 %. A global clip is therefore a method
+# change, not a switch to flip.
+#
+# RESULT OF THE FIRST RUN, AND WHY THE MATRIX GREW (2026-09-09). The first version of this
+# gate crossed SL_CLIP with SL_CLIP_REGION only, and it FAILED in an instructive way: the
+# band-aware arm moved every interface metric by EXACTLY what the global clip moved it
+# (volume +30.4 %, centroid +12.5 %, shape +4.9 %, L1|u'| +8.9 %, to every printed digit).
+# The mask was correct -- 8048 cells eligible against 8192, so 144 band cells were withheld --
+# and the clip still fired in the same 44 cells, constantly, at every write.
+#
+# config/popinet2D_clipFiringProbe.yaml then LOCATED those cells, and the answer was not the
+# band at all. This mesh has exactly SIX cells where psi is the extremum of its own stencil:
+# the four box corners (local maxima of the distance field) and the two cells at the droplet
+# centre (the apex of the distance cone, a local minimum). ALL FOUR cells the clip fired in
+# were among those six. Nothing else fired, at any step.
+#
+# A quasi-monotone bound cannot represent an extremum. Where psi_c is already the stencil
+# minimum, lo IS psi_c, so every reconstructed value below it is pulled back up and the
+# extremum is flattened -- every step, for the whole run. The fit undershoots at the cone
+# apex because a smooth quadratic cannot follow a non-differentiable minimum. That is why the
+# clip fires on a UNIFORM HEXAHEDRAL mesh, and why excluding the narrow band changed nothing:
+# every firing was already outside it.
+#
+# So there are TWO orthogonal rules, and this matrix separates them:
+#   SL_CLIP_REGION       all | outsideBand -- WHERE the clip may act.
+#   SL_CLIP_KEEP_EXTREMA false | true      -- whether a cell that is ALREADY its stencil's
+#                                             extremum is exempt. The classical exemption of
+#                                             a monotonicity-preserving limiter at a smooth
+#                                             extremum. No coefficient: the test is
+#                                             psi_c == lo or psi_c == hi, exact in floating
+#                                             point because lo and hi are taken over a
+#                                             stencil that contains psi_c.
+#
+# THE ARMS. The cross product of SL_CLIP [false, true], SL_CLIP_REGION [all, outsideBand] and
+# SL_CLIP_KEEP_EXTREMA [false, true] -- eight arms on one mesh at one time step. Read the arm
+# identity from each case_params.json, never from the arm index.
+#   The FOUR clip-off arms must all be BIT-IDENTICAL to each other. That is the token
+#   inertness control, and it validates the matrix: a difference means a new token is not
+#   inert and no other row may be believed.
+#   true / all         / false  -- CONTROL. The global clip, damage already measured.
+#   true / outsideBand / false  -- CONTROL. The first version of this gate; it must reproduce
+#                                  the global clip's numbers, which is how the extremum
+#                                  mechanism was found.
+#   true / all         / true   -- isolates the extremum exemption ALONE. If this arm is
+#                                  inert, the band exclusion is not what fixes the interface.
+#   true / outsideBand / true   -- THE CANDIDATE, both rules together.
+#
+# PRE-REGISTERED READ-OUT, at the full horizon t = T_U (1563 steps):
+#   PASS   the candidate matches the baseline to within 1 % on phaseVolumeRelError,
+#          zeroSetRadialL2, centroidError, l2MagUPrime and meanMagUPrime; AND the four
+#          clip-off arms are bit-identical to each other; AND the two keepExtrema false arms
+#          reproduce the measured global-clip damage, which shows the metrics respond to a
+#          clip at the interface.
+#   FALSIFIED IF the candidate still moves an interface metric by more than 1 %. Then some
+#          firing is neither a stencil extremum nor a band cell, and the probe must locate it
+#          again before any further rule is written.
+#   THE SHARPEST ROW is true / all / true. If the extremum exemption alone is inert, then the
+#          band exclusion carries no measured benefit on hex and its value must be argued on
+#          the polyhedral mesh (config/polyDroplet3Drefined_clipRegionGate.yaml) or dropped.
+#
+# NOTE ON WHAT THIS GATE CANNOT SHOW. This is a HEXAHEDRAL case. It measures inertness only.
+# The candidate's effect on the defect is G4 (config/popinet3D_poly_sigma0_dtSweep.yaml, the
+# first arm with the clip on). Report L1 and L2, never L_inf.
+#
+# NORMALISE BEFORE YOU THRESHOLD. zeroSetRadialL2 and centroidError are absolute lengths in
+# metres. Divide by DROPLET_RADIUS (5e-4 m) before comparing against any fixed number.
+#
+# SI UNITS. This is Popinet's translating droplet at his own dimensionless groups: D = 1 mm,
+# rho = 1000 kg/m^3, nu = 1e-6 m^2/s in both phases, sigma = 0.012 N/m, U = 0.0692820323 m/s,
+# box 5 x 2.5 mm, T_U = D/U = 0.01443375673 s, so La = 12000, We = 0.4 and Re = 69.28. The
+# axes below are those of config/popinet2D_La12000_N64.yaml, unchanged, so arm 1 must
+# reproduce that study exactly. Verify with:
+#     python3 workflow/scripts/popinet_si.py check <this file>
+#
+study_name: popinet2D_clipRegionGate
+case: popinetTranslating2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 720
+axes_override:
+  SL_CLIP: ["false", "true"]
+  SL_CLIP_REGION: ["all", "outsideBand"]
+  SL_CLIP_KEEP_EXTREMA: ["false", "true"]
+  N_CELLS: [64]
+  POPINET_NX: [128]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [0.0025]
+  CAPILLARY_REF_LENGTH: [0.0025]
+  CAPILLARY_DT_COEFF: [0.004729265146]
+  DROPLET_RADIUS: [0.0005]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [0.0692820323]
+  SIGMA: [0.012]
+  POPINET_RHO: [1000]
+  POPINET_NU: [1.0e-06]
+  END_TIME: [0.01443375673]
+  WRITE_INTERVAL: [0.01443375673]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

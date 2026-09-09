@@ -82,17 +82,57 @@ protected:
     //- Copy of the semiLagrangian sub-dict (models read their own controls).
     dictionary dict_;
 
+    //- Cumulative clip activity. A write-time SAMPLE of the per-step count is not
+    //  enough and has already misled once: the inflowOnly gate reported 0 bounded
+    //  cells at every write while its metric CSV left the baseline at step 20. The
+    //  clip fires in bursts, so the total and the first firing are what matter.
+    mutable label nClipFiredTotal_ = 0;
+    mutable label nClipStepsFired_ = 0;
+    mutable label firstFireIndex_ = -1;
+
+    //- Cells that have EVER been bounded, written as slClipFiredEver. The per-step
+    //  field alone cannot find a firing that happened between two write times, and
+    //  that is exactly the case that matters: with the extremum exemption the clip
+    //  fires 3 cell-steps in the first few steps of a 1563-step run and never
+    //  again, yet that one-off perturbation grows into a 1 % volume error.
+    mutable boolList firedEver_;
+
     //- Reconstruct at a foot with the advection-level robustness safeguards:
     //  non-finite -> stencil mid (counts nNonFinite); optional tight monotone
-    //  clip to the stencil bounds; else an always-on generous value cap
-    //  (mid +- 10*range) that only fires on runaway growth.
+    //  clip to the stencil bounds (counts nClipped when it actually bounds the
+    //  value); else an always-on generous value cap (mid +- 10*range) that only
+    //  fires on runaway growth.
     scalar robustEvaluate
     (
         const slReconstruction& recon,
         const label c,
         const point& foot,
         const bool clip,
-        label& nNonFinite
+        label& nNonFinite,
+        boolList& firedCell
+    ) const;
+
+    //- Per-cell mask of the cells where the quasi-monotone clip may act, built
+    //  from psi^n once per step. Empty when the clip is off. The criterion is
+    //  stated per cell over face neighbours, so it is compact-stencil,
+    //  mesh-agnostic and decomposition-independent -- see slCorrector.C.
+    void buildClipMask
+    (
+        const volScalarField& psi,
+        const slReconstruction& recon,
+        boolList& clipCell
+    ) const;
+
+    //- Accumulate the clip's activity EVERY step, and at write time report the
+    //  per-step count, the cumulative total, the number of steps that fired and
+    //  the first step that fired; then write slClipEligible / slClipFired so the
+    //  firing cells can be LOCATED. A count says the clip acted; only the field
+    //  says where, and where is what decides whether the region rule is right.
+    void reportClipActivity
+    (
+        const slReconstruction& recon,
+        const boolList& clipCell,
+        const boolList& firedCell
     ) const;
 
     //- Operational CFL <= 1 check: warn if any foot leaves its point-neighbour

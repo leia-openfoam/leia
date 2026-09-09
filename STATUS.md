@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-09 (the dt sweep CONFIRMS that the polyhedral failure is not a time-step effect: the failure time is fixed while the step falls by a factor 4).
+Last updated: 2026-09-09 (RETRACTED: the clip's interface damage is not the narrow band, it is the level set's own extrema. The classical extremum exemption cuts it 30x, from +30.4 % to +1.03 % volume error, and the clip's activity from 600+ cell-steps to 3. G4 is now the critical path and it can falsify the approach).
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -2206,6 +2206,114 @@ Popinet's units. A fixed threshold against them reads every SI run as clean, whi
 first pass over this sweep misread all three arms as passing. Divide by `DROPLET_RADIUS`
 before any threshold, any curated table and any comparison across unit systems. The committed
 curation scripts use relative gates or divide by R already, so none of them carries the defect.
+
+### RETRACTED AND REPLACED: the clip's damage is not the narrow band, it is the level set's own extrema (2026-09-09)
+
+**What was believed.** The quasi-monotone clip stops the polyhedral far-field failure but is
+not inert at the interface: on Popinet's 2D hexahedral translating droplet at N = 64 it costs
++30 % volume error, +12 % centroid and +5 % shape. The stated remedy was a BAND-AWARE clip --
+apply it outside the sign-change narrow band only, where the level set carries no interface,
+so the interface metrics are untouched by construction. That is section 2 of
+[ROADMAP-poly3D.md](ROADMAP-poly3D.md), requirement 3, and it is now RETRACTED.
+
+**What the measurement says.** The band-aware clip is implemented, runtime-selectable and
+gated (`clipRegion outsideBand`, token `SL_CLIP_REGION`). It withholds the clip from 144 band
+cells exactly as designed. It removes NONE of the damage. Every interface metric moved by
+exactly what the global clip moved it, to every printed digit:
+
+| | L1\|u'\| | L2\|u'\| | volume err | shape L2/R | centroid/R | kappa L2 band |
+|---|---|---|---|---|---|---|
+| baseline, clip off | 9.0723e-05 | 2.0419e-04 | 1.2123e-03 | 4.0755e-03 | 4.1908e-03 | 1.7498e+02 |
+| clip, region all | +8.9 % | +3.3 % | +30.4 % | +4.9 % | +12.5 % | -3.1 % |
+| clip, region outsideBand | +8.9 % | +3.3 % | +30.4 % | +4.9 % | +12.5 % | -3.1 % |
+
+**The mechanism, located rather than argued.** The solver now writes `slClipFired`, so the
+firing cells can be found. `config/popinet2D_clipFiringProbe.yaml` did that. The mesh has
+exactly SIX cells where psi is the extremum of its own stencil -- the four box corners, which
+are local maxima of the distance field, and the two cells at the droplet centre, which are the
+apex of the distance cone and a local minimum. EVERY cell the clip fired in was one of those
+six. Nothing else fired, at any step, and the `all` and `outsideBand` arms fired in the same
+cells. The band was never where the damage came from.
+
+A quasi-monotone bound CANNOT represent an extremum. Where psi_c is already the stencil
+minimum, `lo` IS psi_c, so every reconstructed value below it is pulled back up to psi_c and
+the extremum is flattened -- at every step, for the whole run. The fit undershoots at the apex
+because a smooth quadratic cannot follow a non-differentiable minimum. So the clip fires on a
+UNIFORM HEXAHEDRAL mesh, which the roadmap assumed it would not.
+
+**The rule that follows, and it is classical.** Exempt a cell that is ALREADY its stencil's
+extremum: the standard exemption of a monotonicity-preserving limiter at a smooth extremum.
+It carries NO coefficient -- the test is `psi_c == lo` or `psi_c == hi`, exact in floating
+point because lo and hi are taken over a stencil that contains psi_c. A flat stencil is not an
+extremum, so the clip keeps enforcing exactness on a constant field. What stays bounded is the
+SPURIOUS extremum, the one the fit creates in a cell that was not an extremum, which is the
+polyhedral defect the clip exists for.
+
+Measured, same case, same horizon (`config/popinet2D_clipRegionGate.yaml`, 8 arms, all
+COMPLETED at 1563 steps): the exemption cuts the damage by a factor 30 and the clip's activity
+from over 600 cell-steps to THREE.
+
+| | L1\|u'\| | L2\|u'\| | volume err | shape L2/R | centroid/R | kappa L2 band | clip activity |
+|---|---|---|---|---|---|---|---|
+| clip, no exemption | +8.9 % | +3.3 % | +30.4 % | +4.9 % | +12.5 % | -3.1 % | 44 per step |
+| clip + exemption | +0.3 % | +0.2 % | +1.03 % | +0.2 % | +0.4 % | +0.1 % | 3 cell-steps in total |
+
+The band rule and the extremum rule are ORTHOGONAL and the matrix separates them: `all` and
+`outsideBand` are identical in both rows, so on hex the band exclusion removes exactly zero
+firings and earns nothing. Whether it earns its place must be argued on the polyhedral mesh or
+the entry should be dropped rather than kept as a second knob.
+
+**Inertness, gated.** All four clip-off arms of the 8-arm matrix are bit-identical to each
+other, so both new tokens are inert. The G1 and G2 baselines were re-run at HEAD BEFORE any
+clip code existed and came back bit-identical to the studies of 2026-09-08 -- which also
+proves commit `7bf52eb`, the amplification diagnostic, bit-inert at its default
+`fitProbeDisplacement (0 0 0)`. G0 shows the rendered case differing by the two token lines
+only.
+
+**The residual, characterised exactly, and NOT yet fixed.** The candidate is not bit-identical
+on hex, so the roadmap's requirement 1 is not met. The residual is ONE cell: the droplet-centre
+apex. The apex minimum is shared by a symmetric PAIR of cells, equal to the last digit at
+t = 0. The exact equality test holds while that tie is exact and fails the moment a
+rounding-level perturbation breaks it -- the survivor sits at
+`(psi_c - lo)/(hi - lo) = 0.004`, a hair off the minimum, so it is clipped, and being clipped
+pushes it further off. THREE cell-steps of clipping in the first steps then amplify to +1.03 %
+volume error by step 1562: the candidate is identical to the baseline to ELEVEN digits through
+step 100, its first byte difference is at step 20, and it grows from there. That amplification
+of a far-field perturbation is the campaign's own central finding, arriving from a new
+direction.
+
+**A diagnosis that was tested and did NOT hold.** The full-horizon probe found the
+pre-exemption survivors in a strip at `i = 126`, the single cell layer just inside the OUTLET,
+every one a near-minimum at `(psi_c - lo)/(hi - lo) ~ 0.006`. `slReconstruction.H` records
+that `stencilBoundaryFaces include` makes the outlet carry a stationary alternating error, and
+`inflowOnly` is the gated remedy for it. It works on the FIRINGS and not on the DAMAGE:
+`config/popinet2D_clipStencilGate.yaml` removed those eighteen firings -- the cumulative
+counter goes to zero after the first steps -- and left the volume error at +1.027 %, against
++1.0 % with `include`. The `inflowOnly` baseline's own final metrics match the `include`
+baseline to nine digits. So the outlet layer is not the residual, and that hypothesis is
+retracted too.
+
+**A process lesson, and it cost an hour.** A write-time SAMPLE of the per-step firing count is
+not evidence. The `inflowOnly` arm reported 0 bounded cells at every one of its three write
+times while its metric CSV had already left the baseline at step 20 -- the clip fires in a
+burst in the first steps and then stops, and every write time sampled the quiet part. The
+solver now accumulates the count every step and prints the total, the number of steps that
+fired and the FIRST step that fired, and it writes `slClipFiredEver` so a firing between two
+write times can still be located. Read the cumulative counter, never the per-step one.
+
+**What is next, in one line: G4, and nothing else.**
+`config/popinet3D_poly_sigma0_clipGate.yaml` asks whether the clip still REMOVES the
+polyhedral far-field failure once the extrema are exempt. It can falsify the whole approach: a
+growing checkerboard has extrema at its own peaks, so the exemption may hand the defect
+exactly the cells it needs to grow in. Four arms, 650 steps, np 32, sigma = 0, at the first dt
+of the sweep whose clip-off control failed at step 528. Do NOT build the apex detector before
+that gate has run.
+
+The apex detector, if G4 passes and requirement 1 still has to be met: exempt a cell whose OWN
+quadratic has a stationary point INSIDE the cell. The gradient and the Hessian already exist
+in the fit (the curvature path computes them), the test is whether the stationary point lies
+within the cell, and the cell's own size is geometry rather than a tuned number. It is
+coefficient-free, per cell, compact-stencil, and it is one implementation for 2D and 3D.
 
 ### The capillary time step on polyhedral meshes -- audited (2026-09-08)
 

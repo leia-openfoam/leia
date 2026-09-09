@@ -1,0 +1,127 @@
+# DOES THE BAND-AWARE CLIP LEAVE THE POLYHEDRAL INTERFACE ALONE, AND IS IT
+# DECOMPOSITION-INDEPENDENT? (G3 + the polyhedral half of G5, 2026-09-09)
+#
+# THE MESH. The statically refined polyhedral stationary droplet: pMesh at MAX_CELL_SIZE
+# 2.0e-4 plus REFINE_LEVELS 1 pass of surface-mesh refinement in a band of 6 fine cells
+# around the psi = 0 iso-surface, giving 150 362 cells against the uniform twin's 572 039.
+# The interface cells sit at 7.937e-5 m in BOTH meshes, identical to seven digits, so the
+# refined mesh measures the same interface at 3.8 times less cost. That is why this rung, not
+# the uniform one, carries the local polyhedral gates. Its equivalence to the uniform mesh at
+# matched h is already DECIDED (STATUS.md, 2026-09-04).
+#
+# WHY THIS GATE EXISTS. The band-aware clip (clipRegion outsideBand) withholds the
+# quasi-monotone clip from the sign-change narrow band. Two properties need measuring on a
+# POLYHEDRAL mesh, and neither one can be measured on hex:
+#
+#   1. INERTNESS AT A POLYHEDRAL INTERFACE. The graded cfMesh polyhedra around the interface
+#      are where the fit is worst conditioned (quadraticPivotTol 0.3 demotes 47622 cells of
+#      the uniform mesh to a linear fit). A clip that fires inside the band here would move
+#      the parasitic velocity, the shape and the volume. The existing clip gate
+#      (config/polyDroplet3D_r13p8_clip.yaml) ran 200 steps of the GLOBAL clip and found nine
+#      metrics identical to seven digits -- but the interface moves 1e-10 per step there, so
+#      it proved inertness for a QUIET interface only. This arm runs 458 steps.
+#   2. DECOMPOSITION INDEPENDENCE. The clip mask is a sign test of psi across each face. On a
+#      processor boundary the far side comes from patchNeighbourField(), so a stale value
+#      would put a cell in the band on one rank count and out of it on another -- silently,
+#      with no error, just a different answer. slCorrector::buildClipMask derives the test
+#      from a SYNCED copy of psi and handles the coupled patches explicitly. The serial arm
+#      below is what proves that, because the four-rank mask has processor boundaries and the
+#      serial mask has none.
+#
+# WHAT THE HEXAHEDRAL GATE ALREADY SETTLED (2026-09-09). On Popinet's 2D hexahedral
+# translating droplet the band exclusion ALONE was worthless: the band-aware clip moved every
+# interface metric by exactly what the global clip moved it (volume +30.4 %, centroid
+# +12.5 %). config/popinet2D_clipFiringProbe.yaml located the firings, and they were all in
+# the SIX cells where psi is the extremum of its own stencil -- the four box corners and the
+# two cells at the droplet centre, the apex of the distance cone. A quasi-monotone bound
+# cannot represent an extremum, so the clip flattened them at every step. Nothing else fired.
+# The second rule follows and it is classical: exempt a cell that is ALREADY its stencil's
+# extremum (SL_CLIP_KEEP_EXTREMA). It carries no coefficient -- the test is psi_c == lo or
+# psi_c == hi, exact because lo and hi are taken over a stencil that contains psi_c.
+#
+# This gate therefore crosses BOTH rules, because a graded polyhedral mesh may need the band
+# exclusion that hex did not: cfMesh grades the cells around the interface, the fit is worst
+# conditioned exactly there, and quadraticPivotTol 0.3 already demotes tens of thousands of
+# cells to a linear fit.
+#
+# THE ARMS. The cross product of SL_CLIP [false, true], SL_CLIP_REGION [all, outsideBand] and
+# SL_CLIP_KEEP_EXTREMA [false, true] on four ranks, 458 steps to t = 0.003. Read the arm
+# identity from case_params.json, never from the arm index.
+#   SL_CLIP_KEEP_EXTREMA is held at true, because the hexahedral gate already characterised
+#   keepExtrema false completely: it flattens the level set's own extrema and costs +30.4 %
+#   volume error. Re-running that here would buy nothing and each arm needs its own cfMesh
+#   build plus a refinement pass. Four arms:
+#   false / all         -- THE BASELINE, the clip off. Must reproduce
+#                          config/polyDroplet3Drefined_r13p8_smoke4.yaml.
+#   false / outsideBand -- CONTROL. Both clip tokens are read only when SL_CLIP is true, so
+#                          this arm must be BIT-IDENTICAL to the baseline.
+#   true  / all         -- the extremum exemption alone, on a graded polyhedral band.
+#   true  / outsideBand -- THE CANDIDATE, both rules.
+# The serial companion is config/polyDroplet3Drefined_clipRegionGateSerial.yaml, which runs
+# the baseline and the candidate on ONE rank.
+#
+# PRE-REGISTERED READ-OUT at step 458:
+#   PASS   the candidate matches the baseline to within 1 % on meanMagUPrime, l2MagUPrime,
+#          phaseVolumeRelError, zeroSetRadialL2, pLaplace and kErrL2Band; AND the four
+#          clip-off arms are bit-identical to each other; AND the serial candidate matches the
+#          four-rank candidate to the tolerance the uniform-versus-refined equivalence carries.
+#   FALSIFIED IF the candidate moves any of those metrics by more than 1 %. Then some firing
+#          on a graded polyhedral mesh is neither a stencil extremum nor a band cell, and the
+#          firing probe must locate it before any further rule is written.
+#   THE ROW THAT DECIDES WHETHER THE BAND RULE SURVIVES is true / all / true against
+#          true / outsideBand / true. If they agree, the band exclusion carries no measured
+#          benefit anywhere and it should be dropped rather than kept as a second knob.
+#   ALSO A FAILURE, of the code rather than the candidate: serial and four-rank disagreeing
+#          beyond that tolerance. The mask would then be decomposition-dependent, which is a
+#          defect even when both runs complete.
+#
+# WATCH THE CLIP'S OWN COUNTER. The solver prints, at every write time,
+#   slCorrector: quasi-monotone clip (clipRegion = ...): N eligible cells, M bounded this step
+# M is how often the fit created a new extremum. M = 0 in arm 4 would mean the gate is
+# vacuous -- the clip never acted, so it can prove nothing about the far field. Record M.
+#
+# N_CELLS PIN. N_CELLS 84 and REFINE_ALLOW_PIN_MISMATCH true, matching
+# config/polyDroplet3Drefined_r13p8_smoke4.yaml exactly, so arm 1 must reproduce that smoke
+# run. The pin is 10 % conservative (the band check suggests 76); that is a property of the
+# baseline and it is identical in all four arms, so it cannot confound the comparison.
+#
+# Report L1 and L2, never L_inf. Report volume AND shape together, never one alone.
+#
+study_name: polyDroplet3Drefined_clipRegionGate
+case: stationaryDroplet3D
+mesh: polyRefined
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  semi-lagrangian-level-set
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  SL_CLIP: ["false", "true"]
+  SL_CLIP_REGION: ["all", "outsideBand"]
+  SL_CLIP_KEEP_EXTREMA: ["true"]
+  DOMAIN_LENGTH: [0.006]
+  MAX_CELL_SIZE: [2.0e-4]
+  REFINE_LEVELS: [1]
+  REFINE_BAND_CELLS: [6]
+  N_CELLS: [84]
+  REFINE_ALLOW_PIN_MISMATCH: ["true"]
+  END_TIME: [0.003]
+  WRITE_INTERVAL: [0.003]
+  SURFACE_TENSION_FORCE: [reconstructedCurvature]
+  CURVATURE_EXTENSION: [cellCentreInverse]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  VOLUME_CORRECTION: [noVolumeCorrection]
+  MOMENTUM_DDT_SCHEME: [backward]
+  RHO_DDT_SCHEME: [backward]
+  MOMENTUM_DIV_SCHEME: [upwind]
+  MASS_FLUX: [rhoLENT]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: [projectedFlux]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: [taylor]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

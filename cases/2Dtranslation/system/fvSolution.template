@@ -379,6 +379,8 @@ levelSet
                                        // to cost convergence order -> off; the always-on
                                        // value cap in the corrector handles overflow.
         clipToStencilBounds @!SL_CLIP!@;  // monotone clip of the reconstructed value to the
+        clipRegion @!SL_CLIP_REGION!@;   // all | outsideBand -- WHERE the clip may act (see default.parameter)
+        clipKeepExtrema @!SL_CLIP_KEEP_EXTREMA!@;   // exempt a cell whose psi is already its stencil's extremum (see default.parameter)
                                        // stencil [min,max]; forbids the overshoot that drives
                                        // the quadraticTaylor steepening instability (not needed
                                        // by the value-fitting reconstructions, which are bounded).

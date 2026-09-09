@@ -235,6 +235,8 @@ levelSet
         // ---- reconstruction safeguards (slReconstruction base; every reconstruction) ----
         limitSlope          false;     // Barth-Jespersen limiter; MEASURED to cost order -> off
         clipToStencilBounds @!SL_CLIP!@;   // tight monotone clip to stencil [min,max];
+        clipRegion @!SL_CLIP_REGION!@;   // all | outsideBand -- WHERE the clip may act (see default.parameter)
+        clipKeepExtrema @!SL_CLIP_KEEP_EXTREMA!@;   // exempt a cell whose psi is already its stencil's extremum (see default.parameter)
                                        // false on hex, true on polyhedra (REQUIRED: bounds a
                                        // near-singular per-cell fit that would else run away)
 

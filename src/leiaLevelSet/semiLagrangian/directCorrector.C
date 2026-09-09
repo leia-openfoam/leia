@@ -59,21 +59,29 @@ void Foam::directCorrector::correct
 {
     recon.update(psi);                       // build the reconstruction from psi^n
     const slReconstruction& R = recon;
-    const bool clip = R.clipToStencilBounds();
+
+    // Per-cell clip permission, from psi^n: the whole mesh for clipRegion all,
+    // the far field only for clipRegion outsideBand, nothing when the clip is
+    // off (the default).
+    boolList clipCell;
+    buildClipMask(psi, R, clipCell);
 
     footRadiusGuard(R, feet);
 
     scalarField newPsi(mesh_.nCells());
     label nNonFinite = 0;
+    boolList firedCell(mesh_.nCells(), false);
     forAll(feet, c)
     {
-        newPsi[c] = robustEvaluate(R, c, feet[c], clip, nNonFinite);
+        newPsi[c] =
+            robustEvaluate(R, c, feet[c], clipCell[c], nNonFinite, firedCell);
     }
 
     psi.primitiveFieldRef() = newPsi;
     psi.correctBoundaryConditions();
 
     warnNonFinite(nNonFinite);
+    reportClipActivity(R, clipCell, firedCell);
 }
 
 // ************************************************************************* //

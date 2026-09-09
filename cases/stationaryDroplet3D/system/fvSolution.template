@@ -485,6 +485,8 @@ levelSet
         CFLmax              0.5;
         limitSlope          false;
         clipToStencilBounds @!SL_CLIP!@;   // quasi-monotone clip of the reconstructed value to the stencil bounds (see default.parameter)
+        clipRegion @!SL_CLIP_REGION!@;   // all | outsideBand -- WHERE the clip may act (see default.parameter)
+        clipKeepExtrema @!SL_CLIP_KEEP_EXTREMA!@;   // exempt a cell whose psi is already its stencil's extremum (see default.parameter)
         curvatureNewtonIters 3;
         // geometric admissibility of the quadratic fit (see default.parameter
         // SL_QUAD_PIVOT_TOL); 0 reproduces the pre-2026-09-05 behaviour

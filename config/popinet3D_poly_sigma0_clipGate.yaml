@@ -1,0 +1,133 @@
+# G4: DOES THE CLIP STILL REMOVE THE POLYHEDRAL FAR-FIELD FAILURE ONCE THE LEVEL SET'S OWN
+# EXTREMA ARE EXEMPT? (2026-09-09)
+#
+# THIS IS THE GATE THAT DECIDES THE WHOLE APPROACH, and it is the one that can falsify it.
+#
+# THE DEFECT. On cfMesh's polyhedral mesh the semi-Lagrangian quadratic fit amplifies the
+# level set in the small one-sided cells. The far field grows a false zero set and the run
+# fails. The sigma = 0 passive-transport control isolates it completely: the velocity is an
+# exactly uniform stream (max|u'| 2e-14 for 1563 steps) and the level set still fails, at
+# step 528 in SI (config/popinet3D_poly_sigma0_dtSweep.yaml, job 54503136). The amplification
+# bound of the fit reaches Lambda = 1.2608 there against 1.0527 on hex, and the dt sweep
+# proved a smaller step cannot repair it: the failure TIME is fixed to 6.5 % across a factor
+# four in the step.
+#
+# THE FIX UNDER TEST. The quasi-monotone clip of the reconstructed value to the stencil
+# bounds, with the level set's own extrema exempt (SL_CLIP_KEEP_EXTREMA). Lambda = 1 means the
+# update is a convex combination of the stencil values and can create no new extremum; the
+# clip enforces that property where the fit does not have it. Neither rule carries a
+# coefficient.
+#
+# WHY THE EXEMPTION MIGHT BREAK THE FIX -- the pre-registered falsifier, stated plainly. A
+# GROWING CHECKERBOARD HAS EXTREMA AT ITS OWN PEAKS. The exemption withholds the clip from a
+# cell whose value is already the extremum of its stencil, and after one step of growth a
+# checkerboard peak IS such a cell. So the exemption could hand the defect exactly the cells
+# it needs to grow in. That is not an argument either way -- it is the reason this gate must
+# run before anything else is built on the candidate.
+#
+# MEASURED ALREADY on Popinet's 2D HEXAHEDRAL translating droplet at N = 64: the exemption
+# cuts the clip's cost at the interface from +30.4 % to +1.03 % volume error and its activity
+# from over 600 cell-steps to THREE in a 1563-step run. If it also removes the polyhedral
+# failure, the candidate is a fix. If the failure returns, the exemption and the bound are in
+# direct conflict and the operator has to be reconsidered, not retuned.
+#
+# THE ARMS. SL_CLIP [false, true] x SL_CLIP_KEEP_EXTREMA [false, true], four arms, at the
+# FIRST dt of the sweep (9.23685e-06 s) and END_TIME 0.006 s, which is 650 steps and covers
+# the failure at step 528. SL_CLIP_REGION stays at `all`: the hexahedral gate measured the
+# band exclusion to remove exactly zero firings, and `all` is the STRONGEST form of the clip,
+# so if the exemption defeats the bound it will show here first. Read the arm identity from
+# case_params.json, never from the arm index.
+#   false / false  -- CONTROL, and it is load-bearing. It must reproduce the recorded failure
+#                     at step 528 +- a few steps. The library has changed since that run (the
+#                     amplification diagnostic, then the clip code), so this arm is also the
+#                     inertness check for those changes on a POLYHEDRAL mesh.
+#   false / true    -- CONTROL. Both clip tokens are read only when SL_CLIP is true, so this
+#                     arm must be BIT-IDENTICAL to the one above.
+#   true  / false   -- the global clip. The 2026-09-08 run of this control COMPLETED clean in
+#                     Popinet's units (no fake zero set, zero-set error 3.98e-04 against
+#                     8.66e-01, volume error 1.08e-06 against 3.79). This arm re-establishes
+#                     that in SI and shows the bound still works at full strength.
+#   true  / true    -- THE CANDIDATE.
+#
+# PRE-REGISTERED READ-OUT. The physical time and step at which zeroSetRadialL2 / DROPLET_RADIUS
+# first exceeds 1e-3, and the volume error at END_TIME.
+#   PASS   the candidate reaches END_TIME with NO fake zero set: zeroSetRadialL2/R stays below
+#          1e-3 for all 650 steps and the volume error stays below 1e-4. That matches the
+#          global clip's own numbers and removes the defect.
+#   FALSIFIED IF the candidate fails, at any step. Then the exemption returns the growth the
+#          bound removed, the two rules are in conflict, and the fix must change the operator
+#          rather than gain another exemption. The next question in that case is the one the
+#          hexahedral probe already framed: the failing cells are spurious extrema and the
+#          genuine ones are the medial axis of the distance field, so the two must be
+#          separated by a local property of the FIT -- for instance whether the cell's own
+#          quadratic has a stationary point inside the cell, which is coefficient-free -- and
+#          not by an equality test that a rounding-level tie can break.
+#   PARTIAL, AND STILL A RESULT: the candidate delays the failure without removing it. Report
+#          the step and the time; a delay is a measurement of the exemption's cost, not a fix.
+#
+# NORMALISE BEFORE YOU THRESHOLD. zeroSetRadialL2 and centroidError are absolute lengths in
+# metres, 400 times smaller in SI than in Popinet's units. Divide by DROPLET_RADIUS (5e-4 m)
+# before comparing against 1e-3. This error misread the whole dt sweep on the first pass.
+# Report L1 and L2, never L_inf.
+#
+# WATCH THE CUMULATIVE COUNTER, not the per-step one. The solver prints at every write time
+#   slCorrector: quasi-monotone clip (clipRegion = ...): N eligible cells, M bounded this
+#   step, T cell-steps bounded in total over S steps, first at step F
+# A write-time sample of M alone has already misled once: an arm reported M = 0 at every write
+# while its metric CSV had left the baseline at step 20. T, S and F are the evidence.
+#
+# SI UNITS. Popinet's benchmark in real units at his own dimensionless groups: D = 1 mm,
+# rho = 1000 kg/m^3 and nu = 1e-6 m^2/s in both phases, U = 0.0692820323 m/s, box
+# 5 x 2.5 x 2.5 mm. SIGMA is 0 here by design -- this is the passive-transport control, so
+# La and We do not apply and only the transport is under test. Verify the geometry with:
+#     python3 workflow/scripts/popinet_si.py check <this file>
+#
+study_name: popinet3D_poly_sigma0_clipGate
+case: popinetTranslating3D
+mesh: poly
+mode: parallel
+np: 32
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 300
+axes_override:
+  SL_CLIP: ["false", "true"]
+  SL_CLIP_REGION: ["all"]
+  SL_CLIP_KEEP_EXTREMA: ["false", "true"]
+  FIXED_DELTA_T: [9.23685e-06]
+  N_CELLS: [64]
+  MAX_CELL_SIZE: [4.875e-05]
+  REFINE_ALLOW_PIN_MISMATCH: ["true"]
+  END_TIME: [0.006]
+  WRITE_INTERVAL: [0.0006]
+  POPINET_NX: [128]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [0.0025]
+  CAPILLARY_REF_LENGTH: [0.0025]
+  CAPILLARY_DT_COEFF: [0.004729265146]
+  DROPLET_RADIUS: [0.0005]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [0.0692820323]
+  SIGMA: [0]
+  POPINET_RHO: [1000]
+  POPINET_NU: [1.0e-06]
+  SURFACE_FILE: [box5x2p5x2p5mm.fms]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

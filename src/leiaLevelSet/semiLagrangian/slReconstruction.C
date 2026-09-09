@@ -51,6 +51,17 @@ Foam::slReconstruction::slReconstruction(const fvMesh& mesh)
     (
         slDict_.getOrDefault<Switch>("clipToStencilBounds", false)
     ),
+    // Backward compatible: "all" reproduces the global clip that every existing
+    // SL_CLIP true study was measured with. See the declaration for the measured
+    // cost of the global form at the interface.
+    clipRegion_(slDict_.getOrDefault<word>("clipRegion", "all")),
+    // Default false: the clip keeps flattening genuine extrema, which is what the
+    // existing SL_CLIP true studies measured. See the declaration for why true is
+    // the right answer and what it was measured against.
+    clipKeepExtrema_
+    (
+        slDict_.getOrDefault<Switch>("clipKeepExtrema", false)
+    ),
     // MEASURED: Barth-Jespersen over the wide point-neighbour stencil with the
     // IDW-weighted quadratic fit over-restricts (spurious overshoot at the
     // far/diagonal neighbours) and collapses the convergence order (quadratic
@@ -108,6 +119,13 @@ Foam::slReconstruction::slReconstruction(const fvMesh& mesh)
         FatalIOErrorInFunction(slDict_)
             << "slopeLimiter must be none, barthJespersen or venkatakrishnan, "
             << "got '" << limiterType_ << "'" << exit(FatalIOError);
+    }
+
+    if (clipRegion_ != "all" && clipRegion_ != "outsideBand")
+    {
+        FatalIOErrorInFunction(slDict_)
+            << "clipRegion must be all or outsideBand, got '"
+            << clipRegion_ << "'" << exit(FatalIOError);
     }
 
     if
@@ -366,6 +384,14 @@ void Foam::slReconstruction::stencilRange
         lo = Foam::min(lo, s[i]);
         hi = Foam::max(hi, s[i]);
     }
+}
+
+
+Foam::scalar Foam::slReconstruction::stencilCellValue(const label c) const
+{
+    // Slot 0 of the stencil is the arrival cell itself (slReconstruction.H), so
+    // this is psiOld[c] with no field lookup and no second halo exchange.
+    return stencilPsi_[c][0];
 }
 
 

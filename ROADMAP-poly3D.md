@@ -32,42 +32,131 @@ bulk 0.0230, and the small far cells reach 0.1507. That is 6.5 times the bulk va
 below any classical limit. The step comes from the capillary law, not from a Courant limit
 (`adjustTimeStep no`).
 
-## 2. The fix to build (not started)
+## 2. The fix — built, and requirement 3 is RETRACTED
 
-**A band-aware quasi-monotone clip of the semi-Lagrangian update.**
+**RETRACTION, 2026-09-09.** Requirement 3 below said the clip must act in **the far field
+only**, because a global clip costs +30 % volume error at the interface. The +30 % is real and
+reproduces exactly. **Its mechanism was wrong.** The damage does not come from clipping the
+narrow band, and withholding the clip from the band removes NONE of it: measured on Popinet's
+2D hexahedral translating droplet at N = 64, `clipRegion outsideBand` moved every interface
+metric by exactly what the global clip moved it — volume +30.4 %, centroid +12.5 %, shape
++4.9 %, L1|u'| +8.9 %, to every printed digit — while correctly withholding the clip from 144
+band cells.
 
-Requirements, all mandatory:
+`config/popinet2D_clipFiringProbe.yaml` located the firings. That mesh has exactly **six**
+cells where psi is the extremum of its own stencil — the four box corners (local maxima of the
+distance field) and the two cells at the droplet centre (the apex of the distance cone, a
+local minimum) — and **every** cell the clip fired in was one of them. Nothing else fired, at
+any step.
 
-1. **It must not act on hexahedral meshes at all.** The user stated this directly. Hexahedral
-   meshes run correctly and must stay bit-identical.
-2. **No mesh-type switch.** The trigger must be a local geometric or algebraic property (for
-   example the per-cell `Lambda`, or a one-sided stencil measure), never `mesh == poly`.
-3. **The far field only.** A global clip is NOT inert at the interface: it costs +30 % volume
-   error on the 2D hexahedral translating case (measured).
-4. **Runtime-selectable and inert by default** (a dictionary entry in
-   `fvSolution.levelSet.semiLagrangian` plus a case token), so every existing study is
-   unaffected and the clip can be a study axis.
+A quasi-monotone bound cannot represent an extremum. Where psi_c is already the stencil
+minimum, `lo` IS psi_c, so every reconstructed value below it is pulled back up and the
+extremum is flattened at every step. The fit undershoots at the apex because a smooth
+quadratic cannot follow a non-differentiable minimum. So the clip fires on a **uniform
+hexahedral mesh**, which requirement 1 assumed it would not, and the band is irrelevant to it.
+
+**The second rule, and it is classical**: exempt a cell that is ALREADY its stencil's
+extremum — the standard exemption of a monotonicity-preserving limiter at a smooth extremum.
+It carries no coefficient: the test is `psi_c == lo` or `psi_c == hi`, exact in floating point
+because lo and hi are taken over a stencil that contains psi_c.
+
+### What is implemented (all runtime-selectable, all inert by default)
+
+| entry (`fvSolution.levelSet.semiLagrangian`) | token | default | what it does |
+|---|---|---|---|
+| `clipToStencilBounds` | `SL_CLIP` | false | the bound itself (pre-existing) |
+| `clipRegion` | `SL_CLIP_REGION` | `all` | `outsideBand` withholds the clip from the sign-change narrow band |
+| `clipKeepExtrema` | `SL_CLIP_KEEP_EXTREMA` | false | exempt a cell that is already its stencil's extremum |
+
+Code: `slCorrector::robustEvaluate` (the bound and the exemption),
+`slCorrector::buildClipMask` (the region), `slReconstruction` (the entries),
+`slCorrector::reportClipActivity` (the counters and `slClipEligible` /
+`slClipFired` / `slClipFiredEver`).
+
+### Measured, 2026-09-09, Popinet 2D hex N = 64, full horizon 1563 steps
+
+| | L1\|u'\| | L2\|u'\| | volume err | shape L2/R | centroid/R | kappa L2 band | clip activity |
+|---|---|---|---|---|---|---|---|
+| baseline, clip off | 9.0723e-05 | 2.0419e-04 | 1.2123e-03 | 4.0755e-03 | 4.1908e-03 | 1.7498e+02 | — |
+| clip, no exemption | +8.9 % | +3.3 % | **+30.4 %** | +4.9 % | +12.5 % | -3.1 % | 44/step |
+| clip + exemption | +0.3 % | +0.2 % | **+1.03 %** | +0.2 % | +0.4 % | +0.1 % | **3 cell-steps, total** |
+
+The exemption cuts the damage by a factor 30 and the clip's activity from over 600 cell-steps
+to THREE in a 1563-step run. The four clip-off arms are bit-identical to each other, so both
+new tokens are inert (G0 and G1 also pass: the rendered case differs by the token lines only,
+and the metric CSV is bit-identical).
+
+### The residual, characterised exactly
+
+The candidate is NOT yet bit-identical on hex, so requirement 1 is not met. The residual is
+**one cell**: 4000, the droplet-centre apex. The apex minimum is shared by a symmetric PAIR of
+cells (4000 and 4128, equal to the last digit at t = 0). The exact equality test holds while
+that tie is exact and fails the moment a rounding-level perturbation breaks it — the survivor
+sits at `(psi_c - lo)/(hi - lo) = 0.004`, a hair off the minimum, so it is clipped, which
+pushes it further off. Three cell-steps of clipping in the first steps then amplify to +1.03 %
+volume error by step 1562: identical to eleven digits through step 100, first byte difference
+at step 20, then growth.
+
+Two candidate repairs, neither started:
+1. **A coefficient-free apex detector from the fit itself**: exempt a cell whose own quadratic
+   has a stationary point INSIDE the cell. The gradient and Hessian already exist (the
+   curvature path computes them), the test is "is the stationary point within the cell", and
+   the cell's own size is geometry, not a tuned number. Works in 2D and 3D, compact stencil.
+2. Accept +1 % on hex and record it. Not acceptable under requirement 1 as written.
+
+**Do not build either until G4 has run.** A growing checkerboard has extrema at its own peaks,
+so the exemption may hand the polyhedral defect exactly the cells it needs.
+
+### One diagnosis that was tested and did NOT hold
+
+The full-horizon probe found the pre-exemption survivors in a strip at `i = 126`, the single
+cell layer just inside the OUTLET, all near-minima at `pos ≈ 0.006`. `slReconstruction.H`
+records that `stencilBoundaryFaces include` makes the outlet carry a stationary alternating
+error, and `inflowOnly` is the gated remedy. It works on the firings and **not** on the damage:
+`config/popinet2D_clipStencilGate.yaml` removed those eighteen firings and left the volume
+error at **+1.027 %**, against +1.0 % with `include`. The `inflowOnly` baseline's own final
+metrics match the `include` baseline to nine digits. So the outlet layer is not the residual.
+
+Requirements 1, 2, 4 and 5 stand unchanged:
+
+1. **It must not act on hexahedral meshes at all.** Hexahedral meshes run correctly and must
+   stay bit-identical. NOT YET MET — see "The residual" above.
+2. **No mesh-type switch.** MET: both triggers are local algebraic tests, and neither names a
+   mesh type.
+3. ~~**The far field only.**~~ RETRACTED, see above. The band rule is implemented and measured
+   to remove zero firings on hex; whether it earns its place must be argued on the polyhedral
+   mesh or the entry should be dropped rather than kept as a second knob.
+4. **Runtime-selectable and inert by default.** MET and gated.
 5. **Unstructured FVM only**: per cell, compact stencil, MPI-decomposable, one implementation
-   for 2D and 3D.
+   for 2D and 3D. MET by construction; the 4-rank gate passed and the serial-versus-np4 check
+   is `config/polyDroplet3Drefined_clipRegionGate.yaml`.
 
-The theory behind the clip: a reconstruction with `Lambda = 1` in a cell cannot create a new
-extremum, because the update is then a convex combination of the stencil values. The clip
-enforces that property where the fit does not have it.
+The theory behind the clip is unchanged: a reconstruction with `Lambda = 1` in a cell cannot
+create a new extremum, because the update is then a convex combination of the stencil values.
+The clip enforces that property where the fit does not have it — and the exemption keeps it
+from destroying the extrema the level set genuinely has.
 
 ## 3. The gate ladder for the fix, cheapest first
 
-| # | gate | command / config | pass criterion |
-|---|---|---|---|
-| G0 | inertness, render | `--until generate_case` at HEAD~ and HEAD | only the new token line changes |
-| G1 | inertness, 2D hex | `config/popinet2D_La12000_N64.yaml` | metric CSV **bit-identical** to the pre-change run |
-| G2 | inertness, 3D hex | `config/popinet3D_La12000_hex_smoke4.yaml` (R/h 12.8) | metric CSV bit-identical |
-| G3 | 4-rank parallel gate | any 3D arm, `mpirun -np 4` | serial and np4 agree; see CLAUDE.md |
-| G4 | the defect is removed | `config/popinet3D_poly_sigma0_dtSweep.yaml` first arm, sigma = 0 | no failure to t = T_U; `zeroSetRadialL2/R` stays below 1e-3 |
-| G5 | inertness at a MOVING interface | 2D hex translating, and the poly stationary rung | volume error unchanged to 1 % |
-| G6 | the coupled polyhedral case runs | `config/popinet3D_La12000_poly_r12p8_mcs0195.yaml` in SI | COMPLETED at 1563 steps |
-| G7 | order is preserved | the poly ladder, section 5 | orders within +-0.3 of the hexahedral ladder |
+| # | gate | command / config | pass criterion | state 2026-09-09 |
+|---|---|---|---|---|
+| G0 | inertness, render | `--until generate_case` at HEAD~ and HEAD | only the new token line changes | **PASS** — only `clipRegion` / `clipKeepExtrema` appear |
+| G1 | inertness, 2D hex | `config/popinet2D_La12000_N64.yaml` | metric CSV **bit-identical** to the pre-change run | **PASS** — 1563 steps, bit-identical |
+| G2 | inertness, 3D hex | `config/popinet3D_La12000_hex_smoke4.yaml` (R/h 12.8) | metric CSV bit-identical | **PASS** — 78 steps, bit-identical |
+| G3 | 4-rank parallel gate | `config/polyDroplet3Drefined_clipRegionGate.yaml`, `mpirun -np 4` | serial and np4 agree; see CLAUDE.md | code path exercised on 4 ranks; serial companion open |
+| G4 | the defect is removed | `config/popinet3D_poly_sigma0_clipGate.yaml`, sigma = 0 | no failure to END_TIME; `zeroSetRadialL2/R` stays below 1e-3 | **NOT RUN — the decisive gate, needs the cluster** |
+| G5 | inertness at a MOVING interface | `config/popinet2D_clipRegionGate.yaml` (hex), `config/polyDroplet3Drefined_clipRegionGate.yaml` (poly) | volume error unchanged to 1 % | hex **+1.03 %**, at the threshold; poly open |
+| G6 | the coupled polyhedral case runs | `config/popinet3D_La12000_poly_r12p8_mcs0195.yaml` in SI | COMPLETED at 1563 steps | not run |
+| G7 | order is preserved | the poly ladder, section 5 | orders within +-0.3 of the hexahedral ladder | not run |
 
-G1 and G2 gate everything else. Do not run G4 before they pass.
+G1 and G2 gate everything else, and they PASS. **G4 is now the critical path**: it is the only
+gate that can show the clip still does what it exists for, and it is the one the extremum
+exemption can plausibly break. Do not build the apex detector before G4 has run.
+
+The baselines for G1 and G2 were re-run at HEAD before any clip code existed, and both came
+back bit-identical to the studies of 2026-09-08 — which also proves commit `7bf52eb`, the
+amplification diagnostic, bit-inert at its default `fitProbeDisplacement (0 0 0)`. The
+pre-change studies are preserved as `studies/*_preDiag_20260908` and `studies/*_B0`.
 
 ## 4. Stationary droplet 3D polyhedral — state and work
 

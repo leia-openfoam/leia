@@ -1,0 +1,118 @@
+# IS THE CLIP BIT-INERT ON HEX ONCE THE OUTLET STENCIL IS RIGHT? (2026-09-09)
+#
+# THE CHAIN THAT LEADS HERE, in order, all measured today:
+#   1. config/popinet2D_clipRegionGate.yaml. The GLOBAL quasi-monotone clip costs +30.4 %
+#      volume error, +12.5 % centroid and +4.9 % shape on Popinet's 2D hexahedral translating
+#      droplet at N = 64. Withholding it from the sign-change narrow band changed NOTHING --
+#      every metric matched the global clip to every printed digit.
+#   2. config/popinet2D_clipFiringProbe.yaml, 20 steps. All four firings were cells where psi
+#      is the extremum of its own stencil: the two left box corners and the two cells at the
+#      droplet centre, the apex of the distance cone. The mesh has exactly six such cells.
+#      A quasi-monotone bound cannot represent an extremum, so the clip flattened them at
+#      every step.
+#   3. SL_CLIP_KEEP_EXTREMA, the classical exemption of a limiter at a smooth extremum. It
+#      cut the damage from +30.4 % to +1.0 % on volume and to <= 0.4 % on every other metric,
+#      and the firing count from 44 to 18. No coefficient: the test is psi_c == lo or
+#      psi_c == hi, exact because lo and hi are taken over a stencil that contains psi_c.
+#   4. The probe at the FULL horizon then located the surviving firings, and they are not a
+#      new family. At all nine write times EVERY one of them sits at i = 126 -- the single
+#      cell layer just inside the OUTLET -- in a strip of 17 to 30 cells centred on the
+#      droplet's own height. None is an exact extremum; every one is a NEAR-minimum, with
+#      (psi_c - lo)/(hi - lo) = 0.005 to 0.006. They are 55 to 78 cell widths from the
+#      interface, so they are deep far field.
+#
+# WHY THAT IS NOT A CLIP PROBLEM. slReconstruction.H records the defect already:
+# `stencilBoundaryFaces include` makes every physical boundary face a stencil data point,
+# carrying the cell's own value at h/2 with a 1/d^2 weight four to thirty times a neighbour's.
+# MEASURED there: with the faces included the inlet layer is frozen and THE OUTLET CARRIES A
+# STATIONARY ALTERNATING ERROR. That error pushes the last interior column just below its own
+# stencil range, the fit undershoots, and the clip -- correctly -- bounds it. The clip is
+# reacting to a separate, already-diagnosed defect, and the same source records the rule that
+# is right at both ends: `inflowOnly`, a boundary face is data where the boundary condition
+# speaks and not where the interior determines the value.
+#
+# So the question is not "which tolerance exempts a near-extremum" -- that would be exactly
+# the tuned coefficient this repository forbids. The question is whether the clip is inert
+# once the outlet stencil is right.
+#
+# THE ARMS. SL_STENCIL_BOUNDARY_FACES is held at inflowOnly in ALL FOUR arms, so it is not a
+# variable here; it is the setting under test, and the comparison is internal to it. The
+# variables are SL_CLIP [false, true] and SL_CLIP_KEEP_EXTREMA [false, true]. SL_CLIP_REGION
+# stays at `all` because the hexahedral gate measured the band exclusion to remove exactly
+# zero firings. Read the arm identity from case_params.json, never from the arm index.
+#   false / false  -- THE BASELINE for this stencil mode. Not the same field as the `include`
+#                     baseline: inflowOnly is itself a method change, so no number here may be
+#                     compared against config/popinet2D_La12000_N64.yaml.
+#   false / true   -- CONTROL. keepExtrema is read only when the clip is on, so this arm must
+#                     be BIT-IDENTICAL to the baseline.
+#   true  / false  -- the clip without the exemption. Expected to keep the extremum damage
+#                     (order +30 % volume), which is what makes the next row readable.
+#   true  / true   -- THE CANDIDATE.
+#
+# PRE-REGISTERED READ-OUT at the full horizon (1563 steps):
+#   PASS   the candidate's metric CSV is BIT-IDENTICAL to the baseline, and the solver reports
+#          0 bounded cells at every write. That is the roadmap's requirement 1 met exactly and
+#          without a mesh-type switch: the clip is present, runtime-selected, and provably
+#          does nothing on a hexahedral mesh.
+#   WEAKER PASS   not bit-identical, but every metric within 0.1 % AND the firing count small
+#          and NOT at the outlet layer. Then the remaining firings are a third family and the
+#          probe must locate them before the candidate is scored.
+#   FALSIFIED IF the firing count stays at 18 or more at i = 126. Then inflowOnly does not
+#          remove the outlet error and the diagnosis in step 4 above is wrong.
+#   ALSO A FAILURE, of the matrix: the false/true arm differing from the baseline at all.
+#
+# WHAT THIS DOES NOT SHOW. Inertness only, and on hex only. Whether the clip still REMOVES the
+# polyhedral far-field failure is G4 (config/popinet3D_poly_sigma0_dtSweep.yaml with the clip
+# on), and that is the gate the extremum exemption could plausibly break: a growing
+# checkerboard has extrema at its own peaks, so the exemption might let it through. That must
+# be measured, not argued.
+#
+# NORMALISE BEFORE YOU THRESHOLD. zeroSetRadialL2 and centroidError are absolute lengths in
+# metres. Divide by DROPLET_RADIUS (5e-4 m). Report L1 and L2, never L_inf.
+#
+study_name: popinet2D_clipStencilGate
+case: popinetTranslating2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 720
+axes_override:
+  SL_STENCIL_BOUNDARY_FACES: ["inflowOnly"]
+  SL_CLIP: ["false", "true"]
+  SL_CLIP_REGION: ["all"]
+  SL_CLIP_KEEP_EXTREMA: ["false", "true"]
+  N_CELLS: [64]
+  POPINET_NX: [128]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [0.0025]
+  CAPILLARY_REF_LENGTH: [0.0025]
+  CAPILLARY_DT_COEFF: [0.004729265146]
+  DROPLET_RADIUS: [0.0005]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [0.0692820323]
+  SIGMA: [0.012]
+  POPINET_RHO: [1000]
+  POPINET_NU: [1.0e-06]
+  END_TIME: [0.01443375673]
+  WRITE_INTERVAL: [0.01443375673]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

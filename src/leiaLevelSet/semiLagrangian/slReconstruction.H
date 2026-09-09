@@ -86,6 +86,51 @@ protected:
     //  bounds of psiOld (default false; quadratic fits can overshoot).
     Switch clipToStencilBounds_;
 
+    //- WHERE the quasi-monotone clip may act. Read only when
+    //  clipToStencilBounds is true; the clip stays off otherwise.
+    //    all         -- every cell. This is the GLOBAL clip, and it is a METHOD
+    //                   CHANGE at the interface: MEASURED on Popinet's 2D
+    //                   hexahedral translating droplet at N = 64, it moves
+    //                   L1|u'| -6 %, L2|u'| -5 %, the volume error +30 %, the
+    //                   shape error +5 % and the centroid error +12 %. Kept as
+    //                   the default so every existing SL_CLIP true study keeps
+    //                   the behaviour it was measured with.
+    //    outsideBand -- every cell EXCEPT the sign-change narrow band, so the
+    //                   FAR FIELD only. The level set carries no interface
+    //                   there, and the clip cannot touch an interface metric by
+    //                   construction. This is the form the polyhedral far-field
+    //                   defect needs; see slCorrector::buildClipMask.
+    const word clipRegion_;
+
+    //- Withhold the clip from a cell whose OWN value is already the extremum of
+    //  its stencil (default false; the measured behaviour of every existing
+    //  SL_CLIP true study keeps the clip there).
+    //
+    //  WHY IT IS NEEDED. A quasi-monotone bound cannot represent an extremum:
+    //  where psi_c is already the stencil minimum, every reconstructed value
+    //  below it is bounded UP to psi_c, so the extremum is flattened at every
+    //  step. The level set has such extrema by construction -- the apex of the
+    //  distance cone at the droplet centre, and the box corner farthest from the
+    //  interface -- and the fit undershoots at the apex because a smooth
+    //  quadratic cannot follow a non-differentiable minimum.
+    //
+    //  MEASURED 2026-09-09 on Popinet's 2D hexahedral translating droplet at
+    //  N = 64 (config/popinet2D_clipFiringProbe.yaml): the mesh has exactly SIX
+    //  cells where psi is its own stencil's extremum -- the four box corners and
+    //  the two cells at the droplet centre -- and ALL FOUR cells the clip fired
+    //  in were among them. Nothing else fired, at any step. So on that mesh the
+    //  clip's whole activity was the flattening of genuine extrema, which is why
+    //  the global clip cost +30 % volume error and why withholding the clip from
+    //  the narrow band changed nothing: every firing was already outside it.
+    //
+    //  This is the classical exemption of a monotonicity-preserving limiter at a
+    //  smooth extremum. It carries NO coefficient: the test is psi_c == lo or
+    //  psi_c == hi, exact in floating point because lo and hi are the min and max
+    //  over a stencil that CONTAINS psi_c. It leaves the SPURIOUS extremum -- the
+    //  one the fit creates in a cell that was not an extremum -- fully bounded,
+    //  which is the polyhedral far-field defect the clip exists for.
+    Switch clipKeepExtrema_;
+
     //- Legacy switch: limitSlope true == slopeLimiter barthJespersen (kept for
     //  backward compatibility with existing dictionaries).
     Switch limitSlope_;
@@ -251,6 +296,16 @@ public:
     // Member Functions
 
         Switch clipToStencilBounds() const { return clipToStencilBounds_; }
+
+        //- Where the quasi-monotone clip may act: all | outsideBand.
+        const word& clipRegion() const { return clipRegion_; }
+
+        //- Withhold the clip where psi is already its own stencil's extremum.
+        Switch clipKeepExtrema() const { return clipKeepExtrema_; }
+
+        //- psiOld in the arrival cell itself (stencil slot 0). Requires a prior
+        //  collectStencil in update().
+        scalar stencilCellValue(const label c) const;
 
         //- Min/max of psiOld over the arrival cell's stencil (requires a prior
         //  collectStencil in update()).

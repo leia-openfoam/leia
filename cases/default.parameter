@@ -53,6 +53,35 @@ SL_CLIP false;       // leiaSemiLagrangeLevelSetFoam clipToStencilBounds: tight
                      // near-singular per-cell fit can otherwise let psi run away
                      // geometrically; the clamp is inactive in smooth regions so
                      // it preserves the 2nd-order convergence.
+SL_CLIP_REGION all;  // WHERE the clip may act; read only when SL_CLIP is true.
+                     // all = every cell. This is the GLOBAL clip and it is a
+                     // METHOD CHANGE at the interface: MEASURED on Popinet's 2D
+                     // hexahedral translating droplet at N = 64 it moves the
+                     // volume error +30 % and the shape error +5 %. Kept as the
+                     // default so every study measured with SL_CLIP true is
+                     // unchanged.
+                     // outsideBand = the far field only, withholding the clip
+                     // from the sign-change narrow band. The clip then cannot
+                     // touch a cell the interface passes through, so no interface
+                     // metric can move. This is the form for the polyhedral
+                     // far-field defect, where the fit's amplification bound
+                     // reaches 1.26 in the small one-sided cfMesh cells.
+SL_CLIP_KEEP_EXTREMA false;  // withhold the clip from a cell whose own psi is
+                     // already the extremum of its stencil; read only when
+                     // SL_CLIP is true. false = default, the behaviour every
+                     // existing SL_CLIP true study measured.
+                     // A quasi-monotone bound CANNOT represent an extremum: where
+                     // psi_c is the stencil minimum, every reconstructed value
+                     // below it is pulled back to psi_c and the extremum is
+                     // flattened at every step. The level set has such extrema by
+                     // construction -- the apex of the distance cone at the
+                     // droplet centre, and the box corner farthest from the
+                     // interface. MEASURED 2026-09-09 on Popinet's 2D hexahedral
+                     // translating droplet at N = 64: the mesh has exactly SIX
+                     // such cells and ALL FOUR the clip fired in were among them,
+                     // at every step. true exempts them, which leaves the
+                     // SPURIOUS extremum -- the one the fit creates in a cell that
+                     // was not an extremum -- fully bounded.
 REDIST_VIOLFRAC 0;   // signedDistanceBounds robust variant: fire only when more
                      // than this fraction of band cells violates [1/g, g]
                      // (0 = strict min/max). Localized under-resolved tails

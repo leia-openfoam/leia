@@ -1,0 +1,114 @@
+# WHERE DOES THE QUASI-MONOTONE CLIP FIRE ON A HEXAHEDRAL MESH? (2026-09-09)
+#
+# WHY THIS PROBE EXISTS. The clipRegion gate (config/popinet2D_clipRegionGate.yaml) returned a
+# result nobody predicted: on Popinet's 2D hexahedral translating droplet at N = 64, the
+# band-aware clip (clipRegion outsideBand) moved every interface metric by EXACTLY the amount
+# the global clip moved it -- volume error +30.4 %, centroid +12.5 %, shape +4.9 %, L1|u'|
+# +8.9 %, to every printed digit. The mask was working: 8048 cells eligible against 8192, so
+# 144 sign-change band cells were correctly withheld. And the clip still fired in 44 cells at
+# every write, always exactly 44.
+#
+# So the damage does NOT come from clipping the narrow band, and excluding the band cannot
+# remove it. Two facts follow, and both need locating rather than arguing:
+#   1. The clip FIRES on a uniform hexahedral mesh, which the roadmap assumed it would not.
+#      44 of 8192 cells per step, and the count is constant, so the cause is structural --
+#      a fixed set of cells, not a field excursion that comes and goes.
+#   2. Those 44 cells are outside the sign-change band, yet clipping them reaches the
+#      interface metrics. Something carries a far-field change into the interface.
+#
+# THE READ-OUT IS A FIELD, NOT A NUMBER. The solver writes slClipEligible (the mask) and
+# slClipFired (1 where the clip bounded the value at that step) at every write time. Twenty
+# steps with a write every five gives four samples. What to look at, in order:
+#   a. Are the fired cells at the DOMAIN BOUNDARY? stencilBoundaryFaces is `include` here, so
+#      every physical boundary face is a stencil data point at h/2 with a 1/d^2 weight. That
+#      makes the boundary-cell stencils one-sided, and the amplification bound of the fit
+#      already measures hex far-interior cells at Lambda up to 1.0527 against 1.0164 in the
+#      bulk. If the firings sit in the boundary layer, the region rule must exclude the
+#      boundary stencils, not the band.
+#   b. Are they at the DROPLET CENTRE or on the medial axis? The signed distance has a genuine
+#      extremum there -- a minimum at the centre with a kink -- and a clip cannot preserve an
+#      extremum. If the firings sit there, the region rule must protect the level set's own
+#      extrema, which is a statement about |grad psi|, not about the interface.
+#   c. Do the fired cells MOVE with the droplet or stay fixed in the box? A fixed set points
+#      to the mesh and its boundaries; a moving set points to the field.
+#
+# WHAT THE FIRST PASS FOUND (2026-09-09, 20 steps). Four cells fired, and all four were
+# stencil extrema of psi: the two left box corners (local maxima of the distance field) and
+# the two cells at the droplet centre (the apex of the distance cone, a local minimum). The
+# mesh has exactly six such cells and the other two -- the right box corners -- did not fire.
+# Nothing else fired at any step, and the `all` and `outsideBand` arms were identical, which
+# is why the band exclusion changed no metric.
+#
+# WHY THIS PROBE NOW RUNS THE FULL HORIZON. The firing count GROWS with time: 4 at step 20,
+# 44 at step 1563. The extremum exemption (SL_CLIP_KEEP_EXTREMA) removes 26 of those 44 and
+# cuts the volume-error damage from +30.4 % to +1.0 %, but 18 firings remain and 1.0 % is not
+# the bit-identity the roadmap requires on a hexahedral mesh. So the question is now: WHERE
+# are the surviving 18, and are they a third structural family or the same one arriving late?
+#
+# THE ARMS. SL_CLIP_KEEP_EXTREMA [false, true] at SL_CLIP true and clipRegion all, one rank,
+# the full horizon with eight write samples. Serial, so the fields land directly in the time
+# directories with no reconstruction step. clipRegion is held at `all` because the hexahedral
+# gate measured the band exclusion to remove exactly zero firings; adding it here would only
+# duplicate arms.
+#   keepExtrema false -- the 44 firings, so the exemption's effect is a set difference.
+#   keepExtrema true  -- the surviving 18. THESE are what must be located.
+#
+# WHAT TO ASK OF slClipFired IN THE keepExtrema true ARM:
+#   a. Are the cells at the domain BOUNDARY? stencilBoundaryFaces is `include`, so every
+#      physical boundary face is a stencil data point at h/2 with a 1/d^2 weight, which makes
+#      the boundary-cell stencils one-sided. The amplification bound already measures hex
+#      far-interior cells at Lambda up to 1.0527 against 1.0164 in the bulk.
+#   b. Do they trail the droplet, sit ahead of it, or stay fixed in the box? A set that moves
+#      with the interface is a field effect; a fixed set is the mesh and its boundaries.
+#   c. Is each one a NEAR-extremum -- the second smallest or largest of its stencil rather
+#      than the smallest? The exact test psi_c == lo cannot catch a cell that the fit has
+#      already pushed just off the extremum, and that would be the same mechanism arriving
+#      one step later.
+#
+# THIS IS A DIAGNOSTIC, NOT A GATE. It reads no error metric and decides no candidate. It
+# tells the next rule where to look.
+#
+study_name: popinet2D_clipFiringProbe
+case: popinetTranslating2D
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+axes_override:
+  SL_CLIP: ["true"]
+  SL_CLIP_REGION: ["all"]
+  SL_CLIP_KEEP_EXTREMA: ["false", "true"]
+  N_CELLS: [64]
+  POPINET_NX: [128]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [0.0025]
+  CAPILLARY_REF_LENGTH: [0.0025]
+  CAPILLARY_DT_COEFF: [0.004729265146]
+  DROPLET_RADIUS: [0.0005]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [0.0692820323]
+  SIGMA: [0.012]
+  POPINET_RHO: [1000]
+  POPINET_NU: [1.0e-06]
+  END_TIME: [0.01443375673]
+  WRITE_INTERVAL: [0.0018042195]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: ""
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

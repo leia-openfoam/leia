@@ -70,8 +70,13 @@ Foam::slAdvection::slAdvection(const fvMesh& mesh)
 
     Info<< "slAdvection: scheme = " << scheme_->type()
         << ", CFLmax = " << CFLmax_
-        << ", clipToStencilBounds = " << recon_->clipToStencilBounds()
-        << ", correction = " << corrector_->type() << endl;
+        << ", clipToStencilBounds = " << recon_->clipToStencilBounds();
+    if (recon_->clipToStencilBounds())
+    {
+        Info<< " (clipRegion = " << recon_->clipRegion()
+            << ", clipKeepExtrema = " << recon_->clipKeepExtrema() << ")";
+    }
+    Info<< ", correction = " << corrector_->type() << endl;
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
