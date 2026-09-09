@@ -27,6 +27,23 @@
 #       fix is a local time-step constraint, not a reconstruction change.
 # Either outcome is decisive, and both are cheap: 650 / 1300 / 2600 steps.
 #
+# MEASURED 2026-09-09, job 54503136, all three arms COMPLETED. THE PREDICTION HOLDS.
+#   arm    dt [s]         steps to failure   failure time [s]   rate [1/s]   rate/step [%]
+#   dt     9.23685e-06     528               4.877e-03          132.78       0.1227
+#   dt/2   4.618425e-06   1009               4.660e-03          128.59       0.0594
+#   dt/4   2.3092125e-06  1974               4.558e-03          126.05       0.0291
+# The failure step scales as 1 : 1.91 : 3.74, the failure TIME agrees to 6.5 %, and the
+# growth rate per unit physical time is constant to 5 % across a factor 4 in the step. The
+# pre-failure trajectory of zeroSetRadialL2/R at matched physical times agrees to 0.3 % in
+# all three arms. The falsifier did not occur: the failure moved EARLIER, not later.
+# So the near-wall cells do not need their own step limit, and a smaller step cannot fix
+# the polyhedral failure. See STATUS.md, "CONFIRMED: the polyhedral failure is not a time
+# step effect (2026-09-09)".
+#
+# NORMALISE BEFORE YOU THRESHOLD. zeroSetRadialL2 and centroidError are absolute lengths in
+# metres. In SI they are 400 times smaller than in Popinet's units, so a fixed threshold
+# reads every SI run as clean. Divide by DROPLET_RADIUS first.
+#
 # SI UNITS (2026-09-08). This study runs Popinet's benchmark in real units at his own
 # dimensionless groups: D = 1 mm, rho = 1000 kg/m^3 and nu = 1e-6 m^2/s in BOTH phases,
 # sigma = 0.012 N/m, U = 0.0692820323 m/s, box 5 x 2.5 (x 2.5) mm, T_U = D/U = 0.01443375673 s.

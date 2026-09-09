@@ -450,6 +450,21 @@ time the accumulated bound is `Lambda^(T/dt) = exp((Lambda - 1) T/dt) = exp(c U 
 does not contain dt -- a smaller time step cannot remove the growth. `config/popinet3D_poly_
 sigma0_dtSweep.yaml` tests that prediction directly.
 
+**CONFIRMED 2026-09-09** (job 54503136, three arms, all COMPLETED). The sigma = 0 control ran
+at dt, dt/2 and dt/4 on the SI polyhedral mesh at N = 64. It failed in every arm, at the steps
+528 / 1009 / 1974 (ratio 1 : 1.91 : 3.74) and at the times 4.877e-03 / 4.660e-03 /
+4.558e-03 s. The growth rate of `zeroSetRadialL2/R` per unit physical time is 132.78 / 128.59
+/ 126.05 per second; the same rate per STEP is 0.1227 / 0.0594 / 0.0291 %, which halves and
+quarters with the step. Before the failure the three trajectories are ONE function of time:
+`zeroSetRadialL2/R` at matched physical times agrees to 0.3 % from t = 1e-4 s to t = 4.5e-3 s.
+A smaller time step therefore cannot repair the polyhedral failure, and the near-wall cells do
+not need their own step limit.
+
+**Normalise before you threshold.** `zeroSetRadialL2`, `zeroSetRadialLinf`, `centroidError`
+and the `m2*` columns are absolute lengths in metres. In SI they are 400 times smaller than in
+Popinet's units, so a fixed threshold reads every SI run as clean. Divide by `DROPLET_RADIUS`
+first, in every gate, curated table and comparison across unit systems.
+
 Lambda > 1 does not PROVE instability: it is an upper bound, and the hexahedral mesh reaches
 1.05 and runs the horizon. It proves the opposite, though: a mesh whose Lambda is 1
 everywhere cannot grow a new extremum at all.

@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-05 (static local refinement DECIDED on hex and polyhedra, every arm in; polyhedral uniform ladder complete, R/h = 12.6 / 18.0 / 25.2 at the interface).
+Last updated: 2026-09-09 (the dt sweep CONFIRMS that the polyhedral failure is not a time-step effect: the failure time is fixed while the step falls by a factor 4).
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -2157,6 +2157,55 @@ mesh (0.5 % per step) is a fiftieth of its bound. The bound proves the converse 
 though: a reconstruction whose Lambda is 1 everywhere cannot create or grow a new extremum.
 That is what a quasi-monotone clip enforces, and it is why the clip removed the failure
 completely while leaving the first 500 steps identical.
+
+### CONFIRMED: the polyhedral failure is not a time-step effect (2026-09-09)
+
+The pre-registered sweep `config/popinet3D_poly_sigma0_dtSweep.yaml` ran on Lichtenberg as
+job **54503136**. All three arms COMPLETED at np 32. Each arm is the sigma = 0 passive
+transport control on the SI polyhedral mesh at N = 64. The arms differ in `FIXED_DELTA_T`
+only: dt, dt/2 and dt/4, with dt = 9.23685e-06 s.
+
+The read-out is the first step at which the far field grows a false zero set. Two columns
+mark that step together: `zeroSetRadialL2/R` passes 1e-2, and `maxGradPsiBand` leaves 1.016.
+
+| arm | dt [s] | steps to failure | failure time [s] | growth rate of zeroSetRadialL2/R [1/s] | the same rate per step [%] |
+|---|---|---|---|---|---|
+| dt | 9.23685e-06 | 528 | 4.877e-03 | 132.78 | 0.1227 |
+| dt/2 | 4.618425e-06 | 1009 | 4.660e-03 | 128.59 | 0.0594 |
+| dt/4 | 2.3092125e-06 | 1974 | 4.558e-03 | 126.05 | 0.0291 |
+| reference run, Popinet's units, dt | 9.23685e-06 | 509 | 4.702e-03 | 132.94 | 0.1229 |
+
+Read the table in this order:
+
+1. **The number of steps to failure doubles and quadruples as the step falls.** The measured
+   ratios are 1 : 1.91 : 3.74. The pre-registration predicted the steps 508 / 1016 / 2032 and
+   the measurement gives 528 / 1009 / 1974.
+2. **The failure TIME does not move.** The three times agree to 6.5 %, and the smallest step
+   fails EARLIER, not later.
+3. **The growth rate per unit physical time does not move.** It stays between 126 and 133 per
+   second across a factor 4 in the step. The rate per STEP falls by that same factor.
+4. **The pre-failure trajectories are one function of time.** `zeroSetRadialL2/R` at matched
+   physical times agrees to 0.3 % in all three arms, from t = 1e-4 s to t = 4.5e-3 s.
+
+This is what the amplification bound predicts. Lambda - 1 is proportional to the departure
+displacement, hence to dt, so the bound over a fixed physical time is
+`Lambda^(T/dt) = exp((Lambda - 1) T/dt) = exp(c U T)`, which does not contain dt.
+
+**The falsifier did not occur.** The failure did not move later, and it occurred in every arm.
+The near-wall cells therefore do NOT need their own step limit. A local time-step constraint
+cannot repair this failure, and a global one only pays more steps for the same growth. The fix
+must change the update operator, not the step.
+
+**The same data confirms the SI conversion once more.** The reference run in Popinet's units
+and the SI arm at the same step give the same growth rate (132.94 against 132.78 per second)
+and the same failure time to 4 %. Their metric levels differ by exactly the length scale 400.
+
+**A trap this measurement exposed.** `zeroSetRadialL2`, `zeroSetRadialLinf`, `centroidError`
+and the `m2*` columns are ABSOLUTE LENGTHS in metres. In SI they are 400 times smaller than in
+Popinet's units. A fixed threshold against them reads every SI run as clean, which is how the
+first pass over this sweep misread all three arms as passing. Divide by `DROPLET_RADIUS`
+before any threshold, any curated table and any comparison across unit systems. The committed
+curation scripts use relative gates or divide by R already, so none of them carries the defect.
 
 ### The capillary time step on polyhedral meshes -- audited (2026-09-08)
 
