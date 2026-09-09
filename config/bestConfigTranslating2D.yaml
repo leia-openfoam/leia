@@ -1,3 +1,18 @@
+# ============================ VOID -- DO NOT USE ============================
+# This config runs `case: translatingDroplet2D`, whose blockMeshDict put all four sides
+# into a single `walls` patch: the mesh had NO inlet and NO outlet, so the uniform stream
+# every field declared was parsed and silently discarded on every run. It was a CLOSED
+# SLIP BOX, and the pressure projection annihilated the free stream on step 1. Every
+# number this config ever produced is VOID (CLAUDE.md, "A wrong setup voids its data").
+#
+# It is also NOT the record of the best configuration. That is METHOD.md, whose executable
+# form is the `.parameter` layering (cases/default.parameter and cases/<case>.parameter).
+# The name of this file predates that convention and is misleading; keep it only so the
+# void studies that reference it remain traceable.
+#
+# The live translating benchmark is config/popinet2D_La12000_N64.yaml, which reproduces
+# Popinet's published table to 0.05 %.
+# ===========================================================================
 # THE TRANSLATING DROPLET ON THE BEST CONFIGURATION WE HAVE -- with a matched
 # control at every rung, so what the change buys is MEASURED, not asserted.
 #

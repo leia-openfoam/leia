@@ -5,8 +5,9 @@
 > neither one loads the other, and a markdown link is documentation, not a load
 > instruction. Both files therefore carry the complete guide.
 > **Any edit must be applied to both in the same commit** — `diff CLAUDE.md
-> AGENTS.md` must print nothing. `CLUSTER.md` (cluster workflow) and
-> `STATUS.md` (current state of the work) stay separate and are read on demand.
+> AGENTS.md` must print nothing. `CLUSTER.md` (cluster workflow),
+> `STATUS.md` (current state of the work) and `METHOD.md` (the current best
+> configuration) stay separate and are read on demand.
 
 OpenFOAM level-set library + solvers, a Snakemake verification suite, and
 thematic docs (reveal decks + Elsevier articles) fed by a single per-theme
@@ -47,6 +48,37 @@ prose. The rules that matter most:
   `*.html` (keep `*.template.html`), article PDFs.
 - Hub is GitHub `leia-openfoam/leia`. Code moves by git; raw simulation output
   moves by rsync. See **[CLUSTER.md](CLUSTER.md)**.
+
+## The best configuration lives in METHOD.md and in the `.parameter` files
+
+**`METHOD.md` is the record of the current best configuration**: what it is, why each
+choice was made, and which gate measured it. **Any gate that changes a setting updates
+`METHOD.md` in the same commit**, and every entry names the config that decided it and
+the number it was decided on. A setting nobody can trace to a measurement is folklore,
+and this file exists to keep it out. Do NOT put the table in this guide: it changes with
+every gate, it would have to be kept byte-identical in two files, and it would load into
+every session's context.
+
+**Its executable form is the `.parameter` layering, not a separate config.** A document
+drifts from the code; the token files cannot, because the workflow renders every case
+from them. Three layers, later overriding earlier:
+
+1. `cases/default.parameter` — the global default, flat (`SL_FIT normalEquations;`).
+2. `cases/<case>.parameter` — the per-case default, in a `values { ... }` block. Some
+   settings are genuinely case-dependent (`CURVATURE_EXTENSION` is `none` for the Popinet
+   translating family and `cellCentreInverse` for the stationary droplet family); this
+   layer exists so they are not collapsed to one global winner.
+3. `axes_override` in `config/<study>.yaml` — the per-study sweep.
+
+So changing the best configuration means editing a `.parameter` file, and every study
+that does not override that axis inherits the change — which is exactly why such a change
+is gated like any other, with a bit-identity run against the pre-change state.
+
+**Never add a `config/best.yaml` base file.** Snakemake merges multiple `--configfile`
+arguments SHALLOWLY, so a study's `axes_override` replaces the base's entirely rather
+than merging into it. MEASURED 2026-09-09: a base setting `SL_FIT` plus a study setting
+only `N_CELLS` rendered a case that had silently LOST `SL_FIT`. A base config drops axes
+without warning, which is worse than having none.
 
 ## Running studies
 
