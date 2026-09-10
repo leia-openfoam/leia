@@ -441,6 +441,66 @@ candidate improved volume order while failing the gradient; a single-metric view
 would have called it a win. State where it ran, on which commit, and with which
 binaries.
 
+### Touch advection, run a mesh convergence study — before stating anything
+
+**Any change that touches the advection of the level set is measured on a MESH
+CONVERGENCE STUDY for that study, and no statement is made from a single
+resolution.** A single mesh gives an error, not a result. An error that is lower
+at one resolution can still be a floor, a crossover, or a coarse-mesh artefact,
+and the order is the only column that separates them.
+
+MEASURED 2026-09-10, and this rule is written from it. The semi-Lagrangian
+distance-cone bound lowered EVERY interface metric by 25 to 68 percent on the
+coupled 2D hexahedral case at N = 64, and that was reported as a gain. At
+N = 128 the eikonal error moved 7.119e-03 to 7.066e-03 — an order of 0.01, a
+FLOOR — the spurious-current order fell 0.24 to 0.03, and the centroid error
+REVERSED to 119 percent worse than no bound. The unbounded run converges at
+order 1.10 and reaches the bound's floor at about N = 256. One rung said "a
+large gain"; two rungs said "no gain beyond N = 256, and one metric is worse".
+
+Three requirements:
+
+1. **At least three resolutions**, matched horizon, matched time-step LAW. A
+   fourth rung has already falsified a trend that three had made look like clean
+   second order, so treat three as the minimum and not as the target.
+2. **Report the observed ORDER next to the error**, for every metric in the
+   vector of step 6. `workflow/scripts/value_bound_ladder_table.py` is the
+   pattern.
+3. **State the resolution range with every number.** "The error falls 60
+   percent" is not a result. "The error falls 60 percent at N = 64 and 0 percent
+   at N = 128, order 0.01" is.
+
+### The standing advection regression set
+
+**Any change to the advection path also re-runs the advection regression set,
+before any conclusion is drawn from any other study.** The set is three coarse
+studies, and it exists because a coupled two-phase gate does not exercise the
+transport the same way:
+
+| rung | case | mesh | why it is in the set |
+|---|---|---|---|
+| hex 2D | `2Dvortex` or `2Dtranslation` | `hex` | the cheapest transport order, and `2Dtranslation` is the only O(1)-displacement gate |
+| hex 3D | `3Dshear` | `hex` | 3D stencils and the cross terms of the quadratic fit |
+| polyhedral 3D | `3Dshear` | `poly` | the only rung where the polyhedral amplification defect appears |
+
+Run the DEFAULT configuration at three resolutions on each rung, and compare
+against the preserved pre-change study. A change that claims to be inert must be
+BYTE-IDENTICAL there; a change that is not inert must show its order.
+
+MEASURED 2026-09-10: the `slValueBound` refactor was gated for bit-identity on
+the coupled two-phase solver over 1563 steps and 8 arms, and NOT on the
+advection solver at all — although `robustEvaluate`, the function it rewrote,
+is reached from `pointValueScheme` in both. The coupled gate cannot stand in for
+the advection gate.
+
+**A polyhedral rung needs ONE mesh for every arm.** The workflow's `mesh` rule
+runs once per ARM, so a polyhedral sweep gives each arm its own cfMesh mesh, and
+a cross-arm comparison then measures the MESHER and not the change. Build the
+mesh once (`--until preprocess` on a single-arm config), copy it into every arm
+with `workflow/scripts/advect_bound_arm.sh`, and print the digest of
+`constant/polyMesh/points` so the claim is checkable.
+
+
 ## Constraints that gate what may even be proposed
 
 - **Unstructured FVM only** (see the section above), compact stencils,
