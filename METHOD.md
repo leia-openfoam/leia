@@ -527,6 +527,14 @@ which is the polyhedral case it was built for.
 
 #### 8.3.4 THE ADVECTION LADDER FALSIFIES IT: kinematics before dynamics
 
+**THE NUMBERS IN THIS SUBSECTION COME FROM ONE RESOLUTION PER CASE, which the rule
+"Touch advection, run a mesh convergence study -- before stating anything" now
+forbids. The converged replacements are in 8.3.7, and they do not all agree with the
+ratios quoted here: the vortex degradation is far WORSE than one rung showed (8.6x at
+N = 32 growing to 190x at N = 256), and on uniform translation the bound is actually
+BETTER than no bound at the coarsest rung. The falsification stands; these particular
+ratios do not.**
+
 Pure advection, `leiaSemiLagrangeLevelSetFoam`, no force in the loop, so this isolates
 TRANSPORT. Every arm of a case runs on the IDENTICAL mesh -- the mesh is built once and
 copied, because cfMesh is not bit-reproducible and a per-arm rebuild would make a cross-arm
@@ -565,6 +573,64 @@ boundary). Every bound prevents that. But at the common step no bound is ACCURAT
 all three sit at 1.5 to 1.9 relative geometric error on this coarse polyhedral mesh -- and
 `stencilBounds` gives the best volume error of the three (4.4e-03 against the cone's 1.0e-01
 and 3.2e-01). **The falsified monotone clip beats the cone bound on every advection gate.**
+
+#### 8.3.7 The CONVERGED advection ladders, 2D (2026-09-10)
+
+Four rungs per case, N = 32/64/128/256, matched horizon, CFL fixed, `h_eff` from the
+CELL COUNT. `E_GEOM_ALPHA_REL`, with the observed order between consecutive rungs:
+
+**Uniform translation, grad u = 0 -- the regime where L = 1 is exactly valid.**
+
+| N | h_eff | `none` | order | `lipschitzCone` | order | ratio |
+|---|---|---|---|---|---|---|
+| 32 | 9.92e-02 | 4.747e-03 | — | 4.019e-03 | — | **0.85, the bound is BETTER** |
+| 64 | 6.25e-02 | 3.409e-04 | 5.70 | 1.241e-03 | 2.54 | 3.6x worse |
+| 128 | 3.94e-02 | 7.947e-05 | 3.15 | 3.394e-04 | 2.81 | 4.3x worse |
+| 256 | 2.48e-02 | 1.159e-04 | **−0.82** | 2.162e-04 | 0.98 | 1.9x worse |
+
+Two things a single rung could not show. The bound is BETTER at the coarsest rung, so
+"worse on uniform translation" was too simple. And **the unbounded scheme itself
+SATURATES**: its order goes 5.70, 3.15, then −0.82, and the error RISES from 7.95e-05
+to 1.16e-04 at N = 256. Something other than the transport reconstruction limits this
+case at the finest rung, and that is a finding about the baseline, not about any bound.
+It needs its own investigation before this rung is used to score anything.
+
+**Reversed vortex, strained.**
+
+| N | `none` | order | `lipschitzCone` | order | ratio |
+|---|---|---|---|---|---|
+| 32 | 4.266e-02 | — | 3.662e-01 | — | 8.6x |
+| 64 | 6.278e-03 | 4.15 | 1.184e-01 | 2.44 | 18.9x |
+| 128 | 6.670e-04 | 4.85 | 5.115e-02 | 1.82 | 76.7x |
+| 256 | 1.564e-04 | 3.14 | 2.967e-02 | 1.18 | **189.7x** |
+
+**The disadvantage GROWS with refinement, 8.6x to 190x, and the order is roughly
+halved** (3.14 against 1.18 at the finest pair). The volume error behaves the same way:
+3.95e-05 against 1.302e-02 at N = 256, a factor 330, with order 3.75 against 0.91. This
+is a converged falsification, and it is much stronger than the single rung suggested.
+
+`stencilBounds` tracks `none` to within a few percent on both 2D cases at every rung,
+which is what a bound that rarely fires on hexahedra should do. `E_BOUND_ALPHA` is
+exactly 0 for every arm at every rung, so alpha stays bounded throughout.
+
+Data: `docs/method-comparison/method-comparison-article/data/tables/advConv2D*_convergence.csv`,
+from `config/advConv2Dtranslation.yaml` and `config/advConv2Dvortex.yaml`, read with
+`workflow/scripts/advection_convergence_table.py`.
+
+**The 3D hex and polyhedral rungs are RUNNING** (27 jobs, 48 ranks each) and are not
+reported here. Nothing is stated from them until they land.
+
+#### 8.3.8 The advection REGRESSION passes: the refactor did not change transport
+
+HEAD against the pre-change commit `83db548`, built into a separate prefix, run on an
+IDENTICAL mesh and an IDENTICAL `0/` so the only difference is the advection solver
+binary. Hex 2D translation, hex 2D vortex, hex 3D shear and polyhedral 3D shear are
+bit-identical in EVERY physical column at EVERY step, at tolerance 0. The polyhedral
+rung diverges at step 198 in both. `slValueBound` did not change advection.
+
+That comparison first reported DIFFERS on all four, from a `cmp` of the whole metrics
+CSV: `ELAPSED_CPU_TIME` and `ELAPSED_CLOCK_TIME` are wall-clock and always differ. Use
+`workflow/scripts/compare_metrics_csv.py --tol 0 --skip ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME`.
 
 #### 8.3.5 THE RESOLUTION LADDER FALSIFIES THE COUPLED GAIN AS AN ASYMPTOTIC RESULT
 
