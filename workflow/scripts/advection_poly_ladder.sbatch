@@ -10,15 +10,21 @@
 # ONE rung of the POLYHEDRAL advection ladder: build ONE pMesh, then run every
 # value-bound arm on THAT mesh.
 #
-# WHY IT IS NOT A SNAKEMAKE STUDY. The workflow's `mesh` rule runs once per ARM, and
+# WHEN TO USE THIS RATHER THAN A SNAKEMAKE STUDY. Bit-identical meshes are NOT
+# required for a polyhedral sweep, and config/advConv3DshearPoly.yaml is the normal
+# route: let each arm build its own mesh and read the arms against a MEASURED
+# mesh-noise floor. Use this script only when the effect under test is expected to sit
+# AT that floor, so the mesh contribution has to be removed rather than bounded.
+#
+# The mesh really does vary. The workflow's `mesh` rule runs once per ARM, and
 # MEASURED 2026-09-10 on the WSL laptop: two runs of pMesh from the IDENTICAL rendered
 # case gave different meshes -- digests 7e9ee670c679 and e38b4e8e919b, and even
 # different file sizes (8277379 against 8277373 bytes). cfMesh is therefore not
 # reproducible run to run, not merely across a change of scale. A polyhedral parameter
 # sweep driven by the workflow gives every arm its own mesh, and a cross-arm metric
-# comparison then measures the MESHER and not the parameter. This script builds the
-# mesh once and copies it into every arm, and prints the digest so the claim is
-# checkable rather than asserted.
+# comparison carries that difference too. This script builds the mesh once and copies
+# it into every arm, and prints the digest so the claim is checkable rather than
+# asserted.
 #
 # --mem-per-cpu is mandatory on Lichtenberg. It is set high because pMesh is SERIAL
 # and holds the whole mesh in ONE process, so it does not get cheaper as -n rises.

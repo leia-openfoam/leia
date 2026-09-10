@@ -493,12 +493,23 @@ advection solver at all — although `robustEvaluate`, the function it rewrote,
 is reached from `pointValueScheme` in both. The coupled gate cannot stand in for
 the advection gate.
 
-**A polyhedral rung needs ONE mesh for every arm.** The workflow's `mesh` rule
-runs once per ARM, so a polyhedral sweep gives each arm its own cfMesh mesh, and
-a cross-arm comparison then measures the MESHER and not the change. Build the
-mesh once (`--until preprocess` on a single-arm config), copy it into every arm
-with `workflow/scripts/advect_bound_arm.sh`, and print the digest of
-`constant/polyMesh/points` so the claim is checkable.
+**A polyhedral rung does NOT need bit-identical meshes. It needs a measured
+mesh-noise floor.** The workflow's `mesh` rule runs once per ARM, and cfMesh is
+not reproducible run to run -- MEASURED 2026-09-10: two runs of `pMesh` from the
+IDENTICAL rendered case gave different meshes, digests `7e9ee670c679` and
+`e38b4e8e919b`, and even different file sizes (8277379 against 8277373 bytes).
+So every polyhedral arm carries a mesh contribution on top of the parameter's.
+
+Do not engineer that away by default. QUANTIFY it: run the SAME configuration on
+two independently built meshes at one resolution, and the spread between them is
+the floor below which no arm-to-arm difference in that study means anything.
+Report the floor next to the differences. A difference ten times the floor is a
+result; a difference at the floor is the mesher.
+
+Share one mesh across arms only where the effect being measured is expected to
+be AT that floor. `workflow/scripts/advect_bound_arm.sh` does that -- it copies
+`constant/polyMesh` into every arm and prints the digest -- and it is the
+exception, not the default.
 
 
 ## Constraints that gate what may even be proposed
