@@ -495,21 +495,43 @@ the advection gate.
 
 **A polyhedral rung does NOT need bit-identical meshes. It needs a measured
 mesh-noise floor.** The workflow's `mesh` rule runs once per ARM, and cfMesh is
-not reproducible run to run -- MEASURED 2026-09-10: two runs of `pMesh` from the
-IDENTICAL rendered case gave different meshes, digests `7e9ee670c679` and
-`e38b4e8e919b`, and even different file sizes (8277379 against 8277373 bytes).
-So every polyhedral arm carries a mesh contribution on top of the parameter's.
+not bit-reproducible, so each arm gets its own mesh. MEASURED 2026-09-10, and
+the SIZE of that difference is the whole point: two runs of `pMesh` from the
+IDENTICAL rendered case produced meshes with the same point count whose
+coordinates differ in the LAST DIGIT of 1.3 percent of points -- 2658 of 206528,
+at about 3e-12 relative -- plus some face ordering. The two meshes are the same
+mesh to eleven significant digits.
 
-Do not engineer that away by default. QUANTIFY it: run the SAME configuration on
-two independently built meshes at one resolution, and the spread between them is
-the floor below which no arm-to-arm difference in that study means anything.
-Report the floor next to the differences. A difference ten times the floor is a
-result; a difference at the floor is the mesher.
+Whether that matters is a property OF THE CANDIDATE, not of the mesher, and it
+is measured with a null arm: run the SAME configuration on two independently
+built meshes and read the spread. On the 3D shear polyhedral rung:
 
-Share one mesh across arms only where the effect being measured is expected to
-be AT that floor. `workflow/scripts/advect_bound_arm.sh` does that -- it copies
+| arm | geometric error spread | volume error spread |
+|---|---|---|
+| `valueBound none` | 0.0 % | 0.0 % |
+| `valueBound stencilBounds` | 0.0 % | 0.0 % |
+| `valueBound lipschitzCone` | 0.3 % | **14.2 %** |
+
+So the mesh noise is NOT a general confound to be engineered away — two of the
+three arms are insensitive to it at four significant figures. It is a
+DIAGNOSTIC: a candidate that turns a 3e-12 coordinate change into a 14 percent
+volume difference is telling you it is unstable to round-off, and that is a
+finding about the candidate. Report the floor next to the differences, and treat
+a difference at the floor as noise.
+
+Share one mesh across arms only where the effect under test is expected to sit
+AT that floor. `workflow/scripts/advect_bound_arm.sh` does that -- it copies
 `constant/polyMesh` into every arm and prints the digest -- and it is the
 exception, not the default.
+
+**Compare metric CSVs with the committed comparator, and skip the timing
+columns.** `ELAPSED_CPU_TIME` and `ELAPSED_CLOCK_TIME` are wall-clock and always
+differ, so a `cmp` of the whole file reports DIFFERS for two runs that are
+bit-identical in every physical quantity. That is the same class of mistake as
+an ad-hoc grep against a solver log. Use
+
+    workflow/scripts/compare_metrics_csv.py A.csv B.csv --tol 0 \
+        --skip ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME
 
 
 ## Constraints that gate what may even be proposed
