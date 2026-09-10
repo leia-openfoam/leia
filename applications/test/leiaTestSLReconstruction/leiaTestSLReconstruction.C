@@ -38,6 +38,7 @@ Description
 #include "bandQuadraticWeightedLeastSquaresReconstruction.H"
 #include "defectCorrectedIDWReconstruction.H"
 #include "slReconstruction.H"
+#include "slValueBound.H"
 
 using namespace Foam;
 
@@ -249,10 +250,15 @@ int main(int argc, char *argv[])
     // kink (excluded via the near-interface band) are not tested.
     scalar errSDF = 0;
     {
-        const point x0(0.5, 0.5, 0.0);
-        const scalar Rsdf = 0.25;
+        // From the mesh, not from unit-box literals: hardcoded coordinates put
+        // the sphere outside an SI-scale case, the band filter then matched no
+        // cell, and errSDF = 0 was reported as a PASS having tested nothing.
+        const point x0 = 0.5*(bb.min() + bb.max());
+        const vector extSdf = bb.max() - bb.min();
+        const scalar Rsdf = 0.2*Foam::min(extSdf.x(), extSdf.y());
         auto fSDF = [&](const point& x) -> scalar { return Foam::mag(x - x0) - Rsdf; };
         setPsi(fSDF);
+        label nSDFtested = 0;
 
         signedDistanceQuadraticWeightedLeastSquaresReconstruction sd(mesh);
         sd.update(psi);
@@ -272,8 +278,242 @@ int main(int argc, char *argv[])
             dir /= Foam::mag(dir);
             const point xe = xc + 0.25*r*dir;
             errSDF = Foam::max(errSDF, Foam::mag(sd.evaluate(c, xe) - fSDF(xe)));
+            ++nSDFtested;
         }
         reduce(errSDF, maxOp<scalar>());
+        reduce(nSDFtested, sumOp<label>());
+        // A test that examined no cell has not passed.
+        if (nSDFtested == 0)
+        {
+            errSDF = GREAT;
+            Info<< "  (b'') WARNING: no cell met the SDF band filter" << endl;
+        }
+    }
+
+    // ======= (d) the distance-cone bound: admissibility and contraction ======= //
+    // The bound is
+    //     l_c = max_j ( psi_j - L|x_d - x_j| ),  u_c = min_j ( psi_j + L|x_d - x_j| )
+    // over the arrival cell's stencil, with L = 1 for a signed distance field.
+    //
+    // WHAT THIS GATE DECIDES. The falsified monotone clip is exact only on
+    // monotone data, and a signed distance field is never monotone in a closed
+    // domain: it has genuine interior extrema on its medial axis. The claim for
+    // the cone bound is different and much stronger -- it is exact on the class
+    // of fields the method transports, for ANY interface shape and ANY mesh:
+    //
+    //   1. For L-Lipschitz data the true departure value lies inside [l_c, u_c],
+    //      so the interval is never EMPTY (admissibility) and never excludes the
+    //      truth (containment).
+    //   2. Clipping onto an interval that contains the true value moves the
+    //      candidate toward it, so the guarded error cannot exceed the raw fit's
+    //      error, cell by cell (contraction). This is why the bound cannot
+    //      degrade the order on compatible data.
+    //
+    // If any of these fails on an EXACT distance field, the bound is wrong and
+    // no coupled run is worth starting.
+    scalar coneLo1D = 0, coneHi1D = 0, coneMonoErr1D = 0;   // the review's 1D case
+    label nConeInadmissible = 0;      // empty intervals on exact data: must be 0
+    scalar coneContain = 0;           // how far the truth fell OUTSIDE [l_c, u_c]
+    scalar coneWorsened = 0;          // worst error INCREASE caused by clipping
+    scalar coneTightPlane = 0;        // |l_c - psi_true| on a plane: must be ~0
+    label nConeApexTested = 0;        // apex cells where the monotone clip errs
+    scalar coneApexMonoErr = 0;       // the monotone clip's error there
+    scalar coneApexConeErr = 0;       // the cone bound's error at the same cells
+    {
+        // ---- (d1) the review's verified 1D counterexample, pure arithmetic.
+        // psi(x) = |x - 0.25| - 2 sampled at x = -1, 0, 1. The true value at the
+        // departure point x_d = 0.25 is -2, which is BELOW the sample minimum
+        // -1.75, so a clip to the sample range commits an error of 0.25. The cone
+        // interval is [-2, -1.5] and admits the true value at its lower end.
+        {
+            const scalar xs[3] = {-1.0, 0.0, 1.0};
+            const scalar xd = 0.25;
+            scalar lo = -GREAT, hi = GREAT, smin = GREAT, smax = -GREAT;
+            for (label i = 0; i < 3; ++i)
+            {
+                const scalar pj = Foam::mag(xs[i] - 0.25) - 2.0;
+                const scalar r = Foam::mag(xd - xs[i]);
+                lo = Foam::max(lo, pj - r);
+                hi = Foam::min(hi, pj + r);
+                smin = Foam::min(smin, pj);
+                smax = Foam::max(smax, pj);
+            }
+            const scalar exact = -2.0;
+            coneLo1D = lo;
+            coneHi1D = hi;
+            coneMonoErr1D = Foam::mag(Foam::min(Foam::max(exact, smin), smax) - exact);
+        }
+
+        // ---- (d2)/(d3)/(d4) on the mesh, through the public accessor.
+        uncachedQuadraticWeightedLeastSquaresReconstruction R(mesh);
+
+        // GEOMETRY FROM THE MESH, never from unit-box literals. A hardcoded
+        // x0 = (0.5, 0.5) and R = 0.25 lie entirely OUTSIDE an SI-scale case
+        // (the Popinet box is 5 mm x 2.5 mm), so every filter matches nothing
+        // and the test reports a VACUOUS pass -- the same defect class as a
+        // mesher that adds no cells and still exits 0.
+        //
+        // The sphere centre is offset by HALF A CELL off the box centre on
+        // purpose. The distance cone's apex sitting exactly on a cell centre is
+        // a measure-zero special case in which the apex value is itself a
+        // stencil value and the monotone clip happens to be right. The generic
+        // position -- apex BETWEEN cell centres -- is the one that matters, and
+        // it is where the monotone clip is guaranteed wrong.
+        const point boxCtr = 0.5*(bb.min() + bb.max());
+        const vector ext = bb.max() - bb.min();
+        const scalar Rs = 0.2*Foam::min(ext.x(), ext.y());
+        const point x0 = boxCtr + 0.5*h*vector(1, 1, (gd[2] == 1 ? 1 : 0));
+        vector nrm(0.6, 0.8, 0.0);            // |nrm| == 1 exactly
+        auto fPlane = [&](const point& x) -> scalar { return nrm & (x - x0); };
+        auto fSphere = [&](const point& x) -> scalar
+        {
+            return Foam::mag(x - x0) - Rs;
+        };
+
+        for (label field = 0; field < 2; ++field)
+        {
+            std::function<scalar(const point&)> f =
+                (field == 0)
+              ? std::function<scalar(const point&)>(fPlane)
+              : std::function<scalar(const point&)>(fSphere);
+
+            setPsi(f);
+            R.update(psi);
+
+            forAll(C, c)
+            {
+                const point& xc = C[c];
+                const bool interior =
+                    (xc.x() - bb.min().x() > 4*h) && (bb.max().x() - xc.x() > 4*h)
+                 && (xc.y() - bb.min().y() > 4*h) && (bb.max().y() - xc.y() > 4*h);
+                if (!interior) { continue; }
+
+                // A departure displacement inside the stencil hull, as the SL
+                // trace produces.
+                const scalar r = R.stencilRadius(c);
+                vector dir(1.0, 1.0, 0.0);
+                if (gd[2] == 1) { dir.z() = 1.0; }
+                dir /= Foam::mag(dir);
+                const point xd = xc - 0.25*r*dir;
+
+                scalar lo, hi;
+                const bool ok = R.stencilConeRange(c, xd, 1.0, false, lo, hi);
+                if (!ok)
+                {
+                    ++nConeInadmissible;
+                    continue;
+                }
+
+                const scalar exact = f(xd);
+                // Containment: the truth must be inside. A POSITIVE value here is
+                // a bound that would clip a correct value.
+                coneContain = Foam::max
+                (
+                    coneContain,
+                    Foam::max(lo - exact, exact - hi)
+                );
+
+                // Contraction: clipping must not increase the pointwise error.
+                const scalar Hc = R.evaluateRaw(c, xd);
+                const scalar Hb = Foam::min(Foam::max(Hc, lo), hi);
+                coneWorsened = Foam::max
+                (
+                    coneWorsened,
+                    Foam::mag(Hb - exact) - Foam::mag(Hc - exact)
+                );
+
+                if (field == 0)
+                {
+                    // On a plane the bound is TIGHT: a stencil point lying
+                    // upstream along the gradient gives psi_j + |x_d - x_j|
+                    // exactly equal to psi(x_d), so l_c reproduces the truth.
+                    coneTightPlane =
+                        Foam::max(coneTightPlane, Foam::mag(lo - exact));
+                }
+            }
+        }
+
+        // ---- THE CASE THAT KILLED THE MONOTONE CLIP: the distance cone's apex.
+        // psi = |x - x0| - R has a genuine interior MINIMUM at x0. When the apex
+        // lies BETWEEN cell centres, the true value at a departure point near it
+        // is below every sampled value, so a clip to the stencil range is
+        // guaranteed to be wrong -- and the exemption written to protect that
+        // cell is what falsified the monotone clip at gate G4.
+        //
+        // SUB-CELL ALIGNMENT IS SWEPT, not chosen. The apex sitting exactly on a
+        // cell centre is a measure-zero special case in which the apex value IS
+        // a stencil value and the monotone clip happens to be right; a single
+        // hardcoded offset can land there by accident, and did (an offset of half
+        // a cell from the box centre put the apex exactly on a centre, because
+        // the box centre falls on a FACE). The review of 2026-09-09 asks for
+        // "a translating disk/sphere at several subcell alignments" for exactly
+        // this reason.
+        //
+        // The foot is aimed AT the apex, which is the direction that puts the
+        // departure point below the sampled minimum.
+        for (label a = 0; a < 8; ++a)
+        {
+            const scalar frac = a/8.0;          // 0, 1/8, ... 7/8 of a cell
+            const point xa =
+                boxCtr + frac*h*vector(1, 0.7, (gd[2] == 1 ? 0.4 : 0));
+            auto fApex = [&](const point& x) -> scalar
+            {
+                return Foam::mag(x - xa) - Rs;
+            };
+            setPsi(fApex);
+            R.update(psi);
+
+            forAll(C, c)
+            {
+                const point& xc = C[c];
+                // Only cells whose stencil can reach the apex.
+                if (Foam::mag(xc - xa) > 2.0*h) { continue; }
+                const bool interior =
+                    (xc.x() - bb.min().x() > 4*h) && (bb.max().x() - xc.x() > 4*h)
+                 && (xc.y() - bb.min().y() > 4*h) && (bb.max().y() - xc.y() > 4*h);
+                if (!interior) { continue; }
+
+                const vector toApex = xa - xc;
+                const scalar dm = Foam::mag(toApex);
+                if (dm < SMALL) { continue; }    // the apex IS this cell centre
+
+                // A departure point at the apex itself: the sharpest case, and
+                // the one a translating droplet reaches every step.
+                const point xd = xa;
+                const scalar exact = fApex(xd);  // == -Rs
+
+                scalar slo, shi;
+                R.stencilRange(c, slo, shi);
+                if (exact >= slo && exact <= shi) { continue; }   // no violation
+
+                scalar lo, hi;
+                const bool ok = R.stencilConeRange(c, xd, 1.0, false, lo, hi);
+                ++nConeApexTested;
+                if (!ok)
+                {
+                    ++nConeInadmissible;
+                    continue;
+                }
+                coneApexMonoErr = Foam::max
+                (
+                    coneApexMonoErr,
+                    Foam::mag(Foam::min(Foam::max(exact, slo), shi) - exact)
+                );
+                coneApexConeErr = Foam::max
+                (
+                    coneApexConeErr,
+                    Foam::max(lo - exact, exact - hi)
+                );
+            }
+        }
+
+        reduce(nConeInadmissible, sumOp<label>());
+        reduce(nConeApexTested, sumOp<label>());
+        reduce(coneContain, maxOp<scalar>());
+        reduce(coneWorsened, maxOp<scalar>());
+        reduce(coneTightPlane, maxOp<scalar>());
+        reduce(coneApexMonoErr, maxOp<scalar>());
+        reduce(coneApexConeErr, maxOp<scalar>());
     }
 
     // ================= (c) constant-velocity foot ====================== //
@@ -315,10 +555,33 @@ int main(int argc, char *argv[])
     // SDF reprojection is only O(h^2)-accurate (SDF is non-polynomial): assert a loose
     // bound that a correct reprojection meets easily but a broken one (O(1)) fails.
     const bool passSDF = errSDF < 5e-2;
+
+    // (d) the distance-cone bound. Every one of these is a hard assertion on
+    // EXACT distance data, where the mathematics leaves no room: an empty
+    // interval, a truth outside the interval, or an error made worse by clipping
+    // would each mean the bound is wrong, not merely loose.
+    const bool passCone1D =
+        Foam::mag(coneLo1D + 2.0) < 1e-12          // l_c == -2
+     && Foam::mag(coneHi1D + 1.5) < 1e-12          // u_c == -1.5
+     && Foam::mag(coneMonoErr1D - 0.25) < 1e-12;   // the monotone clip errs 0.25
+    const bool passConeAdmissible = (nConeInadmissible == 0);
+    const bool passConeContain = coneContain < 1e-12;
+    const bool passConeContract = coneWorsened < 1e-12;
+    // Tightness on a plane is limited by the stencil's angular coverage, not by
+    // round-off: l_c is exact only if some stencil point lies ON the gradient ray
+    // through x_d. On a hexahedral stencil the nearest point is off that ray by
+    // up to half a cell, so the gap is O(h). A loose bound that a correct
+    // implementation meets easily and a broken one (O(1)) fails.
+    const bool passConeTight = coneTightPlane < 2.0*h;
+    // The apex must actually be REACHED, or the sharpest claim is untested.
+    const bool passConeApex = (nConeApexTested > 0) && (coneApexConeErr < 1e-12);
+
     const bool allPass =
         passCentre && passLin && passLinWLS && passLinWLSQuad
         && passNest && passQuad && passDefect && passFoot
-        && passBandExact && passBandVsFull && passUncached && passParity && passSDF;
+        && passBandExact && passBandVsFull && passUncached && passParity && passSDF
+        && passCone1D && passConeAdmissible && passConeContain
+        && passConeContract && passConeTight && passConeApex;
 
     Info<< nl << "=== leiaTestSLReconstruction ===" << nl
         << "  (a) centre reproduction  max|e| = " << worstCentre
@@ -348,6 +611,22 @@ int main(int argc, char *argv[])
         << "  (c) const-velocity foot accel |max| = " << maxAccel
         << " (gradU max " << maxGradU << ")"
         << "  [" << (passFoot ? "PASS" : "FAIL") << "]" << nl
+        << "  (d) cone bound, review 1D case [" << coneLo1D << ", " << coneHi1D
+        << "] vs monotone error " << coneMonoErr1D
+        << "  [" << (passCone1D ? "PASS" : "FAIL") << "]" << nl
+        << "  (d) cone bound, empty intervals on exact data = " << nConeInadmissible
+        << "  [" << (passConeAdmissible ? "PASS" : "FAIL") << "]" << nl
+        << "  (d) cone bound, truth outside interval = " << coneContain
+        << "  [" << (passConeContain ? "PASS" : "FAIL") << "]" << nl
+        << "  (d) cone bound, worst error INCREASE from clipping = " << coneWorsened
+        << "  [" << (passConeContract ? "PASS" : "FAIL") << "]" << nl
+        << "  (d) cone bound, plane tightness |l_c - exact| = " << coneTightPlane
+        << " (tol " << 2.0*h << ")"
+        << "  [" << (passConeTight ? "PASS" : "FAIL") << "]" << nl
+        << "  (d) cone bound at " << nConeApexTested
+        << " apex cells: monotone clip errs " << coneApexMonoErr
+        << ", cone errs " << coneApexConeErr
+        << "  [" << (passConeApex ? "PASS" : "FAIL") << "]" << nl
         << "  RESULT: " << (allPass ? "PASS" : "FAIL") << nl << endl;
 
     if (Pstream::master())
@@ -380,6 +659,19 @@ int main(int argc, char *argv[])
            << (passFoot ? 1 : 0) << "\n";
         os << "signedDistanceSDFReproject," << errSDF << ",5e-2,"
            << (passSDF ? 1 : 0) << "\n";
+        os << "coneBoundReview1Dcase," << coneMonoErr1D << ",0.25,"
+           << (passCone1D ? 1 : 0) << "\n";
+        os << "coneBoundEmptyIntervals," << nConeInadmissible << ",0,"
+           << (passConeAdmissible ? 1 : 0) << "\n";
+        os << "coneBoundTruthOutside," << coneContain << ",1e-12,"
+           << (passConeContain ? 1 : 0) << "\n";
+        os << "coneBoundErrorIncrease," << coneWorsened << ",1e-12,"
+           << (passConeContract ? 1 : 0) << "\n";
+        os << "coneBoundPlaneTightness," << coneTightPlane << "," << 2.0*h << ","
+           << (passConeTight ? 1 : 0) << "\n";
+        os << "coneBoundApexCells," << nConeApexTested << ",>0,"
+           << (passConeApex ? 1 : 0) << "\n";
+        os << "coneBoundApexMonotoneError," << coneApexMonoErr << ",NA,1\n";
     }
 
     Info<< "End\n" << endl;

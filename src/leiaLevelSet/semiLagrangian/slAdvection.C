@@ -76,7 +76,8 @@ Foam::slAdvection::slAdvection(const fvMesh& mesh)
         Info<< " (clipRegion = " << recon_->clipRegion()
             << ", clipKeepExtrema = " << recon_->clipKeepExtrema() << ")";
     }
-    Info<< ", correction = " << corrector_->type() << endl;
+    Info<< ", correction = " << corrector_->type()
+        << ", valueBound = " << corrector_->bound().type() << endl;
 }
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //

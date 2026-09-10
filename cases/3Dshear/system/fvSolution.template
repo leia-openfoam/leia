@@ -247,6 +247,15 @@ levelSet
         clipToStencilBounds @!SL_CLIP!@;   // tight monotone clip to stencil [min,max];
         clipRegion @!SL_CLIP_REGION!@;   // all | outsideBand -- WHERE the clip may act (see default.parameter)
         clipKeepExtrema @!SL_CLIP_KEEP_EXTREMA!@;   // exempt a cell whose psi is already its stencil's extremum (see default.parameter)
+        // The bound on the reconstructed value is a runtime-selected model.
+        // fromClipSwitch (the default) follows clipToStencilBounds, so this
+        // block is inert until a study overrides SL_VALUE_BOUND. The three
+        // cone entries are read by valueBound lipschitzCone only.
+        // See cases/default.parameter and workflow/README.md.
+        valueBound          @!SL_VALUE_BOUND!@;
+        lipschitzMode       @!SL_CONE_L_MODE!@;
+        lipschitzConstant   @!SL_CONE_L!@;
+        onInadmissible      @!SL_CONE_INADMISSIBLE!@;
                                        // false on hex, true on polyhedra (REQUIRED: bounds a
                                        // near-singular per-cell fit that would else run away)
 

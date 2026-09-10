@@ -80,6 +80,10 @@ semiLagrangian/uncachedQuadraticWeightedLeastSquaresReconstruction.C
 semiLagrangian/signedDistanceQuadraticWeightedLeastSquaresReconstruction.C
 semiLagrangian/bandQuadraticWeightedLeastSquaresReconstruction.C
 semiLagrangian/defectCorrectedIDWReconstruction.C
+semiLagrangian/slValueBound.C
+semiLagrangian/noValueBound.C
+semiLagrangian/stencilBoundsValueBound.C
+semiLagrangian/lipschitzConeValueBound.C
 semiLagrangian/slCorrector.C
 semiLagrangian/directCorrector.C
 semiLagrangian/deferredCorrector.C

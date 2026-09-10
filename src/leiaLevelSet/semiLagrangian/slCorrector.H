@@ -63,11 +63,64 @@ SourceFiles
 #include "dictionary.H"
 #include "autoPtr.H"
 #include "runTimeSelectionTables.H"
+#include "slValueBound.H"
 
 namespace Foam
 {
 
 class slReconstruction;
+
+/*---------------------------------------------------------------------------*\
+                        Struct slBoundTally Declaration
+\*---------------------------------------------------------------------------*/
+
+//- Per-step bound accounting. The derived corrector creates one, robustEvaluate
+//  fills it cell by cell, and reportClipActivity reduces and writes it. Plain
+//  per-cell data: nothing here is reduced until the whole cell loop is done, so
+//  no collective is ever reached from inside a loop over cells.
+struct slBoundTally
+{
+    //- Cells whose value the bound actually changed this step.
+    boolList fired;
+
+    //- Cells where the bound's own construction gave an EMPTY interval, so the
+    //  recovery path supplied one. For the distance-cone bound this is a direct
+    //  measurement of how far psi has drifted from a distance function.
+    boolList inadmissible;
+
+    //- The change the bound made, psi_bounded - psi_fit, in the units of psi
+    //  (metres for a level set). Zero where the bound did not act. This is the
+    //  interface damage, in the same quantity the falsified monotone clip was
+    //  measured with.
+    scalarField delta;
+
+    //- Signed headroom, min(hi - v, v - lo)/max(|d|, SMALL), where the bound is
+    //  enforced. NEGATIVE means the bound fired, POSITIVE is spare room, and
+    //  zero means the bound was not enforced in that cell.
+    scalarField slack;
+
+    //- Non-finite reconstructions reset to the stencil mid this step.
+    label nNonFinite = 0;
+
+    explicit slBoundTally(const label nCells)
+    :
+        fired(nCells, false),
+        inadmissible(nCells, false),
+        delta(nCells, Zero),
+        slack(nCells, Zero)
+    {}
+
+    //- Reuse across deferred-correction passes without reallocating.
+    void reset()
+    {
+        fired = false;
+        inadmissible = false;
+        delta = Zero;
+        slack = Zero;
+        nNonFinite = 0;
+    }
+};
+
 
 /*---------------------------------------------------------------------------*\
                          Class slCorrector Declaration
@@ -82,6 +135,12 @@ protected:
     //- Copy of the semiLagrangian sub-dict (models read their own controls).
     dictionary dict_;
 
+    //- The runtime-selected bound on the reconstructed value. Never null: the
+    //  sentinel `valueBound fromClipSwitch` resolves to `none` when the legacy
+    //  clipToStencilBounds Switch is false, so a case that predates the family
+    //  gets the unbounded path bit for bit.
+    autoPtr<slValueBound> bound_;
+
     //- Cumulative clip activity. A write-time SAMPLE of the per-step count is not
     //  enough and has already misled once: the inflowOnly gate reported 0 bounded
     //  cells at every write while its metric CSV left the baseline at step 20. The
@@ -89,6 +148,11 @@ protected:
     mutable label nClipFiredTotal_ = 0;
     mutable label nClipStepsFired_ = 0;
     mutable label firstFireIndex_ = -1;
+
+    //- Cumulative cells whose bound interval was EMPTY. For the distance-cone
+    //  bound a large value FALSIFIES the guard: the old field is not Lipschitz
+    //  over those stencils, so the bound has no meaning there.
+    mutable label nInadmissibleTotal_ = 0;
 
     //- Cells that have EVER been bounded, written as slClipFiredEver. The per-step
     //  field alone cannot find a firing that happened between two write times, and
@@ -98,18 +162,19 @@ protected:
     mutable boolList firedEver_;
 
     //- Reconstruct at a foot with the advection-level robustness safeguards:
-    //  non-finite -> stencil mid (counts nNonFinite); optional tight monotone
-    //  clip to the stencil bounds (counts nClipped when it actually bounds the
-    //  value); else an always-on generous value cap (mid +- 10*range) that only
-    //  fires on runaway growth.
+    //  non-finite -> stencil mid, counted; then clip to the interval the
+    //  runtime-selected slValueBound returns for this cell. Every bound returns
+    //  the always-on runaway cap (stencil mid +- 10*range) for a cell it does not
+    //  act on, so the value can never grow without limit whichever bound is
+    //  selected. This is the ONE decision point for the bound, which is what
+    //  makes the strategies comparable as a study axis.
     scalar robustEvaluate
     (
         const slReconstruction& recon,
         const label c,
         const point& foot,
-        const bool clip,
-        label& nNonFinite,
-        boolList& firedCell
+        const bool eligible,
+        slBoundTally& tally
     ) const;
 
     //- Per-cell mask of the cells where the quasi-monotone clip may act, built
@@ -132,7 +197,7 @@ protected:
     (
         const slReconstruction& recon,
         const boolList& clipCell,
-        const boolList& firedCell
+        const slBoundTally& tally
     ) const;
 
     //- Operational CFL <= 1 check: warn if any foot leaves its point-neighbour
@@ -166,6 +231,12 @@ public:
 
     //- Select from semiLagrangian.correction (default "direct").
     static autoPtr<slCorrector> New(const fvMesh& mesh, const dictionary& dict);
+
+    //- The selected bound on the reconstructed value.
+    const slValueBound& bound() const
+    {
+        return bound_();
+    }
 
     //- Destructor
     virtual ~slCorrector() = default;

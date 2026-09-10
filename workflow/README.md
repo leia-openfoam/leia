@@ -537,3 +537,58 @@ measurement is the transport fraction above (`psi_check`: PASS = ~1.00 at inlet 
 both smokes with the droplet metrics unchanged to round-off), then the 2D Popinet horizon run,
 then a long polyhedral run past the onset step before any rung is resubmitted.
 
+
+### The value bound is a runtime-selectable family (`SL_VALUE_BOUND`, 2026-09-10)
+
+The bound on the reconstructed value is a runtime-selected model, `slValueBound`, so `none`,
+the falsified quasi-monotone clip and the distance-cone guard are ONE study axis instead of
+three branches inside `slCorrector::robustEvaluate`. Types, which are also the dictionary
+values:
+
+| `valueBound` | what it does |
+|---|---|
+| `none` | no bound, only the runaway cap (stencil mid +- 10*stencil range) that predates the family. Reproduces `clipToStencilBounds false`. |
+| `stencilBounds` | the quasi-monotone clip to the stencil [min, max], with `clipRegion` and `clipKeepExtrema`. Reproduces `clipToStencilBounds true`. FALSIFIED as a fix; kept so its arms stay reproducible. |
+| `lipschitzCone` | the distance-cone bound, `psi_c^{n+1} = clip(H_c, l_c, u_c)` with `l_c = max_j(psi_j - L|x_d - x_j|)` and `u_c = min_j(psi_j + L|x_d - x_j|)`. |
+
+**The default is a sentinel, not a type.** `valueBound fromClipSwitch` resolves to
+`stencilBounds` when `clipToStencilBounds` is true and to `none` otherwise, so a case that
+predates the family keeps its behaviour whether or not its template carries the token. The
+pattern is the one `slopeLimiter` already used for `limitSlope`. MEASURED: all 8 arms of
+`config/popinet2D_clipRegionGate.yaml` byte-identical over 1563 steps at np = 4 against
+`studies/popinet2D_clipRegionGate_preBound_20260910`.
+
+**Scope.** The bound acts in `robustEvaluate`, so it reaches the `pointValue` scheme only --
+which is the production default. `fluxFormScheme` calls `slReconstruction::evaluate()`
+directly and `normalProjectedScheme` never uses the corrector, so both stay unbounded.
+
+**The cone-specific entries** (`lipschitzMode`, `lipschitzConstant`, `onInadmissible`) are
+read by `lipschitzCone` only. That is a self-validating control: the four arms of each
+non-cone bound in a sweep of those axes MUST be byte-identical to each other.
+
+**Diagnostics**, written at write time next to `slClipEligible`/`slClipFired`/
+`slClipFiredEver`: `slBoundDelta` (the change the bound made, in the units of psi, so the
+interface damage is measurable), `slBoundSlack` (signed headroom over the displacement;
+negative means the bound fired) and `slBoundInadmissible` (the empty-interval flag, which is
+a direct measurement of how far psi has drifted from a distance function).
+
+**Recipes.**
+
+```bash
+# exact-field unit gate: the review's 1D case, plane, sphere, and the cone apex
+cd <a rendered case> && blockMesh && leiaSetFields && leiaTestSLReconstruction
+
+# the NONLINEAR map's amplification. Lambda may NOT be used to certify a clip, and
+# the power iteration needs linearity, so a bound is scored with -mode growth.
+leiaTestTransportSpectrum -mode growth -seed checkerboard -amp 1 -nIter 2000
+
+# the coupled 2D matrix
+make studies-one STUDY=popinet2D_coneBoundGate
+```
+
+**Measured, and it is two results that point opposite ways** -- see METHOD.md 8.3 for the
+tables. On the 2D hexahedral coupled case every interface metric IMPROVES by 25 to 68 % and
+the eikonal error falls 75 to 81 %, while the NONLINEAR amplification of a grid-scale
+perturbation gets 1.5 to 2.4 times WORSE with the coefficient-free `L = 1`. Decomposed as
+`max|U|(T) = u_0(h) exp(G(h))`, the bound attacks `u_0` and worsens `G`. The bound is
+therefore NOT in the best configuration.

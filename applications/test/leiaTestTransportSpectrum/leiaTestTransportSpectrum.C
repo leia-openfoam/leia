@@ -118,6 +118,18 @@ int main(int argc, char *argv[])
         "projectedFlux (default, PRODUCTION) | cellCentred"
     );
     argList::addOption("tol", "scalar", "rho pass tolerance (default 1e-6)");
+    argList::addOption
+    (
+        "mode", "word",
+        "spectrum (default, linear power iteration) | growth"
+        " (nonlinear finite-time amplification about the physical state)"
+    );
+    argList::addOption
+    (
+        "amp", "scalar",
+        "growth mode: perturbation amplitude as a MULTIPLE of the mean cell size"
+        " (default 1; the review asks for below and above O(h))"
+    );
     argList::addBoolOption("writeModes", "write the converged mode as psiMode");
 
     #include "setRootCase.H"
@@ -134,6 +146,13 @@ int main(int argc, char *argv[])
             << traceType << exit(FatalError);
     }
     const scalar tol = args.getOrDefault<scalar>("tol", 1e-6);
+    const word mode = args.getOrDefault<word>("mode", "spectrum");
+    const scalar ampH = args.getOrDefault<scalar>("amp", 1.0);
+    if (mode != "spectrum" && mode != "growth")
+    {
+        FatalErrorInFunction << "mode must be spectrum or growth, got "
+            << mode << exit(FatalError);
+    }
 
     if (seedType != "random" && seedType != "checkerboard")
     {
@@ -202,15 +221,26 @@ int main(int argc, char *argv[])
         << "  max|Utrace|      = " << gMax(mag(Utrace.primitiveField())) << nl
         << "  nIter/nTransient = " << nIter << " / " << nTrans << nl << endl;
 
-    // The operator is linear ONLY with the clip off: the clip is a nonlinear,
-    // data-dependent bound. Refuse to report a spectral radius otherwise.
-    if (slAdv->transportReconstruction().clipToStencilBounds())
+    // The operator is linear ONLY with no bound acting: every bound is a
+    // nonlinear, data-dependent clip. A spectral radius is not defined for a
+    // nonlinear map, so the SPECTRUM mode refuses to run with one -- and the
+    // external review of 2026-09-09 is explicit that this may not be worked
+    // around: "The linear diagnostic Lambda cannot simply be assigned the value
+    // one after nonlinear clipping", and "For the proposed nonlinear schemes,
+    // test the mapping itself rather than reusing a frozen linear-weight
+    // argument."
+    //
+    // THE GROWTH MODE IS THAT TEST OF THE MAPPING. It runs with any bound.
+    const bool bounded = !slAdv->corrector().bound().inert();
+    if (mode == "spectrum" && bounded)
     {
         FatalErrorInFunction
-            << "clipToStencilBounds is ON. The transport stage is then NONLINEAR"
-            << " and a spectral radius is not defined for it. Set"
-            << " levelSet/semiLagrangian/clipToStencilBounds false, or measure"
-            << " the nonlinear map's finite-time growth instead."
+            << "valueBound " << slAdv->corrector().bound().type()
+            << " is active. The transport stage is then NONLINEAR and a spectral"
+            << " radius is not defined for it. Either set"
+            << " levelSet/semiLagrangian/valueBound none, or run -mode growth,"
+            << " which measures the nonlinear map's finite-time amplification"
+            << " about the physical state instead."
             << exit(FatalError);
     }
 
@@ -259,6 +289,154 @@ int main(int argc, char *argv[])
     {
         csv = new OFstream(runTime.path()/"leiaTestTransportSpectrum.csv");
         *csv << "PHASE,ITER,L2,L1,GROWTH_L2,GROWTH_L1" << endl;
+    }
+
+    // ======================= MODE: growth ================================= //
+    // WHY THIS MODE EXISTS. Every value bound is a nonlinear, data-dependent
+    // clip, so the transport stage stops being linear the moment one is active:
+    // a spectral radius is undefined, the power iteration has nothing to
+    // converge to, and the linear amplification bound Lambda may NOT be
+    // reassigned. The external review of 2026-09-09 states the requirement
+    // directly -- "For the proposed nonlinear schemes, test the mapping itself
+    // rather than reusing a frozen linear-weight argument."
+    //
+    // WHAT IT MEASURES. The amplification of a PERTURBATION about the physically
+    // relevant state, which is what stability means here. Two frozen-velocity
+    // trajectories run side by side: one from the case's own psi (the exact
+    // signed distance field that leiaSetFields wrote) and one from that field
+    // plus a perturbation. The read-out is
+    //
+    //     g_N = ||psi_pert^N - psi_base^N||_2 / ||psi_pert^0 - psi_base^0||_2 ,
+    //     per-step growth = g_N^(1/N) .
+    //
+    // A random seed is NOT used as the state here, deliberately: it is not a
+    // distance function, so a bound premised on the Lipschitz property of one
+    // would fire everywhere and the measurement would describe a field the
+    // method never transports.
+    //
+    // ITS SELF-VALIDATION IS PRE-REGISTERED. With valueBound none the difference
+    // of two linear trajectories evolves under the SAME linear operator, so the
+    // per-step growth must converge to rho(B) -- the already measured 1.00441 on
+    // production hexahedra and 1.01028 on production pMesh. If it does not, the
+    // instrument is wrong and no verdict about any bound may be read from it.
+    if (mode == "growth")
+    {
+        volScalarField psiBase
+        (
+            IOobject("psiBase", runTime.timeName(), mesh,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            psi
+        );
+        volScalarField psiPert
+        (
+            IOobject("psiPert", runTime.timeName(), mesh,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            psi
+        );
+
+        // The perturbation amplitude is scaled by the mean cell size, so "below
+        // and above O(h)" is what -amp selects and the number transfers across
+        // meshes. hMean is a collective, evaluated once by every rank above.
+        const scalar eps = ampH*hMean;
+        volScalarField dseed
+        (
+            IOobject("dseed", runTime.timeName(), mesh,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            psi
+        );
+        fillSeed(dseed);
+        psiPert.primitiveFieldRef() += eps*dseed.primitiveField();
+        psiPert.correctBoundaryConditions();
+
+        volScalarField diff
+        (
+            IOobject("diff", runTime.timeName(), mesh,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            psiPert - psiBase
+        );
+        const scalar e0 = l2(diff);
+
+        Info<< "MODE growth: nonlinear finite-time amplification" << nl
+            << "  valueBound       = "
+            << slAdv->corrector().bound().type()
+            << (bounded ? "  (NONLINEAR)" : "  (linear -> must reproduce rho)") << nl
+            << "  base state       = the case's psi (exact signed distance)" << nl
+            << "  perturbation     = " << seedType << ", amp = " << ampH
+            << " h = " << eps << nl
+            << "  ||d psi^0||_2    = " << e0 << nl
+            << "  steps            = " << nIter << nl
+            << "  iter  ||dpsi||_2  g_N  per-step g_N^(1/N)" << endl;
+
+        if (e0 < SMALL)
+        {
+            FatalErrorInFunction << "the perturbation is zero" << exit(FatalError);
+        }
+
+        scalar gN = 1.0, perStep = 1.0, perStepPrev = 0.0;
+        label nDoneG = 0;
+        for (label it = 1; it <= nIter; ++it)
+        {
+            // BOTH trajectories advance under the SAME frozen velocity. Any
+            // difference between them is the operator's action on the
+            // perturbation, which is the whole measurement.
+            slAdv->advect(psiBase, Utrace, UtraceOld);
+            slAdv->advect(psiPert, Utrace, UtraceOld);
+
+            diff.primitiveFieldRef() =
+                psiPert.primitiveField() - psiBase.primitiveField();
+            diff.correctBoundaryConditions();
+
+            // Collectives on EVERY rank, outside every guard.
+            const scalar e = l2(diff);
+            nDoneG = it;
+            if (!std::isfinite(e))
+            {
+                Info<< "  iter " << it << ": NON-FINITE -- the map overflowed"
+                    << endl;
+                break;
+            }
+            gN = e/e0;
+            perStep = Foam::pow(gN, 1.0/scalar(it));
+            if (it <= 10 || it % 20 == 0 || it == nIter)
+            {
+                Info<< "  " << it << "  " << e << "  " << gN << "  " << perStep
+                    << "   dperStep = "
+                    << (it > 1 ? perStep - perStepPrev : 0.0) << endl;
+            }
+            if (Pstream::master())
+            {
+                *csv << "growth," << it << ',' << e << ',' << gN << ','
+                     << perStep << ',' << gN << endl;
+            }
+            perStepPrev = perStep;
+        }
+
+        const scalar lastIncrement = perStep - perStepPrev;
+        const bool growsG = (perStep > 1.0 + tol);
+
+        Info<< nl << "RESULT" << nl
+            << "  mode              = growth (the NONLINEAR map itself)" << nl
+            << "  valueBound        = "
+            << slAdv->corrector().bound().type() << nl
+            << "  perturbation      = " << seedType
+            << ", amp = " << ampH << " h" << nl
+            << "  steps             = " << nDoneG << nl
+            << "  total growth g_N  = " << gN << nl
+            << "  per-step growth   = " << perStep << nl
+            << "  per-step - 1      = " << perStep - 1.0 << nl
+            << "  last increment    = " << lastIncrement
+            << (Foam::mag(lastIncrement) > 0.1*Foam::mag(perStep - 1.0)
+                 ? "   *** NOT CONVERGED: raise -nIter ***" : "")
+            << nl << endl;
+
+        Info<< (growsG
+              ? "GROWS: the map amplifies a perturbation of the distance field"
+              : "BOUNDED: per-step growth <= 1 + tol over this horizon")
+            << endl;
+
+        if (Pstream::master()) { delete csv; }
+        Info<< "End\n" << endl;
+        return growsG ? 1 : 0;
     }
 
     // ---- PHASE 1: un-renormalised power norms (transient growth) ----------

@@ -28,6 +28,7 @@ License
 #include "slCorrector.H"
 #include "slReconstruction.H"
 #include "coupledFvPatch.H"
+#include "Switch.H"
 #include <cmath>   // std::isfinite
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -43,8 +44,22 @@ namespace Foam
 Foam::slCorrector::slCorrector(const fvMesh& mesh, const dictionary& dict)
 :
     mesh_(mesh),
-    dict_(dict)
-{}
+    dict_(dict),
+    bound_
+    (
+        slValueBound::New
+        (
+            mesh,
+            dict,
+            // The legacy Switch, read from the SAME sub-dict and with the SAME
+            // default that slReconstruction uses, so the sentinel resolves
+            // identically on both sides and no case changes behaviour.
+            dict.getOrDefault<Switch>("clipToStencilBounds", false)
+        )
+    )
+{
+    bound_->printBanner();
+}
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
 
@@ -80,9 +95,8 @@ Foam::scalar Foam::slCorrector::robustEvaluate
     const slReconstruction& recon,
     const label c,
     const point& foot,
-    const bool clip,
-    label& nNonFinite,
-    boolList& firedCell
+    const bool eligible,
+    slBoundTally& tally
 ) const
 {
     scalar v = recon.evaluate(c, foot);
@@ -93,57 +107,41 @@ Foam::scalar Foam::slCorrector::robustEvaluate
     if (!std::isfinite(v))
     {
         v = mid;
-        ++nNonFinite;
+        ++tally.nNonFinite;
         return v;
     }
 
-    bool bound = clip;
+    // The bound decides ONE thing: the interval. It has no side effects, it may
+    // not reduce, and it gets the stencil range passed in so no bound recomputes
+    // it. `none` returns the runaway cap, which reproduces the pre-family path
+    // exactly: min(max(v, mid - cap), mid + cap) with cap = 10*max(hi - lo, SMALL).
+    slBoundResult r;
+    bound_->interval(recon, c, foot, eligible, lo, hi, r);
 
-    // A quasi-monotone bound cannot represent an extremum. Where psi_c is already
-    // the extremum of its own stencil, lo (or hi) IS psi_c, so every reconstructed
-    // value beyond it is pulled back to psi_c and the extremum is flattened -- at
-    // every step, for as long as the run lasts. The level set has such extrema by
-    // construction: the apex of the distance cone at the droplet centre, and the
-    // box corner farthest from the interface. The fit undershoots at the apex
-    // because a smooth quadratic cannot follow a non-differentiable minimum, so
-    // the clip fires there on EVERY mesh, hexahedral meshes included.
-    //
-    // The test is exact in floating point and carries no coefficient: lo and hi
-    // are the min and max over a stencil that CONTAINS psi_c, so psi_c == lo holds
-    // bitwise when the cell is the minimum. A FLAT stencil (lo == hi) is not an
-    // extremum -- the clip must keep enforcing exactness on a constant field.
-    //
-    // What stays bounded is the SPURIOUS extremum: the fit putting the value
-    // outside the range of a cell that was NOT an extremum. That is the polyhedral
-    // far-field defect the clip exists for.
-    if (bound && recon.clipKeepExtrema() && lo != hi)
+    const scalar vb = Foam::min(Foam::max(v, r.lo), r.hi);
+
+    if (r.enforced)
     {
-        const scalar psiC = recon.stencilCellValue(c);
-        if (psiC == lo || psiC == hi)
+        // A bound is a BOUND, not a strength: it changes the value ONLY when the
+        // fit puts it outside the admissible interval. A cell whose reconstruction
+        // stays inside is bit-unchanged. The runaway cap is NOT counted as a
+        // firing (r.enforced is false there), so the counters keep the meaning
+        // they had before the bound became selectable.
+        if (vb != v)
         {
-            bound = false;
+            tally.fired[c] = true;
+            tally.delta[c] = vb - v;
         }
+        const scalar d = Foam::max(Foam::mag(foot - mesh_.C()[c]), SMALL);
+        tally.slack[c] = Foam::min(r.hi - v, v - r.lo)/d;
     }
 
-    if (bound)
+    if (r.inadmissible)
     {
-        // The clip is a BOUND, not a strength: it carries no coefficient and it
-        // changes the value ONLY when the fit puts it outside the stencil range,
-        // which is exactly when the update creates a new extremum. A cell whose
-        // reconstruction stays inside its stencil bounds is bit-unchanged.
-        const scalar vClipped = Foam::min(Foam::max(v, lo), hi);
-        if (vClipped != v)
-        {
-            firedCell[c] = true;
-            v = vClipped;
-        }
+        tally.inadmissible[c] = true;
     }
-    else
-    {
-        const scalar cap = 10.0*Foam::max(hi - lo, SMALL);
-        v = Foam::min(Foam::max(v, mid - cap), mid + cap);
-    }
-    return v;
+
+    return vb;
 }
 
 
@@ -156,9 +154,9 @@ void Foam::slCorrector::buildClipMask
 {
     clipCell.setSize(mesh_.nCells(), false);
 
-    if (!recon.clipToStencilBounds())
+    if (bound_->inert())
     {
-        return;                                  // the clip is off everywhere
+        return;                                  // no bound acts anywhere
     }
 
     clipCell = true;
@@ -248,13 +246,15 @@ void Foam::slCorrector::reportClipActivity
 (
     const slReconstruction& recon,
     const boolList& clipCell,
-    const boolList& firedCell
+    const slBoundTally& tally
 ) const
 {
-    if (!recon.clipToStencilBounds())
+    if (bound_->inert())
     {
         return;
     }
+
+    const boolList& firedCell = tally.fired;
 
     if (firedEver_.size() != firedCell.size())
     {
@@ -263,13 +263,26 @@ void Foam::slCorrector::reportClipActivity
 
     label nEligible = 0;
     label nFired = 0;
+    label nInadmissible = 0;
+    scalar maxDelta = 0;
+    scalar minSlack = 0;
     forAll(clipCell, c)
     {
         if (clipCell[c]) { ++nEligible; }
         if (firedCell[c]) { ++nFired; firedEver_[c] = true; }
+        if (tally.inadmissible[c]) { ++nInadmissible; }
+        maxDelta = Foam::max(maxDelta, Foam::mag(tally.delta[c]));
+        minSlack = Foam::min(minSlack, tally.slack[c]);
     }
+    // Every reduction happens AFTER the cell loop and on every rank. A collective
+    // inside a loop over cells deadlocks as soon as two ranks hold different cell
+    // counts, and that has cost this campaign a full run.
     reduce(nEligible, sumOp<label>());
     reduce(nFired, sumOp<label>());
+    reduce(nInadmissible, sumOp<label>());
+    reduce(maxDelta, maxOp<scalar>());
+    reduce(minSlack, minOp<scalar>());
+    nInadmissibleTotal_ += nInadmissible;
 
     // Accumulate EVERY step. The write-time sample alone is not evidence: the
     // inflowOnly gate reported 0 bounded at every write while its metric CSV had
@@ -289,12 +302,22 @@ void Foam::slCorrector::reportClipActivity
         return;
     }
 
+    // KEEP THIS LINE'S SHAPE. workflow/scripts/make_clip_region_gate_table.py
+    // parses it, so the bound-independent numbers stay where they are and the
+    // new ones go on their own line below.
     Info<< "slCorrector: quasi-monotone clip (clipRegion = "
         << recon.clipRegion() << "): " << nEligible
         << " eligible cells, " << nFired << " bounded this step, "
         << nClipFiredTotal_ << " cell-steps bounded in total over "
         << nClipStepsFired_ << " steps, first at step " << firstFireIndex_
         << "; writing slClipEligible, slClipFired and slClipFiredEver" << endl;
+
+    Info<< "slCorrector: valueBound " << bound_->type()
+        << ": max |delta| " << maxDelta
+        << ", min slack/|d| " << minSlack
+        << ", " << nInadmissible << " inadmissible this step, "
+        << nInadmissibleTotal_ << " in total"
+        << "; writing slBoundDelta, slBoundSlack and slBoundInadmissible" << endl;
 
     // The count says the clip acted. Only the FIELD says where, and where is what
     // decides whether the region rule is right: a firing inside the band is a
@@ -321,15 +344,47 @@ void Foam::slCorrector::reportClipActivity
         mesh_,
         dimensionedScalar(dimless, 0)
     );
+    // The bound's own read-outs. slBoundDelta is the interface damage in the
+    // units of psi, which is how the monotone clip's +30 % volume cost was
+    // traced to six cells. slBoundInadmissible is the eikonal-drift measurement:
+    // an empty interval means the OLD field already violates the Lipschitz
+    // condition over that stencil.
+    volScalarField boundDelta
+    (
+        IOobject("slBoundDelta", mesh_.time().timeName(), mesh_,
+                 IOobject::NO_READ, IOobject::NO_WRITE),
+        mesh_,
+        dimensionedScalar(dimless, 0)
+    );
+    volScalarField boundSlack
+    (
+        IOobject("slBoundSlack", mesh_.time().timeName(), mesh_,
+                 IOobject::NO_READ, IOobject::NO_WRITE),
+        mesh_,
+        dimensionedScalar(dimless, 0)
+    );
+    volScalarField boundInadmissible
+    (
+        IOobject("slBoundInadmissible", mesh_.time().timeName(), mesh_,
+                 IOobject::NO_READ, IOobject::NO_WRITE),
+        mesh_,
+        dimensionedScalar(dimless, 0)
+    );
     forAll(clipCell, c)
     {
         eligible[c] = clipCell[c] ? 1.0 : 0.0;
         fired[c] = firedCell[c] ? 1.0 : 0.0;
         firedEver[c] = firedEver_[c] ? 1.0 : 0.0;
+        boundDelta[c] = tally.delta[c];
+        boundSlack[c] = tally.slack[c];
+        boundInadmissible[c] = tally.inadmissible[c] ? 1.0 : 0.0;
     }
     eligible.write();
     fired.write();
     firedEver.write();
+    boundDelta.write();
+    boundSlack.write();
+    boundInadmissible.write();
 }
 
 

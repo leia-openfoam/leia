@@ -245,6 +245,19 @@ protected:
         return (g < nLocal_) ? mesh_.C()[g] : centreTail_[g - nLocal_];
     }
 
+    //- True when stencil entry i of cell c is a PHYSICAL boundary FACE rather
+    //  than a cell centre. Compact indices [nLocal_, nLocal_ + nBoundaryFaces)
+    //  are the boundary-face slots of collectData's layout (see buildKeep), and
+    //  OpenFOAM never puts coupled or empty patch faces into a cell-to-cell
+    //  stencil, so every slot in that range is a physical patch face. Entries at
+    //  or beyond that range are remote cell centres.
+    inline bool stencilIsBoundaryFace(const label c, const label i) const
+    {
+        const label g =
+            stencil_.stencil()[c][excludeBoundaryFaces_ ? keep_[c][i] : i];
+        return (g >= nLocal_) && (g < nLocal_ + mesh_.nBoundaryFaces());
+    }
+
     //- No-op retained for API compatibility: the per-cell stencil centres are no
     //  longer stored (stencilC() reads mesh_.C()/centreTail_ on demand), so there
     //  is nothing to free. Kept so existing callers compile unchanged.
@@ -315,6 +328,46 @@ public:
         //  (the interpolation radius; the SL foot must stay within it). Requires
         //  a prior collectStencil in update().
         scalar stencilRadius(const label c) const;
+
+        //- Distance-cone bounds at x: the intersection over the arrival cell's
+        //  stencil of the L-Lipschitz intervals
+        //  [psi_j - L|x - x_j|, psi_j + L|x - x_j|]. A signed distance function
+        //  is 1-Lipschitz, so for compatible data the exact value at x lies in
+        //  every one of those intervals and therefore in their intersection.
+        //
+        //  Returns FALSE when the intersection is EMPTY beyond round-off, which
+        //  happens exactly when the old data already violates the L-Lipschitz
+        //  condition between two stencil points -- lo > hi requires
+        //  psi_i - psi_k > L(r_i + r_k) >= L|x_i - x_k| by the triangle
+        //  inequality through x. The caller must then take a documented recovery
+        //  path and COUNT the cell: the crossing fraction measures how far the
+        //  level set has drifted from a distance function.
+        //
+        //  useBoundaryFaces false skips physical boundary-face entries, whose
+        //  zeroGradient value is a copy of psi_c placed at about h/2 and is NOT
+        //  a sample of the distance function. Slot 0, the arrival cell, is always
+        //  used: it carries the one bound that is proved,
+        //  |psi^{n+1}_c - psi^n_c| <= L|x - x_c|.
+        //
+        //  Requires a prior collectStencil in update().
+        bool stencilConeRange
+        (
+            const label c,
+            const point& x,
+            const scalar L,
+            const bool useBoundaryFaces,
+            scalar& lo,
+            scalar& hi
+        ) const;
+
+        //- Largest owner-to-neighbour slope |psi_i - psi_c|/|x_i - x_c| over the
+        //  arrival cell's stencil: the measured local Lipschitz constant of the
+        //  old data. For an exact signed distance field this is at most 1, so a
+        //  value above 1 measures the drift of |grad psi| away from the eikonal
+        //  value. O(n) in the stencil size; the all-pairs constant would be
+        //  O(n^2) with a square root each and is not worth it (see
+        //  lipschitzConeValueBound). Requires a prior collectStencil in update().
+        scalar stencilLipschitz(const label c) const;
 
         //- Prepare the reconstruction for the current step from psiOld
         //  (gradient/Hessian passes or the cached-pseudoinverse coefficients).

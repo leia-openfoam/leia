@@ -23,63 +23,41 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
+
 \*---------------------------------------------------------------------------*/
 
-#include "directCorrector.H"
+#include "noValueBound.H"
 #include "addToRunTimeSelectionTable.H"
-#include "slReconstruction.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    defineTypeNameAndDebug(directCorrector, 0);
-    addToRunTimeSelectionTable(slCorrector, directCorrector, Mesh);
+    defineTypeNameAndDebug(noValueBound, 0);
+    addToRunTimeSelectionTable(slValueBound, noValueBound, Mesh);
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::directCorrector::directCorrector
-(
-    const fvMesh& mesh,
-    const dictionary& dict
-)
+Foam::noValueBound::noValueBound(const fvMesh& mesh, const dictionary& dict)
 :
-    slCorrector(mesh, dict)
+    slValueBound(mesh, dict)
 {}
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void Foam::directCorrector::correct
+void Foam::noValueBound::interval
 (
-    volScalarField& psi,
-    const pointField& feet,
-    slReconstruction& recon
+    const slReconstruction& recon,
+    const label c,
+    const point& foot,
+    const bool eligible,
+    const scalar stencilLo,
+    const scalar stencilHi,
+    slBoundResult& r
 ) const
 {
-    recon.update(psi);                       // build the reconstruction from psi^n
-    const slReconstruction& R = recon;
-
-    // Per-cell clip permission, from psi^n: the whole mesh for clipRegion all,
-    // the far field only for clipRegion outsideBand, nothing when the clip is
-    // off (the default).
-    boolList clipCell;
-    buildClipMask(psi, R, clipCell);
-
-    footRadiusGuard(R, feet);
-
-    scalarField newPsi(mesh_.nCells());
-    slBoundTally tally(mesh_.nCells());
-    forAll(feet, c)
-    {
-        newPsi[c] = robustEvaluate(R, c, feet[c], clipCell[c], tally);
-    }
-
-    psi.primitiveFieldRef() = newPsi;
-    psi.correctBoundaryConditions();
-
-    warnNonFinite(tally.nNonFinite);
-    reportClipActivity(R, clipCell, tally);
+    runawayCap(stencilLo, stencilHi, r);
 }
 
 // ************************************************************************* //

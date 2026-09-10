@@ -402,6 +402,89 @@ Foam::scalar Foam::slReconstruction::stencilRadius(const label c) const
 }
 
 
+bool Foam::slReconstruction::stencilConeRange
+(
+    const label c,
+    const point& x,
+    const scalar L,
+    const bool useBoundaryFaces,
+    scalar& lo,
+    scalar& hi
+) const
+{
+    const List<scalar>& s = stencilPsi_[c];
+    const label n = stencilSize(c);
+
+    // Slot 0 is the arrival cell and is never a boundary face, so seed from it
+    // unconditionally: that single interval is the proved per-step bound.
+    const scalar r0 = L*Foam::mag(x - stencilC(c, 0));
+    lo = s[0] - r0;
+    hi = s[0] + r0;
+
+    for (label i = 1; i < n; ++i)
+    {
+        if (!useBoundaryFaces && stencilIsBoundaryFace(c, i))
+        {
+            continue;
+        }
+        const scalar r = L*Foam::mag(x - stencilC(c, i));
+        lo = Foam::max(lo, s[i] - r);
+        hi = Foam::min(hi, s[i] + r);
+    }
+
+    if (lo <= hi)
+    {
+        return true;
+    }
+
+    // Tightness makes the emptiness test a FLOATING-POINT question. On an exact
+    // plane the bound is SHARP: a stencil point lying upstream along the gradient
+    // gives psi_j + L|x_d - x_j| exactly equal to psi(x_d), so lo and hi can
+    // meet, and a round-off wobble then reads as an empty interval. MEASURED on
+    // the unit square, exact plane, N = 64: 12 interior cells crossed, by
+    // 1.1e-16. A marginal crossing collapses to the midpoint, which is the
+    // unique admissible value and lies within round-off of both ends.
+    //
+    // This is a round-off guard, not a coefficient. It is scaled to the
+    // magnitudes actually compared -- the values and the L-weighted stencil
+    // radius -- so it cannot admit a crossing larger than the round-off of the
+    // data, while a genuine Lipschitz violation is O(h) or larger and still
+    // reports as inadmissible.
+    const scalar scale = Foam::max
+    (
+        Foam::max(Foam::mag(lo), Foam::mag(hi)),
+        L*radius_[c]
+    );
+    if (lo - hi <= 8.0*SMALL*scale)
+    {
+        lo = hi = 0.5*(lo + hi);
+        return true;
+    }
+
+    return false;
+}
+
+
+Foam::scalar Foam::slReconstruction::stencilLipschitz(const label c) const
+{
+    const List<scalar>& s = stencilPsi_[c];
+    const label n = stencilSize(c);
+    const point x0 = stencilC(c, 0);
+    const scalar psiC = s[0];
+
+    scalar Lmax = 0;
+    for (label i = 1; i < n; ++i)
+    {
+        const scalar d = Foam::mag(stencilC(c, i) - x0);
+        if (d > SMALL)
+        {
+            Lmax = Foam::max(Lmax, Foam::mag(s[i] - psiC)/d);
+        }
+    }
+    return Lmax;
+}
+
+
 void Foam::slReconstruction::computeLimiters()
 {
     phi_.setSize(mesh_.nCells());

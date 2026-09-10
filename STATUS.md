@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-09 (DECIDED: the amplification defect is POLYHEDRAL CELLS. cfMesh's own HEX mesher on the same meshDict gives Lambda 1.0549 against pMesh's 1.2608, and snappyHexMesh WITH wall layers gives 1.0566 -- so a hexahedral unstructured workflow is clear of it and the clip leaves the critical path. Earlier: G4 FALSIFIED the candidate: the quasi-monotone bound and the extremum exemption are in direct conflict. Without the exemption the clip removes the polyhedral defect and costs +30.4 % volume error on hex; with it the interface is clean at +1.03 % and the defect returns at step 506. 59 % of the cells the clip must bound on polyhedra are themselves stencil extrema, so no better extremum test can separate them -- SCALE can, and that is the next measurement).
+Last updated: 2026-09-10 (BUILT AND GATED: the value bound is now a runtime-selectable family, slValueBound, with none | stencilBounds | lipschitzCone as one study axis. The distance-cone bound (Rank 5 of the external review) gives TWO results that point opposite ways. On the 2D hexahedral coupled case EVERY interface metric IMPROVES 25-68 % and the eikonal error falls 75-81 %; on the NONLINEAR amplification of a grid-scale perturbation the coefficient-free L = 1 arm is 1.5-2.4x WORSE than no bound, while the falsified monotone clip DAMPS. Decomposed as max|U| = u_0 exp(G): the bound attacks u_0 and worsens G. It is NOT in the best configuration. Inertness: 8/8 arms byte-identical over 1563 steps at np = 4. See METHOD.md 8.3. Earlier: the amplification defect is POLYHEDRAL CELLS -- cfMesh's own HEX mesher on the same meshDict gives Lambda 1.0549 against pMesh's 1.2608, so a hexahedral unstructured workflow is clear of it.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -265,6 +265,14 @@ velocity field.
 `massFlux { massResidualDiagnostic true; }` (mass residual for every model),
 `DROPLET_OFFSET_X` (droplet start placement). All three gated for bit-identity and on
 4 MPI ranks before any cluster use.
+
+`levelSet { semiLagrangian { valueBound ...; } }` — the bound on the reconstructed value,
+runtime-selected: `none` | `stencilBounds` (the falsified monotone clip) | `lipschitzCone`
+(the distance-cone bound). The default is the sentinel `fromClipSwitch`, which follows the
+legacy `clipToStencilBounds`, so nothing existing moves. Its three cone entries
+(`lipschitzMode`, `lipschitzConstant`, `onInadmissible`) are read by `lipschitzCone` only.
+Tokens `SL_VALUE_BOUND`, `SL_CONE_L_MODE`, `SL_CONE_L`, `SL_CONE_INADMISSIBLE`. Gated for
+bit-identity on 8 arms over 1563 steps at np = 4, plus an exact-field unit gate.
 
 ---
 

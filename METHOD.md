@@ -338,6 +338,10 @@ that does not override the axis runs it. "gate" is the config whose measurement 
 | `SL_CLIP` | `false` | default | `popinet3D_poly_sigma0_clipGate` (G4) | **the clip is NOT in the best configuration.** With the extremum exemption it fails at step 506 against the unclipped control's 527; without it, it removes the polyhedral failure but costs +30.4 % volume error on the 2D hex translating droplet |
 | `SL_CLIP_REGION` | `all` | default | `popinet2D_clipRegionGate` | the band exclusion removes ZERO firings on hex and fires zero cells on the poly stationary rung: no measured benefit anywhere |
 | `SL_CLIP_KEEP_EXTREMA` | `false` | default | G4 | see `SL_CLIP`; 59.2 % of the cells the bound must act on are themselves stencil extrema |
+| `SL_VALUE_BOUND` | `fromClipSwitch` | default | `popinet2D_coneBoundGate` (B1/B7a) | **no bound is in the best configuration.** The sentinel follows `SL_CLIP`, so it resolves to `none`. Inertness: 8 arms of `popinet2D_clipRegionGate` byte-identical over 1563 steps at np = 4 |
+| `SL_CONE_L_MODE` | `unity` | default | `popinet2D_coneBoundGate` (B5) | read only by `lipschitzCone`. `unity` is the coefficient-free arm and it is the WORSE one on the amplifier: per-step perturbation growth − 1 = 3.48e-04/2.92e-04/2.24e-04 at amplitude 0.1h/1h/10h, against 1.46e-04 with no bound at all |
+| `SL_CONE_L` | `1` | default | — | the eikonal value. Any other value is a tuned coefficient and the solver warns |
+| `SL_CONE_INADMISSIBLE` | `cellOnly` | default | B7a | 0.58 % of cell-steps had an EMPTY cone interval, and the recovery path then decides the answer: volume error −67.8 % with `cellOnly` against −5.3 % with `none` on the same mesh. It is not a detail |
 | `PSI_FILTER` | `none` | default | filter-off scoring rule | a filter is a research instrument; production must be stable without it |
 | `VOLUME_CORRECTION` | `noVolumeCorrection` | default | — | — |
 | `MASS_FLUX` | `rhoLENT` | default | consistency studies | — |
@@ -432,6 +436,92 @@ therefore measure ρ on its OWN mesh before a horizon is chosen; the probe is on
 plus 2000 cheap iterations.
 
 ---
+
+### 8.3 The distance-cone bound: it improves the interface and worsens the amplifier (2026-09-10)
+
+`slValueBound lipschitzCone` implements Rank 5 of the external review of 2026-09-09. A
+signed distance function is L-Lipschitz, so the exact departure value lies in every
+interval `psi_j +- L|x_d - x_j|` and therefore in their intersection over the stencil:
+
+    l_c = max_j ( psi_j - L|x_d - x_j| ),   u_c = min_j ( psi_j + L|x_d - x_j| )
+
+Unlike the quasi-monotone clip it ADMITS a medial-axis extremum, which is what falsified
+that clip. Code: `src/leiaLevelSet/semiLagrangian/lipschitzConeValueBound.C`, with the
+bound itself in `slReconstruction::stencilConeRange`.
+
+**Exact-field unit gate (`leiaTestSLReconstruction`, section (d)), unit square N = 64.**
+The review's verified 1D case reproduces exactly: `psi(x) = |x-0.25|-2` sampled at
+`x = -1, 0, 1` gives the cone interval `[-2, -1.5]`, which admits the true value `-2`,
+while the sample range `[-1.75, -0.75]` forces an error of `0.25`. On exact plane and
+sphere distance fields: **0** empty intervals, the truth inside the interval to 1.1e-16,
+and **ZERO** cells where clipping increased the pointwise error. At **96 apex cells** where
+the true departure value lies outside the stencil range, the monotone clip errs by 0.0157
+-- ONE CELL WIDTH -- and the cone bound errs by **0**. The same numbers hold on the SI
+Popinet mesh (monotone 3.93e-05 = one cell width, cone 0).
+
+**Coupled 2D hexahedral, `popinet2D_coneBoundGate`, 12 arms, 1563 steps, np = 4.**
+Relative change of the final-step metric against `valueBound none`:
+
+| bound | L mode | recovery | volume err | shape err | centroid err | l2 |u'| | mean |u'| | grad-psi L2 err |
+|---|---|---|---|---|---|---|---|---|
+| `stencilBounds` | — | — | **+30.4 %** | +4.9 % | +12.5 % | +3.3 % | +8.9 % | −4.3 % |
+| `lipschitzCone` | unity | cellOnly | **−67.8 %** | −44.6 % | −25.4 % | −9.2 % | −40.5 % | −75.1 % |
+| `lipschitzCone` | unity | none | −5.3 % | −54.8 % | −43.4 % | −38.9 % | −59.0 % | −81.0 % |
+| `lipschitzCone` | stencil | cellOnly | −54.2 % | −53.3 % | −38.0 % | −3.6 % | −44.6 % | −81.4 % |
+
+Two controls validate the matrix. The four `none` arms are byte-identical to each other, so
+the cone tokens do not leak into a path that does not read them. And `stencilBounds`
+reproduces the recorded cost of the falsified clip to the digit: **+30.4 %** volume and
++4.9 % shape, against the +30 % and +5 % on record.
+
+**EVERY interface metric IMPROVES**, by 25 to 68 %, and the mechanism is visible:
+`gradPsiL2ErrorBand` falls 75 to 81 %, `minGradPsiBand` rises 7 % toward 1 and
+`maxGradPsiBand` falls 6 to 8 % toward 1. The bound holds the level set much closer to a
+signed distance function, which is what a Lipschitz bound is for.
+
+**AND THE AMPLIFIER GETS WORSE.** `leiaTestTransportSpectrum -mode growth` measures the
+NONLINEAR map, as the review requires ("For the proposed nonlinear schemes, test the
+mapping itself rather than reusing a frozen linear-weight argument"): two frozen-velocity
+trajectories, one from the exact distance field and one perturbed, and the growth of their
+difference. Per-step growth − 1, same mesh, checkerboard perturbation:
+
+| bound | amp 0.1 h | amp 1 h | amp 10 h |
+|---|---|---|---|
+| `none` | 1.456e-04 | 1.456e-04 | 1.456e-04 |
+| `stencilBounds` | 1.247e-04 | 4.56e-05 | **−5.16e-05** |
+| `lipschitzCone` unity cellOnly | 3.48e-04 | 2.92e-04 | 2.24e-04 |
+| `lipschitzCone` unity none | 5.72e-04 | 1.24e-04 | 1.43e-04 |
+| `lipschitzCone` stencil cellOnly | 1.82e-04 | 1.12e-05 | **−1.00e-04** |
+
+The instrument is validated twice. With `none` the growth is 1.0001456 against the power
+iteration's rho = 1.0001403 on the same mesh -- agreement to 3.6 % of (rho − 1) -- and it
+is IDENTICAL at all three amplitudes, as a linear operator must be.
+
+**The coefficient-free arm is the worst one.** `lipschitzCone` with L = 1 amplifies a
+grid-scale perturbation 1.5 to 2.4 times MORE than no bound, at every amplitude. The
+falsified monotone clip, by contrast, DAMPS it, and damps harder as the amplitude grows --
+which is what a maximum principle does and what the cone bound deliberately gives up in
+order to admit an extremum. Only the `stencil` L mode damps, and only at amplitudes at or
+above h; at 0.1 h it is still worse than no bound.
+
+**READ THE TWO RESULTS TOGETHER, they are not in conflict.** Decomposed as
+`max|U|(T) = u_0(h) exp(G(h))`, the cone bound attacks `u_0` -- the error one step commits,
+through a much better distance field and therefore a better curvature -- and slightly
+WORSENS `G`, the amplifier. On the 2D hexahedral coupled case `u_0` dominates, so every
+interface metric improves. Nothing here shows the bound helps where `G` is what fails,
+which is the polyhedral case it was built for.
+
+**Not yet measured:** the polyhedral rung, a resolution ladder (so the improvement could
+still be resolution-specific), and the order of accuracy. The bound is therefore NOT in the
+best configuration; `SL_VALUE_BOUND` stays at the sentinel that resolves to `none`.
+
+**One question for the record, unresolved.** The bound clips psi toward the Lipschitz cone
+of its own stencil, and the measured effect is a 75 to 81 % reduction in the eikonal error.
+That is a redistancing-like effect obtained inside the transport operator: one step, no
+iteration, no separate stage, no coefficient, and inactive wherever the fit already
+satisfies the bound. Whether that falls under the repository rule "no filtering or
+reinitialisation in the production method" is a judgement the rule's author has to make,
+and it should be made before this bound is promoted.
 
 ## 9. Open
 

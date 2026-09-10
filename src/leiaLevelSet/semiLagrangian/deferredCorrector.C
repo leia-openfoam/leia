@@ -67,8 +67,7 @@ void Foam::deferredCorrector::correct
 ) const
 {
     scalarField newPsi(mesh_.nCells());
-    label nNonFinite = 0;
-    boolList firedCell(mesh_.nCells(), false);
+    slBoundTally tally(mesh_.nCells());
     scalar deltaRel = 0;
     label nPasses = 0;
 
@@ -93,15 +92,14 @@ void Foam::deferredCorrector::correct
             footRadiusGuard(R, feet);        // geometry only -> once
         }
 
-        nNonFinite = 0;                      // report the delivered pass's quality
-        firedCell = false;
+        tally.reset();                       // report the delivered pass's quality
         scalar deltaMax = 0;
         scalar rangeMax = SMALL;
 
         forAll(feet, c)
         {
             const scalar v0 =
-                robustEvaluate(R, c, feet[c], clipCell[c], nNonFinite, firedCell);
+                robustEvaluate(R, c, feet[c], clipCell[c], tally);
             const scalar vOld = psi[c];
             const scalar v = vOld + relax_*(v0 - vOld);   // under-relaxed update
             scalar lo, hi;
@@ -126,8 +124,8 @@ void Foam::deferredCorrector::correct
         }
     }
 
-    warnNonFinite(nNonFinite);
-    reportClipActivity(recon, clipCell, firedCell);
+    warnNonFinite(tally.nNonFinite);
+    reportClipActivity(recon, clipCell, tally);
 
     if (mesh_.time().writeTime())
     {

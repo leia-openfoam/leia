@@ -175,6 +175,15 @@ public:
             return recon_();
         }
 
+        //- The correction strategy, and through it the selected value bound.
+        //  A diagnostic needs this to ask whether the transport stage is LINEAR:
+        //  every bound is a nonlinear clip, so a spectral radius is defined only
+        //  when corrector().bound().inert() is true.
+        const slCorrector& corrector() const
+        {
+            return corrector_();
+        }
+
         //- Advect one step: psi holds psi^n on entry, psi^{n+1} on exit.
         //  Unew = u^{n+1}, Uold = u^n at cell centres.
         //

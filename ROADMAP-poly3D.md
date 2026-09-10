@@ -67,6 +67,10 @@ because lo and hi are taken over a stencil that contains psi_c.
 | `clipToStencilBounds` | `SL_CLIP` | false | the bound itself (pre-existing) |
 | `clipRegion` | `SL_CLIP_REGION` | `all` | `outsideBand` withholds the clip from the sign-change narrow band |
 | `clipKeepExtrema` | `SL_CLIP_KEEP_EXTREMA` | false | exempt a cell that is already its stencil's extremum |
+| `valueBound` | `SL_VALUE_BOUND` | `fromClipSwitch` | selects the bound: `none` \| `stencilBounds` \| `lipschitzCone`. The sentinel follows `clipToStencilBounds`, so every pre-2026-09-10 case is unchanged |
+| `lipschitzMode` | `SL_CONE_L_MODE` | `unity` | where L comes from: `unity` (L = 1, coefficient-free) \| `stencil` (measured, a diagnostic) |
+| `lipschitzConstant` | `SL_CONE_L` | 1 | the eikonal value; anything else is a tuned coefficient |
+| `onInadmissible` | `SL_CONE_INADMISSIBLE` | `cellOnly` | recovery when the cone interval is EMPTY: owner-only interval \| no bound |
 
 Code: `slCorrector::robustEvaluate` (the bound and the exemption),
 `slCorrector::buildClipMask` (the region), `slReconstruction` (the entries),
@@ -198,6 +202,12 @@ END_TIME on that arm alone before the clip is called a fix. That is cheap.
 | G5 | inertness at a MOVING interface | `config/popinet2D_clipRegionGate.yaml` (hex), `config/polyDroplet3Drefined_clipRegionGate.yaml` (poly) | volume error unchanged to 1 % | hex **+1.03 %** at the threshold; poly **PASS**, 0 cells bounded in 458 steps |
 | G6 | the coupled polyhedral case runs | `config/popinet3D_La12000_poly_r12p8_mcs0195.yaml` in SI | COMPLETED at 1563 steps | not run |
 | G7 | order is preserved | the poly ladder, section 5 | orders within +-0.3 of the hexahedral ladder | not run |
+| **B0** | render inertness, the bound family | `--until generate_case` at HEAD~ and HEAD | only the new token lines change | **PASS** — only the four new entries appear |
+| **B1** | bit-identity, 2D hex, EVERY bound sub-configuration | `config/popinet2D_clipRegionGate.yaml`, 8 arms, 1563 steps, np = 4 | every arm byte-identical to the pre-change study | **PASS** — 8/8 identical to `studies/popinet2D_clipRegionGate_preBound_20260910`; covers `none` AND `stencilBounds` in all four (region, keepExtrema) forms |
+| **B3** | exact-field unit gate, cone bound | `leiaTestSLReconstruction`, unit square N = 64 and the SI Popinet mesh | 0 empty intervals, truth inside, no error increase, apex cells reached | **PASS** — 0 empty, truth inside to 1.1e-16, ZERO error increase; at 96 apex cells the monotone clip errs ONE CELL WIDTH and the cone errs 0 |
+| **B5** | the NONLINEAR map's amplification | `leiaTestTransportSpectrum -mode growth`, 2D hex, amp 0.1h/1h/10h | per-step growth no worse than `none` | **FAILED for the coefficient-free arm** — L = 1 is 1.5-2.4x WORSE than no bound at every amplitude. Only the `stencil` L mode damps, and only at amp >= h |
+| **B7a** | inertness at a MOVING interface, 2D hex | `config/popinet2D_coneBoundGate.yaml`, 12 arms, 1563 steps | interface metrics within 1 % of `none` | **EXCEEDED, in the other direction** — every interface metric IMPROVES 25-68 %, grad-psi L2 error -75 to -81 %. The 1 % criterion assumed a bound could only cost; see METHOD.md 8.3 |
+| **B6** | kinematic, O(1) displacement, then polyhedral | `popinetTranslating2D`, then the poly rung | the poly arm passes step 3, where it diverged | not run |
 
 G1 and G2 gate everything else, and they PASS. **G4 RAN AND FAILED**, exactly as its
 pre-registered falsifier said it might. See section 2a.

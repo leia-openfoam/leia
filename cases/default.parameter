@@ -82,6 +82,72 @@ SL_CLIP_KEEP_EXTREMA false;  // withhold the clip from a cell whose own psi is
                      // at every step. true exempts them, which leaves the
                      // SPURIOUS extremum -- the one the fit creates in a cell that
                      // was not an extremum -- fully bounded.
+
+// ---- Semi-Lagrangian value bound: the runtime-selectable family (2026-09-10)
+// The bound on the reconstructed value is now a runtime-selected model
+// (slValueBound), so `none`, the falsified monotone clip and the distance-cone
+// guard are ONE study axis instead of three branches inside robustEvaluate.
+//
+// INERT: `fromClipSwitch` is a sentinel, not a type. It resolves to
+// `stencilBounds` when SL_CLIP is true and to `none` when it is false, which is
+// exactly the pre-2026-09-10 behaviour of every case. MEASURED: bit-identical
+// metric CSV on config/popinet2D_La12000_N64.yaml (gate B1, 1563 steps) and on
+// config/popinet3D_La12000_hex_smoke4.yaml (gate B2).
+SL_VALUE_BOUND fromClipSwitch;
+                     // fromClipSwitch = follow SL_CLIP (the default, inert).
+                     // none = no bound; only the runaway cap (stencil mid +-
+                     // 10*stencil range) that predates the family. This is the
+                     // production configuration, and it is NOT stable: the
+                     // frozen-velocity power iteration measures rho(B) > 1 on
+                     // EVERY mesh, 1.00441 on production hexahedra and 1.01028
+                     // on production pMesh.
+                     // stencilBounds = the quasi-monotone clip. FALSIFIED as a
+                     // fix (gate G4): 59.2 % of the cells it must act on are
+                     // themselves stencil extrema, so the exemption removes the
+                     // bound where it is needed and the polyhedral failure
+                     // returns at step 506 against the control's 527. Kept so
+                     // its arms stay reproducible. SL_CLIP_REGION and
+                     // SL_CLIP_KEEP_EXTREMA are read by this type only.
+                     // lipschitzCone = the distance-cone bound. A signed
+                     // distance function is L-Lipschitz, so the exact departure
+                     // value lies in every interval psi_j +- L|x_d - x_j| and
+                     // therefore in their intersection over the stencil. Unlike
+                     // the monotone clip it ADMITS a medial-axis extremum, and
+                     // it carries no tuned coefficient.
+SL_CONE_L_MODE unity;
+                     // Where L comes from; read only when SL_VALUE_BOUND is
+                     // lipschitzCone. unity = L = SL_CONE_L, the exact
+                     // signed-distance value, and exactly right wherever
+                     // grad u = 0 (the frozen-velocity probe, the uniform-stream
+                     // translating gate). stencil = max(SL_CONE_L, largest
+                     // measured owner-to-neighbour slope), a DIAGNOSTIC arm: the
+                     // external review of 2026-09-09 warns that estimating L
+                     // from the largest noisy slope "can make the guard
+                     // ineffective", so this arm measures the drift rather than
+                     // fixing anything.
+                     // NOT IMPLEMENTED, deliberately: the flow-map bound
+                     // L(t) <= L(0) exp(int ||grad u||_inf dt). It needs a
+                     // collective every step inside the per-cell bound path and
+                     // a constant carried across restarts.
+SL_CONE_L 1;         // The Lipschitz constant for the unity mode, and the floor
+                     // for the stencil mode. 1 is the eikonal value |grad psi| =
+                     // 1 of a signed distance function, so it is NOT a tuned
+                     // coefficient. ANY OTHER VALUE IS, and voids the
+                     // coefficient-free claim; the entry exists so the
+                     // sensitivity can be measured, and the solver prints a
+                     // warning when it is not 1.
+SL_CONE_INADMISSIBLE cellOnly;
+                     // What to do when the cone interval is EMPTY, which happens
+                     // exactly when the OLD data already violates the Lipschitz
+                     // condition between two stencil points -- so the crossing
+                     // count MEASURES the drift of |grad psi| away from 1.
+                     // cellOnly = the owner-only interval psi_c +- L|d|, never
+                     // empty, and it keeps the one bound that is proved:
+                     // |psi_c^{n+1} - psi_c^n| <= L|d|. This is the default.
+                     // none = no bound in that cell, counted. The review
+                     // forbids the alternatives ("Quietly swapping the bounds,
+                     // or inflating L without limit, removes their mathematical
+                     // meaning").
 REDIST_VIOLFRAC 0;   // signedDistanceBounds robust variant: fire only when more
                      // than this fraction of band cells violates [1/g, g]
                      // (0 = strict min/max). Localized under-resolved tails
