@@ -1,0 +1,5 @@
+arm,state,rows,commonStep,meshDigest,E_GEOM_ALPHA_REL,E_VOL_ALPHA_REL,E_BOUND_ALPHA
+adv_3DshearPoly_none_unity_cellOnly,DIVERGED,186,186,7e9ee670c679,39.2800648578,38.345623998,0.0
+adv_3DshearPoly_lipschitzCone_unity_cellOnly,COMPLETED,968,186,7e9ee670c679,1.73709296064,0.1011359896,0.0
+adv_3DshearPoly_lipschitzCone_stencil_cellOnly,COMPLETED,968,186,7e9ee670c679,1.54125808205,0.317038150823,0.0
+adv_3DshearPoly_stencilBounds_unity_cellOnly,COMPLETED,968,186,7e9ee670c679,1.8478852194,0.00443041773764,0.0

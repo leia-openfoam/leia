@@ -1,0 +1,5 @@
+arm,state,rows,commonStep,meshDigest,E_GEOM_ALPHA_REL,E_VOL_ALPHA_REL,E_BOUND_ALPHA
+adv_3DshearHex_none_unity_cellOnly,COMPLETED,375,375,7fff155ba682,0.0787189872332,0.0198390289987,0.0
+adv_3DshearHex_lipschitzCone_unity_cellOnly,COMPLETED,375,375,7fff155ba682,0.716339650827,0.716339650827,0.0
+adv_3DshearHex_lipschitzCone_stencil_cellOnly,COMPLETED,375,375,7fff155ba682,1.0,1.0,0.0
+adv_3DshearHex_stencilBounds_unity_cellOnly,COMPLETED,375,375,7fff155ba682,0.0726427092966,0.0257821954045,0.0

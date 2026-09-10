@@ -586,9 +586,23 @@ leiaTestTransportSpectrum -mode growth -seed checkerboard -amp 1 -nIter 2000
 make studies-one STUDY=popinet2D_coneBoundGate
 ```
 
-**Measured, and it is two results that point opposite ways** -- see METHOD.md 8.3 for the
-tables. On the 2D hexahedral coupled case every interface metric IMPROVES by 25 to 68 % and
-the eikonal error falls 75 to 81 %, while the NONLINEAR amplification of a grid-scale
-perturbation gets 1.5 to 2.4 times WORSE with the coefficient-free `L = 1`. Decomposed as
-`max|U|(T) = u_0(h) exp(G(h))`, the bound attacks `u_0` and worsens `G`. The bound is
-therefore NOT in the best configuration.
+**MEASURED, and `lipschitzCone` is FALSIFIED as a transport bound** -- see METHOD.md 8.3 for
+every table. It is exact at a distance cusp, and that result stands; it does not follow that
+it transports well. On PURE ADVECTION, with every arm on the identical mesh, it is 2.3 to 3.6
+times WORSE than no bound on uniform translation -- the one flow where its `L = 1` is exactly
+valid -- 9 to 19 times worse in strained flow, and with `lipschitzMode stencil` it loses the
+phase completely on 3D shear (`E_VOL_ALPHA_REL` = 1.0000). The mechanism is the review's own
+bound `L(t) <= L(0) exp(int ||grad u||_inf dt)`, which this implementation does not carry: in
+a strained flow the true Lipschitz constant grows and clamping to 1 destroys the field.
+
+The coupled 2D hexahedral gain (every interface metric better by 25 to 68 % at N = 64) does
+not survive refinement either: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at
+N = 128, an order of 0.01 -- a FLOOR, not a converging error -- and the centroid error
+reverses to 119 % worse than no bound.
+
+The unbounded POLYHEDRAL advection arm does diverge (floating-point exception at step 198)
+and every bound prevents that, but `stencilBounds` prevents it with the best volume error of
+the three. **The falsified monotone clip beats the cone bound on every advection gate.**
+
+So `SL_VALUE_BOUND` stays at the sentinel that resolves to `none`. What survives is the
+FAMILY -- the seat for the review's Rank 1 -- and the `-mode growth` instrument.

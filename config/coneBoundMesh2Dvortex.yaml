@@ -1,0 +1,18 @@
+study_name: coneBoundMesh2Dvortex
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+solve_runtime: 3600
+axes_override:
+  N_CELLS: [64]
+  CFL: [0.5]
+  END_TIME: [2]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_LIMITER: ["none"]
+
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

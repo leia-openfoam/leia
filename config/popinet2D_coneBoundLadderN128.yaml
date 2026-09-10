@@ -1,0 +1,128 @@
+# ============================================================================
+# GATE B7b -- RESOLUTION LADDER rung N = 128: does the cone bound's gain survive refinement?
+#
+# WHAT IS BEING TESTED. slValueBound lipschitzCone, the bound derived from the
+# Lipschitz property of a signed distance function:
+#
+#     l_c = max_j ( psi_j - L|x_d - x_j| ),   u_c = min_j ( psi_j + L|x_d - x_j| )
+#     psi_c^{n+1} = clip(H_c, l_c, u_c)
+#
+# over the arrival cell's stencil, with H_c the quadratic candidate and L = 1 the
+# eikonal value. Proposed as Rank 5 of five by the external review of 2026-09-09.
+#
+# WHY THIS CASE FIRST. Popinet's 2D hexahedral translating droplet at N = 64 is a
+# case where NOTHING IS BROKEN: it completes its 1563 steps, and the far-field
+# amplification defect that motivates a bound lives on polyhedra. So this gate
+# does not ask whether the bound fixes anything. It asks the question that
+# falsified the previous bound: WHAT DOES IT COST WHERE THERE IS NOTHING TO FIX?
+# The quasi-monotone clip failed exactly here, at +30 % volume error, because it
+# flattened the level set's own extrema.
+#
+# WHAT ALREADY PASSED, and is not re-asked here:
+#   B0  render inertness            only the four new token lines change
+#   B1  bit-identity, 8 arms        config/popinet2D_clipRegionGate.yaml at
+#                                   1563 steps, np = 4: every arm byte-identical
+#                                   to studies/popinet2D_clipRegionGate_preBound_20260910,
+#                                   covering valueBound none AND stencilBounds in
+#                                   all four (clipRegion, clipKeepExtrema) forms
+#   B3  exact-field unit gate       leiaTestSLReconstruction on the unit square:
+#                                   0 empty intervals, truth inside to 1.1e-16,
+#                                   ZERO error increase from clipping, and at 96
+#                                   apex cells the monotone clip errs by 0.0157
+#                                   (one cell width) while the cone bound errs 0
+#
+# THE MATRIX. 3 bound types x 2 Lipschitz modes x 2 recovery paths = 12 arms.
+# The redundancy is deliberate and self-validating: the cone tokens are read by
+# lipschitzCone ONLY, so the four arms of each non-cone bound MUST be
+# bit-identical to each other. If they are not, a cone token is leaking into a
+# path it does not belong to, and no other row can be trusted.
+#
+# WHY A LADDER. At N = 64 every interface metric improved 25 to 68 % with the cone
+# bound (METHOD.md 8.3). ONE resolution cannot tell an improvement from a
+# resolution-specific accident, and it cannot give an ORDER. Three rungs can:
+# N = 64 (config/popinet2D_coneBoundGate.yaml), N = 128 (this file) and N = 256.
+# The dt law is dt = coeff*h^1.5/L^1.5 with CAPILLARY_REF_LENGTH = DOMAIN_LENGTH, so
+# the horizon is fixed and the step count rises as h^-1.5. Matched horizon, matched
+# dt law, one variable: the bound.
+#
+# PRE-REGISTERED READ-OUT, at the full horizon t = T_U:
+#   PASS   the cone bound's advantage PERSISTS at this rung -- the same interface
+#          metrics stay better than the valueBound none arm at the same N -- and the
+#          none-arm order is not degraded by the bound: the observed order of
+#          zeroSetRadialL2 and phaseVolumeRelError with the bound is within 0.3 of
+#          the order without it.
+#   FALSIFIED IF the advantage shrinks toward zero under refinement. The gain would
+#          then be a coarse-mesh effect: the bound would be repairing an error that
+#          refinement removes anyway, and it would buy nothing at production
+#          resolution while still costing on the amplifier (gate B5, where L = 1 is
+#          1.5 to 2.4x WORSE than no bound).
+#   ALSO FALSIFIED IF the bound LOWERS the observed order. A bound that improves the
+#          error at every rung but flattens its slope is not a fix; it is a
+#          resolution-dependent correction.
+#   REPORT L1 AND L2 ONLY. Never L_inf, which does not converge here.
+#
+# NOTE ON WHAT THIS GATE CANNOT SHOW. It cannot show that the bound makes
+# anything stable. rho(B) > 1 on this very mesh (1.00441), and this run completes
+# anyway, so completion here is not evidence of stability. The stability question
+# belongs to leiaTestTransportSpectrum -mode growth, which measures the NONLINEAR
+# map; the review is explicit that Lambda may not be reassigned after a nonlinear
+# clip and that the mapping itself must be tested.
+#
+# NORMALISE BEFORE YOU THRESHOLD. Every length here is absolute metres. Divide
+# zeroSetRadialL2 and centroidError by DROPLET_RADIUS = 5e-4 m before comparing
+# against any percentage. Never report L_inf.
+#
+# SI UNITS. Box 5 mm x 2.5 mm, droplet R = 0.5 mm, U = 0.0692820323 m/s,
+# sigma = 0.012 N/m, rho = 1000 kg/m3, nu = 1e-06 m2/s, La = 12000.
+# Verify with: python3 workflow/scripts/popinet_si.py check
+# ============================================================================
+study_name: popinet2D_coneBoundLadderN128
+case: popinetTranslating2D
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangianLevelSetTwoPhaseFoam
+theme:  method-comparison
+setfields_args: "-alphaName alpha.water"
+solve_runtime: 3600
+axes_override:
+  SL_VALUE_BOUND: ["none", "lipschitzCone"]
+  SL_CONE_L_MODE: ["unity", "stencil"]
+  SL_CONE_INADMISSIBLE: ["cellOnly"]
+  SL_CONE_L: [1]
+  SL_CLIP: ["false"]
+  SL_CLIP_REGION: ["all"]
+  SL_CLIP_KEEP_EXTREMA: ["false"]
+  N_CELLS: [128]
+  POPINET_NX: [256]
+  POPINET_XLEN: [2]
+  DOMAIN_LENGTH: [0.0025]
+  CAPILLARY_REF_LENGTH: [0.0025]
+  CAPILLARY_DT_COEFF: [0.004729265146]
+  DROPLET_RADIUS: [0.0005]
+  DROPLET_OFFSET_X: [0]
+  TRANSLATION_SPEED: [0.0692820323]
+  SIGMA: [0.012]
+  POPINET_RHO: [1000]
+  POPINET_NU: [1.0e-06]
+  END_TIME: [0.01443375673]
+  WRITE_INTERVAL: [0.01443375673]
+  MOMENTUM_DIV_SCHEME: ["upwind"]
+  MASS_FLUX: ["rhoLENT"]
+  MASS_FLUX_BOUND_RHO: ["true"]
+  VOLUME_CORRECTION: ["noVolumeCorrection"]
+  MOMENTUM_DDT_SCHEME: ["backward"]
+  RHO_DDT_SCHEME: ["backward"]
+  CURVATURE_EXTENSION: ["none"]
+  SURFACE_TENSION_FORCE: ["reconstructedCurvature"]
+  FACE_CURVATURE_SOURCE: [model]
+  PSI_FILTER: [none]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_TRACE_VELOCITY: ["projectedFlux"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_LIMITER: ["none"]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

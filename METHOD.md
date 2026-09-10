@@ -339,7 +339,7 @@ that does not override the axis runs it. "gate" is the config whose measurement 
 | `SL_CLIP_REGION` | `all` | default | `popinet2D_clipRegionGate` | the band exclusion removes ZERO firings on hex and fires zero cells on the poly stationary rung: no measured benefit anywhere |
 | `SL_CLIP_KEEP_EXTREMA` | `false` | default | G4 | see `SL_CLIP`; 59.2 % of the cells the bound must act on are themselves stencil extrema |
 | `SL_VALUE_BOUND` | `fromClipSwitch` | default | `popinet2D_coneBoundGate` (B1/B7a) | **no bound is in the best configuration.** The sentinel follows `SL_CLIP`, so it resolves to `none`. Inertness: 8 arms of `popinet2D_clipRegionGate` byte-identical over 1563 steps at np = 4 |
-| `SL_CONE_L_MODE` | `unity` | default | `popinet2D_coneBoundGate` (B5) | read only by `lipschitzCone`. `unity` is the coefficient-free arm and it is the WORSE one on the amplifier: per-step perturbation growth − 1 = 3.48e-04/2.92e-04/2.24e-04 at amplitude 0.1h/1h/10h, against 1.46e-04 with no bound at all |
+| `SL_CONE_L_MODE` | `unity` | default | advection ladder + `popinet2D_coneBoundLadderN128` | read only by `lipschitzCone`, which is FALSIFIED (8.3). `unity` degrades pure transport 2.3-3.6x even where grad u = 0, and 9-19x in strained flow; `stencil` loses the phase entirely on 3D shear (E_VOL_REL = 1.0000) |
 | `SL_CONE_L` | `1` | default | — | the eikonal value. Any other value is a tuned coefficient and the solver warns |
 | `SL_CONE_INADMISSIBLE` | `cellOnly` | default | B7a | 0.58 % of cell-steps had an EMPTY cone interval, and the recovery path then decides the answer: volume error −67.8 % with `cellOnly` against −5.3 % with `none` on the same mesh. It is not a detail |
 | `PSI_FILTER` | `none` | default | filter-off scoring rule | a filter is a research instrument; production must be stable without it |
@@ -437,7 +437,17 @@ plus 2000 cheap iterations.
 
 ---
 
-### 8.3 The distance-cone bound: it improves the interface and worsens the amplifier (2026-09-10)
+### 8.3 The distance-cone bound is FALSIFIED as a transport bound (2026-09-10)
+
+**RETRACTION, same day.** An earlier version of this section reported the cone bound as
+"improves the interface and worsens the amplifier", on the strength of ONE coupled case at
+ONE resolution. The advection ladder and the resolution ladder below both falsify it. The
+one case where it looked good, Popinet's translating droplet, has a nearly UNIFORM velocity,
+and that is the only regime in which its Lipschitz constant L = 1 is defensible. I was wrong
+to frame a single near-uniform case as a general gain; the measurements are in 8.3.1 to
+8.3.4 and the bound is not a candidate for production.
+
+#### 8.3.1 What it is, and the exact-field gate it passes
 
 `slValueBound lipschitzCone` implements Rank 5 of the external review of 2026-09-09. A
 signed distance function is L-Lipschitz, so the exact departure value lies in every
@@ -459,7 +469,9 @@ the true departure value lies outside the stencil range, the monotone clip errs 
 -- ONE CELL WIDTH -- and the cone bound errs by **0**. The same numbers hold on the SI
 Popinet mesh (monotone 3.93e-05 = one cell width, cone 0).
 
-**Coupled 2D hexahedral, `popinet2D_coneBoundGate`, 12 arms, 1563 steps, np = 4.**
+#### 8.3.2 Coupled 2D hexahedral at N = 64: every interface metric improves
+
+**`popinet2D_coneBoundGate`, 12 arms, 1563 steps, np = 4.**
 Relative change of the final-step metric against `valueBound none`:
 
 | bound | L mode | recovery | volume err | shape err | centroid err | l2 |u'| | mean |u'| | grad-psi L2 err |
@@ -479,7 +491,9 @@ reproduces the recorded cost of the falsified clip to the digit: **+30.4 %** vol
 `maxGradPsiBand` falls 6 to 8 % toward 1. The bound holds the level set much closer to a
 signed distance function, which is what a Lipschitz bound is for.
 
-**AND THE AMPLIFIER GETS WORSE.** `leiaTestTransportSpectrum -mode growth` measures the
+#### 8.3.3 The amplifier gets worse
+
+**`leiaTestTransportSpectrum -mode growth`.** `leiaTestTransportSpectrum -mode growth` measures the
 NONLINEAR map, as the review requires ("For the proposed nonlinear schemes, test the
 mapping itself rather than reusing a frozen linear-weight argument"): two frozen-velocity
 trajectories, one from the exact distance field and one perturbed, and the growth of their
@@ -511,17 +525,106 @@ WORSENS `G`, the amplifier. On the 2D hexahedral coupled case `u_0` dominates, s
 interface metric improves. Nothing here shows the bound helps where `G` is what fails,
 which is the polyhedral case it was built for.
 
-**Not yet measured:** the polyhedral rung, a resolution ladder (so the improvement could
-still be resolution-specific), and the order of accuracy. The bound is therefore NOT in the
-best configuration; `SL_VALUE_BOUND` stays at the sentinel that resolves to `none`.
+#### 8.3.4 THE ADVECTION LADDER FALSIFIES IT: kinematics before dynamics
 
-**One question for the record, unresolved.** The bound clips psi toward the Lipschitz cone
-of its own stencil, and the measured effect is a 75 to 81 % reduction in the eikonal error.
-That is a redistancing-like effect obtained inside the transport operator: one step, no
-iteration, no separate stage, no coefficient, and inactive wherever the fit already
-satisfies the bound. Whether that falls under the repository rule "no filtering or
-reinitialisation in the production method" is a judgement the rule's author has to make,
-and it should be made before this bound is promoted.
+Pure advection, `leiaSemiLagrangeLevelSetFoam`, no force in the loop, so this isolates
+TRANSPORT. Every arm of a case runs on the IDENTICAL mesh -- the mesh is built once and
+copied, because cfMesh is not bit-reproducible and a per-arm rebuild would make a cross-arm
+comparison measure the mesher instead of the bound. Mesh digests are recorded and equal
+within each case. Relative geometric error `E_GEOM_ALPHA_REL` at the last COMMON step:
+
+| case | flow | cells | `none` | cone unity | cone stencil | `stencilBounds` |
+|---|---|---|---|---|---|---|
+| 2Dtranslation hex | uniform, grad u = 0 | 4 096 | **3.41e-04** | 1.24e-03 (3.6x worse) | 7.84e-04 (2.3x worse) | 3.50e-04 (equal) |
+| 2Dvortex hex | strained | 4 096 | **6.28e-03** | 1.18e-01 (19x worse) | 4.02e-01 (64x worse) | 6.99e-03 (1.1x worse) |
+| 3Dshear hex | strained | 32 768 | 7.87e-02 | 7.16e-01 (9x worse) | **1.0000 (the phase is GONE)** | **7.26e-02 (best)** |
+| 3Dshear poly | strained | 49 911 | **DIVERGED, step 198** | 1.74 | 1.54 | 1.85 |
+
+Three findings, in order of weight.
+
+**1. The bound degrades pure transport EVERYWHERE, including where L = 1 is valid.** On
+uniform translation, the one flow in which grad u = 0 makes L = 1 exactly defensible, the
+cone bound is still 2.3 to 3.6 times WORSE than no bound at all. That alone disqualifies it
+as a transport bound: it is not inert in its own valid regime.
+
+**2. In strained flow it is catastrophic, and the review predicted exactly this.** 19x worse
+on the vortex, 9x worse on 3D shear, and with the `stencil` L mode the phase is lost
+COMPLETELY (`E_VOL_ALPHA_REL` = 1.0000). The mechanism is the review's own bound,
+
+    L(t) <= L(0) exp( int_0^t ||grad u(s)||_inf ds ) ,
+
+which this implementation deliberately does NOT carry. In a strained flow the level set's
+true Lipschitz constant grows exponentially, so clamping to L = 1 fights the physics and
+destroys the field. Popinet's translating droplet is nearly uniform, which is why it is the
+single case where the bound looked good.
+
+**3. It does prevent the polyhedral divergence -- and so does the clip it replaces, more
+cheaply.** The unbounded polyhedral arm dies with a floating-point exception at step 198
+(the geometric error is already 39.3 at step 186, so it was blowing up, not tripping over a
+boundary). Every bound prevents that. But at the common step no bound is ACCURATE there --
+all three sit at 1.5 to 1.9 relative geometric error on this coarse polyhedral mesh -- and
+`stencilBounds` gives the best volume error of the three (4.4e-03 against the cone's 1.0e-01
+and 3.2e-01). **The falsified monotone clip beats the cone bound on every advection gate.**
+
+#### 8.3.5 THE RESOLUTION LADDER FALSIFIES THE COUPLED GAIN AS AN ASYMPTOTIC RESULT
+
+Coupled 2D hex, matched horizon, matched dt law (`dt = coeff h^1.5 / L^1.5`), one variable.
+`popinet2D_coneBoundGate` (N = 64) and `popinet2D_coneBoundLadderN128` (N = 128), 4420 steps
+at the fine rung.
+
+| metric | arm | N = 64 | N = 128 | observed order | vs `none` at N = 128 |
+|---|---|---|---|---|---|
+| volume | `none` | 1.212e-03 | 5.014e-04 | 1.27 | — |
+| | cone unity | 1.148e-03 | 8.310e-05 | 3.79 | −83.4 % |
+| | cone stencil | 5.553e-04 | 2.116e-04 | 1.39 | −57.8 % |
+| shape | `none` | 2.038e-06 | 5.231e-07 | **1.96** | — |
+| | cone unity | 9.203e-07 | 3.733e-07 | **1.30** | −28.6 % |
+| | cone stencil | 9.523e-07 | 1.867e-07 | 2.35 | −64.3 % |
+| centroid | `none` | 2.095e-06 | 2.349e-07 | **3.16** | — |
+| | cone unity | 1.186e-06 | 5.155e-07 | **1.20** | **+119.4 %** |
+| | cone stencil | 1.299e-06 | 2.458e-07 | 2.40 | +4.6 % |
+| l2 \|u'\| | `none` | 2.042e-04 | 1.727e-04 | 0.24 | — |
+| | cone unity | 1.247e-04 | 1.225e-04 | **0.03** | −29.1 % |
+| grad-psi L2 | `none` | 3.753e-02 | 1.747e-02 | 1.10 | — |
+| | cone unity | 7.119e-03 | 7.066e-03 | **0.01** | −59.6 % |
+| | cone stencil | 6.994e-03 | 3.636e-03 | 0.94 | −79.2 % |
+
+**The `unity` arm's order collapses to ZERO on the two metrics its gain was built on.** The
+eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128 -- a 0.8 % change across a 2x
+refinement. That is not a converging error, it is a FLOOR: the bound pins the eikonal error
+at about 7e-03 whatever the resolution. The unbounded run converges at order 1.10 from
+3.75e-02, so it reaches that floor at about N = 256 and is BETTER beyond it. The same holds
+for the spurious current (order 0.03 against 0.24).
+
+**And one metric already reverses.** The centroid error with `unity` is 119 % WORSE than no
+bound at N = 128, with the order cut from 3.16 to 1.20. Under refinement the coupled gain
+does not merely shrink; it changes sign.
+
+Both pre-registered falsifiers of `config/popinet2D_coneBoundLadderN128.yaml` therefore fire:
+the advantage shrinks toward zero under refinement, AND the bound lowers the observed order.
+The third rung at N = 256 would only locate a crossover that two rungs already establish
+from a 0.8 % change across a 2x refinement, so it was not run.
+
+#### 8.3.6 What survives
+
+The `slValueBound` family survives, and it is the point of the exercise: `none`,
+`stencilBounds` and `lipschitzCone` are now one study axis, gated byte-inert, and the family
+is where the review's Rank 1 (monotone transporting base plus filtered correction) goes next.
+The `-mode growth` instrument survives, self-validated against the power iteration, and any
+nonlinear candidate needs it.
+
+The distance-cone bound itself does NOT survive as a transport bound. It is exact at a
+distance cusp -- gate B3 is unambiguous, and that result stands -- but exactness at the apex
+does not buy transport accuracy, and outside a near-uniform velocity field its premise is
+false. `SL_VALUE_BOUND` stays at the sentinel that resolves to `none`.
+
+The one route that is not closed is the review's own flow-map L, `L(t) <= L(0) exp(int
+||grad u||_inf dt)`, which is what the strained-flow failures point at. It needs a
+`||grad u||_inf` collective per step and a constant carried across restarts, and on this
+evidence it would be repairing a bound that is already 2 to 4 times worse than nothing in
+the regime where it is exactly valid. That is a poor bet, and it should not be taken before
+Rank 1 is tried.
+
 
 ## 9. Open
 

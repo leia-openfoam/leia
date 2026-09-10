@@ -1,0 +1,5 @@
+arm,state,rows,commonStep,meshDigest,E_GEOM_ALPHA_REL,E_VOL_ALPHA_REL,E_BOUND_ALPHA
+adv_2Dtranslation_none_unity_cellOnly,COMPLETED,87,87,fd13ce29ac8e,0.000340898523368,0.000211632058898,0.0
+adv_2Dtranslation_lipschitzCone_unity_cellOnly,COMPLETED,87,87,fd13ce29ac8e,0.00124098196509,0.000627444368526,0.0
+adv_2Dtranslation_lipschitzCone_stencil_cellOnly,COMPLETED,87,87,fd13ce29ac8e,0.000783888909977,0.000181226124695,0.0
+adv_2Dtranslation_stencilBounds_unity_cellOnly,COMPLETED,87,87,fd13ce29ac8e,0.000350461753773,0.000219033464511,0.0
