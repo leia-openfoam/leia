@@ -354,14 +354,33 @@ criterion. That number is now measured directly, by
 `applications/test/leiaTestTransportSpectrum` (frozen velocity, clip off, so the transport
 stage is exactly linear) driven by `workflow/scripts/transport_spectrum_probe.sh`.
 
-| mesh | cells | h [m] | ρ(B) | ρ−1 | ln ρ/Δt [1/s] |
-|---|---|---|---|---|---|
-| blockMesh hex | 65 536 | 7.81e-05 | 1.00439 | 4.39e-03 | 236.9 |
-| blockMesh hex | 221 184 | 5.21e-05 | 1.00441 | 4.41e-03 | 356.6 |
-| pMesh | 95 969 | 7.74e-05 | 1.01108 | 1.11e-02 | 595.9 |
-| pMesh | 312 975 | 5.16e-05 | 1.01133 | 1.13e-02 | 922.2 |
+| mesh | cells | h [m] | Co | ρ(B) | ρ−1 | ln ρ/Δt [1/s] | Λ_max | × over 1563 steps |
+|---|---|---|---|---|---|---|---|---|
+| blockMesh hex, n = 32 | 65 536 | 7.81e-05 | 0.0164 | 1.00439 | 4.39e-03 | 236.9 | 1.0527 | 9.4e2 |
+| blockMesh hex, n = 48 | 221 184 | 5.21e-05 | 0.0164 | 1.00441 | 4.41e-03 | 356.6 | — | 9.7e2 |
+| **blockMesh hex, n = 64 (production)** | 524 288 | 3.91e-05 | 0.0164 | **1.00441** | 4.41e-03 | 476.4 | 1.0527 | 9.7e2 |
+| **snappyHexMesh round channel (production)** | 263 168 | 3.79e-05 | 0.0169 | **1.00600** | 6.00e-03 | 648.0 | 1.0538 | 1.2e4 |
+| pMesh, maxCellSize 9.75e-05 | 95 969 | 7.74e-05 | 0.0166 | 1.01108 | 1.11e-02 | 595.9 | 1.2086 | 3.0e7 |
+| pMesh, maxCellSize 6.50e-05 | 312 975 | 5.16e-05 | 0.0164 | 1.01133 | 1.13e-02 | 922.2 | — | 4.4e7 |
+| **pMesh, maxCellSize 4.875e-05 (production)** | 674 493 | 3.87e-05 | 0.0165 | **1.01028** | 1.03e-02 | 1107.0 | 1.2608 | 8.7e6 |
 
-All at matched Courant 0.0164, 2000 power iterations, increment converged to 0.
+Courant matched to 3 %, 2000 power iterations, increment converged to 0 in every arm. The
+production arms are cluster job 54510951 (32 ranks, 7 min 58 s, all four COMPLETED); the
+`Λ_max` column is `sl_fit_amplification.csv` on the SAME meshes.
+
+**Λ IS NOT A RELIABLE PROXY FOR ρ, and the production arms are what show it.** Two
+disagreements, both measured:
+
+* Across resolutions of ONE mesher the two move in OPPOSITE directions. Refining pMesh from
+  95 969 to 674 493 cells raises Λ_max from 1.2086 to 1.2608 (+4.3 %) while ρ−1 FALLS from
+  1.11e-02 to 1.03e-02 (−7 %).
+* Λ UNDER-REPORTS snapping. The snapped, layered round channel has Λ_max 1.0538 against
+  plain blockMesh's 1.0527 — a 0.10 % difference, i.e. indistinguishable — yet its ρ−1 is
+  **36 % larger** (6.00e-03 against 4.41e-03).
+
+So Λ keeps its use as a one-mesh-pass SCREEN that separates mesh FAMILIES at comparable
+resolution (hex ~1.05 against pMesh ~1.26), and it must not be used to rank resolutions of
+one mesher, nor to score a snapped mesh against an aligned one. Only ρ decides.
 
 Two controls, both on the pMesh at 95 969 cells:
 
@@ -390,8 +409,10 @@ Three things follow, and they change how Sec. 9 item 3 must be read.
    fails is the exponent times the horizon: over 1563 steps, exp(1563 × 0.00439) ≈ 9.6e2 on
    hex takes an O(h²) initial error of ~1e-8 to ~1e-5 (invisible), while exp(1563 × 0.011)
    ≈ 3e7 takes it to ~0.3 on pMesh — the observed failure scale.
-2. **ρ−1 is INVARIANT under refinement at fixed Courant** (1.004× and 1.023× for a 1.5×
-   refinement), but Δt ∝ h, so the growth rate per unit PHYSICAL TIME scales as 1/h:
+2. **ρ−1 is INVARIANT under refinement at fixed Courant.** On hexahedra it is 4.39e-03,
+   4.41e-03, 4.41e-03 across a 2× range of h and an 8× range of cell count (65 536 to
+   524 288) — flat to 0.5 %. But Δt ∝ h, so the growth rate per unit PHYSICAL TIME scales
+   as 1/h:
    measured ratios 1.505 and 1.548 against the exact 1.5. Refining does not make each step
    worse; it buys more steps per second. That is the mechanism behind the recorded 3D wide
    ladder destabilising at R/h = 15.8 while R/h 10.0 and 12.7 are stable.
@@ -400,8 +421,15 @@ Three things follow, and they change how Sec. 9 item 3 must be read.
    |G|² = 1 − 4C²(1−C²)sin⁴(θ/2) ≤ 1. The ordering of ρ−1 does track Λ−1 (2.5× against
    4.0×), so Λ remains a cheap one-mesh-pass screen — but only ρ decides.
 
-CAVEAT ON SCOPE: these arms drive the transport with the CELL velocity. Production uses
-`projectedFlux`; the projectedFlux arms are the next measurement.
+**WHAT THIS MEANS FOR THE MESH CHOICE, and it qualifies Sec. 8.1's hexahedral row.** At
+production resolution the ordering is hex 4.41e-03 < snapped channel 6.00e-03 < pMesh
+1.03e-02, so a hexahedral family is 2.3× better than pMesh in the exponent and amplifies
+9.0e3 times less over a 1563-step horizon (9.7e2 against 8.7e6) — which is the difference
+between a run that completes and one that fails. But SNAPPING COSTS 36 %: a body-fitted
+hexahedral mesh of a geometry that does not align with it is measurably worse than an
+aligned box, and Λ does not see that penalty at all. A microfluidic demonstration should
+therefore measure ρ on its OWN mesh before a horizon is chosen; the probe is one mesh pass
+plus 2000 cheap iterations.
 
 ---
 
