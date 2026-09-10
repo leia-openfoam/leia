@@ -1,0 +1,66 @@
+# ============================================================================
+# ADVECTION CONVERGENCE + REGRESSION: hex 3D, shear -- 3D stencils and the cross terms of the quadratic fit
+#
+# WHY THIS STUDY EXISTS. Two standing rules, both in CLAUDE.md.
+#
+# 1. "Touch advection, run a mesh convergence study -- before stating anything."
+#    A single resolution gives an error, not a result. MEASURED 2026-09-10: the
+#    distance-cone bound lowered every interface metric 25-68 % at one rung and
+#    the eikonal error then moved 7.119e-03 -> 7.066e-03 across a 2x refinement,
+#    an order of 0.01 -- a FLOOR, not a converging error.
+# 2. "The standing advection regression set." The slValueBound refactor rewrote
+#    slCorrector::robustEvaluate and was gated for bit-identity on the COUPLED
+#    two-phase solver only. pointValueScheme reaches that same function from the
+#    advection solver, so the coupled gate cannot stand in for this one.
+#
+# THE DEFAULT ARM IS THE REGRESSION. `SL_VALUE_BOUND none` is what the sentinel
+# `fromClipSwitch` resolves to, so the none arm at every rung must reproduce the
+# recorded transport order. If it does not, the refactor broke advection and
+# nothing else in this campaign can be trusted.
+#
+# THE BOUND ARMS FOUND THE EARLIER CLAIM. The advection falsification of
+# 2026-09-10 (METHOD.md 8.3.4) was stated from ONE resolution per case, which
+# the new rule forbids. These rungs either found it or retract it.
+#
+# PRE-REGISTERED READ-OUT, at t = END_TIME:
+#   PASS   the `none` arm's observed order in E_GEOM_ALPHA_REL matches the order
+#          recorded for this case to within 0.3, at every rung pair; AND
+#          E_BOUND_ALPHA stays at round-off, so alpha is still bounded.
+#   FALSIFIED IF the `none` order is degraded. That is a transport regression
+#          from the refactor, and it outranks every other result here.
+#   THE BOUND ARMS PASS only if their order is also within 0.3 of the `none`
+#          arm's. An arm with a lower error and a lower order is a floor, and
+#          the order column is the only thing that shows it.
+#   REPORT the geometric error, the volume error AND the boundedness error
+#          together. NEVER L_INF_E_PSI, which does not converge here.
+#
+# READ IT WITH: workflow/scripts/value_bound_ladder_table.py (order next to the
+# error) or, for shared-mesh arms, value_bound_advection_census.py.
+# ============================================================================
+study_name: advConv3DshearHex
+case: 3Dshear
+mesh: hex
+mode: parallel
+np: 48
+solver: leiaSemiLagrangeLevelSetFoam
+solve_runtime: 14400
+axes_override:
+  SL_VALUE_BOUND: ["none", "lipschitzCone", "stencilBounds"]
+  SL_CONE_L_MODE: ["unity"]
+  SL_CONE_INADMISSIBLE: ["cellOnly"]
+  SL_CONE_L: [1]
+  SL_LIMITER: ["none"]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_CLIP_REGION: ["all"]
+  SL_CLIP_KEEP_EXTREMA: ["false"]
+  PHASE_INDICATOR: [detrixheAslam]
+  N_CELLS: [32, 64, 128]
+  CFL: [0.3]
+  END_TIME: [3.0]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

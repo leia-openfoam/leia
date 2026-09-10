@@ -1,0 +1,18 @@
+study_name: advPolyMesh3Dshear04
+case: 3Dshear
+mesh: poly
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+solve_runtime: 3600
+axes_override:
+  MAX_CELL_SIZE: [0.04]
+  CFL: [0.3]
+  END_TIME: [3.0]
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_LIMITER: ["none"]
+
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
