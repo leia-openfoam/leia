@@ -2813,17 +2813,31 @@ branch `sdpls-pre-pull-20260922` = b3aa65e. Job ids appended to `.my_jobs`: 5482
      The 2026-08-19 parallel run is the defective one; the article already suspends those
      results (Section 7).
 5. **Serial confirmation job 54823068** (np = 1, new binary, 9 s), serial against np = 4 of
-   the SAME binary: noSource, every metric within 5.8e-6 (most below 1e-7), the linear-solver
-   tolerance level. R arm: band gradient error L1 1.2e-3 and L2 2.4e-4, volume error 5.0e-4,
-   shape 5.5e-6, whole-domain gradient extremes 0.94 (`MIN_MAG_GRAD_PSI`) and 0.19 (`MAX`).
-   Against the OLD np = 4 reference the band L1 differs by 1.2e-1. So the fix removed about
-   99 % of the seam error in the band metric, and **a residual decomposition dependence of
-   the R path remains, about two orders above the sourceless arm's solver noise.** Every
-   `gradPsiErrorCSV` statistic is collective (`gMax`, `gAverage`, `gSum`), so these are
-   solution differences; the 4.8e-2 in `NARROW_MEAN_R` at t = 0 is a comparator floor
-   artefact (both values are +-1e-16). FINDING for the SDPLS session: run the R arm through
-   the serial-vs-np4 equivalence pattern (`config/seamConsistency3D{serial,par4}.yaml`)
-   before any new parallel SDPLS ladder; multi-rank fitted orders stay provisional.
+   the SAME binary: noSource, every metric within 5.8e-6 (most below 1e-7). R arm: band
+   gradient error L1 1.2e-3 and L2 2.4e-4, volume error 5.0e-4, shape 5.5e-6, whole-domain
+   gradient extremes 0.94 (`MIN_MAG_GRAD_PSI`, serial 1.3e-3 against 2.2e-2 at t = 0.74) and
+   0.19 (`MAX`). Against the OLD np = 4 reference the band L1 differs by 1.2e-1.
+   **CORRECTED the same day (first written as "a residual decomposition dependence of the R
+   path remains"; that reading was wrong).** Two measurements settle it. (a) Growth in time:
+   at step 1 the serial-vs-np4 difference is 1.1e-10 in the R arm and 1.3e-10 in the
+   sourceless arm, the same size and equal to the psi solver tolerance (PBiCGStab, DILU,
+   1e-10); the sourceless arm stays at 1e-8 to 1e-9 for all 129 steps, the R arm grows to
+   1e-7 at t = 0.17, 5.6e-3 (L2) at t = 0.42 and 3.6e-2 at t = 0.74. A seam operator would
+   show at step 1; this is amplification of solver-level noise. (b) The single-variable test,
+   job 54827753 (serial, same binary, same decomposition, only the psi tolerance changed from
+   1e-10 to 1e-14): the R arm differs from its own tolerance-1e-10 run by 0.95 in
+   `MIN_MAG_GRAD_PSI` (same step 107), 3.1e-2 in L2, 2.9e-2 in L1 and 5.7e-4 in volume, the
+   same amounts as serial against np = 4; the sourceless arm by at most 4.1e-6. So the
+   transport is seam-consistent, the R source path carries no remaining decomposition
+   dependence, and the R arm at N = 32, T = 1 (non-reversed) amplifies solver-tolerance noise
+   by seven orders over 130 steps, mostly where the far-field `|grad psi|` collapses toward
+   zero (its minimum reaches 1e-3). Every `gradPsiErrorCSV` statistic is collective, so these
+   are solution differences of that sensitive far field; the band metrics move 1e-3 and the
+   shape 5e-6. Consequence for the SDPLS session: a seam gate on the R arm must tighten the
+   psi tolerance (1e-14) or read the band metrics at a short horizon, otherwise solver noise
+   masquerades as a seam defect; and the narrow-band parallel fixes of 2026-08-15 (4a73c71,
+   6d144e9) are not involved, because this case's R path does not read the band
+   (`GRAD_PSI fvc`, `MOLLIFIER none`) and the fixes are in both binaries compared.
 6. **Pin probe job 54823248**: see 9.4. The ranks of a workflow-submitted job run the default
    dir. Consistent today; decision pending.
 7. **Dry run** with the Makefile's flags (`--rerun-triggers mtime`): `sdplsConv2Dvortex` would
