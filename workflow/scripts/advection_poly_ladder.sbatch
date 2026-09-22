@@ -48,11 +48,11 @@ SRC=$(cd "$SRC" && pwd)
 OUTDIR=${OUTDIR:-$(dirname "$(dirname "$SRC")")/advPolyArms}
 mkdir -p "$OUTDIR"
 
-# bashrc FIRST, then .leia_env: the bashrc RESETS WM_PROJECT_USER_DIR, so an export
+# bashrc FIRST, then etc/leia-env.sh: the bashrc RESETS WM_PROJECT_USER_DIR, so an export
 # before it lands in the SHARED account prefix and overwrites another session's
 # binaries. That happened on 2026-09-09.
 source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
-[ -f "$HOME/.leia_env" ] && . "$HOME/.leia_env"
+. "$REPO/etc/leia-env.sh" || exit 1   # this clone's binaries; AFTER etc/bashrc
 echo "prefix   = $WM_PROJECT_USER_DIR"
 echo "src      = $SRC"
 echo "maxCellSize = $(foamDictionary -entry maxCellSize -value "$SRC/system/meshDict")"

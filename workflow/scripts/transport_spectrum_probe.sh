@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+LEIA_ENV="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)/etc/leia-env.sh"
+[ -f "$LEIA_ENV" ] || LEIA_ENV="${SLURM_SUBMIT_DIR:-$PWD}/etc/leia-env.sh"   # sbatch runs a spool copy
 # Frozen-velocity power iteration of the semi-Lagrangian transport operator, one mesh.
 #
 # WHY. Lambda_c bounds ONE step in ONE cell. It does not decide repeated stability, and the
@@ -49,7 +51,7 @@ cd "$OUT" || exit 1
 LEIA_PMESH_PRELOAD=${LEIA_PMESH_PRELOAD:-}
 # shellcheck disable=SC1090
 source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
-[ -f "$HOME/.leia_env" ] && . "$HOME/.leia_env"
+. "$LEIA_ENV" || exit 1   # this clone's binaries; AFTER etc/bashrc
 
 foamDictionary -entry deltaT -set "$DT" system/controlDict >/dev/null
 foamDictionary -entry writeInterval -set "$DT" system/controlDict >/dev/null

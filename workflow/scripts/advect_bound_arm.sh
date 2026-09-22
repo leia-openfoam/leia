@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+LEIA_ENV="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)/etc/leia-env.sh"
+[ -f "$LEIA_ENV" ] || LEIA_ENV="${SLURM_SUBMIT_DIR:-$PWD}/etc/leia-env.sh"   # sbatch runs a spool copy
 # Run ONE value-bound arm of an ADVECTION case on a GIVEN, SHARED mesh.
 #
 # WHY THIS EXISTS RATHER THAN A STUDY. The workflow's `mesh` rule runs once per ARM, and
@@ -42,7 +44,7 @@ for f in "$SRC"/*.fms "$SRC"/*.stl; do [ -e "$f" ] && cp "$f" "$OUT/"; done
 cp "$SRC/case_params.json" "$OUT/" 2>/dev/null
 cd "$OUT" || exit 1
 source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
-[ -f "$HOME/.leia_env" ] && . "$HOME/.leia_env"
+. "$LEIA_ENV" || exit 1   # this clone's binaries; AFTER etc/bashrc
 foamDictionary -entry levelSet/semiLagrangian/valueBound     -set "$BOUND" system/fvSolution >/dev/null 2>&1
 foamDictionary -entry levelSet/semiLagrangian/lipschitzMode  -set "$LMODE" system/fvSolution >/dev/null 2>&1
 foamDictionary -entry levelSet/semiLagrangian/onInadmissible -set "$INADM" system/fvSolution >/dev/null 2>&1

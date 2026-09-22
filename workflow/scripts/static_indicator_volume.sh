@@ -14,6 +14,7 @@
 set +eu; source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; set -e
 
 REPO=/home/tmaric/OpenFOAM/repos/leia
+. "$REPO/etc/leia-env.sh" || exit 1   # this clone's binaries; AFTER etc/bashrc
 SRC=$REPO/studies/phaseIndicatorConvergence/2Dvortex_00000   # 2Dvortex / shear2D base
 OUT=${1:-$REPO/workflow/scripts/static_indicator_volume.csv}
 WORK=/home/tmaric/qa_deck/staticvol

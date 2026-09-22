@@ -23,12 +23,17 @@
 # re-submitting after any interruption continues where it stopped.
 set -o pipefail   # NOTE: no `set -u` -- OpenFOAM etc/bashrc reads WM_PROJECT_DIR unset
 
-cd /work/scratch/tm83tomy/leia || exit 1
+# The clone to run is the one this script was submitted FROM: `cd <clone> && sbatch
+# run-studies.sbatch`. Every clone carries its own binaries (etc/leia-env.sh), so one
+# committed script serves every clone; a session that wants another job name
+# overrides it on the command line: `sbatch -J leia-curv run-studies.sbatch`.
+cd "${SLURM_SUBMIT_DIR:?run-studies.sbatch: submit it with sbatch from the clone root}" || exit 1
+[ -f etc/leia-env.sh ] || { echo "run-studies.sbatch: $PWD is not a leia clone (no etc/leia-env.sh)" >&2; exit 1; }
 module purge
 module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv
 export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2
 source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
-[ -f "$PWD/.leia_env" ] && . "$PWD/.leia_env"   # clone-local overlay (session pin); AFTER etc/bashrc, which defines WM_OPTIONS
+. "$PWD/etc/leia-env.sh" || exit 1   # this clone's binaries; AFTER etc/bashrc, which defines WM_OPTIONS
 export PATH="$HOME/.local/bin:$PATH"
 
 # STUDY runs exactly one config; TARGET runs a whole group.

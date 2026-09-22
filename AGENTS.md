@@ -35,7 +35,15 @@ prose. The rules that matter most:
   script to a remote host, pipe a file (`ssh host 'bash -s' < script.sh`) rather
   than a heredoc — nested Windows→WSL→ssh quoting expands `$VAR`/`$(...)` in the
   wrong shell.
-- **Build:** `source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc && ./Allwmake`
+- **Build:** `source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc && . ./etc/leia-env.sh && ./Allwmake`.
+  Every clone installs into its own `<clone>/platforms/` (git-ignored): `etc/leia-env.sh`,
+  sourced AFTER OpenFOAM's `etc/bashrc` in every shell that builds or runs a leia
+  binary, sets `WM_PROJECT_USER_DIR` to the clone root. Two clones never share
+  binaries, so a rebuild in one cannot change what another runs (MEASURED 2026-09-09:
+  a build from one clone landed in the shared account default and a second clone ran
+  a library about 200 commits ahead of its own source; STATUS.md section 9). The
+  workflow sources the file itself in every job (`workflow/Snakefile`, `sh()`);
+  `Allwmake`, `Allwclean` and `run-studies.sbatch` source it too.
   (OpenFOAM-v2512 is the current standard version, in `$HOME/OpenFOAM` on both
   the WSL laptop and Lichtenberg).
 

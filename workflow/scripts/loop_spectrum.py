@@ -62,6 +62,7 @@ from foamlib import FoamCase
 
 SOLVER = "leiaSemiLagrangianLevelSetTwoPhaseFoam"
 BASHRC = os.path.expanduser("~/OpenFOAM/OpenFOAM-v2512/etc/bashrc")
+LEIA_ENV = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "etc", "leia-env.sh")
 
 
 def _set_entries(path, entries):
@@ -83,7 +84,7 @@ def _set_entries(path, entries):
 
 def _run_step(case_dir, env):
     r = subprocess.run(
-        ["bash", "-lc", f"source {BASHRC} >/dev/null 2>&1 && cd {case_dir} && {SOLVER}"],
+        ["bash", "-lc", f"source {BASHRC} >/dev/null 2>&1 && . {LEIA_ENV} && cd {case_dir} && {SOLVER}"],
         capture_output=True, text=True, env=env,
     )
     return r.returncode, r.stdout + r.stderr

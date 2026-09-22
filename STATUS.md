@@ -2865,3 +2865,46 @@ ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de "grep -m1 '^Exec' /work/scratch/tm83t
   2026-07-30 curation (15 rows, no commit column); the 2026-08-12 runs (30 rows, 6228f44-dirty)
   are not versioned. That theme's call.
 - The deck's visual check in a browser.
+
+## 10. Build policy migration: per-clone binaries, stamps, the library split (2026-09-22 ->)
+
+Plan: `docs/plan-library-split-and-build-policy.md` (63ce3ed). Decisions in its section 0.
+This section is the running record of its execution; one entry per work package.
+
+### 10.1 WP1 -- `etc/leia-env.sh`: every clone runs its own binaries
+
+**What changed (laptop, one commit).** `etc/leia-env.sh`, sourced AFTER OpenFOAM's
+`etc/bashrc`, sets `WM_PROJECT_USER_DIR` to the clone root, so binaries install into
+and run from `<clone>/platforms/<WM_OPTIONS>/{bin,lib}` (git-ignored), and it removes
+every OpenFOAM USER dir from `PATH` and `LD_LIBRARY_PATH` while keeping OpenFOAM's own
+installation and ThirdParty. Sourced by: `Allwmake`, `Allwclean`, the Snakefile shell
+helper `sh()` (after the profile's or config's `env_preamble`, so every job, local or
+SLURM), `run-studies.sbatch`, `run-sink-decay.sbatch`, `workflow/Snakefile.pressure-compatibility`,
+and the seven probe and arm scripts under `workflow/scripts/` that launch a leia binary.
+`run-studies.sbatch` now runs the clone it was submitted FROM (`cd $SLURM_SUBMIT_DIR`);
+the job name is overridden on the command line (`sbatch -J leia-curv run-studies.sbatch`).
+Not changed: `profiles/slurm/config.yaml` (the helper follows its preamble), the study
+configs (their `[ -f $HOME/.leia_env ]` clauses become inert when that file is retired),
+the legacy OpenFOAM-v2212 `cases/*/Allrun_*.sbatch`.
+
+**MEASURED while building it.** The first path filter of the environment file removed
+every entry matching `/OpenFOAM/<name>-v2512/platforms/`, which also matched OpenFOAM's
+own `OpenFOAM-v2512` and `ThirdParty-v2512`. The link of every solver then failed with
+undefined `Foam::UPstream::mpi_*` and `Foam::vtk::*` references: GNU ld resolves the
+transitive dependencies of shared libraries through `LD_LIBRARY_PATH`. The filter now
+keeps everything under `$WM_PROJECT_DIR` and `$WM_THIRD_PARTY_DIR`.
+
+**Laptop gates, all PASS (2026-09-22 evening).**
+1. Build: 22 binaries and 4 libraries in `<clone>/platforms/linux64GccDPInt32Opt/`;
+   `which leiaLevelSetFoam` and `ldd` resolve to the clone; the account default
+   `tmaric-v2512` is no longer on `PATH`; sourcing twice is idempotent (one entry).
+2. Relocation: `sdpls1Dstretch` cases 00001 and 00010 re-run with the relocated binary
+   reproduce the published `leiaLevelSetFoam.csv` and `gradPsiError.csv` at tolerance 0.
+3. Through the workflow: `snakemake --workflow-profile profiles/local --configfile
+   config/sdpls1Dstretch.yaml --config studies_dir=$PWD/tmp/gate-wp1 --until solve`
+   (stopped before the report rule, so no data table is rewritten): the rendered job
+   shell sources the environment file directly after the preamble; all 12 cases
+   reproduce both CSVs at tolerance 0 (24 comparisons); `git status docs/` unchanged.
+
+**Cluster (both clones): PENDING** -- filled in below when done.
+

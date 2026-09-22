@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Every clone builds into its own <clone>/platforms/ (etc/leia-env.sh); the
+# OpenFOAM etc/bashrc must already be sourced (WM_OPTIONS set).
+. "$(cd "$(dirname "$0")" && pwd)/etc/leia-env.sh" || exit 1
+# A stale monolithic library from before the split would be loaded next to the
+# new ones; remove it wherever this build installs (no-op until the split lands).
+echo "leia: installing into $WM_PROJECT_USER_DIR/platforms/$WM_OPTIONS"
+
 g++ --version | head -n 1
 
 WITH_BEAR=""

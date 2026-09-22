@@ -24,10 +24,15 @@ even if you only use B — B automates A, and when B breaks it breaks in A's ter
 module purge
 module load <compiler-module> <mpi-module>
 source $WM_PROJECT_DIR/etc/bashrc            # e.g. $HOME/OpenFOAM/OpenFOAM-v2512
-. $HOME/.leia_env                            # optional session overlay, AFTER the line above
+. <clone>/etc/leia-env.sh                    # the clone's own binaries, AFTER the line above
 ```
 
-A session overlay that pins your own binaries typically reads
+`etc/leia-env.sh` is committed in the repository. It sets `WM_PROJECT_USER_DIR` to
+the clone root, so every clone installs into and runs from `<clone>/platforms/`, and
+it removes the account-default user dir that `etc/bashrc` put on `PATH` and
+`LD_LIBRARY_PATH`. The workflow sources it in every job after the profile's
+`env_preamble`. It replaces the earlier per-session overlay file (`$HOME/.leia_env`,
+retired 2026-09-22), which read
 
 ```bash
 export WM_PROJECT_USER_DIR=$HOME/OpenFOAM/<session-name>
@@ -47,9 +52,13 @@ export LD_LIBRARY_PATH=$FOAM_USER_LIBBIN:$LD_LIBRARY_PATH
 > which blockMesh <solver>    # must both resolve
 > ```
 
-Why an overlay at all: when several sessions share one account, they also share
-`$FOAM_USER_LIBBIN`. Pin anything you are measuring into a session-local
-`WM_PROJECT_USER_DIR` so another session's rebuild cannot silently change your binary.
+Why per-clone binaries at all: when several sessions share one account, they also
+share the default `$FOAM_USER_LIBBIN`. MEASURED 2026-09-09: a build from one clone
+landed there and a second clone ran a library about 200 commits ahead of its own
+source for two weeks, invisible in every log. MEASURED 2026-09-22 (a probe job): a
+driver-side overlay alone does not reach the ranks, because the job preamble
+re-sources `etc/bashrc`; the job side must source the environment file too, which is
+why the workflow's shell helper does it.
 
 ### 1.2 Filesystems
 

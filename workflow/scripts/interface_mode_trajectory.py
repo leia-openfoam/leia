@@ -45,6 +45,7 @@ from foamlib import FoamCase
 
 SOLVER = "leiaSemiLagrangianLevelSetTwoPhaseFoam"
 BASHRC = os.path.expanduser("~/OpenFOAM/OpenFOAM-v2512/etc/bashrc")
+LEIA_ENV = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "etc", "leia-env.sh")
 
 
 def _time_dirs(d):
@@ -157,7 +158,7 @@ def main(argv):
 
     if not os.path.exists(os.path.join(work, "0", "C")):
         subprocess.run(["bash", "-lc",
-                        f"source {BASHRC} >/dev/null 2>&1 && cd {work} && "
+                        f"source {BASHRC} >/dev/null 2>&1 && . {LEIA_ENV} && cd {work} && "
                         f"postProcess -func writeCellCentres -time 0 >/dev/null 2>&1"],
                        capture_output=True, text=True)
     C = np.asarray(FoamCase(work)[0]["C"].internal_field, dtype=float)
@@ -187,7 +188,7 @@ def main(argv):
                 shutil.rmtree(os.path.join(work, d))
         FoamCase(work)[0]["psi"].internal_field = (psi0 + delta).tolist()
         r = subprocess.run(["bash", "-lc",
-                            f"source {BASHRC} >/dev/null 2>&1 && cd {work} && {SOLVER}"],
+                            f"source {BASHRC} >/dev/null 2>&1 && . {LEIA_ENV} && cd {work} && {SOLVER}"],
                            capture_output=True, text=True)
         ts = [x for x in _time_dirs(work) if x[0] > 0]
         if not ts:

@@ -52,6 +52,7 @@ def of_shell(command):
     return (
         "set +eu\n"
         f"source {OF_ENV}\n"
+        f'. "{REPO}/etc/leia-env.sh" || exit 1\n'
         "set -e\n"
         f"cd {REPO}\n"
         + command

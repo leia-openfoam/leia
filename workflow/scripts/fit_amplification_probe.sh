@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+LEIA_ENV="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)/etc/leia-env.sh"
+[ -f "$LEIA_ENV" ] || LEIA_ENV="${SLURM_SUBMIT_DIR:-$PWD}/etc/leia-env.sh"   # sbatch runs a spool copy
 # Build one mesh and measure the amplification bound of the semi-Lagrangian fit on it.
 #
 # WHY. Lambda_c = |1 - sum_j g_j| + sum_j |g_j| is the Lebesgue constant of the fit at the
@@ -64,11 +66,11 @@ fi
 
 cd "$OUT" || exit 1
 # NOTE: sourcing the bashrc AFTER any WM_PROJECT_USER_DIR export would reset it; on a shared
-# account source $HOME/.leia_env after the bashrc (CLUSTER.md).
+# account source the clone's etc/leia-env.sh after the bashrc (CLUSTER.md).
 # shellcheck disable=SC1090
 LEIA_PMESH_PRELOAD=${LEIA_PMESH_PRELOAD:-}
 source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
-[ -f "$HOME/.leia_env" ] && . "$HOME/.leia_env"
+. "$LEIA_ENV" || exit 1   # this clone's binaries; AFTER etc/bashrc
 
 DT=$(foamDictionary -entry deltaT -value system/controlDict)
 

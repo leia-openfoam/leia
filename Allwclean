@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
 
+. "$(cd "$(dirname "$0")" && pwd)/etc/leia-env.sh" || exit 1
+
 wclean all src 
 wclean all applications

@@ -117,9 +117,21 @@ def case_path(w):
 
 
 def sh(*lines):
-    """Shell body: source OpenFOAM (lenient), then run the commands strictly."""
+    """Shell body: source OpenFOAM (lenient), then this clone's etc/leia-env.sh,
+    then run the commands strictly.
+
+    The environment file comes AFTER the profile's or config's env_preamble
+    because that preamble sources OpenFOAM's etc/bashrc, which resets
+    WM_PROJECT_USER_DIR to the account default. Sourcing it here, in the one
+    helper every rule passes through, makes every job -- local or SLURM,
+    whatever profile supplied the preamble -- run the binaries of THIS clone
+    (<clone>/platforms/), never those of another clone that shares the account.
+    MEASURED 2026-09-22 (job 54823248): a driver-side overlay alone does not
+    reach the ranks; the job side must source the file too.
+    """
     pre = (PREAMBLE + "\n") if PREAMBLE else ""
-    return "set +eu\n" + pre + "set -e\n" + "\n".join(lines)
+    env = f'. "{REPO}/etc/leia-env.sh" || exit 1\n'
+    return "set +eu\n" + pre + env + "set -e\n" + "\n".join(lines)
 
 
 # --- per-mesh command (chosen once per study) --------------------------------

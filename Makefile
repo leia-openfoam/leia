@@ -3,7 +3,7 @@
 #
 # Prerequisite (once per shell): source OpenFOAM and have the Python deps
 # (snakemake, foamlib, vtk, numpy, matplotlib) + pdflatex on PATH:
-#     source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc
+#     source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc && . ./etc/leia-env.sh
 #
 # Targets:
 #     make build      compile the leia library + solvers (Allwmake)
