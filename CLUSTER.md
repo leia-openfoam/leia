@@ -500,3 +500,13 @@ export FOAM_USER_LIBBIN=$WM_PROJECT_USER_DIR/platforms/$WM_OPTIONS/lib
 export PATH=$FOAM_USER_APPBIN:$PATH
 export LD_LIBRARY_PATH=$FOAM_USER_LIBBIN:$LD_LIBRARY_PATH
 ```
+
+> **MEASURED 2026-09-09, found 2026-09-22.** A build from the curvature clone was written to
+> the account-default user dir `tm83tomy-v2512` twenty seconds after that clone pulled 0046961
+> (`libleiaLevelSet.so` of 11:00:40; `strings … | grep -c compositeFlux` gives 2). The SDPLS
+> clone `/work/scratch/tm83tomy/leia`, at b3aa65e with object files of 2026-08-19, thereby ran
+> a library about 200 commits ahead of its own source until it was rebuilt. Rules: print
+> `$WM_PROJECT_USER_DIR` before every `./Allwmake`; every session pins its own user dir; the
+> SDPLS clone pins through `run-studies.sbatch`, which sources the clone-local `.leia_env`
+> (`sdpls-v2512`) after `etc/bashrc`; after every launch read the `Exec` line of one solver
+> log. Record: STATUS.md section 9.
