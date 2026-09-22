@@ -508,5 +508,8 @@ export LD_LIBRARY_PATH=$FOAM_USER_LIBBIN:$LD_LIBRARY_PATH
 > a library about 200 commits ahead of its own source until it was rebuilt. Rules: print
 > `$WM_PROJECT_USER_DIR` before every `./Allwmake`; every session pins its own user dir; the
 > SDPLS clone pins through `run-studies.sbatch`, which sources the clone-local `.leia_env`
-> (`sdpls-v2512`) after `etc/bashrc`; after every launch read the `Exec` line of one solver
-> log. Record: STATUS.md section 9.
+> (`sdpls-v2512`) after `etc/bashrc` -- MEASURED 2026-09-22 (job 54823248): that driver-side
+> hook alone does NOT reach the ranks, because the profile's `env_preamble` re-sources
+> `etc/bashrc` in every job; the job side must source the overlay too, or the ranks run the
+> account default. After every launch read the `Exec` line of one solver log. Record:
+> STATUS.md section 9.

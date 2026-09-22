@@ -2696,7 +2696,7 @@ of 2026-09-22. Nothing in sections 0-8 was edited for it.
 |---|---|---|
 | laptop `development` | 32a0d9b | the commits of 9.2, pushed |
 | GitHub `origin/development` | 32a0d9b | same as the laptop |
-| cluster `/work/scratch/tm83tomy/leia` (the SDPLS session's clone) | b3aa65e (2026-08-19), 221 commits behind | see 9.5 |
+| cluster `/work/scratch/tm83tomy/leia` (the SDPLS session's clone) | b3aa65e (2026-08-19), 221 commits behind | b16fc41 (fast-forwarded 2026-09-22 16:16), then the record commit of 9.5 |
 | cluster `/work/scratch/tm83tomy/leia-curvature` (curvature session) | 81d04e7 | 32a0d9b (fast-forwarded 2026-09-22 11:20) |
 
 The SDPLS code (`src/leiaLevelSet/sdplsSource/**`) has not changed since 4923800 (2026-08-26).
@@ -2756,19 +2756,83 @@ sources `$PWD/.leia_env` after `etc/bashrc` when that file exists, and does noth
 The clone-local `/work/scratch/tm83tomy/leia/.leia_env` (unversioned; listed in
 `.git/info/exclude`) exports `WM_PROJECT_USER_DIR=$HOME/OpenFOAM/sdpls-v2512` and the
 `FOAM_USER_APPBIN`, `FOAM_USER_LIBBIN`, `PATH`, `LD_LIBRARY_PATH` overlay of SLURM.md 1.1. The
-default dir `tm83tomy-v2512` is rebuilt from the pulled clone as a consistent fallback. After
-every launch: `grep -m1 '^Exec' studies/<study>/<case>/log.leiaLevelSetFoam` must name
-`sdpls-v2512`. Proposed to the curvature session, not done: the same hook in the committed
-`profiles/slurm/config.yaml` preamble (it would collide with that clone's uncommitted edit of
-the same line).
+default dir `tm83tomy-v2512` is rebuilt from the pulled clone as a consistent fallback.
 
-### 9.5 Cluster procedure and verdicts
+**MEASURED 2026-09-22 16:28 (job 54823248): the driver-side hook alone does NOT reach the
+ranks.** A job submitted from the pinned driver shell, whose script runs the committed
+profile's `env_preamble` (`module purge; module load ...; source etc/bashrc`), resolves
+`leiaLevelSetFoam` and `FOAM_USER_LIBBIN` to `tm83tomy-v2512`: the preamble's `etc/bashrc`
+resets `WM_PROJECT_USER_DIR` and puts the default dirs first again. So the SDPLS session's
+solves run the DEFAULT dir today, which is consistent because 9.5 rebuilt it from b16fc41. The
+pin becomes effective only when the job side sources the overlay too: one inert clause
+`; [ -f "$PWD/.leia_env" ] && . "$PWD/.leia_env"` at the end of `profiles/slurm/config.yaml`
+line 132. That line is the one the curvature clone edits locally, so committing the clause
+makes that clone's next `git pull --ff-only` abort until its edit is stashed and re-applied
+(or replaced by its own clone-local `.leia_env`). DECISION PENDING: commit the clause, with
+that coordination, or stay on the default dir. After every launch, whichever way:
+`grep -m1 '^Exec' studies/<study>/<case>/log.leiaLevelSetFoam` tells which dir ran.
 
-PENDING at the time of this commit; filled in by the follow-up commit of the same day:
-fast-forward result, the table diff after re-aggregation, the two builds, the gate job
-(`leia-sdpls-gate`, cases `sdplsExpSource2Dvortex/2Dvortex_00000` at 40ecf59 and
-`sdplsConv2Dvortex/2Dvortex_00000` at a2175d1-dirty, both run on the cluster; expected: both
-CSVs identical at tolerance 0 and the `Exec` line naming `sdpls-v2512`), and the dry run.
+### 9.5 Cluster procedure and verdicts (executed 2026-09-22 16:15-16:30 by this session, authorized)
+
+Logs: `/work/scratch/tm83tomy/leia-sync-20260922/log/` (one file per step). Gate scratch:
+`/work/scratch/tm83tomy/leia-gate-20260922/` (kept, small). Rollback anchor in the clone:
+branch `sdpls-pre-pull-20260922` = b3aa65e. Job ids appended to `.my_jobs`: 54822859,
+54823068, 54823248 (all `leia-sdpls-gate`, all COMPLETED). No SDPLS job ran between
+2026-09-09 and 2026-09-22 (`sacct`), so no result was produced with the mismatched pair.
+
+1. **Fast-forward** b3aa65e -> b16fc41 (228 commits). The 13 untracked tables were moved
+   aside, compared with `cmp` after the pull (13 of 13 identical) and the aside copies
+   removed. The clone has no modified tracked file left.
+2. **The four regenerated tables.** Cause confirmed: `studies/sdplsConv3Dshear/
+   sdplsConv3Dshear_errors.csv` had an empty `oscillation` column. Re-aggregated in place
+   (`aggregate.build_database` over 36 cases; copies `*.pre-reaggregate-20260922` kept): the
+   column is `on`, and the studies copy now carries four columns more than the tracked docs
+   copy (`surfaceTensionForce`, `psiDdt`, `gradientErrorMax`, `gradientErrorMaxHalf`), every
+   shared column identical. `make_convergence_table.py --method sdpls` then reproduced the
+   committed tables exactly: `git diff` of the tables dir is EMPTY. Trap: the login shell's
+   `python3` is miniconda 3.14 without numpy; the workflow's interpreter is the snakemake
+   shebang `/shared/spapps_2026_01/gcc-11.5.0/python-3.11.14-*/bin/python3`.
+3. **Builds** from the pulled clone: `sdpls-v2512` in 2 min 5 s (0 errors, 22 binaries,
+   `compositeFlux` present), `tm83tomy-v2512` relinked in 8 s from the same objects;
+   `curvature-v2512` untouched (2026-09-10 13:52).
+4. **Gate job 54822859** (mpsd0001, 39 s, np = 4, both cases 129 steps, `Exec` names
+   `sdpls-v2512` because the gate script sourced the overlay itself):
+   - noSource control (`sdplsConv2Dvortex/2Dvortex_00000`, reference a2175d1-dirty of
+     2026-08-12): `leiaLevelSetFoam.csv` identical at tolerance 0; `gradPsiError.csv`
+     identical except the three strain-diagnostic columns `NARROW_MIN_R`, `NARROW_MEAN_R`,
+     `NARROW_MAX_R`. `leiaSetFields.csv` identical.
+   - R arm (`sdplsExpSource2Dvortex/2Dvortex_00000`, reference 40ecf59 of 2026-08-19):
+     FAIL as pre-registered: 7 solver columns and 17 gradient columns differ, band gradient
+     error L1 up to 1.2e-1 relative.
+   - Attribution, not a regression of this sync: 30e6ba9 and 808d384 (2026-08-26,
+     "setVelocity wrote FACE values into COUPLED patches: every parallel SDPLS run was
+     wrong"; "The extension flux was the raw flux at every processor face") lie between the
+     two references and the laptop reference 093e3a4 (2026-08-26), whose SERIAL 1D gate
+     passed byte for byte (9.2). The control's signature -- transport identical, strain
+     diagnostic changed -- is what a corrected `fvc::grad(U)` at processor patches produces.
+     The 2026-08-19 parallel run is the defective one; the article already suspends those
+     results (Section 7).
+5. **Serial confirmation job 54823068** (np = 1, new binary, 9 s), serial against np = 4 of
+   the SAME binary: noSource, every metric within 5.8e-6 (most below 1e-7), the linear-solver
+   tolerance level. R arm: band gradient error L1 1.2e-3 and L2 2.4e-4, volume error 5.0e-4,
+   shape 5.5e-6, whole-domain gradient extremes 0.94 (`MIN_MAG_GRAD_PSI`) and 0.19 (`MAX`).
+   Against the OLD np = 4 reference the band L1 differs by 1.2e-1. So the fix removed about
+   99 % of the seam error in the band metric, and **a residual decomposition dependence of
+   the R path remains, about two orders above the sourceless arm's solver noise.** Every
+   `gradPsiErrorCSV` statistic is collective (`gMax`, `gAverage`, `gSum`), so these are
+   solution differences; the 4.8e-2 in `NARROW_MEAN_R` at t = 0 is a comparator floor
+   artefact (both values are +-1e-16). FINDING for the SDPLS session: run the R arm through
+   the serial-vs-np4 equivalence pattern (`config/seamConsistency3D{serial,par4}.yaml`)
+   before any new parallel SDPLS ladder; multi-rank fitted orders stay provisional.
+6. **Pin probe job 54823248**: see 9.4. The ranks of a workflow-submitted job run the default
+   dir. Consistent today; decision pending.
+7. **Dry run** with the Makefile's flags (`--rerun-triggers mtime`): `sdplsConv2Dvortex` would
+   re-run 6 of 42 cases, `sdplsExpSource2Dvortex` 2 of 14, because the 2026-09-22 mtime
+   sweep gave some inputs a later second than their outputs, and `_solve` deletes the CSV
+   first. Without `--rerun-triggers mtime` every case would re-run (params and code
+   triggers). Before re-launching ANY existing SDPLS study on the cluster: `snakemake
+   --workflow-profile profiles/slurm --configfile config/<study>.yaml --touch` (marks the
+   outputs up to date without running), or preserve the study dir with a dated suffix.
 
 ### 9.6 Phone-runnable checks
 
