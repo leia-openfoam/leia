@@ -3367,6 +3367,23 @@ Tables are regenerated from the curated study output into
 \texttt{data/tables/}; the affine unit test is
 \texttt{cases/sdplsSourceUnit/Allrun.sh}.
 
+\medskip
+\noindent The curated result tables of the kinematic studies are versioned as
+\texttt{data/tables/}\emph{study}\texttt{\_errors.csv}, one row per case, each row
+carrying the commit and the date of its run (state of 2026-09-22): every kinematic
+study this article names by identifier --- \texttt{sdpls1Dstretch},
+\texttt{sdplsRdivCoefficientError2Dvortex}, \texttt{sdplsRdivProductRule2Dvortex},
+\texttt{sdplsRdivConv2Dvortex}, \texttt{sdplsRdivStrictSpConv2Dvortex},
+\texttt{sdplsExpSource2Dvortex}, \texttt{sdplsExpSource2DvortexRev},
+\texttt{sdplsVolCorr2DvortexRev} and \texttt{sdplsVolCorr3Dshear} --- and the inputs
+of the generated convergence tables above (\texttt{sdplsConv2Dvortex},
+\texttt{sdplsConv3Dshear}, \texttt{sdplsConv3Ddeformation}, \texttt{sdplsBetaSweep},
+\texttt{sdplsOrderAblation}; the two \texttt{benchVortexEuler} inputs are curated
+under the method-comparison theme), together with the single-mesh stability sweep
+\texttt{sdplsStability}. The coupled-droplet studies of Section~\ref{sec:coupled}
+write no such table; their numbers are typed into the tables of that section from the
+raw study output, which stays on the cluster.
+
 \bibliographystyle{elsarticle-num}
 \bibliography{refs}
 \end{document}
