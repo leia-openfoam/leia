@@ -2683,3 +2683,107 @@ The laptop working tree also carries uncommitted regenerated study tables and
 figures from a **different** thread (the linear/nSL semi-Lagrangian studies) and a
 cluster stash `stash@{0}` with the same. Those are deliberately not committed
 here — they belong to whoever is running those studies.
+
+## 9. SDPLS thread — sync state (2026-09-22)
+
+The source-term line (SDPLS) is developed in a separate session from the curvature work
+of sections 0-8. This section records the state of its three repositories and the actions
+of 2026-09-22. Nothing in sections 0-8 was edited for it.
+
+### 9.1 Where the three repositories stand
+
+| location | at the start of 2026-09-22 | after this sitting |
+|---|---|---|
+| laptop `development` | 32a0d9b | the commits of 9.2, pushed |
+| GitHub `origin/development` | 32a0d9b | same as the laptop |
+| cluster `/work/scratch/tm83tomy/leia` (the SDPLS session's clone) | b3aa65e (2026-08-19), 221 commits behind | see 9.5 |
+| cluster `/work/scratch/tm83tomy/leia-curvature` (curvature session) | 81d04e7 | 32a0d9b (fast-forwarded 2026-09-22 11:20) |
+
+The SDPLS code (`src/leiaLevelSet/sdplsSource/**`) has not changed since 4923800 (2026-08-26).
+The SDPLS clone lacks five code commits of 2026-08-20 to 2026-08-26 (8d8467e, ef7341b, dc4d835,
+e6ee5e1, 4923800), the configs `sdpls1Dstretch`, `sdplsRdivCoefficientError2Dvortex`,
+`sdplsRdivProductRule2Dvortex` with `cases/1Dstretch`, and the article, deck and table commits
+of 2026-08-20 to 2026-08-28 (a50d235, e346d50, 92a81ee). Its article is the 112 KB version;
+upstream is 206 KB.
+
+### 9.2 What this sitting changed on the laptop
+
+- 246c96e: seventeen per-study result tables versioned under
+  `docs/sdpls-level-set/sdpls-article/data/tables/` (13 copied byte for byte from the cluster
+  clone, where they were untracked; 4 inputs of the generated convergence tables from the
+  laptop's `studies/` tree), and one Reproducibility paragraph in `sdplsLevelSet.tex` that
+  names them. PDF rebuilt (52 pages).
+- 169172e: the negative-results deck caught up with the article: stacks 3 and 4 retracted in
+  place (reversed-sign branch), five stacks added, 10 stacks, 26 slides, every number traced
+  to an article line (245 numbers, 0 misses). Visual check in a browser pending.
+- 7825401: the SDPLS planning briefs and the combined-source note (not implemented).
+- the `workflow/README.md` SDPLS section; this section; the CLUSTER.md note of 9.3; the
+  `run-studies.sbatch` hook of 9.4.
+
+Laptop gate (before any commit): the six cases `1Dstretch_00000..00002` and `00009..00011` of
+`studies/sdpls1Dstretch` (serial, run on this laptop at 093e3a4-dirty on 2026-08-26) were re-run
+with the current binary (`libleiaLevelSet.so` of 2026-09-10, up to date with HEAD). Both
+`leiaLevelSetFoam.csv` and `gradPsiError.csv` reproduce byte for byte: 12 comparisons with
+`compare_metrics_csv.py --tol 0 --skip ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME`, 12 PASS.
+
+### 9.3 Findings about the SDPLS clone, measured 2026-09-22
+
+- **Four modified tracked tables** (`sdpls_convergence*.csv`, `convergence_orders*.tex`) are
+  not data. The clone's `studies/sdplsConv3Dshear/sdplsConv3Dshear_errors.csv` carries an EMPTY
+  `oscillation` column (an older `aggregate.py`), so `make_convergence_table.py` did not blank
+  the t = T gradient columns of the 3D shear rows. Repair: re-aggregate that study in place
+  (CLUSTER.md, "Aggregate in place"), regenerate, expect `git diff` empty.
+- **Thirteen untracked tables** in `docs/sdpls-level-set/sdpls-article/data/tables/` are now
+  tracked upstream with identical bytes (246c96e). Before the pull they are moved aside; after
+  it they are compared with `cmp` and deleted.
+- **Binary provenance.** `$HOME/OpenFOAM/tm83tomy-v2512/platforms/*/lib/libleiaLevelSet.so` was
+  rebuilt on 2026-09-09 at 11:00:40 from the curvature clone (that clone pulled 0046961 at
+  11:00:20); it contains the `compositeFlux` and `exponentialImplicit` symbols of 2026-08-26,
+  while the SDPLS clone at b3aa65e has object files and build logs of 2026-08-19. Any SDPLS run
+  launched from that clone after 2026-09-09 ran a library about 200 commits ahead of its own
+  source. `sacct` for 2026-09-15 to 2026-09-22 shows no leia job; before trusting an SDPLS
+  result of that period run
+  `sacct -u tm83tomy -S 2026-09-09 -X --format=JobID,JobName%30,State,WorkDir%60 | grep '/leia$'`.
+- **Modification-time sweep.** Between 10:59 and 11:12 on 2026-09-22 every file and directory
+  under `/work/scratch/tm83tomy` received a fresh mtime, content unchanged where checked. File
+  ages on that scratch mean nothing for that day: `foam_log_state.sh` `age=`, and Snakemake's
+  `--rerun-triggers mtime`. Dry-run every study before launching it (9.5).
+
+### 9.4 The pin, decided 2026-09-22
+
+The SDPLS session pins its binaries to `$HOME/OpenFOAM/sdpls-v2512`. `run-studies.sbatch`
+sources `$PWD/.leia_env` after `etc/bashrc` when that file exists, and does nothing otherwise.
+The clone-local `/work/scratch/tm83tomy/leia/.leia_env` (unversioned; listed in
+`.git/info/exclude`) exports `WM_PROJECT_USER_DIR=$HOME/OpenFOAM/sdpls-v2512` and the
+`FOAM_USER_APPBIN`, `FOAM_USER_LIBBIN`, `PATH`, `LD_LIBRARY_PATH` overlay of SLURM.md 1.1. The
+default dir `tm83tomy-v2512` is rebuilt from the pulled clone as a consistent fallback. After
+every launch: `grep -m1 '^Exec' studies/<study>/<case>/log.leiaLevelSetFoam` must name
+`sdpls-v2512`. Proposed to the curvature session, not done: the same hook in the committed
+`profiles/slurm/config.yaml` preamble (it would collide with that clone's uncommitted edit of
+the same line).
+
+### 9.5 Cluster procedure and verdicts
+
+PENDING at the time of this commit; filled in by the follow-up commit of the same day:
+fast-forward result, the table diff after re-aggregation, the two builds, the gate job
+(`leia-sdpls-gate`, cases `sdplsExpSource2Dvortex/2Dvortex_00000` at 40ecf59 and
+`sdplsConv2Dvortex/2Dvortex_00000` at a2175d1-dirty, both run on the cluster; expected: both
+CSVs identical at tolerance 0 and the `Exec` line naming `sdpls-v2512`), and the dry run.
+
+### 9.6 Phone-runnable checks
+
+```
+ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de "squeue -u tm83tomy -n leia-studies"
+ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de "tail -3 /work/scratch/tm83tomy/leia/.my_jobs"
+ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de "cd /work/scratch/tm83tomy/leia && git status -sb | head -1"
+ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de "grep -m1 '^Exec' /work/scratch/tm83tomy/leia/studies/<study>/<case>/log.leiaLevelSetFoam"
+```
+
+### 9.7 Not done, on purpose
+
+- GitHub `main` is 440 commits behind `development` (one own commit, a `.gitignore` update).
+- The briefs of 7825401 are not implemented (`interfaceDefects`, `sdplsCombined`).
+- `benchVortexEulerT2/T8_errors.csv` tracked under the method-comparison theme are the
+  2026-07-30 curation (15 rows, no commit column); the 2026-08-12 runs (30 rows, 6228f44-dirty)
+  are not versioned. That theme's call.
+- The deck's visual check in a browser.
