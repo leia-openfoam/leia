@@ -167,6 +167,89 @@ oracle, the pressure-algebra tolerance sweep, and the GAMG/PCG solver gate.
 The similarly named Make targets are thin aliases only; they do not own study
 logic or freshness.
 
+## SDPLS level-set source term (leiaLevelSetFoam)
+
+The source-term line: Eulerian psi advection with a source `S = f_nl(psi^n) psi` that
+vanishes on the zero level set and controls `|grad psi|` through the transport equation
+itself, without redistancing. Theme `sdpls-level-set`; results agglomerate into
+`docs/sdpls-level-set/sdpls-article/data/`, and the article `sdplsLevelSet.tex` and the two
+decks `sdpls-level-set.template.html` and `sdpls-level-set-negative-results.template.html`
+build from it. A study config MUST set `theme: sdpls-level-set` explicitly: the solver map
+sends `leiaLevelSetFoam` to `velocity-extension` otherwise.
+
+Tokens live in `cases/default.parameter` and render into `levelSet.sdplsSource` of the case
+`fvSolution.template` (2Dvortex: lines 212-263) and into `gradSchemes` of `fvSchemes.template`.
+Every default is the inert value, so a study that does not set a token is unchanged:
+
+    SDPLS_SOURCE          noSource    # noSource | R | beta | Rdiv | RdivStrictSp
+    SOURCE_SCHEME         simpleLinearImplicit
+                          # explicit | simpleLinearImplicit | strictNegativeSpLinearImplicit
+                          # | exponential | exponentialImplicit
+    SDPLS_BETA            1.0         # beta only: f_nl = beta - |grad psi|
+    MOLLIFIER             none        # none | band | m1 (research instrument: the eq. (24) cut-off)
+    SDPLS_W1 / SDPLS_W2   0.05 / 0.15 # mollifier widths, physical length, w2 > w1
+    SDPLS_NLAYERS         3           # band cut-off only, cell count
+    SDPLS_COMPOSITE_FLUX  off         # Rdiv only: off | composite | normal
+    SDPLS_FLUX_BLEND      1.0         # Rdiv only: lambda = 1 is R's own flux
+    GRAD_PSI              fvc         # fvc | narrowLS
+    GRAD_PSI_SDPLS        SdplsLSQ    # aliasDict names of the source's gradient schemes
+    GRAD_U_SDPLS          SdplsUGauss
+
+Studies (each config header documents its axes, its purpose and its pre-registered read-out;
+`make print-sdpls-studies` lists the 16 of `SDPLS_STUDIES`):
+
+    # convergence ladders: the inputs of make_convergence_table.py --method sdpls
+    snakemake --workflow-profile profiles/local --configfile config/sdplsConv2Dvortex.yaml
+    snakemake --workflow-profile profiles/local --configfile config/sdplsConv3Dshear.yaml
+    snakemake --workflow-profile profiles/local --configfile config/sdplsConv3Ddeformation.yaml
+    # (benchVortexEulerT2 and benchVortexEulerT8, theme method-comparison, are the two other inputs)
+
+    # order ablation, beta sweep, single-mesh stability
+    #   sdplsOrderAblation, sdplsBetaSweep, sdplsStability
+    # mollifier and band cut-off (research instruments; excluded from the published tables)
+    #   sdplsConvMoll{2Dvortex,3Dshear,3Ddeformation}, sdplsMollifier{2Dvortex,3Dshear,3Ddeformation},
+    #   sdplsBand{2Dvortex,3Dshear,3Ddeformation}
+    # source variants, time order, normal scheme, volume correction
+    #   sdplsExpSource2Dvortex, sdplsExpSource2DvortexRev, sdplsTemporal2Dvortex, sdplsNormal2Dvortex,
+    #   sdplsVolCorr2Dvortex, sdplsVolCorr2DvortexRev, sdplsVolCorr3Dshear
+    # the divergence-form line (withdrawn as a method; retained as measurements)
+    #   sdplsRdivConv2Dvortex, sdplsRdivConv3Dshear, sdplsRdivStrictSpConv2Dvortex,
+    #   sdplsRdivProductRule2Dvortex, sdplsRdivCoefficientError2Dvortex, sdplsRdivDroplet2D
+    # the 1D uniaxial-stretch gate: closed-form solution for the whole psi field
+    snakemake --workflow-profile profiles/local --configfile config/sdpls1Dstretch.yaml
+    # coupled stationary droplet (leiaLevelSetTwoPhaseFoam)
+    #   sdplsDropletNS2D, sdplsDropletMechanism2D, sdplsDropletBdf2Droplet2D, sdplsPsiBudgetDroplet2D
+    # the GRL comparison arm
+    #   vortexSDPLSGRL
+
+or `make studies-sdpls` (the 16 of `SDPLS_STUDIES`) and `make studies-one STUDY=<name>`; on
+Lichtenberg `sbatch --export=ALL,STUDY=<name> run-studies.sbatch`.
+
+Report scripts. `make_convergence_table.py --method sdpls` reads `studies/<study>/<study>_errors.csv`
+of seven hard-coded studies (benchVortexEulerT2, benchVortexEulerT8, sdplsBetaSweep,
+sdplsConv2Dvortex, sdplsOrderAblation, sdplsConv3Dshear, sdplsConv3Ddeformation) and writes
+`sdpls_convergence.csv`, `sdpls_convergence_orders.csv`, `convergence_orders.tex` and
+`convergence_orders_extended.tex` into the theme's tables dir. It REFUSES, and writes nothing, when
+a study tree holds a resolution absent from its config, when a study is missing (`--allow-partial`
+overrides only this case) or when an arm fits no order. It BLANKS the t = T gradient metrics of every
+row that ran with `oscillation on`: on a reversed flow the end-time gradient error cancels by
+time-reversal symmetry, so the gradient is read at T/2, the shape at T and the volume at both. The
+Snakemake `report` rule runs the script after every sdpls-level-set or method-comparison study. A
+study aggregated by an old `aggregate.py` that left the `oscillation` column empty therefore yields
+FILLED end-time columns; re-aggregate that study before trusting a regenerated table (measured
+2026-09-22 on the cluster's `sdplsConv3Dshear`). Figures: `make_sdpls_convergence_fig.py`,
+`make_beta_target_fig.py`, `make_sdpls_trajectory_fig.py`, `make_bench_fields_fig.py`. Gate:
+`make check-discretization STUDY=<name>` asserts one discretization per study group.
+
+Unit tests outside snakemake: `leiaTestSdplsSource` (89 assertions: the one-step factor of every
+discretization against the closed form, and the sign conventions) and
+`cases/sdplsSourceUnit/Allrun.sh` (the affine unit case).
+
+RECORD NOTE (2026-09-22): every kinematic study the article names by identifier has its
+`<study>_errors.csv` versioned in the theme's tables dir, together with the inputs of the generated
+convergence tables and the stability sweep (17 files added that day). The coupled-droplet studies
+write no such table; their raw output stays on the cluster.
+
 ## 3D semi-Lagrangian convergence (quadraticWeightedLeastSquares)
 
 Plain snakemake, one config per case (both sweep N=32/64/128, CFL 0.5 & 1.0):
