@@ -2906,5 +2906,32 @@ keeps everything under `$WM_PROJECT_DIR` and `$WM_THIRD_PARTY_DIR`.
    shell sources the environment file directly after the preamble; all 12 cases
    reproduce both CSVs at tolerance 0 (24 comparisons); `git status docs/` unchanged.
 
-**Cluster (both clones): PENDING** -- filled in below when done.
+**Cluster (both clones), 2026-09-22 22:09-22:22, all PASS.** Logs under
+`/work/scratch/tm83tomy/leia-sync-20260922/log/wp1_*`.
+- Preconditions: no job of either clone running or pending.
+- Curvature clone: its two private overlays (`profiles/slurm/config.yaml` line 132 and
+  `run-studies.sbatch`: job name `leia-curv`, its own `cd`, the `curvature-v2512`
+  exports) are in `stash@{0}` there, recoverable; then fast-forward to 019ed08; build
+  2 min 2 s into `/work/scratch/tm83tomy/leia-curvature/platforms/`, 22 binaries,
+  `which` and `ldd` resolve there. Probe job 54840842 (profile preamble, then the hook,
+  as every workflow job does): `WM_PROJECT_USER_DIR` and `which
+  leiaSemiLagrangianLevelSetTwoPhaseFoam` name the curvature clone. The curvature session
+  submits with `sbatch -J leia-curv run-studies.sbatch` from its clone root from now on.
+- SDPLS clone: the superseded clone-local `.leia_env` removed; fast-forward to 019ed08;
+  build 8 s into `/work/scratch/tm83tomy/leia/platforms/`, 22 binaries.
+  - Job 54840841 (np = 4, preamble then hook, `srun` as the profile does): `Exec`
+    names `/work/scratch/tm83tomy/leia/platforms/linux64GccDPInt32Opt/bin/leiaLevelSetFoam
+    -parallel`; both CSVs identical at tolerance 0 to the 16:22 gate output of the same
+    code (`leia-gate-20260922/exp_00000`).
+  - Job 54840840, the real launcher chain: `sbatch --export=ALL,STUDY=sdpls1Dstretch
+    run-studies.sbatch` from the clone root, 5 min 1 s, 63 of 63 steps, 12 cases; all
+    12 cases reproduce the laptop's published `leiaLevelSetFoam.csv` and
+    `gradPsiError.csv` with max relative difference 0.0 (gcc 11.5 against gcc 13.3;
+    this serial 1D case is bit-reproducible across the two machines). The report rule
+    rewrote `docs/.../sdpls1Dstretch_errors.csv` with the new run's provenance columns
+    only; restored with `git checkout`, the clone has 0 modified tracked files. The four
+    regenerated theme tables stayed identical. `studies/sdpls1Dstretch` now exists on
+    the cluster (12 cases, small).
+- Old install dirs and `$HOME/.leia_env` untouched until WP6; `sdpls-v2512` and the
+  default dir were last written 16:19 and 16:20, `curvature-v2512` 2026-09-10.
 
