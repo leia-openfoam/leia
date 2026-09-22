@@ -28,6 +28,7 @@ module purge
 module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv
 export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2
 source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+[ -f "$PWD/.leia_env" ] && . "$PWD/.leia_env"   # clone-local overlay (session pin); AFTER etc/bashrc, which defines WM_OPTIONS
 export PATH="$HOME/.local/bin:$PATH"
 
 # STUDY runs exactly one config; TARGET runs a whole group.
