@@ -236,6 +236,14 @@ step ...: More processors requested than permitted"* — scattered across all
 arms, including `noSource` at N=32, so plainly not physics. The structural fix
 is the rule layout below.
 
+**MEASURED 2026-09-23: a command-line `--config` replaces the profile's `config:` list.**
+`snakemake --workflow-profile profiles/slurm --configfile config/X.yaml --config
+studies_dir=/other/tree` runs every solve with `mpirun -np N` and without the module
+preamble, because the profile's `mpi_launcher` and `env_preamble` are command-line
+defaults that the explicit `--config` overrides as a whole (jobs 54888391-2 and
+54888082-90: launch failures, no result recorded). Repeat both entries in the same
+`--config` whenever you add one; the WP3 gate driver does.
+
 ### Serial steps and the parallel step are separate jobs
 
 Only the CFD solve is an MPI job:

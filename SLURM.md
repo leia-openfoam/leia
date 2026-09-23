@@ -259,6 +259,14 @@ nohup snakemake --workflow-profile profiles/slurm --configfile config/myStudy2D.
 > against a stale clone. If files block the pull, move them aside — do not delete — and
 > check whether they differ from the remote first.
 
+**A `--config` on the command line REPLACES the profile's `config:` list.** MEASURED
+2026-09-23 (jobs 54888391-2, 54888082-90): a driver that added `--config studies_dir=...`
+to run a study into another tree lost the profile's `mpi_launcher` and `env_preamble`; the
+solve jobs fell back to `mpirun -np N` inside a one-task step (launch failure, no result
+recorded) and ran without the module preamble. Snakemake treats the profile as default
+command-line arguments, and the command line wins whole, not entry by entry. Whenever you
+pass `--config`, repeat the profile's two entries verbatim in the same `--config`.
+
 ### 4.4 Record what you started
 
 ```bash
