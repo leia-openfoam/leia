@@ -2964,5 +2964,21 @@ under `workflow/`, exactly as `gitCommit` does; the stamp follows the same rule 
 purpose. The mismatch test (clean binary, dirtied source, no rebuild) runs on the SDPLS
 cluster clone, whose code paths are clean: see the cluster entry below.
 
-**Cluster (both clones): PENDING** -- filled in below when done.
+**Cluster (both clones), 2026-09-23 11:09-11:13, all PASS.** Logs under
+`/work/scratch/tm83tomy/leia-sync-20260922/log/wp2_*`. No job of either clone was running.
+Both clones fast-forwarded to cc79df4; `Allwmake` generated the stamp and rebuilt in about
+50 s each; both `.so` files carry `shared-method-config-2026-09-01-136-gcc79df4` -- no
+`-dirty`, because both clones have clean code paths.
+- SDPLS clone, np = 4 (job 54871894): `Exec` names the clone's `platforms/`; the banner
+  prints `leia library libleiaLevelSet : shared-method-config-2026-09-01-136-gcc79df4`;
+  `leia.version` lies in the case root only (not in the processor directories); both CSVs
+  identical at tolerance 0 to the 2026-09-22 16:22 gate output of the same physics code.
+- Curvature clone, serial (job 54871895): `which` resolves its own `platforms/`; the same
+  banner line and case file; the 1D case `1Dstretch_00001` reproduces the SDPLS clone's run of
+  2026-09-22 at tolerance 0 -- two clones, one commit, identical binaries in effect.
+- Mismatch test in the SDPLS clone: an untracked probe file under `workflow/` makes
+  `materialize._git_commit()` read `cc79df4-dirty` while the built binary's banner still reads
+  `...-gcc79df4`; the stamp script would write `-dirty` on the next build. A pulled or
+  edited clone that was not rebuilt is therefore visible in every log and, through
+  `libStamps`, in every table. Probe removed; code paths clean again.
 
