@@ -2935,3 +2935,34 @@ keeps everything under `$WM_PROJECT_DIR` and `$WM_THIRD_PARTY_DIR`.
 - Old install dirs and `$HOME/.leia_env` untouched until WP6; `sdpls-v2512` and the
   default dir were last written 16:19 and 16:20, `curvature-v2512` 2026-09-10.
 
+### 10.2 WP2 -- a version stamp in every library, printed in every banner and case
+
+**What changed (laptop, one commit, 2026-09-23).** `etc/leia-stamp.sh <dir> <library>`
+writes `<dir>/leiaStamp_<library>.C` (git-ignored) with one static registrar object
+carrying `git describe --always`, plus `-dirty` when `src`, `applications`, `workflow`,
+`cases` or `config` has uncommitted or untracked changes -- the same rule as the
+`gitCommit` column of `materialize.py`. It rewrites the file only when the stamp changed,
+so wmake recompiles exactly then; `Allwmake` calls it before `wmake src/leiaLevelSet`.
+`src/leiaLevelSet/leiaVersionRegistry.{H,C}` collects the registered pairs; the five
+solvers call `leia::reportVersions(Info)` and `leia::writeVersions(runTime)` right after
+`createTime.H`, which prints `leia library <lib> : <stamp>` in the banner and writes the
+same lines to `<case>/leia.version` (master rank, `runTime.globalPath()`).
+`aggregate.py` reads that file into the column `libStamps` of `<study>_database.csv` and
+`<study>_errors.csv`, next to `gitCommit`. A pulled-but-not-rebuilt clone then shows a
+stamp that differs from `gitCommit` in every table and every log.
+
+**Laptop gates, all PASS.** Build 1 min 6 s (the library recompiled for the new units);
+the stamp file is generated and ignored; the stamp string is in the `.so`. Published case
+`sdpls1Dstretch/1Dstretch_00001` re-run with the stamped binary: banner line present,
+`leia.version` present, both CSVs identical at tolerance 0. `leiaTestSdplsSource`: 89
+passed, 0 failed. Workflow run of `sdpls1Dstretch` up to the `aggregate` rule into a
+scratch tree: `libStamps` present in the database and the errors table with the value
+`libleiaLevelSet shared-method-config-2026-09-01-135-gf05d03c-dirty`, all 12 cases at
+tolerance 0 against the published study, no data table touched. Note: on this laptop
+the stamp reads `-dirty` as long as the curvature thread's two untracked scripts sit
+under `workflow/`, exactly as `gitCommit` does; the stamp follows the same rule on
+purpose. The mismatch test (clean binary, dirtied source, no rebuild) runs on the SDPLS
+cluster clone, whose code paths are clean: see the cluster entry below.
+
+**Cluster (both clones): PENDING** -- filled in below when done.
+

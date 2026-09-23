@@ -196,6 +196,8 @@ def _write_error_table(records, database_path):
             # benchVortexEulerT2's 30-row errors CSV sits next to a 15-row
             # database from a different run. Nothing in either file said so.
             "study", "caseDir", "np", "gitCommit", "runDate",
+            # the libraries the solver loaded, "<lib> <git describe>" joined by ";"
+            "libStamps",
             # `on` = reversed flow (cos(pi t/tau)); the interface returns to its
             # initial shape at t=T and the sourceless drift cancels by symmetry,
             # which flatters doing nothing. `off` = steady vortex, sustained
@@ -327,6 +329,7 @@ def _write_error_table(records, database_path):
             "np": rec.get("np", ""),
             "gitCommit": rec.get("gitCommit", ""),
             "runDate": rec.get("runDate", ""),
+            "libStamps": rec.get("libStamps", ""),
             **{c: rec.get(c, "") for c in fvschemes.COLUMNS},
         })
     rows.sort(key=lambda r: (r["velocityExtension"], r["phaseIndicator"],
@@ -370,6 +373,18 @@ def build_database(case_dirs, out_path):
             for key in ("case", "index", "mesh", "mode", "np",
                         "gitCommit", "runDate"):
                 rec[key] = meta.get(key, "")
+        # The binaries that ran, as every leia library registered them at load time
+        # (src/leiaLevelSet/leiaVersionRegistry.H): the solver writes one line per
+        # library, "<library> <git describe[-dirty]>", to <case>/leia.version. Next
+        # to gitCommit (the SOURCE tree the case was rendered from) this makes a
+        # binary that does not match its clone visible in the curated table.
+        # MEASURED 2026-09-09: a library ~200 commits ahead of its clone ran for
+        # two weeks with nothing in any table saying so (STATUS.md section 9).
+        stamp_path = os.path.join(case_dir, "leia.version")
+        if os.path.isfile(stamp_path):
+            with open(stamp_path) as fh:
+                rec["libStamps"] = ";".join(
+                    ln.strip() for ln in fh if ln.strip())
             for k, v in meta.get("tokens", {}).items():
                 rec[k] = v
         else:

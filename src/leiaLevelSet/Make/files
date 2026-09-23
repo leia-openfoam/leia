@@ -106,5 +106,7 @@ volumeCorrection/newtonShiftVolumeCorrection.C
    system/fvOptions, `form off` (and an absent fvOptions file) is inert. */
 fvOptions/semiImplicitCapillaryForce.C
 
+leiaVersionRegistry.C
+leiaStamp_leiaLevelSet.C
 
 LIB = $(FOAM_USER_LIBBIN)/libleiaLevelSet

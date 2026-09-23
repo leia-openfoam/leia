@@ -16,6 +16,7 @@ fi
 
 wmake $WITH_BEAR $1 src/levelSetImplicitSurfaces 
 wmake $WITH_BEAR $1 src/functionObjects
+"$(cd "$(dirname "$0")" && pwd)/etc/leia-stamp.sh" src/leiaLevelSet leiaLevelSet || exit 1
 wmake $WITH_BEAR $1 src/leiaLevelSet
 wmake $WITH_BEAR $1 src/finiteVolume
 

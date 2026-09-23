@@ -98,6 +98,8 @@ scalar maxDeltaT(surfaceScalarField phi, const dictionary& dict)
 }
 
 
+#include "leiaVersionRegistry.H"
+
 int main(int argc, char *argv[])
 {
     argList::addNote
@@ -114,6 +116,8 @@ int main(int argc, char *argv[])
     #include "addCheckCaseOptions.H"
     #include "setRootCaseLists.H"
     #include "createTime.H"
+    Foam::leia::reportVersions(Info);   // which leia libraries, from which commit
+    Foam::leia::writeVersions(runTime); // the same lines in <case>/leia.version
     #include "createMesh.H"
 
     #include "createFields.H"

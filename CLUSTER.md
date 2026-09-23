@@ -468,8 +468,10 @@ grep -m1 '^Exec' studies/<study>/<case>_00000/log.<solver>   # names <clone>/pla
 the `Exec` line OpenFOAM prints is the absolute path the solver was launched as. If
 it does not name the clone you built, nothing downstream is about your code. Note
 that verifying the solver binary is not enough; check the library too, with
-`strings <lib> | grep -c <a symbol you added>`, until the version stamps of
-docs/plan-library-split-and-build-policy.md WP2 print it in every banner.
+`strings <lib> | grep -c <a symbol you added>`; and since WP2 (2026-09-23) every solver
+prints the stamp of every loaded leia library in its banner, `leia library <lib> :
+<git describe[-dirty]>`, and writes the same lines to `<case>/leia.version`, which the
+aggregator carries as the `libStamps` column next to `gitCommit`.
 
 ### History: the private overlays this file replaces
 
