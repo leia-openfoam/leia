@@ -2935,6 +2935,14 @@ keeps everything under `$WM_PROJECT_DIR` and `$WM_THIRD_PARTY_DIR`.
 - Old install dirs and `$HOME/.leia_env` untouched until WP6; `sdpls-v2512` and the
   default dir were last written 16:19 and 16:20, `curvature-v2512` 2026-09-10.
 
+**Follow-up, MEASURED 2026-09-23 (WP3 gate).** The strip also removed the only `pMesh` a cluster
+job could find: cfMesh lives in the dedicated install `$HOME/OpenFOAM/cfmesh/platforms/<opt>/`
+(25 binaries and `libmeshLibrary.so`, 2026-09-01) and was on PATH only through the retired
+`curvature-v2512` overlay; the first polyhedral mesh rule after WP1 failed with `pMesh: command
+not found`. `etc/leia-env.sh` now appends `$LEIA_CFMESH_DIR` (default `$HOME/OpenFOAM/cfmesh`)
+AFTER the clone's own directories. The laptop received the same layout from the cfMesh files of
+`tmaric-v2512` (24 binaries plus the library, copied 2026-09-23), so `pMesh` resolves there too.
+
 ### 10.2 WP2 -- a version stamp in every library, printed in every banner and case
 
 **What changed (laptop, one commit, 2026-09-23).** `etc/leia-stamp.sh <dir> <library>`
