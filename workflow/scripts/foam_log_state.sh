@@ -58,7 +58,9 @@ done
 classify() {
     [ -f "$LOG" ] || { echo "MISSING steps=0 age=-1"; return 5; }
     local steps age
-    steps=$(grep -c '^Time = ' "$LOG" 2>/dev/null || echo 0)
+    # grep -c prints 0 AND exits 1 when nothing matches; `|| echo 0` then produced "0\n0" and
+    # the LAUNCH_FAILURE test below errored out (MEASURED 2026-09-23 on a launch-failure log).
+    steps=$(grep -c '^Time = ' "$LOG" 2>/dev/null); steps=${steps:-0}
     age=$(( $(date +%s) - $(stat -c %Y "$LOG") ))
     if grep -qE '^End$' "$LOG"; then
         echo "COMPLETED steps=$steps age=$age"; return 0
