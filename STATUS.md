@@ -3027,3 +3027,69 @@ binaries of the SDPLS clone (`cc79df4`, HEAD 5614bdc) into
 arms 54887764-66); the split runs from its own clone `/work/scratch/tm83tomy/leia-wp3split` into
 `.../split`; the polyhedral rung reuses the baseline meshes (`advect_bound_arm.sh`). The verdicts
 follow in the next commit of this section.
+
+**Gate (Lichtenberg, every rung, tolerance 0) -- PASS, 2026-09-23 19:22-22:23.** Scratch tree
+`/work/scratch/tm83tomy/leia-wp3-20260923/{baseline,split}` (logs in `log/`, scripts `wp3_*.sbatch`,
+`wp3_compare.py`); no case ran on the laptop (the user's instruction of that evening). Baseline:
+the pre-split binaries of the SDPLS clone (`cc79df4`, HEAD 5614bdc), stamp
+`shared-method-config-2026-09-01-136-gcc79df4`. Split: a third, temporary clone
+`/work/scratch/tm83tomy/leia-wp3split` on branch `wp3-library-split` at a235d0a, built in 175 s,
+stamp `...-138-ga235d0a` in all eight libraries. Both sets ran through the same driver into two
+trees; every CSV in every case root was compared pairwise with `compare_metrics_csv.py --tol 0
+--skip ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME`. Rungs, all PASS:
+
+| rung | cases (steps) | CSV pairs |
+|---|---|---|
+| unit `leiaTestSdplsSource` | 89 passed, 0 failed, in both trees | -- |
+| exact 1D `sdpls1Dstretch`, serial | 12 (82/111/171/295) | 36 |
+| seam `seamConsistency3Dserial`, `...par4` (np 4) | 2 + 2 (20) | 8 + 8 |
+| coupled SL two-phase `stationaryDroplet3DbitIdentity`, serial | 1 (65) | 4 |
+| `leiaLevelSetFoam` np 4: `sdplsExpSource2Dvortex` N 32 | 2 (both schemes) | 6 |
+| coupled Eulerian two-phase `sdplsPsiBudgetDroplet2D` N 32, np 8 | 2 completed (1667) + 1 identical abort | 9 |
+| `leiaRedistancedLevelSetFoam` np 4: `bulkVortexGRL` N 32, T 0.5, four redistancers | 4 (74) | 12 |
+| hex 2D `advConv2Dtranslation`, np 8, 3 bounds x N 32-256 | 12 | 36 |
+| hex 2D `advConv2Dvortex`, np 8, 3 bounds x N 32-256 | 12 (153/255/463/883) | 36 |
+| hex 3D `advConv3DshearHex`, np 48, 3 bounds x N 32/64/128 | 9 (374/703/1362) | 27 |
+| poly 3D `advConv3DshearPoly`, np 48, shared mesh per resolution: 49 911, 347 073, 2 389 233 cells | 3 bounds x 3 meshes (967/1989/3945) | 27 |
+| loading: `ldd` of the 22 binaries in the split clone | the link matrix of `README.md`, no `libleiaLevelSet` | -- |
+
+209 CSV pairs compared, 0 differences. The polyhedral rung built each mesh ONCE (plain
+`pMesh` jobs 54889779/82/85, digests 7e22acf1fbc9, 133ef0399684, 73ac6afbe5c8) and
+`advect_bound_arm.sh` copied it into both trees' arms, so the cfMesh non-reproducibility never
+enters the comparison. The split solvers print one stamp line per loaded library
+(`leiaSemiLagrangeLevelSetFoam`: Core and SemiLagrangian; `leiaLevelSetFoam`: seven).
+
+**Two findings about the current code, not about the split (both trees behave the same).**
+1. `leiaLevelSetTwoPhaseFoam` writes its metrics to `leiaLevelSetFoam.csv`
+   (`errorCalculation.H` line 37), but the workflow's solve rule waits for `<solver>.csv`, so every
+   study of that solver ends in `MissingOutputException` after a completed run; `psiConservation.csv`,
+   `capillaryFluxResidual.csv` and `leiaLevelSetFoam.csv` are written and were compared here.
+2. The `Rdiv` arm of `sdplsPsiBudgetDroplet2D` aborts at step 1 in the coupled solver:
+   `FOAM FATAL IO ERROR: Entry 'velocityModel' not found in dictionary "system/fvSolution"`
+   (`sdplsRdiv.C` line 444, since ef7341b: the divergence form reads the prescribed velocity model,
+   which a coupled case has not). The workflow records it as a diverged result. Both are for the
+   SDPLS thread to decide; nothing in this work package changes them.
+
+**Three traps met on the way, all recorded.** (a) A command-line `--config` replaces the slurm
+profile's `config:` list (CLUSTER.md, SLURM.md): the first baseline pass ran `mpirun` in one-task
+steps and was voided (jobs cancelled by id, tree removed). (b) `pMesh` was on no job's PATH after
+WP1 (10.1 follow-up above). (c) `foam_log_state.sh` printed "0 0" for a zero-step log (fixed,
+4940440). The `advConv3DshearPoly` study lists each arm twice (`N_CELLS` 32 and 64 from
+`cases/3Dshear_poly.parameter`); the gate meshed the N 32 case of each resolution.
+
+**Merge and production clones (2026-09-23 23:20-23:37).** `development` fast-forwarded to 88e9480 on the laptop
+(the split a235d0a plus four follow-up commits: the helper fix, the `--config` note, the
+cfMesh environment line, the 10.1 follow-up) and pushed, then c6944e6 (`/agent-input/` in
+`.gitignore`); both cluster clones pulled and rebuilt into their own `platforms/` (eight
+libraries, no monolith, 22 binaries, `leia-check-deps` PASS, `pMesh` resolved; stamps
+`...-142-g88e9480` in the SDPLS clone and `...-143-gc6944e6` in the curvature clone, the
+commit each clone was built from), and each ran the probe set (unit, the 12 serial 1D
+cases, the two np 4 cases) against the baseline tree: 42 CSV pairs each (12 serial 1D cases and the two np 4 cases, three CSVs per case)
+identical at tolerance 0, unit 89 of 89 in both, no binary loads `libleiaLevelSet`
+(drivers 54898114 and 54898205, trees `final-leia` and `final-leia-curvature`). The temporary split clone
+was removed. Laptop: the main clone rebuilt after the merge; the worktree and the branch removed.
+
+The scratch tree `/work/scratch/tm83tomy/leia-wp3-20260923` (baseline, split and probe results,
+logs, driver scripts) stays as the gate's evidence until 2026-09-30; the temporary clone
+`leia-wp3split` was removed on 2026-09-23. Next in the plan: WP4 (touch every finished study once,
+then the launch guard) and WP6 (retire the old install folders after the first real runs).
