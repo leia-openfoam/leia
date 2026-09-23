@@ -39,3 +39,17 @@ _leia_strip() {
 export PATH="$FOAM_USER_APPBIN:$(_leia_strip "$PATH")"
 export LD_LIBRARY_PATH="$FOAM_USER_LIBBIN:$(_leia_strip "$LD_LIBRARY_PATH")"
 unset -f _leia_strip
+
+# cfMesh (pMesh, cartesianMesh) is a third-party mesher built once per machine, like
+# OpenFOAM itself, not per clone: $LEIA_CFMESH_DIR (default $HOME/OpenFOAM/cfmesh, the
+# layout of a WM_PROJECT_USER_DIR). Appended AFTER the clone's own directories, so it
+# can never shadow a leia binary. MEASURED 2026-09-23: stripping the shared user
+# directories also removed the only pMesh on the cluster's PATH, and the polyhedral
+# mesh rule failed with `pMesh: command not found` (WP3 gate, STATUS.md 10.3).
+LEIA_CFMESH_DIR="${LEIA_CFMESH_DIR:-$HOME/OpenFOAM/cfmesh}"; export LEIA_CFMESH_DIR
+_leia_cf="$LEIA_CFMESH_DIR/platforms/$WM_OPTIONS"
+if [ -d "$_leia_cf/bin" ]; then
+    case ":$PATH:" in *":$_leia_cf/bin:"*) ;; *) export PATH="$PATH:$_leia_cf/bin" ;; esac
+    case ":$LD_LIBRARY_PATH:" in *":$_leia_cf/lib:"*) ;; *) export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$_leia_cf/lib" ;; esac
+fi
+unset _leia_cf
