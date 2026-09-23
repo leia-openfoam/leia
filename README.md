@@ -89,9 +89,43 @@ leia> git submodule update --init        # pyFoamStudy (legacy), cfMesh
 leia> ./Allwmake
 ```
 
-This builds the libraries (`libleiaLevelSet`, …) and the solvers/utilities
-(`leiaLevelSetFoam`, `leiaLevelSetTwoPhaseFoam`, `leiaSetFields`, `leiaPerturbMesh`, …)
-into `$FOAM_USER_*BIN`. Doxygen docs: <https://leia-openfoam.github.io/leia/>.
+This builds the libraries and the solvers/utilities (`leiaLevelSetFoam`,
+`leiaLevelSetTwoPhaseFoam`, `leiaSetFields`, `leiaPerturbMesh`, …) into the clone's own
+`platforms/` (`etc/leia-env.sh` sets `WM_PROJECT_USER_DIR` to the clone root; source it
+AFTER OpenFOAM's `etc/bashrc`). Doxygen docs: <https://leia-openfoam.github.io/leia/>.
+
+The level-set code under `src/leiaLevelSet/` is one core library and seven method
+libraries, each with its own `Make/` in its directory (split 2026-09-23,
+`docs/plan-library-split-and-build-policy.md`). Every model stays runtime-selectable;
+a solver links every library it can select from, so its case dictionaries choose the
+method and the linker only decides what is loaded:
+
+| library | contents | links (leia) |
+|---|---|---|
+| `libleiaCore` | `profile`, `narrowBand`, `phaseIndicator`, `velocityModel`, the version registry | `liblevelSetImplicitSurfaces` |
+| `libleiaSdplsSource` | `sdplsSource` | `Core` |
+| `libleiaSemiLagrangian` | `semiLagrangian` | `Core` |
+| `libleiaVelocityExtension` | `velocityExtension` | `Core`, `SemiLagrangian` |
+| `libleiaRedistancer` | `redistancer` | `Core` |
+| `libleiaVolumeCorrection` | `volumeCorrection` | `Core` |
+| `libleiaSurfaceTension` | `surfaceTensionForce`, its `fvOptions/semiImplicitCapillaryForce` | `Core` |
+| `libleiaAdvection` | `advection` (the hub of `leiaLevelSetFoam`) | `Core`, `SdplsSource`, `SemiLagrangian`, `VelocityExtension` |
+
+| binary | links (every one also links `Core`) |
+|---|---|
+| `leiaLevelSetFoam` | `Advection`, `SdplsSource`, `SemiLagrangian`, `VelocityExtension`, `Redistancer`, `VolumeCorrection` |
+| `leiaLevelSetTwoPhaseFoam` | `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection`, `SemiLagrangian` |
+| `leiaRedistancedLevelSetFoam` | `Redistancer`, `SdplsSource` |
+| `leiaSemiLagrangeLevelSetFoam` | `SemiLagrangian` |
+| `leiaSemiLagrangianLevelSetTwoPhaseFoam` | `SemiLagrangian`, `VelocityExtension`, `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection` |
+| test applications, `leiaSetFields`, `leiaPerturbMesh` | the libraries whose headers they include |
+
+Two rules keep the boundaries real. Every library links with `--no-undefined`, so a
+symbol used from a library that is not in its `LIB_LIBS` fails that library's link.
+`etc/leia-check-deps.py`, run by `Allwmake` before the first `wmake`, reads the
+header includes between the parts and refuses one that the table above does not
+cover. Every library carries its own version stamp (`etc/leia-stamp.sh`); a solver
+prints all of them in its banner and writes them to `<case>/leia.version`.
 
 ## Running the verification test suite (Snakemake)
 

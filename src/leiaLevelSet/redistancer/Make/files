@@ -1,0 +1,13 @@
+/* libleiaRedistancer -- the redistancing family.
+   Links libleiaCore; every solver that can select one of its
+   models links it (docs/plan-library-split-and-build-policy.md, WP3). */
+
+redistancer.C
+pdeRedistancer.C
+planeAnchors.C
+anchoredEikonalRedistancer.C
+planeFootWaveRedistancer.C
+
+leiaStamp_leiaRedistancer.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaRedistancer

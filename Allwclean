@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
-. "$(cd "$(dirname "$0")" && pwd)/etc/leia-env.sh" || exit 1
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+. "$ROOT/etc/leia-env.sh" || exit 1
 
-wclean all src 
-wclean all applications
+wclean all "$ROOT/src"
+wclean all "$ROOT/applications"
+# The generated per-library version stamps; Allwmake writes them again.
+find "$ROOT/src" -name 'leiaStamp_*.C' -delete

@@ -1,50 +1,18 @@
+/* libleiaCore -- what every leia binary needs: the level-set profile, the narrow
+   band, the phase indicator, the prescribed velocity models and the version
+   registry. The method libraries (sdplsSource, semiLagrangian, velocityExtension,
+   redistancer, volumeCorrection, surfaceTensionForce, advection) each have their
+   own Make/ in their directory below this one and link this library; the graph is
+   in docs/plan-library-split-and-build-policy.md (WP3) and is checked by
+   etc/leia-check-deps.py before every build. schemes/levelSetBlended is not
+   compiled (it was not in the monolith either). */
+
 phaseIndicator/phaseIndicator.C
 phaseIndicator/heavisidePhaseIndicator.C
 phaseIndicator/sharpJumpPhaseIndicator.C
 phaseIndicator/levelSetPlaneReconstruction.C
 phaseIndicator/geometricPhaseIndicator.C
 phaseIndicator/detrixheAslamPhaseIndicator.C
-
-redistancer/redistancer.C
-redistancer/pdeRedistancer.C
-redistancer/planeAnchors.C
-redistancer/anchoredEikonalRedistancer.C
-redistancer/planeFootWaveRedistancer.C
-
-advection/levelSetAdvection.C
-advection/eulerianAdvection.C
-advection/semiLagrangianAdvection.C
-
-surfaceTensionForce/surfaceTensionForce.C
-surfaceTensionForce/constantCurvatureSurfTension.C
-surfaceTensionForce/constantCurvaturePressurePotential.C
-surfaceTensionForce/curvaturePressurePotential.C
-surfaceTensionForce/traceGradGeoNormalSnGradAlpha.C
-surfaceTensionForce/traceGradGradPsiSnGradAlpha.C
-surfaceTensionForce/divGradPsiSnGradAlpha.C
-surfaceTensionForce/divGradAlphaSnGradAlpha.C
-surfaceTensionForce/integralSurfaceTension.C
-surfaceTensionForce/integralConormalSurfaceTension.C
-surfaceTensionForce/isoCurvatureSurfaceTension.C
-surfaceTensionForce/correctionKang.C
-surfaceTensionForce/reconstructedCurvature.C
-
-sdplsSource/sdplsSource.C
-sdplsSource/sdplsR.C
-sdplsSource/sdplsBeta.C
-sdplsSource/discretization/discretization.C
-sdplsSource/discretization/explicitDiscretization.C
-sdplsSource/discretization/simpleLinearImplicit.C
-sdplsSource/discretization/strictNegativeSpLinearImplicit.C
-sdplsSource/discretization/exponentialDiscretization.C
-sdplsSource/discretization/exponentialImplicit.C
-sdplsSource/mollifier/mollifier.C
-sdplsSource/mollifier/mollifier1.C
-sdplsSource/mollifier/interfaceBandMollifier.C
-sdplsSource/gradPsi/gradPsi.C
-sdplsSource/gradPsi/narrowLS.C
-sdplsSource/sdplsRdiv.C
-sdplsSource/sdplsRdivStrictSp.C
 
 narrowBand/narrowBand.C
 narrowBand/emptyNarrowBand.C
@@ -61,52 +29,7 @@ velocityModel/velocityModel.C
 velocityModel/prescribedVelocityModels.C
 velocityModel/fluxCorrection.C
 
-velocityExtension/velocityExtension.C
-velocityExtension/interfaceExtension.C
-velocityExtension/anisotropicDiffusion.C
-velocityExtension/pseudoTime.C
-velocityExtension/steadyUpwind.C
-velocityExtension/steadyUpwindLinear.C
-velocityExtension/closestPoint.C
-velocityExtension/meshWaveExt.C
-
-semiLagrangian/slReconstruction.C
-semiLagrangian/linearTaylorReconstruction.C
-semiLagrangian/linearWeightedLeastSquaresReconstruction.C
-semiLagrangian/signedDistanceLinearWeightedLeastSquaresReconstruction.C
-semiLagrangian/quadraticTaylorReconstruction.C
-semiLagrangian/quadraticWeightedLeastSquaresReconstruction.C
-semiLagrangian/uncachedQuadraticWeightedLeastSquaresReconstruction.C
-semiLagrangian/signedDistanceQuadraticWeightedLeastSquaresReconstruction.C
-semiLagrangian/bandQuadraticWeightedLeastSquaresReconstruction.C
-semiLagrangian/defectCorrectedIDWReconstruction.C
-semiLagrangian/slValueBound.C
-semiLagrangian/noValueBound.C
-semiLagrangian/stencilBoundsValueBound.C
-semiLagrangian/lipschitzConeValueBound.C
-semiLagrangian/slCorrector.C
-semiLagrangian/directCorrector.C
-semiLagrangian/deferredCorrector.C
-semiLagrangian/slScheme.C
-semiLagrangian/pointValueScheme.C
-semiLagrangian/fluxFormScheme.C
-semiLagrangian/normalProjectedScheme.C
-semiLagrangian/slAdvection.C
-
-/* Per-time-step phase-volume correction. The base class IS the no-op default
-   (noVolumeCorrection), exactly as sdplsSource's base is noSource, so an absent
-   levelSet/volumeCorrection sub-dictionary costs nothing. */
-volumeCorrection/volumeCorrection.C
-volumeCorrection/newtonShiftVolumeCorrection.C
-
-
-/* Semi-implicit (Hysing/Raessi/SAAMPLE) capillary term as an fvOption. Inside
-   libleiaLevelSet so every leia solver that links the library has the RTS
-   entry with no controlDict libs() plumbing; enabled per case from
-   system/fvOptions, `form off` (and an absent fvOptions file) is inert. */
-fvOptions/semiImplicitCapillaryForce.C
-
 leiaVersionRegistry.C
-leiaStamp_leiaLevelSet.C
+leiaStamp_leiaCore.C
 
-LIB = $(FOAM_USER_LIBBIN)/libleiaLevelSet
+LIB = $(FOAM_USER_LIBBIN)/libleiaCore

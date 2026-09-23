@@ -1,0 +1,12 @@
+/* libleiaVolumeCorrection -- the per-step phase-volume correction family.
+   Links libleiaCore; every solver that can select one of its
+   models links it (docs/plan-library-split-and-build-policy.md, WP3). */
+
+/* The base class IS the no-op default (noVolumeCorrection), exactly as sdplsSource's
+   base is noSource, so an absent levelSet/volumeCorrection sub-dictionary costs nothing. */
+volumeCorrection.C
+newtonShiftVolumeCorrection.C
+
+leiaStamp_leiaVolumeCorrection.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaVolumeCorrection

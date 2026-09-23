@@ -1,0 +1,11 @@
+/* libleiaAdvection -- the advection hub of leiaLevelSetFoam: eulerian (velocity extension + source term) or semi-Lagrangian.
+   Links libleiaCore and leiaSdplsSource, leiaSemiLagrangian, leiaVelocityExtension; every solver that can select one of its
+   models links it (docs/plan-library-split-and-build-policy.md, WP3). */
+
+levelSetAdvection.C
+eulerianAdvection.C
+semiLagrangianAdvection.C
+
+leiaStamp_leiaAdvection.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaAdvection

@@ -18,7 +18,7 @@
 #   * cfMesh pMesh above ~2M cells, and the fine 3D curvature gates (~6M cells)
 #     -- does NOT fit; those OOM the box and need the cluster.
 # A run that dies with an EMPTY solver log and exit 139 is usually not physics:
-# check first that the solver binary is newer than libleiaLevelSet.so (a stale
+# check first that the solver binary is newer than the leia libraries (a stale
 # solver against a rebuilt library segfaults at startup -- measured 2026-08-27).
 #
 # cfMesh (pMesh) aborts on glibc 2.39 with `free(): invalid pointer` unless

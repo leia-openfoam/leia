@@ -5,8 +5,8 @@
 #
 #     bash cases/sdplsSourceUnit/Allrun.sh
 #
-# Requires a sourced OpenFOAM environment and a built libleiaLevelSet +
-# leiaTestSdplsSource (./Allwmake at the repo root).
+# Requires a sourced OpenFOAM environment plus etc/leia-env.sh, and a built
+# libleiaSdplsSource + leiaTestSdplsSource (./Allwmake at the repo root).
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 

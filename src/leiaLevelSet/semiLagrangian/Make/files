@@ -1,0 +1,30 @@
+/* libleiaSemiLagrangian -- the semi-Lagrangian transport: reconstructions, value bounds, correctors, schemes, slAdvection.
+   Links libleiaCore; every solver that can select one of its
+   models links it (docs/plan-library-split-and-build-policy.md, WP3). */
+
+slReconstruction.C
+linearTaylorReconstruction.C
+linearWeightedLeastSquaresReconstruction.C
+signedDistanceLinearWeightedLeastSquaresReconstruction.C
+quadraticTaylorReconstruction.C
+quadraticWeightedLeastSquaresReconstruction.C
+uncachedQuadraticWeightedLeastSquaresReconstruction.C
+signedDistanceQuadraticWeightedLeastSquaresReconstruction.C
+bandQuadraticWeightedLeastSquaresReconstruction.C
+defectCorrectedIDWReconstruction.C
+slValueBound.C
+noValueBound.C
+stencilBoundsValueBound.C
+lipschitzConeValueBound.C
+slCorrector.C
+directCorrector.C
+deferredCorrector.C
+slScheme.C
+pointValueScheme.C
+fluxFormScheme.C
+normalProjectedScheme.C
+slAdvection.C
+
+leiaStamp_leiaSemiLagrangian.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaSemiLagrangian

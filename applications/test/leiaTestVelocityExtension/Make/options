@@ -9,5 +9,7 @@ EXE_LIBS = \
     -L$(FOAM_USER_LIBBIN) \
     -lfiniteVolume \
     -lmeshTools \
-    -lleiaLevelSet \
+    -lleiaVelocityExtension \
+    -lleiaSemiLagrangian \
+    -lleiaCore \
     -llevelSetImplicitSurfaces

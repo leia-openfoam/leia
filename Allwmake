@@ -2,10 +2,23 @@
 
 # Every clone builds into its own <clone>/platforms/ (etc/leia-env.sh); the
 # OpenFOAM etc/bashrc must already be sourced (WM_OPTIONS set).
-. "$(cd "$(dirname "$0")" && pwd)/etc/leia-env.sh" || exit 1
-# A stale monolithic library from before the split would be loaded next to the
-# new ones; remove it wherever this build installs (no-op until the split lands).
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+. "$ROOT/etc/leia-env.sh" || exit 1
 echo "leia: installing into $WM_PROJECT_USER_DIR/platforms/$WM_OPTIONS"
+
+# libleiaLevelSet was split into libleiaCore and seven method libraries on 2026-09-23
+# (docs/plan-library-split-and-build-policy.md, WP3). A stale monolith next to the new
+# libraries would carry a second copy of every runtime-selection table; remove it, its
+# generated stamp, and the objects of the moved parts from the core's object directory.
+rm -f "$FOAM_USER_LIBBIN/libleiaLevelSet.so" "$ROOT/src/leiaLevelSet/leiaStamp_leiaLevelSet.C"
+for p in sdplsSource semiLagrangian velocityExtension redistancer volumeCorrection \
+         surfaceTensionForce fvOptions advection
+do
+    rm -rf "$ROOT/src/leiaLevelSet/Make/$WM_OPTIONS/$p"
+done
+
+# Gate: the header includes between the parts must follow the library link graph.
+python3 "$ROOT/etc/leia-check-deps.py" || exit 1
 
 g++ --version | head -n 1
 
@@ -14,12 +27,26 @@ if bear --version; then
 	WITH_BEAR="-with-bear"
 fi
 
-wmake $WITH_BEAR $1 src/levelSetImplicitSurfaces 
-wmake $WITH_BEAR $1 src/functionObjects
-"$(cd "$(dirname "$0")" && pwd)/etc/leia-stamp.sh" src/leiaLevelSet leiaLevelSet || exit 1
-wmake $WITH_BEAR $1 src/leiaLevelSet
-wmake $WITH_BEAR $1 src/finiteVolume
+wmake $WITH_BEAR $1 "$ROOT/src/levelSetImplicitSurfaces"
+wmake $WITH_BEAR $1 "$ROOT/src/functionObjects"
 
-wmake $WITH_BEAR $1 all applications
+# The leia level-set libraries in dependency order, each with its own version stamp
+# (etc/leia-stamp.sh, printed by every solver and written to <case>/leia.version).
+for entry in \
+    leiaCore:src/leiaLevelSet \
+    leiaSdplsSource:src/leiaLevelSet/sdplsSource \
+    leiaSemiLagrangian:src/leiaLevelSet/semiLagrangian \
+    leiaVelocityExtension:src/leiaLevelSet/velocityExtension \
+    leiaRedistancer:src/leiaLevelSet/redistancer \
+    leiaVolumeCorrection:src/leiaLevelSet/volumeCorrection \
+    leiaSurfaceTension:src/leiaLevelSet/surfaceTensionForce \
+    leiaAdvection:src/leiaLevelSet/advection
+do
+    name="${entry%%:*}"; dir="${entry#*:}"
+    "$ROOT/etc/leia-stamp.sh" "$dir" "$name" || exit 1
+    wmake $WITH_BEAR $1 "$ROOT/$dir" || exit 1
+done
 
+wmake $WITH_BEAR $1 "$ROOT/src/finiteVolume"
 
+wmake $WITH_BEAR $1 all "$ROOT/applications"

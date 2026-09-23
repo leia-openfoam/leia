@@ -1,0 +1,26 @@
+/* libleiaSurfaceTension -- the surface tension force family and the semi-implicit capillary fvOption.
+   Links libleiaCore; every solver that can select one of its
+   models links it (docs/plan-library-split-and-build-policy.md, WP3). */
+
+/* fvOptions/semiImplicitCapillaryForce: the semi-implicit (Hysing/Raessi/SAAMPLE)
+   capillary term as an fvOption. In this library so every solver that links it has the
+   RTS entry with no controlDict libs() plumbing; enabled per case from system/fvOptions,
+   `form off` (and an absent fvOptions file) is inert. */
+surfaceTensionForce.C
+constantCurvatureSurfTension.C
+constantCurvaturePressurePotential.C
+curvaturePressurePotential.C
+traceGradGeoNormalSnGradAlpha.C
+traceGradGradPsiSnGradAlpha.C
+divGradPsiSnGradAlpha.C
+divGradAlphaSnGradAlpha.C
+integralSurfaceTension.C
+integralConormalSurfaceTension.C
+isoCurvatureSurfaceTension.C
+correctionKang.C
+reconstructedCurvature.C
+fvOptions/semiImplicitCapillaryForce.C
+
+leiaStamp_leiaSurfaceTension.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaSurfaceTension

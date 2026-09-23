@@ -11,4 +11,10 @@ EXE_LIBS = \
     -lfvOptions \
     -lmeshTools \
     -lsampling \
-    -lleiaLevelSet
+    -lleiaAdvection \
+    -lleiaSdplsSource \
+    -lleiaSemiLagrangian \
+    -lleiaVelocityExtension \
+    -lleiaRedistancer \
+    -lleiaVolumeCorrection \
+    -lleiaCore

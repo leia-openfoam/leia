@@ -83,6 +83,14 @@ OpenFOAM must be sourced for the run steps. Locally this is done by
 `env_preamble` in `config/config.yaml` (defaults to OpenFOAM-v2512 — adjust to
 your install, or set it to `""` if you already source OpenFOAM in your shell).
 
+**Libraries.** `./Allwmake` builds `libleiaCore` and seven method libraries
+(`libleiaSdplsSource`, `libleiaSemiLagrangian`, `libleiaVelocityExtension`,
+`libleiaRedistancer`, `libleiaVolumeCorrection`, `libleiaSurfaceTension`,
+`libleiaAdvection`) into the clone's `platforms/`; each solver links every library it
+can select a model from, so no study config or case dictionary names a library. The
+table and the link matrix are in the top-level `README.md` (Build); the solver banner
+lists one version stamp per library and the aggregator carries them in `libStamps`.
+
 ## Run
 
 Edit `config/config.yaml` (`case`, `mesh`, `mode`, `np`, scope), then:

@@ -2982,3 +2982,40 @@ Both clones fast-forwarded to cc79df4; `Allwmake` generated the stamp and rebuil
   edited clone that was not rebuilt is therefore visible in every log and, through
   `libStamps`, in every table. Probe removed; code paths clean again.
 
+
+### 10.3 WP3 -- `libleiaLevelSet` split into `libleiaCore` and seven method libraries
+
+**What changed (branch `wp3-library-split`, one commit, 2026-09-23 evening).** One `Make/`
+per part under `src/leiaLevelSet/`: `libleiaCore` (`profile`, `narrowBand`, `phaseIndicator`,
+`velocityModel`, the version registry), `libleiaSdplsSource`, `libleiaSemiLagrangian`,
+`libleiaVelocityExtension` (links SemiLagrangian), `libleiaRedistancer`, `libleiaVolumeCorrection`,
+`libleiaSurfaceTension` (with `fvOptions/semiImplicitCapillaryForce`, moved by `git mv` under
+`surfaceTensionForce/`; no line of code changed), `libleiaAdvection` (links SdplsSource,
+SemiLagrangian, VelocityExtension). `schemes/levelSetBlended` stays uncompiled, as it was in the
+monolith. Every library links with `--no-undefined` and carries its own version stamp; `Allwmake`
+builds the eight in dependency order, removes a stale `libleiaLevelSet.so` and the monolith's
+leftover objects, and runs `etc/leia-check-deps.py` first, which prints the header includes
+between the parts and refuses one that the link graph does not cover. Each solver links every
+library it can select a model from (`README.md`, Build: the library table and the link matrix);
+the 12 test applications and 2 utilities that linked the monolith link what their headers use.
+Documents in the same commit: `CLAUDE.md`/`AGENTS.md` (build bullet), `README.md`,
+`workflow/README.md` (Install), `CLUSTER.md` (stamp paragraph), `docs/IMPROVEMENTS.md` (the
+ownership table names the library of every owned source; the index is now versioned), the
+comments of `cases/sdplsSourceUnit/Allrun.sh`, `profiles/local8/config.yaml` and
+`psiConservationCSV.H`. Not edited: `METHOD.md` line 35 still names `libleiaLevelSet` (thread C's
+file; the owner decides).
+
+**Laptop: build only.** The user's instruction of 2026-09-23 evening: no case runs on the laptop,
+every rung runs on Lichtenberg. Build in a separate worktree (`/home/tmaric/OpenFOAM/repos/leia-wp3`,
+its own `platforms/`, the main clone's binaries untouched): 2 min 10 s with 16 compile jobs; 8
+libraries and 22 binaries; no link error at the first attempt, so the dependency table of the
+plan's section 1 is complete; `etc/leia-check-deps.py` prints exactly its 9 edges and PASS; `ldd`
+of the 22 binaries shows the link matrix and no `libleiaLevelSet`; every `.so` carries the stamp
+`shared-method-config-2026-09-01-137-g5614bdc-dirty` (dirty: the uncommitted split itself).
+
+**Gate (Lichtenberg, every rung, tolerance 0) -- pending.** Baselines run with the pre-split
+binaries of the SDPLS clone (`cc79df4`, HEAD 5614bdc) into
+`/work/scratch/tm83tomy/leia-wp3-20260923/baseline` (drivers 54887761, 54887767, 54887768, poly
+arms 54887764-66); the split runs from its own clone `/work/scratch/tm83tomy/leia-wp3split` into
+`.../split`; the polyhedral rung reuses the baseline meshes (`advect_bound_arm.sh`). The verdicts
+follow in the next commit of this section.

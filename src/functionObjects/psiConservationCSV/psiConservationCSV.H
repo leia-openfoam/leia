@@ -127,7 +127,7 @@ Description
           SDPLS_nonLinearPart (= a, inherited from sdplsR), so the algebraic
           formula would report a number that is NOT the source that ran, and
           phiW is a local that is never registered, so this object cannot rebuild
-          it without linking libleiaLevelSet.
+          it without linking libleiaSdplsSource.
     In both regimes BUDGET_SOURCE, BUDGET_SOURCE_BAND and (because the budget is
     then unattributable) BUDGET_RESIDUAL are quiet_NaN, and SOURCE_ALGEBRAIC
     records which regime the row is in: 1 = gSum(f_nl psi V) reproduces the

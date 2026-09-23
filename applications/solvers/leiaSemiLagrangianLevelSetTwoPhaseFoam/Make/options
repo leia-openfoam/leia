@@ -41,5 +41,11 @@ EXE_LIBS = \
     -lVoFphaseTurbulentTransportModels \
     -lincompressibleInterPhaseTransportModels \
     -L$(FOAM_USER_LIBBIN) \
-    -lleiaLevelSet \
+    -lleiaSemiLagrangian \
+    -lleiaVelocityExtension \
+    -lleiaSdplsSource \
+    -lleiaSurfaceTension \
+    -lleiaRedistancer \
+    -lleiaVolumeCorrection \
+    -lleiaCore \
     -llevelSetImplicitSurfaces

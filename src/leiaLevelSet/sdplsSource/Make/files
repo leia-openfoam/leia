@@ -1,0 +1,24 @@
+/* libleiaSdplsSource -- the SDPLS level-set source term family (sdplsSource), its discretizations, mollifiers and gradient models.
+   Links libleiaCore; every solver that can select one of its
+   models links it (docs/plan-library-split-and-build-policy.md, WP3). */
+
+sdplsSource.C
+sdplsR.C
+sdplsBeta.C
+discretization/discretization.C
+discretization/explicitDiscretization.C
+discretization/simpleLinearImplicit.C
+discretization/strictNegativeSpLinearImplicit.C
+discretization/exponentialDiscretization.C
+discretization/exponentialImplicit.C
+mollifier/mollifier.C
+mollifier/mollifier1.C
+mollifier/interfaceBandMollifier.C
+gradPsi/gradPsi.C
+gradPsi/narrowLS.C
+sdplsRdiv.C
+sdplsRdivStrictSp.C
+
+leiaStamp_leiaSdplsSource.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaSdplsSource

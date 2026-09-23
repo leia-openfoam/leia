@@ -1,0 +1,16 @@
+/* libleiaVelocityExtension -- the interface velocity extensions (closestPoint needs the semi-Lagrangian reconstruction).
+   Links libleiaCore and leiaSemiLagrangian; every solver that can select one of its
+   models links it (docs/plan-library-split-and-build-policy.md, WP3). */
+
+velocityExtension.C
+interfaceExtension.C
+anisotropicDiffusion.C
+pseudoTime.C
+steadyUpwind.C
+steadyUpwindLinear.C
+closestPoint.C
+meshWaveExt.C
+
+leiaStamp_leiaVelocityExtension.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaVelocityExtension
