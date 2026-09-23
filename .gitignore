@@ -177,6 +177,9 @@ docs/**/*.spl
 # Scratch area for throwaway gate/plot experiments
 /tmp/
 
+# Material the user hands to agent sessions (briefs, notes, inputs); local only
+/agent-input/
+
 # Solver run logs. The bare "log" pattern above only catches a file called
 # exactly "log"; OpenFOAM writes log.<application>, and the Allrun scripts of the
 # variant-comparison cases write log.<application>.<variant>:
