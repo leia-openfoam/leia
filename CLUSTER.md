@@ -501,6 +501,11 @@ rebuilt from another tree.
 
 ### History: the private overlays this file replaces
 
+Retired 2026-09-24 (WP6, STATUS.md 10.5): `curvature-v2512`, `sdpls-v2512` and `~/.leia_env`
+carry the suffix `.retired-2026-09-24`; the leia files of the account default `tm83tomy-v2512`
+sit in its `retired-leia-2026-09-24/` (the folder itself stays for another project's library).
+Deletion is due on or after 2026-10-01.
+
 Until 2026-09-22 each session pinned its binaries by hand: an unversioned
 `$HOME/.leia_env` exporting `WM_PROJECT_USER_DIR=$HOME/OpenFOAM/curvature-v2512`
 plus the APPBIN, LIBBIN, PATH and LD_LIBRARY_PATH overlay, sourced in the driver

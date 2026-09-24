@@ -3160,3 +3160,41 @@ WP4 is closed. Open in the plan: WP6 (rename `$HOME/OpenFOAM/tm83tomy-v2512`, `c
 `sdpls-v2512` and `$HOME/.leia_env` with a dated suffix after the first real runs from the new
 folders; delete a week later; the laptop's `tmaric-v2512` keeps only its cfMesh copy, now also in
 `$HOME/OpenFOAM/cfmesh`).
+
+### 10.5 WP6 -- the old install folders retired (2026-09-24), deletion due 2026-10-01
+
+**Condition met first.** Since WP1 every case that ran from either clone -- the WP2 probes, the
+full WP3 gate (both trees), the WP4 gates and probes -- printed the clone's `platforms/` path
+in its `Exec` line and the clone's stamps in its banner; the launcher chain itself
+(`sbatch run-studies.sbatch` -> `make studies-one` -> guard -> snakemake) ran from each clone
+today (jobs 54916369, 54916370: guard 0 solve jobs, "Nothing to be done", `ALL-STUDIES-DONE`).
+
+**What was retired, Lichtenberg, 2026-09-24 12:27 (log `wp6_retire.log`).**
+- `$HOME/OpenFOAM/tm83tomy-v2512` STAYS: its `platforms/linux64GccDPInt32Opt/lib` also holds
+  `libweiFunctionObjects.so`, a library of another project on the shared account (its jobs
+  `openfoam-bayesopt-cht/...` were running). Only the leia files moved, into
+  `platforms/linux64GccDPInt32Opt/retired-leia-2026-09-24/{bin,lib}` (22 binaries, 4 libraries).
+- `curvature-v2512` -> `curvature-v2512.retired-2026-09-24` (25 MB; its cfMesh copy is a duplicate
+  of `$HOME/OpenFOAM/cfmesh`), `sdpls-v2512` -> `sdpls-v2512.retired-2026-09-24` (18 MB),
+  `~/.leia_env` -> `~/.leia_env.retired-2026-09-24` (the `[ -f $HOME/.leia_env ]` clauses in the
+  study configs are inert now). A plain OpenFOAM shell finds no `leiaLevelSetFoam` any more; with a
+  clone's `etc/leia-env.sh` it finds the clone's, and `pMesh` in `$HOME/OpenFOAM/cfmesh`.
+- Laptop, the same rule: `$HOME/OpenFOAM/tmaric-v2512` stays (36 binaries and 18 libraries of
+  other projects, plus cfMesh and `run/`); its 22 leia binaries and 4 leia libraries moved into
+  `platforms/linux64GccDPInt32Opt/retired-leia-2026-09-24/`. A plain shell finds no leia binary.
+- Found on the way: `run-sink-decay.sbatch` sourced `$HOME/OpenFOAM/curvature-v2512/etc/bashrc`,
+  a file that never existed, so it sourced nothing and stopped at `etc/leia-env.sh`; it now
+  sources OpenFOAM's `etc/bashrc` (this commit).
+
+**Verification after the retirement.** Probe drivers 54916367 (SDPLS clone) and
+54916368 (curvature clone), 12:27-12:36: unit 89 of 89, `ldd` shows no monolith, the 12 serial 1D
+cases and the two np 4 cases give 42 CSV pairs each identical to the WP3 baseline at tolerance 0;
+every `Exec` line names the clone's `platforms/`, every banner its seven stamps, and no retired
+folder is on any job's PATH. The launcher chain (jobs 54916369, 54916370) passed the guard and
+found nothing to do on the two up-to-date studies. My chain-job output files were removed from
+the clone roots (my ids only).
+
+**Deletion.** On or after 2026-10-01, if both sessions have run a study from the new folders by
+then, delete `curvature-v2512.retired-2026-09-24`, `sdpls-v2512.retired-2026-09-24`,
+`~/.leia_env.retired-2026-09-24`, the two `retired-leia-2026-09-24` subfolders (cluster and
+laptop); record the date here. Until then they are the rollback of this work package.
