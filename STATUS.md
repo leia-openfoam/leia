@@ -3068,7 +3068,8 @@ enters the comparison. The split solvers print one stamp line per loaded library
    `FOAM FATAL IO ERROR: Entry 'velocityModel' not found in dictionary "system/fvSolution"`
    (`sdplsRdiv.C` line 444, since ef7341b: the divergence form reads the prescribed velocity model,
    which a coupled case has not). The workflow records it as a diverged result. Both are for the
-   SDPLS thread to decide; nothing in this work package changes them.
+   SDPLS thread to decide; nothing in this work package changes them. **Both fixed 2026-09-24,
+   on the user's instruction: see 10.4.**
 
 **Three traps met on the way, all recorded.** (a) A command-line `--config` replaces the slurm
 profile's `config:` list (CLUSTER.md, SLURM.md): the first baseline pass ran `mpirun` in one-task
@@ -3093,3 +3094,33 @@ The scratch tree `/work/scratch/tm83tomy/leia-wp3-20260923` (baseline, split and
 logs, driver scripts) stays as the gate's evidence until 2026-09-30; the temporary clone
 `leia-wp3split` was removed on 2026-09-23. Next in the plan: WP4 (touch every finished study once,
 then the launch guard) and WP6 (retire the old install folders after the first real runs).
+
+### 10.4 WP4 -- study safety: touched once, guarded every time; two SDPLS fixes
+
+**What changed (development, 2026-09-24 morning, three commits).**
+1. `workflow/Snakefile`: the solve rule waits for `SOLVER_CSV`, the file the solver writes;
+   for `leiaLevelSetTwoPhaseFoam` that is `leiaLevelSetFoam.csv`, for every other solver
+   `<solver>.csv` as before. The dry-run DAG of every other study is unchanged by construction.
+2. `src/leiaLevelSet/sdplsSource/sdplsRdiv.C`: the exact-reference diagnostic reads the
+   `velocityModel` dictionary with `subOrEmptyDict`; a coupled case (no prescribed velocity
+   model) now takes the documented skip instead of `FOAM FATAL IO ERROR` at the first assembly.
+   Kinematic cases read the same dictionary as before.
+3. `workflow/scripts/guard_finished_cases.py` (new, stdlib only) runs before every `snakemake`
+   the Makefile starts (`GUARD` in `studies-one` and the seven study loops): it repeats the
+   launch's dry run, and if a listed `solve` job targets a case whose log is COMPLETED or
+   DIVERGED it prints the cases and exits 2. `LEIA_ALLOW_RERUN=1` turns that into a warning
+   (preserve the directory first). Documents: `workflow/README.md` (Run and SDPLS sections),
+   `SLURM.md` 4.2, `CLUSTER.md` ("Study safety").
+
+**Laptop.** `Allwmake` rebuilds `libleiaSdplsSource` only (3 min 21 s in total); dry runs of
+`sdplsPsiBudgetDroplet2D` (solve output `leiaLevelSetFoam.csv`, 45 jobs on an empty tree) and
+`sdpls1Dstretch` (output unchanged) parse; the guard on `sdpls1Dstretch` against the laptop's
+finished study: 0 solve jobs listed, exit 0. No case ran on the laptop.
+
+**Cluster -- pending.** Both clones pull and rebuild; the guard is measured on
+`sdplsConv2Dvortex` before the touch pass (expected: 6 of 42 cases refused) and after (exit 0);
+`snakemake --touch` marks every study directory with a config up to date (measured 2026-09-24
+on a scratch copy with one CSV removed: touch creates no file); the probe set (unit, 1D with
+its Rdiv arms, np 4) is compared with the WP3 baseline tree at tolerance 0; and the N 32 arms of
+`sdplsPsiBudgetDroplet2D` run through the fixed solve rule, the Rdiv arm included. Verdicts
+follow in the next commit of this section.

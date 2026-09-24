@@ -38,6 +38,11 @@ REMOTE_DIR ?= /work/scratch/tm83tomy/leia
 REMOTE     ?= $(CLUSTER):$(REMOTE_DIR)
 SNAKE    = PATH=$$HOME/.local/bin:$$PATH snakemake --workflow-profile $(PROFILE) \
              --nolock --keep-going --resources tasks=$(TASKS) --rerun-triggers mtime
+# Before every launch: refuse to re-run a FINISHED case (a result the solve rule would
+# delete). `--rerun-triggers mtime` reads file times, and a touch sweep over the scratch
+# filesystem once made 6 of 42 finished cases due again (STATUS.md section 9). Override,
+# after preserving the study directory: LEIA_ALLOW_RERUN=1 make studies-one STUDY=...
+GUARD    = PATH=$$HOME/.local/bin:$$PATH python3 workflow/scripts/guard_finished_cases.py
 
 # Publication studies (override on the command line, e.g. make studies SL_STUDIES="uncachedConv2Dvortex").
 SL_STUDIES ?= uncachedConv2Dvortex uncachedConv3Dshear uncachedConv3Ddeformation \
@@ -122,15 +127,15 @@ build:
 	./Allwmake
 
 studies-sl:
-	@for cfg in $(SL_STUDIES); do echo ">>> $$cfg"; $(SNAKE) --configfile config/$$cfg.yaml; done
+	@for cfg in $(SL_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
 studies-sl-linear:
-	@for cfg in $(SL_LINEAR_STUDIES); do echo ">>> $$cfg"; $(SNAKE) --configfile config/$$cfg.yaml; done
+	@for cfg in $(SL_LINEAR_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
 studies-droplet:
-	@for cfg in $(DROPLET_STUDIES); do echo ">>> $$cfg"; $(SNAKE) --configfile config/$$cfg.yaml; done
+	@for cfg in $(DROPLET_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
 studies-ve:
-	@for cfg in $(VE_STUDIES); do echo ">>> $$cfg"; $(SNAKE) --configfile config/$$cfg.yaml; done
+	@for cfg in $(VE_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
 studies-grl:
-	@for cfg in $(GRL_STUDIES); do echo ">>> $$cfg"; $(SNAKE) --configfile config/$$cfg.yaml; done
+	@for cfg in $(GRL_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
 # SDPLS source line: the 2D reversed-vortex arm matrix (both linearizations x
 # {noSource,R,beta}) plus the 3D shear/deformation companions.
 # Enumerate a study group (scripts and humans: `make -s print-euler-studies`).
@@ -147,10 +152,11 @@ print-euler-studies:
 # Run ONE study by name: make studies-one STUDY=sdplsConv3Dshear
 studies-one:
 	@test -n "$(STUDY)" || { echo "usage: make studies-one STUDY=<name>"; exit 1; }
+	$(GUARD) config/$(STUDY).yaml --profile $(PROFILE)
 	$(SNAKE) --configfile config/$(STUDY).yaml
 
 studies-sdpls:
-	@for cfg in $(SDPLS_STUDIES); do echo ">>> $$cfg"; $(SNAKE) --configfile config/$$cfg.yaml; done
+	@for cfg in $(SDPLS_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
 # EVERY study whose psi transport is a finite-volume div(phi,psi). These share
 # one discretization (linearUpwind grad(psi), cell-limited grad(psi), nDefCorr
 # >= 3), so they must be re-run TOGETHER whenever it changes -- otherwise rows
@@ -158,7 +164,7 @@ studies-sdpls:
 # exactly how the 2D/3D SDPLS confound happened. The 82 semi-Lagrangian studies
 # have no div(phi,psi) term and are unaffected.
 studies-euler:
-	@for cfg in $(EULER_STUDIES); do echo ">>> $$cfg"; $(SNAKE) --configfile config/$$cfg.yaml; done
+	@for cfg in $(EULER_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
 studies: studies-sl studies-sl-linear studies-droplet studies-ve studies-grl
 
 decks:

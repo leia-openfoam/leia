@@ -231,6 +231,14 @@ snakemake --workflow-profile profiles/slurm --configfile config/myStudy2D.yaml -
 Check the `solve` count equals the arm count you intended. A silent factor of two is
 usually an axis you forgot to collapse.
 
+**The guard runs first.** Every `make studies*` target calls
+`workflow/scripts/guard_finished_cases.py`, which repeats the dry run and refuses (exit 2) a
+launch whose `solve` jobs would re-run a case with a COMPLETED or DIVERGED log. A study
+that snakemake wants to re-run only because file times moved is marked up to date with
+`snakemake --workflow-profile profiles/slurm --configfile config/<study>.yaml --nolock
+--rerun-triggers mtime --touch` (touches existing outputs, creates nothing; measured
+2026-09-24). Re-run on purpose only after preserving the directory: `LEIA_ALLOW_RERUN=1`.
+
 ### 4.3 Launch
 
 ```bash

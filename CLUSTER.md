@@ -378,6 +378,21 @@ What each run actually used is now recorded per case in the curated CSV
 study tokens — see `workflow/scripts/fvschemes.py` for why the tokens are not
 trustworthy (2Dvortex hardcodes its div scheme and has no `DIV` token at all).
 
+## Study safety: touched once, guarded every time
+
+MEASURED 2026-09-22: a sweep over `/work/scratch` gave every file of both clones a new
+mtime (STATUS.md section 9); with the Makefile's `--rerun-triggers mtime`, 6 of the 42
+finished cases of `sdplsConv2Dvortex` and 2 of 14 of `sdplsExpSource2Dvortex` were due for
+re-running, and the solve rule deletes a case's CSV before it starts. Two measures
+(docs/plan-library-split-and-build-policy.md, WP4):
+
+1. **Touched once.** On 2026-09-24 every study directory with a config was marked up to
+   date in both clones with `snakemake ... --touch` (existing outputs only; it creates no
+   file, measured on a scratch copy with one CSV removed). The list is in STATUS.md 10.4.
+2. **Guarded every time.** `workflow/scripts/guard_finished_cases.py` runs before every
+   `make studies*` launch and refuses a `solve` over a case whose log is COMPLETED or
+   DIVERGED. Override only after preserving the directory: `LEIA_ALLOW_RERUN=1`.
+
 ## The daily loop
 
 ```bash

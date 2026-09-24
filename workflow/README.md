@@ -109,6 +109,20 @@ snakemake --workflow-profile profiles/local \
   --config case=3Dshear mesh=hex mode=parallel np=8 study_name=shear-par
 ```
 
+### The launch guard: a finished case is never re-run by accident
+
+Every `make studies*` target runs `workflow/scripts/guard_finished_cases.py` before its
+`snakemake`. The guard repeats the launch's dry run (`--rerun-triggers mtime`), reads the
+`solve` jobs it lists, and classifies each target case's solver log with
+`foam_log_state.sh`. A `solve` over a case whose log is COMPLETED or DIVERGED would delete
+a result (the rule removes the case CSV first), so the guard prints those cases and exits 2,
+and the launch does not start. MEASURED 2026-09-22: a touch sweep over `/work/scratch` gave
+every file a new mtime, after which the flags above made 6 of 42 finished cases of
+`sdplsConv2Dvortex` due again. Both cluster clones were marked up to date once with
+`snakemake --touch` on 2026-09-24 (STATUS.md 10.4). To re-run a finished study on purpose:
+preserve its directory (rename it with a dated suffix), then
+`LEIA_ALLOW_RERUN=1 make studies-one STUDY=<name> PROFILE=...`.
+
 ### Scope (smoke vs full)
 
 `config/config.yaml` defaults to a small **smoke** grid via `axes_override` +
@@ -257,6 +271,18 @@ RECORD NOTE (2026-09-22): every kinematic study the article names by identifier 
 `<study>_errors.csv` versioned in the theme's tables dir, together with the inputs of the generated
 convergence tables and the stability sweep (17 files added that day). The coupled-droplet studies
 write no such table; their raw output stays on the cluster.
+
+**Two facts about the coupled Eulerian studies (`solver: leiaLevelSetTwoPhaseFoam`), found
+2026-09-23 and fixed 2026-09-24.** (1) That solver writes its metrics to
+`leiaLevelSetFoam.csv` (`errorCalculation.H`), never to `<solver>.csv`; the solve rule now
+waits for the file the solver writes (`SOLVER_CSV` in the Snakefile), so `sdplsRdivDroplet2D`,
+`sdplsDropletNS2D`, `sdplsDropletBdf2Droplet2D` and `sdplsPsiBudgetDroplet2D` can reach
+`aggregate` -- before, every one of them ended in `MissingOutputException` after a completed
+run and none has a table. (2) `SDPLS_SOURCE Rdiv` aborted at its first assembly in every
+coupled case since ef7341b (`Entry 'velocityModel' not found`): its exact-reference
+diagnostic read the prescribed velocity model with `subDict`; it now uses `subOrEmptyDict`
+and skips, as intended, where there is no velocity model. Kinematic Rdiv results are
+unchanged (gated at tolerance 0, STATUS.md 10.4).
 
 ## 3D semi-Lagrangian convergence (quadraticWeightedLeastSquares)
 
