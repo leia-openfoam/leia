@@ -35,6 +35,14 @@ STUDY       = config["study_name"]
 # solve rule's output. Default: the advection solver. Alternative apps (e.g. the
 # static extension verification leiaTestVelocityExtension) plug in per study.
 SOLVER      = config.get("solver", "leiaLevelSetFoam")
+# The file the solve rule waits for. Every solver writes <solver>.csv except the Eulerian
+# two-phase solver, whose metrics go to leiaLevelSetFoam.csv (errorCalculation.H); with
+# <solver>.csv as the output, every one of its studies ended in MissingOutputException after
+# a completed run and never reached aggregate (MEASURED 2026-09-23, WP3 gate; four such
+# studies sat on the cluster without a table). workflow/scripts/guard_finished_cases.py
+# carries the same rule.
+SOLVER_CSV  = ("leiaLevelSetFoam.csv" if SOLVER == "leiaLevelSetTwoPhaseFoam"
+               else f"{SOLVER}.csv")
 # Optional SERIAL command run in the case directory immediately after the solver,
 # whether it succeeded or diverged. It exists so a solver that does NOT write
 # <SOLVER>.csv itself can still be studied: OpenFOAM's own interFoam writes
@@ -185,7 +193,7 @@ _preprocess = ["cd {params.d}",
                " psiConservation.csv",
                " ".join(filter(None, [SETFIELDS_APP, SETFIELDS_ARGS]))]
 
-_solve = ["cd {params.d}", f"rm -f {SOLVER}.csv .leia_solver_failed"]
+_solve = ["cd {params.d}", f"rm -f {SOLVER_CSV} .leia_solver_failed"]
 if INIT_END:
     _solve.append(INIT_END)
 # The curvature test app reads the SAME -alphaName flag as leiaSetFields (its
@@ -253,14 +261,14 @@ _solve += [
     # discarded as an infrastructure fault. Solver deaths are checked FIRST.
     f"if [ $rc -ne 0 ]; then "
     f"if grep -qE 'sigFpe::sigHandler|sigSegv::sigHandler|Floating point exception \(core dumped\)|Segmentation fault \(core dumped\)|FOAM FATAL' log.{SOLVER}; then "
-    f"echo $rc > .leia_solver_failed; touch {SOLVER}.csv; "
+    f"echo $rc > .leia_solver_failed; touch {SOLVER_CSV}; "
     f"echo \"[leia] SOLVER DIED $rc (FPE/segfault/FATAL = diverged) -- recorded; tail of log.{SOLVER}:\"; "
     f"tail -15 log.{SOLVER}; "
     f"elif grep -qE 'Unable to create step|not enough slots|More processors requested than permitted|Unable to satisfy cpu bind|CPU binding outside|srun: error: Unable to|error: Task launch|mpirun.*(error|Error)' log.{SOLVER}; then "
     f"echo \"[leia] LAUNCH FAILURE (rc=$rc) -- the solver never ran; NOT recorded as a result:\"; "
     f"tail -15 log.{SOLVER}; exit $rc; "
     f"else "
-    f"echo $rc > .leia_solver_failed; touch {SOLVER}.csv; "
+    f"echo $rc > .leia_solver_failed; touch {SOLVER_CSV}; "
     f"echo \"[leia] SOLVER EXITED $rc (diverged or crashed) -- recorded; tail of log.{SOLVER}:\"; "
     f"tail -15 log.{SOLVER}; fi; fi",
 ]
@@ -384,7 +392,7 @@ rule solve:
          if PARALLEL else
          os.path.join(CASE_DIR, ".leia_preprocessed")),
     output:
-        os.path.join(CASE_DIR, f"{SOLVER}.csv"),
+        os.path.join(CASE_DIR, SOLVER_CSV),
     params:
         d=case_path,
     resources:
@@ -419,7 +427,7 @@ if PARALLEL:
     # leiaSetFields-initialised field so a montage's initial contour is right.
     rule reconstruct:
         input:
-            os.path.join(CASE_DIR, f"{SOLVER}.csv"),
+            os.path.join(CASE_DIR, SOLVER_CSV),
         output:
             touch(os.path.join(CASE_DIR, ".leia_reconstructed")),
         params:
@@ -439,7 +447,7 @@ if PARALLEL:
 # rule backfills studies materialised before that and is a no-op otherwise.
 rule paraview_stub:
     input:
-        os.path.join(CASE_DIR, f"{SOLVER}.csv"),
+        os.path.join(CASE_DIR, SOLVER_CSV),
     output:
         os.path.join(CASE_DIR, CASE + "_{idx}.foam"),
     resources:
@@ -452,7 +460,7 @@ rule paraview_stub:
 
 rule aggregate:
     input:
-        expand(os.path.join(CASE_DIR, f"{SOLVER}.csv"), idx=IDX),
+        expand(os.path.join(CASE_DIR, SOLVER_CSV), idx=IDX),
         # Reconstruction must finish before `report` reads the cases: report
         # depends on DATABASE, so the dependency belongs here.
         *([expand(os.path.join(CASE_DIR, ".leia_reconstructed"), idx=IDX)]
