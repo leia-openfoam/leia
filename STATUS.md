@@ -3124,3 +3124,39 @@ on a scratch copy with one CSV removed: touch creates no file); the probe set (u
 its Rdiv arms, np 4) is compared with the WP3 baseline tree at tolerance 0; and the N 32 arms of
 `sdplsPsiBudgetDroplet2D` run through the fixed solve rule, the Rdiv arm included. Verdicts
 follow in the next commit of this section.
+
+**Cluster, 2026-09-24 08:39-08:58, all PASS** (logs `/work/scratch/tm83tomy/leia-wp3-20260923/log/wp4_*`,
+`drv-54909721`, `drv-54909722`, `drv-54909812`). Both clones fast-forwarded to 8c36b90 and rebuilt
+(only `libleiaSdplsSource` recompiled, 35 s; stamp `shared-method-config-2026-09-01-147-g8c36b90`).
+- Guard, before the touch pass, SDPLS clone, `sdplsConv2Dvortex`: 6 of the 6 listed `solve` jobs
+  targeted finished cases (`2Dvortex_00036` to `00041`, COMPLETED, 700 steps, CSV present); exit 2.
+  That is the 2026-09-22 hazard, refused. After the touch pass: 0 `solve` jobs listed, exit 0.
+- Touch pass (`snakemake ... --touch`, one dry run before and after each study): SDPLS clone 43
+  studies touched, 3 already up to date, 0 dry-run failures; curvature clone 98 touched, 1 up to
+  date, 0 failures. `git status docs/` is empty in the SDPLS clone; the curvature clone's 27 lines
+  (5 modified and 22 untracked tables, every mtime 2026-09-22 10:59) are the curvature session's
+  own state from before the pass (the 5 modified tables are the same 5 it has modified on the
+  laptop). Code paths clean in both. Studies that still list jobs after the touch, all for
+  outputs that never existed: 18 in the SDPLS clone, 6 in the curvature clone -- mostly
+  `reconstruct`, `aggregate`, `report` of pipelines that never ran to the end, plus `solve` jobs
+  over cases without a CSV (`benchVortexGRLfrozen` 2, `benchVortexVET2` 2,
+  `oscillatingDropletFootEvalFace` 6, `stationaryDropletFootEvalFace` 5, `stationaryDropletRenorm`
+  1; curvature clone `advConv3DshearHex` 1, `filterThetaScaling3D` 1). The guard permits those
+  unless the case log says COMPLETED or DIVERGED.
+- Probe sets in both clones (unit, the 12 serial 1D cases with their Rdiv arms, the two np 4
+  cases): 42 CSV pairs each identical to the WP3 baseline at tolerance 0, unit 89 of 89; the 1D
+  Rdiv arms print `sdplsRdiv exactRef: SKIPPED (... velocityModel 'uniaxialStrain' ...)` as before.
+- Coupled Eulerian study `sdplsPsiBudgetDroplet2D`, N 32 arms through the fixed solve rule, np 8:
+  all three cases COMPLETED with 1667 steps and no `MissingOutputException`; `noSource` and `R`
+  identical to the WP3 baseline (8 CSV pairs); `Rdiv`, which aborted at step 1 before, runs to the
+  end and prints `sdplsRdiv exactRef: SKIPPED (implicitSurface 'implicitSphere', velocityModel
+  'none', parRun true)`; `aggregate.build_database` over the three cases gives 3 rows with 160
+  populated columns each and the eight stamps in `libStamps`. What the Rdiv arm's numbers mean is
+  for the SDPLS thread to read; this gate shows only that the arm runs and aggregates.
+- The first attempt at that gate targeted the old CSV name through my scratch target selector
+  (nothing ran); the second attempt, with the mapped name, is the one recorded above.
+
+WP4 is closed. Open in the plan: WP6 (rename `$HOME/OpenFOAM/tm83tomy-v2512`, `curvature-v2512`,
+`sdpls-v2512` and `$HOME/.leia_env` with a dated suffix after the first real runs from the new
+folders; delete a week later; the laptop's `tmaric-v2512` keeps only its cfMesh copy, now also in
+`$HOME/OpenFOAM/cfmesh`).
