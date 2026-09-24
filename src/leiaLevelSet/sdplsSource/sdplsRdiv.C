@@ -441,7 +441,13 @@ sdplsRdiv::fvmsdplsSource(const volScalarField& psi, const volVectorField& U)
     {
         const fvSolution& fvSolutionDict(mesh);
         const dictionary& levelSetDict = fvSolutionDict.subDict("levelSet");
-        const dictionary& velocityDict = fvSolutionDict.subDict("velocityModel");
+        // subOrEmptyDict, not subDict: a coupled case has no prescribed velocity
+        // model, and subDict aborted every coupled Rdiv run at its first assembly
+        // (FOAM FATAL IO ERROR, "Entry 'velocityModel' not found"; MEASURED
+        // 2026-09-23 on sdplsPsiBudgetDroplet2D, present since ef7341b). The guard
+        // below then reads velocityType "none" and skips, as it was meant to.
+        const dictionary velocityDict =
+            fvSolutionDict.subOrEmptyDict("velocityModel");
 
         const word surfaceType =
             levelSetDict.subOrEmptyDict("implicitSurface")
