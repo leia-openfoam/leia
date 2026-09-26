@@ -2515,7 +2515,7 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
-| (pending) `leia-gate2D` `long` | **methodGate2D**, baseline + S1, HL0, HL1q, HL1z, HL2, FP0, moved on 2026-09-26 23:05 into `/work/scratch/tm83tomy/leia` (user request; section 11.12). The runs in `leia-gcls` (`55042210`, `55043312` and their children) are cancelled by id; their partial studies stay there. | 7 d (orchestrator) | `/work/scratch/tm83tomy/leia/studies/methodGate2D_*` |
+| `55044205` `leia-gate2D` `long` | **methodGate2D** (2026-09-26 23:06, commit 79b5a92, clean stamps), baseline + S1, HL0, HL1q, HL1z, HL2, FP0, moved into `/work/scratch/tm83tomy/leia` (user request; section 11.12). The runs in `leia-gcls` (`55042210`, `55043312` and their children) are cancelled by id; their partial studies stay there. | 7 d (orchestrator) | `/work/scratch/tm83tomy/leia/studies/methodGate2D_*` |
 | `54354379` `leia-curv` `long` | **interFoamDroplet2D** — re-running the `N` = 512 arm only (the other three are complete at the full 0.1 s horizon with `interFoam.csv` present). 106689 steps at the measured 1.52 steps/s = ~19.5 h. Replaces the arm lost to the cleanup bug above. | 28 h | `studies/interFoamDroplet2D/` |
 | DONE | **filterOffAmplifier3D** 4/4, **upwindConvection2D** 8/8, **upwindConvection3D** 4/4, **filterThetaScaling3D** 6/6 — all analysed, section 4. | — | `studies/*/` |
 | DONE | **stationaryDroplet3Dwide**, **cellCentreInverseFiltered512**, **domainSizeControl10R/6R/4R**, **psiOuterCorrectorsGain3D**, **ddtOrderGain3D** | — | `studies/*/` |
@@ -3514,6 +3514,8 @@ the 4-rank check of CLAUDE.md before the cluster, not a measurement.
   (209 child ids). `/work/scratch/tm83tomy/leia` now has the branch `feature/gradient-controlled-level-set`
   checked out and its binaries are rebuilt from it; its untracked files and its `studies/` stay. To
   give the clone back to the development line: `git switch development && ./Allwmake`.
+  Relaunched there as `55044205` (WorkDir `/work/scratch/tm83tomy/leia`); ledger: that clone's `.my_jobs`,
+  lines tagged `[gcls session]`.
 - Conda on the cluster: the base env (`~/miniconda3`, Python 3.14) has neither yaml nor numpy, and it
   is the first `python3` on PATH in the jobs. The gate helpers do not use it: they run on snakemake's
   own interpreter (module Python 3.11.14, yaml and numpy from `~/.local`).
