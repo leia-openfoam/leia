@@ -307,7 +307,9 @@ discretization against the closed form, the sign conventions, and the `gradientC
 against `R`, `beta` and the exact affine F) and `cases/sdplsSourceUnit/Allrun.sh` (the affine unit
 case); `leiaTestGradientControlLaw` (no case: the laws of `libleiaGradientControl`, 109
 assertions); `cases/slSourceUnit/Allrun.sh` (`leiaTestSlSource`, the semi-Lagrangian
-`gradientControl` source, serial and on 4 ranks, 49 assertions each).
+`gradientControl` source, serial and on 4 ranks, 49 assertions each);
+`cases/haloLimitedUnit/Allrun.sh` (`leiaTestHaloLimited`, the `haloLimited` velocity extension,
+serial and on 4 ranks, 18 assertions each).
 
 RECORD NOTE (2026-09-22): every kinematic study the article names by identifier has its
 `<study>_errors.csv` versioned in the theme's tables dir, together with the inputs of the generated

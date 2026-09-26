@@ -14,7 +14,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 rm -rf processor* constant/polyMesh
 blockMesh > log.blockMesh 2>&1
 leiaTestSlSource > log.leiaTestSlSource.serial 2>&1 || { tail -30 log.leiaTestSlSource.serial; exit 1; }
-tail -1 log.leiaTestSlSource.serial
+grep 'passed' log.leiaTestSlSource.serial
 decomposePar -force > log.decomposePar 2>&1
 mpirun -np 4 leiaTestSlSource -parallel > log.leiaTestSlSource.np4 2>&1 || { tail -30 log.leiaTestSlSource.np4; exit 1; }
-tail -1 log.leiaTestSlSource.np4
+grep 'passed' log.leiaTestSlSource.np4

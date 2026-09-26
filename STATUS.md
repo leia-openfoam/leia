@@ -3417,3 +3417,38 @@ Unit gates (laptop):
   1e-12, psi unchanged outside bit for bit, no sign change, the clamp at |dt F| = 50, the cell
   size, and current processor-patch values. A mutant without the halo update passes in serial
   and fails on 4 ranks.
+
+### 11.10 Phase D4: the halo-limited extension, and the scheme keys (2026-09-26)
+
+- `velocityExtension` type `haloLimited` (`velocityExtension/haloLimited/`) with four new strategy
+  families, each runtime-selectable: `extensionTravel` (`capped`: S_R(d) = d [1 +
+  (d/R)^(2m)]^(-1/(2m))), `extensionWeight` (`fractionReached`: w = (S_R/d)^beta),
+  `extensionDirection` (`levelSet`: d = psi/sqrt(Q2), e = grad(psi)/sqrt(Q2), with the flat
+  regularizer Q2 = q^2 + (1 - 4q^2)^3/4 for q < 0.5, zero above) and `extensionSampler`
+  (`stencilFit`: the uncached quadratic value fit of the semi-Lagrangian line, one velocity
+  component at a time). A linear sampler is not offered: at first order the extension is a
+  weighted SDPLS source (dossier).
+- Flux in the correction form phiExt = phi + w [u_h(Y) - u_h(x)].S_f, the mean of the two
+  cells' models on a face; physical patches keep phi; on a coupled face both sides average their
+  corrections in one orientation, so they carry exactly opposite values. R = radiusCells
+  min(h_owner, h_neighbour), 0 < radiusCells <= 1, h from 1/deltaCoeffs over internal and coupled
+  faces (no dependence on the decomposition). Written fields: hlWeight, hlDistance, hlReach,
+  hlCorrection.
+- The scheme keys of the new models in the ten gate templates: `gradPsiSource leastSquares`,
+  `gradUSource Gauss linear` (D3), `gradPsiExtension leastSquares` (D4). Render diff against the
+  reference with the C6 rules plus these three lines: 250 of 250 configs PASS.
+
+Unit gate `leiaTestHaloLimited` (`cases/haloLimitedUnit`, serial and np 4, the planar interface
+x = 0.01 next to the processor boundary x = 0, 240 coupled faces): 18 passed on both. S(0) = 0,
+S'(0) = 1, S odd, |S| <= R up to |d| = 1e6 R, 1 - w = (beta/2m)(d/R)^(2m); for an affine velocity
+the face correction equals -w S_R(d_f) (du/dx).S_f and Uext = U - w S_R du/dx to 1e-16 (the
+quadratic models are exact); a uniform velocity leaves phi and U bit-identical; for the
+divergence-free quadratic velocity of the dossier the correction equals w [u(Y) - u(x)].S_f with
+the exact u to 2e-16; the correction field is exactly antisymmetric on the coupled faces. Two
+floating-point defects found by the test and fixed: |S| exceeded R by one rounding step for
+t > 1 (S is now sign(d) R (1 + t^(-2m))^(-1/(2m)) there), and (1 - w) U + w U was not U bit for
+bit (Uext = U + w (u_h(Y) - U) now).
+
+Final-state bit identity (all templates of C6 and D4, binaries with D1 to D4 compiled in and not
+selected, against the reference 0c7079c): the Phase C set, 53 of 53 cases, every CSV and every
+written field identical; the rendered dictionaries differ only by the inert insertions.

@@ -50,8 +50,10 @@ The level-set components are **runtime-selectable** (chosen in `system/fvSolutio
   corrected field `Uext` and an advection flux, and leaves `U`/`phi` untouched.
   Types: `none` (default, identity), `anisotropicDiffusion`, `pseudoTime`,
   `steadyUpwind`, `steadyUpwindLinear`, `closestPoint` (the statically
-  ~O(h^2)-convergent geometric reference), `meshWave` (parallel-robust wave). See
-  [Velocity extension](#velocity-extension).
+  ~O(h^2)-convergent geometric reference), `meshWave` (parallel-robust wave),
+  `haloLimited` (the halo-limited directional extension: a smoothly capped sample
+  point inside one cell size, blended with the local velocity, in the flux
+  correction form). See [Velocity extension](#velocity-extension).
 
 Solvers (`applications/solvers/`):
 

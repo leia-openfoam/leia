@@ -1,4 +1,4 @@
-/* libleiaVelocityExtension -- the interface velocity extensions (closestPoint needs the semi-Lagrangian reconstruction).
+/* libleiaVelocityExtension -- the interface velocity extensions (closestPoint and haloLimited need the semi-Lagrangian reconstruction).
    Links libleiaCore and leiaSemiLagrangian; every solver that can select one of its
    models links it (docs/plan-library-split-and-build-policy.md, WP3). */
 
@@ -10,6 +10,8 @@ steadyUpwind.C
 steadyUpwindLinear.C
 closestPoint.C
 meshWaveExt.C
+haloLimited/haloLimitedStrategies.C
+haloLimited/haloLimited.C
 
 leiaStamp_leiaVelocityExtension.C
 
