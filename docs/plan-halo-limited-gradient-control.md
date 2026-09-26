@@ -544,13 +544,17 @@ What the gates replace (planned earlier as separate studies, now parts of the ga
 | Gradient band error (L2 of |q - 1|, unlimited gradient) | `E_NARROW_L2_GRAD_PSI` (`gradPsiError.csv`) | `gradPsiL2ErrorBand` (after B3) | same | same | T/2 for shear, T for droplets |
 | Volume error | `E_VOL_ALPHA_REL` | `phaseVolumeRelError` | same | same | T/2 and T |
 | Phase-indicator bounds | `E_BOUND_ALPHA` | `E_BOUND_ALPHA`, `rhoClipFraction` | same | same | maximum over t |
-| Spurious currents | none | `maxMagU` (maximum over t, and at T), `l2MagUPrime` | `maxMagUPrime`, `l2MagUPrime` | (the damping rate above) | |
+| Spurious currents | none | `meanMagUPrime` (L1) and `l2MagUPrime` (L2) at T | same | same | T |
 | Pressure-jump error | none | abs(pLaplace - sigma/R)/(sigma/R) | same | none | T |
 | Curvature error | none | `kErrL2Band` | same | none | T |
 | Travelled fraction | none | none | centroid displacement/(U T) | none | T |
 | Cost | `nRanks`, `wallClockSolve`, `solverClockTime` (`ELAPSED_CLOCK_TIME`), `coreSeconds`, `steps`, `secondsPerStep` | same | same | same | |
 | State, provenance | COMPLETED or DIVERGED (classifier), `endTimeReached`, `gitCommit`, `libStamps`, `runDate` | same | same | same | |
 
+- CORRECTED 2026-09-26: this table first listed `maxMagU` (the maximum over the cells) as the
+  spurious-current metric, and the first gate summary scored it and gave it an order. An L_inf
+  norm does not converge on unstructured meshes and is never reported; the gate uses the L1 and
+  L2 norms of the velocity disturbance. `E_BOUND_ALPHA` is scored as a regression but has no order.
 - `E_BOUND_ALPHA` is 0 by construction for `detrixheAslam` (METHOD.md). The column stays, because the user
   asked for it and because another indicator can be selected.
 - No L_inf metric gets an order.

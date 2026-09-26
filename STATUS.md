@@ -3474,6 +3474,11 @@ the 4-rank check of CLAUDE.md before the cluster, not a measurement.
   with R = 2 h halves the finest-rung shear volume error of HL0 and keeps its gradient gain.
   It needs the cap radiusCells <= 1 raised (the local quadratic model is then extrapolated beyond
   its stencil). Falsified if the volume error does not fall by half.
+- CORRECTED after this smoke: the gate summary scored `maxMagU` (the maximum of |U| over the cells,
+  an L_inf norm) and gave it an order, against the rule that no L_inf norm is reported. It now
+  scores `meanMagUPrime` (L1) and `l2MagUPrime` (L2) at T; the bounds check has no order. The
+  smoke summaries were regenerated; the running cluster gate uses the old script, so its
+  summaries are regenerated with the fixed script when every arm is done.
 - The kinematic SL solver evaluated the extension three times per step (t^(n+1), t^n, t^(n+1));
   it now evaluates t^n first and t^(n+1) second. The HL0 shear smoke is bit-identical before and
   after (3 rungs, both CSVs at tolerance 0).

@@ -47,10 +47,16 @@ CMP = os.path.join(HERE, "compare_metrics_csv.py")
 SKIP_CLOCK = "ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME"
 # Decomposition invariance: max over rows of |a - b| divided by the column's largest |value|.
 SEAM_TOL = 1e-10
-# Every vector metric is an error: lower is better, the exact value is 0.
+# Every vector metric is an error: lower is better, the exact value is 0. L2 and L1 norms
+# only: an L_inf norm (a single-cell extremum, set by where the interface cuts a cell) does not
+# converge on unstructured meshes and is never reported (memory "never report L_inf"). The
+# spurious current is its L1 (meanMagUPrime) and its L2 norm (l2MagUPrime) at T.
 ERROR_METRICS = ["shapeError", "gradientBandError", "volumeError", "volumeErrorHalf",
-                 "boundsError", "rhoClipFraction", "maxMagU", "l2MagUPrime",
+                 "boundsError", "rhoClipFraction", "meanMagUPrime", "l2MagUPrime",
                  "pressureJumpError", "curvatureError", "travelledFractionError", "qError"]
+# The phase-indicator bounds check is an extremum by definition (the largest violation of
+# 0 <= alpha <= 1): it is reported and scored as a regression, but it carries no order.
+NO_ORDER = {"boundsError"}
 # Quantities without an exact value: Celik/Richardson, reported, not scored.
 REFERENCE_FREE = ["oscPeriod", "oscDampingRate"]
 KINEMATIC_CSV = {"leiaSemiLagrangeLevelSetFoam": "leiaSemiLagrangeLevelSetFoam.csv",
@@ -202,6 +208,7 @@ def case_vector(case_dir, arm, gate, cand, solver):
     row["volumeErrorHalf"] = abs(half["phaseVolumeRelError"]) if half.get("phaseVolumeRelError") is not None else None
     row["rhoClipFraction"] = colmax(drop, "rhoClipFraction")
     row["l2MagUPrime"] = fin.get("l2MagUPrime")
+    row["meanMagUPrime"] = fin.get("meanMagUPrime")
     flow = arm.get("flow")
     if flow in ("stationary", "translating"):
         rad = fin.get("zeroSetRadialL2")
@@ -212,7 +219,6 @@ def case_vector(case_dir, arm, gate, cand, solver):
         row["pressureJumpError"] = abs(pl - jump) / jump if pl is not None else None
         kerr = fin.get("kErrL2Band")          # absolute [1/m], against the exact (dims-1)/R
         row["curvatureError"] = kerr * R / (int(gate["dims"]) - 1) if kerr is not None else None
-        row["maxMagU"] = colmax(drop, "maxMagU" if flow == "stationary" else "maxMagUPrime")
     if flow == "translating" and drop and fin:
         x0, x1 = drop[0].get("centroidX"), fin.get("centroidX")
         U = float(arm["U"])
@@ -251,6 +257,8 @@ def orders_of(summary):
         rows = sorted([r for r in summary if r["arm"] == arm], key=lambda r: -r["h"])
         h = [r["h"] for r in rows]
         for m in ERROR_METRICS + REFERENCE_FREE + ["staticGradientFloor"]:
+            if m in NO_ORDER:
+                continue
             vals = [num(r.get(m)) for r in rows]
             if all(v is None for v in vals):
                 continue
