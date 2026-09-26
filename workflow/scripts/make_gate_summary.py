@@ -52,8 +52,12 @@ SEAM_TOL = 1e-10
 # converge on unstructured meshes and is never reported (memory "never report L_inf"). The
 # spurious current is its L1 (meanMagUPrime) and its L2 norm (l2MagUPrime) at T.
 ERROR_METRICS = ["shapeError", "gradientBandError", "volumeError", "volumeErrorHalf",
-                 "boundsError", "rhoClipFraction", "meanMagUPrime", "l2MagUPrime",
+                 "boundsError", "meanMagUPrime", "l2MagUPrime",
                  "pressureJumpError", "curvatureError", "travelledFractionError", "qError"]
+# REPORTED in summary.csv, NOT scored and given no order: rhoClipFraction counts every cell
+# the density bound touches, and in the pure phases round-off alone touches 37-48 % of the
+# cells at a clip L1 of 1e-12 (laptop, 2026-09-27). As a ratio or an order it measures
+# round-off, and it would fail candidates at random.
 # The phase-indicator bounds check is an extremum by definition (the largest violation of
 # 0 <= alpha <= 1): it is reported and scored as a regression, but it carries no order.
 NO_ORDER = {"boundsError"}
