@@ -328,6 +328,17 @@ were logged as 11 "divergences", including the `euler` baseline at N=32, which
 cannot fail for physical reasons. Infrastructure faults must never enter the
 record as physics.
 
+**A dead rank must end the step: `--kill-on-bad-exit=1` (2026-09-27).** When one rank of an
+`srun` step dies (a floating-point exception is the usual end of a diverged run), `srun`
+kept the step alive by default and the other ranks waited in MPI until the job time limit.
+The solve rule records a divergence only AFTER `srun` returns, so the result was not written
+and the case held its cores. MEASURED on `methodGate2D` (orchestrator 55044205): 20 diverged
+cases held 4 cores each for more than an hour. The launcher now carries
+`--kill-on-bad-exit=1`. A case that hangs this way under an older profile is released by
+cancelling ONLY its solver step, `scancel <jobid>.1` (step `.0` is snakemake's wrapper): `srun`
+then returns and the rule records the divergence. Never cancel the whole job for this: the
+rule then fails and snakemake deletes the case's CSV.
+
 Measured on `sdplsStability` (18 parallel np=4 cases, one command):
 
 | launcher | solver CSVs produced |
