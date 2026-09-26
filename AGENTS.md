@@ -65,6 +65,44 @@ prose. The rules that matter most:
 - Hub is GitHub `leia-openfoam/leia`. Code moves by git; raw simulation output
   moves by rsync. See **[CLUSTER.md](CLUSTER.md)**.
 
+## Extension without modification
+
+**The level-set method is open to extension and closed to modification.** New
+behaviour is a new runtime-selectable (RTS) class. It is not an edit of an
+existing model class, of a solver equation or of a selector.
+
+1. A new model goes into the RTS family that owns the behaviour: one class with
+   `addToRunTimeSelectionTable` and one line in that family's `Make/files`. A
+   dictionary word selects it. A case token with an inert default renders that
+   word.
+2. If no family owns the behaviour, add a new family. Its base class is the
+   inert default model. It gets its own `Make/`, a row in
+   `etc/leia-check-deps.py`, an entry in `Allwmake` and `Allwclean`, and an
+   `-l` entry in the `EXE_LIBS` of every solver that can select it.
+3. An alternative inside a model is a strategy, and a strategy is also a RTS
+   family. The pattern is the `discretization`, `gradPsi` and `mollifier`
+   strategies of `sdplsSource`. An `if` chain over dictionary words is not an
+   extension point.
+4. A solver holds composition roots only. It constructs each family with
+   `New()` and calls the family interface. A solver or a selector never tests
+   the type name of a model.
+5. A solver without a composition root for a family gets one as a one-time
+   infrastructure change. The change ships with the inert default, in its own
+   commit, gated by a bit-identity run against the pre-change state.
+6. A model that needs data that the family interface does not give extends the
+   base interface once, with an inert default, gated as in item 5. A model
+   never looks up a field by a name that another class chooses.
+7. The Eulerian solvers and the semi-Lagrangian solvers expose the same
+   families where the method allows it. An Eulerian model runs in an Eulerian
+   solver. A semi-Lagrangian model runs in a semi-Lagrangian solver.
+
+MEASURED 2026-09-26: the rule was broken in four places. The Eulerian two-phase
+solver cannot select a velocity extension. The semi-Lagrangian two-phase solver
+ignores any extension with the default `projectedFlux` trace.
+`sdplsSource::New` lists `"Rdiv"` and `"RdivStrictSp"` by name. `sdplsRdiv`
+finds its flux by the registry name `"phi"`. The plan that removes these four
+breaks is `docs/plan-halo-limited-gradient-control.md`.
+
 ## The best configuration lives in METHOD.md and in the `.parameter` files
 
 **`METHOD.md` is the record of the current best configuration**: what it is, why each
