@@ -192,7 +192,11 @@
     const surfaceScalarField snA(fvc::snGrad(alpha1));
     const scalarField& snIi = snA.primitiveField();
     const scalar snMx = max(gMax(mag(snIi)), VSMALL);
-    const volScalarField magGradPsi(mag(fvc::grad(psi)));
+    // The METRIC gradient: the unlimited gradPsiMetric scheme that every two-phase
+    // fvSchemes template defines for exactly this use. FIXED 2026-09-26: this line used
+    // fvc::grad(psi), i.e. the advection scheme's cellLimited leastSquares, which returns
+    // exactly 0 at a local extremum and so biased min/max/L2 |grad psi| in the band.
+    const volScalarField magGradPsi(mag(fvc::grad(psi, "gradPsiMetric")));
     boolList bnd(mesh.nCells(), false);
     forAll(snIi, f)
     {

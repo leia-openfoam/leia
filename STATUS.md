@@ -3240,3 +3240,13 @@ Other repairs, one commit:
 - DEFERRED, D-c (dims of the `*Droplet2D` cases recorded as 3): the only readers are the 2D field
   plots of `plots.py` and `marker_ref.py`; a fix would switch them on for every droplet study, and
   the gates take the dimension from the gate definition.
+
+### 11.3 Phase B3: the droplet band gradient uses the unlimited metric scheme (2026-09-26)
+
+`writeDropletMetrics.H` computed `minGradPsiBand`, `maxGradPsiBand`, `gradPsiL2ErrorBand` and
+`gradPsiRatioBand` with `fvc::grad(psi)`, the advection scheme `cellLimited leastSquares 1`; it now
+uses `gradPsiMetric` (unlimited `leastSquares`), as the templates require. Gate (laptop, np 4,
+`stationaryDroplet2D` N = 64, 30 steps, reference binaries of c431677 against the new binary): all
+four CSVs identical at tolerance 0, the four columns included. The limiter acts only at a local
+extremum of psi, and a smooth band has none; the fix changes the columns only where the band
+profile is corrupted.
