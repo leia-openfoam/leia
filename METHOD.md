@@ -269,12 +269,23 @@ $$\frac{\rho_c^{n+1}-\rho_c^{n}}{\Delta t}
 
 with $\alpha_f$ from the same reconstructed plane, and after the outer loop
 $\rho \leftarrow \alpha\rho_1+(1-\alpha)\rho_2$ so that $\rho^{\text{old}}$ at the
-next step is geometrically consistent. The auxiliary $\rho$ is never clipped.
+next step is geometrically consistent.
+
+CORRECTED 2026-09-27 (this sentence said "the auxiliary $\rho$ is never clipped"): since
+2026-09-02 the auxiliary density IS clipped to $[\rho_2,\rho_1]$ right after its solve
+(`MASS_FLUX_BOUND_RHO true`). With matched BDF2 the homogeneous part of the density update
+extrapolates and undershoots: `config/rhoDdtGate2D` drove $\rho$ to $-72.28$ without the
+bound; bounded, the matched pair runs the full horizon at $N=128$ with the clip small
+($\mathrm{clipL1}=7.4\times10^{-4}$ against $\rho_2=1.19$). The clip breaks the identity
+that rhoLENT enforces, so it is measured, never silent (`rhoClipL1`, `rhoClipFraction` in the
+droplet CSV).
 Measured relative mass residual $\sim10^{-13}$, including right up to every crash —
 mass transport is not implicated in any failure observed so far.
 
-Interface advanced **once** per step, on the first outer iteration, then held fixed
-across the pressure–velocity correctors.
+CORRECTED 2026-09-27 (this paragraph said the interface is advanced once per step and then
+held fixed): since 2026-08-28 the interface is re-advected from $\psi^n$ on EVERY outer
+corrector with the current velocity iterate (`PSI_OUTER_CORRECTORS yes`, three outer
+correctors); `cases/default.parameter` records the measurement.
 
 ---
 
@@ -348,7 +359,15 @@ that does not override the axis runs it. "gate" is the config whose measurement 
 | `PHASE_INDICATOR` | `detrixheAslam` | default | — | — |
 | `SURFACE_TENSION_FORCE` | `reconstructedCurvature` | per-case | balanced-force gates | — |
 | `FACE_CURVATURE_SOURCE` | `model` | per-case | — | — |
-| `CURVATURE_EXTENSION` | **case-dependent** | per-case | — | `none` for the Popinet translating family, `cellCentreInverse` for the stationary droplet family. Do NOT collapse these to one global value |
+| `CURVATURE_EXTENSION` | **case-dependent** | study config | `translatingLadder2D`, `methodGate2D` | `cellCentreInverse` for the stationary and the oscillating droplet (no dedicated oscillating measurement yet); `none` for the translating droplet: `translatingLadder2D` (none) completed $N=128$ and 181 to 0.1 s and diverged at 256 near 0.08 s, while `cellCentreInverse` diverged at every rung of `methodGate2D` (2026-09-27). The per-case file `translatingDroplet2D.parameter` does NOT set it, so a study without the axis runs the global `cellCentreInverse`; `methodGate2D` and `translatingLadder2D` set `none` explicitly. Do NOT collapse these to one global value |
+| `MASS_FLUX_BOUND_RHO` | `true` | default | `rhoDdtGate2D` | without it matched BDF2 drove $\rho$ to $-72.28$; bounded, clipL1 $7.4\times10^{-4}$ at $N=128$ (Sec. 6) |
+| `MASS_FLUX_ALPHAF_SOURCE` | `donorPlane` | default | author's instruction 2026-09-01 | "only Gauss upwind worked in rhoLENT" |
+| `PSI_OUTER_CORRECTORS` | `yes` | default | 2026-08-28 decision, `cases/default.parameter` | psi re-advected on every outer corrector (Sec. 6) |
+| `N_OUTER_CORRECTORS` | `3` | default | — | the historical value |
+| `MOMENTUM_DIV_SCHEME` | `upwind` | default | 3D stationary droplet, BDF2, $R/h=12.7$ and 15.8 | inert there: the velocity agrees with `linearUpwind` to four significant figures (`cases/default.parameter`); removes the extrapolation with the discontinuous gradient of U across the interface |
+| `VISCOSITY_FACE_MODEL` | `alg_lin` | default (2D templates) | viscosity-contrast ladder at $\mu_1/\mu_2=1000$ | best of six after the frozen-`muf` fix; the 3D droplet templates carry no token and run the solver default `geo_lin` (OPEN) |
+| `CAPILLARY_FORCE_CENTRING` | `endStep` | default | linear analysis | `midpoint` is spectrally identical for the linear capillary oscillator; it costs a second interface pipeline per step |
+| `CURVATURE_INVERSE_GAUSSIAN` | `yes` | default | 3D sphere gate | K-aware inverse $h^{1.95}$, against $h^{1.02}$ without K |
 | mesh family | **hexahedral** | — | `sl_fit_amplification.csv` | Λ_max 1.0527 blockMesh / 1.0549 cartesianMesh / 1.0566 snappy+layers / 1.0538 snapped round channel / 1.0265 and 1.0222 at 2:1 refinement transitions, against **1.2608** on pMesh. cfMesh's own HEX mesher on the SAME meshDict and surface is clean, so the defect is polyhedral cells, not cfMesh and not boundary layers |
 
 ### 8.2 The transport operator amplifies on EVERY mesh (2026-09-09)
