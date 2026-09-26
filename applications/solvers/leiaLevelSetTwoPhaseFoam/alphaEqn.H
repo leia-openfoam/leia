@@ -41,11 +41,10 @@
         U += fvc::reconstruct(mesh.phi());
     }
 
-    // Interface updates ONCE per time step (final outer corrector): the
-    // band refresh, the (criterion-gated) redistancing and the volume
-    // fraction. Re-running these every corrector would repeatedly displace
-    // the interface within one step (redistancing) and recompute the
-    // tet-fill indicator against a psi that is still iterating.
+    // Interface updates. The band refresh, the (criterion-gated) redistancing
+    // and the volume correction run ONCE per time step (final outer corrector):
+    // re-running redistancing every corrector would repeatedly displace the
+    // interface within one step.
     if (pimple.finalIter())
     {
         // Fresh sign-change band BEFORE redistancing (plane-anchored
@@ -77,12 +76,32 @@
             // or lose a cell, exactly as after a redistance event above.
             narrowBand->calc();
         }
+    }
+    else if (psiOuterCorrectors)
+    {
+        // The band of the current psi iterate, for the phase indicator and
+        // the face density below.
+        narrowBand->calc();
+    }
 
+    // The phase indicator, the mixture and the face density follow the
+    // interface: on the final outer corrector (psiOuterCorrectors no), or on
+    // every outer corrector from the current psi iterate (yes).
+    if (pimple.finalIter() || psiOuterCorrectors)
+    {
         phaseInd->calcPhaseIndicator(alpha1, psi);
 
         alpha2 = 1.0 - alpha1;
         mixture.correct();
 
+        // Face area fraction, face density rho_f and face viscosity from the
+        // NEW interface; the geometric cell density for the mass-flux modes
+        // that solve no density equation (shared with the SL solver).
+        #include "updateFaceDensity.H"
+    }
+
+    if (pimple.finalIter())
+    {
         scalar domainFraction =
             alpha1.weightedAverage(mesh.Vsc()).value();
 
@@ -91,5 +110,19 @@
             << "  Min(" << alpha1.name() << ") = " << min(alpha1).value()
             << "  Max(" << alpha1.name() << ") = " << max(alpha1).value()
             << endl;
+    }
+
+    // The mass flux rhoPhi and, for rhoLENT, the auxiliary density, on EVERY
+    // outer corrector: pEqn changes phi, so rhoPhi must be reassembled before
+    // the next UEqn (shared with the SL solver).
+    #include "updateMassFlux.H"
+
+    // The density bound breaks the identity rhoLENT enforces, so it is
+    // reported, never silent. This solver writes no droplet CSV yet, so the
+    // two numbers go to the log.
+    if (useRhoLENT && boundRhoLENT && !freezeRhoPhi)
+    {
+        Info<< "rhoLENT density bound: rhoClipL1 = " << rhoClipL1
+            << ", rhoClipFraction = " << rhoClipFraction << nl << endl;
     }
 }

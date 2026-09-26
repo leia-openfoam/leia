@@ -19,6 +19,7 @@ EXE_INC = \
     -I$(LIB_SRC)/TurbulenceModels/phaseIncompressible/lnInclude \
     -I$(LIB_SRC)/transportModels/immiscibleIncompressibleTwoPhaseMixture/lnInclude \
     -I../../../src/leiaLevelSet/lnInclude \
+    -I../../../src/levelSetImplicitSurfaces/lnInclude \
     -I../leiaSemiLagrangianLevelSetTwoPhaseFoam \
 
 EXE_LIBS = \
@@ -47,4 +48,5 @@ EXE_LIBS = \
     -lleiaVelocityExtension \
     -lleiaSemiLagrangian \
     -lleiaGradientControl \
-    -lleiaCore
+    -lleiaCore \
+    -llevelSetImplicitSurfaces
