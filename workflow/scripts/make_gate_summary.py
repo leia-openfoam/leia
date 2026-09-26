@@ -354,6 +354,15 @@ def verdict(gate, cand, summ, base_summ, orders, base_orders, no_effect, seam):
     lines, ok, cmp_rows = [], True, []
     key = lambda r: (r["arm"], int(r["N"]))
     base = {key(r): r for r in base_summ}
+    # Criterion 1: every baseline case COMPLETED. A rung where the baseline did not complete
+    # carries no comparison (its metrics at T do not exist), so the run is INVALID for the
+    # verdict instead of passing that rung silently. MEASURED 2026-09-27: the baseline of the
+    # translating arm diverged at every rung, and the candidates' comparisons were skipped.
+    invalid = sorted({(b["arm"], int(b["N"]), b.get("state") or "?") for b in base_summ
+                      if b.get("state") != "COMPLETED"})
+    for arm, n, st in invalid:
+        lines.append(f"INVALID baseline: {arm} N={n} is {st} (criterion 1: every baseline case"
+                     f" COMPLETED); this rung is not scored")
     for r in summ:
         b = base.get(key(r))
         if not b:
@@ -416,8 +425,9 @@ def verdict(gate, cand, summ, base_summ, orders, base_orders, no_effect, seam):
             ok = False
     if not cand.get("preRegistered", True):
         lines.append("NOTE: ad-hoc candidate (SET=), NOT pre-registered; exploratory only")
-    lines.insert(0, f"VERDICT {'PASS' if ok else 'FAIL'}: candidate {cand['candidate']} against baseline")
-    return ok, lines, cmp_rows
+    head = "INVALID" if invalid else ("PASS" if ok else "FAIL")
+    lines.insert(0, f"VERDICT {head}: candidate {cand['candidate']} against baseline")
+    return (ok and not invalid), lines, cmp_rows
 
 
 def main(argv=None):

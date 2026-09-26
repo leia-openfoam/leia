@@ -78,7 +78,7 @@ def verdict_row(root, cand):
         return {"verdict": "reference" if cand.startswith("baseline") else "--"}
     lines = open(path).read().splitlines()
     first = lines[0] if lines else ""
-    m = re.search(r"VERDICT (PASS|FAIL)", first)
+    m = re.search(r"VERDICT (PASS|FAIL|INVALID)", first)
     row = {"verdict": m.group(1) if m else "--",
            "regressions": sum(l.startswith("FAIL regression") for l in lines),
            "orders": sum(l.startswith("FAIL order") for l in lines),
