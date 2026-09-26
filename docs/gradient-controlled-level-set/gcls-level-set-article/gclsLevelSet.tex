@@ -111,26 +111,133 @@ Every sample lies inside the radius $R$, and on the interface
 $\nhat^{\mathsf T}(\nabla\bu_H)\nhat=0$.
 
 \subsection{Source-law family}
-%% Table: none, linearQ mu(1-q), linearZ -mu (q^2-1)/2, cubic laws,
-%% regularised 2/3 law, saturated linear z law, the soft wall
-%% -kappa tanh[gamma((q-1)/delta_s)^p]; the strain weight none|full|omega;
-%% the robust inward-pointing condition kappa Theta* >= sigma + ... + mu.
+The source coefficient is
+\begin{equation}
+  F = w(q)\,a + G(q,\sigma),\qquad
+  a=\nhat\cdot\mathbf D\cdot\nhat,\qquad
+  \sigma=\lvert\mathbf D\rvert_F,\qquad
+  \mathbf D=\tfrac12\left(\nabla\bu+\nabla\bu^{\mathsf T}\right),
+  \label{eq:Fdef}
+\end{equation}
+with $G(1,\sigma)=0$ for every law, so that a signed-distance level set is a
+fixed point of \eqref{eq:designlaw}. With $e=q-1$ and $\zeta=(q^2-1)/2$,
+Table~\ref{tab:laws} lists the laws. For the same $\mu$ the linear pair has
+the slope $-\mu$ at $q=1$ and the cubic pair the slope zero, so a difference
+between the q- and the z-form near $q=1$ comes from the discretisation, not
+from the coefficients. The weight $w$ is $0$ (\texttt{none}), $1$
+(\texttt{full}: the SDPLS source $R$ of \cite{FrickeEtAl2022}) or
+$\omega(q)=1-\exp[-\beta((q-1)/\delta_s)^{2m}]$ (\texttt{omega}).
+
+\begin{table}[t]
+  \centering
+  \caption{The source laws $G(q,\sigma)$ of the library
+  \texttt{libleiaGradientControl}; $e=q-1$, $\zeta=(q^2-1)/2$. Every
+  coefficient that a law reads is required in the case dictionary.}
+  \label{tab:laws}
+  \begin{tabular}{lll}
+    \toprule
+    law & $G(q,\sigma)$ & coefficients\\
+    \midrule
+    \texttt{none}             & $0$ & --\\
+    \texttt{linearQ}          & $-\mu e$ & $\mu$\\
+    \texttt{linearZ}          & $-\mu\zeta$ & $\mu$\\
+    \texttt{cubicQ}           & $-\mu e^3$ & $\mu$\\
+    \texttt{cubicZ}           & $-\mu\zeta^3$ & $\mu$\\
+    \texttt{twoThirdsZReg}    & $-\mu\zeta(\zeta^2+\varepsilon^2)^{-1/6}$ & $\mu$, $\varepsilon$\\
+    \texttt{saturatedLinearZ} & $-\mu\zeta/(1+c\lvert\zeta\rvert)$ & $\mu$, $c$\\
+    \texttt{softWall}         & $-C_\kappa\sqrt{\sigma^2+\varepsilon_D^2}\,
+                                 \tanh[\gamma(e/\delta_s)^p]$ &
+                                 $C_\kappa$, $\delta_s$, $p$ odd, $\gamma$, $\varepsilon_D$\\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 %% ---------------------------------------------------------------------------
 \section{Discretisation on unstructured finite-volume meshes}
 \label{sec:fv}
-%% The material-form operator div_h(Phi psi) - psi div_h(Phi) with the ACTUAL
-%% transport flux; the two discrete divergences; the flux correction
-%% Phi^H = Phi^NS + w [U_h(Y) - U_h(x)].S_f; the partition-independent stencil
-%% sampler; the exponential source update; the semi-Lagrangian realisation
-%% (trace along reconstruct(Phi^H), split source step).
+\paragraph{Eulerian line} The level set is transported in material form
+with the flux that actually moves it,
+\begin{equation}
+  \partial_t\psilev+\nabla_h\cdot(\Phi\,\psilev)-\psilev\,\nabla_h\cdot\Phi
+  = \psilev F,
+  \label{eq:materialFV}
+\end{equation}
+where $\Phi$ is the extension flux when an extension is selected. $F$ enters
+through the linearisations of the SDPLS source \cite{FrickeEtAl2022}.
+
+\paragraph{Semi-Lagrangian line} The characteristic step
+$\psilev^A(\bx_c)=\psilev^n(\bx_d)$ traces along
+$\mathrm{reconstruct}(\Phi^H)$ when the extension enters the trace
+(\texttt{traceFlux extension}), and along $\mathrm{reconstruct}(\Phi)$
+otherwise. The source step integrates $\Dt\psilev=\psilev F$ exactly for one
+step with $F$ frozen,
+\begin{equation}
+  \psilev_c^{n+1}=\psilev_c^A\exp(\Delta t\,F_c),
+  \label{eq:expUpdate}
+\end{equation}
+in the band $\lvert\psilev_c\rvert/q_c\le b\,h_c$, with $F=0$ outside it and
+$\lvert\Delta t F\rvert$ clamped at $30$ (every clamp is counted). The update
+changes no sign, so no cell changes phase. $q_c$ comes from a gradient
+scheme that the case selects; $h_c$ is the smallest distance to the centre
+of a face neighbour, coupled neighbours included.
+
+\paragraph{Halo-limited flux} The extension enters as a correction of the
+pressure-corrected flux,
+\begin{equation}
+  \Phi^H_f=\Phi_f+w_f\left[\bu_h(Y_f)-\bu_h(\bx_f)\right]\cdot\mathbf S_f,
+  \qquad
+  R_f=r\min(h_P,h_N),\quad 0<r\le1,
+  \label{eq:hlFlux}
+\end{equation}
+so that $\Phi^H=\Phi$ where $w=0$ and on the physical patches. $\bu_h$ is the
+mean of the owner's and the neighbour's local quadratic models (a weighted
+least-squares value fit over the cell-point-cell stencil, one velocity
+component at a time), each evaluated at the same two points, so that the
+constant part of each model cancels. A linear model would reduce the
+extension to a weighted SDPLS source at first order. On a coupled face each
+side evaluates its own cell's model; the two corrections are summed in the
+owner side's orientation and halved, so the two sides carry exactly opposite
+values. The direction uses $d=\psilev/\sqrt{Q_2}$, $\mathbf e=\nabla\psilev/
+\sqrt{Q_2}$ with $Q_2=q^2+\zeta(q^2)$ and $\zeta(z)=(1-4z)^3/4$ for $z<1/4$,
+zero above: $d=\psilev/q$ and $\mathbf e=\nhat$ hold exactly for $q\ge0.5$.
 
 %% ---------------------------------------------------------------------------
 \section{Implementation in leia}
 \label{sec:impl}
-%% Runtime-selectable families (velocityExtension, sdplsSource, slSource,
-%% gradientControlLaw and the strategies of haloLimited), composition roots per
-%% solver, extension without modification, the parallel design.
+The method is open to extension and closed to modification: a new law,
+extension or strategy is one new class that registers itself in a
+runtime-selection table, and one dictionary word selects it. Table
+\ref{tab:families} lists the families. The solvers hold composition roots
+only; each constructs the families it can select and calls their interface.
+Before the new models, four roots were opened in one commit that changed no
+result: the source family of the semi-Lagrangian line, the velocity
+extension of the Eulerian two-phase solver and of the kinematic
+semi-Lagrangian solver, and the trace flux of both semi-Lagrangian solvers.
+The bit-identity gate compared every CSV at tolerance zero and every written
+field byte for byte against the binaries of the previous commit: 53 cases on
+all five solvers, including hexahedral and polyhedral transport ladders at
+three resolutions, were identical.
+
+\begin{table}[t]
+  \centering
+  \caption{Runtime-selectable families used by the method. The indented
+  rows are strategies: families of their own, selected inside the dictionary
+  of \texttt{gradientControlLaw} and of \texttt{haloLimited}.}
+  \label{tab:families}
+  \begin{tabular}{lll}
+    \toprule
+    family & library & models\\
+    \midrule
+    \texttt{gradientControlLaw} & \texttt{GradientControl} & Table~\ref{tab:laws}\\
+    \quad strategy \texttt{strainWeight} & \texttt{GradientControl} & \texttt{none}, \texttt{full}, \texttt{omega}\\
+    \texttt{sdplsSource} & \texttt{SdplsSource} & \dots, \texttt{gradientControl}\\
+    \texttt{slSource} & \texttt{SemiLagrangian} & \texttt{none}, \texttt{gradientControl}\\
+    \texttt{velocityExtension} & \texttt{VelocityExtension} & \dots, \texttt{closestPoint}, \texttt{haloLimited}\\
+    \quad travel, weight & \texttt{VelocityExtension} & \texttt{capped}, \texttt{fractionReached}\\
+    \quad direction, sampler & \texttt{VelocityExtension} & \texttt{levelSet}, \texttt{stencilFit}\\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 %% ---------------------------------------------------------------------------
 \section{Test cases}
@@ -242,9 +349,36 @@ $\nu_2=\SI{1.53e-5}{m^2/s}$), with $\sigma=\SI{0.07274}{N/m}$ and no gravity.
 %% ---------------------------------------------------------------------------
 \section{Verification}
 \label{sec:verification}
-%% EMPTY until the gates report: unit and exact gates (the law closed forms,
-%% the interfacial cancellation, constant-state preservation), the static
-%% gradient metrology E0, the exact 1D gates E1, the seam gate E2.
+\paragraph{Unit gates} Each model has a unit gate that exits nonzero on
+a failure; the parallel gates run on four ranks with the interface or the
+source band across a processor boundary.
+\begin{itemize}
+  \item The laws (109 checks, no mesh): $G(1)=0$ exactly, the sign of $G$
+  opposite to $q-1$, $\partial G/\partial q$ against a central difference,
+  the equal q/z slopes, the soft-wall response of the table in \cite{BotheDossierHalo2026}
+  table within $5\times10^{-4}$, and fourth-order Runge--Kutta integration
+  of $q'=qG$ against the logistic, the $z$-logistic and the implicit cubic
+  solutions.
+  \item The Eulerian source (189 checks): law \texttt{none} with weight
+  \texttt{full} equals the SDPLS source $R$ bit for bit; \texttt{linearQ}
+  with $\mu=1$ equals the bounded-gradient source with $\beta=1$ exactly;
+  every law applies $F\psilev$ at the exact affine values to $10^{-10}$.
+  \item The semi-Lagrangian source (49 checks on one and on four ranks):
+  \eqref{eq:expUpdate} to $10^{-12}$ in the band, the cells outside it
+  unchanged bit for bit, no sign change, the clamp, and current processor
+  values after the step.
+  \item The halo-limited extension (18 checks on one and on four ranks):
+  $S_R(0)=0$, $S_R'(0)=1$, $\lvert S_R\rvert\le R$ up to $\lvert
+  d\rvert=10^6R$, $1-w=(\beta/2m)(d/R)^{2m}$ to leading order; for an affine
+  and for the divergence-free quadratic velocity of \cite{BotheDossierHalo2026}, the face
+  correction equals \eqref{eq:hlFlux} with the exact velocity at the exact
+  sample point to $2\times10^{-16}$; a uniform velocity leaves $\Phi$ and
+  $\bu$ unchanged bit for bit; the correction is exactly antisymmetric on
+  all 240 coupled faces.
+\end{itemize}
+%% Still EMPTY until the gates report: the static gradient metrology E0, the
+%% exact 1D gates E1 (the oracle for candidates with a source or an extension
+%% is open), the seam gate E2.
 
 %% ---------------------------------------------------------------------------
 \section{Coupled results}
