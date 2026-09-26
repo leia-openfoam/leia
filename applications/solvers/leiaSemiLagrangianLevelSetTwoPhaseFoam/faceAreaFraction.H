@@ -21,6 +21,8 @@
 #define faceAreaFraction_H
 
 #include "fvCFD.H"
+#include "syncTools.H"
+#include "coupledPolyPatch.H"
 #include "levelSetPlaneReconstruction.H"
 #include "levelSetImplicitSurfaces.H"
 #include <algorithm>
@@ -79,9 +81,11 @@ inline scalar faceNegativeFraction
 //                 -- the consistent, stable donor choice; upwind = owner if
 //                 phi>=0 else neighbour).
 //  upwind=false : 1/2 (owner + neighbour) central average (comparison only).
-//  Cells outside the narrow band use their sign (fully one phase). Boundary faces
-//  use the owner-side fraction (exact for walls/empty away from the interface; a
-//  serial-exact first cut on processor patches).
+//  Cells outside the narrow band use their sign (fully one phase). A non-coupled
+//  boundary face has one cell and uses its fraction. A COUPLED face (processor,
+//  cyclic) has a cell on each side, and the two sides must agree on alpha_f: each
+//  side computes its local-cell fraction, the values are swapped, and the donor
+//  rule is applied with the local flux (see the boundary loop).
 //- ADVECTED variant (alphaFSource donorPlaneAdvected): pass the OLD level set and a
 //  face velocity, and the donor plane is displaced by the SAME semi-Lagrangian step
 //  the CELL values undergo before it is cut against the face.
@@ -235,19 +239,66 @@ inline void computeFaceAreaFractions
         }
     }
 
-    surfaceScalarField::Boundary& afbf = alphaf.boundaryFieldRef();
-    forAll(afbf, patchI)
+    // BOUNDARY FACES. A non-coupled face has one cell, so its fraction is that
+    // cell's. A COUPLED face (processor, cyclic) has a donor on EACH side, and
+    // both sides must use the SAME alpha_f: otherwise rho_f*phi differs between
+    // the two sides of the face and mass is not conserved across the seam.
+    // MEASURED 2026-09-27 before this fix (translating droplet, N = 64, np 4, one
+    // step): 4 processor faces with alpha_f different on the two sides, rho_f
+    // different by up to 90 %, while phi matched exactly. Each side computes its
+    // LOCAL-cell fraction, the two values are swapped, and the donor rule uses
+    // the local flux: phi > 0 leaves the local cell (the local cell is the donor),
+    // phi < 0 enters it (the neighbour is). At phi == 0 both sides take the value
+    // of the patch's owner side, so the tie is also decided the same way on both.
+    // The donor's own rank computes the value, so a processor face gets the value
+    // the internal face gets in a serial run, up to the summation order.
+    const label nInt = mesh.nInternalFaces();
+    scalarField localFrac(mesh.nBoundaryFaces(), Zero);
+    forAll(mesh.boundary(), patchI)
     {
         const fvPatch& fvp = mesh.boundary()[patchI];
         const labelUList& fcs = fvp.faceCells();
         const label start = fvp.start();
-        fvsPatchScalarField& afp = afbf[patchI];
-        forAll(afp, i)
+        forAll(fcs, i)
         {
             const label c = fcs[i];
             const scalar dShift = advectPlane && planeSet[c]
               ? -(nCell[c] & (*UfPtr).boundaryField()[patchI][i])*dt : scalar(0);
-            afp[i] = cellFrac(c, start + i, dShift);
+            localFrac[start + i - nInt] = cellFrac(c, start + i, dShift);
+        }
+    }
+    // COLLECTIVE (a matched exchange on every coupled patch): every rank calls it.
+    scalarField neiFrac(localFrac);
+    syncTools::swapBoundaryFaceList(mesh, neiFrac);
+
+    surfaceScalarField::Boundary& afbf = alphaf.boundaryFieldRef();
+    forAll(afbf, patchI)
+    {
+        const fvPatch& fvp = mesh.boundary()[patchI];
+        const label start = fvp.start();
+        fvsPatchScalarField& afp = afbf[patchI];
+        const polyPatch& pp = mesh.boundaryMesh()[patchI];
+        const bool coupled = isA<coupledPolyPatch>(pp);
+        const bool ownerSide =
+            coupled && refCast<const coupledPolyPatch>(pp).owner();
+        const scalarField& phip = phi.boundaryField()[patchI];
+        forAll(afp, i)
+        {
+            const label bfi = start + i - nInt;
+            if (!coupled)
+            {
+                afp[i] = localFrac[bfi];
+            }
+            else if (upwind)
+            {
+                const bool localDonor =
+                    (phip[i] > 0) || (phip[i] == 0 && ownerSide);
+                afp[i] = localDonor ? localFrac[bfi] : neiFrac[bfi];
+            }
+            else
+            {
+                afp[i] = 0.5*(localFrac[bfi] + neiFrac[bfi]);
+            }
         }
     }
 }
