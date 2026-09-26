@@ -2515,7 +2515,7 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
-| `55042210` `leia-gate2D` `long` | **methodGate2D** (2026-09-26 22:41), baseline + S1, HL0, HL1q, HL1z, HL2, FP0 (section 11.12). From `/work/scratch/tm83tomy/leia-gcls` at 4015404; the ledger with the child job ids is that clone's `.my_jobs`. | 7 d (orchestrator) | `studies/methodGate2D_*` there |
+| `55043312` `leia-gate2D` `long` | **methodGate2D** (relaunched 2026-09-26 22:54; the first orchestrator `55042210` stopped after the exact1D arms, section 11.12), baseline + S1, HL0, HL1q, HL1z, HL2, FP0. From `/work/scratch/tm83tomy/leia-gcls` at f7067d9, binaries of 4015404 (src and applications unchanged); the ledger with the child job ids is that clone's `.my_jobs`. | 7 d (orchestrator) | `studies/methodGate2D_*` there |
 | `54354379` `leia-curv` `long` | **interFoamDroplet2D** — re-running the `N` = 512 arm only (the other three are complete at the full 0.1 s horizon with `interFoam.csv` present). 106689 steps at the measured 1.52 steps/s = ~19.5 h. Replaces the arm lost to the cleanup bug above. | 28 h | `studies/interFoamDroplet2D/` |
 | DONE | **filterOffAmplifier3D** 4/4, **upwindConvection2D** 8/8, **upwindConvection3D** 4/4, **filterThetaScaling3D** 6/6 — all analysed, section 4. | — | `studies/*/` |
 | DONE | **stationaryDroplet3Dwide**, **cellCentreInverseFiltered512**, **domainSizeControl10R/6R/4R**, **psiOuterCorrectorsGain3D**, **ddtOrderGain3D** | — | `studies/*/` |
@@ -3499,3 +3499,12 @@ the 4-rank check of CLAUDE.md before the cluster, not a measurement.
 - Read-out when every arm is done: `studies/methodGate2D_summary/<candidate>/{summary,orders,
   vsBaseline}.csv` and `verdict.txt`; pull with `make pull-study STUDY=methodGate2D_summary`.
   The 3D gate runs only after a 2D PASS.
+- FAILED FIRST LAUNCH: all 28 exact1D cases COMPLETED (4 rungs x 7 candidates), then every
+  exact1d_check died on `import yaml`: the gate rules called the first python3 on PATH, which on
+  Lichtenberg is miniconda without yaml (the laptop's has it, so the smoke passed). The gate
+  stopped with nothing else to run (55042210 COMPLETED, rc 2). Fixed in f7067d9: the helpers run on
+  snakemake's own interpreter, as the report rule of workflow/Snakefile already did. The clone
+  pulled f7067d9 (only workflow, docs and STATUS changed since 4015404, so the binaries stay) and
+  the gate was relaunched as `55043312`; the seven finished exact1D arms are not re-run.
+- NOTE for the harvest: the report rule of every non-smoke arm copies its `<study>_errors.csv`
+  into the theme's `data/tables`. Commit only the gate summary tables from there.
