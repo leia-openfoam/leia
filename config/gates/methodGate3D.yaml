@@ -104,7 +104,9 @@ arms:
     T_REF: 0.02
     solve_runtime: 1440
     setfields_args: "-alphaName alpha.water"
-    tokens: {<<: *twoPhaseCoupling, CURVATURE_EXTENSION: none, END_TIME: 0.02, TRANSLATION_SPEED: 0.05, WRITE_INTERVAL: 0.002}
+    # CURVATURE_EXTENSION as in the other droplet arms: no measurement decides it for the
+    # translating droplet (see methodGate2D); END_TIME 0.02 s is 1 R of travel.
+    tokens: {<<: *twoPhaseCoupling, CURVATURE_EXTENSION: cellCentreInverse, END_TIME: 0.02, TRANSLATION_SPEED: 0.05, WRITE_INTERVAL: 0.002}
     smoke: {N_CELLS: [20, 26], END_TIME: 7.6e-4, np: 4}
   oscillating:
     case: oscillatingDroplet3D

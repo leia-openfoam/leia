@@ -247,6 +247,11 @@ These did not run on `translatingDroplet2D` and are unaffected:
 
 ### The curvature chain is exonerated, four times over
 
+RETRACTED 2026-09-27. Three of the four studies below (`wellBalancedTranslating2D`,
+`bestConfigTranslating2D`, `rhoDdtGate2D`) ran on the closed box and are VOID (list above).
+The conclusion also contradicts the amplifierGate2D verdict above: the curvature estimator is
+the source. Do not cite this subsection.
+
 `kinematicTranslation2D` (transport 2nd–3rd order, bounded-α error exactly 0);
 `wellBalancedTranslating2D` (**exact constant curvature still diverged**);
 `bestConfigTranslating2D` (the required extension does not help, hurts coarse rungs);
@@ -254,12 +259,18 @@ These did not run on `translatingDroplet2D` and are unaffected:
 
 ### Leading open defect
 
+RETRACTED 2026-09-27: the +5 to +8 % inflation below comes from `translatingClearOutlet2D`,
+which ran before the fix 440107f (closed box). It is not a measurement of the repaired case.
+
 The droplet **inflates** monotonically, +5% to +8% over the horizon, and at matched
 times the gain does **not** converge under refinement. Untouched by the mass-flux
 model — α comes from ψ, so this is semi-Lagrangian transport under the computed
 velocity field.
 
 ### New, runtime-selectable, default-off (nothing existing moves)
+
+CORRECTED 2026-09-27: `boundRho` defaults to true since 28a1383 (2026-09-02), and with
+`MASS_FLUX rhoLENT` (82ca995, the same day) it is active in every study that does not override it.
 
 `massFlux { boundRho true; }` (clip ρ to `[rho2, rho1]`; the clip is **reported**),
 `massFlux { massResidualDiagnostic true; }` (mass residual for every model),
@@ -321,6 +332,9 @@ any coupled run.
    `kappa_f` constant across a cut cell gives each face a value centred on the cell
    rather than on itself — an O(h) offset wherever curvature varies along the
    interface. Structural; better averaging cannot fix it.
+
+CORRECTED 2026-09-27: since c935883 (2026-09-01) the default is `cellCentreInverse`
+(METHOD.md Sec. 4.1 and 8.1). The paragraph below is the state before that commit.
 
 **Current production delivery, and the only one that passes:**
 `curvatureExtension stabilizedFootPointFace` — the per-face parallel-surface
@@ -929,7 +943,8 @@ studies), 18344 steps each. If the two coarse meshes — stable at their native 
 destabilise purely by taking more, smaller steps, the mechanism is the once-per-step
 frozen capillary force and "finer is less stable" is an artefact of tying dt to h.
 Note `psiOuterCorrectors` defaults **off**, so the three outer correctors currently
-converge momentum and pressure against a force that cannot change.
+converge momentum and pressure against a force that cannot change. CORRECTED 2026-09-27:
+`PSI_OUTER_CORRECTORS` defaults to yes since 5cbfaaa (2026-08-28).
 
 ### Two further defects found by the audit and fixed
 
@@ -3526,3 +3541,82 @@ the 4-rank check of CLAUDE.md before the cluster, not a measurement.
   own interpreter (module Python 3.11.14, yaml and numpy from `~/.local`).
 - NOTE for the harvest: the report rule of every non-smoke arm copies its `<study>_errors.csv`
   into the theme's `data/tables`. Commit only the gate summary tables from there.
+
+### 11.13 The best SL two-phase settings, the record corrected, the translating arm re-run (2026-09-27)
+
+Request (user, 2026-09-27, before an 8-hour absence): find the best measured settings of the SL
+method for the coupling to the two-phase Navier-Stokes equations (mass and momentum consistency
+at high density ratio, the surface-tension force), apply them, and re-run the multiphase studies
+on Lichtenberg.
+
+What was done:
+
+1. A read-only audit of METHOD.md, this file, `cases/default.parameter`, the case files and the
+   study configs.
+2. Both gates carry the best coupling explicitly (8a9b85a, the `twoPhaseCoupling` block). A render
+   check proves that the block changes no case file of the stationary and oscillating arms: the
+   generated case directories of `baseline` and `HL1z` are byte-identical before and after. The
+   translating arm differs only in `endTime`.
+3. The record is corrected: METHOD.md sections 4.1, 4.3, 6, 8.1 and 10, three comments in
+   `cases/default.parameter` (the token set is unchanged, 144 of 144), and five places in this
+   file, each marked CORRECTED or RETRACTED 2026-09-27.
+
+Findings:
+
+1. The closed-box VOID (section 0) removes most of the translating evidence:
+   `matchedBDF2Translating2D` (the ddt pairing table), `massFluxComparison2D` (the rhoLENT
+   translating numbers), `rhoDdtGate2D` and `volumeCorrectionTranslating2D` (the need for
+   boundRho), `bestConfigTranslating2D` (the only none-against-cellCentreInverse comparison),
+   `translatingClearOutlet2D`, and most likely `translatingLadder2D` (committed e8a6660 on the
+   morning of the fix, no record of a run after 440107f, and its N = 128 tokens diverged after
+   the fix in `translatingRepaired2D`).
+2. No `cases/<case>.parameter` sets `CURVATURE_EXTENSION`. The global default is
+   `cellCentreInverse` (c935883). The Popinet `none` is in each Popinet config, at density ratio 1.
+3. `MASS_FLUX_BOUND_RHO` is active with rhoLENT, and its only measured basis is VOID.
+4. METHOD.md sections 4.1 and 10 still described the configuration of 2026-07-31.
+
+The best configuration as it stands (the `twoPhaseCoupling` block of both gates):
+
+| token | value | evidence | status |
+|---|---|---|---|
+| `MASS_FLUX` | rhoLENT | `rhoLENTStationary2D`: residual +1.0 / -22 / +0.1 % at N = 32 / 64 / 128 | stationary only; no translating benefit shown after the fix |
+| `MASS_FLUX_ALPHAF_SOURCE` | donorPlane | the author's instruction (2026-09-01) | no measurement |
+| `MASS_FLUX_BOUND_RHO` | true | none valid | OPEN |
+| `MOMENTUM_DDT_SCHEME`, `RHO_DDT_SCHEME` | backward, backward | the BDF2 rule; the matching argument | the pairing tables are VOID |
+| `MOMENTUM_DIV_SCHEME` | upwind | inert on the 3D stationary droplet; the longest-lived arm of `translatingRepaired2D` (9987 steps) | every translating arm diverges |
+| `VISCOSITY_FACE_MODEL` | alg_lin (2D) | the viscosity-contrast ladder at mu1/mu2 = 1000 | 3D templates have no token (OPEN) |
+| `N_OUTER_CORRECTORS`, `PSI_OUTER_CORRECTORS` | 3, yes | 3 frozen equal 12 re-advected to 3-4 digits | measured |
+| `CAPILLARY_FORCE_CENTRING` | endStep | the linear analysis; a 20-step smoke | no coupled measurement |
+| `SURFACE_TENSION_FORCE`, `FACE_CURVATURE_SOURCE` | reconstructedCurvature, model | non-gradient force content at order +2.01 | constant curvature only |
+| `CURVATURE_EXTENSION` | cellCentreInverse | the 2D stationary ladders: residual 4.60 / 3.81 / 1.55 / 1.49x lower at N = 32-256 | translating undecided; oscillating at N = 128 only |
+| `CURVATURE_INVERSE_GAUSSIAN` | yes | h^1.95 against h^1.02 on the 3D sphere | measured |
+| `CAPILLARY_DT_COEFF` | 0.010861 | 0.2323 of the Brackbill limit at every rung | measured |
+| `PSI_FILTER`, `VOLUME_CORRECTION` | none, noVolumeCorrection | the repository rules | — |
+
+The translating arm. The 0.1 s runs of `55044205` diverged in every candidate. The time of the
+last CSV row, per rung (N = 100 / 142 / 200):
+
+| candidate | N = 100 | N = 142 | N = 200 |
+|---|---|---|---|
+| baseline | 0.0904 | 0.0942 | 0.0772 |
+| S1 | 0.0574 | 0.0433 | 0.0593 |
+| HL0 | 0.0870 | 0.0734 | 0.0619 |
+| HL1q | 0.0996 | 0.0724 | 0.0648 |
+| HL1z | 0.0917 | 0.0718 | 0.0618 |
+| HL2 | 0.0467 | 0.0365 | running (0.0185 at 01:00) |
+| FP0 | 0.0511 | running (0.0432) | running (0.0264) |
+
+1. These are valid results at the pre-registered horizon of 0.1 s, not a wrong setup. They show
+   that the late instability is not a property of the baseline alone. S1 and HL2 diverge before
+   0.05 s at one rung or more. The directories stay, renamed
+   `methodGate2D_<candidate>_translating_endTime0p1_20260927`.
+2. The gate's translating arm ends at 0.05 s with `cellCentreInverse`. The `none` of 8a9b85a is
+   reverted, because its evidence is VOID. The arm then differs from the 0.1 s runs only in
+   `endTime`, so each re-run must reproduce the first 0.05 s of its 0.1 s run byte for byte
+   (`compare_metrics_csv.py`, the two timing columns skipped).
+3. Stated as a change after seeing data: the horizon was pre-registered as 0.1 s and was changed
+   to 0.05 s after the baseline diverged. The verdict at 0.05 s answers one question: does a
+   candidate degrade the translating droplet while the production method is stable? The late
+   instability stays open. Not tried after the fix: `cellCentreInverse` against `none` on a
+   matched setup, a longer box, the RK2 foot integrator, midpoint force centring, and the
+   semi-implicit capillary force.

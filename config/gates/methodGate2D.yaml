@@ -132,14 +132,15 @@ arms:
     T_REF: 0.02             # R/U
     solve_runtime: 600
     setfields_args: "-alphaName alpha.water"
-    # CURVATURE_EXTENSION none and END_TIME 0.05 s (2026-09-27). With the global default
-    # cellCentreInverse the BASELINE diverged at every rung (t = 0.077-0.094 s of 0.1 s; the
-    # spurious current grows from t = 0.06 s at N = 200 while the droplet is still 3 mm from
-    # the outlet). config/translatingLadder2D (same geometry, none) completed N = 128 and 181
-    # to 0.1 s and diverged at N = 256 near t = 0.08 s. The late translating instability of
-    # the production method is an open problem of its own, not a gate arm: 0.05 s (2.5 R of
-    # travel) ends before the measured onset, so criterion 1 can hold.
-    tokens: {<<: *twoPhaseCoupling, CURVATURE_EXTENSION: none, END_TIME: 0.05, DROPLET_OFFSET_X: -0.0025, TRANSLATION_SPEED: 0.05}
+    # END_TIME 0.05 s (2.5 R of travel), CURVATURE_EXTENSION as in the other droplet arms
+    # (2026-09-27). The translating droplet at the water/air density ratio diverges late
+    # with either curvature extension: the baseline of this gate (cellCentreInverse) at
+    # t = 0.077-0.094 s of 0.1 s, the spurious current growing from t = 0.06 s at N = 200;
+    # config/translatingRepaired2D (none, N = 128, after the inlet/outlet fix 440107f) in
+    # all 8 arms at t = 0.063-0.075 s. No valid measurement decides the extension for this
+    # case (the translatingLadder2D completions predate the fix). The late instability is
+    # an open problem of its own; 0.05 s ends before its onset, so criterion 1 can hold.
+    tokens: {<<: *twoPhaseCoupling, CURVATURE_EXTENSION: cellCentreInverse, END_TIME: 0.05, DROPLET_OFFSET_X: -0.0025, TRANSLATION_SPEED: 0.05}
     smoke: {N_CELLS: [32, 45, 64], END_TIME: 4.3e-4}
   oscillating:
     case: oscillatingDroplet2D

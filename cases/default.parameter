@@ -677,6 +677,11 @@ TRANSLATION_SPEED 0.05;
 // also carries the WORST velocity excess of the four arms compared, max|U-U0| = 2.12
 // against 0.14. Whatever transports the droplet correctly currently carries a large
 // max|U-U0|; that anti-correlation is unresolved and is the open problem.
+// CORRECTED 2026-09-27: config/massFluxComparison2D ran on the closed-box translating
+// case (before 440107f) and is VOID (STATUS.md section 0), so the translating numbers
+// above are not evidence. The stationary evidence stands. dec002f then falsified
+// mass-momentum consistency as the dominant term of the late translating instability:
+// nine orders of magnitude in the mass residual moved the velocity excess by less than 2x.
 MASS_FLUX rhoLENT;
 // donorPlane, on the author's instruction (2026-09-01): "only Gauss upwind worked in
 // rhoLENT". This is deliberately NOT the solver's own preference -- createTransport
@@ -788,6 +793,13 @@ VISCOSITY_FACE_MODEL alg_lin;
 // drove rho to -72.28 (config/rhoDdtGate2D). Bounded, the matched backward/backward
 // pairing runs the full horizon at N=128 with the best volume conservation measured on
 // this case, and the clip stays small: clipL1 7.4e-04 against rho2 = 1.19.
+// CORRECTED 2026-09-27, two statements above are wrong. (1) The bound is NOT inert for
+// the shared configuration: MASS_FLUX became rhoLENT the same day (82ca995), so the bound
+// is active in every study that does not override MASS_FLUX. (2) config/rhoDdtGate2D ran
+// on the closed-box translating case and is VOID (STATUS.md section 0): rho -72.28 and
+// clipL1 7.4e-04 are not evidence, and neither is the translating half of the 2026-09-01
+// GAMG measurement. No valid measurement of the bound exists after the fix 440107f
+// (METHOD.md Sec. 6 and 8.1).
 MASS_FLUX_BOUND_RHO true;
 
 // Diagnostic only, no effect on the solution: compute and write the discrete mass
@@ -927,6 +939,12 @@ MASS_FLUX_PROJECT false;
 // is FALSIFIED: with boundRho false the density reached -27.7 and -1786 over the full
 // horizon even with ddt(rho) = Euler. The 4-rank gate that suggested otherwise ran 167
 // steps.
+// CORRECTED 2026-09-27: config/matchedBDF2Translating2D and
+// config/volumeCorrectionTranslating2D ran on the closed-box translating case (before
+// 440107f) and are VOID (STATUS.md section 0), so both pairing tables above and the
+// -27.7 / -1786 densities are not evidence. What stands is the matching argument: with
+// U == U0 the momentum transient reduces to U0 times the mass residual only if ddt(rho,U)
+// and ddt(rho) use the same scheme.
 RHO_DDT_SCHEME backward;
 
 // FLUID PROPERTIES, tokenised 2026-09-02 so the DENSITY RATIO can be swept as a

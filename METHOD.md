@@ -15,7 +15,7 @@ from them. Three layers, later overriding earlier:
 2. `cases/<case>.parameter` — the per-case default, inside a `values { ... }` block
    (`SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );`). This layer exists
    because some settings are genuinely case-dependent, and it must be used rather than
-   silently picking one global winner — see `CURVATURE_EXTENSION` in Sec. 10.
+   silently picking one global winner — see `CURVATURE_EXTENSION` in Sec. 8.1.
 3. `axes_override` in `config/<study>.yaml` — the per-study sweep.
 
 So changing the best configuration means editing a `.parameter` file, and every study
@@ -158,6 +158,14 @@ evaluated **at the cell centre**. There is no normal extension: the foot-point
 Newton projection is off (`curvatureExtension none`), having been measured to
 amplify band curvature 40–85× on a drifted $\psi$.
 
+CORRECTED 2026-09-27: the paragraph above describes the state of 2026-07-31. Since c935883
+(2026-09-01) the global default is `curvatureExtension cellCentreInverse`
+(`cases/default.parameter`). Each cell applies the parallel-surface inverse of Sec. 4.2 in
+place. The offset is `signedOffset`, the stable quadratic root along the normal ray, and in
+3D the inverse includes the Gaussian curvature $K$ (Sec. 4.3). The reconstruction's
+`offsetCorrection` defaults to `none`, and no droplet template sets it. The foot-point Newton
+projection stays off.
+
 ### 4.2 The offset (parallel-curve) correction
 
 $\kappa_d$ is the curvature of the level contour *through the cell centre*, not of
@@ -223,6 +231,13 @@ which reduces to $\kappa = \kappa_d/(1-\tfrac12 d\kappa_d)$ under local spherici
 $K$ is also available from the same fit, so the exact inversion is reachable, but
 **only the 2D form is implemented and only 2D cases have been run.**
 
+CORRECTED 2026-09-27: the exact inversion is implemented and is the default
+(`CURVATURE_INVERSE_GAUSSIAN yes`):
+$\kappa^\Gamma = (\kappa - 2Kd)/(1 - d\kappa + Kd^2)$, with $K = 0$ identically in 2D.
+On the 3D sphere it converges at $h^{1.95}$, against $h^{1.02}$ without $K$, and with $K$ off
+the coupled 3D arms diverge (STATUS.md, the 3D sphere gate). Its second order is measured on
+constant curvature only (`cellCentreInverseCurvature.H`, CAVEAT).
+
 ---
 
 ## 5. Surface tension delivery — balanced force
@@ -274,11 +289,14 @@ next step is geometrically consistent.
 CORRECTED 2026-09-27 (this sentence said "the auxiliary $\rho$ is never clipped"): since
 2026-09-02 the auxiliary density IS clipped to $[\rho_2,\rho_1]$ right after its solve
 (`MASS_FLUX_BOUND_RHO true`). With matched BDF2 the homogeneous part of the density update
-extrapolates and undershoots: `config/rhoDdtGate2D` drove $\rho$ to $-72.28$ without the
-bound; bounded, the matched pair runs the full horizon at $N=128$ with the clip small
-($\mathrm{clipL1}=7.4\times10^{-4}$ against $\rho_2=1.19$). The clip breaks the identity
-that rhoLENT enforces, so it is measured, never silent (`rhoClipL1`, `rhoClipFraction` in the
-droplet CSV).
+can extrapolate and undershoot. RETRACTED 2026-09-27 as evidence: the only measurement of
+that, `config/rhoDdtGate2D` ($\rho$ to $-72.28$ without the bound, $\mathrm{clipL1} =
+7.4\times10^{-4}$ with it), ran on the closed-box translating case and is VOID (STATUS.md
+section 0). No valid measurement of the bound exists after the inlet/outlet fix 440107f. With
+rhoLENT the bound is ACTIVE, not inert: the comment in `cases/default.parameter` assumed
+`geometricFaceDensity`, and `MASS_FLUX` became `rhoLENT` the same day (82ca995). The clip
+breaks the identity that rhoLENT enforces, so it is measured, never silent (`rhoClipL1`,
+`rhoClipFraction` in the droplet CSV).
 Measured relative mass residual $\sim10^{-13}$, including right up to every crash —
 mass transport is not implicated in any failure observed so far.
 
@@ -340,7 +358,7 @@ that does not override the axis runs it. "gate" is the config whose measurement 
 | token | value | layer | gate that decided it | the number |
 |---|---|---|---|---|
 | `MOMENTUM_DDT_SCHEME` | `backward` | default | BDF2-vs-Euler matched windows | gain moved +11.1/+2.9/-3.0 % (sign-flipping = noise); volume and shape within 1.2 %. BDF2 costs nothing and is formally right |
-| `RHO_DDT_SCHEME` | `backward` | default | as above | — |
+| `RHO_DDT_SCHEME` | `backward` | default | as above | the basis is the matching argument (both ddt terms at the same order). CORRECTED 2026-09-27: the backward/Euler pairing table that `cases/default.parameter` cites ran on the closed-box translating case and is VOID (STATUS.md section 0) |
 | `SL_RECONSTRUCTION` | `uncachedQuadraticWeightedLeastSquares` | per-case | transport ladders | 2nd–3rd order shape error to CFL 1 on hex AND cfMesh poly (Sec. 8) |
 | `SL_CORRECTION` | `direct` | default | — | `deferredCorrection` is a research path; no study selects it |
 | `SL_TRACE_VELOCITY` | `projectedFlux` | default | `stationaryDropletFootEval*` | the win is the RECONSTRUCT OPERATOR, not solenoidality (STATUS 2026-08-31) |
@@ -355,12 +373,12 @@ that does not override the axis runs it. "gate" is the config whose measurement 
 | `SL_CONE_INADMISSIBLE` | `cellOnly` | default | B7a | 0.58 % of cell-steps had an EMPTY cone interval, and the recovery path then decides the answer: volume error −67.8 % with `cellOnly` against −5.3 % with `none` on the same mesh. It is not a detail |
 | `PSI_FILTER` | `none` | default | filter-off scoring rule | a filter is a research instrument; production must be stable without it |
 | `VOLUME_CORRECTION` | `noVolumeCorrection` | default | — | — |
-| `MASS_FLUX` | `rhoLENT` | default | consistency studies | — |
+| `MASS_FLUX` | `rhoLENT` | default | `rhoLENTStationary2D` | neutral to better on the stationary droplet: residual +1.0 / −22 / +0.1 % at $N$ = 32 / 64 / 128, volume and shape equal to three digits. CORRECTED 2026-09-27: the translating rationale in `cases/default.parameter` is closed-box VOID, and dec002f falsified mass–momentum consistency as the dominant term of the late translating instability (nine orders of magnitude in the mass residual moved the velocity excess by less than 2x) |
 | `PHASE_INDICATOR` | `detrixheAslam` | default | — | — |
 | `SURFACE_TENSION_FORCE` | `reconstructedCurvature` | per-case | balanced-force gates | — |
 | `FACE_CURVATURE_SOURCE` | `model` | per-case | — | — |
-| `CURVATURE_EXTENSION` | **case-dependent** | study config | `translatingLadder2D`, `methodGate2D` | `cellCentreInverse` for the stationary and the oscillating droplet (no dedicated oscillating measurement yet); `none` for the translating droplet: `translatingLadder2D` (none) completed $N=128$ and 181 to 0.1 s and diverged at 256 near 0.08 s, while `cellCentreInverse` diverged at every rung of `methodGate2D` (2026-09-27). The per-case file `translatingDroplet2D.parameter` does NOT set it, so a study without the axis runs the global `cellCentreInverse`; `methodGate2D` and `translatingLadder2D` set `none` explicitly. Do NOT collapse these to one global value |
-| `MASS_FLUX_BOUND_RHO` | `true` | default | `rhoDdtGate2D` | without it matched BDF2 drove $\rho$ to $-72.28$; bounded, clipL1 $7.4\times10^{-4}$ at $N=128$ (Sec. 6) |
+| `CURVATURE_EXTENSION` | `cellCentreInverse` (global default since c935883); **case-dependent where a measurement says so** | default; study config | stationary: the 2D shared ladders; translating, oscillating: NONE valid | CORRECTED 2026-09-27 (the row cited `translatingLadder2D` for `none` on the translating droplet; that evidence is most likely closed-box VOID). **Stationary 2D:** `cellCentreInverse` lowers the unabsorbed capillary residual 4.60 / 3.81 / 1.55 / 1.49x at $N$ = 32 / 64 / 128 / 256. **Translating 2D: undecided.** The only none-vs-cCI comparison (`bestConfigTranslating2D`) is closed-box VOID; the `translatingLadder2D` completions at $N$ = 128 and 181 have no record of a run after the fix 440107f, and the same tokens diverged after it; `translatingRepaired2D` (`none`, $N$ = 128, post-fix) diverged in all 8 arms at $t$ = 0.063–0.075 s at ratio 838.8; the `methodGate2D` baseline (`cellCentreInverse`) diverged at $t$ = 0.077–0.094 s of 0.1 s. `methodGate2D` runs `cellCentreInverse` with END_TIME 0.05 s, before both onsets. **Oscillating 2D:** `cellCentreInverse` completed $N$ = 128 in `oscillatingLadder2Dshared` where `none` failed at $t$ = 0.0982 s, but `none` had the lower volume error at $N$ = 32 and 64, the study used an algebraic psi, and cCI was never scored on the ellipse gate. **Popinet:** `none` is the setting of the reproduction (each config's `axes_override`, density ratio 1), not a measured preference. No `cases/<case>.parameter` sets this token |
+| `MASS_FLUX_BOUND_RHO` | `true` | default | NONE valid | CORRECTED 2026-09-27: the row cited `rhoDdtGate2D` ($\rho$ to $-72.28$ without the bound), which ran on the closed-box translating case and is VOID. No valid measurement after the fix 440107f. The bound is active with rhoLENT; it is measured (`rhoClipL1`, `rhoClipFraction`) and must be gated before it is called settled (Sec. 6) |
 | `MASS_FLUX_ALPHAF_SOURCE` | `donorPlane` | default | author's instruction 2026-09-01 | "only Gauss upwind worked in rhoLENT" |
 | `PSI_OUTER_CORRECTORS` | `yes` | default | 2026-08-28 decision, `cases/default.parameter` | psi re-advected on every outer corrector (Sec. 6) |
 | `N_OUTER_CORRECTORS` | `3` | default | — | the historical value |
@@ -774,6 +792,16 @@ Rank 1 is tried.
 ## 10. Reproducing the best configuration
 
 `fvSolution`, `levelSet` sub-dictionary:
+
+CORRECTED 2026-09-27: the dictionary below is the state of 2026-07-31. Four entries are no
+longer the best configuration: the droplet templates do not set `offsetCorrection` (the
+parallel-surface inverse is `curvatureExtension cellCentreInverse`, Sec. 4.1); the
+curvature extension is `cellCentreInverse` for the stationary droplet and undecided for the
+translating one (Sec. 8.1); the rhoLENT face density comes from the donor plane
+(`MASS_FLUX_ALPHAF_SOURCE donorPlane`), not from central interpolation, with
+`boundRho true`; and psi is re-advected on every outer corrector (Sec. 6). The executable
+form is `cases/default.parameter` plus the gate's `twoPhaseCoupling` block
+(`config/gates/methodGate2D.yaml`).
 
 ```
 semiLagrangian
