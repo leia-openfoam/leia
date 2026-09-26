@@ -193,7 +193,7 @@ _preprocess = ["cd {params.d}",
                " psiConservation.csv",
                " ".join(filter(None, [SETFIELDS_APP, SETFIELDS_ARGS]))]
 
-_solve = ["cd {params.d}", f"rm -f {SOLVER_CSV} .leia_solver_failed"]
+_solve = ["cd {params.d}", f"rm -f {SOLVER_CSV} .leia_solver_failed .leia_launch"]
 if INIT_END:
     _solve.append(INIT_END)
 # The curvature test app reads the SAME -alphaName flag as leiaSetFields (its
@@ -220,10 +220,25 @@ _solver_cmd = " ".join(
 # log, the full log stays in the case directory, and aggregate.py emits a
 # `solverFailed` column. An EMPTY csv is treated as absent by the aggregator,
 # so the row appears with blank metrics instead of vanishing.
+# LAUNCH RECORD. <case>/.leia_launch keeps what the solver log and the per-step CSV do
+# not: the configured np, the SLURM job id (for sacct), the host, the wall-clock start
+# and end of the solve step, the exit code, and the classifier line of
+# foam_log_state.sh for the finished log, which carries the rank count MPI actually
+# started (nprocs=). aggregate.py reads it into nRanks, wallClockSolve, steps,
+# logState and slurmJobId. Doubled braces: this string is format()ed by snakemake.
+_launch_np = str(NP if PARALLEL else 1)
 _solve += [
     "set +e",
+    'echo "solver=' + SOLVER + '" > .leia_launch',
+    'echo "np=' + _launch_np + '" >> .leia_launch',
+    'echo "slurmJobId=${{SLURM_JOB_ID:-}}" >> .leia_launch',
+    'echo "host=$(hostname)" >> .leia_launch',
+    'echo "start=$(date +%s)" >> .leia_launch',
     f"{_solver_cmd} > log.{SOLVER} 2>&1",
     "rc=$?",
+    'echo "end=$(date +%s)" >> .leia_launch',
+    'echo "rc=$rc" >> .leia_launch',
+    'echo "state=$(bash ' + REPO + '/workflow/scripts/foam_log_state.sh log.' + SOLVER + ' 2>/dev/null)" >> .leia_launch',
     "set -e",
     # DISCRIMINATE: a launch failure is NOT a result.
     #

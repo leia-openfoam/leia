@@ -29,7 +29,9 @@
 #                       (pgrep/squeue) before touching anything
 #   MISSING         5   no log file
 #
-# Also printed: steps=<n Time-lines> age=<seconds since last write>.
+# Also printed: steps=<n Time-lines> age=<seconds since last write> nprocs=<the rank count in
+# the log header "nProcs : N"; 1 for a serial log>. Every field after the state is additive;
+# consumers read the first word and the exit code.
 #
 # Usage:
 #   foam_log_state.sh <log> [--stall SECONDS]
@@ -56,26 +58,27 @@ while [ $# -gt 0 ]; do
 done
 
 classify() {
-    [ -f "$LOG" ] || { echo "MISSING steps=0 age=-1"; return 5; }
-    local steps age
+    [ -f "$LOG" ] || { echo "MISSING steps=0 age=-1 nprocs=0"; return 5; }
+    local steps age nprocs
     # grep -c prints 0 AND exits 1 when nothing matches; `|| echo 0` then produced "0\n0" and
     # the LAUNCH_FAILURE test below errored out (MEASURED 2026-09-23 on a launch-failure log).
     steps=$(grep -c '^Time = ' "$LOG" 2>/dev/null); steps=${steps:-0}
     age=$(( $(date +%s) - $(stat -c %Y "$LOG") ))
+    nprocs=$(grep -m1 -E '^nProcs *: *[0-9]+' "$LOG" 2>/dev/null | grep -oE '[0-9]+$'); nprocs=${nprocs:-1}
     if grep -qE '^End$' "$LOG"; then
-        echo "COMPLETED steps=$steps age=$age"; return 0
+        echo "COMPLETED steps=$steps age=$age nprocs=$nprocs"; return 0
     fi
     # LAUNCH_FAILURE before DIVERGED: an aborted launch also spews MPI noise
     if grep -qE "$LAUNCHFAIL_RE" "$LOG" && [ "$steps" -eq 0 ]; then
-        echo "LAUNCH_FAILURE steps=$steps age=$age"; return 4
+        echo "LAUNCH_FAILURE steps=$steps age=$age nprocs=$nprocs"; return 4
     fi
     if grep -qE "$DIVERGED_RE" "$LOG"; then
-        echo "DIVERGED steps=$steps age=$age"; return 3
+        echo "DIVERGED steps=$steps age=$age nprocs=$nprocs"; return 3
     fi
     if [ "$age" -gt "$STALL" ]; then
-        echo "STALLED steps=$steps age=$age"; return 2
+        echo "STALLED steps=$steps age=$age nprocs=$nprocs"; return 2
     fi
-    echo "RUNNING steps=$steps age=$age"; return 1
+    echo "RUNNING steps=$steps age=$age nprocs=$nprocs"; return 1
 }
 
 if [ "$WAIT" -eq 1 ]; then

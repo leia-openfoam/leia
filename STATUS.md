@@ -3198,3 +3198,45 @@ the clone roots (my ids only).
 then, delete `curvature-v2512.retired-2026-09-24`, `sdpls-v2512.retired-2026-09-24`,
 `~/.leia_env.retired-2026-09-24`, the two `retired-leia-2026-09-24` subfolders (cluster and
 laptop); record the date here. Until then they are the rollback of this work package.
+
+## 11. Halo-limited extension and gradient-control sources (2026-09-26 ->)
+
+Plan: `docs/plan-halo-limited-gradient-control.md` (approved 2026-09-26). Branch
+`feature/gradient-controlled-level-set`, laptop worktree `~/OpenFOAM/repos/leia-gcls`; the
+never-edited reference worktree `~/OpenFOAM/repos/leia-gcls-base` (detached at c431677) holds the
+pre-change binaries for every bit-identity gate. Theme: `docs/gradient-controlled-level-set/`.
+Decisions of 2026-09-26: the SL line first; 3D h ratio >= 1.3; the dossiers stay out of git; ONE
+2D and ONE 3D gate study test every method (no per-method study configs).
+
+### 11.1 Phase A: rules, plan, docs theme (2026-09-26)
+
+- CLAUDE.md and AGENTS.md: the section "Extension without modification" (byte-identical).
+- `docs/plan-combined-source-terms.md` (WP2, WP3) and `docs/combined-source-terms/improvement-sdpls-combined.md`
+  are SUBSUMED: the combined source is `gradientControl` with law `linearQ` and strain weight `full`.
+- The theme skeleton builds (`make article-gcls`, the deck exports).
+
+### 11.2 Phase B1: workflow repairs, and a retraction (2026-09-26)
+
+**RETRACTED: every 2D advection order in METHOD.md section 8.3.7 was 3/2 of the true value.**
+`advection_convergence_table.py` used h_eff = nCells^(-1/3) for every case, so a 2D case with
+N^2 cells had h_eff = N^(-2/3). The corrected orders (h = 1/N) are in METHOD.md 8.3.7: the
+translation `none` arm goes 3.80, 2.10, -0.54 (was 5.70, 3.15, -0.82), the vortex `none` arm
+2.76, 3.23, 2.09 (was 4.15, 4.85, 3.14). The conclusions of 8.3.7 do not change. OPEN: regenerate
+the curated `advConv2D*_convergence.csv` on Lichtenberg (the studies are only there).
+
+Other repairs, one commit:
+- `aggregate.py`: the token copy sat inside the `leia.version` branch since WP2 (cc79df4), so a
+  case without a stamp lost N_CELLS, END_TIME and h, and had no completeness check. MEASURED on
+  three existing studies, old against new aggregator: every changed column goes from blank to its
+  value, except one diverged run (`alphaFTest_averagedPlanes`, DIVERGED at step 4634), whose
+  mid-run row is no longer published as final. The method label of eight `sdpls1Dstretch` arms
+  changes from `euler+div:...` to `euler+SDPLS:R/...`: the old label hid which arms had a source.
+  No physical value changed.
+- `aggregate.py`: completeness now follows OpenFOAM's stopping rule (t_last >= END_TIME - dt/2)
+  instead of 0.99 END_TIME; `seamConsistency3Dpar4` (t_last = 98.7 % of END_TIME) is complete.
+- The solve rule writes `<case>/.leia_launch` (np, SLURM job id, host, start, end, exit code,
+  classifier line); `aggregate.py` reports `nRanks` (from the log header), `wallClockSolve`,
+  `steps`, `logState`, `slurmJobId`. `foam_log_state.sh` prints an additive `nprocs=` field.
+- DEFERRED, D-c (dims of the `*Droplet2D` cases recorded as 3): the only readers are the 2D field
+  plots of `plots.py` and `marker_ref.py`; a fix would switch them on for every droplet study, and
+  the gates take the dimension from the gate definition.

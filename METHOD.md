@@ -576,21 +576,30 @@ and 3.2e-01). **The falsified monotone clip beats the cone bound on every advect
 
 #### 8.3.7 The CONVERGED advection ladders, 2D (2026-09-10)
 
-Four rungs per case, N = 32/64/128/256, matched horizon, CFL fixed, `h_eff` from the
+**RETRACTED AND CORRECTED 2026-09-26: the orders in this section were first published 3/2
+times too high.** `workflow/scripts/advection_convergence_table.py` computed
+h_eff = nCells^(-1/3) for every case. A 2D case has N^2 cells, so that gave h_eff = N^(-2/3)
+instead of 1/N, and every order was 3/2 of the true value. The tables below now carry the
+orders against h = 1/N (the old h_eff column, 9.92e-02 at N = 32, was the wrong spacing). The
+conclusions do not change: the unbounded translation still saturates at N = 256, and the cone
+bound is still worse on the vortex by a factor that grows under refinement. The curated
+`advConv2D*_convergence.csv` tables are regenerated on Lichtenberg with the corrected script.
+
+Four rungs per case, N = 32/64/128/256, matched horizon, CFL fixed, h = 1/N from the
 CELL COUNT. `E_GEOM_ALPHA_REL`, with the observed order between consecutive rungs:
 
 **Uniform translation, grad u = 0 -- the regime where L = 1 is exactly valid.**
 
-| N | h_eff | `none` | order | `lipschitzCone` | order | ratio |
+| N | h | `none` | order | `lipschitzCone` | order | ratio |
 |---|---|---|---|---|---|---|
-| 32 | 9.92e-02 | 4.747e-03 | — | 4.019e-03 | — | **0.85, the bound is BETTER** |
-| 64 | 6.25e-02 | 3.409e-04 | 5.70 | 1.241e-03 | 2.54 | 3.6x worse |
-| 128 | 3.94e-02 | 7.947e-05 | 3.15 | 3.394e-04 | 2.81 | 4.3x worse |
-| 256 | 2.48e-02 | 1.159e-04 | **−0.82** | 2.162e-04 | 0.98 | 1.9x worse |
+| 32 | 3.125e-02 | 4.747e-03 | — | 4.019e-03 | — | **0.85, the bound is BETTER** |
+| 64 | 1.563e-02 | 3.409e-04 | 3.80 | 1.241e-03 | 1.70 | 3.6x worse |
+| 128 | 7.813e-03 | 7.947e-05 | 2.10 | 3.394e-04 | 1.87 | 4.3x worse |
+| 256 | 3.906e-03 | 1.159e-04 | **−0.54** | 2.162e-04 | 0.65 | 1.9x worse |
 
 Two things a single rung could not show. The bound is BETTER at the coarsest rung, so
 "worse on uniform translation" was too simple. And **the unbounded scheme itself
-SATURATES**: its order goes 5.70, 3.15, then −0.82, and the error RISES from 7.95e-05
+SATURATES**: its order goes 3.80, 2.10, then −0.54, and the error RISES from 7.95e-05
 to 1.16e-04 at N = 256. Something other than the transport reconstruction limits this
 case at the finest rung, and that is a finding about the baseline, not about any bound.
 It needs its own investigation before this rung is used to score anything.
@@ -600,13 +609,13 @@ It needs its own investigation before this rung is used to score anything.
 | N | `none` | order | `lipschitzCone` | order | ratio |
 |---|---|---|---|---|---|
 | 32 | 4.266e-02 | — | 3.662e-01 | — | 8.6x |
-| 64 | 6.278e-03 | 4.15 | 1.184e-01 | 2.44 | 18.9x |
-| 128 | 6.670e-04 | 4.85 | 5.115e-02 | 1.82 | 76.7x |
-| 256 | 1.564e-04 | 3.14 | 2.967e-02 | 1.18 | **189.7x** |
+| 64 | 6.278e-03 | 2.76 | 1.184e-01 | 1.63 | 18.9x |
+| 128 | 6.670e-04 | 3.23 | 5.115e-02 | 1.21 | 76.7x |
+| 256 | 1.564e-04 | 2.09 | 2.967e-02 | 0.79 | **189.7x** |
 
 **The disadvantage GROWS with refinement, 8.6x to 190x, and the order is roughly
-halved** (3.14 against 1.18 at the finest pair). The volume error behaves the same way:
-3.95e-05 against 1.302e-02 at N = 256, a factor 330, with order 3.75 against 0.91. This
+halved** (2.09 against 0.79 at the finest pair). The volume error behaves the same way:
+3.95e-05 against 1.302e-02 at N = 256, a factor 330, with order 2.50 against 0.61. This
 is a converged falsification, and it is much stronger than the single rung suggested.
 
 `stencilBounds` tracks `none` to within a few percent on both 2D cases at every rung,

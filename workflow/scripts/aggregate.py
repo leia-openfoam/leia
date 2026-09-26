@@ -65,12 +65,64 @@ def _last_time(path):
 # N=256 against 2.84 at N=181, read off a case sitting at t=0.72 of 1.0. That
 # reads as the error turning over at the fine end -- a convergence claim -- when
 # it is only an earlier time. Blank those metrics and record why.
+#
+# THE CRITERION IS OPENFOAM'S OWN STOPPING RULE. Time::run() ends the loop once the
+# time value is within HALF A STEP of endTime, so a fixed-dt run whose END_TIME is
+# not a multiple of dt stops up to dt/2 short of it. A relative tolerance cannot
+# express that: MEASURED in seamConsistency3Dpar4, a completed 20-step run ended at
+# t = 2.1722e-4 against END_TIME 2.2e-4 (98.7 %) and the old 0.99 rule blanked its
+# final metrics. The step comes from the last two TIME rows of the same CSV; with a
+# write-time-only CSV that difference is the write interval, and the rule still
+# separates a run that stopped at the last write from one that stopped a write
+# earlier. The 0.99 rule is kept only as the fallback for a single-row CSV.
 _END_TIME_TOL = 0.99
 
 
-def _reached(t_last, t_target):
-    return (t_last is not None and t_target is not None
-            and t_last >= _END_TIME_TOL * t_target)
+def _reached(t_last, t_target, dt_last=None):
+    if t_last is None or t_target is None:
+        return False
+    if dt_last is not None and dt_last > 0:
+        return t_last >= t_target - 0.5*dt_last - 1e-12*abs(t_target)
+    return t_last >= _END_TIME_TOL * t_target
+
+
+def _last_step(path):
+    """TIME difference of the last two rows, or None for fewer than two rows."""
+    with open(path, newline="") as fh:
+        times = [_num(r.get("TIME")) for r in csv.DictReader(fh)]
+    times = [x for x in times if x is not None]
+    return (times[-1] - times[-2]) if len(times) >= 2 else None
+
+
+# The solve rule writes <case>/.leia_launch (workflow/Snakefile): one key=value per
+# line -- solver, the configured np, slurmJobId, host, start, end, rc, and the
+# classifier line of workflow/scripts/foam_log_state.sh for the finished log
+# ("COMPLETED steps=N age=S nprocs=P"). nRanks is the rank count MPI actually
+# started (the log header), not the configured np, which a serial run also carries.
+def _launch_record(case_dir):
+    path = os.path.join(case_dir, ".leia_launch")
+    out = {}
+    if not os.path.isfile(path):
+        return out
+    kv = {}
+    with open(path) as fh:
+        for line in fh:
+            if "=" in line:
+                k, v = line.rstrip("\n").split("=", 1)
+                kv[k.strip()] = v.strip()
+    start, end = _num(kv.get("start")), _num(kv.get("end"))
+    if start is not None and end is not None:
+        out["wallClockSolve"] = f"{end - start:.0f}"
+    out["slurmJobId"] = kv.get("slurmJobId", "")
+    state = kv.get("state", "").split()
+    if state:
+        out["logState"] = state[0]
+        for item in state[1:]:
+            if item.startswith("steps="):
+                out["steps"] = item.split("=", 1)[1]
+            elif item.startswith("nprocs="):
+                out["nRanks"] = item.split("=", 1)[1]
+    return out
 
 
 def _half_time_row(path, t_half):
@@ -196,6 +248,10 @@ def _write_error_table(records, database_path):
             # benchVortexEulerT2's 30-row errors CSV sits next to a 15-row
             # database from a different run. Nothing in either file said so.
             "study", "caseDir", "np", "gitCommit", "runDate",
+            # From <case>/.leia_launch (blank for cases run before 2026-09-26):
+            # the rank count MPI started, the wall-clock time of the solve step
+            # [s], the time steps in the log, the classifier state, the job id.
+            "nRanks", "wallClockSolve", "steps", "logState", "slurmJobId",
             # the libraries the solver loaded, "<lib> <git describe>" joined by ";"
             "libStamps",
             # `on` = reversed flow (cos(pi t/tau)); the interface returns to its
@@ -327,6 +383,11 @@ def _write_error_table(records, database_path):
             "study": study,
             "caseDir": rec.get("case_dir", ""),
             "np": rec.get("np", ""),
+            "nRanks": rec.get("nRanks", ""),
+            "wallClockSolve": rec.get("wallClockSolve", ""),
+            "steps": rec.get("steps", ""),
+            "logState": rec.get("logState", ""),
+            "slurmJobId": rec.get("slurmJobId", ""),
             "gitCommit": rec.get("gitCommit", ""),
             "runDate": rec.get("runDate", ""),
             "libStamps": rec.get("libStamps", ""),
@@ -373,6 +434,10 @@ def build_database(case_dirs, out_path):
             for key in ("case", "index", "mesh", "mode", "np",
                         "gitCommit", "runDate"):
                 rec[key] = meta.get(key, "")
+            for k, v in meta.get("tokens", {}).items():
+                rec[k] = v
+        else:
+            rec["index"] = os.path.basename(case_dir)
         # The binaries that ran, as every leia library registered them at load time
         # (src/leiaLevelSet/leiaVersionRegistry.H): the solver writes one line per
         # library, "<library> <git describe[-dirty]>", to <case>/leia.version. Next
@@ -385,10 +450,11 @@ def build_database(case_dirs, out_path):
             with open(stamp_path) as fh:
                 rec["libStamps"] = ";".join(
                     ln.strip() for ln in fh if ln.strip())
-            for k, v in meta.get("tokens", {}).items():
-                rec[k] = v
-        else:
-            rec["index"] = os.path.basename(case_dir)
+        # FIXED 2026-09-26: the WP2 commit (cc79df4) put the token copy and the
+        # `else` above INSIDE this branch, so a case without leia.version (every
+        # case run before 2026-09-23, every leiaTest*/interFoam/interFlow case) lost
+        # N_CELLS, END_TIME and DOMAIN_LENGTH and had its index overwritten.
+        rec.update(_launch_record(case_dir))
         rec["case_dir"] = os.path.relpath(case_dir, os.path.dirname(out_path) or ".")
 
         # The discretization the solver ACTUALLY read, parsed from the rendered
@@ -420,16 +486,17 @@ def build_database(case_dirs, out_path):
             # See _reached(): a per-step CSV exists from the first time step, so
             # only a row that actually reached t_end may fill the t=T columns.
             t_last = _last_time(path)
+            dt_last = _last_step(path)
             if t_last is not None:
                 rec["lastTime"] = f"{t_last:.6g}"
-                rec["endTimeReached"] = ("1" if _reached(t_last, t_end)
+                rec["endTimeReached"] = ("1" if _reached(t_last, t_end, dt_last)
                                          else "0" if t_end else "")
             # Fill the final-time columns only for a run that got there. Still
             # running, or cut short without a non-zero exit, leaves them blank
             # rather than publishing an earlier state as the final one. The
             # half-time block below is judged separately: a run that reached T/2
             # but not T still has a valid T/2 row.
-            if not t_end or _reached(t_last, t_end):
+            if not t_end or _reached(t_last, t_end, dt_last):
                 for k, v in _final_row(path).items():
                     if k is not None:
                         rec[f"{prefix}.{k.strip()}"] = (v or "").strip()
@@ -437,7 +504,7 @@ def build_database(case_dirs, out_path):
             # not cancelled anything yet, so these columns carry the honest
             # forward-deformation error of the advection studies. Same rule --
             # a run that never got to T/2 has no T/2 row to report.
-            if t_end and _reached(t_last, 0.5*t_end):
+            if t_end and _reached(t_last, 0.5*t_end, dt_last):
                 for k, v in _half_time_row(path, 0.5*t_end).items():
                     if k is not None:
                         rec[f"half.{prefix}.{k.strip()}"] = (v or "").strip()

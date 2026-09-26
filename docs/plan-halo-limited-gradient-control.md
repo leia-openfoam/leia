@@ -89,7 +89,7 @@ Richardson/GCI estimates.
 | ID | Where | Defect | Effect |
 |---|---|---|---|
 | D-a | `workflow/scripts/aggregate.py:383-391` | the token copy sits inside `if isfile(leia.version)` | a case without `leia.version` loses N_CELLS, END_TIME and h |
-| D-b | `workflow/scripts/advection_convergence_table.py:107` | h_eff = nCells^(-1/3) also in 2D | every 2D order in `advConv2D*_convergence.csv` is 1.5 times too high; METHOD.md section 8.3.7 (lines 584-618) quotes them (5.70 is really 3.80, 4.15 is 2.77, 4.85 is 3.23) |
+| D-b | `workflow/scripts/advection_convergence_table.py:107` | h_eff = nCells^(-1/3) also in 2D | every 2D order in `advConv2D*_convergence.csv` is 1.5 times too high; METHOD.md section 8.3.7 (lines 584-618) quotes them (5.70 is really 3.80, 4.15 is 2.76, 4.85 is 3.23) |
 | D-c | `workflow/Snakefile:79` | dims from the case-name prefix | every `*Droplet2D` case records dims 3 |
 | D-e | `cases/oscillatingDroplet2D/system/fvSolution.template:382` | algebraic level set | the gradient columns and every band criterion in psi units have no meaning |
 | D-f | `applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/writeDropletMetrics.H:195` | the band |grad psi| uses the limited `fvc::grad(psi)` | the template requires the unlimited `gradPsiMetric` (`fvSchemes.template:104-108`); every two-phase template defines it |
