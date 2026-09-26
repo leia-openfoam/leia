@@ -212,7 +212,12 @@ make gate GATE=methodGate2D SET="line=semiLagrangian,VELOCITY_EXTENSION=haloLimi
 The arms of `methodGate2D` (np 4): `exact1D` (`1Dstretch`, closed form, runs
 first), `shear` (`2Dvortex`, N 68/96/136, reversed, T = 2), `seamNp1`/`seamNp8`
 (the coarsest shear rung at np 1 and 8), `stationary`, `translating`,
-`oscillating` (`*Droplet2D`, N 100/142/200, T = 0.1 s). `methodGate3D` (np 32):
+`oscillating` (`*Droplet2D`, N 100/142/200, T = 0.1 s; the translating arm ends at
+0.05 s), and `translatingSeamNp1` (the coarsest translating rung in serial: the
+decomposition check of the coupled solver, on the error-vector columns of the
+droplet CSV at `seam.tol`; NOT_COMPARABLE if the np 4 reference did not
+complete). An arm gets a seam check with `seam: {np: [...], prefix, tol,
+columns}`; the shear arm keeps the historical `seamNp<np>` names. `methodGate3D` (np 32):
 `exact1D`, `shear` (`3Dshear`, N 68/90/118), `seamNp16`, and the three droplets
 on the 6R box (N 60/78/102). Study names are `<gate>_<candidate>_<arm>`; the
 summaries are in `studies/<gate>_summary/<candidate>/` and, for a real run, in

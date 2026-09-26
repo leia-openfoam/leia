@@ -277,24 +277,41 @@ def orders_of(summary):
     return out
 
 
-def seam_rows(man, studies_dir):
+def seam_rows(man, studies_dir, gate=None):
+    """Every seam arm against the coarsest rung of the arm it belongs to (seamOf), at the
+    gate np. The shear arm compares every column at SEAM_TOL; an arm with seam.columns
+    compares only those columns, at seam.tol. A droplet run whose np-gate reference did not
+    COMPLETE is NOT_COMPARABLE: a divergence decorrelates the two runs at any decomposition."""
     out = []
-    ref_arm = next((a for a in man["arms"] if a["arm"] == "shear"), None)
-    if not ref_arm:
-        return out
-    ref_case = (arm_cases(studies_dir, ref_arm["study"]) or [None])[0]
     for a in man["arms"]:
-        if not a.get("seamOf") or not ref_case:
+        if not a.get("seamOf"):
+            continue
+        ref_arm = next((x for x in man["arms"]
+                        if x["arm"] == a["seamOf"] and not x.get("seamOf")), None)
+        ref_case = (arm_cases(studies_dir, ref_arm["study"]) or [None])[0] if ref_arm else None
+        if not ref_case:
             continue
         case = (arm_cases(studies_dir, a["study"]) or [None])[0]
         if not case:
             out.append({"decomposition": a["arm"], "np": a["np"], "verdict": "MISSING"})
             continue
-        for name in ("gradPsiError.csv", "leiaSemiLagrangeLevelSetFoam.csv", "leiaLevelSetFoam.csv"):
+        tol = float(a.get("seamTol") or SEAM_TOL)
+        only = a.get("seamColumns")
+        if only and gate is not None:
+            solver = gate["solvers"][man["line"]][a["kind"]]
+            st = classify(ref_case, solver).get("state")
+            if st != "COMPLETED":
+                out.append({"decomposition": a["arm"], "np": a["np"], "verdict": "NOT_COMPARABLE",
+                            "detail": f"the np {ref_arm['np']} reference is {st}"})
+                continue
+        for name in ("gradPsiError.csv", "leiaSemiLagrangeLevelSetFoam.csv", "leiaLevelSetFoam.csv",
+                     "leiaSemiLagrangianLevelSetTwoPhaseFoam.csv"):
             pa, pb = os.path.join(ref_case, name), os.path.join(case, name)
             if not (os.path.isfile(pa) and os.path.isfile(pb)):
                 continue
             A, B = read_rows(pa), read_rows(pb)
+            if only and not any(c in A[0] for c in only):
+                continue
             if len(A) != len(B):
                 out.append({"decomposition": a["arm"], "np": a["np"], "csv": name, "verdict": "FAIL",
                             "detail": f"{len(A)} rows vs {len(B)} rows"})
@@ -302,6 +319,8 @@ def seam_rows(man, studies_dir):
             worst, wcol = 0.0, ""
             for col in A[0]:
                 if col in ("ELAPSED_CPU_TIME", "ELAPSED_CLOCK_TIME") or col == "":
+                    continue
+                if only and col not in only:
                     continue
                 va = [r.get(col) for r in A]; vb = [r.get(col) for r in B]
                 if any(x is None for x in va + vb):
@@ -311,7 +330,7 @@ def seam_rows(man, studies_dir):
                 if d > worst:
                     worst, wcol = d, col
             out.append({"decomposition": a["arm"], "np": a["np"], "csv": name,
-                        "verdict": "PASS" if worst <= SEAM_TOL else "FAIL",
+                        "verdict": "PASS" if worst <= tol else "FAIL", "tolerance": tol,
                         "maxColumnScaledDiff": worst, "worstColumn": wcol})
     return out
 
@@ -419,7 +438,9 @@ def verdict(gate, cand, summ, base_summ, orders, base_orders, no_effect, seam):
             else:
                 lines.append(f"PASS target: {arm} {tgt['metric']} ratio {cv / bv:.3f}")
     for s in seam:
-        if s.get("verdict") != "PASS":
+        if s.get("verdict") == "NOT_COMPARABLE":
+            lines.append(f"NOTE seam: {s.get('decomposition')} not comparable ({s.get('detail', '')})")
+        elif s.get("verdict") != "PASS":
             lines.append(f"FAIL seam: {s.get('decomposition')} {s.get('csv', '')} "
                          f"{s.get('worstColumn', '')} {s.get('maxColumnScaledDiff', s.get('detail', ''))}")
             ok = False
@@ -462,7 +483,7 @@ def main(argv=None):
     write_csv(os.path.join(a.summary_dir, "summary.csv"), summ, first=("arm", "N", "nCells", "h", "R_over_h", "state"))
     orders = orders_of(summ)
     write_csv(os.path.join(a.summary_dir, "orders.csv"), orders, first=("arm", "metric"))
-    seam = seam_rows(man, a.studies_dir)
+    seam = seam_rows(man, a.studies_dir, gate)
     write_csv(os.path.join(a.summary_dir, "seam.csv"), seam or [{"decomposition": "none"}])
     outputs = ["summary.csv", "orders.csv", "seam.csv"]
     rc = 0

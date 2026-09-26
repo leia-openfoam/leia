@@ -237,16 +237,20 @@ def render(gate_path, candidates, set_string="", smoke=False, studies_dir=None):
                 scfg = render_arm(gate, arm_name, arm, cand, tokens, rates, smoke,
                                   np_override=np_seam)
                 scfg["axes_override"]["N_CELLS"] = [cfg["axes_override"]["N_CELLS"][0]]
-                sstudy = f"{gate_name}_{cname}_seamNp{np_seam}"
+                # The shear arm keeps the historical label seamNp<np>; another arm names
+                # its own prefix (seam.prefix), so two arms never share a study name.
+                label = f"{seam.get('prefix', 'seam')}Np{np_seam}"
+                sstudy = f"{gate_name}_{cname}_{label}"
                 scfg["study_name"] = sstudy
                 if smoke:
                     scfg["studies_dir"] = studies_dir
-                spath = os.path.join(cdir, "configs", f"seamNp{np_seam}.yaml")
+                spath = os.path.join(cdir, "configs", f"{label}.yaml")
                 write_if_changed(spath, header + yaml.safe_dump(scfg, sort_keys=False))
-                arms.append({"arm": f"seamNp{np_seam}", "seamOf": arm_name, "study": sstudy,
+                arms.append({"arm": label, "seamOf": arm_name, "study": sstudy,
                              "config": spath, "np": scfg["np"], "first": False,
                              "kind": arm["kind"], "case": arm["case"],
-                             "ladder": scfg["axes_override"]["N_CELLS"]})
+                             "ladder": scfg["axes_override"]["N_CELLS"],
+                             "seamTol": seam.get("tol"), "seamColumns": seam.get("columns")})
         resolved = {"candidate": cname, "line": cand["line"], "tokens": tokens,
                     "rates": rates, "preRegistered": cand["preRegistered"],
                     "source": cand["source"], "description": cand.get("description", ""),

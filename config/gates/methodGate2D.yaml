@@ -142,6 +142,14 @@ arms:
     # an open problem of its own; 0.05 s ends before its onset, so criterion 1 can hold.
     tokens: {<<: *twoPhaseCoupling, CURVATURE_EXTENSION: cellCentreInverse, END_TIME: 0.05, DROPLET_OFFSET_X: -0.0025, TRANSLATION_SPEED: 0.05}
     smoke: {N_CELLS: [32, 45, 64], END_TIME: 4.3e-4}
+    # DECOMPOSITION CHECK OF THE COUPLED SOLVER (2026-09-27): the coarsest rung again in
+    # serial; the error-vector columns of the droplet CSV must equal the np 4 run to `tol`
+    # (column-scaled maximum over all rows). Laptop, N = 100, t = 0.05: 3.5e-7 at most after
+    # the coupled-face and droplet-metric fixes; before them 1e-4 to 8e-2. A reference run that
+    # did not COMPLETE makes the check NOT_COMPARABLE (a divergence decorrelates the runs).
+    seam: {np: [1], smokeNp: [1], prefix: translatingSeam, tol: 1.0e-5,
+           columns: [l2MagUPrime, meanMagUPrime, phaseVolumeRelError, zeroSetRadialL2,
+                     gradPsiL2ErrorBand, kErrL2Band, pLaplace, centroidX, centroidY]}
   oscillating:
     case: oscillatingDroplet2D
     kind: twoPhase
