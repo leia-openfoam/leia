@@ -3516,6 +3516,11 @@ the 4-rank check of CLAUDE.md before the cluster, not a measurement.
   give the clone back to the development line: `git switch development && ./Allwmake`.
   Relaunched there as `55044205` (WorkDir `/work/scratch/tm83tomy/leia`); ledger: that clone's `.my_jobs`,
   lines tagged `[gcls session]`.
+- 23:32: 21 of 49 arms done, no rule error; six exact1D checks PASS (baseline 2.5e-6, the same value
+  as in `leia-gcls`). HL2's exact1D arm is complete but its check waits: the outer workflow runs at
+  most 16 local jobs and 16 long `run_arm` jobs hold every slot, so HL2's other arms start late.
+  Fixed for the next run in 778c06f (the checks and the summaries have priority); the running gate
+  keeps the old order.
 - Conda on the cluster: the base env (`~/miniconda3`, Python 3.14) has neither yaml nor numpy, and it
   is the first `python3` on PATH in the jobs. The gate helpers do not use it: they run on snakemake's
   own interpreter (module Python 3.11.14, yaml and numpy from `~/.local`).
