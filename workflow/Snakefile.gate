@@ -107,6 +107,10 @@ rule run_arm:
 
 
 rule exact1d_check:
+    # The outer workflow runs at most GATE_CORES local jobs, and a run_arm job holds its slot
+    # for hours. MEASURED 2026-09-26: HL2's check waited behind 16 running arms although its
+    # exact1D arm had finished. The checks and the summaries go first when a slot frees.
+    priority: 100
     input:
         lambda w: done(next(a["study"] for a in MAN[w.cand]["arms"] if a["arm"] == "exact1D"))
     output:
@@ -118,6 +122,7 @@ rule exact1d_check:
 
 
 rule summarize:
+    priority: 50
     input:
         lambda w: [done(a["study"]) for a in MAN[w.cand]["arms"]]
     output:
@@ -137,6 +142,7 @@ def _compare_inputs(w):
 
 
 rule compare:
+    priority: 50
     input:
         unpack(_compare_inputs)
     output:
