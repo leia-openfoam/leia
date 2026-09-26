@@ -3698,8 +3698,16 @@ np 4 against serial (new): U, alpha, psi and p_rgh equal to 1e-8 relative. Stati
 np 4: displacement 2.5e-13 m, L2 |U| 8.0e-5 m/s. Relative mass residual at ratio 840: 1.2e-10.
 The previous Eulerian binary moves the heavy droplet at 42 % of the stream: every Eulerian
 two-phase result with a moving interface and a density contrast before this commit is wrong
-physics (the OPEN decision on the frozen-rho studies, plan item D-m). Still missing in the
-Eulerian solver: the droplet CSV (plan F2), so it cannot join the coupled gate arms yet.
+physics (the OPEN decision on the frozen-rho studies, plan item D-m). Two steps remain before
+the Eulerian line can join the coupled gate arms:
+
+1. The curvature pipeline. The Eulerian production curvature is the older one
+   (`meanCurvatureClosestPoint` plus the `stabilizedFootPointFace` delivery,
+   `reconstructedCurvatureFields.H`); it does not read `curvatureExtension`, so it cannot run
+   `cellCentreInverse`, the SL best. It needs the same curvature-extension dispatch.
+2. The droplet CSV (plan F2). `writeDropletMetrics.H` needs two small adapters: the CSV name
+   (hard-coded to the SL solver) and the fit object of one research diagnostic
+   (`slAdv->reconstruction()`); everything else it reads exists in the Eulerian solver now.
 
 Also noted, not fixed: `rhoClipFraction` counts round-off clips in pure cells (37-48 % of the
 cells at a clip L1 of 1e-12), so as an error metric it measures round-off; the research
