@@ -588,6 +588,47 @@ an ad-hoc grep against a solver log. Use
         --skip ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME
 
 
+## Method gates: 2D first, 3D on a pass
+
+**Any change to the level-set method runs the 2D method gate before any other
+coupled study.** A change is a new model, a changed default, or a composition
+root that is not inert. The command is
+
+    make gate GATE=methodGate2D CANDIDATES=<name> PROFILE=profiles/slurm
+
+and it runs, on Lichtenberg, the exact 1D arm first and then the 2D shear,
+stationary, translating and oscillating droplet arms at np 4. The 3D method gate
+(`GATE=methodGate3D`) runs only after a 2D pass. The laptop runs only the unit
+tests and the 4-rank smoke (`SMOKE=1`) that "Run it on 4 ranks before it leaves
+the laptop" requires. Reason: a method has given good advection and bad
+hydrodynamics here before, and only the coupled arms show that.
+
+1. ONE 2D study and ONE 3D study test every method. A method enters only as a
+   candidate, a set of case tokens: `config/candidates/<name>.yaml` with the
+   pre-registered read-out in its header, or `SET="TOKEN=value,..."` for an
+   exploratory run that the summary marks as not pre-registered. A method that
+   cannot be configured by tokens alone is not modular. The gate definitions are
+   `config/gates/methodGate{2D,3D}.yaml`; the baseline takes its method settings
+   from the `.parameter` layering, never from a copy.
+2. Every gate run carries the `baseline` candidate on the same commit and
+   binaries. A verdict against a baseline from another commit is not a verdict.
+3. The resolution ladder is a Richardson ladder. In 2D the cell count doubles
+   per rung (h ratio sqrt(2) = 1.414). In 3D the h ratio is at least 1.3 per
+   rung, about 2.2 times the cells, because doubling the cells (h ratio
+   2^(1/3) = 1.26) puts the rungs too close for a stable order estimate (Celik
+   et al., J. Fluids Eng. 130, 078001, 2008). Three rungs at least. The first
+   rung has R/h >= 10. All rungs have the same parity of N.
+4. The gate reports the whole vector per arm: shape, gradient band error,
+   volume, phase-indicator bounds, spurious currents, pressure-jump error,
+   curvature, rank count and wall clock. It reports the observed order of every
+   L2 and L1 metric, and the Richardson extrapolation with the GCI for a quantity
+   without an exact value. It never reports an L_inf order.
+5. The renderer refuses a candidate token that an arm's case does not render.
+   The verdict fails a candidate whose every CSV equals the baseline's: its
+   tokens were not consumed. MEASURED 2026-09-26: `VELOCITY_EXTENSION
+   closestPoint` on the semi-Lagrangian line is such a no-op, because the default
+   `projectedFlux` trace ignores the extension.
+
 ## Constraints that gate what may even be proposed
 
 - **Unstructured FVM only** (see the section above), compact stencils,

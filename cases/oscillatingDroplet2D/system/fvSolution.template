@@ -95,7 +95,10 @@ solvers
     // levelSet.velocityExtension.type selects them). Third and last of the
     // missing dictionary entries that made the velocity-extension arm look like
     // a code block in plan sec. 15.3.
-    Uext
+    // "Uext.*", not Uext: the PIMPLE final corrector solves UextFinal. FIXED 2026-09-26:
+    // every extension model with a linear solve died at step 1 in this case with
+    // "Entry 'UextFinal' not found in dictionary stream/solvers".
+    "Uext.*"
     {
         solver          smoothSolver;
         smoother        symGaussSeidel;

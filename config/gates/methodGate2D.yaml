@@ -1,0 +1,122 @@
+# THE 2D METHOD GATE. One study for EVERY level-set method (CLAUDE.md "Method gates").
+#
+# A method enters only as a CANDIDATE: a set of case tokens (config/candidates/<name>.yaml,
+# or SET="TOKEN=value,..." on the command line). workflow/scripts/render_gate_configs.py
+# turns gate + candidate into one complete study config per arm; workflow/Snakefile runs
+# each arm unchanged. A method that cannot be configured by tokens alone cannot enter.
+#
+#   make gate GATE=methodGate2D CANDIDATES=baseline+<name> PROFILE=profiles/slurm
+#   make gate GATE=methodGate2D CANDIDATES=baseline SMOKE=1 PROFILE=profiles/local
+#
+# THE METHOD SETTINGS ARE NOT COPIED HERE. The baseline is the .parameter layering
+# (cases/default.parameter + cases/<case>.parameter), which is the executable form of
+# METHOD.md. This file holds only the arm setup (horizon, geometry, ladder) and the
+# tokens that define a solver LINE where the kinematic case layer does not carry the
+# production value.
+#
+# LADDER (Richardson): cells x2 per rung (h ratio sqrt 2), first rung R/h >= 10, even N at
+# every rung. dt of the droplets = 10.861 h^1.5 (0.2323 of the Brackbill limit) at every rung.
+#
+# PRE-REGISTERED VERDICT (thresholds are proposals of 2026-09-26):
+#   1. every baseline case COMPLETED; a candidate case that DIVERGED where the baseline
+#      COMPLETED is a FAIL (and a result);
+#   2. no regression: every vector metric at the finest rung <= (1 + regressionTolerance)
+#      x baseline, and every least-squares order >= baseline order - orderTolerance;
+#   3. the candidate's own target from its file;
+#   4. a candidate whose every CSV equals the baseline's is a FAIL ("no effect": its
+#      tokens were not consumed);
+#   5. the exact1D arm passes before any other arm starts.
+gate: methodGate2D
+dims: 2
+theme: gradient-controlled-level-set
+np: 4
+
+solvers:
+  semiLagrangian: {kinematic: leiaSemiLagrangeLevelSetFoam, twoPhase: leiaSemiLagrangianLevelSetTwoPhaseFoam}
+  eulerian:       {kinematic: leiaLevelSetFoam,             twoPhase: leiaLevelSetTwoPhaseFoam}
+
+# Tokens that define a solver line. A candidate cannot set them.
+# SL: the kinematic cases inherit the CACHED reconstruction from cases/default.parameter;
+# the production transport (METHOD.md 8.1) is the uncached one, as the droplet case layers
+# already carry. Eulerian: leiaLevelSetFoam selects its advection by ADVECTION.
+lineTokens:
+  semiLagrangian: {SL_RECONSTRUCTION: uncachedQuadraticWeightedLeastSquares}
+  eulerian:       {ADVECTION: eulerian}
+
+# The only tokens a candidate may set. A token listed under lineOf belongs to that line.
+methodTokens: [VELOCITY_EXTENSION, HL_RADIUS_CELLS, HL_M, HL_BETA, HL_DIRECTION, HL_SAMPLER,
+               SL_TRACE_FLUX, SL_SOURCE, SL_SOURCE_BAND_CELLS,
+               SDPLS_SOURCE, SOURCE_SCHEME,
+               GC_LAW, GC_STRAIN_WEIGHT, GC_MU, GC_EPS, GC_SAT_C,
+               SW_C_KAPPA, SW_DELTA_S, SW_P, SW_GAMMA, SW_EPS_D, OMEGA_BETA, OMEGA_M]
+lineOf:
+  semiLagrangian: [SL_TRACE_FLUX, SL_SOURCE, SL_SOURCE_BAND_CELLS]
+  eulerian:       [SDPLS_SOURCE, SOURCE_SCHEME]
+# Dimensionless rates: a candidate gives GC_M_MU; each arm gets GC_MU = GC_M_MU/T_REF,
+# constant across the rungs and never tied to dt.
+rates: {GC_M_MU: GC_MU}
+
+arms:
+  exact1D:
+    case: 1Dstretch
+    kind: kinematic
+    first: true             # the other arms start only after this arm passes
+    np: 4
+    N_CELLS: [32, 64, 128, 256]
+    T_REF: 1.0              # 1/STRAIN_RATE
+    solve_runtime: 30
+    tokens: {END_TIME: 1, CFL: 0.5, REPORT_WRITE_ONLY: "false", IMPLICIT_SURFACE: implicitPlane,
+             PHASE_INDICATOR: detrixheAslam, REDISTANCER: noRedistancing, N_LAYERS: 3, STRAIN_RATE: 1}
+    smoke: {N_CELLS: [32, 64], END_TIME: 0.1}
+  shear:
+    case: 2Dvortex
+    kind: kinematic
+    reversed: true          # gradient at T/2, shape at T, volume at both
+    N_CELLS: [68, 96, 136]
+    R: 0.15
+    DOMAIN_LENGTH: 1.0
+    T_REF: 1.0              # L/U
+    solve_runtime: 240
+    tokens: {END_TIME: 2, CFL: 0.5, REPORT_WRITE_ONLY: "false", OSCILLATION: "on",
+             PHASE_INDICATOR: detrixheAslam}
+    seam: {np: [1, 8]}      # the coarsest rung again at np 1 and np 8, next to np 4
+    smoke: {N_CELLS: [32, 45, 64], END_TIME: 0.1}
+  stationary:
+    case: stationaryDroplet2D
+    kind: twoPhase
+    flow: stationary
+    N_CELLS: [100, 142, 200]
+    R: 1.0e-3
+    DOMAIN_LENGTH: 0.01
+    T_REF: 3.7e-3           # sqrt(rho R^3/sigma)
+    solve_runtime: 600
+    setfields_args: "-alphaName alpha.water"
+    tokens: {END_TIME: 0.1}
+    smoke: {N_CELLS: [32, 45, 64], END_TIME: 4.3e-4}
+  translating:
+    case: translatingDroplet2D
+    kind: twoPhase
+    flow: translating
+    N_CELLS: [100, 142, 200]
+    R: 1.0e-3
+    DOMAIN_LENGTH: 0.01
+    U: 0.05
+    T_REF: 0.02             # R/U
+    solve_runtime: 600
+    setfields_args: "-alphaName alpha.water"
+    tokens: {END_TIME: 0.1, DROPLET_OFFSET_X: -0.0025, TRANSLATION_SPEED: 0.05}
+    smoke: {N_CELLS: [32, 45, 64], END_TIME: 4.3e-4}
+  oscillating:
+    case: oscillatingDroplet2D
+    kind: twoPhase
+    flow: oscillating
+    N_CELLS: [100, 142, 200]
+    R: 1.0e-3               # equivalent radius, a b = R^2
+    DOMAIN_LENGTH: 0.01
+    T_REF: 1.51e-3          # 1/omega of the n = 2 mode (Lamb, 2D)
+    solve_runtime: 600
+    setfields_args: "-alphaName alpha.water"
+    tokens: {END_TIME: 0.1, DROPLET_SURFACE: signedDistanceEllipse}
+    smoke: {N_CELLS: [32, 45, 64], END_TIME: 4.3e-4}
+
+verdict: {regressionTolerance: 0.10, orderTolerance: 0.3}

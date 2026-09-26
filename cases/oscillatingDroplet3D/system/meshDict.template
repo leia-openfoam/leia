@@ -1,0 +1,68 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                |
+| \\      /  F ield         | cfMesh: A library for mesh generation          |
+|  \\    /   O peration     |                                                |
+|   \\  /    A nd           | Author: Franjo Juretic                         |
+|    \\/     M anipulation  | E-mail: franjo.juretic@c-fields.com            |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      meshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// stationaryDroplet3D POLYHEDRAL mesh (cfMesh pMesh): the same 6R box the hex
+// arms use (DOMAIN_LENGTH 0.006 in blockMeshDict.template), meshed as
+// polyhedra so no face normal is axis-aligned by construction. PURPOSE: the
+// parasitic m = 8 mode on hex meshes is locked to the mesh-symmetry angles;
+// a polyhedral mesh scatters the face orientations, testing whether the
+// orientation coherence -- not the presence -- of the curvature error drives
+// the exponential amplification. MAX_CELL_SIZE plays the role h plays on hex:
+// keep it equal to DOMAIN_LENGTH/N_CELLS so the capillary dt (computed from
+// N_CELLS) matches the actual cell size.
+
+maxCellSize     @!MAX_CELL_SIZE!@;
+surfaceFile     @!SURFACE_FILE!@;
+
+renameBoundary
+{
+    newPatchNames
+    {
+        VisualizationToolkitgeneratedSLAFile_0
+        {
+            newName left; 
+            type wall;
+        }
+        VisualizationToolkitgeneratedSLAFile_1
+        {
+            newName right; 
+            type wall;
+        }
+        VisualizationToolkitgeneratedSLAFile_2
+        {
+            newName front; 
+            type wall;
+        }
+        VisualizationToolkitgeneratedSLAFile_3
+        {
+            newName back; 
+            type wall;
+        }
+        VisualizationToolkitgeneratedSLAFile_4
+        {
+            newName bottom; 
+            type wall;
+        }
+        VisualizationToolkitgeneratedSLAFile_5
+        {
+            newName top; 
+            type wall;
+        }
+    } 
+}
+
+// ************************************************************************* //

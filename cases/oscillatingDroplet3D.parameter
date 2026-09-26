@@ -1,0 +1,21 @@
+// Oscillating droplet, 3D: the mode-2 prolate spheroid of fvSolution.template, released
+// from rest in quiescent air on the certified 6R box. Cloned from stationaryDroplet3D
+// (2026-09-26) for the 3D method gate (config/gates/methodGate3D.yaml, arm oscillating).
+// The semi-axes keep the volume of the sphere of radius DROPLET_RADIUS = 1 mm:
+// a = 1.1e-3, b = c = 1e-3/sqrt(1.1) = 0.9534626e-3, a b c = 1.0000e-9 m^3.
+values
+{
+    solver (leiaSemiLagrangianLevelSetTwoPhaseFoam);
+    N_CELLS ( 60 78 102 );
+    DOMAIN_LENGTH ( 0.006 );
+    CAPILLARY_REF_LENGTH ( 0.01 );
+    // About 2.1 periods of Lamb's n = 2 mode (11.65 ms): enough for the period and
+    // the damping rate from the zero crossings of m2CosCoefficient.
+    END_TIME ( 0.025 );
+    MAX_CO ( 0.1 );
+    CAPILLARY_DT_COEFF ( 0.010861 );
+    SL_RECONSTRUCTION ( uncachedQuadraticWeightedLeastSquares );
+    DROPLET_AXIS_X ( 1.1e-3 );
+    DROPLET_AXIS_Y ( 0.9534626e-3 );
+    DROPLET_AXIS_Z ( 0.9534626e-3 );
+}

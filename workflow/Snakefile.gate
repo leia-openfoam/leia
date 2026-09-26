@@ -1,0 +1,145 @@
+# =============================================================================
+# METHOD GATES: one 2D study and one 3D study for EVERY level-set method
+# (CLAUDE.md "Method gates"; docs/plan-halo-limited-gradient-control.md section 5).
+#
+#   make gate GATE=methodGate2D CANDIDATES=baseline+HL1z PROFILE=profiles/slurm
+#   make gate GATE=methodGate2D SMOKE=1 CANDIDATES=baseline PROFILE=profiles/local
+#   make gate GATE=methodGate2D SET="line=semiLagrangian,VELOCITY_EXTENSION=haloLimited"
+#
+# Each arm of the gate (config/gates/<gate>.yaml) is an ordinary study of
+# workflow/Snakefile, rendered by workflow/scripts/render_gate_configs.py and run through
+# `make studies-one-file`, so the re-run guard (guard_finished_cases.py) and the standard
+# snakemake command line of the Makefile apply to every arm. The baseline of every solver
+# line in play is added automatically: a verdict needs a baseline on the same commit.
+#
+# Order: the exact1D arm of a candidate runs first; its other arms start only after it
+# passes (cheapest discriminator first). Then summary.csv/orders.csv/seam.csv per
+# candidate (make_gate_summary.py) and, for a non-baseline candidate, vsBaseline.csv and
+# verdict.txt. A FAIL verdict is a RESULT: the compare rule succeeds and the file says it.
+# =============================================================================
+import os
+import sys
+
+REPO    = os.path.abspath(os.path.join(workflow.basedir, ".."))
+SCRIPTS = os.path.join(workflow.basedir, "scripts")
+sys.path.insert(0, SCRIPTS)
+import render_gate_configs as RG
+from snakemake.exceptions import WorkflowError
+
+GATE      = str(config["gate"])
+GATE_FILE = os.path.join(REPO, "config", "gates", f"{GATE}.yaml")
+SET       = str(config.get("set", "") or "")
+SMOKE     = str(config.get("smoke", "") or "") in ("1", "true", "True", "yes")
+PROFILE   = str(config.get("profile", "profiles/local"))
+STUDIES   = os.path.abspath(str(config.get("studies_dir", os.path.join(REPO, "studies"))))
+BASELINE_OF_LINE = {"semiLagrangian": "baseline", "eulerian": "baselineEulerian"}
+
+_names = [c for c in str(config.get("candidates", "") or "").replace(",", "+").split("+") if c]
+if SET and "adhoc" not in _names:
+    _names.append("adhoc")
+if not _names:
+    _names = ["baseline"]
+_lines = {RG.load_candidate(n, SET)["line"] for n in _names}
+for _ln in sorted(_lines):
+    if BASELINE_OF_LINE[_ln] not in _names:
+        _names.insert(0, BASELINE_OF_LINE[_ln])
+
+try:
+    _gate, MANIFESTS = RG.render(GATE_FILE, _names, SET, SMOKE, STUDIES)
+except RG.GateError as e:
+    raise WorkflowError(f"[gate] REFUSED: {e}")
+GATE_NAME = MANIFESTS[0]["gate"]
+MAN = {m["candidate"]: m for m in MANIFESTS}
+ARM_OF_STUDY = {a["study"]: (m["candidate"], a) for m in MANIFESTS for a in m["arms"]}
+
+
+def done(study):
+    return os.path.join(STUDIES, study, ".gate_arm.done")
+
+
+def summary_dir(cand):
+    return MAN[cand]["summaryDir"]
+
+
+def exact1d_pass(cand):
+    return os.path.join(summary_dir(cand), "exact1D.pass")
+
+
+wildcard_constraints:
+    study="[A-Za-z0-9_-]+",
+    cand="[A-Za-z0-9-]+",
+
+localrules: all, run_arm, exact1d_check, summarize, compare
+
+
+rule all:
+    input:
+        [os.path.join(summary_dir(c), "verdict.txt") for c in MAN
+         if c not in BASELINE_OF_LINE.values()],
+        [os.path.join(summary_dir(c), "summary.csv") for c in MAN],
+
+
+def _arm_inputs(w):
+    cand, arm = ARM_OF_STUDY[w.study]
+    inputs = {"cfg": arm["config"]}
+    if not arm["first"]:
+        inputs["exact1d"] = exact1d_pass(cand)
+    return inputs
+
+
+rule run_arm:
+    # One arm = one study of workflow/Snakefile. SMOKE stops at aggregate: the report rule
+    # would copy a smoke table into the tracked docs tables.
+    input:
+        unpack(_arm_inputs)
+    output:
+        touch(os.path.join(STUDIES, "{study}", ".gate_arm.done"))
+    params:
+        extra=("--until aggregate" if SMOKE else ""),
+    shell:
+        "cd {REPO} && make -s studies-one-file CFG={input.cfg} PROFILE=" + PROFILE +
+        " SNAKE_EXTRA='{params.extra}'"
+
+
+rule exact1d_check:
+    input:
+        lambda w: done(next(a["study"] for a in MAN[w.cand]["arms"] if a["arm"] == "exact1D"))
+    output:
+        os.path.join(STUDIES, GATE_NAME + "_summary", "{cand}", "exact1D.pass")
+    shell:
+        "python3 " + SCRIPTS + "/make_gate_summary.py --gate " + GATE_FILE +
+        " --summary-dir " + os.path.join(STUDIES, GATE_NAME + "_summary") + "/{wildcards.cand}"
+        " --studies-dir " + STUDIES + " --exact1d-only && touch {output}"
+
+
+rule summarize:
+    input:
+        lambda w: [done(a["study"]) for a in MAN[w.cand]["arms"]]
+    output:
+        os.path.join(STUDIES, GATE_NAME + "_summary", "{cand}", "summary.csv")
+    params:
+        docs=("" if SMOKE else "--docs"),
+    shell:
+        "python3 " + SCRIPTS + "/make_gate_summary.py --gate " + GATE_FILE +
+        " --summary-dir " + os.path.join(STUDIES, GATE_NAME + "_summary") + "/{wildcards.cand}"
+        " --studies-dir " + STUDIES + " {params.docs}"
+
+
+def _compare_inputs(w):
+    base = BASELINE_OF_LINE[MAN[w.cand]["line"]]
+    return {"cand": os.path.join(summary_dir(w.cand), "summary.csv"),
+            "base": os.path.join(summary_dir(base), "summary.csv")}
+
+
+rule compare:
+    input:
+        unpack(_compare_inputs)
+    output:
+        os.path.join(STUDIES, GATE_NAME + "_summary", "{cand}", "verdict.txt")
+    params:
+        base=lambda w: summary_dir(BASELINE_OF_LINE[MAN[w.cand]["line"]]),
+        docs=("" if SMOKE else "--docs"),
+    shell:
+        "python3 " + SCRIPTS + "/make_gate_summary.py --gate " + GATE_FILE +
+        " --summary-dir " + os.path.join(STUDIES, GATE_NAME + "_summary") + "/{wildcards.cand}"
+        " --studies-dir " + STUDIES + " --baseline {params.base} {params.docs} || true"

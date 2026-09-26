@@ -1,0 +1,95 @@
+# THE 3D METHOD GATE. The same arms as config/gates/methodGate2D.yaml in 3D; it runs only
+# after a 2D pass (CLAUDE.md "Method gates"). Same rules, same candidates, same verdict.
+#
+#   make gate GATE=methodGate3D CANDIDATES=baseline+<name> PROFILE=profiles/slurm
+#
+# LADDER (Richardson): h ratio >= 1.3 per rung (Celik et al., J. Fluids Eng. 130, 078001,
+# 2008), about 2.2x the cells per rung; doubling the cells (h ratio 1.26) puts the rungs too
+# close for a stable order estimate. First rung R/h >= 10, even N. Droplets on the certified
+# 6R box (DOMAIN_LENGTH 0.006). The exact1D arm is the same arm as in the 2D gate, so every
+# 3D run carries its own exact check on its own commit and binaries.
+gate: methodGate3D
+dims: 3
+theme: gradient-controlled-level-set
+np: 32
+
+solvers:
+  semiLagrangian: {kinematic: leiaSemiLagrangeLevelSetFoam, twoPhase: leiaSemiLagrangianLevelSetTwoPhaseFoam}
+  eulerian:       {kinematic: leiaLevelSetFoam,             twoPhase: leiaLevelSetTwoPhaseFoam}
+lineTokens:
+  semiLagrangian: {SL_RECONSTRUCTION: uncachedQuadraticWeightedLeastSquares}
+  eulerian:       {ADVECTION: eulerian}
+methodTokens: [VELOCITY_EXTENSION, HL_RADIUS_CELLS, HL_M, HL_BETA, HL_DIRECTION, HL_SAMPLER,
+               SL_TRACE_FLUX, SL_SOURCE, SL_SOURCE_BAND_CELLS,
+               SDPLS_SOURCE, SOURCE_SCHEME,
+               GC_LAW, GC_STRAIN_WEIGHT, GC_MU, GC_EPS, GC_SAT_C,
+               SW_C_KAPPA, SW_DELTA_S, SW_P, SW_GAMMA, SW_EPS_D, OMEGA_BETA, OMEGA_M]
+lineOf:
+  semiLagrangian: [SL_TRACE_FLUX, SL_SOURCE, SL_SOURCE_BAND_CELLS]
+  eulerian:       [SDPLS_SOURCE, SOURCE_SCHEME]
+rates: {GC_M_MU: GC_MU}
+
+arms:
+  exact1D:
+    case: 1Dstretch
+    kind: kinematic
+    first: true
+    np: 4
+    N_CELLS: [32, 64, 128, 256]
+    T_REF: 1.0
+    solve_runtime: 30
+    tokens: {END_TIME: 1, CFL: 0.5, REPORT_WRITE_ONLY: "false", IMPLICIT_SURFACE: implicitPlane,
+             PHASE_INDICATOR: detrixheAslam, REDISTANCER: noRedistancing, N_LAYERS: 3, STRAIN_RATE: 1}
+    smoke: {N_CELLS: [32, 64], END_TIME: 0.1}
+  shear:
+    case: 3Dshear
+    kind: kinematic
+    reversed: true
+    N_CELLS: [68, 90, 118]
+    R: 0.15
+    DOMAIN_LENGTH: 1.0
+    T_REF: 1.0
+    solve_runtime: 1440
+    tokens: {END_TIME: 3, CFL: 0.3, REPORT_WRITE_ONLY: "true", OSCILLATION: "on",
+             PHASE_INDICATOR: detrixheAslam}
+    seam: {np: [16], smokeNp: [8]}
+    smoke: {N_CELLS: [20, 26], END_TIME: 0.1, np: 4}
+  stationary:
+    case: stationaryDroplet3D
+    kind: twoPhase
+    flow: stationary
+    N_CELLS: [60, 78, 102]
+    R: 1.0e-3
+    DOMAIN_LENGTH: 0.006
+    T_REF: 3.7e-3
+    solve_runtime: 1440
+    setfields_args: "-alphaName alpha.water"
+    tokens: {END_TIME: 0.025, DOMAIN_LENGTH: 0.006, WRITE_INTERVAL: 0.0025}
+    smoke: {N_CELLS: [20, 26], END_TIME: 7.6e-4, np: 4}
+  translating:
+    case: translatingDroplet3D
+    kind: twoPhase
+    flow: translating
+    N_CELLS: [60, 78, 102]
+    R: 1.0e-3
+    DOMAIN_LENGTH: 0.006
+    U: 0.05
+    T_REF: 0.02
+    solve_runtime: 1440
+    setfields_args: "-alphaName alpha.water"
+    tokens: {END_TIME: 0.02, TRANSLATION_SPEED: 0.05, WRITE_INTERVAL: 0.002}
+    smoke: {N_CELLS: [20, 26], END_TIME: 7.6e-4, np: 4}
+  oscillating:
+    case: oscillatingDroplet3D
+    kind: twoPhase
+    flow: oscillating
+    N_CELLS: [60, 78, 102]
+    R: 1.0e-3               # equivalent radius, a b c = R^3
+    DOMAIN_LENGTH: 0.006
+    T_REF: 1.854e-3         # 1/omega of the n = 2 mode (Lamb, 3D)
+    solve_runtime: 1440
+    setfields_args: "-alphaName alpha.water"
+    tokens: {END_TIME: 0.025, DOMAIN_LENGTH: 0.006, WRITE_INTERVAL: 0.0025}
+    smoke: {N_CELLS: [20, 26], END_TIME: 7.6e-4, np: 4}
+
+verdict: {regressionTolerance: 0.10, orderTolerance: 0.3}

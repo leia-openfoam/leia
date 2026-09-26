@@ -1,0 +1,7 @@
+# BASELINE of the semi-Lagrangian line: the production method of METHOD.md, exactly as the
+# .parameter layering renders it (no method token set). Every gate run carries it on the
+# same commit and binaries; a verdict against a baseline from another commit is not one.
+candidate: baseline
+line: semiLagrangian
+description: "production semi-Lagrangian method (METHOD.md): no velocity extension, no source"
+tokens: {}

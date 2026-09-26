@@ -189,6 +189,45 @@ oracle, the pressure-algebra tolerance sweep, and the GAMG/PCG solver gate.
 The similarly named Make targets are thin aliases only; they do not own study
 logic or freshness.
 
+## Method gates: methodGate2D and methodGate3D
+
+ONE 2D study and ONE 3D study test every level-set method (CLAUDE.md "Method
+gates"). A method enters only as a CANDIDATE, a set of case tokens.
+
+| File | Content |
+|---|---|
+| `config/gates/methodGate2D.yaml`, `methodGate3D.yaml` | the arms (case, ladder, horizon, geometry), the solver per line, the line tokens, the method tokens a candidate may set, the verdict thresholds |
+| `config/candidates/<name>.yaml` | one candidate: `line`, method `tokens`, dimensionless `rates` (`GC_M_MU`), a `target`, the pre-registered read-out in the header |
+| `workflow/scripts/render_gate_configs.py` | gate + candidate -> one study config per arm, with explicit refusals |
+| `workflow/Snakefile.gate` | render, run every arm through `make studies-one-file`, exact1D first, then summary and verdict |
+| `workflow/scripts/make_gate_summary.py` | `summary.csv`, `orders.csv`, `seam.csv`, `vsBaseline.csv`, `verdict.txt` |
+| `workflow/scripts/richardson.py` | pairwise and least-squares orders; Celik (2008) Richardson and GCI; `--self-test` |
+
+```bash
+make gate GATE=methodGate2D CANDIDATES=baseline+HL1z PROFILE=profiles/slurm
+make gate GATE=methodGate2D SMOKE=1 CANDIDATES=baseline PROFILE=profiles/local
+make gate GATE=methodGate2D SET="line=semiLagrangian,VELOCITY_EXTENSION=haloLimited"
+```
+
+The arms of `methodGate2D` (np 4): `exact1D` (`1Dstretch`, closed form, runs
+first), `shear` (`2Dvortex`, N 68/96/136, reversed, T = 2), `seamNp1`/`seamNp8`
+(the coarsest shear rung at np 1 and 8), `stationary`, `translating`,
+`oscillating` (`*Droplet2D`, N 100/142/200, T = 0.1 s). `methodGate3D` (np 32):
+`exact1D`, `shear` (`3Dshear`, N 68/90/118), `seamNp16`, and the three droplets
+on the 6R box (N 60/78/102). Study names are `<gate>_<candidate>_<arm>`; the
+summaries are in `studies/<gate>_summary/<candidate>/` and, for a real run, in
+`docs/gradient-controlled-level-set/gcls-level-set-article/data/tables/`.
+
+What the renderer refuses: a token that is not a method token; a token of the
+other solver line; a collision with an arm or line token; a candidate token that
+an arm's case does not render (foam_param would drop it silently and the arm
+would run the baseline under the candidate's name). What the verdict fails: a
+candidate case that diverges where the baseline completes; a regression of more
+than 10 % at the finest rung; an order more than 0.3 below the baseline's; a
+candidate whose every CSV equals the baseline's ("no effect"); a failed seam
+check; the candidate's own target. `SMOKE=1` uses coarse N, about 20 steps, and
+stops each arm at `aggregate`, so no smoke table reaches the docs.
+
 ## SDPLS level-set source term (leiaLevelSetFoam)
 
 The source-term line: Eulerian psi advection with a source `S = f_nl(psi^n) psi` that

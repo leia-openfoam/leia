@@ -3260,3 +3260,29 @@ study. New token `DROPLET_SURFACE` (default `implicitEllipsoid`, bit-identical);
 pin `signedDistanceEllipse`. Gate: `oscillatingLadder2Dshared` rendered before and after; only three
 comment lines differ. OPEN, for the author: void the past `oscillatingDroplet2D` studies
 (`_VOID_algebraicPsi_<date>`) or keep them with this caveat.
+
+### 11.5 Phase B5 and B6: the method gates exist, and the 3D oscillating droplet (2026-09-26)
+
+- `config/gates/methodGate{2D,3D}.yaml`, `config/candidates/baseline{,Eulerian}.yaml`,
+  `workflow/scripts/render_gate_configs.py`, `workflow/Snakefile.gate`,
+  `workflow/scripts/make_gate_summary.py`, `workflow/scripts/richardson.py`, Makefile targets
+  `gate` and `studies-one-file`; CLAUDE.md and AGENTS.md section "Method gates".
+- `richardson.py --self-test`: 64 checks PASS (orders p = 1, 2, 3 recovered to 1e-8 on the four
+  integer gate ladders, extrapolated value to 1e-10, the three convergence types).
+- 2D smoke, laptop, baseline (`SMOKE=1`, N 32/45/64, about 20 steps): all 14 cases COMPLETED at
+  np 4; exact1D q error 1.6e-6 (PASS); seam np 1 and np 8 against np 4: column-scaled
+  difference <= 1.9e-12 (PASS).
+- 3D smoke, laptop, baseline (N 20/26, np 4): all 11 cases COMPLETED; seam np 8 against np 4:
+  1.1e-12 (PASS). New case `cases/oscillatingDroplet3D` (mode-2 prolate spheroid, a = 1.1 R,
+  b = c = R/sqrt(1.1), `signedDistanceEllipsoid`): initial volume error -3.23 % at N = 26,
+  against -3.22 % for the sphere at the same N; initial mode-2 coefficient 7.4e-5 m (sphere
+  2e-8 m), decreasing over the 20 steps.
+- FOUND by the gate: every extension model with a linear solve died at step 1 in the eight
+  droplet templates ("Entry 'UextFinal' not found"): their solver entry was `Uext`, not
+  `"Uext.*"`. Fixed (inert for `velocityExtension none`, which never solves for Uext).
+- FOUND by the gate's no-effect check: `VELOCITY_EXTENSION closestPoint` on the SL line gives
+  CSVs identical to the baseline in every arm: the default `projectedFlux` trace ignores the
+  extension. This is the second break named in CLAUDE.md "Extension without modification";
+  step C4 of the plan removes it.
+- FOUND: `writeDropletMetrics.H` sums the zero-set crossings over internal faces only, so the
+  droplet shape columns miss the crossings on processor faces in a parallel run. Open.
