@@ -46,4 +46,5 @@ EXE_LIBS = \
     -lleiaVolumeCorrection \
     -lleiaVelocityExtension \
     -lleiaSemiLagrangian \
+    -lleiaGradientControl \
     -lleiaCore

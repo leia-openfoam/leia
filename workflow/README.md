@@ -302,9 +302,12 @@ FILLED end-time columns; re-aggregate that study before trusting a regenerated t
 `make_beta_target_fig.py`, `make_sdpls_trajectory_fig.py`, `make_bench_fields_fig.py`. Gate:
 `make check-discretization STUDY=<name>` asserts one discretization per study group.
 
-Unit tests outside snakemake: `leiaTestSdplsSource` (89 assertions: the one-step factor of every
-discretization against the closed form, and the sign conventions) and
-`cases/sdplsSourceUnit/Allrun.sh` (the affine unit case).
+Unit tests outside snakemake: `leiaTestSdplsSource` (189 assertions: the one-step factor of every
+discretization against the closed form, the sign conventions, and the `gradientControl` source
+against `R`, `beta` and the exact affine F) and `cases/sdplsSourceUnit/Allrun.sh` (the affine unit
+case); `leiaTestGradientControlLaw` (no case: the laws of `libleiaGradientControl`, 109
+assertions); `cases/slSourceUnit/Allrun.sh` (`leiaTestSlSource`, the semi-Lagrangian
+`gradientControl` source, serial and on 4 ranks, 49 assertions each).
 
 RECORD NOTE (2026-09-22): every kinematic study the article names by identifier has its
 `<study>_errors.csv` versioned in the theme's tables dir, together with the inputs of the generated

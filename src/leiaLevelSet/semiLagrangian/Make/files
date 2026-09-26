@@ -1,5 +1,5 @@
-/* libleiaSemiLagrangian -- the semi-Lagrangian transport: reconstructions, value bounds, correctors, schemes, slAdvection.
-   Links libleiaCore; every solver that can select one of its
+/* libleiaSemiLagrangian -- the semi-Lagrangian transport: reconstructions, value bounds, correctors, schemes, slAdvection,
+   and the scalar sources slSource. Links libleiaCore and libleiaGradientControl (the laws of slGradientControlSource); every solver that can select one of its
    models links it (docs/plan-library-split-and-build-policy.md, WP3). */
 
 slReconstruction.C
@@ -25,6 +25,7 @@ fluxFormScheme.C
 normalProjectedScheme.C
 slAdvection.C
 source/slSource.C
+source/slGradientControlSource.C
 
 leiaStamp_leiaSemiLagrangian.C
 

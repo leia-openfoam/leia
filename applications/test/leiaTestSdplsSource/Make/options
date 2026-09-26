@@ -10,5 +10,6 @@ EXE_LIBS = \
     -lfiniteVolume \
     -lmeshTools \
     -lleiaSdplsSource \
+    -lleiaGradientControl \
     -lleiaCore \
     -llevelSetImplicitSurfaces

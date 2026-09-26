@@ -40,6 +40,7 @@ wmakeLnInclude -u "$ROOT/src/leiaLevelSet" > /dev/null
 # (etc/leia-stamp.sh, printed by every solver and written to <case>/leia.version).
 for entry in \
     leiaCore:src/leiaLevelSet \
+    leiaGradientControl:src/leiaLevelSet/gradientControl \
     leiaSdplsSource:src/leiaLevelSet/sdplsSource \
     leiaSemiLagrangian:src/leiaLevelSet/semiLagrangian \
     leiaVelocityExtension:src/leiaLevelSet/velocityExtension \

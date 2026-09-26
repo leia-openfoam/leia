@@ -110,6 +110,7 @@ Usage
 #include "sdplsSource.H"
 #include "sdplsR.H"
 #include "sdplsBeta.H"
+#include "sdplsGradientControl.H"
 
 using namespace Foam;
 
@@ -492,6 +493,121 @@ int main(int argc, char *argv[])
                 ++nPass;
                 Info<< "ok   " << tag
                     << " R/explicit : source opposes the advective drift" << nl;
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ //
+    // LAYER 4 -- gradientControl (docs/plan-halo-limited-gradient-control.md,
+    // D2). Its special cases reproduce R (law none, weight full) and beta = 1
+    // (law linearQ, mu 1, weight none), and every law applies F*psi with
+    // F = w(q) a + G(q, sigma) at the exact affine values q = c, a = alpha,
+    // sigma = |symm(grad U)|_F = sqrt(2)|alpha|. Slopes c != 1 so that G != 0.
+    // ------------------------------------------------------------------ //
+    {
+        auto fillSlope = [&](const scalar alpha, const scalar c)
+        {
+            forAll(mesh.C(), ci)
+            {
+                const point& x = mesh.C()[ci];
+                psi[ci] = c*x.x();
+                U[ci] = vector(alpha*x.x(), -alpha*x.y(), 0);
+            }
+            forAll(psi.boundaryField(), patchi)
+            {
+                fvPatchScalarField& pp = psi.boundaryFieldRef()[patchi];
+                fvPatchVectorField& pU = U.boundaryFieldRef()[patchi];
+                const vectorField& Cf = mesh.boundary()[patchi].Cf();
+                forAll(pp, i)
+                {
+                    pp[i] = c*Cf[i].x();
+                    pU[i] = vector(alpha*Cf[i].x(), -alpha*Cf[i].y(), 0);
+                }
+            }
+            psi.oldTime() == psi;
+        };
+
+        // Every law coefficient is present, as in the case templates.
+        auto gcDict = [&](const word& law, const word& weight) -> dictionary
+        {
+            dictionary d = srcDict("explicit", 1.0);
+            dictionary l;
+            l.add("type", law);
+            l.add("mu", 1.0);
+            l.add("eps", 0.02);
+            l.add("c", 1.0);
+            l.add("cKappa", 1.25);
+            l.add("deltaS", 0.08);
+            l.add("p", label(5));
+            l.add("gamma", 1.4722194895832204);
+            l.add("epsD", 0.0);
+            dictionary w;
+            w.add("type", weight);
+            w.add("beta", 1.0);
+            w.add("m", label(2));
+            w.add("deltaS", 0.08);
+            l.add("strainWeight", w);
+            d.add("law", l);
+            return d;
+        };
+
+        auto appliedOf = [&](sdplsSource& src) -> scalarField
+        {
+            const fvScalarMatrix B(src.fvmsdplsSource(psi, U));
+            scalarField a(mesh.nCells());
+            forAll(a, ci)
+            {
+                a[ci] = (B.diag()[ci]*psi[ci] - B.source()[ci])/V[ci];
+            }
+            return a;
+        };
+
+        const List<word> laws
+        {
+            "none", "linearQ", "linearZ", "cubicQ", "cubicZ", "twoThirdsZReg",
+            "saturatedLinearZ", "softWall"
+        };
+        const List<word> weights{"none", "full", "omega"};
+
+        for (const scalar alpha : {0.7, -0.7})
+        {
+            for (const scalar c : {0.6, 1.6})
+            {
+                fillSlope(alpha, c);
+                const string tag =
+                    "gradientControl alpha=" + name(alpha) + " c=" + name(c);
+
+                scalarField aR, aG, aB, aQ;
+                { sdplsR src(srcDict("explicit", 1.0), mesh); aR = appliedOf(src); }
+                { sdplsGradientControl src(gcDict("none", "full"), mesh); aG = appliedOf(src); }
+                check(tag + " : law none + weight full == R (bit for bit)",
+                      maxDiff(aG, aR), 0.0, 0.0);
+
+                { sdplsBeta src(srcDict("explicit", 1.0), mesh); aB = appliedOf(src); }
+                { sdplsGradientControl src(gcDict("linearQ", "none"), mesh); aQ = appliedOf(src); }
+                check(tag + " : linearQ mu 1 + weight none == beta 1",
+                      maxDiff(aQ, aB), 0.0, 1e-15);
+
+                for (const word& law : laws)
+                {
+                    for (const word& weight : weights)
+                    {
+                        if (law == "none" && weight == "none") continue;
+                        sdplsGradientControl src(gcDict(law, weight), mesh);
+                        const scalar F = src.law().F
+                        (
+                            c*c, Foam::sqrt(2.0)*mag(alpha), alpha
+                        );
+                        const scalarField a(appliedOf(src));
+                        scalarField expected(mesh.nCells());
+                        forAll(expected, ci)
+                        {
+                            expected[ci] = F*psi[ci];
+                        }
+                        check(tag + " : " + law + "/" + weight
+                              + " applies F*psi", maxDiff(a, expected), 0.0, 1e-10);
+                    }
+                }
             }
         }
     }

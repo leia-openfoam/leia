@@ -3383,3 +3383,37 @@ Gates:
    rendered dictionary differs from the reference only by the inert insertions. The polyhedral
    rung runs both binaries on the same C6 dictionaries (one mesh per resolution); the hex 3D
    rung covers the new 3Dshear dictionaries against the old ones.
+
+### 11.9 Phases D1 to D3: the laws and the two source models (2026-09-26)
+
+- D1 `libleiaGradientControl` (new library; `etc/leia-check-deps.py`, `Allwmake`, every solver's
+  `EXE_LIBS`): the family `gradientControlLaw` (`none`, `linearQ`, `linearZ`, `cubicQ`, `cubicZ`,
+  `twoThirdsZReg`, `saturatedLinearZ`, `softWall`) and its strategy `strainWeight` (`none`,
+  `full`, `omega`). F = w(q) a + G(q, sigma). Every coefficient that a law reads is required;
+  `softWall` refuses an even exponent. `boundedGradient` of the plan is not a class: the
+  bounded-gradient equation with target 1 is `linearQ`, and a second name for the same law would
+  break the one-name rule.
+- D2 `sdplsGradientControl` (`sdplsSource` type `gradientControl`): F is the `nonLinearPart()`,
+  so the discretization and mollifier strategies apply unchanged. It warns when a velocity
+  extension and a strain weight both cancel the strain.
+- D3 `slGradientControlSource` (`semiLagrangian.source` type `gradientControl`): psi <- psi
+  exp(dt F) in the band |psi|/q <= bandCells h, F = 0 outside; |dt F| clamped at 30, counted and
+  written (`slSourceF`, `slSourceClamp`). DEVIATION from the plan: q and n come from
+  fvc::grad(psi, "gradPsiSource"), not from the geometry fit, because only the uncached quadratic
+  fit provides fit derivatives; the case selects the scheme. The scheme keys come to the gate
+  templates in the next commit, with their own render check.
+
+Unit gates (laptop):
+- `leiaTestGradientControlLaw` (new, no mesh): 109 passed. G(1) = 0 exactly for every law, the
+  sign of G, dG/dq against a central difference, the equal q/z slopes, the soft-wall table of the
+  dossier (3 to 10 percent, within 5e-4) and Theta* = 0.9, the strain weights, the SDPLS
+  cancellation, RK4 against the logistic, z-logistic and implicit cubic solutions (RK4 order 4).
+  Two injected law defects (a wrong linearZ slope, a flipped soft-wall sign) fail it.
+- `leiaTestSdplsSource` (extended): 189 passed (89 before). gradientControl with law none and
+  weight full equals R bit for bit; linearQ with mu 1 equals beta 1 (difference 0); every law and
+  weight applies F psi at the exact affine values to 1e-10.
+- `leiaTestSlSource` (new, `cases/slSourceUnit`, serial and np 4 with the band across the
+  processor boundary x = 0): 49 passed on both. psi = psi^0 exp(dt F) in the band (240 cells) to
+  1e-12, psi unchanged outside bit for bit, no sign change, the clamp at |dt F| = 50, the cell
+  size, and current processor-patch values. A mutant without the halo update passes in serial
+  and fails on 4 ranks.

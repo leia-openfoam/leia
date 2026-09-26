@@ -1,5 +1,5 @@
 /* libleiaSdplsSource -- the SDPLS level-set source term family (sdplsSource), its discretizations, mollifiers and gradient models.
-   Links libleiaCore; every solver that can select one of its
+   Links libleiaCore and libleiaGradientControl (the laws of sdplsGradientControl); every solver that can select one of its
    models links it (docs/plan-library-split-and-build-policy.md, WP3). */
 
 sdplsSource.C
@@ -18,6 +18,7 @@ gradPsi/gradPsi.C
 gradPsi/narrowLS.C
 sdplsRdiv.C
 sdplsRdivStrictSp.C
+sdplsGradientControl.C
 
 leiaStamp_leiaSdplsSource.C
 

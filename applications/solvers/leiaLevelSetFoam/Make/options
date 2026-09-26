@@ -17,4 +17,5 @@ EXE_LIBS = \
     -lleiaVelocityExtension \
     -lleiaRedistancer \
     -lleiaVolumeCorrection \
+    -lleiaGradientControl \
     -lleiaCore

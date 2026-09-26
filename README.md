@@ -94,7 +94,7 @@ This builds the libraries and the solvers/utilities (`leiaLevelSetFoam`,
 `platforms/` (`etc/leia-env.sh` sets `WM_PROJECT_USER_DIR` to the clone root; source it
 AFTER OpenFOAM's `etc/bashrc`). Doxygen docs: <https://leia-openfoam.github.io/leia/>.
 
-The level-set code under `src/leiaLevelSet/` is one core library and seven method
+The level-set code under `src/leiaLevelSet/` is one core library and eight method
 libraries, each with its own `Make/` in its directory (split 2026-09-23,
 `docs/plan-library-split-and-build-policy.md`). Every model stays runtime-selectable;
 a solver links every library it can select from, so its case dictionaries choose the
@@ -103,8 +103,9 @@ method and the linker only decides what is loaded:
 | library | contents | links (leia) |
 |---|---|---|
 | `libleiaCore` | `profile`, `narrowBand`, `phaseIndicator`, `velocityModel`, the version registry | `liblevelSetImplicitSurfaces` |
-| `libleiaSdplsSource` | `sdplsSource` | `Core` |
-| `libleiaSemiLagrangian` | `semiLagrangian`, with the scalar-source family `slSource` | `Core` |
+| `libleiaGradientControl` | `gradientControlLaw` and its strategy `strainWeight`: the source laws of the gradient-controlled level set | `Core` |
+| `libleiaSdplsSource` | `sdplsSource` | `Core`, `GradientControl` |
+| `libleiaSemiLagrangian` | `semiLagrangian`, with the scalar-source family `slSource` | `Core`, `GradientControl` |
 | `libleiaVelocityExtension` | `velocityExtension` | `Core`, `SemiLagrangian` |
 | `libleiaRedistancer` | `redistancer` | `Core` |
 | `libleiaVolumeCorrection` | `volumeCorrection` | `Core` |
@@ -113,11 +114,11 @@ method and the linker only decides what is loaded:
 
 | binary | links (every one also links `Core`) |
 |---|---|
-| `leiaLevelSetFoam` | `Advection`, `SdplsSource`, `SemiLagrangian`, `VelocityExtension`, `Redistancer`, `VolumeCorrection` |
-| `leiaLevelSetTwoPhaseFoam` | `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection`, `SemiLagrangian`, `VelocityExtension` |
-| `leiaRedistancedLevelSetFoam` | `Redistancer`, `SdplsSource` |
-| `leiaSemiLagrangeLevelSetFoam` | `SemiLagrangian`, `VelocityExtension` |
-| `leiaSemiLagrangianLevelSetTwoPhaseFoam` | `SemiLagrangian`, `VelocityExtension`, `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection` |
+| `leiaLevelSetFoam` | `Advection`, `SdplsSource`, `SemiLagrangian`, `VelocityExtension`, `Redistancer`, `VolumeCorrection`, `GradientControl` |
+| `leiaLevelSetTwoPhaseFoam` | `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection`, `SemiLagrangian`, `VelocityExtension`, `GradientControl` |
+| `leiaRedistancedLevelSetFoam` | `Redistancer`, `SdplsSource`, `GradientControl` |
+| `leiaSemiLagrangeLevelSetFoam` | `SemiLagrangian`, `VelocityExtension`, `GradientControl` |
+| `leiaSemiLagrangianLevelSetTwoPhaseFoam` | `SemiLagrangian`, `VelocityExtension`, `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection`, `GradientControl` |
 | test applications, `leiaSetFields`, `leiaPerturbMesh` | the libraries whose headers they include |
 
 Two rules keep the boundaries real. Every library links with `--no-undefined`, so a

@@ -44,11 +44,11 @@ prose. The rules that matter most:
   a library about 200 commits ahead of its own source; STATUS.md section 9). The
   workflow sources the file itself in every job (`workflow/Snakefile`, `sh()`);
   `Allwmake`, `Allwclean` and `run-studies.sbatch` source it too.
-  `src/leiaLevelSet` builds as EIGHT libraries: `libleiaCore` and one per method
-  (`sdplsSource`, `semiLagrangian`, `velocityExtension`, `redistancer`,
-  `volumeCorrection`, `surfaceTensionForce` with the capillary fvOption, `advection`),
-  each with its own `Make/` and version stamp (split 2026-09-23, WP3 of
-  `docs/plan-library-split-and-build-policy.md`). Every solver links every library it
+  `src/leiaLevelSet` builds as NINE libraries: `libleiaCore` and one per method
+  (`gradientControl`, `sdplsSource`, `semiLagrangian`, `velocityExtension`,
+  `redistancer`, `volumeCorrection`, `surfaceTensionForce` with the capillary fvOption,
+  `advection`), each with its own `Make/` and version stamp (split 2026-09-23, WP3 of
+  `docs/plan-library-split-and-build-policy.md`; `gradientControl` added 2026-09-26). Every solver links every library it
   can select a model from; a new model goes into the library of its family, a new
   family gets its own `Make/` and a row in `etc/leia-check-deps.py`, which `Allwmake`
   runs and which refuses a header include that the link graph does not cover.

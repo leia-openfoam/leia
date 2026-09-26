@@ -1,0 +1,43 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | Web:      www.OpenFOAM.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+
+solvers
+{
+}
+
+levelSet
+{
+    semiLagrangian
+    {
+        // Only for the geometryFit argument of apply(); the source does not use it.
+        reconstruction  linearWeightedLeastSquares;
+
+        // leiaTestSlSource replaces the law of this block for every test.
+        source
+        {
+            type        gradientControl;
+            bandCells   3;
+            law
+            {
+                type    linearZ;
+                mu      2;
+                strainWeight { type none; }
+            }
+        }
+    }
+}
+
+// ************************************************************************* //
