@@ -419,7 +419,8 @@ the CSV; then push.
   band L2 of |q - 1| and of |zeta| on the exact signed-distance initial fields of every arm and rung.
   This sets `SW_DELTA_S = 0.10 - eps_q` and `GC_EPS = C_eps E_zeta` with C_eps in {0.5, 1, 2}. The gates
   use hex meshes only; other mesh families are out of their scope.
-- **E1.** The `exact1D` arm of every 2D gate run (closed forms of D2 and D3).
+- **E1.** The `exact1D` arm of every gate run, 2D and 3D (closed forms of D2 and D3). The other arms
+  start only after it passes.
 - **E2.** The `seam` sub-arm of every gate run (2D: np 1, 4, 8 at the coarsest shear rung; 3D: np 16 and
   32). Pass: every CSV column equal to 1e-10 relative (for an Eulerian `R`-type strain weight the psi
   solver tolerance is 1e-14, per STATUS.md section 9).
@@ -458,7 +459,8 @@ before that, because those gates do not need the two-phase solver.
 
 What the gates replace (planned earlier as separate studies, now parts of the gates):
 - the smoke gate: `SMOKE=1` on the same gate (coarse N, about 20 steps, `profiles/local`);
-- the exact 1D checks: the `exact1D` arm of the 2D gate (`1Dstretch`, closed form);
+- the exact 1D checks: the `exact1D` arm, the FIRST arm of BOTH gates (`1Dstretch`, closed form, seconds);
+  the other arms start only after it passes, so every gate run carries its own exact check;
 - the static gradient metrology: the t = 0 rows of every arm (exact signed distance on the gate meshes);
 - the seam checks: the `seam` sub-arm (the coarsest shear rung at np 1 and np 8 next to np 4 in 2D; np 16
   next to np 32 in 3D), reported as the maximum relative CSV difference.
@@ -524,6 +526,7 @@ What the gates replace (planned earlier as separate studies, now parts of the ga
 
 | Arm | Case | N | Cells | h ratio | R/h | END_TIME | Steps |
 |---|---|---|---|---|---|---|---|
+| exact1D | `1Dstretch` (the same arm as in the 2D gate) | as `sdpls1Dstretch` | 1D | | | as `sdpls1Dstretch` | seconds |
 | shear | `3Dshear` (unit cube, R = 0.15, reversed) | 68/90/118 | 314 432 / 729 000 / 1 643 032 | 1.324, 1.311 | 10.2 / 13.5 / 17.7 | 3 (CFL 0.3) | CFL-controlled |
 | stationary | `stationaryDroplet3D`, 6R box (L = 6 mm) | 60/78/102 | 216 000 / 474 552 / 1 061 208 | 1.300, 1.308 | 10.0 / 13.0 / 17.0 | 0.025 | 2 302 / 3 412 / 5 102 |
 | translating | `translatingDroplet3D`, 6R box | 60/78/102 | same | same | same | 0.02 | 1 842 / 2 730 / 4 082 |
