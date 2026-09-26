@@ -2515,6 +2515,7 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
+| `55042210` `leia-gate2D` `long` | **methodGate2D** (2026-09-26 22:41), baseline + S1, HL0, HL1q, HL1z, HL2, FP0 (section 11.12). From `/work/scratch/tm83tomy/leia-gcls` at 4015404; the ledger with the child job ids is that clone's `.my_jobs`. | 7 d (orchestrator) | `studies/methodGate2D_*` there |
 | `54354379` `leia-curv` `long` | **interFoamDroplet2D** — re-running the `N` = 512 arm only (the other three are complete at the full 0.1 s horizon with `interFoam.csv` present). 106689 steps at the measured 1.52 steps/s = ~19.5 h. Replaces the arm lost to the cleanup bug above. | 28 h | `studies/interFoamDroplet2D/` |
 | DONE | **filterOffAmplifier3D** 4/4, **upwindConvection2D** 8/8, **upwindConvection3D** 4/4, **filterThetaScaling3D** 6/6 — all analysed, section 4. | — | `studies/*/` |
 | DONE | **stationaryDroplet3Dwide**, **cellCentreInverseFiltered512**, **domainSizeControl10R/6R/4R**, **psiOuterCorrectorsGain3D**, **ddtOrderGain3D** | — | `studies/*/` |
@@ -3476,3 +3477,17 @@ the 4-rank check of CLAUDE.md before the cluster, not a measurement.
 - The kinematic SL solver evaluated the extension three times per step (t^(n+1), t^n, t^(n+1));
   it now evaluates t^n first and t^(n+1) second. The HL0 shear smoke is bit-identical before and
   after (3 rungs, both CSVs at tolerance 0).
+
+### 11.12 The 2D method gate runs on Lichtenberg (2026-09-26)
+
+- New clone `/work/scratch/tm83tomy/leia-gcls` (branch `feature/gradient-controlled-level-set`,
+  commit 4015404), its own binaries (`etc/leia-env.sh`); the other sessions' clones are not
+  touched. Verified before the launch: the clone's solver on PATH, the stamps g4015404 without
+  `-dirty`, the symbols of haloLimited, slGradientControlSource and softWall in the libraries,
+  and a dry run of 70 jobs (49 arms, 7 exact1D checks, 7 summaries, 6 comparisons).
+- Orchestrator `55042210` (`leia-gate2D`, partition `long`), `make gate GATE=methodGate2D
+  CANDIDATES=S1+HL0+HL1q+HL1z+HL2+FP0 PROFILE=profiles/slurm` (baseline added). Ledger: the
+  clone's `.my_jobs`; the child job ids are appended from the orchestrator's `.err`.
+- Read-out when every arm is done: `studies/methodGate2D_summary/<candidate>/{summary,orders,
+  vsBaseline}.csv` and `verdict.txt`; pull with `make pull-study STUDY=methodGate2D_summary`.
+  The 3D gate runs only after a 2D PASS.
