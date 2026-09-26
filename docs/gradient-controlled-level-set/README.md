@@ -1,0 +1,66 @@
+# Gradient-controlled level set (theme `gradient-controlled-level-set`)
+
+This theme holds the pre-print, the deck and the curated results of the
+gradient-controlled level-set method in leia. The method keeps the level-set
+gradient magnitude q = |grad psi| inside an admissible band, for example
+0.9 <= q <= 1.1, near the interface. It does not enforce exact signed distance
+and it does not redistance.
+
+## The method in three parts
+
+1. **Material-form transport with the actual transport flux Phi.**
+   `ddt(psi) + div(Phi, psi) - Sp(div(Phi), psi) = psi F`. The level set is a
+   material label, so the operator subtracts the divergence of the SAME flux
+   that transports psi.
+2. **Halo-limited directional velocity extension.** Each face samples the
+   physical velocity at `Y = x - S_R(d) e`, a point toward the interface whose
+   distance from x is always less than a radius R. The travel law is
+   `S_R(d) = d [1 + (d/R)^(2m)]^(-1/(2m))`. The blend
+   `u_H = (1 - w) u(x) + w u(Y)` with `w = (S_R/d)^beta` has zero normal strain
+   on the interface. The level-set flux is the correction
+   `Phi^H = Phi^NS + w [U(Y) - U(x)] . S_f`, so the pressure-corrected flux
+   stays where w = 0. R is a method parameter, never a property of the MPI
+   decomposition.
+3. **A weak scalar source F** from a law family: none, `linearQ`
+   `mu (1 - q)`, `linearZ` `-mu (q^2 - 1)/2`, cubic and regularised 2/3-power
+   laws, and the smooth soft wall `-kappa tanh[gamma ((q - 1)/delta_s)^p]`.
+
+In the semi-Lagrangian solvers the extension enters through the trace velocity
+(`traceFlux extension`) and the source is a split step
+`psi <- psi exp(dt F)` after the characteristic update.
+
+## Sources
+
+The two technical dossiers are NOT in git. The authors keep them in the local,
+git-ignored `agent-input/` folder of the clone. Cite them as:
+
+- D. Bothe, *Modified Level-Set Transport Equations for Gradient Control on
+  Unstructured Finite-Volume Meshes*, technical dossier, revision 6,
+  26 September 2026 (unpublished).
+- D. Bothe, T. Maric, K. Soga, *Technical Dossier for OpenFOAM/FVM Tests of
+  Foot-Point Velocity Extension with Gradient-Stabilizing Source Terms*,
+  September 2026 (unpublished).
+
+The implementation and verification plan is
+`docs/plan-halo-limited-gradient-control.md`. The progress record is STATUS.md
+section 11.
+
+## Layout
+
+| Path | Content |
+|---|---|
+| `gcls-level-set-article/gclsLevelSet.tex` | the pre-print (elsarticle) |
+| `gcls-level-set-article/refs.bib` | the bibliography |
+| `gcls-level-set-article/data/tables/` | curated CSV tables; the method gates copy `<gate>_<candidate>_{summary,orders,vsBaseline}.csv` here |
+| `gcls-level-set-article/data/figures/` | curated figures, each made by a committed script |
+| `gcls-level-set-presentation/gcls-level-set.template.html` | the reveal.js deck source |
+
+## Build
+
+```bash
+make article-gcls
+bash docs/build-decks.sh
+```
+
+Every number in `data/` comes from a committed script and a committed config.
+Do not edit a curated table by hand.

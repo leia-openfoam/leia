@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>leia — gradient-controlled level set</title>
+
+  <!-- reveal.js 4.6.x core + black theme, from cdnjs -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css"
+        id="theme">
+
+  <style>
+    :root {
+      --ls-fg:      #f2f2f2;
+      --ls-muted:   #b9c2cc;
+      --ls-accent:  #4fc3f7;
+      --ls-warn:    #ffb74d;
+      --ls-good:    #81c784;
+      --ls-bad:     #e57373;
+    }
+    .reveal h1 { font-size: 1.5em; line-height: 1.1; }
+    .reveal h2 { font-size: 1.2em; color: var(--ls-accent); }
+    .reveal section { font-size: 0.8em; }
+    .reveal p, .reveal li { color: var(--ls-fg); }
+    .reveal .muted { color: var(--ls-muted); }
+    .reveal .accent { color: var(--ls-accent); }
+    .reveal .warn { color: var(--ls-warn); }
+    .reveal .good { color: var(--ls-good); }
+    .reveal .bad { color: var(--ls-bad); }
+    .reveal code { color: var(--ls-warn); }
+    .reveal .mjx-container { color: var(--ls-fg) !important; }
+    .cols { display: flex; gap: 1.2em; align-items: flex-start; justify-content: center; }
+    .cols > div { flex: 1; }
+    .reveal ul.tight { margin: 0; }
+    .reveal ul.tight li { margin: 0.12em 0; }
+    .center { text-align: center; }
+    .footnote { font-size: 0.62em; color: var(--ls-muted); }
+    .reveal table { font-size: 0.85em; margin: 0.4em auto; }
+    .reveal table th { color: var(--ls-accent); }
+    .reveal table td, .reveal table th { padding: 0.14em 0.6em; border-bottom: 1px solid #444; }
+    .reveal .box {
+      border: 1px solid var(--ls-accent); border-radius: 6px;
+      padding: 0.4em 0.8em; margin: 0.5em auto; display: inline-block;
+    }
+  </style>
+
+  <!-- MathJax 3 (loaded directly from cdnjs) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        macros: { boldsymbol: ['{#1}', 1] }
+      },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+      svg: { fontCache: 'local' }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ===== TITLE ===== -->
+<section>
+  <h1>Gradient-controlled level set</h1>
+  <p class="muted">halo-limited velocity extension and admissible-band source terms
+     on unstructured finite-volume meshes</p>
+  <p><b>Tomislav Marić</b> · <b>Dieter Bothe</b><br>
+     <span class="muted">MMA, TU Darmstadt</span></p>
+  <p class="footnote">theme <code>docs/gradient-controlled-level-set/</code> ·
+     plan <code>docs/plan-halo-limited-gradient-control.md</code> · status: method in implementation, no gate results yet</p>
+</section>
+
+<!-- ===== PROBLEM ===== -->
+<section>
+  <h2>The problem: normal strain changes \(|\nabla\psi|\)</h2>
+  <p>For \(\partial_t\psi+\mathbf u\cdot\nabla\psi=0\) and \(q=|\nabla\psi|\):</p>
+  <p>\[ \mathrm D_t q = -a\,q,\qquad a=\mathbf n^{\mathsf T}(\nabla\mathbf u)\,\mathbf n . \]</p>
+  <ul class="tight">
+    <li>An exact solution loses the signed-distance property in a deforming flow.</li>
+    <li>Target: an <span class="accent">admissible band</span> \(0.9\le q\le 1.1\) near the interface,
+        not \(q=1\), and no redistancing.</li>
+  </ul>
+</section>
+
+<!-- ===== METHOD ===== -->
+<section>
+  <h2>The method in three parts</h2>
+  <ol>
+    <li><b>Material-form transport</b> with the actual flux:
+        \(\partial_t\psi+\operatorname{div}_h(\Phi\psi)-\psi\operatorname{div}_h\Phi=\psi F\).</li>
+    <li><b>Halo-limited extension</b>: \(Y=\mathbf x-S_R(d)\,\mathbf e\), \(|Y-\mathbf x|<R\),
+        \(\mathbf u_H=(1-w)\mathbf u(\mathbf x)+w\,\mathbf u(Y)\);
+        \(\mathbf n^{\mathsf T}\nabla\mathbf u_H\,\mathbf n=0\) on the interface;
+        flux \(\Phi^H=\Phi^{NS}+w\,[\mathbf U(Y)-\mathbf U(\mathbf x)]\cdot\mathbf S_f\).</li>
+    <li><b>Weak scalar source</b> \(F\): none, \(\mu(1-q)\), \(-\mu(q^2-1)/2\), soft wall
+        \(-\kappa\tanh[\gamma((q-1)/\delta_s)^p]\).</li>
+  </ol>
+</section>
+
+<!-- ===== ARCHITECTURE ===== -->
+<section>
+  <h2>Extension without modification</h2>
+  <ul class="tight">
+    <li>Every alternative is a runtime-selectable class: laws, strain weights, travel laws,
+        weights, directions, samplers.</li>
+    <li>One law family serves the Eulerian source (<code>sdplsSource gradientControl</code>)
+        and the semi-Lagrangian source (<code>slSource gradientControl</code>).</li>
+    <li>Solvers hold composition roots only; each root was opened once, gated by bit identity.</li>
+  </ul>
+</section>
+
+<!-- ===== GATES ===== -->
+<section>
+  <h2>Method gates: 2D first, 3D on a pass</h2>
+  <table>
+    <tr><th>gate</th><th>arms</th><th>ladder</th><th>ranks</th></tr>
+    <tr><td>methodGate2D</td><td>shear, stationary, translating, oscillating</td>
+        <td>cells ×2 per rung, \(R/h\ge 10\)</td><td>4</td></tr>
+    <tr><td>methodGate3D</td><td>same four arms in 3D</td>
+        <td>\(h\) ratio \(\ge 1.3\) per rung</td><td>32</td></tr>
+  </table>
+  <p class="muted">Every gate run carries the baseline on the same commit. Reported: shape, gradient
+     band error, volume, phase-indicator bounds, spurious currents, pressure jump, ranks, wall clock,
+     observed orders and GCI.</p>
+</section>
+
+</div>
+</div>
+
+<!-- reveal.js core + notes plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.04,
+    plugins: [ RevealNotes ]
+  });
+</script>
+</body>
+</html>

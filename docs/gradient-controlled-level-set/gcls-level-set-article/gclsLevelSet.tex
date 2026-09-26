@@ -1,0 +1,163 @@
+%% Gradient-controlled level-set transport on unstructured finite-volume meshes:
+%% halo-limited velocity extension and admissible-band source terms.
+%% Build:  latexmk -pdf gclsLevelSet.tex      (or: make article-gcls)
+%%
+%% STATUS: skeleton (2026-09-26). The continuum model (sections 3 and 4) follows
+%% the two technical dossiers cited in the README of this theme. Sections 6-8 stay
+%% empty until the gates named in them report; no number enters this file unless a
+%% committed script wrote it into data/tables or data/figures.
+%% Author list: to be decided by the authors.
+\documentclass[preprint,3p,11pt]{elsarticle}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+
+\graphicspath{{data/figures/}}
+
+\newcommand{\psilev}{\psi}
+\newcommand{\nhat}{\mathbf{n}}
+\newcommand{\bu}{\mathbf{u}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\Dt}{\mathrm{D}_t}
+
+\begin{document}
+\begin{frontmatter}
+
+\title{Gradient-controlled level-set transport on unstructured finite-volume
+meshes: halo-limited velocity extension and admissible-band source terms}
+
+\author[tuda]{Tomislav Mari\'{c}}
+\author[tuda]{Dieter Bothe}
+\address[tuda]{Mathematical Modeling and Analysis, TU Darmstadt, Germany}
+
+\begin{abstract}
+%% To be written after the 2D and 3D method gates report.
+A signed-distance level set gives a well-scaled normal and a fixed physical
+width of the interface transition, but the level-set transport equation does
+not keep the signed-distance property under a deforming flow. This work keeps
+the gradient magnitude $q=|\nabla\psilev|$ inside an admissible band near the
+interface instead of enforcing $q=1$, with no redistancing, on unstructured
+finite-volume meshes under MPI domain decomposition.
+\end{abstract}
+
+\begin{keyword}
+level set \sep velocity extension \sep signed distance \sep unstructured finite
+volume \sep OpenFOAM \sep two-phase flow
+\end{keyword}
+
+\end{frontmatter}
+
+%% ---------------------------------------------------------------------------
+\section{Introduction}
+\label{sec:intro}
+%% The problem: D_t q = -a q; why redistancing is unwanted (interface
+%% displacement, cost, contact lines); the admissible band as the target.
+For the material equation $\partial_t\psilev+\bu\cdot\nabla\psilev=0$ the
+gradient magnitude obeys, along a trajectory,
+\begin{equation}
+  \Dt q = -a\,q,\qquad a=\nhat^{\mathsf T}(\nabla\bu)\,\nhat,\qquad
+  \nhat=\nabla\psilev/q ,
+  \label{eq:qlaw}
+\end{equation}
+so the normal strain $a$ changes $q$ even for an exact solution
+\cite{FrickeEtAl2022,BotheFrickeSoga2024}.
+
+%% ---------------------------------------------------------------------------
+\section{Prior art}
+\label{sec:priorart}
+%% From the halo-limited dossier, section "State of the art": hyperbolic
+%% reinitialisation \cite{SussmanSmerekaOsher1994,SussmanFatemi1999}; geometric
+%% and Eikonal methods \cite{KarakusEtAl2022,Shakoor2025}; conservative level
+%% set and CLSVOF \cite{OlssonKreiss2005,OlssonKreissZahedi2007,KeesEtAl2011,LyrasEtAl2020};
+%% variational methods \cite{LiEtAl2010,ToureSoulaimani2016,ShaoEtAl2023};
+%% modified equations \cite{SabelnikovEtAl2014,Hamamuki2019}; SDPLS and the
+%% bounded-gradient equation \cite{FrickeEtAl2022,BotheFrickeSoga2024};
+%% gradient-augmented level set \cite{NaveRosalesSeibold2010,BockmannVartdal2014};
+%% velocity extension \cite{AdalsteinssonSethian1999,BotheSoga2026}; OpenFOAM
+%% and LEIA \cite{WellerEtAl1998,LEIA,Reitzel2023,LiuEtAl2023,FerroEtAl2025}.
+
+%% ---------------------------------------------------------------------------
+\section{Continuum model}
+\label{sec:model}
+
+\subsection{Source calculus}
+For $\Dt\psilev=\psilev F$ the zero level set is invariant, and on it
+\begin{equation}
+  \Dt q = q\,(F-a).
+  \label{eq:designlaw}
+\end{equation}
+
+\subsection{Halo-limited directional velocity extension}
+Let $d$ be a signed nominal distance and $\mathbf e$ the unit direction from
+the interface toward $\bx$; the level-set realisation is $d=\psilev/q$,
+$\mathbf e=\nhat$. With a radius $R$ and $m\in\mathbb N$,
+\begin{equation}
+  S_R(d)=d\left[1+\left(\frac{d}{R}\right)^{2m}\right]^{-1/(2m)},\qquad
+  Y_R=\bx-S_R(d)\,\mathbf e,\qquad
+  w_R=\left(\frac{S_R(d)}{d}\right)^{\beta},
+\end{equation}
+\begin{equation}
+  \bu_H=(1-w_R)\,\bu(\bx)+w_R\,\bu(Y_R).
+\end{equation}
+Every sample lies inside the radius $R$, and on the interface
+$\nhat^{\mathsf T}(\nabla\bu_H)\nhat=0$.
+
+\subsection{Source-law family}
+%% Table: none, linearQ mu(1-q), linearZ -mu (q^2-1)/2, cubic laws,
+%% regularised 2/3 law, saturated linear z law, the soft wall
+%% -kappa tanh[gamma((q-1)/delta_s)^p]; the strain weight none|full|omega;
+%% the robust inward-pointing condition kappa Theta* >= sigma + ... + mu.
+
+%% ---------------------------------------------------------------------------
+\section{Discretisation on unstructured finite-volume meshes}
+\label{sec:fv}
+%% The material-form operator div_h(Phi psi) - psi div_h(Phi) with the ACTUAL
+%% transport flux; the two discrete divergences; the flux correction
+%% Phi^H = Phi^NS + w [U_h(Y) - U_h(x)].S_f; the partition-independent stencil
+%% sampler; the exponential source update; the semi-Lagrangian realisation
+%% (trace along reconstruct(Phi^H), split source step).
+
+%% ---------------------------------------------------------------------------
+\section{Implementation in leia}
+\label{sec:impl}
+%% Runtime-selectable families (velocityExtension, sdplsSource, slSource,
+%% gradientControlLaw and the strategies of haloLimited), composition roots per
+%% solver, extension without modification, the parallel design.
+
+%% ---------------------------------------------------------------------------
+\section{Verification}
+\label{sec:verification}
+%% EMPTY until the gates report: unit and exact gates (the law closed forms,
+%% the interfacial cancellation, constant-state preservation), the static
+%% gradient metrology E0, the exact 1D gates E1, the seam gate E2.
+
+%% ---------------------------------------------------------------------------
+\section{Coupled results}
+\label{sec:coupled}
+%% EMPTY until the method gates report: methodGate2D and methodGate3D tables
+%% (data/tables/<gate>_<candidate>_{summary,orders,vsBaseline}.csv) with the
+%% observed orders and the GCI \cite{Roache1994,Celik2008}.
+
+%% ---------------------------------------------------------------------------
+\section{Parallel cost and decomposition invariance}
+\label{sec:parallel}
+%% EMPTY until the gates report: rank count, wall clock, core-seconds per
+%% step, serial vs np 4 vs np 8 differences.
+
+%% ---------------------------------------------------------------------------
+\section{Discussion}
+\label{sec:discussion}
+%% What was falsified; limits (volume conservation, transition strain).
+
+%% ---------------------------------------------------------------------------
+\section{Conclusions}
+\label{sec:conclusions}
+
+\section*{Acknowledgements}
+%% To be written.
+
+\bibliographystyle{elsarticle-num}
+\bibliography{refs}
+\end{document}

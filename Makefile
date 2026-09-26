@@ -91,8 +91,9 @@ EULER_STUDIES ?= $(SDPLS_STUDIES) \
 ART_SL := docs/semi-lagrangian-level-set/sl-level-set-article
 ART_LSL := docs/linear-semi-lagrangian-level-set/lsl-level-set-article
 ART_GRL := docs/geometrically-redistanced-levelset/grl-level-set-article
+ART_GCLS := docs/gradient-controlled-level-set/gcls-level-set-article
 
-.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler studies-one print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
+.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler studies-one print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl article-gcls comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
 .DEFAULT_GOAL := help
 
 help:
@@ -241,7 +242,12 @@ article-lsl:
 article-grl:
 	@command -v latexmk >/dev/null && (cd $(ART_GRL) && latexmk -pdf -interaction=nonstopmode -halt-on-error *.tex) \
 	  || echo "[skip] latexmk not found; install a LaTeX toolchain to build the article PDF"
-articles: article-sl article-lsl article-grl
+# Gradient-controlled level set (docs/gradient-controlled-level-set/): the pre-print of the
+# halo-limited extension and the gradient-control sources.
+article-gcls:
+	@command -v latexmk >/dev/null && (cd $(ART_GCLS) && latexmk -pdf -interaction=nonstopmode -halt-on-error gclsLevelSet.tex) \
+	  || echo "[skip] latexmk not found; install a LaTeX toolchain to build the article PDF"
+articles: article-sl article-lsl article-grl article-gcls
 
 docs: decks articles
 

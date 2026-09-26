@@ -22,6 +22,7 @@ _THEMES = {
     "geometrically-redistanced-levelset": ("geometrically-redistanced-levelset", "grl-level-set",      "geometrically-redistanced-level-set.template.html"),
     "sdpls-level-set":                    ("sdpls-level-set",                    "sdpls",              "sdpls-level-set.template.html"),
     "method-comparison":                  ("method-comparison",                  "method-comparison",  "level-set-method-comparison.template.html"),
+    "gradient-controlled-level-set":      ("gradient-controlled-level-set",      "gcls-level-set",     "gcls-level-set.template.html"),
 }
 
 # Themes whose deck reads figures/tables from ITS OWN presentation data/ folder
