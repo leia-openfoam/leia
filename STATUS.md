@@ -2515,7 +2515,7 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
-| `55043312` `leia-gate2D` `long` | **methodGate2D** (relaunched 2026-09-26 22:54; the first orchestrator `55042210` stopped after the exact1D arms, section 11.12), baseline + S1, HL0, HL1q, HL1z, HL2, FP0. From `/work/scratch/tm83tomy/leia-gcls` at f7067d9, binaries of 4015404 (src and applications unchanged); the ledger with the child job ids is that clone's `.my_jobs`. | 7 d (orchestrator) | `studies/methodGate2D_*` there |
+| (pending) `leia-gate2D` `long` | **methodGate2D**, baseline + S1, HL0, HL1q, HL1z, HL2, FP0, moved on 2026-09-26 23:05 into `/work/scratch/tm83tomy/leia` (user request; section 11.12). The runs in `leia-gcls` (`55042210`, `55043312` and their children) are cancelled by id; their partial studies stay there. | 7 d (orchestrator) | `/work/scratch/tm83tomy/leia/studies/methodGate2D_*` |
 | `54354379` `leia-curv` `long` | **interFoamDroplet2D** — re-running the `N` = 512 arm only (the other three are complete at the full 0.1 s horizon with `interFoam.csv` present). 106689 steps at the measured 1.52 steps/s = ~19.5 h. Replaces the arm lost to the cleanup bug above. | 28 h | `studies/interFoamDroplet2D/` |
 | DONE | **filterOffAmplifier3D** 4/4, **upwindConvection2D** 8/8, **upwindConvection3D** 4/4, **filterThetaScaling3D** 6/6 — all analysed, section 4. | — | `studies/*/` |
 | DONE | **stationaryDroplet3Dwide**, **cellCentreInverseFiltered512**, **domainSizeControl10R/6R/4R**, **psiOuterCorrectorsGain3D**, **ddtOrderGain3D** | — | `studies/*/` |
@@ -3506,5 +3506,16 @@ the 4-rank check of CLAUDE.md before the cluster, not a measurement.
   snakemake's own interpreter, as the report rule of workflow/Snakefile already did. The clone
   pulled f7067d9 (only workflow, docs and STATUS changed since 4015404, so the binaries stay) and
   the gate was relaunched as `55043312`; the seven finished exact1D arms are not re-run.
+- MOVED 2026-09-26 23:00, on the user's instruction to run in `/work/scratch/tm83tomy/leia` and not
+  in `$HOME`. Checked first: every job of the account had WorkDir `/work/scratch/tm83tomy/leia-gcls`,
+  and no file in `$HOME` had changed since the setup; `/work/scratch/tm83tomy/leia` was on `development`
+  at c431677, idle since 2026-09-22, with no tracked change (67 untracked logs and folders). The
+  `leia-gcls` gate (orchestrator `55043312`, 30 live children) was cancelled by id from its ledger
+  (209 child ids). `/work/scratch/tm83tomy/leia` now has the branch `feature/gradient-controlled-level-set`
+  checked out and its binaries are rebuilt from it; its untracked files and its `studies/` stay. To
+  give the clone back to the development line: `git switch development && ./Allwmake`.
+- Conda on the cluster: the base env (`~/miniconda3`, Python 3.14) has neither yaml nor numpy, and it
+  is the first `python3` on PATH in the jobs. The gate helpers do not use it: they run on snakemake's
+  own interpreter (module Python 3.11.14, yaml and numpy from `~/.local`).
 - NOTE for the harvest: the report rule of every non-smoke arm copies its `<study>_errors.csv`
   into the theme's `data/tables`. Commit only the gate summary tables from there.
