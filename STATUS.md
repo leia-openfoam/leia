@@ -3286,3 +3286,14 @@ comment lines differ. OPEN, for the author: void the past `oscillatingDroplet2D`
   step C4 of the plan removes it.
 - FOUND: `writeDropletMetrics.H` sums the zero-set crossings over internal faces only, so the
   droplet shape columns miss the crossings on processor faces in a parallel run. Open.
+
+### 11.6 The pre-print's case figures (2026-09-26)
+
+`docs/gradient-controlled-level-set/gcls-level-set-article/figures/make_case_figures.py` writes one
+TikZ figure per gate arm (exact 1D, 2D and 3D shear, the three 2D and three 3D droplets) with the
+geometry, the initial condition and the boundary conditions taken from the case files. The 2D shear
+streamlines are contours of the stream function; the 3D panels use an orthographic view (x right,
+y into the page, z up) with computed hidden edges, and the camera keeps every front edge clear of
+the droplet. Iterated on rendered pages: all half-width panels are at most 8.0 cm at scale 1 (two
+per row in the 16.5 cm text width), labels on lines have white backgrounds. Section "Test cases"
+of the article holds the three figures and the parameter table.
