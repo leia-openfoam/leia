@@ -117,12 +117,19 @@ every session's context.
 drifts from the code; the token files cannot, because the workflow renders every case
 from them. Three layers, later overriding earlier:
 
-1. `cases/default.parameter` — the global default, flat (`SL_FIT normalEquations;`).
+1. `cases/default.parameter` — the global default, flat (`TOKEN value;`).
 2. `cases/<case>.parameter` — the per-case default, in a `values { ... }` block. Some
-   settings are genuinely case-dependent (`CURVATURE_EXTENSION` is `none` for the Popinet
-   translating family and `cellCentreInverse` for the stationary droplet family); this
-   layer exists so they are not collapsed to one global winner.
+   settings are genuinely case-dependent; this layer exists so they are not collapsed to
+   one global winner.
 3. `axes_override` in `config/<study>.yaml` — the per-study sweep.
+
+**This guide holds no case- or study-specific method settings.** (The BDF2 mandate below is
+a repository-wide rule, not a tuned setting.) The working settings
+live in the configuration files: the `.parameter` layers, and every study config (a method
+gate included) that pins a case-dependent value names it explicitly, with the measurement
+that decided it. A value quoted here drifts from the files and is read as a rule, which is
+how a study once inherited a global default that this guide described as case-specific
+(2026-09-27, the translating arm of `methodGate2D`).
 
 So changing the best configuration means editing a `.parameter` file, and every study
 that does not override that axis inherits the change — which is exactly why such a change
