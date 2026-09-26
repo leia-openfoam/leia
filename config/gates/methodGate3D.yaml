@@ -36,6 +36,7 @@ arms:
     first: true
     np: 4
     N_CELLS: [32, 64, 128, 256]
+    DOMAIN_LENGTH: 4.0      # x in [-2, 2]
     T_REF: 1.0
     solve_runtime: 30
     tokens: {END_TIME: 1, CFL: 0.5, REPORT_WRITE_ONLY: "false", IMPLICIT_SURFACE: implicitPlane,
