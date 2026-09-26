@@ -51,6 +51,11 @@ Richardson/GCI estimates.
    2D keeps sqrt(2) = 1.414 (cells x2), which is above 1.3.
 3. Docs theme: `gradient-controlled-level-set`, slug `gcls-level-set`.
 4. The two dossiers stay out of git. The theme README cites them by title, authors and date.
+5. ONE 2D study and ONE 3D study test every method; there are no per-method study configs. A method
+   enters the gates only as a set of case tokens (a candidate), so a method that cannot be configured by
+   tokens alone is not modular and cannot be tested. The gates reuse the existing cases and the existing
+   `workflow/Snakefile` unchanged. The smoke run, the exact 1D check, the static gradient floor and the
+   decomposition check are parts of the same two gate studies, not separate studies.
 
 ---
 
@@ -277,12 +282,12 @@ Every step names its files, its inert default and the gate that closes it. Every
   before and after; the dictionaries are identical.
 - **B5.** Gate infrastructure (section 5): `workflow/Snakefile.gate`,
   `workflow/scripts/render_gate_configs.py`, `workflow/scripts/make_gate_summary.py`,
-  `workflow/scripts/richardson.py`, `config/gates/{methodGate2D,methodGate3D,methodGate2Dsmoke}.yaml`,
+  `workflow/scripts/richardson.py`, `config/gates/{methodGate2D,methodGate3D}.yaml`,
   `config/candidates/baseline.yaml`, the Makefile targets `gate` and `studies-one-file`, and a
   `workflow/README.md` section. Gates:
   - `python3 workflow/scripts/richardson.py --self-test` recovers p = 1, 2, 3 from synthetic
     f = f0 + C h^p with non-constant r to 1e-10, and flags oscillatory convergence. It exits nonzero on failure.
-  - The 4-rank laptop smoke `make gate GATE=methodGate2Dsmoke CANDIDATES=baseline PROFILE=profiles/local`
+  - The 4-rank laptop smoke `make gate GATE=methodGate2D SMOKE=1 CANDIDATES=baseline PROFILE=profiles/local`
     completes all four arms, and the summary has every column filled (check `steps=`, not the exit code).
 - **B6.** New case `cases/oscillatingDroplet3D`: a clone of `stationaryDroplet3D` with
   `signedDistanceEllipsoid`, axes a = 1.1 R and b = c = R/sqrt(1.1) (volume of the sphere of radius R).
@@ -365,10 +370,9 @@ Before C1, preserve the pre-change gate set of `docs/plan-library-split-and-buil
   - Coverage of older ideas: SDPLS `R` = law `none` + `full`; `sdplsCombined` = `linearQ` + `full`;
     S0 = `boundedGradient`.
   - Tests: extend `leiaTestSdplsSource` (equality with `sdplsR` and `sdplsBeta` to round-off on a static
-    field). New config `gradientControl1Dstretch` (copy of `sdpls1Dstretch`) with
-    q0 in {0.87, 0.92, 1.00, 1.08, 1.13}. With u = alpha x and psi = c(t) x the closed forms are
-    c' = c (G(c) - alpha) for strain weight `none` and c' = c G(c) for `full`. Pass: the error falls at the
-    order of the time integration when dt halves.
+    field). The 1D closed forms run in the `exact1D` arm of the 2D gate (no new study config): with
+    u = alpha x and psi = c(t) x, c' = c (G(c) - alpha) for strain weight `none` and c' = c G(c) for
+    `full`; the summary integrates the same ODE independently (RK4) and reports the error.
 - **D3. `slGradientControlSource`** (`TypeName("gradientControl")`) in `libleiaSemiLagrangian`.
   - Flat band gate |psi|/q <= bandCells h; outside the band F = 0 exactly.
   - q2 and n from the geometry fit of the arrival field; sigma and a = n . symm(grad U) . n from
@@ -377,7 +381,8 @@ Before C1, preserve the pre-change gate set of `docs/plan-library-split-and-buil
     `gSum` (outside any `Pstream::master()` guard) and written to a field.
   - New app `leiaTestSlSource`: one step reproduces psi exp(dt F) exactly for planar psi = g0 x with
     U = 0; cells outside the band stay bit-identical; no value changes sign; np 4 equals serial.
-  - New config `slSource1Dstretch`: the 1D gate through `leiaLevelSetFoam` with `ADVECTION semiLagrangian`.
+  - The SL line's 1D closed form runs in the same `exact1D` arm (`leiaLevelSetFoam` with
+    `ADVECTION semiLagrangian`, the same `slAdvection` path as the SL solvers).
 - **D4. `haloLimited`** velocity extension. Per `correct()`:
   1. g = fvc::grad(psi, "gradPsiExtension") (unlimited leastSquares); psi_f and g_f by linear interpolation.
   2. Direction `levelSet`: d = psi/sqrt(Q2), e = g/sqrt(Q2), with Q2 = q2 + zeta(q2) and a flat
@@ -410,16 +415,14 @@ the CSV; then push.
 
 ### Phase E: the campaign (Lichtenberg)
 
-- **E0.** Static gradient metrology (dossier Test 0). New configs `staticGradientMetrology2D` (plane,
-  circle, ellipse signed distance on hex and perturbed hex; the `2DgradTest` pattern) and
-  `staticGradientMetrology3D` (hex and poly). Gradient schemes: leastSquares, Gauss linear corrected,
-  cellLimited leastSquares 1. Output: P95 |q - 1| and P95 |zeta| per rung. This sets
-  `SW_DELTA_S = 0.10 - eps_q` and `GC_EPS = C_eps E_zeta,95` with C_eps in {0.5, 1, 2}. A mesh and scheme
-  pair whose static bias uses most of the +-10 % band is rejected before any transport test.
-- **E1.** The exact 1D gates of D2 and D3 on Lichtenberg, serial and np 4.
-- **E2.** Seam gate: the shear arm at N = 68, serial vs np 4 vs np 8, for `haloLimited`,
-  `gradientControl` (Eulerian; psi solver tolerance 1e-14, per STATUS.md section 9) and `slSource`. Pass:
-  every CSV column equal to 1e-10 relative.
+- **E0.** Static gradient floor (dossier Test 0), read from the t = 0 rows of the baseline gate run: the
+  band L2 of |q - 1| and of |zeta| on the exact signed-distance initial fields of every arm and rung.
+  This sets `SW_DELTA_S = 0.10 - eps_q` and `GC_EPS = C_eps E_zeta` with C_eps in {0.5, 1, 2}. The gates
+  use hex meshes only; other mesh families are out of their scope.
+- **E1.** The `exact1D` arm of every 2D gate run (closed forms of D2 and D3).
+- **E2.** The `seam` sub-arm of every gate run (2D: np 1, 4, 8 at the coarsest shear rung; 3D: np 16 and
+  32). Pass: every CSV column equal to 1e-10 relative (for an Eulerian `R`-type strain weight the psi
+  solver tolerance is 1e-14, per STATUS.md section 9).
 - **E3.** The 2D gate campaign (section 6). **E4.** The 3D gate on a 2D pass. **E5.** Promotion to
   METHOD.md (section 6).
 
@@ -443,6 +446,23 @@ before that, because those gates do not need the two-phase solver.
 
 ## 5. The method gates
 
+### 5.0 What the gates reuse, and what they replace
+
+| Existing asset | Use in the gates |
+|---|---|
+| cases `1Dstretch`, `2Dvortex`, `stationaryDroplet2D`, `translatingDroplet2D`, `oscillatingDroplet2D`, `3Dshear`, `stationaryDroplet3D`, `translatingDroplet3D` | the gate arms, unchanged except for new inert tokens; only `oscillatingDroplet3D` is new, because no 3D oscillating case exists |
+| `workflow/Snakefile` | runs every arm; the gate adds no rule to it |
+| `stationaryLadder2Dshared`, `translatingLadder2D`, `oscillatingLadder2Dshared`, `traceKinematic2Dvortex`, `traceStationary3Dhex` | source of the pinned tokens; the configs stay as the historical record and are not re-run |
+| the advection regression set and the WP3 bit-identity set (`docs/plan-library-split-and-build-policy.md`) | the inertness check of a refactor, compared against their preserved baselines; no new config |
+| `guard_finished_cases.py`, `foam_log_state.sh`, `compare_metrics_csv.py`, `aggregate.py`, `run-studies.sbatch` | used as they are, by every arm |
+
+What the gates replace (planned earlier as separate studies, now parts of the gates):
+- the smoke gate: `SMOKE=1` on the same gate (coarse N, about 20 steps, `profiles/local`);
+- the exact 1D checks: the `exact1D` arm of the 2D gate (`1Dstretch`, closed form);
+- the static gradient metrology: the t = 0 rows of every arm (exact signed distance on the gate meshes);
+- the seam checks: the `seam` sub-arm (the coarsest shear rung at np 1 and np 8 next to np 4 in 2D; np 16
+  next to np 32 in 3D), reported as the maximum relative CSV difference.
+
 ### 5.1 Mechanism: one command per gate
 
 - **Gate definition** `config/gates/<gate>.yaml`: the arms (case, kind, N ladder, T_REF, arm tokens,
@@ -452,6 +472,9 @@ before that, because those gates do not need the two-phase solver.
 - **Candidate** `config/candidates/<name>.yaml`: `line` (`semiLagrangian` or `eulerian`), the method
   tokens (single values), dimensionless rates (`GC_M_MU`, with mu = M_mu/T_REF per arm, constant across
   rungs, never tied to dt), the pre-registered read-out in the header, and a target criterion.
+- **On the fly**: `SET="TOKEN=value,..."` on the command line defines an ad-hoc candidate without a file.
+  The renderer names it `adhoc-<hash of the tokens>` and marks it `preRegistered: false` in every summary,
+  so an exploratory run can never pass for a pre-registered one.
 - **Renderer** `workflow/scripts/render_gate_configs.py` writes one complete study config per candidate
   and arm to `studies/<gate>_summary/<candidate>/configs/<arm>.yaml`. It refuses a token that is not a
   method token, a token of the other line, and a collision with a fixed token. It omits `mpi_launcher` and
@@ -472,11 +495,15 @@ before that, because those gates do not need the two-phase solver.
 
 | Arm | Case | SL-line solver | Eulerian-line solver | N | Cells | h ratio | R/h | END_TIME | Steps |
 |---|---|---|---|---|---|---|---|---|---|
+| exact1D | `1Dstretch` (uniaxial strain, closed form) | `leiaLevelSetFoam` (`ADVECTION semiLagrangian`) | `leiaLevelSetFoam` (`ADVECTION eulerian`) | as the existing `sdpls1Dstretch` ladder | 1D | | | as `sdpls1Dstretch` | seconds |
 | shear | `2Dvortex` (shear2D, reversed, T = 2) | `leiaSemiLagrangeLevelSetFoam` | `leiaLevelSetFoam` (`ADVECTION eulerian`) | 68/96/136 | 4 624 / 9 216 / 18 496 | 1.412, 1.417 | 10.2 / 14.4 / 20.4 | 2 | about 270 / 380 / 550 (CFL 0.5) |
+| seam | `2Dvortex` at N = 68 | same | same | 68 at np 1 and np 8 | 4 624 | | 10.2 | 2 | about 270 |
 | stationary | `stationaryDroplet2D` (L = 10 mm, R = 1 mm) | `leiaSemiLagrangianLevelSetTwoPhaseFoam` | `leiaLevelSetTwoPhaseFoam` | 100/142/200 | 10 000 / 20 164 / 40 000 | 1.420, 1.408 | 10.0 / 14.2 / 20.0 | 0.1 | 9 207 / 15 580 / 26 042 |
 | translating | `translatingDroplet2D` (offset -2.5 mm, U = 0.05 m/s) | same | same | 100/142/200 | same | same | same | 0.1 | same |
 | oscillating | `oscillatingDroplet2D` (mode 2, signed-distance ellipse) | same | same | 100/142/200 | same | same | same | 0.1 (about 10.5 periods of 9.51 ms) | same |
 
+- The droplet arms start only after the `exact1D` arm passes (cheapest discriminator first). The summary
+  reads the t = 0 row of every arm as the static gradient floor (E0).
 - Cell counts double per rung (ratios 1.99-2.02). dt = 10.861 h^1.5 (0.2323 of the Brackbill limit) at
   every rung. All N are even: the droplet centre and the vortex centre sit on mesh vertices at every rung.
 - solve_runtime: 240 min (shear), 600 min (droplets; `stationaryLadder2Dshared` ran N = 256 in that limit).
@@ -645,7 +672,7 @@ docs/gradient-controlled-level-set/
 3. Bit identity after each C step, and after C6 on the final state:
    `compare_metrics_csv.py A.csv B.csv --tol 0 --skip ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME` for every pair
    of the preserved gate set. PASS = every pair identical.
-4. The 4-rank laptop smoke: `make gate GATE=methodGate2Dsmoke CANDIDATES=baseline PROFILE=profiles/local`.
+4. The 4-rank laptop smoke: `make gate GATE=methodGate2D SMOKE=1 CANDIDATES=baseline PROFILE=profiles/local`.
    Check `steps=` and the summary columns, not the exit code.
 5. Lichtenberg: the gate dry run, then the baseline 2D gate. The summary CSV has every column filled, the
    orders computed, nRanks = 4 from the log, and the wall clock present.
