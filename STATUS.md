@@ -3704,3 +3704,12 @@ Eulerian solver: the droplet CSV (plan F2), so it cannot join the coupled gate a
 Also noted, not fixed: `rhoClipFraction` counts round-off clips in pure cells (37-48 % of the
 cells at a clip L1 of 1e-12), so as an error metric it measures round-off; the research
 diagnostics `A4h*`, `A8h*` and `driver*` still use internal faces only.
+
+**A setup defect of the 3D translating case (fixed 2026-09-27).** `cases/translatingDroplet3D`
+had no `dropletReferenceVelocity` entry, so the metrics writer used (0 0 0): the disturbance
+metrics (`maxMagUPrime`, `meanMagUPrime`, `l2MagUPrime`) reported the translation itself and the
+zero-set and centroid errors reported the displacement. Seen in the 3D gate smoke:
+`meanMagUPrime = 0.0500 = U0`. The solution does not read the entry. The 2D translating case and
+both Popinet cases have it. Now the 3D template renders `dropletReferenceVelocity (0.05 0 0)`.
+VOID for these columns: `traceTranslating3Dhex` and `traceTranslating3Dpoly_r10p0/r12p7/r15p8`
+(no conclusion in STATUS.md, METHOD.md or the docs cites them). The 3D gate has not run.

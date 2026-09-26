@@ -193,6 +193,15 @@ PIMPLE
 // Leia level-set configuration.
 levelSet
 {
+    // Constant background advection velocity: the metrics writer subtracts it
+    // (maxMagUPrime = |U - Uref|) and translates the analytic reference sphere
+    // (centroid/zero-set errors are measured against center0 + Uref*t).
+    // MUST track TRANSLATION_SPEED. ADDED 2026-09-27: this case had no entry, so
+    // the default (0 0 0) made the disturbance metrics report the translation
+    // itself and the zero-set error report the displacement (the 3D gate smoke:
+    // meanMagUPrime = 0.0500 = U0). The solution does not read it.
+    dropletReferenceVelocity (@!TRANSLATION_SPEED!@ 0 0);
+
     // Where in time the capillary force is evaluated.
     //   endStep  : force from psi^{n+1} (symplectic Euler) -- the default, and
     //              what every historical run did. det(M) = 1, |lambda| = 1 for
