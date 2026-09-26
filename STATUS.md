@@ -3474,6 +3474,9 @@ the 4-rank check of CLAUDE.md before the cluster, not a measurement.
   with R = 2 h halves the finest-rung shear volume error of HL0 and keeps its gradient gain.
   It needs the cap radiusCells <= 1 raised (the local quadratic model is then extrapolated beyond
   its stencil). Falsified if the volume error does not fall by half.
+- The 3D gate smoke (N 20/26, np 4; the seam arm at np 8), same candidates and binaries: 42
+  studies, every case COMPLETED, no rule error; seam PASS for S1 and every HL candidate, FAIL for
+  FP0 (as predicted). This is the 4-rank check for a later 3D launch, not a measurement.
 - CORRECTED after this smoke: the gate summary scored `maxMagU` (the maximum of |U| over the cells,
   an L_inf norm) and gave it an order, against the rule that no L_inf norm is reported. It now
   scores `meanMagUPrime` (L1) and `l2MagUPrime` (L2) at T; the bounds check has no order. The
