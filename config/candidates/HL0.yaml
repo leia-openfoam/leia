@@ -1,0 +1,27 @@
+# CANDIDATE HL0 (halo-limited dossier, control H0): the halo-limited extension alone.
+#   u_H = (1 - w) u(x) + w u(Y), Y = x - S_R(d) e, R = 1 h, m = 2, beta = 1; the
+#   semi-Lagrangian trace uses reconstruct(phiExt) (traceFlux extension); no source.
+# QUESTION: how much does the extension alone protect q? (the dossier's first control:
+#   "the source is justified only by measured drift")
+# PRE-REGISTERED READ-OUT (2026-09-26, before any run):
+#   prediction: n.grad(u_H).n = 0 on the interface, so the gradient band error falls in
+#     the arms with normal strain (shear, oscillating); stationary and translating stay
+#     within the regression tolerance.
+#   pass: the gate verdict AND the target below.
+#   falsified if: the shear-arm gradient band error at the finest rung is above 0.8 x the
+#     baseline, or a volume or shape metric regresses beyond the tolerance.
+candidate: HL0
+line: semiLagrangian
+description: "halo-limited extension (R = 1 h, m = 2, beta = 1) in the SL trace, no source"
+tokens:
+  VELOCITY_EXTENSION: haloLimited
+  SL_TRACE_FLUX: extension
+  HL_RADIUS_CELLS: 1
+  HL_M: 2
+  HL_BETA: 1
+  HL_DIRECTION: levelSet
+  HL_SAMPLER: stencilFit
+target:
+  metric: gradientBandError
+  ratioToBaselineAtFinest: 0.8
+  arms: [shear]

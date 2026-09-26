@@ -1,0 +1,21 @@
+# CANDIDATE FP0 (halo-limited dossier, D6): the full foot-point extension closestPoint as
+#   the reference against halo limiting; traceFlux extension, no source.
+# QUESTION: is a full closest-point extension much better than HL0? If so, improve the
+#   direction (fitFootPoint) before any source tuning.
+# PRE-REGISTERED READ-OUT (2026-09-26, before any run):
+#   prediction: the gradient band error is at most that of HL0 in the shear arm; the seam
+#     check may fail (closestPoint trusts halo Taylor data within cpHaloReach and falls
+#     back to a steady solve), which makes FP0 a reference, not a promotion candidate.
+#   pass: the gate verdict AND the target below.
+#   falsified if: the shear-arm gradient band error at the finest rung is above 0.8 x the
+#     baseline.
+candidate: FP0
+line: semiLagrangian
+description: "closestPoint extension in the SL trace (reference), no source"
+tokens:
+  VELOCITY_EXTENSION: closestPoint
+  SL_TRACE_FLUX: extension
+target:
+  metric: gradientBandError
+  ratioToBaselineAtFinest: 0.8
+  arms: [shear]

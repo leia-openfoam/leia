@@ -1,0 +1,32 @@
+# CANDIDATE HL1q (halo-limited dossier, H1; companion dossier, the paired q/z comparison):
+#   HL0 plus the weak linear source G = -mu (q - 1),
+#   mu = GC_M_MU/T_REF per arm (M_mu = 1), strain weight none (the extension already
+#   removes the normal strain), in the band |psi|/q <= 3h.
+# QUESTION: does a weak restoring source add protection to HL0 at the same mu for q and z?
+# PRE-REGISTERED READ-OUT (2026-09-26, before any run):
+#   prediction: the gradient band error is at most that of HL0 in every arm; HL1q and HL1z
+#     agree within the ladder's GCI (same first-order slope at q = 1).
+#   pass: the gate verdict AND the target below.
+#   falsified if: the shear-arm gradient band error at the finest rung is above 0.8 x the
+#     baseline, or a volume or shape metric regresses beyond the tolerance.
+candidate: HL1q
+line: semiLagrangian
+description: "halo-limited extension + linearQ source (M_mu = 1), strain weight none"
+tokens:
+  VELOCITY_EXTENSION: haloLimited
+  SL_TRACE_FLUX: extension
+  HL_RADIUS_CELLS: 1
+  HL_M: 2
+  HL_BETA: 1
+  HL_DIRECTION: levelSet
+  HL_SAMPLER: stencilFit
+  SL_SOURCE: gradientControl
+  SL_SOURCE_BAND_CELLS: 3
+  GC_LAW: linearQ
+  GC_STRAIN_WEIGHT: none
+rates:
+  GC_M_MU: 1
+target:
+  metric: gradientBandError
+  ratioToBaselineAtFinest: 0.8
+  arms: [shear]
