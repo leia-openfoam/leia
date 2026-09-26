@@ -268,6 +268,36 @@ levelSet
           // distance while psi is a signed distance function.
           nLayers @!SDPLS_NLAYERS!@;
         }
+
+        // gradientControl only (Phase D2; inert for every other type): the law of F.
+        law
+        {
+            // F = w(q)*a + G(q) in D_t psi = psi*F; q = |grad psi|, a = n.D.n.
+            // G(1) = 0 for every law. A law reads only its own entries, and every
+            // entry that a law reads is REQUIRED (no code default).
+            //   none | linearQ | linearZ | cubicQ | cubicZ | twoThirdsZReg |
+            //   saturatedLinearZ | softWall
+            type        @!GC_LAW!@;
+            mu          @!GC_MU!@;   // [1/s] rate of the q- and z-laws
+            eps         @!GC_EPS!@;   // twoThirdsZReg: G = -mu*zeta/(zeta^2 + eps^2)^(1/6)
+            c           @!GC_SAT_C!@;   // saturatedLinearZ: G = -mu*zeta/(1 + c*|zeta|)
+            // softWall: G = -cKappa*sqrt(D:D + epsD^2)*tanh[gamma*((q - 1)/deltaS)^p]
+            cKappa      @!SW_C_KAPPA!@;
+            deltaS      @!SW_DELTA_S!@;
+            p           @!SW_P!@;   // odd
+            gamma       @!SW_GAMMA!@;   // artanh(0.9)
+            epsD        @!SW_EPS_D!@;   // [1/s]
+            // The weight w(q) of the strain term a:
+            //   none (w = 0) | full (w = 1: the SDPLS R source) |
+            //   omega (w = 1 - exp[-beta*((q - 1)/deltaS)^(2m)])
+            strainWeight
+            {
+                type    @!GC_STRAIN_WEIGHT!@;
+                beta    @!OMEGA_BETA!@;
+                m       @!OMEGA_M!@;
+                deltaS  @!SW_DELTA_S!@;
+            }
+        }
     }
 
     // Runtime-selectable interface-normal velocity extension used to advect psi.
@@ -300,6 +330,14 @@ levelSet
         // exact for non-solenoidal extension velocities (leiaLevelSetFoam.C).
         projectFlux false;
         maxScale    5;         // clip |Uext| <= maxScale*max|U| in the band (runaway guard)
+
+        // haloLimited only (Phase D4; inert for every other type): the halo-limited
+        // directional extension u_H = (1 - w)*u(x) + w*u(Y), Y = x - S_R(d)*e.
+        radiusCells   @!HL_RADIUS_CELLS!@;   // the travel cap R in cell sizes (at most 1)
+        travel        { type capped;          m    @!HL_M!@; }   // S_R = d/(1 + (d/R)^(2m))^(1/(2m))
+        weight        { type fractionReached; beta @!HL_BETA!@; }   // w = (S_R/d)^beta
+        direction     { type @!HL_DIRECTION!@; }   // levelSet: d = psi/q, e = grad(psi)/q
+        sampler       { type @!HL_SAMPLER!@; }   // stencilFit: least-squares fit of U
     }
 
     // ===================================================================== //
@@ -358,6 +396,11 @@ levelSet
         // tracing field is discretely solenoidal, and the prescribed cell
         // velocity is only ANALYTICALLY so.
         traceVelocity       @!SL_TRACE_VELOCITY!@;
+        // Which face flux the projectedFlux trace reconstructs (2026-09-26):
+        //   physical  : reconstruct(phi); the default, byte-identical to every earlier run.
+        //   extension : reconstruct(phiExt) of the velocityExtension model, so the
+        //               extension enters the trace. Needs traceVelocity projectedFlux.
+        traceFlux           @!SL_TRACE_FLUX!@;
 
         reconstruction      @!SL_RECONSTRUCTION!@;
 
@@ -417,6 +460,45 @@ levelSet
         nDefCorrMax         10;        // hard cap on passes
         defCorrRelax        1.0;       // under-relaxation of the fixed-point update (<= 1)
         defCorrTol          0.0;       // range-relative early-out (0 = run all passes)
+
+        // ---- scalar source after the characteristic step (RTS slSource) ----
+        // D_t psi = psi*F, applied as psi <- psi*exp(dt*F) in the band
+        // |psi|/|grad psi| <= bandCells*h; F = 0 outside the band.
+        //   none            : no source (the default; the step is not called).
+        //   gradientControl : F from the law below (Phase D3).
+        source
+        {
+            type        @!SL_SOURCE!@;
+            bandCells   @!SL_SOURCE_BAND_CELLS!@;
+            law
+            {
+                // F = w(q)*a + G(q) in D_t psi = psi*F; q = |grad psi|, a = n.D.n.
+                // G(1) = 0 for every law. A law reads only its own entries, and every
+                // entry that a law reads is REQUIRED (no code default).
+                //   none | linearQ | linearZ | cubicQ | cubicZ | twoThirdsZReg |
+                //   saturatedLinearZ | softWall
+                type        @!GC_LAW!@;
+                mu          @!GC_MU!@;   // [1/s] rate of the q- and z-laws
+                eps         @!GC_EPS!@;   // twoThirdsZReg: G = -mu*zeta/(zeta^2 + eps^2)^(1/6)
+                c           @!GC_SAT_C!@;   // saturatedLinearZ: G = -mu*zeta/(1 + c*|zeta|)
+                // softWall: G = -cKappa*sqrt(D:D + epsD^2)*tanh[gamma*((q - 1)/deltaS)^p]
+                cKappa      @!SW_C_KAPPA!@;
+                deltaS      @!SW_DELTA_S!@;
+                p           @!SW_P!@;   // odd
+                gamma       @!SW_GAMMA!@;   // artanh(0.9)
+                epsD        @!SW_EPS_D!@;   // [1/s]
+                // The weight w(q) of the strain term a:
+                //   none (w = 0) | full (w = 1: the SDPLS R source) |
+                //   omega (w = 1 - exp[-beta*((q - 1)/deltaS)^(2m)])
+                strainWeight
+                {
+                    type    @!GC_STRAIN_WEIGHT!@;
+                    beta    @!OMEGA_BETA!@;
+                    m       @!OMEGA_M!@;
+                    deltaS  @!SW_DELTA_S!@;
+                }
+            }
+        }
     }
 }
 

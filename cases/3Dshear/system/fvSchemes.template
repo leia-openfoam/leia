@@ -51,6 +51,10 @@ gradSchemes
     gradPsi         pointCellsLeastSquares;   // g_c = grad(psi^n)
     gradGradPsi     pointCellsLeastSquares;   // H_c = grad(g_c) (quadraticTaylor)
     gradU           Gauss linear;   // grad(u^{n+1}) for the SL foot (Gauss linear: no run-long LSQ cache)
+    // Velocity extension (copied from 2Dvortex, 2026-09-26): the linearUpwind
+    // reconstruction gradient and the normal derivative of steadyUpwindLinear.
+    grad(Uext)      leastSquares;
+    velExtLSGrad    leastSquares;
 }
 
 divSchemes
@@ -71,6 +75,9 @@ divSchemes
     div(phiW,psi)   Gauss linearUpwind grad(psi);
     // anchoredEikonal redistancer: steady-Eikonal fill transport along nHat.
     div(yPhi,psiDist) Gauss upwind;
+    // Steady velocity extension (steadyUpwind family, closestPoint fill); UEXT_DIV
+    // selects UpwindUext or LinearUpwindUext (aliasDict). Copied from 2Dvortex.
+    div(velExtPhiW,Uext) Gauss $@!UEXT_DIV!@;
 }
 
 laplacianSchemes

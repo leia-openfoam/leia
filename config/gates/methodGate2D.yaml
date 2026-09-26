@@ -38,9 +38,11 @@ solvers:
 # Tokens that define a solver line. A candidate cannot set them.
 # SL: the kinematic cases inherit the CACHED reconstruction from cases/default.parameter;
 # the production transport (METHOD.md 8.1) is the uncached one, as the droplet case layers
-# already carry. Eulerian: leiaLevelSetFoam selects its advection by ADVECTION.
+# already carry. The production trace is projectedFlux; the 1Dstretch case layer keeps the
+# solver default cellCentred of its earlier runs, so the line sets it for every arm.
+# Eulerian: leiaLevelSetFoam selects its advection by ADVECTION.
 lineTokens:
-  semiLagrangian: {SL_RECONSTRUCTION: uncachedQuadraticWeightedLeastSquares}
+  semiLagrangian: {SL_RECONSTRUCTION: uncachedQuadraticWeightedLeastSquares, SL_TRACE_VELOCITY: projectedFlux}
   eulerian:       {ADVECTION: eulerian}
 
 # The only tokens a candidate may set. A token listed under lineOf belongs to that line.

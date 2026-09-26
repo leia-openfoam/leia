@@ -17,7 +17,7 @@ solvers:
   semiLagrangian: {kinematic: leiaSemiLagrangeLevelSetFoam, twoPhase: leiaSemiLagrangianLevelSetTwoPhaseFoam}
   eulerian:       {kinematic: leiaLevelSetFoam,             twoPhase: leiaLevelSetTwoPhaseFoam}
 lineTokens:
-  semiLagrangian: {SL_RECONSTRUCTION: uncachedQuadraticWeightedLeastSquares}
+  semiLagrangian: {SL_RECONSTRUCTION: uncachedQuadraticWeightedLeastSquares, SL_TRACE_VELOCITY: projectedFlux}
   eulerian:       {ADVECTION: eulerian}
 methodTokens: [VELOCITY_EXTENSION, HL_RADIUS_CELLS, HL_M, HL_BETA, HL_DIRECTION, HL_SAMPLER,
                SL_TRACE_FLUX, SL_SOURCE, SL_SOURCE_BAND_CELLS,

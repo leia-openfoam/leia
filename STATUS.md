@@ -3351,3 +3351,35 @@ regression set ran the default arm at laptop sizes, not at the cluster sizes of 
 `advConv*` studies: with `slSource none` the new call is skipped, so no arithmetic changes. The
 polyhedral rung used `advect_bound_arm.sh` on one mesh per resolution (the same point digest in
 both runs), so the mesher cannot enter the comparison.
+
+### 11.8 Phase C6: the tokens of the new families, inert (2026-09-26)
+
+- `cases/default.parameter`: `HL_RADIUS_CELLS 1`, `HL_M 2`, `HL_BETA 1`, `HL_DIRECTION levelSet`,
+  `HL_SAMPLER stencilFit`, `SL_TRACE_FLUX physical`, `SL_SOURCE none`, `SL_SOURCE_BAND_CELLS 3`,
+  `GC_LAW none`, `GC_STRAIN_WEIGHT none`, `GC_MU 1`, `GC_EPS 0.02`, `GC_SAT_C 1`, `SW_C_KAPPA 1.25`,
+  `SW_DELTA_S 0.08`, `SW_P 5`, `SW_GAMMA 1.4722194895832` (artanh 0.9; the dossier's rounded 1.4722
+  gives tanh = 0.89999), `SW_EPS_D 0`, `OMEGA_BETA 1`, `OMEGA_M 2`. The comment that listed
+  `meshWaveExt` as a valid extension type now says `meshWave` (the registered name).
+- The ten gate templates (1Dstretch, 2Dvortex, 2Dtranslation, 3Dshear, the three 2D and the three 3D
+  droplets): the haloLimited entries at the end of `velocityExtension`, `traceFlux` after
+  `traceVelocity`, the `source` block with its `law` at the end of `semiLagrangian`, and the `law`
+  block in `sdplsSource`.
+- `3Dshear` had no `velocityExtension` block, no `Uext` solver entries and no extension schemes, so
+  no extension could be selected in the 3D shear arm. It has them now (copied from 2Dvortex).
+- `1Dstretch` had no `traceVelocity` entry: its SL runs traced with the solver default
+  `cellCentred`. The template carries the token; `cases/1Dstretch.parameter` keeps `cellCentred`,
+  and both gates set the production trace `projectedFlux` as a line token of the SL line.
+
+Gates:
+1. Render diff: every committed config that uses one of the ten cases (250 configs), rendered in
+   the reference tree (0c7079c) and in the new tree. Every change is an expected inert insertion or
+   the `meshWave` comment: 250 of 250 PASS, 2 899 changed files, 126 487 added lines, 650 comment
+   lines, no deleted or changed line. The classifier fails on two injected changes (a changed
+   relTol, `traceFlux extension`). Thirteen configs first failed to render in one tree: a race of
+   concurrent snakemake instances in the migration of `.snakemake`; they pass when rendered one at a
+   time.
+2. Bit identity, the Phase C set again on the new templates, new binaries (with D1 to D3 compiled
+   in, not selected) against the reference: 53 of 53 cases, every CSV and every written field identical; every
+   rendered dictionary differs from the reference only by the inert insertions. The polyhedral
+   rung runs both binaries on the same C6 dictionaries (one mesh per resolution); the hex 3D
+   rung covers the new 3Dshear dictionaries against the old ones.
