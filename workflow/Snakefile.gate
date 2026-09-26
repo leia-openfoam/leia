@@ -22,6 +22,11 @@ import sys
 
 REPO    = os.path.abspath(os.path.join(workflow.basedir, ".."))
 SCRIPTS = os.path.join(workflow.basedir, "scripts")
+# The helpers run on SNAKEMAKE'S OWN INTERPRETER, as in workflow/Snakefile (rule report): on
+# Lichtenberg the first python3 on PATH is miniconda without yaml or numpy. MEASURED
+# 2026-09-26: every exact1d_check died on `import yaml` there, and the gate stopped after the
+# seven exact1D arms.
+PY = sys.executable
 sys.path.insert(0, SCRIPTS)
 import render_gate_configs as RG
 from snakemake.exceptions import WorkflowError
@@ -107,7 +112,7 @@ rule exact1d_check:
     output:
         os.path.join(STUDIES, GATE_NAME + "_summary", "{cand}", "exact1D.pass")
     shell:
-        "python3 " + SCRIPTS + "/make_gate_summary.py --gate " + GATE_FILE +
+        PY + " " + SCRIPTS + "/make_gate_summary.py --gate " + GATE_FILE +
         " --summary-dir " + os.path.join(STUDIES, GATE_NAME + "_summary") + "/{wildcards.cand}"
         " --studies-dir " + STUDIES + " --exact1d-only && touch {output}"
 
@@ -120,7 +125,7 @@ rule summarize:
     params:
         docs=("" if SMOKE else "--docs"),
     shell:
-        "python3 " + SCRIPTS + "/make_gate_summary.py --gate " + GATE_FILE +
+        PY + " " + SCRIPTS + "/make_gate_summary.py --gate " + GATE_FILE +
         " --summary-dir " + os.path.join(STUDIES, GATE_NAME + "_summary") + "/{wildcards.cand}"
         " --studies-dir " + STUDIES + " {params.docs}"
 
@@ -140,6 +145,6 @@ rule compare:
         base=lambda w: summary_dir(BASELINE_OF_LINE[MAN[w.cand]["line"]]),
         docs=("" if SMOKE else "--docs"),
     shell:
-        "python3 " + SCRIPTS + "/make_gate_summary.py --gate " + GATE_FILE +
+        PY + " " + SCRIPTS + "/make_gate_summary.py --gate " + GATE_FILE +
         " --summary-dir " + os.path.join(STUDIES, GATE_NAME + "_summary") + "/{wildcards.cand}"
         " --studies-dir " + STUDIES + " --baseline {params.base} {params.docs} || true"

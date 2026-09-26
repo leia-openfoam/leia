@@ -172,9 +172,12 @@ studies-one-file:
 # submit to SLURM through the profile. On Lichtenberg run it inside run-studies.sbatch:
 #   sbatch -J leia-gate2D --export=ALL,TARGET=gate,GATE=methodGate2D,CANDIDATES=baseline run-studies.sbatch
 GATE_CORES ?= $(if $(filter profiles/slurm,$(PROFILE)),16,1)
+# The interpreter of snakemake itself (its shebang): it has yaml and numpy on every host; the
+# first python3 on PATH does not on Lichtenberg (miniconda).
+GATE_PY ?= $(or $(shell sed -n '1s/^\#!//p' $$(PATH=$$HOME/.local/bin:$$PATH command -v snakemake) 2>/dev/null),python3)
 gate:
 	@test -n "$(GATE)" || { echo "usage: make gate GATE=methodGate2D|methodGate3D CANDIDATES=<a+b> [SET=...] [SMOKE=1] [PRESERVE=1] [DRYRUN=1] PROFILE=..."; exit 1; }
-	@$(if $(PRESERVE),python3 workflow/scripts/render_gate_configs.py --gate config/gates/$(GATE).yaml --candidates "$(CANDIDATES)" --set "$(SET)" $(if $(SMOKE),--smoke,) --preserve,true)
+	@$(if $(PRESERVE),$(GATE_PY) workflow/scripts/render_gate_configs.py --gate config/gates/$(GATE).yaml --candidates "$(CANDIDATES)" --set "$(SET)" $(if $(SMOKE),--smoke,) --preserve,true)
 	PATH=$$HOME/.local/bin:$$PATH snakemake -s workflow/Snakefile.gate --cores $(GATE_CORES) --nolock --keep-going \
 	  --config gate=$(GATE) candidates="$(CANDIDATES)" set="$(SET)" smoke=$(SMOKE) profile=$(PROFILE) $(if $(DRYRUN),-n,)
 
