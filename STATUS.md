@@ -3250,3 +3250,13 @@ uses `gradPsiMetric` (unlimited `leastSquares`), as the templates require. Gate 
 four CSVs identical at tolerance 0, the four columns included. The limiter acts only at a local
 extremum of psi, and a smooth band has none; the fix changes the columns only where the band
 profile is corrupted.
+
+### 11.4 Phase B4: the oscillating droplet's level-set surface is a token (2026-09-26)
+
+`cases/oscillatingDroplet2D` initialised psi with `implicitEllipsoid`, which is ALGEBRAIC:
+psi = sum (x_i - c_i)^2/a_i^2 - 1, so |grad psi| = 2/a_i is 1.8e3 to 2.2e3 at the interface. Its
+gradient columns, and every band criterion in psi units, had no meaning in any oscillating-droplet
+study. New token `DROPLET_SURFACE` (default `implicitEllipsoid`, bit-identical); the method gates
+pin `signedDistanceEllipse`. Gate: `oscillatingLadder2Dshared` rendered before and after; only three
+comment lines differ. OPEN, for the author: void the past `oscillatingDroplet2D` studies
+(`_VOID_algebraicPsi_<date>`) or keep them with this caveat.

@@ -971,6 +971,11 @@ POPINET_NU     1e-06;   // m^2/s, both phases (viscosity ratio 1); La = 12000 wi
 // seconds: it is the exact-solution unit rung of the ladder for a defect that has
 // so far only been chased in coupled runs costing hours.
 DROPLET_OFFSET_X 0;
+// Level-set surface of cases/oscillatingDroplet2D (levelSet.implicitSurface.type).
+// implicitEllipsoid (default, every study before 2026-09-26) is ALGEBRAIC: |grad psi| is 1.8e3
+// to 2.2e3 at the interface, so gradient metrics and band widths in psi units have no
+// meaning there. signedDistanceEllipse (the method gates) is a signed distance.
+DROPLET_SURFACE implicitEllipsoid;
 
 SL_FOOT_INTEGRATOR taylor;
 // NOT INERT: cellCentred -> projectedFlux. Measured this campaign, stationary 2D

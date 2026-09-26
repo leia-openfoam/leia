@@ -379,7 +379,10 @@ levelSet
     // field, never the droplet.
     implicitSurface
     {
-        type    implicitEllipsoid;
+        // DROPLET_SURFACE (cases/default.parameter): implicitEllipsoid is the historical,
+        // ALGEBRAIC level set sum((x_i - c_i)^2/a_i^2) - 1, whose |grad psi| is 1.8e3 to 2.2e3 at
+        // the interface; signedDistanceEllipse gives a signed distance (|grad psi| = 1).
+        type    @!DROPLET_SURFACE!@;
         center  (@!DOMAIN_HALF_LENGTH!@ @!DOMAIN_HALF_LENGTH!@ 0);
         axes    (1.1e-3 0.90909e-3 1);
         // Equivalent-circle radius (a*b = R^2), read by createDropletMetricsFile.H
