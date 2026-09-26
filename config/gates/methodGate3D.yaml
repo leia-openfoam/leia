@@ -29,6 +29,32 @@ lineOf:
   eulerian:       [SDPLS_SOURCE, SOURCE_SCHEME]
 rates: {GC_M_MU: GC_MU}
 
+# THE TWO-PHASE COUPLING, EXPLICIT (2026-09-27, user instruction: the working settings live in
+# the study configuration). Each value is the measured best that cases/default.parameter holds,
+# with the measurement next to it there; METHOD.md 8.1 records the decisions. Every droplet arm
+# merges this block; CURVATURE_EXTENSION is set per arm because it is case-dependent.
+twoPhaseCoupling: &twoPhaseCoupling
+  MASS_FLUX: rhoLENT                  # mass residual ~1e-11, against 4.8e-2 relative for geometricFaceDensity
+  MASS_FLUX_ALPHAF_SOURCE: donorPlane # author: "only Gauss upwind worked in rhoLENT"
+  MASS_FLUX_ALPHAF_TIME_LEVEL: new
+  MASS_FLUX_BOUND_RHO: "true"         # rhoDdtGate2D: without it matched BDF2 drove rho to -72.28
+  MASS_FLUX_PROJECT: "false"
+  MOMENTUM_DDT_SCHEME: backward       # BDF2 everywhere (repository rule)
+  RHO_DDT_SCHEME: backward
+  MOMENTUM_DIV_SCHEME: upwind         # inert on the stationary droplet (4 significant figures)
+  # VISCOSITY_FACE_MODEL and VOLUME_CORRECTION are not tokens of the 3D droplet templates.
+  # OPEN (2026-09-27): without the entry the solver default is geo_lin, not the 2D best
+  # alg_lin; the 3D templates need the token before this gate runs.
+  N_OUTER_CORRECTORS: 3
+  PSI_OUTER_CORRECTORS: "yes"         # 2026-08-28: psi re-advected on every outer corrector
+  CAPILLARY_FORCE_CENTRING: endStep   # midpoint is spectrally identical for the linear oscillator
+  SURFACE_TENSION_FORCE: reconstructedCurvature
+  FACE_CURVATURE_SOURCE: model
+  CURVATURE_INVERSE_GAUSSIAN: "yes"   # K-aware inverse: h^1.95 on the 3D sphere, against h^1.02
+  CAPILLARY_DT_COEFF: 0.010861        # dt = 0.2323 of the Brackbill limit at every rung
+  PSI_FILTER: none                    # no filtering in production
+  # PHASE_INDICATOR is written into the droplet templates (detrixheAslam), not a token.
+
 arms:
   exact1D:
     case: 1Dstretch
@@ -65,7 +91,7 @@ arms:
     T_REF: 3.7e-3
     solve_runtime: 1440
     setfields_args: "-alphaName alpha.water"
-    tokens: {END_TIME: 0.025, DOMAIN_LENGTH: 0.006, WRITE_INTERVAL: 0.0025}
+    tokens: {<<: *twoPhaseCoupling, CURVATURE_EXTENSION: cellCentreInverse, END_TIME: 0.025, DOMAIN_LENGTH: 0.006, WRITE_INTERVAL: 0.0025}
     smoke: {N_CELLS: [20, 26], END_TIME: 7.6e-4, np: 4}
   translating:
     case: translatingDroplet3D
@@ -78,7 +104,7 @@ arms:
     T_REF: 0.02
     solve_runtime: 1440
     setfields_args: "-alphaName alpha.water"
-    tokens: {END_TIME: 0.02, TRANSLATION_SPEED: 0.05, WRITE_INTERVAL: 0.002}
+    tokens: {<<: *twoPhaseCoupling, CURVATURE_EXTENSION: none, END_TIME: 0.02, TRANSLATION_SPEED: 0.05, WRITE_INTERVAL: 0.002}
     smoke: {N_CELLS: [20, 26], END_TIME: 7.6e-4, np: 4}
   oscillating:
     case: oscillatingDroplet3D
@@ -90,7 +116,7 @@ arms:
     T_REF: 1.854e-3         # 1/omega of the n = 2 mode (Lamb, 3D)
     solve_runtime: 1440
     setfields_args: "-alphaName alpha.water"
-    tokens: {END_TIME: 0.025, DOMAIN_LENGTH: 0.006, WRITE_INTERVAL: 0.0025}
+    tokens: {<<: *twoPhaseCoupling, CURVATURE_EXTENSION: cellCentreInverse, END_TIME: 0.025, DOMAIN_LENGTH: 0.006, WRITE_INTERVAL: 0.0025}
     smoke: {N_CELLS: [20, 26], END_TIME: 7.6e-4, np: 4}
 
 verdict: {regressionTolerance: 0.10, orderTolerance: 0.3}
