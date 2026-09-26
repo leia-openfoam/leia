@@ -119,6 +119,43 @@ if
         << " BIT-IDENTICAL to reconstructedU. It separates from it only when"
         << " an extension model is active." << nl << endl;
 }
+// Which face flux the projectedFlux trace reconstructs (2026-09-26):
+//   physical  (default) reconstruct(phi), byte-identical to every earlier run;
+//   extension reconstruct(slVelExt->phi()), so the selected velocity extension
+//             enters the trace with the reconstruct operator of projectedFlux.
+const word slTraceFlux
+(
+    static_cast<const fvSolution&>(mesh).subDict("levelSet")
+        .subOrEmptyDict("semiLagrangian")
+        .getOrDefault<word>("traceFlux", "physical")
+);
+if (slTraceFlux != "physical" && slTraceFlux != "extension")
+{
+    FatalErrorInFunction
+        << "levelSet.semiLagrangian.traceFlux = '" << slTraceFlux
+        << "'. Valid: physical, extension." << exit(FatalError);
+}
+const bool traceFluxExtension = (slTraceFlux == "extension");
+if (traceFluxExtension && slTraceVelocity != "projectedFlux")
+{
+    FatalErrorInFunction
+        << "traceFlux extension needs traceVelocity projectedFlux." << exit(FatalError);
+}
+if
+(
+    slTraceVelocity == "projectedFlux" && !traceFluxExtension
+ && static_cast<const fvSolution&>(mesh).subDict("levelSet")
+        .subOrEmptyDict("velocityExtension")
+        .getOrDefault<word>("type", "none") != "none"
+)
+{
+    WarningInFunction
+        << "levelSet.velocityExtension selects a model, but traceVelocity"
+        << " projectedFlux with traceFlux physical traces reconstruct(phi): the"
+        << " extension does NOT enter the transport. Set traceFlux extension." << nl
+        << endl;
+}
+
 // Both non-default sources trace a RECONSTRUCTED cell field and so share the
 // Utrace/UtraceOld two-level machinery; they differ only in the face field.
 const bool traceFromFlux =
@@ -152,7 +189,7 @@ auto slTraceField = [&]() -> tmp<volVectorField>
         // field was extended off the interface.
         return fvc::reconstruct(linearInterpolate(U) & mesh.Sf());
     }
-    return fvc::reconstruct(phi);
+    return fvc::reconstruct(traceFluxExtension ? slVelExt->phi() : phi);
 };
 
 // Trace-velocity levels used when traceFromFlux; allocated only then. Utrace

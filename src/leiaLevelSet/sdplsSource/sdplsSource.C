@@ -71,17 +71,16 @@ Foam::sdplsSource::New(const fvMesh& mesh)
     const word& discretizationType =
         sourceTermDict.getOrDefault<word>("discretization", "none");
 
-    // ...EXCEPT for the divergence-form family, which does not go through the
-    // discretization hierarchy at all. `Rdiv` (sdplsRdiv) and `RdivStrictSp`
-    // (sdplsRdivStrictSp, the same operator with the algebraic coefficient
-    // sign-split in the Patankar sense) override fvmsdplsSource and assemble
-    // fvm::div/fvm::Su/fvm::Sp directly; discretization()->discretize() is
-    // never called. For them `discretization none` is NOT a null study, and
-    // any other value is read by NOTHING. The names are spelled as literals
-    // rather than as <derived>::typeName so that this base-class translation
-    // unit keeps no include dependency on its own derived classes.
-    const bool divergenceFormSource =
-        (type == "Rdiv") || (type == "RdivStrictSp");
+    Info << "Selecting SDPLS source term type: " << type << nl << endl;
+    autoPtr<sdplsSource> model(ctorPtr(sourceTermDict, mesh));
+
+    // ...EXCEPT for a source that assembles its own matrix and never calls the
+    // discretization hierarchy (usesDiscretization() false: the divergence-form
+    // family sdplsRdiv / sdplsRdivStrictSp). For it `discretization none` is NOT
+    // a null study, and any other value is read by NOTHING. Until 2026-09-26
+    // this test compared the type name with the literals "Rdiv" and
+    // "RdivStrictSp", so every new self-assembling model had to edit this file.
+    const bool divergenceFormSource = !model->usesDiscretization();
 
     if (divergenceFormSource && discretizationType != "none")
     {
@@ -101,7 +100,7 @@ Foam::sdplsSource::New(const fvMesh& mesh)
             << " assembled." << endl;
     }
 
-    if (type != "noSource" && !divergenceFormSource
+    if (type != sdplsSource::typeName && !divergenceFormSource
      && discretizationType == "none")
     {
         FatalIOErrorInFunction(sourceTermDict)
@@ -118,8 +117,7 @@ Foam::sdplsSource::New(const fvMesh& mesh)
             << exit(FatalIOError);
     }
 
-    Info << "Selecting SDPLS source term type: " << type << nl << endl;
-    return autoPtr<sdplsSource>(ctorPtr(sourceTermDict, mesh));
+    return model;
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -259,6 +257,20 @@ uint Foam::sdplsSource::maxIterations()
         return 1;
     }
 }
+
+const Foam::surfaceScalarField& Foam::sdplsSource::transportFlux() const
+{
+    if (!transportFlux_)
+    {
+        FatalErrorInFunction
+            << "sdplsSource type '" << type() << "' needs the face flux that"
+            << " transports psi, but the solver set none: the composition root"
+            << " must call setTransportFlux() before fvmsdplsSource()."
+            << exit(FatalError);
+    }
+    return *transportFlux_;
+}
+
 
 // * * * * * * * * * * * * * *  Global functions  * * * * * * * * * * * * * * //
 

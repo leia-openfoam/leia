@@ -104,7 +104,7 @@ method and the linker only decides what is loaded:
 |---|---|---|
 | `libleiaCore` | `profile`, `narrowBand`, `phaseIndicator`, `velocityModel`, the version registry | `liblevelSetImplicitSurfaces` |
 | `libleiaSdplsSource` | `sdplsSource` | `Core` |
-| `libleiaSemiLagrangian` | `semiLagrangian` | `Core` |
+| `libleiaSemiLagrangian` | `semiLagrangian`, with the scalar-source family `slSource` | `Core` |
 | `libleiaVelocityExtension` | `velocityExtension` | `Core`, `SemiLagrangian` |
 | `libleiaRedistancer` | `redistancer` | `Core` |
 | `libleiaVolumeCorrection` | `volumeCorrection` | `Core` |
@@ -114,9 +114,9 @@ method and the linker only decides what is loaded:
 | binary | links (every one also links `Core`) |
 |---|---|
 | `leiaLevelSetFoam` | `Advection`, `SdplsSource`, `SemiLagrangian`, `VelocityExtension`, `Redistancer`, `VolumeCorrection` |
-| `leiaLevelSetTwoPhaseFoam` | `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection`, `SemiLagrangian` |
+| `leiaLevelSetTwoPhaseFoam` | `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection`, `SemiLagrangian`, `VelocityExtension` |
 | `leiaRedistancedLevelSetFoam` | `Redistancer`, `SdplsSource` |
-| `leiaSemiLagrangeLevelSetFoam` | `SemiLagrangian` |
+| `leiaSemiLagrangeLevelSetFoam` | `SemiLagrangian`, `VelocityExtension` |
 | `leiaSemiLagrangianLevelSetTwoPhaseFoam` | `SemiLagrangian`, `VelocityExtension`, `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection` |
 | test applications, `leiaSetFields`, `leiaPerturbMesh` | the libraries whose headers they include |
 

@@ -3203,8 +3203,9 @@ laptop); record the date here. Until then they are the rollback of this work pac
 
 Plan: `docs/plan-halo-limited-gradient-control.md` (approved 2026-09-26). Branch
 `feature/gradient-controlled-level-set`, laptop worktree `~/OpenFOAM/repos/leia-gcls`; the
-never-edited reference worktree `~/OpenFOAM/repos/leia-gcls-base` (detached at c431677) holds the
-pre-change binaries for every bit-identity gate. Theme: `docs/gradient-controlled-level-set/`.
+never-edited reference worktree `~/OpenFOAM/repos/leia-gcls-base` holds the pre-change binaries
+for every bit-identity gate: before each gated step it is checked out (detached) at the last commit
+before that step and rebuilt (c431677 for B3; 0c7079c for Phase C). Theme: `docs/gradient-controlled-level-set/`.
 Decisions of 2026-09-26: the SL line first; 3D h ratio >= 1.3; the dossiers stay out of git; ONE
 2D and ONE 3D gate study test every method (no per-method study configs).
 
@@ -3297,3 +3298,56 @@ y into the page, z up) with computed hidden edges, and the camera keeps every fr
 the droplet. Iterated on rendered pages: all half-width panels are at most 8.0 cm at scale 1 (two
 per row in the 16.5 cm text width), labels on lines have white backgrounds. Section "Test cases"
 of the article holds the three figures and the parameter table.
+
+### 11.7 Phase C: the extension points are open, bit-identical (2026-09-26)
+
+One commit, steps C1 to C5 of the plan. After it, a new source law, extension or trace flux needs
+no solver edit.
+- C1 `sdplsSource`: the selector tested the literal names `Rdiv` and `RdivStrictSp`; a virtual trait
+  `usesDiscretization()` replaces them. `setTransportFlux()` gives a model the flux that advects
+  psi; `eulerianAdvection`, `leiaRedistancedLevelSetFoam` and `leiaLevelSetTwoPhaseFoam` set it.
+  The accessor `transportFlux()` stops with a fatal error when no flux was set.
+- C2 new family `slSource` (base `none`, in `libleiaSemiLagrangian`, dictionary
+  `levelSet.semiLagrangian.source`). `slAdvection::advect` calls it after the scheme step with the
+  scheme's effective dt, and only when the model is active.
+- C3 `leiaLevelSetTwoPhaseFoam` constructs a `velocityExtension` (`velocityExtensionFieldsEuler.H`)
+  and transports psi with its flux in `div` and `Sp`. With `none` the flux is a copy of `phi`
+  with the name `phi`, so the `div(phi,psi)` scheme still applies.
+- C4 `leiaSemiLagrangianLevelSetTwoPhaseFoam`: `levelSet.semiLagrangian.traceFlux physical |
+  extension` (default `physical`). `extension` traces reconstruct(phiExt). The solver warns when
+  an extension is selected with `projectedFlux` and `physical`: that combination was the no-op
+  that the gate found in 11.5.
+- C5 `leiaSemiLagrangeLevelSetFoam`: the same `traceFlux` word and a `velocityExtension` root. For
+  the reversed flow the root extends the t^n field (oscillation factor of t^n) for the old trace
+  level and the t^(n+1) field for the new one.
+- `Allwmake` refreshes the root lnInclude of `src/leiaLevelSet` before the libraries. MEASURED: a
+  header in a new sub-directory (`semiLagrangian/source/slSource.H`) was not in it, and the
+  solvers did not compile.
+
+Gate, laptop: the reference worktree at 0c7079c (the state before Phase C, rebuilt) against the
+new binaries. Each study runs up to `aggregate` in both trees; then every rendered dictionary,
+every top-level CSV (tolerance 0, the two clock columns skipped) and every file of every written
+time directory is compared byte for byte (`bitid2.sh`, `bitid_compare.py`).
+
+| study (laptop sizes) | solver | covers | cases | result |
+|---|---|---|---|---|
+| `sdpls1Dstretch` (committed, serial, noSource/R/Rdiv, N 32-256) | `leiaLevelSetFoam` eulerian | C1 | 12 | identical |
+| 1Dstretch np 4, N 32/64, `ADVECTION semiLagrangian` | `leiaLevelSetFoam` | C2 | 2 | identical |
+| 1Dstretch np 4, N 32/64 | `leiaSemiLagrangeLevelSetFoam` | C2, C5 | 2 | identical |
+| 2Dvortex np 4, R/beta | `leiaRedistancedLevelSetFoam` | C1 | 2 | identical |
+| 2Dvortex np 4, noSource/R/Rdiv, N 32/64 | `leiaLevelSetFoam` eulerian | C1 | 6 | identical |
+| stationaryDroplet2D np 4, noSource/R/Rdiv, N 32, 40 steps | `leiaLevelSetTwoPhaseFoam` | C1, C3 | 3 | identical |
+| 2Dvortex np 4, reversed, cellCentred/projectedFlux, N 32/64 | `leiaSemiLagrangeLevelSetFoam` | C2, C5 | 4 | identical |
+| 3Dshear np 4, N 24, T = 0.6 | `leiaSemiLagrangeLevelSetFoam` | C2, C5 | 1 | identical |
+| stationaryDroplet2D np 4, N 64, 30 steps, projectedFlux/cellCentred x none/closestPoint | SL two-phase | C2, C4 | 4 | identical |
+| translatingDroplet2D np 4, N 64, 100 steps | SL two-phase | C2, C4 | 1 | identical |
+| stationaryDroplet3D np 4, N 30, 65 steps | SL two-phase | C2, C4 | 1 | identical |
+| regression set, hex 2D: 2Dvortex and 2Dtranslation, N 32/64/128, np 4 | `leiaSemiLagrangeLevelSetFoam` | C2 | 6 | identical |
+| regression set, hex 3D: 3Dshear N 16/24/32, T = 3, np 4 | same | C2 | 3 | identical |
+| regression set, poly 3D: 3Dshear, 18 082 / 40 001 / 74 234 cells, T = 3, np 4, shared meshes | same | C2 | 6 | identical |
+
+53 cases, 0 differences. `leiaTestSdplsSource`: 89 passed in both trees, the same output. The
+regression set ran the default arm at laptop sizes, not at the cluster sizes of the committed
+`advConv*` studies: with `slSource none` the new call is skipped, so no arithmetic changes. The
+polyhedral rung used `advect_bound_arm.sh` on one mesh per resolution (the same point digest in
+both runs), so the mesher cannot enter the comparison.

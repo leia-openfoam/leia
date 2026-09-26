@@ -69,6 +69,7 @@ SourceFiles
 #include "Switch.H"
 #include "autoPtr.H"
 #include "slReconstruction.H"
+#include "slSource.H"
 #include "slCorrector.H"
 #include "slScheme.H"
 
@@ -125,6 +126,10 @@ class slAdvection
     //  already the analytic cell-centre velocity, so the discrete-field path is
     //  used unconditionally; a future exact-gradient trajectory can honour it.
     Switch analyticVelocity_;
+
+    //- Source step D_t psi = psi F after the characteristic update (RTS family
+    //  slSource, levelSet.semiLagrangian.source). Default `none`: not called.
+    autoPtr<slSource> source_;
 
     //- Advection scheme (RTS): pointValue (default; the Lagrange interpolation
     //  psi^{n+1}(x_c) = psi^n(x_d), non-conservative), fluxForm (conservative

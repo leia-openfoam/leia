@@ -46,6 +46,7 @@ Description
 #include "velocityModel.H"
 #include "prescribedVelocityModels.H"
 #include "slAdvection.H"
+#include "velocityExtension.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -156,7 +157,37 @@ int main(int argc, char *argv[])
         // are built from the prescribed FLUX instead of the prescribed cell
         // velocity: phi is already rescaled to t^{n+1} above, and the old level
         // is the base flux rescaled to t^n (identity for the steady field).
-        if (traceFromFlux)
+        if (traceFromFlux && traceFluxExtension)
+        {
+            // The extension of u^{n+1} (psi^n geometry) at the new level; for
+            // the reversed flow the extension of u^n at the old level, from U
+            // and phi set to t^n with the velocity model's own expression and
+            // then restored bit for bit to t^{n+1}.
+            velExtPtr->correct();
+            UtracePtr() == fvc::reconstruct(velExtPtr->phi());
+            if (velocityModel->isOscillating())
+            {
+                const scalar tau = velocityModel->tau();
+                const scalar fn = velocityModel->oscillationFactor
+                (
+                    runTime.value() - runTime.deltaT().value(), tau
+                );
+                const scalar fn1 =
+                    velocityModel->oscillationFactor(runTime.timeOutputValue(), tau);
+                phi == phi0Ptr()*fn;
+                U == U0*fn;
+                velExtPtr->correct();
+                UtraceOldPtr() == fvc::reconstruct(velExtPtr->phi());
+                phi == phi0Ptr()*fn1;
+                U == U0*fn1;
+                velExtPtr->correct();
+            }
+            else
+            {
+                UtraceOldPtr() == UtracePtr();
+            }
+        }
+        else if (traceFromFlux)
         {
             UtracePtr() == fvc::reconstruct(phi);
             if (velocityModel->isOscillating())

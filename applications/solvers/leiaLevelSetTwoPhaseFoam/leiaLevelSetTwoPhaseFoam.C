@@ -64,6 +64,7 @@ Description
 #include "surfaceTensionForce.H"
 #include "narrowBand.H"
 #include "volumeCorrection.H"
+#include "velocityExtension.H"
 // Production curvature: the SL reconstruction machinery reused READ-ONLY as a
 // spatial kappa evaluator (see reconstructedCurvatureFields.H).
 #include "slReconstruction.H"
@@ -94,6 +95,7 @@ int main(int argc, char *argv[])
     #include "createDyMControls.H"
     #include "createFields.H"
     #include "volumeCorrectionFields.H"
+    #include "velocityExtensionFieldsEuler.H"
     #include "initCorrectPhi.H"
     #include "createUfIfPresent.H"
 

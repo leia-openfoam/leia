@@ -17,12 +17,17 @@
     // the deferred-correction control for second-order (linearUpwind)
     // div(phi,psi) schemes, and psi is re-advected with each corrector's
     // updated flux.
-    const volScalarField divPhi("divPhi", fvc::div(phi));
+    // The flux that transports psi: the velocity extension's (default `none`:
+    // a copy of phi, byte-identical to the transport before 2026-09-26).
+    velExt->correct();
+    const surfaceScalarField& phiPsi = velExt->phi();
+    const volScalarField divPhi("divPhi", fvc::div(phiPsi));
+    source->setTransportFlux(phiPsi);
 
     fvScalarMatrix psiEqn
     (
         fvm::ddt(psi)
-      + fvm::div(phi, psi)
+      + fvm::div(phiPsi, psi)
       - fvm::Sp(divPhi, psi)
      ==
         source->fvmsdplsSource(psi, U)

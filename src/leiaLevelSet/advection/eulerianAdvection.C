@@ -78,6 +78,8 @@ void eulerianAdvection::advance(volScalarField& psi)
     // not a conservation law: the conservative fvm::div(phiExt, psi) equals
     // (v.grad)psi only for solenoidal v. Assemble the advective derivative
     // exactly: (v.grad)psi = div(phiExt psi) - psi (div phiExt).
+    // The source sees the flux that transports psi (the extension flux).
+    source_->setTransportFlux(velExt_->phi());
     const volScalarField divPhiExt("divPhiExt", fvc::div(velExt_->phi()));
 
     // Defect-correction loop for the deferred second-order (linearUpwind)

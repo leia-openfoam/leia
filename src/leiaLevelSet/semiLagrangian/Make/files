@@ -24,6 +24,7 @@ pointValueScheme.C
 fluxFormScheme.C
 normalProjectedScheme.C
 slAdvection.C
+source/slSource.C
 
 leiaStamp_leiaSemiLagrangian.C
 

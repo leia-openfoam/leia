@@ -44,5 +44,6 @@ EXE_LIBS = \
     -lleiaSurfaceTension \
     -lleiaRedistancer \
     -lleiaVolumeCorrection \
+    -lleiaVelocityExtension \
     -lleiaSemiLagrangian \
     -lleiaCore
