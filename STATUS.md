@@ -3620,3 +3620,87 @@ last CSV row, per rung (N = 100 / 142 / 200):
    instability stays open. Not tried after the fix: `cellCentreInverse` against `none` on a
    matched setup, a longer box, the RK2 foot integrator, midpoint force centring, and the
    semi-implicit capillary force.
+
+### 11.14 Two parallel defects of the coupled SL solver; the Eulerian rhoLENT port (2026-09-27)
+
+Found while preparing the Eulerian port, which reuses the SL mass-flux code. Every number below
+is from the laptop, the gate's baseline translating case (N = 100, R/h = 10, END_TIME as stated),
+binaries of the named commits.
+
+**Defect 1, the solution: the face density on a coupled face (fixed in 28d13f0).**
+`computeFaceAreaFractions` filled every boundary face from its local cell. On a processor face
+each rank used its own cell's plane, whatever the flux direction, so the two sides disagreed on
+alpha_f and rho_f*phi, and mass was not conserved across the seam where the interface crossed it.
+
+1. Measured, N = 64, np 4, one step: 4 processor faces with alpha_f different on the two sides,
+   rho_f up to 90 % apart; phi equal on both sides. After the fix: 0 faces differ.
+2. np 4 against serial (column-scaled maximum difference, velocity metrics): 1e-5 to 5e-4 by
+   t = 0.033 before the fix; 1e-8 to 1e-10 through step 5000 after it.
+3. The per-rank mass residual (1e-10 to 1e-13) did not see the defect: each rank's auxiliary
+   density balances its own flux.
+
+**The late translating instability is not a decomposition artefact.** To t = 0.1:
+
+| run | diverged at step | t [s] |
+|---|---|---|
+| serial | 7139 | 0.0775 |
+| np 4, before the fix (the cluster baseline: the same step) | 8331 | 0.0904 |
+| np 4, with the fix | 8000 | 0.0868 |
+
+The runs agree until the growth starts near t = 0.06-0.065; from there any difference is
+amplified.
+
+**Defect 2, the diagnostics: internal-face loops in writeDropletMetrics.H (fixed in b1798c3).**
+The zero-set sample, the curvature/gradient band and the face statistics used internal faces
+only; on several ranks the processor faces were missing. np 4 against serial, to t = 0.05, with
+defect 1 already fixed:
+
+| column | before | after |
+|---|---|---|
+| zeroSetRadialL2 (gate: shape) | 3.42e-02 | 1.20e-07 |
+| gradPsiL2ErrorBand (gate: gradient band) | 3.82e-02 | 1.24e-08 |
+| kErrL2Band (gate: curvature) | 7.59e-02 | 2.11e-08 |
+| m2Amplitude (gate: oscillating shape) | 6.31e-01 | 1.92e-07 |
+
+Serial runs are unchanged by both fixes: bit-identical to the previous binary over 4604 steps,
+every column (`compare_metrics_csv.py --tol 0`).
+
+**Consequence.** Every SL two-phase result on more than one rank before 2026-09-27 carries both
+defects: a decomposition error of about 1e-4 in the solution before any instability, and a
+decomposition bias of several percent in the shape, gradient-band, curvature and mode-2 columns.
+OPEN, author decision: which earlier parallel studies to re-run or void. The running 2D gate
+(`55044205` and the five translating re-runs) uses the pre-fix binaries; it completes as the
+pre-fix record, then the whole gate re-runs with the fixes (PRESERVE=1), and the two are
+compared for verdict changes.
+
+**The gate now checks the coupled solver's decomposition (aaae627).** `translatingSeamNp1` runs
+the coarsest translating rung in serial and compares the error-vector columns of the droplet CSV
+with the np 4 run at tol 1e-5 (3.5e-7 at most after the fixes). A reference that did not complete
+is NOT_COMPARABLE, not a FAIL. The seam option now works on any arm.
+
+**The Eulerian two-phase solver gets the SL mass flux (c094bd8).** It kept rho, rhoPhi and muf at
+their t = 0 values for the whole run. The SL mass-flux code is now shared, moved verbatim into
+`createMassFluxFields.H`, `updateFaceDensity.H` and `updateMassFlux.H` (the SL files reconstruct
+byte for byte). The Eulerian solver reads the same `levelSet.massFlux` dictionary with the same
+defaults, rebuilds the face density from the new interface, solves the rhoLENT auxiliary density
+on every outer corrector, resets rho after the PIMPLE loop, and logs the density-bound numbers.
+`PSI_OUTER_CORRECTORS yes` rebuilds its interface on every outer corrector. Laptop, np 4, 1000
+steps (t = 0.0109 s):
+
+| run | travelled fraction | L2 \|U-U0\| [m/s] | L1 \|U-U0\| [m/s] |
+|---|---|---|---|
+| Eulerian, new, ratio 840 | 1.00012 | 4.85e-4 | 2.54e-4 |
+| Eulerian, previous binary, ratio 840 | 0.420 | 1.55e-1 | 3.05e-2 |
+| Eulerian, new, ratio 1 | 1.00078 | 1.04e-4 | 3.59e-5 |
+| Eulerian, previous binary, ratio 1 | 1.00339 | 2.18e-4 | 9.10e-5 |
+
+np 4 against serial (new): U, alpha, psi and p_rgh equal to 1e-8 relative. Stationary droplet,
+np 4: displacement 2.5e-13 m, L2 |U| 8.0e-5 m/s. Relative mass residual at ratio 840: 1.2e-10.
+The previous Eulerian binary moves the heavy droplet at 42 % of the stream: every Eulerian
+two-phase result with a moving interface and a density contrast before this commit is wrong
+physics (the OPEN decision on the frozen-rho studies, plan item D-m). Still missing in the
+Eulerian solver: the droplet CSV (plan F2), so it cannot join the coupled gate arms yet.
+
+Also noted, not fixed: `rhoClipFraction` counts round-off clips in pure cells (37-48 % of the
+cells at a clip L1 of 1e-12), so as an error metric it measures round-off; the research
+diagnostics `A4h*`, `A8h*` and `driver*` still use internal faces only.

@@ -300,6 +300,17 @@ breaks the identity that rhoLENT enforces, so it is measured, never silent (`rho
 Measured relative mass residual $\sim10^{-13}$, including right up to every crash —
 mass transport is not implicated in any failure observed so far.
 
+CORRECTED 2026-09-27: before 28d13f0 the face density on a processor face came from each
+rank's OWN cell, whatever the flux direction, so the two sides of a seam used different
+$\rho_f$ and mass was not conserved across the seam where the interface crossed it. The
+per-rank residual above did not see it: each rank's auxiliary density balances its own
+flux. np 4 against serial on the translating droplet ($N = 100$): $10^{-5}$ to
+$5\times10^{-4}$ relative in the velocity metrics by $t = 0.033$ s before the fix,
+$10^{-8}$ to $10^{-10}$ through step 5000 after it. Every result on more than one rank
+before that commit carries this error; serial results do not (bit-identical by
+construction and by test). The late translating instability is not this defect: serial
+diverges at $t = 0.0775$ s, np 4 at $0.0868$ s with the fix and $0.0904$ s without it.
+
 CORRECTED 2026-09-27 (this paragraph said the interface is advanced once per step and then
 held fixed): since 2026-08-28 the interface is re-advected from $\psi^n$ on EVERY outer
 corrector with the current velocity iterate (`PSI_OUTER_CORRECTORS yes`, three outer

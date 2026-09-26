@@ -220,7 +220,12 @@ by O(1) at every processor boundary; `interfaceExtension::updateFlux` assigning
 the raw flux over the whole boundary field; the psi filter's `fvc::average`
 inheriting `calculated` patch types so `L(psi)` was uncoupled across seams; a
 narrow-band dilation looping internal faces only, making the filtered CELL SET
-decomposition-dependent.
+decomposition-dependent; `computeFaceAreaFractions` filling a processor face from
+each rank's own cell, so the two sides of a seam used different rho_f and mass
+was not conserved across it (2026-09-27); the droplet metrics sampling the zero
+set and the band on internal faces only, 3-8 % apart between serial and np 4 on
+fields equal to 1e-8 (the same day). The 2D method gate now runs the coupled
+solver's decomposition check (`translatingSeamNp1`).
 
 **The gate.** Before `sbatch`, on the laptop:
 
