@@ -159,12 +159,12 @@ int main(int argc, char *argv[])
         // is the base flux rescaled to t^n (identity for the steady field).
         if (traceFromFlux && traceFluxExtension)
         {
-            // The extension of u^{n+1} (psi^n geometry) at the new level; for
-            // the reversed flow the extension of u^n at the old level, from U
-            // and phi set to t^n with the velocity model's own expression and
-            // then restored bit for bit to t^{n+1}.
-            velExtPtr->correct();
-            UtracePtr() == fvc::reconstruct(velExtPtr->phi());
+            // Both levels with the psi^n geometry. For the reversed flow the
+            // extension of u^n at the old level FIRST, from U and phi set to t^n
+            // with the velocity model's own expression, then U and phi restored
+            // bit for bit to t^{n+1} (the expression of oscillateVelocity) and
+            // the extension of u^{n+1} at the new level. Two evaluations per
+            // step, and the extension object ends the step at t^{n+1}.
             if (velocityModel->isOscillating())
             {
                 const scalar tau = velocityModel->tau();
@@ -181,9 +181,12 @@ int main(int argc, char *argv[])
                 phi == phi0Ptr()*fn1;
                 U == U0*fn1;
                 velExtPtr->correct();
+                UtracePtr() == fvc::reconstruct(velExtPtr->phi());
             }
             else
             {
+                velExtPtr->correct();
+                UtracePtr() == fvc::reconstruct(velExtPtr->phi());
                 UtraceOldPtr() == UtracePtr();
             }
         }

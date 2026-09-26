@@ -3452,3 +3452,27 @@ bit (Uext = U + w (u_h(Y) - U) now).
 Final-state bit identity (all templates of C6 and D4, binaries with D1 to D4 compiled in and not
 selected, against the reference 0c7079c): the Phase C set, 53 of 53 cases, every CSV and every
 written field identical; the rendered dictionaries differ only by the inert insertions.
+
+### 11.11 The 2D gate smoke with the six candidates, laptop (2026-09-26)
+
+`SMOKE=1`, N 32/45/64, np 4, about 20 to 55 steps per case; baseline and S1, HL0, HL1q, HL1z,
+HL2, FP0 on commit 952e593 (clean stamps): 49 studies, every case COMPLETED, no rule error. This is
+the 4-rank check of CLAUDE.md before the cluster, not a measurement.
+- The sources act (HL2 shear: max |dt F| up to 0.06 per step, no clamp) and every sample point
+  stays inside R (max |Y - x|/R = 0.99999999).
+- Seam check (np 1 and np 8 against np 4, column-scaled tolerance 1e-10): PASS for S1, HL0,
+  HL1q, HL1z and HL2; FAIL for FP0 (E_VOL_ALPHA_REL differs by 1.4e-2 at np 1), as its candidate
+  file predicted (closestPoint trusts halo Taylor data and falls back to a steady solve).
+- The smoke verdicts are not results: N = 32 and 45 are below R/h = 10, and the horizons are 20
+  to 55 steps. OBSERVATION for the gate to test: every extension candidate lowers the shear
+  gradient band error at N = 64 (HL0 0.53, HL1q/HL1z 0.50, HL2 0.47, FP0 0.05 of the baseline) and
+  raises the shear volume error about six times (HL0 6.8e-4 against 1.1e-4) with a lower order
+  (0.54 against 1.27). S1 misses its target (0.83 > 0.8) and also raises the volume error.
+- PRE-REGISTERED FOLLOW-UP (not run): with R = 1 h the extension velocity changes over one cell
+  in the normal direction, so the trace error near |d| = R can be first order. Prediction: HL0
+  with R = 2 h halves the finest-rung shear volume error of HL0 and keeps its gradient gain.
+  It needs the cap radiusCells <= 1 raised (the local quadratic model is then extrapolated beyond
+  its stencil). Falsified if the volume error does not fall by half.
+- The kinematic SL solver evaluated the extension three times per step (t^(n+1), t^n, t^(n+1));
+  it now evaluates t^n first and t^(n+1) second. The HL0 shear smoke is bit-identical before and
+  after (3 rungs, both CSVs at tolerance 0).
