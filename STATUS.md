@@ -3721,3 +3721,23 @@ zero-set and centroid errors reported the displacement. Seen in the 3D gate smok
 both Popinet cases have it. Now the 3D template renders `dropletReferenceVelocity (0.05 0 0)`.
 VOID for these columns: `traceTranslating3Dhex` and `traceTranslating3Dpoly_r10p0/r12p7/r15p8`
 (no conclusion in STATUS.md, METHOD.md or the docs cites them). The 3D gate has not run.
+
+**The late translating instability: four one-change discriminators (laptop, 2026-09-27).** The
+gate's baseline translating case, N = 100 (R/h = 10), np 4, to t = 0.1 s, binaries with both
+parallel fixes. One entry changed per run. The read-out is the divergence time against the
+decomposition scatter of the unchanged case (serial 0.0775 s, np 4 0.0868 s with the fixes,
+0.0904 s without). A shift inside that scatter is not a result. ONE resolution only: these are
+indicators for the choice of the next ladder, not results.
+
+| change | result | t [s] | reading |
+|---|---|---|---|
+| none (the reference, np 4) | DIVERGED step 8000 | 0.0868 | — |
+| `curvatureExtension none` | DIVERGED step 6404 | 0.0695 | 20 % earlier: cellCentreInverse delays the instability |
+| `footIntegrator rk2` | DIVERGED step 7759 | 0.0842 | inside the scatter: no effect |
+| `capillaryForceCentring midpoint` | DIVERGED step 5467 | 0.0593 | 32 % earlier: worse |
+| density ratio 1 (499.695 both) | COMPLETED | 0.1 | the instability needs the density contrast |
+
+Consistent with section 0 and `translatingRepaired2D` (`none` at N = 128 diverged at
+t = 0.063-0.075 s, ratio 1 completed). The divergence onset (growth from t = 0.06 s) is when the
+droplet centre is at 5.5 mm and its leading edge 3.5 mm (35 cells) from the outlet. Not yet
+tested: a longer box (the distance to the outlet), and the semi-implicit capillary force.
