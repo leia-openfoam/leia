@@ -3848,3 +3848,19 @@ predicted (the fixes do not touch the kinematic solver). The baseline's `transla
 (`meanMagUPrime`), 1.2e-7 (`zeroSetRadialL2`), 2.1e-8 (`kErrL2Band`), the same numbers as on the
 laptop to every printed digit; the check passes at its tolerance 1e-5. The baseline translating
 arm completes all three rungs.
+
+**Fixed against pre-fix baseline (the whole vector, the value at T; 03:40).** Most entries agree to
+0.4 % or better; the kinematic shear arm to 0.0 %. The seam defects mattered where the processor
+boundaries cross the droplet:
+
+| arm, N | metric | pre-fix | fixed | change |
+|---|---|---|---|---|
+| stationary 100 | shapeError | 3.90e-4 | 4.27e-4 | +9.4 % |
+| stationary 100 | meanMagUPrime | 1.48e-8 | 1.35e-8 | -8.7 % |
+| oscillating 100 | l2MagUPrime (the physical oscillation) | 2.41e-3 | 1.22e-3 | -50 % |
+| oscillating 200 | gradientBandError | 3.41 | 5.13 | +51 % |
+| oscillating 200 | volumeError | 8.18e-3 | 3.04e-3 | -63 % |
+
+The baseline's oscillating arm is unhealthy at N = 200: the gradient band error is 5.1 (0.10 and
+0.14 at N = 100 and 142), so |grad psi| in the band is far from 1 by t = 0.1 s at the finest rung.
+The oscillating arm's orders and verdicts must be read with that in mind.
