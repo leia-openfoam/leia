@@ -3797,6 +3797,23 @@ A slower growth remains in the 20 mm box at N = 142 after t = 0.07 s: 4.3e-4 to 
 about 70 times slower than the outlet-driven one; at N = 100 the 20 mm box decays over the same
 window. It is the question a long-box ladder (three rungs, 0.1 s or longer) must answer next.
 
+The long-box ladder to t = 0.1 s (laptop, fixed binaries; np 8, 8, 16 at N = 100, 142, 200): all
+three rungs COMPLETE. At t = 0.1 s:
+
+| metric | N = 100 | N = 142 | N = 200 | pairwise orders |
+|---|---|---|---|---|
+| zeroSetRadialL2 [m] | 1.38e-4 | 7.08e-5 | 3.99e-5 | 1.90, 1.68 |
+| centroidError [m] | 1.95e-4 | 1.00e-4 | 5.62e-5 | 1.89, 1.69 |
+| phaseVolumeRelError | 1.30e-2 | 2.19e-3 | 2.20e-3 | 5.1, 0.0 |
+| gradPsiL2ErrorBand | 7.70e-2 | 7.80e-2 | 4.53e-2 | -0.04, 1.58 |
+| l2MagUPrime [m/s] | 5.14e-4 | 1.80e-3 | 7.36e-4 | -3.6, 2.6 |
+| kErrL2Band [1/m] (exact 1000) | 15.4 | 21.6 | 20.2 | -1.0, 0.2 |
+
+Shape and centroid converge near order 1.7-1.9. The spurious current stays bounded at every rung
+but is not monotone in h (the N = 142 bump after t = 0.07 s); the curvature error does not converge
+(1.5-2.2 %). Running: the long box to t = 0.25 s at N = 100 and 142 (does the N = 142 growth
+continue?).
+
 **The fixed 2D gate:** orchestrator `55048916` (section 5). While it runs, the cluster clone stays at 1150e68 (no pull: new cases would record a commit the binaries do not carry); its STATUS.md is refreshed from GitHub without a pull (`git show origin/<branch>:STATUS.md > STATUS.md`; STATUS.md is outside the paths that mark a case dirty). Before the next pull there: `git checkout -- STATUS.md`.
 
 **Two corrections of the gate's scoring, made after the fixed gate started (so its orchestrator
