@@ -3781,7 +3781,21 @@ when the leading edge is 3.5 mm (35 cells) from the outlet. This is the geometri
 section "Is the interface still inside the domain?" of CLAUDE.md warns about; it needs the density
 contrast (ratio 1 completes). The gate's 0.05 s horizon ends before it. OPEN, author decision:
 a longer translating box for the gates and ladders (a new length token with the current box as
-its default). N = 142 confirmation of the long box: running on the laptop.
+its default).
+
+Confirmed at N = 142 (R/h = 14.2, np 8, fixed binaries): the 10 mm box DIVERGES at step 14198
+(t = 0.0911 s, volume error 0.48 at the last row); the 20 mm box COMPLETES t = 0.1 s (volume error
+2.2e-3). L2 |U-U0|:
+
+| t [s] | 0.02 | 0.05 | 0.06 | 0.07 | 0.08 | 0.09 | 0.1 |
+|---|---|---|---|---|---|---|---|
+| 10 mm box | 6.80e-4 | 1.26e-3 | 9.66e-4 | 7.04e-2 | 1.29e-1 | 6.46e-1 | — |
+| 20 mm box | 4.81e-4 | 8.95e-4 | 6.85e-4 | 4.28e-4 | 9.64e-4 | 1.56e-3 | 1.80e-3 |
+
+A slower growth remains in the 20 mm box at N = 142 after t = 0.07 s: 4.3e-4 to 1.8e-3 in 0.03 s
+(about 46 1/s), with the droplet more than 11 mm from the outlet. That is an interior growth,
+about 70 times slower than the outlet-driven one; at N = 100 the 20 mm box decays over the same
+window. It is the question a long-box ladder (three rungs, 0.1 s or longer) must answer next.
 
 **The fixed 2D gate:** orchestrator `55048916` (section 5). While it runs, the cluster clone stays at 1150e68 (no pull: new cases would record a commit the binaries do not carry); its STATUS.md is refreshed from GitHub without a pull (`git show origin/<branch>:STATUS.md > STATUS.md`; STATUS.md is outside the paths that mark a case dirty). Before the next pull there: `git checkout -- STATUS.md`.
 
