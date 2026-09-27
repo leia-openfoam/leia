@@ -2530,7 +2530,7 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
-| `55044205` `leia-gate2D` `long` | **methodGate2D** (2026-09-26 23:06, commit 79b5a92, clean stamps), baseline + S1, HL0, HL1q, HL1z, HL2, FP0, moved into `/work/scratch/tm83tomy/leia` (user request; section 11.12). The runs in `leia-gcls` (`55042210`, `55043312` and their children) are cancelled by id; their partial studies stay there. | 7 d (orchestrator) | `/work/scratch/tm83tomy/leia/studies/methodGate2D_*` |
+| `55048916` `leia-gate2D` `long` | **methodGate2D, FIXED** (2026-09-27 02:10, commit 1150e68, stamps g1150e68): the coupled-face density fix, the droplet-metric fix and `translatingSeamNp1` (section 11.14), all seven candidates, 56 arms. Artefacts checked before sbatch. The pre-fix run `55044205` and the translating re-run drivers `55047550`-`55047554` were stopped by id at 02:07, stragglers only; their studies are preserved as `methodGate2D_*_pre-20260927-*` and `methodGate2D_summary_pre-20260927-020856` (section 11.15). | 7 d (orchestrator) | `/work/scratch/tm83tomy/leia/studies/methodGate2D_*` |
 | `54354379` `leia-curv` `long` | **interFoamDroplet2D** — re-running the `N` = 512 arm only (the other three are complete at the full 0.1 s horizon with `interFoam.csv` present). 106689 steps at the measured 1.52 steps/s = ~19.5 h. Replaces the arm lost to the cleanup bug above. | 28 h | `studies/interFoamDroplet2D/` |
 | DONE | **filterOffAmplifier3D** 4/4, **upwindConvection2D** 8/8, **upwindConvection3D** 4/4, **filterThetaScaling3D** 6/6 — all analysed, section 4. | — | `studies/*/` |
 | DONE | **stationaryDroplet3Dwide**, **cellCentreInverseFiltered512**, **domainSizeControl10R/6R/4R**, **psiOuterCorrectorsGain3D**, **ddtOrderGain3D** | — | `studies/*/` |
@@ -3741,3 +3741,47 @@ Consistent with section 0 and `translatingRepaired2D` (`none` at N = 128 diverge
 t = 0.063-0.075 s, ratio 1 completed). The divergence onset (growth from t = 0.06 s) is when the
 droplet centre is at 5.5 mm and its leading edge 3.5 mm (35 cells) from the outlet. Not yet
 tested: a longer box (the distance to the outlet), and the semi-implicit capillary force.
+
+### 11.15 The pre-fix verdicts, the outlet, and the fixed 2D gate (2026-09-27)
+
+**The pre-fix 2D gate** (`55044205` plus the five translating re-runs, pre-fix binaries, summaries
+in `methodGate2D_summary_pre-20260927-020856`): every candidate's verdict is FAIL. The kinematic
+shear arm alone fails all of them. The coupled-solver defects of 11.14 do not touch the kinematic
+solver, whose seam checks pass at 1e-12:
+
+| candidate | shear shape error at N = 136 | ratio to baseline (6.19e-4) | shape order (baseline 3.07) |
+|---|---|---|---|
+| HL0 (halo-limited extension, no source) | 8.49e-3 | 14 | 1.39 |
+| S1 (soft wall, no extension) | 0.254 | 410 | 0.06 |
+| HL1q (extension, linear q law) | 0.107 | 170 | 0.02 |
+| HL1z (extension, linear z law) | 1.65 | 2700 | — |
+
+The extension and the sources degrade the transport of the interface itself. The coupled arms
+add divergences where the baseline completes (for example HL1q and HL1z at stationary N = 142).
+The fixed gate re-runs the kinematic arms with unchanged kinematic code; they must reproduce the
+pre-fix ones byte for byte.
+
+**The translating re-runs to 0.05 s** (pre-fix binaries): the baseline completes all three rungs,
+so criterion 1 can hold. All 15 re-runs reproduce the first 0.05 s of their 0.1 s runs byte for
+byte (`compare_metrics_csv.py --tol 0`, the pre-registered check of 11.13), S1 at N = 142 to the
+identical divergence row (6741).
+
+**The late translating instability is the outlet** (laptop, N = 100, fixed binaries). The same
+case in a box twice as long in x (20 mm, the same h, the outlet 10 mm further away) COMPLETES
+t = 0.1 s, and its spurious current decays:
+
+| t [s] | 0.02 | 0.05 | 0.06 | 0.065 | 0.07 | 0.08 |
+|---|---|---|---|---|---|---|
+| L2 \|U-U0\|, 10 mm box (np 4) | 1.04e-3 | 1.95e-3 | 1.79e-3 | 4.90e-2 | 7.56e-2 | 1.35e-1 |
+| L2 \|U-U0\|, 20 mm box (np 8) | 7.39e-4 | 1.38e-3 | 1.22e-3 | 1.09e-3 | 9.10e-4 | 6.73e-4 |
+
+(The 20 mm box has twice the volume, so its volume-weighted L2 norm is about 1/sqrt(2) of the
+10 mm value at equal local levels; the early ratio is 0.71.) In the 10 mm box the growth starts
+when the leading edge is 3.5 mm (35 cells) from the outlet. This is the geometric event that the
+section "Is the interface still inside the domain?" of CLAUDE.md warns about; it needs the density
+contrast (ratio 1 completes). The gate's 0.05 s horizon ends before it. OPEN, author decision:
+a longer translating box for the gates and ladders (a new length token with the current box as
+its default). N = 142 confirmation of the long box: running on the laptop.
+
+**The fixed 2D gate:** orchestrator `55048916` (section 5). The login node `lcluster5` stopped
+answering at about 02:00; `lcluster3` and `lcluster4` answered and were used.
