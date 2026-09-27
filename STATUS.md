@@ -3951,3 +3951,20 @@ arm: the shear arm (as before the fix), the stationary arm at N = 200 (HL1q shap
 volume error 76 %; HL1z 3.7 R and 84 %: these runs COMPLETE, but with the droplet destroyed, so
 the completion count alone would mislead), the translating and the oscillating arm. Waiting: HL0
 and S1 (oscillating finest rungs), HL2, FP0.
+
+**The baseline's oscillating arm goes unstable at the finest rung (fixed gate, 06:20).** The band
+gradient error `gradPsiL2ErrorBand` (L2 of |grad psi| - 1 in the band) over time:
+
+| t [s] | 0.01 | 0.03 | 0.05 | 0.07 | 0.08 | 0.09 | 0.10 |
+|---|---|---|---|---|---|---|---|
+| N = 142 | 0.036 | 0.066 | 0.076 | 0.099 | 0.111 | 0.123 | 0.140 |
+| N = 200 | 0.054 | 0.087 | 0.159 | 0.386 | 0.581 | 1.24 | 5.13 |
+
+At N = 142 the drift grows about linearly; at N = 200 it grows exponentially after t = 0.05 s, and
+at t = 0.10 s the velocity norm jumps tenfold (8.1e-2). The run COMPLETES the 0.1 s horizon on the
+edge of a divergence, so its values at T (period 8.06 ms against 10.0 and 9.82 ms at the coarser
+rungs; the Celik classification of period and damping: divergent) cannot carry a verdict. This
+drift of |grad psi| without redistancing is exactly the defect the gradient-control candidates
+exist to remove; the candidates fail for other reasons (the shear transport). OPEN, author
+decision: the oscillating arm's horizon (as for the translating arm), and a baseline check that
+reads the gradient drift over time, not only at T.
