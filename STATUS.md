@@ -3927,7 +3927,24 @@ The spurious current grows from t = 0.10 s at a slowing rate (about 26 1/s at fi
 end), the droplet volume drifts by 10 % and the droplet runs 3.9 mm ahead of the stream. So the
 interior degradation is real and needs no outlet; the outlet only turns it into an explosive
 divergence. For the method this is the open defect of the translating droplet at the water/air
-density ratio. Running: the same 40 mm box at N = 142 (does the degradation shrink with h?).
+density ratio.
+
+The same 40 mm box at N = 142 (np 16, to t = 0.3 s) COMPLETES with a smaller degradation:
+
+| t [s] | 0.10 | 0.18 | 0.22 | 0.26 | 0.30 |
+|---|---|---|---|---|---|
+| L2 \|U-U0\|, N = 100 | 3.6e-4 | 2.2e-3 | 4.4e-3 | 6.9e-3 | 8.3e-3 |
+| L2 \|U-U0\|, N = 142 | 1.3e-3 | 1.1e-3 | 1.6e-3 | 2.4e-3 | 3.6e-3 |
+| volume error, N = 100 | 1.3e-2 | 1.2e-2 | 3.6e-2 | 8.1e-2 | 1.5e-1 |
+| volume error, N = 142 | 2.2e-3 | 9.1e-3 | 1.9e-3 | 9.6e-3 | 2.8e-2 |
+| centroid lead [mm], N = 100 | 0.19 | 0.63 | 1.32 | 2.48 | 3.86 |
+| centroid lead [mm], N = 142 | 0.10 | 0.58 | 0.82 | 1.21 | 1.82 |
+
+At t = 0.3 s the degradation is 2.3x (spurious current), 5.4x (volume) and 2.1x (lead) smaller at
+N = 142 than at N = 100: it shrinks with h, as a discretization error does, not as a
+resolution-independent instability. TWO rungs only: no order is stated. The third rung (N = 200,
+160 000 cells, 78 000 steps) belongs on the cluster. With the outlet more than 17 mm away the
+translating droplet is usable over 0.3 s at N = 142; near the outlet it is not.
 
 **Fixed-gate verdicts so far (05:32).** HL1q: FAIL. HL1z: FAIL (43 FAIL lines). Both fail on every
 arm: the shear arm (as before the fix), the stationary arm at N = 200 (HL1q shape error 3.8 R and
