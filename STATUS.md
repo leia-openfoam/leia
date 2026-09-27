@@ -3825,7 +3825,30 @@ The growth starts near t = 0.10 s at about 30 1/s, with the droplet more than 8 
 and turns explosive after t = 0.16 s (the centroid then runs ahead of U0 t: the droplet breaks up).
 So there are TWO phenomena: (1) a fast growth that the outlet triggers in the 10 mm box (a factor 27
 in 0.005 s at t = 0.06 s, N = 100), and (2) a slower interior growth that the long box only
-postpones. The gate's 0.05 s horizon ends before both. N = 142 to 0.25 s: running.
+postpones. The gate's 0.05 s horizon ends before both. N = 142 in the 20 mm box: DIVERGED at step
+34187 (t = 0.2194 s), the same pattern.
+
+**A geometric signature (04:10).** The time at which L2 |U-U0| first exceeds 10 times its t = 0.03 s
+level, and where the droplet is then:
+
+| run | t [s] | centroid x [mm] | box centre [mm] | centroid - centre [mm] |
+|---|---|---|---|---|
+| 10 mm box, N = 100, serial | 0.0630 | 5.76 | 5.0 | +0.76 |
+| 10 mm box, N = 100, np 4 | 0.0630 | 5.76 | 5.0 | +0.76 |
+| 10 mm box, N = 142, np 8 | 0.0656 | 5.72 | 5.0 | +0.72 |
+| 20 mm box, N = 100, np 4 | 0.1608 | 10.98 | 10.0 | +0.98 |
+| 20 mm box, N = 142, np 8 | 0.1611 | 11.04 | 10.0 | +1.04 |
+
+In every run the explosive growth starts when the droplet's TRAILING edge (centroid - R, R = 1 mm)
+crosses the middle of the box, within 0.3 mm, in serial and in parallel, at both resolutions and
+both box lengths. The jump time reproduces to 0.2 % between N = 100 and 142 in the 20 mm box: a
+geometric event (CLAUDE.md, "Is the interface still inside the domain?"), not a growth that starts
+at t = 0. No case file places anything at x = L/2 (the inlet fixes U and alpha, the outlet fixes
+p_rgh, psi is zeroGradient everywhere). So the position in the box and the elapsed time are
+confounded in these runs. The discriminator, with its prediction written before the result: the
+20 mm box, N = 100, droplet starting at x = 5 mm instead of 2.5 mm. If the event is tied to the box
+centre, the jump comes with the centroid near 11 mm, at t near 0.12 s; if it is tied to time or
+travel, near t = 0.16 s with the centroid near 13 mm. Running on the laptop.
 
 **The fixed 2D gate:** orchestrator `55048916` (section 5). While it runs, the cluster clone stays at 1150e68 (no pull: new cases would record a commit the binaries do not carry); its STATUS.md is refreshed from GitHub without a pull (`git show origin/<branch>:STATUS.md > STATUS.md`; STATUS.md is outside the paths that mark a case dirty). Before the next pull there: `git checkout -- STATUS.md`.
 
