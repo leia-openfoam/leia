@@ -3998,3 +3998,25 @@ soft wall): 15 FAIL lines; all three translating rungs diverge; its seam check i
 (the np 4 reference diverged). Every candidate of the first campaign now FAILS the 2D gate: S1,
 HL0, HL1q, HL1z, HL2, and FP0 (its shear arm and seam check). The 3D gate therefore does not run.
 Remaining: FP0's oscillating arm and stationary N = 200, which time out at the 10 h limit.
+
+**The fixed 2D gate is complete (orchestrator `55048916`, 12:57, rc 2: FP0's three TIMEOUT
+solves, 10 h limit).** Every summary and verdict recomputed with the corrected script (13:00,
+HEAD c718abb, no source change since the build 1150e68). Verdicts: every candidate FAILS.
+
+| candidate | verdict | target ratio | regressions | orders | seam | completion |
+|---|---|---|---|---|---|---|
+| FP0 | FAIL | 0.939 | 3 | 8 | 5 | 5 |
+| HL0 | FAIL | 0.828 | 16 | 13 | 0 | 0 |
+| HL1q | FAIL | 0.204 | 22 | 18 | 0 | 0 |
+| HL1z | FAIL | 6.490 | 23 | 19 | 0 | 0 |
+| HL2 | FAIL | 0.754 | 7 | 5 | 0 | 3 |
+| S1 | FAIL | 0.707 | 12 | 5 | 1 | 1 |
+
+Coupled seam check (`translatingSeamNp1`, tol 1e-5): baseline 3.5e-7, HL0 4.7e-6, HL1q 4.9e-7, HL1z
+5.3e-7 PASS; S1 0.76 FAIL; FP0 1.11 FAIL; HL2 NOT_COMPARABLE. The trade-off the gradient-control
+sources show on the shear arm: HL1q lowers the band gradient error of the baseline (1.62, order
+0.05: in a shear flow |grad psi| changes physically without redistancing) five-fold, and raises
+the shape error 173-fold. Tables committed: `docs/gradient-controlled-level-set/gcls-level-set-
+article/data/tables/methodGate2D_*` (the verdicts, one LaTeX table per arm, and the summary,
+orders, vsBaseline and seam CSVs of every candidate; regenerate with `make_gate_summary.py
+--docs` and `make_gate_tables.py`). The 3D gate does not run: no 2D pass.
