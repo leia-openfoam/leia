@@ -3848,7 +3848,19 @@ p_rgh, psi is zeroGradient everywhere). So the position in the box and the elaps
 confounded in these runs. The discriminator, with its prediction written before the result: the
 20 mm box, N = 100, droplet starting at x = 5 mm instead of 2.5 mm. If the event is tied to the box
 centre, the jump comes with the centroid near 11 mm, at t near 0.12 s; if it is tied to time or
-travel, near t = 0.16 s with the centroid near 13 mm. Running on the laptop.
+travel, near t = 0.16 s with the centroid near 13 mm.
+
+RESULT (04:40): the jump came at t = 0.1372 s with the centroid at 12.15 mm (7.15 mm travelled);
+the run diverged at t = 0.1917 s. NEITHER prediction holds, so the box-centre coincidence of the
+table above is NOT supported. Up to t = 0.12 s the two runs have IDENTICAL spurious-current
+histories (7.4e-4, 8.0e-4, 1.2e-3, 6.7e-4, 5.1e-4, 7.7e-4 at t = 0.02 ... 0.12 s): the slow phase is a
+function of time only, as translation invariance requires. The explosive phase then comes
+earlier for the droplet that is further downstream (its leading edge 6.9 mm from the outlet at the
+jump, against 8.0 mm for the later jump of the droplet started at 2.5 mm). The reading that fits
+every run so far: a slow interior growth in time, and an amplification that grows as the droplet
+approaches the outlet; the jump happens when the two together cross a threshold. In the 10 mm box
+the outlet is close from the start, so the jump comes at t = 0.063 s. Not yet tested: a far longer
+box (the interior growth alone), an outlet condition other than fixed p_rgh with zeroGradient U.
 
 **The fixed 2D gate:** orchestrator `55048916` (section 5). While it runs, the cluster clone stays at 1150e68 (no pull: new cases would record a commit the binaries do not carry); its STATUS.md is refreshed from GitHub without a pull (`git show origin/<branch>:STATUS.md > STATUS.md`; STATUS.md is outside the paths that mark a case dirty). Before the next pull there: `git checkout -- STATUS.md`.
 
