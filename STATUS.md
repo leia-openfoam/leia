@@ -3913,3 +3913,18 @@ recomputed with it (the oscillating rows carry `oscL2MagU`; `l2MagUPrime` is emp
 41 h: they will time out at the 10 h job limit. FP0's verdict does not depend on them: its shear
 arm (bit-identical to the pre-fix gate) fails at 34 times the baseline's shape error, and its own
 seam check fails (closestPoint is decomposition-dependent, 0.45).
+
+**The interior growth without the outlet: a 40 mm box (N = 100, laptop, np 8, to t = 0.3 s).** The
+outlet stays more than 17 mm from the droplet. The run COMPLETES, but it degrades:
+
+| t [s] | 0.10 | 0.14 | 0.18 | 0.22 | 0.26 | 0.30 |
+|---|---|---|---|---|---|---|
+| L2 \|U-U0\| (40 mm box; 1/sqrt(2) of the 20 mm scale) | 3.6e-4 | 1.0e-3 | 2.2e-3 | 4.4e-3 | 6.9e-3 | 8.3e-3 |
+| phaseVolumeRelError | 1e-2 | 4e-3 | 1e-2 | 4e-2 | 8e-2 | 1e-1 |
+| centroid x - (x0 + U0 t) [mm] | 0.2 | 0.3 | 0.6 | 1.3 | 2.5 | 3.9 |
+
+The spurious current grows from t = 0.10 s at a slowing rate (about 26 1/s at first, 5 1/s at the
+end), the droplet volume drifts by 10 % and the droplet runs 3.9 mm ahead of the stream. So the
+interior degradation is real and needs no outlet; the outlet only turns it into an explosive
+divergence. For the method this is the open defect of the translating droplet at the water/air
+density ratio. Running: the same 40 mm box at N = 142 (does the degradation shrink with h?).
