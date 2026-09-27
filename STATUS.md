@@ -3988,3 +3988,13 @@ defect is in the kinematic path of the extension, before any coupling. First sus
 risk in the plan (section 9): the `stencilFit` sampler (a least-squares fit of U; exact only for
 affine U). Next step, the cheapest discriminator: the shear arm with HL0 at two samplers or radii,
 and HL0 on the exact-velocity 1D and 2D kinematic cases with the flux correction written out.
+
+**S1 and HL2: FAIL (fixed gate, 12:14).** S1 (soft wall, no extension): 19 FAIL lines; the
+translating N = 142 rung diverges before 0.05 s, and its `translatingSeamNp1` check FAILS: serial
+and np 4 differ by 76 % in `l2MagUPrime` (the baseline: 3.5e-7). The soft-wall source makes the
+coupled solution sensitive to round-off, so its result depends on the decomposition; this is
+the mesh-noise-floor diagnostic of CLAUDE.md, applied to the decomposition. HL2 (extension plus
+soft wall): 15 FAIL lines; all three translating rungs diverge; its seam check is NOT_COMPARABLE
+(the np 4 reference diverged). Every candidate of the first campaign now FAILS the 2D gate: S1,
+HL0, HL1q, HL1z, HL2, and FP0 (its shear arm and seam check). The 3D gate therefore does not run.
+Remaining: FP0's oscillating arm and stationary N = 200, which time out at the 10 h limit.
