@@ -3766,7 +3766,7 @@ so criterion 1 can hold. All 15 re-runs reproduce the first 0.05 s of their 0.1 
 byte (`compare_metrics_csv.py --tol 0`, the pre-registered check of 11.13), S1 at N = 142 to the
 identical divergence row (6741).
 
-**The late translating instability is the outlet** (laptop, N = 100, fixed binaries). The same
+**The late translating instability: the outlet triggers the fast divergence; a slower interior growth remains** (laptop, N = 100, fixed binaries). CORRECTED 2026-09-27 03:40: this heading first said "the late translating instability is the outlet". I was wrong: the 20 mm box to t = 0.25 s diverges too, later (see the end of this paragraph). The same
 case in a box twice as long in x (20 mm, the same h, the outlet 10 mm further away) COMPLETES
 t = 0.1 s, and its spurious current decays:
 
@@ -3811,8 +3811,21 @@ three rungs COMPLETE. At t = 0.1 s:
 
 Shape and centroid converge near order 1.7-1.9. The spurious current stays bounded at every rung
 but is not monotone in h (the N = 142 bump after t = 0.07 s); the curvature error does not converge
-(1.5-2.2 %). Running: the long box to t = 0.25 s at N = 100 and 142 (does the N = 142 growth
-continue?).
+(1.5-2.2 %).
+
+**The 20 mm box to t = 0.25 s, N = 100: DIVERGED at step 19590 (t = 0.2127 s).** L2 |U-U0| (and the
+droplet centroid x):
+
+| t [s] | 0.10 | 0.12 | 0.14 | 0.16 | 0.18 | 0.21 |
+|---|---|---|---|---|---|---|
+| L2 \|U-U0\| | 5.1e-4 | 7.7e-4 | 1.4e-3 | 3.4e-3 | 8.5e-2 | 5.9e-1 |
+| centroid x [mm] | 7.7 | 8.7 | 9.8 | 10.9 | 13.4 | 14.7 |
+
+The growth starts near t = 0.10 s at about 30 1/s, with the droplet more than 8 mm from the outlet,
+and turns explosive after t = 0.16 s (the centroid then runs ahead of U0 t: the droplet breaks up).
+So there are TWO phenomena: (1) a fast growth that the outlet triggers in the 10 mm box (a factor 27
+in 0.005 s at t = 0.06 s, N = 100), and (2) a slower interior growth that the long box only
+postpones. The gate's 0.05 s horizon ends before both. N = 142 to 0.25 s: running.
 
 **The fixed 2D gate:** orchestrator `55048916` (section 5). While it runs, the cluster clone stays at 1150e68 (no pull: new cases would record a commit the binaries do not carry); its STATUS.md is refreshed from GitHub without a pull (`git show origin/<branch>:STATUS.md > STATUS.md`; STATUS.md is outside the paths that mark a case dirty). Before the next pull there: `git checkout -- STATUS.md`.
 
