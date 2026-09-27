@@ -211,9 +211,17 @@ def case_vector(case_dir, arm, gate, cand, solver):
     row["volumeError"] = abs(fin["phaseVolumeRelError"]) if fin.get("phaseVolumeRelError") is not None else None
     row["volumeErrorHalf"] = abs(half["phaseVolumeRelError"]) if half.get("phaseVolumeRelError") is not None else None
     row["rhoClipFraction"] = colmax(drop, "rhoClipFraction")
-    row["l2MagUPrime"] = fin.get("l2MagUPrime")
-    row["meanMagUPrime"] = fin.get("meanMagUPrime")
     flow = arm.get("flow")
+    if flow in ("stationary", "translating"):
+        # |U - U_ref| is a spurious current only where the exact flow is U_ref. In the
+        # oscillating droplet it is the physical oscillation: reported, not scored (plan 5.4:
+        # the oscillating arm is scored by its period and damping rate). CORRECTED 2026-09-27;
+        # before, a candidate that damps the oscillation more scored as better.
+        row["l2MagUPrime"] = fin.get("l2MagUPrime")
+        row["meanMagUPrime"] = fin.get("meanMagUPrime")
+    else:
+        row["oscL2MagU"] = fin.get("l2MagUPrime")
+        row["oscMeanMagU"] = fin.get("meanMagUPrime")
     if flow in ("stationary", "translating"):
         rad = fin.get("zeroSetRadialL2")
         row["shapeError"] = rad / R if rad is not None else None
