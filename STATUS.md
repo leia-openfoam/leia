@@ -3899,3 +3899,17 @@ boundaries cross the droplet:
 The baseline's oscillating arm is unhealthy at N = 200: the gradient band error is 5.1 (0.10 and
 0.14 at N = 100 and 142), so |grad psi| in the band is far from 1 by t = 0.1 s at the finest rung.
 The oscillating arm's orders and verdicts must be read with that in mind.
+
+**Mid-gate pull (04:37), and why it was safe.** The no-pull rule protects case provenance: a case
+materialized after a pull records a commit the binaries do not carry. Checked first: every one of
+the 56 arms had materialized its cases, and every case records 1150e68 (0 exceptions). Between
+1150e68 and the pulled 35a8878 only `workflow/scripts/make_gate_summary.py` changed in `src`,
+`applications`, `workflow`, `cases` and `config`. So the orchestrator's remaining summaries and
+comparisons now use the corrected scoring (4bff922, 4ef98db), and the baseline summary was
+recomputed with it (the oscillating rows carry `oscL2MagU`; `l2MagUPrime` is empty there).
+
+**Finish estimates (04:36).** HL0, HL1q and HL1z within about 1 h; S1 by about 08:20; HL2 by about
+11:00. FP0's stationary and oscillating N = 200 run at 0.19 and 0.14 steps/s and need 29 h and
+41 h: they will time out at the 10 h job limit. FP0's verdict does not depend on them: its shear
+arm (bit-identical to the pre-fix gate) fails at 34 times the baseline's shape error, and its own
+seam check fails (closestPoint is decomposition-dependent, 0.45).
