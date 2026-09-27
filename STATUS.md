@@ -3968,3 +3968,23 @@ drift of |grad psi| without redistancing is exactly the defect the gradient-cont
 exist to remove; the candidates fail for other reasons (the shear transport). OPEN, author
 decision: the oscillating arm's horizon (as for the translating arm), and a baseline check that
 reads the gradient drift over time, not only at T.
+
+**HL0 (halo-limited extension alone): FAIL, and it destroys the level set in the coupled arms
+(fixed gate, 06:45).** HL0 is the dossier's core idea (protect |grad psi| by the extension, no
+source). Values at T (baseline in brackets):
+
+| arm | N = 100 | N = 142 | N = 200 |
+|---|---|---|---|
+| oscillating, gradient band error | 7.5 (0.10) | 2.2e6 (0.14) | 2.0e7 (5.1) |
+| oscillating, volume error | 0.74 (7.6e-3) | 10.4 (7.3e-3) | 6.7 (3.0e-3) |
+| translating, shape error / R | — | — | 0.196 (3.1e-3) |
+| shear (kinematic), shape error | — | — | 8.5e-3 at N = 136 (6.2e-4), order 1.39 (3.07) |
+
+The oscillating runs COMPLETE with garbage fields. The stationary arm is the exception: only
+volume-error regressions at the 1e-7 level. The ladder of CLAUDE.md places the defect: the exact
+unit gates of D4 pass (zero normal strain to 1e-12 on affine U, uniform U bit for bit), and the
+first rung above them, KINEMATIC transport (shear, no force), already fails at order 1.39. So the
+defect is in the kinematic path of the extension, before any coupling. First suspect, named as a
+risk in the plan (section 9): the `stencilFit` sampler (a least-squares fit of U; exact only for
+affine U). Next step, the cheapest discriminator: the shear arm with HL0 at two samplers or radii,
+and HL0 on the exact-velocity 1D and 2D kinematic cases with the flux correction written out.
