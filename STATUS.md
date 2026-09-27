@@ -3928,3 +3928,9 @@ end), the droplet volume drifts by 10 % and the droplet runs 3.9 mm ahead of the
 interior degradation is real and needs no outlet; the outlet only turns it into an explosive
 divergence. For the method this is the open defect of the translating droplet at the water/air
 density ratio. Running: the same 40 mm box at N = 142 (does the degradation shrink with h?).
+
+**Fixed-gate verdicts so far (05:32).** HL1q: FAIL. HL1z: FAIL (43 FAIL lines). Both fail on every
+arm: the shear arm (as before the fix), the stationary arm at N = 200 (HL1q shape error 3.8 R and
+volume error 76 %; HL1z 3.7 R and 84 %: these runs COMPLETE, but with the droplet destroyed, so
+the completion count alone would mislead), the translating and the oscillating arm. Waiting: HL0
+and S1 (oscillating finest rungs), HL2, FP0.
