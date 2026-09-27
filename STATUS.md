@@ -3783,5 +3783,5 @@ contrast (ratio 1 completes). The gate's 0.05 s horizon ends before it. OPEN, au
 a longer translating box for the gates and ladders (a new length token with the current box as
 its default). N = 142 confirmation of the long box: running on the laptop.
 
-**The fixed 2D gate:** orchestrator `55048916` (section 5). The login node `lcluster5` stopped
+**The fixed 2D gate:** orchestrator `55048916` (section 5). While it runs, the cluster clone stays at 1150e68 (no pull: new cases would record a commit the binaries do not carry); its STATUS.md is refreshed from GitHub without a pull (`git show origin/<branch>:STATUS.md > STATUS.md`; STATUS.md is outside the paths that mark a case dirty). Before the next pull there: `git checkout -- STATUS.md`. The login node `lcluster5` stopped
 answering at about 02:00; `lcluster3` and `lcluster4` answered and were used.
