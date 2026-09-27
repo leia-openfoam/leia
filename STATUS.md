@@ -3810,3 +3810,11 @@ after it finishes):**
    entry as the damping rate; the implementation had deviated from it. The two norms are now
    reported as `oscL2MagU` and `oscMeanMagU`. The login node `lcluster5` stopped
 answering at about 02:00; `lcluster3` and `lcluster4` answered and were used.
+
+**Fixed gate, first checks (02:52):** the kinematic arms (exact1D, shear, seamNp1, seamNp8) of the
+fixed gate reproduce the pre-fix gate byte for byte: 177 CSV pairs identical at tolerance 0, as
+predicted (the fixes do not touch the kinematic solver). The baseline's `translatingSeamNp1`
+(serial) against its np 4 run, the error-vector columns of the droplet CSV: at most 3.47e-7
+(`meanMagUPrime`), 1.2e-7 (`zeroSetRadialL2`), 2.1e-8 (`kErrL2Band`), the same numbers as on the
+laptop to every printed digit; the check passes at its tolerance 1e-5. The baseline translating
+arm completes all three rungs.
