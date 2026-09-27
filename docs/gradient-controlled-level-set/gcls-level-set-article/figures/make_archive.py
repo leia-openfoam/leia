@@ -93,7 +93,17 @@ def lib_stamp(case_dir):
 
 
 # --------------------------------------------------------------------------- gate / prefix
-def cmd_gate(a, copy_summaries=True):
+def study_dir(studies_dir, study, suffix_glob):
+    """The study folder; with suffix_glob the renamed twin (the latest match), because the
+    PRESERVE step renamed the pre-fix studies with a dated suffix and their manifests still
+    name the original study."""
+    if not suffix_glob:
+        return os.path.join(studies_dir, study)
+    m = sorted(glob.glob(os.path.join(studies_dir, study + suffix_glob)))
+    return m[-1] if m else os.path.join(studies_dir, study + "__missing__")
+
+
+def cmd_gate(a, copy_summaries=True, suffix_glob=""):
     os.makedirs(a.out, exist_ok=True)
     cands = sorted(d for d in os.listdir(a.summary_dir)
                    if os.path.isfile(os.path.join(a.summary_dir, d, "manifest.json")))
@@ -109,7 +119,7 @@ def cmd_gate(a, copy_summaries=True):
                     shutil.copy2(os.path.join(sd, f), os.path.join(a.out, "summaries", c, f))
         man = json.load(open(os.path.join(sd, "manifest.json")))
         for arm in man["arms"]:
-            study = os.path.join(a.studies_dir, arm["study"])
+            study = study_dir(a.studies_dir, arm["study"], suffix_glob)
             for case in sorted(glob.glob(os.path.join(study, "*_0*"))):
                 if not os.path.isdir(case):
                     continue
@@ -147,7 +157,7 @@ def cmd_gate(a, copy_summaries=True):
 
 
 def cmd_prefix(a):
-    cmd_gate(a, copy_summaries=True)
+    cmd_gate(a, copy_summaries=True, suffix_glob="_pre-*")
     # The 0.1 s translating runs of the pre-fix gate, kept as *_translating_endTime0p1_20260927.
     table = []
     for study in sorted(glob.glob(os.path.join(a.studies_dir, "methodGate2D_*_translating_endTime0p1_20260927"))):
