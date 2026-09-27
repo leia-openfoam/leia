@@ -4020,3 +4020,22 @@ the shape error 173-fold. Tables committed: `docs/gradient-controlled-level-set/
 article/data/tables/methodGate2D_*` (the verdicts, one LaTeX table per arm, and the summary,
 orders, vsBaseline and seam CSVs of every candidate; regenerate with `make_gate_summary.py
 --docs` and `make_gate_tables.py`). The 3D gate does not run: no 2D pass.
+
+### 11.16 The pre-print is written; its data are archived per software version (2026-09-27)
+
+`docs/gradient-controlled-level-set/gcls-level-set-article/gclsLevelSet.tex` is now a numerical
+paper (21 pages): for each method the continuum model, the OpenFOAM discretisation and the gate
+results, then a discussion that names, for each failure, the discrete mechanism it points to and
+the experiment that can decide it (the source step moves the discrete zero set where F differs
+between the two cells across the interface; the halo-limited extension loses order through the
+face-to-cell reconstruction of the corrected flux; the sampler fits across the interface in the
+coupled arms). Every number comes from ONE folder of secondary data,
+`gcls-level-set-article/data/archive/shared-method-config-2026-09-01-192-g1150e68/` (116 files,
+13 MB: the fixed gate, the pre-fix gate, the laptop runs; `README.md`, `MANIFEST.csv` with
+SHA-256). `figures/make_archive.py` writes the archive from the raw output;
+`figures/make_result_figures.py` writes the five result figures and eight tables from it; the gate
+tables come from `make_gate_tables.py` on the archived summaries. A new pre-print version gets a
+new folder; an older folder is never overwritten. The raw laptop runs are preserved in the
+git-ignored `runs/gcls-laptop-20260927` (1.5 GB, 539 files), with a copy on Lichtenberg in
+`/work/scratch/tm83tomy/leia/runs/`. `.gitignore` now exempts `docs/**/data/figures/*.pdf` and
+`docs/**/data/archive/**/*.csv` (curated results).

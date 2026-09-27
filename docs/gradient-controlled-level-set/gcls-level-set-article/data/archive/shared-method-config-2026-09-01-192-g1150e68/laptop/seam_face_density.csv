@@ -1,0 +1,13 @@
+code,time,field,facesCompared,facesDiffering,worstRelative
+before,2.12129e-05,phi,138,0,0.000e+00
+before,2.12129e-05,alphaf,37,4,1.000e+00
+before,2.12129e-05,rhof,37,4,9.037e-01
+before,0.0001060645,phi,138,0,0.000e+00
+before,0.0001060645,alphaf,37,3,1.000e+00
+before,0.0001060645,rhof,37,3,9.684e-01
+after,2.12129e-05,phi,138,0,0.000e+00
+after,2.12129e-05,alphaf,37,0,0.000e+00
+after,2.12129e-05,rhof,37,0,0.000e+00
+after,0.0001060645,phi,138,0,0.000e+00
+after,0.0001060645,alphaf,37,0,0.000e+00
+after,0.0001060645,rhof,37,0,0.000e+00

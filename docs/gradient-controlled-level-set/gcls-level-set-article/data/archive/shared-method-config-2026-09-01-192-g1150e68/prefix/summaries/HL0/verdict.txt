@@ -1,0 +1,29 @@
+VERDICT FAIL: candidate HL0 against baseline
+FAIL completion: oscillating N=142 is DIVERGED where the baseline COMPLETED
+FAIL completion: oscillating N=200 is RUNNING where the baseline COMPLETED
+FAIL regression: shear shapeError at N=136: 0.00849 vs baseline 0.0006188
+FAIL regression: shear volumeError at N=136: 0.004492 vs baseline 0.0002559
+FAIL regression: stationary volumeError at N=200: 1.986e-07 vs baseline 2.218e-08
+FAIL regression: stationary volumeErrorHalf at N=200: 1.786e-07 vs baseline 9.974e-08
+FAIL regression: translating shapeError at N=200: 0.3086 vs baseline 0.00306
+FAIL regression: translating gradientBandError at N=200: 3.838 vs baseline 0.03842
+FAIL regression: translating volumeError at N=200: 0.06051 vs baseline 0.0002049
+FAIL regression: translating volumeErrorHalf at N=200: 0.0005467 vs baseline 0.0003635
+FAIL regression: translating meanMagUPrime at N=200: 0.02957 vs baseline 0.0005367
+FAIL regression: translating l2MagUPrime at N=200: 0.0918 vs baseline 0.0008932
+FAIL regression: translating pressureJumpError at N=200: 0.5068 vs baseline 0.0006264
+FAIL regression: translating curvatureError at N=200: 9.314 vs baseline 0.03591
+FAIL regression: translating travelledFractionError at N=200: 0.07187 vs baseline 0.001717
+FAIL regression: oscillating volumeErrorHalf at N=200: 0.7421 vs baseline 0.00344
+FAIL order: oscillating volumeErrorHalf order -7.81 vs baseline 0.28
+FAIL order: shear shapeError order 1.39 vs baseline 3.07
+FAIL order: shear volumeError order 1.48 vs baseline 3.60
+FAIL order: translating shapeError order -3.75 vs baseline 3.13
+FAIL order: translating gradientBandError order -4.67 vs baseline 0.82
+FAIL order: translating volumeError order -3.23 vs baseline 3.27
+FAIL order: translating meanMagUPrime order -2.96 vs baseline 1.37
+FAIL order: translating l2MagUPrime order -3.94 vs baseline 1.13
+FAIL order: translating pressureJumpError order -5.92 vs baseline 1.63
+FAIL order: translating curvatureError order -6.50 vs baseline -0.10
+FAIL order: translating travelledFractionError order -2.49 vs baseline 3.13
+FAIL target: shear gradientBandError ratio 0.828 > 0.8

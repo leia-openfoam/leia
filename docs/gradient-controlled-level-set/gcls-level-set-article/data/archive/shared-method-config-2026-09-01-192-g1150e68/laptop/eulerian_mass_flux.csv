@@ -1,0 +1,6 @@
+run,solver,densityRatio,np,steps,time,travelledFraction,L2_U_minus_U0,L1_U_minus_U0
+trans100_new,shared rhoLENT mass flux,838.8,4,1000,0.010861,1.000121,4.8467e-04,2.5426e-04
+trans100_new_serial,shared rhoLENT mass flux,838.8,1,1000,0.010861,1.000122,4.8467e-04,2.5426e-04
+trans100_old,frozen density,838.8,4,1000,0.010861,0.420460,1.5463e-01,3.0515e-02
+trans100r1_new,shared rhoLENT mass flux,1.0,4,1000,0.010861,1.000777,1.0379e-04,3.5949e-05
+trans100r1_old,frozen density,1.0,4,1000,0.010861,1.003393,2.1810e-04,9.1025e-05

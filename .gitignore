@@ -115,6 +115,10 @@ log
 !docs/**/data/tables/*.csv
 !docs/**/data/figures/*.csv
 !docs/**/data/mechanism/*.csv
+# The pre-prints' figures may be vector PDF, and each pre-print archives the secondary data of
+# its software version under data/archive/<version>/ (CSV): both are curated results.
+!docs/**/data/figures/*.pdf
+!docs/**/data/archive/**/*.csv
 # editor / tool backups
 *.backp
 *.orig

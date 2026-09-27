@@ -10,6 +10,7 @@ folder from the raw output: the method-gate studies (on the cluster), the preser
   make_archive.py prefix --studies-dir STUDIES --summary-dir STUDIES/methodGate2D_summary_pre-... \
                          --out ARCHIVE/prefix
   make_archive.py laptop --runs runs/gcls-laptop-20260927 --out ARCHIVE/laptop
+  make_archive.py manifest --out ARCHIVE      # MANIFEST.csv: every file, rows, bytes, sha256
 
 Only the Python standard library is used, so the same file runs on the laptop and on the
 cluster login node. Reduced time histories keep about 300 rows per case plus the last row.
@@ -343,6 +344,21 @@ def cmd_laptop(a):
            "L2_U_minus_U0", "L1_U_minus_U0"], table)
 
 
+def cmd_manifest(a):
+    import hashlib
+    table = []
+    for dp, _, fns in os.walk(a.out):
+        for fn in sorted(fns):
+            if fn == "MANIFEST.csv":
+                continue
+            p = os.path.join(dp, fn)
+            data = open(p, "rb").read()
+            nrows = data.count(b"\n") - 1 if fn.endswith(".csv") else ""
+            table.append([os.path.relpath(p, a.out), nrows, len(data), hashlib.sha256(data).hexdigest()])
+    table.sort()
+    write(os.path.join(a.out, "MANIFEST.csv"), ["file", "rows", "bytes", "sha256"], table)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -354,8 +370,10 @@ def main():
     s = sub.add_parser("laptop")
     s.add_argument("--runs", required=True)
     s.add_argument("--out", required=True)
+    s = sub.add_parser("manifest")
+    s.add_argument("--out", required=True)
     a = ap.parse_args()
-    {"gate": cmd_gate, "prefix": cmd_prefix, "laptop": cmd_laptop}[a.cmd](a)
+    {"gate": cmd_gate, "prefix": cmd_prefix, "laptop": cmd_laptop, "manifest": cmd_manifest}[a.cmd](a)
 
 
 if __name__ == "__main__":

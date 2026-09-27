@@ -1,0 +1,33 @@
+{
+  "candidate": "HL1q",
+  "description": "halo-limited extension + linearQ source (M_mu = 1), strain weight none",
+  "gate": "methodGate2D",
+  "gateFile": "config/gates/methodGate2D.yaml",
+  "line": "semiLagrangian",
+  "preRegistered": true,
+  "rates": {
+    "GC_M_MU": 1
+  },
+  "smoke": false,
+  "source": "config/candidates/HL1q.yaml",
+  "target": {
+    "arms": [
+      "shear"
+    ],
+    "metric": "gradientBandError",
+    "ratioToBaselineAtFinest": 0.8
+  },
+  "tokens": {
+    "GC_LAW": "linearQ",
+    "GC_STRAIN_WEIGHT": "none",
+    "HL_BETA": 1,
+    "HL_DIRECTION": "levelSet",
+    "HL_M": 2,
+    "HL_RADIUS_CELLS": 1,
+    "HL_SAMPLER": "stencilFit",
+    "SL_SOURCE": "gradientControl",
+    "SL_SOURCE_BAND_CELLS": 3,
+    "SL_TRACE_FLUX": "extension",
+    "VELOCITY_EXTENSION": "haloLimited"
+  }
+}

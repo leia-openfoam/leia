@@ -1,11 +1,9 @@
-%% Gradient-controlled level-set transport on unstructured finite-volume meshes:
-%% halo-limited velocity extension and admissible-band source terms.
+%% Gradient control for semi-Lagrangian level sets on unstructured finite-volume meshes.
 %% Build:  latexmk -pdf gclsLevelSet.tex      (or: make article-gcls)
 %%
-%% STATUS: skeleton (2026-09-26). The continuum model (sections 3 and 4) follows
-%% the two technical dossiers cited in the README of this theme. Sections 6-8 stay
-%% empty until the gates named in them report; no number enters this file unless a
-%% committed script wrote it into data/tables or data/figures.
+%% Every number in this file comes from the archive data/archive/<version>/ of ONE software
+%% version, through figures/make_result_figures.py (figures, tables) and
+%% workflow/scripts/make_gate_tables.py (gate tables). Appendix A lists the files.
 %% Author list: to be decided by the authors.
 \documentclass[preprint,3p,11pt]{elsarticle}
 
@@ -13,6 +11,7 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{url}
+\makeatletter\g@addto@macro{\UrlBreaks}{\do\-}\makeatother   % paths may break at hyphens
 \usepackage{siunitx}
 \usepackage{subcaption}
 \usepackage{tikz}
@@ -21,118 +20,222 @@
 \input{figures/tikzstyles.tex}
 
 \graphicspath{{data/figures/}}
+\sisetup{separate-uncertainty}
 
 \newcommand{\psilev}{\psi}
 \newcommand{\nhat}{\mathbf{n}}
 \newcommand{\bu}{\mathbf{u}}
 \newcommand{\bx}{\mathbf{x}}
 \newcommand{\Dt}{\mathrm{D}_t}
+\newcommand{\archive}{\path{data/archive/shared-method-config-2026-09-01-192-g1150e68}}
 
 \begin{document}
 \begin{frontmatter}
 
-\title{Gradient-controlled level-set transport on unstructured finite-volume
-meshes: halo-limited velocity extension and admissible-band source terms}
+\title{Gradient control for semi-Lagrangian level sets on unstructured finite-volume
+meshes: source terms, a halo-limited velocity extension, and a verification gate}
 
 \author[tuda]{Tomislav Mari\'{c}}
 \author[tuda]{Dieter Bothe}
 \address[tuda]{Mathematical Modeling and Analysis, TU Darmstadt, Germany}
 
 \begin{abstract}
-%% To be written after the 2D and 3D method gates report.
-A signed-distance level set gives a well-scaled normal and a fixed physical
-width of the interface transition, but the level-set transport equation does
-not keep the signed-distance property under a deforming flow. This work keeps
-the gradient magnitude $q=|\nabla\psilev|$ inside an admissible band near the
-interface instead of enforcing $q=1$, with no redistancing, on unstructured
-finite-volume meshes under MPI domain decomposition.
+A level set that starts as a signed distance does not stay one. The normal strain
+rate of the flow changes the gradient magnitude $q=|\nabla\psilev|$ along the
+trajectories, and after a strong deformation $q$ differs from one by an amount of
+order one near the interface. We study two ways to keep $q$ near one without
+redistancing, for the collocated finite-volume method of OpenFOAM on unstructured
+meshes, with a quadratic semi-Lagrangian level-set transport that is coupled to the
+two-phase Navier--Stokes equations: a source term $\psilev F$ in the level-set
+equation, with $F$ from a family of gradient-control laws, and a halo-limited
+directional velocity extension that removes the normal strain at the interface. For
+each model we give the continuum form, the discretisation on the mesh, and the
+result of a verification gate. The gate has an exact one-dimensional case, a reversed
+shear flow, and a stationary, a translating and an oscillating droplet at the
+water--air density ratio, each on three resolutions, on four MPI ranks, and with a
+serial check of the parallel result. Every one of the six tested combinations fails
+the gate. The halo-limited extension alone lowers the observed order of the shape
+error in the kinematic shear flow from $3.1$ to $1.4$. The source terms move the
+discrete zero level set wherever the strain rate is not zero: the shape error of the
+shear flow rises by a factor of $14$ to $2700$ over the production method, and a
+soft-wall source that leaves the stationary droplet unchanged destroys the volume of
+the oscillating droplet. We identify the discrete mechanism that each failure points
+to and name the experiment that can decide it. The serial check also found two
+defects of the parallel implementation of the production method, which we fix, and
+a study with longer domains shows that the late instability of the translating
+droplet is triggered by the outlet boundary but that a slower growth remains in the
+interior.
 \end{abstract}
 
 \begin{keyword}
-level set \sep velocity extension \sep signed distance \sep unstructured finite
-volume \sep OpenFOAM \sep two-phase flow
+level set \sep signed distance \sep semi-Lagrangian \sep velocity extension \sep
+unstructured finite volume \sep OpenFOAM \sep two-phase flow \sep verification
 \end{keyword}
 
 \end{frontmatter}
 
-%% ---------------------------------------------------------------------------
+%% ===========================================================================
 \section{Introduction}
 \label{sec:intro}
-%% The problem: D_t q = -a q; why redistancing is unwanted (interface
-%% displacement, cost, contact lines); the admissible band as the target.
-For the material equation $\partial_t\psilev+\bu\cdot\nabla\psilev=0$ the
-gradient magnitude obeys, along a trajectory,
+
+The level-set method represents an interface $\Gamma$ as the zero set of a function
+$\psilev$ and moves it with the material equation
+$\partial_t\psilev+\bu\cdot\nabla\psilev=0$ \cite{OsherSethian1988}. The zero set
+alone defines the interface, so any $\psilev$ with the right zero set is admissible.
+In practice the method starts from a signed distance, $|\nabla\psilev|=1$, because a
+signed distance gives a well-scaled normal $\nhat=\nabla\psilev/|\nabla\psilev|$, a
+curvature $\kappa=\nabla\cdot\nhat$ that a local polynomial fit can evaluate
+accurately, and a transition layer of the phase indicator with a fixed physical width.
+
+The transport equation does not keep this property. Along a trajectory the gradient
+magnitude $q=|\nabla\psilev|$ obeys
 \begin{equation}
-  \Dt q = -a\,q,\qquad a=\nhat^{\mathsf T}(\nabla\bu)\,\nhat,\qquad
-  \nhat=\nabla\psilev/q ,
+  \Dt q = -a\,q,\qquad a=\nhat\cdot(\nabla\bu)\,\nhat,
   \label{eq:qlaw}
 \end{equation}
-so the normal strain $a$ changes $q$ even for an exact solution
-\cite{FrickeEtAl2022,BotheFrickeSoga2024}.
+so a flow with a normal strain rate $a\neq0$ at the interface changes $q$, even for
+the exact solution \cite{FrickeEtAl2022,BotheFrickeSoga2024}. In the reversed shear
+flow of this paper, $q$ departs from one by an amount of order one near the interface
+at the time of maximum deformation (Section~\ref{sec:res-baseline}).
 
-%% ---------------------------------------------------------------------------
-\section{Prior art}
-\label{sec:priorart}
-%% From the halo-limited dossier, section "State of the art": hyperbolic
-%% reinitialisation \cite{SussmanSmerekaOsher1994,SussmanFatemi1999}; geometric
-%% and Eikonal methods \cite{KarakusEtAl2022,Shakoor2025}; conservative level
-%% set and CLSVOF \cite{OlssonKreiss2005,OlssonKreissZahedi2007,KeesEtAl2011,LyrasEtAl2020};
-%% variational methods \cite{LiEtAl2010,ToureSoulaimani2016,ShaoEtAl2023};
-%% modified equations \cite{SabelnikovEtAl2014,Hamamuki2019}; SDPLS and the
-%% bounded-gradient equation \cite{FrickeEtAl2022,BotheFrickeSoga2024};
-%% gradient-augmented level set \cite{NaveRosalesSeibold2010,BockmannVartdal2014};
-%% velocity extension \cite{AdalsteinssonSethian1999,BotheSoga2026}; OpenFOAM
-%% and LEIA \cite{WellerEtAl1998,LEIA,Reitzel2023,LiuEtAl2023,FerroEtAl2025}.
+The usual remedy is to redistance: to replace $\psilev$ at intervals by the signed
+distance to its own zero set \cite{SussmanSmerekaOsher1994,SussmanFatemi1999}.
+Redistancing moves the discrete interface, it is a non-local operation, and on
+unstructured meshes under MPI domain decomposition it needs either a global solve or
+a wide geometric search. Two alternatives keep the transport local. A source term in
+the level-set equation can drive $q$ towards one while it leaves the zero set in
+place \cite{FrickeEtAl2022,BotheFrickeSoga2024}. A velocity extension can transport
+$\psilev$ with a velocity whose normal strain vanishes on $\Gamma$, so that
+\eqref{eq:qlaw} gives $\Dt q=0$ there \cite{AdalsteinssonSethian1999}. Two technical
+dossiers \cite{BotheDossierHalo2026,BotheMaricSogaDossier2026} propose a family of
+source laws and a halo-limited extension that samples the velocity only inside a
+radius of one cell, so that it needs no closest-point search and no halo wider than
+one layer of cells.
 
-%% ---------------------------------------------------------------------------
-\section{Continuum model}
+This paper implements both ideas in the leia library of OpenFOAM
+\cite{WellerEtAl1998,LEIA} and tests them. The target is a method for arbitrary
+unstructured meshes: every operator is local, uses compact stencils and runs under
+MPI domain decomposition. The level set is transported by a quadratic
+semi-Lagrangian scheme \cite{StaniforthCote1991} that is coupled to the one-field
+two-phase Navier--Stokes equations. We call this coupled method the baseline.
+
+The contributions are the following.
+\begin{enumerate}
+  \item The continuum form and the finite-volume discretisation of a family of
+  gradient-control source laws and of a halo-limited velocity extension for a
+  semi-Lagrangian level set on unstructured meshes (Sections~\ref{sec:model}--\ref{sec:fv}).
+  \item A verification gate for level-set methods in two-phase flow: five arms, three
+  resolutions per arm, the observed orders of an error vector, and a serial check of
+  every parallel result (Section~\ref{sec:gate}).
+  \item The results of six combinations against the baseline. All six fail
+  (Section~\ref{sec:results}). The discussion names the discrete mechanism that each
+  failure points to and the experiment that can decide it (Section~\ref{sec:discussion}).
+  \item Two defects of the parallel implementation of the baseline, which the serial
+  check found: a face density that differed between the two sides of a processor
+  boundary, and diagnostics that ignored processor faces (Section~\ref{sec:fv-parallel}).
+  \item The late instability of the translating droplet: the outlet boundary triggers
+  it, and a slower growth remains in the interior (Section~\ref{sec:res-translating}).
+\end{enumerate}
+
+%% ===========================================================================
+\section{Level-set transport and the gradient magnitude}
+\label{sec:levelset}
+
+Let $\psilev(\bx,t)$ satisfy
+\begin{equation}
+  \partial_t\psilev+\bu\cdot\nabla\psilev = 0,\qquad
+  \psilev(\bx,0)=\pm\operatorname{dist}(\bx,\Gamma(0)),
+  \label{eq:transport}
+\end{equation}
+negative inside the liquid. The gradient $\mathbf g=\nabla\psilev$ satisfies
+$\Dt\mathbf g=-(\nabla\bu)^{\mathsf T}\mathbf g$, and with $q=|\mathbf g|$ and
+$\nhat=\mathbf g/q$ this gives \eqref{eq:qlaw}. Only the symmetric part
+$\mathbf D=\frac12(\nabla\bu+\nabla\bu^{\mathsf T})$ enters, $a=\nhat\cdot\mathbf D\,\nhat$,
+and $|a|\le\sigma=|\mathbf D|_F$. A uniform translation and a rigid rotation have
+$\mathbf D=0$ and keep $q$. A shear flow has $a\neq0$ on most of the interface and
+changes $q$ everywhere.
+
+Near the interface, $q$ enters a two-phase solver in three places. The phase
+indicator of the baseline fits a plane to $\psilev$ and fills each cell with the
+closed form of \cite{DetrixheAslam2016}; it does not assume $q=1$. The curvature comes
+from the second derivatives of a local quadratic fit and from the offset of the cell
+centre to the zero set, $d=\psilev/q$; it is exact for any $q$ in the continuum. The
+reconstruction at the departure point, however, fits a quadratic polynomial to the
+cell values, and its error grows with the second derivatives of $\psilev$, which grow
+where $q$ varies along the normal. The aim of gradient control is therefore modest:
+keep $q$ in a band around one, for example $0.9\le q\le1.1$, near the interface, not
+enforce $q=1$.
+
+%% ===========================================================================
+\section{Gradient-control source terms}
 \label{sec:model}
 
-\subsection{Source calculus}
-For $\Dt\psilev=\psilev F$ the zero level set is invariant, and on it
+\subsection{The modified level-set equation}
+\label{sec:model-source}
+The source-term route replaces \eqref{eq:transport} by
 \begin{equation}
-  \Dt q = q\,(F-a).
-  \label{eq:designlaw}
+  \partial_t\psilev+\bu\cdot\nabla\psilev = \psilev\,F,
+  \label{eq:sourceEq}
 \end{equation}
+with a scalar coefficient $F(\bx,t)$ [1/s]. Three properties follow directly.
+\begin{enumerate}
+  \item The zero set is invariant: along a trajectory $\Dt\psilev=\psilev F$, so a
+  point with $\psilev=0$ keeps $\psilev=0$, and the interface moves with $\bu$ as
+  before.
+  \item On the interface the gradient magnitude obeys
+  \begin{equation}
+    \Dt q = q\,(F-a).
+    \label{eq:designlaw}
+  \end{equation}
+  \item If $F=0$ at $q=1$ and $a=0$, a signed distance is a fixed point.
+\end{enumerate}
+The source therefore acts on the gradient and not on the interface position, but only
+in the continuum. Section~\ref{sec:disc-source} shows how the discrete zero set moves.
 
-\subsection{Halo-limited directional velocity extension}
-Let $d$ be a signed nominal distance and $\mathbf e$ the unit direction from
-the interface toward $\bx$; the level-set realisation is $d=\psilev/q$,
-$\mathbf e=\nhat$. With a radius $R$ and $m\in\mathbb N$,
-\begin{equation}
-  S_R(d)=d\left[1+\left(\frac{d}{R}\right)^{2m}\right]^{-1/(2m)},\qquad
-  Y_R=\bx-S_R(d)\,\mathbf e,\qquad
-  w_R=\left(\frac{S_R(d)}{d}\right)^{\beta},
-\end{equation}
-\begin{equation}
-  \bu_H=(1-w_R)\,\bu(\bx)+w_R\,\bu(Y_R).
-\end{equation}
-Every sample lies inside the radius $R$, and on the interface
-$\nhat^{\mathsf T}(\nabla\bu_H)\nhat=0$.
-
-\subsection{Source-law family}
-The source coefficient is
+\subsection{The law family}
+\label{sec:model-laws}
+The coefficient has the form
 \begin{equation}
   F = w(q)\,a + G(q,\sigma),\qquad
-  a=\nhat\cdot\mathbf D\cdot\nhat,\qquad
-  \sigma=\lvert\mathbf D\rvert_F,\qquad
-  \mathbf D=\tfrac12\left(\nabla\bu+\nabla\bu^{\mathsf T}\right),
+  a=\nhat\cdot\mathbf D\,\nhat,\qquad
+  \sigma=|\mathbf D|_F,
   \label{eq:Fdef}
 \end{equation}
-with $G(1,\sigma)=0$ for every law, so that a signed-distance level set is a
-fixed point of \eqref{eq:designlaw}. With $e=q-1$ and $\zeta=(q^2-1)/2$,
-Table~\ref{tab:laws} lists the laws. For the same $\mu$ the linear pair has
-the slope $-\mu$ at $q=1$ and the cubic pair the slope zero, so a difference
-between the q- and the z-form near $q=1$ comes from the discretisation, not
-from the coefficients. The weight $w$ is $0$ (\texttt{none}), $1$
-(\texttt{full}: the SDPLS source $R$ of \cite{FrickeEtAl2022}) or
-$\omega(q)=1-\exp[-\beta((q-1)/\delta_s)^{2m}]$ (\texttt{omega}).
+with a strain weight $w$ and a rate law $G$ with $G(1,\sigma)=0$. The weight
+$w=1$ cancels the normal strain exactly in \eqref{eq:designlaw} (the SDPLS source of
+\cite{FrickeEtAl2022}); $w=0$ leaves it to $G$. All candidates of this paper use
+$w=0$. Table~\ref{tab:laws} lists the laws of the library; with $e=q-1$ and
+$\zeta=(q^2-1)/2$, the linear pair has the slope $-\mu$ at $q=1$ for the same $\mu$.
+Three laws enter the gate.
+
+\paragraph{Linear laws} \texttt{linearQ}, $G=-\mu(q-1)$, and \texttt{linearZ},
+$G=-\mu(q^2-1)/2$. With $w=0$ and a steady strain, \eqref{eq:designlaw} has the fixed
+point $q^\ast=1-a/\mu+O(a^2/\mu^2)$: a finite rate leaves an offset of order $a/\mu$,
+so $\mu$ must exceed the strain rates of the flow. The gate sets
+$\mu=M_\mu/T_\mathrm{ref}$ with $M_\mu=1$ and the time scale $T_\mathrm{ref}$ of each
+arm (Table~\ref{tab:candidates}).
+
+\paragraph{Soft wall} \texttt{softWall},
+\begin{equation}
+  G=-C_\kappa\sqrt{\sigma^2+\varepsilon_D^2}\,
+     \tanh\!\left[\gamma\left(\frac{q-1}{\delta_s}\right)^{p}\right],
+  \qquad p\ \text{odd}.
+  \label{eq:softwall}
+\end{equation}
+Inside the band $|q-1|<\delta_s$ the wall is almost inactive; at $|q-1|=\delta_s$ it
+reaches $\tanh\gamma$ of its full strength. The gate uses $C_\kappa=1.25$,
+$\delta_s=0.08$, $p=5$, $\gamma=\operatorname{artanh}0.9$ and $\varepsilon_D=0$, so
+$|G|=1.125\,\sigma\ge|a|$ at $|q-1|=\delta_s$: outside the band the wall is at least as
+strong as any normal strain, and $q$ cannot leave $[1-\delta_s,1+\delta_s]$ far. The
+wall scales with the local strain-rate norm $\sigma$. Where $\sigma=0$ it is off,
+whatever the value of $q$.
 
 \begin{table}[t]
   \centering
-  \caption{The source laws $G(q,\sigma)$ of the library
-  \texttt{libleiaGradientControl}; $e=q-1$, $\zeta=(q^2-1)/2$. Every
-  coefficient that a law reads is required in the case dictionary.}
+  \caption{The source laws $G(q,\sigma)$ of the library; $e=q-1$,
+  $\zeta=(q^2-1)/2$. Every coefficient that a law reads is required in the case
+  dictionary; there is no code default. The gate tests \texttt{linearQ},
+  \texttt{linearZ} and \texttt{softWall}.}
   \label{tab:laws}
   \begin{tabular}{lll}
     \toprule
@@ -145,137 +248,264 @@ $\omega(q)=1-\exp[-\beta((q-1)/\delta_s)^{2m}]$ (\texttt{omega}).
     \texttt{cubicZ}           & $-\mu\zeta^3$ & $\mu$\\
     \texttt{twoThirdsZReg}    & $-\mu\zeta(\zeta^2+\varepsilon^2)^{-1/6}$ & $\mu$, $\varepsilon$\\
     \texttt{saturatedLinearZ} & $-\mu\zeta/(1+c\lvert\zeta\rvert)$ & $\mu$, $c$\\
-    \texttt{softWall}         & $-C_\kappa\sqrt{\sigma^2+\varepsilon_D^2}\,
-                                 \tanh[\gamma(e/\delta_s)^p]$ &
+    \texttt{softWall}         & \eqref{eq:softwall} &
                                  $C_\kappa$, $\delta_s$, $p$ odd, $\gamma$, $\varepsilon_D$\\
     \bottomrule
   \end{tabular}
 \end{table}
 
-%% ---------------------------------------------------------------------------
-\section{Discretisation on unstructured finite-volume meshes}
-\label{sec:fv}
-\paragraph{Eulerian line} The level set is transported in material form
-with the flux that actually moves it,
-\begin{equation}
-  \partial_t\psilev+\nabla_h\cdot(\Phi\,\psilev)-\psilev\,\nabla_h\cdot\Phi
-  = \psilev F,
-  \label{eq:materialFV}
-\end{equation}
-where $\Phi$ is the extension flux when an extension is selected. $F$ enters
-through the linearisations of the SDPLS source \cite{FrickeEtAl2022}.
+%% ===========================================================================
+\section{Velocity extension}
+\label{sec:extension}
 
-\paragraph{Semi-Lagrangian line} The characteristic step
-$\psilev^A(\bx_c)=\psilev^n(\bx_d)$ traces along
-$\mathrm{reconstruct}(\Phi^H)$ when the extension enters the trace
-(\texttt{traceFlux extension}), and along $\mathrm{reconstruct}(\Phi)$
-otherwise. The source step integrates $\Dt\psilev=\psilev F$ exactly for one
-step with $F$ frozen,
+\subsection{Why an extension controls the gradient}
+If the level set is transported with a velocity $\bu_E$ instead of $\bu$, with
+$\bu_E=\bu$ on $\Gamma$ and $\nhat\cdot(\nabla\bu_E)\nhat=0$ on $\Gamma$, the interface
+moves as before and \eqref{eq:qlaw} gives $\Dt q=0$ on $\Gamma$: a signed distance
+keeps $q=1$ at the interface. The classical construction extends $\bu$ from the
+interface constant along the normals, $\bu_E(\bx)=\bu(\bx_\Gamma(\bx))$ with the
+closest point $\bx_\Gamma$ \cite{AdalsteinssonSethian1999}. It needs a closest-point
+search and a band of cells around $\Gamma$. The reference candidate FP0 uses the
+closest-point extension of leia, which is a Newton search on the local fits with a
+fall-back to a steady extension equation.
+
+\subsection{The halo-limited extension}
+\label{sec:model-hl}
+The halo-limited extension \cite{BotheDossierHalo2026} samples the velocity at a point
+towards the interface that never leaves a radius $R$. With a signed nominal distance
+$d$ and the unit direction $\mathbf e$ from the interface towards $\bx$,
 \begin{equation}
-  \psilev_c^{n+1}=\psilev_c^A\exp(\Delta t\,F_c),
+  S_R(d)=d\left[1+\left(\frac{d}{R}\right)^{2m}\right]^{-1/(2m)},\qquad
+  \mathbf Y=\bx-S_R(d)\,\mathbf e,\qquad
+  w=\left(\frac{S_R(d)}{d}\right)^{\beta},
+  \label{eq:hl}
+\end{equation}
+\begin{equation}
+  \bu_H(\bx)=(1-w)\,\bu(\bx)+w\,\bu(\mathbf Y).
+  \label{eq:uH}
+\end{equation}
+The travel $S_R$ is odd, $S_R(0)=0$, $S_R'(0)=1$ and $|S_R|<R$. On the interface
+$\mathbf Y=\bx$ and $w=1$, and the normal derivative of $\mathbf Y$ vanishes, so
+$\nhat\cdot(\nabla\bu_H)\nhat=0$ there. Far from the interface $w\to0$ and $\bu_H\to\bu$.
+The level-set realisation is $d=\psilev/q$ and $\mathbf e=\nhat$. The gate uses
+$R=h$, $m=2$ and $\beta=1$: every sample lies within one cell of its point.
+
+%% ===========================================================================
+\section{Discretisation in OpenFOAM}
+\label{sec:fv}
+
+\subsection{Finite-volume setting}
+The unknowns are cell averages, stored at the cell centres $\bx_c$ of a mesh of
+arbitrary polyhedra. A face $f$ has the centre $\bx_f$, the area vector
+$\mathbf S_f$ that points from its owner to its neighbour cell, and the volumetric flux
+$\Phi_f\approx\bu_f\cdot\mathbf S_f$ that the pressure projection makes discretely
+divergence-free. Under MPI domain decomposition each rank holds a part of the mesh; a
+face between two ranks is a processor face that both ranks hold, each with its own cell
+as owner. $h_c$ is the smallest distance from $\bx_c$ to the centre of a face
+neighbour, processor neighbours included, so it does not depend on the decomposition.
+
+\subsection{Semi-Lagrangian transport (the baseline)}
+\label{sec:fv-sl}
+The level set is constant along characteristics, so the update is an assignment at
+every cell centre,
+\begin{equation}
+  \psilev^{n+1}(\bx_c)=\psilev^n(\bx_d),\qquad
+  \bx_d=\bx_c-\frac{\Delta t}{2}\left(3\bu^n-\bu^{n-1}\right)
+        +\frac{\Delta t^2}{2}\left(\bu^n\cdot\nabla\right)\bu^n,
+  \label{eq:sl}
+\end{equation}
+with the trace velocity $\bu^n$ at the cell centres. The coupled solver advances the
+interface before its momentum solve, so the foot point uses the two available time
+levels; the Adams--Bashforth centring keeps it second order in time. The trace velocity
+is the reconstruction of the pressure-corrected face flux,
+\begin{equation}
+  \bu_c=\Big(\sum_f\frac{\mathbf S_f\mathbf S_f}{|\mathbf S_f|}\Big)^{-1}
+        \sum_f\frac{\mathbf S_f}{|\mathbf S_f|}\,\Phi_f,
+  \label{eq:reconstruct}
+\end{equation}
+the OpenFOAM operator \texttt{fvc::reconstruct}. The value $\psilev^n(\bx_d)$ comes from
+a quadratic weighted least-squares fit over the cell--point--cell stencil of the cell
+that holds the foot point: with $\mathbf d_i=\bx_i-\bx_c$ and the basis
+$\mathbf b(\mathbf d)=(d_a,\tfrac12d_a^2,d_ad_b)_{a<b}$ without a constant term,
+\begin{equation}
+  R_c(\bx_c+\mathbf d)=\psilev_c+\mathbf a\cdot\mathbf b(\mathbf d),\qquad
+  \mathbf a=\arg\min\sum_{i}\frac{\left(R_c(\bx_i)-\psilev_i\right)^2}{|\mathbf d_i|^2}.
+  \label{eq:fit}
+\end{equation}
+The fit gives the gradient $\mathbf g$ and the Hessian $\mathbf H$ of $\psilev$ at
+$\bx_c$, from which the curvature is computed (Section~\ref{sec:fv-coupling}).
+
+\subsection{The source step}
+\label{sec:fv-source}
+After the characteristic step the source integrates $\Dt\psilev=\psilev F$ exactly for
+one step with $F$ frozen,
+\begin{equation}
+  \psilev_c^{n+1}=\psilev_c^{A}\exp\!\left(\Delta t\,F_c\right),
   \label{eq:expUpdate}
 \end{equation}
-in the band $\lvert\psilev_c\rvert/q_c\le b\,h_c$, with $F=0$ outside it and
-$\lvert\Delta t F\rvert$ clamped at $30$ (every clamp is counted). The update
-changes no sign, so no cell changes phase. $q_c$ comes from a gradient
-scheme that the case selects; $h_c$ is the smallest distance to the centre
-of a face neighbour, coupled neighbours included.
+where $\psilev^A$ is the arrival value of \eqref{eq:sl}. $F_c$ comes from
+\eqref{eq:Fdef} with $q_c=|\nabla_h\psilev^A|_c$ from a least-squares gradient of the
+arrival field and $\mathbf D_c$ from the gradient of the trace velocity. The source acts
+only in the band $|\psilev_c|/q_c\le3h_c$ and is exactly zero outside it; $|\Delta
+tF_c|$ is clamped at $30$ and every clamp is counted. The update never changes the sign
+of a cell value, so no cell changes phase. The Eulerian solvers of leia have the same
+law family through their SDPLS source \cite{FrickeEtAl2022}; that line is not part of
+this gate.
 
-\paragraph{Halo-limited flux} The extension enters as a correction of the
-pressure-corrected flux,
+\subsection{The halo-limited extension on the mesh}
+\label{sec:fv-hl}
+The extension enters as a correction of the pressure-corrected flux,
 \begin{equation}
-  \Phi^H_f=\Phi_f+w_f\left[\bu_h(Y_f)-\bu_h(\bx_f)\right]\cdot\mathbf S_f,
-  \qquad
-  R_f=r\min(h_P,h_N),\quad 0<r\le1,
+  \Phi^H_f=\Phi_f+w_f\left[\bu_h(\mathbf Y_f)-\bu_h(\bx_f)\right]\cdot\mathbf S_f,
+  \qquad R_f=\min(h_P,h_N),
   \label{eq:hlFlux}
 \end{equation}
-so that $\Phi^H=\Phi$ where $w=0$ and on the physical patches. $\bu_h$ is the
-mean of the owner's and the neighbour's local quadratic models (a weighted
-least-squares value fit over the cell-point-cell stencil, one velocity
-component at a time), each evaluated at the same two points, so that the
-constant part of each model cancels. A linear model would reduce the
-extension to a weighted SDPLS source at first order. On a coupled face each
-side evaluates its own cell's model; the two corrections are summed in the
-owner side's orientation and halved, so the two sides carry exactly opposite
-values. The direction uses $d=\psilev/\sqrt{Q_2}$, $\mathbf e=\nabla\psilev/
-\sqrt{Q_2}$ with $Q_2=q^2+\zeta(q^2)$ and $\zeta(z)=(1-4z)^3/4$ for $z<1/4$,
-zero above: $d=\psilev/q$ and $\mathbf e=\nhat$ hold exactly for $q\ge0.5$.
+so that $\Phi^H=\Phi$ where $w=0$ and on every physical boundary. The direction uses
+the least-squares gradient $\mathbf g_f$ of $\psilev$ interpolated to the face, with
+$d_f=\psilev_f/\sqrt{Q_2}$ and $\mathbf e_f=\mathbf g_f/\sqrt{Q_2}$, where
+$Q_2=q^2+\zeta_r(q^2)$ and $\zeta_r(z)=(1-4z)^3/4$ for $z<1/4$ and zero above; so $d=\psilev/q$
+and $\mathbf e=\nhat$ hold exactly for $q\ge0.5$. The sampler $\bu_h$ is the mean of
+the owner's and the neighbour's local quadratic models of each velocity component, each
+a weighted least-squares fit over the cell--point--cell stencil, evaluated at the same
+two points $\mathbf Y_f$ and $\bx_f$; the constant part of each model cancels in the
+difference. On a processor face each rank evaluates its own cell's model, and the two
+corrections are averaged in one orientation, so both sides carry exactly opposite
+fluxes. In the semi-Lagrangian solvers the extension enters through the trace velocity:
+\eqref{eq:reconstruct} is applied to $\Phi^H$ instead of $\Phi$ (the setting
+\texttt{traceFlux extension}).
 
-%% ---------------------------------------------------------------------------
-\section{Implementation in leia}
-\label{sec:impl}
-The method is open to extension and closed to modification: a new law,
-extension or strategy is one new class that registers itself in a
-runtime-selection table, and one dictionary word selects it. Table
-\ref{tab:families} lists the families. The solvers hold composition roots
-only; each constructs the families it can select and calls their interface.
-Before the new models, four roots were opened in one commit that changed no
-result: the source family of the semi-Lagrangian line, the velocity
-extension of the Eulerian two-phase solver and of the kinematic
-semi-Lagrangian solver, and the trace flux of both semi-Lagrangian solvers.
-The bit-identity gate compared every CSV at tolerance zero and every written
-field byte for byte against the binaries of the previous commit: 53 cases on
-all five solvers, including hexahedral and polyhedral transport ladders at
-three resolutions, were identical.
+\subsection{Coupling to the two-phase flow (the baseline)}
+\label{sec:fv-coupling}
+The flow is the one-field incompressible Navier--Stokes system with
+$\rho=\alpha\rho_1+(1-\alpha)\rho_2$ and $\mu=\alpha\mu_1+(1-\alpha)\mu_2$, solved with
+the PIMPLE algorithm, three outer correctors, and the level set re-advected from
+$\psilev^n$ on every outer corrector with the current velocity iterate. Both time
+derivatives, of momentum and of density, use the second-order backward scheme. The
+momentum flux is the rhoLENT mass flux \cite{LiuEtAl2023}: an auxiliary density
+equation $\partial_t\rho+\nabla\cdot(\rho_f\Phi)=0$ is solved on every outer corrector
+with the face density $\rho_f=\alpha_f\rho_1+(1-\alpha_f)\rho_2$ of the upwind cell's
+reconstructed plane, bounded to $[\rho_2,\rho_1]$, and $\rho$ is reset from $\alpha$
+after the loop. The surface tension is the balanced-force face flux
+$\sigma_s\kappa_f(\nabla\alpha)_f\cdot\mathbf S_f$ \cite{Francois2006,Popinet2009} with
+the cell curvature of the fit, corrected per cell to the interface by the
+parallel-surface inverse $\kappa=(\kappa_d-2Kd)/(1-d\kappa_d+Kd^2)$ with $K=0$ in 2D,
+and interpolated linearly to the faces. The time step is fixed at
+$\Delta t=0.23\,\Delta t_\sigma$ with the capillary limit
+$\Delta t_\sigma=\sqrt{(\rho_1+\rho_2)h^3/(2\pi\sigma_s)}$ \cite{Brackbill1992}. No
+redistancing, no filter and no volume correction is applied.
+
+\subsection{Consistency under domain decomposition}
+\label{sec:fv-parallel}
+A parallel run must give the serial answer up to the round-off of its reductions and
+linear solvers. The serial check of the gate (Section~\ref{sec:gate-verdict}) found two
+places where the baseline did not, both of the same kind: code that handled a
+processor face as a boundary face of one cell.
+
+\paragraph{The face density} The face area fraction $\alpha_f$ of the mass flux comes
+from the reconstructed plane of the upwind cell. On a processor face each rank used its
+own cell's plane, whatever the flux direction. The two sides then disagreed on $\rho_f$,
+and the mass that left one rank through the face was not the mass that entered the
+other. Table~\ref{tab:facedensity} gives the measurement: after one step, four
+processor faces had $\rho_f$ different by up to \SI{90}{\percent} between the two sides,
+while $\Phi$ matched exactly. In the corrected code each side computes its local-cell
+fraction, the two values are exchanged, and both sides apply the same donor rule with
+the local flux sign; at $\Phi=0$ both take the value of the owner side of the patch.
+After the correction no face differs.
+
+\paragraph{The diagnostics} The zero-set sample of the shape error, the band of the
+curvature and gradient errors, and the face statistics were formed from internal faces
+only, so on several ranks they missed the processor faces. They did not change the
+solution, but they changed the reported numbers.
+
+Table~\ref{tab:seam} and Figure~\ref{fig:seam} give the effect: the maximum difference
+between a run on four ranks and a serial run over the first \SI{0.05}{s} of the
+translating droplet at $N=100$. Before the corrections the solution differed by
+$5\times10^{-6}$ to $1.4\times10^{-3}$, the band and shape diagnostics by $3$ to
+\SI{8}{\percent}, and the mode-2 amplitude by \SI{63}{\percent}. After both corrections
+every column of Table~\ref{tab:seam} agrees to $3.5\times10^{-7}$ or better, the level of
+the linear-solver tolerances. Serial runs are unchanged, bit for bit. Every parallel
+result of the baseline that was computed before the corrections carries both errors.
 
 \begin{table}[t]
   \centering
-  \caption{Runtime-selectable families used by the method. The indented
-  rows are strategies: families of their own, selected inside the dictionary
-  of \texttt{gradientControlLaw} and of \texttt{haloLimited}.}
-  \label{tab:families}
-  \begin{tabular}{lll}
-    \toprule
-    family & library & models\\
-    \midrule
-    \texttt{gradientControlLaw} & \texttt{GradientControl} & Table~\ref{tab:laws}\\
-    \quad strategy \texttt{strainWeight} & \texttt{GradientControl} & \texttt{none}, \texttt{full}, \texttt{omega}\\
-    \texttt{sdplsSource} & \texttt{SdplsSource} & \dots, \texttt{gradientControl}\\
-    \texttt{slSource} & \texttt{SemiLagrangian} & \texttt{none}, \texttt{gradientControl}\\
-    \texttt{velocityExtension} & \texttt{VelocityExtension} & \dots, \texttt{closestPoint}, \texttt{haloLimited}\\
-    \quad travel, weight & \texttt{VelocityExtension} & \texttt{capped}, \texttt{fractionReached}\\
-    \quad direction, sampler & \texttt{VelocityExtension} & \texttt{levelSet}, \texttt{stencilFit}\\
-    \bottomrule
-  \end{tabular}
+  \caption{The face area fraction $\alpha_f$ and the face density $\rho_f$ on the two
+  sides of every processor face, translating droplet, $N=64$, four ranks. A face
+  differs if the two values differ by more than $10^{-12}$ relative. The flux $\Phi$
+  matches exactly on every face before and after.}
+  \label{tab:facedensity}
+  \input{data/tables/gcls_face_density.tex}
 \end{table}
 
-%% ---------------------------------------------------------------------------
-\section{Test cases}
-\label{sec:cases}
-One 2D study and one 3D study test every method (the method gates). Each
-gate has the same arms: an exact one-dimensional check, a reversed shear flow,
-and a stationary, a translating and an oscillating droplet.
-Figures~\ref{fig:cases-kinematic}--\ref{fig:cases-droplets3D} give the geometry,
-the initial condition and the boundary conditions of every arm, and
-Table~\ref{tab:cases} gives the parameters and the resolution ladders. In 2D the
-number of cells doubles per rung; in 3D the ratio of the cell sizes is at least
-1.3 per rung \cite{Celik2008}. The first rung resolves the droplet radius with at
-least ten cells. The two droplet fluids are water ($\rho_1=\SI{998.2}{kg/m^3}$,
-$\nu_1=\SI{1e-6}{m^2/s}$) and air ($\rho_2=\SI{1.19}{kg/m^3}$,
-$\nu_2=\SI{1.53e-5}{m^2/s}$), with $\sigma=\SI{0.07274}{N/m}$ and no gravity.
+\begin{table}[t]
+  \centering
+  \caption{Four ranks against one: the largest difference over the first \SI{0.05}{s}
+  of the translating droplet ($N=100$), each column divided by its largest value.}
+  \label{tab:seam}
+  \input{data/tables/gcls_seam.tex}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\textwidth]{gcls_seam.pdf}
+  \caption{The data of Table~\ref{tab:seam}. The coupled-face correction removes the
+  error of the solution (the velocity, volume, pressure and centroid columns); the
+  diagnostic correction removes the error of the band and zero-set columns.}
+  \label{fig:seam}
+\end{figure}
+
+\paragraph{The Eulerian two-phase solver} The same investigation found that the
+Eulerian two-phase solver of leia kept the density, the mass flux and the face
+viscosity at their initial values: the density moved only on a dynamic mesh
+refinement. It now shares the mass-flux code of the semi-Lagrangian solver
+unchanged. Table~\ref{tab:eulerian} shows the translating droplet after $1000$ steps:
+with the frozen density the heavy droplet travels at \SI{42}{\percent} of the stream
+and the velocity error is three times the stream speed; with the shared mass flux it
+travels at the stream speed to $10^{-4}$. The Eulerian line is not part of the gate:
+its curvature pipeline and its droplet diagnostics do not yet match those of the
+semi-Lagrangian solver.
+
+\begin{table}[t]
+  \centering
+  \caption{The Eulerian two-phase solver of leia, translating droplet, $N=100$, $1000$
+  steps ($t=\SI{0.0109}{s}$). Travelled fraction: the centroid displacement divided by
+  $U_0t$.}
+  \label{tab:eulerian}
+  \input{data/tables/gcls_eulerian.tex}
+\end{table}
+
+%% ===========================================================================
+\section{The method gate}
+\label{sec:gate}
+
+One 2D study tests every method. It reuses the cases and the workflow of the
+production studies; a method enters only as a set of case entries, so a method that
+cannot be selected at run time cannot be tested.
+
+\subsection{Arms and resolutions}
+\label{sec:gate-arms}
+Figures~\ref{fig:cases-kinematic}--\ref{fig:cases-droplets2D} show the arms and
+Table~\ref{tab:cases} their parameters. The exact 1D arm transports a plane in a uniaxial
+strain with the closed form $q=e^{-\alpha t}$ and runs first; the other arms start only
+after it passes. The reversed shear flow returns the interface to its initial position at
+$t=T$. The three droplet arms are coupled to the flow with water and air. The number of
+cells doubles per rung, and the first rung resolves the droplet radius with ten cells.
+Every arm runs on four MPI ranks. The translating arm ends at \SI{0.05}{s}, before the
+late instability of Section~\ref{sec:res-translating}.
 
 \begin{figure}[p]
   \centering
   \begin{subfigure}[t]{\textwidth}\centering
     \input{figures/case_exact1D.tex}
     \caption{Exact 1D arm: uniaxial strain $\mathbf u=\alpha x\,\mathbf e_x$
-      transports the plane $\psi=0$. The closed form is
-      $|\nabla\psi|=e^{-\alpha t}$.}
+      transports the plane $\psi=0$. The closed form is $|\nabla\psi|=e^{-\alpha t}$.}
     \label{fig:case-exact1D}
   \end{subfigure}\\[6pt]
-  \begin{subfigure}[t]{0.49\textwidth}\centering
+  \begin{subfigure}[t]{0.55\textwidth}\centering
     \input{figures/case_shear2D.tex}
-    \caption{2D shear.}
+    \caption{2D reversed shear.}
     \label{fig:case-shear2D}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.49\textwidth}\centering
-    \input{figures/case_shear3D.tex}
-    \caption{3D shear.}
-    \label{fig:case-shear3D}
   \end{subfigure}
-  \caption{The kinematic arms: a prescribed velocity and no momentum equation.
-    The reversed flows (b) and (c) return the interface to its initial position at
-    $t=T$.}
+  \caption{The kinematic arms: a prescribed velocity and no momentum equation.}
   \label{fig:cases-kinematic}
 \end{figure}
 
@@ -296,114 +526,462 @@ $\nu_2=\SI{1.53e-5}{m^2/s}$), with $\sigma=\SI{0.07274}{N/m}$ and no gravity.
     \caption{Oscillating droplet (mode 2).}
     \label{fig:case-oscillating2D}
   \end{subfigure}
-  \caption{The 2D droplet arms (one cell thick, empty front and back
-    patches). The level set $\psi$ is a signed distance at $t=0$ in every arm.}
+  \caption{The droplet arms (one cell thick, empty front and back patches). The level set
+    $\psi$ is a signed distance at $t=0$ in every arm.}
   \label{fig:cases-droplets2D}
-\end{figure}
-
-\begin{figure}[p]
-  \centering
-  \begin{subfigure}[t]{0.49\textwidth}\centering
-    \input{figures/case_stationary3D.tex}
-    \caption{Stationary droplet.}
-    \label{fig:case-stationary3D}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.49\textwidth}\centering
-    \input{figures/case_translating3D.tex}
-    \caption{Translating droplet.}
-    \label{fig:case-translating3D}
-  \end{subfigure}\\[6pt]
-  \begin{subfigure}[t]{0.49\textwidth}\centering
-    \input{figures/case_oscillating3D.tex}
-    \caption{Oscillating droplet (mode 2).}
-    \label{fig:case-oscillating3D}
-  \end{subfigure}
-  \caption{The 3D droplet arms on the box of side $L=6R$. Orthographic view
-    from the front: $x$ to the right, $y$ into the page, $z$ up; dashed lines
-    are hidden edges.}
-  \label{fig:cases-droplets3D}
 \end{figure}
 
 \begin{table}[tp]
   \centering
-  \caption{Parameters of the gate arms. $N$ is the number of cells per
-    direction; $h=L/N$. The droplet time step is $\Delta t=10.861\,h^{1.5}$
-    (0.23 of the explicit capillary limit) at every rung.}
+  \caption{Parameters of the gate arms. $N$ is the number of cells per direction,
+    $h=L/N$. The droplet time step is $\Delta t=0.010861\,N^{-1.5}$\,s, 0.23 of the
+    capillary limit, at every rung. Water: $\rho_1=\SI{998.2}{kg/m^3}$,
+    $\nu_1=\SI{1e-6}{m^2/s}$; air: $\rho_2=\SI{1.19}{kg/m^3}$, $\nu_2=\SI{1.53e-5}{m^2/s}$;
+    $\sigma_s=\SI{0.07274}{N/m}$; no gravity.}
   \label{tab:cases}
   \small
-  \begin{tabular}{@{}llllll@{}}
+  \begin{tabular}{@{}lllll@{}}
     \toprule
-    Arm & Domain & Interface at $t=0$ & $T$ & $N$ (2D gate) & $N$ (3D gate)\\
+    arm & domain & interface at $t=0$ & $T$ & $N$\\
     \midrule
-    exact 1D & $x\in[-2,2]$ & plane $x=0.25$ & \SI{1}{s} & 32, 64, 128, 256 & same \\
-    shear & $[0,1]^d$ & $R=0.15$ & 2\,s / 3\,s & 68, 96, 136 & 68, 90, 118\\
-    stationary & $[0,L]^d$ & $R=\SI{1}{mm}$, centred & \SI{0.1}{s} / \SI{0.025}{s} & 100, 142, 200 & 60, 78, 102\\
-    translating & $[0,L]^d$ & $R=\SI{1}{mm}$, $U_0=\SI{0.05}{m/s}$ & \SI{0.1}{s} / \SI{0.02}{s} & 100, 142, 200 & 60, 78, 102\\
-    oscillating & $[0,L]^d$ & ellipse / spheroid, $a=1.1R$ & \SI{0.1}{s} / \SI{0.025}{s} & 100, 142, 200 & 60, 78, 102\\
+    exact 1D & $x\in[-2,2]$ & plane & \SI{1}{s} & 32, 64, 128, 256\\
+    shear & $[0,1]^2$ & circle, $R=0.15$ & \SI{2}{s}, reversed & 68, 96, 136\\
+    stationary & $[0,L]^2$, walls & circle, $R=\SI{1}{mm}$, centred & \SI{0.1}{s} & 100, 142, 200\\
+    translating & $[0,L]^2$, inlet, outlet & circle at $x_0=\SI{2.5}{mm}$, $U_0=\SI{0.05}{m/s}$ & \SI{0.05}{s} & 100, 142, 200\\
+    oscillating & $[0,L]^2$, walls & ellipse, $a=1.1R$, equal area & \SI{0.1}{s} & 100, 142, 200\\
     \bottomrule
   \end{tabular}\\[3pt]
-  {\footnotesize $L=\SI{10}{mm}$ in 2D and $L=\SI{6}{mm}$ in 3D. Where two values
-  are given, the first is 2D and the second 3D.}
+  {\footnotesize $L=\SI{10}{mm}$.}
 \end{table}
 
-%% ---------------------------------------------------------------------------
-\section{Verification}
-\label{sec:verification}
-\paragraph{Unit gates} Each model has a unit gate that exits nonzero on
-a failure; the parallel gates run on four ranks with the interface or the
-source band across a processor boundary.
+\subsection{The error vector}
+\label{sec:gate-metrics}
+Each arm reports a vector of errors, never one number, and every entry is an $L^2$ or an
+$L^1$ norm; a maximum norm is not reported, because a single-cell extremum does not
+converge on an unstructured mesh.
 \begin{itemize}
-  \item The laws (109 checks, no mesh): $G(1)=0$ exactly, the sign of $G$
-  opposite to $q-1$, $\partial G/\partial q$ against a central difference,
-  the equal q/z slopes, the soft-wall response of the table in \cite{BotheDossierHalo2026}
-  table within $5\times10^{-4}$, and fourth-order Runge--Kutta integration
-  of $q'=qG$ against the logistic, the $z$-logistic and the implicit cubic
-  solutions.
-  \item The Eulerian source (189 checks): law \texttt{none} with weight
-  \texttt{full} equals the SDPLS source $R$ bit for bit; \texttt{linearQ}
-  with $\mu=1$ equals the bounded-gradient source with $\beta=1$ exactly;
-  every law applies $F\psilev$ at the exact affine values to $10^{-10}$.
-  \item The semi-Lagrangian source (49 checks on one and on four ranks):
-  \eqref{eq:expUpdate} to $10^{-12}$ in the band, the cells outside it
-  unchanged bit for bit, no sign change, the clamp, and current processor
-  values after the step.
-  \item The halo-limited extension (18 checks on one and on four ranks):
-  $S_R(0)=0$, $S_R'(0)=1$, $\lvert S_R\rvert\le R$ up to $\lvert
-  d\rvert=10^6R$, $1-w=(\beta/2m)(d/R)^{2m}$ to leading order; for an affine
-  and for the divergence-free quadratic velocity of \cite{BotheDossierHalo2026}, the face
-  correction equals \eqref{eq:hlFlux} with the exact velocity at the exact
-  sample point to $2\times10^{-16}$; a uniform velocity leaves $\Phi$ and
-  $\bu$ unchanged bit for bit; the correction is exactly antisymmetric on
-  all 240 coupled faces.
+  \item Shape: for the shear flow the relative $L^1$ difference of $\alpha$ to its
+  initial field at $t=T$; for the droplets the $L^2$ norm of the radial distance of the
+  zero-set crossings to the exact circle (centred at $\bx_0+\mathbf U_0t$), divided by $R$.
+  \item Volume: $|V(t)/V(0)-1|$ at $T$ (and at $T/2$).
+  \item Band gradient error: the $L^2$ norm of $q-1$ over the cells of the interface
+  band, with the unlimited least-squares gradient. For the reversed shear flow it is read
+  at $T/2$, where the deformation is largest; at $T$ the reversal cancels it.
+  \item Spurious current: the volume-weighted $L^2$ and $L^1$ norms of $\bu-\mathbf U_0$
+  (stationary and translating droplets only: in the oscillating droplet the velocity is
+  the physical oscillation).
+  \item Pressure jump: the difference of the mean pressure over the pure phases against
+  $\sigma_s/R$; curvature: the $L^2$ norm of $\kappa-1/R$ in the band, relative to $1/R$.
+  \item Travel: the centroid displacement against $U_0T$.
+  \item Oscillation: the period and the damping rate of the mode-2 amplitude. These have
+  no exact value in the discretised problem; their convergence is judged by the
+  procedure of \cite{Celik2008}.
 \end{itemize}
-%% Still EMPTY until the gates report: the static gradient metrology E0, the
-%% exact 1D gates E1 (the oracle for candidates with a source or an extension
-%% is open), the seam gate E2.
 
-%% ---------------------------------------------------------------------------
-\section{Coupled results}
-\label{sec:coupled}
-%% EMPTY until the method gates report: methodGate2D and methodGate3D tables
-%% (data/tables/<gate>_<candidate>_{summary,orders,vsBaseline}.csv) with the
-%% observed orders and the GCI \cite{Roache1994,Celik2008}.
+\subsection{Orders and verdict}
+\label{sec:gate-verdict}
+For a quantity with the exact value zero the observed order is the least-squares slope
+over the three rungs. A candidate passes if all of the following hold.
+\begin{enumerate}
+  \item Every case of the candidate completes where the baseline completes.
+  \item No entry of the vector is more than \SI{10}{\percent} above the baseline at the
+  finest rung, and no least-squares order is more than $0.3$ below the baseline's.
+  \item The candidate meets its own target: here the band gradient error of the shear
+  arm at the finest rung is at most $0.8$ times the baseline's.
+  \item The serial checks pass: the coarsest shear rung repeated on one and on eight
+  ranks agrees with the four-rank run to $10^{-10}$, and the coarsest translating rung
+  repeated on one rank agrees in the error-vector columns to $10^{-5}$. A check whose
+  four-rank reference did not complete is not comparable.
+\end{enumerate}
 
-%% ---------------------------------------------------------------------------
-\section{Parallel cost and decomposition invariance}
-\label{sec:parallel}
-%% EMPTY until the gates report: rank count, wall clock, core-seconds per
-%% step, serial vs np 4 vs np 8 differences.
+\subsection{The candidates}
+\label{sec:gate-candidates}
+Table~\ref{tab:candidates} lists the six candidates. S1 tests the soft wall alone. HL0
+tests the halo-limited extension alone, and FP0 the closest-point extension as a
+reference for it. HL1q and HL1z add the linear laws to the extension, as a paired
+comparison of the q- and the z-form, and HL2 adds the soft wall to it.
 
-%% ---------------------------------------------------------------------------
-\section{Discussion}
+\begin{table}[t]
+  \centering
+  \caption{The candidates of the first campaign. Every other setting is the baseline's.}
+  \label{tab:candidates}
+  \small
+  \resizebox{\textwidth}{!}{\input{data/tables/gcls_candidates.tex}}\\[3pt]
+  {\footnotesize \input{data/tables/gcls_candidates_tref.tex}}
+\end{table}
+
+%% ===========================================================================
+\section{Results}
+\label{sec:results}
+
+All numbers of this section come from the 2D gate on commit 1150e68, with both
+corrections of Section~\ref{sec:fv-parallel}, on four MPI ranks of the Lichtenberg
+cluster; \ref{app:data} lists the data files.
+
+\subsection{The baseline}
+\label{sec:res-baseline}
+Table~\ref{tab:baseline} gives the error vector of the baseline.
+
+\paragraph{Shear} The shape error converges at order $3.1$ and the volume error at
+order $3.6$. The band gradient error at $T/2$ is $1.6$ at every rung: the flow itself
+moves $q$ away from one by an amount of order one (Figure~\ref{fig:shear}b), and the
+reversal returns it to $10^{-3}$ at $t=T$. This is the effect that gradient control is
+meant to remove.
+
+\paragraph{Stationary droplet} Shape, band gradient, pressure jump and curvature
+converge at order $1.9$ to $2.8$. The spurious current is small,
+$4\times10^{-7}$\,m/s at $N=200$, but it is larger at finer rungs at the fixed time $T$
+(order $-3.4$); the droplet reaches equilibrium more slowly on the finer mesh.
+
+\paragraph{Translating droplet} Shape, volume and travel converge at order $3.1$ to
+$3.3$ and the spurious current at order $1.1$. The curvature error does not converge:
+it stays between $2.4$ and \SI{3.6}{\percent} of $1/R$ at all three rungs, while the
+same estimator converges at order $1.9$ on the stationary droplet. The band gradient
+error converges only at order $0.8$.
+
+\paragraph{Oscillating droplet} At $N=100$ and $142$ the band gradient error stays near
+$0.1$ over ten oscillation periods. At $N=200$ it grows exponentially after
+$t=\SI{0.05}{s}$ and reaches $5.1$ at $T$, and the velocity departs from the damped
+oscillation just before $T$ (Figure~\ref{fig:oscdrift}). The finest rung completes the
+horizon on the edge of a divergence. Its period ($8.1$\,ms against $10.0$ and $9.8$\,ms)
+and damping rate break the convergence of both quantities, which the procedure of
+\cite{Celik2008} classifies as divergent. The gradient drift without redistancing is
+therefore a defect of the baseline itself, and the oscillating arm at $N=200$ cannot
+carry a verdict.
+
+\begin{table}[t]
+  \centering
+  \caption{The error vector of the baseline; the rungs are the $N$ of
+  Table~\ref{tab:cases}. The order is the least-squares slope; for the period and the
+  damping rate it is the apparent order of \cite{Celik2008}, marked (div.) where the
+  ladder is divergent.}
+  \label{tab:baseline}
+  \small
+  \input{data/tables/gcls_baseline.tex}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{gcls_oscillating_drift.pdf}
+  \caption{The baseline's oscillating droplet at three resolutions: (a) the band gradient
+  error, (b) the $L^1$ norm of the velocity, which is the physical oscillation. At
+  $N=200$ the gradient error grows exponentially after $t=\SI{0.05}{s}$.}
+  \label{fig:oscdrift}
+\end{figure}
+
+\subsection{Verdicts}
+Table~\ref{tab:verdicts} gives the verdicts. Every candidate fails, and every candidate
+fails several criteria at once. Tables~\ref{tab:arm-shear}--\ref{tab:arm-osc} give, per
+arm, the value at the finest rung and the order of each entry;
+Figures~\ref{fig:shear} and~\ref{fig:droplets} show the histories.
+
+\begin{table}[t]
+  \centering
+  \caption{Verdicts of the 2D gate. Target ratio: the band gradient error of the shear
+  arm at the finest rung divided by the baseline's (target: at most $0.8$). The last four
+  columns count the failed criteria.}
+  \label{tab:verdicts}
+  \input{data/tables/methodGate2D_verdicts.tex}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{gcls_shear.pdf}
+  \caption{The reversed shear flow. (a) The shape error at $T$ against $h$; the dotted
+  lines show the slopes one and three. (b) The band gradient error at $N=136$ over time.}
+  \label{fig:shear}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{gcls_droplets.pdf}
+  \caption{The droplet arms at $N=200$: (a) the spurious current of the stationary
+  droplet, (b) the shape error of the translating droplet, (c) the band gradient error of
+  the oscillating droplet. S1, HL0 and HL2 coincide with the baseline in (a). The FP0 runs
+  at $N=200$ ended on the \SI{10}{h} limit of the cluster and are not shown.}
+  \label{fig:droplets}
+\end{figure}
+
+\subsection{Soft wall alone (S1)}
+\label{sec:res-s1}
+On the stationary droplet S1 agrees with the baseline to four significant digits or
+better in every entry. The wall \eqref{eq:softwall} scales with $\sigma$, and the
+stationary droplet has $\sigma\approx0$ (its only velocity is the spurious current), so
+the source is almost off. Wherever the flow strains the interface, S1
+changes the result strongly. In the shear flow it lowers the band gradient error to
+$0.71$ of the baseline, which meets its target, and it raises the shape error $410$
+times, with an order of $0.06$. The translating droplet diverges at $N=142$. The volume of
+the oscillating droplet grows by a factor of $22$. The serial check of the translating
+arm fails: one rank and four ranks differ by \SI{76}{\percent} in the spurious current,
+against $3.5\times10^{-7}$ for the baseline, so the soft wall amplifies the round-off of
+the decomposition. A source that is invariant for the zero set in the continuum
+therefore moves the discrete zero set; Section~\ref{sec:disc-source} gives the mechanism.
+
+\subsection{Velocity extensions alone (HL0, FP0)}
+\label{sec:res-hl0}
+HL0 leaves the stationary droplet almost unchanged: the shape, pressure-jump and
+curvature errors change by less than \SI{5}{\percent}, and only the volume error rises,
+from $2.2\times10^{-8}$ to $2.0\times10^{-7}$. The extension acts only where the velocity
+varies. In the shear flow it keeps the band gradient error at $0.83$ of the
+baseline, which misses the target, and it raises the shape error $14$ times at
+$N=136$; the order falls from $3.1$ to $1.4$ (Figure~\ref{fig:shear}a). This is the
+kinematic arm, with a smooth prescribed velocity and no force, so the loss of order
+comes from the transport and not from the coupling. In the coupled arms the extension
+destroys the level set: on the oscillating droplet the band gradient error reaches
+$2\times10^{7}$ and the volume error $6.7$, and on the translating droplet the shape
+error at $N=200$ is $64$ times the baseline's. Its serial checks pass.
+
+The closest-point reference FP0 behaves like HL0 in the shear flow: $34$ times the shape
+error and order $1.4$. It is the only candidate whose kinematic serial check fails
+(\SI{45}{\percent} between one and four ranks): its closest-point search depends on the
+decomposition at the processor boundaries.
+
+\subsection{Linear laws with the extension (HL1q, HL1z)}
+\label{sec:res-hl1}
+The linear laws do what they are designed for on the gradient and fail on everything
+else. HL1q lowers the band gradient error of the shear flow five times, to $0.20$ of the
+baseline; its shape error is $173$ times the baseline's and does not converge (order
+$0.02$). HL1z has the same slope at $q=1$ but lets the band gradient error grow to
+$10.5$, and its shape error is $1.65$. On the stationary droplet both destroy the
+interface: the spurious current grows from about $10^{-6}$\,m/s to $0.2$ and
+$0.5$\,m/s by $t=\SI{0.035}{s}$ (Figure~\ref{fig:droplets}a), and at $T$ the shape error is $3.8$ and
+$3.7$ times $R$ with a volume error of $76$ and \SI{84}{\percent}. These runs complete,
+so the completion criterion alone would not detect them; the error vector does.
+
+\subsection{Soft wall with the extension (HL2)}
+HL2 agrees with HL0 on the stationary droplet to four significant digits or better (the
+wall is almost off). The translating droplet diverges at all three rungs before
+\SI{0.05}{s}, and the volume of the oscillating droplet grows by a factor of $16$.
+
+\begin{table}[p]
+  \centering
+  \caption{The shear arm: the value at the finest rung ($N=136$) and the least-squares
+  order of each entry.}
+  \label{tab:arm-shear}
+  \small
+  \resizebox{\textwidth}{!}{\input{data/tables/methodGate2D_shear.tex}}\\[10pt]
+  \caption{The stationary arm ($N=200$).}
+  \label{tab:arm-stat}
+  \resizebox{\textwidth}{!}{\input{data/tables/methodGate2D_stationary.tex}}\\[10pt]
+  \caption{The translating arm ($N=200$).}
+  \label{tab:arm-trans}
+  \resizebox{\textwidth}{!}{\input{data/tables/methodGate2D_translating.tex}}\\[10pt]
+  \caption{The oscillating arm ($N=200$).}
+  \label{tab:arm-osc}
+  \resizebox{\textwidth}{!}{\input{data/tables/methodGate2D_oscillating.tex}}
+\end{table}
+
+\subsection{Serial checks}
+Table~\ref{tab:gateseam} gives the serial checks of the gate. The kinematic arms agree to
+$10^{-11}$ for every candidate except FP0. The coupled translating check passes for the
+baseline, HL0, HL1q and HL1z at $3.5\times10^{-7}$ to $4.7\times10^{-6}$; it fails for S1
+and FP0, and it is not comparable for HL2, whose four-rank reference diverged. Before the
+corrections of Section~\ref{sec:fv-parallel} the baseline itself would have failed it.
+
+\begin{table}[t]
+  \centering
+  \caption{The serial checks of the gate: the largest column-scaled difference to the
+  four-rank run.}
+  \label{tab:gateseam}
+  \input{data/tables/gcls_gate_seam.tex}
+\end{table}
+
+\subsection{The translating droplet at long times}
+\label{sec:res-translating}
+The production study of the translating droplet ran to \SI{0.1}{s} and diverged late at
+every resolution. The gate avoids this with its \SI{0.05}{s} horizon; this section asks
+what causes it. Table~\ref{tab:translating} lists the runs, all with the baseline method
+at $N=100$ to $200$, and Figure~\ref{fig:boxes} shows the spurious current and the lead
+of the droplet over the stream for three box lengths. The onset is the first time at
+which the spurious current exceeds ten times its level at $t=\SI{0.03}{s}$.
+
+Five observations follow.
+\begin{enumerate}
+  \item The instability does not depend on the decomposition. In the \SI{10}{mm} box the
+  serial run and the four-rank runs start to grow at the same time,
+  $t=\SI{0.063}{s}$, and diverge between $0.078$ and \SI{0.090}{s}.
+  \item It needs the density contrast: at the density ratio one the run completes.
+  \item One-change variants of the baseline shift it but do not remove it. The curvature
+  without the per-cell inverse diverges \SI{20}{\percent} earlier, the midpoint force
+  centring \SI{32}{\percent} earlier; the second-order foot integrator makes no
+  difference.
+  \item The outlet triggers it. In a box twice as long, with the same cell size, the run
+  completes \SI{0.1}{s} at all three resolutions, and the fast growth that starts at
+  $t=\SI{0.063}{s}$ in the short box is absent.
+  \item A slower growth remains in the interior. In the \SI{20}{mm} box the spurious
+  current grows from $t\approx\SI{0.10}{s}$ at about \SI{30}{s^{-1}} and turns explosive
+  near \SI{0.16}{s}, with the leading edge of the droplet \SI{8}{mm} from the outlet. In a box four
+  times as long, with the outlet more than \SI{17}{mm} away, the run completes
+  \SI{0.3}{s}, but the droplet leads the stream by \SI{3.9}{mm} and its volume changes by
+  \SI{15}{\percent} at $N=100$; at $N=142$ the lead is \SI{1.8}{mm} and the volume change
+  \SI{2.8}{\percent}. This interior growth shrinks with $h$ between the two rungs; a
+  third rung is needed before an order can be stated.
+\end{enumerate}
+A test with the droplet started at \SI{5}{mm} instead of \SI{2.5}{mm} in the \SI{20}{mm}
+box separates time from position: the slow phase of the two runs is the same function of
+time, and the explosive phase comes earlier for the droplet that is further downstream.
+The reading that fits every run is a slow interior growth in time, amplified as the
+droplet approaches the outlet.
+
+\begin{table}[t]
+  \centering
+  \caption{The translating droplet with the baseline method beyond the gate horizon.
+  $L$: box length in $x$; $x_0$: initial centre; binaries: the state of the two
+  corrections of Section~\ref{sec:fv-parallel}.}
+  \label{tab:translating}
+  \scriptsize
+  \resizebox{\textwidth}{!}{\input{data/tables/gcls_translating_runs.tex}}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{gcls_translating_boxes.pdf}
+  \caption{The translating droplet in boxes of length 10, 20 and \SI{40}{mm} with the
+  same cell size. (a) The spurious current, referred to the volume of the \SI{10}{mm}
+  box. (b) The centroid ahead of $x_0+U_0t$.}
+  \label{fig:boxes}
+\end{figure}
+
+%% ===========================================================================
+\section{Discussion: where the problems are}
 \label{sec:discussion}
-%% What was falsified; limits (volume conservation, transition strain).
 
-%% ---------------------------------------------------------------------------
+The gate separates three classes of problems: the source step, the extension, and the
+baseline's own limits. For each we state the evidence, the mechanism it points to, and
+the experiment that can decide it.
+
+\subsection{The source step moves the discrete zero set}
+\label{sec:disc-source}
+The exponential update \eqref{eq:expUpdate} keeps every cell's sign, and in the
+continuum the zero set does not move. The discrete zero set is the set of crossings
+between neighbouring cells with opposite signs. Take two neighbours at distance $h$
+across the interface, with $\psilev_A=-a<0$ and $\psilev_B=b>0$. The linear crossing lies
+at the fraction $a/(a+b)$ from $A$. After one source step with $F_A\neq F_B$ it lies at
+$ae^{\Delta tF_A}/(ae^{\Delta tF_A}+be^{\Delta tF_B})$, so the crossing moves by
+\begin{equation}
+  \delta = h\,\frac{ab}{(a+b)^2}\,\Delta t\,(F_A-F_B)+O(\Delta t^2)
+  \label{eq:zeroShift}
+\end{equation}
+per step. The source moves the discrete interface whenever $F$ differs between the two
+cells that hold it. In the gate, $F$ varies from cell to cell through $q_c$, a
+least-squares gradient of the arrival field, and through $\sigma_c$. The evidence fits:
+S1 is identical to the baseline where $\sigma=0$ and degrades the shape wherever
+$\sigma\neq0$; its serial check fails because $q_c$ carries the round-off of the
+decomposition into $F$. Two further effects add to \eqref{eq:zeroShift}: the switch of the
+source at the band edge $|\psilev|/q=3h$ puts a kink into $\psilev$ inside the
+reconstruction stencils of the interface cells, and the clamp acts where $q$ is
+small.
+
+The test is direct: evaluate $F$ on the interface and extend it constant along the
+normals into the band, so that the two cells across the interface receive the same
+factor. Then \eqref{eq:zeroShift} vanishes at first order. A second test replaces the
+switch at the band edge by a smooth taper. The exact 1D arm needs an oracle with a
+non-uniform strain, so that it can see this mechanism at all; with a uniform strain $F$
+is the same in every cell.
+
+\subsection{The halo-limited extension loses transport order}
+\label{sec:disc-hl}
+The unit gates of the extension pass: for an affine and for a divergence-free quadratic
+velocity the face correction equals \eqref{eq:hlFlux} with the exact velocity at the exact
+sample point to $2\times10^{-16}$. The first rung above them, the kinematic shear flow,
+fails at order $1.4$. The extension therefore changes the transport already for a smooth
+velocity. The most likely cause is the step from faces to cells. The correction
+\eqref{eq:hlFlux} varies on the scale $R=h$, within one cell, because $w$ and $S_R$ vary
+there. The trace velocity \eqref{eq:reconstruct} averages the face fluxes of a cell, and
+for a flux correction that varies within the cell this average has an error of the size
+of the correction itself, $O(h|\nabla\bu|)$. A trace velocity with an error $O(h)$ gives
+a foot point error $O(h\Delta t)$ per step and a first-order transport. The closest-point
+reference FP0 shows the same order through the same reconstruction, which supports this
+reading.
+
+Two experiments decide it. The first traces with the extension's own cell velocity
+$\bu_H(\bx_c)$ of \eqref{eq:uH} instead of the reconstruction of $\Phi^H$; if the order
+of the shear arm returns to three, the reconstruction is the cause. The second doubles
+the radius to $R=2h$; the correction then varies over two cells, and the error of the
+reconstruction should fall.
+
+The coupled arms fail far more strongly than the kinematic one. Near the interface the
+velocity is continuous, but its gradient jumps with the viscosity and density contrast.
+The sampler fits one quadratic model per cell over a stencil that crosses the interface,
+so near $\Gamma$ it fits across the jump, exactly where the surface-tension force acts.
+The experiment is HL0 on the oscillating droplet at the density and viscosity ratio one:
+if it passes there, the fit across the jump is the cause.
+
+\subsection{The linear laws: gradient against position}
+HL1q shows the conflict of the linear laws most clearly: it lowers the band gradient error
+five times and raises the shape error $173$ times. With $\mu=1/T_\mathrm{ref}$ the law acts
+on the time scale of the arm, and \eqref{eq:zeroShift} applies with $F_A-F_B=-\mu(q_A-q_B)$.
+In the coupled arms $\mu$ is large ($270$ to \SI{662}{s^{-1}}), and the stationary droplet
+fails within \SI{0.035}{s}. HL1z, with the same slope at $q=1$, grows the gradient error;
+the q- and the z-form differ only in their nonlinear terms, which are large once $q$ is far
+from one, and the z-form drives large $q$ back more strongly. None of this can be judged
+before the mechanism of Section~\ref{sec:disc-source} is removed.
+
+\subsection{The baseline's own limits}
+Three results limit what any candidate can show against the baseline.
+\begin{enumerate}
+  \item The curvature of the moving interface does not converge: \SI{2.4}{} to
+  \SI{3.6}{\percent} at all rungs of the translating arm, while the same estimator
+  converges on the stationary droplet. This agrees with the earlier finding that the
+  curvature estimate is the source of the spurious currents of the translating droplet.
+  \item The gradient drift of the oscillating droplet turns unstable at $N=200$ within ten
+  periods. This is the drift that gradient control is meant to remove, so it is the case
+  on which a working candidate must first show a gain.
+  \item The translating droplet grows slowly in the interior and fast near the outlet.
+  A gate that runs longer than \SI{0.05}{s} needs a longer box.
+\end{enumerate}
+
+%% ===========================================================================
 \section{Conclusions}
 \label{sec:conclusions}
 
+We implemented a family of gradient-control source terms and a halo-limited velocity
+extension for a quadratic semi-Lagrangian level set on unstructured finite-volume meshes,
+and tested six combinations against the production method in a verification gate with
+three resolutions per arm and a serial check of every parallel result. All six fail. The
+source terms move the discrete zero level set wherever $F$ differs between the two cells
+that hold the interface, which is wherever the strain rate or the computed gradient
+varies. The halo-limited extension lowers the transport order of a smooth kinematic flow
+from three to one and a half, most likely through the reconstruction of the corrected
+face flux to the cell centres. Both mechanisms can be tested with one experiment each
+(Section~\ref{sec:discussion}). The gate also showed that the production method needs
+two corrections under domain decomposition, which we made, and that the late
+instability of the translating droplet is triggered by the outlet with a slower
+interior growth behind it. The next candidates should first remove the two
+discrete mechanisms, and they should be judged on the oscillating droplet, where the
+gradient drift of the production method turns unstable.
+
 \section*{Acknowledgements}
 %% To be written.
+
+\appendix
+\section{Data and reproducibility}
+\label{app:data}
+Every number of this paper comes from one folder of secondary data,
+\archive, named after the version stamp of the leia libraries that produced the gate
+results. The folder is regenerated from the raw output by
+\path{figures/make_archive.py}; the figures and the tables of this paper are generated
+from it by \path{figures/make_result_figures.py} and
+\path{workflow/scripts/make_gate_tables.py}. Its \texttt{README.md} lists every file,
+its source and the version stamps of the runs.
+\begin{itemize}
+  \item \texttt{gate/}: the 2D gate of this paper (code version 1150e68, both corrections,
+  Lichtenberg, four ranks): the summary, orders, comparison and serial-check files of every
+  candidate, the list of cases with their states and stamps, and reduced time histories
+  (about 300 rows per case) of every case.
+  \item \texttt{prefix/}: the same gate before the corrections of
+  Section~\ref{sec:fv-parallel} (code version 79b5a92), with the \SI{0.1}{s} translating
+  runs.
+  \item \texttt{laptop/}: the translating runs of Section~\ref{sec:res-translating}, the
+  serial checks of Section~\ref{sec:fv-parallel}, and the Eulerian runs of
+  Table~\ref{tab:eulerian}, from the preserved raw output
+  \path{runs/gcls-laptop-20260927}.
+\end{itemize}
+The gate definition is \path{config/gates/methodGate2D.yaml} and the candidates are
+\path{config/candidates/*.yaml}. The gate runs with
+\begin{center}\scriptsize
+\path{make gate GATE=methodGate2D CANDIDATES=baseline+S1+HL0+HL1q+HL1z+HL2+FP0}.
+\end{center}
 
 \bibliographystyle{elsarticle-num}
 \bibliography{refs}

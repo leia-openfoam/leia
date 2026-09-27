@@ -1,0 +1,13 @@
+{
+  "candidate": "baseline",
+  "description": "production semi-Lagrangian method (METHOD.md): no velocity extension, no source",
+  "gate": "methodGate2D",
+  "gateFile": "config/gates/methodGate2D.yaml",
+  "line": "semiLagrangian",
+  "preRegistered": true,
+  "rates": {},
+  "smoke": false,
+  "source": "config/candidates/baseline.yaml",
+  "target": null,
+  "tokens": {}
+}

@@ -1,0 +1,31 @@
+VERDICT FAIL: candidate HL0 against baseline
+FAIL regression: shear shapeError at N=136: 0.00849 vs baseline 0.0006188
+FAIL regression: shear volumeError at N=136: 0.004492 vs baseline 0.0002559
+FAIL regression: stationary volumeError at N=200: 1.986e-07 vs baseline 2.218e-08
+FAIL regression: stationary volumeErrorHalf at N=200: 1.786e-07 vs baseline 9.974e-08
+FAIL regression: translating shapeError at N=200: 0.196 vs baseline 0.00306
+FAIL regression: translating gradientBandError at N=200: 2.021 vs baseline 0.03842
+FAIL regression: translating volumeError at N=200: 0.03736 vs baseline 0.0002049
+FAIL regression: translating volumeErrorHalf at N=200: 0.0005467 vs baseline 0.0003635
+FAIL regression: translating meanMagUPrime at N=200: 0.01605 vs baseline 0.0005367
+FAIL regression: translating l2MagUPrime at N=200: 0.04388 vs baseline 0.0008932
+FAIL regression: translating pressureJumpError at N=200: 0.2462 vs baseline 0.0006264
+FAIL regression: translating curvatureError at N=200: 3.355 vs baseline 0.03591
+FAIL regression: translating travelledFractionError at N=200: 0.09797 vs baseline 0.001717
+FAIL regression: oscillating gradientBandError at N=200: 2.036e+07 vs baseline 5.129
+FAIL regression: oscillating volumeError at N=200: 6.7 vs baseline 0.003043
+FAIL regression: oscillating volumeErrorHalf at N=200: 0.638 vs baseline 0.00344
+FAIL order: oscillating gradientBandError order -21.43 vs baseline -5.61
+FAIL order: oscillating volumeError order -3.20 vs baseline 1.32
+FAIL order: oscillating volumeErrorHalf order -5.89 vs baseline 0.28
+FAIL order: shear shapeError order 1.39 vs baseline 3.07
+FAIL order: shear volumeError order 1.48 vs baseline 3.60
+FAIL order: translating shapeError order -3.10 vs baseline 3.12
+FAIL order: translating gradientBandError order -3.79 vs baseline 0.82
+FAIL order: translating volumeError order -2.59 vs baseline 3.27
+FAIL order: translating meanMagUPrime order -2.12 vs baseline 1.37
+FAIL order: translating l2MagUPrime order -2.94 vs baseline 1.13
+FAIL order: translating pressureJumpError order -4.81 vs baseline 1.63
+FAIL order: translating curvatureError order -5.04 vs baseline -0.10
+FAIL order: translating travelledFractionError order -2.94 vs baseline 3.13
+FAIL target: shear gradientBandError ratio 0.828 > 0.8

@@ -1,0 +1,17 @@
+run,boxLength_mm,N,np,startX_mm,variant,binaries,endTime,state,steps,lastTime,growthOnsetTime,centroidAtOnset_mm,libleiaCore
+trans100_serial,10,100,1,2.5,reference,before the fixes,0.1,DIVERGED,7139,0.077514957,0.0629721,5.762,shared-method-config-2026-09-01-165-g952e593
+trans100_np4,10,100,4,2.5,reference,before the fixes,0.1,DIVERGED,8331,0.090374381,0.0629721,5.762,shared-method-config-2026-09-01-165-g952e593
+trans100_np4fix,10,100,4,2.5,reference,coupled-face fix,0.1,DIVERGED,8000,0.086790251,0.0629721,5.762,shared-method-config-2026-09-01-183-g935fd4e-dirty
+std142,10,142,8,2.5,reference,both fixes,0.1,DIVERGED,14198,0.09105369216,0.0655592,5.719,shared-method-config-2026-09-01-183-g935fd4e-dirty
+none,10,100,4,2.5,curvatureExtension none,both fixes,0.1,DIVERGED,6404,0.069456095,0.0618751,5.755,shared-method-config-2026-09-01-183-g935fd4e-dirty
+rk2,10,100,4,2.5,footIntegrator rk2,both fixes,0.1,DIVERGED,7759,0.08417275,0.0629721,5.762,shared-method-config-2026-09-01-183-g935fd4e-dirty
+midpoint,10,100,4,2.5,capillaryForceCentring midpoint,both fixes,0.1,DIVERGED,5467,0.059322782,0.0423036,5.762,shared-method-config-2026-09-01-183-g935fd4e-dirty
+ratio1,10,100,4,2.5,density ratio 1,both fixes,0.1,COMPLETED,9207,0.099997227,0.0651877,5.834,shared-method-config-2026-09-01-183-g935fd4e-dirty
+longbox,20,100,8,2.5,reference,both fixes,0.1,COMPLETED,9207,0.099997227,,,shared-method-config-2026-09-01-183-g935fd4e-dirty
+long142,20,142,8,2.5,reference,both fixes,0.1,COMPLETED,15580,0.1000011648,,,shared-method-config-2026-09-01-183-g935fd4e-dirty
+long200,20,200,16,2.5,reference,both fixes,0.1,COMPLETED,26042,0.09999971748,,,shared-method-config-2026-09-01-183-g935fd4e-dirty
+long100_T25,20,100,4,2.5,reference,both fixes,0.25,DIVERGED,19590,0.212680102,0.160754,10.98,shared-method-config-2026-09-01-183-g935fd4e-dirty
+long142_T25,20,142,8,2.5,reference,both fixes,0.25,DIVERGED,34187,0.2194056365,0.161099,11.04,shared-method-config-2026-09-01-183-g935fd4e-dirty
+long100_x5,20,100,4,5.0,reference,both fixes,0.2,DIVERGED,17657,0.191642345,0.137229,12.15,shared-method-config-2026-09-01-183-g935fd4e-dirty
+box40,40,100,8,2.5,reference,both fixes,0.3,COMPLETED,27622,0.300002542,0.252725,17.37,shared-method-config-2026-09-01-183-g935fd4e-dirty
+box40_142,40,142,16,2.5,reference,both fixes,0.3,COMPLETED,46739,0.2999970758,,,shared-method-config-2026-09-01-183-g935fd4e-dirty
