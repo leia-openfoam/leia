@@ -130,7 +130,7 @@ def cmd_gate(a, copy_summaries=True):
                         if os.path.isfile(p):
                             for r in rows(p):
                                 merged.setdefault(r["TIME"], {}).update({k: r.get(k, "") for k in cols})
-                    R = [dict(TIME=t, **v) for t, v in sorted(merged.items(), key=lambda kv: float(kv[0]))]
+                    R = [{**v, "TIME": t} for t, v in sorted(merged.items(), key=lambda kv: float(kv[0]))]
                     for r in reduce_rows(R):
                         hist.setdefault(arm["arm"], []).append(
                             [c, N, arm["np"], st] + [r.get(k, "") for fname in KIN_COLS
