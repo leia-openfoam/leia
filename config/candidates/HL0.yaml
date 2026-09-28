@@ -10,6 +10,10 @@
 #   pass: the gate verdict AND the target below.
 #   falsified if: the shear-arm gradient band error at the finest rung is above 0.8 x the
 #     baseline, or a volume or shape metric regresses beyond the tolerance.
+# CORRECTED 2026-09-28: this read-out conflated the interface with the band. The capped/fractionReached
+#   extension relocates the normal strain into a shell at d = 1-2h (K = 1.27 at 1.5 R); the 1D arm
+#   measured qBandMean 0.46-0.59 against the prediction 0.49.
+#   See docs/gradient-controlled-level-set/gcls-technical-report/
 candidate: HL0
 line: semiLagrangian
 description: "halo-limited extension (R = 1 h, m = 2, beta = 1) in the SL trace, no source"

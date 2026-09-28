@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-10 (FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is 2.3-3.6x WORSE than no bound on uniform translation, where its L = 1 is exactly valid, 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-09-28 (FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is 2.3-3.6x WORSE than no bound on uniform translation, where its L = 1 is exactly valid, 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -63,6 +63,11 @@ current roughly 50x below the artefact that was hiding it.
 - the equal-density control that was mid-flight was **stopped by job id** rather than
   allowed to finish, although its isolation argument is formally boundary-independent.
   A setup wrong in one way is not assumed wrong in only that way.
+- MARKED 2026-09-28: the studies behind `cases/default.parameter` lines 824-876
+  (`MASS_FLUX_ALPHAF_TIME_LEVEL`, `MASS_FLUX_PROJECT`, the +5 to +8 % inflation) also ran on the closed
+  box: `alphaFTimeLevelTranslating2D` (5cd2c98, 08:31), `massFluxComparison2D` (86f8333, 09:38) and
+  `translatingClearOutlet2D` (65fc13c, 00:07), all on 2026-09-02 before the fix 440107f (17:25). Their
+  numbers are void; the block carries a VOID marker and stays as history.
 
 **Re-running now.** `config/translatingRepaired2D` and
 `config/translatingRepairedEqualRho2D` — twin 8-arm matrices, `MASS_FLUX` (rhoLENT,
@@ -467,6 +472,10 @@ exonerated by direct experiment. Mode-resolved: r(maxU) ≈ 2·r(A2h);
 the corrugation rate r(A2h) is the order parameter and is nearly
 dt-independent at N=256.
 
+SUPERSEDED 2026-09-28 marker: the filtered coupled results below (psiFilter biharmonicBand theta = 0.2
+and 0.05, and the transport-order comparison read in filtered arms) predate the psi-filter seam bug;
+see the INVALIDATION of 2026-08-19 (section 4) and docs/knowledge-base/retractions/psi-filter-seam-bug.md.
+
 **THE COMBINATION WORKS (2026-08-18, 28 coupled arms). Curated:
 `docs/method-comparison/.../tables/capillary_envelope_coupled.csv`.**
 
@@ -516,6 +525,11 @@ suspect, see the 2026-08-26 gradU contamination notice below; np=4 kinematic
 run**), the verdict is that dropping transport order buys NOTHING coupled and
 costs everything kinematic -- the filter is the damping mechanism, not the
 transport order.
+
+SUPERSEDED 2026-09-28 marker: the filtered arms below (psiFilter biharmonicBand theta = 0.2 and 0.05)
+predate the psi-filter seam bug; see the INVALIDATION of 2026-08-19 (section 4) and
+docs/knowledge-base/retractions/psi-filter-seam-bug.md. The unfiltered cellCentreInverse arms are outside
+that invalidation; every np > 1 coupled run before 2026-09-27 carries the parallel defects of section 11.14.
 
 **THE CELL-CENTRE INVERSE AND THE FILTER (2026-08-18).** Two constructions the
 user proposed now hold the best coupled results on record; curated:
@@ -773,6 +787,10 @@ every pre-existing token shape, and `blockMesh` polyMesh output byte-identical a
 `DOMAIN_LENGTH = 0.01` in 2D and 3D.
 
 ### The wide ladders (2026-08-19): 2D completes, 3D destabilises at R/h ~ 16
+
+SUPERSEDED 2026-09-28 marker: both ladders ran with psiFilter biharmonicBand theta = 0.2 and predate the
+psi-filter seam bug; see the INVALIDATION of 2026-08-19 (section 4), the two-factor law of 2026-08-20
+(section 4) and docs/knowledge-base/retractions/psi-filter-seam-bug.md.
 
 `cellCentreInverse` + biharmonicBand theta = 0.2, curated in
 `docs/method-comparison/method-comparison-article/data/tables/wide_ladder_coupled.csv`
@@ -3302,7 +3320,7 @@ comment lines differ. OPEN, for the author: void the past `oscillatingDroplet2D`
   extension. This is the second break named in CLAUDE.md "Extension without modification";
   step C4 of the plan removes it.
 - FOUND: `writeDropletMetrics.H` sums the zero-set crossings over internal faces only, so the
-  droplet shape columns miss the crossings on processor faces in a parallel run. Open.
+  droplet shape columns miss the crossings on processor faces in a parallel run. Open. (CLOSED by b1798c3, 2026-09-27)
 
 ### 11.6 The pre-print's case figures (2026-09-26)
 
@@ -4039,3 +4057,21 @@ new folder; an older folder is never overwritten. The raw laptop runs are preser
 git-ignored `runs/gcls-laptop-20260927` (1.5 GB, 539 files), with a copy on Lichtenberg in
 `/work/scratch/tm83tomy/leia/runs/`. `.gitignore` now exempts `docs/**/data/figures/*.pdf` and
 `docs/**/data/archive/**/*.csv` (curated results).
+
+### 11.17 Gate blind spots found on 2026-09-28 (OPEN repairs)
+
+Two blind spots of the method gates, found while the record was corrected on 2026-09-28. Both
+repairs are OPEN. The measurements are in the technical report
+`docs/gradient-controlled-level-set/gcls-technical-report/`; the gates are described in
+`docs/knowledge-base/concepts/method-gates.md`.
+
+- (a) **The exact-1D closed form is vacuous for every candidate.** `workflow/scripts/make_gate_summary.py`
+  lines 190-198 set `q_exact` to `None` for every candidate that is not plain (any of
+  `VELOCITY_EXTENSION`, `SL_SOURCE` or `SDPLS_SOURCE` set), so `qError` is `None` and the criterion
+  "target" is vacuous for the candidates. Repair: integrate the closed form of each candidate per
+  band cell, dq/dt = q (F - alpha K(d/R)) and dd/dt = alpha d (1 - c^2), and compare `qBandMean`
+  with it.
+- (b) **The band-gradient metric is blind to the cell-scale mode.** `gradPsiMetric leastSquares` is
+  centred, so the mode (-1)^(i+j) d, which destroyed the stationary droplet under HL1q and HL1z,
+  does not change it. Repair: an L2 of the second difference of psi, or the min and max of a
+  one-sided q, and a curvature column in the kinematic arms.

@@ -70,3 +70,10 @@ bash docs/build-decks.sh
 
 Every number in `data/` comes from a committed script and a committed config.
 Do not edit a curated table by hand.
+
+Four findings on the semi-Lagrangian baseline live in the SL article
+`docs/semi-lagrangian-level-set/sl-level-set-article/`, not in the pre-print here: the
+consistency under domain decomposition, the rhoLENT mass flux and its port to the
+Eulerian solver, the translating droplet at long times, and the gradient drift of the
+oscillating droplet; `make_result_figures.py` writes their figures and tables from the
+archive here into that article's `data/` folders.

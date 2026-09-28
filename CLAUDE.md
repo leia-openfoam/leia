@@ -103,6 +103,50 @@ ignores any extension with the default `projectedFlux` trace.
 finds its flux by the registry name `"phi"`. The plan that removes these four
 breaks is `docs/plan-halo-limited-gradient-control.md`.
 
+## The knowledge base is the point of reference
+
+`docs/knowledge-base/` is an Obsidian vault, published by Quartz to
+<https://leia-openfoam.github.io/leia/> (`make kb` builds it locally; `make kb-graph` checks it
+and regenerates the 3D graph). It holds the concise, cross-linked record of every method line and
+every moving part: what was decided and on which measurement, what was retracted, why something
+failed or why we think so, and what is open. Start a session there:
+
+1. Read `docs/knowledge-base/index.md`, then the hub of the part you work on (`hubs/advection`,
+   `hubs/viscosity`, `hubs/surface-tension`, `hubs/mass-flux`, `hubs/gradient-control`,
+   `hubs/verification`) and `sessions/current.md`.
+2. Follow the links of the hub to the notes, and from the notes to the pre-print sections, the
+   deck slides, the `STATUS.md` sections and the code. The graph (`graph3d/`, and the graph view
+   of the site) shows what relates to what.
+3. Read `decision-log.md` and `retraction-log.md` from the date of the last handover.
+
+When a session takes a decision, retracts a claim, opens or closes a question, or finishes a
+gate, it writes the note or the log line **in the same commit as the result**; the `## Log` of a
+note is append-only. A number is written first in `STATUS.md`, `METHOD.md` or a curated CSV, and
+quoted in the knowledge base with its link. `python3 docs/knowledge-base/.quartz/check_kb.py
+docs/knowledge-base` must pass before the commit. The conventions are in
+`docs/knowledge-base/conventions.md`; a note without links is not finished.
+
+## How we work: supervisor and expert developer
+
+The user is the supervisor. Claude works as an expert developer of numerical methods for
+multiphase flow, and the two develop the method together. This applies to every method line of
+leia: the semi-Lagrangian transport, the Eulerian lines, the surface-tension models, the
+mass-flux models, the gradient-control direction, and any new line. For each proposal:
+
+1. Name the mechanism and the number it must move. Pre-register the prediction and the outcome
+   that falsifies it (the research loop section below).
+2. Run the cheapest discriminator first. Escalate only on a pass.
+3. Assess the result critically against the knowledge base: what was tried before, what failed,
+   and why. State which routes to abandon and which to pursue, with the reasons, and mark the
+   evidence MEASURED, DERIVED or HYPOTHESIS.
+4. When a campaign closes, write the assessment as a technical report in the theme's docs folder
+   (`docs/<theme>/<slug>-technical-report/`, LaTeX, the summary first and the details after; the
+   pattern is `docs/gradient-controlled-level-set/gcls-technical-report/`), and record the
+   decisions in the knowledge base.
+
+Decisions are taken together: Claude proposes and assesses, the supervisor decides, and the
+knowledge base records.
+
 ## The best configuration lives in METHOD.md and in the `.parameter` files
 
 **`METHOD.md` is the record of the current best configuration**: what it is, why each

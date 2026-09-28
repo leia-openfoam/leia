@@ -8,6 +8,7 @@
 \usepackage{bm}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{siunitx}   % \num{} in the tables generated from the gradient-control archive
 \usepackage{subcaption}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
@@ -916,6 +917,99 @@ volume-of-fluid solver holds $\alpha$ fixed across its inner correctors -- becau
 semi-Lagrangian update overwrites $\psilev$ in place and must not be re-applied within a
 step. No reinitialisation is performed at any point.
 
+\subsection{Mass--momentum-consistent flux (rhoLENT)}
+\label{sec:rholent}
+Equation~\eqref{eq:massmomentum} states the requirement on the two density fields of the
+momentum equation: the cell density $\rho$ of the transient and the face density $\rho_f$
+of the convective mass flux $\rho_f\phi_f$ must satisfy one discrete mass balance, or the
+residual $\mathcal R$ of that balance enters the momentum equation as the source
+$\uvec_0\mathcal R$, which is not a gradient and which the pressure projection cannot
+remove. The construction that meets the requirement is the \textsc{rhoLENT} mass flux of
+Liu et al.~\cite{liu2023}: an auxiliary density is transported with the same mass flux
+that convects momentum, and the momentum transient is built from that auxiliary density
+rather than from the phase indicator.
+
+\paragraph{The auxiliary density equation.} On every outer corrector of the PIMPLE loop
+the solver advances the density by the conservative balance
+\begin{equation}
+  \frac{3\rho_c^{\,n+1}-4\rho_c^{\,n}+\rho_c^{\,n-1}}{2\Delta t}\,V_c
+  + \sum_{f\in F(c)} \rho_f\,\phi_f = 0,
+  \qquad
+  \rho_f = \alpha_f\,\rho_1 + (1-\alpha_f)\,\rho_2 ,
+  \label{eq:rholent}
+\end{equation}
+with $\phi_f$ the pressure-corrected volumetric face flux of the current outer corrector,
+which is the flux of the convective term $\nabla\cdot(\rho_f\phi_f\,\uvec)$ of the momentum
+equation, and $\alpha_f$ the geometric face area fraction of the donor cell: the linear
+least-squares plane~\eqref{eq:planefit} of the cell upwind of $\phi_f$ is cut against the
+face, and the fraction of the face area in $\{\phi<0\}$ is filled analytically, triangle by
+triangle, by the two-dimensional form of Eq.~\eqref{eq:tetfill}. The face density does not
+depend on $\rho_c$, so Eq.~\eqref{eq:rholent} is an explicit update of $\rho_c^{\,n+1}$ and
+costs no linear solve. Its time derivative is the same backward (BDF2) scheme as the
+momentum transient, and the match is not optional: for $\uvec\equiv\uvec_0$ the transient
+and the convective term of Eq.~\eqref{eq:momentum} collapse to $\uvec_0\mathcal R$ only if
+$\partial_t(\rho\uvec)$ and $\partial_t\rho$ are discretised with the same scheme; with two
+schemes the momentum equation inherits $\uvec_0$ times the difference of the two operators
+applied to $\rho$, which is of the order of $U_0\,\partial_t\rho$ in every cell the
+interface sweeps.
+
+\paragraph{The bound.} The homogeneous part of the BDF2 update in Eq.~\eqref{eq:rholent}
+is an extrapolation, $\rho^{n+1}=\tfrac43\rho^{n}-\tfrac13\rho^{n-1}-\dots$, not a convex
+combination, so $\rho_c$ can leave $[\rho_2,\rho_1]$ in a cell that the interface sweeps; a
+negative density flips the sign of $1/\rho$ in the pressure Laplacian and ends the run.
+The auxiliary density is therefore clipped to $[\rho_2,\rho_1]$ directly after the update
+(\texttt{boundRho}). The clip is a source: with it the balance reads
+$\partial_t\rho+\nabla\cdot(\rho_f\phi)=S_{\mathrm{clip}}$ instead of zero, and the momentum
+equation inherits $\uvec\,S_{\mathrm{clip}}$. It is therefore measured every step -- the
+volume mean of the clipped density and the fraction of clipped cells are written to the
+metrics file -- and never silent.
+
+\paragraph{The residual diagnostic.} After the clip the solver evaluates the discrete
+residual $\mathcal R_c=(\partial_t\rho)_c+V_c^{-1}\sum_f\rho_f\phi_f$, with
+$(\partial_t\rho)_c$ the BDF2 difference of Eq.~\eqref{eq:rholent} and the same operators
+that the momentum equation uses, and writes its volume-mean $L_1$ norm, its maximum, and
+the $L_1$ norm relative to the volume mean of
+$\lvert\partial_t\rho\rvert+\lvert\nabla\cdot(\rho_f\phi)\rvert$. The same residual is
+computed, on request, for the models that solve no density equation; that is how the
+comparison of Section~\ref{sec:translating} was measured, where $\mathcal R$ moves from
+$1.7\times10^{-11}$ with the auxiliary density to $1.6\times10^{-1}$ with the geometric
+face density used directly, for the limited convection schemes.
+
+\paragraph{The reset.} The auxiliary density serves only the pressure--velocity coupling
+of one step. After the last outer corrector it is replaced by the geometric density of the
+phase indicator, $\rho\leftarrow\alpha\rho_1+(1-\alpha)\rho_2$ with $\alpha$ from
+Eq.~\eqref{eq:alpha}; the volume mean of
+$\lvert\rho_{\mathrm{aux}}-\rho_{\mathrm{geom}}\rvert$ is written, and the pressure
+$p=p_{\mathrm d}+\rho\,(\mathbf g\cdot\mathbf x)$ is updated with the reset density. On the
+next step this geometric field is $\rho^{n}$, so the old-time density of
+Eq.~\eqref{eq:rholent} is consistent with the interface and the residual measures the
+mismatch of one step only.
+
+\paragraph{The Eulerian two-phase solver.} The library also carries an Eulerian two-phase
+solver, \texttt{leiaLevelSetTwoPhaseFoam}, which transports the level set by a
+finite-volume flux instead of the semi-Lagrangian update. The investigation of
+Section~\ref{sec:parallel} also found that this solver kept the density, the mass flux and
+the face viscosity at their initial values: the density moved only on a dynamic mesh
+refinement. It now shares the mass-flux code of the semi-Lagrangian solver unchanged (the
+face density, the auxiliary density equation, the bound and the reset are three headers
+that both solvers include). Table~\ref{tab:eulerian} shows the translating droplet after
+$1000$ steps: with the frozen density the heavy droplet travels at $42\%$ of the stream
+and the velocity error is three times the stream speed; with the shared mass flux it
+travels at the stream speed to $10^{-4}$, and the run on four ranks agrees with the serial
+run to $10^{-8}$ relative in the velocity, the phase indicator, the level set and the
+pressure. The Eulerian solver is not part of the verification of this article: its
+curvature pipeline and its droplet diagnostics do not yet match those of the
+semi-Lagrangian solver.
+
+\begin{table}[t]
+  \centering
+  \caption{The Eulerian two-phase solver of leia, translating droplet, $N=100$, $1000$
+  steps ($t=0.0109$~s). Travelled fraction: the centroid displacement divided by
+  $U_0t$.}
+  \label{tab:eulerian}
+  \input{data/tables/gcls_eulerian.tex}
+\end{table}
+
 \subsection{Surface tension from the reconstructed curvature}
 \label{sec:surften}
 Surface tension is modelled as a continuum surface force (CSF)~\cite{brackbill1992}, a body
@@ -1155,6 +1249,83 @@ command.
   hierarchy. Adding a model is one class plus a registration macro and a dictionary
   entry.}
   \label{fig:uml}
+\end{figure}
+
+\subsection{Consistency under domain decomposition}
+\label{sec:parallel}
+A parallel run must give the serial answer up to the round-off of its reductions and
+linear solvers. Code that is correct on one rank and wrong on several is a class of
+defect of its own, and this method had met it more than once before the case reported
+here: \texttt{setVelocity} wrote face values into the processor patches and biased
+$\nabla\uvec$ by $\mathcal{O}(1)$ at every processor boundary (found on 26 August 2026);
+\texttt{interfaceExtension::updateFlux} assigned the raw flux over the whole boundary
+field, processor patches included; and the \texttt{fvc::average} of the $\psilev$ filter
+inherited \texttt{calculated} patch types, so its operator was uncoupled across the
+processor seams. None of these appears in a serial run: the processor-patch values, the
+halo exchange and the collective reductions are code paths that exist only in parallel,
+so a serial pass proves nothing about them. The rule that follows is that every new or
+changed algorithm runs on at least four MPI ranks before it runs on the cluster, and that
+the parallel result is compared with the serial one rather than with an exit code.
+
+The check of one rank against four on the translating droplet of
+Section~\ref{sec:translating} found two places where the two-phase solver did not give
+the serial answer, both of the same kind: code that handled a processor face as a
+boundary face of one cell.
+
+\paragraph{The face density.} The face area fraction $\alpha_f$ of the mass flux
+(Section~\ref{sec:rholent}) comes from the reconstructed plane of the upwind cell. On a
+processor face each rank used its own cell's plane, whatever the flux direction. The two
+sides then disagreed on $\rho_f$, and the mass that left one rank through the face was
+not the mass that entered the other. Table~\ref{tab:facedensity} gives the measurement:
+after one step, four processor faces had $\rho_f$ different by up to $90\%$ between the
+two sides, while $\phi$ matched exactly. In the corrected code each side computes its
+local-cell fraction, the two values are exchanged, and both sides apply the same donor
+rule with the local flux sign; at $\phi=0$ both take the value of the owner side of the
+patch. After the correction no face differs.
+
+\paragraph{The diagnostics.} The zero-set sample of the shape error, the band of the
+curvature and gradient errors, and the face statistics were formed from internal faces
+only, so on several ranks they missed the processor faces. They did not change the
+solution, but they changed the reported numbers.
+
+Table~\ref{tab:seam} and Figure~\ref{fig:seam} give the effect: the maximum difference
+between a run on four ranks and a serial run over the first $0.05$~s of the translating
+droplet at $N=100$. Before the corrections the solution differed by $5\times10^{-6}$ to
+$1.4\times10^{-3}$, the band and shape diagnostics by $3$ to $8\%$, and the mode-2
+amplitude by $63\%$. After both corrections every column of Table~\ref{tab:seam} agrees
+to $3.5\times10^{-7}$ or better, the level of the linear-solver tolerances. Serial runs
+are unchanged, bit for bit. Every parallel result of the two-phase solver that was
+computed before the corrections carries both errors; the serial results do not. The
+decomposition differences of Table~\ref{tab:refined-decomp} were measured before the
+corrections, so the linear-solver dependence that Section~\ref{sec:staticrefine-verif}
+attributes them to is not separated from the two errors there; that table needs a re-run
+with the corrected code before the attribution can stand.
+
+\begin{table}[t]
+  \centering
+  \caption{The face area fraction $\alpha_f$ and the face density $\rho_f$ on the two
+  sides of every processor face, translating droplet, $N=64$, four ranks. A face
+  differs if the two values differ by more than $10^{-12}$ relative. The flux $\phi$
+  matches exactly on every face before and after.}
+  \label{tab:facedensity}
+  \input{data/tables/gcls_face_density.tex}
+\end{table}
+
+\begin{table}[t]
+  \centering
+  \caption{Four ranks against one: the largest difference over the first $0.05$~s
+  of the translating droplet ($N=100$), each column divided by its largest value.}
+  \label{tab:seam}
+  \input{data/tables/gcls_seam.tex}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\linewidth]{gcls_seam.pdf}
+  \caption{The data of Table~\ref{tab:seam}. The coupled-face correction removes the
+  error of the solution (the velocity, volume, pressure and centroid columns); the
+  diagnostic correction removes the error of the band and zero-set columns.}
+  \label{fig:seam}
 \end{figure}
 
 % =============================================================================
@@ -2104,6 +2275,64 @@ slightly \emph{below} one, the transport lagging, rather than the $1.026$ of the
 reconstructed-$\kappa$ arm. The net propulsion is a product of the curvature error, not of
 the coupling.
 
+\paragraph{The late instability: the outlet and the interior growth.}
+\label{sec:translating-late}
+The production study of the translating droplet ran to $0.1$~s and diverged late at every
+resolution; the verification gate of the gradient-control study~\cite{maric2026gcls},
+which reuses this case, stops at $0.05$~s for that reason. This paragraph asks what causes
+it. Table~\ref{tab:translating} lists the runs, all with the default method of this
+article at $N=100$ to $200$ in the configuration of that gate, and Figure~\ref{fig:boxes}
+shows the spurious current and the lead of the droplet over the stream for three box
+lengths. The onset is the first time at which the spurious current exceeds ten times its
+level at $t=0.03$~s.
+
+Five observations follow.
+\begin{enumerate}
+  \item The instability does not depend on the decomposition. In the $10$~mm box the
+  serial run and the four-rank runs start to grow at the same time, $t=0.063$~s, and
+  diverge between $0.078$ and $0.090$~s.
+  \item It needs the density contrast: at the density ratio one the run completes.
+  \item One-change variants of the default shift it but do not remove it. The curvature
+  without the per-cell correction to the interface (the parallel-surface inverse
+  $\kappa=(\kappa_d-2Kd)/(1-d\kappa_d+Kd^2)$ of the cell-centre value $\kappa_d$ at the
+  offset $d=\psilev/\gradpsi$, with $K=0$ in 2D) diverges $20\%$ earlier, the midpoint
+  force centring $32\%$ earlier; the second-order foot integrator makes no difference.
+  \item The outlet triggers it. In a box twice as long, with the same cell size, the run
+  completes $0.1$~s at all three resolutions, and the fast growth that starts at
+  $t=0.063$~s in the short box is absent.
+  \item A slower growth remains in the interior. In the $20$~mm box the spurious current
+  grows from $t\approx0.10$~s at about $30$~s$^{-1}$ and turns explosive near $0.16$~s,
+  with the leading edge of the droplet $8$~mm from the outlet. In a box four times as
+  long, with the outlet more than $17$~mm away, the run completes $0.3$~s, but the
+  droplet leads the stream by $3.9$~mm and its volume changes by $15\%$ at $N=100$; at
+  $N=142$ the lead is $1.8$~mm and the volume change $2.8\%$. This interior growth shrinks
+  with $h$ between the two rungs; a third rung is needed before an order can be stated.
+\end{enumerate}
+A test with the droplet started at $5$~mm instead of $2.5$~mm in the $20$~mm box
+separates time from position: the slow phase of the two runs is the same function of
+time, and the explosive phase comes earlier for the droplet that is further downstream.
+The reading that fits every run is a slow interior growth in time, amplified as the
+droplet approaches the outlet.
+
+\begin{table}[t]
+  \centering
+  \caption{The translating droplet with the default method beyond the $0.05$~s horizon
+  of the gradient-control gate. $L$: box length in $x$; $x_0$: initial centre; binaries:
+  the state of the two corrections of Section~\ref{sec:parallel}.}
+  \label{tab:translating}
+  \scriptsize
+  \resizebox{\linewidth}{!}{\input{data/tables/gcls_translating_runs.tex}}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{gcls_translating_boxes.pdf}
+  \caption{The translating droplet in boxes of length $10$, $20$ and $40$~mm with the
+  same cell size. (a) The spurious current, referred to the volume of the $10$~mm
+  box. (b) The centroid ahead of $x_0+U_0t$.}
+  \label{fig:boxes}
+\end{figure}
+
 \subsection{Comparison with the reference translating-droplet benchmark}
 \label{sec:popinet}
 The translating droplet is not a benchmark of our own devising: Popinet introduced it
@@ -2470,11 +2699,17 @@ eventually diverges, with a blow-up time $\sim N^{-3/2}$, so the fine meshes des
 curvature-error-seeded transport feedback -- not a force imbalance (the coupling is
 balanced~\cite{francois2006}), not the curvature formula (convergent on a clean signed distance,
 Section~\ref{sec:curvature}), not a capillary-CFL violation, and, \emph{on the stationary droplet}, not the density ratio.
-That last exclusion does not carry over to a translating interface: in the uniform stream of
-Section~\ref{sec:translating} all eight arms at $\rho_1/\rho_2=838.8$ destabilise within the
-horizon while all eight at ratio $1$ complete it, even though at a matched healthy step the
-disturbance levels differ only by a factor of $2.7$--$3.9$. The ratio acts on the amplifier,
-not on the source -- subject to the matched-$\mu$ control noted in
+That last exclusion does not carry over to a translating interface, and the late
+instability of the translating droplet is measured (Section~\ref{sec:translating-late}): in
+the $10$~mm box the spurious current starts to grow at $t=0.063$~s and the run diverges
+between $0.078$ and $0.090$~s, on one rank as on four; the outlet triggers this fast growth,
+since a box twice as long with the same cell size completes $0.1$~s at $N=100$, $142$ and
+$200$; and a slower growth of about $30$~s$^{-1}$ remains in the interior, needs the
+density contrast (the run at the density ratio one completes, as do the eight equal-density
+arms of Section~\ref{sec:translating}) and shrinks with $h$ between $N=100$ and $142$ -- a
+third rung is needed before its order can be stated. A benchmark that runs the translating
+droplet longer than $0.05$~s therefore needs a longer box, and the density ratio acts on
+the amplifier, not on the source -- subject to the matched-$\mu$ control noted in
 Section~\ref{sec:translating}. A stabilisation
 study (Section~\ref{sec:droplet}) shows that higher-order time integration, a smaller step, and
 curvature smoothing (foot-point or harmonic extension) all fail to remove the onset -- curvature
@@ -2503,6 +2738,31 @@ distance proves the width -- is exactly the marker an adaptive refinement would 
 but adaptivity needs the reconstruction stencils and the semi-Lagrangian caches
 rebuilt after every topology change, and the re-initialisation that keeps the fields
 sharp here is not available mid-run; both are future work.
+
+The first of these limitations has a measured consequence in a coupled flow. The
+oscillating droplet of the gradient-control gate~\cite{maric2026gcls} -- an ellipse with
+the semi-axis $a=1.1R$ and the area of the circle of radius $R=1$~mm, in the $10$~mm box of
+Section~\ref{sec:droplet} with walls, water and air, run for $T=0.1$~s at $N=100$, $142$ and
+$200$ on four ranks with the default method of this article and no redistancing -- measures
+the gradient drift directly. At $N=100$ and $142$ the band gradient error (the $L_2$ norm
+of $\gradpsi-1$ over the interface band) stays near $0.1$ over ten oscillation periods. At
+$N=200$ it grows exponentially after $t=0.05$~s and reaches $5.1$ at $T$, and the velocity
+departs from the damped oscillation just before $T$ (Figure~\ref{fig:oscdrift}). The finest
+rung completes the horizon on the edge of a divergence. Its period ($8.1$~ms against $10.0$
+and $9.8$~ms) and damping rate break the convergence of both quantities, which the
+procedure of Celik et al.~\cite{celik2008} classifies as divergent. The gradient drift
+without redistancing is therefore a defect of the method itself: it turns unstable within
+ten periods at $N=200$, and the oscillating droplet is the case on which a redistancing
+partner or a gradient-control source must first show a gain.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{gcls_oscillating_drift.pdf}
+  \caption{The oscillating droplet at three resolutions: (a) the band gradient error,
+  (b) the $L_1$ norm of the velocity, which is the physical oscillation. At $N=200$ the
+  gradient error grows exponentially after $t=0.05$~s.}
+  \label{fig:oscdrift}
+\end{figure}
 
 % =============================================================================
 \section{Conclusions}
@@ -2544,6 +2804,13 @@ open-source repository with a single command.
 The source code, the verification cases and the scripts that regenerate every figure
 and table in this article are openly available in the \textsc{leia} repository,
 \url{https://github.com/leia-openfoam/leia}.
+The tables and figures of Sections~\ref{sec:rholent}, \ref{sec:parallel}
+and~\ref{sec:translating-late} and Figure~\ref{fig:oscdrift} are generated by
+\path{docs/gradient-controlled-level-set/gcls-level-set-article/figures/make_result_figures.py}
+from the archive folder
+\path{docs/gradient-controlled-level-set/gcls-level-set-article/data/archive/shared-method-config-2026-09-01-192-g1150e68/}
+of the gradient-control pre-print~\cite{maric2026gcls}, whose \texttt{MANIFEST.csv} lists
+every file with its row count, size and SHA-256 digest.
 
 % Acknowledgements omitted until funding / computing acknowledgements are supplied:
 % \section*{Acknowledgements}

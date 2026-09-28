@@ -7,6 +7,14 @@ Reads only the archive (make_archive.py writes it) and the gate and candidate de
 (config/gates/methodGate2D.yaml, config/candidates/*.yaml). Writes PDF figures and LaTeX tables;
 the gate tables themselves come from workflow/scripts/make_gate_tables.py on
 <archive>/gate/summaries.
+
+Four findings on the semi-Lagrangian baseline live in the SL article, not in the gcls
+pre-print: the seam check (gcls_seam.pdf, gcls_seam.tex, gcls_face_density.tex), the
+Eulerian mass-flux port (gcls_eulerian.tex), the translating droplet at long times
+(gcls_translating_boxes.pdf, gcls_translating_runs.tex) and the oscillating-droplet gradient
+drift (gcls_oscillating_drift.pdf). Those outputs go to SL_DATA, the data folder of
+docs/semi-lagrangian-level-set/sl-level-set-article, whatever --figures and --tables say;
+everything else goes to --figures and --tables.
 """
 import argparse
 import csv
@@ -22,6 +30,10 @@ import yaml  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
+# The data folder of the SL article: the four findings on the semi-Lagrangian baseline
+# (see the module docstring) are published there, so their figures and tables are written there.
+SL_DATA = os.path.abspath(os.path.join(HERE, "..", "..", "..", "semi-lagrangian-level-set",
+                                       "sl-level-set-article", "data"))
 CANDS = ["baseline", "S1", "HL0", "HL1q", "HL1z", "HL2", "FP0"]
 COLOR = {"baseline": "black", "S1": "tab:orange", "HL0": "tab:blue", "HL1q": "tab:green",
          "HL1z": "tab:red", "HL2": "tab:purple", "FP0": "tab:brown"}
@@ -359,17 +371,22 @@ def main():
     ap.add_argument("--tables", required=True)
     a = ap.parse_args()
     os.makedirs(a.figures, exist_ok=True); os.makedirs(a.tables, exist_ok=True)
+    sl_figures = os.path.join(SL_DATA, "figures")
+    sl_tables = os.path.join(SL_DATA, "tables")
+    os.makedirs(sl_figures, exist_ok=True); os.makedirs(sl_tables, exist_ok=True)
+    # the gcls pre-print
     fig_shear(a.archive, a.figures)
     fig_droplets(a.archive, a.figures)
-    fig_oscillating_drift(a.archive, a.figures)
-    fig_translating_boxes(a.archive, a.figures)
-    fig_seam(a.archive, a.figures)
     tab_candidates(a.tables)
     tab_baseline(a.archive, a.tables)
-    tab_translating(a.archive, a.tables)
-    tab_eulerian(a.archive, a.tables)
-    tab_seam(a.archive, a.tables)
     tab_gate_seam(a.archive, a.tables)
+    # the SL article (the four findings on the baseline)
+    fig_oscillating_drift(a.archive, sl_figures)
+    fig_translating_boxes(a.archive, sl_figures)
+    fig_seam(a.archive, sl_figures)
+    tab_translating(a.archive, sl_tables)
+    tab_eulerian(a.archive, sl_tables)
+    tab_seam(a.archive, sl_tables)
     subprocess.run([sys.executable, os.path.join(REPO, "workflow", "scripts", "make_gate_tables.py"),
                     "--summary-root", os.path.join(a.archive, "gate", "summaries"),
                     "--gate", "methodGate2D", "--out", a.tables], check=True)

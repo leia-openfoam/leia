@@ -1,0 +1,99 @@
+# Build and publish the leia knowledge base (docs/knowledge-base, an Obsidian vault) with
+# Quartz v5 to the repository's GitHub Pages site, together with the reveal decks and the
+# pre-print PDFs. One repository has one Pages site: the last push that runs this workflow
+# wins. Local build: `make kb` (docs/knowledge-base/.quartz/build.sh, the same steps).
+name: Knowledge base
+on:
+  push:
+    branches: [main, development, "feature/**"]
+    paths:
+      - "docs/**"
+      - "STATUS.md"
+      - "METHOD.md"
+      - "CLAUDE.md"
+      - ".github/workflows/knowledge-base.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+env:
+  QUARTZ_TAG: v5.0.0
+  KB_DIR: docs/knowledge-base
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check the knowledge base (frontmatter, wikilinks, log coverage)
+        run: python3 "$KB_DIR/.quartz/check_kb.py" "$KB_DIR"
+      - name: Build the 3D graph data
+        run: python3 "$KB_DIR/.quartz/build_graph.py" "$KB_DIR"
+      - name: Clone Quartz at the pinned tag
+        run: git clone --depth 1 --branch "$QUARTZ_TAG" https://github.com/jackyzha0/quartz.git quartz
+      - name: Install Quartz and its plugins
+        working-directory: quartz
+        run: |
+          npm ci
+          npx quartz plugin install
+          npx quartz plugin resolve
+      - name: Stage the content (single source, docs/knowledge-base)
+        run: |
+          rm -rf quartz/content && mkdir -p quartz/content
+          rsync -a --exclude ".obsidian" --exclude ".quartz" --exclude "templates" "$KB_DIR"/ quartz/content/
+          cp "$KB_DIR/.quartz/quartz.config.yaml" quartz/quartz.config.yaml
+      - name: Stage the record files for full-text search (the notes link to GitHub, not here)
+        run: |
+          mkdir -p quartz/content/record
+          cp STATUS.md METHOD.md CLAUDE.md quartz/content/record/
+          cp docs/plan-*.md docs/capillary-level-set-research-roadmap.md docs/IMPROVEMENTS.md quartz/content/record/
+      - name: Build the reveal decks into content/decks
+        run: |
+          bash docs/build-decks.sh
+          mkdir -p quartz/content/decks
+          for f in docs/*/*-presentation/*.html; do
+            case "$f" in *.template.html) continue ;; esac
+            cp "$f" quartz/content/decks/
+          done
+      - name: Compile the pre-prints and the reports into content/preprints (a LaTeX failure does not block the site)
+        continue-on-error: true
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends latexmk texlive-latex-base \
+            texlive-latex-recommended texlive-latex-extra texlive-publishers texlive-science \
+            texlive-pictures texlive-fonts-recommended texlive-bibtex-extra biber cm-super
+          mkdir -p quartz/content/preprints
+          for tex in docs/*/*-article/*.tex docs/*/*-report/*.tex; do
+            [ -f "$tex" ] || continue
+            dir=$(dirname "$tex"); name=$(basename "$tex" .tex)
+            if (cd "$dir" && latexmk -pdf -interaction=nonstopmode -halt-on-error "$name.tex" > "latexmk-$name.log" 2>&1); then
+              cp "$dir/$name.pdf" quartz/content/preprints/
+            else
+              echo "[skip] $tex did not compile; see $dir/latexmk-$name.log"
+            fi
+          done
+          ls -la quartz/content/preprints
+      - name: Build the site
+        working-directory: quartz
+        run: npx quartz build -d content -o public
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: quartz/public
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

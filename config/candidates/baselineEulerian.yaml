@@ -1,7 +1,8 @@
 # BASELINE of the Eulerian line: material-form FV transport with the Navier-Stokes flux, no
 # velocity extension, no source. The Eulerian coupled arms wait for Phase F of
 # docs/plan-halo-limited-gradient-control.md (rho and rhoPhi are frozen at t = 0 in
-# leiaLevelSetTwoPhaseFoam, and the solver writes no droplet metrics); until then only its
+# leiaLevelSetTwoPhaseFoam -- CORRECTED 2026-09-28: no longer, c094bd8 ported the rhoLENT mass flux
+# to that solver -- and the solver writes no droplet metrics); until then only its
 # exact1D and shear arms are meaningful.
 candidate: baselineEulerian
 line: eulerian

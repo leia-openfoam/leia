@@ -136,7 +136,9 @@
     // by their convergence order -- and because the legacy names still parse, so a run
     // must state which of the six it actually used rather than which token was written.
     {
-        word vfm = mfD.getOrDefault<word>("viscosityFaceModel", "alg_lin (default)");
+        // CORRECTED 2026-09-28: the code default is geo_lin (createFields.H, shared with
+        // leiaLevelSetTwoPhaseFoam); the banner said alg_lin. The case templates set the token.
+        word vfm = mfD.getOrDefault<word>("viscosityFaceModel", "geo_lin (default)");
         if (vfm == "interpolated")           vfm = "alg_lin (legacy 'interpolated')";
         else if (vfm == "geometric")         vfm = "geo_lin (legacy 'geometric')";
         else if (vfm == "geometricHarmonic") vfm = "geo_harm (legacy 'geometricHarmonic')";

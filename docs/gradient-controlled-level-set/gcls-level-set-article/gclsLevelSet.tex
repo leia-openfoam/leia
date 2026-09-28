@@ -48,23 +48,29 @@ redistancing, for the collocated finite-volume method of OpenFOAM on unstructure
 meshes, with a quadratic semi-Lagrangian level-set transport that is coupled to the
 two-phase Navier--Stokes equations: a source term $\psilev F$ in the level-set
 equation, with $F$ from a family of gradient-control laws, and a halo-limited
-directional velocity extension that removes the normal strain at the interface. For
-each model we give the continuum form, the discretisation on the mesh, and the
-result of a verification gate. The gate has an exact one-dimensional case, a reversed
-shear flow, and a stationary, a translating and an oscillating droplet at the
+directional velocity extension that is meant to remove the normal strain at the
+interface. For each model we give the continuum form, the discretisation on the mesh,
+and the result of a verification gate. The gate has an exact one-dimensional case, a
+reversed shear flow, and a stationary, a translating and an oscillating droplet at the
 water--air density ratio, each on three resolutions, on four MPI ranks, and with a
 serial check of the parallel result. Every one of the six tested combinations fails
 the gate. The halo-limited extension alone lowers the observed order of the shape
-error in the kinematic shear flow from $3.1$ to $1.4$. The source terms move the
-discrete zero level set wherever the strain rate is not zero: the shape error of the
-shear flow rises by a factor of $14$ to $2700$ over the production method, and a
-soft-wall source that leaves the stationary droplet unchanged destroys the volume of
-the oscillating droplet. We identify the discrete mechanism that each failure points
-to and name the experiment that can decide it. The serial check also found two
-defects of the parallel implementation of the production method, which we fix, and
-a study with longer domains shows that the late instability of the translating
-droplet is triggered by the outlet boundary but that a slower growth remains in the
-interior.
+error in the kinematic shear flow from $3.1$ to $1.4$; the source terms raise the
+shape error of the shear flow by a factor of $14$ to $2700$ over the production
+method, and the linear laws destroy the stationary droplet at the finest resolution.
+We show where the failures come from. The extension with a radius of one cell does
+not remove the normal strain at the interface: it relocates the strain into a shell
+one to two cells from the interface, inside the reconstruction stencils, which the
+one-dimensional arm measures. The source step, discretised with a centred gradient
+of $q$, a hard band edge and no time-step guard, is linearly unstable at a rate of
+order $\mu$ with no flow in the loop: the linear laws read no velocity, and the
+measured growth rates on the stationary droplet are of the order of $\mu$ and far
+below the capillary rate of the mesh. We name the experiment that decides each
+reading, and the order of the next steps: the discretisation of the source step is
+repaired and gated on a zero-flow static test before any law and before any coupled
+run. A companion article reports two defects of the parallel implementation of the
+production method, found by the serial check, and the late instability of the
+translating droplet.
 \end{abstract}
 
 \begin{keyword}
@@ -128,13 +134,14 @@ The contributions are the following.
   resolutions per arm, the observed orders of an error vector, and a serial check of
   every parallel result (Section~\ref{sec:gate}).
   \item The results of six combinations against the baseline. All six fail
-  (Section~\ref{sec:results}). The discussion names the discrete mechanism that each
-  failure points to and the experiment that can decide it (Section~\ref{sec:discussion}).
-  \item Two defects of the parallel implementation of the baseline, which the serial
-  check found: a face density that differed between the two sides of a processor
-  boundary, and diagnostics that ignored processor faces (Section~\ref{sec:fv-parallel}).
-  \item The late instability of the translating droplet: the outlet boundary triggers
-  it, and a slower growth remains in the interior (Section~\ref{sec:res-translating}).
+  (Section~\ref{sec:results}). The discussion gives, for each failure, the discrete
+  mechanism with its mark (measured, derived, or a hypothesis with the experiment that
+  decides it), and the order of the next steps (Section~\ref{sec:discussion}).
+  \item Two findings on the baseline itself, reported in full in the companion
+  article \cite{maric2026sl}: two defects of its parallel implementation, which the
+  serial check found and which we corrected, and the late instability of the
+  translating droplet, which the outlet triggers and which has a slower interior growth
+  behind it (Sections~\ref{sec:fv-parallel} and~\ref{sec:res-translating}).
 \end{enumerate}
 
 %% ===========================================================================
@@ -396,82 +403,18 @@ redistancing, no filter and no volume correction is applied.
 
 \subsection{Consistency under domain decomposition}
 \label{sec:fv-parallel}
-A parallel run must give the serial answer up to the round-off of its reductions and
-linear solvers. The serial check of the gate (Section~\ref{sec:gate-verdict}) found two
-places where the baseline did not, both of the same kind: code that handled a
-processor face as a boundary face of one cell.
-
-\paragraph{The face density} The face area fraction $\alpha_f$ of the mass flux comes
-from the reconstructed plane of the upwind cell. On a processor face each rank used its
-own cell's plane, whatever the flux direction. The two sides then disagreed on $\rho_f$,
-and the mass that left one rank through the face was not the mass that entered the
-other. Table~\ref{tab:facedensity} gives the measurement: after one step, four
-processor faces had $\rho_f$ different by up to \SI{90}{\percent} between the two sides,
-while $\Phi$ matched exactly. In the corrected code each side computes its local-cell
-fraction, the two values are exchanged, and both sides apply the same donor rule with
-the local flux sign; at $\Phi=0$ both take the value of the owner side of the patch.
-After the correction no face differs.
-
-\paragraph{The diagnostics} The zero-set sample of the shape error, the band of the
-curvature and gradient errors, and the face statistics were formed from internal faces
-only, so on several ranks they missed the processor faces. They did not change the
-solution, but they changed the reported numbers.
-
-Table~\ref{tab:seam} and Figure~\ref{fig:seam} give the effect: the maximum difference
-between a run on four ranks and a serial run over the first \SI{0.05}{s} of the
-translating droplet at $N=100$. Before the corrections the solution differed by
-$5\times10^{-6}$ to $1.4\times10^{-3}$, the band and shape diagnostics by $3$ to
-\SI{8}{\percent}, and the mode-2 amplitude by \SI{63}{\percent}. After both corrections
-every column of Table~\ref{tab:seam} agrees to $3.5\times10^{-7}$ or better, the level of
-the linear-solver tolerances. Serial runs are unchanged, bit for bit. Every parallel
-result of the baseline that was computed before the corrections carries both errors.
-
-\begin{table}[t]
-  \centering
-  \caption{The face area fraction $\alpha_f$ and the face density $\rho_f$ on the two
-  sides of every processor face, translating droplet, $N=64$, four ranks. A face
-  differs if the two values differ by more than $10^{-12}$ relative. The flux $\Phi$
-  matches exactly on every face before and after.}
-  \label{tab:facedensity}
-  \input{data/tables/gcls_face_density.tex}
-\end{table}
-
-\begin{table}[t]
-  \centering
-  \caption{Four ranks against one: the largest difference over the first \SI{0.05}{s}
-  of the translating droplet ($N=100$), each column divided by its largest value.}
-  \label{tab:seam}
-  \input{data/tables/gcls_seam.tex}
-\end{table}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.9\textwidth]{gcls_seam.pdf}
-  \caption{The data of Table~\ref{tab:seam}. The coupled-face correction removes the
-  error of the solution (the velocity, volume, pressure and centroid columns); the
-  diagnostic correction removes the error of the band and zero-set columns.}
-  \label{fig:seam}
-\end{figure}
-
-\paragraph{The Eulerian two-phase solver} The same investigation found that the
-Eulerian two-phase solver of leia kept the density, the mass flux and the face
-viscosity at their initial values: the density moved only on a dynamic mesh
-refinement. It now shares the mass-flux code of the semi-Lagrangian solver
-unchanged. Table~\ref{tab:eulerian} shows the translating droplet after $1000$ steps:
-with the frozen density the heavy droplet travels at \SI{42}{\percent} of the stream
-and the velocity error is three times the stream speed; with the shared mass flux it
-travels at the stream speed to $10^{-4}$. The Eulerian line is not part of the gate:
-its curvature pipeline and its droplet diagnostics do not yet match those of the
-semi-Lagrangian solver.
-
-\begin{table}[t]
-  \centering
-  \caption{The Eulerian two-phase solver of leia, translating droplet, $N=100$, $1000$
-  steps ($t=\SI{0.0109}{s}$). Travelled fraction: the centroid displacement divided by
-  $U_0t$.}
-  \label{tab:eulerian}
-  \input{data/tables/gcls_eulerian.tex}
-\end{table}
+The serial check of the gate (Section~\ref{sec:gate-verdict}) found two places where the
+baseline handled a processor face as a boundary face of one cell -- the face density of the
+mass flux differed between the two sides of a processor face, and the droplet diagnostics
+ignored processor faces -- and after both corrections the four-rank run agrees with the
+serial run to $3.5\times10^{-7}$ or better in every column, as the companion
+article~\cite{maric2026sl} reports with the measurement and the corrected code. Every
+parallel result of the baseline that was computed before the corrections carries both
+errors; serial runs are unchanged, bit for bit. The same investigation found that the
+Eulerian two-phase solver of leia kept the density, the mass flux and the face viscosity
+at their initial values; it now shares the mass-flux code of the semi-Lagrangian solver,
+and with it the translating droplet travels at the stream speed to $10^{-4}$ instead of at
+\SI{42}{\percent} of it \cite{maric2026sl}.
 
 %% ===========================================================================
 \section{The method gate}
@@ -640,14 +583,11 @@ same estimator converges at order $1.9$ on the stationary droplet. The band grad
 error converges only at order $0.8$.
 
 \paragraph{Oscillating droplet} At $N=100$ and $142$ the band gradient error stays near
-$0.1$ over ten oscillation periods. At $N=200$ it grows exponentially after
-$t=\SI{0.05}{s}$ and reaches $5.1$ at $T$, and the velocity departs from the damped
-oscillation just before $T$ (Figure~\ref{fig:oscdrift}). The finest rung completes the
-horizon on the edge of a divergence. Its period ($8.1$\,ms against $10.0$ and $9.8$\,ms)
-and damping rate break the convergence of both quantities, which the procedure of
-\cite{Celik2008} classifies as divergent. The gradient drift without redistancing is
-therefore a defect of the baseline itself, and the oscillating arm at $N=200$ cannot
-carry a verdict.
+$0.1$ over ten oscillation periods. At $N=200$ the gradient drift of the baseline without
+redistancing turns unstable within ten periods -- the band gradient error grows
+exponentially after $t=\SI{0.05}{s}$, and the period and the damping rate of the finest
+rung break the convergence of both quantities \cite{maric2026sl} -- so the oscillating arm
+at $N=200$ cannot carry a verdict.
 
 \begin{table}[t]
   \centering
@@ -659,15 +599,6 @@ carry a verdict.
   \small
   \input{data/tables/gcls_baseline.tex}
 \end{table}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\textwidth]{gcls_oscillating_drift.pdf}
-  \caption{The baseline's oscillating droplet at three resolutions: (a) the band gradient
-  error, (b) the $L^1$ norm of the velocity, which is the physical oscillation. At
-  $N=200$ the gradient error grows exponentially after $t=\SI{0.05}{s}$.}
-  \label{fig:oscdrift}
-\end{figure}
 
 \subsection{Verdicts}
 Table~\ref{tab:verdicts} gives the verdicts. Every candidate fails, and every candidate
@@ -789,136 +720,158 @@ corrections of Section~\ref{sec:fv-parallel} the baseline itself would have fail
 \subsection{The translating droplet at long times}
 \label{sec:res-translating}
 The production study of the translating droplet ran to \SI{0.1}{s} and diverged late at
-every resolution. The gate avoids this with its \SI{0.05}{s} horizon; this section asks
-what causes it. Table~\ref{tab:translating} lists the runs, all with the baseline method
-at $N=100$ to $200$, and Figure~\ref{fig:boxes} shows the spurious current and the lead
-of the droplet over the stream for three box lengths. The onset is the first time at
-which the spurious current exceeds ten times its level at $t=\SI{0.03}{s}$.
-
-Five observations follow.
-\begin{enumerate}
-  \item The instability does not depend on the decomposition. In the \SI{10}{mm} box the
-  serial run and the four-rank runs start to grow at the same time,
-  $t=\SI{0.063}{s}$, and diverge between $0.078$ and \SI{0.090}{s}.
-  \item It needs the density contrast: at the density ratio one the run completes.
-  \item One-change variants of the baseline shift it but do not remove it. The curvature
-  without the per-cell inverse diverges \SI{20}{\percent} earlier, the midpoint force
-  centring \SI{32}{\percent} earlier; the second-order foot integrator makes no
-  difference.
-  \item The outlet triggers it. In a box twice as long, with the same cell size, the run
-  completes \SI{0.1}{s} at all three resolutions, and the fast growth that starts at
-  $t=\SI{0.063}{s}$ in the short box is absent.
-  \item A slower growth remains in the interior. In the \SI{20}{mm} box the spurious
-  current grows from $t\approx\SI{0.10}{s}$ at about \SI{30}{s^{-1}} and turns explosive
-  near \SI{0.16}{s}, with the leading edge of the droplet \SI{8}{mm} from the outlet. In a box four
-  times as long, with the outlet more than \SI{17}{mm} away, the run completes
-  \SI{0.3}{s}, but the droplet leads the stream by \SI{3.9}{mm} and its volume changes by
-  \SI{15}{\percent} at $N=100$; at $N=142$ the lead is \SI{1.8}{mm} and the volume change
-  \SI{2.8}{\percent}. This interior growth shrinks with $h$ between the two rungs; a
-  third rung is needed before an order can be stated.
-\end{enumerate}
-A test with the droplet started at \SI{5}{mm} instead of \SI{2.5}{mm} in the \SI{20}{mm}
-box separates time from position: the slow phase of the two runs is the same function of
-time, and the explosive phase comes earlier for the droplet that is further downstream.
-The reading that fits every run is a slow interior growth in time, amplified as the
-droplet approaches the outlet.
-
-\begin{table}[t]
-  \centering
-  \caption{The translating droplet with the baseline method beyond the gate horizon.
-  $L$: box length in $x$; $x_0$: initial centre; binaries: the state of the two
-  corrections of Section~\ref{sec:fv-parallel}.}
-  \label{tab:translating}
-  \scriptsize
-  \resizebox{\textwidth}{!}{\input{data/tables/gcls_translating_runs.tex}}
-\end{table}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\textwidth]{gcls_translating_boxes.pdf}
-  \caption{The translating droplet in boxes of length 10, 20 and \SI{40}{mm} with the
-  same cell size. (a) The spurious current, referred to the volume of the \SI{10}{mm}
-  box. (b) The centroid ahead of $x_0+U_0t$.}
-  \label{fig:boxes}
-\end{figure}
+every resolution, which is why the gate stops at \SI{0.05}{s}. A study of the baseline in
+boxes of 10, 20 and \SI{40}{mm} with the same cell size, reported in the companion
+article~\cite{maric2026sl}, shows that the outlet triggers the fast growth -- the box
+twice as long completes \SI{0.1}{s} at all three resolutions -- and that a slower interior
+growth of about \SI{30}{s^{-1}} remains, which needs the density contrast and shrinks with
+$h$ between $N=100$ and $142$.
 
 %% ===========================================================================
 \section{Discussion: where the problems are}
 \label{sec:discussion}
 
-The gate separates three classes of problems: the source step, the extension, and the
-baseline's own limits. For each we state the evidence, the mechanism it points to, and
-the experiment that can decide it.
+The gate separates three classes of problems: the discretisation of the source step,
+the extension, and the baseline's own limits. For each we state the evidence, the
+mechanism it points to, and the experiment that decides it. Each mechanism carries a
+mark: \emph{measured} (a number in the archive of \ref{app:data}), \emph{derived} (a
+closed form), or \emph{hypothesis} (an experiment is named). The technical report of
+the theme folder (\path{gcls-technical-report/gclsTechnicalReport.tex}) gives the
+derivations and the full experiment ladder.
 
-\subsection{The source step moves the discrete zero set}
+\subsection{The source step: a centred gradient makes its own map unstable}
 \label{sec:disc-source}
-The exponential update \eqref{eq:expUpdate} keeps every cell's sign, and in the
-continuum the zero set does not move. The discrete zero set is the set of crossings
-between neighbouring cells with opposite signs. Take two neighbours at distance $h$
-across the interface, with $\psilev_A=-a<0$ and $\psilev_B=b>0$. The linear crossing lies
-at the fraction $a/(a+b)$ from $A$. After one source step with $F_A\neq F_B$ it lies at
-$ae^{\Delta tF_A}/(ae^{\Delta tF_A}+be^{\Delta tF_B})$, so the crossing moves by
+The linear laws read no velocity. The law family is $F=w(q^2)\,a+G(q^2,\sigma)$ with
+$w=0$ for every candidate, and \texttt{linearQ} and \texttt{linearZ} have no
+$\sigma$, so for HL1q and HL1z the loop is $\psilev\to q\to F\to\psilev$ with no flow in
+it. The source step reads $q_c$ from a centred least-squares gradient of the arrival
+field. Linearise the update \eqref{eq:expUpdate} about the signed distance,
+$\psilev_c=d_c+\delta_c$: $\delta_c\leftarrow\delta_c-\mu\Delta t\,d_c\,(\nhat\cdot
+\nabla_h\delta)_c$. For the distance-modulated checkerboard $\delta_c=(-1)^cE\,d_c$ the
+central difference gives $(\nhat\cdot\nabla_h\delta)_c=(-1)^{c+1}E$, so
+$\delta_c\leftarrow\delta_c(1+\mu\Delta t)$: an exact eigenmode with growth rate
+$\mu$, independent of $\Delta t$, $h$ and the flow (in 2D the mode is $(-1)^{i+j}E\,d$;
+derived). A one-sided gradient towards the interface damps the same mode at $2\mu d/h$.
+A pure checkerboard without the $d$ modulation is invisible to a centred difference,
+which is why the band gradient error of the gate cannot see the growing mode. The
+stationary droplet exposes the mode because at $\bu\approx0$ the semi-Lagrangian step
+is the identity and nothing damps it; at CFL $0.5$ the quadratic fit halves a
+checkerboard per step, which hides it in the shear arm.
+
+The histories of the stationary droplet at $N=200$ agree with this reading (all
+measured). HL1q's curvature error e-folds at about \SI{290}{s^{-1}} over $10$ to
+\SI{20}{ms} (about \SI{460}{s^{-1}} over $2$ to \SI{10}{ms}) and its spurious current at
+$320$ to \SI{350}{s^{-1}}, against $\mu=1/T_\mathrm{ref}=\SI{270}{s^{-1}}$ and far below
+the capillary rate of the mesh, $\sqrt{\sigma k^3/\rho}\sim\SI{e5}{s^{-1}}$. HL1q and
+HL1z agree to three digits until $t=\SI{0.02}{s}$: their linearisations coincide. The
+curvature error leads the velocity: at \SI{4.3}{ms} it is $10.6$ times the baseline's
+while the spurious current is $1.4$ times, and at that time the band gradient error is
+below the baseline's ($3.2\times10^{-4}$ against $4.4\times10^{-4}$), because the smooth
+part of the initial $q$ error decays as the law intends while the mode grows unseen.
+$\min q$ and $\max q$ leave $[0.99,1.01]$ symmetrically ($0.83$ and $1.17$ at
+\SI{20}{ms}, $0.33$ and $2.29$ at \SI{30}{ms}): an oscillatory cell-scale mode, not a
+drift. The linearised map predicts a rate of exactly $\mu$; the measured excess is not
+explained, and the experiment that decides the reading is the $\mu$ ladder: HL1q on the
+stationary droplet at $M_\mu=0.1$ and $10$ must survive \SI{0.1}{s} and die by about
+\SI{3.5}{ms}, with a rate proportional to $\mu$. The cheapest discriminator needs no
+flow at all: a signed-distance circle with $\bu=0$ and the source on, at
+$\mu\in\{27,270,2700\}\,\si{s^{-1}}$; the prediction is a growth of
+$\max|\psilev_c-d_c|$ as $e^{\mu t}$ with the pattern $(-1)^{i+j}d$.
+
+Two further effects are of order one in $h$ (derived). A law that reaches its target
+multiplies $|\psilev|$ inside the band by $e^{\int F\,dt}=q_\mathrm{far}/q_\mathrm{target}
+\approx2$ to $3$ in the shear arm and by one outside, so $|\psilev|$ becomes non-monotone
+at the hard band edge $|\psilev|/q=3h$, independent of $h$, and spurious crossings
+follow (measured: HL1z reaches a band error of $10.5$ and a volume error of $1.6$ at
+$T$). And the soft wall's slope $|dG/dq|$ reaches $40\sigma$ at $|q-1|\approx0.07$ for
+the parameters of S1, so $\Delta t\,dG/dq\approx0.5$ per step in the shear arm: a nearly
+discontinuous per-cell map, whose signature is the \SI{76}{\percent} serial-check
+failure of S1 that HL1q and HL1z do not share.
+
+The exponential update also moves the discrete zero set. With two neighbours at
+distance $h$ across the interface, $\psilev_A=-a<0$ and $\psilev_B=b>0$, the linear
+crossing lies at the fraction $a/(a+b)$ from $A$, and after one step with $F_A\neq F_B$
+it moves by
 \begin{equation}
-  \delta = h\,\frac{ab}{(a+b)^2}\,\Delta t\,(F_A-F_B)+O(\Delta t^2)
+  \delta = h\,\frac{ab}{(a+b)^2}\,\Delta t\,(F_A-F_B)+O(\Delta t^2).
   \label{eq:zeroShift}
 \end{equation}
-per step. The source moves the discrete interface whenever $F$ differs between the two
-cells that hold it. In the gate, $F$ varies from cell to cell through $q_c$, a
-least-squares gradient of the arrival field, and through $\sigma_c$. The evidence fits:
-S1 is identical to the baseline where $\sigma=0$ and degrades the shape wherever
-$\sigma\neq0$; its serial check fails because $q_c$ carries the round-off of the
-decomposition into $F$. Two further effects add to \eqref{eq:zeroShift}: the switch of the
-source at the band edge $|\psilev|/q=3h$ puts a kink into $\psilev$ inside the
-reconstruction stencils of the interface cells, and the clamp acts where $q$ is
-small.
+This shift is first order in $h$: for the linear laws $F_A-F_B=-\mu(q_A-q_B)$, and
+summed over the shear run it is at most about $0.2h$. The measured shape errors of the
+source candidates are of order one in $h$ and flat in $N$ (HL1q: $0.108$, $0.117$,
+$0.107$; S1: $0.265$, $0.327$, $0.254$), so \eqref{eq:zeroShift} is a secondary
+contribution; the first version of this paper held it responsible, which we correct
+here. The repair follows from the mechanisms: a one-sided gradient of $q$ with the
+coupled-patch neighbours, a smooth taper instead of the hard band edge, and a
+time-step guard $\mu\,3h\,\Delta t/h<1/2$; then $F$ evaluated at the algebraic foot
+$\bx_c-d\,\nhat$ and copied along the normal, if the $O(h)$ shift is still measurable.
 
-The test is direct: evaluate $F$ on the interface and extend it constant along the
-normals into the band, so that the two cells across the interface receive the same
-factor. Then \eqref{eq:zeroShift} vanishes at first order. A second test replaces the
-switch at the band edge by a smooth taper. The exact 1D arm needs an oracle with a
-non-uniform strain, so that it can see this mechanism at all; with a uniform strain $F$
-is the same in every cell.
-
-\subsection{The halo-limited extension loses transport order}
+\subsection{The halo-limited extension relocates the strain}
 \label{sec:disc-hl}
 The unit gates of the extension pass: for an affine and for a divergence-free quadratic
 velocity the face correction equals \eqref{eq:hlFlux} with the exact velocity at the exact
 sample point to $2\times10^{-16}$. The first rung above them, the kinematic shear flow,
-fails at order $1.4$. The extension therefore changes the transport already for a smooth
-velocity. The most likely cause is the step from faces to cells. The correction
-\eqref{eq:hlFlux} varies on the scale $R=h$, within one cell, because $w$ and $S_R$ vary
-there. The trace velocity \eqref{eq:reconstruct} averages the face fluxes of a cell, and
-for a flux correction that varies within the cell this average has an error of the size
-of the correction itself, $O(h|\nabla\bu|)$. A trace velocity with an error $O(h)$ gives
-a foot point error $O(h\Delta t)$ per step and a first-order transport. The closest-point
-reference FP0 shows the same order through the same reconstruction, which supports this
-reading.
+fails at order $1.4$. The reason is a property of the model, not of one operator
+(derived). With the capped travel $S=c\,d$ and the weight $w=c$,
+$c=(1+(d/R)^4)^{-1/4}$, the extension transmits the normal strain
+$K(d/R)=1-(1-t^4)(1+t^4)^{-3/2}$, $t=d/R$: zero on the interface, $1.00$ at $R$, $1.27$
+at $1.5R$ and $1.1$ at $3R$, with $\int_0^D(1-K)\,dd\to R^2/D$. The strain is displaced
+by about $1.5h$ into a shell with a \SI{27}{\percent} overshoot, and with $R=h$ the shell
+sits inside the band and the reconstruction stencils. The exact one-dimensional arm
+measures it: HL0's band mean of $q$ is $0.59$, $0.50$, $0.51$, $0.46$ at $N=32$ to $256$,
+against $e^{-1}=0.37$ for the baseline and $0.49$ for the band average of $e^{-K}$. The
+pre-registered read-out of HL0 (``zero normal strain on the interface, so the band
+error falls'') conflated the interface with the band. The $q$ profile then varies by
+order one over one cell, and the quadratic reconstruction at the feet is first order
+whatever the trace velocity: the HL0-to-baseline ratio of the shape error grows $4.3$,
+$8.4$, $13.7$ over the three shear rungs (measured).
 
-Two experiments decide it. The first traces with the extension's own cell velocity
-$\bu_H(\bx_c)$ of \eqref{eq:uH} instead of the reconstruction of $\Phi^H$; if the order
-of the shear arm returns to three, the reconstruction is the cause. The second doubles
-the radius to $R=2h$; the correction then varies over two cells, and the error of the
-reconstruction should fall.
+The face-to-cell reconstruction of the corrected flux, which the first version of this
+paper held responsible, is one $O(h|\nabla\bu|)$ contribution among others: it is not
+necessary, because FP0 has no shell (its extended flux is the interpolated cell field)
+and loses the same order, $1.38$, and it is not sufficient, because HL0's excess volume
+error appears by $t=\SI{0.02}{s}$, before any kink in $q$ exists (measured). The
+experiment that bounds its share traces the kinematic shear arm with the extension's own
+cell velocity $\bu_H(\bx_c)$ of \eqref{eq:uH}: the constant should fall and the order
+stay below two. The radius ladder that the first version proposed is blocked by
+construction: the sampler evaluates the models of the face's own cells, so $R>h$ needs
+a sampler that locates the cell containing the sample point with a halo of two to three
+layers, which is the halo the design set out to avoid.
 
-The coupled arms fail far more strongly than the kinematic one. Near the interface the
-velocity is continuous, but its gradient jumps with the viscosity and density contrast.
-The sampler fits one quadratic model per cell over a stencil that crosses the interface,
-so near $\Gamma$ it fits across the jump, exactly where the surface-tension force acts.
-The experiment is HL0 on the oscillating droplet at the density and viscosity ratio one:
-if it passes there, the fit across the jump is the cause.
+The coupled arms fail far more strongly than the kinematic one, for two different
+reasons. The translating droplet has no physical gradient to fit across (rigid
+translation), and HL0 fails $64$ times there: the sampler reads the cell-scale spurious
+current and injects it into the trace flux unprojected, while the baseline traces the
+reconstructed projected flux, the smoothest velocity the solver has. HL0 tracks the
+baseline to $t\approx\SI{0.02}{s}$, then its curvature error and its velocity grow
+together at about $235$ and \SI{210}{s^{-1}} (measured). On the oscillating droplet the
+air-side boundary layer, $\sqrt{\nu_\mathrm{air}T}\approx8h$ at $N=200$, gives a normal
+strain of about \SI{250}{s^{-1}}, and the sampler fits one quadratic model across the
+kink; HL0's band gradient error grows at about \SI{480}{s^{-1}} there (measured), five
+times the physical strain, so the fit across the jump is the plausible reading
+(hypothesis). A density and viscosity ratio of one cannot separate the two readings,
+because it shrinks the spurious current and the kink at once; the experiment that
+separates them samples the reconstructed projected flux instead of the cell velocity in
+the extension: the translating droplet should improve and the oscillating droplet should
+not.
 
-\subsection{The linear laws: gradient against position}
+\subsection{The linear laws: what they showed, and the order of the next steps}
 HL1q shows the conflict of the linear laws most clearly: it lowers the band gradient error
-five times and raises the shape error $173$ times. With $\mu=1/T_\mathrm{ref}$ the law acts
-on the time scale of the arm, and \eqref{eq:zeroShift} applies with $F_A-F_B=-\mu(q_A-q_B)$.
-In the coupled arms $\mu$ is large ($270$ to \SI{662}{s^{-1}}), and the stationary droplet
-fails within \SI{0.035}{s}. HL1z, with the same slope at $q=1$, grows the gradient error;
-the q- and the z-form differ only in their nonlinear terms, which are large once $q$ is far
-from one, and the z-form drives large $q$ back more strongly. None of this can be judged
-before the mechanism of Section~\ref{sec:disc-source} is removed.
+five times and raises the shape error $173$ times. The gate therefore did not test the
+laws; it tested a discretisation of the source step that fails before any law can act,
+and an extension that cannot protect the band at $R=h$. HL1z, with the same slope at
+$q=1$, adds the term $-\mu q^2/2$, which is unbounded for the large $q$ that the band edge
+produces, and grows the gradient error to $10.5$. The next steps follow in a fixed order:
+the closed forms of the candidates in the one-dimensional arm, so that its target criterion
+is real; the zero-flow static test of the repaired source step at three values of $\mu$,
+with and without the band; the dossiers' rigid-motion and homogeneous-strain tests with
+$q_0\neq1$; then the stationary droplet at $M_\mu\in\{0.1,1,10\}$ with the prediction
+``no growth at a rate of order $\mu$''. No candidate re-enters the coupled gate before the
+kinematic ladder passes at the baseline's order.
 
 \subsection{The baseline's own limits}
-Three results limit what any candidate can show against the baseline.
+Three results of the baseline limit what any candidate can show against it
+\cite{maric2026sl}.
 \begin{enumerate}
   \item The curvature of the moving interface does not converge: \SI{2.4}{} to
   \SI{3.6}{\percent} at all rungs of the translating arm, while the same estimator
@@ -938,18 +891,23 @@ Three results limit what any candidate can show against the baseline.
 We implemented a family of gradient-control source terms and a halo-limited velocity
 extension for a quadratic semi-Lagrangian level set on unstructured finite-volume meshes,
 and tested six combinations against the production method in a verification gate with
-three resolutions per arm and a serial check of every parallel result. All six fail. The
-source terms move the discrete zero level set wherever $F$ differs between the two cells
-that hold the interface, which is wherever the strain rate or the computed gradient
-varies. The halo-limited extension lowers the transport order of a smooth kinematic flow
-from three to one and a half, most likely through the reconstruction of the corrected
-face flux to the cell centres. Both mechanisms can be tested with one experiment each
-(Section~\ref{sec:discussion}). The gate also showed that the production method needs
-two corrections under domain decomposition, which we made, and that the late
-instability of the translating droplet is triggered by the outlet with a slower
-interior growth behind it. The next candidates should first remove the two
-discrete mechanisms, and they should be judged on the oscillating droplet, where the
-gradient drift of the production method turns unstable.
+three resolutions per arm and a serial check of every parallel result. All six fail, and
+the gate shows where. The source step, as discretised, is linearly unstable at a rate of
+order $\mu$ with no flow in the loop: a centred gradient of $q$ turns the cell-scale mode
+$(-1)^{i+j}d$ into an eigenmode of the update, a hard band edge puts an order-one jump into
+$|\psilev|$, and the soft wall's slope makes its map nearly discontinuous. The
+halo-limited extension with a radius of one cell relocates the normal strain into a shell
+one to two cells from the interface instead of removing it, and lowers the transport order
+of a smooth kinematic flow from three to one and a half. The gate itself has two blind
+spots, which we repair next: the one-dimensional arm has no closed form for a candidate
+with a source or an extension, and the centred band gradient metric cannot see the mode.
+The laws themselves were not tested, because the discretisation failed first. The next
+campaign repairs the source step (a one-sided gradient, a smooth taper, a time-step
+guard), gates it on a zero-flow static test and on rigid-motion and homogeneous-strain
+tests, and only then runs the stationary droplet at three values of $\mu$; the extension
+is abandoned at $R=h$. The technical report of the theme folder carries the assessment
+with the mark of every claim and the experiment ladder with its pre-registered
+predictions.
 
 \section*{Acknowledgements}
 %% To be written.
@@ -973,9 +931,9 @@ its source and the version stamps of the runs.
   Section~\ref{sec:fv-parallel} (code version 79b5a92), with the \SI{0.1}{s} translating
   runs.
   \item \texttt{laptop/}: the translating runs of Section~\ref{sec:res-translating}, the
-  serial checks of Section~\ref{sec:fv-parallel}, and the Eulerian runs of
-  Table~\ref{tab:eulerian}, from the preserved raw output
-  \path{runs/gcls-laptop-20260927}.
+  serial checks of Section~\ref{sec:fv-parallel} and the Eulerian runs of the mass-flux
+  port, whose tables and figures the companion article~\cite{maric2026sl} carries, from
+  the preserved raw output \path{runs/gcls-laptop-20260927}.
 \end{itemize}
 The gate definition is \path{config/gates/methodGate2D.yaml} and the candidates are
 \path{config/candidates/*.yaml}. The gate runs with

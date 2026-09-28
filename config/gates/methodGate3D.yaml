@@ -35,6 +35,7 @@ rates: {GC_M_MU: GC_MU}
 # merges this block; CURVATURE_EXTENSION is set per arm because it is case-dependent.
 twoPhaseCoupling: &twoPhaseCoupling
   MASS_FLUX: rhoLENT                  # mass residual ~1e-11, against 4.8e-2 relative for geometricFaceDensity
+  # CORRECTED 2026-09-28: this residual predates the closed-box fix (440107f) and is quoted as history only (measured by rhoBoundGate2D, in the VOID list of STATUS section 0)
   MASS_FLUX_ALPHAF_SOURCE: donorPlane # author: "only Gauss upwind worked in rhoLENT"
   MASS_FLUX_ALPHAF_TIME_LEVEL: new
   MASS_FLUX_BOUND_RHO: "true"         # rhoDdtGate2D: without it matched BDF2 drove rho to -72.28

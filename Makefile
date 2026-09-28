@@ -274,6 +274,21 @@ article-gcls:
 	  || echo "[skip] latexmk not found; install a LaTeX toolchain to build the article PDF"
 articles: article-sl article-lsl article-grl article-gcls
 
+report-gcls: ## technical report on the gradient-control campaign (docs/gradient-controlled-level-set/gcls-technical-report)
+	cd docs/gradient-controlled-level-set/gcls-technical-report && latexmk -pdf -interaction=nonstopmode gclsTechnicalReport.tex
+
+kb: ## knowledge base site: docs/knowledge-base -> build/kb/quartz/public (Quartz v5, Node >= 22; see .quartz/build.sh)
+	bash docs/knowledge-base/.quartz/build.sh
+
+kb-serve: ## build the knowledge base and serve it on http://localhost:8080
+	bash docs/knowledge-base/.quartz/build.sh --serve
+
+kb-graph: ## check the vault and regenerate graph3d/graph.json; prints the local preview command
+	python3 docs/knowledge-base/.quartz/check_kb.py docs/knowledge-base
+	python3 docs/knowledge-base/.quartz/build_graph.py docs/knowledge-base
+	@echo "python3 -m http.server -d docs/knowledge-base 8000   # then open http://localhost:8000/graph3d/?local=1"
+
+
 docs: decks articles
 
 all: build studies docs

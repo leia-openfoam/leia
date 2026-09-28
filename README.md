@@ -6,7 +6,7 @@ methods for multiphase flow in complex geometries — currently an **unstructure
 Finite-Volume Level Set Method** for interface advection and two-phase flow.
 
 [![Build Tests](https://github.com/leia-openfoam/leia/actions/workflows/build.yml/badge.svg)](https://github.com/leia-openfoam/leia/actions/workflows/build.yml)
-[![Documentation](https://github.com/leia-openfoam/leia/actions/workflows/docs.yml/badge.svg)](https://leia-openfoam.github.io/leia/)
+[![Knowledge base](https://github.com/leia-openfoam/leia/actions/workflows/knowledge-base.yml/badge.svg)](https://leia-openfoam.github.io/leia/)
 
 ## Method
 
@@ -94,7 +94,10 @@ leia> ./Allwmake
 This builds the libraries and the solvers/utilities (`leiaLevelSetFoam`,
 `leiaLevelSetTwoPhaseFoam`, `leiaSetFields`, `leiaPerturbMesh`, …) into the clone's own
 `platforms/` (`etc/leia-env.sh` sets `WM_PROJECT_USER_DIR` to the clone root; source it
-AFTER OpenFOAM's `etc/bashrc`). Doxygen docs: <https://leia-openfoam.github.io/leia/>.
+AFTER OpenFOAM's `etc/bashrc`). The knowledge base, the decks and the pre-prints are
+published at <https://leia-openfoam.github.io/leia/> from `docs/knowledge-base/` (an
+Obsidian vault built by Quartz; `make kb` builds it locally). The Doxygen API docs build
+locally with `docs/api/Allwmake`.
 
 The level-set code under `src/leiaLevelSet/` is one core library and eight method
 libraries, each with its own `Make/` in its directory (split 2026-09-23,

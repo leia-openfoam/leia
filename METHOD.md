@@ -32,7 +32,7 @@ Discussion note, 2026-07-31, kept current. Describes the configuration that curr
 gives the best measured result, the equations it actually solves, and what is still open.
 Numbers are measured, not estimated; the provenance of each is given.
 
-Solver `leiaSemiLagrangianLevelSetTwoPhaseFoam`, library `libleiaLevelSet`,
+Solver `leiaSemiLagrangianLevelSetTwoPhaseFoam`, library `libleiaLevelSet` (CORRECTED 2026-09-28: now libleiaCore plus eight method libraries, see CLAUDE.md 'Execution environment'),
 OpenFOAM-v2512. Collocated cell-centred finite volume, arbitrary polyhedra.
 
 ---
@@ -350,6 +350,8 @@ best Eulerian line at half the wall clock at $512^2$, $T=8$.
 
 **Stationary droplet, uniform hex, water/air, $R=1$ mm.**
 
+CORRECTED 2026-09-28: this describes 2026-07-31; the current state is in section 8.1 and in docs/knowledge-base/hubs/
+
 | $N$ | cells/$R$ | settled $\max|\mathbf U|$ | trend | $\Delta p$ error | band $\min|\nabla\psi|$ |
 |---|---|---|---|---|---|
 | 64 | 6.4 | $4.71\times10^{-6}$ m/s | decaying | exact | 0.989 |
@@ -372,7 +374,7 @@ that does not override the axis runs it. "gate" is the config whose measurement 
 | `RHO_DDT_SCHEME` | `backward` | default | as above | the basis is the matching argument (both ddt terms at the same order). CORRECTED 2026-09-27: the backward/Euler pairing table that `cases/default.parameter` cites ran on the closed-box translating case and is VOID (STATUS.md section 0) |
 | `SL_RECONSTRUCTION` | `uncachedQuadraticWeightedLeastSquares` | per-case | transport ladders | 2nd–3rd order shape error to CFL 1 on hex AND cfMesh poly (Sec. 8) |
 | `SL_CORRECTION` | `direct` | default | — | `deferredCorrection` is a research path; no study selects it |
-| `SL_TRACE_VELOCITY` | `projectedFlux` | default | `stationaryDropletFootEval*` | the win is the RECONSTRUCT OPERATOR, not solenoidality (STATUS 2026-08-31) |
+| `SL_TRACE_VELOCITY` | `projectedFlux` | default | `stationaryDropletFootEval*` (CORRECTED 2026-09-28: the evidence is STATUS 2026-08-31 'ANSWERED: projectedFlux win is the RECONSTRUCT OPERATOR' and cases/default.parameter; the gate named here did not decide it) | the win is the RECONSTRUCT OPERATOR, not solenoidality (STATUS 2026-08-31) |
 | `SL_FOOT_INTEGRATOR` | `taylor` | default | — | — |
 | `SL_FIT` | `normalEquations` | default | `popinet3D_La12000_poly_dump4_qr` | `householderQR` blows up IDENTICALLY (step-3 phase volume 0.017512193 vs 0.017512208, ~6 significant figures). The amplifying cells are WELL conditioned (min pivot 0.757 at Λ = 1.2608), so there is nothing for better arithmetic to repair |
 | `SL_CLIP` | `false` | default | `popinet3D_poly_sigma0_clipGate` (G4) | **the clip is NOT in the best configuration.** With the extremum exemption it fails at step 506 against the unclipped control's 527; without it, it removes the polyhedral failure but costs +30.4 % volume error on the 2D hex translating droplet |
@@ -750,6 +752,8 @@ Rank 1 is tried.
 
 
 ## 9. Open
+
+CORRECTED 2026-09-28: this describes 2026-07-31; the current state is in section 8.1 and in docs/knowledge-base/hubs/
 
 1. **Anti-convergence.** $N=64\to128$ makes the settled current $62\times$ worse.
    The offset correction flipped the $N=128$ trend from growing to decaying and

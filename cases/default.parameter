@@ -61,6 +61,8 @@ SL_CLIP false;       // leiaSemiLagrangeLevelSetFoam clipToStencilBounds: tight
                      // near-singular per-cell fit can otherwise let psi run away
                      // geometrically; the clamp is inactive in smooth regions so
                      // it preserves the 2nd-order convergence.
+                     // CORRECTED 2026-09-28: refuted 2026-09-09 (STATUS 4, G4); SL_CLIP false is the
+                     // decision, see docs/knowledge-base/decisions/sl-clip-and-value-bound-off.md
 SL_CLIP_REGION all;  // WHERE the clip may act; read only when SL_CLIP is true.
                      // all = every cell. This is the GLOBAL clip and it is a
                      // METHOD CHANGE at the interface: MEASURED on Popinet's 2D
@@ -670,6 +672,8 @@ TRANSLATION_SPEED 0.05;
 // and a droplet translating at U0 inherits a momentum source U0 times that residual,
 // which is not a gradient and which vanishes identically at U0 = 0. That is the entire
 // stationary/translating asymmetry, and rhoLENT drives the residual to ~1e-11.
+// CORRECTED 2026-09-28: this residual (4.8e-02) predates the closed-box fix (440107f) and is quoted
+// as history only (measured by rhoBoundGate2D, in the VOID list of STATUS section 0).
 //
 // WHAT IT COSTS, recorded rather than buried: rhoLENT's auxiliary density is NOT the
 // geometric one and is unbounded on its own -- it is usable only because
@@ -814,6 +818,9 @@ MASS_FLUX_BOUND_RHO true;
 // Default false = every existing study is byte-unchanged.
 MASS_RESIDUAL_DIAGNOSTIC false;
 
+// VOID 2026-09-28 marker: these numbers come from translatingDroplet2D runs before the closed-box
+// fix (440107f, 2026-09-02) and are void; kept as history (alphaFTimeLevelTranslating2D,
+// massFluxComparison2D, translatingClearOutlet2D; STATUS section 0).
 // TIME LEVEL OF THE GEOMETRIC FACE DENSITY (author's proposal, 2026-09-02).
 //   new        rho_f from the NEW interface only -- what every run to date used.
 //   trapezoid  1/2 (rho_f^n + rho_f^{n+1}), both geometric reconstructions.
