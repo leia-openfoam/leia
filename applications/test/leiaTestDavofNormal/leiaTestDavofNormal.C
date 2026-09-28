@@ -68,6 +68,7 @@ Description
 #include "leiaVersionRegistry.H"
 #include "reconstructionSchemes.H"
 #include "foamGeometry.H"
+#include "plicInterfaceSurface.H"
 #include <functional>
 
 using namespace Foam;
@@ -465,6 +466,32 @@ int main(int argc, char *argv[])
         maxAlphaDiffPlaneCut = returnReduce(worst, maxOp<scalar>());
     }
 
+    // ---- The PLIC surfaces as legacy VTK polydata ----------------------------
+    // postProcessing/davofInterface/<time>/plic.<model>.vtk, one polygon per
+    // interface cell with the cell index and the error fields attached
+    // (libleiaDavofInterface; per rank in parallel).
+    const fileName vtkDir =
+        runTime.path()/"postProcessing"/"davofInterface"/runTime.timeName();
+    {
+        boolList isI(mesh.nCells(), false);
+        forAll(isI, c) isI[c] = st.isInterfaceCell(c);
+        plicInterfaceSurface s
+        (
+            mesh, st.m().primitiveField(), st.xPlane().primitiveField(), &isI
+        );
+        s.writeLegacyVTK
+        (
+            vtkDir/"plic.davof.vtk",
+            wordList({"eNormal", "ePos"}),
+            List<const scalarField*>
+            ({
+                &eDavof.primitiveField(), &ePosDavof.primitiveField()
+            })
+        );
+        Info<< "PLIC surface of davof: " << s.size() << " polygons -> "
+            << vtkDir/"plic.davof.vtk" << endl;
+    }
+
     // ---- Cross-check: OpenFOAM geometricVoF schemes on the same alpha -------
     const dictionary& crossDict = davofDict.subOrEmptyDict("crossCheck");
     const word crossSet = crossDict.getOrDefault<word>("set", "none");
@@ -537,6 +564,29 @@ int main(int argc, char *argv[])
                 &ePosModels.last().primitiveFieldRef()
             );
             results.append(r);
+            {
+                // normal_ points into alpha = 1: flip it out of the liquid.
+                const vectorField nOut(-rs->normal().primitiveField());
+                boolList isI(mesh.nCells(), false);
+                forAll(isI, c) isI[c] = mag(nOut[c]) > 0;
+                plicInterfaceSurface s
+                (
+                    mesh, nOut, rs->centre().primitiveField(), &isI
+                );
+                s.writeLegacyVTK
+                (
+                    vtkDir/("plic." + model + ".vtk"),
+                    wordList({"eNormal", "ePos"}),
+                    List<const scalarField*>
+                    ({
+                        &eModels.last().primitiveField(),
+                        &ePosModels.last().primitiveField()
+                    })
+                );
+                Info<< "PLIC surface of " << model << ": " << s.size()
+                    << " polygons -> " << vtkDir/("plic." + model + ".vtk")
+                    << endl;
+            }
         }
     }
     else if (crossSet != "none")

@@ -25,6 +25,11 @@ the liquid. Library: `src/leiaLevelSet/davof` (`libleiaDavof`). Gates:
   leia's plane-based production state), with OpenFOAM's geometricVoF plicRDF /
   gradAlpha / isoAlpha run on the identical alpha of each state as the
   cross-check. The pre-registered predictions and what was measured are in the
-  config header. The matching TwoPhaseFlow benchmark is
+  config header.
+- `config/davof/planeNormal3DLadder.yaml`: the plane at N = 8/16/32 for the
+  PLIC surface renderings (`figures/davof_plic_*.pdf`, DAVOF next to plicRDF
+  and gradAlpha, written by `render_davof_interfaces.py` from the VTK
+  surfaces of `libleiaDavofInterface`). `make davof-proposal DEST=...` copies
+  the compact table and these figures into the DAVOF proposal. The matching TwoPhaseFlow benchmark is
   `run/benchmark/reconstruction/sphereNormal3D` in the sibling TwoPhaseFlow
   clone (branch `davof`).

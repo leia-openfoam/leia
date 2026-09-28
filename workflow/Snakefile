@@ -529,6 +529,10 @@ rule report:
         if SOLVER == "leiaTestDavofNormal":
             _run([_PY, os.path.join(_scripts, "make_davof_normal_table.py"),
                      STUDY_DIR, "--theme", THEME], "make_davof_normal_table.py")
+            # The PLIC surfaces (postProcessing/davofInterface/*/plic.<model>.vtk)
+            # rendered side by side, models x resolutions, into the theme figures.
+            _run([_PY, os.path.join(_scripts, "render_davof_interfaces.py"),
+                     STUDY_DIR, "--theme", THEME], "render_davof_interfaces.py")
         # 1b. The SDPLS convergence + order tables are a DATA product that
         # docs/sdpls-level-set/.../sdplsLevelSet.tex \input{}s, not a slide, so
         # they must not sit behind `export_slides` -- 89 of 117 study configs set

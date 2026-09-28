@@ -804,4 +804,25 @@ Gates:
 ```bash
 cases/davof/planeNormal3D/Allrun                         # exact-solution gate, seconds, exit != 0 on failure
 make studies-one STUDY=davof/sphereNormal3D PROFILE=profiles/local   # 12 cases, serial, < 1 h
+make studies-one STUDY=davof/planeNormal3DLadder PROFILE=profiles/local   # the plane at N = 8/16/32, seconds
+make davof-proposal DEST=<proposal>/figures/davof   # the compact table + the PLIC figures for the proposal
+```
+
+PLIC surfaces: `libleiaDavofInterface` (`src/leiaLevelSet/davofInterface`, ported
+from TwoPhaseFlow's `postProcessing/interface`) cuts the plane of every interface
+cell through the cell (OpenFOAM's `cutCellPLIC`) into one polygon:
+`plicInterfaceSurface(mesh, normalOut, pointOnPlane)` with `writeLegacyVTK()`,
+and the `sampledSurface` `type davofInterface` (fields `normal m.davof`,
+`centre xPlane.davof`) for the `surfaces` function object of a solver.
+`leiaTestDavofNormal` writes `postProcessing/davofInterface/<time>/plic.<model>.vtk`
+for DAVOF and every cross-check model, with `cellId`, `eNormal`, `ePos` as
+CELL_DATA; `workflow/scripts/render_davof_interfaces.py` (called by the report
+rule) draws them side by side, models x resolutions, coloured by the error, into
+`figures/davof_plic_<study>.{pdf,png}` (self-contained orthographic projection,
+no VTK/mplot3d dependency). `make_davof_normal_table.py` also writes the compact
+`tables/davof_normal_proposal_<study>.tex`; `export_davof_proposal.py --dest`
+(`make davof-proposal`) copies both into the DAVOF proposal, which `\input`s and
+`\includegraphics` them by name.
+
+```bash
 ```

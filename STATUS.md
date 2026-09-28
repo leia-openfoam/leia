@@ -3429,3 +3429,45 @@ update's denominator (|S_f| where the pre-image area belongs) and the curvature 
 preliminary-work section. leia: TwoPhaseFlow's PLIC VTK writer as a leia library, the plane and
 sphere interfaces of gradAlpha, plicRDF and DAVOF at three resolutions rendered to PDF by a
 Snakemake/Python job and included in the proposal automatically.
+
+### 10.9 The PLIC surfaces as VTK, the proposal's tables and figures (2026-09-29)
+
+**What.** `libleiaDavofInterface` (`src/leiaLevelSet/davofInterface`, ported from TwoPhaseFlow's
+`src/postProcessing/interface`, Henning Scheufler, DLR): `plicInterfaceSurface(mesh, normalOut,
+pointOnPlane)` cuts the plane of every interface cell through the cell with OpenFOAM's
+`cutCellPLIC` into one polygon of a `meshedSurface` (`meshCells()` maps polygons to cells) and
+writes ASCII legacy VTK polydata with per-polygon CELL_DATA from cell fields; the
+`sampledSurface` `type davofInterface` (fields `normal m.davof`, `centre xPlane.davof`, optional
+`wispTol`) is the function-object form for the `surfaces` FO of a solver. Decoupled from the
+reconstructionSchemes registry on purpose: the caller names the fields, so the DAVOF plane and
+a geometricVoF scheme (-normal_, centre_) are drawn by the same code. `leiaTestDavofNormal`
+writes `postProcessing/davofInterface/<time>/plic.{davof,plicRDF,gradAlpha,isoAlpha}.vtk` with
+`cellId`, `eNormal`, `ePos`. `workflow/scripts/render_davof_interfaces.py` (report rule, after
+the table) parses the VTK itself and draws models x resolutions (the coarsest three) coloured by
+the error on one log scale, orthographic projection with a painter's sort (mplot3d is broken on
+this host: apt + pip matplotlib), head-on for a planar surface; `figures/davof_plic_<study>.{pdf,png}`.
+`config/davof/planeNormal3DLadder.yaml` (the gate's plane at N = 8/16/32, seconds) gives the
+plane renderings. `make_davof_normal_table.py` writes the compact
+`tables/davof_normal_proposal_<study>.tex`; `export_davof_proposal.py --dest`
+(`make davof-proposal DEST=...`) copies table and figures into the proposal, which `\input`s
+and `\includegraphics` them (`figures/davof/`), so a study rerun plus the export updates the
+proposal's preliminary-results section without editing it.
+
+**Proposal (2026-DFG-AVOF, uncommitted there).** A paragraph "Preliminary results for the DAVOF
+core (static gates, 2026)" before "Technical positioning": the two gates, the compact order table
+(Table davof-prelim), TikZ schematics of both gates (the cut cell with alpha_f, the area normal
+and p_k; the sphere in its box with the interface cells and a zoomed cell with the exact arc,
+the recovered plane, e_k and d_k), the three findings, and the PLIC figure (plane and sphere,
+DAVOF / plicRDF / gradAlpha x three resolutions). Builds clean with xelatex (Windows TeX Live
+2025; WSL lacks Arial), 0 unresolved references.
+
+**MEASURED, the plane ladder (N = 8/16/32, linear interpolant).** DAVOF normal L2 = 1e-14 at every
+N (round-off; the fitted "order" is meaningless), plicRDF 1.3e-4, gradAlpha 8.8e-2, isoAlpha
+7.7e-2 at N = 32: the comparators do not recover a plane from exact plane fractions. The sphere
+study was rerun (run 4, identical metrics, now with the VTK surfaces).
+
+**Incidents.** A sed replacement wrote a literal `\n` into the Allwmake loop (fixed by a
+script); the report rule tolerates a failing table/render step (rc recorded in the log, the
+study passes) -- watch for "FAILED (rc=1)" lines; the plane ladder's first run recorded no
+DAVOF tokens because its fvSolution was not a template (case_params.json records only the
+tokens the templates reference) -- fvSolution.template now, DOMAIN_LENGTH in the .parameter.

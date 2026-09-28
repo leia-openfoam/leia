@@ -118,6 +118,9 @@ One study = one `(case, mesh, mode)`; backend switches purely via `PROFILE`.
 `cases/`; the per-case directories use the basename), output in `studies/davof/`,
 theme `davof` -> `docs/davof/davof-article/data/` (README section "DAVOF").
 `cases/davof/planeNormal3D/Allrun` is their exact-solution gate (exits non-zero).
+`libleiaDavofInterface` writes the PLIC surfaces (VTK, `sampledSurface`
+`davofInterface`); `make davof-proposal DEST=...` exports the proposal's table
+and figures (README section "DAVOF").
 `mesh: hexRefined | polyRefined` = statically refined around the interface by
 `workflow/scripts/leiaRefineHexMesh.py` / `leiaRefinePolyMesh.py` in the `mesh`
 rule (pre-processing only, solver unchanged, fields re-initialised on the final

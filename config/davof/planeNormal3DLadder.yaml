@@ -1,0 +1,31 @@
+# DAVOF plane ladder: the exact-solution gate geometry (an implicitPlane with
+# normal (0.3 0.5 0.8124) through (2.13 1.71 1.97) mm in a 4 mm box) on
+# N = 8/16/32, DAVOF state from the linear interpolant (exact for a plane), the
+# geometricVoF cross-check on the identical alpha. Purpose: the PLIC surface
+# renderings (render_davof_interfaces.py -> figures/davof_plic_planeNormal3DLadder.pdf)
+# that the DAVOF proposal includes next to the sphere ones; the CSV metrics are
+# the gate's numbers at three resolutions (DAVOF at round-off at every N).
+#
+#   make studies-one STUDY=davof/planeNormal3DLadder PROFILE=profiles/local
+study_name: planeNormal3DLadder
+studies_dir: studies/davof
+case: davof/planeNormal3DLadder
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestDavofNormal
+theme:  davof
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [8, 16, 32]
+  DAVOF_ALPHA_SOURCE: [linearInterpolant]
+  DAVOF_CROSS_CHECK: [geometricVoF]
+  DAVOF_WISP_TOL: [1e-3]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
