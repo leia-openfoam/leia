@@ -3198,3 +3198,76 @@ the clone roots (my ids only).
 then, delete `curvature-v2512.retired-2026-09-24`, `sdpls-v2512.retired-2026-09-24`,
 `~/.leia_env.retired-2026-09-24`, the two `retired-leia-2026-09-24` subfolders (cluster and
 laptop); record the date here. Until then they are the rollback of this work package.
+
+### 10.6 OpenFOAM-v2606 on the laptop; the davof workspace; the TwoPhaseFlow hook (2026-09-28)
+
+**Why.** The DAVOF (dual area/volume-of-fluid) work will be developed in leia and benchmarked
+against TwoPhaseFlow's plicRDF/isoAdvector through the `interFlow` reference arm. The newest
+OpenFOAM on the laptop is v2606 (`$HOME/OpenFOAM/OpenFOAM-v2606`, Opt only), and TwoPhaseFlow's
+upstream master was ported to it on 2026-08-19. Decision: v2606 is the standard from today,
+everywhere in the repository (the cluster files too; Lichtenberg has only v2512 and needs a
+v2606 source build before its studies run again).
+
+**What changed (three commits before this one).**
+- `etc/leia-env.sh`: the strip rule no longer hard-codes `-v2512`. The account default that
+  `etc/bashrc` put first on the paths is captured before `WM_PROJECT_USER_DIR` is overridden and
+  removed by its exact prefix, for whatever version is sourced (fallback: the bashrc's own
+  formula); the `<name>-vNNNN/platforms` pattern stays for retired user dirs. New: a version
+  stamp, `platforms/<WM_OPTIONS>/.openfoam-version`, written by `Allwmake`, removed by
+  `Allwclean` (before sourcing), refused by `leia-env.sh` on mismatch, because v2512 and v2606
+  share `WM_OPTIONS=linux64GccDPInt32Opt` and the loader cannot tell the two apart. cfMesh:
+  `$HOME/OpenFOAM/cfmesh-$WM_PROJECT_VERSION` when it exists, else `$HOME/OpenFOAM/cfmesh`, with
+  a warning if a stamped cfMesh belongs to another version. TwoPhaseFlow: `$LEIA_TPF_DIR`
+  (default the `TwoPhaseFlow` clone next to this one) appended after leia's own directories, the
+  same shape as the cfMesh hook, so the `interFlow` arm needs no study-config reference.
+- One `sed` over 363 files: `OpenFOAM-v2512/etc/bashrc` -> `OpenFOAM-v2606/etc/bashrc` in 349
+  study configs, `config/config.yaml`, the slurm and local8 profiles, both sbatch drivers, and
+  the workflow scripts (`local-mesh-wrappers/pMesh` included).
+- Docs: README, AGENTS/CLAUDE (byte-identical), requirements, Makefile, CLUSTER, SLURM, METHOD.
+
+**The davof workspace, `$HOME/OpenFOAM/repos/davof/`.** Fresh clones, both building into their
+own `platforms/`: `leia` (this branch) and `TwoPhaseFlow` on a local branch `davof` = the fork's
+`feature/parasitic-currents` (the `Foam::twoPhaseFlow` inline-namespace fix for the
+libgeometricVoF collision, 5aa7e9a) merged with upstream `ba10702`; no conflicts. TwoPhaseFlow got
+an `etc/davof-env.sh` of the same shape as ours (account default stripped, clone-local install,
+version stamp), sourced by its `Allwmake`/`Allwclean`; no `Make/files` or `Make/options` changed.
+Not pushed. An untracked `davof/env.sh` sources OpenFOAM, then TwoPhaseFlow, then leia.
+`$HOME/OpenFOAM/cfmesh-v2606` was built from OpenFOAM-v2606's own `plugins/cfmesh` with
+`./Allwmake -prefix=<dir>/platforms/<WM_OPTIONS>` (25 binaries, `libmeshLibrary.so`, stamped);
+the SourceForge-based `$HOME/OpenFOAM/cfmesh` stays the v2512 build.
+
+**MEASURED, laptop, 2026-09-28.**
+- leia on v2606: `./Allwmake` clean without any source change; `leia-check-deps: PASS`, eight
+  stamps written, 22 binaries and 11 libraries in `platforms/linux64GccDPInt32Opt`, stamp `v2606`.
+- Bit-identity across OpenFOAM versions: `cases/2Dtranslation` (367 steps) run with the v2512
+  build of `repos/leia` (c431677) and with this v2606 build; `compare_metrics_csv.py --tol 0`
+  on `leiaSemiLagrangeLevelSetFoam.csv`: 368 rows, 12 columns, max relative difference 0 in
+  every column, PASS. Same result at 1e-12 and 1e-8, as it must be.
+- The environment: after `etc/leia-env.sh` under v2606, zero `tmaric-v2606` entries on PATH and
+  LD_LIBRARY_PATH (that directory holds a stale `libVoF.so`, `libalphaFieldFunctions.so` and
+  `setAlphaField` of an unrelated build), eight OpenFOAM-v2606 entries kept, leia's directories
+  first, then OpenFOAM and ThirdParty, then `cfmesh-v2606`, then the TwoPhaseFlow clone. Sourcing
+  twice adds nothing. Under a v2512 shell both env files refuse with the stamp message (rc 1).
+- TwoPhaseFlow on v2606: builds clean (7 executables, 9 libraries). Collision checks on
+  `libVoF.so`: 41 defined symbols under `Foam::twoPhaseFlow::reconstructionSchemes`, 0 under
+  `Foam::reconstructionSchemes`, 0 strong symbols shared with `libgeometricVoF.so`;
+  `run/parasiticCurrents/stationaryDroplet2D` (function objects loaded) exits 0 after 20 steps,
+  0 "Duplicate entry"; `interFlow -lib geometricVoF` on the same case also exits 0 with 0
+  duplicates. `ldd interFlow` resolves `libVoF`/`libsurfaceForces` in the clone and
+  `libalphaFieldFunctions` in OpenFOAM-v2606, nothing in `tmaric-v2606`.
+- The interFlow arm through the real launch path: a temporary study (copy of
+  `config/interFlowDroplet2D.yaml`; N 64, RDF, np 4, END_TIME 0.002) via
+  `make studies-one`: 10 of 10 Snakemake steps, `interFlow -parallel` 94 steps to `End`, 0
+  "Duplicate entry", `interFlow.csv` written by the post-solve script. The only `interFlow` on
+  a v2606 path is the davof clone's (`command -v` in the driver shell). The report step's
+  `make_convergence_table.py` prints "no sdpls studies found" and rc 1 for this arm, as before
+  (the report rule tolerates it). Study, config and the copied errors table were deleted.
+- Account defaults untouched: `ls -la --time-style=full-iso` of `tmaric-v2606` and
+  `tmaric-v2512` `platforms/*/{bin,lib}` before and after are identical, and `find -newer` the
+  before-listing finds 0 files (`davof/logs/acct-default-*-{before,after}.txt`).
+
+**Open.** Lichtenberg: build OpenFOAM-v2606 there before the next cluster study (every preamble
+now sources v2606). The cfMesh codebases differ (community plugin on v2606, SourceForge on
+v2512), so polyhedral meshes may differ slightly between the two; measure before comparing
+poly results across the versions. The `feature/eulerian-rholent` branch edits `Allwmake` and
+`etc/leia-env.sh` too; its merge onto this `leia-env.sh` is manual.
