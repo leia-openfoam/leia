@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+# Installed binaries and the OpenFOAM-version stamp, removed BEFORE sourcing so that a
+# stamp of another version can never block the clean.
+rm -rf "$ROOT/platforms"
 . "$ROOT/etc/leia-env.sh" || exit 1
 
 wclean all "$ROOT/src"
