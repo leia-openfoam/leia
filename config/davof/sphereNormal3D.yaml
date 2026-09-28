@@ -48,6 +48,31 @@
 #   (34x), gradAlpha 0.07 (0.066, no convergence), isoAlpha 0.52. TwoPhaseFlow's
 #   own ladder (cutCellIso / cutCellImpFunc): plicRDF 1.08 / 1.06, gradAlpha
 #   0.07, isoAlpha 0.55 / 0.51 -- the cross-check reproduces it.
+# PREDICTION 3 (pre-registered 2026-09-29, before run 3, the explicit position):
+#   the plane position p_c = (3 alpha_c V_c - sum_f alpha_f (x_f - x_c).S_f)/|m_c|
+#   (the corrected 2020 AOF formula, exact for a plane on every polyhedral cell)
+#   scored as E_POS_* = the distance of the centroid of the plane-cell polygon
+#   from the exact sphere, in metres: p(E_POS_L2) = 2.0 +- 0.2 for exactSphere;
+#   2.0 +- 0.3 for linearInterpolant and planePhaseIndicator too, because the
+#   offset error is O(h^2) even where the normal is O(h) (3 dV = O(h^4), the
+#   face terms O(h^4), |m_c| = O(h^2)) and the O(h) tilt about the foot point
+#   contributes O(h) x O(h) at the centroid; plicRDF ~2 (volume-matched). The
+#   realizability diagnostics MAX_VOL_DIFF_PLANE and MAX_AREA_DIFF_PLANE are
+#   O(h^2) and O(h) for the curved states, round-off (< 1e-12) on the plane gate.
+#   [MEASURED run 3: MAX_VOL_DIFF_PLANE is O(h), not O(h^2): 5.9e-2, 3.3e-2,
+#   1.7e-2, 8.6e-3 for exactSphere -- the fraction cut by a plane at the
+#   patch's mean offset differs from the exact one by sagitta x area / V_c =
+#   O(h/R). The area diagnostic is O(h) as predicted, noisy in the max.]
+# MEASURED 2026-09-29 (run 3, STATUS 10.8): HELD for every arm. p(E_POS_L2):
+#   exactSphere 2.00 (pairwise 2.00 / 2.00 / 2.00), linearInterpolant 2.03,
+#   planePhaseIndicator 2.00; E_POS_L2 at N = 160: 4.35e-8 m (1.7e-3 h),
+#   1.69e-8 m, 2.02e-7 m. plicRDF on the exact alpha: 2.00 and 4.35e-8 m, the
+#   same position as DAVOF's explicit one to 0.02 %: on a realizable-to-leading-
+#   order state the explicit formula lands on the volume-matching plane. On the
+#   linear-interpolant alpha plicRDF 7.94e-8 m, DAVOF 1.69e-8 m (4.7x better).
+#   gradAlpha 1.95, isoAlpha 1.99; TwoPhaseFlow's own LCentre1: plicRDF 2.00.
+#   Plane gate: E_POS_LINF 1.0e-16 m and 8.9e-17 m (both states), realizability
+#   |alphaPlane - alpha| 1.9e-15 / 1.5e-14, |A n - m_c|/h^2 6.0e-14 / 9.6e-14.
 # PASS: exactSphere order(E_L2_N) >= 1.8 AND order(E_AREA_REL) >= 1.8;
 #   linearInterpolant MAX_CONSISTENCY < 1e-10 at every rung (the identity).
 # FALSIFIED: exactSphere order(E_L2_N) < 1.7 (the method claim of the

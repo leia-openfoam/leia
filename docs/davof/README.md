@@ -14,8 +14,10 @@ with `|m_c|` the interface area in the cell and `m_c/|m_c|` the normal out of
 the liquid. Library: `src/leiaLevelSet/davof` (`libleiaDavof`). Gates:
 
 - `cases/davof/planeNormal3D/Allrun`: exact-solution gate (a plane; the
-  normal, the tet/face consistency and the alpha against the exact plane cut
-  at round-off, or the app exits non-zero).
+  normal, the explicit plane position, the tet/face consistency, the alpha
+  against the exact plane cut and the realizability of the state by the
+  recovered plane at round-off for both leia states, or the app exits
+  non-zero).
 - `config/davof/sphereNormal3D.yaml`: static gate 1, the normal and the total
   area of a sphere on the uniform ladder N = 20/40/80/160 from three states
   (`alphaSource exactSphere`: exact face and cell fractions; `linearInterpolant`:

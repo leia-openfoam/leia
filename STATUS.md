@@ -3371,3 +3371,61 @@ FoamFile header in `simulationParameter` (added; OpenFOAM merges it on `#include
 (`mesh: poly`), the one-step face-fraction update test, and a wispTol sweep are one config
 each away. `leiaSetFields`' every-cell plane initialisation deserves its own note in the
 phase-indicator docs.
+
+### 10.8 DAVOF static gate 1b: the explicit plane position, measured (2026-09-29)
+
+**Why.** The 2020 area-of-fluid draft (`research/articles/2020-article-area-of-fluid`) holds the
+explicit position formula the proposal alludes to. Re-derived from the Gauss theorem for x on the
+liquid sub-volume, corrected in the draft (sign; one degree of freedom, the signed distance p_k of
+the plane from the cell centroid, not a "centroid" vector; the face-centroid form is EXACT on
+planar faces because (x - x_k).n_f is constant there; a remark on the d-fold amplification of a
+volume defect) and added to the proposal as eq:avof-position; verified symbolically and in exact
+rational arithmetic (`verification/aof_identities_sympy.py`: corner cuts of the cube and the
+square, 157 rational planes through a cube in every configuration, zero residual, the 2020 sign
+returns -p_k, a defect dV moves the plane by 3 dV/|A|). Implemented as
+`davofState::planePosition()`:
+
+    p_c = ( 3 alpha_c V_c - sum_f alpha_f (x_f - x_c).S_f^out ) / |m_c|,   plane {x : (x - x_c).n_c = p_c},
+
+then the plane is cut through the cell on the Detrixhe-Aslam tets (exact for a plane): the
+polygon centroid `xPlane.davof`, area `APlane.davof`, cut fraction `alphaPlane.davof`. Position
+error per model: E_POS_L1/L2/LINF, the distance [m] of the polygon centroid (the geometricVoF
+models' `centre_`) from the exact surface over the interface cells; realizability diagnostics
+MAX_VOL_DIFF_PLANE = max |alphaPlane - alpha|, MAX_AREA_DIFF_PLANE = max |A n - m_c|/h^2; the
+plane gate checks E_POS_LINF/h and both diagnostics at 1e-12 for both leia states.
+
+**Pre-registered prediction 3 (config header): HELD.** p(E_POS_L2): exactSphere 2.00 (pairwise
+2.00 / 2.00 / 2.00), linearInterpolant 2.03 (2.07 / 2.03 / 1.99), planePhaseIndicator 2.00;
+E_POS_L2 at N = 160: 4.35e-8 m (1.7e-3 h), 1.69e-8 m, 2.02e-7 m; L2/h falls linearly (1.4e-2 ->
+1.7e-3 for the exact state). Every plane-based position is second order, plicRDF, isoAlpha and
+gradAlpha included (2.00 / 1.99 / 1.95 on the exact alpha; TwoPhaseFlow's own LCentre1: plicRDF
+2.00). On the exact alpha the explicit position coincides with plicRDF's volume-matched one to
+0.02 % (4.350e-8 vs 4.349e-8 m): the identity lands on the volume-matching plane when the state is
+consistent to leading order. On the linear-interpolant alpha the explicit position is 4.7x more
+accurate than the volume-matched plane of the same alpha (1.69e-8 vs 7.94e-8 m); on the
+plane-indicator state, where the two planes of a face disagree, the volume-matched plane is
+slightly better (1.74e-7 vs 2.02e-7 m). DAVOF's foot point x_c + p_c n_c: L2 4.6e-8 m at N = 160
+for the exact state, the same order.
+
+**One diagnostic prediction was WRONG.** MAX_VOL_DIFF_PLANE for the curved exact state was
+pre-registered as O(h^2); measured 5.9e-2, 3.3e-2, 1.7e-2, 8.6e-3, i.e. O(h): the fraction cut by
+a plane at the patch's mean offset differs from the exact fraction by (sagitta x patch area)/V_c =
+O(h^2/R x h^2 / h^3) = O(h/R). The area diagnostic is O(h) as predicted, noisy in the max
+(0.18, 0.099, 0.087, 0.056). Both are round-off on the plane gate (1.9e-15 / 1.5e-14 and 6.0e-14 /
+9.6e-14 for the two states); E_POS_LINF there 1.0e-16 m and 8.9e-17 m.
+
+**Where things are.** leia commit (this one): davofState.{H,C} (planePosition, four fields),
+leiaTestDavofNormal (position norms, foot point, realizability, gate), make_davof_normal_table.py
+(E_POS_* metrics, figure, tex column; TwoPhaseFlow's LCentre1/LCentreInf merged as E_POS_L1/LINF),
+config header, README/docs, theme data (`davof_normal_e_pos_l2_sphereNormal3D.png` and the
+tables). Article: `sections/area-of-fluid-method-interface-recon.tex` corrected in place (comments
+mark every change), `sections/results.tex` written with the plane and sphere tables,
+`verification/aof_identities_sympy.py` added. Proposal: eq:avof-position with the two properties
+(fraction accuracy decides the order; 3-fold sensitivity to inconsistency) inserted after
+eq:avof-normal. Not touched in the proposal, still flagged from the 2026-09-28 review: the face
+update's denominator (|S_f| where the pre-image area belongs) and the curvature factor (H vs 2H).
+
+**Next (agreed 2026-09-29).** Proposal: the order tables and TikZ schematics of both tests in the
+preliminary-work section. leia: TwoPhaseFlow's PLIC VTK writer as a leia library, the plane and
+sphere interfaces of gradAlpha, plicRDF and DAVOF at three resolutions rendered to PDF by a
+Snakemake/Python job and included in the proposal automatically.

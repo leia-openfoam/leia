@@ -774,7 +774,23 @@ the per-case directories use the basename).
 Norms per model over the interface cells: `e_c = |n_c - n_exact(x_c)|` at the
 reconstructed patch centroid (`xS.davof` for DAVOF), `E_L1_N = mean`, `E_L2_N =
 root mean square`, `E_LINF_N = max`; area-weighted `E_L1_N_AW`, `E_L2_N_AW`;
-`E_AREA_REL = |sum_c |m_c| - A_exact|/A_exact` (4 pi R^2 for a sphere). CSVs in the
+`E_AREA_REL = |sum_c |m_c| - A_exact|/A_exact` (4 pi R^2 for a sphere).
+
+The explicit plane position (`davofState::planePosition()`, the corrected 2020
+AOF formula, the Gauss theorem for x on the liquid sub-volume):
+`p_c = (3 alpha_c V_c - sum_f alpha_f (x_f - x_c).S_f^out)/|m_c|`, the plane
+`{x : (x - x_c).n_c = p_c}`; exact on planar faces, no iteration, nothing beyond
+`(alpha_c, alpha_f)` and the mesh geometry. The plane is cut through the cell on
+the Detrixhe-Aslam tets: `xPlane.davof` (polygon centroid), `APlane.davof`,
+`alphaPlane.davof` (the cut volume fraction). Position error per model:
+`E_POS_L1/L2/LINF` = mean / rms / max over the interface cells of the distance
+[m] of the polygon centroid (`centre_` for the geometricVoF models) from the
+exact surface; `E_POS_FOOT_L2/LINF` the same for DAVOF's foot point
+`x_c + p_c n_c`. Realizability diagnostics: `MAX_VOL_DIFF_PLANE` =
+`max |alphaPlane - alpha|`, `MAX_AREA_DIFF_PLANE` = `max |A n - m_c|/h^2`
+(round-off for a plane, O(h^2) and O(h) for a curved surface whose state no
+single plane realizes; `-expectExact` gates them with the position at 1e-12).
+CSVs in the
 case: `leiaTestDavofNormal.csv` (one row, DAVOF + diagnostics; aggregated into the
 study database as `leiaTestDavofNormal.<COL>`) and `leiaTestDavofNormalModels.csv`
 (tidy, one row per MODEL; read by `workflow/scripts/make_davof_normal_table.py`,

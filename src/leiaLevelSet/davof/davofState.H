@@ -35,6 +35,17 @@
     (a consistency check against m_c), their area AS_c and their area-weighted
     centroid xS_c (where the exact normal is evaluated by the tests).
 
+    The explicit plane position (planePosition()), the Gauss theorem for the
+    position vector on the liquid sub-volume, exact on planar faces because
+    (x - x_c).n_f is constant on a face:
+
+        p_c = ( 3 alpha_c V_c - sum_f alpha_f (x_f - x_c).S_f^out ) / |m_c|,
+
+    the plane {x : (x - x_c).n_c = p_c}, n_c = m_c/|m_c|. Together with the
+    normal it recovers the PLIC plane of a cell from (alpha_c, alpha_f) alone,
+    without iteration or neighbours; for a state no plane realizes, a volume
+    defect dV moves it by 3 dV/|m_c| (three times a volume-matching shift).
+
       exactSphere         The exact state of an implicitSphere on an axis-aligned
                           hex mesh (davofSphereGeometry.H): face fractions from
                           the circle-polygon intersection, cell fractions from
@@ -75,6 +86,14 @@ class davofState
     volScalarField AS_;             // AS.davof, patch area [m^2]
     vectorField mTet_;              // sum of the tet zero-set area vectors
     scalar maxAlphaClip_;
+
+    // The explicit plane position (planePosition()):
+    volScalarField pPlane_;         // pPlane.davof, (x - x_c).n on the plane [m]
+    volVectorField xPlane_;         // xPlane.davof, centroid of the plane-cell polygon
+    volScalarField APlane_;         // APlane.davof, area of that polygon [m^2]
+    volScalarField alphaPlane_;     // alphaPlane.davof, cell fraction cut by the plane
+    scalar maxVolDiffPlane_;        // max_c |alphaPlane_c - alpha_c|
+    scalar maxAreaDiffPlane_;       // max_c |A_polygon n - m_c| / V_c^(2/3)
 
     //- Cell fractions and zero-set patches of cellI from vertex values given
     //  by phiCell(c), phiFace(c, f), phiPoint(c, p).
@@ -137,6 +156,28 @@ public:
 
     //- max_c |m_c - mTet_c| / V_c^(2/3), reduced over ranks
     scalar maxConsistency() const;
+
+    //- The explicit position of the DAVOF plane in every interface cell
+    //  (after areaNormal()), the Gauss theorem for x on the liquid sub-volume:
+    //
+    //      p_c = ( 3 alpha_c V_c - sum_f alpha_f (x_f - x_c).S_f^out ) / |m_c|
+    //
+    //  with n_c = m_c/|m_c| pointing out of the liquid, the plane
+    //  {x : (x - x_c).n_c = p_c}. Exact on planar faces ((x - x_c).n_f is
+    //  constant there), no iteration, nothing beyond (alpha_c, alpha_f) and
+    //  the mesh geometry. The plane is then cut through the cell on the same
+    //  Detrixhe-Aslam tets (exact for a plane): xPlane_c, APlane_c and the
+    //  cut volume fraction alphaPlane_c; the last two against alpha_c and
+    //  m_c are the realizability diagnostics (round-off for a plane, O(h^2)
+    //  for a curved surface whose state no single plane realizes).
+    void planePosition();
+
+    scalar maxVolDiffPlane() const { return maxVolDiffPlane_; }
+    scalar maxAreaDiffPlane() const { return maxAreaDiffPlane_; }
+    const volScalarField& pPlane() const { return pPlane_; }
+    const volVectorField& xPlane() const { return xPlane_; }
+    const volScalarField& APlane() const { return APlane_; }
+    const volScalarField& alphaPlane() const { return alphaPlane_; }
 
     //- Interface cell: |m_c| > wispTol V_c^(2/3); wisp: 0 < |m_c| <= that.
     scalar wispThreshold(const label cellI) const;

@@ -68,6 +68,7 @@ Description
 #include "leiaVersionRegistry.H"
 #include "reconstructionSchemes.H"
 #include "foamGeometry.H"
+#include <functional>
 
 using namespace Foam;
 
@@ -82,8 +83,50 @@ struct normResult
     scalar L1 = 0, L2 = 0, Linf = 0;
     scalar L1aw = 0, L2aw = 0;
     scalar LinfAll = 0;
+    // Position: the distance [m] of the reconstructed plane's polygon centroid
+    // from the exact surface, mean / rms / max over the interface cells.
+    scalar P1 = 0, P2 = 0, Pinf = 0;
+    // DAVOF only: the same for the foot point x_c + p_c n_c of the plane.
+    scalar Pfoot2 = 0, Pfootinf = 0;
     scalar cpu = 0;
 };
+
+
+//- Position norms of the points xpos over the interface cells (the same set
+//  as evaluateNormals: |av| > wispTol V^(2/3)), dist the exact unsigned
+//  distance to the surface. Fills r.P1, r.P2, r.Pinf.
+void evaluatePositions
+(
+    normResult& r,
+    const fvMesh& mesh,
+    const vectorField& av,
+    const vectorField& xpos,
+    const scalar wispTol,
+    const std::function<scalar(const point&)>& dist,
+    scalarField* eOut
+)
+{
+    const scalarField& V = mesh.V();
+    scalar s1 = 0, s2 = 0, li = 0;
+    label nI = 0;
+    forAll(av, c)
+    {
+        const scalar a = mag(av[c]);
+        if (a <= wispTol*Foam::pow(V[c], 2.0/3.0)) continue;
+        const scalar e = dist(xpos[c]);
+        ++nI;
+        s1 += e;
+        s2 += e*e;
+        li = max(li, e);
+        if (eOut) (*eOut)[c] = e;
+    }
+    nI = returnReduce(nI, sumOp<label>());
+    s1 = returnReduce(s1, sumOp<scalar>());
+    s2 = returnReduce(s2, sumOp<scalar>());
+    r.Pinf = returnReduce(li, maxOp<scalar>());
+    r.P1 = (nI > 0) ? s1/nI : 0;
+    r.P2 = (nI > 0) ? Foam::sqrt(s2/nI) : 0;
+}
 
 
 //- Norms of the normal error of the per-cell area vectors av (sign*av points
@@ -209,6 +252,37 @@ int main(int argc, char *argv[])
         aExact = 4.0*constant::mathematical::pi*radius*radius;
     }
 
+    // Exact unsigned distance of a point from the surface: closed form for
+    // the sphere and the plane, the first-order |psi|/|grad psi| otherwise.
+    std::function<scalar(const point&)> exactDistance;
+    if (surfType == "implicitSphere")
+    {
+        const vector centre = surfDict.get<vector>("center");
+        const scalar R = radius;
+        exactDistance = [=](const point& x) -> scalar
+        {
+            return mag(mag(x - centre) - R);
+        };
+    }
+    else if (surfType == "implicitPlane")
+    {
+        const implicitPlane pl(surfDict);
+        const vector n0 = pl.normal()/mag(pl.normal());
+        const vector x0 = pl.position();
+        exactDistance = [=](const point& x) -> scalar
+        {
+            return mag((x - x0) & n0);
+        };
+    }
+    else
+    {
+        const implicitSurface& s = surface();
+        exactDistance = [&s](const point& x) -> scalar
+        {
+            return mag(s.value(x))/max(mag(s.grad(x)), VSMALL);
+        };
+    }
+
     // ---- The DAVOF state -----------------------------------------------------
     davofState st(mesh, davofDict);
     cpuTime timer;
@@ -257,6 +331,7 @@ int main(int argc, char *argv[])
         st.computeFromPlanePhaseIndicator(psiPtr(), analytic);
     }
     st.areaNormal();
+    st.planePosition();
     const scalar cpuDavof = timer.cpuTimeIncrement();
 
     // ---- Mesh size -----------------------------------------------------------
@@ -296,6 +371,14 @@ int main(int argc, char *argv[])
         zeroGradientFvPatchVectorField::typeName
     );
 
+    volScalarField ePosDavof
+    (
+        IOobject("ePos.davof", runTime.timeName(), mesh,
+                 IOobject::NO_READ, IOobject::AUTO_WRITE),
+        mesh, dimensionedScalar(dimLength, Zero),
+        zeroGradientFvPatchScalarField::typeName
+    );
+
     List<normResult> results;
     {
         normResult r = evaluateNormals
@@ -305,14 +388,31 @@ int main(int argc, char *argv[])
             &eDavof.primitiveFieldRef(), &marker.primitiveFieldRef()
         );
         r.cpu = cpuDavof;
-        results.append(r);
+        // The explicit plane position: its polygon centroid, and the foot
+        // point x_c + p_c n_c of the cell centre on the plane.
+        evaluatePositions
+        (
+            r, mesh, st.m().primitiveField(), st.xPlane().primitiveField(),
+            st.wispTol(), exactDistance, &ePosDavof.primitiveFieldRef()
+        );
+        vectorField xFoot(mesh.cellCentres());
         forAll(nDavof, c)
         {
             if (st.isInterfaceCell(c))
             {
                 nDavof[c] = st.m()[c]/mag(st.m()[c]);
+                xFoot[c] += st.pPlane()[c]*nDavof[c];
             }
         }
+        normResult rFoot;
+        evaluatePositions
+        (
+            rFoot, mesh, st.m().primitiveField(), xFoot, st.wispTol(),
+            exactDistance, nullptr
+        );
+        r.Pfoot2 = rFoot.P2;
+        r.Pfootinf = rFoot.Pinf;
+        results.append(r);
     }
     // A COPY: results grows below (the cross-check appends), which reallocates
     // the list and would leave a reference dangling.
@@ -327,6 +427,9 @@ int main(int argc, char *argv[])
     const scalar eAreaRel = (aExact > 0) ? mag(rd.A - aExact)/aExact : -1;
     const scalar eAreaPLRel = (aExact > 0) ? mag(aPL - aExact)/aExact : -1;
     const scalar maxAlphaClip = returnReduce(st.maxAlphaClip(), maxOp<scalar>());
+    // Realizability of the state by the DAVOF plane (planePosition()).
+    const scalar maxVolDiffPlane = st.maxVolDiffPlane();
+    const scalar maxAreaDiffPlane = st.maxAreaDiffPlane();
 
     // alpha.davof against the leiaSetFields field, when present.
     scalar maxAlphaDiffDA = -1;
@@ -366,6 +469,7 @@ int main(int argc, char *argv[])
     const dictionary& crossDict = davofDict.subOrEmptyDict("crossCheck");
     const word crossSet = crossDict.getOrDefault<word>("set", "none");
     PtrList<volScalarField> eModels;
+    PtrList<volScalarField> ePosModels;
     if (crossSet == "geometricVoF")
     {
         const wordList models
@@ -415,6 +519,23 @@ int main(int argc, char *argv[])
                 &eModels.last().primitiveFieldRef(), nullptr
             );
             r.cpu = cpuModel;
+            ePosModels.append
+            (
+                new volScalarField
+                (
+                    IOobject("ePos." + model, runTime.timeName(), mesh,
+                             IOobject::NO_READ, IOobject::AUTO_WRITE),
+                    mesh, dimensionedScalar(dimLength, Zero),
+                    zeroGradientFvPatchScalarField::typeName
+                )
+            );
+            // Their centre_ is the centroid of the PLIC polygon.
+            evaluatePositions
+            (
+                r, mesh, rs->normal().primitiveField(),
+                rs->centre().primitiveField(), st.wispTol(), exactDistance,
+                &ePosModels.last().primitiveFieldRef()
+            );
             results.append(r);
         }
     }
@@ -438,7 +559,11 @@ int main(int argc, char *argv[])
         << "max |m_c - sum caps|/h^2: " << maxConsistency << nl
         << "max alpha clip          : " << maxAlphaClip << nl
         << "max |alpha - " << alphaName << "| : " << maxAlphaDiffDA << nl
-        << "max |alpha - plane cut| : " << maxAlphaDiffPlaneCut << nl;
+        << "max |alpha - plane cut| : " << maxAlphaDiffPlaneCut << nl
+        << "plane realizability     : max |alphaPlane - alpha| = " << maxVolDiffPlane
+        << ", max |A n - m_c|/h^2 = " << maxAreaDiffPlane << nl
+        << "position (DAVOF foot pt): L2/Linf = " << rd.Pfoot2 << " / " << rd.Pfootinf
+        << " m" << nl;
     for (const normResult& r : results)
     {
         Info<< "  " << r.model << "  N_S = " << r.nInterface
@@ -447,7 +572,8 @@ int main(int argc, char *argv[])
             << "  L1/L2/Linf = " << r.L1 << " / " << r.L2 << " / " << r.Linf
             << "  (area-weighted " << r.L1aw << " / " << r.L2aw
             << "; Linf incl. wisps " << r.LinfAll
-            << "; cpu " << r.cpu << " s)" << nl;
+            << "; position L1/L2/Linf = " << r.P1 << " / " << r.P2 << " / " << r.Pinf
+            << " m; cpu " << r.cpu << " s)" << nl;
     }
     Info<< endl;
 
@@ -461,6 +587,8 @@ int main(int argc, char *argv[])
               "E_AREA_PL_REL,SUM_M_REL,MAX_CONSISTENCY,MAX_ALPHA_CLIP,"
               "MAX_ALPHA_DIFF_DA,MAX_ALPHA_DIFF_PLANECUT,"
               "E_L1_N,E_L2_N,E_LINF_N,E_L1_N_AW,E_L2_N_AW,E_LINF_N_WISP,"
+              "E_POS_L1,E_POS_L2,E_POS_LINF,E_POS_FOOT_L2,E_POS_FOOT_LINF,"
+              "MAX_VOL_DIFF_PLANE,MAX_AREA_DIFF_PLANE,"
               "CPU_SECONDS" << nl;
         os << dx << ',' << nCellsGlobal << ',' << mesh.nGeometricD() << ','
            << st.alphaSource() << ',' << st.wispTol() << ',' << radius << ','
@@ -471,13 +599,17 @@ int main(int argc, char *argv[])
            << maxAlphaDiffPlaneCut << ','
            << rd.L1 << ',' << rd.L2 << ',' << rd.Linf << ','
            << rd.L1aw << ',' << rd.L2aw << ',' << rd.LinfAll << ','
+           << rd.P1 << ',' << rd.P2 << ',' << rd.Pinf << ','
+           << rd.Pfoot2 << ',' << rd.Pfootinf << ','
+           << maxVolDiffPlane << ',' << maxAreaDiffPlane << ','
            << rd.cpu << nl;
 
         OFstream osM("leiaTestDavofNormalModels.csv");
         osM.precision(12);
         osM << "MODEL,ALPHA_SOURCE,DELTA_X,N_CELLS_MESH,R_OVER_H,N_INTERFACE,"
                "N_WISP,A_EXACT,A_MODEL,E_AREA_REL,E_L1_N,E_L2_N,E_LINF_N,"
-               "E_L1_N_AW,E_L2_N_AW,E_LINF_N_WISP,CPU_SECONDS" << nl;
+               "E_L1_N_AW,E_L2_N_AW,E_LINF_N_WISP,"
+               "E_POS_L1,E_POS_L2,E_POS_LINF,CPU_SECONDS" << nl;
         for (const normResult& r : results)
         {
             const scalar eA = (aExact > 0) ? mag(r.A - aExact)/aExact : -1;
@@ -486,6 +618,7 @@ int main(int argc, char *argv[])
                 << r.nWisp << ',' << aExact << ',' << r.A << ',' << eA << ','
                 << r.L1 << ',' << r.L2 << ',' << r.Linf << ','
                 << r.L1aw << ',' << r.L2aw << ',' << r.LinfAll << ','
+                << r.P1 << ',' << r.P2 << ',' << r.Pinf << ','
                 << r.cpu << nl;
         }
     }
@@ -499,11 +632,17 @@ int main(int argc, char *argv[])
         // plane-DA state are exact for a plane (measured ~1e-14 for the
         // interpolant, ~1e-13 for the least-squares plane fit).
         const scalar tol = 1e-12;
+        // The position in units of h; the realizability diagnostics are
+        // dimensionless already.
+        const scalar posLinfH = (dx > 0) ? rd.Pinf/dx : rd.Pinf;
         if
         (
             rd.Linf > tol
          || maxConsistency > tol
          || (maxAlphaDiffPlaneCut >= 0 && maxAlphaDiffPlaneCut > tol)
+         || posLinfH > tol
+         || maxVolDiffPlane > tol
+         || maxAreaDiffPlane > tol
          || rd.nInterface == 0
         )
         {
@@ -511,6 +650,9 @@ int main(int argc, char *argv[])
                 << "-expectExact FAILED: E_LINF_N = " << rd.Linf
                 << ", MAX_CONSISTENCY = " << maxConsistency
                 << ", MAX_ALPHA_DIFF_PLANECUT = " << maxAlphaDiffPlaneCut
+                << ", E_POS_LINF/h = " << posLinfH
+                << ", MAX_VOL_DIFF_PLANE = " << maxVolDiffPlane
+                << ", MAX_AREA_DIFF_PLANE = " << maxAreaDiffPlane
                 << ", N_INTERFACE = " << rd.nInterface
                 << " (tolerance " << tol << ")" << exit(FatalError);
         }

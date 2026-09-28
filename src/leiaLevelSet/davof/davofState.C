@@ -89,7 +89,37 @@ Foam::davofState::davofState(const fvMesh& mesh, const dictionary& dict)
         zeroGradientFvPatchScalarField::typeName
     ),
     mTet_(mesh.nCells(), Zero),
-    maxAlphaClip_(0)
+    maxAlphaClip_(0),
+    pPlane_
+    (
+        IOobject("pPlane.davof", mesh.time().timeName(), mesh,
+                 IOobject::NO_READ, IOobject::AUTO_WRITE),
+        mesh, dimensionedScalar(dimLength, Zero),
+        zeroGradientFvPatchScalarField::typeName
+    ),
+    xPlane_
+    (
+        IOobject("xPlane.davof", mesh.time().timeName(), mesh,
+                 IOobject::NO_READ, IOobject::AUTO_WRITE),
+        mesh, dimensionedVector(dimLength, Zero),
+        zeroGradientFvPatchVectorField::typeName
+    ),
+    APlane_
+    (
+        IOobject("APlane.davof", mesh.time().timeName(), mesh,
+                 IOobject::NO_READ, IOobject::AUTO_WRITE),
+        mesh, dimensionedScalar(dimArea, Zero),
+        zeroGradientFvPatchScalarField::typeName
+    ),
+    alphaPlane_
+    (
+        IOobject("alphaPlane.davof", mesh.time().timeName(), mesh,
+                 IOobject::NO_READ, IOobject::AUTO_WRITE),
+        mesh, dimensionedScalar(dimless, Zero),
+        zeroGradientFvPatchScalarField::typeName
+    ),
+    maxVolDiffPlane_(0),
+    maxAreaDiffPlane_(0)
 {
     if
     (
@@ -582,6 +612,110 @@ void Foam::davofState::areaNormal()
 }
 
 
+void Foam::davofState::planePosition()
+{
+    const vectorField& Sf = mesh_.faceAreas();
+    const vectorField& Cf = mesh_.faceCentres();
+    const vectorField& C = mesh_.cellCentres();
+    const scalarField& V = mesh_.V();
+    const labelUList& own = mesh_.faceOwner();
+    const labelUList& nei = mesh_.faceNeighbour();
+    const label nInt = mesh_.nInternalFaces();
+    const pointField& points = mesh_.points();
+    const faceList& faces = mesh_.faces();
+    const cellList& cells = mesh_.cells();
+
+    // sum_f alpha_f (x_f - x_c).S_f^out per cell: S_f is outward for the
+    // owner and inward for the neighbour, as in areaNormal().
+    scalarField faceMoment(mesh_.nCells(), Zero);
+    forAll(Sf, faceI)
+    {
+        const scalar af = alphaf_[faceI];
+        if (af == 0) continue;
+        faceMoment[own[faceI]] += af*((Cf[faceI] - C[own[faceI]]) & Sf[faceI]);
+        if (faceI < nInt)
+        {
+            faceMoment[nei[faceI]] -= af*((Cf[faceI] - C[nei[faceI]]) & Sf[faceI]);
+        }
+    }
+
+    scalarField& p = pPlane_.primitiveFieldRef();
+    vectorField& xp = xPlane_.primitiveFieldRef();
+    scalarField& Ap = APlane_.primitiveFieldRef();
+    scalarField& ap = alphaPlane_.primitiveFieldRef();
+    maxVolDiffPlane_ = 0;
+    maxAreaDiffPlane_ = 0;
+
+    forAll(cells, c)
+    {
+        p[c] = 0;
+        xp[c] = C[c];
+        Ap[c] = 0;
+        ap[c] = alpha_[c];
+        if (!isInterfaceCell(c)) continue;
+
+        const scalar mMag = mag(m_[c]);
+        const vector n = m_[c]/mMag;
+        p[c] = (3.0*alpha_[c]*V[c] - faceMoment[c])/mMag;
+
+        // The plane through the cell on the Detrixhe-Aslam tets: the plane is
+        // linear, so the tet fractions and zero sets are exact for it.
+        const point& xc = C[c];
+        const scalar phic = -p[c];
+        auto phiAt = [&](const point& x) -> scalar
+        {
+            return ((x - xc) & n) - p[c];
+        };
+        scalar liquidVol = 0, totalVol = 0, as = 0;
+        vector mt(Zero), xs(Zero);
+        const labelList& cFaces = cells[c];
+        forAll(cFaces, cf)
+        {
+            const label faceI = cFaces[cf];
+            const face& f = faces[faceI];
+            const point& xf = Cf[faceI];
+            const scalar phif = phiAt(xf);
+            forAll(f, ip)
+            {
+                const label ip1 = f.nextLabel(ip);
+                const point& p0 = points[f[ip]];
+                const point& p1 = points[ip1];
+                const scalar vol = mag(((xf - xc) ^ (p0 - xc)) & (p1 - xc))/6.0;
+                if (vol <= VSMALL) continue;
+                const scalar phi0 = phiAt(p0);
+                const scalar phi1 = phiAt(p1);
+                liquidVol += davof::tetNegativeFraction(phic, phif, phi0, phi1)*vol;
+                totalVol += vol;
+                const point x[4] = {xc, xf, p0, p1};
+                const scalar ph[4] = {phic, phif, phi0, phi1};
+                vector av;
+                point cen;
+                scalar a;
+                if (davof::tetZeroSet(x, ph, av, cen, a) > 0)
+                {
+                    mt += av;
+                    as += a;
+                    xs += a*cen;
+                }
+            }
+        }
+        ap[c] = (totalVol > VSMALL) ? liquidVol/totalVol : alpha_[c];
+        Ap[c] = as;
+        xp[c] = (as > VSMALL) ? xs/as : (xc + p[c]*n);
+        maxVolDiffPlane_ = max(maxVolDiffPlane_, mag(ap[c] - alpha_[c]));
+        maxAreaDiffPlane_ =
+            max(maxAreaDiffPlane_, mag(mt - m_[c])/Foam::pow(V[c], 2.0/3.0));
+    }
+    maxVolDiffPlane_ = returnReduce(maxVolDiffPlane_, maxOp<scalar>());
+    maxAreaDiffPlane_ = returnReduce(maxAreaDiffPlane_, maxOp<scalar>());
+
+    pPlane_.correctBoundaryConditions();
+    xPlane_.correctBoundaryConditions();
+    APlane_.correctBoundaryConditions();
+    alphaPlane_.correctBoundaryConditions();
+}
+
+
 Foam::scalar Foam::davofState::maxConsistency() const
 {
     const scalarField& V = mesh_.V();
@@ -620,6 +754,10 @@ void Foam::davofState::write()
     m_.write();
     xS_.write();
     AS_.write();
+    pPlane_.write();
+    xPlane_.write();
+    APlane_.write();
+    alphaPlane_.write();
 }
 
 
