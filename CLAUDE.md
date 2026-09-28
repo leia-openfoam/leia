@@ -113,6 +113,11 @@ snakemake --workflow-profile profiles/local --configfile config/<study>.yaml -n 
 
 One study = one `(case, mesh, mode)`; backend switches purely via `PROFILE`.
 `workflow/README.md` documents every `config/*.yaml` study.
+`make studies-davof` runs the DAVOF (dual area/volume-of-fluid) static gates:
+`config/davof/*.yaml` with `cases/davof/*` (a `case:` may name a sub-folder of
+`cases/`; the per-case directories use the basename), output in `studies/davof/`,
+theme `davof` -> `docs/davof/davof-article/data/` (README section "DAVOF").
+`cases/davof/planeNormal3D/Allrun` is their exact-solution gate (exits non-zero).
 `mesh: hexRefined | polyRefined` = statically refined around the interface by
 `workflow/scripts/leiaRefineHexMesh.py` / `leiaRefinePolyMesh.py` in the `mesh`
 rule (pre-processing only, solver unchanged, fields re-initialised on the final

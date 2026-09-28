@@ -27,6 +27,11 @@ configfile: os.path.join(REPO, "config", "config.yaml")
 
 CASES_DIR   = os.path.join(REPO, "cases")
 CASE        = config["case"]
+# A case may live in a sub-folder of cases/ (`case: davof/sphereNormal3D`): the
+# template directory and the .parameter file keep the full path; every per-case
+# directory, stub and CSV name uses the basename, one level under the study dir,
+# where the figure scripts glob. For the existing flat cases both are equal.
+CASE_NAME   = os.path.basename(CASE)
 MESH        = config["mesh"]
 MODE        = config["mode"]
 NP          = int(config["np"])
@@ -76,7 +81,7 @@ SETFIELDS_APP = config.get("setfields_app", "leiaSetFields")
 assert MESH in ("hex", "perturbed", "poly", "hexRefined", "polyRefined"), f"bad mesh: {MESH}"
 assert MODE in ("serial", "parallel"), f"bad mode: {MODE}"
 PARALLEL = MODE == "parallel"
-DIMS = 1 if CASE.startswith("1D") else (2 if CASE.startswith("2D") else 3)
+DIMS = 1 if CASE_NAME.startswith("1D") else (2 if CASE_NAME.startswith("2D") else 3)
 
 if MESH in ("poly", "polyRefined"):
     assert DIMS == 3, "poly mesh is only available for 3D cases"
@@ -101,7 +106,7 @@ IDX = [f"{i:05d}" for i in range(len(VARIATIONS))]
 assert NP >= 1, "np must be >= 1"
 
 STUDY_DIR = os.path.join(STUDIES_DIR, STUDY)
-CASE_DIR  = os.path.join(STUDY_DIR, CASE + "_{idx}")
+CASE_DIR  = os.path.join(STUDY_DIR, CASE_NAME + "_{idx}")
 DATABASE  = os.path.join(STUDY_DIR, f"{STUDY}_database.csv")
 
 # Results agglomeration (thematic single source): a study's figures + curated CSV
@@ -121,7 +126,7 @@ localrules: all, generate_case, aggregate, report, utilities, paraview_stub
 
 
 def case_path(w):
-    return os.path.join(STUDY_DIR, f"{CASE}_{w.idx}")
+    return os.path.join(STUDY_DIR, f"{CASE_NAME}_{w.idx}")
 
 
 def sh(*lines):
@@ -190,6 +195,7 @@ _preprocess = ["cd {params.d}",
                "rm -f gradPsiError.csv leiaSetFields.csv leiaLevelSetFoam.csv"
                " leiaRedistancedLevelSetFoam.csv leiaTestRedistance.csv"
                " leiaTestFaceCurvature.csv leiaTestCurvatureNoiseGain.csv"
+               " leiaTestDavofNormal.csv leiaTestDavofNormalModels.csv"
                " psiConservation.csv",
                " ".join(filter(None, [SETFIELDS_APP, SETFIELDS_ARGS]))]
 
@@ -202,7 +208,8 @@ if INIT_END:
 # leiaSetFields is also usable AS the study solver (initialisation-accuracy
 # gates): it needs the same -alphaName the preprocess step passes.
 _solver_args = (SETFIELDS_ARGS
-                if SOLVER in ("leiaTestMeanCurvature", "leiaSetFields")
+                if SOLVER in ("leiaTestMeanCurvature", "leiaSetFields",
+                              "leiaTestDavofNormal")
                 else "")
 _solver_cmd = " ".join(
     filter(None, [f"{MPI_PREFIX}{SOLVER}".strip(), _solver_args, PAR, FLUX.strip()]))
@@ -309,7 +316,7 @@ rule all:
     input:
         DATABASE,
         REPORT,
-        expand(os.path.join(CASE_DIR, CASE + "_{idx}.foam"), idx=IDX),
+        expand(os.path.join(CASE_DIR, CASE_NAME + "_{idx}.foam"), idx=IDX),
 
 
 rule generate_case:
@@ -319,7 +326,7 @@ rule generate_case:
         materialize.materialize(
             BASE_CASE, VARIATIONS[int(wildcards.idx)],
             os.path.dirname(output[0]),
-            NP, MESH, MODE, DIMS, CASE, wildcards.idx,
+            NP, MESH, MODE, DIMS, CASE_NAME, wildcards.idx,
         )
 
 
@@ -449,7 +456,7 @@ rule paraview_stub:
     input:
         os.path.join(CASE_DIR, SOLVER_CSV),
     output:
-        os.path.join(CASE_DIR, CASE + "_{idx}.foam"),
+        os.path.join(CASE_DIR, CASE_NAME + "_{idx}.foam"),
     resources:
         tasks=1,
     group:
@@ -468,7 +475,7 @@ rule aggregate:
     output:
         DATABASE,
     run:
-        case_dirs = [os.path.join(STUDY_DIR, f"{CASE}_{i}") for i in IDX]
+        case_dirs = [os.path.join(STUDY_DIR, f"{CASE_NAME}_{i}") for i in IDX]
         aggregate.build_database(case_dirs, output[0])
 
 
@@ -509,9 +516,19 @@ rule report:
         # metric column blank, solver misattributed by the fallback label) --
         # its studies publish their own face_curvature_orders/curvature_error
         # tables instead.
-        if SOLVER != "leiaTestMeanCurvature":
+        # The same holds for the DAVOF static gate (leiaTestDavofNormal): it
+        # publishes its own davof_normal_orders table (1c below).
+        _STATIC_APPS = ("leiaTestMeanCurvature", "leiaTestDavofNormal")
+        if SOLVER not in _STATIC_APPS:
             for _csv in _glob.glob(os.path.join(STUDY_DIR, f"{STUDY}_errors.csv")):
                 _shutil.copy(_csv, TABLES_DIR)
+        # 1c. DAVOF static gates: the order table + log-log figures of the
+        # Gauss-identity normal (every alpha source x every model) from the
+        # per-case leiaTestDavofNormal*.csv files. A data product, so outside
+        # the export_slides gate; the davof theme has no deck.
+        if SOLVER == "leiaTestDavofNormal":
+            _run([_PY, os.path.join(_scripts, "make_davof_normal_table.py"),
+                     STUDY_DIR, "--theme", THEME], "make_davof_normal_table.py")
         # 1b. The SDPLS convergence + order tables are a DATA product that
         # docs/sdpls-level-set/.../sdplsLevelSet.tex \input{}s, not a slide, so
         # they must not sit behind `export_slides` -- 89 of 117 study configs set
@@ -632,6 +649,10 @@ rule report:
                     if CASE in ("3Dshear", "3Ddeformation"):
                         _run([_PY, os.path.join(_scripts, "make_isosurface_fig.py"),
                                  STUDY_DIR, "--theme", THEME], "make_isosurface_fig.py")
+            elif THEME == "davof":
+                # DAVOF static gates publish through make_davof_normal_table.py
+                # (1c above); the generic advection plots do not apply.
+                pass
             else:
                 # velocity-extension: field montages + convergence figures.
                 plots.main(STUDY_DIR, FIGS_DIR)
@@ -641,7 +662,8 @@ rule report:
             # 4. rebuild THIS theme's self-contained deck (figures inlined from data/)
             export_html.export(PRES_DIR, DECK_TPL)
         else:
-            plots.main(STUDY_DIR, "")
+            if SOLVER not in _STATIC_APPS:
+                plots.main(STUDY_DIR, "")
             # keep the presentation-side data mirror current even when the deck
             # rebuild is skipped (the errors.csv above landed in the article data/).
             paths.propagate(THEME)

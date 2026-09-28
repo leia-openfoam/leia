@@ -1,0 +1,99 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Read by leiaSetFields (psi = exact signed distance, alpha.water by the
+// Detrixhe-Aslam plane indicator) and by leiaTestDavofNormal (the surface).
+// The sphere centre is a literal in metres, shared bit-identically with the
+// TwoPhaseFlow benchmark run/benchmark/reconstruction/sphereNormal3D: it sits
+// off every mesh symmetry plane and off every grid line and cell centre of the
+// N = 20/40/80/160 ladder on the 0.004 m box, so no rung is superconvergent by
+// symmetry.
+levelSet
+{
+    profile
+    {
+        type    signedDistance;
+    }
+
+    implicitSurface
+    {
+        type    implicitSphere;
+        center  (@!DAVOF_SPHERE_CENTRE_X!@ @!DAVOF_SPHERE_CENTRE_Y!@ @!DAVOF_SPHERE_CENTRE_Z!@);
+        radius  @!DROPLET_RADIUS!@;
+    }
+
+    narrowBand
+    {
+        type    signChange;
+    }
+
+    phaseIndicator
+    {
+        type            detrixheAslam;
+        geometrySource  levelSetField;
+    }
+}
+
+// The DAVOF state (libleiaDavof) and the norms of leiaTestDavofNormal.
+//   alphaSource linearInterpolant  : exact signed distance at cell centre, face
+//                                    centres and points, linear on the tets --
+//                                    ONE C0 piecewise-linear surface, the
+//                                    Gauss identity is exact for it.
+//   alphaSource planePhaseIndicator: leia's production plane per band cell
+//                                    (detrixheAslam) with the central face
+//                                    average -- what the SL solver transports.
+//   wispTol: a cell is an interface cell when |m_c| > wispTol V_c^(2/3).
+//   crossCheck geometricVoF: OpenFOAM's plicRDF / gradAlpha / isoAlpha run on
+//                                    the SAME alpha.davof, scored the same way.
+davof
+{
+    alphaSource     @!DAVOF_ALPHA_SOURCE!@;
+    wispTol         @!DAVOF_WISP_TOL!@;
+
+    crossCheck
+    {
+        set         @!DAVOF_CROSS_CHECK!@;
+        models      (plicRDF gradAlpha isoAlpha);
+
+        // The DLR reconstruction benchmark's settings
+        // (run/benchmark/surfaceTension/curvatureSphere/curvature3D/system/fvSolution).
+        plicRDF
+        {
+            reconstructionScheme    plicRDF;
+            iterations              10;
+            interpolateNormal       false;
+            tol                     1e-8;
+            relTol                  0.1;
+            surfCellTol             1e-8;
+            isoFaceTol              1e-8;
+        }
+        gradAlpha
+        {
+            reconstructionScheme    gradAlpha;
+            surfCellTol             1e-8;
+            isoFaceTol              1e-8;
+        }
+        isoAlpha
+        {
+            reconstructionScheme    isoAlpha;
+            surfCellTol             1e-8;
+            isoFaceTol              1e-8;
+        }
+    }
+}
+
+// ************************************************************************* //

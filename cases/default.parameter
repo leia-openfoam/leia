@@ -1047,3 +1047,16 @@ REFINE_BAND_CELLS 6;          // complete fine layers each side, worst case (hex
 REFINE_SOURCE     interface;  // interface (0 < alpha < 1 seed + dilations) | ball (CONTROL: whole droplet interior)
 REFINE_ALLOW_PIN_MISMATCH false; // "true" ONLY to match a twin's N_CELLS on purpose: the band check then reports,
                                   // but does not fail on, an N_CELLS that is not the measured fine spacing
+
+// ---- DAVOF static gates (cases/davof/*, config/davof/*, 2026-09-28) -------------------------
+// Referenced only by the davof cases; every other study is unaffected (a token no template
+// mentions is dropped by foam_param). The sphere centre is a LITERAL in metres, shared with
+// the TwoPhaseFlow benchmark run/benchmark/reconstruction/sphereNormal3D: (0.5173, 0.5293,
+// 0.4887) x 0.004 m, off every mesh symmetry plane and off every grid line and cell centre
+// of the N = 20/40/80/160 ladder, so no rung is superconvergent by symmetry.
+DAVOF_SPHERE_CENTRE_X 0.0020692;
+DAVOF_SPHERE_CENTRE_Y 0.0021172;
+DAVOF_SPHERE_CENTRE_Z 0.0019548;
+DAVOF_ALPHA_SOURCE    linearInterpolant;  // | planePhaseIndicator | exactSphere (libleiaDavof, davofState.H)
+DAVOF_WISP_TOL        1e-3;               // interface cell: |m_c| > DAVOF_WISP_TOL * V_c^(2/3)
+DAVOF_CROSS_CHECK     none;               // | geometricVoF: OpenFOAM plicRDF/gradAlpha/isoAlpha on the same alpha

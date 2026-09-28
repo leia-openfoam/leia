@@ -51,7 +51,9 @@ def main():
         m = re.match(r"^(study_name|case|solver|studies_dir):\s*([^#\s]+)", line)
         if m:
             cfg[m.group(1)] = m.group(2).strip("\"'")
-    study, case = cfg["study_name"], cfg["case"]
+    # the per-case directory is <basename(case)>_<idx> also for a case in a sub-folder
+    # of cases/ (`case: davof/sphereNormal3D`), as in workflow/Snakefile (CASE_NAME)
+    study, case = cfg["study_name"], os.path.basename(cfg["case"])
     solver = cfg.get("solver", "leiaLevelSetFoam")
     studies_dir = a.studies_dir or cfg.get("studies_dir") or os.path.join(REPO, "studies")
 

@@ -22,6 +22,9 @@ _THEMES = {
     "geometrically-redistanced-levelset": ("geometrically-redistanced-levelset", "grl-level-set",      "geometrically-redistanced-level-set.template.html"),
     "sdpls-level-set":                    ("sdpls-level-set",                    "sdpls",              "sdpls-level-set.template.html"),
     "method-comparison":                  ("method-comparison",                  "method-comparison",  "level-set-method-comparison.template.html"),
+    # DAVOF (dual area/volume-of-fluid): static gates of the Gauss-identity
+    # normal; tables/figures only, no deck yet (docs/davof/README.md).
+    "davof":                              ("davof",                              "davof",              "davof.template.html"),
 }
 
 # Themes whose deck reads figures/tables from ITS OWN presentation data/ folder
@@ -37,6 +40,7 @@ _SOLVER_THEME = {
     "leiaSemiLagrangianLevelSetTwoPhaseFoam":  "semi-lagrangian-level-set",
     "leiaLevelSetFoam":                        "velocity-extension",
     "leiaRedistancedLevelSetFoam":             "geometrically-redistanced-levelset",
+    "leiaTestDavofNormal":                     "davof",
 }
 
 

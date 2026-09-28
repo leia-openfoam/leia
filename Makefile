@@ -62,6 +62,9 @@ VE_STUDIES ?= bulkVortex steadyVortex2D staticExtension
 BENCH_STUDIES ?= benchVortexEulerT2 benchVortexEulerT8 benchVortexSLT2 benchVortexSLT8 benchVortexVET2 benchVortexVET8 \
                  benchVortexSLimproved benchVortexSLimprovedPerturbed benchVortexSLflux benchVortexGRLfrozen
 GRL_STUDIES ?= redistanceStatic2D redistanceCircle2D vortexTriggerGRL vortexBoundsGRL bulkVortexGRL 3DshearGRL 3DdeformationGRL
+# DAVOF (dual area/volume-of-fluid) static gates: config/davof/*.yaml -> studies/davof/
+# (docs/davof/README.md). Sub-folder names: the loops build config/$$cfg.yaml.
+DAVOF_STUDIES ?= davof/sphereNormal3D
 # SDPLS source line: the 2D reversed-vortex arm matrix (noSource/R/beta x both
 # admissible linearizations), the beta-target sweep that separates a residual
 # from a wrong target, and the 3D shear/deformation companions.
@@ -92,7 +95,7 @@ ART_SL := docs/semi-lagrangian-level-set/sl-level-set-article
 ART_LSL := docs/linear-semi-lagrangian-level-set/lsl-level-set-article
 ART_GRL := docs/geometrically-redistanced-levelset/grl-level-set-article
 
-.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler studies-one print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
+.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-davof studies-sdpls studies-euler studies-one print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
 .DEFAULT_GOAL := help
 
 help:
@@ -116,6 +119,7 @@ help:
 	@echo "  make pressure-rauf-gate - alias for the paired pressure-operator/constant-rAUf Snakemake rule"
 	@echo "  make pressure-tolerance-gate - alias for the pressure-algebra Snakemake rule"
 	@echo "  make pressure-solver-gate - alias for the GAMG/PCG pressure Snakemake rule"
+	@echo "  make studies-davof - DAVOF static gates (config/davof/*.yaml -> studies/davof/, docs/davof data)"
 	@echo "  make studies-sdpls - SDPLS source line (2D arm matrix + 3D shear/deformation)"
 	@echo "  make studies-euler - EVERY FV div(phi,psi) study; re-run together when the"
 	@echo "                   discretization changes.  PROFILE=profiles/slurm on Lichtenberg."
@@ -136,6 +140,8 @@ studies-ve:
 	@for cfg in $(VE_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
 studies-grl:
 	@for cfg in $(GRL_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
+studies-davof:
+	@for cfg in $(DAVOF_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
 # SDPLS source line: the 2D reversed-vortex arm matrix (both linearizations x
 # {noSource,R,beta}) plus the 3D shear/deformation companions.
 # Enumerate a study group (scripts and humans: `make -s print-euler-studies`).
