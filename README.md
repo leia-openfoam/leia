@@ -76,11 +76,21 @@ Solvers (`applications/solvers/`):
 ### Dependencies
 
 - A C++17 compiler (tested with GCC 10.x / 11.x).
-- **OpenFOAM-v2512** (current standard version; also builds against v2206/v2506).
-  Source it before building (`source .../OpenFOAM-v2512/etc/bashrc`). On the
-  laptop (WSL) it lives in `$HOME/OpenFOAM/OpenFOAM-v2512`; on Lichtenberg it is
-  the source build in `$HOME/OpenFOAM/OpenFOAM-v2512` — see [CLUSTER.md](CLUSTER.md).
+- **OpenFOAM-v2606** (current standard version since 2026-09-28; v2512 before, and the
+  code still builds against it). Source it before building
+  (`source .../OpenFOAM-v2606/etc/bashrc`). On the laptop (WSL) it lives in
+  `$HOME/OpenFOAM/OpenFOAM-v2606`; on Lichtenberg the source build is still v2512
+  (`$HOME/OpenFOAM/OpenFOAM-v2512`) and needs a v2606 build before the cluster
+  studies run again — see [CLUSTER.md](CLUSTER.md). `etc/leia-env.sh` stamps the
+  version into `platforms/<WM_OPTIONS>/.openfoam-version` and refuses to run a clone
+  built under another version (v2512 and v2606 share `WM_OPTIONS`).
 - [cfmesh](https://cfmesh.com/cfmesh/) (OpenFOAM sub-module) — polyhedral (`pMesh`) cases.
+  `etc/leia-env.sh` uses `$HOME/OpenFOAM/cfmesh-<version>` when it exists (laptop:
+  `cfmesh-v2606`, built from OpenFOAM-v2606's `plugins/cfmesh`), else `$HOME/OpenFOAM/cfmesh`.
+- [TwoPhaseFlow](https://github.com/DLR-RY/TwoPhaseFlow) (optional) — the `interFlow`
+  reference arm of the method-comparison studies. `etc/leia-env.sh` appends
+  `$LEIA_TPF_DIR/platforms/<WM_OPTIONS>/{bin,lib}` after leia's own directories;
+  the default is the `TwoPhaseFlow` clone next to this clone.
 
 ### Build
 

@@ -2,7 +2,7 @@
 #   pip install -r requirements.txt   (a venv or --user is recommended)
 #
 # NOT installable via pip and required to RUN the studies (produce the data the
-# figures are drawn from): a built OpenFOAM v2506 with the leia libraries/solvers
+# figures are drawn from): a built OpenFOAM v2606 with the leia libraries/solvers
 # compiled -- see the top-level README.md.
 #
 # Rebuilding only the deck HTML from index.template.html needs NONE of these

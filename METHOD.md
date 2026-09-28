@@ -33,7 +33,7 @@ gives the best measured result, the equations it actually solves, and what is st
 Numbers are measured, not estimated; the provenance of each is given.
 
 Solver `leiaSemiLagrangianLevelSetTwoPhaseFoam`, library `libleiaLevelSet`,
-OpenFOAM-v2512. Collocated cell-centred finite volume, arbitrary polyhedra.
+OpenFOAM-v2606 (v2512 until 2026-09-28). Collocated cell-centred finite volume, arbitrary polyhedra.
 
 ---
 

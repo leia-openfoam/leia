@@ -35,7 +35,7 @@ prose. The rules that matter most:
   script to a remote host, pipe a file (`ssh host 'bash -s' < script.sh`) rather
   than a heredoc — nested Windows→WSL→ssh quoting expands `$VAR`/`$(...)` in the
   wrong shell.
-- **Build:** `source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc && . ./etc/leia-env.sh && ./Allwmake`.
+- **Build:** `source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc && . ./etc/leia-env.sh && ./Allwmake`.
   Every clone installs into its own `<clone>/platforms/` (git-ignored): `etc/leia-env.sh`,
   sourced AFTER OpenFOAM's `etc/bashrc` in every shell that builds or runs a leia
   binary, sets `WM_PROJECT_USER_DIR` to the clone root. Two clones never share
@@ -52,8 +52,15 @@ prose. The rules that matter most:
   can select a model from; a new model goes into the library of its family, a new
   family gets its own `Make/` and a row in `etc/leia-check-deps.py`, which `Allwmake`
   runs and which refuses a header include that the link graph does not cover.
-  (OpenFOAM-v2512 is the current standard version, in `$HOME/OpenFOAM` on both
-  the WSL laptop and Lichtenberg).
+  (OpenFOAM-v2606 is the current standard version since 2026-09-28, in
+  `$HOME/OpenFOAM` on the WSL laptop; Lichtenberg still has only v2512 and needs a
+  v2606 build before cluster studies run. `etc/leia-env.sh` stamps the version into
+  `platforms/<WM_OPTIONS>/.openfoam-version` and refuses another one, because v2512
+  and v2606 share `WM_OPTIONS`. It also appends two sibling builds after the clone's
+  own directories: cfMesh, `$HOME/OpenFOAM/cfmesh-<version>` if present, else
+  `$HOME/OpenFOAM/cfmesh`; and TwoPhaseFlow, `$LEIA_TPF_DIR`, default the
+  `TwoPhaseFlow` clone next to this one, which is how the `interFlow` benchmark arm
+  finds its solver.)
 
 ## Repo layout & git discipline
 
@@ -118,7 +125,8 @@ Full, verified workflow in **[CLUSTER.md](CLUSTER.md)**; the site-independent
 recipe (any SLURM cluster, same traps) is **[SLURM.md](SLURM.md)**. Essentials:
 `ssh tm83tomy@lcluster5.hrz.tu-darmstadt.de` (passwordless; `~/bin/licht N` helper);
 SLURM account `special00004`; jobs **must** set `--mem-per-cpu` (the slurm
-profile does); OpenFOAM-v2512 source-built in `$HOME/OpenFOAM`; pull raw output
+profile does); OpenFOAM-v2512 source-built in `$HOME/OpenFOAM` (a v2606 build is
+needed there since the preambles moved to v2606 on 2026-09-28); pull raw output
 back with `make pull-runs` / `make pull-study STUDY=<name>`.
 
 ### Never cancel jobs you did not start

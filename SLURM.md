@@ -23,7 +23,7 @@ even if you only use B — B automates A, and when B breaks it breaks in A's ter
 ```bash
 module purge
 module load <compiler-module> <mpi-module>
-source $WM_PROJECT_DIR/etc/bashrc            # e.g. $HOME/OpenFOAM/OpenFOAM-v2512
+source $WM_PROJECT_DIR/etc/bashrc            # e.g. $HOME/OpenFOAM/OpenFOAM-v2606
 . <clone>/etc/leia-env.sh                    # the clone's own binaries, AFTER the line above
 ```
 
@@ -207,7 +207,7 @@ axes_override:
   END_TIME: [0.02]
 collapse_other_axes: true
 mpi_launcher: "mpirun -np {np}"
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
 ```
 
 Case directories hold `*.template` files with `@!TOKEN!@` placeholders. The materializer

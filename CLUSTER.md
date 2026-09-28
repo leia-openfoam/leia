@@ -54,7 +54,7 @@ git-ignored — rebuild it locally in seconds with `make docs`. So slides are
 - **Login `.bashrc` noise:** it tries to `module load gcc/11.4.1 python/3.11.9`
   which don't exist on every node — harmless Lmod errors. Batch jobs ignore it
   (`module purge` + explicit loads in the job).
-- **OpenFOAM:** built from source in **`$HOME/OpenFOAM/OpenFOAM-v2512`**
+- **OpenFOAM:** built from source in **`$HOME/OpenFOAM/OpenFOAM-v2512`** (the leia standard moved to **v2606** on 2026-09-28; every preamble now sources v2606, so Lichtenberg needs a v2606 source build in `$HOME/OpenFOAM/OpenFOAM-v2606` before cluster studies run again)
   (matches the WSL laptop version). Defaults `WM_COMPILER=Gcc`,
   `WM_COMPILER_TYPE=system`, `WM_MPLIB=SYSTEMOPENMPI` — uses the module gcc +
   module OpenMPI, no ThirdParty compiler/MPI build. A system spack module
@@ -195,7 +195,7 @@ git clone git@github.com:leia-openfoam/leia.git && cd leia
 git checkout feature/velocity-extension
 git submodule update --init --recursive        # pyFoamStudy (legacy)
 python3 -m pip install --user --break-system-packages "snakemake>=8" snakemake-executor-plugin-slurm
-source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc && ./Allwmake     # build leia against v2512
+source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc && ./Allwmake     # build leia against v2606
 ```
 
 ## Parallel-run status (verified 2026-07-28)
@@ -481,7 +481,7 @@ dir to the account default); the helper corrects it before any command runs.
 
 ```bash
 module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv
-source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc
+source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc
 . ./etc/leia-env.sh                      # in the clone; AFTER the line above
 ./Allwmake                               # installs into <clone>/platforms/
 grep -m1 '^Exec' studies/<study>/<case>_00000/log.<solver>   # names <clone>/platforms/
