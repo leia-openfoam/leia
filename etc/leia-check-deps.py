@@ -18,12 +18,14 @@ LIB = {   # part directory -> library
     "velocityExtension": "leiaVelocityExtension", "redistancer": "leiaRedistancer",
     "volumeCorrection": "leiaVolumeCorrection", "surfaceTensionForce": "leiaSurfaceTension",
     "advection": "leiaAdvection",
+    "davof": "leiaDavof",
 }
 LINKS = {  # library -> the leia libraries in its LIB_LIBS (libleiaCore is implicit)
     "leiaCore": set(), "leiaSdplsSource": set(), "leiaSemiLagrangian": set(),
     "leiaRedistancer": set(), "leiaVolumeCorrection": set(), "leiaSurfaceTension": set(),
     "leiaVelocityExtension": {"leiaSemiLagrangian"},
     "leiaAdvection": {"leiaSdplsSource", "leiaSemiLagrangian", "leiaVelocityExtension"},
+    "leiaDavof": set(),
 }
 
 def part_of(path):

@@ -1,0 +1,30 @@
+#!/bin/bash
+# DAVOF exact-solution gate: a plane. Both leia states are exact for a plane --
+# the linear interpolant by construction, the Detrixhe-Aslam plane state
+# because the least-squares plane of a linear psi IS the plane and the face
+# fractions of two identical planes are the exact face cut -- so
+# leiaTestDavofNormal -expectExact must find the normal error, the tet/face
+# consistency and the alpha difference to the exact plane cut at round-off
+# (tolerance 1e-12) for BOTH alphaSource settings, or exit non-zero. Run in a
+# shell with OpenFOAM and this clone (etc/leia-env.sh) sourced:
+#     cases/davof/planeNormal3D/Allrun
+cd "${0%/*}" || exit 1
+. "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+
+rm -rf 0 && cp -r 0.org 0
+
+runApplication blockMesh
+runApplication leiaSetFields -alphaName alpha.water
+
+status=0
+for src in linearInterpolant planePhaseIndicator; do
+    foamDictionary -entry davof/alphaSource -set "$src" system/fvSolution > /dev/null
+    leiaTestDavofNormal -alphaName alpha.water -expectExact > "log.leiaTestDavofNormal.$src" 2>&1
+    rc=$?
+    echo "== alphaSource $src =="
+    grep -E "expectExact|davof  N_S|max " "log.leiaTestDavofNormal.$src"
+    echo "leiaTestDavofNormal -expectExact ($src) exit code: $rc"
+    [ $rc -ne 0 ] && status=$rc
+done
+foamDictionary -entry davof/alphaSource -set linearInterpolant system/fvSolution > /dev/null
+exit $status

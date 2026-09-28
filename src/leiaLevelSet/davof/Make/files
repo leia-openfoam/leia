@@ -1,0 +1,9 @@
+/* libleiaDavof -- the DAVOF (dual area/volume-of-fluid) state: cell volume fractions,
+   face area fractions and the Gauss-identity area normal m_c = -sum_f alpha_f S_f
+   (docs/plan-library-split-and-build-policy.md, WP3 pattern: one library per family). */
+
+davofState.C
+
+leiaStamp_leiaDavof.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaDavof

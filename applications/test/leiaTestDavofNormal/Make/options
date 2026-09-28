@@ -1,0 +1,23 @@
+EXE_INC = \
+    -std=c++17 \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/surfMesh/lnInclude \
+    -I$(LIB_SRC)/transportModels/geometricVoF/lnInclude \
+    -I../../../src/leiaLevelSet/lnInclude \
+    -I../../../src/leiaLevelSet/davof \
+    -I../../../src/levelSetImplicitSurfaces/lnInclude \
+    -I../../../src/vof
+
+/* OpenFOAM's own libgeometricVoF (Foam::reconstructionSchemes) for the cross-check
+   on the same alpha; TwoPhaseFlow's fork lives in Foam::twoPhaseFlow and is never
+   linked here. */
+EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) \
+    -lfiniteVolume \
+    -lmeshTools \
+    -lsurfMesh \
+    -lgeometricVoF \
+    -lleiaDavof \
+    -lleiaCore \
+    -llevelSetImplicitSurfaces
