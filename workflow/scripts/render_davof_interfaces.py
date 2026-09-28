@@ -207,13 +207,16 @@ def main(argv):
             ax.set_ylim(mid[1] - span/2, mid[1] + span/2)
             ax.set_aspect("equal")
             ax.set_title(f"{MODEL_LABEL.get(m, m)}, N = {N} ({len(polys)} cells)",
-                         fontsize=9)
+                         fontsize=12)
     sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=axes.ravel().tolist(), shrink=0.7, pad=0.02)
-    cbar.set_label(FIELD_LABEL.get(a.field, a.field), fontsize=9)
-    fig.suptitle(f"PLIC surfaces on the identical alpha ({a.alpha_source}), "
-                 f"coloured by the per-cell {a.field}", fontsize=10)
+    cbar.set_label(FIELD_LABEL.get(a.field, a.field), fontsize=12)
+    cbar.ax.tick_params(labelsize=11)
+    # No figure title: the caption of the document that includes it says what
+    # is drawn (alpha source and field are in the file name's study and the log).
+    print(f"[render] {study}: alpha source {a.alpha_source}, field {a.field}, "
+          f"models {models}, N {[N for N, _ in cases]}")
     figs = paths.figs_dir(a.theme)
     os.makedirs(figs, exist_ok=True)
     for ext in ("pdf", "png"):
