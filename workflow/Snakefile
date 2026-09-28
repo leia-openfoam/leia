@@ -662,7 +662,9 @@ rule report:
             # 4. rebuild THIS theme's self-contained deck (figures inlined from data/)
             export_html.export(PRES_DIR, DECK_TPL)
         else:
-            if SOLVER not in _STATIC_APPS:
+            # Unchanged for every existing solver (leiaTestMeanCurvature included);
+            # only the DAVOF app, which has no advection metrics, is exempted.
+            if SOLVER != "leiaTestDavofNormal":
                 plots.main(STUDY_DIR, "")
             # keep the presentation-side data mirror current even when the deck
             # rebuild is skipped (the errors.csv above landed in the article data/).

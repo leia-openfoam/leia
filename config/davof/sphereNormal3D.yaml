@@ -42,6 +42,12 @@
 #   state difference, O(h), and is NOT a gate for this source. On the exact
 #   alpha the cross-check changes: plicRDF 1.5..2 (its published order),
 #   gradAlpha ~1 (Youngs-type), isoAlpha 1..1.5.
+# MEASURED 2026-09-28 (run 2, STATUS 10.7): HELD. exactSphere p(E_L2_N) = 1.98
+#   (pairwise 2.16 / 2.03 / 1.73), p(E_L1_N) = 2.05, p(E_AREA_REL) = 2.00,
+#   E_L2_N at N = 160 1.15e-4; plicRDF on the same exact alpha 1.06 and 3.87e-3
+#   (34x), gradAlpha 0.07 (0.066, no convergence), isoAlpha 0.52. TwoPhaseFlow's
+#   own ladder (cutCellIso / cutCellImpFunc): plicRDF 1.08 / 1.06, gradAlpha
+#   0.07, isoAlpha 0.55 / 0.51 -- the cross-check reproduces it.
 # PASS: exactSphere order(E_L2_N) >= 1.8 AND order(E_AREA_REL) >= 1.8;
 #   linearInterpolant MAX_CONSISTENCY < 1e-10 at every rung (the identity).
 # FALSIFIED: exactSphere order(E_L2_N) < 1.7 (the method claim of the

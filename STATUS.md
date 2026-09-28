@@ -3271,3 +3271,103 @@ now sources v2606). The cfMesh codebases differ (community plugin on v2606, Sour
 v2512), so polyhedral meshes may differ slightly between the two; measure before comparing
 poly results across the versions. The `feature/eulerian-rholent` branch edits `Allwmake` and
 `etc/leia-env.sh` too; its merge onto this `leia-env.sh` is manual.
+
+### 10.7 DAVOF static gate 1: the Gauss-identity normal on a sphere, measured (2026-09-28)
+
+**Why.** The DFG proposal's reviewers asked for a preliminary result: initialise the cell
+volume fractions `alpha_c` and the face liquid-area fractions `alpha_f` of a sphere, recover
+the interface area normal of every cell from the DAVOF identity `m_c = -sum_f alpha_f S_f^out`
+(`|m_c|` the interface area in the cell, the direction the normal out of the liquid), and show
+its convergence next to the best PLIC reconstructions (TwoPhaseFlow's plicRDF, gradAlpha,
+isoAlpha). Expectation before the run: DAVOF second order, the PLIC schemes first.
+
+**What exists now (commits 98bb59f, 9cfcd4b, this one).** `src/leiaLevelSet/davof`
+(`libleiaDavof`, `davofState.H`): the DAVOF state with three sources of `(alpha_c, alpha_f)`:
+`exactSphere` (closed-form circle-polygon face fractions, quadrature cell fractions, both
+exact), `linearInterpolant` (the exact signed distance at the cell centre, the face centres
+and the points, linear on the Detrixhe-Aslam tets and on the face fans with the same vertex
+values: ONE C0 piecewise-linear surface, for which the identity is exact), and
+`planePhaseIndicator` (leia's production plane-DA state). `applications/test/leiaTestDavofNormal`
+scores `e_c = |m_c/|m_c| - n_exact(xS_c)|` at the reconstructed patch centroid over the
+interface cells (`|m_c| > wispTol V_c^(2/3)`, wispTol 1e-3) in L1 (mean), L2 (rms), Linf,
+area-weighted variants, the total area `sum_c |m_c|` against `4 pi R^2`, the tet/face
+consistency and the closure, and runs OpenFOAM's geometricVoF plicRDF / gradAlpha / isoAlpha
+(the algorithms TwoPhaseFlow uses) on the IDENTICAL alpha as the like-for-like cross-check.
+Study `config/davof/sphereNormal3D.yaml` (R = 1 mm in a 4R box, centre off every symmetry
+plane and grid line, hex N = 20/40/80/160, R/h = 5..40, serial, 12 cases in ~12 min),
+`make studies-one STUDY=davof/sphereNormal3D`; the plane gate `cases/davof/planeNormal3D/Allrun`;
+results in `docs/davof/davof-article/data/{tables,figures}` (the tpf rows merged with
+`make_davof_normal_table.py --tpf-results`). The TwoPhaseFlow arm (davof clone, branch `davof`,
+commits 5fdca12 and ac879d1, not pushed): `reconstructionError` gained six appended columns
+(`LNormalDiff1/2/Inf`, `areaSum`, `areaExact`, `nInterface`; the first twelve byte-identical)
+and `run/benchmark/reconstruction/sphereNormal3D` is the same ladder through its own
+framework (genCases/runAll/getResults + pytest/oftest in `~/OpenFOAM/repos/davof/tpf-venv`).
+
+**Pre-registered prediction 1 (config header, before run 1): FALSIFIED for the normal, held
+for the area and the identity.** With the `linearInterpolant` state the DAVOF normal converges
+at order ONE, not two: p(L2) = 1.01 (pairwise 1.05 / 1.01 / 0.99), p(L1) = 1.02, L2 at N = 160
+2.43e-3; the area error is second order, p(A) = 2.00 (1.13e-4 at N = 160); the identity is exact,
+MAX_CONSISTENCY = |m_c - sum of the tet patches|/h^2 <= 4.2e-14, closure |sum_c m_c|/A ~ 1e-15.
+Mechanism: the face crossings of a linear interpolant of the exact distance are O(h^2)
+accurate, so the face fractions carry O(h) errors as fractions, and the direction of a sum of
+O(h^2) vectors weighted by O(h)-accurate fractions is O(h) accurate; the magnitude (area) is
+not affected at leading order. The same holds for the plane-DA state (p(L2) = 1.13, p(A) =
+2.00, L2 at N = 160 4.50e-3, Linf 0.058, larger by the C0 mismatch of neighbouring planes).
+
+**Pre-registered prediction 2 (config header, before run 2): HELD.** With the exact face and
+cell fractions (`exactSphere`) the DAVOF normal is second order: p(L2) = 1.98 (pairwise
+2.16 / 2.03 / 1.73), p(L1) = 2.05 (2.14 / 2.05 / 1.96), area-weighted p(L1) = 2.01, p(L2) = 1.98,
+p(A) = 2.00; L2 falls 6.96e-3 -> 1.56e-3 -> 3.83e-4 -> 1.15e-4 over N = 20/40/80/160, the area
+error to 5.1e-5. Linf (p = 1.22, 5.5e-3 at N = 160) is set by the smallest corner clips just
+above the wisp threshold and is reported, not gated. Interface cells 472 / 1863 / 7418 / 29739,
+wisps 8 / 34 / 122 / 432. The DAVOF normal costs 0.02..3.0 s serial per rung.
+
+**The cross-check on the identical alpha (OpenFOAM geometricVoF in the leia app).** plicRDF:
+p(L2) = 1.06 on every state (exact 1.08 / 1.11 / 0.99 pairwise), L2 at N = 160 3.87e-3 -- on the
+exact alpha 34x the DAVOF error, on the linear-interpolant alpha 1.6x. gradAlpha (the
+centred-gradient normal): p(L2) = 0.07, L2 = 0.066 at every rung, 0.124 even on the exact
+plane of the plane gate: the discrete gradient of a sharp indicator does not converge to the
+normal (Pilliod & Puckett, JCP 199, 2004). isoAlpha: p(L2) = 0.52, 0.021 at N = 160. The
+TwoPhaseFlow arm agrees to within a few percent on its own alpha and error measure: plicRDF
+cutCellIso p(L2) = 1.08 (1.09 / 1.14 / 1.00), 3.97e-3 at N = 160, cutCellImpFunc 1.06, 4.01e-3;
+gradAlpha 0.07, 0.066; isoAlpha 0.55 / 0.51, 0.0216 / 0.0214; pytest (N <= 80): 7 passed, the
+order assertion is 0.9 for plicRDF (measured 1.07) and none for gradAlpha (0.11; the
+pre-registered 0.9 for it was wrong and the test now says so). The "plicRDF is second order"
+expectation from its paper is NOT reproduced in this metric on this ladder by either code.
+
+**Gates and inertness.** Plane gate at tolerance 1e-12 for BOTH leia states (they are exact
+for a plane): linearInterpolant normal 5.3e-14, consistency 2.1e-15, alpha vs the exact plane
+cut 2.1e-15; planePhaseIndicator 9.5e-13, 3.4e-14, 2.7e-14 (the least-squares fit's
+conditioning); plicRDF on that exact plane alpha 1.9e-4, gradAlpha/isoAlpha ~0.1. Parallel:
+np 4 vs serial on the N = 40 sphere, all three sources, every norm within 5.5e-11 relative,
+round-off quantities within 7.3e-13 absolute. The Snakefile edit (a `case:` may name a
+sub-folder; per-case directories use the basename): the dry-run job listings of all 352
+configs are identical before and after (sorted; Snakemake's job order is not deterministic);
+the report rule's behaviour for every existing solver is unchanged (only the new app is
+exempted from the generic plots). The plane-DA alpha of `leiaSetFields` is reproduced bit
+for bit (MAX_ALPHA_DIFF_DA = 0): its narrow band is built in createFields.H on a uniform psi,
+so it initialises EVERY cell from a plane, and cells 0.5..0.9 h away still clip a corner --
+a fact worth knowing about the production initialiser.
+
+**What it means for the proposal.** The identity is exact and its normal is as accurate as
+the face fractions are as fractions: O(h^2) face fractions give a second-order normal that
+beats plicRDF by more than an order of magnitude at equal input; O(h) face fractions (any
+linearised initialisation, and any transport that only locates the interface to O(h^2)) give
+a first-order normal, still 1.6x better than plicRDF on the same input. WP1's face update
+therefore has to deliver `alpha_f` to O(h^2) as a fraction, i.e. the face crossing to third
+order or the face liquid area by an exact-geometry evaluation, and that is the next gate: the
+one-step face-fraction update the reviewers asked for. The total area is second order for
+every state.
+
+**Incidents.** Two `pkill -f` patterns matched their own `wsl.exe ... bash -c` command line
+and killed it (exit 15) before the kill lines ran; the TwoPhaseFlow ladder was then started
+four times over and its 4.1e6-cell cutCellImpFunc cases (~8 GB each) exited with rc 1 out of
+memory. Stopped from a script whose invocation matches no pattern (`scratch/stop-tpf.sh`),
+restarted once; `runAll.sh` now runs coarse to fine (an alphabetical glob starts with N160).
+`pgrep -x` cannot match `reconstructInterface` (names > 15 characters). PyFoam needs a
+FoamFile header in `simulationParameter` (added; OpenFOAM merges it on `#include`).
+
+**Open.** Push `development` after review. The polyhedral (cfMesh) ladder of the same gate
+(`mesh: poly`), the one-step face-fraction update test, and a wispTol sweep are one config
+each away. `leiaSetFields`' every-cell plane initialisation deserves its own note in the
+phase-indicator docs.
