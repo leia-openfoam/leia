@@ -268,7 +268,7 @@ def main():
     ap.add_argument("--fps", type=int, default=3)
     ap.add_argument("--dpi", type=int, default=115)
     ap.add_argument("--preamble",
-                    default="source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc")
+                    default="source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc")
     a = ap.parse_args()
 
     case = os.path.abspath(a.case)

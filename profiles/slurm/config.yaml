@@ -59,7 +59,7 @@ set-resources:
 # Override execution knobs from config/config.yaml. The preamble loads the
 # Lichtenberg toolchain, forces the OpenMPI transport that is known-good on the
 # interconnect (from the group's proven isoAdv.sbatch), and sources the OpenFOAM
-# the leia binaries are built against ($HOME/OpenFOAM/OpenFOAM-v2512).
+# the leia binaries are built against ($HOME/OpenFOAM/OpenFOAM-v2606 since 2026-09-28).
 # LAUNCHER: `srun --ntasks={np} --overlap` (corrected 2026-08-08).
 #
 # History, because this has now bitten twice in opposite directions:
@@ -129,4 +129,4 @@ config:
 #
 # So there is no LD_PRELOAD here and no wrapper on PATH. If pMesh ever aborts
 # again, check which cfMesh is installed before reaching for an allocator.
-  - "env_preamble=module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv; export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2; source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+  - "env_preamble=module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv; export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2; source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

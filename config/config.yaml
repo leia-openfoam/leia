@@ -60,6 +60,6 @@ collapse_other_axes: true
 # Where $HOME/.leia_env does not exist this is exactly the old single-command line,
 # so machines that do not need it are unaffected.
 mpi_launcher: "mpirun -np {np}"
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
 
 # studies_dir: studies     # default: <repo>/studies  (already in .gitignore)

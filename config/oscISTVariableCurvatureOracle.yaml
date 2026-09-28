@@ -64,4 +64,4 @@ oracle_gate:
 
 publication_table: docs/method-comparison/method-comparison-article/data/tables/oscISTVariableCurvatureVelocityOracle.csv
 export_slides: false
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

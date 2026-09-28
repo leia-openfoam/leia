@@ -50,4 +50,4 @@ axes_override:
   WRITE_INTERVAL: [0.0025]
 solve_runtime: 86400
 export_slides: false
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; export PATH=$PWD/workflow/scripts/local-mesh-wrappers:$PATH"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; export PATH=$PWD/workflow/scripts/local-mesh-wrappers:$PATH"

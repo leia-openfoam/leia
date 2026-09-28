@@ -69,7 +69,7 @@ cd "$OUT" || exit 1
 # account source the clone's etc/leia-env.sh after the bashrc (CLUSTER.md).
 # shellcheck disable=SC1090
 LEIA_PMESH_PRELOAD=${LEIA_PMESH_PRELOAD:-}
-source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
 . "$LEIA_ENV" || exit 1   # this clone's binaries; AFTER etc/bashrc
 
 DT=$(foamDictionary -entry deltaT -value system/controlDict)

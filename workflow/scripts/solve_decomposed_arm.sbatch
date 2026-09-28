@@ -28,7 +28,7 @@ set +u
 : "${CASE:?CASE must be an already-decomposed case directory}"
 SOLVER=${SOLVER:-leiaSemiLagrangeLevelSetFoam}
 
-source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
 LEIA_ENV="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)/etc/leia-env.sh"
 [ -f "$LEIA_ENV" ] || LEIA_ENV="${SLURM_SUBMIT_DIR:-$PWD}/etc/leia-env.sh"   # sbatch runs a spool copy
 . "$LEIA_ENV" || exit 1   # this clone's binaries; AFTER etc/bashrc

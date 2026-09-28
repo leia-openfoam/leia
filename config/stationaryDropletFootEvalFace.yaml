@@ -72,4 +72,4 @@ solve_runtime: 240
 # baseline) stay untouched; this study is read from its per-step solver CSVs.
 export_slides: false
 
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

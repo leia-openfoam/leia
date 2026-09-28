@@ -25,7 +25,7 @@
 # jemalloc is preloaded. Scope the preload to pMesh ONLY -- a study-global
 # LD_PRELOAD segfaults the MPI solver at startup (empty log, rc 139; measured
 # 2026-09-04) -- through the prefix the mesh rule and leiaRefinePolyMesh.py apply:
-#   --config env_preamble="source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; \
+#   --config env_preamble="source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; \
 #            export LEIA_PMESH_PRELOAD=$HOME/miniconda3/lib/libjemalloc.so.2"
 #   (a bare path: snakemake's --config parsing strips quotes from the value)
 #

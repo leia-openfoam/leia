@@ -50,7 +50,7 @@ for f in "$SRC"/*.fms "$SRC"/*.stl; do [ -e "$f" ] && cp "$f" "$OUT/"; done
 cd "$OUT" || exit 1
 LEIA_PMESH_PRELOAD=${LEIA_PMESH_PRELOAD:-}
 # shellcheck disable=SC1090
-source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
 . "$LEIA_ENV" || exit 1   # this clone's binaries; AFTER etc/bashrc
 
 foamDictionary -entry deltaT -set "$DT" system/controlDict >/dev/null

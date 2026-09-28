@@ -44,7 +44,7 @@ export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2
 # OpenFOAM's own bashrc. Until 2026-09-24 this line named $HOME/OpenFOAM/curvature-v2512/etc/bashrc,
 # a file that never existed (a user directory has no etc/bashrc), so the script sourced nothing and
 # then stopped at etc/leia-env.sh with "WM_OPTIONS is empty" (found while retiring that directory, WP6).
-source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
 . "$REPO/etc/leia-env.sh" || exit 1   # this clone's binaries; AFTER the bashrc
 export PATH="$HOME/.local/bin:$PATH"
 

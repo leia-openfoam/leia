@@ -44,7 +44,7 @@ import numpy as np
 from foamlib import FoamCase
 
 SOLVER = "leiaSemiLagrangianLevelSetTwoPhaseFoam"
-BASHRC = os.path.expanduser("~/OpenFOAM/OpenFOAM-v2512/etc/bashrc")
+BASHRC = os.path.expanduser("~/OpenFOAM/OpenFOAM-v2606/etc/bashrc")
 LEIA_ENV = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "etc", "leia-env.sh")
 
 

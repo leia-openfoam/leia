@@ -11,7 +11,7 @@
 # pseudo-2D height divided out).
 #
 # Usage: bash workflow/scripts/static_indicator_volume.sh [out.csv]
-set +eu; source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; set -e
+set +eu; source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; set -e
 
 REPO=/home/tmaric/OpenFOAM/repos/leia
 . "$REPO/etc/leia-env.sh" || exit 1   # this clone's binaries; AFTER etc/bashrc

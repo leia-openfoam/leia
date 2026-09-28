@@ -43,7 +43,7 @@ for f in 0.org constant system; do cp -r "$SRC/$f" "$OUT/"; done
 for f in "$SRC"/*.fms "$SRC"/*.stl; do [ -e "$f" ] && cp "$f" "$OUT/"; done
 cp "$SRC/case_params.json" "$OUT/" 2>/dev/null
 cd "$OUT" || exit 1
-source "$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc"
+source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
 . "$LEIA_ENV" || exit 1   # this clone's binaries; AFTER etc/bashrc
 foamDictionary -entry levelSet/semiLagrangian/valueBound     -set "$BOUND" system/fvSolution >/dev/null 2>&1
 foamDictionary -entry levelSet/semiLagrangian/lipschitzMode  -set "$LMODE" system/fvSolution >/dev/null 2>&1

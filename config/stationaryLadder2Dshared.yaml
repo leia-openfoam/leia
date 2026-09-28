@@ -70,4 +70,4 @@ mpi_launcher: "mpirun -np {np}"
 # profile config: block in this snakemake version (verified by dry-run), so
 # the profile cannot be relied on. ~/.leia_env is machine-local and
 # unversioned; where it does not exist this line is exactly the old one.
-env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"
