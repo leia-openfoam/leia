@@ -34,7 +34,7 @@ code; every note links to them.
 - [[retraction-log]]: one line per retracted, voided or corrected claim, in time order.
 - [[sessions/current]]: the living handover; the dated notes in `sessions/` are frozen.
 - [[conventions]]: how to write here.
-- The graph, interactive in 3D: [graph3d](graph3d/) (the same links as the graph view in the sidebar).
+- The graph, interactive in 3D: [graph3d/graph.htm](graph3d/graph.htm) (the same links as the graph view in the sidebar).
 
 ## Where the details live
 

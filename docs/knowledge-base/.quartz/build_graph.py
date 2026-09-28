@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Write graph3d/graph.json for the three.js page from the vault's notes and wikilinks.
 
-Usage: python3 build_graph.py <vault-dir>
+Usage: python3 build_graph.py <vault-dir> [--allow-unresolved]
+
+--allow-unresolved writes the graph although some links do not resolve (a preview of a vault
+that is still being written); without it an unresolved link is an error (exit 1).
 
 Nodes: every note whose kind is not "index", plus the root index (Home). Links: every resolved
 wikilink between two nodes, deduplicated, without self-links. An unresolved link is an error of
@@ -18,10 +21,12 @@ from check_kb import load_notes, links_of  # noqa: E402
 
 
 def main():
-    if len(sys.argv) != 2:
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    allow = "--allow-unresolved" in sys.argv
+    if len(args) != 1:
         print(__doc__)
         return 2
-    vault = sys.argv[1]
+    vault = args[0]
     notes = load_notes(vault)
     aliases = {}
     for rel, n in notes.items():
@@ -60,7 +65,9 @@ def main():
         nodes[t]["degree"] += 1
     if errors:
         print("\n".join(errors))
-        return 1
+        if not allow:
+            return 1
+        print(f"build_graph: {len(errors)} unresolved link(s) skipped (--allow-unresolved)")
     out = {
         "generated": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "counts": {"nodes": len(nodes), "links": len(links)},

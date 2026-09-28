@@ -286,7 +286,7 @@ kb-serve: ## build the knowledge base and serve it on http://localhost:8080
 kb-graph: ## check the vault and regenerate graph3d/graph.json; prints the local preview command
 	python3 docs/knowledge-base/.quartz/check_kb.py docs/knowledge-base
 	python3 docs/knowledge-base/.quartz/build_graph.py docs/knowledge-base
-	@echo "python3 -m http.server -d docs/knowledge-base 8000   # then open http://localhost:8000/graph3d/?local=1"
+	@echo "python3 -m http.server -d docs/knowledge-base 8000   # then open http://localhost:8000/graph3d/graph.htm?local=1"
 
 
 docs: decks articles

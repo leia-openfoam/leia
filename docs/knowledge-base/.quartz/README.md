@@ -16,4 +16,6 @@ to <https://leia-openfoam.github.io/leia/> on every push that touches `docs/**`,
 
 Preview the 3D graph without Node: `make kb-graph`, then
 `python3 -m http.server -d docs/knowledge-base 8000` and open
-<http://localhost:8000/graph3d/?local=1>.
+<http://localhost:8000/graph3d/graph.htm?local=1>. The page is `graph.htm`, not `index.html`: Quartz
+strips the `.html` extension of a non-Markdown file, and GitHub Pages would not serve the result as a
+directory index.
