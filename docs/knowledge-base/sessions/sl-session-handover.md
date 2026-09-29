@@ -94,8 +94,9 @@ decision and the cheapest discriminator.
    2.00 over N = 128 to 512; ellipsoid 2.10 over N = 50 to 128, 1.00 without the Gaussian term), 14 to
    26 % below the per-face inverse. Its gain equals the per-face inverse's: G h^2 0.647 at N = 512, so
    the STATUS 7 criterion as the curvature plan applied it (the finest rung) is met. The stricter
-   per-rung form fails at N = 128 and 256 (0.651, 0.673) for every second-order delivery, the per-face
-   inverse included; only the first-order cell-mean and symmetric face-mean deliveries stay below 0.65.
+   per-rung form fails at N = 128 (0.651) and 256 (0.673); at N = 256 every second-order delivery fails
+   it, the per-face inverse included; only the first-order cell-mean and symmetric face-mean deliveries
+   stay below 0.65.
    On the implicit psi every delivery is first order.
 6. **Traps** ([STATUS 11.19 item 7](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4303-L4312)): `leiaSetFields` is not
    idempotent on a non-pristine `0/`; a verification study through the full workflow runs the finalize

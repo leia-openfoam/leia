@@ -55,7 +55,7 @@
 # That form is stricter than the criterion as the curvature plan applied it (PCS 12: the finest
 # rung and the fitted order; per-face inverse 0.647 and 1.98, "passes"): under that form cCI
 # PASSES with the same numbers (0.647 at N = 512). The per-face inverse fails the per-rung form
-# too (0.650 / 0.673 at N = 128 / 256), and so does the arithmetic delivery (0.670 at N = 256);
+# at N = 256 (0.673; 0.6499 at N = 128 is below 0.65), and so does the arithmetic (0.670);
 # only the first-order cell-mean (0.416) and symmetric face-mean (0.467) stay below 0.65. Note:
 # the 0.660 seen before this header is the eps = 0.1 value; the linear value is 0.651.
 # ----------------------------------------------------------------------------

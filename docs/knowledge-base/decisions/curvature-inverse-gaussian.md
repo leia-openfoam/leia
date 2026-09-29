@@ -1,6 +1,6 @@
 ---
 title: "CURVATURE_INVERSE_GAUSSIAN: the K-aware parallel-surface inverse"
-description: "CURVATURE_INVERSE_GAUSSIAN yes, decided by config/faceCurvatureSphere3D.yaml on 2026-08-07: the inverse with the Gaussian curvature converges at h^1.95 on the 3D sphere against h^1.02 without K; with K off the coupled 3D arms at R/h = 12.7 and 15.8 diverge"
+description: "CURVATURE_INVERSE_GAUSSIAN yes, decided by config/faceCurvatureSphere3D.yaml on 2026-08-07: the per-face inverse with the Gaussian curvature converges at h^1.95 on the 3D sphere against h^1.02 without K; with K off the coupled 3D arms at R/h = 12.7 and 15.8 diverge; in the production cell-centre inverse the signed-distance ellipsoid gives 2.10 with K and 1.00 without (2026-09-29)"
 aliases: [CURVATURE_INVERSE_GAUSSIAN yes]
 kind: decision
 status: settled
@@ -9,12 +9,12 @@ tags: [decision, part/surface-tension]
 date: 2026-09-28
 date_settled: 2026-08-07
 decided_by: [config/faceCurvatureSphere3D.yaml, config/stationaryDroplet3DwideNoK.yaml]
-code: [applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/cellCentreInverseCurvature.H, applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/stabilizedFootPointFaceCurvature.H, cases/default.parameter]
-sources: ["METHOD 4.3 (L222-L241, CORRECTED)", "METHOD 8.1 row CURVATURE_INVERSE_GAUSSIAN (L398)", "RM L1362-L1396", "STATUS 4 (L846-L890)", "DP L296-L303"]
+code: [applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/cellCentreInverseCurvature.H, applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/stabilizedFootPointFaceCurvature.H, cases/default.parameter, applications/test/leiaTestMeanCurvature/leiaTestMeanCurvature.C, config/faceCurvatureEllipsoid3D.yaml]
+sources: ["METHOD 4.3 (L222-L241, CORRECTED)", "METHOD 8.1 row CURVATURE_INVERSE_GAUSSIAN (L398)", "RM L1362-L1396", "STATUS 4 (L846-L890)", "DP L296-L303", "METHOD 4.1 (L169-L193 at aaa0a7dd, MEASURED 2026-09-29)", "METHOD 4.3 (L266-L269 at aaa0a7dd, CORRECTED 2026-09-29)", "STATUS 11.19 item 6 (L4269-L4301 at aaa0a7dd)", "METHOD 8.1 row CURVATURE_INVERSE_GAUSSIAN (L435 at f47fc939)"]
 ---
 # CURVATURE_INVERSE_GAUSSIAN: the K-aware parallel-surface inverse
 
-> `CURVATURE_INVERSE_GAUSSIAN yes` in the global default; switchable since e6edf3d (2026-08-19) ([DP L296-L303](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L296-L303), [METHOD 8.1 L398](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L398)). The parallel-surface inverse that converts the curvature of the level set at offset `d` into the interface curvature is `kappa^Gamma = (kappa - 2 K d) / (1 - d kappa + K d^2)`, with the Gaussian curvature `K = (g . cof(H) . g) / abs(g)^4` from the same fit; `K` is identically zero in 2D, so every 2D result is byte-identical ([METHOD 4.3 L235-L241](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L235-L241), [RM L1362-L1372](https://github.com/leia-openfoam/leia/blob/8867581/docs/capillary-level-set-research-roadmap.md#L1362-L1372)). Decided by the static 3D sphere gate of 2026-08-07: the K-aware inverse converges at h^1.95 (L2 5.25e-3 at N = 128) against h^1.02 (0.421, equal to the raw value) for the 2D scalar inverse without K ([RM L1373-L1396](https://github.com/leia-openfoam/leia/blob/8867581/docs/capillary-level-set-research-roadmap.md#L1373-L1396)). The coupled control of 2026-08-19 confirms it: with K off the delivered non-gradient content is 770x larger at zeroth order and two of three 3D arms diverge ([STATUS L846-L890](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L846-L890)).
+> `CURVATURE_INVERSE_GAUSSIAN yes` in the global default; switchable since e6edf3d (2026-08-19) ([DP L296-L303](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L296-L303), [METHOD 8.1 L398](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L398)). The parallel-surface inverse that converts the curvature of the level set at offset `d` into the interface curvature is `kappa^Gamma = (kappa - 2 K d) / (1 - d kappa + K d^2)`, with the Gaussian curvature `K = (g . cof(H) . g) / abs(g)^4` from the same fit; `K` is identically zero in 2D, so every 2D result is byte-identical ([METHOD 4.3 L235-L241](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L235-L241), [RM L1362-L1372](https://github.com/leia-openfoam/leia/blob/8867581/docs/capillary-level-set-research-roadmap.md#L1362-L1372)). Decided by the static 3D sphere gate of 2026-08-07: the K-aware inverse of the per-face delivery converges at h^1.95 (L2 5.25e-3 at N = 128) against h^1.02 (0.421, equal to the raw value) for the 2D scalar inverse without K ([RM L1373-L1396](https://github.com/leia-openfoam/leia/blob/8867581/docs/capillary-level-set-research-roadmap.md#L1373-L1396)). The coupled control of 2026-08-19 confirms it: with K off the delivered non-gradient content is 770x larger at zeroth order and two of three 3D arms diverge ([STATUS L846-L890](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L846-L890)). CORRECTED 2026-09-29: the sphere orders belong to the per-face inverse, not to the cell-centre inverse in which the token now acts ([METHOD 4.3](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L266-L269)); the METHOD 8.1 row of the token now says so and gives the ellipsoid result ([METHOD 8.1 L435](https://github.com/leia-openfoam/leia/blob/f47fc939/METHOD.md#L435)). On the signed-distance ellipsoid the Gaussian term carries the order of the cell-centre inverse: the fit over N = 50 to 128 gives 2.10 with K and 1.00 without it ([METHOD 4.1](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L178-L183)).
 
 ## The question
 
@@ -34,10 +34,24 @@ The 2D parallel-curve inverse `kappa = kappa_d / (1 - d kappa_d)` is first-order
 
 Pre-registered read-out ([stationaryDroplet3DwideNoK.yaml L23-L34](https://github.com/leia-openfoam/leia/blob/8867581/config/stationaryDroplet3DwideNoK.yaml#L23-L34)): a. R/h = 15.8 stable with K off means K's noise feeds the growth; b. still unstable means K is exonerated and the tangential structure remains; c. the t = 0 delivery order drops to about 1 either way. Outcome b and c occurred: K is not the amplifier, and removing it destroys the delivery ([STATUS L880-L890](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L880-L890)).
 
+## Evidence after the decision (2026-09-29)
+
+The sphere ladder scored the per-face inverse (`quadraticCellCentre` with the foot point, and the `scalarInverse2D` control), not the cell-centre inverse ([METHOD 4.3](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L266-L269), [STATUS 11.19](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4270-L4274)). On 2026-09-29 the rows `solverCellCentreInverse` and `solverCellCentreInverseNoK` scored the production delivery with and without K on the ellipsoid gate:
+
+| arm | metric | value | where |
+|---|---|---|---|
+| static signed-distance ellipsoid, serial, N = 32 / 50 / 80 / 128, `cellCentreInverse` with K | active-face L2 error of `kappa_f` [1/m]; fit over N = 50 to 128 | 0.698 / 0.166 / 0.0571 / 0.0231; 2.10 | MEASURED, [METHOD 4.1](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L178) |
+| the same without K | the same | 1.82 / 1.30 / 0.825 / 0.508; 1.00 | MEASURED, same |
+| the same, per-face inverse | the same | 0.643 / 0.193 / 0.0689 / 0.0286; 2.03 | MEASURED, same |
+| implicit-psi ellipsoid, with K / without K | L2 at N = 128; fit | 0.309 (fit 0.91) / 0.685; every delivery is first order, because this foliation is not parallel | MEASURED, [METHOD 4.1](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L179-L184) |
+| signed-distance 2:1 ellipse, with and without K | every row | identical (K = 0 in 2D) | MEASURED, [METHOD 4.1](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L177) |
+
+The pre-registered read-out asks for an order >= 1.9 with K, and near first order without K (as `scalarInverse2D`, 0.97 in the raw data of 2026-08-26). It is FALSIFIED if the order with K is below 1.5 ([ellipsoid header](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/config/faceCurvatureEllipsoid3D.yaml#L20-L24)). Outcome: 2.10 and 1.00, not falsified ([STATUS 11.19](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4288-L4290)).
+
 ## What it does not cover
 
-1. The sphere gate scored the K-aware inverse inside the face delivery `stabilizedFootPointFace`; the production token now acts inside `cellCentreInverse` (sub-key `gaussianCurvature`) ([[models/curvature-extension]]). The coupled control of 2026-08-19 ran that cell delivery.
-2. Second order is measured on constant curvature (the sphere) only; a varying-K surface (a torus) is not tested ([METHOD 4.3 L240-L241](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L240-L241), [[concepts/cell-centre-inverse-curvature]]).
+1. The sphere gate scored the K-aware inverse inside the face delivery `stabilizedFootPointFace`; the production token now acts inside `cellCentreInverse` (sub-key `gaussianCurvature`) ([[models/curvature-extension]]). The coupled control of 2026-08-19 ran that cell delivery. Since 2026-09-29 the static ellipsoid gate scores the cell delivery too (the section above).
+2. Second order with K is now measured on a surface with a varying K, the ellipsoid; it is convex, so K > 0 everywhere (DERIVED). No static field gate has K < 0: the torus companion of STATUS 7 is not built ([STATUS 7](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L2687-L2693), [[concepts/cell-centre-inverse-curvature]]).
 3. The inverse assumes a parallel foliation, `psi = f(signed distance)`; on a drifted level set that premise fails, and the 3D instability at R/h about 16 happens despite the second-order delivery ([STATUS L880-L890](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L880-L890)).
 4. The 3D offset correction of the reconstruction (`SL_OFFSET_CORRECTION`) is a different object and stays `none` in the droplet templates ([METHOD 4.1 L161-L167](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L161-L167)).
 
@@ -49,3 +63,7 @@ Pre-registered read-out ([stationaryDroplet3DwideNoK.yaml L23-L34](https://githu
 
 ### 2026-09-28
 SETTLED on the sphere gate of 2026-08-07, confirmed by the K-off control of 2026-08-19. Entered in [[decision-log#2026-08]].
+
+### 2026-09-29
+CORRECTED the attribution of the sphere orders: they belong to the per-face inverse (METHOD 4.3, CORRECTED 2026-09-29). UPDATED with the ellipsoid evidence for the cell-centre inverse, 2.10 with K and 1.00 without (METHOD 4.1, STATUS 11.19 item 6, the config header, pinned to aaa0a7dd). The decision is unchanged. The decision-log line does not name the delivery and stays correct.
+UPDATED the same day: the METHOD 8.1 row of the token now names the per-face sphere orders and the ellipsoid result (f47fc939).

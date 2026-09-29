@@ -4292,8 +4292,9 @@ to the last commit of this section.
    the order); not falsified. The gain: G h^2 (linear regime) is 0.618 / 0.651 / 0.673 / 0.647
    at N = 64 to 512. The criterion of section 7 as PCS 12 applied it (the finest rung and the
    fitted order; the per-face inverse "passes" with 0.647 and 1.98) is MET with the same numbers.
-   The stricter per-rung form that I pre-registered FAILS at N = 128 and 256; the per-face
-   inverse (0.650, 0.673) and the arithmetic delivery (0.670 at N = 256) fail it too, and only
+   The stricter per-rung form that I pre-registered FAILS at N = 128 (0.6514) and 256 (0.673);
+   the per-face inverse fails it at N = 256 (0.673; 0.6499 at N = 128 is below the limit by
+   1e-4), the arithmetic delivery too (0.670 at N = 256), and only
    the first-order cell-mean (0.416) and symmetric face-mean (0.467) stay below 0.65. Correction
    of the same day: I first wrote "every delivery fails it at N = 256"; the knowledge-base
    writer found the two first-order exceptions. Ellipsoid, signed distance, N = 128: cCI
