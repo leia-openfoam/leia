@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-29 (section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-09-29 (section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -4172,7 +4172,7 @@ technical report. Plan: `docs/plan-knowledge-base-2026-09-28.md` (approved
    the 3D graph page `graph3d/graph.htm`), `missing_notes.py`, `build.sh` (`make kb`,
    `make kb-serve`, `make kb-graph`). The workflow `.github/workflows/knowledge-base.yml`
    replaces the dead `docs.yml`.
-2. **Publishing is blocked by one setting (OPEN, author decision).** The `github-pages`
+2. **Publishing is blocked by one setting (RESOLVED 2026-09-29: `main` carries the vault since the merge of 11.20, and its run published the site).** The `github-pages`
    environment allows deployments from `main` only (GitHub API, 2026-09-29). The workflow builds
    and checks the site on this branch; to publish from it, add the branch under Settings >
    Environments > github-pages > Deployment branches, or merge into `main`.
@@ -4397,3 +4397,59 @@ to the last commit of this section.
    that `materialize.py` breaks; no study runs it. (e) The circle and sphere face-curvature
    tables have no cCI rows yet: their studies were not re-run (the sphere inertness rung, N = 32:
    K-on 0.079, K-off 1.87).
+
+### 11.20 The merges of 2026-09-29: development, main, the pruned branches
+
+The author's request of 2026-09-29: merge everything into `development`, then into `main`, with
+`feature/eulerian-rholent`, and prune the obsolete feature branches (plan steps E to G).
+
+1. **`development` = 4f12ae71**, the merge of `feature/gradient-controlled-level-set` (537a6011,
+   which contains `feature/eulerian-rholent`) onto the OpenFOAM-v2606 move (185e356a). The two
+   predicted conflicts are resolved: STATUS.md keeps 10.6, then section 11; METHOD.md line 35
+   keeps both notes (the eight libraries, v2606). The merge adds to the feature exactly
+   development's own change: the same 375 files and the same line counts. The next commit,
+   1d568a87, puts v2606 in the three places that the feature added with v2512 (the banner of the
+   `oscillatingDroplet3D` fvOptions template, the launch recipe of the halo-limited plan 5.6, the
+   default of `translation_bc_probe.sh`), makes the clone recipe of CLUSTER.md check out
+   `development`, pins the two branch links of `concepts/method-gates` to a commit, and rewrites
+   `sessions/current`.
+2. **`main` = d89e3f56**: `git --no-replace-objects merge -s ours --no-ff origin/main` on 1d568a87,
+   pushed as a fast-forward, no force. Its tree is development's (`git diff --quiet HEAD^1 HEAD`),
+   and the old `main` 8f7b89fe (the history before the filter-repo rewrite of 2026-07-09) is its
+   second parent. `development` does not take this commit. The local `refs/replace/*` map 8f7b89fe
+   to its rewritten twin, so every command of this step ran with `--no-replace-objects`; with the
+   replace refs active, git sees the old `main` as an ancestor of `development`. Later merges from
+   `development` into `main` are normal merges with a recent base; this section reaches `main` by
+   the first of them.
+3. **GitHub Actions on `main`.** Knowledge base: build and deploy succeeded (run 36559552822, 11:27
+   UTC); https://leia-openfoam.github.io/leia/ now serves the vault instead of the old Doxygen
+   pages, so 11.18 item 2 is resolved. Build Tests (`.github/workflows/build.yml`, Docker image
+   `tmaric/openfoam-v2206_ubuntu-focal`) FAILED in its compile step (run 36559552814): the code
+   needs v2606, and the README badge is red. OPEN, author decision: a v2606 image or the
+   retirement of the workflow.
+4. **Branches.** Deleted on GitHub: `feature/eulerian-rholent` and `feature/velocity-extension`;
+   both are contained in `main` (`git --no-replace-objects merge-base --is-ancestor`). KEPT:
+   `feature/gradient-controlled-level-set`, because the Lichtenberg clones
+   `/work/scratch/tm83tomy/leia` (40c39d7) and `leia-gcls` (f7067d9) track it and cannot move to
+   `development` until OpenFOAM-v2606 is built on Lichtenberg (10.6); `leia-curvature` is on
+   `development` (c431677). After that switch, delete it with
+   `git push origin --delete feature/gradient-controlled-level-set`. The seven old branches of
+   other authors stay (author decision, 2026-09-29). No tag was pushed. The laptop keeps its local
+   branches; `leia-gcls-base` has `feature/eulerian-rholent` checked out, with no upstream.
+5. **Not touched:** the laptop clone `~/OpenFOAM/repos/leia` of another session (`development` at
+   c4316771, 101 commits behind, 51 uncommitted entries) and the Lichtenberg clones. The pull of
+   the laptop clone, for its owner:
+   1. Move aside the 8 untracked CSVs in
+      `docs/semi-lagrangian-level-set/sl-level-set-presentation/data/tables/` that are
+      byte-identical to development's (`npslConv2Dvortex`, `nslConv2Dvortex`,
+      `nslConv3Ddeformation`, `nslKinematicGate`, `sl_fit_pivot_census`, `veSmoke`,
+      `veSmokemeshWaveExt`, `veSmokesteadyUpwind`, each `*_errors.csv` or `.csv`).
+   2. `git stash`.
+   3. `git pull --ff-only`.
+   4. `git stash pop`, then resolve `.gitignore`, `popinetTranslating.csv` and
+      `stationaryDroplet3DbitIdentity_errors.csv`, which development also changed.
+6. **To read this file on Lichtenberg** without a change to any working tree:
+
+   ```bash
+   cd /work/scratch/tm83tomy/leia-curvature && git fetch -q origin && git show origin/development:STATUS.md | less
+   ```
