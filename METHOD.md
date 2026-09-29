@@ -166,6 +166,31 @@ place. The offset is `signedOffset`, the stable quadratic root along the normal 
 `offsetCorrection` defaults to `none`, and no droplet template sets it. The foot-point Newton
 projection stays off.
 
+MEASURED 2026-09-29: the first scoring of the SHIPPED delivery on varying curvature. The rows
+`solverCellCentreInverse` (K-aware) and `solverCellCentreInverseNoK` of `leiaTestMeanCurvature`
+call the solver's `applyCellCentreInverseCurvature` and the arithmetic face interpolation of
+`reconstructedCurvature.C`. Before this date the static gates scored the cell-centre inverse
+only as a remainder term. Active-face $L_2$ error of $\kappa_f$ [1/m], laptop, v2512:
+
+| gate | $N$ | cell-centre inverse (K-aware) | the same without $K$ | per-face inverse |
+|---|---|---|---|---|
+| 2:1 ellipse, signed distance (`faceCurvatureEllipse2D`) | 64 / 128 / 256 / 512 | 11.2 / 3.28 / 0.831 / 0.208; orders 1.77, 1.98, 2.00 | identical ($K = 0$ in 2D) | 14.2 / 4.32 / 1.12 / 0.279; orders 1.71, 1.95, 2.00 |
+| ellipsoid, signed distance (`faceCurvatureEllipsoid3D`) | 32 / 50 / 80 / 128 | 0.698 / 0.166 / 0.0571 / 0.0231; orders 3.22, 2.27, 1.93; fit over 50–128: 2.10 | 1.82 / 1.30 / 0.825 / 0.508; fit 1.00 | 0.643 / 0.193 / 0.0689 / 0.0286; fit 2.03 |
+| ellipsoid, implicit $\psi$ (same study) | 32 / 50 / 80 / 128 | 1.08 / 0.727 / 0.475 / 0.309; fit 0.91 | 1.84 / 1.48 / 1.10 / 0.685 | 1.19 / 0.728 / 0.468 / 0.308 |
+
+On both signed-distance gates the cell-centre inverse is second order, and from $N$ = 128 (2D)
+and $N$ = 50 (3D) its error is 14 to 26 % below the per-face inverse. In 3D the Gaussian term
+carries the order: without it the error is first order. On the implicit $\psi$ every delivery
+is first order, because that foliation is not parallel (Sec. 4.2). The pre-registered read-out
+(`config/faceCurvatureEllipse2D.yaml`, `config/faceCurvatureEllipsoid3D.yaml`): the orders
+PASS on both gates, and the K-on/K-off control is identical in 2D. The gain criterion FAILS:
+in the linear regime $G h^2$ is 0.618 / 0.651 / 0.673 / 0.647 at $N$ = 64 … 512, above the
+limit 0.65 of STATUS.md section 7 at $N$ = 128 and 256. The limit fails for every delivery at
+$N$ = 256 (per-face inverse 0.673, arithmetic 0.670), so on the ellipse the gain does not
+separate the deliveries. Tables: `face_curvature_ladder_ellipse.csv`,
+`face_curvature_ladder_ellipsoid3d_*.csv`, `face_curvature_orders_ellipsoid3d_foliation.csv`,
+`curvature_gain_ellipse.csv` (method-comparison data).
+
 ### 4.2 The offset (parallel-curve) correction
 
 $\kappa_d$ is the curvature of the level contour *through the cell centre*, not of
@@ -237,6 +262,11 @@ $\kappa^\Gamma = (\kappa - 2Kd)/(1 - d\kappa + Kd^2)$, with $K = 0$ identically 
 On the 3D sphere it converges at $h^{1.95}$, against $h^{1.02}$ without $K$, and with $K$ off
 the coupled 3D arms diverge (STATUS.md, the 3D sphere gate). Its second order is measured on
 constant curvature only (`cellCentreInverseCurvature.H`, CAVEAT).
+
+CORRECTED 2026-09-29: the sphere orders $h^{1.95}$ and $h^{1.02}$ belong to the PER-FACE
+inverse (`quadraticCellCentre` with the foot point, and the `scalarInverse2D` control), not to
+the cell-centre inverse. The cell-centre inverse with $K$ is now measured on varying curvature:
+$h^{2.10}$ on the signed-distance ellipsoid, $h^{1.00}$ without $K$ (Sec. 4.1).
 
 ---
 
@@ -372,7 +402,7 @@ that does not override the axis runs it. "gate" is the config whose measurement 
 |---|---|---|---|---|
 | `MOMENTUM_DDT_SCHEME` | `backward` | default | BDF2-vs-Euler matched windows | gain moved +11.1/+2.9/-3.0 % (sign-flipping = noise); volume and shape within 1.2 %. BDF2 costs nothing and is formally right |
 | `RHO_DDT_SCHEME` | `backward` | default | as above | the basis is the matching argument (both ddt terms at the same order). CORRECTED 2026-09-27: the backward/Euler pairing table that `cases/default.parameter` cites ran on the closed-box translating case and is VOID (STATUS.md section 0) |
-| `SL_RECONSTRUCTION` | `uncachedQuadraticWeightedLeastSquares` | per-case | transport ladders | 2nd–3rd order shape error to CFL 1 on hex AND cfMesh poly (Sec. 8) |
+| `SL_RECONSTRUCTION` | `uncachedQuadraticWeightedLeastSquares` | per-case | transport ladders | 2nd–3rd order shape error to CFL 1 on hex AND cfMesh poly (Sec. 8). CORRECTED 2026-09-29: the hex CFL axis came from the REVERSED `kinematicTranslation2D` (void). One-way, $N$ = 32–128: `E_GEOM_ALPHA_REL` orders 2.86, 2.30 at CFL 0.25 and 2.90, 2.16 at CFL 0.5; at CFL 1 they are irregular, 0.88 and 3.49 (STATUS 11.19) |
 | `SL_CORRECTION` | `direct` | default | — | `deferredCorrection` is a research path; no study selects it |
 | `SL_TRACE_VELOCITY` | `projectedFlux` | default | `stationaryDropletFootEval*` (CORRECTED 2026-09-28: the evidence is STATUS 2026-08-31 'ANSWERED: projectedFlux win is the RECONSTRUCT OPERATOR' and cases/default.parameter; the gate named here did not decide it) | the win is the RECONSTRUCT OPERATOR, not solenoidality (STATUS 2026-08-31) |
 | `SL_FOOT_INTEGRATOR` | `taylor` | default | — | — |
@@ -381,7 +411,7 @@ that does not override the axis runs it. "gate" is the config whose measurement 
 | `SL_CLIP_REGION` | `all` | default | `popinet2D_clipRegionGate` | the band exclusion removes ZERO firings on hex and fires zero cells on the poly stationary rung: no measured benefit anywhere |
 | `SL_CLIP_KEEP_EXTREMA` | `false` | default | G4 | see `SL_CLIP`; 59.2 % of the cells the bound must act on are themselves stencil extrema |
 | `SL_VALUE_BOUND` | `fromClipSwitch` | default | `popinet2D_coneBoundGate` (B1/B7a) | **no bound is in the best configuration.** The sentinel follows `SL_CLIP`, so it resolves to `none`. Inertness: 8 arms of `popinet2D_clipRegionGate` byte-identical over 1563 steps at np = 4 |
-| `SL_CONE_L_MODE` | `unity` | default | advection ladder + `popinet2D_coneBoundLadderN128` | read only by `lipschitzCone`, which is FALSIFIED (8.3). `unity` degrades pure transport 2.3-3.6x even where grad u = 0, and 9-19x in strained flow; `stencil` loses the phase entirely on 3D shear (E_VOL_REL = 1.0000) |
+| `SL_CONE_L_MODE` | `unity` | default | advection ladder + `popinet2D_coneBoundLadderN128` | read only by `lipschitzCone`, which is FALSIFIED (8.3). `unity` degrades pure transport even where grad u = 0: 14x at $N$ = 64 on the one-way translation, with no convergence over $N$ = 32–256 (8.3.4, 8.3.7; the 2.3-3.6x quoted here before 2026-09-29 came from a REVERSED translation and is void), and 9-19x in strained flow; `stencil` loses the phase entirely on 3D shear (E_VOL_REL = 1.0000) |
 | `SL_CONE_L` | `1` | default | — | the eikonal value. Any other value is a tuned coefficient and the solver warns |
 | `SL_CONE_INADMISSIBLE` | `cellOnly` | default | B7a | 0.58 % of cell-steps had an EMPTY cone interval, and the recovery path then decides the answer: volume error −67.8 % with `cellOnly` against −5.3 % with `none` on the same mesh. It is not a detail |
 | `PSI_FILTER` | `none` | default | filter-off scoring rule | a filter is a research instrument; production must be stable without it |
@@ -390,7 +420,7 @@ that does not override the axis runs it. "gate" is the config whose measurement 
 | `PHASE_INDICATOR` | `detrixheAslam` | default | — | — |
 | `SURFACE_TENSION_FORCE` | `reconstructedCurvature` | per-case | balanced-force gates | — |
 | `FACE_CURVATURE_SOURCE` | `model` | per-case | — | — |
-| `CURVATURE_EXTENSION` | `cellCentreInverse` (global default since c935883); **case-dependent where a measurement says so** | default; study config | stationary: the 2D shared ladders; translating, oscillating: NONE valid | CORRECTED 2026-09-27 (the row cited `translatingLadder2D` for `none` on the translating droplet; that evidence is most likely closed-box VOID). **Stationary 2D:** `cellCentreInverse` lowers the unabsorbed capillary residual 4.60 / 3.81 / 1.55 / 1.49x at $N$ = 32 / 64 / 128 / 256. **Translating 2D: undecided.** The only none-vs-cCI comparison (`bestConfigTranslating2D`) is closed-box VOID; the `translatingLadder2D` completions at $N$ = 128 and 181 have no record of a run after the fix 440107f, and the same tokens diverged after it; `translatingRepaired2D` (`none`, $N$ = 128, post-fix) diverged in all 8 arms at $t$ = 0.063–0.075 s at ratio 838.8; the `methodGate2D` baseline (`cellCentreInverse`) diverged at $t$ = 0.077–0.094 s of 0.1 s. `methodGate2D` runs `cellCentreInverse` with END_TIME 0.05 s, before both onsets. **Oscillating 2D:** `cellCentreInverse` completed $N$ = 128 in `oscillatingLadder2Dshared` where `none` failed at $t$ = 0.0982 s, but `none` had the lower volume error at $N$ = 32 and 64, the study used an algebraic psi, and cCI was never scored on the ellipse gate. **Popinet:** `none` is the setting of the reproduction (each config's `axes_override`, density ratio 1), not a measured preference. No `cases/<case>.parameter` sets this token |
+| `CURVATURE_EXTENSION` | `cellCentreInverse` (global default since c935883); **case-dependent where a measurement says so** | default; study config | stationary: the 2D shared ladders; translating, oscillating: NONE valid | CORRECTED 2026-09-27 (the row cited `translatingLadder2D` for `none` on the translating droplet; that evidence is most likely closed-box VOID). **Stationary 2D:** `cellCentreInverse` lowers the unabsorbed capillary residual 4.60 / 3.81 / 1.55 / 1.49x at $N$ = 32 / 64 / 128 / 256. **Translating 2D: undecided.** The only none-vs-cCI comparison (`bestConfigTranslating2D`) is closed-box VOID; the `translatingLadder2D` completions at $N$ = 128 and 181 have no record of a run after the fix 440107f, and the same tokens diverged after it; `translatingRepaired2D` (`none`, $N$ = 128, post-fix) diverged in all 8 arms at $t$ = 0.063–0.075 s at ratio 838.8; the `methodGate2D` baseline (`cellCentreInverse`) diverged at $t$ = 0.077–0.094 s of 0.1 s. `methodGate2D` runs `cellCentreInverse` with END_TIME 0.05 s, before both onsets. **Oscillating 2D:** `cellCentreInverse` completed $N$ = 128 in `oscillatingLadder2Dshared` where `none` failed at $t$ = 0.0982 s, but `none` had the lower volume error at $N$ = 32 and 64, the study used an algebraic psi, and cCI was not scored on the ellipse gate before 2026-09-29. **Static ellipse and ellipsoid (2026-09-29, the first scoring of the shipped delivery):** second order on the signed-distance ellipse (1.98, 2.00 over $N$ = 128–512) and ellipsoid (2.10 over $N$ = 50–128; 1.00 without $K$), 14–26 % below the per-face inverse; the gain limit 0.65 fails at $N$ = 128 and 256, for every delivery at 256 (Sec. 4.1). **Popinet:** `none` is the setting of the reproduction (each config's `axes_override`, density ratio 1), not a measured preference. No `cases/<case>.parameter` sets this token |
 | `MASS_FLUX_BOUND_RHO` | `true` | default | NONE valid | CORRECTED 2026-09-27: the row cited `rhoDdtGate2D` ($\rho$ to $-72.28$ without the bound), which ran on the closed-box translating case and is VOID. No valid measurement after the fix 440107f. The bound is active with rhoLENT; it is measured (`rhoClipL1`, `rhoClipFraction`) and must be gated before it is called settled (Sec. 6) |
 | `MASS_FLUX_ALPHAF_SOURCE` | `donorPlane` | default | author's instruction 2026-09-01 | "only Gauss upwind worked in rhoLENT" |
 | `PSI_OUTER_CORRECTORS` | `yes` | default | 2026-08-28 decision, `cases/default.parameter` | psi re-advected on every outer corrector (Sec. 6) |
@@ -577,6 +607,14 @@ which is the polyhedral case it was built for.
 
 #### 8.3.4 THE ADVECTION LADDER FALSIFIES IT: kinematics before dynamics
 
+**CORRECTED 2026-09-29: the 2Dtranslation row below is RE-MEASURED.** Until 2026-09-29
+`cases/2Dtranslation` was a REVERSED flow: the velocity model's default multiplied U by
+cos(pi t/T), so the circle came back to its start at T, and the metrics compared T with the
+initial fields (STATUS 11.19). The earlier row (none 3.41e-04, cone unity 3.6x worse, cone
+stencil 2.3x worse) is void. The row now carries the one-way case (oscillation off, the exact
+end reference psiEnd/alphaEnd, psi zeroGradient on all four patches), on one shared N = 64
+mesh (digest fd13ce29ac8e), np 4, laptop, `value_bound_advection_2Dtranslation.csv`.
+
 **THE NUMBERS IN THIS SUBSECTION COME FROM ONE RESOLUTION PER CASE, which the rule
 "Touch advection, run a mesh convergence study -- before stating anything" now
 forbids. The converged replacements are in 8.3.7, and they do not all agree with the
@@ -593,7 +631,7 @@ within each case. Relative geometric error `E_GEOM_ALPHA_REL` at the last COMMON
 
 | case | flow | cells | `none` | cone unity | cone stencil | `stencilBounds` |
 |---|---|---|---|---|---|---|
-| 2Dtranslation hex | uniform, grad u = 0 | 4 096 | **3.41e-04** | 1.24e-03 (3.6x worse) | 7.84e-04 (2.3x worse) | 3.50e-04 (equal) |
+| 2Dtranslation hex (one-way, 2026-09-29) | uniform, grad u = 0 | 4 096 | **7.21e-03** | 1.02e-01 (14.1x worse) | 6.82e-02 (9.5x worse) | 7.21e-03 (equal) |
 | 2Dvortex hex | strained | 4 096 | **6.28e-03** | 1.18e-01 (19x worse) | 4.02e-01 (64x worse) | 6.99e-03 (1.1x worse) |
 | 3Dshear hex | strained | 32 768 | 7.87e-02 | 7.16e-01 (9x worse) | **1.0000 (the phase is GONE)** | **7.26e-02 (best)** |
 | 3Dshear poly | strained | 49 911 | **DIVERGED, step 198** | 1.74 | 1.54 | 1.85 |
@@ -602,8 +640,12 @@ Three findings, in order of weight.
 
 **1. The bound degrades pure transport EVERYWHERE, including where L = 1 is valid.** On
 uniform translation, the one flow in which grad u = 0 makes L = 1 exactly defensible, the
-cone bound is still 2.3 to 3.6 times WORSE than no bound at all. That alone disqualifies it
-as a transport bound: it is not inert in its own valid regime.
+cone bound is 9.5 (stencil) to 14.1 (unity) times WORSE than no bound at N = 64, and it does
+not converge (8.3.7). That alone disqualifies it as a transport bound: it is not inert in its
+own valid regime. (Before 2026-09-29 this read "2.3 to 3.6 times", from the reversed flow.)
+The cone arm also depends on the psi boundary value 0.1 away from the interface: at N = 64 it
+gives 3.03e-02 with the exact value on the outflow patch and 1.02e-01 with zeroGradient (serial
+probe, 2026-09-29). The mechanism is not measured.
 
 **2. In strained flow it is catastrophic, and the review predicted exactly this.** 19x worse
 on the vortex, 9x worse on 3D shear, and with the `stencil` L mode the phase is lost
@@ -632,27 +674,33 @@ h_eff = nCells^(-1/3) for every case. A 2D case has N^2 cells, so that gave h_ef
 instead of 1/N, and every order was 3/2 of the true value. The tables below now carry the
 orders against h = 1/N (the old h_eff column, 9.92e-02 at N = 32, was the wrong spacing). The
 conclusions do not change: the unbounded translation still saturates at N = 256, and the cone
-bound is still worse on the vortex by a factor that grows under refinement. The curated
+bound is still worse on the vortex by a factor that grows under refinement. (RETRACTED
+2026-09-29: the translation saturation was measured on the REVERSED flow; the one-way ladder
+below converges.) The curated
 `advConv2D*_convergence.csv` tables are regenerated on Lichtenberg with the corrected script.
 
 Four rungs per case, N = 32/64/128/256, matched horizon, CFL fixed, h = 1/N from the
 CELL COUNT. `E_GEOM_ALPHA_REL`, with the observed order between consecutive rungs:
 
-**Uniform translation, grad u = 0 -- the regime where L = 1 is exactly valid.**
+**Uniform translation, grad u = 0 -- the regime where L = 1 is exactly valid.** RE-MEASURED
+2026-09-29 on the ONE-WAY case (oscillation off, the exact end reference, psi zeroGradient on
+all four patches; laptop, np 8, v2512, commit d48d4bd7). The table of 2026-09-10 in this place
+came from the reversed flow and is void, and with it two statements: "the unbounded scheme
+saturates at N = 256" and "the bound is better at the coarsest rung". The one-way ladder shows
+neither.
 
 | N | h | `none` | order | `lipschitzCone` | order | ratio |
 |---|---|---|---|---|---|---|
-| 32 | 3.125e-02 | 4.747e-03 | — | 4.019e-03 | — | **0.85, the bound is BETTER** |
-| 64 | 1.563e-02 | 3.409e-04 | 3.80 | 1.241e-03 | 1.70 | 3.6x worse |
-| 128 | 7.813e-03 | 7.947e-05 | 2.10 | 3.394e-04 | 1.87 | 4.3x worse |
-| 256 | 3.906e-03 | 1.159e-04 | **−0.54** | 2.162e-04 | 0.65 | 1.9x worse |
+| 32 | 3.125e-02 | 5.364e-02 | — | 1.323e-01 | — | 2.5x worse |
+| 64 | 1.563e-02 | 7.210e-03 | 2.90 | 1.019e-01 | 0.38 | 14.1x worse |
+| 128 | 7.813e-03 | 1.609e-03 | 2.16 | 9.664e-02 | 0.08 | 60.1x worse |
+| 256 | 3.906e-03 | 4.442e-04 | 1.86 | 7.535e-02 | 0.36 | **169.6x worse** |
 
-Two things a single rung could not show. The bound is BETTER at the coarsest rung, so
-"worse on uniform translation" was too simple. And **the unbounded scheme itself
-SATURATES**: its order goes 3.80, 2.10, then −0.54, and the error RISES from 7.95e-05
-to 1.16e-04 at N = 256. Something other than the transport reconstruction limits this
-case at the finest rung, and that is a finding about the baseline, not about any bound.
-It needs its own investigation before this rung is used to score anything.
+The unbounded scheme converges at second order. The volume error `E_VOL_ALPHA_REL` of `none`
+is 2.156e-02 / 4.557e-03 / 5.798e-04 / 2.359e-05 (orders 2.24, 2.97, 4.62); the cone's is
+7.74e-02 / 8.89e-02 / 9.15e-02 / 7.32e-02, which does not converge. `stencilBounds` tracks
+`none` within 4 % at every rung (`E_GEOM_ALPHA_REL` 5.59e-02 / 7.21e-03 / 1.61e-03 /
+4.47e-04). The one-way errors are larger than the reversed ones because nothing cancels at T.
 
 **Reversed vortex, strained.**
 
@@ -686,6 +734,11 @@ IDENTICAL mesh and an IDENTICAL `0/` so the only difference is the advection sol
 binary. Hex 2D translation, hex 2D vortex, hex 3D shear and polyhedral 3D shear are
 bit-identical in EVERY physical column at EVERY step, at tolerance 0. The polyhedral
 rung diverges at step 198 in both. `slValueBound` did not change advection.
+
+CORRECTED 2026-09-29: the hex 2D translation rung of this comparison ran the REVERSED flow, so
+its part of the evidence is void; the vortex and the two 3D rungs carry the result. The preserved
+baseline of the hex 2D translation rung is now `studies/advConv2Dtranslation` of 2026-09-29
+(one-way, the table in 8.3.7).
 
 That comparison first reported DIFFERS on all four, from a `cmp` of the whole metrics
 CSV: `ELAPSED_CPU_TIME` and `ELAPSED_CLOCK_TIME` are wall-clock and always differ. Use

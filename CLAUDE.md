@@ -525,6 +525,12 @@ of the form coefficient x displacement^n needs a gate with O(1) displacement IN 
 CELLS IT CAN AFFECT; a passing convergence table is not evidence for cells the flow
 never moved.
 
+**Corollary, MEASURED 2026-09-29: never give psi a fixed value on a patch.** The SL fit reads
+every physical patch value as a stencil datum (`SL_STENCIL_BOUNDARY_FACES include`). On the
+one-way `2Dtranslation`, the exact psi on the outflow patch grew by a factor of about 1.1 per
+step at the outflow edge, and the exact psi on the inflow patch failed at CFL 1, where the
+departure point leaves the domain. zeroGradient is stable in both.
+
 **Is the interface still inside the domain?** Before any conclusion is drawn from
 `t_blow`, compute where the interface IS at that step and how far it is from the
 nearest boundary -- and check what that boundary actually IS, in
@@ -589,7 +595,7 @@ transport the same way:
 
 | rung | case | mesh | why it is in the set |
 |---|---|---|---|
-| hex 2D | `2Dvortex` or `2Dtranslation` | `hex` | the cheapest transport order, and `2Dtranslation` is the only O(1)-displacement gate |
+| hex 2D | `2Dvortex` or `2Dtranslation` | `hex` | the cheapest transport order, and `2Dtranslation` is the only O(1)-displacement gate (one-way since 2026-09-29; before that it reversed, and its numbers are void) |
 | hex 3D | `3Dshear` | `hex` | 3D stencils and the cross terms of the quadratic fit |
 | polyhedral 3D | `3Dshear` | `poly` | the only rung where the polyhedral amplification defect appears |
 

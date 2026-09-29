@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-28 (FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is 2.3-3.6x WORSE than no bound on uniform translation, where its L = 1 is exactly valid, 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-09-29 (section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid; the gain limit 0.65 fails on the ellipse for every delivery. Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -3087,6 +3087,9 @@ trees; every CSV in every case root was compared pairwise with `compare_metrics_
 | poly 3D `advConv3DshearPoly`, np 48, shared mesh per resolution: 49 911, 347 073, 2 389 233 cells | 3 bounds x 3 meshes (967/1989/3945) | 27 |
 | loading: `ldd` of the 22 binaries in the split clone | the link matrix of `README.md`, no `libleiaLevelSet` | -- |
 
+CORRECTED 2026-09-29: the `advConv2Dtranslation` row ran the REVERSED translation (11.19);
+its 36 pairs are void, and the equivalence of the hex 2D rung rests on the vortex row.
+
 209 CSV pairs compared, 0 differences. The polyhedral rung built each mesh ONCE (plain
 `pMesh` jobs 54889779/82/85, digests 7e22acf1fbc9, 133ef0399684, 73ac6afbe5c8) and
 `advect_bound_arm.sh` copied it into both trees' arms, so the cfMesh non-reproducibility never
@@ -3379,6 +3382,9 @@ time directory is compared byte for byte (`bitid2.sh`, `bitid_compare.py`).
 | regression set, hex 2D: 2Dvortex and 2Dtranslation, N 32/64/128, np 4 | `leiaSemiLagrangeLevelSetFoam` | C2 | 6 | identical |
 | regression set, hex 3D: 3Dshear N 16/24/32, T = 3, np 4 | same | C2 | 3 | identical |
 | regression set, poly 3D: 3Dshear, 18 082 / 40 001 / 74 234 cells, T = 3, np 4, shared meshes | same | C2 | 6 | identical |
+
+CORRECTED 2026-09-29: the 2Dtranslation arms of the hex 2D regression row ran the REVERSED
+translation (11.19); they are void, and the row rests on its 2Dvortex arms.
 
 53 cases, 0 differences. `leiaTestSdplsSource`: 89 passed in both trees, the same output. The
 regression set ran the default arm at laptop sizes, not at the cluster sizes of the committed
@@ -4133,7 +4139,8 @@ technical report. Plan: `docs/plan-knowledge-base-2026-09-28.md` (approved
    corrected; they are listed, with the corrections still to make at the source, in
    `docs/knowledge-base/sessions/sl-session-handover.md` (items 1 to 15). The two most important:
    the production curvature `cellCentreInverse` was never scored on the varying-curvature ellipse
-   gate (the acceptance criterion of section 7 is not demonstrated for it), and a row of the SL
+   gate (the acceptance criterion of section 7 is not demonstrated for it; scored on 2026-09-29,
+   11.19: the orders pass, the gain limit fails for every delivery), and a row of the SL
    article's viscous-term table comes from the frozen-muf run of 4267d7b (re-run or retract: an
    author decision). Corrected at the source today: CLAUDE.md and AGENTS.md (a second clone would
    have loaded the library ~200 commits ahead; no job ran with it, 9.5), CLUSTER.md (the banner
@@ -4156,3 +4163,157 @@ technical report. Plan: `docs/plan-knowledge-base-2026-09-28.md` (approved
    `missing_notes.py` lists what is missing, each writer saves a source digest
    (`.quartz/digests/`, git-ignored) before drafting and every note at once, and the tree is
    committed after each batch (the incremental commits of 2026-09-28 and 2026-09-29).
+
+### 11.19 The one-way 2Dtranslation, the production curvature on the ellipse and ellipsoid (2026-09-29)
+
+The author's requests of 2026-09-29: `cases/2Dtranslation` must translate the droplet left to
+right only; the production curvature `cellCentreInverse` must be tested on the signed-distance
+ellipse and ellipsoid, after a check of what exists; two findings go to the SL session (its
+hand-over note); then the merges into `development` and `main`. All runs below: laptop,
+`leia-gcls` binaries (v2512), branch `feature/gradient-controlled-level-set`, commits f94e2a4a
+to the last commit of this section.
+
+1. **`2Dtranslation` was a REVERSED flow (retraction; every earlier number of the case is
+   VOID).** Commit cd97e6da (2026-09-01) made the case from `2Dvortex` and dropped the line
+   `oscillation @!OSCILLATION!@;`. `velocityModel.C:49` defaults `oscillation` to TRUE and `:50`
+   defaults `tau` to endTime, so U(t) = cos(pi t/T) (1 0 0): the circle came back to its start at
+   T, and the error metrics compared T with the initial fields (no `psiEnd`). The recorded data
+   show it: U = (0.034 0 0) at t = 0.2446 and (-0.99991 0 0) at t = 0.4979; the centroid moves
+   0.2500, 0.4082, 0.2502. Void: `kinematicTranslation2D`, `coneBoundMesh2Dtranslation` and its
+   four arms (METHOD 8.3.4), `advConv2Dtranslation` (8.3.7), the 2Dtranslation rows of the
+   regression and bit-identity gates (8.3.8, 10.3, 11.7, the C5 gate of the halo-limited plan).
+   The trees are renamed `*_VOID_reversedTranslation_20260929` (laptop and Lichtenberg), the three
+   curated tables are in `data/tables/VOID_reversedTranslation_20260929/` with a README.
+   I was wrong in the METHOD statements "the unbounded translation saturates at N = 256" and
+   "the cone bound is better at the coarsest rung": both were read from the reversed flow.
+
+2. **The fix.** `OSCILLATION off` in `cases/2Dtranslation.parameter`. A new token
+   `END_REFERENCE none|translate` (inert default `none` in `cases/default.parameter`): with
+   `translate`, `workflow/scripts/write_end_reference.py` writes `psiEnd`/`alphaEnd` (the circle
+   moved by U T, made by the same `leiaSetFields` from the pristine `0.org` inputs) before
+   `decomposePar`; the Snakefile runs it from the template's content, `advect_bound_arm.sh` and
+   `Allrun.sh` call it too. The three kinematic solvers print which error reference they use
+   (the silent fallback to the initial fields hid the reversal for four weeks); inert,
+   bit-identical CSVs on `2Dvortex` N = 32 np 4 for the SL and the Eulerian solver.
+   `aggregate.py` keeps `shapeError` for a one-way row with an end reference. psi is
+   zeroGradient on all four patches (item 3).
+
+3. **Fixed psi values on a patch make the SL update unstable (MEASURED; a finding about the SL
+   scheme, for the SL session).** The approved plan put the exact psi on all four patches; that
+   was my recommendation, and I was wrong. The SL fit reads every physical patch value as a
+   stencil datum (`SL_STENCIL_BOUNDARY_FACES include`, the default). Serial probe of four
+   boundary variants (`workflow/scripts/translation_bc_probe.sh` and `_scan.py`),
+   `E_GEOM_ALPHA_REL` at T:
+
+   | psi on left (inflow) / right (outflow) / top, bottom | N = 128, CFL 0.5 | N = 256, CFL 0.5 | N = 128, CFL 1 |
+   |---|---|---|---|
+   | exact / exact / exact | 1.72e-03 | **1.98e-02** (outflow edge 4.5e+05) | **1.79** |
+   | exact / zeroGradient / exact | 1.61e-03 | 4.44e-04 | **1.79** |
+   | exact / zeroGradient / zeroGradient | 1.61e-03 | 4.44e-04 | **1.79** |
+   | zeroGradient everywhere (committed) | 1.61e-03 | 4.44e-04 | 2.15e-03 |
+
+   (a) The exact value on the OUTFLOW patch: the outflow-edge error grows by a factor of about
+   1.1 per step (N = 64 to 256, CFL 0.5), reaches 4.5e5 at T at N = 256 and makes 96 false
+   zero-set cells. It corrupted the `none` N = 256 rung of the first re-run (`E_GEOM_ALPHA_REL`
+   order -3.53); those trees are `*_VOID_outflowDirichlet_20260929`. (b) The exact value on the
+   INFLOW patch at CFL 1, where the departure point of the first cell column lies outside the
+   domain: 2246 false zero-set cells in the inflow region; those trees are
+   `*_VOID_inflowDirichlet_20260929`. With zeroGradient everywhere both are stable: outflow edge
+   1.7e-03 at N = 256 (CFL 0.5), 8.8e-04 at N = 128 (CFL 1). No production case gives psi a
+   fixed value, so no production run is affected; CLAUDE.md has the corollary. Consequence for
+   this case: the inflow region x < t keeps psi0(0, y) >= 0.10 (no zero crossing, the interface
+   metrics are unaffected), and the GLOBAL gradient metrics measure that frozen region.
+
+4. **The repair gate** (`config/translationRepairGate2D{serial,par4}.yaml`, pre-registered; three
+   runs, the first two void). RE-RUN 3 passes every line on both indicator arms: U = (1 0 0) at
+   every write; 108 steps (the reversed case took 86); centroid at T (0.74972, 0.50000);
+   `E_VOL_ALPHA_REL` at t = 0 1.65e-14; `E_GEOM_ALPHA_REL` 2.000000 at t = 0 (disjoint circles)
+   and 7.210e-03 at T; every patch face equals its boundary cell; np 4 against serial 2.7e-12
+   column-scaled; outflow edge 5.92e-03 at t = 0.2486 and 6.90e-03 at T; no false zero set.
+
+5. **The translation studies, re-run** (all 34 runs COMPLETED, no false zero-set cell at any
+   write time). `advConv2Dtranslation` (np 8) is the new preserved baseline of the hex 2D
+   regression rung:
+
+   | N | `none` E_GEOM | order | `stencilBounds` | `lipschitzCone` | order | cone / none |
+   |---|---|---|---|---|---|---|
+   | 32 | 5.364e-02 | — | 5.591e-02 | 1.323e-01 | — | 2.5 |
+   | 64 | 7.210e-03 | 2.90 | 7.210e-03 | 1.019e-01 | 0.38 | 14.1 |
+   | 128 | 1.609e-03 | 2.16 | 1.614e-03 | 9.664e-02 | 0.08 | 60.1 |
+   | 256 | 4.442e-04 | 1.86 | 4.472e-04 | 7.535e-02 | 0.36 | 169.6 |
+
+   `E_VOL_ALPHA_REL` of `none`: 2.156e-02, 4.557e-03, 5.798e-04, 2.359e-05 (orders 2.24, 2.97,
+   4.62); of the cone: 7.7e-02 to 9.1e-02, no convergence. `E_BOUND_ALPHA` = 0 everywhere. The
+   one-way errors are about 20 times the reversed ones (7.21e-03 against 3.41e-04 at N = 64),
+   because nothing cancels at T. The four cone-bound arms on one N = 64 mesh (np 4, digest
+   fd13ce29ac8e): `none` 7.21e-03, cone unity 1.02e-01 (14.1x), cone stencil 6.82e-02 (9.5x),
+   `stencilBounds` 7.21e-03. The cone arm depends on the psi boundary value 0.1 away from the
+   interface: 3.03e-02 with the exact outflow value, 1.02e-01 with zeroGradient (probe, N = 64);
+   the mechanism is not measured.
+
+   `kinematicTranslation2D` (18 arms, np 4), `E_GEOM_ALPHA_REL` at T, N = 32 / 64 / 128:
+
+   | CFL | E_GEOM_ALPHA_REL | orders | E_VOL_ALPHA_REL | orders |
+   |---|---|---|---|---|
+   | 0.25 | 6.24e-02 / 8.62e-03 / 1.75e-03 | 2.86, 2.30 | 2.94e-02 / 7.81e-03 / 1.06e-03 | 1.91, 2.88 |
+   | 0.5 | 5.36e-02 / 7.21e-03 / 1.61e-03 | 2.90, 2.16 | 2.16e-02 / 4.56e-03 / 5.80e-04 | 2.24, 2.97 |
+   | 1 | 4.47e-02 / 2.42e-02 / 2.15e-03 | 0.88, 3.49 | 2.07e-03 / 1.79e-03 / 6.83e-06 | 0.21, 8.04 |
+
+   The pre-registered read-out, on the geometric alpha error (never L_inf): second order at fixed
+   CFL PASSES at CFL 0.25 and 0.5; at CFL 1 the orders are irregular (OPEN). The mechanism
+   prediction (the error collapses at CFL 1) is FALSIFIED again: at CFL 1 the shape error is 3.4
+   times worse at N = 64 and 1.34 times worse at N = 128 than at CFL 0.5; only the volume error
+   falls, 85 times at N = 128, on one rung. The null control passes: projectedFlux and
+   cellCentred agree to 5.0e-12 column-scaled in every column of every row.
+
+6. **`cellCentreInverse` on the signed-distance ellipse and ellipsoid (MEASURED; the first
+   scoring of the shipped delivery on varying curvature).** What existed: the ellipse gate of
+   2026-08-12 to 08-15 (per-face inverse 1.98, cut-cell 1.02, cell mean 1.03, arithmetic 0.97)
+   ran BEFORE `cellCentreInverse` existed (9bb4f9d5, 2026-08-18); the sphere ladder h^1.95
+   against h^1.02 scored the per-face inverse; the ellipsoid gate ran on 2026-08-26 and was never
+   curated; the static gates scored cCI only as a remainder term. What the author remembered is
+   most likely those gates. Added (e089939f): the rows `solverCellCentreInverse` and
+   `solverCellCentreInverseNoK` in `leiaTestMeanCurvature` and the models `cellCentreInverse` and
+   `cellCentreInverseNoK` in `leiaTestCurvatureNoiseGain`, both calling the shipped function and
+   the arithmetic face interpolation. Inert: every old row byte-identical on the circle (N = 128),
+   the sphere (N = 32) and the ellipse (N = 128). The two EXISTING studies re-ran; no new study.
+   Active-face L2 error [1/m]:
+
+   | gate | N | cCI with K | cCI without K | per-face inverse |
+   |---|---|---|---|---|
+   | ellipse, signed distance | 64 / 128 / 256 / 512 | 11.2 / 3.28 / 0.831 / 0.208; orders 1.77, 1.98, 2.00 | identical | 14.2 / 4.32 / 1.12 / 0.279 |
+   | ellipsoid, signed distance | 32 / 50 / 80 / 128 | 0.698 / 0.166 / 0.0571 / 0.0231; fit 50-128: 2.10 | 1.82 / 1.30 / 0.825 / 0.508; fit 1.00 | 0.643 / 0.193 / 0.0689 / 0.0286; fit 2.03 |
+   | ellipsoid, implicit psi | 32 / 50 / 80 / 128 | 1.08 / 0.727 / 0.475 / 0.309; fit 0.91 | 1.84 / 1.48 / 1.10 / 0.685 | 1.19 / 0.728 / 0.468 / 0.308 |
+
+   The pre-registered read-out (the two config headers): the orders PASS on both signed-distance
+   gates; the K-off control is identical in 2D and first order in 3D (the Gaussian term carries
+   the order); not falsified. The gain criterion of section 7 FAILS on the ellipse: G h^2 (linear
+   regime) is 0.618 / 0.651 / 0.673 / 0.647 at N = 64 to 512, above 0.65 at N = 128 and 256.
+   Every delivery fails it at N = 256 (per-face inverse 0.673, arithmetic 0.670), so on the
+   ellipse the gain does not separate the deliveries. Ellipsoid, signed distance, N = 128: cCI
+   0.838, per-face 0.836, arithmetic 0.834. The implicit psi is first order for every delivery
+   (its foliation is not parallel); its gain per unit psi (0.060) is not comparable with the
+   signed distance. Curated by hand (the finalize rule runs the same scripts):
+   `face_curvature_ladder_ellipse.csv`, `face_curvature_orders_ellipse.*`, `curvature_gain_ellipse.*`,
+   the `_ellipsoid3d_<surface>` tables and figures, `face_curvature_orders_ellipsoid3d_foliation.*`.
+   `make_face_curvature_fig.py` and `make_curvature_gain_table.py` now write one set per
+   `PSI_SURFACE` (they mixed the two psi of the ellipsoid gate in one fit), label the production
+   rows, name the right geometry in the title and write the per-rung ladder. METHOD 4.1, 4.3, 8.1.
+
+7. **Traps, for any session.**
+   - `leiaSetFields` is not idempotent on a non-pristine `0/`: a second call on its own output
+     wrote 0/1 indicator values at the new circle (`alphaEnd` off by 0.46 in a cell, 1.6 %
+     volume). `write_end_reference.py` rebuilds `0/` from `0.org` for its call.
+   - A verification study through the full workflow runs the finalize rule, which overwrote
+     curated figures (`alpha_field_2Dvortex_hex.png`, three velocity-extension figures; restored
+     with `git checkout`). Run verification studies with `--until solve`.
+   - The per-value relative test of `compare_metrics_csv.py` fails on round-off columns
+     (`E_BOUND_ALPHA` <= 1.6e-14, the t = 0 volume rows); read the column-scaled difference.
+
+8. **Open.** (a) The SL treatment of Dirichlet psi data and of a departure point outside the
+   domain (item 3; the SL session). (b) The CFL-1 orders of `kinematicTranslation2D` (0.88,
+   3.49). (c) The cone bound's dependence on a boundary value 0.1 away (the bound is falsified
+   anyway). (d) `3Dtranslation` keeps its own `init_End` with a hardcoded centre and symlinks
+   that `materialize.py` breaks; no study runs it. (e) The circle and sphere face-curvature
+   tables have no cCI rows yet: their studies were not re-run (the sphere inertness rung, N = 32:
+   K-on 0.079, K-off 1.87).
