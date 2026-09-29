@@ -79,6 +79,15 @@
 # this droplet -- now discriminates between the curvature ESTIMATOR and the force
 # BALANCE, and is the necessary next step rather than merely a useful one.
 # ================================================================================
+# ----------------------------------------------------------------------------
+# RE-RUN 2026-09-29 with the ONE-WAY case (oscillation off, psiEnd/alphaEnd, exact boundary data;
+# f94e2a4a). Every earlier run of this study was a REVERSED translation (cos(pi t/tau), the circle
+# returned at T; STATUS 11.19): its numbers, and any RESULT text below that quotes them, are VOID.
+# The read-out above stands: order in h at fixed CFL in the geometric alpha error (never L_inf),
+# the null control (projectedFlux = cellCentred for uniform U, to round-off) and the CFL = 1 test.
+# Known limit, not changed: deltaT starts at 1e-6 and ramps x1.2 per step (about 6 CFL cells of
+# travel), so the foot is not on a cell centre during the ramp even at CFL = 1.
+# ----------------------------------------------------------------------------
 study_name: kinematicTranslation2D
 case: 2Dtranslation
 mesh: hex

@@ -37,6 +37,12 @@
 # READ IT WITH: workflow/scripts/value_bound_ladder_table.py (order next to the
 # error) or, for shared-mesh arms, value_bound_advection_census.py.
 # ============================================================================
+# ----------------------------------------------------------------------------
+# RE-RUN 2026-09-29 with the ONE-WAY case (oscillation off, psiEnd/alphaEnd, exact boundary data;
+# f94e2a4a). Every earlier run of this study was a REVERSED translation (cos(pi t/tau), the circle
+# returned at T; STATUS 11.19): its numbers, and any RESULT text below that quotes them, are VOID.
+# The read-out above stands; this run is the new preserved baseline of the hex 2D regression rung.
+# ----------------------------------------------------------------------------
 study_name: advConv2Dtranslation
 case: 2Dtranslation
 mesh: hex

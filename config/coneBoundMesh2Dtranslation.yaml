@@ -1,3 +1,11 @@
+# ----------------------------------------------------------------------------
+# RE-RUN 2026-09-29 with the ONE-WAY case (oscillation off, psiEnd/alphaEnd, exact boundary data;
+# f94e2a4a). Every earlier run of this study was a REVERSED translation (cos(pi t/tau), the circle
+# returned at T; STATUS 11.19): its numbers, and any RESULT text below that quotes them, are VOID.
+# The mesh of the four advect_bound_arm.sh arms of METHOD 8.3.4 (none, cone unity, cone stencil,
+# stencilBounds) on one shared N = 64 mesh. The question stands: is the cone bound worse than none
+# on uniform translation, where L = 1 is exact? (The earlier 2.3-3.6x worse is void.)
+# ----------------------------------------------------------------------------
 study_name: coneBoundMesh2Dtranslation
 case: 2Dtranslation
 mesh: hex
