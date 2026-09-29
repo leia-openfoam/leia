@@ -79,6 +79,18 @@
 #      bottom 1.8e-3 to 1.1e-3.) The left column keeps psi0(0, y): its error is not a defect.
 #   9. No false zero set: no cell with psi < 0 lies farther than 5 h from the exact circle at T.
 # FAILED if any line fails.
+#
+# RESULT of RE-RUN 3 (2026-09-29, laptop, leia-gcls binaries of 11:30, v2512, commit 39c9fe02).
+# Both phase-indicator arms (geometric, detrixheAslam) PASS every line:
+#   1. U = (1 0 0) at t = 0, 0.2486, 0.4986.        2. 108 steps.
+#   3. centroid at T (0.74972, 0.50000).            4. E_VOL_ALPHA_REL(t = 0) = 1.65e-14, 1.72e-14.
+#   5. E_GEOM_ALPHA_REL = 2.000000 at t = 0, 7.210e-3 at T (E_VOL_ALPHA_REL 4.557e-3 at T).
+#   6. every face of the four patches equals its boundary cell exactly, at t = 0 and at T.
+#   7. np 4 against serial: the largest column-scaled difference is 2.7e-12 (E_VOL_ALPHA); the
+#      per-value relative test flags only round-off entries, as in RE-RUN 2.
+#   8. right edge 5.92e-3 at t = 0.2486 and 6.90e-3 at T (1.17 times); top and bottom edges
+#      (x > t + 0.05) 3.74e-3 and 2.10e-3.
+#   9. no cell with psi < 0 lies farther than 5 h from the exact circle at T.
 # ============================================================================
 study_name: translationRepairGate2Dserial
 case: 2Dtranslation
