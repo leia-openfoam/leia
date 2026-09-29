@@ -73,6 +73,24 @@
 #   gradAlpha 1.95, isoAlpha 1.99; TwoPhaseFlow's own LCentre1: plicRDF 2.00.
 #   Plane gate: E_POS_LINF 1.0e-16 m and 8.9e-17 m (both states), realizability
 #   |alphaPlane - alpha| 1.9e-15 / 1.5e-14, |A n - m_c|/h^2 6.0e-14 / 9.6e-14.
+# PREDICTION 4 (pre-registered 2026-09-29, before run 5; the arm linearInterpolant
+#   is renamed detrixheAslam, which is what it is: the exact signed distance at
+#   the cell centre, the face centres and the points in the Detrixhe-Aslam
+#   formulas). New arm quadraticFaces: the face fractions from the exactly cut
+#   quadratic interpolant of the exact signed distance at the vertices and the
+#   edge midpoints of every fan triangle (crossings O(h^3), fractions O(h^2)),
+#   cell fractions as detrixheAslam. Prediction: p(E_L2_N) = 2.0 +- 0.2 and
+#   p(E_L1_N) = 2.0 +- 0.2 with E_L2_N within a factor 2 of exactSphere at every
+#   rung; p(E_AREA_REL) = 2.0; p(E_POS_L2) = 2.0 +- 0.3; N_FACE_FALLBACK = 0 at
+#   R/h >= 10. FALSIFIED: p(E_L2_N) < 1.7 (then one polynomial degree more is
+#   not enough and the sliver argument is wrong).
+# MEASURED 2026-09-29 (run 5, STATUS 10.10): HELD. quadraticFaces p(E_L2_N) =
+#   1.95, p(E_L1_N) = 2.05, E_L2_N 6.80e-3 / 1.56e-3 / 3.9e-4 / 1.19e-4 against
+#   exactSphere 6.96e-3 / 1.56e-3 / 3.83e-4 / 1.15e-4 (within 4 %), p(E_AREA_REL)
+#   = 2.00, p(E_POS_L2) = 2.01 (7.5e-8 m at N = 160). N_FACE_FALLBACK 4 / 2 / 0 /
+#   4 of 2.6e4..1.2e7 faces (the "0 at R/h >= 10" part of the prediction missed
+#   by a handful of faces; they keep the Detrixhe-Aslam value). Plane gate: all
+#   three leia states exact (E_POS_LINF 9e-17 m for quadraticFaces).
 # PASS: exactSphere order(E_L2_N) >= 1.8 AND order(E_AREA_REL) >= 1.8;
 #   linearInterpolant MAX_CONSISTENCY < 1e-10 at every rung (the identity).
 # FALSIFIED: exactSphere order(E_L2_N) < 1.7 (the method claim of the
@@ -99,7 +117,7 @@ setfields_args: "-alphaName alpha.water"
 
 axes_override:
   N_CELLS: [20, 40, 80, 160]
-  DAVOF_ALPHA_SOURCE: [exactSphere, linearInterpolant, planePhaseIndicator]
+  DAVOF_ALPHA_SOURCE: [exactSphere, quadraticFaces, detrixheAslam, planePhaseIndicator]
   DAVOF_CROSS_CHECK: [geometricVoF]
   DAVOF_WISP_TOL: [1e-3]
 collapse_other_axes: true

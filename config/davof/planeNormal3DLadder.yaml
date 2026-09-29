@@ -21,7 +21,7 @@ setfields_args: "-alphaName alpha.water"
 
 axes_override:
   N_CELLS: [8, 16, 32]
-  DAVOF_ALPHA_SOURCE: [linearInterpolant]
+  DAVOF_ALPHA_SOURCE: [detrixheAslam]
   DAVOF_CROSS_CHECK: [geometricVoF]
   DAVOF_WISP_TOL: [1e-3]
 collapse_other_axes: true

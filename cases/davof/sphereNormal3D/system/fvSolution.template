@@ -49,7 +49,7 @@ levelSet
 }
 
 // The DAVOF state (libleiaDavof) and the norms of leiaTestDavofNormal.
-//   alphaSource linearInterpolant  : exact signed distance at cell centre, face
+//   alphaSource detrixheAslam      : exact signed distance at cell centre, face
 //                                    centres and points, linear on the tets --
 //                                    ONE C0 piecewise-linear surface, the
 //                                    Gauss identity is exact for it.

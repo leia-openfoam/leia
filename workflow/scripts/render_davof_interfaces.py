@@ -127,7 +127,8 @@ def main(argv):
     study = os.path.basename(os.path.normpath(a.study_dir))
     cases, sources = collect(a.study_dir, a.alpha_source, a.models, a.max_resolutions)
     if not cases and a.alpha_source is None:
-        for pref in ("exactSphere", "linearInterpolant", "planePhaseIndicator"):
+        for pref in ("exactSphere", "quadraticFaces", "detrixheAslam", "linearInterpolant",
+                     "planePhaseIndicator"):
             if pref in sources:
                 cases, _ = collect(a.study_dir, pref, a.models, a.max_resolutions)
                 a.alpha_source = pref

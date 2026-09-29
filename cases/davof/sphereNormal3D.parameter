@@ -9,7 +9,7 @@
 //
 // Three alpha sources run at every rung: exactSphere is the exact state (face
 // fractions from the circle-polygon intersection, cell fractions from an exact
-// quadrature); linearInterpolant is the consistent piecewise-linear state the
+// quadrature); quadraticFaces cuts the quadratic interpolant of the exact signed distance on every face triangle; detrixheAslam is the Detrixhe-Aslam state (exact signed distance at cell centre, face centres and points) the
 // DAVOF identity is exact for; planePhaseIndicator is the plane-based state the
 // SL solver transports. The cross-check runs OpenFOAM's geometricVoF plicRDF,
 // gradAlpha and isoAlpha on the identical alpha field of each source.
@@ -21,7 +21,7 @@ values
 
     DOMAIN_LENGTH ( 0.004 );
 
-    DAVOF_ALPHA_SOURCE ( exactSphere linearInterpolant planePhaseIndicator );
+    DAVOF_ALPHA_SOURCE ( exactSphere quadraticFaces detrixheAslam planePhaseIndicator );
 
     DAVOF_CROSS_CHECK ( geometricVoF );
 }

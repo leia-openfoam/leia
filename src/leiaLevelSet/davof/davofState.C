@@ -5,6 +5,7 @@
 #include "davofState.H"
 #include "davofSimplexGeometry.H"
 #include "davofSphereGeometry.H"
+#include "davofQuadraticFaceGeometry.H"
 #include "levelSetPlaneReconstruction.H"
 #include "syncTools.H"
 #include "boundBox.H"
@@ -16,7 +17,10 @@ Foam::davofState::davofState(const fvMesh& mesh, const dictionary& dict)
 :
     mesh_(mesh),
     dict_(dict),
-    alphaSource_(dict.getOrDefault<word>("alphaSource", "linearInterpolant")),
+    alphaSource_
+    (
+        canonicalSource(dict.getOrDefault<word>("alphaSource", "detrixheAslam"))
+    ),
     wispTol_(dict.getOrDefault<scalar>("wispTol", 1e-3)),
     alpha_
     (
@@ -119,20 +123,29 @@ Foam::davofState::davofState(const fvMesh& mesh, const dictionary& dict)
         zeroGradientFvPatchScalarField::typeName
     ),
     maxVolDiffPlane_(0),
-    maxAreaDiffPlane_(0)
+    maxAreaDiffPlane_(0),
+    nFaceFallback_(0)
 {
     if
     (
-        alphaSource_ != "linearInterpolant"
+        alphaSource_ != "detrixheAslam"
+     && alphaSource_ != "quadraticFaces"
      && alphaSource_ != "planePhaseIndicator"
      && alphaSource_ != "exactSphere"
     )
     {
         FatalIOErrorInFunction(dict_)
             << "Unknown davof alphaSource '" << alphaSource_
-            << "'. Valid: linearInterpolant, planePhaseIndicator, exactSphere."
+            << "'. Valid: detrixheAslam (alias linearInterpolant), "
+            << "quadraticFaces, planePhaseIndicator, exactSphere."
             << exit(FatalIOError);
     }
+}
+
+
+Foam::word Foam::davofState::canonicalSource(const word& name)
+{
+    return (name == "linearInterpolant") ? word("detrixheAslam") : name;
 }
 
 
@@ -323,6 +336,63 @@ void Foam::davofState::computeFromImplicitSurface(const implicitSurface& surface
         );
     }
     alpha_.correctBoundaryConditions();
+    fillAlphafOut();
+}
+
+
+void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
+{
+    // Cell fractions, tet reference and the Detrixhe-Aslam face fractions
+    // (the fallback) first.
+    computeFromImplicitSurface(surface);
+
+    const pointField& P = mesh_.points();
+    const faceList& faces = mesh_.faces();
+    const vectorField& Cf = mesh_.faceCentres();
+    const vectorField& Sf = mesh_.faceAreas();
+
+    label nFallback = 0;
+    forAll(alphaf_, faceI)
+    {
+        const scalar A = mag(Sf[faceI]);
+        if (A <= VSMALL) continue;
+        const face& f = faces[faceI];
+        const point& xf = Cf[faceI];
+        const scalar phif = surface.value(xf);
+
+        scalar liqA = 0, totA = 0;
+        bool fb = false;
+        forAll(f, ip)
+        {
+            const label ip1 = f.nextLabel(ip);
+            const point& p0 = P[f[ip]];
+            const point& p1 = P[ip1];
+            const scalar triA = 0.5*mag((p0 - xf) ^ (p1 - xf));
+            if (triA <= VSMALL) continue;
+            // vertices xf, p0, p1; midpoints of (xf,p0), (p0,p1), (p1,xf)
+            const scalar ph[6] =
+            {
+                phif,
+                surface.value(p0),
+                surface.value(p1),
+                surface.value(0.5*(xf + p0)),
+                surface.value(0.5*(p0 + p1)),
+                surface.value(0.5*(p1 + xf))
+            };
+            bool tfb = false;
+            const scalar fr = davof::triQuadraticNegativeFraction(xf, p0, p1, ph, tfb);
+            if (tfb) { fb = true; break; }
+            liqA += fr*triA;
+            totA += triA;
+        }
+        if (fb) { ++nFallback; continue; }
+        if (totA > VSMALL)
+        {
+            alphaf_[faceI] = min(max(liqA/totA, scalar(0)), scalar(1));
+        }
+    }
+    nFaceFallback_ = returnReduce(nFallback, sumOp<label>());
+
     fillAlphafOut();
 }
 

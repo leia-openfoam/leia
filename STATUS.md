@@ -3471,3 +3471,53 @@ script); the report rule tolerates a failing table/render step (rc recorded in t
 study passes) -- watch for "FAILED (rc=1)" lines; the plane ladder's first run recorded no
 DAVOF tokens because its fvSolution was not a template (case_params.json records only the
 tokens the templates reference) -- fvSolution.template now, DOMAIN_LENGTH in the .parameter.
+
+### 10.10 The order is the fraction order: quadratic faces, the arm renamed, the proposal's equations (2026-09-29)
+
+**Why.** Tomislav's reading of the first runs: the initialisation should be the exact signed
+distance at the cell centre, the face centres and the corner points in the Detrixhe-Aslam
+formulas, and that should give a second-order normal without iteration. That IS the arm the study
+had called `linearInterpolant` (a misleading name: nothing is interpolated from elsewhere; "linear"
+is what the DA formulas assume inside each simplex), and it measured first order. Renamed
+`detrixheAslam` (alias kept). The mechanism, now written down: the DA formulas integrate the chord
+surface, whose crossings are O(h^2) off a curved interface; per face that is an O(h) error AS A
+FRACTION although the integrated volume and area are second order; the Gauss sum's direction
+inherits the per-face order. Hence two estimates that define WP1 (now equations in the proposal):
+|dn| <= sum_f |d alpha_f| |S_f| / |A| = O(h^q) for |d alpha_f| = O(h^q), and |d alpha_f| = O(d_Sigma/h)
+with d_Sigma the position error of the discrete interface used to clip the face: any per-cell
+plane gives q = 1, O(h^3) gives q = 2.
+
+**New arm `quadraticFaces`** (`davofQuadraticFaceGeometry.H`): the exact signed distance also at
+the edge midpoints of every fan triangle, the quadratic Lagrange interpolant cut exactly (edge
+roots in the numerically stable form; the sliver between chord and conic arc by 12-point
+Gauss-Legendre, analytic integrand); cell fractions stay DA. Triangles with other than two
+boundary crossings or an arc that is not a graph over its chord keep the DA value and are counted
+(N_FACE_FALLBACK).
+
+**MEASURED, pre-registered prediction 4: HELD.** quadraticFaces p(E_L2_N) = 1.95, p(E_L1_N) = 2.05,
+E_L2_N within 4 % of exactSphere at every rung (1.19e-4 vs 1.15e-4 at N = 160), p(A) = 2.00,
+p(E_POS_L2) = 2.01; fallbacks 4 / 2 / 0 / 4 faces on the four meshes (the "none at R/h >= 10"
+clause missed by a handful). Plane gate exact for all three leia states (E_POS_LINF 9e-17 m). A
+first version of the edge-root formula failed the plane gate at 1e-6: for a plane the quadratic
+degenerates to a line and the textbook root formula cancels; the stable form fixed it. So: a
+second-order normal from exact signed distances alone, non-iteratively, for any implicit surface,
+with one polynomial degree more in the face cut. The transport must preserve exactly that
+fraction accuracy, which is the WP1 question as now stated.
+
+**Proposal (2026-DFG-AVOF, committed there).** After the face update: the two estimates as
+displayed equations (eq:normal-propagation, eq:clipping-law); the Consistency Hypothesis restated
+on the normal and position orders with q, the realizability defect a diagnostic relative to the
+exact state's O(h) floor; Stage 1 names the two q = 2 candidates (curvature-carrying clipping
+surface, sliver correction) and the self-consistency argument (a first-order curvature suffices,
+second-order normals provide it), stability of the loop as Stage 4; success criteria split
+(position >= 1.8 unconditionally, normal >= 1.8 with q = 2, the q = 1 outcome a stated result);
+"compatible with, but not dependent on" replaced by the designed coupling with the iso-surface
+fallback; "no stencil" replaced by "cell-local recovery, one ring for the curvature in the
+update"; Table 1 caption names the cell set and the wisp threshold; Table 1 is nine rows (exact,
+quadratic faces, Detrixhe-Aslam x DAVOF, plicRDF, gradAlpha), isoAlpha and the plane indicator
+quoted in the text. Page budget kept at 17 by dropping the WP2 convergence plot (its numbers are
+Table 2's), the repeated sentences in WP2, WP3 and the timeline, and shorter captions.
+
+**Open (agreed).** The remaining question Tomislav wants to discuss next: the q = 2 update itself
+(which candidate, and whether to show a one-step result before submission). Then the 25 September
+items outside WP1.

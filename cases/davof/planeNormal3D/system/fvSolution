@@ -40,7 +40,7 @@ levelSet
 
 davof
 {
-    alphaSource     linearInterpolant;
+    alphaSource     detrixheAslam;
     wispTol         0.001;
     crossCheck
     {

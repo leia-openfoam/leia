@@ -1057,6 +1057,6 @@ REFINE_ALLOW_PIN_MISMATCH false; // "true" ONLY to match a twin's N_CELLS on pur
 DAVOF_SPHERE_CENTRE_X 0.0020692;
 DAVOF_SPHERE_CENTRE_Y 0.0021172;
 DAVOF_SPHERE_CENTRE_Z 0.0019548;
-DAVOF_ALPHA_SOURCE    linearInterpolant;  // | planePhaseIndicator | exactSphere (libleiaDavof, davofState.H)
+DAVOF_ALPHA_SOURCE    detrixheAslam;      // | quadraticFaces | planePhaseIndicator | exactSphere (libleiaDavof, davofState.H)
 DAVOF_WISP_TOL        1e-3;               // interface cell: |m_c| > DAVOF_WISP_TOL * V_c^(2/3)
 DAVOF_CROSS_CHECK     none;               // | geometricVoF: OpenFOAM plicRDF/gradAlpha/isoAlpha on the same alpha

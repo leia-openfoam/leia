@@ -13,14 +13,27 @@
 
     Two sources of (alpha_c, alpha_f):
 
-      linearInterpolant   The exact signed distance of an implicit surface at
-                          the cell centre, the face centres and the mesh points,
-                          interpolated linearly on the tets (xc, xf, p0, p1) of
-                          every cell (the Detrixhe-Aslam construction with the
-                          exact vertex values). Face fractions come from the
-                          triangle fans (xf, p0, p1) with the SAME vertex values,
-                          so the whole state describes ONE piecewise-linear C0
-                          surface and the identity above is exact for it.
+      detrixheAslam       The exact signed distance of an implicit surface at
+                          the cell centre, the face centres and the mesh points
+                          in the Detrixhe-Aslam formulas: the tets (xc, xf, p0,
+                          p1) of every cell for the volume, the triangle fans
+                          (xf, p0, p1) with the SAME vertex values for the face
+                          area. The formulas are exact for a linear function on
+                          each simplex, so the state describes ONE piecewise-
+                          linear C0 surface (the chord surface) and the identity
+                          above is exact for it; the chords are O(h^2) off a
+                          curved surface, which leaves the face fractions O(h)
+                          as fractions and the normal first order (measured).
+                          Alias: linearInterpolant (the name of the first runs).
+      quadraticFaces      detrixheAslam for the cell fractions, and for the face
+                          fractions the quadratic interpolant of the exact
+                          signed distance at the vertices AND the edge midpoints
+                          of every fan triangle, cut exactly
+                          (davofQuadraticFaceGeometry.H): crossings O(h^3),
+                          fractions O(h^2), a second-order normal from exact
+                          signed distances alone, non-iteratively, for any
+                          implicit surface. Triangles the routine cannot handle
+                          keep the Detrixhe-Aslam value (nFaceFallback()).
       planePhaseIndicator leia's production construction: one plane per
                           narrow-band cell (least-squares fit of psi, or the
                           exact tangent plane at the cell centre when
@@ -54,7 +67,7 @@
     Dictionary (fvSolution):
         davof
         {
-            alphaSource  linearInterpolant;   // | planePhaseIndicator | exactSphere
+            alphaSource  detrixheAslam;   // | quadraticFaces | planePhaseIndicator | exactSphere
             wispTol      1e-3;                // interface cell: |m_c| > wispTol*V_c^(2/3)
         }
 \*---------------------------------------------------------------------------*/
@@ -94,6 +107,7 @@ class davofState
     volScalarField alphaPlane_;     // alphaPlane.davof, cell fraction cut by the plane
     scalar maxVolDiffPlane_;        // max_c |alphaPlane_c - alpha_c|
     scalar maxAreaDiffPlane_;       // max_c |A_polygon n - m_c| / V_c^(2/3)
+    label nFaceFallback_;           // quadraticFaces: faces kept at the DA value
 
     //- Cell fractions and zero-set patches of cellI from vertex values given
     //  by phiCell(c), phiFace(c, f), phiPoint(c, p).
@@ -124,8 +138,21 @@ public:
 
     davofState(const fvMesh& mesh, const dictionary& davofDict);
 
-    //- alphaSource linearInterpolant
+    //- The canonical source name (the alias linearInterpolant -> detrixheAslam)
+    static word canonicalSource(const word& name);
+
+    //- alphaSource detrixheAslam (alias linearInterpolant)
     void computeFromImplicitSurface(const implicitSurface& surface);
+
+    //- alphaSource quadraticFaces: detrixheAslam, then the face fractions from
+    //  the exactly cut quadratic interpolant of the signed distance at the
+    //  vertices and edge midpoints of every fan triangle. The tet reference
+    //  (mTet, AS, xS) stays the chord surface's, so maxConsistency() is the
+    //  O(h) chord-to-quadratic difference, not a gate, as for exactSphere.
+    void computeFromQuadraticFaces(const implicitSurface& surface);
+
+    //- Faces whose quadratic cut fell back to the Detrixhe-Aslam value
+    label nFaceFallback() const { return nFaceFallback_; }
 
     //- alphaSource exactSphere: the exact face fractions (planar faces cut by
     //  the ball: davofSphereGeometry.H) and the exact cell fractions of

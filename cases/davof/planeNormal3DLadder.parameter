@@ -11,7 +11,7 @@ values
 
     DOMAIN_LENGTH ( 0.004 );
 
-    DAVOF_ALPHA_SOURCE ( linearInterpolant );
+    DAVOF_ALPHA_SOURCE ( detrixheAslam );
 
     DAVOF_CROSS_CHECK ( geometricVoF );
 }

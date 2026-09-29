@@ -17,7 +17,7 @@ runApplication blockMesh
 runApplication leiaSetFields -alphaName alpha.water
 
 status=0
-for src in linearInterpolant planePhaseIndicator; do
+for src in detrixheAslam quadraticFaces planePhaseIndicator; do
     foamDictionary -entry davof/alphaSource -set "$src" system/fvSolution > /dev/null
     leiaTestDavofNormal -alphaName alpha.water -expectExact > "log.leiaTestDavofNormal.$src" 2>&1
     rc=$?
@@ -26,5 +26,5 @@ for src in linearInterpolant planePhaseIndicator; do
     echo "leiaTestDavofNormal -expectExact ($src) exit code: $rc"
     [ $rc -ne 0 ] && status=$rc
 done
-foamDictionary -entry davof/alphaSource -set linearInterpolant system/fvSolution > /dev/null
+foamDictionary -entry davof/alphaSource -set detrixheAslam system/fvSolution > /dev/null
 exit $status

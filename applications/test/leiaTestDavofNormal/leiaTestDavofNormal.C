@@ -288,9 +288,13 @@ int main(int argc, char *argv[])
     davofState st(mesh, davofDict);
     cpuTime timer;
     autoPtr<volScalarField> psiPtr;
-    if (st.alphaSource() == "linearInterpolant")
+    if (st.alphaSource() == "detrixheAslam")
     {
         st.computeFromImplicitSurface(surface());
+    }
+    else if (st.alphaSource() == "quadraticFaces")
+    {
+        st.computeFromQuadraticFaces(surface());
     }
     else if (st.alphaSource() == "exactSphere")
     {
@@ -612,6 +616,7 @@ int main(int argc, char *argv[])
         << "max |alpha - plane cut| : " << maxAlphaDiffPlaneCut << nl
         << "plane realizability     : max |alphaPlane - alpha| = " << maxVolDiffPlane
         << ", max |A n - m_c|/h^2 = " << maxAreaDiffPlane << nl
+        << "quadratic-face fallbacks: " << st.nFaceFallback() << nl
         << "position (DAVOF foot pt): L2/Linf = " << rd.Pfoot2 << " / " << rd.Pfootinf
         << " m" << nl;
     for (const normResult& r : results)
@@ -638,7 +643,7 @@ int main(int argc, char *argv[])
               "MAX_ALPHA_DIFF_DA,MAX_ALPHA_DIFF_PLANECUT,"
               "E_L1_N,E_L2_N,E_LINF_N,E_L1_N_AW,E_L2_N_AW,E_LINF_N_WISP,"
               "E_POS_L1,E_POS_L2,E_POS_LINF,E_POS_FOOT_L2,E_POS_FOOT_LINF,"
-              "MAX_VOL_DIFF_PLANE,MAX_AREA_DIFF_PLANE,"
+              "MAX_VOL_DIFF_PLANE,MAX_AREA_DIFF_PLANE,N_FACE_FALLBACK,"
               "CPU_SECONDS" << nl;
         os << dx << ',' << nCellsGlobal << ',' << mesh.nGeometricD() << ','
            << st.alphaSource() << ',' << st.wispTol() << ',' << radius << ','
@@ -652,6 +657,7 @@ int main(int argc, char *argv[])
            << rd.P1 << ',' << rd.P2 << ',' << rd.Pinf << ','
            << rd.Pfoot2 << ',' << rd.Pfootinf << ','
            << maxVolDiffPlane << ',' << maxAreaDiffPlane << ','
+           << st.nFaceFallback() << ','
            << rd.cpu << nl;
 
         OFstream osM("leiaTestDavofNormalModels.csv");
