@@ -11,7 +11,9 @@
 cd "${0%/*}" || exit 1
 . "$WM_PROJECT_DIR/bin/tools/RunFunctions"
 
-rm -rf 0 && cp -r 0.org 0
+# A fresh run every time: runApplication skips a step whose log exists, and a
+# recreated 0 directory without leiaSetFields leaves the plane state empty.
+rm -f log.* && rm -rf 0 && cp -r 0.org 0
 
 runApplication blockMesh
 runApplication leiaSetFields -alphaName alpha.water

@@ -30,7 +30,34 @@ Description
     (plain averages over the interface cells; area-weighted variants and the
     Linf over every cell with |m_c| > 0, i.e. including the wisps, are
     reported next to them). The total interface area sum_c |m_c| is compared
-    with the exact area (4 pi R^2 for implicitSphere).
+    with the exact area (4 pi R^2 for implicitSphere, a Gauss-Legendre
+    quadrature of the parametrisation for signedDistanceEllipsoid).
+
+    Curvature of the DAVOF state (fvSolution davof.curvature { models (...);
+    <name> { type quadricFit; ... } }, libleiaDavof curvature/): every model is
+    fitted to the ring of plane-polygon centroids and area normals, and scored
+    against the exact geometry (implicitSphere, implicitPlane,
+    signedDistanceEllipsoid) in the convention kappa = kappa_1 + kappa_2 =
+    div(n), 2/R on a sphere:
+        E_KAPPA_*       at the interface centroids, |kappa_c - kappa_exact(q)|
+                        with q the closest surface point of xPlane_c [1/m];
+                        E_K_L2 the same for the Gaussian curvature;
+        E_KAPPA_CELL_*  the contour-referenced cell field on the force band
+                        (parallel-surface forward map of the model at the cell
+                        centre's offset) against the exact parallel-surface
+                        curvature at the cell centre;
+        E_KAPPA_FACE_*  interpolate(kappaCell) inverted at the face with the
+                        level-set solver's parallelSurfaceInverse(kappa_f, d_f,
+                        K_f) against the exact interface curvature at the foot
+                        of the face centre; E_KAPPA_FACE_FOOT_* the models'
+                        interface value at that foot (no parallel-surface
+                        algebra), the comparison delivery.
+    L1 mean, L2 rms, Linf max over the interface cells, the filled band cells
+    and the active faces (internal faces and the owner side of coupled
+    patches); KAPPA_REF_L2 is the rms of the exact total curvature over the
+    interface cells (relative errors in the tables). The first model is the
+    headline (its values also in the wide and the models CSV), every model has
+    a row in leiaTestDavofCurvature.csv.
 
     Optional cross-check on the SAME alpha_c (fvSolution davof.crossCheck
     { set geometricVoF; models (plicRDF gradAlpha isoAlpha); <model> {...} }):
@@ -41,10 +68,12 @@ Description
 
     Outputs (case directory): leiaTestDavofNormal.csv (one row, the DAVOF
     result and the consistency diagnostics) and leiaTestDavofNormalModels.csv
-    (tidy, one row per MODEL: davof, plicRDF, gradAlpha, isoAlpha); fields
+    (tidy, one row per MODEL: davof, plicRDF, gradAlpha, isoAlpha),
+    leiaTestDavofCurvature.csv (tidy, one row per curvature model); fields
     alpha.davof, alphaf.davof, m.davof, xS.davof, AS.davof, nDavof,
     eNormal.davof, interfaceMarker.davof (0 bulk, 1 interface, 2 wisp),
-    eNormal.<model>.
+    eNormal.<model>, kappa.davof.<curvature model>, K.davof.<...>,
+    kappa1/kappa2.davof.<...>, eKappa.davof and kappaCell.davof (headline).
 
     Parallel-safe (every norm is reduced). Options:
         -alphaName <word>   the leiaSetFields field to compare alpha.davof with
@@ -53,8 +82,11 @@ Description
                             levelSetField, the same construction)
         -expectExact        exact-solution gate for an implicitPlane: exit
                             non-zero unless the normal error, the tet/face
-                            consistency and the alpha difference against the
-                            plane cut of src/vof/foamGeometry.H are at round-off.
+                            consistency, the alpha difference against the
+                            plane cut of src/vof/foamGeometry.H, the position,
+                            the realizability diagnostics and (when curvature
+                            models are configured) the curvature times h at the
+                            centroids and the faces are at round-off.
 
     Run in a meshed, leiaSetFields-initialised case:
         blockMesh; leiaSetFields -alphaName alpha.water; leiaTestDavofNormal
@@ -64,6 +96,9 @@ Description
 #include "fvCFD.H"
 #include "cpuTime.H"
 #include "davofState.H"
+#include "davofCurvature.H"
+#include "davofCurvatureDelivery.H"
+#include "davofQuadraticFaceGeometry.H"
 #include "levelSetImplicitSurfaces.H"
 #include "leiaVersionRegistry.H"
 #include "reconstructionSchemes.H"
@@ -212,6 +247,180 @@ normResult evaluateNormals
 }
 
 
+//- Surface area of the axis-aligned ellipsoid with half-axes a, b, c: a
+//  composite 12-point Gauss-Legendre rule (32 x 64 panels) over the
+//  parametrisation x = a sin t cos p, y = b sin t sin p, z = c cos t,
+//  dA = sin t sqrt(b^2 c^2 sin^2 t cos^2 p + a^2 c^2 sin^2 t sin^2 p
+//  + a^2 b^2 cos^2 t) dt dp; the integrand is smooth, the rule is exact to
+//  round-off for this purpose.
+scalar ellipsoidArea(const scalar a, const scalar b, const scalar c)
+{
+    const List<Pair<scalar>>& gl = Foam::davof::gaussLegendre01(12);
+    const label nT = 32, nP = 64;
+    const scalar pi = constant::mathematical::pi;
+    scalar A = 0;
+    for (label it = 0; it < nT; ++it)
+    {
+        forAll(gl, gt)
+        {
+            const scalar t = pi*(it + gl[gt].first())/nT;
+            const scalar wt = pi/nT*gl[gt].second();
+            const scalar st = Foam::sin(t), ct = Foam::cos(t);
+            for (label ip = 0; ip < nP; ++ip)
+            {
+                forAll(gl, gp)
+                {
+                    const scalar p = 2*pi*(ip + gl[gp].first())/nP;
+                    const scalar wp = 2*pi/nP*gl[gp].second();
+                    const scalar sp = Foam::sin(p), cp = Foam::cos(p);
+                    A += wt*wp*st*Foam::sqrt
+                    (
+                        sqr(b*c*st*cp) + sqr(a*c*st*sp) + sqr(a*b*ct)
+                    );
+                }
+            }
+        }
+    }
+    return A;
+}
+
+
+//- Exact geometry at a point x: the total curvature kappa_1 + kappa_2 and the
+//  Gaussian curvature of the surface at the closest point of x, and the
+//  signed distance d of x (positive on the gas side).
+typedef std::function<void(const point&, scalar&, scalar&, scalar&)> exactGeomType;
+
+
+struct curvResult
+{
+    word model;
+    label nInterface = 0, nBand = 0, nUnfilled = 0, nActive = 0, nOneSided = 0;
+    label nSkipped = 0;
+    label nFallback = 0;
+    scalar kappaRef2 = 0;                    // rms of the exact total curvature
+    scalar S1 = 0, S2 = 0, Sinf = 0;         // at the interface centroids
+    scalar K2 = 0;                           // Gaussian curvature, rms error
+    scalar C1 = 0, C2 = 0, Cinf = 0;         // cell field on the force band
+    scalar F1 = 0, F2 = 0, Finf = 0;         // faces, interpolate + inverse
+    scalar G1 = 0, G2 = 0, Ginf = 0;         // faces, the models at the foot
+    scalar cpu = 0;
+};
+
+
+//- Curvature norms of one model (see the Description).
+curvResult evaluateCurvature
+(
+    const word& model,
+    const fvMesh& mesh,
+    const davofState& st,
+    const davofCurvature& cm,
+    const davofCurvatureDelivery& dl,
+    const exactGeomType& exactGeom,
+    scalarField* eOut,
+    scalarField* kappaCellOut
+)
+{
+    curvResult r;
+    r.model = model;
+    const vectorField& xPl = st.xPlane().primitiveField();
+    const scalarField& kap = cm.kappa().primitiveField();
+    const scalarField& Kg = cm.K().primitiveField();
+
+    scalar s1 = 0, s2 = 0, si = 0, sK2 = 0, ref2 = 0;
+    label nI = 0;
+    forAll(kap, c)
+    {
+        if (!st.isInterfaceCell(c)) continue;
+        scalar ke, Ke, de;
+        exactGeom(xPl[c], ke, Ke, de);
+        const scalar e = mag(kap[c] - ke);
+        const scalar eK = mag(Kg[c] - Ke);
+        ++nI;
+        s1 += e;
+        s2 += e*e;
+        si = max(si, e);
+        sK2 += eK*eK;
+        ref2 += ke*ke;
+        if (eOut) (*eOut)[c] = e;
+    }
+    nI = returnReduce(nI, sumOp<label>());
+    s1 = returnReduce(s1, sumOp<scalar>());
+    s2 = returnReduce(s2, sumOp<scalar>());
+    sK2 = returnReduce(sK2, sumOp<scalar>());
+    ref2 = returnReduce(ref2, sumOp<scalar>());
+    r.nInterface = nI;
+    r.Sinf = returnReduce(si, maxOp<scalar>());
+    if (nI > 0)
+    {
+        r.S1 = s1/nI;
+        r.S2 = Foam::sqrt(s2/nI);
+        r.K2 = Foam::sqrt(sK2/nI);
+        r.kappaRef2 = Foam::sqrt(ref2/nI);
+    }
+
+    const vectorField& C = mesh.cellCentres();
+    scalar c1 = 0, c2 = 0, ci = 0;
+    label nB = 0;
+    forAll(C, c)
+    {
+        if (!dl.bandCell()[c] || !dl.filledCell()[c]) continue;
+        scalar ke, Ke, de;
+        exactGeom(C[c], ke, Ke, de);
+        const scalar kpar = parallelSurfaceForward(ke, de, Ke);
+        const scalar e = mag(dl.kappaCell()[c] - kpar);
+        ++nB;
+        c1 += e;
+        c2 += e*e;
+        ci = max(ci, e);
+        if (kappaCellOut) (*kappaCellOut)[c] = dl.kappaCell()[c];
+    }
+    nB = returnReduce(nB, sumOp<label>());
+    c1 = returnReduce(c1, sumOp<scalar>());
+    c2 = returnReduce(c2, sumOp<scalar>());
+    r.Cinf = returnReduce(ci, maxOp<scalar>());
+    if (nB > 0)
+    {
+        r.C1 = c1/nB;
+        r.C2 = Foam::sqrt(c2/nB);
+    }
+
+    const vectorField& Cf = mesh.faceCentres();
+    scalar f1 = 0, f2 = 0, fi = 0, g1 = 0, g2 = 0, gi = 0;
+    label nF = 0;
+    forAll(Cf, f)
+    {
+        if (!dl.activeFace()[f]) continue;
+        scalar ke, Ke, de;
+        exactGeom(Cf[f], ke, Ke, de);
+        const scalar e = mag(dl.kappaFaceInv()[f] - ke);
+        const scalar g = mag(dl.kappaFaceFoot()[f] - ke);
+        ++nF;
+        f1 += e; f2 += e*e; fi = max(fi, e);
+        g1 += g; g2 += g*g; gi = max(gi, g);
+    }
+    nF = returnReduce(nF, sumOp<label>());
+    f1 = returnReduce(f1, sumOp<scalar>());
+    f2 = returnReduce(f2, sumOp<scalar>());
+    g1 = returnReduce(g1, sumOp<scalar>());
+    g2 = returnReduce(g2, sumOp<scalar>());
+    r.Finf = returnReduce(fi, maxOp<scalar>());
+    r.Ginf = returnReduce(gi, maxOp<scalar>());
+    if (nF > 0)
+    {
+        r.F1 = f1/nF; r.F2 = Foam::sqrt(f2/nF);
+        r.G1 = g1/nF; r.G2 = Foam::sqrt(g2/nF);
+    }
+
+    r.nBand = dl.nBandCells();
+    r.nUnfilled = dl.nUnfilledCells();
+    r.nActive = dl.nActiveFaces();
+    r.nOneSided = dl.nOneSidedFaces();
+    r.nSkipped = dl.nSkippedFaces();
+    r.nFallback = cm.nFallback();
+    return r;
+}
+
+
 int main(int argc, char *argv[])
 {
     argList::addOption
@@ -252,9 +461,17 @@ int main(int argc, char *argv[])
         radius = surfDict.get<scalar>("radius");
         aExact = 4.0*constant::mathematical::pi*radius*radius;
     }
+    else if (surfType == "signedDistanceEllipsoid")
+    {
+        // RADIUS (and R_OVER_H) = the smallest half-axis.
+        const vector ax = surfDict.get<vector>("axes");
+        radius = min(ax.x(), min(ax.y(), ax.z()));
+        aExact = ellipsoidArea(ax.x(), ax.y(), ax.z());
+    }
 
     // Exact unsigned distance of a point from the surface: closed form for
-    // the sphere and the plane, the first-order |psi|/|grad psi| otherwise.
+    // the sphere and the plane, |psi|/|grad psi| otherwise (exact for the
+    // signed-distance surfaces, first order for an algebraic one).
     std::function<scalar(const point&)> exactDistance;
     if (surfType == "implicitSphere")
     {
@@ -282,6 +499,62 @@ int main(int argc, char *argv[])
         {
             return mag(s.value(x))/max(mag(s.grad(x)), VSMALL);
         };
+    }
+
+    // Exact geometry for the curvature norms (kappa_1 + kappa_2 and K at the
+    // closest surface point of x, signed distance of x). implicitSphere's own
+    // curvature() returns 1/R, half the div(n) convention, so the sphere is
+    // written out; signedDistanceEllipsoid::curvature() is the total curvature
+    // at the closest point q = x - psi grad(psi) already, and its Gaussian
+    // curvature is K = 1/(a^2 b^2 c^2 (X^2/a^4 + Y^2/b^4 + Z^2/c^4)^2).
+    exactGeomType exactGeom;
+    bool haveExactGeom = true;
+    if (surfType == "implicitSphere")
+    {
+        const vector centre = surfDict.get<vector>("center");
+        const scalar R = radius;
+        exactGeom = [=](const point& x, scalar& kappa, scalar& K, scalar& d)
+        {
+            kappa = 2.0/R;
+            K = 1.0/(R*R);
+            d = mag(x - centre) - R;
+        };
+    }
+    else if (surfType == "implicitPlane")
+    {
+        const implicitSurface& s = surface();
+        exactGeom = [&s](const point& x, scalar& kappa, scalar& K, scalar& d)
+        {
+            kappa = 0;
+            K = 0;
+            d = s.value(x)/max(mag(s.grad(x)), VSMALL);
+        };
+    }
+    else if (surfType == "signedDistanceEllipsoid")
+    {
+        const signedDistanceEllipsoid* ell =
+            dynamic_cast<const signedDistanceEllipsoid*>(&surface());
+        const vector centre = ell->center();
+        const vector ax = ell->axes();
+        const implicitSurface& s = surface();
+        exactGeom = [&s, centre, ax]
+        (
+            const point& x, scalar& kappa, scalar& K, scalar& d
+        )
+        {
+            d = s.value(x);
+            const vector q = x - d*s.grad(x);
+            kappa = s.curvature(x);
+            const vector X = q - centre;
+            const scalar a2 = sqr(ax.x()), b2 = sqr(ax.y()), c2 = sqr(ax.z());
+            const scalar sInv =
+                sqr(X.x())/sqr(a2) + sqr(X.y())/sqr(b2) + sqr(X.z())/sqr(c2);
+            K = 1.0/(a2*b2*c2*sqr(sInv));
+        };
+    }
+    else
+    {
+        haveExactGeom = false;
     }
 
     // ---- The DAVOF state -----------------------------------------------------
@@ -470,6 +743,64 @@ int main(int argc, char *argv[])
         maxAlphaDiffPlaneCut = returnReduce(worst, maxOp<scalar>());
     }
 
+    // ---- Curvature of the DAVOF state ----------------------------------------
+    // fvSolution davof.curvature { models (...); <name> { type ...; } }: each
+    // model is fitted to the ring of centroids and normals (libleiaDavof
+    // curvature/), delivered to the force band and the active faces with the
+    // parallel-surface closed form and scored against the exact geometry; the
+    // first model is the headline.
+    const dictionary& curvDict = davofDict.subOrEmptyDict("curvature");
+    wordList curvModels(curvDict.getOrDefault<wordList>("models", wordList()));
+    {
+        wordList kept;
+        for (const word& nm : curvModels) if (nm != "none") kept.append(nm);
+        curvModels = kept;
+    }
+    if (curvModels.size() && !haveExactGeom)
+    {
+        FatalIOErrorInFunction(curvDict)
+            << "davof curvature models need an exact geometry: implicitSphere, "
+            << "implicitPlane or signedDistanceEllipsoid, found " << surfType
+            << exit(FatalIOError);
+    }
+    volScalarField eKappa
+    (
+        IOobject("eKappa.davof", runTime.timeName(), mesh,
+                 IOobject::NO_READ, IOobject::AUTO_WRITE),
+        mesh, dimensionedScalar(dimless/dimLength, Zero),
+        zeroGradientFvPatchScalarField::typeName
+    );
+    volScalarField kappaCellField
+    (
+        IOobject("kappaCell.davof", runTime.timeName(), mesh,
+                 IOobject::NO_READ, IOobject::AUTO_WRITE),
+        mesh, dimensionedScalar(dimless/dimLength, Zero),
+        zeroGradientFvPatchScalarField::typeName
+    );
+    List<curvResult> curvResults;
+    PtrList<davofCurvature> curvPtrs;
+    forAll(curvModels, mi)
+    {
+        const word& name = curvModels[mi];
+        const dictionary& mDict = curvDict.subDict(name);
+        curvPtrs.append(davofCurvature::New(name, mesh, st, mDict));
+        davofCurvature& cm = curvPtrs.last();
+        cm.compute();
+        cpuTime dTimer;
+        davofCurvatureDelivery dl(mesh, st, cm);
+        curvResult cr = evaluateCurvature
+        (
+            name, mesh, st, cm, dl, exactGeom,
+            (mi == 0) ? &eKappa.primitiveFieldRef() : nullptr,
+            (mi == 0) ? &kappaCellField.primitiveFieldRef() : nullptr
+        );
+        cr.cpu = cm.cpuSeconds() + dTimer.cpuTimeIncrement();
+        curvResults.append(cr);
+        cm.write();
+    }
+    const bool haveCurv = curvResults.size() > 0;
+    const curvResult ch = haveCurv ? curvResults[0] : curvResult();
+
     // ---- The PLIC surfaces as legacy VTK polydata ----------------------------
     // postProcessing/davofInterface/<time>/plic.<model>.vtk, one polygon per
     // interface cell with the cell index and the error fields attached
@@ -483,15 +814,17 @@ int main(int argc, char *argv[])
         (
             mesh, st.m().primitiveField(), st.xPlane().primitiveField(), &isI
         );
-        s.writeLegacyVTK
-        (
-            vtkDir/"plic.davof.vtk",
-            wordList({"eNormal", "ePos"}),
-            List<const scalarField*>
-            ({
-                &eDavof.primitiveField(), &ePosDavof.primitiveField()
-            })
-        );
+        wordList vtkNames({"eNormal", "ePos"});
+        List<const scalarField*> vtkFields
+        ({
+            &eDavof.primitiveField(), &ePosDavof.primitiveField()
+        });
+        if (haveCurv)
+        {
+            vtkNames.append("eKappa");
+            vtkFields.append(&eKappa.primitiveField());
+        }
+        s.writeLegacyVTK(vtkDir/"plic.davof.vtk", vtkNames, vtkFields);
         Info<< "PLIC surface of davof: " << s.size() << " polygons -> "
             << vtkDir/"plic.davof.vtk" << endl;
     }
@@ -630,6 +963,23 @@ int main(int argc, char *argv[])
             << "; position L1/L2/Linf = " << r.P1 << " / " << r.P2 << " / " << r.Pinf
             << " m; cpu " << r.cpu << " s)" << nl;
     }
+    for (const curvResult& r : curvResults)
+    {
+        Info<< "  curvature " << r.model
+            << "  N_S = " << r.nInterface << "  band = " << r.nBand
+            << " (unfilled " << r.nUnfilled << ")  faces = " << r.nActive
+            << " (one-sided " << r.nOneSided << ", skipped " << r.nSkipped
+            << ")  fallbacks = " << r.nFallback
+            << nl
+            << "    kappa_ref L2 = " << r.kappaRef2
+            << "  centroid L1/L2/Linf = " << r.S1 << " / " << r.S2 << " / " << r.Sinf
+            << "  (rel. L2 " << ((r.kappaRef2 > 0) ? r.S2/r.kappaRef2 : 0)
+            << "; K rms err " << r.K2 << ")" << nl
+            << "    cell L1/L2/Linf = " << r.C1 << " / " << r.C2 << " / " << r.Cinf
+            << "  face inverse L1/L2/Linf = " << r.F1 << " / " << r.F2 << " / " << r.Finf
+            << "  face foot L1/L2/Linf = " << r.G1 << " / " << r.G2 << " / " << r.Ginf
+            << "  (cpu " << r.cpu << " s)" << nl;
+    }
     Info<< endl;
 
     if (Pstream::master())
@@ -644,7 +994,22 @@ int main(int argc, char *argv[])
               "E_L1_N,E_L2_N,E_LINF_N,E_L1_N_AW,E_L2_N_AW,E_LINF_N_WISP,"
               "E_POS_L1,E_POS_L2,E_POS_LINF,E_POS_FOOT_L2,E_POS_FOOT_LINF,"
               "MAX_VOL_DIFF_PLANE,MAX_AREA_DIFF_PLANE,N_FACE_FALLBACK,"
-              "CPU_SECONDS" << nl;
+              "CPU_SECONDS,"
+              "E_KAPPA_L1,E_KAPPA_L2,E_KAPPA_LINF,KAPPA_REF_L2,E_KAPPA_FACE_L2,"
+              "N_CURV_FALLBACK" << nl;
+        // The headline curvature model's columns (blank without models).
+        auto curvCols = [&](Ostream& o)
+        {
+            if (haveCurv)
+            {
+                o << ',' << ch.S1 << ',' << ch.S2 << ',' << ch.Sinf << ','
+                  << ch.kappaRef2 << ',' << ch.F2 << ',' << ch.nFallback;
+            }
+            else
+            {
+                o << ",,,,,,";
+            }
+        };
         os << dx << ',' << nCellsGlobal << ',' << mesh.nGeometricD() << ','
            << st.alphaSource() << ',' << st.wispTol() << ',' << radius << ','
            << rOverH << ',' << rd.nInterface << ',' << rd.nWisp << ','
@@ -658,14 +1023,18 @@ int main(int argc, char *argv[])
            << rd.Pfoot2 << ',' << rd.Pfootinf << ','
            << maxVolDiffPlane << ',' << maxAreaDiffPlane << ','
            << st.nFaceFallback() << ','
-           << rd.cpu << nl;
+           << rd.cpu;
+        curvCols(os);
+        os << nl;
 
         OFstream osM("leiaTestDavofNormalModels.csv");
         osM.precision(12);
         osM << "MODEL,ALPHA_SOURCE,DELTA_X,N_CELLS_MESH,R_OVER_H,N_INTERFACE,"
                "N_WISP,A_EXACT,A_MODEL,E_AREA_REL,E_L1_N,E_L2_N,E_LINF_N,"
                "E_L1_N_AW,E_L2_N_AW,E_LINF_N_WISP,"
-               "E_POS_L1,E_POS_L2,E_POS_LINF,CPU_SECONDS" << nl;
+               "E_POS_L1,E_POS_L2,E_POS_LINF,CPU_SECONDS,"
+               "E_KAPPA_L1,E_KAPPA_L2,E_KAPPA_LINF,KAPPA_REF_L2,E_KAPPA_FACE_L2,"
+               "N_CURV_FALLBACK" << nl;
         for (const normResult& r : results)
         {
             const scalar eA = (aExact > 0) ? mag(r.A - aExact)/aExact : -1;
@@ -675,7 +1044,34 @@ int main(int argc, char *argv[])
                 << r.L1 << ',' << r.L2 << ',' << r.Linf << ','
                 << r.L1aw << ',' << r.L2aw << ',' << r.LinfAll << ','
                 << r.P1 << ',' << r.P2 << ',' << r.Pinf << ','
-                << r.cpu << nl;
+                << r.cpu;
+            // The curvature belongs to the DAVOF state, not to a comparator.
+            if (r.model == "davof") curvCols(osM); else osM << ",,,,,,";
+            osM << nl;
+        }
+
+        OFstream osC("leiaTestDavofCurvature.csv");
+        osC.precision(12);
+        osC << "CURV_MODEL,ALPHA_SOURCE,DELTA_X,N_CELLS_MESH,R_OVER_H,"
+               "N_INTERFACE,N_BAND_CELLS,N_UNFILLED_CELLS,N_ACTIVE_FACES,"
+               "N_ONE_SIDED_FACES,N_SKIPPED_FACES,KAPPA_REF_L2,"
+               "E_KAPPA_L1,E_KAPPA_L2,E_KAPPA_LINF,E_K_L2,"
+               "E_KAPPA_CELL_L1,E_KAPPA_CELL_L2,E_KAPPA_CELL_LINF,"
+               "E_KAPPA_FACE_L1,E_KAPPA_FACE_L2,E_KAPPA_FACE_LINF,"
+               "E_KAPPA_FACE_FOOT_L1,E_KAPPA_FACE_FOOT_L2,E_KAPPA_FACE_FOOT_LINF,"
+               "N_CURV_FALLBACK,CPU_SECONDS" << nl;
+        for (const curvResult& r : curvResults)
+        {
+            osC << r.model << ',' << st.alphaSource() << ',' << dx << ','
+                << nCellsGlobal << ',' << rOverH << ','
+                << r.nInterface << ',' << r.nBand << ',' << r.nUnfilled << ','
+                << r.nActive << ',' << r.nOneSided << ',' << r.nSkipped << ','
+                << r.kappaRef2 << ','
+                << r.S1 << ',' << r.S2 << ',' << r.Sinf << ',' << r.K2 << ','
+                << r.C1 << ',' << r.C2 << ',' << r.Cinf << ','
+                << r.F1 << ',' << r.F2 << ',' << r.Finf << ','
+                << r.G1 << ',' << r.G2 << ',' << r.Ginf << ','
+                << r.nFallback << ',' << r.cpu << nl;
         }
     }
 
@@ -691,6 +1087,13 @@ int main(int argc, char *argv[])
         // The position in units of h; the realizability diagnostics are
         // dimensionless already.
         const scalar posLinfH = (dx > 0) ? rd.Pinf/dx : rd.Pinf;
+        // The curvature of a plane is zero: kappa h at round-off at the
+        // centroids and at the faces (every configured model).
+        scalar curvLinfH = 0;
+        for (const curvResult& r : curvResults)
+        {
+            curvLinfH = max(curvLinfH, max(r.Sinf, r.Finf)*dx);
+        }
         if
         (
             rd.Linf > tol
@@ -699,6 +1102,7 @@ int main(int argc, char *argv[])
          || posLinfH > tol
          || maxVolDiffPlane > tol
          || maxAreaDiffPlane > tol
+         || curvLinfH > tol
          || rd.nInterface == 0
         )
         {
@@ -709,6 +1113,7 @@ int main(int argc, char *argv[])
                 << ", E_POS_LINF/h = " << posLinfH
                 << ", MAX_VOL_DIFF_PLANE = " << maxVolDiffPlane
                 << ", MAX_AREA_DIFF_PLANE = " << maxAreaDiffPlane
+                << ", max E_KAPPA_LINF h = " << curvLinfH
                 << ", N_INTERFACE = " << rd.nInterface
                 << " (tolerance " << tol << ")" << exit(FatalError);
         }

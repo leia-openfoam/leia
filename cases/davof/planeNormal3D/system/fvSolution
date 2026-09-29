@@ -42,6 +42,20 @@ davof
 {
     alphaSource     detrixheAslam;
     wispTol         0.001;
+    curvature
+    {
+        models          ( normalsOnly hermite );
+        normalsOnly
+        {
+            type            quadricFit;
+            positionWeight  0;
+        }
+        hermite
+        {
+            type            quadricFit;
+            positionWeight  1;
+        }
+    }
     crossCheck
     {
         set             geometricVoF;

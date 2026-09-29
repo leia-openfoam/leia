@@ -3,7 +3,8 @@ EXE_INC = \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I../lnInclude \
-    -I../../levelSetImplicitSurfaces/lnInclude
+    -I../../levelSetImplicitSurfaces/lnInclude \
+    -Icurvature
 
 /* --no-undefined: a symbol used from a library that is not in LIB_LIBS fails THIS
    link instead of surfacing when a solver loads the library (WP3 gate). */

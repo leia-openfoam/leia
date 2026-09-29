@@ -6,6 +6,7 @@ EXE_INC = \
     -I$(LIB_SRC)/transportModels/geometricVoF/lnInclude \
     -I../../../src/leiaLevelSet/lnInclude \
     -I../../../src/leiaLevelSet/davof \
+    -I../../../src/leiaLevelSet/davof/curvature \
     -I../../../src/leiaLevelSet/davofInterface \
     -I../../../src/levelSetImplicitSurfaces/lnInclude \
     -I../../../src/vof
