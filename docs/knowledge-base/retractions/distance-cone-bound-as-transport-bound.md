@@ -18,7 +18,7 @@ sources: [METHOD 8.3, STATUS header line, CLAUDE mesh-convergence rule, DP SL_VA
 
 - [METHOD 8.3](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L488-L496), `METHOD.md`: the section was rewritten in place. Its first paragraph now records the retraction.
 - [STATUS header](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L6), `STATUS.md`: the "Last updated 2026-09-10" line carries the falsification and the retraction.
-- [CLAUDE.md](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L554-L581): the rule "Touch advection, run a mesh convergence study" was written from this case.
+- [CLAUDE.md](https://github.com/leia-openfoam/leia/blob/d1e3414/CLAUDE.md#L554-L581): the rule "Touch advection, run a mesh convergence study" was written from this case.
 - [cases/default.parameter](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L119-L146), `cases/default.parameter`: the `lipschitzCone` comment describes the bound and its modes.
 - The curated ladder table `docs/method-comparison/method-comparison-article/data/tables/value_bound_ladder_popinet2D.csv` ([blob](https://github.com/leia-openfoam/leia/blob/8867581/docs/method-comparison/method-comparison-article/data/tables/value_bound_ladder_popinet2D.csv)) holds the N = 64 and N = 128 coupled numbers.
 
@@ -48,7 +48,7 @@ Done:
 
 - [x] `METHOD.md`: [8.3](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L488-L496) rewritten with the retraction first; [8.3.4](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L578-L584) marked as single-rung numbers.
 - [x] `STATUS.md`: the [header line](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L6).
-- [x] `CLAUDE.md`: the [mesh-convergence rule](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L554-L581) and the [advection regression set](https://github.com/leia-openfoam/leia/blob/d1e3414/CLAUDE.md#L583-L604).
+- [x] `CLAUDE.md`: the [mesh-convergence rule](https://github.com/leia-openfoam/leia/blob/d1e3414/CLAUDE.md#L554-L581) and the [advection regression set](https://github.com/leia-openfoam/leia/blob/d1e3414/CLAUDE.md#L583-L604).
 - [x] `cases/default.parameter`: the [token comments](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L104-L158).
 - [x] The curated tables: `value_bound_ladder_popinet2D.csv` and the two `advConv2D*_convergence.csv` (commit 32a0d9b, 2026-09-10). The orders in those two CSVs were then found 3/2 too high, see [[retractions/advection-orders-3-2-factor]].
 - [x] The line in [[retraction-log]].

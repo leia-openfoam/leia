@@ -59,7 +59,7 @@ The band decides where the phase indicator is evaluated ([geometricPhaseIndicato
 ## Decisions
 
 - `NARROW_BAND signChange` stays the default so that every existing case is bit-unchanged ([DP L562-L564](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L562-L564)).
-- Seam checks on every band change: the serial-against-np-4 pattern `config/seamConsistency3D{serial,par4}.yaml` ([CLAUDE L283-L286](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L283-L286)).
+- Seam checks on every band change: the serial-against-np-4 pattern `config/seamConsistency3D{serial,par4}.yaml` ([CLAUDE L283-L286](https://github.com/leia-openfoam/leia/blob/d1e3414/CLAUDE.md#L283-L286)).
 
 ## Open questions
 

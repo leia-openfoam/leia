@@ -60,7 +60,7 @@ It did not fail; it did what a delivery can do. The parallel-foliation hypothesi
 
 ## Decisions
 
-- `CURVATURE_EXTENSION cellCentreInverse` as the global default; the gates set it on every droplet arm ([`config/gates/methodGate2D.yaml`](https://github.com/leia-openfoam/leia/blob/8867581/config/gates/methodGate2D.yaml#L118-L149)); see [[decisions/curvature-extension-cell-centre-inverse]].
+- `CURVATURE_EXTENSION cellCentreInverse` as the global default; the gates set it on every droplet arm ([`config/gates/methodGate2D.yaml`](https://github.com/leia-openfoam/leia/blob/8867581/config/gates/methodGate2D.yaml#L112-L163)); see [[decisions/curvature-extension-cell-centre-inverse]].
 - `CURVATURE_INVERSE_GAUSSIAN yes` ([METHOD 8.1](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L399)); see [[decisions/curvature-inverse-gaussian]].
 
 ## Open questions

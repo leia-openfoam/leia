@@ -18,7 +18,7 @@ sources: [docs/gradU-coupled-patch-contamination.md, STATUS 4 (2026-08-26 and 20
 
 - [plan-curvature-stabilization 0](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L21-L61), `docs/plan-curvature-stabilization.md`: the transport table "do not touch", now under a contamination notice and a re-established 2D row.
 - [METHOD 8](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L343-L347), `METHOD.md`: "Transport (prescribed velocity, settled)", 2.97 / 2.59, 2.95 / 3.28, 1.36 / 1.46. No marker.
-- The SL article, `docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex`, [the 2D convergence section](https://github.com/leia-openfoam/leia/blob/8867581/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L1278-L1285): shape order 2.97 at CFL 1/2 and 2.59 at CFL 1.
+- The SL article, `docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex`, [the 2D convergence section](https://github.com/leia-openfoam/leia/blob/8867581/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L1200-L1208): shape order 2.97 at CFL 1/2 and 2.59 at CFL 1.
 - The curated tables `uncachedConv*`, `linearConv*`, `nslConv*`, `npslConv2Dvortex`, `sdCompare2D` under the SL, linear-SL and nPSL themes ([the list](https://github.com/leia-openfoam/leia/blob/8867581/docs/gradU-coupled-patch-contamination.md#L110-L142)).
 - [STATUS 4, 2026-08-18](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L513-L518) and [L543-L550](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L543-L550): the `linearTaylor` kinematic price arm (volume 340 % at N = 256), "numbers suspect".
 - The SDPLS article, `docs/sdpls-level-set/sdpls-article/sdplsLevelSet.tex`, [sec:coupledpatch](https://github.com/leia-openfoam/leia/blob/8867581/docs/sdpls-level-set/sdpls-article/sdplsLevelSet.tex#L2678-L2679) `sec:coupledpatch`: the same defect on the Eulerian SDPLS side (29 studies, tiered for re-run).
@@ -55,7 +55,7 @@ Done:
 Still missing:
 
 - [ ] The 3D shear, 3D deformation and polyhedral rows are "pending re-run" ([plan-curvature-stabilization 0](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L61)); the record has no entry of their landing, and their curated tables (`uncachedConv3D*`, `linearConv3D*`) carry no marker.
-- [ ] [METHOD 8](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L343-L347) and the [SL article](https://github.com/leia-openfoam/leia/blob/8867581/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L1278-L1285) quote the pre-fix 2.97 at CFL 1/2; the re-established value is 2.84. Which table the article's `tab:orders` reads is not checked here.
+- [ ] [METHOD 8](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L343-L347) and the [SL article](https://github.com/leia-openfoam/leia/blob/8867581/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L1204-L1205) quote the pre-fix 2.97 at CFL 1/2; the re-established value is 2.84. Which table the article's `tab:orders` reads is not checked here.
 - [ ] The outcome of the SDPLS re-run tiering (29 studies, P0 to P3) is not recorded in this vault.
 
 ## Related

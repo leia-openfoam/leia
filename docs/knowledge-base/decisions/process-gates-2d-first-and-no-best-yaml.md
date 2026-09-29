@@ -34,7 +34,7 @@ Pre-registered verdict of the gate ([methodGate2D.yaml L19-L26](https://github.c
 
 ## What it does not cover
 
-1. The 3D gate has not run ([STATUS L3739](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3739)).
+1. The 3D gate has not run ([STATUS L3723](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3723)).
 2. Two blind spots of the 2D gate found on 2026-09-28: the exact 1D closed form is `None` for every candidate, and the centred band metric is blind to the cell-scale mode ([[concepts/method-gates]], [[hubs/verification]]).
 3. The record correction of 2026-09-27 (METHOD 4.1, 4.3, 6, 8.1 and 10; three token comments; five STATUS places) shows the same-commit rule was not kept between 2026-07-31 and 2026-09-27 ([STATUS L3571-L3575](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3571-L3575)); this knowledge base is the layer that now mirrors section 8.1.
 4. The gate's coupling block copies the measured best values explicitly on the user's instruction of 2026-09-27; it does not replace the `.parameter` layers ([methodGate2D.yaml L57-L63](https://github.com/leia-openfoam/leia/blob/8867581/config/gates/methodGate2D.yaml#L57-L63)).

@@ -37,7 +37,7 @@ The momentum time scheme is part of the stabilisation, not only of the accuracy 
 ## Where in the code
 
 - The switch `levelSet.capillaryForceCentring endStep | midpoint`, fatal on any other word ([`createSLFields.H`](https://github.com/leia-openfoam/leia/blob/8867581/applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/createSLFields.H#L118-L155)); the midpoint drift of half a step ([`slAlphaEqn.H`](https://github.com/leia-openfoam/leia/blob/8867581/applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/slAlphaEqn.H#L122-L125)) and the second pipeline in the main loop ([`leiaSemiLagrangianLevelSetTwoPhaseFoam.C`](https://github.com/leia-openfoam/leia/blob/8867581/applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/leiaSemiLagrangianLevelSetTwoPhaseFoam.C#L418)).
-- The token `CAPILLARY_FORCE_CENTRING endStep` ([`cases/default.parameter`](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L328-L336)), set in the gate's `twoPhaseCoupling` block ([`config/gates/methodGate2D.yaml`](https://github.com/leia-openfoam/leia/blob/8867581/config/gates/methodGate2D.yaml#L110)).
+- The token `CAPILLARY_FORCE_CENTRING endStep` ([`cases/default.parameter`](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L328-L336)), set in the gate's `twoPhaseCoupling` block ([`config/gates/methodGate2D.yaml`](https://github.com/leia-openfoam/leia/blob/8867581/config/gates/methodGate2D.yaml#L77)).
 - The force is read once per outer corrector at [`UEqn.H`](https://github.com/leia-openfoam/leia/blob/8867581/applications/solvers/leiaLevelSetTwoPhaseFoam/UEqn.H#L8), after the interface pipeline of `slAlphaEqn.H`.
 
 ## Evidence

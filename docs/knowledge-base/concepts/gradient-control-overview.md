@@ -47,7 +47,7 @@ A working gradient control removes the last reason for a reinitialisation, which
 lines showed to be injurious under transport ([[concepts/redistancing-geometric-grl]]). It must
 satisfy the constraints of every leia method: unstructured FVM with compact stencils under MPI,
 inert by default, no filter, judged on the moving-interface gates with the whole error vector
-([CLAUDE.md, constraints](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L563-L578)).
+([CLAUDE.md, constraints](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L644-L659)).
 
 ## Where in the code
 

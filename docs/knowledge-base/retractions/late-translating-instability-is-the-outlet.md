@@ -37,7 +37,7 @@ sources: [STATUS 11.14, STATUS 11.15, gcls pre-print sec:res-translating, SL art
 1. The outlet triggers the fast phase; the density contrast is necessary (the ratio-1 run completes); the phenomenon is decomposition-independent ([STATUS 11.14](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3725-L3741)). A benchmark that runs the translating droplet longer than 0.05 s needs a longer box ([SL article, d1e3414](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L2702-L2712)).
 2. The long-box ladder to 0.1 s at N = 100 / 142 / 200: all three rungs complete; shape and centroid converge near order 1.7 to 1.9, the curvature error does not (1.5 to 2.2 %) ([STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3800-L3814)).
 3. The reading "a slow interior growth in time, amplified as the droplet approaches the outlet" fits every run so far, including the start-position test ([STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3860-L3863)).
-4. The rule of [CLAUDE.md](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L528-L544): before any conclusion from t_blow, compute where the interface is and what the nearest boundary is, see [[concepts/error-vector-and-read-out-instants]].
+4. The rule of [CLAUDE.md](https://github.com/leia-openfoam/leia/blob/d1e3414/CLAUDE.md#L528-L544): before any conclusion from t_blow, compute where the interface is and what the nearest boundary is, see [[concepts/error-vector-and-read-out-instants]].
 
 ## Propagation (checklist, same commit)
 

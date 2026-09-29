@@ -52,7 +52,7 @@ The step is not a failure; the two readings that made it look like a lever faile
 
 ## Decisions
 
-- `CAPILLARY_DT_COEFF 0.010861` in every droplet case layer; the gates carry it in `twoPhaseCoupling` ([`config/gates/methodGate2D.yaml`](https://github.com/leia-openfoam/leia/blob/8867581/config/gates/methodGate2D.yaml#L116)).
+- `CAPILLARY_DT_COEFF 0.010861` in every droplet case layer; the gates carry it in `twoPhaseCoupling` ([`config/gates/methodGate2D.yaml`](https://github.com/leia-openfoam/leia/blob/8867581/config/gates/methodGate2D.yaml#L81)).
 - The step follows `h`, not the cell count; bit-identical for every pre-existing token shape ([STATUS 4](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L767-L773)).
 - Ladders are matched on the time-step law, and `gAvg` is compared only at equal step counts ([CLAUDE](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L458-L460), [STATUS 4](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1027-L1028), [[concepts/richardson-ladders-and-orders]]).
 

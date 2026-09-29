@@ -31,7 +31,7 @@ The shape and volume metrics, the capillary force support `snGrad(alpha)` and th
 
 Pre-registered read-out: the study isolates the Heaviside computation, because the psi advection is identical for both members and only `alpha` differs ([phaseIndicatorConvergence.yaml L6-L9](https://github.com/leia-openfoam/leia/blob/8867581/config/phaseIndicatorConvergence.yaml#L6-L9)).
 
-The default change of 2026-09-01 was the author's instruction to run one shared configuration ([DP L360-L371](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L360-L371)); the kinematic cases sweep both members in their case layers ([3Dshear.parameter L3](https://github.com/leia-openfoam/leia/blob/8867581/cases/3Dshear.parameter#L3)).
+The default change of 2026-09-01 was the author's instruction to run one shared configuration ([DP L360-L371](https://github.com/leia-openfoam/leia/blob/d1e3414/cases/default.parameter#L360-L371)); the kinematic cases sweep both members in their case layers ([3Dshear.parameter L3](https://github.com/leia-openfoam/leia/blob/8867581/cases/3Dshear.parameter#L3)).
 
 ## What it does not cover
 

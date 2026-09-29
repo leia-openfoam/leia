@@ -58,7 +58,7 @@ The production transport is the quadratic semi-Lagrangian scheme: a constant-fre
 
 ## Open, in order
 
-1. The amplification $\rho(B) > 1$ of the reconstruct-and-evaluate operator on every mesh: the acceptance criterion $\rho \le 1$ is met nowhere ([METHOD 9.3 and 9.4](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L771-L790)); a quadratic-exact rule with $\Lambda = 1$ is impossible at an off-node point.
+1. The amplification $\rho(B) > 1$ of the reconstruct-and-evaluate operator on every mesh: the acceptance criterion $\rho \le 1$ is met nowhere ([METHOD 9.3 and 9.4](https://github.com/leia-openfoam/leia/blob/d1e3414/METHOD.md#L771-L790)); a quadratic-exact rule with $\Lambda = 1$ is impossible at an off-node point.
 2. The gradient drift without redistancing: the oscillating droplet's band gradient error grows exponentially at $N = 200$ after $t = 0.05$ s ([STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3745-L4023)); [[hubs/gradient-control]] holds the candidates.
 3. The translation `none` arm saturates at $N = 256$ ([METHOD 8](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L648-L653)).
 4. The signed-distance assumption survives in the phase indicator's first-order offset, unmeasured ([[models/phase-indicator]]).
