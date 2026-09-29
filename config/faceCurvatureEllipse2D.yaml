@@ -47,6 +47,17 @@
 #             STATUS section 7), because every CSF face has two filled cells.
 #   FALSIFIED an order <= 1.2: the one-value-per-cell collapse of 2026-08-12 (cut-cell 1.02).
 #   CONTROL   the K-on and K-off rows are identical (K = +0 exactly in 2D).
+# RESULT (2026-09-29, laptop, v2512, test apps of e089939f; face_curvature_ladder_ellipse.csv and
+# curvature_gain_ellipse.csv). cellCentreInverse E_L2 11.2 / 3.28 / 0.831 / 0.208 1/m at
+# N = 64 / 128 / 256 / 512, pairwise orders 1.77, 1.98, 2.00: the order PASSES; not falsified.
+# CONTROL passes: the K-off rows are identical. The gain, linear regime (eps 1e-3 and 1e-2 agree):
+# G h^2 = 0.618 / 0.651 / 0.673 / 0.647. The per-rung form written above FAILS at N = 128 and 256.
+# That form is stricter than the criterion as the curvature plan applied it (PCS 12: the finest
+# rung and the fitted order; per-face inverse 0.647 and 1.98, "passes"): under that form cCI
+# PASSES with the same numbers (0.647 at N = 512). The per-face inverse fails the per-rung form
+# too (0.650 / 0.673 at N = 128 / 256), and so does the arithmetic delivery (0.670 at N = 256);
+# only the first-order cell-mean (0.416) and symmetric face-mean (0.467) stay below 0.65. Note:
+# the 0.660 seen before this header is the eps = 0.1 value; the linear value is 0.651.
 # ----------------------------------------------------------------------------
 study_name: faceCurvatureEllipse2D
 case: ellipseDroplet2D

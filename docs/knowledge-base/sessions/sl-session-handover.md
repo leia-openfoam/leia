@@ -92,9 +92,11 @@ decision and the cheapest discriminator.
    ellipsoid** (item 1 below; [METHOD 4.1](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L169-L193),
    [STATUS 11.19 item 6](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4269-L4302)): second order on both (ellipse 1.98 and
    2.00 over N = 128 to 512; ellipsoid 2.10 over N = 50 to 128, 1.00 without the Gaussian term), 14 to
-   26 % below the per-face inverse. The gain part of the STATUS 7 criterion fails: G h^2 is 0.651 and
-   0.673 at N = 128 and 256, and every delivery fails it at N = 256, so on the ellipse the gain does not
-   separate the deliveries. On the implicit psi every delivery is first order.
+   26 % below the per-face inverse. Its gain equals the per-face inverse's: G h^2 0.647 at N = 512, so
+   the STATUS 7 criterion as the curvature plan applied it (the finest rung) is met. The stricter
+   per-rung form fails at N = 128 and 256 (0.651, 0.673) for every second-order delivery, the per-face
+   inverse included; only the first-order cell-mean and symmetric face-mean deliveries stay below 0.65.
+   On the implicit psi every delivery is first order.
 6. **Traps** ([STATUS 11.19 item 7](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4303-L4312)): `leiaSetFields` is not
    idempotent on a non-pristine `0/`; a verification study through the full workflow runs the finalize
    rule, which overwrites curated outputs (use `--until solve`); the per-value relative test of

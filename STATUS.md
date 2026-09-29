@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-29 (section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid; the gain limit 0.65 fails on the ellipse for every delivery. Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-09-29 (section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -4140,7 +4140,8 @@ technical report. Plan: `docs/plan-knowledge-base-2026-09-28.md` (approved
    `docs/knowledge-base/sessions/sl-session-handover.md` (items 1 to 15). The two most important:
    the production curvature `cellCentreInverse` was never scored on the varying-curvature ellipse
    gate (the acceptance criterion of section 7 is not demonstrated for it; scored on 2026-09-29,
-   11.19: the orders pass, the gain limit fails for every delivery), and a row of the SL
+   11.19: the orders pass; the gain equals the per-face inverse's, and the per-rung form of the
+   limit fails for every second-order delivery), and a row of the SL
    article's viscous-term table comes from the frozen-muf run of 4267d7b (re-run or retract: an
    author decision). Corrected at the source today: CLAUDE.md and AGENTS.md (a second clone would
    have loaded the library ~200 commits ahead; no job ran with it, 9.5), CLUSTER.md (the banner
@@ -4287,10 +4288,14 @@ to the last commit of this section.
 
    The pre-registered read-out (the two config headers): the orders PASS on both signed-distance
    gates; the K-off control is identical in 2D and first order in 3D (the Gaussian term carries
-   the order); not falsified. The gain criterion of section 7 FAILS on the ellipse: G h^2 (linear
-   regime) is 0.618 / 0.651 / 0.673 / 0.647 at N = 64 to 512, above 0.65 at N = 128 and 256.
-   Every delivery fails it at N = 256 (per-face inverse 0.673, arithmetic 0.670), so on the
-   ellipse the gain does not separate the deliveries. Ellipsoid, signed distance, N = 128: cCI
+   the order); not falsified. The gain: G h^2 (linear regime) is 0.618 / 0.651 / 0.673 / 0.647
+   at N = 64 to 512. The criterion of section 7 as PCS 12 applied it (the finest rung and the
+   fitted order; the per-face inverse "passes" with 0.647 and 1.98) is MET with the same numbers.
+   The stricter per-rung form that I pre-registered FAILS at N = 128 and 256; the per-face
+   inverse (0.650, 0.673) and the arithmetic delivery (0.670 at N = 256) fail it too, and only
+   the first-order cell-mean (0.416) and symmetric face-mean (0.467) stay below 0.65. Correction
+   of the same day: I first wrote "every delivery fails it at N = 256"; the knowledge-base
+   writer found the two first-order exceptions. Ellipsoid, signed distance, N = 128: cCI
    0.838, per-face 0.836, arithmetic 0.834. The implicit psi is first order for every delivery
    (its foliation is not parallel); its gain per unit psi (0.060) is not comparable with the
    signed distance. Curated by hand (the finalize rule runs the same scripts):
