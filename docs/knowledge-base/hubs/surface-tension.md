@@ -52,6 +52,7 @@ The force is a balanced-force CSF flux in the pressure-flux space ([[concepts/ba
 
 ## Open, in order
 
+0. The production curvature `cellCentreInverse` was never scored on the varying-curvature ellipse gate, so the acceptance criterion (`G h^2 <= 0.65`, order `>= 1.9` on the ellipse) is not demonstrated for it ([METHOD 8.1 L393](https://github.com/leia-openfoam/leia/blob/d1e3414/METHOD.md#L393), [[cases/curvature-static-gates]]). The cheapest open item: a static gate of minutes.
 1. Anti-convergence of the settled current under refinement ([METHOD 9.1](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L754-L756)); the two-factor law names the amplifier $G(h) \sim h^{-3.27}$ in 3D.
 2. The curvature of the moving interface does not converge on the translating arm ([STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3745-L4023)).
 3. The oscillating droplet's gradient drift at $N = 200$: the case for the gradient-control candidates ([[hubs/gradient-control]]).
@@ -62,3 +63,6 @@ The force is a balanced-force CSF flux in the pressure-flux space ([[concepts/ba
 
 ### 2026-09-28
 Created.
+
+### 2026-09-29
+Added open item 0 (the ellipse gate was never run on the production curvature).
