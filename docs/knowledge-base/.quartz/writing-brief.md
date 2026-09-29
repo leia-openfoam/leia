@@ -26,8 +26,11 @@ retracted, and why something failed or why we think so.
    `[[folder/slug|text]]` is allowed; inside a table cell escape the pipe: `[[folder/slug\|text]]`).
    Use only slugs that exist in the manifest (yours or another owner's). Root notes: `[[index]]`,
    `[[decision-log]]`, `[[retraction-log]]`, `[[conventions]]`.
-   GitHub links: `https://github.com/leia-openfoam/leia/blob/8867581/<path>#L<a>-L<b>` (pinned,
-   drift-proof), with the path in backticks next to the link. Article sections: the same blob
+   GitHub links: `https://github.com/leia-openfoam/leia/blob/<commit>/<path>#L<a>-L<b>` (pinned,
+   drift-proof), with the path in backticks next to the link. `<commit>` is the commit whose tree
+   you READ (`git rev-parse HEAD` in the clone, and the file must be unmodified there: check
+   `git status --short <path>`); line numbers of a modified working-tree file do not match any
+   commit. The notes of 2026-09-28 pin to d1e3414 (the writers) and 8867581 (the session lead). Article sections: the same blob
    link at the `\section` line plus the `\label` in backticks. Deck slides: the site URL
    `https://leia-openfoam.github.io/leia/decks/<name>.html#/<h>` (h = the horizontal slide index,
    counted from 0; add `/<v>` for a vertical slide). Pre-prints: `https://leia-openfoam.github.io/leia/preprints/<texname>.pdf`.
