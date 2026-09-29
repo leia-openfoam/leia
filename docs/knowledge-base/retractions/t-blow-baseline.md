@@ -30,7 +30,7 @@ sources: [STATUS 4 (2026-08-31), STATUS 4 (2026-08-18), PCS 13 and 16.1, SL deck
 | The 0.078 s blow-up time at N = 128 reproduces. | The control is alive at t = 0.1 s; max|U| 4.65e-3 m/s; rate +118 1/s over the last fifth; extrapolated blow-up near 0.146 s (1.9x). | MEASURED, [STATUS 4](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1057-L1064) |
 | t_blow measures the growth rate. | K = r t_blow between 5.4 and 13.3 across the dt-sweep arms; incubation varies. | MEASURED, [plan 16.1](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L1311-L1313) |
 | t_blow at one resolution ranks deliveries. | The cell-mean prefactor win vanishes under refinement: p = -1.09 against -0.94 for the per-face inverse. | MEASURED, [plan 13](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L1070-L1093) |
-| A reproducible step count is an instability. | 9337 / 9331 / 9367 / 9324 on four occasions, against 5 to 38 % scatter: a geometric event. | MEASURED, [CLAUDE.md](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L528-L536) |
+| A reproducible step count is an instability. | 9337 / 9331 / 9367 / 9324 on four occasions, against 5 to 38 % scatter: a geometric event. | MEASURED, [CLAUDE.md](https://github.com/leia-openfoam/leia/blob/d1e3414/CLAUDE.md#L528-L536) |
 | The cause of the 1.9x shift. | Not found. "Until the cause is found, no result may be compared against the older t_blow table." | HYPOTHESIS, [STATUS 4](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1063-L1066) |
 
 ## What survives
@@ -46,7 +46,7 @@ Done:
 
 - [x] `STATUS.md`: [RETRACTION FIRST](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1050-L1068); the refinement ladders carry [their own baselines](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1166-L1175); the [scoring instruction](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L2555-L2559).
 - [x] The plan document: [16.1](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L1311-L1313) and the [binding scoring note](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L1110-L1115).
-- [x] `CLAUDE.md`: ["Is the interface still inside the domain?"](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L528-L544).
+- [x] `CLAUDE.md`: ["Is the interface still inside the domain?"](https://github.com/leia-openfoam/leia/blob/d1e3414/CLAUDE.md#L528-L544).
 - [x] The line in [[retraction-log]].
 
 Still missing:

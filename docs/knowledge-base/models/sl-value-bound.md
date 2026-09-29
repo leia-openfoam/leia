@@ -73,7 +73,7 @@ The polyhedral far field fails without a bound: the sigma = 0 passive control on
 | Cone bound, resolution ladder N = 64 to 128 | grad-psi error 7.119e-03 to 7.066e-03, order 0.01 (a floor); centroid +119.4 % worse at N = 128 | MEASURED, [METHOD 8.3.5 L698-L724](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L698-L724) |
 | Cone bound, 3D shear hex, `stencil` mode | E_VOL_ALPHA_REL = 1.0000, the phase is gone | MEASURED, [METHOD 8.3.4 L592-L597](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L592-L597) |
 | Polyhedral 3D shear, unbounded | diverged at step 198 in both HEAD and the pre-change binary | MEASURED, [METHOD 8.3.8 L680-L686](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L680-L686) |
-| Mesh-noise floor on the polyhedral rung | volume spread 0.0 / 0.0 / 14.2 % for none / stencilBounds / lipschitzCone | MEASURED, [CLAUDE L617-L623](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L617-L623) |
+| Mesh-noise floor on the polyhedral rung | volume spread 0.0 / 0.0 / 14.2 % for none / stencilBounds / lipschitzCone | MEASURED, [CLAUDE L617-L623](https://github.com/leia-openfoam/leia/blob/d1e3414/CLAUDE.md#L617-L623) |
 
 ## Why it failed, or why we think so
 

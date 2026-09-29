@@ -35,7 +35,7 @@ The executable plan is [plan-halo-limited-gradient-control.md](https://github.co
 (approved 2026-09-26): the SL line first, one 2D and one 3D gate that test every method, the
 dossiers stay out of git. The pre-print of 2026-09-27 ([[studies/gcls-pre-print]]) gives the
 models, their discretisation and the gate results. The technical report of 2026-09-28
-([gclsTechnicalReport.tex](https://github.com/leia-openfoam/leia/blob/8867581/docs/gradient-controlled-level-set/gcls-technical-report/gclsTechnicalReport.tex))
+([gclsTechnicalReport.tex](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/gradient-controlled-level-set/gcls-technical-report/gclsTechnicalReport.tex))
 assesses why each candidate failed and what to do next; the knowledge-base notes
 [[concepts/why-the-candidates-failed]], [[concepts/source-discretisation-defects]],
 [[concepts/extension-strain-relocation]] and [[concepts/gradient-control-next-experiments]] carry

@@ -40,7 +40,7 @@ What stands: the derivation that BDF2's homogeneous update `rho^{n+1} = (4/3) rh
 ## What it does not cover
 
 1. The gate runs every droplet arm with the bound on ([methodGate2D.yaml L68](https://github.com/leia-openfoam/leia/blob/8867581/config/gates/methodGate2D.yaml#L68)). A `boundRho false` control on the repaired translating and oscillating cases is the missing measurement; its read-out is the completion, `min rho`, `rhoClipL1` and the whole error vector.
-2. `rhoClipFraction` counts round-off clips in pure cells, 37 to 48 % of the cells at a clip L1 of 1e-12, so as an error metric it measures round-off; it is reported, not scored ([STATUS L3731-L3733](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3731-L3733)).
+2. `rhoClipFraction` counts round-off clips in pure cells, 37 to 48 % of the cells at a clip L1 of 1e-12, so as an error metric it measures round-off; it is reported, not scored ([STATUS L3731-L3733](https://github.com/leia-openfoam/leia/blob/d1e3414/STATUS.md#L3731-L3733)).
 3. The bound is inert for `geometricFaceDensity` and `interpolatedDensity`, which solve no density equation ([DP L768-L770](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L768-L770)).
 
 ## Related

@@ -21,7 +21,7 @@ date: 2026-09-28
    semi-Lagrangian topic from the source-term topic (four sections of the gcls pre-print moved to
    the SL article; [[sessions/sl-session-handover]]), the technical report on the first
    gradient-control campaign
-   ([gclsTechnicalReport.tex](https://github.com/leia-openfoam/leia/blob/8867581/docs/gradient-controlled-level-set/gcls-technical-report/gclsTechnicalReport.tex)),
+   ([gclsTechnicalReport.tex](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/gradient-controlled-level-set/gcls-technical-report/gclsTechnicalReport.tex)),
    the two rule sections of CLAUDE.md (the knowledge base as the point of reference; supervisor
    and expert developer), and the record corrections of STATUS.md, METHOD.md and the configs.
 2. Gradient control: the next experiments are pre-registered in

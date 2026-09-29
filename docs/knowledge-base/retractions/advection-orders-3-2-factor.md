@@ -34,7 +34,7 @@ sources: [STATUS 11.2, METHOD 8.3.7, commit f8aaa8e, advConv2D*_convergence.csv]
 ## What survives
 
 1. Every conclusion of [METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L627-L680) and of the [distance-cone retraction](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L490-L496): the ratios between arms and the saturation of the unbounded translation at N = 256 (order -0.54, still negative).
-2. The 3D rungs and the [advection regression of 8.3.8](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L682-L692) (bit-identity at tolerance 0 does not read an order).
+2. The 3D rungs and the [advection regression of 8.3.8](https://github.com/leia-openfoam/leia/blob/d1e3414/METHOD.md#L682-L692) (bit-identity at tolerance 0 does not read an order).
 3. The corrected 2D translation order at the finest healthy pair, 2.10, and the vortex orders 2.76 to 3.23, consistent with the 2D vortex orders of the SL article and of the gradU re-run (2.84 at CFL 0.5, [[retractions/gradu-coupled-patch-contamination]]).
 4. The rule that an order is reported next to its error and its spacing ([CLAUDE.md](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L510-L537)), see [[concepts/richardson-ladders-and-orders]].
 

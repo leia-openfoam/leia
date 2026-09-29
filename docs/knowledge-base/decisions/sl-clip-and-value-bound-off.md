@@ -48,7 +48,7 @@ Why no formulation does both: a monotone bound cannot represent an extremum, and
 2. The family stays as one study axis; the next candidate is the review's Rank 1, a monotone transporting base plus a filtered correction ([METHOD 8.3.6 L733-L737](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L733-L737)).
 3. The flow-map Lipschitz constant `L(t) <= L(0) exp(int abs(grad u) dt)` is deliberately not implemented; it needs a collective per step ([METHOD 8.3.6 L742-L749](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L742-L749)).
 4. Two threshold-free properties that separate a genuine extremum from a checkerboard peak (grad psi towards 0 at a medial-axis extremum; survival under a wider stencil) are proposed and untested ([STATUS L2362-L2374](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L2362-L2374)).
-5. The mesh-noise floor of the polyhedral rung is a property of the candidate: volume spread 0.0 / 0.0 / 14.2 % for none / stencilBounds / lipschitzCone ([CLAUDE L617-L623](https://github.com/leia-openfoam/leia/blob/8867581/CLAUDE.md#L617-L623), [[concepts/advection-regression-set]]).
+5. The mesh-noise floor of the polyhedral rung is a property of the candidate: volume spread 0.0 / 0.0 / 14.2 % for none / stencilBounds / lipschitzCone ([CLAUDE L617-L623](https://github.com/leia-openfoam/leia/blob/d1e3414/CLAUDE.md#L617-L623), [[concepts/advection-regression-set]]).
 
 ## Related
 
