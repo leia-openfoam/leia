@@ -83,6 +83,22 @@ The note writers of 2026-09-29 read the record against itself and found these; n
     records that no job ran with it. Corrected in CLAUDE.md and AGENTS.md on 2026-09-29; the comment in
     `src/leiaLevelSet/leiaVersionRegistry.H` line 11 still says "ran" (a code comment; left for the next
     library change, since an edit changes the library stamp).
+16. **`2Dtranslation` is a reversed translation.** Its `velocityModel` block sets no `oscillation`
+    entry, the default is on ([velocityModel.C L49-L50](https://github.com/leia-openfoam/leia/blob/d1e3414/src/leiaLevelSet/velocityModel/velocityModel.C#L49-L50)),
+    and `tau` defaults to `endTime` = 0.5 s, so U = U0 cos(pi t/tau): the circle moves at most
+    tau/pi = 0.16 and returns at T, while the case comment describes a one-way translation with the
+    exact solution psi0(x - U t). The ladder `advConv2Dtranslation` (METHOD 8.3.7) read its errors at T,
+    where the reversal cancels errors. DERIVED from the code; a solver log confirms it. OPEN, author
+    decision: a wrong setup (re-run with `oscillation off`) or a reversed-flow gate read at the right
+    instants ([[cases/kinematic-advection-cases]], [[hubs/advection]]).
+17. **The published polyhedral orders ran with the clip on:** 3.28 (3D shear) and 1.46 (3D deformation)
+    come from configs with `SL_CLIP true` and the face stencil; with the production default the
+    coarsest polyhedral 3D shear rung diverges at step 198; the SL article's "Boundedness" subsection
+    (L543-L549) still calls the clip order-preserving ([[concepts/value-bounds-and-clips]]).
+18. **Small items:** `workflow/README.md` line 354 still gives 128 x 128 x 256 cells for the 3D shear (the
+    case is N^3 now); `cases/3Dtranslation_poly.parameter` sets END_TIME 3.0, which moves the sphere
+    out of the box at t = 1.65 (no study runs `3Dtranslation`); the GRL article's text and table give
+    different one-step volume changes (1.05e-4 against 1.11e-5 at the coarsest rung).
 
 ## What is open for the author
 
@@ -96,3 +112,4 @@ Created.
 ### 2026-09-29
 CORRECTED the void statement of item 4 (the void is OPEN); added the record inconsistencies found by the note writers.
 Added items 7 to 15 from the reports of the note writers.
+Added items 16 to 18 (the reversed 2Dtranslation, the clip-on polyhedral orders, small items).

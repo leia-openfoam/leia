@@ -4138,7 +4138,13 @@ technical report. Plan: `~/.claude/plans/make-a-detailed-plan-snuggly-lynx.md` (
    author decision). Corrected at the source today: CLAUDE.md and AGENTS.md (a second clone would
    have loaded the library ~200 commits ahead; no job ran with it, 9.5), CLUSTER.md (the banner
    lists one stamp line per loaded library, up to nine), the 40 mm volume change of 11.15 (15 %).
-   Open and not changed: `foam_log_state.sh` tests launch failures before death signatures on a
+   Open and not changed, and the most consequential: `2Dtranslation` is a REVERSED translation (no
+   `oscillation` entry, the default is on, `tau` = `endTime`), so the circle moves at most 0.16 and
+   returns at T, and the ladder of METHOD 8.3.7 read its errors at T (DERIVED from
+   `velocityModel.C` lines 49-50; author decision: a wrong setup or a reversed-flow gate); the
+   published polyhedral orders 3.28 and 1.46 ran with `SL_CLIP true` (the production default
+   diverges at step 198 on the coarsest polyhedral 3D shear rung). Also open:
+   `foam_log_state.sh` tests launch failures before death signatures on a
    zero-step log, the Snakefile the other way round; `make_archive.py` does not refuse an existing
    archive folder ("never overwritten" is a convention); the Phase C bit-identity scripts are not
    committed; every method-gate arm renders a hex mesh, so the polyhedral rung exists only in the

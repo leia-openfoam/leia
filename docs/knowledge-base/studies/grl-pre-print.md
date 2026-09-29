@@ -41,10 +41,10 @@ The static-gate tables report the band maximum norm; the record has no L2 for th
 | Static gate, one event on the tanh circle, band error after the event at h=1/256 | `planeFootWave` 4.48e-5 (orders 1.97, 2.00, 2.54 between rungs); `anchoredEikonal` 3.53e-4 (1.98, 2.06, 2.35); PDE 4.07e-2 against 2.03e-2 before the event | [`sec:static`, 355](https://github.com/leia-openfoam/leia/blob/8867581/docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex#L355) and [`static_redistance_orders.tex`](https://github.com/leia-openfoam/leia/blob/8867581/docs/geometrically-redistanced-levelset/grl-level-set-article/data/tables/static_redistance_orders.tex), MEASURED (maximum norm) |
 | One step on an exact plane | band error 1.61e-13 at h=1/256, volume change 2.36e-16 | [`redistanceStatic2D_orders.tex`](https://github.com/leia-openfoam/leia/blob/8867581/docs/geometrically-redistanced-levelset/grl-level-set-article/data/tables/redistanceStatic2D_orders.tex), MEASURED |
 | One step on an exact circle, spurious volume change | 1.11e-5 at h=1/32 to 1.17e-7 at h=1/256 (table); the prose quotes 1.05e-4 to 1.72e-6 and 1.5 % to 0.02 % of the phase volume | [`sec:idempotency`, 385](https://github.com/leia-openfoam/leia/blob/8867581/docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex#L385) and the same table, MEASURED; the prose and the table disagree |
-| Shape error equals volume error (one-signed displacement) | equal at three of the four rungs in the table (1.20e-7 against 1.17e-7 at the finest) | same table, MEASURED |
+| Shape error equals volume error (one-signed displacement) | equal to the printed digits at the two coarsest of the four rungs (1.59e-6 and 1.11e-5); within 4 % at the two finest (1.20e-7 against 1.17e-7 at the finest) | same table, MEASURED |
 | PDE reinitialisation on the exact circle | band error 1.97e-1 at h=1/32 | same table, MEASURED (maximum norm) |
 | Advected 2D vortex `bulkVortexGRL`, shape error, h=1/32 to 1/128 | `noRedistancing` 6.97e-3 to 2.20e-3; `planeFootWave` 3.59e-2 to 5.09e-2 (grows); `anchoredEikonal` about 5.0e-2 flat; PDE 4.97e-2 to 4.43e-3 | [`grl_convergence_orders.tex`](https://github.com/leia-openfoam/leia/blob/8867581/docs/geometrically-redistanced-levelset/grl-level-set-article/data/tables/grl_convergence_orders.tex), MEASURED; the article's advected sections are TODO |
-| The trigger degenerates to every-step firing | the ablation is identical to 3 digits; thresholds 0.01 and 0.05 change nothing | deck https://leia-openfoam.github.io/leia/decks/geometrically-redistanced-level-set.html#/5/4, MEASURED |
+| The trigger degenerates to every-step firing | the ablation is identical to 3 digits; thresholds 0.01 and 0.05 change nothing | deck https://leia-openfoam.github.io/leia/decks/geometrically-redistanced-level-set.html#/5/3, MEASURED |
 | Frozen-band variant under Eulerian transport, T=8 | volume error 0.017 to 1.77 at N=256, 0.238 to 2.53 at N=128; the indicator inflates to 2.8x the droplet | [MC `sec:frozen`, 304](https://github.com/leia-openfoam/leia/blob/8867581/docs/method-comparison/method-comparison-article/methodComparison.tex#L304), MEASURED |
 
 ## Why it failed, or why we think so
@@ -67,3 +67,6 @@ The line is closed: [[models/redistancer]], [PCS dead end 7](https://github.com/
 
 ### 2026-09-28
 Created from the draft at 8867581, the two deck templates and the tables.
+
+### 2026-09-29
+CORRECTED two details found by the advection writer: the trigger ablation is deck slide #/5/3, and the shape and volume errors agree at two of the four rungs, not three.
