@@ -19,3 +19,16 @@ Preview the 3D graph without Node: `make kb-graph`, then
 <http://localhost:8000/graph3d/graph.htm?local=1>. The page is `graph.htm`, not `index.html`: Quartz
 strips the `.html` extension of a non-Markdown file, and GitHub Pages would not serve the result as a
 directory index.
+
+## Publishing
+
+The repository's `github-pages` environment allows deployments from `main` only (checked
+2026-09-29 through the GitHub API). The workflow builds and checks the vault on `main`,
+`development` and `feature/gradient-controlled-level-set`; its deploy job succeeds only from a
+branch that the environment allows. To publish from another branch, add it under Settings >
+Environments > github-pages > Deployment branches and tags, then re-run the workflow
+(Actions > Knowledge base > Run workflow).
+
+The decks and the PDFs are copied into `public/` after the Quartz build: Quartz strips the
+`.html` extension of a copied file, and GitHub Pages would then serve a deck without a content
+type. The 3D graph page is `graph.htm` for the same reason.

@@ -30,23 +30,25 @@ cp "$repo/STATUS.md" "$repo/METHOD.md" "$repo/CLAUDE.md" "$q/content/record/"
 cp "$repo"/docs/plan-*.md "$repo/docs/capillary-level-set-research-roadmap.md" \
    "$repo/docs/IMPROVEMENTS.md" "$q/content/record/" 2>/dev/null || true
 
-if [ "${KB_DECKS:-1}" = 1 ]; then
-    bash "$repo/docs/build-decks.sh"
-    mkdir -p "$q/content/decks"
-    find "$repo/docs" -path '*-presentation/*.html' ! -name '*.template.html' -exec cp {} "$q/content/decks/" \;
-fi
-if [ "${KB_PREPRINTS:-0}" = 1 ]; then
-    mkdir -p "$q/content/preprints"
-    for tex in "$repo"/docs/*/*-article/*.tex "$repo"/docs/*/*-report/*.tex; do
-        [ -f "$tex" ] || continue
-        dir=$(dirname "$tex"); name=$(basename "$tex" .tex)
-        if (cd "$dir" && latexmk -pdf -interaction=nonstopmode -halt-on-error "$name.tex" > "latexmk-$name.log" 2>&1); then
-            cp "$dir/$name.pdf" "$q/content/preprints/"
-        else
-            echo "[kb] skip $tex (see $dir/latexmk-$name.log)"
-        fi
-    done
-fi
+add_extras() {   # after the Quartz build: Quartz strips .html from copied files
+    if [ "${KB_DECKS:-1}" = 1 ]; then
+        bash "$repo/docs/build-decks.sh"
+        mkdir -p "$q/public/decks"
+        find "$repo/docs" -path '*-presentation/*.html' ! -name '*.template.html' -exec cp {} "$q/public/decks/" \;
+    fi
+    if [ "${KB_PREPRINTS:-0}" = 1 ]; then
+        mkdir -p "$q/public/preprints"
+        for tex in "$repo"/docs/*/*-article/*.tex "$repo"/docs/*/*-report/*.tex; do
+            [ -f "$tex" ] || continue
+            dir=$(dirname "$tex"); name=$(basename "$tex" .tex)
+            if (cd "$dir" && latexmk -pdf -interaction=nonstopmode -halt-on-error "$name.tex" > "latexmk-$name.log" 2>&1); then
+                cp "$dir/$name.pdf" "$q/public/preprints/"
+            else
+                echo "[kb] skip $tex (see $dir/latexmk-$name.log)"
+            fi
+        done
+    fi
+}
 
 node_ok() { command -v node >/dev/null 2>&1 && [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 22 ]; }
 if ! node_ok && [ -s "$HOME/.nvm/nvm.sh" ]; then
@@ -65,11 +67,18 @@ if ! node_ok; then
 fi
 if node_ok; then
     (cd "$q" && npm ci && npx quartz plugin install && npx quartz plugin resolve \
-        && npx quartz build -d content -o public $serve)
+        && npx quartz build -d content -o public)
+    add_extras
+    if [ -n "$serve" ]; then
+        echo "[kb] serving $q/public on http://localhost:8080 (Ctrl-C to stop)"
+        python3 -m http.server -d "$q/public" 8080
+    fi
 elif command -v docker >/dev/null 2>&1; then
     echo "[kb] no Node >= 22 on PATH: building in node:22-slim"
-    docker run --rm -it -v "$q:/work" -w /work -p 8080:8080 -p 3001:3001 node:22-slim \
-        bash -c "npm ci && npx quartz plugin install && npx quartz plugin resolve && npx quartz build -d content -o public $serve"
+    docker run --rm -v "$q:/work" -w /work node:22-slim \
+        bash -c "npm ci && npx quartz plugin install && npx quartz plugin resolve && npx quartz build -d content -o public"
+    add_extras
+    if [ -n "$serve" ]; then python3 -m http.server -d "$q/public" 8080; fi
 else
     echo "[kb] neither Node >= 22 nor Docker is available" >&2; exit 1
 fi

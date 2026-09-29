@@ -5,7 +5,10 @@
 name: Knowledge base
 on:
   push:
-    branches: [main, development, "feature/**"]
+    # The github-pages environment allows deployments from main only (2026-09-29). To publish
+    # from another branch, add it under Settings > Environments > github-pages > Deployment
+    # branches; the build job below runs and checks the vault on every listed branch.
+    branches: [main, development, feature/gradient-controlled-level-set]
     paths:
       - "docs/**"
       - "STATUS.md"
@@ -56,35 +59,36 @@ jobs:
           mkdir -p quartz/content/record
           cp STATUS.md METHOD.md CLAUDE.md quartz/content/record/
           cp docs/plan-*.md docs/capillary-level-set-research-roadmap.md docs/IMPROVEMENTS.md quartz/content/record/
-      - name: Build the reveal decks into content/decks
+      - name: Build the site
+        working-directory: quartz
+        run: npx quartz build -d content -o public
+      - name: Add the reveal decks to the site (after the Quartz build, which strips .html from copied files)
         run: |
           bash docs/build-decks.sh
-          mkdir -p quartz/content/decks
+          mkdir -p quartz/public/decks
           for f in docs/*/*-presentation/*.html; do
             case "$f" in *.template.html) continue ;; esac
-            cp "$f" quartz/content/decks/
+            cp "$f" quartz/public/decks/
           done
-      - name: Compile the pre-prints and the reports into content/preprints (a LaTeX failure does not block the site)
+          ls -la quartz/public/decks
+      - name: Add the pre-prints and the reports to the site (a LaTeX failure does not block the site)
         continue-on-error: true
         run: |
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends latexmk texlive-latex-base \
             texlive-latex-recommended texlive-latex-extra texlive-publishers texlive-science \
             texlive-pictures texlive-fonts-recommended texlive-bibtex-extra biber cm-super
-          mkdir -p quartz/content/preprints
+          mkdir -p quartz/public/preprints
           for tex in docs/*/*-article/*.tex docs/*/*-report/*.tex; do
             [ -f "$tex" ] || continue
             dir=$(dirname "$tex"); name=$(basename "$tex" .tex)
             if (cd "$dir" && latexmk -pdf -interaction=nonstopmode -halt-on-error "$name.tex" > "latexmk-$name.log" 2>&1); then
-              cp "$dir/$name.pdf" quartz/content/preprints/
+              cp "$dir/$name.pdf" quartz/public/preprints/
             else
               echo "[skip] $tex did not compile; see $dir/latexmk-$name.log"
             fi
           done
-          ls -la quartz/content/preprints
-      - name: Build the site
-        working-directory: quartz
-        run: npx quartz build -d content -o public
+          ls -la quartz/public/preprints
       - uses: actions/upload-pages-artifact@v3
         with:
           path: quartz/public
