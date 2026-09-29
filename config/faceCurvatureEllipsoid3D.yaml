@@ -11,6 +11,18 @@
 # (leiaTestRemainderTerm.csv), and the orientation bins -- on the 2D ellipse
 # the diagonal bins were 2.1-2.9x worse, and this is where that result gets its
 # 3D counterpart on hex before the poly comparison.
+# ----------------------------------------------------------------------------
+# RE-RUN 2026-09-29 (the first curated run: the run of 2026-08-26 was never curated): the
+# production curvature cellCentreInverse is scored for the first time (e089939f).
+# The read-out below is the one of the approved plan of 2026-09-29, written before any run.
+# Seen before this header was added: one rung of the inertness check (ellipse N = 128:
+# cellCentreInverse E_L2 3.28 1/m, G h^2 0.660; sphere N = 32: K-on 0.079, K-off 1.87).
+# PRE-REGISTERED READ-OUT for the new rows (fit over N = 50, 80, 128):
+#   signed-distance psi: K-on E_L2 order >= 1.9; the K-off control near first order (as
+#             scalarInverse2D, 0.97 in the raw 2026-08-26 data). FALSIFIED if K-on is below 1.5.
+#   algebraic psi (implicitEllipsoid): no prediction beyond "worse than the signed distance"
+#             (the foliation is not parallel).
+# ----------------------------------------------------------------------------
 study_name: faceCurvatureEllipsoid3D
 case: ellipsoidDroplet3D
 mesh: hex
