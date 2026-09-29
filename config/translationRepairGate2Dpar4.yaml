@@ -5,8 +5,8 @@
 # vortex's `oscillation` line, so the velocity model's default multiplied U by cos(pi t/tau)
 # and the circle came back at T; the metrics compared T with the initial fields. The fix:
 # OSCILLATION off, END_REFERENCE translate (psiEnd/alphaEnd from write_end_reference.py), the
-# exact signed distance on the inflow and no-flow patches, zeroGradient on the outflow patch
-# (0.org/psi; the first version put the exact value on all four patches, see VOID below).
+# psi zeroGradient on all four patches (0.org/psi). Two earlier versions put the exact value
+# on patches; both were unstable (see the two VOID notes below).
 # STATUS 11.19.
 #
 # PREDICTIONS (N = 64, CFL 0.5, END_TIME 0.5, the SL kinematic solver):
@@ -60,6 +60,25 @@
 #      per-value relative test of compare_metrics_csv.py flags only round-off entries: the t = 0
 #      volume rows near 1e-14, and E_BOUND_ALPHA, whose whole column is below 1.6e-14.
 #   8. the edge max |psi - psi_exact| is 9.40e-3 at t = 0.2486 and 7.17e-3 at T: it falls.
+#
+# VOID (2026-09-29, third): RE-RUN 2 ran with the exact value on the INFLOW patch (left) and on
+# the no-flow patches. Its eight lines passed, but the same setup is unstable at CFL 1: the
+# departure point of the first cell column lies outside the domain, and kinematicTranslation2D
+# reached E_GEOM_ALPHA_REL 1.79 at N = 128 with 2246 false zero-set cells in the inflow region.
+# zeroGradient on all four patches is stable at CFL 0.5 and 1 (serial probe, N = 64 to 256).
+# The runs of RE-RUN 2 are renamed *_VOID_inflowDirichlet_20260929.
+#
+# RE-RUN 3, PRE-REGISTERED before the run (2026-09-29): psi zeroGradient on all four patches.
+# Lines 1 to 5 and 7 as above. Line 6 changes; lines 8 and 9 are:
+#   6. Every patch face (left, right, top, bottom) carries the value of its boundary cell, at
+#      t = 0 and at T.
+#   8. The outflow and no-flow edges are stable: the largest |psi - psi_exact| over the cells
+#      next to the right patch, and next to the top and bottom patches at x > t + 0.05 (outside
+#      the frozen inflow region), is below 2e-2 at T and at most 1.5 times its value at the
+#      write time near t = 0.25. (The probe, serial N = 128: right 2.9e-3 to 3.5e-3, top and
+#      bottom 1.8e-3 to 1.1e-3.) The left column keeps psi0(0, y): its error is not a defect.
+#   9. No false zero set: no cell with psi < 0 lies farther than 5 h from the exact circle at T.
+# FAILED if any line fails.
 # ============================================================================
 study_name: translationRepairGate2Dpar4
 case: 2Dtranslation
