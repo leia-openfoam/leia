@@ -4081,7 +4081,7 @@ repairs are OPEN. The measurements are in the technical report
 The user's request of 2026-09-28: separate the semi-Lagrangian topic from the source-term topic,
 build a cross-linked knowledge base in `docs/` from the slides and pre-prints that records the
 reasoning and the decisions, and assess the first gradient-control campaign critically in a
-technical report. Plan: `~/.claude/plans/make-a-detailed-plan-snuggly-lynx.md` (approved
+technical report. Plan: `docs/plan-knowledge-base-2026-09-28.md` (approved
 2026-09-28). Commits d1e3414 to the final commit of 2026-09-29 on `feature/gradient-controlled-level-set`.
 
 1. **The knowledge base** `docs/knowledge-base/` (an Obsidian vault, built by Quartz v5):
