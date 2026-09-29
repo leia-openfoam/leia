@@ -6,17 +6,28 @@ Reads, for every case of a leiaTestDavofNormal study,
     <case>/case_params.json               tokens.N_CELLS, DOMAIN_LENGTH, DAVOF_ALPHA_SOURCE
     <case>/leiaTestDavofNormalModels.csv  tidy: one row per MODEL (davof, plicRDF, ...)
     <case>/leiaTestDavofNormal.csv        the DAVOF diagnostics (consistency, closure)
+    <case>/leiaTestDavofCurvature.csv     tidy: one row per curvature model (optional)
 
 and writes into the theme's data source (paths.tables_dir/figs_dir):
 
     tables/davof_normal_<study>.csv           the long table, every (alphaSource, model, N)
     tables/davof_normal_orders_<study>.csv    least-squares + pairwise orders per series
     tables/davof_normal_orders_<study>.tex    booktabs body of the same (\\input-able)
+    tables/davof_normal_proposal_<study>.tex  the compact table of the DAVOF proposal
     figures/davof_normal_<metric>_<study>.png log-log error vs h, one per metric
 
 Series = (alphaSource, model). Metrics = E_L1_N, E_L2_N, E_LINF_N (normal error
 |n - n_exact| over the interface cells: mean, rms, max), E_L1_N_AW, E_L2_N_AW
-(area-weighted) and E_AREA_REL (|sum |m_c| - 4 pi R^2| / 4 pi R^2). h = L/N.
+(area-weighted), E_AREA_REL (|sum |m_c| - A_exact| / A_exact), E_POS_* (the
+plane-centroid distance from the surface), and the curvature of the DAVOF
+state: E_KAPPA_* at the interface centroids (|kappa - kappa_exact|, kappa =
+kappa_1 + kappa_2), E_KAPPA_REL_L2 = E_KAPPA_L2/KAPPA_REF_L2, E_K_L2 (Gaussian),
+E_KAPPA_CELL_L2 (the contour-referenced cell field on the force band),
+E_KAPPA_FACE_L2 (interpolate + parallel-surface inverse at the active faces),
+E_KAPPA_FACE_FOOT_L2 (the models' foot value). The models CSV carries the
+HEADLINE curvature model's columns on the davof row; every curvature model is
+a series of its own, model "davof:curv:<CURV_MODEL>", from the curvature CSV.
+h = L/N.
 
 --tpf-results <csv> merges the rows of the TwoPhaseFlow benchmark
 run/benchmark/reconstruction/sphereNormal3D (results_sphereNormal3D.csv) as
@@ -43,9 +54,13 @@ import paths
 
 CSV_MODELS = "leiaTestDavofNormalModels.csv"
 CSV_WIDE = "leiaTestDavofNormal.csv"
+CSV_CURV = "leiaTestDavofCurvature.csv"
+CURV_METRICS = ["E_KAPPA_L1", "E_KAPPA_L2", "E_KAPPA_LINF", "E_KAPPA_REL_L2", "E_K_L2",
+                "E_KAPPA_CELL_L2", "E_KAPPA_FACE_L2", "E_KAPPA_FACE_FOOT_L2"]
 METRICS = ["E_L1_N", "E_L2_N", "E_LINF_N", "E_L1_N_AW", "E_L2_N_AW", "E_AREA_REL",
-           "E_POS_L1", "E_POS_L2", "E_POS_LINF"]
-FIG_METRICS = ["E_L2_N", "E_L1_N", "E_LINF_N", "E_AREA_REL", "E_POS_L2", "E_POS_LINF"]
+           "E_POS_L1", "E_POS_L2", "E_POS_LINF"] + CURV_METRICS
+FIG_METRICS = ["E_L2_N", "E_L1_N", "E_LINF_N", "E_AREA_REL", "E_POS_L2", "E_POS_LINF",
+               "E_KAPPA_REL_L2", "E_KAPPA_FACE_L2", "E_KAPPA_CELL_L2", "E_K_L2"]
 DIAG = ["MAX_CONSISTENCY", "SUM_M_REL", "MAX_ALPHA_DIFF_DA", "N_WISP"]
 
 # Fixed hue per model (categorical slots in the validated order of the dataviz
@@ -55,9 +70,12 @@ COLORS = {
     "plicRDF":   "#eb6834",   # orange
     "gradAlpha": "#1baf7a",   # aqua
     "isoAlpha":  "#eda100",   # yellow
+    "davof:curv:normalsOnly": "#2a78d6",   # the headline curvature model, DAVOF's hue
+    "davof:curv:hermite":     "#7a3bb5",   # the naive Hermite fit, purple
 }
 TPF_COLORS = {"plicRDF": "#e87ba4", "gradAlpha": "#008300", "isoAlpha": "#4a3aa7"}
-MARKERS = {"davof": "o", "plicRDF": "s", "gradAlpha": "D", "isoAlpha": "^"}
+MARKERS = {"davof": "o", "plicRDF": "s", "gradAlpha": "D", "isoAlpha": "^",
+           "davof:curv:normalsOnly": "o", "davof:curv:hermite": "v"}
 STYLES = {"exactSphere": "-", "quadraticFaces": "--", "detrixheAslam": "-.",
           "linearInterpolant": "-.", "planePhaseIndicator": ":", "tpf": ":"}
 SOURCE_LABEL = {"exactSphere": "exact sphere",
@@ -76,6 +94,14 @@ METRIC_LABEL = {
     "E_POS_L1": r"$L_1$ of the plane-centroid distance to the surface [m]",
     "E_POS_L2": r"$L_2$ of the plane-centroid distance to the surface [m]",
     "E_POS_LINF": r"$L_\infty$ of the plane-centroid distance to the surface [m]",
+    "E_KAPPA_L1": r"$L_1$ of $|\kappa_c - \kappa_{\mathrm{exact}}|$ at the centroids [1/m]",
+    "E_KAPPA_L2": r"$L_2$ of $|\kappa_c - \kappa_{\mathrm{exact}}|$ at the centroids [1/m]",
+    "E_KAPPA_LINF": r"$L_\infty$ of $|\kappa_c - \kappa_{\mathrm{exact}}|$ at the centroids [1/m]",
+    "E_KAPPA_REL_L2": r"$L_2(\kappa_c - \kappa_{\mathrm{exact}}) / L_2(\kappa_{\mathrm{exact}})$",
+    "E_K_L2": r"$L_2$ of $|K_c - K_{\mathrm{exact}}|$ (Gaussian) [1/m$^2$]",
+    "E_KAPPA_CELL_L2": r"$L_2$ of the cell field error on the force band [1/m]",
+    "E_KAPPA_FACE_L2": r"$L_2$ of $\kappa_f$ (interpolate + inverse) on the active faces [1/m]",
+    "E_KAPPA_FACE_FOOT_L2": r"$L_2$ of $\kappa_f$ (foot value) on the active faces [1/m]",
 }
 
 
@@ -143,10 +169,36 @@ def collect(study_dir):
                    "CPU_SECONDS": _f(row.get("CPU_SECONDS")), "case": os.path.basename(cdir)}
             for m in METRICS:
                 rec[m] = _f(row.get(m))
+            _relative_curvature(rec, row)
             for d in DIAG:
                 rec[d] = (wide.get(d) if model == "davof" else "")
             series.setdefault((src, model), []).append(rec)
+        # Every curvature model as a series of its own (the davof row above
+        # carries the headline model's columns only).
+        cpath = os.path.join(cdir, CSV_CURV)
+        if os.path.isfile(cpath) and os.path.getsize(cpath) > 0:
+            for row in _read_rows(cpath):
+                cm, src = row.get("CURV_MODEL"), row.get("ALPHA_SOURCE") or tok.get("DAVOF_ALPHA_SOURCE")
+                if not cm or not src:
+                    continue
+                rec = {"N": int(n), "h": L/n, "R_OVER_H": _f(row.get("R_OVER_H")),
+                       "N_INTERFACE": row.get("N_INTERFACE"), "N_WISP": "",
+                       "CPU_SECONDS": _f(row.get("CPU_SECONDS")), "case": os.path.basename(cdir)}
+                rec.update({m: None for m in METRICS})
+                for m in CURV_METRICS:
+                    rec[m] = _f(row.get(m))
+                _relative_curvature(rec, row)
+                for d in DIAG:
+                    rec[d] = ""
+                series.setdefault((src, f"davof:curv:{cm}"), []).append(rec)
     return series
+
+
+def _relative_curvature(rec, row):
+    """E_KAPPA_REL_L2 = E_KAPPA_L2 / KAPPA_REF_L2 (rms of the exact curvature)."""
+    e, ref = _f(row.get("E_KAPPA_L2")), _f(row.get("KAPPA_REF_L2"))
+    rec["E_KAPPA_REL_L2"] = (e/ref) if (e is not None and ref) else None
+    rec["N_CURV_FALLBACK"] = row.get("N_CURV_FALLBACK", "")
 
 
 def merge_tpf(series, path):
@@ -168,6 +220,7 @@ def merge_tpf(series, path):
         rec["E_POS_L1"] = _f(row.get("LCentre1"))
         rec["E_POS_LINF"] = _f(row.get("LCentreInf"))
         rec["E_AREA_REL"] = _f(row.get("E_area_rel"))
+        rec["N_CURV_FALLBACK"] = ""
         for d in DIAG:
             rec[d] = ""
         series.setdefault(("tpf", f"tpf:{scheme}/{setA}"), []).append(rec)
@@ -209,6 +262,7 @@ def main(argv):
                    "N_wisp": r["N_WISP"]}
             row.update({m: r[m] for m in METRICS})
             row.update({d: r[d] for d in DIAG})
+            row["N_curv_fallback"] = r.get("N_CURV_FALLBACK", "")
             row["cpu_s"] = r["CPU_SECONDS"]
             row["case"] = r["case"]
             long_rows.append(row)
@@ -260,9 +314,13 @@ def main(argv):
     print(f"[davof] wrote {tpath}")
 
     # --- the compact table for the proposal: one row per (state, method) -------
-    # p(n): least-squares order of E_L2_N, p(A) of E_AREA_REL, p(x) of E_POS_L2
-    # (E_POS_L1 where no rms exists, i.e. the TwoPhaseFlow rows); the errors at
-    # the finest mesh. \input by the DAVOF proposal (figures/davof/).
+    # p(n): least-squares order of E_L2_N, p(x) of E_POS_L2 (E_POS_L1 where no
+    # rms exists, i.e. the TwoPhaseFlow rows), p(kappa) of E_KAPPA_L2 (the
+    # headline curvature model on the davof row, "--" for the comparators and
+    # for a study without curvature data); the errors at the finest mesh, the
+    # curvature one relative to the rms of the exact curvature. \input by the
+    # DAVOF proposal (figures/davof/). The area order (2.00 for every state) is
+    # quoted in the proposal's text, not tabulated.
     # The proposal table: the informative states and comparators only (the
     # plane-indicator state and isoAlpha are quoted in the proposal's text).
     PROPOSAL_MODELS = ("davof", "plicRDF", "gradAlpha")
@@ -270,9 +328,10 @@ def main(argv):
     ppath = os.path.join(tables, f"davof_normal_proposal_{study}.tex")
     with open(ppath, "w") as fh:
         fh.write("% Auto-generated by workflow/scripts/make_davof_normal_table.py -- do not edit.\n")
-        fh.write("\\begin{tabular}{llccccc}\n\\toprule\n")
+        fh.write("\\begin{tabular}{llcccccc}\n\\toprule\n")
         fh.write("$(\\alpha_k,\\alpha_f)$ & method & $p(\\mathbf{n})$ & $L_2(\\mathbf{n})$ & "
-                 "$p(A)$ & $p(\\mathbf{x})$ & $L_2(d)$ [m] \\\\\n\\midrule\n")
+                 "$p(\\mathbf{x})$ & $L_2(d)$ [m] & $p(\\kappa)$ & "
+                 "$L_2(\\kappa)/L_2(\\kappa_\\Sigma)$ \\\\\n\\midrule\n")
         def _p(v):   # an order: two decimals, no "-0.00"
             return "--" if v is None else f"{(0.0 if abs(v) < 0.005 else v):.2f}"
         prop_rows = [r for r in order_rows
@@ -289,16 +348,22 @@ def main(argv):
             last_src = r["alphaSource"]
             model = "DAVOF" if r["model"] == "davof" else r["model"]
             px = r.get("p_E_POS_L2") if r.get("p_E_POS_L2") is not None else r.get("p_E_POS_L1")
+            pk = r.get("p_E_KAPPA_L2") if r["model"] == "davof" else None
+            ek = r.get("E_KAPPA_REL_L2_finest") if r["model"] == "davof" else None
             fh.write(f"{SOURCE_LABEL.get(r['alphaSource'], r['alphaSource'])} & {model} & "
                      f"{_p(r['p_E_L2_N'])} & {_num(r['E_L2_N_finest'], '{:.2e}')} & "
-                     f"{_p(r['p_E_AREA_REL'])} & {_p(px)} & "
-                     f"{_num(r.get('E_POS_L2_finest'), '{:.2e}')} \\\\\n")
+                     f"{_p(px)} & {_num(r.get('E_POS_L2_finest'), '{:.2e}')} & "
+                     f"{_p(pk)} & {_num(ek, '{:.2e}')} \\\\\n")
         fh.write("\\bottomrule\n\\end{tabular}\n")
     print(f"[davof] wrote {ppath}")
 
     # --- figures: one log-log panel per metric --------------------------------
     hs = sorted({r["h"] for recs in series.values() for r in recs})
     for metric in FIG_METRICS:
+        # No figure for a metric no series carries (a study without curvature
+        # models has no curvature figures).
+        if not any(any(r.get(metric) for r in recs) for recs in series.values()):
+            continue
         fig, ax = plt.subplots(figsize=(8.4, 5.0))
         ymin, ymax = np.inf, -np.inf
         for (src, model), recs in sorted(series.items()):
@@ -326,7 +391,7 @@ def main(argv):
             ax.annotate(r"$h^2$", xy=(h0*1.05, 1.15*y2*(h0/h1)**2), color="#7f7f7f", fontsize=9)
         ax.set_xlabel(r"$h$ [m]")
         ax.set_ylabel(METRIC_LABEL.get(metric, metric))
-        ax.set_title("DAVOF Gauss-identity normal on a sphere: " + metric.replace("_", " "),
+        ax.set_title(f"DAVOF static gate {study}: " + metric.replace("_", " "),
                      fontsize=11)
         ax.grid(True, which="both", ls=":", alpha=0.4)
         ax.legend(frameon=False, fontsize=8, loc="center left", bbox_to_anchor=(1.01, 0.5))
@@ -343,6 +408,14 @@ def main(argv):
               f"  pos: p(L2)={_num(r.get('p_E_POS_L2'))} p(L1)={_num(r.get('p_E_POS_L1'))}"
               f" p(Linf)={_num(r.get('p_E_POS_LINF'))}"
               f" L2@finest={_num(r.get('E_POS_L2_finest'), '{:.3e}')}")
+        if r.get("p_E_KAPPA_L2") is not None:
+            print(f"[davof] {'':20s} {'':28s} curvature: p(L2)={_num(r.get('p_E_KAPPA_L2'))}"
+                  f" p(L1)={_num(r.get('p_E_KAPPA_L1'))} p(Linf)={_num(r.get('p_E_KAPPA_LINF'))}"
+                  f" p(K)={_num(r.get('p_E_K_L2'))} p(cell)={_num(r.get('p_E_KAPPA_CELL_L2'))}"
+                  f" p(face)={_num(r.get('p_E_KAPPA_FACE_L2'))}"
+                  f" p(foot)={_num(r.get('p_E_KAPPA_FACE_FOOT_L2'))}"
+                  f" rel L2@finest={_num(r.get('E_KAPPA_REL_L2_finest'), '{:.3e}')}"
+                  f" pairwise={r.get('pairwise_E_KAPPA_L2')}")
     return 0
 
 

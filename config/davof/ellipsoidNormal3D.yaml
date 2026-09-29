@@ -1,0 +1,141 @@
+# DAVOF static gate 2: the normal, the position and the CURVATURE of the DAVOF
+# state on an ELLIPSOID.
+#
+# An axis-aligned triaxial ellipsoid, half-axes (1.0, 0.8, 0.6) mm, in the
+# 4 mm box, centre the sphere gate's literal (off every mesh symmetry plane),
+# on the uniform hex ladder N = 20/40/80/160 (h = 200/100/50/25 um; the
+# tightest curvature radius c^2/a = 0.36 mm is 1.8h .. 14.4h; the total
+# curvature runs from 1.54e3 to 4.34e3 1/m). The ellipsoid is not umbilic: a
+# mean-curvature paraboloid and a curvature-tensor paraboloid differ on it,
+# which a sphere cannot show. RADIUS / R_OVER_H report the smallest half-axis.
+#
+# Sources: quadraticFaces (q = 2), detrixheAslam and planePhaseIndicator
+# (q = 1); no exact-fraction construction exists for an ellipsoid (on the
+# sphere quadraticFaces was within 4 % of it at every rung). Norms as in
+# sphereNormal3D.yaml (normal at the reconstructed centroid, position = the
+# distance of the plane-polygon centroid from the surface). NEW: the
+# curvature of the DAVOF state (libleiaDavof curvature/, fvSolution
+# davof.curvature): per interface cell a quadric fitted to the ring of
+# plane-polygon centroids and area normals (quadricFit), two models per case:
+#   normalsOnly (positionWeight 0, the headline): the normals decide the
+#                second derivatives, the centroids only the offset;
+#   hermite     (positionWeight 1): the naive Hermite fit, centroids and
+#                normals weighted alike.
+# Convention: kappa = kappa_1 + kappa_2 = div(n), 2/R on a sphere, scored at
+# the interface centroids against the exact total curvature at their closest
+# surface points (E_KAPPA_*; KAPPA_REF_L2 = rms of the exact value, so the
+# relative L2 error is E_KAPPA_L2/KAPPA_REF_L2), the Gaussian curvature the
+# same (E_K_L2). Delivery with the parallel-surface closed form
+# (davofCurvatureDelivery.H): the contour-referenced cell field on the force
+# band against the exact parallel-surface curvature at the cell centre
+# (E_KAPPA_CELL_*), interpolate + parallelSurfaceInverse at the active faces
+# against the exact interface curvature at the foot of the face centre
+# (E_KAPPA_FACE_*), and the models' foot value at the faces
+# (E_KAPPA_FACE_FOOT_*).
+#
+# PREDICTION 5 (pre-registered 2026-09-29, before the first ladder run; the
+# N = 40 quadraticFaces smoke test gave rel. L2 = 3.1 % at the centroids,
+# 2.8 % at the faces, and serial = np-4 at 1e-12).
+#   quadraticFaces (q = 2): p(E_L2_N) = 2.0 +- 0.2, p(E_POS_L2) = 2.0 +- 0.3,
+#     p(E_AREA_REL) = 2.0 +- 0.2; normalsOnly p(E_KAPPA_L2) = 1.0 +- 0.3,
+#     p(E_KAPPA_CELL_L2) and p(E_KAPPA_FACE_L2) = 1.0 +- 0.3, E_KAPPA_L2 /
+#     KAPPA_REF_L2 about 2e-3 .. 8e-3 at N = 160 (first order from 3.1 % at
+#     N = 40 gives 7.7e-3); p(E_K_L2) = 1.0 +- 0.4. MECHANISM: the ring's
+#     normals are O(h^2) accurate, their surface gradient over about 2h is
+#     O(h); the centroids' non-smooth O(h^2) error enters only the offset.
+#   detrixheAslam, planePhaseIndicator (q = 1): p(E_L2_N) = 1.0 +- 0.2,
+#     p(E_POS_L2) = 2.0 +- 0.3; normalsOnly p(E_KAPPA_L2) = 0.0 +- 0.3, i.e.
+#     NO convergence, relative error a few 1e-2 at every rung: O(h) normals
+#     over a 2h ring leave an O(1) curvature error. The curvature is the
+#     sharpest detector of the fraction order q: one derivative beyond the
+#     normal, so a lost q shows as order 1 -> 0 before the normal shows 2 -> 1.
+#   hermite on quadraticFaces: p(E_KAPPA_L2) <= 0.5 over the ladder, i.e.
+#     the point-fit floor: the centroids' O(h^2) error divided by h^2 is O(1)
+#     once it dominates the slope information (at N = 40 the two models still
+#     agree within 3 %, the floor is expected to show on the finer rungs).
+#   The naive fit and the headline may coincide at N = 20..40 (the position
+#     noise is below the slope noise there); the ORDER over the ladder is the
+#     prediction, not the N = 40 value.
+# FALSIFIED: quadraticFaces normalsOnly p(E_KAPPA_L2) < 0.7 (the Hermite data
+#   of the DAVOF state do not yield even first-order curvature; the Stage 1
+#   self-consistency argument of the proposal then needs another curvature
+#   source); detrixheAslam normalsOnly p(E_KAPPA_L2) > 0.5 (the curvature is
+#   less sensitive to q than claimed); quadraticFaces p(E_L2_N) < 1.7 (the
+#   quadratic-face result of the sphere does not carry to a non-umbilic
+#   surface).
+# PASS: quadraticFaces p(E_L2_N) >= 1.8 AND normalsOnly p(E_KAPPA_L2) >= 0.8
+#   over the four rungs (the three finest reported next to it, the coarsest
+#   rung has the tightest radius at 1.8h).
+#
+# MEASURED 2026-09-29 (run 1 of the final binary, one case at a time, STATUS
+#   10.11; a first run with three concurrent N = 160 cases was OOM-killed at
+#   6.5 GB rss each while the ring data were still gathered for all cells).
+#   quadraticFaces: p(E_L2_N) = 1.78 (pairwise 1.67 / 2.14 / 1.41; p(E_L1_N) =
+#     1.96, p(E_LINF_N) = 1.20), E_L2_N at N = 160 3.01e-4 -- the PASS threshold
+#     1.8 is missed by 0.02 in L2 while L1 is second order: 47 of the 18642
+#     interface cells (0.25 %) carry e > 2e-3 and set the rms (1.72e-4 without
+#     them); 3 / 2 / 3 quadratic-face fallbacks at N = 40 / 80 / 160.
+#     p(E_POS_L2) = 2.00 (1.01e-7 m), p(E_AREA_REL) = 2.00. Curvature
+#     normalsOnly: p(E_KAPPA_L2) = 1.55 (pairwise 1.91 / 1.54 / 1.21), p(L1) =
+#     1.67, p(Linf) = 1.19, E_KAPPA_L2/KAPPA_REF_L2 = 1.15e-1 / 3.07e-2 / 1.05e-2
+#     / 4.55e-3 (inside the predicted 2e-3 .. 8e-3 at N = 160, the ORDER above
+#     the predicted band 1.0 +- 0.3: pre-asymptotic, the finest pair 1.21);
+#     p(E_K_L2) = 1.59, p(E_KAPPA_CELL_L2) = 1.36, p(E_KAPPA_FACE_L2) = 1.63,
+#     p(E_KAPPA_FACE_FOOT_L2) = 1.41; no curvature fallbacks, the 20 largest
+#     cell errors at N = 160 are 67..80 1/m against an rms of 12.1 (no outliers).
+#   detrixheAslam: p(E_L2_N) = 1.00 (3.63e-3), p(E_POS_L2) = 2.04 (2.32e-8 m);
+#     curvature normalsOnly p(E_KAPPA_L2) = 1.31 (pairwise 1.88 / 1.34 / 0.70),
+#     relative 1.02e-1 / 2.78e-2 / 1.10e-2 / 6.75e-3, p(K) = 1.23, p(cell) =
+#     1.25, p(face) = 1.38. FALSIFIED by the stated criterion (> 0.5): the
+#     curvature of the q = 1 state CONVERGES on this ladder, 1.5x less accurate
+#     than q = 2 at N = 160 and slowing at the finest pair (0.70 against 1.21).
+#     MECHANISM, revised: the chord state's O(h) normal error is smooth along
+#     the interface (a systematic tilt of the chords), so its surface gradient
+#     over the ring is O(h)/R, not O(1); the curvature separates q = 1 from
+#     q = 2 less sharply than the normal does (1.00 against 1.78).
+#   planePhaseIndicator: p(E_L2_N) = 1.12 (1.14e-2), p(E_POS_L2) = 2.01
+#     (2.68e-7 m); curvature 1.28 (pairwise 1.93 / 1.36 / 0.53), 8.60e-3.
+#   hermite (positionWeight 1): p(E_KAPPA_L2) = 1.53 / 1.31 / 1.24 on the three
+#     states, within 3 % of normalsOnly at every rung. FALSIFIED (predicted
+#     <= 0.5, the point-fit floor): in the joint least squares the two slope
+#     rows per neighbour with leverage U outweigh the one position row with
+#     leverage U^2/2, so the centroids barely move the second derivatives; the
+#     floor would need a fit in which the positions decide alone.
+#   Comparators on the identical alpha: plicRDF p(E_L2_N) = 1.10 (5.36e-3 at
+#     N = 160, 18x DAVOF's quadratic-face error), p(E_POS_L2) = 2.00; gradAlpha
+#     0.10 (6.80e-2); isoAlpha 0.65 .. 0.67.
+#   Serial = np-4 at 1e-12 (wide and curvature CSVs; the models CSV differs
+#     only in plicRDF's own round-off, 1e-14). Plane gate: curvature at
+#     1e-13 (DA, quadratic faces) and 1e-10 (plane indicator) 1/m, times
+#     h = 5e-4 m at round-off. Sphere smoke (N = 40, exactSphere): relative
+#     L2 9.7e-3 at R/h = 10.
+#   make studies-one STUDY=davof/ellipsoidNormal3D PROFILE=profiles/local
+#   snakemake --workflow-profile profiles/local --configfile config/davof/ellipsoidNormal3D.yaml
+study_name: ellipsoidNormal3D
+studies_dir: studies/davof
+case: davof/ellipsoidNormal3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestDavofNormal
+theme:  davof
+
+# leiaSetFields initialises psi + alpha.water; the app compares its own
+# alpha.davof with that field (MAX_ALPHA_DIFF_DA).
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  DAVOF_ALPHA_SOURCE: [quadraticFaces, detrixheAslam, planePhaseIndicator]
+  DAVOF_CURV_MODEL_1: [normalsOnly]
+  DAVOF_CURV_MODEL_2: [hermite]
+  DAVOF_CROSS_CHECK: [geometricVoF]
+  DAVOF_WISP_TOL: [1e-3]
+collapse_other_axes: true
+
+# Figures and the order table go to studies/davof/ellipsoidNormal3D/figures and
+# to the davof theme's docs data (make_davof_normal_table.py); no deck.
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

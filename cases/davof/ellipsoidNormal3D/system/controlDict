@@ -1,0 +1,40 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// STATIC gate: no time stepping. leiaSetFields initialises psi and alpha.water
+// at t = 0, leiaTestDavofNormal reads the case at t = 0 and writes its fields
+// and CSVs there. No END_TIME token on purpose: the aggregator would blank the
+// metrics of a CSV without a TIME column against it.
+
+application     leiaTestDavofNormal;
+
+startFrom       startTime;
+startTime       0;
+stopAt          endTime;
+endTime         0;
+deltaT          1;
+
+writeControl    timeStep;
+writeInterval   1;
+purgeWrite      0;
+writeFormat     binary;
+writePrecision  12;
+writeCompression off;
+timeFormat      general;
+timePrecision   6;
+runTimeModifiable no;
+
+// ************************************************************************* //

@@ -1,0 +1,71 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// DAVOF static gate: a sphere of radius DROPLET_RADIUS (1 mm) in a cube of side
+// DOMAIN_LENGTH (default 4R), n_cells in every direction, swept by the study
+// (@!N_CELLS!@ = 20, 40, 80, 160 gives R/h = 5, 10, 20, 40).
+
+scale   1;
+
+// N_CELLS_BASE = N_CELLS/2^REFINE_LEVELS (materialize); with REFINE_LEVELS 0 it
+// IS @!N_CELLS!@.
+n_cells @!N_CELLS_BASE!@;
+
+domain  @!DOMAIN_LENGTH!@;
+
+vertices
+(
+    (0        0        0       )
+    ($domain  0        0       )
+    ($domain  $domain  0       )
+    (0        $domain  0       )
+    (0        0        $domain )
+    ($domain  0        $domain )
+    ($domain  $domain  $domain )
+    (0        $domain  $domain )
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($n_cells $n_cells $n_cells) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    walls
+    {
+        type wall;
+        faces
+        (
+            (0 4 7 3)   // x-min
+            (2 6 5 1)   // x-max
+            (1 5 4 0)   // y-min
+            (3 7 6 2)   // y-max
+            (0 3 2 1)   // z-min
+            (4 5 6 7)   // z-max
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

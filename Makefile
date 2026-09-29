@@ -64,7 +64,7 @@ BENCH_STUDIES ?= benchVortexEulerT2 benchVortexEulerT8 benchVortexSLT2 benchVort
 GRL_STUDIES ?= redistanceStatic2D redistanceCircle2D vortexTriggerGRL vortexBoundsGRL bulkVortexGRL 3DshearGRL 3DdeformationGRL
 # DAVOF (dual area/volume-of-fluid) static gates: config/davof/*.yaml -> studies/davof/
 # (docs/davof/README.md). Sub-folder names: the loops build config/$$cfg.yaml.
-DAVOF_STUDIES ?= davof/sphereNormal3D
+DAVOF_STUDIES ?= davof/sphereNormal3D davof/ellipsoidNormal3D
 # SDPLS source line: the 2D reversed-vortex arm matrix (noSource/R/beta x both
 # admissible linearizations), the beta-target sweep that separates a residual
 # from a wrong target, and the 3D shear/deformation companions.

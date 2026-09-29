@@ -1,0 +1,125 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     |                                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Read by leiaSetFields (psi = exact signed distance, alpha.water by the
+// Detrixhe-Aslam plane indicator) and by leiaTestDavofNormal (the surface).
+// An axis-aligned triaxial ellipsoid (signedDistanceEllipsoid: the exact
+// Euclidean distance by Eberly's root, unit gradient, total curvature at the
+// closest point), half-axes DAVOF_ELLIPSOID_A/B/C, the centre the literal of
+// the sphere gate (off every mesh symmetry plane and grid line of the
+// N = 20/40/80/160 ladder on the 0.004 m box). The ellipsoid is not umbilic:
+// its two principal curvatures differ everywhere but at the axis ends, which
+// is what separates a curvature-tensor model from a mean-curvature one.
+levelSet
+{
+    profile
+    {
+        type    signedDistance;
+    }
+
+    implicitSurface
+    {
+        type    signedDistanceEllipsoid;
+        center  (@!DAVOF_SPHERE_CENTRE_X!@ @!DAVOF_SPHERE_CENTRE_Y!@ @!DAVOF_SPHERE_CENTRE_Z!@);
+        axes    (@!DAVOF_ELLIPSOID_A!@ @!DAVOF_ELLIPSOID_B!@ @!DAVOF_ELLIPSOID_C!@);
+    }
+
+    narrowBand
+    {
+        type    signChange;
+    }
+
+    phaseIndicator
+    {
+        type            detrixheAslam;
+        geometrySource  levelSetField;
+    }
+}
+
+// The DAVOF state (libleiaDavof) and the norms of leiaTestDavofNormal
+// (cases/davof/sphereNormal3D/system/fvSolution.template documents the
+// alpha sources and the cross-check). New here: the curvature of the DAVOF
+// state (libleiaDavof curvature/, davofCurvature.H):
+//   models (...)      : evaluated in this order, the first is the headline.
+//   quadricFit        : a quadric per interface cell fitted to the ring of
+//                       plane-polygon centroids and area normals;
+//                       positionWeight 0 lets the normals decide the second
+//                       derivatives (the centroids only the offset),
+//                       positionWeight 1 is the naive Hermite fit whose
+//                       centroid noise gives the point-fit curvature floor.
+// The delivery to cell centres and faces uses the parallel-surface closed
+// form with the Gaussian curvature (davofCurvatureDelivery.H).
+davof
+{
+    alphaSource     @!DAVOF_ALPHA_SOURCE!@;
+    wispTol         @!DAVOF_WISP_TOL!@;
+
+    curvature
+    {
+        models      (@!DAVOF_CURV_MODEL_1!@ @!DAVOF_CURV_MODEL_2!@);   // none entries are skipped
+
+        normalsOnly
+        {
+            type            quadricFit;
+            positionWeight  0;
+            weighting       area;
+            minNeighbours   5;
+            alignTol        0.2;
+        }
+        hermite
+        {
+            type            quadricFit;
+            positionWeight  1;
+            weighting       area;
+            minNeighbours   5;
+            alignTol        0.2;
+        }
+    }
+
+    crossCheck
+    {
+        set         @!DAVOF_CROSS_CHECK!@;
+        models      (plicRDF gradAlpha isoAlpha);
+
+        // The DLR reconstruction benchmark's settings
+        // (run/benchmark/surfaceTension/curvatureSphere/curvature3D/system/fvSolution).
+        plicRDF
+        {
+            reconstructionScheme    plicRDF;
+            iterations              10;
+            interpolateNormal       false;
+            tol                     1e-8;
+            relTol                  0.1;
+            surfCellTol             1e-8;
+            isoFaceTol              1e-8;
+        }
+        gradAlpha
+        {
+            reconstructionScheme    gradAlpha;
+            surfCellTol             1e-8;
+            isoFaceTol              1e-8;
+        }
+        isoAlpha
+        {
+            reconstructionScheme    isoAlpha;
+            surfCellTol             1e-8;
+            isoFaceTol              1e-8;
+        }
+    }
+}
+
+// ************************************************************************* //

@@ -1,0 +1,35 @@
+// DAVOF static gate 2: the normal, the position and the CURVATURE of the DAVOF
+// state on an ellipsoid.
+//
+// An axis-aligned triaxial ellipsoid with half-axes (1.0, 0.8, 0.6) mm
+// (DAVOF_ELLIPSOID_A/B/C in cases/default.parameter) in the cube of side
+// DOMAIN_LENGTH = 4 mm, centre the literal of the sphere gate (off every mesh
+// symmetry plane). No time stepping: mesh, leiaSetFields, leiaTestDavofNormal.
+// The ladder N = 20/40/80/160 gives h = 200/100/50/25 um; the tightest radius
+// of curvature c^2/a = 0.36 mm is 1.8h at N = 20 and 14.4h at N = 160, the
+// total curvature runs from c(1/a^2 + 1/b^2) = 1.54e3 to a(1/b^2 + 1/c^2) =
+// 4.34e3 1/m (ratio 2.8). RADIUS/R_OVER_H report the smallest half-axis.
+//
+// Three alpha sources (no exact-fraction construction exists for an
+// ellipsoid; on the sphere quadraticFaces was within 4 % of it at every rung):
+// quadraticFaces (q = 2), detrixheAslam and planePhaseIndicator (q = 1). Two
+// curvature models per case, normalsOnly (the headline: the normals decide
+// the second derivatives) and hermite (the naive fit, the comparison arm).
+// The cross-check runs OpenFOAM's geometricVoF plicRDF, gradAlpha and
+// isoAlpha on the identical alpha field of each source.
+values
+{
+    solver (leiaTestDavofNormal);
+
+    N_CELLS ( 20 40 80 160 );
+
+    DOMAIN_LENGTH ( 0.004 );
+
+    DAVOF_ALPHA_SOURCE ( quadraticFaces detrixheAslam planePhaseIndicator );
+
+    DAVOF_CURV_MODEL_1 ( normalsOnly );
+
+    DAVOF_CURV_MODEL_2 ( hermite );
+
+    DAVOF_CROSS_CHECK ( geometricVoF );
+}

@@ -799,11 +799,56 @@ log-log figure per metric into the theme data, least-squares and pairwise orders
 per (alphaSource, model)). `--tpf-results <csv>` merges the rows of the TwoPhaseFlow
 benchmark `run/benchmark/reconstruction/sphereNormal3D` as `tpf:<scheme>/<setAlpha>`.
 
+Curvature of the DAVOF state (`src/leiaLevelSet/davof/curvature`, part of
+`libleiaDavof`, run-time selectable by the DAVOF applications and independent of
+the level-set libraries): `fvSolution davof { curvature { models (normalsOnly
+hermite); normalsOnly { type quadricFit; positionWeight 0; } hermite { type
+quadricFit; positionWeight 1; } } }`. `quadricFit` fits, per interface cell, a
+quadric graph in the frame of `n_c = m_c/|m_c|` about the plane-polygon centroid
+`xPlane` to the Hermite data of the point-neighbour ring (OpenFOAM's
+`CPCCellToCellStencil`, gathered for the interface cells only and parallel-aware):
+two slope rows per neighbour from its normal, one position row from its centroid
+weighted by `positionWeight`. `positionWeight 0` (the headline) lets the normals
+decide the second derivatives (the centroids' non-smooth O(h^2) error would give
+an O(1) curvature floor, the known point-fit floor; the normals' O(h^2) error over
+a ring of about 2h gives O(h)); `positionWeight 1` is the naive Hermite fit, the
+comparison arm. Convention: `kappa = kappa_1 + kappa_2 = div(n)` (2/R on a
+sphere), also `K` (Gaussian), `kappa1`, `kappa2`. The delivery to cell centres and
+faces (`davofCurvatureDelivery.H`) uses the parallel-surface closed form of the
+level-set solver because the interface centroid is neither the cell centre nor a
+face centre: the contour-referenced cell field on the force band is the forward
+map `kappa(d) = (kappa + 2 d K)/(1 + d kappa + d^2 K)` at the cell centre's offset
+`d` from the cell's own model (the stable quadratic root of the normal-projected
+SL note), band cells without a model take the Kang-weighted values of their
+face-adjacent models (across coupled patches through the packed models, so np-4 =
+serial at 1e-12); the face field on the active faces (alpha jumps, a model on at
+least one side; the faces of wisps are skipped and counted) is
+`interpolate(kappaCell)` inverted with `parallelSurfaceInverse(kappa_f, d_f, K_f)`
+(the level-set solver's delivery, `d_f`, `K_f` Kang-combined from the two sides),
+next to the models' own foot value. Norms: `E_KAPPA_L1/L2/LINF` at the interface
+centroids against the exact total curvature at their closest surface points
+(`KAPPA_REF_L2` = rms of the exact value, `E_K_L2` the Gaussian curvature),
+`E_KAPPA_CELL_*` on the filled band cells against the exact parallel-surface value
+at the cell centre, `E_KAPPA_FACE_*` and `E_KAPPA_FACE_FOOT_*` on the active faces
+against the exact interface curvature at the foot of the face centre. Exact
+geometry: `implicitSphere` (2/R, 1/R^2), `implicitPlane` (0) and
+`signedDistanceEllipsoid` (its `curvature()` at the closest point, `K =
+1/(a^2 b^2 c^2 (X^2/a^4 + Y^2/b^4 + Z^2/c^4)^2)`); its exact area by a composite
+Gauss-Legendre rule (`A_EXACT`), `RADIUS` = the smallest half-axis. The first
+model's `E_KAPPA_L1/L2/LINF, KAPPA_REF_L2, E_KAPPA_FACE_L2, N_CURV_FALLBACK` are
+appended to the wide CSV and to the `davof` row of the models CSV; every model has
+a row in `leiaTestDavofCurvature.csv` (the table script reads it as the series
+`davof:curv:<model>` and adds `E_KAPPA_REL_L2 = E_KAPPA_L2/KAPPA_REF_L2`; the
+compact proposal table carries `p(kappa)` and the relative error at the finest
+mesh on the DAVOF rows). `-expectExact` also requires `E_KAPPA_LINF h` and
+`E_KAPPA_FACE_LINF h` at round-off (a plane's curvature is zero).
+
 Gates:
 
 ```bash
 cases/davof/planeNormal3D/Allrun                         # exact-solution gate, seconds, exit != 0 on failure
-make studies-one STUDY=davof/sphereNormal3D PROFILE=profiles/local   # 12 cases, serial, < 1 h
+make studies-one STUDY=davof/sphereNormal3D PROFILE=profiles/local   # 16 cases, serial, < 1 h
+make studies-one STUDY=davof/ellipsoidNormal3D PROFILE=profiles/local   # 12 cases, the curvature gate; 9 GB at N = 160, ONE at a time (--jobs 1)
 make studies-one STUDY=davof/planeNormal3DLadder PROFILE=profiles/local   # the plane at N = 8/16/32, seconds
 make davof-proposal DEST=<proposal>/figures/davof   # the compact table + the PLIC figures for the proposal
 ```

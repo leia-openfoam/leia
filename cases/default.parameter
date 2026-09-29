@@ -1060,3 +1060,12 @@ DAVOF_SPHERE_CENTRE_Z 0.0019548;
 DAVOF_ALPHA_SOURCE    detrixheAslam;      // | quadraticFaces | planePhaseIndicator | exactSphere (libleiaDavof, davofState.H)
 DAVOF_WISP_TOL        1e-3;               // interface cell: |m_c| > DAVOF_WISP_TOL * V_c^(2/3)
 DAVOF_CROSS_CHECK     none;               // | geometricVoF: OpenFOAM plicRDF/gradAlpha/isoAlpha on the same alpha
+// DAVOF static gate 2 (cases/davof/ellipsoidNormal3D, 2026-09-29): the half-axes of the
+// axis-aligned signedDistanceEllipsoid (centre = the sphere literal above) and the curvature
+// models of the DAVOF state (fvSolution davof.curvature.models, libleiaDavof curvature/;
+// "none" entries are skipped by leiaTestDavofNormal).
+DAVOF_ELLIPSOID_A     1e-3;
+DAVOF_ELLIPSOID_B     8e-4;
+DAVOF_ELLIPSOID_C     6e-4;
+DAVOF_CURV_MODEL_1    none;               // | normalsOnly (quadricFit, positionWeight 0: the headline)
+DAVOF_CURV_MODEL_2    none;               // | hermite (quadricFit, positionWeight 1: the naive comparison arm)
