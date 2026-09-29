@@ -192,7 +192,7 @@ Clone on the cluster once (into scratch, over SSH):
 ssh lichtenberg
 cd /work/scratch/tm83tomy
 git clone git@github.com:leia-openfoam/leia.git && cd leia
-git checkout feature/velocity-extension
+git checkout development
 git submodule update --init --recursive        # pyFoamStudy (legacy)
 python3 -m pip install --user --break-system-packages "snakemake>=8" snakemake-executor-plugin-slurm
 source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc && ./Allwmake     # build leia against v2606

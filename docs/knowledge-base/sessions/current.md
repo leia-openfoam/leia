@@ -9,9 +9,12 @@ date: 2026-09-28
 ---
 # Current handover
 
-> Branch `feature/gradient-controlled-level-set`, laptop clone `~/OpenFOAM/repos/leia-gcls`, last
-> data commit 8867581 (the gcls pre-print), gate data stamp
-> `shared-method-config-2026-09-01-192-g1150e68`. Last dated handover:
+> Since 2026-09-29 the line is `development`: the merge commit 4f12ae71 brought
+> `feature/gradient-controlled-level-set` (tip 537a6011) onto the OpenFOAM-v2606 move of
+> development, and `main` carries the same tree (a merge that supersedes the pre-rewrite `main`).
+> The feature's measurements ran on v2512 in the laptop clone `~/OpenFOAM/repos/leia-gcls`, which
+> stays on the feature branch with its v2512 binaries. Last data commit of the gcls pre-print
+> 8867581, gate data stamp `shared-method-config-2026-09-01-192-g1150e68`. Last dated handover:
 > [[sessions/2026-09-27-gcls-first-campaign]]. Read [[decision-log#2026-09]] and
 > [[retraction-log#2026-09]] from 2026-09-26.
 
@@ -26,11 +29,17 @@ date: 2026-09-28
    and expert developer), and the record corrections of STATUS.md, METHOD.md and the configs.
 2. Gradient control: the next experiments are pre-registered in
    [[concepts/gradient-control-next-experiments]]; none has run.
+3. 2026-09-29 ([STATUS 11.19](https://github.com/leia-openfoam/leia/blob/537a6011/STATUS.md#L4168-L4326)): `2Dtranslation` was a reversed flow and
+   every earlier number of the case is void ([[retractions/reversed-2dtranslation]]); the case now
+   translates one way, and its three studies re-ran on the laptop. Fixed psi values on a patch make
+   the SL update unstable (the CLAUDE.md corollary). The production curvature `cellCentreInverse`
+   is scored on the signed-distance ellipse and ellipsoid ([[cases/curvature-static-gates]]). The SL
+   session has three tasks in [[sessions/sl-session-handover]].
 
 ## What is open, in order
 
-0. Publishing: the `github-pages` environment allows deployments from `main` only; add this
-   branch under Settings > Environments > github-pages > Deployment branches, or merge into `main`.
+0. Publishing: the `github-pages` environment allows deployments from `main` only. Since the merge
+   of 2026-09-29 `main` has the vault; its Knowledge base run publishes the site.
 1. Author decisions on the gate repairs ([[concepts/method-gates]]), the next gradient-control
    experiments ([[concepts/gradient-control-open-decisions]]), `boundRho`
    ([[decisions/mass-flux-bound-rho]]), which parallel studies to re-run
@@ -38,10 +47,16 @@ date: 2026-09-28
    ([[concepts/eulerian-solver-mass-flux-port]]), a box-length token and the oscillating horizon
    ([[cases/translating-droplet]], [[cases/oscillating-droplet]]), and the record inconsistencies the note
    writers found, listed with the corrections to make at the source in [[sessions/sl-session-handover]]
-   (among them: the production curvature was never scored on the ellipse gate; a row of the SL
-   article's viscous table comes from the frozen-muf run).
+   (among them: a row of the SL article's viscous table comes from the frozen-muf run, and the
+   published polyhedral orders ran with the clip on; the ellipse scoring of the production curvature
+   is done since 2026-09-29).
 2. The third rung of the 40 mm translating box ($N = 200$) on the cluster.
-3. Regenerate the `advConv2D*` convergence CSVs on Lichtenberg ([[retractions/advection-orders-3-2-factor]]).
+3. Regenerate the `advConv2Dvortex` convergence CSV with the corrected script
+   ([[retractions/advection-orders-3-2-factor]]); the translation table is regenerated (one-way,
+   2026-09-29).
+4. OpenFOAM-v2606 on Lichtenberg (STATUS 10.6). Until it exists, the Lichtenberg clones
+   `leia` (the SDPLS session) and `leia-gcls` stay on `feature/gradient-controlled-level-set`,
+   which therefore stays on GitHub; `leia-curvature` is on `development`.
 
 ## Build progress of the vault (incremental, restart-safe)
 
@@ -69,7 +84,9 @@ hand (`.quartz/link-audit-2026-09-29.txt`).
 - A finished `0/` is not the initial state; regenerate from `0.org` ([[concepts/bit-identity-and-inertness-gates]]).
 - Check `constant/polyMesh/boundary` before reading any droplet metric ([[concepts/wrong-setup-voids]]).
 - Every SL two-phase result on more than one rank before 2026-09-27 carries the two seam defects ([[concepts/coupled-face-density-defect]]).
-- The cluster clone `/work/scratch/tm83tomy/leia` is on the feature branch at 8867581; no job of this session runs there.
+- The cluster clone `/work/scratch/tm83tomy/leia` belongs to the SDPLS session and is on the feature branch at 40c39d7; no job of this session runs there.
+- Never give psi a fixed value on a patch: the SL fit reads patch values as stencil data ([STATUS 11.19](https://github.com/leia-openfoam/leia/blob/537a6011/STATUS.md#L4202-L4226)).
+- Run a verification study with `--until solve`: the finalize rule overwrites curated figures and tables.
 
 ## Where the numbers live
 
@@ -84,3 +101,4 @@ Created with the vault.
 
 ### 2026-09-29
 The vault is complete (131 notes); the link review is done; publishing waits for the Pages setting.
+Rewritten for the merge into `development` and `main` and the results of 2026-09-29 (132 notes).

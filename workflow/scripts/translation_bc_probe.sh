@@ -14,11 +14,12 @@
 #
 # Usage: translation_bc_probe.sh <rendered arm dir> <probe dir> <variant>
 # Then:  translation_bc_probe_scan.py <probe dir parent> <N> <probe dir name> ...
-# FOAM_BASHRC overrides the OpenFOAM environment (default: v2512 in $HOME/OpenFOAM).
+# FOAM_BASHRC overrides the OpenFOAM environment (default: v2606 in $HOME/OpenFOAM; the
+# measurements of STATUS 11.19 ran on v2512).
 src=$1; dst=$2; var=$3
 [ -n "$src" ] && [ -n "$dst" ] && [ -n "$var" ] || { sed -n '2,20p' "$0"; exit 1; }
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
-source "${FOAM_BASHRC:-$HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc}"
+source "${FOAM_BASHRC:-$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc}"
 . "$REPO/etc/leia-env.sh"
 src=$(cd "$src" && pwd)
 rm -rf "${dst:?}"; mkdir -p "$dst"

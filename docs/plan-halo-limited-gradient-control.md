@@ -584,7 +584,8 @@ The summary prints PASS or FAIL per criterion. The author reads the whole vector
 ```bash
 cd /work/scratch/tm83tomy/<clone> && git pull --rebase
 module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv
-source $HOME/OpenFOAM/OpenFOAM-v2512/etc/bashrc; . ./etc/leia-env.sh; ./Allwmake > /tmp/leia-build.log 2>&1
+# v2606 since 2026-09-28 (the feature measured on v2512); Lichtenberg needs a v2606 build first (STATUS 10.6)
+source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; . ./etc/leia-env.sh; ./Allwmake > /tmp/leia-build.log 2>&1
 make gate GATE=methodGate2D CANDIDATES=baseline+HL1z PROFILE=profiles/slurm DRYRUN=1
 sbatch --parsable -J leia-gate2D --export=ALL,TARGET=gate,GATE=methodGate2D,CANDIDATES=baseline+HL1z run-studies.sbatch 2>/dev/null | tail -1 >> .my_jobs
 ```
