@@ -25,9 +25,14 @@ values
 
     N_CELLS ( 64 );
 
-    // The circle starts at x = 0.25 and travels to x = 0.75 -- 3.3 diameters --
-    // with its far edge at 0.90, clear of the wall.
+    // The circle starts at x = 0.25 and travels to x = 0.75 -- 1.67 diameters,
+    // 3.3 radii -- with its far edge at 0.90, 0.10 clear of the outlet.
     END_TIME ( 0.5 );
+
+    // One way, left to right: no cos(pi t/tau) factor (CORRECTED 2026-09-29; the case
+    // oscillated before, see the template). The metrics at T need the exact reference.
+    OSCILLATION ( off );
+    END_REFERENCE ( translate );
 
     VELOCITY_EXTENSION ( none );
 

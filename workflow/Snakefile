@@ -193,6 +193,16 @@ _preprocess = ["cd {params.d}",
                " psiConservation.csv",
                " ".join(filter(None, [SETFIELDS_APP, SETFIELDS_ARGS]))]
 
+# The exact end-time reference of a flow that does not return (2026-09-29): a case whose
+# fvSolution.template carries @!END_REFERENCE!@ gets psiEnd/alphaEnd from
+# write_end_reference.py right after leiaSetFields, so decomposePar distributes them with the
+# other fields (a no-op for END_REFERENCE none). Chosen by the template's content, not by the
+# case name, and absent from every other study's command.
+_tmpl_fvsol = os.path.join(REPO, "cases", CASE, "system", "fvSolution.template")
+if os.path.isfile(_tmpl_fvsol) and "@!END_REFERENCE!@" in open(_tmpl_fvsol).read():
+    _preprocess.append(" ".join(filter(None, [
+        f"python3 {REPO}/workflow/scripts/write_end_reference.py", SETFIELDS_ARGS])))
+
 _solve = ["cd {params.d}", f"rm -f {SOLVER_CSV} .leia_solver_failed .leia_launch"]
 if INIT_END:
     _solve.append(INIT_END)

@@ -26,6 +26,9 @@ HL_DIRECTION    levelSet;   // d = psi/q, e = grad(psi)/q
 HL_SAMPLER      stencilFit; // least-squares fit of U over the cell-point-cell stencil
 OSCILLATION on;      // velocityModel: on = reversed test (cos(pi t/tau) factor),
                      // off = steady non-reversing vortex (sustained strain).
+END_REFERENCE none;  // none | translate: the exact end-time reference psiEnd/alphaEnd
+                     // (workflow/scripts/write_end_reference.py); only cases/2Dtranslation
+                     // references the token (2026-09-29). none = no reference, as before.
 SL_RECONSTRUCTION quadraticWeightedLeastSquares; // leiaSemiLagrangeLevelSetFoam foot reconstruction;
                      // single value here (constant for velocity-extension studies,
                      // which ignore it) -> the SL configs axes_override the sweep

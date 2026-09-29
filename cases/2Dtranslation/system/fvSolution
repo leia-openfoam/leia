@@ -90,7 +90,10 @@ velocityModel
     // foot ON a cell centre, where the reconstruction has nothing to interpolate.
     type translation;
     velocity (1 0 0);
+    oscillation off;   // one way (CORRECTED 2026-09-29; see fvSolution.template)
 }
+
+endReference translate;   // Allrun.sh writes psiEnd/alphaEnd (write_end_reference.py)
 
 levelSet
 {

@@ -18,37 +18,44 @@ dimensions      [0 1 0 0 0 0 0];
 
 internalField   uniform 0;
 
+// EXACT BOUNDARY DATA of the one-way translation (2026-09-29). The exact solution is the
+// signed distance of the translated circle, psi(x, t) = |x - c - U t| - R, with
+// c = (0.25 0.5), U = (1 0 0), R = 0.15: the implicitSphere and velocityModel blocks of
+// system/fvSolution (keep them in agreement). With zeroGradient the inflow region behind
+// the circle (x < t) froze at psi0(0, y) and spoiled the global gradient metrics. Valid for
+// the signedDistance profile only, the case's only profile.
+exactPsi
+{
+    type            uniformFixedValue;
+    value           uniform 0;
+    uniformValue
+    {
+        type        expression;
+        expression  #{ sqrt(sqr(pos().x() - 0.25 - arg()) + sqr(pos().y() - 0.5)) - 0.15 #};
+    }
+}
+
 boundaryField
 {
-    left 
+    left
     {
-        type            zeroGradient;
+        $exactPsi;
     }
 
-    right 
+    right
     {
-        type            zeroGradient;
+        $exactPsi;
     }
 
-    top 
+    top
     {
-        type            zeroGradient;
+        $exactPsi;
     }
 
-    bottom 
+    bottom
     {
-        type            zeroGradient;
+        $exactPsi;
     }
-
-//    front
-//    {
-//        type            zeroGradient;
-//    }
-//
-//    back
-//    {
-//        type            zeroGradient;
-//    }
 }
 
 // ************************************************************************* //

@@ -103,10 +103,10 @@ PISO
     pRefValue       0;
 }
 
-// Classical single (shear) vortex. oscillation on: reversed by cos(pi t / tau),
-// tau defaults to endTime so the interface returns to its initial shape at
-// t = endTime. oscillation off: STEADY vortex -- sustained strain, no error
-// cancellation on the way back (the non-reversing stress test).
+// ONE-WAY uniform translation, left to right (oscillation off). CORRECTED 2026-09-29: the case
+// was made from 2Dvortex (cd97e6da, 2026-09-01) without its `oscillation` line, so the model's
+// default (on, tau = endTime) multiplied U by cos(pi t/tau) and the circle moved at most
+// tau/pi = 0.16 and came back; every run before this fix is void (STATUS 11.19).
 velocityModel
 {
     // Uniform translation: the SIMPLEST kinematic test there is, and the one
@@ -117,7 +117,15 @@ velocityModel
     // foot ON a cell centre, where the reconstruction has nothing to interpolate.
     type translation;
     velocity (1 0 0);
+    oscillation @!OSCILLATION!@;   // off: U = (1 0 0) at every time; the case parameter sets it
 }
+
+// The error metrics compare the fields at T with psiEnd/alphaEnd when the case has them
+// (errorCalculation.H), and with the INITIAL fields otherwise -- right only for a flow that
+// returns. `translate`: workflow/scripts/write_end_reference.py writes psiEnd/alphaEnd after
+// leiaSetFields, from the implicitSurface below shifted by velocity*endTime, with the same
+// mesh, profile and phase indicator as the run. `none`: no reference (the default).
+endReference @!END_REFERENCE!@;
 
 levelSet
 {
@@ -144,7 +152,9 @@ levelSet
 
     // Bulk interface: circle of radius 0.15 centred at (0.25, 0.5). Starting
     // upstream of centre so that at END_TIME 0.5 it has travelled to x = 0.75
-    // -- 3.3 diameters -- with its far edge at 0.90, still clear of the wall.
+    // -- 1.67 diameters, 3.3 radii -- with its far edge at 0.90, 0.10 clear of the
+    // outlet. The exact boundary values of 0.org/psi use the same centre, radius and
+    // velocity: keep the three in agreement.
     implicitSurface
     {
         type implicitSphere;

@@ -324,8 +324,11 @@ def _write_error_table(records, database_path):
             # `oscillation` column below says why.
             # Judged on the RENDERED value for the same reason as `oscillation`
             # below: a case whose template hardcodes the setting has no token.
-            "shapeError": ("" if (rec.get("oscillationRendered")
-                                  or rec.get("OSCILLATION", "on")) == "off"
+            # With an explicit alphaEnd (a one-way translation, 2026-09-29) E_GEOM is the
+            # error against the exact end state, so it is kept.
+            "shapeError": ("" if ((rec.get("oscillationRendered")
+                                   or rec.get("OSCILLATION", "on")) == "off"
+                                  and not rec.get("endReferencePresent"))
                            else sget(rec, "E_GEOM_ALPHA")),
             # Volume error stays valid either way: it measures conservation
             # against the initial volume, which a divergence-free velocity
@@ -463,6 +466,11 @@ def build_database(case_dirs, out_path):
         # may hold an unexpanded $alias, and gradPsiSdpls/gradUSdpls are not
         # tokens at all. See workflow/scripts/fvschemes.py.
         rec.update(fvschemes.read_discretization(case_dir))
+        # An explicit end-time reference (psiEnd/alphaEnd, write_end_reference.py) makes E_GEOM
+        # an error also for a flow that does not return (2026-09-29).
+        rec["endReferencePresent"] = ("1" if any(
+            os.path.isfile(os.path.join(case_dir, d, "alphaEnd"))
+            for d in ("0", os.path.join("processor0", "0"))) else "")
 
         # A diverged/crashed solve is a RESULT: the Snakefile records the exit
         # code here rather than stalling the study, and the row survives with

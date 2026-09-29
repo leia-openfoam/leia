@@ -1,0 +1,45 @@
+# ============================================================================
+# REPAIR GATE of the one-way 2Dtranslation (2026-09-29), serial. Pre-registered before the run.
+#
+# WHY. cases/2Dtranslation reversed: it was made from 2Dvortex (cd97e6da) without the
+# vortex's `oscillation` line, so the velocity model's default multiplied U by cos(pi t/tau)
+# and the circle came back at T; the metrics compared T with the initial fields. The fix:
+# OSCILLATION off, END_REFERENCE translate (psiEnd/alphaEnd from write_end_reference.py), the
+# exact signed distance on all four patches (0.org/psi). STATUS 11.19.
+#
+# PREDICTIONS (N = 64, CFL 0.5, END_TIME 0.5, the SL kinematic solver):
+#   1. U = (1 0 0) at every write time (no cos factor).
+#   2. The step count follows the one-way dt law: 108 steps (the reversed case took 86).
+#   3. The alpha-weighted centroid at T is (0.750, 0.500) within 1e-3.
+#   4. V(alphaEnd) = V(alpha(0)) to round-off: E_VOL_ALPHA_REL at t = 0 below 1e-12.
+#   5. E_GEOM_ALPHA_REL = 2.000 at t = 0 (the start and end circles are disjoint), small at T.
+#   6. The boundary psi equals the exact signed distance of the translated circle at t = 0 and
+#      at T on every patch face, to 1e-12.
+#   7. np 4 against serial: every CSV column within 1e-10 (the seam check).
+# FAILED if any line fails; Step A of the plan stops there.
+#
+# RESULT (2026-09-29, laptop, leia-gcls binaries of 11:30, v2512). The first run FAILED line 4:
+# E_VOL_ALPHA_REL = 1.6e-2 at t = 0, because write_end_reference.py ran leiaSetFields on the first
+# call's output instead of the pristine 0.org inputs, and the indicator wrote 0/1 values at the
+# new circle (alphaEnd off by 0.46 in a cell). Fixed (0/ rebuilt from 0.org for the call); that run
+# is renamed *_VOID_endRefNonPristine_20260929. The re-run PASSES every line:
+#   1. U = (1 0 0) at t = 0, 0.2486, 0.4986.        2. 108 steps.
+#   3. centroid at T (0.74974, 0.50000).            4. E_VOL_ALPHA_REL(t = 0) = 1.65e-14.
+#   5. E_GEOM_ALPHA_REL = 2.000000 at t = 0, 7.20e-3 at T (E_VOL_ALPHA_REL 4.71e-3 at T).
+#   6. boundary psi = exact signed distance on all 256 patch faces to 4.95e-13, at t = 0 and T.
+#   7. np 4 against serial: the largest column-scaled difference 2.7e-12 (E_VOL_ALPHA); the
+#      per-value relative test flags only entries at round-off (E_BOUND_ALPHA <= 1.5e-14 in
+#      both runs, the t = 0 volume rows near 1e-14).
+# ============================================================================
+study_name: translationRepairGate2Dserial
+case: 2Dtranslation
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangeLevelSetFoam
+solve_runtime: 900
+axes_override:
+  N_CELLS: [64]
+  CFL: [0.5]
+  END_TIME: [0.5]
+collapse_other_axes: true

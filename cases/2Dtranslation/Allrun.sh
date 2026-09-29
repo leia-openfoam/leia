@@ -10,4 +10,6 @@ find 0 -name '*.template' -delete 2>/dev/null || true
 
 runApplication blockMesh
 runApplication leiaSetFields
+# The exact reference at T (psiEnd/alphaEnd) of the one-way translation.
+python3 ../../workflow/scripts/write_end_reference.py > log.endReference.driver 2>&1 || exit 1
 runApplication leiaSemiLagrangeLevelSetFoam
