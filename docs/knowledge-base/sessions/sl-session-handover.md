@@ -1,6 +1,6 @@
 ---
 title: "Handover to the semi-Lagrangian session"
-description: "What the separate semi-Lagrangian session must know from the gradient-control session: the two parallel fixes, the metric fixes, the Eulerian port, the translating-droplet box study, the oscillating drift at N = 200, the gate infrastructure, the scoring corrections, the record corrections, and the open decisions"
+description: "What the separate semi-Lagrangian session must do and know from the gradient-control session: three tasks (the frozen-viscosity table row, the clip-on polyhedral orders, fixed psi patch values), the results of 2026-09-29, the two parallel fixes, the metric fixes, the Eulerian port, the translating-droplet box study, the oscillating drift at N = 200, the gate infrastructure, the scoring corrections, the record corrections, and the open decisions"
 kind: session
 status: open
 part: advection
@@ -14,6 +14,91 @@ date: 2026-09-28
 > domain decomposition", "Mass-momentum-consistent flux (rhoLENT)", the late-instability paragraphs
 > of the translating droplet, and the oscillating drift in the Limitations). STATUS 11.13 to 11.15
 > holds the lab record.
+
+## Tasks for the SL session (2026-09-29)
+
+Three findings need a decision of the author in the SL line. Each task names the evidence, the
+decision and the cheapest discriminator.
+
+**T1. A row of the viscous-term table ran with a frozen face viscosity** (item 7 below).
+
+- Evidence: the `mu_f interpolated` row of the viscous-term table (`sec:viscous`,
+  [SL article L801-L829](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L801-L829),
+  `docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex`) comes from the
+  run at 4267d7b. At that commit the viscous term read `muf` for every model, and `muf` was rebuilt
+  for the geometric models only. The row entered the article at a2cfb2a, before the fix 39e59b3
+  ([[concepts/viscosity-open-items]]). The claims that rest on it: the 36 % separation after 2667
+  steps, and the gains 0.64x (L1), 0.81x (L2) and 3.3x (shape).
+- Decision: re-run the arm on a post-fix binary and replace the row, or retract the row and its
+  claims by the retraction rule.
+- Cheapest discriminator: re-run the table's matrix (the `mu_f interpolated` arm and, because a
+  setup wrong in one way is not assumed wrong in one way only, the geometric and harmonic arms of
+  the same run) with the current binaries at the table's N and horizon, on the laptop at np 4, and
+  compare with the published rows.
+
+**T2. The published polyhedral transport orders ran with the clip on** (item 17 below).
+
+- Evidence: the orders 3.28 (3D shear) and 1.46 (3D deformation) come from configs with
+  `SL_CLIP true` and the face stencil
+  ([`uncachedConv3DshearPoly.yaml`](https://github.com/leia-openfoam/leia/blob/d1e3414/config/uncachedConv3DshearPoly.yaml),
+  [[concepts/value-bounds-and-clips]]). The production default is `SL_CLIP false`
+  ([METHOD 8.1 row SL_CLIP](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L410)), and with it the coarsest polyhedral 3D
+  shear rung diverges at step 198 ([METHOD 8.3.4](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L608-L668), finding 3).
+  The article's "Boundedness" subsection
+  ([SL article L543-L549](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L543-L549))
+  still calls the clip order-preserving.
+- Decision: state the clip setting next to the orders and correct "Boundedness", or re-run the
+  polyhedral ladders with the production default and report the divergence as the result.
+- Cheapest discriminator: the first option needs no run (a text change); for the second, the
+  coarsest rung with `SL_CLIP false` already has a recorded answer (divergence at step 198).
+
+**T3 (new). A fixed psi value on a patch makes the SL update unstable.**
+
+- Evidence ([STATUS 11.19 item 3](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4201-L4226), [CLAUDE.md](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/CLAUDE.md#L528-L532)):
+  the SL fit reads every physical patch value as a stencil datum (`SL_STENCIL_BOUNDARY_FACES
+  include`, the default). On the one-way `2Dtranslation`, the exact psi on the outflow patch made
+  the outflow-edge error grow by a factor of about 1.1 per step (4.5e5 at T at N = 256), and the
+  exact psi on the inflow patch failed at CFL 1, where the departure point of the first cell column
+  lies outside the domain (`E_GEOM_ALPHA_REL` 1.79 at N = 128). zeroGradient everywhere is stable.
+  No production case gives psi a fixed value.
+- Decision: whether the SL scheme must accept fixed psi data (an inflow of the second phase, a jet,
+  a filling), and then how it treats a departure point outside the domain.
+- Cheapest discriminator: `workflow/scripts/translation_bc_probe.sh` (with `_scan.py`) with
+  `stencilBoundaryFaces inflowOnly` on the `exactAll` variant at N = 128, CFL 0.5 (does the outflow
+  instability go when the outflow faces leave the stencil?), and on the `exactInflowOnly` variant at
+  CFL 1 (does the inflow need the boundary value at the departure point?). Seconds per run, serial.
+
+## Results of 2026-09-29 (information for the SL session)
+
+1. **`2Dtranslation` translates one way, and every earlier number of the case is void**
+   ([[retractions/reversed-2dtranslation]], [STATUS 11.19 items 1 and 2](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4176-L4200)).
+   The author decided on 2026-09-29 that the case translates left to right (item 16 below). It now
+   has `OSCILLATION off`, the exact end reference `psiEnd`/`alphaEnd` from
+   `workflow/scripts/write_end_reference.py` (token `END_REFERENCE`, inert default `none`) and psi
+   zeroGradient on all four patches. The three kinematic solvers print which error reference they use.
+2. **The new baseline of the hex 2D regression rung** is `studies/advConv2Dtranslation` of 2026-09-29
+   (laptop, np 8; [METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L685-L704)): `none` 5.364e-02 / 7.210e-03 /
+   1.609e-03 / 4.442e-04 at N = 32 to 256, orders 2.90, 2.16, 1.86. The "saturation at N = 256" is
+   retracted. The curated table is `advConv2Dtranslation_convergence.csv` (method-comparison data).
+   The finalize rule also writes `advConv2Dtranslation_errors.csv` into the SL article's and deck's
+   `data/tables/`; those copies are not committed, and the SL session decides whether they belong there.
+3. **The cone bound on the one-way translation** is 14.1x (unity) and 9.5x (stencil) worse than `none`
+   at N = 64 and does not converge over N = 32 to 256 ([METHOD 8.3.4](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L608-L668)).
+   The falsification stands and is stronger.
+4. **`kinematicTranslation2D`** re-ran ([STATUS 11.19 item 5](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4234-L4268)):
+   second order at fixed CFL 0.25 and 0.5 on the geometric alpha error; the prediction "the error
+   collapses at CFL 1" is falsified again; the null control passes (5.0e-12 column-scaled).
+5. **The production curvature `cellCentreInverse` is scored on the signed-distance ellipse and
+   ellipsoid** (item 1 below; [METHOD 4.1](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L169-L193),
+   [STATUS 11.19 item 6](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4269-L4302)): second order on both (ellipse 1.98 and
+   2.00 over N = 128 to 512; ellipsoid 2.10 over N = 50 to 128, 1.00 without the Gaussian term), 14 to
+   26 % below the per-face inverse. The gain part of the STATUS 7 criterion fails: G h^2 is 0.651 and
+   0.673 at N = 128 and 256, and every delivery fails it at N = 256, so on the ellipse the gain does not
+   separate the deliveries. On the implicit psi every delivery is first order.
+6. **Traps** ([STATUS 11.19 item 7](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4303-L4312)): `leiaSetFields` is not
+   idempotent on a non-pristine `0/`; a verification study through the full workflow runs the finalize
+   rule, which overwrites curated outputs (use `--until solve`); the per-value relative test of
+   `compare_metrics_csv.py` fails on round-off columns (read the column-scaled difference).
 
 ## What the SL session must know
 
@@ -29,7 +114,7 @@ date: 2026-09-28
 
 The note writers of 2026-09-29 read the record against itself and found these; none is corrected yet.
 
-1. **The production curvature was never scored on the ellipse gate.** `cellCentreInverse` is production
+1. **RESOLVED 2026-09-29 (Results 5): the production curvature was never scored on the ellipse gate.** `cellCentreInverse` is production
    since c935883 (2026-09-01), but the varying-curvature ellipse gate never scored it
    ([METHOD 8.1 L393](https://github.com/leia-openfoam/leia/blob/d1e3414/METHOD.md#L393)); its second order is measured on constant curvature only.
    The acceptance criterion of STATUS section 7 (`G h^2 <= 0.65` and order `>= 1.9` on the ellipse) is
@@ -48,7 +133,7 @@ The note writers of 2026-09-29 read the record against itself and found these; n
    still describes it, while the code uses the pure phases.
 6. **Stale header comments:** the first lines of `cases/oscillatingDroplet2D.parameter` and lines 17-20
    of the 3D stationary `blockMeshDict.template`.
-7. **A table of the SL article carries the frozen face-viscosity bug.** The `mu_f interpolated` row of
+7. **Task T1. A table of the SL article carries the frozen face-viscosity bug.** The `mu_f interpolated` row of
    the viscous-term table (section `sec:viscous`, the table near L805-L829 at d1e3414) comes from the
    4267d7b run, when `muf` was rebuilt for the geometric models only; the row entered the article at
    a2cfb2a, before the fix 39e59b3. The claims built on it (36 % after 2667 steps; 0.64x, 0.81x, 3.3x)
@@ -83,7 +168,7 @@ The note writers of 2026-09-29 read the record against itself and found these; n
     records that no job ran with it. Corrected in CLAUDE.md and AGENTS.md on 2026-09-29; the comment in
     `src/leiaLevelSet/leiaVersionRegistry.H` line 11 still says "ran" (a code comment; left for the next
     library change, since an edit changes the library stamp).
-16. **`2Dtranslation` is a reversed translation.** Its `velocityModel` block sets no `oscillation`
+16. **RESOLVED 2026-09-29 (Results 1 to 4; the author decided one-way): `2Dtranslation` is a reversed translation.** Its `velocityModel` block sets no `oscillation`
     entry, the default is on ([velocityModel.C L49-L50](https://github.com/leia-openfoam/leia/blob/d1e3414/src/leiaLevelSet/velocityModel/velocityModel.C#L49-L50)),
     and `tau` defaults to `endTime` = 0.5 s, so U = U0 cos(pi t/tau): the circle moves at most
     tau/pi = 0.16 and returns at T, while the case comment describes a one-way translation with the
@@ -91,7 +176,7 @@ The note writers of 2026-09-29 read the record against itself and found these; n
     where the reversal cancels errors. DERIVED from the code; a solver log confirms it. OPEN, author
     decision: a wrong setup (re-run with `oscillation off`) or a reversed-flow gate read at the right
     instants ([[cases/kinematic-advection-cases]], [[hubs/advection]]).
-17. **The published polyhedral orders ran with the clip on:** 3.28 (3D shear) and 1.46 (3D deformation)
+17. **Task T2. The published polyhedral orders ran with the clip on:** 3.28 (3D shear) and 1.46 (3D deformation)
     come from configs with `SL_CLIP true` and the face stencil; with the production default the
     coarsest polyhedral 3D shear rung diverges at step 198; the SL article's "Boundedness" subsection
     (L543-L549) still calls the clip order-preserving ([[concepts/value-bounds-and-clips]]).
@@ -113,3 +198,4 @@ Created.
 CORRECTED the void statement of item 4 (the void is OPEN); added the record inconsistencies found by the note writers.
 Added items 7 to 15 from the reports of the note writers.
 Added items 16 to 18 (the reversed 2Dtranslation, the clip-on polyhedral orders, small items).
+Added the tasks T1 to T3 and the results of 2026-09-29; items 1 and 16 are resolved.
