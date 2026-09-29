@@ -202,6 +202,9 @@ cases/**/psi.redistanced.*
 # docs/knowledge-base: an Obsidian vault published by Quartz (GitHub Pages). The local
 # workspace files and the generated 3D graph data are not tracked; the graph page and the
 # small assets are re-included past the docs/**/*.html and *.png ignores above.
+docs/knowledge-base/.quartz/__pycache__/
+# The top-level pattern studies/ above also matches the vault's studies/ folder: re-include it.
+!docs/knowledge-base/studies/
 docs/knowledge-base/.obsidian/workspace.json
 docs/knowledge-base/.obsidian/workspace-mobile.json
 docs/knowledge-base/.obsidian/cache
