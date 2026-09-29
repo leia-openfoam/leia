@@ -60,13 +60,20 @@ def main(argv):
     study = argv[0]
     # Artifact suffix per GATE, so the circle, sphere and varying-curvature
     # gates write side by side instead of overwriting one another.
+    # "ellipsoid" first: faceCurvatureEllipsoid3D contains "3d" and faceCurvatureEllipsoidPsi2D
+    # no "ellipse", so they used to overwrite the sphere's and the circle's tables (2026-09-29);
+    # a polyhedral twin gets its own suffix instead of overwriting the hex study's.
     _base = os.path.basename(os.path.normpath(study)).lower()
-    if "3d" in _base or "sphere" in _base:
+    if "ellipsoid" in _base:
+        suffix = "_ellipsoid3d" if "3d" in _base else "_ellipsoidPsi"
+    elif "3d" in _base or "sphere" in _base:
         suffix = "_3d"
     elif "ellipse" in _base:
         suffix = "_ellipse"
     else:
         suffix = ""
+    if "poly" in _base and suffix:
+        suffix += "_poly"
 
     rows = []
     for meta in sorted(glob.glob(os.path.join(study, "*", "case_params.json"))):
