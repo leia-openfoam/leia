@@ -1,0 +1,14 @@
+/* libleiaGradientControl -- the source laws of the gradient-controlled level set
+   (docs/plan-halo-limited-gradient-control.md, D1): gradientControlLaw and its
+   strategy strainWeight. Pure scalar algebra: the consumers sdplsGradientControl
+   (libleiaSdplsSource) and slGradientControlSource (libleiaSemiLagrangian) own the
+   discretization. Links libleiaCore only (for the version stamp). */
+
+/* The base classes ARE the defaults (law none, strain weight none). */
+strainWeight.C
+gradientControlLaw.C
+gradientControlLaws.C
+
+leiaStamp_leiaGradientControl.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaGradientControl

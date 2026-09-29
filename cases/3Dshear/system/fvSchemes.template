@@ -29,6 +29,14 @@ gradSchemes
     // grad(psi): a cell-limited gradient returns exactly 0 at a local
     // extremum, which the metric then reports as |grad psi| = 0.
     gradPsiMetric   leastSquares;
+    // Gradient-control source (semiLagrangian.source gradientControl): q = |grad psi|
+    // of the arrival field, and the strain of the trajectory velocity. Read only by
+    // that source (2026-09-26).
+    gradPsiSource   leastSquares;
+    gradUSource     Gauss linear;
+    // Halo-limited extension (velocityExtension haloLimited): the gradient of psi that
+    // gives the direction e = grad(psi)/q. Read only by that model (2026-09-26).
+    gradPsiExtension leastSquares;
     // SDPLS source-term gradients: dedicated keywords, decoupled from the
     // psi advection gradient (grad(psi)) and the unnamed grad(U) fallback.
     gradPsiSdpls    $@!GRAD_PSI_SDPLS!@;
@@ -51,6 +59,10 @@ gradSchemes
     gradPsi         pointCellsLeastSquares;   // g_c = grad(psi^n)
     gradGradPsi     pointCellsLeastSquares;   // H_c = grad(g_c) (quadraticTaylor)
     gradU           Gauss linear;   // grad(u^{n+1}) for the SL foot (Gauss linear: no run-long LSQ cache)
+    // Velocity extension (copied from 2Dvortex, 2026-09-26): the linearUpwind
+    // reconstruction gradient and the normal derivative of steadyUpwindLinear.
+    grad(Uext)      leastSquares;
+    velExtLSGrad    leastSquares;
 }
 
 divSchemes
@@ -71,6 +83,9 @@ divSchemes
     div(phiW,psi)   Gauss linearUpwind grad(psi);
     // anchoredEikonal redistancer: steady-Eikonal fill transport along nHat.
     div(yPhi,psiDist) Gauss upwind;
+    // Steady velocity extension (steadyUpwind family, closestPoint fill); UEXT_DIV
+    // selects UpwindUext or LinearUpwindUext (aliasDict). Copied from 2Dvortex.
+    div(velExtPhiW,Uext) Gauss $@!UEXT_DIV!@;
 }
 
 laplacianSchemes

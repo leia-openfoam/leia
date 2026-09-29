@@ -77,6 +77,9 @@ Description
 // parallel-surface inverse -- reused here so the gate measures EXACTLY the
 // formula the solver applies.
 #include "stabilizedFootPointFaceCurvature.H"
+// The production curvature (curvatureExtension cellCentreInverse): the K-aware
+// parallel-surface inverse applied to the CELL curvature (solver-side, 2026-09-29).
+#include "cellCentreInverseCurvature.H"
 #include "faceAreaFraction.H"
 // Analytic surfaces: supply the POSITION-DEPENDENT exact curvature on the
 // varying-curvature gates (a circle and a sphere cannot exercise averaging).
@@ -1212,6 +1215,35 @@ int main(int argc, char *argv[])
     addFaceRow("cellMeanInverse", 1, kfCellMean);
     addFaceRow("symFaceMean050", 1, kfSym050);
     addFaceRow("symFaceMean100", 1, kfSym100);
+
+    // THE PRODUCTION DELIVERY (2026-09-29): curvatureExtension cellCentreInverse, the K-aware
+    // parallel-surface inverse applied to the CELL curvature by the solver's own function
+    // (cellCentreInverseCurvature.H), delivered to the faces by the production arithmetic
+    // interpolation (reconstructedCurvature.C). It was created on 2026-08-18, after the ellipse
+    // gate of 2026-08-12, and had never been scored here as a face curvature. The NoK row is the
+    // control without the Gaussian-curvature term (K = +0 exactly in 2D, so the two rows agree
+    // there by construction). Appended after every older row, which stay byte-identical.
+    {
+        volScalarField kCCI
+        (
+            IOobject("kappaCellCentreInverseGate", runTime.timeName(), mesh,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            kappaNoExt
+        );
+        applyCellCentreInverseCurvature(mesh, recon, kCCI, true);
+        kCCI.correctBoundaryConditions();
+        addFaceRow("solverCellCentreInverse", 1, fvc::interpolate(kCCI)().primitiveField());
+
+        volScalarField kCCI0
+        (
+            IOobject("kappaCellCentreInverseNoKGate", runTime.timeName(), mesh,
+                     IOobject::NO_READ, IOobject::NO_WRITE),
+            kappaNoExt
+        );
+        applyCellCentreInverseCurvature(mesh, recon, kCCI0, false);
+        kCCI0.correctBoundaryConditions();
+        addFaceRow("solverCellCentreInverseNoK", 1, fvc::interpolate(kCCI0)().primitiveField());
+    }
 
     // ---- REMAINDER-TERM CONVERGENCE ---------------------------------------
     // The user's decomposition splits the capillary force as

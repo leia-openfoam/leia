@@ -83,10 +83,10 @@ OpenFOAM must be sourced for the run steps. Locally this is done by
 `env_preamble` in `config/config.yaml` (defaults to OpenFOAM-v2512 — adjust to
 your install, or set it to `""` if you already source OpenFOAM in your shell).
 
-**Libraries.** `./Allwmake` builds `libleiaCore` and seven method libraries
+**Libraries.** `./Allwmake` builds `libleiaCore` and eight method libraries
 (`libleiaSdplsSource`, `libleiaSemiLagrangian`, `libleiaVelocityExtension`,
 `libleiaRedistancer`, `libleiaVolumeCorrection`, `libleiaSurfaceTension`,
-`libleiaAdvection`) into the clone's `platforms/`; each solver links every library it
+`libleiaAdvection`, `libleiaGradientControl`) into the clone's `platforms/`; each solver links every library it
 can select a model from, so no study config or case dictionary names a library. The
 table and the link matrix are in the top-level `README.md` (Build); the solver banner
 lists one version stamp per library and the aggregator carries them in `libStamps`.
@@ -189,6 +189,50 @@ oracle, the pressure-algebra tolerance sweep, and the GAMG/PCG solver gate.
 The similarly named Make targets are thin aliases only; they do not own study
 logic or freshness.
 
+## Method gates: methodGate2D and methodGate3D
+
+ONE 2D study and ONE 3D study test every level-set method (CLAUDE.md "Method
+gates"). A method enters only as a CANDIDATE, a set of case tokens.
+
+| File | Content |
+|---|---|
+| `config/gates/methodGate2D.yaml`, `methodGate3D.yaml` | the arms (case, ladder, horizon, geometry), the solver per line, the line tokens, the method tokens a candidate may set, the verdict thresholds |
+| `config/candidates/<name>.yaml` | one candidate: `line`, method `tokens`, dimensionless `rates` (`GC_M_MU`), a `target`, the pre-registered read-out in the header |
+| `workflow/scripts/render_gate_configs.py` | gate + candidate -> one study config per arm, with explicit refusals |
+| `workflow/Snakefile.gate` | render, run every arm through `make studies-one-file`, exact1D first, then summary and verdict |
+| `workflow/scripts/make_gate_summary.py` | `summary.csv`, `orders.csv`, `seam.csv`, `vsBaseline.csv`, `verdict.txt` |
+| `workflow/scripts/richardson.py` | pairwise and least-squares orders; Celik (2008) Richardson and GCI; `--self-test` |
+
+```bash
+make gate GATE=methodGate2D CANDIDATES=baseline+HL1z PROFILE=profiles/slurm
+make gate GATE=methodGate2D SMOKE=1 CANDIDATES=baseline PROFILE=profiles/local
+make gate GATE=methodGate2D SET="line=semiLagrangian,VELOCITY_EXTENSION=haloLimited"
+```
+
+The arms of `methodGate2D` (np 4): `exact1D` (`1Dstretch`, closed form, runs
+first), `shear` (`2Dvortex`, N 68/96/136, reversed, T = 2), `seamNp1`/`seamNp8`
+(the coarsest shear rung at np 1 and 8), `stationary`, `translating`,
+`oscillating` (`*Droplet2D`, N 100/142/200, T = 0.1 s; the translating arm ends at
+0.05 s), and `translatingSeamNp1` (the coarsest translating rung in serial: the
+decomposition check of the coupled solver, on the error-vector columns of the
+droplet CSV at `seam.tol`; NOT_COMPARABLE if the np 4 reference did not
+complete). An arm gets a seam check with `seam: {np: [...], prefix, tol,
+columns}`; the shear arm keeps the historical `seamNp<np>` names. `methodGate3D` (np 32):
+`exact1D`, `shear` (`3Dshear`, N 68/90/118), `seamNp16`, and the three droplets
+on the 6R box (N 60/78/102). Study names are `<gate>_<candidate>_<arm>`; the
+summaries are in `studies/<gate>_summary/<candidate>/` and, for a real run, in
+`docs/gradient-controlled-level-set/gcls-level-set-article/data/tables/`.
+
+What the renderer refuses: a token that is not a method token; a token of the
+other solver line; a collision with an arm or line token; a candidate token that
+an arm's case does not render (foam_param would drop it silently and the arm
+would run the baseline under the candidate's name). What the verdict fails: a
+candidate case that diverges where the baseline completes; a regression of more
+than 10 % at the finest rung; an order more than 0.3 below the baseline's; a
+candidate whose every CSV equals the baseline's ("no effect"); a failed seam
+check; the candidate's own target. `SMOKE=1` uses coarse N, about 20 steps, and
+stops each arm at `aggregate`, so no smoke table reaches the docs.
+
 ## SDPLS level-set source term (leiaLevelSetFoam)
 
 The source-term line: Eulerian psi advection with a source `S = f_nl(psi^n) psi` that
@@ -263,9 +307,14 @@ FILLED end-time columns; re-aggregate that study before trusting a regenerated t
 `make_beta_target_fig.py`, `make_sdpls_trajectory_fig.py`, `make_bench_fields_fig.py`. Gate:
 `make check-discretization STUDY=<name>` asserts one discretization per study group.
 
-Unit tests outside snakemake: `leiaTestSdplsSource` (89 assertions: the one-step factor of every
-discretization against the closed form, and the sign conventions) and
-`cases/sdplsSourceUnit/Allrun.sh` (the affine unit case).
+Unit tests outside snakemake: `leiaTestSdplsSource` (189 assertions: the one-step factor of every
+discretization against the closed form, the sign conventions, and the `gradientControl` source
+against `R`, `beta` and the exact affine F) and `cases/sdplsSourceUnit/Allrun.sh` (the affine unit
+case); `leiaTestGradientControlLaw` (no case: the laws of `libleiaGradientControl`, 109
+assertions); `cases/slSourceUnit/Allrun.sh` (`leiaTestSlSource`, the semi-Lagrangian
+`gradientControl` source, serial and on 4 ranks, 49 assertions each);
+`cases/haloLimitedUnit/Allrun.sh` (`leiaTestHaloLimited`, the `haloLimited` velocity extension,
+serial and on 4 ranks, 18 assertions each).
 
 RECORD NOTE (2026-09-22): every kinematic study the article names by identifier has its
 `<study>_errors.csv` versioned in the theme's tables dir, together with the inputs of the generated

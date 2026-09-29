@@ -3,11 +3,11 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-10 (FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is 2.3-3.6x WORSE than no bound on uniform translation, where its L = 1 is exactly valid, 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-09-29 (section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
-workflow). This file is the *current state*, not the manual.
+workflow). This file is the *current state*, not the manual. Since 2026-09-28 the concise, cross-linked record of every method line (the decisions, the retractions, why something failed, what is open) is the knowledge base `docs/knowledge-base/` (start at its `index.md`; section 11.18).
 
 ---
 
@@ -63,6 +63,11 @@ current roughly 50x below the artefact that was hiding it.
 - the equal-density control that was mid-flight was **stopped by job id** rather than
   allowed to finish, although its isolation argument is formally boundary-independent.
   A setup wrong in one way is not assumed wrong in only that way.
+- MARKED 2026-09-28: the studies behind `cases/default.parameter` lines 824-876
+  (`MASS_FLUX_ALPHAF_TIME_LEVEL`, `MASS_FLUX_PROJECT`, the +5 to +8 % inflation) also ran on the closed
+  box: `alphaFTimeLevelTranslating2D` (5cd2c98, 08:31), `massFluxComparison2D` (86f8333, 09:38) and
+  `translatingClearOutlet2D` (65fc13c, 00:07), all on 2026-09-02 before the fix 440107f (17:25). Their
+  numbers are void; the block carries a VOID marker and stays as history.
 
 **Re-running now.** `config/translatingRepaired2D` and
 `config/translatingRepairedEqualRho2D` — twin 8-arm matrices, `MASS_FLUX` (rhoLENT,
@@ -247,6 +252,11 @@ These did not run on `translatingDroplet2D` and are unaffected:
 
 ### The curvature chain is exonerated, four times over
 
+RETRACTED 2026-09-27. Three of the four studies below (`wellBalancedTranslating2D`,
+`bestConfigTranslating2D`, `rhoDdtGate2D`) ran on the closed box and are VOID (list above).
+The conclusion also contradicts the amplifierGate2D verdict above: the curvature estimator is
+the source. Do not cite this subsection.
+
 `kinematicTranslation2D` (transport 2nd–3rd order, bounded-α error exactly 0);
 `wellBalancedTranslating2D` (**exact constant curvature still diverged**);
 `bestConfigTranslating2D` (the required extension does not help, hurts coarse rungs);
@@ -254,12 +264,18 @@ These did not run on `translatingDroplet2D` and are unaffected:
 
 ### Leading open defect
 
+RETRACTED 2026-09-27: the +5 to +8 % inflation below comes from `translatingClearOutlet2D`,
+which ran before the fix 440107f (closed box). It is not a measurement of the repaired case.
+
 The droplet **inflates** monotonically, +5% to +8% over the horizon, and at matched
 times the gain does **not** converge under refinement. Untouched by the mass-flux
 model — α comes from ψ, so this is semi-Lagrangian transport under the computed
 velocity field.
 
 ### New, runtime-selectable, default-off (nothing existing moves)
+
+CORRECTED 2026-09-27: `boundRho` defaults to true since 28a1383 (2026-09-02), and with
+`MASS_FLUX rhoLENT` (82ca995, the same day) it is active in every study that does not override it.
 
 `massFlux { boundRho true; }` (clip ρ to `[rho2, rho1]`; the clip is **reported**),
 `massFlux { massResidualDiagnostic true; }` (mass residual for every model),
@@ -321,6 +337,9 @@ any coupled run.
    `kappa_f` constant across a cut cell gives each face a value centred on the cell
    rather than on itself — an O(h) offset wherever curvature varies along the
    interface. Structural; better averaging cannot fix it.
+
+CORRECTED 2026-09-27: since c935883 (2026-09-01) the default is `cellCentreInverse`
+(METHOD.md Sec. 4.1 and 8.1). The paragraph below is the state before that commit.
 
 **Current production delivery, and the only one that passes:**
 `curvatureExtension stabilizedFootPointFace` — the per-face parallel-surface
@@ -453,6 +472,10 @@ exonerated by direct experiment. Mode-resolved: r(maxU) ≈ 2·r(A2h);
 the corrugation rate r(A2h) is the order parameter and is nearly
 dt-independent at N=256.
 
+SUPERSEDED 2026-09-28 marker: the filtered coupled results below (psiFilter biharmonicBand theta = 0.2
+and 0.05, and the transport-order comparison read in filtered arms) predate the psi-filter seam bug;
+see the INVALIDATION of 2026-08-19 (section 4) and docs/knowledge-base/retractions/psi-filter-seam-bug.md.
+
 **THE COMBINATION WORKS (2026-08-18, 28 coupled arms). Curated:
 `docs/method-comparison/.../tables/capillary_envelope_coupled.csv`.**
 
@@ -502,6 +525,11 @@ suspect, see the 2026-08-26 gradU contamination notice below; np=4 kinematic
 run**), the verdict is that dropping transport order buys NOTHING coupled and
 costs everything kinematic -- the filter is the damping mechanism, not the
 transport order.
+
+SUPERSEDED 2026-09-28 marker: the filtered arms below (psiFilter biharmonicBand theta = 0.2 and 0.05)
+predate the psi-filter seam bug; see the INVALIDATION of 2026-08-19 (section 4) and
+docs/knowledge-base/retractions/psi-filter-seam-bug.md. The unfiltered cellCentreInverse arms are outside
+that invalidation; every np > 1 coupled run before 2026-09-27 carries the parallel defects of section 11.14.
 
 **THE CELL-CENTRE INVERSE AND THE FILTER (2026-08-18).** Two constructions the
 user proposed now hold the best coupled results on record; curated:
@@ -760,6 +788,10 @@ every pre-existing token shape, and `blockMesh` polyMesh output byte-identical a
 
 ### The wide ladders (2026-08-19): 2D completes, 3D destabilises at R/h ~ 16
 
+SUPERSEDED 2026-09-28 marker: both ladders ran with psiFilter biharmonicBand theta = 0.2 and predate the
+psi-filter seam bug; see the INVALIDATION of 2026-08-19 (section 4), the two-factor law of 2026-08-20
+(section 4) and docs/knowledge-base/retractions/psi-filter-seam-bug.md.
+
 `cellCentreInverse` + biharmonicBand theta = 0.2, curated in
 `docs/method-comparison/method-comparison-article/data/tables/wide_ladder_coupled.csv`
 via `workflow/scripts/make_wide_ladder_table.py`.
@@ -929,7 +961,8 @@ studies), 18344 steps each. If the two coarse meshes — stable at their native 
 destabilise purely by taking more, smaller steps, the mechanism is the once-per-step
 frozen capillary force and "finer is less stable" is an artefact of tying dt to h.
 Note `psiOuterCorrectors` defaults **off**, so the three outer correctors currently
-converge momentum and pressure against a force that cannot change.
+converge momentum and pressure against a force that cannot change. CORRECTED 2026-09-27:
+`PSI_OUTER_CORRECTORS` defaults to yes since 5cbfaaa (2026-08-28).
 
 ### Two further defects found by the audit and fixed
 
@@ -2515,6 +2548,7 @@ Account `special00004`. Every job **must** set `--mem-per-cpu`.
 
 | job | what | limit | output |
 |---|---|---|---|
+| `55048916` `leia-gate2D` `long` | **methodGate2D, FIXED** (2026-09-27 02:10, commit 1150e68, stamps g1150e68): the coupled-face density fix, the droplet-metric fix and `translatingSeamNp1` (section 11.14), all seven candidates, 56 arms. Artefacts checked before sbatch. The pre-fix run `55044205` and the translating re-run drivers `55047550`-`55047554` were stopped by id at 02:07, stragglers only; their studies are preserved as `methodGate2D_*_pre-20260927-*` and `methodGate2D_summary_pre-20260927-020856` (section 11.15). | 7 d (orchestrator) | `/work/scratch/tm83tomy/leia/studies/methodGate2D_*` |
 | `54354379` `leia-curv` `long` | **interFoamDroplet2D** — re-running the `N` = 512 arm only (the other three are complete at the full 0.1 s horizon with `interFoam.csv` present). 106689 steps at the measured 1.52 steps/s = ~19.5 h. Replaces the arm lost to the cleanup bug above. | 28 h | `studies/interFoamDroplet2D/` |
 | DONE | **filterOffAmplifier3D** 4/4, **upwindConvection2D** 8/8, **upwindConvection3D** 4/4, **filterThetaScaling3D** 6/6 — all analysed, section 4. | — | `studies/*/` |
 | DONE | **stationaryDroplet3Dwide**, **cellCentreInverseFiltered512**, **domainSizeControl10R/6R/4R**, **psiOuterCorrectorsGain3D**, **ddtOrderGain3D** | — | `studies/*/` |
@@ -3053,6 +3087,9 @@ trees; every CSV in every case root was compared pairwise with `compare_metrics_
 | poly 3D `advConv3DshearPoly`, np 48, shared mesh per resolution: 49 911, 347 073, 2 389 233 cells | 3 bounds x 3 meshes (967/1989/3945) | 27 |
 | loading: `ldd` of the 22 binaries in the split clone | the link matrix of `README.md`, no `libleiaLevelSet` | -- |
 
+CORRECTED 2026-09-29: the `advConv2Dtranslation` row ran the REVERSED translation (11.19);
+its 36 pairs are void, and the equivalence of the hex 2D rung rests on the vortex row.
+
 209 CSV pairs compared, 0 differences. The polyhedral rung built each mesh ONCE (plain
 `pMesh` jobs 54889779/82/85, digests 7e22acf1fbc9, 133ef0399684, 73ac6afbe5c8) and
 `advect_bound_arm.sh` copied it into both trees' arms, so the cfMesh non-reproducibility never
@@ -3271,3 +3308,1092 @@ now sources v2606). The cfMesh codebases differ (community plugin on v2606, Sour
 v2512), so polyhedral meshes may differ slightly between the two; measure before comparing
 poly results across the versions. The `feature/eulerian-rholent` branch edits `Allwmake` and
 `etc/leia-env.sh` too; its merge onto this `leia-env.sh` is manual.
+
+## 11. Halo-limited extension and gradient-control sources (2026-09-26 ->)
+
+Plan: `docs/plan-halo-limited-gradient-control.md` (approved 2026-09-26). Branch
+`feature/gradient-controlled-level-set`, laptop worktree `~/OpenFOAM/repos/leia-gcls`; the
+never-edited reference worktree `~/OpenFOAM/repos/leia-gcls-base` holds the pre-change binaries
+for every bit-identity gate: before each gated step it is checked out (detached) at the last commit
+before that step and rebuilt (c431677 for B3; 0c7079c for Phase C). Theme: `docs/gradient-controlled-level-set/`.
+Decisions of 2026-09-26: the SL line first; 3D h ratio >= 1.3; the dossiers stay out of git; ONE
+2D and ONE 3D gate study test every method (no per-method study configs).
+
+### 11.1 Phase A: rules, plan, docs theme (2026-09-26)
+
+- CLAUDE.md and AGENTS.md: the section "Extension without modification" (byte-identical).
+- `docs/plan-combined-source-terms.md` (WP2, WP3) and `docs/combined-source-terms/improvement-sdpls-combined.md`
+  are SUBSUMED: the combined source is `gradientControl` with law `linearQ` and strain weight `full`.
+- The theme skeleton builds (`make article-gcls`, the deck exports).
+
+### 11.2 Phase B1: workflow repairs, and a retraction (2026-09-26)
+
+**RETRACTED: every 2D advection order in METHOD.md section 8.3.7 was 3/2 of the true value.**
+`advection_convergence_table.py` used h_eff = nCells^(-1/3) for every case, so a 2D case with
+N^2 cells had h_eff = N^(-2/3). The corrected orders (h = 1/N) are in METHOD.md 8.3.7: the
+translation `none` arm goes 3.80, 2.10, -0.54 (was 5.70, 3.15, -0.82), the vortex `none` arm
+2.76, 3.23, 2.09 (was 4.15, 4.85, 3.14). The conclusions of 8.3.7 do not change. OPEN: regenerate
+the curated `advConv2D*_convergence.csv` on Lichtenberg (the studies are only there).
+
+Other repairs, one commit:
+- `aggregate.py`: the token copy sat inside the `leia.version` branch since WP2 (cc79df4), so a
+  case without a stamp lost N_CELLS, END_TIME and h, and had no completeness check. MEASURED on
+  three existing studies, old against new aggregator: every changed column goes from blank to its
+  value, except one diverged run (`alphaFTest_averagedPlanes`, DIVERGED at step 4634), whose
+  mid-run row is no longer published as final. The method label of eight `sdpls1Dstretch` arms
+  changes from `euler+div:...` to `euler+SDPLS:R/...`: the old label hid which arms had a source.
+  No physical value changed.
+- `aggregate.py`: completeness now follows OpenFOAM's stopping rule (t_last >= END_TIME - dt/2)
+  instead of 0.99 END_TIME; `seamConsistency3Dpar4` (t_last = 98.7 % of END_TIME) is complete.
+- The solve rule writes `<case>/.leia_launch` (np, SLURM job id, host, start, end, exit code,
+  classifier line); `aggregate.py` reports `nRanks` (from the log header), `wallClockSolve`,
+  `steps`, `logState`, `slurmJobId`. `foam_log_state.sh` prints an additive `nprocs=` field.
+- DEFERRED, D-c (dims of the `*Droplet2D` cases recorded as 3): the only readers are the 2D field
+  plots of `plots.py` and `marker_ref.py`; a fix would switch them on for every droplet study, and
+  the gates take the dimension from the gate definition.
+
+### 11.3 Phase B3: the droplet band gradient uses the unlimited metric scheme (2026-09-26)
+
+`writeDropletMetrics.H` computed `minGradPsiBand`, `maxGradPsiBand`, `gradPsiL2ErrorBand` and
+`gradPsiRatioBand` with `fvc::grad(psi)`, the advection scheme `cellLimited leastSquares 1`; it now
+uses `gradPsiMetric` (unlimited `leastSquares`), as the templates require. Gate (laptop, np 4,
+`stationaryDroplet2D` N = 64, 30 steps, reference binaries of c431677 against the new binary): all
+four CSVs identical at tolerance 0, the four columns included. The limiter acts only at a local
+extremum of psi, and a smooth band has none; the fix changes the columns only where the band
+profile is corrupted.
+
+### 11.4 Phase B4: the oscillating droplet's level-set surface is a token (2026-09-26)
+
+`cases/oscillatingDroplet2D` initialised psi with `implicitEllipsoid`, which is ALGEBRAIC:
+psi = sum (x_i - c_i)^2/a_i^2 - 1, so |grad psi| = 2/a_i is 1.8e3 to 2.2e3 at the interface. Its
+gradient columns, and every band criterion in psi units, had no meaning in any oscillating-droplet
+study. New token `DROPLET_SURFACE` (default `implicitEllipsoid`, bit-identical); the method gates
+pin `signedDistanceEllipse`. Gate: `oscillatingLadder2Dshared` rendered before and after; only three
+comment lines differ. OPEN, for the author: void the past `oscillatingDroplet2D` studies
+(`_VOID_algebraicPsi_<date>`) or keep them with this caveat.
+
+### 11.5 Phase B5 and B6: the method gates exist, and the 3D oscillating droplet (2026-09-26)
+
+- `config/gates/methodGate{2D,3D}.yaml`, `config/candidates/baseline{,Eulerian}.yaml`,
+  `workflow/scripts/render_gate_configs.py`, `workflow/Snakefile.gate`,
+  `workflow/scripts/make_gate_summary.py`, `workflow/scripts/richardson.py`, Makefile targets
+  `gate` and `studies-one-file`; CLAUDE.md and AGENTS.md section "Method gates".
+- `richardson.py --self-test`: 64 checks PASS (orders p = 1, 2, 3 recovered to 1e-8 on the four
+  integer gate ladders, extrapolated value to 1e-10, the three convergence types).
+- 2D smoke, laptop, baseline (`SMOKE=1`, N 32/45/64, about 20 steps): all 14 cases COMPLETED at
+  np 4; exact1D q error 1.6e-6 (PASS); seam np 1 and np 8 against np 4: column-scaled
+  difference <= 1.9e-12 (PASS).
+- 3D smoke, laptop, baseline (N 20/26, np 4): all 11 cases COMPLETED; seam np 8 against np 4:
+  1.1e-12 (PASS). New case `cases/oscillatingDroplet3D` (mode-2 prolate spheroid, a = 1.1 R,
+  b = c = R/sqrt(1.1), `signedDistanceEllipsoid`): initial volume error -3.23 % at N = 26,
+  against -3.22 % for the sphere at the same N; initial mode-2 coefficient 7.4e-5 m (sphere
+  2e-8 m), decreasing over the 20 steps.
+- FOUND by the gate: every extension model with a linear solve died at step 1 in the eight
+  droplet templates ("Entry 'UextFinal' not found"): their solver entry was `Uext`, not
+  `"Uext.*"`. Fixed (inert for `velocityExtension none`, which never solves for Uext).
+- FOUND by the gate's no-effect check: `VELOCITY_EXTENSION closestPoint` on the SL line gives
+  CSVs identical to the baseline in every arm: the default `projectedFlux` trace ignores the
+  extension. This is the second break named in CLAUDE.md "Extension without modification";
+  step C4 of the plan removes it.
+- FOUND: `writeDropletMetrics.H` sums the zero-set crossings over internal faces only, so the
+  droplet shape columns miss the crossings on processor faces in a parallel run. Open. (CLOSED by b1798c3, 2026-09-27)
+
+### 11.6 The pre-print's case figures (2026-09-26)
+
+`docs/gradient-controlled-level-set/gcls-level-set-article/figures/make_case_figures.py` writes one
+TikZ figure per gate arm (exact 1D, 2D and 3D shear, the three 2D and three 3D droplets) with the
+geometry, the initial condition and the boundary conditions taken from the case files. The 2D shear
+streamlines are contours of the stream function; the 3D panels use an orthographic view (x right,
+y into the page, z up) with computed hidden edges, and the camera keeps every front edge clear of
+the droplet. Iterated on rendered pages: all half-width panels are at most 8.0 cm at scale 1 (two
+per row in the 16.5 cm text width), labels on lines have white backgrounds. Section "Test cases"
+of the article holds the three figures and the parameter table.
+
+### 11.7 Phase C: the extension points are open, bit-identical (2026-09-26)
+
+One commit, steps C1 to C5 of the plan. After it, a new source law, extension or trace flux needs
+no solver edit.
+- C1 `sdplsSource`: the selector tested the literal names `Rdiv` and `RdivStrictSp`; a virtual trait
+  `usesDiscretization()` replaces them. `setTransportFlux()` gives a model the flux that advects
+  psi; `eulerianAdvection`, `leiaRedistancedLevelSetFoam` and `leiaLevelSetTwoPhaseFoam` set it.
+  The accessor `transportFlux()` stops with a fatal error when no flux was set.
+- C2 new family `slSource` (base `none`, in `libleiaSemiLagrangian`, dictionary
+  `levelSet.semiLagrangian.source`). `slAdvection::advect` calls it after the scheme step with the
+  scheme's effective dt, and only when the model is active.
+- C3 `leiaLevelSetTwoPhaseFoam` constructs a `velocityExtension` (`velocityExtensionFieldsEuler.H`)
+  and transports psi with its flux in `div` and `Sp`. With `none` the flux is a copy of `phi`
+  with the name `phi`, so the `div(phi,psi)` scheme still applies.
+- C4 `leiaSemiLagrangianLevelSetTwoPhaseFoam`: `levelSet.semiLagrangian.traceFlux physical |
+  extension` (default `physical`). `extension` traces reconstruct(phiExt). The solver warns when
+  an extension is selected with `projectedFlux` and `physical`: that combination was the no-op
+  that the gate found in 11.5.
+- C5 `leiaSemiLagrangeLevelSetFoam`: the same `traceFlux` word and a `velocityExtension` root. For
+  the reversed flow the root extends the t^n field (oscillation factor of t^n) for the old trace
+  level and the t^(n+1) field for the new one.
+- `Allwmake` refreshes the root lnInclude of `src/leiaLevelSet` before the libraries. MEASURED: a
+  header in a new sub-directory (`semiLagrangian/source/slSource.H`) was not in it, and the
+  solvers did not compile.
+
+Gate, laptop: the reference worktree at 0c7079c (the state before Phase C, rebuilt) against the
+new binaries. Each study runs up to `aggregate` in both trees; then every rendered dictionary,
+every top-level CSV (tolerance 0, the two clock columns skipped) and every file of every written
+time directory is compared byte for byte (`bitid2.sh`, `bitid_compare.py`).
+
+| study (laptop sizes) | solver | covers | cases | result |
+|---|---|---|---|---|
+| `sdpls1Dstretch` (committed, serial, noSource/R/Rdiv, N 32-256) | `leiaLevelSetFoam` eulerian | C1 | 12 | identical |
+| 1Dstretch np 4, N 32/64, `ADVECTION semiLagrangian` | `leiaLevelSetFoam` | C2 | 2 | identical |
+| 1Dstretch np 4, N 32/64 | `leiaSemiLagrangeLevelSetFoam` | C2, C5 | 2 | identical |
+| 2Dvortex np 4, R/beta | `leiaRedistancedLevelSetFoam` | C1 | 2 | identical |
+| 2Dvortex np 4, noSource/R/Rdiv, N 32/64 | `leiaLevelSetFoam` eulerian | C1 | 6 | identical |
+| stationaryDroplet2D np 4, noSource/R/Rdiv, N 32, 40 steps | `leiaLevelSetTwoPhaseFoam` | C1, C3 | 3 | identical |
+| 2Dvortex np 4, reversed, cellCentred/projectedFlux, N 32/64 | `leiaSemiLagrangeLevelSetFoam` | C2, C5 | 4 | identical |
+| 3Dshear np 4, N 24, T = 0.6 | `leiaSemiLagrangeLevelSetFoam` | C2, C5 | 1 | identical |
+| stationaryDroplet2D np 4, N 64, 30 steps, projectedFlux/cellCentred x none/closestPoint | SL two-phase | C2, C4 | 4 | identical |
+| translatingDroplet2D np 4, N 64, 100 steps | SL two-phase | C2, C4 | 1 | identical |
+| stationaryDroplet3D np 4, N 30, 65 steps | SL two-phase | C2, C4 | 1 | identical |
+| regression set, hex 2D: 2Dvortex and 2Dtranslation, N 32/64/128, np 4 | `leiaSemiLagrangeLevelSetFoam` | C2 | 6 | identical |
+| regression set, hex 3D: 3Dshear N 16/24/32, T = 3, np 4 | same | C2 | 3 | identical |
+| regression set, poly 3D: 3Dshear, 18 082 / 40 001 / 74 234 cells, T = 3, np 4, shared meshes | same | C2 | 6 | identical |
+
+CORRECTED 2026-09-29: the 2Dtranslation arms of the hex 2D regression row ran the REVERSED
+translation (11.19); they are void, and the row rests on its 2Dvortex arms.
+
+53 cases, 0 differences. `leiaTestSdplsSource`: 89 passed in both trees, the same output. The
+regression set ran the default arm at laptop sizes, not at the cluster sizes of the committed
+`advConv*` studies: with `slSource none` the new call is skipped, so no arithmetic changes. The
+polyhedral rung used `advect_bound_arm.sh` on one mesh per resolution (the same point digest in
+both runs), so the mesher cannot enter the comparison.
+
+### 11.8 Phase C6: the tokens of the new families, inert (2026-09-26)
+
+- `cases/default.parameter`: `HL_RADIUS_CELLS 1`, `HL_M 2`, `HL_BETA 1`, `HL_DIRECTION levelSet`,
+  `HL_SAMPLER stencilFit`, `SL_TRACE_FLUX physical`, `SL_SOURCE none`, `SL_SOURCE_BAND_CELLS 3`,
+  `GC_LAW none`, `GC_STRAIN_WEIGHT none`, `GC_MU 1`, `GC_EPS 0.02`, `GC_SAT_C 1`, `SW_C_KAPPA 1.25`,
+  `SW_DELTA_S 0.08`, `SW_P 5`, `SW_GAMMA 1.4722194895832` (artanh 0.9; the dossier's rounded 1.4722
+  gives tanh = 0.89999), `SW_EPS_D 0`, `OMEGA_BETA 1`, `OMEGA_M 2`. The comment that listed
+  `meshWaveExt` as a valid extension type now says `meshWave` (the registered name).
+- The ten gate templates (1Dstretch, 2Dvortex, 2Dtranslation, 3Dshear, the three 2D and the three 3D
+  droplets): the haloLimited entries at the end of `velocityExtension`, `traceFlux` after
+  `traceVelocity`, the `source` block with its `law` at the end of `semiLagrangian`, and the `law`
+  block in `sdplsSource`.
+- `3Dshear` had no `velocityExtension` block, no `Uext` solver entries and no extension schemes, so
+  no extension could be selected in the 3D shear arm. It has them now (copied from 2Dvortex).
+- `1Dstretch` had no `traceVelocity` entry: its SL runs traced with the solver default
+  `cellCentred`. The template carries the token; `cases/1Dstretch.parameter` keeps `cellCentred`,
+  and both gates set the production trace `projectedFlux` as a line token of the SL line.
+
+Gates:
+1. Render diff: every committed config that uses one of the ten cases (250 configs), rendered in
+   the reference tree (0c7079c) and in the new tree. Every change is an expected inert insertion or
+   the `meshWave` comment: 250 of 250 PASS, 2 899 changed files, 126 487 added lines, 650 comment
+   lines, no deleted or changed line. The classifier fails on two injected changes (a changed
+   relTol, `traceFlux extension`). Thirteen configs first failed to render in one tree: a race of
+   concurrent snakemake instances in the migration of `.snakemake`; they pass when rendered one at a
+   time.
+2. Bit identity, the Phase C set again on the new templates, new binaries (with D1 to D3 compiled
+   in, not selected) against the reference: 53 of 53 cases, every CSV and every written field identical; every
+   rendered dictionary differs from the reference only by the inert insertions. The polyhedral
+   rung runs both binaries on the same C6 dictionaries (one mesh per resolution); the hex 3D
+   rung covers the new 3Dshear dictionaries against the old ones.
+
+### 11.9 Phases D1 to D3: the laws and the two source models (2026-09-26)
+
+- D1 `libleiaGradientControl` (new library; `etc/leia-check-deps.py`, `Allwmake`, every solver's
+  `EXE_LIBS`): the family `gradientControlLaw` (`none`, `linearQ`, `linearZ`, `cubicQ`, `cubicZ`,
+  `twoThirdsZReg`, `saturatedLinearZ`, `softWall`) and its strategy `strainWeight` (`none`,
+  `full`, `omega`). F = w(q) a + G(q, sigma). Every coefficient that a law reads is required;
+  `softWall` refuses an even exponent. `boundedGradient` of the plan is not a class: the
+  bounded-gradient equation with target 1 is `linearQ`, and a second name for the same law would
+  break the one-name rule.
+- D2 `sdplsGradientControl` (`sdplsSource` type `gradientControl`): F is the `nonLinearPart()`,
+  so the discretization and mollifier strategies apply unchanged. It warns when a velocity
+  extension and a strain weight both cancel the strain.
+- D3 `slGradientControlSource` (`semiLagrangian.source` type `gradientControl`): psi <- psi
+  exp(dt F) in the band |psi|/q <= bandCells h, F = 0 outside; |dt F| clamped at 30, counted and
+  written (`slSourceF`, `slSourceClamp`). DEVIATION from the plan: q and n come from
+  fvc::grad(psi, "gradPsiSource"), not from the geometry fit, because only the uncached quadratic
+  fit provides fit derivatives; the case selects the scheme. The scheme keys come to the gate
+  templates in the next commit, with their own render check.
+
+Unit gates (laptop):
+- `leiaTestGradientControlLaw` (new, no mesh): 109 passed. G(1) = 0 exactly for every law, the
+  sign of G, dG/dq against a central difference, the equal q/z slopes, the soft-wall table of the
+  dossier (3 to 10 percent, within 5e-4) and Theta* = 0.9, the strain weights, the SDPLS
+  cancellation, RK4 against the logistic, z-logistic and implicit cubic solutions (RK4 order 4).
+  Two injected law defects (a wrong linearZ slope, a flipped soft-wall sign) fail it.
+- `leiaTestSdplsSource` (extended): 189 passed (89 before). gradientControl with law none and
+  weight full equals R bit for bit; linearQ with mu 1 equals beta 1 (difference 0); every law and
+  weight applies F psi at the exact affine values to 1e-10.
+- `leiaTestSlSource` (new, `cases/slSourceUnit`, serial and np 4 with the band across the
+  processor boundary x = 0): 49 passed on both. psi = psi^0 exp(dt F) in the band (240 cells) to
+  1e-12, psi unchanged outside bit for bit, no sign change, the clamp at |dt F| = 50, the cell
+  size, and current processor-patch values. A mutant without the halo update passes in serial
+  and fails on 4 ranks.
+
+### 11.10 Phase D4: the halo-limited extension, and the scheme keys (2026-09-26)
+
+- `velocityExtension` type `haloLimited` (`velocityExtension/haloLimited/`) with four new strategy
+  families, each runtime-selectable: `extensionTravel` (`capped`: S_R(d) = d [1 +
+  (d/R)^(2m)]^(-1/(2m))), `extensionWeight` (`fractionReached`: w = (S_R/d)^beta),
+  `extensionDirection` (`levelSet`: d = psi/sqrt(Q2), e = grad(psi)/sqrt(Q2), with the flat
+  regularizer Q2 = q^2 + (1 - 4q^2)^3/4 for q < 0.5, zero above) and `extensionSampler`
+  (`stencilFit`: the uncached quadratic value fit of the semi-Lagrangian line, one velocity
+  component at a time). A linear sampler is not offered: at first order the extension is a
+  weighted SDPLS source (dossier).
+- Flux in the correction form phiExt = phi + w [u_h(Y) - u_h(x)].S_f, the mean of the two
+  cells' models on a face; physical patches keep phi; on a coupled face both sides average their
+  corrections in one orientation, so they carry exactly opposite values. R = radiusCells
+  min(h_owner, h_neighbour), 0 < radiusCells <= 1, h from 1/deltaCoeffs over internal and coupled
+  faces (no dependence on the decomposition). Written fields: hlWeight, hlDistance, hlReach,
+  hlCorrection.
+- The scheme keys of the new models in the ten gate templates: `gradPsiSource leastSquares`,
+  `gradUSource Gauss linear` (D3), `gradPsiExtension leastSquares` (D4). Render diff against the
+  reference with the C6 rules plus these three lines: 250 of 250 configs PASS.
+
+Unit gate `leiaTestHaloLimited` (`cases/haloLimitedUnit`, serial and np 4, the planar interface
+x = 0.01 next to the processor boundary x = 0, 240 coupled faces): 18 passed on both. S(0) = 0,
+S'(0) = 1, S odd, |S| <= R up to |d| = 1e6 R, 1 - w = (beta/2m)(d/R)^(2m); for an affine velocity
+the face correction equals -w S_R(d_f) (du/dx).S_f and Uext = U - w S_R du/dx to 1e-16 (the
+quadratic models are exact); a uniform velocity leaves phi and U bit-identical; for the
+divergence-free quadratic velocity of the dossier the correction equals w [u(Y) - u(x)].S_f with
+the exact u to 2e-16; the correction field is exactly antisymmetric on the coupled faces. Two
+floating-point defects found by the test and fixed: |S| exceeded R by one rounding step for
+t > 1 (S is now sign(d) R (1 + t^(-2m))^(-1/(2m)) there), and (1 - w) U + w U was not U bit for
+bit (Uext = U + w (u_h(Y) - U) now).
+
+Final-state bit identity (all templates of C6 and D4, binaries with D1 to D4 compiled in and not
+selected, against the reference 0c7079c): the Phase C set, 53 of 53 cases, every CSV and every
+written field identical; the rendered dictionaries differ only by the inert insertions.
+
+### 11.11 The 2D gate smoke with the six candidates, laptop (2026-09-26)
+
+`SMOKE=1`, N 32/45/64, np 4, about 20 to 55 steps per case; baseline and S1, HL0, HL1q, HL1z,
+HL2, FP0 on commit 952e593 (clean stamps): 49 studies, every case COMPLETED, no rule error. This is
+the 4-rank check of CLAUDE.md before the cluster, not a measurement.
+- The sources act (HL2 shear: max |dt F| up to 0.06 per step, no clamp) and every sample point
+  stays inside R (max |Y - x|/R = 0.99999999).
+- Seam check (np 1 and np 8 against np 4, column-scaled tolerance 1e-10): PASS for S1, HL0,
+  HL1q, HL1z and HL2; FAIL for FP0 (E_VOL_ALPHA_REL differs by 1.4e-2 at np 1), as its candidate
+  file predicted (closestPoint trusts halo Taylor data and falls back to a steady solve).
+- The smoke verdicts are not results: N = 32 and 45 are below R/h = 10, and the horizons are 20
+  to 55 steps. OBSERVATION for the gate to test: every extension candidate lowers the shear
+  gradient band error at N = 64 (HL0 0.53, HL1q/HL1z 0.50, HL2 0.47, FP0 0.05 of the baseline) and
+  raises the shear volume error about six times (HL0 6.8e-4 against 1.1e-4) with a lower order
+  (0.54 against 1.27). S1 misses its target (0.83 > 0.8) and also raises the volume error.
+- PRE-REGISTERED FOLLOW-UP (not run): with R = 1 h the extension velocity changes over one cell
+  in the normal direction, so the trace error near |d| = R can be first order. Prediction: HL0
+  with R = 2 h halves the finest-rung shear volume error of HL0 and keeps its gradient gain.
+  It needs the cap radiusCells <= 1 raised (the local quadratic model is then extrapolated beyond
+  its stencil). Falsified if the volume error does not fall by half.
+- The 3D gate smoke (N 20/26, np 4; the seam arm at np 8), same candidates and binaries: 42
+  studies, every case COMPLETED, no rule error; seam PASS for S1 and every HL candidate, FAIL for
+  FP0 (as predicted). This is the 4-rank check for a later 3D launch, not a measurement.
+- CORRECTED after this smoke: the gate summary scored `maxMagU` (the maximum of |U| over the cells,
+  an L_inf norm) and gave it an order, against the rule that no L_inf norm is reported. It now
+  scores `meanMagUPrime` (L1) and `l2MagUPrime` (L2) at T; the bounds check has no order. The
+  smoke summaries were regenerated; the running cluster gate uses the old script, so its
+  summaries are regenerated with the fixed script when every arm is done.
+- The kinematic SL solver evaluated the extension three times per step (t^(n+1), t^n, t^(n+1));
+  it now evaluates t^n first and t^(n+1) second. The HL0 shear smoke is bit-identical before and
+  after (3 rungs, both CSVs at tolerance 0).
+
+### 11.12 The 2D method gate runs on Lichtenberg (2026-09-26)
+
+- New clone `/work/scratch/tm83tomy/leia-gcls` (branch `feature/gradient-controlled-level-set`,
+  commit 4015404), its own binaries (`etc/leia-env.sh`); the other sessions' clones are not
+  touched. Verified before the launch: the clone's solver on PATH, the stamps g4015404 without
+  `-dirty`, the symbols of haloLimited, slGradientControlSource and softWall in the libraries,
+  and a dry run of 70 jobs (49 arms, 7 exact1D checks, 7 summaries, 6 comparisons).
+- Orchestrator `55042210` (`leia-gate2D`, partition `long`), `make gate GATE=methodGate2D
+  CANDIDATES=S1+HL0+HL1q+HL1z+HL2+FP0 PROFILE=profiles/slurm` (baseline added). Ledger: the
+  clone's `.my_jobs`; the child job ids are appended from the orchestrator's `.err`.
+- Read-out when every arm is done: `studies/methodGate2D_summary/<candidate>/{summary,orders,
+  vsBaseline}.csv` and `verdict.txt`; pull with `make pull-study STUDY=methodGate2D_summary`.
+  The 3D gate runs only after a 2D PASS.
+- FAILED FIRST LAUNCH: all 28 exact1D cases COMPLETED (4 rungs x 7 candidates), then every
+  exact1d_check died on `import yaml`: the gate rules called the first python3 on PATH, which on
+  Lichtenberg is miniconda without yaml (the laptop's has it, so the smoke passed). The gate
+  stopped with nothing else to run (55042210 COMPLETED, rc 2). Fixed in f7067d9: the helpers run on
+  snakemake's own interpreter, as the report rule of workflow/Snakefile already did. The clone
+  pulled f7067d9 (only workflow, docs and STATUS changed since 4015404, so the binaries stay) and
+  the gate was relaunched as `55043312`; the seven finished exact1D arms are not re-run.
+- MOVED 2026-09-26 23:00, on the user's instruction to run in `/work/scratch/tm83tomy/leia` and not
+  in `$HOME`. Checked first: every job of the account had WorkDir `/work/scratch/tm83tomy/leia-gcls`,
+  and no file in `$HOME` had changed since the setup; `/work/scratch/tm83tomy/leia` was on `development`
+  at c431677, idle since 2026-09-22, with no tracked change (67 untracked logs and folders). The
+  `leia-gcls` gate (orchestrator `55043312`, 30 live children) was cancelled by id from its ledger
+  (209 child ids). `/work/scratch/tm83tomy/leia` now has the branch `feature/gradient-controlled-level-set`
+  checked out and its binaries are rebuilt from it; its untracked files and its `studies/` stay. To
+  give the clone back to the development line: `git switch development && ./Allwmake`.
+  Relaunched there as `55044205` (WorkDir `/work/scratch/tm83tomy/leia`); ledger: that clone's `.my_jobs`,
+  lines tagged `[gcls session]`.
+- 23:32: 21 of 49 arms done, no rule error; six exact1D checks PASS (baseline 2.5e-6, the same value
+  as in `leia-gcls`). HL2's exact1D arm is complete but its check waits: the outer workflow runs at
+  most 16 local jobs and 16 long `run_arm` jobs hold every slot, so HL2's other arms start late.
+  Fixed for the next run in 778c06f (the checks and the summaries have priority); the running gate
+  keeps the old order.
+- Conda on the cluster: the base env (`~/miniconda3`, Python 3.14) has neither yaml nor numpy, and it
+  is the first `python3` on PATH in the jobs. The gate helpers do not use it: they run on snakemake's
+  own interpreter (module Python 3.11.14, yaml and numpy from `~/.local`).
+- NOTE for the harvest: the report rule of every non-smoke arm copies its `<study>_errors.csv`
+  into the theme's `data/tables`. Commit only the gate summary tables from there.
+
+### 11.13 The best SL two-phase settings, the record corrected, the translating arm re-run (2026-09-27)
+
+Request (user, 2026-09-27, before an 8-hour absence): find the best measured settings of the SL (the SL findings of 11.13 to 11.15 are summarised for the separate SL session in `docs/knowledge-base/sessions/sl-session-handover.md`, and the SL article now carries them; 2026-09-28)
+method for the coupling to the two-phase Navier-Stokes equations (mass and momentum consistency
+at high density ratio, the surface-tension force), apply them, and re-run the multiphase studies
+on Lichtenberg.
+
+What was done:
+
+1. A read-only audit of METHOD.md, this file, `cases/default.parameter`, the case files and the
+   study configs.
+2. Both gates carry the best coupling explicitly (8a9b85a, the `twoPhaseCoupling` block). A render
+   check proves that the block changes no case file of the stationary and oscillating arms: the
+   generated case directories of `baseline` and `HL1z` are byte-identical before and after. The
+   translating arm differs only in `endTime`.
+3. The record is corrected: METHOD.md sections 4.1, 4.3, 6, 8.1 and 10, three comments in
+   `cases/default.parameter` (the token set is unchanged, 144 of 144), and five places in this
+   file, each marked CORRECTED or RETRACTED 2026-09-27.
+
+Findings:
+
+1. The closed-box VOID (section 0) removes most of the translating evidence:
+   `matchedBDF2Translating2D` (the ddt pairing table), `massFluxComparison2D` (the rhoLENT
+   translating numbers), `rhoDdtGate2D` and `volumeCorrectionTranslating2D` (the need for
+   boundRho), `bestConfigTranslating2D` (the only none-against-cellCentreInverse comparison),
+   `translatingClearOutlet2D`, and most likely `translatingLadder2D` (committed e8a6660 on the
+   morning of the fix, no record of a run after 440107f, and its N = 128 tokens diverged after
+   the fix in `translatingRepaired2D`).
+2. No `cases/<case>.parameter` sets `CURVATURE_EXTENSION`. The global default is
+   `cellCentreInverse` (c935883). The Popinet `none` is in each Popinet config, at density ratio 1.
+3. `MASS_FLUX_BOUND_RHO` is active with rhoLENT, and its only measured basis is VOID.
+4. METHOD.md sections 4.1 and 10 still described the configuration of 2026-07-31.
+
+The best configuration as it stands (the `twoPhaseCoupling` block of both gates):
+
+| token | value | evidence | status |
+|---|---|---|---|
+| `MASS_FLUX` | rhoLENT | `rhoLENTStationary2D`: residual +1.0 / -22 / +0.1 % at N = 32 / 64 / 128 | stationary only; no translating benefit shown after the fix |
+| `MASS_FLUX_ALPHAF_SOURCE` | donorPlane | the author's instruction (2026-09-01) | no measurement |
+| `MASS_FLUX_BOUND_RHO` | true | none valid | OPEN |
+| `MOMENTUM_DDT_SCHEME`, `RHO_DDT_SCHEME` | backward, backward | the BDF2 rule; the matching argument | the pairing tables are VOID |
+| `MOMENTUM_DIV_SCHEME` | upwind | inert on the 3D stationary droplet; the longest-lived arm of `translatingRepaired2D` (9987 steps) | every translating arm diverges |
+| `VISCOSITY_FACE_MODEL` | alg_lin (2D) | the viscosity-contrast ladder at mu1/mu2 = 1000 | 3D templates have no token (OPEN) |
+| `N_OUTER_CORRECTORS`, `PSI_OUTER_CORRECTORS` | 3, yes | 3 frozen equal 12 re-advected to 3-4 digits | measured |
+| `CAPILLARY_FORCE_CENTRING` | endStep | the linear analysis; a 20-step smoke | no coupled measurement |
+| `SURFACE_TENSION_FORCE`, `FACE_CURVATURE_SOURCE` | reconstructedCurvature, model | non-gradient force content at order +2.01 | constant curvature only |
+| `CURVATURE_EXTENSION` | cellCentreInverse | the 2D stationary ladders: residual 4.60 / 3.81 / 1.55 / 1.49x lower at N = 32-256 | translating undecided; oscillating at N = 128 only |
+| `CURVATURE_INVERSE_GAUSSIAN` | yes | h^1.95 against h^1.02 on the 3D sphere | measured |
+| `CAPILLARY_DT_COEFF` | 0.010861 | 0.2323 of the Brackbill limit at every rung | measured |
+| `PSI_FILTER`, `VOLUME_CORRECTION` | none, noVolumeCorrection | the repository rules | — |
+
+The translating arm. The 0.1 s runs of `55044205` diverged in every candidate. The time of the
+last CSV row, per rung (N = 100 / 142 / 200):
+
+| candidate | N = 100 | N = 142 | N = 200 |
+|---|---|---|---|
+| baseline | 0.0904 | 0.0942 | 0.0772 |
+| S1 | 0.0574 | 0.0433 | 0.0593 |
+| HL0 | 0.0870 | 0.0734 | 0.0619 |
+| HL1q | 0.0996 | 0.0724 | 0.0648 |
+| HL1z | 0.0917 | 0.0718 | 0.0618 |
+| HL2 | 0.0467 | 0.0365 | running (0.0185 at 01:00) |
+| FP0 | 0.0511 | running (0.0432) | running (0.0264) |
+
+1. These are valid results at the pre-registered horizon of 0.1 s, not a wrong setup. They show
+   that the late instability is not a property of the baseline alone. S1 and HL2 diverge before
+   0.05 s at one rung or more. The directories stay, renamed
+   `methodGate2D_<candidate>_translating_endTime0p1_20260927`.
+2. The gate's translating arm ends at 0.05 s with `cellCentreInverse`. The `none` of 8a9b85a is
+   reverted, because its evidence is VOID. The arm then differs from the 0.1 s runs only in
+   `endTime`, so each re-run must reproduce the first 0.05 s of its 0.1 s run byte for byte
+   (`compare_metrics_csv.py`, the two timing columns skipped).
+3. Stated as a change after seeing data: the horizon was pre-registered as 0.1 s and was changed
+   to 0.05 s after the baseline diverged. The verdict at 0.05 s answers one question: does a
+   candidate degrade the translating droplet while the production method is stable? The late
+   instability stays open. Not tried after the fix: `cellCentreInverse` against `none` on a
+   matched setup, a longer box, the RK2 foot integrator, midpoint force centring, and the
+   semi-implicit capillary force.
+
+### 11.14 Two parallel defects of the coupled SL solver; the Eulerian rhoLENT port (2026-09-27)
+
+Found while preparing the Eulerian port, which reuses the SL mass-flux code. Every number below
+is from the laptop, the gate's baseline translating case (N = 100, R/h = 10, END_TIME as stated),
+binaries of the named commits.
+
+**Defect 1, the solution: the face density on a coupled face (fixed in 28d13f0).**
+`computeFaceAreaFractions` filled every boundary face from its local cell. On a processor face
+each rank used its own cell's plane, whatever the flux direction, so the two sides disagreed on
+alpha_f and rho_f*phi, and mass was not conserved across the seam where the interface crossed it.
+
+1. Measured, N = 64, np 4, one step: 4 processor faces with alpha_f different on the two sides,
+   rho_f up to 90 % apart; phi equal on both sides. After the fix: 0 faces differ.
+2. np 4 against serial (column-scaled maximum difference, velocity metrics): 1e-5 to 5e-4 by
+   t = 0.033 before the fix; 1e-8 to 1e-10 through step 5000 after it.
+3. The per-rank mass residual (1e-10 to 1e-13) did not see the defect: each rank's auxiliary
+   density balances its own flux.
+
+**The late translating instability is not a decomposition artefact.** To t = 0.1:
+
+| run | diverged at step | t [s] |
+|---|---|---|
+| serial | 7139 | 0.0775 |
+| np 4, before the fix (the cluster baseline: the same step) | 8331 | 0.0904 |
+| np 4, with the fix | 8000 | 0.0868 |
+
+The runs agree until the growth starts near t = 0.06-0.065; from there any difference is
+amplified.
+
+**Defect 2, the diagnostics: internal-face loops in writeDropletMetrics.H (fixed in b1798c3).**
+The zero-set sample, the curvature/gradient band and the face statistics used internal faces
+only; on several ranks the processor faces were missing. np 4 against serial, to t = 0.05, with
+defect 1 already fixed:
+
+| column | before | after |
+|---|---|---|
+| zeroSetRadialL2 (gate: shape) | 3.42e-02 | 1.20e-07 |
+| gradPsiL2ErrorBand (gate: gradient band) | 3.82e-02 | 1.24e-08 |
+| kErrL2Band (gate: curvature) | 7.59e-02 | 2.11e-08 |
+| m2Amplitude (gate: oscillating shape) | 6.31e-01 | 1.92e-07 |
+
+Serial runs are unchanged by both fixes: bit-identical to the previous binary over 4604 steps,
+every column (`compare_metrics_csv.py --tol 0`).
+
+**Consequence.** Every SL two-phase result on more than one rank before 2026-09-27 carries both
+defects: a decomposition error of about 1e-4 in the solution before any instability, and a
+decomposition bias of several percent in the shape, gradient-band, curvature and mode-2 columns.
+OPEN, author decision: which earlier parallel studies to re-run or void. The running 2D gate
+(`55044205` and the five translating re-runs) uses the pre-fix binaries; it completes as the
+pre-fix record, then the whole gate re-runs with the fixes (PRESERVE=1), and the two are
+compared for verdict changes.
+
+**The gate now checks the coupled solver's decomposition (aaae627).** `translatingSeamNp1` runs
+the coarsest translating rung in serial and compares the error-vector columns of the droplet CSV
+with the np 4 run at tol 1e-5 (3.5e-7 at most after the fixes). A reference that did not complete
+is NOT_COMPARABLE, not a FAIL. The seam option now works on any arm.
+
+**The Eulerian two-phase solver gets the SL mass flux (c094bd8).** It kept rho, rhoPhi and muf at
+their t = 0 values for the whole run. The SL mass-flux code is now shared, moved verbatim into
+`createMassFluxFields.H`, `updateFaceDensity.H` and `updateMassFlux.H` (the SL files reconstruct
+byte for byte). The Eulerian solver reads the same `levelSet.massFlux` dictionary with the same
+defaults, rebuilds the face density from the new interface, solves the rhoLENT auxiliary density
+on every outer corrector, resets rho after the PIMPLE loop, and logs the density-bound numbers.
+`PSI_OUTER_CORRECTORS yes` rebuilds its interface on every outer corrector. Laptop, np 4, 1000
+steps (t = 0.0109 s):
+
+| run | travelled fraction | L2 \|U-U0\| [m/s] | L1 \|U-U0\| [m/s] |
+|---|---|---|---|
+| Eulerian, new, ratio 840 | 1.00012 | 4.85e-4 | 2.54e-4 |
+| Eulerian, previous binary, ratio 840 | 0.420 | 1.55e-1 | 3.05e-2 |
+| Eulerian, new, ratio 1 | 1.00078 | 1.04e-4 | 3.59e-5 |
+| Eulerian, previous binary, ratio 1 | 1.00339 | 2.18e-4 | 9.10e-5 |
+
+np 4 against serial (new): U, alpha, psi and p_rgh equal to 1e-8 relative. Stationary droplet,
+np 4: displacement 2.5e-13 m, L2 |U| 8.0e-5 m/s. Relative mass residual at ratio 840: 1.2e-10.
+The previous Eulerian binary moves the heavy droplet at 42 % of the stream: every Eulerian
+two-phase result with a moving interface and a density contrast before this commit is wrong
+physics (the OPEN decision on the frozen-rho studies, plan item D-m). Two steps remain before
+the Eulerian line can join the coupled gate arms:
+
+1. The curvature pipeline. The Eulerian production curvature is the older one
+   (`meanCurvatureClosestPoint` plus the `stabilizedFootPointFace` delivery,
+   `reconstructedCurvatureFields.H`); it does not read `curvatureExtension`, so it cannot run
+   `cellCentreInverse`, the SL best. It needs the same curvature-extension dispatch.
+2. The droplet CSV (plan F2). `writeDropletMetrics.H` needs two small adapters: the CSV name
+   (hard-coded to the SL solver) and the fit object of one research diagnostic
+   (`slAdv->reconstruction()`); everything else it reads exists in the Eulerian solver now.
+
+Also noted, not fixed: `rhoClipFraction` counts round-off clips in pure cells (37-48 % of the
+cells at a clip L1 of 1e-12), so as an error metric it measures round-off; the research
+diagnostics `A4h*`, `A8h*` and `driver*` still use internal faces only.
+
+**A setup defect of the 3D translating case (fixed 2026-09-27).** `cases/translatingDroplet3D`
+had no `dropletReferenceVelocity` entry, so the metrics writer used (0 0 0): the disturbance
+metrics (`maxMagUPrime`, `meanMagUPrime`, `l2MagUPrime`) reported the translation itself and the
+zero-set and centroid errors reported the displacement. Seen in the 3D gate smoke:
+`meanMagUPrime = 0.0500 = U0`. The solution does not read the entry. The 2D translating case and
+both Popinet cases have it. Now the 3D template renders `dropletReferenceVelocity (0.05 0 0)`.
+VOID for these columns: `traceTranslating3Dhex` and `traceTranslating3Dpoly_r10p0/r12p7/r15p8`
+(no conclusion in STATUS.md, METHOD.md or the docs cites them). The 3D gate has not run.
+
+**The late translating instability: four one-change discriminators (laptop, 2026-09-27).** The
+gate's baseline translating case, N = 100 (R/h = 10), np 4, to t = 0.1 s, binaries with both
+parallel fixes. One entry changed per run. The read-out is the divergence time against the
+decomposition scatter of the unchanged case (serial 0.0775 s, np 4 0.0868 s with the fixes,
+0.0904 s without). A shift inside that scatter is not a result. ONE resolution only: these are
+indicators for the choice of the next ladder, not results.
+
+| change | result | t [s] | reading |
+|---|---|---|---|
+| none (the reference, np 4) | DIVERGED step 8000 | 0.0868 | — |
+| `curvatureExtension none` | DIVERGED step 6404 | 0.0695 | 20 % earlier: cellCentreInverse delays the instability |
+| `footIntegrator rk2` | DIVERGED step 7759 | 0.0842 | inside the scatter: no effect |
+| `capillaryForceCentring midpoint` | DIVERGED step 5467 | 0.0593 | 32 % earlier: worse |
+| density ratio 1 (499.695 both) | COMPLETED | 0.1 | the instability needs the density contrast |
+
+Consistent with section 0 and `translatingRepaired2D` (`none` at N = 128 diverged at
+t = 0.063-0.075 s, ratio 1 completed). The divergence onset (growth from t = 0.06 s) is when the
+droplet centre is at 5.5 mm and its leading edge 3.5 mm (35 cells) from the outlet. Not yet
+tested: a longer box (the distance to the outlet), and the semi-implicit capillary force.
+
+### 11.15 The pre-fix verdicts, the outlet, and the fixed 2D gate (2026-09-27)
+
+**The pre-fix 2D gate** (`55044205` plus the five translating re-runs, pre-fix binaries, summaries
+in `methodGate2D_summary_pre-20260927-020856`): every candidate's verdict is FAIL. The kinematic
+shear arm alone fails all of them. The coupled-solver defects of 11.14 do not touch the kinematic
+solver, whose seam checks pass at 1e-12:
+
+| candidate | shear shape error at N = 136 | ratio to baseline (6.19e-4) | shape order (baseline 3.07) |
+|---|---|---|---|
+| HL0 (halo-limited extension, no source) | 8.49e-3 | 14 | 1.39 |
+| S1 (soft wall, no extension) | 0.254 | 410 | 0.06 |
+| HL1q (extension, linear q law) | 0.107 | 170 | 0.02 |
+| HL1z (extension, linear z law) | 1.65 | 2700 | — |
+
+The extension and the sources degrade the transport of the interface itself. The coupled arms
+add divergences where the baseline completes (for example HL1q and HL1z at stationary N = 142).
+The fixed gate re-runs the kinematic arms with unchanged kinematic code; they must reproduce the
+pre-fix ones byte for byte.
+
+**The translating re-runs to 0.05 s** (pre-fix binaries): the baseline completes all three rungs,
+so criterion 1 can hold. All 15 re-runs reproduce the first 0.05 s of their 0.1 s runs byte for
+byte (`compare_metrics_csv.py --tol 0`, the pre-registered check of 11.13), S1 at N = 142 to the
+identical divergence row (6741).
+
+**The late translating instability: the outlet triggers the fast divergence; a slower interior growth remains** (laptop, N = 100, fixed binaries). CORRECTED 2026-09-27 03:40: this heading first said "the late translating instability is the outlet". I was wrong: the 20 mm box to t = 0.25 s diverges too, later (see the end of this paragraph). The same
+case in a box twice as long in x (20 mm, the same h, the outlet 10 mm further away) COMPLETES
+t = 0.1 s, and its spurious current decays:
+
+| t [s] | 0.02 | 0.05 | 0.06 | 0.065 | 0.07 | 0.08 |
+|---|---|---|---|---|---|---|
+| L2 \|U-U0\|, 10 mm box (np 4) | 1.04e-3 | 1.95e-3 | 1.79e-3 | 4.90e-2 | 7.56e-2 | 1.35e-1 |
+| L2 \|U-U0\|, 20 mm box (np 8) | 7.39e-4 | 1.38e-3 | 1.22e-3 | 1.09e-3 | 9.10e-4 | 6.73e-4 |
+
+(The 20 mm box has twice the volume, so its volume-weighted L2 norm is about 1/sqrt(2) of the
+10 mm value at equal local levels; the early ratio is 0.71.) In the 10 mm box the growth starts
+when the leading edge is 3.5 mm (35 cells) from the outlet. This is the geometric event that the
+section "Is the interface still inside the domain?" of CLAUDE.md warns about; it needs the density
+contrast (ratio 1 completes). The gate's 0.05 s horizon ends before it. OPEN, author decision:
+a longer translating box for the gates and ladders (a new length token with the current box as
+its default).
+
+Confirmed at N = 142 (R/h = 14.2, np 8, fixed binaries): the 10 mm box DIVERGES at step 14198
+(t = 0.0911 s, volume error 0.48 at the last row); the 20 mm box COMPLETES t = 0.1 s (volume error
+2.2e-3). L2 |U-U0|:
+
+| t [s] | 0.02 | 0.05 | 0.06 | 0.07 | 0.08 | 0.09 | 0.1 |
+|---|---|---|---|---|---|---|---|
+| 10 mm box | 6.80e-4 | 1.26e-3 | 9.66e-4 | 7.04e-2 | 1.29e-1 | 6.46e-1 | — |
+| 20 mm box | 4.81e-4 | 8.95e-4 | 6.85e-4 | 4.28e-4 | 9.64e-4 | 1.56e-3 | 1.80e-3 |
+
+A slower growth remains in the 20 mm box at N = 142 after t = 0.07 s: 4.3e-4 to 1.8e-3 in 0.03 s
+(about 46 1/s), with the droplet more than 11 mm from the outlet. That is an interior growth,
+about 70 times slower than the outlet-driven one; at N = 100 the 20 mm box decays over the same
+window. It is the question a long-box ladder (three rungs, 0.1 s or longer) must answer next.
+
+The long-box ladder to t = 0.1 s (laptop, fixed binaries; np 8, 8, 16 at N = 100, 142, 200): all
+three rungs COMPLETE. At t = 0.1 s:
+
+| metric | N = 100 | N = 142 | N = 200 | pairwise orders |
+|---|---|---|---|---|
+| zeroSetRadialL2 [m] | 1.38e-4 | 7.08e-5 | 3.99e-5 | 1.90, 1.68 |
+| centroidError [m] | 1.95e-4 | 1.00e-4 | 5.62e-5 | 1.89, 1.69 |
+| phaseVolumeRelError | 1.30e-2 | 2.19e-3 | 2.20e-3 | 5.1, 0.0 |
+| gradPsiL2ErrorBand | 7.70e-2 | 7.80e-2 | 4.53e-2 | -0.04, 1.58 |
+| l2MagUPrime [m/s] | 5.14e-4 | 1.80e-3 | 7.36e-4 | -3.6, 2.6 |
+| kErrL2Band [1/m] (exact 1000) | 15.4 | 21.6 | 20.2 | -1.0, 0.2 |
+
+Shape and centroid converge near order 1.7-1.9. The spurious current stays bounded at every rung
+but is not monotone in h (the N = 142 bump after t = 0.07 s); the curvature error does not converge
+(1.5-2.2 %).
+
+**The 20 mm box to t = 0.25 s, N = 100: DIVERGED at step 19590 (t = 0.2127 s).** L2 |U-U0| (and the
+droplet centroid x):
+
+| t [s] | 0.10 | 0.12 | 0.14 | 0.16 | 0.18 | 0.21 |
+|---|---|---|---|---|---|---|
+| L2 \|U-U0\| | 5.1e-4 | 7.7e-4 | 1.4e-3 | 3.4e-3 | 8.5e-2 | 5.9e-1 |
+| centroid x [mm] | 7.7 | 8.7 | 9.8 | 10.9 | 13.4 | 14.7 |
+
+The growth starts near t = 0.10 s at about 30 1/s, with the droplet more than 8 mm from the outlet,
+and turns explosive after t = 0.16 s (the centroid then runs ahead of U0 t: the droplet breaks up).
+So there are TWO phenomena: (1) a fast growth that the outlet triggers in the 10 mm box (a factor 27
+in 0.005 s at t = 0.06 s, N = 100), and (2) a slower interior growth that the long box only
+postpones. The gate's 0.05 s horizon ends before both. N = 142 in the 20 mm box: DIVERGED at step
+34187 (t = 0.2194 s), the same pattern.
+
+**A geometric signature (04:10).** The time at which L2 |U-U0| first exceeds 10 times its t = 0.03 s
+level, and where the droplet is then:
+
+| run | t [s] | centroid x [mm] | box centre [mm] | centroid - centre [mm] |
+|---|---|---|---|---|
+| 10 mm box, N = 100, serial | 0.0630 | 5.76 | 5.0 | +0.76 |
+| 10 mm box, N = 100, np 4 | 0.0630 | 5.76 | 5.0 | +0.76 |
+| 10 mm box, N = 142, np 8 | 0.0656 | 5.72 | 5.0 | +0.72 |
+| 20 mm box, N = 100, np 4 | 0.1608 | 10.98 | 10.0 | +0.98 |
+| 20 mm box, N = 142, np 8 | 0.1611 | 11.04 | 10.0 | +1.04 |
+
+In every run the explosive growth starts when the droplet's TRAILING edge (centroid - R, R = 1 mm)
+crosses the middle of the box, within 0.3 mm, in serial and in parallel, at both resolutions and
+both box lengths. The jump time reproduces to 0.2 % between N = 100 and 142 in the 20 mm box: a
+geometric event (CLAUDE.md, "Is the interface still inside the domain?"), not a growth that starts
+at t = 0. No case file places anything at x = L/2 (the inlet fixes U and alpha, the outlet fixes
+p_rgh, psi is zeroGradient everywhere). So the position in the box and the elapsed time are
+confounded in these runs. The discriminator, with its prediction written before the result: the
+20 mm box, N = 100, droplet starting at x = 5 mm instead of 2.5 mm. If the event is tied to the box
+centre, the jump comes with the centroid near 11 mm, at t near 0.12 s; if it is tied to time or
+travel, near t = 0.16 s with the centroid near 13 mm.
+
+RESULT (04:40): the jump came at t = 0.1372 s with the centroid at 12.15 mm (7.15 mm travelled);
+the run diverged at t = 0.1917 s. NEITHER prediction holds, so the box-centre coincidence of the
+table above is NOT supported. Up to t = 0.12 s the two runs have IDENTICAL spurious-current
+histories (7.4e-4, 8.0e-4, 1.2e-3, 6.7e-4, 5.1e-4, 7.7e-4 at t = 0.02 ... 0.12 s): the slow phase is a
+function of time only, as translation invariance requires. The explosive phase then comes
+earlier for the droplet that is further downstream (its leading edge 6.9 mm from the outlet at the
+jump, against 8.0 mm for the later jump of the droplet started at 2.5 mm). The reading that fits
+every run so far: a slow interior growth in time, and an amplification that grows as the droplet
+approaches the outlet; the jump happens when the two together cross a threshold. In the 10 mm box
+the outlet is close from the start, so the jump comes at t = 0.063 s. Not yet tested: a far longer
+box (the interior growth alone), an outlet condition other than fixed p_rgh with zeroGradient U.
+
+**The fixed 2D gate:** orchestrator `55048916` (section 5). While it runs, the cluster clone stays at 1150e68 (no pull: new cases would record a commit the binaries do not carry); its STATUS.md is refreshed from GitHub without a pull (`git show origin/<branch>:STATUS.md > STATUS.md`; STATUS.md is outside the paths that mark a case dirty). Before the next pull there: `git checkout -- STATUS.md`.
+
+**Two corrections of the gate's scoring, made after the fixed gate started (so its orchestrator
+still scores the old way; the summaries and verdicts are recomputed with the corrected script
+after it finishes):**
+
+1. `rhoClipFraction` is reported, not scored (4bff922): it counts round-off clips.
+2. The oscillating arm no longer scores `meanMagUPrime` and `l2MagUPrime` (this commit). There
+   |U - U_ref| is the physical oscillation, not a spurious current, and a candidate that damps
+   the oscillation more scored as better. Plan section 5.4 pre-registered the oscillating arm's
+   entry as the damping rate; the implementation had deviated from it. The two norms are now
+   reported as `oscL2MagU` and `oscMeanMagU`. The login node `lcluster5` stopped
+answering at about 02:00; `lcluster3` and `lcluster4` answered and were used.
+
+**Fixed gate, first checks (02:52):** the kinematic arms (exact1D, shear, seamNp1, seamNp8) of the
+fixed gate reproduce the pre-fix gate byte for byte: 177 CSV pairs identical at tolerance 0, as
+predicted (the fixes do not touch the kinematic solver). The baseline's `translatingSeamNp1`
+(serial) against its np 4 run, the error-vector columns of the droplet CSV: at most 3.47e-7
+(`meanMagUPrime`), 1.2e-7 (`zeroSetRadialL2`), 2.1e-8 (`kErrL2Band`), the same numbers as on the
+laptop to every printed digit; the check passes at its tolerance 1e-5. The baseline translating
+arm completes all three rungs.
+
+**Fixed against pre-fix baseline (the whole vector, the value at T; 03:40).** Most entries agree to
+0.4 % or better; the kinematic shear arm to 0.0 %. The seam defects mattered where the processor
+boundaries cross the droplet:
+
+| arm, N | metric | pre-fix | fixed | change |
+|---|---|---|---|---|
+| stationary 100 | shapeError | 3.90e-4 | 4.27e-4 | +9.4 % |
+| stationary 100 | meanMagUPrime | 1.48e-8 | 1.35e-8 | -8.7 % |
+| oscillating 100 | l2MagUPrime (the physical oscillation) | 2.41e-3 | 1.22e-3 | -50 % |
+| oscillating 200 | gradientBandError | 3.41 | 5.13 | +51 % |
+| oscillating 200 | volumeError | 8.18e-3 | 3.04e-3 | -63 % |
+
+The baseline's oscillating arm is unhealthy at N = 200: the gradient band error is 5.1 (0.10 and
+0.14 at N = 100 and 142), so |grad psi| in the band is far from 1 by t = 0.1 s at the finest rung.
+The oscillating arm's orders and verdicts must be read with that in mind.
+
+**Mid-gate pull (04:37), and why it was safe.** The no-pull rule protects case provenance: a case
+materialized after a pull records a commit the binaries do not carry. Checked first: every one of
+the 56 arms had materialized its cases, and every case records 1150e68 (0 exceptions). Between
+1150e68 and the pulled 35a8878 only `workflow/scripts/make_gate_summary.py` changed in `src`,
+`applications`, `workflow`, `cases` and `config`. So the orchestrator's remaining summaries and
+comparisons now use the corrected scoring (4bff922, 4ef98db), and the baseline summary was
+recomputed with it (the oscillating rows carry `oscL2MagU`; `l2MagUPrime` is empty there).
+
+**Finish estimates (04:36).** HL0, HL1q and HL1z within about 1 h; S1 by about 08:20; HL2 by about
+11:00. FP0's stationary and oscillating N = 200 run at 0.19 and 0.14 steps/s and need 29 h and
+41 h: they will time out at the 10 h job limit. FP0's verdict does not depend on them: its shear
+arm (bit-identical to the pre-fix gate) fails at 34 times the baseline's shape error, and its own
+seam check fails (closestPoint is decomposition-dependent, 0.45).
+
+**The interior growth without the outlet: a 40 mm box (N = 100, laptop, np 8, to t = 0.3 s).** The
+outlet stays more than 17 mm from the droplet. The run COMPLETES, but it degrades:
+
+| t [s] | 0.10 | 0.14 | 0.18 | 0.22 | 0.26 | 0.30 |
+|---|---|---|---|---|---|---|
+| L2 \|U-U0\| (40 mm box; 1/sqrt(2) of the 20 mm scale) | 3.6e-4 | 1.0e-3 | 2.2e-3 | 4.4e-3 | 6.9e-3 | 8.3e-3 |
+| phaseVolumeRelError | 1e-2 | 4e-3 | 1e-2 | 4e-2 | 8e-2 | 1e-1 |
+| centroid x - (x0 + U0 t) [mm] | 0.2 | 0.3 | 0.6 | 1.3 | 2.5 | 3.9 |
+
+The spurious current grows from t = 0.10 s at a slowing rate (about 26 1/s at first, 5 1/s at the
+end), the droplet volume drifts by 10 % (CORRECTED 2026-09-29: 15 %, 1.5e-1 at t = 0.3 s in the second table below and 0.147 in the archived history; the table above rounds it) and the droplet runs 3.9 mm ahead of the stream. So the
+interior degradation is real and needs no outlet; the outlet only turns it into an explosive
+divergence. For the method this is the open defect of the translating droplet at the water/air
+density ratio.
+
+The same 40 mm box at N = 142 (np 16, to t = 0.3 s) COMPLETES with a smaller degradation:
+
+| t [s] | 0.10 | 0.18 | 0.22 | 0.26 | 0.30 |
+|---|---|---|---|---|---|
+| L2 \|U-U0\|, N = 100 | 3.6e-4 | 2.2e-3 | 4.4e-3 | 6.9e-3 | 8.3e-3 |
+| L2 \|U-U0\|, N = 142 | 1.3e-3 | 1.1e-3 | 1.6e-3 | 2.4e-3 | 3.6e-3 |
+| volume error, N = 100 | 1.3e-2 | 1.2e-2 | 3.6e-2 | 8.1e-2 | 1.5e-1 |
+| volume error, N = 142 | 2.2e-3 | 9.1e-3 | 1.9e-3 | 9.6e-3 | 2.8e-2 |
+| centroid lead [mm], N = 100 | 0.19 | 0.63 | 1.32 | 2.48 | 3.86 |
+| centroid lead [mm], N = 142 | 0.10 | 0.58 | 0.82 | 1.21 | 1.82 |
+
+At t = 0.3 s the degradation is 2.3x (spurious current), 5.4x (volume) and 2.1x (lead) smaller at
+N = 142 than at N = 100: it shrinks with h, as a discretization error does, not as a
+resolution-independent instability. TWO rungs only: no order is stated. The third rung (N = 200,
+160 000 cells, 78 000 steps) belongs on the cluster. With the outlet more than 17 mm away the
+translating droplet is usable over 0.3 s at N = 142; near the outlet it is not.
+
+**Fixed-gate verdicts so far (05:32).** HL1q: FAIL. HL1z: FAIL (43 FAIL lines). Both fail on every
+arm: the shear arm (as before the fix), the stationary arm at N = 200 (HL1q shape error 3.8 R and
+volume error 76 %; HL1z 3.7 R and 84 %: these runs COMPLETE, but with the droplet destroyed, so
+the completion count alone would mislead), the translating and the oscillating arm. Waiting: HL0
+and S1 (oscillating finest rungs), HL2, FP0.
+
+**The baseline's oscillating arm goes unstable at the finest rung (fixed gate, 06:20).** The band
+gradient error `gradPsiL2ErrorBand` (L2 of |grad psi| - 1 in the band) over time:
+
+| t [s] | 0.01 | 0.03 | 0.05 | 0.07 | 0.08 | 0.09 | 0.10 |
+|---|---|---|---|---|---|---|---|
+| N = 142 | 0.036 | 0.066 | 0.076 | 0.099 | 0.111 | 0.123 | 0.140 |
+| N = 200 | 0.054 | 0.087 | 0.159 | 0.386 | 0.581 | 1.24 | 5.13 |
+
+At N = 142 the drift grows about linearly; at N = 200 it grows exponentially after t = 0.05 s, and
+at t = 0.10 s the velocity norm jumps tenfold (8.1e-2). The run COMPLETES the 0.1 s horizon on the
+edge of a divergence, so its values at T (period 8.06 ms against 10.0 and 9.82 ms at the coarser
+rungs; the Celik classification of period and damping: divergent) cannot carry a verdict. This
+drift of |grad psi| without redistancing is exactly the defect the gradient-control candidates
+exist to remove; the candidates fail for other reasons (the shear transport). OPEN, author
+decision: the oscillating arm's horizon (as for the translating arm), and a baseline check that
+reads the gradient drift over time, not only at T.
+
+**HL0 (halo-limited extension alone): FAIL, and it destroys the level set in the coupled arms
+(fixed gate, 06:45).** HL0 is the dossier's core idea (protect |grad psi| by the extension, no
+source). Values at T (baseline in brackets):
+
+| arm | N = 100 | N = 142 | N = 200 |
+|---|---|---|---|
+| oscillating, gradient band error | 7.5 (0.10) | 2.2e6 (0.14) | 2.0e7 (5.1) |
+| oscillating, volume error | 0.74 (7.6e-3) | 10.4 (7.3e-3) | 6.7 (3.0e-3) |
+| translating, shape error / R | — | — | 0.196 (3.1e-3) |
+| shear (kinematic), shape error | — | — | 8.5e-3 at N = 136 (6.2e-4), order 1.39 (3.07) |
+
+The oscillating runs COMPLETE with garbage fields. The stationary arm is the exception: only
+volume-error regressions at the 1e-7 level. The ladder of CLAUDE.md places the defect: the exact
+unit gates of D4 pass (zero normal strain to 1e-12 on affine U, uniform U bit for bit), and the
+first rung above them, KINEMATIC transport (shear, no force), already fails at order 1.39. So the
+defect is in the kinematic path of the extension, before any coupling. First suspect, named as a
+risk in the plan (section 9): the `stencilFit` sampler (a least-squares fit of U; exact only for
+affine U). Next step, the cheapest discriminator: the shear arm with HL0 at two samplers or radii,
+and HL0 on the exact-velocity 1D and 2D kinematic cases with the flux correction written out.
+
+**S1 and HL2: FAIL (fixed gate, 12:14).** S1 (soft wall, no extension): 19 FAIL lines; the
+translating N = 142 rung diverges before 0.05 s, and its `translatingSeamNp1` check FAILS: serial
+and np 4 differ by 76 % in `l2MagUPrime` (the baseline: 3.5e-7). The soft-wall source makes the
+coupled solution sensitive to round-off, so its result depends on the decomposition; this is
+the mesh-noise-floor diagnostic of CLAUDE.md, applied to the decomposition. HL2 (extension plus
+soft wall): 15 FAIL lines; all three translating rungs diverge; its seam check is NOT_COMPARABLE
+(the np 4 reference diverged). Every candidate of the first campaign now FAILS the 2D gate: S1,
+HL0, HL1q, HL1z, HL2, and FP0 (its shear arm and seam check). The 3D gate therefore does not run.
+Remaining: FP0's oscillating arm and stationary N = 200, which time out at the 10 h limit.
+
+**The fixed 2D gate is complete (orchestrator `55048916`, 12:57, rc 2: FP0's three TIMEOUT
+solves, 10 h limit).** Every summary and verdict recomputed with the corrected script (13:00,
+HEAD c718abb, no source change since the build 1150e68). Verdicts: every candidate FAILS.
+
+| candidate | verdict | target ratio | regressions | orders | seam | completion |
+|---|---|---|---|---|---|---|
+| FP0 | FAIL | 0.939 | 3 | 8 | 5 | 5 |
+| HL0 | FAIL | 0.828 | 16 | 13 | 0 | 0 |
+| HL1q | FAIL | 0.204 | 22 | 18 | 0 | 0 |
+| HL1z | FAIL | 6.490 | 23 | 19 | 0 | 0 |
+| HL2 | FAIL | 0.754 | 7 | 5 | 0 | 3 |
+| S1 | FAIL | 0.707 | 12 | 5 | 1 | 1 |
+
+Coupled seam check (`translatingSeamNp1`, tol 1e-5): baseline 3.5e-7, HL0 4.7e-6, HL1q 4.9e-7, HL1z
+5.3e-7 PASS; S1 0.76 FAIL; FP0 1.11 FAIL; HL2 NOT_COMPARABLE. The trade-off the gradient-control
+sources show on the shear arm: HL1q lowers the band gradient error of the baseline (1.62, order
+0.05: in a shear flow |grad psi| changes physically without redistancing) five-fold, and raises
+the shape error 173-fold. Tables committed: `docs/gradient-controlled-level-set/gcls-level-set-
+article/data/tables/methodGate2D_*` (the verdicts, one LaTeX table per arm, and the summary,
+orders, vsBaseline and seam CSVs of every candidate; regenerate with `make_gate_summary.py
+--docs` and `make_gate_tables.py`). The 3D gate does not run: no 2D pass.
+
+### 11.16 The pre-print is written; its data are archived per software version (2026-09-27)
+
+`docs/gradient-controlled-level-set/gcls-level-set-article/gclsLevelSet.tex` is now a numerical
+paper (21 pages): for each method the continuum model, the OpenFOAM discretisation and the gate
+results, then a discussion that names, for each failure, the discrete mechanism it points to and
+the experiment that can decide it (the source step moves the discrete zero set where F differs
+between the two cells across the interface; the halo-limited extension loses order through the
+face-to-cell reconstruction of the corrected flux; the sampler fits across the interface in the
+coupled arms). Every number comes from ONE folder of secondary data,
+`gcls-level-set-article/data/archive/shared-method-config-2026-09-01-192-g1150e68/` (116 files,
+13 MB: the fixed gate, the pre-fix gate, the laptop runs; `README.md`, `MANIFEST.csv` with
+SHA-256). `figures/make_archive.py` writes the archive from the raw output;
+`figures/make_result_figures.py` writes the five result figures and eight tables from it; the gate
+tables come from `make_gate_tables.py` on the archived summaries. A new pre-print version gets a
+new folder; an older folder is never overwritten. The raw laptop runs are preserved in the
+git-ignored `runs/gcls-laptop-20260927` (1.5 GB, 539 files), with a copy on Lichtenberg in
+`/work/scratch/tm83tomy/leia/runs/`. `.gitignore` now exempts `docs/**/data/figures/*.pdf` and
+`docs/**/data/archive/**/*.csv` (curated results).
+
+### 11.17 Gate blind spots found on 2026-09-28 (OPEN repairs)
+
+Two blind spots of the method gates, found while the record was corrected on 2026-09-28. Both
+repairs are OPEN. The measurements are in the technical report
+`docs/gradient-controlled-level-set/gcls-technical-report/`; the gates are described in
+`docs/knowledge-base/concepts/method-gates.md`.
+
+- (a) **The exact-1D closed form is vacuous for every candidate.** `workflow/scripts/make_gate_summary.py`
+  lines 190-198 set `q_exact` to `None` for every candidate that is not plain (any of
+  `VELOCITY_EXTENSION`, `SL_SOURCE` or `SDPLS_SOURCE` set), so `qError` is `None` and the criterion
+  "target" is vacuous for the candidates. Repair: integrate the closed form of each candidate per
+  band cell, dq/dt = q (F - alpha K(d/R)) and dd/dt = alpha d (1 - c^2), and compare `qBandMean`
+  with it.
+- (b) **The band-gradient metric is blind to the cell-scale mode.** `gradPsiMetric leastSquares` is
+  centred, so the mode (-1)^(i+j) d, which destroyed the stationary droplet under HL1q and HL1z,
+  does not change it. Repair: an L2 of the second difference of psi, or the min and max of a
+  one-sided q, and a curvature column in the kinematic arms.
+
+### 11.18 The knowledge base, the technical report and the paper split (2026-09-28/29)
+
+The user's request of 2026-09-28: separate the semi-Lagrangian topic from the source-term topic,
+build a cross-linked knowledge base in `docs/` from the slides and pre-prints that records the
+reasoning and the decisions, and assess the first gradient-control campaign critically in a
+technical report. Plan: `docs/plan-knowledge-base-2026-09-28.md` (approved
+2026-09-28). Commits d1e3414 to the final commit of 2026-09-29 on `feature/gradient-controlled-level-set`.
+
+1. **The knowledge base** `docs/knowledge-base/` (an Obsidian vault, built by Quartz v5):
+   131 notes (7 hubs, 17 models, 55 concepts, 16 decisions, 13 retractions, 8 cases, 12 studies,
+   3 sessions), the decision log and the retraction log. Start at `index.md`; the living handover
+   is `sessions/current.md`; the handover to the SL session is `sessions/sl-session-handover.md`.
+   Tools in `.quartz/`: `check_kb.py` (frontmatter, wikilinks, log coverage; the CI gate),
+   `check_links.py` (every pinned GitHub link against the history), `build_graph.py` (the data of
+   the 3D graph page `graph3d/graph.htm`), `missing_notes.py`, `build.sh` (`make kb`,
+   `make kb-serve`, `make kb-graph`). The workflow `.github/workflows/knowledge-base.yml`
+   replaces the dead `docs.yml`.
+2. **Publishing is blocked by one setting (OPEN, author decision).** The `github-pages`
+   environment allows deployments from `main` only (GitHub API, 2026-09-29). The workflow builds
+   and checks the site on this branch; to publish from it, add the branch under Settings >
+   Environments > github-pages > Deployment branches, or merge into `main`.
+3. **The technical report** `docs/gradient-controlled-level-set/gcls-technical-report/`
+   (`make report-gcls`, 11 pages, summary first, every claim marked MEASURED, DERIVED or
+   HYPOTHESIS). CORRECTED, the pre-print's reading of the failures: the linear laws read no
+   velocity, so the coupled loop cannot be the primary mechanism for HL1q/HL1z; the source step
+   with a centred gradient of q is linearly unstable at a rate of order mu (DERIVED); the
+   measured growth rates on the stationary droplet at N = 200 are about 290 1/s (curvature
+   error) and 320 to 350 1/s (spurious current) over 10 to 20 ms against mu = 270 1/s. I was
+   wrong to quote 245 and 276 1/s from the first reading of the histories; the archive gives the
+   numbers above. The halo-limited extension at R = h relocates the normal strain into a shell
+   at d = 1 to 2h (K = 1.27 at 1.5R); the exact-1D band means 0.46 to 0.59 measure it. The
+   crossing shift is O(h) and cannot explain the O(1) shape errors. The experiment ladder E0.1
+   to E3 is pre-registered in the report and in `concepts/gradient-control-next-experiments`.
+4. **The paper split.** The four SL-baseline findings of the gcls pre-print moved into the SL
+   article (the subsection "Consistency under domain decomposition", the subsection
+   "Mass-momentum-consistent flux (rhoLENT)" with the Eulerian port, the paragraphs "The late
+   instability: the outlet and the interior growth", the oscillating drift in the Limitations),
+   with their tables and figures (`git mv`); `make_result_figures.py` writes them into the SL
+   article's `data/`. The gcls abstract, contributions, discussion and conclusions follow the
+   report. Both articles build without undefined references (52 and 19 pages).
+5. **CLAUDE.md and AGENTS.md** (byte-identical): "The knowledge base is the point of
+   reference" and "How we work: supervisor and expert developer".
+6. **Record corrections** (the 13 audit flags of the plan): this file's date, SUPERSEDED
+   markers at the filtered 2026-08-18/19 blocks, the VOID list of section 0 (the morning studies
+   of 2026-09-02), 11.17; METHOD.md CORRECTED notes (lines 35, 353, 377, 756);
+   `cases/default.parameter` (the clip, the pre-fix residual, the VOID block); the gate configs
+   (the VOID `rhoDdtGate2D` basis, the pre-fix residual); `HL0.yaml` (the read-out conflated the
+   interface with the band); `baselineEulerian.yaml`; the banner default of the SL solver
+   (`geo_lin`); `workflow/README.md` (eight method libraries); `docs/IMPROVEMENTS.md`, the nPSL
+   note, the library-split plan.
+7. **Link integrity.** The note writers read the tree of d1e3414 and pinned many links to
+   8867581, where the same line numbers show other text. `check_links.py` moved 65 pins on
+   decisive evidence; a reviewer decided the 159 ambiguous ones by hand (125 OK, 14 moved to the other commit, 19 re-anchored, one pointed at the wrong file).
+8. **The writers read the record against itself** and found inconsistencies that nobody had
+   corrected; they are listed, with the corrections still to make at the source, in
+   `docs/knowledge-base/sessions/sl-session-handover.md` (items 1 to 15). The two most important:
+   the production curvature `cellCentreInverse` was never scored on the varying-curvature ellipse
+   gate (the acceptance criterion of section 7 is not demonstrated for it; scored on 2026-09-29,
+   11.19: the orders pass; the gain equals the per-face inverse's, and the per-rung form of the
+   limit fails for every second-order delivery), and a row of the SL
+   article's viscous-term table comes from the frozen-muf run of 4267d7b (re-run or retract: an
+   author decision). Corrected at the source today: CLAUDE.md and AGENTS.md (a second clone would
+   have loaded the library ~200 commits ahead; no job ran with it, 9.5), CLUSTER.md (the banner
+   lists one stamp line per loaded library, up to nine), the 40 mm volume change of 11.15 (15 %).
+   Open and not changed, and the most consequential: `2Dtranslation` is a REVERSED translation (no
+   `oscillation` entry, the default is on, `tau` = `endTime`), so the circle moves at most 0.16 and
+   returns at T, and the ladder of METHOD 8.3.7 read its errors at T (DERIVED from
+   `velocityModel.C` lines 49-50; author decision: a wrong setup or a reversed-flow gate); the
+   published polyhedral orders 3.28 and 1.46 ran with `SL_CLIP true` (the production default
+   diverges at step 198 on the coarsest polyhedral 3D shear rung). Also open:
+   `foam_log_state.sh` tests launch failures before death signatures on a
+   zero-step log, the Snakefile the other way round; `make_archive.py` does not refuse an existing
+   archive folder ("never overwritten" is a convention); the Phase C bit-identity scripts are not
+   committed; every method-gate arm renders a hex mesh, so the polyhedral rung exists only in the
+   regression set.
+9. **Process: the spend limit stopped every agent three times**, each time before the end of a
+   5-hour window of the individual limit (the windows that ended 2026-09-28 16:10 and 21:10 and
+   2026-09-29 02:10). Since the second stop
+   the work is restart-safe: the manifest `.quartz/manifest.md` fixes every slug and owner,
+   `missing_notes.py` lists what is missing, each writer saves a source digest
+   (`.quartz/digests/`, git-ignored) before drafting and every note at once, and the tree is
+   committed after each batch (the incremental commits of 2026-09-28 and 2026-09-29).
+
+### 11.19 The one-way 2Dtranslation, the production curvature on the ellipse and ellipsoid (2026-09-29)
+
+The author's requests of 2026-09-29: `cases/2Dtranslation` must translate the droplet left to
+right only; the production curvature `cellCentreInverse` must be tested on the signed-distance
+ellipse and ellipsoid, after a check of what exists; two findings go to the SL session (its
+hand-over note); then the merges into `development` and `main`. All runs below: laptop,
+`leia-gcls` binaries (v2512), branch `feature/gradient-controlled-level-set`, commits f94e2a4a
+to the last commit of this section.
+
+1. **`2Dtranslation` was a REVERSED flow (retraction; every earlier number of the case is
+   VOID).** Commit cd97e6da (2026-09-01) made the case from `2Dvortex` and dropped the line
+   `oscillation @!OSCILLATION!@;`. `velocityModel.C:49` defaults `oscillation` to TRUE and `:50`
+   defaults `tau` to endTime, so U(t) = cos(pi t/T) (1 0 0): the circle came back to its start at
+   T, and the error metrics compared T with the initial fields (no `psiEnd`). The recorded data
+   show it: U = (0.034 0 0) at t = 0.2446 and (-0.99991 0 0) at t = 0.4979; the centroid moves
+   0.2500, 0.4082, 0.2502. Void: `kinematicTranslation2D`, `coneBoundMesh2Dtranslation` and its
+   four arms (METHOD 8.3.4), `advConv2Dtranslation` (8.3.7), the 2Dtranslation rows of the
+   regression and bit-identity gates (8.3.8, 10.3, 11.7, the C5 gate of the halo-limited plan).
+   The trees are renamed `*_VOID_reversedTranslation_20260929` (laptop and Lichtenberg), the three
+   curated tables are in `data/tables/VOID_reversedTranslation_20260929/` with a README.
+   I was wrong in the METHOD statements "the unbounded translation saturates at N = 256" and
+   "the cone bound is better at the coarsest rung": both were read from the reversed flow.
+
+2. **The fix.** `OSCILLATION off` in `cases/2Dtranslation.parameter`. A new token
+   `END_REFERENCE none|translate` (inert default `none` in `cases/default.parameter`): with
+   `translate`, `workflow/scripts/write_end_reference.py` writes `psiEnd`/`alphaEnd` (the circle
+   moved by U T, made by the same `leiaSetFields` from the pristine `0.org` inputs) before
+   `decomposePar`; the Snakefile runs it from the template's content, `advect_bound_arm.sh` and
+   `Allrun.sh` call it too. The three kinematic solvers print which error reference they use
+   (the silent fallback to the initial fields hid the reversal for four weeks); inert,
+   bit-identical CSVs on `2Dvortex` N = 32 np 4 for the SL and the Eulerian solver.
+   `aggregate.py` keeps `shapeError` for a one-way row with an end reference. psi is
+   zeroGradient on all four patches (item 3).
+
+3. **Fixed psi values on a patch make the SL update unstable (MEASURED; a finding about the SL
+   scheme, for the SL session).** The approved plan put the exact psi on all four patches; that
+   was my recommendation, and I was wrong. The SL fit reads every physical patch value as a
+   stencil datum (`SL_STENCIL_BOUNDARY_FACES include`, the default). Serial probe of four
+   boundary variants (`workflow/scripts/translation_bc_probe.sh` and `_scan.py`),
+   `E_GEOM_ALPHA_REL` at T:
+
+   | psi on left (inflow) / right (outflow) / top, bottom | N = 128, CFL 0.5 | N = 256, CFL 0.5 | N = 128, CFL 1 |
+   |---|---|---|---|
+   | exact / exact / exact | 1.72e-03 | **1.98e-02** (outflow edge 4.5e+05) | **1.79** |
+   | exact / zeroGradient / exact | 1.61e-03 | 4.44e-04 | **1.79** |
+   | exact / zeroGradient / zeroGradient | 1.61e-03 | 4.44e-04 | **1.79** |
+   | zeroGradient everywhere (committed) | 1.61e-03 | 4.44e-04 | 2.15e-03 |
+
+   (a) The exact value on the OUTFLOW patch: the outflow-edge error grows by a factor of about
+   1.1 per step (N = 64 to 256, CFL 0.5), reaches 4.5e5 at T at N = 256 and makes 96 false
+   zero-set cells. It corrupted the `none` N = 256 rung of the first re-run (`E_GEOM_ALPHA_REL`
+   order -3.53); those trees are `*_VOID_outflowDirichlet_20260929`. (b) The exact value on the
+   INFLOW patch at CFL 1, where the departure point of the first cell column lies outside the
+   domain: 2246 false zero-set cells in the inflow region; those trees are
+   `*_VOID_inflowDirichlet_20260929`. With zeroGradient everywhere both are stable: outflow edge
+   1.7e-03 at N = 256 (CFL 0.5), 8.8e-04 at N = 128 (CFL 1). No production case gives psi a
+   fixed value, so no production run is affected; CLAUDE.md has the corollary. Consequence for
+   this case: the inflow region x < t keeps psi0(0, y) >= 0.10 (no zero crossing, the interface
+   metrics are unaffected), and the GLOBAL gradient metrics measure that frozen region.
+
+4. **The repair gate** (`config/translationRepairGate2D{serial,par4}.yaml`, pre-registered; four
+   runs, the first three void: a non-pristine end reference, then the exact outflow and the exact
+   inflow value). RE-RUN 3 passes every line on both indicator arms: U = (1 0 0) at
+   every write; 108 steps (the reversed case took 86); centroid at T (0.74972, 0.50000);
+   `E_VOL_ALPHA_REL` at t = 0 1.65e-14; `E_GEOM_ALPHA_REL` 2.000000 at t = 0 (disjoint circles)
+   and 7.210e-03 at T; every patch face equals its boundary cell; np 4 against serial 2.7e-12
+   column-scaled; outflow edge 5.92e-03 at t = 0.2486 and 6.90e-03 at T; no false zero set.
+
+5. **The translation studies, re-run** (all 34 runs COMPLETED, no false zero-set cell at any
+   write time). `advConv2Dtranslation` (np 8) is the new preserved baseline of the hex 2D
+   regression rung:
+
+   | N | `none` E_GEOM | order | `stencilBounds` | `lipschitzCone` | order | cone / none |
+   |---|---|---|---|---|---|---|
+   | 32 | 5.364e-02 | — | 5.591e-02 | 1.323e-01 | — | 2.5 |
+   | 64 | 7.210e-03 | 2.90 | 7.210e-03 | 1.019e-01 | 0.38 | 14.1 |
+   | 128 | 1.609e-03 | 2.16 | 1.614e-03 | 9.664e-02 | 0.08 | 60.1 |
+   | 256 | 4.442e-04 | 1.86 | 4.472e-04 | 7.535e-02 | 0.36 | 169.6 |
+
+   `E_VOL_ALPHA_REL` of `none`: 2.156e-02, 4.557e-03, 5.798e-04, 2.359e-05 (orders 2.24, 2.97,
+   4.62); of the cone: 7.7e-02 to 9.1e-02, no convergence. `E_BOUND_ALPHA` = 0 everywhere. The
+   one-way errors are about 20 times the reversed ones (7.21e-03 against 3.41e-04 at N = 64),
+   because nothing cancels at T. The four cone-bound arms on one N = 64 mesh (np 4, digest
+   fd13ce29ac8e): `none` 7.21e-03, cone unity 1.02e-01 (14.1x), cone stencil 6.82e-02 (9.5x),
+   `stencilBounds` 7.21e-03. The cone arm depends on the psi boundary value 0.1 away from the
+   interface: 3.03e-02 with the exact outflow value, 1.02e-01 with zeroGradient (probe, N = 64);
+   the mechanism is not measured.
+
+   `kinematicTranslation2D` (18 arms, np 4), `E_GEOM_ALPHA_REL` at T, N = 32 / 64 / 128:
+
+   | CFL | E_GEOM_ALPHA_REL | orders | E_VOL_ALPHA_REL | orders |
+   |---|---|---|---|---|
+   | 0.25 | 6.24e-02 / 8.62e-03 / 1.75e-03 | 2.86, 2.30 | 2.94e-02 / 7.81e-03 / 1.06e-03 | 1.91, 2.88 |
+   | 0.5 | 5.36e-02 / 7.21e-03 / 1.61e-03 | 2.90, 2.16 | 2.16e-02 / 4.56e-03 / 5.80e-04 | 2.24, 2.97 |
+   | 1 | 4.47e-02 / 2.42e-02 / 2.15e-03 | 0.88, 3.49 | 2.07e-03 / 1.79e-03 / 6.83e-06 | 0.21, 8.04 |
+
+   The pre-registered read-out, on the geometric alpha error (never L_inf): second order at fixed
+   CFL PASSES at CFL 0.25 and 0.5; at CFL 1 the orders are irregular (OPEN). The mechanism
+   prediction (the error collapses at CFL 1) is FALSIFIED again: at CFL 1 the shape error is 3.4
+   times worse at N = 64 and 1.34 times worse at N = 128 than at CFL 0.5; only the volume error
+   falls, 85 times at N = 128, on one rung. The null control passes: projectedFlux and
+   cellCentred agree to 5.0e-12 column-scaled in every column of every row.
+
+6. **`cellCentreInverse` on the signed-distance ellipse and ellipsoid (MEASURED; the first
+   scoring of the shipped delivery on varying curvature).** What existed: the ellipse gate of
+   2026-08-12 to 08-15 (per-face inverse 1.98, cut-cell 1.02, cell mean 1.03, arithmetic 0.97)
+   ran BEFORE `cellCentreInverse` existed (9bb4f9d5, 2026-08-18); the sphere ladder h^1.95
+   against h^1.02 scored the per-face inverse; the ellipsoid gate ran on 2026-08-26 and was never
+   curated; the static gates scored cCI only as a remainder term. What the author remembered is
+   most likely those gates. Added (e089939f): the rows `solverCellCentreInverse` and
+   `solverCellCentreInverseNoK` in `leiaTestMeanCurvature` and the models `cellCentreInverse` and
+   `cellCentreInverseNoK` in `leiaTestCurvatureNoiseGain`, both calling the shipped function and
+   the arithmetic face interpolation. Inert: every old row byte-identical on the circle (N = 128),
+   the sphere (N = 32) and the ellipse (N = 128). The two EXISTING studies re-ran; no new study.
+   Active-face L2 error [1/m]:
+
+   | gate | N | cCI with K | cCI without K | per-face inverse |
+   |---|---|---|---|---|
+   | ellipse, signed distance | 64 / 128 / 256 / 512 | 11.2 / 3.28 / 0.831 / 0.208; orders 1.77, 1.98, 2.00 | identical | 14.2 / 4.32 / 1.12 / 0.279 |
+   | ellipsoid, signed distance | 32 / 50 / 80 / 128 | 0.698 / 0.166 / 0.0571 / 0.0231; fit 50-128: 2.10 | 1.82 / 1.30 / 0.825 / 0.508; fit 1.00 | 0.643 / 0.193 / 0.0689 / 0.0286; fit 2.03 |
+   | ellipsoid, implicit psi | 32 / 50 / 80 / 128 | 1.08 / 0.727 / 0.475 / 0.309; fit 0.91 | 1.84 / 1.48 / 1.10 / 0.685 | 1.19 / 0.728 / 0.468 / 0.308 |
+
+   The pre-registered read-out (the two config headers): the orders PASS on both signed-distance
+   gates; the K-off control is identical in 2D and first order in 3D (the Gaussian term carries
+   the order); not falsified. The gain: G h^2 (linear regime) is 0.618 / 0.651 / 0.673 / 0.647
+   at N = 64 to 512. The criterion of section 7 as PCS 12 applied it (the finest rung and the
+   fitted order; the per-face inverse "passes" with 0.647 and 1.98) is MET with the same numbers.
+   The stricter per-rung form that I pre-registered FAILS at N = 128 (0.6514) and 256 (0.673);
+   the per-face inverse fails it at N = 256 (0.673; 0.6499 at N = 128 is below the limit by
+   1e-4), the arithmetic delivery too (0.670 at N = 256), and only
+   the first-order cell-mean (0.416) and symmetric face-mean (0.467) stay below 0.65. Correction
+   of the same day: I first wrote "every delivery fails it at N = 256"; the knowledge-base
+   writer found the two first-order exceptions. Ellipsoid, signed distance, N = 128: cCI
+   0.838, per-face 0.836, arithmetic 0.834. The implicit psi is first order for every delivery
+   (its foliation is not parallel); its gain per unit psi (0.060) is not comparable with the
+   signed distance. Curated by hand (the finalize rule runs the same scripts):
+   `face_curvature_ladder_ellipse.csv`, `face_curvature_orders_ellipse.*`, `curvature_gain_ellipse.*`,
+   the `_ellipsoid3d_<surface>` tables and figures, `face_curvature_orders_ellipsoid3d_foliation.*`.
+   `make_face_curvature_fig.py` and `make_curvature_gain_table.py` now write one set per
+   `PSI_SURFACE` (they mixed the two psi of the ellipsoid gate in one fit), label the production
+   rows, name the right geometry in the title and write the per-rung ladder. METHOD 4.1, 4.3, 8.1.
+
+7. **Traps, for any session.**
+   - `leiaSetFields` is not idempotent on a non-pristine `0/`: a second call on its own output
+     wrote 0/1 indicator values at the new circle (`alphaEnd` off by 0.46 in a cell, 1.6 %
+     volume). `write_end_reference.py` rebuilds `0/` from `0.org` for its call.
+   - A verification study through the full workflow runs the finalize rule, which overwrote
+     curated figures (`alpha_field_2Dvortex_hex.png`, three velocity-extension figures; restored
+     with `git checkout`). Run verification studies with `--until solve`.
+   - The per-value relative test of `compare_metrics_csv.py` fails on round-off columns
+     (`E_BOUND_ALPHA` <= 1.6e-14, the t = 0 volume rows); read the column-scaled difference.
+
+8. **Open.** (a) The SL treatment of Dirichlet psi data and of a departure point outside the
+   domain (item 3; the SL session). (b) The CFL-1 orders of `kinematicTranslation2D` (0.88,
+   3.49). (c) The cone bound's dependence on a boundary value 0.1 away (the bound is falsified
+   anyway). (d) `3Dtranslation` keeps its own `init_End` with a hardcoded centre and symlinks
+   that `materialize.py` breaks; no study runs it. (e) The circle and sphere face-curvature
+   tables have no cCI rows yet: their studies were not re-run (the sphere inertness rung, N = 32:
+   K-on 0.079, K-off 1.87).

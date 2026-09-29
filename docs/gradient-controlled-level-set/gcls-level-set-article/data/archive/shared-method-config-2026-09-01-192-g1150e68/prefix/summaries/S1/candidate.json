@@ -1,0 +1,29 @@
+{
+  "candidate": "S1",
+  "description": "scalar soft wall S1a (cKappa 1.25, deltaS 0.08, p 5), no velocity extension",
+  "gate": "methodGate2D",
+  "gateFile": "config/gates/methodGate2D.yaml",
+  "line": "semiLagrangian",
+  "preRegistered": true,
+  "rates": {},
+  "smoke": false,
+  "source": "config/candidates/S1.yaml",
+  "target": {
+    "arms": [
+      "shear"
+    ],
+    "metric": "gradientBandError",
+    "ratioToBaselineAtFinest": 0.8
+  },
+  "tokens": {
+    "GC_LAW": "softWall",
+    "GC_STRAIN_WEIGHT": "none",
+    "SL_SOURCE": "gradientControl",
+    "SL_SOURCE_BAND_CELLS": 3,
+    "SW_C_KAPPA": 1.25,
+    "SW_DELTA_S": 0.08,
+    "SW_EPS_D": 0,
+    "SW_GAMMA": 1.4722194895832,
+    "SW_P": 5
+  }
+}

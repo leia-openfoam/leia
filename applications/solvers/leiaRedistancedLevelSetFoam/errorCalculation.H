@@ -35,6 +35,20 @@ volScalarField alpha0
 
 // Open error file for output (same columns as leiaLevelSetFoam.csv /
 // leiaSemiLagrangeLevelSetFoam.csv for cross-solver comparison).
+
+// Say which reference the error metrics use (2026-09-29): psiEnd/alphaEnd when the case has
+// them, otherwise the initial fields, which is right only for a flow that returns. The silent
+// fallback hid a reversed translation for four weeks (STATUS 11.19). Every rank computes the
+// sum (a collective), the master prints; the CSVs do not change.
+{
+    const scalar refDiff = gSumMag(psi0.primitiveField() - psi.primitiveField());
+    Info<< "Error reference: "
+        << (refDiff > 0
+            ? "psiEnd/alphaEnd (the exact end state of the case)"
+            : "the initial fields (valid only for a flow that returns to its start)")
+        << nl << endl;
+}
+
 OFstream errorFile("leiaRedistancedLevelSetFoam.csv");
 
 // CSV Header

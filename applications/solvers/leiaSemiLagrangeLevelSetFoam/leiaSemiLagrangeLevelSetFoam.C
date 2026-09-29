@@ -46,6 +46,7 @@ Description
 #include "velocityModel.H"
 #include "prescribedVelocityModels.H"
 #include "slAdvection.H"
+#include "velocityExtension.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -156,7 +157,40 @@ int main(int argc, char *argv[])
         // are built from the prescribed FLUX instead of the prescribed cell
         // velocity: phi is already rescaled to t^{n+1} above, and the old level
         // is the base flux rescaled to t^n (identity for the steady field).
-        if (traceFromFlux)
+        if (traceFromFlux && traceFluxExtension)
+        {
+            // Both levels with the psi^n geometry. For the reversed flow the
+            // extension of u^n at the old level FIRST, from U and phi set to t^n
+            // with the velocity model's own expression, then U and phi restored
+            // bit for bit to t^{n+1} (the expression of oscillateVelocity) and
+            // the extension of u^{n+1} at the new level. Two evaluations per
+            // step, and the extension object ends the step at t^{n+1}.
+            if (velocityModel->isOscillating())
+            {
+                const scalar tau = velocityModel->tau();
+                const scalar fn = velocityModel->oscillationFactor
+                (
+                    runTime.value() - runTime.deltaT().value(), tau
+                );
+                const scalar fn1 =
+                    velocityModel->oscillationFactor(runTime.timeOutputValue(), tau);
+                phi == phi0Ptr()*fn;
+                U == U0*fn;
+                velExtPtr->correct();
+                UtraceOldPtr() == fvc::reconstruct(velExtPtr->phi());
+                phi == phi0Ptr()*fn1;
+                U == U0*fn1;
+                velExtPtr->correct();
+                UtracePtr() == fvc::reconstruct(velExtPtr->phi());
+            }
+            else
+            {
+                velExtPtr->correct();
+                UtracePtr() == fvc::reconstruct(velExtPtr->phi());
+                UtraceOldPtr() == UtracePtr();
+            }
+        }
+        else if (traceFromFlux)
         {
             UtracePtr() == fvc::reconstruct(phi);
             if (velocityModel->isOscillating())

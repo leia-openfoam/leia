@@ -91,8 +91,9 @@ EULER_STUDIES ?= $(SDPLS_STUDIES) \
 ART_SL := docs/semi-lagrangian-level-set/sl-level-set-article
 ART_LSL := docs/linear-semi-lagrangian-level-set/lsl-level-set-article
 ART_GRL := docs/geometrically-redistanced-levelset/grl-level-set-article
+ART_GCLS := docs/gradient-controlled-level-set/gcls-level-set-article
 
-.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler studies-one print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
+.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-sdpls studies-euler studies-one studies-one-file gate print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl article-gcls comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
 .DEFAULT_GOAL := help
 
 help:
@@ -154,6 +155,31 @@ studies-one:
 	@test -n "$(STUDY)" || { echo "usage: make studies-one STUDY=<name>"; exit 1; }
 	$(GUARD) config/$(STUDY).yaml --profile $(PROFILE)
 	$(SNAKE) --configfile config/$(STUDY).yaml
+
+# Run ONE study from a config FILE (a rendered method-gate arm): the guard, then snakemake.
+# SNAKE_EXTRA passes extra snakemake options (the gate's smoke run stops at aggregate).
+studies-one-file:
+	@test -n "$(CFG)" || { echo "usage: make studies-one-file CFG=<path to a study config>"; exit 1; }
+	$(GUARD) $(CFG) --profile $(PROFILE)
+	$(SNAKE) --configfile $(CFG) $(SNAKE_EXTRA)
+
+# METHOD GATES (CLAUDE.md "Method gates"): one 2D and one 3D study for every level-set method.
+#   make gate GATE=methodGate2D CANDIDATES=baseline+HL1z PROFILE=profiles/slurm
+#   make gate GATE=methodGate2D SMOKE=1 CANDIDATES=baseline PROFILE=profiles/local
+#   make gate GATE=methodGate2D SET="line=semiLagrangian,VELOCITY_EXTENSION=haloLimited"
+# PRESERVE=1 renames the existing studies of the named candidates with a dated suffix
+# first; DRYRUN=1 prints the jobs. The outer workflow runs its rules locally; the arms
+# submit to SLURM through the profile. On Lichtenberg run it inside run-studies.sbatch:
+#   sbatch -J leia-gate2D --export=ALL,TARGET=gate,GATE=methodGate2D,CANDIDATES=baseline run-studies.sbatch
+GATE_CORES ?= $(if $(filter profiles/slurm,$(PROFILE)),16,1)
+# The interpreter of snakemake itself (its shebang): it has yaml and numpy on every host; the
+# first python3 on PATH does not on Lichtenberg (miniconda).
+GATE_PY ?= $(or $(shell sed -n '1s/^\#!//p' $$(PATH=$$HOME/.local/bin:$$PATH command -v snakemake) 2>/dev/null),python3)
+gate:
+	@test -n "$(GATE)" || { echo "usage: make gate GATE=methodGate2D|methodGate3D CANDIDATES=<a+b> [SET=...] [SMOKE=1] [PRESERVE=1] [DRYRUN=1] PROFILE=..."; exit 1; }
+	@$(if $(PRESERVE),$(GATE_PY) workflow/scripts/render_gate_configs.py --gate config/gates/$(GATE).yaml --candidates "$(CANDIDATES)" --set "$(SET)" $(if $(SMOKE),--smoke,) --preserve,true)
+	PATH=$$HOME/.local/bin:$$PATH snakemake -s workflow/Snakefile.gate --cores $(GATE_CORES) --nolock --keep-going \
+	  --config gate=$(GATE) candidates="$(CANDIDATES)" set="$(SET)" smoke=$(SMOKE) profile=$(PROFILE) $(if $(DRYRUN),-n,)
 
 studies-sdpls:
 	@for cfg in $(SDPLS_STUDIES); do echo ">>> $$cfg"; $(GUARD) config/$$cfg.yaml --profile $(PROFILE) && $(SNAKE) --configfile config/$$cfg.yaml; done
@@ -241,7 +267,27 @@ article-lsl:
 article-grl:
 	@command -v latexmk >/dev/null && (cd $(ART_GRL) && latexmk -pdf -interaction=nonstopmode -halt-on-error *.tex) \
 	  || echo "[skip] latexmk not found; install a LaTeX toolchain to build the article PDF"
-articles: article-sl article-lsl article-grl
+# Gradient-controlled level set (docs/gradient-controlled-level-set/): the pre-print of the
+# halo-limited extension and the gradient-control sources.
+article-gcls:
+	@command -v latexmk >/dev/null && (cd $(ART_GCLS) && latexmk -pdf -interaction=nonstopmode -halt-on-error gclsLevelSet.tex) \
+	  || echo "[skip] latexmk not found; install a LaTeX toolchain to build the article PDF"
+articles: article-sl article-lsl article-grl article-gcls
+
+report-gcls: ## technical report on the gradient-control campaign (docs/gradient-controlled-level-set/gcls-technical-report)
+	cd docs/gradient-controlled-level-set/gcls-technical-report && latexmk -pdf -interaction=nonstopmode gclsTechnicalReport.tex
+
+kb: ## knowledge base site: docs/knowledge-base -> build/kb/quartz/public (Quartz v5, Node >= 22; see .quartz/build.sh)
+	bash docs/knowledge-base/.quartz/build.sh
+
+kb-serve: ## build the knowledge base and serve it on http://localhost:8080
+	bash docs/knowledge-base/.quartz/build.sh --serve
+
+kb-graph: ## check the vault and regenerate graph3d/graph.json; prints the local preview command
+	python3 docs/knowledge-base/.quartz/check_kb.py docs/knowledge-base
+	python3 docs/knowledge-base/.quartz/build_graph.py docs/knowledge-base
+	@echo "python3 -m http.server -d docs/knowledge-base 8000   # then open http://localhost:8000/graph3d/graph.htm?local=1"
+
 
 docs: decks articles
 

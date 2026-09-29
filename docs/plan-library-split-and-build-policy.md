@@ -3,7 +3,7 @@
 Per-clone binaries, version stamps in every library, and the split of
 `libleiaLevelSet` into a core and seven method libraries. Working document for a
 coding agent -- **v0.1**, 2026-09-22, written from the question series of that
-day. Style: ASD-STE100. Nothing in this document has been executed.
+day. Style: ASD-STE100. Nothing in this document has been executed. (CORRECTED 2026-09-28: executed 2026-09-23, see STATUS section 10)
 
 Scope: how leia is built and installed on the laptop and on Lichtenberg, and how
 the library is cut. Out of scope: any change to a numerical method, any study

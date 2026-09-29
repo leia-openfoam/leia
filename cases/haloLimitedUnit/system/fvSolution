@@ -1,0 +1,40 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | Web:      www.OpenFOAM.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+
+solvers
+{
+}
+
+levelSet
+{
+    // The sampler reuses the semi-Lagrangian quadratic fit and its stencil options.
+    semiLagrangian
+    {
+        reconstruction  uncachedQuadraticWeightedLeastSquares;
+    }
+
+    velocityExtension
+    {
+        type          haloLimited;
+        radiusCells   1;
+        travel        { type capped;          m    2; }
+        weight        { type fractionReached; beta 1; }
+        direction     { type levelSet; }
+        sampler       { type stencilFit; }
+    }
+}
+
+// ************************************************************************* //

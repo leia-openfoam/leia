@@ -47,6 +47,7 @@ Foam::slAdvection::slAdvection(const fvMesh& mesh)
     corrector_(slCorrector::New(mesh, slDict_)),
     CFLmax_(slDict_.getOrDefault<scalar>("CFLmax", 1.0)),
     analyticVelocity_(slDict_.getOrDefault<Switch>("analyticVelocity", true)),
+    source_(slSource::New(mesh)),
     scheme_(slScheme::New(mesh))
 {
     // Optional dedicated GEOMETRY fit (see slAdvection.H). Absent dict or the
@@ -99,6 +100,15 @@ void Foam::slAdvection::advect
     // Delegate to the runtime-selected scheme (pointValue | fluxForm); both
     // reuse this object's reconstruction and correction strategy.
     scheme_->advance(psi, Unew, Uold, recon_(), corrector_());
+
+    // The source step on the arrival field (inert `none`: not called).
+    if (source_->active())
+    {
+        source_->apply
+        (
+            psi, Unew, geom(), mesh_.time().deltaTValue()*scheme_->dtScale()
+        );
+    }
 }
 
 

@@ -328,6 +328,17 @@ were logged as 11 "divergences", including the `euler` baseline at N=32, which
 cannot fail for physical reasons. Infrastructure faults must never enter the
 record as physics.
 
+**A dead rank must end the step: `--kill-on-bad-exit=1` (2026-09-27).** When one rank of an
+`srun` step dies (a floating-point exception is the usual end of a diverged run), `srun`
+kept the step alive by default and the other ranks waited in MPI until the job time limit.
+The solve rule records a divergence only AFTER `srun` returns, so the result was not written
+and the case held its cores. MEASURED on `methodGate2D` (orchestrator 55044205): 20 diverged
+cases held 4 cores each for more than an hour. The launcher now carries
+`--kill-on-bad-exit=1`. A case that hangs this way under an older profile is released by
+cancelling ONLY its solver step, `scancel <jobid>.1` (step `.0` is snakemake's wrapper): `srun`
+then returns and the rule records the divergence. Never cancel the whole job for this: the
+rule then fails and snakemake deletes the case's CSV.
+
 Measured on `sdplsStability` (18 parallel np=4 cases, one command):
 
 | launcher | solver CSVs produced |
@@ -495,7 +506,8 @@ that verifying the solver binary is not enough; check the library too, with
 prints the stamp of every loaded leia library in its banner, `leia library <lib> :
 <git describe[-dirty]>`, and writes the same lines to `<case>/leia.version`, which the
 aggregator carries as the `libStamps` column next to `gitCommit`. Since the split of 2026-09-23 (WP3: `libleiaCore` and seven method libraries, each
-with its own stamp) a solver banner lists eight such lines; they name the same commit
+with its own stamp; `libleiaGradientControl` is the ninth library since 2026-09-26) a solver banner lists one
+such line per leia library it loads; they name the same commit
 when the clone was built as one, and a lone different line marks a library that was
 rebuilt from another tree.
 

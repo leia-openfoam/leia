@@ -37,6 +37,49 @@ if (slTraceVelocity != "cellCentred" && slTraceVelocity != "projectedFlux")
         << "'. Valid: cellCentred, projectedFlux." << exit(FatalError);
 }
 const bool traceFromFlux = (slTraceVelocity == "projectedFlux");
+
+// Which face flux the projectedFlux trace reconstructs (2026-09-26):
+//   physical  (default) reconstruct(phi), byte-identical to every earlier run;
+//   extension reconstruct(phiExt) of the selected velocityExtension model, so a
+//             velocity extension enters the semi-Lagrangian trace.
+// This solver uses a velocity extension ONLY through `traceFlux extension`.
+const word slTraceFlux
+(
+    static_cast<const fvSolution&>(mesh).subDict("levelSet")
+        .subOrEmptyDict("semiLagrangian")
+        .getOrDefault<word>("traceFlux", "physical")
+);
+if (slTraceFlux != "physical" && slTraceFlux != "extension")
+{
+    FatalErrorInFunction
+        << "levelSet.semiLagrangian.traceFlux = '" << slTraceFlux
+        << "'. Valid: physical, extension." << exit(FatalError);
+}
+const bool traceFluxExtension = (slTraceFlux == "extension");
+if (traceFluxExtension && !traceFromFlux)
+{
+    FatalErrorInFunction
+        << "traceFlux extension needs traceVelocity projectedFlux." << exit(FatalError);
+}
+if
+(
+    !traceFluxExtension
+ && static_cast<const fvSolution&>(mesh).subDict("levelSet")
+        .subOrEmptyDict("velocityExtension")
+        .getOrDefault<word>("type", "none") != "none"
+)
+{
+    WarningInFunction
+        << "levelSet.velocityExtension selects a model, but this solver uses a"
+        << " velocity extension only with levelSet.semiLagrangian.traceFlux"
+        << " extension: the model does NOT enter this run." << nl << endl;
+}
+autoPtr<velocityExtension> velExtPtr;
+if (traceFluxExtension)
+{
+    velExtPtr = velocityExtension::New(mesh);
+    velExtPtr->correct();
+}
 autoPtr<volVectorField> UtracePtr;
 autoPtr<volVectorField> UtraceOldPtr;
 if (traceFromFlux)
@@ -74,6 +117,20 @@ volScalarField alpha0
     ),
     alpha
 );
+
+
+// Say which reference the error metrics use (2026-09-29): psiEnd/alphaEnd when the case has
+// them, otherwise the initial fields, which is right only for a flow that returns. The silent
+// fallback hid a reversed translation for four weeks (STATUS 11.19). Every rank computes the
+// sum (a collective), the master prints; the CSVs do not change.
+{
+    const scalar refDiff = gSumMag(psi0.primitiveField() - psi.primitiveField());
+    Info<< "Error reference: "
+        << (refDiff > 0
+            ? "psiEnd/alphaEnd (the exact end state of the case)"
+            : "the initial fields (valid only for a flow that returns to its start)")
+        << nl << endl;
+}
 
 // Open error file for output
 OFstream errorFile("leiaSemiLagrangeLevelSetFoam.csv");

@@ -1,0 +1,53 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2512                                 |
+|   \\  /    A nd           | www.openfoam.com                                |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvOptions;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Semi-implicit (Hysing / Raessi / SAAMPLE sec. 3.4) capillary term in the
+// momentum predictor -- the linearisation of the SAME balanced CSF force about
+// the interface position at t^{n+1}. See
+// src/leiaLevelSet/fvOptions/semiImplicitCapillaryForce.H for the derivation,
+// the two forms and their consistent outer-loop pairings:
+//
+//   off        -- the historical fully explicit force. addSup returns without
+//                 touching the matrix, verified bit-identical.
+//   value      -- SAAMPLE arrangement: implicit sigma*dt*Lap_Gamma(u^{n+1})
+//                 with deferred projector corrections. Pairs with the FROZEN
+//                 interface (PIMPLE.psiOuterCorrectors no). The term remains
+//                 in the converged equation: stabilises AND dissipates.
+//   increment  -- deferred Jacobian on the outer-loop increment. Vanishes to
+//                 round-off at outer-loop convergence (no dissipation in the
+//                 converged equation). Pairs with the interface IN the loop
+//                 (PIMPLE.psiOuterCorrectors yes) + residual-controlled outer
+//                 iterations, where it is the preconditioner of the Picard
+//                 iteration on the coupled capillary system.
+//
+// The coefficient is coeff*sigma*dt*|snGrad(alpha)|_f -- the same discrete
+// object GSigma differences, so damping support == force support. It is a
+// linearisation, not a filter: proportional to (an increment of) U, vanishing
+// identically at the Young-Laplace equilibrium.
+semiImplicitCapillary
+{
+    type            semiImplicitCapillaryForce;
+    fields          (U);
+    form            @!SEMI_IMPLICIT_CAPILLARY!@;
+    coeff           @!SEMI_IMPLICIT_CAPILLARY_COEFF!@;
+    laplaceBeltrami @!SEMI_IMPLICIT_LB!@;
+    alphaName       alpha.water;
+    kappaName       kappa;
+    nHatName        nHatFit;
+    diagnostics     true;
+}
+
+// ************************************************************************* //

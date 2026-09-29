@@ -1,5 +1,10 @@
 # Combined source terms: `sdplsCombined` model and note corrections
 
+> **SUBSUMED 2026-09-26 by `docs/plan-halo-limited-gradient-control.md`.** `sdplsCombined` is not
+> implemented as its own class. The same source is the `gradientControl` source with law
+> `linearQ` and strain weight `full`, and its required rate is the law entry `mu`. The note
+> corrections of this brief are still open.
+
 Implementation brief for Claude Code. Repo root: `~/OpenFOAM/repos/leia` (this repo).
 Read `docs/IMPROVEMENTS.md` first for global rules, notation, and file ownership.
 

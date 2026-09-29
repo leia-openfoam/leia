@@ -11,9 +11,13 @@ TWO THINGS IT REFUSES TO DO.
 
 1. It does NOT plot against MAX_CELL_SIZE. That token is a PIN, not a mesh size: cfMesh
    treats it as a request and the mesh it returns has its own spacing. The effective
-   spacing comes from the cell count, h_eff = (V_domain/nCells)^(1/3), read from the mesh
-   itself, and the order is computed against that. A ladder plotted against a request is
-   not a ladder.
+   spacing comes from the cell count, h_eff = (V_domain/nCells)^(1/d), read from the mesh
+   itself, with d the case dimension from case_params.json, and the order is computed
+   against that. A ladder plotted against a request is not a ladder.
+
+   RETRACTED 2026-09-26: this script used the exponent 1/3 for EVERY case. For a 2D case
+   with N^2 cells that gives h_eff = N^(-2/3) instead of N^(-1), so every published 2D
+   order was 3/2 of the true value (METHOD.md section 8.3.7; the advConv2D* tables).
 
 2. It does NOT report L_inf. L_INF_E_PSI does not converge for these cases and a verdict
    built on it had to be retracted. The geometric error, the volume error and the
@@ -96,15 +100,17 @@ def main():
             pj = os.path.join(d, "case_params.json")
             if not os.path.exists(pj):
                 continue
-            t = json.load(open(pj))["tokens"]
+            meta = json.load(open(pj))
+            t = meta["tokens"]
             nc = ncells(d)
+            dims = int(meta.get("dims") or 3)
             arms.append(dict(
                 dir=d, study=s,
                 bound=t.get("SL_VALUE_BOUND", "?"),
                 lmode=t.get("SL_CONE_L_MODE", "?"),
                 pin=t.get("N_CELLS") or t.get("MAX_CELL_SIZE") or "?",
                 nCells=nc,
-                heff=(1.0 / nc ** (1.0 / 3.0)) if nc else None,   # unit-box domain
+                heff=(1.0 / nc ** (1.0 / dims)) if nc else None,   # unit-box domain
                 state=state(d, a.solver), rows=rows(d, a.solver)))
 
     if not arms:

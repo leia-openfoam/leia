@@ -1,3 +1,19 @@
+# ----------------------------------------------------------------------------
+# RE-RUN 2026-09-29 with the ONE-WAY case (oscillation off, psiEnd/alphaEnd, exact boundary data;
+# f94e2a4a). Every earlier run of this study was a REVERSED translation (cos(pi t/tau), the circle
+# returned at T; STATUS 11.19): its numbers, and any RESULT text below that quotes them, are VOID.
+# VOID TOO (2026-09-29, second): the re-run above had the exact psi value on the OUTFLOW patch,
+# which made the SL update unstable at the outflow edge (the default arm: 4.5e5 at T at N = 256,
+# 96 false zero-set cells). Its trees are *_VOID_outflowDirichlet_20260929. The next re-run has
+# zeroGradient on the outflow patch and the exact value on the inflow and no-flow patches.
+# VOID TOO (2026-09-29, third): the second re-run had the exact psi value on the INFLOW patch,
+# which made the SL update unstable at CFL 1 (the departure point of the first cell column lies
+# outside the domain; E_GEOM_ALPHA_REL 1.79 at N = 128). Its trees are
+# *_VOID_inflowDirichlet_20260929. The next re-run has zeroGradient on all four patches.
+# The mesh of the four advect_bound_arm.sh arms of METHOD 8.3.4 (none, cone unity, cone stencil,
+# stencilBounds) on one shared N = 64 mesh. The question stands: is the cone bound worse than none
+# on uniform translation, where L = 1 is exact? (The earlier 2.3-3.6x worse is void.)
+# ----------------------------------------------------------------------------
 study_name: coneBoundMesh2Dtranslation
 case: 2Dtranslation
 mesh: hex

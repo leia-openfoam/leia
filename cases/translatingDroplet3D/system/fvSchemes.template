@@ -94,6 +94,14 @@ gradSchemes
     // grad(psi): a cell-limited gradient returns exactly 0 at a local
     // extremum, which the metric then reports as |grad psi| = 0.
     gradPsiMetric   leastSquares;
+    // Gradient-control source (semiLagrangian.source gradientControl): q = |grad psi|
+    // of the arrival field, and the strain of the trajectory velocity. Read only by
+    // that source (2026-09-26).
+    gradPsiSource   leastSquares;
+    gradUSource     Gauss linear;
+    // Halo-limited extension (velocityExtension haloLimited): the gradient of psi that
+    // gives the direction e = grad(psi)/q. Read only by that model (2026-09-26).
+    gradPsiExtension leastSquares;
     // SDPLS source-term gradients: dedicated keywords (see single-phase cases).
     gradPsiSdpls    leastSquares;
     gradUSdpls      Gauss linear;

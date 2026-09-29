@@ -1,0 +1,23 @@
+VERDICT FAIL: candidate FP0 against baseline
+FAIL completion: stationary N=200 is RUNNING where the baseline COMPLETED
+FAIL completion: translating N=142 is DIVERGED where the baseline COMPLETED
+FAIL completion: translating N=200 is DIVERGED where the baseline COMPLETED
+FAIL completion: oscillating N=142 is STALLED where the baseline COMPLETED
+FAIL completion: oscillating N=200 is STALLED where the baseline COMPLETED
+FAIL regression: shear shapeError at N=136: 0.02118 vs baseline 0.0006188
+FAIL regression: shear volumeErrorHalf at N=136: 0.0244 vs baseline 0.007402
+FAIL regression: translating volumeErrorHalf at N=200: 0.004139 vs baseline 0.0003635
+FAIL order: shear shapeError order 1.38 vs baseline 3.07
+FAIL order: stationary shapeError order 0.06 vs baseline 2.82
+FAIL order: stationary gradientBandError order -8.39 vs baseline 2.08
+FAIL order: stationary volumeError order -3.62 vs baseline 5.48
+FAIL order: stationary volumeErrorHalf order -17.65 vs baseline 3.43
+FAIL order: stationary pressureJumpError order -3.15 vs baseline 2.02
+FAIL order: stationary curvatureError order -1.33 vs baseline 1.94
+FAIL order: translating volumeErrorHalf order -0.68 vs baseline 0.88
+FAIL target: shear gradientBandError ratio 0.939 > 0.8
+FAIL seam: seamNp1 gradPsiError.csv NARROW_MIN_MAG_GRAD_PSI 0.44517409485446496
+FAIL seam: seamNp1 leiaSemiLagrangeLevelSetFoam.csv E_VOL_ALPHA_REL 0.30260732204952806
+FAIL seam: seamNp8 gradPsiError.csv MIN_MAG_GRAD_PSI 0.4782737391691168
+FAIL seam: seamNp8 leiaSemiLagrangeLevelSetFoam.csv E_VOL_ALPHA 0.21912308292828897
+FAIL seam: translatingSeamNp1 leiaSemiLagrangianLevelSetTwoPhaseFoam.csv pLaplace 1.1145011538030405

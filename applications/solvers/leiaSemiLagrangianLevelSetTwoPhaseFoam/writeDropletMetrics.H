@@ -69,18 +69,22 @@
     scalar m2SumCos = 0, m2SumSin = 0;
     scalar m2SumCos2 = 0, m2SumCosSin = 0, m2SumSin2 = 0;
     scalar m2SumDr = 0, m2SumDrCos = 0, m2SumDrSin = 0;
-    forAll(fnei, f)
+    // One crossing: the owner value and centre, the neighbour value, and the
+    // vector from the owner centre to the neighbour centre.
+    auto addCrossing = [&]
+    (
+        const scalar psiOwn,
+        const scalar psiNei,
+        const point& centreOwn,
+        const vector& ownToNei
+    )
     {
-        const label own = fown[f];
-        const label nei = fnei[f];
-        const scalar psiOwn = psi[own];
-        const scalar psiNei = psi[nei];
         if (psiOwn*psiNei > 0 || mag(psiOwn - psiNei) < VSMALL)
         {
-            continue;
+            return;
         }
         const scalar lambda = psiOwn/(psiOwn - psiNei);
-        const point crossing = centres[own] + lambda*(centres[nei] - centres[own]);
+        const point crossing = centreOwn + lambda*ownToNei;
         const vector radial = crossing - expectedCentroid;
         const scalar crossingRadius = mag(radial);
         const scalar signedRadialError = crossingRadius - dropletR;
@@ -102,6 +106,37 @@
             m2SumDr += signedRadialError;
             m2SumDrCos += signedRadialError*cosMode2;
             m2SumDrSin += signedRadialError*sinMode2;
+        }
+    };
+    forAll(fnei, f)
+    {
+        const label own = fown[f];
+        const label nei = fnei[f];
+        addCrossing(psi[own], psi[nei], centres[own], centres[nei] - centres[own]);
+    }
+    // Crossings on PROCESSOR faces, counted once (on the owner side of the
+    // patch): a serial run sees these faces as internal faces. With internal
+    // faces alone the sample, and every statistic below, depended on the
+    // decomposition. MEASURED 2026-09-27 (translating droplet, N = 100, to
+    // t = 0.05): zeroSetRadialL2 3.4 % apart between serial and np 4 on fields
+    // equal to 1e-8. delta() is the owner-to-neighbour centre vector.
+    forAll(mesh.boundary(), patchi)
+    {
+        const fvPatch& fvp = mesh.boundary()[patchi];
+        if
+        (
+            !isA<processorFvPatch>(fvp)
+         || !refCast<const processorFvPatch>(fvp).procPolyPatch().owner()
+        )
+        {
+            continue;
+        }
+        const labelUList& fc = fvp.faceCells();
+        const scalarField psiNeiP(psi.boundaryField()[patchi].patchNeighbourField());
+        const vectorField ownToNeiP(fvp.delta());
+        forAll(fc, i)
+        {
+            addCrossing(psi[fc[i]], psiNeiP[i], centres[fc[i]], ownToNeiP[i]);
         }
     }
     reduce(zeroSetCount, sumOp<scalar>());
@@ -191,12 +226,40 @@
     // curvature degrades before or after the spurious currents grow.
     const surfaceScalarField snA(fvc::snGrad(alpha1));
     const scalarField& snIi = snA.primitiveField();
-    const scalar snMx = max(gMax(mag(snIi)), VSMALL);
-    const volScalarField magGradPsi(mag(fvc::grad(psi)));
+    // The threshold and the band use the internal faces AND the processor
+    // faces (internal faces of a serial run), so the band cell set does not
+    // depend on the decomposition (2026-09-27; kErrL2Band 7.6 % and
+    // gradPsiL2ErrorBand 3.8 % apart between serial and np 4 before).
+    scalar snMxAll = snIi.size() ? max(mag(snIi)) : scalar(0);
+    forAll(mesh.boundary(), patchi)
+    {
+        if (isA<processorFvPatch>(mesh.boundary()[patchi]) && snA.boundaryField()[patchi].size())
+        {
+            snMxAll = max(snMxAll, max(mag(snA.boundaryField()[patchi])));
+        }
+    }
+    reduce(snMxAll, maxOp<scalar>());
+    const scalar snMx = max(snMxAll, VSMALL);
+    // The METRIC gradient: the unlimited gradPsiMetric scheme that every two-phase
+    // fvSchemes template defines for exactly this use. FIXED 2026-09-26: this line used
+    // fvc::grad(psi), i.e. the advection scheme's cellLimited leastSquares, which returns
+    // exactly 0 at a local extremum and so biased min/max/L2 |grad psi| in the band.
+    const volScalarField magGradPsi(mag(fvc::grad(psi, "gradPsiMetric")));
     boolList bnd(mesh.nCells(), false);
     forAll(snIi, f)
     {
         if (mag(snIi[f]) > 1e-8*snMx) { bnd[fown[f]] = true; bnd[fnei[f]] = true; }
+    }
+    forAll(mesh.boundary(), patchi)
+    {
+        const fvPatch& fvp = mesh.boundary()[patchi];
+        if (!isA<processorFvPatch>(fvp)) { continue; }
+        const scalarField& snP = snA.boundaryField()[patchi];
+        const labelUList& fc = fvp.faceCells();
+        forAll(fc, i)
+        {
+            if (mag(snP[i]) > 1e-8*snMx) { bnd[fc[i]] = true; }
+        }
     }
     scalar bV = 0, bs2 = 0, kLinf = 0;
     scalar gMinBand = GREAT, gMaxBand = -GREAT, gErrS2 = 0;
@@ -272,6 +335,27 @@
         {
             if (mag(snIi[f]) <= 1e-8*snMx) { continue; }
             wSum += aSf[f]; wK += aSf[f]*kf[f]; wK2 += aSf[f]*kf[f]*kf[f];
+        }
+        // Processor faces once, on the owner side (internal faces of a serial run).
+        forAll(mesh.boundary(), patchi)
+        {
+            const fvPatch& fvp = mesh.boundary()[patchi];
+            if
+            (
+                !isA<processorFvPatch>(fvp)
+             || !refCast<const processorFvPatch>(fvp).procPolyPatch().owner()
+            )
+            {
+                continue;
+            }
+            const scalarField& snP = snA.boundaryField()[patchi];
+            const scalarField& kfP = kappaF.boundaryField()[patchi];
+            const scalarField& aP = mesh.magSf().boundaryField()[patchi];
+            forAll(snP, i)
+            {
+                if (mag(snP[i]) <= 1e-8*snMx) { continue; }
+                wSum += aP[i]; wK += aP[i]*kfP[i]; wK2 += aP[i]*kfP[i]*kfP[i];
+            }
         }
         reduce(wSum, sumOp<scalar>()); reduce(wK, sumOp<scalar>());
         reduce(wK2, sumOp<scalar>());

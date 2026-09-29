@@ -1,5 +1,11 @@
 # plan-combined-source-terms.md
 
+> **SUBSUMED 2026-09-26 by `docs/plan-halo-limited-gradient-control.md`.** The combined source
+> F = a + lambda(1 - |grad psi|) of WP2 is the `gradientControl` source with law `linearQ` and
+> strain weight `full`. WP3's `slSource` hierarchy composed in `slAdvection` is adopted there,
+> with one law family shared by the Eulerian and the semi-Lagrangian consumers. The measured
+> facts of section 0 stay valid and binding.
+
 Implementation and gating plan for the zero-level-set-preserving **combined
 source term**
 
