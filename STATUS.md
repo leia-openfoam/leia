@@ -3521,3 +3521,77 @@ Table 2's), the repeated sentences in WP2, WP3 and the timeline, and shorter cap
 **Open (agreed).** The remaining question Tomislav wants to discuss next: the q = 2 update itself
 (which candidate, and whether to show a one-step result before submission). Then the 25 September
 items outside WP1.
+
+### 10.11 DAVOF static gate 2: the curvature of the DAVOF state on an ellipsoid, measured (2026-09-29)
+
+**What.** The curvature of the DAVOF state as run-time-selectable models inside
+`libleiaDavof` (`src/leiaLevelSet/davof/curvature`, `fvSolution davof.curvature`,
+nothing in the level-set libraries): `quadricFit` fits, per interface cell, a
+quadric graph in the frame of `n_c = m_c/|m_c|` about the plane-polygon centroid
+to the Hermite data of the point-neighbour ring (OpenFOAM's `CPCCellToCellStencil`,
+gathered for the interface cells only, parallel-aware), two slope rows per
+neighbour from its normal and one position row from its centroid weighted by
+`positionWeight` (0 = the normals decide the second derivatives, the headline
+model `normalsOnly`; 1 = the naive Hermite fit, `hermite`). Convention
+`kappa = kappa_1 + kappa_2 = div(n)`; also `K`, `kappa1`, `kappa2`. Delivery
+(`davofCurvatureDelivery.H`) with the parallel-surface closed form of the
+level-set solver, because the interface centroid is neither the cell centre nor
+a face centre: the contour-referenced cell field on the force band by the forward
+map `kappa(d) = (kappa + 2dK)/(1 + d kappa + d^2 K)` at the cell centre's offset
+(the stable quadratic root of the normal-projected SL note), the face field by
+`interpolate(kappaCell)` and `parallelSurfaceInverse(kappa_f, d_f, K_f)` (copied
+verbatim from `stabilizedFootPointFaceCurvature.H`), next to the models' own foot
+value; packed models cross coupled patches by `syncTools::swapBoundaryFaceList`.
+`leiaTestDavofNormal` scores every model against the exact geometry
+(`signedDistanceEllipsoid`: total curvature at the closest point, the Gaussian
+curvature from the axes; `implicitSphere` 2/R; `implicitPlane` 0), writes
+`leiaTestDavofCurvature.csv` and the headline columns into the wide and the
+models CSV; `-expectExact` gates `E_KAPPA_LINF h` at round-off. New study
+`config/davof/ellipsoidNormal3D.yaml` (half-axes 1.0/0.8/0.6 mm, the sphere
+gate's centre, N = 20..160, states quadraticFaces / detrixheAslam /
+planePhaseIndicator, the geometricVoF cross-check), PREDICTION 5 in its header.
+`make_davof_normal_table.py` carries the curvature metrics, the series
+`davof:curv:<model>` and the compact proposal table with `p(kappa)` and the
+relative error (the p(A) column dropped).
+
+**Measured (the config header has the full record).**
+
+| state | p(n) L2 / L1 | p(x) | p(kappa) L2, pairwise | rel. L2(kappa) at N = 160 | p(K) / cell / face |
+|---|---|---|---|---|---|
+| quadraticFaces | 1.78 / 1.96 | 2.00 | 1.55 (1.91, 1.54, 1.21) | 4.55e-3 | 1.59 / 1.36 / 1.63 |
+| detrixheAslam | 1.00 / 1.05 | 2.04 | 1.31 (1.88, 1.34, 0.70) | 6.75e-3 | 1.23 / 1.25 / 1.38 |
+| planePhaseIndicator | 1.12 / 1.14 | 2.01 | 1.28 (1.93, 1.36, 0.53) | 8.60e-3 | 1.28 / 1.18 / 1.35 |
+
+plicRDF on the identical alpha: 1.10 (5.36e-3 at N = 160, 18x the quadratic-face
+DAVOF error 3.01e-4), position 2.00; gradAlpha 0.10; isoAlpha 0.65. Area order
+2.00 for every state. `hermite` within 3 % of `normalsOnly` everywhere.
+
+**Against PREDICTION 5.** HELD: quadraticFaces normal second order in L1 and
+position second order; curvature at least first order with the relative error
+inside the predicted 2e-3..8e-3 at N = 160; K, cell and face deliveries at the
+same orders; plane gate at round-off; np-4 = serial. MISSED by 0.02: the L2
+order of the quadratic-face normal (1.78 against the 1.8 threshold) -- 47 of
+18642 interface cells (0.25 %) carry e > 2e-3 and set the rms (1.72e-4 without
+them); the L1 order is 1.96. ABOVE the predicted band: the curvature order
+(1.55 against 1.0 +- 0.3, pre-asymptotic, the finest pair 1.21). FALSIFIED (two):
+(a) the curvature of the q = 1 states converges (1.31 and 1.28, criterion
+"> 0.5"), 1.5x less accurately than q = 2 at N = 160 and slowing at the finest
+pair (0.70 against 1.21) -- the chord state's O(h) normal error is smooth along
+the interface, so its surface gradient is O(h)/R, not O(1); the curvature
+separates the fraction orders LESS sharply than the normal does (1.00 against
+1.78), the opposite of the pre-registered claim; (b) the naive Hermite fit shows
+no point-fit floor: in the joint least squares the two slope rows per neighbour
+(leverage U) outweigh the one position row (leverage U^2/2), so the centroids
+barely move the second derivatives; a floor would need positions alone.
+
+**Operational.** With the geometricVoF cross-check a case needs 1.2 GB at
+N = 80 and about 9 GB at N = 160 (0.62 GB at N = 80 without it): the ellipsoid
+study runs ONE case at a time (`scratch/run-study-ellipsoid.sh`, `--jobs 1`);
+the first run with three concurrent N = 160 cases was OOM-killed, and the ring
+data were then still gathered for all 4.1e6 cells (6 GB) -- now the stencil
+lists of non-interface cells are cleared before the map is built. WSL shuts the
+distro down when no session is open, which killed a detached (`nohup &`) run
+mid-ladder: long runs go through an attached session. The Snakefile edit is one
+line (the curvature CSV in the `_preprocess` rm list; `git diff`), the sphere
+study re-renders its tables unchanged apart from the new column layout.
+Commits: the library and app, the study and docs, this record.

@@ -121,14 +121,16 @@ theme `davof` -> `docs/davof/davof-article/data/` (README section "DAVOF").
 `libleiaDavofInterface` writes the PLIC surfaces (VTK, `sampledSurface`
 `davofInterface`); `make davof-proposal DEST=...` exports the proposal's table
 and figures (README section "DAVOF").
-Open DAVOF points (2026-09-29): the ellipsoid arm of the static ladder
-(`signedDistanceEllipsoid` exists; the app lacks its exact area, and the
-exact-fraction source is sphere-only, `quadraticFaces` stands in); curvature
-of the DAVOF state as run-time-selectable models in `libleiaDavof`
-(`fvSolution.davof.curvature`, NOT in the level-set libraries; pre-registered
-orders: 1 with q = 2 sources, 0 with q = 1 sources); the zero-step regeneration
-and one-step translation gates. The list with predictions lives in the proposal
-package (`research/projects/2026-DFG-AVOF/AGENTS.md`) and in STATUS.md 10.10.
+Curvature of the DAVOF state: run-time-selectable models in `libleiaDavof`
+(`src/leiaLevelSet/davof/curvature`, `fvSolution davof.curvature`, NOT in the
+level-set libraries), delivered to cells and faces with the parallel-surface
+closed form; measured on the ellipsoid ladder `config/davof/ellipsoidNormal3D.yaml`
+(STATUS 10.11; the config header records prediction 5 and what held, missed
+and was falsified). That study needs 9 GB per N = 160 case: ONE case at a time
+(`--jobs 1`); a detached (`nohup &`) run dies when the last WSL session closes,
+so long runs go through an attached session. Still open: the zero-step
+regeneration and one-step translation gates (the proposal package's
+`research/projects/2026-DFG-AVOF/AGENTS.md` lists them).
 `mesh: hexRefined | polyRefined` = statically refined around the interface by
 `workflow/scripts/leiaRefineHexMesh.py` / `leiaRefinePolyMesh.py` in the `mesh`
 rule (pre-processing only, solver unchanged, fields re-initialised on the final
