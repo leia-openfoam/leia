@@ -5,7 +5,9 @@
 # vortex's `oscillation` line, so the velocity model's default multiplied U by cos(pi t/tau)
 # and the circle came back at T; the metrics compared T with the initial fields. The fix:
 # OSCILLATION off, END_REFERENCE translate (psiEnd/alphaEnd from write_end_reference.py), the
-# exact signed distance on all four patches (0.org/psi). STATUS 11.19.
+# exact signed distance on the inflow and no-flow patches, zeroGradient on the outflow patch
+# (0.org/psi; the first version put the exact value on all four patches, see VOID below).
+# STATUS 11.19.
 #
 # PREDICTIONS (N = 64, CFL 0.5, END_TIME 0.5, the SL kinematic solver):
 #   1. U = (1 0 0) at every write time (no cos factor).
@@ -30,6 +32,22 @@
 #   7. np 4 against serial: the largest column-scaled difference 2.7e-12 (E_VOL_ALPHA); the
 #      per-value relative test flags only entries at round-off (E_BOUND_ALPHA <= 1.5e-14 in
 #      both runs, the t = 0 volume rows near 1e-14).
+#
+# VOID (2026-09-29, second): the RESULT above ran with the exact value on the OUTFLOW patch
+# (right) too. That boundary data made the SL update unstable at the outflow edge: the SL fit
+# reads the patch value as a stencil datum (SL_STENCIL_BOUNDARY_FACES include), and the edge
+# error of the default arm grew by a factor of about 1.1 per step; at N = 256 it reached 4.5e5
+# at T (advConv2Dtranslation). At N = 64 the growth was still small, but the setup was wrong, so
+# every line of that RESULT is void. The runs are renamed *_VOID_outflowDirichlet_20260929.
+#
+# RE-RUN 2, PRE-REGISTERED before the run (2026-09-29): psi zeroGradient on the outflow patch.
+# Lines 1 to 5 and 7 as above. Line 6 changes, line 8 is new:
+#   6. The boundary psi equals the exact signed distance on every left, top and bottom face at
+#      t = 0 and at T, to 1e-12; every right face carries the value of its boundary cell.
+#   8. The outflow edge is stable: the largest |psi - psi_exact| over the cells next to a patch
+#      is below 2e-2 at T and at most 1.5 times its value at the write time near t = 0.25.
+#      (The discriminating probe, serial N = 128: 4.8e-3 at t = 0.25 and 3.6e-3 at T.)
+# FAILED if any line fails.
 # ============================================================================
 study_name: translationRepairGate2Dpar4
 case: 2Dtranslation

@@ -153,7 +153,8 @@ levelSet
     // Bulk interface: circle of radius 0.15 centred at (0.25, 0.5). Starting
     // upstream of centre so that at END_TIME 0.5 it has travelled to x = 0.75
     // -- 1.67 diameters, 3.3 radii -- with its far edge at 0.90, 0.10 clear of the
-    // outlet. The exact boundary values of 0.org/psi use the same centre, radius and
+    // outlet. The exact inflow and no-flow boundary values of 0.org/psi (the outflow
+    // patch is zeroGradient) use the same centre, radius and
     // velocity: keep the three in agreement.
     implicitSurface
     {

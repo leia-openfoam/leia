@@ -18,12 +18,19 @@ dimensions      [0 1 0 0 0 0 0];
 
 internalField   uniform 0;
 
-// EXACT BOUNDARY DATA of the one-way translation (2026-09-29). The exact solution is the
-// signed distance of the translated circle, psi(x, t) = |x - c - U t| - R, with
-// c = (0.25 0.5), U = (1 0 0), R = 0.15: the implicitSphere and velocityModel blocks of
-// system/fvSolution (keep them in agreement). With zeroGradient the inflow region behind
-// the circle (x < t) froze at psi0(0, y) and spoiled the global gradient metrics. Valid for
-// the signedDistance profile only, the case's only profile.
+// BOUNDARY DATA of the one-way translation (2026-09-29). The exact solution is the signed
+// distance of the translated circle, psi(x, t) = |x - c - U t| - R, with c = (0.25 0.5),
+// U = (1 0 0), R = 0.15: the implicitSphere and velocityModel blocks of system/fvSolution
+// (keep them in agreement). Valid for the signedDistance profile only, the case's only profile.
+//   left (inflow), top and bottom (no flow): the exact value. With zeroGradient the inflow
+//     region behind the circle (x < t) froze at psi0(0, y) and spoiled the global gradient
+//     metrics.
+//   right (outflow): zeroGradient. The advection equation takes no boundary data where the
+//     flow leaves the domain. MEASURED 2026-09-29: the exact value on this patch made the SL
+//     update unstable at the outflow edge, because the SL fit reads the patch value as a
+//     stencil datum (SL_STENCIL_BOUNDARY_FACES include, the default). The edge error of the
+//     default arm grew by a factor of about 1.1 per step (N = 64 to 256) and reached 4.5e5 at T
+//     at N = 256, with 96 false zero-set cells. With zeroGradient here it stays at 1.8e-3.
 exactPsi
 {
     type            uniformFixedValue;
@@ -44,7 +51,7 @@ boundaryField
 
     right
     {
-        $exactPsi;
+        type            zeroGradient;
     }
 
     top
