@@ -13,8 +13,8 @@ is checked:
     lines (plus two lines of margin) at the pinned commit and at every other listed commit. If
     another commit matches better by a margin of two and with a score of three or more, the
     writer read that commit's numbering: FIX the pin to it (the line numbers stay). The score
-    adds one per context token (the link text and the 250 characters before the link; a table
-    row as a whole) found in the anchored lines, five for a \\label named in the context, five
+    adds one per context token (the link text and the sentence before the link, at most 250
+    characters; a table row as a whole) found in the anchored lines, five for a \\label named in the context, five
     when a section number of the link text ("STATUS 11.15") holds the anchored line, and three
     when an anchored heading shares two words with the link text. A heading anchor spans its
     section. If no commit matches any token, the link is
@@ -186,6 +186,9 @@ def context_of(line, m):
         before = line
     else:
         before = line[max(0, m.start() - 250):m.start()]
+        cut = max(before.rfind(". "), before.rfind("; "))      # the sentence that holds the link
+        if cut >= 0 and len(before) - cut >= 40:
+            before = before[cut + 2:]
     j = line.rfind("[", 0, m.start())
     link_text = line[j + 1:m.start()].rstrip("](") if j >= 0 else ""
     return before, link_text
