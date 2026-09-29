@@ -10,7 +10,7 @@ date: 2026-09-28
 date_settled: 2026-08-27
 decided_by: [config/uncachedConv2Dvortex.yaml, config/advConv2Dvortex.yaml, config/advConv3DshearHex.yaml, config/advConv3DshearPoly.yaml]
 code: [src/leiaLevelSet/semiLagrangian/uncachedQuadraticWeightedLeastSquaresReconstruction.H, src/leiaLevelSet/semiLagrangian/uncachedQuadraticWeightedLeastSquaresReconstruction.C, cases/default.parameter, cases/stationaryDroplet2D.parameter]
-sources: ["METHOD 8.1 row SL_RECONSTRUCTION (L373)", "METHOD 2.2 (L98-L125)", "METHOD 8 (L343-L347)", "PCS L52-L62", "DP L29-L32", "SL article sec:recon"]
+sources: ["METHOD 8.1 row SL_RECONSTRUCTION (L373)", "METHOD 2.2 (L98-L125)", "METHOD 8 (L343-L347)", "PCS L52-L62", "DP L29-L32", "SL article sec:recon", "STATUS 11.19"]
 ---
 # SL_RECONSTRUCTION: the uncached quadratic value fit
 
@@ -39,7 +39,7 @@ On 2026-08-27 the 3D shear, the 3D deformation and the polyhedral rows were stil
 
 1. The linear members. The consistent-linear line converges at order about 1.1 and is a research line ([[concepts/linear-semi-lagrangian]]).
 2. Stability. The reconstruct-and-evaluate operator amplifies on every mesh: `rho(B) = 1.00441` on production hexahedra ([METHOD 8.2 L409-L417](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L409-L417), [[concepts/polyhedral-fit-amplification]]).
-3. Uniform translation. The unbounded scheme saturates at N = 256, order -0.54 ([METHOD 8.3.7 L641-L653](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L641-L653)). The cause is open.
+3. Uniform translation. RETRACTED 2026-09-29: "the unbounded scheme saturates at N = 256, order -0.54" ([METHOD 8.3.7 L641-L653](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L641-L653)) was read from a reversed flow ([[retractions/reversed-2dtranslation]]). One way, the shape error converges at orders 2.90, 2.16, 1.86 over N = 32 to 256 at CFL 0.5 ([METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L692-L697)). The METHOD 8.1 row of this token now says that its hex CFL axis came from the reversed `kinematicTranslation2D`; one way, the CFL-1 orders are irregular, 0.88 and 3.49 ([METHOD 8.1](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L405)).
 4. The fit solver. `SL_FIT` is a separate decision ([[decisions/sl-fit-normal-equations]]).
 5. The curated `advConv2D*_convergence.csv` orders of METHOD 8.3.7 were 3/2 too high ([STATUS L3237-L3242](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3237-L3242), [[retractions/advection-orders-3-2-factor]]). The orders in this note come from the SL article ladders, not from those files.
 
@@ -51,3 +51,6 @@ On 2026-08-27 the 3D shear, the 3D deformation and the polyhedral rows were stil
 
 ### 2026-09-28
 SETTLED on the measurement of 2026-08-27; the per-case layer carries the value since 2026-08-14. Entered in [[decision-log#2026-08]].
+
+### 2026-09-29
+What it does not cover, item 3, CORRECTED: the translation saturation came from a reversed flow (STATUS 11.19, [[retractions/reversed-2dtranslation]]); the one-way orders and the CORRECTED METHOD 8.1 row are added. The decision does not change: it rests on the vortex and 3D shear ladders.

@@ -40,6 +40,8 @@ The check that belongs in every new case's gate: `constant/polyMesh/boundary` is
 | `oscillatingDroplet2D`, algebraic psi | `implicitEllipsoid` gives `psi = sum (x_i - c_i)^2/a_i^2 - 1`, so `|grad psi|` is 1.8e3 to 2.2e3 at the interface; every gradient column and every band criterion in psi units had no meaning | 2026-09-26 | open: void the past oscillating studies or keep them with the caveat; the gates pin `signedDistanceEllipse` ([STATUS 11.4](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3271-L3280), [[cases/oscillating-droplet]]) |
 | `translatingDroplet3D`, no reference velocity | the metrics writer used `(0 0 0)`, so the disturbance columns reported the translation itself (`meanMagUPrime = 0.0500 = U0`) and the zero-set and centroid errors the displacement | 2026-09-27 | those columns of `traceTranslating3Dhex` and `traceTranslating3Dpoly_r10p0/r12p7/r15p8`; no conclusion cites them ([STATUS 11.14](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3716-L3724)) |
 | the Eulerian two-phase solver, frozen density | `rho`, `rhoPhi` and `muf` at their `t = 0` values for the whole run | 2026-09-27 | open: the five Eulerian coupled studies ([[concepts/eulerian-solver-mass-flux-port]]) |
+| `2Dtranslation`, reversed flow | made from `2Dvortex` without the `oscillation` line (cd97e6da, 2026-09-01); the velocity model's default multiplied U by cos(pi t/T), so the circle came back at T; with no `psiEnd` the metrics compared T with the start, silently | 2026-09-29 | every study of the case: `kinematicTranslation2D`, `coneBoundMesh2Dtranslation` and its arms, `advConv2Dtranslation`, the translation rows of the regression gates ([STATUS 11.19](https://github.com/leia-openfoam/leia/blob/f47fc939/STATUS.md#L4177-L4189), [[retractions/reversed-2dtranslation]]) |
+| `2Dtranslation`, fixed psi on a patch (the first two repairs) | the exact psi on the outflow patch made the SL update unstable at the outflow edge (4.5e5 at T at N = 256); on the inflow patch it failed at CFL 1, where the departure point leaves the domain | 2026-09-29 | the two re-runs `_VOID_outflowDirichlet_20260929` and `_VOID_inflowDirichlet_20260929` ([STATUS 11.19](https://github.com/leia-openfoam/leia/blob/f47fc939/STATUS.md#L4202-L4226)) |
 
 ## Why it matters
 
@@ -74,3 +76,6 @@ An entire `div(rhoPhi,U)` scheme comparison, a droplet-leaves-the-domain mechani
 
 ### 2026-09-28
 Created.
+
+### 2026-09-29
+Added the reversed `2Dtranslation` and the two fixed-psi repairs of the same day to the table of wrong setups.

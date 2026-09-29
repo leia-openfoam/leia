@@ -10,7 +10,7 @@ date: 2026-09-28
 date_settled: 2026-08-31
 decided_by: [config/fullHorizonStability2D.yaml, config/traceAmplifierDt2D.yaml, config/projFluxStationary2D.yaml, config/projFluxOscillating2D.yaml]
 code: [applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/createTransportFields.H, cases/default.parameter]
-sources: ["METHOD 8.1 row SL_TRACE_VELOCITY (L375, CORRECTED 2026-09-28)", "STATUS 4 (L1050-L1164)", "METHOD 8.2 (L437-L455)", "DP L1036-L1047", "PSH L791-L805"]
+sources: ["METHOD 8.1 row SL_TRACE_VELOCITY (L375, CORRECTED 2026-09-28)", "STATUS 4 (L1050-L1164)", "METHOD 8.2 (L437-L455)", "DP L1036-L1047", "PSH L791-L805", "STATUS 11.19 (L4262-L4267)"]
 ---
 # SL_TRACE_VELOCITY: trace the foot with the reconstructed projected flux
 
@@ -31,7 +31,7 @@ The semi-Lagrangian foot needs a cell velocity. `cellCentred` traces the velocit
 | the split of the cell-centred amplifier | share | reconstruct operator 70 %; velocity extension 0 % (null step, byte-identical); solenoidality 30 % | MEASURED, [STATUS L1130-L1146](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1130-L1146) |
 | 2D stationary ladder, N = 32 / 64 / 128 / 256 | unabsorbed capillary residual, relative L2 | projectedFlux 2.37e-5 / 3.15e-6 / 8.53e-7 / 6.43e-7; cellCentred blows up at the two finest rungs (5.48e-4, 2.79e-2) | MEASURED, [DP L1036-L1040](https://github.com/leia-openfoam/leia/blob/d1e3414/cases/default.parameter#L1036-L1040) (the config `projFluxStationary2D` holds the pre-registration, not the result) |
 | 2D oscillating ladder, three rungs | completion | projectedFlux reaches the full horizon at all three rungs, cellCentred at none of the two finest | MEASURED, [DP L1040-L1041](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L1040-L1041) |
-| kinematic uniform translation, 18 arms | difference between the traces | identical to every printed digit: `fvc::reconstruct` is exact for a uniform field | MEASURED, [kinematicTranslation2D.yaml L56-L59](https://github.com/leia-openfoam/leia/blob/8867581/config/kinematicTranslation2D.yaml#L56-L59) |
+| kinematic uniform translation, 18 arms, one way (re-measured 2026-09-29) | difference between the traces | `projectedFlux` and `cellCentred` agree to 5.0e-12 column-scaled in every column of every row: `fvc::reconstruct` is exact for a uniform field to round-off. The reversed run of 2026-09-01 ("to every printed digit") is VOID ([[retractions/reversed-2dtranslation]]) | MEASURED, [STATUS 11.19](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4266-L4267); VOID, [kinematicTranslation2D.yaml L53-L56](https://github.com/leia-openfoam/leia/blob/8867581/config/kinematicTranslation2D.yaml#L53-L56) |
 | frozen uniform stream, pMesh, power iteration | `rho(B)` with projectedFlux against cellCentred | 1.0110805 against 1.0110805, identical to 8 digits | MEASURED, [METHOD 8.2 L437-L455](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L437-L455) |
 
 Pre-registered read-outs: [fullHorizonStability2D.yaml L38-L47](https://github.com/leia-openfoam/leia/blob/8867581/config/fullHorizonStability2D.yaml#L38-L47) (no stability prediction for projectedFlux; a diverged arm is a result), [traceAmplifierDt2D.yaml L43-L60](https://github.com/leia-openfoam/leia/blob/8867581/config/traceAmplifierDt2D.yaml#L43-L60) (`dr` halves with dt; `rho = dr_recU / dr_cc` decides the mechanism), [projFluxStationary2D.yaml L23-L37](https://github.com/leia-openfoam/leia/blob/8867581/config/projFluxStationary2D.yaml#L23-L37), [projFluxOscillating2D.yaml L20-L28](https://github.com/leia-openfoam/leia/blob/8867581/config/projFluxOscillating2D.yaml#L20-L28) (period and decay rate, not max abs U).
@@ -54,3 +54,6 @@ The choice is not a filter. `fvc::reconstruct(linearInterpolate(U) & Sf)` carrie
 
 ### 2026-09-28
 SETTLED on the measurement of 2026-08-31; the default changed on 2026-09-01. The gate that METHOD 8.1 names is wrong and is marked corrected there. Entered in [[decision-log#2026-08]].
+
+### 2026-09-29
+The kinematic null-control row is re-measured on the one-way `2Dtranslation`: 5.0e-12 column-scaled (STATUS 11.19). The reversed run of 2026-09-01 is void ([[retractions/reversed-2dtranslation]]). The decision does not change: the kinematic gates never tested it (What it does not cover, item 1).

@@ -10,7 +10,7 @@ date: 2026-09-28
 date_settled: 2026-09-10
 decided_by: [author decision 2026-09-10, config/gates/methodGate2D.yaml]
 code: [workflow/scripts/richardson.py, workflow/scripts/make_gate_summary.py, workflow/scripts/advection_convergence_table.py, workflow/scripts/value_bound_ladder_table.py]
-sources: [CLAUDE mesh convergence section, CLAUDE method gates section, METHOD 8.3.5, METHOD 8.3.7, STATUS 11.2, PHL 5.4]
+sources: [CLAUDE mesh convergence section, CLAUDE method gates section, METHOD 8.3.5, METHOD 8.3.7, STATUS 11.2, PHL 5.4, STATUS 11.19]
 ---
 # Richardson ladders and observed orders
 
@@ -35,8 +35,8 @@ A single mesh gives an error, not a result. An error that is lower at one resolu
 |---|---|---|
 | one rung said gain, two rungs said floor | at N = 64 every metric 25 to 68 % lower with the cone bound; at N = 128 the eikonal error 7.119e-03 to 7.066e-03 (order 0.01), the spurious-current order 0.24 to 0.03, the centroid error +119 %; the unbounded run converges at 1.10 and reaches the floor at about N = 256 | [METHOD 8.3.5](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L692-L730), MEASURED |
 | the converged advection ladders reverse a single-rung reading | vortex, cone against none: 8.6x at N = 32 to 189.7x at N = 256, order 2.09 against 0.79 at the finest pair; volume 3.95e-05 against 1.302e-02, order 2.50 against 0.61 | [METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L657-L679), MEASURED |
-| the unbounded translation saturates | orders 3.80, 2.10, -0.54; the error rises from 7.947e-05 at N = 128 to 1.159e-04 at N = 256 | [METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L640-L655), MEASURED, open |
-| the 2D orders were 3/2 too high | translation `none` 3.80, 2.10, -0.54 (published 5.70, 3.15, -0.82); vortex `none` 2.76, 3.23, 2.09 (published 4.15, 4.85, 3.14); `h_eff = nCells^(-1/3)` | [STATUS 11.2](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3235-L3243), [METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L625-L636), MEASURED |
+| the unbounded translation saturates (RETRACTED 2026-09-29) | orders 3.80, 2.10, -0.54 and a rise from 7.947e-05 at N = 128 to 1.159e-04 at N = 256 came from a reversed flow and are VOID ([[retractions/reversed-2dtranslation]]); one way, 7.210e-03 / 1.609e-03 / 4.442e-04 at N = 64 / 128 / 256, orders 2.90, 2.16, 1.86 | [METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L640-L655), VOID; [METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L692-L697), MEASURED |
+| the 2D orders were 3/2 too high | translation `none` 3.80, 2.10, -0.54 (published 5.70, 3.15, -0.82; VOID since 2026-09-29, a reversed flow); vortex `none` 2.76, 3.23, 2.09 (published 4.15, 4.85, 3.14); `h_eff = nCells^(-1/3)` | [STATUS 11.2](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3235-L3243), [METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L625-L636), MEASURED |
 | a ladder whose entries are not monotone in h | the long-box translating droplet at N = 100, 142, 200: shape 1.38e-4, 7.08e-5, 3.99e-5 (pairwise orders 1.90, 1.68); spurious current 5.14e-4, 1.80e-3, 7.36e-4 (-3.6, 2.6); curvature error 15.4, 21.6, 20.2 1/m (-1.0, 0.2) | [STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3800-L3815), MEASURED |
 | the third rung was not run when two rungs decided | a 0.8 % change across a 2x refinement locates the floor; N = 256 would only locate the crossover | [METHOD 8.3.5](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L726-L730), author decision |
 
@@ -47,18 +47,21 @@ A single mesh gives an error, not a result. An error that is lower at one resolu
 
 ## Open questions
 
-1. The curated `advConv2D*_convergence.csv` tables are regenerated on Lichtenberg with the corrected script (open in [STATUS 11.2](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3235-L3243)).
-2. The saturation of the unbounded translation at N = 256 needs its own investigation before that rung scores anything ([METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L649-L655)).
+1. The curated `advConv2D*_convergence.csv` tables are regenerated on Lichtenberg with the corrected script (open in [STATUS 11.2](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3235-L3243)). CORRECTED 2026-09-29: the one-way [translation table](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/docs/method-comparison/method-comparison-article/data/tables/advConv2Dtranslation_convergence.csv) is regenerated with h = 1/N; the [vortex table](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/docs/method-comparison/method-comparison-article/data/tables/advConv2Dvortex_convergence.csv) is not.
+2. RETRACTED 2026-09-29: "the saturation of the unbounded translation at N = 256 needs its own investigation" ([METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L649-L655)). The saturation came from a reversed flow; the one-way ladder converges ([METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L685-L697), [[retractions/reversed-2dtranslation]]).
 3. The third rung of the 40 mm translating box ([[cases/translating-droplet]]).
 
 ## Related
 
 - Hub: [[hubs/verification]].
 - Siblings: [[concepts/method-gates]], [[concepts/error-vector-and-read-out-instants]], [[concepts/advection-regression-set]], [[concepts/bit-identity-and-inertness-gates]].
-- Retractions: [[retractions/advection-orders-3-2-factor]], [[retractions/distance-cone-bound-as-transport-bound]].
+- Retractions: [[retractions/advection-orders-3-2-factor]], [[retractions/distance-cone-bound-as-transport-bound]], [[retractions/reversed-2dtranslation]].
 - Advection: [[concepts/value-bounds-and-clips]], [[models/sl-value-bound]], [[cases/kinematic-advection-cases]].
 
 ## Log
 
 ### 2026-09-28
 Created.
+
+### 2026-09-29
+The translation ladder ran a reversed flow and is void (STATUS 11.19, [[retractions/reversed-2dtranslation]]): the saturation row and open question 2 RETRACTED, with the one-way orders 2.90, 2.16, 1.86; open question 1 CORRECTED (the translation table is regenerated, the vortex table is not).

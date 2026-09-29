@@ -20,6 +20,8 @@ including the ones that look unaffected:
 
 The study trees are renamed `*_VOID_reversedTranslation_20260929` (the laptop's
 `~/OpenFOAM/repos/leia/studies/` and Lichtenberg's `leia-curvature/studies/`). The fixed case
-(oscillation off, an exact end reference, exact boundary data) re-runs every study; the new
-tables replace these at their old paths. STATUS.md 11.19, the knowledge-base note
+(oscillation off, an exact end reference, psi zeroGradient on all four patches) re-runs every
+study; the new tables replace these at their old paths. (CORRECTED 2026-09-29: this README first
+said "exact boundary data"; exact psi values on the outflow and on the inflow patch made the SL
+update unstable, and those two re-runs are void too, STATUS.md 11.19 item 3.) STATUS.md 11.19, the knowledge-base note
 `retractions/reversed-2dtranslation`.

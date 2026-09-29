@@ -10,7 +10,7 @@ date: 2026-09-28
 date_settled: 2026-09-05
 decided_by: [config/uncachedConv2Dvortex.yaml, config/uncachedConv3Dshear.yaml, config/uncachedConv3DshearPoly.yaml, config/popinet3D_La12000_poly_dump4_qr.yaml]
 code: [src/leiaLevelSet/semiLagrangian/slReconstruction.H, src/leiaLevelSet/semiLagrangian/slReconstruction.C, src/leiaLevelSet/semiLagrangian/uncachedQuadraticWeightedLeastSquaresReconstruction.C]
-sources: ["METHOD 2.2 (L98-L125)", "METHOD 8.1 rows SL_RECONSTRUCTION and SL_FIT (L373-L377)", "STATUS 4 pivot tolerance (L1550-L1722)", "STATUS 4 boundary faces (L1874-L1990)", "STATUS 4 QR (L2269-L2278)", "SL article sec:recon"]
+sources: ["METHOD 2.2 (L98-L125)", "METHOD 8.1 rows SL_RECONSTRUCTION and SL_FIT (L373-L377)", "STATUS 4 pivot tolerance (L1550-L1722)", "STATUS 4 boundary faces (L1874-L1990)", "STATUS 4 QR (L2269-L2278)", "SL article sec:recon", "STATUS 11.19 (L4201-L4267)"]
 ---
 # slReconstruction: the semi-Lagrangian value fit
 
@@ -43,7 +43,7 @@ The dictionary words are the `TypeName` strings of the headers ([linearTaylor L6
 | key | values | default | what it decides | evidence |
 |---|---|---|---|---|
 | `stencil` | `point`, `face` | `point` | Cell-point-cell on hexahedra (6 face neighbours are too few for 9 coefficients); cell-face-cell on polyhedra. | [slReconstruction.C L94-L98](https://github.com/leia-openfoam/leia/blob/8867581/src/leiaLevelSet/semiLagrangian/slReconstruction.C#L94-L98), [METHOD L123-L125](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L123-L125) |
-| `stencilBoundaryFaces` | `include`, `exclude`, `inflowOnly` | `include` | A boundary face is a data point at h/2 with the cell's own value. `exclude` diverged at step 716 in 2D. `inflowOnly` fixes the outlet layer but not the polyhedral far field. | [STATUS L1883-L1930](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1883-L1930), [STATUS L1965-L1989](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1965-L1989) |
+| `stencilBoundaryFaces` | `include`, `exclude`, `inflowOnly` | `include` | A boundary face is a data point at h/2 with the cell's own value. `exclude` diverged at step 716 in 2D. `inflowOnly` fixes the outlet layer but not the polyhedral far field. MEASURED 2026-09-29: with `include`, a fixed psi value on a patch made the update unstable. The exact outflow value grew the edge error by about 1.1 per step (4.5e5 at T at N = 256), and the exact inflow value failed at CFL 1, where the departure point lies outside the domain; zeroGradient is stable. | [STATUS L1883-L1930](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1883-L1930), [STATUS L1965-L1989](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1965-L1989), [STATUS 11.19](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4201-L4222), [CLAUDE.md](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/CLAUDE.md#L528-L532) |
 | `quadraticPivotTol` | scalar | `0.3` | The smallest scaled Cholesky pivot a quadratic stencil must reach; below it the cell uses the linear fit. | [uncached C L184](https://github.com/leia-openfoam/leia/blob/8867581/src/leiaLevelSet/semiLagrangian/uncachedQuadraticWeightedLeastSquaresReconstruction.C#L184), [STATUS L1657-L1681](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1657-L1681) |
 | `fit` | `normalEquations`, `householderQR` | `normalEquations` | QR blows up identically: step-3 phase volume 0.017512193 against 0.017512208. | [METHOD 8.1 L377](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L377), [STATUS L2269-L2278](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L2269-L2278) |
 | `ridgeEps` | scalar | `0` | Optional Tikhonov ridge on the diagonal. | [uncached C L183](https://github.com/leia-openfoam/leia/blob/8867581/src/leiaLevelSet/semiLagrangian/uncachedQuadraticWeightedLeastSquaresReconstruction.C#L183) |
@@ -52,7 +52,7 @@ The dictionary words are the `TypeName` strings of the headers ([linearTaylor L6
 
 ## Why it matters
 
-The reconstruction is the only place where the transport can create error. The foot is exact for a uniform velocity ([kinematicTranslation2D header L19-L23](https://github.com/leia-openfoam/leia/blob/8867581/config/kinematicTranslation2D.yaml#L19-L23)). A value fit stays bounded within the stencil data; a Taylor expansion injects a differentiated field and amplifies grid-scale error ([SL article L418-L427](https://github.com/leia-openfoam/leia/blob/8867581/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L418)). The same fit supplies the curvature, so a defect here reaches the capillary force ([[concepts/curvature-from-the-fit]]).
+The reconstruction is the only place where the transport can create error. The foot is exact for a uniform velocity, `x_d = x_c - U dt` ([kinematicTranslation2D header L19-L23](https://github.com/leia-openfoam/leia/blob/8867581/config/kinematicTranslation2D.yaml#L19-L23)). On the one-way `2Dtranslation` the shape error converges at second order at fixed CFL 0.25 and 0.5, and the CFL-1 orders are irregular (0.88, 3.49). The 2026-09-01 numbers of that case came from a reversed flow and are void ([STATUS 11.19](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4254-L4264), [[retractions/reversed-2dtranslation]]). A value fit stays bounded within the stencil data; a Taylor expansion injects a differentiated field and amplifies grid-scale error ([SL article L418-L427](https://github.com/leia-openfoam/leia/blob/8867581/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L418)). The same fit supplies the curvature, so a defect here reaches the capillary force ([[concepts/curvature-from-the-fit]]).
 
 ## Where in the code
 
@@ -78,6 +78,8 @@ The reconstruction is the only place where the transport can create error. The f
 | `inflowOnly` on the 2D Popinet horizon | every droplet metric identical to `include` to all printed digits | MEASURED, [STATUS L1924-L1930](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1924-L1930) |
 | QR against normal equations on the diverging polyhedral case | phase volume 0.017512193 vs 0.017512208 at step 3; the worst amplifier has pivot 0.757 | MEASURED, [STATUS L2269-L2278](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L2269-L2278) |
 | Non-orthogonal correctors 1 / 3 / 6 on the polyhedral cases | metrics identical to every printed digit | MEASURED, [STATUS L1941-L1957](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1941-L1957) |
+| The hex CFL axis of the `SL_RECONSTRUCTION` row of METHOD 8.1 | CORRECTED 2026-09-29: it came from the reversed `kinematicTranslation2D` (void). One way, N = 32 to 128, `E_GEOM_ALPHA_REL` orders 2.86, 2.30 at CFL 0.25 and 2.90, 2.16 at CFL 0.5; irregular at CFL 1, 0.88 and 3.49 | MEASURED, [METHOD 8.1](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L405) |
+| Fixed psi on a patch of the one-way `2Dtranslation`, `include`, serial probe | exact outflow value: 4.5e5 at T at N = 256, 96 false zero-set cells; exact inflow value at CFL 1: 2246 false zero-set cells; zeroGradient: outflow edge 1.7e-03 at N = 256 (CFL 0.5), 8.8e-04 at N = 128 (CFL 1) | MEASURED, [STATUS 11.19](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4215-L4222) |
 
 ## Decisions
 
@@ -85,19 +87,24 @@ The reconstruction is the only place where the transport can create error. The f
 - `SL_FIT normalEquations`: [[decisions/sl-fit-normal-equations]].
 - `SL_QUAD_PIVOT_TOL 0.3`, decided 2026-09-08 from the pivot census ([STATUS L1680-L1681](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1680-L1681)).
 - `SL_STENCIL_BOUNDARY_FACES include` stays the default; `inflowOnly` is selectable ([STATUS L1987-L1989](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1987-L1989)).
+- 2026-09-29: never give psi a fixed value on a patch, because the fit reads the patch value as a stencil datum ([CLAUDE.md, the corollary on `SL_STENCIL_BOUNDARY_FACES include`](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/CLAUDE.md#L528-L532)).
 
 ## Open questions
 
 1. Which linear member is unstable? METHOD says a linear value fit drives the gradient error to 1e21 ([L120-L121](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L120-L121)). The LSL article attributes 2.0e21 at N = 256 to `linearTaylor` ([L279-L282](https://github.com/leia-openfoam/leia/blob/8867581/docs/linear-semi-lagrangian-level-set/lsl-level-set-article/linearSemiLagrangianLevelSet.tex#L279-L282)). The `linearConv2Dvortex` study sweeps `linearWeightedLeastSquares` and its header calls that member unstable ([L28-L36](https://github.com/leia-openfoam/leia/blob/8867581/config/linearConv2Dvortex.yaml#L28-L36)). See [[concepts/linear-semi-lagrangian]].
-2. The unbounded scheme saturates on uniform translation at N = 256: the error rises from 7.947e-05 to 1.159e-04, order -0.54 ([METHOD 8.3.7 L641-L653](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L641-L653)). The cause is not found.
+2. RETRACTED 2026-09-29: "the unbounded scheme saturates on uniform translation at N = 256: the error rises from 7.947e-05 to 1.159e-04, order -0.54" ([METHOD 8.3.7 L641-L653](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L641-L653)). It was read from a reversed flow ([[retractions/reversed-2dtranslation]]). One way, the error falls 7.210e-03, 1.609e-03, 4.442e-04 at N = 64, 128, 256, orders 2.16 and 1.86 ([METHOD 8.3.7](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/METHOD.md#L692-L697)).
 3. The transport operator amplifies on every mesh: `rho(B) = 1.00441` on production hexahedra ([METHOD 8.2 L409-L417](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L409-L417)). See [[concepts/polyhedral-fit-amplification]].
 4. No ladder is on record for `signedDistanceLinearWeightedLeastSquares` and `bandQuadraticWeightedLeastSquares`.
+5. How the fit treats fixed psi data on a patch and a departure point outside the domain is open for the SL session ([STATUS 11.19 item 8](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4313-L4314)).
 
 ## Related
 
-[[hubs/advection]] - [[models/sl-scheme]] - [[models/sl-value-bound]] - [[models/level-set-advection]] - [[concepts/departure-foot-ab2-centring]] - [[concepts/polyhedral-fit-amplification]] - [[concepts/idec-defect-correction-failure]] - [[concepts/linear-semi-lagrangian]] - [[concepts/value-bounds-and-clips]] - [[concepts/curvature-from-the-fit]] - [[concepts/advection-regression-set]] - [[decisions/sl-reconstruction-uncached-qwls]] - [[decisions/sl-fit-normal-equations]] - [[retractions/gradu-coupled-patch-contamination]] - [[retractions/polyhedral-popinet-3d-mesh-defect]] - [[studies/sl-quadratic-pre-print]]
+[[hubs/advection]] - [[models/sl-scheme]] - [[models/sl-value-bound]] - [[models/level-set-advection]] - [[concepts/departure-foot-ab2-centring]] - [[concepts/polyhedral-fit-amplification]] - [[concepts/idec-defect-correction-failure]] - [[concepts/linear-semi-lagrangian]] - [[concepts/value-bounds-and-clips]] - [[concepts/curvature-from-the-fit]] - [[concepts/advection-regression-set]] - [[decisions/sl-reconstruction-uncached-qwls]] - [[decisions/sl-fit-normal-equations]] - [[retractions/gradu-coupled-patch-contamination]] - [[retractions/polyhedral-popinet-3d-mesh-defect]] - [[retractions/reversed-2dtranslation]] - [[studies/sl-quadratic-pre-print]]
 
 ## Log
 
 ### 2026-09-28
 Created from METHOD 2.2 and 8.1, STATUS section 4, the SL article and the code headers.
+
+### 2026-09-29
+The one-way `2Dtranslation` (STATUS 11.19, [[retractions/reversed-2dtranslation]]): the transport sentence of Why it matters, the measured fixed-psi instability in the `stencilBoundaryFaces` row, two evidence rows (the CORRECTED METHOD 8.1 row and the probe), a decision, open question 2 RETRACTED, open question 5 added. New links pinned to aaa0a7dd.

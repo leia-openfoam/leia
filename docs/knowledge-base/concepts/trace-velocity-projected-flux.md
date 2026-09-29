@@ -10,7 +10,7 @@ date: 2026-09-28
 date_settled: 2026-08-31
 decided_by: [config/fullHorizonStability2D.yaml, config/traceAmplifierDt2D.yaml, config/projFluxStationary2D.yaml, config/projFluxOscillating2D.yaml, config/kinematicTranslation2D.yaml]
 code: [applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/createTransportFields.H, applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/slAlphaEqn.H, applications/solvers/leiaSemiLagrangeLevelSetFoam/errorCalculation.H]
-sources: ["STATUS 4 full-horizon gate (L1050-L1101)", "STATUS 4 reconstruct operator (L1103-L1164)", "STATUS 4 ladders launched (L1166-L1195)", "STATUS 11.5 traceFlux (L3300-L3303)", "STATUS 11.16 VOID columns (L3716-L3723)", "METHOD 8.1 row SL_TRACE_VELOCITY (L375)", "METHOD 8.2 controls (L437-L455)", "PSH reconstruct warning (L791-L805)", "DP L1029-L1040"]
+sources: ["STATUS 4 full-horizon gate (L1050-L1101)", "STATUS 4 reconstruct operator (L1103-L1164)", "STATUS 4 ladders launched (L1166-L1195)", "STATUS 11.5 traceFlux (L3300-L3303)", "STATUS 11.16 VOID columns (L3716-L3723)", "METHOD 8.1 row SL_TRACE_VELOCITY (L375)", "METHOD 8.2 controls (L437-L455)", "PSH reconstruct warning (L791-L805)", "DP L1029-L1040", "STATUS 11.19 (L4262-L4267)"]
 ---
 # The trace velocity: projectedFlux and the reconstruct operator
 
@@ -54,7 +54,7 @@ The same operator has a known limit. SAAMPLE proves `fvc::reconstruct` second or
 | `projectedFlux`'s own rate across the sweep | -46.85 to -37.91 1/s; the traces have not converged (spread 85.8 to 8.75) | MEASURED, [STATUS L1161-L1164](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L1161-L1164) |
 | Stationary 2D ladder, unabsorbed capillary residual, N = 32 / 64 / 128 / 256 | `projectedFlux` 2.37e-5 / 3.15e-6 / 8.53e-7 / 6.43e-7; `cellCentred` blows up at the two finest rungs, 5.48e-4 and 2.79e-2 | MEASURED, recorded only in [DP L1029-L1032](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L1029-L1032) |
 | Oscillating 2D ladder, N = 32 / 64 / 128 | `projectedFlux` reaches the full horizon at all three rungs; `cellCentred` at none of the two finest | MEASURED, [DP L1032-L1033](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L1032-L1033) |
-| Uniform translation, kinematic | the two traces are bit-identical | MEASURED, [DP L1034-L1035](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L1034-L1035), [[cases/kinematic-advection-cases]] |
+| Uniform translation, kinematic, one way (re-measured 2026-09-29) | `projectedFlux` and `cellCentred` agree to 5.0e-12 column-scaled in every column of every row. The reversed run of 2026-09-01, which the token comment calls BIT-IDENTICAL, is VOID ([[retractions/reversed-2dtranslation]]) | MEASURED, [STATUS 11.19](https://github.com/leia-openfoam/leia/blob/aaa0a7dd/STATUS.md#L4266-L4267); VOID, [DP L1034-L1035](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L1034-L1035), [[cases/kinematic-advection-cases]] |
 | Frozen uniform stream, power iteration on the 95 969-cell pMesh | `rho(B)` 1.0110805 for both traces; `max abs Utrace` = `max abs U` = 0.069282032 | MEASURED, [METHOD 8.2 L439-L455](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L439-L455) |
 | `VELOCITY_EXTENSION closestPoint` on the SL line with the default trace | CSVs identical to the baseline in every arm: the extension did not enter | MEASURED, [STATUS L3300-L3303](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3300-L3303) |
 | `fvc::reconstruct` on a field with a gradient jump | formally divergent at the interface (SAAMPLE sec. 3.4) | DERIVED (literature), [PSH L791-L805](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-shannon-parasitic-currents.md#L791-L805) |
@@ -80,3 +80,6 @@ The same operator has a known limit. SAAMPLE proves `fvc::reconstruct` second or
 
 ### 2026-09-28
 Created from STATUS section 4 (2026-08-31), METHOD 8.1 and 8.2, the Shannon plan, the token comments and the solver headers.
+
+### 2026-09-29
+The uniform-translation row is re-measured on the one-way `2Dtranslation`: 5.0e-12 column-scaled, not bit-identical (STATUS 11.19). The reversed run of 2026-09-01 is void ([[retractions/reversed-2dtranslation]]). The `SL_TRACE_VELOCITY` comment in `cases/default.parameter` still says BIT-IDENTICAL at aaa0a7dd.

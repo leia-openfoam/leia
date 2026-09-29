@@ -1043,6 +1043,8 @@ SL_FOOT_INTEGRATOR taylor;
 // the full horizon at all three rungs, cellCentred at none of the two finest. And
 // config/kinematicTranslation2D showed the two are BIT-IDENTICAL under uniform
 // translation, so this default costs nothing where the flow cannot tell them apart.
+// CORRECTED 2026-09-29: that run was a REVERSED translation (STATUS 11.19); the one-way
+// re-run agrees to 5.0e-12 column-scaled, round-off, not bit-identical.
 SL_TRACE_VELOCITY projectedFlux;
 // INERT: physical = reconstruct(phi), the only trace flux before 2026-09-26.
 // extension = reconstruct(phiExt) of the velocityExtension model, so a velocity

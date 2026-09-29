@@ -625,7 +625,8 @@ forbids. The converged replacements are in 8.3.7, and they do not all agree with
 ratios quoted here: the vortex degradation is far WORSE than one rung showed (8.6x at
 N = 32 growing to 190x at N = 256), and on uniform translation the bound is actually
 BETTER than no bound at the coarsest rung. The falsification stands; these particular
-ratios do not.**
+ratios do not.** (RETRACTED 2026-09-29: "better at the coarsest rung" was read from the
+reversed translation; one-way, the cone bound is 2.5x worse at N = 32, 8.3.7.)
 
 Pure advection, `leiaSemiLagrangeLevelSetFoam`, no force in the loop, so this isolates
 TRANSPORT. Every arm of a case runs on the IDENTICAL mesh -- the mesh is built once and

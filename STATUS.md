@@ -4225,8 +4225,9 @@ to the last commit of this section.
    this case: the inflow region x < t keeps psi0(0, y) >= 0.10 (no zero crossing, the interface
    metrics are unaffected), and the GLOBAL gradient metrics measure that frozen region.
 
-4. **The repair gate** (`config/translationRepairGate2D{serial,par4}.yaml`, pre-registered; three
-   runs, the first two void). RE-RUN 3 passes every line on both indicator arms: U = (1 0 0) at
+4. **The repair gate** (`config/translationRepairGate2D{serial,par4}.yaml`, pre-registered; four
+   runs, the first three void: a non-pristine end reference, then the exact outflow and the exact
+   inflow value). RE-RUN 3 passes every line on both indicator arms: U = (1 0 0) at
    every write; 108 steps (the reversed case took 86); centroid at T (0.74972, 0.50000);
    `E_VOL_ALPHA_REL` at t = 0 1.65e-14; `E_GEOM_ALPHA_REL` 2.000000 at t = 0 (disjoint circles)
    and 7.210e-03 at T; every patch face equals its boundary cell; np 4 against serial 2.7e-12
