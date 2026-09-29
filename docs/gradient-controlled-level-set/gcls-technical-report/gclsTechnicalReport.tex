@@ -29,13 +29,15 @@
 \newcommand{\per}{\,\si{\per\second}}
 \newcommand{\archive}{\path{shared-method-config-2026-09-01-192-g1150e68}}
 \setlength{\parskip}{3pt}
+\setlength{\emergencystretch}{2em}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 
 \title{Gradient control by source terms and a velocity extension in the leia
 semi-Lagrangian level set:\\ why the first campaign failed, and what to do next\\[4pt]
 \large Technical report, 2026-09-28}
 \author{Prepared by the gradient-control session (Claude Code) for\\
 Tomislav Mari\'{c} and Dieter Bothe, Mathematical Modeling and Analysis, TU Darmstadt}
-\date{Data: archive \archive; code: commit 8867581, branch \path{feature/gradient-controlled-level-set}}
+\date{Data: archive \archive\\ code: commit 8867581, branch \path{feature/gradient-controlled-level-set}}
 
 \begin{document}
 \maketitle
@@ -70,7 +72,7 @@ only then runs a coupled arm.
 
 \paragraph{One line per candidate.}
 \begin{center}\small
-\begin{tabular}{@{}p{1.1cm}p{3.6cm}p{5.4cm}p{5.2cm}@{}}
+\begin{tabular}{@{}L{1.1cm}L{3.2cm}L{5.4cm}L{5.1cm}@{}}
 \toprule
 cand. & what & how it failed (\Meas) & mechanism held responsible (mark) \\
 \midrule
@@ -124,7 +126,7 @@ Every number of the campaign is in the archive \archive{} (Appendix~A).
   \centering\small
   \caption{The candidates of the first campaign (from the pre-print).}
   \label{tab:cands}
-  \input{\tables/gcls_candidates.tex}\\[2pt]
+  \resizebox{\textwidth}{!}{\input{\tables/gcls_candidates.tex}}\\[2pt]
   \input{\tables/gcls_candidates_tref.tex}
 \end{table}
 
@@ -286,9 +288,9 @@ extension samples at $Y=\bx-S\bn$ with $S=c\,d$ and blends with $w=c$,
 $c=(1+t^4)^{-1/4}$, $t=d/R$. Linearised, $\bu_H=\bu-wS\,\partial_n\bu$, and the normal strain it
 transmits at $d=tR$ is (Appendix~B)
 \begin{equation}
-  K(t)=1-\frac{d(wS)}{dd}=1-(1-t^4)(1+t^4)^{-3/2}
-  =0,\;0.14,\;1.00,\;1.27,\;1.21,\;1.11\quad\text{at }t=0,\,0.5,\,1,\,1.5,\,2,\,3,
+  K(t)=1-\frac{d(wS)}{dd}=1-(1-t^4)(1+t^4)^{-3/2},
 \end{equation}
+that is $K=0$, $0.14$, $1.00$, $1.27$, $1.21$, $1.11$ at $t=0$, $0.5$, $1$, $1.5$, $2$, $3$,
 with $\int_0^D(1-K)\,dd=wS(D)\to R^2/D$. The strain is displaced by about $1.5h$ into a shell
 with a 27\,\% overshoot, not removed, and with $R=h$ the shell sits inside the
 geometry-evaluation neighbourhood (band $3h$, stencil $1.4h$), which the dossier itself forbids
@@ -432,10 +434,10 @@ design.
 \end{enumerate}
 
 \begin{table}[p]
-  \centering\small
+  \centering\footnotesize
   \caption{The experiment ladder, cheapest first. Each prediction is written before its run.}
   \label{tab:experiments}
-  \begin{tabular}{@{}p{1.3cm}p{5.0cm}p{5.0cm}p{3.6cm}@{}}
+  \begin{tabular}{@{}L{1.25cm}L{4.6cm}L{5.0cm}L{3.6cm}@{}}
   \toprule
   id (cost) & experiment & prediction & it falsifies \\
   \midrule
@@ -449,7 +451,7 @@ design.
   E1.7 & S1 with $\delta_s=0.3$, $p=1$ (slope $\approx6\sigma$) & seam $\le10^{-5}$, shear shape error $\ge10\times$ lower, band-error gain shrinks & the bang-bang reading, if the seam still fails \\
   E2.1 (days) & upwind $q$ in the source, plus the source-CFL guard & E1.1's mode damped at $2\mu d/h$; HL1q stationary at the baseline level for \SI{0.1}{s} & A \\
   E2.2 & smooth band taper, or no band & HL1q and S1 shear shape orders rise from $\sim0$ to $\ge1$ & B \\
-  E2.3 & kinematic \texttt{cellCentred} trace with $\bu_\mathrm{ext}$ (\path{leiaSemiLagrangeLevelSetFoam.C}, line 218) & the HL0 shear constant drops, the order stays $<2$ (the shell remains); order 3 would mean the trace alone was the cause & the relocation reading \\
+  E2.3 & kinematic \texttt{cellCentred} trace with $\bu_\mathrm{ext}$ (the kinematic SL solver, line 218) & the HL0 shear constant drops, the order stays $<2$ (the shell remains); order 3 would mean the trace alone was the cause & the relocation reading \\
   E2.4 & $F$ at the algebraic foot, copied along the normal & the $O(h)$ shift vanishes at first order; A and B remain unless E2.1 and E2.2 & the crossing-shift contribution \\
   E3 (weeks) & extended sampler with \texttt{findCell} and a 3-layer halo for $R=3h$; S2 & only if HL survives E2.3 & --- \\
   \bottomrule
@@ -461,8 +463,8 @@ design.
 \section{Data and reproducibility}
 \label{app:data}
 
-Every number of this report comes from the archive
-\path{docs/gradient-controlled-level-set/gcls-level-set-article/data/archive/}\archive{}
+Every number of this report comes from the archive \archive{} in the folder
+\path{docs/gradient-controlled-level-set/gcls-level-set-article/data/archive/}
 (README.md, MANIFEST.csv with SHA-256): the fixed gate (\path{gate/}: the summaries, verdicts,
 orders, seam checks and reduced histories of every arm), the pre-fix gate (\path{prefix/}) and
 the laptop discriminators (\path{laptop/}), and from STATUS.md section~11 at commit 8867581.
@@ -511,8 +513,12 @@ the least-squares gradient projected on $\bn$; a one-dimensional checkerboard $(
 at $\mu n_x^2\le\mu$.
 
 \paragraph{The soft-wall slope.} $G=-C_\kappa\sigma\,\mathrm{sign}(e)\tanh(\gamma x)$ with
-$x=(|e|/\delta_s)^p$; $|dG/de|=C_\kappa\sigma\,\gamma p\,(|e|/\delta_s)^{p-1}\delta_s^{-1}
-\operatorname{sech}^2(\gamma x)$. Its maximum over $e$ at $C_\kappa=1.25$, $\delta_s=0.08$,
+$x=(|e|/\delta_s)^p$, so
+\[
+  \left|\frac{dG}{de}\right| = \frac{C_\kappa\sigma\,\gamma p}{\delta_s}
+  \left(\frac{|e|}{\delta_s}\right)^{p-1}\operatorname{sech}^2(\gamma x).
+\]
+Its maximum over $e$ at $C_\kappa=1.25$, $\delta_s=0.08$,
 $p=5$, $\gamma=\mathrm{artanh}\,0.9=1.472$ is $40.3\,\sigma$ at $|e|=0.069=0.86\,\delta_s$
 (numerically); with $\sigma=3\per$ and $\Delta t=\SI{4.1e-3}{s}$, $\Delta t\,|dG/de|=0.50$.
 
