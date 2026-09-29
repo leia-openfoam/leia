@@ -43,6 +43,9 @@ LABELS = {
     "perFaceInverse": "per-face parallel-surface inverse",
     "cutCellInverse": "one inverted value per cut cell",
     "cellMeanInverse": "cut-cell mean of per-face inversions",
+    # The shipped production curvature (CURVATURE_EXTENSION cellCentreInverse), 2026-09-29.
+    "cellCentreInverse":    "cell-centre inverse (production, K-aware)",
+    "cellCentreInverseNoK": "cell-centre inverse without the Gaussian term (control)",
 }
 
 
@@ -58,6 +61,21 @@ def main(argv):
         print("usage: make_curvature_gain_table.py <study_dir>")
         return 1
     study = argv[0]
+    # A study that varies the psi surface (the ellipsoid gate: signed distance and implicit)
+    # gets one table per surface, suffix + "_<surface>"; the two are never mixed (2026-09-29).
+    surfaces = set()
+    for meta in glob.glob(os.path.join(study, "*", "case_params.json")):
+        with open(meta) as fh:
+            surfaces.add(str(json.load(fh).get("tokens", {}).get("PSI_SURFACE", "")))
+    if len(surfaces) <= 1:
+        return _curate(study, None)
+    rc = 0
+    for s in sorted(surfaces):
+        rc = max(rc, _curate(study, s))
+    return rc
+
+
+def _curate(study, surface):
     # Artifact suffix per GATE, so the circle, sphere and varying-curvature
     # gates write side by side instead of overwriting one another.
     # "ellipsoid" first: faceCurvatureEllipsoid3D contains "3d" and faceCurvatureEllipsoidPsi2D
@@ -74,6 +92,8 @@ def main(argv):
         suffix = ""
     if "poly" in _base and suffix:
         suffix += "_poly"
+    if surface is not None:
+        suffix += "_" + surface
 
     rows = []
     for meta in sorted(glob.glob(os.path.join(study, "*", "case_params.json"))):
@@ -81,7 +101,10 @@ def main(argv):
         if not os.path.isfile(cpath) or os.path.getsize(cpath) == 0:
             continue
         with open(meta) as fh:
-            n = _f(json.load(fh).get("tokens", {}).get("N_CELLS"))
+            _tokens = json.load(fh).get("tokens", {})
+        if surface is not None and str(_tokens.get("PSI_SURFACE", "")) != surface:
+            continue
+        n = _f(_tokens.get("N_CELLS"))
         if not n:
             continue
         with open(cpath, newline="") as fh:

@@ -49,6 +49,7 @@ COLORS = {
     "kangQuadratic":           "#882255",
     "cutCellInverse":          "#117733",
     "cellMeanInverse":         "#44AA99",
+    "solverCellCentreInverse": "#000000",
 }
 MARKERS = {
     "quadraticCellCentre":     "o",
@@ -60,6 +61,7 @@ MARKERS = {
     "kangQuadratic":           "X",
     "cutCellInverse":          "*",
     "cellMeanInverse":         "h",
+    "solverCellCentreInverse": "p",
 }
 LABELS = {
     "quadraticCellCentre":     "quadratic cell centre",
@@ -79,12 +81,17 @@ LABELS = {
     "scalarInverse2D":         "2D scalar inverse (control, no Gaussian term)",
     "cutCellInverse":          "one inverted value per cut cell",
     "cellMeanInverse":         "cut-cell mean of per-face inversions",
+    # The shipped production curvature (CURVATURE_EXTENSION cellCentreInverse): the solver's
+    # applyCellCentreInverseCurvature + arithmetic face interpolation, scored since 2026-09-29.
+    "solverCellCentreInverse":    "cell-centre inverse (production, K-aware)",
+    "solverCellCentreInverseNoK": "cell-centre inverse without the Gaussian term (control)",
 }
 # (entity, foot_point) pairs drawn in the figure; the rest go to the table.
 PLOT_PAIRED = ["quadraticCellCentre", "fvmDivGradPsi", "fvmDivGradAlpha"]
 PLOT_SINGLE = [("stableFootPoint", 1), ("footPointHeightFunction", 0),
                ("connectedInterface", 0), ("kangQuadratic", 0),
-               ("cutCellInverse", 1), ("cellMeanInverse", 1)]
+               ("cutCellInverse", 1), ("cellMeanInverse", 1),
+               ("solverCellCentreInverse", 1)]
 
 
 def _f(x):
@@ -105,9 +112,20 @@ def _fit(h, y):
     return float(p[0]), (1.0 - ss/st if st > 0 else 1.0)
 
 
-def _series(study_dir):
+def _surfaces(study_dir):
+    """The PSI_SURFACE values of the study's cases (one value, or "" when the token is absent)."""
+    out = set()
+    for meta in glob.glob(os.path.join(study_dir, "*", "case_params.json")):
+        with open(meta) as fh:
+            out.add(str(json.load(fh).get("tokens", {}).get("PSI_SURFACE", "")))
+    return sorted(out)
+
+
+def _series(study_dir, surface=None):
     """{(model, fp): {"N": [...], "h": [...], "L1": [...], "L2": [...],
-    "Linf": [...], "L2w": [...]}} sorted by N; plus kappaExact."""
+    "Linf": [...], "L2w": [...]}} sorted by N; plus kappaExact. With `surface`, only the
+    cases whose PSI_SURFACE token equals it: a study that varies the psi surface (the
+    ellipsoid gate: signed distance and implicit) must never mix the two in one fit."""
     recs = {}
     kappa_exact = None
     for meta in sorted(glob.glob(os.path.join(study_dir, "*", "case_params.json"))):
@@ -116,7 +134,10 @@ def _series(study_dir):
         if not os.path.isfile(cpath) or os.path.getsize(cpath) == 0:
             continue
         with open(meta) as fh:
-            n = _f(json.load(fh).get("tokens", {}).get("N_CELLS"))
+            _tokens = json.load(fh).get("tokens", {})
+        if surface is not None and str(_tokens.get("PSI_SURFACE", "")) != surface:
+            continue
+        n = _f(_tokens.get("N_CELLS"))
         if not n:
             continue
         with open(cpath, newline="") as fh:
@@ -147,9 +168,21 @@ def _series(study_dir):
 def main(argv):
     if not argv:
         print("usage: make_face_curvature_fig.py <study_dir>"); return 1
-    recs, kappa_exact = _series(argv[0])
+    surfaces = _surfaces(argv[0])
+    if len(surfaces) <= 1:
+        return _curate(argv[0], None)
+    # More than one psi surface: one artifact set per surface, suffix + "_<surface>".
+    rc = 0
+    for s in surfaces:
+        rc = max(rc, _curate(argv[0], s))
+    return rc
+
+
+def _curate(study_dir, surface):
+    argv = [study_dir]
+    recs, kappa_exact = _series(study_dir, surface)
     if not recs:
-        print(f"[facecurv] no completed cases under {argv[0]}"); return 1
+        print(f"[facecurv] no completed cases under {study_dir} (surface {surface})"); return 1
 
     # 3D sphere gate -> its own artifact names (auto from the study name).
     # Artifact suffix per GATE, so the circle, sphere and varying-curvature
@@ -168,6 +201,8 @@ def main(argv):
         suffix = ""
     if "poly" in _base and suffix:
         suffix += "_poly"
+    if surface is not None:
+        suffix += "_" + surface
 
     figs, tables = paths.figs_dir(THEME), paths.tables_dir(THEME)
     orders = {k: _fit(s["h"], s["L2"]) for k, s in recs.items()}
@@ -205,6 +240,19 @@ def main(argv):
         ax.loglog(ctrl["h"], ctrl["L2"], "--", color="#7f7f7f", marker="x",
                   ms=6, lw=1.3, label=lab)
 
+    # The K-off control of the production cell-centre inverse: identical in 2D (K = 0),
+    # drawn only where it differs from the K-aware line.
+    ctrl, corr = recs.get(("solverCellCentreInverseNoK", 1)), recs.get(("solverCellCentreInverse", 1))
+    if ctrl and corr and any(
+            abs(a - b) > 0.01*max(abs(b), 1e-30)
+            for a, b in zip(ctrl["L2"], corr["L2"])):
+        p, _ = orders[("solverCellCentreInverseNoK", 1)]
+        lab = LABELS["solverCellCentreInverseNoK"]
+        if p is not None:
+            lab += rf"  ($\propto h^{{{p:.2f}}}$)"
+        ax.loglog(ctrl["h"], ctrl["L2"], "--", color="#000000", marker="p",
+                  ms=5, lw=1.1, label=lab)
+
     # Constant interface-mean diagnostic: a control, not a competing series.
     s = recs.get(("interfaceMean", 0))
     if s:
@@ -232,9 +280,14 @@ def main(argv):
 
     ax.set_xlabel(r"$h$ [m]")
     ax.set_ylabel(r"active-face $L_2$ error of $\kappa_f$ [m$^{-1}$]")
-    geom = "sphere" if suffix else "circle"
+    # The geometry by gate (it used to say "sphere" for every gate with a suffix).
+    geom = ("ellipsoid" if suffix.startswith("_ellipsoid3d") else
+            "ellipse" if suffix.startswith(("_ellipse", "_ellipsoidPsi")) else
+            "sphere" if suffix.startswith("_3d") else "circle")
+    psi_kind = ("implicit (algebraic) psi" if surface and "implicit" in surface.lower()
+                else "exact SDF")
     ax.set_title("Face-centered curvature on the CSF force support\n"
-                 rf"(static {geom}, exact SDF; faces with $|\mathrm{{snGrad}}\,\alpha| > 0$)",
+                 rf"(static {geom}, {psi_kind}; faces with $|\mathrm{{snGrad}}\,\alpha| > 0$)",
                  fontsize=11)
     ax.grid(True, which="both", ls=":", alpha=0.5)
     ax.legend(frameon=False, fontsize=8, loc="center left",
@@ -264,6 +317,18 @@ def main(argv):
             "order_L2": p2, "R2": r2, "order_Linf": pinf,
             "N_finest": s["N"][-1],
         })
+
+    # Per-rung errors (L1, L2, force-weighted L2; no L_inf), one row per model x
+    # foot point x N: the orders above are fitted from these (2026-09-29).
+    lpath = os.path.join(tables, f"face_curvature_ladder{suffix}.csv")
+    with open(lpath, "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["model", "footPoint", "N", "h", "L1", "L2", "L2_forceWeighted"])
+        for k in sorted(recs, key=_key):
+            s = recs[k]
+            for i in range(len(s["N"])):
+                w.writerow([k[0], k[1], s["N"][i], s["h"][i], s["L1"][i], s["L2"][i], s["L2w"][i]])
+    print(f"[facecurv] wrote {lpath}")
 
     cpath = os.path.join(tables, f"face_curvature_orders{suffix}.csv")
     with open(cpath, "w", newline="") as fh:
