@@ -48,6 +48,18 @@
 #      is below 2e-2 at T and at most 1.5 times its value at the write time near t = 0.25.
 #      (The discriminating probe, serial N = 128: 4.8e-3 at t = 0.25 and 3.6e-3 at T.)
 # FAILED if any line fails.
+#
+# RESULT of RE-RUN 2 (2026-09-29, laptop, leia-gcls binaries of 11:30, v2512, commit 8e589863).
+# Both phase-indicator arms (geometric, detrixheAslam) PASS every line:
+#   1. U = (1 0 0) at t = 0, 0.2486, 0.4986.        2. 108 steps.
+#   3. centroid at T (0.74974, 0.50000).            4. E_VOL_ALPHA_REL(t = 0) = 1.65e-14, 1.72e-14.
+#   5. E_GEOM_ALPHA_REL = 2.000000 at t = 0, 7.203e-3 at T (E_VOL_ALPHA_REL 4.712e-3 at T).
+#   6. left, top and bottom faces: max |psi_b - psi_exact| = 4.95e-13 at t = 0 and at T; every
+#      right face equals its boundary cell exactly.
+#   7. np 4 against serial: the largest column-scaled difference is 2.7e-12 (E_VOL_ALPHA). The
+#      per-value relative test of compare_metrics_csv.py flags only round-off entries: the t = 0
+#      volume rows near 1e-14, and E_BOUND_ALPHA, whose whole column is below 1.6e-14.
+#   8. the edge max |psi - psi_exact| is 9.40e-3 at t = 0.2486 and 7.17e-3 at T: it falls.
 # ============================================================================
 study_name: translationRepairGate2Dpar4
 case: 2Dtranslation
