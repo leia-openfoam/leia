@@ -4,7 +4,7 @@
 configuration is, why each choice was made, and which gate measured it. Any gate that
 changes a setting updates this file IN THE SAME COMMIT, and every entry names the config
 that decided it and the number it was decided on. A setting nobody can trace to a
-measurement is folklore, and this file exists to keep it out.
+measurement is folklore, and this file exists to keep it out. Every decision of section 8.1 also has a note in `docs/knowledge-base/decisions/` (the measurement that decided it, what it does not cover, its retractions) and a line in `docs/knowledge-base/decision-log.md` (since 2026-09-28).
 
 **Its EXECUTABLE form is the `.parameter` layering, not a separate file.** A document
 drifts from the code; the token files cannot, because the workflow renders every case

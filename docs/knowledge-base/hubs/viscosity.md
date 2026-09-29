@@ -31,10 +31,13 @@ Which face viscosity $\mu_f$ of the two-phase momentum equation is consistent wi
 ## Open, in order
 
 1. The 3D case templates carry no `VISCOSITY_FACE_MODEL` token ([STATUS 11.13](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3545-L3623)).
-2. `mufGrid2D` ran on 8 ranks before the coupled-face density fix of 2026-09-27 ([[concepts/coupled-face-density-defect]]); the decision holds until a re-run says otherwise.
+2. `mufGrid2D` ran on 4, 8 and 16 ranks (N = 128, 256, 512) before the coupled-face density fix of 2026-09-27, with `CURVATURE_EXTENSION none` to 0.02 s ([[concepts/coupled-face-density-defect]]); the decision holds until a re-run says otherwise.
 3. A geometric sharp $\alpha_f$ consistent with the interface plane, untested.
 
 ## Log
 
 ### 2026-09-28
 Created.
+
+### 2026-09-29
+CORRECTED the rank counts of the mufGrid2D ladder (4, 8 and 16, not 8 only; concepts/viscosity-open-items).

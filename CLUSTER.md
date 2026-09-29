@@ -506,7 +506,8 @@ that verifying the solver binary is not enough; check the library too, with
 prints the stamp of every loaded leia library in its banner, `leia library <lib> :
 <git describe[-dirty]>`, and writes the same lines to `<case>/leia.version`, which the
 aggregator carries as the `libStamps` column next to `gitCommit`. Since the split of 2026-09-23 (WP3: `libleiaCore` and seven method libraries, each
-with its own stamp) a solver banner lists eight such lines; they name the same commit
+with its own stamp; `libleiaGradientControl` is the ninth library since 2026-09-26) a solver banner lists one
+such line per leia library it loads; they name the same commit
 when the clone was built as one, and a lone different line marks a library that was
 rebuilt from another tree.
 

@@ -36,7 +36,7 @@ The ladder ran on the translating droplet case after the closed-box fix 440107f 
 
 ## What it does not cover
 
-1. 3D, open. The templates of `stationaryDroplet3D`, `translatingDroplet3D`, `oscillatingDroplet3D` and `ellipsoidDroplet3D` contain no `viscosityFaceModel` entry; the code default is `geo_lin` ([createFields.H L92](https://github.com/leia-openfoam/leia/blob/8867581/applications/solvers/leiaLevelSetTwoPhaseFoam/createFields.H#L92)), and the banner prints `alg_lin (default)` ([printMethodBanner.H L139](https://github.com/leia-openfoam/leia/blob/8867581/applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/printMethodBanner.H#L139)), so a 3D run reports a wrong default. The 3D gate needs the token before its verdict means anything ([[concepts/viscosity-open-items]]).
+1. 3D, open. The templates of the three 3D droplet cases `stationaryDroplet3D`, `translatingDroplet3D` and `oscillatingDroplet3D` contain no `viscosityFaceModel` entry (`ellipsoidDroplet3D` is a static curvature case and needs none); the code default is `geo_lin` ([createFields.H L92](https://github.com/leia-openfoam/leia/blob/8867581/applications/solvers/leiaLevelSetTwoPhaseFoam/createFields.H#L92)), and the banner prints `alg_lin (default)` ([printMethodBanner.H L139](https://github.com/leia-openfoam/leia/blob/8867581/applications/solvers/leiaSemiLagrangianLevelSetTwoPhaseFoam/printMethodBanner.H#L139)), so a 3D run reports a wrong default. The 3D gate needs the token before its verdict means anything ([[concepts/viscosity-open-items]]).
 2. The parallel provenance of the ladder: it ran on 4 to 16 ranks before 28d13f0 and b1798c3; the decision holds until a re-run says otherwise ([[hubs/viscosity]]).
 3. The Eulerian two-phase solver kept `muf` frozen until c094bd8 (2026-09-27); its earlier two-phase results carry that defect ([[concepts/eulerian-solver-mass-flux-port]]).
 4. Why the harmonic and the blended models lose is not explained by the series-parallel argument ([SL article L845-L852](https://github.com/leia-openfoam/leia/blob/8867581/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L845-L852)).
@@ -49,3 +49,6 @@ The ladder ran on the translating droplet case after the closed-box fix 440107f 
 
 ### 2026-09-28
 SETTLED in 2D on 2026-09-03; 3D open. Entered in [[decision-log#2026-09]].
+
+### 2026-09-29
+CORRECTED: three 3D droplet templates lack the token, not four (ellipsoidDroplet3D is static).

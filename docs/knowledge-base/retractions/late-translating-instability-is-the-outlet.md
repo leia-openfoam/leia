@@ -26,7 +26,7 @@ sources: [STATUS 11.14, STATUS 11.15, gcls pre-print sec:res-translating, SL art
 | claim | number | where |
 |---|---|---|
 | A longer box removes the divergence. | The 20 mm box to 0.25 s: N = 100 DIVERGED at step 19590 (t = 0.2127 s); N = 142 DIVERGED at step 34187 (t = 0.2194 s). L2\|U-U0\| 5.1e-4 / 7.7e-4 / 1.4e-3 / 3.4e-3 / 8.5e-2 / 5.9e-1 at t = 0.10 to 0.21 s; the centroid runs ahead of U0 t after 0.16 s. | MEASURED, [STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3816-L3829) |
-| The growth needs the outlet. | The 40 mm box (outlet more than 17 mm away) completes 0.3 s at N = 100 and 142 and degrades: current from t = 0.10 s at about 26 1/s at first and 5 1/s at the end; volume drift 10 %; lead 3.9 mm. | MEASURED, [STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3917-L3930) |
+| The growth needs the outlet. | The 40 mm box (outlet more than 17 mm away) completes 0.3 s at N = 100 and 142 and degrades: current from t = 0.10 s at about 26 1/s at first and 5 1/s at the end; volume drift 15 % (1.5e-1 at t = 0.3 s; the first STATUS table rounds it to 1e-1, the second table, the SL article and the archived history give 1.5e-1 and 0.147); lead 3.9 mm. | MEASURED, [STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3917-L3930) |
 | The interior growth is a resolution-independent instability. | At t = 0.3 s the degradation is 2.3x (current), 5.4x (volume) and 2.1x (lead) smaller at N = 142 than at N = 100: it shrinks with h. TWO rungs only, no order stated. | MEASURED, [STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3932-L3947) |
 | The explosive phase starts when the trailing edge crosses the box centre (the geometric signature). | The start-position test (droplet at 5 mm instead of 2.5 mm, 20 mm box, N = 100): jump at t = 0.1372 s with the centroid at 12.15 mm; neither pre-registered prediction holds; the slow phase of the two runs is identical to t = 0.12 s (7.4e-4 to 7.7e-4). | MEASURED, [STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3831-L3863) |
 | The fast phase is the outlet. | In the 10 mm box the current rises a factor 27 in 0.005 s at t = 0.06 s with the leading edge 3.5 mm (35 cells) from the outlet; the 20 mm box has no growth there at N = 100, 142 and 200. This part of the claim survives. | MEASURED, [STATUS 11.15](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3779-L3782), [L3826-L3829](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3826-L3829) |
@@ -63,3 +63,6 @@ Hubs: [[hubs/mass-flux]], [[hubs/verification]]. Siblings: [[cases/translating-d
 
 ### 2026-09-28
 Written from STATUS 11.14 and 11.15, the gcls pre-print and the SL article. Corrected 2026-09-27. Entered in [[retraction-log#2026-09]].
+
+### 2026-09-29
+CORRECTED the volume drift of the 40 mm box at N = 100: 15 %, not 10 % (the archived history gives 0.147 at t = 0.3 s).

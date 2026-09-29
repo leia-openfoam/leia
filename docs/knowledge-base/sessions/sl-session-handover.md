@@ -48,6 +48,41 @@ The note writers of 2026-09-29 read the record against itself and found these; n
    still describes it, while the code uses the pure phases.
 6. **Stale header comments:** the first lines of `cases/oscillatingDroplet2D.parameter` and lines 17-20
    of the 3D stationary `blockMeshDict.template`.
+7. **A table of the SL article carries the frozen face-viscosity bug.** The `mu_f interpolated` row of
+   the viscous-term table (section `sec:viscous`, the table near L805-L829 at d1e3414) comes from the
+   4267d7b run, when `muf` was rebuilt for the geometric models only; the row entered the article at
+   a2cfb2a, before the fix 39e59b3. The claims built on it (36 % after 2667 steps; 0.64x, 0.81x, 3.3x)
+   need a re-run or a retraction: an author decision ([[concepts/viscosity-open-items]]).
+8. **The same bug is still reachable.** `updateFaceDensity.H` line 10 skips `faceViscosity.H` when the
+   mass flux is `interpolatedDensity` or `SL_FREEZE_RHOPHI` is set, and `interpolatedDensity` is the code
+   default of `createMassFluxFields.H`; no config selects it today.
+9. **The "58x" attribution.** 58x and 0.073 s belong to the arm with Kang AND the sharp Heaviside
+   together (4.5e-3 / 7.7e-5 = 58.4); `docs/plan-curvature-stabilization.md` and the SL deck give it to
+   Kang alone, thirteen case templates to `sharpHeaviside` alone, and `sharpHeaviside` with the
+   arithmetic face value cannot run ([[concepts/kang-gfm-and-sharp-heaviside]]).
+10. **Stale claims in comments and headers:** thirteen templates call CST "MEASURED SUPERIOR on the static
+    droplet"; `UEqn.H` lines 25-35 still name "interpolated" as the default and keep a retracted "2.08x
+    worse"; the `faceViscosity.H` header names keys the solver no longer reads; the header of
+    `config/variationalForce2D.yaml` calls interFoam's curvature an exact variation (plan-shannon lines
+    616-619 corrects it); `cases/translatingDroplet2D/system/fvSolution.template` lines 405-407 keep a
+    closed-box "MEASURED 2026-09-01 ... outlet at t = 0.08" comment without a VOID marker; nine
+    `.parameter` files start with the stationary-droplet header.
+11. **A closed-box trap in a committed mesh file:** `cases/transISTDroplet2D/system/blockMeshDict` puts all
+    four sides in one `walls` patch; the `.template` is right and the workflow overwrites the file, but a
+    run from the unrendered case gets a closed box.
+12. **Two numbers that disagree inside STATUS 11.15:** the 40 mm box at N = 100 and t = 0.3 s has a volume
+    change of 1e-1 in the first table and its sentence, and 1.5e-1 in the second table (the archived
+    history: 0.147; 15 % is right); the Popinet L2 order is 0.88 at one place and 0.91 at another (0.88
+    comes from the rounded table values).
+13. **A wrong cross-reference in the SL article:** lines 438-441 point to `sec:popinet` for the 3D
+    polyhedral divergence at step 3, but that section covers the 2D benchmark only.
+14. **Case bookkeeping:** `3Dcontactline` is a 2D mesh (one cell thick); four cases have no study config
+    (`3Dtranslation`, `2Dcontactline-periodic`, `2Dcontactline-vortex`, `3Dcontactline`)
+    ([[cases/benchmark-cases]]).
+15. **CLAUDE.md said a second clone "ran" a library about 200 commits ahead** (2026-09-09); STATUS 9.5
+    records that no job ran with it. Corrected in CLAUDE.md and AGENTS.md on 2026-09-29; the comment in
+    `src/leiaLevelSet/leiaVersionRegistry.H` line 11 still says "ran" (a code comment; left for the next
+    library change, since an edit changes the library stamp).
 
 ## What is open for the author
 
@@ -60,3 +95,4 @@ Created.
 
 ### 2026-09-29
 CORRECTED the void statement of item 4 (the void is OPEN); added the record inconsistencies found by the note writers.
+Added items 7 to 15 from the reports of the note writers.

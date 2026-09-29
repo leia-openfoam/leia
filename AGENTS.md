@@ -40,8 +40,8 @@ prose. The rules that matter most:
   sourced AFTER OpenFOAM's `etc/bashrc` in every shell that builds or runs a leia
   binary, sets `WM_PROJECT_USER_DIR` to the clone root. Two clones never share
   binaries, so a rebuild in one cannot change what another runs (MEASURED 2026-09-09:
-  a build from one clone landed in the shared account default and a second clone ran
-  a library about 200 commits ahead of its own source; STATUS.md section 9). The
+  a build from one clone landed in the shared account default, and a second clone would
+  have loaded a library ~200 commits ahead of its source; no job ran, STATUS.md 9.5). The
   workflow sources the file itself in every job (`workflow/Snakefile`, `sh()`);
   `Allwmake`, `Allwclean` and `run-studies.sbatch` source it too.
   `src/leiaLevelSet` builds as NINE libraries: `libleiaCore` and one per method

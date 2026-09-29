@@ -38,7 +38,7 @@ Ladder values at ratio 1000 from the token comment; `p` is the least-squares ord
 | algebraic alpha_f, normal blend | `alg_blend` | retracted | 3.09e-3, p(L1) 0.83, p(shape) +0.60: second at the large ratio, negative shape order at ratio 54.8 | [`cases/default.parameter`](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L742-L747) |
 | geometric alpha_f, linear mixing | `geo_lin` | retracted as default, solver default in code | 1.83e-3, p(L1) 0.46, p(shape) -0.37; the frozen-muf bug made `alg_lin` look worse than this | [`cases/default.parameter`](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L754-L759), [`createFields.H`](https://github.com/leia-openfoam/leia/blob/8867581/applications/solvers/leiaLevelSetTwoPhaseFoam/createFields.H#L92) |
 | geometric alpha_f, harmonic mixing | `geo_harm` | retracted | 4.67e-3, p(L1) 0.15, p(shape) -0.56 | [`cases/default.parameter`](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L742-L747) |
-| geometric alpha_f, normal blend | `geo_blend` | retracted | 5.67e-3 at ratio 54.8, p(shape) -0.65; ratio 1000 not recorded in the token comment | [`cases/default.parameter`](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L735-L740) |
+| geometric alpha_f, normal blend | `geo_blend` | retracted | 5.67e-3 at ratio 54.8, p(shape) -0.65; 2.65e-3 at ratio 1000, order 0.33 (the SL article's table, [L871](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L871); the token comment does not carry it) | [`cases/default.parameter`](https://github.com/leia-openfoam/leia/blob/8867581/cases/default.parameter#L735-L740) |
 
 ## Why it matters
 
@@ -84,3 +84,6 @@ See [[concepts/viscosity-open-items]]: the 3D token, the banner default, the par
 
 ### 2026-09-28
 Created from the token comment, METHOD 8.1, the SL article section on the viscous term and the solver sources.
+
+### 2026-09-29
+CORRECTED: the geo_blend value at ratio 1000 is recorded in the SL article's table (2.65e-3, order 0.33).

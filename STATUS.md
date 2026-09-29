@@ -7,7 +7,7 @@ Last updated: 2026-09-28 (FALSIFIED: the distance-cone bound is NOT a transport 
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
-workflow). This file is the *current state*, not the manual.
+workflow). This file is the *current state*, not the manual. Since 2026-09-28 the concise, cross-linked record of every method line (the decisions, the retractions, why something failed, what is open) is the knowledge base `docs/knowledge-base/` (start at its `index.md`; section 11.18).
 
 ---
 
@@ -3562,7 +3562,7 @@ the 4-rank check of CLAUDE.md before the cluster, not a measurement.
 
 ### 11.13 The best SL two-phase settings, the record corrected, the translating arm re-run (2026-09-27)
 
-Request (user, 2026-09-27, before an 8-hour absence): find the best measured settings of the SL
+Request (user, 2026-09-27, before an 8-hour absence): find the best measured settings of the SL (the SL findings of 11.13 to 11.15 are summarised for the separate SL session in `docs/knowledge-base/sessions/sl-session-handover.md`, and the SL article now carries them; 2026-09-28)
 method for the coupling to the two-phase Navier-Stokes equations (mass and momentum consistency
 at high density ratio, the surface-tension force), apply them, and re-run the multiphase studies
 on Lichtenberg.
@@ -3942,7 +3942,7 @@ outlet stays more than 17 mm from the droplet. The run COMPLETES, but it degrade
 | centroid x - (x0 + U0 t) [mm] | 0.2 | 0.3 | 0.6 | 1.3 | 2.5 | 3.9 |
 
 The spurious current grows from t = 0.10 s at a slowing rate (about 26 1/s at first, 5 1/s at the
-end), the droplet volume drifts by 10 % and the droplet runs 3.9 mm ahead of the stream. So the
+end), the droplet volume drifts by 10 % (CORRECTED 2026-09-29: 15 %, 1.5e-1 at t = 0.3 s in the second table below and 0.147 in the archived history; the table above rounds it) and the droplet runs 3.9 mm ahead of the stream. So the
 interior degradation is real and needs no outlet; the outlet only turns it into an explosive
 divergence. For the method this is the open defect of the translating droplet at the water/air
 density ratio.
@@ -4075,3 +4075,78 @@ repairs are OPEN. The measurements are in the technical report
   centred, so the mode (-1)^(i+j) d, which destroyed the stationary droplet under HL1q and HL1z,
   does not change it. Repair: an L2 of the second difference of psi, or the min and max of a
   one-sided q, and a curvature column in the kinematic arms.
+
+### 11.18 The knowledge base, the technical report and the paper split (2026-09-28/29)
+
+The user's request of 2026-09-28: separate the semi-Lagrangian topic from the source-term topic,
+build a cross-linked knowledge base in `docs/` from the slides and pre-prints that records the
+reasoning and the decisions, and assess the first gradient-control campaign critically in a
+technical report. Plan: `~/.claude/plans/make-a-detailed-plan-snuggly-lynx.md` (approved
+2026-09-28). Commits d1e3414 to the final commit of 2026-09-29 on `feature/gradient-controlled-level-set`.
+
+1. **The knowledge base** `docs/knowledge-base/` (an Obsidian vault, built by Quartz v5):
+   131 notes (7 hubs, 17 models, 55 concepts, 16 decisions, 13 retractions, 8 cases, 12 studies,
+   3 sessions), the decision log and the retraction log. Start at `index.md`; the living handover
+   is `sessions/current.md`; the handover to the SL session is `sessions/sl-session-handover.md`.
+   Tools in `.quartz/`: `check_kb.py` (frontmatter, wikilinks, log coverage; the CI gate),
+   `check_links.py` (every pinned GitHub link against the history), `build_graph.py` (the data of
+   the 3D graph page `graph3d/graph.htm`), `missing_notes.py`, `build.sh` (`make kb`,
+   `make kb-serve`, `make kb-graph`). The workflow `.github/workflows/knowledge-base.yml`
+   replaces the dead `docs.yml`.
+2. **Publishing is blocked by one setting (OPEN, author decision).** The `github-pages`
+   environment allows deployments from `main` only (GitHub API, 2026-09-29). The workflow builds
+   and checks the site on this branch; to publish from it, add the branch under Settings >
+   Environments > github-pages > Deployment branches, or merge into `main`.
+3. **The technical report** `docs/gradient-controlled-level-set/gcls-technical-report/`
+   (`make report-gcls`, 11 pages, summary first, every claim marked MEASURED, DERIVED or
+   HYPOTHESIS). CORRECTED, the pre-print's reading of the failures: the linear laws read no
+   velocity, so the coupled loop cannot be the primary mechanism for HL1q/HL1z; the source step
+   with a centred gradient of q is linearly unstable at a rate of order mu (DERIVED); the
+   measured growth rates on the stationary droplet at N = 200 are about 290 1/s (curvature
+   error) and 320 to 350 1/s (spurious current) over 10 to 20 ms against mu = 270 1/s. I was
+   wrong to quote 245 and 276 1/s from the first reading of the histories; the archive gives the
+   numbers above. The halo-limited extension at R = h relocates the normal strain into a shell
+   at d = 1 to 2h (K = 1.27 at 1.5R); the exact-1D band means 0.46 to 0.59 measure it. The
+   crossing shift is O(h) and cannot explain the O(1) shape errors. The experiment ladder E0.1
+   to E3 is pre-registered in the report and in `concepts/gradient-control-next-experiments`.
+4. **The paper split.** The four SL-baseline findings of the gcls pre-print moved into the SL
+   article (the subsection "Consistency under domain decomposition", the subsection
+   "Mass-momentum-consistent flux (rhoLENT)" with the Eulerian port, the paragraphs "The late
+   instability: the outlet and the interior growth", the oscillating drift in the Limitations),
+   with their tables and figures (`git mv`); `make_result_figures.py` writes them into the SL
+   article's `data/`. The gcls abstract, contributions, discussion and conclusions follow the
+   report. Both articles build without undefined references (52 and 19 pages).
+5. **CLAUDE.md and AGENTS.md** (byte-identical): "The knowledge base is the point of
+   reference" and "How we work: supervisor and expert developer".
+6. **Record corrections** (the 13 audit flags of the plan): this file's date, SUPERSEDED
+   markers at the filtered 2026-08-18/19 blocks, the VOID list of section 0 (the morning studies
+   of 2026-09-02), 11.17; METHOD.md CORRECTED notes (lines 35, 353, 377, 756);
+   `cases/default.parameter` (the clip, the pre-fix residual, the VOID block); the gate configs
+   (the VOID `rhoDdtGate2D` basis, the pre-fix residual); `HL0.yaml` (the read-out conflated the
+   interface with the band); `baselineEulerian.yaml`; the banner default of the SL solver
+   (`geo_lin`); `workflow/README.md` (eight method libraries); `docs/IMPROVEMENTS.md`, the nPSL
+   note, the library-split plan.
+7. **Link integrity.** The note writers read the tree of d1e3414 and pinned many links to
+   8867581, where the same line numbers show other text. `check_links.py` moved 65 pins on
+   decisive evidence; a reviewer decided the 159 ambiguous ones by hand (125 OK, 14 moved to the other commit, 19 re-anchored, one pointed at the wrong file).
+8. **The writers read the record against itself** and found inconsistencies that nobody had
+   corrected; they are listed, with the corrections still to make at the source, in
+   `docs/knowledge-base/sessions/sl-session-handover.md` (items 1 to 15). The two most important:
+   the production curvature `cellCentreInverse` was never scored on the varying-curvature ellipse
+   gate (the acceptance criterion of section 7 is not demonstrated for it), and a row of the SL
+   article's viscous-term table comes from the frozen-muf run of 4267d7b (re-run or retract: an
+   author decision). Corrected at the source today: CLAUDE.md and AGENTS.md (a second clone would
+   have loaded the library ~200 commits ahead; no job ran with it, 9.5), CLUSTER.md (the banner
+   lists one stamp line per loaded library, up to nine), the 40 mm volume change of 11.15 (15 %).
+   Open and not changed: `foam_log_state.sh` tests launch failures before death signatures on a
+   zero-step log, the Snakefile the other way round; `make_archive.py` does not refuse an existing
+   archive folder ("never overwritten" is a convention); the Phase C bit-identity scripts are not
+   committed; every method-gate arm renders a hex mesh, so the polyhedral rung exists only in the
+   regression set.
+9. **Process: the spend limit stopped every agent three times**, each time before the end of a
+   5-hour window of the individual limit (the windows that ended 2026-09-28 16:10 and 21:10 and
+   2026-09-29 02:10). Since the second stop
+   the work is restart-safe: the manifest `.quartz/manifest.md` fixes every slug and owner,
+   `missing_notes.py` lists what is missing, each writer saves a source digest
+   (`.quartz/digests/`, git-ignored) before drafting and every note at once, and the tree is
+   committed after each batch (the incremental commits of 2026-09-28 and 2026-09-29).
