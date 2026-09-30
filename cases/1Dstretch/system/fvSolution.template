@@ -82,7 +82,7 @@ solvers
 
     "Uext.*" { $@!VELOCITY_EXTENSION!@Uext; }
 
-    // anchoredEikonal redistancer fill solve (leiaRedistancedLevelSetFoam):
+    // anchoredEikonal redistancer fill solve (leiaLevelSetFoam):
     // ASYMMETRIC advection-diffusion linearization -> PBiCGStab/DILU
     // (never PCG/DIC).
     "psiDist.*"

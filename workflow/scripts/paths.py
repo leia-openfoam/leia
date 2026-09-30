@@ -40,7 +40,7 @@ _SOLVER_THEME = {
     "leiaSemiLagrangeLevelSetFoam":            "semi-lagrangian-level-set",
     "leiaSemiLagrangianLevelSetTwoPhaseFoam":  "semi-lagrangian-level-set",
     "leiaLevelSetFoam":                        "velocity-extension",
-    "leiaRedistancedLevelSetFoam":             "geometrically-redistanced-levelset",
+    "leiaRedistancedLevelSetFoam":             "geometrically-redistanced-levelset",  # retired 2026-09-30; archived studies
     "leiaTestDavofNormal":                     "davof",
 }
 

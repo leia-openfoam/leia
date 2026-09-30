@@ -131,10 +131,12 @@ method and the linker only decides what is loaded:
 |---|---|
 | `leiaLevelSetFoam` | `Advection`, `SdplsSource`, `SemiLagrangian`, `VelocityExtension`, `Redistancer`, `VolumeCorrection`, `GradientControl` |
 | `leiaLevelSetTwoPhaseFoam` | `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection`, `SemiLagrangian`, `VelocityExtension`, `GradientControl` |
-| `leiaRedistancedLevelSetFoam` | `Redistancer`, `SdplsSource`, `GradientControl` |
 | `leiaSemiLagrangeLevelSetFoam` | `SemiLagrangian`, `VelocityExtension`, `GradientControl` |
 | `leiaSemiLagrangianLevelSetTwoPhaseFoam` | `SemiLagrangian`, `VelocityExtension`, `SdplsSource`, `SurfaceTension`, `Redistancer`, `VolumeCorrection`, `GradientControl` |
 | test applications, `leiaSetFields`, `leiaPerturbMesh` | the libraries whose headers they include |
+
+`leiaRedistancedLevelSetFoam` was retired on 2026-09-30: `leiaLevelSetFoam` with `eulerian`
+advection, `velocityExtension none` and a redistancer reproduces it bit for bit (STATUS 11.22).
 
 Two rules keep the boundaries real. Every library links with `--no-undefined`, so a
 symbol used from a library that is not in its `LIB_LIBS` fails that library's link.

@@ -374,7 +374,7 @@ solver directly instead:
 
 Regenerate the deck figures: `python3 workflow/scripts/make_sl_3d_fig.py`
 
-## Geometrically redistanced level set (leiaRedistancedLevelSetFoam)
+## Geometrically redistanced level set (leiaLevelSetFoam; leiaRedistancedLevelSetFoam until 2026-09-30)
 
 The third research line: Eulerian psi advection + criterion-gated geometric
 redistancing from the phase indicator's own least-squares planes. Theme

@@ -149,8 +149,8 @@ Description
 
     \f$ \psi^n \f$ IS \c psi.oldTime(), NOT THE ARGUMENT \c psi. Every call
     site re-assembles this source inside an outer loop that has ALREADY
-    overwritten \c psi: the defect-correction loop of \c eulerianAdvection and
-    \c leiaRedistancedLevelSetFoam (\c nDefCorr, default 3) and the PIMPLE
+    overwritten \c psi: the defect-correction loop of \c eulerianAdvection
+    (\c nDefCorr, default 3; also \c leiaRedistancedLevelSetFoam until 2026-09-30) and the PIMPLE
     outer-corrector loop of \c alphaEqn.H. Feeding the latest ITERATE into a
     multiplicative factor turns that loop into the Picard iteration
     \f$ \psi^{k+1} = \psi^n + \psi^k(e^z - 1) \f$, whose fixed point is
