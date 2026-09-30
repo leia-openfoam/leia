@@ -123,6 +123,7 @@ decisions/viscosity-face-model-alg-lin | VISCOSITY_FACE_MODEL alg_lin (3D open) 
 decisions/momentum-schemes-bdf2-upwind | MOMENTUM_DDT_SCHEME backward, MOMENTUM_DIV upwind | | C (BDF2 section), kb-raw D5 | D
 decisions/mesh-family-hexahedral | The mesh family: hexahedral production, polyhedral as the amplification rung | | S:2233-2310, M:402-484 | D
 decisions/process-gates-2d-first-and-no-best-yaml | Process: 2D gate before 3D; no config/best.yaml; METHOD.md updated in the same commit | | C (best configuration section), M:25-29 | D
+decisions/retire-redistanced-solver | leiaRedistancedLevelSetFoam retired: the redistancing line runs in leiaLevelSetFoam | the 10-arm bit-identity gate; the semi-Lagrangian pair is not equivalent | S:11.22 | ME
 
 ## retractions/ (owner E; each with a line in retraction-log.md under its month)
 retractions/closed-box-translating-droplet | "The translating droplet ran": the case was a closed box (2026-09-02) | | S:14-65, C:661-705, 440107f | E

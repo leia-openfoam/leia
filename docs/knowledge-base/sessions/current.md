@@ -35,6 +35,10 @@ date: 2026-09-28
    the SL update unstable (the CLAUDE.md corollary). The production curvature `cellCentreInverse`
    is scored on the signed-distance ellipse and ellipsoid ([[cases/curvature-static-gates]]). The SL
    session has three tasks in [[sessions/sl-session-handover]].
+4. 2026-09-30 ([STATUS 11.22](https://github.com/leia-openfoam/leia/blob/6bd5b7b7/STATUS.md#L4859-L4939)): `leiaRedistancedLevelSetFoam` is retired; the
+   redistancing studies run in `leiaLevelSetFoam`, bit for bit the same
+   ([[decisions/retire-redistanced-solver]]). The kinematic semi-Lagrangian solver stays: the
+   `semiLagrangian` member of `leiaLevelSetFoam` has no `projectedFlux` trace.
 
 ## What is open, in order
 
@@ -61,6 +65,10 @@ date: 2026-09-28
    move them; `leia-curvature` is on `development` with v2512 binaries.
 5. CI: `Build Tests` builds leia on OpenFOAM-v2606 at every push and pull request to `main` and
    `development` ([[concepts/ci-build-tests]]); run `.github/scripts/ci-build-and-smoke.sh` before a push.
+6. Author decision: retire `leiaSemiLagrangeLevelSetFoam` too? It needs the trace-velocity options
+   in `semiLagrangianAdvection`, a decision on the stale narrow band of its phase indicator (a fix
+   changes every SL kinematic metrics CSV), and the `L_INF_E_PSI` sign-test fix in the Eulerian
+   error writer ([[models/level-set-advection]] open question 3).
 
 ## Build progress of the vault (incremental, restart-safe)
 
@@ -91,6 +99,7 @@ hand (`.quartz/link-audit-2026-09-29.txt`).
 - The cluster clone `/work/scratch/tm83tomy/leia` belongs to the SDPLS session and is on the feature branch at 40c39d7; no job of this session runs there.
 - Never give psi a fixed value on a patch: the SL fit reads patch values as stencil data ([STATUS 11.19](https://github.com/leia-openfoam/leia/blob/537a6011/STATUS.md#L4202-L4226)).
 - Run a verification study with `--until solve`: the finalize rule overwrites curated figures and tables.
+- A clone that built a solver which `git pull` deletes keeps the untracked `Make/<WM_OPTIONS>/`, and `wmake` stops on it; `Allwmake` removes the one of `leiaRedistancedLevelSetFoam` ([STATUS 11.22](https://github.com/leia-openfoam/leia/blob/6bd5b7b7/STATUS.md#L4859-L4939)).
 
 ## Where the numbers live
 
@@ -109,3 +118,4 @@ Rewritten for the merge into `development` and `main` and the results of 2026-09
 
 ### 2026-09-30
 OpenFOAM-v2606 on Lichtenberg and the CI (Build Tests) added to the open list (STATUS 11.21).
+The redistanced solver retired, the semi-Lagrangian pair measured (STATUS 11.22); open item 6 added.
