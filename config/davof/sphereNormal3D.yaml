@@ -1,0 +1,129 @@
+# DAVOF static gate 1: the Gauss-identity interface normal on a sphere
+#
+#     m_c = - sum_f alpha_f S_f^out
+#
+# from the cell volume fractions alpha_c and the face liquid-area fractions
+# alpha_f of a sphere (R = 1 mm, 4R box, centre off every mesh symmetry plane),
+# on the uniform hex ladder N = 20/40/80/160 (R/h = 5/10/20/40; the R/h >= 10
+# rule holds on three of the four rungs). Scored per interface cell
+# (|m_c| > wispTol V_c^(2/3)) as e_c = |m_c/|m_c| - n_exact(xS_c)| at the
+# reconstructed patch centroid, L1/L2 plain averages over the interface cells,
+# Linf the maximum; total area sum_c |m_c| against 4 pi R^2.
+#
+# PREDICTION 1 (pre-registered, 2026-09-28, two alpha sources):
+#   alphaSource linearInterpolant (one C0 piecewise-linear surface from the
+#   exact signed distance): E_L1_N, E_L2_N and E_AREA_REL are O(h^2), i.e. a
+#   least-squares order of 2.0 +- 0.2 over the four rungs; MAX_CONSISTENCY
+#   (|m_c - sum of the tet patches|/h^2) and SUM_M_REL (|sum_c m_c|/A) at
+#   round-off (< 1e-10). E_LINF_N is reported, not gated: corner clips with a
+#   small |m_c| carry O(1) direction errors, the wisp threshold removes them
+#   and N_WISP / E_LINF_N_WISP show how many there are and how bad.
+#   alphaSource planePhaseIndicator (leia's production plane-DA state with the
+#   central face average, NOT one consistent surface): order >= 1 expected,
+#   the C0 mismatch of neighbouring planes is the mechanism that decides
+#   whether it is 1 or 2.
+#   Cross-check on the SAME alpha (OpenFOAM geometricVoF): plicRDF order 1..2,
+#   gradAlpha ~1, isoAlpha 1..1.5, from their published behaviour on hex meshes.
+# MEASURED 2026-09-28 (run 1, STATUS 10.7): FALSIFIED for the normal, HELD for
+#   the area and the identity. linearInterpolant: p(E_L2_N) = 1.01 (pairwise
+#   1.05 / 1.01 / 0.99), p(E_L1_N) = 1.02, p(E_AREA_REL) = 2.00, MAX_CONSISTENCY
+#   ~ 5e-15, SUM_M_REL ~ 1e-16. On the same alpha plicRDF 1.06 (1.6x the DAVOF
+#   error at every rung), isoAlpha 0.5, gradAlpha 0.06 (no convergence).
+#   MECHANISM: the identity is exact (consistency at round-off) and |m_c| is
+#   second order (the area), but the DIRECTION of m_c is set by the face
+#   crossings of the interpolant, which are O(h^2) accurate, so the face
+#   fractions carry O(h) errors and the direction O(h). A second-order normal
+#   needs face fractions accurate to O(h^2) as fractions -- crossings to third
+#   order -- which is exactly the requirement on a transported alpha_f.
+# PREDICTION 2 (pre-registered 2026-09-28, before run 2, third source added):
+#   alphaSource exactSphere (exact face fractions from the circle-polygon
+#   intersection, exact cell fractions by quadrature): p(E_L1_N), p(E_L2_N) and
+#   p(E_AREA_REL) = 2.0 +- 0.2; MAX_CONSISTENCY is then the exact-minus-linear
+#   state difference, O(h), and is NOT a gate for this source. On the exact
+#   alpha the cross-check changes: plicRDF 1.5..2 (its published order),
+#   gradAlpha ~1 (Youngs-type), isoAlpha 1..1.5.
+# MEASURED 2026-09-28 (run 2, STATUS 10.7): HELD. exactSphere p(E_L2_N) = 1.98
+#   (pairwise 2.16 / 2.03 / 1.73), p(E_L1_N) = 2.05, p(E_AREA_REL) = 2.00,
+#   E_L2_N at N = 160 1.15e-4; plicRDF on the same exact alpha 1.06 and 3.87e-3
+#   (34x), gradAlpha 0.07 (0.066, no convergence), isoAlpha 0.52. TwoPhaseFlow's
+#   own ladder (cutCellIso / cutCellImpFunc): plicRDF 1.08 / 1.06, gradAlpha
+#   0.07, isoAlpha 0.55 / 0.51 -- the cross-check reproduces it.
+# PREDICTION 3 (pre-registered 2026-09-29, before run 3, the explicit position):
+#   the plane position p_c = (3 alpha_c V_c - sum_f alpha_f (x_f - x_c).S_f)/|m_c|
+#   (the corrected 2020 AOF formula, exact for a plane on every polyhedral cell)
+#   scored as E_POS_* = the distance of the centroid of the plane-cell polygon
+#   from the exact sphere, in metres: p(E_POS_L2) = 2.0 +- 0.2 for exactSphere;
+#   2.0 +- 0.3 for linearInterpolant and planePhaseIndicator too, because the
+#   offset error is O(h^2) even where the normal is O(h) (3 dV = O(h^4), the
+#   face terms O(h^4), |m_c| = O(h^2)) and the O(h) tilt about the foot point
+#   contributes O(h) x O(h) at the centroid; plicRDF ~2 (volume-matched). The
+#   realizability diagnostics MAX_VOL_DIFF_PLANE and MAX_AREA_DIFF_PLANE are
+#   O(h^2) and O(h) for the curved states, round-off (< 1e-12) on the plane gate.
+#   [MEASURED run 3: MAX_VOL_DIFF_PLANE is O(h), not O(h^2): 5.9e-2, 3.3e-2,
+#   1.7e-2, 8.6e-3 for exactSphere -- the fraction cut by a plane at the
+#   patch's mean offset differs from the exact one by sagitta x area / V_c =
+#   O(h/R). The area diagnostic is O(h) as predicted, noisy in the max.]
+# MEASURED 2026-09-29 (run 3, STATUS 10.8): HELD for every arm. p(E_POS_L2):
+#   exactSphere 2.00 (pairwise 2.00 / 2.00 / 2.00), linearInterpolant 2.03,
+#   planePhaseIndicator 2.00; E_POS_L2 at N = 160: 4.35e-8 m (1.7e-3 h),
+#   1.69e-8 m, 2.02e-7 m. plicRDF on the exact alpha: 2.00 and 4.35e-8 m, the
+#   same position as DAVOF's explicit one to 0.02 %: on a realizable-to-leading-
+#   order state the explicit formula lands on the volume-matching plane. On the
+#   linear-interpolant alpha plicRDF 7.94e-8 m, DAVOF 1.69e-8 m (4.7x better).
+#   gradAlpha 1.95, isoAlpha 1.99; TwoPhaseFlow's own LCentre1: plicRDF 2.00.
+#   Plane gate: E_POS_LINF 1.0e-16 m and 8.9e-17 m (both states), realizability
+#   |alphaPlane - alpha| 1.9e-15 / 1.5e-14, |A n - m_c|/h^2 6.0e-14 / 9.6e-14.
+# PREDICTION 4 (pre-registered 2026-09-29, before run 5; the arm linearInterpolant
+#   is renamed detrixheAslam, which is what it is: the exact signed distance at
+#   the cell centre, the face centres and the points in the Detrixhe-Aslam
+#   formulas). New arm quadraticFaces: the face fractions from the exactly cut
+#   quadratic interpolant of the exact signed distance at the vertices and the
+#   edge midpoints of every fan triangle (crossings O(h^3), fractions O(h^2)),
+#   cell fractions as detrixheAslam. Prediction: p(E_L2_N) = 2.0 +- 0.2 and
+#   p(E_L1_N) = 2.0 +- 0.2 with E_L2_N within a factor 2 of exactSphere at every
+#   rung; p(E_AREA_REL) = 2.0; p(E_POS_L2) = 2.0 +- 0.3; N_FACE_FALLBACK = 0 at
+#   R/h >= 10. FALSIFIED: p(E_L2_N) < 1.7 (then one polynomial degree more is
+#   not enough and the sliver argument is wrong).
+# MEASURED 2026-09-29 (run 5, STATUS 10.10): HELD. quadraticFaces p(E_L2_N) =
+#   1.95, p(E_L1_N) = 2.05, E_L2_N 6.80e-3 / 1.56e-3 / 3.9e-4 / 1.19e-4 against
+#   exactSphere 6.96e-3 / 1.56e-3 / 3.83e-4 / 1.15e-4 (within 4 %), p(E_AREA_REL)
+#   = 2.00, p(E_POS_L2) = 2.01 (7.5e-8 m at N = 160). N_FACE_FALLBACK 4 / 2 / 0 /
+#   4 of 2.6e4..1.2e7 faces (the "0 at R/h >= 10" part of the prediction missed
+#   by a handful of faces; they keep the Detrixhe-Aslam value). Plane gate: all
+#   three leia states exact (E_POS_LINF 9e-17 m for quadraticFaces).
+# PASS: exactSphere order(E_L2_N) >= 1.8 AND order(E_AREA_REL) >= 1.8;
+#   linearInterpolant MAX_CONSISTENCY < 1e-10 at every rung (the identity).
+# FALSIFIED: exactSphere order(E_L2_N) < 1.7 (the method claim of the
+#   proposal would then fail even with an exact state); MAX_CONSISTENCY > 1e-10
+#   for linearInterpolant (the implementation); plicRDF on the exact alpha with
+#   an order >= DAVOF's AND a smaller E_L2_N at N = 160 (no accuracy advantage
+#   at equal input -- reported as such, not hidden).
+#
+#   make studies-one STUDY=davof/sphereNormal3D PROFILE=profiles/local
+#   snakemake --workflow-profile profiles/local --configfile config/davof/sphereNormal3D.yaml
+study_name: sphereNormal3D
+studies_dir: studies/davof
+case: davof/sphereNormal3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestDavofNormal
+theme:  davof
+
+# leiaSetFields initialises psi + alpha.water; the app compares its own
+# alpha.davof with that field (MAX_ALPHA_DIFF_DA).
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  DAVOF_ALPHA_SOURCE: [exactSphere, quadraticFaces, detrixheAslam, planePhaseIndicator]
+  DAVOF_CROSS_CHECK: [geometricVoF]
+  DAVOF_WISP_TOL: [1e-3]
+collapse_other_axes: true
+
+# Figures and the order table go to studies/davof/sphereNormal3D/figures and to
+# the davof theme's docs data (make_davof_normal_table.py); no deck.
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -1,0 +1,15 @@
+/* libleiaDavof -- the DAVOF (dual area/volume-of-fluid) state: cell volume fractions,
+   face area fractions and the Gauss-identity area normal m_c = -sum_f alpha_f S_f
+   (docs/plan-library-split-and-build-policy.md, WP3 pattern: one library per family),
+   and the curvature of that state (curvature/: run-time-selectable models fitted to
+   the ring of centroids and normals, delivered to cells and faces with the
+   parallel-surface closed form). */
+
+davofState.C
+curvature/davofCurvature.C
+curvature/davofQuadricCurvature.C
+curvature/davofCurvatureDelivery.C
+
+leiaStamp_leiaDavof.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaDavof

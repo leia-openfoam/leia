@@ -194,6 +194,7 @@ log.*
 *.foam
 cases/**/results.variants/
 cases/**/psi.redistanced.*
+cases/**/leia.version
 
 # Windows alternate-data-stream copy artifacts (appear when files are copied
 # from Windows into WSL as "<name>:Zone.Identifier")

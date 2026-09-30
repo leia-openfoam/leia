@@ -1,0 +1,27 @@
+// DAVOF static gate 1: the Gauss-identity interface normal on a sphere.
+//
+// A sphere of radius DROPLET_RADIUS = 1 mm (cases/default.parameter) in a cube of
+// side DOMAIN_LENGTH = 4R, centre off every mesh symmetry plane (the literal
+// DAVOF_SPHERE_CENTRE_* tokens in default.parameter). No time stepping: mesh,
+// leiaSetFields, leiaTestDavofNormal. The ladder N = 20/40/80/160 gives
+// R/h = 5/10/20/40 (8e3 .. 4.1e6 cells; four points, as AGENTS.md asks, three of
+// them at R/h >= 10). Serial; the N = 160 rung takes minutes and a few GB.
+//
+// Three alpha sources run at every rung: exactSphere is the exact state (face
+// fractions from the circle-polygon intersection, cell fractions from an exact
+// quadrature); quadraticFaces cuts the quadratic interpolant of the exact signed distance on every face triangle; detrixheAslam is the Detrixhe-Aslam state (exact signed distance at cell centre, face centres and points) the
+// DAVOF identity is exact for; planePhaseIndicator is the plane-based state the
+// SL solver transports. The cross-check runs OpenFOAM's geometricVoF plicRDF,
+// gradAlpha and isoAlpha on the identical alpha field of each source.
+values
+{
+    solver (leiaTestDavofNormal);
+
+    N_CELLS ( 20 40 80 160 );
+
+    DOMAIN_LENGTH ( 0.004 );
+
+    DAVOF_ALPHA_SOURCE ( exactSphere quadraticFaces detrixheAslam planePhaseIndicator );
+
+    DAVOF_CROSS_CHECK ( geometricVoF );
+}

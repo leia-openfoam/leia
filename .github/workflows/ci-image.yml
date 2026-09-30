@@ -1,0 +1,45 @@
+name: CI image
+# Builds .github/docker/openfoam-v2606/Dockerfile and pushes it to the GitHub Container Registry
+# of the organisation. Runs when the Dockerfile or this file changes, or by hand.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, development]
+    paths:
+      - '.github/docker/**'
+      - '.github/workflows/ci-image.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/leia-openfoam/openfoam-v2606_ubuntu-noble
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .github/docker/openfoam-v2606
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+      - name: Check the pushed image
+        run: |
+          docker pull "$IMAGE:latest"
+          # (foamVersion is not in the openfoam2606 packages: exit 127 on 2026-09-30.)
+          docker run --rm "$IMAGE:latest" bash -c '. "$LEIA_FOAM_BASHRC" && echo "OpenFOAM-$WM_PROJECT_VERSION $WM_OPTIONS" && command -v wmake && command -v blockMesh && command -v mpirun'

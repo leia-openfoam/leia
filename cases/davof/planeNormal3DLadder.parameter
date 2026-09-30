@@ -1,0 +1,17 @@
+// DAVOF plane ladder: the exact-solution gate geometry (cases/davof/planeNormal3D,
+// an implicitPlane in a 4 mm box) on N = 8/16/32 cells per side, for the PLIC
+// surface renderings of the proposal (DAVOF, plicRDF, gradAlpha side by side).
+// The DAVOF state is exact for a plane at every N; the cross-check models show
+// their errors. Serial, seconds per case.
+values
+{
+    solver (leiaTestDavofNormal);
+
+    N_CELLS ( 8 16 32 );
+
+    DOMAIN_LENGTH ( 0.004 );
+
+    DAVOF_ALPHA_SOURCE ( detrixheAslam );
+
+    DAVOF_CROSS_CHECK ( geometricVoF );
+}

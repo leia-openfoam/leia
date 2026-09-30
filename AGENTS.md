@@ -202,6 +202,24 @@ snakemake --workflow-profile profiles/local --configfile config/<study>.yaml -n 
 
 One study = one `(case, mesh, mode)`; backend switches purely via `PROFILE`.
 `workflow/README.md` documents every `config/*.yaml` study.
+`make studies-davof` runs the DAVOF (dual area/volume-of-fluid) static gates:
+`config/davof/*.yaml` with `cases/davof/*` (a `case:` may name a sub-folder of
+`cases/`; the per-case directories use the basename), output in `studies/davof/`,
+theme `davof` -> `docs/davof/davof-article/data/` (README section "DAVOF").
+`cases/davof/planeNormal3D/Allrun` is their exact-solution gate (exits non-zero).
+`libleiaDavofInterface` writes the PLIC surfaces (VTK, `sampledSurface`
+`davofInterface`); `make davof-proposal DEST=...` exports the proposal's table
+and figures (README section "DAVOF").
+Curvature of the DAVOF state: run-time-selectable models in `libleiaDavof`
+(`src/leiaLevelSet/davof/curvature`, `fvSolution davof.curvature`, NOT in the
+level-set libraries), delivered to cells and faces with the parallel-surface
+closed form; measured on the ellipsoid ladder `config/davof/ellipsoidNormal3D.yaml`
+(STATUS 10.11; the config header records prediction 5 and what held, missed
+and was falsified). That study needs 9 GB per N = 160 case: ONE case at a time
+(`--jobs 1`); a detached (`nohup &`) run dies when the last WSL session closes,
+so long runs go through an attached session. Still open: the zero-step
+regeneration and one-step translation gates (the proposal package's
+`research/projects/2026-DFG-AVOF/AGENTS.md` lists them).
 `mesh: hexRefined | polyRefined` = statically refined around the interface by
 `workflow/scripts/leiaRefineHexMesh.py` / `leiaRefinePolyMesh.py` in the `mesh`
 rule (pre-processing only, solver unchanged, fields re-initialised on the final

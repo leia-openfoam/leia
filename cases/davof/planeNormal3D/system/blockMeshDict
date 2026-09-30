@@ -1,0 +1,68 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// DAVOF exact-solution gate: a plane through a 0.004 m box, 8^3 cells. Every
+// linear interpolant is exact for a plane, so the DAVOF normal, the tet/face
+// consistency and the alpha against the exact plane cut must be at round-off.
+
+scale   1;
+
+n_cells 8;
+domain  0.004;
+
+vertices
+(
+    (0        0        0       )
+    ($domain  0        0       )
+    ($domain  $domain  0       )
+    (0        $domain  0       )
+    (0        0        $domain )
+    ($domain  0        $domain )
+    ($domain  $domain  $domain )
+    (0        $domain  $domain )
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($n_cells $n_cells $n_cells) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    walls
+    {
+        type wall;
+        faces
+        (
+            (0 4 7 3)
+            (2 6 5 1)
+            (1 5 4 0)
+            (3 7 6 2)
+            (0 3 2 1)
+            (4 5 6 7)
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

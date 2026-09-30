@@ -24,6 +24,13 @@ config/faceCurvatureDroplet2D.yaml  FACE-CENTERED curvature convergence: kappa_f
                              circle, exact SDF), every curvature model with/without the
                              stabilized foot point (leiaTestMeanCurvature, serial,
                              seconds; figure + orders into the method-comparison theme)
+config/davof/sphereNormal3D.yaml  DAVOF static gate 1: the Gauss-identity interface
+                             normal m_c = -sum_f alpha_f S_f of a sphere on the hex
+                             ladder N = 20/40/80/160, three alpha sources (exact
+                             sphere, linear interpolant, plane indicator), with
+                             OpenFOAM's geometricVoF plicRDF/gradAlpha/isoAlpha on
+                             the same alpha as the cross-check (leiaTestDavofNormal,
+                             serial; studies/davof/; docs/davof theme; section "DAVOF")
 config/stationaryDropletStableFoot.yaml  parasitic currents with the SECOND-ORDER face
                              curvature (curvatureExtension stabilizedFootPointFace +
                              faceCurvatureSource registered): N=256,512 (both >20
@@ -772,3 +779,144 @@ the three. **The falsified monotone clip beats the cone bound on every advection
 
 So `SL_VALUE_BOUND` stays at the sentinel that resolves to `none`. What survives is the
 FAMILY -- the seat for the review's Rank 1 -- and the `-mode growth` instrument.
+
+## DAVOF: the Gauss-identity interface normal (leiaTestDavofNormal)
+
+The dual area/volume-of-fluid method carries, next to the cell volume fraction
+`alpha_c`, the liquid area fraction `alpha_f` of every face, and recovers the
+interface area normal of a cell from the Gauss identity on the liquid sub-volume,
+`m_c = -sum_f alpha_f S_f^out` (`|m_c|` = interface area in the cell, direction =
+normal out of the liquid). Library `src/leiaLevelSet/davof` (`libleiaDavof`,
+`davofState.H`), app `applications/test/leiaTestDavofNormal`, theme `davof`
+(`docs/davof/README.md`). The studies live in their own sub-folders:
+`config/davof/<study>.yaml`, `cases/davof/<case>{,.parameter}`, `studies/davof/<study>`
+(`studies_dir: studies/davof` in the config; a `case:` with a sub-folder is allowed,
+the per-case directories use the basename).
+
+`fvSolution davof { alphaSource ...; wispTol ...; crossCheck { set ...; models (...); } }`:
+
+- `alphaSource exactSphere` -- the exact state of an `implicitSphere` on an
+  axis-aligned hex mesh (`davofSphereGeometry.H`): `alpha_f` from the closed-form
+  circle-polygon intersection of every face, `alpha_c` from an adaptive Simpson
+  quadrature (relative 1e-12) of the exact rectangle-disk cross-section. The
+  reference the Gauss identity is meant to recover the normal from; also the
+  reference the other two states are measured against. `MAX_CONSISTENCY` is then
+  the exact-minus-linear state difference (O(h)), not a gate.
+- `alphaSource linearInterpolant` -- the exact signed distance of
+  `levelSet.implicitSurface` at the cell centre, the face centres and the points,
+  linear on the tets `(xc, xf, p0, p1)` (the Detrixhe-Aslam decomposition with the
+  exact vertex values) for `alpha_c`, and on the face triangle fans `(xf, p0, p1)`
+  with the SAME values for `alpha_f`: one C0 piecewise-linear surface, the identity
+  is exact for it (`MAX_CONSISTENCY` = |m_c - sum of the tet patches|/h^2 at
+  round-off is the gate of the implementation).
+- `alphaSource planePhaseIndicator` -- leia's production state: one plane per
+  narrow-band cell (`detrixheAslam`), face fractions as the central average of the
+  owner and neighbour planes (what the SL two-phase solver transports).
+- `wispTol` -- a cell is an interface cell when `|m_c| > wispTol V_c^(2/3)`; smaller
+  non-zero `|m_c|` are wisps (counted, excluded from the norms, their worst normal
+  error reported as `E_LINF_N_WISP`).
+- `crossCheck set geometricVoF` -- OpenFOAM's `plicRDF`, `gradAlpha`, `isoAlpha`
+  (libgeometricVoF, the algorithms of TwoPhaseFlow) run on the identical
+  `alpha.davof` and are scored with the same norms; their area vector points into
+  alpha = 1 and is flipped; the exact normal is taken at their `centre_`.
+
+Norms per model over the interface cells: `e_c = |n_c - n_exact(x_c)|` at the
+reconstructed patch centroid (`xS.davof` for DAVOF), `E_L1_N = mean`, `E_L2_N =
+root mean square`, `E_LINF_N = max`; area-weighted `E_L1_N_AW`, `E_L2_N_AW`;
+`E_AREA_REL = |sum_c |m_c| - A_exact|/A_exact` (4 pi R^2 for a sphere).
+
+The explicit plane position (`davofState::planePosition()`, the corrected 2020
+AOF formula, the Gauss theorem for x on the liquid sub-volume):
+`p_c = (3 alpha_c V_c - sum_f alpha_f (x_f - x_c).S_f^out)/|m_c|`, the plane
+`{x : (x - x_c).n_c = p_c}`; exact on planar faces, no iteration, nothing beyond
+`(alpha_c, alpha_f)` and the mesh geometry. The plane is cut through the cell on
+the Detrixhe-Aslam tets: `xPlane.davof` (polygon centroid), `APlane.davof`,
+`alphaPlane.davof` (the cut volume fraction). Position error per model:
+`E_POS_L1/L2/LINF` = mean / rms / max over the interface cells of the distance
+[m] of the polygon centroid (`centre_` for the geometricVoF models) from the
+exact surface; `E_POS_FOOT_L2/LINF` the same for DAVOF's foot point
+`x_c + p_c n_c`. Realizability diagnostics: `MAX_VOL_DIFF_PLANE` =
+`max |alphaPlane - alpha|`, `MAX_AREA_DIFF_PLANE` = `max |A n - m_c|/h^2`
+(round-off for a plane, O(h^2) and O(h) for a curved surface whose state no
+single plane realizes; `-expectExact` gates them with the position at 1e-12).
+CSVs in the
+case: `leiaTestDavofNormal.csv` (one row, DAVOF + diagnostics; aggregated into the
+study database as `leiaTestDavofNormal.<COL>`) and `leiaTestDavofNormalModels.csv`
+(tidy, one row per MODEL; read by `workflow/scripts/make_davof_normal_table.py`,
+which writes `davof_normal_orders_<study>.{csv,tex}`, the raw long table and one
+log-log figure per metric into the theme data, least-squares and pairwise orders
+per (alphaSource, model)). `--tpf-results <csv>` merges the rows of the TwoPhaseFlow
+benchmark `run/benchmark/reconstruction/sphereNormal3D` as `tpf:<scheme>/<setAlpha>`.
+
+Curvature of the DAVOF state (`src/leiaLevelSet/davof/curvature`, part of
+`libleiaDavof`, run-time selectable by the DAVOF applications and independent of
+the level-set libraries): `fvSolution davof { curvature { models (normalsOnly
+hermite); normalsOnly { type quadricFit; positionWeight 0; } hermite { type
+quadricFit; positionWeight 1; } } }`. `quadricFit` fits, per interface cell, a
+quadric graph in the frame of `n_c = m_c/|m_c|` about the plane-polygon centroid
+`xPlane` to the Hermite data of the point-neighbour ring (OpenFOAM's
+`CPCCellToCellStencil`, gathered for the interface cells only and parallel-aware):
+two slope rows per neighbour from its normal, one position row from its centroid
+weighted by `positionWeight`. `positionWeight 0` (the headline) lets the normals
+decide the second derivatives (the centroids' non-smooth O(h^2) error would give
+an O(1) curvature floor, the known point-fit floor; the normals' O(h^2) error over
+a ring of about 2h gives O(h)); `positionWeight 1` is the naive Hermite fit, the
+comparison arm. Convention: `kappa = kappa_1 + kappa_2 = div(n)` (2/R on a
+sphere), also `K` (Gaussian), `kappa1`, `kappa2`. The delivery to cell centres and
+faces (`davofCurvatureDelivery.H`) uses the parallel-surface closed form of the
+level-set solver because the interface centroid is neither the cell centre nor a
+face centre: the contour-referenced cell field on the force band is the forward
+map `kappa(d) = (kappa + 2 d K)/(1 + d kappa + d^2 K)` at the cell centre's offset
+`d` from the cell's own model (the stable quadratic root of the normal-projected
+SL note), band cells without a model take the Kang-weighted values of their
+face-adjacent models (across coupled patches through the packed models, so np-4 =
+serial at 1e-12); the face field on the active faces (alpha jumps, a model on at
+least one side; the faces of wisps are skipped and counted) is
+`interpolate(kappaCell)` inverted with `parallelSurfaceInverse(kappa_f, d_f, K_f)`
+(the level-set solver's delivery, `d_f`, `K_f` Kang-combined from the two sides),
+next to the models' own foot value. Norms: `E_KAPPA_L1/L2/LINF` at the interface
+centroids against the exact total curvature at their closest surface points
+(`KAPPA_REF_L2` = rms of the exact value, `E_K_L2` the Gaussian curvature),
+`E_KAPPA_CELL_*` on the filled band cells against the exact parallel-surface value
+at the cell centre, `E_KAPPA_FACE_*` and `E_KAPPA_FACE_FOOT_*` on the active faces
+against the exact interface curvature at the foot of the face centre. Exact
+geometry: `implicitSphere` (2/R, 1/R^2), `implicitPlane` (0) and
+`signedDistanceEllipsoid` (its `curvature()` at the closest point, `K =
+1/(a^2 b^2 c^2 (X^2/a^4 + Y^2/b^4 + Z^2/c^4)^2)`); its exact area by a composite
+Gauss-Legendre rule (`A_EXACT`), `RADIUS` = the smallest half-axis. The first
+model's `E_KAPPA_L1/L2/LINF, KAPPA_REF_L2, E_KAPPA_FACE_L2, N_CURV_FALLBACK` are
+appended to the wide CSV and to the `davof` row of the models CSV; every model has
+a row in `leiaTestDavofCurvature.csv` (the table script reads it as the series
+`davof:curv:<model>` and adds `E_KAPPA_REL_L2 = E_KAPPA_L2/KAPPA_REF_L2`; the
+compact proposal table carries `p(kappa)` and the relative error at the finest
+mesh on the DAVOF rows). `-expectExact` also requires `E_KAPPA_LINF h` and
+`E_KAPPA_FACE_LINF h` at round-off (a plane's curvature is zero).
+
+Gates:
+
+```bash
+cases/davof/planeNormal3D/Allrun                         # exact-solution gate, seconds, exit != 0 on failure
+make studies-one STUDY=davof/sphereNormal3D PROFILE=profiles/local   # 16 cases, serial, < 1 h
+make studies-one STUDY=davof/ellipsoidNormal3D PROFILE=profiles/local   # 12 cases, the curvature gate; 9 GB at N = 160, ONE at a time (--jobs 1)
+make studies-one STUDY=davof/planeNormal3DLadder PROFILE=profiles/local   # the plane at N = 8/16/32, seconds
+make davof-proposal DEST=<proposal>/figures/davof   # the compact table + the PLIC figures for the proposal
+```
+
+PLIC surfaces: `libleiaDavofInterface` (`src/leiaLevelSet/davofInterface`, ported
+from TwoPhaseFlow's `postProcessing/interface`) cuts the plane of every interface
+cell through the cell (OpenFOAM's `cutCellPLIC`) into one polygon:
+`plicInterfaceSurface(mesh, normalOut, pointOnPlane)` with `writeLegacyVTK()`,
+and the `sampledSurface` `type davofInterface` (fields `normal m.davof`,
+`centre xPlane.davof`) for the `surfaces` function object of a solver.
+`leiaTestDavofNormal` writes `postProcessing/davofInterface/<time>/plic.<model>.vtk`
+for DAVOF and every cross-check model, with `cellId`, `eNormal`, `ePos` as
+CELL_DATA; `workflow/scripts/render_davof_interfaces.py` (called by the report
+rule) draws them side by side, models x resolutions, coloured by the error, into
+`figures/davof_plic_<study>.{pdf,png}` (self-contained orthographic projection,
+no VTK/mplot3d dependency). `make_davof_normal_table.py` also writes the compact
+`tables/davof_normal_proposal_<study>.tex`; `export_davof_proposal.py --dest`
+(`make davof-proposal`) copies both into the DAVOF proposal, which `\input`s and
+`\includegraphics` them by name.
+
+```bash
+```

@@ -25,6 +25,10 @@ PER_CASE_CSVS = [
     "leiaTestVelocityExtension.csv",   # static t=0 extension verification
     "leiaTestMeanCurvature.csv",       # static curvature-accuracy test
     "leiaTestRedistance.csv",          # static redistancing gate (circle)
+    "leiaTestDavofNormal.csv",         # DAVOF static gate: Gauss-identity normal
+                                       # (one row; the tidy per-model twin
+                                       # leiaTestDavofNormalModels.csv is read by
+                                       # make_davof_normal_table.py directly)
     "psiConservation.csv",             # int(psi dV) drift + flux/divPhi/source
                                        # budget + vol{psi<0}; written only when
                                        # PSI_CONSERVATION_CSV is true, and a

@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-29 (section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-09-30 (section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -3309,6 +3309,330 @@ v2512), so polyhedral meshes may differ slightly between the two; measure before
 poly results across the versions. The `feature/eulerian-rholent` branch edits `Allwmake` and
 `etc/leia-env.sh` too; its merge onto this `leia-env.sh` is manual.
 
+### 10.7 DAVOF static gate 1: the Gauss-identity normal on a sphere, measured (2026-09-28)
+
+**Why.** The DFG proposal's reviewers asked for a preliminary result: initialise the cell
+volume fractions `alpha_c` and the face liquid-area fractions `alpha_f` of a sphere, recover
+the interface area normal of every cell from the DAVOF identity `m_c = -sum_f alpha_f S_f^out`
+(`|m_c|` the interface area in the cell, the direction the normal out of the liquid), and show
+its convergence next to the best PLIC reconstructions (TwoPhaseFlow's plicRDF, gradAlpha,
+isoAlpha). Expectation before the run: DAVOF second order, the PLIC schemes first.
+
+**What exists now (commits 98bb59f, 9cfcd4b, this one).** `src/leiaLevelSet/davof`
+(`libleiaDavof`, `davofState.H`): the DAVOF state with three sources of `(alpha_c, alpha_f)`:
+`exactSphere` (closed-form circle-polygon face fractions, quadrature cell fractions, both
+exact), `linearInterpolant` (the exact signed distance at the cell centre, the face centres
+and the points, linear on the Detrixhe-Aslam tets and on the face fans with the same vertex
+values: ONE C0 piecewise-linear surface, for which the identity is exact), and
+`planePhaseIndicator` (leia's production plane-DA state). `applications/test/leiaTestDavofNormal`
+scores `e_c = |m_c/|m_c| - n_exact(xS_c)|` at the reconstructed patch centroid over the
+interface cells (`|m_c| > wispTol V_c^(2/3)`, wispTol 1e-3) in L1 (mean), L2 (rms), Linf,
+area-weighted variants, the total area `sum_c |m_c|` against `4 pi R^2`, the tet/face
+consistency and the closure, and runs OpenFOAM's geometricVoF plicRDF / gradAlpha / isoAlpha
+(the algorithms TwoPhaseFlow uses) on the IDENTICAL alpha as the like-for-like cross-check.
+Study `config/davof/sphereNormal3D.yaml` (R = 1 mm in a 4R box, centre off every symmetry
+plane and grid line, hex N = 20/40/80/160, R/h = 5..40, serial, 12 cases in ~12 min),
+`make studies-one STUDY=davof/sphereNormal3D`; the plane gate `cases/davof/planeNormal3D/Allrun`;
+results in `docs/davof/davof-article/data/{tables,figures}` (the tpf rows merged with
+`make_davof_normal_table.py --tpf-results`). The TwoPhaseFlow arm (davof clone, branch `davof`,
+commits 5fdca12 and ac879d1, not pushed): `reconstructionError` gained six appended columns
+(`LNormalDiff1/2/Inf`, `areaSum`, `areaExact`, `nInterface`; the first twelve byte-identical)
+and `run/benchmark/reconstruction/sphereNormal3D` is the same ladder through its own
+framework (genCases/runAll/getResults + pytest/oftest in `~/OpenFOAM/repos/davof/tpf-venv`).
+
+**Pre-registered prediction 1 (config header, before run 1): FALSIFIED for the normal, held
+for the area and the identity.** With the `linearInterpolant` state the DAVOF normal converges
+at order ONE, not two: p(L2) = 1.01 (pairwise 1.05 / 1.01 / 0.99), p(L1) = 1.02, L2 at N = 160
+2.43e-3; the area error is second order, p(A) = 2.00 (1.13e-4 at N = 160); the identity is exact,
+MAX_CONSISTENCY = |m_c - sum of the tet patches|/h^2 <= 4.2e-14, closure |sum_c m_c|/A ~ 1e-15.
+Mechanism: the face crossings of a linear interpolant of the exact distance are O(h^2)
+accurate, so the face fractions carry O(h) errors as fractions, and the direction of a sum of
+O(h^2) vectors weighted by O(h)-accurate fractions is O(h) accurate; the magnitude (area) is
+not affected at leading order. The same holds for the plane-DA state (p(L2) = 1.13, p(A) =
+2.00, L2 at N = 160 4.50e-3, Linf 0.058, larger by the C0 mismatch of neighbouring planes).
+
+**Pre-registered prediction 2 (config header, before run 2): HELD.** With the exact face and
+cell fractions (`exactSphere`) the DAVOF normal is second order: p(L2) = 1.98 (pairwise
+2.16 / 2.03 / 1.73), p(L1) = 2.05 (2.14 / 2.05 / 1.96), area-weighted p(L1) = 2.01, p(L2) = 1.98,
+p(A) = 2.00; L2 falls 6.96e-3 -> 1.56e-3 -> 3.83e-4 -> 1.15e-4 over N = 20/40/80/160, the area
+error to 5.1e-5. Linf (p = 1.22, 5.5e-3 at N = 160) is set by the smallest corner clips just
+above the wisp threshold and is reported, not gated. Interface cells 472 / 1863 / 7418 / 29739,
+wisps 8 / 34 / 122 / 432. The DAVOF normal costs 0.02..3.0 s serial per rung.
+
+**The cross-check on the identical alpha (OpenFOAM geometricVoF in the leia app).** plicRDF:
+p(L2) = 1.06 on every state (exact 1.08 / 1.11 / 0.99 pairwise), L2 at N = 160 3.87e-3 -- on the
+exact alpha 34x the DAVOF error, on the linear-interpolant alpha 1.6x. gradAlpha (the
+centred-gradient normal): p(L2) = 0.07, L2 = 0.066 at every rung, 0.124 even on the exact
+plane of the plane gate: the discrete gradient of a sharp indicator does not converge to the
+normal (Pilliod & Puckett, JCP 199, 2004). isoAlpha: p(L2) = 0.52, 0.021 at N = 160. The
+TwoPhaseFlow arm agrees to within a few percent on its own alpha and error measure: plicRDF
+cutCellIso p(L2) = 1.08 (1.09 / 1.14 / 1.00), 3.97e-3 at N = 160, cutCellImpFunc 1.06, 4.01e-3;
+gradAlpha 0.07, 0.066; isoAlpha 0.55 / 0.51, 0.0216 / 0.0214; pytest (N <= 80): 7 passed, the
+order assertion is 0.9 for plicRDF (measured 1.07) and none for gradAlpha (0.11; the
+pre-registered 0.9 for it was wrong and the test now says so). The "plicRDF is second order"
+expectation from its paper is NOT reproduced in this metric on this ladder by either code.
+
+**Gates and inertness.** Plane gate at tolerance 1e-12 for BOTH leia states (they are exact
+for a plane): linearInterpolant normal 5.3e-14, consistency 2.1e-15, alpha vs the exact plane
+cut 2.1e-15; planePhaseIndicator 9.5e-13, 3.4e-14, 2.7e-14 (the least-squares fit's
+conditioning); plicRDF on that exact plane alpha 1.9e-4, gradAlpha/isoAlpha ~0.1. Parallel:
+np 4 vs serial on the N = 40 sphere, all three sources, every norm within 5.5e-11 relative,
+round-off quantities within 7.3e-13 absolute. The Snakefile edit (a `case:` may name a
+sub-folder; per-case directories use the basename): the dry-run job listings of all 352
+configs are identical before and after (sorted; Snakemake's job order is not deterministic);
+the report rule's behaviour for every existing solver is unchanged (only the new app is
+exempted from the generic plots). The plane-DA alpha of `leiaSetFields` is reproduced bit
+for bit (MAX_ALPHA_DIFF_DA = 0): its narrow band is built in createFields.H on a uniform psi,
+so it initialises EVERY cell from a plane, and cells 0.5..0.9 h away still clip a corner --
+a fact worth knowing about the production initialiser.
+
+**What it means for the proposal.** The identity is exact and its normal is as accurate as
+the face fractions are as fractions: O(h^2) face fractions give a second-order normal that
+beats plicRDF by more than an order of magnitude at equal input; O(h) face fractions (any
+linearised initialisation, and any transport that only locates the interface to O(h^2)) give
+a first-order normal, still 1.6x better than plicRDF on the same input. WP1's face update
+therefore has to deliver `alpha_f` to O(h^2) as a fraction, i.e. the face crossing to third
+order or the face liquid area by an exact-geometry evaluation, and that is the next gate: the
+one-step face-fraction update the reviewers asked for. The total area is second order for
+every state.
+
+**Incidents.** Two `pkill -f` patterns matched their own `wsl.exe ... bash -c` command line
+and killed it (exit 15) before the kill lines ran; the TwoPhaseFlow ladder was then started
+four times over and its 4.1e6-cell cutCellImpFunc cases (~8 GB each) exited with rc 1 out of
+memory. Stopped from a script whose invocation matches no pattern (`scratch/stop-tpf.sh`),
+restarted once; `runAll.sh` now runs coarse to fine (an alphabetical glob starts with N160).
+`pgrep -x` cannot match `reconstructInterface` (names > 15 characters). PyFoam needs a
+FoamFile header in `simulationParameter` (added; OpenFOAM merges it on `#include`).
+
+**Open.** Push `development` after review. The polyhedral (cfMesh) ladder of the same gate
+(`mesh: poly`), the one-step face-fraction update test, and a wispTol sweep are one config
+each away. `leiaSetFields`' every-cell plane initialisation deserves its own note in the
+phase-indicator docs.
+
+### 10.8 DAVOF static gate 1b: the explicit plane position, measured (2026-09-29)
+
+**Why.** The 2020 area-of-fluid draft (`research/articles/2020-article-area-of-fluid`) holds the
+explicit position formula the proposal alludes to. Re-derived from the Gauss theorem for x on the
+liquid sub-volume, corrected in the draft (sign; one degree of freedom, the signed distance p_k of
+the plane from the cell centroid, not a "centroid" vector; the face-centroid form is EXACT on
+planar faces because (x - x_k).n_f is constant there; a remark on the d-fold amplification of a
+volume defect) and added to the proposal as eq:avof-position; verified symbolically and in exact
+rational arithmetic (`verification/aof_identities_sympy.py`: corner cuts of the cube and the
+square, 157 rational planes through a cube in every configuration, zero residual, the 2020 sign
+returns -p_k, a defect dV moves the plane by 3 dV/|A|). Implemented as
+`davofState::planePosition()`:
+
+    p_c = ( 3 alpha_c V_c - sum_f alpha_f (x_f - x_c).S_f^out ) / |m_c|,   plane {x : (x - x_c).n_c = p_c},
+
+then the plane is cut through the cell on the Detrixhe-Aslam tets (exact for a plane): the
+polygon centroid `xPlane.davof`, area `APlane.davof`, cut fraction `alphaPlane.davof`. Position
+error per model: E_POS_L1/L2/LINF, the distance [m] of the polygon centroid (the geometricVoF
+models' `centre_`) from the exact surface over the interface cells; realizability diagnostics
+MAX_VOL_DIFF_PLANE = max |alphaPlane - alpha|, MAX_AREA_DIFF_PLANE = max |A n - m_c|/h^2; the
+plane gate checks E_POS_LINF/h and both diagnostics at 1e-12 for both leia states.
+
+**Pre-registered prediction 3 (config header): HELD.** p(E_POS_L2): exactSphere 2.00 (pairwise
+2.00 / 2.00 / 2.00), linearInterpolant 2.03 (2.07 / 2.03 / 1.99), planePhaseIndicator 2.00;
+E_POS_L2 at N = 160: 4.35e-8 m (1.7e-3 h), 1.69e-8 m, 2.02e-7 m; L2/h falls linearly (1.4e-2 ->
+1.7e-3 for the exact state). Every plane-based position is second order, plicRDF, isoAlpha and
+gradAlpha included (2.00 / 1.99 / 1.95 on the exact alpha; TwoPhaseFlow's own LCentre1: plicRDF
+2.00). On the exact alpha the explicit position coincides with plicRDF's volume-matched one to
+0.02 % (4.350e-8 vs 4.349e-8 m): the identity lands on the volume-matching plane when the state is
+consistent to leading order. On the linear-interpolant alpha the explicit position is 4.7x more
+accurate than the volume-matched plane of the same alpha (1.69e-8 vs 7.94e-8 m); on the
+plane-indicator state, where the two planes of a face disagree, the volume-matched plane is
+slightly better (1.74e-7 vs 2.02e-7 m). DAVOF's foot point x_c + p_c n_c: L2 4.6e-8 m at N = 160
+for the exact state, the same order.
+
+**One diagnostic prediction was WRONG.** MAX_VOL_DIFF_PLANE for the curved exact state was
+pre-registered as O(h^2); measured 5.9e-2, 3.3e-2, 1.7e-2, 8.6e-3, i.e. O(h): the fraction cut by
+a plane at the patch's mean offset differs from the exact fraction by (sagitta x patch area)/V_c =
+O(h^2/R x h^2 / h^3) = O(h/R). The area diagnostic is O(h) as predicted, noisy in the max
+(0.18, 0.099, 0.087, 0.056). Both are round-off on the plane gate (1.9e-15 / 1.5e-14 and 6.0e-14 /
+9.6e-14 for the two states); E_POS_LINF there 1.0e-16 m and 8.9e-17 m.
+
+**Where things are.** leia commit (this one): davofState.{H,C} (planePosition, four fields),
+leiaTestDavofNormal (position norms, foot point, realizability, gate), make_davof_normal_table.py
+(E_POS_* metrics, figure, tex column; TwoPhaseFlow's LCentre1/LCentreInf merged as E_POS_L1/LINF),
+config header, README/docs, theme data (`davof_normal_e_pos_l2_sphereNormal3D.png` and the
+tables). Article: `sections/area-of-fluid-method-interface-recon.tex` corrected in place (comments
+mark every change), `sections/results.tex` written with the plane and sphere tables,
+`verification/aof_identities_sympy.py` added. Proposal: eq:avof-position with the two properties
+(fraction accuracy decides the order; 3-fold sensitivity to inconsistency) inserted after
+eq:avof-normal. Not touched in the proposal, still flagged from the 2026-09-28 review: the face
+update's denominator (|S_f| where the pre-image area belongs) and the curvature factor (H vs 2H).
+
+**Next (agreed 2026-09-29).** Proposal: the order tables and TikZ schematics of both tests in the
+preliminary-work section. leia: TwoPhaseFlow's PLIC VTK writer as a leia library, the plane and
+sphere interfaces of gradAlpha, plicRDF and DAVOF at three resolutions rendered to PDF by a
+Snakemake/Python job and included in the proposal automatically.
+
+### 10.9 The PLIC surfaces as VTK, the proposal's tables and figures (2026-09-29)
+
+**What.** `libleiaDavofInterface` (`src/leiaLevelSet/davofInterface`, ported from TwoPhaseFlow's
+`src/postProcessing/interface`, Henning Scheufler, DLR): `plicInterfaceSurface(mesh, normalOut,
+pointOnPlane)` cuts the plane of every interface cell through the cell with OpenFOAM's
+`cutCellPLIC` into one polygon of a `meshedSurface` (`meshCells()` maps polygons to cells) and
+writes ASCII legacy VTK polydata with per-polygon CELL_DATA from cell fields; the
+`sampledSurface` `type davofInterface` (fields `normal m.davof`, `centre xPlane.davof`, optional
+`wispTol`) is the function-object form for the `surfaces` FO of a solver. Decoupled from the
+reconstructionSchemes registry on purpose: the caller names the fields, so the DAVOF plane and
+a geometricVoF scheme (-normal_, centre_) are drawn by the same code. `leiaTestDavofNormal`
+writes `postProcessing/davofInterface/<time>/plic.{davof,plicRDF,gradAlpha,isoAlpha}.vtk` with
+`cellId`, `eNormal`, `ePos`. `workflow/scripts/render_davof_interfaces.py` (report rule, after
+the table) parses the VTK itself and draws models x resolutions (the coarsest three) coloured by
+the error on one log scale, orthographic projection with a painter's sort (mplot3d is broken on
+this host: apt + pip matplotlib), head-on for a planar surface; `figures/davof_plic_<study>.{pdf,png}`.
+`config/davof/planeNormal3DLadder.yaml` (the gate's plane at N = 8/16/32, seconds) gives the
+plane renderings. `make_davof_normal_table.py` writes the compact
+`tables/davof_normal_proposal_<study>.tex`; `export_davof_proposal.py --dest`
+(`make davof-proposal DEST=...`) copies table and figures into the proposal, which `\input`s
+and `\includegraphics` them (`figures/davof/`), so a study rerun plus the export updates the
+proposal's preliminary-results section without editing it.
+
+**Proposal (2026-DFG-AVOF, uncommitted there).** A paragraph "Preliminary results for the DAVOF
+core (static gates, 2026)" before "Technical positioning": the two gates, the compact order table
+(Table davof-prelim), TikZ schematics of both gates (the cut cell with alpha_f, the area normal
+and p_k; the sphere in its box with the interface cells and a zoomed cell with the exact arc,
+the recovered plane, e_k and d_k), the three findings, and the PLIC figure (plane and sphere,
+DAVOF / plicRDF / gradAlpha x three resolutions). Builds clean with xelatex (Windows TeX Live
+2025; WSL lacks Arial), 0 unresolved references.
+
+**MEASURED, the plane ladder (N = 8/16/32, linear interpolant).** DAVOF normal L2 = 1e-14 at every
+N (round-off; the fitted "order" is meaningless), plicRDF 1.3e-4, gradAlpha 8.8e-2, isoAlpha
+7.7e-2 at N = 32: the comparators do not recover a plane from exact plane fractions. The sphere
+study was rerun (run 4, identical metrics, now with the VTK surfaces).
+
+**Incidents.** A sed replacement wrote a literal `\n` into the Allwmake loop (fixed by a
+script); the report rule tolerates a failing table/render step (rc recorded in the log, the
+study passes) -- watch for "FAILED (rc=1)" lines; the plane ladder's first run recorded no
+DAVOF tokens because its fvSolution was not a template (case_params.json records only the
+tokens the templates reference) -- fvSolution.template now, DOMAIN_LENGTH in the .parameter.
+
+### 10.10 The order is the fraction order: quadratic faces, the arm renamed, the proposal's equations (2026-09-29)
+
+**Why.** Tomislav's reading of the first runs: the initialisation should be the exact signed
+distance at the cell centre, the face centres and the corner points in the Detrixhe-Aslam
+formulas, and that should give a second-order normal without iteration. That IS the arm the study
+had called `linearInterpolant` (a misleading name: nothing is interpolated from elsewhere; "linear"
+is what the DA formulas assume inside each simplex), and it measured first order. Renamed
+`detrixheAslam` (alias kept). The mechanism, now written down: the DA formulas integrate the chord
+surface, whose crossings are O(h^2) off a curved interface; per face that is an O(h) error AS A
+FRACTION although the integrated volume and area are second order; the Gauss sum's direction
+inherits the per-face order. Hence two estimates that define WP1 (now equations in the proposal):
+|dn| <= sum_f |d alpha_f| |S_f| / |A| = O(h^q) for |d alpha_f| = O(h^q), and |d alpha_f| = O(d_Sigma/h)
+with d_Sigma the position error of the discrete interface used to clip the face: any per-cell
+plane gives q = 1, O(h^3) gives q = 2.
+
+**New arm `quadraticFaces`** (`davofQuadraticFaceGeometry.H`): the exact signed distance also at
+the edge midpoints of every fan triangle, the quadratic Lagrange interpolant cut exactly (edge
+roots in the numerically stable form; the sliver between chord and conic arc by 12-point
+Gauss-Legendre, analytic integrand); cell fractions stay DA. Triangles with other than two
+boundary crossings or an arc that is not a graph over its chord keep the DA value and are counted
+(N_FACE_FALLBACK).
+
+**MEASURED, pre-registered prediction 4: HELD.** quadraticFaces p(E_L2_N) = 1.95, p(E_L1_N) = 2.05,
+E_L2_N within 4 % of exactSphere at every rung (1.19e-4 vs 1.15e-4 at N = 160), p(A) = 2.00,
+p(E_POS_L2) = 2.01; fallbacks 4 / 2 / 0 / 4 faces on the four meshes (the "none at R/h >= 10"
+clause missed by a handful). Plane gate exact for all three leia states (E_POS_LINF 9e-17 m). A
+first version of the edge-root formula failed the plane gate at 1e-6: for a plane the quadratic
+degenerates to a line and the textbook root formula cancels; the stable form fixed it. So: a
+second-order normal from exact signed distances alone, non-iteratively, for any implicit surface,
+with one polynomial degree more in the face cut. The transport must preserve exactly that
+fraction accuracy, which is the WP1 question as now stated.
+
+**Proposal (2026-DFG-AVOF, committed there).** After the face update: the two estimates as
+displayed equations (eq:normal-propagation, eq:clipping-law); the Consistency Hypothesis restated
+on the normal and position orders with q, the realizability defect a diagnostic relative to the
+exact state's O(h) floor; Stage 1 names the two q = 2 candidates (curvature-carrying clipping
+surface, sliver correction) and the self-consistency argument (a first-order curvature suffices,
+second-order normals provide it), stability of the loop as Stage 4; success criteria split
+(position >= 1.8 unconditionally, normal >= 1.8 with q = 2, the q = 1 outcome a stated result);
+"compatible with, but not dependent on" replaced by the designed coupling with the iso-surface
+fallback; "no stencil" replaced by "cell-local recovery, one ring for the curvature in the
+update"; Table 1 caption names the cell set and the wisp threshold; Table 1 is nine rows (exact,
+quadratic faces, Detrixhe-Aslam x DAVOF, plicRDF, gradAlpha), isoAlpha and the plane indicator
+quoted in the text. Page budget kept at 17 by dropping the WP2 convergence plot (its numbers are
+Table 2's), the repeated sentences in WP2, WP3 and the timeline, and shorter captions.
+
+**Open (agreed).** The remaining question Tomislav wants to discuss next: the q = 2 update itself
+(which candidate, and whether to show a one-step result before submission). Then the 25 September
+items outside WP1.
+
+### 10.11 DAVOF static gate 2: the curvature of the DAVOF state on an ellipsoid, measured (2026-09-29)
+
+**What.** The curvature of the DAVOF state as run-time-selectable models inside
+`libleiaDavof` (`src/leiaLevelSet/davof/curvature`, `fvSolution davof.curvature`,
+nothing in the level-set libraries): `quadricFit` fits, per interface cell, a
+quadric graph in the frame of `n_c = m_c/|m_c|` about the plane-polygon centroid
+to the Hermite data of the point-neighbour ring (OpenFOAM's `CPCCellToCellStencil`,
+gathered for the interface cells only, parallel-aware), two slope rows per
+neighbour from its normal and one position row from its centroid weighted by
+`positionWeight` (0 = the normals decide the second derivatives, the headline
+model `normalsOnly`; 1 = the naive Hermite fit, `hermite`). Convention
+`kappa = kappa_1 + kappa_2 = div(n)`; also `K`, `kappa1`, `kappa2`. Delivery
+(`davofCurvatureDelivery.H`) with the parallel-surface closed form of the
+level-set solver, because the interface centroid is neither the cell centre nor
+a face centre: the contour-referenced cell field on the force band by the forward
+map `kappa(d) = (kappa + 2dK)/(1 + d kappa + d^2 K)` at the cell centre's offset
+(the stable quadratic root of the normal-projected SL note), the face field by
+`interpolate(kappaCell)` and `parallelSurfaceInverse(kappa_f, d_f, K_f)` (copied
+verbatim from `stabilizedFootPointFaceCurvature.H`), next to the models' own foot
+value; packed models cross coupled patches by `syncTools::swapBoundaryFaceList`.
+`leiaTestDavofNormal` scores every model against the exact geometry
+(`signedDistanceEllipsoid`: total curvature at the closest point, the Gaussian
+curvature from the axes; `implicitSphere` 2/R; `implicitPlane` 0), writes
+`leiaTestDavofCurvature.csv` and the headline columns into the wide and the
+models CSV; `-expectExact` gates `E_KAPPA_LINF h` at round-off. New study
+`config/davof/ellipsoidNormal3D.yaml` (half-axes 1.0/0.8/0.6 mm, the sphere
+gate's centre, N = 20..160, states quadraticFaces / detrixheAslam /
+planePhaseIndicator, the geometricVoF cross-check), PREDICTION 5 in its header.
+`make_davof_normal_table.py` carries the curvature metrics, the series
+`davof:curv:<model>` and the compact proposal table with `p(kappa)` and the
+relative error (the p(A) column dropped).
+
+**Measured (the config header has the full record).**
+
+| state | p(n) L2 / L1 | p(x) | p(kappa) L2, pairwise | rel. L2(kappa) at N = 160 | p(K) / cell / face |
+|---|---|---|---|---|---|
+| quadraticFaces | 1.78 / 1.96 | 2.00 | 1.55 (1.91, 1.54, 1.21) | 4.55e-3 | 1.59 / 1.36 / 1.63 |
+| detrixheAslam | 1.00 / 1.05 | 2.04 | 1.31 (1.88, 1.34, 0.70) | 6.75e-3 | 1.23 / 1.25 / 1.38 |
+| planePhaseIndicator | 1.12 / 1.14 | 2.01 | 1.28 (1.93, 1.36, 0.53) | 8.60e-3 | 1.28 / 1.18 / 1.35 |
+
+plicRDF on the identical alpha: 1.10 (5.36e-3 at N = 160, 18x the quadratic-face
+DAVOF error 3.01e-4), position 2.00; gradAlpha 0.10; isoAlpha 0.65. Area order
+2.00 for every state. `hermite` within 3 % of `normalsOnly` everywhere.
+
+**Against PREDICTION 5.** HELD: quadraticFaces normal second order in L1 and
+position second order; curvature at least first order with the relative error
+inside the predicted 2e-3..8e-3 at N = 160; K, cell and face deliveries at the
+same orders; plane gate at round-off; np-4 = serial. MISSED by 0.02: the L2
+order of the quadratic-face normal (1.78 against the 1.8 threshold) -- 47 of
+18642 interface cells (0.25 %) carry e > 2e-3 and set the rms (1.72e-4 without
+them); the L1 order is 1.96. ABOVE the predicted band: the curvature order
+(1.55 against 1.0 +- 0.3, pre-asymptotic, the finest pair 1.21). FALSIFIED (two):
+(a) the curvature of the q = 1 states converges (1.31 and 1.28, criterion
+"> 0.5"), 1.5x less accurately than q = 2 at N = 160 and slowing at the finest
+pair (0.70 against 1.21) -- the chord state's O(h) normal error is smooth along
+the interface, so its surface gradient is O(h)/R, not O(1); the curvature
+separates the fraction orders LESS sharply than the normal does (1.00 against
+1.78), the opposite of the pre-registered claim; (b) the naive Hermite fit shows
+no point-fit floor: in the joint least squares the two slope rows per neighbour
+(leverage U) outweigh the one position row (leverage U^2/2), so the centroids
+barely move the second derivatives; a floor would need positions alone.
+
+**Operational.** With the geometricVoF cross-check a case needs 1.2 GB at
+N = 80 and about 9 GB at N = 160 (0.62 GB at N = 80 without it): the ellipsoid
+study runs ONE case at a time (`scratch/run-study-ellipsoid.sh`, `--jobs 1`);
+the first run with three concurrent N = 160 cases was OOM-killed, and the ring
+data were then still gathered for all 4.1e6 cells (6 GB) -- now the stencil
+lists of non-interface cells are cleared before the map is built. WSL shuts the
+distro down when no session is open, which killed a detached (`nohup &`) run
+mid-ladder: long runs go through an attached session. The Snakefile edit is one
+line (the curvature CSV in the `_preprocess` rm list; `git diff`), the sphere
+study re-renders its tables unchanged apart from the new column layout.
+Commits: the library and app, the study and docs, this record.
+
 ## 11. Halo-limited extension and gradient-control sources (2026-09-26 ->)
 
 Plan: `docs/plan-halo-limited-gradient-control.md` (approved 2026-09-26). Branch
@@ -4453,3 +4777,81 @@ The author's request of 2026-09-29: merge everything into `development`, then in
    ```bash
    cd /work/scratch/tm83tomy/leia-curvature && git fetch -q origin && git show origin/development:STATUS.md | less
    ```
+
+### 11.21 CI on OpenFOAM-v2606; Lichtenberg on OpenFOAM-v2606 (2026-09-30)
+
+The author's requests of 2026-09-30: a new Docker image, because CI must work; OpenFOAM-v2606 on
+Lichtenberg, built in `$HOME/OpenFOAM` if needed; the input for the SL session delivered to it.
+
+1. **The CI image.** `ghcr.io/leia-openfoam/openfoam-v2606_ubuntu-noble` (`:latest` and `:<sha>`),
+   built and pushed by `.github/workflows/ci-image.yml` from `.github/docker/openfoam-v2606/Dockerfile`:
+   Ubuntu 24.04, the openfoam.com package `openfoam2606-dev` (its dependencies bring the compiler and
+   the OpenMPI development files), `openmpi-bin`, git, python3, bc, procps, make. The package is
+   private to the organisation and linked to the repository; the build job pulls it with its token.
+   Why our own image: the laptop has no Docker, and OpenCFD's newest development image is 2512
+   (2606 exists only as the runtime image `opencfd/openfoam-run`, without compilers). The first image
+   run pushed the image and failed its check on `foamVersion`, which the packages do not install
+   (exit 127); the check now prints `WM_PROJECT_VERSION` and the second run passed.
+2. **Build Tests** (`.github/workflows/build.yml`), on pushes to `main`, `development` and
+   `releases/**`, on pull requests to `main` and `development`, and by hand. Its one step is
+   `.github/scripts/ci-build-and-smoke.sh`, which runs the same way on a workstation
+   (`.github/scripts/ci-build-and-smoke.sh $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc`):
+   1. `./Allwmake`;
+   2. `etc/leia-check-build.py` (new): every `EXE`/`LIB` target of every `src/**/Make/files` and
+      `applications/**/Make/files` exists, because `wmake all` does not always fail on one broken
+      application;
+   3. `cases/2Dtranslation/Allrun.sh` (serial, N = 128, CFL 0.5), classified by `foam_log_state.sh`;
+   4. its numbers: `E_GEOM_ALPHA_REL` = 2 at t = 0 (the exact end reference is in use), below 3e-3 at
+      T; `E_VOL_ALPHA_REL` below 1e-12 at t = 0 and 1e-3 at T; `E_BOUND_ALPHA` = 0.
+   MEASURED, laptop (OpenFOAM-v2606 source build, fbc5916b): 26 executables and 14 libraries, 0
+   missing; 168 steps; `E_GEOM_ALPHA_REL` 2.000000 -> 1.6090e-03 and `E_VOL_ALPHA_REL` 2.27e-14 ->
+   5.7984e-04, the `kinematicTranslation2D` values at N = 128, CFL 0.5 (11.19). GitHub: run
+   36706765044 on `development` f010ed1a PASSED in 8 minutes (the build step 7.5 minutes). A failure
+   writes an error annotation with the tail of its log, and a pass a notice with the numbers: the
+   public check-runs API returns annotations without login, while the job logs need admin rights.
+3. **Two traps, fixed in the script.** Sourcing OpenFOAM's `etc/bashrc` passes the script's own
+   arguments to it, and it sources every readable file among them: a path to the bashrc in `$1`
+   recursed until bash segfaulted (exit 139); the script runs `set --` first.
+   `cases/2Dtranslation/Allrun.sh` has mode 644 in git (exit 126); the script runs `bash ./Allrun.sh`.
+4. **Knowledge base.** Its deploy job runs on `main` only; on `development` the build job is the
+   check, and the run ends green (it ended red at every development push before).
+5. **Lichtenberg on OpenFOAM-v2606** (`$HOME/OpenFOAM/OpenFOAM-v2606`, `ThirdParty-v2606`,
+   `cfmesh-v2606`; the recipe is in CLUSTER.md; every job id is in `$HOME/OpenFOAM/.my_jobs` and
+   `/work/scratch/tm83tomy/leia-dev/.my_jobs`).
+   1. Pass 1, job 55179573 (48 cores, 40:49, exit code 0): OpenFOAM plus ThirdParty, then cfMesh
+      from the release's `plugins/cfmesh` (25 executables, `libmeshLibrary`, stamp `v2606`; `pMesh`,
+      `cartesianMesh`, `tetMesh` present). But only 151 applications and 113 libraries: `icoFoam`,
+      `interFoam`, `simpleFoam`, `potentialFoam`, `pimpleFoam`, `pisoFoam`, `scalarTransportFoam` and
+      `setFields` were missing, and `foamInstallationTest` reported 1 critical error. Cause: the job
+      sourced `etc/bashrc` before ThirdParty built FFTW, so FFTW's `lib/` was not on the loader path;
+      the link of `noise` against `librandomProcesses.so` (which needs `libfftw3.so.3`) failed and
+      make stopped before the standard solvers. The exit code 0 of the job was no evidence.
+   2. The two leia jobs behind it (55179650 running for 3 minutes, 55179651 not started) were
+      cancelled by id, and the partial leia build removed.
+   3. Pass 2, job 55179978 (6:57): `etc/bashrc` sourced with FFTW present. 270 applications and 129
+      libraries (v2512: 270 and 128); every standard solver present; `foamInstallationTest`
+      "Critical systems ok"; `librandomProcesses.so` resolves `libfftw3.so.3` in ThirdParty-v2606.
+   4. A new clone for the development line, `/work/scratch/tm83tomy/leia-dev` (development
+      f010ed1; the other three clones are untouched), built by job 55179979 (32 cores, 1:16) with
+      `.github/scripts/ci-build-and-smoke.sh`: PASS, 26 executables and 14 libraries, 0 missing,
+      stamp `v2606`; 168 steps; `E_GEOM_ALPHA_REL` 2.000000 -> 1.6090e-03 and `E_VOL_ALPHA_REL`
+      2.27e-14 -> 5.7984e-04, the laptop's values to every printed digit; `pMesh` and
+      `cartesianMesh` resolve from `cfmesh-v2606`.
+   5. The workflow end to end: `sbatch -J leia-dev-smoke --export=ALL,STUDY=translationRepairGate2Dpar4
+      run-studies.sbatch` (driver 55179980, 8 child jobs 55180038 to 55180053 through
+      `profiles/slurm`): rc 0; both arms COMPLETED, 108 steps, 4 ranks, the binary of the clone's own
+      `platforms/`. Against the laptop's RE-RUN 3 (11.19 item 4: v2512, 4 ranks), every metric column
+      is bit-identical except the four volume sums, which differ by at most 2.7e-12 column-scaled
+      (1.1e-10 relative at one early row), the order of the parallel sum. End values on both:
+      `E_GEOM_ALPHA_REL` 7.2095e-03, `E_VOL_ALPHA_REL` 4.5568e-03.
+   So Lichtenberg runs the development line on OpenFOAM-v2606 through the committed profile. The
+   study's two curated tables were removed from the clone.
+6. **The SL session.** The full input (the tasks T1 to T3 and the results of 2026-09-29) is queued
+   for "SLLS: Polyhedral stationary and translating" (a Remote Control session on another machine,
+   offline on 2026-09-29 and 2026-09-30); delivery waits until that machine reconnects.
+7. **Open.** The clones `leia` (the SDPLS session), `leia-gcls` and `leia-curvature` on Lichtenberg
+   still run v2512 binaries; their owners move them (CLUSTER.md, "Where leia lives"); after that,
+   `feature/gradient-controlled-level-set` can be deleted on GitHub. TwoPhaseFlow is not built on
+   Lichtenberg for v2606 (the `interFlow` arm). A parallel smoke run and the seam check are not in
+   the CI yet. The actions `checkout@v4`, `upload-artifact@v4` and the Docker actions target
+   Node.js 20; GitHub runs them on Node.js 24 with a warning.

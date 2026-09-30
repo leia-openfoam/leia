@@ -49,7 +49,9 @@ for entry in \
     leiaRedistancer:src/leiaLevelSet/redistancer \
     leiaVolumeCorrection:src/leiaLevelSet/volumeCorrection \
     leiaSurfaceTension:src/leiaLevelSet/surfaceTensionForce \
-    leiaAdvection:src/leiaLevelSet/advection
+    leiaAdvection:src/leiaLevelSet/advection \
+    leiaDavof:src/leiaLevelSet/davof \
+    leiaDavofInterface:src/leiaLevelSet/davofInterface
 do
     name="${entry%%:*}"; dir="${entry#*:}"
     "$ROOT/etc/leia-stamp.sh" "$dir" "$name" || exit 1

@@ -54,12 +54,40 @@ git-ignored — rebuild it locally in seconds with `make docs`. So slides are
 - **Login `.bashrc` noise:** it tries to `module load gcc/11.4.1 python/3.11.9`
   which don't exist on every node — harmless Lmod errors. Batch jobs ignore it
   (`module purge` + explicit loads in the job).
-- **OpenFOAM:** built from source in **`$HOME/OpenFOAM/OpenFOAM-v2512`** (the leia standard moved to **v2606** on 2026-09-28; every preamble now sources v2606, so Lichtenberg needs a v2606 source build in `$HOME/OpenFOAM/OpenFOAM-v2606` before cluster studies run again)
+- **OpenFOAM:** built from source in **`$HOME/OpenFOAM/OpenFOAM-v2606`** (the leia standard since 2026-09-28; built on Lichtenberg on 2026-09-30, recipe below; every preamble sources it). `$HOME/OpenFOAM/OpenFOAM-v2512` stays for the clones that still run v2512 binaries
   (matches the WSL laptop version). Defaults `WM_COMPILER=Gcc`,
   `WM_COMPILER_TYPE=system`, `WM_MPLIB=SYSTEMOPENMPI` — uses the module gcc +
   module OpenMPI, no ThirdParty compiler/MPI build. A system spack module
   `openfoam/2512` also exists but does NOT populate the classic `wmake`
   environment, so we use the source build.
+
+### How OpenFOAM-v2606 was built (2026-09-30; reproduce with `$HOME/OpenFOAM/build-of2606.sbatch`)
+
+```bash
+# on a login node (internet only exists here):
+cd $HOME/OpenFOAM
+curl -fsSL -o OpenFOAM-v2606.tgz      https://dl.openfoam.com/source/v2606/OpenFOAM-v2606.tgz
+curl -fsSL -o ThirdParty-v2606.tar.gz https://dl.openfoam.com/source/v2606/ThirdParty-v2606.tar.gz   # .tar.gz; .tgz is a 404
+tar xzf OpenFOAM-v2606.tgz && tar xzf ThirdParty-v2606.tar.gz
+mv OpenFOAM-v2606/modules/OpenQBMM OpenFOAM-v2606/OpenQBMM.disabled   # the v2512 gotcha below
+sbatch build-of2606.sbatch           # pass 1: -A special00004, -c 48, --mem-per-cpu=3600, -t 4 h
+sbatch build-of2606-rebuild.sbatch   # pass 2 (after pass 1): the same with etc/bashrc sourced again
+# every job id goes to $HOME/OpenFOAM/.my_jobs
+```
+
+> **BUILD GOTCHA (MEASURED 2026-09-30, and it is why v2512 also has a `-rebuild` script).** Pass 1
+> builds ThirdParty (FFTW among it) AFTER the job has sourced `etc/bashrc`, so FFTW's `lib/` is not
+> on the loader path. `librandomProcesses.so` links `libfftw3.so.3`, the link of `noise` against it
+> fails, and make stops before the standard solvers: 151 applications and 113 libraries, `icoFoam`,
+> `interFoam`, `simpleFoam` and `setFields` missing, `foamInstallationTest` "1 critical error" --
+> with job exit code 0. Pass 2 sources `etc/bashrc` with FFTW present and completes the build.
+> Check the solver list and `foamInstallationTest` in the job output, never the exit code.
+
+The job is the v2512 recipe below with v2606, followed by cfMesh: it copies the release's own
+`plugins/cfmesh` to `$HOME/OpenFOAM/cfmesh-v2606`, builds it there with
+`./Allwmake -prefix=$HOME/OpenFOAM/cfmesh-v2606/platforms/$WM_OPTIONS` and writes the version stamp
+`platforms/$WM_OPTIONS/.openfoam-version` that `etc/leia-env.sh` checks (the laptop's layout, STATUS
+10.6). The result is in STATUS.md 11.21.
 
 ### How OpenFOAM-v2512 was built (reproduce with `$HOME/OpenFOAM/build-of2512-rebuild.sbatch`)
 
@@ -154,6 +182,19 @@ looks like a leftover is usually another session's live run. If a driver has to
 be replaced, cancel it **by id** and resubmit; never clear the queue.
 
 ## Where leia lives on the cluster
+
+Clones on 2026-09-30 (one clone per line, each with its own `platforms/`):
+
+| clone | branch | OpenFOAM of its binaries | owner |
+|---|---|---|---|
+| `/work/scratch/tm83tomy/leia-dev` | `development` | v2606 | the development line (created 2026-09-30) |
+| `/work/scratch/tm83tomy/leia` | `feature/gradient-controlled-level-set` | v2512 | the SDPLS session, and the 2D method gate |
+| `/work/scratch/tm83tomy/leia-gcls` | `feature/gradient-controlled-level-set` | v2512 | the gradient-control line |
+| `/work/scratch/tm83tomy/leia-curvature` | `development` (at c431677) | v2512 | the curvature line |
+
+A clone moves to v2606 by `git switch development && git pull --ff-only`, then `./Allwclean` and
+`./Allwmake` under the v2606 environment (the version stamp refuses a v2512 build). Only its owner
+does that.
 
 **`/work/scratch/tm83tomy/leia`** — the checkout is on the **parallel file
 system**, because that is where simulations must run (fast parallel I/O).
