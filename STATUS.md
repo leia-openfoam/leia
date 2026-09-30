@@ -4922,14 +4922,20 @@ test on the semi-Lagrangian pair. Laptop, OpenFOAM-v2606 source build, a worktre
       flux-extension trace either.
    3. The alpha metrics differ even with `cellCentred`: `E_VOL_ALPHA` at 21 to 65 of the steps, the
       relative volume error by up to 5.6e-04 (2Dvortex), 7.5e-04 (2Dtranslation) and 7.7e-04
-      (3Dshear); `E_GEOM_ALPHA` at 21 to 63 steps, the same order. The final alpha differs in 2 of
-      1024, 10 of 4096 and 3 of 13824 cells, by up to 0.024, 0.082 and 0.058. Cause: both phase
-      indicators read the `NarrowBand` field, and the SL solver computes alpha BEFORE
-      `narrowBand->calc()` (with the band of psi^n), `leiaLevelSetFoam` after it (the band of
-      psi^{n+1}). The order dates from the first SL versions (July 2026, ec160a46 and 4044f472) and
-      carries no comment; the unified solver's order is the consistent one. OPEN, author decision:
-      the per-step volume and shape errors of every SL kinematic study carry this stale-band effect;
-      a fix changes their metrics CSVs and needs the advection regression set.
+      (3Dshear); `E_GEOM_ALPHA` at 21 to 63 steps, the same order. That is not small against the
+      error itself: at step 53 of 2Dvortex the SL solver has a relative volume error of 6.5e-04
+      where `leiaLevelSetFoam` has 9.2e-05 (7.1x); at T of 3Dshear 2.14e-03 against 1.86e-03
+      (+15 %); at T of the two 2D cases the two agree. The final alpha differs in 2 of 1024, 10 of
+      4096 and 3 of 13824 cells, by up to 0.024, 0.082 and 0.058. Cause: both phase indicators read
+      the `NarrowBand` field, and the SL solver computes alpha BEFORE `narrowBand->calc()` (with the
+      band of psi^n), `leiaLevelSetFoam` after it (the band of psi^{n+1}). The order dates from the
+      first SL versions (July 2026, ec160a46 and 4044f472) and carries no comment. The two-phase SL
+      solver has had the consistent order since it was written (2a53364b; `slAlphaEqn.H` L167-L172:
+      "previously it lagged one step, giving cells that had just entered the band a sign-based 0/1
+      alpha for one step"); the kinematic SL solver kept the lag. OPEN, author decision: the
+      per-step volume and shape errors of every SL kinematic study carry this stale-band effect,
+      measured here only at N = 24 to 64, with an unknown order in h; a fix changes their metrics
+      CSVs and needs the advection regression set at three resolutions.
    4. `L_INF_E_PSI` differs in every arm, also where psi is identical: the Eulerian
       `advectionErrors.H` of `leiaLevelSetFoam` still has the mis-parenthesised sign test
       `sign(psi == sign(psi0))`, which the SL copy fixed on 2026-08-27 (84906ee4). L_inf is never

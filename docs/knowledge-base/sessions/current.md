@@ -66,8 +66,8 @@ date: 2026-09-28
 5. CI: `Build Tests` builds leia on OpenFOAM-v2606 at every push and pull request to `main` and
    `development` ([[concepts/ci-build-tests]]); run `.github/scripts/ci-build-and-smoke.sh` before a push.
 6. Author decision: retire `leiaSemiLagrangeLevelSetFoam` too? It needs the trace-velocity options
-   in `semiLagrangianAdvection`, a decision on the stale narrow band of its phase indicator (a fix
-   changes every SL kinematic metrics CSV), and the `L_INF_E_PSI` sign-test fix in the Eulerian
+   in `semiLagrangianAdvection`, a decision on the stale narrow band of its phase indicator (up to
+   7.1x the volume error at one step at N = 32; a fix changes every SL kinematic metrics CSV), and the `L_INF_E_PSI` sign-test fix in the Eulerian
    error writer ([[models/level-set-advection]] open question 3).
 
 ## Build progress of the vault (incremental, restart-safe)
