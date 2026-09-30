@@ -54,9 +54,13 @@ date: 2026-09-28
 3. Regenerate the `advConv2Dvortex` convergence CSV with the corrected script
    ([[retractions/advection-orders-3-2-factor]]); the translation table is regenerated (one-way,
    2026-09-29).
-4. OpenFOAM-v2606 on Lichtenberg (STATUS 10.6). Until it exists, the Lichtenberg clones
-   `leia` (the SDPLS session) and `leia-gcls` stay on `feature/gradient-controlled-level-set`,
-   which therefore stays on GitHub; `leia-curvature` is on `development`.
+4. DONE 2026-09-30 ([STATUS 11.21](https://github.com/leia-openfoam/leia/blob/a177025d/STATUS.md#L4818-L4848)): OpenFOAM-v2606 is built on Lichtenberg, and
+   the new clone `/work/scratch/tm83tomy/leia-dev` runs the development line on it through
+   `profiles/slurm`. Open: the clones `leia` (the SDPLS session) and `leia-gcls` still run v2512
+   binaries on `feature/gradient-controlled-level-set`, which stays on GitHub until their owners
+   move them; `leia-curvature` is on `development` with v2512 binaries.
+5. CI: `Build Tests` builds leia on OpenFOAM-v2606 at every push and pull request to `main` and
+   `development` ([[concepts/ci-build-tests]]); run `.github/scripts/ci-build-and-smoke.sh` before a push.
 
 ## Build progress of the vault (incremental, restart-safe)
 
@@ -102,3 +106,6 @@ Created with the vault.
 ### 2026-09-29
 The vault is complete (131 notes); the link review is done; publishing waits for the Pages setting.
 Rewritten for the merge into `development` and `main` and the results of 2026-09-29 (132 notes).
+
+### 2026-09-30
+OpenFOAM-v2606 on Lichtenberg and the CI (Build Tests) added to the open list (STATUS 11.21).
