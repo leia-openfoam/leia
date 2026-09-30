@@ -1,19 +1,42 @@
 name: Build Tests
+# Builds leia with OpenFOAM-v2606 in the CI image ghcr.io/leia-openfoam/openfoam-v2606_ubuntu-noble
+# (.github/docker/openfoam-v2606/Dockerfile, published by .github/workflows/ci-image.yml), checks
+# that every target of every Make/files exists (etc/leia-check-build.py), and runs the one-way
+# 2Dtranslation case with checks on its numbers. All of it is .github/scripts/ci-build-and-smoke.sh,
+# which runs the same way on a workstation:
+#     .github/scripts/ci-build-and-smoke.sh $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - 'releases/**'
+    branches: [main, development, 'releases/**']
+  pull_request:
+    branches: [main, development]
+
+permissions:
+  contents: read
+  packages: read
+
 jobs:
-  Build-OpenFOAM-v2206-Opt:
+  Build-OpenFOAM-v2606-Opt:
     runs-on: ubuntu-latest
-    container: tmaric/openfoam-v2206_ubuntu-focal
-    defaults:
-        run:
-            shell: bash
+    container:
+      image: ghcr.io/leia-openfoam/openfoam-v2606_ubuntu-noble:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
-      - name: Build with OpenFOAM-v2206 in Opt mode
-        run: ls /opt/OpenFOAM && . /opt/OpenFOAM/OpenFOAM-v2206/etc/bashrc && ./Allwmake
+        uses: actions/checkout@v4
+      # No `bash -e`: OpenFOAM's etc/bashrc does not survive errexit; the script checks every step.
+      - name: Build, check the targets, run the smoke case
+        shell: bash {0}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          .github/scripts/ci-build-and-smoke.sh
+      - name: Keep the build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-Allwmake
+          path: log.Allwmake
+          if-no-files-found: ignore

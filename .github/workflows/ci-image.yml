@@ -41,4 +41,5 @@ jobs:
       - name: Check the pushed image
         run: |
           docker pull "$IMAGE:latest"
-          docker run --rm "$IMAGE:latest" bash -c '. "$LEIA_FOAM_BASHRC" && foamVersion && command -v wmake && command -v mpirun'
+          # (foamVersion is not in the openfoam2606 packages: exit 127 on 2026-09-30.)
+          docker run --rm "$IMAGE:latest" bash -c '. "$LEIA_FOAM_BASHRC" && echo "OpenFOAM-$WM_PROJECT_VERSION $WM_OPTIONS" && command -v wmake && command -v blockMesh && command -v mpirun'

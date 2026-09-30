@@ -94,6 +94,9 @@ jobs:
           path: quartz/public
   deploy:
     needs: build
+    # The github-pages environment accepts main only; on the other branches the build job is the
+    # check, and a deploy attempt would only fail (a red run on every development push).
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
