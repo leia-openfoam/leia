@@ -77,5 +77,7 @@ sys.exit(0 if all(ok for _, ok in checks) else 1)
 PY
 rc=$?; cat log.ciNumbers
 [ "$rc" -eq 0 ] || fail "the smoke numbers" log.ciNumbers
+summary="$(tail -n 1 "$ROOT/log.checkBuild" | sed 's/^leia-check-build: //'); $(grep '^CI: [0-9]* steps' log.ciNumbers | sed 's/^CI: //')"
+[ -n "$GITHUB_ACTIONS" ] && echo "::notice title=leia CI PASS::OpenFOAM-$WM_PROJECT_VERSION; $summary"
 sh ./Allclean > /dev/null 2>&1
-echo "CI: PASS"
+echo "CI: PASS ($summary)"

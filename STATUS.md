@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-29 (section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-09-30 (section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -4777,3 +4777,81 @@ The author's request of 2026-09-29: merge everything into `development`, then in
    ```bash
    cd /work/scratch/tm83tomy/leia-curvature && git fetch -q origin && git show origin/development:STATUS.md | less
    ```
+
+### 11.21 CI on OpenFOAM-v2606; Lichtenberg on OpenFOAM-v2606 (2026-09-30)
+
+The author's requests of 2026-09-30: a new Docker image, because CI must work; OpenFOAM-v2606 on
+Lichtenberg, built in `$HOME/OpenFOAM` if needed; the input for the SL session delivered to it.
+
+1. **The CI image.** `ghcr.io/leia-openfoam/openfoam-v2606_ubuntu-noble` (`:latest` and `:<sha>`),
+   built and pushed by `.github/workflows/ci-image.yml` from `.github/docker/openfoam-v2606/Dockerfile`:
+   Ubuntu 24.04, the openfoam.com package `openfoam2606-dev` (its dependencies bring the compiler and
+   the OpenMPI development files), `openmpi-bin`, git, python3, bc, procps, make. The package is
+   private to the organisation and linked to the repository; the build job pulls it with its token.
+   Why our own image: the laptop has no Docker, and OpenCFD's newest development image is 2512
+   (2606 exists only as the runtime image `opencfd/openfoam-run`, without compilers). The first image
+   run pushed the image and failed its check on `foamVersion`, which the packages do not install
+   (exit 127); the check now prints `WM_PROJECT_VERSION` and the second run passed.
+2. **Build Tests** (`.github/workflows/build.yml`), on pushes to `main`, `development` and
+   `releases/**`, on pull requests to `main` and `development`, and by hand. Its one step is
+   `.github/scripts/ci-build-and-smoke.sh`, which runs the same way on a workstation
+   (`.github/scripts/ci-build-and-smoke.sh $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc`):
+   1. `./Allwmake`;
+   2. `etc/leia-check-build.py` (new): every `EXE`/`LIB` target of every `src/**/Make/files` and
+      `applications/**/Make/files` exists, because `wmake all` does not always fail on one broken
+      application;
+   3. `cases/2Dtranslation/Allrun.sh` (serial, N = 128, CFL 0.5), classified by `foam_log_state.sh`;
+   4. its numbers: `E_GEOM_ALPHA_REL` = 2 at t = 0 (the exact end reference is in use), below 3e-3 at
+      T; `E_VOL_ALPHA_REL` below 1e-12 at t = 0 and 1e-3 at T; `E_BOUND_ALPHA` = 0.
+   MEASURED, laptop (OpenFOAM-v2606 source build, fbc5916b): 26 executables and 14 libraries, 0
+   missing; 168 steps; `E_GEOM_ALPHA_REL` 2.000000 -> 1.6090e-03 and `E_VOL_ALPHA_REL` 2.27e-14 ->
+   5.7984e-04, the `kinematicTranslation2D` values at N = 128, CFL 0.5 (11.19). GitHub: run
+   36706765044 on `development` f010ed1a PASSED in 8 minutes (the build step 7.5 minutes). A failure
+   writes an error annotation with the tail of its log, and a pass a notice with the numbers: the
+   public check-runs API returns annotations without login, while the job logs need admin rights.
+3. **Two traps, fixed in the script.** Sourcing OpenFOAM's `etc/bashrc` passes the script's own
+   arguments to it, and it sources every readable file among them: a path to the bashrc in `$1`
+   recursed until bash segfaulted (exit 139); the script runs `set --` first.
+   `cases/2Dtranslation/Allrun.sh` has mode 644 in git (exit 126); the script runs `bash ./Allrun.sh`.
+4. **Knowledge base.** Its deploy job runs on `main` only; on `development` the build job is the
+   check, and the run ends green (it ended red at every development push before).
+5. **Lichtenberg on OpenFOAM-v2606** (`$HOME/OpenFOAM/OpenFOAM-v2606`, `ThirdParty-v2606`,
+   `cfmesh-v2606`; the recipe is in CLUSTER.md; every job id is in `$HOME/OpenFOAM/.my_jobs` and
+   `/work/scratch/tm83tomy/leia-dev/.my_jobs`).
+   1. Pass 1, job 55179573 (48 cores, 40:49, exit code 0): OpenFOAM plus ThirdParty, then cfMesh
+      from the release's `plugins/cfmesh` (25 executables, `libmeshLibrary`, stamp `v2606`; `pMesh`,
+      `cartesianMesh`, `tetMesh` present). But only 151 applications and 113 libraries: `icoFoam`,
+      `interFoam`, `simpleFoam`, `potentialFoam`, `pimpleFoam`, `pisoFoam`, `scalarTransportFoam` and
+      `setFields` were missing, and `foamInstallationTest` reported 1 critical error. Cause: the job
+      sourced `etc/bashrc` before ThirdParty built FFTW, so FFTW's `lib/` was not on the loader path;
+      the link of `noise` against `librandomProcesses.so` (which needs `libfftw3.so.3`) failed and
+      make stopped before the standard solvers. The exit code 0 of the job was no evidence.
+   2. The two leia jobs behind it (55179650 running for 3 minutes, 55179651 not started) were
+      cancelled by id, and the partial leia build removed.
+   3. Pass 2, job 55179978 (6:57): `etc/bashrc` sourced with FFTW present. 270 applications and 129
+      libraries (v2512: 270 and 128); every standard solver present; `foamInstallationTest`
+      "Critical systems ok"; `librandomProcesses.so` resolves `libfftw3.so.3` in ThirdParty-v2606.
+   4. A new clone for the development line, `/work/scratch/tm83tomy/leia-dev` (development
+      f010ed1; the other three clones are untouched), built by job 55179979 (32 cores, 1:16) with
+      `.github/scripts/ci-build-and-smoke.sh`: PASS, 26 executables and 14 libraries, 0 missing,
+      stamp `v2606`; 168 steps; `E_GEOM_ALPHA_REL` 2.000000 -> 1.6090e-03 and `E_VOL_ALPHA_REL`
+      2.27e-14 -> 5.7984e-04, the laptop's values to every printed digit; `pMesh` and
+      `cartesianMesh` resolve from `cfmesh-v2606`.
+   5. The workflow end to end: `sbatch -J leia-dev-smoke --export=ALL,STUDY=translationRepairGate2Dpar4
+      run-studies.sbatch` (driver 55179980, 8 child jobs 55180038 to 55180053 through
+      `profiles/slurm`): rc 0; both arms COMPLETED, 108 steps, 4 ranks, the binary of the clone's own
+      `platforms/`. Against the laptop's RE-RUN 3 (11.19 item 4: v2512, 4 ranks), every metric column
+      is bit-identical except the four volume sums, which differ by at most 2.7e-12 column-scaled
+      (1.1e-10 relative at one early row), the order of the parallel sum. End values on both:
+      `E_GEOM_ALPHA_REL` 7.2095e-03, `E_VOL_ALPHA_REL` 4.5568e-03.
+   So Lichtenberg runs the development line on OpenFOAM-v2606 through the committed profile. The
+   study's two curated tables were removed from the clone.
+6. **The SL session.** The full input (the tasks T1 to T3 and the results of 2026-09-29) is queued
+   for "SLLS: Polyhedral stationary and translating" (a Remote Control session on another machine,
+   offline on 2026-09-29 and 2026-09-30); delivery waits until that machine reconnects.
+7. **Open.** The clones `leia` (the SDPLS session), `leia-gcls` and `leia-curvature` on Lichtenberg
+   still run v2512 binaries; their owners move them (CLUSTER.md, "Where leia lives"); after that,
+   `feature/gradient-controlled-level-set` can be deleted on GitHub. TwoPhaseFlow is not built on
+   Lichtenberg for v2606 (the `interFlow` arm). A parallel smoke run and the seam check are not in
+   the CI yet. The actions `checkout@v4`, `upload-artifact@v4` and the Docker actions target
+   Node.js 20; GitHub runs them on Node.js 24 with a warning.
