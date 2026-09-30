@@ -52,6 +52,11 @@ foamDictionary -entry numberOfSubdomains -set "$NP" system/decomposeParDict >/de
 # 0/ from 0.org plus the pre-processing, never from a finished 0/ (CLAUDE.md).
 rm -rf 0 processor* && cp -r 0.org 0 && find 0 -name '*.template' -delete
 leiaSetFields $SFARGS > log.setFields 2>&1 || { echo "ABORT setFields"; tail -5 log.setFields; exit 3; }
+# The exact end-time reference of a flow that does not return (a no-op for endReference none);
+# before decomposePar, so the reference is decomposed with the other fields (2026-09-29).
+REPO_ROOT=$(cd "$(dirname "$LEIA_ENV")/.." && pwd)
+python3 "$REPO_ROOT/workflow/scripts/write_end_reference.py" $SFARGS > log.endReference.driver 2>&1 \
+  || { echo "ABORT endReference"; tail -5 log.endReference.driver; exit 5; }
 if [ "$NP" -gt 1 ]; then
   decomposePar -force > log.decomposePar 2>&1 || { echo "ABORT decomposePar"; exit 4; }
   mpirun -np "$NP" "$SOLVER" -parallel > log.solve 2>&1

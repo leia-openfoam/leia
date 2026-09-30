@@ -149,6 +149,7 @@ int main(int argc, char *argv[])
         // so the residual discrete divergence cannot act as a spurious
         // compression source (-fluxCorrection additionally projects phi).
         const volScalarField divPhi("divPhi", fvc::div(phi));
+        source->setTransportFlux(phi);
 
         // Defect-correction loop for the deferred second-order (linearUpwind)
         // spatial term: each pass re-assembles with the latest psi so the

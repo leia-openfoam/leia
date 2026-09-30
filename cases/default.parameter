@@ -9,15 +9,26 @@ SURFACE_FILE  none; // cfmesh pMesh (polyhedral mesh) not used
 PHASE_INDICATOR detrixheAslam;
 VELOCITY_EXTENSION none; // levelSet.velocityExtension.type for the LEVEL-SET
                      // transport only (momentum velocity untouched):
-                     // none | closestPoint | meshWaveExt | pseudoTime |
+                     // none | closestPoint | meshWave | pseudoTime |
                      // steadyUpwind | steadyUpwindLinear |
                      // anisotropicDiffusion. none = original path.
 ANCHOR_LAYERS 0;    // velocityExtension: extra foot-pointed Dirichlet layers
 UEXT_DIV UpwindUext; // steadyUpwind div scheme alias; MEASURED: the linearUpwind
                      // deferred correction DIVERGES on the steady extension
                      // equation (no ddt damping) -> upwind is the safe default.
+// Halo-limited directional extension (velocityExtension haloLimited, Phase D4 of
+// docs/plan-halo-limited-gradient-control.md). Only haloLimited reads these five
+// entries, so every other extension type renders and runs unchanged.
+HL_RADIUS_CELLS 1;          // the travel cap R in cell sizes; the model refuses a value above 1
+HL_M            2;          // travel capped: S_R(d) = d/(1 + (d/R)^(2m))^(1/(2m))
+HL_BETA         1;          // weight fractionReached: w = (S_R/d)^beta
+HL_DIRECTION    levelSet;   // d = psi/q, e = grad(psi)/q
+HL_SAMPLER      stencilFit; // least-squares fit of U over the cell-point-cell stencil
 OSCILLATION on;      // velocityModel: on = reversed test (cos(pi t/tau) factor),
                      // off = steady non-reversing vortex (sustained strain).
+END_REFERENCE none;  // none | translate: the exact end-time reference psiEnd/alphaEnd
+                     // (workflow/scripts/write_end_reference.py); only cases/2Dtranslation
+                     // references the token (2026-09-29). none = no reference, as before.
 SL_RECONSTRUCTION quadraticWeightedLeastSquares; // leiaSemiLagrangeLevelSetFoam foot reconstruction;
                      // single value here (constant for velocity-extension studies,
                      // which ignore it) -> the SL configs axes_override the sweep
@@ -53,6 +64,8 @@ SL_CLIP false;       // leiaSemiLagrangeLevelSetFoam clipToStencilBounds: tight
                      // near-singular per-cell fit can otherwise let psi run away
                      // geometrically; the clamp is inactive in smooth regions so
                      // it preserves the 2nd-order convergence.
+                     // CORRECTED 2026-09-28: refuted 2026-09-09 (STATUS 4, G4); SL_CLIP false is the
+                     // decision, see docs/knowledge-base/decisions/sl-clip-and-value-bound-off.md
 SL_CLIP_REGION all;  // WHERE the clip may act; read only when SL_CLIP is true.
                      // all = every cell. This is the GLOBAL clip and it is a
                      // METHOD CHANGE at the interface: MEASURED on Popinet's 2D
@@ -207,6 +220,28 @@ SDPLS_W2   0.15;     // preprint value; MUST be > w1
 // `band` cut-off only: cells either side of the interface that the
 // source acts over. Topological -- no |grad psi| assumption.
 SDPLS_NLAYERS 3;
+// Gradient-control law (libleiaGradientControl, Phase D1 of
+// docs/plan-halo-limited-gradient-control.md). Only the source models
+// gradientControl read it (SDPLS_SOURCE gradientControl on the Eulerian line,
+// SL_SOURCE gradientControl on the semi-Lagrangian line), so these values are
+// inert until a study selects one of them. D_t psi = psi*F, F = w(q)*a + G(q),
+// q = |grad psi|, a = n.D.n.
+GC_LAW           none;  // none | linearQ | linearZ | cubicQ | cubicZ | twoThirdsZReg | saturatedLinearZ | softWall
+GC_STRAIN_WEIGHT none;  // none (w = 0) | full (w = 1: the SDPLS R source) | omega
+GC_MU            1;     // [1/s]; the method gates set it per arm from GC_M_MU/T_REF
+GC_EPS           0.02;  // twoThirdsZReg; a placeholder until the static floor (E0) is measured
+GC_SAT_C         1;     // saturatedLinearZ
+// softWall (dossier S1a): G = -SW_C_KAPPA*sqrt(D:D + SW_EPS_D^2)*tanh[SW_GAMMA*((q - 1)/SW_DELTA_S)^SW_P].
+// The dossier reference values: delta_A = 0.10, eps_q = 0.02, delta_s = delta_A - eps_q = 0.08,
+// p = 5, gamma = artanh(0.9), C_kappa = 1.25.
+SW_C_KAPPA 1.25;
+SW_DELTA_S 0.08;
+SW_P       5;
+SW_GAMMA   1.4722194895832;   // artanh(0.9), so that tanh(SW_GAMMA) = 0.9 (1.4722 gives 0.89999)
+SW_EPS_D   0;           // [1/s]
+// strainWeight omega (dossier S1c): w = 1 - exp[-OMEGA_BETA*((q - 1)/SW_DELTA_S)^(2*OMEGA_M)].
+OMEGA_BETA 1;
+OMEGA_M    2;
 // SDPLS source gradients, as aliasDict names. The NORMAL that the strain
 // cancellation is built from is only as good as GRAD_PSI_SDPLS; it was
 // hardcoded to the most compact stencil in the file until 2026-08-15.
@@ -640,6 +675,8 @@ TRANSLATION_SPEED 0.05;
 // and a droplet translating at U0 inherits a momentum source U0 times that residual,
 // which is not a gradient and which vanishes identically at U0 = 0. That is the entire
 // stationary/translating asymmetry, and rhoLENT drives the residual to ~1e-11.
+// CORRECTED 2026-09-28: this residual (4.8e-02) predates the closed-box fix (440107f) and is quoted
+// as history only (measured by rhoBoundGate2D, in the VOID list of STATUS section 0).
 //
 // WHAT IT COSTS, recorded rather than buried: rhoLENT's auxiliary density is NOT the
 // geometric one and is unbounded on its own -- it is usable only because
@@ -647,6 +684,11 @@ TRANSLATION_SPEED 0.05;
 // also carries the WORST velocity excess of the four arms compared, max|U-U0| = 2.12
 // against 0.14. Whatever transports the droplet correctly currently carries a large
 // max|U-U0|; that anti-correlation is unresolved and is the open problem.
+// CORRECTED 2026-09-27: config/massFluxComparison2D ran on the closed-box translating
+// case (before 440107f) and is VOID (STATUS.md section 0), so the translating numbers
+// above are not evidence. The stationary evidence stands. dec002f then falsified
+// mass-momentum consistency as the dominant term of the late translating instability:
+// nine orders of magnitude in the mass residual moved the velocity excess by less than 2x.
 MASS_FLUX rhoLENT;
 // donorPlane, on the author's instruction (2026-09-01): "only Gauss upwind worked in
 // rhoLENT". This is deliberately NOT the solver's own preference -- createTransport
@@ -758,6 +800,13 @@ VISCOSITY_FACE_MODEL alg_lin;
 // drove rho to -72.28 (config/rhoDdtGate2D). Bounded, the matched backward/backward
 // pairing runs the full horizon at N=128 with the best volume conservation measured on
 // this case, and the clip stays small: clipL1 7.4e-04 against rho2 = 1.19.
+// CORRECTED 2026-09-27, two statements above are wrong. (1) The bound is NOT inert for
+// the shared configuration: MASS_FLUX became rhoLENT the same day (82ca995), so the bound
+// is active in every study that does not override MASS_FLUX. (2) config/rhoDdtGate2D ran
+// on the closed-box translating case and is VOID (STATUS.md section 0): rho -72.28 and
+// clipL1 7.4e-04 are not evidence, and neither is the translating half of the 2026-09-01
+// GAMG measurement. No valid measurement of the bound exists after the fix 440107f
+// (METHOD.md Sec. 6 and 8.1).
 MASS_FLUX_BOUND_RHO true;
 
 // Diagnostic only, no effect on the solution: compute and write the discrete mass
@@ -772,6 +821,9 @@ MASS_FLUX_BOUND_RHO true;
 // Default false = every existing study is byte-unchanged.
 MASS_RESIDUAL_DIAGNOSTIC false;
 
+// VOID 2026-09-28 marker: these numbers come from translatingDroplet2D runs before the closed-box
+// fix (440107f, 2026-09-02) and are void; kept as history (alphaFTimeLevelTranslating2D,
+// massFluxComparison2D, translatingClearOutlet2D; STATUS section 0).
 // TIME LEVEL OF THE GEOMETRIC FACE DENSITY (author's proposal, 2026-09-02).
 //   new        rho_f from the NEW interface only -- what every run to date used.
 //   trapezoid  1/2 (rho_f^n + rho_f^{n+1}), both geometric reconstructions.
@@ -897,6 +949,12 @@ MASS_FLUX_PROJECT false;
 // is FALSIFIED: with boundRho false the density reached -27.7 and -1786 over the full
 // horizon even with ddt(rho) = Euler. The 4-rank gate that suggested otherwise ran 167
 // steps.
+// CORRECTED 2026-09-27: config/matchedBDF2Translating2D and
+// config/volumeCorrectionTranslating2D ran on the closed-box translating case (before
+// 440107f) and are VOID (STATUS.md section 0), so both pairing tables above and the
+// -27.7 / -1786 densities are not evidence. What stands is the matching argument: with
+// U == U0 the momentum transient reduces to U0 times the mass residual only if ddt(rho,U)
+// and ddt(rho) use the same scheme.
 RHO_DDT_SCHEME backward;
 
 // FLUID PROPERTIES, tokenised 2026-09-02 so the DENSITY RATIO can be swept as a
@@ -971,6 +1029,11 @@ POPINET_NU     1e-06;   // m^2/s, both phases (viscosity ratio 1); La = 12000 wi
 // seconds: it is the exact-solution unit rung of the ladder for a defect that has
 // so far only been chased in coupled runs costing hours.
 DROPLET_OFFSET_X 0;
+// Level-set surface of cases/oscillatingDroplet2D (levelSet.implicitSurface.type).
+// implicitEllipsoid (default, every study before 2026-09-26) is ALGEBRAIC: |grad psi| is 1.8e3
+// to 2.2e3 at the interface, so gradient metrics and band widths in psi units have no
+// meaning there. signedDistanceEllipse (the method gates) is a signed distance.
+DROPLET_SURFACE implicitEllipsoid;
 
 SL_FOOT_INTEGRATOR taylor;
 // NOT INERT: cellCentred -> projectedFlux. Measured this campaign, stationary 2D
@@ -980,7 +1043,18 @@ SL_FOOT_INTEGRATOR taylor;
 // the full horizon at all three rungs, cellCentred at none of the two finest. And
 // config/kinematicTranslation2D showed the two are BIT-IDENTICAL under uniform
 // translation, so this default costs nothing where the flow cannot tell them apart.
+// CORRECTED 2026-09-29: that run was a REVERSED translation (STATUS 11.19); the one-way
+// re-run agrees to 5.0e-12 column-scaled, round-off, not bit-identical.
 SL_TRACE_VELOCITY projectedFlux;
+// INERT: physical = reconstruct(phi), the only trace flux before 2026-09-26.
+// extension = reconstruct(phiExt) of the velocityExtension model, so a velocity
+// extension enters the semi-Lagrangian trace. It needs SL_TRACE_VELOCITY projectedFlux.
+SL_TRACE_FLUX physical;
+// The scalar source after the semi-Lagrangian step (slSource family). INERT: none
+// is not called. gradientControl applies psi <- psi*exp(dt*F), F from the GC_* law
+// below, in the band |psi|/|grad psi| <= SL_SOURCE_BAND_CELLS*h (Phase D3).
+SL_SOURCE none;
+SL_SOURCE_BAND_CELLS 3;
 
 // ---- Static local mesh refinement around the interface (pre-processing) ----------
 // Consumed by workflow/scripts/leiaRefineHexMesh.py / leiaRefinePolyMesh.py through

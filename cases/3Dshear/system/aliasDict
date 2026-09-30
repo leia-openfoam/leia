@@ -24,3 +24,9 @@ SdplsPointLSQ     pointCellsLeastSquares;    // extended point-cell stencil
 SdplsGauss        Gauss linear;              // Green-Gauss, different family
 SdplsUGauss       Gauss linear;              // grad(v) for a = n.grad(v).n
 SdplsULSQ         leastSquares;
+
+// ## Steady velocity-extension convection (div(velExtPhiW,Uext)), selected by
+// the UEXT_DIV study token (copied from 2Dvortex, 2026-09-26).
+
+UpwindUext        upwind;
+LinearUpwindUext  linearUpwind grad(Uext);

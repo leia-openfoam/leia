@@ -143,6 +143,10 @@ private:
         //  \f$f_{nl}(\psi^{n})\f$ of an SDPLS source term.
         volScalarField nonLinearPart_;
 
+        //- The face flux that transports psi, set by the composition root
+        //  (setTransportFlux) before every fvmsdplsSource(). Null until set.
+        const surfaceScalarField* transportFlux_ = nullptr;
+
 
     // Private Member Functions
 
@@ -232,6 +236,21 @@ public:
         //- Write private data members
         void write() const;
 
+        //- True if this source goes through the discretization strategy
+        //  (nonLinearPart() and discretization()->discretize()). A source that
+        //  assembles its own matrix in fvmsdplsSource() returns false; the
+        //  selector then accepts `discretization none` for it and warns when a
+        //  discretization is given. This trait replaces the list of literal type
+        //  names the selector held before 2026-09-26 (CLAUDE.md "Extension
+        //  without modification": a selector never tests a model's type name).
+        virtual bool usesDiscretization() const { return true; }
+
+        //- Tell the source which face flux transports psi. Every composition
+        //  root calls it before fvmsdplsSource(); with a velocity extension it is
+        //  the extension flux, not the Navier-Stokes phi. Inert for a model that
+        //  does not read transportFlux().
+        void setTransportFlux(const surfaceScalarField& phi) { transportFlux_ = &phi; }
+
         bool iterative();
 
         uint maxIterations();
@@ -255,6 +274,10 @@ protected:
         //
         //  @param psi is the Level Set field
         tmp<volVectorField> grad(const volScalarField& psi) const;
+
+        //- The flux that transports psi. FatalError if the solver set none: a
+        //  model never looks a flux up by a registry name another class chose.
+        const surfaceScalarField& transportFlux() const;
 };
 
 

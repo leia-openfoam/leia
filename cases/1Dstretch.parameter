@@ -36,4 +36,8 @@ values
     SDPLS_SOURCE       (noSource R Rdiv);
     SOURCE_SCHEME      (simpleLinearImplicit);
     VELOCITY_EXTENSION (none closestPoint);
+    // The semi-Lagrangian runs of this case traced with the solver default
+    // cellCentred until the template carried the token (2026-09-26). The method
+    // gates set the production trace projectedFlux as a line token.
+    SL_TRACE_VELOCITY  (cellCentred);
 }

@@ -79,6 +79,7 @@ Description
 
 // Geometric face liquid-area fractions -> consistent two-phase mass flux.
 #include "faceAreaFraction.H"
+#include "processorFvPatch.H"   // writeDropletMetrics.H: processor-face samples
 
 // Foot-point height-function curvature (normal-constant, geometry-only).
 #include "footPointCurvature.H"

@@ -6,6 +6,8 @@ the baseline solver configuration note (METHOD.md) and the stabilized 3D
 foot-point algorithm (stable_foot_point_3d.md, needed only for the optional
 refinement in §7.2).
 
+CORRECTED 2026-09-28: the line is closed; the measured record is in docs/normal-projected-semi-lagrangian/npsl-article/ and docs/knowledge-base/concepts/normal-projected-sl.md
+
 Working name: **normal-projected SL** (nSL). The scheme replaces the
 baseline semi-Lagrangian value transport
 $\psi^{n+1}(\mathbf x_c)=\psi^n(\mathbf x_d)$ by a purely geometric update

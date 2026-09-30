@@ -132,6 +132,9 @@ public:
         //  algebraic-coefficient path entirely; discretization() is unused.
         virtual tmp<fvScalarMatrix>
         fvmsdplsSource(const volScalarField& psi, const volVectorField& U);
+
+        //- This family assembles its own matrix (sdplsRdivStrictSp inherits it).
+        virtual bool usesDiscretization() const { return false; }
 };
 
 } // End namespace Foam

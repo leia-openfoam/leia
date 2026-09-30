@@ -108,7 +108,12 @@ set-resources:
 #
 # profiles/local keeps `mpirun -np {np}` -- there is no srun nesting there.
 config:
-  - "mpi_launcher=srun --ntasks={np} --overlap --cpu-bind=none"
+  # --kill-on-bad-exit=1 (2026-09-27): when one rank dies (a floating-point exception is a
+  # DIVERGED result), srun ends the whole step. Without it the surviving ranks wait in MPI
+  # until the job time limit: MEASURED on methodGate2D (job 55044205), 20 diverged cases held
+  # 4 cores each for over an hour, and the solve rule could not record the result until the
+  # solver step was cancelled by hand. A successful run is not affected.
+  - "mpi_launcher=srun --ntasks={np} --overlap --cpu-bind=none --kill-on-bad-exit=1"
 # RETRACTED 2026-09-01: this block previously said "CFMESH NEEDS A PRELOADED
 # JEMALLOC ON THIS CLUSTER TOO" and put a jemalloc wrapper first in PATH. That
 # was WRONG about the cause and the cure, and both are removed.

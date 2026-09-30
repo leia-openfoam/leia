@@ -1,0 +1,11 @@
+EXE_INC = \
+    -std=c++17 \
+    -I../lnInclude
+
+/* --no-undefined: a symbol used from a library that is not in LIB_LIBS fails THIS
+   link instead of surfacing when a solver loads the library (WP3 gate). */
+LIB_LIBS = \
+    -Wl,--no-undefined \
+    -L$(FOAM_USER_LIBBIN) \
+    -lOpenFOAM \
+    -lleiaCore

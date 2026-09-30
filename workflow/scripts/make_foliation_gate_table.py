@@ -46,10 +46,10 @@ def main(argv):
         surf = re.search(
             r"implicitSurface\s*\{[^}]*type\s+(\w+)", fv, re.S
         ).group(1)
-        n = int(re.search(
-            r"n_cells\s+(\d+)",
-            open(os.path.join(d, "system", "blockMeshDict")).read()
-        ).group(1))
+        _bm = open(os.path.join(d, "system", "blockMeshDict")).read()
+        _m = (re.search(r"n_cells\s+(\d+)", _bm)
+              or re.search(r"hex\s*\([^)]*\)\s*\(\s*(\d+)", _bm))   # 3D: hex (...) (N N N)
+        n = int(_m.group(1))
         p = os.path.join(d, "leiaTestFaceCurvature.csv")
         if not os.path.exists(p):
             continue

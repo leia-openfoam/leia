@@ -36,9 +36,8 @@ adjustTimeStep  yes;
 // CFL = 1 arm is built on. Writing a step late costs nothing here.
 writeControl    runTime;
 
-// Write at t = 0, T/2 (maximum deformation) and T (reversed) so the automated
-// field atlas (alpha, |grad psi|-1) can show the full init -> half -> reversed
-// evolution. adjustableRunTime nudges deltaT to land exactly on the write times.
+// Write at t = 0, T/2 and T so the field atlas (alpha, |grad psi|-1) shows the start,
+// the half-way position and the end position of the translated circle.
 writeInterval   @!HALF_END_TIME!@;
 
 purgeWrite      0;

@@ -47,5 +47,6 @@ EXE_LIBS = \
     -lleiaSurfaceTension \
     -lleiaRedistancer \
     -lleiaVolumeCorrection \
+    -lleiaGradientControl \
     -lleiaCore \
     -llevelSetImplicitSurfaces

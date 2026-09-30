@@ -1,0 +1,22 @@
+{
+  "candidate": "FP0",
+  "description": "closestPoint extension in the SL trace (reference), no source",
+  "gate": "methodGate2D",
+  "gateFile": "config/gates/methodGate2D.yaml",
+  "line": "semiLagrangian",
+  "preRegistered": true,
+  "rates": {},
+  "smoke": false,
+  "source": "config/candidates/FP0.yaml",
+  "target": {
+    "arms": [
+      "shear"
+    ],
+    "metric": "gradientBandError",
+    "ratioToBaselineAtFinest": 0.8
+  },
+  "tokens": {
+    "SL_TRACE_FLUX": "extension",
+    "VELOCITY_EXTENSION": "closestPoint"
+  }
+}

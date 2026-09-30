@@ -1,0 +1,5 @@
+decomposition,np,csv,verdict,tolerance,maxColumnScaledDiff,worstColumn
+seamNp1,1,gradPsiError.csv,PASS,1e-10,1.353626335837668e-12,E_L1_GRAD_PSI
+seamNp1,1,leiaSemiLagrangeLevelSetFoam.csv,PASS,1e-10,1.012096613725031e-12,E_VOL_ALPHA
+seamNp8,8,gradPsiError.csv,PASS,1e-10,1.6639656189048152e-12,E_NARROW_MEAN_GRAD_PSI
+seamNp8,8,leiaSemiLagrangeLevelSetFoam.csv,PASS,1e-10,1.012096613725031e-12,E_VOL_ALPHA

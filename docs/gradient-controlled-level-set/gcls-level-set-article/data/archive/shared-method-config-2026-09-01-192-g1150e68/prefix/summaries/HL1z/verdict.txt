@@ -1,0 +1,47 @@
+VERDICT FAIL: candidate HL1z against baseline
+FAIL completion: stationary N=142 is DIVERGED where the baseline COMPLETED
+FAIL regression: shear shapeError at N=136: 1.65 vs baseline 0.0006188
+FAIL regression: shear gradientBandError at N=136: 10.54 vs baseline 1.624
+FAIL regression: shear volumeError at N=136: 1.597 vs baseline 0.0002559
+FAIL regression: shear volumeErrorHalf at N=136: 0.7181 vs baseline 0.007402
+FAIL regression: stationary shapeError at N=200: 3.878 vs baseline 6.079e-05
+FAIL regression: stationary gradientBandError at N=200: 0.511 vs baseline 0.000374
+FAIL regression: stationary volumeError at N=200: 0.9302 vs baseline 2.218e-08
+FAIL regression: stationary volumeErrorHalf at N=200: 0.3188 vs baseline 9.974e-08
+FAIL regression: stationary meanMagUPrime at N=200: 0.04936 vs baseline 1.29e-07
+FAIL regression: stationary l2MagUPrime at N=200: 0.08037 vs baseline 4.133e-07
+FAIL regression: stationary pressureJumpError at N=200: 3.607 vs baseline 0.0001286
+FAIL regression: stationary curvatureError at N=200: 33.72 vs baseline 0.0001335
+FAIL regression: translating shapeError at N=200: 0.1824 vs baseline 0.00306
+FAIL regression: translating gradientBandError at N=200: 1.167 vs baseline 0.03842
+FAIL regression: translating volumeError at N=200: 0.009086 vs baseline 0.0002049
+FAIL regression: translating volumeErrorHalf at N=200: 0.0005009 vs baseline 0.0003635
+FAIL regression: translating meanMagUPrime at N=200: 0.01249 vs baseline 0.0005367
+FAIL regression: translating l2MagUPrime at N=200: 0.06212 vs baseline 0.0008932
+FAIL regression: translating pressureJumpError at N=200: 0.1335 vs baseline 0.0006264
+FAIL regression: translating curvatureError at N=200: 4.495 vs baseline 0.03591
+FAIL regression: translating travelledFractionError at N=200: 0.08162 vs baseline 0.001717
+FAIL regression: oscillating volumeError at N=200: 0.2428 vs baseline 0.008176
+FAIL regression: oscillating volumeErrorHalf at N=200: 0.5904 vs baseline 0.00344
+FAIL regression: oscillating meanMagUPrime at N=200: 0.08878 vs baseline 0.01795
+FAIL regression: oscillating l2MagUPrime at N=200: 0.1141 vs baseline 0.05621
+FAIL order: oscillating volumeErrorHalf order -1.66 vs baseline 0.28
+FAIL order: shear shapeError order -0.49 vs baseline 3.07
+FAIL order: shear gradientBandError order -0.90 vs baseline 0.05
+FAIL order: shear volumeError order -0.65 vs baseline 3.60
+FAIL order: stationary shapeError order 0.07 vs baseline 2.68
+FAIL order: stationary gradientBandError order -0.08 vs baseline 2.09
+FAIL order: stationary volumeError order -0.05 vs baseline 5.48
+FAIL order: stationary volumeErrorHalf order -1.45 vs baseline 3.43
+FAIL order: stationary pressureJumpError order -1.30 vs baseline 2.02
+FAIL order: stationary curvatureError order -0.75 vs baseline 1.94
+FAIL order: translating shapeError order -1.49 vs baseline 3.13
+FAIL order: translating gradientBandError order -3.97 vs baseline 0.82
+FAIL order: translating volumeError order -0.45 vs baseline 3.27
+FAIL order: translating volumeErrorHalf order 0.26 vs baseline 0.88
+FAIL order: translating meanMagUPrime order -4.53 vs baseline 1.37
+FAIL order: translating l2MagUPrime order -5.67 vs baseline 1.13
+FAIL order: translating pressureJumpError order -7.01 vs baseline 1.63
+FAIL order: translating curvatureError order -6.10 vs baseline -0.10
+FAIL order: translating travelledFractionError order -1.17 vs baseline 3.13
+FAIL target: shear gradientBandError ratio 6.490 > 0.8

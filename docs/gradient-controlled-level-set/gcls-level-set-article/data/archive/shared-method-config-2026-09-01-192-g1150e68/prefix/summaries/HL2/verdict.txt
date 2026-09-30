@@ -1,0 +1,15 @@
+VERDICT FAIL: candidate HL2 against baseline
+FAIL completion: translating N=100 is DIVERGED where the baseline COMPLETED
+FAIL completion: translating N=142 is DIVERGED where the baseline COMPLETED
+FAIL completion: translating N=200 is DIVERGED where the baseline COMPLETED
+FAIL completion: oscillating N=100 is DIVERGED where the baseline COMPLETED
+FAIL completion: oscillating N=142 is DIVERGED where the baseline COMPLETED
+FAIL completion: oscillating N=200 is DIVERGED where the baseline COMPLETED
+FAIL regression: shear shapeError at N=136: 0.2474 vs baseline 0.0006188
+FAIL regression: shear volumeError at N=136: 0.06824 vs baseline 0.0002559
+FAIL regression: stationary volumeError at N=200: 1.986e-07 vs baseline 2.218e-08
+FAIL regression: stationary volumeErrorHalf at N=200: 1.786e-07 vs baseline 9.974e-08
+FAIL order: shear shapeError order 0.25 vs baseline 3.07
+FAIL order: shear gradientBandError order -0.87 vs baseline 0.05
+FAIL order: shear volumeError order 0.24 vs baseline 3.60
+PASS target: shear gradientBandError ratio 0.754

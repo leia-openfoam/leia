@@ -18,37 +18,49 @@ dimensions      [0 1 0 0 0 0 0];
 
 internalField   uniform 0;
 
+// BOUNDARY DATA of the one-way translation (2026-09-29): zeroGradient on all four patches,
+// as in every two-phase case of this repository. The exact solution is the signed distance
+// of the translated circle, psi(x, t) = |x - c - U t| - R, with c = (0.25 0.5), U = (1 0 0),
+// R = 0.15 (the implicitSphere and velocityModel blocks of system/fvSolution).
+//
+// Do NOT put the exact value on a patch here. MEASURED 2026-09-29 (a serial probe of four
+// boundary variants at N = 64, 128, 256; STATUS 11.19): the SL fit reads every physical patch
+// value as a stencil datum (SL_STENCIL_BOUNDARY_FACES include, the default), and
+//   * the exact value on the OUTFLOW patch (right) made the SL update unstable at the outflow
+//     edge at CFL 0.5: the edge error grew by a factor of about 1.1 per step and reached
+//     4.5e5 at T at N = 256, with 96 false zero-set cells;
+//   * the exact value on the INFLOW patch (left) made it unstable at CFL 1, where the
+//     departure point of the first cell column lies outside the domain: E_GEOM_ALPHA_REL
+//     1.79 at T at N = 128, with 2246 false zero-set cells in the inflow region.
+// With zeroGradient on all four patches both runs are stable (outflow-edge error 1.7e-3 at
+// N = 256, CFL 0.5; 8.8e-4 at N = 128, CFL 1).
+//
+// Consequence: the inflow region behind the circle (x < t) keeps psi0(0, y), which is at
+// least 0.10 (no zero crossing), so the interface metrics are unaffected; the GLOBAL
+// gradient metrics of this case measure that frozen region, not the transport. Use the
+// band metrics.
+
 boundaryField
 {
-    left 
+    left
     {
         type            zeroGradient;
     }
 
-    right 
+    right
     {
         type            zeroGradient;
     }
 
-    top 
+    top
     {
         type            zeroGradient;
     }
 
-    bottom 
+    bottom
     {
         type            zeroGradient;
     }
-
-//    front
-//    {
-//        type            zeroGradient;
-//    }
-//
-//    back
-//    {
-//        type            zeroGradient;
-//    }
 }
 
 // ************************************************************************* //

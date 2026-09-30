@@ -64,10 +64,14 @@ Description
 #include "surfaceTensionForce.H"
 #include "narrowBand.H"
 #include "volumeCorrection.H"
+#include "velocityExtension.H"
 // Production curvature: the SL reconstruction machinery reused READ-ONLY as a
 // spatial kappa evaluator (see reconstructedCurvatureFields.H).
 #include "slReconstruction.H"
 #include "stabilizedFootPointFaceCurvature.H"
+// Geometric face area fractions for the two-phase mass flux (shared with the
+// semi-Lagrangian two-phase solver).
+#include "faceAreaFraction.H"
 
 #include "advectionErrors.H"
 
@@ -94,6 +98,42 @@ int main(int argc, char *argv[])
     #include "createDyMControls.H"
     #include "createFields.H"
     #include "volumeCorrectionFields.H"
+    #include "velocityExtensionFieldsEuler.H"
+
+    // THE TWO-PHASE MASS FLUX (2026-09-27): the same models, dictionary and
+    // defaults as the semi-Lagrangian two-phase solver (levelSet.massFlux:
+    // interpolatedDensity | geometricFaceDensity | rhoLENT). Before this, rho,
+    // rhoPhi and muf kept their t = 0 values for the whole run (rho was
+    // reassigned only on a dynamic mesh refinement), so a moving interface
+    // carried the initial density and viscosity fields.
+    #include "createMassFluxFields.H"
+
+    // PIMPLE.psiOuterCorrectors (default no): rebuild the interface -- band,
+    // phase indicator, mixture, face density -- on EVERY outer corrector from
+    // the current psi iterate, instead of once on the final corrector. psi
+    // itself is re-solved on every corrector in both settings (alphaEqn.H).
+    // The same switch in the semi-Lagrangian solver re-advects psi and
+    // rebuilds the interface on every corrector.
+    const Switch psiOuterCorrectors
+    (
+        static_cast<const fvSolution&>(mesh).subOrEmptyDict("PIMPLE")
+            .getOrDefault<Switch>("psiOuterCorrectors", false)
+    );
+    Info<< "PIMPLE.psiOuterCorrectors "
+        << (psiOuterCorrectors ? "yes: the interface is rebuilt on every"
+                                 " outer corrector"
+                               : "no: the interface is rebuilt on the final"
+                                 " outer corrector")
+        << nl << endl;
+
+    // The face density and the face viscosity start from the initial
+    // interface, so the first outer corrector of the first step does not use
+    // the construction values (rhof = interpolate(rho), alphaf = 0).
+    // alpha2 first: createFields.H recomputes alpha1 from psi after the
+    // mixture set alpha2 = 1 - alpha1 from the alpha file.
+    alpha2 = 1.0 - alpha1;
+    #include "updateFaceDensity.H"
+
     #include "initCorrectPhi.H"
     #include "createUfIfPresent.H"
 
@@ -205,6 +245,11 @@ int main(int argc, char *argv[])
                 turbulence->correct();
             }
         }
+
+        // rhoLENT: the auxiliary density served the pressure-velocity
+        // coupling; reset rho to the geometric mixture for the output and the
+        // next time level (rhoLENT Algorithm 1, step 13). No-op otherwise.
+        #include "resetRhoLENT.H"
 
         reportErrors(
             errorFile, 

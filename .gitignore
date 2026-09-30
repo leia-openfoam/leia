@@ -115,6 +115,10 @@ log
 !docs/**/data/tables/*.csv
 !docs/**/data/figures/*.csv
 !docs/**/data/mechanism/*.csv
+# The pre-prints' figures may be vector PDF, and each pre-print archives the secondary data of
+# its software version under data/archive/<version>/ (CSV): both are curated results.
+!docs/**/data/figures/*.pdf
+!docs/**/data/archive/**/*.csv
 # editor / tool backups
 *.backp
 *.orig
@@ -195,3 +199,20 @@ cases/**/leia.version
 # Windows alternate-data-stream copy artifacts (appear when files are copied
 # from Windows into WSL as "<name>:Zone.Identifier")
 *:Zone.Identifier
+
+# docs/knowledge-base: an Obsidian vault published by Quartz (GitHub Pages). The local
+# workspace files and the generated 3D graph data are not tracked; the graph page and the
+# small assets are re-included past the docs/**/*.html and *.png ignores above.
+docs/knowledge-base/.quartz/__pycache__/
+# The top-level pattern studies/ above also matches the vault's studies/ folder: re-include it.
+!docs/knowledge-base/studies/
+docs/knowledge-base/.obsidian/workspace.json
+docs/knowledge-base/.obsidian/workspace-mobile.json
+docs/knowledge-base/.obsidian/cache
+docs/knowledge-base/.obsidian/plugins/*/data.json
+docs/knowledge-base/graph3d/graph.json
+!docs/knowledge-base/graph3d/graph.htm
+!docs/knowledge-base/assets/*.png
+!docs/knowledge-base/assets/*.svg
+docs/knowledge-base/.quartz/digests/*
+!docs/knowledge-base/.quartz/digests/README.md

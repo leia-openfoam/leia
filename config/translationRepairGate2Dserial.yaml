@@ -1,0 +1,106 @@
+# ============================================================================
+# REPAIR GATE of the one-way 2Dtranslation (2026-09-29), serial. Pre-registered before the run.
+#
+# WHY. cases/2Dtranslation reversed: it was made from 2Dvortex (cd97e6da) without the
+# vortex's `oscillation` line, so the velocity model's default multiplied U by cos(pi t/tau)
+# and the circle came back at T; the metrics compared T with the initial fields. The fix:
+# OSCILLATION off, END_REFERENCE translate (psiEnd/alphaEnd from write_end_reference.py), the
+# psi zeroGradient on all four patches (0.org/psi). Two earlier versions put the exact value
+# on patches; both were unstable (see the two VOID notes below).
+# STATUS 11.19.
+#
+# PREDICTIONS (N = 64, CFL 0.5, END_TIME 0.5, the SL kinematic solver):
+#   1. U = (1 0 0) at every write time (no cos factor).
+#   2. The step count follows the one-way dt law: 108 steps (the reversed case took 86).
+#   3. The alpha-weighted centroid at T is (0.750, 0.500) within 1e-3.
+#   4. V(alphaEnd) = V(alpha(0)) to round-off: E_VOL_ALPHA_REL at t = 0 below 1e-12.
+#   5. E_GEOM_ALPHA_REL = 2.000 at t = 0 (the start and end circles are disjoint), small at T.
+#   6. The boundary psi equals the exact signed distance of the translated circle at t = 0 and
+#      at T on every patch face, to 1e-12.
+#   7. np 4 against serial: every CSV column within 1e-10 (the seam check).
+# FAILED if any line fails; Step A of the plan stops there.
+#
+# RESULT (2026-09-29, laptop, leia-gcls binaries of 11:30, v2512). The first run FAILED line 4:
+# E_VOL_ALPHA_REL = 1.6e-2 at t = 0, because write_end_reference.py ran leiaSetFields on the first
+# call's output instead of the pristine 0.org inputs, and the indicator wrote 0/1 values at the
+# new circle (alphaEnd off by 0.46 in a cell). Fixed (0/ rebuilt from 0.org for the call); that run
+# is renamed *_VOID_endRefNonPristine_20260929. The re-run PASSES every line:
+#   1. U = (1 0 0) at t = 0, 0.2486, 0.4986.        2. 108 steps.
+#   3. centroid at T (0.74974, 0.50000).            4. E_VOL_ALPHA_REL(t = 0) = 1.65e-14.
+#   5. E_GEOM_ALPHA_REL = 2.000000 at t = 0, 7.20e-3 at T (E_VOL_ALPHA_REL 4.71e-3 at T).
+#   6. boundary psi = exact signed distance on all 256 patch faces to 4.95e-13, at t = 0 and T.
+#   7. np 4 against serial: the largest column-scaled difference 2.7e-12 (E_VOL_ALPHA); the
+#      per-value relative test flags only entries at round-off (E_BOUND_ALPHA <= 1.5e-14 in
+#      both runs, the t = 0 volume rows near 1e-14).
+#
+# VOID (2026-09-29, second): the RESULT above ran with the exact value on the OUTFLOW patch
+# (right) too. That boundary data made the SL update unstable at the outflow edge: the SL fit
+# reads the patch value as a stencil datum (SL_STENCIL_BOUNDARY_FACES include), and the edge
+# error of the default arm grew by a factor of about 1.1 per step; at N = 256 it reached 4.5e5
+# at T (advConv2Dtranslation). At N = 64 the growth was still small, but the setup was wrong, so
+# every line of that RESULT is void. The runs are renamed *_VOID_outflowDirichlet_20260929.
+#
+# RE-RUN 2, PRE-REGISTERED before the run (2026-09-29): psi zeroGradient on the outflow patch.
+# Lines 1 to 5 and 7 as above. Line 6 changes, line 8 is new:
+#   6. The boundary psi equals the exact signed distance on every left, top and bottom face at
+#      t = 0 and at T, to 1e-12; every right face carries the value of its boundary cell.
+#   8. The outflow edge is stable: the largest |psi - psi_exact| over the cells next to a patch
+#      is below 2e-2 at T and at most 1.5 times its value at the write time near t = 0.25.
+#      (The discriminating probe, serial N = 128: 4.8e-3 at t = 0.25 and 3.6e-3 at T.)
+# FAILED if any line fails.
+#
+# RESULT of RE-RUN 2 (2026-09-29, laptop, leia-gcls binaries of 11:30, v2512, commit 8e589863).
+# Both phase-indicator arms (geometric, detrixheAslam) PASS every line:
+#   1. U = (1 0 0) at t = 0, 0.2486, 0.4986.        2. 108 steps.
+#   3. centroid at T (0.74974, 0.50000).            4. E_VOL_ALPHA_REL(t = 0) = 1.65e-14, 1.72e-14.
+#   5. E_GEOM_ALPHA_REL = 2.000000 at t = 0, 7.203e-3 at T (E_VOL_ALPHA_REL 4.712e-3 at T).
+#   6. left, top and bottom faces: max |psi_b - psi_exact| = 4.95e-13 at t = 0 and at T; every
+#      right face equals its boundary cell exactly.
+#   7. np 4 against serial: the largest column-scaled difference is 2.7e-12 (E_VOL_ALPHA). The
+#      per-value relative test of compare_metrics_csv.py flags only round-off entries: the t = 0
+#      volume rows near 1e-14, and E_BOUND_ALPHA, whose whole column is below 1.6e-14.
+#   8. the edge max |psi - psi_exact| is 9.40e-3 at t = 0.2486 and 7.17e-3 at T: it falls.
+#
+# VOID (2026-09-29, third): RE-RUN 2 ran with the exact value on the INFLOW patch (left) and on
+# the no-flow patches. Its eight lines passed, but the same setup is unstable at CFL 1: the
+# departure point of the first cell column lies outside the domain, and kinematicTranslation2D
+# reached E_GEOM_ALPHA_REL 1.79 at N = 128 with 2246 false zero-set cells in the inflow region.
+# zeroGradient on all four patches is stable at CFL 0.5 and 1 (serial probe, N = 64 to 256).
+# The runs of RE-RUN 2 are renamed *_VOID_inflowDirichlet_20260929.
+#
+# RE-RUN 3, PRE-REGISTERED before the run (2026-09-29): psi zeroGradient on all four patches.
+# Lines 1 to 5 and 7 as above. Line 6 changes; lines 8 and 9 are:
+#   6. Every patch face (left, right, top, bottom) carries the value of its boundary cell, at
+#      t = 0 and at T.
+#   8. The outflow and no-flow edges are stable: the largest |psi - psi_exact| over the cells
+#      next to the right patch, and next to the top and bottom patches at x > t + 0.05 (outside
+#      the frozen inflow region), is below 2e-2 at T and at most 1.5 times its value at the
+#      write time near t = 0.25. (The probe, serial N = 128: right 2.9e-3 to 3.5e-3, top and
+#      bottom 1.8e-3 to 1.1e-3.) The left column keeps psi0(0, y): its error is not a defect.
+#   9. No false zero set: no cell with psi < 0 lies farther than 5 h from the exact circle at T.
+# FAILED if any line fails.
+#
+# RESULT of RE-RUN 3 (2026-09-29, laptop, leia-gcls binaries of 11:30, v2512, commit 39c9fe02).
+# Both phase-indicator arms (geometric, detrixheAslam) PASS every line:
+#   1. U = (1 0 0) at t = 0, 0.2486, 0.4986.        2. 108 steps.
+#   3. centroid at T (0.74972, 0.50000).            4. E_VOL_ALPHA_REL(t = 0) = 1.65e-14, 1.72e-14.
+#   5. E_GEOM_ALPHA_REL = 2.000000 at t = 0, 7.210e-3 at T (E_VOL_ALPHA_REL 4.557e-3 at T).
+#   6. every face of the four patches equals its boundary cell exactly, at t = 0 and at T.
+#   7. np 4 against serial: the largest column-scaled difference is 2.7e-12 (E_VOL_ALPHA); the
+#      per-value relative test flags only round-off entries, as in RE-RUN 2.
+#   8. right edge 5.92e-3 at t = 0.2486 and 6.90e-3 at T (1.17 times); top and bottom edges
+#      (x > t + 0.05) 3.74e-3 and 2.10e-3.
+#   9. no cell with psi < 0 lies farther than 5 h from the exact circle at T.
+# ============================================================================
+study_name: translationRepairGate2Dserial
+case: 2Dtranslation
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangeLevelSetFoam
+solve_runtime: 900
+axes_override:
+  N_CELLS: [64]
+  CFL: [0.5]
+  END_TIME: [0.5]
+collapse_other_axes: true

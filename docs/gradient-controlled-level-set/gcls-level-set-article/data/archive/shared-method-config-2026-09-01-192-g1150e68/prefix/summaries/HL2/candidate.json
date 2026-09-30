@@ -1,0 +1,36 @@
+{
+  "candidate": "HL2",
+  "description": "halo-limited extension + soft wall S1a",
+  "gate": "methodGate2D",
+  "gateFile": "config/gates/methodGate2D.yaml",
+  "line": "semiLagrangian",
+  "preRegistered": true,
+  "rates": {},
+  "smoke": false,
+  "source": "config/candidates/HL2.yaml",
+  "target": {
+    "arms": [
+      "shear"
+    ],
+    "metric": "gradientBandError",
+    "ratioToBaselineAtFinest": 0.8
+  },
+  "tokens": {
+    "GC_LAW": "softWall",
+    "GC_STRAIN_WEIGHT": "none",
+    "HL_BETA": 1,
+    "HL_DIRECTION": "levelSet",
+    "HL_M": 2,
+    "HL_RADIUS_CELLS": 1,
+    "HL_SAMPLER": "stencilFit",
+    "SL_SOURCE": "gradientControl",
+    "SL_SOURCE_BAND_CELLS": 3,
+    "SL_TRACE_FLUX": "extension",
+    "SW_C_KAPPA": 1.25,
+    "SW_DELTA_S": 0.08,
+    "SW_EPS_D": 0,
+    "SW_GAMMA": 1.4722194895832,
+    "SW_P": 5,
+    "VELOCITY_EXTENSION": "haloLimited"
+  }
+}

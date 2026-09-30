@@ -32,10 +32,17 @@ fi
 wmake $WITH_BEAR $1 "$ROOT/src/levelSetImplicitSurfaces"
 wmake $WITH_BEAR $1 "$ROOT/src/functionObjects"
 
+# Every header under src/leiaLevelSet must be in the ROOT lnInclude that the method libraries
+# include (-I../lnInclude). wmake refreshes it only when the core library's own files
+# change, so a header in a NEW sub-directory (a new family) stayed invisible
+# (MEASURED 2026-09-26: semiLagrangian/source/slSource.H). Refresh it explicitly.
+wmakeLnInclude -u "$ROOT/src/leiaLevelSet" > /dev/null
+
 # The leia level-set libraries in dependency order, each with its own version stamp
 # (etc/leia-stamp.sh, printed by every solver and written to <case>/leia.version).
 for entry in \
     leiaCore:src/leiaLevelSet \
+    leiaGradientControl:src/leiaLevelSet/gradientControl \
     leiaSdplsSource:src/leiaLevelSet/sdplsSource \
     leiaSemiLagrangian:src/leiaLevelSet/semiLagrangian \
     leiaVelocityExtension:src/leiaLevelSet/velocityExtension \

@@ -1,0 +1,8 @@
+// Accuracy-driven outer loop DISABLED (the default): this include is empty on
+// purpose, so the PIMPLE dictionary is byte-equal to its historical form.
+// MEASURED (2026-08-27): a residualControl block whose tolerances are 0 is NOT
+// inert -- its mere presence changes which outer corrector PIMPLE treats as
+// "final" (and therefore which solver settings, U/p_rgh vs *Final, the last
+// pass uses), shifting a 30-step N=128 droplet run in the 8th significant
+// digit. Presence must be opt-in, hence this file-level switch
+// (PIMPLE_RESIDUAL_CONTROL_FILE = residualControl.off | residualControl.on).

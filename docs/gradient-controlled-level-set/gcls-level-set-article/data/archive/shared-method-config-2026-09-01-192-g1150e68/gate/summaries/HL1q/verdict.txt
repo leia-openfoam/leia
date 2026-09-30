@@ -1,0 +1,42 @@
+VERDICT FAIL: candidate HL1q against baseline
+FAIL regression: shear shapeError at N=136: 0.1069 vs baseline 0.0006188
+FAIL regression: shear volumeError at N=136: 0.008905 vs baseline 0.0002559
+FAIL regression: shear volumeErrorHalf at N=136: 0.03095 vs baseline 0.007402
+FAIL regression: stationary shapeError at N=200: 3.814 vs baseline 6.079e-05
+FAIL regression: stationary gradientBandError at N=200: 0.4989 vs baseline 0.000374
+FAIL regression: stationary volumeError at N=200: 0.7589 vs baseline 2.218e-08
+FAIL regression: stationary volumeErrorHalf at N=200: 0.2865 vs baseline 9.974e-08
+FAIL regression: stationary meanMagUPrime at N=200: 0.03795 vs baseline 1.29e-07
+FAIL regression: stationary l2MagUPrime at N=200: 0.08785 vs baseline 4.133e-07
+FAIL regression: stationary pressureJumpError at N=200: 0.865 vs baseline 0.0001286
+FAIL regression: stationary curvatureError at N=200: 21.79 vs baseline 0.0001335
+FAIL regression: translating shapeError at N=200: 0.1792 vs baseline 0.00306
+FAIL regression: translating gradientBandError at N=200: 0.9678 vs baseline 0.03842
+FAIL regression: translating volumeError at N=200: 0.006734 vs baseline 0.0002049
+FAIL regression: translating volumeErrorHalf at N=200: 0.0004973 vs baseline 0.0003635
+FAIL regression: translating meanMagUPrime at N=200: 0.009064 vs baseline 0.0005367
+FAIL regression: translating l2MagUPrime at N=200: 0.0238 vs baseline 0.0008932
+FAIL regression: translating pressureJumpError at N=200: 0.1382 vs baseline 0.0006264
+FAIL regression: translating curvatureError at N=200: 2.658 vs baseline 0.03591
+FAIL regression: translating travelledFractionError at N=200: 0.09691 vs baseline 0.001717
+FAIL regression: oscillating volumeError at N=200: 0.7133 vs baseline 0.003043
+FAIL regression: oscillating volumeErrorHalf at N=200: 0.02804 vs baseline 0.00344
+FAIL order: oscillating volumeError order 0.34 vs baseline 1.32
+FAIL order: shear shapeError order 0.02 vs baseline 3.07
+FAIL order: shear volumeError order 1.96 vs baseline 3.60
+FAIL order: stationary shapeError order -0.17 vs baseline 2.82
+FAIL order: stationary gradientBandError order -0.13 vs baseline 2.08
+FAIL order: stationary volumeError order 0.02 vs baseline 5.48
+FAIL order: stationary volumeErrorHalf order -0.82 vs baseline 3.43
+FAIL order: stationary pressureJumpError order -0.18 vs baseline 2.02
+FAIL order: stationary curvatureError order -0.47 vs baseline 1.94
+FAIL order: translating shapeError order -1.43 vs baseline 3.12
+FAIL order: translating gradientBandError order -3.66 vs baseline 0.82
+FAIL order: translating volumeError order 0.01 vs baseline 3.27
+FAIL order: translating volumeErrorHalf order 0.30 vs baseline 0.88
+FAIL order: translating meanMagUPrime order -3.76 vs baseline 1.37
+FAIL order: translating l2MagUPrime order -4.06 vs baseline 1.13
+FAIL order: translating pressureJumpError order -6.13 vs baseline 1.63
+FAIL order: translating curvatureError order -5.46 vs baseline -0.10
+FAIL order: translating travelledFractionError order -1.37 vs baseline 3.13
+PASS target: shear gradientBandError ratio 0.204

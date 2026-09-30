@@ -1,0 +1,26 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | Web:      www.OpenFOAM.com
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      decomposeParDict;
+}
+
+// Four subdomains in x: every processor boundary is a plane x = const, and the
+// middle one (x = 0) lies inside the band, so the band crosses a seam.
+numberOfSubdomains 4;
+method          simple;
+coeffs
+{
+    n           (4 1 1);
+}
+
+// ************************************************************************* //

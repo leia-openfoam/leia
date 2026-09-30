@@ -58,6 +58,14 @@
     gates score cutCellInverse at 1.02). So the second-order behaviour may be
     specific to constant curvature -- which is the stationary droplet, but not
     the oscillating one.
+
+    MEASURED 2026-09-29 on varying curvature, for the FACE CURVATURE itself (the
+    delivered kappa_f against the exact interface curvature, not the remainder
+    above; leiaTestMeanCurvature rows solverCellCentreInverse and ...NoK): second
+    order on the signed-distance 2:1 ellipse (pairwise 1.98 and 2.00 over
+    N = 128 to 512) and ellipsoid (2.10 fitted over N = 50 to 128; 1.00 without
+    the Gaussian term), 14 to 26 percent below the per-face inverse. The
+    remainder itself is not yet measured on varying curvature. METHOD.md 4.1.
 \*---------------------------------------------------------------------------*/
 
 #ifndef cellCentreInverseCurvature_H

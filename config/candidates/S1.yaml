@@ -1,0 +1,30 @@
+# CANDIDATE S1 (halo-limited dossier, route S1a): the scalar soft wall alone, no extension.
+#   D_t psi = psi F after the semi-Lagrangian step (psi <- psi exp(dt F)), in the band
+#   |psi|/q <= 3h:  F = -1.25 sqrt(D:D) tanh[artanh(0.9) ((q - 1)/0.08)^5],
+#   D = symm(grad u) of the trajectory velocity.
+# QUESTION: does scalar control alone keep |grad psi| in the band 0.9 <= q <= 1.1?
+# PRE-REGISTERED READ-OUT (2026-09-26, before any run):
+#   prediction: the gradient band error falls in the arms whose strain drives q out of the
+#     band (shear, oscillating); the stationary and translating arms (D ~ 0 near the
+#     droplet) stay within the regression tolerance.
+#   pass: the gate verdict (no metric > 1.10 x baseline at the finest rung, no order below
+#     baseline - 0.3) AND the target below.
+#   falsified if: the shear-arm gradient band error at the finest rung is above 0.8 x the
+#     baseline, or a volume or shape metric regresses beyond the tolerance.
+candidate: S1
+line: semiLagrangian
+description: "scalar soft wall S1a (cKappa 1.25, deltaS 0.08, p 5), no velocity extension"
+tokens:
+  SL_SOURCE: gradientControl
+  SL_SOURCE_BAND_CELLS: 3
+  GC_LAW: softWall
+  GC_STRAIN_WEIGHT: none
+  SW_C_KAPPA: 1.25
+  SW_DELTA_S: 0.08
+  SW_P: 5
+  SW_GAMMA: 1.4722194895832
+  SW_EPS_D: 0
+target:
+  metric: gradientBandError
+  ratioToBaselineAtFinest: 0.8
+  arms: [shear]

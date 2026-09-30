@@ -65,6 +65,9 @@ Description
 
 // The production face deliveries, measured exactly as the solver applies them.
 #include "stabilizedFootPointFaceCurvature.H"
+// The production curvature (curvatureExtension cellCentreInverse): the K-aware
+// parallel-surface inverse applied to the CELL curvature (solver-side, 2026-09-29).
+#include "cellCentreInverseCurvature.H"
 #include "capillaryDriverSplit.H"
 #include "levelSetImplicitSurfaces.H"
 
@@ -285,7 +288,10 @@ int main(int argc, char *argv[])
          // construction can be judged before it is built: the potential form
          // needs a cell curvature that is BOTH accurate and smooth, and this
          // column is the smoothness half.
-         "newtonFootCell", "closestPointCell"}
+         "newtonFootCell", "closestPointCell",
+         // THE PRODUCTION DELIVERY (curvatureExtension cellCentreInverse, 2026-09-29) and its
+         // control without the Gaussian-curvature term (identical in 2D, where K = +0).
+         "cellCentreInverse", "cellCentreInverseNoK"}
     );
 
     // kappa_f for every delivery, from the CURRENT psi in the reconstruction.
@@ -370,6 +376,22 @@ int main(int argc, char *argv[])
             kappaCell.correctBoundaryConditions();
             kappaFace = fvc::interpolate(kappaCell);
             kf[8] = kappaFace.primitiveField();
+        }
+
+        // curvatureExtension cellCentreInverse: the solver's own K-aware inverse of the CELL
+        // curvature, delivered by the production arithmetic interpolation; NoK drops K.
+        {
+            volScalarField kappaCCI("kappaCCING", kappa);
+            applyCellCentreInverseCurvature(mesh, recon(), kappaCCI, true);
+            kappaCCI.correctBoundaryConditions();
+            kappaFace = fvc::interpolate(kappaCCI);
+            kf[9] = kappaFace.primitiveField();
+
+            volScalarField kappaCCI0("kappaCCINoKNG", kappa);
+            applyCellCentreInverseCurvature(mesh, recon(), kappaCCI0, false);
+            kappaCCI0.correctBoundaryConditions();
+            kappaFace = fvc::interpolate(kappaCCI0);
+            kf[10] = kappaFace.primitiveField();
         }
     };
 

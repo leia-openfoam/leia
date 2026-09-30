@@ -17,12 +17,13 @@ LIB = {   # part directory -> library
     "sdplsSource": "leiaSdplsSource", "semiLagrangian": "leiaSemiLagrangian",
     "velocityExtension": "leiaVelocityExtension", "redistancer": "leiaRedistancer",
     "volumeCorrection": "leiaVolumeCorrection", "surfaceTensionForce": "leiaSurfaceTension",
-    "advection": "leiaAdvection",
+    "advection": "leiaAdvection", "gradientControl": "leiaGradientControl",
     "davof": "leiaDavof",
     "davofInterface": "leiaDavofInterface",
 }
 LINKS = {  # library -> the leia libraries in its LIB_LIBS (libleiaCore is implicit)
-    "leiaCore": set(), "leiaSdplsSource": set(), "leiaSemiLagrangian": set(),
+    "leiaCore": set(), "leiaGradientControl": set(),
+    "leiaSdplsSource": {"leiaGradientControl"}, "leiaSemiLagrangian": {"leiaGradientControl"},
     "leiaRedistancer": set(), "leiaVolumeCorrection": set(), "leiaSurfaceTension": set(),
     "leiaVelocityExtension": {"leiaSemiLagrangian"},
     "leiaAdvection": {"leiaSdplsSource", "leiaSemiLagrangian", "leiaVelocityExtension"},

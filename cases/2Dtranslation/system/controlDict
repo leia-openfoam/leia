@@ -23,7 +23,7 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         2;
+endTime         0.5;
 
 maxCo           0.5;
 
@@ -33,7 +33,7 @@ adjustTimeStep  yes;
 
 writeControl    runTime;
 
-writeInterval   2;
+writeInterval   0.25;
 
 purgeWrite      0;
 

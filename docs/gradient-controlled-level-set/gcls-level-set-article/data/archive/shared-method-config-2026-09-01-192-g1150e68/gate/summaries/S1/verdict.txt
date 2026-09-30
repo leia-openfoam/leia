@@ -1,0 +1,21 @@
+VERDICT FAIL: candidate S1 against baseline
+FAIL completion: translating N=142 is DIVERGED where the baseline COMPLETED
+FAIL regression: shear shapeError at N=136: 0.2541 vs baseline 0.0006188
+FAIL regression: shear volumeError at N=136: 0.004879 vs baseline 0.0002559
+FAIL regression: translating shapeError at N=200: 0.04372 vs baseline 0.00306
+FAIL regression: translating gradientBandError at N=200: 0.2843 vs baseline 0.03842
+FAIL regression: translating volumeError at N=200: 0.007792 vs baseline 0.0002049
+FAIL regression: translating meanMagUPrime at N=200: 0.004664 vs baseline 0.0005367
+FAIL regression: translating l2MagUPrime at N=200: 0.02324 vs baseline 0.0008932
+FAIL regression: translating pressureJumpError at N=200: 0.2357 vs baseline 0.0006264
+FAIL regression: translating curvatureError at N=200: 4.229 vs baseline 0.03591
+FAIL regression: translating travelledFractionError at N=200: 0.01987 vs baseline 0.001717
+FAIL regression: oscillating volumeError at N=200: 21.32 vs baseline 0.003043
+FAIL regression: oscillating volumeErrorHalf at N=200: 20.84 vs baseline 0.00344
+FAIL order: oscillating volumeError order -0.00 vs baseline 1.32
+FAIL order: shear shapeError order 0.06 vs baseline 3.07
+FAIL order: shear gradientBandError order -0.53 vs baseline 0.05
+FAIL order: translating pressureJumpError order -0.13 vs baseline 1.63
+FAIL order: translating travelledFractionError order 2.00 vs baseline 3.13
+PASS target: shear gradientBandError ratio 0.707
+FAIL seam: translatingSeamNp1 leiaSemiLagrangianLevelSetTwoPhaseFoam.csv l2MagUPrime 0.7634094950473804

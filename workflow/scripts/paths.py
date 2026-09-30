@@ -25,6 +25,7 @@ _THEMES = {
     # DAVOF (dual area/volume-of-fluid): static gates of the Gauss-identity
     # normal; tables/figures only, no deck yet (docs/davof/README.md).
     "davof":                              ("davof",                              "davof",              "davof.template.html"),
+    "gradient-controlled-level-set":      ("gradient-controlled-level-set",      "gcls-level-set",     "gcls-level-set.template.html"),
 }
 
 # Themes whose deck reads figures/tables from ITS OWN presentation data/ folder

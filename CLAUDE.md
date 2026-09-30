@@ -40,15 +40,15 @@ prose. The rules that matter most:
   sourced AFTER OpenFOAM's `etc/bashrc` in every shell that builds or runs a leia
   binary, sets `WM_PROJECT_USER_DIR` to the clone root. Two clones never share
   binaries, so a rebuild in one cannot change what another runs (MEASURED 2026-09-09:
-  a build from one clone landed in the shared account default and a second clone ran
-  a library about 200 commits ahead of its own source; STATUS.md section 9). The
+  a build from one clone landed in the shared account default, and a second clone would
+  have loaded a library ~200 commits ahead of its source; no job ran, STATUS.md 9.5). The
   workflow sources the file itself in every job (`workflow/Snakefile`, `sh()`);
   `Allwmake`, `Allwclean` and `run-studies.sbatch` source it too.
-  `src/leiaLevelSet` builds as EIGHT libraries: `libleiaCore` and one per method
-  (`sdplsSource`, `semiLagrangian`, `velocityExtension`, `redistancer`,
-  `volumeCorrection`, `surfaceTensionForce` with the capillary fvOption, `advection`),
-  each with its own `Make/` and version stamp (split 2026-09-23, WP3 of
-  `docs/plan-library-split-and-build-policy.md`). Every solver links every library it
+  `src/leiaLevelSet` builds as NINE libraries: `libleiaCore` and one per method
+  (`gradientControl`, `sdplsSource`, `semiLagrangian`, `velocityExtension`,
+  `redistancer`, `volumeCorrection`, `surfaceTensionForce` with the capillary fvOption,
+  `advection`), each with its own `Make/` and version stamp (split 2026-09-23, WP3 of
+  `docs/plan-library-split-and-build-policy.md`; `gradientControl` added 2026-09-26). Every solver links every library it
   can select a model from; a new model goes into the library of its family, a new
   family gets its own `Make/` and a row in `etc/leia-check-deps.py`, which `Allwmake`
   runs and which refuses a header include that the link graph does not cover.
@@ -72,6 +72,88 @@ prose. The rules that matter most:
 - Hub is GitHub `leia-openfoam/leia`. Code moves by git; raw simulation output
   moves by rsync. See **[CLUSTER.md](CLUSTER.md)**.
 
+## Extension without modification
+
+**The level-set method is open to extension and closed to modification.** New
+behaviour is a new runtime-selectable (RTS) class. It is not an edit of an
+existing model class, of a solver equation or of a selector.
+
+1. A new model goes into the RTS family that owns the behaviour: one class with
+   `addToRunTimeSelectionTable` and one line in that family's `Make/files`. A
+   dictionary word selects it. A case token with an inert default renders that
+   word.
+2. If no family owns the behaviour, add a new family. Its base class is the
+   inert default model. It gets its own `Make/`, a row in
+   `etc/leia-check-deps.py`, an entry in `Allwmake` and `Allwclean`, and an
+   `-l` entry in the `EXE_LIBS` of every solver that can select it.
+3. An alternative inside a model is a strategy, and a strategy is also a RTS
+   family. The pattern is the `discretization`, `gradPsi` and `mollifier`
+   strategies of `sdplsSource`. An `if` chain over dictionary words is not an
+   extension point.
+4. A solver holds composition roots only. It constructs each family with
+   `New()` and calls the family interface. A solver or a selector never tests
+   the type name of a model.
+5. A solver without a composition root for a family gets one as a one-time
+   infrastructure change. The change ships with the inert default, in its own
+   commit, gated by a bit-identity run against the pre-change state.
+6. A model that needs data that the family interface does not give extends the
+   base interface once, with an inert default, gated as in item 5. A model
+   never looks up a field by a name that another class chooses.
+7. The Eulerian solvers and the semi-Lagrangian solvers expose the same
+   families where the method allows it. An Eulerian model runs in an Eulerian
+   solver. A semi-Lagrangian model runs in a semi-Lagrangian solver.
+
+MEASURED 2026-09-26: the rule was broken in four places. The Eulerian two-phase
+solver cannot select a velocity extension. The semi-Lagrangian two-phase solver
+ignores any extension with the default `projectedFlux` trace.
+`sdplsSource::New` lists `"Rdiv"` and `"RdivStrictSp"` by name. `sdplsRdiv`
+finds its flux by the registry name `"phi"`. The plan that removes these four
+breaks is `docs/plan-halo-limited-gradient-control.md`.
+
+## The knowledge base is the point of reference
+
+`docs/knowledge-base/` is an Obsidian vault, published by Quartz to
+<https://leia-openfoam.github.io/leia/> (`make kb` builds it locally; `make kb-graph` checks it
+and regenerates the 3D graph). It holds the concise, cross-linked record of every method line and
+every moving part: what was decided and on which measurement, what was retracted, why something
+failed or why we think so, and what is open. Start a session there:
+
+1. Read `docs/knowledge-base/index.md`, then the hub of the part you work on (`hubs/advection`,
+   `hubs/viscosity`, `hubs/surface-tension`, `hubs/mass-flux`, `hubs/gradient-control`,
+   `hubs/verification`) and `sessions/current.md`.
+2. Follow the links of the hub to the notes, and from the notes to the pre-print sections, the
+   deck slides, the `STATUS.md` sections and the code. The graph (`graph3d/`, and the graph view
+   of the site) shows what relates to what.
+3. Read `decision-log.md` and `retraction-log.md` from the date of the last handover.
+
+When a session takes a decision, retracts a claim, opens or closes a question, or finishes a
+gate, it writes the note or the log line **in the same commit as the result**; the `## Log` of a
+note is append-only. A number is written first in `STATUS.md`, `METHOD.md` or a curated CSV, and
+quoted in the knowledge base with its link. `python3 docs/knowledge-base/.quartz/check_kb.py
+docs/knowledge-base` must pass before the commit. The conventions are in
+`docs/knowledge-base/conventions.md`; a note without links is not finished.
+
+## How we work: supervisor and expert developer
+
+The user is the supervisor. Claude works as an expert developer of numerical methods for
+multiphase flow, and the two develop the method together. This applies to every method line of
+leia: the semi-Lagrangian transport, the Eulerian lines, the surface-tension models, the
+mass-flux models, the gradient-control direction, and any new line. For each proposal:
+
+1. Name the mechanism and the number it must move. Pre-register the prediction and the outcome
+   that falsifies it (the research loop section below).
+2. Run the cheapest discriminator first. Escalate only on a pass.
+3. Assess the result critically against the knowledge base: what was tried before, what failed,
+   and why. State which routes to abandon and which to pursue, with the reasons, and mark the
+   evidence MEASURED, DERIVED or HYPOTHESIS.
+4. When a campaign closes, write the assessment as a technical report in the theme's docs folder
+   (`docs/<theme>/<slug>-technical-report/`, LaTeX, the summary first and the details after; the
+   pattern is `docs/gradient-controlled-level-set/gcls-technical-report/`), and record the
+   decisions in the knowledge base.
+
+Decisions are taken together: Claude proposes and assesses, the supervisor decides, and the
+knowledge base records.
+
 ## The best configuration lives in METHOD.md and in the `.parameter` files
 
 **`METHOD.md` is the record of the current best configuration**: what it is, why each
@@ -86,12 +168,19 @@ every session's context.
 drifts from the code; the token files cannot, because the workflow renders every case
 from them. Three layers, later overriding earlier:
 
-1. `cases/default.parameter` — the global default, flat (`SL_FIT normalEquations;`).
+1. `cases/default.parameter` — the global default, flat (`TOKEN value;`).
 2. `cases/<case>.parameter` — the per-case default, in a `values { ... }` block. Some
-   settings are genuinely case-dependent (`CURVATURE_EXTENSION` is `none` for the Popinet
-   translating family and `cellCentreInverse` for the stationary droplet family); this
-   layer exists so they are not collapsed to one global winner.
+   settings are genuinely case-dependent; this layer exists so they are not collapsed to
+   one global winner.
 3. `axes_override` in `config/<study>.yaml` — the per-study sweep.
+
+**This guide holds no case- or study-specific method settings.** (The BDF2 mandate below is
+a repository-wide rule, not a tuned setting.) The working settings
+live in the configuration files: the `.parameter` layers, and every study config (a method
+gate included) that pins a case-dependent value names it explicitly, with the measurement
+that decided it. A value quoted here drifts from the files and is read as a rule, which is
+how a study once inherited a global default that this guide described as case-specific
+(2026-09-27, the translating arm of `methodGate2D`).
 
 So changing the best configuration means editing a `.parameter` file, and every study
 that does not override that axis inherits the change — which is exactly why such a change
@@ -201,7 +290,12 @@ by O(1) at every processor boundary; `interfaceExtension::updateFlux` assigning
 the raw flux over the whole boundary field; the psi filter's `fvc::average`
 inheriting `calculated` patch types so `L(psi)` was uncoupled across seams; a
 narrow-band dilation looping internal faces only, making the filtered CELL SET
-decomposition-dependent.
+decomposition-dependent; `computeFaceAreaFractions` filling a processor face from
+each rank's own cell, so the two sides of a seam used different rho_f and mass
+was not conserved across it (2026-09-27); the droplet metrics sampling the zero
+set and the band on internal faces only, 3-8 % apart between serial and np 4 on
+fields equal to 1e-8 (the same day). The 2D method gate now runs the coupled
+solver's decomposition check (`translatingSeamNp1`).
 
 **The gate.** Before `sbatch`, on the laptop:
 
@@ -457,6 +551,12 @@ of the form coefficient x displacement^n needs a gate with O(1) displacement IN 
 CELLS IT CAN AFFECT; a passing convergence table is not evidence for cells the flow
 never moved.
 
+**Corollary, MEASURED 2026-09-29: never give psi a fixed value on a patch.** The SL fit reads
+every physical patch value as a stencil datum (`SL_STENCIL_BOUNDARY_FACES include`). On the
+one-way `2Dtranslation`, the exact psi on the outflow patch grew by a factor of about 1.1 per
+step at the outflow edge, and the exact psi on the inflow patch failed at CFL 1, where the
+departure point leaves the domain. zeroGradient is stable in both.
+
 **Is the interface still inside the domain?** Before any conclusion is drawn from
 `t_blow`, compute where the interface IS at that step and how far it is from the
 nearest boundary -- and check what that boundary actually IS, in
@@ -521,7 +621,7 @@ transport the same way:
 
 | rung | case | mesh | why it is in the set |
 |---|---|---|---|
-| hex 2D | `2Dvortex` or `2Dtranslation` | `hex` | the cheapest transport order, and `2Dtranslation` is the only O(1)-displacement gate |
+| hex 2D | `2Dvortex` or `2Dtranslation` | `hex` | the cheapest transport order, and `2Dtranslation` is the only O(1)-displacement gate (one-way since 2026-09-29; before that it reversed, and its numbers are void) |
 | hex 3D | `3Dshear` | `hex` | 3D stencils and the cross terms of the quadratic fit |
 | polyhedral 3D | `3Dshear` | `poly` | the only rung where the polyhedral amplification defect appears |
 
@@ -575,6 +675,47 @@ an ad-hoc grep against a solver log. Use
     workflow/scripts/compare_metrics_csv.py A.csv B.csv --tol 0 \
         --skip ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME
 
+
+## Method gates: 2D first, 3D on a pass
+
+**Any change to the level-set method runs the 2D method gate before any other
+coupled study.** A change is a new model, a changed default, or a composition
+root that is not inert. The command is
+
+    make gate GATE=methodGate2D CANDIDATES=<name> PROFILE=profiles/slurm
+
+and it runs, on Lichtenberg, the exact 1D arm first and then the 2D shear,
+stationary, translating and oscillating droplet arms at np 4. The 3D method gate
+(`GATE=methodGate3D`) runs only after a 2D pass. The laptop runs only the unit
+tests and the 4-rank smoke (`SMOKE=1`) that "Run it on 4 ranks before it leaves
+the laptop" requires. Reason: a method has given good advection and bad
+hydrodynamics here before, and only the coupled arms show that.
+
+1. ONE 2D study and ONE 3D study test every method. A method enters only as a
+   candidate, a set of case tokens: `config/candidates/<name>.yaml` with the
+   pre-registered read-out in its header, or `SET="TOKEN=value,..."` for an
+   exploratory run that the summary marks as not pre-registered. A method that
+   cannot be configured by tokens alone is not modular. The gate definitions are
+   `config/gates/methodGate{2D,3D}.yaml`; the baseline takes its method settings
+   from the `.parameter` layering, never from a copy.
+2. Every gate run carries the `baseline` candidate on the same commit and
+   binaries. A verdict against a baseline from another commit is not a verdict.
+3. The resolution ladder is a Richardson ladder. In 2D the cell count doubles
+   per rung (h ratio sqrt(2) = 1.414). In 3D the h ratio is at least 1.3 per
+   rung, about 2.2 times the cells, because doubling the cells (h ratio
+   2^(1/3) = 1.26) puts the rungs too close for a stable order estimate (Celik
+   et al., J. Fluids Eng. 130, 078001, 2008). Three rungs at least. The first
+   rung has R/h >= 10. All rungs have the same parity of N.
+4. The gate reports the whole vector per arm: shape, gradient band error,
+   volume, phase-indicator bounds, spurious currents, pressure-jump error,
+   curvature, rank count and wall clock. It reports the observed order of every
+   L2 and L1 metric, and the Richardson extrapolation with the GCI for a quantity
+   without an exact value. It never reports an L_inf order.
+5. The renderer refuses a candidate token that an arm's case does not render.
+   The verdict fails a candidate whose every CSV equals the baseline's: its
+   tokens were not consumed. MEASURED 2026-09-26: `VELOCITY_EXTENSION
+   closestPoint` on the semi-Lagrangian line is such a no-op, because the default
+   `projectedFlux` trace ignores the extension.
 
 ## Constraints that gate what may even be proposed
 
