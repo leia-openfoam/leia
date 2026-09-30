@@ -16,7 +16,7 @@ import method_label  # the single definition of a method label
 
 PER_CASE_CSVS = [
     "leiaLevelSetFoam.csv",
-    "leiaRedistancedLevelSetFoam.csv",   # geometric-redistancing solver (same columns)
+    "leiaRedistancedLevelSetFoam.csv",   # geometric-redistancing solver, retired 2026-09-30, STATUS 11.22; archived studies
     "leiaSemiLagrangeLevelSetFoam.csv",  # semi-Lagrangian solver (same columns)
     "leiaSemiLagrangianLevelSetTwoPhaseFoam.csv",  # two-phase droplet metrics
                                          # (TIME,maxMagU,meanMagU,pLaplace)
@@ -172,7 +172,7 @@ def _write_error_table(records, database_path):
         if rec.get("leiaSemiLagrangeLevelSetFoam.E_GEOM_ALPHA", "") != "":
             return "leiaSemiLagrangeLevelSetFoam"
         if rec.get("leiaRedistancedLevelSetFoam.E_GEOM_ALPHA", "") != "":
-            return "leiaRedistancedLevelSetFoam"
+            return "leiaRedistancedLevelSetFoam"   # retired 2026-09-30: archived studies
         if rec.get("leiaTestRedistance.E_LINF_BAND_PSI", "") != "":
             return "leiaTestRedistance"
         return "leiaLevelSetFoam"
@@ -302,13 +302,15 @@ def _write_error_table(records, database_path):
             # semi-Lagrangian reconstruction (blank for the Eulerian solver).
             "reconstruction": rec.get("SL_RECONSTRUCTION", "")
             if solver_of(rec) == "leiaSemiLagrangeLevelSetFoam" else "",
-            # Geometric-redistancing solver / static gate: which redistancer
-            # model and trigger produced the row (blank for other solvers).
+            # Geometric-redistancing rows / static gate: which redistancer model and
+            # trigger produced the row (blank for the semi-Lagrangian solver). Since
+            # 2026-09-30 leiaLevelSetFoam runs the redistancing line, so its rows carry
+            # the rendered REDISTANCER (noRedistancing where no redistancer is set).
             "redistancer": rec.get("REDISTANCER", "")
-            if solver_of(rec) in ("leiaRedistancedLevelSetFoam",
+            if solver_of(rec) in ("leiaRedistancedLevelSetFoam", "leiaLevelSetFoam",
                                   "leiaTestRedistance") else "",
             "redistTrigger": rec.get("REDIST_TRIGGER", "")
-            if solver_of(rec) in ("leiaRedistancedLevelSetFoam",
+            if solver_of(rec) in ("leiaRedistancedLevelSetFoam", "leiaLevelSetFoam",
                                   "leiaTestRedistance") else "",
             "solver": solver_of(rec),
             "phaseIndicator": rec.get("PHASE_INDICATOR", ""),

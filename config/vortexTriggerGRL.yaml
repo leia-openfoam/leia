@@ -15,8 +15,12 @@ mesh: hex
 mode: parallel
 np: 4
 
-solver: leiaRedistancedLevelSetFoam
-
+# 2026-09-30: the redistancing line runs in leiaLevelSetFoam (eulerian advection,
+# velocityExtension none); leiaRedistancedLevelSetFoam, which ran it before, is retired and
+# was bit-identical to it (STATUS 11.22). The theme is explicit, since it no longer follows
+# from the solver name.
+solver: leiaLevelSetFoam
+theme: geometrically-redistanced-levelset
 axes_override:
   END_TIME: [2, 8]
   N_CELLS:  [64]

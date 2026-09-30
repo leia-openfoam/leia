@@ -137,8 +137,7 @@ def read_discretization(case_dir):
             ent = _entries(_strip_comments(open(ctrl).read()))
         except OSError:
             ent = {}
-        # Absent key => the C++ default in eulerianAdvection.C /
-        # leiaRedistancedLevelSetFoam.C, which is 3.
+        # Absent key => the C++ default in eulerianAdvection.C, which is 3.
         out["nDefCorr"] = ent.get("nDefCorr", "3 (solver default)")
 
     # DID THE FLOW ACTUALLY REVERSE? Same reason as everything above: the token

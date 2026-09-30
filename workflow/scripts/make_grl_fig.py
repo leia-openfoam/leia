@@ -3,7 +3,8 @@
 
 Scans the geometrically-redistanced-levelset theme's data/tables/ for the
 curated <study>_errors.csv files that the Snakefile report rule copies there,
-and for every study with leiaRedistancedLevelSetFoam rows plots the shape /
+and for every study with redistancing rows (leiaLevelSetFoam; leiaRedistancedLevelSetFoam in
+studies before its retirement on 2026-09-30) plots the shape /
 volume / band-gradient errors over h, one line per redistancer (largest T,
 each cfl). Idempotent and skip-missing: rerunning after any study only adds
 or refreshes that study's outputs (same convention as make_sl_3d_fig.py).
@@ -40,7 +41,9 @@ def _num(x):
 def load(err_csv):
     with open(err_csv, newline="") as fh:
         rows = list(csv.DictReader(fh))
-    rows = [r for r in rows if r.get("solver") == "leiaRedistancedLevelSetFoam"
+    # The redistancing rows of this theme: leiaLevelSetFoam since 2026-09-30, the retired
+    # (bit-identical) leiaRedistancedLevelSetFoam in the archived studies.
+    rows = [r for r in rows if r.get("solver") in ("leiaLevelSetFoam", "leiaRedistancedLevelSetFoam")
             and _num(r.get("h")) is not None]
     return rows
 
@@ -85,7 +88,7 @@ def make_figures(study, rows, figs_dir):
             ax.set_title(f"{label},  T = {tmax:g}", fontsize=10)
             ax.grid(True, which="both", alpha=0.25)
             ax.legend(fontsize=6)
-    fig.suptitle(f"{study}: leiaRedistancedLevelSetFoam convergence", fontsize=10)
+    fig.suptitle(f"{study}: redistanced level set convergence ({rows[0].get('solver', '')})", fontsize=10)
     fig.tight_layout()
     out = os.path.join(figs_dir, f"{study}_convergence.png")
     fig.savefig(out, dpi=200)
@@ -118,7 +121,10 @@ def make_order_table(all_rows, tables_dir):
             )
             prev = None
             for h, err in pts:
-                if prev and err > 0 and prev[1] > 0:
+                # Two rows at the same h (arms that differ on an axis this table does not
+                # key on) have no order between them; they crashed the table with a
+                # division by zero before 2026-09-30.
+                if prev and err > 0 and prev[1] > 0 and prev[0] != h:
                     order = math.log(prev[1]/err)/math.log(prev[0]/h)
                     otxt = f"{order:.2f}"
                 else:
@@ -139,8 +145,8 @@ def main():
     tables = paths.tables_dir(THEME)
     collected = list(studies())
     if not collected:
-        print("[make_grl_fig] no *_errors.csv with leiaRedistancedLevelSetFoam "
-              "rows in the theme tables dir yet — nothing to do")
+        print("[make_grl_fig] no *_errors.csv with redistancing rows "
+              "in the theme tables dir yet — nothing to do")
         return
     for study, rows in collected:
         make_figures(study, rows, figs)

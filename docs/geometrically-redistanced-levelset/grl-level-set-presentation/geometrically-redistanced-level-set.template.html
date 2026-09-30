@@ -126,7 +126,7 @@
   <p style="margin-top:0.7em; font-size:1.05em">
      <b>Tomislav Mari&#263; &middot; Mathis Fricke &middot; Dieter Bothe</b>
      <span class="muted" style="font-weight:normal"><br>MMA, TU Darmstadt</span></p>
-  <p class="footnote"><code>libleiaLevelSet</code> &nbsp;|&nbsp; solver <code>leiaRedistancedLevelSetFoam</code>
+  <p class="footnote"><code>libleiaLevelSet</code> &nbsp;|&nbsp; solver <code>leiaLevelSetFoam</code> (eulerian advection + redistancer; <code>leiaRedistancedLevelSetFoam</code> until 2026-09-30, bit-identical)
      &nbsp;|&nbsp; companion deck: <code>geometrically-redistanced-level-set-negative-results.template.html</code> (every dead end, measured)</p>
   <aside class="notes">
     The third research line next to velocity extension and semi-Lagrangian
@@ -421,7 +421,8 @@ forAll(anchors.cells, i) psiIn[anchors.cells[i]] = anchors.dist[i];  // exact an
 <section data-track="The solver">
 <section>
   <p class="part-kicker">Part 3 of 6</p>
-  <h2>The solver: <code>leiaRedistancedLevelSetFoam</code></h2>
+  <h2>The solver: <code>leiaLevelSetFoam</code></h2>
+  <p class="muted">eulerian advection, <code>velocityExtension none</code>, a <code>levelSet.redistancer</code>; until 2026-09-30 the separate solver <code>leiaRedistancedLevelSetFoam</code>, which gave bit-identical results</p>
   <div class="todo">SKELETON &mdash; advective-form \(\psi\) equation, optional Helmholtz
     flux projection, band refresh around redistance events, per-event volume-shift
     diagnostic.</div>

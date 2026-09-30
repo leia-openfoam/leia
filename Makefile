@@ -57,7 +57,7 @@ SL_LINEAR_STUDIES ?= linearConv2Dvortex linearConv3Dshear linearConv3Ddeformatio
 # visualisation job (velocity-glyph-over-alpha + curvature across resolution).
 DROPLET_STUDIES ?= stationaryDroplet2D curvatureDroplet2D dropletFields2D
 VE_STUDIES ?= bulkVortex steadyVortex2D staticExtension
-# Geometrically-redistanced level set (leiaRedistancedLevelSetFoam): static
+# Geometrically-redistanced level set (leiaLevelSetFoam with a redistancer; leiaRedistancedLevelSetFoam until 2026-09-30): static
 # circle convergence + trigger ablation + advection studies (2D + 3D).
 BENCH_STUDIES ?= benchVortexEulerT2 benchVortexEulerT8 benchVortexSLT2 benchVortexSLT8 benchVortexVET2 benchVortexVET8 \
                  benchVortexSLimproved benchVortexSLimprovedPerturbed benchVortexSLflux benchVortexGRLfrozen
@@ -76,7 +76,7 @@ SDPLS_STUDIES ?= sdplsStability benchVortexEulerT2 benchVortexEulerT8 \
                  sdplsBand2Dvortex sdplsBand3Dshear sdplsBand3Ddeformation \
                  sdplsTemporal2Dvortex sdplsNormal2Dvortex
 # EVERY study whose psi transport is an FV div(phi,psi) -- i.e. solver is
-# leiaRedistancedLevelSetFoam / leiaLevelSetTwoPhaseFoam, or leiaLevelSetFoam
+# leiaLevelSetTwoPhaseFoam, or leiaLevelSetFoam (leiaRedistancedLevelSetFoam until 2026-09-30)
 # without ADVECTION=semiLagrangian. These share ONE discretization
 # (div(phi,psi) Gauss linearUpwind grad(psi), grad(psi) cellLimited leastSquares 1,
 # nDefCorr >= 3) and must be re-run together whenever it changes, or the

@@ -3,9 +3,9 @@
 
 Why this exists
 ---------------
-Three solvers write the SAME error table -- leiaLevelSetFoam,
-leiaRedistancedLevelSetFoam (which includes leiaLevelSetFoam's advectionErrors.H
-via `-I../leiaLevelSetFoam`) and leiaSemiLagrangeLevelSetFoam -- and each one
+Three solvers wrote the SAME error table -- leiaLevelSetFoam,
+leiaRedistancedLevelSetFoam (which included leiaLevelSetFoam's advectionErrors.H
+via `-I../leiaLevelSetFoam`; retired 2026-09-30) and leiaSemiLagrangeLevelSetFoam -- and each one
 carried its OWN copy of the header string. The comment in the semi-Lagrangian
 copy read "same columns as leiaLevelSetFoam.csv for direct comparison", which is
 a statement no compiler was checking.

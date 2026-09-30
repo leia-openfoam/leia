@@ -19,6 +19,17 @@ do
     rm -rf "$ROOT/src/leiaLevelSet/Make/$WM_OPTIONS/$p"
 done
 
+# leiaRedistancedLevelSetFoam was retired on 2026-09-30: leiaLevelSetFoam with eulerian advection,
+# velocityExtension none and a redistancer reproduces it bit for bit (STATUS 11.22). A clone that
+# built it keeps the untracked object directory Make/<WM_OPTIONS>/ after `git pull`, and wmake then
+# stops on the missing Make/files (MEASURED 2026-09-30: Allwmake rc 2). Remove the leftovers, only
+# when no Make/files is left, and the stale binary, so that nothing runs it by accident.
+_retired="$ROOT/applications/solvers/leiaRedistancedLevelSetFoam"
+if [ -d "$_retired" ] && [ ! -f "$_retired/Make/files" ]; then
+    rm -rf "$_retired"
+fi
+rm -f "$FOAM_USER_APPBIN/leiaRedistancedLevelSetFoam"
+
 # Gate: the header includes between the parts must follow the library link graph.
 python3 "$ROOT/etc/leia-check-deps.py" || exit 1
 

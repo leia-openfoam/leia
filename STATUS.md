@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-30 (section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-09-30 (section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -4855,3 +4855,85 @@ Lichtenberg, built in `$HOME/OpenFOAM` if needed; the input for the SL session d
    Lichtenberg for v2606 (the `interFlow` arm). A parallel smoke run and the seam check are not in
    the CI yet. The actions `checkout@v4`, `upload-artifact@v4` and the Docker actions target
    Node.js 20; GitHub runs them on Node.js 24 with a warning.
+
+### 11.22 `leiaRedistancedLevelSetFoam` retired; the semi-Lagrangian pair is not equivalent yet (2026-09-30)
+
+The author's question of 2026-09-30: `leiaLevelSetFoam` can run with no source term, no velocity
+extension and a redistancer, so why a second solver? Then the request: retire it, and run the same
+test on the semi-Lagrangian pair. Laptop, OpenFOAM-v2606 source build, a worktree of `development`
+06e15ecf, 4 ranks everywhere.
+
+1. **Why it was redundant (DERIVED, then MEASURED).** `leiaRedistancedLevelSetFoam` assembled
+   `ddt(psi) + div(phi psi) - psi div(phi) = S_SDPLS(psi)` inline, with the deferred-correction
+   loop, then called the gated redistancer. `leiaLevelSetFoam` hands the same step to its
+   `eulerian` advection model, which builds the same equation with the extension flux; with
+   `velocityExtension none` that flux is the prescribed one. Then it calls the same redistancer and
+   a volume correction whose default does nothing. The committed case dictionaries already select
+   these models, so only the executable changes. `leiaLevelSetFoam` dates from 2021 (a0d38c2e);
+   the redistanced solver came in 2a53364b (2026-07-30), whose message says only that it "exercises
+   the redistancer line on its own". I was wrong in my answer of the same day: I wrote that both
+   solvers came in that one commit. That commit added the redistanced solver and changed
+   `leiaLevelSetFoam`.
+2. **The retirement gate (pre-registered: bit-identical in every metric column at every step, and
+   the final fields byte-identical).** Three scratch studies through the workflow up to the solve
+   rule, before (the old solver, the unchanged tree) and after (`leiaLevelSetFoam`, the changed tree
+   with the old solver deleted and its binary removed): 2Dvortex N = 32, T = 0.5 with
+   `noRedistancing`, `PDE`, `planeFootWave`, `anchoredEikonal`; 2Dvortex N = 32 with the SDPLS
+   sources `R` and `beta`, each with `strictNegativeSpLinearImplicit` and `explicit`; 3Dshear hex
+   N = 24, T = 0.75 with `PDE` and `planeFootWave`. PASS: in all 10 arms the solver CSV (14 columns)
+   and `gradPsiError.csv` are identical in every column at every step (74 steps in 2D, 85 in 3D;
+   `compare_metrics_csv.py --tol 0`, timing columns skipped), and the final psi and alpha files are
+   byte-identical on all four ranks. Control: in the same gate, `PDE` and `planeFootWave` differ
+   from each other in 7 columns, so the identity is not trivial. The aggregated errors table has the
+   same values, with the solver column now `leiaLevelSetFoam` and the redistancer and trigger filled;
+   `make_grl_fig.py` finds the new rows. An earlier test of the same day (the v2512 build of
+   `leia-gcls`, `bulkVortexGRL` rendered at N = 32, `PDE` and `planeFootWave`) had given the same
+   result.
+3. **What changed.** The solver folder is deleted. The nine study configs that ran it select
+   `leiaLevelSetFoam` with an explicit `theme: geometrically-redistanced-levelset` (the theme used to
+   follow from the solver name). `aggregate.py` fills `redistancer` and `redistTrigger` for
+   `leiaLevelSetFoam` rows too (the only reader is `make_grl_fig.py`); `make_grl_fig.py` accepts both
+   solver names, because the curated tables keep `leiaRedistancedLevelSetFoam` in the rows that it
+   produced; `paths.py` keeps its theme entry for those archived studies. Comments in the case
+   templates, `cases/default.parameter` (token set unchanged, checked), three library files, the
+   README, the Makefile, `workflow/README.md` and the two redistancing decks name `leiaLevelSetFoam`.
+   The curated data tables, the plan documents and the older STATUS sections keep the old name: they
+   record what ran. 25 executables and 14 libraries now; `etc/leia-check-build.py` finds none
+   missing.
+4. **Two traps, fixed.** (a) `git rm` leaves the untracked object folder `Make/<WM_OPTIONS>/` of the
+   deleted solver in every clone that built it, and `wmake all` then stops on the missing
+   `Make/files`: `Allwmake` rc 2 while every target exists. `Allwmake` now removes that folder (only
+   when no `Make/files` is left) and the stale binary. (b) `make_grl_fig.py` crashed in its order
+   table (division by zero when two rows of one group share h) on the committed tables alone, before
+   this change, so the curation of every redistancing study failed there. A guard skips the order
+   for equal h.
+5. **The semi-Lagrangian pair: NOT equivalent (MEASURED).** `leiaSemiLagrangeLevelSetFoam` against
+   `leiaLevelSetFoam` with `levelSet.advection.type semiLagrangian`, identical starting copies, the
+   rest of the case dictionary unchanged: 2Dvortex N = 32, T = 0.5 (74 steps); 2Dtranslation N = 64,
+   T = 0.5 (108 steps); 3Dshear hex N = 24, T = 0.75 (85 steps); each with `SL_TRACE_VELOCITY`
+   `cellCentred` and `projectedFlux`, and the phase indicators `geometric` and `detrixheAslam`
+   (12 arms, 24 runs, all COMPLETED).
+   1. `cellCentred`: psi is byte-identical at T in all 6 arms, and every gradient metric is identical
+      at every step. The transport is the same.
+   2. `projectedFlux`, the production default: psi differs in every cell of 2Dvortex and 3Dshear (by
+      up to 2.2e-05 and 6.9e-05 at T), and in one cell by 1e-15 in 2Dtranslation (a uniform
+      velocity, where the two trace velocities agree to round-off). The `semiLagrangian` advection
+      model has no trace-velocity option: it always traces with the cell velocity, and it has no
+      flux-extension trace either.
+   3. The alpha metrics differ even with `cellCentred`: `E_VOL_ALPHA` at 21 to 65 of the steps, the
+      relative volume error by up to 5.6e-04 (2Dvortex), 7.5e-04 (2Dtranslation) and 7.7e-04
+      (3Dshear); `E_GEOM_ALPHA` at 21 to 63 steps, the same order. The final alpha differs in 2 of
+      1024, 10 of 4096 and 3 of 13824 cells, by up to 0.024, 0.082 and 0.058. Cause: both phase
+      indicators read the `NarrowBand` field, and the SL solver computes alpha BEFORE
+      `narrowBand->calc()` (with the band of psi^n), `leiaLevelSetFoam` after it (the band of
+      psi^{n+1}). The order dates from the first SL versions (July 2026, ec160a46 and 4044f472) and
+      carries no comment; the unified solver's order is the consistent one. OPEN, author decision:
+      the per-step volume and shape errors of every SL kinematic study carry this stale-band effect;
+      a fix changes their metrics CSVs and needs the advection regression set.
+   4. `L_INF_E_PSI` differs in every arm, also where psi is identical: the Eulerian
+      `advectionErrors.H` of `leiaLevelSetFoam` still has the mis-parenthesised sign test
+      `sign(psi == sign(psi0))`, which the SL copy fixed on 2026-08-27 (84906ee4). L_inf is never
+      reported, so no reported number is affected. OPEN: port the fix.
+   So `leiaSemiLagrangeLevelSetFoam` stays. To retire it: port the trace-velocity options into
+   `semiLagrangianAdvection`, decide the phase-indicator order, port the sign-test fix, then repeat
+   this test.
