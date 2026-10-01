@@ -30,9 +30,11 @@ env_setup() {
 case "$cmd" in
 submit)
     cfg=$1; dir=$2; hours=$3
-    study=$(python3 -c "import yaml,sys; print(yaml.safe_load(open(sys.argv[1]))['study_name'])" "$cfg")
-    np=$(python3 -c "import yaml,sys; print(yaml.safe_load(open(sys.argv[1]))['np'])" "$cfg")
-    ncase=$(python3 -c "import yaml,sys; print(len(yaml.safe_load(open(sys.argv[1]))['axes_override']['MAX_CELL_SIZE']))" "$cfg")
+    # Plain text, not yaml: the login node's python3 has no yaml module (MEASURED 2026-10-01).
+    study=$(grep -m1 -E '^study_name:' "$cfg" | awk '{print $2}')
+    np=$(grep -m1 -E '^np:' "$cfg" | awk '{print $2}')
+    ncase=$(grep -m1 -E '^\s*MAX_CELL_SIZE:' "$cfg" | sed 's/.*\[\(.*\)\].*/\1/' | tr ',' '\n' | grep -c '[0-9]')
+    [ -n "$study" ] && [ -n "$np" ] && [ "$ncase" -gt 0 ] || { echo "cannot read $cfg" >&2; exit 1; }
     logs="$dir/$study.logs"; mkdir -p "$logs"
     cd "$ROOT" || exit 1
     prep=$(sbatch --parsable -A special00004 -J fluxgate-prep -N 1 -n 1 -c 2 --mem-per-cpu=24000 \
