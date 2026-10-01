@@ -34,7 +34,7 @@ Description
 
     The conserved functional is the one the verification metrics report, and
     there is only one of it in this library
-    (leiaLevelSetFoam/advectionErrors.H:45,57):
+    (leiaLevelSetFoam/advectionErrors.H:53,65):
 
     \f{equation}{
         V(\psi) \;=\; \sum_c \alpha_c(\psi)\,|\Omega_c|,
@@ -126,7 +126,7 @@ protected:
     //  correct() call restores. Negative means "not yet captured": it is set
     //  once, by setTargetVolume(), from the alpha field the solver has just
     //  built at start-up, so that it is bit-identical to the \c alphaV0
-    //  baseline of the error metric (advectionErrors.H:45).
+    //  baseline of the error metric (advectionErrors.H:53).
     scalar targetVolume_;
 
     //- The shift \f$ \varepsilon \f$ applied by the last correct() call
@@ -178,7 +178,7 @@ public:
 
         //- Capture \f$ V_{target} = \sum_c \alpha_c |\Omega_c| \f$ from the
         //  supplied indicator field, using gSum over the primitive field
-        //  times mesh.V() -- the SAME expression as advectionErrors.H:45,57,
+        //  times mesh.V() -- the SAME expression as advectionErrors.H:53,65,
         //  so the target and the reported error are the same number.
         //
         //  Honours an explicit \c targetVolume dictionary entry, which is

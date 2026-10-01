@@ -69,7 +69,7 @@ The two lines target the same problem: transport psi accurately while it stays u
 
 1. The 2D orders of METHOD 8.3.7 were 3/2 too high until 2026-09-26; the curated `advConv2D*` CSVs are not yet regenerated ([STATUS L3237-L3242](https://github.com/leia-openfoam/leia/blob/8867581/STATUS.md#L3237-L3242)).
 2. The method comparison ran at `np = 4` before the 2026-08-26 gradU fix; the 2D vortex row was re-established, the 3D rows remain pending ([PCS L52-L61](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L52-L61)).
-3. WITHDRAWN 2026-10-01: `leiaSemiLagrangeLevelSetFoam` stays, by the author's rule of one kinematic solver per flow solver ([[decisions/kinematic-solver-per-flow-solver]]). The stale band is fixed (6f63418a, [STATUS 11.23](https://github.com/leia-openfoam/leia/blob/d2984c5e/STATUS.md#L4947-L5055)). Still open: the sign-test fix of `L_INF_E_PSI` in the Eulerian `advectionErrors.H` ([L32](https://github.com/leia-openfoam/leia/blob/6bd5b7b7/applications/solvers/leiaLevelSetFoam/advectionErrors.H#L32)); the regeneration of the curated tables of this solver ([[retractions/sl-stale-band-alpha-metrics]]).
+3. WITHDRAWN 2026-10-01: `leiaSemiLagrangeLevelSetFoam` stays, by the author's rule of one kinematic solver per flow solver ([[decisions/kinematic-solver-per-flow-solver]]). The stale band is fixed (6f63418a, [STATUS 11.23](https://github.com/leia-openfoam/leia/blob/d2984c5e/STATUS.md#L4947-L5055)). The sign test of `L_INF_E_PSI` in the shared `advectionErrors.H` ([L32](https://github.com/leia-openfoam/leia/blob/6bd5b7b7/applications/solvers/leiaLevelSetFoam/advectionErrors.H#L32)) is FIXED (60d3558e, [STATUS 11.24](https://github.com/leia-openfoam/leia/blob/7443a228/STATUS.md#L5057-L5093)); the file served three solvers, and since the fix all four compile it, so the pair is identical in every column. Still open: the regeneration of the curated tables of this solver ([[retractions/sl-stale-band-alpha-metrics]]).
 
 ## Related
 
@@ -86,3 +86,4 @@ The stale-band row gives the size against the volume error itself (7.1x at one s
 
 ### 2026-10-01
 The stale band is fixed (6f63418a); the CFL 1.0 shape order is CORRECTED ([[retractions/sl-stale-band-alpha-metrics]]); open question 3 is withdrawn by the author's rule ([[decisions/kinematic-solver-per-flow-solver]]).
+The `L_INF_E_PSI` sign test fixed; the pair identical in every column (STATUS 11.24).

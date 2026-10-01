@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-10-01 (section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-10-01 (section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -5053,3 +5053,41 @@ solver (no `projectedFlux` trace). Laptop, OpenFOAM-v2606, np 4, a worktree of `
     the SL article belongs to the SL session. (b) The `L_INF_E_PSI` sign test in `leiaLevelSetFoam`.
     (c) A shared library function for the interface step of each kinematic and flow solver pair,
     so that the two cannot drift again (a refactor with a bit-identity gate).
+
+### 11.24 `L_INF_E_PSI`: the sign test fixed in the shared error writer; one writer for four solvers (2026-10-01)
+
+The author's instruction of 2026-10-01: fix the `L_INF_E_PSI` defect of 11.22 item 5.4 first, then the
+Helmholtz projection of the prescribed flux on polyhedral meshes (11.25). Laptop, OpenFOAM-v2606, np 4.
+
+1. **The defect, wider than 11.22 said.** `applications/solvers/leiaLevelSetFoam/advectionErrors.H`
+   tested `sign(psi == sign(psi0))`: the comparison is evaluated first and `sign(0) = 1`, so the
+   guard was always true and the psi error was zeroed in every bulk cell, also where the sign had
+   switched. The file serves THREE solvers: `leiaLevelSetFoam`, and both two-phase solvers
+   (`leiaLevelSetTwoPhaseFoam/advectionErrors.H` is a git symlink to it, and
+   `leiaSemiLagrangianLevelSetTwoPhaseFoam` includes that directory). 11.22 named only
+   `leiaLevelSetFoam`; that was incomplete. The kinematic SL solver had its own copy, fixed on
+   2026-08-27 (84906ee4); the two copies differed only in this line and in comments.
+2. **The fix (60d3558e).** The test is `sign(psi) == sign(psi0)`, and the kinematic SL solver's copy
+   is now a symlink to the same file: four solvers compile one writer, so the copies cannot drift
+   again. The comments that cite line numbers of the file are updated (+8 lines).
+3. **The gate**, pre-registered in the scratch config headers (`linfGate*.yaml`). Before = 44dff788,
+   after = 60d3558e, both built; one prepared, decomposed case per arm, two identical copies, np 4.
+   Arms: `leiaLevelSetFoam` 2Dvortex N = 32, T = 0.5 (`noRedistancing`, `PDE`) and 3Dshear N = 24,
+   T = 0.75; `leiaSemiLagrangeLevelSetFoam` 2Dvortex N = 32 and 3Dshear N = 24;
+   `leiaLevelSetTwoPhaseFoam` stationaryDroplet2D N = 32, 50 steps;
+   `leiaSemiLagrangianLevelSetTwoPhaseFoam` translatingDroplet2D N = 32, 100 steps, and a 500-step
+   arm added after the first result (its read-out written before its run). All COMPLETED.
+   - P1 PASS: every column of every CSV is identical at every step except `L_INF_E_PSI`, and the
+     final fields are byte-identical (the kinematic arms at T; the 500-step droplet at its write
+     time 0.02 s, 72 files; the short two-phase arms write no time after 0).
+   - P2: `L_INF_E_PSI` is never lower after the fix. It is higher at 14 and 17 of 75 steps (2D,
+     the two redistancer arms), 28 of 86 (3D) and 145 of 501 (the 500-step droplet). The 100-step
+     droplet did not change: it moved 2.9e-04 m, less than one cell (h = 3.1e-04 m), so no bulk
+     cell switched sign. My prediction of a rise there was wrong for that horizon. The stationary
+     droplet did not change either.
+   - P3 PASS: the kinematic SL solver is identical in every column.
+   - P4 PASS: the `cellCentred` pair of 11.22 (`leiaSemiLagrangeLevelSetFoam` against
+     `leiaLevelSetFoam` `semiLagrangian`) is now identical in every column, `L_INF_E_PSI` included:
+     2Dvortex N = 32 and 3Dshear N = 24, two phase indicators each.
+4. **Reach.** No script reads `L_INF_E_PSI`, and L_inf is never reported: the raw CSVs of the three
+   solvers carry the zeroed column, and no curated number changes. 11.23 item 11(b) is done.

@@ -219,7 +219,7 @@ Description
 
     VOL_PSI_NEG uses the SAME measure the studies already report -- gSum(alpha V)
     on the registered phase indicator (applications/solvers/
-    leiaLevelSetTwoPhaseFoam/advectionErrors.H:45,57 computes the volume error
+    leiaLevelSetTwoPhaseFoam/advectionErrors.H:53,65 computes the volume error
     from exactly this), field name from the "alpha" entry, default alpha.water.
     That indicator is the SMEARED heaviside for PHASE_INDICATOR heaviside
     (src/leiaLevelSet/phaseIndicator/heavisidePhaseIndicator.C: epsilon =
