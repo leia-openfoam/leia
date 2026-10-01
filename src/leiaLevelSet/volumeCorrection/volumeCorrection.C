@@ -114,7 +114,7 @@ void volumeCorrection::setTargetVolume(const volScalarField& alpha)
     }
 
     // gSum over primitiveField()*mesh.V().field(): the SAME expression as
-    // advectionErrors.H:45,57 and leiaLevelSetFoam.C:167, so the target and
+    // advectionErrors.H:53,65 and leiaLevelSetFoam.C:167, so the target and
     // the reported E_VOL_ALPHA_SIGNED baseline are the same number and not
     // merely two spellings that agree to round-off.
     targetVolume_ =

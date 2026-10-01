@@ -109,7 +109,7 @@ Description
         along \f$ \Gamma \f$, whereas the volume was lost where the flow
         strained the interface. The shape error \c E_GEOM_ALPHA
         \f$ = \sum_c |\alpha_c - \alpha^0_c| |\Omega_c| \f$
-        (advectionErrors.H:65) can therefore INCREASE while the volume error
+        (advectionErrors.H:73) can therefore INCREASE while the volume error
         goes to zero.
       - The documented remedy is connected-component labelling of
         \f$ \{\psi < 0\} \f$ with a per-body \f$ \varepsilon_i \f$ solved from

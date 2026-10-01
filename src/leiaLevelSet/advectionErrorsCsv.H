@@ -20,6 +20,10 @@ So the header lives here, once. A solver that writes these rows includes this
 file and cannot disagree with the writer about what the columns are.
 
 Keep this in lockstep with the write block in advectionErrors.H.
+Since 2026-10-01 one advectionErrors.H (applications/solvers/leiaLevelSetFoam) serves
+all four solvers that write these rows: the two-phase solvers and leiaSemiLagrangeLevelSetFoam
+include it through symlinks. The semi-Lagrangian copy had kept a sign-test fix for five weeks
+that the shared file lacked (STATUS 11.24).
 \*---------------------------------------------------------------------------*/
 
 #ifndef advectionErrorsCsv_H
