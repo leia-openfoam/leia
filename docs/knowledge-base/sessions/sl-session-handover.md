@@ -68,6 +68,20 @@ decision and the cheapest discriminator.
   instability go when the outflow faces leave the stencil?), and on the `exactInflowOnly` variant at
   CFL 1 (does the inflow need the boundary value at the departure point?). Seconds per run, serial.
 
+**T4 (2026-10-01). The CFL 1.0 row of the 2D convergence table is retracted** ([[retractions/sl-stale-band-alpha-metrics]]).
+
+- Evidence: `leiaSemiLagrangeLevelSetFoam` computed alpha with the narrow band of psi^n (fixed in
+  6f63418a). On the published ladder `config/uncachedConv2Dvortex.yaml` the fixed solver gives the
+  CFL 1.0 shape order 2.465 (published 2.378) and volume order 3.193 (published 3.542); the shape
+  error at T is 10.5 to 23.3 % lower at five of seven rungs. The CFL 0.5 row stands (orders within
+  0.005). psi and every gradient metric are unchanged ([STATUS 11.23](https://github.com/leia-openfoam/leia/blob/d2984c5e/STATUS.md#L4947-L5055)).
+- Decision (author): regenerate the curated tables of this solver. 19 tables carry its rows; 8 have
+  arms at CFL 0.8 or 1.0 (`uncachedConv2Dvortex`, `npslConv2Dvortex`, `nslConv2Dvortex`,
+  `sdCompare2D`, `linearConv2Dvortex`, `linearConv2DvortexClip`, `linearConv3Dshear`,
+  `kinematicTranslation2D`). Then the generated `convergence_orders*.tex`, the deck and the prose.
+- Cheapest discriminator: the 2D studies with the current binaries on the laptop (the published 2D
+  ladder runs in about one minute per arm pair at np 4); the 3D studies on Lichtenberg.
+
 ## Results of 2026-09-29 (information for the SL session)
 
 1. **`2Dtranslation` translates one way, and every earlier number of the case is void**
@@ -202,3 +216,6 @@ CORRECTED the void statement of item 4 (the void is OPEN); added the record inco
 Added items 7 to 15 from the reports of the note writers.
 Added items 16 to 18 (the reversed 2Dtranslation, the clip-on polyhedral orders, small items).
 Added the tasks T1 to T3 and the results of 2026-09-29; items 1 and 16 are resolved.
+
+### 2026-10-01
+Added task T4 (the stale narrow band; the CFL 1.0 row of the 2D convergence table retracted).

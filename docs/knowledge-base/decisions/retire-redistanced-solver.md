@@ -37,7 +37,7 @@ Pre-registered: bit-identical in every metric column at every step, and the fina
 1. The curated data tables, the plan documents and the older STATUS sections keep the name `leiaRedistancedLevelSetFoam`: they record what ran. `aggregate.py`, `make_grl_fig.py` and `paths.py` still read the old name for those archived studies.
 2. The retirement gate is a transition gate: it needs the old solver, so it cannot run again after 6bd5b7b7. Its axes are in STATUS 11.22; its scratch studies are not kept.
 3. Two traps, fixed in the same commit: a clone that built the old solver keeps its untracked object folder, and `wmake` stopped on the missing `Make/files` (`Allwmake` rc 2); `make_grl_fig.py` divided by zero on two rows at the same h, on the committed tables alone ([STATUS 11.22 item 4](https://github.com/leia-openfoam/leia/blob/6bd5b7b7/STATUS.md#L4903-L4909)).
-4. The semi-Lagrangian pair is NOT equivalent, and three items are open: `semiLagrangianAdvection` has no trace-velocity option (no `projectedFlux`, the production default); the SL solver computes alpha with the narrow band of psi^n; the Eulerian `L_INF_E_PSI` has a sign-test defect ([STATUS 11.22 item 5](https://github.com/leia-openfoam/leia/blob/6bd5b7b7/STATUS.md#L4910-L4939), [[models/level-set-advection]]).
+4. The semi-Lagrangian pair is NOT equivalent; on 2026-10-01 the author settled that `leiaSemiLagrangeLevelSetFoam` stays as the kinematic solver of the SL two-phase solver ([[decisions/kinematic-solver-per-flow-solver]]), and the stale band is fixed (6f63418a). Three items were open: `semiLagrangianAdvection` has no trace-velocity option (no `projectedFlux`, the production default); the SL solver computes alpha with the narrow band of psi^n; the Eulerian `L_INF_E_PSI` has a sign-test defect ([STATUS 11.22 item 5](https://github.com/leia-openfoam/leia/blob/6bd5b7b7/STATUS.md#L4910-L4939), [[models/level-set-advection]]).
 5. I was wrong in the chat answer of 2026-09-30: I wrote that both solvers came in one commit. `leiaLevelSetFoam` dates from 2021 (a0d38c2e); 2a53364b added the redistanced solver and changed `leiaLevelSetFoam`.
 
 ## Related
@@ -48,3 +48,6 @@ Pre-registered: bit-identical in every metric column at every step, and the fina
 
 ### 2026-09-30
 SETTLED: the retirement gate passed in 10 arms; the solver is deleted in 6bd5b7b7. Entered in [[decision-log#2026-09]].
+
+### 2026-10-01
+Item 4: the SL kinematic solver stays by the author's rule; the stale band is fixed ([[decisions/kinematic-solver-per-flow-solver]]).

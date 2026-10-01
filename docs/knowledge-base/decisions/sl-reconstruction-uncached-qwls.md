@@ -24,7 +24,7 @@ Which reconstruction of `psi^n` at the departure foot is the production choice, 
 
 | arm | metric | value | where |
 |---|---|---|---|
-| 2D vortex, hex, CFL 0.5 and 1.0 | shape order and volume order | 2.84 / 3.30 at CFL 0.5, 2.38 / 3.54 at CFL 1.0 (2026-08-27); before the gradU fix 2.97 / 2.98 and 2.59 / 2.94 | MEASURED, [PCS L52-L61](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L52-L61) |
+| 2D vortex, hex, CFL 0.5 and 1.0 | shape order and volume order | 2.84 / 3.30 at CFL 0.5, 2.38 / 3.54 at CFL 1.0 (2026-08-27); before the gradU fix 2.97 / 2.98 and 2.59 / 2.94. CORRECTED 2026-10-01: the CFL 1.0 values carry the stale narrow band of the kinematic SL solver; with the fix (6f63418a) the same ladder gives shape 2.465 and volume 3.193, CFL 0.5 unchanged ([STATUS 11.23 item 7](https://github.com/leia-openfoam/leia/blob/d2984c5e/STATUS.md#L5009-L5036), [[retractions/sl-stale-band-alpha-metrics]]). The decision rests on the CFL 0.5 row and stands. | MEASURED, [PCS L52-L61](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L52-L61) |
 | 3D shear, hex and poly | shape order | 2.95 / 3.28 | MEASURED, [METHOD 8 L343-L347](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L343-L347) |
 | 3D deformation, hex and poly | shape order, filament-limited | 1.36 / 1.46 | MEASURED, [METHOD 8 L343-L347](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L343-L347) |
 | against the best Eulerian line, 512^2, T = 8 | accuracy at equal wall clock | 20x more accurate at half the wall clock | MEASURED, [METHOD 8 L343-L347](https://github.com/leia-openfoam/leia/blob/8867581/METHOD.md#L343-L347) |
@@ -54,3 +54,6 @@ SETTLED on the measurement of 2026-08-27; the per-case layer carries the value s
 
 ### 2026-09-29
 What it does not cover, item 3, CORRECTED: the translation saturation came from a reversed flow (STATUS 11.19, [[retractions/reversed-2dtranslation]]); the one-way orders and the CORRECTED METHOD 8.1 row are added. The decision does not change: it rests on the vortex and 3D shear ladders.
+
+### 2026-10-01
+The CFL 1.0 row is CORRECTED ([[retractions/sl-stale-band-alpha-metrics]]); the decision rests on CFL 0.5 and stands.

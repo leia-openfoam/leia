@@ -218,22 +218,33 @@ int main(int argc, char *argv[])
             slAdv->advect(psi, U, Uold);
         }
 
-        // Diagnostics (phase indicator alpha, narrow band, error norms + CSV
-        // row). The advection above uses neither alpha nor the narrow band, so
-        // with reportAtWriteTimesOnly true they can be skipped between write
-        // times (the per-cell-LLS + tet-fill indicator dominates the cost on
-        // fine/polyhedral meshes) -- but the final step is ALWAYS logged: the
-        // reversed benchmarks are scored exactly at t = endTime, and this
-        // solver's own deltaT override keeps adjustableRunTime from ever
-        // landing a writeTime() there.
+        // Narrow band FIRST, in every step, then the phase indicator: the order
+        // of the two-phase SL solver (slAlphaEqn.H), whose interface step this
+        // kinematic solver must reproduce. Both phase indicators read the
+        // registered NarrowBand field to decide which cells get the geometric
+        // volume fraction, so the band must be the band of psi^{n+1}. Until
+        // 2026-10-01 this solver computed alpha first, with the band of psi^n,
+        // and refreshed the band only on report steps: a cell that had just
+        // entered the band got a sign-based 0/1 alpha for one step (MEASURED
+        // 2026-09-30, STATUS 11.22: the relative volume error 6.5e-04 against
+        // 9.2e-05 at step 53 of 2Dvortex N = 32). The default trajectory does
+        // not read the band, so psi does not change; trajectoryVelocity
+        // normalClosestPoint reads it in the next advection.
+        narrowBand->calc();
+
+        // Diagnostics (phase indicator alpha, error norms + CSV row). Alpha is
+        // not used by the advection, so with reportAtWriteTimesOnly true it can
+        // be skipped between write times (the per-cell-LLS + tet-fill indicator
+        // dominates the cost on fine/polyhedral meshes) -- but the final step
+        // is ALWAYS logged: the reversed benchmarks are scored exactly at
+        // t = endTime, and this solver's own deltaT override keeps
+        // adjustableRunTime from ever landing a writeTime() there.
         const bool finalStep =
             (runTime.endTime().value() - runTime.value())
           < 0.5*runTime.deltaTValue();
         if (!reportAtWriteTimesOnly || runTime.writeTime() || finalStep)
         {
             phaseInd->calcPhaseIndicator(alpha, psi);
-
-            narrowBand->calc();
 
             reportErrors(
                 errorFile,

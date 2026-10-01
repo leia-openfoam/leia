@@ -39,6 +39,9 @@ date: 2026-09-28
    redistancing studies run in `leiaLevelSetFoam`, bit for bit the same
    ([[decisions/retire-redistanced-solver]]). The kinematic semi-Lagrangian solver stays: the
    `semiLagrangian` member of `leiaLevelSetFoam` has no `projectedFlux` trace.
+5. 2026-10-01 ([STATUS 11.23](https://github.com/leia-openfoam/leia/blob/d2984c5e/STATUS.md#L4947-L5055)): the kinematic SL solver computes the narrow band before
+   alpha, as its flow solver does (6f63418a; psi byte-identical in 27 pairs); the CFL 1.0 row of the
+   SL 2D convergence table is retracted ([[retractions/sl-stale-band-alpha-metrics]]).
 
 ## What is open, in order
 
@@ -65,10 +68,12 @@ date: 2026-09-28
    move them; `leia-curvature` is on `development` with v2512 binaries.
 5. CI: `Build Tests` builds leia on OpenFOAM-v2606 at every push and pull request to `main` and
    `development` ([[concepts/ci-build-tests]]); run `.github/scripts/ci-build-and-smoke.sh` before a push.
-6. Author decision: retire `leiaSemiLagrangeLevelSetFoam` too? It needs the trace-velocity options
-   in `semiLagrangianAdvection`, a decision on the stale narrow band of its phase indicator (up to
-   7.1x the volume error at one step at N = 32; a fix changes every SL kinematic metrics CSV), and the `L_INF_E_PSI` sign-test fix in the Eulerian
-   error writer ([[models/level-set-advection]] open question 3).
+6. Author decision: regenerate the curated tables of the kinematic SL solver ([STATUS 11.23](https://github.com/leia-openfoam/leia/blob/d2984c5e/STATUS.md#L4947-L5055)).
+   The stale narrow band is fixed (6f63418a); the CFL 1.0 row of the SL 2D convergence table is
+   retracted ([[retractions/sl-stale-band-alpha-metrics]]). 19 tables carry rows of this solver, 8 of them at CFL 0.8
+   or 1.0; the 2D ones run on the laptop in minutes, the 3D ones belong on Lichtenberg, and the SL
+   article belongs to the SL session (task T4 in [[sessions/sl-session-handover]]). The solver stays:
+   one kinematic solver per flow solver ([[decisions/kinematic-solver-per-flow-solver]]).
 
 ## Build progress of the vault (incremental, restart-safe)
 
@@ -119,3 +124,6 @@ Rewritten for the merge into `development` and `main` and the results of 2026-09
 ### 2026-09-30
 OpenFOAM-v2606 on Lichtenberg and the CI (Build Tests) added to the open list (STATUS 11.21).
 The redistanced solver retired, the semi-Lagrangian pair measured (STATUS 11.22); open item 6 added.
+
+### 2026-10-01
+The stale band fixed and gated (STATUS 11.23); item 5 added; open item 6 replaced by the regeneration decision.

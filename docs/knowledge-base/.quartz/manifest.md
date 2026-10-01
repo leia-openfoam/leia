@@ -124,6 +124,7 @@ decisions/momentum-schemes-bdf2-upwind | MOMENTUM_DDT_SCHEME backward, MOMENTUM_
 decisions/mesh-family-hexahedral | The mesh family: hexahedral production, polyhedral as the amplification rung | | S:2233-2310, M:402-484 | D
 decisions/process-gates-2d-first-and-no-best-yaml | Process: 2D gate before 3D; no config/best.yaml; METHOD.md updated in the same commit | | C (best configuration section), M:25-29 | D
 decisions/retire-redistanced-solver | leiaRedistancedLevelSetFoam retired: the redistancing line runs in leiaLevelSetFoam | the 10-arm bit-identity gate; the semi-Lagrangian pair is not equivalent | S:11.22 | ME
+decisions/kinematic-solver-per-flow-solver | One kinematic solver per flow solver, with the same interface step | the author's rule of 2026-10-01; the stale band as the drift it prevents; the Eulerian pair compared | S:11.23 | ME
 
 ## retractions/ (owner E; each with a line in retraction-log.md under its month)
 retractions/closed-box-translating-droplet | "The translating droplet ran": the case was a closed box (2026-09-02) | | S:14-65, C:661-705, 440107f | E
@@ -140,6 +141,7 @@ retractions/late-translating-instability-is-the-outlet | "The late translating i
 retractions/mass-momentum-consistency-dominant-term | Mass-momentum consistency as the dominant term (falsified dec002f) | | kb-raw D2, S:74-125 | E
 retractions/gcls-coupled-loop-reading | The "coupled loop through the velocity at rate mu" reading of HL1q/HL1z (corrected 2026-09-28) | the linear laws read no velocity (gradientControlLaw.H:182-185); measured rates 245-276/s = mu 270/s; the crossing shift is O(h); see the technical report | src/leiaLevelSet/gradientControl/gradientControlLaw.H, gcls article sec 846, the memo summary in kb-manifest appendix | E
 retractions/reversed-2dtranslation | "2Dtranslation is a uniform one-way translation": the case was a reversed flow (2026-09-29) | the dropped oscillation line and the cos(pi t/T) default; the silent error-reference fallback; the two fixed-psi setups found during the repair; the one-way re-run (orders 2.90/2.16/1.86; cone 14.1x and 9.5x at N = 64; null control 5.0e-12) | S:4167-4319 (11.19), S:3090-3091, S:3386-3387, M:405, M:414, M:608-741, C:528-532, C:598 (all aaa0a7dd); old text M:373-653 at 8867581 | session lead
+retractions/sl-stale-band-alpha-metrics | The CFL 1.0 row of the SL 2D convergence table: alpha read a stale narrow band (2026-10-01) | the fix 6f63418a; the 27-pair gate; the published ladder pre/post (2.374 -> 2.465, 3.540 -> 3.193); the 19 tables not yet re-measured | S:11.22 item 5.3, S:11.23 | ME
 
 ## sessions/ (owner ME)
 sessions/current | Current handover | | | ME

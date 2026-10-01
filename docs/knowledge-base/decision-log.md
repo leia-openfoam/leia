@@ -40,3 +40,7 @@ one. Newest month at the bottom.
 - 2026-09-26 · [[decisions/process-gates-2d-first-and-no-best-yaml]] · SETTLED process: the 2D method gate before any coupled study, 3D on a pass; no config/best.yaml (shallow merge lost SL_FIT, 2026-09-09); METHOD.md updated in the same commit · `config/gates/methodGate2D.yaml`
 - 2026-09-27 · [[decisions/mass-flux-bound-rho]] · REOPENED `MASS_FLUX_BOUND_RHO true`: the basis rhoDdtGate2D (rho to -72.28 without the bound) ran on the closed box and is void; the bound stays active and unmeasured on the repaired case · `config/rhoDdtGate2D.yaml` (VOID)
 - 2026-09-30 · [[decisions/retire-redistanced-solver]] · SETTLED `leiaRedistancedLevelSetFoam` retired: `leiaLevelSetFoam` with `eulerian` advection, `velocityExtension none` and a redistancer reproduces it bit for bit in 10 arms on 4 ranks (2Dvortex N = 32, 3Dshear N = 24); the semi-Lagrangian pair is not equivalent, so `leiaSemiLagrangeLevelSetFoam` stays · STATUS 11.22, author decision 2026-09-30
+
+## 2026-10
+
+- 2026-10-01 · [[decisions/kinematic-solver-per-flow-solver]] · SETTLED one kinematic solver per flow solver, with the same interface step: `leiaSemiLagrangeLevelSetFoam` stays for the SL two-phase solver; its stale narrow band (alpha with the band of psi^n, 7.1x the volume error at one step) is fixed in 6f63418a · STATUS 11.23, author decision 2026-10-01

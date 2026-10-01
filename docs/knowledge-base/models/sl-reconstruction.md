@@ -65,7 +65,7 @@ The reconstruction is the only place where the transport can create error. The f
 
 | claim | number | where |
 |---|---|---|
-| Shape order, 2D reversed vortex, hex, CFL 0.5 / 1.0 | 2.843 / 2.378 | MEASURED, [sl_convergence_orders.csv](https://github.com/leia-openfoam/leia/blob/8867581/docs/semi-lagrangian-level-set/sl-level-set-article/data/tables/sl_convergence_orders.csv), re-established after the gradU fix [PCS L52-L61](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L52-L61) |
+| Shape order, 2D reversed vortex, hex, CFL 0.5 / 1.0 | 2.843 / 2.378. CORRECTED 2026-10-01: the CFL 1.0 values carry the stale narrow band of the kinematic SL solver; with the fix (6f63418a) the same ladder gives shape 2.465 and volume 3.193, CFL 0.5 unchanged ([STATUS 11.23 item 7](https://github.com/leia-openfoam/leia/blob/d2984c5e/STATUS.md#L5009-L5036), [[retractions/sl-stale-band-alpha-metrics]]). | MEASURED, [sl_convergence_orders.csv](https://github.com/leia-openfoam/leia/blob/8867581/docs/semi-lagrangian-level-set/sl-level-set-article/data/tables/sl_convergence_orders.csv), re-established after the gradU fix [PCS L52-L61](https://github.com/leia-openfoam/leia/blob/8867581/docs/plan-curvature-stabilization.md#L52-L61) |
 | Shape order, 3D shear, hex / poly | 2.955 / 3.285 | MEASURED, same table; [SL article L1253-L1255](https://github.com/leia-openfoam/leia/blob/8867581/docs/semi-lagrangian-level-set/sl-level-set-article/semiLagrangianLevelSet.tex#L1253-L1255) |
 | Shape order, 3D deformation, hex / poly (filament-limited) | 1.360 / 1.464 | MEASURED, same table |
 | Accuracy against the best Eulerian line at 512^2, T = 8 | 20x more accurate at half the wall clock | MEASURED, [MC article L195-L199](https://github.com/leia-openfoam/leia/blob/8867581/docs/method-comparison/method-comparison-article/methodComparison.tex#L194) |
@@ -108,3 +108,6 @@ Created from METHOD 2.2 and 8.1, STATUS section 4, the SL article and the code h
 
 ### 2026-09-29
 The one-way `2Dtranslation` (STATUS 11.19, [[retractions/reversed-2dtranslation]]): the transport sentence of Why it matters, the measured fixed-psi instability in the `stencilBoundaryFaces` row, two evidence rows (the CORRECTED METHOD 8.1 row and the probe), a decision, open question 2 RETRACTED, open question 5 added. New links pinned to aaa0a7dd.
+
+### 2026-10-01
+The CFL 1.0 shape order is CORRECTED: [[retractions/sl-stale-band-alpha-metrics]].
