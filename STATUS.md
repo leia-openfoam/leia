@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-09-30 (section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-10-01 (section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -4943,3 +4943,113 @@ test on the semi-Lagrangian pair. Laptop, OpenFOAM-v2606 source build, a worktre
    So `leiaSemiLagrangeLevelSetFoam` stays. To retire it: port the trace-velocity options into
    `semiLagrangianAdvection`, decide the phase-indicator order, port the sign-test fix, then repeat
    this test.
+
+### 11.23 The kinematic SL solver computes the narrow band before alpha; it stays (2026-10-01)
+
+The author's decisions of 2026-10-01: (a) fix the stale band of 11.22 item 5.3; (b) the kinematic
+SL solver stays: "we need one kinematic solver for each flow solver if we use reversed prescribed
+analytic velocity". A kinematic solver runs the interface step of its flow solver with a prescribed
+velocity, so a reversed-flow test verifies the flow solver only if the two run the same interface
+code. I withdraw the proposal of 11.22 to retire `leiaSemiLagrangeLevelSetFoam`: the
+`semiLagrangian` model of `leiaLevelSetFoam` does not run the interface step of the SL two-phase
+solver (no `projectedFlux` trace). Laptop, OpenFOAM-v2606, np 4, a worktree of `development`
+1962df1f.
+
+1. **The change (6f63418a).** `leiaSemiLagrangeLevelSetFoam` calls `narrowBand->calc()` after the
+   advection in every step, then computes alpha on the report steps with the band of psi^{n+1}:
+   the order of the SL two-phase solver (`slAlphaEqn.H` L167-L172). Before, it computed alpha with
+   the band of psi^n and refreshed the band only on the report steps. Both phase indicators give a
+   sign-based 0/1 alpha outside the band (`detrixheAslamPhaseIndicator.C` L151-L182). The Eulerian
+   pair already has the consistent order (`alphaEqn.H` L52-L92 of `leiaLevelSetTwoPhaseFoam`,
+   `leiaLevelSetFoam.C` L174-L181).
+2. **Where the band reaches (code reading).** The default trajectory (`trajectoryVelocity input`)
+   does not read the band; only `normalClosestPoint` does (`pointValueScheme.C` L205-L218), and only
+   a two-phase study runs it (`config/transISTTrajectoryGate.yaml`). Every study that reports at
+   write times only (`REPORT_WRITE_ONLY true`, the `benchVortex*` method comparison) runs
+   `leiaLevelSetFoam`, which refreshes the band in every step. So the defect reached only the alpha
+   metrics of `leiaSemiLagrangeLevelSetFoam`, by one step.
+3. **The gate.** Each rung was pre-registered in a scratch config header before it ran
+   (`slBandGate{2Dvortex,3DshearHex,3DshearPoly}.yaml` first, then
+   `slBandGate{3DshearPolyClip,2DvortexPublished}.yaml`, each written after the earlier results and
+   before its own run). One prepared and decomposed case per rung (the workflow up to `decompose`),
+   two identical copies: the pre-fix solver (the source of 1962df1f, compiled under another name
+   against the same libraries) and the fixed solver. The rungs:
+   - 2Dvortex hex N = 32, 64, 128, 256, T = 2, CFL 0.5, the `none` arm of `config/advConv2Dvortex.yaml`;
+   - 3Dshear hex N = 32, 48, 64, T = 3, CFL 0.3 (`advConv3DshearHex`);
+   - 3Dshear poly MAX_CELL_SIZE 0.04, 0.03, 0.0225 (49,910 / 105,193 / 245,554 cells), CFL 0.3,
+     `SL_CLIP false` (`advConv3DshearPoly`, the production default);
+   - 3Dshear poly in the published configuration (`config/uncachedConv3DshearPoly.yaml`:
+     `SL_CLIP true`, `SL_STENCIL face`, CFL 0.5), MAX_CELL_SIZE 0.03125, 0.0235, 0.0176
+     (105,158 / 216,747 / 473,103 cells);
+   - the published 2D table itself (`config/uncachedConv2Dvortex.yaml`): N = 32 to 256 in steps of
+     sqrt(2), CFL 0.5 and 1.0.
+   All 54 runs COMPLETED; pre and post have the same step count in every pair. The 3D rungs are
+   under-resolved for orders (R = 0.15, R/h = 4.8 to 11.7; the method gates ask R/h >= 10 at the
+   first rung): their orders bound the change on these meshes, they are no convergence result.
+4. **P1, the transport is unchanged: PASS for psi.** psi is byte-identical at every written time on
+   every rank in all 27 pairs, and every column of `gradPsiError.csv` is identical at every step.
+   The read-out also listed `L_INF_E_PSI` as a psi column. That was wrong: the column zeroes the psi
+   error in the cells where alpha is 0 or 1 (`advectionErrors.H` L21-L40), so it depends on alpha.
+   It changes in 6 of the 13 pairs of the first four rungs. L_inf is never reported.
+5. **P2, the fix acts: yes, except in the published polyhedral configuration.** The alpha columns
+   differ at 58 of 154 to 845 of 884 steps (2Dvortex N = 32 to 256), 334 of 375 to 684 of 704
+   (3Dshear hex) and 427 of 968 to 1192 of 1730 (3Dshear poly, production). In the published
+   polyhedral configuration they are identical at every step (0 of 790, 1008, 1317); I have not
+   found why. At T, the cells whose alpha differs lie within one cell of the exact interface on hex
+   (2D N = 128: 5 cells at |psi0| = 0.61 to 0.69 h; 3D N = 32: 4 cells at 0.62 to 0.88 h), and 29 h
+   away from it in the production polyhedral arm: a false zero set of the far-field defect (item 8).
+6. **The size, per step, on the production ladders (CFL 0.5 in 2D, 0.3 in 3D).** The shape error
+   moves little: the median relative change per step is at most 0.01 %, the maximum 1.7 % (2D) and
+   0.19 % (3D hex). The volume error moves much more, and in
+   2D the effect grows with N: the median relative change per step is 0.52 / 1.82 / 4.51 / 6.22 % at
+   N = 32 / 64 / 128 / 256 (3D hex 0.27 / 0.19 / 0.10 %; poly production 0.00 %). Whether a read-out
+   instant is hit depends on whether a cell enters the band in the last step before it.
+   DERIVED: near T/2 the velocity factor cos(pi t/T) is near zero, so few cells enter the band
+   there, and the T/2 read-out is protected; the T read-out is not.
+7. **P3, the size at the read-out instants, and the decision.** Pre-registered threshold: an order
+   change above 0.1, or a change of a finest-rung error above 5 %, means the curated table must be
+   regenerated.
+   - The production ladders: 2Dvortex E_GEOM at T -1.66 % at N = 128, unchanged elsewhere;
+     E_VOL_ALPHA_REL at T/2 unchanged at every N, at T +4.80 % at N = 128 (2.233e-04 to 2.341e-04);
+     consecutive-rung orders change by at most 0.068. 3Dshear hex: every change at most 0.35 %,
+     orders by at most 0.011. Both poly configurations: unchanged to the printed digits.
+   - **The published 2D table (`uncachedConv2Dvortex_errors.csv`): the threshold is MET.** The
+     pre-fix runs reproduce the published numbers (fitted orders within 0.008, `volumeError` within
+     0.8 %, `shapeError` within 1 % at N = 32). Fitted orders as in `make_convergence_table.py`:
+     | CFL | | shapeOrder | volumeOrder | volumeHalfOrder |
+     |---|---|---|---|---|
+     | 0.5 | published | 2.843 | 3.303 | 1.766 |
+     | 0.5 | pre / post | 2.839 / 2.841 | 3.299 / 3.294 | 1.763 / 1.763 |
+     | 1.0 | published | 2.378 | 3.542 | 1.819 |
+     | 1.0 | pre / post | 2.374 / **2.465** | 3.540 / **3.193** | 1.811 / 1.814 |
+     At CFL 1.0 the shape error at T falls by 10.5, 14.8, 23.3, 11.0 and 15.5 % at N = 64, 90, 128,
+     181 and 256 (the stale band inflated it), and the volume error at T moves by -10.5 % to +511 %
+     (N = 128: 5.368e-05 to 3.282e-04). At CFL 0.5 the finest-rung errors are unchanged and the
+     fitted orders move by at most 0.005. DERIVED: at CFL 1 the interface crosses up to one cell per
+     step, so a cell that enters the band is more often cut by the interface.
+   So the CFL 1.0 row of the SL article's 2D convergence table is RETRACTED as published (shape
+   order 2.378, volume order 3.542); the measured values with the fixed solver are 2.465 and 3.193
+   (laptop, v2606). The table is not regenerated yet: author decision (it belongs to the SL article
+   of the SL session). 19 curated tables carry rows of this solver; 8 of them have arms at CFL 0.8
+   or 1.0 (`uncachedConv2Dvortex`, `npslConv2Dvortex`, `nslConv2Dvortex`, `sdCompare2D`,
+   `linearConv2Dvortex`, `linearConv2DvortexClip`, `linearConv3Dshear`, `kinematicTranslation2D`);
+   none of them is re-measured.
+8. **Two observations, not caused by the fix (pre and post agree).** (a) The production
+   configuration fails on the polyhedral 3D shear rung: `E_VOL_ALPHA_REL` at T is 7.6, 11.6 and 18.7
+   and grows with refinement. This agrees with the record (`value_bound_advection_3DshearPoly.csv`,
+   2026-09-10: the `none` arm DIVERGED at step 186, 38.3) and with item T2 of the SL hand-over: the
+   published polyhedral numbers need `SL_CLIP true`. (b) Some volume errors on these ladders are not
+   monotone in h (2Dvortex at T/2: 5.21e-03 at N = 64, 9.49e-03 at N = 128; 3Dshear hex at T:
+   2.77e-03 at N = 48, 3.31e-03 at N = 64). Recorded only.
+9. **P4, the pair of 11.22 (`cellCentred`): now identical.** With the fix, the kinematic SL solver
+   equals `leiaLevelSetFoam` `semiLagrangian` in every column except `L_INF_E_PSI` (the sign-test
+   defect of the Eulerian writer, still open), and the final psi and alpha files are byte-identical:
+   2Dvortex N = 32 and 3Dshear hex N = 24, two phase indicators each.
+10. **CI.** `.github/scripts/ci-build-and-smoke.sh` on the fixed tree passes. The smoke numbers at T
+    changed: `E_GEOM_ALPHA_REL` 1.6090e-03 to 1.5892e-03, `E_VOL_ALPHA_REL` 5.7984e-04 to
+    5.6281e-04 (2Dtranslation N = 128, serial).
+11. **Open.** (a) Regenerate the curated tables of item 7, the 2D ones on the laptop and the 3D ones
+    on Lichtenberg, and correct the article and deck text that quotes them: author decision, and
+    the SL article belongs to the SL session. (b) The `L_INF_E_PSI` sign test in `leiaLevelSetFoam`.
+    (c) A shared library function for the interface step of each kinematic and flow solver pair,
+    so that the two cannot drift again (a refactor with a bit-identity gate).
