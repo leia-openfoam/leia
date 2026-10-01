@@ -25,6 +25,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "velocityModel.H"
+#include "fluxCorrection.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -47,8 +48,18 @@ Foam::velocityModel::velocityModel(const fvMesh& mesh)
     // benign -- but it is the same construct that made the `off` default in
     // uniaxialStrain mean ON, so it is written unambiguously.
     isOscillating_(velocityDict_.getOrDefault<Switch>("oscillation", true)),
-    tau_(velocityDict_.getOrDefault<scalar>("tau", mesh.time().endTime().value()))
-{}
+    tau_(velocityDict_.getOrDefault<scalar>("tau", mesh.time().endTime().value())),
+    fluxProjection_(velocityDict_.getOrDefault<word>("fluxProjection", "none"))
+{
+    if (fluxProjection_ != "none" && fluxProjection_ != "helmholtz")
+    {
+        FatalIOErrorInFunction(velocityDict_)
+            << "Unknown velocityModel.fluxProjection '" << fluxProjection_
+            << "'. Valid values are none and helmholtz."
+            << exit(FatalIOError);
+    }
+    Info<< "velocityModel: fluxProjection " << fluxProjection_ << endl;
+}
 
 // * * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * //
 
@@ -228,6 +239,16 @@ void Foam::velocityModel::setVolumetricFlux(surfaceScalarField& phi) const
                 velocity(CfPatchField[faceI]) & SfPatchField[faceI]
             );
         }
+    }
+
+    // The discrete divergence of the face-centre flux, reported for every
+    // mesh (a log line, no field changes): the measure of what the projection
+    // removes. Collective; every rank calls setVolumetricFlux.
+    fluxDivergenceReport(phi, "Prescribed flux U(x_f) & S_f");
+
+    if (fluxProjection_ == "helmholtz")
+    {
+        correctFlux(phi);
     }
 }
 

@@ -26,6 +26,11 @@ HL_DIRECTION    levelSet;   // d = psi/q, e = grad(psi)/q
 HL_SAMPLER      stencilFit; // least-squares fit of U over the cell-point-cell stencil
 OSCILLATION on;      // velocityModel: on = reversed test (cos(pi t/tau) factor),
                      // off = steady non-reversing vortex (sustained strain).
+FLUX_PROJECTION none; // velocityModel.fluxProjection: none | helmholtz. helmholtz projects the
+                     // prescribed face flux U(x_f) & S_f once (correctFlux): on polyhedral meshes
+                     // it is far from discretely divergence-free, and the SL projectedFlux trace
+                     // reconstructs its velocity from it. helmholtz in cases/<case>_poly.parameter
+                     // only (STATUS 11.25); none keeps every hex study bit-identical.
 END_REFERENCE none;  // none | translate: the exact end-time reference psiEnd/alphaEnd
                      // (workflow/scripts/write_end_reference.py); only cases/2Dtranslation
                      // references the token (2026-09-29). none = no reference, as before.

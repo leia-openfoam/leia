@@ -47,6 +47,7 @@ velocityModel
     type translation; 
     velocity (1 0 0);
     oscillation off;
+    fluxProjection @!FLUX_PROJECTION!@;   // none | helmholtz (polyhedral meshes, STATUS 11.25)
 }
 
 levelSet
