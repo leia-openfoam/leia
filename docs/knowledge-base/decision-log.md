@@ -44,3 +44,4 @@ one. Newest month at the bottom.
 ## 2026-10
 
 - 2026-10-01 · [[decisions/kinematic-solver-per-flow-solver]] · SETTLED one kinematic solver per flow solver, with the same interface step: `leiaSemiLagrangeLevelSetFoam` stays for the SL two-phase solver; its stale narrow band (alpha with the band of psi^n, 7.1x the volume error at one step) is fixed in 6f63418a · STATUS 11.23, author decision 2026-10-01
+- 2026-10-02 · [[decisions/flux-projection-polyhedral]] · SETTLED `FLUX_PROJECTION helmholtz` on polyhedral meshes (poly layer; `none` on hex): the prescribed face flux has max|div| 2.3 to 4.0 1/s on cfMesh meshes at every rung, projected to <= 2.8e-09 1/s; two defects of correctFlux fixed first; on the 3D shear to 4.8M cells the shape error moves at most 1.1 % and the T/2 volume error does not move · config/gates/fluxProjectionGate3DshearPoly{,Clip}.yaml, author decision 2026-10-01

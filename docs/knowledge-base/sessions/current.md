@@ -42,6 +42,10 @@ date: 2026-09-28
 5. 2026-10-01 ([STATUS 11.23](https://github.com/leia-openfoam/leia/blob/d2984c5e/STATUS.md#L4947-L5055)): the kinematic SL solver computes the narrow band before
    alpha, as its flow solver does (6f63418a; psi byte-identical in 27 pairs); the CFL 1.0 row of the
    SL 2D convergence table is retracted ([[retractions/sl-stale-band-alpha-metrics]]).
+6. 2026-10-01 to 02 ([STATUS 11.24 to 11.25](https://github.com/leia-openfoam/leia/blob/2793c9a7/STATUS.md#L5057-L5172)): `L_INF_E_PSI` fixed in the
+   writer that also serves both two-phase solvers; the prescribed flux is projected on polyhedral
+   meshes ([[decisions/flux-projection-polyhedral]]). Large runs go to Lichtenberg, not the laptop
+   (author instruction 2026-10-01).
 
 ## What is open, in order
 
@@ -127,3 +131,6 @@ The redistanced solver retired, the semi-Lagrangian pair measured (STATUS 11.22)
 
 ### 2026-10-01
 The stale band fixed and gated (STATUS 11.23); item 5 added; open item 6 replaced by the regeneration decision.
+
+### 2026-10-02
+Item 6 (STATUS 11.24 and 11.25).
