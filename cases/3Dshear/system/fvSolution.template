@@ -83,6 +83,7 @@ velocityModel
 {
     type shear3D; 
     oscillation @!OSCILLATION!@;
+    fluxProjection @!FLUX_PROJECTION!@;   // none | helmholtz (polyhedral meshes, STATUS 11.25)
 }
 
 levelSet

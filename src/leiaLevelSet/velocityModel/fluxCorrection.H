@@ -29,7 +29,22 @@ Description
     Helmholtz/projection enforcement of a divergence-free volumetric flux:
     solves laplacian(p) = div(phi) and sets phi -= grad p (= pEqn.flux()).
     Moved out of the solver header so both the solver (-fluxCorrection) and the
-    velocityExtension models (projectFlux) can use it.
+    velocityExtension models (projectFlux) can use it. Since 2026-10-01 the
+    prescribed velocity models use it too (velocityModel.fluxProjection
+    helmholtz, the polyhedral meshes): there the face-centre flux
+    U(x_f) & S_f of an analytically solenoidal field is not discretely
+    divergence-free.
+
+    ONE reference cell for the whole decomposed mesh. The pure-Neumann
+    Laplacian is pinned at a single cell, on the master rank only. Until
+    2026-10-01 every rank pinned its own local cell 0, so a run on N ranks
+    solved a problem with N pinned cells: the projected flux kept a
+    divergence at N - 1 cells and depended on the decomposition.
+
+    fluxDivergenceReport prints three norms of div(phi): the maximum and the
+    volume-weighted mean of |div(phi)| [1/s], and the largest non-cancelling
+    fraction |sum_f phi_f| / sum_f |phi_f| of a cell [-]. Collective: call it
+    on every rank.
 
 SourceFiles
     fluxCorrection.C
@@ -48,6 +63,9 @@ namespace Foam
 
 //- Project phi onto a divergence-free space (in place).
 void correctFlux(surfaceScalarField& phi);
+
+//- Print max and mean |div(phi)| and the largest non-cancelling flux fraction.
+void fluxDivergenceReport(const surfaceScalarField& phi, const char* label);
 
 } // End namespace Foam
 

@@ -1,0 +1,44 @@
+# ============================================================================
+# FLUX PROJECTION GATE, polyhedral 3D shear (2026-10-01; STATUS 11.25). Written before the runs.
+#
+# THE CHANGE. velocityModel.fluxProjection helmholtz (token FLUX_PROJECTION, helmholtz in
+# cases/<case>_poly.parameter only) projects the prescribed face flux U(x_f) & S_f once with
+# correctFlux, which now pins ONE reference cell and balances the net boundary flux first.
+# MEASURED on the laptop (STATUS 11.25): unprojected, max|div(phi)| = 2.3 to 4.0 1/s on these
+# meshes (round-off on hex); projected, at most 1.5e-09 1/s; serial and np 4 agree to 2.3e-12.
+#
+# THE ARMS. This config only PREPARES the cases (the workflow up to decompose). The driver
+# workflow/scripts/flux_projection_gate.sh copies every prepared case twice, sets
+# fluxProjection none and helmholtz, and runs both on the identical mesh and 0/.
+#
+# PRE-REGISTERED READ-OUT (E_GEOM_ALPHA_REL at T, E_VOL_ALPHA_REL at T/2 and T,
+# E_NARROW_L2_GRAD_PSI at T/2, each with the consecutive orders):
+#   Q1  if the divergent flux degrades the transport, the projection lowers the volume error at T
+#       at the two finest rungs and raises the volume-error order; FALSIFIED if neither happens.
+#       The laptop rungs (R/h 7 to 12) showed no effect beyond +12.1 / -1.1 % (volume at T) and
+#       -0.3 / +0.2 % (shape at T); the question here is whether the effect appears on finer rungs.
+#   Q2  the shape error at T and the band gradient error change by less than 5 %, or fall.
+# ============================================================================
+# ARM A: the published polyhedral configuration (config/uncachedConv3DshearPoly.yaml), its rungs.
+study_name: fluxProjectionGate3DshearPolyClip
+case: 3Dshear
+mesh: poly
+mode: parallel
+np: 16
+solver: leiaSemiLagrangeLevelSetFoam
+axes_override:
+  END_TIME: [3.0]
+  MAX_CELL_SIZE: [0.03125, 0.02, 0.0125, 0.0078125]
+  CFL: [0.5]
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_CLIP: ["true"]
+  SL_STENCIL: [face]
+  PHASE_INDICATOR: [detrixheAslam]
+  SURFACE_FILE: [box-shear-edges.stl]
+  DIV: [linear]
+  N_CELLS: [64]
+  FLUX_PROJECTION: [none]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true"

@@ -68,6 +68,16 @@ protected:
     Switch isOscillating_;
     const scalar tau_;
 
+    //- velocityModel.fluxProjection: none (default) | helmholtz. The face
+    //  flux U(x_f) & S_f of an analytically solenoidal field is not discretely
+    //  divergence-free; on polyhedral meshes the defect is large, and the
+    //  semi-Lagrangian projectedFlux trace reconstructs its cell velocity from
+    //  that flux. helmholtz projects the flux once, in setVolumetricFlux
+    //  (correctFlux); the cos(pi t/tau) scaling of the reversed tests keeps it
+    //  divergence-free. Set by the token FLUX_PROJECTION, helmholtz in the
+    //  polyhedral parameter layer (cases/<case>_poly.parameter) only.
+    word fluxProjection_;
+
 public:
 
     //- Runtime type information
@@ -131,8 +141,16 @@ public:
         //- Fill U from velocity(cellCentre) on internal + boundary fields
         virtual void setVelocity(volVectorField& U) const;
 
-        //- Fill phi from velocity(faceCentre) & Sf on internal + boundary faces
+        //- Fill phi from velocity(faceCentre) & Sf on internal + boundary
+        //  faces, report its divergence, and project it when
+        //  fluxProjection is helmholtz
         virtual void setVolumetricFlux(surfaceScalarField& phi) const;
+
+        //- The selected flux projection (none | helmholtz)
+        const word& fluxProjection() const
+        {
+            return fluxProjection_;
+        }
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

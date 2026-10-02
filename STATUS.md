@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-10-01 (section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-10-02 (section 11.25: the prescribed flux is projected to divergence-free on polyhedral meshes, after fixing two defects of correctFlux; no transport metric degrades by more than 1.1 %. Section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -5091,3 +5091,82 @@ Helmholtz projection of the prescribed flux on polyhedral meshes (11.25). Laptop
      2Dvortex N = 32 and 3Dshear N = 24, two phase indicators each.
 4. **Reach.** No script reads `L_INF_E_PSI`, and L_inf is never reported: the raw CSVs of the three
    solvers carry the zeroed column, and no curated number changes. 11.23 item 11(b) is done.
+
+### 11.25 The prescribed flux on polyhedral meshes: Helmholtz projection; two defects of `correctFlux` fixed (2026-10-01 to 02)
+
+The author's instruction of 2026-10-01: on polyhedral meshes the face flux U(x_f) & S_f has a large
+divergence, and the SL `projectedFlux` trace reconstructs its cell velocity from that flux, so the
+flux must be projected to divergence-free with a Helmholtz projection, on polyhedral meshes only.
+The same day the author stopped the large laptop runs (the RAM was full); the transport gate moved
+to Lichtenberg (`/work/scratch/tm83tomy/leia-fluxproj`, branch `feature/flux-projection`).
+
+1. **The divergence (G0, MEASURED).** A new log line at every start (`fluxDivergenceReport`): on the
+   cfMesh 3D shear meshes the prescribed flux has max|div(phi)| = 2.3 to 4.0 1/s (the velocity
+   gradient scale is about 2 pi), mean |div| 0.0016 to 0.019 1/s (falling about as h^1.3), and up to
+   6 % of a cell's face flux uncancelled. The maximum does not fall with refinement: 3.97 / 3.98 /
+   3.99 / 4.00 1/s at 105,158 to 4,832,366 cells. On uniform hex meshes it is round-off (1.8e-14 to
+   2.7e-13 1/s): for this field the three face differences of a hex cell are 2, -1 and -1 times
+   sin(2 pi x) sin(2 pi y) sin(2 pi z) sin(pi h), and they cancel exactly.
+2. **Two defects of the existing `correctFlux`, fixed.**
+   (a) The pure-Neumann problem was pinned with `setReference(0, 0)` on every rank: N ranks solved a
+   problem with N pinned cells, so the projected flux kept a divergence at N - 1 cells and depended
+   on the decomposition. Now the master rank alone pins its cell 0 (the serial choice in serial).
+   (b) The projection cannot change a boundary flux (zeroGradient p), so a nonzero net boundary flux
+   makes the Neumann problem incompatible, and the pinned cell absorbed all of it. The 3D shear top
+   and bottom patches carry 0.136 m3/s each, but on cfMesh meshes their face-centre sums differ by
+   -4.8e-05 to -2.8e-07 m3/s (on hex they cancel to 7e-49). After the projection the pinned cell kept
+   |div| = 5 to 56 1/s, and the mean |div| equalled imbalance / volume to four digits. Now the
+   outflow of the non-coupled patches is scaled first so that the net boundary flux vanishes, as
+   `adjustPhi` does (factor 1.00002 to 1.00035 on the laptop meshes).
+   With both fixes the projected flux has max|div| <= 2.8e-09 1/s on every mesh, laptop and cluster,
+   and serial against np 4 agrees to 1.0e-15 m3/s (2.3e-12 of the largest face flux, the 0.03 mesh).
+   The only study that ran the old code, `benchVortexSLimprovedPerturbed` (`-fluxCorrection` on a
+   perturbed mesh, np 4), carried defect (a); it feeds no curated table.
+3. **The change (9ccc9783, cfb1a58f).** `velocityModel.fluxProjection none | helmholtz` (default
+   `none`): `setVolumetricFlux` reports the divergence and, with `helmholtz`, projects the flux once
+   at the start; the cos(pi t/tau) scaling keeps it divergence-free. Token `FLUX_PROJECTION`: `none`
+   in `cases/default.parameter`, `helmholtz` in the poly layer of 3Dshear, 3Ddeformation, 3Drotation
+   and 3Dtranslation. Only `leiaSemiLagrangeLevelSetFoam` runs these cases on polyhedra (13
+   configs); the two-phase cases and `leiaTestMeanCurvature` do not use the velocity model.
+4. **G1, hex inert: PASS.** Fresh hex cases rendered with `fluxProjection none`, the old build
+   (2b642398) against the new one, np 4: every CSV column and every field byte-identical (SL kinematic
+   3Dshear N = 24 and 2Dvortex N = 32, `leiaLevelSetFoam` 3Dshear N = 24).
+5. **G2, transport.** Pre-registered in a laptop file before the laptop runs and in the headers of
+   `config/gates/fluxProjectionGate3DshearPoly{,Clip}.yaml` before the cluster runs; `none` against
+   `helmholtz` on identical copies of each prepared mesh (`workflow/scripts/flux_projection_gate.sh`),
+   trace `projectedFlux`, table by `workflow/scripts/flux_projection_gate_table.py`.
+   - Laptop, before the stop (the finest rungs, R/h 9 to 12): published configuration, shape at T
+     -0.3 / +0.2 %, volume at T +12.1 / -1.1 %, volume at T/2 and band gradient unchanged. The laptop
+     prediction (a lower volume error at T at both rungs) was falsified there. Four smaller pairs were
+     stopped: no result.
+   - Lichtenberg, 14 runs, all COMPLETED at T = 3, np 16, wall/CPU = 1.0. Published configuration
+     (`config/uncachedConv3DshearPoly.yaml`: `SL_CLIP true`, face stencil, CFL 0.5), 105,158 /
+     347,073 / 1,272,989 / 4,832,366 cells (R/h 7 to 25):
+     | quantity | none | helmholtz | change |
+     |---|---|---|---|
+     | shape error at T | 3.02e-02 / 1.08e-02 / 2.98e-03 / 8.11e-04 | 3.03e-02 / 1.08e-02 / 2.97e-03 / 8.20e-04 | +0.1 / +0.3 / -0.5 / +1.1 % |
+     | its orders | 2.59 / 2.97 / 2.93 | 2.59 / 2.98 / 2.89 | |
+     | volume error at T/2 | 1.03e-01 / 2.51e-02 / 3.18e-03 / 4.65e-03 | the same to four digits | 0.0 % |
+     | volume error at T | 2.14e-03 / 1.36e-03 / 1.92e-04 / 3.28e-05 | 2.08e-03 / 1.27e-03 / 1.87e-04 / 7.21e-06 | -2.4 / -6.7 / -2.4 / -78.0 % |
+     | band gradient error at T/2 | 2.29 / 2.45 / 2.61 / 2.64 | the same to three digits | 0.0 % |
+     Q1 (a lower volume error at T at the two finest rungs and a higher volume order) passes as
+     written. But the signed volume error at T changes sign across the rungs (-, +, +, -; the same
+     sign in both arms at each rung): its consecutive orders are no convergence rate, and the -78 %
+     at the finest rung is an absolute shift of 2.6e-05 toward zero, against a volume error of
+     4.65e-03 at T/2. Q2 (shape and band gradient within 5 %) passes.
+   - Production configuration (`SL_CLIP false`), 49,910 / 347,073 / 2,389,233 cells: fails with and
+     without the projection (volume error at T 7.6 / 20.1 / 25.8, band gradient at T/2 up to 6e+24);
+     the projection moves the failed metrics by +0.1 to +9.4 %. No rescue, as pre-registered.
+6. **Reading.** The projection removes a real defect of the prescribed flux, one that does not shrink
+   with refinement, for one Poisson solve at the start (217 to 912 PCG iterations). On the 3D shear it
+   does not move the shape error, the T/2 volume error or the band gradient error up to 4.8M cells,
+   and it shifts the T volume residual toward zero. It does not cure the far-field failure of
+   `SL_CLIP false` on polyhedra, which is attributed to the fit amplification. Adopted on polyhedral
+   meshes on the author's instruction, because no metric degrades by more than 1.1 %: METHOD 8.1 row
+   `FLUX_PROJECTION`.
+7. **Observations, the same in both arms.** The T/2 volume error of the published configuration is
+   not monotone (3.18e-03 at 1.27M cells, 4.65e-03 at 4.83M cells), and the T volume error changes
+   sign across the rungs.
+8. **Open.** 3Ddeformation on polyhedra (3 configs) is not measured with the projection. Raw data:
+   `/work/scratch/tm83tomy/leia-fluxproj/studies/fluxProjectionGate3DshearPoly{,Clip}` on Lichtenberg
+   (job ids in that worktree's `.my_jobs`).
