@@ -14,7 +14,10 @@
 # face-triangulation sum (davofState::mTri: the fan about Cf circulated over
 # the face points, computed on the fly, nothing stored per face; both the
 # Detrixhe-Aslam and the quadratic path) recovers it to 1e-13 and is the
-# davof normal of the test; the scalar identity is printed as a diagnostic.
+# davof normal of the test; the scalar identity is printed as a diagnostic. The
+# explicit position uses the same fan (the first moment of every triangle's
+# wet part): both surface-based states pass -expectExact on the perturbed
+# meshes (position within 1e-11 h, the round-off floor of corner-sliver cells).
 cd "${0%/*}" || exit 1
 . "$WM_PROJECT_DIR/bin/tools/RunFunctions"
 mode=${1:-vertex}; amp=${2:-0.1}

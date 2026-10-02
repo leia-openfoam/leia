@@ -98,6 +98,59 @@ inline point edgeCrossing
 }
 
 
+//- The part of the triangle (x0, x1, x2) in Omega^- = {phi <= 0} under the
+//  linear interpolant of its vertex values (a, b, c): the area vector Swet
+//  (oriented like (x1 - x0) ^ (x2 - x0)) and the area-weighted centroid xwet
+//  of that part, built by walking the triangle boundary (wet vertices and
+//  the edge crossings). Returns the area fraction; xwet is the triangle
+//  centroid when nothing or everything is wet. Convention of
+//  triNegativeFraction (phi <= 0 is wet).
+inline scalar triNegativePolygon
+(
+    const point& x0, const point& x1, const point& x2,
+    const scalar a, const scalar b, const scalar c,
+    vector& Swet, point& xwet
+)
+{
+    const point x[3] = {x0, x1, x2};
+    const scalar ph[3] = {a, b, c};
+    const vector St = 0.5*((x1 - x0) ^ (x2 - x0));
+    const scalar At = mag(St);
+    Swet = Zero;
+    xwet = (x0 + x1 + x2)/3.0;
+    if (At <= VSMALL) return 0;
+    const vector nt = St/At;
+
+    point poly[6];
+    label n = 0;
+    for (label i = 0; i < 3; ++i)
+    {
+        const label j = (i + 1) % 3;
+        if (ph[i] <= 0) poly[n++] = x[i];
+        if ((ph[i] <= 0) != (ph[j] <= 0))
+        {
+            poly[n++] = edgeCrossing(x[i], x[j], ph[i], ph[j]);
+        }
+    }
+    if (n < 3) return 0;
+
+    // Fan about poly[0]: signed areas along the triangle normal.
+    vector S(Zero), xs(Zero);
+    scalar A = 0;
+    for (label k = 1; k + 1 < n; ++k)
+    {
+        const vector Sk = 0.5*((poly[k] - poly[0]) ^ (poly[k + 1] - poly[0]));
+        const scalar Ak = Sk & nt;
+        S += Sk;
+        A += Ak;
+        xs += Ak*((poly[0] + poly[k] + poly[k + 1])/3.0);
+    }
+    Swet = S;
+    if (mag(A) > VSMALL) xwet = xs/A;
+    return (S & nt)/At;
+}
+
+
 //- Zero set of the linear interpolant of phi on the tet (x[0..3]).
 //  areaVec: area vector oriented from Omega^- (phi <= 0) to Omega^+;
 //  centroid: area-weighted centroid of the polygon; area: its area.

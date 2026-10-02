@@ -1120,8 +1120,13 @@ int main(int argc, char *argv[])
         // interpolant, ~1e-13 for the least-squares plane fit).
         const scalar tol = 1e-12;
         // The position in units of h; the realizability diagnostics are
-        // dimensionless already.
+        // dimensionless already. The position p = (3 alpha V - M)/|m|
+        // divides the difference of two O(V) numbers by the cap area, which
+        // in a corner-sliver cell is ~1e-3 V^(2/3): its round-off floor is
+        // ten times the others (measured 1.5e-12 and 2.2e-12 h on perturbed
+        // hexahedra, 2026-10-02), hence the ten-fold allowance.
         const scalar posLinfH = (dx > 0) ? rd.Pinf/dx : rd.Pinf;
+        const scalar posTol = 10*tol;
         // The curvature of a plane is zero: kappa h at round-off at the
         // centroids and at the faces (every configured model).
         scalar curvLinfH = 0;
@@ -1134,7 +1139,7 @@ int main(int argc, char *argv[])
             rd.Linf > tol
          || maxConsistency > tol
          || (maxAlphaDiffPlaneCut >= 0 && maxAlphaDiffPlaneCut > tol)
-         || posLinfH > tol
+         || posLinfH > posTol
          || maxVolDiffPlane > tol
          || maxAreaDiffPlane > tol
          || curvLinfH > tol
@@ -1150,9 +1155,11 @@ int main(int argc, char *argv[])
                 << ", MAX_AREA_DIFF_PLANE = " << maxAreaDiffPlane
                 << ", max E_KAPPA_LINF h = " << curvLinfH
                 << ", N_INTERFACE = " << rd.nInterface
-                << " (tolerance " << tol << ")" << exit(FatalError);
+                << " (tolerance " << tol << ", position " << posTol << ")"
+                << exit(FatalError);
         }
-        Info<< "-expectExact PASSED (tolerance " << tol << ")" << nl << endl;
+        Info<< "-expectExact PASSED (tolerance " << tol << ", position "
+            << posTol << ")" << nl << endl;
     }
 
     Info<< "End\n" << endl;

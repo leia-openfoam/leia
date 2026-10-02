@@ -234,9 +234,10 @@ state recovers the plane to round-off. Vertex-wise perturbation (`leiaPerturbMes
 faces warp): the scalar face fraction loses the plane (8 % of the normal at 0.1 h),
 the face-triangulation sum (`davofState::mTri`, the fan about Cf circulated over
 the face points, computed on the fly, nothing stored per face) recovers it to
-1e-13 and is the davof normal of the test; the scalar identity is a diagnostic. The proposal states both (STATUS 10.12). Open: the first moment of the
-wetted face part for the explicit position on warped faces; `wettedSf_` in the
-Detrixhe-Aslam path; the realizability diagnostic of the plane indicator on
+1e-13 and is the davof normal of the test; the scalar identity is a diagnostic. The proposal states both (STATUS 10.12). The explicit position uses the same fan (the first moment of every
+wet triangle part, `momentTri_`): both surface-based states pass on the
+perturbed meshes, the position within 1e-11 h (round-off of corner slivers).
+Open: the plane indicator's own fan sums and its realizability diagnostic on
 non-cubic cells.
 
 ## Cluster (Lichtenberg, TU Darmstadt)

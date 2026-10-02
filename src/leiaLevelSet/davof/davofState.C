@@ -38,6 +38,7 @@ Foam::davofState::davofState(const fvMesh& mesh, const dictionary& dict)
     ),
     alphaf_(mesh.nFaces(), Zero),
     mTri_(mesh.nCells(), Zero),
+    momentTri_(mesh.nCells(), Zero),
     hasMTri_(false),
     alphafOut_
     (
@@ -283,11 +284,13 @@ Foam::scalar Foam::davofState::faceFraction
 
 
 template<class PhiFace, class PhiPoint>
-Foam::vector Foam::davofState::faceWettedAreaVector
+void Foam::davofState::faceWettedTriangles
 (
     const label faceI,
     PhiFace&& phiFace,
-    PhiPoint&& phiPoint
+    PhiPoint&& phiPoint,
+    vector& S,
+    scalar& M
 ) const
 {
     const pointField& points = mesh_.points();
@@ -295,7 +298,8 @@ Foam::vector Foam::davofState::faceWettedAreaVector
     const point& xf = mesh_.faceCentres()[faceI];
     const scalar phif = phiFace(faceI);
 
-    vector wet = Zero;
+    S = Zero;
+    M = 0;
     forAll(f, ip)
     {
         const label ip1 = f.nextLabel(ip);
@@ -303,9 +307,15 @@ Foam::vector Foam::davofState::faceWettedAreaVector
         const point& p1 = points[ip1];
         const vector St = 0.5*((p0 - xf) ^ (p1 - xf));
         if (mag(St) <= VSMALL) continue;
-        wet += davof::triNegativeFraction(phif, phiPoint(f[ip]), phiPoint(ip1))*St;
+        const scalar phi0 = phiPoint(f[ip]);
+        const scalar phi1 = phiPoint(ip1);
+        const vector Swet = davof::triNegativeFraction(phif, phi0, phi1)*St;
+        vector Spoly;
+        point xwet;
+        davof::triNegativePolygon(xf, p0, p1, phif, phi0, phi1, Spoly, xwet);
+        S += Swet;
+        M += xwet & Swet;
     }
-    return wet;
 }
 
 
@@ -372,16 +382,25 @@ void Foam::davofState::computeFromImplicitSurface(const implicitSurface& surface
         const labelUList& nei = mesh_.faceNeighbour();
         const label nInt = mesh_.nInternalFaces();
         mTri_ = Zero;
+        momentTri_ = Zero;
         forAll(alphaf_, faceI)
         {
-            const vector wet = faceWettedAreaVector
+            vector wet;
+            scalar M;
+            faceWettedTriangles
             (
                 faceI,
                 [&](const label f) { return psiF[f]; },
-                [&](const label p) { return psiP[p]; }
+                [&](const label p) { return psiP[p]; },
+                wet, M
             );
             mTri_[own[faceI]] -= wet;
-            if (faceI < nInt) mTri_[nei[faceI]] += wet;
+            momentTri_[own[faceI]] += M - (C[own[faceI]] & wet);
+            if (faceI < nInt)
+            {
+                mTri_[nei[faceI]] += wet;
+                momentTri_[nei[faceI]] -= M - (C[nei[faceI]] & wet);
+            }
         }
         hasMTri_ = true;
     }
@@ -408,6 +427,7 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
     const labelUList& own = mesh_.faceOwner();
     const labelUList& nei = mesh_.faceNeighbour();
     const label nInt = mesh_.nInternalFaces();
+    const vectorField& C = mesh_.cellCentres();
     scalarField psiPq(P.size());
     forAll(P, i) psiPq[i] = surface.value(P[i]);
 
@@ -422,6 +442,7 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
 
         scalar liqA = 0, totA = 0;
         vector wet = Zero;
+        scalar Mq = 0;
         bool fb = false;
         forAll(f, ip)
         {
@@ -445,20 +466,37 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
             if (tfb) { fb = true; break; }
             liqA += fr*triA;
             totA += triA;
-            wet += fr*(0.5*((p0 - xf) ^ (p1 - xf)));
+            const vector St = 0.5*((p0 - xf) ^ (p1 - xf));
+            wet += fr*St;
+            // The wet centroid of the triangle from its linear cut (exact
+            // for a plane; immaterial on a planar face).
+            vector Sl;
+            point xwet;
+            davof::triNegativePolygon(xf, p0, p1, ph[0], ph[1], ph[2], Sl, xwet);
+            Mq += xwet & (fr*St);
         }
         if (fb) { ++nFallback; continue; }
         if (totA > VSMALL)
         {
             alphaf_[faceI] = min(max(liqA/totA, scalar(0)), scalar(1));
-            const vector wetDA = faceWettedAreaVector
+            vector wetDA;
+            scalar MDA;
+            faceWettedTriangles
             (
                 faceI,
                 [&](const label fi) { return surface.value(Cf[fi]); },
-                [&](const label p) { return psiPq[p]; }
+                [&](const label p) { return psiPq[p]; },
+                wetDA, MDA
             );
             mTri_[own[faceI]] += wetDA - wet;
-            if (faceI < nInt) mTri_[nei[faceI]] -= wetDA - wet;
+            momentTri_[own[faceI]] +=
+                (Mq - (C[own[faceI]] & wet)) - (MDA - (C[own[faceI]] & wetDA));
+            if (faceI < nInt)
+            {
+                mTri_[nei[faceI]] -= wetDA - wet;
+                momentTri_[nei[faceI]] -=
+                    (Mq - (C[nei[faceI]] & wet)) - (MDA - (C[nei[faceI]] & wetDA));
+            }
         }
     }
     nFaceFallback_ = returnReduce(nFallback, sumOp<label>());
@@ -774,16 +812,26 @@ void Foam::davofState::planePosition()
     const cellList& cells = mesh_.cells();
 
     // sum_f alpha_f (x_f - x_c).S_f^out per cell: S_f is outward for the
-    // owner and inward for the neighbour, as in areaNormal().
+    // owner and inward for the neighbour, as in areaNormal(). When the
+    // state came from a surface, the moment of the fan triangles
+    // (momentTri_) replaces it: identical on planar faces, exact on warped
+    // ones, where (x - x_c).n_f is not constant over the face.
     scalarField faceMoment(mesh_.nCells(), Zero);
-    forAll(Sf, faceI)
+    if (hasMTri_)
     {
-        const scalar af = alphaf_[faceI];
-        if (af == 0) continue;
-        faceMoment[own[faceI]] += af*((Cf[faceI] - C[own[faceI]]) & Sf[faceI]);
-        if (faceI < nInt)
+        faceMoment = momentTri_;
+    }
+    else
+    {
+        forAll(Sf, faceI)
         {
-            faceMoment[nei[faceI]] -= af*((Cf[faceI] - C[nei[faceI]]) & Sf[faceI]);
+            const scalar af = alphaf_[faceI];
+            if (af == 0) continue;
+            faceMoment[own[faceI]] += af*((Cf[faceI] - C[own[faceI]]) & Sf[faceI]);
+            if (faceI < nInt)
+            {
+                faceMoment[nei[faceI]] -= af*((Cf[faceI] - C[nei[faceI]]) & Sf[faceI]);
+            }
         }
     }
 

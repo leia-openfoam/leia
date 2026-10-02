@@ -5215,3 +5215,19 @@ the warped meshes through the POSITION: `planePosition()` uses sum_f alpha_f (x_
 is inexact on a warped face; with the exact normal the position error drops from 0.038 h to 0.0037 h
 (the realizability diagnostics 0.004 / 0.0076 follow from it). Next: the first moment per fan
 triangle (the wet polygon's centroid of each triangle) in the same loop, nothing stored.
+
+Position (same day, on the author's instruction): the explicit position uses the same fan. Per triangle
+the first moment (x_wet,t - x_c).S_wet,t with the centroid of the wet polygon
+(`davof::triNegativePolygon`: a walk along the triangle boundary collecting the wet vertices and the
+edge crossings; the quadratic path keeps its exact area fraction and takes the centroid from the
+linear cut of the same triangle, exact for a plane and immaterial on a planar face, where
+(x - x_c).n_f is constant), summed per cell on the fly (`momentTri_`); `planePosition()` uses it
+whenever the state came from a surface. Measured: vertex-perturbed 0.1 h, both states PASS at 1e-12;
+0.2 h: normal 1.8e-13 / 1.1e-13, position 1.5e-12 h, plane-cut alpha 2.6e-15, area 2.6e-13, curvature
+2.3e-15; column 0.3 h: position 2.2e-12 h, the rest 1e-13 and below. The two position maxima sit in
+corner-sliver cells (alpha 2e-5 and 0.99998, |m| 0.002 V^(2/3)), where p = (3 alpha V - M)/|m| divides
+the difference of two O(V) numbers by a tiny area: round-off, so the position check of `-expectExact`
+has a ten-fold allowance (1e-11 h). In such a cell on the warped mesh the old alpha_f moment put the
+plane 0.004 h off. The ellipsoid at N = 20 with quadratic faces is unchanged to every printed digit
+(normal 0.0111565466185 / 0.115032544554, identical plane offsets). The plane indicator keeps its
+scalar path (its own fan sums are open), as is its realizability diagnostic on non-cubic cells.

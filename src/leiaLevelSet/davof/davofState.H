@@ -103,6 +103,13 @@ class davofState
     // 2026-10-02: 8 % normal error on a plane at 0.1 h vertex perturbation,
     // the triangle sum 1e-13). areaNormal() uses it as m_c when available.
     vectorField mTri_;
+    // The face moment of the explicit position from the same fan, per
+    // cell: sum_f sum_t (x_wet,t - x_c).S_wet,t^out with the wet centroid
+    // x_wet,t of every triangle (the polygon centroid of the linear cut;
+    // the quadratic path keeps its exact area and takes the centroid from
+    // the linear cut of the same triangle, which is exact for a plane and
+    // immaterial on a planar face, where (x - x_c).n is constant).
+    scalarField momentTri_;
     bool hasMTri_;
     surfaceScalarField alphafOut_;  // alphaf.davof (for writing)
     volVectorField m_;              // m.davof, the DAVOF area normal [m^2]
@@ -189,16 +196,19 @@ public:
         const implicitSurface* analytic
     );
 
-    //- The wetted area vector of face faceI from the fan triangles
-    //  (x_f, p_i, p_{i+1}) over the face's points: sum_t a_t S_t with the
-    //  Detrixhe-Aslam fraction a_t of each triangle. Computed where it is
-    //  summed, never stored.
+    //- The wetted part of face faceI from the fan triangles (x_f, p_i,
+    //  p_{i+1}) over the face points under the linear interpolant: its
+    //  area vector S = sum_t a_t S_t and its first moment M = sum_t
+    //  x_wet,t . (a_t S_t), so that a cell with centre x_c sees the moment
+    //  M - x_c.S. Computed where it is summed, never stored.
     template<class PhiFace, class PhiPoint>
-    vector faceWettedAreaVector
+    void faceWettedTriangles
     (
         const label faceI,
         PhiFace&& phiFace,
-        PhiPoint&& phiPoint
+        PhiPoint&& phiPoint,
+        vector& S,
+        scalar& M
     ) const;
 
     //- m_c = -sum_f alpha_f S_f^out, or the face-triangulation sum mTri_
@@ -246,6 +256,7 @@ public:
     const volScalarField& AS() const { return AS_; }
     const vectorField& mTet() const { return mTet_; }
     const vectorField& mTri() const { return mTri_; }
+    const scalarField& momentTri() const { return momentTri_; }
     bool hasMTri() const { return hasMTri_; }
     scalar maxAlphaClip() const { return maxAlphaClip_; }
 
