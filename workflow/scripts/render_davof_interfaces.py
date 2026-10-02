@@ -3,7 +3,8 @@
 
     python3 workflow/scripts/render_davof_interfaces.py studies/davof/sphereNormal3D \
         [--theme davof] [--alpha-source exactSphere] [--models davof plicRDF gradAlpha] \
-        [--max-resolutions 3] [--field eNormal] [--elev 22 --azim -55]
+        [--max-resolutions 3 | --resolutions 40 80 160] [--field eNormal] [--elev 22 --azim -55] \
+        [--font-size 18 --short-titles --suffix proposal]
 
 Every case of the study written by leiaTestDavofNormal carries
 postProcessing/davofInterface/<time>/plic.<model>.vtk: one polygon per interface
@@ -82,9 +83,9 @@ def view_matrix(elev_deg, azim_deg):
     return np.vstack([right, sup, view])
 
 
-def collect(study_dir, alpha_source, models, max_res):
-    """[(N, {model: vtk path})] for the coarsest max_res resolutions, and the
-    alpha sources seen."""
+def collect(study_dir, alpha_source, models, max_res, resolutions=None):
+    """[(N, {model: vtk path})] for the coarsest max_res resolutions (or exactly
+    the N in `resolutions`, in that order), and the alpha sources seen."""
     cases, sources = {}, set()
     for meta in sorted(glob.glob(os.path.join(study_dir, "*", "case_params.json"))):
         d = os.path.dirname(meta)
@@ -103,6 +104,8 @@ def collect(study_dir, alpha_source, models, max_res):
         files = {m: f for m, f in files.items() if os.path.isfile(f)}
         if files:
             cases[N] = files
+    if resolutions:
+        return [(N, cases[N]) for N in resolutions if N in cases], sources
     return [(N, cases[N]) for N in sorted(cases)[:max_res]], sources
 
 
@@ -115,6 +118,18 @@ def main(argv):
                          "else linearInterpolant, else planePhaseIndicator)")
     ap.add_argument("--models", nargs="+", default=["davof", "plicRDF", "gradAlpha"])
     ap.add_argument("--max-resolutions", type=int, default=3)
+    ap.add_argument("--resolutions", nargs="+", type=int, default=None,
+                    help="draw exactly these N (in this order) instead of the coarsest "
+                         "--max-resolutions")
+    ap.add_argument("--font-size", type=float, default=12,
+                    help="panel title and colourbar font size [pt] (default 12; the "
+                         "proposal variant uses 18 so that a panel printed at a third "
+                         "of the text width stays readable)")
+    ap.add_argument("--short-titles", action="store_true",
+                    help="panel titles 'model, N = ..' without the cell count")
+    ap.add_argument("--suffix", default=None,
+                    help="write davof_plic_<study>_<suffix>.{pdf,png} instead of "
+                         "davof_plic_<study>.{pdf,png}")
     ap.add_argument("--field", default="eNormal", choices=["eNormal", "ePos"])
     ap.add_argument("--elev", type=float, default=None, dest="elev_set",
                     help="camera elevation [deg] (default 22, or head-on for a planar surface)")
@@ -125,21 +140,27 @@ def main(argv):
     a.azim = -55.0 if a.azim_set is None else a.azim_set
 
     study = os.path.basename(os.path.normpath(a.study_dir))
-    cases, sources = collect(a.study_dir, a.alpha_source, a.models, a.max_resolutions)
-    if not cases and a.alpha_source is None:
+    # ONE alpha source per figure. Without --alpha-source the most accurate state
+    # present is chosen before anything is collected (a collection over all
+    # sources would silently mix them: the per-N dictionary keeps the case that
+    # sorts last).
+    if a.alpha_source is None:
+        _, sources = collect(a.study_dir, None, a.models, a.max_resolutions, a.resolutions)
         for pref in ("exactSphere", "quadraticFaces", "detrixheAslam", "linearInterpolant",
                      "planePhaseIndicator"):
             if pref in sources:
-                cases, _ = collect(a.study_dir, pref, a.models, a.max_resolutions)
                 a.alpha_source = pref
-                if cases:
-                    break
+                break
+        else:
+            seen = sorted(s for s in sources if s)
+            a.alpha_source = seen[0] if seen else None
+    cases, sources = collect(a.study_dir, a.alpha_source, a.models, a.max_resolutions,
+                             a.resolutions)
     if not cases:
-        print(f"[render] no plic.<model>.vtk files under {a.study_dir} "
-              f"(alpha sources seen: {sorted(s for s in sources if s)}); nothing drawn")
+        print(f"[render] no plic.<model>.vtk files under {a.study_dir} for alpha source "
+              f"{a.alpha_source} (sources seen: {sorted(s for s in sources if s)}); "
+              f"nothing drawn")
         return 0
-    if a.alpha_source is None:
-        a.alpha_source = sorted(s for s in sources if s)[0]
 
     # Load everything first: one colour scale per figure.
     data, vmin, vmax = {}, np.inf, -np.inf
@@ -207,21 +228,23 @@ def main(argv):
             ax.set_xlim(mid[0] - span/2, mid[0] + span/2)
             ax.set_ylim(mid[1] - span/2, mid[1] + span/2)
             ax.set_aspect("equal")
-            ax.set_title(f"{MODEL_LABEL.get(m, m)}, N = {N} ({len(polys)} cells)",
-                         fontsize=12)
+            title = (f"{MODEL_LABEL.get(m, m)}, N = {N}" if a.short_titles
+                     else f"{MODEL_LABEL.get(m, m)}, N = {N} ({len(polys)} cells)")
+            ax.set_title(title, fontsize=a.font_size)
     sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=axes.ravel().tolist(), shrink=0.7, pad=0.02)
-    cbar.set_label(FIELD_LABEL.get(a.field, a.field), fontsize=12)
-    cbar.ax.tick_params(labelsize=11)
+    cbar.set_label(FIELD_LABEL.get(a.field, a.field), fontsize=a.font_size)
+    cbar.ax.tick_params(labelsize=max(a.font_size - 1, 6))
     # No figure title: the caption of the document that includes it says what
     # is drawn (alpha source and field are in the file name's study and the log).
     print(f"[render] {study}: alpha source {a.alpha_source}, field {a.field}, "
           f"models {models}, N {[N for N, _ in cases]}")
     figs = paths.figs_dir(a.theme)
     os.makedirs(figs, exist_ok=True)
+    stem = f"davof_plic_{study}" + (f"_{a.suffix}" if a.suffix else "")
     for ext in ("pdf", "png"):
-        out = os.path.join(figs, f"davof_plic_{study}.{ext}")
+        out = os.path.join(figs, f"{stem}.{ext}")
         fig.savefig(out, dpi=170, bbox_inches="tight")
         print(f"[render] wrote {out}")
     plt.close(fig)

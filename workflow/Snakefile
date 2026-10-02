@@ -559,6 +559,15 @@ rule report:
             # rendered side by side, models x resolutions, into the theme figures.
             _run([_PY, os.path.join(_scripts, "render_davof_interfaces.py"),
                      STUDY_DIR, "--theme", THEME], "render_davof_interfaces.py")
+            # The proposal's variant of the ellipsoid figure: DAVOF against
+            # plicRDF at the three finest rungs, large fonts, short titles
+            # (davof_plic_<study>_proposal.{pdf,png}; make davof-proposal copies it).
+            if STUDY == "ellipsoidNormal3D":
+                _run([_PY, os.path.join(_scripts, "render_davof_interfaces.py"),
+                         STUDY_DIR, "--theme", THEME, "--models", "davof", "plicRDF",
+                         "--resolutions", "40", "80", "160", "--font-size", "18",
+                         "--short-titles", "--suffix", "proposal"],
+                     "render_davof_interfaces.py (proposal variant)")
         # 1b. The SDPLS convergence + order tables are a DATA product that
         # docs/sdpls-level-set/.../sdplsLevelSet.tex \input{}s, not a slide, so
         # they must not sit behind `export_slides` -- 89 of 117 study configs set
