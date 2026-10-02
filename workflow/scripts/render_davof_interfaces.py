@@ -130,6 +130,9 @@ def main(argv):
     ap.add_argument("--suffix", default=None,
                     help="write davof_plic_<study>_<suffix>.{pdf,png} instead of "
                          "davof_plic_<study>.{pdf,png}")
+    ap.add_argument("--edges", default="thin", choices=["thin", "none"],
+                    help="polygon edges: thin black lines (default) or none, so that "
+                         "only the coloured error distribution is seen")
     ap.add_argument("--field", default="eNormal", choices=["eNormal", "ePos"])
     ap.add_argument("--elev", type=float, default=None, dest="elev_set",
                     help="camera elevation [deg] (default 22, or head-on for a planar surface)")
@@ -220,8 +223,14 @@ def main(argv):
             order = np.argsort(depth)           # far first (painter's algorithm)
             verts = [proj[polys[k], :2] for k in order]
             colors = cmap(norm(np.maximum(e[order], vmin)))
-            ax.add_collection(PolyCollection(verts, facecolors=colors, edgecolors="k",
-                                             linewidths=0.08))
+            if a.edges == "none":
+                # Face colour on the edges too: no hairline of the painter's
+                # order shows between neighbouring polygons.
+                ax.add_collection(PolyCollection(verts, facecolors=colors,
+                                                 edgecolors=colors, linewidths=0.15))
+            else:
+                ax.add_collection(PolyCollection(verts, facecolors=colors, edgecolors="k",
+                                                 linewidths=0.08))
             lo, hi = proj[:, :2].min(axis=0), proj[:, :2].max(axis=0)
             span = (hi - lo).max()*1.04
             mid = 0.5*(lo + hi)

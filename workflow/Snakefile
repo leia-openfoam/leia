@@ -566,7 +566,7 @@ rule report:
                 _run([_PY, os.path.join(_scripts, "render_davof_interfaces.py"),
                          STUDY_DIR, "--theme", THEME, "--models", "davof", "plicRDF",
                          "--resolutions", "40", "80", "160", "--font-size", "18",
-                         "--short-titles", "--suffix", "proposal"],
+                         "--short-titles", "--edges", "none", "--suffix", "proposal"],
                      "render_davof_interfaces.py (proposal variant)")
         # 1b. The SDPLS convergence + order tables are a DATA product that
         # docs/sdpls-level-set/.../sdplsLevelSet.tex \input{}s, not a slide, so
