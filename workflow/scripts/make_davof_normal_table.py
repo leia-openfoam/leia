@@ -286,6 +286,12 @@ def main(argv):
             row[f"R2_{m}"] = r2
             row[f"pairwise_{m}"] = " ".join(
                 "--" if q is None else f"{q:.2f}" for q in _pairwise(h, e))
+        # The orders over the three finest levels (the proposal's success
+        # criterion counts "the three finest of at least four refinements").
+        for m in ("E_L1_N", "E_L2_N", "E_POS_L2", "E_KAPPA_L2"):
+            e = [r[m] for r in recs]
+            p3 = _fit(h[-3:], e[-3:])[0] if len(recs) >= 3 else None
+            row[f"p3_{m}"] = p3
         order_rows.append(row)
     opath = os.path.join(tables, f"davof_normal_orders_{study}.csv")
     with open(opath, "w", newline="") as fh:
@@ -341,22 +347,59 @@ def main(argv):
         prop_rows.sort(key=lambda r: (src_order.index(r["alphaSource"])
                                       if r["alphaSource"] in src_order else 99,
                                       PROPOSAL_MODELS.index(r["model"])))
-        last_src = None
-        for r in prop_rows:
-            if last_src is not None and r["alphaSource"] != last_src:
-                fh.write("\\midrule\n")
-            last_src = r["alphaSource"]
+        def _pp(r, m):   # the order over all levels (over the three finest)
+            p3 = r.get(f"p3_{m}")
+            return _p(r.get(f"p_{m}")) + ("" if p3 is None else f" ({_p(p3)})")
+
+        def _write(label, r):
             model = "DAVOF" if r["model"] == "davof" else r["model"]
             px = r.get("p_E_POS_L2") if r.get("p_E_POS_L2") is not None else r.get("p_E_POS_L1")
             pk = r.get("p_E_KAPPA_L2") if r["model"] == "davof" else None
             ek = r.get("E_KAPPA_REL_L2_finest") if r["model"] == "davof" else None
-            fh.write(f"{SOURCE_LABEL.get(r['alphaSource'], r['alphaSource'])} & {model} & "
-                     f"{_p(r['p_E_L1_N'])} & {_p(r['p_E_L2_N'])} & "
+            fh.write(f"{label} & {model} & "
+                     f"{_pp(r, 'E_L1_N')} & {_pp(r, 'E_L2_N')} & "
                      f"{_num(r['E_L2_N_finest'], '{:.2e}')} & "
                      f"{_p(px)} & {_num(r.get('E_POS_L2_finest'), '{:.2e}')} & "
                      f"{_p(pk)} & {_num(ek, '{:.2e}')} \\\\\n")
+
+        # The comparators depend on alpha_k only. When every state of the
+        # table shares alpha_k (the ellipsoid ladder: quadratic faces keep the
+        # Detrixhe-Aslam cell fractions), their rows are identical to the digit
+        # and are printed once, after the DAVOF rows, under one label.
+        def _same(a, b):
+            for k in ("E_L2_N_finest", "p_E_L2_N", "p_E_L1_N", "E_POS_L2_finest"):
+                x, y = a.get(k), b.get(k)
+                if (x is None) != (y is None):
+                    return False
+                if x is not None and abs(x - y) > 1e-12*max(1.0, abs(x)):
+                    return False
+            return True
+        davof_rows = [r for r in prop_rows if r["model"] == "davof"]
+        comp = {}
+        for r in prop_rows:
+            if r["model"] != "davof":
+                comp.setdefault(r["model"], []).append(r)
+        collapsed = (len(davof_rows) > 1 and comp
+                     and all(len(v) == len(davof_rows) and all(_same(v[0], x) for x in v[1:])
+                             for v in comp.values()))
+        if collapsed:
+            for r in davof_rows:
+                _write(SOURCE_LABEL.get(r["alphaSource"], r["alphaSource"]), r)
+            fh.write("\\midrule\n")
+            first = True
+            for m in PROPOSAL_MODELS:
+                if m in comp:
+                    _write("both states ($\\alpha_k$ shared)" if first else "", comp[m][0])
+                    first = False
+        else:
+            last_src = None
+            for r in prop_rows:
+                if last_src is not None and r["alphaSource"] != last_src:
+                    fh.write("\\midrule\n")
+                last_src = r["alphaSource"]
+                _write(SOURCE_LABEL.get(r["alphaSource"], r["alphaSource"]), r)
         fh.write("\\bottomrule\n\\end{tabular}\n")
-    print(f"[davof] wrote {ppath}")
+    print(f"[davof] wrote {ppath}" + (" (comparator rows collapsed)" if collapsed else ""))
 
     # --- figures: one log-log panel per metric --------------------------------
     hs = sorted({r["h"] for recs in series.values() for r in recs})

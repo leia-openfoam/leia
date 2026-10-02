@@ -226,6 +226,18 @@ rule (pre-processing only, solver unchanged, fields re-initialised on the final
 mesh; `REFINE_LEVELS >= 1`, `N_CELLS` = the FINE count) -- README section
 "Static local refinement around the interface".
 
+### The DAVOF plane test on perturbed meshes (2026-10-02)
+
+`cases/davof/planeNormal3D/Allrun_perturbed vertex|column <amplitude>`. Column-wise
+perturbation (`workflow/scripts/perturb_columns.py`, faces stay planar): every DAVOF
+state recovers the plane to round-off. Vertex-wise perturbation (`leiaPerturbMesh`,
+faces warp): the scalar face fraction loses the plane (8 % of the normal at 0.1 h),
+the wetted area vector (`davofState::mVec`, filled by `quadraticFaces`) recovers it
+to 1e-13. The proposal states both (STATUS 10.12). Open: the first moment of the
+wetted face part for the explicit position on warped faces; `wettedSf_` in the
+Detrixhe-Aslam path; the realizability diagnostic of the plane indicator on
+non-cubic cells.
+
 ## Cluster (Lichtenberg, TU Darmstadt)
 
 Full, verified workflow in **[CLUSTER.md](CLUSTER.md)**; the site-independent

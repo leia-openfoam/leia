@@ -37,6 +37,9 @@ Foam::davofState::davofState(const fvMesh& mesh, const dictionary& dict)
         zeroGradientFvPatchScalarField::typeName
     ),
     alphaf_(mesh.nFaces(), Zero),
+    wettedSf_(mesh.nFaces(), Zero),
+    mVec_(mesh.nCells(), Zero),
+    hasWettedSf_(false),
     alphafOut_
     (
         IOobject
@@ -351,6 +354,14 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
     const vectorField& Cf = mesh_.faceCentres();
     const vectorField& Sf = mesh_.faceAreas();
 
+    // The wetted area vector: alpha_f S_f for every face first (the
+    // fallback faces keep it), the triangle sum below for the rest.
+    forAll(alphaf_, faceI)
+    {
+        wettedSf_[faceI] = alphaf_[faceI]*Sf[faceI];
+    }
+    hasWettedSf_ = true;
+
     label nFallback = 0;
     forAll(alphaf_, faceI)
     {
@@ -361,6 +372,7 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
         const scalar phif = surface.value(xf);
 
         scalar liqA = 0, totA = 0;
+        vector wet = Zero;
         bool fb = false;
         forAll(f, ip)
         {
@@ -384,11 +396,13 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
             if (tfb) { fb = true; break; }
             liqA += fr*triA;
             totA += triA;
+            wet += fr*(0.5*((p0 - xf) ^ (p1 - xf)));
         }
         if (fb) { ++nFallback; continue; }
         if (totA > VSMALL)
         {
             alphaf_[faceI] = min(max(liqA/totA, scalar(0)), scalar(1));
+            wettedSf_[faceI] = wet;
         }
     }
     nFaceFallback_ = returnReduce(nFallback, sumOp<label>());
@@ -660,6 +674,19 @@ void Foam::davofState::areaNormal()
             m[nei[faceI]] += contrib;
         }
     }
+    // The same sum with the wetted area vectors (exact on warped faces).
+    mVec_ = Zero;
+    if (hasWettedSf_)
+    {
+        forAll(Sf, faceI)
+        {
+            mVec_[own[faceI]] -= wettedSf_[faceI];
+            if (faceI < nInt)
+            {
+                mVec_[nei[faceI]] += wettedSf_[faceI];
+            }
+        }
+    }
     // A cell whose face fractions are all equal holds no interface (all wet,
     // all dry): its sum_f S_f vanishes only to round-off, which would leave a
     // ~1e-19 m^2 "wisp" in every bulk cell. Set m_c = 0 exactly there.
@@ -676,6 +703,7 @@ void Foam::davofState::areaNormal()
         if (lo == hi)
         {
             m[c] = Zero;
+            mVec_[c] = Zero;
         }
     }
     m_.correctBoundaryConditions();

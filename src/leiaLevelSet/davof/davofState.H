@@ -93,6 +93,15 @@ class davofState
 
     volScalarField alpha_;          // alpha.davof
     scalarField alphaf_;            // one value per polyMesh face
+    // The wetted area VECTOR per face: sum of the wetted fractions of the
+    // face's centroid triangles times their area vectors. Equal to
+    // alpha_f S_f on a planar face; on a warped face the two differ, and
+    // the Gauss identity m_c = -sum_f S_f^- holds only for the vector
+    // (measured 2026-10-02: the scalar loses a plane on vertex-perturbed
+    // hexahedra by 8 % of the normal at 0.1 h). Filled by quadraticFaces.
+    vectorField wettedSf_;
+    vectorField mVec_;              // m_c from the wetted area vectors
+    bool hasWettedSf_;
     surfaceScalarField alphafOut_;  // alphaf.davof (for writing)
     volVectorField m_;              // m.davof, the DAVOF area normal [m^2]
     volVectorField xS_;             // xS.davof, patch centroid [m]
@@ -221,6 +230,8 @@ public:
     const volVectorField& xS() const { return xS_; }
     const volScalarField& AS() const { return AS_; }
     const vectorField& mTet() const { return mTet_; }
+    const vectorField& mVec() const { return mVec_; }
+    bool hasWettedSf() const { return hasWettedSf_; }
     scalar maxAlphaClip() const { return maxAlphaClip_; }
 
     //- Write alpha.davof, alphaf.davof, m.davof, xS.davof, AS.davof

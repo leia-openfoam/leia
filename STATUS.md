@@ -5170,3 +5170,30 @@ to Lichtenberg (`/work/scratch/tm83tomy/leia-fluxproj`, branch `feature/flux-pro
 8. **Open.** 3Ddeformation on polyhedra (3 configs) is not measured with the projection. Raw data:
    `/work/scratch/tm83tomy/leia-fluxproj/studies/fluxProjectionGate3DshearPoly{,Clip}` on Lichtenberg
    (job ids in that worktree's `.my_jobs`).
+
+### 10.12 The plane test on perturbed hexahedra: planar faces exact, warped faces need the wetted area vector (2026-10-02)
+
+Asked by the panel review of the proposal (R3, R5: every static test so far ran on blockMesh hexahedra).
+`cases/davof/planeNormal3D/Allrun_perturbed vertex|column <amplitude>`; pre-registered prediction:
+round-off on any perturbed mesh, because the identity holds on any polyhedron. FALSIFIED in one half:
+
+1. **Column-wise perturbation** (`workflow/scripts/perturb_columns.py`: the same (dx, dy) for all points
+   above each other, boundary points fixed, 0.2 h and 0.3 h, skewness 0.41, every face planar):
+   `-expectExact` PASSES for detrixheAslam and quadraticFaces at 1e-12 (normal, position, consistency,
+   plane-cut alpha). planePhaseIndicator: normal 5e-12, consistency 5.6e-13, position 1e-12, but its
+   `MAX_VOL_DIFF_PLANE` diagnostic reads 5.4 on the irregular cells and fails the check: a diagnostic
+   defect of the plane-indicator path on non-cubic cells, not a DAVOF result (open).
+2. **Vertex-wise perturbation** (`leiaPerturbMesh -alpha 0.1|0.2 -seed 0`, faces warp): the SCALAR face
+   fraction loses the plane for every initialisation, E_LINF_N 0.080 (0.1 h) and 0.168 (0.2 h),
+   `max |m_c - sum caps|/h^2` 0.049 and 0.102, position 0.038 h and 0.065 h, while
+   `max |alpha - plane cut|` stays at 2e-15. Cause: on a warped face the wetted area vector
+   sum_t a_t S_t is not parallel to S_f, so alpha_f S_f cannot represent it; (1) holds only for the
+   vector. Fix measured the same day: `davofState::wettedSf_` (per-triangle wetted fractions times
+   triangle area vectors, filled by quadraticFaces) and `mVec_ = -sum_f S_f^-`; the test prints
+   `vector-state normal`: L2/Linf 6.6e-15 / 6.2e-14 (0.1 h), 1.1e-14 / 1.1e-13 (0.2 h), and
+   9.5e-15 / 7.9e-14 on the column mesh (identical to the scalar there).
+
+Consequence for the method (proposal, both versions, 2026-10-02): on non-planar faces the transported
+face quantity is the wetted area vector and, for the explicit position (2), its first moment: four
+scalars per face that reduce to alpha_f on a planar face. The first moment and the position on warped
+faces are not yet measured (open); the Detrixhe-Aslam path does not fill `wettedSf_` yet (open).

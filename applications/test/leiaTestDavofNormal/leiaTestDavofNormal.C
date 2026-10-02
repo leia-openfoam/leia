@@ -696,6 +696,20 @@ int main(int argc, char *argv[])
     // the list and would leave a reference dangling.
     const normResult rd = results[0];
 
+    // The vector state: m_c from the wetted area vectors of the faces
+    // (quadraticFaces only). Identical to m_c on planar faces; on warped
+    // faces the scalar fraction cannot represent the wetted area vector.
+    normResult rVec;
+    if (st.hasWettedSf())
+    {
+        rVec = evaluateNormals
+        (
+            "davofVec", mesh, st.mVec(), 1.0,
+            st.xS().primitiveField(), surface(), st.wispTol(),
+            nullptr, nullptr
+        );
+    }
+
     // Closure of the closed surface (round-off), tet/face consistency,
     // piecewise-linear patch area, alpha clipping.
     const vector sumM = gSum(st.m().primitiveField());
@@ -950,6 +964,10 @@ int main(int argc, char *argv[])
         << "plane realizability     : max |alphaPlane - alpha| = " << maxVolDiffPlane
         << ", max |A n - m_c|/h^2 = " << maxAreaDiffPlane << nl
         << "quadratic-face fallbacks: " << st.nFaceFallback() << nl
+        << "vector-state normal     : L2/Linf = "
+        << (st.hasWettedSf() ? rVec.L2 : -1.0) << " / "
+        << (st.hasWettedSf() ? rVec.Linf : -1.0)
+        << (st.hasWettedSf() ? "" : "  (n/a: not quadraticFaces)") << nl
         << "position (DAVOF foot pt): L2/Linf = " << rd.Pfoot2 << " / " << rd.Pfootinf
         << " m" << nl;
     for (const normResult& r : results)
