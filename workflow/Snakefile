@@ -564,7 +564,7 @@ rule report:
             # (davof_plic_<study>_proposal.{pdf,png}; make davof-proposal copies it).
             if STUDY == "ellipsoidNormal3D":
                 _run([_PY, os.path.join(_scripts, "render_davof_interfaces.py"),
-                         STUDY_DIR, "--theme", THEME, "--models", "davof", "plicRDF",
+                         STUDY_DIR, "--theme", THEME, "--models", "plicRDF", "davof",
                          "--resolutions", "40", "80", "160", "--font-size", "18",
                          "--short-titles", "--edges", "none", "--suffix", "proposal"],
                      "render_davof_interfaces.py (proposal variant)")
