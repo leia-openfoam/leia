@@ -305,7 +305,7 @@ bool Foam::functionObjects::psiConservationCSV::write()
     const scalarField& psiIn = psi_.primitiveField();
 
     // gSum(field*mesh.V().field()) on PRIMITIVE fields is the house form for a
-    // volume integral (gradPsiErrorCSV.C:176-182, advectionErrors.H:45,57): one
+    // volume integral (gradPsiErrorCSV.C:176-182, advectionErrors.H:53,65): one
     // MPI_Allreduce per integral, boundary faces excluded by construction (the
     // boundary contributes through BUDGET_FLUX and nowhere else).
     const scalar sumV = gSum(cellV);
@@ -424,7 +424,7 @@ bool Foam::functionObjects::psiConservationCSV::write()
 
     // The SECOND conserved quantity, by the measure the studies already report:
     // gSum(alpha V) on the registered phase indicator, exactly as
-    // advectionErrors.H:45,57 forms the volume error. Both indicators in the
+    // advectionErrors.H:53,65 forms the volume error. Both indicators in the
     // library set alpha = 1 where psi < 0 (heavisidePhaseIndicator.C:62-77 ends
     // in `alpha == 1 - alpha`; geometricPhaseIndicator.C:103-107), so this IS the
     // {psi < 0} phase volume -- SMEARED over epsilon = (nCells/2) max(1/deltaCoeffs)

@@ -58,7 +58,7 @@ solvers
 
     "Uext.*" { $@!VELOCITY_EXTENSION!@Uext; }
 
-    // anchoredEikonal redistancer fill solve (leiaRedistancedLevelSetFoam):
+    // anchoredEikonal redistancer fill solve (leiaLevelSetFoam):
     // ASYMMETRIC advection-diffusion linearization -> PBiCGStab/DILU
     // (never PCG/DIC).
     "psiDist.*"
@@ -83,6 +83,7 @@ velocityModel
 {
     type shear3D; 
     oscillation @!OSCILLATION!@;
+    fluxProjection @!FLUX_PROJECTION!@;   // none | helmholtz (polyhedral meshes, STATUS 11.25)
 }
 
 levelSet

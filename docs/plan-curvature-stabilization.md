@@ -59,6 +59,9 @@ QWLSR agree cell-for-cell to ~1e-13.
 > (STATUS.md 2026-08-27); the "117x collapse" of the first re-run was a
 > diagnostics-gate artifact (stale band + scoring at T - dt), fully retracted.
 > The 3D shear / deformation / poly rows above remain pending re-run.
+> CORRECTED 2026-10-01: the CFL 1.0 orders 2.38 / 3.54 carry the stale narrow band of the kinematic
+> SL solver (alpha with the band of psi^n); with the fix 6f63418a the same ladder gives 2.465 / 3.193,
+> the CFL 0.5 orders are unchanged (STATUS 11.23 item 7).
 
 **Curvature statics (exact SDF, |Sf|-weighted L2 on active faces):**
 - 2D circle: every classical delivery ≈ O(h^1.1). Cell-centred κ: O(h^1.07),

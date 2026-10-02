@@ -60,7 +60,7 @@ libs ("libleiafiniteVolume.so");
 // source, so one pass is first-order in practice. The same loop also
 // Picard-iterates the SDPLS source, which is re-linearized every pass
 // (fvmsdplsSource -> R(psi,U) on the current iterate) -- so >= 3.
-// Read by eulerianAdvection.C and by leiaRedistancedLevelSetFoam.C.
+// Read by eulerianAdvection.C (leiaLevelSetFoam).
 nDefCorr        @!N_DEF_CORR!@;
 
 // ************************************************************************* //

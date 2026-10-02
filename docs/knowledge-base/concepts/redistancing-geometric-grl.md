@@ -9,7 +9,7 @@ tags: [concept, part/advection]
 date: 2026-09-29
 date_settled: 2026-07-30
 decided_by: [config/redistanceCircle2D.yaml, config/redistanceStatic2D.yaml, config/bulkVortexGRL.yaml, config/vortexTriggerGRL.yaml, config/vortexThresholdGRL.yaml, config/benchVortexGRLfrozen.yaml]
-code: [src/leiaLevelSet/redistancer/planeFootWaveRedistancer.H, src/leiaLevelSet/redistancer/planeAnchors.H, src/leiaLevelSet/redistancer/anchoredEikonalRedistancer.H, src/leiaLevelSet/redistancer/pdeRedistancer.H, applications/solvers/leiaRedistancedLevelSetFoam, applications/test/leiaTestRedistance]
+code: [src/leiaLevelSet/redistancer/planeFootWaveRedistancer.H, src/leiaLevelSet/redistancer/planeAnchors.H, src/leiaLevelSet/redistancer/anchoredEikonalRedistancer.H, src/leiaLevelSet/redistancer/pdeRedistancer.H, applications/solvers/leiaLevelSetFoam, applications/test/leiaTestRedistance]
 sources: ["GRL article sec:method (L83-L340)", "GRL article sec:static and sec:idempotency (L355-L431)", "GRL article sec:negative (L448-L468)", "GRL deck slides 3/6 and 5/1 to 5/3", "GRL negative deck slides 2 to 7", "MC article redistancing item (L238-L250)", "MC article sec:frozen (L304-L341)", "PCS WP6 (L302-L344)", "PCS dead end 7 (L378-L381)", "PCT dead end 1 (L599-L604)", "METHOD 9 items 2 and 4 (L761-L770, L790-L794)", "DP L42-L56 and L488-L500"]
 ---
 # Geometric redistancing (GRL), the closed line
@@ -18,7 +18,7 @@ sources: ["GRL article sec:method (L83-L340)", "GRL article sec:static and sec:i
 
 ## What it is
 
-The GRL method restores the signed-distance property geometrically, from the planes the Detrixhe-Aslam phase indicator already reconstructs ([GRL article L50-L65](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex#L50-L65), [[models/phase-indicator]]). The Eulerian solver `leiaRedistancedLevelSetFoam` advects the level set in the form `ddt(psi) + div(v psi) - psi div(v) = 0` ([GRL article L86-L95](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex#L86-L95)). One event of `planeFootWave` has four parts ([GRL article sec:algorithm L310-L334](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex#L310-L334), `sec:algorithm`):
+The GRL method restores the signed-distance property geometrically, from the planes the Detrixhe-Aslam phase indicator already reconstructs ([GRL article L50-L65](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex#L50-L65), [[models/phase-indicator]]). The Eulerian solver `leiaRedistancedLevelSetFoam` (since 2026-09-30 `leiaLevelSetFoam` with `eulerian` advection and `velocityExtension none`, bit for bit the same, [[decisions/retire-redistanced-solver]]) advects the level set in the form `ddt(psi) + div(v psi) - psi div(v) = 0` ([GRL article L86-L95](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex#L86-L95)). One event of `planeFootWave` has four parts ([GRL article sec:algorithm L310-L334](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex#L310-L334), `sec:algorithm`):
 
 1. Plane per band cell. Each sign-change cell fits `psi_l = n_c . x + d_c` by least squares over itself and its face neighbours. The event normalises the plane: `delta_c(x) = (n_c . x + d_c)/abs(n_c)` ([L97-L133](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex#L97-L133), `sec:llsplanes`).
 2. Anchors. A band cell keeps its own plane distance and a foot point `f_c = x_c - D_c n_c`. The first ring gets the plicRDF-weighted mean of the adjacent donor planes ([L135-L166](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex#L135-L166), `sec:anchors`).
@@ -35,7 +35,7 @@ Transport without reinitialisation does not keep the distance property: the band
 
 - `planeFootWave`: [planeFootWaveRedistancer.H L29-L43](https://github.com/leia-openfoam/leia/blob/d1e3414/src/leiaLevelSet/redistancer/planeFootWaveRedistancer.H#L29-L43), `src/leiaLevelSet/redistancer/planeFootWaveRedistancer.H`; the shared planes: `src/leiaLevelSet/redistancer/planeAnchors.{H,C}`.
 - `PDE`: the mesh-relative pseudo-step `deltaTCoeff`, the frozen band and the Hamiltonian choice, [pdeRedistancer.H L69-L96](https://github.com/leia-openfoam/leia/blob/d1e3414/src/leiaLevelSet/redistancer/pdeRedistancer.H#L69-L96).
-- Solver `applications/solvers/leiaRedistancedLevelSetFoam`; unit test `applications/test/leiaTestRedistance`; cases `2DredistanceCircle` and `2DredistanceStatic` ([redistanceCircle2D.yaml L1-L29](https://github.com/leia-openfoam/leia/blob/d1e3414/config/redistanceCircle2D.yaml#L1-L29), [redistanceStatic2D.yaml L1-L30](https://github.com/leia-openfoam/leia/blob/d1e3414/config/redistanceStatic2D.yaml#L1-L30)).
+- Solver `applications/solvers/leiaLevelSetFoam` (`levelSet.advection.type eulerian`, `velocityExtension none`, `levelSet.redistancer.type`); `leiaRedistancedLevelSetFoam` until its retirement on 2026-09-30 ([[decisions/retire-redistanced-solver]]); unit test `applications/test/leiaTestRedistance`; cases `2DredistanceCircle` and `2DredistanceStatic` ([redistanceCircle2D.yaml L1-L29](https://github.com/leia-openfoam/leia/blob/d1e3414/config/redistanceCircle2D.yaml#L1-L29), [redistanceStatic2D.yaml L1-L30](https://github.com/leia-openfoam/leia/blob/d1e3414/config/redistanceStatic2D.yaml#L1-L30)).
 
 ## Evidence
 
@@ -96,3 +96,6 @@ The static gates record the band error of psi in the maximum norm only. The rows
 
 ### 2026-09-29
 Created from the GRL article, its tables and its two decks, the method-comparison article, the curvature plan and the combined-source plan. Pinned to d1e3414.
+
+### 2026-09-30
+The solver of the line is `leiaLevelSetFoam`; `leiaRedistancedLevelSetFoam` is retired, bit for bit the same ([[decisions/retire-redistanced-solver]]). The frontmatter `code` list names the new solver.

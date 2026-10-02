@@ -48,6 +48,7 @@ velocityModel
     omega (1 0 0);
     point (0.5 0.5 0.5);
     oscillation off;
+    fluxProjection @!FLUX_PROJECTION!@;   // none | helmholtz (polyhedral meshes, STATUS 11.25)
 }
 
 levelSet

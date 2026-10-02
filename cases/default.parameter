@@ -26,6 +26,11 @@ HL_DIRECTION    levelSet;   // d = psi/q, e = grad(psi)/q
 HL_SAMPLER      stencilFit; // least-squares fit of U over the cell-point-cell stencil
 OSCILLATION on;      // velocityModel: on = reversed test (cos(pi t/tau) factor),
                      // off = steady non-reversing vortex (sustained strain).
+FLUX_PROJECTION none; // velocityModel.fluxProjection: none | helmholtz. helmholtz projects the
+                     // prescribed face flux U(x_f) & S_f once (correctFlux): on polyhedral meshes
+                     // it is far from discretely divergence-free, and the SL projectedFlux trace
+                     // reconstructs its velocity from it. helmholtz in cases/<case>_poly.parameter
+                     // only (STATUS 11.25); none keeps every hex study bit-identical.
 END_REFERENCE none;  // none | translate: the exact end-time reference psiEnd/alphaEnd
                      // (workflow/scripts/write_end_reference.py); only cases/2Dtranslation
                      // references the token (2026-09-29). none = no reference, as before.
@@ -42,7 +47,7 @@ SL_STENCIL point;    // leiaSemiLagrangeLevelSetFoam departure-foot reconstructi
                      // neighbours < 9 for a 3D quadratic). face = cell-face-cell
                      // (polyhedra only: ~12-16 faces suffice, ~3-4x smaller/faster
                      // + better conditioned). Sweepable per SL config.
-REDISTANCER noRedistancing; // leiaRedistancedLevelSetFoam levelSet.redistancer.type:
+REDISTANCER noRedistancing; // leiaLevelSetFoam levelSet.redistancer.type:
                      // noRedistancing | PDE | planeFootWave | anchoredEikonal.
                      // Default keeps every non-redistancing study byte-identical;
                      // the GRL configs axes_override the sweep.
@@ -503,7 +508,7 @@ REDIST_HAMILTONIAN central; // PDE reinit |grad psi|: central (fvSchemes grad;
 REDIST_NITER 30;     // PDE pseudo-time iterations (reach = niter*deltaTCoeff*h).
 
 // Defect-correction passes of the EULERIAN psi advection loop
-// (controlDict nDefCorr; eulerianAdvection.C + leiaRedistancedLevelSetFoam.C).
+// (controlDict nDefCorr; eulerianAdvection.C).
 // >= 3: linearUpwind's second-order part is an explicit RHS source AND the
 // SDPLS source is re-linearized every pass. UNRELATED to the semi-Lagrangian
 // deferredCorrector's own nDefCorr, which lives in fvSolution.levelSet.

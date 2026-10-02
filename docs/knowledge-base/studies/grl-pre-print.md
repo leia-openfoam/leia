@@ -7,7 +7,7 @@ status: open
 part: advection
 tags: [study, part/advection]
 date: 2026-09-28
-code: [docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex, docs/geometrically-redistanced-levelset/grl-level-set-presentation/geometrically-redistanced-level-set.template.html, docs/geometrically-redistanced-levelset/grl-level-set-presentation/geometrically-redistanced-level-set-negative-results.template.html, src/leiaLevelSet/redistancer, applications/solvers/leiaRedistancedLevelSetFoam]
+code: [docs/geometrically-redistanced-levelset/grl-level-set-article/geometricallyRedistancedLevelSet.tex, docs/geometrically-redistanced-levelset/grl-level-set-presentation/geometrically-redistanced-level-set.template.html, docs/geometrically-redistanced-levelset/grl-level-set-presentation/geometrically-redistanced-level-set-negative-results.template.html, src/leiaLevelSet/redistancer, applications/solvers/leiaLevelSetFoam]
 sources: [GRL article, GRL decks, MC article sec:frozen, PCS dead end 7, IMPROVEMENTS.md, kb-raw B6]
 ---
 # The geometrically redistanced level set pre-print (draft)
@@ -30,7 +30,7 @@ The draft records the one geometric redistancing construction that passes a stat
 
 ## Where in the code
 
-`src/leiaLevelSet/redistancer/` (`noRedistancing`, `PDE`, `anchoredEikonal`, `planeFootWave`; trigger `interval`, `gradPsiThreshold`, `signedDistanceBounds`), `applications/solvers/leiaRedistancedLevelSetFoam`, `applications/test/leiaTestRedistance`, `cases/2DredistanceCircle`, `cases/2DredistanceStatic`.
+`src/leiaLevelSet/redistancer/` (`noRedistancing`, `PDE`, `anchoredEikonal`, `planeFootWave`; trigger `interval`, `gradPsiThreshold`, `signedDistanceBounds`), `applications/solvers/leiaLevelSetFoam` (`leiaRedistancedLevelSetFoam` until its retirement on 2026-09-30, [[decisions/retire-redistanced-solver]]), `applications/test/leiaTestRedistance`, `cases/2DredistanceCircle`, `cases/2DredistanceStatic`.
 
 ## Evidence
 
@@ -70,3 +70,6 @@ Created from the draft at 8867581, the two deck templates and the tables.
 
 ### 2026-09-29
 CORRECTED two details found by the advection writer: the trigger ablation is deck slide #/5/3, and the shape and volume errors agree at two of the four rungs, not three.
+
+### 2026-09-30
+The GRL studies run in `leiaLevelSetFoam`; `leiaRedistancedLevelSetFoam` is retired ([[decisions/retire-redistanced-solver]]). The deck slide on the solver names the new solver; the curated tables keep the old name in the `solver` column of the rows it produced.

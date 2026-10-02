@@ -1,5 +1,9 @@
 values
 {
+    // The prescribed face flux U(x_f) & S_f is far from discretely divergence-free on
+    // polyhedra; project it (velocityModel.fluxProjection, STATUS 11.25).
+    FLUX_PROJECTION ( helmholtz );
+
     PHASE_INDICATOR ( geometric detrixheAslam );
     solver (leiaLevelSetFoam);
 

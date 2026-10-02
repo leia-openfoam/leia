@@ -113,8 +113,8 @@ Sc(const volScalarField& nonLinearPart, const volScalarField& psi) const
 
     // psi^n is psi.oldTime(), NOT the psi argument.
     //
-    // All three call sites (eulerianAdvection, leiaRedistancedLevelSetFoam,
-    // alphaEqn.H) re-assemble this source inside an outer loop that has
+    // Both call sites (eulerianAdvection, alphaEqn.H; leiaRedistancedLevelSetFoam was a third
+    // until its retirement on 2026-09-30) re-assemble this source inside an outer loop that has
     // already overwritten psi -- nDefCorr (default 3) or the PIMPLE outer
     // correctors. Feeding the latest iterate psi^k into a MULTIPLICATIVE
     // factor turns that loop into the Picard iteration

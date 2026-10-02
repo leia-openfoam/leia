@@ -79,6 +79,8 @@ The mechanisms:
 | the stamp shows an edited clone that was not rebuilt | an untracked file made `gitCommit` read `cc79df4-dirty` while the banner read `...-gcc79df4` | [STATUS 10.2](https://github.com/leia-openfoam/leia/blob/d1e3414/STATUS.md#L3021-L3025), MEASURED |
 | the pre-launch check in practice | the clone's solver on `PATH`, stamps `g4015404` without `-dirty`, the new symbols in the libraries, a dry run of 70 jobs (2026-09-26) | [STATUS 11.12](https://github.com/leia-openfoam/leia/blob/d1e3414/STATUS.md#L3524-L3528), MEASURED |
 | a cancel from the ledger | the `leia-gcls` gate cancelled by 209 child ids from its ledger (2026-09-26) | [STATUS 11.12](https://github.com/leia-openfoam/leia/blob/d1e3414/STATUS.md#L3545-L3547), MEASURED |
+| OpenFOAM-v2606 on Lichtenberg needs two build passes | pass 1: 151 applications, 113 libraries, `icoFoam` missing, job exit code 0 (FFTW built after `etc/bashrc` was sourced); pass 2: 270 and 129, "Critical systems ok" | MEASURED, [STATUS 11.21](https://github.com/leia-openfoam/leia/blob/a177025d/STATUS.md#L4818-L4848), [CLUSTER.md](https://github.com/leia-openfoam/leia/blob/a177025d/CLUSTER.md#L64-L86) |
+| The development line runs on Lichtenberg with v2606 | clone `leia-dev`: the CI script passes; the repair gate through `profiles/slurm` matches the laptop's v2512 run in every column except the four volume sums (2.7e-12 column-scaled) | MEASURED, [STATUS 11.21](https://github.com/leia-openfoam/leia/blob/a177025d/STATUS.md#L4818-L4848) |
 
 ## Decisions
 
@@ -103,3 +105,6 @@ The mechanisms:
 
 ### 2026-09-29
 Created.
+
+### 2026-09-30
+OpenFOAM-v2606 on Lichtenberg (two passes, FFTW) and the new clone `leia-dev` on the development line (STATUS 11.21).

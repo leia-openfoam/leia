@@ -35,6 +35,17 @@ date: 2026-09-28
    the SL update unstable (the CLAUDE.md corollary). The production curvature `cellCentreInverse`
    is scored on the signed-distance ellipse and ellipsoid ([[cases/curvature-static-gates]]). The SL
    session has three tasks in [[sessions/sl-session-handover]].
+4. 2026-09-30 ([STATUS 11.22](https://github.com/leia-openfoam/leia/blob/6bd5b7b7/STATUS.md#L4859-L4939)): `leiaRedistancedLevelSetFoam` is retired; the
+   redistancing studies run in `leiaLevelSetFoam`, bit for bit the same
+   ([[decisions/retire-redistanced-solver]]). The kinematic semi-Lagrangian solver stays: the
+   `semiLagrangian` member of `leiaLevelSetFoam` has no `projectedFlux` trace.
+5. 2026-10-01 ([STATUS 11.23](https://github.com/leia-openfoam/leia/blob/d2984c5e/STATUS.md#L4947-L5055)): the kinematic SL solver computes the narrow band before
+   alpha, as its flow solver does (6f63418a; psi byte-identical in 27 pairs); the CFL 1.0 row of the
+   SL 2D convergence table is retracted ([[retractions/sl-stale-band-alpha-metrics]]).
+6. 2026-10-01 to 02 ([STATUS 11.24 to 11.25](https://github.com/leia-openfoam/leia/blob/2793c9a7/STATUS.md#L5057-L5172)): `L_INF_E_PSI` fixed in the
+   writer that also serves both two-phase solvers; the prescribed flux is projected on polyhedral
+   meshes ([[decisions/flux-projection-polyhedral]]). Large runs go to Lichtenberg, not the laptop
+   (author instruction 2026-10-01).
 
 ## What is open, in order
 
@@ -54,9 +65,19 @@ date: 2026-09-28
 3. Regenerate the `advConv2Dvortex` convergence CSV with the corrected script
    ([[retractions/advection-orders-3-2-factor]]); the translation table is regenerated (one-way,
    2026-09-29).
-4. OpenFOAM-v2606 on Lichtenberg (STATUS 10.6). Until it exists, the Lichtenberg clones
-   `leia` (the SDPLS session) and `leia-gcls` stay on `feature/gradient-controlled-level-set`,
-   which therefore stays on GitHub; `leia-curvature` is on `development`.
+4. DONE 2026-09-30 ([STATUS 11.21](https://github.com/leia-openfoam/leia/blob/a177025d/STATUS.md#L4818-L4848)): OpenFOAM-v2606 is built on Lichtenberg, and
+   the new clone `/work/scratch/tm83tomy/leia-dev` runs the development line on it through
+   `profiles/slurm`. Open: the clones `leia` (the SDPLS session) and `leia-gcls` still run v2512
+   binaries on `feature/gradient-controlled-level-set`, which stays on GitHub until their owners
+   move them; `leia-curvature` is on `development` with v2512 binaries.
+5. CI: `Build Tests` builds leia on OpenFOAM-v2606 at every push and pull request to `main` and
+   `development` ([[concepts/ci-build-tests]]); run `.github/scripts/ci-build-and-smoke.sh` before a push.
+6. Author decision: regenerate the curated tables of the kinematic SL solver ([STATUS 11.23](https://github.com/leia-openfoam/leia/blob/d2984c5e/STATUS.md#L4947-L5055)).
+   The stale narrow band is fixed (6f63418a); the CFL 1.0 row of the SL 2D convergence table is
+   retracted ([[retractions/sl-stale-band-alpha-metrics]]). 19 tables carry rows of this solver, 8 of them at CFL 0.8
+   or 1.0; the 2D ones run on the laptop in minutes, the 3D ones belong on Lichtenberg, and the SL
+   article belongs to the SL session (task T4 in [[sessions/sl-session-handover]]). The solver stays:
+   one kinematic solver per flow solver ([[decisions/kinematic-solver-per-flow-solver]]).
 
 ## Build progress of the vault (incremental, restart-safe)
 
@@ -87,6 +108,7 @@ hand (`.quartz/link-audit-2026-09-29.txt`).
 - The cluster clone `/work/scratch/tm83tomy/leia` belongs to the SDPLS session and is on the feature branch at 40c39d7; no job of this session runs there.
 - Never give psi a fixed value on a patch: the SL fit reads patch values as stencil data ([STATUS 11.19](https://github.com/leia-openfoam/leia/blob/537a6011/STATUS.md#L4202-L4226)).
 - Run a verification study with `--until solve`: the finalize rule overwrites curated figures and tables.
+- A clone that built a solver which `git pull` deletes keeps the untracked `Make/<WM_OPTIONS>/`, and `wmake` stops on it; `Allwmake` removes the one of `leiaRedistancedLevelSetFoam` ([STATUS 11.22](https://github.com/leia-openfoam/leia/blob/6bd5b7b7/STATUS.md#L4859-L4939)).
 
 ## Where the numbers live
 
@@ -102,3 +124,13 @@ Created with the vault.
 ### 2026-09-29
 The vault is complete (131 notes); the link review is done; publishing waits for the Pages setting.
 Rewritten for the merge into `development` and `main` and the results of 2026-09-29 (132 notes).
+
+### 2026-09-30
+OpenFOAM-v2606 on Lichtenberg and the CI (Build Tests) added to the open list (STATUS 11.21).
+The redistanced solver retired, the semi-Lagrangian pair measured (STATUS 11.22); open item 6 added.
+
+### 2026-10-01
+The stale band fixed and gated (STATUS 11.23); item 5 added; open item 6 replaced by the regeneration decision.
+
+### 2026-10-02
+Item 6 (STATUS 11.24 and 11.25).

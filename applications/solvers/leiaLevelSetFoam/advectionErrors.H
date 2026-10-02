@@ -28,9 +28,17 @@ void reportErrors
         {
             // and the sign of the signed distance didn't switch,
             // after the advection reversal, so cellI is a bulk
-            // cell at the final simulation time. 
-            if (Foam::sign(psi[cellI] == Foam::sign(psi0[cellI]))) 
-                ePhi[cellI] = 0; 
+            // cell at the final simulation time.
+            // (Was sign(psi == sign(psi0)): the comparison evaluated first,
+            // sign(0) = 1, so the guard was always true and ePhi was zeroed
+            // in EVERY bulk cell regardless of a sign switch. Fixed in the
+            // semi-Lagrangian copy on 2026-08-27 (84906ee4) and here on
+            // 2026-10-01; this file serves leiaLevelSetFoam, both two-phase
+            // solvers (leiaLevelSetTwoPhaseFoam/advectionErrors.H is a
+            // symlink to it) and, since 2026-10-01, also
+            // leiaSemiLagrangeLevelSetFoam, by the same kind of symlink.)
+            if (Foam::sign(psi[cellI]) == Foam::sign(psi0[cellI]))
+                ePhi[cellI] = 0;
             // This avoids the problem of maximal errors reported
             // away from the interface.
         }

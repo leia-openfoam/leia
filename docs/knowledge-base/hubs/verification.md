@@ -30,6 +30,7 @@ The rules are in [CLAUDE.md](https://github.com/leia-openfoam/leia/blob/8867581/
 | concept | [[concepts/wrong-setup-voids]] | settled | rename and re-run |
 | concept | [[concepts/bit-identity-and-inertness-gates]] | settled | compare_metrics_csv; a finished 0/ is not the initial state |
 | concept | [[concepts/cluster-provenance-and-binaries]] | settled | per-clone binaries; the ledger; ssh output |
+| concept | [[concepts/ci-build-tests]] | settled | Build Tests on OpenFOAM-v2606: build, every target, the 2Dtranslation smoke (2026-09-30) |
 | concept | [[concepts/log-classifier-and-waiters]] | settled | foam_log_state.sh; timeouts |
 | concept | [[concepts/data-archive-per-version]] | settled | the archive convention |
 | concept | [[concepts/advection-regression-set]] | settled | hex 2D, hex 3D, poly 3D |
@@ -48,3 +49,6 @@ The rules are in [CLAUDE.md](https://github.com/leia-openfoam/leia/blob/8867581/
 
 ### 2026-09-28
 Created.
+
+### 2026-09-30
+Added [[concepts/ci-build-tests]] (Build Tests on OpenFOAM-v2606).

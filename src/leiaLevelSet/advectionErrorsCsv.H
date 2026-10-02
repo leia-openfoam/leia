@@ -3,9 +3,9 @@
 
 Why this exists
 ---------------
-Three solvers write the SAME error table -- leiaLevelSetFoam,
-leiaRedistancedLevelSetFoam (which includes leiaLevelSetFoam's advectionErrors.H
-via `-I../leiaLevelSetFoam`) and leiaSemiLagrangeLevelSetFoam -- and each one
+Three solvers wrote the SAME error table -- leiaLevelSetFoam,
+leiaRedistancedLevelSetFoam (which included leiaLevelSetFoam's advectionErrors.H
+via `-I../leiaLevelSetFoam`; retired 2026-09-30) and leiaSemiLagrangeLevelSetFoam -- and each one
 carried its OWN copy of the header string. The comment in the semi-Lagrangian
 copy read "same columns as leiaLevelSetFoam.csv for direct comparison", which is
 a statement no compiler was checking.
@@ -20,6 +20,10 @@ So the header lives here, once. A solver that writes these rows includes this
 file and cannot disagree with the writer about what the columns are.
 
 Keep this in lockstep with the write block in advectionErrors.H.
+Since 2026-10-01 one advectionErrors.H (applications/solvers/leiaLevelSetFoam) serves
+all four solvers that write these rows: the two-phase solvers and leiaSemiLagrangeLevelSetFoam
+include it through symlinks. The semi-Lagrangian copy had kept a sign-test fix for five weeks
+that the shared file lacked (STATUS 11.24).
 \*---------------------------------------------------------------------------*/
 
 #ifndef advectionErrorsCsv_H
