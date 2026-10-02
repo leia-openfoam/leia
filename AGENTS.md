@@ -232,8 +232,9 @@ mesh; `REFINE_LEVELS >= 1`, `N_CELLS` = the FINE count) -- README section
 perturbation (`workflow/scripts/perturb_columns.py`, faces stay planar): every DAVOF
 state recovers the plane to round-off. Vertex-wise perturbation (`leiaPerturbMesh`,
 faces warp): the scalar face fraction loses the plane (8 % of the normal at 0.1 h),
-the wetted area vector (`davofState::mVec`, filled by `quadraticFaces`) recovers it
-to 1e-13. The proposal states both (STATUS 10.12). Open: the first moment of the
+the face-triangulation sum (`davofState::mTri`, the fan about Cf circulated over
+the face points, computed on the fly, nothing stored per face) recovers it to
+1e-13 and is the davof normal of the test; the scalar identity is a diagnostic. The proposal states both (STATUS 10.12). Open: the first moment of the
 wetted face part for the explicit position on warped faces; `wettedSf_` in the
 Detrixhe-Aslam path; the realizability diagnostic of the plane indicator on
 non-cubic cells.

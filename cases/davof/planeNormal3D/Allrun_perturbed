@@ -11,7 +11,10 @@
 # trips only its own realizability diagnostic). With warped faces the SCALAR
 # face fraction loses the plane (normal error 8 % at 0.1 h, 17 % at 0.2 h),
 # because the wetted area vector of a warped face is not parallel to S_f; the
-# wetted area VECTOR (davofState::mVec, quadraticFaces) recovers it to 1e-13.
+# face-triangulation sum (davofState::mTri: the fan about Cf circulated over
+# the face points, computed on the fly, nothing stored per face; both the
+# Detrixhe-Aslam and the quadratic path) recovers it to 1e-13 and is the
+# davof normal of the test; the scalar identity is printed as a diagnostic.
 cd "${0%/*}" || exit 1
 . "$WM_PROJECT_DIR/bin/tools/RunFunctions"
 mode=${1:-vertex}; amp=${2:-0.1}
@@ -29,6 +32,6 @@ for src in detrixheAslam quadraticFaces planePhaseIndicator; do
     foamDictionary -entry davof/alphaSource -set "$src" system/fvSolution > /dev/null
     leiaTestDavofNormal -alphaName alpha.water -expectExact > "log.leiaTestDavofNormal.$src" 2>&1
     echo "== $mode $amp h, alphaSource $src (exit $?) =="
-    grep -E "expectExact|vector-state|  davof  N_S" "log.leiaTestDavofNormal.$src" | cut -c1-160
+    grep -E "expectExact|alpha_f S_f identity|  davof  N_S" "log.leiaTestDavofNormal.$src" | cut -c1-160
 done
 foamDictionary -entry davof/alphaSource -set detrixheAslam system/fvSolution > /dev/null

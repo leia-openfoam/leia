@@ -93,15 +93,17 @@ class davofState
 
     volScalarField alpha_;          // alpha.davof
     scalarField alphaf_;            // one value per polyMesh face
-    // The wetted area VECTOR per face: sum of the wetted fractions of the
-    // face's centroid triangles times their area vectors. Equal to
-    // alpha_f S_f on a planar face; on a warped face the two differ, and
-    // the Gauss identity m_c = -sum_f S_f^- holds only for the vector
-    // (measured 2026-10-02: the scalar loses a plane on vertex-perturbed
-    // hexahedra by 8 % of the normal at 0.1 h). Filled by quadraticFaces.
-    vectorField wettedSf_;
-    vectorField mVec_;              // m_c from the wetted area vectors
-    bool hasWettedSf_;
+    // The area normal from the barycentric face triangulation: for every
+    // face the fan of triangles (x_f, p_i, p_{i+1}) over the face's own
+    // points, each triangle's wetted fraction times its area vector, summed
+    // into the owner (-) and neighbour (+) cells ON THE FLY during the
+    // surface-based initialisations; nothing is stored per face. Equal to
+    // -sum_f alpha_f S_f on planar faces; on a warped face the scalar
+    // fraction cannot represent the wetted area vector (measured
+    // 2026-10-02: 8 % normal error on a plane at 0.1 h vertex perturbation,
+    // the triangle sum 1e-13). areaNormal() uses it as m_c when available.
+    vectorField mTri_;
+    bool hasMTri_;
     surfaceScalarField alphafOut_;  // alphaf.davof (for writing)
     volVectorField m_;              // m.davof, the DAVOF area normal [m^2]
     volVectorField xS_;             // xS.davof, patch centroid [m]
@@ -187,7 +189,20 @@ public:
         const implicitSurface* analytic
     );
 
-    //- m_c = -sum_f alpha_f S_f^out
+    //- The wetted area vector of face faceI from the fan triangles
+    //  (x_f, p_i, p_{i+1}) over the face's points: sum_t a_t S_t with the
+    //  Detrixhe-Aslam fraction a_t of each triangle. Computed where it is
+    //  summed, never stored.
+    template<class PhiFace, class PhiPoint>
+    vector faceWettedAreaVector
+    (
+        const label faceI,
+        PhiFace&& phiFace,
+        PhiPoint&& phiPoint
+    ) const;
+
+    //- m_c = -sum_f alpha_f S_f^out, or the face-triangulation sum mTri_
+    //  when the state was initialised from a surface
     void areaNormal();
 
     //- max_c |m_c - mTet_c| / V_c^(2/3), reduced over ranks
@@ -230,8 +245,8 @@ public:
     const volVectorField& xS() const { return xS_; }
     const volScalarField& AS() const { return AS_; }
     const vectorField& mTet() const { return mTet_; }
-    const vectorField& mVec() const { return mVec_; }
-    bool hasWettedSf() const { return hasWettedSf_; }
+    const vectorField& mTri() const { return mTri_; }
+    bool hasMTri() const { return hasMTri_; }
     scalar maxAlphaClip() const { return maxAlphaClip_; }
 
     //- Write alpha.davof, alphaf.davof, m.davof, xS.davof, AS.davof

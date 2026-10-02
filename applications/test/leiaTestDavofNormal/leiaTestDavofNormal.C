@@ -696,15 +696,32 @@ int main(int argc, char *argv[])
     // the list and would leave a reference dangling.
     const normResult rd = results[0];
 
-    // The vector state: m_c from the wetted area vectors of the faces
-    // (quadraticFaces only). Identical to m_c on planar faces; on warped
-    // faces the scalar fraction cannot represent the wetted area vector.
-    normResult rVec;
-    if (st.hasWettedSf())
+    // The scalar identity -sum_f alpha_f S_f as a diagnostic next to the
+    // face-triangulation normal that the state uses when it was initialised
+    // from a surface: identical on planar faces, 8 % apart on a plane
+    // through vertex-perturbed hexahedra (2026-10-02). Computed here on the
+    // fly from alpha_f and S_f; nothing is stored.
+    normResult rAlpha;
+    if (st.hasMTri())
     {
-        rVec = evaluateNormals
+        vectorField mAlpha(mesh.nCells(), Zero);
+        const vectorField& SfAll = mesh.faceAreas();
+        const labelUList& ownAll = mesh.faceOwner();
+        const labelUList& neiAll = mesh.faceNeighbour();
+        const label nIntAll = mesh.nInternalFaces();
+        forAll(SfAll, faceI)
+        {
+            const vector contrib = st.alphaf()[faceI]*SfAll[faceI];
+            mAlpha[ownAll[faceI]] -= contrib;
+            if (faceI < nIntAll) mAlpha[neiAll[faceI]] += contrib;
+        }
+        forAll(mAlpha, c)
+        {
+            if (!st.isInterfaceCell(c)) mAlpha[c] = Zero;
+        }
+        rAlpha = evaluateNormals
         (
-            "davofVec", mesh, st.mVec(), 1.0,
+            "davofAlphaSf", mesh, mAlpha, 1.0,
             st.xS().primitiveField(), surface(), st.wispTol(),
             nullptr, nullptr
         );
@@ -964,10 +981,10 @@ int main(int argc, char *argv[])
         << "plane realizability     : max |alphaPlane - alpha| = " << maxVolDiffPlane
         << ", max |A n - m_c|/h^2 = " << maxAreaDiffPlane << nl
         << "quadratic-face fallbacks: " << st.nFaceFallback() << nl
-        << "vector-state normal     : L2/Linf = "
-        << (st.hasWettedSf() ? rVec.L2 : -1.0) << " / "
-        << (st.hasWettedSf() ? rVec.Linf : -1.0)
-        << (st.hasWettedSf() ? "" : "  (n/a: not quadraticFaces)") << nl
+        << "alpha_f S_f identity    : L2/Linf = "
+        << (st.hasMTri() ? rAlpha.L2 : rd.L2) << " / "
+        << (st.hasMTri() ? rAlpha.Linf : rd.Linf)
+        << (st.hasMTri() ? "  (the davof row uses the face-triangulation sum)" : "  (= davof)") << nl
         << "position (DAVOF foot pt): L2/Linf = " << rd.Pfoot2 << " / " << rd.Pfootinf
         << " m" << nl;
     for (const normResult& r : results)

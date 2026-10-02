@@ -5197,3 +5197,21 @@ Consequence for the method (proposal, both versions, 2026-10-02): on non-planar 
 face quantity is the wetted area vector and, for the explicit position (2), its first moment: four
 scalars per face that reduce to alpha_f on a planar face. The first moment and the position on warped
 faces are not yet measured (open); the Detrixhe-Aslam path does not fill `wettedSf_` yet (open).
+
+Reworked the same day on the author's instruction (no per-face storage): the wetted face area is
+computed from the barycentric fan, the triangles (x_f, p_i, p_{i+1}) picked up by circulating over the
+face's own points with its centre x_f, each triangle's wetted fraction times its area vector summed
+straight into the owner and neighbour cells during the initialisation (`davofState::mTri_`, both the
+Detrixhe-Aslam path via `faceWettedAreaVector` and the quadratic path, which replaces the DA triangle
+contribution of every face whose quadratic cut succeeds). `areaNormal()` uses that sum as m_c whenever
+the state came from a surface; the scalar identity -sum_f alpha_f S_f is printed by the test as
+`alpha_f S_f identity` (identical on planar faces). The per-face vector field of the first version is
+gone.
+Measured after the rework (vertex-perturbed 8^3 plane, `Allrun_perturbed vertex 0.1|0.2`): the davof
+normal from the fan sum E_LINF_N 3.3e-14 / 6.2e-14 at 0.1 h (Detrixhe-Aslam / quadratic faces) and
+1.8e-13 / 1.1e-13 at 0.2 h, consistency against the tet sum 1e-15, while the scalar identity reads
+0.080 and 0.168; column 0.3 h and the Cartesian Allrun unchanged (3/3). `-expectExact` still fails on
+the warped meshes through the POSITION: `planePosition()` uses sum_f alpha_f (x_f - x_c).S_f, which
+is inexact on a warped face; with the exact normal the position error drops from 0.038 h to 0.0037 h
+(the realizability diagnostics 0.004 / 0.0076 follow from it). Next: the first moment per fan
+triangle (the wet polygon's centroid of each triangle) in the same loop, nothing stored.

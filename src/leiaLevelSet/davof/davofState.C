@@ -37,9 +37,8 @@ Foam::davofState::davofState(const fvMesh& mesh, const dictionary& dict)
         zeroGradientFvPatchScalarField::typeName
     ),
     alphaf_(mesh.nFaces(), Zero),
-    wettedSf_(mesh.nFaces(), Zero),
-    mVec_(mesh.nCells(), Zero),
-    hasWettedSf_(false),
+    mTri_(mesh.nCells(), Zero),
+    hasMTri_(false),
     alphafOut_
     (
         IOobject
@@ -283,6 +282,33 @@ Foam::scalar Foam::davofState::faceFraction
 }
 
 
+template<class PhiFace, class PhiPoint>
+Foam::vector Foam::davofState::faceWettedAreaVector
+(
+    const label faceI,
+    PhiFace&& phiFace,
+    PhiPoint&& phiPoint
+) const
+{
+    const pointField& points = mesh_.points();
+    const face& f = mesh_.faces()[faceI];
+    const point& xf = mesh_.faceCentres()[faceI];
+    const scalar phif = phiFace(faceI);
+
+    vector wet = Zero;
+    forAll(f, ip)
+    {
+        const label ip1 = f.nextLabel(ip);
+        const point& p0 = points[f[ip]];
+        const point& p1 = points[ip1];
+        const vector St = 0.5*((p0 - xf) ^ (p1 - xf));
+        if (mag(St) <= VSMALL) continue;
+        wet += davof::triNegativeFraction(phif, phiPoint(f[ip]), phiPoint(ip1))*St;
+    }
+    return wet;
+}
+
+
 void Foam::davofState::fillAlphafOut()
 {
     scalarField& in = alphafOut_.primitiveFieldRef();
@@ -338,6 +364,27 @@ void Foam::davofState::computeFromImplicitSurface(const implicitSurface& surface
             [&](const label p) { return psiP[p]; }
         );
     }
+    // The area normal from the face triangulation, summed on the fly:
+    // the same fan triangles as faceFraction, their wetted area vectors
+    // into the owner (outward) and the neighbour (inward).
+    {
+        const labelUList& own = mesh_.faceOwner();
+        const labelUList& nei = mesh_.faceNeighbour();
+        const label nInt = mesh_.nInternalFaces();
+        mTri_ = Zero;
+        forAll(alphaf_, faceI)
+        {
+            const vector wet = faceWettedAreaVector
+            (
+                faceI,
+                [&](const label f) { return psiF[f]; },
+                [&](const label p) { return psiP[p]; }
+            );
+            mTri_[own[faceI]] -= wet;
+            if (faceI < nInt) mTri_[nei[faceI]] += wet;
+        }
+        hasMTri_ = true;
+    }
     alpha_.correctBoundaryConditions();
     fillAlphafOut();
 }
@@ -354,13 +401,15 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
     const vectorField& Cf = mesh_.faceCentres();
     const vectorField& Sf = mesh_.faceAreas();
 
-    // The wetted area vector: alpha_f S_f for every face first (the
-    // fallback faces keep it), the triangle sum below for the rest.
-    forAll(alphaf_, faceI)
-    {
-        wettedSf_[faceI] = alphaf_[faceI]*Sf[faceI];
-    }
-    hasWettedSf_ = true;
+    // mTri_ holds the Detrixhe-Aslam triangle sum of
+    // computeFromImplicitSurface; every face whose quadratic cut succeeds
+    // replaces its DA triangle contribution by the quadratic one (both
+    // from the same fan about x_f, nothing stored per face).
+    const labelUList& own = mesh_.faceOwner();
+    const labelUList& nei = mesh_.faceNeighbour();
+    const label nInt = mesh_.nInternalFaces();
+    scalarField psiPq(P.size());
+    forAll(P, i) psiPq[i] = surface.value(P[i]);
 
     label nFallback = 0;
     forAll(alphaf_, faceI)
@@ -402,7 +451,14 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
         if (totA > VSMALL)
         {
             alphaf_[faceI] = min(max(liqA/totA, scalar(0)), scalar(1));
-            wettedSf_[faceI] = wet;
+            const vector wetDA = faceWettedAreaVector
+            (
+                faceI,
+                [&](const label fi) { return surface.value(Cf[fi]); },
+                [&](const label p) { return psiPq[p]; }
+            );
+            mTri_[own[faceI]] += wetDA - wet;
+            if (faceI < nInt) mTri_[nei[faceI]] -= wetDA - wet;
         }
     }
     nFaceFallback_ = returnReduce(nFallback, sumOp<label>());
@@ -674,18 +730,12 @@ void Foam::davofState::areaNormal()
             m[nei[faceI]] += contrib;
         }
     }
-    // The same sum with the wetted area vectors (exact on warped faces).
-    mVec_ = Zero;
-    if (hasWettedSf_)
+    // The face-triangulation sum, when the state was initialised from a
+    // surface, is the area normal: identical on planar faces, exact where
+    // the scalar identity is not (warped faces).
+    if (hasMTri_)
     {
-        forAll(Sf, faceI)
-        {
-            mVec_[own[faceI]] -= wettedSf_[faceI];
-            if (faceI < nInt)
-            {
-                mVec_[nei[faceI]] += wettedSf_[faceI];
-            }
-        }
+        m = mTri_;
     }
     // A cell whose face fractions are all equal holds no interface (all wet,
     // all dry): its sum_f S_f vanishes only to round-off, which would leave a
@@ -703,7 +753,7 @@ void Foam::davofState::areaNormal()
         if (lo == hi)
         {
             m[c] = Zero;
-            mVec_[c] = Zero;
+            mTri_[c] = Zero;
         }
     }
     m_.correctBoundaryConditions();
