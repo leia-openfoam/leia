@@ -155,6 +155,32 @@ inline scalar faceCut
 }
 
 
+//- The wetted area vector of cellI for the surface phi, in the convention of
+//  the state's m_c = -sum_f alpha_f S_f^out (owner: -wet, neighbour: +wet).
+template<class PhiAt>
+inline vector cellWettedAreaVector
+(
+    const fvMesh& mesh,
+    const label cellI,
+    PhiAt&& phi
+)
+{
+    const labelUList& own = mesh.faceOwner();
+    const labelList& cFaces = mesh.cells()[cellI];
+    vector m(Zero);
+    label nfb = 0;
+    forAll(cFaces, i)
+    {
+        const label faceI = cFaces[i];
+        vector wet(Zero);
+        scalar M = 0;
+        faceCut(mesh, faceI, phi, wet, M, nfb);
+        m += (own[faceI] == cellI) ? -wet : wet;
+    }
+    return m;
+}
+
+
 //- sum_f |S_f| alpha_f^phi over the faces of cellI (the anchoring quantity of
 //  the paraboloidFaces arm).
 template<class PhiAt>
@@ -309,15 +335,17 @@ inline scalar solveOffset
 }
 
 
-//- Reference face fraction of faceI for an exact surface s: the quadratic
+//- Reference face fraction of faceI for an exact signed function phi
+//  (x -> scalar, negative in the liquid): the quadratic
 //  cut on every fan triangle subdivided `levels` times (4^levels
 //  sub-triangles; the reference error is 4^levels times below the
 //  unsubdivided quadratic cut, which is itself O(h^2) as a fraction).
-inline scalar refFaceFraction
+template<class PhiAt>
+inline scalar refFaceFractionPhi
 (
     const fvMesh& mesh,
     const label faceI,
-    const implicitSurface& s,
+    PhiAt&& phi,
     const label levels,
     label& nFallback
 )
@@ -329,8 +357,8 @@ inline scalar refFaceFraction
             {
                 const scalar ph[6] =
                 {
-                    s.value(a), s.value(b), s.value(c),
-                    s.value(0.5*(a + b)), s.value(0.5*(b + c)), s.value(0.5*(c + a))
+                    phi(a), phi(b), phi(c),
+                    phi(0.5*(a + b)), phi(0.5*(b + c)), phi(0.5*(c + a))
                 };
                 bool fb = false;
                 scalar fr = triQuadraticNegativeFraction(a, b, c, ph, fb);
@@ -361,7 +389,25 @@ inline scalar refFaceFraction
         liqA += rec(xf, p0, p1, levels);
         totA += triA;
     }
-    return (totA > VSMALL) ? liqA/totA : (s.value(xf) < 0 ? scalar(1) : scalar(0));
+    return (totA > VSMALL) ? liqA/totA : (phi(xf) < 0 ? scalar(1) : scalar(0));
+}
+
+
+//- The reference for an implicitSurface s (the quadratic cut of s on every
+//  fan triangle subdivided `levels` times).
+inline scalar refFaceFraction
+(
+    const fvMesh& mesh,
+    const label faceI,
+    const implicitSurface& s,
+    const label levels,
+    label& nFallback
+)
+{
+    return refFaceFractionPhi
+    (
+        mesh, faceI, [&](const point& x) { return s.value(x); }, levels, nFallback
+    );
 }
 
 

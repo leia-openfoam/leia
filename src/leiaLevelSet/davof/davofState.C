@@ -40,6 +40,7 @@ Foam::davofState::davofState(const fvMesh& mesh, const dictionary& dict)
     mTri_(mesh.nCells(), Zero),
     momentTri_(mesh.nCells(), Zero),
     hasMTri_(false),
+    positionFromVolume_(false),
     alphafOut_
     (
         IOobject
@@ -863,50 +864,91 @@ void Foam::davofState::planePosition()
         // The plane through the cell on the Detrixhe-Aslam tets: the plane is
         // linear, so the tet fractions and zero sets are exact for it.
         const point& xc = C[c];
-        const scalar phic = -p[c];
-        auto phiAt = [&](const point& x) -> scalar
-        {
-            return ((x - xc) & n) - p[c];
-        };
+        const labelList& cFaces = cells[c];
         scalar liquidVol = 0, totalVol = 0, as = 0;
         vector mt(Zero), xs(Zero);
-        const labelList& cFaces = cells[c];
-        forAll(cFaces, cf)
+        auto cutPlane = [&](const scalar pp)
         {
-            const label faceI = cFaces[cf];
-            const face& f = faces[faceI];
-            const point& xf = Cf[faceI];
-            const scalar phif = phiAt(xf);
-            forAll(f, ip)
+            const scalar phic = -pp;
+            auto phiAt = [&](const point& x) -> scalar
             {
-                const label ip1 = f.nextLabel(ip);
-                const point& p0 = points[f[ip]];
-                const point& p1 = points[ip1];
-                const scalar vol = mag(((xf - xc) ^ (p0 - xc)) & (p1 - xc))/6.0;
-                if (vol <= VSMALL) continue;
-                const scalar phi0 = phiAt(p0);
-                const scalar phi1 = phiAt(p1);
-                liquidVol += davof::tetNegativeFraction(phic, phif, phi0, phi1)*vol;
-                totalVol += vol;
-                const point x[4] = {xc, xf, p0, p1};
-                const scalar ph[4] = {phic, phif, phi0, phi1};
-                vector av;
-                point cen;
-                scalar a;
-                if (davof::tetZeroSet(x, ph, av, cen, a) > 0)
+                return ((x - xc) & n) - pp;
+            };
+            liquidVol = 0; totalVol = 0; as = 0;
+            mt = Zero; xs = Zero;
+            forAll(cFaces, cf)
+            {
+                const label faceI = cFaces[cf];
+                const face& f = faces[faceI];
+                const point& xf = Cf[faceI];
+                const scalar phif = phiAt(xf);
+                forAll(f, ip)
                 {
-                    mt += av;
-                    as += a;
-                    xs += a*cen;
+                    const label ip1 = f.nextLabel(ip);
+                    const point& p0 = points[f[ip]];
+                    const point& p1 = points[ip1];
+                    const scalar vol = mag(((xf - xc) ^ (p0 - xc)) & (p1 - xc))/6.0;
+                    if (vol <= VSMALL) continue;
+                    const scalar phi0 = phiAt(p0);
+                    const scalar phi1 = phiAt(p1);
+                    liquidVol += davof::tetNegativeFraction(phic, phif, phi0, phi1)*vol;
+                    totalVol += vol;
+                    const point x[4] = {xc, xf, p0, p1};
+                    const scalar ph[4] = {phic, phif, phi0, phi1};
+                    vector av;
+                    point cen;
+                    scalar a;
+                    if (davof::tetZeroSet(x, ph, av, cen, a) > 0)
+                    {
+                        mt += av;
+                        as += a;
+                        xs += a*cen;
+                    }
                 }
+            }
+        };
+        cutPlane(p[c]);
+        // The realizability diagnostics refer to the EXPLICIT plane.
+        const scalar apExplicit = (totalVol > VSMALL) ? liquidVol/totalVol : alpha_[c];
+        maxVolDiffPlane_ = max(maxVolDiffPlane_, mag(apExplicit - alpha_[c]));
+        maxAreaDiffPlane_ =
+            max(maxAreaDiffPlane_, mag(mt - m_[c])/Foam::pow(V[c], 2.0/3.0));
+        if (positionFromVolume_ && totalVol > VSMALL)
+        {
+            // The plane positioned by alpha_c: bisection on the tet cut
+            // (increasing in p), the explicit position as the first bracket
+            // centre, widened when the plane has left the cell.
+            const scalar h = Foam::cbrt(V[c]);
+            const scalar target = alpha_[c]*totalVol;
+            scalar lo = p[c] - h, hi = p[c] + h;
+            cutPlane(lo);
+            scalar gLo = liquidVol - target;
+            cutPlane(hi);
+            scalar gHi = liquidVol - target;
+            for (label w = 0; w < 6 && gLo*gHi > 0; ++w)
+            {
+                lo -= h; hi += h;
+                cutPlane(lo); gLo = liquidVol - target;
+                cutPlane(hi); gHi = liquidVol - target;
+            }
+            if (gLo*gHi <= 0)
+            {
+                scalar pm = p[c];
+                for (label it = 0; it < 200 && (hi - lo) > 1e-14*h; ++it)
+                {
+                    pm = 0.5*(lo + hi);
+                    cutPlane(pm);
+                    const scalar g = liquidVol - target;
+                    if (g == 0) break;
+                    if (g*gLo > 0) { lo = pm; gLo = g; } else { hi = pm; gHi = g; }
+                }
+                p[c] = pm;
+                cutPlane(p[c]);
             }
         }
         ap[c] = (totalVol > VSMALL) ? liquidVol/totalVol : alpha_[c];
         Ap[c] = as;
         xp[c] = (as > VSMALL) ? xs/as : (xc + p[c]*n);
-        maxVolDiffPlane_ = max(maxVolDiffPlane_, mag(ap[c] - alpha_[c]));
-        maxAreaDiffPlane_ =
-            max(maxAreaDiffPlane_, mag(mt - m_[c])/Foam::pow(V[c], 2.0/3.0));
     }
     maxVolDiffPlane_ = returnReduce(maxVolDiffPlane_, maxOp<scalar>());
     maxAreaDiffPlane_ = returnReduce(maxAreaDiffPlane_, maxOp<scalar>());

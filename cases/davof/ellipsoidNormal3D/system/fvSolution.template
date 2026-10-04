@@ -71,6 +71,18 @@ davof
     // paraboloidPlane | paraboloidFaces | paraboloidVolume; the paraboloid
     // arms take the ring tensor from the first curvature model.
     regenerate      @!DAVOF_REGEN_ARM!@;
+    // Regenerations applied in sequence (the iterated zero-step test of
+    // 2026-10-05; leiaTestDavofRegenIter.csv per iteration).
+    regenerateIterations @!DAVOF_REGEN_ITER!@;
+    // own: one value per face (the owner cell's cut) to both cells, as the
+    // transport's single-valued face; average; cell (each its own view).
+    regenerateFeedback @!DAVOF_REGEN_FEEDBACK!@;
+    // Refit the ring tensor on the regenerated state before every further
+    // regeneration (true: the loop of the transport; false: frozen tensor).
+    regenerateRefit @!DAVOF_REGEN_REFIT!@;
+    // volume: the state's plane positioned by alpha_k (the flux plane);
+    // explicit: the explicit position (2), finding (v).
+    regenerateOrigin @!DAVOF_REGEN_ORIGIN!@;
 
     curvature
     {

@@ -130,6 +130,13 @@ class davofState
     // alphaf_ holds the owner's view only, so areaNormal() must not take a
     // uniform owner view for a bulk cell there.
     boolList regenerated_;
+    // planePosition(): false (default) the explicit position (2); true the
+    // plane positioned by alpha_c along the recovered normal (bisection on
+    // the Detrixhe-Aslam tet cut, exact for a plane), the explicit one as
+    // the initial guess, as the transport's flux plane (CCS from the closed
+    // form, 2026-10-04); the realizability diagnostics then refer to the
+    // explicit plane still.
+    bool positionFromVolume_;
 
     //- Cell fractions and zero-set patches of cellI from vertex values given
     //  by phiCell(c), phiFace(c, f), phiPoint(c, p).
@@ -248,6 +255,9 @@ public:
     //  m_c are the realizability diagnostics (round-off for a plane, O(h^2)
     //  for a curved surface whose state no single plane realizes).
     void planePosition();
+
+    void setPositionFromVolume(const bool b) { positionFromVolume_ = b; }
+    bool positionFromVolume() const { return positionFromVolume_; }
 
     scalar maxVolDiffPlane() const { return maxVolDiffPlane_; }
     scalar maxAreaDiffPlane() const { return maxAreaDiffPlane_; }

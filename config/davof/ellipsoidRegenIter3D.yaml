@@ -1,0 +1,100 @@
+# DAVOF: the ITERATED zero-step regeneration (ellipsoid) (plan of 2026-10-05, item 6
+# of the third realistic review of the DFG proposal: does the per-step re-sampling
+# of the face fractions from the clipping surface accumulate?). The regeneration
+# map of ellipsoidRegeneration3D.yaml (recover the normal (1), the state's plane and the ring tensor from
+# the face fractions, build the clipping surface, re-cut the faces) is applied K
+# times; the face-fraction error against the FIXED exact reference is recorded
+# after every application (leiaTestDavofRegenIter.csv). At small Courant number the
+# transport update tends to this map applied to its own output.
+#
+# Arms (DAVOF_REGEN_ARM): plane; paraboloidFaces (one scalar, the total wetted face
+#   area: the anchoring of finding (v) of the proposal); paraboloidVector (three
+#   scalars, the offset and the in-plane position of the vertex, so that the
+#   paraboloid's own wetted area vector equals the state's m_c; Newton from the
+#   scalar anchoring, failures counted in N_NO_BRACKET).
+# Feedback (DAVOF_REGEN_FEEDBACK): own = one value per face, the owner cell's cut,
+#   as the transport's single-valued face (an inactive cell does not define a
+#   face); cell = every cell keeps its own view, the cells couple only through the
+#   ring tensor.
+# Origin (DAVOF_REGEN_ORIGIN volume): the state's plane is positioned by alpha_k
+#   along the recovered normal (the explicit position (2) as the initial guess), the
+#   flux plane of the transport (CCS from the closed form, 2026-10-04). MEASURED
+#   2026-10-05: the explicit position itself amplifies the realizability defect by
+#   -2 per application (eq. (2) is three times as sensitive as a volume match), and
+#   the plane arm explodes within ten iterations with it.
+# Refit (DAVOF_REGEN_REFIT true): the ring tensor is refitted on the regenerated
+#   state before every application. MEASURED 2026-10-05: the drift of the one-scalar
+#   arm is the same with the tensor frozen.
+# Active set: the interface set of the original state (frozen, the scoring set),
+#   less the cells whose current normal is below the wisp threshold; they keep their
+#   fractions. The displaced-face cut at k = 1 (E_ALPHAF_SHIFT_* in
+#   leiaTestDavofRegen.csv): the faces translated by -0.5, -0.25, +0.25, +0.5 h
+#   along the cell normal, cut against the cell's surface, against the exact
+#   fraction of the displaced face.
+#
+# SMOKE 2026-10-05 (sphere, N = 20 and 40, K = 50, quadraticFaces, run BEFORE this
+# ladder; FINDINGS.md of the article folder):
+#   plane/cell is an exact fixed point (every digit constant over 50 iterations);
+#   plane/own drifts (the O(h) mismatch of neighbouring planes enters through the
+#   shared faces). paraboloidFaces (own, cell and average feedback, tensor refitted
+#   or frozen): E_ALPHAF_L1 grows LINEARLY with k; the increment per iteration is
+#   1.7e-4 at N = 20 and 4.5e-5 at N = 40 (ratio 3.8: O(h^2)) and of the size of
+#   E(1); the normal rotates by O((h/R)^2) per application. Cause: the mean normal of
+#   a paraboloid patch equals its axis only when the vertex sits at the patch
+#   centroid; the one-scalar anchoring leaves the vertex at the plane polygon's
+#   centroid. paraboloidVector/cell lowers the drift to a factor 4.6 over 50
+#   iterations at N = 20 (from 30) but the Newton solve fails in 11 % of the cells
+#   and the map is not a fixed point; paraboloidVector/own diverges. The prediction
+#   of the plan of 2026-10-05 ("paraboloidFaces saturates, E(K)/E(1) <= 2") is
+#   therefore FALSIFIED on the smoke run, before this ladder.
+#
+# PREDICTIONS for this ladder (pre-registered 2026-10-05, before its first run):
+#   P1   plane/cell: E_ALPHAF(k) constant to round-off at every rung.
+#   P1'  plane/own: the increment per iteration d = (E(K) - E(1))/(K - 1) is first
+#        order in h over the ladder.
+#   P2'  paraboloidFaces, both feedbacks: d is second order in h (L1 order 1.8 to
+#        2.2 over the ladder), with d/E(1) between 0.5 and 2 at every rung; the
+#        growth factor of the normal tends to 1 from above.
+#   P2'' paraboloidVector/cell: d at most one fifth of paraboloidFaces' at every
+#        rung and at least second order in h; the share of Newton failures falls
+#        with N. paraboloidVector/own: no prediction (diverged on the smoke run).
+#   P4   displaced faces at k = 1: second order in L1 at +-0.25 h and +-0.5 h for
+#        both paraboloid arms, first order for the plane; the constant at 0.5 h at
+#        most four times the one at delta = 0.
+# A falsified line is reported as such (STATUS 10.14, FINDINGS.md).
+
+study_name: ellipsoidRegenIter3D
+studies_dir: studies/davof
+case: davof/ellipsoidNormal3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestDavofNormal
+theme:  davof
+
+setfields_args: "-alphaName alpha.water"
+
+# The serial solve under profiles/slurm: an N = 160 regeneration case needs more
+# than the profile's 4000 MB; K regenerations of the Newton arm at N = 160 take
+# hours (about 60 s per application).
+solve_mem_mb: 8000
+solve_runtime: 1440
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  DAVOF_ALPHA_SOURCE: [quadraticFaces]
+  DAVOF_REGEN_ARM: [plane, paraboloidFaces, paraboloidVector]
+  DAVOF_REGEN_FEEDBACK: [own, cell]
+  DAVOF_REGEN_ITER: [500]
+  DAVOF_REGEN_ORIGIN: [volume]
+  DAVOF_REGEN_REFIT: [true]
+  DAVOF_CURV_MODEL_1: [normalsOnly]
+  DAVOF_CURV_MODEL_2: [none]
+  DAVOF_CROSS_CHECK: [none]
+  DAVOF_WISP_TOL: [1e-3]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

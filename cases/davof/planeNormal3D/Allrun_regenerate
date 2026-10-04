@@ -5,7 +5,9 @@
 # so the paraboloids are the plane -- and leiaTestDavofNormal -expectExact
 # -regenerate <arm> must find the regenerated face fractions, normal and
 # position at round-off for every arm and both surface-based alpha sources, or
-# exit non-zero. Run in a shell with OpenFOAM and this clone (etc/leia-env.sh)
+# exit non-zero; three regenerations in sequence (the plane is a fixed point of
+# its own regeneration) and the displaced-face cut at round-off too. Run in a
+# shell with OpenFOAM and this clone (etc/leia-env.sh)
 # sourced:
 #     cases/davof/planeNormal3D/Allrun_regenerate
 cd "${0%/*}" || exit 1
@@ -19,9 +21,9 @@ runApplication leiaSetFields -alphaName alpha.water
 status=0
 for src in detrixheAslam quadraticFaces; do
     foamDictionary -entry davof/alphaSource -set "$src" system/fvSolution > /dev/null
-    for arm in plane paraboloidPlane paraboloidFaces paraboloidVolume paraboloidVolumeExact; do
+    for arm in plane paraboloidPlane paraboloidFaces paraboloidVolume paraboloidVolumeExact paraboloidVector; do
         log="log.leiaTestDavofNormal.$src.$arm"
-        leiaTestDavofNormal -alphaName alpha.water -expectExact -regenerate "$arm" > "$log" 2>&1
+        leiaTestDavofNormal -alphaName alpha.water -expectExact -regenerate "$arm" -regenerateIterations 3 > "$log" 2>&1
         rc=$?
         echo "== alphaSource $src, regeneration $arm =="
         grep -E "expectExact|^regeneration|alpha_f error|regenerated normal" "$log"

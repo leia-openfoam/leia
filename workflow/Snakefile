@@ -67,6 +67,10 @@ MPI         = config.get("mpi_launcher", "mpirun -np {np}")
 # Optional per-study SLURM time limit (MINUTES) for the solve rule only; see the
 # `solve` rule. None => the workflow profile's default.
 SOLVE_RUNTIME = config.get("solve_runtime")
+# Optional per-study memory (MB per CPU) for the solve rule only: a serial
+# solve gets exactly this much in total under profiles/slurm (default 4000),
+# which the N = 160 DAVOF regeneration (5.1 GB resident) exceeds.
+SOLVE_MEM_MB = config.get("solve_mem_mb")
 PREAMBLE    = (config.get("env_preamble") or "").strip()
 # Extra leiaSetFields arguments (e.g. "-alphaName alpha.water" for the two-phase
 # mixture field, whose name is not the leiaSetFields default "alpha").
@@ -197,6 +201,7 @@ _preprocess = ["cd {params.d}",
                " leiaTestFaceCurvature.csv leiaTestCurvatureNoiseGain.csv"
                " leiaTestDavofNormal.csv leiaTestDavofNormalModels.csv"
                " leiaTestDavofCurvature.csv leiaTestDavofRegen.csv"
+               " leiaTestDavofRegenIter.csv"
                " psiConservation.csv",
                " ".join(filter(None, [SETFIELDS_APP, SETFIELDS_ARGS]))]
 
@@ -449,6 +454,7 @@ rule solve:
         # to a slower partition and holds the allocation long after a diverged
         # solve has stopped producing steps.
         **({"runtime": int(SOLVE_RUNTIME)} if SOLVE_RUNTIME else {}),
+        **({"mem_mb_per_cpu": int(SOLVE_MEM_MB)} if SOLVE_MEM_MB else {}),
     shell:
         sh(*_solve)
 

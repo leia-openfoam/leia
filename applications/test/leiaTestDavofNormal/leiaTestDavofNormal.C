@@ -100,6 +100,7 @@ Description
 #include "davofCurvatureDelivery.H"
 #include "davofQuadraticFaceGeometry.H"
 #include "davofRegeneration.H"
+#include "davofSphereGeometry.H"
 #include "levelSetImplicitSurfaces.H"
 #include "leiaVersionRegistry.H"
 #include "reconstructionSchemes.H"
@@ -441,8 +442,44 @@ int main(int argc, char *argv[])
     (
         "regenerate", "arm",
         "Zero-step regeneration (davofRegeneration.H): plane | paraboloidPlane | "
-        "paraboloidFaces | paraboloidVolume | paraboloidVolumeExact; overrides "
-        "fvSolution davof.regenerate (default none)."
+        "paraboloidFaces | paraboloidVolume | paraboloidVolumeExact | "
+        "paraboloidVector (the offset and the in-plane vertex position from the "
+        "cell's wetted area vector); overrides fvSolution davof.regenerate "
+        "(default none)."
+    );
+    argList::addOption
+    (
+        "regenerateIterations", "K",
+        "Apply the regeneration K times (recover normal, plane and ring tensor "
+        "from the regenerated fractions, rebuild the surface, re-cut), one row "
+        "per iteration in leiaTestDavofRegenIter.csv; overrides fvSolution "
+        "davof.regenerateIterations (default 1)."
+    );
+    argList::addOption
+    (
+        "regenerateFeedback", "mode",
+        "What the next regeneration starts from: own (one value per face, the "
+        "owner cell's cut, as the transport's single-valued face; default) | "
+        "average (the mean of the two cells' cuts) | cell (every cell keeps its "
+        "own view, no coupling through shared faces); overrides fvSolution "
+        "davof.regenerateFeedback."
+    );
+    argList::addOption
+    (
+        "regenerateRefit", "bool",
+        "Refit the ring tensor on the regenerated state before every further "
+        "regeneration (true, the loop of the transport) or keep the first fit "
+        "(false, the curvature feedback switched off); overrides fvSolution "
+        "davof.regenerateRefit (default true)."
+    );
+    argList::addOption
+    (
+        "regenerateOrigin", "mode",
+        "The plane of the state inside the regeneration: volume (positioned by "
+        "alpha_k along the recovered normal, the explicit position as the initial "
+        "guess, as the transport's flux plane; default) | explicit (the explicit "
+        "position (2) itself, finding (v) of the proposal); overrides fvSolution "
+        "davof.regenerateOrigin."
     );
 
     #include "setRootCase.H"
@@ -469,13 +506,47 @@ int main(int argc, char *argv[])
     (
         regenArm != "none" && regenArm != "plane" && regenArm != "paraboloidPlane"
      && regenArm != "paraboloidFaces" && regenArm != "paraboloidVolume"
-     && regenArm != "paraboloidVolumeExact"
+     && regenArm != "paraboloidVolumeExact" && regenArm != "paraboloidVector"
     )
     {
         FatalErrorInFunction
             << "Unknown regeneration arm '" << regenArm
             << "'. Valid: none, plane, paraboloidPlane, paraboloidFaces, "
-            << "paraboloidVolume, paraboloidVolumeExact." << exit(FatalError);
+            << "paraboloidVolume, paraboloidVolumeExact, paraboloidVector."
+            << exit(FatalError);
+    }
+    const label regenIter = max
+    (
+        label(1),
+        args.getOrDefault<label>
+        (
+            "regenerateIterations",
+            davofDict.getOrDefault<label>("regenerateIterations", 1)
+        )
+    );
+    const word regenFeedback = args.getOrDefault<word>
+    (
+        "regenerateFeedback", davofDict.getOrDefault<word>("regenerateFeedback", "own")
+    );
+    if (regenFeedback != "own" && regenFeedback != "average" && regenFeedback != "cell")
+    {
+        FatalErrorInFunction
+            << "Unknown regeneration feedback '" << regenFeedback
+            << "'. Valid: own, average, cell." << exit(FatalError);
+    }
+    const bool regenRefit = args.getOrDefault<bool>
+    (
+        "regenerateRefit", davofDict.getOrDefault<bool>("regenerateRefit", true)
+    );
+    const word regenOrigin = args.getOrDefault<word>
+    (
+        "regenerateOrigin", davofDict.getOrDefault<word>("regenerateOrigin", "volume")
+    );
+    if (regenOrigin != "volume" && regenOrigin != "explicit")
+    {
+        FatalErrorInFunction
+            << "Unknown regeneration origin '" << regenOrigin
+            << "'. Valid: volume, explicit." << exit(FatalError);
     }
 
     // Exact area of the closed surface, where it is known.
@@ -1008,6 +1079,12 @@ int main(int argc, char *argv[])
         scalar resMax = 0;                      // anchoring residual, relative
         scalar volDiffPlane = 0;                // realizability of the regenerated state
         scalar cpu = 0;
+        label nIter = 1;                        // regenerations applied
+        // The displaced-face cut at the first iteration: the faces of every
+        // interface cell translated by shifts[j] h along the cell normal, cut
+        // against the cell's surface, against the exact fraction of the
+        // displaced face (the surface evaluated where no face anchors it).
+        FixedList<scalar, 4> sh1, sh2, shInf;
     };
     regenResult rg;
     normResult rRegen;
@@ -1016,18 +1093,33 @@ int main(int argc, char *argv[])
     {
         cpuTime rgTimer;
         rg.arm = regenArm;
+        rg.nIter = regenIter;
+        forAll(rg.sh1, j) { rg.sh1[j] = 0; rg.sh2[j] = 0; rg.shInf[j] = 0; }
         const scalarField& V = mesh.V();
         const vectorField& Sf = mesh.faceAreas();
+        const vectorField& Cf = mesh.faceCentres();
+        const vectorField& C = mesh.cellCentres();
+        const pointField& P = mesh.points();
+        const faceList& faces = mesh.faces();
         const labelUList& own = mesh.faceOwner();
         const labelUList& nei = mesh.faceNeighbour();
         const label nInt = mesh.nInternalFaces();
         const cellList& cells = mesh.cells();
 
+        // The interface set of the ORIGINAL state is the scoring set of every
+        // iteration (frozen), as in finding (v) of the proposal.
         boolList isI(mesh.nCells(), false);
         forAll(isI, c) isI[c] = st.isInterfaceCell(c);
 
+        // The state's plane inside the loop: positioned by alpha_k (the flux
+        // plane of the transport; the explicit position (2) would amplify the
+        // realizability defect by -2 per iteration, measured 2026-10-05) or
+        // the explicit one (finding (v)).
+        st.setPositionFromVolume(regenOrigin == "volume");
+        if (regenOrigin == "volume") st.planePosition();
+
         const bool wantParaboloid = (regenArm != "plane");
-        const davofCurvature* fit = curvPtrs.size() ? &curvPtrs[0] : nullptr;
+        davofCurvature* fit = curvPtrs.size() ? &curvPtrs[0] : nullptr;
         if (wantParaboloid && !fit)
         {
             FatalErrorInFunction
@@ -1037,111 +1129,13 @@ int main(int argc, char *argv[])
                 << exit(FatalError);
         }
 
-        // The clipping surfaces.
-        List<davof::cellSurface> surf(mesh.nCells());
-        const vectorField& mF = st.m().primitiveField();
-        const vectorField& xPl = st.xPlane().primitiveField();
-        const scalarField& alphaF = st.alphaf();
-        forAll(isI, c)
-        {
-            if (!isI[c]) continue;
-            ++rg.nCells;
-            davof::cellSurface& S = surf[c];
-            S.o = xPl[c];
-            S.e3 = mF[c]/mag(mF[c]);
-            S.c = 0;
-            S.paraboloid = false;
-            if (wantParaboloid)
-            {
-                davofModelPack p;
-                if (fit->pack(c, p))
-                {
-                    S.e1 = vector(p[4], p[5], p[6]);
-                    S.e2 = vector(p[7], p[8], p[9]);
-                    const scalar hc = p[13];
-                    // W = C0 + C1 U + C2 V + C3 U^2/2 + C4 U V + C5 V^2/2 with
-                    // U = u/hc, W = w/hc: the physical second derivatives are
-                    // C3/hc, C4/hc, C5/hc. The slopes stay zero (the normal is
-                    // the Gauss-identity normal), the offset is the arm's.
-                    S.b11 = p[17]/hc;
-                    S.b12 = p[18]/hc;
-                    S.b22 = p[19]/hc;
-                    S.paraboloid = true;
-                }
-                else
-                {
-                    ++rg.nNoModel;   // the plane for this cell
-                }
-            }
-            if (S.paraboloid && regenArm != "paraboloidPlane")
-            {
-                const scalar h = Foam::cbrt(V[c]);
-                scalar target = 0;
-                std::function<scalar(scalar)> g;
-                if (regenArm == "paraboloidFaces")
-                {
-                    const labelList& cf = cells[c];
-                    forAll(cf, i) target += alphaF[cf[i]]*mag(Sf[cf[i]]);
-                    g = [&](const scalar cc) -> scalar
-                    {
-                        davof::cellSurface T = S;
-                        T.c = cc;
-                        return davof::cellWettedArea
-                        (
-                            mesh, c, [&](const point& x) { return T.value(x); }
-                        );
-                    };
-                }
-                else if (regenArm == "paraboloidVolume")
-                {
-                    // The Detrixhe-Aslam tet quadrature of the paraboloid's
-                    // values: the SAME chord quadrature that defined the cell
-                    // fraction of the detrixheAslam and quadraticFaces states.
-                    target = st.alpha()[c]*V[c];
-                    g = [&](const scalar cc) -> scalar
-                    {
-                        davof::cellSurface T = S;
-                        T.c = cc;
-                        return davof::cellLiquidVolume
-                        (
-                            mesh, c, [&](const point& x) { return T.value(x); }
-                        );
-                    };
-                }
-                else
-                {
-                    // The paraboloid's own cut volume (tets split twice).
-                    target = st.alpha()[c]*V[c];
-                    g = [&](const scalar cc) -> scalar
-                    {
-                        davof::cellSurface T = S;
-                        T.c = cc;
-                        return davof::cellLiquidVolumeRefined
-                        (
-                            mesh, c, [&](const point& x) { return T.value(x); }, 2
-                        );
-                    };
-                }
-                scalar cc = 0;
-                bool bracketed = false;
-                const scalar res =
-                    davof::solveOffset(g, target, -h, h, 1e-13*h, cc, bracketed);
-                S.c = cc;
-                if (!bracketed) ++rg.nNoBracket;
-                // Relative to the target with a cell-sized floor (a nearly
-                // empty or full cell has a target near zero).
-                const scalar floorT =
-                    (regenArm == "paraboloidFaces")
-                  ? 1e-6*Foam::pow(V[c], 2.0/3.0) : 1e-6*V[c];
-                rg.resMax = max(rg.resMax, res/max(target, floorT));
-            }
-        }
-
-        // The reference fractions on the faces of the interface cells.
-        scalarField alphafRef(alphaF);
+        // The reference fractions on the faces of the interface cells, fixed
+        // over the iterations: the exact ones on the exactSphere state, else
+        // the quadratic cut of the exact distance subdivided twice.
+        scalarField alphafRef(st.alphaf());
         if (st.alphaSource() != "exactSphere")
         {
-            boolList done(alphaF.size(), false);
+            boolList done(alphafRef.size(), false);
             forAll(isI, c)
             {
                 if (!isI[c]) continue;
@@ -1157,104 +1151,19 @@ int main(int argc, char *argv[])
             }
         }
 
-        // Re-cut.
-        scalarField alphafOwn(alphaF), alphafNei(alphaF);
-        vectorField mTri(st.mTri());
-        scalarField momentTri(st.momentTri());
-        if (mTri.size() != mesh.nCells()) mTri.setSize(mesh.nCells(), Zero);
-        if (momentTri.size() != mesh.nCells()) momentTri.setSize(mesh.nCells(), 0);
-        davof::regenerate
-        (
-            mesh, isI, surf, alphafOwn, alphafNei, mTri, momentTri, rg.nTriFallback
-        );
+        // The exact fraction of a displaced face on the sphere: the cut of a
+        // face translated by s against the ball about c equals the cut of the
+        // face against the ball about c - s.
+        const bool isSphere = (surfType == "implicitSphere");
+        vector sphereCentre(Zero);
+        if (isSphere) sphereCentre = surfDict.get<vector>("center");
+        const FixedList<scalar, 4> shifts({-0.5, -0.25, 0.25, 0.5});
 
-        // The face-fraction errors, as fractions, over the (cell, face)
-        // pairs of the interface cells, each cell with its own view.
-        {
-            scalar s1 = 0, s2 = 0, li = 0, m1 = 0, mi = 0;
-            label nP = 0, nM = 0;
-            forAll(isI, c)
-            {
-                if (!isI[c]) continue;
-                const labelList& cf = cells[c];
-                forAll(cf, i)
-                {
-                    const label f = cf[i];
-                    const scalar view = (own[f] == c) ? alphafOwn[f] : alphafNei[f];
-                    const scalar e = mag(view - alphafRef[f]);
-                    ++nP; s1 += e; s2 += e*e; li = max(li, e);
-                }
-            }
-            for (label f = 0; f < nInt; ++f)
-            {
-                if (isI[own[f]] && isI[nei[f]])
-                {
-                    const scalar d = mag(alphafOwn[f] - alphafNei[f]);
-                    ++nM; m1 += d; mi = max(mi, d);
-                }
-            }
-            rg.nPairs = nP;
-            rg.nMismatch = nM;
-            rg.A1 = (nP > 0) ? s1/nP : 0;
-            rg.A2 = (nP > 0) ? Foam::sqrt(s2/nP) : 0;
-            rg.Ainf = li;
-            rg.M1 = (nM > 0) ? m1/nM : 0;
-            rg.Minf = mi;
-        }
+        // The per-cell views of the face fractions, carried across the
+        // iterations: the state keeps only the owner's view per face; the
+        // regeneration of a cell starts from the cell's own view.
+        scalarField viewOwn(st.alphaf()), viewNei(st.alphaf());
 
-        // Diagnostic: the eight worst (cell, face) pairs of the fraction
-        // error with the cell's state, to locate outliers (2026-10-04).
-        {
-            DynamicList<scalar> wE;
-            DynamicList<label> wC, wF;
-            forAll(isI, c)
-            {
-                if (!isI[c]) continue;
-                const labelList& cf = cells[c];
-                forAll(cf, i)
-                {
-                    const label f = cf[i];
-                    const scalar view = (own[f] == c) ? alphafOwn[f] : alphafNei[f];
-                    wE.append(mag(view - alphafRef[f]));
-                    wC.append(c);
-                    wF.append(f);
-                }
-            }
-            const label nW = min(label(8), wE.size());
-            labelList order(wE.size());
-            forAll(order, i) order[i] = i;
-            std::partial_sort
-            (
-                order.begin(), order.begin() + nW, order.end(),
-                [&](label a, label b) { return wE[a] > wE[b]; }
-            );
-            const scalar hD = Foam::cbrt(gAverage(V));
-            Info<< "  worst pairs: cell face int/bnd e view ref alphaf0 alpha_k"
-                << " |m|/h^2 c/h b11*h b22*h paraboloid wettedFraction" << nl;
-            for (label k = 0; k < nW; ++k)
-            {
-                const label i = order[k];
-                const label c = wC[i], f = wF[i];
-                const scalar view = (own[f] == c) ? alphafOwn[f] : alphafNei[f];
-                scalar wet = 0, tot = 0;
-                const labelList& cf = cells[c];
-                forAll(cf, j)
-                {
-                    wet += mag(Sf[cf[j]])*alphaF[cf[j]];
-                    tot += mag(Sf[cf[j]]);
-                }
-                Info<< "    " << c << ' ' << f << (f < nInt ? " i " : " b ")
-                    << wE[i] << ' ' << view << ' ' << alphafRef[f] << ' '
-                    << alphaF[f] << ' ' << st.alpha()[c] << ' '
-                    << mag(mF[c])/sqr(hD) << ' ' << surf[c].c/hD << ' '
-                    << surf[c].b11*hD << ' ' << surf[c].b22*hD << ' '
-                    << surf[c].paraboloid << ' ' << wet/max(tot, VSMALL) << nl;
-            }
-        }
-
-        // The normal and the position recovered from the regenerated data.
-        st.setRegenerated(isI, alphafOwn, mTri, momentTri);
-        rg.volDiffPlane = st.maxVolDiffPlane();
         volScalarField eRegen
         (
             IOobject("eNormal.davofRegen", runTime.timeName(), mesh,
@@ -1262,27 +1171,462 @@ int main(int argc, char *argv[])
             mesh, dimensionedScalar(dimless, Zero),
             zeroGradientFvPatchScalarField::typeName
         );
-        // Scored on the ORIGINAL interface set with the state's wisp rule: a
-        // regenerated cell whose patch fell under the threshold drops out and
-        // is counted (N_INTERFACE against N_INTERFACE_REGEN); the explicit
-        // plane of the exact state lies outside the sphere by half a sagitta
-        // and misses the cells the sphere barely enters. The regenerated
-        // normal of the plane arm is the original one (the plane's own
-        // fractions return its normal exactly); the paraboloid arms give the
-        // mean normal of the paraboloid patch.
-        vectorField mReg(st.m().primitiveField());
-        forAll(mReg, c) if (!isI[c]) mReg[c] = Zero;
-        rRegen = evaluateNormals
-        (
-            "davofRegen", mesh, mReg, 1.0,
-            st.xS().primitiveField(), surface(), st.wispTol(),
-            &eRegen.primitiveFieldRef(), nullptr
-        );
-        evaluatePositions
-        (
-            rRegen, mesh, mReg, st.xPlane().primitiveField(),
-            st.wispTol(), exactDistance, nullptr
-        );
+
+        const bool master = Pstream::master();
+        autoPtr<OFstream> osIt;
+        if (master)
+        {
+            osIt.reset(new OFstream("leiaTestDavofRegenIter.csv"));
+            osIt().precision(12);
+            osIt() << "ITER,E_ALPHAF_L1,E_ALPHAF_L2,E_ALPHAF_LINF,"
+                      "E_ALPHAF_MISMATCH_L1,E_ALPHAF_MISMATCH_LINF,"
+                      "N_NO_BRACKET,N_TRI_FALLBACK,ANCHOR_RESIDUAL_MAX,"
+                      "MAX_VOL_DIFF_PLANE_REGEN,N_INTERFACE_REGEN,"
+                      "E_L1_N,E_L2_N,E_LINF_N,E_POS_L1,E_POS_L2,E_POS_LINF,"
+                      "GROWTH_N_L2,CPU_SECONDS_CUM,N_INACTIVE" << nl;
+        }
+        scalar prevL2N = -1, cpuCum = 0;
+
+        for (label k = 1; k <= regenIter; ++k)
+        {
+            cpuTime itTimer;
+            rg.nCells = 0; rg.nNoModel = 0; rg.nNoBracket = 0;
+            rg.nTriFallback = 0; rg.resMax = 0;
+            const vectorField& mF = st.m().primitiveField();      // the current state
+            const vectorField& xPl = st.xPlane().primitiveField();
+
+            // The active set of this iteration: the frozen set, less the cells
+            // whose current normal fell below the wisp threshold (a surface
+            // built from such a normal is noise; the state's own rule). An
+            // inactive cell keeps its fractions and does not define a face.
+            boolList active(isI);
+            label nInactive = 0;
+            forAll(active, c)
+            {
+                if (active[c] && !st.isInterfaceCell(c)) { active[c] = false; ++nInactive; }
+            }
+
+            // The clipping surfaces.
+            List<davof::cellSurface> surf(mesh.nCells());
+            forAll(active, c)
+            {
+                if (!active[c]) continue;
+                ++rg.nCells;
+                davof::cellSurface& S = surf[c];
+                S.o = xPl[c];
+                S.e3 = mF[c]/max(mag(mF[c]), VSMALL);
+                S.c = 0;
+                S.paraboloid = false;
+                if (wantParaboloid)
+                {
+                    davofModelPack p;
+                    if (fit->pack(c, p))
+                    {
+                        S.e1 = vector(p[4], p[5], p[6]);
+                        S.e2 = vector(p[7], p[8], p[9]);
+                        const scalar hc = p[13];
+                        // W = C0 + C1 U + C2 V + C3 U^2/2 + C4 U V + C5 V^2/2
+                        // with U = u/hc, W = w/hc: the physical second
+                        // derivatives are C3/hc, C4/hc, C5/hc. The slopes
+                        // stay zero (the normal is the Gauss-identity
+                        // normal), the offset is the arm's.
+                        S.b11 = p[17]/hc;
+                        S.b12 = p[18]/hc;
+                        S.b22 = p[19]/hc;
+                        S.paraboloid = true;
+                    }
+                    else
+                    {
+                        ++rg.nNoModel;   // the plane for this cell
+                    }
+                }
+                if (S.paraboloid && regenArm != "paraboloidPlane")
+                {
+                    const scalar h = Foam::cbrt(V[c]);
+                    scalar target = 0;
+                    std::function<scalar(scalar)> g;
+                    if (regenArm == "paraboloidFaces" || regenArm == "paraboloidVector")
+                    {
+                        // The total wetted face area of the cell's own view.
+                        const labelList& cf = cells[c];
+                        forAll(cf, i)
+                        {
+                            const label f = cf[i];
+                            const scalar a = (own[f] == c) ? viewOwn[f] : viewNei[f];
+                            target += a*mag(Sf[f]);
+                        }
+                        g = [&](const scalar cc) -> scalar
+                        {
+                            davof::cellSurface T = S;
+                            T.c = cc;
+                            return davof::cellWettedArea
+                            (
+                                mesh, c, [&](const point& x) { return T.value(x); }
+                            );
+                        };
+                    }
+                    else if (regenArm == "paraboloidVolume")
+                    {
+                        // The Detrixhe-Aslam tet quadrature of the paraboloid's
+                        // values: the SAME chord quadrature that defined the
+                        // cell fraction of the detrixheAslam and quadraticFaces
+                        // states.
+                        target = st.alpha()[c]*V[c];
+                        g = [&](const scalar cc) -> scalar
+                        {
+                            davof::cellSurface T = S;
+                            T.c = cc;
+                            return davof::cellLiquidVolume
+                            (
+                                mesh, c, [&](const point& x) { return T.value(x); }
+                            );
+                        };
+                    }
+                    else
+                    {
+                        // The linear tet cut on tets split twice (a chord
+                        // defect 1/16 of the Detrixhe-Aslam one; STATUS 10.13).
+                        target = st.alpha()[c]*V[c];
+                        g = [&](const scalar cc) -> scalar
+                        {
+                            davof::cellSurface T = S;
+                            T.c = cc;
+                            return davof::cellLiquidVolumeRefined
+                            (
+                                mesh, c, [&](const point& x) { return T.value(x); }, 2
+                            );
+                        };
+                    }
+                    scalar cc = 0;
+                    bool bracketed = false;
+                    const scalar res =
+                        davof::solveOffset(g, target, -h, h, 1e-13*h, cc, bracketed);
+                    S.c = cc;
+                    if (!bracketed) ++rg.nNoBracket;
+                    // Relative to the target with a cell-sized floor (a nearly
+                    // empty or full cell has a target near zero).
+                    const scalar floorT =
+                        (regenArm == "paraboloidFaces" || regenArm == "paraboloidVector")
+                      ? 1e-6*Foam::pow(V[c], 2.0/3.0) : 1e-6*V[c];
+                    rg.resMax = max(rg.resMax, res/max(target, floorT));
+
+                    if (regenArm == "paraboloidVector")
+                    {
+                        // Three scalars, the offset c and the in-plane position
+                        // (du, dv) of the vertex, so that the paraboloid's own
+                        // wetted area vector equals the state's m_c: the
+                        // regenerated normal is then the state's by
+                        // construction (the mean normal of a paraboloid patch
+                        // is its axis only if the vertex sits at the patch
+                        // centroid). Newton with a forward-difference Jacobian
+                        // from the scalar anchoring.
+                        const vector mTarget = mF[c];
+                        const scalar mScale = max(mag(mTarget), VSMALL);
+                        vector x(S.c, 0, 0);
+                        auto areaVec = [&](const vector& y) -> vector
+                        {
+                            davof::cellSurface T = S;
+                            T.o = S.o + y.y()*S.e1 + y.z()*S.e2;
+                            T.c = y.x();
+                            return davof::cellWettedAreaVector
+                            (
+                                mesh, c, [&](const point& q) { return T.value(q); }
+                            );
+                        };
+                        vector F = areaVec(x) - mTarget;
+                        bool ok = false;
+                        const scalar eps = 1e-6*h;
+                        for (label it = 0; it < 25; ++it)
+                        {
+                            if (mag(F) <= 1e-12*mScale) { ok = true; break; }
+                            tensor J(Zero);
+                            for (direction d = 0; d < 3; ++d)
+                            {
+                                vector xd = x;
+                                xd[d] += eps;
+                                const vector Fd = areaVec(xd) - mTarget;
+                                const vector col = (Fd - F)/eps;
+                                J(0, d) = col.x(); J(1, d) = col.y(); J(2, d) = col.z();
+                            }
+                            if (mag(det(J)) < VSMALL) break;
+                            vector dx = -(inv(J) & F);
+                            // The vertex stays within the cell's scale.
+                            const scalar dm = mag(dx);
+                            if (dm > h) dx *= h/dm;
+                            x += dx;
+                            F = areaVec(x) - mTarget;
+                        }
+                        if (ok || mag(F) <= 1e-8*mScale)
+                        {
+                            S.o = S.o + x.y()*S.e1 + x.z()*S.e2;
+                            S.c = x.x();
+                        }
+                        else
+                        {
+                            ++rg.nNoBracket;   // the scalar anchoring stands
+                        }
+                        rg.resMax = max(rg.resMax, mag(F)/mScale);
+                    }
+                }
+            }
+
+            // Re-cut from the cells' own views.
+            scalarField alphafOwn(viewOwn), alphafNei(viewNei);
+            vectorField mTri(st.mTri());
+            scalarField momentTri(st.momentTri());
+            if (mTri.size() != mesh.nCells()) mTri.setSize(mesh.nCells(), Zero);
+            if (momentTri.size() != mesh.nCells()) momentTri.setSize(mesh.nCells(), 0);
+            davof::regenerate
+            (
+                mesh, active, surf, alphafOwn, alphafNei, mTri, momentTri, rg.nTriFallback
+            );
+
+            // The face-fraction errors, as fractions, over the (cell, face)
+            // pairs of the interface cells, each cell with its own view.
+            {
+                scalar s1 = 0, s2 = 0, li = 0, m1 = 0, mi = 0;
+                label nP = 0, nM = 0;
+                forAll(isI, c)
+                {
+                    if (!isI[c]) continue;
+                    const labelList& cf = cells[c];
+                    forAll(cf, i)
+                    {
+                        const label f = cf[i];
+                        const scalar view = (own[f] == c) ? alphafOwn[f] : alphafNei[f];
+                        const scalar e = mag(view - alphafRef[f]);
+                        ++nP; s1 += e; s2 += e*e; li = max(li, e);
+                    }
+                }
+                for (label f = 0; f < nInt; ++f)
+                {
+                    if (isI[own[f]] && isI[nei[f]])
+                    {
+                        const scalar d = mag(alphafOwn[f] - alphafNei[f]);
+                        ++nM; m1 += d; mi = max(mi, d);
+                    }
+                }
+                rg.nPairs = nP;
+                rg.nMismatch = nM;
+                rg.A1 = (nP > 0) ? s1/nP : 0;
+                rg.A2 = (nP > 0) ? Foam::sqrt(s2/nP) : 0;
+                rg.Ainf = li;
+                rg.M1 = (nM > 0) ? m1/nM : 0;
+                rg.Minf = mi;
+            }
+
+            // Diagnostic at the first and the last iteration: the eight worst
+            // (cell, face) pairs of the fraction error with the cell's state.
+            if (k == 1 || k == regenIter)
+            {
+                DynamicList<scalar> wE;
+                DynamicList<label> wC, wF;
+                forAll(isI, c)
+                {
+                    if (!isI[c]) continue;
+                    const labelList& cf = cells[c];
+                    forAll(cf, i)
+                    {
+                        const label f = cf[i];
+                        const scalar view = (own[f] == c) ? alphafOwn[f] : alphafNei[f];
+                        wE.append(mag(view - alphafRef[f]));
+                        wC.append(c);
+                        wF.append(f);
+                    }
+                }
+                const label nW = min(label(8), wE.size());
+                labelList order(wE.size());
+                forAll(order, i) order[i] = i;
+                std::partial_sort
+                (
+                    order.begin(), order.begin() + nW, order.end(),
+                    [&](label a, label b) { return wE[a] > wE[b]; }
+                );
+                const scalar hD = Foam::cbrt(gAverage(V));
+                Info<< "  worst pairs (iteration " << k << "): cell face int/bnd e view ref"
+                    << " alphaf0 alpha_k |m|/h^2 c/h b11*h b22*h paraboloid wettedFraction" << nl;
+                for (label w = 0; w < nW; ++w)
+                {
+                    const label i = order[w];
+                    const label c = wC[i], f = wF[i];
+                    const scalar view = (own[f] == c) ? alphafOwn[f] : alphafNei[f];
+                    const scalar a0 = (own[f] == c) ? viewOwn[f] : viewNei[f];
+                    scalar wet = 0, tot = 0;
+                    const labelList& cf = cells[c];
+                    forAll(cf, j)
+                    {
+                        const scalar aj = (own[cf[j]] == c) ? viewOwn[cf[j]] : viewNei[cf[j]];
+                        wet += mag(Sf[cf[j]])*aj;
+                        tot += mag(Sf[cf[j]]);
+                    }
+                    Info<< "    " << c << ' ' << f << (f < nInt ? " i " : " b ")
+                        << wE[i] << ' ' << view << ' ' << alphafRef[f] << ' '
+                        << a0 << ' ' << st.alpha()[c] << ' '
+                        << mag(mF[c])/sqr(hD) << ' ' << surf[c].c/hD << ' '
+                        << surf[c].b11*hD << ' ' << surf[c].b22*hD << ' '
+                        << surf[c].paraboloid << ' ' << wet/max(tot, VSMALL) << nl;
+                }
+            }
+
+            // The displaced-face cut at the first iteration: the faces of
+            // every interface cell translated by shifts[j] h along the cell
+            // normal (cutting the translated face against phi equals cutting
+            // the face against phi(x + s)), against the exact fraction of the
+            // displaced face.
+            if (k == 1)
+            {
+                forAll(shifts, j)
+                {
+                    scalar s1 = 0, s2 = 0, li = 0;
+                    label nP = 0;
+                    forAll(active, c)
+                    {
+                        if (!active[c]) continue;
+                        const davof::cellSurface& S = surf[c];
+                        const vector sv = shifts[j]*Foam::cbrt(V[c])*S.e3;
+                        const labelList& cf = cells[c];
+                        forAll(cf, i)
+                        {
+                            const label f = cf[i];
+                            vector wet(Zero);
+                            scalar M = 0;
+                            label nfb = 0;
+                            const scalar aP = davof::faceCut
+                            (
+                                mesh, f,
+                                [&](const point& x) { return S.value(x + sv); },
+                                wet, M, nfb
+                            );
+                            scalar aR = 0;
+                            if (isSphere)
+                            {
+                                const scalar A = mag(Sf[f]);
+                                aR = davof::faceBallArea
+                                (
+                                    faces[f], P, Cf[f], Sf[f]/A, sphereCentre - sv, radius
+                                )/A;
+                            }
+                            else
+                            {
+                                label nfbR = 0;
+                                const implicitSurface& sRef = surface();
+                                aR = davof::refFaceFractionPhi
+                                (
+                                    mesh, f,
+                                    [&](const point& x) { return sRef.value(x + sv); },
+                                    2, nfbR
+                                );
+                            }
+                            const scalar e = mag(aP - aR);
+                            ++nP; s1 += e; s2 += e*e; li = max(li, e);
+                        }
+                    }
+                    rg.sh1[j] = (nP > 0) ? s1/nP : 0;
+                    rg.sh2[j] = (nP > 0) ? Foam::sqrt(s2/nP) : 0;
+                    rg.shInf[j] = li;
+                }
+            }
+
+            // Feed back. The transport gives every face ONE value (the cut of
+            // its pre-image in the cell that holds it), so `own` feeds the
+            // owner cell's cut to both cells and recomputes the fan sums from
+            // the single-valued fractions (planar faces: alpha_f S_f and
+            // alpha_f (x_f - x_c).S_f); `average` uses the mean of the two
+            // cuts; `cell` keeps every cell's own view, which couples the
+            // cells only through the ring tensor. The fan sums are zeroed
+            // outside the frozen set (the exactSphere path leaves stale
+            // Detrixhe-Aslam sums there); the ring tensor is refitted on the
+            // regenerated state.
+            if (regenFeedback != "cell")
+            {
+                forAll(alphafOwn, f)
+                {
+                    const bool internal = (f < nInt);
+                    const bool oA = active[own[f]];
+                    const bool nA = internal && active[nei[f]];
+                    if (regenFeedback == "average" && oA && nA)
+                    {
+                        const scalar a = 0.5*(alphafOwn[f] + alphafNei[f]);
+                        alphafOwn[f] = a;
+                        alphafNei[f] = a;
+                    }
+                    else if (nA && !oA)
+                    {
+                        alphafOwn[f] = alphafNei[f];   // only the neighbour cut it
+                    }
+                    else if (oA)
+                    {
+                        alphafNei[f] = alphafOwn[f];   // the owner's cut (or both: the owner's)
+                    }
+                    // neither active: the face keeps its value in both views
+                }
+                forAll(active, c)
+                {
+                    if (!active[c]) continue;
+                    vector m(Zero);
+                    scalar mom = 0;
+                    const labelList& cf = cells[c];
+                    forAll(cf, i)
+                    {
+                        const label f = cf[i];
+                        const vector So = (own[f] == c) ? Sf[f] : -Sf[f];
+                        m -= alphafOwn[f]*So;
+                        mom += alphafOwn[f]*((Cf[f] - C[c]) & So);
+                    }
+                    mTri[c] = m;
+                    momentTri[c] = mom;
+                }
+            }
+            forAll(mTri, c)
+            {
+                if (!isI[c]) { mTri[c] = Zero; momentTri[c] = 0; }
+            }
+            st.setRegenerated(active, alphafOwn, mTri, momentTri);
+            rg.volDiffPlane = st.maxVolDiffPlane();
+            if (fit && regenRefit) fit->compute();
+            viewOwn = alphafOwn;
+            viewNei = alphafNei;
+
+            // The normal and the position recovered from the regenerated
+            // data, scored on the frozen set at the original centroids.
+            vectorField mReg(st.m().primitiveField());
+            forAll(mReg, c) if (!isI[c]) mReg[c] = Zero;
+            rRegen = evaluateNormals
+            (
+                "davofRegen", mesh, mReg, 1.0,
+                st.xS().primitiveField(), surface(), st.wispTol(),
+                &eRegen.primitiveFieldRef(), nullptr
+            );
+            evaluatePositions
+            (
+                rRegen, mesh, mReg, st.xPlane().primitiveField(),
+                st.wispTol(), exactDistance, nullptr
+            );
+            const scalar growth = (prevL2N > 0) ? rRegen.L2/prevL2N : 1;
+            prevL2N = rRegen.L2;
+            cpuCum += itTimer.cpuTimeIncrement();
+            if (master)
+            {
+                osIt() << k << ',' << rg.A1 << ',' << rg.A2 << ',' << rg.Ainf << ','
+                    << rg.M1 << ',' << rg.Minf << ','
+                    << rg.nNoBracket << ',' << rg.nTriFallback << ','
+                    << rg.resMax << ',' << rg.volDiffPlane << ','
+                    << rRegen.nInterface << ','
+                    << rRegen.L1 << ',' << rRegen.L2 << ',' << rRegen.Linf << ','
+                    << rRegen.P1 << ',' << rRegen.P2 << ',' << rRegen.Pinf << ','
+                    << growth << ',' << cpuCum << ',' << nInactive << nl;
+                osIt().flush();
+            }
+            if (k == 1 || k == regenIter || k % 100 == 0)
+            {
+                Info<< "  regeneration " << k << ": alpha_f L1/L2/Linf = "
+                    << rg.A1 << " / " << rg.A2 << " / " << rg.Ainf
+                    << "  normal L1/L2 = " << rRegen.L1 << " / " << rRegen.L2
+                    << "  growth(L2 n) = " << growth
+                    << "  inactive " << nInactive << endl;
+            }
+        }
+
         rg.cpu = rgTimer.cpuTimeIncrement();
         rRegen.cpu = rg.cpu;
         results.append(rRegen);
@@ -1300,18 +1644,24 @@ int main(int argc, char *argv[])
                 List<const scalarField*>({&eRegen.primitiveField()})
             );
         }
-        Info<< nl << "regeneration " << regenArm
+        Info<< nl << "regeneration " << regenArm << " x " << regenIter
+            << " (feedback " << regenFeedback << ", refit " << regenRefit
+            << ", origin " << regenOrigin << ")"
             << ": cells " << rg.nCells << " (no model " << rg.nNoModel
             << ", no bracket " << rg.nNoBracket << ")"
             << "  triangle fallbacks " << rg.nTriFallback
             << "  reference fallbacks " << rg.nRefFallback << nl
             << "  alpha_f error (as fractions) L1/L2/Linf = "
             << rg.A1 << " / " << rg.A2 << " / " << rg.Ainf
-            << "  over " << rg.nPairs << " cell-face pairs" << nl
+            << "  over " << rg.nPairs << " cell-face pairs (last iteration)" << nl
             << "  owner/neighbour mismatch L1/Linf = " << rg.M1 << " / " << rg.Minf
             << "  over " << rg.nMismatch << " faces" << nl
             << "  anchoring residual (rel.) max = " << rg.resMax
             << "  realizability max |alphaPlane - alpha| = " << rg.volDiffPlane << nl
+            << "  displaced faces (-0.5, -0.25, +0.25, +0.5 h) alpha_f L1 = "
+            << rg.sh1[0] << " / " << rg.sh1[1] << " / " << rg.sh1[2] << " / " << rg.sh1[3]
+            << "  Linf = "
+            << rg.shInf[0] << " / " << rg.shInf[1] << " / " << rg.shInf[2] << " / " << rg.shInf[3] << nl
             << "  regenerated normal L1/L2/Linf = "
             << rRegen.L1 << " / " << rRegen.L2 << " / " << rRegen.Linf
             << "  position L2/Linf = " << rRegen.P2 << " / " << rRegen.Pinf << " m"
@@ -1475,7 +1825,11 @@ int main(int argc, char *argv[])
                    "E_ALPHAF_MISMATCH_L1,E_ALPHAF_MISMATCH_LINF,"
                    "ANCHOR_RESIDUAL_MAX,MAX_VOL_DIFF_PLANE_REGEN,"
                    "N_INTERFACE_REGEN,E_L1_N,E_L2_N,E_LINF_N,"
-                   "E_POS_L1,E_POS_L2,E_POS_LINF,CPU_SECONDS" << nl;
+                   "E_POS_L1,E_POS_L2,E_POS_LINF,CPU_SECONDS,N_ITER,"
+                   "E_ALPHAF_SHIFT_M050_L1,E_ALPHAF_SHIFT_M050_L2,E_ALPHAF_SHIFT_M050_LINF,"
+                   "E_ALPHAF_SHIFT_M025_L1,E_ALPHAF_SHIFT_M025_L2,E_ALPHAF_SHIFT_M025_LINF,"
+                   "E_ALPHAF_SHIFT_P025_L1,E_ALPHAF_SHIFT_P025_L2,E_ALPHAF_SHIFT_P025_LINF,"
+                   "E_ALPHAF_SHIFT_P050_L1,E_ALPHAF_SHIFT_P050_L2,E_ALPHAF_SHIFT_P050_LINF" << nl;
             osR << rg.arm << ',' << st.alphaSource() << ',' << dx << ','
                 << nCellsGlobal << ',' << rOverH << ',' << rd.nInterface << ','
                 << rg.nCells << ',' << rg.nNoModel << ',' << rg.nNoBracket << ','
@@ -1487,7 +1841,12 @@ int main(int argc, char *argv[])
                 << rRegen.nInterface << ','
                 << rRegen.L1 << ',' << rRegen.L2 << ',' << rRegen.Linf << ','
                 << rRegen.P1 << ',' << rRegen.P2 << ',' << rRegen.Pinf << ','
-                << rg.cpu << nl;
+                << rg.cpu << ',' << rg.nIter;
+            forAll(rg.sh1, j)
+            {
+                osR << ',' << rg.sh1[j] << ',' << rg.sh2[j] << ',' << rg.shInf[j];
+            }
+            osR << nl;
         }
     }
 
@@ -1522,13 +1881,16 @@ int main(int argc, char *argv[])
         const scalar regenPosH =
             haveRegen ? ((dx > 0) ? rRegen.Pinf/dx : rRegen.Pinf) : 0;
         const scalar regenAlphaf = haveRegen ? rg.Ainf : 0;
+        scalar regenShift = 0;
+        if (haveRegen) forAll(rg.shInf, j) regenShift = max(regenShift, rg.shInf[j]);
         if
         (
             rd.Linf > tol
          || maxConsistency > tol
-         || regenLinf > tol
+         || regenLinf > posTol
          || regenPosH > posTol
          || regenAlphaf > posTol
+         || regenShift > posTol
          || (maxAlphaDiffPlaneCut >= 0 && maxAlphaDiffPlaneCut > tol)
          || posLinfH > posTol
          || maxVolDiffPlane > tol
