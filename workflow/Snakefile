@@ -555,6 +555,12 @@ rule report:
         if SOLVER == "leiaTestDavofNormal":
             _run([_PY, os.path.join(_scripts, "make_davof_normal_table.py"),
                      STUDY_DIR, "--theme", THEME], "make_davof_normal_table.py")
+            # The zero-step regeneration studies (config/davof/*Regeneration3D.yaml)
+            # add leiaTestDavofRegen.csv per case: their own order tables and
+            # figures (a no-op for a study without that file).
+            if _glob.glob(os.path.join(STUDY_DIR, "*", "leiaTestDavofRegen.csv")):
+                _run([_PY, os.path.join(_scripts, "make_davof_regen_table.py"),
+                         STUDY_DIR, "--theme", THEME], "make_davof_regen_table.py")
             # The PLIC surfaces (postProcessing/davofInterface/*/plic.<model>.vtk)
             # rendered side by side, models x resolutions, into the theme figures.
             _run([_PY, os.path.join(_scripts, "render_davof_interfaces.py"),

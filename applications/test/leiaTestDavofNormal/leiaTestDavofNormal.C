@@ -106,6 +106,7 @@ Description
 #include "foamGeometry.H"
 #include "plicInterfaceSurface.H"
 #include <functional>
+#include <algorithm>
 
 using namespace Foam;
 
@@ -1199,6 +1200,56 @@ int main(int argc, char *argv[])
             rg.Ainf = li;
             rg.M1 = (nM > 0) ? m1/nM : 0;
             rg.Minf = mi;
+        }
+
+        // Diagnostic: the eight worst (cell, face) pairs of the fraction
+        // error with the cell's state, to locate outliers (2026-10-04).
+        {
+            DynamicList<scalar> wE;
+            DynamicList<label> wC, wF;
+            forAll(isI, c)
+            {
+                if (!isI[c]) continue;
+                const labelList& cf = cells[c];
+                forAll(cf, i)
+                {
+                    const label f = cf[i];
+                    const scalar view = (own[f] == c) ? alphafOwn[f] : alphafNei[f];
+                    wE.append(mag(view - alphafRef[f]));
+                    wC.append(c);
+                    wF.append(f);
+                }
+            }
+            const label nW = min(label(8), wE.size());
+            labelList order(wE.size());
+            forAll(order, i) order[i] = i;
+            std::partial_sort
+            (
+                order.begin(), order.begin() + nW, order.end(),
+                [&](label a, label b) { return wE[a] > wE[b]; }
+            );
+            const scalar hD = Foam::cbrt(gAverage(V));
+            Info<< "  worst pairs: cell face int/bnd e view ref alphaf0 alpha_k"
+                << " |m|/h^2 c/h b11*h b22*h paraboloid wettedFraction" << nl;
+            for (label k = 0; k < nW; ++k)
+            {
+                const label i = order[k];
+                const label c = wC[i], f = wF[i];
+                const scalar view = (own[f] == c) ? alphafOwn[f] : alphafNei[f];
+                scalar wet = 0, tot = 0;
+                const labelList& cf = cells[c];
+                forAll(cf, j)
+                {
+                    wet += mag(Sf[cf[j]])*alphaF[cf[j]];
+                    tot += mag(Sf[cf[j]]);
+                }
+                Info<< "    " << c << ' ' << f << (f < nInt ? " i " : " b ")
+                    << wE[i] << ' ' << view << ' ' << alphafRef[f] << ' '
+                    << alphaF[f] << ' ' << st.alpha()[c] << ' '
+                    << mag(mF[c])/sqr(hD) << ' ' << surf[c].c/hD << ' '
+                    << surf[c].b11*hD << ' ' << surf[c].b22*hD << ' '
+                    << surf[c].paraboloid << ' ' << wet/max(tot, VSMALL) << nl;
+            }
         }
 
         // The normal and the position recovered from the regenerated data.

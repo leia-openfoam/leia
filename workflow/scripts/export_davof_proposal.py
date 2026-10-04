@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import paths  # noqa: E402
 
 PATTERNS = (("tables", "davof_normal_proposal_*.tex"),
+            ("tables", "davof_regen_proposal_*.tex"),
             ("figures", "davof_plic_*.pdf"),
             ("figures", "davof_plic_*.png"))
 

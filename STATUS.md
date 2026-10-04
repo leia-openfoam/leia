@@ -5231,3 +5231,168 @@ has a ten-fold allowance (1e-11 h). In such a cell on the warped mesh the old al
 plane 0.004 h off. The ellipsoid at N = 20 with quadratic faces is unchanged to every printed digit
 (normal 0.0111565466185 / 0.115032544554, identical plane offsets). The plane indicator keeps its
 scalar path (its own fan sums are open), as is its realizability diagnostic on non-cubic cells.
+
+### 10.13 DAVOF static gate 3: the zero-step regeneration, measured (2026-10-04)
+
+What the proposal's Stage 1 pre-registers, run without a time step: from the
+static state (alpha_k, {alpha_f}) every interface cell recovers its normal
+(the Gauss identity), its explicit plane and, from the ring of recovered
+normals, its curvature tensor (`quadricFit normalsOnly`); a clipping surface
+is built from the three; every face of the cell is cut again with it; the
+regenerated face fractions are compared with a reference AS FRACTIONS over
+the (cell, face) pairs of the interface cells (each cell with its own view;
+the owner-against-neighbour disagreement on shared faces is the C0
+diagnostic); the normal and the position are recovered from the regenerated
+data once more (`davofState::setRegenerated`). Code:
+`src/leiaLevelSet/davof/davofRegeneration.H` (header-only: `cellSurface`,
+`faceCut` with the quadratic cut on every fan triangle and a four-way split
+where it falls back, `cellWettedArea`, `cellLiquidVolume[Refined]`,
+`solveOffset`, `refFaceFraction`, `regenerate`), option
+`leiaTestDavofNormal -regenerate <arm>` / `fvSolution davof.regenerate`
+(token `DAVOF_REGEN_ARM`), output `leiaTestDavofRegen.csv`, the model row
+`davofRegen` and the eight worst (cell, face) pairs in the log, tables and
+figures `workflow/scripts/make_davof_regen_table.py` (`davof_regen_*`, run
+by the report step for a study with that CSV; the compact table exported by
+`make davof-proposal`), studies `config/davof/sphereRegeneration3D.yaml` and
+`ellipsoidRegeneration3D.yaml` (PREDICTION 6 in their headers), gate
+`cases/davof/planeNormal3D/Allrun_regenerate`.
+
+Arms (the clipping surface of a cell; the paraboloid in the frame of the
+plane polygon's centroid with the DAVOF normal, its second derivatives from
+the fit's coefficients C3..C5 / h_c):
+
+| arm | offset along the normal | q predicted |
+|---|---|---|
+| plane | the explicit plane (2) | 1 |
+| paraboloidPlane | zero: vertex on the plane | 1 |
+| paraboloidFaces | the cell's total wetted face area reproduced (one monotone scalar, bisection to 1e-13 h); THE METHOD'S anchoring (no volume matching, Tomislav 2026-10-03) | 2 |
+| paraboloidVolume | alpha_k V_k with the Detrixhe-Aslam tet quadrature of the paraboloid | 1 on the chord cell fraction |
+| paraboloidVolumeExact | alpha_k V_k with the linear tet cut on tets split twice (named "own cut volume" before the ladder; see the falsification) | 1 on the chord cell fraction, 2 on the exact state |
+
+Reference: the exact face fractions on the `exactSphere` state; otherwise
+the quadratic cut of the exact distance on every fan triangle subdivided
+twice (its error 16 times below the quadraticFaces initialisation).
+
+Plane gate: every arm regenerates the plane to round-off on both
+surface-based states (alpha_f 1e-14, normal 1e-14, position 1e-16 m).
+
+**Sphere ladder, N = 20 to 160 (R/h = 5 to 40), both states, five arms**
+(orders over the three finest rungs, all four rungs in parentheses; the
+face-fraction error as a fraction over the (cell, face) pairs of the
+interface cells; `docs/davof/davof-article/data/tables/davof_regen_orders_sphereRegeneration3D.csv`):
+
+| state | arm | p(alpha_f, L1) | p(alpha_f, L2) | p(mismatch, L1) | p(n, L1) | p(n, L2) | p(x, L2) | alpha_f L1 at N = 160 |
+|---|---|---|---|---|---|---|---|---|
+| exact sphere | plane | 1.00 (0.99) | 0.99 (0.99) | 1.00 (1.00) | 2.00 (2.05) | 1.87 (1.98) | 2.00 (2.00) | 3.49e-3 |
+| exact sphere | paraboloidPlane | 0.98 (0.96) | 0.98 (0.96) | 1.00 (0.98) | 2.10 (2.11) | 2.35 (2.10) | 1.97 (1.92) | 1.19e-3 |
+| exact sphere | paraboloidFaces | 1.98 (1.97) | 1.91 (1.91) | 1.97 (1.97) | 2.06 (2.06) | 2.34 (2.10) | 2.00 (2.00) | 1.12e-5 |
+| exact sphere | paraboloidVolume | 1.00 (0.99) | 0.98 (0.98) | 1.13 (1.22) | 2.10 (2.10) | 2.31 (2.12) | 2.01 (2.04) | 1.05e-3 |
+| exact sphere | paraboloidVolumeExact | 1.05 (1.15) | 1.20 (1.30) | 1.91 (1.92) | 2.07 (2.06) | 2.35 (2.10) | 2.01 (2.04) | 7.26e-5 |
+| DA + quadratic faces | plane | 1.00 (1.00) | 0.98 (0.96) | 1.00 (1.00) | 1.97 (2.00) | 1.79 (1.87) | 2.00 (2.00) | 1.29e-3 |
+| DA + quadratic faces | paraboloidPlane | 1.01 (1.02) | 0.98 (0.98) | 1.01 (0.99) | 1.98 (2.02) | 1.75 (1.95) | 2.02 (2.06) | 1.97e-3 |
+| DA + quadratic faces | paraboloidFaces | 2.00 (2.07) | 1.18 (1.65) | 2.00 (2.03) | 1.99 (2.03) | 1.83 (1.90) | 2.00 (2.00) | 4.55e-6 |
+| DA + quadratic faces | paraboloidVolume | 1.97 (2.03) | 1.49 (1.65) | 1.98 (2.03) | 1.99 (2.02) | 1.82 (1.88) | 2.00 (2.01) | 6.25e-6 |
+| DA + quadratic faces | paraboloidVolumeExact | 1.00 (1.01) | 0.98 (0.99) | 1.04 (1.12) | 1.99 (2.03) | 1.85 (1.94) | 2.02 (2.05) | 9.81e-4 |
+
+Pairwise L1 orders of the face-anchored arm: exact state 1.96, 1.96, 2.00;
+chord state 2.23, 2.07, 1.92. At N = 160 its L1 error is 300 times below
+the plane's on the chord state (4.6e-6 against 1.3e-3) and 310 times on the
+exact state.
+
+**Ellipsoid ladder (the proposal's state: DA cell fraction, quadratic
+faces; half-axes 1.0/0.8/0.6 mm; N = 20 to 160), the reference the
+twice-subdivided quadratic cut
+(`davof_regen_orders_ellipsoidRegeneration3D.csv`):**
+
+| arm | p(alpha_f, L1) | p(alpha_f, L2) | p(mismatch, L1) | p(n, L1) | p(n, L2) | p(x, L2) | alpha_f L1 at N = 160 |
+|---|---|---|---|---|---|---|---|
+| plane | 0.99 (0.98) | 0.97 (0.95) | 0.98 (0.99) | 1.93 (1.92) | 1.67 (1.69) | 2.00 (1.99) | 1.68e-3 |
+| paraboloidPlane | 1.01 (1.04) | 0.98 (1.00) | 0.99 (1.01) | 1.96 (1.97) | 1.85 (1.80) | 2.11 (2.12) | 2.55e-3 |
+| paraboloidFaces | 2.09 (2.11) | 2.16 (2.01) | 2.01 (2.01) | 1.93 (1.93) | 1.64 (1.70) | 1.99 (2.00) | 8.84e-6 |
+| paraboloidVolume | 2.04 (2.05) | 1.83 (1.77) | 2.04 (2.07) | 1.92 (1.93) | 1.61 (1.68) | 1.99 (2.00) | 1.30e-5 |
+| paraboloidVolumeExact | 1.02 (1.04) | 1.01 (1.01) | 1.16 (1.24) | 1.94 (1.93) | 1.66 (1.70) | 2.04 (2.10) | 1.27e-3 |
+
+Pairwise L1 orders of the face-anchored arm 2.12, 2.18, 2.00; its L1 error
+at N = 160 is 190 times below the plane's. The original state's normal on
+this ladder: 1.97 (L1) / 1.77 (L2) over the three finest rungs, the numbers
+of 10.11 (1.96 / 1.78) within the fit's rounding. Anchoring residual at or
+below 2e-11 relative on every rung; triangle fallbacks 0 except
+paraboloidVolume at N = 20 (6) and 40 (1); no cell without a bracket.
+
+Reading. The face anchoring regenerates the face fractions at q = 2 on the
+chord state (2.00 sphere, 2.09 ellipsoid in L1) and on the exact state
+(1.98); the plane and the vertex-anchored paraboloid at q = 1 (0.98 to
+1.01): the tilt of the explicit plane and the half-sagitta offset of the
+vertex anchoring are the O(h) fraction errors of the derivation of
+2026-10-03 (article folder, FINDINGS.md). The owner-neighbour mismatch
+follows the same orders (2.00 / 2.01 face-anchored, 1.00 / 0.98 plane), so
+the C0 defect of the cell-local regeneration is O(h^2) as a fraction for the
+method's anchoring. The regenerated normal and position are second order
+for every arm: in a zero-step test the regenerated fractions are the
+clipping surface's own, and (1) returns that surface's mean normal (the
+plane's exactly), so the fraction order, not the normal, carries q. The
+regenerated normal's 1.99 / 1.83 (sphere) and 1.93 / 1.64 (ellipsoid) in
+L1 / L2 satisfy the proposal's WP1 criterion (1.8 / 1.5) trivially for the
+same reason; the result of this gate is the fraction order.
+
+Predictions against the ladders (PREDICTION 6):
+
+- plane q = 1: confirmed (1.00 / 1.00 / 0.99).
+- paraboloidPlane q = 1: confirmed (0.98 / 1.01 / 1.01).
+- paraboloidFaces q = 2: confirmed (1.98 / 2.00 / 2.09 in L1).
+- paraboloidVolume q = 1 on the chord cell fraction: FALSIFIED (1.97 sphere,
+  2.04 ellipsoid): the Detrixhe-Aslam tet quadrature of the paraboloid
+  carries the chord defect of the cell fraction it is matched to, and the
+  two defects cancel (the smoke run's finding holds over both ladders). On
+  the exact state the same arm is q = 1 (1.00): there the quadrature's chord
+  defect has no partner.
+- paraboloidVolumeExact q = 2 on the exact state: FALSIFIED (1.05, pairwise
+  1.38, 1.09, 1.01). Its "own cut volume" is the LINEAR tet cut on tets
+  split twice: the chord defect is 1/16 of the Detrixhe-Aslam one, not zero,
+  and the matched offset carries 1/16 of the chord shift; the finest L1
+  error is 7.3e-5 against 1.05e-3 for the unrefined quadrature (ratio
+  14.5). A truly exact paraboloid volume needs the quadratic cut. On the
+  chord state the arm is q = 1 (1.00 / 1.02) as derived (15/16 of a chord
+  shift off). The arm keeps its name with this note.
+
+Consequence for the design (now over both ladders): a volume anchor is
+consistent only in the quadrature that defined the cell fraction, and it
+must be the chord quadrature for the chord state; the face anchor needs no
+such pairing and is second order on both states and both surfaces.
+
+**The chord state's L2 at N = 160 (sphere, face-anchored: 1.18 over the
+three finest rungs, pairwise 2.25, 2.64, -0.29; Linf 1.4e-2 against 1.1e-3
+at N = 80).** The worst-pair diagnostic names one internal face (6216215,
+cells 2080726 / 2080886, alpha_k 0.013 / 0.983): both cells regenerate it
+at 0.4650 / 0.4654, the state's own value is 0.4651, the twice-subdivided
+reference says 0.4788. A grazing face at the sphere's pole: from alpha_k
+the sphere enters the empty cell by about 0.01 h through this face, so the
+in-plane circle has a radius of about 0.9 h and the quadratic cut of the
+fan triangles misses 1.4e-2 of its area in the initialisation; the
+face-anchored regeneration reproduces the state's value to 1e-4 and inherits
+the defect. The next six pairs are corner slivers (alpha_k 0.99999) with
+errors of 2e-3 to 3e-3 of the same kind. Such faces exist with an expected
+count of a few h/R per rung (none at N = 80, one at N = 160), so their
+weight in L1 is 1e-8 and L1 is clean (2.00); L2 and Linf at the finest rung
+are theirs. The ellipsoid's L2 (2.16) has no such face. Open: the exact
+fraction of a grazing face from the sphere's disc for the record; the
+quadratic cut on a fan triangle whose in-plane curve radius is below the
+triangle size (a split criterion by curvature, not by fallback).
+
+Regression found and fixed: `computeFromExactSphere` let the Detrixhe-Aslam
+fan sums (`mTri_`, 2026-10-02) stand in for the exact face fractions; the
+exact state's normal was first order from 2026-10-02 to 2026-10-04 (2.0e-2 /
+9.7e-3 at N = 20 / 40 instead of 7.0e-3 / 1.6e-3). The sphere ladder of
+2026-09-29 (section 10.7) and the proposal's Table 1 predate the fan.
+`hasMTri_` is false for the exact state now. On this ladder the exact
+state's normal reads 2.00 (L1) / 1.88 (L2) over the three finest rungs
+(pairwise L2 2.16, 2.03, 1.73), the position 2.00.
+
+Running the ladders: `--jobs 1` (an N = 160 sphere case peaks at 5.1 GB;
+a sphere N = 160 case runs 20 to 60 s, the paraboloidVolumeExact arm the
+longest). The morning's six parallel jobs OOM-killed one solver, which
+poisoned systemd's `init.scope` cgroup of the WSL VM so that every later
+session died after 90 s until `wsl --shutdown` (AGENTS.md, "The DAVOF
+zero-step regeneration"). Not yet in the proposal: the manuscript changes
+only on Tomislav's decision (both versions, one sentence after finding
+(iv) and the Stage 1 arms as results).

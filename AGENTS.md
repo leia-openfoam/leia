@@ -226,6 +226,59 @@ rule (pre-processing only, solver unchanged, fields re-initialised on the final
 mesh; `REFINE_LEVELS >= 1`, `N_CELLS` = the FINE count) -- README section
 "Static local refinement around the interface".
 
+### The DAVOF zero-step regeneration (2026-10-04)
+
+`src/leiaLevelSet/davof/davofRegeneration.H` (header-only) and the option
+`leiaTestDavofNormal -regenerate <arm>` (or `fvSolution davof.regenerate`,
+token `DAVOF_REGEN_ARM`, default `none`): from the static state every
+interface cell recovers its normal (eq. 1), its explicit plane (eq. 2) and the
+ring tensor of the FIRST curvature model (a `quadricFit`, so the paraboloid
+arms need `davof.curvature.models (normalsOnly ...)`), builds a clipping
+surface, re-cuts its own faces with it and compares the regenerated face
+fractions with a reference AS FRACTIONS; the normal and the position are then
+recovered from the regenerated data (`davofState::setRegenerated`). Arms:
+`plane`, `paraboloidPlane` (vertex on the plane polygon's centroid),
+`paraboloidFaces` (offset from the cell's own face fractions: the total wetted
+face area is reproduced; THE METHOD'S anchoring, Tomislav 2026-10-03),
+`paraboloidVolume` (offset from alpha_k with the Detrixhe-Aslam tet
+quadrature of the paraboloid) and `paraboloidVolumeExact` (offset from
+alpha_k with the LINEAR tet cut on tets split twice: NOT exact, its chord
+defect is 1/16 of the Detrixhe-Aslam one, see STATUS 10.13). Reference: the
+exact fractions on the `exactSphere` state, otherwise the quadratic cut of
+the exact distance on every fan triangle subdivided twice. Output:
+`leiaTestDavofRegen.csv` per case (E_ALPHAF_L1/L2/LINF over the (cell, face)
+pairs of the interface cells, each cell with its own view;
+E_ALPHAF_MISMATCH_* owner against neighbour; the regenerated normal and
+position, also as the model row `davofRegen`; counts and the anchoring
+residual; the eight worst pairs in the log), `plic.davofRegen.vtk`, and the
+tables and figures of `workflow/scripts/make_davof_regen_table.py`
+(`davof_regen_*_<study>.{csv,tex,png}`, run by the report step for a study
+with that CSV; the compact table exported by `make davof-proposal`).
+Studies: `config/davof/ellipsoidRegeneration3D.yaml` (the proposal's state,
+quadraticFaces) and `sphereRegeneration3D.yaml` (the cross-check with the
+exact fractions); predictions pre-registered in their headers (PREDICTION 6,
+with the smoke-run note of 2026-10-04). Gate:
+`cases/davof/planeNormal3D/Allrun_regenerate` (every arm regenerates the
+plane to round-off, both surface-based states). Serial studies only: a
+neighbour's surface across a processor boundary is not exchanged. Results in
+STATUS.md 10.13.
+
+A regression found and fixed the same day: `computeFromExactSphere` let the
+Detrixhe-Aslam fan sums (`mTri_`, 2026-10-02) stand in for the exact face
+fractions, so the exact state's normal was first order between 2026-10-02 and
+2026-10-04; the sphere ladder of 2026-09-29 and the proposal's numbers predate
+the fan and are unaffected. `hasMTri_` is false for the exact state now.
+
+WSL (2026-10-04): run the N = 160 cases with `--jobs 1`. An N = 160 sphere
+case peaks at 5.1 GB; six parallel jobs of the local profile exhaust the
+16 GB VM, and the OOM kill of one solver poisons systemd's `init.scope`
+cgroup of the WSL VM (`/sys/fs/cgroup/init.scope/memory.events` keeps
+`oom_kill 1` across distro restarts; `OOMPolicy=stop`), after which every
+new WSL session is SIGKILLed 90 s after it starts (`journalctl`:
+`init.scope: Stopping timed out. Killing.`; `wsl.exe` reports `Catastrophic
+failure`, `Wsl/Service/E_UNEXPECTED`). `systemctl reset-failed` does not
+clear it; `wsl.exe --shutdown` does.
+
 ### The DAVOF plane test on perturbed meshes (2026-10-02)
 
 `cases/davof/planeNormal3D/Allrun_perturbed vertex|column <amplitude>`. Column-wise
