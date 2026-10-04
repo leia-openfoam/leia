@@ -196,7 +196,7 @@ _preprocess = ["cd {params.d}",
                " leiaRedistancedLevelSetFoam.csv leiaTestRedistance.csv"
                " leiaTestFaceCurvature.csv leiaTestCurvatureNoiseGain.csv"
                " leiaTestDavofNormal.csv leiaTestDavofNormalModels.csv"
-               " leiaTestDavofCurvature.csv"
+               " leiaTestDavofCurvature.csv leiaTestDavofRegen.csv"
                " psiConservation.csv",
                " ".join(filter(None, [SETFIELDS_APP, SETFIELDS_ARGS]))]
 

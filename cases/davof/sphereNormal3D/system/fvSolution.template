@@ -63,6 +63,34 @@ davof
 {
     alphaSource     @!DAVOF_ALPHA_SOURCE!@;
     wispTol         @!DAVOF_WISP_TOL!@;
+    // Zero-step regeneration arm (davofRegeneration.H): none | plane |
+    // paraboloidPlane | paraboloidFaces | paraboloidVolume; the paraboloid
+    // arms take the ring tensor from the first curvature model.
+    regenerate      @!DAVOF_REGEN_ARM!@;
+
+    // Curvature of the DAVOF state (libleiaDavof curvature/), none by default
+    // on the sphere gate; the regeneration study switches normalsOnly on.
+    curvature
+    {
+        models      (@!DAVOF_CURV_MODEL_1!@ @!DAVOF_CURV_MODEL_2!@);   // none entries are skipped
+
+        normalsOnly
+        {
+            type            quadricFit;
+            positionWeight  0;
+            weighting       area;
+            minNeighbours   5;
+            alignTol        0.2;
+        }
+        hermite
+        {
+            type            quadricFit;
+            positionWeight  1;
+            weighting       area;
+            minNeighbours   5;
+            alignTol        0.2;
+        }
+    }
 
     crossCheck
     {

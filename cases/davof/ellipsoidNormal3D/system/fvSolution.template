@@ -67,6 +67,10 @@ davof
 {
     alphaSource     @!DAVOF_ALPHA_SOURCE!@;
     wispTol         @!DAVOF_WISP_TOL!@;
+    // Zero-step regeneration arm (davofRegeneration.H): none | plane |
+    // paraboloidPlane | paraboloidFaces | paraboloidVolume; the paraboloid
+    // arms take the ring tensor from the first curvature model.
+    regenerate      @!DAVOF_REGEN_ARM!@;
 
     curvature
     {

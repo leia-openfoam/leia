@@ -1,0 +1,33 @@
+#!/bin/bash
+# DAVOF exact-solution gate of the zero-step regeneration (davofRegeneration.H):
+# on a plane every arm must regenerate the plane again -- the Gauss-identity
+# normal and the explicit plane are exact, the ring tensor of a plane is zero,
+# so the paraboloids are the plane -- and leiaTestDavofNormal -expectExact
+# -regenerate <arm> must find the regenerated face fractions, normal and
+# position at round-off for every arm and both surface-based alpha sources, or
+# exit non-zero. Run in a shell with OpenFOAM and this clone (etc/leia-env.sh)
+# sourced:
+#     cases/davof/planeNormal3D/Allrun_regenerate
+cd "${0%/*}" || exit 1
+. "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+
+rm -f log.* && rm -rf 0 && cp -r 0.org 0
+
+runApplication blockMesh
+runApplication leiaSetFields -alphaName alpha.water
+
+status=0
+for src in detrixheAslam quadraticFaces; do
+    foamDictionary -entry davof/alphaSource -set "$src" system/fvSolution > /dev/null
+    for arm in plane paraboloidPlane paraboloidFaces paraboloidVolume paraboloidVolumeExact; do
+        log="log.leiaTestDavofNormal.$src.$arm"
+        leiaTestDavofNormal -alphaName alpha.water -expectExact -regenerate "$arm" > "$log" 2>&1
+        rc=$?
+        echo "== alphaSource $src, regeneration $arm =="
+        grep -E "expectExact|^regeneration|alpha_f error|regenerated normal" "$log"
+        echo "leiaTestDavofNormal -expectExact -regenerate $arm ($src) exit code: $rc"
+        [ $rc -ne 0 ] && status=$rc
+    done
+done
+foamDictionary -entry davof/alphaSource -set detrixheAslam system/fvSolution > /dev/null
+exit $status

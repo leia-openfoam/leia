@@ -126,6 +126,10 @@ class davofState
     scalar maxVolDiffPlane_;        // max_c |alphaPlane_c - alpha_c|
     scalar maxAreaDiffPlane_;       // max_c |A_polygon n - m_c| / V_c^(2/3)
     label nFaceFallback_;           // quadraticFaces: faces kept at the DA value
+    // Cells whose face data were regenerated (davofRegeneration.H): their
+    // alphaf_ holds the owner's view only, so areaNormal() must not take a
+    // uniform owner view for a bulk cell there.
+    boolList regenerated_;
 
     //- Cell fractions and zero-set patches of cellI from vertex values given
     //  by phiCell(c), phiFace(c, f), phiPoint(c, p).
@@ -214,6 +218,18 @@ public:
     //- m_c = -sum_f alpha_f S_f^out, or the face-triangulation sum mTri_
     //  when the state was initialised from a surface
     void areaNormal();
+
+    //- Install regenerated face data (davofRegeneration.H): alphaf the
+    //  owner's view of every face, mTri and momentTri the per-cell fan sums
+    //  of the regenerated cells (isI), then recompute the normal and the
+    //  explicit position from them. The cell fractions stay.
+    void setRegenerated
+    (
+        const boolList& isI,
+        const scalarField& alphaf,
+        const vectorField& mTri,
+        const scalarField& momentTri
+    );
 
     //- max_c |m_c - mTet_c| / V_c^(2/3), reduced over ranks
     scalar maxConsistency() const;

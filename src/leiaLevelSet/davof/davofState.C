@@ -589,6 +589,12 @@ void Foam::davofState::computeFromExactSphere(const implicitSphere& sphere)
         }
     }
     maxAlphaClip_ = 0;
+    // The exact fractions ARE the state: on these planar faces the scalar
+    // identity -sum_f alpha_f S_f is the exact wetted area vector, so the
+    // Detrixhe-Aslam fan sums of the first pass must not stand in for it
+    // (they did from 2026-10-02 to 2026-10-04: the exact state's normal was
+    // then first order; the sphere ladder of 2026-09-29 predates the fan).
+    hasMTri_ = false;
 
     alpha_.correctBoundaryConditions();
     fillAlphafOut();
@@ -788,7 +794,7 @@ void Foam::davofState::areaNormal()
             lo = min(lo, alphaf_[cf[i]]);
             hi = max(hi, alphaf_[cf[i]]);
         }
-        if (lo == hi)
+        if (lo == hi && !(regenerated_.size() && regenerated_[c]))
         {
             m[c] = Zero;
             mTri_[c] = Zero;
@@ -909,6 +915,25 @@ void Foam::davofState::planePosition()
     xPlane_.correctBoundaryConditions();
     APlane_.correctBoundaryConditions();
     alphaPlane_.correctBoundaryConditions();
+}
+
+
+void Foam::davofState::setRegenerated
+(
+    const boolList& isI,
+    const scalarField& alphaf,
+    const vectorField& mTri,
+    const scalarField& momentTri
+)
+{
+    regenerated_ = isI;
+    alphaf_ = alphaf;
+    mTri_ = mTri;
+    momentTri_ = momentTri;
+    hasMTri_ = true;
+    fillAlphafOut();
+    areaNormal();
+    planePosition();
 }
 
 

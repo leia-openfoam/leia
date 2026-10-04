@@ -32,4 +32,6 @@ values
     DAVOF_CURV_MODEL_2 ( hermite );
 
     DAVOF_CROSS_CHECK ( geometricVoF );
+
+    DAVOF_REGEN_ARM ( none );
 }
