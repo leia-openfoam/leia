@@ -88,7 +88,7 @@ axes_override:
   DAVOF_REGEN_FEEDBACK: [own, cell]
   DAVOF_REGEN_ITER: [5000]
   DAVOF_REGEN_ORIGIN: [volume]
-  DAVOF_REGEN_REFIT: [true]
+  DAVOF_REGEN_REFIT: ["true"]
   DAVOF_CURV_MODEL_1: [normalsOnly]
   DAVOF_CURV_MODEL_2: [none]
   DAVOF_CROSS_CHECK: [none]
