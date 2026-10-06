@@ -5396,3 +5396,49 @@ session died after 90 s until `wsl --shutdown` (AGENTS.md, "The DAVOF
 zero-step regeneration"). Not yet in the proposal: the manuscript changes
 only on Tomislav's decision (both versions, one sentence after finding
 (iv) and the Stage 1 arms as results).
+
+### 10.14 The iterated regeneration on Lichtenberg: q = 2 per step, q = 1 per period (2026-10-06)
+
+The ladders of `config/davof/sphereRegenIterLong3D.yaml` (K = 5000, N = 20 and 40),
+`sphereRegenIter3D.yaml` and `ellipsoidRegenIter3D.yaml` (K = 500, N = 20 to 160),
+arms plane / paraboloidFaces / paraboloidVector, views own / cell, origin volume,
+refit on, run in the clone `/work/scratch/tm83tomy/leia-davof` (jobs 55339952 to
+55339954, resubmitted 2026-10-06 morning after the YAML boolean failure of the
+overnight run: `DAVOF_REGEN_REFIT: [true]` became the token `True`; quote booleans).
+Tables: `docs/davof/davof-article/data/tables/davof_regen_iter_<study>.csv` and
+`davof_regen_iter_orders_<study>.csv`; per case `leiaTestDavofRegenIter.csv`.
+
+Long ladder, completed 20:31 (L1 face-fraction error as a fraction; the per-period
+accounting compares k proportional to 1/h: N = 20 at k = 40 against N = 40 at k = 80):
+
+| arm / view | E(1) at N 20, 40 | E(2N) | E(4N) | E(5000) | per-period order |
+|---|---|---|---|---|---|
+| plane / cell | 3.92e-3, 1.98e-3 | unchanged | unchanged | unchanged | exact fixed point (P1 confirmed) |
+| plane / own | 3.92e-3, 1.98e-3 | 2.48e-2, 1.52e-2 | 2.33e-2, 1.57e-2 | 2.32e-2, 1.60e-2 | saturates in 40 iterations at order 0.5; normal destroyed |
+| paraboloidFaces / cell | 2.30e-4, 4.45e-5 | 5.52e-3, 2.98e-3 | 1.05e-2, 6.00e-3 | 9.37e-2, 8.97e-2 | 0.89 (2N), 0.81 (4N) |
+| paraboloidFaces / own | 2.30e-4, 4.45e-5 | 6.25e-3, 1.63e-3 | 1.76e-2, 4.33e-3 | 0.37, 0.37 | diverges; 51 and 163 cells drop out |
+| paraboloidVector / cell | 2.10e-4, 2.84e-5 | 8.21e-4, 4.80e-4 | 1.34e-3, 8.70e-4 | 8.0e-3, 7.5e-3 | 0.78 (2N), 0.62 (4N); constant 6 to 7 times lower |
+| paraboloidVector / own | 2.10e-4, 2.84e-5 | 3.19e-2, 1.38e-2 | 6.21e-2, 4.14e-2 | 0.31, 0.36 | diverges; Newton fails in 60 and 277 cells |
+
+Verdicts on the pre-registered lines of the config headers: P1 CONFIRMED (plane/cell
+constant to every digit over 5000 iterations). P1' (plane/own increment first order):
+the arm saturates, the increment is not the measure; the saturated level is order 0.5.
+P2' FALSIFIED beyond the first few hundred iterations: at fixed K = 5000 the error of
+paraboloidFaces is independent of h (9.4e-2 against 9.0e-2); the increment is O(h^2)
+only at the start (smoke run, STATUS 10.13 addendum of 2026-10-05). P2'' half: the
+vector arm's drift is a fifth to a seventh of the scalar arm's but not second order; the
+Newton failures (11 to 15 % of the cells, scalar fallback) are the suspected residual.
+The measured statement for the proposal: the zero-velocity regeneration with the
+face-anchored paraboloid is q = 2 per step and q = 1 per period, the alpha_k-positioned
+plane with cell views is the only fixed point, and a fixed point of the second-order
+map needs a clipping surface that reproduces the cell's fractions (the proposal's
+Stage 1 projection; a six-coefficient paraboloid fitted to the F fractions is the
+identity of the map by construction for F <= 6 and is the next arm to test,
+`paraboloidFull`, not yet implemented).
+
+K = 500 ladders (sphere and ellipsoid, N = 20 to 160): at 23:30 at 94 % and 89 %, the
+N = 160 cases running; their per-period orders over four rungs, the displaced-face cut
+at k = 1 (P4) and the Newton-failure share against N are to be appended here when the
+drivers end (`cluster_status2.sh` of the session record; the data return by git from
+the clone). The proposal (commit 50451c2 of `research/projects`) carries the long
+ladder's result in finding (v) and Stage 1.
