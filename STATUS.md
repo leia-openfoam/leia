@@ -5442,3 +5442,60 @@ at k = 1 (P4) and the Newton-failure share against N are to be appended here whe
 drivers end (`cluster_status2.sh` of the session record; the data return by git from
 the clone). The proposal (commit 50451c2 of `research/projects`) carries the long
 ladder's result in finding (v) and Stage 1.
+
+**K = 500 ladders, completed 2026-10-06 23:39 (sphere) and 2026-10-07 00:24 (ellipsoid),
+48 cases, no error; leia 0d2bffc carries the tables and figures.** L1 face-fraction error
+as a fraction at k = 2N (one period at fixed Courant number, k proportional to 1/h) for
+N = 20, 40, 80, 160 and the per-period order between successive rungs (4N lies inside
+K = 500 only for N <= 80):
+
+| arm / view | surface | E(2N) at N = 20, 40, 80, 160 | order at 2N | order at 4N |
+|---|---|---|---|---|
+| plane / cell | sphere | 3.92e-3, 1.98e-3, 9.92e-4, 4.96e-4 (= E(1), every digit) | exact fixed point | exact fixed point |
+| plane / cell | ellipsoid | 5.48e-3, 2.82e-3, 1.40e-3, 7.05e-4 (= E(1)) | exact fixed point | exact fixed point |
+| plane / own | sphere | 2.48e-2, 1.57e-2, 1.42e-2, 9.66e-3 | 0.66, 0.14, 0.56 | 0.57, 0.15 |
+| plane / own | ellipsoid | 2.99e-2, 1.87e-2, 1.36e-2, 1.04e-2 | 0.68, 0.46, 0.38 | 0.63, 0.47 |
+| paraboloidFaces / cell | sphere | 5.52e-3, 2.98e-3, 1.60e-3, 8.67e-4 | 0.89, 0.90, 0.89 | 0.81, 0.84 |
+| paraboloidFaces / cell | ellipsoid | 1.29e-2, 6.30e-3, 3.40e-3, 1.85e-3 | 1.03, 0.89, 0.88 | 1.14, 0.81 |
+| paraboloidFaces / own | sphere | 6.25e-3, 4.33e-3, 3.92e-3, 4.89e-3 | 0.53, 0.14, -0.32 | 0.56, -0.20 |
+| paraboloidFaces / own | ellipsoid | 1.51e-2, 9.65e-3, 8.76e-3, 7.82e-3 | 0.64, 0.14, 0.16 | 0.40, 0.01 |
+| paraboloidVector / cell | sphere | 8.21e-4, 4.80e-4, 2.50e-4, 1.26e-4 | 0.78, 0.94, 0.98 | 0.63, 0.86 |
+| paraboloidVector / cell | ellipsoid | 2.34e-3, 1.12e-3, 5.58e-4, 2.95e-4 | 1.06, 1.00, 0.92 | 1.12, 0.94 |
+| paraboloidVector / own | sphere | 3.19e-2, 4.14e-2, 9.36e-2, 1.47e-1 | diverges (-0.4 to -1.2) | diverges |
+| paraboloidVector / own | ellipsoid | 2.75e-2, 4.82e-2, 1.01e-1, 1.69e-1 | diverges (-0.8 to -1.1) | diverges |
+
+The report's own order table (`davof_regen_iter_orders_*.csv`, quantity EK = the error
+at K = 500, three finest rungs) reads 1.71 (sphere) / 1.69 (ellipsoid) for
+paraboloidFaces/cell and 1.76 / 1.83 for paraboloidVector/cell: at FIXED K the error
+still falls with h because K = 500 is 1.6 periods at N = 160 and 12.5 at N = 20; the
+per-period accounting above compares like with like and is the one to quote.
+
+Verdicts. (1) The one-scalar face anchoring drifts at order 0.9 per period on both
+surfaces over four rungs (the long ladder's 0.89 / 0.81 on the two coarsest meshes was
+not a coarse-mesh artefact); (2) the area-vector anchoring drifts at 0.8 to 1.0 per
+period with a constant 5.5 to 6.9 times lower (sphere 6.2 to 6.9, ellipsoid 5.5 to
+6.3), tending to first order under refinement (0.98 and 0.92 on the finest pair), so
+P2'' stays half-confirmed: a lower constant, not a higher order; (3) the own-view
+(single-valued) arms do not converge at all: plane/own saturates, both paraboloid/own
+arms diverge, the vector arm fastest; (4) the Newton failures of the vector arm
+(N_NO_BRACKET at k = 1, scalar fallback) are a constant share of the interface cells,
+60/472, 277/1863, 1155/7418, 4651/29739 = 12.7, 14.9, 15.6, 15.6 % on the sphere and
+51/298, 208/1168, 851/4649, 3400/18642 = 17.1, 17.8, 18.3, 18.2 % on the ellipsoid;
+they do not vanish under refinement, so they are a property of the anchoring (the
+in-plane vertex position has no root in those cells), not the residual of a
+second-order arm. (5) P4, the displaced-face cut at k = 1 (`leiaTestDavofRegen.csv`,
+columns `E_ALPHAF_SHIFT_{M050,M025,P025,P050}_L1`, faces displaced by -0.5, -0.25,
++0.25, +0.5 h along the normal and cut against the k = 1 surface): the face-anchored
+paraboloid gives 5.6e-4, 8.7e-5, 1.4e-5, 3.1e-6 at -0.5 h on the sphere (orders 2.7,
+2.6, 2.2) and 1.7e-3, 2.6e-4, 4.7e-5, 1.0e-5 on the ellipsoid (2.7, 2.5, 2.2), the
+vector arm the same within 10 %, the plane 1.05e-2, 4.8e-3, 2.2e-3, 1.06e-3 (1.1, 1.1,
+1.0); the other three displacements agree within 30 %. So the ONE-STEP cut against
+displaced faces (reviewer C's variant of the transport step) is q = 2 for the
+paraboloid arms and q = 1 for the plane; it is the repetition, not the displacement,
+that costs the order. P4 CONFIRMED.
+
+Manuscript (2026-10-09, both versions, finding (v)): "first order (0.9 over four
+refinements on the sphere and on the ellipsoid) for the face-anchored paraboloid and,
+with a six times smaller constant, for the paraboloid anchored by the cell's wetted
+area vector (0.8 to 1.0)"; the Detailed version names the ladders (sphere and
+ellipsoid, N = 20 to 160, K = 500, and 5000 on the two coarsest sphere meshes).
