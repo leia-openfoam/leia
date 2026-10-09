@@ -1,0 +1,19 @@
+ALPHA_SOURCE,REGEN_ARM,FEEDBACK,K,QUANTITY,P_ALL,P_3FINEST,PAIRWISE,VALUES
+quadraticFaces,plane,cell,5000,E1,0.988,,0.99,3.924e-03 1.978e-03
+quadraticFaces,plane,cell,5000,EK,0.988,,0.99,3.924e-03 1.978e-03
+quadraticFaces,plane,cell,5000,d,-0.000,,-0.00,2.000e-18 2.000e-18
+quadraticFaces,plane,own,5000,E1,0.988,,0.99,3.924e-03 1.978e-03
+quadraticFaces,plane,own,5000,EK,0.534,,0.53,2.324e-02 1.604e-02
+quadraticFaces,plane,own,5000,d,0.457,,0.46,3.864e-06 2.814e-06
+quadraticFaces,paraboloidFaces,cell,5000,E1,2.373,,2.37,2.304e-04 4.448e-05
+quadraticFaces,paraboloidFaces,cell,5000,EK,0.063,,0.06,9.369e-02 8.971e-02
+quadraticFaces,paraboloidFaces,cell,5000,d,0.060,,0.06,1.870e-05 1.794e-05
+quadraticFaces,paraboloidFaces,own,5000,E1,2.373,,2.37,2.304e-04 4.448e-05
+quadraticFaces,paraboloidFaces,own,5000,EK,0.016,,0.02,3.700e-01 3.660e-01
+quadraticFaces,paraboloidFaces,own,5000,d,0.015,,0.02,7.397e-05 7.320e-05
+quadraticFaces,paraboloidVector,cell,5000,E1,2.887,,2.89,2.101e-04 2.839e-05
+quadraticFaces,paraboloidVector,cell,5000,EK,0.084,,0.08,7.995e-03 7.541e-03
+quadraticFaces,paraboloidVector,cell,5000,d,0.052,,0.05,1.557e-06 1.503e-06
+quadraticFaces,paraboloidVector,own,5000,E1,2.887,,2.89,2.101e-04 2.839e-05
+quadraticFaces,paraboloidVector,own,5000,EK,-0.219,,-0.22,3.051e-01 3.551e-01
+quadraticFaces,paraboloidVector,own,5000,d,-0.220,,-0.22,6.100e-05 7.102e-05
