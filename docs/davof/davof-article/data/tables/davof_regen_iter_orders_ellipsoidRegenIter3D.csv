@@ -17,3 +17,9 @@ quadraticFaces,paraboloidVector,cell,500,d,1.532,1.823,0.86 1.80 1.85,2.023e-05 
 quadraticFaces,paraboloidVector,own,500,E1,2.330,2.202,2.52 2.51 1.89,5.226e-04 9.088e-05 1.594e-05 4.291e-06
 quadraticFaces,paraboloidVector,own,500,EK,-0.104,-0.091,-0.08 -0.27 0.09,1.863e-01 1.962e-01 2.365e-01 2.225e-01
 quadraticFaces,paraboloidVector,own,500,d,-0.105,-0.091,-0.08 -0.27 0.09,3.722e-04 3.931e-04 4.739e-04 4.459e-04
+quadraticFaces,paraboloidFull,cell,500,E1,2.279,2.290,2.18 2.51 2.08,1.500e-04 3.305e-05 5.820e-06 1.381e-06
+quadraticFaces,paraboloidFull,cell,500,EK,2.282,2.290,2.19 2.51 2.07,1.510e-04 3.309e-05 5.825e-06 1.383e-06
+quadraticFaces,paraboloidFull,cell,500,d,2.971,2.131,4.58 3.19 1.07,2.102e-09 8.797e-11 9.639e-12 4.588e-12
+quadraticFaces,paraboloidFull,own,500,E1,2.279,2.290,2.18 2.51 2.08,1.500e-04 3.305e-05 5.820e-06 1.381e-06
+quadraticFaces,paraboloidFull,own,500,EK,2.279,2.289,2.18 2.51 2.07,1.505e-04 3.313e-05 5.833e-06 1.388e-06
+quadraticFaces,paraboloidFull,own,500,d,2.181,1.810,2.76 2.67 0.95,1.137e-09 1.678e-10 2.638e-11 1.364e-11
