@@ -95,6 +95,7 @@ Description
 
 #include "fvCFD.H"
 #include "cpuTime.H"
+#include "scalarMatrices.H"
 #include "davofState.H"
 #include "davofCurvature.H"
 #include "davofCurvatureDelivery.H"
@@ -444,8 +445,10 @@ int main(int argc, char *argv[])
         "Zero-step regeneration (davofRegeneration.H): plane | paraboloidPlane | "
         "paraboloidFaces | paraboloidVolume | paraboloidVolumeExact | "
         "paraboloidVector (the offset and the in-plane vertex position from the "
-        "cell's wetted area vector); overrides fvSolution davof.regenerate "
-        "(default none)."
+        "cell's wetted area vector) | paraboloidFull (offset, two slopes and the "
+        "three tensor components fitted to the cell's F face fractions, the ring "
+        "tensor as a weak prior; Gauss-Newton); overrides fvSolution "
+        "davof.regenerate (default none)."
     );
     argList::addOption
     (
@@ -507,12 +510,14 @@ int main(int argc, char *argv[])
         regenArm != "none" && regenArm != "plane" && regenArm != "paraboloidPlane"
      && regenArm != "paraboloidFaces" && regenArm != "paraboloidVolume"
      && regenArm != "paraboloidVolumeExact" && regenArm != "paraboloidVector"
+     && regenArm != "paraboloidFull"
     )
     {
         FatalErrorInFunction
             << "Unknown regeneration arm '" << regenArm
             << "'. Valid: none, plane, paraboloidPlane, paraboloidFaces, "
-            << "paraboloidVolume, paraboloidVolumeExact, paraboloidVector."
+            << "paraboloidVolume, paraboloidVolumeExact, paraboloidVector, "
+            << "paraboloidFull."
             << exit(FatalError);
     }
     const label regenIter = max
@@ -1074,7 +1079,9 @@ int main(int argc, char *argv[])
         word arm;
         label nCells = 0, nNoModel = 0, nTriFallback = 0, nRefFallback = 0;
         label nNoBracket = 0, nPairs = 0, nMismatch = 0;
+        label nFullSingular = 0, nFullStalled = 0, nFullPrinted = 0;   // paraboloidFull
         scalar A1 = 0, A2 = 0, Ainf = 0;        // |alpha_f^regen - alpha_f^ref|
+        scalar A1in = 0, AinfIn = 0;            // |alpha_f^state - alpha_f^ref| (k = 0)
         scalar M1 = 0, Minf = 0;                // owner view - neighbour view
         scalar resMax = 0;                      // anchoring residual, relative
         scalar volDiffPlane = 0;                // realizability of the regenerated state
@@ -1151,6 +1158,32 @@ int main(int argc, char *argv[])
             }
         }
 
+        // The error of the INPUT state's face fractions against the same
+        // reference, over the same (cell, face) pairs (the owner's value on
+        // every face, k = 0): the floor of E_ALPHAF for an arm that
+        // reproduces the state's fractions (paraboloidFull), zero on the
+        // exactSphere state, the quadratic-cut error of the unsubdivided
+        // fan against the twice-subdivided reference otherwise.
+        {
+            scalar s1 = 0, li = 0;
+            label nP = 0;
+            forAll(isI, c)
+            {
+                if (!isI[c]) continue;
+                const labelList& cf = cells[c];
+                forAll(cf, i)
+                {
+                    const scalar e = mag(st.alphaf()[cf[i]] - alphafRef[cf[i]]);
+                    ++nP; s1 += e; li = max(li, e);
+                }
+            }
+            rg.A1in = (nP > 0) ? s1/nP : 0;
+            rg.AinfIn = li;
+            Info<< "  input state alpha_f error against the reference L1/Linf = "
+                << rg.A1in << " / " << rg.AinfIn << " over " << nP
+                << " cell-face pairs" << endl;
+        }
+
         // The exact fraction of a displaced face on the sphere: the cut of a
         // face translated by s against the ball about c equals the cut of the
         // face against the ball about c - s.
@@ -1191,6 +1224,7 @@ int main(int argc, char *argv[])
         {
             cpuTime itTimer;
             rg.nCells = 0; rg.nNoModel = 0; rg.nNoBracket = 0;
+            rg.nFullSingular = 0; rg.nFullStalled = 0;
             rg.nTriFallback = 0; rg.resMax = 0;
             const vectorField& mF = st.m().primitiveField();      // the current state
             const vectorField& xPl = st.xPlane().primitiveField();
@@ -1245,7 +1279,12 @@ int main(int argc, char *argv[])
                     const scalar h = Foam::cbrt(V[c]);
                     scalar target = 0;
                     std::function<scalar(scalar)> g;
-                    if (regenArm == "paraboloidFaces" || regenArm == "paraboloidVector")
+                    const bool faceAnchored =
+                    (
+                        regenArm == "paraboloidFaces" || regenArm == "paraboloidVector"
+                     || regenArm == "paraboloidFull"
+                    );
+                    if (faceAnchored)
                     {
                         // The total wetted face area of the cell's own view.
                         const labelList& cf = cells[c];
@@ -1306,8 +1345,7 @@ int main(int argc, char *argv[])
                     // Relative to the target with a cell-sized floor (a nearly
                     // empty or full cell has a target near zero).
                     const scalar floorT =
-                        (regenArm == "paraboloidFaces" || regenArm == "paraboloidVector")
-                      ? 1e-6*Foam::pow(V[c], 2.0/3.0) : 1e-6*V[c];
+                        faceAnchored ? 1e-6*Foam::pow(V[c], 2.0/3.0) : 1e-6*V[c];
                     rg.resMax = max(rg.resMax, res/max(target, floorT));
 
                     if (regenArm == "paraboloidVector")
@@ -1366,6 +1404,236 @@ int main(int argc, char *argv[])
                             ++rg.nNoBracket;   // the scalar anchoring stands
                         }
                         rg.resMax = max(rg.resMax, mag(F)/mScale);
+                    }
+
+                    if (regenArm == "paraboloidFull")
+                    {
+                        // Six scalars, the offset c, the slopes (a1, a2) and
+                        // the tensor (b11, b12, b22), so that the paraboloid
+                        // cuts every face of the cell at the cell's own view
+                        // of its fraction: the zero-velocity map is then the
+                        // identity by construction. Gauss-Newton in the
+                        // dimensionless unknowns y = (c/h, a1, a2, b11 h,
+                        // b12 h, b22 h) from the scalar anchoring (the ring
+                        // tensor, zero slopes, the bisection offset), the
+                        // residual r_f = w_f (alpha_f(y) - t_f) with
+                        // w_f = |S_f|/sum |S_f|, a forward-difference
+                        // Jacobian, the normal equations with Marquardt
+                        // damping (1 + wPrior^2 on the diagonal plus a
+                        // floor): the surface usually crosses fewer than six
+                        // faces, so the system is under-determined; the
+                        // right-hand side lies in the row space of J, so the
+                        // null-space components of every step vanish and
+                        // those of the solution stay at the start, the ring
+                        // tensor as the prior. (Prior ROWS wPrior (b -
+                        // b_ring) in the residual would bias the fit by about
+                        // wPrior^2 and never reach tolFull.) The step is
+                        // limited to norm one (c moves at most h) and halved
+                        // until the max face residual decreases, at most 50
+                        // iterations; converged when every face residual is
+                        // below tolFull. Otherwise (no convergence, stalled,
+                        // singular) the best iterate stands, which is the
+                        // scalar anchoring when nothing improved on it; the
+                        // cell is counted in nNoBracket as the vector arm's
+                        // failures; resMax carries the max face residual.
+                        const labelList& cf = cells[c];
+                        const label F = cf.size();
+                        scalarList tF(F), wF(F);
+                        scalar sumS = 0;
+                        forAll(cf, i) sumS += mag(Sf[cf[i]]);
+                        forAll(cf, i)
+                        {
+                            const label f = cf[i];
+                            tF[i] = (own[f] == c) ? viewOwn[f] : viewNei[f];
+                            wF[i] = mag(Sf[f])/max(sumS, VSMALL);
+                        }
+                        const scalar wPrior = 1e-2;
+                        const scalar tolFull = 1e-10;
+                        const scalar eps = 1e-6;
+                        const label nU = 6;
+                        FixedList<scalar, 6> y;
+                        y[0] = S.c/h; y[1] = 0; y[2] = 0;
+                        y[3] = S.b11*h; y[4] = S.b12*h; y[5] = S.b22*h;
+                        auto surfaceOf = [&](const FixedList<scalar, 6>& yy)
+                            -> davof::cellSurface
+                        {
+                            davof::cellSurface T = S;
+                            T.c = yy[0]*h;
+                            T.a1 = yy[1];
+                            T.a2 = yy[2];
+                            T.b11 = yy[3]/h;
+                            T.b12 = yy[4]/h;
+                            T.b22 = yy[5]/h;
+                            return T;
+                        };
+                        // The weighted residual; returns the max face residual.
+                        auto residual = [&](const FixedList<scalar, 6>& yy, scalarList& r)
+                            -> scalar
+                        {
+                            const davof::cellSurface T = surfaceOf(yy);
+                            scalarList aF;
+                            davof::cellFaceFractions
+                            (
+                                mesh, c, [&](const point& q) { return T.value(q); }, aF
+                            );
+                            r.setSize(F);
+                            scalar rmax = 0;
+                            forAll(aF, i)
+                            {
+                                r[i] = wF[i]*(aF[i] - tF[i]);
+                                rmax = max(rmax, mag(aF[i] - tF[i]));
+                            }
+                            return rmax;
+                        };
+                        scalarList r;
+                        scalar rmax = residual(y, r);
+                        // The best iterate is kept: the start (the
+                        // paraboloidFaces surface) when nothing improves
+                        // on it, else the iterate of least max face
+                        // residual, so that a cell whose six fractions no
+                        // paraboloid reproduces exactly (the quadratic cut
+                        // of the exact surface is not a paraboloid's) keeps
+                        // its least-squares fit rather than the fallback.
+                        FixedList<scalar, 6> yBest(y);
+                        scalar rBest = rmax;
+                        bool ok = (rmax <= tolFull);
+                        bool singular = false, stalled = false;
+                        label nIt = 0;
+                        for (label it = 0; it < 50 && !ok; ++it)
+                        {
+                            ++nIt;
+                            List<scalarList> J(nU);
+                            for (label d = 0; d < nU; ++d)
+                            {
+                                FixedList<scalar, 6> yd(y);
+                                yd[d] += eps;
+                                scalarList rd;
+                                residual(yd, rd);
+                                J[d].setSize(F);
+                                forAll(rd, i) J[d][i] = (rd[i] - r[i])/eps;
+                            }
+                            // (J^T J + lambda I) dy = -J^T r
+                            scalarSquareMatrix A(nU, Zero);
+                            scalarList g(nU, Zero);
+                            for (label p = 0; p < nU; ++p)
+                            {
+                                for (label q = 0; q < nU; ++q)
+                                {
+                                    scalar s = 0;
+                                    for (label i = 0; i < F; ++i) s += J[p][i]*J[q][i];
+                                    A(p, q) = s;
+                                }
+                                scalar s = 0;
+                                for (label i = 0; i < F; ++i) s += J[p][i]*r[i];
+                                g[p] = -s;
+                            }
+                            // Marquardt damping, relative to the diagonal
+                            // (an absolute damping of the size of a grazing
+                            // face's sensitivity, measured 2026-10-12 at
+                            // 1e-4, made the step along that face's
+                            // direction linearly convergent and 31 % of the
+                            // cells miss the tolerance within 30 iterations),
+                            // with a floor of 1e-10 of the largest diagonal
+                            // entry for a direction that moves no face (the
+                            // right-hand side lies in the row space of J, so
+                            // the null-space components of the step vanish
+                            // up to round-off divided by the floor).
+                            scalar diagMax = 0;
+                            for (label p = 0; p < nU; ++p) diagMax = max(diagMax, mag(A(p, p)));
+                            if (diagMax <= VSMALL) { singular = true; break; }
+                            for (label p = 0; p < nU; ++p)
+                            {
+                                A(p, p) = A(p, p)*(1 + sqr(wPrior)) + 1e-10*diagMax;
+                            }
+                            // Gaussian elimination with partial pivoting.
+                            for (label p = 0; p < nU; ++p)
+                            {
+                                label piv = p;
+                                for (label i = p + 1; i < nU; ++i)
+                                {
+                                    if (mag(A(i, p)) > mag(A(piv, p))) piv = i;
+                                }
+                                if (mag(A(piv, p)) <= 1e-13*diagMax) { singular = true; break; }
+                                if (piv != p)
+                                {
+                                    for (label q = 0; q < nU; ++q) Swap(A(p, q), A(piv, q));
+                                    Swap(g[p], g[piv]);
+                                }
+                                for (label i = p + 1; i < nU; ++i)
+                                {
+                                    const scalar fct = A(i, p)/A(p, p);
+                                    if (fct == 0) continue;
+                                    for (label q = p; q < nU; ++q) A(i, q) -= fct*A(p, q);
+                                    g[i] -= fct*g[p];
+                                }
+                            }
+                            if (singular) break;
+                            FixedList<scalar, 6> dy;
+                            for (label p = nU - 1; p >= 0; --p)
+                            {
+                                scalar s = g[p];
+                                for (label q = p + 1; q < nU; ++q) s -= A(p, q)*dy[q];
+                                dy[p] = s/A(p, p);
+                            }
+                            scalar dn = 0;
+                            forAll(dy, d) dn += sqr(dy[d]);
+                            dn = Foam::sqrt(dn);
+                            if (dn > 1) forAll(dy, d) dy[d] /= dn;
+                            // The step, halved up to six times until the max
+                            // face residual decreases; none: stalled.
+                            bool improved = false;
+                            for (label half = 0; half < 7; ++half)
+                            {
+                                FixedList<scalar, 6> yTry(y);
+                                forAll(yTry, d) yTry[d] += dy[d];
+                                scalarList rTry;
+                                const scalar rmaxTry = residual(yTry, rTry);
+                                if (rmaxTry < rmax)
+                                {
+                                    y = yTry; r = rTry; rmax = rmaxTry;
+                                    improved = true;
+                                    break;
+                                }
+                                forAll(dy, d) dy[d] *= 0.5;
+                            }
+                            if (!improved) { stalled = true; break; }
+                            if (rmax < rBest) { yBest = y; rBest = rmax; }
+                            ok = (rmax <= tolFull);
+                        }
+                        S = surfaceOf(yBest);
+                        rmax = rBest;
+                        if (!ok)
+                        {
+                            ++rg.nNoBracket;   // the best iterate stands
+                            if (singular) ++rg.nFullSingular;
+                            if (stalled) ++rg.nFullStalled;
+                            // The first failures of the first application:
+                            // the targets, the fit's last cuts, its residual.
+                            if (k == 1 && rg.nFullPrinted < 12)
+                            {
+                                if (rg.nFullPrinted == 0)
+                                {
+                                    Info<< "  paraboloidFull failures (first 12): cell F"
+                                        << " iterations singular stalled maxResidual"
+                                        << " alpha_k | targets | best cuts" << nl;
+                                }
+                                ++rg.nFullPrinted;
+                                const davof::cellSurface T = surfaceOf(yBest);
+                                scalarList aF;
+                                davof::cellFaceFractions
+                                (
+                                    mesh, c, [&](const point& q) { return T.value(q); }, aF
+                                );
+                                Info<< "    " << c << ' ' << F << ' ' << nIt << ' '
+                                    << singular << ' ' << stalled << ' ' << rmax << ' '
+                                    << st.alpha()[c] << " |";
+                                forAll(tF, i) Info<< ' ' << tF[i];
+                                Info<< " |";
+                                forAll(aF, i) Info<< ' ' << aF[i];
+                                Info<< nl;
+                            }
+                        }
+                        rg.resMax = max(rg.resMax, rmax);
                     }
                 }
             }
@@ -1648,7 +1916,12 @@ int main(int argc, char *argv[])
             << " (feedback " << regenFeedback << ", refit " << regenRefit
             << ", origin " << regenOrigin << ")"
             << ": cells " << rg.nCells << " (no model " << rg.nNoModel
-            << ", no bracket " << rg.nNoBracket << ")"
+            << ", no bracket " << rg.nNoBracket
+            << (regenArm == "paraboloidFull" ? ", of which singular " : "")
+            << (regenArm == "paraboloidFull" ? Foam::name(rg.nFullSingular) : word())
+            << (regenArm == "paraboloidFull" ? ", stalled " : "")
+            << (regenArm == "paraboloidFull" ? Foam::name(rg.nFullStalled) : word())
+            << ")"
             << "  triangle fallbacks " << rg.nTriFallback
             << "  reference fallbacks " << rg.nRefFallback << nl
             << "  alpha_f error (as fractions) L1/L2/Linf = "
@@ -1829,7 +2102,8 @@ int main(int argc, char *argv[])
                    "E_ALPHAF_SHIFT_M050_L1,E_ALPHAF_SHIFT_M050_L2,E_ALPHAF_SHIFT_M050_LINF,"
                    "E_ALPHAF_SHIFT_M025_L1,E_ALPHAF_SHIFT_M025_L2,E_ALPHAF_SHIFT_M025_LINF,"
                    "E_ALPHAF_SHIFT_P025_L1,E_ALPHAF_SHIFT_P025_L2,E_ALPHAF_SHIFT_P025_LINF,"
-                   "E_ALPHAF_SHIFT_P050_L1,E_ALPHAF_SHIFT_P050_L2,E_ALPHAF_SHIFT_P050_LINF" << nl;
+                   "E_ALPHAF_SHIFT_P050_L1,E_ALPHAF_SHIFT_P050_L2,E_ALPHAF_SHIFT_P050_LINF,"
+                   "E0_ALPHAF_L1,E0_ALPHAF_LINF" << nl;
             osR << rg.arm << ',' << st.alphaSource() << ',' << dx << ','
                 << nCellsGlobal << ',' << rOverH << ',' << rd.nInterface << ','
                 << rg.nCells << ',' << rg.nNoModel << ',' << rg.nNoBracket << ','
@@ -1846,7 +2120,7 @@ int main(int argc, char *argv[])
             {
                 osR << ',' << rg.sh1[j] << ',' << rg.sh2[j] << ',' << rg.shInf[j];
             }
-            osR << nl;
+            osR << ',' << rg.A1in << ',' << rg.AinfIn << nl;
         }
     }
 

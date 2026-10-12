@@ -62,6 +62,21 @@
 #        both paraboloid arms, first order for the plane; the constant at 0.5 h at
 #        most four times the one at delta = 0.
 # A falsified line is reported as such (STATUS 10.14, FINDINGS.md).
+#
+# PRE-REGISTERED PREDICTIONS for the paraboloidFull arm (2026-10-12, written
+# before its first run; the arm fits offset, two slopes and the three tensor
+# components to the cell's F face fractions, the ring tensor as a weak prior,
+# Gauss-Newton, failures counted in N_NO_BRACKET with the paraboloidFaces
+# surface as the fallback):
+#   P7 (paraboloidFull, zero-step identity): E_ALPHAF_L1 at k = 1 is at round-off
+#   (below 1e-10) on every rung where the fit converges, on the chord state and
+#   on the exact state. P8: the share of non-converging cells
+#   (N_NO_BRACKET / N_INTERFACE) is below 2 % and falls with refinement. P9: the
+#   displaced-face cut at k = 1 (E_ALPHAF_SHIFT_*) is q = 2 with a constant at or
+#   below the paraboloidFaces arm's. P10: iterated to K = 500 the error stays at
+#   round-off and the regenerated normal equals the state's normal to round-off.
+#   This arm cannot test transport; P9 (the displaced pre-image) is the closest
+#   stand-in.
 
 study_name: ellipsoidRegenIter3D
 studies_dir: studies/davof
@@ -84,7 +99,7 @@ solve_runtime: 1440
 axes_override:
   N_CELLS: [20, 40, 80, 160]
   DAVOF_ALPHA_SOURCE: [quadraticFaces]
-  DAVOF_REGEN_ARM: [plane, paraboloidFaces, paraboloidVector]
+  DAVOF_REGEN_ARM: ["plane", "paraboloidFaces", "paraboloidVector", "paraboloidFull"]
   DAVOF_REGEN_FEEDBACK: [own, cell]
   DAVOF_REGEN_ITER: [500]
   DAVOF_REGEN_ORIGIN: [volume]

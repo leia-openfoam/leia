@@ -24,6 +24,15 @@
                          fraction (the comparison arm; on the chord cell
                          fraction of the quadraticFaces state it lands on
                          the chord)                        q = 1 predicted
+        paraboloidFull   the six coefficients of the paraboloid (offset, two
+                         slopes, three tensor components) fitted to the F
+                         face fractions of the cell's own view, the ring
+                         tensor as a weak prior (Gauss-Newton; 2026-10-12,
+                         predictions P7-P10 in the headers of
+                         config/davof/{sphere,ellipsoid}RegenIter3D.yaml):
+                         the surface passes through the cell's own fractions,
+                         so the zero-velocity map is the identity by
+                         construction where the fit converges
 
     Nothing here matches a volume on purpose except the comparison arm: the
     method's anchoring is the face fractions (2026-10-03).
@@ -50,15 +59,22 @@ namespace davof
 {
 
 //- The clipping surface of one cell: the plane {w = c} or the paraboloid
-//  w = c + 1/2 (b11 u^2 + 2 b12 u v + b22 v^2) in the frame (o; e1, e2, e3),
-//  u = (x - o).e1, v = (x - o).e2, w = (x - o).e3, e3 the DAVOF normal
-//  pointing out of the liquid. value(x) < 0 in the liquid.
+//  w = c + a1 u + a2 v + 1/2 (b11 u^2 + 2 b12 u v + b22 v^2) in the frame
+//  (o; e1, e2, e3), u = (x - o).e1, v = (x - o).e2, w = (x - o).e3, e3 the
+//  DAVOF normal pointing out of the liquid. value(x) < 0 in the liquid.
+//  The slopes a1, a2 are zero for every arm except paraboloidFull (the
+//  surface's axis is then e3, the Gauss-identity normal); with slopes the
+//  surface normal at the vertex is (e3 - a1 e1 - a2 e2)/|.| and the mean
+//  normal of the patch is no longer e3. Nothing evaluates the surface's
+//  analytic normal or curvature: every use goes through value(), the
+//  regenerated normal and position are recovered from the re-cut fractions.
 struct cellSurface
 {
     bool paraboloid = false;
     point o = Zero;
     vector e1 = Zero, e2 = Zero, e3 = Zero;
     scalar b11 = 0, b12 = 0, b22 = 0, c = 0;
+    scalar a1 = 0, a2 = 0;
 
     scalar value(const point& x) const
     {
@@ -66,7 +82,7 @@ struct cellSurface
         const scalar w = r & e3;
         if (!paraboloid) return w - c;
         const scalar u = r & e1, v = r & e2;
-        return w - c - 0.5*(b11*u*u + 2*b12*u*v + b22*v*v);
+        return w - c - a1*u - a2*v - 0.5*(b11*u*u + 2*b12*u*v + b22*v*v);
     }
 };
 
@@ -198,6 +214,30 @@ inline scalar cellWettedArea(const fvMesh& mesh, const label cellI, PhiAt&& phi)
         a += faceCut(mesh, f, phi, wet, M, nfb)*mag(Sf[f]);
     }
     return a;
+}
+
+
+//- The wetted fraction of every face of cellI cut by phi, in the cell's
+//  face order (mesh.cells()[cellI]); the residual vector of the
+//  paraboloidFull arm. alphaF is resized to the number of faces.
+template<class PhiAt>
+inline void cellFaceFractions
+(
+    const fvMesh& mesh,
+    const label cellI,
+    PhiAt&& phi,
+    scalarList& alphaF
+)
+{
+    const labelList& cFaces = mesh.cells()[cellI];
+    alphaF.setSize(cFaces.size());
+    label nfb = 0;
+    vector wet;
+    scalar M;
+    forAll(cFaces, i)
+    {
+        alphaF[i] = faceCut(mesh, cFaces[i], phi, wet, M, nfb);
+    }
 }
 
 

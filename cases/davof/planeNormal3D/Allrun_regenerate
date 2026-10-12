@@ -21,7 +21,7 @@ runApplication leiaSetFields -alphaName alpha.water
 status=0
 for src in detrixheAslam quadraticFaces; do
     foamDictionary -entry davof/alphaSource -set "$src" system/fvSolution > /dev/null
-    for arm in plane paraboloidPlane paraboloidFaces paraboloidVolume paraboloidVolumeExact paraboloidVector; do
+    for arm in plane paraboloidPlane paraboloidFaces paraboloidVolume paraboloidVolumeExact paraboloidVector paraboloidFull; do
         log="log.leiaTestDavofNormal.$src.$arm"
         leiaTestDavofNormal -alphaName alpha.water -expectExact -regenerate "$arm" -regenerateIterations 3 > "$log" 2>&1
         rc=$?

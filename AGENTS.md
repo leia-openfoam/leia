@@ -243,7 +243,18 @@ face area is reproduced; THE METHOD'S anchoring, Tomislav 2026-10-03),
 `paraboloidVolume` (offset from alpha_k with the Detrixhe-Aslam tet
 quadrature of the paraboloid) and `paraboloidVolumeExact` (offset from
 alpha_k with the LINEAR tet cut on tets split twice: NOT exact, its chord
-defect is 1/16 of the Detrixhe-Aslam one, see STATUS 10.13). Reference: the
+defect is 1/16 of the Detrixhe-Aslam one, see STATUS 10.13); since 2026-10-05
+`paraboloidVector` (offset and in-plane vertex position from the cell's
+wetted area vector, Newton) and since 2026-10-12 `paraboloidFull` (offset,
+two slopes and the three tensor components fitted to the cell's F face
+fractions by Gauss-Newton with Marquardt damping, the ring tensor as the
+prior through the null space; the identity of the zero-velocity map where
+the fit converges; failures counted in N_NO_BRACKET, the best iterate kept;
+`cellSurface` carries the slopes a1, a2, zero for every other arm;
+predictions P7-P10 in the `*RegenIter3D.yaml` headers; smoke 2026-10-12 at
+N = 20: 2.3 % / 2.8 % of the cells fail on the chord / exact state, the
+converged cells reproduce the state's fractions, `leiaTestDavofRegen.csv`
+has the input state's own error `E0_ALPHAF_*` as the floor). Reference: the
 exact fractions on the `exactSphere` state, otherwise the quadratic cut of
 the exact distance on every fan triangle subdivided twice. Output:
 `leiaTestDavofRegen.csv` per case (E_ALPHAF_L1/L2/LINF over the (cell, face)

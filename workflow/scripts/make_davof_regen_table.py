@@ -59,18 +59,21 @@ COUNTS = ["N_INTERFACE", "N_INTERFACE_REGEN", "N_REGEN_CELLS", "N_NO_MODEL",
           "N_MISMATCH_FACES", "ANCHOR_RESIDUAL_MAX", "MAX_VOL_DIFF_PLANE_REGEN",
           "CPU_SECONDS"]
 FIG_METRICS = ["E_ALPHAF_L1", "E_ALPHAF_L2", "E_ALPHAF_MISMATCH_L1", "E_L1_N", "E_L2_N", "E_POS_L2"]
-ARMS = ["plane", "paraboloidPlane", "paraboloidFaces", "paraboloidVector", "paraboloidVolume", "paraboloidVolumeExact"]
+ARMS = ["plane", "paraboloidPlane", "paraboloidFaces", "paraboloidVector", "paraboloidFull",
+        "paraboloidVolume", "paraboloidVolumeExact"]
 ARM_LABEL = {"plane": "plane (2)",
              "paraboloidPlane": "paraboloid, vertex on the plane",
              "paraboloidFaces": "paraboloid anchored by the face fractions",
              "paraboloidVolume": "paraboloid, volume on the DA tets",
              "paraboloidVolumeExact": "paraboloid, own cut volume",
-             "paraboloidVector": "paraboloid anchored by the wetted area vector"}
+             "paraboloidVector": "paraboloid anchored by the wetted area vector",
+             "paraboloidFull": "paraboloid, six coefficients fitted to the face fractions"}
 COLORS = {"plane": "#2a78d6", "paraboloidPlane": "#eb6834", "paraboloidFaces": "#1baf7a",
           "paraboloidVolume": "#eda100", "paraboloidVolumeExact": "#7a3bb5",
-          "paraboloidVector": "#c23b7a"}
+          "paraboloidVector": "#c23b7a", "paraboloidFull": "#4a4a4a"}
 MARKERS = {"plane": "o", "paraboloidPlane": "s", "paraboloidFaces": "D",
-           "paraboloidVolume": "^", "paraboloidVolumeExact": "v", "paraboloidVector": "P"}
+           "paraboloidVolume": "^", "paraboloidVolumeExact": "v", "paraboloidVector": "P",
+           "paraboloidFull": "X"}
 SOURCE_LABEL = {"exactSphere": "exact sphere", "quadraticFaces": "DA + quadratic faces",
                 "detrixheAslam": "Detrixhe-Aslam", "planePhaseIndicator": "plane indicator"}
 METRIC_LABEL = {
