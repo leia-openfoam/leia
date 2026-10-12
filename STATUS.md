@@ -5499,3 +5499,63 @@ refinements on the sphere and on the ellipsoid) for the face-anchored paraboloid
 with a six times smaller constant, for the paraboloid anchored by the cell's wetted
 area vector (0.8 to 1.0)"; the Detailed version names the ladders (sphere and
 ellipsoid, N = 20 to 160, K = 500, and 5000 on the two coarsest sphere meshes).
+
+### 10.15 The six-coefficient clipping surface (`paraboloidFull`): the identity of the zero-velocity map (2026-10-12)
+
+The fifth proposal review (2026-10-12) read the Stage 1 projection as inert (a trigger
+above the O(h^2) floor cannot act on an O(h^2) per-step drift) or undefined (target set,
+degrees of freedom, one value per shared face). The record's answer, named in 10.14, is
+the paraboloid whose six coefficients (offset, two slopes, the three tensor components,
+in the frame of the recovered normal) are fitted to the cell's F face fractions, with the
+ring tensor as prior: it reproduces the fractions by construction, so the zero-velocity
+regeneration is the identity. Implemented 2026-10-12 as the arm `paraboloidFull` (leia
+36a3667, a9e6798): `cellSurface` gains the slopes a1, a2 (value = w - c - a1 u - a2 v -
+(b11 u^2 + 2 b12 u v + b22 v^2)/2, negative in the liquid; the other arms unchanged to
+every digit, plane gate `Allrun_regenerate` all seven arms PASSED); unknowns
+(c/h, a1, a2, b11 h, b12 h, b22 h) from the `paraboloidFaces` start, residual the
+|S_f|-weighted difference between the face cut and the cell's own view of its fractions,
+forward-difference Jacobian, normal equations with Marquardt damping relative to the
+diagonal (the prior enters as damping, not as penalty rows: with four or five cut faces
+the system is under-determined and a penalty row cannot reach 1e-10; the damped step
+keeps the null-space components at the start, i.e. the ring tensor, zero slopes and the
+bisection offset), step limited to h, halving up to six times, at most 50 iterations,
+converged at a maximum face residual of 1e-10; on failure the best iterate is kept and
+the cell counted in N_NO_BRACKET. New columns E0_ALPHAF_L1 / LINF in
+`leiaTestDavofRegen.csv`: the input state's own fraction error against the reference
+(k = 0).
+
+Pre-registered (config headers, before the run): P7 zero-step identity (E at k = 1 at
+round-off where the fit converges, chord and exact state); P8 non-converging share below
+2 % and falling with refinement; P9 the displaced-face cut at k = 1 q = 2 with a constant
+at or below the face-anchored arm's; P10 iterated to K = 500 the error stays at
+round-off and the regenerated normal equals the state's.
+
+Laptop smoke, sphere N = 20 (R/h = 5, 472 interface cells; feedback own, origin volume,
+refit on; `studies/davof/paraboloidFullSmoke`, git-ignored):
+
+| arm, state | E_ALPHAF_L1 (k = 1) | N_NO_BRACKET / 472 | MISMATCH_L1 | E_L2_N (k = 1) | SHIFT L1 at -0.5 / -0.25 / +0.25 / +0.5 h | E_ALPHAF_L1 (k = 50) |
+|---|---|---|---|---|---|---|
+| paraboloidFaces, chord | 2.304e-4 (= 10.13) | 0 | 4.6e-4 | 2.85e-2 | 5.6e-4 / 4.9e-4 / 4.3e-4 / 4.5e-4 | 8.54e-3 |
+| paraboloidFull, chord | 9.616e-5 = E0 (9.617e-5) | 11 (2.3 %) | 1.8e-7 | 6.80e-3 | 7.4e-4 / 5.3e-4 / 1.04e-3 / 1.07e-3 | 9.626e-5 |
+| paraboloidFaces, exact | 2.61e-4 | 0 | 6.0e-4 | 1.03e-2 | 4.5e-4 / 4.1e-4 / 4.3e-4 / 4.2e-4 | - |
+| paraboloidFull, exact | 5.7e-7 | 13 (2.8 %) | 9.0e-7 | 6.95e-3 | 5.2e-4 / 3.9e-4 / 1.20e-3 / 1.33e-3 | 3.7e-6 |
+
+Reading. P7 holds in its measurable content: on the exact state E(1) = 5.7e-7 comes
+entirely from the 13 non-converged cells (Linf 4.2e-4 is one of them); on the chord
+state E(1) equals E0 to four digits, because E_ALPHAF measures against the twice-refined
+reference and not against the state, so "round-off" is unreachable there by
+construction; the owner-neighbour mismatch is at 1e-7 (the other arms 5e-4). The
+regenerated normal is the state's normal (E_L2_N 6.80e-3 = the davof row's 6.803e-3;
+the face-anchored arm's 2.85e-2 is four times worse). P8 marginal at N = 20 (2.3 and
+2.8 %; the failures are faces with tiny targets, 1e-7 to 1e-5, that the surface misses,
+and six-cut-face cells with an irreducible least-squares residual of order 1e-5); the
+ladder decides the trend. P9 FALSIFIED on the constant: the displaced-face errors are
+1.3 to 2.4 times the face-anchored arm's (the fit is exact on the faces and worse away
+from them; the order is for the ladder). P10 at K = 50: drift 1e-7 (chord) and 3e-6
+(exact) in L1 from the failed cells feeding back through shared faces, the normal
+constant to five digits; the identity of the map holds on every converged cell.
+
+Ladders submitted 2026-10-12 (jobs 55408801 sphere, 55408802 ellipsoid; the K = 500
+studies of 2026-10-06 moved to `*.k500-2026-10-06`; all four arms rerun): the
+non-converging share against N, the displaced-face orders, E(K = 500) against E0 and
+the mismatch over the rungs are to be appended here.
