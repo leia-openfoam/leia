@@ -5559,3 +5559,47 @@ Ladders submitted 2026-10-12 (jobs 55408801 sphere, 55408802 ellipsoid; the K = 
 studies of 2026-10-06 moved to `*.k500-2026-10-06`; all four arms rerun): the
 non-converging share against N, the displaced-face orders, E(K = 500) against E0 and
 the mismatch over the rungs are to be appended here.
+
+**Ladders done 2026-10-12 (ellipsoid 16:45, sphere 18:09; 64 cases, no error; leia
+4e613f9 carries the tables and figures; all four arms rerun, the 6 October results of the
+three old arms reproduced to every digit).** paraboloidFull, cell view, L1 face-fraction
+error as a fraction; E0 = the input state's own error against the twice-refined reference;
+E(k) after k applications; the fit's non-converged share N_NO_BRACKET / N_INTERFACE at
+k = 1; the owner-neighbour mismatch at k = 1; the displaced-face cut at -0.5 h with the
+paraboloidFaces value in parentheses:
+
+| surface | N | E0 | E(2N) | E(500) | non-converged | mismatch | shift -0.5 h |
+|---|---|---|---|---|---|---|---|
+| sphere | 20 | 9.62e-5 | 9.99e-5 | 9.99e-5 | 3/472 (0.6 %) | 1.2e-5 | 7.4e-4 (5.6e-4) |
+| sphere | 40 | 1.25e-5 | 1.28e-5 | 1.28e-5 | 1/1863 (0.1 %) | 7.1e-7 | 1.13e-4 (8.7e-5) |
+| sphere | 80 | 2.03e-6 | 2.03e-6 | 2.03e-6 | 5/7418 (0.1 %) | 8.1e-9 | 1.67e-5 (1.42e-5) |
+| sphere | 160 | 7.48e-7 | 7.47e-7 | 7.47e-7 | 15/29739 (0.1 %) | 6.5e-9 | 3.78e-6 (3.07e-6) |
+| ellipsoid | 20 | 1.49e-4 | 1.51e-4 | 1.51e-4 | 0/298 (0.0 %) | 1.9e-6 | 1.96e-3 (1.69e-3) |
+| ellipsoid | 40 | 3.30e-5 | 3.31e-5 | 3.31e-5 | 2/1168 (0.2 %) | 1.6e-7 | 3.39e-4 (2.62e-4) |
+| ellipsoid | 80 | 5.82e-6 | 5.83e-6 | 5.83e-6 | 9/4649 (0.2 %) | 4.6e-8 | 6.76e-5 (4.65e-5) |
+| ellipsoid | 160 | 1.38e-6 | 1.38e-6 | 1.38e-6 | 17/18642 (0.1 %) | 1.9e-8 | 1.50e-5 (1.03e-5) |
+
+Orders of the displaced-face cut (-0.5 h, successive rungs): paraboloidFull 2.71 / 2.75 /
+2.15 (sphere), 2.53 / 2.33 / 2.17 (ellipsoid); paraboloidFaces 2.69 / 2.62 / 2.21 and 2.69 /
+2.49 / 2.17; paraboloidVector 2.95 / 2.99 / 2.41 and 2.80 / 2.59 / 2.12; plane 1.14 / 1.14 /
+1.03 and 1.19 / 1.12 / 1.05. The own-view paraboloidFull has the same E(2N) and E(500) as
+the cell view (9.63e-5 ... 7.48e-7 and 1.51e-4 ... 1.39e-6), i.e. the arm is the identity in
+the single-valued view as well, where every other arm saturates or diverges (10.14).
+
+Verdicts. P7 CONFIRMED in its measurable content: E(1) = E(2N) = E(500) = E0 to three
+digits on every rung and both surfaces (the error against the reference cannot fall below
+the input state's own error; the mismatch 1e-5 to 1e-8 is the fit's residual). P8
+CONFIRMED: 0.0 to 0.6 % non-converged cells, 0.1 % on the three finer meshes (the laptop
+smoke's 2.3 to 2.8 % at N = 20 came from its different fallback settings and is
+superseded). P9 half: the displaced-face cut is q = 2 (2.2 to 2.8) but its constant is
+1.2 to 1.5 times the paraboloidFaces arm's on every rung (the interpolating surface is exact
+on the faces and worse away from them); the vector arm has the lowest displaced-face
+constant of all. P10 CONFIRMED: over 500 applications the error does not move from E0,
+and the regenerated normal equals the state's except in the non-converged cells (the N =
+20 sphere L2 of 2.8e-2 is three such cells). Statement for the record and the manuscripts:
+the paraboloid with six coefficients fitted to the cell's face fractions IS the fixed point
+of the zero-velocity regeneration at every resolution tested; the transport question is
+the remainder of the fit at the displaced pre-image, O(h^2) per step with a constant
+slightly above the face-anchored arm's, and whether its sum over a period is O(h^2) or
+O(h). Both proposal versions (finding (v)) and the preprint (Section 6.3) carry it since
+2026-10-12 evening.
