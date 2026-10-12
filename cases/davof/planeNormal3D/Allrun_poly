@@ -1,0 +1,40 @@
+#!/bin/bash
+# The plane test on a POLYHEDRAL mesh (2026-10-12, the mesh-class comparison of
+# the DAVOF static recovery): cfMesh pMesh on the 4 mm box (system/meshDict,
+# maxCellSize 2.52e-4 = h/2^(-1/3) at the N = 20 rung of the ladders, h = 2e-4,
+# the interface-cell pin of workflow/README.md; surface box4mm-faces.stl
+# with one solid per box face), then leiaSetFields and leiaTestDavofNormal
+# -expectExact for both surface-based states and the plane indicator. The
+# Detrixhe-Aslam tets and the fan triangles of davofState are general
+# polyhedral constructions, so the normal, the position and the curvature of
+# a plane must be at round-off (1e-12; position 1e-11 h) on polyhedral cells
+# as they are on hexahedra (Allrun) and on perturbed hexahedra
+# (Allrun_perturbed): prediction P11 of config/davof/*_poly.yaml.
+#     cases/davof/planeNormal3D/Allrun_poly
+# On the laptop cfMesh needs jemalloc preloaded (glibc 2.39, workflow/README.md):
+#     LEIA_PMESH_PRELOAD=$HOME/miniconda3/lib/libjemalloc.so.2 cases/davof/planeNormal3D/Allrun_poly
+# Exit code: non-zero if any -expectExact fails.
+cd "${0%/*}" || exit 1
+. "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+rm -f log.* && rm -rf 0 constant/polyMesh && cp -r 0.org 0
+if [ -n "$LEIA_PMESH_PRELOAD" ]; then
+    env LD_PRELOAD="$LEIA_PMESH_PRELOAD" pMesh > log.pMesh 2>&1 || { echo "pMesh FAILED (log.pMesh)"; exit 1; }
+else
+    pMesh > log.pMesh 2>&1 || { echo "pMesh FAILED (log.pMesh)"; exit 1; }
+fi
+runApplication checkMesh
+grep -E "^ *cells:|^ *faces:|Max non-orthogonality|Max skewness|Mesh OK|Failed" log.checkMesh
+runApplication leiaSetFields -alphaName alpha.water
+status=0
+for src in detrixheAslam quadraticFaces planePhaseIndicator; do
+    foamDictionary -entry davof/alphaSource -set "$src" system/fvSolution > /dev/null
+    leiaTestDavofNormal -alphaName alpha.water -expectExact > "log.leiaTestDavofNormal.$src" 2>&1
+    rc=$?
+    echo "== poly, alphaSource $src (exit $rc) =="
+    grep -E "expectExact|alpha_f S_f identity|  davof  N_S" "log.leiaTestDavofNormal.$src" | cut -c1-160
+    # The plane indicator trips only its own realizability diagnostic (as on
+    # perturbed hexahedra); the two surface-based states must pass.
+    [ $rc -ne 0 ] && [ "$src" != planePhaseIndicator ] && status=$rc
+done
+foamDictionary -entry davof/alphaSource -set detrixheAslam system/fvSolution > /dev/null
+exit $status

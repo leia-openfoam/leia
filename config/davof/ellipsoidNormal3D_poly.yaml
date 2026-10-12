@@ -1,0 +1,72 @@
+# DAVOF static recovery on the ELLIPSOID, mesh class POLYHEDRAL (cfMesh
+# pMesh, 2026-10-12).
+#
+# The ellipsoid gate of ellipsoidNormal3D.yaml (half-axes 1.0/0.8/0.6 mm,
+# centre the sphere gate's literal, 4 mm box) on the workflow's `mesh: poly`:
+# cfMesh pMesh on the box box4mm-faces.stl (one solid per box face, every box
+# edge a feature edge, patches left/right/front/back/bottom/top) with
+# maxCellSize = h/2^(-1/3), h = DOMAIN_LENGTH/N_CELLS (the derived token
+# CFMESH_CELL_SIZE of materialize.py, system/meshDict.template): cfMesh's dual
+# cells AT THE INTERFACE measure 2^(-1/3) maxCellSize (the pin of workflow/
+# README.md, measured on the polyhedral droplet rungs), so the polyhedral study
+# runs the SAME N = 20/40/80/160 ladder as the hexahedral one at the same
+# interface resolution h = 200/100/50/25 um; the mean over ALL cells (the
+# DELTA_X column of the case CSVs) is smaller, 0.63 maxCellSize at N = 20
+# (boundary slab, feature edges). Parameter file cases/davof/
+# ellipsoidNormal3D_poly.parameter (SURFACE_FILE). Two states, quadraticFaces
+# (q = 2) and detrixheAslam (q = 1); the two curvature models of the hex
+# ladder, normalsOnly (the headline) and hermite (the naive fit); the
+# geometricVoF cross-check (plicRDF, gradAlpha, isoAlpha) on the identical
+# alpha. The Detrixhe-Aslam tets and the fan triangles are general polyhedral
+# constructions: nothing in the initialisation assumes a hexahedron. Norms as
+# in ellipsoidNormal3D.yaml; h = DOMAIN_LENGTH/N in the order tables. The mesh
+# class is read from case_params.json ("mesh") by make_davof_normal_table.py,
+# which also writes the combined three-mesh table
+# tables/davof_normal_proposal_ellipsoidNormal3D_meshes.tex.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-12, before any run):
+# P11 (plane, every mesh class): normal, position and curvature at round-off
+#   (1e-12) for both states with the fan sums.
+# P12 (perturbed 0.1 h and polyhedral): the quadratic-face normal converges at
+#   second order with a larger constant than on the hexahedral mesh; the
+#   Detrixhe-Aslam normal at first order; the position at second order for
+#   both; the one-ring curvature converges (order between 1 and 2) with a
+#   smaller constant on polyhedra, where the point-neighbour ring is larger.
+# P13: plicRDF stays at order about 1.1 on every mesh class; gradAlpha does
+#   not converge; isoAlpha 0.5 to 0.7.
+#
+# Laptop: --jobs 1 (the N = 160 case with the curvature models needs 9 GB on
+# hexahedra; the polyhedral ring is larger), and cfMesh needs jemalloc
+# preloaded for pMesh only (glibc 2.39, workflow/README.md): export
+# LEIA_PMESH_PRELOAD=$HOME/miniconda3/lib/libjemalloc.so.2 in the shell that
+# runs snakemake (the mesh rule reads it; unset on the cluster).
+#   make studies-one STUDY=davof/ellipsoidNormal3D_poly PROFILE=profiles/local
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/ellipsoidNormal3D_poly.yaml
+# Lichtenberg:
+#   sbatch --parsable -J leia-davof-ellipsoidNormal3D_poly --export=ALL,STUDY=davof/ellipsoidNormal3D_poly run-studies.sbatch
+study_name: ellipsoidNormal3D_poly
+studies_dir: studies/davof
+case: davof/ellipsoidNormal3D
+mesh: poly
+mode: serial
+np: 1
+
+solver: leiaTestDavofNormal
+theme:  davof
+
+# leiaSetFields initialises psi + alpha.water; the app compares its own
+# alpha.davof with that field (MAX_ALPHA_DIFF_DA).
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  DAVOF_ALPHA_SOURCE: [quadraticFaces, detrixheAslam]
+  DAVOF_CURV_MODEL_1: [normalsOnly]
+  DAVOF_CURV_MODEL_2: [hermite]
+  DAVOF_CROSS_CHECK: [geometricVoF]
+  DAVOF_WISP_TOL: [1e-3]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

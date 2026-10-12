@@ -179,7 +179,10 @@ PAR        = "-parallel" if PARALLEL else ""
 # MPI may contain a {np} placeholder (e.g. "mpirun -np {np}"); srun needs none
 # because the slurm allocation already carries --ntasks (resources.tasks).
 MPI_PREFIX = (MPI.format(np=NP) + " ") if PARALLEL else ""
-FLUX       = " -fluxCorrection" if MESH == "perturbed" else ""
+# The static DAVOF app has no -fluxCorrection option (an unknown option is a
+# FatalError in argList), so the perturbed-mesh flag is for the solvers only.
+FLUX       = (" -fluxCorrection"
+              if MESH == "perturbed" and SOLVER != "leiaTestDavofNormal" else "")
 INIT_END   = f"./system/init_End/init_End.{MODE}" if CASE == "3Dtranslation" else ""
 
 # The gradPsiErrorCSV / leiaSetFields function objects APPEND to their CSVs: a

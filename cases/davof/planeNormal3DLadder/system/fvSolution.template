@@ -42,6 +42,33 @@ davof
 {
     alphaSource     @!DAVOF_ALPHA_SOURCE!@;
     wispTol         @!DAVOF_WISP_TOL!@;
+
+    // Curvature of the DAVOF state (libleiaDavof curvature/): none by default
+    // (default.parameter); the mesh-class ladders of 2026-10-12 switch
+    // normalsOnly on, because the curvature of a plane must be at round-off
+    // on every mesh class (prediction P11). "none" entries are skipped.
+    curvature
+    {
+        models      (@!DAVOF_CURV_MODEL_1!@ @!DAVOF_CURV_MODEL_2!@);
+
+        normalsOnly
+        {
+            type            quadricFit;
+            positionWeight  0;
+            weighting       area;
+            minNeighbours   5;
+            alignTol        0.2;
+        }
+        hermite
+        {
+            type            quadricFit;
+            positionWeight  1;
+            weighting       area;
+            minNeighbours   5;
+            alignTol        0.2;
+        }
+    }
+
     crossCheck
     {
         set             @!DAVOF_CROSS_CHECK!@;

@@ -48,12 +48,21 @@ _TOKEN = re.compile(r"@!([A-Z0-9_]+)!@")
 #                   refined hex mesh (mesh: hexRefined). N_CELLS stays the capillary
 #                   dt handle and means the FINE count; REFINE_LEVELS 0 renders
 #                   N_CELLS verbatim, so existing studies are byte-identical.
+#   DOMAIN_CELL_SIZE = DOMAIN_LENGTH / N_CELLS, the hex ladder's cell size h.
+#   CFMESH_CELL_SIZE = DOMAIN_CELL_SIZE / 2^(-1/3), the cfMesh maxCellSize whose
+#                   dual cells at the interface measure h (the pin measured on the
+#                   polyhedral droplet rungs, README "Popinet's translating droplet
+#                   in 3D on polyhedral meshes"), for a meshDict.template so that a
+#                   polyhedral study runs the SAME N_CELLS ladder as its hexahedral
+#                   twin (cases/davof/*, 2026-10-12) instead of a MAX_CELL_SIZE axis.
 _DERIVED_TOKENS = {
     "HALF_END_TIME",
     "MAX_DELTA_T",
     "DOMAIN_HALF_LENGTH",
     "DROPLET_CENTRE_X",
     "N_CELLS_BASE",
+    "DOMAIN_CELL_SIZE",
+    "CFMESH_CELL_SIZE",
 }
 
 # A derived token is computed FROM other tokens, and those inputs are typically
@@ -68,6 +77,8 @@ _DERIVED_INPUTS = {
     # the grid although no template names them; N_CELLS for the dt law.
     "N_CELLS_BASE": ("N_CELLS", "REFINE_LEVELS", "REFINE_BAND_CELLS", "REFINE_SOURCE",
                      "REFINE_ALLOW_PIN_MISMATCH"),
+    "DOMAIN_CELL_SIZE": ("N_CELLS", "DOMAIN_LENGTH"),
+    "CFMESH_CELL_SIZE": ("N_CELLS", "DOMAIN_LENGTH"),
 }
 
 

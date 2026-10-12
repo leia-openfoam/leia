@@ -1,0 +1,38 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                |
+| \\      /  F ield         | cfMesh: A library for mesh generation          |
+|  \\    /   O peration     |                                                |
+|   \\  /    A nd           | Author: Franjo Juretic                         |
+|    \\/     M anipulation  | E-mail: franjo.juretic@c-fields.com            |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      meshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// DAVOF static test on a POLYHEDRAL mesh (mesh: poly -> cfMesh pMesh,
+// 2026-10-12): the same 4 mm box as the hexahedral ladder (DOMAIN_LENGTH in
+// blockMeshDict.template), meshed as polyhedra so that no face is axis-aligned
+// and the cells have more than six faces. maxCellSize = h/2^(-1/3) with the hex
+// ladder's h = DOMAIN_LENGTH/N_CELLS (the derived token CFMESH_CELL_SIZE of
+// materialize.py): cfMesh's dual cells AT THE INTERFACE measure 2^(-1/3)
+// maxCellSize (the pin of workflow/README.md, measured on the polyhedral
+// droplet rungs), so the polyhedral study runs the SAME N_CELLS ladder
+// (20/40/80/160) as its hexahedral twin at the same interface resolution;
+// the mean over ALL cells (leiaTestDavofNormal's DELTA_X) is smaller, 0.63
+// maxCellSize at N = 20, because of the boundary slab and the feature edges. No boundary
+// layers, no local refinement: the interface stays at least 1 mm from every
+// wall. The surface box4mm-faces.stl (make_box_stl.py --solids faces) has one
+// solid per box face, so cfMesh keeps every box edge as a feature edge and
+// names the patches left/right/front/back/bottom/top, which the 0.org fields
+// cover with one regex group.
+
+maxCellSize     @!CFMESH_CELL_SIZE!@;
+surfaceFile     "@!SURFACE_FILE!@";
+
+// ************************************************************************* //

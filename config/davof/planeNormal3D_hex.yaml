@@ -1,0 +1,56 @@
+# DAVOF static recovery on a PLANE, mesh class HEXAHEDRAL, on the ladder
+# N = 20/40/80/160 of the sphere and ellipsoid tests (2026-10-12).
+#
+# The exact-solution geometry of cases/davof/planeNormal3D (an implicitPlane
+# with normal (0.3 0.5 0.8124) through (2.13 1.71 1.97) mm in the 4 mm box),
+# templated as cases/davof/planeNormal3DLadder, with both surface-based
+# states (detrixheAslam, quadraticFaces), the one-ring curvature model
+# normalsOnly and the geometricVoF cross-check on the identical alpha. Both
+# states are exact for a plane on every cell, so the DAVOF normal, position
+# and curvature are at round-off at every N and the cross-check models show
+# their errors; the point of the hex ladder is the first block of the
+# three-mesh plane table (tables/davof_normal_proposal_planeNormal3D_meshes.tex,
+# make_davof_normal_table.py; the mesh class is read from case_params.json),
+# next to planeNormal3D_perturbed.yaml and planeNormal3D_poly.yaml. The
+# existing planeNormal3DLadder.yaml (N = 8/16/32, the PLIC renderings of the
+# proposal) is unchanged.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-12, before any run):
+# P11 (plane, every mesh class): normal, position and curvature at round-off
+#   (1e-12) for both states with the fan sums.
+# P12 (perturbed 0.1 h and polyhedral): the quadratic-face normal converges at
+#   second order with a larger constant than on the hexahedral mesh; the
+#   Detrixhe-Aslam normal at first order; the position at second order for
+#   both; the one-ring curvature converges (order between 1 and 2) with a
+#   smaller constant on polyhedra, where the point-neighbour ring is larger.
+# P13: plicRDF stays at order about 1.1 on every mesh class; gradAlpha does
+#   not converge; isoAlpha 0.5 to 0.7.
+#
+#   make studies-one STUDY=davof/planeNormal3D_hex PROFILE=profiles/local
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeNormal3D_hex.yaml
+# Lichtenberg:
+#   sbatch --parsable -J leia-davof-planeNormal3D_hex --export=ALL,STUDY=davof/planeNormal3D_hex run-studies.sbatch
+study_name: planeNormal3D_hex
+studies_dir: studies/davof
+case: davof/planeNormal3DLadder
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestDavofNormal
+theme:  davof
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  DAVOF_ALPHA_SOURCE: [detrixheAslam, quadraticFaces]
+  DAVOF_CURV_MODEL_1: [normalsOnly]
+  DAVOF_CURV_MODEL_2: [none]
+  DAVOF_CROSS_CHECK: [geometricVoF]
+  DAVOF_WISP_TOL: [1e-3]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

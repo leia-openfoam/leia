@@ -5603,3 +5603,105 @@ the remainder of the fit at the displaced pre-image, O(h^2) per step with a cons
 slightly above the face-anchored arm's, and whether its sum over a period is O(h^2) or
 O(h). Both proposal versions (finding (v)) and the preprint (Section 6.3) carry it since
 2026-10-12 evening.
+
+### 10.16 The static recovery on perturbed-hexahedral and polyhedral meshes (2026-10-12)
+
+Part B of the plan of 2026-10-12: the static DAVOF recovery (normal, position, curvature)
+of the plane, the sphere and the ellipsoid on three mesh classes, hexahedral (the ladders
+of 10.7 to 10.11), vertex-perturbed hexahedral (`mesh: perturbed`: blockMesh, then
+`leiaPerturbMesh` with its defaults, every point displaced by up to 0.1 h with the
+deterministic seed 0, so the mesh rule needed no change; the faces warp) and polyhedral
+(`mesh: poly`: cfMesh `pMesh` on the 4 mm box `box4mm-faces.stl`, one solid per box face
+from `make_box_stl.py --solids faces`, so every box edge is a feature edge and the patches
+are left/right/front/back/bottom/top, covered by one regex group in the `0.org` fields).
+Configs `config/davof/{sphere,ellipsoid}Normal3D_{perturbed,poly}.yaml` and
+`planeNormal3D_{hex,perturbed,poly}.yaml` (the plane on the N = 20/40/80/160 ladder of
+the other two, case `planeNormal3DLadder`, whose `fvSolution.template` gained the
+curvature block); `cases/davof/<case>/system/meshDict.template` and
+`cases/davof/<case>_poly.parameter`; the gate `cases/davof/planeNormal3D/Allrun_poly`
+(`system/meshDict`); alpha sources quadraticFaces and detrixheAslam on the non-hex meshes
+(exactSphere is hex-only). Two derived tokens in `materialize.py`: `DOMAIN_CELL_SIZE` =
+DOMAIN_LENGTH/N_CELLS (h) and `CFMESH_CELL_SIZE` = h/2^(-1/3), the cfMesh maxCellSize
+whose dual cells at the interface measure h (the pin of the README's polyhedral droplet),
+so the polyhedral studies run the SAME N_CELLS ladder as the hex ones. Measured on the
+plane box at N = 20: with maxCellSize = h the mesh has 31471 cells and a mean cell size
+(DELTA_X) of 0.63 h, with the pin 13017 cells, DELTA_X 0.85 h and 784 interface cells
+against 772 on the hex mesh, i.e. the interface resolution of the hex ladder. The
+Snakefile no longer passes `-fluxCorrection` to `leiaTestDavofNormal` on perturbed
+meshes (an unknown option is a FatalError in argList). `make_davof_normal_table.py` keys
+every series by (mesh, alphaSource, model) with the mesh class from `case_params.json`
+(the per-study outputs are byte-identical to the old script's on every study present,
+checked) and writes, for a study `<surface>Normal3D[_hex|_perturbed|_poly]`, the combined
+table `tables/davof_normal_proposal_<surface>Normal3D_meshes.tex` (mesh column first, a
+`\midrule` between the mesh blocks, comparator rows collapsed per block when the states
+share alpha_k) and `davof_normal_orders_<surface>Normal3D_meshes.csv` from the sibling
+study directories that exist (a missing one is noted); `make davof-proposal` exports them
+with the other `davof_normal_proposal_*.tex`.
+
+Pre-registered (the config headers, before any run). P11 (plane, every mesh class):
+normal, position and curvature at round-off (1e-12) for both states with the fan sums.
+P12 (perturbed 0.1 h and polyhedral): the quadratic-face normal converges at second order
+with a larger constant than on the hexahedral mesh; the Detrixhe-Aslam normal at first
+order; the position at second order for both; the one-ring curvature converges (order
+between 1 and 2) with a smaller constant on polyhedra, where the point-neighbour ring is
+larger. P13: plicRDF stays at order about 1.1 on every mesh class; gradAlpha does not
+converge; isoAlpha 0.5 to 0.7.
+
+The plane gate at N = 20 (`-expectExact`, tolerance 1e-12, position 1e-11 h), both
+surface-based states (detrixheAslam / quadraticFaces):
+
+| mesh | cells (interface) | max skewness | normal Linf | position Linf / h | consistency | curvature Linf h | area diagnostic | verdict |
+|---|---|---|---|---|---|---|---|---|
+| hexahedral | 8000 (772) | 0 | 5.6e-14 / 5.6e-14 | 1.3e-12 / 1.3e-12 | 2e-15 | 1e-13 | 6e-14 / 1e-13 | PASSED |
+| perturbed 0.1 h | 8000 (772) | 0.13 | 2.2e-13 / 2.2e-13 | below 1e-11 | 1e-14 | 1e-13 | below 1e-12 | PASSED |
+| polyhedral | 13017 (784) | 2.18 | 1.9e-13 / 1.9e-13 | 1.9e-12 / 6.8e-12 | 6.6e-15 / 8.2e-15 | 1.9e-14 / 2.5e-14 | 2.2e-12 / 1.1e-11 | area diagnostic above 1e-12 |
+
+(The plane indicator is not exact on perturbed or polyhedral cells, normal Linf 0.098
+and 0.17, as in 10.12.) P11 HOLDS in its stated content on all three mesh classes: the
+normal, the position and the curvature of the plane are at round-off on polyhedra too,
+and the Detrixhe-Aslam tets and the fan triangles needed no change for polyhedral cells
+(no code change in `davofState`). The ONE quantity above the tolerance on the polyhedral
+mesh is the area realizability diagnostic MAX_AREA_DIFF_PLANE, 2.2e-12 and 1.1e-11
+against 1e-12: it divides by h^2 in the corner-sliver cells of a mesh with skewness 2.2,
+the same floor for which the position already carries a ten-fold allowance;
+`Allrun_poly` therefore exits 1, and whether the area diagnostic gets the position's
+allowance is Tomislav's decision (the gate's tolerance was not changed).
+
+Laptop smoke of the sphere ladders at N = 20 and 40 (`--jobs 1`; studies
+`sphereNormal3D_{perturbed,poly}Smoke`, git-ignored; orders between the two rungs; the
+hex row from the ladder of 10.10):
+
+| mesh, state | L1(n) 20 to 40 (order) | L2(n) 20 to 40 (order) | Linf(n) at 40 | L2(x) order | plicRDF L2 (order) | gradAlpha / isoAlpha L2 order |
+|---|---|---|---|---|---|---|
+| perturbed, quadraticFaces | 2.90e-3 to 1.36e-3 (1.09) | 5.83e-3 to 2.84e-2 (-2.28) | 1.22 | 1.44 | 3.55e-2 to 1.76e-2 (1.01) | 0.11 / 0.39 |
+| perturbed, detrixheAslam | 1.25e-2 to 6.27e-3 (1.00) | 1.93e-2 to 9.93e-3 (0.96) | 0.042 | 2.06 | same alpha_k | |
+| polyhedral, quadraticFaces | 6.58e-4 to 1.26e-4 (2.38) | 2.22e-3 to 3.87e-4 (2.52) | 0.010 | 2.07 | 1.83e-2 to 8.97e-3 (1.03) | 0.12 / 0.16 |
+| polyhedral, detrixheAslam | 2.78e-3 to 1.22e-3 (1.19) | 5.77e-3 to 2.53e-3 (1.19) | 0.019 | 2.01 | same alpha_k | |
+| hexahedral, quadraticFaces | 3.03e-3 to 6.83e-4 (2.15) | 6.80e-3 to 1.56e-3 (2.13) | 0.025 | 2.01 | | |
+
+Reading. The perturbed quadratic-face L2 at N = 40 is ONE cell: cell 28460 has
+alpha_k = 0 (the Detrixhe-Aslam tets see no liquid) while the quadratic cut of its warped
+fan triangles wets faces, so |m_c| passes the wisp threshold and the "normal" of a cell
+without volume is scored (e = 1.22; N_FACE_FALLBACK 4 of 3.8e5 faces). Without that cell
+L2 = 1.47e-3 and L1 = 7.06e-4, the hex constants (1.56e-3, 6.83e-4), and the pairwise
+orders read 1.99 (L2) and 2.04 (L1): the perturbation of 0.1 h costs nothing in the
+constant, and P12's "larger constant" is not seen; the ladder decides whether such
+volume-less wetted cells recur (they are the realizability defect of the inconsistent
+quadratic-face state in its sharpest form, and a candidate for the two-piece/defect rule
+of the proposal). The polyhedral quadratic-face normal is second order with a constant
+4.0 times BELOW the hex one at N = 40 (3.87e-4 against 1.56e-3; more faces per cell enter
+the sum) and its position is second order: P12 FALSIFIED in the favourable direction for
+the constant on the smoke. The Detrixhe-Aslam normal is first order on both mesh classes
+(1.00, 1.19), its position second order (2.06, 2.01). P13 holds on the smoke: plicRDF
+1.01 and 1.03 (its error 12 and 23 times the quadratic-face DAVOF error at N = 40),
+gradAlpha 0.11 and 0.12, isoAlpha 0.39 and 0.16 (below the predicted 0.5 to 0.7 on two
+rungs). The curvature part of P12 waits for the ellipsoid ladders (no curvature model on
+the sphere).
+
+PENDING: the ladders on Lichtenberg (`sbatch --parsable -J leia-davof-<cfg>
+--export=ALL,STUDY=davof/<cfg> run-studies.sbatch` for sphereNormal3D_perturbed,
+sphereNormal3D_poly, ellipsoidNormal3D_perturbed, ellipsoidNormal3D_poly,
+planeNormal3D_hex, planeNormal3D_perturbed, planeNormal3D_poly; the laptop needs
+`LEIA_PMESH_PRELOAD` for pMesh, the cluster does not); their orders over the three finest
+rungs, the combined tables per surface and the verdicts on P12 and P13 are to be appended
+here.

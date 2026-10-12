@@ -1,0 +1,31 @@
+// DAVOF plane ladder on a POLYHEDRAL mesh (mesh: poly -> cfMesh pMesh,
+// 2026-10-12). This file REPLACES planeNormal3DLadder.parameter for mesh: poly
+// studies (workflow/Snakefile PARAM_FILE): the exact-solution geometry of
+// cases/davof/planeNormal3D (an implicitPlane in the 4 mm box) on the N_CELLS
+// ladder 20/40/80/160 that the sphere and ellipsoid tests use; cfMesh is asked
+// for maxCellSize = h/2^(-1/3), h = DOMAIN_LENGTH/N_CELLS (the derived token
+// CFMESH_CELL_SIZE: the dual cells at the interface measure 2^(-1/3) maxCellSize,
+// the pin of workflow/README.md).
+// Both surface-based states (detrixheAslam, quadraticFaces) are exact for a
+// plane on every polyhedral cell (the fan sums of davofState::mTri), so the
+// DAVOF normal, position and curvature must be at round-off at every N; the
+// cross-check models show their errors. Serial, seconds per case; cfMesh needs
+// jemalloc preloaded on the laptop (LEIA_PMESH_PRELOAD, workflow/README.md).
+values
+{
+    solver (leiaTestDavofNormal);
+
+    N_CELLS ( 20 40 80 160 );
+
+    DOMAIN_LENGTH ( 0.004 );
+
+    SURFACE_FILE ( box4mm-faces.stl );
+
+    DAVOF_ALPHA_SOURCE ( detrixheAslam quadraticFaces );
+
+    DAVOF_CROSS_CHECK ( geometricVoF );
+
+    DAVOF_CURV_MODEL_1 ( normalsOnly );
+
+    DAVOF_CURV_MODEL_2 ( none );
+}

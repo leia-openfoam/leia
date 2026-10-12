@@ -181,6 +181,24 @@ def _with_derived_tokens(tokens):
             )
         except (TypeError, ValueError):
             pass
+    # DOMAIN_CELL_SIZE = DOMAIN_LENGTH/N_CELLS: the hex ladder's h, and
+    # CFMESH_CELL_SIZE = h/2^(-1/3): the cfMesh maxCellSize whose dual cells AT THE
+    # INTERFACE measure h (the pin measured on every polyhedral droplet rung,
+    # README "Popinet's translating droplet in 3D on polyhedral meshes"; the mean
+    # over ALL cells is smaller still, 0.63 maxCellSize on the 4 mm box at N = 20,
+    # because of the boundary slab and the feature edges). Rendered into a cfMesh
+    # meshDict.template so that a polyhedral twin runs the SAME N_CELLS ladder at
+    # the same interface resolution (cases/davof/*, 2026-10-12). Only a template
+    # that names a token sees it; every other study renders byte-identically.
+    if "DOMAIN_LENGTH" in out and "N_CELLS" in out:
+        try:
+            n_cells = float(out["N_CELLS"])
+            if n_cells > 0:
+                h = float(out["DOMAIN_LENGTH"]) / n_cells
+                out["DOMAIN_CELL_SIZE"] = "{:.10g}".format(h)
+                out["CFMESH_CELL_SIZE"] = "{:.10g}".format(h / 2.0 ** (-1.0 / 3.0))
+        except (TypeError, ValueError):
+            pass
     # N_CELLS_BASE: what blockMesh renders on a statically refined hex mesh (mesh:
     # hexRefined). N_CELLS is the capillary-dt handle (below) and on a refined mesh
     # means the FINE spacing, so the base mesh is N_CELLS/2^REFINE_LEVELS. With
