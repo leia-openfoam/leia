@@ -19,14 +19,14 @@ Which transport and gradient-control lines exist in leia, which one is productio
 
 | line | status | one line | documents |
 |---|---|---|---|
-| Quadratic semi-Lagrangian level set | production | third-order transport on hexahedra, coupled two-phase solver; the reference of every gate | [[studies/sl-quadratic-pre-print]], [[hubs/advection]] |
+| Quadratic semi-Lagrangian level set | production; development PAUSED 2026-10-13 | third-order transport on hexahedra, coupled two-phase solver; the reference of every gate. The author pauses its development until the error amplification of the quadratic reconstruction is understood; the target is hexahedral meshes with boundary layers ([[sessions/sl-session-handover]], task T5) | [[studies/sl-quadratic-pre-print]], [[hubs/advection]] |
 | Linear semi-Lagrangian level set | measured | order about 1.1; the value fit must be quadratic | [[studies/sl-linear-pre-print]], [[concepts/linear-semi-lagrangian]] |
 | Eulerian FV transport | reference | robust second at 20 times the error; the SDPLS sources live here | [[studies/method-comparison]], [[concepts/eulerian-fv-transport]] |
 | SDPLS (source-term distance control, Eulerian) | kinematic positive, coupled negative | R converges kinematically; coupled it amplifies the curvature-seeded current 260 times | [[studies/sdpls-pre-print]], [[concepts/sdpls-source-eulerian]] |
 | Normal-projected semi-Lagrangian | closed | the trace is clean; every write-back keyed on the fitted normals diverges | [[studies/npsl-design]], [[concepts/normal-projected-sl]] |
 | Geometric redistancing (GRL) | closed | second order static; injurious under transport | [[studies/grl-pre-print]], [[concepts/redistancing-geometric-grl]] |
 | Velocity extension (legacy models) | dominated | worst accuracy at 12 to 27 times the cost on pure advection | [[studies/velocity-extension-pre-print]], [[models/velocity-extension]] |
-| Gradient control (SL source step, halo-limited extension) | first campaign failed | every candidate fails the 2D gate; the source discretisation is the first repair | [[studies/gcls-pre-print]], [[hubs/gradient-control]] |
+| Gradient control (SL source step, halo-limited extension) | first campaign failed; PRIORITY 2026-10-13 | every candidate fails the 2D gate; the source discretisation is the first repair. The author asks to push the combined source of Bothe and Soga, $F = a + \lambda(1 - q)$ (law `linearQ` with strain weight `full`), as soon as possible | [[studies/gcls-pre-print]], [[hubs/gradient-control]] |
 
 ## Map
 
@@ -41,10 +41,13 @@ Which transport and gradient-control lines exist in leia, which one is productio
 
 ## Open, in order
 
-1. The gradient-control repairs ([[hubs/gradient-control]]).
+1. The gradient-control repairs and the combined source ([[hubs/gradient-control]]); the author's priority since 2026-10-13.
 2. The parasitic-current source (the curvature estimator) and its amplifiers ([[hubs/surface-tension]]).
 
 ## Log
 
 ### 2026-09-28
 Created.
+
+### 2026-10-13
+The author's direction: the quadratic SL line paused until the reconstruction's error amplification is understood (task T5 of the SL hand-over); the combined source is the priority.

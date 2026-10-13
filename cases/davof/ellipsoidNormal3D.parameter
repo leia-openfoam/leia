@@ -32,4 +32,14 @@ values
     DAVOF_CURV_MODEL_2 ( hermite );
 
     DAVOF_CROSS_CHECK ( geometricVoF );
+
+    DAVOF_REGEN_ARM ( none );
+
+    DAVOF_REGEN_ITER ( 1 );
+
+    DAVOF_REGEN_FEEDBACK ( own );
+
+    DAVOF_REGEN_REFIT ( true );
+
+    DAVOF_REGEN_ORIGIN ( volume );
 }

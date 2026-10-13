@@ -93,6 +93,24 @@ class davofState
 
     volScalarField alpha_;          // alpha.davof
     scalarField alphaf_;            // one value per polyMesh face
+    // The area normal from the barycentric face triangulation: for every
+    // face the fan of triangles (x_f, p_i, p_{i+1}) over the face's own
+    // points, each triangle's wetted fraction times its area vector, summed
+    // into the owner (-) and neighbour (+) cells ON THE FLY during the
+    // surface-based initialisations; nothing is stored per face. Equal to
+    // -sum_f alpha_f S_f on planar faces; on a warped face the scalar
+    // fraction cannot represent the wetted area vector (measured
+    // 2026-10-02: 8 % normal error on a plane at 0.1 h vertex perturbation,
+    // the triangle sum 1e-13). areaNormal() uses it as m_c when available.
+    vectorField mTri_;
+    // The face moment of the explicit position from the same fan, per
+    // cell: sum_f sum_t (x_wet,t - x_c).S_wet,t^out with the wet centroid
+    // x_wet,t of every triangle (the polygon centroid of the linear cut;
+    // the quadratic path keeps its exact area and takes the centroid from
+    // the linear cut of the same triangle, which is exact for a plane and
+    // immaterial on a planar face, where (x - x_c).n is constant).
+    scalarField momentTri_;
+    bool hasMTri_;
     surfaceScalarField alphafOut_;  // alphaf.davof (for writing)
     volVectorField m_;              // m.davof, the DAVOF area normal [m^2]
     volVectorField xS_;             // xS.davof, patch centroid [m]
@@ -108,6 +126,17 @@ class davofState
     scalar maxVolDiffPlane_;        // max_c |alphaPlane_c - alpha_c|
     scalar maxAreaDiffPlane_;       // max_c |A_polygon n - m_c| / V_c^(2/3)
     label nFaceFallback_;           // quadraticFaces: faces kept at the DA value
+    // Cells whose face data were regenerated (davofRegeneration.H): their
+    // alphaf_ holds the owner's view only, so areaNormal() must not take a
+    // uniform owner view for a bulk cell there.
+    boolList regenerated_;
+    // planePosition(): false (default) the explicit position (2); true the
+    // plane positioned by alpha_c along the recovered normal (bisection on
+    // the Detrixhe-Aslam tet cut, exact for a plane), the explicit one as
+    // the initial guess, as the transport's flux plane (CCS from the closed
+    // form, 2026-10-04); the realizability diagnostics then refer to the
+    // explicit plane still.
+    bool positionFromVolume_;
 
     //- Cell fractions and zero-set patches of cellI from vertex values given
     //  by phiCell(c), phiFace(c, f), phiPoint(c, p).
@@ -178,8 +207,36 @@ public:
         const implicitSurface* analytic
     );
 
-    //- m_c = -sum_f alpha_f S_f^out
+    //- The wetted part of face faceI from the fan triangles (x_f, p_i,
+    //  p_{i+1}) over the face points under the linear interpolant: its
+    //  area vector S = sum_t a_t S_t and its first moment M = sum_t
+    //  x_wet,t . (a_t S_t), so that a cell with centre x_c sees the moment
+    //  M - x_c.S. Computed where it is summed, never stored.
+    template<class PhiFace, class PhiPoint>
+    void faceWettedTriangles
+    (
+        const label faceI,
+        PhiFace&& phiFace,
+        PhiPoint&& phiPoint,
+        vector& S,
+        scalar& M
+    ) const;
+
+    //- m_c = -sum_f alpha_f S_f^out, or the face-triangulation sum mTri_
+    //  when the state was initialised from a surface
     void areaNormal();
+
+    //- Install regenerated face data (davofRegeneration.H): alphaf the
+    //  owner's view of every face, mTri and momentTri the per-cell fan sums
+    //  of the regenerated cells (isI), then recompute the normal and the
+    //  explicit position from them. The cell fractions stay.
+    void setRegenerated
+    (
+        const boolList& isI,
+        const scalarField& alphaf,
+        const vectorField& mTri,
+        const scalarField& momentTri
+    );
 
     //- max_c |m_c - mTet_c| / V_c^(2/3), reduced over ranks
     scalar maxConsistency() const;
@@ -198,6 +255,9 @@ public:
     //  m_c are the realizability diagnostics (round-off for a plane, O(h^2)
     //  for a curved surface whose state no single plane realizes).
     void planePosition();
+
+    void setPositionFromVolume(const bool b) { positionFromVolume_ = b; }
+    bool positionFromVolume() const { return positionFromVolume_; }
 
     scalar maxVolDiffPlane() const { return maxVolDiffPlane_; }
     scalar maxAreaDiffPlane() const { return maxAreaDiffPlane_; }
@@ -221,6 +281,9 @@ public:
     const volVectorField& xS() const { return xS_; }
     const volScalarField& AS() const { return AS_; }
     const vectorField& mTet() const { return mTet_; }
+    const vectorField& mTri() const { return mTri_; }
+    const scalarField& momentTri() const { return momentTri_; }
+    bool hasMTri() const { return hasMTri_; }
     scalar maxAlphaClip() const { return maxAlphaClip_; }
 
     //- Write alpha.davof, alphaf.davof, m.davof, xS.davof, AS.davof

@@ -32,9 +32,24 @@ code; every note links to them.
 
 - [[decision-log]]: one line per settled decision, in time order.
 - [[retraction-log]]: one line per retracted, voided or corrected claim, in time order.
+- [[negative-log]]: one line per route that was tried and failed, with the condition under which
+  it may be re-opened.
+- [[decisions/process-operating-rules]]: the operating rules that came from incidents.
 - [[sessions/current]]: the living handover; the dated notes in `sessions/` are frozen.
 - [[conventions]]: how to write here.
 - The graph, interactive in 3D: [graph3d/graph.htm](graph3d/graph.htm) (the same links as the graph view in the sidebar).
+
+## Query it from a terminal
+
+The vault is the permanent memory of every agent and every session; it travels with git. From the
+repository root (standard library only):
+
+```bash
+python3 docs/knowledge-base/.quartz/kb.py search gradient control checkerboard
+python3 docs/knowledge-base/.quartz/kb.py negative clip
+python3 docs/knowledge-base/.quartz/kb.py show decisions/psi-filter-none
+python3 docs/knowledge-base/.quartz/kb.py since 2026-10-01
+```
 
 ## Where the details live
 
@@ -48,3 +63,6 @@ code; every note links to them.
 
 ### 2026-09-28
 Created.
+
+### 2026-10-13
+Linked the negative log and the operating rules; the query tool.

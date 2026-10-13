@@ -4,6 +4,7 @@ description: "The gradient-injecting defectCorrectedIDW reconstruction and its t
 aliases: [iDEC, defectCorrectedIDW, deferred correction, deferredCorrection]
 kind: concept
 status: retracted
+outcome: negative
 part: advection
 tags: [concept, part/advection]
 date: 2026-09-28
@@ -78,3 +79,6 @@ The lift term `g_C . (x_d - x_C)` feeds the gradient of `psi^n` back into `psi^{
 
 ### 2026-09-28
 Created from the supplementary iDEC failure report, the reconstruction and corrector headers and the study configs.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].

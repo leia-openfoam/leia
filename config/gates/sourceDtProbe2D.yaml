@@ -1,0 +1,65 @@
+# ============================================================================
+# PROBE: is the shape loss of the strain term a time-splitting error or a spatial error? (2026-10-13)
+#
+# WHY. The anchor probe (config/gates/sourceAnchorProbe2D.yaml, STATUS 11.26) falsified the direct
+# zero-crossing shift: with the interface cells anchored, the strain term alone on the whole
+# domain still has a shape error at T of 1.29e-2 at N = 136 (baseline 5.48e-4). The source step is
+# a first-order split after the SL step: psi <- P(foot) exp(dt F(arrival)).
+#
+# SETUP. The shear arm (2Dvortex, reversed, T = 2) at N = 136 only, np 4, the strain term alone
+# (GC_LAW none, GC_STRAIN_WEIGHT full, GC_Q_SCHEME upwindFit, band 1000) against the null arm
+# (strain none = the baseline), CFL in {0.5, 0.25, 0.125}.
+#
+# PRE-REGISTERED READ-OUT (2026-10-13, before the run):
+#   D1 (a time error): the strain arm's shape error at T falls by at least 1.6x per halving of the
+#      CFL (an order of at least 0.7 in dt), more than the null arm's.
+#   D2 (a spatial error): it changes by less than 1.2x per halving.
+#   Between the two: no reading; the next probe is the mesh at a fixed dt.
+#
+# RESULT (2026-10-13): D2. The strain arm's shape error is 1.76e-2 / 1.80e-2 / 3.00e-2 at CFL 0.5 /
+# 0.25 / 0.125; the null arm's 5.5e-4 / 2.6e-4 / 1.1e-4.
+# ============================================================================
+study_name: sourceDtProbe2D
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme: gradient-controlled-level-set
+solve_runtime: 240
+axes_override:
+  N_CELLS:
+  - '136'
+  END_TIME:
+  - '2'
+  CFL:
+  - '0.5'
+  - '0.25'
+  - '0.125'
+  REPORT_WRITE_ONLY:
+  - 'false'
+  OSCILLATION:
+  - 'on'
+  PHASE_INDICATOR:
+  - detrixheAslam
+  SL_RECONSTRUCTION:
+  - uncachedQuadraticWeightedLeastSquares
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - gradientControl
+  SL_SOURCE_BAND_CELLS:
+  - '1000'
+  GC_LAW:
+  - none
+  GC_STRAIN_WEIGHT:
+  - none
+  - full
+  GC_Q_SCHEME:
+  - upwindFit
+  GC_MU:
+  - '1'
+  GC_ANCHOR_INTERFACE:
+  - 'false'
+collapse_other_axes: true
+export_slides: false

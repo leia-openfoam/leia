@@ -27,8 +27,11 @@ date: 2026-09-28
    ([gclsTechnicalReport.tex](https://github.com/leia-openfoam/leia/blob/d1e3414/docs/gradient-controlled-level-set/gcls-technical-report/gclsTechnicalReport.tex)),
    the two rule sections of CLAUDE.md (the knowledge base as the point of reference; supervisor
    and expert developer), and the record corrections of STATUS.md, METHOD.md and the configs.
-2. Gradient control: the next experiments are pre-registered in
-   [[concepts/gradient-control-next-experiments]]; none has run.
+2. Gradient control: E1 and E2.1 ran on 2026-10-13 (STATUS 11.26): the centred q of the source fails
+   at zero velocity and its growth law is retracted
+   ([[retractions/centred-q-eigenmode-growth-rate]]); the one-sided `GC_Q_SCHEME upwindFit` passes;
+   the combined source fails the kinematic arms of the 2D method gate on the shape order, and the 2D
+   cause is open ([[hubs/gradient-control]], open item 2).
 3. 2026-09-29 ([STATUS 11.19](https://github.com/leia-openfoam/leia/blob/537a6011/STATUS.md#L4168-L4326)): `2Dtranslation` was a reversed flow and
    every earlier number of the case is void ([[retractions/reversed-2dtranslation]]); the case now
    translates one way, and its three studies re-ran on the laptop. Fixed psi values on a patch make
@@ -46,6 +49,12 @@ date: 2026-09-28
    writer that also serves both two-phase solvers; the prescribed flux is projected on polyhedral
    meshes ([[decisions/flux-projection-polyhedral]]). Large runs go to Lichtenberg, not the laptop
    (author instruction 2026-10-01).
+
+7. 2026-10-13, the author's direction: the SL work waits until the error amplification of the
+   quadratic reconstruction is understood (task T5 in [[sessions/sl-session-handover]], sent to the
+   SL session); this session builds the knowledge base into the permanent memory of every agent,
+   decisions and negative findings included, and pushes the combined source of Bothe and Soga
+   ([[concepts/combined-source-note]], [[concepts/gradient-control-next-experiments]]).
 
 ## What is open, in order
 
@@ -134,3 +143,10 @@ The stale band fixed and gated (STATUS 11.23); item 5 added; open item 6 replace
 
 ### 2026-10-02
 Item 6 (STATUS 11.24 and 11.25).
+
+### 2026-10-13
+Item 7: the author's direction of 2026-10-13.
+
+### 2026-10-13
+Item 1 of the author's direction: the vault is the shared memory (negative log, query tool,
+operating rules; cb4026eb). Item 2: STATUS 11.26, the combined source.

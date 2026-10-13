@@ -1060,6 +1060,18 @@ SL_TRACE_FLUX physical;
 // below, in the band |psi|/|grad psi| <= SL_SOURCE_BAND_CELLS*h (Phase D3).
 SL_SOURCE none;
 SL_SOURCE_BAND_CELLS 3;
+// How the gradientControl source computes q = |grad psi| (inert default: centred, the
+// fvc::grad of the case's gradPsiSource scheme). upwindFit: the upwind-weighted mean of
+// the upwind face neighbours' fit gradients, evaluated at the cell centre (STATUS 11.26:
+// the centred q carries the sawtooth envelope onto the interface at u = 0).
+GC_Q_SCHEME centred;
+// A research probe of the gradientControl source (inert default false): true sets F = 0 in
+// every cell with a face neighbour of the opposite sign, so the source cannot move a zero
+// crossing (STATUS 11.26, the crossing-shift probe).
+GC_ANCHOR_INTERFACE false;
+// A research probe of the gradientControl strain term (inert default psi): fixedX reads
+// a = e_x.D.e_x instead of n.D.n (STATUS 11.26, the tangential-transport hypothesis).
+GC_STRAIN_NORMAL psi;
 
 // ---- Static local mesh refinement around the interface (pre-processing) ----------
 // Consumed by workflow/scripts/leiaRefineHexMesh.py / leiaRefinePolyMesh.py through

@@ -6,8 +6,13 @@ to <https://leia-openfoam.github.io/leia/> on every push that touches `docs/**`,
 `METHOD.md` or `CLAUDE.md`, together with the reveal decks (`decks/`) and the pre-print PDFs
 (`preprints/`).
 
-- `check_kb.py <vault>`: the gate (frontmatter, wikilinks, log coverage, names). Run it before
+- `check_kb.py <vault>`: the gate (frontmatter, wikilinks, log coverage, names, and `CLAUDE.md`
+  byte-identical to `AGENTS.md`). Run it before
   every commit: `make kb-graph` runs it and regenerates the 3D graph data.
+- `kb.py <command>`: the query tool of the agents (search, show, negative, decisions,
+  retractions, open, since); `kb.py --help` lists the commands.
+- `kb_coverage.py [--strict]`: the curation backlog, the `STATUS.md` sections and the `METHOD.md`
+  section 8.1 tokens that no note covers yet. A report, not a gate.
 - `build_graph.py <vault>`: writes `graph3d/graph.json` (git-ignored) for the three.js page.
 - `quartz.config.yaml`: the site configuration, copied over Quartz's own at build time.
 - `build.sh [--serve]`: the local build (`make kb`, `make kb-serve`). Needs Node >= 22: it uses

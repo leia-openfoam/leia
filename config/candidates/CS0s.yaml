@@ -1,0 +1,22 @@
+# CANDIDATE CS0s (control of CS1: the strain term alone): F = a = n.D.n (GC_STRAIN_WEIGHT full),
+#   GC_LAW none, one-sided q (GC_Q_SCHEME upwindFit; q enters only the band test and n), band 3h.
+# PRE-REGISTERED READ-OUT (2026-10-13, before any run):
+#   exact1D: the closed form is q = 1 (a = alpha uniform); prediction: the band mean q at T in
+#     [0.95, 1.05] at every rung. FALSIFIED if outside [0.9, 1.1] at the finest rung.
+#   shear: prediction: the gradient band error at the finest rung at most 0.8 x the baseline (most of
+#     CS1's gain comes from a); CS1 at most CS0s. No prediction on the orders beyond the gate rules.
+candidate: CS0s
+line: semiLagrangian
+description: "control of CS1: the strain term a = n.D.n alone (strain weight full, law none), one-sided q"
+tokens:
+  SL_SOURCE: gradientControl
+  SL_SOURCE_BAND_CELLS: 3
+  GC_LAW: none
+  GC_STRAIN_WEIGHT: full
+  GC_Q_SCHEME: upwindFit
+rates:
+  GC_M_MU: 1
+target:
+  metric: gradientBandError
+  ratioToBaselineAtFinest: 0.8
+  arms: [shear]

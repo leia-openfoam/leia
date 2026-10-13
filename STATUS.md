@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-10-02 (section 11.25: the prescribed flux is projected to divergence-free on polyhedral meshes, after fixing two defects of correctFlux; no transport metric degrades by more than 1.1 %. Section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-10-13 (section 11.26: the combined source F = a + lambda (1 - q): the centred q of the source step fails at zero velocity and its growth law is retracted; the one-sided q `upwindFit` passes gate E2.1 at order 3.6; the kinematic arms of the 2D method gate fail on the shape order for the combined source and both single terms; the band breaks the strain term in 1D; the 2D shape loss is open. section 11.25: the prescribed flux is projected to divergence-free on polyhedral meshes, after fixing two defects of correctFlux; no transport metric degrades by more than 1.1 %. Section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -5170,3 +5170,789 @@ to Lichtenberg (`/work/scratch/tm83tomy/leia-fluxproj`, branch `feature/flux-pro
 8. **Open.** 3Ddeformation on polyhedra (3 configs) is not measured with the projection. Raw data:
    `/work/scratch/tm83tomy/leia-fluxproj/studies/fluxProjectionGate3DshearPoly{,Clip}` on Lichtenberg
    (job ids in that worktree's `.my_jobs`).
+
+### 11.26 The combined source F = a + lambda (1 - q): the centred q fails at zero velocity, the one-sided q passes, the kinematic gate fails on the shape order (2026-10-13)
+
+The author's direction of 2026-10-13: the SL work waits until the error amplification of the
+quadratic reconstruction is understood (task T5, sent to the SL session), and this session pushes
+the combined source of D. Bothe and K. Soga, F = a + lambda (1 - q) with a = n.D.n, and builds the
+knowledge base into the shared memory of the agents (cb4026eb). Everything below ran on the laptop
+(2D, serial or np <= 8, OpenFOAM-v2606, development cb4026eb plus this commit). The raw studies are
+in `~/OpenFOAM/data/2026-10-13-combined-source/` (5.5 GB): `e1`, `e21`, `e21-np4`, `methodGate2D`,
+`probes`. Every number in this section is MEASURED unless it is marked.
+
+1. **Gate E1: the source step with the centred q at zero velocity.** `config/gates/sourceZeroFlow2D.yaml`
+   quotes the pre-registration of 2026-09-28; driver `workflow/scripts/source_zero_flow_gate.sh`,
+   diagnostic `workflow/scripts/source_checkerboard_diag.py`. N = 100, u = 0, linearQ, mu in
+   {27, 270, 2700} 1/s at mu dt = 0.01, band 3 and 1000 cells, psi0 = d and 1.5 d, to mu t = 40.
+   - E1.1 FALSIFIED as written: no growth at e^(mu t). The sawtooth amplitude (D2(D2 psi)/64 in
+     |d| <= 3h) rises from 5.2e-8 to 2e-5 by mu t = 4, stays there to mu t of about 16, and then
+     grows at 0.067 mu (1.87e-4 at mu t = 40). The interface cells flatten later: at mu t = 80 the
+     median psi/d of the interface cells is 0.33 (OpenFOAM, the control arm of E2.1) and 0.18 (the
+     numpy copy of item 2; the two agree to 2.6e-8 up to mu t = 40 and separate in the unstable
+     regime).
+   - A design flaw of E1, mine: dt = 1e-2/mu makes the three mu the same run in step space, so the
+     rates 1:10:100 hold by construction (0.067 mu at all three). The numpy copy answers the
+     dt question instead (item 2); the OpenFOAM run E1b was not needed.
+   - E1.2 (psi0 = 1.5 d) PARTLY confirmed: the zero crossings move by O(0.5 h) at u = 0 (up to
+     0.91 h at mu t = 40). The mechanism "one sublattice to zero within 5/mu" is FALSIFIED: q is
+     restored first (band mean 1.499 to 0.993), and both sublattices flatten later (median psi/d
+     0.38 at mu t = 40).
+   - E1.3 (band 1000) FALSIFIED ("B disappears, A remains"): the source on the whole domain is
+     worse (q band mean 4.5 and a displacement of 1.6 h at mu t = 40).
+2. **The numpy copy of the source step** (`workflow/scripts/source_step_replica.py`, a research
+   instrument). At u = 0 the SL step is the identity (the quadratic fit is anchored at the cell
+   value and evaluated at the cell centre). The copy reproduces E1 to 2.6e-8 after 4000 steps
+   (`source_step_replica.py validate`). Its tables (`source_step_replica.py table`):
+   - The damage does not depend on mu dt: 0.068 mu at mu dt = 0.001 and 0.067 mu at 0.01
+     (band 3, N = 100).
+   - A wider band is worse: band 12 flattens the interface cells (median psi/d 0.0000) by
+     mu t = 40.
+   - A seeded mode 1e-6 d (-1)^(i+j) does not grow at e^(mu t).
+   - THE MECHANISM (DERIVED, consistent with the three lines above). For a sawtooth with a smooth
+     envelope, delta_c = (-1)^(i+j) A, the linearised centred step is A_t = mu d n.grad A: the
+     envelope moves TOWARD the zero set with speed mu |d|, while smooth errors move away from it.
+     This is the reversed group velocity of the sawtooth mode under a centred difference. The
+     "eigenmode at rate mu", (-1)^(i+j) d, is the unbounded envelope arriving from larger |d|; a
+     band cuts it off. RETRACTED: the growth law of the technical report
+     (`docs/knowledge-base/retractions/centred-q-eigenmode-growth-rate.md`; a retraction paragraph
+     in the report's summary and at sec:eigenmode). Consequence: the coupled rates near mu of HL1q
+     (290 and 320 to 350 1/s against 270) are not explained by the source's own map; their cause
+     is OPEN again (E1.4 decides the scaling with mu).
+   - The q estimators, psi0 = d, band 3, mu t = 80, N = 50 / 100 / 200 (the maximum zero-crossing
+     shift in h; the order of rms(psi - d)): centred 0.93 / 0.74 / 0.66, destroyed; the first-order
+     one-sided q (Godunov, or least squares over the upwind face neighbours) 0.70 / 0.29 / 0.39,
+     stable but first order; the same with the interface cells anchored 0 / 0 / 0, order 1.9 and
+     2.0, but a wrong interface gradient stays (psi0 = 1.5 d keeps psi/d = 1.5 there); the cell's
+     own quadratic fit 0.93 / 0.68 / 0.84, as centred; the single most upwind neighbour's fit
+     0.22 / 0.058 / 0.20, no convergence; an upwind quadratic over the 5x5 ring 0.16 / 0.037 /
+     0.0077, order 3.1 and 3.3, not compact; the upwind-weighted mean of the upwind face
+     neighbours' fits 0.034 / 0.0043 / 0.0006, order 3.7 and 3.6. A smooth band taper with the
+     centred q delays the damage and does not remove it.
+3. **The change.** `slGradientControlSource`: `qScheme centred | upwindFit` (token `GC_Q_SCHEME`,
+   default `centred`). `upwindFit`, per cell, two passes over face neighbours: (1) the SL fit is
+   updated on the current psi, and its gradient g_u and Hessian H_u at every cell centre are
+   exchanged across processor patches; (2) g_c = sum_u w_u (g_u + H_u (x_c - x_u)) / sum_u w_u over
+   the face neighbours u upwind of c (closer to the zero set or across it),
+   w_u = sign(psi_c) (psi_c - psi_u) > 0; q = |g_c|, n = g_c/q; F = 0 in a cell without an upwind
+   neighbour. `quadraticWeightedLeastSquaresReconstruction` gets `fitDerivatives` (the uncached
+   fit had it). `anchorInterface false | true` (token `GC_ANCHOR_INTERFACE`, default `false`) is a
+   research probe: F = 0 in every cell with a face neighbour of the opposite sign. Both tokens are
+   method tokens of `methodGate2D` and `methodGate3D`. Inertness: the default path re-ran E1 case
+   00000_s1 byte-identically over 4001 steps (the CSV and psi), and the rendered `qScheme centred`
+   path over 4000 steps (E2.1, P1); the null arm of the anchor probe (F = 0) is byte-identical to
+   the baseline in 12 of 12 cases.
+4. **Gate E2.1 PASS** (`config/gates/sourceZeroFlowUpwind2D.yaml`, pre-registered from the numpy
+   copy before the run). `upwindFit` at u = 0, mu t = 80:
+
+   | psi0 = d | N = 50 | N = 100 | N = 200 |
+   |---|---|---|---|
+   | zero-crossing shift max / h (copy) | 0.0341 (0.034) | 0.0043 (0.0043) | 0.0006 (0.0006) |
+   | rms(psi - d)/h in abs(d) < 3h | 1.478e-2 | 2.271e-3 | 3.790e-4 |
+   | sawtooth growth from mu t = 40 to 80 (limit 2x) | 1.69x | 1.32x | 1.16x |
+
+   The orders of rms(psi - d) are 3.70 and 3.58. From psi0 = 1.5 d the median psi/d at the
+   interface is 0.9978 (N = 100) and 0.9993 (N = 200). The centred control flattens (median psi/d
+   0.04 at N = 50, 0.33 at N = 100). 4 ranks against serial at N = 100: psi agrees to 1e-13 at all
+   161 writes, the metric columns to 1e-17 absolute (the reduction order). The C++ estimator
+   reproduces the copy to three and four digits.
+5. **The kinematic arms of `methodGate2D`: CS1, CS0s and CS0r FAIL** (`config/candidates/CS1.yaml`,
+   `CS0s.yaml`, `CS0r.yaml`, pre-registered before the run). CS1 = linearQ plus strain weight full
+   with `upwindFit`, M_mu = 1 (lambda = 1 1/s in the shear arm, band 3); CS0s = the strain term
+   alone; CS0r = the restoring term alone (HL1q without the extension, with the one-sided q). The
+   baseline re-ran on the same binaries. All 36 kinematic cases COMPLETED; the seams pass (np 1 and
+   8 against 4 to 1e-12). Verdicts by `workflow/scripts/make_gate_summary.py`:
+
+   | shear arm (2Dvortex, reversed, N = 68 / 96 / 136) | gradient band error at T/2, ratio to the baseline at 136 | shape error at T, order (baseline 3.25) | volume error at T, N = 136 (baseline 2.2e-4) |
+   |---|---|---|---|
+   | CS1 | 0.137 | 0.88 | 3.7e-2 |
+   | CS0s | 0.575 | 1.24 | 1.2e-2 |
+   | CS0r | 0.302 | 0.26 | 3.3e-2 |
+
+   The exact1D arm (u = alpha x, alpha = 1, T = 1; the band mean q at T; the baseline gives
+   e^(-1) = 0.368, exact): CS1 1.106 / 0.913 / 0.667 / 0.514 and CS0s 1.116 / 0.923 / 0.676 / 0.534
+   at N = 32 / 64 / 128 / 256 FALSIFY the pre-registered q = 1. CS0r gives 0.546 / 0.514 / 0.523 /
+   0.461, and its closed form 1/(1 + T) = 0.5 holds. CS0r hit the gradient target (0.30), against
+   its prediction to miss it.
+6. **Probes of the shape loss** (each config in `config/gates/` with its read-out written before
+   the run).
+   - The band, exact1D with `SL_SOURCE_BAND_CELLS 1000`: the strain term keeps q = 1.000119 /
+     1.000040 / 1.000010 / 1.000003 (N = 32 to 256) on the whole domain, against 0.534 with the
+     3-cell band. In 1D the band is the cause. (With a uniform a the whole-domain source is a uniform
+     rescaling of the baseline field, so the zero set is the baseline's.)
+   - The shear arm with the whole-domain source: the gradient band error is 0.17 to 0.33 of the
+     baseline, but the shape error at T at N = 136 is still 1.76e-2 (CS0s), 3.99e-2 (CS1) and
+     2.84e-2 (CS0r): 32x to 73x the baseline.
+   - The anchor probe (`sourceAnchorProbe2D`): A1 FALSIFIED. With the interface cells anchored the
+     strain arm's shape error at N = 136 is 1.29e-2, 23x the baseline (the limit was 10x): the
+     direct zero-crossing shift of the cell-wise factor is not the cause.
+   - The time-step probe (`sourceDtProbe2D`): D2, a spatial error. The strain arm's shape error is
+     1.76e-2 / 1.80e-2 / 3.00e-2 at CFL 0.5 / 0.25 / 0.125 (N = 136); the null arm's is 5.5e-4 /
+     2.6e-4 / 1.1e-4.
+   - The deformation probe (`sourceDeformationProbe2D`): H1 not confirmed. The ratio strain/null
+     at N = 136 is 18.6 at T = 1, 32.1 at T = 2 and 15.3 at T = 3 (H1 needed 3x between T = 1 and
+     T = 2, and a larger ratio at T = 3). Even at T = 1 the strain arm's shape error converges at
+     order 0.69 (8.9e-3 to 5.5e-3), the null arm's at 1.7.
+   - The direction probe (`sourceDirectionProbe2D`): P1 FALSIFIED. With n from the centred
+     least-squares gradient (`GC_Q_SCHEME centred`; with law none the centred q has no restoring
+     term) the shape error at N = 136 is 34.3x the baseline (1.88e-2): the upwind direction is not
+     the cause.
+   - The fit probe (`sourceFitProbe2D`): C1 FALSIFIED by its clip part. With `SL_CLIP true` the strain
+     arm has 20.2x the clipped null arm's shape error at N = 136 (1.41e-2 against 6.99e-4): the
+     unbounded quadratic fit is not the cause. Its linear-fit arms are VOID (the 2Dvortex template
+     has no geometryFit entry; the source asked the linear fit for derivatives and stopped at step 1).
+   - The interface at T, N = 136, from the zero crossings of psi(T) against psi(0) on the cell edges
+     (serial cell order): the baseline's crossings move by 0.009 / 0.010 h rms (x / y edges),
+     smoothly along the interface (lag-1 correlation 0.85 / 0.97), and 2 + 2 edges change their
+     crossing; the strain arm's move by 0.25 / 0.22 h rms with lag-1 correlation 0.06 / 0.36, and 74
+     and 94 edges change their crossing. The shape loss is a CORRUGATION of the interface, not a
+     displacement (mean shift -0.02 h). The applied F on the interface cells at T has an rms of 1.52
+     and a cell-scale part D2(D2 F)/64 of rms 0.33. (A first version of this analysis, reported in the
+     chat, sorted the cells on y rounded to 12 digits and mixed the rows; its numbers are void.)
+   - The strain-direction probe (`sourceStrainNormalProbe2D`, a probe key `strainNormal psi | fixedX`,
+     token `GC_STRAIN_NORMAL`, default `psi`): T1 CONFIRMED. With n fixed to e_x the source is
+     F = D_xx, smooth, of both signs and of the size of n.D.n, and independent of psi: its shape
+     error at T is 4.42e-3 / 1.49e-3 / 6.51e-4 (orders 3.16, 2.37), 1.2x the baseline at N = 136, and
+     its volume error 2.06e-4 (baseline 2.16e-4). With n from psi it is 32.1x, as before. A smooth
+     multiplicative F does not corrugate the interface; the dependence of F on psi through
+     n = grad psi/|grad psi| does.
+7. **Assessment.** (a) The one-sided `upwindFit` q is the repair of the source's q; it is ready
+   (E2.1, 4 ranks, seams). (b) A 3-cell band breaks the strain term even in 1D; the whole domain
+   repairs 1D. (c) In 2D the strain term alone, on the whole domain, loses the shape order (0.7 to
+   1.2) through a spatial error per step: the interface corrugates, and F carries a cell-scale part.
+   Falsified as the cause: the direct crossing shift (anchor), the time step, the deformation, the
+   upwind direction n, the unbounded quadratic fit (clip). The cause (MEASURED by T1): the
+   dependence of a = n.D.n on psi through n = grad psi/|grad psi|; a smooth psi-independent F of the
+   same size keeps the shape at 1.2x the baseline. The mechanism (DERIVED, consistent with T1 and the
+   six falsifications): the linearisation of psi n.D.n contains a transport of perturbations ALONG
+   the level sets with speed 2 psi (n.D.t); both q schemes are centred in that tangential direction
+   (upwindFit is upwind only along the normal), the E1 disease turned by 90 degrees, and the
+   low-dissipation SL step does not damp it (the Eulerian SDPLS source R, which converges
+   kinematically, is integrated inside a dissipative FV transport). Next: a strain term whose
+   direction does not feed back the cell-scale content of psi: a normal-constant a from the zero
+   set (E2.4: n and a at the foot point of the SL fit), then the same kinematic arms. No coupled arm
+   runs before a kinematic arm passes.
+8. **Records.** STATUS 11.26 (this section); the knowledge base: the retraction note, the negative
+   log (the centred q, the taper alone, the first-order one-sided q, the cell's own fit, the single
+   neighbour's fit, the band-limited strain term, the combined source on the kinematic gate, the
+   anchor), `concepts/gradient-control-next-experiments` (the outcomes), `hubs/gradient-control`,
+   `concepts/combined-source-note` (re-opened), `concepts/source-discretisation-defects`,
+   `models/sl-source`, `sessions/current`. METHOD.md is not affected: `SL_SOURCE none` stays the
+   default and nothing of this line is in production.
+
+### 10.12 The plane test on perturbed hexahedra: planar faces exact, warped faces need the wetted area vector (2026-10-02)
+
+Asked by the panel review of the proposal (R3, R5: every static test so far ran on blockMesh hexahedra).
+`cases/davof/planeNormal3D/Allrun_perturbed vertex|column <amplitude>`; pre-registered prediction:
+round-off on any perturbed mesh, because the identity holds on any polyhedron. FALSIFIED in one half:
+
+1. **Column-wise perturbation** (`workflow/scripts/perturb_columns.py`: the same (dx, dy) for all points
+   above each other, boundary points fixed, 0.2 h and 0.3 h, skewness 0.41, every face planar):
+   `-expectExact` PASSES for detrixheAslam and quadraticFaces at 1e-12 (normal, position, consistency,
+   plane-cut alpha). planePhaseIndicator: normal 5e-12, consistency 5.6e-13, position 1e-12, but its
+   `MAX_VOL_DIFF_PLANE` diagnostic reads 5.4 on the irregular cells and fails the check: a diagnostic
+   defect of the plane-indicator path on non-cubic cells, not a DAVOF result (open).
+2. **Vertex-wise perturbation** (`leiaPerturbMesh -alpha 0.1|0.2 -seed 0`, faces warp): the SCALAR face
+   fraction loses the plane for every initialisation, E_LINF_N 0.080 (0.1 h) and 0.168 (0.2 h),
+   `max |m_c - sum caps|/h^2` 0.049 and 0.102, position 0.038 h and 0.065 h, while
+   `max |alpha - plane cut|` stays at 2e-15. Cause: on a warped face the wetted area vector
+   sum_t a_t S_t is not parallel to S_f, so alpha_f S_f cannot represent it; (1) holds only for the
+   vector. Fix measured the same day: `davofState::wettedSf_` (per-triangle wetted fractions times
+   triangle area vectors, filled by quadraticFaces) and `mVec_ = -sum_f S_f^-`; the test prints
+   `vector-state normal`: L2/Linf 6.6e-15 / 6.2e-14 (0.1 h), 1.1e-14 / 1.1e-13 (0.2 h), and
+   9.5e-15 / 7.9e-14 on the column mesh (identical to the scalar there).
+
+Consequence for the method (proposal, both versions, 2026-10-02): on non-planar faces the transported
+face quantity is the wetted area vector and, for the explicit position (2), its first moment: four
+scalars per face that reduce to alpha_f on a planar face. The first moment and the position on warped
+faces are not yet measured (open); the Detrixhe-Aslam path does not fill `wettedSf_` yet (open).
+
+Reworked the same day on the author's instruction (no per-face storage): the wetted face area is
+computed from the barycentric fan, the triangles (x_f, p_i, p_{i+1}) picked up by circulating over the
+face's own points with its centre x_f, each triangle's wetted fraction times its area vector summed
+straight into the owner and neighbour cells during the initialisation (`davofState::mTri_`, both the
+Detrixhe-Aslam path via `faceWettedAreaVector` and the quadratic path, which replaces the DA triangle
+contribution of every face whose quadratic cut succeeds). `areaNormal()` uses that sum as m_c whenever
+the state came from a surface; the scalar identity -sum_f alpha_f S_f is printed by the test as
+`alpha_f S_f identity` (identical on planar faces). The per-face vector field of the first version is
+gone.
+Measured after the rework (vertex-perturbed 8^3 plane, `Allrun_perturbed vertex 0.1|0.2`): the davof
+normal from the fan sum E_LINF_N 3.3e-14 / 6.2e-14 at 0.1 h (Detrixhe-Aslam / quadratic faces) and
+1.8e-13 / 1.1e-13 at 0.2 h, consistency against the tet sum 1e-15, while the scalar identity reads
+0.080 and 0.168; column 0.3 h and the Cartesian Allrun unchanged (3/3). `-expectExact` still fails on
+the warped meshes through the POSITION: `planePosition()` uses sum_f alpha_f (x_f - x_c).S_f, which
+is inexact on a warped face; with the exact normal the position error drops from 0.038 h to 0.0037 h
+(the realizability diagnostics 0.004 / 0.0076 follow from it). Next: the first moment per fan
+triangle (the wet polygon's centroid of each triangle) in the same loop, nothing stored.
+
+Position (same day, on the author's instruction): the explicit position uses the same fan. Per triangle
+the first moment (x_wet,t - x_c).S_wet,t with the centroid of the wet polygon
+(`davof::triNegativePolygon`: a walk along the triangle boundary collecting the wet vertices and the
+edge crossings; the quadratic path keeps its exact area fraction and takes the centroid from the
+linear cut of the same triangle, exact for a plane and immaterial on a planar face, where
+(x - x_c).n_f is constant), summed per cell on the fly (`momentTri_`); `planePosition()` uses it
+whenever the state came from a surface. Measured: vertex-perturbed 0.1 h, both states PASS at 1e-12;
+0.2 h: normal 1.8e-13 / 1.1e-13, position 1.5e-12 h, plane-cut alpha 2.6e-15, area 2.6e-13, curvature
+2.3e-15; column 0.3 h: position 2.2e-12 h, the rest 1e-13 and below. The two position maxima sit in
+corner-sliver cells (alpha 2e-5 and 0.99998, |m| 0.002 V^(2/3)), where p = (3 alpha V - M)/|m| divides
+the difference of two O(V) numbers by a tiny area: round-off, so the position check of `-expectExact`
+has a ten-fold allowance (1e-11 h). In such a cell on the warped mesh the old alpha_f moment put the
+plane 0.004 h off. The ellipsoid at N = 20 with quadratic faces is unchanged to every printed digit
+(normal 0.0111565466185 / 0.115032544554, identical plane offsets). The plane indicator keeps its
+scalar path (its own fan sums are open), as is its realizability diagnostic on non-cubic cells.
+
+### 10.13 DAVOF static gate 3: the zero-step regeneration, measured (2026-10-04)
+
+What the proposal's Stage 1 pre-registers, run without a time step: from the
+static state (alpha_k, {alpha_f}) every interface cell recovers its normal
+(the Gauss identity), its explicit plane and, from the ring of recovered
+normals, its curvature tensor (`quadricFit normalsOnly`); a clipping surface
+is built from the three; every face of the cell is cut again with it; the
+regenerated face fractions are compared with a reference AS FRACTIONS over
+the (cell, face) pairs of the interface cells (each cell with its own view;
+the owner-against-neighbour disagreement on shared faces is the C0
+diagnostic); the normal and the position are recovered from the regenerated
+data once more (`davofState::setRegenerated`). Code:
+`src/leiaLevelSet/davof/davofRegeneration.H` (header-only: `cellSurface`,
+`faceCut` with the quadratic cut on every fan triangle and a four-way split
+where it falls back, `cellWettedArea`, `cellLiquidVolume[Refined]`,
+`solveOffset`, `refFaceFraction`, `regenerate`), option
+`leiaTestDavofNormal -regenerate <arm>` / `fvSolution davof.regenerate`
+(token `DAVOF_REGEN_ARM`), output `leiaTestDavofRegen.csv`, the model row
+`davofRegen` and the eight worst (cell, face) pairs in the log, tables and
+figures `workflow/scripts/make_davof_regen_table.py` (`davof_regen_*`, run
+by the report step for a study with that CSV; the compact table exported by
+`make davof-proposal`), studies `config/davof/sphereRegeneration3D.yaml` and
+`ellipsoidRegeneration3D.yaml` (PREDICTION 6 in their headers), gate
+`cases/davof/planeNormal3D/Allrun_regenerate`.
+
+Arms (the clipping surface of a cell; the paraboloid in the frame of the
+plane polygon's centroid with the DAVOF normal, its second derivatives from
+the fit's coefficients C3..C5 / h_c):
+
+| arm | offset along the normal | q predicted |
+|---|---|---|
+| plane | the explicit plane (2) | 1 |
+| paraboloidPlane | zero: vertex on the plane | 1 |
+| paraboloidFaces | the cell's total wetted face area reproduced (one monotone scalar, bisection to 1e-13 h); THE METHOD'S anchoring (no volume matching, Tomislav 2026-10-03) | 2 |
+| paraboloidVolume | alpha_k V_k with the Detrixhe-Aslam tet quadrature of the paraboloid | 1 on the chord cell fraction |
+| paraboloidVolumeExact | alpha_k V_k with the linear tet cut on tets split twice (named "own cut volume" before the ladder; see the falsification) | 1 on the chord cell fraction, 2 on the exact state |
+
+Reference: the exact face fractions on the `exactSphere` state; otherwise
+the quadratic cut of the exact distance on every fan triangle subdivided
+twice (its error 16 times below the quadraticFaces initialisation).
+
+Plane gate: every arm regenerates the plane to round-off on both
+surface-based states (alpha_f 1e-14, normal 1e-14, position 1e-16 m).
+
+**Sphere ladder, N = 20 to 160 (R/h = 5 to 40), both states, five arms**
+(orders over the three finest rungs, all four rungs in parentheses; the
+face-fraction error as a fraction over the (cell, face) pairs of the
+interface cells; `docs/davof/davof-article/data/tables/davof_regen_orders_sphereRegeneration3D.csv`):
+
+| state | arm | p(alpha_f, L1) | p(alpha_f, L2) | p(mismatch, L1) | p(n, L1) | p(n, L2) | p(x, L2) | alpha_f L1 at N = 160 |
+|---|---|---|---|---|---|---|---|---|
+| exact sphere | plane | 1.00 (0.99) | 0.99 (0.99) | 1.00 (1.00) | 2.00 (2.05) | 1.87 (1.98) | 2.00 (2.00) | 3.49e-3 |
+| exact sphere | paraboloidPlane | 0.98 (0.96) | 0.98 (0.96) | 1.00 (0.98) | 2.10 (2.11) | 2.35 (2.10) | 1.97 (1.92) | 1.19e-3 |
+| exact sphere | paraboloidFaces | 1.98 (1.97) | 1.91 (1.91) | 1.97 (1.97) | 2.06 (2.06) | 2.34 (2.10) | 2.00 (2.00) | 1.12e-5 |
+| exact sphere | paraboloidVolume | 1.00 (0.99) | 0.98 (0.98) | 1.13 (1.22) | 2.10 (2.10) | 2.31 (2.12) | 2.01 (2.04) | 1.05e-3 |
+| exact sphere | paraboloidVolumeExact | 1.05 (1.15) | 1.20 (1.30) | 1.91 (1.92) | 2.07 (2.06) | 2.35 (2.10) | 2.01 (2.04) | 7.26e-5 |
+| DA + quadratic faces | plane | 1.00 (1.00) | 0.98 (0.96) | 1.00 (1.00) | 1.97 (2.00) | 1.79 (1.87) | 2.00 (2.00) | 1.29e-3 |
+| DA + quadratic faces | paraboloidPlane | 1.01 (1.02) | 0.98 (0.98) | 1.01 (0.99) | 1.98 (2.02) | 1.75 (1.95) | 2.02 (2.06) | 1.97e-3 |
+| DA + quadratic faces | paraboloidFaces | 2.00 (2.07) | 1.18 (1.65) | 2.00 (2.03) | 1.99 (2.03) | 1.83 (1.90) | 2.00 (2.00) | 4.55e-6 |
+| DA + quadratic faces | paraboloidVolume | 1.97 (2.03) | 1.49 (1.65) | 1.98 (2.03) | 1.99 (2.02) | 1.82 (1.88) | 2.00 (2.01) | 6.25e-6 |
+| DA + quadratic faces | paraboloidVolumeExact | 1.00 (1.01) | 0.98 (0.99) | 1.04 (1.12) | 1.99 (2.03) | 1.85 (1.94) | 2.02 (2.05) | 9.81e-4 |
+
+Pairwise L1 orders of the face-anchored arm: exact state 1.96, 1.96, 2.00;
+chord state 2.23, 2.07, 1.92. At N = 160 its L1 error is 300 times below
+the plane's on the chord state (4.6e-6 against 1.3e-3) and 310 times on the
+exact state.
+
+**Ellipsoid ladder (the proposal's state: DA cell fraction, quadratic
+faces; half-axes 1.0/0.8/0.6 mm; N = 20 to 160), the reference the
+twice-subdivided quadratic cut
+(`davof_regen_orders_ellipsoidRegeneration3D.csv`):**
+
+| arm | p(alpha_f, L1) | p(alpha_f, L2) | p(mismatch, L1) | p(n, L1) | p(n, L2) | p(x, L2) | alpha_f L1 at N = 160 |
+|---|---|---|---|---|---|---|---|
+| plane | 0.99 (0.98) | 0.97 (0.95) | 0.98 (0.99) | 1.93 (1.92) | 1.67 (1.69) | 2.00 (1.99) | 1.68e-3 |
+| paraboloidPlane | 1.01 (1.04) | 0.98 (1.00) | 0.99 (1.01) | 1.96 (1.97) | 1.85 (1.80) | 2.11 (2.12) | 2.55e-3 |
+| paraboloidFaces | 2.09 (2.11) | 2.16 (2.01) | 2.01 (2.01) | 1.93 (1.93) | 1.64 (1.70) | 1.99 (2.00) | 8.84e-6 |
+| paraboloidVolume | 2.04 (2.05) | 1.83 (1.77) | 2.04 (2.07) | 1.92 (1.93) | 1.61 (1.68) | 1.99 (2.00) | 1.30e-5 |
+| paraboloidVolumeExact | 1.02 (1.04) | 1.01 (1.01) | 1.16 (1.24) | 1.94 (1.93) | 1.66 (1.70) | 2.04 (2.10) | 1.27e-3 |
+
+Pairwise L1 orders of the face-anchored arm 2.12, 2.18, 2.00; its L1 error
+at N = 160 is 190 times below the plane's. The original state's normal on
+this ladder: 1.97 (L1) / 1.77 (L2) over the three finest rungs, the numbers
+of 10.11 (1.96 / 1.78) within the fit's rounding. Anchoring residual at or
+below 2e-11 relative on every rung; triangle fallbacks 0 except
+paraboloidVolume at N = 20 (6) and 40 (1); no cell without a bracket.
+
+Reading. The face anchoring regenerates the face fractions at q = 2 on the
+chord state (2.00 sphere, 2.09 ellipsoid in L1) and on the exact state
+(1.98); the plane and the vertex-anchored paraboloid at q = 1 (0.98 to
+1.01): the tilt of the explicit plane and the half-sagitta offset of the
+vertex anchoring are the O(h) fraction errors of the derivation of
+2026-10-03 (article folder, FINDINGS.md). The owner-neighbour mismatch
+follows the same orders (2.00 / 2.01 face-anchored, 1.00 / 0.98 plane), so
+the C0 defect of the cell-local regeneration is O(h^2) as a fraction for the
+method's anchoring. The regenerated normal and position are second order
+for every arm: in a zero-step test the regenerated fractions are the
+clipping surface's own, and (1) returns that surface's mean normal (the
+plane's exactly), so the fraction order, not the normal, carries q. The
+regenerated normal's 1.99 / 1.83 (sphere) and 1.93 / 1.64 (ellipsoid) in
+L1 / L2 satisfy the proposal's WP1 criterion (1.8 / 1.5) trivially for the
+same reason; the result of this gate is the fraction order.
+
+Predictions against the ladders (PREDICTION 6):
+
+- plane q = 1: confirmed (1.00 / 1.00 / 0.99).
+- paraboloidPlane q = 1: confirmed (0.98 / 1.01 / 1.01).
+- paraboloidFaces q = 2: confirmed (1.98 / 2.00 / 2.09 in L1).
+- paraboloidVolume q = 1 on the chord cell fraction: FALSIFIED (1.97 sphere,
+  2.04 ellipsoid): the Detrixhe-Aslam tet quadrature of the paraboloid
+  carries the chord defect of the cell fraction it is matched to, and the
+  two defects cancel (the smoke run's finding holds over both ladders). On
+  the exact state the same arm is q = 1 (1.00): there the quadrature's chord
+  defect has no partner.
+- paraboloidVolumeExact q = 2 on the exact state: FALSIFIED (1.05, pairwise
+  1.38, 1.09, 1.01). Its "own cut volume" is the LINEAR tet cut on tets
+  split twice: the chord defect is 1/16 of the Detrixhe-Aslam one, not zero,
+  and the matched offset carries 1/16 of the chord shift; the finest L1
+  error is 7.3e-5 against 1.05e-3 for the unrefined quadrature (ratio
+  14.5). A truly exact paraboloid volume needs the quadratic cut. On the
+  chord state the arm is q = 1 (1.00 / 1.02) as derived (15/16 of a chord
+  shift off). The arm keeps its name with this note.
+
+Consequence for the design (now over both ladders): a volume anchor is
+consistent only in the quadrature that defined the cell fraction, and it
+must be the chord quadrature for the chord state; the face anchor needs no
+such pairing and is second order on both states and both surfaces.
+
+**The chord state's L2 at N = 160 (sphere, face-anchored: 1.18 over the
+three finest rungs, pairwise 2.25, 2.64, -0.29; Linf 1.4e-2 against 1.1e-3
+at N = 80).** The worst-pair diagnostic names one internal face (6216215,
+cells 2080726 / 2080886, alpha_k 0.013 / 0.983): both cells regenerate it
+at 0.4650 / 0.4654, the state's own value is 0.4651, the twice-subdivided
+reference says 0.4788. A grazing face at the sphere's pole: from alpha_k
+the sphere enters the empty cell by about 0.01 h through this face, so the
+in-plane circle has a radius of about 0.9 h and the quadratic cut of the
+fan triangles misses 1.4e-2 of its area in the initialisation; the
+face-anchored regeneration reproduces the state's value to 1e-4 and inherits
+the defect. The next six pairs are corner slivers (alpha_k 0.99999) with
+errors of 2e-3 to 3e-3 of the same kind. Such faces exist with an expected
+count of a few h/R per rung (none at N = 80, one at N = 160), so their
+weight in L1 is 1e-8 and L1 is clean (2.00); L2 and Linf at the finest rung
+are theirs. The ellipsoid's L2 (2.16) has no such face. Open: the exact
+fraction of a grazing face from the sphere's disc for the record; the
+quadratic cut on a fan triangle whose in-plane curve radius is below the
+triangle size (a split criterion by curvature, not by fallback).
+
+Regression found and fixed: `computeFromExactSphere` let the Detrixhe-Aslam
+fan sums (`mTri_`, 2026-10-02) stand in for the exact face fractions; the
+exact state's normal was first order from 2026-10-02 to 2026-10-04 (2.0e-2 /
+9.7e-3 at N = 20 / 40 instead of 7.0e-3 / 1.6e-3). The sphere ladder of
+2026-09-29 (section 10.7) and the proposal's Table 1 predate the fan.
+`hasMTri_` is false for the exact state now. On this ladder the exact
+state's normal reads 2.00 (L1) / 1.88 (L2) over the three finest rungs
+(pairwise L2 2.16, 2.03, 1.73), the position 2.00.
+
+Running the ladders: `--jobs 1` (an N = 160 sphere case peaks at 5.1 GB;
+a sphere N = 160 case runs 20 to 60 s, the paraboloidVolumeExact arm the
+longest). The morning's six parallel jobs OOM-killed one solver, which
+poisoned systemd's `init.scope` cgroup of the WSL VM so that every later
+session died after 90 s until `wsl --shutdown` (AGENTS.md, "The DAVOF
+zero-step regeneration"). Not yet in the proposal: the manuscript changes
+only on Tomislav's decision (both versions, one sentence after finding
+(iv) and the Stage 1 arms as results).
+
+### 10.14 The iterated regeneration on Lichtenberg: q = 2 per step, q = 1 per period (2026-10-06)
+
+The ladders of `config/davof/sphereRegenIterLong3D.yaml` (K = 5000, N = 20 and 40),
+`sphereRegenIter3D.yaml` and `ellipsoidRegenIter3D.yaml` (K = 500, N = 20 to 160),
+arms plane / paraboloidFaces / paraboloidVector, views own / cell, origin volume,
+refit on, run in the clone `/work/scratch/tm83tomy/leia-davof` (jobs 55339952 to
+55339954, resubmitted 2026-10-06 morning after the YAML boolean failure of the
+overnight run: `DAVOF_REGEN_REFIT: [true]` became the token `True`; quote booleans).
+Tables: `docs/davof/davof-article/data/tables/davof_regen_iter_<study>.csv` and
+`davof_regen_iter_orders_<study>.csv`; per case `leiaTestDavofRegenIter.csv`.
+
+Long ladder, completed 20:31 (L1 face-fraction error as a fraction; the per-period
+accounting compares k proportional to 1/h: N = 20 at k = 40 against N = 40 at k = 80):
+
+| arm / view | E(1) at N 20, 40 | E(2N) | E(4N) | E(5000) | per-period order |
+|---|---|---|---|---|---|
+| plane / cell | 3.92e-3, 1.98e-3 | unchanged | unchanged | unchanged | exact fixed point (P1 confirmed) |
+| plane / own | 3.92e-3, 1.98e-3 | 2.48e-2, 1.52e-2 | 2.33e-2, 1.57e-2 | 2.32e-2, 1.60e-2 | saturates in 40 iterations at order 0.5; normal destroyed |
+| paraboloidFaces / cell | 2.30e-4, 4.45e-5 | 5.52e-3, 2.98e-3 | 1.05e-2, 6.00e-3 | 9.37e-2, 8.97e-2 | 0.89 (2N), 0.81 (4N) |
+| paraboloidFaces / own | 2.30e-4, 4.45e-5 | 6.25e-3, 1.63e-3 | 1.76e-2, 4.33e-3 | 0.37, 0.37 | diverges; 51 and 163 cells drop out |
+| paraboloidVector / cell | 2.10e-4, 2.84e-5 | 8.21e-4, 4.80e-4 | 1.34e-3, 8.70e-4 | 8.0e-3, 7.5e-3 | 0.78 (2N), 0.62 (4N); constant 6 to 7 times lower |
+| paraboloidVector / own | 2.10e-4, 2.84e-5 | 3.19e-2, 1.38e-2 | 6.21e-2, 4.14e-2 | 0.31, 0.36 | diverges; Newton fails in 60 and 277 cells |
+
+Verdicts on the pre-registered lines of the config headers: P1 CONFIRMED (plane/cell
+constant to every digit over 5000 iterations). P1' (plane/own increment first order):
+the arm saturates, the increment is not the measure; the saturated level is order 0.5.
+P2' FALSIFIED beyond the first few hundred iterations: at fixed K = 5000 the error of
+paraboloidFaces is independent of h (9.4e-2 against 9.0e-2); the increment is O(h^2)
+only at the start (smoke run, STATUS 10.13 addendum of 2026-10-05). P2'' half: the
+vector arm's drift is a fifth to a seventh of the scalar arm's but not second order; the
+Newton failures (11 to 15 % of the cells, scalar fallback) are the suspected residual.
+The measured statement for the proposal: the zero-velocity regeneration with the
+face-anchored paraboloid is q = 2 per step and q = 1 per period, the alpha_k-positioned
+plane with cell views is the only fixed point, and a fixed point of the second-order
+map needs a clipping surface that reproduces the cell's fractions (the proposal's
+Stage 1 projection; a six-coefficient paraboloid fitted to the F fractions is the
+identity of the map by construction for F <= 6 and is the next arm to test,
+`paraboloidFull`, not yet implemented).
+
+K = 500 ladders (sphere and ellipsoid, N = 20 to 160): at 23:30 at 94 % and 89 %, the
+N = 160 cases running; their per-period orders over four rungs, the displaced-face cut
+at k = 1 (P4) and the Newton-failure share against N are to be appended here when the
+drivers end (`cluster_status2.sh` of the session record; the data return by git from
+the clone). The proposal (commit 50451c2 of `research/projects`) carries the long
+ladder's result in finding (v) and Stage 1.
+
+**K = 500 ladders, completed 2026-10-06 23:39 (sphere) and 2026-10-07 00:24 (ellipsoid),
+48 cases, no error; leia 0d2bffc carries the tables and figures.** L1 face-fraction error
+as a fraction at k = 2N (one period at fixed Courant number, k proportional to 1/h) for
+N = 20, 40, 80, 160 and the per-period order between successive rungs (4N lies inside
+K = 500 only for N <= 80):
+
+| arm / view | surface | E(2N) at N = 20, 40, 80, 160 | order at 2N | order at 4N |
+|---|---|---|---|---|
+| plane / cell | sphere | 3.92e-3, 1.98e-3, 9.92e-4, 4.96e-4 (= E(1), every digit) | exact fixed point | exact fixed point |
+| plane / cell | ellipsoid | 5.48e-3, 2.82e-3, 1.40e-3, 7.05e-4 (= E(1)) | exact fixed point | exact fixed point |
+| plane / own | sphere | 2.48e-2, 1.57e-2, 1.42e-2, 9.66e-3 | 0.66, 0.14, 0.56 | 0.57, 0.15 |
+| plane / own | ellipsoid | 2.99e-2, 1.87e-2, 1.36e-2, 1.04e-2 | 0.68, 0.46, 0.38 | 0.63, 0.47 |
+| paraboloidFaces / cell | sphere | 5.52e-3, 2.98e-3, 1.60e-3, 8.67e-4 | 0.89, 0.90, 0.89 | 0.81, 0.84 |
+| paraboloidFaces / cell | ellipsoid | 1.29e-2, 6.30e-3, 3.40e-3, 1.85e-3 | 1.03, 0.89, 0.88 | 1.14, 0.81 |
+| paraboloidFaces / own | sphere | 6.25e-3, 4.33e-3, 3.92e-3, 4.89e-3 | 0.53, 0.14, -0.32 | 0.56, -0.20 |
+| paraboloidFaces / own | ellipsoid | 1.51e-2, 9.65e-3, 8.76e-3, 7.82e-3 | 0.64, 0.14, 0.16 | 0.40, 0.01 |
+| paraboloidVector / cell | sphere | 8.21e-4, 4.80e-4, 2.50e-4, 1.26e-4 | 0.78, 0.94, 0.98 | 0.63, 0.86 |
+| paraboloidVector / cell | ellipsoid | 2.34e-3, 1.12e-3, 5.58e-4, 2.95e-4 | 1.06, 1.00, 0.92 | 1.12, 0.94 |
+| paraboloidVector / own | sphere | 3.19e-2, 4.14e-2, 9.36e-2, 1.47e-1 | diverges (-0.4 to -1.2) | diverges |
+| paraboloidVector / own | ellipsoid | 2.75e-2, 4.82e-2, 1.01e-1, 1.69e-1 | diverges (-0.8 to -1.1) | diverges |
+
+The report's own order table (`davof_regen_iter_orders_*.csv`, quantity EK = the error
+at K = 500, three finest rungs) reads 1.71 (sphere) / 1.69 (ellipsoid) for
+paraboloidFaces/cell and 1.76 / 1.83 for paraboloidVector/cell: at FIXED K the error
+still falls with h because K = 500 is 1.6 periods at N = 160 and 12.5 at N = 20; the
+per-period accounting above compares like with like and is the one to quote.
+
+Verdicts. (1) The one-scalar face anchoring drifts at order 0.9 per period on both
+surfaces over four rungs (the long ladder's 0.89 / 0.81 on the two coarsest meshes was
+not a coarse-mesh artefact); (2) the area-vector anchoring drifts at 0.8 to 1.0 per
+period with a constant 5.5 to 6.9 times lower (sphere 6.2 to 6.9, ellipsoid 5.5 to
+6.3), tending to first order under refinement (0.98 and 0.92 on the finest pair), so
+P2'' stays half-confirmed: a lower constant, not a higher order; (3) the own-view
+(single-valued) arms do not converge at all: plane/own saturates, both paraboloid/own
+arms diverge, the vector arm fastest; (4) the Newton failures of the vector arm
+(N_NO_BRACKET at k = 1, scalar fallback) are a constant share of the interface cells,
+60/472, 277/1863, 1155/7418, 4651/29739 = 12.7, 14.9, 15.6, 15.6 % on the sphere and
+51/298, 208/1168, 851/4649, 3400/18642 = 17.1, 17.8, 18.3, 18.2 % on the ellipsoid;
+they do not vanish under refinement, so they are a property of the anchoring (the
+in-plane vertex position has no root in those cells), not the residual of a
+second-order arm. (5) P4, the displaced-face cut at k = 1 (`leiaTestDavofRegen.csv`,
+columns `E_ALPHAF_SHIFT_{M050,M025,P025,P050}_L1`, faces displaced by -0.5, -0.25,
++0.25, +0.5 h along the normal and cut against the k = 1 surface): the face-anchored
+paraboloid gives 5.6e-4, 8.7e-5, 1.4e-5, 3.1e-6 at -0.5 h on the sphere (orders 2.7,
+2.6, 2.2) and 1.7e-3, 2.6e-4, 4.7e-5, 1.0e-5 on the ellipsoid (2.7, 2.5, 2.2), the
+vector arm the same within 10 %, the plane 1.05e-2, 4.8e-3, 2.2e-3, 1.06e-3 (1.1, 1.1,
+1.0); the other three displacements agree within 30 %. So the ONE-STEP cut against
+displaced faces (reviewer C's variant of the transport step) is q = 2 for the
+paraboloid arms and q = 1 for the plane; it is the repetition, not the displacement,
+that costs the order. P4 CONFIRMED.
+
+Manuscript (2026-10-09, both versions, finding (v)): "first order (0.9 over four
+refinements on the sphere and on the ellipsoid) for the face-anchored paraboloid and,
+with a six times smaller constant, for the paraboloid anchored by the cell's wetted
+area vector (0.8 to 1.0)"; the Detailed version names the ladders (sphere and
+ellipsoid, N = 20 to 160, K = 500, and 5000 on the two coarsest sphere meshes).
+
+### 10.15 The six-coefficient clipping surface (`paraboloidFull`): the identity of the zero-velocity map (2026-10-12)
+
+The fifth proposal review (2026-10-12) read the Stage 1 projection as inert (a trigger
+above the O(h^2) floor cannot act on an O(h^2) per-step drift) or undefined (target set,
+degrees of freedom, one value per shared face). The record's answer, named in 10.14, is
+the paraboloid whose six coefficients (offset, two slopes, the three tensor components,
+in the frame of the recovered normal) are fitted to the cell's F face fractions, with the
+ring tensor as prior: it reproduces the fractions by construction, so the zero-velocity
+regeneration is the identity. Implemented 2026-10-12 as the arm `paraboloidFull` (leia
+36a3667, a9e6798): `cellSurface` gains the slopes a1, a2 (value = w - c - a1 u - a2 v -
+(b11 u^2 + 2 b12 u v + b22 v^2)/2, negative in the liquid; the other arms unchanged to
+every digit, plane gate `Allrun_regenerate` all seven arms PASSED); unknowns
+(c/h, a1, a2, b11 h, b12 h, b22 h) from the `paraboloidFaces` start, residual the
+|S_f|-weighted difference between the face cut and the cell's own view of its fractions,
+forward-difference Jacobian, normal equations with Marquardt damping relative to the
+diagonal (the prior enters as damping, not as penalty rows: with four or five cut faces
+the system is under-determined and a penalty row cannot reach 1e-10; the damped step
+keeps the null-space components at the start, i.e. the ring tensor, zero slopes and the
+bisection offset), step limited to h, halving up to six times, at most 50 iterations,
+converged at a maximum face residual of 1e-10; on failure the best iterate is kept and
+the cell counted in N_NO_BRACKET. New columns E0_ALPHAF_L1 / LINF in
+`leiaTestDavofRegen.csv`: the input state's own fraction error against the reference
+(k = 0).
+
+Pre-registered (config headers, before the run): P7 zero-step identity (E at k = 1 at
+round-off where the fit converges, chord and exact state); P8 non-converging share below
+2 % and falling with refinement; P9 the displaced-face cut at k = 1 q = 2 with a constant
+at or below the face-anchored arm's; P10 iterated to K = 500 the error stays at
+round-off and the regenerated normal equals the state's.
+
+Laptop smoke, sphere N = 20 (R/h = 5, 472 interface cells; feedback own, origin volume,
+refit on; `studies/davof/paraboloidFullSmoke`, git-ignored):
+
+| arm, state | E_ALPHAF_L1 (k = 1) | N_NO_BRACKET / 472 | MISMATCH_L1 | E_L2_N (k = 1) | SHIFT L1 at -0.5 / -0.25 / +0.25 / +0.5 h | E_ALPHAF_L1 (k = 50) |
+|---|---|---|---|---|---|---|
+| paraboloidFaces, chord | 2.304e-4 (= 10.13) | 0 | 4.6e-4 | 2.85e-2 | 5.6e-4 / 4.9e-4 / 4.3e-4 / 4.5e-4 | 8.54e-3 |
+| paraboloidFull, chord | 9.616e-5 = E0 (9.617e-5) | 11 (2.3 %) | 1.8e-7 | 6.80e-3 | 7.4e-4 / 5.3e-4 / 1.04e-3 / 1.07e-3 | 9.626e-5 |
+| paraboloidFaces, exact | 2.61e-4 | 0 | 6.0e-4 | 1.03e-2 | 4.5e-4 / 4.1e-4 / 4.3e-4 / 4.2e-4 | - |
+| paraboloidFull, exact | 5.7e-7 | 13 (2.8 %) | 9.0e-7 | 6.95e-3 | 5.2e-4 / 3.9e-4 / 1.20e-3 / 1.33e-3 | 3.7e-6 |
+
+Reading. P7 holds in its measurable content: on the exact state E(1) = 5.7e-7 comes
+entirely from the 13 non-converged cells (Linf 4.2e-4 is one of them); on the chord
+state E(1) equals E0 to four digits, because E_ALPHAF measures against the twice-refined
+reference and not against the state, so "round-off" is unreachable there by
+construction; the owner-neighbour mismatch is at 1e-7 (the other arms 5e-4). The
+regenerated normal is the state's normal (E_L2_N 6.80e-3 = the davof row's 6.803e-3;
+the face-anchored arm's 2.85e-2 is four times worse). P8 marginal at N = 20 (2.3 and
+2.8 %; the failures are faces with tiny targets, 1e-7 to 1e-5, that the surface misses,
+and six-cut-face cells with an irreducible least-squares residual of order 1e-5); the
+ladder decides the trend. P9 FALSIFIED on the constant: the displaced-face errors are
+1.3 to 2.4 times the face-anchored arm's (the fit is exact on the faces and worse away
+from them; the order is for the ladder). P10 at K = 50: drift 1e-7 (chord) and 3e-6
+(exact) in L1 from the failed cells feeding back through shared faces, the normal
+constant to five digits; the identity of the map holds on every converged cell.
+
+Ladders submitted 2026-10-12 (jobs 55408801 sphere, 55408802 ellipsoid; the K = 500
+studies of 2026-10-06 moved to `*.k500-2026-10-06`; all four arms rerun): the
+non-converging share against N, the displaced-face orders, E(K = 500) against E0 and
+the mismatch over the rungs are to be appended here.
+
+**Ladders done 2026-10-12 (ellipsoid 16:45, sphere 18:09; 64 cases, no error; leia
+4e613f9 carries the tables and figures; all four arms rerun, the 6 October results of the
+three old arms reproduced to every digit).** paraboloidFull, cell view, L1 face-fraction
+error as a fraction; E0 = the input state's own error against the twice-refined reference;
+E(k) after k applications; the fit's non-converged share N_NO_BRACKET / N_INTERFACE at
+k = 1; the owner-neighbour mismatch at k = 1; the displaced-face cut at -0.5 h with the
+paraboloidFaces value in parentheses:
+
+| surface | N | E0 | E(2N) | E(500) | non-converged | mismatch | shift -0.5 h |
+|---|---|---|---|---|---|---|---|
+| sphere | 20 | 9.62e-5 | 9.99e-5 | 9.99e-5 | 3/472 (0.6 %) | 1.2e-5 | 7.4e-4 (5.6e-4) |
+| sphere | 40 | 1.25e-5 | 1.28e-5 | 1.28e-5 | 1/1863 (0.1 %) | 7.1e-7 | 1.13e-4 (8.7e-5) |
+| sphere | 80 | 2.03e-6 | 2.03e-6 | 2.03e-6 | 5/7418 (0.1 %) | 8.1e-9 | 1.67e-5 (1.42e-5) |
+| sphere | 160 | 7.48e-7 | 7.47e-7 | 7.47e-7 | 15/29739 (0.1 %) | 6.5e-9 | 3.78e-6 (3.07e-6) |
+| ellipsoid | 20 | 1.49e-4 | 1.51e-4 | 1.51e-4 | 0/298 (0.0 %) | 1.9e-6 | 1.96e-3 (1.69e-3) |
+| ellipsoid | 40 | 3.30e-5 | 3.31e-5 | 3.31e-5 | 2/1168 (0.2 %) | 1.6e-7 | 3.39e-4 (2.62e-4) |
+| ellipsoid | 80 | 5.82e-6 | 5.83e-6 | 5.83e-6 | 9/4649 (0.2 %) | 4.6e-8 | 6.76e-5 (4.65e-5) |
+| ellipsoid | 160 | 1.38e-6 | 1.38e-6 | 1.38e-6 | 17/18642 (0.1 %) | 1.9e-8 | 1.50e-5 (1.03e-5) |
+
+Orders of the displaced-face cut (-0.5 h, successive rungs): paraboloidFull 2.71 / 2.75 /
+2.15 (sphere), 2.53 / 2.33 / 2.17 (ellipsoid); paraboloidFaces 2.69 / 2.62 / 2.21 and 2.69 /
+2.49 / 2.17; paraboloidVector 2.95 / 2.99 / 2.41 and 2.80 / 2.59 / 2.12; plane 1.14 / 1.14 /
+1.03 and 1.19 / 1.12 / 1.05. The own-view paraboloidFull has the same E(2N) and E(500) as
+the cell view (9.63e-5 ... 7.48e-7 and 1.51e-4 ... 1.39e-6), i.e. the arm is the identity in
+the single-valued view as well, where every other arm saturates or diverges (10.14).
+
+Verdicts. P7 CONFIRMED in its measurable content: E(1) = E(2N) = E(500) = E0 to three
+digits on every rung and both surfaces (the error against the reference cannot fall below
+the input state's own error; the mismatch 1e-5 to 1e-8 is the fit's residual). P8
+CONFIRMED: 0.0 to 0.6 % non-converged cells, 0.1 % on the three finer meshes (the laptop
+smoke's 2.3 to 2.8 % at N = 20 came from its different fallback settings and is
+superseded). P9 half: the displaced-face cut is q = 2 (2.2 to 2.8) but its constant is
+1.2 to 1.5 times the paraboloidFaces arm's on every rung (the interpolating surface is exact
+on the faces and worse away from them); the vector arm has the lowest displaced-face
+constant of all. P10 CONFIRMED: over 500 applications the error does not move from E0,
+and the regenerated normal equals the state's except in the non-converged cells (the N =
+20 sphere L2 of 2.8e-2 is three such cells). Statement for the record and the manuscripts:
+the paraboloid with six coefficients fitted to the cell's face fractions IS the fixed point
+of the zero-velocity regeneration at every resolution tested; the transport question is
+the remainder of the fit at the displaced pre-image, O(h^2) per step with a constant
+slightly above the face-anchored arm's, and whether its sum over a period is O(h^2) or
+O(h). Both proposal versions (finding (v)) and the preprint (Section 6.3) carry it since
+2026-10-12 evening.
+
+### 10.16 The static recovery on perturbed-hexahedral and polyhedral meshes (2026-10-12)
+
+Part B of the plan of 2026-10-12: the static DAVOF recovery (normal, position, curvature)
+of the plane, the sphere and the ellipsoid on three mesh classes, hexahedral (the ladders
+of 10.7 to 10.11), vertex-perturbed hexahedral (`mesh: perturbed`: blockMesh, then
+`leiaPerturbMesh` with its defaults, every point displaced by up to 0.1 h with the
+deterministic seed 0, so the mesh rule needed no change; the faces warp) and polyhedral
+(`mesh: poly`: cfMesh `pMesh` on the 4 mm box `box4mm-faces.stl`, one solid per box face
+from `make_box_stl.py --solids faces`, so every box edge is a feature edge and the patches
+are left/right/front/back/bottom/top, covered by one regex group in the `0.org` fields).
+Configs `config/davof/{sphere,ellipsoid}Normal3D_{perturbed,poly}.yaml` and
+`planeNormal3D_{hex,perturbed,poly}.yaml` (the plane on the N = 20/40/80/160 ladder of
+the other two, case `planeNormal3DLadder`, whose `fvSolution.template` gained the
+curvature block); `cases/davof/<case>/system/meshDict.template` and
+`cases/davof/<case>_poly.parameter`; the gate `cases/davof/planeNormal3D/Allrun_poly`
+(`system/meshDict`); alpha sources quadraticFaces and detrixheAslam on the non-hex meshes
+(exactSphere is hex-only). Two derived tokens in `materialize.py`: `DOMAIN_CELL_SIZE` =
+DOMAIN_LENGTH/N_CELLS (h) and `CFMESH_CELL_SIZE` = h/2^(-1/3), the cfMesh maxCellSize
+whose dual cells at the interface measure h (the pin of the README's polyhedral droplet),
+so the polyhedral studies run the SAME N_CELLS ladder as the hex ones. Measured on the
+plane box at N = 20: with maxCellSize = h the mesh has 31471 cells and a mean cell size
+(DELTA_X) of 0.63 h, with the pin 13017 cells, DELTA_X 0.85 h and 784 interface cells
+against 772 on the hex mesh, i.e. the interface resolution of the hex ladder. The
+Snakefile no longer passes `-fluxCorrection` to `leiaTestDavofNormal` on perturbed
+meshes (an unknown option is a FatalError in argList). `make_davof_normal_table.py` keys
+every series by (mesh, alphaSource, model) with the mesh class from `case_params.json`
+(the per-study outputs are byte-identical to the old script's on every study present,
+checked) and writes, for a study `<surface>Normal3D[_hex|_perturbed|_poly]`, the combined
+table `tables/davof_normal_proposal_<surface>Normal3D_meshes.tex` (mesh column first, a
+`\midrule` between the mesh blocks, comparator rows collapsed per block when the states
+share alpha_k) and `davof_normal_orders_<surface>Normal3D_meshes.csv` from the sibling
+study directories that exist (a missing one is noted); `make davof-proposal` exports them
+with the other `davof_normal_proposal_*.tex`.
+
+Pre-registered (the config headers, before any run). P11 (plane, every mesh class):
+normal, position and curvature at round-off (1e-12) for both states with the fan sums.
+P12 (perturbed 0.1 h and polyhedral): the quadratic-face normal converges at second order
+with a larger constant than on the hexahedral mesh; the Detrixhe-Aslam normal at first
+order; the position at second order for both; the one-ring curvature converges (order
+between 1 and 2) with a smaller constant on polyhedra, where the point-neighbour ring is
+larger. P13: plicRDF stays at order about 1.1 on every mesh class; gradAlpha does not
+converge; isoAlpha 0.5 to 0.7.
+
+The plane gate at N = 20 (`-expectExact`, tolerance 1e-12, position 1e-11 h), both
+surface-based states (detrixheAslam / quadraticFaces):
+
+| mesh | cells (interface) | max skewness | normal Linf | position Linf / h | consistency | curvature Linf h | area diagnostic | verdict |
+|---|---|---|---|---|---|---|---|---|
+| hexahedral | 8000 (772) | 0 | 5.6e-14 / 5.6e-14 | 1.3e-12 / 1.3e-12 | 2e-15 | 1e-13 | 6e-14 / 1e-13 | PASSED |
+| perturbed 0.1 h | 8000 (772) | 0.13 | 2.2e-13 / 2.2e-13 | below 1e-11 | 1e-14 | 1e-13 | below 1e-12 | PASSED |
+| polyhedral | 13017 (784) | 2.18 | 1.9e-13 / 1.9e-13 | 1.9e-12 / 6.8e-12 | 6.6e-15 / 8.2e-15 | 1.9e-14 / 2.5e-14 | 2.2e-12 / 1.1e-11 | area diagnostic above 1e-12 |
+
+(The plane indicator is not exact on perturbed or polyhedral cells, normal Linf 0.098
+and 0.17, as in 10.12.) P11 HOLDS in its stated content on all three mesh classes: the
+normal, the position and the curvature of the plane are at round-off on polyhedra too,
+and the Detrixhe-Aslam tets and the fan triangles needed no change for polyhedral cells
+(no code change in `davofState`). The ONE quantity above the tolerance on the polyhedral
+mesh is the area realizability diagnostic MAX_AREA_DIFF_PLANE, 2.2e-12 and 1.1e-11
+against 1e-12: it divides by h^2 in the corner-sliver cells of a mesh with skewness 2.2,
+the same floor for which the position already carries a ten-fold allowance;
+`Allrun_poly` therefore exits 1, and whether the area diagnostic gets the position's
+allowance is Tomislav's decision (the gate's tolerance was not changed).
+
+Laptop smoke of the sphere ladders at N = 20 and 40 (`--jobs 1`; studies
+`sphereNormal3D_{perturbed,poly}Smoke`, git-ignored; orders between the two rungs; the
+hex row from the ladder of 10.10):
+
+| mesh, state | L1(n) 20 to 40 (order) | L2(n) 20 to 40 (order) | Linf(n) at 40 | L2(x) order | plicRDF L2 (order) | gradAlpha / isoAlpha L2 order |
+|---|---|---|---|---|---|---|
+| perturbed, quadraticFaces | 2.90e-3 to 1.36e-3 (1.09) | 5.83e-3 to 2.84e-2 (-2.28) | 1.22 | 1.44 | 3.55e-2 to 1.76e-2 (1.01) | 0.11 / 0.39 |
+| perturbed, detrixheAslam | 1.25e-2 to 6.27e-3 (1.00) | 1.93e-2 to 9.93e-3 (0.96) | 0.042 | 2.06 | same alpha_k | |
+| polyhedral, quadraticFaces | 6.58e-4 to 1.26e-4 (2.38) | 2.22e-3 to 3.87e-4 (2.52) | 0.010 | 2.07 | 1.83e-2 to 8.97e-3 (1.03) | 0.12 / 0.16 |
+| polyhedral, detrixheAslam | 2.78e-3 to 1.22e-3 (1.19) | 5.77e-3 to 2.53e-3 (1.19) | 0.019 | 2.01 | same alpha_k | |
+| hexahedral, quadraticFaces | 3.03e-3 to 6.83e-4 (2.15) | 6.80e-3 to 1.56e-3 (2.13) | 0.025 | 2.01 | | |
+
+Reading. The perturbed quadratic-face L2 at N = 40 is ONE cell: cell 28460 has
+alpha_k = 0 (the Detrixhe-Aslam tets see no liquid) while the quadratic cut of its warped
+fan triangles wets faces, so |m_c| passes the wisp threshold and the "normal" of a cell
+without volume is scored (e = 1.22; N_FACE_FALLBACK 4 of 3.8e5 faces). Without that cell
+L2 = 1.47e-3 and L1 = 7.06e-4, the hex constants (1.56e-3, 6.83e-4), and the pairwise
+orders read 1.99 (L2) and 2.04 (L1): the perturbation of 0.1 h costs nothing in the
+constant, and P12's "larger constant" is not seen; the ladder decides whether such
+volume-less wetted cells recur (they are the realizability defect of the inconsistent
+quadratic-face state in its sharpest form, and a candidate for the two-piece/defect rule
+of the proposal). The polyhedral quadratic-face normal is second order with a constant
+4.0 times BELOW the hex one at N = 40 (3.87e-4 against 1.56e-3; more faces per cell enter
+the sum) and its position is second order: P12 FALSIFIED in the favourable direction for
+the constant on the smoke. The Detrixhe-Aslam normal is first order on both mesh classes
+(1.00, 1.19), its position second order (2.06, 2.01). P13 holds on the smoke: plicRDF
+1.01 and 1.03 (its error 12 and 23 times the quadratic-face DAVOF error at N = 40),
+gradAlpha 0.11 and 0.12, isoAlpha 0.39 and 0.16 (below the predicted 0.5 to 0.7 on two
+rungs). The curvature part of P12 waits for the ellipsoid ladders (no curvature model on
+the sphere).
+
+PENDING: the ladders on Lichtenberg (`sbatch --parsable -J leia-davof-<cfg>
+--export=ALL,STUDY=davof/<cfg> run-studies.sbatch` for sphereNormal3D_perturbed,
+sphereNormal3D_poly, ellipsoidNormal3D_perturbed, ellipsoidNormal3D_poly,
+planeNormal3D_hex, planeNormal3D_perturbed, planeNormal3D_poly; the laptop needs
+`LEIA_PMESH_PRELOAD` for pMesh, the cluster does not); their orders over the three finest
+rungs, the combined tables per surface and the verdicts on P12 and P13 are to be appended
+here.
+
+**Ladders on Lichtenberg (2026-10-13; leia 072de77 carries the tables; the four hex and
+perturbed studies done, jobs 55421098, 55421100, 55421102, 55421103; the three polyhedral
+studies resubmitted with `solve_mem_mb: 24000` after two OOM kills at N = 160, 4000 and
+12000 MB, jobs 55422221-23, pending).** Orders over N = 20 to 160 (three finest in
+parentheses), errors at N = 160:
+
+| study | state / model | p1(n) | p2(n) | L2(n) | Linf(n) | p(x) | L2(d) [m] | p(kappa) | kappa err |
+|---|---|---|---|---|---|---|---|---|---|
+| sphere perturbed 0.1 h | DAVOF, quadratic faces | 2.12 (2.49) | 2.40 (4.11) | 9.49e-5 | 3.43e-3 | 2.07 | 7.77e-8 | - | - |
+| | DAVOF, Detrixhe-Aslam | 0.99 (0.98) | 0.97 (0.98) | 2.57e-3 | 1.23e-2 | 2.04 | 1.77e-8 | - | - |
+| | plicRDF | 0.90 (0.83) | 0.93 (0.87) | 5.25e-3 | 1.45e-1 | 1.50 | 2.37e-7 | - | - |
+| | gradAlpha / isoAlpha | 0.06 / 0.17 | 0.05 / 0.20 | 6.71e-2 / 4.75e-2 | 1.45e-1 / 1.97e-1 | 1.51 / 1.57 | 2.40e-7 / 2.03e-7 | - | - |
+| ellipsoid perturbed 0.1 h | DAVOF, quadratic faces | 2.02 (2.00) | 1.87 (1.91) | 2.81e-4 | 1.06e-2 | 1.99 | 1.04e-7 | 1.53 | 4.65e-3 |
+| | DAVOF, Detrixhe-Aslam | 1.04 (1.03) | 1.01 (1.02) | 3.80e-3 | 3.01e-2 | 2.06 | 2.44e-8 | 1.27 | 7.23e-3 |
+| | plicRDF | 1.06 (0.98) | 1.02 (1.01) | 6.43e-3 | 1.39e-1 | 1.64 | 2.39e-7 | - | - |
+| | gradAlpha / isoAlpha | 0.10 / 0.29 | 0.11 / 0.31 | 6.86e-2 / 4.81e-2 | 1.45e-1 / 1.93e-1 | 1.63 / 1.78 | 2.46e-7 / 2.06e-7 | - | - |
+| plane hex (ladder) | DAVOF, both states | round-off | round-off | 1.8e-14 / 9.8e-15 | 3.3e-13 | - | 4.6e-17 | - | - |
+| | plicRDF / gradAlpha / isoAlpha | - | - | 2.51e-4 / 7.46e-2 / 4.18e-2 | 1.89e-2 / 0.40 / 0.54 | 0.12 / 1.31 / 1.45 | 8.3e-12 / 3.0e-8 / 3.6e-8 | - | - |
+| plane perturbed 0.1 h | DAVOF, both states | round-off | round-off | 1.9e-14 / 1.2e-14 | 3.6e-13 | - | 4.6e-17 | - | - |
+| | plicRDF / gradAlpha / isoAlpha | - | - | 5.26e-3 / 7.56e-2 / 6.08e-2 | 0.38 / 0.41 / 0.56 | 0.95 / 0.96 / 1.02 | 2.7e-7 / 2.6e-7 / 2.2e-7 | - | - |
+
+Reading. P11 CONFIRMED on hex and perturbed (the plane at 1e-14 for every N; the
+polyhedral ladder pending, the N = 20 gate passed). P12 half: the orders hold (quadratic
+faces second order, Detrixhe-Aslam first, position second, the ellipsoid curvature 1.53
+against 1.55 on hex), but the constant is NOT larger on the perturbed mesh (ellipsoid L2
+2.81e-4 against 3.01e-4 on hex, and the L2 order rises from 1.78 to 1.87 because the
+perturbation breaks the pole alignment that set the hex L2): the "larger constant" half
+of P12 is falsified in the favourable direction. P13 CONFIRMED and sharpened: on the
+perturbed meshes plicRDF's order falls to 0.90 / 0.93 (sphere) at a maximum normal error
+of 0.145, and the comparators' position order falls to 1.5 to 1.8, while the DAVOF
+position stays at 2.0 and its maximum normal error at 3.4e-3 (sphere) and 1.1e-2
+(ellipsoid); on the perturbed plane plicRDF's normal error is 5.3e-3 with a maximum of
+0.38 against 1e-14. The sphere's quadratic-face L2 order 2.40 (4.11 over the three finest)
+is the N = 20 rung's volume-less cell of the smoke run (alpha_k = 0 with wetted warped fan
+triangles) dropping out of the ladder as the meshes refine; L1 (2.12) is the order to
+quote.
+
+**Polyhedral ladders done 2026-10-13 11:20-11:27 (jobs 55422221-23, `solve_mem_mb` 24000;
+leia af4c58f carries the tables and the combined `_meshes` tables).** Orders over
+N = 20 to 160 (three finest in parentheses), errors at N = 160, cfMesh polyhedra with the
+mean cell size of the hex ladder:
+
+| study | state / model | p1(n) | p2(n) | L2(n) | Linf(n) | p(x) | L2(d) [m] | p(kappa) | kappa err |
+|---|---|---|---|---|---|---|---|---|---|
+| sphere poly | DAVOF, quadratic faces | 2.14 (2.04) | 2.19 (2.08) | 2.17e-5 | 1.63e-3 | 2.02 | 1.33e-8 | - | - |
+| | DAVOF, Detrixhe-Aslam | 1.05 (0.99) | 1.04 (0.99) | 6.46e-4 | 5.07e-3 | 2.01 | 9.22e-9 | - | - |
+| | plicRDF | 1.05 (1.04) | 1.06 (1.05) | 2.08e-3 | 1.07e-2 | 2.00 | 6.07e-8 | - | - |
+| | gradAlpha / isoAlpha | 0.05 / 0.06 | 0.06 / 0.06 | 4.64e-2 / 5.37e-2 | 0.10 / 0.12 | 1.99 / 1.97 | 6.2e-8 / 6.4e-8 | - | - |
+| ellipsoid poly | DAVOF, quadratic faces | 1.97 (1.97) | 1.79 (1.80) | 8.36e-5 | 4.23e-3 | 1.98 | 1.77e-8 | 1.83 | 2.33e-3 |
+| | DAVOF, Detrixhe-Aslam | 1.26 (1.17) | 1.06 (1.02) | 8.89e-4 | 9.25e-3 | 2.01 | 1.22e-8 | 1.58 | 2.60e-3 |
+| | plicRDF | 1.18 (1.12) | 1.11 (1.10) | 2.73e-3 | 2.02e-2 | 2.00 | 8.03e-8 | - | - |
+| | gradAlpha / isoAlpha | 0.12 / 0.09 | 0.13 / 0.09 | 4.55e-2 / 5.36e-2 | 0.12 / 0.12 | 1.99 / 1.98 | 8.1e-8 / 8.3e-8 | - | - |
+| plane poly | DAVOF, both states | round-off | round-off | 1.7e-14 / 8.1e-15 | 2.9e-13 / 2.1e-13 | - | 2.5e-17 | - | - |
+| | plicRDF / gradAlpha / isoAlpha | - | - | 3.47e-3 / 6.99e-2 / 8.14e-2 | 0.47 / 0.55 / 1.95 | 1.47 / 1.58 / 1.40 | 5.9e-8 / 8.1e-8 / 1.4e-7 | - | - |
+
+Reading. P11 CONFIRMED on all three mesh classes (the plane at 1e-14 on cfMesh polyhedra
+for every N; plicRDF's maximum normal error there is 0.47, isoAlpha's 1.95). P12: the
+orders hold on polyhedra (quadratic faces 2.14 / 1.97 in L1, Detrixhe-Aslam 1.05 / 1.26,
+position 2.0, the ellipsoid curvature 1.83 against 1.55 on hex), and the constants are
+SMALLER, not larger: the sphere normal L2 2.17e-5 against 1.19e-4 on hex (5.5x; the Detrixhe-Aslam state 6.46e-4 against 2.43e-3, 3.8x), the
+ellipsoid 8.36e-5 against 3.01e-4 (3.6x), the curvature error 2.33e-3 against 4.55e-3
+(2x); the polyhedral cells have more faces (the F fractions over-determine the normal)
+and the point-neighbour ring is larger (the tensor fit sees more samples), which is the
+mechanism the second half of P12 named for the curvature and did not expect for the
+normal. P13 CONFIRMED: plicRDF 1.05 to 1.18 on polyhedra, gradAlpha and isoAlpha do not
+converge at all there (0.05 to 0.13). Combined tables per surface
+(`davof_normal_proposal_<surface>Normal3D_meshes.tex`): the sphere and ellipsoid ones lack
+the hexahedral block because the hexahedral studies live on the laptop, not in the cluster
+clone; the article stitches the three per-study bodies itself.
+
+Verdicts of 10.16, all seven ladders in: P11 CONFIRMED (hex, perturbed, polyhedral). P12
+CONFIRMED for the orders and FALSIFIED in the favourable direction for the constant: the
+quadratic-face normal is second order on every mesh class with the hex constant on the
+perturbed mesh and a 3.6 to 5.5 times smaller one on cfMesh polyhedra; the Detrixhe-Aslam
+normal first order (1.0 to 1.3); the position second order everywhere; the one-ring
+curvature 1.5 on hex and perturbed, 1.8 on polyhedra with half the error. P13 CONFIRMED
+and sharpened: plicRDF 0.9 to 1.2 on every mesh class with maximum normal errors of 0.14
+to 0.47 off the hex mesh, gradAlpha and isoAlpha below 0.3 and non-convergent on
+polyhedra. Open: the volume-less wetted cells of the perturbed quadratic-face state (the
+N = 20 rung of the sphere) as a case of the proposal's defect rule; the area diagnostic's
+tolerance in `Allrun_poly` (Tomislav).

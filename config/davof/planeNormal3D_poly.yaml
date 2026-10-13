@@ -1,0 +1,66 @@
+# DAVOF static recovery on a PLANE, mesh class POLYHEDRAL (cfMesh pMesh), on
+# the ladder N = 20/40/80/160 of the sphere and ellipsoid tests (2026-10-12).
+#
+# The exact-solution geometry of cases/davof/planeNormal3D (templated as
+# cases/davof/planeNormal3DLadder) on the workflow's `mesh: poly`: cfMesh
+# pMesh on the box box4mm-faces.stl (one solid per box face, every box edge a
+# feature edge, patches left/right/front/back/bottom/top) with maxCellSize =
+# h/2^(-1/3), h = DOMAIN_LENGTH/N_CELLS (the derived token CFMESH_CELL_SIZE of
+# materialize.py, system/meshDict.template): cfMesh's dual cells AT THE
+# INTERFACE measure 2^(-1/3) maxCellSize (the pin of workflow/README.md), so
+# the ladder has the hex ladder's interface resolution h = 200/100/50/25 um;
+# the mean over ALL cells (the DELTA_X column of the case CSVs) is smaller,
+# 0.63 maxCellSize at N = 20 (boundary slab, feature edges). Parameter file cases/davof/planeNormal3DLadder_poly.parameter
+# (SURFACE_FILE). Both surface-based states (detrixheAslam, quadraticFaces)
+# are exact for a plane on every polyhedral cell (the Detrixhe-Aslam tets and
+# the fan triangles are general polyhedral constructions), so the DAVOF
+# normal, position and one-ring curvature (normalsOnly) must be at round-off
+# at every N; the geometricVoF cross-check shows its errors. The gate with the
+# explicit -expectExact check is cases/davof/planeNormal3D/Allrun_poly; this
+# ladder is the third block of the three-mesh plane table
+# (tables/davof_normal_proposal_planeNormal3D_meshes.tex).
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-12, before any run):
+# P11 (plane, every mesh class): normal, position and curvature at round-off
+#   (1e-12) for both states with the fan sums.
+# P12 (perturbed 0.1 h and polyhedral): the quadratic-face normal converges at
+#   second order with a larger constant than on the hexahedral mesh; the
+#   Detrixhe-Aslam normal at first order; the position at second order for
+#   both; the one-ring curvature converges (order between 1 and 2) with a
+#   smaller constant on polyhedra, where the point-neighbour ring is larger.
+# P13: plicRDF stays at order about 1.1 on every mesh class; gradAlpha does
+#   not converge; isoAlpha 0.5 to 0.7.
+#
+# Laptop: cfMesh needs jemalloc preloaded for pMesh only (glibc 2.39,
+# workflow/README.md): export LEIA_PMESH_PRELOAD=$HOME/miniconda3/lib/libjemalloc.so.2
+# in the shell that runs snakemake (the mesh rule reads it; unset on the cluster).
+#   make studies-one STUDY=davof/planeNormal3D_poly PROFILE=profiles/local
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeNormal3D_poly.yaml
+# Lichtenberg:
+#   sbatch --parsable -J leia-davof-planeNormal3D_poly --export=ALL,STUDY=davof/planeNormal3D_poly run-studies.sbatch
+study_name: planeNormal3D_poly
+studies_dir: studies/davof
+case: davof/planeNormal3DLadder
+mesh: poly
+# The N = 160 solve with the curvature model exceeds the 4000 MB Slurm default (OOM-killed 2026-10-12).
+solve_mem_mb: 24000  # the polyhedral N = 160 solve reached 10.6 GB resident and was OOM-killed at 12000
+mode: serial
+np: 1
+
+solver: leiaTestDavofNormal
+theme:  davof
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  DAVOF_ALPHA_SOURCE: [detrixheAslam, quadraticFaces]
+  DAVOF_CURV_MODEL_1: [normalsOnly]
+  DAVOF_CURV_MODEL_2: [none]
+  DAVOF_CROSS_CHECK: [geometricVoF]
+  DAVOF_WISP_TOL: [1e-3]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

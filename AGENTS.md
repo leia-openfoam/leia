@@ -110,13 +110,16 @@ ignores any extension with the default `projectedFlux` trace.
 finds its flux by the registry name `"phi"`. The plan that removes these four
 breaks is `docs/plan-halo-limited-gradient-control.md`.
 
-## The knowledge base is the point of reference
+## The knowledge base is the point of reference and the shared memory
 
 `docs/knowledge-base/` is an Obsidian vault, published by Quartz to
 <https://leia-openfoam.github.io/leia/> (`make kb` builds it locally; `make kb-graph` checks it
 and regenerates the 3D graph). It holds the concise, cross-linked record of every method line and
-every moving part: what was decided and on which measurement, what was retracted, why something
-failed or why we think so, and what is open. Start a session there:
+every moving part: what was decided and on which measurement, what was retracted, which routes
+were tried and failed, why something failed or why we think so, and what is open. **It is the
+permanent memory that every agent and every session shares, through git.** The memory of one
+machine or one session is not shared: a rule or a finding that must outlive a session goes into
+the vault. Start a session there:
 
 1. Read `docs/knowledge-base/index.md`, then the hub of the part you work on (`hubs/advection`,
    `hubs/viscosity`, `hubs/surface-tension`, `hubs/mass-flux`, `hubs/gradient-control`,
@@ -124,14 +127,26 @@ failed or why we think so, and what is open. Start a session there:
 2. Follow the links of the hub to the notes, and from the notes to the pre-print sections, the
    deck slides, the `STATUS.md` sections and the code. The graph (`graph3d/`, and the graph view
    of the site) shows what relates to what.
-3. Read `decision-log.md` and `retraction-log.md` from the date of the last handover.
+3. Read `decision-log.md`, `retraction-log.md` and `negative-log.md` from the date of the last
+   handover, or run `python3 docs/knowledge-base/.quartz/kb.py since <YYYY-MM-DD>`.
 
-When a session takes a decision, retracts a claim, opens or closes a question, or finishes a
-gate, it writes the note or the log line **in the same commit as the result**; the `## Log` of a
-note is append-only. A number is written first in `STATUS.md`, `METHOD.md` or a curated CSV, and
-quoted in the knowledge base with its link. `python3 docs/knowledge-base/.quartz/check_kb.py
-docs/knowledge-base` must pass before the commit. The conventions are in
-`docs/knowledge-base/conventions.md`; a note without links is not finished.
+**Query it before you propose a route.** `kb.py search <words>` ranks the notes, `kb.py show
+<note>` prints the verdict and the log of one note, `kb.py negative <words>` lists the routes that
+were tried and failed, and `kb.py open` lists the open questions. A route with a line in
+`negative-log.md` is re-opened only under the condition written on that line, or with a new reason
+written next to it.
+
+When a session takes a decision, retracts a claim, finds that a route fails, opens or closes a
+question, or finishes a gate, it writes the note or the log line **in the same commit as the
+result**: a decision in `decision-log.md`, a retraction in `retraction-log.md`, a failed route in
+`negative-log.md` (and `outcome: negative` on a note whose main finding is the failure). The
+`## Log` of a note is append-only. A number is written first in `STATUS.md`, `METHOD.md` or a
+curated CSV, and quoted in the knowledge base with its link. `python3
+docs/knowledge-base/.quartz/check_kb.py docs/knowledge-base` must pass before the commit; it also
+checks that this guide and its duplicate are byte-identical. `kb_coverage.py` lists the
+`STATUS.md` sections and `METHOD.md` tokens that no note covers yet. The conventions are in
+`docs/knowledge-base/conventions.md`; the operating rules that came from incidents are in
+`decisions/process-operating-rules.md`; a note without links is not finished.
 
 ## How we work: supervisor and expert developer
 
@@ -225,6 +240,84 @@ regeneration and one-step translation gates (the proposal package's
 rule (pre-processing only, solver unchanged, fields re-initialised on the final
 mesh; `REFINE_LEVELS >= 1`, `N_CELLS` = the FINE count) -- README section
 "Static local refinement around the interface".
+
+### The DAVOF zero-step regeneration (2026-10-04)
+
+`src/leiaLevelSet/davof/davofRegeneration.H` (header-only) and the option
+`leiaTestDavofNormal -regenerate <arm>` (or `fvSolution davof.regenerate`,
+token `DAVOF_REGEN_ARM`, default `none`): from the static state every
+interface cell recovers its normal (eq. 1), its explicit plane (eq. 2) and the
+ring tensor of the FIRST curvature model (a `quadricFit`, so the paraboloid
+arms need `davof.curvature.models (normalsOnly ...)`), builds a clipping
+surface, re-cuts its own faces with it and compares the regenerated face
+fractions with a reference AS FRACTIONS; the normal and the position are then
+recovered from the regenerated data (`davofState::setRegenerated`). Arms:
+`plane`, `paraboloidPlane` (vertex on the plane polygon's centroid),
+`paraboloidFaces` (offset from the cell's own face fractions: the total wetted
+face area is reproduced; THE METHOD'S anchoring, Tomislav 2026-10-03),
+`paraboloidVolume` (offset from alpha_k with the Detrixhe-Aslam tet
+quadrature of the paraboloid) and `paraboloidVolumeExact` (offset from
+alpha_k with the LINEAR tet cut on tets split twice: NOT exact, its chord
+defect is 1/16 of the Detrixhe-Aslam one, see STATUS 10.13); since 2026-10-05
+`paraboloidVector` (offset and in-plane vertex position from the cell's
+wetted area vector, Newton) and since 2026-10-12 `paraboloidFull` (offset,
+two slopes and the three tensor components fitted to the cell's F face
+fractions by Gauss-Newton with Marquardt damping, the ring tensor as the
+prior through the null space; the identity of the zero-velocity map where
+the fit converges; failures counted in N_NO_BRACKET, the best iterate kept;
+`cellSurface` carries the slopes a1, a2, zero for every other arm;
+predictions P7-P10 in the `*RegenIter3D.yaml` headers; smoke 2026-10-12 at
+N = 20: 2.3 % / 2.8 % of the cells fail on the chord / exact state, the
+converged cells reproduce the state's fractions, `leiaTestDavofRegen.csv`
+has the input state's own error `E0_ALPHAF_*` as the floor). Reference: the
+exact fractions on the `exactSphere` state, otherwise the quadratic cut of
+the exact distance on every fan triangle subdivided twice. Output:
+`leiaTestDavofRegen.csv` per case (E_ALPHAF_L1/L2/LINF over the (cell, face)
+pairs of the interface cells, each cell with its own view;
+E_ALPHAF_MISMATCH_* owner against neighbour; the regenerated normal and
+position, also as the model row `davofRegen`; counts and the anchoring
+residual; the eight worst pairs in the log), `plic.davofRegen.vtk`, and the
+tables and figures of `workflow/scripts/make_davof_regen_table.py`
+(`davof_regen_*_<study>.{csv,tex,png}`, run by the report step for a study
+with that CSV; the compact table exported by `make davof-proposal`).
+Studies: `config/davof/ellipsoidRegeneration3D.yaml` (the proposal's state,
+quadraticFaces) and `sphereRegeneration3D.yaml` (the cross-check with the
+exact fractions); predictions pre-registered in their headers (PREDICTION 6,
+with the smoke-run note of 2026-10-04). Gate:
+`cases/davof/planeNormal3D/Allrun_regenerate` (every arm regenerates the
+plane to round-off, both surface-based states). Serial studies only: a
+neighbour's surface across a processor boundary is not exchanged. Results in
+STATUS.md 10.13.
+
+A regression found and fixed the same day: `computeFromExactSphere` let the
+Detrixhe-Aslam fan sums (`mTri_`, 2026-10-02) stand in for the exact face
+fractions, so the exact state's normal was first order between 2026-10-02 and
+2026-10-04; the sphere ladder of 2026-09-29 and the proposal's numbers predate
+the fan and are unaffected. `hasMTri_` is false for the exact state now.
+
+WSL (2026-10-04): run the N = 160 cases with `--jobs 1`. An N = 160 sphere
+case peaks at 5.1 GB; six parallel jobs of the local profile exhaust the
+16 GB VM, and the OOM kill of one solver poisons systemd's `init.scope`
+cgroup of the WSL VM (`/sys/fs/cgroup/init.scope/memory.events` keeps
+`oom_kill 1` across distro restarts; `OOMPolicy=stop`), after which every
+new WSL session is SIGKILLed 90 s after it starts (`journalctl`:
+`init.scope: Stopping timed out. Killing.`; `wsl.exe` reports `Catastrophic
+failure`, `Wsl/Service/E_UNEXPECTED`). `systemctl reset-failed` does not
+clear it; `wsl.exe --shutdown` does.
+
+### The DAVOF plane test on perturbed meshes (2026-10-02)
+
+`cases/davof/planeNormal3D/Allrun_perturbed vertex|column <amplitude>`. Column-wise
+perturbation (`workflow/scripts/perturb_columns.py`, faces stay planar): every DAVOF
+state recovers the plane to round-off. Vertex-wise perturbation (`leiaPerturbMesh`,
+faces warp): the scalar face fraction loses the plane (8 % of the normal at 0.1 h),
+the face-triangulation sum (`davofState::mTri`, the fan about Cf circulated over
+the face points, computed on the fly, nothing stored per face) recovers it to
+1e-13 and is the davof normal of the test; the scalar identity is a diagnostic. The proposal states both (STATUS 10.12). The explicit position uses the same fan (the first moment of every
+wet triangle part, `momentTri_`): both surface-based states pass on the
+perturbed meshes, the position within 1e-11 h (round-off of corner slivers).
+Open: the plane indicator's own fan sums and its realizability diagnostic on
+non-cubic cells.
 
 ## Cluster (Lichtenberg, TU Darmstadt)
 

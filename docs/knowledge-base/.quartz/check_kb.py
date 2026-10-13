@@ -10,12 +10,16 @@ Checks, each written from a way the vault can silently break:
     (by its vault path, or by an alias), or to a file under assets/; a note in a folder must be
     linked with its folder, because Quartz resolves links from the vault root;
  3. every note in decisions/ has a line in decision-log.md, every note in retractions/ a line in
-    retraction-log.md;
+    retraction-log.md, and every note with `outcome: negative` (a route tried and failed on a
+    measurement, whatever its kind) a line in negative-log.md;
  4. every settled decision has date_settled and a non-empty decided_by;
  5. no file named log.* and no folder or file name that the repository .gitignore traps
     (a single digit, "<digit>.<digit>"); a non-Markdown file outside assets/, graph3d/,
     .obsidian/, .quartz/ and templates/ is reported (the site would publish it);
- 6. "## Log" is the last "##" section of every note that is not an index.
+ 6. "## Log" is the last "##" section of every note that is not an index;
+ 7. the repository guides CLAUDE.md and AGENTS.md (two levels above the vault) are byte-identical:
+    Claude Code loads one and the other agent tools load the other, and DAVOF commits of
+    2026-10-02 to 2026-10-12 edited AGENTS.md only (78 lines that CLAUDE.md lacked).
 Exit code 1 on any failure; every message is "<file>: <message>".
 Standard library only (the same parser feeds build_graph.py).
 """
@@ -28,6 +32,10 @@ STATUSES = {"settled", "open", "retracted", "voided", "candidate"}
 PARTS = {"advection", "viscosity", "surface-tension", "mass-flux", "gradient-control",
          "verification", "all"}
 REQUIRED = ("title", "description", "kind", "status", "part", "tags", "date")
+# Optional: `outcome: negative` marks a note whose main finding is that a route failed on a
+# measurement. Negative findings are first-class: they get their own log (negative-log.md), so an
+# agent can list everything that was tried and failed before it proposes a route again.
+OUTCOMES = {"negative"}
 SKIP_DIRS = {".obsidian", ".quartz", "templates", "graph3d"}
 LINK_RE = re.compile(r"(!?)\[\[([^\]\|#]+)(#[^\]\|]*)?(\|[^\]]*)?\]\]")
 FENCE_RE = re.compile(r"```.*?```", re.S)
@@ -171,6 +179,9 @@ def check(vault):
             errors.append(f"{rel}.md: kind '{kind}' is not one of {sorted(KINDS)}")
         if status not in STATUSES:
             errors.append(f"{rel}.md: status '{status}' is not one of {sorted(STATUSES)}")
+        outcome = fm.get("outcome")
+        if outcome is not None and outcome not in OUTCOMES:
+            errors.append(f"{rel}.md: outcome '{outcome}' is not one of {sorted(OUTCOMES)}")
         if part not in PARTS:
             errors.append(f"{rel}.md: part '{part}' is not one of {sorted(PARTS)}")
         tags = fm.get("tags") or []
@@ -227,6 +238,13 @@ def check(vault):
             if rel.startswith(folder + "/") and not rel.endswith("/index"):
                 if f"[[{rel}" not in logtext:
                     errors.append(f"{rel}.md: has no line in {log}.md")
+    negtext = notes.get("negative-log", {}).get("body", "")
+    if "negative-log" not in notes:
+        errors.append("negative-log.md: missing")
+    else:
+        for rel, x in notes.items():
+            if x["fm"] and x["fm"].get("outcome") == "negative" and f"[[{rel}" not in negtext:
+                errors.append(f"{rel}.md: outcome negative, but no line in negative-log.md")
     return errors, notes, aliases
 
 
@@ -236,6 +254,14 @@ def main():
         return 2
     vault = sys.argv[1]
     errors, notes, _ = check(vault)
+    # 7. the two agent guides of the repository
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(vault)))
+    guides = [os.path.join(repo, g) for g in ("CLAUDE.md", "AGENTS.md")]
+    if all(os.path.isfile(g) for g in guides):
+        a, b = (open(g, "rb").read() for g in guides)
+        if a != b:
+            errors.append("CLAUDE.md, AGENTS.md: not byte-identical; apply every edit to both "
+                          "(diff CLAUDE.md AGENTS.md must print nothing)")
     for e in errors:
         print(e)
     n = sum(1 for r, x in notes.items() if x["fm"] and x["fm"].get("kind") != "index")

@@ -1,0 +1,43 @@
+# DAVOF static gate 3b: the ZERO-STEP REGENERATION on the sphere, the
+# cross-check of ellipsoidRegeneration3D.yaml with an EXACT reference: on the
+# exactSphere state the reference face fractions are the exact ones
+# (davofSphereGeometry.H), and the regeneration of that state is scored
+# against them; the quadraticFaces state runs as on the ellipsoid (the
+# twice-subdivided quadratic cut as the reference). Same sphere, box and
+# ladder as sphereNormal3D.yaml (R = 1 mm, N = 20/40/80/160, R/h = 5..40).
+# Arms, measures and PREDICTION 6 as in ellipsoidRegeneration3D.yaml; on the
+# exactSphere state the paraboloidVolume arm has a consistent cell fraction
+# (the exact one), so there, and only there, it is predicted at q = 2 like
+# paraboloidFaces (p(E_ALPHAF_L1) = 2.0 +- 0.3, p(E_L1_N) = 2.0 +- 0.3).
+# paraboloidVolume (the Detrixhe-Aslam tet quadrature of the paraboloid's
+# volume) is predicted at q = 1 on the EXACT state (the exact cell fraction
+# against a chord quadrature: the defect now sits on the quadrature side) and
+# at q = 2 on the quadraticFaces state (the smoke run of 2026-10-04 measured
+# 2.25 there; see ellipsoidRegeneration3D.yaml); paraboloidVolumeExact at
+# q = 2 on the exact state and q = 1 on the chord cell fraction.
+
+study_name: sphereRegeneration3D
+studies_dir: studies/davof
+case: davof/sphereNormal3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestDavofNormal
+theme:  davof
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  DAVOF_ALPHA_SOURCE: [exactSphere, quadraticFaces]
+  DAVOF_REGEN_ARM: [plane, paraboloidPlane, paraboloidFaces, paraboloidVolume, paraboloidVolumeExact]
+  DAVOF_CURV_MODEL_1: [normalsOnly]
+  DAVOF_CURV_MODEL_2: [none]
+  DAVOF_CROSS_CHECK: [none]
+  DAVOF_WISP_TOL: [1e-3]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

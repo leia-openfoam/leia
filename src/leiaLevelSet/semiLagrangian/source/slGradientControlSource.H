@@ -50,6 +50,38 @@ Description
       only if the law reads \f$ \sigma = |\mathbf{D}|_F \f$ or the strain
       weight reads \f$ a = \mathbf{n}\cdot\mathbf{D}\cdot\mathbf{n} \f$.
 
+    qScheme (optional, default centred) selects how q is computed:
+    - centred: \f$ q = |\mathbf{g}| \f$ as above. On a uniform hexahedral
+      mesh this is the centred difference. It reverses the group velocity of
+      the sawtooth mode: the source equation carries smooth errors away from
+      the interface, but the centred q carries the sawtooth envelope onto it
+      (zero-flow gate E1, STATUS 11.26). Kept as the inert default.
+    - upwindFit: two passes over face neighbours. Pass 1 updates the
+      semi-Lagrangian fit on the current psi and reads its gradient
+      \f$ \mathbf{g}_u \f$ and Hessian \f$ \mathbf{H}_u \f$ at every cell
+      centre (fitDerivatives; exchanged across coupled patches). Pass 2:
+      \f[
+          \mathbf{g}_c = \frac{\sum_u w_u\,(\mathbf{g}_u
+              + \mathbf{H}_u (\mathbf{x}_c - \mathbf{x}_u))}{\sum_u w_u},
+          \qquad w_u = s_c (\psi_c - \psi_u) > 0,
+      \f]
+      over the face neighbours u upwind of c (closer to the zero set, or
+      across it), \f$ s_c = \mathrm{sign}(\psi_c) \f$, and
+      \f$ q = |\mathbf{g}_c| \f$, \f$ \mathbf{n} = \mathbf{g}_c/q \f$.
+      A cell without an upwind neighbour (a local extremum of
+      \f$ s\psi \f$, or \f$ \psi_c = 0 \f$) gets F = 0. Compact (face
+      neighbours of face neighbours), per cell, no structured index.
+
+    anchorInterface (optional, default false): a research probe. With true, F = 0
+    in every cell that has a face neighbour (processor neighbours included)
+    of the opposite sign or psi_c = 0, so the source cannot move a zero
+    crossing between two cells; only the semi-Lagrangian step moves them.
+
+    strainNormal (optional, default psi): a research probe. With fixedX the
+    strain weight reads a = e_x.D.e_x instead of n.D.n, a smooth F of the same
+    size that does not depend on psi (STATUS 11.26, the tangential-transport
+    hypothesis).
+
     Band: F acts only where \f$ |\psi_c|/q_c \le \f$ bandCells \f$ h_c \f$,
     with \f$ h_c \f$ the smallest distance from the centre of cell c to the
     centre of a face neighbour (processor neighbours included), so the band
@@ -69,6 +101,9 @@ Description
             {
                 type        gradientControl;
                 bandCells   3;
+                qScheme     centred;    // centred | upwindFit
+                anchorInterface false;  // true: F = 0 in the interface cells
+                strainNormal psi;       // psi | fixedX (probe: a = D_xx)
                 law
                 {
                     type    linearZ;
@@ -108,6 +143,15 @@ class slGradientControlSource
         //- The band half width in cell sizes
         const scalar bandCells_;
 
+        //- How q is computed: centred | upwindFit
+        const word qScheme_;
+
+        //- F = 0 in the cells with a face neighbour of the opposite sign
+        const bool anchorInterface_;
+
+        //- The direction of the strain term: psi (n = g/q) | fixedX (e_x)
+        const word strainNormal_;
+
         //- The law G and its strain weight w
         autoPtr<gradientControlLaw> law_;
 
@@ -129,6 +173,16 @@ class slGradientControlSource
 
         //- h_c from the face neighbours (coupled patches included)
         void computeCellSize();
+
+        //- qScheme upwindFit: the gradient g_c from the fits of the upwind
+        //  face neighbours, and whether c has an upwind neighbour
+        void upwindFitGradient
+        (
+            volScalarField& psi,
+            slReconstruction& fit,
+            vectorField& gUp,
+            boolList& valid
+        ) const;
 
 
 public:

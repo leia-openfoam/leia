@@ -37,6 +37,10 @@ Foam::davofState::davofState(const fvMesh& mesh, const dictionary& dict)
         zeroGradientFvPatchScalarField::typeName
     ),
     alphaf_(mesh.nFaces(), Zero),
+    mTri_(mesh.nCells(), Zero),
+    momentTri_(mesh.nCells(), Zero),
+    hasMTri_(false),
+    positionFromVolume_(false),
     alphafOut_
     (
         IOobject
@@ -280,6 +284,42 @@ Foam::scalar Foam::davofState::faceFraction
 }
 
 
+template<class PhiFace, class PhiPoint>
+void Foam::davofState::faceWettedTriangles
+(
+    const label faceI,
+    PhiFace&& phiFace,
+    PhiPoint&& phiPoint,
+    vector& S,
+    scalar& M
+) const
+{
+    const pointField& points = mesh_.points();
+    const face& f = mesh_.faces()[faceI];
+    const point& xf = mesh_.faceCentres()[faceI];
+    const scalar phif = phiFace(faceI);
+
+    S = Zero;
+    M = 0;
+    forAll(f, ip)
+    {
+        const label ip1 = f.nextLabel(ip);
+        const point& p0 = points[f[ip]];
+        const point& p1 = points[ip1];
+        const vector St = 0.5*((p0 - xf) ^ (p1 - xf));
+        if (mag(St) <= VSMALL) continue;
+        const scalar phi0 = phiPoint(f[ip]);
+        const scalar phi1 = phiPoint(ip1);
+        const vector Swet = davof::triNegativeFraction(phif, phi0, phi1)*St;
+        vector Spoly;
+        point xwet;
+        davof::triNegativePolygon(xf, p0, p1, phif, phi0, phi1, Spoly, xwet);
+        S += Swet;
+        M += xwet & Swet;
+    }
+}
+
+
 void Foam::davofState::fillAlphafOut()
 {
     scalarField& in = alphafOut_.primitiveFieldRef();
@@ -335,6 +375,36 @@ void Foam::davofState::computeFromImplicitSurface(const implicitSurface& surface
             [&](const label p) { return psiP[p]; }
         );
     }
+    // The area normal from the face triangulation, summed on the fly:
+    // the same fan triangles as faceFraction, their wetted area vectors
+    // into the owner (outward) and the neighbour (inward).
+    {
+        const labelUList& own = mesh_.faceOwner();
+        const labelUList& nei = mesh_.faceNeighbour();
+        const label nInt = mesh_.nInternalFaces();
+        mTri_ = Zero;
+        momentTri_ = Zero;
+        forAll(alphaf_, faceI)
+        {
+            vector wet;
+            scalar M;
+            faceWettedTriangles
+            (
+                faceI,
+                [&](const label f) { return psiF[f]; },
+                [&](const label p) { return psiP[p]; },
+                wet, M
+            );
+            mTri_[own[faceI]] -= wet;
+            momentTri_[own[faceI]] += M - (C[own[faceI]] & wet);
+            if (faceI < nInt)
+            {
+                mTri_[nei[faceI]] += wet;
+                momentTri_[nei[faceI]] -= M - (C[nei[faceI]] & wet);
+            }
+        }
+        hasMTri_ = true;
+    }
     alpha_.correctBoundaryConditions();
     fillAlphafOut();
 }
@@ -351,6 +421,17 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
     const vectorField& Cf = mesh_.faceCentres();
     const vectorField& Sf = mesh_.faceAreas();
 
+    // mTri_ holds the Detrixhe-Aslam triangle sum of
+    // computeFromImplicitSurface; every face whose quadratic cut succeeds
+    // replaces its DA triangle contribution by the quadratic one (both
+    // from the same fan about x_f, nothing stored per face).
+    const labelUList& own = mesh_.faceOwner();
+    const labelUList& nei = mesh_.faceNeighbour();
+    const label nInt = mesh_.nInternalFaces();
+    const vectorField& C = mesh_.cellCentres();
+    scalarField psiPq(P.size());
+    forAll(P, i) psiPq[i] = surface.value(P[i]);
+
     label nFallback = 0;
     forAll(alphaf_, faceI)
     {
@@ -361,6 +442,8 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
         const scalar phif = surface.value(xf);
 
         scalar liqA = 0, totA = 0;
+        vector wet = Zero;
+        scalar Mq = 0;
         bool fb = false;
         forAll(f, ip)
         {
@@ -384,11 +467,37 @@ void Foam::davofState::computeFromQuadraticFaces(const implicitSurface& surface)
             if (tfb) { fb = true; break; }
             liqA += fr*triA;
             totA += triA;
+            const vector St = 0.5*((p0 - xf) ^ (p1 - xf));
+            wet += fr*St;
+            // The wet centroid of the triangle from its linear cut (exact
+            // for a plane; immaterial on a planar face).
+            vector Sl;
+            point xwet;
+            davof::triNegativePolygon(xf, p0, p1, ph[0], ph[1], ph[2], Sl, xwet);
+            Mq += xwet & (fr*St);
         }
         if (fb) { ++nFallback; continue; }
         if (totA > VSMALL)
         {
             alphaf_[faceI] = min(max(liqA/totA, scalar(0)), scalar(1));
+            vector wetDA;
+            scalar MDA;
+            faceWettedTriangles
+            (
+                faceI,
+                [&](const label fi) { return surface.value(Cf[fi]); },
+                [&](const label p) { return psiPq[p]; },
+                wetDA, MDA
+            );
+            mTri_[own[faceI]] += wetDA - wet;
+            momentTri_[own[faceI]] +=
+                (Mq - (C[own[faceI]] & wet)) - (MDA - (C[own[faceI]] & wetDA));
+            if (faceI < nInt)
+            {
+                mTri_[nei[faceI]] -= wetDA - wet;
+                momentTri_[nei[faceI]] -=
+                    (Mq - (C[nei[faceI]] & wet)) - (MDA - (C[nei[faceI]] & wetDA));
+            }
         }
     }
     nFaceFallback_ = returnReduce(nFallback, sumOp<label>());
@@ -481,6 +590,12 @@ void Foam::davofState::computeFromExactSphere(const implicitSphere& sphere)
         }
     }
     maxAlphaClip_ = 0;
+    // The exact fractions ARE the state: on these planar faces the scalar
+    // identity -sum_f alpha_f S_f is the exact wetted area vector, so the
+    // Detrixhe-Aslam fan sums of the first pass must not stand in for it
+    // (they did from 2026-10-02 to 2026-10-04: the exact state's normal was
+    // then first order; the sphere ladder of 2026-09-29 predates the fan).
+    hasMTri_ = false;
 
     alpha_.correctBoundaryConditions();
     fillAlphafOut();
@@ -660,6 +775,13 @@ void Foam::davofState::areaNormal()
             m[nei[faceI]] += contrib;
         }
     }
+    // The face-triangulation sum, when the state was initialised from a
+    // surface, is the area normal: identical on planar faces, exact where
+    // the scalar identity is not (warped faces).
+    if (hasMTri_)
+    {
+        m = mTri_;
+    }
     // A cell whose face fractions are all equal holds no interface (all wet,
     // all dry): its sum_f S_f vanishes only to round-off, which would leave a
     // ~1e-19 m^2 "wisp" in every bulk cell. Set m_c = 0 exactly there.
@@ -673,9 +795,10 @@ void Foam::davofState::areaNormal()
             lo = min(lo, alphaf_[cf[i]]);
             hi = max(hi, alphaf_[cf[i]]);
         }
-        if (lo == hi)
+        if (lo == hi && !(regenerated_.size() && regenerated_[c]))
         {
             m[c] = Zero;
+            mTri_[c] = Zero;
         }
     }
     m_.correctBoundaryConditions();
@@ -696,16 +819,26 @@ void Foam::davofState::planePosition()
     const cellList& cells = mesh_.cells();
 
     // sum_f alpha_f (x_f - x_c).S_f^out per cell: S_f is outward for the
-    // owner and inward for the neighbour, as in areaNormal().
+    // owner and inward for the neighbour, as in areaNormal(). When the
+    // state came from a surface, the moment of the fan triangles
+    // (momentTri_) replaces it: identical on planar faces, exact on warped
+    // ones, where (x - x_c).n_f is not constant over the face.
     scalarField faceMoment(mesh_.nCells(), Zero);
-    forAll(Sf, faceI)
+    if (hasMTri_)
     {
-        const scalar af = alphaf_[faceI];
-        if (af == 0) continue;
-        faceMoment[own[faceI]] += af*((Cf[faceI] - C[own[faceI]]) & Sf[faceI]);
-        if (faceI < nInt)
+        faceMoment = momentTri_;
+    }
+    else
+    {
+        forAll(Sf, faceI)
         {
-            faceMoment[nei[faceI]] -= af*((Cf[faceI] - C[nei[faceI]]) & Sf[faceI]);
+            const scalar af = alphaf_[faceI];
+            if (af == 0) continue;
+            faceMoment[own[faceI]] += af*((Cf[faceI] - C[own[faceI]]) & Sf[faceI]);
+            if (faceI < nInt)
+            {
+                faceMoment[nei[faceI]] -= af*((Cf[faceI] - C[nei[faceI]]) & Sf[faceI]);
+            }
         }
     }
 
@@ -731,50 +864,91 @@ void Foam::davofState::planePosition()
         // The plane through the cell on the Detrixhe-Aslam tets: the plane is
         // linear, so the tet fractions and zero sets are exact for it.
         const point& xc = C[c];
-        const scalar phic = -p[c];
-        auto phiAt = [&](const point& x) -> scalar
-        {
-            return ((x - xc) & n) - p[c];
-        };
+        const labelList& cFaces = cells[c];
         scalar liquidVol = 0, totalVol = 0, as = 0;
         vector mt(Zero), xs(Zero);
-        const labelList& cFaces = cells[c];
-        forAll(cFaces, cf)
+        auto cutPlane = [&](const scalar pp)
         {
-            const label faceI = cFaces[cf];
-            const face& f = faces[faceI];
-            const point& xf = Cf[faceI];
-            const scalar phif = phiAt(xf);
-            forAll(f, ip)
+            const scalar phic = -pp;
+            auto phiAt = [&](const point& x) -> scalar
             {
-                const label ip1 = f.nextLabel(ip);
-                const point& p0 = points[f[ip]];
-                const point& p1 = points[ip1];
-                const scalar vol = mag(((xf - xc) ^ (p0 - xc)) & (p1 - xc))/6.0;
-                if (vol <= VSMALL) continue;
-                const scalar phi0 = phiAt(p0);
-                const scalar phi1 = phiAt(p1);
-                liquidVol += davof::tetNegativeFraction(phic, phif, phi0, phi1)*vol;
-                totalVol += vol;
-                const point x[4] = {xc, xf, p0, p1};
-                const scalar ph[4] = {phic, phif, phi0, phi1};
-                vector av;
-                point cen;
-                scalar a;
-                if (davof::tetZeroSet(x, ph, av, cen, a) > 0)
+                return ((x - xc) & n) - pp;
+            };
+            liquidVol = 0; totalVol = 0; as = 0;
+            mt = Zero; xs = Zero;
+            forAll(cFaces, cf)
+            {
+                const label faceI = cFaces[cf];
+                const face& f = faces[faceI];
+                const point& xf = Cf[faceI];
+                const scalar phif = phiAt(xf);
+                forAll(f, ip)
                 {
-                    mt += av;
-                    as += a;
-                    xs += a*cen;
+                    const label ip1 = f.nextLabel(ip);
+                    const point& p0 = points[f[ip]];
+                    const point& p1 = points[ip1];
+                    const scalar vol = mag(((xf - xc) ^ (p0 - xc)) & (p1 - xc))/6.0;
+                    if (vol <= VSMALL) continue;
+                    const scalar phi0 = phiAt(p0);
+                    const scalar phi1 = phiAt(p1);
+                    liquidVol += davof::tetNegativeFraction(phic, phif, phi0, phi1)*vol;
+                    totalVol += vol;
+                    const point x[4] = {xc, xf, p0, p1};
+                    const scalar ph[4] = {phic, phif, phi0, phi1};
+                    vector av;
+                    point cen;
+                    scalar a;
+                    if (davof::tetZeroSet(x, ph, av, cen, a) > 0)
+                    {
+                        mt += av;
+                        as += a;
+                        xs += a*cen;
+                    }
                 }
+            }
+        };
+        cutPlane(p[c]);
+        // The realizability diagnostics refer to the EXPLICIT plane.
+        const scalar apExplicit = (totalVol > VSMALL) ? liquidVol/totalVol : alpha_[c];
+        maxVolDiffPlane_ = max(maxVolDiffPlane_, mag(apExplicit - alpha_[c]));
+        maxAreaDiffPlane_ =
+            max(maxAreaDiffPlane_, mag(mt - m_[c])/Foam::pow(V[c], 2.0/3.0));
+        if (positionFromVolume_ && totalVol > VSMALL)
+        {
+            // The plane positioned by alpha_c: bisection on the tet cut
+            // (increasing in p), the explicit position as the first bracket
+            // centre, widened when the plane has left the cell.
+            const scalar h = Foam::cbrt(V[c]);
+            const scalar target = alpha_[c]*totalVol;
+            scalar lo = p[c] - h, hi = p[c] + h;
+            cutPlane(lo);
+            scalar gLo = liquidVol - target;
+            cutPlane(hi);
+            scalar gHi = liquidVol - target;
+            for (label w = 0; w < 6 && gLo*gHi > 0; ++w)
+            {
+                lo -= h; hi += h;
+                cutPlane(lo); gLo = liquidVol - target;
+                cutPlane(hi); gHi = liquidVol - target;
+            }
+            if (gLo*gHi <= 0)
+            {
+                scalar pm = p[c];
+                for (label it = 0; it < 200 && (hi - lo) > 1e-14*h; ++it)
+                {
+                    pm = 0.5*(lo + hi);
+                    cutPlane(pm);
+                    const scalar g = liquidVol - target;
+                    if (g == 0) break;
+                    if (g*gLo > 0) { lo = pm; gLo = g; } else { hi = pm; gHi = g; }
+                }
+                p[c] = pm;
+                cutPlane(p[c]);
             }
         }
         ap[c] = (totalVol > VSMALL) ? liquidVol/totalVol : alpha_[c];
         Ap[c] = as;
         xp[c] = (as > VSMALL) ? xs/as : (xc + p[c]*n);
-        maxVolDiffPlane_ = max(maxVolDiffPlane_, mag(ap[c] - alpha_[c]));
-        maxAreaDiffPlane_ =
-            max(maxAreaDiffPlane_, mag(mt - m_[c])/Foam::pow(V[c], 2.0/3.0));
     }
     maxVolDiffPlane_ = returnReduce(maxVolDiffPlane_, maxOp<scalar>());
     maxAreaDiffPlane_ = returnReduce(maxAreaDiffPlane_, maxOp<scalar>());
@@ -783,6 +957,25 @@ void Foam::davofState::planePosition()
     xPlane_.correctBoundaryConditions();
     APlane_.correctBoundaryConditions();
     alphaPlane_.correctBoundaryConditions();
+}
+
+
+void Foam::davofState::setRegenerated
+(
+    const boolList& isI,
+    const scalarField& alphaf,
+    const vectorField& mTri,
+    const scalarField& momentTri
+)
+{
+    regenerated_ = isI;
+    alphaf_ = alphaf;
+    mTri_ = mTri;
+    momentTri_ = momentTri;
+    hasMTri_ = true;
+    fillAlphafOut();
+    areaNormal();
+    planePosition();
 }
 
 

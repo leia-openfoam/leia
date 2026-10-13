@@ -1,0 +1,40 @@
+#!/bin/bash
+# The plane test on a perturbed hexahedral mesh (2026-10-02, the panel asked
+# for a non-Cartesian measurement of the plane exactness):
+#     Allrun_perturbed vertex 0.1     every interior vertex displaced by up to
+#                                     0.1 h (leiaPerturbMesh): faces WARP
+#     Allrun_perturbed column 0.3     column-wise displacement (same for all
+#                                     points above each other, perturb_columns.py):
+#                                     irregular hexahedra, every face PLANAR
+# Measured: with planar faces every DAVOF state recovers the plane to round-off
+# (-expectExact passes for detrixheAslam and quadraticFaces; the plane indicator
+# trips only its own realizability diagnostic). With warped faces the SCALAR
+# face fraction loses the plane (normal error 8 % at 0.1 h, 17 % at 0.2 h),
+# because the wetted area vector of a warped face is not parallel to S_f; the
+# face-triangulation sum (davofState::mTri: the fan about Cf circulated over
+# the face points, computed on the fly, nothing stored per face; both the
+# Detrixhe-Aslam and the quadratic path) recovers it to 1e-13 and is the
+# davof normal of the test; the scalar identity is printed as a diagnostic. The
+# explicit position uses the same fan (the first moment of every triangle's
+# wet part): both surface-based states pass -expectExact on the perturbed
+# meshes (position within 1e-11 h, the round-off floor of corner-sliver cells).
+cd "${0%/*}" || exit 1
+. "$WM_PROJECT_DIR/bin/tools/RunFunctions"
+mode=${1:-vertex}; amp=${2:-0.1}
+rm -f log.* && rm -rf 0 && cp -r 0.org 0
+runApplication blockMesh
+if [ "$mode" = vertex ]; then
+    leiaPerturbMesh -alpha "$amp" -seed 0 > log.leiaPerturbMesh 2>&1
+    cp -r 0/polyMesh constant/ && rm -rf 0/polyMesh
+else
+    python3 ../../../workflow/scripts/perturb_columns.py . "$amp" 0 > log.perturbColumns 2>&1
+fi
+runApplication checkMesh
+runApplication leiaSetFields -alphaName alpha.water
+for src in detrixheAslam quadraticFaces planePhaseIndicator; do
+    foamDictionary -entry davof/alphaSource -set "$src" system/fvSolution > /dev/null
+    leiaTestDavofNormal -alphaName alpha.water -expectExact > "log.leiaTestDavofNormal.$src" 2>&1
+    echo "== $mode $amp h, alphaSource $src (exit $?) =="
+    grep -E "expectExact|alpha_f S_f identity|  davof  N_S" "log.leiaTestDavofNormal.$src" | cut -c1-160
+done
+foamDictionary -entry davof/alphaSource -set detrixheAslam system/fvSolution > /dev/null

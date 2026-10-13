@@ -3,6 +3,7 @@ title: "Why the candidates of the first campaign failed"
 description: "One row per candidate: how it failed, the mechanism the pre-print named, the mechanism the technical report holds responsible, the mark (MEASURED, DERIVED, HYPOTHESIS) and the experiment that decides it"
 kind: concept
 status: open
+outcome: negative
 part: gradient-control
 tags: [concept, part/gradient-control]
 date: 2026-09-28
@@ -10,6 +11,10 @@ sources: [technical report, gcls article sec:discussion, STATUS 11.15]
 ---
 # Why the candidates of the first campaign failed
 
+> 2026-10-13: the first row's mechanism, the centred-$q$ eigenmode at rate $\mu$, is RETRACTED
+> ([[retractions/centred-q-eigenmode-growth-rate]]): at $u = 0$ the source's own map does not grow
+> at $\mu$. The measured coupled rates near $\mu$ (evidence item 1) are unexplained again.
+>
 > Open (2026-09-28): the readings below are the technical report's; each carries its mark and
 > the experiment that decides it. Every number is from the archive
 > `shared-method-config-2026-09-01-192-g1150e68` ([[concepts/data-archive-per-version]]) and from
@@ -68,3 +73,10 @@ sources: [technical report, gcls article sec:discussion, STATUS 11.15]
 
 ### 2026-09-28
 Created with the technical report.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].
+The first row's mechanism is retracted ([[retractions/centred-q-eigenmode-growth-rate]], gate E1,
+STATUS 11.26). The cause of the coupled rates near $\mu$ (290 and 320 to 350 1/s against 270) is OPEN:
+the source's own map does not grow at $\mu$ at $u = 0$, so the flow, the velocity extension or the SL
+step with a small velocity must carry it. E1.4 (the scaling with $\mu$) decides.

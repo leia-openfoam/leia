@@ -4,6 +4,7 @@ description: "The 2D structured CST prototype gives the only discrete equilibriu
 aliases: [CST, integralSurfaceTension, integralConormalSurfaceTension, conservative integral surface tension, the meta-law, better static balance higher dynamic gain, the CST sign trap]
 kind: concept
 status: retracted
+outcome: negative
 part: surface-tension
 tags: [concept, part/surface-tension]
 date: 2026-09-29
@@ -95,3 +96,6 @@ The currents in this table are peak values `max|U|`, the only norm the record gi
 
 ### 2026-09-29
 Created from the SL article, the negative-results deck, the roadmap gates and P3, PCS section 3, the case template and the model sources. All were read at d1e3414.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].

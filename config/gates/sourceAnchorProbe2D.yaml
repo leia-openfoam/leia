@@ -1,0 +1,82 @@
+# ============================================================================
+# PROBE: is the zero-crossing shift of the cell-wise source the cause of the shape loss? (2026-10-13)
+#
+# WHY. The kinematic arms of methodGate2D (STATUS 11.26) failed for the combined source CS1
+# (F = a + lambda (1 - q)), the strain term alone CS0s and the restoring term alone CS0r, all with
+# the one-sided q (GC_Q_SCHEME upwindFit): the gradient band error fell to 0.14 / 0.58 / 0.30 of the
+# baseline, but the shape order at T fell from 3.25 to 0.88 / 1.24 / 0.26. Two defects were
+# separated so far: (1) the 3-cell band (in the exact 1D arm the strain term keeps q = 1.000003 on
+# the whole domain and 0.53 with the band, N = 256); (2) with the source on the whole domain the
+# shape error in the shear arm is still 32x the baseline at N = 136 (CS0s). The remaining candidate:
+# a cell-wise factor exp(dt F) that differs between two cells across the interface moves their zero
+# crossing by about h r (1 - r) dt (F_A - F_B) per step, although the continuum source keeps the
+# zero set. GC_ANCHOR_INTERFACE true sets F = 0 in every cell with a face neighbour of the opposite
+# sign: the source then cannot move a crossing directly.
+#
+# SETUP. The shear arm of methodGate2D as rendered for CS1 (2Dvortex, reversed, T = 2, CFL 0.5,
+# N = 68, 96, 136, np 4, uncachedQuadraticWeightedLeastSquares, projectedFlux, GC_MU 1), crossed:
+# SL_SOURCE_BAND_CELLS {3, 1000} x GC_ANCHOR_INTERFACE {false, true} x GC_LAW {none, linearQ}
+# x GC_STRAIN_WEIGHT {none, full}. (none, none) is the null arm: F = 0 everywhere.
+# Read-out instants as the gate: the gradient at T/2, the shape at T, the volume at T/2 and T.
+#
+# PRE-REGISTERED READ-OUT (2026-10-13, before the run):
+#   N0 (null arm): every CSV byte-identical to methodGate2D_baseline_shear at the same N
+#      (compare_metrics_csv --tol 0, timing columns skipped).
+#   A1 (the crossing shift is the cause): with the anchor, band 1000, the shape error at T at
+#      N = 136 is at most 3x the baseline (5.48e-4) for (none, full), (linearQ, full) and
+#      (linearQ, none), the shape order on the last interval is at least 2.5, and the gradient band
+#      error at T/2 stays at most 0.8x the baseline (1.62).
+#   FALSIFIED if: with the anchor the shape error at N = 136 stays above 10x the baseline for the
+#      strain arm (none, full). Then the shape loss comes through the SL fit of the modified
+#      neighbours, not through the direct crossing shift.
+#
+# RESULT (2026-10-13): N0 PASS (12 of 12 byte-identical); A1 FALSIFIED (anchored strain arm 1.29e-2,
+# 23x the baseline at N = 136).
+# ============================================================================
+study_name: sourceAnchorProbe2D
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme: gradient-controlled-level-set
+solve_runtime: 240
+axes_override:
+  N_CELLS:
+  - '68'
+  - '96'
+  - '136'
+  END_TIME:
+  - '2'
+  CFL:
+  - '0.5'
+  REPORT_WRITE_ONLY:
+  - 'false'
+  OSCILLATION:
+  - 'on'
+  PHASE_INDICATOR:
+  - detrixheAslam
+  SL_RECONSTRUCTION:
+  - uncachedQuadraticWeightedLeastSquares
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - gradientControl
+  SL_SOURCE_BAND_CELLS:
+  - '3'
+  - '1000'
+  GC_LAW:
+  - none
+  - linearQ
+  GC_STRAIN_WEIGHT:
+  - none
+  - full
+  GC_Q_SCHEME:
+  - upwindFit
+  GC_MU:
+  - '1'
+  GC_ANCHOR_INTERFACE:
+  - 'false'
+  - 'true'
+collapse_other_axes: true
+export_slides: false

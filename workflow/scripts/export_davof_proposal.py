@@ -3,7 +3,9 @@
 
     python3 workflow/scripts/export_davof_proposal.py --dest <proposal>/figures/davof
 
-Copies tables/davof_normal_proposal_*.tex and figures/davof_plic_*.pdf (plus
+Copies tables/davof_normal_proposal_*.tex (the per-study compact tables and,
+since 2026-10-12, the three-mesh tables davof_normal_proposal_<surface>Normal3D_meshes.tex
+of make_davof_normal_table.py) and figures/davof_plic_*.pdf (plus
 the .png previews) from paths.tables_dir('davof') / paths.figs_dir('davof') to
 --dest, creating it. The proposal \\input{}s and \\includegraphics{}es these
 files by name, so a rerun of the studies followed by this export updates the
@@ -19,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import paths  # noqa: E402
 
 PATTERNS = (("tables", "davof_normal_proposal_*.tex"),
+            ("tables", "davof_regen_proposal_*.tex"),
             ("figures", "davof_plic_*.pdf"),
             ("figures", "davof_plic_*.png"))
 

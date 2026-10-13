@@ -4,6 +4,7 @@ description: "Tracing along (u.n)n is clean (0.017 h after one step, baseline-eq
 aliases: [nSL, nPSL, normalProjected, normal-projected SL, SL_RENORMALIZATION, geometric renormalization]
 kind: concept
 status: retracted
+outcome: negative
 part: advection
 tags: [concept, part/advection]
 date: 2026-09-28
@@ -80,3 +81,6 @@ Writing any fit-derived offset back into psi feeds neighbour noise into the next
 
 ### 2026-09-28
 Created from the nPSL article, the combined-source plan, the roadmap and the scheme header.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].

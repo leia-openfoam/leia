@@ -1,0 +1,122 @@
+# DAVOF static gate 3: the ZERO-STEP REGENERATION on the ellipsoid
+# (davofRegeneration.H; Stage 1 of the DFG proposal, pre-registered there).
+#
+# The same ellipsoid, box and ladder as ellipsoidNormal3D.yaml (half-axes
+# (1.0, 0.8, 0.6) mm, N = 20/40/80/160). From the quadraticFaces state (the
+# second-order face fractions and the Detrixhe-Aslam CHORD cell fraction,
+# i.e. the state the proposal starts from) every interface cell recovers its
+# normal (eq. 1), its explicit plane (eq. 2) and its curvature tensor from
+# the ring of recovered normals (quadricFit normalsOnly), builds a clipping
+# surface from the three, cuts its own faces again with it and compares the
+# regenerated face fractions with the reference AS FRACTIONS (the quadratic
+# cut of the exact distance on every fan triangle subdivided twice: its own
+# error is 16 times below the quadraticFaces initialisation). The normal and
+# the position are then recovered from the regenerated fractions once more.
+# Zero time steps: one application of the reconstruct-clip-recover loop that
+# the transport closes.
+#
+# Arms (DAVOF_REGEN_ARM, the clipping surface of a cell):
+#   plane            the explicit plane (2);
+#   paraboloidPlane  the paraboloid with the ring tensor, vertex on the
+#                    plane polygon's centroid, tangent plane = the plane;
+#   paraboloidFaces  the same paraboloid, its offset along the normal fixed
+#                    by the cell's own face fractions (the total wetted face
+#                    area sum_f |S_f| alpha_f is reproduced; one monotone
+#                    scalar equation, bisection to 1e-13 h). THE METHOD'S
+#                    ANCHORING (Tomislav, 2026-10-03: no volume matching);
+#   paraboloidVolume the same paraboloid, its offset fixed by the cell
+#                    fraction (cut volume = alpha_k V_k on the Detrixhe-Aslam
+#                    tets): the comparison arm, the reviewers' reading of the
+#                    morning text of 2026-10-03.
+#
+# Measures (leiaTestDavofRegen.csv; the regenerated normal and position also
+# as the model row davofRegen of leiaTestDavofNormalModels.csv): E_ALPHAF_L1,
+# _L2, _LINF = |alpha_f^regen - alpha_f^ref| over the (cell, face) pairs of
+# the interface cells, each cell with its own view (cell-local recovery);
+# E_ALPHAF_MISMATCH_L1/_LINF = the owner's against the neighbour's view on
+# shared faces of two interface cells (the C0 diagnostic); E_L1_N, E_L2_N,
+# E_LINF_N and E_POS_L2 of the normal and the position recovered from the
+# regenerated data (norms as in sphereNormal3D.yaml: over the interface
+# cells |m_c| > wispTol V^(2/3), the normal at the tet zero-set centroid of
+# the original state, the position = distance of the plane-polygon centroid
+# from the surface); MAX_VOL_DIFF_PLANE_REGEN the realizability defect of
+# the regenerated state; ANCHOR_RESIDUAL_MAX the relative residual of the
+# offset equation.
+#
+# PREDICTION 6 (pre-registered 2026-10-04, before the first run; derivation
+# in research/articles/2026-article-area-of-fluid/FINDINGS.md, 2026-10-03):
+#   plane:            p(E_ALPHAF_L1) = 1.0 +- 0.2 (the regenerated fractions
+#     are the chord's again), p(E_L1_N) = 1.0 +- 0.2 with the error constant
+#     of the Detrixhe-Aslam row of ellipsoidNormal3D (3.6e-3 at N = 160
+#     within a factor 1.5), p(E_POS_L2) = 2.0 +- 0.3.
+#   paraboloidPlane:  p(E_ALPHAF_L1) = 1.0 +- 0.2 and p(E_L1_N) = 1.0 +- 0.3:
+#     the vertex sits on the first-moment plane, O(h^2) off the surface (half
+#     a sagitta on the exact state, a sagitta on the chord cell fraction), so
+#     the paraboloid is a shifted copy of the right one and q = 1.
+#   paraboloidFaces:  p(E_ALPHAF_L1) = 2.0 +- 0.3, p(E_ALPHAF_L2) >= 1.5,
+#     p(E_L1_N) >= 1.8 and p(E_L2_N) >= 1.5 over the three finest rungs (the
+#     proposal's criterion), p(E_POS_L2) = 2.0 +- 0.3; E_ALPHAF_LINF at
+#     least first order (the ends of the ellipsoid, 14h radius at N = 160).
+#     MECHANISM: each second-order face fraction locates the trace on its
+#     face to O(h^3); one scalar fitted to F of them places the paraboloid to
+#     O(h^3) whatever the cell fraction holds; the ring tensor's O(h) error
+#     moves the paraboloid by O(h^3).
+#   paraboloidVolume: p(E_ALPHAF_L1) = 1.0 +- 0.3 and p(E_L1_N) = 1.0 +- 0.3
+#     on this state: the chord cell fraction is short of the quadratic
+#     surface's volume by the arc-chord sliver, O(h) as a fraction, so the
+#     volume-matched paraboloid lands on the chord. (On a consistent cell
+#     fraction it would be q = 2; that arm needs the quadratic cell fraction,
+#     Tier 2 item 2.3, and is not run here.)
+#   Mismatch (secondary): p(E_ALPHAF_MISMATCH_L1) = 2.0 +- 0.4 for
+#     paraboloidFaces, 1.0 +- 0.3 for plane and paraboloidPlane.
+#   No prediction on the sign of the plane arm's error constant relative to
+#     the Detrixhe-Aslam row beyond the factor 1.5 above.
+# A falsified line is reported as such (STATUS 10.13, FINDINGS.md).
+#
+# SMOKE RUN 2026-10-04 (sphere, N = 20 and 40, quadraticFaces state, run
+# before this ladder): plane and paraboloidPlane at q = 1 and paraboloidFaces
+# at q = 2 as predicted (alpha_f L1 orders 0.99, 1.04, 2.33); paraboloidVolume
+# ALSO at q = 2 (2.25): the prediction above is FALSIFIED AS STATED, because
+# the arm matches the Detrixhe-Aslam TET QUADRATURE of the paraboloid's
+# volume, which carries the same chord defect as the chord cell fraction it is
+# matched to, so the defect cancels. The arm the prediction meant, the
+# paraboloid's OWN cut volume = alpha_k V_k, is added as paraboloidVolumeExact
+# (every tet split twice, the chord defect of the quadrature 16 times
+# smaller), pre-registered before its first run: p(E_ALPHAF_L1) = 1.0 +- 0.3
+# and p(E_L1_N) = 1.0 +- 0.3 on the chord cell fraction (it lands on the
+# chord), 2.0 +- 0.3 on the exact sphere state. The regenerated NORMAL of the
+# plane arm is the original normal by construction (the plane's own fractions
+# return its normal exactly), so E_L1_N tests the paraboloid arms only; the
+# fraction error E_ALPHAF is the test of q for every arm. The exactSphere
+# rows of the smoke run were invalid (computeFromExactSphere let the
+# Detrixhe-Aslam fan sums stand in for the exact fractions since 2026-10-02,
+# fixed the same day) and are rerun.
+#
+# The sphere cross-check with the exact fractions as the reference:
+# sphereRegeneration3D.yaml (alphaSource exactSphere and quadraticFaces).
+
+study_name: ellipsoidRegeneration3D
+studies_dir: studies/davof
+case: davof/ellipsoidNormal3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: leiaTestDavofNormal
+theme:  davof
+
+setfields_args: "-alphaName alpha.water"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  DAVOF_ALPHA_SOURCE: [quadraticFaces]
+  DAVOF_REGEN_ARM: [plane, paraboloidPlane, paraboloidFaces, paraboloidVolume, paraboloidVolumeExact]
+  DAVOF_CURV_MODEL_1: [normalsOnly]
+  DAVOF_CURV_MODEL_2: [none]
+  DAVOF_CROSS_CHECK: [none]
+  DAVOF_WISP_TOL: [1e-3]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

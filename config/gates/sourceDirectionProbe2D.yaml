@@ -1,0 +1,64 @@
+# ============================================================================
+# PROBE: does the direction n of the strain term a = n.D.n cause the 2D shape loss? (2026-10-13)
+#
+# WHY. With the strain term alone (GC_LAW none, GC_STRAIN_WEIGHT full) on the whole domain, the
+# shear arm keeps a shape error of 32x the baseline at N = 136 (STATUS 11.26 item 6). With law none,
+# q enters only the band test and the direction n = g/q of a = n.D.n. The upwind mean g of
+# `upwindFit` cancels where upwind neighbours lie on opposite sides (the medial axis), so n can be
+# noise there; the centred least-squares g of `centred` is smooth. With law none the centred q has no
+# restoring term, so the centred-q failure of E1 cannot act here.
+#
+# SETUP. The shear arm of methodGate2D as rendered for CS0s (2Dvortex, reversed, T = 2, CFL 0.5,
+# N = 68, 96, 136, np 4), GC_Q_SCHEME {centred, upwindFit} x SL_SOURCE_BAND_CELLS {3, 1000}.
+#
+# PRE-REGISTERED READ-OUT (2026-10-13, before the run):
+#   P1 (n causes it): with GC_Q_SCHEME centred and band 1000 the shape error at T at N = 136 is at
+#      most 3x the baseline (5.48e-4) and the shape order on the last interval is at least 2.5.
+#   FALSIFIED if it stays above 10x the baseline. The upwindFit arms reproduce STATUS 11.26.
+#
+# RESULT (2026-10-13): P1 FALSIFIED. GC_Q_SCHEME centred with band 1000 gives 34.3x the baseline's
+# shape error at N = 136 (1.88e-2); the upwindFit arms reproduce STATUS 11.26 (32.1x and 30.0x).
+# ============================================================================
+study_name: sourceDirectionProbe2D
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme: gradient-controlled-level-set
+solve_runtime: 240
+axes_override:
+  N_CELLS:
+  - '68'
+  - '96'
+  - '136'
+  END_TIME:
+  - '2'
+  CFL:
+  - '0.5'
+  REPORT_WRITE_ONLY:
+  - 'false'
+  OSCILLATION:
+  - 'on'
+  PHASE_INDICATOR:
+  - detrixheAslam
+  SL_RECONSTRUCTION:
+  - uncachedQuadraticWeightedLeastSquares
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - gradientControl
+  SL_SOURCE_BAND_CELLS:
+  - '3'
+  - '1000'
+  GC_LAW:
+  - none
+  GC_STRAIN_WEIGHT:
+  - full
+  GC_Q_SCHEME:
+  - centred
+  - upwindFit
+  GC_MU:
+  - '1'
+collapse_other_axes: true
+export_slides: false

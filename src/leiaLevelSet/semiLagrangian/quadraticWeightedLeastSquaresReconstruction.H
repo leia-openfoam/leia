@@ -126,6 +126,17 @@ public:
     virtual void update(const volScalarField& psiOld) override;
 
     virtual scalar evaluateRaw(const label c, const point& x) const override;
+
+    //- The fit gradient and Hessian at the cell centre, read from the
+    //  coefficients of the last update() (see slReconstruction). The basis is
+    //  d_a, then d_a^2/2, then d_a d_b (a < b): the coefficients are the
+    //  gradient, the diagonal and the off-diagonal of the Hessian.
+    virtual label fitDerivatives
+    (
+        const label c,
+        vector& g,
+        symmTensor& H
+    ) const override;
 };
 
 } // End namespace Foam

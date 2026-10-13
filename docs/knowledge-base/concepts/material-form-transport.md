@@ -3,6 +3,7 @@ title: "Material-form transport and the Sp(div u) correction"
 description: "What the material form of the source (R + div u, the Sp(div Phi) correction) taught: Rdiv diverges kinematically and is withdrawn; a normal-constant extension shears the band tangentially"
 kind: concept
 status: open
+outcome: negative
 part: gradient-control
 tags: [concept, part/gradient-control]
 date: 2026-09-28
@@ -39,3 +40,6 @@ part of the extension flux, which the `pointValue` scheme ignores on the zero se
 
 ### 2026-09-28
 Created.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].

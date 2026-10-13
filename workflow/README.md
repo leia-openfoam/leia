@@ -31,6 +31,12 @@ config/davof/sphereNormal3D.yaml  DAVOF static gate 1: the Gauss-identity interf
                              OpenFOAM's geometricVoF plicRDF/gradAlpha/isoAlpha on
                              the same alpha as the cross-check (leiaTestDavofNormal,
                              serial; studies/davof/; docs/davof theme; section "DAVOF")
+config/davof/{sphere,ellipsoid}Normal3D_{perturbed,poly}.yaml, planeNormal3D_{hex,perturbed,poly}.yaml
+                             the same static recovery on the three MESH CLASSES
+                             (hexahedral, vertex-perturbed hexahedral 0.1 h, cfMesh
+                             polyhedral) on the N = 20/40/80/160 ladder, predictions
+                             P11-P13 in the headers (2026-10-12; STATUS 10.16; the
+                             combined three-mesh table per surface, section "DAVOF")
 config/stationaryDropletStableFoot.yaml  parasitic currents with the SECOND-ORDER face
                              curvature (curvatureExtension stabilizedFootPointFace +
                              faceCurvatureSource registered): N=256,512 (both >20
@@ -900,7 +906,24 @@ make studies-one STUDY=davof/sphereNormal3D PROFILE=profiles/local   # 16 cases,
 make studies-one STUDY=davof/ellipsoidNormal3D PROFILE=profiles/local   # 12 cases, the curvature gate; 9 GB at N = 160, ONE at a time (--jobs 1)
 make studies-one STUDY=davof/planeNormal3DLadder PROFILE=profiles/local   # the plane at N = 8/16/32, seconds
 make davof-proposal DEST=<proposal>/figures/davof   # the compact table + the PLIC figures for the proposal
+# The three mesh classes (2026-10-12, STATUS 10.16): the same recovery on vertex-perturbed
+# hexahedra (mesh: perturbed, leiaPerturbMesh defaults alpha 0.1, seed 0) and on cfMesh
+# polyhedra (mesh: poly; cases/davof/<case>/system/meshDict.template with maxCellSize =
+# CFMESH_CELL_SIZE = h/2^(-1/3), h = DOMAIN_LENGTH/N_CELLS, so that the dual cells at the
+# interface measure h and the N_CELLS ladder is the hex one; cases/davof/<case>_poly.parameter;
+# the box box4mm-faces.stl from make_box_stl.py --solids faces). On the laptop pMesh needs
+# LEIA_PMESH_PRELOAD=$HOME/miniconda3/lib/libjemalloc.so.2 exported in the shell; --jobs 1.
+cases/davof/planeNormal3D/Allrun_perturbed vertex 0.1   # the plane gate on warped hexahedra
+cases/davof/planeNormal3D/Allrun_poly                    # the plane gate on polyhedra (system/meshDict, N = 20)
+make studies-one STUDY=davof/sphereNormal3D_perturbed PROFILE=profiles/local   # also _poly, ellipsoidNormal3D_{perturbed,poly}
+make studies-one STUDY=davof/planeNormal3D_hex PROFILE=profiles/local          # also _perturbed, _poly (N = 20..160)
 ```
+`make_davof_normal_table.py` keys every series by (mesh, alphaSource, model), the mesh
+class read from `case_params.json`, and for a study `<surface>Normal3D[_hex|_perturbed|_poly]`
+also writes the combined `tables/davof_normal_proposal_<surface>Normal3D_meshes.tex`
+(mesh column first, `\midrule` between the mesh blocks) and
+`davof_normal_orders_<surface>Normal3D_meshes.csv` from the sibling studies that exist;
+the per-study tables are unchanged (byte-identical to the script before 2026-10-12).
 
 PLIC surfaces: `libleiaDavofInterface` (`src/leiaLevelSet/davofInterface`, ported
 from TwoPhaseFlow's `postProcessing/interface`) cuts the plane of every interface

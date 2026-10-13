@@ -67,6 +67,10 @@ MPI         = config.get("mpi_launcher", "mpirun -np {np}")
 # Optional per-study SLURM time limit (MINUTES) for the solve rule only; see the
 # `solve` rule. None => the workflow profile's default.
 SOLVE_RUNTIME = config.get("solve_runtime")
+# Optional per-study memory (MB per CPU) for the solve rule only: a serial
+# solve gets exactly this much in total under profiles/slurm (default 4000),
+# which the N = 160 DAVOF regeneration (5.1 GB resident) exceeds.
+SOLVE_MEM_MB = config.get("solve_mem_mb")
 PREAMBLE    = (config.get("env_preamble") or "").strip()
 # Extra leiaSetFields arguments (e.g. "-alphaName alpha.water" for the two-phase
 # mixture field, whose name is not the leiaSetFields default "alpha").
@@ -175,7 +179,10 @@ PAR        = "-parallel" if PARALLEL else ""
 # MPI may contain a {np} placeholder (e.g. "mpirun -np {np}"); srun needs none
 # because the slurm allocation already carries --ntasks (resources.tasks).
 MPI_PREFIX = (MPI.format(np=NP) + " ") if PARALLEL else ""
-FLUX       = " -fluxCorrection" if MESH == "perturbed" else ""
+# The static DAVOF app has no -fluxCorrection option (an unknown option is a
+# FatalError in argList), so the perturbed-mesh flag is for the solvers only.
+FLUX       = (" -fluxCorrection"
+              if MESH == "perturbed" and SOLVER != "leiaTestDavofNormal" else "")
 INIT_END   = f"./system/init_End/init_End.{MODE}" if CASE == "3Dtranslation" else ""
 
 # The gradPsiErrorCSV / leiaSetFields function objects APPEND to their CSVs: a
@@ -196,7 +203,8 @@ _preprocess = ["cd {params.d}",
                " leiaRedistancedLevelSetFoam.csv leiaTestRedistance.csv"
                " leiaTestFaceCurvature.csv leiaTestCurvatureNoiseGain.csv"
                " leiaTestDavofNormal.csv leiaTestDavofNormalModels.csv"
-               " leiaTestDavofCurvature.csv"
+               " leiaTestDavofCurvature.csv leiaTestDavofRegen.csv"
+               " leiaTestDavofRegenIter.csv"
                " psiConservation.csv",
                " ".join(filter(None, [SETFIELDS_APP, SETFIELDS_ARGS]))]
 
@@ -449,6 +457,7 @@ rule solve:
         # to a slower partition and holds the allocation long after a diverged
         # solve has stopped producing steps.
         **({"runtime": int(SOLVE_RUNTIME)} if SOLVE_RUNTIME else {}),
+        **({"mem_mb_per_cpu": int(SOLVE_MEM_MB)} if SOLVE_MEM_MB else {}),
     shell:
         sh(*_solve)
 
@@ -555,10 +564,25 @@ rule report:
         if SOLVER == "leiaTestDavofNormal":
             _run([_PY, os.path.join(_scripts, "make_davof_normal_table.py"),
                      STUDY_DIR, "--theme", THEME], "make_davof_normal_table.py")
+            # The zero-step regeneration studies (config/davof/*Regeneration3D.yaml)
+            # add leiaTestDavofRegen.csv per case: their own order tables and
+            # figures (a no-op for a study without that file).
+            if _glob.glob(os.path.join(STUDY_DIR, "*", "leiaTestDavofRegen.csv")):
+                _run([_PY, os.path.join(_scripts, "make_davof_regen_table.py"),
+                         STUDY_DIR, "--theme", THEME], "make_davof_regen_table.py")
             # The PLIC surfaces (postProcessing/davofInterface/*/plic.<model>.vtk)
             # rendered side by side, models x resolutions, into the theme figures.
             _run([_PY, os.path.join(_scripts, "render_davof_interfaces.py"),
                      STUDY_DIR, "--theme", THEME], "render_davof_interfaces.py")
+            # The proposal's variant of the ellipsoid figure: DAVOF against
+            # plicRDF at the three finest rungs, large fonts, short titles
+            # (davof_plic_<study>_proposal.{pdf,png}; make davof-proposal copies it).
+            if STUDY == "ellipsoidNormal3D":
+                _run([_PY, os.path.join(_scripts, "render_davof_interfaces.py"),
+                         STUDY_DIR, "--theme", THEME, "--models", "plicRDF", "davof",
+                         "--resolutions", "40", "80", "160", "--font-size", "18",
+                         "--short-titles", "--edges", "none", "--suffix", "proposal"],
+                     "render_davof_interfaces.py (proposal variant)")
         # 1b. The SDPLS convergence + order tables are a DATA product that
         # docs/sdpls-level-set/.../sdplsLevelSet.tex \input{}s, not a slide, so
         # they must not sit behind `export_slides` -- 89 of 117 study configs set

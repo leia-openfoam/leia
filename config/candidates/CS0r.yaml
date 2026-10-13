@@ -1,0 +1,26 @@
+# CANDIDATE CS0r (control of CS1: the restoring term alone): F = lambda (1 - q), GC_LAW linearQ,
+#   lambda = GC_MU = GC_M_MU/T_REF (M_mu = 1), GC_STRAIN_WEIGHT none, one-sided q (upwindFit), band 3h.
+#   It is HL1q without the velocity extension and with the one-sided q.
+# PRE-REGISTERED READ-OUT (2026-10-13, before any run):
+#   exact1D (alpha = lambda = 1): on the zero set q' = q (lambda (1 - q) - alpha) = -q^2, so the
+#     closed form is q(T) = 1/(1 + T) = 0.5; prediction: the band mean q at T in [0.45, 0.55] at the
+#     finest rung (the band edge may pull it).
+#   shear: prediction: it MISSES the target (lambda = 1 1/s against a vortex strain of order pi 1/s);
+#     the gradient band error between 0.8 and 1.0 x the baseline; no regression of the shape order
+#     (the one-sided q repairs the first campaign's failure). FALSIFIED if the shape order at T falls
+#     below the baseline order minus the gate's order tolerance.
+candidate: CS0r
+line: semiLagrangian
+description: "control of CS1: the restoring term lambda (1 - q) alone (linearQ, M_mu = 1), one-sided q"
+tokens:
+  SL_SOURCE: gradientControl
+  SL_SOURCE_BAND_CELLS: 3
+  GC_LAW: linearQ
+  GC_STRAIN_WEIGHT: none
+  GC_Q_SCHEME: upwindFit
+rates:
+  GC_M_MU: 1
+target:
+  metric: gradientBandError
+  ratioToBaselineAtFinest: 0.8
+  arms: [shear]

@@ -11,6 +11,14 @@ sources: [technical report sec 3 and appendix B]
 ---
 # The source discretisation: the centred-q eigenmode, the band edge, the soft-wall slope
 
+> 2026-10-13: gate E1 ran (STATUS 11.26). A's growth law is RETRACTED
+> ([[retractions/centred-q-eigenmode-growth-rate]]): at $u = 0$ the centred-$q$ step does not grow
+> at $e^{\mu t}$; it carries the sawtooth envelope onto the zero set (the reversed group velocity of
+> the sawtooth mode), and the interface cells flatten by $\mu t = 80$. B's "one sublattice to zero
+> within $5/\mu$" is FALSIFIED as stated: both sublattices flatten, by $\mu t \approx 40$ to 80. A
+> wider band is worse, so the band edge is not the main cause; a smooth taper alone only delays the
+> damage (numpy copy). The repair under test is the one-sided `qScheme upwindFit` (gate E2.1).
+>
 > Open (DERIVED 2026-09-28; the discriminators have not run). The source step reads $q$ from
 > `fvc::grad(psi, "gradPsiSource")`, which every case template sets to `leastSquares`, a CENTRED
 > gradient ([slGradientControlSource.C](https://github.com/leia-openfoam/leia/blob/8867581/src/leiaLevelSet/semiLagrangian/source/slGradientControlSource.C#L146);
@@ -74,3 +82,15 @@ by E1.1 to E1.3 and the non-vacuous 1D closed forms (E0.1).
 
 ### 2026-09-28
 Created with the technical report.
+
+### 2026-10-13
+Gate E1 and the numpy copy of the step (STATUS 11.26): A's growth law retracted
+([[retractions/centred-q-eigenmode-growth-rate]]); B's sublattice prediction falsified as stated; the
+taper, the first-order one-sided q, the cell's own fit and the single-neighbour fit are failed routes
+([[negative-log]]). `qScheme upwindFit` added to the source (default `centred`, byte-identical).
+With the one-sided q, a band of 3 cells breaks the strain term in the exact 1D stretch (q 0.534
+against 1.000003 on the whole domain, N = 256); in 2D the whole domain does not restore the shape
+order, and the anchor shows that the direct crossing shift is not the cause (STATUS 11.26 item 6).
+Later the same day: the direction and the clip probes; the strain term corrugates the interface in
+2D, and the hypothesis is a tangential transport through n(grad psi) that both q schemes discretise
+centred (STATUS 11.26 item 7).
