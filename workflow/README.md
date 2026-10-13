@@ -37,6 +37,16 @@ config/davof/{sphere,ellipsoid}Normal3D_{perturbed,poly}.yaml, planeNormal3D_{he
                              polyhedral) on the N = 20/40/80/160 ladder, predictions
                              P11-P13 in the headers (2026-10-12; STATUS 10.16; the
                              combined three-mesh table per surface, section "DAVOF")
+config/davof/{plane,sphere}Translation3D_hex.yaml
+                             the TRANSPORTED face fractions through the TwoPhaseFlow
+                             fork's advectorVoF (branch davof): the plane-translation
+                             round-off test (N = 20..160, Co 0.05..0.5, two velocity
+                             arms, 224 cases) and the sphere-translation ladder
+                             (N = 32/64/128, Co 0.1/0.2/0.5, 63 cases), seven rows
+                             each (the davof scheme with five normal models, plicRDF,
+                             isoAlpha); predictions P-A1..3 / P-B1..3 in the headers
+                             (2026-10-13; section "DAVOF: the TwoPhaseFlow advection
+                             studies"); *_hexSmoke.yaml the laptop smokes
 config/stationaryDropletStableFoot.yaml  parasitic currents with the SECOND-ORDER face
                              curvature (curvatureExtension stabilizedFootPointFace +
                              faceCurvatureSource registered): N=256,512 (both >20
@@ -941,5 +951,83 @@ no VTK/mplot3d dependency). `make_davof_normal_table.py` also writes the compact
 (`make davof-proposal`) copies both into the DAVOF proposal, which `\input`s and
 `\includegraphics` them by name.
 
+## DAVOF: the TwoPhaseFlow advection studies (advectorVoF)
+
+The transported face fractions (2026-10-13): the fork TwoPhaseFlow, branch `davof`
+(`<dirname of leia>/TwoPhaseFlow`, found by `etc/leia-env.sh` through `LEIA_TPF_DIR`),
+carries the face update (isoAdvection storing `alphaf.<phase>`, the `davof`
+reconstruction scheme with its normal models, `initDavofFields`, the function objects
+`areaFractionError` / `volumeFractionError`; its `etc/README-davof.md`). The leia
+studies drive its benchmark solver `advectorVoF` with the dictionaries of the fork's
+`run/benchmark/advection/{plane,sphere}Translation3D` as templates:
+
+- `cases/davof/planeTranslation3D{,.parameter}`: the plane of the static test moved by
+  0.2 L along its normal (arm `normal`, U = n) or along x (`oblique`); the
+  Detrixhe-Aslam state (exact on a plane); `END_TIME 8e-4` at |U| = 1 is 0.2 N / Co
+  steps; the reconstruction error every step.
+- `cases/davof/sphereTranslation3D{,.parameter}`: the sphere R = 0.15 carried along
+  the 2 x 1 x 1 box over one unit (arm `axial`); the quadraticFaces state; N / Co
+  steps; the reconstruction error at the end time; `areaFractionError` against the
+  EXACT state of the translated sphere.
+- The time step is the advective convention of `transISTDroplet2D`:
+  `TIME_STEP_CONTROL advective`, `MAX_DELTA_T = TARGET_ADVECTIVE_CO * DOMAIN_LENGTH /
+  (N_CELLS * REFERENCE_SPEED)` = Co h (the inputs are named in controlDict's comment
+  lines so that they reach the grid).
+- The rows: ONE token `TPF_ROW` (`workflow/scripts/tpf_rows.py`), expanded by
+  `materialize._with_derived_tokens` into the alpha-solver keys `TPF_RECON_SCHEME`,
+  `TPF_NORMAL_MODEL`, `TPF_APPLY_TO`, `TPF_SLIVER_TOL`, `TPF_MAX_ANGLE`:
+  `davof-cellLocal` (the own normal m_c), `davof-ringArea`, `davof-ringFit`,
+  `davof-exact` (control), `davof-plicRDFnormal` (control), `plicRDF`, `isoAlpha`
+  (the comparators carry the davof keys inertly and start from the same
+  `initDavofFields` alpha; they ignore `alphaf.water`). The velocity arm
+  `TPF_VELOCITY_ARM` expands into `TPF_UX/UY/UZ` the same way. The grid is exactly
+  `N_CELLS x TARGET_ADVECTIVE_CO x TPF_ROW [x TPF_VELOCITY_ARM]`.
+- The abort guard of `advectorVoF` (top-level `isoAdvector { abortEnabled true;
+  abortMinAlpha -0.5; abortMaxAlpha 1.5; abortInterfaceCellFactor 10; }` in
+  `fvSolution.template`): a run whose alpha leaves [-0.5, 1.5] or whose interface-cell
+  count exceeds ten times its initial count ends with `advectorVoF: ABORT at step ...`
+  and the normal `End`; the workflow records COMPLETED, the converter `status diverged`.
+- `post_solve: python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out
+  advectorVoF.csv` joins the three `.dat` files (`postProcessing/<fo>/<latest time>/`)
+  with the solver log into one row per step (TIME, step, L1/L2/Linf of alphaf, the
+  normal and centre errors, Eshape/Emass/Ebound, the davof counts, min/max alpha,
+  the cpu times, status/abortStep/abortReason); the Snakefile removes
+  `postProcessing/` before an advectorVoF solve (the function objects append) and
+  skips `-fluxCorrection` and the level-set plots for this solver.
+- The report step runs `make_davof_advection_table.py <study> --theme davof`:
+  `tables/davof_advection_<study>.csv` (one row per case: end values, run maxima, min
+  alpha, interface cells first -> last, sliver / fit-fallback maxima, cpu, status),
+  `davof_advection_history_<study>.csv` and `davof_advection_growth_<study>.csv` (the
+  davof rows: per-step L1(alphaf), the first 20 steps with the factors g_k =
+  L1_k/L1_{k-1}, their maximum and geometric mean), per Courant number
+  `davof_advection_<study>_orders_Co<co>.{csv,tex}` (rows x N: L1(alphaf) at the end
+  and its maximum over the run, L1(n), L1(x), Eshape, Ebound, min alpha, status, with
+  the least-squares and pairwise orders over N; a diverged rung prints `div.` and is
+  excluded from the fit), `davof_advection_<study>_co_N<n>.{csv,tex}` (the Co
+  dependence at the middle N, `--co-table-N`), for a plane study
+  `davof_advection_<study>_gate.{csv,tex}` (max L1(alphaf), max Linf(alphaf), max
+  L1(n) over the run, PASS at 1e-12 for the davof rows), and the figures
+  `figures/davof_advection_<metric>_<study>_Co<co>.png` (error against h, one hue per
+  row, `tpf_rows.COLORS`) and `davof_advection_history_<study>_N<n>_Co<co>.png`
+  (L1(alphaf) against the step). The `.tex` files are tabular bodies (booktabs);
+  `\input` them with the full file name (the Co name carries a dot).
+  `make davof-preprint` copies them flat into `docs/davof/davof-article/`;
+  `make davof-proposal` exports them with the static tables.
+
 ```bash
+snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeTranslation3D_hexSmoke.yaml   # 8 cases, seconds
+snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/sphereTranslation3D_hexSmoke.yaml  # 7 cases, minutes each
+make studies-one STUDY=davof/planeTranslation3D_hex PROFILE=profiles/slurm    # 224 cases
+make studies-one STUDY=davof/sphereTranslation3D_hex PROFILE=profiles/slurm   # 63 cases; N = 128 is 4.2e6 cells
+python3 workflow/scripts/make_davof_advection_table.py studies/davof/sphereTranslation3D_hex   # the report step by hand
 ```
+
+Laptop smoke of 2026-10-13 (the same binary and dictionaries as the fork's laptop runs
+of that day; `tables/davof_advection_*Smoke*`): the plane at N = 20, Co 0.2, 20 steps:
+`davof-exact` and `davof-ringArea` at round-off on both arms (max L1(alphaf) 2.9e-15 /
+1.2e-14 and 3.1e-15 / 1.1e-14, max L1(n) 3.7e-15 / 2.0e-15 and 4.3e-15 / 1.2e-14),
+`davof-cellLocal` at round-off on the normal arm (5.2e-15, 1.1e-13) and at max L1(n)
+1.1e-12 on the oblique arm over the 20 steps (10 % above the 1e-12 gate; the fork's
+ten-step run had 6.4e-13); the plicRDF comparator carries no face fractions (-1).
+The sphere numbers are in the smoke tables and in `docs/davof/README.md`.
+
