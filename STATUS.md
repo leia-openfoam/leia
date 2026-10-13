@@ -5705,3 +5705,40 @@ planeNormal3D_hex, planeNormal3D_perturbed, planeNormal3D_poly; the laptop needs
 `LEIA_PMESH_PRELOAD` for pMesh, the cluster does not); their orders over the three finest
 rungs, the combined tables per surface and the verdicts on P12 and P13 are to be appended
 here.
+
+**Ladders on Lichtenberg (2026-10-13; leia 072de77 carries the tables; the four hex and
+perturbed studies done, jobs 55421098, 55421100, 55421102, 55421103; the three polyhedral
+studies resubmitted with `solve_mem_mb: 24000` after two OOM kills at N = 160, 4000 and
+12000 MB, jobs 55422221-23, pending).** Orders over N = 20 to 160 (three finest in
+parentheses), errors at N = 160:
+
+| study | state / model | p1(n) | p2(n) | L2(n) | Linf(n) | p(x) | L2(d) [m] | p(kappa) | kappa err |
+|---|---|---|---|---|---|---|---|---|---|
+| sphere perturbed 0.1 h | DAVOF, quadratic faces | 2.12 (2.49) | 2.40 (4.11) | 9.49e-5 | 3.43e-3 | 2.07 | 7.77e-8 | - | - |
+| | DAVOF, Detrixhe-Aslam | 0.99 (0.98) | 0.97 (0.98) | 2.57e-3 | 1.23e-2 | 2.04 | 1.77e-8 | - | - |
+| | plicRDF | 0.90 (0.83) | 0.93 (0.87) | 5.25e-3 | 1.45e-1 | 1.50 | 2.37e-7 | - | - |
+| | gradAlpha / isoAlpha | 0.06 / 0.17 | 0.05 / 0.20 | 6.71e-2 / 4.75e-2 | 1.45e-1 / 1.97e-1 | 1.51 / 1.57 | 2.40e-7 / 2.03e-7 | - | - |
+| ellipsoid perturbed 0.1 h | DAVOF, quadratic faces | 2.02 (2.00) | 1.87 (1.91) | 2.81e-4 | 1.06e-2 | 1.99 | 1.04e-7 | 1.53 | 4.65e-3 |
+| | DAVOF, Detrixhe-Aslam | 1.04 (1.03) | 1.01 (1.02) | 3.80e-3 | 3.01e-2 | 2.06 | 2.44e-8 | 1.27 | 7.23e-3 |
+| | plicRDF | 1.06 (0.98) | 1.02 (1.01) | 6.43e-3 | 1.39e-1 | 1.64 | 2.39e-7 | - | - |
+| | gradAlpha / isoAlpha | 0.10 / 0.29 | 0.11 / 0.31 | 6.86e-2 / 4.81e-2 | 1.45e-1 / 1.93e-1 | 1.63 / 1.78 | 2.46e-7 / 2.06e-7 | - | - |
+| plane hex (ladder) | DAVOF, both states | round-off | round-off | 1.8e-14 / 9.8e-15 | 3.3e-13 | - | 4.6e-17 | - | - |
+| | plicRDF / gradAlpha / isoAlpha | - | - | 2.51e-4 / 7.46e-2 / 4.18e-2 | 1.89e-2 / 0.40 / 0.54 | 0.12 / 1.31 / 1.45 | 8.3e-12 / 3.0e-8 / 3.6e-8 | - | - |
+| plane perturbed 0.1 h | DAVOF, both states | round-off | round-off | 1.9e-14 / 1.2e-14 | 3.6e-13 | - | 4.6e-17 | - | - |
+| | plicRDF / gradAlpha / isoAlpha | - | - | 5.26e-3 / 7.56e-2 / 6.08e-2 | 0.38 / 0.41 / 0.56 | 0.95 / 0.96 / 1.02 | 2.7e-7 / 2.6e-7 / 2.2e-7 | - | - |
+
+Reading. P11 CONFIRMED on hex and perturbed (the plane at 1e-14 for every N; the
+polyhedral ladder pending, the N = 20 gate passed). P12 half: the orders hold (quadratic
+faces second order, Detrixhe-Aslam first, position second, the ellipsoid curvature 1.53
+against 1.55 on hex), but the constant is NOT larger on the perturbed mesh (ellipsoid L2
+2.81e-4 against 3.01e-4 on hex, and the L2 order rises from 1.78 to 1.87 because the
+perturbation breaks the pole alignment that set the hex L2): the "larger constant" half
+of P12 is falsified in the favourable direction. P13 CONFIRMED and sharpened: on the
+perturbed meshes plicRDF's order falls to 0.90 / 0.93 (sphere) at a maximum normal error
+of 0.145, and the comparators' position order falls to 1.5 to 1.8, while the DAVOF
+position stays at 2.0 and its maximum normal error at 3.4e-3 (sphere) and 1.1e-2
+(ellipsoid); on the perturbed plane plicRDF's normal error is 5.3e-3 with a maximum of
+0.38 against 1e-14. The sphere's quadratic-face L2 order 2.40 (4.11 over the three finest)
+is the N = 20 rung's volume-less cell of the smoke run (alpha_k = 0 with wetted warped fan
+triangles) dropping out of the ladder as the meshes refine; L1 (2.12) is the order to
+quote.
