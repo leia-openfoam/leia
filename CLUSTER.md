@@ -191,6 +191,7 @@ Clones on 2026-09-30 (one clone per line, each with its own `platforms/`):
 | `/work/scratch/tm83tomy/leia` | `feature/gradient-controlled-level-set` | v2512 | the SDPLS session, and the 2D method gate |
 | `/work/scratch/tm83tomy/leia-gcls` | `feature/gradient-controlled-level-set` | v2512 | the gradient-control line |
 | `/work/scratch/tm83tomy/leia-curvature` | `development` (at c431677) | v2512 | the curvature line |
+| `/work/scratch/tm83tomy/davof/leia` | `development` | v2606 | the DAVOF line (the clone `leia-davof` of 2026-10-05, moved into the `davof/` workspace on 2026-10-13 next to the TwoPhaseFlow fork `davof/TwoPhaseFlow`, so that `etc/leia-env.sh` finds the fork by its default `LEIA_TPF_DIR`; the advectorVoF studies of `config/davof/*Translation3D_*.yaml` run here) |
 
 A clone moves to v2606 by `git switch development && git pull --ff-only`, then `./Allwclean` and
 `./Allwmake` under the v2606 environment (the version stamp refuses a v2512 build). Only its owner
