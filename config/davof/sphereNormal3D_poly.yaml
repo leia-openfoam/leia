@@ -47,6 +47,8 @@ study_name: sphereNormal3D_poly
 studies_dir: studies/davof
 case: davof/sphereNormal3D
 mesh: poly
+# The N = 160 solve with the curvature model exceeds the 4000 MB Slurm default (OOM-killed 2026-10-12).
+solve_mem_mb: 12000
 mode: serial
 np: 1
 
