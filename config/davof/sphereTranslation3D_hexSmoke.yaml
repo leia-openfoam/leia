@@ -1,0 +1,37 @@
+# Laptop smoke of config/davof/sphereTranslation3D_hex.yaml (the sphere-translation
+# benchmark of the DAVOF face update through the fork's advectorVoF): N = 32,
+# Co 0.2 (160 steps, dt = 6.25e-3), all seven rows: 7 serial cases of minutes
+# each. The study name ends in Smoke (studies/davof/sphereTranslation3D_hexSmoke,
+# git-ignored like every study). Expected (the fork's laptop run of 2026-10-13
+# on the same binary and dictionaries; end values): davof-ringArea L1(alphaf)
+# 1.78e-2, L1(n) 4.06e-2, L1(x) 1.35e-3, Eshape 3.85e-4, 424 interface cells;
+# davof-exact 1.04e-2 / 3.64e-3 / 9.83e-4 / 2.76e-4 / 426; plicRDF and isoAlpha
+# near L1(n) 3.92e-2 / 5.94e-2 and L1(x) 2.05e-3 / 2.17e-3 (not digit-identical:
+# their initial alpha is the DAVOF state's, not setAlphaField's); davof-cellLocal
+# aborts at step 111 (interface cells 4171 of initial 416) and lands as status
+# diverged.
+#
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/sphereTranslation3D_hexSmoke.yaml
+study_name: sphereTranslation3D_hexSmoke
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-cellLocal, davof-ringArea, davof-ringFit, davof-exact, davof-plicRDFnormal, plicRDF, isoAlpha]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

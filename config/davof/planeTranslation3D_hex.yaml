@@ -1,0 +1,80 @@
+# The plane-translation test of the DAVOF face update on hexahedra, driven
+# through the TwoPhaseFlow fork's advectorVoF (branch davof, binaries found
+# by etc/leia-env.sh via LEIA_TPF_DIR): the exact-solution test of the
+# transported face fractions. The plane of the static test (normal
+# (0.3 0.5 0.8124)) in the corner of the 4 mm box moves by 0.2 L (END_TIME
+# 8e-4 at |U| = 1; 0.2 N / Co steps) along its normal (arm normal, U = n:
+# the sliver-amplifying arm of the fork's gate) or along x (arm oblique,
+# U = (1 0 0)), on N = 20/40/80/160 at the Courant numbers 0.05/0.1/0.2/0.5
+# (dt = Co h), for the seven rows of workflow/scripts/tpf_rows.py: the davof
+# scheme with its own cell-local normal, the ring-area and ring-fit normals,
+# the exact-normal and plicRDF-normal controls, and the comparators plicRDF
+# and isoAlpha, every row from the same Detrixhe-Aslam initDavofFields
+# state (exact on a plane). 4 x 4 x 7 x 2 = 224 serial cases of seconds to
+# minutes each. Metrics per step (tpf_advection_metrics.py -> advectorVoF.csv):
+# L1/L2/Linf of |alphaf - alphaf_exact| over the faces of the interface cells,
+# the normal and centre errors, Eshape/Emass/Ebound, the sliver and
+# replacement counts, min/max alpha, the abort status. Tables and figures:
+# make_davof_advection_table.py (the gate table, the per-Co order tables, the
+# Co table, the growth table, the histories).
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-13, written before the first run):
+# P-A1 (round-off): every davof row stays at round-off, max over the run of
+#   L1(alphaf) and of L1(n) below 1e-12, for every N, Co and arm, EXCEPT
+#   davof-cellLocal on the normal arm at Co 0.5, whose per-step growth of the
+#   face-fraction error through the sliver cells rises with Co and with N
+#   (the fork's measurement of 2026-10-13: growth 6.8 and 23 per step at
+#   N = 20 and 40, Co 0.5; 1.36e-7 after ten steps at N = 20).
+#   FALSIFIED if a ring row, the exact row or the plicRDF-normal row leaves
+#   round-off on any arm (the face update, not the normal, would then be the
+#   source of the growth), or if davof-cellLocal fails on the oblique arm.
+# P-A2: davof-cellLocal at Co 0.05, 0.1 and 0.2 passes (below 1e-12 over
+#   0.2 N / Co steps) at every N on both arms: the sliver amplification is a
+#   Courant-number effect. FALSIFIED if the normal arm at Co 0.2 leaves
+#   round-off at N = 80 or 160 over its 80 to 160 steps (the growth would
+#   then be a step-count effect that the ten-step gate of the fork missed).
+# P-A3: davof-exact at round-off everywhere (the face update is exact for a
+#   translated plane whatever the Courant number). FALSIFIED by any value
+#   above 1e-12: a defect of the face update itself.
+# The comparators plicRDF and isoAlpha carry no face fractions (L1(alphaf)
+#   = -1); their normal error on the plane is their stencil's: plicRDF about
+#   1e-1 at N = 20 on the normal arm (the fork's 0.142), not converging to
+#   round-off.
+#
+#   make studies-one STUDY=davof/planeTranslation3D_hex PROFILE=profiles/local
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeTranslation3D_hex.yaml
+# Lichtenberg:
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hex --export=ALL,STUDY=davof/planeTranslation3D_hex run-studies.sbatch
+study_name: planeTranslation3D_hex
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+# initDavofFields reads system/initAlphaFieldDict: alpha.water and the face
+# fractions alphaf.water of the Detrixhe-Aslam state; no -alphaName.
+setfields_app: initDavofFields
+setfields_args: ""
+# The function-object .dat files and the solver log -> advectorVoF.csv (the
+# solve rule's output), one row per step.
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.05, 0.1, 0.2, 0.5]
+  TPF_ROW: [davof-cellLocal, davof-ringArea, davof-ringFit, davof-exact, davof-plicRDFnormal, plicRDF, isoAlpha]
+  TPF_VELOCITY_ARM: [normal, oblique]
+collapse_other_axes: true
+
+# The N = 160 case (4.1e6 cells, 640 steps at Co 0.05) needs more than the Slurm default.
+solve_mem_mb: 12000
+solve_runtime: 720
+
+# Tables and figures go to the davof theme's docs data (make_davof_advection_table.py); no deck.
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

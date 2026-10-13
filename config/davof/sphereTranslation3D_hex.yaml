@@ -1,0 +1,82 @@
+# The sphere-translation benchmark of the DAVOF face update on hexahedra,
+# driven through the TwoPhaseFlow fork's advectorVoF (branch davof, binaries
+# found by etc/leia-env.sh via LEIA_TPF_DIR): the first transported ladder of
+# the face fractions on a curved interface. A sphere of radius 0.15 in the
+# 2 x 1 x 1 box carried by U = (1 0 0) over one unit (3.3 diameters, END_TIME
+# 1) on N = 32/64/128 across the height (R/h = 4.8/9.6/19.2) at the Courant
+# numbers 0.1/0.2/0.5 (dt = Co h, N / Co steps), for the seven rows of
+# workflow/scripts/tpf_rows.py: the davof scheme with its own cell-local
+# normal, the ring-area and ring-fit normals, the exact-normal and
+# plicRDF-normal controls, and the comparators plicRDF and isoAlpha, every row
+# from the same quadraticFaces initDavofFields state (the proposal's
+# second-order face fractions). 3 x 3 x 7 = 63 serial cases; N = 128 is
+# 4.2e6 cells and 1280 steps at Co 0.1. Metrics per step
+# (tpf_advection_metrics.py -> advectorVoF.csv): L1/L2/Linf of
+# |alphaf - alphaf_exact| against the EXACT state of the translated sphere
+# over the faces of the interface cells, Eshape/Emass/Ebound, the sliver and
+# replacement counts, min/max alpha, the abort status; the normal and centre
+# errors at the end time. Tables and figures: make_davof_advection_table.py.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-13, written before the first run; the
+# laptop smoke of the fork at N = 32, Co 0.2, is the only prior number):
+# P-B1 (orders at Co 0.2): davof-ringArea and davof-exact are FIRST order in
+#   L1(alphaf) at the end time over N = 32 to 128 (the clipping law: the
+#   plane clipping of the moved PLIC plane gives q = 1 whatever the state's
+#   initial order, finding (v) of the proposal), with a normal error at first
+#   order and a constant of about plicRDF's (the fork's smoke: 4.06e-2 ringArea
+#   against 3.92e-2 plicRDF at N = 32), and a centre error at second order
+#   below plicRDF's (1.35e-3 against 2.05e-3 at N = 32). FALSIFIED if
+#   L1(alphaf) of davof-exact is second order (the clipping law would then
+#   be wrong for a translated sphere) or if it does not converge (order
+#   below 0.7: the face update would be inconsistent).
+# P-B2 (stability): davof-ringArea, davof-exact, davof-plicRDFnormal, plicRDF
+#   and isoAlpha stay bounded (min alpha above -1e-10) to the end at every N
+#   and Co; davof-cellLocal (the own normal, undamped) aborts at every N and
+#   Co (the interface-cell count exceeds ten times its initial value: the
+#   fork's smoke reached 4910 of 416 at N = 32); davof-ringFit degrades late
+#   (fit fallbacks rise, the cell count grows: 687 at N = 32) and may abort
+#   at N = 128. FALSIFIED if davof-cellLocal completes bounded at any N (the
+#   C2 loop would be damped by refinement or by the step), or if a ring row
+#   aborts at N = 32.
+# P-B3 (Courant dependence): at fixed N the ringArea errors (L1(alphaf), the
+#   normal) FALL with Co (fewer steps, fewer re-clippings per unit travel: the
+#   per-step clipping error is paid N / Co times). FALSIFIED if the Co 0.5
+#   row is worse than Co 0.1 at N = 64 (the per-step error would then grow
+#   faster than linearly with Co).
+#
+#   make studies-one STUDY=davof/sphereTranslation3D_hex PROFILE=profiles/local
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/sphereTranslation3D_hex.yaml
+# Lichtenberg:
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hex --export=ALL,STUDY=davof/sphereTranslation3D_hex run-studies.sbatch
+study_name: sphereTranslation3D_hex
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+# initDavofFields reads system/initAlphaFieldDict: alpha.water and the face
+# fractions alphaf.water of the quadraticFaces state; no -alphaName.
+setfields_app: initDavofFields
+setfields_args: ""
+# The function-object .dat files and the solver log -> advectorVoF.csv (the
+# solve rule's output), one row per step.
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.1, 0.2, 0.5]
+  TPF_ROW: [davof-cellLocal, davof-ringArea, davof-ringFit, davof-exact, davof-plicRDFnormal, plicRDF, isoAlpha]
+collapse_other_axes: true
+
+# The N = 128 case (4.2e6 cells, four field writes) needs more than the Slurm default.
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+# Tables and figures go to the davof theme's docs data (make_davof_advection_table.py); no deck.
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

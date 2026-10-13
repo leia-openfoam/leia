@@ -1,0 +1,35 @@
+# Laptop smoke of config/davof/planeTranslation3D_hex.yaml (the plane-translation
+# test of the DAVOF face update through the fork's advectorVoF): N = 20, Co 0.2
+# (20 steps, dt = 4e-5), both velocity arms, the rows davof-cellLocal,
+# davof-exact, davof-ringArea and plicRDF: 8 serial cases of seconds each. The
+# study name ends in Smoke (studies/davof/planeTranslation3D_hexSmoke, git-ignored
+# like every study). Expected (the fork's laptop run of 2026-10-13 on the same
+# binary and dictionaries): davof-exact and davof-ringArea at round-off (max
+# L1(alphaf) and max L1(n) below 1e-12) on both arms, davof-cellLocal at
+# round-off at Co 0.2, plicRDF with L1(alphaf) = -1 (no face fractions).
+#
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeTranslation3D_hexSmoke.yaml
+study_name: planeTranslation3D_hexSmoke
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-cellLocal, davof-exact, davof-ringArea, plicRDF]
+  TPF_VELOCITY_ARM: [normal, oblique]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
