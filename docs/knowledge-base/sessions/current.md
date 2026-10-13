@@ -47,6 +47,12 @@ date: 2026-09-28
    meshes ([[decisions/flux-projection-polyhedral]]). Large runs go to Lichtenberg, not the laptop
    (author instruction 2026-10-01).
 
+7. 2026-10-13, the author's direction: the SL work waits until the error amplification of the
+   quadratic reconstruction is understood (task T5 in [[sessions/sl-session-handover]], sent to the
+   SL session); this session builds the knowledge base into the permanent memory of every agent,
+   decisions and negative findings included, and pushes the combined source of Bothe and Soga
+   ([[concepts/combined-source-note]], [[concepts/gradient-control-next-experiments]]).
+
 ## What is open, in order
 
 0. Publishing: the `github-pages` environment allows deployments from `main` only. Since the merge
@@ -134,3 +140,6 @@ The stale band fixed and gated (STATUS 11.23); item 5 added; open item 6 replace
 
 ### 2026-10-02
 Item 6 (STATUS 11.24 and 11.25).
+
+### 2026-10-13
+Item 7: the author's direction of 2026-10-13.

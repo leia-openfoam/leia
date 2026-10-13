@@ -82,6 +82,28 @@ decision and the cheapest discriminator.
 - Cheapest discriminator: the 2D studies with the current binaries on the laptop (the published 2D
   ladder runs in about one minute per arm pair at np 4); the 3D studies on Lichtenberg.
 
+**T5 (2026-10-13). Author decision: the SL work waits until the error amplification of the quadratic reconstruction is understood.**
+
+- The target is a method that is accurate on hexahedral meshes with boundary layers. The polyhedral
+  failure of the production setting (`SL_CLIP false`) is attributed to the fit amplification
+  ([[concepts/polyhedral-fit-amplification]]); the flux projection does not cure it
+  ([[decisions/flux-projection-polyhedral]]).
+- The test the author asks for: translate a sphere through a box of static refinement on a
+  hexahedral mesh, with the SL method as it is now (`uncachedQuadraticWeightedLeastSquares`,
+  `SL_CLIP false`, `projectedFlux`), and measure whether an error appears while the interface
+  crosses the refined region. If there is none, the SL work focuses first on hexahedral meshes.
+- Starting points: `workflow/scripts/leiaRefineHexMesh.py` (topoSet and hexRef8, 2:1, the levels
+  persisted; sources `band` and `ball`; a fixed box needs a `boxToCell` source), the one-way
+  translation with an exact end reference (`cases/2Dtranslation`, [[retractions/reversed-2dtranslation]]).
+  Read-out to pre-register: per step the shape and volume error against the exact translated
+  sphere, the band gradient error, and where the largest psi error sits relative to the refinement
+  boundary; controls on the uniform coarse and uniform fine meshes with the same time-step law;
+  three resolutions. The transition cells of a refined hex mesh are polyhedra: read the start-up
+  line `max|div(phi)|` there, and `fluxProjection helmholtz` is available.
+- The alternative (author): a Lean study of the monotonicity of the quadratic reconstruction. The
+  author's Lean project `formal/SlTransportProofs` is not on `development` yet.
+- Sent to the SL session (SLLS, fc0271) on 2026-10-13 by the source-term session.
+
 ## Results of 2026-09-29 (information for the SL session)
 
 1. **`2Dtranslation` translates one way, and every earlier number of the case is void**
@@ -219,3 +241,6 @@ Added the tasks T1 to T3 and the results of 2026-09-29; items 1 and 16 are resol
 
 ### 2026-10-01
 Added task T4 (the stale narrow band; the CFL 1.0 row of the 2D convergence table retracted).
+
+### 2026-10-13
+Added task T5 (the author's decision to pause the SL work; the refined-box translation test; the Lean alternative).
