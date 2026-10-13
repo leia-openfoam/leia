@@ -18,7 +18,8 @@ and writes into the theme's data source (paths.tables_dir/figs_dir):
 
 and, when the study is one of the mesh-class ladders of a surface
 (<surface>Normal3D[_hex|_perturbed|_poly], 2026-10-12), the COMBINED table of
-the three mesh classes from the sibling study directories that exist (a
+the three mesh classes from the sibling study directories that exist, or
+from their long CSVs in tables/ when a sibling ran on another machine (a
 missing one is skipped with a note):
 
     tables/davof_normal_proposal_<surface>Normal3D_meshes.tex  mesh column first,
@@ -392,7 +393,16 @@ def write_proposal_table(path, order_rows, with_mesh=False):
                  "$L_2(\\mathbf{n})$ & $L_\\infty(\\mathbf{n})$ & $p(\\mathbf{x})$ & $L_2(d)$ [m] & $p(\\kappa)$ & "
                  "$L_2(\\kappa)/L_2(\\kappa_\\Sigma)$ \\\\\n\\midrule\n")
 
+        # An error at round-off has no order (the plane studies: a least-squares
+        # slope through 1e-13 to 1e-17 is noise, not an order); printed as "--".
+        RO_NORMAL, RO_POS, RO_KAPPA = 1e-11, 1e-14, 1e-9
+
+        def _ro(v, floor):
+            return v is not None and v < floor
+
         def _pp(r, m):   # the order over all levels (over the three finest)
+            if _ro(r.get("E_L2_N_finest"), RO_NORMAL):
+                return "--"
             p3 = r.get(f"p3_{m}")
             return _p(r.get(f"p_{m}")) + ("" if p3 is None else f" ({_p(p3)})")
 
@@ -401,7 +411,11 @@ def write_proposal_table(path, order_rows, with_mesh=False):
         def _write(label, r):
             model = "DAVOF" if r["model"] == "davof" else r["model"]
             px = r.get("p_E_POS_L2") if r.get("p_E_POS_L2") is not None else r.get("p_E_POS_L1")
+            if _ro(r.get("E_POS_L2_finest"), RO_POS):
+                px = None
             pk = r.get("p_E_KAPPA_L2") if r["model"] == "davof" else None
+            if _ro(r.get("E_KAPPA_L2_finest"), RO_KAPPA):
+                pk = None
             ek = r.get("E_KAPPA_REL_L2_finest") if r["model"] == "davof" else None
             lead = ""
             if with_mesh:
@@ -477,21 +491,66 @@ def mesh_class_siblings(study_dir):
     return base, dirs
 
 
+def series_from_long_csv(tables, study, mesh):
+    """The series of a study read back from its long CSV tables/davof_normal_<study>.csv
+    (written by main() on the machine that ran it and carried by git), for a
+    mesh-class sibling whose study directory is not on this machine. Only the
+    per-model rows are recovered (the curvature-model series are not in the long
+    CSV; the davof row carries the headline curvature columns)."""
+    path = os.path.join(tables, f"davof_normal_{study}.csv")
+    if not os.path.isfile(path):
+        return {}
+    series = {}
+    for row in _read_rows(path):
+        src, model = row.get("alphaSource"), row.get("model")
+        if not src or not model:
+            continue
+        rec = {"N": int(float(row["N"])), "h": float(row["h"]),
+               "R_OVER_H": _f(row.get("R_over_h")), "DELTA_X": None,
+               "N_INTERFACE": row.get("N_interface", ""), "N_WISP": row.get("N_wisp", ""),
+               "CPU_SECONDS": _f(row.get("cpu_s")), "case": row.get("case", "")}
+        for m in METRICS:
+            rec[m] = _f(row.get(m))
+        rec["N_CURV_FALLBACK"] = row.get("N_curv_fallback", "")
+        for d in DIAG:
+            rec[d] = row.get(d, "")
+        series.setdefault((row.get("mesh") or mesh, src, model), []).append(rec)
+    for recs in series.values():
+        recs.sort(key=lambda r: -r["h"])
+    return series
+
+
 def write_combined(study_dir, tables):
-    """The three-mesh table and orders CSV of the surface this study belongs to."""
+    """The three-mesh table and orders CSV of the surface this study belongs to.
+
+    A sibling study that is not on this machine is read back from its long CSV in
+    tables/ (series_from_long_csv); a mesh class with neither is reported."""
     base, dirs = mesh_class_siblings(study_dir)
     if base is None:
         return
     expected = {"hex": [base, base + "_hex"], "perturbed": [base + "_perturbed"],
                 "poly": [base + "_poly"]}
     present = {os.path.basename(d) for d in dirs}
-    for mesh, names in expected.items():
-        if not any(n in present for n in names):
-            print(f"[davof] combined {base}: no completed {mesh} study ({' or '.join(names)}), skipped")
     series = {}
+    sources = [os.path.basename(d) for d in dirs]
     for d in dirs:
         for key, recs in collect(d).items():
             series.setdefault(key, []).extend(recs)
+    for mesh, names in expected.items():
+        if any(n in present for n in names):
+            continue
+        found = False
+        for n in names:
+            csv_series = series_from_long_csv(tables, n, mesh)
+            if csv_series:
+                for key, recs in csv_series.items():
+                    series.setdefault(key, []).extend(recs)
+                sources.append(f"{n} (from tables/davof_normal_{n}.csv)")
+                found = True
+                break
+        if not found:
+            print(f"[davof] combined {base}: no completed {mesh} study ({' or '.join(names)}) "
+                  "and no long CSV of it in tables/, skipped")
     for recs in series.values():
         recs.sort(key=lambda r: -r["h"])
     if not series:
@@ -503,7 +562,7 @@ def write_combined(study_dir, tables):
     collapsed = write_proposal_table(ppath, order_rows, with_mesh=True)
     meshes = sorted({k[0] for k in series}, key=_mesh_rank)
     print(f"[davof] wrote {opath} and {ppath} (mesh classes: {', '.join(meshes)}; "
-          f"from {', '.join(os.path.basename(d) for d in dirs)}"
+          f"from {', '.join(sources)}"
           + (f"; comparator rows collapsed on {', '.join(collapsed)}" if collapsed else "") + ")")
 
 
@@ -515,7 +574,15 @@ def main(argv):
                     help="results_sphereNormal3D.csv of the TwoPhaseFlow benchmark")
     ap.add_argument("--no-combined", action="store_true",
                     help="skip the three-mesh table of the sibling studies")
+    ap.add_argument("--combined-only", metavar="SURFACE", default=None,
+                    help="write only the three-mesh table of <SURFACE>Normal3D from the "
+                         "sibling studies and long CSVs that exist (no study of its own needed)")
     a = ap.parse_args(argv)
+    if a.combined_only:
+        tables = paths.tables_dir(a.theme)
+        write_combined(os.path.join(os.path.dirname(os.path.normpath(a.study_dir)),
+                                    a.combined_only + "Normal3D"), tables)
+        return 0
 
     series = collect(a.study_dir)
     if a.tpf_results and os.path.isfile(a.tpf_results):

@@ -3,6 +3,21 @@
 \toprule
 mesh & $(\alpha_k,\alpha_f)$ & method & $p_1(\mathbf{n})$ & $p_2(\mathbf{n})$ & $L_2(\mathbf{n})$ & $L_\infty(\mathbf{n})$ & $p(\mathbf{x})$ & $L_2(d)$ [m] & $p(\kappa)$ & $L_2(\kappa)/L_2(\kappa_\Sigma)$ \\
 \midrule
+hexahedral & exact sphere & DAVOF & 2.05 (2.00) & 1.98 (1.88) & 1.15e-04 & 5.53e-03 & 2.00 & 4.35e-08 & -- & -- \\
+ & exact sphere & plicRDF & 1.07 (1.04) & 1.06 (1.05) & 3.87e-03 & 1.67e-02 & 2.00 & 4.35e-08 & -- & -- \\
+ & exact sphere & gradAlpha & 0.07 (0.04) & 0.07 (0.02) & 6.64e-02 & 1.29e-01 & 1.95 & 4.98e-08 & -- & -- \\
+ & exact sphere & isoAlpha & 0.51 (0.33) & 0.52 (0.36) & 2.08e-02 & 7.85e-02 & 1.99 & 4.35e-08 & -- & -- \\
+\midrule
+ & DA + quadratic faces & DAVOF & 2.05 (2.00) & 1.95 (1.86) & 1.19e-04 & 5.53e-03 & 2.01 & 7.53e-08 & -- & -- \\
+ & DA + quadratic faces & plicRDF & 1.06 (1.04) & 1.06 (1.05) & 3.86e-03 & 1.65e-02 & 2.00 & 7.94e-08 & -- & -- \\
+ & DA + quadratic faces & gradAlpha & 0.06 (0.04) & 0.06 (0.02) & 6.64e-02 & 1.29e-01 & 1.98 & 8.38e-08 & -- & -- \\
+ & DA + quadratic faces & isoAlpha & 0.51 (0.34) & 0.52 (0.37) & 2.08e-02 & 7.87e-02 & 2.00 & 7.92e-08 & -- & -- \\
+\midrule
+ & Detrixhe-Aslam & DAVOF & 1.02 (1.00) & 1.01 (1.00) & 2.43e-03 & 1.05e-02 & 2.03 & 1.68e-08 & -- & -- \\
+ & Detrixhe-Aslam & plicRDF & 1.06 (1.04) & 1.06 (1.05) & 3.86e-03 & 1.65e-02 & 2.00 & 7.94e-08 & -- & -- \\
+ & Detrixhe-Aslam & gradAlpha & 0.06 (0.04) & 0.06 (0.02) & 6.64e-02 & 1.29e-01 & 1.98 & 8.38e-08 & -- & -- \\
+ & Detrixhe-Aslam & isoAlpha & 0.51 (0.34) & 0.52 (0.37) & 2.08e-02 & 7.87e-02 & 2.00 & 7.92e-08 & -- & -- \\
+\midrule
 perturbed hexahedral (0.1 h) & DA + quadratic faces & DAVOF & 2.12 (2.49) & 2.40 (4.11) & 9.49e-05 & 3.43e-03 & 2.07 & 7.77e-08 & -- & -- \\
  & Detrixhe-Aslam & DAVOF & 0.99 (0.98) & 0.97 (0.98) & 2.57e-03 & 1.23e-02 & 2.04 & 1.77e-08 & -- & -- \\
 \midrule
