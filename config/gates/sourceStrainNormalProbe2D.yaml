@@ -1,0 +1,69 @@
+# ============================================================================
+# PROBE: does the dependence of a = n.D.n on psi corrugate the interface? (2026-10-13)
+#
+# WHY. The strain term alone (GC_LAW none, GC_STRAIN_WEIGHT full, whole domain) corrugates the
+# interface of the shear arm (zero crossings at T move by 0.25 / 0.22 h rms against 0.009 / 0.010 h
+# for the baseline, N = 136; STATUS 11.26), and six readings are falsified. HYPOTHESIS (DERIVED):
+# a = n.D.n depends on psi through n = grad psi/|grad psi|; its linearisation transports
+# perturbations along the level sets with speed 2 psi (n.D.t), and both q schemes are centred in
+# that tangential direction. GC_STRAIN_NORMAL fixedX replaces n by e_x: a = D_xx is smooth, has both
+# signs and the size of n.D.n, and does not depend on psi.
+#
+# SETUP. The shear arm (2Dvortex, reversed, T = 2, CFL 0.5, N = 68, 96, 136, np 4), whole domain,
+# GC_LAW none, upwindFit: GC_STRAIN_WEIGHT {none, full} x GC_STRAIN_NORMAL {psi, fixedX}.
+#
+# PRE-REGISTERED READ-OUT (2026-10-13, before the run):
+#   T1 (the n-dependence corrugates): with fixedX the strain arm's shape error at T at N = 136 is at
+#      most 3x the baseline (5.48e-4), while the psi arm reproduces 32x.
+#   FALSIFIED if the fixedX arm stays above 10x the baseline: then any smooth multiplicative F
+#      corrugates the interface through the SL step, whatever its direction.
+#   (fixedX is not a candidate: it does not keep |grad psi| = 1; the gradient error is not read.)
+#
+# RESULT (2026-10-13): T1 CONFIRMED. fixedX: shape error at T 4.42e-3 / 1.49e-3 / 6.51e-4 (orders 3.16,
+# 2.37), 1.2x the baseline at N = 136, volume 2.06e-4 (baseline 2.16e-4); psi: 32.1x, as before.
+# ============================================================================
+study_name: sourceStrainNormalProbe2D
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme: gradient-controlled-level-set
+solve_runtime: 240
+axes_override:
+  N_CELLS:
+  - '68'
+  - '96'
+  - '136'
+  END_TIME:
+  - '2'
+  CFL:
+  - '0.5'
+  REPORT_WRITE_ONLY:
+  - 'false'
+  OSCILLATION:
+  - 'on'
+  PHASE_INDICATOR:
+  - detrixheAslam
+  SL_RECONSTRUCTION:
+  - uncachedQuadraticWeightedLeastSquares
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - gradientControl
+  SL_SOURCE_BAND_CELLS:
+  - '1000'
+  GC_LAW:
+  - none
+  GC_STRAIN_WEIGHT:
+  - none
+  - full
+  GC_Q_SCHEME:
+  - upwindFit
+  GC_MU:
+  - '1'
+  GC_STRAIN_NORMAL:
+  - psi
+  - fixedX
+collapse_other_axes: true
+export_slides: false

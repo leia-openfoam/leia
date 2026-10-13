@@ -45,6 +45,7 @@ Foam::slGradientControlSource::slGradientControlSource(const fvMesh& mesh)
     bandCells_(dict_.get<scalar>("bandCells")),
     qScheme_(dict_.getOrDefault<word>("qScheme", "centred")),
     anchorInterface_(dict_.getOrDefault<bool>("anchorInterface", false)),
+    strainNormal_(dict_.getOrDefault<word>("strainNormal", "psi")),
     law_(gradientControlLaw::New(dict_.subDict("law"))),
     h_(mesh.nCells(), GREAT),
     F_
@@ -87,6 +88,12 @@ Foam::slGradientControlSource::slGradientControlSource(const fvMesh& mesh)
             << "semiLagrangian.source gradientControl qScheme must be centred"
             << " or upwindFit; got " << qScheme_ << exit(FatalIOError);
     }
+    if (strainNormal_ != "psi" && strainNormal_ != "fixedX")
+    {
+        FatalIOErrorInFunction(dict_)
+            << "semiLagrangian.source gradientControl strainNormal must be psi"
+            << " or fixedX; got " << strainNormal_ << exit(FatalIOError);
+    }
     if (!law_->active())
     {
         WarningInFunction
@@ -99,6 +106,7 @@ Foam::slGradientControlSource::slGradientControlSource(const fvMesh& mesh)
         << " h, law " << law_->type() << ", strain weight "
         << law_->weight().type() << ", q " << qScheme_
         << (anchorInterface_ ? ", interface cells anchored (F = 0)" : "")
+        << (strainNormal_ == "fixedX" ? ", strain direction fixed to e_x" : "")
         << ", |dt F| clamp " << maxExponent << endl;
 }
 
@@ -355,7 +363,8 @@ void Foam::slGradientControlSource::apply
         {
             const symmTensor& D = tD()[celli];
             sigma = mag(D);
-            const vector n = gc/q;
+            const vector n =
+                (strainNormal_ == "fixedX" ? vector(1, 0, 0) : gc/q);
             a = n & D & n;
         }
         const scalar F = law.F(q2, sigma, a);

@@ -69,3 +69,4 @@ RE-OPENED by the author's decision: the combined source is the first line of the
 work. Status candidate. The derivation of $D_t\lvert\nabla\psi\rvert$ added.
 Step 1 (the one-sided q, gate E2.1) PASSED. Step 2 (the kinematic arms of the 2D method gate)
 FAILED for CS1 and both single terms on the shape order; the 2D cause is open (STATUS 11.26).
+The 2D shape loss of the strain term comes from n(grad psi) in a = n.D.n: a psi-independent direction keeps the shape (1.2x the baseline). The next form is a normal-constant a from the zero set (STATUS 11.26).

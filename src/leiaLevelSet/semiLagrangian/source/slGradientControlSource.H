@@ -77,6 +77,11 @@ Description
     of the opposite sign or psi_c = 0, so the source cannot move a zero
     crossing between two cells; only the semi-Lagrangian step moves them.
 
+    strainNormal (optional, default psi): a research probe. With fixedX the
+    strain weight reads a = e_x.D.e_x instead of n.D.n, a smooth F of the same
+    size that does not depend on psi (STATUS 11.26, the tangential-transport
+    hypothesis).
+
     Band: F acts only where \f$ |\psi_c|/q_c \le \f$ bandCells \f$ h_c \f$,
     with \f$ h_c \f$ the smallest distance from the centre of cell c to the
     centre of a face neighbour (processor neighbours included), so the band
@@ -98,6 +103,7 @@ Description
                 bandCells   3;
                 qScheme     centred;    // centred | upwindFit
                 anchorInterface false;  // true: F = 0 in the interface cells
+                strainNormal psi;       // psi | fixedX (probe: a = D_xx)
                 law
                 {
                     type    linearZ;
@@ -142,6 +148,9 @@ class slGradientControlSource
 
         //- F = 0 in the cells with a face neighbour of the opposite sign
         const bool anchorInterface_;
+
+        //- The direction of the strain term: psi (n = g/q) | fixedX (e_x)
+        const word strainNormal_;
 
         //- The law G and its strain weight w
         autoPtr<gradientControlLaw> law_;

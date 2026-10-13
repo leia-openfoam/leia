@@ -57,10 +57,10 @@ Not yet. The first campaign tested six candidates against the production method 
    gate lose the shape order (0.88 / 1.24 / 0.26 against 3.25). The band breaks the strain term in 1D;
    the 2D cause is open: the interface corrugates (zero crossings 0.22 to 0.25 h rms against 0.01 h)
    and the applied $F$ has a cell-scale part. Six readings are falsified (STATUS 11.26 items 6 and
-   7). HYPOTHESIS: $a = \mathbf{n}\cdot\mathbf{D}\cdot\mathbf{n}$ transports perturbations along the level
-   sets through $\mathbf{n}(\nabla\psi)$, and both $q$ schemes are centred in that direction. Next: an
-   $\mathbf{n}$-independent $F$ of the same size; a normal-constant $a$ from the zero set (E2.4); a
-   smooth 2D strain case with an exact solution.
+   7). The cause, MEASURED: the dependence of $a = \mathbf{n}\cdot\mathbf{D}\cdot\mathbf{n}$ on $\psi$
+   through $\mathbf{n} = \nabla\psi/\lvert\nabla\psi\rvert$; with $\mathbf{n}$ fixed to $\mathbf{e}_x$ the
+   shape stays at 1.2x the baseline. Next: a normal-constant $a$ from the zero set (E2.4), whose
+   direction does not feed back the cell-scale content of $\psi$.
 3. The coupled stationary droplet with the repaired source at $M_\mu \in \{0.1, 1, 10\}$, only after
    a kinematic arm passes.
 4. The cause of the coupled rates near $\mu$ of HL1q, open again since the retraction: E1.4 (the
@@ -82,3 +82,4 @@ eigenmode is retracted ([[retractions/centred-q-eigenmode-growth-rate]]); the op
 around E2.1 and the combined source.
 E2.1 passed; the kinematic gate failed for CS1, CS0s and CS0r on the shape order; four probes
 (STATUS 11.26 item 6). The open list is updated.
+The strain-direction probe located the 2D cause: the psi-dependence of n in a = n.D.n (STATUS 11.26).

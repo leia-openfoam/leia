@@ -5309,21 +5309,29 @@ in `~/OpenFOAM/data/2026-10-13-combined-source/` (5.5 GB): `e1`, `e21`, `e21-np4
      displacement (mean shift -0.02 h). The applied F on the interface cells at T has an rms of 1.52
      and a cell-scale part D2(D2 F)/64 of rms 0.33. (A first version of this analysis, reported in the
      chat, sorted the cells on y rounded to 12 digits and mixed the rows; its numbers are void.)
+   - The strain-direction probe (`sourceStrainNormalProbe2D`, a probe key `strainNormal psi | fixedX`,
+     token `GC_STRAIN_NORMAL`, default `psi`): T1 CONFIRMED. With n fixed to e_x the source is
+     F = D_xx, smooth, of both signs and of the size of n.D.n, and independent of psi: its shape
+     error at T is 4.42e-3 / 1.49e-3 / 6.51e-4 (orders 3.16, 2.37), 1.2x the baseline at N = 136, and
+     its volume error 2.06e-4 (baseline 2.16e-4). With n from psi it is 32.1x, as before. A smooth
+     multiplicative F does not corrugate the interface; the dependence of F on psi through
+     n = grad psi/|grad psi| does.
 7. **Assessment.** (a) The one-sided `upwindFit` q is the repair of the source's q; it is ready
    (E2.1, 4 ranks, seams). (b) A 3-cell band breaks the strain term even in 1D; the whole domain
    repairs 1D. (c) In 2D the strain term alone, on the whole domain, loses the shape order (0.7 to
    1.2) through a spatial error per step: the interface corrugates, and F carries a cell-scale part.
    Falsified as the cause: the direct crossing shift (anchor), the time step, the deformation, the
-   upwind direction n, the unbounded quadratic fit (clip). HYPOTHESIS (DERIVED, not tested): a = n.D.n
-   depends on psi through n = grad psi/|grad psi|, so its linearisation contains a transport of
-   perturbations ALONG the level sets with speed 2 psi (n.D.t); both q schemes are centred in that
-   tangential direction (upwindFit is upwind only along the normal), which is the E1 disease turned
-   by 90 degrees, and the low-dissipation SL step does not damp it (the Eulerian SDPLS source R,
-   which converges kinematically, is integrated inside a dissipative FV transport). Next, cheapest
-   first: an n-independent F of the same size (a frozen-n or a scalar strain measure) to test the
-   hypothesis; then a normal-constant a from the zero set (E2.4), whose n is the interface normal;
-   then a smooth 2D strain case with an exact solution (a circle in a uniaxial stretch). No coupled
-   arm runs before a kinematic arm passes.
+   upwind direction n, the unbounded quadratic fit (clip). The cause (MEASURED by T1): the
+   dependence of a = n.D.n on psi through n = grad psi/|grad psi|; a smooth psi-independent F of the
+   same size keeps the shape at 1.2x the baseline. The mechanism (DERIVED, consistent with T1 and the
+   six falsifications): the linearisation of psi n.D.n contains a transport of perturbations ALONG
+   the level sets with speed 2 psi (n.D.t); both q schemes are centred in that tangential direction
+   (upwindFit is upwind only along the normal), the E1 disease turned by 90 degrees, and the
+   low-dissipation SL step does not damp it (the Eulerian SDPLS source R, which converges
+   kinematically, is integrated inside a dissipative FV transport). Next: a strain term whose
+   direction does not feed back the cell-scale content of psi: a normal-constant a from the zero
+   set (E2.4: n and a at the foot point of the SL fit), then the same kinematic arms. No coupled arm
+   runs before a kinematic arm passes.
 8. **Records.** STATUS 11.26 (this section); the knowledge base: the retraction note, the negative
    log (the centred q, the taper alone, the first-order one-sided q, the cell's own fit, the single
    neighbour's fit, the band-limited strain term, the combined source on the kinematic gate, the

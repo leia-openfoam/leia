@@ -1069,6 +1069,9 @@ GC_Q_SCHEME centred;
 // every cell with a face neighbour of the opposite sign, so the source cannot move a zero
 // crossing (STATUS 11.26, the crossing-shift probe).
 GC_ANCHOR_INTERFACE false;
+// A research probe of the gradientControl strain term (inert default psi): fixedX reads
+// a = e_x.D.e_x instead of n.D.n (STATUS 11.26, the tangential-transport hypothesis).
+GC_STRAIN_NORMAL psi;
 
 // ---- Static local mesh refinement around the interface (pre-processing) ----------
 // Consumed by workflow/scripts/leiaRefineHexMesh.py / leiaRefinePolyMesh.py through
