@@ -1,0 +1,83 @@
+# ============================================================================
+# PROBE: does the quadratic SL fit amplify what the strain term seeds? (2026-10-13)
+#
+# WHY. In the shear arm the strain term alone, on the whole domain, leaves a CORRUGATED interface at
+# T (N = 136): the zero crossings move by 0.097 h rms (baseline 0.0028 h) with a mean of -0.004 h, and
+# neighbouring crossings are almost uncorrelated (lag-1 correlation 0.17, baseline 0.56). The source
+# multiplies psi by a smooth factor; the anchor, the time step, the deformation and the direction n
+# do not explain the loss (STATUS 11.26). HYPOTHESIS: the unbounded quadratic fit amplifies
+# cell-scale content (the fit amplification of the SL session, Lambda_max = 1.0527 on blockMesh),
+# and the source keeps seeding it, so the per-step amplification shows; the baseline's smooth
+# transported field seeds nothing above round-off.
+#
+# SETUP. The shear arm (2Dvortex, reversed, T = 2, CFL 0.5, N = 68, 96, 136, np 4), the source on the
+# whole domain with GC_LAW none: GC_STRAIN_WEIGHT {none, full} x SL_CLIP {false, true} x
+# SL_RECONSTRUCTION {uncachedQuadraticWeightedLeastSquares, linearWeightedLeastSquares};
+# GEOMETRY_FIT uncachedQuadraticWeightedLeastSquares in every arm (the source reads the fit
+# derivatives from the geometry fit; the linear fit has none).
+#
+# PRE-REGISTERED READ-OUT (2026-10-13, before the run):
+#   C1 (the quadratic fit amplifies the seeds): with SL_CLIP true the strain arm's shape error at T
+#      at N = 136 is at most 3x the clipped null arm's; with the linear fit (clip off) the strain arm
+#      is within 1.5x of the linear null arm.
+#   FALSIFIED if the clipped strain arm stays above 10x the clipped null arm at N = 136.
+#   The clip and the linear fit are instruments here, not candidates (the negative log has both).
+#
+# CORRECTED 2026-10-13, after the run. The corrugation numbers under WHY came from a mis-sorted cell
+# order in my analysis (a sort on y rounded to 12 digits split the 136 rows into 194). With the
+# serial cell order (x fastest): the baseline's crossings at T move by 0.009 / 0.010 h rms (x / y
+# edges), lag-1 correlation 0.85 / 0.97; the strain arm's by 0.25 / 0.22 h rms, lag-1 correlation
+# 0.06 / 0.36. The read-out C1 does not use these numbers.
+# RESULT: C1 FALSIFIED by its clip part: the clipped strain arm has 20.2x the clipped null arm's shape
+# error at N = 136 (1.41e-2 against 6.99e-4). The linear-fit arms are VOID: the 2Dvortex template has
+# no geometryFit entry, so the source asked the linear fit for derivatives and stopped at step 1
+# (FATAL, NotImplemented fitDerivatives); no number of them is used.
+# ============================================================================
+study_name: sourceFitProbe2D
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme: gradient-controlled-level-set
+solve_runtime: 240
+axes_override:
+  N_CELLS:
+  - '68'
+  - '96'
+  - '136'
+  END_TIME:
+  - '2'
+  CFL:
+  - '0.5'
+  REPORT_WRITE_ONLY:
+  - 'false'
+  OSCILLATION:
+  - 'on'
+  PHASE_INDICATOR:
+  - detrixheAslam
+  SL_RECONSTRUCTION:
+  - uncachedQuadraticWeightedLeastSquares
+  - linearWeightedLeastSquares
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - gradientControl
+  SL_SOURCE_BAND_CELLS:
+  - '1000'
+  GC_LAW:
+  - none
+  GC_STRAIN_WEIGHT:
+  - none
+  - full
+  GC_Q_SCHEME:
+  - upwindFit
+  GC_MU:
+  - '1'
+  SL_CLIP:
+  - 'false'
+  - 'true'
+  GEOMETRY_FIT:
+  - uncachedQuadraticWeightedLeastSquares
+collapse_other_axes: true
+export_slides: false

@@ -49,8 +49,9 @@ is the force-side seed ([[concepts/parasitic-current-mechanism]]) and no source 
 - 2026-10-13, E2.2: the smooth taper alone does not repair the centred $q$ (numpy copy); with the
   one-sided $q$ the band still breaks the strain term in 1D, and the whole domain repairs 1D.
 - 2026-10-13, the kinematic arms of the 2D method gate with the combined source and both single
-  terms FAIL on the shape order ([[negative-log]]); the anchor, the time step and the deformation
-  probes did not locate the 2D cause (STATUS 11.26 item 6).
+  terms FAIL on the shape order ([[negative-log]]); the anchor, the time step, the deformation, the
+  direction and the clip probes did not locate the 2D cause; the interface corrugates and $F$ has a
+  cell-scale part (STATUS 11.26 items 6 and 7).
 
 ## Related
 

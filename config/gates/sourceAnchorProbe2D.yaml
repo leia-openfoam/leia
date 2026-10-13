@@ -29,6 +29,9 @@
 #   FALSIFIED if: with the anchor the shape error at N = 136 stays above 10x the baseline for the
 #      strain arm (none, full). Then the shape loss comes through the SL fit of the modified
 #      neighbours, not through the direct crossing shift.
+#
+# RESULT (2026-10-13): N0 PASS (12 of 12 byte-identical); A1 FALSIFIED (anchored strain arm 1.29e-2,
+# 23x the baseline at N = 136).
 # ============================================================================
 study_name: sourceAnchorProbe2D
 case: 2Dvortex

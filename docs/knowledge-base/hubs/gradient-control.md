@@ -55,9 +55,12 @@ Not yet. The first campaign tested six candidates against the production method 
 1. DONE 2026-10-13: gate E2.1 passes; `GC_Q_SCHEME upwindFit` is the one-sided $q$ (STATUS 11.26).
 2. FAILED 2026-10-13: the combined source and both single terms on the kinematic arms of the 2D method
    gate lose the shape order (0.88 / 1.24 / 0.26 against 3.25). The band breaks the strain term in 1D;
-   the 2D cause is open. Next, cheapest first: the direction $\mathbf{n}$ of $a$ where $q$ is small;
-   a normal-constant $a$ from the zero set (E2.4); a smooth 2D strain case with an exact solution
-   (a circle in a uniaxial stretch).
+   the 2D cause is open: the interface corrugates (zero crossings 0.22 to 0.25 h rms against 0.01 h)
+   and the applied $F$ has a cell-scale part. Six readings are falsified (STATUS 11.26 items 6 and
+   7). HYPOTHESIS: $a = \mathbf{n}\cdot\mathbf{D}\cdot\mathbf{n}$ transports perturbations along the level
+   sets through $\mathbf{n}(\nabla\psi)$, and both $q$ schemes are centred in that direction. Next: an
+   $\mathbf{n}$-independent $F$ of the same size; a normal-constant $a$ from the zero set (E2.4); a
+   smooth 2D strain case with an exact solution.
 3. The coupled stationary droplet with the repaired source at $M_\mu \in \{0.1, 1, 10\}$, only after
    a kinematic arm passes.
 4. The cause of the coupled rates near $\mu$ of HL1q, open again since the retraction: E1.4 (the

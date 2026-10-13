@@ -91,3 +91,6 @@ taper, the first-order one-sided q, the cell's own fit and the single-neighbour 
 With the one-sided q, a band of 3 cells breaks the strain term in the exact 1D stretch (q 0.534
 against 1.000003 on the whole domain, N = 256); in 2D the whole domain does not restore the shape
 order, and the anchor shows that the direct crossing shift is not the cause (STATUS 11.26 item 6).
+Later the same day: the direction and the clip probes; the strain term corrugates the interface in
+2D, and the hypothesis is a tangential transport through n(grad psi) that both q schemes discretise
+centred (STATUS 11.26 item 7).

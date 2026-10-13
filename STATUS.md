@@ -5293,15 +5293,37 @@ in `~/OpenFOAM/data/2026-10-13-combined-source/` (5.5 GB): `e1`, `e21`, `e21-np4
      at N = 136 is 18.6 at T = 1, 32.1 at T = 2 and 15.3 at T = 3 (H1 needed 3x between T = 1 and
      T = 2, and a larger ratio at T = 3). Even at T = 1 the strain arm's shape error converges at
      order 0.69 (8.9e-3 to 5.5e-3), the null arm's at 1.7.
+   - The direction probe (`sourceDirectionProbe2D`): P1 FALSIFIED. With n from the centred
+     least-squares gradient (`GC_Q_SCHEME centred`; with law none the centred q has no restoring
+     term) the shape error at N = 136 is 34.3x the baseline (1.88e-2): the upwind direction is not
+     the cause.
+   - The fit probe (`sourceFitProbe2D`): C1 FALSIFIED by its clip part. With `SL_CLIP true` the strain
+     arm has 20.2x the clipped null arm's shape error at N = 136 (1.41e-2 against 6.99e-4): the
+     unbounded quadratic fit is not the cause. Its linear-fit arms are VOID (the 2Dvortex template
+     has no geometryFit entry; the source asked the linear fit for derivatives and stopped at step 1).
+   - The interface at T, N = 136, from the zero crossings of psi(T) against psi(0) on the cell edges
+     (serial cell order): the baseline's crossings move by 0.009 / 0.010 h rms (x / y edges),
+     smoothly along the interface (lag-1 correlation 0.85 / 0.97), and 2 + 2 edges change their
+     crossing; the strain arm's move by 0.25 / 0.22 h rms with lag-1 correlation 0.06 / 0.36, and 74
+     and 94 edges change their crossing. The shape loss is a CORRUGATION of the interface, not a
+     displacement (mean shift -0.02 h). The applied F on the interface cells at T has an rms of 1.52
+     and a cell-scale part D2(D2 F)/64 of rms 0.33. (A first version of this analysis, reported in the
+     chat, sorted the cells on y rounded to 12 digits and mixed the rows; its numbers are void.)
 7. **Assessment.** (a) The one-sided `upwindFit` q is the repair of the source's q; it is ready
    (E2.1, 4 ranks, seams). (b) A 3-cell band breaks the strain term even in 1D; the whole domain
    repairs 1D. (c) In 2D the strain term alone, on the whole domain, loses the shape order (0.7 to
-   1.2) through a spatial error per step that is not the direct crossing shift and that the
-   deformation does not explain. Open, cheapest first: the direction n of a = n.D.n where q is
-   small (the upwind mean cancels at the medial axis, so n is noise there); a normal-constant a
-   from the zero set (E2.4) against a at the cell; a smooth 2D strain case with an exact solution
-   (a circle in a uniaxial stretch becomes an ellipse), which separates the source from the
-   reversal. No coupled arm runs before a kinematic arm passes.
+   1.2) through a spatial error per step: the interface corrugates, and F carries a cell-scale part.
+   Falsified as the cause: the direct crossing shift (anchor), the time step, the deformation, the
+   upwind direction n, the unbounded quadratic fit (clip). HYPOTHESIS (DERIVED, not tested): a = n.D.n
+   depends on psi through n = grad psi/|grad psi|, so its linearisation contains a transport of
+   perturbations ALONG the level sets with speed 2 psi (n.D.t); both q schemes are centred in that
+   tangential direction (upwindFit is upwind only along the normal), which is the E1 disease turned
+   by 90 degrees, and the low-dissipation SL step does not damp it (the Eulerian SDPLS source R,
+   which converges kinematically, is integrated inside a dissipative FV transport). Next, cheapest
+   first: an n-independent F of the same size (a frozen-n or a scalar strain measure) to test the
+   hypothesis; then a normal-constant a from the zero set (E2.4), whose n is the interface normal;
+   then a smooth 2D strain case with an exact solution (a circle in a uniaxial stretch). No coupled
+   arm runs before a kinematic arm passes.
 8. **Records.** STATUS 11.26 (this section); the knowledge base: the retraction note, the negative
    log (the centred q, the taper alone, the first-order one-sided q, the cell's own fit, the single
    neighbour's fit, the band-limited strain term, the combined source on the kinematic gate, the

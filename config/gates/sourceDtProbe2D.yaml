@@ -15,6 +15,9 @@
 #      CFL (an order of at least 0.7 in dt), more than the null arm's.
 #   D2 (a spatial error): it changes by less than 1.2x per halving.
 #   Between the two: no reading; the next probe is the mesh at a fixed dt.
+#
+# RESULT (2026-10-13): D2. The strain arm's shape error is 1.76e-2 / 1.80e-2 / 3.00e-2 at CFL 0.5 /
+# 0.25 / 0.125; the null arm's 5.5e-4 / 2.6e-4 / 1.1e-4.
 # ============================================================================
 study_name: sourceDtProbe2D
 case: 2Dvortex
