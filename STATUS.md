@@ -5742,3 +5742,48 @@ position stays at 2.0 and its maximum normal error at 3.4e-3 (sphere) and 1.1e-2
 is the N = 20 rung's volume-less cell of the smoke run (alpha_k = 0 with wetted warped fan
 triangles) dropping out of the ladder as the meshes refine; L1 (2.12) is the order to
 quote.
+
+**Polyhedral ladders done 2026-10-13 11:20-11:27 (jobs 55422221-23, `solve_mem_mb` 24000;
+leia af4c58f carries the tables and the combined `_meshes` tables).** Orders over
+N = 20 to 160 (three finest in parentheses), errors at N = 160, cfMesh polyhedra with the
+mean cell size of the hex ladder:
+
+| study | state / model | p1(n) | p2(n) | L2(n) | Linf(n) | p(x) | L2(d) [m] | p(kappa) | kappa err |
+|---|---|---|---|---|---|---|---|---|---|
+| sphere poly | DAVOF, quadratic faces | 2.14 (2.04) | 2.19 (2.08) | 2.17e-5 | 1.63e-3 | 2.02 | 1.33e-8 | - | - |
+| | DAVOF, Detrixhe-Aslam | 1.05 (0.99) | 1.04 (0.99) | 6.46e-4 | 5.07e-3 | 2.01 | 9.22e-9 | - | - |
+| | plicRDF | 1.05 (1.04) | 1.06 (1.05) | 2.08e-3 | 1.07e-2 | 2.00 | 6.07e-8 | - | - |
+| | gradAlpha / isoAlpha | 0.05 / 0.06 | 0.06 / 0.06 | 4.64e-2 / 5.37e-2 | 0.10 / 0.12 | 1.99 / 1.97 | 6.2e-8 / 6.4e-8 | - | - |
+| ellipsoid poly | DAVOF, quadratic faces | 1.97 (1.97) | 1.79 (1.80) | 8.36e-5 | 4.23e-3 | 1.98 | 1.77e-8 | 1.83 | 2.33e-3 |
+| | DAVOF, Detrixhe-Aslam | 1.26 (1.17) | 1.06 (1.02) | 8.89e-4 | 9.25e-3 | 2.01 | 1.22e-8 | 1.58 | 2.60e-3 |
+| | plicRDF | 1.18 (1.12) | 1.11 (1.10) | 2.73e-3 | 2.02e-2 | 2.00 | 8.03e-8 | - | - |
+| | gradAlpha / isoAlpha | 0.12 / 0.09 | 0.13 / 0.09 | 4.55e-2 / 5.36e-2 | 0.12 / 0.12 | 1.99 / 1.98 | 8.1e-8 / 8.3e-8 | - | - |
+| plane poly | DAVOF, both states | round-off | round-off | 1.7e-14 / 8.1e-15 | 2.9e-13 / 2.1e-13 | - | 2.5e-17 | - | - |
+| | plicRDF / gradAlpha / isoAlpha | - | - | 3.47e-3 / 6.99e-2 / 8.14e-2 | 0.47 / 0.55 / 1.95 | 1.47 / 1.58 / 1.40 | 5.9e-8 / 8.1e-8 / 1.4e-7 | - | - |
+
+Reading. P11 CONFIRMED on all three mesh classes (the plane at 1e-14 on cfMesh polyhedra
+for every N; plicRDF's maximum normal error there is 0.47, isoAlpha's 1.95). P12: the
+orders hold on polyhedra (quadratic faces 2.14 / 1.97 in L1, Detrixhe-Aslam 1.05 / 1.26,
+position 2.0, the ellipsoid curvature 1.83 against 1.55 on hex), and the constants are
+SMALLER, not larger: the sphere normal L2 2.17e-5 against 1.19e-4 on hex (5.5x; the Detrixhe-Aslam state 6.46e-4 against 2.43e-3, 3.8x), the
+ellipsoid 8.36e-5 against 3.01e-4 (3.6x), the curvature error 2.33e-3 against 4.55e-3
+(2x); the polyhedral cells have more faces (the F fractions over-determine the normal)
+and the point-neighbour ring is larger (the tensor fit sees more samples), which is the
+mechanism the second half of P12 named for the curvature and did not expect for the
+normal. P13 CONFIRMED: plicRDF 1.05 to 1.18 on polyhedra, gradAlpha and isoAlpha do not
+converge at all there (0.05 to 0.13). Combined tables per surface
+(`davof_normal_proposal_<surface>Normal3D_meshes.tex`): the sphere and ellipsoid ones lack
+the hexahedral block because the hexahedral studies live on the laptop, not in the cluster
+clone; the article stitches the three per-study bodies itself.
+
+Verdicts of 10.16, all seven ladders in: P11 CONFIRMED (hex, perturbed, polyhedral). P12
+CONFIRMED for the orders and FALSIFIED in the favourable direction for the constant: the
+quadratic-face normal is second order on every mesh class with the hex constant on the
+perturbed mesh and a 3.6 to 5.5 times smaller one on cfMesh polyhedra; the Detrixhe-Aslam
+normal first order (1.0 to 1.3); the position second order everywhere; the one-ring
+curvature 1.5 on hex and perturbed, 1.8 on polyhedra with half the error. P13 CONFIRMED
+and sharpened: plicRDF 0.9 to 1.2 on every mesh class with maximum normal errors of 0.14
+to 0.47 off the hex mesh, gradAlpha and isoAlpha below 0.3 and non-convergent on
+polyhedra. Open: the volume-less wetted cells of the perturbed quadratic-face state (the
+N = 20 rung of the sphere) as a case of the proposal's defect rule; the area diagnostic's
+tolerance in `Allrun_poly` (Tomislav).
