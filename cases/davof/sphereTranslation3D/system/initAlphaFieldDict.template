@@ -1,0 +1,31 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      initAlphaFieldDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// initDavofFields (the study's setfields_app): alpha.water and the face
+// fractions alphaf.water of the sphere with the DAVOF state construction
+// TPF_DAVOF_METHOD (quadraticFaces: the proposal's second-order face
+// fractions on the Detrixhe-Aslam cell fractions) and the interface-cell
+// threshold |m_c| > wispTol V^(2/3). Every row starts from this state; the
+// comparator schemes ignore alphaf.water.
+field   "alpha.water";
+type    sphere;
+radius  @!TPF_SPHERE_RADIUS!@;
+origin  (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
+davofMethod @!TPF_DAVOF_METHOD!@;
+wispTol     @!TPF_WISP_TOL!@;
+
+// ************************************************************************* //

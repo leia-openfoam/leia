@@ -1,0 +1,32 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// The uniform velocity of the arm TPF_VELOCITY_ARM (tpf_rows.velocity_tokens):
+// normal = the plane's unit normal (0.3 0.5 0.8124), oblique = (1 0 0).
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+
+boundaryField
+{
+    rim
+    {
+        type            zeroGradient;
+    }
+}
+
+// ************************************************************************* //

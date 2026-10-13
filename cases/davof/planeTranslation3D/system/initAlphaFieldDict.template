@@ -1,0 +1,30 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      initAlphaFieldDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// initDavofFields (the study's setfields_app): alpha.water and the face
+// fractions alphaf.water of the plane with the DAVOF state construction
+// TPF_DAVOF_METHOD (detrixheAslam on the plane: exact) and the interface-cell
+// threshold |m_c| > wispTol V^(2/3). Every row starts from this state; the
+// comparator schemes ignore alphaf.water.
+field   "alpha.water";
+type    plane;
+origin  (@!TPF_PLANE_PX!@ @!TPF_PLANE_PY!@ @!TPF_PLANE_PZ!@);
+normal  (@!TPF_PLANE_NX!@ @!TPF_PLANE_NY!@ @!TPF_PLANE_NZ!@);
+davofMethod @!TPF_DAVOF_METHOD!@;
+wispTol     @!TPF_WISP_TOL!@;
+
+// ************************************************************************* //

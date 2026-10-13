@@ -1,0 +1,56 @@
+// The plane-translation test of the DAVOF face update, driven through the
+// TwoPhaseFlow fork's advectorVoF (branch davof; the dictionaries of
+// run/benchmark/advection/planeTranslation3D there, 2026-10-13).
+//
+// The plane of the static test (normal (0.3 0.5 0.8124), unit) positioned in
+// the (L, L, L) corner of the 4 mm box (origin (0.8 L, 0.9 L, 0.7878 L),
+// n.x = 1.33 L): it meets only the x = L, y = L and z = L boundaries, so no cut
+// cell has an inflow boundary face. The arm TPF_VELOCITY_ARM moves it along
+// its normal (normal, U = n: the sliver-amplifying arm) or along x (oblique,
+// U = (1 0 0)); |U| = 1 for both, REFERENCE_SPEED 1. The fixed step is
+// dt = Co h (materialize, TIME_STEP_CONTROL advective); END_TIME 8e-4 s is a
+// travel of 0.2 L = 0.2 N / Co steps (20 at N = 20, Co 0.2; 640 at N = 160,
+// Co 0.05), the plane staying inside the corner (n.x <= 1.53 L < 1.6124 L).
+//
+// The state is the Detrixhe-Aslam construction of initDavofFields (exact on
+// a plane); the seven rows of workflow/scripts/tpf_rows.py (TPF_ROW) run the
+// davof scheme with its normal models and the two comparators on the same
+// initial alpha. areaFractionError and volumeFractionError every step, the
+// reconstruction error every step (controlDict.template);
+// tpf_advection_metrics.py joins them with the solver log into advectorVoF.csv.
+values
+{
+    solver (advectorVoF);
+
+    N_CELLS ( 20 40 80 160 );
+
+    TARGET_ADVECTIVE_CO ( 0.05 0.1 0.2 0.5 );
+
+    TPF_ROW ( davof-cellLocal davof-ringArea davof-ringFit davof-exact davof-plicRDFnormal plicRDF isoAlpha );
+
+    TPF_VELOCITY_ARM ( normal oblique );
+
+    TPF_DAVOF_METHOD ( detrixheAslam );
+
+    DOMAIN_LENGTH ( 0.004 );
+
+    END_TIME ( 8e-4 );
+
+    TIME_STEP_CONTROL ( advective );
+
+    REFERENCE_SPEED ( 1 );
+
+    TPF_WISP_TOL ( 1e-3 );
+
+    TPF_PLANE_PX ( 0.0032 );
+    TPF_PLANE_PY ( 0.0036 );
+    TPF_PLANE_PZ ( 0.0031512 );
+
+    TPF_PLANE_NX ( 0.3 );
+    TPF_PLANE_NY ( 0.5 );
+    TPF_PLANE_NZ ( 0.8124 );
+
+    // controlDict writeInterval in steps (timeStep write control): the end
+    // time only with this default; 1 writes every step
+    TPF_WRITE_STEPS ( 1000000 );
+}
