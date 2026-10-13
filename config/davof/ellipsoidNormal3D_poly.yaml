@@ -49,7 +49,7 @@ studies_dir: studies/davof
 case: davof/ellipsoidNormal3D
 mesh: poly
 # The N = 160 solve with the curvature model exceeds the 4000 MB Slurm default (OOM-killed 2026-10-12).
-solve_mem_mb: 12000
+solve_mem_mb: 24000  # the polyhedral N = 160 solve reached 10.6 GB resident and was OOM-killed at 12000
 mode: serial
 np: 1
 
