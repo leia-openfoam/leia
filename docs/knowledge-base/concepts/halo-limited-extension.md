@@ -3,6 +3,7 @@ title: "The halo-limited directional extension (HL0)"
 description: "The design (capped travel, fractionReached weight, level-set direction, stencilFit sampler, flux-correction form, R = h), the unit gates that pass, and the gate that fails: order 1.39 kinematic, destroyed coupled arms"
 kind: concept
 status: retracted
+outcome: negative
 part: gradient-control
 tags: [concept, part/gradient-control]
 date: 2026-09-28
@@ -73,3 +74,6 @@ $R \ge 3h$, the dossier's taper) only after the source repair and only for dropl
 
 ### 2026-09-28
 Created.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].

@@ -4,6 +4,7 @@ description: "The Kang face weights improve the static balance of the N = 64 dro
 aliases: [Kang GFM, interfaceWeighted, sharpHeaviside, LS-SSF, Kang face curvature, the 58x attribution flag]
 kind: concept
 status: retracted
+outcome: negative
 part: surface-tension
 tags: [concept, part/surface-tension]
 date: 2026-09-29
@@ -94,3 +95,6 @@ The coupled arms ran on the N = 64 stationary droplet of the negative-results de
 
 ### 2026-09-29
 Created from the SL article delivery study, the two SL decks, PCS section 3, the case template comments, the roadmap gates and the `reconstructedCurvature` source, all read at d1e3414. The attribution flag (raw-material audit item 11) is resolved as stated in the Evidence section.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].

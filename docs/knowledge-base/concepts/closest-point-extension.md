@@ -3,6 +3,7 @@ title: "The closest-point extension (FP0)"
 description: "The reference extension that samples the velocity at the closest interface point: the same order loss as HL0 in the shear flow, decomposition-dependent (45 %), and a collapse at the shear tail"
 kind: concept
 status: retracted
+outcome: negative
 part: gradient-control
 tags: [concept, part/gradient-control]
 date: 2026-09-28
@@ -47,3 +48,6 @@ band and from the distance function's kinks entering the band at the shear tail 
 
 ### 2026-09-28
 Created.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].

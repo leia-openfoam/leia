@@ -4,6 +4,7 @@ description: "Every bound on the reconstructed semi-Lagrangian value is falsifie
 aliases: [value bounds, clips and value bounds, quasi-monotone clip, distance-cone bound, gate G4]
 kind: concept
 status: retracted
+outcome: negative
 part: advection
 tags: [concept, part/advection]
 date: 2026-09-29
@@ -120,3 +121,6 @@ cfMesh is not bit-reproducible. Two runs of `pMesh` from the identical rendered 
 Created from STATUS section 4 (2026-09-05 to 2026-09-10), METHOD 8.1, 8.3 and 9, and CLAUDE.md. Other sources: the token comments, the gate configs and the method-comparison article. Pinned to d1e3414.
 
 Reversed `2Dtranslation` ([[retractions/reversed-2dtranslation]], STATUS 11.19): the translation numbers of the cone bound CORRECTED in three evidence rows and in Why it failed (item 3), record item 11 added, open question 4 RETRACTED and 5 CORRECTED. New links pinned to aaa0a7dd.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].

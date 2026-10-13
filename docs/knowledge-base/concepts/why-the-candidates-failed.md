@@ -3,6 +3,7 @@ title: "Why the candidates of the first campaign failed"
 description: "One row per candidate: how it failed, the mechanism the pre-print named, the mechanism the technical report holds responsible, the mark (MEASURED, DERIVED, HYPOTHESIS) and the experiment that decides it"
 kind: concept
 status: open
+outcome: negative
 part: gradient-control
 tags: [concept, part/gradient-control]
 date: 2026-09-28
@@ -68,3 +69,6 @@ sources: [technical report, gcls article sec:discussion, STATUS 11.15]
 
 ### 2026-09-28
 Created with the technical report.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].

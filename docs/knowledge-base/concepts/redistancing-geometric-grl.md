@@ -4,6 +4,7 @@ description: "The geometric redistancer planeFootWave is second order in the ban
 aliases: [GRL, geometric redistancing, planeFootWave, anchoredEikonal, frozen-band redistancing, PDE reinitialisation]
 kind: concept
 status: retracted
+outcome: negative
 part: advection
 tags: [concept, part/advection]
 date: 2026-09-29
@@ -99,3 +100,6 @@ Created from the GRL article, its tables and its two decks, the method-compariso
 
 ### 2026-09-30
 The solver of the line is `leiaLevelSetFoam`; `leiaRedistancedLevelSetFoam` is retired, bit for bit the same ([[decisions/retire-redistanced-solver]]). The frontmatter `code` list names the new solver.
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].

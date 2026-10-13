@@ -36,7 +36,8 @@ Every note has `title`, `description` (one sentence; search, popovers and the gr
 (the kind, and `part/<part>`) and `date`. Optional: `aliases`, `date_settled`, `decided_by`
 (config paths, or `author decision YYYY-MM-DD`), `code` (repository paths), `sources` (short
 locators such as `STATUS 11.15`, `METHOD 8.1 row SL_CLIP`, `SL article sec:surften`,
-`SL deck #/3/2`). Lists are flow lists `[a, b]` or block lists; no nested maps. Write `title`
+`SL deck #/3/2`), `outcome` (`negative`: the main finding of the note is a route that was tried and
+failed on a measurement; the note then has a line in [[negative-log]]). Lists are flow lists `[a, b]` or block lists; no nested maps. Write `title`
 and `description` in double quotes: a colon, a hash or a leading special character breaks the
 YAML parser of the site (found by the first build, 2026-09-28).
 
@@ -67,15 +68,28 @@ template of the kind (`templates/`). `## Log` is the last section: append-only, 
 2. Every number carries a link to the place where it lives.
 3. Write in ASD-STE100 Simplified Technical English.
 4. Never rename or delete a note. Repurpose it and add an alias.
-5. A decision, a retraction, a closed or opened question, a finished gate: write the note or the
-   log line in the same commit as the result.
+5. A decision, a retraction, a failed route, a closed or opened question, a finished gate: write
+   the note or the log line in the same commit as the result. Decisions go to [[decision-log]],
+   retractions to [[retraction-log]], failed routes to [[negative-log]].
 6. Keep a note to one screen where possible. Link to the pre-print, the deck and `STATUS.md` for
    the details.
 7. No file named `log.*` and no folder named with one digit: the repository `.gitignore` ignores
    them silently.
 8. `python3 docs/knowledge-base/.quartz/check_kb.py docs/knowledge-base` must pass before a commit.
+   `python3 docs/knowledge-base/.quartz/kb_coverage.py` lists the `STATUS.md` sections and the
+   `METHOD.md` tokens that no note covers yet: the curation backlog.
+9. The vault is the memory that every agent shares through git. Query it before you propose a
+   route: `kb.py search <words>`, `kb.py negative <words>`, `kb.py show <note>`. A route with a
+   line in [[negative-log]] is re-opened only under the condition on that line, or with a new
+   reason written next to it.
+10. A rule of working that must outlive a session goes into the vault
+   ([[decisions/process-operating-rules]]), not only into the memory of one machine.
 
 ## Log
 
 ### 2026-09-28
 Created with the vault.
+
+### 2026-10-13
+Added the `outcome` key, the negative log, the query tool (rule 9), the coverage report (rule 8)
+and rule 10: the vault is the shared memory of the agents.

@@ -4,6 +4,7 @@ description: "The face-level curvature deliveries of the stabilization campaign;
 aliases: [face deliveries, curvature noise gain, G h^2, stabilizedFootPointFace, cut-cell delivery, cell-mean delivery]
 kind: concept
 status: retracted
+outcome: negative
 part: surface-tension
 tags: [concept, part/surface-tension]
 date: 2026-09-28
@@ -95,3 +96,6 @@ Created from the roadmap's face gates, PCS sections 9 to 17 and STATUS sections 
 ### 2026-09-29
 UPDATED with the static scoring of the production cell-centre inverse on the ellipse and the gain read-out per rung (METHOD 4.1, STATUS 11.19 item 6, the curated gain table, pinned to aaa0a7dd). CORRECTED the verdict: per rung the per-face inverse exceeds the gain limit at N = 256 (0.673), so the gain limit does not separate the deliveries on the ellipse.
 CORRECTED the same day: the two forms of the gain criterion (f47fc939).
+
+### 2026-10-13
+`outcome: negative`: the main finding is a failed route; a line in [[negative-log]].
