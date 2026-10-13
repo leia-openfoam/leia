@@ -49,7 +49,7 @@ REPO=$(cd "$(dirname "$0")/../.." && pwd)
 # shellcheck disable=SC1091
 . "$REPO/etc/leia-env.sh"
 
-RECONS="uncachedQuadraticWeightedLeastSquares quadraticWeightedLeastSquares quadraticTaylor
+RECONS="footAnchoredQuadraticWeightedLeastSquares uncachedQuadraticWeightedLeastSquares quadraticWeightedLeastSquares quadraticTaylor
         linearWeightedLeastSquares linearTaylor defectCorrectedIDW
         signedDistanceQuadraticWeightedLeastSquares"
 BOUNDS="none stencilBounds lipschitzCone"
