@@ -27,6 +27,8 @@ import re
 import shutil
 import subprocess
 
+import tpf_rows   # the TwoPhaseFlow advection rows: TPF_ROW -> scheme + normal model
+
 _TOKEN = re.compile(r"@!([A-Z0-9_]+)!@")
 _REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 # Paths whose state can change what a run computes. Deliberately NOT the whole
@@ -159,8 +161,21 @@ def _with_derived_tokens(tokens):
         The capillary mode remains the default for coupled surface-tension runs.
         The advective mode is for sigma=0 kinematic convergence tests, where
         retaining the capillary limit would add progressively more unnecessary
-        point-value remaps and confound the spatial study."""
+        point-value remaps and confound the spatial study.
+
+      * TPF_ROW (the TwoPhaseFlow advection studies, cases/davof/*Translation3D,
+        2026-10-13) expands into TPF_RECON_SCHEME, TPF_NORMAL_MODEL,
+        TPF_APPLY_TO, TPF_SLIVER_TOL, TPF_MAX_ANGLE (tpf_rows.row_tokens), and
+        TPF_VELOCITY_ARM into TPF_UX/UY/UZ (tpf_rows.velocity_tokens): one word
+        per row and per arm in a config, the five dictionary keys in the
+        templates. Only a case that carries the input token sees them; every
+        other study renders byte-identically (gate of 2026-10-13: three
+        existing studies re-materialized before and after, identical)."""
     out = dict(tokens)
+    if "TPF_ROW" in out:
+        out.update(tpf_rows.row_tokens(str(out["TPF_ROW"])))
+    if "TPF_VELOCITY_ARM" in out:
+        out.update(tpf_rows.velocity_tokens(str(out["TPF_VELOCITY_ARM"])))
     if "END_TIME" in out:
         try:
             out["HALF_END_TIME"] = "{:g}".format(float(out["END_TIME"]) / 2.0)

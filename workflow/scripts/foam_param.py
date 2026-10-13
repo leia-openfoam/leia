@@ -55,6 +55,12 @@ _TOKEN = re.compile(r"@!([A-Z0-9_]+)!@")
 #                   in 3D on polyhedral meshes"), for a meshDict.template so that a
 #                   polyhedral study runs the SAME N_CELLS ladder as its hexahedral
 #                   twin (cases/davof/*, 2026-10-12) instead of a MAX_CELL_SIZE axis.
+#   TPF_RECON_SCHEME, TPF_NORMAL_MODEL, TPF_APPLY_TO, TPF_SLIVER_TOL, TPF_MAX_ANGLE
+#                   = tpf_rows.row_tokens(TPF_ROW): the alpha-solver keys of one
+#                   row of the TwoPhaseFlow advection studies (cases/davof/
+#                   *Translation3D, 2026-10-13); the sweep axis is TPF_ROW.
+#   TPF_UX, TPF_UY, TPF_UZ = tpf_rows.velocity_tokens(TPF_VELOCITY_ARM): the
+#                   uniform velocity of an arm (normal | oblique | axial).
 _DERIVED_TOKENS = {
     "HALF_END_TIME",
     "MAX_DELTA_T",
@@ -63,6 +69,14 @@ _DERIVED_TOKENS = {
     "N_CELLS_BASE",
     "DOMAIN_CELL_SIZE",
     "CFMESH_CELL_SIZE",
+    "TPF_RECON_SCHEME",
+    "TPF_NORMAL_MODEL",
+    "TPF_APPLY_TO",
+    "TPF_SLIVER_TOL",
+    "TPF_MAX_ANGLE",
+    "TPF_UX",
+    "TPF_UY",
+    "TPF_UZ",
 }
 
 # A derived token is computed FROM other tokens, and those inputs are typically
@@ -79,6 +93,16 @@ _DERIVED_INPUTS = {
                      "REFINE_ALLOW_PIN_MISMATCH"),
     "DOMAIN_CELL_SIZE": ("N_CELLS", "DOMAIN_LENGTH"),
     "CFMESH_CELL_SIZE": ("N_CELLS", "DOMAIN_LENGTH"),
+    # The TwoPhaseFlow advection rows and velocity arms (tpf_rows.py): the
+    # templates name the expanded keys, the study sweeps the one-word inputs.
+    "TPF_RECON_SCHEME": ("TPF_ROW",),
+    "TPF_NORMAL_MODEL": ("TPF_ROW",),
+    "TPF_APPLY_TO": ("TPF_ROW",),
+    "TPF_SLIVER_TOL": ("TPF_ROW",),
+    "TPF_MAX_ANGLE": ("TPF_ROW",),
+    "TPF_UX": ("TPF_VELOCITY_ARM",),
+    "TPF_UY": ("TPF_VELOCITY_ARM",),
+    "TPF_UZ": ("TPF_VELOCITY_ARM",),
 }
 
 
