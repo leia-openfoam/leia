@@ -67,3 +67,9 @@ Hubs: [[hubs/gradient-control]]. Siblings: [[concepts/why-the-candidates-failed]
 
 ### 2026-09-28
 Written from the pre-print at 8867581, the technical report, the law and source code, and STATUS 11.15 to 11.17. Corrected 2026-09-28. Entered in [[retraction-log#2026-09]].
+
+### 2026-10-13
+The reading that replaced this one, the centred-q eigenmode at rate mu, is retracted too
+([[retractions/centred-q-eigenmode-growth-rate]]). That does not reinstate the loop reading: no
+measurement supports it either. The cause of the coupled rates near mu is open; E1.4 decides the
+scaling with mu.

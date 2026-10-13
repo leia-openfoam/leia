@@ -54,6 +54,17 @@ experiment is named that decides it). The summary comes first; the details follo
 \section{Summary}
 \label{sec:summary}
 
+\paragraph{Retraction (2026-10-13).} Reason~(i) below states that the source step with the
+centred $q$ is linearly unstable at a rate of order $\mu$. The zero-flow gate E1 falsifies that
+growth law (\path{STATUS.md} section 11.26): at $\bu=0$, $N=100$ and a band of $3h$, the sawtooth
+amplitude rises from $5.2\times10^{-8}$ to $2\times10^{-5}$ by $\mu t=4$, stays there to
+$\mu t\approx16$, and then grows at $0.067\mu$, with the same numbers for every $\mu\Delta t$
+between 0.001 and 0.01. The centred $q$ is still the defect: it reverses the group velocity of
+the sawtooth mode, so the source carries the sawtooth envelope onto the zero set, and the
+interface cells flatten by $\mu t=80$ (Section~\ref{sec:eigenmode}). The measured coupled rates
+near $\mu$ of HL1q are therefore not explained by the source's own map; their cause is open.
+The rest of this report is unchanged and must be read with this paragraph.
+
 \paragraph{The verdict in one paragraph.} The six candidates of the first campaign (S1, HL0,
 HL1q, HL1z, HL2, FP0) all fail the fixed 2D method gate, and they fail for three reasons that
 the pre-print did not name correctly. (i)~The source step is discretised with a centred
@@ -78,7 +89,7 @@ cand. & what & how it failed (\Meas) & mechanism held responsible (mark) \\
 \midrule
 S1 & soft wall alone, band $3h$ & shear shape error $411\times$ (order 0.06), gradient target met (0.71); translating $N{=}142$ diverges; oscillating volume error 21; coupled seam 0.76 & the wall's slope reaches $40\sigma$, a bang-bang per-cell map (\Der); the band edge (\Der) \\
 HL0 & halo-limited extension, $R=h$ & shear $14\times$, order 1.39, target missed (0.83); oscillating band error $2\times10^7$; translating $64\times$; seam pass & strain relocated into a shell (\Der, \Meas{} 1D); in the coupled arms the sampler injects the spurious current unprojected (\Meas{} translating) or fits across the boundary layer (\Hyp{} oscillating) \\
-HL1q & HL0 + linearQ, $\mu=1/T_\mathrm{ref}$ & shear target met (0.20), shape $173\times$ (order 0.02); stationary droplet destroyed at $N{=}200$ (shape $3.8R$, volume 76\,\%); seam pass & the centred-$q$ eigenmode at rate $\sim\mu$ (\Der; rates \Meas); the band edge (\Der) \\
+HL1q & HL0 + linearQ, $\mu=1/T_\mathrm{ref}$ & shear target met (0.20), shape $173\times$ (order 0.02); stationary droplet destroyed at $N{=}200$ (shape $3.8R$, volume 76\,\%); seam pass & the centred-$q$ eigenmode at rate $\sim\mu$ (\Der; rates \Meas; the rate-$\mu$ law retracted 2026-10-13, see the Summary); the band edge (\Der) \\
 HL1z & HL0 + linearZ & shear band error 10.5, shape 1.65, volume 1.6; stationary destroyed (3.7$R$, 84\,\%); seam pass & as HL1q, plus the unbounded $-\mu q^2/2$ term for large $q$ (\Der) \\
 HL2 & HL0 + soft wall & translating diverges at all rungs; oscillating volume error 14.6; shear $400\times$; seam not comparable & S1's and HL0's mechanisms together \\
 FP0 & closest-point extension & shear $34\times$ (order 1.38), target missed (0.94); kinematic seam 0.45; coupled seam 1.11; $N{=}200$ runs timed out & no shell, same order loss: the tangential shear of a normal-constant extension and the kinks at the shear tail (\Der); the search is decomposition-dependent (\Meas) \\
@@ -182,6 +193,16 @@ $\sigma$. So the linear laws read no velocity. This fact organises the section.
 
 \subsection{The source's own map is linearly unstable with a centred gradient (\Der)}
 \label{sec:eigenmode}
+
+\paragraph{Retracted 2026-10-13.} The growth law of this subsection is wrong. The mode
+$(-1)^{i+j}E\,d$ grows with $|d|$, so in a band of finite width it is not an eigenmode. For a
+sawtooth with a smooth envelope, $\delta_c=(-1)^{i+j}A(\bx_c)$, the centred step gives
+$A_t=\mu\,d\,\bn\cdot\nabla A$: the envelope moves toward the zero set with speed $\mu|d|$ and
+keeps its value along the way, while smooth errors move away from the zero set (the reversed
+group velocity of the sawtooth mode under a centred difference). Gate E1 (\Meas,
+\path{STATUS.md} section 11.26) shows a bounded rise, a plateau and a slow growth at $0.067\mu$,
+not $e^{\mu t}$. The conclusion that the centred $q$ must be replaced stands; the rate-$\mu$
+explanation of the coupled rates does not. The text below is the original derivation.
 
 Linearise $\psi_c\leftarrow\psi_c\exp(-\mu\Delta t\,(q_c-1))$ about the signed distance
 $\psi=d$: with $\psi_c=d_c+\delta_c$ and $q_c\approx1+(\bn\cdot\gradh\delta)_c$,

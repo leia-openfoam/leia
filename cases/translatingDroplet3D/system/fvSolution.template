@@ -548,6 +548,8 @@ levelSet
         {
             type        @!SL_SOURCE!@;
             bandCells   @!SL_SOURCE_BAND_CELLS!@;
+            qScheme     @!GC_Q_SCHEME!@;
+            anchorInterface @!GC_ANCHOR_INTERFACE!@;
             law
             {
                 // F = w(q)*a + G(q) in D_t psi = psi*F; q = |grad psi|, a = n.D.n.

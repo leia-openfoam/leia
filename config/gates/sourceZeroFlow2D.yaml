@@ -1,0 +1,54 @@
+# ============================================================================
+# SOURCE-TERM GATE E1.1 to E1.3: the SL source step at ZERO velocity (2026-10-13)
+#
+# WHY. The first gradient-control campaign failed every candidate (STATUS 11.15). The technical
+# report reads the primary failure as a property of the source map itself: with a CENTRED q
+# (gradPsiSource leastSquares, which is the centred difference on a uniform hex mesh) the mode
+# (-1)^(i+j) d grows by (1 + mu dt) per step, because the centred difference flips the sign of the
+# alternating part, so F = -mu (q - 1) = +mu eps (-1)^(i+j). With u = 0 the strain a vanishes, so
+# this gate tests the linearQ part of the combined source F = a + lambda (1 - q) of Bothe and Soga
+# (law linearQ with strain weight full) and nothing else. Pre-registered in
+# docs/knowledge-base/concepts/gradient-control-next-experiments.md on 2026-09-28; quoted below.
+#
+# SETUP. cases/2Dtranslation, N = 100 (h = 0.01, R/h = 15), serial, the kinematic SL solver with
+# SL_SOURCE gradientControl, GC_LAW linearQ, GC_STRAIN_WEIGHT none, GC_MU in {27, 270, 2700} 1/s,
+# SL_SOURCE_BAND_CELLS in {3, 1000}. This config renders and initialises the cases; the driver
+# workflow/scripts/source_zero_flow_gate.sh sets u = (0 0 0), adjustTimeStep no, deltaT =
+# 1e-2/mu, endTime = 40/mu (4000 steps), writes psi every 50 steps, and runs each case twice:
+# psi0 = d and psi0 = 1.5 d. END_REFERENCE none: the reference is the initial field.
+# Diagnostic (workflow/scripts/source_checkerboard_diag.py): the checkerboard amplitude
+# cb = D2(D2 psi)/64 in the band (D2 the 5-point second difference; the smooth floor of the circle
+# is about h^4/R^3 = 3e-6), its growth rate from a log fit, the band mean of the centred q, and the
+# zero-set displacement from E_GEOM_ALPHA.
+#
+# PRE-REGISTERED READ-OUT (2026-09-28, quoted):
+#   E1.1 (psi0 = d, bandCells 3): max|psi_c - d_c| grows as e^(mu t) with the pattern (-1)^(i+j) d;
+#        the fit curvature error grows at mu; the centred metric stays O(seed) until the amplitude
+#        is O(h); rates 1:10:100. FALSIFIES mechanism A; if nothing grows at u = 0 the source map
+#        is stable and the flow-loop reading returns.
+#   E1.2 (psi0 = 1.5 d): |psi| -> 0 in the interface cells on one sublattice within about 5/mu;
+#        zero-set displacement O(0.5 h). Mechanism B, if the zero set stays put to O(h^2).
+#   E1.3 (bandCells 1000): B disappears, A remains. Separates A from B.
+# Not measured here: the curvature error (the kinematic solver has no curvature fit).
+# ============================================================================
+study_name: sourceZeroFlow2D
+case: 2Dtranslation
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangeLevelSetFoam
+axes_override:
+  N_CELLS: [100]
+  CFL: [0.5]
+  END_TIME: [0.5]
+  END_REFERENCE: [none]
+  SL_SOURCE: [gradientControl]
+  SL_SOURCE_BAND_CELLS: [3, 1000]
+  GC_LAW: [linearQ]
+  GC_STRAIN_WEIGHT: [none]
+  GC_MU: [27, 270, 2700]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

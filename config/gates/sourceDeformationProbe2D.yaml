@@ -1,0 +1,64 @@
+# ============================================================================
+# PROBE: does the shape loss of the strain term grow with the deformation of the shape? (2026-10-13)
+#
+# WHY. The time-step probe (config/gates/sourceDtProbe2D.yaml, STATUS 11.26) showed a spatial error:
+# the strain arm's shape error at T does not fall with dt (1.76e-2, 1.80e-2, 3.00e-2 at CFL 0.5,
+# 0.25, 0.125, N = 136). HYPOTHESIS: the source keeps the field near a signed distance, which in a
+# stretched shape has a poorly resolved medial axis inside the fit stencils of the interface
+# cells; the baseline's transported field stays smooth there. The reversed vortex deforms the
+# circle more when T is longer.
+#
+# SETUP. The shear arm (2Dvortex, reversed, CFL 0.5, np 4) at N = 68 and 136, END_TIME in {1, 2, 3},
+# the strain term alone (GC_LAW none, GC_STRAIN_WEIGHT full, upwindFit, band 1000) against the null
+# arm (the baseline).
+#
+# PRE-REGISTERED READ-OUT (2026-10-13, before the run):
+#   H1 (the deformation decides): at N = 136 the ratio (strain arm shape error)/(null arm shape
+#      error) at T = 1 is at least 3x smaller than at T = 2, and at T = 3 it is larger than at T = 2.
+#   FALSIFIED if the ratio at T = 1 is within 1.5x of the ratio at T = 2.
+# ============================================================================
+study_name: sourceDeformationProbe2D
+case: 2Dvortex
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme: gradient-controlled-level-set
+solve_runtime: 240
+axes_override:
+  N_CELLS:
+  - '68'
+  - '136'
+  END_TIME:
+  - '1'
+  - '2'
+  - '3'
+  CFL:
+  - '0.5'
+  REPORT_WRITE_ONLY:
+  - 'false'
+  OSCILLATION:
+  - 'on'
+  PHASE_INDICATOR:
+  - detrixheAslam
+  SL_RECONSTRUCTION:
+  - uncachedQuadraticWeightedLeastSquares
+  SL_TRACE_VELOCITY:
+  - projectedFlux
+  SL_SOURCE:
+  - gradientControl
+  SL_SOURCE_BAND_CELLS:
+  - '1000'
+  GC_LAW:
+  - none
+  GC_STRAIN_WEIGHT:
+  - none
+  - full
+  GC_Q_SCHEME:
+  - upwindFit
+  GC_MU:
+  - '1'
+  GC_ANCHOR_INTERFACE:
+  - 'false'
+collapse_other_axes: true
+export_slides: false

@@ -1,0 +1,62 @@
+# ============================================================================
+# SOURCE-TERM GATE E2.1: the upwind q of the gradient-control source at ZERO velocity (2026-10-13)
+#
+# WHY. Gate E1 (config/gates/sourceZeroFlow2D.yaml, STATUS 11.26) measured the centred q at u = 0:
+# no growth at e^(mu t), but a slow growth (0.067 mu, independent of mu dt between 0.001 and 0.01)
+# that flattens the interface cells by mu t = 80 (psi/d 0.18 at N = 100), faster in a wider band.
+# A numpy copy of the source step (validated against E1 to 2.6e-8 after 4000 steps) located the
+# cause: the centred difference reverses the group velocity of the sawtooth mode, so the source
+# carries smooth errors away from the zero set but carries the sawtooth envelope onto it. The
+# same copy ranked the q estimators; the compact two-pass one ranked first:
+#   qScheme upwindFit: pass 1 updates the SL quadratic fit on the current psi and reads its
+#   gradient g_u and Hessian H_u at every cell centre (exchanged across processor patches);
+#   pass 2: g_c = sum_u w_u (g_u + H_u (x_c - x_u)) / sum_u w_u over the face neighbours u that
+#   are upwind of c (closer to the zero set or across it), w_u = sign(psi_c) (psi_c - psi_u) > 0.
+#
+# SETUP. As E1: cases/2Dtranslation, serial, the kinematic SL solver, u = (0 0 0), GC_LAW linearQ,
+# GC_STRAIN_WEIGHT none, GC_MU 27 1/s, mu dt = 0.01, band 3 cells; N in {50, 100, 200}; GC_Q_SCHEME
+# in {centred, upwindFit}; psi0 = d and psi0 = 1.5 d; to mu t = 80 (8000 steps). Driver:
+#   workflow/scripts/source_zero_flow_gate.sh <studies_dir> config/gates/sourceZeroFlowUpwind2D.yaml 80
+# Diagnostic: workflow/scripts/source_checkerboard_diag.py (the line "final:" at the last time):
+# the zero-crossing shift along x and y between neighbours with a sign change (max and RMS, in h),
+# rms(psi - d)/h in |d| < 3h, the sawtooth amplitude cb of psi - d, the median psi/d in |d| < h.
+#
+# PRE-REGISTERED READ-OUT (2026-10-13, before the run; the numbers are those of the numpy copy,
+# replica/exp5.py "avg", the same estimator on the same grid, mu t = 80):
+#   P1 (inertness of the token path). The centred arm at N = 100, psi0 = d, is byte-identical to
+#      E1 case 2Dtranslation_00000_s1 over its 4001 steps (compare_metrics_csv --tol 0).
+#   P2 (stability). upwindFit, psi0 = d: cb(psi - d) at mu t = 80 is at most 2x the copy
+#      (5.4e-5, 3.8e-6, 3.7e-7 at N = 50, 100, 200), and grows by less than 2x between mu t = 40
+#      and 80 at every N. FAIL: a growth of 2x or more at any N.
+#   P3 (accuracy). upwindFit, psi0 = d: the maximum zero-crossing shift is at most 2x the copy
+#      (0.034 h, 0.0043 h, 0.0006 h); the observed order of rms(psi - d) is at least 2.5 on both
+#      intervals (the copy: 3.7, 3.6). FAIL: an order below 1.5 on either interval.
+#   P4 (correction). upwindFit, psi0 = 1.5 d: median psi/d in |d| < h at mu t = 80 is in
+#      [0.99, 1.01] at N = 100 and 200 (the copy: 0.998, 0.999).
+#   P5 (control). centred, psi0 = d: the interface cells flatten at N = 50 and 100 (median psi/d
+#      below 0.6 at mu t = 80; the copy: 0.03 and 0.18), as in E1.
+#   The 4-rank gate of upwindFit (np 4 against serial, max |psi_par - psi_ser| <= 1e-10 at
+#   mu t = 80, N = 100) runs from the same driver output; a larger difference is a defect.
+# ============================================================================
+study_name: sourceZeroFlowUpwind2D
+case: 2Dtranslation
+mesh: hex
+mode: serial
+np: 1
+solver: leiaSemiLagrangeLevelSetFoam
+axes_override:
+  N_CELLS: [50, 100, 200]
+  CFL: [0.5]
+  END_TIME: [0.5]
+  END_REFERENCE: [none]
+  SL_SOURCE: [gradientControl]
+  SL_SOURCE_BAND_CELLS: [3]
+  GC_Q_SCHEME: [centred, upwindFit]
+  GC_LAW: [linearQ]
+  GC_STRAIN_WEIGHT: [none]
+  GC_MU: [27]
+  PHASE_INDICATOR: [detrixheAslam]
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: "mpirun -np {np}"
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

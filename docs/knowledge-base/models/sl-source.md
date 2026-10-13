@@ -84,3 +84,9 @@ once the discretisation is repaired.
 
 ### 2026-09-28
 Created.
+
+### 2026-10-13
+The gradient-control source has a key `qScheme centred | upwindFit` (token `GC_Q_SCHEME`, default
+`centred`, byte-identical over 4000 steps). `upwindFit` takes q from the upwind-weighted mean of the
+upwind face neighbours' fit gradients at the cell centre (STATUS 11.26); the centred q is a failed
+route at u = 0 ([[retractions/centred-q-eigenmode-growth-rate]]).

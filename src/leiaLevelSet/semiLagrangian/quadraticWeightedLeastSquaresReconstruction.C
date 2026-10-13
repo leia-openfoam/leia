@@ -285,4 +285,58 @@ Foam::scalar Foam::quadraticWeightedLeastSquaresReconstruction::evaluateRaw
     return val;
 }
 
+
+Foam::label Foam::quadraticWeightedLeastSquaresReconstruction::fitDerivatives
+(
+    const label c,
+    vector& g,
+    symmTensor& H
+) const
+{
+    g = Zero;
+    H = Zero;
+
+    const label ncoeff = ncoeff_[c];
+    if (ncoeff == 0)
+    {
+        return 0;                                   // constant fallback
+    }
+
+    const label nd = activeDirs_.size();
+    const scalar* cf = coeffs_[c].cdata();
+    for (label a = 0; a < nd; ++a)
+    {
+        g[activeDirs_[a]] = cf[a];
+    }
+    if (ncoeff == nd)
+    {
+        return 1;                                   // linear fallback: H = 0
+    }
+
+    scalar Hm[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+    for (label a = 0; a < nd; ++a)
+    {
+        Hm[activeDirs_[a]][activeDirs_[a]] = cf[nd + a];
+    }
+    label k = 2*nd;
+    for (label a = 0; a < nd; ++a)
+    {
+        for (label b = a + 1; b < nd; ++b)
+        {
+            const label i = activeDirs_[a];
+            const label j = activeDirs_[b];
+            Hm[i][j] = cf[k];
+            Hm[j][i] = cf[k];
+            ++k;
+        }
+    }
+    H = symmTensor
+    (
+        Hm[0][0], Hm[0][1], Hm[0][2],
+                  Hm[1][1], Hm[1][2],
+                            Hm[2][2]
+    );
+    return 2;
+}
+
 // ************************************************************************* //

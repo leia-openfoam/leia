@@ -34,6 +34,24 @@ Then the first coupled gate of the next campaign: the stationary droplet with th
 source at $M_\mu \in \{0.1, 1, 10\}$, prediction "no growth at rate $\mu$"; a slower residual growth
 is the force-side seed ([[concepts/parasitic-current-mechanism]]) and no source fixes it.
 
+## Outcomes (appended; the predictions above are not edited)
+
+- 2026-10-13, E1.1 to E1.3 (STATUS 11.26): E1.1 FALSIFIED as written (no growth at $e^{\mu t}$; a
+  bounded rise, a plateau, then 0.067 $\mu$; the rate law is retracted,
+  [[retractions/centred-q-eigenmode-growth-rate]]); the three $\mu$ were the same run in step space
+  (a design flaw), so the $\mu\Delta t$ question went to the numpy copy. E1.2 PARTLY: the zero
+  crossings move by O(0.5h) at $u = 0$, not through "one sublattice to zero within $5/\mu$". E1.3
+  FALSIFIED: the whole-domain band is worse.
+- 2026-10-13, E2.1, re-designed: the one-sided $q$ is the compact two-pass `upwindFit`, not
+  Rouy–Tourin (the first-order one-sided $q$ has a first-order fixed point). PASS
+  (`config/gates/sourceZeroFlowUpwind2D.yaml`): the zero-crossing shift 0.034 / 0.0043 / 0.0006 h
+  at $N$ = 50 / 100 / 200, rms$(\psi - d)$ order 3.7 and 3.6, 4 ranks to 1e-13.
+- 2026-10-13, E2.2: the smooth taper alone does not repair the centred $q$ (numpy copy); with the
+  one-sided $q$ the band still breaks the strain term in 1D, and the whole domain repairs 1D.
+- 2026-10-13, the kinematic arms of the 2D method gate with the combined source and both single
+  terms FAIL on the shape order ([[negative-log]]); the anchor, the time step and the deformation
+  probes did not locate the 2D cause (STATUS 11.26 item 6).
+
 ## Related
 
 [[hubs/gradient-control]], [[concepts/why-the-candidates-failed]],
@@ -44,3 +62,6 @@ is the force-side seed ([[concepts/parasitic-current-mechanism]]) and no source 
 
 ### 2026-09-28
 Created with the technical report.
+
+### 2026-10-13
+E1.1 to E1.3 and E2.1 ran; the outcomes are appended above the related notes.

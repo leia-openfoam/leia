@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-10-02 (section 11.25: the prescribed flux is projected to divergence-free on polyhedral meshes, after fixing two defects of correctFlux; no transport metric degrades by more than 1.1 %. Section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-10-13 (section 11.26: the combined source F = a + lambda (1 - q): the centred q of the source step fails at zero velocity and its growth law is retracted; the one-sided q `upwindFit` passes gate E2.1 at order 3.6; the kinematic arms of the 2D method gate fail on the shape order for the combined source and both single terms; the band breaks the strain term in 1D; the 2D shape loss is open. section 11.25: the prescribed flux is projected to divergence-free on polyhedral meshes, after fixing two defects of correctFlux; no transport metric degrades by more than 1.1 %. Section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -5170,6 +5170,145 @@ to Lichtenberg (`/work/scratch/tm83tomy/leia-fluxproj`, branch `feature/flux-pro
 8. **Open.** 3Ddeformation on polyhedra (3 configs) is not measured with the projection. Raw data:
    `/work/scratch/tm83tomy/leia-fluxproj/studies/fluxProjectionGate3DshearPoly{,Clip}` on Lichtenberg
    (job ids in that worktree's `.my_jobs`).
+
+### 11.26 The combined source F = a + lambda (1 - q): the centred q fails at zero velocity, the one-sided q passes, the kinematic gate fails on the shape order (2026-10-13)
+
+The author's direction of 2026-10-13: the SL work waits until the error amplification of the
+quadratic reconstruction is understood (task T5, sent to the SL session), and this session pushes
+the combined source of D. Bothe and K. Soga, F = a + lambda (1 - q) with a = n.D.n, and builds the
+knowledge base into the shared memory of the agents (cb4026eb). Everything below ran on the laptop
+(2D, serial or np <= 8, OpenFOAM-v2606, development cb4026eb plus this commit). The raw studies are
+in `~/OpenFOAM/data/2026-10-13-combined-source/` (5.5 GB): `e1`, `e21`, `e21-np4`, `methodGate2D`,
+`probes`. Every number in this section is MEASURED unless it is marked.
+
+1. **Gate E1: the source step with the centred q at zero velocity.** `config/gates/sourceZeroFlow2D.yaml`
+   quotes the pre-registration of 2026-09-28; driver `workflow/scripts/source_zero_flow_gate.sh`,
+   diagnostic `workflow/scripts/source_checkerboard_diag.py`. N = 100, u = 0, linearQ, mu in
+   {27, 270, 2700} 1/s at mu dt = 0.01, band 3 and 1000 cells, psi0 = d and 1.5 d, to mu t = 40.
+   - E1.1 FALSIFIED as written: no growth at e^(mu t). The sawtooth amplitude (D2(D2 psi)/64 in
+     |d| <= 3h) rises from 5.2e-8 to 2e-5 by mu t = 4, stays there to mu t of about 16, and then
+     grows at 0.067 mu (1.87e-4 at mu t = 40). The interface cells flatten later: at mu t = 80 the
+     median psi/d of the interface cells is 0.33 (OpenFOAM, the control arm of E2.1) and 0.18 (the
+     numpy copy of item 2; the two agree to 2.6e-8 up to mu t = 40 and separate in the unstable
+     regime).
+   - A design flaw of E1, mine: dt = 1e-2/mu makes the three mu the same run in step space, so the
+     rates 1:10:100 hold by construction (0.067 mu at all three). The numpy copy answers the
+     dt question instead (item 2); the OpenFOAM run E1b was not needed.
+   - E1.2 (psi0 = 1.5 d) PARTLY confirmed: the zero crossings move by O(0.5 h) at u = 0 (up to
+     0.91 h at mu t = 40). The mechanism "one sublattice to zero within 5/mu" is FALSIFIED: q is
+     restored first (band mean 1.499 to 0.993), and both sublattices flatten later (median psi/d
+     0.38 at mu t = 40).
+   - E1.3 (band 1000) FALSIFIED ("B disappears, A remains"): the source on the whole domain is
+     worse (q band mean 4.5 and a displacement of 1.6 h at mu t = 40).
+2. **The numpy copy of the source step** (`workflow/scripts/source_step_replica.py`, a research
+   instrument). At u = 0 the SL step is the identity (the quadratic fit is anchored at the cell
+   value and evaluated at the cell centre). The copy reproduces E1 to 2.6e-8 after 4000 steps
+   (`source_step_replica.py validate`). Its tables (`source_step_replica.py table`):
+   - The damage does not depend on mu dt: 0.068 mu at mu dt = 0.001 and 0.067 mu at 0.01
+     (band 3, N = 100).
+   - A wider band is worse: band 12 flattens the interface cells (median psi/d 0.0000) by
+     mu t = 40.
+   - A seeded mode 1e-6 d (-1)^(i+j) does not grow at e^(mu t).
+   - THE MECHANISM (DERIVED, consistent with the three lines above). For a sawtooth with a smooth
+     envelope, delta_c = (-1)^(i+j) A, the linearised centred step is A_t = mu d n.grad A: the
+     envelope moves TOWARD the zero set with speed mu |d|, while smooth errors move away from it.
+     This is the reversed group velocity of the sawtooth mode under a centred difference. The
+     "eigenmode at rate mu", (-1)^(i+j) d, is the unbounded envelope arriving from larger |d|; a
+     band cuts it off. RETRACTED: the growth law of the technical report
+     (`docs/knowledge-base/retractions/centred-q-eigenmode-growth-rate.md`; a retraction paragraph
+     in the report's summary and at sec:eigenmode). Consequence: the coupled rates near mu of HL1q
+     (290 and 320 to 350 1/s against 270) are not explained by the source's own map; their cause
+     is OPEN again (E1.4 decides the scaling with mu).
+   - The q estimators, psi0 = d, band 3, mu t = 80, N = 50 / 100 / 200 (the maximum zero-crossing
+     shift in h; the order of rms(psi - d)): centred 0.93 / 0.74 / 0.66, destroyed; the first-order
+     one-sided q (Godunov, or least squares over the upwind face neighbours) 0.70 / 0.29 / 0.39,
+     stable but first order; the same with the interface cells anchored 0 / 0 / 0, order 1.9 and
+     2.0, but a wrong interface gradient stays (psi0 = 1.5 d keeps psi/d = 1.5 there); the cell's
+     own quadratic fit 0.93 / 0.68 / 0.84, as centred; the single most upwind neighbour's fit
+     0.22 / 0.058 / 0.20, no convergence; an upwind quadratic over the 5x5 ring 0.16 / 0.037 /
+     0.0077, order 3.1 and 3.3, not compact; the upwind-weighted mean of the upwind face
+     neighbours' fits 0.034 / 0.0043 / 0.0006, order 3.7 and 3.6. A smooth band taper with the
+     centred q delays the damage and does not remove it.
+3. **The change.** `slGradientControlSource`: `qScheme centred | upwindFit` (token `GC_Q_SCHEME`,
+   default `centred`). `upwindFit`, per cell, two passes over face neighbours: (1) the SL fit is
+   updated on the current psi, and its gradient g_u and Hessian H_u at every cell centre are
+   exchanged across processor patches; (2) g_c = sum_u w_u (g_u + H_u (x_c - x_u)) / sum_u w_u over
+   the face neighbours u upwind of c (closer to the zero set or across it),
+   w_u = sign(psi_c) (psi_c - psi_u) > 0; q = |g_c|, n = g_c/q; F = 0 in a cell without an upwind
+   neighbour. `quadraticWeightedLeastSquaresReconstruction` gets `fitDerivatives` (the uncached
+   fit had it). `anchorInterface false | true` (token `GC_ANCHOR_INTERFACE`, default `false`) is a
+   research probe: F = 0 in every cell with a face neighbour of the opposite sign. Both tokens are
+   method tokens of `methodGate2D` and `methodGate3D`. Inertness: the default path re-ran E1 case
+   00000_s1 byte-identically over 4001 steps (the CSV and psi), and the rendered `qScheme centred`
+   path over 4000 steps (E2.1, P1); the null arm of the anchor probe (F = 0) is byte-identical to
+   the baseline in 12 of 12 cases.
+4. **Gate E2.1 PASS** (`config/gates/sourceZeroFlowUpwind2D.yaml`, pre-registered from the numpy
+   copy before the run). `upwindFit` at u = 0, mu t = 80:
+
+   | psi0 = d | N = 50 | N = 100 | N = 200 |
+   |---|---|---|---|
+   | zero-crossing shift max / h (copy) | 0.0341 (0.034) | 0.0043 (0.0043) | 0.0006 (0.0006) |
+   | rms(psi - d)/h in abs(d) < 3h | 1.478e-2 | 2.271e-3 | 3.790e-4 |
+   | sawtooth growth from mu t = 40 to 80 (limit 2x) | 1.69x | 1.32x | 1.16x |
+
+   The orders of rms(psi - d) are 3.70 and 3.58. From psi0 = 1.5 d the median psi/d at the
+   interface is 0.9978 (N = 100) and 0.9993 (N = 200). The centred control flattens (median psi/d
+   0.04 at N = 50, 0.33 at N = 100). 4 ranks against serial at N = 100: psi agrees to 1e-13 at all
+   161 writes, the metric columns to 1e-17 absolute (the reduction order). The C++ estimator
+   reproduces the copy to three and four digits.
+5. **The kinematic arms of `methodGate2D`: CS1, CS0s and CS0r FAIL** (`config/candidates/CS1.yaml`,
+   `CS0s.yaml`, `CS0r.yaml`, pre-registered before the run). CS1 = linearQ plus strain weight full
+   with `upwindFit`, M_mu = 1 (lambda = 1 1/s in the shear arm, band 3); CS0s = the strain term
+   alone; CS0r = the restoring term alone (HL1q without the extension, with the one-sided q). The
+   baseline re-ran on the same binaries. All 36 kinematic cases COMPLETED; the seams pass (np 1 and
+   8 against 4 to 1e-12). Verdicts by `workflow/scripts/make_gate_summary.py`:
+
+   | shear arm (2Dvortex, reversed, N = 68 / 96 / 136) | gradient band error at T/2, ratio to the baseline at 136 | shape error at T, order (baseline 3.25) | volume error at T, N = 136 (baseline 2.2e-4) |
+   |---|---|---|---|
+   | CS1 | 0.137 | 0.88 | 3.7e-2 |
+   | CS0s | 0.575 | 1.24 | 1.2e-2 |
+   | CS0r | 0.302 | 0.26 | 3.3e-2 |
+
+   The exact1D arm (u = alpha x, alpha = 1, T = 1; the band mean q at T; the baseline gives
+   e^(-1) = 0.368, exact): CS1 1.106 / 0.913 / 0.667 / 0.514 and CS0s 1.116 / 0.923 / 0.676 / 0.534
+   at N = 32 / 64 / 128 / 256 FALSIFY the pre-registered q = 1. CS0r gives 0.546 / 0.514 / 0.523 /
+   0.461, and its closed form 1/(1 + T) = 0.5 holds. CS0r hit the gradient target (0.30), against
+   its prediction to miss it.
+6. **Probes of the shape loss** (each config in `config/gates/` with its read-out written before
+   the run).
+   - The band, exact1D with `SL_SOURCE_BAND_CELLS 1000`: the strain term keeps q = 1.000119 /
+     1.000040 / 1.000010 / 1.000003 (N = 32 to 256) on the whole domain, against 0.534 with the
+     3-cell band. In 1D the band is the cause. (With a uniform a the whole-domain source is a uniform
+     rescaling of the baseline field, so the zero set is the baseline's.)
+   - The shear arm with the whole-domain source: the gradient band error is 0.17 to 0.33 of the
+     baseline, but the shape error at T at N = 136 is still 1.76e-2 (CS0s), 3.99e-2 (CS1) and
+     2.84e-2 (CS0r): 32x to 73x the baseline.
+   - The anchor probe (`sourceAnchorProbe2D`): A1 FALSIFIED. With the interface cells anchored the
+     strain arm's shape error at N = 136 is 1.29e-2, 23x the baseline (the limit was 10x): the
+     direct zero-crossing shift of the cell-wise factor is not the cause.
+   - The time-step probe (`sourceDtProbe2D`): D2, a spatial error. The strain arm's shape error is
+     1.76e-2 / 1.80e-2 / 3.00e-2 at CFL 0.5 / 0.25 / 0.125 (N = 136); the null arm's is 5.5e-4 /
+     2.6e-4 / 1.1e-4.
+   - The deformation probe (`sourceDeformationProbe2D`): H1 not confirmed. The ratio strain/null
+     at N = 136 is 18.6 at T = 1, 32.1 at T = 2 and 15.3 at T = 3 (H1 needed 3x between T = 1 and
+     T = 2, and a larger ratio at T = 3). Even at T = 1 the strain arm's shape error converges at
+     order 0.69 (8.9e-3 to 5.5e-3), the null arm's at 1.7.
+7. **Assessment.** (a) The one-sided `upwindFit` q is the repair of the source's q; it is ready
+   (E2.1, 4 ranks, seams). (b) A 3-cell band breaks the strain term even in 1D; the whole domain
+   repairs 1D. (c) In 2D the strain term alone, on the whole domain, loses the shape order (0.7 to
+   1.2) through a spatial error per step that is not the direct crossing shift and that the
+   deformation does not explain. Open, cheapest first: the direction n of a = n.D.n where q is
+   small (the upwind mean cancels at the medial axis, so n is noise there); a normal-constant a
+   from the zero set (E2.4) against a at the cell; a smooth 2D strain case with an exact solution
+   (a circle in a uniaxial stretch becomes an ellipse), which separates the source from the
+   reversal. No coupled arm runs before a kinematic arm passes.
+8. **Records.** STATUS 11.26 (this section); the knowledge base: the retraction note, the negative
+   log (the centred q, the taper alone, the first-order one-sided q, the cell's own fit, the single
+   neighbour's fit, the band-limited strain term, the combined source on the kinematic gate, the
+   anchor), `concepts/gradient-control-next-experiments` (the outcomes), `hubs/gradient-control`,
+   `concepts/combined-source-note` (re-opened), `concepts/source-discretisation-defects`,
+   `models/sl-source`, `sessions/current`. METHOD.md is not affected: `SL_SOURCE none` stays the
+   default and nothing of this line is in production.
 
 ### 10.12 The plane test on perturbed hexahedra: planar faces exact, warped faces need the wetted area vector (2026-10-02)
 
