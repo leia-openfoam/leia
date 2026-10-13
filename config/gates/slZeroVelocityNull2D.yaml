@@ -1,0 +1,109 @@
+# ============================================================================
+# GATE: is the semi-Lagrangian step the IDENTITY at zero velocity? (2026-10-13)
+#
+# WHY. The amplification analysis (docs/analysis-amplification-sl/ms.tex) asked whether the
+# weighted least-squares fit returns psi_c when it is evaluated at the cell centre. A
+# least-squares fit is NOT in general an interpolant, and if it does not reproduce the owner
+# value then the scheme does something even when nothing moves -- an error source with no
+# mesh geometry in it at all. config/kinematicTranslation2D.yaml:66-68 asserts exactly that
+# ("a LSQ fit does not interpolate its nodal values").
+#
+# The CODE REFUTES IT for the anchored value fits: the right-hand side is assembled as the
+# difference psi_i - psi_c over a constant-free basis and evaluateRaw starts from psi_c
+# (uncachedQuadraticWeightedLeastSquaresReconstruction.C:688,712,749-766), so
+# R_c(x_c) = psi_c holds by construction, leiaTestSLReconstruction gate (a) asserts it at
+# 1e-9, and STATUS.md 5204-5205 states it. At u = 0 the feet are x_d = x_c exactly
+# (pointValueScheme.C:430).
+#
+# So this gate is NOT run to confirm the fit. It is run to find the pipeline stages where the
+# identity BREAKS, because the fit is not the only stage:
+#   - signedDistanceQuadraticWeightedLeastSquares::evaluateRaw is a Newton flow onto the
+#     fit's zero set; at d = 0 it returns psi_c only if |grad P| = 1 exactly.
+#   - SL_RENORMALIZATION (default `strain`) and SL_SOURCE act after the transport stage.
+#   - every SL_VALUE_BOUND clips the candidate.
+#
+# SETUP. cases/2Dtranslation at N = 64, np 4, with velocityModel velocity (0 0 0) and
+# adjustTimeStep no (maxDeltaT is maxCo/(0.5 gMax(sumPhi/V)), i.e. 0/0 at zero flux), set by
+# workflow/scripts/sl_zero_velocity_null.sh. One axis varies per arm; everything else is
+# pinned to production. With END_REFERENCE translate and zero velocity write_end_reference.py
+# gives cT == c, so psiEnd == psi0 and the end-time error is a direct identity residual.
+#
+# READ-OUT. L_INF_E_PSI is the sharp column, but the error writer zeroes every cell with
+# alpha in {0,1} and unchanged sign (advectionErrors.H:23-45), so at u = 0 it reports only
+# the interface band. That restriction is what we want here, and it is stated with the number.
+# E_GEOM_ALPHA_REL, E_VOL_ALPHA_REL and E_BOUND_ALPHA are reported with it.
+#
+# PRE-REGISTERED (2026-10-13, before the run):
+#   P1. Every arm whose reconstruction is an ANCHORED VALUE fit (linearTaylor,
+#       linearWeightedLeastSquares, quadraticTaylor, quadraticWeightedLeastSquares,
+#       uncachedQuadraticWeightedLeastSquares, defectCorrectedIDW, bandQuadraticWLSQ) with
+#       SL_VALUE_BOUND none and SL_SOURCE none holds psi to ROUND-OFF:
+#       L_INF_E_PSI <= 1e-12 * max|psi0| at every step.
+#   P2. signedDistanceQuadraticWeightedLeastSquares does NOT: it is a reprojection, not a
+#       value fit, so it moves psi at u = 0 by O(|grad P| - 1).
+#   P3. SL_VALUE_BOUND none|stencilBounds|lipschitzCone are all identical here, because the
+#       runaway cap cannot fire at d = 0 and the candidate equals psi_c.
+#   FALSIFIED IF any P1 arm moves psi above round-off. Then the identity does not hold in
+#   the pipeline, the premise of kinematicTranslation2D:66-68 is right after all, and the
+#   amplification report's zero-displacement statement must be withdrawn.
+#
+# RESULT (2026-10-13). All three predictions hold. 12 arms, N = 64, np 4, 50 steps, all
+# COMPLETED.
+#
+#   P1 PASS, and more strongly than predicted: every anchored value fit holds psi to
+#      EXACTLY zero -- not merely below round-off -- in all four columns
+#      (L_INF_E_PSI, E_GEOM_ALPHA_REL, E_VOL_ALPHA_REL, E_BOUND_ALPHA), for
+#      uncachedQuadraticWeightedLeastSquares, quadraticWeightedLeastSquares,
+#      quadraticTaylor, linearWeightedLeastSquares, linearTaylor and defectCorrectedIDW.
+#
+#   P2 PASS. signedDistanceQuadraticWeightedLeastSquares does NOT hold the identity:
+#      L_INF_E_PSI 1.63e-02, E_GEOM_ALPHA_REL 1.08e-01, E_VOL_ALPHA_REL 5.99e-02. It moves
+#      the interface by 11 percent of its geometric error and loses 6 percent of its volume
+#      IN A FLOW THAT DOES NOT MOVE. Its evaluateRaw is a Newton reprojection onto the fit's
+#      zero set, so at d = 0 it returns the distance to that zero set, which equals psi_c
+#      only where |grad P| = 1 exactly. This is a property of the model, not of the mesh.
+#
+#   P3 PASS. none, stencilBounds and lipschitzCone are identical (all exactly zero): the
+#      runaway cap cannot fire at d = 0 and the candidate equals psi_c.
+#
+#   Also measured: SL_RENORMALIZATION strain and none are identical here, confirming that
+#   the entry is read by the normalProjected scheme only and does not touch pointValue.
+#
+# CONSEQUENCE. The premise that motivated this gate -- that a least-squares fit does not
+# reproduce its nodal values -- is false for the anchored fits, and the claim asserting it in
+# config/kinematicTranslation2D.yaml is corrected in the same commit. The zero-velocity
+# identity is NOT a candidate mechanism for the measured amplification
+# (docs/analysis-amplification-sl/ms.tex), which the symbol independently locates at the
+# boundary. What the gate did find is a reconstruction that is unusable at low velocity.
+# ============================================================================
+study_name: slZeroVelocityNull2D
+case: 2Dtranslation
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaSemiLagrangeLevelSetFoam
+theme: semi-lagrangian-level-set
+solve_runtime: 600
+axes_override:
+  N_CELLS: ['64']
+  CFL: ['0.5']
+  END_TIME: ['0.5']
+  OSCILLATION: ['off']
+  END_REFERENCE: ['translate']
+  PHASE_INDICATOR: [detrixheAslam]
+  SL_SCHEME: [pointValue]
+  # ONE rendered arm. The sweep over reconstruction, bound and renormalization is done
+  # in place by workflow/scripts/sl_zero_velocity_null.sh with foamDictionary, as
+  # config/gates/sourceZeroFlow2D.yaml does: a 7x3x2 cartesian product of snakemake arms
+  # would re-mesh and re-initialise 42 identical cases to vary three dictionary entries.
+  SL_RECONSTRUCTION: [uncachedQuadraticWeightedLeastSquares]
+  SL_VALUE_BOUND: ["none"]
+  SL_RENORMALIZATION: [strain]
+  SL_SOURCE: [none]
+  SL_LIMITER: ["none"]
+  SL_FOOT_INTEGRATOR: ["taylor"]
+  SL_STENCIL: ["point"]
+  SL_CLIP: ["false"]
+  SL_TRACE_VELOCITY: [projectedFlux]
+collapse_other_axes: true
+export_slides: false
