@@ -121,6 +121,28 @@ def tok_bool(toks, key, default=False):
     return v in ("true", "yes", "on", "1")
 
 
+def tok_vector(toks, key, default=None):
+    """Three numbers from one token, written as `(x y z)`, `x y z` or `x,y,z`.
+
+    Used by the fixed refinement box (REFINE_BOX_MIN / REFINE_BOX_MAX). Returns
+    `default` unless EXACTLY three numbers parse, so a malformed token fails loudly at
+    the caller rather than silently refining the wrong region.
+    """
+    raw = toks.get(key)
+    if raw is None:
+        return default
+    parts = re.split(r"[\s,()]+", str(raw).strip())
+    nums = []
+    for p in parts:
+        if not p:
+            continue
+        try:
+            nums.append(float(p))
+        except ValueError:
+            return default
+    return nums if len(nums) == 3 else default
+
+
 def alpha_name_from(setfields_cmd, default="alpha.water"):
     m = re.search(r"-alphaName\s+(\S+)", setfields_cmd or "")
     return m.group(1) if m else default

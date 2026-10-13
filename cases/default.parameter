@@ -1136,6 +1136,18 @@ N_NON_ORTHOGONAL_CORRECTORS 1;
 REFINE_LEVELS     0;          // halvings of the near-interface cell size; >= 1 only with hexRefined | polyRefined
 REFINE_BAND_CELLS 6;          // complete fine layers each side, worst case (hex: face dilations are added until psi proves it)
 REFINE_SOURCE     interface;  // interface (0 < alpha < 1 seed + dilations) | ball (CONTROL: whole droplet interior)
+                     // | box (a FIXED region the interface travels through, for the
+                     // refined-box translation test: the sphere then crosses two 2:1
+                     // transitions, coarse -> fine -> coarse). `box` reads the two
+                     // tokens below and is NOT dilated; its band check reports rather
+                     // than fails, because an interface that leaves the box is the
+                     // experiment and not a defect.
+REFINE_BOX_MIN    none;  // INERT by default: the fixed box corners, each as three numbers
+REFINE_BOX_MAX    none;  // `(x y z)`. Read ONLY when REFINE_SOURCE is box, which refuses to
+                     // run without them. The sentinel is `none` and not `()` because an
+                     // empty parenthesis parses to an EMPTY value list, and a token with no
+                     // values is dropped from case_params.json entirely (MEASURED
+                     // 2026-10-13: the study rendered with REFINE_BOX_MIN absent).
 REFINE_ALLOW_PIN_MISMATCH false; // "true" ONLY to match a twin's N_CELLS on purpose: the band check then reports,
                                   // but does not fail on, an N_CELLS that is not the measured fine spacing
 
