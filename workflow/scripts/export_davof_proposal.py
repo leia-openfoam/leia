@@ -22,8 +22,12 @@ import paths  # noqa: E402
 
 PATTERNS = (("tables", "davof_normal_proposal_*.tex"),
             ("tables", "davof_regen_proposal_*.tex"),
+            # the TwoPhaseFlow advection studies (make_davof_advection_table.py,
+            # 2026-10-13): the order, Co and gate table bodies and the figures
+            ("tables", "davof_advection_*.tex"),
             ("figures", "davof_plic_*.pdf"),
-            ("figures", "davof_plic_*.png"))
+            ("figures", "davof_plic_*.png"),
+            ("figures", "davof_advection_*.png"))
 
 
 def main(argv):

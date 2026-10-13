@@ -96,7 +96,7 @@ ART_LSL := docs/linear-semi-lagrangian-level-set/lsl-level-set-article
 ART_GRL := docs/geometrically-redistanced-levelset/grl-level-set-article
 ART_GCLS := docs/gradient-controlled-level-set/gcls-level-set-article
 
-.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-davof davof-proposal studies-sdpls studies-euler studies-one studies-one-file gate print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl article-gcls comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
+.PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-davof davof-proposal davof-preprint studies-sdpls studies-euler studies-one studies-one-file gate print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl article-gcls comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
 .DEFAULT_GOAL := help
 
 help:
@@ -322,3 +322,15 @@ DEST ?= $(LEIA_DAVOF_PROPOSAL_DIR)
 davof-proposal:
 	@test -n "$(DEST)" || { echo "usage: make davof-proposal DEST=<proposal>/figures/davof"; exit 1; }
 	PATH=$$HOME/.local/bin:$$PATH python3 workflow/scripts/export_davof_proposal.py --dest "$(DEST)"
+
+# Copy the tables and figures of the TwoPhaseFlow advection studies
+# (make_davof_advection_table.py; config/davof/*Translation3D_*.yaml) flat into the
+# DAVOF preprint folder, which \input{}s and \includegraphics{}es them by name:
+#   make davof-preprint
+DAVOF_PREPRINT_DIR ?= docs/davof/davof-article
+davof-preprint:
+	@n=0; for f in docs/davof/davof-article/data/tables/davof_advection_*.tex \
+	               docs/davof/davof-article/data/figures/davof_advection_*.png; do \
+	    [ -f "$$f" ] || continue; cp -p "$$f" "$(DAVOF_PREPRINT_DIR)/"; n=$$((n+1)); \
+	    echo "[preprint] $$(basename $$f) -> $(DAVOF_PREPRINT_DIR)/"; done; \
+	  [ $$n -gt 0 ] || { echo "[preprint] nothing found; run the davof advection studies first" >&2; exit 1; }
