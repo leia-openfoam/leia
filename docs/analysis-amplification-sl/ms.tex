@@ -1,0 +1,395 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[margin=25mm]{geometry}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+
+\graphicspath{{data/figures/}}
+\newcommand{\tables}{data/tables}
+
+\newcommand{\derived}{\textcolor{blue!50!black}{\textbf{[DERIVED]}}}
+\newcommand{\measured}{\textcolor{green!35!black}{\textbf{[MEASURED]}}}
+\newcommand{\opn}{\textcolor{orange!80!black}{\textbf{[OPEN]}}}
+
+\title{The Fourier amplification symbol of the semi-Lagrangian quadratic fit\\
+       \large The measured growth on hexahedral meshes is a boundary effect}
+\author{Tomislav Mari\'c}
+\date{2026-10-13}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The frozen-velocity power iteration measures a spectral radius above one on every mesh,
+hexahedral meshes included: $\rho = 1.00441$ at Courant number $0.0164$, flat to $0.5\,\%$
+over an eight-fold range of cell count. That invariance is the signature of a
+constant-coefficient operator. This report derives the operator's Fourier symbol in closed
+form. The interior operator on a uniform hexahedral mesh has $\rho = 1$ \emph{exactly}, for
+every Courant number up to $0.95$, in one, two and three dimensions, and for both weight
+anchors --- ninety-six configurations, no exception. The derivation is validated three ways:
+symbolically against the known one-dimensional result, numerically against an independent
+power iteration, and against the solver's own per-cell field, which it reproduces to nine
+significant figures. The measured growth is therefore not a property of the interior scheme.
+Splitting that field by boundary adjacency locates it: all $484\,344$ interior cells carry a
+single value, and the recorded maximum sits on a boundary cell.
+\end{abstract}
+
+\section{The question, and why algebra answers it}
+
+METHOD.md section 8.2 records the measurement in Table~\ref{tab:measured}.
+
+\begin{table}[h]
+\centering
+\caption{The measured transport spectrum on hexahedral meshes (METHOD.md 8.2,
+\texttt{blockMesh hex} rows; 2000 power iterations, clip off, frozen velocity).}
+\label{tab:measured}
+\begin{tabular}{lrrrrr}
+\toprule
+mesh & cells & $h$ [m] & Co & $\rho(B)$ & $\Lambda_{\max}$ \\
+\midrule
+\texttt{blockMesh} hex, $n=32$ & 65\,536  & 7.81e-05 & 0.0164 & 1.00439 & 1.0527 \\
+\texttt{blockMesh} hex, $n=48$ & 221\,184 & 5.21e-05 & 0.0164 & 1.00441 & ---    \\
+\texttt{blockMesh} hex, $n=64$ & 524\,288 & 3.91e-05 & 0.0164 & \textbf{1.00441} & 1.0527 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two features set up this report. First, $\rho-1$ is invariant under refinement at fixed
+Courant number: $4.39$e-3, $4.41$e-3, $4.41$e-3 across a two-fold range of $h$ and an
+eight-fold range of cell count. Second, the same section records that $\Lambda$ is not a
+reliable proxy for $\rho$ --- refining \texttt{pMesh} raises $\Lambda_{\max}$ by $4.3\,\%$
+while $\rho-1$ \emph{falls} by $7\,\%$.
+
+On a uniform hexahedral mesh, away from boundaries, the semi-Lagrangian update is a linear
+operator with \emph{constant coefficients}: the stencil geometry, the weights and the
+displacement are identical at every cell. Such an operator on a periodic uniform mesh is
+diagonalised exactly by Fourier modes, so its amplification factor is available in closed
+form. The measured number must be reproducible with algebra rather than with 2000 power
+iterations on half a million cells.
+
+\section{The operator, as implemented}
+
+The production reconstruction is
+\texttt{uncachedQuadraticWeightedLeastSquaresReconstruction}. Four properties fix the
+operator completely.
+
+\paragraph{The fit is anchored.} The right-hand side is assembled as the difference
+$\psi_i - \psi_c$ over a \emph{constant-free} basis, and \texttt{evaluateRaw} starts from
+$\psi_c$, so $R_c(x_c) = \psi_c$ holds by construction. The basis, in the code's order, is
+\begin{equation}
+  b(d) \;=\; \bigl(\, d_a \;;\; \tfrac{1}{2} d_a^2 \;;\; d_a d_b,\ a<b \,\bigr),
+  \qquad
+  n_{\text{coeff}} = 2D + \tfrac{1}{2}D(D-1),
+\end{equation}
+so $n_{\text{coeff}} = 2$ in 1D, $5$ in 2D and $9$ in 3D.
+
+\paragraph{The weights are inverse distance from the cell centre.}
+$w_i = 1/\max(|x_i - x_c|,\varepsilon)$, exponent one, with the normal equations using
+$w_i^2$. The anchor is the arrival cell centre, not the departure foot point.
+
+\paragraph{The stencil is one ring.} The cell-point-cell stencil gives the full $3^D$ cube
+minus the owner: $2$ neighbours in 1D, $8$ in 2D, $26$ in 3D. Physical boundary faces enter
+as extra data slots; the interior stencil is untouched by that option.
+
+\paragraph{The update.} With $M = \sum_j w_j^2\, b(d_j)\, b(d_j)^{\!\top}$ and
+$d = x_d - x_c$ the departure displacement,
+\begin{equation}
+  \psi_c^{n+1}
+  \;=\; \Bigl(1 - \sum_j g_j\Bigr)\psi_c \;+\; \sum_j g_j \psi_j,
+  \qquad
+  g_j \;=\; w_j^2\, b(d)^{\!\top} M^{-1} b(d_j).
+  \label{eq:update}
+\end{equation}
+
+\section{Every $h$ cancels, which derives the measured invariance}
+\label{sec:hcancel}
+
+Write $d_j = h s_j$ with integer offsets $s_j \in \{-1,0,1\}^D\setminus\{0\}$ and $d = h c$,
+with $c$ the displacement in cell widths. The basis scales as $b(h s) = S_h\, b(s)$ with
+$S_h = \operatorname{diag}(h,\dots,h,\,h^2,\dots,h^2)$, and the weights as
+$w_j^2 = h^{-2}|s_j|^{-2}$. Hence $M = h^{-2} S_h M_1 S_h$ with
+$M_1 = \sum_j |s_j|^{-2} b(s_j) b(s_j)^{\!\top}$, and substituting into \eqref{eq:update}
+every factor of $h$ and $S_h$ cancels identically:
+\begin{equation}
+  \boxed{\;
+  g_j(c) \;=\; \frac{b(c)^{\!\top} M_1^{-1} b(s_j)}{|s_j|^{2}} \;}
+  \label{eq:gj}
+\end{equation}
+
+\derived{} The weights of the update depend \emph{only} on the normalised displacement $c$
+and on the integer stencil offsets. They do not depend on $h$ at all. This derives the
+measured $h$-invariance of $\rho-1$ at fixed Courant number rather than observing it.
+
+With the cell-centre anchor $M_1$ does not depend on $c$, so it is inverted once and every
+$g_j$ is an exact polynomial in $c$: the whole calculation is rational arithmetic.
+
+\section{The symbol}
+
+Inserting $\psi_i = \exp(\mathrm{i}\,\theta\cdot i)$ into \eqref{eq:update},
+\begin{equation}
+  G(\theta) \;=\; \Bigl(1 - \sum_j g_j\Bigr) \;+\; \sum_j g_j \, e^{\mathrm{i}\,\theta\cdot s_j},
+  \qquad
+  \rho \;=\; \max_{\theta\in[-\pi,\pi]^D} |G(\theta)| .
+  \label{eq:symbol}
+\end{equation}
+For comparison we also report the Lebesgue constant the code writes as
+\texttt{slFitAmplification},
+\begin{equation}
+  \Lambda \;=\; \Bigl|1 - \sum_j g_j\Bigr| \;+\; \sum_j |g_j| ,
+  \label{eq:lambda}
+\end{equation}
+a row-norm bound on the same weights. $\Lambda$ bounds one step in one cell in the maximum
+norm; $\rho$ decides repeated stability in $L^2$. Section~\ref{sec:results} shows how far
+apart they are.
+
+\section{Validation}
+
+\subsection{Gate one: 1D must be Lax--Wendroff, symbolically}
+\label{sec:validate}
+
+In 1D the stencil is $s\in\{-1,+1\}$ and $M_1$ is $2\times 2$. Putting $c = -C$, so the foot
+lies upstream at $x_c - Ch$, equation~\eqref{eq:gj} gives \emph{symbolically}
+\begin{equation}
+  g_{-1} = \frac{C(C+1)}{2}, \qquad
+  g_{+1} = \frac{C(C-1)}{2}, \qquad
+  1 - \textstyle\sum_j g_j = 1 - C^2 ,
+\end{equation}
+which is exactly Lax--Wendroff, and from them
+\begin{equation}
+  \Lambda = 1 + C - C^2 > 1,
+  \qquad
+  |G|^2 = 1 - 4C^2\bigl(1-C^2\bigr)\sin^4(\theta/2) \;\le\; 1 .
+  \label{eq:lw}
+\end{equation}
+\derived{} Both reproduce METHOD.md 8.2 item 3 exactly. The command
+\texttt{sl\_amplification\_symbol.py validate-1d} checks all five identities symbolically and
+exits non-zero on any mismatch. It passes.
+
+Equation~\eqref{eq:lw} is also the warning: $\Lambda > 1$ while $|G| \le 1$. The scheme has
+negative weights and is still $L^2$-stable, so a bound on $\Lambda$ cannot establish
+instability.
+
+\subsection{Gate two: an independent power iteration}
+
+The symbol is an algebraic construction, so it is checked against a procedure that shares
+none of its machinery: the interior stencil is applied repeatedly to a random field on a
+periodic $24^3$ grid by \texttt{numpy.roll}, renormalising each step --- the same procedure
+as \texttt{leiaTestTransportSpectrum}, restricted to the translation-invariant operator.
+
+\measured{} The iteration never exceeds one. It converges to $1$ from below, giving
+$0.99988$ to $0.99992$ after 600 iterations at Courant numbers $0.0164$, $0.25$, $0.5$ and
+$0.9$, along $x$ and along $(1,1,1)$. The approach from below is expected: every
+non-constant mode is damped, so the iteration is converging onto the constant mode, whose
+eigenvalue is exactly one.
+
+\subsection{Gate three: the solver's own per-cell field}
+\label{sec:gate3}
+
+The decisive check is against the implementation. The probe
+\texttt{workflow/scripts/fit\_amplification\_probe.sh} was run on the \emph{same} mesh as
+Table~\ref{tab:measured}, the $128\times 64\times 64$ uniform hexahedral box of
+\texttt{popinetTranslating3D} at $n = 64$, with the recorded probe displacement. It
+reproduces the recorded maximum, $\Lambda_{\max} = 1.0527251$, and reports no cell demoted to
+a linear fit (smallest scaled Cholesky pivot $0.6367$, against the tolerance $0.3$).
+
+The resulting field is split by boundary adjacency in Table~\ref{tab:split}.
+
+\begin{table}[h]
+\centering
+\caption{The per-cell \texttt{slFitAmplification} field of the $n=64$ hexahedral box, split
+into cells that own a boundary face and cells that do not.}
+\label{tab:split}
+\begin{tabular}{lrrrr}
+\toprule
+ & cells & min & max & std \\
+\midrule
+interior          & 484\,344 & 1.01639260 & 1.01639260 & $2.2\times10^{-16}$ \\
+boundary-adjacent &  39\,944 & 1.01643120 & \textbf{1.05272510} & $8.1\times10^{-3}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\measured{} Every one of the $484\,344$ interior cells carries the \emph{same} value, to
+machine epsilon --- one distinct value at eight decimal places. That is the
+constant-coefficient structure of section~\ref{sec:hcancel}, confirmed by the solver.
+
+\derived{} Evaluating \eqref{eq:gj} at the exact displacement of that run,
+$\mathrm{Co} = 6.39947740050255\times10^{-7} / (0.0025/64) = 0.016382662$, gives
+$\Lambda = 1.01639260$ against the code's $1.01639260$: a difference of
+$2.6\times 10^{-9}$, or nine significant figures. The symbolic model of the operator is the
+operator.
+
+\measured{} The global maximum, $1.0527251$, sits on a \textbf{boundary} cell. The
+boundary-adjacent set takes eight distinct values; the interior takes one.
+
+\section{Why 1D cannot answer the question}
+
+Table~\ref{tab:ladder} is why the derivation must be carried to three dimensions.
+
+\begin{table}[h]
+\centering
+\caption{The fit is over-determined only in two and three dimensions.}
+\label{tab:ladder}
+\begin{tabular}{crrl}
+\toprule
+$D$ & neighbours & coefficients & character \\
+\midrule
+1 & 2  & 2 & \textbf{exactly determined}: an interpolant; the weights cancel \\
+2 & 8  & 5 & over-determined by 3 \\
+3 & 26 & 9 & over-determined by 17 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\derived{} In 1D the number of neighbours equals the number of coefficients, so the
+least-squares problem has a unique exact solution and the fit \emph{interpolates}. The
+weights $w_i$ cancel out of \eqref{eq:gj} entirely --- they may be changed arbitrarily
+without changing the scheme. The one-dimensional analysis, including the Lax--Wendroff
+reassurance of \eqref{eq:lw}, therefore says nothing about the least-squares character of the
+production operator. Over-determination, and with it any effect of the weight choice, is a
+two- and three-dimensional phenomenon, and in 3D it is large: 26 data for 9 unknowns.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{The interior operator does not amplify, anywhere}
+
+\derived{} Over the ninety-six configurations of
+\texttt{\tables/sl\_amplification\_symbol.csv} --- dimensions $1,2,3$; weight anchors
+cell-centre and foot-point; displacement along $x$ and along $(1,1,1)$; Courant numbers
+$0.0164$, $0.05$, $0.1$, $0.2$, \dots, $0.95$ --- the result is
+\begin{equation}
+  \rho \;=\; 1.00000000 \qquad\text{in every case, with no exception,}
+\end{equation}
+while $\Lambda$ ranges from $1.016$ to $2.022$. A $96^3$ grid search plus $4\times10^5$
+random samples finds no mode with $|G| > 1$. The maximum of $|G|$ is attained at $\theta = 0$
+and equals one, which is the consistency requirement that the scheme reproduces a constant.
+
+\begin{table}[h]
+\centering
+\caption{Representative rows: the interior operator at the production displacement and at
+large Courant number. $\Lambda$ moves a great deal; $\rho$ does not move at all.}
+\begin{tabular}{llrrr}
+\toprule
+$D$ & anchor & Co & $\Lambda$ & $\rho$ \\
+\midrule
+3 & cell-centre & 0.0164 & 1.016410 & 1.00000000 \\
+3 & cell-centre & 0.50   & 1.509259 & 1.00000000 \\
+3 & cell-centre & 0.90   & 2.022308 & 1.00000000 \\
+3 & foot-point  & 0.0164 & 1.016321 & 1.00000000 \\
+3 & foot-point  & 0.50   & 1.357130 & 1.00000000 \\
+\midrule
+\multicolumn{3}{l}{\emph{measured, whole mesh (Table~\ref{tab:measured})}} & \emph{1.0527} & \emph{1.00441} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{The neutral modes depend on the flow direction.}
+For a displacement along $(1,1,1)$ the constant is the \emph{only} neutral mode: the largest
+$|G|$ away from $\theta = 0$ is $0.99999998$, so every non-constant mode is strictly damped.
+For a displacement along $x$, 191 of $96^3$ sampled modes are neutral to $10^{-12}$ --- all
+of them modes with $\theta_x = 0$, that is, constant along the flow. Such a mode is not
+transported and the transverse fit reproduces it exactly. It is never amplified, but it is
+also never damped.
+
+\subsection{Every boundary stencil amplifies}
+
+The same calculation is carried out for the stencils that occur at a box boundary, with the
+code's rank ladder applied: where the weighted normal matrix is singular the fit is demoted
+to linear, as \texttt{quadraticPivotTol} does in the implementation. The quantity reported is
+the symbol of the operator that would result if that stencil were applied everywhere. It is a
+local amplification indicator, \emph{not} a spectral radius, because a boundary breaks
+translation invariance.
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+ & \multicolumn{2}{c}{along $x$} & \multicolumn{2}{c}{along $(1,1,1)$} \\
+stencil & $\Lambda$ & $\max|G|$ & $\Lambda$ & $\max|G|$ \\
+\midrule
+interior, 26 neighbours, quadratic               & 1.0164 & \textbf{1.000000} & 1.0174 & \textbf{1.000000} \\
+face cell, 17 neighbours, no face slot, LINEAR   & 1.0328 & 1.032800 & 1.0284 & 1.018937 \\
+face cell, 17 neighbours $+$ 1 face, quadratic   & 1.0106 & 1.010575 & 1.0190 & 1.006193 \\
+edge cell, 11 neighbours $+$ 2 faces, quadratic  & 1.0118 & 1.010575 & 1.0207 & 1.012744 \\
+corner cell, 7 neighbours $+$ 3 faces, quadratic & 1.0123 & 1.011028 & 1.0191 & 1.014504 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\derived{} The interior cell is the only stencil whose symbol does not exceed one.
+
+\paragraph{A boundary cell cannot support a quadratic fit without its boundary face.}
+With the face slot excluded, a face cell's stencil has only two distinct levels in the
+wall-normal direction. The monomials $d_x$ and $\tfrac12 d_x^2$ are then collinear on the
+data, the normal matrix is exactly singular, and the fit demotes to linear. Adding the
+boundary face at $h/2$ restores a third level and with it the quadratic rank. This is
+confirmed by the probe of section~\ref{sec:gate3}: with boundary faces included --- the
+default --- \emph{no} cell of the $n=64$ box is demoted, and the smallest scaled pivot is
+$0.6367$, comfortably above the $0.3$ tolerance.
+
+\derived{} \textbf{Including the boundary faces is the better of the two options, by a factor
+of three}: the linear fallback gives $\max|G| = 1.0328$, including the face gives $1.0106$.
+The \texttt{zeroGradient} face value is not a sample of the true field, and the reason to
+keep it is not accuracy --- it is that the slot carries the rank.
+
+\opn{} The modelled boundary stencils reach $1.033$, while the measured maximum is $1.0527$.
+The models above are of a plain box with one boundary condition; the probe case has
+\texttt{inlet}, \texttt{outlet} and \texttt{walls} patches, and the boundary-adjacent set
+takes eight distinct values. Which patch and which cell attain the maximum is not settled
+here.
+
+\section{What this changes}
+
+\begin{enumerate}
+\item \derived{}\,\measured{} \textbf{The interior semi-Lagrangian operator on a uniform
+  hexahedral mesh does not amplify.} $\rho = 1$ exactly in all ninety-six configurations,
+  confirmed symbolically, by an independent power iteration, and against the solver's own
+  per-cell field to nine significant figures. The measured $\rho = 1.00441$ is not a
+  property of the interior scheme.
+
+\item \measured{} \textbf{The growth is at the boundary.} All $484\,344$ interior cells of
+  the production mesh carry one value; the recorded maximum sits on a boundary cell. The
+  search for the mechanism should move there.
+
+\item \derived{} \textbf{$\Lambda$ and $\rho$ do not merely differ in accuracy; they differ
+  in kind.} At Courant number $0.9$ the interior fit has $\Lambda = 2.022$ and $\rho = 1$
+  exactly. A $\Lambda$ of two on an interior hexahedral cell is not evidence of anything.
+  This extends the one-dimensional Lax--Wendroff argument of METHOD.md 8.2 item 3 to the
+  production three-dimensional operator, where it had not been established.
+
+\item \derived{} \textbf{Moving the weights to the foot point does not change $\rho$.} It
+  changes $\Lambda$ substantially --- at Courant $0.5$ along $x$, from $1.509$ to $1.357$ ---
+  but $\rho$ is one for both anchors at every Courant number tested. On uniform interior
+  hexahedra the weight anchor is not the mechanism, and this is known before any solver code
+  is written.
+
+\item \opn{} \textbf{A mesh-aligned displacement leaves a family of undamped modes.} Whether
+  they are excited in practice, and by what, is not settled here.
+\end{enumerate}
+
+\section{Reproduction}
+
+Every number is produced by one committed script with no case, no mesh and no solver, except
+Table~\ref{tab:split}, which needs the probe:
+
+\begin{verbatim}
+python3 workflow/scripts/sl_amplification_symbol.py validate-1d     # the gate
+python3 workflow/scripts/sl_amplification_symbol.py rho --dim 3 --courant 0.0164 --axis x
+python3 workflow/scripts/sl_amplification_symbol.py weights --dim 3 --courant 0.0164
+python3 workflow/scripts/sl_amplification_symbol.py sweep           # the curated table
+python3 docs/analysis-amplification-sl/sympy/boundary_lambda.py     # the boundary stencils
+
+workflow/scripts/fit_amplification_probe.sh \
+    studies/popinet3D_La12000_hex_smoke4/popinetTranslating3D_00000 reuse <out>
+\end{verbatim}
+
+The sweep writes \texttt{\tables/sl\_amplification\_symbol.csv}. The validation gate exits
+non-zero on failure and must pass before any other number is quoted.
+
+\end{document}

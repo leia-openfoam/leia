@@ -13,3 +13,5 @@ snakemake>=7        # orchestrates the parameter studies (config/*.yaml)
 foamlib>=0.8        # reads OpenFOAM case fields in workflow/scripts/plots.py
 numpy>=1.24         # field reshaping / convergence-order fits
 matplotlib>=3.6     # all figures (convergence, field atlas, schematic plots)
+sympy>=1.12         # exact Fourier symbol of the SL fit
+                    # (workflow/scripts/sl_amplification_symbol.py)

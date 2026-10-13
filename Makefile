@@ -95,6 +95,7 @@ ART_SL := docs/semi-lagrangian-level-set/sl-level-set-article
 ART_LSL := docs/linear-semi-lagrangian-level-set/lsl-level-set-article
 ART_GRL := docs/geometrically-redistanced-levelset/grl-level-set-article
 ART_GCLS := docs/gradient-controlled-level-set/gcls-level-set-article
+ANA_AMP := docs/analysis-amplification-sl
 
 .PHONY: all build studies studies-sl studies-sl-linear studies-droplet studies-ve studies-grl studies-davof davof-proposal studies-sdpls studies-euler studies-one studies-one-file gate print-sdpls-studies print-euler-studies check-discretization docs decks articles article-sl article-lsl article-sdpls article-grl article-gcls comparison sl-quadratic sl-linear curvature curvature-mode-gate pressure-workflow pressure-compatibility-gate pressure-nonorthogonal-sweep pressure-operator-pair-gate pressure-rauf-gate pressure-tolerance-gate pressure-solver-gate clean help pull-runs pull-study
 .DEFAULT_GOAL := help
@@ -279,7 +280,16 @@ article-grl:
 article-gcls:
 	@command -v latexmk >/dev/null && (cd $(ART_GCLS) && latexmk -pdf -interaction=nonstopmode -halt-on-error gclsLevelSet.tex) \
 	  || echo "[skip] latexmk not found; install a LaTeX toolchain to build the article PDF"
-articles: article-sl article-lsl article-grl article-gcls
+# The Fourier amplification symbol of the SL quadratic fit
+# (docs/analysis-amplification-sl/): a derivation report, not a theme article, so it is
+# named ms.tex and lives directly under docs/. Its numbers come from
+# workflow/scripts/sl_amplification_symbol.py and sympy/boundary_lambda.py -- no case,
+# no mesh, no solver.
+article-amplification:
+	@command -v latexmk >/dev/null && (cd $(ANA_AMP) && latexmk -pdf -interaction=nonstopmode -halt-on-error ms.tex) \
+	  || echo "[skip] latexmk not found; install a LaTeX toolchain to build the article PDF"
+
+articles: article-sl article-lsl article-grl article-gcls article-amplification
 
 report-gcls: ## technical report on the gradient-control campaign (docs/gradient-controlled-level-set/gcls-technical-report)
 	cd docs/gradient-controlled-level-set/gcls-technical-report && latexmk -pdf -interaction=nonstopmode gclsTechnicalReport.tex
@@ -304,6 +314,9 @@ clean:
 	find docs -path '*-presentation/*.html' ! -name '*.template.html' -delete
 	rm -f docs/*/*-article/*.pdf docs/*/*-article/*.aux docs/*/*-article/*.log \
 	      docs/*/*-article/*.bbl docs/*/*-article/*.blg docs/*/*-article/*.out
+	rm -f docs/analysis-amplification-sl/*.pdf docs/analysis-amplification-sl/*.aux \
+	      docs/analysis-amplification-sl/*.log docs/analysis-amplification-sl/*.out \
+	      docs/analysis-amplification-sl/*.fdb_latexmk docs/analysis-amplification-sl/*.fls
 
 # --- cluster sync (git-ignored raw output only; see CLUSTER.md) --------------
 # Pull ALL study output from the cluster to inspect/visualise locally.
