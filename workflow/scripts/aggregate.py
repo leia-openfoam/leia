@@ -34,6 +34,9 @@ PER_CASE_CSVS = [
                                        # PSI_CONSERVATION_CSV is true, and a
                                        # missing file simply leaves the columns
                                        # empty (see _find_csv below)
+    "advectorVoF.csv",                 # the TwoPhaseFlow advection benchmarks
+                                       # (tpf_advection_metrics.py, one row per
+                                       # step; cases/davof/*Translation3D)
 ]
 
 

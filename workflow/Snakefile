@@ -180,9 +180,12 @@ PAR        = "-parallel" if PARALLEL else ""
 # because the slurm allocation already carries --ntasks (resources.tasks).
 MPI_PREFIX = (MPI.format(np=NP) + " ") if PARALLEL else ""
 # The static DAVOF app has no -fluxCorrection option (an unknown option is a
-# FatalError in argList), so the perturbed-mesh flag is for the solvers only.
+# FatalError in argList), so the perturbed-mesh flag is for the solvers only;
+# the TwoPhaseFlow benchmark solver advectorVoF (cases/davof/*Translation3D,
+# 2026-10-13) has none either (its velocity is uniform and prescribed).
 FLUX       = (" -fluxCorrection"
-              if MESH == "perturbed" and SOLVER != "leiaTestDavofNormal" else "")
+              if MESH == "perturbed"
+              and SOLVER not in ("leiaTestDavofNormal", "advectorVoF") else "")
 INIT_END   = f"./system/init_End/init_End.{MODE}" if CASE == "3Dtranslation" else ""
 
 # The gradPsiErrorCSV / leiaSetFields function objects APPEND to their CSVs: a
@@ -205,7 +208,7 @@ _preprocess = ["cd {params.d}",
                " leiaTestDavofNormal.csv leiaTestDavofNormalModels.csv"
                " leiaTestDavofCurvature.csv leiaTestDavofRegen.csv"
                " leiaTestDavofRegenIter.csv"
-               " psiConservation.csv",
+               " psiConservation.csv advectorVoF.csv",
                " ".join(filter(None, [SETFIELDS_APP, SETFIELDS_ARGS]))]
 
 # The exact end-time reference of a flow that does not return (2026-09-29): a case whose
@@ -219,6 +222,13 @@ if os.path.isfile(_tmpl_fvsol) and "@!END_REFERENCE!@" in open(_tmpl_fvsol).read
         f"python3 {REPO}/workflow/scripts/write_end_reference.py", SETFIELDS_ARGS])))
 
 _solve = ["cd {params.d}", f"rm -f {SOLVER_CSV} .leia_solver_failed .leia_launch"]
+# The TwoPhaseFlow benchmark solver's function objects write under
+# postProcessing/<fo>/<startTime>/ and APPEND to a .dat of a repeated start time:
+# a re-run would stack a second series onto the stale one (the converter keeps
+# the last row of a repeated time, which would then be the OLD run's for every
+# step the new run has not reached). Remove the whole directory first.
+if SOLVER == "advectorVoF":
+    _solve.append("rm -rf postProcessing")
 if INIT_END:
     _solve.append(INIT_END)
 # The curvature test app reads the SAME -alphaName flag as leiaSetFields (its
@@ -552,8 +562,10 @@ rule report:
         # its studies publish their own face_curvature_orders/curvature_error
         # tables instead.
         # The same holds for the DAVOF static gate (leiaTestDavofNormal): it
-        # publishes its own davof_normal_orders table (1c below).
-        _STATIC_APPS = ("leiaTestMeanCurvature", "leiaTestDavofNormal")
+        # publishes its own davof_normal_orders table (1c below), and for the
+        # TwoPhaseFlow advection benchmark (advectorVoF, 1d below), whose
+        # per-step CSV has none of the level-set error columns.
+        _STATIC_APPS = ("leiaTestMeanCurvature", "leiaTestDavofNormal", "advectorVoF")
         if SOLVER not in _STATIC_APPS:
             for _csv in _glob.glob(os.path.join(STUDY_DIR, f"{STUDY}_errors.csv")):
                 _shutil.copy(_csv, TABLES_DIR)
@@ -583,6 +595,14 @@ rule report:
                          "--resolutions", "40", "80", "160", "--font-size", "18",
                          "--short-titles", "--edges", "none", "--suffix", "proposal"],
                      "render_davof_interfaces.py (proposal variant)")
+        # 1d. The TwoPhaseFlow advection benchmarks (solver advectorVoF,
+        # cases/davof/*Translation3D, 2026-10-13): the per-case advectorVoF.csv
+        # (tpf_advection_metrics.py, post_solve) -> the long table, the
+        # histories and growth factors, the per-Co order tables, the Co table,
+        # the plane gate table and the log-log figures in the davof theme data.
+        if SOLVER == "advectorVoF":
+            _run([_PY, os.path.join(_scripts, "make_davof_advection_table.py"),
+                     STUDY_DIR, "--theme", THEME], "make_davof_advection_table.py")
         # 1b. The SDPLS convergence + order tables are a DATA product that
         # docs/sdpls-level-set/.../sdplsLevelSet.tex \input{}s, not a slide, so
         # they must not sit behind `export_slides` -- 89 of 117 study configs set
@@ -717,8 +737,9 @@ rule report:
             export_html.export(PRES_DIR, DECK_TPL)
         else:
             # Unchanged for every existing solver (leiaTestMeanCurvature included);
-            # only the DAVOF app, which has no advection metrics, is exempted.
-            if SOLVER != "leiaTestDavofNormal":
+            # only the DAVOF app and the TwoPhaseFlow benchmark solver, which have
+            # no level-set advection metrics, are exempted.
+            if SOLVER not in ("leiaTestDavofNormal", "advectorVoF"):
                 plots.main(STUDY_DIR, "")
             # keep the presentation-side data mirror current even when the deck
             # rebuild is skipped (the errors.csv above landed in the article data/).

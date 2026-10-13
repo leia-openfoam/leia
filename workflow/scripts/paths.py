@@ -42,6 +42,7 @@ _SOLVER_THEME = {
     "leiaLevelSetFoam":                        "velocity-extension",
     "leiaRedistancedLevelSetFoam":             "geometrically-redistanced-levelset",  # retired 2026-09-30; archived studies
     "leiaTestDavofNormal":                     "davof",
+    "advectorVoF":                             "davof",   # the TwoPhaseFlow advection benchmarks (cases/davof/*Translation3D)
 }
 
 
