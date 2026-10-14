@@ -77,12 +77,23 @@ def read_scalar_field(path, n=None):
 
 
 def read_csv(path):
+    """Rows of a solver or function-object CSV. A function-object CSV (gradPsiError.csv) is
+    APPENDED to when a case is re-run without its preprocess rule (MEASURED 2026-10-14: a solve
+    stopped by the time limit and re-run left the stopped run's rows in front of the new ones), so
+    the last row of every TIME is kept, which is the row of the latest run."""
     if not os.path.isfile(path):
         return []
     with open(path) as f:
         rows = list(csv.DictReader(f))
     if rows and any(v in (None, "") for v in rows[-1].values()):
         rows = rows[:-1]          # an incomplete last row of a run that stopped
+    if rows and "TIME" in rows[0]:
+        rows = [r for r in rows if r["TIME"] != "TIME"]      # a repeated header line
+        last = {}
+        for r in rows:
+            last[r["TIME"]] = r
+        if len(last) != len(rows):
+            rows = sorted(last.values(), key=lambda r: float(r["TIME"]))
     return rows
 
 
