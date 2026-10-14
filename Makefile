@@ -294,6 +294,15 @@ articles: article-sl article-lsl article-grl article-gcls article-amplification
 # Read a reviewed PDF back. Annotate $(ANA_AMP)/ms.pdf in any viewer that SAVES into the
 # file (Edge, Firefox, Acrobat, Okular), save it next to the source as ms_reviewed.pdf, and
 # run this: every comment comes back with the passage it sits on and the section it is in.
+amp-open: article-amplification ## build the amplification report and open it for annotation
+	@cp -f $(ANA_AMP)/ms.pdf $(ANA_AMP)/ms_reviewed.pdf
+	@echo "annotate and SAVE (not 'print to PDF'):  $(ANA_AMP)/ms_reviewed.pdf"
+	@echo "then run:  make review-amplification"
+	@if command -v explorer.exe >/dev/null 2>&1; then \
+	    explorer.exe "$$(wslpath -w $(ANA_AMP)/ms_reviewed.pdf)" 2>/dev/null || true; \
+	 elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$(ANA_AMP)/ms_reviewed.pdf" >/dev/null 2>&1 & \
+	 else echo "open it by hand"; fi
+
 review-amplification: ## read the comments out of docs/analysis-amplification-sl/ms_reviewed.pdf
 	@python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf
 
