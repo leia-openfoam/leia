@@ -5248,9 +5248,15 @@ in `~/OpenFOAM/data/2026-10-13-combined-source/` (5.5 GB): `e1`, `e21`, `e21-np4
    | psi0 = d | N = 50 | N = 100 | N = 200 |
    |---|---|---|---|
    | zero-crossing shift max / h (copy) | 0.0341 (0.034) | 0.0043 (0.0043) | 0.0006 (0.0006) |
+   | zero-crossing shift RMS (L2) / h | 0.01565 | 0.002104 | 0.000299 |
    | rms(psi - d)/h in abs(d) < 3h | 1.478e-2 | 2.271e-3 | 3.790e-4 |
    | sawtooth growth from mu t = 40 to 80 (limit 2x) | 1.69x | 1.32x | 1.16x |
 
+   Correction 2026-10-14: the max row is an L_inf quantity. It stays in the table because P3 was
+   pre-registered on it, but the L2 row is the one to quote: its orders are 2.89 and 2.82
+   (`source_checkerboard_diag.py`, the same edges, on the preserved data in
+   `~/OpenFOAM/data/2026-10-13-combined-source/e21/`). The estimator ranking in item 2 uses the
+   max of the numpy copy; the copy's L2 values are not recorded.
    The orders of rms(psi - d) are 3.70 and 3.58. From psi0 = 1.5 d the median psi/d at the
    interface is 0.9978 (N = 100) and 0.9993 (N = 200). The centred control flattens (median psi/d
    0.04 at N = 50, 0.33 at N = 100). 4 ranks against serial at N = 100: psi agrees to 1e-13 at all
