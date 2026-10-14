@@ -55,6 +55,13 @@ date: 2026-09-28
    SL session); this session builds the knowledge base into the permanent memory of every agent,
    decisions and negative findings included, and pushes the combined source of Bothe and Soga
    ([[concepts/combined-source-note]], [[concepts/gradient-control-next-experiments]]).
+8. 2026-10-14 (STATUS 11.27), the author's request before the return to advection: every Eulerian
+   source term of `leiaLevelSetFoam` alone at zero velocity, on a circle from eight initial fields
+   ([[concepts/static-source-gate-eulerian]]). The first cluster run was void: at u = 0 the psi
+   solver did nothing below its tolerance ([[retractions/static-source-solver-dead-zone]]). The
+   re-run runs on Lichtenberg in the worktree `/work/scratch/tm83tomy/leia-static2` (commit
+   3727b9e9, job names `leia-s2-*`, ledger `.my_jobs` there); the metrics run from
+   `/work/scratch/tm83tomy/leia-static-m`. Read no result before the row S0 passes.
 
 ## What is open, in order
 

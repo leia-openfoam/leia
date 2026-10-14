@@ -83,3 +83,9 @@ around E2.1 and the combined source.
 E2.1 passed; the kinematic gate failed for CS1, CS0s and CS0r on the shape order; four probes
 (STATUS 11.26 item 6). The open list is updated.
 The strain-direction probe located the 2D cause: the psi-dependence of n in a = n.D.n (STATUS 11.26).
+
+### 2026-10-14
+The static source test (STATUS 11.27, [[concepts/static-source-gate-eulerian]]): every Eulerian
+source alone at zero velocity, on a circle from eight initial fields. The first cluster run is void:
+the psi solver did nothing below its tolerance in 68 % of the solves
+([[retractions/static-source-solver-dead-zone]]); fixed with `minIter 1`, re-run on Lichtenberg.
