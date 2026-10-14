@@ -16,7 +16,7 @@ and writes into the davof theme's data source (paths.tables_dir / figs_dir):
         the long table, one row per case: the end values (the last non-blank
         row of every column), the run maxima, min alpha over the run, the
         interface cells at the first and the last step, the sliver and
-        fit-fallback maxima, the cpu time, the status
+        fit-fallback and ring-fallback maxima, the cpu time, the status
     tables/davof_advection_history_<study>.csv
         the davof rows: every step's face-fraction errors and counts
     tables/davof_advection_growth_<study>.csv
@@ -89,6 +89,7 @@ MAX_COLS = {
     "Eshape_max": "Eshape", "Ebound_max": "Ebound", "Emass_max": "Emass",
     "nInterfaceCells_max": "nInterfaceCells", "nSliver_max": "nSliver",
     "nReplaced_max": "nReplaced", "nFitFallback_max": "nFitFallback",
+    "nRingFallback_max": "nRingFallback",
 }
 # the order tables: (long-table column, tex label, has an order)
 ORDER_METRICS = [
@@ -213,6 +214,7 @@ def history_rows(recs):
                         "nInterfaceAdv": s.get("nInterfaceAdv", ""),
                         "nSliver": s.get("nSliver", ""), "nReplaced": s.get("nReplaced", ""),
                         "nFitFallback": s.get("nFitFallback", ""),
+                        "nRingFallback": s.get("nRingFallback", ""),
                         "minAlpha": s.get("minAlpha", ""), "Eshape": s.get("Eshape", ""),
                         "status": s.get("status", "")})
     return out

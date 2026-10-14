@@ -1,0 +1,31 @@
+# Laptop smoke of sphereTranslation3D_hexControl.yaml (the row
+# davof-plicRDFnormal-ring, see there for the keyword, the predictions and the
+# note of 2026-10-14): N = 32, Co 0.2, one case (160 steps, about 20 s), to
+# be compared digit by digit with the fork's benchmark run of the same case
+# (run/benchmark/advection/sphereTranslation3D, row davof-plicRDFnormal-ring)
+# and with the hexSmoke study's davof-plicRDFnormal.
+#
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/sphereTranslation3D_hexControlSmoke.yaml
+study_name: sphereTranslation3D_hexControlSmoke
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-plicRDFnormal-ring]
+collapse_other_axes: true
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

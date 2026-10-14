@@ -18,7 +18,8 @@ Sources, all optional (a missing one leaves its columns blank):
         Time Eshape Emass Ebound ...
     log.advectorVoF
         per step: the FIRST `davof: N interface cells (...), normalModel X
-        (...): S slivers, R replaced[, K kept m][, F fit fallbacks]` line after
+        (...): S slivers, R replaced[, K kept m][, F fit fallbacks][, G ring
+        fallbacks]` line after
         `Time = ` (the advection step's reconstruction; the function objects
         reconstruct again), `isoAdvection: After conservative bounding:
         min(alpha) = ..., max(alpha) = 1 + ...`, `t = ..., sum(alpha*V) = ...,
@@ -37,7 +38,7 @@ Columns, in this order:
     TIME step L1_alphaf L2_alphaf Linf_alphaf nFaces nInterfaceCells consistency
     LNormalDiff1 LNormalDiff2 LNormalDiffInf LCentreDiff1 LCentreDiff2 LCentreDiffInf
     areaSum areaExact nInterface Eshape Emass Ebound
-    nInterfaceAdv nSliver nReplaced nKept nFitFallback minAlphaBound maxAlphaBound
+    nInterfaceAdv nSliver nReplaced nKept nFitFallback nRingFallback minAlphaBound maxAlphaBound
     sumAlphaV devPercent oneMinusMaxAlpha minAlpha executionTime clockTime timeStepTime
     status abortStep abortReason
 
@@ -66,6 +67,7 @@ REC_COLS = {k: k for k in ("LNormalDiff1", "LNormalDiff2", "LNormalDiffInf",
                            "areaSum", "areaExact", "nInterface")}
 VOL_COLS = {k: k for k in ("Eshape", "Emass", "Ebound")}
 LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
+            "nRingFallback",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
             "timeStepTime")
@@ -75,7 +77,8 @@ COLUMNS = (["TIME", "step"] + list(AF_COLS.values()) + list(REC_COLS.values())
 
 _RE_DAVOF = re.compile(
     r"^davof: (\d+) interface cells \(wispTol [^)]*\), normalModel \S+ \([^)]*\): "
-    r"(\d+) slivers, (\d+) replaced(?:, (\d+) kept m)?(?:, (\d+) fit fallbacks)?")
+    r"(\d+) slivers, (\d+) replaced(?:, (\d+) kept m)?(?:, (\d+) fit fallbacks)?"
+    r"(?:, (\d+) ring fallbacks)?")
 _RE_BOUND = re.compile(
     r"^isoAdvection: After conservative bounding: min\(alpha\) = (\S+), "
     r"max\(alpha\) = 1 \+ (\S+)")
@@ -165,6 +168,7 @@ def read_log(path):
                 cur["nReplaced"] = m.group(3)
                 cur["nKept"] = m.group(4) or "0"
                 cur["nFitFallback"] = m.group(5) or "0"
+                cur["nRingFallback"] = m.group(6) or "0"
                 continue
             m = _RE_BOUND.match(line)
             if m:

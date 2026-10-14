@@ -55,10 +55,12 @@ _TOKEN = re.compile(r"@!([A-Z0-9_]+)!@")
 #                   in 3D on polyhedral meshes"), for a meshDict.template so that a
 #                   polyhedral study runs the SAME N_CELLS ladder as its hexahedral
 #                   twin (cases/davof/*, 2026-10-12) instead of a MAX_CELL_SIZE axis.
-#   TPF_RECON_SCHEME, TPF_NORMAL_MODEL, TPF_APPLY_TO, TPF_SLIVER_TOL, TPF_MAX_ANGLE
+#   TPF_RECON_SCHEME, TPF_NORMAL_MODEL, TPF_APPLY_TO, TPF_SLIVER_TOL, TPF_MAX_ANGLE,
+#   TPF_NO_NORMAL_FALLBACK
 #                   = tpf_rows.row_tokens(TPF_ROW): the alpha-solver keys of one
 #                   row of the TwoPhaseFlow advection studies (cases/davof/
-#                   *Translation3D, 2026-10-13); the sweep axis is TPF_ROW.
+#                   *Translation3D, 2026-10-13; the fallback 2026-10-14); the
+#                   sweep axis is TPF_ROW.
 #   TPF_UX, TPF_UY, TPF_UZ = tpf_rows.velocity_tokens(TPF_VELOCITY_ARM): the
 #                   uniform velocity of an arm (normal | oblique | axial).
 _DERIVED_TOKENS = {
@@ -74,6 +76,7 @@ _DERIVED_TOKENS = {
     "TPF_APPLY_TO",
     "TPF_SLIVER_TOL",
     "TPF_MAX_ANGLE",
+    "TPF_NO_NORMAL_FALLBACK",
     "TPF_UX",
     "TPF_UY",
     "TPF_UZ",
@@ -100,6 +103,7 @@ _DERIVED_INPUTS = {
     "TPF_APPLY_TO": ("TPF_ROW",),
     "TPF_SLIVER_TOL": ("TPF_ROW",),
     "TPF_MAX_ANGLE": ("TPF_ROW",),
+    "TPF_NO_NORMAL_FALLBACK": ("TPF_ROW",),
     "TPF_UX": ("TPF_VELOCITY_ARM",),
     "TPF_UY": ("TPF_VELOCITY_ARM",),
     "TPF_UZ": ("TPF_VELOCITY_ARM",),

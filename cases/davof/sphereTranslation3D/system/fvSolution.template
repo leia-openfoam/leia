@@ -36,6 +36,7 @@ solvers
         applyTo         @!TPF_APPLY_TO!@;
         sliverTol       @!TPF_SLIVER_TOL!@;
         maxAngle        @!TPF_MAX_ANGLE!@;
+        noNormalFallback @!TPF_NO_NORMAL_FALLBACK!@;
         exactNormal
         {
             functionType sphere;

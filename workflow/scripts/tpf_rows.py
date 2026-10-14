@@ -5,14 +5,23 @@ TwoPhaseFlow branch davof, run/benchmark/advection there).
 
 A ROW names what the alpha solver dictionary of the fork's benchmark selects:
 the reconstruction scheme and, for the davof scheme, its normal model
-(davofNormalModel.H: normalModel, applyTo all | check, sliverTol, maxAngle).
-The study sweeps the single token TPF_ROW; materialize._with_derived_tokens
-expands it through row_tokens() into the five tokens the templates name
-(TPF_RECON_SCHEME, TPF_NORMAL_MODEL, TPF_APPLY_TO, TPF_SLIVER_TOL,
-TPF_MAX_ANGLE), so that a row is one word in a config and one column in
-case_params.json. The comparator rows (plicRDF, isoAlpha) carry the davof
-keys inertly: the other schemes ignore them, and every row starts from the
-same initDavofFields state (the comparators ignore alphaf.water).
+(davofNormalModel.H: normalModel, applyTo all | check, sliverTol, maxAngle,
+noNormalFallback keep | ringArea). The study sweeps the single token
+TPF_ROW; materialize._with_derived_tokens expands it through row_tokens()
+into the six tokens the templates name (TPF_RECON_SCHEME, TPF_NORMAL_MODEL,
+TPF_APPLY_TO, TPF_SLIVER_TOL, TPF_MAX_ANGLE, TPF_NO_NORMAL_FALLBACK), so
+that a row is one word in a config and one column in case_params.json. The
+comparator rows (plicRDF, isoAlpha) carry the davof keys inertly: the other
+schemes ignore them, and every row starts from the same initDavofFields
+state (the comparators ignore alphaf.water).
+
+The row davof-plicRDFnormal-ring (2026-10-14) is the plicRDF-normal control
+with noNormalFallback ringArea: the cells the davof scheme marks by their
+face fractions but the helper plicRDF does not (alpha outside
+(surfCellTol, 1 - surfCellTol); "kept m" in the fork's Info line, 16 to 24 of
+1800 cells at N = 64 and 144 to 182 of 7100 at N = 128 in the hex study)
+take the ring normal instead of the own m_c. Every other row keeps the
+default keep, so its fvSolution gains one line and nothing else changes.
 
 A VELOCITY ARM (token TPF_VELOCITY_ARM) names the uniform velocity, expanded
 by velocity_tokens() into TPF_UX/UY/UZ: the plane test moves the plane along
@@ -26,19 +35,21 @@ quadraticFaces on the sphere), one per study.
 """
 from collections import OrderedDict
 
-# name -> (reconstructionScheme, normalModel, applyTo, sliverTol, maxAngle)
+# name -> (reconstructionScheme, normalModel, applyTo, sliverTol, maxAngle,
+#          noNormalFallback)
 ROWS = OrderedDict([
-    ("davof-cellLocal",     ("davof",   "cellLocal", "all", "0", "15")),
-    ("davof-ringArea",      ("davof",   "ringArea",  "all", "0", "15")),
-    ("davof-ringFit",       ("davof",   "ringFit",   "all", "0", "15")),
-    ("davof-exact",         ("davof",   "exact",     "all", "0", "15")),
-    ("davof-plicRDFnormal", ("davof",   "plicRDF",   "all", "0", "15")),
-    ("plicRDF",             ("plicRDF", "cellLocal", "all", "0", "15")),
-    ("isoAlpha",            ("isoAlpha", "cellLocal", "all", "0", "15")),
+    ("davof-cellLocal",          ("davof",    "cellLocal", "all", "0", "15", "keep")),
+    ("davof-ringArea",           ("davof",    "ringArea",  "all", "0", "15", "keep")),
+    ("davof-ringFit",            ("davof",    "ringFit",   "all", "0", "15", "keep")),
+    ("davof-exact",              ("davof",    "exact",     "all", "0", "15", "keep")),
+    ("davof-plicRDFnormal",      ("davof",    "plicRDF",   "all", "0", "15", "keep")),
+    ("davof-plicRDFnormal-ring", ("davof",    "plicRDF",   "all", "0", "15", "ringArea")),
+    ("plicRDF",                  ("plicRDF",  "cellLocal", "all", "0", "15", "keep")),
+    ("isoAlpha",                 ("isoAlpha", "cellLocal", "all", "0", "15", "keep")),
 ])
 
 ROW_TOKENS = ("TPF_RECON_SCHEME", "TPF_NORMAL_MODEL", "TPF_APPLY_TO",
-              "TPF_SLIVER_TOL", "TPF_MAX_ANGLE")
+              "TPF_SLIVER_TOL", "TPF_MAX_ANGLE", "TPF_NO_NORMAL_FALLBACK")
 
 # arm -> (UX, UY, UZ); |U| = 1 for every arm (REFERENCE_SPEED 1 in the
 # .parameter files, so dt = Co h). normal = the unit normal of the plane
@@ -60,6 +71,7 @@ LABELS = OrderedDict([
     ("davof-ringFit",       "DAVOF, ring-fit normal"),
     ("davof-exact",         "DAVOF, exact normal (control)"),
     ("davof-plicRDFnormal", "DAVOF, plicRDF normal (control)"),
+    ("davof-plicRDFnormal-ring", "DAVOF, plicRDF normal, ring fallback"),
     ("plicRDF",             "plicRDF"),
     ("isoAlpha",            "isoAlpha"),
 ])
@@ -70,13 +82,15 @@ COLORS = {
     "davof-ringFit":       "#7a3bb5",   # purple
     "davof-exact":         "#444444",   # grey: the control
     "davof-plicRDFnormal": "#e87ba4",   # pink: the plicRDF-normal control
+    "davof-plicRDFnormal-ring": "#9c2f5a",   # dark pink: the control with the ring fallback
     "plicRDF":             "#eb6834",   # plicRDF's orange (make_davof_normal_table.COLORS)
     "isoAlpha":            "#eda100",   # isoAlpha's yellow (make_davof_normal_table.COLORS)
 }
 
 MARKERS = {
     "davof-cellLocal": "o", "davof-ringArea": "s", "davof-ringFit": "D",
-    "davof-exact": "x", "davof-plicRDFnormal": "+", "plicRDF": "^", "isoAlpha": "v",
+    "davof-exact": "x", "davof-plicRDFnormal": "+", "davof-plicRDFnormal-ring": "P",
+    "plicRDF": "^", "isoAlpha": "v",
 }
 
 

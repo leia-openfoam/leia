@@ -1,0 +1,59 @@
+# The plicRDF-normal control of the plane-translation test with the ring
+# fallback (2026-10-14): the row davof-plicRDFnormal-ring of
+# workflow/scripts/tpf_rows.py, otherwise the hex study
+# (config/davof/planeTranslation3D_hex.yaml: the plane of the static test in
+# the corner of the 4 mm box moved by 0.2 L along its normal (arm normal) or
+# along x (arm oblique), N = 20/40/80/160, Co 0.05/0.1/0.2/0.5, the
+# Detrixhe-Aslam initDavofFields state, serial). 4 x 4 x 1 x 2 = 32 cases.
+# The keyword and the row: see sphereTranslation3D_hexControl.yaml.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-14, written before the run):
+# P-F1: the row still FAILS the 1e-12 gate (max over the run of L1(alphaf)
+#   and of L1(n)) on both arms at every N and Co, because the plicRDF normal
+#   itself is not exact at the corners of the box (the stencil normal of a
+#   plane that meets the boundary; the keep control davof-plicRDFnormal
+#   fails everywhere in the hex study); the fallback changes only the cells
+#   without a helper normal.
+# P-F2: the row's maxima equal the keep control's to every digit on every
+#   case (the note in sphereTranslation3D_hexControl.yaml: a cell without a
+#   helper normal has alpha at 0 or 1 within surfCellTol and gets no plane
+#   from positionPlane() whatever its normal, so the fallback is inert).
+#   FALSIFIED if any case differs from the keep control: the fallback would
+#   then enter the transport through a cell that does get a plane.
+#
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeTranslation3D_hexControl.yaml
+# Lichtenberg:
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexControl --export=ALL,STUDY=davof/planeTranslation3D_hexControl run-studies.sbatch
+study_name: planeTranslation3D_hexControl
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+# initDavofFields reads system/initAlphaFieldDict: alpha.water and the face
+# fractions alphaf.water of the Detrixhe-Aslam state; no -alphaName.
+setfields_app: initDavofFields
+setfields_args: ""
+# The function-object .dat files and the solver log -> advectorVoF.csv (the
+# solve rule's output), one row per step.
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.05, 0.1, 0.2, 0.5]
+  TPF_ROW: [davof-plicRDFnormal-ring]
+  TPF_VELOCITY_ARM: [normal, oblique]
+collapse_other_axes: true
+
+# The N = 160 case (4.1e6 cells, 640 steps at Co 0.05) needs more than the Slurm default.
+solve_mem_mb: 12000
+solve_runtime: 720
+
+# Tables and figures go to the davof theme's docs data (make_davof_advection_table.py); no deck.
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

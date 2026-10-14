@@ -1003,13 +1003,22 @@ studies drive its benchmark solver `advectorVoF` with the dictionaries of the fo
   lines so that they reach the grid).
 - The rows: ONE token `TPF_ROW` (`workflow/scripts/tpf_rows.py`), expanded by
   `materialize._with_derived_tokens` into the alpha-solver keys `TPF_RECON_SCHEME`,
-  `TPF_NORMAL_MODEL`, `TPF_APPLY_TO`, `TPF_SLIVER_TOL`, `TPF_MAX_ANGLE`:
+  `TPF_NORMAL_MODEL`, `TPF_APPLY_TO`, `TPF_SLIVER_TOL`, `TPF_MAX_ANGLE`,
+  `TPF_NO_NORMAL_FALLBACK` (since 2026-10-14, the fork's `noNormalFallback keep |
+  ringArea`: what a cell without a model normal gets; `keep` for every row but one):
   `davof-cellLocal` (the own normal m_c), `davof-ringArea`, `davof-ringFit`,
-  `davof-exact` (control), `davof-plicRDFnormal` (control), `plicRDF`, `isoAlpha`
+  `davof-exact` (control), `davof-plicRDFnormal` (control),
+  `davof-plicRDFnormal-ring` (the control with the ring normal in the cells the
+  helper plicRDF does not mark; `config/davof/{sphere,plane}Translation3D_hexControl.yaml`),
+  `plicRDF`, `isoAlpha`
   (the comparators carry the davof keys inertly and start from the same
   `initDavofFields` alpha; they ignore `alphaf.water`). The velocity arm
   `TPF_VELOCITY_ARM` expands into `TPF_UX/UY/UZ` the same way. The grid is exactly
-  `N_CELLS x TARGET_ADVECTIVE_CO x TPF_ROW [x TPF_VELOCITY_ARM]`.
+  `N_CELLS x TARGET_ADVECTIVE_CO x TPF_ROW [x TPF_VELOCITY_ARM]`. Gate of the sixth
+  token (2026-10-14): the two hexSmoke studies (15 cases) re-materialized before and
+  after it differ in exactly the one added `noNormalFallback keep;` line of every
+  `fvSolution`; `case_params.json` gains the token (and its `gitCommit`/`runDate`
+  provenance differs, as on every materialization); nothing else changes.
 - The abort guard of `advectorVoF` (top-level `isoAdvector { abortEnabled true;
   abortMinAlpha -0.5; abortMaxAlpha 1.5; abortInterfaceCellFactor 10; }` in
   `fvSolution.template`): a run whose alpha leaves [-0.5, 1.5] or whose interface-cell
@@ -1024,7 +1033,8 @@ studies drive its benchmark solver `advectorVoF` with the dictionaries of the fo
   skips `-fluxCorrection` and the level-set plots for this solver.
 - The report step runs `make_davof_advection_table.py <study> --theme davof`:
   `tables/davof_advection_<study>.csv` (one row per case: end values, run maxima, min
-  alpha, interface cells first -> last, sliver / fit-fallback maxima, cpu, status),
+  alpha, interface cells first -> last, sliver / fit-fallback / ring-fallback maxima,
+  cpu, status),
   `davof_advection_history_<study>.csv` and `davof_advection_growth_<study>.csv` (the
   davof rows: per-step L1(alphaf), the first 20 steps with the factors g_k =
   L1_k/L1_{k-1}, their maximum and geometric mean), per Courant number
