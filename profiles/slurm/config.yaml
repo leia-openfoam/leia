@@ -9,6 +9,10 @@
 # from the runtime. Edit the account / module / OpenFOAM lines for a different
 # cluster or project.
 executor: slurm
+# Requeue a job that Slurm ends with a non-zero state (NODE_FAIL on 2026-10-14 killed
+# 15 solve jobs of the advectorVoF studies on one bad node; the executor also excludes
+# failed nodes from later submissions).
+slurm-requeue: true
 jobs: 200                  # max sbatch jobs in flight
 printshellcmds: true
 rerun-incomplete: true
