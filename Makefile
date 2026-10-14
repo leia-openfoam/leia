@@ -291,6 +291,12 @@ article-amplification:
 
 articles: article-sl article-lsl article-grl article-gcls article-amplification
 
+# Read a reviewed PDF back. Annotate $(ANA_AMP)/ms.pdf in any viewer that SAVES into the
+# file (Edge, Firefox, Acrobat, Okular), save it next to the source as ms_reviewed.pdf, and
+# run this: every comment comes back with the passage it sits on and the section it is in.
+review-amplification: ## read the comments out of docs/analysis-amplification-sl/ms_reviewed.pdf
+	@python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf
+
 report-gcls: ## technical report on the gradient-control campaign (docs/gradient-controlled-level-set/gcls-technical-report)
 	cd docs/gradient-controlled-level-set/gcls-technical-report && latexmk -pdf -interaction=nonstopmode gclsTechnicalReport.tex
 
