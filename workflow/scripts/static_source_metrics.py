@@ -25,7 +25,7 @@ Norms are L1 and L2 only (never L_inf). Cell order: i + N j (blockMesh, x fastes
 
 Commands:
   selftest
-  check-init <case>...
+  check-init <case>... [--out <dir>]   (P0.2; with --out also staticSource_init.csv)
   analyse --studies <study dir>... --out <dir> [--jobs N]
   null --studies <study dir>... --out <dir>
   seam --serial <study dir>... --parallel <study dir>... --out <dir>
@@ -523,7 +523,7 @@ def _get(fields, **kw):
     return [r for r in fields if all(r.get(k) == v for k, v in kw.items())]
 
 
-def verdicts(fields, hist, cases, null_rows):
+def verdicts(fields, hist, cases, null_rows, init_rows=()):
     V = []
 
     def add(pid, scope, value, threshold, verdict, note=""):
@@ -574,34 +574,73 @@ def verdicts(fields, hist, cases, null_rows):
     if len(pts) >= 3:
         o = lsq_order([p[0] for p in pts], [p[1] for p in pts])
         add("P1.3", "|V_DA(alg) - V_DA(sdf)|/V_exact", f"{o:.2f}", "2 +- 0.3", "PASS" if abs(o - 2) <= 0.3 else "FAIL")
-    # P0.2 and P0.3 are evaluated by check-init and null (bit identities); recorded there.
+    # P1.4: the modulated starts have no derived value; their representation orders are recorded
+    for init in ("modM2", "modM4"):
+        rs = sorted(_get(ctrl, init=init, tau=0.0), key=lambda r: r["N"])
+        if len(rs) >= 3:
+            o = {met: lsq_order([1 / r["N"] for r in rs], [r[met] for r in rs]) for met in ("shapeEx1", "shapeEx2")}
+            add("P1.4", f"{init} tau 0", f"shapeEx1 order {o['shapeEx1']:.2f}, shapeEx2 order {o['shapeEx2']:.2f}",
+                "no derived value", "RECORDED")
+    # P0.2 from check-init --out (staticSource_init.csv); P0.3, P6.1, P7.1, P8.1 from null
+    if init_rows:
+        bad = [r for r in init_rows if r["verdict"] != "PASS"]
+        add("P0.2", "every case (check-init)", f"{len(init_rows) - len(bad)}/{len(init_rows)} PASS",
+            "L1, L2 <= 1e-14; signs of d; sdf = psiEnd", "PASS" if not bad else "FAIL",
+            "; ".join(f"{r['case']}: {r['result']}" for r in bad[:5]))
+    else:
+        add("P0.2", "every case", "", "", "NOT EVALUATED", "no staticSource_init.csv (check-init --out)")
     for r in null_rows:
         add(r["item"], r["pair"], r["result"], "bit-identical", r["verdict"], r.get("note", ""))
-    # P2.1: qband against the ODE
-    for h in hist:
-        pass
-    by_case = {}
-    for h in hist:
-        by_case.setdefault(h["case"] + "@" + h["study"], []).append(h)
-    fails, checked = [], 0
-    for key, hs in by_case.items():
-        h0 = hs[0]
-        if h0["init"] not in ("sdf", "algNorm", "alg", "blend01", "blendH1", "blendH2") or h0["N"] < 128:
-            continue
-        if not h0["arm"].startswith("gc-") and not h0["arm"].startswith("beta-"):
-            continue
-        taus = (1, 2, 5, 7, 10) if h0["arm"].endswith("-band") else (1, 2)
-        for h in hs:
-            if h["tau"] in taus and h.get("NARROW_MEAN_MAG_GRAD_PSI") not in (None, "") and "qODE" in h:
-                checked += 1
-                dev = abs(float(h["NARROW_MEAN_MAG_GRAD_PSI"]) - h["qODE"])
-                if dev > 0.02:
-                    fails.append(f"{key} tau {h['tau']}: {dev:.3f}")
-    if checked:
-        add("P2.1", "qband vs dq/dtau = q G(q)", f"{checked - len(fails)}/{checked} within 0.02", "0.02",
-            "PASS" if not fails else "FAIL", "; ".join(fails[:8]))
-    else:
-        add("P2.1", "qband vs ODE", "", "", "NOT EVALUATED", "no histories at N >= 128")
+    # P2.1: qband against the zero-set ODE; one row per arm (band: tau 1, 2, 5, 7, 10; none: tau 1, 2)
+    gc_arms = sorted({h["arm"] for h in hist if h["arm"].startswith("gc-") or h["arm"].startswith("beta-")})
+    for arm in gc_arms:
+        taus = (1, 2, 5, 7, 10) if arm.endswith("-band") else (1, 2)
+        fails, checked, worst = [], 0, 0.0
+        for h in hist:
+            if h["arm"] != arm or h["N"] < 128 or h["tau"] not in taus or "qODE" not in h:
+                continue
+            if h["init"] not in ("sdf", "algNorm", "alg", "blend01", "blendH1", "blendH2"):
+                continue
+            if h.get("NARROW_MEAN_MAG_GRAD_PSI") in (None, ""):
+                continue
+            checked += 1
+            dev = abs(float(h["NARROW_MEAN_MAG_GRAD_PSI"]) - h["qODE"])
+            worst = max(worst, dev)
+            if dev > 0.02:
+                fails.append(f"{h['init']} N {h['N']} tau {h['tau']:g}: {dev:.3f}")
+        if checked:
+            add("P2.1", f"{arm}: qband vs dq/dtau = q G(q), N >= 128, tau {','.join(map(str, taus))}",
+                f"{checked - len(fails)}/{checked} within 0.02, worst {worst:.2e}", "0.02",
+                "PASS" if not fails else "FAIL", "; ".join(fails[:8]))
+        else:
+            add("P2.1", arm, "", "", "NOT EVALUATED", "no histories at N >= 128")
+    # P2.2: modM2, modM4: eikB follows the RMS over theta of qODE - 1 within 0.01 above the noSource
+    # floor, tau <= 10. Applied as |eikB - qODErms| <= floor + 0.01 with floor = eikB of noSource on
+    # sdf at the same N and tau 0 (the estimator's own error), at the history samples 0 < tau <= 10;
+    # every rung, both mollifiers (the header names no restriction). Fixed 2026-10-14 before any
+    # cluster data was read.
+    floor = {h["N"]: float(h["E_NARROW_L2_GRAD_PSI"]) for h in hist
+             if h["arm"] == "noSource-none" and h["init"] == "sdf" and h["tau"] == 0
+             and h.get("E_NARROW_L2_GRAD_PSI") not in (None, "")}
+    for arm in gc_arms:
+        fails, checked, worst = [], 0, -1.0
+        for h in hist:
+            if h["arm"] != arm or h["init"] not in ("modM2", "modM4") or not (0 < h["tau"] <= 10):
+                continue
+            if "qODErms" not in h or h.get("E_NARROW_L2_GRAD_PSI") in (None, "") or h["N"] not in floor:
+                continue
+            checked += 1
+            dev = abs(float(h["E_NARROW_L2_GRAD_PSI"]) - h["qODErms"])
+            tol = floor[h["N"]] + 0.01
+            worst = max(worst, dev - tol)
+            if dev > tol:
+                fails.append(f"{h['init']} N {h['N']} tau {h['tau']:g}: {dev:.4f} > {tol:.4f}")
+        if checked:
+            add("P2.2", f"{arm}: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10",
+                f"{checked - len(fails)}/{checked} within floor + 0.01, worst margin {worst:+.2e}",
+                "|eikB - qODErms| <= floor + 0.01", "PASS" if not fails else "FAIL", "; ".join(fails[:8]))
+        else:
+            add("P2.2", arm, "", "", "NOT EVALUATED", "no modM histories or no noSource floor")
     # P3.1: the DA volume excess of algNorm over sdf
     for arm in sorted({r["arm"] for r in fields if r["arm"].startswith("gc-")}):
         law = arm.split("-")[1]
@@ -672,6 +711,10 @@ def verdicts(fields, hist, cases, null_rows):
                 ok = all(r["spuriousFar"] > 0 for r in sd10)
                 add("P5.3", f"{arm} sdf tau 10", f"far spurious in {sum(r['spuriousFar'] > 0 for r in sd10)}/{len(sd10)}",
                     "all", "PASS" if ok else "FAIL")
+            if law in ("linearQ", "linearZ", "twoThirdsZReg"):
+                # predicted to appear; outside the FAIL condition of P5.3, so recorded
+                add("P5.3", f"{arm} tau 10, all starts and rungs", f"{len(far)}/{len(r10)} case(s) with far spurious crossings",
+                    "predicted: appear", "RECORDED")
     states = [c for c in cases if c.get("state") not in ("COMPLETED",)]
     add("P5.2", "every case", f"{len(cases) - len(states)}/{len(cases)} COMPLETED", "all",
         "PASS" if not states else "FAIL", "; ".join(f"{c['study']}/{c['case']} {c['state']}" for c in states[:8]))
@@ -867,6 +910,7 @@ def cmd_selftest(_args):
 
 def cmd_check_init(args):
     ok_all = True
+    rows = []
     for case in args.cases:
         c = case_info(case)
         geo = Geometry.get(c["N"], c["cx"], c["cy"], c["R"])
@@ -891,7 +935,13 @@ def cmd_check_init(args):
         else:
             ok &= all(os.path.isfile(os.path.join(case, "0", f)) for f in ("psiEnd", "alphaEnd"))
         print(f"check-init {c['study']}/{c['name']} {c['init']} N {c['N']}: {'PASS' if ok else 'FAIL'} ({'; '.join(msgs)})")
+        rows.append(dict(item="P0.2", case=f"{c['study']}/{c['name']}", init=c["init"], N=c["N"],
+                         result="; ".join(msgs), verdict="PASS" if ok else "FAIL"))
         ok_all &= ok
+    if args.out:
+        os.makedirs(args.out, exist_ok=True)
+        write_rows(os.path.join(args.out, "staticSource_init.csv"), rows)
+    print(f"check-init: {sum(r['verdict'] == 'PASS' for r in rows)}/{len(rows)} PASS")
     return 0 if ok_all else 1
 
 
@@ -923,7 +973,11 @@ def cmd_analyse(args):
     npath = os.path.join(args.out, "staticSource_null.csv")
     if os.path.isfile(npath):
         nulls = read_csv(npath)
-    V = verdicts(fields, hist, summaries, nulls)
+    inits = []
+    ipath = os.path.join(args.out, "staticSource_init.csv")
+    if os.path.isfile(ipath):
+        inits = read_csv(ipath)
+    V = verdicts(fields, hist, summaries, nulls, inits)
     write_rows(os.path.join(args.out, "staticSource_verdicts.csv"), V)
     print(f"analyse: {len(cases)} cases, {len(fields)} field rows, {len(hist)} history rows, {len(V)} verdict lines; commits {sorted(commits)}")
     for v in V:
@@ -1000,6 +1054,7 @@ def main():
     sub.add_parser("selftest")
     p = sub.add_parser("check-init")
     p.add_argument("cases", nargs="+")
+    p.add_argument("--out", default="")
     p = sub.add_parser("analyse")
     p.add_argument("--studies", nargs="+", required=True)
     p.add_argument("--out", required=True)
