@@ -17,8 +17,8 @@
 \newcommand{\measured}{\textcolor{green!35!black}{\textbf{[MEASURED]}}}
 \newcommand{\opn}{\textcolor{orange!80!black}{\textbf{[OPEN]}}}
 
-\title{Why the semi-Lagrangian level set grows on hexahedral meshes\\
-       \large A self-contained derivation, and what to change}
+\title{Where the semi-Lagrangian level set amplifies, and where it does not\\
+       \large Cubes, hexagons and boundaries: a self-contained derivation, and what to change}
 \author{Tomislav Mari\'c}
 \date{2026-10-14}
 
@@ -28,18 +28,41 @@
 \begin{abstract}
 A measurement said that our transport scheme slowly amplifies errors on every mesh,
 including the clean hexahedral ones. This document works out why, from first principles, and
-reaches a different conclusion than the measurement suggested: the scheme does \emph{not}
-amplify anywhere in the interior of a uniform hexahedral mesh. The growth comes from cells
-that touch a boundary, and only when the flow carries material \emph{out} of the domain
-there. The document is written to be read without looking anything up. It builds the tool it
-uses, checks that tool against a case we can do by hand, and only then reports results. It
-closes with what to change in the reconstruction, including a direct answer to the question
-of whether boundary face values belong in the stencil.
+reaches a different conclusion than the measurement suggested. In the interior of a uniform
+mesh the scheme does not amplify at all, provided the material does not travel further in one
+step than the stencil reaches. The growth comes from cells that touch a boundary, where the
+stencil cannot reach past the wall. One principle covers every case examined here:
+\textbf{the scheme amplifies exactly when the point it must look up lies outside the region
+its data covers}, so that the local fit is asked to continue a parabola past its data rather
+than to interpolate within it. The same machinery is then applied to a mesh of regular
+hexagons, which is not a Cartesian mesh, and it gives a sharper stability limit than cubes do
+--- $0.87$ against $1.00$ in Courant number --- for exactly that reason. The document is
+written to be read without looking anything up: it builds the tool it uses, checks that tool
+against a case we can do by hand, and only then reports results. It closes with what to change
+in the reconstruction, including a direct answer to the question of whether boundary face
+values belong in the stencil.
 \end{abstract}
 
 \tableofcontents
 
 \part{The question}
+
+\section*{A note on two words that look alike}
+\addcontentsline{toc}{section}{A note on two words that look alike}
+
+This document uses two words that are easy to confuse and mean different things.
+
+\begin{itemize}
+\item \textbf{Hexahedral} describes our production meshes. A hexahedron is a solid with six
+      faces --- a cube or a box. A hexahedral mesh is a three-dimensional mesh of boxes.
+\item \textbf{Hexagonal} describes the two-dimensional mesh of Section~\ref{sec:hexagon}. A
+      hexagon is a flat figure with six sides. A hexagonal mesh is a tiling of the plane by
+      six-sided tiles, like a honeycomb.
+\end{itemize}
+
+They are unrelated shapes, and they behave differently here. Where confusion is possible the
+text says ``cubes'' or ``honeycomb''.
+
 
 \section{What the scheme does}
 
@@ -423,6 +446,39 @@ A search over a $96^3$ grid of wave directions plus $4\times10^5$ random ones fi
 anywhere with $|G| > 1$. The maximum is attained at $\theta = 0$, the constant field, which
 every consistent scheme must preserve exactly.
 
+\subsection{This is not unconditional, and the limit is exactly where it should be}
+\label{sec:colimit}
+
+The sweep above stops at $\mathrm{Co} = 0.95$, and that turns out to matter. Pushing past it:
+
+\begin{center}
+\begin{tabular}{llr}
+\toprule
+mesh & flow direction & Courant number at which $\rho$ first exceeds 1 \\
+\midrule
+cubes, 3D & along an axis   & \textbf{1.000000} \\
+cubes, 3D & face diagonal   & 1.064760 \\
+cubes, 3D & body diagonal   & 1.071207 \\
+cubes, 2D & along an axis   & \textbf{1.000000} \\
+cubes, 2D & face diagonal   & 1.041283 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\derived{} The limit along an axis is \emph{exactly} one, and the reason is immediate once
+stated. At $\mathrm{Co} = 1$ the departure point lands exactly on the neighbouring cell
+centre, the furthest the one-ring stencil reaches in that direction. Below that, the fit
+interpolates among data it has; above it, the fit must continue past its outermost datum.
+Off-axis the stencil reaches further --- a corner neighbour is $\sqrt{3}$ cells away in 3D ---
+so the limit is a little higher.
+
+This is the same statement that Section~\ref{sec:boundary} makes about boundary cells and
+Section~\ref{sec:hexagon} makes about a honeycomb mesh. It is worth stating once, plainly:
+\textbf{the scheme is safe while the point it looks up lies inside its data, and not
+otherwise.} Our production runs sit at $\mathrm{Co} = 0.0164$, about sixty times below the
+limit, so the interior is in no danger. But the margin is a property of the mesh, not a
+universal constant, and the next mesh we try has a smaller one.
+
 \measured{} As an independent check, not sharing any of the algebra above, the interior rule
 was applied repeatedly to a random field on a periodic $24^3$ grid --- the same procedure as
 the original measurement, but restricted to the interior rule. It never exceeds one; it
@@ -593,6 +649,174 @@ therefore forces the fitted model to return $\psi_c$ at half a cell from the cen
 about the weighting can repair that, and Section~\ref{sec:improve} proposes repairing the
 value instead.
 
+\section{A different mesh entirely: a honeycomb of regular hexagons}
+\label{sec:hexagon}
+
+Everything so far was done on a mesh of boxes. It is fair to ask how much of it was really
+about boxes. This section repeats the whole calculation on a two-dimensional mesh of regular
+hexagons --- a honeycomb --- which is about as far from a Cartesian mesh as a regular tiling
+can get. The answer is that the machinery carries over untouched, one step of it needs to be
+stated more carefully, and the conclusion is the same mechanism with a tighter number.
+
+\subsection{One step of the tool needed a Cartesian mesh. It turns out it did not.}
+
+Section~\ref{sec:symbol-valid} leans on a single property: every cell applies the \emph{same}
+rule, so a wave comes out as the same wave times a number. That needs the mesh to
+\textbf{repeat}. It does not need the mesh to be \emph{square}.
+
+The centres of a honeycomb's cells repeat: starting from any cell, every other cell centre is
+reached by taking whole numbers of steps along two fixed directions,
+\begin{equation}
+  a_1 = (1, 0), \qquad a_2 = \bigl(\tfrac12, \tfrac{\sqrt3}{2}\bigr),
+\end{equation}
+which are at $60^\circ$ to each other rather than $90^\circ$. So each cell can be labelled by
+a pair of whole numbers $m = (m_1, m_2)$ exactly as before, and a wave is still
+$e^{\mathrm{i}\,\theta\cdot m}$ --- only now $m$ counts steps along $a_1$ and $a_2$ instead of
+along $x$ and $y$.
+
+This forces a distinction that a Cartesian mesh hides, and it is the one thing in this section
+worth remembering:
+
+\begin{itemize}
+\item the \textbf{physical} positions of the neighbours, in real distance, build the basis and
+      the weights --- that is, they determine the \emph{fit};
+\item the \textbf{whole-number} labels build the wave phases --- that is, they determine the
+      \emph{symbol}.
+\end{itemize}
+
+On a mesh of boxes these two are the same list of numbers, which is why one can go a long way
+without noticing there are two of them. On a honeycomb they are different, and using the wrong
+one gives nonsense.
+
+\subsection{The honeycomb stencil is smaller than you would guess}
+
+A surprise, and it is a fact about hexagons rather than about our code. Our stencil rule is
+``every cell sharing a vertex with this one''. On a mesh of boxes that is more than the face
+neighbours: in 2D it is 8 rather than 4, because of the diagonals.
+
+On a honeycomb there are no diagonals to pick up. \textbf{Every vertex of a regular hexagonal
+tiling is shared by exactly three cells}, so each of the six vertices contributes two other
+cells, and each of the six edge-neighbours is reached through two different vertices. Six
+vertices give $6 \times 2 = 12$ slots, each edge-neighbour counted twice, leaving six distinct
+cells --- exactly the edge neighbours and nothing more.
+
+\derived{} On a honeycomb, ``share a vertex'' and ``share an edge'' pick the same six cells.
+The stencil has \textbf{six} members where the Cartesian 2D stencil has eight.
+
+Two consequences follow at once.
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+mesh & neighbours & coefficients & spare data \\
+\midrule
+honeycomb, 2D & 6  & 5 & \textbf{1} \\
+cubes, 2D     & 8  & 5 & 3 \\
+cubes, 3D     & 26 & 9 & 17 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\derived{} \textbf{The honeycomb fit is barely over-determined}: six numbers to pin down five
+coefficients, one spare. It is still well posed --- the normal matrix has condition number
+$8.0$ and determinant $1.898$, far from singular --- but there is almost no redundancy to
+absorb a bad value.
+
+\derived{} \textbf{The weighting has no effect at all on a honeycomb.} All six neighbours sit
+at exactly the same distance from the centre, so every inverse-distance weight is the same
+number, and a common factor cancels out of the fit. Whatever we choose for the weight
+exponent, or for the anchor point discussed in Section~\ref{sec:improve}, the scheme on a
+regular honeycomb is unchanged. This is the two-dimensional echo of the counting argument of
+Section~7: where the weights cannot discriminate, they cannot matter.
+
+\subsection{The result: the same behaviour, with a tighter limit}
+
+Running the identical calculation --- physical offsets into the fit, whole-number offsets into
+the phases --- gives:
+
+\begin{table}[h]
+\centering
+\caption{Courant number at which the growth factor first rises above one.}
+\label{tab:hexlimit}
+\begin{tabular}{llr}
+\toprule
+mesh & flow direction & limit \\
+\midrule
+honeycomb & straight at a neighbour         & $\approx 0.817$ \\
+honeycomb & half way between two neighbours & \textbf{0.866025} \\
+cubes, 2D & along an axis                   & \textbf{1.000000} \\
+cubes, 2D & face diagonal                   & 1.041283 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Below its limit the honeycomb behaves exactly as the box mesh does: $\rho = 1.00000000$ at
+$\mathrm{Co} = 0.0164$, $0.1$, $0.25$ and $0.5$, in both directions, with the one-step worst
+case $\Lambda$ rising to $1.42$ while nothing grows --- the same wide gap between the two
+numbers as Section~\ref{sec:lambda}. Above the limit it amplifies quickly: $1.16$ at
+$\mathrm{Co} = 0.9$ and $1.67$ at $\mathrm{Co} = 1.0$, taken half way between two neighbours.
+
+\derived{} \textbf{A honeycomb is about $15\,\%$ less forgiving than a mesh of boxes}, and the
+number $0.866025$ is not a coincidence. $\sqrt3/2 = 0.8660254$ is the distance from a
+hexagon's centre to the middle of one of its sides. The six neighbours form a hexagon around
+the cell; pointing straight at a neighbour, the data reaches out to distance $1$, but pointing
+half way between two neighbours, the nearest edge of that hexagon is only $\sqrt3/2$ away.
+Cross it and the fit is extrapolating. The computed limit in that direction agrees with
+$\sqrt3/2$ to nine decimal places.
+
+\opn{} In the other direction the limit, about $0.817$, is \emph{below} the distance to the
+data, which is $1$. (That figure is found by searching over waves on a finite grid and moves
+in its fourth decimal with the grid; the $\sqrt3/2$ figure does not move at all, because the
+worst wave there sits exactly on a grid point.) So leaving the data is enough to cause amplification but is not the
+only way to cause it, and the exact threshold is direction-dependent. The geometric picture is
+the right one to carry; it is not a complete law.
+
+\subsection{Boundaries on a honeycomb, and a harder failure}
+
+Putting a wall on one side of a honeycomb cell removes three of its six neighbours. The same
+law appears:
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+ & $\mathrm{Co} = 0.0164$ & $\mathrm{Co} = 0.25$ \\
+\midrule
+interior cell, all six neighbours                 & 1.000000 & 1.000000 \\
+at a wall, departure point \emph{into} the domain & \textbf{1.000000} & \textbf{1.000000} \\
+at a wall, departure point \emph{towards} the wall & 1.034180 & 1.523251 \\
+\quad the same, with one face value added          & 1.020505 & 1.313469 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\derived{} Exactly as on a mesh of boxes: a departure point lying inside the data gives one
+precisely; a departure point beyond the wall amplifies; and a face value, which sits on the
+far side, recovers part of the loss. Nothing in Section~\ref{sec:boundary} depended on the
+cells being cubes.
+
+But one thing is distinctly worse. A honeycomb boundary cell is left with \textbf{three}
+neighbours and the quadratic needs \textbf{five} coefficients, so the quadratic fit cannot be
+formed at all and the scheme falls back to a straight-line fit at every cell touching a wall.
+A boundary cell on a mesh of boxes keeps 17 neighbours against 9 coefficients and holds on to
+its quadratic. \derived{} \textbf{A honeycomb loses an order of accuracy along its entire
+boundary; a box mesh does not.} For a method whose whole purpose is an accurate interface,
+that is a stronger objection to honeycombs than the Courant limit is.
+
+\subsection{What this says about mesh choice}
+
+Nothing here forbids a honeycomb, and at our production Courant number of $0.0164$ the
+difference between a limit of $0.87$ and a limit of $1.00$ is of no practical consequence
+whatever. The value of the exercise is different, and it is twofold.
+
+First, it shows that none of the earlier reasoning was an artefact of square cells. The tool,
+the mechanism and the conclusion all survive a change of tiling.
+
+Second, it produces the general statement that the box-mesh calculation alone could not. Three
+different situations --- an interior cell at high Courant number, a cell against a wall, and a
+honeycomb cell at moderate Courant number --- all amplify, and all for the same reason, with
+thresholds that differ only because the data reaches different distances in each case.
+
+
 \section{Checking all of this against the running code}
 \label{sec:symbol-valid}
 
@@ -628,6 +852,47 @@ $1.01639260$: agreement to \textbf{nine significant figures}.
 
 \measured{} The largest value on the whole mesh, $1.0527251$, sits on a \textbf{boundary}
 cell, and it is the number previously recorded as the mesh's $\Lambda_{\max}$.
+
+\part{What it all amounts to, and what to change}
+
+\section{One sentence covers every case in this document}
+\label{sec:principle}
+
+Four separate calculations have now been done: the interior of a box mesh, the interior at
+high Courant number, a cell against a wall, and a honeycomb. They give one statement.
+
+\begin{quote}
+\textbf{The scheme amplifies exactly when the point it must look up lies outside the region
+its data covers.} Inside that region the local fit interpolates and nothing grows, at any
+Courant number and in any direction. Outside it, the fit continues a parabola past its data,
+and a continued parabola grows.
+\end{quote}
+
+Everything measured here is that sentence with a different distance in it:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+situation & how far the data reaches & limit \\
+\midrule
+box mesh, flow along an axis   & the next cell centre, $1$ cell   & $\mathrm{Co} = 1$ \\
+box mesh, flow along a diagonal & the corner neighbour, further   & $\mathrm{Co} \approx 1.07$ \\
+honeycomb, between two neighbours & the hexagon's near side, $\sqrt3/2$ & $\mathrm{Co} = 0.866$ \\
+cell against a wall & nothing beyond the wall, $0$ & any inward flow \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The last row is why a boundary is different in kind rather than in degree. An interior cell
+has data on both sides and only runs out of it at a Courant number near one. A wall cell has
+\emph{no} data beyond the wall at all, so the moment the flow carries material inward from
+outside, the fit is extrapolating --- at any Courant number, however small. That is why the
+boundary amplifies at $\mathrm{Co} = 0.0164$ while the interior does not.
+
+It is also why the boundary face value helps, and why its weight is irrelevant: it is the only
+thing standing on the far side of the departure point, so it converts an extrapolation into an
+interpolation. It is doing geometry, not carrying information.
+
 
 \part{What to change}
 
@@ -746,15 +1011,25 @@ it a value consistent with $|\nabla \psi| = 1$ rather than a copy.
 \section{What is still open}
 
 \begin{enumerate}
-\item \opn{} The boundary-cell figures are local indicators; the direct confirmation is the
+\item \opn{} The boundary-cell figures are growth factors of the rule that \emph{would} result
+      if that stencil were used everywhere. A boundary breaks the repetition the wave argument
+      needs, so they are strong indicators rather than proofs. The direct confirmation is the
       modified power iteration of Section~\ref{sec:improve}.
 \item \opn{} Our modelled boundary stencils reach $1.033$ at the production Courant number,
       while the measured maximum is $1.0527$. The models assume a plain box with one boundary
       condition; the real case has inlet, outlet and wall patches, and the boundary-adjacent
       cells take eight distinct values. Which cell attains the maximum is not settled.
-\item \opn{} Everything here assumes a \emph{uniform} mesh, which is what makes one rule
-      repeat and the wave analysis work. Graded meshes, refinement transitions and polyhedral
-      cells each break that assumption and need their own treatment.
+\item \opn{} ``Outside the data'' is exact in some directions and conservative in others. On a
+      honeycomb, half way between two neighbours the limit is the geometric distance
+      $\sqrt3/2$ to nine decimals; straight at a neighbour it is $0.8168$, below the geometric
+      distance of $1$. So leaving the data is sufficient for amplification but not necessary,
+      and the exact threshold needs its own account.
+\item \opn{} Everything here assumes a mesh that \emph{repeats} --- the same stencil at every
+      cell. That now covers boxes and honeycombs, which is a far wider class than it first
+      appeared, but it still excludes graded meshes, refinement transitions and the irregular
+      polyhedra a mesher actually produces. Those need their own treatment, and the honeycomb
+      result suggests the right question for them is geometric: how far does each cell's data
+      reach, in the direction the flow is coming from?
 \item \opn{} Flow along a mesh axis leaves a family of waves neither grown nor damped. Whether
       anything excites them in practice is unknown.
 \end{enumerate}

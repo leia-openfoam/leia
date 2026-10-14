@@ -89,6 +89,44 @@ def basis(d, dim):
     return sp.Matrix(lin + sq + cross)
 
 
+def lattice(name):
+    """A stencil as (physical offsets, integer lattice offsets, dimension).
+
+    The wave argument of Section "from weights to a growth factor" needs the SAME rule to
+    repeat from cell to cell. That requires a repeating lattice; it does NOT require a
+    Cartesian one. So two different sets of offsets are needed and they are not the same
+    object on a non-Cartesian mesh:
+
+      physical  -- real positions, in units of the centre-to-centre spacing. These build
+                   the basis and the inverse-distance weights, i.e. the FIT.
+      integer   -- coordinates in the lattice's own primitive vectors. These are what the
+                   Fourier phase exp(i theta . m) is written in, i.e. the SYMBOL.
+
+    On a Cartesian mesh the two coincide, which is why the distinction can be missed.
+
+      cartesian1d/2d/3d  the full 3^D block minus the owner: 2, 8, 26 neighbours
+      hex2d              a regular hexagonal tiling. Cell centres form a TRIANGULAR
+                         lattice with primitive vectors a1 = (1,0), a2 = (1/2, sqrt3/2).
+                         Each vertex of such a tiling is shared by exactly THREE cells, so
+                         the vertex neighbours ARE the six edge neighbours and nothing
+                         more: cell-point-cell and cell-face-cell coincide. All six sit at
+                         distance one, so the inverse-distance weights are all equal and
+                         the weighting has no effect at all.
+    """
+    if name.startswith("cartesian"):
+        dim = int(name[-2])
+        offs = stencil_offsets(dim)
+        return [tuple(float(x) for x in o) for o in offs], offs, dim
+    if name == "hex2d":
+        import math
+        a1 = (1.0, 0.0)
+        a2 = (0.5, math.sqrt(3.0)/2.0)
+        ints = [(1, 0), (0, 1), (-1, 1), (-1, 0), (0, -1), (1, -1)]
+        phys = [(m1*a1[0] + m2*a2[0], m1*a1[1] + m2*a2[1]) for m1, m2 in ints]
+        return phys, ints, 2
+    raise ValueError(f"unknown lattice {name!r}")
+
+
 def stencil_offsets(dim):
     """One ring of the cell-point-cell stencil on a uniform hex mesh, h = 1.
 
@@ -121,7 +159,7 @@ def w2_of(s, c, exponent):
     return sp.Pow(r2, -exponent)
 
 
-def fit_weights_numeric(c, dim, anchor="cellCentre", exponent=1):
+def fit_weights_numeric(c, dim, anchor="cellCentre", exponent=1, phys=None):
     """g_j in float64. The fast path, and the only practical one off-axis.
 
     A diagonal displacement carries 1/sqrt(n), so with the foot-point anchor the entries
@@ -131,7 +169,7 @@ def fit_weights_numeric(c, dim, anchor="cellCentre", exponent=1):
     """
     import numpy as np
 
-    offsets = stencil_offsets(dim)
+    offsets = stencil_offsets(dim) if phys is None else phys
     cv = np.array([float(x) for x in c])
     sv = np.array(offsets, dtype=float)
     ncoeff = 2 * dim + dim * (dim - 1) // 2
