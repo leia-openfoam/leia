@@ -31,6 +31,10 @@ values
 
     TPF_DAVOF_METHOD ( quadraticFaces );
 
+    // the reference state of areaFractionError: the exact sphere fractions on
+    // axis-aligned hexahedra; quadraticFaces on perturbed meshes (exactSphere FatalErrors there)
+    TPF_REF_METHOD ( exactSphere );
+
     DOMAIN_LENGTH ( 1 );
 
     END_TIME ( 1 );

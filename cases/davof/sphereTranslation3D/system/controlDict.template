@@ -76,7 +76,7 @@ functions
         origin          (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
         radius          @!TPF_SPHERE_RADIUS!@;
         U0              (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
-        davofMethod     exactSphere;
+        davofMethod     @!TPF_REF_METHOD!@;   // exactSphere on axis-aligned hexahedra, quadraticFaces on perturbed meshes
         wispTol         @!TPF_WISP_TOL!@;
         reconstructionError true;
         reconstructionErrorEveryStep false;

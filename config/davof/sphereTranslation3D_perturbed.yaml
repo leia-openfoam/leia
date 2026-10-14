@@ -1,0 +1,58 @@
+# The sphere-translation test of the DAVOF face update on VERTEX-PERTURBED hexahedra (every
+# mesh point displaced by up to 0.1 h, deterministic seed: leiaPerturbMesh, the workflow's
+# `mesh: perturbed`), the twin of sphereTranslation3D_hex at Co 0.2 (2026-10-14, Part C4 of
+# the plan of 2026-10-13). Same rows, same N, same state (quadraticFaces of initDavofFields,
+# whose fan sums carry the warped faces); the reference state of areaFractionError is the
+# quadraticFaces construction too (TPF_REF_METHOD; exactSphere needs axis-aligned hexahedra).
+#
+# WHAT IS DIFFERENT UNDER TRANSPORT. The fork stores ONE SCALAR face fraction per face. On a
+# warped face the wetted area vector is not parallel to the face area vector, and the preprint's
+# Section 2.4 measured what a scalar fraction then loses on the plane: 8 % of the normal at a
+# vertex displacement of 0.1 h (the fan sums of the initialisation recover it, the transported
+# scalar does not). The end-of-step submerged area of isoAdvector's moving plane is summed over
+# the fan of triangles of the face and scaled to the face area, i.e. it IS a scalar fraction.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-14, before any run):
+# P-C1 (stability): davof-ringArea, davof-exact, plicRDF and isoAlpha stay bounded (min alpha
+#      above -1e-10) at every N; davof-cellLocal aborts at every N; davof-ringFit is erratic.
+# P-C2 (the scalar-fraction floor): the face-fraction error of davof-ringArea and of davof-exact
+#      is larger than on the hexahedral twin by a constant of the order of the warp, and its order
+#      over N = 32 to 128 falls below the hexahedral 0.8 (a floor set by the warp amplitude 0.1 h,
+#      which does not shrink with h in units of h); the normal error of davof-ringArea floors
+#      at about 1e-2, so its order over the three meshes is below 0.9.
+# P-C3 (comparators): plicRDF's normal error and order on the perturbed mesh fall as in the
+#      static ladders (STATUS 10.16: 0.90 on the perturbed sphere against 1.06 on hex), its
+#      centroid stays second order; davof-ringArea's centroid stays second order and at plicRDF's
+#      value within 30 %.
+# FALSIFIED IF: a davof row other than cellLocal becomes unbounded (P-C1); the ringArea
+#      face-fraction order on the perturbed mesh is 0.8 or above with the hexahedral constant
+#      (P-C2); plicRDF keeps 1.0 and the hexahedral constant on the perturbed mesh (P-C3).
+#
+#     sbatch --parsable -J leia-davof-sphereTranslation3D_perturbed --export=ALL,STUDY=davof/sphereTranslation3D_perturbed run-studies.sbatch
+study_name: sphereTranslation3D_perturbed
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: perturbed
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-cellLocal, davof-ringArea, davof-ringFit, davof-exact, davof-plicRDFnormal, plicRDF, isoAlpha]
+  TPF_REF_METHOD: [quadraticFaces]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

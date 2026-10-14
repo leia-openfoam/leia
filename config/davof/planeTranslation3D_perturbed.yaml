@@ -1,0 +1,57 @@
+# The plane-translation test of the DAVOF face update on VERTEX-PERTURBED hexahedra (every
+# mesh point displaced by up to 0.1 h, deterministic seed: leiaPerturbMesh, the workflow's
+# `mesh: perturbed`), the twin of planeTranslation3D_hex at Co 0.2 (2026-10-14, Part C4 of the
+# plan of 2026-10-13). Same rows, arms and N, same state (detrixheAslam of initDavofFields, exact
+# for a plane with the fan sums of the initialisation; the reference state of areaFractionError is
+# the same construction).
+#
+# WHAT IS DIFFERENT. The fork transports ONE SCALAR face fraction per face. On a warped face the
+# wetted area vector is not parallel to the face area vector; the static measurement of the
+# preprint's Section 2.4 gives the normal error of a scalar fraction on these meshes as 8 % at a
+# displacement of 0.1 h. The end-of-step submerged area that isoAdvector's moving plane leaves
+# on a warped face is the sum over the face's fan triangles scaled to the face area, a scalar.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-14, before any run):
+# P-D1 (the gate cannot hold): no row passes the 1e-12 gate on the perturbed mesh at any N or
+#      arm, because the transported scalar fraction of a warped face is not the state the fan
+#      sums reproduce; the face-fraction error after the first step is of the order of the warp's
+#      effect on the face fractions (1e-3 to 1e-2) and does not fall under refinement in units
+#      of h.
+# P-D2 (stability): with the ring normal and the exact normal the error stays bounded over the
+#      0.2 L travel at every N (no growth beyond a factor two per run); the own normal
+#      amplifies as on the hexahedral mesh at N = 80 and 160.
+# P-D3 (the comparators): plicRDF's and isoAlpha's normal errors on the perturbed plane are
+#      1e-2 to 1e-1, as in the static ladder of STATUS 10.16 (plicRDF 5.3e-3 in L2, maximum 0.38).
+# FALSIFIED IF: any row passes the gate on the perturbed mesh at N >= 40 (P-D1, which would mean
+#      the scalar fraction suffices under transport); the ring-normal error grows by more than a
+#      factor two over a run (P-D2).
+#
+#     sbatch --parsable -J leia-davof-planeTranslation3D_perturbed --export=ALL,STUDY=davof/planeTranslation3D_perturbed run-studies.sbatch
+study_name: planeTranslation3D_perturbed
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: perturbed
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  TPF_ROW: [davof-cellLocal, davof-ringArea, davof-ringFit, davof-exact, davof-plicRDFnormal, plicRDF, isoAlpha]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_DAVOF_METHOD: [detrixheAslam]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
