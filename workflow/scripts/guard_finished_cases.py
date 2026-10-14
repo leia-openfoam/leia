@@ -70,7 +70,11 @@ def main():
     solve_idx = []
     rule = None
     for line in r.stdout.splitlines():
-        m = re.match(r"^(?:local)?rule (\w+):", line)
+        # Snakemake 9 prints the member jobs of a group indented ("    rule paraview_stub:"),
+        # so the rule name must be read with leading whitespace; otherwise a stub job that
+        # follows a solve block is attributed to solve (2026-10-14: the guard refused the
+        # resumption of two advectorVoF studies over five finished cases for that reason).
+        m = re.match(r"^\s*(?:local)?rule (\w+):", line)
         if m:
             rule = m.group(1); continue
         m = re.match(r"^\s+wildcards:.*\bidx=(\d+)", line)
