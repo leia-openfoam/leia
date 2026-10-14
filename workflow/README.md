@@ -374,13 +374,20 @@ with the centre (0.5013, 0.4987) off the cell lattice.
   psiEnd = d and alphaEnd = alpha_DA(d), so `leiaLevelSetFoam.csv` measures against the target.
 - **Zero velocity.** `velocityModel translation (0 0 0)` and `adjustTimeStep no` (the Courant control
   divides by the zero flux); `deltaT #eval{ DT_COEFF/N_CELLS }` = 0.5 h on every rung.
+- **The psi solver must iterate.** At u = 0 the psi matrix is diagonal and OpenFOAM normalises the
+  residual by the whole field, so a small source update starts below the tolerance and PBiCGStab
+  returns psi UNCHANGED. The first run (010b553a) did no iteration in 68 % of its psi solves and is
+  void (STATUS 11.27 part 2). `PSI_MIN_ITER 1` (`minIter` of the psi solver) fixes it, and
+  `static_source_metrics.py iterations` checks it (the verdict row S0): read no metric before S0
+  passes.
 - **PHASE_INDICATOR** is pinned in every config: the base config/config.yaml sweeps it otherwise.
 - **Studies.** Stage A: Control (noSource), NullR (R, Rdiv, RdivStrictSp), NullStrain (linearQ with
   strain weight full). Stage B: GcNone, GcBand (the seven laws, MOLLIFIER none / band), Beta. Stage
   C: the N = 512 rungs. The read-out is pre-registered in each header.
 - **Smoke and metrics.** `workflow/scripts/static_source_smoke.sh <dir>` (N = 64, tau = 2, np 4 and
-  serial, the pace at N = 128 and 256); `workflow/scripts/static_source_metrics.py`
-  (`selftest`, `check-init`, `analyse`, `null`, `seam`, `pace`, `curate`): the exact cell areas of
+  serial, the pace at N = 128 and 256, the dead-zone case at N = 256);
+  `workflow/scripts/static_source_metrics.py` (`selftest`, `check-init`, `iterations`, `analyse`,
+  `null`, `seam`, `pace`, `curate`): the exact cell areas of
   the circle, the zero crossings against the exact circle, L1/L2 norms, the zero-set ODE
   dq/dtau = q G(q), and a verdict for every pre-registered line.
 

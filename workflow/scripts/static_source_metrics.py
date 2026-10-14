@@ -98,6 +98,16 @@ def read_csv(path):
     return rows
 
 
+def read_table(path):
+    """Every row of a table this script wrote (null, init, iterations). Unlike read_csv it keeps a
+    last row with an empty field: such a field is legitimate there (firstZero of a case without a
+    zero-iteration solve), not the mark of a run that stopped."""
+    if not os.path.isfile(path):
+        return []
+    with open(path) as f:
+        return list(csv.DictReader(f))
+
+
 def time_dirs(case):
     out = []
     for name in os.listdir(case):
@@ -1035,15 +1045,15 @@ def cmd_analyse(args):
     nulls = []
     npath = os.path.join(args.out, "staticSource_null.csv")
     if os.path.isfile(npath):
-        nulls = read_csv(npath)
+        nulls = read_table(npath)
     inits = []
     ipath = os.path.join(args.out, "staticSource_init.csv")
     if os.path.isfile(ipath):
-        inits = read_csv(ipath)
+        inits = read_table(ipath)
     iters = []
     tpath = os.path.join(args.out, "staticSource_iterations.csv")
     if os.path.isfile(tpath):
-        iters = read_csv(tpath)
+        iters = read_table(tpath)
     V = verdicts(fields, hist, summaries, nulls, inits, iters)
     write_rows(os.path.join(args.out, "staticSource_verdicts.csv"), V)
     print(f"analyse: {len(cases)} cases, {len(fields)} field rows, {len(hist)} history rows, {len(V)} verdict lines; commits {sorted(commits)}")

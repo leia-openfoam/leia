@@ -40,7 +40,9 @@ theme: gradient-controlled-level-set
 studies_dir: studies/staticSource
 setfields_app: setExprFields
 setfields_args: ''
-solve_runtime: 30
+# 60 min: a 2.7-min run (N = 128) reached the 30-min limit on a slow node on 2026-10-14
+# (0.168 s per step against a median of 7.7e-3; STATUS 11.27 part 2).
+solve_runtime: 60
 export_slides: false
 collapse_other_axes: true
 mpi_launcher: mpirun -np {np}

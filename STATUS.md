@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-10-14 (section 11.27: the static test of the Eulerian source terms at zero velocity is set up (case 2DstaticCircle, eight pre-registered study configs, a metrics script); the laptop smoke passes: 296 cases COMPLETED, every null check bit-identical, the parallel path equal to serial to round-off; the whole-domain sources amplify round-off. section 11.26: the combined source F = a + lambda (1 - q): the centred q of the source step fails at zero velocity and its growth law is retracted; the one-sided q `upwindFit` passes gate E2.1 at order 3.6; the kinematic arms of the 2D method gate fail on the shape order for the combined source and both single terms; the band breaks the strain term in 1D; the 2D shape loss is open. section 11.25: the prescribed flux is projected to divergence-free on polyhedral meshes, after fixing two defects of correctFlux; no transport metric degrades by more than 1.1 %. Section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-10-14 (section 11.27: the static test of the Eulerian source terms at zero velocity. The first cluster run is VOID: at u = 0 the psi matrix is diagonal, a small source update started below the solver tolerance, and PBiCGStab did nothing in 68 % of the psi solves (39 cases never changed psi); stage C was cancelled; fixed with minIter 1 and a solver-iteration check (S0); the laptop gate passes except the bit-inertness prediction G3, which was wrong about PBiCGStab (the change is round-off except for softWall on the whole domain); the re-run on Lichtenberg is next. Part 1 corrected: only softWall (and less cubicQ) on the whole domain is decomposition-dependent. section 11.26: the combined source F = a + lambda (1 - q): the centred q of the source step fails at zero velocity and its growth law is retracted; the one-sided q `upwindFit` passes gate E2.1 at order 3.6; the kinematic arms of the 2D method gate fail on the shape order for the combined source and both single terms; the band breaks the strain term in 1D; the 2D shape loss is open. section 11.25: the prescribed flux is projected to divergence-free on polyhedral meshes, after fixing two defects of correctFlux; no transport metric degrades by more than 1.1 %. Section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -5377,7 +5377,8 @@ dt = 0.5 h. Plan and decisions: the plan of 2026-10-14; the read-out is in each 
    0.731 and 0.881; the Detrixhe-Aslam volume excess over that of d falls from 1.17e-3 to 6.3e-5.
 3. **The laptop smoke** (`workflow/scripts/static_source_smoke.sh`; ea7110fb with clean library
    stamps; N = 64, tau = 2; stage A and B configs at np 4, Control, GcNone and GcBand also serial):
-   296 cases, all COMPLETED.
+   296 cases, all COMPLETED. VOID 2026-10-14 (part 2): 60 of its 176 np-4 cases had psi solves
+   without an iteration; the smoke did not check that.
    - check-init: 296 of 296 PASS (psi0 equals the analytic variant within 1e-14 in L1 and L2, the
      signs equal those of d, sdf equals psiEnd bit for bit, psiEnd and alphaEnd in every processor
      directory).
@@ -5395,12 +5396,91 @@ dt = 0.5 h. Plan and decisions: the plan of 2026-10-14; the read-out is in each 
      in the volume columns and by 17 % in the gradient columns already at tau = 2, N = 64. The
      whole-domain sources amplify round-off far from the interface (the circle centre, the walls),
      so their numbers on the cluster belong to np 4 and are not decomposition-independent.
+     CORRECTED 2026-10-14 (part 2, item 8): I was wrong to say this of every whole-domain source.
+     Per law, with the fix and without it: linearQ, linearZ, saturatedLinearZ and twoThirdsZReg
+     agree between serial and np 4 to round-off (volume columns 2.3e-15 absolute, gradient columns
+     9e-13 relative); softWall differs by 7.5e-4 and 20 %, cubicQ by 4.6e-4 relative in the gradient
+     columns, cubicZ by 8e-11. The decomposition dependence belongs to softWall, and less to cubicQ.
    - Nothing was written under docs/.
 4. **The pace** (laptop, np 4): 7.8e-3 s per step at N = 128 (a full run, 160 N steps, 2.7 min),
    2.2e-2 to 2.9e-2 s per step at N = 256 (15 to 20 min); N = 512 about 2 h by extrapolation.
    solve_runtime: 30 min (null checks), 90 min (stage B), 480 min (Control and stage C).
 5. **Next.** A Lichtenberg worktree at the commit of this section, the build, the drivers of stage A
    and B, stage C after stage A passes; then the metrics on the cluster and the results (part 2).
+
+#### 11.27, part 2: the first cluster run is VOID; the psi solver did nothing below its tolerance (2026-10-14)
+
+1. **What ran.** The worktree `/work/scratch/tm83tomy/leia-static` at 010b553a, built by the CI
+   script (stamp `shared-method-config-2026-09-01-330-g010b553a`, `CI: PASS`). Stage A (Control,
+   NullR, NullStrain; drivers 55435601/02/03) and stage B (GcNone, GcBand, Beta; 55435604/05/06):
+   496 cases, all COMPLETED. The NullR case 00017 (RdivStrictSp, blendH1, N = 128) reached the
+   30-minute limit on a slow node (0.168 s per step against a median of 7.7e-3) and was re-run by
+   driver 55439898. The stage A null check (job 55440912) gave 114 bit-identical pairs. Stage C (the
+   N = 512 rungs; drivers 55440959/60) started at 20:02.
+2. **How the defect was found.** The first metrics job (55441345, metrics commit 4025143f) gave for
+   linearQ in the band on d the zero-crossing shift against tau = 0 (shift2) at tau = 80: 0.44 h at
+   N = 64, 0.30 h at N = 128, and exactly 0 at N = 256. At N = 256, psi at tau = 80 was
+   bit-identical to psi0: the source had done nothing in 40960 steps.
+3. **The mechanism.** At u = 0 the psi equation of `leiaLevelSetFoam` is
+   `ddt(psi) == Sp(F, psi)`, so the matrix is diagonal. OpenFOAM normalises the solver residual by
+   sum(|A psi - A psibar| + |b - A psibar|), here of the size of the whole field divided by dt. A
+   source that acts only in a band, or that is of order h^2 on a signed distance, gives an initial
+   residual below `tolerance 1e-10`, and PBiCGStab returns psi unchanged ("No Iterations 0"). This is
+   the cancellation rule of CLAUDE.md seen from the other side: below the tolerance the solver does
+   not under-converge, it does nothing.
+4. **The size**, from the solver-performance lines of all logs (the count is now the command
+   `static_source_metrics.py iterations`). Of the 416 cases with a nonzero source (gradient control
+   and beta), 415 have psi solves without an iteration: 19.8 of 29.0 million (68 %; median per case
+   0.70; band arms 0.59 / 0.67 / 0.74 and whole-domain arms 0.77 / 0.80 / 0.82 at N = 64 / 128 / 256).
+   39 cases never changed psi: every cubicQ, cubicZ and softWall band case on d and on the h^2 blend
+   at every rung (G'(1) = 0 makes F tiny near q = 1), and linearQ, linearZ, saturatedLinearZ and
+   beta in the band on d and on the h^2 blend at N = 256. P4.1 (the flat laws keep the zero set on
+   d) would have passed for the wrong reason, and the band arm of linearQ would have "converged".
+5. **Consequences.** Under the rule "A wrong setup voids its data", every number of the static
+   source studies at 010b553a is void, the null checks included. On Lichtenberg the directory is now
+   `studies/staticSource_VOID_psiSolverDeadZone_2026-10-14` (with `VOID_README.txt` and
+   `psi_zero_iteration_counts.txt`); stage C was cancelled at 20:28 with its 112 running jobs and
+   both drivers, by id from the ledger. The laptop smoke of part 1 is void as well (item 3 of
+   part 1). Retraction note: `docs/knowledge-base/retractions/static-source-solver-dead-zone.md`.
+6. **The fix** (edb1d5bb). The psi solver of `cases/2DstaticCircle` gets `minIter`, token
+   `PSI_MIN_ITER`, 1 in `cases/2DstaticCircle.parameter`. One PBiCGStab iteration with DILU solves a
+   diagonal system to round-off. With F = 0 the residual is exactly zero and PBiCGStab stops at its
+   singularity test before any update, so the null arms keep psi. The command `iterations` writes
+   `staticSource_iterations.csv`, and `analyse` adds the row S0 (F != 0: no psi solve without an
+   iteration; F = 0: no iteration at all). The smoke script runs the case that froze (linearQ, band,
+   d, N = 256, tau = 1, np 4). Also: `analyse` reads its own tables without the stopped-run rule of
+   `read_csv` (it dropped a last row with an empty field), and the null studies get 60 minutes.
+7. **The gate**, pre-registered in the message of edb1d5bb, on the laptop with the binaries of the
+   void smoke (no C++ change since ea7110fb), 301 cases:
+   - G1 PASS. The dead-zone case: 1536 psi solves, none without an iteration; psi at tau = 1
+     differs from psi0 (L2 of the change 3.5e-8).
+   - G2 PASS. 301 of 301 COMPLETED; check-init 301/301; S0 301/301; null 57/57 bit-identical
+     (P0.3, P6.1, P7.1, P8.1); `analyse` end to end; nothing written under docs/.
+   - G3 FAIL as pre-registered. The prediction "every case whose psi solves all iterated in the void
+     smoke is bit-identical to it" is false: 149 of those 190 cases differ (the 41 identical ones
+     are the 40 cases with F = 0 and one band case, linearZ on the normalised r^2 - R^2, serial);
+     the 110 cases with zero-iteration solves differ, as predicted. My model of the solver was wrong: PBiCGStab tests minIter also at its early exit after
+     the first half-step (`PBiCGStab.C` line 223 of v2606), so with minIter 1 every solve does the
+     full BiCGStab step, which adds a correction of round-off size. Measured size, L2 of
+     psi_new - psi_void over L2 of psi at tau = 2: at most 4.3e-11 (median about 1e-15) in every arm
+     except softWall on the whole domain, where it is 0.27 (median) to 0.59 (max). That arm turns
+     round-off into an O(1) change within tau = 2; see item 8.
+   - G4 as in part 1. For noSource and the band arms, serial against np 4: psi within 2.6e-17 (L2),
+     the gradient columns pass the comparator, the dimensionless volume columns differ by at most
+     2.3e-15 (absolute), which the comparator's relative test calls FAIL on numbers of size 1e-6,
+     as in part 1. So the literal P9.1 still fails on the volume columns, at round-off.
+   - The pace is unchanged: 2.34e-2 against 2.15e-2 s per step (linearQ, band, N = 256) and 2.93e-2
+     against 2.93e-2 (softWall).
+8. **The whole-domain seam, per law** (correction of part 1, item 3): serial against np 4 at
+   N = 64, tau = 2, the same in the void and the new smoke: linearQ, linearZ, saturatedLinearZ and
+   twoThirdsZReg agree to round-off (volume 2.3e-15 absolute, gradient 9e-13 relative); softWall
+   differs by 7.5e-4 in the volume columns and 20 % in the gradient columns; cubicQ by 4.6e-4 in the
+   gradient columns; cubicZ by 8e-11. The dead zone did not cause this. softWall on the whole domain
+   amplifies round-off to O(1) (item 7, G3), so its cluster numbers belong to np 4 only.
+9. **Next.** A fresh worktree `/work/scratch/tm83tomy/leia-static2` at the commit of this part, a
+   fresh build, the drivers of stage A and B, stage C after stage A passes; the metrics from
+   `leia-static-m` with `check-init`, `iterations`, `null` and `analyse`; S0 must PASS before any
+   result is read.
 
 ### 10.12 The plane test on perturbed hexahedra: planar faces exact, warped faces need the wetted area vector (2026-10-02)
 

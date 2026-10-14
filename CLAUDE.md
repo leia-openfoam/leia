@@ -235,6 +235,16 @@ and was falsified). That study needs 9 GB per N = 160 case: ONE case at a time
 so long runs go through an attached session. Still open: the zero-step
 regeneration and one-step translation gates (the proposal package's
 `research/projects/2026-DFG-AVOF/AGENTS.md` lists them).
+The TRANSPORTED face fractions (2026-10-13) run through the TwoPhaseFlow
+fork's `advectorVoF` (branch `davof`, the sibling clone found by
+`LEIA_TPF_DIR`; its face update, normal models and abort guard are the
+fork's, nothing of it is in leia): `config/davof/{plane,sphere}Translation3D_hex.yaml`
+with `cases/davof/*Translation3D`, the rows as ONE token `TPF_ROW`
+(`workflow/scripts/tpf_rows.py`, expanded by `materialize._with_derived_tokens`),
+`post_solve` = `tpf_advection_metrics.py` (one CSV row per step, `status
+diverged` from the guard's ABORT line), the report = `make_davof_advection_table.py`
+(README section "DAVOF: the TwoPhaseFlow advection studies"); `*_hexSmoke.yaml`
+are the laptop smokes (`--jobs 1`, N = 20 plane, N = 32 sphere).
 `mesh: hexRefined | polyRefined` = statically refined around the interface by
 `workflow/scripts/leiaRefineHexMesh.py` / `leiaRefinePolyMesh.py` in the `mesh`
 rule (pre-processing only, solver unchanged, fields re-initialised on the final

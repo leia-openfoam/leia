@@ -1,6 +1,6 @@
 ---
 title: "Process: the operating rules that came from incidents"
-description: "Fourteen operating rules that lived only in one machine's session memory, now shared through the vault: L2 and L1 never L_inf, the full advection in static cases, the STATUS hand-off, clone ownership, large runs on Lichtenberg, the shell and snakemake traps, the rebuild rule, incremental agents, the replace refs, the exact criterion form, CI without gh, the writing and media preferences; each with the incident that produced it"
+description: "Fifteen operating rules from incidents, fourteen of which lived only in one machine's session memory, now shared through the vault: the solver iterations of a static test, L2 and L1 never L_inf, the full advection in static cases, the STATUS hand-off, clone ownership, large runs on Lichtenberg, the shell and snakemake traps, the rebuild rule, incremental agents, the replace refs, the exact criterion form, CI without gh, the writing and media preferences; each with the incident that produced it"
 aliases: [operating rules, agent rules, session memory rules]
 kind: decision
 status: settled
@@ -34,6 +34,7 @@ sources: ["the laptop's Claude session memory, 2026-08 to 2026-10", "STATUS 11.2
 | The laptop has no `gh`: read CI states through the public check-runs and annotations API with curl (60 requests per hour), in a bounded poll. | The job logs need admin rights; the annotations carry the CI script's PASS and FAIL lines. | 2026-09-30 | [[concepts/ci-build-tests]] |
 | Write fully, not tersely, in ASD-STE100; plain language and a formula for every new quantity; no analogies. | Dense tables and short verdicts cost the author more time to unpack. | 2026-09 | `CLAUDE.md`, communication |
 | Animations for the author are GIF, with explicit colour-bar axes and fonts readable in a GIF; mp4 stays for the decks. | mp4 downloads fail for the author. | 2026-09 | — |
+| In a test where an equation's signal is small next to its field (zero velocity, a static gate, late time near a steady state), count the linear solves without an iteration before reading any metric (`static_source_metrics.py iterations`, the row S0), and set `minIter 1` where a diagonal solve carries the signal. | At u = 0 the psi matrix of the static source test is diagonal and OpenFOAM normalises the residual by the whole field: a small source update started below tolerance 1e-10 and PBiCGStab returned psi unchanged in 68 % of the psi solves; 39 cases never changed psi, and the whole first run was voided (2026-10-14). | 2026-10-14 | [[retractions/static-source-solver-dead-zone]] |
 
 ## What it does not cover
 
@@ -49,3 +50,6 @@ sources: ["the laptop's Claude session memory, 2026-08 to 2026-10", "STATUS 11.2
 ### 2026-10-13
 SETTLED: moved from the laptop's session memory into the vault, so that every agent can read it. Entered in [[decision-log#2026-10]].
 The `set --` trap added to the shell row (a build script lost its log path the same day).
+
+### 2026-10-14
+The solver-iteration rule added (the void of the first static source test, [[retractions/static-source-solver-dead-zone]]). Entered in [[decision-log#2026-10]].
