@@ -5956,3 +5956,79 @@ to 0.47 off the hex mesh, gradAlpha and isoAlpha below 0.3 and non-convergent on
 polyhedra. Open: the volume-less wetted cells of the perturbed quadratic-face state (the
 N = 20 rung of the sphere) as a case of the proposal's defect rule; the area diagnostic's
 tolerance in `Allrun_poly` (Tomislav).
+
+### 10.17 The transported plane and sphere tests through the TwoPhaseFlow fork (2026-10-14)
+
+The first transport measurements of the DAVOF loop, run reproducibly through this workflow
+with the fork's `advectorVoF` as the solver (configs `config/davof/planeTranslation3D_hex.yaml`
+and `sphereTranslation3D_hex.yaml`, cases `cases/davof/{plane,sphere}Translation3D`, the row
+token `TPF_ROW` expanded by `workflow/scripts/tpf_rows.py`, the converter
+`tpf_advection_metrics.py`, the report `make_davof_advection_table.py`; fork at 8f098c1 with
+the abort guard; cluster jobs 55428354/55 of 2026-10-13 23:08, interrupted by a NODE_FAIL of
+node mpzd0001 at 00:31 that the executor does not resubmit, resumed as 55430286/87 with
+`slurm-requeue` in the profile and the guard's parser fixed for snakemake 9's indented group
+blocks; plane done 09:42, sphere 09:03; 224 and 63 cases, no solver failure; tables in
+10f2f438). Seven rows on the identical initial alpha of `initDavofFields`: davof-cellLocal
+(the own normal), davof-ringArea (the normal of the ring's union), davof-ringFit (the
+weighted quadric through the ring's planes), davof-exact (the exact normal, control),
+davof-plicRDFnormal (the loop driven by the plicRDF normal), plicRDF, isoAlpha. Plane:
+detrixheAslam state, arms normal (U = n) and oblique (U = (1 0 0)), travel 0.2 L, N = 20 to
+160, Co = 0.05 to 0.5, the gate at 1e-12 on the run maxima of L1(alphaf) and L1(n). Sphere:
+quadraticFaces state, R = 0.15 in the 2 x 1 x 1 box, 3.3 diameters, N = 32 / 64 / 128,
+Co = 0.1 / 0.2 / 0.5; errors at the end, orders least-squares over the three meshes.
+
+Plane gate (32 cases per row: 2 arms x 4 N x 4 Co): davof-exact, davof-ringArea and
+davof-ringFit PASS everywhere (max L1(alphaf) 1e-15 to 1e-14, max L1(n) 1e-15 to 1e-13);
+davof-cellLocal passes 10 and fails 22: at Co 0.05 to 0.2 it is at round-off for N = 20 and
+40 (and marginal, 1e-11 in L1(n), at N = 40 on the normal arm at Co 0.2), drifts to 1e-10
+to 1e-7 at N = 80 and breaks at N = 160 (L1(alphaf) 3e-3 to 0.14), and at Co 0.5 it breaks
+on the normal arm from N = 40 on (0.2 to 0.36); davof-plicRDFnormal fails everywhere (the
+plicRDF normal of a plane is not exact at the corner cells: 1e-4 at N = 20 to 0.17 at
+N = 160); plicRDF and isoAlpha carry no face fractions (gate "-"). P-A1 CONFIRMED for the
+ring rows and the control; P-A2 FALSIFIED: the own normal does not pass at every N below
+Co 0.5, the amplification through sliver cells grows with the number of steps and with
+N, not with Co alone; P-A3 CONFIRMED.
+
+Sphere, end of 3.3 diameters, L1(alphaf) as a fraction / L1(n) / L1(x) / Eshape at
+N = 32, 64, 128 with the least-squares order (pairwise in parentheses):
+
+| row, Co | L1(alphaf) | L1(n) | L1(x) | Eshape | bounded |
+|---|---|---|---|---|---|
+| ringArea, 0.1 | 2.33e-2, 1.22e-2, 7.72e-3: 0.80 (0.93 / 0.66) | 4.67e-2, 2.53e-2, 1.26e-2: 0.94 | 1.76e-3, 4.56e-4, 1.34e-4: 1.86 | 4.89e-4, 1.34e-4, 3.90e-5: 1.82 | 1e-13 |
+| ringArea, 0.2 | 1.78e-2, 9.45e-3, 5.76e-3: 0.81 (0.92 / 0.71) | 4.06e-2, 2.23e-2, 1.09e-2: 0.95 | 1.35e-3, 3.56e-4, 1.02e-4: 1.86 | 3.85e-4, 1.08e-4, 3.05e-5: 1.83 | 1e-14 |
+| ringArea, 0.5 | 1.19e-2, 6.06e-3, 2.96e-3: 1.00 (0.97 / 1.03) | 3.34e-2, 1.84e-2, 8.12e-3: 1.02 | 7.71e-4, 1.89e-4, 4.88e-5: 1.99 | 2.58e-4, 6.27e-5, 1.58e-5: 2.02 | 1e-14 |
+| exact, 0.2 | 1.04e-2, 5.68e-3, 3.32e-3: 0.82 | 3.64e-3, 1.72e-3, 4.70e-4: 1.48 | 9.83e-4, 2.53e-4, 6.76e-5: 1.93 | 2.76e-4, 7.16e-5, 1.94e-5: 1.92 | 1e-14 |
+| plicRDF, 0.2 | - | 3.89e-2, 1.91e-2, 9.20e-3: 1.04 | 1.53e-3, 3.80e-4, 1.04e-4: 1.94 | 4.32e-4, 1.14e-4, 3.08e-5: 1.91 | 1e-14 |
+| isoAlpha, 0.2 | - | 5.66e-2, 3.46e-2, 2.03e-2: 0.74 | 1.60e-3, 4.25e-4, 1.20e-4: 1.87 | 4.67e-4, 1.28e-4, 3.53e-5: 1.86 | 1e-14 |
+| plicRDFnormal, 0.2 | 2.07e-2, 1.17e-2, 1.68e-2: 0.15 | 4.03e-2, 3.32e-2, 4.10e-2: -0.01 | 1.58e-3, 4.68e-4, 3.09e-4: 1.18 | 4.31e-4, 1.15e-4, 6.26e-5: 1.39 | 1e-14 |
+| ringFit, 0.2 | 7.93e-2, 1.04e-2, 6.02e-3 | 2.05e-1, 1.22e-2, 5.49e-3 | 1.32e-2, 3.83e-4, 1.05e-4 | 1.15e-3, 1.13e-4, 3.10e-5 | 1e-14 |
+| cellLocal, every Co | aborted (interface cells above 10 x the initial count) at step 205 / 232 / 177 (Co 0.1), 111 / 117 / 97 (0.2), 46 / 56 / 45 (0.5) | | | | |
+
+Reading and verdicts. P-B1 CONFIRMED: ringArea transports the face fractions at first
+order (0.80 / 0.81 / 1.00 over the three Courant numbers, the clipping law's q = 1 for the
+plane clipping, which the exact-normal control reproduces at 0.85 / 0.82 / 0.99: the order
+is the update's, not the normal's), the normal at first order (0.94 to 1.02) at 1.1 to 1.35
+times plicRDF's error (1.09e-2 against 9.20e-3 at N = 128 and Co 0.2; 8.12e-3 against
+6.03e-3 at Co 0.5), the centre at second order (1.86 to 1.99) at plicRDF's error to three
+digits (1.02e-4 against 1.04e-4), the shape error equal to plicRDF's (3.05e-5 against
+3.08e-5), bounded to 1e-14 and conservative to round-off, at 1.16 times plicRDF's cost per
+run (3797 against 3283 s at N = 128, Co 0.2, serial). P-B2 CONFIRMED: ringArea, exact,
+plicRDF and isoAlpha bounded at every N and Co; cellLocal aborts at every N and Co (the
+sliver amplification is a property of the own normal, not of the resolution); ringFit stays
+bounded but is erratic (fit fallbacks 0 to 1702 per step; N = 64 at Co 0.5 ends at a normal
+error of 0.54): unusable as it stands. P-B3 FALSIFIED in its stated direction: at fixed N
+the ringArea errors RISE as Co falls (N = 64: L1(alphaf) 1.22e-2 / 9.45e-3 / 6.06e-3 for
+Co 0.1 / 0.2 / 0.5; the normal 2.53e-2 / 2.23e-2 / 1.84e-2), because the per-step clipping
+error accumulates over the 1/Co more steps; the exact control is flat in Co (6.57e-3 /
+5.68e-3 / 7.27e-3) and plicRDF's own normal error falls with Co too (2.31e-2 / 1.91e-2 /
+1.39e-2). NEW and open: the loop driven by the plicRDF normal (davof-plicRDFnormal) does not
+converge on the sphere (normal error 4e-2 to 5e-2 at every N and Co, face fractions 1.7e-2
+to 2.7e-2 at N = 128), although plicRDF alone converges at 1.04 on the same alpha; the
+difference between the two rows is the DAVOF face update's flux rules on the faces beyond
+the downwind faces (the second ring and the plane's flux where the upwind cell is a sliver
+or is crossed) and the plane positioned by alpha along the helper's normal; which of the
+two costs the convergence is not measured. On the plane the same row fails the gate because
+the plicRDF normal is not exact at the corner cells. Conclusion for the design: the
+one-ring area-weighted normal is the first stable DAVOF transport loop, first order in the
+face fractions by the clipping law, equal to plicRDF in position and shape and within 35 %
+in the normal, at a cost of 16 %; the paraboloid update is what q = 2 needs.
