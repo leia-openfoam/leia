@@ -64,32 +64,101 @@ They are unrelated shapes, and they behave differently here. Where confusion is 
 text says ``cubes'' or ``honeycomb''.
 
 
-\section{What the scheme does}
+\section{The level set equation, and what the method does with it}
 
-We track an interface with a function $\psi(x)$ that is zero on the interface, negative on
-one side and positive on the other. Where the field is a true signed distance, $|\psi|$ is
-the distance to the interface and $|\nabla \psi| = 1$.
+\paragraph{A note on symbols.} The field is written \(\phi\) throughout. In the source code
+the same field is the OpenFOAM variable named \texttt{psi}; only the symbol differs.
 
-To move $\psi$ forward one time step we use a \textbf{semi-Lagrangian} step. The idea is
-simple and physical. The quantity $\psi$ is carried along with the fluid, so its value at a
-point $x$ at the new time equals its value at the old time at the point the fluid came from.
-For each cell centre $x_c$ we therefore:
+\subsection{The equation}
 
-\begin{enumerate}
-\item compute where the material now at $x_c$ was one time step ago. With velocity $u$ and
-      step $\Delta t$ that \textbf{departure point} is $x_d = x_c - u \Delta t$;
-\item look up the old field at $x_d$ and store it as the new value at $x_c$.
-\end{enumerate}
+We track an interface with a function \(\phi(x,t)\) that is zero on the interface, negative on
+one side and positive on the other. Where the field is a true signed distance, \(|\phi|\) is the
+distance to the interface and \(|\nabla\phi| = 1\).
 
-Step 2 is the hard part. $x_d$ is not a cell centre, and we only know $\psi$ at cell centres.
-So we must build a local model of $\psi$ near $x_c$ from the values we have, and evaluate
-that model at $x_d$.
+The interface moves with the fluid. The statement that \(\phi\) is \emph{carried} by the flow,
+and neither created nor destroyed as it goes, is that its material derivative vanishes:
+\begin{equation}
+  \frac{D\phi}{Dt} \;\equiv\; \frac{\partial \phi}{\partial t} + u\cdot\nabla\phi \;=\; 0 .
+  \label{eq:levelset}
+\end{equation}
 
-\subsection{The local model: a quadratic fit}
+This is the \emph{advective} form, and the distinction from a conservation law matters later
+(Section~\ref{sec:whatgrows}). Equation~\eqref{eq:levelset} is not
+\(\partial_t\phi + \nabla\cdot(u\phi) = 0\). The two agree only when \(\nabla\cdot u = 0\), and
+they say different things: a conservation law moves an amount, while \eqref{eq:levelset} moves a
+label.
 
-The values we have are those of the cell itself and of its neighbours. We call that set of
-cells the \textbf{stencil}. On a uniform hexahedral mesh the stencil of an interior cell is
-the $3\times 3 \times 3$ block centred on it: the cell plus its 26 neighbours.
+\subsection{Integrating along the flow}
+
+Fix a point \(x\) and a time \(t^{n+1}\). Define the trajectory \(X(t)\) of the fluid particle
+that is at \(x\) at that time, by integrating the velocity backwards:
+\begin{equation}
+  \frac{dX}{dt} \;=\; u\bigl(X(t),\,t\bigr), \qquad X(t^{n+1}) \;=\; x .
+  \label{eq:traj}
+\end{equation}
+
+Now watch \(\phi\) along that trajectory. By the chain rule and \eqref{eq:traj},
+\begin{equation}
+  \frac{d}{dt}\,\phi\bigl(X(t),t\bigr)
+  \;=\; \frac{\partial\phi}{\partial t} + \frac{dX}{dt}\cdot\nabla\phi
+  \;=\; \frac{\partial\phi}{\partial t} + u\cdot\nabla\phi
+  \;=\; 0
+\end{equation}
+by \eqref{eq:levelset}. So \(\phi\) does not change along a trajectory, and integrating that
+from \(t_0\) to \(t\) gives the equation the whole method rests on:
+\begin{equation}
+  \boxed{\;\phi\bigl(X(t),\,t\bigr) \;=\; \phi\bigl(X(t_0),\,t_0\bigr)\;}
+  \label{eq:equality}
+\end{equation}
+
+The value at a point now equals the value at the place that point came from. Taking
+\(t = t^{n+1}\) and \(t_0 = t^n\), and writing the foot of the trajectory as
+\begin{equation}
+  x_d \;\equiv\; X(t^n) \;=\; x \;-\; \int_{t^n}^{t^{n+1}} u\bigl(X(s),\,s\bigr)\,ds ,
+  \label{eq:flowmap}
+\end{equation}
+equation \eqref{eq:equality} becomes \(\phi(x,t^{n+1}) = \phi(x_d,t^n)\). The map
+\(x \mapsto x_d\) is the \textbf{flow map} over one step.
+
+\subsection{What has to be approximated}
+
+Equation \eqref{eq:equality} is exact. Two things in it are not available, and each has to be
+approximated. These two approximations are the entire semi-Lagrangian method.
+
+\paragraph{First, the flow map \eqref{eq:flowmap} is an integral along a path we do not know.}
+The integrand is the velocity \emph{on the trajectory}, and the trajectory is what we are
+solving for. Only for a velocity that is constant in space and time is the integral exact,
+giving \(x_d = x - u\,\Delta t\). In general it is approximated to the order we need. Our code
+offers two:
+\begin{align}
+  x_d &= x_c - u^{n+1}\Delta t + \tfrac12\,a\,\Delta t^2
+        &&\text{(Taylor, with \(a\) the acceleration from two time levels)},\\
+  x_d &= x_c - u\bigl(x_c - \tfrac12 u^{n+1}\Delta t\bigr)\,\Delta t
+        &&\text{(midpoint, a second-order Runge--Kutta step)} .
+\end{align}
+Both are second order in \(\Delta t\). Everything in this document is about the \emph{second}
+approximation, so the flow map is taken as given from here on; a frozen uniform velocity, which
+is what the analysis uses, makes it exact anyway.
+
+\paragraph{Second, \(\phi^n\) is needed at \(x_d\), which is not a cell centre.}
+We store one number per cell, so \(\phi^n\) is known only at cell centres. The departure point
+lands wherever the flow puts it. So we must build a local model of \(\phi^n\) from the stored
+values and evaluate it off-centre. Writing \(R_c\) for that model, the method is
+
+\begin{equation}
+  \boxed{\;\phi_c^{\,n+1} \;=\; R_c\bigl(x_d\bigr),\qquad x_d = x_c - \!\!\int u\,ds\;}
+  \label{eq:slls}
+\end{equation}
+
+\emph{That is the semi-Lagrangian level set method in one line}: integrate backwards to find
+where the material came from, then look up the old field there. Its two error sources are the
+accuracy of the flow map and the accuracy of the lookup. This document is about the lookup.
+
+\subsection{The lookup: a quadratic fit}
+
+The values available are the cell's own and its neighbours'. That set of cells is the
+\textbf{stencil}. On a uniform mesh of boxes the stencil of an interior cell is the
+\(3\times3\times3\) block centred on it: the cell plus 26 neighbours.
 
 Through those values we fit a quadratic polynomial, meaning a function of the form
 \begin{equation}
@@ -98,49 +167,129 @@ Through those values we fit a quadratic polynomial, meaning a function of the fo
                               + h_{12} d_1 d_2 + h_{13} d_1 d_3 + h_{23} d_2 d_3}_{\text{curvature}},
   \label{eq:poly}
 \end{equation}
-where $d = x - x_c$ is the offset from the cell centre. There are nine coefficients. Notice
+where \(d = x - x_c\) is the offset from the cell centre. There are nine coefficients. Notice
 there is \emph{no constant term}. That is deliberate and it matters later: we fit the
-\emph{differences} $\psi_j - \psi_c$, so the model is
+\emph{differences} \(\phi_j - \phi_c\), so the model is
 \begin{equation}
-  R_c(x) \;=\; \psi_c + P(x - x_c),
+  R_c(x) \;=\; \phi_c + P(x - x_c),
   \label{eq:anchored}
 \end{equation}
-which returns exactly $\psi_c$ at the cell centre, by construction. We call this an
+which returns exactly \(\phi_c\) at the cell centre, by construction. We call this an
 \textbf{anchored} fit.
 
 We have 26 neighbour values and only nine coefficients. There is no polynomial that passes
 through all 26 values, so we ask for the one that comes closest, in the sense of making
 \begin{equation}
-  \sum_{j} w_j^2 \bigl( P(x_j - x_c) - (\psi_j - \psi_c) \bigr)^2
+  \sum_{j} w_j^2 \bigl( P(x_j - x_c) - (\phi_j - \phi_c) \bigr)^2
   \label{eq:lsq}
 \end{equation}
-as small as possible. This is a \textbf{weighted least-squares fit}. The weights $w_j$ say
-how much we care about matching each neighbour; we use $w_j = 1/|x_j - x_c|$, so near
+as small as possible. This is a \textbf{weighted least-squares fit}. The weights \(w_j\) say
+how much we care about matching each neighbour; we use \(w_j = 1/|x_j - x_c|\), so near
 neighbours matter more than far ones.
 
-Minimising \eqref{eq:lsq} is a linear problem. Writing $b(d)$ for the list of nine basis
-functions in \eqref{eq:poly} evaluated at $d$, the solution is
+Minimising \eqref{eq:lsq} is a linear problem. Writing \(b(d)\) for the list of nine basis
+functions in \eqref{eq:poly} evaluated at \(d\), the solution is
 \begin{equation}
-  \text{coefficients} \;=\; M^{-1} \sum_j w_j^2\, b(d_j)\,(\psi_j - \psi_c),
+  \text{coefficients} \;=\; M^{-1} \sum_j w_j^2\, b(d_j)\,(\phi_j - \phi_c),
   \qquad
   M \;=\; \sum_j w_j^2\, b(d_j)\, b(d_j)^{\!\top},
   \label{eq:normal}
 \end{equation}
-where $d_j = x_j - x_c$. $M$ is a $9\times 9$ matrix built only from the \emph{positions} of
-the stencil cells. It does not involve $\psi$ at all.
+where \(d_j = x_j - x_c\). \(M\) is a \(9\times 9\) matrix built only from the \emph{positions}
+of the stencil cells. It does not involve \(\phi\) at all.
 
 \section{What ``amplification'' means, and why it matters}
+\label{sec:whatgrows}
 
-The new value at a cell is a combination of old values at its neighbours. If that combination
-can make the result larger than all of its inputs, then an error present at one step can come
-back bigger at the next step, and bigger again, and so on. Over a run of a few thousand steps
-even a very small per-step growth becomes large: growth of $0.4\,\%$ per step over 1563 steps
-is a factor of about 1000.
+This section answers three questions that have to be settled before any number means anything:
+what is growing, what it is growing \emph{relative to}, and why we probe it with a random
+field.
 
-That is exactly what a measurement in this project reported. Using a numerical procedure
-(described in Section~\ref{sec:poweriter}) the per-step growth factor was found to be
-$1.00441$ on our production hexahedral mesh --- small, but bigger than one, and therefore a
-slow amplifier. Two features of that measurement are the starting point of this document.
+\subsection{Transport changes \texorpdfstring{$\phi_c$}{phi\_c}. That is not what is meant by growth.}
+
+Of course advection changes the value in a cell. A cell that had the value of one part of the
+field is handed the value of another part, and \eqref{eq:slls} says exactly that. If nothing
+changed, nothing would be transported.
+
+The point is what the exact solution does to the field \emph{as a whole}. Along any trajectory
+\(\phi\) is constant, by \eqref{eq:equality}. So exact transport does not alter the collection of
+values that exist in the domain --- it only moves them around, relabelling which cell holds
+which. For a closed or periodic domain this makes the exact update a \textbf{rearrangement}:
+every maximum, every minimum and every norm of the field is preserved exactly, however
+complicated the flow.
+
+\begin{quote}
+So the exact solution operator has size exactly one. \textbf{Any growth in the size of the
+discrete field is manufactured by the discretisation.} That is what the growth factor measures,
+and why a value above one is a defect rather than physics.
+\end{quote}
+
+\subsection{A compressing flow does not make \texorpdfstring{$\phi$}{phi} grow. It steepens it.}
+
+It is natural to expect that where the flow converges --- \(\nabla\cdot u < 0\) in a cell ---
+material piles up and the value there should rise. For a \emph{conserved} quantity that is
+exactly right, and the conservative equation \(\partial_t\phi + \nabla\cdot(u\phi) = 0\) does
+behave that way: compression raises the density.
+
+Equation \eqref{eq:levelset} is not that equation. \(\phi\) is a label carried by the fluid, not
+an amount of anything, so a particle keeps its value whatever the flow around it does. What
+compression changes is how far apart the level sets lie: squeezing the fluid brings surfaces of
+different \(\phi\) closer together and therefore raises \(|\nabla\phi|\). The \emph{value} does
+not grow; the \emph{gradient} does. (That steepening is a real issue for this method, because it
+destroys the signed-distance property \(|\nabla\phi| = 1\); it is a separate matter from the one
+studied here.) For the incompressible flows we run, \(\nabla\cdot u = 0\) and the question does
+not arise at all.
+
+\subsection{The error, precisely}
+
+Let \(\phi_h^n\) be what the code holds at step \(n\), and let \(\Phi^n\) be the exact solution
+sampled at the same cell centres. With the velocity frozen and no clipping the scheme is a
+linear operator \(B\), so \(\phi_h^{n+1} = B\,\phi_h^n\). The exact solution satisfies the same
+relation only up to the amount the scheme gets wrong in one step on smooth data, the
+\textbf{local truncation error} \(\tau^n\):
+\begin{equation}
+  \Phi^{n+1} \;=\; B\,\Phi^{n} \;+\; \tau^{n} .
+\end{equation}
+Subtracting, the error \(e^n = \phi_h^n - \Phi^n\) obeys
+\begin{equation}
+  e^{n+1} \;=\; B\,e^{n} \;-\; \tau^{n},
+  \qquad\text{so}\qquad
+  \|e^N\| \;\le\; \sum_{k=0}^{N-1} \rho^{\,N-1-k}\,\|\tau^k\| ,
+  \label{eq:erracc}
+\end{equation}
+with \(\rho\) the growth factor of \(B\). Everything hangs on whether \(\rho\) exceeds one:
+\begin{itemize}
+\item \(\rho \le 1\): the sum is at most \(N \max_k\|\tau^k\|\). Errors \textbf{add up},
+      linearly in the number of steps. This is the normal, wanted behaviour.
+\item \(\rho > 1\): the sum is about \((\rho^N-1)/(\rho-1)\) times \(\max_k\|\tau^k\|\). Errors
+      \textbf{compound}. At \(\rho = 1.00441\) over 1563 steps that factor is roughly 1000, so a
+      truncation error far too small to see becomes a visible defect.
+\end{itemize}
+
+So \(\rho\) does not describe how much the solution changes. It describes how much of
+\emph{yesterday's mistake} is still present, amplified, tomorrow.
+
+\subsection{Why a random field}
+
+We do not expect a random field to behave regularly, and nothing in the method assumes it does.
+It is a probe, not a physical state.
+
+\(\rho\) is the largest factor by which \(B\) can stretch \emph{anything}. To find it, apply
+\(B\) over and over, rescaling each time. Whatever is being stretched most grows fastest
+relative to everything else, so after enough repetitions it dominates whatever was there at the
+start, and the rescaling factor settles on \(\rho\). A random start is used precisely because it
+contains a little of every pattern, so the worst one is certain to be present and will emerge.
+Starting from a smooth field could accidentally miss it. The procedure finds the worst case; it
+does not predict what any particular simulation will do.
+
+Section~\ref{sec:symbol} replaces this search with a formula, which is what lets us ask
+\emph{which} pattern grows and \emph{where}, questions a single number cannot answer.
+
+\subsection{What was measured}
+
+Using exactly that procedure, the per-step growth factor was found to be $1.00441$ on our
+production hexahedral mesh --- small, but bigger than one, and therefore a slow amplifier. Two
+features of the measurement are the starting point of this document.
 
 \begin{table}[h]
 \centering
@@ -167,17 +316,41 @@ The first feature is a strong clue. A quantity that does not care about the mesh
 usually one that can be computed once and for all, by algebra, rather than searched for
 numerically on each mesh. The rest of Part~\ref{part:tool} builds that algebra.
 
-\subsection{The Courant number}
+\subsection{The Courant number, and which one we actually run at}
 \label{sec:courant}
 
-Everything below depends on how far the departure point lies from the cell centre, measured
-in cell widths. That ratio
+Everything below depends on how far the departure point lies from the cell centre, measured in
+cell widths. That ratio
 \begin{equation}
   \mathrm{Co} \;=\; \frac{|u| \Delta t}{h}
 \end{equation}
-is the \textbf{Courant number}. $\mathrm{Co} = 1$ means the material moves exactly one cell
-per step. Our production runs use a much smaller value, $\mathrm{Co} = 0.0164$, i.e. the
-departure point sits only $1.6\,\%$ of a cell away from the centre.
+is the \textbf{Courant number}. $\mathrm{Co} = 1$ means the material moves exactly one cell per
+step.
+
+\textbf{We run at two very different values, and conflating them would be a mistake.}
+
+\begin{center}
+\begin{tabular}{llr}
+\toprule
+what is being run & what sets the time step & Courant number \\
+\midrule
+coupled two-phase (Popinet droplet)    & surface tension, not transport & $0.0164$ \\
+kinematic advection, 2D hexahedra      & chosen: \texttt{CFL 0.5}       & $0.5$ \\
+kinematic advection, 3D and polyhedral & chosen: \texttt{CFL 0.3}       & $0.3$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The figure $0.0164$ belongs to the \emph{coupled} runs, where the step is forced down by the
+capillary stability limit and the interface barely moves per step. It is the setting of the
+measurement in Table~\ref{tab:measured}, which is why it appears there. The \emph{advection}
+studies --- the ones that measure transport --- choose their step directly and run about thirty
+times coarser, at $\mathrm{Co} = 0.3$ to $0.5$.
+
+This matters more than a change of units. Several results below depend strongly on the Courant
+number, and at $0.3$ to $0.5$ they are not small corrections to the $0.0164$ picture. One of
+them (Section~\ref{sec:frozen}) changes character completely. Where a number depends on the
+Courant number, both regimes are given.
 
 \subsection{How the growth factor was measured}
 \label{sec:poweriter}
@@ -201,8 +374,8 @@ Put \eqref{eq:normal} back into \eqref{eq:anchored} and evaluate at the departur
 $x_d$. Because the fit is linear in the data, the result is a weighted sum:
 \begin{equation}
   \boxed{\;
-  \psi_c^{\text{new}}
-  \;=\; \Bigl(1 - \sum_j g_j\Bigr)\,\psi_c \;+\; \sum_j g_j\, \psi_j \;}
+  \phi_c^{\text{new}}
+  \;=\; \Bigl(1 - \sum_j g_j\Bigr)\,\phi_c \;+\; \sum_j g_j\, \phi_j \;}
   \label{eq:update}
 \end{equation}
 with one number $g_j$ per neighbour,
@@ -216,10 +389,19 @@ This is the central object. The whole scheme, at one cell, is the list of number
 $g_1, \dots, g_{26}$ together with the leftover weight $1 - \sum_j g_j$ on the cell's own
 value. Everything that follows is a statement about that list.
 
-Two sanity checks on \eqref{eq:update}. If every $g_j$ is zero the cell keeps its own value,
-which is what should happen when the departure point is the cell centre. And the weights on
-the right-hand side sum to one, so a field that is constant everywhere stays constant --- the
-scheme does not invent material out of nothing.
+Two checks on \eqref{eq:update}, and both are about limits rather than the general case.
+
+The weights on the right-hand side sum to one, so a field that is constant everywhere stays
+constant: the scheme does not invent material out of nothing.
+
+And when the velocity vanishes, the departure point \emph{is} the cell centre, every $g_j$ is
+zero, and the cell keeps its own value. \textbf{This is not the general behaviour, and it is not
+a claim that advection leaves $\phi_c$ alone.} With a non-zero velocity the departure point
+leaves the centre, the $g_j$ become non-zero, and \eqref{eq:update} mixes in the neighbours ---
+which is precisely the transport. The size of the $g_j$ is the size of the transport. The check
+is worth stating only because it is the one case in which the fit must return its own anchor
+value, and the code is tested against it; Section~\ref{sec:whatgrows} explains why that mixing
+is not what the growth factor measures.
 
 \section{Step 2: the weights do not depend on the mesh size}
 \label{sec:scaling}
@@ -263,6 +445,7 @@ and each $g_j$ is then an exact polynomial in $c$. The entire calculation can be
 exact fractions, with no rounding.
 
 \section{Step 3: from weights to a growth factor}
+\label{sec:symbol}
 
 We now need to turn the list $g_j$ into a single number that says whether repeated
 application grows anything. The tool is an old one and the idea behind it is worth stating
@@ -273,7 +456,7 @@ plainly, because everything rests on it.
 Consider a field that varies as a wave across the mesh. On a grid of cells labelled by
 integer coordinates $m = (m_1,m_2,m_3)$, a wave is
 \begin{equation}
-  \psi_m \;=\; e^{\mathrm{i}\,\theta \cdot m}
+  \phi_m \;=\; e^{\mathrm{i}\,\theta \cdot m}
   \;=\; \cos(\theta\cdot m) + \mathrm{i}\,\sin(\theta\cdot m).
 \end{equation}
 The vector $\theta$ sets the wavelength and direction. $\theta$ near zero is a long, smooth
@@ -289,13 +472,13 @@ Section~\ref{sec:scaling}.
 
 In the interior of a uniform mesh, \emph{every cell applies the same rule}: the same
 neighbour positions, the same weights, the same displacement. Apply \eqref{eq:update} to a
-wave and use $\psi_{m + s_j} = e^{\mathrm{i}\theta\cdot(m+s_j)}
+wave and use $\phi_{m + s_j} = e^{\mathrm{i}\theta\cdot(m+s_j)}
 = e^{\mathrm{i}\theta\cdot m}\, e^{\mathrm{i}\theta\cdot s_j}$:
 \begin{equation}
-  \psi_m^{\text{new}}
+  \phi_m^{\text{new}}
   = \Bigl[\Bigl(1 - \sum_j g_j\Bigr) + \sum_j g_j\, e^{\mathrm{i}\,\theta\cdot s_j}\Bigr]
     \; e^{\mathrm{i}\,\theta\cdot m}
-  \;=\; G(\theta)\; \psi_m .
+  \;=\; G(\theta)\; \phi_m .
 \end{equation}
 
 The wave comes out as the same wave, multiplied by a single complex number
@@ -360,8 +543,8 @@ Let the flow be to the right at Courant number $C$, so the departure point is to
 \]
 Written out, the update is
 \begin{equation}
-  \psi_c^{\text{new}}
-  = (1 - C^2)\,\psi_c + \tfrac{C^2 - C}{2}\,\psi_{c+1} + \tfrac{C^2 + C}{2}\,\psi_{c-1}.
+  \phi_c^{\text{new}}
+  = (1 - C^2)\,\phi_c + \tfrac{C^2 - C}{2}\,\phi_{c+1} + \tfrac{C^2 + C}{2}\,\phi_{c-1}.
 \end{equation}
 
 \derived{} \textbf{That is exactly the Lax--Wendroff scheme}, a classical method from 1960
@@ -587,7 +770,7 @@ cell widths.
 Our code does not leave the boundary cell with 17 neighbours. OpenFOAM's cell-to-cell
 stencils treat each boundary \emph{face} as an extra data point, located at the face centre
 --- half a cell from the cell centre --- and our setting \texttt{stencilBoundaryFaces} is
-\texttt{include}, so those face values are used. With $\psi$ set to \texttt{zeroGradient} on
+\texttt{include}, so those face values are used. With $\phi$ set to \texttt{zeroGradient} on
 the patch, the value carried by that face is \emph{the cell's own value}.
 
 That face point sits at $-h/2$, on the far side of the departure point whenever
@@ -622,6 +805,76 @@ still on one side: a better-determined parabola extrapolated backwards is a \emp
 extrapolation, not a better one. The quantity that matters is not how much data you have, it
 is whether the point you are evaluating lies inside it.
 
+\subsection{At the Courant numbers we advect at, the inflow cell stops transporting}
+\label{sec:frozen}
+
+Everything above was evaluated at $\mathrm{Co} = 0.0164$, the coupled runs' value. The
+advection studies run at $0.3$ to $0.5$ (Section~\ref{sec:courant}), and there the inflow
+boundary cell behaves quite differently. The production setting includes the boundary face,
+which sits at half a cell, so the relevant column is the right-hand one:
+
+\begin{table}[h]
+\centering
+\caption{An inflow boundary cell, departure point towards the wall. ``No face'' is the
+rank-deficient stencil; ``with face'' is what the code does.}
+\label{tab:frozen}
+\begin{tabular}{rllrr}
+\toprule
+Co & regime & & no face & with face \\
+\midrule
+0.0164 & coupled two-phase       & & 1.032800 & 1.010575 \\
+0.1    &                         & & 1.200000 & 1.053333 \\
+0.2    &                         & & 1.400000 & 1.080000 \\
+0.3    & advection, 3D and poly  & & 1.600000 & 1.080000 \\
+0.4    &                         & & 1.800000 & 1.053333 \\
+0.5    & advection, 2D hexahedra & & 2.000000 & \textbf{1.000000} \\
+0.75   &                         & & 2.500000 & 1.000000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The right-hand column rises, peaks near $\mathrm{Co} = 0.25$, and then falls back to exactly
+one. A growth factor of one usually means the scheme is safe. Here it means something else, and
+the weights say what.
+
+\begin{center}
+\begin{tabular}{rrrl}
+\toprule
+Co & $\sum_j |g_j|$ over the cells & weight on the face & what the update does \\
+\midrule
+0.0164 & 0.008471 & 0.0222 & almost nothing moves \\
+0.2    & 0.064086 & 0.3200 & transports \\
+0.3    & 0.064086 & 0.5200 & transports \\
+0.5    & \textbf{0.000000} & \textbf{1.0000} & \textbf{returns its own value} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\derived{} At $\mathrm{Co} = 0.5$ the departure point lands \emph{exactly on the boundary face},
+which sits half a cell from the centre. The fit evaluated at one of its own data points returns
+that point's value, and under \texttt{zeroGradient} that value is $\phi_c$. Every neighbour
+weight is zero to machine precision. So
+\begin{equation}
+  \phi_c^{\,n+1} \;=\; \phi_c^{\,n} \qquad\text{exactly.}
+\end{equation}
+
+\textbf{The cell does not transport at all. It is frozen.} The growth factor is one because
+nothing happens, not because the scheme is well behaved --- the worst possible reason to see a
+reassuring number.
+
+\measured{} This is the mechanism of an effect the project had already recorded without
+explaining: with boundary faces included, the inlet layer is frozen at 1--20\,\% of the exact
+transport. It is now located exactly. The freezing is strongest when the departure point
+coincides with the face, at $\mathrm{Co} = 0.5$ --- which is the Courant number of our 2D
+hexahedral advection case, including the convergence study that is the hex rung of the standing
+regression set.
+
+\opn{} Whether that materially affects those convergence orders is not established here. The
+frozen cells are one layer at the inflow patch, and the interface in those studies spends most
+of its time away from that layer. But a measured order from a case whose inflow boundary is
+inert deserves to be checked rather than assumed, and the check is cheap: compare against
+\texttt{stencilBoundaryFaces inflowOnly} and against a run at $\mathrm{Co} = 0.45$.
+
 \subsection{The face value's weight does not matter. Its presence does.}
 \label{sec:weightfree}
 
@@ -644,8 +897,8 @@ its contribution to both sides of the normal equations \eqref{eq:normal} equally
 scaling cancels: it determines that direction exactly, whatever weight it is given.
 
 \textbf{So the boundary-normal slope is not flattened by the face point's large weight. It is
-flattened by its \emph{value}}, which under \texttt{zeroGradient} is a copy of $\psi_c$ and
-therefore forces the fitted model to return $\psi_c$ at half a cell from the centre. Nothing
+flattened by its \emph{value}}, which under \texttt{zeroGradient} is a copy of $\phi_c$ and
+therefore forces the fitted model to return $\phi_c$ at half a cell from the centre. Nothing
 about the weighting can repair that, and Section~\ref{sec:improve} proposes repairing the
 value instead.
 
@@ -894,7 +1147,6 @@ thing standing on the far side of the departure point, so it converts an extrapo
 interpolation. It is doing geometry, not carrying information.
 
 
-\part{What to change}
 
 \section{Improvements to the reconstruction}
 \label{sec:improve}
@@ -906,16 +1158,16 @@ The analysis changes what is worth doing, and rules some things out. In rough or
 Section~\ref{sec:weightfree} localises the defect precisely. The face point must stay, because
 it is what brackets the departure point and it is the only datum resolving the wall-normal
 curvature. What is wrong is the number it carries: under \texttt{zeroGradient} it is a copy of
-$\psi_c$, which forces the fitted surface flat in the wall-normal direction and produces the
+$\phi_c$, which forces the fitted surface flat in the wall-normal direction and produces the
 frozen inlet layer already measured in this project at 1--20\,\% of the exact transport.
 
-A better value costs nothing extra. For a field that is a signed distance, $|\nabla\psi| = 1$,
+A better value costs nothing extra. For a field that is a signed distance, $|\nabla\phi| = 1$,
 so over a half-cell step towards the face the value should change by about half a cell:
 \begin{equation}
-  \psi_{\text{face}} \;=\; \psi_c + (x_f - x_c)\cdot \hat{n}_\psi,
-  \qquad \hat{n}_\psi = \frac{\nabla\psi}{|\nabla\psi|},
+  \phi_{\text{face}} \;=\; \phi_c + (x_f - x_c)\cdot \hat{n}_\phi,
+  \qquad \hat{n}_\phi = \frac{\nabla\phi}{|\nabla\phi|},
 \end{equation}
-with $\nabla\psi$ taken from the previous step's fit, which the code already has. This keeps
+with $\nabla\phi$ taken from the previous step's fit, which the code already has. This keeps
 the bracketing that makes option B good, and removes the flattening. \opn{} It makes the face
 value depend on the solution, so the resulting scheme is no longer strictly linear and would
 have to be assessed with the nonlinear growth instrument rather than this symbol.
@@ -983,7 +1235,7 @@ uses machinery that already exists.
 
 \textbf{Yes, we do, today, and it is load-bearing.} The setting
 \texttt{SL\_STENCIL\_BOUNDARY\_FACES} is \texttt{include} by default, and every patch of the
-case measured here sets $\psi$ to \texttt{zeroGradient}, so every boundary cell receives one
+case measured here sets $\phi$ to \texttt{zeroGradient}, so every boundary cell receives one
 extra data point per boundary face, at the face centre, carrying the cell's own value.
 
 What the analysis adds is \emph{why} it matters and what it costs.
@@ -994,19 +1246,19 @@ What the analysis adds is \emph{why} it matters and what it costs.
       step. The project has already seen the consequence: with all faces excluded, a case blew
       up at the inflow at step 716.
 \item \textbf{It is doing a geometric job, not an informational one.} The value it carries is
-      a copy of $\psi_c$ and contains no new information. Its usefulness is entirely that it
+      a copy of $\phi_c$ and contains no new information. Its usefulness is entirely that it
       sits on the far side of the departure point. This is why its weight is irrelevant
       (Section~\ref{sec:weightfree}) and why more real data on the wrong side does not help
       (option C).
 \item \textbf{It is unnecessary at an outflow,} where the growth factor is exactly one without
       it, and there it only injects a fabricated value into an otherwise sound fit.
-\item \textbf{Its value is the thing to fix.} Forcing the model to return $\psi_c$ half a cell
+\item \textbf{Its value is the thing to fix.} Forcing the model to return $\phi_c$ half a cell
       from the centre flattens the wall-normal slope, which is the measured frozen inlet
       layer. Section~\ref{sec:improve} proposes the signed-distance-consistent value instead.
 \end{itemize}
 
 So: keep it where the departure point needs bracketing, drop it where it does not, and give
-it a value consistent with $|\nabla \psi| = 1$ rather than a copy.
+it a value consistent with $|\nabla \phi| = 1$ rather than a copy.
 
 \section{What is still open}
 
