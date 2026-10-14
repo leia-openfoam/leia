@@ -534,6 +534,15 @@ def _get(fields, **kw):
     return [r for r in fields if all(r.get(k) == v for k, v in kw.items())]
 
 
+def _undef(*rows):
+    """shift2 is the zero-crossing shift over the edges that cross at tau = 0 AND now; with no such
+    edge it is NaN (the interface moved by more than a cell everywhere, or vanished). A comparison
+    with NaN is False, so a verdict on it would read FAIL for a value that does not exist: such a
+    line is UNDEFINED, with the number of missing crossings in the note."""
+    bad = [r for r in rows if not np.isfinite(r["shift2"])]
+    return "; ".join(f"{r['case']} N {r['N']} tau {r['tau']:g}: shift2 undefined, missing {r['missing']}" for r in bad)
+
+
 def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
     V = []
 
@@ -675,6 +684,10 @@ def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
             for tau in (10.0, 40.0, 80.0):
                 if tau not in an or tau not in sd:
                     continue
+                u = _undef(an[tau], sd[tau])
+                if u:
+                    add("P3.1", f"{arm} N {N} tau {tau:g}", "", "", "UNDEFINED", u)
+                    continue
                 if max(an[tau]["shift2"], sd[tau]["shift2"]) > 0.02:
                     add("P3.1", f"{arm} N {N} tau {tau:g}", "", "", "NOT EVALUATED", "shift2 > 0.02h")
                     continue
@@ -693,6 +706,10 @@ def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
         if not rs:
             continue
         Ns = sorted(rs)
+        u = _undef(*[rs[N] for N in Ns], *[r10[N] for N in Ns if N in r10])
+        if u and (law in FLAT_LAWS or law in ("linearQ", "linearZ", "saturatedLinearZ")):
+            add("P4.1" if law in FLAT_LAWS else "P4.2", f"{arm} sdf", "", "", "UNDEFINED", u)
+            continue
         if law in FLAT_LAWS:
             worst = max(rs[N]["shift2"] for N in Ns)
             add("P4.1", f"{arm} sdf tau 80", f"max over rungs {worst:.4f} h", "<= 0.01h (FAIL > 0.05h)",
@@ -710,9 +727,13 @@ def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
     tt = {r["N"]: r for r in _get(fields, arm="gc-twoThirdsZReg-none-band", init="sdf", tau=80.0)}
     common = sorted(set(lq) & set(tt))
     if common:
-        ok = all(tt[N]["shift2"] >= lq[N]["shift2"] for N in common)
-        add("P4.3", "twoThirdsZReg vs linearQ, band, sdf, tau 80",
-            " ".join(f"N{N}: {tt[N]['shift2']:.4f}/{lq[N]['shift2']:.4f}" for N in common), ">=", "PASS" if ok else "FAIL")
+        u = _undef(*[tt[N] for N in common], *[lq[N] for N in common])
+        vals = " ".join(f"N{N}: {tt[N]['shift2']:.4f}/{lq[N]['shift2']:.4f}" for N in common)
+        if u:
+            add("P4.3", "twoThirdsZReg vs linearQ, band, sdf, tau 80", vals, ">=", "UNDEFINED", u)
+        else:
+            ok = all(tt[N]["shift2"] >= lq[N]["shift2"] for N in common)
+            add("P4.3", "twoThirdsZReg vs linearQ, band, sdf, tau 80", vals, ">=", "PASS" if ok else "FAIL")
     # P5: none arm
     none_arms = sorted({r["arm"] for r in fields if r["arm"].startswith("gc-") and r["arm"].endswith("-none-none")})
     for arm in none_arms:
@@ -745,6 +766,11 @@ def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
             b = {r["N"]: r for r in _get(fields, arm=band, init=init, tau=80.0)}
             for N in sorted(set(a) & set(b)):
                 if N < 128:
+                    continue
+                u = _undef(a[N], b[N])
+                if u:
+                    add("P5.4", f"{arm} {init} N {N} tau 80", f"{a[N]['shift2']:.4f} vs band {b[N]['shift2']:.4f}",
+                        "none >= band/2", "UNDEFINED", u)
                     continue
                 ok = a[N]["shift2"] >= 0.5 * b[N]["shift2"]
                 add("P5.4", f"{arm} {init} N {N} tau 80", f"{a[N]['shift2']:.4f} vs band {b[N]['shift2']:.4f}",
