@@ -1,0 +1,2 @@
+// blend01: d + eps d^2/(2R), eps = 0.1
+initVariables ( "cA = 1" "cB = 0.1" "cE = 0" "cM = 0" );

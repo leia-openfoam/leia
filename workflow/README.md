@@ -356,6 +356,34 @@ diagnostic read the prescribed velocity model with `subDict`; it now uses `subOr
 and skips, as intended, where there is no velocity model. Kinematic Rdiv results are
 unchanged (gated at tolerance 0, STATUS.md 10.4).
 
+## The static source test (config/staticSource/, case 2DstaticCircle)
+
+The Eulerian level-set source terms of `leiaLevelSetFoam` at ZERO velocity (STATUS 11.27). The
+psi equation reduces to `ddt(psi) == S(psi)`, so a run integrates the source alone in pseudo-time
+tau = t (every rate is 1 1/s). `cases/2DstaticCircle`: unit square, N x N x 1, a circle R = 0.25
+with the centre (0.5013, 0.4987) off the cell lattice.
+
+- **Initial fields with setExprFields.** The configs set `setfields_app: setExprFields` and
+  `setfields_args: ""` (the args go to leiaSetFields in write_end_reference.py too, so they stay
+  empty). `system/setExprFieldsDict` evaluates psi0 = cA (d + cB d^2/(2R)) (1 + cE cos(cM theta))
+  with the coefficients of `system/initFields/<INIT_FIELD>`: sdf, blendH2 (eps = (h/R)^2), blendH1
+  (h/R), blend01 (0.1), algNorm ((r^2 - R^2)/(2R)), alg (r^2 - R^2), modM2, modM4. The list is
+  copied into the `psi` entry with `initVariables $initVariables;`: setExprFields hands each entry
+  to the driver without its parent dictionary, and an `#include` inside `expressions` loses its `;`.
+- **The reference.** `END_REFERENCE translate` at velocity (0 0 0): write_end_reference.py writes
+  psiEnd = d and alphaEnd = alpha_DA(d), so `leiaLevelSetFoam.csv` measures against the target.
+- **Zero velocity.** `velocityModel translation (0 0 0)` and `adjustTimeStep no` (the Courant control
+  divides by the zero flux); `deltaT #eval{ DT_COEFF/N_CELLS }` = 0.5 h on every rung.
+- **PHASE_INDICATOR** is pinned in every config: the base config/config.yaml sweeps it otherwise.
+- **Studies.** Stage A: Control (noSource), NullR (R, Rdiv, RdivStrictSp), NullStrain (linearQ with
+  strain weight full). Stage B: GcNone, GcBand (the seven laws, MOLLIFIER none / band), Beta. Stage
+  C: the N = 512 rungs. The read-out is pre-registered in each header.
+- **Smoke and metrics.** `workflow/scripts/static_source_smoke.sh <dir>` (N = 64, tau = 2, np 4 and
+  serial, the pace at N = 128 and 256); `workflow/scripts/static_source_metrics.py`
+  (`selftest`, `check-init`, `analyse`, `null`, `seam`, `pace`, `curate`): the exact cell areas of
+  the circle, the zero crossings against the exact circle, L1/L2 norms, the zero-set ODE
+  dq/dtau = q G(q), and a verdict for every pre-registered line.
+
 ## 3D semi-Lagrangian convergence (quadraticWeightedLeastSquares)
 
 Plain snakemake, one config per case (both sweep N=32/64/128, CFL 0.5 & 1.0):

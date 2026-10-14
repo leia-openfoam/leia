@@ -1,0 +1,2 @@
+// blendH2: d + eps d^2/(2R), eps = (h/R)^2 (the blend of d and (r^2 - R^2)/(2R))
+initVariables ( "cA = 1" "cB = sqr(hc/rad)" "cE = 0" "cM = 0" );

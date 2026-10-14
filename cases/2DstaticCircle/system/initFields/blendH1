@@ -1,0 +1,2 @@
+// blendH1: d + eps d^2/(2R), eps = h/R
+initVariables ( "cA = 1" "cB = hc/rad" "cE = 0" "cM = 0" );

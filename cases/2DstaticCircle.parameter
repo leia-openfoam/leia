@@ -1,0 +1,64 @@
+// The static source test (STATUS 11.27; config/staticSource/): the Eulerian level-set source terms
+// of leiaLevelSetFoam at ZERO velocity. The psi equation reduces to ddt(psi) == S(psi), so a run
+// integrates the source alone in pseudo-time tau = t (every rate is 1 1/s). A circle of radius
+// R = 0.25 with the centre off the cell lattice; psi0 is one of the variants of
+// system/initFields, all with the exact circle as zero set; the reference psiEnd/alphaEnd is the
+// exact signed distance and its Detrixhe-Aslam volume fraction (endReference translate at u = 0).
+//
+// Values are SINGLE on purpose: the study configs sweep what they mean to sweep.
+values
+{
+    solver ( leiaLevelSetFoam );
+
+    N_CELLS ( 64 );
+
+    // The circle: off the cell lattice on every rung, so no rung has a symmetric alignment.
+    CIRCLE_X0 ( 0.5013 );
+    CIRCLE_Y0 ( 0.4987 );
+    CIRCLE_R ( 0.25 );
+
+    INIT_FIELD ( sdf );
+
+    // tau_end (rate 1 1/s); dt = DT_COEFF/N_CELLS; a field write every WRITE_EVERY_TAU.
+    END_TIME ( 80 );
+    DT_COEFF ( 0.5 );
+    WRITE_EVERY_TAU ( 10 );
+
+    // write_end_reference.py needs a one-way translation (here at zero velocity).
+    OSCILLATION ( off );
+    END_REFERENCE ( translate );
+
+    // leiaSetFields of the reference: the signed-distance profile.
+    PROFILE ( signedDistance );
+    TANH_LIMIT ( 0.1 );
+
+    PHASE_INDICATOR ( detrixheAslam );
+
+    // The band mollifier seeds from alpha, which the solver refreshes only at report steps:
+    // report every step.
+    REPORT_WRITE_ONLY ( false );
+
+    ADVECTION ( eulerian );
+    VELOCITY_EXTENSION ( none );
+    REDISTANCER ( noRedistancing );
+    VOLUME_CORRECTION ( noVolumeCorrection );
+
+    // The source: the study configs select the type, the law and the mollifier.
+    SDPLS_SOURCE ( noSource );
+    SOURCE_SCHEME ( simpleLinearImplicit );
+    GRAD_PSI ( fvc );
+    MOLLIFIER ( none );
+    SDPLS_NLAYERS ( 3 );
+    GC_LAW ( none );
+    GC_STRAIN_WEIGHT ( none );
+    GC_MU ( 1 );
+    // Bothe's softWall has the rate cKappa*sqrt(sigma^2 + epsD^2); sigma = 0 at u = 0, so
+    // epsD = 0.8 gives cKappa*epsD = 1.25*0.8 = 1 1/s, the rate of the other laws.
+    SW_EPS_D ( 0.8 );
+    SDPLS_BETA ( 1.0 );
+
+    N_DEF_CORR ( 3 );
+
+    // Read only by maxCo (adjustTimeStep no) and by the inert semiLagrangian block.
+    CFL ( 0.5 );
+}

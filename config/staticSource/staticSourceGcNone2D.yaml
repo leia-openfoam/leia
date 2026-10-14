@@ -1,0 +1,73 @@
+# ============================================================================
+# THE STATIC SOURCE TEST (STATUS 11.27; plan of 2026-10-14): the Eulerian level-set source terms
+# of leiaLevelSetFoam at ZERO velocity. The psi equation reduces to ddt(psi) == S(psi), so a run
+# integrates the source alone in pseudo-time tau = t (every rate is 1 1/s: GC_MU 1; softWall
+# cKappa*epsD = 1.25*0.8; beta's rate is fixed). Case cases/2DstaticCircle: unit square, N x N x 1,
+# a circle R = 0.25 with the centre (0.5013, 0.4987) off the cell lattice; psi0 is one of 8
+# variants (system/initFields), all with the exact circle as zero set:
+#   sdf d | blendH2 d + eps d^2/(2R), eps = (h/R)^2 | blendH1 eps = h/R | blend01 eps = 0.1 |
+#   algNorm (r^2 - R^2)/(2R) | alg r^2 - R^2 (|grad psi| = 2R on the circle) |
+#   modM2, modM4 d (1 + 0.1 cos(m theta)).
+# The reference psiEnd = d, alphaEnd = alpha_DA(d) (endReference translate at u = 0). dt = 0.5 h,
+# tau_end = 80, a field write every 10. Sources: gradientControl laws (linearQ = Soga's restoring
+# term and the Bothe-Fricke-Soga bounded-gradient equation; linearZ, cubicQ, cubicZ,
+# twoThirdsZReg, saturatedLinearZ = the Bothe-Maric-Soga dossier laws; softWall = Bothe S1a),
+# beta, and the strain sources R, Rdiv, RdivStrictSp (Fricke, Maric, Vuckovic, Roisman, Bothe),
+# which are identically zero at u = 0. q is the CENTRED least-squares gradient on this line.
+#
+# DEFINITIONS (workflow/scripts/static_source_metrics.py; L1 and L2 only, never L_inf):
+#   h = 1/N; zcL1/zcL2: error of the linearly interpolated zero crossing on every centre-to-centre
+#   edge against the exact circle, in h; shift2: L2 of the crossing shift against tau = 0, in h;
+#   shapeEx: L1 (and L2) of alpha - alpha_exact over V_exact; volEx = (V_DA - V_exact)/V_exact;
+#   dist3: L2 of (psi - d)/h in |d| <= 3h; eikB = E_NARROW_L2_GRAD_PSI; qband =
+#   NARROW_MEAN_MAG_GRAD_PSI; saw: L2 of D2(D2(psi - psi0))/64 in |d| <= 3h; spurious: edges where
+#   psi changes sign and d does not. Orders: least squares over the rungs.
+#
+# PRE-REGISTERED READ-OUT (2026-10-14, before any run):
+# The gradient-control laws on the whole domain (MOLLIFIER none, the default; stage B).
+# P2.1 (exact ODE) qband follows the zero-set law dq/dtau = q G(q) within 0.02 at tau = 1, 2, 5, 7,
+#      10 (band arm) and up to tau = 2 (none arm), for N >= 128 and the starts sdf, algNorm, alg and
+#      the blends. From alg (q0 = 0.5), |q - 1| at tau = 7: linearQ 9.1e-4, linearZ 1.4e-3,
+#      saturatedLinearZ 2.7e-3, twoThirdsZReg 4e-10, cubicQ 0.28, cubicZ 0.35, softWall 0.017.
+# P2.2 modM2, modM4: eikB follows the RMS over theta of qODE - 1 from q0 = 1 + 0.1 cos(m theta)
+#      within 0.01 above the noSource floor, for tau <= 10.
+# P3.1 (from d kappa/dtau = 2 q G'(q) kappa near the zero set) the DA volume excess of algNorm over
+#      sdf (same law, mollifier, rung) falls below 5 % of its tau = 0 value by tau = 10 for linearQ,
+#      linearZ, saturatedLinearZ, twoThirdsZReg; for cubicQ, cubicZ, softWall (G'(1) = 0) it stays
+#      within 10 % at tau = 10, 40, 80. Evaluated only where shift2 <= 0.02h.
+# P5 (whole domain; the centred q is below 1 at the circle centre, the kink of d, and in the
+#     wall cells, where zeroGradient halves the wall-normal slope, so F > 0 there):
+# P5.1 psi at the circle centre and in the wall cells has changed at tau = 10 (the first field
+#      write) for every law.
+# P5.2 no overflow by tau = 80 (|psi| <= 0.25 e^(80 G(0)) <= 1.4e34): every case COMPLETED.
+#      FAIL: a DIVERGED case.
+# P5.3 Crank-Nicolson multiplies a cell by (1 + dt F/2)/(1 - dt F/2), negative where F < -4N:
+#      spurious crossings far from the circle (|d| > 3h) appear by tau = 10 for linearQ, linearZ,
+#      twoThirdsZReg, and never for softWall and saturatedLinearZ (|F| <= 1). FAIL: such a
+#      crossing for softWall or saturatedLinearZ, or none for linearQ on sdf by tau = 10.
+# P5.4 shift2(none) >= shift2(band)/2 for every law and start at N >= 128 (E1.3: the whole
+#      domain is worse).
+# ============================================================================
+study_name: staticSourceGcNone2D
+case: 2DstaticCircle
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: gradient-controlled-level-set
+studies_dir: studies/staticSource
+setfields_app: setExprFields
+setfields_args: ''
+solve_runtime: 180
+export_slides: false
+collapse_other_axes: true
+mpi_launcher: mpirun -np {np}
+env_preamble: source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true
+axes_override:
+  PHASE_INDICATOR: [detrixheAslam]
+  N_CELLS: [64, 128, 256]
+  INIT_FIELD: [sdf, blendH2, blendH1, blend01, algNorm, alg, modM2, modM4]
+  SDPLS_SOURCE: [gradientControl]
+  GC_LAW: [linearQ, linearZ, cubicQ, cubicZ, twoThirdsZReg, saturatedLinearZ, softWall]
+  GC_STRAIN_WEIGHT: [none]
+  MOLLIFIER: [none]

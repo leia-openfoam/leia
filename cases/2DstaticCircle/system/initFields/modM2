@@ -1,0 +1,2 @@
+// modM2: d (1 + 0.1 cos(2 theta)), |grad psi| = 1 + 0.1 cos(2 theta) on the circle
+initVariables ( "cA = 1" "cB = 0" "cE = 0.1" "cM = 2" );

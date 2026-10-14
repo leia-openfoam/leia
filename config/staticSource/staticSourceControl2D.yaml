@@ -1,0 +1,61 @@
+# ============================================================================
+# THE STATIC SOURCE TEST (STATUS 11.27; plan of 2026-10-14): the Eulerian level-set source terms
+# of leiaLevelSetFoam at ZERO velocity. The psi equation reduces to ddt(psi) == S(psi), so a run
+# integrates the source alone in pseudo-time tau = t (every rate is 1 1/s: GC_MU 1; softWall
+# cKappa*epsD = 1.25*0.8; beta's rate is fixed). Case cases/2DstaticCircle: unit square, N x N x 1,
+# a circle R = 0.25 with the centre (0.5013, 0.4987) off the cell lattice; psi0 is one of 8
+# variants (system/initFields), all with the exact circle as zero set:
+#   sdf d | blendH2 d + eps d^2/(2R), eps = (h/R)^2 | blendH1 eps = h/R | blend01 eps = 0.1 |
+#   algNorm (r^2 - R^2)/(2R) | alg r^2 - R^2 (|grad psi| = 2R on the circle) |
+#   modM2, modM4 d (1 + 0.1 cos(m theta)).
+# The reference psiEnd = d, alphaEnd = alpha_DA(d) (endReference translate at u = 0). dt = 0.5 h,
+# tau_end = 80, a field write every 10. Sources: gradientControl laws (linearQ = Soga's restoring
+# term and the Bothe-Fricke-Soga bounded-gradient equation; linearZ, cubicQ, cubicZ,
+# twoThirdsZReg, saturatedLinearZ = the Bothe-Maric-Soga dossier laws; softWall = Bothe S1a),
+# beta, and the strain sources R, Rdiv, RdivStrictSp (Fricke, Maric, Vuckovic, Roisman, Bothe),
+# which are identically zero at u = 0. q is the CENTRED least-squares gradient on this line.
+#
+# DEFINITIONS (workflow/scripts/static_source_metrics.py; L1 and L2 only, never L_inf):
+#   h = 1/N; zcL1/zcL2: error of the linearly interpolated zero crossing on every centre-to-centre
+#   edge against the exact circle, in h; shift2: L2 of the crossing shift against tau = 0, in h;
+#   shapeEx: L1 (and L2) of alpha - alpha_exact over V_exact; volEx = (V_DA - V_exact)/V_exact;
+#   dist3: L2 of (psi - d)/h in |d| <= 3h; eikB = E_NARROW_L2_GRAD_PSI; qband =
+#   NARROW_MEAN_MAG_GRAD_PSI; saw: L2 of D2(D2(psi - psi0))/64 in |d| <= 3h; spurious: edges where
+#   psi changes sign and d does not. Orders: least squares over the rungs.
+#
+# PRE-REGISTERED READ-OUT (2026-10-14, before any run):
+# Control (noSource, stage A): the representation of every variant, and the null of the source.
+# P0.1 psi is bit-identical to psi0 at every write (F = 0; the diagonal solve does not iterate).
+#      FAIL: any changed bit.
+# P0.2 psi0 equals the analytic variant to 1e-14 (L2, L1) with sign(psi0) = sign(d) in every
+#      cell; psi0(sdf) equals psiEnd bit for bit.
+# P0.3 alpha(alg) equals alpha(algNorm) bit for bit (the DA plane fit is linear in psi and is
+#      normalised).
+# P1.1 shapeEx (L1, L2), |volEx| and zcL2 (absolute) have order 2 +- 0.3 for every variant.
+#      FAIL: an order below 1.5.
+# P1.2 V_DA(blend eps) - V_DA(sdf) = eps [V_DA(algNorm) - V_DA(sdf)] within 15 % at N >= 128,
+#      for eps = 0.1, h/R and (h/R)^2 (orders 2, 3, 4 +- 0.3 of the difference).
+# P1.3 |V_DA(alg) - V_DA(sdf)|/V_exact has order 2 +- 0.3.
+# P1.4 modM2, modM4: no derived value; recorded.
+# ============================================================================
+study_name: staticSourceControl2D
+case: 2DstaticCircle
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: gradient-controlled-level-set
+studies_dir: studies/staticSource
+setfields_app: setExprFields
+setfields_args: ''
+solve_runtime: 720
+export_slides: false
+collapse_other_axes: true
+mpi_launcher: mpirun -np {np}
+env_preamble: source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true
+axes_override:
+  PHASE_INDICATOR: [detrixheAslam]
+  N_CELLS: [64, 128, 256, 512]
+  INIT_FIELD: [sdf, blendH2, blendH1, blend01, algNorm, alg, modM2, modM4]
+  SDPLS_SOURCE: [noSource]
+  MOLLIFIER: [none]

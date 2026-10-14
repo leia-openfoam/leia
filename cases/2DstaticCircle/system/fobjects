@@ -1,0 +1,33 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// The static source test keeps only the gradient-error function objects: ||grad psi| - 1|
+// (leastSquares, gradPsiMetric) at every step into gradPsiError.csv. The iso-surface, the grad
+// field and tvErrorCSV (no implementation in src/) of the transport cases are left out: they
+// cost time at every step and add nothing at u = 0.
+functions
+{
+    gradPsiError
+    {
+        type            gradPsiError;
+        libs            ( fieldFunctionObjects leiaFunctionObjects );
+        field           psi;
+        result          gradPsiError;
+        writeControl    none;
+    }
+    gradPsiErrorCSV
+    {
+        type            gradPsiErrorCSV;
+        libs            ( leiaFunctionObjects );
+        writeControl    timeStep;
+        field           gradPsiError;
+    }
+}
+
+
+// ************************************************************************* //

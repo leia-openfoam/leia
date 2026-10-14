@@ -1,0 +1,2 @@
+// alg: 2R (d + d^2/(2R)) = d (d + 2R) = r^2 - R^2, |grad psi| = 2R on the circle
+initVariables ( "cA = 2*rad" "cB = 1" "cE = 0" "cM = 0" );

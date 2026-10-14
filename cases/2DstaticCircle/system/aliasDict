@@ -1,0 +1,49 @@
+// # Alias Dictionary 
+// ==================
+// 
+// Use this dictionary to specify alias for parameters which should be treated as sinlge paramter but have whitespaces in it.
+// Using alias for these paramters is a solution to the inability of PyFoamRunParameterVariation.py treating them as one parameter.
+// See https://github.com/CRC-1194/zinf
+
+// # Schemes
+
+// ## Convection schemes
+
+LinearUpwind      linearUpwind grad(U);
+Gamma1            Gamma 1;
+
+// ## Steady velocity-extension convection (div(velExtPhiW,Uext)), selected by
+// the UEXT_DIV study token: first-order upwind vs deferred-corrected
+// second-order linearUpwind (converged by the nDefCorrExt loop).
+
+UpwindUext        upwind;
+LinearUpwindUext  linearUpwind grad(Uext);
+
+// ## linearUpwind reconstruction gradient for div(phi,psi), selected by the
+// DIV_GRAD study token. The order-loss ablation
+// (config/sdplsOrderAblation.yaml) varies ONLY this, holding the divergence
+// scheme, the time scheme and everything else fixed.
+//
+// Why it is the leading suspect: a cell-limited gradient returns EXACTLY ZERO at
+// a local extremum, and near an interface the level set is full of them, so the
+// linearUpwind reconstruction degrades to first-order upwind precisely where the
+// band gradient error is measured. The measured error is CFL-independent to 0.5%
+// over a tenfold CFL change, so the loss is spatial, not temporal.
+
+CellLimitedLSQ    cellLimited leastSquares 1;   // historical default
+UnlimitedLSQ      leastSquares;                 // no limiter at all
+CellLimitedGauss  cellLimited Gauss linear 1;   // limiter, different base gradient
+FaceLimitedLSQ    faceLimited leastSquares 1;   // face-limited: less aggressive
+
+// --- SDPLS source gradients (added 2026-08-15) ---------------------------
+// The normal n = grad(psi)/|grad(psi)| that the source cancels the strain with
+// is only as accurate as this gradient. It was HARDCODED to leastSquares -- the
+// most compact stencil of the four gradients this file defines -- and a config
+// asking for anything else was silently ignored. Note the semi-Lagrangian
+// `gradPsi` key in fvSchemes already uses pointCellsLeastSquares: the wider
+// stencil was present in the same case, serving a different method.
+SdplsLSQ          leastSquares;              // historical default, compact
+SdplsPointLSQ     pointCellsLeastSquares;    // extended point-cell stencil
+SdplsGauss        Gauss linear;              // Green-Gauss, different family
+SdplsUGauss       Gauss linear;              // grad(v) for a = n.grad(v).n
+SdplsULSQ         leastSquares;

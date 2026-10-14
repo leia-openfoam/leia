@@ -1,0 +1,2 @@
+// sdf: the signed distance, psi0 = d
+initVariables ( "cA = 1" "cB = 0" "cE = 0" "cM = 0" );

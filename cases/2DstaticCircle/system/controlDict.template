@@ -1,0 +1,64 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     leiaLevelSetFoam;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+// Pseudo-time. Every source of the static test runs at the rate 1 1/s (GC_MU 1; softWall
+// cKappa*epsD = 1.25*0.8; the rate of beta is fixed at 1 1/s), so tau = t and END_TIME is the
+// pseudo-time horizon. A plain number: aggregate.py and write_end_reference.py read it.
+endTime         @!END_TIME!@;
+
+// dt = DT_COEFF*h with h = 1/N_CELLS (the unit square): the same dt ~ h law on every rung.
+// For N = 2^k the value is dyadic, so the write times tau = 10, 20, ... are hit exactly.
+deltaT          #eval{ @!DT_COEFF!@/@!N_CELLS!@ };
+
+// At u = 0 the Courant control divides by the zero flux (leiaLevelSetFoam.C:93): fixed dt.
+adjustTimeStep  no;
+
+maxCo           @!CFL!@;
+
+writeControl    runTime;
+
+writeInterval   @!WRITE_EVERY_TAU!@;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+// 17 significant digits: the null checks of the study compare written fields bit for bit.
+writePrecision  17;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable false;
+
+nDefCorr        @!N_DEF_CORR!@;
+
+libs ("libleiafiniteVolume.so");
+
+#include "fobjects";
+// ************************************************************************* //

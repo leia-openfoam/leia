@@ -1,0 +1,58 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      setExprFieldsDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// The initial level-set field of the static source test (STATUS 11.27), one variant per case:
+//
+//     psi0 = cA (d + cB d^2/(2R)) (1 + cE cos(cM theta)),
+//     d = |x - c| - R, theta = atan2(y - y0, x - x0),
+//
+// d is the signed distance of the circle with the arithmetic of leia's implicitSphere
+// (mag(C - c) - R), so the variant sdf is equal to psiEnd bit for bit. Every factor is
+// positive (1 + cB d/(2R) >= 0.5 and 1 + cE cos >= 0.9), so the circle is the exact zero set of
+// every variant. system/initFields/<INIT_FIELD> defines cA, cB, cE and cM as the list
+// initVariables; hc = h and rad = R are known to it. Numbers come from the rendered template
+// and are parsed once; nothing passes through a printed $variable.
+
+#include "initFields/@!INIT_FIELD!@"
+
+expressions
+(
+    psi
+    {
+        // The variant's list, COPIED into this entry at read time. setExprFields hands each
+        // entry to the expression driver without its parent dictionary, so "#initVariables"
+        // below finds only the entries of this dictionary (exprTools::getList; a missing
+        // optional list expands to nothing). An #include here does not work: the top-level
+        // parse expands it inside the token stream of `expressions` and drops its `;`.
+        initVariables $initVariables;
+
+        field       psi;
+        variables
+        (
+            "x0 = @!CIRCLE_X0!@"
+            "y0 = @!CIRCLE_Y0!@"
+            "rad = @!CIRCLE_R!@"
+            "hc = 1.0/@!N_CELLS!@"
+            "#initVariables"
+            "sd = mag(pos() - vector(x0, y0, 0)) - rad"
+            "th = atan2(pos().y() - y0, pos().x() - x0)"
+        );
+        expression  #{ cA*(sd + cB*sqr(sd)/(2*rad))*(1 + cE*cos(cM*th)) #};
+    }
+);
+
+// ************************************************************************* //
