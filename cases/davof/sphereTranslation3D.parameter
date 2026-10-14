@@ -45,6 +45,9 @@ values
 
     TPF_WISP_TOL ( 1e-3 );
 
+    // plicRDF's interpolateNormal switch (true = the library's default)
+    TPF_INTERPOLATE_NORMAL ( true );
+
     TPF_SPHERE_RADIUS ( 0.15 );
 
     TPF_SPHERE_CX ( 0.5 );

@@ -30,6 +30,10 @@ solvers
         wispTol         @!TPF_WISP_TOL!@;
         isoFaceTol      1e-14;
         surfCellTol     1e-8;
+        // plicRDF's initial guess (the helper inside davof and the comparator alike):
+        // true = the previous normals shifted back by U dt (the library's default),
+        // false = the alpha gradient every time (the hexInterp diagnostic)
+        interpolateNormal @!TPF_INTERPOLATE_NORMAL!@;
         // davof: the normal model (davofNormalModel.H) and where it replaces
         // m_c (applyTo all, or check: the slivers |m_c| < sliverTol h^2 and
         // the cells deviating by more than maxAngle degrees); exactNormal

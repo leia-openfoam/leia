@@ -42,6 +42,9 @@ values
 
     TPF_WISP_TOL ( 1e-3 );
 
+    // plicRDF's interpolateNormal switch (true = the library's default)
+    TPF_INTERPOLATE_NORMAL ( true );
+
     TPF_PLANE_PX ( 0.0032 );
     TPF_PLANE_PY ( 0.0036 );
     TPF_PLANE_PZ ( 0.0031512 );

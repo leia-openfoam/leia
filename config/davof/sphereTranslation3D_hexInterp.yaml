@@ -1,0 +1,50 @@
+# Diagnostic of the plicRDF-normal control of sphereTranslation3D_hex (2026-10-14, after the
+# ring-fallback test showed that the "kept m" cells receive no plane and cannot be the cause of
+# the control's non-convergence). HYPOTHESIS: the helper plicRDF inside the davof scheme is
+# reconstructed two to three times per step (the advection step and the function objects), and
+# plicRDF's iteration starts from its PREVIOUS reconstruction's normals shifted back by U dt
+# (its `interpolateNormal` initial guess), which is right once per step and wrong for the
+# repeated calls; standalone plicRDF reconstructs once per step. The switch `interpolateNormal
+# false` makes every reconstruction start from the alpha gradient, independent of the previous
+# one. Rows: the control (davof-plicRDFnormal) and standalone plicRDF, both with the switch,
+# at Co 0.2 and N = 32 / 64 / 128; the references with the switch on are the hex study's rows.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-14, before the run):
+# P-G1: with interpolateNormal false the control converges like plicRDF: normal error at
+#      N = 128 below 1.5e-2 (hex study with the switch on: 4.10e-2, order -0.01), order about 1;
+#      its face fractions at first order like the ring-normal row (hex: 1.68e-2, order 0.15).
+# P-G2: standalone plicRDF with the switch off changes by less than 20 % from its values with
+#      the switch on (hex study: 3.89e-2, 1.91e-2, 9.20e-3), i.e. the switch is not what makes
+#      plicRDF converge.
+# FALSIFIED IF: the control's normal error at N = 128 stays above 3e-2 with the switch off
+#      (P-G1: the repeated reconstruction is not the cause); plicRDF alone loses its order
+#      with the switch off (P-G2).
+#
+#     sbatch --parsable -J leia-davof-sphereTranslation3D_hexInterp --export=ALL,STUDY=davof/sphereTranslation3D_hexInterp run-studies.sbatch
+study_name: sphereTranslation3D_hexInterp
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-plicRDFnormal, plicRDF]
+  TPF_INTERPOLATE_NORMAL: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
