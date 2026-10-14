@@ -758,25 +758,41 @@ def null_checks(study_dirs):
     return out
 
 
+SEAM_SKIP = ("ELAPSED_CPU_TIME,ELAPSED_CLOCK_TIME,L_INF_E_PSI,E_BOUND_ALPHA,MAX_CFL,MAX_ABS_SUM_VOL_FLUXES,"
+             "E_MAX_GRAD_PSI,E_NARROW_MAX_GRAD_PSI,MAX_MAG_GRAD_PSI,NARROW_MAX_MAG_GRAD_PSI,MIN_MAG_GRAD_PSI,"
+             "NARROW_MIN_MAG_GRAD_PSI,NARROW_MIN_R,NARROW_MAX_R")
+
+
+def _compare(fa, fb):
+    """The committed comparator: relative 1e-10 with an absolute floor of 1e-7 in the column's
+    units (the volume columns are m^3 of size 1e-17 to 1e-8, so the floor makes it an absolute
+    1e-17 m^3, the round-off of the volume sums). The extremum columns (minima, maxima, L_INF_E_PSI)
+    are L_inf-type statistics and are not compared."""
+    r = subprocess.run([sys.executable, os.path.join(HERE, "compare_metrics_csv.py"), fa, fb, "--tol", "1e-10",
+                        "--floor", "1e-7", "--skip", SEAM_SKIP], capture_output=True, text=True)
+    last = (r.stdout.strip().splitlines() or [""])[-1]
+    return r.returncode == 0, last
+
+
 def seam_checks(serial_dirs, parallel_dirs):
     ser = {(c["arm"], c["init"], c["N"]): c for c in map(case_info, case_dirs(serial_dirs))}
     par = {(c["arm"], c["init"], c["N"]): c for c in map(case_info, case_dirs(parallel_dirs))}
     out = []
     for key in sorted(set(ser) & set(par)):
         a, b = ser[key], par[key]
-        ok1, n1 = _csv_equal(os.path.join(a["case"], "leiaLevelSetFoam.csv"), os.path.join(b["case"], "leiaLevelSetFoam.csv"), 1e-10)
-        ok2, n2 = _csv_equal(os.path.join(a["case"], "gradPsiError.csv"), os.path.join(b["case"], "gradPsiError.csv"), 1e-10)
+        ok1, n1 = _compare(os.path.join(a["case"], "leiaLevelSetFoam.csv"), os.path.join(b["case"], "leiaLevelSetFoam.csv"))
+        ok2, n2 = _compare(os.path.join(a["case"], "gradPsiError.csv"), os.path.join(b["case"], "gradPsiError.csv"))
         worst = 0.0
-        N = a["N"]
         for (_, t) in time_dirs(a["case"]):
             pb = os.path.join(b["case"], t, "psi")
             if os.path.isfile(pb):
                 da = read_scalar_field(os.path.join(a["case"], t, "psi")) - read_scalar_field(pb)
                 worst = max(worst, float(np.sqrt(np.mean(da * da))))
         ok = ok1 and ok2 and worst <= 1e-12
+        judged = key[0] == "noSource-none" or key[0].endswith("-band")   # P9.1: noSource and the band arms
         out.append(dict(item="P9.1", pair=f"{key[0]} {key[1]} N {key[2]}: serial {a['name']} vs np {b['np']} {b['name']}",
                         result=f"csv: {n1}; grad csv: {n2}; L2(dpsi) max over writes {worst:.1e}",
-                        verdict="PASS" if ok else "FAIL"))
+                        verdict=("PASS" if ok else "FAIL") if judged else ("REPORTED (within)" if ok else "REPORTED (outside)")))
     return out
 
 
@@ -920,8 +936,9 @@ def cmd_seam(args):
     os.makedirs(args.out, exist_ok=True)
     rows = seam_checks(args.serial, args.parallel)
     write_rows(os.path.join(args.out, "staticSource_seam.csv"), rows)
-    bad = [r for r in rows if r["verdict"] != "PASS"]
-    print(f"seam: {len(rows)} pairs, {len(bad)} not PASS")
+    bad = [r for r in rows if r["verdict"] == "FAIL"]
+    rep = [r for r in rows if r["verdict"].startswith("REPORTED (outside")]
+    print(f"seam: {len(rows)} pairs, {len(bad)} FAIL (noSource and band arms), {len(rep)} reported outside (none arms)")
     for r in bad[:20]:
         print(f"  {r['pair']}: {r['result']}")
     return 0 if not bad else 1

@@ -58,7 +58,7 @@ theme: gradient-controlled-level-set
 studies_dir: studies/staticSource
 setfields_app: setExprFields
 setfields_args: ''
-solve_runtime: 180
+solve_runtime: 90
 export_slides: false
 collapse_other_axes: true
 mpi_launcher: mpirun -np {np}

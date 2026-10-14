@@ -3,7 +3,7 @@
 Living hand-off file. Written to be usable from a phone: every command below is
 meant to be run **on Lichtenberg**, and nothing here needs a local OpenFOAM.
 
-Last updated: 2026-10-13 (section 11.26: the combined source F = a + lambda (1 - q): the centred q of the source step fails at zero velocity and its growth law is retracted; the one-sided q `upwindFit` passes gate E2.1 at order 3.6; the kinematic arms of the 2D method gate fail on the shape order for the combined source and both single terms; the band breaks the strain term in 1D; the 2D shape loss is open. section 11.25: the prescribed flux is projected to divergence-free on polyhedral meshes, after fixing two defects of correctFlux; no transport metric degrades by more than 1.1 %. Section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
+Last updated: 2026-10-14 (section 11.27: the static test of the Eulerian source terms at zero velocity is set up (case 2DstaticCircle, eight pre-registered study configs, a metrics script); the laptop smoke passes: 296 cases COMPLETED, every null check bit-identical, the parallel path equal to serial to round-off; the whole-domain sources amplify round-off. section 11.26: the combined source F = a + lambda (1 - q): the centred q of the source step fails at zero velocity and its growth law is retracted; the one-sided q `upwindFit` passes gate E2.1 at order 3.6; the kinematic arms of the 2D method gate fail on the shape order for the combined source and both single terms; the band breaks the strain term in 1D; the 2D shape loss is open. section 11.25: the prescribed flux is projected to divergence-free on polyhedral meshes, after fixing two defects of correctFlux; no transport metric degrades by more than 1.1 %. Section 11.24: L_INF_E_PSI fixed in the shared error writer, which served three solvers; one writer for four solvers. Section 11.23: the kinematic SL solver computes the narrow band before alpha and stays, one kinematic solver per flow solver; the CFL 1.0 row of the SL 2D convergence table is retracted. Section 11.22: leiaRedistancedLevelSetFoam retired, leiaLevelSetFoam reproduces it bit for bit; the semi-Lagrangian solver is not yet reproducible by leiaLevelSetFoam. Section 11.21: Build Tests runs on OpenFOAM-v2606 in our own CI image and passes; Lichtenberg has OpenFOAM-v2606, and the new clone leia-dev runs the development line there through profiles/slurm. Section 11.20: the feature is merged into development and main, the knowledge-base site is live, two branches are pruned. Section 11.19. `2Dtranslation` was a REVERSED flow until today, so every earlier number of the case is void; re-run one-way: the cone bound is 14x worse than no bound at N = 64 and does not converge, the unbounded scheme converges at order 2.90, 2.16, 1.86. Fixed psi values on a patch make the SL update unstable. The production curvature cellCentreInverse is second order on the signed-distance ellipse and ellipsoid, and its gain equals the per-face inverse's (0.647 at N = 512). Earlier, 2026-09-28: FALSIFIED: the distance-cone bound is NOT a transport bound. The advection ladder settles it -- on pure advection with every arm on the IDENTICAL mesh it is WORSE than no bound on uniform translation, where its L = 1 is exactly valid (the 2.3-3.6x of that date was read from the reversed flow; one-way 14x), 9-19x worse in strained flow, and the stencil L mode LOSES THE PHASE on 3D shear hex (E_VOL_REL = 1.0000). The resolution ladder agrees: the eikonal error is 7.119e-03 at N = 64 and 7.066e-03 at N = 128, a FLOOR at order 0.01, and the centroid error reverses to +119 % worse than none. RETRACTED: the earlier 'every interface metric improves 25-68 %' holds only at N = 64 on Popinet's NEARLY UNIFORM velocity, the single regime where L = 1 is defensible. The unbounded POLYHEDRAL advection arm does diverge at step 198 and every bound prevents it, but the falsified monotone clip beats the cone bound on every advection gate. WHAT SURVIVES: the slValueBound family (none | stencilBounds | lipschitzCone as one gated, byte-inert study axis, the seat for the review's Rank 1) and the -mode growth instrument, self-validated against the power iteration. See METHOD.md 8.3.)
 
 Conventions this file assumes are already known: [CLAUDE.md](CLAUDE.md) (layout,
 build, git discipline) and [CLUSTER.md](CLUSTER.md) (full verified cluster
@@ -5339,6 +5339,62 @@ in `~/OpenFOAM/data/2026-10-13-combined-source/` (5.5 GB): `e1`, `e21`, `e21-np4
    `concepts/combined-source-note` (re-opened), `concepts/source-discretisation-defects`,
    `models/sl-source`, `sessions/current`. METHOD.md is not affected: `SL_SOURCE none` stays the
    default and nothing of this line is in production.
+
+### 11.27 The static test of the Eulerian source terms: setup and the laptop smoke (2026-10-14)
+
+The author's request of 2026-10-13/14, before the work returns to advection: test the level-set
+source terms on their own. Only the Eulerian sources of `leiaLevelSetFoam` that the code has, those
+of D. Bothe and K. Soga included; zero velocity, so the psi equation is `ddt(psi) == S(psi)` and a
+run integrates the source alone in pseudo-time tau = t (every rate 1 1/s). A circle R = 0.25 with
+the centre (0.5013, 0.4987) off the cell lattice, N = 64 to 512, eight initial fields with the exact
+circle as zero set (the signed distance d, r^2 - R^2, its normalised form, the blends
+d + eps d^2/(2R) with eps = (h/R)^2, h/R, 0.1, and d (1 + 0.1 cos(m theta)), m = 2, 4). The sources:
+the seven gradient-control laws (linearQ = Soga's restoring term and the Bothe-Fricke-Soga
+bounded-gradient equation; the Bothe-Maric-Soga dossier laws; Bothe's softWall with epsD 0.8, so
+that its rate at u = 0 is 1 1/s), beta, and as null checks the strain sources R, Rdiv,
+RdivStrictSp and the strain half of the combined source, which are identically zero at u = 0.
+Source regions: the whole domain (MOLLIFIER none, the default) and a 3-layer band. tau = 80,
+dt = 0.5 h. Plan and decisions: the plan of 2026-10-14; the read-out is in each header of
+`config/staticSource/` (written before any run).
+
+1. **The case and the fields** (ea7110fb). `cases/2DstaticCircle` (velocity (0 0 0),
+   `adjustTimeStep no`, `deltaT #eval{ DT_COEFF/N_CELLS }`, writePrecision 17); psi0 by
+   `setExprFields` from `system/initFields/<variant>`; the reference psiEnd = d and
+   alphaEnd = alpha_DA(d) by `END_REFERENCE translate` at zero velocity. Three traps found and
+   fixed before any study: (a) an `#include` inside the `expressions` list of setExprFieldsDict is
+   expanded in the token stream and loses its `;`; (b) a list in the parent dictionary is not found
+   by the expression driver, so the variant's list is copied into the entry with
+   `initVariables $initVariables;`; (c) the base `config/config.yaml` sweeps PHASE_INDICATOR over
+   two values, so every study pins it.
+2. **The trial** (N = 64, tau = 2, linearQ in the band, serial): from r^2 - R^2 the band mean of
+   |grad psi| is 0.733 at tau = 1 and 0.878 at tau = 2, against the logistic law of the zero set
+   0.731 and 0.881; the Detrixhe-Aslam volume excess over that of d falls from 1.17e-3 to 6.3e-5.
+3. **The laptop smoke** (`workflow/scripts/static_source_smoke.sh`; ea7110fb with clean library
+   stamps; N = 64, tau = 2; stage A and B configs at np 4, Control, GcNone and GcBand also serial):
+   296 cases, all COMPLETED.
+   - check-init: 296 of 296 PASS (psi0 equals the analytic variant within 1e-14 in L1 and L2, the
+     signs equal those of d, sdf equals psiEnd bit for bit, psiEnd and alphaEnd in every processor
+     directory).
+   - Null checks, 57 pairs, all bit-identical in both CSVs and in psi and alpha at every write:
+     P0.3 (alpha of r^2 - R^2 equals alpha of its normalised form), P6.1 (beta equals linearQ),
+     P7.1 (R, Rdiv, RdivStrictSp equal noSource), P8.1 (linearQ with strain weight full equals
+     linearQ).
+   - Seam, serial against np 4, the arms P9.1 judges (noSource and the band arms): psi agrees within
+     2e-17 (L2), the gradient columns within 1.6e-12 (relative), the dimensionless volume columns
+     within 2.5e-15 (absolute). P9.1 as written (1e-10 relative on every column) FAILS on the
+     volume columns: they are differences of two nearly equal volumes, so their relative difference
+     is the noise of near-zero numbers. The extremum columns (minima, maxima, L_INF_E_PSI) are not
+     compared. The parallel path is correct.
+   - The whole-domain arms (MOLLIFIER none; only reported): serial and np 4 differ by up to 5.2e-4
+     in the volume columns and by 17 % in the gradient columns already at tau = 2, N = 64. The
+     whole-domain sources amplify round-off far from the interface (the circle centre, the walls),
+     so their numbers on the cluster belong to np 4 and are not decomposition-independent.
+   - Nothing was written under docs/.
+4. **The pace** (laptop, np 4): 7.8e-3 s per step at N = 128 (a full run, 160 N steps, 2.7 min),
+   2.2e-2 to 2.9e-2 s per step at N = 256 (15 to 20 min); N = 512 about 2 h by extrapolation.
+   solve_runtime: 30 min (null checks), 90 min (stage B), 480 min (Control and stage C).
+5. **Next.** A Lichtenberg worktree at the commit of this section, the build, the drivers of stage A
+   and B, stage C after stage A passes; then the metrics on the cluster and the results (part 2).
 
 ### 10.12 The plane test on perturbed hexahedra: planar faces exact, warped faces need the wetted area vector (2026-10-02)
 
