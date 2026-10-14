@@ -1,0 +1,57 @@
+row,metric,N=32,N=64,N=128,p_ls,p_pairwise
+davof-cellLocal,L1_alphaf_end,div.,div.,div.,--,
+davof-cellLocal,L1_alphaf_max,div.,div.,div.,--,
+davof-cellLocal,L1_n_end,div.,div.,div.,--,
+davof-cellLocal,L1_x_end,div.,div.,div.,--,
+davof-cellLocal,Eshape_end,div.,div.,div.,--,
+davof-cellLocal,Ebound_end,div.,div.,div.,,
+davof-cellLocal,minAlpha_run,div.,div.,div.,,
+davof-cellLocal,status,div.,div.,div.,,
+davof-ringArea,L1_alphaf_end,1.19e-02,6.06e-03,2.96e-03,1.00,0.97 / 1.03
+davof-ringArea,L1_alphaf_max,1.19e-02,6.06e-03,3.03e-03,0.99,0.97 / 1.00
+davof-ringArea,L1_n_end,3.34e-02,1.84e-02,8.12e-03,1.02,0.86 / 1.18
+davof-ringArea,L1_x_end,7.71e-04,1.89e-04,4.88e-05,1.99,2.02 / 1.96
+davof-ringArea,Eshape_end,2.58e-04,6.27e-05,1.58e-05,2.02,2.04 / 1.99
+davof-ringArea,Ebound_end,6.94e-15,8.89e-15,9.67e-15,,
+davof-ringArea,minAlpha_run,-9.4e-15,-9.9e-15,-1.0e-14,,
+davof-ringArea,status,ok,ok,ok,,
+davof-ringFit,L1_alphaf_end,1.47e-02,1.35e-01,3.38e-03,1.06,-3.20 / 5.32
+davof-ringFit,L1_alphaf_max,1.47e-02,1.35e-01,3.38e-03,1.06,-3.20 / 5.32
+davof-ringFit,L1_n_end,1.37e-02,5.36e-01,1.50e-03,1.60,-5.29 / 8.48
+davof-ringFit,L1_x_end,7.34e-04,4.15e-02,4.71e-05,1.98,-5.82 / 9.79
+davof-ringFit,Eshape_end,2.52e-04,5.68e-04,1.57e-05,2.00,-1.18 / 5.17
+davof-ringFit,Ebound_end,8.88e-15,4.36e-09,9.53e-15,,
+davof-ringFit,minAlpha_run,-1.0e-14,-9.5e-09,-1.0e-14,,
+davof-ringFit,status,ok,ok,ok,,
+davof-exact,L1_alphaf_end,1.37e-02,7.27e-03,3.46e-03,0.99,0.91 / 1.07
+davof-exact,L1_alphaf_max,1.37e-02,7.27e-03,3.46e-03,0.99,0.91 / 1.07
+davof-exact,L1_n_end,7.70e-03,2.62e-03,5.54e-04,1.90,1.56 / 2.24
+davof-exact,L1_x_end,7.42e-04,1.81e-04,4.76e-05,1.98,2.03 / 1.93
+davof-exact,Eshape_end,2.52e-04,6.23e-05,1.58e-05,2.00,2.01 / 1.98
+davof-exact,Ebound_end,4.88e-15,7.06e-15,9.95e-15,,
+davof-exact,minAlpha_run,-9.7e-15,-1.0e-14,-1.0e-14,,
+davof-exact,status,ok,ok,ok,,
+davof-plicRDFnormal,L1_alphaf_end,1.19e-02,8.08e-03,8.57e-03,0.24,0.56 / -0.09
+davof-plicRDFnormal,L1_alphaf_max,1.19e-02,8.46e-03,9.29e-03,0.18,0.49 / -0.13
+davof-plicRDFnormal,L1_n_end,2.32e-02,2.01e-02,2.70e-02,-0.11,0.20 / -0.42
+davof-plicRDFnormal,L1_x_end,7.67e-04,2.50e-04,1.33e-04,1.26,1.61 / 0.91
+davof-plicRDFnormal,Eshape_end,2.52e-04,7.20e-05,3.40e-05,1.44,1.81 / 1.08
+davof-plicRDFnormal,Ebound_end,9.88e-15,9.96e-15,9.77e-15,,
+davof-plicRDFnormal,minAlpha_run,-9.9e-15,-1.0e-14,-3.7e-13,,
+davof-plicRDFnormal,status,ok,ok,ok,,
+plicRDF,L1_alphaf_end,--,--,--,--,
+plicRDF,L1_alphaf_max,--,--,--,--,
+plicRDF,L1_n_end,2.32e-02,1.39e-02,6.03e-03,0.97,0.74 / 1.20
+plicRDF,L1_x_end,7.67e-04,2.00e-04,4.87e-05,1.99,1.94 / 2.04
+plicRDF,Eshape_end,2.52e-04,6.65e-05,1.61e-05,1.98,1.92 / 2.04
+plicRDF,Ebound_end,1.06e-15,8.88e-15,9.51e-15,,
+plicRDF,minAlpha_run,-9.7e-15,-1.0e-14,-1.0e-14,,
+plicRDF,status,ok,ok,ok,,
+isoAlpha,L1_alphaf_end,--,--,--,--,
+isoAlpha,L1_alphaf_max,--,--,--,--,
+isoAlpha,L1_n_end,4.04e-02,2.69e-02,1.65e-02,0.64,0.58 / 0.70
+isoAlpha,L1_x_end,7.75e-04,2.02e-04,5.97e-05,1.85,1.94 / 1.76
+isoAlpha,Eshape_end,2.54e-04,6.26e-05,1.71e-05,1.95,2.02 / 1.87
+isoAlpha,Ebound_end,3.32e-15,9.77e-15,8.88e-15,,
+isoAlpha,minAlpha_run,-9.7e-15,-1.0e-14,-1.0e-14,,
+isoAlpha,status,ok,ok,ok,,
