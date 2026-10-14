@@ -59,6 +59,12 @@ values
 
     N_DEF_CORR ( 3 );
 
+    // minIter of the psi solver (system/fvSolution). 1: every psi solve does at least one
+    // iteration, which solves the diagonal system of u = 0 exactly. 0 is the OpenFOAM default and
+    // freezes psi wherever the source update is below the normalised tolerance (STATUS 11.27:
+    // the data of commit 010b553a is void for this reason).
+    PSI_MIN_ITER ( 1 );
+
     // Read only by maxCo (adjustTimeStep no) and by the inert semiLagrangian block.
     CFL ( 0.5 );
 }

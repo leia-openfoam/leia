@@ -28,6 +28,7 @@ Commands:
   check-init <case>... [--out <dir>]   (P0.2; with --out also staticSource_init.csv)
   analyse --studies <study dir>... --out <dir> [--jobs N]
   null --studies <study dir>... --out <dir>
+  iterations --studies <study dir>... --out <dir>   (S0: no psi solve without an iteration where F != 0)
   seam --serial <study dir>... --parallel <study dir>... --out <dir>
   pace --studies <study dir>...
   curate --metrics <dir> [--theme gradient-controlled-level-set] [--stamp <libleiaCore stamp>]
@@ -523,7 +524,7 @@ def _get(fields, **kw):
     return [r for r in fields if all(r.get(k) == v for k, v in kw.items())]
 
 
-def verdicts(fields, hist, cases, null_rows, init_rows=()):
+def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
     V = []
 
     def add(pid, scope, value, threshold, verdict, note=""):
@@ -581,6 +582,15 @@ def verdicts(fields, hist, cases, null_rows, init_rows=()):
             o = {met: lsq_order([1 / r["N"] for r in rs], [r[met] for r in rs]) for met in ("shapeEx1", "shapeEx2")}
             add("P1.4", f"{init} tau 0", f"shapeEx1 order {o['shapeEx1']:.2f}, shapeEx2 order {o['shapeEx2']:.2f}",
                 "no derived value", "RECORDED")
+    # S0 (setup, not a prediction): with F != 0 every psi solve iterated; with F = 0 none did
+    if iter_rows:
+        bad = [r for r in iter_rows if r["verdict"] != "PASS"]
+        add("S0", "every case (iterations)", f"{len(iter_rows) - len(bad)}/{len(iter_rows)} PASS",
+            "F != 0: no zero-iteration psi solve; F = 0: no iteration", "PASS" if not bad else "FAIL",
+            "; ".join(f"{r['case']} {r['arm']} {r['init']} N {r['N']}: {r['zeroIter']}/{r['solves']} zero"
+                      for r in bad[:5]))
+    else:
+        add("S0", "every case", "", "", "NOT EVALUATED", "no staticSource_iterations.csv (iterations --out)")
     # P0.2 from check-init --out (staticSource_init.csv); P0.3, P6.1, P7.1, P8.1 from null
     if init_rows:
         bad = [r for r in init_rows if r["verdict"] != "PASS"]
@@ -730,6 +740,59 @@ def verdicts(fields, hist, cases, null_rows, init_rows=()):
                 add("P5.4", f"{arm} {init} N {N} tau 80", f"{a[N]['shift2']:.4f} vs band {b[N]['shift2']:.4f}",
                     "none >= band/2", "PASS" if ok else "FAIL")
     return V
+
+
+# --------------------------------------------------------------------------- solver iterations
+ZERO_SOURCES = ("noSource", "R", "Rdiv", "RdivStrictSp")     # identically zero at u = 0
+_SOLVE = re.compile(r"Solving for psi, Initial residual = ([0-9.eE+-]+), Final residual = ([0-9.eE+-]+), "
+                    r"No Iterations (\d+)")
+_TIME = re.compile(r"^Time = ([0-9.eE+-]+)")
+
+
+def psi_iterations(case):
+    """The psi solves of a case log and how many of them did no iteration. Not a state classifier
+    (foam_log_state.sh is): it reads only the solver-performance lines of the psi equation.
+    At u = 0 the psi matrix is diagonal and OpenFOAM normalises the residual by the whole field,
+    so a small source update can start below the tolerance; a solve with zero iterations then
+    returns psi unchanged (STATUS 11.27, the void data of commit 010b553a)."""
+    log = os.path.join(case, "log.leiaLevelSetFoam")
+    n = zero = steps0 = 0
+    first0, tnow, cur = "", "", []
+    if not os.path.isfile(log):
+        return None
+    with open(log, errors="replace") as f:
+        for line in f:
+            m = _TIME.match(line)
+            if m:
+                if cur and all(k == 0 for k in cur):
+                    steps0 += 1
+                cur, tnow = [], m.group(1)
+                continue
+            m = _SOLVE.search(line)
+            if m:
+                k = int(m.group(3))
+                n += 1
+                cur.append(k)
+                if k == 0:
+                    zero += 1
+                    first0 = first0 or tnow
+    if cur and all(k == 0 for k in cur):
+        steps0 += 1
+    return dict(solves=n, zeroIter=zero, stepsAllZero=steps0, firstZero=first0)
+
+
+def iteration_rows(study_dirs):
+    out = []
+    for case in case_dirs(study_dirs):
+        c = case_info(case)
+        it = psi_iterations(case)
+        if it is None:
+            continue
+        expect_zero = c["source"] in ZERO_SOURCES
+        ok = (it["zeroIter"] == it["solves"]) if expect_zero else (it["zeroIter"] == 0 and it["solves"] > 0)
+        out.append(dict(item="S0", case=f"{c['study']}/{c['name']}", arm=c["arm"], init=c["init"], N=c["N"],
+                        source=c["source"], **it, verdict="PASS" if ok else "FAIL"))
+    return out
 
 
 # --------------------------------------------------------------------------- null and seam
@@ -977,7 +1040,11 @@ def cmd_analyse(args):
     ipath = os.path.join(args.out, "staticSource_init.csv")
     if os.path.isfile(ipath):
         inits = read_csv(ipath)
-    V = verdicts(fields, hist, summaries, nulls, inits)
+    iters = []
+    tpath = os.path.join(args.out, "staticSource_iterations.csv")
+    if os.path.isfile(tpath):
+        iters = read_csv(tpath)
+    V = verdicts(fields, hist, summaries, nulls, inits, iters)
     write_rows(os.path.join(args.out, "staticSource_verdicts.csv"), V)
     print(f"analyse: {len(cases)} cases, {len(fields)} field rows, {len(hist)} history rows, {len(V)} verdict lines; commits {sorted(commits)}")
     for v in V:
@@ -994,6 +1061,18 @@ def cmd_null(args):
     print(f"null: {len(rows)} pairs, {len(bad)} not PASS")
     for r in bad[:20]:
         print(f"  {r['item']} {r['pair']}: {r['result']}")
+    return 0 if not bad else 1
+
+
+def cmd_iterations(args):
+    os.makedirs(args.out, exist_ok=True)
+    rows = iteration_rows(args.studies)
+    write_rows(os.path.join(args.out, "staticSource_iterations.csv"), rows)
+    bad = [r for r in rows if r["verdict"] != "PASS"]
+    print(f"iterations: {len(rows)} cases, {len(bad)} not PASS")
+    for r in bad[:20]:
+        print(f"  {r['case']} {r['arm']} {r['init']} N {r['N']}: {r['zeroIter']}/{r['solves']} psi solves without an "
+              f"iteration, {r['stepsAllZero']} steps unchanged, first at t = {r['firstZero']}")
     return 0 if not bad else 1
 
 
@@ -1063,6 +1142,9 @@ def main():
     p = sub.add_parser("null")
     p.add_argument("--studies", nargs="+", required=True)
     p.add_argument("--out", required=True)
+    p = sub.add_parser("iterations")
+    p.add_argument("--studies", nargs="+", required=True)
+    p.add_argument("--out", required=True)
     p = sub.add_parser("seam")
     p.add_argument("--serial", nargs="+", required=True)
     p.add_argument("--parallel", nargs="+", required=True)
@@ -1075,7 +1157,7 @@ def main():
     p.add_argument("--stamp", default="")
     a = ap.parse_args()
     return {"selftest": cmd_selftest, "check-init": cmd_check_init, "analyse": cmd_analyse, "null": cmd_null,
-            "seam": cmd_seam, "pace": cmd_pace, "curate": cmd_curate}[a.cmd](a)
+            "seam": cmd_seam, "pace": cmd_pace, "curate": cmd_curate, "iterations": cmd_iterations}[a.cmd](a)
 
 
 if __name__ == "__main__":

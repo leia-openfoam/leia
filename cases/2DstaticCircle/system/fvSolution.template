@@ -23,6 +23,14 @@ solvers
         preconditioner  DILU;
         tolerance       1e-10;
         relTol          0;
+        // At u = 0 the psi matrix is diagonal (ddt and the implicit source only), and OpenFOAM
+        // normalises the residual by the whole field. A small source update then starts below
+        // the tolerance and the solver returns psi UNCHANGED (zero iterations). MEASURED
+        // 2026-10-14 (STATUS 11.27): linearQ in the band on the signed distance at N = 256 did
+        // zero iterations in all 122880 psi solves. One iteration solves a diagonal system
+        // exactly; with F = 0 the residual is exactly zero and the solver stops before any
+        // update, so the null arms stay bit-identical.
+        minIter         @!PSI_MIN_ITER!@;
     }
 
     p
