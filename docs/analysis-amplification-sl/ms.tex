@@ -17,379 +17,764 @@
 \newcommand{\measured}{\textcolor{green!35!black}{\textbf{[MEASURED]}}}
 \newcommand{\opn}{\textcolor{orange!80!black}{\textbf{[OPEN]}}}
 
-\title{The Fourier amplification symbol of the semi-Lagrangian quadratic fit\\
-       \large The measured growth on hexahedral meshes is a boundary effect}
+\title{Why the semi-Lagrangian level set grows on hexahedral meshes\\
+       \large A self-contained derivation, and what to change}
 \author{Tomislav Mari\'c}
-\date{2026-10-13}
+\date{2026-10-14}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-The frozen-velocity power iteration measures a spectral radius above one on every mesh,
-hexahedral meshes included: $\rho = 1.00441$ at Courant number $0.0164$, flat to $0.5\,\%$
-over an eight-fold range of cell count. That invariance is the signature of a
-constant-coefficient operator. This report derives the operator's Fourier symbol in closed
-form. The interior operator on a uniform hexahedral mesh has $\rho = 1$ \emph{exactly}, for
-every Courant number up to $0.95$, in one, two and three dimensions, and for both weight
-anchors --- ninety-six configurations, no exception. The derivation is validated three ways:
-symbolically against the known one-dimensional result, numerically against an independent
-power iteration, and against the solver's own per-cell field, which it reproduces to nine
-significant figures. The measured growth is therefore not a property of the interior scheme.
-Splitting that field by boundary adjacency locates it: all $484\,344$ interior cells carry a
-single value, and the recorded maximum sits on a boundary cell.
+A measurement said that our transport scheme slowly amplifies errors on every mesh,
+including the clean hexahedral ones. This document works out why, from first principles, and
+reaches a different conclusion than the measurement suggested: the scheme does \emph{not}
+amplify anywhere in the interior of a uniform hexahedral mesh. The growth comes from cells
+that touch a boundary, and only when the flow carries material \emph{out} of the domain
+there. The document is written to be read without looking anything up. It builds the tool it
+uses, checks that tool against a case we can do by hand, and only then reports results. It
+closes with what to change in the reconstruction, including a direct answer to the question
+of whether boundary face values belong in the stencil.
 \end{abstract}
 
-\section{The question, and why algebra answers it}
+\tableofcontents
 
-METHOD.md section 8.2 records the measurement in Table~\ref{tab:measured}.
+\part{The question}
+
+\section{What the scheme does}
+
+We track an interface with a function $\psi(x)$ that is zero on the interface, negative on
+one side and positive on the other. Where the field is a true signed distance, $|\psi|$ is
+the distance to the interface and $|\nabla \psi| = 1$.
+
+To move $\psi$ forward one time step we use a \textbf{semi-Lagrangian} step. The idea is
+simple and physical. The quantity $\psi$ is carried along with the fluid, so its value at a
+point $x$ at the new time equals its value at the old time at the point the fluid came from.
+For each cell centre $x_c$ we therefore:
+
+\begin{enumerate}
+\item compute where the material now at $x_c$ was one time step ago. With velocity $u$ and
+      step $\Delta t$ that \textbf{departure point} is $x_d = x_c - u \Delta t$;
+\item look up the old field at $x_d$ and store it as the new value at $x_c$.
+\end{enumerate}
+
+Step 2 is the hard part. $x_d$ is not a cell centre, and we only know $\psi$ at cell centres.
+So we must build a local model of $\psi$ near $x_c$ from the values we have, and evaluate
+that model at $x_d$.
+
+\subsection{The local model: a quadratic fit}
+
+The values we have are those of the cell itself and of its neighbours. We call that set of
+cells the \textbf{stencil}. On a uniform hexahedral mesh the stencil of an interior cell is
+the $3\times 3 \times 3$ block centred on it: the cell plus its 26 neighbours.
+
+Through those values we fit a quadratic polynomial, meaning a function of the form
+\begin{equation}
+  P(d) \;=\; \underbrace{g_1 d_1 + g_2 d_2 + g_3 d_3}_{\text{a slope in each direction}}
+            \;+\; \underbrace{\tfrac12 h_{11} d_1^2 + \tfrac12 h_{22} d_2^2 + \tfrac12 h_{33} d_3^2
+                              + h_{12} d_1 d_2 + h_{13} d_1 d_3 + h_{23} d_2 d_3}_{\text{curvature}},
+  \label{eq:poly}
+\end{equation}
+where $d = x - x_c$ is the offset from the cell centre. There are nine coefficients. Notice
+there is \emph{no constant term}. That is deliberate and it matters later: we fit the
+\emph{differences} $\psi_j - \psi_c$, so the model is
+\begin{equation}
+  R_c(x) \;=\; \psi_c + P(x - x_c),
+  \label{eq:anchored}
+\end{equation}
+which returns exactly $\psi_c$ at the cell centre, by construction. We call this an
+\textbf{anchored} fit.
+
+We have 26 neighbour values and only nine coefficients. There is no polynomial that passes
+through all 26 values, so we ask for the one that comes closest, in the sense of making
+\begin{equation}
+  \sum_{j} w_j^2 \bigl( P(x_j - x_c) - (\psi_j - \psi_c) \bigr)^2
+  \label{eq:lsq}
+\end{equation}
+as small as possible. This is a \textbf{weighted least-squares fit}. The weights $w_j$ say
+how much we care about matching each neighbour; we use $w_j = 1/|x_j - x_c|$, so near
+neighbours matter more than far ones.
+
+Minimising \eqref{eq:lsq} is a linear problem. Writing $b(d)$ for the list of nine basis
+functions in \eqref{eq:poly} evaluated at $d$, the solution is
+\begin{equation}
+  \text{coefficients} \;=\; M^{-1} \sum_j w_j^2\, b(d_j)\,(\psi_j - \psi_c),
+  \qquad
+  M \;=\; \sum_j w_j^2\, b(d_j)\, b(d_j)^{\!\top},
+  \label{eq:normal}
+\end{equation}
+where $d_j = x_j - x_c$. $M$ is a $9\times 9$ matrix built only from the \emph{positions} of
+the stencil cells. It does not involve $\psi$ at all.
+
+\section{What ``amplification'' means, and why it matters}
+
+The new value at a cell is a combination of old values at its neighbours. If that combination
+can make the result larger than all of its inputs, then an error present at one step can come
+back bigger at the next step, and bigger again, and so on. Over a run of a few thousand steps
+even a very small per-step growth becomes large: growth of $0.4\,\%$ per step over 1563 steps
+is a factor of about 1000.
+
+That is exactly what a measurement in this project reported. Using a numerical procedure
+(described in Section~\ref{sec:poweriter}) the per-step growth factor was found to be
+$1.00441$ on our production hexahedral mesh --- small, but bigger than one, and therefore a
+slow amplifier. Two features of that measurement are the starting point of this document.
 
 \begin{table}[h]
 \centering
-\caption{The measured transport spectrum on hexahedral meshes (METHOD.md 8.2,
-\texttt{blockMesh hex} rows; 2000 power iterations, clip off, frozen velocity).}
+\caption{The measured growth factor on hexahedral meshes of three resolutions.
+``Co'' is the Courant number, defined in Section~\ref{sec:courant}.}
 \label{tab:measured}
-\begin{tabular}{lrrrrr}
+\begin{tabular}{lrrrr}
 \toprule
-mesh & cells & $h$ [m] & Co & $\rho(B)$ & $\Lambda_{\max}$ \\
+mesh & cells & cell size $h$ [m] & Co & growth factor $\rho$ \\
 \midrule
-\texttt{blockMesh} hex, $n=32$ & 65\,536  & 7.81e-05 & 0.0164 & 1.00439 & 1.0527 \\
-\texttt{blockMesh} hex, $n=48$ & 221\,184 & 5.21e-05 & 0.0164 & 1.00441 & ---    \\
-\texttt{blockMesh} hex, $n=64$ & 524\,288 & 3.91e-05 & 0.0164 & \textbf{1.00441} & 1.0527 \\
+hexahedral, $n=32$ & 65\,536  & 7.81e-05 & 0.0164 & 1.00439 \\
+hexahedral, $n=48$ & 221\,184 & 5.21e-05 & 0.0164 & 1.00441 \\
+hexahedral, $n=64$ & 524\,288 & 3.91e-05 & 0.0164 & \textbf{1.00441} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Two features set up this report. First, $\rho-1$ is invariant under refinement at fixed
-Courant number: $4.39$e-3, $4.41$e-3, $4.41$e-3 across a two-fold range of $h$ and an
-eight-fold range of cell count. Second, the same section records that $\Lambda$ is not a
-reliable proxy for $\rho$ --- refining \texttt{pMesh} raises $\Lambda_{\max}$ by $4.3\,\%$
-while $\rho-1$ \emph{falls} by $7\,\%$.
+\textbf{First}, the number barely changes when the mesh is refined: $1.00439$, $1.00441$,
+$1.00441$, across an eight-fold change in the number of cells. \textbf{Second}, it was
+obtained by a numerical search, which tells you \emph{that} something grows but not
+\emph{what} or \emph{where}.
 
-On a uniform hexahedral mesh, away from boundaries, the semi-Lagrangian update is a linear
-operator with \emph{constant coefficients}: the stencil geometry, the weights and the
-displacement are identical at every cell. Such an operator on a periodic uniform mesh is
-diagonalised exactly by Fourier modes, so its amplification factor is available in closed
-form. The measured number must be reproducible with algebra rather than with 2000 power
-iterations on half a million cells.
+The first feature is a strong clue. A quantity that does not care about the mesh size is
+usually one that can be computed once and for all, by algebra, rather than searched for
+numerically on each mesh. The rest of Part~\ref{part:tool} builds that algebra.
 
-\section{The operator, as implemented}
+\subsection{The Courant number}
+\label{sec:courant}
 
-The production reconstruction is
-\texttt{uncachedQuadraticWeightedLeastSquaresReconstruction}. Four properties fix the
-operator completely.
-
-\paragraph{The fit is anchored.} The right-hand side is assembled as the difference
-$\psi_i - \psi_c$ over a \emph{constant-free} basis, and \texttt{evaluateRaw} starts from
-$\psi_c$, so $R_c(x_c) = \psi_c$ holds by construction. The basis, in the code's order, is
+Everything below depends on how far the departure point lies from the cell centre, measured
+in cell widths. That ratio
 \begin{equation}
-  b(d) \;=\; \bigl(\, d_a \;;\; \tfrac{1}{2} d_a^2 \;;\; d_a d_b,\ a<b \,\bigr),
-  \qquad
-  n_{\text{coeff}} = 2D + \tfrac{1}{2}D(D-1),
+  \mathrm{Co} \;=\; \frac{|u| \Delta t}{h}
 \end{equation}
-so $n_{\text{coeff}} = 2$ in 1D, $5$ in 2D and $9$ in 3D.
+is the \textbf{Courant number}. $\mathrm{Co} = 1$ means the material moves exactly one cell
+per step. Our production runs use a much smaller value, $\mathrm{Co} = 0.0164$, i.e. the
+departure point sits only $1.6\,\%$ of a cell away from the centre.
 
-\paragraph{The weights are inverse distance from the cell centre.}
-$w_i = 1/\max(|x_i - x_c|,\varepsilon)$, exponent one, with the normal equations using
-$w_i^2$. The anchor is the arrival cell centre, not the departure foot point.
+\subsection{How the growth factor was measured}
+\label{sec:poweriter}
 
-\paragraph{The stencil is one ring.} The cell-point-cell stencil gives the full $3^D$ cube
-minus the owner: $2$ neighbours in 1D, $8$ in 2D, $26$ in 3D. Physical boundary faces enter
-as extra data slots; the interior stencil is untouched by that option.
+The existing measurement works like this. Freeze the velocity, so the scheme becomes a fixed
+linear rule. Start from a random field. Apply the rule, measure how much the size of the
+field changed, rescale it back to size one, and repeat two thousand times. The factor
+settles down to a single number: the largest factor by which the rule can stretch anything.
+That number is what Table~\ref{tab:measured} reports.
 
-\paragraph{The update.} With $M = \sum_j w_j^2\, b(d_j)\, b(d_j)^{\!\top}$ and
-$d = x_d - x_c$ the departure displacement,
-\begin{equation}
-  \psi_c^{n+1}
-  \;=\; \Bigl(1 - \sum_j g_j\Bigr)\psi_c \;+\; \sum_j g_j \psi_j,
-  \qquad
-  g_j \;=\; w_j^2\, b(d)^{\!\top} M^{-1} b(d_j).
-  \label{eq:update}
-\end{equation}
+This procedure is sound, but it has two limits that motivate the present work. It gives one
+number for the whole mesh, so it cannot say which cells are responsible; and it includes the
+cells at the domain boundary, whose update rule is not the same as an interior cell's.
 
-\section{Every $h$ cancels, which derives the measured invariance}
-\label{sec:hcancel}
+\part{The tool: turning a scheme into a number}
+\label{part:tool}
 
-Write $d_j = h s_j$ with integer offsets $s_j \in \{-1,0,1\}^D\setminus\{0\}$ and $d = h c$,
-with $c$ the displacement in cell widths. The basis scales as $b(h s) = S_h\, b(s)$ with
-$S_h = \operatorname{diag}(h,\dots,h,\,h^2,\dots,h^2)$, and the weights as
-$w_j^2 = h^{-2}|s_j|^{-2}$. Hence $M = h^{-2} S_h M_1 S_h$ with
-$M_1 = \sum_j |s_j|^{-2} b(s_j) b(s_j)^{\!\top}$, and substituting into \eqref{eq:update}
-every factor of $h$ and $S_h$ cancels identically:
+\section{Step 1: the update is a weighted sum of neighbour values}
+
+Put \eqref{eq:normal} back into \eqref{eq:anchored} and evaluate at the departure point
+$x_d$. Because the fit is linear in the data, the result is a weighted sum:
 \begin{equation}
   \boxed{\;
-  g_j(c) \;=\; \frac{b(c)^{\!\top} M_1^{-1} b(s_j)}{|s_j|^{2}} \;}
+  \psi_c^{\text{new}}
+  \;=\; \Bigl(1 - \sum_j g_j\Bigr)\,\psi_c \;+\; \sum_j g_j\, \psi_j \;}
+  \label{eq:update}
+\end{equation}
+with one number $g_j$ per neighbour,
+\begin{equation}
+  g_j \;=\; w_j^2 \; b(d)^{\!\top} M^{-1} b(d_j),
+  \qquad d = x_d - x_c .
   \label{eq:gj}
 \end{equation}
 
-\derived{} The weights of the update depend \emph{only} on the normalised displacement $c$
-and on the integer stencil offsets. They do not depend on $h$ at all. This derives the
-measured $h$-invariance of $\rho-1$ at fixed Courant number rather than observing it.
+This is the central object. The whole scheme, at one cell, is the list of numbers
+$g_1, \dots, g_{26}$ together with the leftover weight $1 - \sum_j g_j$ on the cell's own
+value. Everything that follows is a statement about that list.
 
-With the cell-centre anchor $M_1$ does not depend on $c$, so it is inverted once and every
-$g_j$ is an exact polynomial in $c$: the whole calculation is rational arithmetic.
+Two sanity checks on \eqref{eq:update}. If every $g_j$ is zero the cell keeps its own value,
+which is what should happen when the departure point is the cell centre. And the weights on
+the right-hand side sum to one, so a field that is constant everywhere stays constant --- the
+scheme does not invent material out of nothing.
 
-\section{The symbol}
+\section{Step 2: the weights do not depend on the mesh size}
+\label{sec:scaling}
 
-Inserting $\psi_i = \exp(\mathrm{i}\,\theta\cdot i)$ into \eqref{eq:update},
+Here is the first real result, and it explains the flat column in
+Table~\ref{tab:measured}.
+
+Write the stencil offsets as $d_j = h\, s_j$, where $h$ is the cell size and $s_j$ is a
+triple of integers from $\{-1,0,1\}$ --- for a uniform mesh the 26 neighbours sit at integer
+multiples of the cell size. Write the departure offset the same way, $d = h\,c$, so $c$ is
+the displacement measured \emph{in cell widths}.
+
+Now look at how each piece of \eqref{eq:gj} scales with $h$.
+
+\begin{itemize}
+\item The basis \eqref{eq:poly} has linear terms and quadratic terms, so
+      $b(h s) = S_h\, b(s)$, where $S_h$ multiplies the three linear entries by $h$ and the
+      six quadratic entries by $h^2$.
+\item The weights are inverse distances, so $w_j^2 = h^{-2} |s_j|^{-2}$.
+\item Therefore $M = h^{-2}\, S_h M_1 S_h$, where
+      $M_1 = \sum_j |s_j|^{-2}\, b(s_j) b(s_j)^{\!\top}$ contains no $h$ at all.
+\end{itemize}
+
+Substituting into \eqref{eq:gj}, the factors $h$ and the matrices $S_h$ cancel exactly:
 \begin{equation}
-  G(\theta) \;=\; \Bigl(1 - \sum_j g_j\Bigr) \;+\; \sum_j g_j \, e^{\mathrm{i}\,\theta\cdot s_j},
-  \qquad
-  \rho \;=\; \max_{\theta\in[-\pi,\pi]^D} |G(\theta)| .
+  \boxed{\;
+  g_j(c) \;=\; \frac{b(c)^{\!\top} M_1^{-1} b(s_j)}{|s_j|^{2}} \;}
+  \label{eq:gj-scaled}
+\end{equation}
+
+\derived{} \textbf{The weights of the update depend only on the displacement measured in cell
+widths, and on the integer positions of the neighbours. The cell size has dropped out
+completely.}
+
+So the scheme at a cell of a $64^3$ mesh is \emph{the same list of numbers} as at a cell of a
+$32^3$ mesh, provided the Courant number is the same. That is why the measured growth factor
+is flat across resolutions. We have now explained that column rather than merely observed it.
+
+A second consequence is practical: $M_1$ does not depend on $c$, so it can be inverted once,
+and each $g_j$ is then an exact polynomial in $c$. The entire calculation can be done in
+exact fractions, with no rounding.
+
+\section{Step 3: from weights to a growth factor}
+
+We now need to turn the list $g_j$ into a single number that says whether repeated
+application grows anything. The tool is an old one and the idea behind it is worth stating
+plainly, because everything rests on it.
+
+\subsection{Waves on a grid}
+
+Consider a field that varies as a wave across the mesh. On a grid of cells labelled by
+integer coordinates $m = (m_1,m_2,m_3)$, a wave is
+\begin{equation}
+  \psi_m \;=\; e^{\mathrm{i}\,\theta \cdot m}
+  \;=\; \cos(\theta\cdot m) + \mathrm{i}\,\sin(\theta\cdot m).
+\end{equation}
+The vector $\theta$ sets the wavelength and direction. $\theta$ near zero is a long, smooth
+wave. $\theta_1 = \pi$ is the shortest wave the mesh can carry: it flips sign from cell to
+cell, the familiar saw-tooth of wavelength two cells. Every possible field on the mesh can be
+written as a sum of such waves, so if we understand what the scheme does to each wave
+separately we understand what it does to everything.
+
+\subsection{Why each wave is treated separately}
+
+This is the step that makes the whole analysis possible, and it depends on the result of
+Section~\ref{sec:scaling}.
+
+In the interior of a uniform mesh, \emph{every cell applies the same rule}: the same
+neighbour positions, the same weights, the same displacement. Apply \eqref{eq:update} to a
+wave and use $\psi_{m + s_j} = e^{\mathrm{i}\theta\cdot(m+s_j)}
+= e^{\mathrm{i}\theta\cdot m}\, e^{\mathrm{i}\theta\cdot s_j}$:
+\begin{equation}
+  \psi_m^{\text{new}}
+  = \Bigl[\Bigl(1 - \sum_j g_j\Bigr) + \sum_j g_j\, e^{\mathrm{i}\,\theta\cdot s_j}\Bigr]
+    \; e^{\mathrm{i}\,\theta\cdot m}
+  \;=\; G(\theta)\; \psi_m .
+\end{equation}
+
+The wave comes out as the same wave, multiplied by a single complex number
+\begin{equation}
+  \boxed{\;
+  G(\theta) \;=\; \Bigl(1 - \sum_j g_j\Bigr) + \sum_j g_j\, e^{\mathrm{i}\,\theta\cdot s_j}
+  \;}
   \label{eq:symbol}
 \end{equation}
-For comparison we also report the Lebesgue constant the code writes as
-\texttt{slFitAmplification},
+
+$G(\theta)$ is the \textbf{growth factor of that wave}. Its magnitude $|G(\theta)|$ says
+whether the wave grows or shrinks in one step; its angle says how far the wave is shifted,
+which is how the scheme transports. After $N$ steps the wave has been multiplied by
+$G(\theta)^N$, so:
+
+\begin{itemize}
+\item $|G(\theta)| < 1$: that wave decays, and keeps decaying. Harmless.
+\item $|G(\theta)| = 1$: that wave neither grows nor decays. Neutral.
+\item $|G(\theta)| > 1$: that wave grows every step, without limit. This is the dangerous case.
+\end{itemize}
+
+The number that decides the scheme is therefore the worst case over all waves:
 \begin{equation}
-  \Lambda \;=\; \Bigl|1 - \sum_j g_j\Bigr| \;+\; \sum_j |g_j| ,
-  \label{eq:lambda}
+  \rho \;=\; \max_{\theta} \; |G(\theta)| .
 \end{equation}
-a row-norm bound on the same weights. $\Lambda$ bounds one step in one cell in the maximum
-norm; $\rho$ decides repeated stability in $L^2$. Section~\ref{sec:results} shows how far
-apart they are.
 
-\section{Validation}
+\textbf{This is exactly the number the power iteration of Section~\ref{sec:poweriter}
+searches for numerically.} The difference is that we can now compute it in closed form, and
+we can compute it for the interior rule alone, separately from the boundary.
 
-\subsection{Gate one: 1D must be Lax--Wendroff, symbolically}
+One value of $\theta$ is free: at $\theta = 0$ the wave is a constant, every exponential is
+one, and $G(0) = (1 - \sum g_j) + \sum g_j = 1$ exactly. So $\rho \ge 1$ always. A scheme
+with $\rho = 1$ is the best achievable: nothing grows, and the only neutral direction is the
+constant field, which must be preserved.
+
+\section{Step 4: checking the tool on a case we can do by hand}
 \label{sec:validate}
 
-In 1D the stencil is $s\in\{-1,+1\}$ and $M_1$ is $2\times 2$. Putting $c = -C$, so the foot
-lies upstream at $x_c - Ch$, equation~\eqref{eq:gj} gives \emph{symbolically}
+Before trusting any of this we check it where the answer is already known. We take the same
+scheme in one dimension, where the arithmetic is small enough to do on paper.
+
+In 1D the stencil is two neighbours, at $s = -1$ and $s = +1$. The basis has two entries,
+$b(d) = (d, \tfrac12 d^2)$. The weights are $w = 1$ for both neighbours, since both are at
+distance one.
+
+\[
+M_1 = b(-1)b(-1)^{\!\top} + b(+1)b(+1)^{\!\top}
+= \begin{pmatrix} 1 & -\tfrac12 \\ -\tfrac12 & \tfrac14\end{pmatrix}
++ \begin{pmatrix} 1 & \tfrac12 \\ \tfrac12 & \tfrac14\end{pmatrix}
+= \begin{pmatrix} 2 & 0 \\ 0 & \tfrac12 \end{pmatrix},
+\qquad
+M_1^{-1} = \begin{pmatrix} \tfrac12 & 0 \\ 0 & 2 \end{pmatrix}.
+\]
+
+Let the flow be to the right at Courant number $C$, so the departure point is to the
+\emph{left} of the cell centre: $c = -C$, and $b(c) = (-C, \tfrac12 C^2)$. Then
+\eqref{eq:gj-scaled} gives
+\[
+  g_{+1} = \tfrac{C(C-1)}{2}, \qquad
+  g_{-1} = \tfrac{C(C+1)}{2}, \qquad
+  1 - \textstyle\sum_j g_j = 1 - C^2 .
+\]
+Written out, the update is
 \begin{equation}
-  g_{-1} = \frac{C(C+1)}{2}, \qquad
-  g_{+1} = \frac{C(C-1)}{2}, \qquad
-  1 - \textstyle\sum_j g_j = 1 - C^2 ,
+  \psi_c^{\text{new}}
+  = (1 - C^2)\,\psi_c + \tfrac{C^2 - C}{2}\,\psi_{c+1} + \tfrac{C^2 + C}{2}\,\psi_{c-1}.
 \end{equation}
-which is exactly Lax--Wendroff, and from them
+
+\derived{} \textbf{That is exactly the Lax--Wendroff scheme}, a classical method from 1960
+whose properties are in every textbook. Our fit, in one dimension, reproduces it. Putting
+this into \eqref{eq:symbol} and simplifying gives
 \begin{equation}
-  \Lambda = 1 + C - C^2 > 1,
-  \qquad
-  |G|^2 = 1 - 4C^2\bigl(1-C^2\bigr)\sin^4(\theta/2) \;\le\; 1 .
+  |G(\theta)|^2 \;=\; 1 - 4C^2\bigl(1-C^2\bigr)\sin^4(\theta/2)
+  \;\le\; 1 \quad\text{for } 0 \le C \le 1,
   \label{eq:lw}
 \end{equation}
-\derived{} Both reproduce METHOD.md 8.2 item 3 exactly. The command
-\texttt{sl\_amplification\_symbol.py validate-1d} checks all five identities symbolically and
-exits non-zero on any mismatch. It passes.
+which is the textbook result. The script performs all five of these identities symbolically
+and refuses to report anything else if any of them fails.
 
-Equation~\eqref{eq:lw} is also the warning: $\Lambda > 1$ while $|G| \le 1$. The scheme has
-negative weights and is still $L^2$-stable, so a bound on $\Lambda$ cannot establish
-instability.
+\subsection{A warning hidden in the 1D answer}
+\label{sec:warning}
 
-\subsection{Gate two: an independent power iteration}
+There is a second quantity in circulation in this project, and \eqref{eq:lw} is the cleanest
+place to see why it misleads. Define
+\begin{equation}
+  \Lambda \;=\; \Bigl|1 - \sum_j g_j\Bigr| + \sum_j |g_j| .
+  \label{eq:lambda}
+\end{equation}
+$\Lambda$ is the largest factor by which \emph{one} update at \emph{one} cell could change a
+value, if the neighbour values conspired to have exactly the worst signs. $\Lambda = 1$
+happens when all the weights are positive and sum to one; then the new value is an average of
+old values and can never be an extreme. Our code computes $\Lambda$ per cell and writes it
+out as a diagnostic.
 
-The symbol is an algebraic construction, so it is checked against a procedure that shares
-none of its machinery: the interior stencil is applied repeatedly to a random field on a
-periodic $24^3$ grid by \texttt{numpy.roll}, renormalising each step --- the same procedure
-as \texttt{leiaTestTransportSpectrum}, restricted to the translation-invariant operator.
+In the 1D case above, $\Lambda = 1 + C - C^2$, which is greater than one for every
+$0 < C < 1$. Yet \eqref{eq:lw} says no wave ever grows. Both statements are correct:
+$\Lambda$ counts a worst case over sign patterns that no actual wave realises. So:
 
-\measured{} The iteration never exceeds one. It converges to $1$ from below, giving
-$0.99988$ to $0.99992$ after 600 iterations at Courant numbers $0.0164$, $0.25$, $0.5$ and
-$0.9$, along $x$ and along $(1,1,1)$. The approach from below is expected: every
-non-constant mode is damped, so the iteration is converging onto the constant mode, whose
-eigenvalue is exactly one.
+\derived{} \textbf{$\Lambda > 1$ does not mean the scheme amplifies.} It means the scheme has
+some negative weights, which any method more accurate than first order must have. $\Lambda$
+is an upper bound that can be loose by a lot, and Section~\ref{sec:lambda} shows just how
+loose.
 
-\subsection{Gate three: the solver's own per-cell field}
-\label{sec:gate3}
+\section{Why one dimension cannot answer the question}
 
-The decisive check is against the implementation. The probe
-\texttt{workflow/scripts/fit\_amplification\_probe.sh} was run on the \emph{same} mesh as
-Table~\ref{tab:measured}, the $128\times 64\times 64$ uniform hexahedral box of
-\texttt{popinetTranslating3D} at $n = 64$, with the recorded probe displacement. It
-reproduces the recorded maximum, $\Lambda_{\max} = 1.0527251$, and reports no cell demoted to
-a linear fit (smallest scaled Cholesky pivot $0.6367$, against the tolerance $0.3$).
-
-The resulting field is split by boundary adjacency in Table~\ref{tab:split}.
-
-\begin{table}[h]
-\centering
-\caption{The per-cell \texttt{slFitAmplification} field of the $n=64$ hexahedral box, split
-into cells that own a boundary face and cells that do not.}
-\label{tab:split}
-\begin{tabular}{lrrrr}
-\toprule
- & cells & min & max & std \\
-\midrule
-interior          & 484\,344 & 1.01639260 & 1.01639260 & $2.2\times10^{-16}$ \\
-boundary-adjacent &  39\,944 & 1.01643120 & \textbf{1.05272510} & $8.1\times10^{-3}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\measured{} Every one of the $484\,344$ interior cells carries the \emph{same} value, to
-machine epsilon --- one distinct value at eight decimal places. That is the
-constant-coefficient structure of section~\ref{sec:hcancel}, confirmed by the solver.
-
-\derived{} Evaluating \eqref{eq:gj} at the exact displacement of that run,
-$\mathrm{Co} = 6.39947740050255\times10^{-7} / (0.0025/64) = 0.016382662$, gives
-$\Lambda = 1.01639260$ against the code's $1.01639260$: a difference of
-$2.6\times 10^{-9}$, or nine significant figures. The symbolic model of the operator is the
-operator.
-
-\measured{} The global maximum, $1.0527251$, sits on a \textbf{boundary} cell. The
-boundary-adjacent set takes eight distinct values; the interior takes one.
-
-\section{Why 1D cannot answer the question}
-
-Table~\ref{tab:ladder} is why the derivation must be carried to three dimensions.
+It is tempting to stop here: the 1D scheme is Lax--Wendroff, Lax--Wendroff is stable, done.
+That reasoning is wrong, and the reason is a counting argument.
 
 \begin{table}[h]
 \centering
-\caption{The fit is over-determined only in two and three dimensions.}
+\caption{Data available against coefficients to be determined.}
 \label{tab:ladder}
 \begin{tabular}{crrl}
 \toprule
-$D$ & neighbours & coefficients & character \\
+dimension & neighbours & coefficients & character of the fit \\
 \midrule
-1 & 2  & 2 & \textbf{exactly determined}: an interpolant; the weights cancel \\
+1 & 2  & 2 & \textbf{exactly determined} \\
 2 & 8  & 5 & over-determined by 3 \\
 3 & 26 & 9 & over-determined by 17 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\derived{} In 1D the number of neighbours equals the number of coefficients, so the
-least-squares problem has a unique exact solution and the fit \emph{interpolates}. The
-weights $w_i$ cancel out of \eqref{eq:gj} entirely --- they may be changed arbitrarily
-without changing the scheme. The one-dimensional analysis, including the Lax--Wendroff
-reassurance of \eqref{eq:lw}, therefore says nothing about the least-squares character of the
-production operator. Over-determination, and with it any effect of the weight choice, is a
-two- and three-dimensional phenomenon, and in 3D it is large: 26 data for 9 unknowns.
+In one dimension there are two neighbours and two coefficients. There is exactly one
+quadratic through those two differences, so the ``best fit'' is the exact fit --- the
+least-squares part of the method never engages, and the weights $w_j$ cancel out of
+\eqref{eq:gj-scaled} entirely. You could set them to anything and get the same scheme.
 
-\section{Results}
-\label{sec:results}
+\derived{} \textbf{One dimension cannot tell us anything about the least-squares character of
+the method, because in one dimension the method is not least squares.} In three dimensions we
+have 26 numbers constraining 9 unknowns. That is where the behaviour we care about lives, and
+it has to be computed there.
 
-\subsection{The interior operator does not amplify, anywhere}
+\part{What we found}
 
-\derived{} Over the ninety-six configurations of
-\texttt{\tables/sl\_amplification\_symbol.csv} --- dimensions $1,2,3$; weight anchors
-cell-centre and foot-point; displacement along $x$ and along $(1,1,1)$; Courant numbers
-$0.0164$, $0.05$, $0.1$, $0.2$, \dots, $0.95$ --- the result is
+\section{The interior of a uniform hexahedral mesh does not amplify}
+
+Evaluating \eqref{eq:symbol} for the real stencil --- 26 neighbours, 9 coefficients, inverse
+distance weights --- gives the same answer everywhere we look.
+
+\derived{} Across \textbf{96 configurations} --- dimensions 1, 2 and 3; both weight choices
+discussed in Section~\ref{sec:improve}; flow along a mesh axis and along the body diagonal;
+Courant numbers from $0.0164$ up to $0.95$ --- the result is
 \begin{equation}
-  \rho \;=\; 1.00000000 \qquad\text{in every case, with no exception,}
+  \rho \;=\; \max_\theta |G(\theta)| \;=\; 1.00000000 \quad \text{in every case.}
 \end{equation}
-while $\Lambda$ ranges from $1.016$ to $2.022$. A $96^3$ grid search plus $4\times10^5$
-random samples finds no mode with $|G| > 1$. The maximum of $|G|$ is attained at $\theta = 0$
-and equals one, which is the consistency requirement that the scheme reproduces a constant.
+A search over a $96^3$ grid of wave directions plus $4\times10^5$ random ones finds no wave
+anywhere with $|G| > 1$. The maximum is attained at $\theta = 0$, the constant field, which
+every consistent scheme must preserve exactly.
+
+\measured{} As an independent check, not sharing any of the algebra above, the interior rule
+was applied repeatedly to a random field on a periodic $24^3$ grid --- the same procedure as
+the original measurement, but restricted to the interior rule. It never exceeds one; it
+approaches one from below ($0.99988$ to $0.99992$ after 600 steps).
+
+\textbf{So the production transport scheme, in the interior of a uniform hexahedral mesh, is
+not an amplifier.} The measured $1.00441$ of Table~\ref{tab:measured} has to come from
+somewhere else.
+
+\subsection{Which waves survive, and a detail worth knowing}
+
+For flow along the body diagonal, the constant field is the \emph{only} neutral wave: the
+largest $|G|$ among all other waves is $0.99999998$, so everything else is damped, if only
+barely.
+
+For flow along a mesh axis the picture differs. 191 of the $96^3$ sampled waves are neutral
+to within $10^{-12}$ --- all of them waves that do not vary along the flow direction. Such a
+wave is not transported at all, and the fit reproduces it exactly in the two transverse
+directions. It is never amplified, but it is never damped either. \opn{} Whether anything in
+a real simulation feeds those waves is not settled here.
+
+\section{The two numbers disagree, and by a lot}
+\label{sec:lambda}
+
+Section~\ref{sec:warning} showed $\Lambda$ can exceed one while nothing grows. In three
+dimensions the gap is large.
 
 \begin{table}[h]
 \centering
-\caption{Representative rows: the interior operator at the production displacement and at
-large Courant number. $\Lambda$ moves a great deal; $\rho$ does not move at all.}
-\begin{tabular}{llrrr}
+\caption{The interior rule. $\Lambda$ moves a great deal; the growth factor does not move at
+all.}
+\begin{tabular}{lrrr}
 \toprule
-$D$ & anchor & Co & $\Lambda$ & $\rho$ \\
+ & Co & $\Lambda$ & $\rho$ \\
 \midrule
-3 & cell-centre & 0.0164 & 1.016410 & 1.00000000 \\
-3 & cell-centre & 0.50   & 1.509259 & 1.00000000 \\
-3 & cell-centre & 0.90   & 2.022308 & 1.00000000 \\
-3 & foot-point  & 0.0164 & 1.016321 & 1.00000000 \\
-3 & foot-point  & 0.50   & 1.357130 & 1.00000000 \\
-\midrule
-\multicolumn{3}{l}{\emph{measured, whole mesh (Table~\ref{tab:measured})}} & \emph{1.0527} & \emph{1.00441} \\
+interior cell, 3D & 0.0164 & 1.016410 & 1.00000000 \\
+interior cell, 3D & 0.50   & 1.509259 & 1.00000000 \\
+interior cell, 3D & 0.90   & 2.022308 & 1.00000000 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{The neutral modes depend on the flow direction.}
-For a displacement along $(1,1,1)$ the constant is the \emph{only} neutral mode: the largest
-$|G|$ away from $\theta = 0$ is $0.99999998$, so every non-constant mode is strictly damped.
-For a displacement along $x$, 191 of $96^3$ sampled modes are neutral to $10^{-12}$ --- all
-of them modes with $\theta_x = 0$, that is, constant along the flow. Such a mode is not
-transported and the transverse fit reproduces it exactly. It is never amplified, but it is
-also never damped.
+\derived{} At Courant number $0.9$ the one-step bound is \emph{two} while the actual growth
+factor is exactly one. An interior hexahedral cell reporting $\Lambda = 2$ is not evidence of
+a problem. This matters practically: $\Lambda$ is cheap to compute and is used in this
+project as a screening diagnostic, and Section~\ref{sec:improve} proposes replacing it.
 
-\subsection{Every boundary stencil amplifies}
+\section{The growth is at the boundary, and it is an extrapolation}
+\label{sec:boundary}
 
-The same calculation is carried out for the stencils that occur at a box boundary, with the
-code's rank ladder applied: where the weighted normal matrix is singular the fit is demoted
-to linear, as \texttt{quadraticPivotTol} does in the implementation. The quantity reported is
-the symbol of the operator that would result if that stencil were applied everywhere. It is a
-local amplification indicator, \emph{not} a spectral radius, because a boundary breaks
-translation invariance.
+A cell touching the domain boundary has fewer neighbours. With a wall on its left, it keeps
+the 17 neighbours at or to the right of itself and loses the 9 on the other side. The rule at
+such a cell is not the interior rule, so the analysis above does not apply to it --- and the
+original measurement included these cells.
 
-\begin{center}
-\begin{tabular}{lrrrr}
+Repeating the calculation for the boundary stencil gives a clean and complete answer. The
+quantity reported is the growth factor of the rule that \emph{would} result if that stencil
+were used everywhere; it is a local indicator rather than a true whole-mesh growth factor,
+because a boundary breaks the uniformity that Section~\ref{sec:symbol-valid} relies on.
+
+\begin{table}[h]
+\centering
+\caption{A cell against a wall on its $-x$ side, with no boundary datum. The sign of $c_x$
+says which way the departure point lies.}
+\label{tab:bracket}
+\begin{tabular}{lrr}
 \toprule
- & \multicolumn{2}{c}{along $x$} & \multicolumn{2}{c}{along $(1,1,1)$} \\
-stencil & $\Lambda$ & $\max|G|$ & $\Lambda$ & $\max|G|$ \\
+departure point lies\ldots & Co & $\max_\theta|G|$ \\
 \midrule
-interior, 26 neighbours, quadratic               & 1.0164 & \textbf{1.000000} & 1.0174 & \textbf{1.000000} \\
-face cell, 17 neighbours, no face slot, LINEAR   & 1.0328 & 1.032800 & 1.0284 & 1.018937 \\
-face cell, 17 neighbours $+$ 1 face, quadratic   & 1.0106 & 1.010575 & 1.0190 & 1.006193 \\
-edge cell, 11 neighbours $+$ 2 faces, quadratic  & 1.0118 & 1.010575 & 1.0207 & 1.012744 \\
-corner cell, 7 neighbours $+$ 3 faces, quadratic & 1.0123 & 1.011028 & 1.0191 & 1.014504 \\
+towards the wall, outside the data & 0.0164 & 1.032800 \\
+                                   & 0.1    & 1.200000 \\
+                                   & 0.25   & 1.500000 \\
+                                   & 0.5    & 2.000000 \\
+\midrule
+into the domain, inside the data   & any, any direction & \textbf{1.00000000} \\
 \bottomrule
 \end{tabular}
-\end{center}
+\end{table}
 
-\derived{} The interior cell is the only stencil whose symbol does not exceed one.
+\derived{} Two exact laws, both reproduced to machine precision:
+\begin{equation}
+  \max_\theta |G| = 1 + 2\,\mathrm{Co}
+  \quad\text{(departure point outside the data)},
+  \qquad
+  \max_\theta |G| = 1
+  \quad\text{(inside)}.
+  \label{eq:bndlaw}
+\end{equation}
 
-\paragraph{A boundary cell cannot support a quadratic fit without its boundary face.}
-With the face slot excluded, a face cell's stencil has only two distinct levels in the
-wall-normal direction. The monomials $d_x$ and $\tfrac12 d_x^2$ are then collinear on the
-data, the normal matrix is exactly singular, and the fit demotes to linear. Adding the
-boundary face at $h/2$ restores a third level and with it the quadratic rank. This is
-confirmed by the probe of section~\ref{sec:gate3}: with boundary faces included --- the
-default --- \emph{no} cell of the $n=64$ box is demoted, and the smallest scaled pivot is
-$0.6367$, comfortably above the $0.3$ tolerance.
+\textbf{This identifies the mechanism.} A boundary cell amplifies when, and only when, the
+departure point lies \emph{outside} the region its data covers --- that is, when the fit is
+asked to \textbf{extrapolate} rather than interpolate. That happens when the flow carries
+material out through the boundary, so that the material now in the cell came from
+\emph{outside} the domain. When the flow brings material inward, the departure point lies
+among the cell's own data, the fit interpolates, and there is no amplification at all, at any
+Courant number and in any direction.
 
-\derived{} \textbf{Including the boundary faces is the better of the two options, by a factor
-of three}: the linear fallback gives $\max|G| = 1.0328$, including the face gives $1.0106$.
-The \texttt{zeroGradient} face value is not a sample of the true field, and the reason to
-keep it is not accuracy --- it is that the slot carries the rank.
+Extrapolating a quadratic is the textbook way to amplify: a parabola fitted on one side and
+continued past the data grows quickly, and the further you continue it the worse it gets.
+Equation~\eqref{eq:bndlaw} says exactly that, with the extrapolation distance measured in
+cell widths.
 
-\opn{} The modelled boundary stencils reach $1.033$, while the measured maximum is $1.0527$.
-The models above are of a plain box with one boundary condition; the probe case has
-\texttt{inlet}, \texttt{outlet} and \texttt{walls} patches, and the boundary-adjacent set
-takes eight distinct values. Which patch and which cell attain the maximum is not settled
-here.
+\subsection{What the boundary face value is really doing}
+\label{sec:facevalue}
 
-\section{What this changes}
+Our code does not leave the boundary cell with 17 neighbours. OpenFOAM's cell-to-cell
+stencils treat each boundary \emph{face} as an extra data point, located at the face centre
+--- half a cell from the cell centre --- and our setting \texttt{stencilBoundaryFaces} is
+\texttt{include}, so those face values are used. With $\psi$ set to \texttt{zeroGradient} on
+the patch, the value carried by that face is \emph{the cell's own value}.
+
+That face point sits at $-h/2$, on the far side of the departure point whenever
+$\mathrm{Co} < 0.5$. So it brackets the evaluation point and turns the extrapolation back
+into an interpolation.
+
+\begin{table}[h]
+\centering
+\caption{Four ways of treating the same boundary cell, wall on the $-x$ side, departure point
+towards the wall.}
+\label{tab:options}
+\begin{tabular}{llrr}
+\toprule
+ & stencil & $\max|G|$ at Co $=0.0164$ & at Co $=0.25$ \\
+\midrule
+interior cell, for reference        & 26 cells            & 1.000000 & 1.000000 \\
+A \; exclude the face               & 17 cells            & 1.032800 & 1.500000 \\
+B \; include the face (\textbf{what we do}) & 17 cells + 1 face & \textbf{1.010575} & \textbf{1.083333} \\
+C \; add a second interior layer    & 26 cells            & 1.066138 & 2.125000 \\
+D \; both                           & 26 cells + 1 face   & 1.023011 & 1.384308 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\derived{} Option B, what the code already does, is the best of the four, by a factor of
+about $1.4$ at the production Courant number and about $14$ at $\mathrm{Co} = 0.25$.
+
+Option C deserves comment because it is the obvious idea and it is \emph{wrong}. Adding a
+second layer of real interior cells gives the fit more genuine data and restores its ability
+to resolve a quadratic. It also makes the result markedly worse, because all that data is
+still on one side: a better-determined parabola extrapolated backwards is a \emph{worse}
+extrapolation, not a better one. The quantity that matters is not how much data you have, it
+is whether the point you are evaluating lies inside it.
+
+\subsection{The face value's weight does not matter. Its presence does.}
+\label{sec:weightfree}
+
+The project's own notes worry that the face point carries a weight four to thirty times a
+neighbour's, because it is only half a cell away, and that this drags the fit's wall-normal
+slope towards zero. The first half of that is true and the second half is true, but they are
+not cause and effect, and the distinction changes what to fix.
+
+\measured{} Scaling the face point's weight down by factors from $1$ to $10^{-8}$ leaves
+$\max|G|$ unchanged at $1.083333$ to six decimals, and leaves the face point's own
+coefficient unchanged at $0.4167$. At weight exactly zero the answer jumps to $1.5$, the
+rank-deficient value of row A.
+
+\derived{} The reason is a fact about least squares worth knowing on its own. Without the
+face point, the 17 interior cells occupy only two distinct positions in the wall-normal
+direction, and a straight line and a parabola cannot be told apart from two positions. There
+is exactly one direction in coefficient space that the interior data does not constrain at
+all. The face point is the only datum that constrains it. For such a datum, its weight scales
+its contribution to both sides of the normal equations \eqref{eq:normal} equally, and the
+scaling cancels: it determines that direction exactly, whatever weight it is given.
+
+\textbf{So the boundary-normal slope is not flattened by the face point's large weight. It is
+flattened by its \emph{value}}, which under \texttt{zeroGradient} is a copy of $\psi_c$ and
+therefore forces the fitted model to return $\psi_c$ at half a cell from the centre. Nothing
+about the weighting can repair that, and Section~\ref{sec:improve} proposes repairing the
+value instead.
+
+\section{Checking all of this against the running code}
+\label{sec:symbol-valid}
+
+None of the above is worth anything if the model of the scheme is not the scheme. The sharpest
+check available is against the solver's own per-cell diagnostic, on the very mesh of
+Table~\ref{tab:measured}.
+
+The probe was run on the $128\times 64\times 64$ uniform hexahedral mesh at $n = 64$, with the
+recorded probe displacement, and the resulting field of per-cell $\Lambda$ values was split
+into cells that touch a boundary and cells that do not.
+
+\begin{table}[h]
+\centering
+\caption{The solver's own per-cell $\Lambda$ field, split by whether the cell touches a boundary.}
+\label{tab:split}
+\begin{tabular}{lrrrr}
+\toprule
+ & cells & smallest & largest & spread \\
+\midrule
+interior         & 484\,344 & 1.01639260 & 1.01639260 & $2.2\times10^{-16}$ \\
+touching a boundary & 39\,944 & 1.01643120 & \textbf{1.05272510} & $8.1\times10^{-3}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\measured{} Every one of the $484\,344$ interior cells carries \emph{the same value}, to the
+last digit a computer can represent. That is the prediction of Section~\ref{sec:scaling} ---
+one rule, repeated identically --- confirmed by the solver without being told to.
+
+\derived{} Evaluating \eqref{eq:gj-scaled} at that run's exact displacement, which corresponds
+to $\mathrm{Co} = 0.016382662$, gives $\Lambda = 1.01639260$ against the code's
+$1.01639260$: agreement to \textbf{nine significant figures}.
+
+\measured{} The largest value on the whole mesh, $1.0527251$, sits on a \textbf{boundary}
+cell, and it is the number previously recorded as the mesh's $\Lambda_{\max}$.
+
+\part{What to change}
+
+\section{Improvements to the reconstruction}
+\label{sec:improve}
+
+The analysis changes what is worth doing, and rules some things out. In rough order of value.
+
+\subsection{Fix the boundary face \emph{value}, not its weight (highest value)}
+
+Section~\ref{sec:weightfree} localises the defect precisely. The face point must stay, because
+it is what brackets the departure point and it is the only datum resolving the wall-normal
+curvature. What is wrong is the number it carries: under \texttt{zeroGradient} it is a copy of
+$\psi_c$, which forces the fitted surface flat in the wall-normal direction and produces the
+frozen inlet layer already measured in this project at 1--20\,\% of the exact transport.
+
+A better value costs nothing extra. For a field that is a signed distance, $|\nabla\psi| = 1$,
+so over a half-cell step towards the face the value should change by about half a cell:
+\begin{equation}
+  \psi_{\text{face}} \;=\; \psi_c + (x_f - x_c)\cdot \hat{n}_\psi,
+  \qquad \hat{n}_\psi = \frac{\nabla\psi}{|\nabla\psi|},
+\end{equation}
+with $\nabla\psi$ taken from the previous step's fit, which the code already has. This keeps
+the bracketing that makes option B good, and removes the flattening. \opn{} It makes the face
+value depend on the solution, so the resulting scheme is no longer strictly linear and would
+have to be assessed with the nonlinear growth instrument rather than this symbol.
+
+\subsection{Keep \texttt{inflowOnly} --- and for a sharper reason than was recorded}
+
+The project already proposed a middle setting: use a boundary face as data where the flow
+enters the domain and not where it leaves. Equation~\eqref{eq:bndlaw} explains \emph{why} that
+is the right rule, and makes it exact rather than empirical.
+
+Where the flow \emph{leaves} the domain, the departure point lies inside the cell's own data,
+the fit interpolates, and the growth factor is exactly one \emph{with no boundary datum at
+all}. The face value is not merely unnecessary there; it is pure contamination, since it
+injects a fabricated number into a fit that did not need it. Where the flow \emph{enters}, the
+departure point lies outside, the fit extrapolates, and without a bracketing datum the growth
+factor is $1 + 2\,\mathrm{Co}$.
+
+\derived{} So the correct rule follows from the geometry of the departure point, not from a
+preference: \textbf{a boundary face is needed exactly where the departure point lies on its
+side of the cell centre.} That is slightly sharper than ``inflow'', since it refers to the
+foot point rather than to the flux sign, and the two agree except at grazing flow.
+
+\subsection{Replace $\Lambda$ as a screening diagnostic}
+
+Section~\ref{sec:lambda} shows $\Lambda$ can read $2.02$ where the growth factor is exactly
+one. The code already computes the per-cell weights $g_j$ in order to form $\Lambda$, and
+discards them. Keeping them and evaluating \eqref{eq:symbol} on a modest set of wave
+directions gives a per-cell growth factor at almost the same cost, which is the quantity that
+actually decides the behaviour. The field then points straight at the cells responsible,
+which $\Lambda$ does not.
+
+\subsection{Things this analysis rules out}
+
+Recording these saves the effort of trying them.
+
+\begin{itemize}
+\item \textbf{Moving the weights to the departure point.} The natural thought is that a fit
+      weighted about the cell centre is weighted to be accurate where it is not evaluated.
+      \derived{} It changes $\Lambda$ substantially (at $\mathrm{Co} = 0.5$ along an axis,
+      $1.509$ becomes $1.357$) and changes the growth factor not at all: exactly one for both,
+      at every Courant number, in the interior \emph{and} at the boundary stencils, where the
+      two agree to six decimals. It also introduces a division by zero when the departure
+      point meets a stencil point. Implemented and selectable so it can be measured on graded
+      and polyhedral meshes, where this symbol does not apply; not expected to help on
+      hexahedra.
+\item \textbf{A wider one-sided stencil at the boundary.} Option C of
+      Table~\ref{tab:options}: worse, not better, and much worse as the Courant number rises.
+      The problem is extrapolation, and more one-sided data makes extrapolation worse.
+\item \textbf{Reducing the boundary face weight.} Section~\ref{sec:weightfree}: no effect
+      whatsoever over eight orders of magnitude.
+\end{itemize}
+
+\subsection{The measurement that would close this}
+
+\opn{} The claim that the measured $1.00441$ is produced by boundary cells is strongly
+supported but not yet proved, because the boundary-stencil figures in
+Table~\ref{tab:options} are local indicators and the whole-mesh growth factor of a
+non-uniform rule is not simply the largest of them. The direct test is to run the existing
+power iteration with the boundary rows replaced by a non-amplifying rule --- first-order
+upwind, or simply frozen --- and see whether the measured growth factor falls to one. That
+uses machinery that already exists.
+
+\section{Direct answer: do we include boundary values in the stencil?}
+\label{sec:answer}
+
+\textbf{Yes, we do, today, and it is load-bearing.} The setting
+\texttt{SL\_STENCIL\_BOUNDARY\_FACES} is \texttt{include} by default, and every patch of the
+case measured here sets $\psi$ to \texttt{zeroGradient}, so every boundary cell receives one
+extra data point per boundary face, at the face centre, carrying the cell's own value.
+
+What the analysis adds is \emph{why} it matters and what it costs.
+
+\begin{itemize}
+\item \textbf{It is not optional at an inflow.} Remove it and a boundary cell's fit must
+      extrapolate to reach its departure point, with growth factor $1 + 2\,\mathrm{Co}$ per
+      step. The project has already seen the consequence: with all faces excluded, a case blew
+      up at the inflow at step 716.
+\item \textbf{It is doing a geometric job, not an informational one.} The value it carries is
+      a copy of $\psi_c$ and contains no new information. Its usefulness is entirely that it
+      sits on the far side of the departure point. This is why its weight is irrelevant
+      (Section~\ref{sec:weightfree}) and why more real data on the wrong side does not help
+      (option C).
+\item \textbf{It is unnecessary at an outflow,} where the growth factor is exactly one without
+      it, and there it only injects a fabricated value into an otherwise sound fit.
+\item \textbf{Its value is the thing to fix.} Forcing the model to return $\psi_c$ half a cell
+      from the centre flattens the wall-normal slope, which is the measured frozen inlet
+      layer. Section~\ref{sec:improve} proposes the signed-distance-consistent value instead.
+\end{itemize}
+
+So: keep it where the departure point needs bracketing, drop it where it does not, and give
+it a value consistent with $|\nabla \psi| = 1$ rather than a copy.
+
+\section{What is still open}
 
 \begin{enumerate}
-\item \derived{}\,\measured{} \textbf{The interior semi-Lagrangian operator on a uniform
-  hexahedral mesh does not amplify.} $\rho = 1$ exactly in all ninety-six configurations,
-  confirmed symbolically, by an independent power iteration, and against the solver's own
-  per-cell field to nine significant figures. The measured $\rho = 1.00441$ is not a
-  property of the interior scheme.
-
-\item \measured{} \textbf{The growth is at the boundary.} All $484\,344$ interior cells of
-  the production mesh carry one value; the recorded maximum sits on a boundary cell. The
-  search for the mechanism should move there.
-
-\item \derived{} \textbf{$\Lambda$ and $\rho$ do not merely differ in accuracy; they differ
-  in kind.} At Courant number $0.9$ the interior fit has $\Lambda = 2.022$ and $\rho = 1$
-  exactly. A $\Lambda$ of two on an interior hexahedral cell is not evidence of anything.
-  This extends the one-dimensional Lax--Wendroff argument of METHOD.md 8.2 item 3 to the
-  production three-dimensional operator, where it had not been established.
-
-\item \derived{} \textbf{Moving the weights to the foot point does not change $\rho$.} It
-  changes $\Lambda$ substantially --- at Courant $0.5$ along $x$, from $1.509$ to $1.357$ ---
-  but $\rho$ is one for both anchors at every Courant number tested. On uniform interior
-  hexahedra the weight anchor is not the mechanism, and this is known before any solver code
-  is written.
-
-\item \opn{} \textbf{A mesh-aligned displacement leaves a family of undamped modes.} Whether
-  they are excited in practice, and by what, is not settled here.
+\item \opn{} The boundary-cell figures are local indicators; the direct confirmation is the
+      modified power iteration of Section~\ref{sec:improve}.
+\item \opn{} Our modelled boundary stencils reach $1.033$ at the production Courant number,
+      while the measured maximum is $1.0527$. The models assume a plain box with one boundary
+      condition; the real case has inlet, outlet and wall patches, and the boundary-adjacent
+      cells take eight distinct values. Which cell attains the maximum is not settled.
+\item \opn{} Everything here assumes a \emph{uniform} mesh, which is what makes one rule
+      repeat and the wave analysis work. Graded meshes, refinement transitions and polyhedral
+      cells each break that assumption and need their own treatment.
+\item \opn{} Flow along a mesh axis leaves a family of waves neither grown nor damped. Whether
+      anything excites them in practice is unknown.
 \end{enumerate}
 
-\section{Reproduction}
+\section{Reproducing every number}
 
-Every number is produced by one committed script with no case, no mesh and no solver, except
-Table~\ref{tab:split}, which needs the probe:
+No case, no mesh and no solver are needed for anything except Table~\ref{tab:split}:
 
 \begin{verbatim}
-python3 workflow/scripts/sl_amplification_symbol.py validate-1d     # the gate
+python3 workflow/scripts/sl_amplification_symbol.py validate-1d   # Section 6; exits nonzero on failure
 python3 workflow/scripts/sl_amplification_symbol.py rho --dim 3 --courant 0.0164 --axis x
 python3 workflow/scripts/sl_amplification_symbol.py weights --dim 3 --courant 0.0164
-python3 workflow/scripts/sl_amplification_symbol.py sweep           # the curated table
-python3 docs/analysis-amplification-sl/sympy/boundary_lambda.py     # the boundary stencils
+python3 workflow/scripts/sl_amplification_symbol.py sweep          # the 96-row table
+python3 docs/analysis-amplification-sl/sympy/boundary_lambda.py    # the boundary stencils
 
 workflow/scripts/fit_amplification_probe.sh \
     studies/popinet3D_La12000_hex_smoke4/popinetTranslating3D_00000 reuse <out>
 \end{verbatim}
 
-The sweep writes \texttt{\tables/sl\_amplification\_symbol.csv}. The validation gate exits
-non-zero on failure and must pass before any other number is quoted.
+The sweep writes \texttt{\tables/sl\_amplification\_symbol.csv}. The check of
+Section~\ref{sec:validate} must pass before any other number here is quoted.
 
 \end{document}
