@@ -6174,3 +6174,25 @@ the plicRDF normal is not exact at the corner cells. Conclusion for the design: 
 one-ring area-weighted normal is the first stable DAVOF transport loop, first order in the
 face fractions by the clipping law, equal to plicRDF in position and shape and within 35 %
 in the normal, at a cost of 16 %; the paraboloid update is what q = 2 needs.
+
+Appendix to 10.17 (2026-10-14 evening). (a) The perturbed twins (`planeTranslation3D_perturbed`,
+`sphereTranslation3D_perturbed`, Co 0.2, 0.1 h vertex displacement; tables c9cc9ba): no row
+passes the plane gate (the exact normal keeps the normal at round-off while the transported
+scalar face fraction is off by 1 to 5 %), every DAVOF row diverges on the sphere, the
+exact-normal control included (abort at step 144 / 217 / 315), the ring normal at 101 / 147 /
+181; plicRDF and isoAlpha stay bounded with converging shape errors but non-convergent normals
+(plicRDF 4.9e-2 / 5.5e-2 / 8.8e-2, ten times its static values). P-C1 FALSIFIED, P-C2 too
+optimistic (divergence, not a floor), P-C3 half; P-D1 and P-D3 CONFIRMED, P-D2 FALSIFIED.
+Reading: the scalar face fraction is not transportable on warped faces (the wetted area vector
+and its first moment are the face quantities, 10.12), and the face update's plane-based flux
+rules lose boundedness there; distorted-mesh transport is open for the framework as a whole.
+(b) The plicRDF-normal control of the hex study: the "kept m" explanation (own normal where
+the helper has no plane) is withdrawn, those cells receive no plane at all; the ring fallback
+(`noNormalFallback ringArea`, fork 1019e09, row `davof-plicRDFnormal-ring`, f4e22198)
+reproduces the control to all digits (the `*_hexControl` configs are not submitted). The
+repeated-reconstruction hypothesis is falsified by `sphereTranslation3D_hexInterp`
+(interpolateNormal false, e3d9ff2): the control's normal error 4.03e-2 / 3.45e-2 / 4.52e-2 at
+N = 32 / 64 / 128 (switch on: 4.03e-2 / 3.32e-2 / 4.10e-2), standalone plicRDF within 4 % of
+its values. P-G1 FALSIFIED, P-G2 CONFIRMED. The control's non-convergence stays open (the
+candidate: the interaction of the plicRDF normal with the face update's flux rules beyond the
+downwind faces); the ring-normal result does not depend on it.
