@@ -1,0 +1,17 @@
+row,metric,Co=0.2
+davof-plicRDFnormal,L1_alphaf_end,1.22e-02
+davof-plicRDFnormal,L1_alphaf_max,1.24e-02
+davof-plicRDFnormal,L1_n_end,3.45e-02
+davof-plicRDFnormal,L1_x_end,4.83e-04
+davof-plicRDFnormal,Eshape_end,1.21e-04
+davof-plicRDFnormal,Ebound_end,5.18e-15
+davof-plicRDFnormal,minAlpha_run,-1.0e-14
+davof-plicRDFnormal,status,ok
+plicRDF,L1_alphaf_end,--
+plicRDF,L1_alphaf_max,--
+plicRDF,L1_n_end,1.94e-02
+plicRDF,L1_x_end,3.84e-04
+plicRDF,Eshape_end,1.13e-04
+plicRDF,Ebound_end,1.62e-16
+plicRDF,minAlpha_run,-8.0e-15
+plicRDF,status,ok
