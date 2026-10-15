@@ -1,0 +1,60 @@
+# Diagnostic of the sagitta face clipping (2026-10-16): ONE step of the
+# davof-sagitta-exact row at N = 32, Co 0.2 (dt = 0.00625 = END_TIME), with the
+# ring curvature tensor and the vertex offset the correction uses written at
+# the end of the step (TPF_WRITE_TENSOR true: curvatureTensorDavof.water,
+# curvatureOffsetDavof.water; the fields the scheme computed at the START of
+# the step, in advect() before the sweep). Why: the study hexSagitta of
+# 2026-10-15 falsified P-S1 (L1(alphaf) 3.233e-3 at N = 128 against the plane
+# clipping's 3.322e-3, order 0.83 against 0.82: the correction changes the
+# face-fraction error by 1 to 3 % although it is applied on every cut face,
+# 13 500 of 27 000 at N = 128, and is of the size of the error by the
+# estimate h/(12 R)), while the pure-geometry check of the formula (the
+# proposal folder's scratch script sagitta_design_check.py) is recorded in
+# the article FINDINGS of 2026-10-16. The question here is the implementation:
+# the tensor B the Monge fit returns on this state (expected: two eigenvalues
+# at 1/R = 6.67 1/m, one at zero, within 10 to 20 % at N = 32) and the offset
+# z_0 = -(1/2) B : M (expected of the order -h^2/(12 R) = -5e-4 m, negative
+# on every cell). The reference row davof-exact runs too (the plane
+# clipping, one step, identical fields except the tensor).
+#
+# PRE-REGISTERED (2026-10-16, before the run): P-D1 the eigenvalues of B lie
+# within 25 % of 1/R on at least 90 % of the interface cells and z_0 is
+# negative on at least 95 % of them; FALSIFIED otherwise, which locates the
+# defect in the fit (davof::updateCurvatureTensor, davofNormalModel::mongeFit)
+# rather than in the chord integral of planeSagitta::correct.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexSagittaDiag --export=ALL,STUDY=davof/sphereTranslation3D_hexSagittaDiag run-studies.sbatch
+study_name: sphereTranslation3D_hexSagittaDiag
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-sagitta-exact, davof-exact]
+  END_TIME: [0.00625]
+  TPF_WRITE_INTERVAL: [0.00625]
+  TPF_WRITE_TENSOR: ["true"]
+  TPF_AFE_WRITE_CONTROL: ["onEnd"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VFE_WRITE_CONTROL: ["onEnd"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 30
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -56,6 +56,10 @@ values
     // plicRDF's interpolateNormal switch (true = the library's default)
     TPF_INTERPOLATE_NORMAL ( true );
 
+    // davof: write the ring curvature tensor and vertex offset of the sagitta
+    // correction at the field writes (the diagnostic study hexSagittaDiag)
+    TPF_WRITE_TENSOR ( false );
+
     TPF_SPHERE_RADIUS ( 0.15 );
 
     TPF_SPHERE_CX ( 0.5 );

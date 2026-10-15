@@ -52,6 +52,10 @@ solvers
         sagittaMaxFraction 0.25;
         sagittaForm     full;
         tensorSource    ring;
+        // davof: write the ring curvature tensor and the vertex offset the
+        // sagitta correction uses (curvatureTensorDavof, curvatureOffsetDavof)
+        // at the field writes (the diagnostic of 2026-10-16; false: not written)
+        writeCurvatureTensor @!TPF_WRITE_TENSOR!@;
         exactNormal
         {
             functionType sphere;
