@@ -21,7 +21,12 @@ Sources, all optional (a missing one leaves its columns blank):
         (...): S slivers, R replaced[, K kept m][, F fit fallbacks][, G ring
         fallbacks]` line after
         `Time = ` (the advection step's reconstruction; the function objects
-        reconstruct again), `isoAdvection: After conservative bounding:
+        reconstruct again), the FIRST `davof: curvature tensor on N cells, F
+        tensor fallbacks` line (the planeSagitta face clipping, 2026-10-15),
+        the face update's `isoAdvection: alphaf set by a plane on ...` line
+        with its optional clause `; sagitta corrected F faces, C capped, K
+        clamped, S skipped (cos), M skipped (chord)` (the same model),
+        `isoAdvection: After conservative bounding:
         min(alpha) = ..., max(alpha) = 1 + ...`, `t = ..., sum(alpha*V) = ...,
         dev = ...%, 1-max(alpha1) = ..., min(alpha1) = ...`, `ExecutionTime =
         ... ClockTime = ... timeStepTime = ...`; and the abort guard's
@@ -38,9 +43,14 @@ Columns, in this order:
     TIME step L1_alphaf L2_alphaf Linf_alphaf nFaces nInterfaceCells consistency
     LNormalDiff1 LNormalDiff2 LNormalDiffInf LCentreDiff1 LCentreDiff2 LCentreDiffInf
     areaSum areaExact nInterface Eshape Emass Ebound
-    nInterfaceAdv nSliver nReplaced nKept nFitFallback nRingFallback minAlphaBound maxAlphaBound
+    nInterfaceAdv nSliver nReplaced nKept nFitFallback nRingFallback
+    nTensorCells nTensorFallback nSagittaCorrected nSagittaCapped nSagittaClamped
+    nSagittaSkipCos nSagittaSkipChord minAlphaBound maxAlphaBound
     sumAlphaV devPercent oneMinusMaxAlpha minAlpha executionTime clockTime timeStepTime
-    status abortStep abortReason
+    status abortStep abortReason tpfCommit tpfVersion
+
+(the tensor and sagitta counters are blank for the rows whose face clipping
+is plane: the lines do not exist in their logs)
 
 status (constant over the rows): `diverged` when the ABORT line exists,
 `completed` on `End` without it, `crashed` when .leia_solver_failed exists
@@ -69,6 +79,8 @@ REC_COLS = {k: k for k in ("LNormalDiff1", "LNormalDiff2", "LNormalDiffInf",
 VOL_COLS = {k: k for k in ("Eshape", "Emass", "Ebound")}
 LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "nRingFallback",
+            "nTensorCells", "nTensorFallback", "nSagittaCorrected", "nSagittaCapped",
+            "nSagittaClamped", "nSagittaSkipCos", "nSagittaSkipChord",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
             "timeStepTime")
@@ -80,6 +92,11 @@ _RE_DAVOF = re.compile(
     r"^davof: (\d+) interface cells \(wispTol [^)]*\), normalModel \S+ \([^)]*\): "
     r"(\d+) slivers, (\d+) replaced(?:, (\d+) kept m)?(?:, (\d+) fit fallbacks)?"
     r"(?:, (\d+) ring fallbacks)?")
+_RE_TENSOR = re.compile(
+    r"^davof: curvature tensor on (\d+) cells, (\d+) tensor fallbacks")
+_RE_SAGITTA = re.compile(
+    r"; sagitta corrected (\d+) faces, (\d+) capped, (\d+) clamped, "
+    r"(\d+) skipped \(cos\), (\d+) skipped \(chord\)")
 _RE_BOUND = re.compile(
     r"^isoAdvection: After conservative bounding: min\(alpha\) = (\S+), "
     r"max\(alpha\) = 1 \+ (\S+)")
@@ -170,6 +187,20 @@ def read_log(path):
                 cur["nKept"] = m.group(4) or "0"
                 cur["nFitFallback"] = m.group(5) or "0"
                 cur["nRingFallback"] = m.group(6) or "0"
+                continue
+            m = _RE_TENSOR.match(line)
+            if m and "nTensorCells" not in cur:
+                cur["nTensorCells"] = m.group(1)
+                cur["nTensorFallback"] = m.group(2)
+                continue
+            if line.startswith("isoAdvection: alphaf set by a plane"):
+                m = _RE_SAGITTA.search(line)
+                if m:
+                    cur["nSagittaCorrected"] = m.group(1)
+                    cur["nSagittaCapped"] = m.group(2)
+                    cur["nSagittaClamped"] = m.group(3)
+                    cur["nSagittaSkipCos"] = m.group(4)
+                    cur["nSagittaSkipChord"] = m.group(5)
                 continue
             m = _RE_BOUND.match(line)
             if m:

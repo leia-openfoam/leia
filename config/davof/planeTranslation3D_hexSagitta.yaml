@@ -1,0 +1,63 @@
+# The plane gate of the sagitta correction (2026-10-15): the fork's
+# face-clipping model planeSagitta (TwoPhaseFlow branch davof, commits
+# e579cd1 / bb0ae62 / 912fdb3; etc/README-davof.md "Face clipping models")
+# on the exact-solution test of the face update, cases/davof/
+# planeTranslation3D (the plane of the static test moved by 0.2 L along its
+# normal, arm normal, or along x, arm oblique; the Detrixhe-Aslam state,
+# exact on a plane), N = 20/40/80/160 at Co 0.2, the rows
+# davof-sagitta-exact, davof-sagitta-ringArea, davof-sagitta-cellSliver
+# (planeSagitta) and davof-ringArea (the plane clipping, the twin): 4 x 2 x
+# 4 = 32 serial cases of seconds to minutes. The gate: max over the run of
+# L1(alphaf) and L1(n) below 1e-12 (make_davof_advection_table.py's gate
+# table). The diagnostics every step as in the hex study.
+#
+# PRE-REGISTERED PREDICTION (2026-10-15, written before the first run):
+# P-S5 (the plane): every sagitta row stays at round-off, max over the run
+#   of L1(alphaf) and of L1(n) below 1e-12, on both arms at every N, as its
+#   plane-clipping twin does (the hex study: every ring and exact row
+#   passes at Co 0.2). The ring's positioned planes of an exact plane state
+#   have centroids on the plane and exact normals to round-off, so the
+#   fitted quadratic coefficients of the Monge patch are round-off (about
+#   1e-15 in the scaled units, B about 1e-15/h, i.e. 5e-12 1/m at N = 20 of
+#   the 4 mm box) and the correction per face about B h/12 ~ 1e-16 of the
+#   face area; a tensor as large as 1e-13 1/m would move a fraction by
+#   1e-13 h/12 < 1e-18 at every N here, far below the gate. The tensor
+#   fallback count is expected to be the corner cells with fewer than six
+#   ring planes (the ringFit model's 2 at N = 20) and no more. FALSIFIED
+#   by any sagitta row above 1e-12 whose plane-clipping twin passes: the
+#   correction would then act on a plane (a sign or frame error, or a
+#   tensor far above round-off: read nTensorFallback and the sagitta
+#   counters of advectorVoF.csv; a correction of the right magnitude on a
+#   plane is a fit that is not round-off).
+#
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeTranslation3D_hexSagitta.yaml
+# Lichtenberg:
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexSagitta --export=ALL,STUDY=davof/planeTranslation3D_hexSagitta run-studies.sbatch
+study_name: planeTranslation3D_hexSagitta
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-sagitta-exact, davof-sagitta-ringArea, davof-sagitta-cellSliver, davof-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+collapse_other_axes: true
+
+# The N = 160 case (4.1e6 cells) needs more than the Slurm default.
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

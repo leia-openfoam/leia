@@ -28,6 +28,11 @@ values
 
     TPF_ROW ( davof-cellLocal davof-ringArea davof-ringFit davof-exact davof-plicRDFnormal plicRDF isoAlpha );
 
+    // the face-clipping model (plane | planeSagitta, 2026-10-15) is DERIVED
+    // from TPF_ROW by tpf_rows.row_tokens (the sagitta rows select
+    // planeSagitta); the value here documents the default, the row decides
+    TPF_FACE_CLIPPING ( plane );
+
     TPF_VELOCITY_ARM ( normal oblique );
 
     TPF_DAVOF_METHOD ( detrixheAslam );

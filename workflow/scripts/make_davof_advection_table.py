@@ -16,8 +16,9 @@ and writes into the davof theme's data source (paths.tables_dir / figs_dir):
         the long table, one row per case: the end values (the last non-blank
         row of every column), the run maxima, min alpha over the run, the
         interface cells at the first and the last step, the sliver and
-        fit-fallback and ring-fallback maxima, the cpu time and the cpu
-        time per step (cpu / nSteps), the status
+        fit-fallback and ring-fallback maxima, the tensor-fallback and
+        sagitta-counter maxima (the planeSagitta rows, 2026-10-15), the cpu
+        time and the cpu time per step (cpu / nSteps), the status
     tables/davof_advection_history_<study>.csv
         the davof rows: every step's face-fraction errors and counts
     tables/davof_advection_growth_<study>.csv
@@ -91,6 +92,11 @@ MAX_COLS = {
     "nInterfaceCells_max": "nInterfaceCells", "nSliver_max": "nSliver",
     "nReplaced_max": "nReplaced", "nFitFallback_max": "nFitFallback",
     "nRingFallback_max": "nRingFallback",
+    # the planeSagitta face clipping (2026-10-15): the tensor fallbacks and the
+    # sagitta counters per step, their run maxima (blank for the plane rows)
+    "nTensorFallback_max": "nTensorFallback", "nSagittaCorrected_max": "nSagittaCorrected",
+    "nSagittaCapped_max": "nSagittaCapped", "nSagittaClamped_max": "nSagittaClamped",
+    "nSagittaSkipCos_max": "nSagittaSkipCos", "nSagittaSkipChord_max": "nSagittaSkipChord",
 }
 # the order tables: (long-table column, tex label, has an order)
 ORDER_METRICS = [
@@ -226,6 +232,10 @@ def history_rows(recs):
                         "nSliver": s.get("nSliver", ""), "nReplaced": s.get("nReplaced", ""),
                         "nFitFallback": s.get("nFitFallback", ""),
                         "nRingFallback": s.get("nRingFallback", ""),
+                        "nTensorFallback": s.get("nTensorFallback", ""),
+                        "nSagittaCorrected": s.get("nSagittaCorrected", ""),
+                        "nSagittaCapped": s.get("nSagittaCapped", ""),
+                        "nSagittaClamped": s.get("nSagittaClamped", ""),
                         "minAlpha": s.get("minAlpha", ""), "Eshape": s.get("Eshape", ""),
                         "status": s.get("status", "")})
     return out

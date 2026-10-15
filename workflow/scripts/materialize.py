@@ -165,10 +165,11 @@ def _with_derived_tokens(tokens):
 
       * TPF_ROW (the TwoPhaseFlow advection studies, cases/davof/*Translation3D,
         2026-10-13) expands into TPF_RECON_SCHEME, TPF_NORMAL_MODEL,
-        TPF_APPLY_TO, TPF_SLIVER_TOL, TPF_MAX_ANGLE and, since 2026-10-14,
-        TPF_NO_NORMAL_FALLBACK (tpf_rows.row_tokens), and TPF_VELOCITY_ARM
+        TPF_APPLY_TO, TPF_SLIVER_TOL, TPF_MAX_ANGLE, since 2026-10-14
+        TPF_NO_NORMAL_FALLBACK and since 2026-10-15 TPF_FACE_CLIPPING
+        (tpf_rows.row_tokens), and TPF_VELOCITY_ARM
         into TPF_UX/UY/UZ (tpf_rows.velocity_tokens): one word per row and
-        per arm in a config, the six dictionary keys in the templates. Only a case that carries the input token sees them; every
+        per arm in a config, the seven dictionary keys in the templates. Only a case that carries the input token sees them; every
         other study renders byte-identically (gate of 2026-10-13: three
         existing studies re-materialized before and after, identical)."""
     out = dict(tokens)

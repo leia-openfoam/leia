@@ -1093,6 +1093,36 @@ studies drive its benchmark solver `advectorVoF` with the dictionaries of the fo
   per-step `timeStepTime` (the ExecutionTime difference the log prints) and the long
   table `cpu_per_step = cpu / nSteps`.
 
+- The face-clipping model (2026-10-15): the seventh element of a row in
+  `tpf_rows.py`, the derived token `TPF_FACE_CLIPPING` (`plane` for every
+  existing row, so each existing study's `fvSolution` gains the block
+  `faceClipping plane;` with the sagitta sub-keys at the fork's defaults
+  (`sagittaMinCos 0.2; sagittaMinChord 0.05; sagittaMaxFraction 0.25;
+  sagittaForm full; tensorSource ring;`, read by `planeSagitta` only) and
+  nothing else changes; the `.parameter` files list `TPF_FACE_CLIPPING ( plane )`
+  as documentation, the row decides). The fork's `planeSagitta` adds to the
+  plane-clipped face area the second-order area between the plane's trace on
+  the face and the interface's trace from the ring curvature tensor the davof
+  scheme fits (`README-davof.md` "Face clipping models": the full form with the
+  volume-positioned plane's vertex offset, the chord-only segment form kept as
+  `sagittaForm segment`). Four rows: `davof-sagitta-exact` (the exact normal:
+  the fractions' order alone), `davof-sagitta-ringArea`, `davof-sagitta-cellSliver`
+  (the own normal everywhere except the slivers, which take the ring normal:
+  `ringArea`, `applyTo check`, `sliverTol 0.1`, `maxAngle 180`) and
+  `davof-sagitta-cellLocal`. The converter parses the fork's `davof: curvature
+  tensor on N cells, F tensor fallbacks` line and the face update's `; sagitta
+  corrected F faces, C capped, K clamped, S skipped (cos), M skipped (chord)`
+  clause into the columns `nTensorCells`, `nTensorFallback`, `nSagitta*` (blank
+  for the plane rows); the long table carries their run maxima. Studies:
+  `config/davof/sphereTranslation3D_hexSagitta.yaml` (the four sagitta rows plus
+  `davof-ringArea`, `davof-exact`, `plicRDF`; N 32/64/128; Co 0.2; the diagnostics
+  at the end only as the timing study; 21 cases; predictions P-S1 to P-S4 and
+  P-S6 in the header) and `config/davof/planeTranslation3D_hexSagitta.yaml`
+  (three sagitta rows plus `davof-ringArea`; both arms; N 20 to 160; Co 0.2; the
+  gate; 32 cases; P-S5). Dry-run gate of the seventh token (2026-10-15):
+  `snakemake -n` of both configs plans 21 and 32 cases; the converter's columns
+  checked on a synthetic log.
+
 ```bash
 snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeTranslation3D_hexSmoke.yaml   # 8 cases, seconds
 snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/sphereTranslation3D_hexSmoke.yaml  # 7 cases, minutes each

@@ -1,0 +1,120 @@
+# The sagitta correction of the DAVOF face update on the translated sphere
+# (2026-10-15): the fork's face-clipping model planeSagitta (TwoPhaseFlow
+# branch davof, commits e579cd1 / bb0ae62 / 912fdb3; etc/README-davof.md
+# "Face clipping models") against the plane clipping of the hex study. The
+# plane clipping stores the submerged area of the face under the moved PLIC
+# plane: first order in the face fractions by the clipping law (the hex
+# study: 0.82 with the exact normal), which limits the transported normal
+# to plicRDF's accuracy. planeSagitta adds the second-order area between
+# the plane's trace on the face (the chord) and the interface's trace (the
+# arc), dA = -(1/cos phi) int_chord w dl with w = z_0 + (1/2) x.B.x the
+# surface's offset from the volume-positioned plane, B the curvature tensor
+# the scheme fits to the ring's planes (the Monge patch of ringFit in the
+# frame of the cell's used normal) and z_0 = -(1/2) B : M its vertex offset
+# (M the cut polygon's second moments): the chord plus this O(h^3) area is
+# O(h^4) close to the interface's trace, a first-order curvature error moves
+# it by O(h^4), so the stored fractions are second order where the plane's
+# are first (sagittaForm full, the default; the chord-only parabolic segment
+# (2/3) L s of the first formulation is sagittaForm segment and is NOT run
+# here, see P-S6).
+#
+# cases/davof/sphereTranslation3D (the hex study's case: R = 0.15 in the
+# 2 x 1 x 1 box, U = (1 0 0), 3.3 diameters, the quadraticFaces state),
+# N = 32/64/128 at Co 0.2 (N / Co steps), the four sagitta rows of
+# workflow/scripts/tpf_rows.py plus the references davof-ringArea,
+# davof-exact (plane clipping) and plicRDF: 7 x 3 = 21 serial cases. The
+# diagnostics at the end only, as the timing study (TPF_AFE_WRITE_CONTROL
+# onEnd: areaFractionError at the end step; TPF_AFE_CONSISTENCY false: no
+# extra reconstruction per write, the transport bit-identical for every
+# normal model here; TPF_VFE_WRITE_CONTROL onEnd): the per-step history of
+# L1(alphaf) is not recorded, the per-step min alpha and the davof counters
+# come from the log (tpf_advection_metrics.py: nTensorFallback, the sagitta
+# counters corrected / capped / clamped / skipped (cos) / skipped (chord)).
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-15, written before the first run; the
+# only prior numbers are the hex study's at Co 0.2: davof-exact L1(alphaf)
+# 1.039e-2 / 5.683e-3 / 3.322e-3 at N = 32 / 64 / 128, order 0.82; L1(n)
+# of davof-ringArea 1.09e-2 and of plicRDF 9.20e-3 at N = 128; the centre
+# error second order at plicRDF's value):
+# P-S1 (the fractions): with the exact normal (davof-sagitta-exact) the
+#   face-fraction error L1(alphaf) at the end is SECOND order over N = 32 to
+#   128 (least-squares order at least 1.8) and below 1e-3 at N = 128 (the
+#   plane clipping: 3.32e-3, order 0.82). FALSIFIED if the order is below
+#   1.5 or the N = 128 value above 2e-3: the correction would then miss an
+#   O(h^3) term of the plane's face defect (the first suspect is the
+#   paraboloid's vertex offset z_0 and the chord's position relative to the
+#   centroid, i.e. the full form against the segment form), or the ring
+#   tensor would not be first order on this state.
+# P-S2 (the normal): the own normal with the sliver fallback
+#   (davof-sagitta-cellSliver: m_c everywhere except the slivers |m_c| <
+#   0.1 h^2, which take the ring normal) is SECOND order in L1(n) over
+#   N = 32 to 128 with an error below 3e-3 at N = 128 (the ring normal
+#   with the plane clipping: 1.09e-2; plicRDF: 9.20e-3), because the own
+#   normal's order is the face fractions' (the clipping law) and the
+#   fractions are now second order. FALSIFIED if its L1(n) at N = 128 is
+#   above 5e-3 or its order below 1.5.
+# P-S3 (the ring normal): davof-sagitta-ringArea improves less than the own
+#   normal: its L1(n) at N = 128 lies between 3e-3 and 1.09e-2 and its
+#   order stays near one (the ring average's bias on a curved interface is
+#   first order on this mesh too, and the O(h) slope error enters the
+#   correction's w at O(h^2), the order of the correction itself).
+#   FALSIFIED if it is below the cellSliver row's L1(n) at N = 128 (the
+#   ring bias would then be smaller than the sliver mechanism's cost).
+# P-S4 (stability): every sagitta row with a damped normal
+#   (davof-sagitta-exact, -ringArea, -cellSliver) stays bounded (min alpha
+#   over the run above -1e-10) to the end at every N; the pure own-normal
+#   row davof-sagitta-cellLocal still ABORTS at every N (the abort guard's
+#   interface-cell factor): the sliver amplification of C2 is in the
+#   normal (the division by a small |m_c|), not in the fractions.
+#   FALSIFIED if davof-sagitta-cellLocal completes bounded at any N (the
+#   second-order fractions would then damp the loop), or if a damped
+#   sagitta row aborts at N = 32.
+# P-S5 (the plane, config planeTranslation3D_hexSagitta): the sagitta rows
+#   stay at round-off on the plane, max over the run of L1(alphaf) and
+#   L1(n) below 1e-12 on both arms at every N (the tensor of exact plane
+#   data is round-off, about 1e-15/h; the correction per face about
+#   B h/12 ~ 1e-16 of the face). FALSIFIED by any value above 1e-12 on a
+#   sagitta row whose plane-clipping twin passes.
+# P-S6 (the form; not run here, a statement for the record): sagittaForm
+#   segment, the chord-only parabolic segment (2/3) L s, gives NO second
+#   order in P-S1 (its L1(alphaf) order stays below 1.3 and the N = 128
+#   value above the plane clipping's 3.32e-3), because the volume-positioned
+#   plane is a secant of the surface over the cell and the offset term it
+#   drops has, on a cube cut through its centre, the opposite sign and the
+#   same order as the segment (README-davof "Face clipping models").
+#
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/sphereTranslation3D_hexSagitta.yaml
+# Lichtenberg:
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexSagitta --export=ALL,STUDY=davof/sphereTranslation3D_hexSagitta run-studies.sbatch
+study_name: sphereTranslation3D_hexSagitta
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-sagitta-exact, davof-sagitta-ringArea, davof-sagitta-cellSliver, davof-sagitta-cellLocal, davof-ringArea, davof-exact, plicRDF]
+  TPF_AFE_WRITE_CONTROL: ["onEnd"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VFE_WRITE_CONTROL: ["onEnd"]
+collapse_other_axes: true
+
+# The N = 128 case (4.2e6 cells, four field writes) needs more than the Slurm default.
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

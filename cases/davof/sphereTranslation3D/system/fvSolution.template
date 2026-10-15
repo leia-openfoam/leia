@@ -41,6 +41,17 @@ solvers
         sliverTol       @!TPF_SLIVER_TOL!@;
         maxAngle        @!TPF_MAX_ANGLE!@;
         noNormalFallback @!TPF_NO_NORMAL_FALLBACK!@;
+        // davof: the face-clipping model of the face update (fork
+        // davofFaceClipping.H, 2026-10-15): plane (the plane clipping of the
+        // moved PLIC plane, the default) or planeSagitta (plus the
+        // second-order sagitta correction from the ring curvature tensor);
+        // the sub-keys at the fork's defaults, read by planeSagitta only
+        faceClipping    @!TPF_FACE_CLIPPING!@;
+        sagittaMinCos   0.2;
+        sagittaMinChord 0.05;
+        sagittaMaxFraction 0.25;
+        sagittaForm     full;
+        tensorSource    ring;
         exactNormal
         {
             functionType sphere;
