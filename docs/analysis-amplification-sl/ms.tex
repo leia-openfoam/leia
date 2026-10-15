@@ -7,6 +7,8 @@
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage[margin=25mm]{geometry}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
 \usepackage{hyperref}
 \hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
 
@@ -211,12 +213,20 @@ Of course advection changes the value in a cell. A cell that had the value of on
 field is handed the value of another part, and \eqref{eq:slls} says exactly that. If nothing
 changed, nothing would be transported.
 
-The point is what the exact solution does to the field \emph{as a whole}. Along any trajectory
-\(\phi\) is constant, by \eqref{eq:equality}. So exact transport does not alter the collection of
-values that exist in the domain --- it only moves them around, relabelling which cell holds
-which. For a closed or periodic domain this makes the exact update a \textbf{rearrangement}:
-every maximum, every minimum and every norm of the field is preserved exactly, however
-complicated the flow.
+The point is what the exact solution does to the field \emph{as a whole}.
+
+\begin{center}
+\fbox{\parbox{0.92\linewidth}{\textbf{Exact transport is a rearrangement.}\\[2pt]
+Along any trajectory \(\phi\) is constant, by \eqref{eq:equality}. So the exact update does not
+alter the \emph{collection} of values present in the domain --- it only moves them around,
+relabelling which cell holds which. On a closed or periodic domain every maximum, every minimum
+and \emph{every norm} of the field is therefore preserved exactly, however complicated the flow.
+\[ \bigl\|\phi(\cdot,t^{n+1})\bigr\| \;=\; \bigl\|\phi(\cdot,t^{n})\bigr\|
+   \qquad\text{for every norm, exactly.} \]}}
+\end{center}
+
+This is the single fact the whole document rests on, so it is worth stating twice: the exact
+solution operator has size exactly one.
 
 \begin{quote}
 So the exact solution operator has size exactly one. \textbf{Any growth in the size of the
@@ -232,55 +242,199 @@ exactly right, and the conservative equation \(\partial_t\phi + \nabla\cdot(u\ph
 behave that way: compression raises the density.
 
 Equation \eqref{eq:levelset} is not that equation. \(\phi\) is a label carried by the fluid, not
-an amount of anything, so a particle keeps its value whatever the flow around it does. What
-compression changes is how far apart the level sets lie: squeezing the fluid brings surfaces of
-different \(\phi\) closer together and therefore raises \(|\nabla\phi|\). The \emph{value} does
-not grow; the \emph{gradient} does. (That steepening is a real issue for this method, because it
-destroys the signed-distance property \(|\nabla\phi| = 1\); it is a separate matter from the one
-studied here.) For the incompressible flows we run, \(\nabla\cdot u = 0\) and the question does
-not arise at all.
+an amount of anything, so a particle keeps its value whatever the flow around it does. The
+\emph{value} does not grow. The \emph{gradient} does, and it is worth writing down exactly how,
+because the condition for it to be left alone is much stronger than incompressibility.
+
+Differentiate \eqref{eq:levelset} with respect to \(x_j\) and use the chain rule:
+\begin{equation}
+  \frac{D}{Dt}\bigl(\partial_j \phi\bigr) \;=\; -\,\bigl(\partial_j u_i\bigr)\,\partial_i \phi .
+  \label{eq:gradtransport}
+\end{equation}
+Write \(g = |\nabla\phi|\) and \(n = \nabla\phi/g\) for the unit normal of the level sets.
+Contracting \eqref{eq:gradtransport} with \(\partial_j\phi\) gives \(Dg^2/Dt\), and dividing by
+\(2g\),
+\begin{equation}
+  \boxed{\;\frac{Dg}{Dt} \;=\; -\,g\;\, n\cdot\bigl(n\cdot\nabla\bigr)u
+        \;=\; -\,g\;\, n^{\!\top} D\, n\;}
+  \label{eq:gradnorm}
+\end{equation}
+where \(D = \tfrac12(\nabla u + \nabla u^{\!\top})\) is the rate-of-strain tensor (only its
+symmetric part survives the contraction with \(n\,n\)).
+
+\derived{} Equation~\eqref{eq:gradnorm} says the gradient norm is stretched or compressed at the
+rate of the \emph{normal strain}, the component of the straining motion along the level-set
+normal. Two consequences matter here.
+
+\begin{itemize}
+\item \textbf{Incompressibility is not enough.} \(\nabla\cdot u = 0\) means
+      \(\operatorname{tr} D = 0\), not \(n^{\!\top}Dn = 0\). A divergence-free flow can stretch
+      along \(n\) as long as it compresses in the two tangential directions, and then
+      \(|\nabla\phi|\) changes. The trace being zero only says the three principal strains sum
+      to zero.
+\item \textbf{The condition is on the normal derivative of the normal velocity.}
+      \(|\nabla\phi|\) is preserved exactly along a trajectory only where
+      \(n\cdot(n\cdot\nabla)u = 0\) --- that is, where the velocity component along \(n\) does
+      not vary in the direction of \(n\). Only such a flow leaves the signed-distance property
+      \(|\nabla\phi| = 1\) intact.
+\end{itemize}
+
+So the exact equation preserves the \emph{values} of \(\phi\) unconditionally, and preserves
+\(|\nabla\phi|\) only under \eqref{eq:gradnorm} with vanishing normal strain. The growth factor
+of this document is about the first of those, which is the one the discretisation can violate on
+its own. The second is a property of the flow rather than of the scheme, and it is the reason
+the signed-distance property has to be maintained separately; it is not studied here.
 
 \subsection{The error, precisely}
 
 Let \(\phi_h^n\) be what the code holds at step \(n\), and let \(\Phi^n\) be the exact solution
 sampled at the same cell centres. With the velocity frozen and no clipping the scheme is a
-linear operator \(B\), so \(\phi_h^{n+1} = B\,\phi_h^n\). The exact solution satisfies the same
-relation only up to the amount the scheme gets wrong in one step on smooth data, the
-\textbf{local truncation error} \(\tau^n\):
+linear operator \(B\), so
 \begin{equation}
-  \Phi^{n+1} \;=\; B\,\Phi^{n} \;+\; \tau^{n} .
+  \phi_h^{n+1} \;=\; B\,\phi_h^{n}.
+  \label{eq:disc}
 \end{equation}
-Subtracting, the error \(e^n = \phi_h^n - \Phi^n\) obeys
+The exact solution satisfies the same relation only up to the amount the scheme gets wrong in
+one step on smooth data. That amount is the \textbf{local truncation error} \(\tau^n\), and it
+is \emph{defined} by insisting the exact solution obey \eqref{eq:disc} with a remainder:
 \begin{equation}
-  e^{n+1} \;=\; B\,e^{n} \;-\; \tau^{n},
-  \qquad\text{so}\qquad
-  \|e^N\| \;\le\; \sum_{k=0}^{N-1} \rho^{\,N-1-k}\,\|\tau^k\| ,
+  \Phi^{n+1} \;=\; B\,\Phi^{n} \;+\; \tau^{n}.
+  \label{eq:exactstep}
+\end{equation}
+
+Subtract \eqref{eq:exactstep} from \eqref{eq:disc} and write \(e^n = \phi_h^n - \Phi^n\):
+\begin{equation}
+  e^{n+1} \;=\; B\,e^{n} \;-\; \tau^{n}.
+  \label{eq:errrec}
+\end{equation}
+
+\paragraph{Unrolling the recursion.} Apply \eqref{eq:errrec} repeatedly, starting from
+\(e^0 = 0\) because the initial field is set exactly:
+\begin{align}
+  e^{1} &= -\,\tau^{0}, \notag\\
+  e^{2} &= B e^{1} - \tau^{1} \;=\; -B\tau^{0} - \tau^{1}, \notag\\
+  e^{3} &= B e^{2} - \tau^{2} \;=\; -B^{2}\tau^{0} - B\tau^{1} - \tau^{2}, \notag
+\end{align}
+and after \(N\) steps the pattern closes:
+\begin{equation}
+  e^{N} \;=\; -\sum_{k=0}^{N-1} B^{\,N-1-k}\,\tau^{k}.
+  \label{eq:errsum}
+\end{equation}
+\textbf{Read \eqref{eq:errsum} directly:} the mistake committed at step \(k\) is afterwards
+multiplied by \(B\) once for every remaining step. An early mistake is handled by the operator
+many times; the last one is not handled at all.
+
+Taking norms and using the triangle inequality,
+\begin{equation}
+  \|e^{N}\| \;\le\; \sum_{k=0}^{N-1} \bigl\|B^{\,N-1-k}\bigr\|\;\|\tau^{k}\| .
+  \label{eq:errnorm}
+\end{equation}
+
+\paragraph{What \(\rho\) is, exactly, and why \(\|B^m\| = \rho^m\) here.}
+Define
+\begin{equation}
+  \rho \;=\; \max_{\theta\in[-\pi,\pi]^D} \bigl|G(\theta)\bigr| ,
+\end{equation}
+with \(G\) the number a single wave is multiplied by (Section~\ref{sec:symbol}). In general the
+size of a power of an operator is not the power of its size, and \(\rho\) --- the largest
+eigenvalue magnitude --- can understate \(\|B^m\|\) for many steps before the asymptotics take
+over. \emph{That complication does not arise here}, and the reason is worth stating.
+
+On a uniform periodic mesh the waves \(e^{\mathrm{i}\theta\cdot m}\) are eigenvectors of \(B\),
+with eigenvalues \(G(\theta)\), and they are mutually orthogonal. An operator with an orthogonal
+eigenbasis is \emph{normal}, and for a normal operator the 2-norm equals the largest eigenvalue
+magnitude exactly, at every power:
+\begin{equation}
+  \bigl\|B^{m}\bigr\|_2 \;=\; \max_\theta \bigl|G(\theta)^{m}\bigr| \;=\; \rho^{\,m}.
+\end{equation}
+Substituting into \eqref{eq:errnorm} gives the bound used throughout:
+\begin{equation}
+  \boxed{\;\|e^{N}\| \;\le\; \sum_{k=0}^{N-1} \rho^{\,N-1-k}\,\|\tau^{k}\|\;}
   \label{eq:erracc}
 \end{equation}
-with \(\rho\) the growth factor of \(B\). Everything hangs on whether \(\rho\) exceeds one:
+
+With \(T = \max_k \|\tau^k\|\) the worst single-step error, the sum is a geometric series:
+\begin{equation}
+  \|e^{N}\| \;\le\; T \sum_{j=0}^{N-1}\rho^{\,j}
+  \;=\;
+  \begin{cases}
+    N\,T, & \rho = 1,\\[4pt]
+    \dfrac{\rho^{N}-1}{\rho-1}\,T, & \rho \ne 1 .
+  \end{cases}
+  \label{eq:geom}
+\end{equation}
+
 \begin{itemize}
-\item \(\rho \le 1\): the sum is at most \(N \max_k\|\tau^k\|\). Errors \textbf{add up},
-      linearly in the number of steps. This is the normal, wanted behaviour.
-\item \(\rho > 1\): the sum is about \((\rho^N-1)/(\rho-1)\) times \(\max_k\|\tau^k\|\). Errors
-      \textbf{compound}. At \(\rho = 1.00441\) over 1563 steps that factor is roughly 1000, so a
-      truncation error far too small to see becomes a visible defect.
+\item \(\rho \le 1\): errors \textbf{add up}, linearly in the number of steps. This is the
+      normal, wanted behaviour, and it is what makes a convergence order measurable.
+\item \(\rho > 1\): errors \textbf{compound}. At \(\rho = 1.00441\) over \(N = 1563\) steps,
+      \((\rho^N-1)/(\rho-1) \approx 2.2\times10^{5}\) against \(N = 1563\) --- a factor of about
+      140 more error from the same truncation error, and growing with the horizon.
 \end{itemize}
 
 So \(\rho\) does not describe how much the solution changes. It describes how much of
 \emph{yesterday's mistake} is still present, amplified, tomorrow.
+
+\subsection{Do we need the exact solution? No.}
+
+Equation \eqref{eq:erracc} mentions \(\Phi^n\) and \(\tau^n\), and we do not have either on a
+real case. That is worth separating clearly, because it decides what the measured number does
+and does not depend on.
+
+\begin{itemize}
+\item \textbf{\(\rho\) is a property of \(B\) alone.} It is the largest factor by which the
+      update operator can stretch anything. Computing or measuring it needs the stencil, the
+      weights and the displacement --- nothing else. No exact solution, no manufactured
+      solution, no reference run, and in fact no physical initial field at all. Table~1 was
+      produced this way, and the closed form of Section~\ref{sec:symbol} needs even less: only
+      the geometry.
+\item \textbf{The exact solution appears only in the interpretation.} Equations
+      \eqref{eq:errrec} to \eqref{eq:geom} explain \emph{why} a reader should care whether
+      \(\rho\) exceeds one. They are not part of the measurement, and nothing in this document
+      evaluates \(\tau^n\).
+\end{itemize}
+
+\derived{} So the figure \(1.00441\) is not an error against a reference. It is the worst-case
+one-step stretching of the scheme's own update operator, and it would be the same number on an
+empty domain. The amplification factors reported here are not manufactured from a translating
+circle or from any other test problem.
 
 \subsection{Why a random field}
 
 We do not expect a random field to behave regularly, and nothing in the method assumes it does.
 It is a probe, not a physical state.
 
-\(\rho\) is the largest factor by which \(B\) can stretch \emph{anything}. To find it, apply
-\(B\) over and over, rescaling each time. Whatever is being stretched most grows fastest
-relative to everything else, so after enough repetitions it dominates whatever was there at the
-start, and the rescaling factor settles on \(\rho\). A random start is used precisely because it
-contains a little of every pattern, so the worst one is certain to be present and will emerge.
-Starting from a smooth field could accidentally miss it. The procedure finds the worst case; it
-does not predict what any particular simulation will do.
+\(\rho\) is the largest factor by which \(B\) can stretch \emph{anything}. The procedure that
+finds it is the \textbf{power iteration}. Written out: choose \(v^0\) at random with
+\(\|v^0\| = 1\), and for \(k = 0,1,2,\dots\)
+\begin{equation}
+  w^{k+1} = B\,v^{k}, \qquad
+  \sigma^{k+1} = \bigl\|w^{k+1}\bigr\|, \qquad
+  v^{k+1} = \frac{w^{k+1}}{\sigma^{k+1}} .
+  \label{eq:power}
+\end{equation}
+The rescaling in the third step keeps the vector at unit size, so the second step reports the
+stretching of one application rather than the accumulated size.
+
+Why it converges: expand the start in the eigenvectors of \(B\), which here are the waves,
+\(v^0 = \sum_\theta c_\theta\,e^{\mathrm{i}\theta\cdot m}\). Then
+\begin{equation}
+  B^{k} v^{0} \;=\; \sum_\theta c_\theta\, G(\theta)^{k}\, e^{\mathrm{i}\theta\cdot m},
+\end{equation}
+and dividing by the largest term, every other component carries a factor
+\(\bigl(|G(\theta)|/\rho\bigr)^{k} \to 0\). So whichever wave has the largest \(|G|\) comes to
+dominate, and
+\begin{equation}
+  \sigma^{k} \;\longrightarrow\; \rho \qquad\text{as } k \to \infty .
+\end{equation}
+The measurement in Table~\ref{tab:measured} ran \(k = 2000\) and reported the settled
+\(\sigma\).
+
+Two things follow, and they answer the obvious objection. We do \emph{not} expect a random
+field to behave regularly, and nothing assumes it does: it is a probe, not a physical state. It
+is random precisely so that \(c_\theta \ne 0\) for every \(\theta\), which guarantees the worst
+wave is present and will emerge. A smooth start could have \(c_\theta = 0\) for exactly the
+wave that grows, and would then converge to the wrong number.
 
 Section~\ref{sec:symbol} replaces this search with a formula, which is what lets us ask
 \emph{which} pattern grows and \emph{where}, questions a single number cannot answer.
@@ -391,8 +545,25 @@ value. Everything that follows is a statement about that list.
 
 Two checks on \eqref{eq:update}, and both are about limits rather than the general case.
 
-The weights on the right-hand side sum to one, so a field that is constant everywhere stays
-constant: the scheme does not invent material out of nothing.
+\paragraph{The weights sum to one, and nothing enforces it.} A field that is constant
+everywhere stays constant. This is not a constraint imposed on the fit; it follows from the
+anchored form \eqref{eq:anchored}, and the argument is short enough to give in full.
+
+Suppose every stencil value equals the owner's, \(\phi_j = \phi_c\) for all \(j\). Then every
+right-hand side in \eqref{eq:lsq} is \(\phi_j - \phi_c = 0\), so the least-squares problem is
+minimised by the zero coefficient vector, \(P \equiv 0\), and \(R_c(x) = \phi_c\) everywhere by
+\eqref{eq:anchored} --- for \emph{any} evaluation point, any weights and any stencil. Reading
+that through \eqref{eq:update} with \(\phi_j = \phi_c\),
+\[
+  \phi_c^{\text{new}} = \Bigl(1-\sum_j g_j\Bigr)\phi_c + \sum_j g_j \phi_c
+  = \phi_c\Bigl(1 - \sum_j g_j + \sum_j g_j\Bigr) = \phi_c ,
+\]
+which holds identically. The sum-to-one property is therefore built into the \emph{shape} of
+\eqref{eq:update}: the coefficient of \(\phi_c\) is written as \(1 - \sum_j g_j\) precisely so
+that the total is one whatever the \(g_j\) turn out to be. Dropping the constant term from the
+basis \eqref{eq:poly} is what makes that shape available. A fit with a constant term would have
+to have the property imposed on it, and a weighted least-squares fit does not supply it for
+free.
 
 And when the velocity vanishes, the departure point \emph{is} the cell centre, every $g_j$ is
 zero, and the cell keeps its own value. \textbf{This is not the general behaviour, and it is not
@@ -467,52 +638,99 @@ separately we understand what it does to everything.
 
 \subsection{Why each wave is treated separately}
 
-This is the step that makes the whole analysis possible, and it depends on the result of
-Section~\ref{sec:scaling}.
+This step depends on the result of Section~\ref{sec:scaling}. In the interior of a uniform mesh
+\emph{every cell applies the same rule}: the same neighbour positions, the same weights, the
+same displacement. Only then does the following work.
 
-In the interior of a uniform mesh, \emph{every cell applies the same rule}: the same
-neighbour positions, the same weights, the same displacement. Apply \eqref{eq:update} to a
-wave and use $\phi_{m + s_j} = e^{\mathrm{i}\theta\cdot(m+s_j)}
-= e^{\mathrm{i}\theta\cdot m}\, e^{\mathrm{i}\theta\cdot s_j}$:
-\begin{equation}
-  \phi_m^{\text{new}}
-  = \Bigl[\Bigl(1 - \sum_j g_j\Bigr) + \sum_j g_j\, e^{\mathrm{i}\,\theta\cdot s_j}\Bigr]
-    \; e^{\mathrm{i}\,\theta\cdot m}
-  \;=\; G(\theta)\; \phi_m .
-\end{equation}
+Take the field at step \(n\) to be a single wave, and substitute into \eqref{eq:update}. Every
+line below is one substitution.
 
-The wave comes out as the same wave, multiplied by a single complex number
+\begin{align}
+  \phi^n_m &= e^{\mathrm{i}\,\theta\cdot m}
+    &&\text{the wave, at cell } m \label{eq:w1}\\[2pt]
+  \phi^n_{m+s_j} &= e^{\mathrm{i}\,\theta\cdot (m+s_j)}
+    &&\text{the same wave, at the neighbour } m+s_j \label{eq:w2}\\[2pt]
+  &= e^{\mathrm{i}\,\theta\cdot m}\;e^{\mathrm{i}\,\theta\cdot s_j}
+    &&\text{because } e^{a+b} = e^{a}e^{b} \label{eq:w3}\\[2pt]
+  &= \phi^n_m\;e^{\mathrm{i}\,\theta\cdot s_j}
+    &&\text{by \eqref{eq:w1}: the first factor \emph{is} } \phi^n_m \label{eq:w4}
+\end{align}
+
+Line \eqref{eq:w4} is the whole trick: \textbf{on a repeating mesh, a neighbour's value is the
+cell's own value times a fixed number}, and that number depends on the offset \(s_j\) and the
+wave \(\theta\), but not on which cell \(m\) we are at. Now put \eqref{eq:w4} into the update
+rule and factor \(\phi^n_m\) out:
+
+\begin{align}
+  \phi^{n+1}_m
+    &= \Bigl(1 - \sum_j g_j\Bigr)\,\phi^n_m \;+\; \sum_j g_j\,\phi^n_{m+s_j}
+    &&\text{the update \eqref{eq:update}} \\[2pt]
+    &= \Bigl(1 - \sum_j g_j\Bigr)\,\phi^n_m \;+\; \sum_j g_j\,\phi^n_m\,e^{\mathrm{i}\theta\cdot s_j}
+    &&\text{substituting \eqref{eq:w4}} \\[2pt]
+    &= \underbrace{\Bigl[\Bigl(1 - \sum_j g_j\Bigr) + \sum_j g_j\,e^{\mathrm{i}\theta\cdot s_j}\Bigr]}_{\textstyle G(\theta)}\;\phi^n_m
+    &&\text{factoring } \phi^n_m \text{ out}
+\end{align}
+
+The wave comes out as \emph{the same wave}, multiplied by a single complex number:
 \begin{equation}
-  \boxed{\;
-  G(\theta) \;=\; \Bigl(1 - \sum_j g_j\Bigr) + \sum_j g_j\, e^{\mathrm{i}\,\theta\cdot s_j}
-  \;}
+  \boxed{\;\phi^{n+1}_m = G(\theta)\,\phi^{n}_m, \qquad
+  G(\theta) = \Bigl(1-\sum_j g_j\Bigr) + \sum_j g_j\, e^{\mathrm{i}\theta\cdot s_j} \;}
   \label{eq:symbol}
 \end{equation}
 
-$G(\theta)$ is the \textbf{growth factor of that wave}. Its magnitude $|G(\theta)|$ says
-whether the wave grows or shrinks in one step; its angle says how far the wave is shifted,
-which is how the scheme transports. After $N$ steps the wave has been multiplied by
-$G(\theta)^N$, so:
+Nothing couples one wave to another, so each can be studied on its own. After \(N\) steps a wave
+is multiplied by \(G(\theta)^N\).
+
+\subsection{What the exact solution does to a wave, and what the three cases mean}
+\label{sec:exactwave}
+
+The three cases \(|G| < 1\), \(= 1\), \(> 1\) are easier to read against the exact answer, so
+here is the exact answer.
+
+Take a constant velocity \(u\). The exact solution of \eqref{eq:levelset} started from a wave is
+that same wave displaced, because \eqref{eq:equality} says the value is carried unchanged:
+\begin{equation}
+  \phi(x, t^{n+1}) \;=\; \phi(x - u\Delta t,\; t^{n})
+  \;=\; e^{\mathrm{i}\,\theta\cdot(m - \mathrm{Co}\,\hat u)}
+  \;=\; \underbrace{e^{-\mathrm{i}\,\theta\cdot \mathrm{Co}\,\hat u}}_{\textstyle G_{\text{exact}}}\;\phi(x,t^n),
+\end{equation}
+with \(\hat u\) the flow direction. So the exact update multiplies every wave by a number too,
+and that number is a \textbf{pure phase}:
+\begin{equation}
+  \bigl|G_{\text{exact}}(\theta)\bigr| \;=\; 1 \qquad\text{for every } \theta .
+  \label{eq:exactgain}
+\end{equation}
+Its \emph{angle} is the transport --- how far the wave is shifted --- and its \emph{magnitude}
+is exactly one, which is \eqref{eq:equality} restated one wave at a time: carrying a value
+along a trajectory does not change it.
+
+\derived{} Reading the three cases against \eqref{eq:exactgain}:
 
 \begin{itemize}
-\item $|G(\theta)| < 1$: that wave decays, and keeps decaying. Harmless.
-\item $|G(\theta)| = 1$: that wave neither grows nor decays. Neutral.
-\item $|G(\theta)| > 1$: that wave grows every step, without limit. This is the dangerous case.
+\item \(|G(\theta)| = 1\): the scheme reproduces the magnitude the material-derivative equation
+      demands. \textbf{This is fidelity to \eqref{eq:levelset}, not merely stability.} Any
+      remaining error in that wave is in the \emph{angle} --- the wave is shifted by slightly
+      the wrong amount, which is a phase (dispersion) error.
+\item \(|G(\theta)| < 1\): the wave decays, and keeps decaying, although the exact solution does
+      not decay at all. This is \textbf{numerical dissipation}, and it is an error, not a
+      safety margin. It is a \emph{stable} error --- it cannot run away, and it is bounded by
+      the field itself --- but it flattens the very structure we are transporting. A scheme with
+      \(|G| \ll 1\) at the short waves smears the interface while never once reporting
+      instability.
+\item \(|G(\theta)| > 1\): the wave grows without limit, which nothing in \eqref{eq:levelset}
+      can produce. This is the failure the rest of the document is about.
 \end{itemize}
 
-The number that decides the scheme is therefore the worst case over all waves:
+\textbf{So \(|G| = 1\) is the target, not the ceiling.} The ideal scheme has magnitude exactly
+one everywhere and the correct angle; the first is achievable, the second is where the order of
+accuracy lives. One value of \(\theta\) is free: at \(\theta = 0\) the wave is a constant,
+every exponential is one, and \(G(0) = (1 - \sum g_j) + \sum g_j = 1\) exactly. So
+\(\rho \ge 1\) always, and a scheme with
 \begin{equation}
-  \rho \;=\; \max_{\theta} \; |G(\theta)| .
+  \rho \;=\; \max_\theta |G(\theta)| \;=\; 1
 \end{equation}
-
-\textbf{This is exactly the number the power iteration of Section~\ref{sec:poweriter}
-searches for numerically.} The difference is that we can now compute it in closed form, and
-we can compute it for the interior rule alone, separately from the boundary.
-
-One value of $\theta$ is free: at $\theta = 0$ the wave is a constant, every exponential is
-one, and $G(0) = (1 - \sum g_j) + \sum g_j = 1$ exactly. So $\rho \ge 1$ always. A scheme
-with $\rho = 1$ is the best achievable: nothing grows, and the only neutral direction is the
-constant field, which must be preserved.
+is the best achievable: nothing grows, and whatever damping it has is a choice of the
+discretisation rather than a defect that compounds.
 
 \section{Step 4: checking the tool on a case we can do by hand}
 \label{sec:validate}
@@ -557,6 +775,139 @@ this into \eqref{eq:symbol} and simplifying gives
 \end{equation}
 which is the textbook result. The script performs all five of these identities symbolically
 and refuses to report anything else if any of them fails.
+
+\subsection{The one-dimensional step, drawn}
+\label{sec:1dfig}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[>=Stealth, x=2.5cm, y=1.0cm]
+  % values of phi at t^n, drawn as HEIGHTS so the fit visibly passes through them
+  % the fit is the parabola through (-1,.62) (0,1.02) (1,1.18): p(x)=1.02+.28x-.12x^2
+  \def\fit(#1){1.02 + 0.28*(#1) - 0.12*(#1)*(#1)}
+
+  % ---- time level n -------------------------------------------------------
+  \draw[thick] (-2.35,0) -- (1.45,0);
+  \node[left=4pt] at (-2.35,0) {$t^{n}$};
+  \foreach \i/\v/\lab in {-2/0.14/{c-2}, -1/0.62/{c-1}, 0/1.02/{c}, 1/1.18/{c+1}} {
+     \draw (\i,0.08) -- (\i,-0.08);
+     \draw[black!45, thin] (\i,0) -- (\i,\v);
+     \fill (\i,\v) circle (2.3pt);
+     \node[below=4pt, font=\footnotesize] at (\i,0) {$\phi^{n}_{\lab}$};
+  }
+
+  % the quadratic fit through the three stencil values
+  \draw[domain=-1.32:1.30, smooth, variable=\x, gray, thick]
+        plot ({\x},{\fit(\x)});
+  \node[gray, font=\footnotesize, right] at (1.30,{\fit(1.30)}) {fit $R_c$};
+
+  % the departure point and the value read off the fit
+  \def\xd{-0.55}
+  \draw[orange!85!black, thick, dashed] (\xd,0) -- (\xd,{\fit(\xd)});
+  \fill[orange!85!black] (\xd,{\fit(\xd)}) circle (2.6pt);
+  \fill[orange!85!black] (\xd,0) circle (1.9pt);
+  \node[orange!85!black, font=\footnotesize, below=4pt] at (\xd,0) {$x_d$};
+  \node[orange!85!black, font=\footnotesize, above left=-1pt and -2pt]
+       at (\xd,{\fit(\xd)}) {$R_c(x_d)$};
+
+  % the displacement, drawn clear of the dashed line
+  \draw[<->, orange!85!black] (\xd,1.62) -- node[above, font=\footnotesize, inner sep=1.5pt]
+       {$C\,h$} (0,1.62);
+  \draw[orange!85!black, thin, dotted] (\xd,{\fit(\xd)}) -- (\xd,1.62);
+  \draw[orange!85!black, thin, dotted] (0,1.02) -- (0,1.62);
+
+  % ---- time level n+1 -----------------------------------------------------
+  \begin{scope}[yshift=-3.6cm]
+    \draw[thick] (-2.35,0) -- (1.45,0);
+    \node[left=4pt] at (-2.35,0) {$t^{n+1}$};
+    \foreach \i in {-2,-1,0,1} { \draw (\i,0.08) -- (\i,-0.08); }
+    \draw[black!45, thin] (0,0) -- (0,{\fit(\xd)});
+    \fill[orange!85!black] (0,{\fit(\xd)}) circle (2.6pt);
+    \node[font=\footnotesize, below=4pt] at (0,0) {$\phi^{n+1}_{c}$};
+    \node[font=\footnotesize, right=4pt, orange!85!black, align=left] at (0,{\fit(\xd)})
+         {same height as\\$R_c(x_d)$ above};
+  \end{scope}
+
+  % the hand-over: the height at x_d becomes the height at x_c.
+  % Routed to the RIGHT so the label can sit clear of it on the left.
+  \draw[->, very thick, orange!85!black]
+        (\xd,{\fit(\xd)-0.16})
+        .. controls (0.55,-0.85) and (0.55,-1.65) ..
+        (0,{\fit(\xd)-3.6+0.18});
+  \node[orange!85!black, font=\footnotesize, align=right, anchor=east] at (-0.15,-1.25)
+       {the value is carried\\along the trajectory};
+\end{tikzpicture}
+\caption{One semi-Lagrangian step in one dimension. The material now at $x_c$ came from
+$x_d = x_c - C h$ upstream. We do not hold a value there, so the fit $R_c$ (grey) is built
+through the stencil values at $t^n$ and read at $x_d$. That number becomes $\phi^{n+1}_c$. The
+only approximation is the height of the grey curve at $x_d$: everything else is exact, by
+\eqref{eq:equality}.}
+\label{fig:1dstep}
+\end{figure}
+
+Figure~\ref{fig:1dstep} also shows where the two special cases of the next subsection come
+from. If $C = 0$ the orange point sits on $\phi^n_c$ and the step returns it unchanged. If
+$C = 1$ it sits exactly on $\phi^n_{c-1}$ --- a stencil point --- and the fit returns that
+value exactly, with no interpolation at all.
+
+\subsection{Can we choose \texorpdfstring{$C$}{C} to make the scheme exact?}
+\label{sec:cexact}
+
+A fair question to put to \eqref{eq:lw}: solve $|G(\theta)| = 1$ for $C$, and use whatever
+comes out. Setting the correction term to zero,
+\begin{equation}
+  4\,C^{2}\bigl(1-C^{2}\bigr)\sin^{4}(\theta/2) \;=\; 0 \quad\text{for all }\theta
+  \qquad\Longleftrightarrow\qquad C^{2}\bigl(1-C^{2}\bigr) = 0
+  \qquad\Longleftrightarrow\qquad C \in \{0,\,1\}.
+\end{equation}
+
+\derived{} \textbf{$C = 1$ makes the one-dimensional scheme exact}, and not merely neutral. The
+departure point lands on the neighbouring cell centre, the fit is evaluated at one of its own
+data points, and
+\begin{equation}
+  \phi^{\,n+1}_{c} \;=\; \phi^{\,n}_{c-1}
+\end{equation}
+exactly: the field is shifted one cell and nothing is interpolated. $|G| = 1$ \emph{and} the
+phase is right, so there is no dissipation and no dispersion. $C = 0$ is the trivial other root.
+
+This is the same fact as the stability limit of Section~\ref{sec:colimit}: $\mathrm{Co} = 1$ is
+where the foot reaches the outermost datum. Below it the fit interpolates, above it the fit
+extrapolates, and exactly at it the fit interpolates \emph{at a node}.
+
+\paragraph{So why not run at $C = 1$?} Because $C$ is not ours to choose cell by cell. With one
+time step for the whole mesh,
+\begin{equation}
+  C_c \;=\; \frac{|u_c|\,\Delta t}{h_c},
+\end{equation}
+so $C_c = 1$ everywhere requires $|u_c|/h_c$ to be the \emph{same constant in every cell}. Any
+velocity variation breaks it, and so does any mesh grading or refinement --- on the refined-box
+meshes of this project $h$ changes by a factor of two across a transition, so $C$ changes by two
+even in a uniform stream.
+
+\paragraph{And local time stepping does not rescue it.} Setting
+$\Delta t_c = h_c/|u_c|$ per cell is exactly the author's question, and the obstruction is
+immediate: the cells then arrive at \emph{different times}. The method computes
+$\phi(\cdot,t^{n+1})$, one field at one time level, and \eqref{eq:equality} relates two time
+levels of the same trajectory. A field whose cells hold values at $t_c^{n+1}$ for a cell-wise
+$t_c$ is not a solution at any time, and the interface it defines is not a surface at any
+instant. Bringing the cells back onto a common level requires interpolating in time, which
+reintroduces exactly the interpolation error that $C = 1$ was removing --- now in time instead
+of space. Asynchronous and local-time-stepping schemes exist and are a research field of their
+own; they are not a free improvement to this method, and nothing in this document assumes one.
+
+\paragraph{In more than one dimension the condition is much stronger.} $C = 1$ along a mesh axis
+lands on a neighbour, but a general direction does not: exactness needs the displacement vector
+$\mathrm{Co}\,\hat u$ to be an \emph{exact lattice vector}, not merely of length one. On the
+honeycomb of Section~\ref{sec:hexagon} the lattice vectors are not even orthogonal.
+
+\derived{} So $C = 1$ is a genuine exactness point and it explains the shape of the stability
+limit, but it is not a design target: it cannot hold in every cell at once for any flow or mesh
+we actually run. What survives as practical guidance is the weaker, geometric statement that the
+rest of the document uses --- \textbf{the closer the departure point lands to a datum the fit
+holds, the smaller the error, and the error is worst midway between data}. The boundary cell of
+Section~\ref{sec:frozen} is the same statement with an unwelcome sign: there the foot lands
+exactly on a datum at $\mathrm{Co} = 0.5$, the fit returns it exactly --- and the datum carries
+$\phi_c$, so the exactness freezes the cell instead of transporting it.
 
 \subsection{A warning hidden in the 1D answer}
 \label{sec:warning}
