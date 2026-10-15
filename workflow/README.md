@@ -986,7 +986,20 @@ no VTK/mplot3d dependency). `make_davof_normal_table.py` also writes the compact
 (`make davof-proposal`) copies both into the DAVOF proposal, which `\input`s and
 `\includegraphics` them by name.
 
-## DAVOF: the TwoPhaseFlow advection studies (advectorVoF)
+## DAVOF: the TwoPhaseFlow advection studies
+
+Provenance (2026-10-15): every case records leia's commit in `case_params.json`
+(`gitCommit`) and, since the converter of 2026-10-15, the TwoPhaseFlow fork's commit and
+version stamp in `advectorVoF.csv` (`tpfCommit`, `tpfVersion`, from `LEIA_TPF_DIR`, which
+`etc/leia-env.sh` exports in every solve job; `-dirty` when `src/` or `apps/` of the fork
+have uncommitted changes), carried into the long table of the report. The studies of
+2026-10-13/14 predate the column: their fork commits are the ones STATUS 10.17 names
+(8f098c1 for the hex and perturbed studies and the controls, 33198a9 for hexTiming,
+eb4d173 for hexTiming2 and hexCheck). A study is reproduced by checking out both commits,
+building the fork (`build-tpf-davof.sbatch` on Lichtenberg), and submitting the config
+with `run-studies.sbatch`; the cases, the time step, the rows and the diagnostics are all
+in the committed config, the parameter files and the templates.
+ (advectorVoF)
 
 The transported face fractions (2026-10-13): the fork TwoPhaseFlow, branch `davof`
 (`<dirname of leia>/TwoPhaseFlow`, found by `etc/leia-env.sh` through `LEIA_TPF_DIR`),

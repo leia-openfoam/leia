@@ -166,6 +166,7 @@ def collect(study_dir):
             "dt": _f(tok.get("MAX_DELTA_T")), "scheme": tok.get("TPF_RECON_SCHEME", ""),
             "normalModel": tok.get("TPF_NORMAL_MODEL", ""),
             "gitCommit": meta.get("gitCommit", ""),
+            "tpfCommit": "",   # filled from the case CSV below (the fork's commit)
         }
         path = os.path.join(case, CSV)
         rows = []
@@ -178,6 +179,11 @@ def collect(study_dir):
         rec["status"] = _last_nonblank(rows, "status") or ("absent" if not rows else "incomplete")
         rec["abortStep"] = _last_nonblank(rows, "abortStep")
         rec["abortReason"] = _last_nonblank(rows, "abortReason")
+        # provenance of the solver: the TwoPhaseFlow fork's commit and version stamp the
+        # converter recorded (cases before 2026-10-15 carry none: the fork commit per study
+        # is then the one STATUS 10.17 names)
+        rec["tpfCommit"] = _last_nonblank(rows, "tpfCommit") or "unrecorded"
+        rec["tpfVersion"] = _last_nonblank(rows, "tpfVersion") or "unrecorded"
         for name, col in END_COLS.items():
             rec[name] = _last_nonblank(rows, col)
         for name, col in MAX_COLS.items():

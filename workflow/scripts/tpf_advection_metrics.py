@@ -57,6 +57,7 @@ import csv
 import glob
 import os
 import re
+import subprocess
 import sys
 
 AF_COLS = {"L1": "L1_alphaf", "L2": "L2_alphaf", "Linf": "Linf_alphaf",
@@ -73,7 +74,7 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "timeStepTime")
 COLUMNS = (["TIME", "step"] + list(AF_COLS.values()) + list(REC_COLS.values())
            + list(VOL_COLS.values()) + list(LOG_COLS)
-           + ["status", "abortStep", "abortReason"])
+           + ["status", "abortStep", "abortReason", "tpfCommit", "tpfVersion"])
 
 _RE_DAVOF = re.compile(
     r"^davof: (\d+) interface cells \(wispTol [^)]*\), normalModel \S+ \([^)]*\): "
@@ -195,6 +196,29 @@ def read_log(path):
     return steps, abort, ended, True
 
 
+def tpf_provenance():
+    """(short git commit of the TwoPhaseFlow fork, its platforms version stamp), from
+    LEIA_TPF_DIR (exported by etc/leia-env.sh); "unknown" where not available. The solver
+    binary the case ran is the fork's build at that commit (the clone-local platforms/)."""
+    tpf = os.environ.get("LEIA_TPF_DIR", "")
+    commit, version = "unknown", "unknown"
+    if tpf and os.path.isdir(tpf):
+        try:
+            commit = subprocess.run(["git", "-C", tpf, "rev-parse", "--short", "HEAD"],
+                                    capture_output=True, text=True, timeout=20).stdout.strip() or "unknown"
+            dirty = subprocess.run(["git", "-C", tpf, "status", "--porcelain", "--untracked-files=no",
+                                    "--", "src", "apps"], capture_output=True, text=True, timeout=20).stdout.strip()
+            if dirty:
+                commit += "-dirty"
+        except Exception:  # noqa: BLE001 - provenance must never fail the converter
+            pass
+        opts = os.environ.get("WM_OPTIONS", "")
+        stamp = os.path.join(tpf, "platforms", opts, ".openfoam-version")
+        if opts and os.path.isfile(stamp):
+            version = open(stamp).read().strip()
+    return commit, version
+
+
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--case", default=".", help="case directory (default .)")
@@ -225,6 +249,7 @@ def main(argv):
 
     keys = set(af) | set(rec) | set(vol) | set(log)
     keys = sorted(keys, key=float)
+    tpf_commit, tpf_version = tpf_provenance()
     rows = []
     for step, k in enumerate(keys, start=1):
         row = {c: "" for c in COLUMNS}
@@ -242,6 +267,8 @@ def main(argv):
         row["status"] = status
         row["abortStep"] = abort_step
         row["abortReason"] = abort_reason
+        row["tpfCommit"] = tpf_commit
+        row["tpfVersion"] = tpf_version
         rows.append(row)
 
     out = os.path.join(case, a.out)
