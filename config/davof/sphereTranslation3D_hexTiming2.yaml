@@ -1,0 +1,50 @@
+# The repeated timing study (2026-10-15) on the fork after the second round of bit-identical
+# speedups (c1b3995 the default face fractions without the full-mesh passes, 660d741 the area
+# normal over the wet-face list in global face order, bfe0c00 extendMarkedCells over the
+# marked faces): the three rows of sphereTranslation3D_hexTiming at Co 0.2, N = 32 / 64 /
+# 128, each THREE times (TPF_REPEAT, a comment line in controlDict: the cases are identical),
+# diagnostics at the end only, profiling on. The per-step medians of the repetitions average
+# the node noise that contaminated the N = 64 pair of the first timing study.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-15, before the run):
+# P-U1 (identity): every end value of every row and repetition equals the hex study's
+#      (docs/davof/davof-article/data/tables/davof_advection_sphereTranslation3D_hex.csv, Co 0.2)
+#      to all digits, and the three repetitions of a case are identical to each other.
+# P-U2 (cost): the ring-normal row's per-step median is below plicRDF's at every N, in every
+#      repetition; the profile's davof::reconstruct below 80 s at N = 128 (first study: 94 s,
+#      of which areaNormal 32 s) and the two default passes gone from the profile (37 s).
+# FALSIFIED IF: any digit differs (P-U1: then bisect c1b3995 / 660d741 / bfe0c00 on the N = 32
+#      case); the ring-normal median is above plicRDF's in two of three repetitions at any N.
+#
+#     sbatch --parsable -J leia-davof-sphereTranslation3D_hexTiming2 --export=ALL,STUDY=davof/sphereTranslation3D_hexTiming2 run-studies.sbatch
+study_name: sphereTranslation3D_hexTiming2
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-ringArea, davof-exact, plicRDF]
+  TPF_REPEAT: [1, 2, 3]
+  TPF_AFE_WRITE_CONTROL: ["onEnd"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VFE_WRITE_CONTROL: ["onEnd"]
+  TPF_PROFILING: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

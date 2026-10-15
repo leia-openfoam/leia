@@ -45,6 +45,9 @@ values
 
     TPF_WISP_TOL ( 1e-3 );
 
+    // repetition index of a timing study (a comment in controlDict; an axis only)
+    TPF_REPEAT ( 1 );
+
     // plicRDF's interpolateNormal switch (true = the library's default)
     TPF_INTERPOLATE_NORMAL ( true );
 

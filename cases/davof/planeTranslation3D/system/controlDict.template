@@ -21,6 +21,8 @@ FoamFile
 
 application     advectorVoF;
 
+// repetition @!TPF_REPEAT!@ of a timing study (the token is an axis that changes nothing in the case)
+
 startFrom       startTime;
 startTime       0;
 
