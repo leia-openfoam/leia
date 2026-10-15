@@ -31,6 +31,7 @@ Commands:
   iterations --studies <study dir>... --out <dir>   (S0: no psi solve without an iteration where F != 0)
   seam --serial <study dir>... --parallel <study dir>... --out <dir>
   pace --studies <study dir>...
+  summary --metrics <dir>   (from the tables of analyse: staticSource_survival.csv, staticSource_growth.csv)
   curate --metrics <dir> [--theme gradient-controlled-level-set] [--stamp <libleiaCore stamp>]
 numpy and the standard library only; runs on the laptop and under snakemake's interpreter on the
 cluster.
@@ -1174,10 +1175,70 @@ def cmd_pace(args):
     return 0
 
 
+def _f(v):
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return float("nan")
+    return x
+
+
+def summary_tables(fields, hist):
+    """Two derived tables, from the tables of analyse only (no field is read again).
+
+    survival: per (arm, init, N) the first field write at which dist3_2 (the L2 of (psi - d)/h in
+    |d| <= 3h) exceeds 1 or is not finite -- the field is then more than one cell from d near the
+    circle -- or 'none' by the last write; and the state at the last write: shift2, missing,
+    spuriousFar, volChg, dist3_2, eik3_2.
+
+    growth: per (arm, init, N) the least-squares rate of ln(eikB) over tau, eikB =
+    E_NARROW_L2_GRAD_PSI of the history samples, on the samples with 1 <= eikB <= 1e8 (the growth
+    phase: above the start, below the saturation); at least three samples, else empty. The rate is
+    per unit tau, so per unit of the source rate (1 1/s in every arm)."""
+    by = {}
+    for r in fields:
+        by.setdefault((r["arm"], r["init"], int(r["N"])), {})[float(r["tau"])] = r
+    surv = []
+    for (arm, init, N), rows in sorted(by.items()):
+        taus = sorted(rows)
+        fail = next((tau for tau in taus if not (_f(rows[tau]["dist3_2"]) <= 1.0)), None)
+        last = rows[taus[-1]]
+        surv.append(dict(arm=arm, init=init, N=N, tauFail="none" if fail is None else fail, tauLast=taus[-1],
+                         shift2=_f(last["shift2"]), missing=last["missing"], spuriousFar=last["spuriousFar"],
+                         volChg=_f(last["volChg"]), dist3_2=_f(last["dist3_2"]), eik3_2=_f(last["eik3_2"])))
+    hb = {}
+    for h in hist:
+        hb.setdefault((h["arm"], h["init"], int(h["N"])), []).append(h)
+    growth = []
+    for (arm, init, N), hs in sorted(hb.items()):
+        pts = [(float(h["tau"]), _f(h.get("E_NARROW_L2_GRAD_PSI"))) for h in hs]
+        sel = [(tau, v) for tau, v in pts if math.isfinite(v) and 1.0 <= v <= 1e8]
+        rate = ""
+        if len(sel) >= 3:
+            x = np.array([s[0] for s in sel]); y = np.log([s[1] for s in sel])
+            rate = float(np.polyfit(x, y, 1)[0])
+        growth.append(dict(arm=arm, init=init, N=N, rate=rate, samples=len(sel),
+                           window=f"{sel[0][0]:g}-{sel[-1][0]:g}" if sel else ""))
+    return surv, growth
+
+
+def cmd_summary(args):
+    fields = read_table(os.path.join(args.metrics, "staticSource_fields.csv"))
+    hist = read_table(os.path.join(args.metrics, "staticSource_histories.csv"))
+    if not fields:
+        print("summary: no staticSource_fields.csv in", args.metrics)
+        return 1
+    surv, growth = summary_tables(fields, hist)
+    write_rows(os.path.join(args.metrics, "staticSource_survival.csv"), surv)
+    write_rows(os.path.join(args.metrics, "staticSource_growth.csv"), growth)
+    print(f"summary: {len(surv)} survival rows, {sum(1 for g in growth if g['rate'] != '')} growth rates")
+    return 0
+
+
 def cmd_curate(args):
     theme = args.theme
     tables = os.path.join(REPO, "docs", theme, "gcls-level-set-article", "data", "tables")
-    names = ("representation", "orders", "null", "verdicts", "cases", "seam")
+    names = ("representation", "orders", "null", "verdicts", "cases", "seam", "survival", "growth", "iterations", "init")
     os.makedirs(tables, exist_ok=True)
     copied = []
     for n in names:
@@ -1224,13 +1285,16 @@ def main():
     p.add_argument("--out", required=True)
     p = sub.add_parser("pace")
     p.add_argument("--studies", nargs="+", required=True)
+    p = sub.add_parser("summary")
+    p.add_argument("--metrics", required=True)
     p = sub.add_parser("curate")
     p.add_argument("--metrics", required=True)
     p.add_argument("--theme", default="gradient-controlled-level-set")
     p.add_argument("--stamp", default="")
     a = ap.parse_args()
     return {"selftest": cmd_selftest, "check-init": cmd_check_init, "analyse": cmd_analyse, "null": cmd_null,
-            "seam": cmd_seam, "pace": cmd_pace, "curate": cmd_curate, "iterations": cmd_iterations}[a.cmd](a)
+            "seam": cmd_seam, "pace": cmd_pace, "curate": cmd_curate, "iterations": cmd_iterations,
+            "summary": cmd_summary}[a.cmd](a)
 
 
 if __name__ == "__main__":
