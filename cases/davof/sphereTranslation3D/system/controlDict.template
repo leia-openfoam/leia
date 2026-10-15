@@ -102,6 +102,10 @@ functions
         consistency     @!TPF_AFE_CONSISTENCY!@;
         reconstructionError true;
         reconstructionErrorEveryStep @!TPF_RECON_ERROR_EVERY_STEP!@;
+        // the signed per-face error alphaf - alphaf_exact written as the
+        // surface field alphafError.water at every write of this object
+        // (the sagitta diagnostic of 2026-10-16; false: not written)
+        writeFaceError  @!TPF_AFE_WRITE_FACE_ERROR!@;
         writeControl    @!TPF_AFE_WRITE_CONTROL!@;
         writeInterval   @!TPF_AFE_WRITE_INTERVAL!@;
         writePrecision  12;

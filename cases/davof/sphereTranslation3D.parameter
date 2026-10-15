@@ -80,6 +80,8 @@ values
     TPF_AFE_WRITE_CONTROL ( timeStep );
     TPF_AFE_WRITE_INTERVAL ( 1 );
     TPF_AFE_CONSISTENCY ( true );
+    // the signed per-face error written as a surface field (the diagnostic study)
+    TPF_AFE_WRITE_FACE_ERROR ( false );
     TPF_RECON_ERROR_EVERY_STEP ( false );
     // volumeFractionError: the same two write keys
     TPF_VFE_WRITE_CONTROL ( timeStep );

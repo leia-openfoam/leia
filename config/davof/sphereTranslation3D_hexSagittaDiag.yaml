@@ -47,6 +47,7 @@ axes_override:
   END_TIME: [0.00625]
   TPF_WRITE_INTERVAL: [0.00625]
   TPF_WRITE_TENSOR: ["true"]
+  TPF_AFE_WRITE_FACE_ERROR: ["true"]
   TPF_AFE_WRITE_CONTROL: ["onEnd"]
   TPF_AFE_CONSISTENCY: ["false"]
   TPF_VFE_WRITE_CONTROL: ["onEnd"]
