@@ -294,8 +294,15 @@ articles: article-sl article-lsl article-grl article-gcls article-amplification
 # Read a reviewed PDF back. Annotate $(ANA_AMP)/ms.pdf in any viewer that SAVES into the
 # file (Edge, Firefox, Acrobat, Okular), save it next to the source as ms_reviewed.pdf, and
 # run this: every comment comes back with the passage it sits on and the section it is in.
-amp-open: article-amplification ## build the amplification report and open it for annotation
-	@cp -f $(ANA_AMP)/ms.pdf $(ANA_AMP)/ms_reviewed.pdf
+amp-open: article-amplification ## open the amplification review copy (never overwrites it)
+	@if [ -f $(ANA_AMP)/ms_reviewed.pdf ]; then \
+	    n=$$(python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf --count 2>/dev/null || echo 0); \
+	    echo "opening the EXISTING review copy ($$n comment(s) in it)"; \
+	    echo "to start a clean round instead:  make amp-refresh"; \
+	 else \
+	    cp $(ANA_AMP)/ms.pdf $(ANA_AMP)/ms_reviewed.pdf; \
+	    echo "created a fresh review copy"; \
+	 fi
 	@echo "annotate and SAVE (not 'print to PDF'):  $(ANA_AMP)/ms_reviewed.pdf"
 	@echo "then run:  make review-amplification"
 	@if command -v explorer.exe >/dev/null 2>&1; then \
@@ -303,8 +310,20 @@ amp-open: article-amplification ## build the amplification report and open it fo
 	 elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$(ANA_AMP)/ms_reviewed.pdf" >/dev/null 2>&1 & \
 	 else echo "open it by hand"; fi
 
-review-amplification: ## read the comments out of docs/analysis-amplification-sl/ms_reviewed.pdf
-	@python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf
+amp-refresh: article-amplification ## start a new review round from the current build
+	@n=$$(python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf --count 2>/dev/null || echo 0); \
+	 if [ "$$n" != "0" ]; then \
+	    echo "REFUSED: $(ANA_AMP)/ms_reviewed.pdf still holds $$n comment(s)."; \
+	    echo "Run 'make review-amplification' first -- it archives them into"; \
+	    echo "$(ANA_AMP)/review-log.md -- then run this again."; \
+	    exit 1; \
+	 fi; \
+	 cp $(ANA_AMP)/ms.pdf $(ANA_AMP)/ms_reviewed.pdf; \
+	 echo "fresh review copy: $(ANA_AMP)/ms_reviewed.pdf"
+
+review-amplification: ## read the comments out of ms_reviewed.pdf AND archive them
+	@python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf \
+	    --append-log $(ANA_AMP)/review-log.md
 
 report-gcls: ## technical report on the gradient-control campaign (docs/gradient-controlled-level-set/gcls-technical-report)
 	cd docs/gradient-controlled-level-set/gcls-technical-report && latexmk -pdf -interaction=nonstopmode gclsTechnicalReport.tex

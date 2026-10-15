@@ -134,11 +134,39 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("pdf")
     ap.add_argument("--json", action="store_true", help="machine-readable output")
+    ap.add_argument("--count", action="store_true",
+                    help="print only the number of comments (for scripting)")
+    ap.add_argument("--append-log", metavar="FILE", default=None,
+                    help="append the extracted comments to a markdown log, so a review "
+                         "survives even if the annotated PDF is lost or overwritten")
     ap.add_argument("--quote-chars", type=int, default=400,
                     help="truncate the quoted passage (0 = no limit)")
     a = ap.parse_args(argv)
 
     rows = collect(a.pdf, a.quote_chars)
+
+    if a.count:
+        print(len(rows))
+        return 0
+
+    if a.append_log and rows:
+        import datetime, os
+        stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        with open(a.append_log, "a") as fh:
+            if fh.tell() == 0:
+                fh.write("# Review comments on the amplification report\n\n"
+                         "Appended by `make review-amplification`. The annotated PDF is not\n"
+                         "tracked, so this file is the durable record of each review round.\n")
+            fh.write(f"\n## {stamp} -- {len(rows)} comment(s) from "
+                     f"{os.path.basename(a.pdf)}\n\n")
+            for r in rows:
+                who = f" ({r['author']})" if r["author"] else ""
+                fh.write(f"**[{r['n']}] p.{r['page']} -- {r['section']}**{who}\n\n")
+                if r["quoted"]:
+                    fh.write(f"> {r['quoted']}\n\n")
+                fh.write((r["comment"] or "_(marked, no note typed)_") + "\n\n")
+        print(f"archived {len(rows)} comment(s) to {a.append_log}\n")
+
     if a.json:
         print(json.dumps(rows, indent=2, ensure_ascii=False))
         return 0
