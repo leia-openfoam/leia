@@ -869,6 +869,67 @@ coincides with the face, at $\mathrm{Co} = 0.5$ --- which is the Courant number 
 hexahedral advection case, including the convergence study that is the hex rung of the standing
 regression set.
 
+\subsection{Is a smaller time step safer? No --- and the curve has a closed form}
+\label{sec:cochoice}
+
+The obvious response to Table~\ref{tab:frozen} is to pick a better Courant number. It does not
+work, and the reason is worth seeing exactly. Sweeping the production stencil finely gives
+
+\begin{equation}
+  \boxed{\;\rho_{\text{inflow}}(\mathrm{Co}) \;=\; 1 + \tfrac{4}{3}\,\mathrm{Co}\,
+         \bigl(\tfrac12 - \mathrm{Co}\bigr), \qquad 0 \le \mathrm{Co} \le \tfrac12 \;}
+  \label{eq:cocurve}
+\end{equation}
+
+\derived{} Verified against the computed symbol at 21 Courant numbers across the range; the
+largest deviation is $4\times10^{-16}$.
+
+It is a parabola, pinned to exactly one at both ends and bulging in between:
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+Co & $\rho$ per step & $\rho^{1/\mathrm{Co}}$ per cell width & $\sum_j|g_j|$ \\
+\midrule
+0.05 & 1.030000 & 1.8061 & 0.024032 \\
+0.10 & 1.053333 & 1.6814 & 0.042724 \\
+0.20 & 1.080000 & 1.4693 & 0.064086 \\
+\textbf{0.25} & \textbf{1.083333} & 1.3774 & 0.066756 \\
+0.30 & 1.080000 & 1.2924 & 0.064086 \\
+0.40 & 1.053333 & 1.1387 & 0.042724 \\
+0.50 & 1.000000 & 1.0000 & \textbf{0.000000} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Three things follow, and none of them is encouraging.
+
+\paragraph{The curve is symmetric about $\mathrm{Co} = 1/4$, so 0.2 and 0.3 are identical.}
+Both give $1.080000$, to eight decimals, as do $0.1$ and $0.4$, and $0.05$ and $0.45$. Moving
+between $0.2$ and $0.3$ buys nothing at all. The symmetry has a plain cause: the two data points
+that bracket the departure point are the cell centre at $0$ and the face at $-1/2$, and the
+error of a fit between two points is largest half way between them.
+
+\paragraph{The worst value is in the middle of the useful range.} $\mathrm{Co} = 1/4$ gives
+$\rho = 13/12$, the maximum of \eqref{eq:cocurve}. Our polyhedral and 3D studies run at $0.3$,
+which is next to it.
+
+\paragraph{Both ends are one for opposite reasons, and only one of them is good.} At
+$\mathrm{Co} \to 0$ nothing moves, so nothing is amplified. At $\mathrm{Co} = 1/2$ the departure
+point sits exactly on the face datum and the cell returns its own value --- zero amplification
+because zero transport, which is the frozen state of Section~\ref{sec:frozen}.
+
+\paragraph{And over a fixed physical time, a smaller step is worse.} Halving the step halves the
+per-step growth but doubles the number of steps, and the second effect wins. The fair comparison
+at fixed horizon is the growth per cell width transported, $\rho^{1/\mathrm{Co}}$, which rises
+monotonically as the step falls: $1.29$ at $\mathrm{Co} = 0.3$ against $1.81$ at $0.05$.
+
+\derived{} \textbf{There is no good Courant number in this range.} Reducing the step makes the
+accumulated boundary error worse; raising it towards $1/2$ removes the amplification by
+switching the transport off. The trade-off cannot be won by choosing a number, which is the
+argument for fixing the face \emph{value} (Section~\ref{sec:improve}): a face datum carrying the
+right value removes the curve rather than moving along it.
+
 \opn{} Whether that materially affects those convergence orders is not established here. The
 frozen cells are one layer at the inflow patch, and the interface in those studies spends most
 of its time away from that layer. But a measured order from a case whose inflow boundary is
