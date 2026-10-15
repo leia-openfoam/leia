@@ -100,7 +100,7 @@ def read_csv(path):
 
 def read_table(path):
     """Every row of a table this script wrote (null, init, iterations). Unlike read_csv it keeps a
-    last row with an empty field: such a field is legitimate there (firstZero of a case without a
+    last row with an empty field: such a field is legitimate there (firstDeadZone of a case without a
     zero-iteration solve), not the mark of a run that stopped."""
     if not os.path.isfile(path):
         return []
@@ -605,9 +605,14 @@ def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
     if iter_rows:
         bad = [r for r in iter_rows if r["verdict"] != "PASS"]
         add("S0", "every case (iterations)", f"{len(iter_rows) - len(bad)}/{len(iter_rows)} PASS",
-            "F != 0: no zero-iteration psi solve; F = 0: no iteration", "PASS" if not bad else "FAIL",
-            "; ".join(f"{r['case']} {r['arm']} {r['init']} N {r['N']}: {r['zeroIter']}/{r['solves']} zero"
-                      for r in bad[:5]))
+            "psi solves present; no deadZone solve; F = 0: zero residual in every solve",
+            "PASS" if not bad else "FAIL",
+            "; ".join(f"{r['case']} {r['arm']} {r['init']} N {r['N']}: solves {r['solves']}, deadZone {r['deadZone']}, "
+                      f"singular {r['singular']}" for r in bad[:5]))
+        sing = [r for r in iter_rows if int(r["singular"]) > 0 and r["source"] not in ZERO_SOURCES]
+        add("S0", "cases with F != 0 and singular solves (zero residual to round-off)", f"{len(sing)}",
+            "counted", "RECORDED", "; ".join(f"{r['case']} {r['arm']} {r['init']} N {r['N']}: {r['singular']}/{r['solves']}"
+                                              for r in sing[:8]))
     else:
         add("S0", "every case", "", "", "NOT EVALUATED", "no staticSource_iterations.csv (iterations --out)")
     # P0.2 from check-init --out (staticSource_init.csv); P0.3, P6.1, P7.1, P8.1 from null
@@ -782,17 +787,28 @@ def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
 ZERO_SOURCES = ("noSource", "R", "Rdiv", "RdivStrictSp")     # identically zero at u = 0
 _SOLVE = re.compile(r"Solving for psi, Initial residual = ([0-9.eE+-]+), Final residual = ([0-9.eE+-]+), "
                     r"No Iterations (\d+)")
+_SINGULAR = re.compile(r"Solving for psi:\s+solution singularity")
 _TIME = re.compile(r"^Time = ([0-9.eE+-]+)")
 
 
 def psi_iterations(case):
-    """The psi solves of a case log and how many of them did no iteration. Not a state classifier
-    (foam_log_state.sh is): it reads only the solver-performance lines of the psi equation.
-    At u = 0 the psi matrix is diagonal and OpenFOAM normalises the residual by the whole field,
-    so a small source update can start below the tolerance; a solve with zero iterations then
-    returns psi unchanged (STATUS 11.27, the void data of commit 010b553a)."""
+    """The psi solves of a case log, classified. Not a state classifier (foam_log_state.sh is): it
+    reads only the solver-performance lines of the psi equation. Two line formats:
+      "Solving for psi, Initial residual = r0, Final residual = r1, No Iterations k"
+      "Solving for psi:  solution singularity"  -- PBiCGStab found sum(r*r) < VSMALL (1e-300) and
+                                                   left psi unchanged
+    Classes:
+      deadZone  k = 0 with r0 > 0: the solver returned psi UNCHANGED although the residual was not
+                zero -- the defect of the void run (010b553a): at u = 0 the psi matrix is diagonal,
+                OpenFOAM normalises r0 by the whole field, and a small update started below the
+                tolerance (STATUS 11.27 part 2)
+      singular  the singularity line: the residual is zero to round-off. MEASURED 2026-10-15
+                (softWall, band, d, N = 256): the written initial-residual field is exactly 0; the
+                source share of the diagonal, F dt/2 ~ 1e-19, is below the round-off of V/dt, so
+                the floating-point system has the solution psi_old, and so would an exact solve
+      zeroRes   k = 0 with r0 = 0 (nothing to do; the format without minIter)"""
     log = os.path.join(case, "log.leiaLevelSetFoam")
-    n = zero = steps0 = 0
+    n = dead = sing = zres = steps0 = 0
     first0, tnow, cur = "", "", []
     if not os.path.isfile(log):
         return None
@@ -804,28 +820,41 @@ def psi_iterations(case):
                     steps0 += 1
                 cur, tnow = [], m.group(1)
                 continue
+            if _SINGULAR.search(line):
+                n += 1
+                sing += 1
+                cur.append(0)
+                continue
             m = _SOLVE.search(line)
             if m:
                 k = int(m.group(3))
                 n += 1
                 cur.append(k)
                 if k == 0:
-                    zero += 1
-                    first0 = first0 or tnow
+                    if float(m.group(1)) > 0:
+                        dead += 1
+                        first0 = first0 or tnow
+                    else:
+                        zres += 1
     if cur and all(k == 0 for k in cur):
         steps0 += 1
-    return dict(solves=n, zeroIter=zero, stepsAllZero=steps0, firstZero=first0)
+    return dict(solves=n, deadZone=dead, singular=sing, zeroRes=zres, stepsUnchanged=steps0, firstDeadZone=first0)
 
 
 def iteration_rows(study_dirs):
+    """S0 per case. PASS needs psi solve lines (a log without them proves nothing) and no deadZone
+    solve; with F = 0 (noSource, R, Rdiv, RdivStrictSp) every solve must also have a zero residual
+    (singular or zeroRes), since there is nothing to integrate. Singular solves with F != 0 are
+    allowed and counted: their residual is zero to round-off."""
     out = []
     for case in case_dirs(study_dirs):
         c = case_info(case)
         it = psi_iterations(case)
         if it is None:
             continue
-        expect_zero = c["source"] in ZERO_SOURCES
-        ok = (it["zeroIter"] == it["solves"]) if expect_zero else (it["zeroIter"] == 0 and it["solves"] > 0)
+        ok = it["solves"] > 0 and it["deadZone"] == 0
+        if c["source"] in ZERO_SOURCES:
+            ok = ok and it["singular"] + it["zeroRes"] == it["solves"]
         out.append(dict(item="S0", case=f"{c['study']}/{c['name']}", arm=c["arm"], init=c["init"], N=c["N"],
                         source=c["source"], **it, verdict="PASS" if ok else "FAIL"))
     return out
@@ -1107,8 +1136,8 @@ def cmd_iterations(args):
     bad = [r for r in rows if r["verdict"] != "PASS"]
     print(f"iterations: {len(rows)} cases, {len(bad)} not PASS")
     for r in bad[:20]:
-        print(f"  {r['case']} {r['arm']} {r['init']} N {r['N']}: {r['zeroIter']}/{r['solves']} psi solves without an "
-              f"iteration, {r['stepsAllZero']} steps unchanged, first at t = {r['firstZero']}")
+        print(f"  {r['case']} {r['arm']} {r['init']} N {r['N']}: {r['solves']} psi solves, {r['deadZone']} deadZone "
+              f"(first at t = {r['firstDeadZone']}), {r['singular']} singular, {r['zeroRes']} zero residual")
     return 0 if not bad else 1
 
 
