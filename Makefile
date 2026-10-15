@@ -312,12 +312,15 @@ amp-open: article-amplification ## open the amplification review copy (never ove
 
 amp-refresh: article-amplification ## start a new review round from the current build
 	@n=$$(python3 workflow/scripts/read_pdf_comments.py $(ANA_AMP)/ms_reviewed.pdf --count 2>/dev/null || echo 0); \
-	 if [ "$$n" != "0" ]; then \
-	    echo "REFUSED: $(ANA_AMP)/ms_reviewed.pdf still holds $$n comment(s)."; \
-	    echo "Run 'make review-amplification' first -- it archives them into"; \
-	    echo "$(ANA_AMP)/review-log.md -- then run this again."; \
+	 cur=$$(sha256sum $(ANA_AMP)/ms_reviewed.pdf 2>/dev/null | cut -d' ' -f1); \
+	 arch=$$(cat $(ANA_AMP)/review-log.md.stamp 2>/dev/null | tr -d '\n'); \
+	 if [ "$$n" != "0" ] && [ "$$cur" != "$$arch" ]; then \
+	    echo "REFUSED: $(ANA_AMP)/ms_reviewed.pdf holds $$n comment(s) that are NOT archived."; \
+	    echo "Run 'make review-amplification' first; it appends them to"; \
+	    echo "$(ANA_AMP)/review-log.md. Then this will proceed."; \
 	    exit 1; \
 	 fi; \
+	 if [ "$$n" != "0" ]; then echo "$$n comment(s) already archived; replacing the copy"; fi; \
 	 cp $(ANA_AMP)/ms.pdf $(ANA_AMP)/ms_reviewed.pdf; \
 	 echo "fresh review copy: $(ANA_AMP)/ms_reviewed.pdf"
 

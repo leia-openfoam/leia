@@ -15,7 +15,11 @@ emphasize
 
 > Equation (1) is not that equation. is a label carried by the fluid, not an amount of anything,l ϕ so a particle keeps its value whatever the flow around it does. What compression changes is howlf far apart the level sets lie: squeezing the fluid brings surfaces of different closer together and ϕ therefore raises ϕ|. The value does not grow; the gradient does. (That steepening is a real |∇ issue fo ...
 
-The gradient norm transport equation for \phi states that the gradient norm rate of change is proportional to n^T (grad U) n where n = grad phi)/mag (grad phi)or something in this direction, so even if the field is divergence free, only a velocity field that is constant in the normal direction of every hypersurface given by phi will not destroy mag(grad phi).
+The gradient norm transport equation for \phi states that the gradient norm rate of change is proportional to n^T (grad U) n 
+
+where n = grad phi)/mag (grad phi)
+
+or something in this direction, so even if the field is divergence free, only a velocity field that is constant in the normal direction of every hypersurface given by phi will not destroy mag(grad phi).
 
 **[3] p.6 -- What was measured** (TomislavMaric)
 
@@ -76,4 +80,3 @@ OK so we need to solve this equation for C, to get G(\theta) = 1 for all theta? 
 > (25)
 
 visualize using tikz-pgf and two lines of 1D point values, one at t^n, another at t^{n+1} to see the connection.
-

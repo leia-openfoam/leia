@@ -219,3 +219,4 @@ docs/knowledge-base/graph3d/graph.json
 !docs/knowledge-base/assets/*.svg
 docs/knowledge-base/.quartz/digests/*
 !docs/knowledge-base/.quartz/digests/README.md
+docs/analysis-amplification-sl/review-log.md.stamp

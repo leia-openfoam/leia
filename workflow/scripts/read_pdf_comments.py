@@ -165,6 +165,13 @@ def main(argv=None):
                 if r["quoted"]:
                     fh.write(f"> {r['quoted']}\n\n")
                 fh.write((r["comment"] or "_(marked, no note typed)_") + "\n\n")
+        # Record WHICH file was archived, by content hash, so a refresh can tell
+        # "already archived" from "not yet read". Without this the guard in
+        # `make amp-refresh` can never be satisfied: archiving does not remove the
+        # annotations from the PDF, so a count-based guard blocks for ever.
+        import hashlib
+        h = hashlib.sha256(open(a.pdf, "rb").read()).hexdigest()
+        open(a.append_log + ".stamp", "w").write(h + "\n")
         print(f"archived {len(rows)} comment(s) to {a.append_log}\n")
 
     if a.json:
