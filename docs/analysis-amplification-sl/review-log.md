@@ -80,3 +80,66 @@ OK so we need to solve this equation for C, to get G(\theta) = 1 for all theta? 
 > (25)
 
 visualize using tikz-pgf and two lines of 1D point values, one at t^n, another at t^{n+1} to see the connection.
+
+## 2026-10-15 18:07 -- 10 comment(s) from ms_reviewed.pdf
+
+**[1] p.11 -- Why each wave is treated separately** (TomislavMaric)
+
+> ei θ · m ϕm = = cos(θ · m) + i sin(θ · m
+
+Use a tikz-pgf schematic image in 1D and show the smallest wave, twice largest, then one more twice largest, and their superposition.
+
+**[2] p.12 -- What the exact solution does to a wave, and what the three cases mean** (TomislavMaric)
+
+> Co ˆu)
+
+express this as well here, make descriptions didactic and self contained
+
+**[3] p.13 -- The one-dimensional step, drawn** (TomislavMaric)
+
+> is the target, not the ceilingi
+
+Can we optimize weights for |G|=1 on a given mesh? Say hexahedral? Assume that there is some angle deviation and distance deviation w.r.t. perfect equidistant hexahedral mesh, which happens when unstructured hexahedral mesh is generated?
+
+**[4] p.14 -- Can we choose C to make the scheme exact?** (TomislavMaric)
+
+> Any velocity variation breaks it, and so does any mesh grading or refinement
+
+and so does the capillary time step restriction
+
+**[5] p.15 -- Why one dimension cannot answer the question** (TomislavMaric)
+
+> There is a second quantity in circulation in this project, and (44) is the cleanest place to see whyi it misleads.
+
+Should we then denote it here and discard it?
+
+**[6] p.18 -- At the Courant numbers we advect at, the inflow cell stops transporting** (TomislavMaric)
+
+> Extrapolating a quadratic is the textbook way to amplify: a parabola fitted on one side and continued past the data grows quickly, and the further you continue it the worse it gets. Equation (50) says exactly that, with the extrapolation distance measured in cell widths.
+
+Emphasize.
+
+**[7] p.18 -- At the Courant numbers we advect at, the inflow cell stops transporting** (TomislavMaric)
+
+> What the boundary face value is really doing
+
+Should we not apply the boundary condition there? But then again zero gradient is the worst possible boundary condition, because the gradient should not be zero at the inlet of \phi.. can we not extrapolate safely?
+
+**[8] p.19 -- Is a smaller time step safer? No — and the curve has a closed form** (TomislavMaric)
+
+> The freezing is strongest when the departure point coincides with the face, at — which is the Courant number of our 2D hexahedral advection case, Co = 0.5 including the convergence study that is the hex rung of the standing regression set.
+
+OK so we use CFL=0.5 for now, it is still larger than the capillary time restriciton?
+
+**[9] p.20 -- The face value's weight does not matter. Its presence does.** (TomislavMaric)
+
+> Whether that materially affects those convergence orders is not established here.l The frozen cells are one layer at the inflow patch, and the interface in those studies spends mostl of its time away from that layer. But a measured order from a case whose inflow boundary is inert deserves to be checked rather than assumed, and the check is cheap: compare against and against a run at 0.45. stencilB ...
+
+Can we not assume that we can extend curvature as constant in the inlet-normal direction, woudl that help ?
+
+**[10] p.20 -- The face value's weight does not matter. Its presence does.** (TomislavMaric)
+
+> which under zeroGradient
+
+I think this might be a problem, because it is not zero-gradient, which means \phi is flat in the inlet-normal direction... this is inconsistent. What is the best practice for level set methods on the inlet?
+
