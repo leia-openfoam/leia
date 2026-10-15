@@ -505,12 +505,20 @@ ORDER_METRICS = ("zcL1", "zcL2", "shift2", "shapeEx1", "shapeEx2", "volEx", "vol
 
 
 def orders_table(fields):
+    """Orders per (arm, init, tau) over every rung of the arm, ACROSS studies: the N = 512 rungs of
+    stage C are separate studies (staticSourceGc*2D_N512) of the same arms. A rung that two studies
+    both hold would be ambiguous and stops the script."""
     groups = {}
     for r in fields:
-        groups.setdefault((r["study"], r["arm"], r["init"], r["tau"]), []).append(r)
+        groups.setdefault((r["arm"], r["init"], r["tau"]), []).append(r)
     out = []
-    for (study, arm, init, tau), rs in sorted(groups.items()):
+    for (arm, init, tau), rs in sorted(groups.items()):
         rs = sorted(rs, key=lambda r: r["N"])
+        Ns = [r["N"] for r in rs]
+        if len(set(Ns)) != len(Ns):
+            raise SystemExit(f"orders_table: rung held twice for {arm} {init} tau {tau}: "
+                             + ", ".join(f"{r['study']}/{r['case']} N {r['N']}" for r in rs))
+        study = "+".join(sorted({r["study"] for r in rs}))
         if len(rs) < 2:
             continue
         hs = [1.0 / r["N"] for r in rs]
@@ -607,9 +615,9 @@ def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
         add("S0", "every case (iterations)", f"{len(iter_rows) - len(bad)}/{len(iter_rows)} PASS",
             "psi solves present; no deadZone solve; F = 0: zero residual in every solve",
             "PASS" if not bad else "FAIL",
-            "; ".join(f"{r['case']} {r['arm']} {r['init']} N {r['N']}: solves {r['solves']}, deadZone {r['deadZone']}, "
-                      f"singular {r['singular']}" for r in bad[:5]))
-        sing = [r for r in iter_rows if int(r["singular"]) > 0 and r["source"] not in ZERO_SOURCES]
+            "; ".join(f"{r['case']} {r['arm']} {r['init']} N {r['N']}: solves {r.get('solves')}, deadZone "
+                      f"{r.get('deadZone')}, singular {r.get('singular')}" for r in bad[:5]))
+        sing = [r for r in iter_rows if int(r.get("singular") or 0) > 0 and r["source"] not in ZERO_SOURCES]
         add("S0", "cases with F != 0 and singular solves (zero residual to round-off)", f"{len(sing)}",
             "counted", "RECORDED", "; ".join(f"{r['case']} {r['arm']} {r['init']} N {r['N']}: {r['singular']}/{r['solves']}"
                                               for r in sing[:8]))
