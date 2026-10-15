@@ -6209,3 +6209,15 @@ plicRDF::reconstruct 265 s; the face update about 45 s more than plicRDF's flux 
 default passes 37 s, the second-ring sweep 7 s, the second-layer bounding 10 s). The 1.16x of
 the hex study was the diagnostic's cost. The `TPF_PROFILING` block renders inert (false) in
 every other study.
+
+Appendix to 10.17 (2026-10-15 12:40, the second speedup round). Fork c1b3995 / 660d741 /
+bfe0c00 (the default face fractions without the full-mesh passes, the area normal over the
+published wet-face list in global face order, extendMarkedCells over the marked faces).
+`planeTranslation3D_hexCheck` (16 cases) and `sphereTranslation3D_hexTiming2` (27 cases, three
+repetitions through TPF_REPEAT; tables c104c1f): P-U1 CONFIRMED, every gate maximum and end
+value equals the hex study's to all digits, the repetitions identical to each other. P-U2
+CONFIRMED: medians of the per-step medians ringArea / plicRDF 0.02 / 0.02 (N = 32), 0.13 /
+0.15 (N = 64), 1.31 / 1.72 s (N = 128); the same-node profile at N = 128 davof::reconstruct
+106 s (20 % of advect) against plicRDF::reconstruct 398 s (49 %), formAreaNormal 4 s, the
+default passes 12 s. Node noise: the same N = 128 case 639 to 1019 s across repetitions;
+quote medians only.
