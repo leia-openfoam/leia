@@ -16,7 +16,8 @@ and writes into the davof theme's data source (paths.tables_dir / figs_dir):
         the long table, one row per case: the end values (the last non-blank
         row of every column), the run maxima, min alpha over the run, the
         interface cells at the first and the last step, the sliver and
-        fit-fallback and ring-fallback maxima, the cpu time, the status
+        fit-fallback and ring-fallback maxima, the cpu time and the cpu
+        time per step (cpu / nSteps), the status
     tables/davof_advection_history_<study>.csv
         the davof rows: every step's face-fraction errors and counts
     tables/davof_advection_growth_<study>.csv
@@ -190,6 +191,10 @@ def collect(study_dir):
         rec["nInterfaceAdv_first"] = int(cells[0]) if cells else ""
         rec["nInterfaceAdv_last"] = int(cells[-1]) if cells else ""
         rec["cpu"] = _last_nonblank(rows, "executionTime")
+        # the cpu time per step (the timing studies): the solver's cumulative
+        # ExecutionTime at the last step over the number of steps
+        cpu = _f(rec["cpu"])
+        rec["cpu_per_step"] = cpu / rec["nSteps"] if (cpu is not None and rec["nSteps"]) else ""
         recs.append(rec)
     recs.sort(key=lambda r: (_row_rank(r["row"]), r["row"], r["arm"], float(r["Co"]), r["N"]))
     return recs

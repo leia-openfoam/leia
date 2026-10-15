@@ -59,14 +59,33 @@ maxCo           1e6;
 maxAlphaCo      1e6;
 maxDeltaT       1e6;
 
+// OpenFOAM's built-in profiling (TPF_PROFILING, default false: the block is
+// inert). With true the cumulative times of the fork's markers
+// (davof::reconstruct, the normal models, isoAdvection's sweeps and bounds,
+// the function objects; README-davof "The cost of the DAVOF rows") are
+// written to <time>/uniform/profiling at every field write, the last one
+// covering the whole run (the timing study sphereTranslation3D_hexTiming).
+profiling
+{
+    active          @!TPF_PROFILING!@;
+}
+
 functions
 {
     // The transported face fractions against the EXACT DAVOF state
-    // (exactSphere) of the sphere translated by U0 t, every step (the davof
-    // rows; -1 for the comparators), and the reconstruction error of the
-    // scheme (normal, centre) at the end time:
-    // postProcessing/areaFractionError/0/areaFractionError.dat and
-    // postProcessing/reconstructionError/0/error.dat.
+    // (exactSphere) of the sphere translated by U0 t (the davof rows; -1
+    // for the comparators), and the reconstruction error of the scheme
+    // (normal, centre) at the end time (TPF_RECON_ERROR_EVERY_STEP false)
+    // or every write (true): postProcessing/areaFractionError/0/
+    // areaFractionError.dat and postProcessing/reconstructionError/0/
+    // error.dat. The write control (TPF_AFE_WRITE_CONTROL timeStep with
+    // TPF_AFE_WRITE_INTERVAL 1: every step, the defaults; onEnd: the end
+    // step only, nothing is computed before it) and the consistency column
+    // (TPF_AFE_CONSISTENCY, default true: one extra reconstruction of the
+    // scheme per write; false writes -1 and leaves the transport
+    // bit-identical for every normal model but plicRDF) are the levers of
+    // the timing study. A timeStep interval the end step does not divide
+    // writes nothing: use onEnd for the end only.
     areaFractionError
     {
         type            areaFractionError;
@@ -78,15 +97,17 @@ functions
         U0              (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
         davofMethod     @!TPF_REF_METHOD!@;   // exactSphere on axis-aligned hexahedra, quadraticFaces on perturbed meshes
         wispTol         @!TPF_WISP_TOL!@;
+        consistency     @!TPF_AFE_CONSISTENCY!@;
         reconstructionError true;
-        reconstructionErrorEveryStep false;
-        writeControl    timeStep;
-        writeInterval   1;
+        reconstructionErrorEveryStep @!TPF_RECON_ERROR_EVERY_STEP!@;
+        writeControl    @!TPF_AFE_WRITE_CONTROL!@;
+        writeInterval   @!TPF_AFE_WRITE_INTERVAL!@;
         writePrecision  12;
     }
     // Eshape = sum |alpha - alpha_exact| V against the translated sphere (the
     // linear interpolant at the mesh points cut by cutCellIso), the mass
-    // error and the boundedness error, every step:
+    // error and the boundedness error, every step (TPF_VFE_WRITE_CONTROL
+    // timeStep, TPF_VFE_WRITE_INTERVAL 1, the defaults; onEnd: the end only):
     // postProcessing/volumeFractionError/0/volumeFractionError.dat.
     volumeFractionError
     {
@@ -96,8 +117,8 @@ functions
         functionType    sphere;
         origin          (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
         radius          @!TPF_SPHERE_RADIUS!@;
-        writeControl    timeStep;
-        writeInterval   1;
+        writeControl    @!TPF_VFE_WRITE_CONTROL!@;
+        writeInterval   @!TPF_VFE_WRITE_INTERVAL!@;
         writePrecision  12;
     }
 }

@@ -56,4 +56,23 @@ values
 
     // controlDict writeInterval [s] (adjustableRunTime): four field writes
     TPF_WRITE_INTERVAL ( 0.25 );
+
+    // The diagnostics' write controls and the profiling (2026-10-15; the
+    // defaults render the study as before, plus the inert profiling block).
+    // areaFractionError: writeControl (timeStep | onEnd) and writeInterval
+    // (steps; a timeStep interval the end step does not divide writes
+    // nothing, use onEnd for the end only), the consistency column (true:
+    // one extra reconstruction of the scheme per write; false: -1, the
+    // transport bit-identical for every normal model but plicRDF), the
+    // reconstruction error every write (true) or at the end time (false).
+    TPF_AFE_WRITE_CONTROL ( timeStep );
+    TPF_AFE_WRITE_INTERVAL ( 1 );
+    TPF_AFE_CONSISTENCY ( true );
+    TPF_RECON_ERROR_EVERY_STEP ( false );
+    // volumeFractionError: the same two write keys
+    TPF_VFE_WRITE_CONTROL ( timeStep );
+    TPF_VFE_WRITE_INTERVAL ( 1 );
+    // controlDict profiling { active ...; }: the fork's markers, written to
+    // <time>/uniform/profiling at every field write
+    TPF_PROFILING ( false );
 }

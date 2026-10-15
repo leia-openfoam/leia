@@ -56,4 +56,16 @@ values
     // controlDict writeInterval in steps (timeStep write control): the end
     // time only with this default; 1 writes every step
     TPF_WRITE_STEPS ( 1000000 );
+
+    // The diagnostics' write controls and the profiling (2026-10-15; the
+    // defaults render the study as before, plus the inert profiling block;
+    // the keys as in sphereTranslation3D.parameter). The reconstruction
+    // error every step is the plane test's default.
+    TPF_AFE_WRITE_CONTROL ( timeStep );
+    TPF_AFE_WRITE_INTERVAL ( 1 );
+    TPF_AFE_CONSISTENCY ( true );
+    TPF_RECON_ERROR_EVERY_STEP ( true );
+    TPF_VFE_WRITE_CONTROL ( timeStep );
+    TPF_VFE_WRITE_INTERVAL ( 1 );
+    TPF_PROFILING ( false );
 }

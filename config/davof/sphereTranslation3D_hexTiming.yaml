@@ -1,0 +1,108 @@
+# The timing study of the DAVOF face update on the translated sphere
+# (2026-10-15): the hex study's rows davof-ringArea, davof-exact and plicRDF
+# at Co 0.2 and N = 32/64/128 (cases/davof/sphereTranslation3D, the same
+# quadraticFaces state, the same dictionaries) with the DIAGNOSTICS OFF
+# during the run and OpenFOAM's profiling ON, so that the per-step time
+# measures the method alone:
+#   TPF_AFE_WRITE_CONTROL onEnd   areaFractionError at the end step only
+#                                 (nothing is computed before it: the exact
+#                                 state over the mesh, the two area sums and
+#                                 the reconstruction error cost per write);
+#                                 a timeStep interval the end step does not
+#                                 divide would write NOTHING, hence onEnd
+#   TPF_AFE_CONSISTENCY false     no extra reconstruction of the scheme per
+#                                 write (the column reads -1)
+#   TPF_VFE_WRITE_CONTROL onEnd   volumeFractionError at the end only
+#   TPF_PROFILING true            controlDict profiling { active true; }: the
+#                                 fork's markers (README-davof "The cost of
+#                                 the DAVOF rows", item 6), the cumulative
+#                                 tree in <time>/uniform/profiling at every
+#                                 field write (TPF_WRITE_INTERVAL 0.25; the
+#                                 write at t = 1 holds the whole run)
+# The fork at or after its commit 33198a9 (the single positioning, the area
+# sums without full-mesh passes, the second-ring sweep's candidate list,
+# the consistency switch, the markers; every change argued bit-identical).
+# davof-cellLocal is NOT included (it diverges at step 111 and would not
+# give a per-step time over the run); davof-ringFit and the plicRDF-normal
+# controls are not timed (the plicRDF model's path changes with the
+# consistency reconstruction removed). The log's `timeStepTime` (the
+# solver's own ExecutionTime difference per step) is the per-step measure
+# (tpf_advection_metrics.py); the long table carries cpu_per_step =
+# cpu / nSteps (make_davof_advection_table.py).
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-15, written before the first run;
+# the only prior numbers are the hex study's run times with the
+# diagnostics on: ringArea 20.6 / 234.7 / 3797.2 s against plicRDF
+# 20.5 / 249.7 / 3282.8 s at N = 32 / 64 / 128, Co 0.2, i.e. 1.0 / 0.94 /
+# 1.16 times plicRDF):
+# P-T1 (cost): with the diagnostic off, the per-step ExecutionTime
+#   (timeStepTime, and cpu_per_step over the run) of davof-ringArea is
+#   BELOW plicRDF's at EVERY N (32, 64, 128): the method's own work per
+#   step is one closed-form sum over the interface cells' faces, one
+#   point-neighbour ring sum and one positioning per interface cell,
+#   against plicRDF's iterated reconstruction (up to 10 iterations from
+#   the gradient normal with a residual check and a stencil exchange per
+#   iteration); the 1.16 of the hex study at N = 128 was the diagnostic
+#   (the exact state over 4.2e6 cells plus one extra reconstruction per
+#   step) and the full-mesh passes removed on 2026-10-15. FALSIFIED if
+#   ringArea's cpu_per_step exceeds plicRDF's at any N: the remaining
+#   overhead would then sit in the face update (the second-ring sweep,
+#   the content bound, the second bounding layer), to be read off the
+#   profiling tree.
+# P-T2 (identity): the END values of every row are IDENTICAL TO ALL
+#   DIGITS to the hex study's (docs/davof/davof-article/data/tables/
+#   davof_advection_sphereTranslation3D_hex.csv, Co 0.2):
+#   davof-ringArea L1(alphaf) 1.783042623167e-02 / 9.449063805415e-03 /
+#     5.762705953109e-03 and L1(n) 4.064916486203e-02 / 2.231427846999e-02 /
+#     1.092495507411e-02;
+#   davof-exact L1(alphaf) 1.039375089062e-02 / 5.683483535362e-03 /
+#     3.322474760088e-03 and L1(n) 3.643831765869e-03 / 1.715950030894e-03 /
+#     4.704101923771e-04;
+#   plicRDF L1(n) 3.894492748947e-02 / 1.908397150709e-02 /
+#     9.202638026423e-03
+#   (and the centre errors, Eshape, Emass, min alpha likewise). FALSIFIED
+#   by any digit: either one of the six fork changes alters a
+#   floating-point result (the suspect is then found by bisecting the
+#   six commits c8dc9d1..33198a9 on the N = 32 case), or the skipped
+#   consistency reconstruction is not inert for that model.
+# P-T3 (profile): in the profiling tree of the ringArea rows the time
+#   under davof::reconstruct is below the time under
+#   isoAdvection::timeIntegratedFlux at every N, and the two function
+#   objects' write markers hold less than 2 % of the run.
+#
+#   snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/sphereTranslation3D_hexTiming.yaml
+# Lichtenberg:
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexTiming --export=ALL,STUDY=davof/sphereTranslation3D_hexTiming run-studies.sbatch
+study_name: sphereTranslation3D_hexTiming
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-ringArea, davof-exact, plicRDF]
+  TPF_AFE_WRITE_CONTROL: ["onEnd"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VFE_WRITE_CONTROL: ["onEnd"]
+  TPF_PROFILING: ["true"]
+collapse_other_axes: true
+
+# The N = 128 case (4.2e6 cells, four field writes) needs more than the Slurm default.
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

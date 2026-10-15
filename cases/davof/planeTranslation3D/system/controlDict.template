@@ -59,13 +59,25 @@ maxCo           1e6;
 maxAlphaCo      1e6;
 maxDeltaT       1e6;
 
+// OpenFOAM's built-in profiling (TPF_PROFILING, default false: the block is
+// inert); see the sphere case's controlDict.template.
+profiling
+{
+    active          @!TPF_PROFILING!@;
+}
+
 functions
 {
     // The transported face fractions against the exact DAVOF state of the
-    // plane translated by U0 t (the davof rows; -1 for the comparators), every
-    // step, with the reconstruction error (normal, centre) every step:
+    // plane translated by U0 t (the davof rows; -1 for the comparators),
+    // with the reconstruction error (normal, centre) every write
+    // (TPF_RECON_ERROR_EVERY_STEP, default true here):
     // postProcessing/areaFractionError/0/areaFractionError.dat and
-    // postProcessing/reconstructionError/0/error.dat.
+    // postProcessing/reconstructionError/0/error.dat. The write control
+    // (TPF_AFE_WRITE_CONTROL timeStep with TPF_AFE_WRITE_INTERVAL 1: every
+    // step, the defaults; onEnd: the end step only) and the consistency
+    // column (TPF_AFE_CONSISTENCY, default true: one extra reconstruction
+    // per write; false writes -1) as in the sphere case's template.
     areaFractionError
     {
         type            areaFractionError;
@@ -77,14 +89,16 @@ functions
         U0              (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
         davofMethod     @!TPF_DAVOF_METHOD!@;
         wispTol         @!TPF_WISP_TOL!@;
+        consistency     @!TPF_AFE_CONSISTENCY!@;
         reconstructionError true;
-        reconstructionErrorEveryStep true;
-        writeControl    timeStep;
-        writeInterval   1;
+        reconstructionErrorEveryStep @!TPF_RECON_ERROR_EVERY_STEP!@;
+        writeControl    @!TPF_AFE_WRITE_CONTROL!@;
+        writeInterval   @!TPF_AFE_WRITE_INTERVAL!@;
         writePrecision  16;
     }
     // Eshape = sum |alpha - alpha_exact| V against the translated plane, the
-    // mass error and the boundedness error, every step:
+    // mass error and the boundedness error, every step (TPF_VFE_WRITE_CONTROL
+    // timeStep, TPF_VFE_WRITE_INTERVAL 1, the defaults):
     // postProcessing/volumeFractionError/0/volumeFractionError.dat.
     volumeFractionError
     {
@@ -94,8 +108,8 @@ functions
         functionType    plane;
         origin          (@!TPF_PLANE_PX!@ @!TPF_PLANE_PY!@ @!TPF_PLANE_PZ!@);
         normal          (@!TPF_PLANE_NX!@ @!TPF_PLANE_NY!@ @!TPF_PLANE_NZ!@);
-        writeControl    timeStep;
-        writeInterval   1;
+        writeControl    @!TPF_VFE_WRITE_CONTROL!@;
+        writeInterval   @!TPF_VFE_WRITE_INTERVAL!@;
         writePrecision  16;
     }
 }

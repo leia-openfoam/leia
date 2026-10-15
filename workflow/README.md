@@ -1059,6 +1059,27 @@ studies drive its benchmark solver `advectorVoF` with the dictionaries of the fo
   `make davof-preprint` copies them flat into `docs/davof/davof-article/`;
   `make davof-proposal` exports them with the static tables.
 
+- The diagnostics' write controls and the profiling (2026-10-15), seven tokens with
+  their defaults in both `.parameter` files so that every existing study renders as
+  before plus one inert `profiling { active false; }` block in `controlDict`:
+  `TPF_AFE_WRITE_CONTROL` (`timeStep` | `onEnd`) and `TPF_AFE_WRITE_INTERVAL` (1) of
+  `areaFractionError`, `TPF_AFE_CONSISTENCY` (`true`: the consistency column costs one
+  extra reconstruction of the scheme per write; `false` writes -1 and leaves the
+  transport bit-identical for every normal model but `plicRDF`, whose helper iterates
+  from the previous normals), `TPF_RECON_ERROR_EVERY_STEP` (`false` on the sphere,
+  `true` on the plane), `TPF_VFE_WRITE_CONTROL` / `TPF_VFE_WRITE_INTERVAL` of
+  `volumeFractionError`, and `TPF_PROFILING` (`true`: the fork's markers,
+  `README-davof` "The cost of the DAVOF rows", written to `<time>/uniform/profiling`
+  at every field write). A `timeStep` interval the end step does not divide writes
+  NOTHING (the function objects have no `end()` of their own): the end only is
+  `onEnd`. YAML booleans and the write controls are quoted in the configs. The
+  timing study `config/davof/sphereTranslation3D_hexTiming.yaml` (rows
+  `davof-ringArea`, `davof-exact`, `plicRDF`; N 32/64/128; Co 0.2; both function
+  objects `onEnd`, consistency off, profiling on; its predictions P-T1 to P-T3 in
+  the header) measures the method alone; `advectorVoF.csv` carries the solver's own
+  per-step `timeStepTime` (the ExecutionTime difference the log prints) and the long
+  table `cpu_per_step = cpu / nSteps`.
+
 ```bash
 snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeTranslation3D_hexSmoke.yaml   # 8 cases, seconds
 snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/sphereTranslation3D_hexSmoke.yaml  # 7 cases, minutes each
