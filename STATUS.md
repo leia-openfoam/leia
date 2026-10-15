@@ -6196,3 +6196,16 @@ N = 32 / 64 / 128 (switch on: 4.03e-2 / 3.32e-2 / 4.10e-2), standalone plicRDF w
 its values. P-G1 FALSIFIED, P-G2 CONFIRMED. The control's non-convergence stays open (the
 candidate: the interaction of the plicRDF normal with the face update's flux rules beyond the
 downwind faces); the ring-normal result does not depend on it.
+
+Appendix to 10.17 (2026-10-15, cost). The study `sphereTranslation3D_hexTiming` (220c9b0:
+rows ringArea, exact, plicRDF; N = 32 / 64 / 128; Co 0.2; the diagnostics at the end only via
+the tokens TPF_AFE_WRITE_CONTROL onEnd, TPF_AFE_CONSISTENCY false, TPF_VFE_WRITE_CONTROL onEnd;
+profiling on) ran on the fork at 33198a9 (the six bit-identical speedups of the day). P-T2
+CONFIRMED: every end value equals the hex study's to all digits in all nine cases. P-T1
+CONFIRMED at N = 32 (medians equal, 0.020 s per step) and N = 128 (1.02 against 1.19 s, the
+run 799 against 870 s) and contaminated at N = 64 by node contention (the shared code paths
+ran twice as slow in the ringArea run). Profile at N = 128: davof::reconstruct 94 s against
+plicRDF::reconstruct 265 s; the face update about 45 s more than plicRDF's flux (two full-mesh
+default passes 37 s, the second-ring sweep 7 s, the second-layer bounding 10 s). The 1.16x of
+the hex study was the diagnostic's cost. The `TPF_PROFILING` block renders inert (false) in
+every other study.
