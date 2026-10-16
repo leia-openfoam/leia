@@ -1,0 +1,13 @@
+row,arm,N,Co,status,L1_1,L1_2,L1_3,L1_4,L1_5,L1_6,L1_7,L1_8,L1_9,L1_10,L1_11,L1_12,L1_13,L1_14,L1_15,L1_16,L1_17,L1_18,L1_19,L1_20,g_2,g_3,g_4,g_5,g_6,g_7,g_8,g_9,g_10,g_11,g_12,g_13,g_14,g_15,g_16,g_17,g_18,g_19,g_20,maxGrowth,geoMeanGrowth
+davof-ringArea,axial,32,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-ringArea,axial,64,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-ringArea,axial,128,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-exact,axial,32,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-exact,axial,64,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-exact,axial,128,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-sagitta-exact,axial,32,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-sagitta-exact,axial,64,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-sagitta-exact,axial,128,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-sagitta-ringArea,axial,32,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-sagitta-ringArea,axial,64,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+davof-sagitta-ringArea,axial,128,0.2,completed,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,

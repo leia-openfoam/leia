@@ -1,0 +1,33 @@
+row,metric,N=32,N=64,N=128,p_ls,p_pairwise
+davof-ringArea,L1_alphaf_end,1.89e-02,1.00e-02,6.01e-03,0.82,0.91 / 0.74
+davof-ringArea,L1_alphaf_max,1.89e-02,1.00e-02,6.01e-03,0.82,0.91 / 0.74
+davof-ringArea,L1_n_end,4.04e-02,2.24e-02,1.09e-02,0.95,0.85 / 1.04
+davof-ringArea,L1_x_end,1.20e-03,3.14e-04,8.92e-05,1.88,1.93 / 1.82
+davof-ringArea,Eshape_end,4.54e-04,1.27e-04,3.56e-05,1.84,1.84 / 1.84
+davof-ringArea,Ebound_end,7.94e-15,5.07e-15,5.55e-15,,
+davof-ringArea,minAlpha_run,-1.0e-14,-9.9e-15,-9.6e-13,,
+davof-ringArea,status,ok,ok,ok,,
+davof-exact,L1_alphaf_end,1.15e-02,6.24e-03,3.64e-03,0.83,0.89 / 0.78
+davof-exact,L1_alphaf_max,1.15e-02,6.24e-03,3.64e-03,0.83,0.89 / 0.78
+davof-exact,L1_n_end,3.69e-03,1.81e-03,5.00e-04,1.44,1.03 / 1.86
+davof-exact,L1_x_end,7.67e-04,2.00e-04,5.37e-05,1.92,1.94 / 1.89
+davof-exact,Eshape_end,3.66e-04,9.54e-05,2.53e-05,1.93,1.94 / 1.92
+davof-exact,Ebound_end,8.54e-15,6.12e-15,8.26e-15,,
+davof-exact,minAlpha_run,-1.0e-14,-1.0e-14,-1.0e-14,,
+davof-exact,status,ok,ok,ok,,
+davof-sagitta-exact,L1_alphaf_end,8.42e-03,4.33e-03,2.58e-03,0.85,0.96 / 0.75
+davof-sagitta-exact,L1_alphaf_max,8.42e-03,4.33e-03,2.58e-03,0.85,0.96 / 0.75
+davof-sagitta-exact,L1_n_end,2.67e-03,1.53e-03,3.81e-04,1.41,0.81 / 2.00
+davof-sagitta-exact,L1_x_end,7.66e-04,1.99e-04,5.32e-05,1.92,1.94 / 1.91
+davof-sagitta-exact,Eshape_end,3.66e-04,9.54e-05,2.53e-05,1.93,1.94 / 1.91
+davof-sagitta-exact,Ebound_end,8.75e-15,6.93e-15,9.36e-15,,
+davof-sagitta-exact,minAlpha_run,-1.0e-14,-9.9e-15,-1.0e-14,,
+davof-sagitta-exact,status,ok,ok,ok,,
+davof-sagitta-ringArea,L1_alphaf_end,1.67e-02,8.69e-03,5.23e-03,0.84,0.94 / 0.73
+davof-sagitta-ringArea,L1_alphaf_max,1.67e-02,8.69e-03,5.23e-03,0.84,0.94 / 0.73
+davof-sagitta-ringArea,L1_n_end,4.01e-02,2.21e-02,1.08e-02,0.95,0.86 / 1.04
+davof-sagitta-ringArea,L1_x_end,1.18e-03,3.14e-04,8.92e-05,1.86,1.91 / 1.82
+davof-sagitta-ringArea,Eshape_end,4.54e-04,1.27e-04,3.56e-05,1.84,1.84 / 1.83
+davof-sagitta-ringArea,Ebound_end,6.95e-15,5.14e-15,8.07e-15,,
+davof-sagitta-ringArea,minAlpha_run,-1.0e-14,-1.0e-14,-1.0e-14,,
+davof-sagitta-ringArea,status,ok,ok,ok,,
