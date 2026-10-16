@@ -1,0 +1,77 @@
+# The one-step sagitta diagnostic repeated on the two initial states and two Courant
+# numbers (2026-10-16, after the first diagnostic and its face-by-face check; this
+# config is Co 0.2, the twin hexSagittaDiag3 is Co 0.02 with END_TIME 0.000625): N = 32,
+# rows davof-sagitta-exact and davof-exact, the state quadraticFaces (the proposal's
+# second-order face fractions on the Detrixhe-Aslam chord cell fractions) and
+# exactSphere (the exact fractions of the sphere, hexahedra only), Co 0.2 and 0.02,
+# END_TIME = one step; the per-face error (alphafError.water), the per-face correction
+# (sagittaCorrection.water) and the tensor fields written at the end of the step.
+#
+# What the first diagnostic (hexSagittaDiag, run 2) found, N = 32, Co 0.2, the
+# quadraticFaces state, after one step: the plane row's face errors are of mixed
+# sign (mean -6.6e-4, mean |.| 8.8e-3) although the geometry of a volume-positioned
+# plane with the exact normal overestimates the wetted area of every side face
+# (sagitta_design_check.py: mean error -1.7e-2 at this h, all negative); the
+# correction dA/|S_f| tracks -e_plane in pattern (r = 0.86, slope 0.82) with an
+# offset of about -1.1e-2 per face, so the corrected error (1.27e-2) exceeds the
+# plane's (9.1e-3); the x faces (normal along the flow) carry e_plane = -1.18e-2 on
+# every face and receive almost no correction (mean dA +4e-4), the y and z faces
+# carry +4.6e-3 and receive -1.8e-2; and the cells' volume fractions lie BELOW the
+# exact sphere's on 384 of 412 cut cells (mean -8.5e-3 of V), the chord state's
+# deficit. The correction's offset z_0 = -(1/2) B : M assumes the plane positioned
+# by the volume under the paraboloid; the chord cell fraction is not that volume
+# (the finding of 2026-10-04: a volume anchor is consistent only in the quadrature
+# that defined the cell fraction).
+#
+# PRE-REGISTERED (2026-10-16, before the run):
+# P-D2 (the exact state): with the exactSphere initial state, at Co 0.2 and at
+#   Co 0.02, the plane row's e_plane is negative on at least 90 % of the counted
+#   faces with mean |e| between 1.2e-2 and 2.2e-2 (the design check's 1.7e-2),
+#   alike on the x and the y/z faces within 30 %, and the corrected error
+#   mean |e_plane + dA| is below 3.5e-3 (at least 80 % removed) with the storage
+#   identity e_sag = e_plane + dA to 1e-12 on the faces not clamped. FALSIFIED
+#   otherwise: the defect would then sit in the solver's chord or centroid handling
+#   and not in the state.
+# P-D3 (the chord state): with the quadraticFaces state the mixed-sign pattern
+#   and the offset of about -1e-2 in dA persist at Co 0.02 (they are the state's,
+#   not the step's). If instead the x-face / y-face asymmetry of the plane row
+#   vanishes at Co 0.02, it is a sweep (time-integration) effect of the moving
+#   plane and is recorded as such.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexSagittaDiag2 --export=ALL,STUDY=davof/sphereTranslation3D_hexSagittaDiag2 run-studies.sbatch
+study_name: sphereTranslation3D_hexSagittaDiag2
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-sagitta-exact, davof-exact]
+  TPF_DAVOF_METHOD: [quadraticFaces, exactSphere]
+  END_TIME: [0.00625]
+  TPF_WRITE_INTERVAL: [0.00625]
+  TPF_WRITE_TENSOR: ["true"]
+  TPF_AFE_WRITE_FACE_ERROR: ["true"]
+  TPF_AFE_WRITE_CONTROL: ["onEnd"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VFE_WRITE_CONTROL: ["onEnd"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 30
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

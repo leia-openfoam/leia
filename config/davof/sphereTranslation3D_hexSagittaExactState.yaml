@@ -1,0 +1,72 @@
+# The sagitta face clipping on the EXACT-SPHERE initial state (2026-10-16): the
+# study hexSagitta of 2026-10-15 repeated with TPF_DAVOF_METHOD exactSphere (the
+# exact volume and face fractions of the sphere, hexahedra only) instead of
+# quadraticFaces (second-order face fractions on the Detrixhe-Aslam chord cell
+# fractions). Why: hexSagitta falsified P-S1 (the correction left the face-fraction
+# error of the exact-normal row unchanged, 3.233e-3 against 3.322e-3 at N = 128,
+# order 0.83), while the formula with the exact tensor removes 90 to 95 % of the
+# plane's face error in pure geometry and the fitted tensor is correct (the
+# one-step diagnostic); the face-by-face check located the defect in the state:
+# the correction's offset z_0 = -(1/2) B : M assumes the plane positioned by the
+# volume under the paraboloid, and the chord cell fraction lies below it by about
+# 8.5e-3 of V at N = 32 (384 of 412 cut cells). On the exact state that
+# assumption holds at t = 0; whether isoAdvector's plane fluxes keep alpha the
+# volume under the surface over 3.3 diameters is what this ladder measures.
+#
+# Rows: davof-sagitta-exact and davof-exact (the fractions' order with the exact
+# normal, sagitta against plane clipping), davof-sagitta-ringArea and davof-ringArea
+# (the loop); N = 32 / 64 / 128 at Co 0.2; the diagnostics at the end only, as in
+# hexSagitta. 4 x 3 = 12 serial cases.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-16, before the run; the priors are the
+# hexSagitta numbers above and the design check's residual, 1.4e-3 / 2.5e-4 /
+# 1.5e-4 at N = 32 / 64 / 128 for one static cell set):
+# P-S7 (the fractions on the consistent state): davof-sagitta-exact is SECOND
+#   order in L1(alphaf) over N = 32 to 128 (least-squares order at least 1.8) with
+#   the N = 128 value below 1.5e-3, and davof-exact (plane clipping) stays first
+#   order near the hexSagitta values (within 30 %: the plane's error does not
+#   depend on the state's deficit at leading order). FALSIFIED if the sagitta
+#   row's order is below 1.5 or its N = 128 value above 2.5e-3: then the
+#   transported alpha leaves the volume under the surface during the run (the
+#   plane fluxes' O(h^2) per-step error summed over N/Co steps), and the
+#   face-anchored offset is needed instead of the volume anchor.
+# P-S8 (the loop): davof-sagitta-ringArea stays first order in L1(n) (the ring
+#   normal's own bias) with a constant below davof-ringArea's at every N (the
+#   fractions it averages are better), bounded (min alpha above -1e-10).
+#   FALSIFIED if its L1(n) at N = 128 is not below davof-ringArea's 1.09e-2, or
+#   if it aborts.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexSagittaExactState --export=ALL,STUDY=davof/sphereTranslation3D_hexSagittaExactState run-studies.sbatch
+study_name: sphereTranslation3D_hexSagittaExactState
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-sagitta-exact, davof-exact, davof-sagitta-ringArea, davof-ringArea]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_WRITE_CONTROL: ["onEnd"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VFE_WRITE_CONTROL: ["onEnd"]
+collapse_other_axes: true
+
+# The N = 128 case (4.2e6 cells, four field writes) needs more than the Slurm default.
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
