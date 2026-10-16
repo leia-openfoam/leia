@@ -6221,3 +6221,29 @@ CONFIRMED: medians of the per-step medians ringArea / plicRDF 0.02 / 0.02 (N = 3
 106 s (20 % of advect) against plicRDF::reconstruct 398 s (49 %), formAreaNormal 4 s, the
 default passes 12 s. Node noise: the same N = 128 case 639 to 1019 s across repetitions;
 quote medians only.
+
+Appendix to 10.17 (2026-10-16, the sagitta face clipping). The studies
+`sphereTranslation3D_hexSagitta` (21 cases) and `planeTranslation3D_hexSagitta` (32 cases; fork
+912fdb3, tables 8d538cc) FALSIFY P-S1, P-S2, P-S4 and confirm P-S5: the reference rows equal the
+hex study's to all digits; with the exact normal the sagitta correction leaves L1(alphaf) at
+1.028e-2 / 5.528e-3 / 3.233e-3 (N = 32 / 64 / 128, order 0.83) against the plane clipping's
+1.039e-2 / 5.683e-3 / 3.322e-3 (0.82), applied on every cut face (860 / 3542 / 13570 per step, no
+tensor fallback); the ring-normal loop is unchanged; the own normal with and without the sliver
+fallback diverges at every N with thousands of tensor fallbacks per step; the plane passes at
+1e-12 for the exact and the ring rows (8 of 8), the sliver variant in 6 of 8. Diagnosis in three
+pre-registered steps: the formula with the exact tensor removes 92 to 97 % of the plane's face
+error in pure geometry (the proposal folder's `sagitta_design_check.py`); the fitted tensor is
+right on every interface cell (`sphereTranslation3D_hexSagittaDiag`, one step at N = 32 with the
+tensor fields written, `davof_tensor_check.py`: eigenvalues 1.04 to 1.07 times 1/R, z_0 < 0 of
+the expected size, P-D1 confirmed); and the per-face fields of fork 0a5207b (`alphafError`,
+`sagittaCorrection`; `davof_sagitta_face_check.py`, `davof_sagitta_cell_check.py`) show the
+correction tracking -e_plane in pattern (r = 0.86) with an offset of about -1.1e-2 per face,
+the plane row's errors of mixed sign where the geometry gives one sign, and the state's volume
+fractions below the exact sphere's on 384 of 412 cut cells (mean -8.5e-3 of V): the
+quadraticFaces state carries the Detrixhe-Aslam chord cell fractions, the plane positioned by
+them sits inward of the plane the correction's volume anchor z_0 = -(1/2) B:M assumes, and the
+correction is off by that shift (the finding of 10.13 in transport: a volume anchor is
+consistent only in its own quadrature). The anchor must come from the face fractions. Submitted
+2026-10-16: `hexSagittaDiag2` / `hexSagittaDiag3` (one step on both states at Co 0.2 / 0.02,
+P-D2, P-D3) and `hexSagittaExactState` (the ladder on the exact-sphere state, P-S7, P-S8), jobs
+55459343-45; the article FINDINGS entry of 2026-10-16 has the full account.
