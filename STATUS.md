@@ -6247,3 +6247,14 @@ consistent only in its own quadrature). The anchor must come from the face fract
 2026-10-16: `hexSagittaDiag2` / `hexSagittaDiag3` (one step on both states at Co 0.2 / 0.02,
 P-D2, P-D3) and `hexSagittaExactState` (the ladder on the exact-sphere state, P-S7, P-S8), jobs
 55459343-45; the article FINDINGS entry of 2026-10-16 has the full account.
+
+Appendix to 10.17 (2026-10-16 01:00, the sagitta diagnostics on both states). `hexSagittaDiag2`
+(Co 0.2) and `hexSagittaDiag3` (Co 0.02), one step at N = 32: P-D2 CONFIRMED, on the exact-sphere
+state the plane's face error is one-signed (mean 1.28e-2 at Co 0.02, x and y/z faces alike) and
+the correction removes 90 to 93 % of it (L1 6.34e-3 -> 4.40e-4 at Co 0.02, 5.79e-3 -> 5.86e-4 at
+Co 0.2; r = 0.99, the storage identity to 1e-13); P-D3 CONFIRMED, on the quadraticFaces state
+all 416 cut cells lie below the exact volume (mean -8.4e-3 of V), the plane's error is of mixed
+sign and less than half the exact state's (the deficit's inward shift cancels most of the secant
+overestimate), and the full correction makes it 2.2 times worse (2.78e-3 -> 6.22e-3). The x-face
+asymmetry of the first diagnostic is a Courant-dependent sweep effect (gone at Co 0.02), which
+the correction removes too. The exact-state ladder (job 55459345) decides P-S7 / P-S8.
