@@ -6258,3 +6258,17 @@ sign and less than half the exact state's (the deficit's inward shift cancels mo
 overestimate), and the full correction makes it 2.2 times worse (2.78e-3 -> 6.22e-3). The x-face
 asymmetry of the first diagnostic is a Courant-dependent sweep effect (gone at Co 0.02), which
 the correction removes too. The exact-state ladder (job 55459345) decides P-S7 / P-S8.
+
+Appendix to 10.17 (2026-10-16 11:00, the exact-state sagitta ladder). `sphereTranslation3D_
+hexSagittaExactState` (12 cases, job 55459345, tables 0729fd5): P-S7 FALSIFIED, the sagitta row
+with the exact normal ends at L1(alphaf) 8.42e-3 / 4.33e-3 / 2.58e-3 (order 0.85) against the
+plane clipping's 1.15e-2 / 6.24e-3 / 3.64e-3 (0.83), a constant 27 to 30 % lower at the same first
+order, where one step from the same state had removed 93 %; P-S8 nominally confirmed (the ring
+loop's L1(n) 1 % lower, its face fractions 13 % lower, bounded, no tensor fallback) and void in
+practice. Cause: the transported alpha is driven by the plane's volume fluxes and acquires a
+one-signed O(h/R) deviation from the volume under the surface within the steps a cell holds the
+interface, after which the volume-anchored offset overshoots as on the chord state. A
+second-order face update under transport needs the offset anchored by the face fractions and
+volume fluxes of the same clipping surface (Stage 1 of the proposal), not a correction of the
+plane loop. The sagitta rows, configs and fields stay as the measured record; `faceClipping
+plane` remains the default and the loop of 10.17 the baseline.
