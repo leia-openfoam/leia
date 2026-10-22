@@ -32,6 +32,11 @@ values
     // planeSagitta); the value here documents the default, the row decides
     TPF_FACE_CLIPPING ( plane );
 
+    // the curved clipping surface of the dual advection (none | exactSphere |
+    // paraboloid, 2026-10-23) is DERIVED from TPF_ROW as well; the value here
+    // documents the default
+    TPF_CLIPPING_SURFACE ( none );
+
     TPF_VELOCITY_ARM ( axial );
 
     TPF_DAVOF_METHOD ( quadraticFaces );

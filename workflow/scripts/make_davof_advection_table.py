@@ -97,6 +97,14 @@ MAX_COLS = {
     "nTensorFallback_max": "nTensorFallback", "nSagittaCorrected_max": "nSagittaCorrected",
     "nSagittaCapped_max": "nSagittaCapped", "nSagittaClamped_max": "nSagittaClamped",
     "nSagittaSkipCos_max": "nSagittaSkipCos", "nSagittaSkipChord_max": "nSagittaSkipChord",
+    # the curved clipping surface (2026-10-23): the faces set, the quadrature
+    # leaves, the fit counters and residual, the surface defect; run maxima
+    "nCurvedFaces_max": "nCurvedFaces", "nCurvedSkipped_max": "nCurvedSkipped",
+    "nCurvedClips_max": "nCurvedClips", "nCurvedLinearCuts_max": "nCurvedLinearCuts",
+    "nCurvedLeaves_max": "nCurvedLeaves", "nFitCells_max": "nFitCells",
+    "nFitStalled_max": "nFitStalled", "nFitSingular_max": "nFitSingular",
+    "nFitNoBracket_max": "nFitNoBracket", "fitResMax_max": "fitResMax",
+    "fitResMean_max": "fitResMean", "defectMax_max": "defectMax", "defectL1_max": "defectL1",
 }
 # the order tables: (long-table column, tex label, has an order)
 ORDER_METRICS = [
@@ -236,6 +244,10 @@ def history_rows(recs):
                         "nSagittaCorrected": s.get("nSagittaCorrected", ""),
                         "nSagittaCapped": s.get("nSagittaCapped", ""),
                         "nSagittaClamped": s.get("nSagittaClamped", ""),
+                        "nFitCells": s.get("nFitCells", ""), "nFitConverged": s.get("nFitConverged", ""),
+                        "fitResMax": s.get("fitResMax", ""), "fitResMean": s.get("fitResMean", ""),
+                        "defectMax": s.get("defectMax", ""), "defectL1": s.get("defectL1", ""),
+                        "nCurvedLeaves": s.get("nCurvedLeaves", ""),
                         "minAlpha": s.get("minAlpha", ""), "Eshape": s.get("Eshape", ""),
                         "status": s.get("status", "")})
     return out

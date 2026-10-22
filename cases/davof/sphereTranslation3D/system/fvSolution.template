@@ -59,6 +59,24 @@ solvers
         // planeSagitta: the signed correction dA/|S_f| per face written as the
         // surface field sagittaCorrection.water (the same diagnostic switch)
         writeSagittaCorrection @!TPF_WRITE_TENSOR!@;
+        // davof: the curved clipping surface of the dual advection (fork
+        // isoAdvectionCurved.C, 2026-10-23), derived from TPF_ROW: none (the
+        // plane sweep, today's loop), exactSphere (the exact sphere of the
+        // exactNormal block for the volume flux AND the face update: the
+        // machinery gate) or paraboloid (the six-coefficient paraboloid of
+        // every interface cell fitted to its own face fractions with the ring
+        // tensor as prior, with its own volume flux); the sub-keys at the
+        // fork's defaults (the prism quadrature's relative tolerance and
+        // depth, the fit's prior weight, tolerance and iteration cap, the
+        // refinement levels of the surface-defect volume)
+        clippingSurface @!TPF_CLIPPING_SURFACE!@;
+        curvedTolRel    1e-10;
+        curvedMaxDepth  12;
+        fitPriorWeight  1e-2;
+        fitTol          1e-10;
+        fitMaxIter      50;
+        defectLevels    3;
+        writeCurvedFields @!TPF_WRITE_TENSOR!@;
         exactNormal
         {
             functionType sphere;

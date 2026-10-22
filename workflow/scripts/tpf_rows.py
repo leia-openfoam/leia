@@ -50,26 +50,51 @@ quadraticFaces on the sphere), one per study.
 """
 from collections import OrderedDict
 
+# The eighth element (2026-10-23) is the fork's curved clipping surface of
+# the dual advection (isoAdvectionCurved.C, keyword clippingSurface of the
+# alpha solver dictionary): none (the plane sweep, today's loop),
+# exactSphere (the exact sphere as the clipping surface for the volume flux
+# AND the face update: the machinery gate, exact to the quadrature tolerance
+# under uniform translation by construction) or paraboloid (the
+# six-coefficient paraboloid of every interface cell fitted to its own face
+# fractions with the ring tensor as prior, its own volume flux: the month-3
+# milestone of the proposal). The exactSurface rows carry the normal model
+# only for the recovered normal's error (the surface does not depend on it);
+# the paraboloid rows' normal defines the frame of the fit (the slopes take
+# the tilt): cellLocal (the own normal everywhere), cellSliver01 / cellSliver001
+# (the own normal, the ring normal below |m_c| < 0.1 h^2 / 0.01 h^2), ringArea
+# (the ring normal everywhere), exact (the control). Every existing row
+# carries none, so its fvSolution gains the keyword block and nothing else
+# changes.
+
 # name -> (reconstructionScheme, normalModel, applyTo, sliverTol, maxAngle,
-#          noNormalFallback, faceClipping)
+#          noNormalFallback, faceClipping, clippingSurface)
 ROWS = OrderedDict([
-    ("davof-cellLocal",          ("davof",    "cellLocal", "all",   "0",   "15",  "keep",     "plane")),
-    ("davof-ringArea",           ("davof",    "ringArea",  "all",   "0",   "15",  "keep",     "plane")),
-    ("davof-ringFit",            ("davof",    "ringFit",   "all",   "0",   "15",  "keep",     "plane")),
-    ("davof-exact",              ("davof",    "exact",     "all",   "0",   "15",  "keep",     "plane")),
-    ("davof-plicRDFnormal",      ("davof",    "plicRDF",   "all",   "0",   "15",  "keep",     "plane")),
-    ("davof-plicRDFnormal-ring", ("davof",    "plicRDF",   "all",   "0",   "15",  "ringArea", "plane")),
-    ("davof-sagitta-exact",      ("davof",    "exact",     "all",   "0",   "15",  "keep",     "planeSagitta")),
-    ("davof-sagitta-ringArea",   ("davof",    "ringArea",  "all",   "0",   "15",  "keep",     "planeSagitta")),
-    ("davof-sagitta-cellSliver", ("davof",    "ringArea",  "check", "0.1", "180", "keep",     "planeSagitta")),
-    ("davof-sagitta-cellLocal",  ("davof",    "cellLocal", "all",   "0",   "15",  "keep",     "planeSagitta")),
-    ("plicRDF",                  ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane")),
-    ("isoAlpha",                 ("isoAlpha", "cellLocal", "all",   "0",   "15",  "keep",     "plane")),
+    ("davof-cellLocal",          ("davof",    "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
+    ("davof-ringArea",           ("davof",    "ringArea",  "all",   "0",   "15",  "keep",     "plane",        "none")),
+    ("davof-ringFit",            ("davof",    "ringFit",   "all",   "0",   "15",  "keep",     "plane",        "none")),
+    ("davof-exact",              ("davof",    "exact",     "all",   "0",   "15",  "keep",     "plane",        "none")),
+    ("davof-plicRDFnormal",      ("davof",    "plicRDF",   "all",   "0",   "15",  "keep",     "plane",        "none")),
+    ("davof-plicRDFnormal-ring", ("davof",    "plicRDF",   "all",   "0",   "15",  "ringArea", "plane",        "none")),
+    ("davof-sagitta-exact",      ("davof",    "exact",     "all",   "0",   "15",  "keep",     "planeSagitta", "none")),
+    ("davof-sagitta-ringArea",   ("davof",    "ringArea",  "all",   "0",   "15",  "keep",     "planeSagitta", "none")),
+    ("davof-sagitta-cellSliver", ("davof",    "ringArea",  "check", "0.1", "180", "keep",     "planeSagitta", "none")),
+    ("davof-sagitta-cellLocal",  ("davof",    "cellLocal", "all",   "0",   "15",  "keep",     "planeSagitta", "none")),
+    ("davof-exactSurface-exact",     ("davof", "exact",     "all",   "0",    "15",  "keep", "plane", "exactSphere")),
+    ("davof-exactSurface-cellLocal", ("davof", "cellLocal", "all",   "0",    "15",  "keep", "plane", "exactSphere")),
+    ("davof-exactSurface-ringArea",  ("davof", "ringArea",  "all",   "0",    "15",  "keep", "plane", "exactSphere")),
+    ("davof-paraboloid-cellLocal",   ("davof", "cellLocal", "all",   "0",    "15",  "keep", "plane", "paraboloid")),
+    ("davof-paraboloid-cellSliver01",  ("davof", "ringArea", "check", "0.1",  "180", "keep", "plane", "paraboloid")),
+    ("davof-paraboloid-cellSliver001", ("davof", "ringArea", "check", "0.01", "180", "keep", "plane", "paraboloid")),
+    ("davof-paraboloid-ringArea",    ("davof", "ringArea",  "all",   "0",    "15",  "keep", "plane", "paraboloid")),
+    ("davof-paraboloid-exact",       ("davof", "exact",     "all",   "0",    "15",  "keep", "plane", "paraboloid")),
+    ("plicRDF",                  ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
+    ("isoAlpha",                 ("isoAlpha", "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
 ])
 
 ROW_TOKENS = ("TPF_RECON_SCHEME", "TPF_NORMAL_MODEL", "TPF_APPLY_TO",
               "TPF_SLIVER_TOL", "TPF_MAX_ANGLE", "TPF_NO_NORMAL_FALLBACK",
-              "TPF_FACE_CLIPPING")
+              "TPF_FACE_CLIPPING", "TPF_CLIPPING_SURFACE")
 
 # arm -> (UX, UY, UZ); |U| = 1 for every arm (REFERENCE_SPEED 1 in the
 # .parameter files, so dt = Co h). normal = the unit normal of the plane
@@ -96,6 +121,14 @@ LABELS = OrderedDict([
     ("davof-sagitta-ringArea",   "DAVOF, sagitta clipping, ring-area normal"),
     ("davof-sagitta-cellSliver", "DAVOF, sagitta clipping, own normal with sliver fallback"),
     ("davof-sagitta-cellLocal",  "DAVOF, sagitta clipping, own normal"),
+    ("davof-exactSurface-exact",     "DAVOF, exact surface, exact normal (gate)"),
+    ("davof-exactSurface-cellLocal", "DAVOF, exact surface, own normal"),
+    ("davof-exactSurface-ringArea",  "DAVOF, exact surface, ring-area normal"),
+    ("davof-paraboloid-cellLocal",   "DAVOF, paraboloid, own normal"),
+    ("davof-paraboloid-cellSliver01",  "DAVOF, paraboloid, own normal, ring below 0.1 h^2"),
+    ("davof-paraboloid-cellSliver001", "DAVOF, paraboloid, own normal, ring below 0.01 h^2"),
+    ("davof-paraboloid-ringArea",    "DAVOF, paraboloid, ring-area normal"),
+    ("davof-paraboloid-exact",       "DAVOF, paraboloid, exact normal (control)"),
     ("plicRDF",             "plicRDF"),
     ("isoAlpha",            "isoAlpha"),
 ])
@@ -111,6 +144,14 @@ COLORS = {
     "davof-sagitta-ringArea":   "#0b6b48",   # dark aqua: ringArea with the sagitta clipping
     "davof-sagitta-cellSliver": "#1a4f8f",   # dark blue: the own normal with the sliver fallback
     "davof-sagitta-cellLocal":  "#7fb2ea",   # light blue: the own normal with the sagitta clipping
+    "davof-exactSurface-exact":     "#222222",   # black: the gate
+    "davof-exactSurface-cellLocal": "#5a5a5a",   # dark grey
+    "davof-exactSurface-ringArea":  "#9a9a9a",   # grey
+    "davof-paraboloid-cellLocal":   "#b5179e",   # magenta: the paraboloid with the own normal
+    "davof-paraboloid-cellSliver01":  "#7209b7", # violet
+    "davof-paraboloid-cellSliver001": "#3f37c9", # indigo
+    "davof-paraboloid-ringArea":    "#4895ef",   # sky blue
+    "davof-paraboloid-exact":       "#4cc9f0",   # cyan: the control
     "plicRDF":             "#eb6834",   # plicRDF's orange (make_davof_normal_table.COLORS)
     "isoAlpha":            "#eda100",   # isoAlpha's yellow (make_davof_normal_table.COLORS)
 }
@@ -120,6 +161,9 @@ MARKERS = {
     "davof-exact": "x", "davof-plicRDFnormal": "+", "davof-plicRDFnormal-ring": "P",
     "davof-sagitta-exact": "X", "davof-sagitta-ringArea": "p",
     "davof-sagitta-cellSliver": "h", "davof-sagitta-cellLocal": "8",
+    "davof-exactSurface-exact": "*", "davof-exactSurface-cellLocal": "1", "davof-exactSurface-ringArea": "2",
+    "davof-paraboloid-cellLocal": "<", "davof-paraboloid-cellSliver01": ">",
+    "davof-paraboloid-cellSliver001": "d", "davof-paraboloid-ringArea": "H", "davof-paraboloid-exact": "|",
     "plicRDF": "^", "isoAlpha": "v",
 }
 

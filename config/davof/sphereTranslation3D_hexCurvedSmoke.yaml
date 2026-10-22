@@ -1,0 +1,48 @@
+# Smoke of the curved clipping surface of the dual advection (2026-10-23; fork
+# isoAdvectionCurved.C): the translated sphere at N = 32, Co 0.2 (160 steps) with
+# the exact sphere as the clipping surface for the volume flux and the face
+# update (the machinery gate: the shape, face-fraction and normal errors must sit
+# at the quadrature tolerance, far below the plane loop's), and with the
+# six-coefficient paraboloid of every interface cell (the month-3 milestone),
+# with the ring normal and with the own normal; the per-step diagnostics on
+# (areaFractionError every step, consistency off) and the per-cell fit residual
+# and surface defect written. Serial, three cases, Lichtenberg (no laptop runs).
+#
+# Expected (pre-registered): davof-exactSurface-exact ends with L1(alphaf) and
+# the shape error below 1e-8 (the quadrature tolerance 1e-10 of the prism volume
+# summed over 160 steps), bounded and conservative to round-off; a value at the
+# plane loop's level (1e-2) means a defect of the machinery. The paraboloid rows
+# are run for their counters (fit convergence, residual, defect, cost) and their
+# end errors, no prediction beyond "bounded" here; the ladders decide the order.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexCurvedSmoke --export=ALL,STUDY=davof/sphereTranslation3D_hexCurvedSmoke run-studies.sbatch
+study_name: sphereTranslation3D_hexCurvedSmoke
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-exactSurface-exact, davof-paraboloid-ringArea, davof-paraboloid-cellLocal]
+  TPF_WRITE_TENSOR: ["true"]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 120
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -81,6 +81,10 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "nRingFallback",
             "nTensorCells", "nTensorFallback", "nSagittaCorrected", "nSagittaCapped",
             "nSagittaClamped", "nSagittaSkipCos", "nSagittaSkipChord",
+            "clippingSurface", "nCurvedFaces", "nCurvedSecondRing", "nCurvedSkipped",
+            "nCurvedClips", "nCurvedLinearCuts", "nCurvedLeaves", "nFitCells",
+            "nFitConverged", "nFitStalled", "nFitSingular", "nFitNoBracket",
+            "fitResMax", "fitResMean", "defectMax", "defectL1",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
             "timeStepTime")
@@ -97,6 +101,13 @@ _RE_TENSOR = re.compile(
 _RE_SAGITTA = re.compile(
     r"; sagitta corrected (\d+) faces, (\d+) capped, (\d+) clamped, "
     r"(\d+) skipped \(cos\), (\d+) skipped \(chord\)")
+_RE_CURVED = re.compile(
+    r"^isoAdvection: curved clipping \((\w+)\): alphaf and dVf set on (\d+) faces "
+    r"\((\d+) second ring, (\d+) boundary\), (\d+) skipped, (\d+) clips, "
+    r"(\d+) linear cuts, (\d+) quadrature leaves"
+    r"(?:; fit: cells (\d+), converged (\d+), stalled (\d+), singular (\d+), "
+    r"no bracket (\d+), no frame (\d+), residual max (\S+) mean (\S+))?"
+    r"(?:; surface defect max (\S+) L1 (\S+) over (\d+) cells)?")
 _RE_BOUND = re.compile(
     r"^isoAdvection: After conservative bounding: min\(alpha\) = (\S+), "
     r"max\(alpha\) = 1 \+ (\S+)")
@@ -201,6 +212,27 @@ def read_log(path):
                     cur["nSagittaClamped"] = m.group(3)
                     cur["nSagittaSkipCos"] = m.group(4)
                     cur["nSagittaSkipChord"] = m.group(5)
+                continue
+            m = _RE_CURVED.match(line)
+            if m:
+                cur["clippingSurface"] = m.group(1)
+                cur["nCurvedFaces"] = m.group(2)
+                cur["nCurvedSecondRing"] = m.group(3)
+                cur["nCurvedSkipped"] = m.group(5)
+                cur["nCurvedClips"] = m.group(6)
+                cur["nCurvedLinearCuts"] = m.group(7)
+                cur["nCurvedLeaves"] = m.group(8)
+                if m.group(9) is not None:
+                    cur["nFitCells"] = m.group(9)
+                    cur["nFitConverged"] = m.group(10)
+                    cur["nFitStalled"] = m.group(11)
+                    cur["nFitSingular"] = m.group(12)
+                    cur["nFitNoBracket"] = m.group(13)
+                    cur["fitResMax"] = m.group(15)
+                    cur["fitResMean"] = m.group(16)
+                if m.group(17) is not None:
+                    cur["defectMax"] = m.group(17)
+                    cur["defectL1"] = m.group(18)
                 continue
             m = _RE_BOUND.match(line)
             if m:
