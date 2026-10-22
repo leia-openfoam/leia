@@ -1,0 +1,59 @@
+# Fourth smoke of the curved clipping surface (2026-10-23): the degrees of
+# freedom the face fractions may set. Smoke 2 showed the six-coefficient surface
+# interpolating the cell's face fractions unstable from the first step on the
+# EXACT initial state too (growth 2 to 2.4 per step at N = 32, Co 0.2, with the
+# exact, the own and the ring normal; P-S2b falsified): the instability is the
+# face-fraction loop's own, not the initial inconsistency's. The faces of a
+# cell come from different surfaces (the upwind cell's on its upwind faces, its
+# own on the downwind ones), so the six fractions are not those of one
+# paraboloid, and the exact interpolation of inconsistent data makes the next
+# surface wilder than the last; the plane loop is stable because its one
+# degree of freedom beyond the normal comes from the conserved alpha_k. Rows
+# here: the ring-tensor paraboloid positioned by the volume (fitDof none,
+# fitAnchor volume: the normal from the face fractions, the tensor from the
+# ring, the offset from alpha_k; no face information in the surface beyond the
+# normal: the damping of classical VOF with a second-order surface) with the
+# exact, the own and the ring normal; and the one-scalar face anchoring
+# (fitDof one, the regeneration's paraboloidFaces) with the exact normal. The
+# exact initial state; N = 32, Co 0.2; 4 serial cases.
+#
+# PRE-REGISTERED (2026-10-23): P-S4a the three paraboloidRing rows stay bounded
+# over the 160 steps; P-S4b their face-fraction error at the first step is
+# below the plane loop's first step (4.4e-3 with the exact normal) by at least a
+# factor five, and the exact-normal row ends below the plane loop's end error
+# (1.04e-2) by at least a factor three; P-S4c the one-scalar row is unstable
+# like the six-coefficient one (the offset from the faces reintroduces the
+# feedback). FALSIFIED (a) if a paraboloidRing row diverges: the volume anchor
+# alone does not damp the curved loop either; (b) if its end error is not below
+# the plane loop's: the second-order surface does not pay under transport.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexCurvedSmoke4 --export=ALL,STUDY=davof/sphereTranslation3D_hexCurvedSmoke4 run-studies.sbatch
+study_name: sphereTranslation3D_hexCurvedSmoke4
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-cellLocal, davof-paraboloidRing-ringArea, davof-paraboloidOne-exact]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_WRITE_TENSOR: ["true"]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

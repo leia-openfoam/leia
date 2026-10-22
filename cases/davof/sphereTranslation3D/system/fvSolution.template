@@ -78,6 +78,9 @@ solvers
         // faces: the surface interpolates the face fractions; volume: the offset
         // shifted after the fit so that the volume under the surface is alpha_k V
         fitAnchor       @!TPF_FIT_ANCHOR!@;
+        // six: all six coefficients from the face fractions; one: the offset alone
+        // from the total wetted area; none: the frame and the ring tensor only
+        fitDof          @!TPF_FIT_DOF!@;
         defectLevels    3;
         writeCurvedFields @!TPF_WRITE_TENSOR!@;
         exactNormal
