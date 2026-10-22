@@ -70,8 +70,8 @@ solvers
         // depth, the fit's prior weight, tolerance and iteration cap, the
         // refinement levels of the surface-defect volume)
         clippingSurface @!TPF_CLIPPING_SURFACE!@;
-        curvedTolRel    1e-10;
-        curvedMaxDepth  12;
+        curvedTolRel    @!TPF_CURVED_TOL_REL!@;
+        curvedMaxDepth  @!TPF_CURVED_MAX_DEPTH!@;
         fitPriorWeight  1e-2;
         fitTol          1e-10;
         fitMaxIter      50;

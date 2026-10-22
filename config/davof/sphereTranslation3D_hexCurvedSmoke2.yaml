@@ -1,0 +1,58 @@
+# Second smoke of the curved clipping surface (2026-10-23, after the first):
+# the first smoke (hexCurvedSmoke, the quadraticFaces state, curvedTolRel 1e-10,
+# depth 12) gave the exact-surface gate exact face fractions (1e-14 from step 2
+# on) but carried the chord state's volume deficit along unchanged (surface
+# defect L1 8.1e-3 at step 1 and 8.5e-3 at step 160, the deficit of the
+# quadraticFaces cell fractions measured on 2026-10-16), at 9 s per step
+# (6.7e7 quadrature leaves); and both paraboloid rows diverged within 10 to 20
+# steps although the first step was 16 times (own normal, 2.7e-4) and 3 times
+# (ring normal, 1.7e-3) better than the plane loop's. Here: the quadrature at
+# 1e-8 / depth 9 (the cost), and BOTH initial states, the exact sphere
+# (consistent: alpha is the volume under the surface that the face fractions
+# describe) and quadraticFaces (the chord cell fractions, inconsistent by the
+# sagitta volume), for the gate row and the three paraboloid rows, N = 32,
+# Co 0.2. 2 x 4 = 8 serial cases; the per-step diagnostics on.
+#
+# PRE-REGISTERED (2026-10-23): P-S2a the gate row on the exact state ends with
+# L1(alphaf), the surface defect and the centre error below 1e-6 (the quadrature
+# tolerance summed over 160 steps) at a per-step cost below 1 s; P-S2b the
+# paraboloid rows on the exact state stay bounded over the 160 steps (the first
+# smoke's divergence came from the initial inconsistency between the chord
+# alpha and the face-anchored surface, which the bounding then redistributed),
+# and on the quadraticFaces state they diverge again. FALSIFIED if a paraboloid
+# row diverges on the exact state as well: the loop itself is then unstable and
+# the per-step history (fit residual, surface defect, the first cells to
+# stall) is the next diagnostic.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexCurvedSmoke2 --export=ALL,STUDY=davof/sphereTranslation3D_hexCurvedSmoke2 run-studies.sbatch
+study_name: sphereTranslation3D_hexCurvedSmoke2
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-exactSurface-exact, davof-paraboloid-exact, davof-paraboloid-cellLocal, davof-paraboloid-ringArea]
+  TPF_DAVOF_METHOD: [exactSphere, quadraticFaces]
+  TPF_WRITE_TENSOR: ["true"]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
