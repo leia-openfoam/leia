@@ -1,0 +1,68 @@
+# Study 1 of the plan of 2026-10-23: the EXACT-SURFACE CONTROL of the dual
+# advection. The translated sphere (cases/davof/sphereTranslation3D: R = 0.15 in
+# the 2 x 1 x 1 box, U = (1 0 0), 3.3 diameters, the quadraticFaces state) with
+# the exact sphere at the state's time as the clipping surface for BOTH the
+# volume flux and the face update (fork isoAdvectionCurved.C, clippingSurface
+# exactSphere): the flux through a face is the liquid volume of the prism
+# between the face's pre-image and the face under the sphere, the new face
+# fraction the pre-image's liquid fraction under it. N = 32 / 64 / 128,
+# Co 0.1 / 0.2 / 0.5; the rows differ in the normal model only, which the
+# surface does not use: the normal error of the exact row is the control, the
+# own-faces and the ring normal measure the recovery (1) on exactly transported
+# fractions. 3 x 3 x 3 = 27 serial cases; the per-step diagnostics on.
+#
+# What this study can establish: under uniform translation the pre-image's
+# fraction under the exact sphere at t^n IS the exact fraction at t^{n+1}, and
+# the swept liquid volume is exact, so the update reproduces the exact state by
+# construction up to the quadrature of the prism volume (curvedTolRel 1e-10 of
+# the prism volume per face and step). It is the machinery gate of the curved
+# flux and face update that study 2 (the paraboloid) uses, not a test of the
+# accumulation over a period: that question needs a fitted surface and is
+# study 2's, with the fit residual and the surface defect per step as the
+# diagnostics that separate the fit's share from the update's.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-23, before the run):
+# P-X1 (the gate): every exactSurface row ends with L1(alphaf), Eshape and the
+#   maximum alpha excursion below 1e-7 at every N and Co (the quadrature
+#   tolerance summed over the N/Co steps), bounded (min alpha above -1e-10)
+#   and conservative to round-off. FALSIFIED by any value above 1e-6: a defect
+#   of the prism quadrature, the pre-image cut, the second-ring rule or the
+#   bookkeeping of the face fractions, to be located before study 2 runs.
+# P-X2 (the recovery on exact fractions under motion): the own-faces normal
+#   (row cellLocal) is second order in L1(n) over N = 32 to 128 at every Co,
+#   as in Table 1 of the proposal (the static exact state), and the ring
+#   normal first order with a constant near the static ring average's, since
+#   neither feeds back into the surface here. FALSIFIED if the cellLocal
+#   normal order is below 1.8.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexExactSurface --export=ALL,STUDY=davof/sphereTranslation3D_hexExactSurface run-studies.sbatch
+study_name: sphereTranslation3D_hexExactSurface
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.1, 0.2, 0.5]
+  TPF_ROW: [davof-exactSurface-exact, davof-exactSurface-cellLocal, davof-exactSurface-ringArea]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+# The N = 128 case (4.2e6 cells, four field writes) needs more than the Slurm default.
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
