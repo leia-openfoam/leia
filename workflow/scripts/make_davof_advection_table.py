@@ -105,6 +105,7 @@ MAX_COLS = {
     "nFitStalled_max": "nFitStalled", "nFitSingular_max": "nFitSingular",
     "nFitNoBracket_max": "nFitNoBracket", "fitResMax_max": "fitResMax",
     "fitResMean_max": "fitResMean", "defectMax_max": "defectMax", "defectL1_max": "defectL1",
+    "nAnchorFail_max": "nAnchorFail", "anchorShiftMax_max": "anchorShiftMax", "anchorShiftMean_max": "anchorShiftMean",
 }
 # the order tables: (long-table column, tex label, has an order)
 ORDER_METRICS = [
@@ -247,6 +248,7 @@ def history_rows(recs):
                         "nFitCells": s.get("nFitCells", ""), "nFitConverged": s.get("nFitConverged", ""),
                         "fitResMax": s.get("fitResMax", ""), "fitResMean": s.get("fitResMean", ""),
                         "defectMax": s.get("defectMax", ""), "defectL1": s.get("defectL1", ""),
+                        "anchorShiftMax": s.get("anchorShiftMax", ""), "anchorShiftMean": s.get("anchorShiftMean", ""),
                         "nCurvedLeaves": s.get("nCurvedLeaves", ""),
                         "minAlpha": s.get("minAlpha", ""), "Eshape": s.get("Eshape", ""),
                         "status": s.get("status", "")})

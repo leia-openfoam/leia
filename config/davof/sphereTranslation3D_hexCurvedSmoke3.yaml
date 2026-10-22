@@ -1,0 +1,54 @@
+# Third smoke of the curved clipping surface (2026-10-23): the VOLUME-ANCHORED
+# six-coefficient surface. The first smoke showed the face-interpolating
+# paraboloid loop unstable from the first step (growth 2.4 per step at N = 32,
+# Co 0.2, before any bounding acted) with the own and with the ring normal,
+# although its first step was 16 and 3 times better than the plane loop's: the
+# volume fraction never enters that surface, so the face-fraction loop is
+# undamped and interpolating. Here the offset is shifted after the fit so that
+# the volume under the surface equals alpha_k V (fork key fitAnchor volume), the
+# slopes and the tensor from the face fit; the flux is the same surface's volume
+# by the same ray quadrature, so the anchor is self-consistent and the conserved
+# alpha_k feeds back into the surface as it does into the plane of classical
+# UGVOF. Rows: exact, own and ring normal; both initial states; N = 32, Co 0.2.
+# 2 x 3 = 6 serial cases; the per-step diagnostics on.
+#
+# PRE-REGISTERED (2026-10-23): P-S3a the anchored rows stay bounded over the 160
+# steps on the exact state; P-S3b their face-fraction error at the first step is
+# within a factor two of the unanchored rows' (2.7e-4 own, 1.7e-3 ring) and at
+# the end below the plane loop's at this N and Co (1.04e-2 exact normal, 1.78e-2
+# ring normal); P-S3c on the quadraticFaces state the anchor pulls the surface
+# toward the chord volume (the face shift of the anchor of the order of the
+# chord deficit, 1e-2) and the end error is larger than on the exact state.
+# FALSIFIED (a) if an anchored row diverges on the exact state: the instability
+# is then not the missing volume feedback alone.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexCurvedSmoke3 --export=ALL,STUDY=davof/sphereTranslation3D_hexCurvedSmoke3 run-studies.sbatch
+study_name: sphereTranslation3D_hexCurvedSmoke3
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidVol-exact, davof-paraboloidVol-cellLocal, davof-paraboloidVol-ringArea]
+  TPF_DAVOF_METHOD: [exactSphere, quadraticFaces]
+  TPF_WRITE_TENSOR: ["true"]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

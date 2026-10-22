@@ -87,14 +87,31 @@ ROWS = OrderedDict([
     ("davof-paraboloid-cellSliver01",  ("davof", "ringArea", "check", "0.1",  "180", "keep", "plane", "paraboloid")),
     ("davof-paraboloid-cellSliver001", ("davof", "ringArea", "check", "0.01", "180", "keep", "plane", "paraboloid")),
     ("davof-paraboloid-ringArea",    ("davof", "ringArea",  "all",   "0",    "15",  "keep", "plane", "paraboloid")),
-    ("davof-paraboloid-exact",       ("davof", "exact",     "all",   "0",    "15",  "keep", "plane", "paraboloid")),
+    ("davof-paraboloid-exact",       ("davof", "exact",     "all",   "0",    "15",  "keep", "plane", "paraboloid", "faces")),
+    ("davof-paraboloidVol-exact",     ("davof", "exact",     "all",   "0",    "15",  "keep", "plane", "paraboloid", "volume")),
+    ("davof-paraboloidVol-cellLocal", ("davof", "cellLocal", "all",   "0",    "15",  "keep", "plane", "paraboloid", "volume")),
+    ("davof-paraboloidVol-cellSliver01",  ("davof", "ringArea", "check", "0.1",  "180", "keep", "plane", "paraboloid", "volume")),
+    ("davof-paraboloidVol-cellSliver001", ("davof", "ringArea", "check", "0.01", "180", "keep", "plane", "paraboloid", "volume")),
+    ("davof-paraboloidVol-ringArea",  ("davof", "ringArea",  "all",   "0",    "15",  "keep", "plane", "paraboloid", "volume")),
     ("plicRDF",                  ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
     ("isoAlpha",                 ("isoAlpha", "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
 ])
+# the ninth element (2026-10-23, after the first smoke): the anchor of the
+# paraboloid fit, faces (the six coefficients interpolate the cell's face
+# fractions; the volume fraction never enters the surface: unstable under
+# transport, growth 2.4 per step at N = 32, Co 0.2) or volume (the offset
+# shifted after the fit so that the volume under the surface is alpha_k V,
+# the feedback of the conserved volume fraction into the surface; the flux
+# is the same surface's volume by the same quadrature). Rows without the
+# element carry faces.
+_FULL = {}
+for _name, _vals in list(ROWS.items()):
+    _FULL[_name] = _vals if len(_vals) == 9 else (_vals + ("faces",))
+ROWS = OrderedDict(_FULL)
 
 ROW_TOKENS = ("TPF_RECON_SCHEME", "TPF_NORMAL_MODEL", "TPF_APPLY_TO",
               "TPF_SLIVER_TOL", "TPF_MAX_ANGLE", "TPF_NO_NORMAL_FALLBACK",
-              "TPF_FACE_CLIPPING", "TPF_CLIPPING_SURFACE")
+              "TPF_FACE_CLIPPING", "TPF_CLIPPING_SURFACE", "TPF_FIT_ANCHOR")
 
 # arm -> (UX, UY, UZ); |U| = 1 for every arm (REFERENCE_SPEED 1 in the
 # .parameter files, so dt = Co h). normal = the unit normal of the plane
@@ -129,6 +146,11 @@ LABELS = OrderedDict([
     ("davof-paraboloid-cellSliver001", "DAVOF, paraboloid, own normal, ring below 0.01 h^2"),
     ("davof-paraboloid-ringArea",    "DAVOF, paraboloid, ring-area normal"),
     ("davof-paraboloid-exact",       "DAVOF, paraboloid, exact normal (control)"),
+    ("davof-paraboloidVol-exact",     "DAVOF, paraboloid, volume anchor, exact normal (control)"),
+    ("davof-paraboloidVol-cellLocal", "DAVOF, paraboloid, volume anchor, own normal"),
+    ("davof-paraboloidVol-cellSliver01",  "DAVOF, paraboloid, volume anchor, own normal, ring below 0.1 h^2"),
+    ("davof-paraboloidVol-cellSliver001", "DAVOF, paraboloid, volume anchor, own normal, ring below 0.01 h^2"),
+    ("davof-paraboloidVol-ringArea",  "DAVOF, paraboloid, volume anchor, ring-area normal"),
     ("plicRDF",             "plicRDF"),
     ("isoAlpha",            "isoAlpha"),
 ])
@@ -152,6 +174,11 @@ COLORS = {
     "davof-paraboloid-cellSliver001": "#3f37c9", # indigo
     "davof-paraboloid-ringArea":    "#4895ef",   # sky blue
     "davof-paraboloid-exact":       "#4cc9f0",   # cyan: the control
+    "davof-paraboloidVol-exact":     "#8d99ae",   # slate: the anchored control
+    "davof-paraboloidVol-cellLocal": "#d00000",   # red: the anchored own normal
+    "davof-paraboloidVol-cellSliver01":  "#e85d04",  # orange-red
+    "davof-paraboloidVol-cellSliver001": "#9d0208",  # dark red
+    "davof-paraboloidVol-ringArea":  "#ffba08",   # amber
     "plicRDF":             "#eb6834",   # plicRDF's orange (make_davof_normal_table.COLORS)
     "isoAlpha":            "#eda100",   # isoAlpha's yellow (make_davof_normal_table.COLORS)
 }
@@ -164,6 +191,9 @@ MARKERS = {
     "davof-exactSurface-exact": "*", "davof-exactSurface-cellLocal": "1", "davof-exactSurface-ringArea": "2",
     "davof-paraboloid-cellLocal": "<", "davof-paraboloid-cellSliver01": ">",
     "davof-paraboloid-cellSliver001": "d", "davof-paraboloid-ringArea": "H", "davof-paraboloid-exact": "|",
+    "davof-paraboloidVol-exact": "_", "davof-paraboloidVol-cellLocal": "o",
+    "davof-paraboloidVol-cellSliver01": "s", "davof-paraboloidVol-cellSliver001": "D",
+    "davof-paraboloidVol-ringArea": "p",
     "plicRDF": "^", "isoAlpha": "v",
 }
 

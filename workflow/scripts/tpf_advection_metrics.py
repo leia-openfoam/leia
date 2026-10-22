@@ -84,7 +84,8 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "clippingSurface", "nCurvedFaces", "nCurvedSecondRing", "nCurvedSkipped",
             "nCurvedClips", "nCurvedLinearCuts", "nCurvedLeaves", "nFitCells",
             "nFitConverged", "nFitStalled", "nFitSingular", "nFitNoBracket",
-            "fitResMax", "fitResMean", "defectMax", "defectL1",
+            "fitResMax", "fitResMean", "nAnchorFail", "anchorShiftMax", "anchorShiftMean",
+            "defectMax", "defectL1",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
             "timeStepTime")
@@ -107,6 +108,7 @@ _RE_CURVED = re.compile(
     r"(\d+) linear cuts, (\d+) quadrature leaves"
     r"(?:; fit: cells (\d+), converged (\d+), stalled (\d+), singular (\d+), "
     r"no bracket (\d+), no frame (\d+), residual max (\S+) mean (\S+))?"
+    r"(?:; volume anchor: failed (\d+), face shift max (\S+) mean (\S+), leaves (\d+))?"
     r"(?:; surface defect max (\S+) L1 (\S+) over (\d+) cells)?")
 _RE_BOUND = re.compile(
     r"^isoAdvection: After conservative bounding: min\(alpha\) = (\S+), "
@@ -231,8 +233,12 @@ def read_log(path):
                     cur["fitResMax"] = m.group(15)
                     cur["fitResMean"] = m.group(16)
                 if m.group(17) is not None:
-                    cur["defectMax"] = m.group(17)
-                    cur["defectL1"] = m.group(18)
+                    cur["nAnchorFail"] = m.group(17)
+                    cur["anchorShiftMax"] = m.group(18)
+                    cur["anchorShiftMean"] = m.group(19)
+                if m.group(21) is not None:
+                    cur["defectMax"] = m.group(21)
+                    cur["defectL1"] = m.group(22)
                 continue
             m = _RE_BOUND.match(line)
             if m:

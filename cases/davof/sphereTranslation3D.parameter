@@ -36,6 +36,8 @@ values
     // paraboloid, 2026-10-23) is DERIVED from TPF_ROW as well; the value here
     // documents the default
     TPF_CLIPPING_SURFACE ( none );
+    // the anchor of the paraboloid fit (faces | volume), derived from TPF_ROW too
+    TPF_FIT_ANCHOR ( faces );
 
     // the prism quadrature of the curved flux: relative tolerance of the flux
     // volume per face and step, and the refinement depth (the first smoke at

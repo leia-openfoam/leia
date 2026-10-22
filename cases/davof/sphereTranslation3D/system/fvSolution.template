@@ -75,6 +75,9 @@ solvers
         fitPriorWeight  1e-2;
         fitTol          1e-10;
         fitMaxIter      50;
+        // faces: the surface interpolates the face fractions; volume: the offset
+        // shifted after the fit so that the volume under the surface is alpha_k V
+        fitAnchor       @!TPF_FIT_ANCHOR!@;
         defectLevels    3;
         writeCurvedFields @!TPF_WRITE_TENSOR!@;
         exactNormal
