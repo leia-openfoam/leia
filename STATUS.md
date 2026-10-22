@@ -6272,3 +6272,29 @@ second-order face update under transport needs the offset anchored by the face f
 volume fluxes of the same clipping surface (Stage 1 of the proposal), not a correction of the
 plane loop. The sagitta rows, configs and fields stay as the measured record; `faceClipping
 plane` remains the default and the loop of 10.17 the baseline.
+
+### 10.18 The dual advection with one curved surface per cell: the gate exact, the interpolating paraboloid unstable (2026-10-23)
+
+The fork's `clippingSurface exactSphere | paraboloid` (isoAdvectionCurved.C) replaces the plane
+sweep by one surface per cell for the volume flux (the liquid volume of the prism between the
+pre-image and the face, adaptive Gauss over the face with exact segment fractions) and the face
+update (the pre-image's quadratic face cut); the studies run through `cases/davof/*Translation3D`
+with the row elements TPF_CLIPPING_SURFACE, TPF_FIT_ANCHOR and TPF_FIT_DOF derived from TPF_ROW
+(`tpf_rows.py`), the converter columns of the "curved clipping" Info line and the report's run
+maxima. Smokes 1 and 2 (`sphereTranslation3D_hexCurvedSmoke`, `hexCurvedSmoke2`; N = 32, Co 0.2):
+the exact-surface gate gives exact face fractions (1e-14) from the second step, bounded and
+conservative to round-off, carrying the initial state's volume unchanged (the chord deficit of
+quadraticFaces, 8e-3 in L1; on the exact state a 2.4e-4 residual between the initialisation's
+box-ball volumes and the ray quadrature, under measurement in `hexCurvedQuad`); the
+six-coefficient surface interpolating the cell's face fractions is unstable from the first step on
+both initial states and with every normal (first step 20 / 13 / 2.6 times better than the plane
+loop's with the exact / own / ring normal, then growth 2 to 2.5 per step, stopped at step 10 to
+21): the volume fraction never enters that surface and the faces of a cell come from different
+surfaces, so the exact interpolation amplifies. Predictions P-S2b falsified as foreseen in the
+reply to the proposal session; the quadrature cost 9 s per step at 1e-10 / 12 and 1.2 s at
+1e-8 / 9 against 0.02 s for the plane loop. Running: smoke 3 (`fitAnchor volume`: the offset
+shifted so that the volume under the surface is alpha_k V), the quadrature study, smoke 4
+(`fitDof none`: the ring-tensor paraboloid positioned by the volume alone, and the one-scalar face
+anchoring). The article FINDINGS entry of 2026-10-23 has the account; the ladders
+(`hexExactSurface`, `hexParaboloid`, `planeTranslation3D_hexParaboloid`) wait for a stable
+variant.
