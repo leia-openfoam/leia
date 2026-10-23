@@ -6509,7 +6509,18 @@ lexicographically (order-independent); the serial smoke (55582019) and the paral
 `*.ringTies-*`). The Kromer-Bothe ladder (55577406) started on 93149e3 and its later cases
 load whatever library the cluster build last wrote (the version stamp per case records
 which); it is a dry run and restarts on the final binary once the tie-break and the
-brute-force comparison are in. The sensitivity itself is a
+brute-force comparison are in.
+Fourth parallel run (55582020, the tie-break): no digit changed in either the parallel or the
+serial run (both reproduce their earlier values exactly), so ties never occurred and the
+difference is deterministic. Its signature, 2.8e-10 at the first step when every surface
+still coincides with the sphere and 1e-4 to 1e-3 from the third, is a different surface on
+some faces: the zero-flux faces (two thirds of the processor faces under the translation
+along x) took the face-owner cell in serial, the lower cell index of the undecomposed mesh,
+and the patch-owning side in parallel, an unrelated rank. Fork 2727892: in serial and in
+parallel a zero-flux face goes to the cell with the lexicographically smaller centre (the
+neighbour centres across a patch from patchNeighbourField); the serial smoke (55582697) and
+the parallel check (55582698) rerun on this binary after build 55582696 (the earlier runs kept
+aside as `*.tieBreak-*`). The sensitivity itself is a
 property of the second-ring rule worth stating: runs that differ in round-off differ by up to
 1e-3 of L1(alphaf), below the ladder's resolution of orders but above a bitwise comparison.
 The `hexRuleDebug` second run (55578132): neither kromerBotheMinSplit 8 nor kromerBotheFan
