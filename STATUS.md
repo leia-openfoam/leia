@@ -6332,3 +6332,11 @@ solves it by the Illinois rule; the plane test (55561277) and the sphere ladder 
 restarted on it after the rebuild (55561276); the partial runs are kept aside as
 `*.secantAnchor-*`. The gate ladder (55557458) runs on, 14 of 27 cases done after three hours (the
 N = 128 cases).
+
+Appendix to 10.18 (2026-10-24 midday, the quadrature). The plane test with the bracketed anchor
+stayed at 1e-5 to 4e-4: the adaptive six-point triangle rule's floor along the surface traces
+(about 4e-6 of the cell volume at depth 9). Fork bcf7dd3 splits the triangle integrals at the
+quadric traces (exact roots along sweep lines, Gauss-12 per piece, adaptive outer rule):
+`hexCurvedQuad` rerun gives the defect 7e-9 in L1 at every tolerance (was 3e-6), 16 000 to 27 000
+leaves per step (was 6.7 million), 1.3 to 1.6 s per step at N = 32. The plane test (55562658) and
+the sphere ladder (55562659) restarted on it; the partial runs kept aside as `*.before-split-*`.
