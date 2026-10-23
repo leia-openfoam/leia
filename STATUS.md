@@ -6370,3 +6370,17 @@ the cell (the quadrature against the exact linear cut: 0.8776474705299629 agains
 Linf 4.0e-12), 506 000 leaves (was 927 000), 44 and 38 s per step at N = 40 with the
 diagnostics on. The split quadrature is at round-off on the plane; the plane test and the
 sphere ladder of variant 3 run on this binary.
+The cost: 44 s per step at N = 40 extrapolates to days for the N = 160 plane and the N = 128
+sphere cases, and the three forced outer levels (9515ea9, against accidental acceptance at the
+edge-crossing kinks) are not needed once those crossings are exact breakpoints. Fork 8e76295
+forces one level: the diagnostic (55566844) repeats every digit of 272dc2c (worst cell 2.0e-14,
+face shift 8.8e-13 / 2.2e-14, L1(alphaf) 2.4e-15 / 6.5e-15) with 128 400 leaves (was 506 000)
+and 13.6 / 12.0 s per step at N = 40 with the diagnostics on (was 44 / 38). The first eleven
+plane cases of 272dc2c (N = 20) were at round-off (run maxima of L1(alphaf) 1e-14, no anchor
+failure) except the own normal on the normal arm at Co 0.5 (3e-8 after eight steps, the sliver
+amplification of the plane loop). Build 55566843; the plane test (55566845) and the sphere
+ladder (55566846) rerun on 8e76295, the partial runs kept aside as `*.minDepth3-*`. The
+remaining cost is the anchor's cell-volume evaluations (24 pyramids per Illinois iteration);
+the exact sphere-tetrahedron overlap (Strobl, Formella, Pöschel 2016) for the control and the
+Evrard et al. (2023) closed forms for the paraboloid are the next levers if the N = 128 cases
+do not fit the wall time.
