@@ -40,6 +40,8 @@ values
     TPF_FIT_ANCHOR ( faces );
     // the degrees of freedom the face fractions set in the fit (six | one | none), derived too
     TPF_FIT_DOF ( six );
+    // the fork's quadrature diagnostic (the worst anchor residual's cell printed)
+    TPF_CURVED_DEBUG ( false );
 
     // the prism quadrature of the curved flux: relative tolerance of the flux
     // volume per face and step, and the refinement depth (the first smoke at

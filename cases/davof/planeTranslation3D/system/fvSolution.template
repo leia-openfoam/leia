@@ -80,6 +80,7 @@ solvers
         // surface-defect diagnostic in steps
         anchorTolRel    1e-11;
         defectEvery     10;
+        curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;
         writeCurvedFields false;
         exactNormal
