@@ -15,6 +15,16 @@
 # values), which makes kromerBothe the reference; FALSIFIED if they do not
 # fall with the depth (a defect of the Kromer-Bothe rule on curved traces).
 # 2 one-step cases.
+# RESULT of the first run (depth 9 and 14): the split quadrature is converged
+# (identical at both depths), kromerBothe differs by up to 5.3e-6 of the prism
+# volume (mean 1.3e-7) on a few x-normal prisms while the cell volumes agree
+# to 6e-9 (mean 2.5e-11); on the exact-sphere control the split quadrature and
+# the exact overlap agreed to 6e-12 in the shape error, so the split quadrature
+# is the reference and the Kromer-Bothe prism is off. SECOND RUN: depth 9, the
+# rule's checks kromerBotheMinSplit 1 | 8 (the arc quadrature's convergence)
+# and kromerBotheFan true | false (the planar faces whole instead of fan
+# triangles): the knob that moves the prism maximum locates the defect.
+# 4 one-step cases.
 #
 #   sbatch --parsable -J leia-davof-sphereTranslation3D_hexRuleDebug --export=ALL,STUDY=davof/sphereTranslation3D_hexRuleDebug run-studies.sbatch
 study_name: sphereTranslation3D_hexRuleDebug
@@ -36,7 +46,9 @@ axes_override:
   TARGET_ADVECTIVE_CO: [0.2]
   TPF_ROW: [davof-paraboloidRing-exact]
   TPF_VOLUME_RULE: [kromerBothe]
-  TPF_CURVED_MAX_DEPTH: [9, 14]
+  TPF_CURVED_MAX_DEPTH: [9]
+  TPF_KB_MIN_SPLIT: [1, 8]
+  TPF_KB_FAN: ["true", "false"]
   TPF_CURVED_DEBUG: ["true"]
   END_TIME: [6.25e-3]
   TPF_DAVOF_METHOD: [exactSphere]

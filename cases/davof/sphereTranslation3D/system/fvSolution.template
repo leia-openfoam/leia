@@ -78,6 +78,10 @@ solvers
         // exactSphere (Strobl, Formella, Poeschel 2016 for the sphere)
         volumeRule      @!TPF_VOLUME_RULE!@;
         volumeRuleDebug @!TPF_CURVED_DEBUG!@;
+        // the Kromer-Bothe rule's checks: the least number of sub-arcs per
+        // trace arc and the fan triangulation of the planar faces
+        kromerBotheMinSplit @!TPF_KB_MIN_SPLIT!@;
+        kromerBotheFan  @!TPF_KB_FAN!@;
         fitPriorWeight  1e-2;
         fitTol          1e-10;
         fitMaxIter      50;

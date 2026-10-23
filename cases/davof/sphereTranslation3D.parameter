@@ -48,6 +48,10 @@ values
     // (Strobl, Formella, Poeschel, J. Comput. Phys. 311 (2016) 158-172,
     // doi:10.1016/j.jcp.2016.02.003; the exact-sphere control)
     TPF_VOLUME_RULE ( splitQuadrature );
+    // the Kromer-Bothe rule's checks (davofKromerBothe.H): the least number of
+    // sub-arcs per trace arc, the fan triangulation of the planar faces
+    TPF_KB_MIN_SPLIT ( 1 );
+    TPF_KB_FAN ( true );
 
     // the prism quadrature of the curved flux: relative tolerance of the flux
     // volume per face and step, and the refinement depth (the first smoke at
