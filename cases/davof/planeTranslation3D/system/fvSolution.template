@@ -72,6 +72,7 @@ solvers
         // face-based method of Kromer and Bothe 2023 for the paraboloid) |
         // exactSphere (Strobl, Formella, Poeschel 2016 for the sphere)
         volumeRule      @!TPF_VOLUME_RULE!@;
+        volumeRuleDebug @!TPF_CURVED_DEBUG!@;
         fitPriorWeight  1e-2;
         fitTol          1e-10;
         fitMaxIter      50;
