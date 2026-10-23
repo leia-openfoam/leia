@@ -6444,4 +6444,19 @@ and the rule falls back to the split quadrature, counted, where its volume leave
 more than 1e-9. Diagnostic on 1bb9724 (55574588): the normal arm unchanged (L1(alphaf)
 2.1e-15), the oblique arm at round-off (L1(alphaf) 4.5e-15, Linf 2.7e-12, min alpha -8e-16,
 7 fallbacks of about 6000 faces). The Kromer-Bothe sphere smoke reruns on 1bb9724 (55574594;
-the run on 038f4d7 kept aside as `*.degenerate-*`).
+the run on 038f4d7 kept aside as `*.degenerate-*`). One more prism slipped through the 1e-14
+sweep test (d.Sf 3e-27 of a face normal to the displacement: the zero components of the face
+area vectors carry 1e-14 of round-off); the threshold is 1e-10 of |d||Sf| (fork 31028dd).
+The four-processor check (`hexParallel`, 55574223, on 955362b): every case ran to the end,
+conservative and bounded, the control's gate held (end L1(alphaf) 2.0e-14, 0.11 s per step
+with the exactSphere rule), but the agreement with the serial runs was not at round-off: the
+control's first step 2.33e-10 against 1.59e-10 and the variant 3 row 7 % off in L1 at step
+64, with the norm over 1708 faces against 1668 and 3332 faces set against 3240. Mechanism:
+under the translation along x the faces normal to y and z have phi = 0 exactly; both sides of
+a processor patch saw themselves upwind by phiF >= 0, both computed the face fraction with
+their own surface, the sync swapped the two values, and areaFractionError counted the
+processor faces on both sides. Fork 164691d: a zero-flux processor face goes to the owning
+side of the patch (the serial rule gives it to the owner cell), and the norm counts a
+processor face once, on the owning side, adjacent when either cell is an interface cell (the
+remote flag swapped across the patch). The check reruns (55576072 after build 55576071; the
+first run kept aside as `*.zeroFluxTie-*`).
