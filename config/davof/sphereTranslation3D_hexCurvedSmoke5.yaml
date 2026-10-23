@@ -1,0 +1,52 @@
+# Fifth smoke of the curved clipping surface (2026-10-23, the check asked by the
+# proposal session): is the instability of the face-interpolating six-coefficient
+# surface (smokes 1 to 3: growth 2 to 2.5 per step at N = 32, Co 0.2, tolerance
+# 1e-8 / depth 9) independent of the quadrature tolerance and of the Courant
+# number? The exact-normal row of the interpolating surface on the exact state
+# at Co 0.05 (four times more steps per travelled cell) with the default
+# quadrature, and at Co 0.2 with the tolerance 1e-10 and depth 12, within the
+# product of the three axes (8 serial cases), N = 32, the per-step diagnostics on.
+#
+# PRE-REGISTERED (2026-10-23): P-S5a at Co 0.05 the row diverges as well, with
+# a growth per step smaller than at Co 0.2 but a growth per travelled cell
+# length at least as large (the amplification is per application of the map,
+# of which there are four times more): stopped before step 80; P-S5b at
+# 1e-10 / 12 the run is indistinguishable from the 1e-8 / 9 run of smoke 2 in
+# its first three steps to two digits and diverges at the same step within
+# two. FALSIFIED if the Co 0.05 row survives the 640 steps bounded (the
+# instability would then be a Courant effect) or if the tighter quadrature
+# changes the step of the abort by more than five (the quadrature's error
+# would then feed the growth).
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexCurvedSmoke5 --export=ALL,STUDY=davof/sphereTranslation3D_hexCurvedSmoke5 run-studies.sbatch
+study_name: sphereTranslation3D_hexCurvedSmoke5
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.05, 0.2]
+  TPF_ROW: [davof-paraboloid-exact]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_CURVED_TOL_REL: [1e-8, 1e-10]
+  TPF_CURVED_MAX_DEPTH: [9, 12]
+  TPF_AFE_CONSISTENCY: ["false"]
+# the workflow sweeps the product: 2 x 2 x 2 = 8 cases, the two of the check among them
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
