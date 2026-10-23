@@ -1,0 +1,50 @@
+# The sensitivity of the volume-positioned loop to round-off (2026-10-24): the
+# four-processor check of variant 3 differs from the serial run by 2.8e-10 of
+# L1(alphaf) at the first step (the anchor's face shift in its eleventh digit,
+# consistent with the ring tensor's summation order across processors), by
+# 1e-4 from the third step and by 1e-5 to 1e-3 afterwards without further
+# growth, with identical interface-cell counts, mass and face counts. Whether
+# the loop amplifies a round-off perturbation a million-fold within two steps
+# is decided in serial alone: two serial runs of the same case (variant 3,
+# exact normal, split quadrature, N = 32, Co 0.2, exact state) that differ
+# only in the quadrature tolerance by 1 % (1e-11 against 9.9e-12), which
+# changes the adaptive rule's refinement path and so the result at round-off.
+# PREDICTION: if the two differ by 1e-5 or more in L1(alphaf) from the third
+# step on, the loop has a round-off noise floor of that size (a property of
+# the method to state: the second-ring and anchor choices are not smooth at
+# round-off), and the parallel check agrees with the serial run as well as two
+# serial runs agree with each other; if they agree to 1e-10 throughout, the
+# parallel difference is a defect of the exchange. 16 steps, 2 cases.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexNoise --export=ALL,STUDY=davof/sphereTranslation3D_hexNoise run-studies.sbatch
+study_name: sphereTranslation3D_hexNoise
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact]
+  TPF_VOLUME_RULE: [splitQuadrature]
+  TPF_CURVED_TOL_REL: [1e-11, 9.9e-12]
+  END_TIME: [0.1]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 120
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
