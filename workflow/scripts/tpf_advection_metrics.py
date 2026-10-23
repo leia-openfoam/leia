@@ -107,9 +107,9 @@ _RE_CURVED = re.compile(
     r"\((\d+) second ring, (\d+) boundary\), (\d+) skipped, (\d+) clips, "
     r"(\d+) linear cuts, (\d+) quadrature leaves"
     r"(?:; fit: cells (\d+), converged (\d+), stalled (\d+), singular (\d+), "
-    r"no bracket (\d+), no frame (\d+), residual max (\S+) mean (\S+))?"
-    r"(?:; volume anchor: failed (\d+), face shift max (\S+) mean (\S+), leaves (\d+))?"
-    r"(?:; surface defect max (\S+) L1 (\S+) over (\d+) cells)?")
+    r"no bracket (\d+), no frame (\d+), residual max ([^\s;]+) mean ([^\s;]+))?"
+    r"(?:; volume anchor: failed (\d+), face shift max ([^\s;]+) mean ([^\s;]+), leaves (\d+))?"
+    r"(?:; surface defect max ([^\s;]+) L1 ([^\s;]+) over (\d+) cells)?")
 _RE_BOUND = re.compile(
     r"^isoAdvection: After conservative bounding: min\(alpha\) = (\S+), "
     r"max\(alpha\) = 1 \+ (\S+)")
