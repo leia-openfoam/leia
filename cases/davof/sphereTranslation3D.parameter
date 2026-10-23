@@ -45,7 +45,7 @@ values
     // volume per face and step, and the refinement depth (the first smoke at
     // 1e-10 / 12 cost 6.7e7 leaves and 9 s per step at N = 32; the needed
     // accuracy is of the order h^2 of the flux)
-    TPF_CURVED_TOL_REL ( 1e-8 );
+    TPF_CURVED_TOL_REL ( 1e-11 );
     TPF_CURVED_MAX_DEPTH ( 9 );
 
     TPF_VELOCITY_ARM ( axial );
