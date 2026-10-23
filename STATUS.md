@@ -6340,3 +6340,33 @@ quadric traces (exact roots along sweep lines, Gauss-12 per piece, adaptive oute
 `hexCurvedQuad` rerun gives the defect 7e-9 in L1 at every tolerance (was 3e-6), 16 000 to 27 000
 leaves per step (was 6.7 million), 1.3 to 1.6 s per step at N = 32. The plane test (55562658) and
 the sphere ladder (55562659) restarted on it; the partial runs kept aside as `*.before-split-*`.
+
+Appendix to 10.18 (2026-10-24 afternoon, the anchor's criterion and the two quadrature layers).
+With the split quadrature the plane test stayed at 4e-6 to 1e-5 in L1(alphaf), with identical
+digits across the anchor's changes: fork 9515ea9 refines the outer rule at least three levels
+before accepting and runs the anchor and the flux at 1e-11 of the volume (templates 7e052553);
+fork 5b8c613 closes the anchor on the offset (bracket width 1e-11 h) instead of the volume
+residual, which left the offset unbounded in corner cells where V(c) is flat. The one-step
+diagnostic `planeTranslation3D_hexCurvedDebug` (fork 90c0918, leia 35bc5190: the cell with the
+largest anchor residual before the anchor, its pyramids against the exact linear cut of the
+Detrixhe-Aslam tets; N = 40, Co 0.2, exact normal, both arms) located the error in the quadrature
+of a cell whose centre lies a few 1e-3 h from the plane: the ray weight of the pyramid rule has a
+layer of that width next to the trace (the rays cross the surface at s near zero on one side of
+the trace and not at all on the other), the trace was an exact breakpoint, the layer was not, and
+the 12-point rule on the piece missed it by up to 6.4e-5 of the cell per triangle (2.1e-4 in the
+cell, 18 to 30 leaves). Fork cc8effa refines the inner integral adaptively per piece (1e-12, depth
+20): the worst residual 2.1e-4 -> 3.9e-10 of the cell, the anchor's face shift 2e-4 -> 4e-10, the
+one-step L1(alphaf) 4e-6 -> 4.1e-12 (normal arm) and 3.6e-12 (oblique), Linf 7e-10, 59 s per step
+at N = 40 (the diagnostic's 927 000 leaves). The remaining 3.9e-10 sits in one triangle with 18
+leaves: the kink of the outer sweep where the trace crosses the swept edge, which bisection
+resolves at second order only; fork 272dc2c splits the outer sweep at those crossings (the same
+exact roots along the edge). Build 55566595; the diagnostic (55566596), the plane test (55566597)
+and the sphere ladder (55566598) rerun on it; the partial runs kept aside as `*.innerGauss-*`
+and `*.innerOnly-*`. The gate ladder (55557458) runs on, 19 of 27 after seven hours.
+The diagnostic on 272dc2c (55566596): the worst anchor residual before the anchor 2.0e-14 of
+the cell (the quadrature against the exact linear cut: 0.8776474705299629 against
+0.8776474705299703), the anchor's face shift max 8.8e-13 mean 2.2e-14, the surface defect max
+1.0e-14, the one-step L1(alphaf) 2.4e-15 (normal arm, Linf 2.5e-14) and 6.5e-15 (oblique,
+Linf 4.0e-12), 506 000 leaves (was 927 000), 44 and 38 s per step at N = 40 with the
+diagnostics on. The split quadrature is at round-off on the plane; the plane test and the
+sphere ladder of variant 3 run on this binary.
