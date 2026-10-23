@@ -6475,3 +6475,21 @@ the difference falls with the depth). Decision: the split-rule sphere ladder (55
 36 cases after 4.3 h, the N = 128 cases unable to finish in 48 h at 600 s per step) cancelled
 and kept aside as `*.splitRule-*`; the variant 3 ladder resubmitted with the kromerBothe rule
 (55577406 after build 55577403; the N = 128, Co 0.1 case estimated at about 1.2 h).
+`hexRuleDebug` first run (55577404): the split quadrature gives the same prism volumes at depth
+14 as at depth 9 (converged by its own test) and the kromerBothe rule differs from it by up to
+5.3e-6 of the prism volume (mean 1.3e-7) on a few x-normal prisms while the cell volumes
+agree to 6.3e-9 (mean 2.5e-11); since the split quadrature and the exact overlap agreed to
+6e-12 in the shape error over 160 steps of the control, the split quadrature is the reference
+and the Kromer-Bothe PRISM is off at the 5e-6 level (the cells are right): the prediction of
+the config falsified. Second run (55578132, fork 93149e3): the knobs kromerBotheMinSplit 1 | 8
+(the arc quadrature's convergence) and kromerBotheFan true | false (planar faces whole) to
+locate the defect in the side parallelograms or the arcs.
+Parallel, second run (55576072, fork 164691d): the control agrees with the serial run at
+round-off (the first step's 1.588e-10 identical, the end 1.928907e-14 against 1.928920e-14,
+the largest relative difference 9e-4 at a step with L1 1.9e-15); the variant 3 row 0.3 % apart
+at worst (step 98) and 6e-5 at the end, with two faces fewer processed: the second ring of a
+processor face saw only the local cell's face neighbours, and a face between a remote
+candidate and a local non-candidate was processed by nobody. Fork 91729ae exchanges per patch
+face the candidate flag and the closest surface of the cell's face neighbours with its
+distance, so the serial rule holds across the boundary; third run 55578374 after build
+55578373 (the second kept aside as `*.localRing-*`).
