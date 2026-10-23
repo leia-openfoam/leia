@@ -6298,3 +6298,24 @@ shifted so that the volume under the surface is alpha_k V), the quadrature study
 anchoring). The article FINDINGS entry of 2026-10-23 has the account; the ladders
 (`hexExactSurface`, `hexParaboloid`, `planeTranslation3D_hexParaboloid`) wait for a stable
 variant.
+
+Appendix to 10.18 (2026-10-23 night). Smoke 3 (`hexCurvedSmoke3`, variant 2: the six-coefficient
+face fit with the offset shifted afterwards to the volume alpha_k V, slopes and tensor as fitted):
+diverges like the unanchored surface on both initial states with every normal. Quadrature study
+(`hexCurvedQuad`): the ray quadrature of the cell volume under the exact sphere agrees with the
+initialisation to 3e-6 in L1 at every tolerance 1e-8 to 1e-12 and depth 9 to 14 (cost 4.6 to 158 s
+per step at N = 32); the 2.4e-4 of smoke 2 was the old tet-quadrature defect routine. Smoke 4
+(`hexCurvedSmoke4`, variant 3, rows davof-paraboloidRing-*: the frame from the normal, the tensor
+from the ring, zero slopes, the offset from the volume alone; fitDof none, fitAnchor volume):
+STABLE with the exact and the ring normal over 160 steps at N = 32, Co 0.2 on the exact state
+(bounded 1e-20, conservative, the defect at the anchor's tolerance): exact normal L1(alphaf) 5.7e-4
+against the plane loop's 1.15e-2, own-faces normal 2.8e-4 against 3.7e-3, centroid 4.1e-4 against
+7.7e-4; ring normal 5.9e-3 against 1.78e-2, normal 3.3e-2 (the ring's bias), centroid 5.3e-4
+against 1.35e-3; the own-normal row diverges through the sliver cells (stopped at step 24); the
+one-scalar face anchoring (paraboloidOne) drifts and is stopped at step 81. The anchor's Newton
+with the flux's quadrature cost 28 s per step; fork 988fdf6 runs it at anchorTolRel 1e-6 with one
+Newton and secant steps and the defect every tenth step. Queued: the gate ladder
+`hexExactSurface` (55557458, running), smoke 5 (`hexCurvedSmoke5`: the interpolating surface at
+Co 0.05 and at the tight quadrature, the proposal session's check), then the rebuild and the
+ladders `sphereTranslation3D_hexParaboloid` (variant 3 rows, exact state, 36 cases; P-P1 to P-P5
+restated in the config) and `planeTranslation3D_hexParaboloid` (48 cases).
