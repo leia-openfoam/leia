@@ -1,57 +1,60 @@
-# Study 2 of the plan of 2026-10-23: the SIX-COEFFICIENT SURFACE WITH ITS OWN
-# VOLUME FLUX, the month-3 milestone of the proposal, on the Cartesian mesh.
+# Study 2 of the plan of 2026-10-23: the second-order surface with its own volume
+# flux, the month-3 milestone of the proposal, on the Cartesian mesh, in the
+# variant the smokes of 2026-10-23 found stable (variant 3, rows
+# davof-paraboloidRing-*): the frame of the surface from the normal the scheme
+# used (own, own with the ring normal below |m_c| < 0.1 h^2, ring, exact), the
+# curvature tensor from the ring, zero slopes, and the offset from the volume
+# fraction alone (fitDof none, fitAnchor volume), i.e. the position from the
+# conserved alpha_k as in classical UGVOF with a second-order surface; the
+# volume flux through a face is the liquid volume of the swept prism under
+# that surface and the new face fraction the pre-image's liquid fraction under
+# it (fork isoAdvectionCurved.C), so alpha_k and alpha_f are the moments of one
+# surface per cell at every step. The six-coefficient surface fitted to the
+# cell's own face fractions (the proposal's Stage 1 surface as written) is
+# unstable under transport (smokes 1 to 3: growth 2 to 2.5 per step from the
+# first step with every normal, on the exact initial state too, with and
+# without the volume anchor of its offset), as is the one-scalar face anchoring
+# (smoke 4): the cell's own faces may not set the remaining coefficients.
 # The translated sphere (cases/davof/sphereTranslation3D: R = 0.15 in the
-# 2 x 1 x 1 box, U = (1 0 0), 3.3 diameters, the quadraticFaces state); the
-# clipping surface of every interface cell is the paraboloid with six
-# coefficients in the frame of the normal the scheme used (offset, two slopes,
-# the curvature tensor), all six fitted to the cell's own face fractions by the
-# Gauss-Newton of leia's regeneration (2026-10-12) with the ring tensor as the
-# prior; the volume flux through a face is the liquid volume of the swept prism
-# under that surface and the new face fraction the pre-image's liquid fraction
-# under it (fork isoAdvectionCurved.C, clippingSurface paraboloid), so that
-# alpha_k and alpha_f are the moments of one surface per cell at every step
-# (the requirement of 2026-10-16). Rows: the normal that frames the fit (the
-# fitted slopes take its tilt): the own normal everywhere (cellLocal), the own
-# normal with the ring normal below |m_c| < 0.1 h^2 and 0.01 h^2 (cellSliver01,
-# cellSliver001: the ring-evaluated share is reported), the ring normal
-# everywhere (ringArea), the exact normal (the control). N = 32 / 64 / 128,
-# Co 0.1 / 0.2 / 0.5: 5 x 3 x 3 = 45 serial cases; the per-step diagnostics on
-# (the face-fraction error every step, the fit residual, the surface defect).
+# 2 x 1 x 1 box, U = (1 0 0), 3.3 diameters), the EXACT-sphere initial state
+# (alpha the volume under the surface the face fractions describe; the
+# quadraticFaces chord deficit would be carried along unchanged), N = 32 / 64 /
+# 128, Co 0.1 / 0.2 / 0.5: 4 x 3 x 3 = 36 serial cases; the per-step
+# diagnostics on (the face-fraction error every step, the surface defect every
+# tenth step).
 #
-# Scoring, as the hex study: q the order of L1(alphaf) over N at the end of
-# the run (one period = 3.3 diameters) and, from the per-step history, the
-# order of the error after the first step (per step); the normal order; min
-# alpha; the mass error; plus the fit's share of non-converging cells, its max
-# and mean residual, and the surface defect's max and L1 per step.
+# Scoring, as the hex study: q the order of L1(alphaf) over N at the end of the
+# run (one period = 3.3 diameters) and, from the per-step history, the order
+# of the error after the first step (per step); the normal order; min alpha;
+# the mass error; the ring-evaluated share (the cellSliver01 row's nSliver);
+# the anchor's face shift and the surface defect per step.
 #
-# PRE-REGISTERED PREDICTIONS (2026-10-23, before the run; the priors: the plane
-# loop's q = 0.80 / 0.81 / 1.00 at Co 0.1 / 0.2 / 0.5, the zero-velocity
-# identity of the six-coefficient surface, the sagitta result that the volume
-# anchor fails under the plane flux, and the proposal's accounting that the
-# remainders of the fit at the displaced pre-images sum to O(h) over a period
-# unless they cancel):
+# PRE-REGISTERED PREDICTIONS (2026-10-23 night, before the run; the priors:
+# smoke 4 at N = 32, Co 0.2 on this state: the exact-normal row ends at
+# L1(alphaf) 5.7e-4 against the plane loop's 1.15e-2, the ring-normal row at
+# 5.9e-3 against 1.78e-2, the own-normal row diverges at step 24; the plane
+# loop's q = 0.80 / 0.81 / 1.00 at Co 0.1 / 0.2 / 0.5):
 # P-P1 (per step): with the exact normal the face-fraction error after ONE step
-#   is second order over N = 32 to 128 (at least 1.8), the first evidence that
-#   the per-step update is O(h^2) with a fitted surface. FALSIFIED below 1.5.
+#   is second order over N = 32 to 128 (at least 1.8). FALSIFIED below 1.5.
 # P-P2 (per period, the milestone's question): the order of L1(alphaf) at the
 #   end of the run with the exact normal lies between 1 and 2; the hypothesis
-#   of the proposal is q >= 1.8 and the null hypothesis of its accounting is
-#   q = 1; this study decides between them. Stated as a two-sided prediction
-#   on purpose: either outcome is the result.
-# P-P3 (the loop): the ring-normal row is bounded at every N and Co; the
-#   own-normal row (cellLocal) is bounded too, because second-order face
-#   fractions remove the mismatch the sliver cells amplify (the sliver
-#   mechanism acts on the first-order fractions of the plane loop); the
-#   sliver variants lie between. FALSIFIED if cellLocal aborts at every N.
-# P-P4 (the fit): the fit converges in at least 99 % of the interface cells at
-#   N = 64 and 128 (leia's static 0.1 to 0.6 % failures), and the surface
-#   defect stays below 1e-3 of V in L1 at N = 128 (the state stays consistent
-#   with the surface that produced it). FALSIFIED if the defect grows over the
-#   run by more than a factor ten from its first-step value.
-# P-P5 (the normal): with the own normal and second-order fractions the
-#   transported normal is second order (the clipping law) with a constant
-#   below the ring normal's; the ring normal stays first order (the mean
-#   normal of the ring). FALSIFIED if cellLocal's L1(n) order is below 1.5.
+#   of the proposal is q >= 1.8 and the accounting's null hypothesis is q = 1;
+#   this study decides. Two-sided on purpose: either outcome is the result.
+# P-P3 (the loop): the exact-normal and the ring-normal rows are bounded at
+#   every N and Co; the own-normal row diverges at every N (smoke 4); the row
+#   with the ring normal below 0.1 h^2 is bounded at N = 64 and 128 (the sliver
+#   cells are where the own normal fails, and they are 11 to 14 % of the
+#   interface cells). FALSIFIED if the exact or the ring row aborts anywhere.
+# P-P4 (the anchor): the anchor converges in every cell (no failures) and its
+#   face shift, the change of the cell's face fractions the volume anchor
+#   imposes on the ring-tensor surface, is first order in its mean over N
+#   (the sagitta volume of the ring tensor's error). FALSIFIED by anchor
+#   failures above 0.1 % of the cells.
+# P-P5 (the normal): with the exact normal the recovered normal from the
+#   cell's own faces is at least 1.5 in order (second-order fractions give a
+#   second-order normal by the clipping law, degraded by the grazing cells);
+#   the ring normal stays first order at its own constant (the mean normal of
+#   the ring). FALSIFIED if the exact row's own-faces normal order is below 1.
 #
 #   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloid --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloid run-studies.sbatch
 study_name: sphereTranslation3D_hexParaboloid
@@ -73,7 +76,8 @@ post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . -
 axes_override:
   N_CELLS: [32, 64, 128]
   TARGET_ADVECTIVE_CO: [0.1, 0.2, 0.5]
-  TPF_ROW: [davof-paraboloid-exact, davof-paraboloid-cellLocal, davof-paraboloid-cellSliver01, davof-paraboloid-cellSliver001, davof-paraboloid-ringArea]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringArea, davof-paraboloidRing-cellSliver01, davof-paraboloidRing-cellLocal]
+  TPF_DAVOF_METHOD: [exactSphere]
   TPF_AFE_CONSISTENCY: ["false"]
 collapse_other_axes: true
 

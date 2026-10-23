@@ -1,10 +1,11 @@
-# The plane test of the six-coefficient surface with its own volume flux
-# (2026-10-23; fork isoAdvectionCurved.C, clippingSurface paraboloid): the
+# The plane test of the volume-anchored ring-tensor surface with its own volume
+# flux (variant 3 of 2026-10-23, rows davof-paraboloidRing-*; fork
+# isoAdvectionCurved.C, clippingSurface paraboloid, fitDof none, fitAnchor volume): the
 # translated plane of cases/davof/planeTranslation3D (the Detrixhe-Aslam state,
 # exact for a plane) carried over 0.2 L along its normal and along (1 0 0),
 # N = 20 / 40 / 80 / 160, Co 0.2 and 0.5, with the own normal, the ring normal
-# and the exact normal framing the fit. On a plane the fit must return the
-# plane (zero tensor, zero slopes, the offset of the chord), the prism
+# and the exact normal framing the surface. On a plane the ring tensor is
+# zero to round-off, the volume anchor returns the plane's offset, the prism
 # quadrature integrates a half-space exactly, and the pre-image cut is the
 # plane's: the gate of the paraboloid path. 3 x 4 x 2 x 2 = 48 serial cases.
 #
@@ -12,8 +13,7 @@
 # of L1(alphaf) and L1(n) below 1e-12) on both arms at every N and Co, the
 # exact and the ring normal included, and the own normal as well, because the
 # fit reproduces the exact plane fractions so that no sliver mismatch arises;
-# the fit converges in every cell (residual below fitTol) and the surface
-# defect is at round-off. FALSIFIED by any row above 1e-10: on the own-normal
+# the anchor converges in every cell and the surface defect is at round-off. FALSIFIED by any row above 1e-10: on the own-normal
 # arm the sliver amplification of the plane loop (which the exact fractions of
 # the plane state should not feed), on the others a defect of the fit or the
 # flux.
@@ -36,7 +36,7 @@ post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . -
 axes_override:
   N_CELLS: [20, 40, 80, 160]
   TARGET_ADVECTIVE_CO: [0.2, 0.5]
-  TPF_ROW: [davof-paraboloid-cellLocal, davof-paraboloid-ringArea, davof-paraboloid-exact]
+  TPF_ROW: [davof-paraboloidRing-cellLocal, davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
   TPF_VELOCITY_ARM: [normal, oblique]
 collapse_other_axes: true
 

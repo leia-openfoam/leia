@@ -76,6 +76,10 @@ solvers
         // six: all six coefficients from the face fractions; one: the offset alone
         // from the total wetted area; none: the frame and the ring tensor only
         fitDof          @!TPF_FIT_DOF!@;
+        // the volume anchor's tolerance (of the cell volume) and the period of the
+        // surface-defect diagnostic in steps
+        anchorTolRel    1e-6;
+        defectEvery     10;
         defectLevels    3;
         writeCurvedFields false;
         exactNormal
