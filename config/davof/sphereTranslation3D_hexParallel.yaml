@@ -1,0 +1,51 @@
+# The curved flux in parallel (2026-10-24; fork 955362b: the surfaces exchanged
+# per processor face, a processor face computed on one side and copied by
+# syncProcPatches): the two smokes of the volume rules repeated on four
+# processors (scotch decomposition), N = 32, Co 0.2, the exact state, 160
+# steps, rows davof-paraboloidRing-exact (variant 3; the splitQuadrature rule
+# is its serial reference in sphereTranslation3D_hexRuleKromerBothe case
+# 00000) and davof-exactSurface-exact (the control; the exactSphere rule's
+# serial reference in sphereTranslation3D_hexRuleExactSphere case 00001),
+# both rules on both rows (the exactSphere rule on the paraboloid row and
+# the split rule on the exact row are fallbacks or the reference itself,
+# kept for the product). 2 x 2 = 4 cases, np 4.
+#
+# PREDICTIONS (before the run): P-PAR1 the per-step L1(alphaf), the
+# interface-cell counts, the minimum of alpha and the mass of every case
+# agree with the serial reference to round-off at every step (the processor
+# faces take the upwind cell's surface as the internal faces do; the second
+# ring across the boundary sees the same face neighbours). FALSIFIED by a
+# relative difference above 1e-10 in L1(alphaf) at any step: a defect of
+# the exchange or of the computing-side rule. P-PAR2 no fatal error and no
+# "skipped" faces beyond the serial count.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParallel --export=ALL,STUDY=davof/sphereTranslation3D_hexParallel run-studies.sbatch
+study_name: sphereTranslation3D_hexParallel
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: parallel
+np: 4
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-exactSurface-exact]
+  TPF_VOLUME_RULE: [splitQuadrature, exactSphere]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 360
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

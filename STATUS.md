@@ -6415,3 +6415,21 @@ gate holds, P-ES2 the defect agrees, P-ES3 a third of the time; 55573933), all b
 cluster build 55573930 (Eigen 3.4.0 downloaded to ~/OpenFOAM/thirdparty/eigen on the cluster
 as on the laptop). The serial ladders (55557458, 55566845, 55566846) run on unchanged. The
 MPI exchange of the surfaces follows the rules.
+Results so far. `hexRuleExactSphere` (55573933): the exactSphere rule holds the gate with the
+split quadrature's digits (L1(alphaf) 1.59e-10 at step 1, 2.7e-16 at step 2, 1.9e-14 at the
+end, Eshape 3.5803e-4 in both, min alpha -9.7e-13 against -2.8e-13), P-ES1 and P-ES3 held
+(0.090 s per step against 0.450, diagnostics included); P-ES2 falsified in the informative
+direction: the surface defect is 6.6e-12 in L1 with the exact overlap against 2.7e-6 with the
+split quadrature at the templates' depth 9, so the initialisation's cell fractions agree with
+the exact sphere to 7e-12 and the residuals attributed to it (3e-6, 7e-9) were the ray
+quadrature's floor at finite depth (preprint sentence corrected). `hexCurvedDebugKB`
+(55573931): on the normal arm the kromerBothe rule reproduces the exact linear cut
+(0.4575043255096169 against 0.4575043255096162), no fallbacks, L1(alphaf) 2.1e-15, 24 656
+leaves and 0.25 s per step (was 13.6); on the oblique arm (U along x) the first step's fluxes
+are wrong (alpha to 2.8 after bounding, 184 cells corrected): a prism configuration of the
+axis-aligned displacement is mis-integrated; fork 955362b adds the per-prism comparison with
+the split quadrature (key volumeRuleDebug) and the diagnostic reruns (55574157 after build
+55574156). Fork 955362b also carries the parallel curved flux (the surfaces exchanged per
+processor face, one side computes, syncProcPatches copies, counters reduced); its check is
+`sphereTranslation3D_hexParallel` (np 4, both smokes' rows and rules, P-PAR1 round-off
+agreement with the serial references).
