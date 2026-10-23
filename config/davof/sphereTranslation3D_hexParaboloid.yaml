@@ -56,6 +56,15 @@
 #   the ring normal stays first order at its own constant (the mean normal of
 #   the ring). FALSIFIED if the exact row's own-faces normal order is below 1.
 #
+# VOLUME RULE (2026-10-24): kromerBothe (Kromer and Bothe, J. Comput. Phys. 475
+# (2023) 111840, doi:10.1016/j.jcp.2022.111840), 0.21 s per step at N = 32
+# against 37.6 s for the split quadrature at depth 9, whose N = 128 cases could
+# not finish inside the wall time; the split-rule run of this study (18 cases
+# at N = 32 and 64 done) is kept aside as *.splitRule-* and is the comparison
+# at those resolutions (the two rules differed by 0.6 % in L1(alphaf) at the
+# end of the N = 32, Co 0.2 smoke, the split quadrature the less accurate one
+# on the curved traces). The predictions above are unchanged.
+#
 #   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloid --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloid run-studies.sbatch
 study_name: sphereTranslation3D_hexParaboloid
 studies_dir: studies/davof
@@ -77,6 +86,7 @@ axes_override:
   N_CELLS: [32, 64, 128]
   TARGET_ADVECTIVE_CO: [0.1, 0.2, 0.5]
   TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringArea, davof-paraboloidRing-cellSliver01, davof-paraboloidRing-cellLocal]
+  TPF_VOLUME_RULE: [kromerBothe]
   TPF_DAVOF_METHOD: [exactSphere]
   TPF_AFE_CONSISTENCY: ["false"]
 collapse_other_axes: true

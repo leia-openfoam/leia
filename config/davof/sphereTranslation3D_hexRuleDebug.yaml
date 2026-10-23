@@ -1,0 +1,51 @@
+# Which volume rule is the reference on the sphere (2026-10-24)? The smoke
+# sphereTranslation3D_hexRuleKromerBothe agreed at the first step to every
+# digit and differed by 0.6 % (exact normal) and 0.04 % (ring normal) in
+# L1(alphaf) after 160 steps between volumeRule splitQuadrature (the
+# templates' depth 9, 37.6 s per step) and kromerBothe (0.21 s per step). The
+# Kromer-Bothe rule's only error on the paraboloid is the 1D arc quadrature;
+# the split quadrature's adaptive rule meets the silhouette kinks of the
+# pyramids on a curved surface and left a 2.7e-6 cell-volume floor at depth 9
+# on the exact-sphere control. One step of the variant 3 row with the exact
+# normal at N = 32, Co 0.2, kromerBothe with volumeRuleDebug on: every prism
+# and cell volume is compared with the split quadrature at the case's depth,
+# the maximum and mean of |kb - split| relative to the prism and the cell
+# volume printed, at depth 9 and at depth 14. PREDICTION: the differences
+# fall with the depth (the split quadrature converging to the Kromer-Bothe
+# values), which makes kromerBothe the reference; FALSIFIED if they do not
+# fall with the depth (a defect of the Kromer-Bothe rule on curved traces).
+# 2 one-step cases.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexRuleDebug --export=ALL,STUDY=davof/sphereTranslation3D_hexRuleDebug run-studies.sbatch
+study_name: sphereTranslation3D_hexRuleDebug
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_CURVED_MAX_DEPTH: [9, 14]
+  TPF_CURVED_DEBUG: ["true"]
+  END_TIME: [6.25e-3]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 120
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
