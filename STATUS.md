@@ -6460,3 +6460,18 @@ side of the patch (the serial rule gives it to the owner cell), and the norm cou
 processor face once, on the owning side, adjacent when either cell is an interface cell (the
 remote flag swapped across the patch). The check reruns (55576072 after build 55576071; the
 first run kept aside as `*.zeroFluxTie-*`).
+`hexRuleKromerBothe` (55574594, on 1bb9724): variant 3 at N = 32, Co 0.2 on the exact state,
+160 steps, split quadrature (depth 9) against kromerBothe. Exact normal: L1(alphaf) at step 1
+identical (2.581510e-4), at the end 5.173e-4 against 5.205e-4 (0.6 %), Eshape 3.5803e-4 to
+twelve digits in both, the surface defect 5e-14 and 4e-14 (each rule consistent with its own
+anchor), min alpha -5.6e-14 and -8.7e-19, no fallbacks, no linear cuts; ring normal: 5.6451e-3
+against 5.6472e-3 (0.04 %). Cost: 37.6 s per step (split, 5334 s total) against 0.21 s
+(kromerBothe, 36 s total), a factor 180; the split quadrature's cost on the sphere is the
+adaptive resolution of the silhouette kinks of the pyramids, which the face-based rule does
+not meet. P-KB1 (agreement to 1e-9) falsified, P-KB2 and P-KB3 held; whether the 0.6 % is the
+split quadrature's depth-9 floor (2.7e-6 of V on the control) is decided by
+`hexRuleDebug` (55577404, one step with the debug statistics at depth 9 and 14; prediction:
+the difference falls with the depth). Decision: the split-rule sphere ladder (55566846; 8 of
+36 cases after 4.3 h, the N = 128 cases unable to finish in 48 h at 600 s per step) cancelled
+and kept aside as `*.splitRule-*`; the variant 3 ladder resubmitted with the kromerBothe rule
+(55577406 after build 55577403; the N = 128, Co 0.1 case estimated at about 1.2 h).
