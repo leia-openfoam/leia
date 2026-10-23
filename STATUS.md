@@ -6515,4 +6515,17 @@ property of the second-ring rule worth stating: runs that differ in round-off di
 The `hexRuleDebug` second run (55578132): neither kromerBotheMinSplit 8 nor kromerBotheFan
 false moves a digit of the 5.316e-6 prism maximum, so the arcs and the fan are
 self-consistent; third run (55582004, fork 685a6e9) prints a brute-force midpoint-grid value
-(n = 200, 400, 800, Richardson) of every printed mismatching prism as the third opinion.
+(n = 200, 400, 800, Richardson) of every printed mismatching prism as the third opinion:
+inconclusive, the midpoint grid scatters at 1e-5 of the prism volume on an integrand with
+kinks. Fourth run (55582053, fork 3503079): the split quadrature against the exact
+sphere-tetrahedron overlap on the same prisms with the exact SPHERE as the surface agrees to
+9.4e-12 of the prism volume over 556 prisms and to 3.0e-12 over the 36 equatorial ones (the
+faces at the sphere's equatorial plane, where the segments are tangent to the surface and the
+split rule's integrand has the silhouette kink it does not mark): the split quadrature is the
+reference even there, and the Kromer-Bothe PRISM is off by up to 5.3e-6, one-signed, at the
+equatorial prisms (the mismatching prisms are all at x = 0.5 under the displacement along
+x). Fifth run (55582136, fork 2c8daf5): a self-test at the rule's construction against an
+exact reference, thin axis-aligned boxes (dx = 0.2 h, h = 1/32) under the axis-aligned
+paraboloid z = -7 (x^2 + y^2)/2, the equatorial configuration exactly (the traces on the
+side faces are parabolas, on the top and bottom circles), the reference exact in x and
+adaptive in y, with the per-face breakdown of every failing box.
