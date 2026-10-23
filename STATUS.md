@@ -6433,3 +6433,15 @@ the split quadrature (key volumeRuleDebug) and the diagnostic reruns (55574157 a
 processor face, one side computes, syncProcPatches copies, counters reduced); its check is
 `sphereTranslation3D_hexParallel` (np 4, both smokes' rows and rules, P-PAR1 round-off
 agreement with the serial references).
+The oblique-arm defect located and fixed (fork 1bb9724): the twelve mismatching prisms of the
+diagnostic were all faces normal to y or z under the displacement (2e-5, 0, 0), whose d.Sf was
+8.7e-28 instead of zero and passed the exact-zero test; the flat prism built for them is not a
+closed polyhedron (top and bottom offset within one plane, the sides degenerate), so the face
+sum of the divergence theorem does not cancel and gave up to 5e-14, five percent of the cell
+volume, per face, while the split quadrature multiplied the same prisms by their zero
+thickness. The sweep test is relative now (1e-14 of |d||Sf|) in the caller and in the rule,
+and the rule falls back to the split quadrature, counted, where its volume leaves [0, V] by
+more than 1e-9. Diagnostic on 1bb9724 (55574588): the normal arm unchanged (L1(alphaf)
+2.1e-15), the oblique arm at round-off (L1(alphaf) 4.5e-15, Linf 2.7e-12, min alpha -8e-16,
+7 fallbacks of about 6000 faces). The Kromer-Bothe sphere smoke reruns on 1bb9724 (55574594;
+the run on 038f4d7 kept aside as `*.degenerate-*`).
