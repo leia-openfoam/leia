@@ -42,6 +42,12 @@ values
     TPF_FIT_DOF ( six );
     // the fork's quadrature diagnostic (the worst anchor residual's cell printed)
     TPF_CURVED_DEBUG ( false );
+    // the volume rule of the curved flux (2026-10-24): splitQuadrature (the
+    // reference), kromerBothe (Kromer and Bothe, J. Comput. Phys. 475 (2023)
+    // 111840, doi:10.1016/j.jcp.2022.111840; the paraboloid), exactSphere
+    // (Strobl, Formella, Poeschel, J. Comput. Phys. 311 (2016) 158-172,
+    // doi:10.1016/j.jcp.2016.02.003; the exact-sphere control)
+    TPF_VOLUME_RULE ( splitQuadrature );
 
     // the prism quadrature of the curved flux: relative tolerance of the flux
     // volume per face and step, and the refinement depth (the first smoke at

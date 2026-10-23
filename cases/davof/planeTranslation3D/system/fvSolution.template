@@ -67,6 +67,11 @@ solvers
         clippingSurface @!TPF_CLIPPING_SURFACE!@;
         curvedTolRel    @!TPF_CURVED_TOL_REL!@;
         curvedMaxDepth  @!TPF_CURVED_MAX_DEPTH!@;
+        // the rule for the cell volume, the prism volume and the face fraction
+        // under a surface: splitQuadrature (the reference) | kromerBothe (the
+        // face-based method of Kromer and Bothe 2023 for the paraboloid) |
+        // exactSphere (Strobl, Formella, Poeschel 2016 for the sphere)
+        volumeRule      @!TPF_VOLUME_RULE!@;
         fitPriorWeight  1e-2;
         fitTol          1e-10;
         fitMaxIter      50;
