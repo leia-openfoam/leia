@@ -6545,4 +6545,14 @@ settings off by 2.3e-8 (box 15) and 8.7e-9 (box 32), i.e. an unmarked kink of th
 rule's sweep (a trace tangent to a sweep line) accepted early. The axis-aligned
 configuration does not reproduce the 5e-6; the sixth run (55582183, fork 33836c8) adds a
 tilted frame (e3 with 0.1 and 0.3 rad along the thin direction, 0.33 rad about it) and
-b12 = 0.5, against the split quadrature at 1e-15 of the prism and depth 20.
+b12 = 0.5, against the split quadrature at 1e-15 of the prism and depth 20. RESULT: all
+cases with a tilt along the thin direction (a = 0.1, 0.3) agree to 5e-15, as do the a = 0
+cases whose box sits at t1 = 0.02; the six cases with a = 0 AND the box straddling t1 = 0
+(whichever b and zShift) have the Kromer-Bothe rule off by 3.2e-5 to 5.1e-5 of the prism
+while the split quadrature agrees with its tightened version to 1e-10. So the defect needs
+the frame axis exactly perpendicular to the thin direction and the box across the surface
+origin's plane t1 = 0 (with b12 = 0.5 the parabolic traces on the faces normal to y then
+carry their vertex inside the box). Seventh run (55582761, fork afc0008): exact per-face
+references for the axis-aligned frame (the wetted area of every box face and the patch
+integral int_S g, exact in one direction and adaptive in the other) next to the rule's
+per-face terms, to name the defective term.
