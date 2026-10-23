@@ -6493,3 +6493,26 @@ candidate and a local non-candidate was processed by nobody. Fork 91729ae exchan
 face the candidate flag and the closest surface of the cell's face neighbours with its
 distance, so the serial rule holds across the boundary; third run 55578374 after build
 55578373 (the second kept aside as `*.localRing-*`).
+Third run (55578374): the face counts match the serial run (3240 at the first step; 9 steps
+with a different count), the control at round-off, but the variant 3 row still 0.29 % apart
+at step 98; the per-step comparison shows the two runs apart by 2.8e-10 at step 1 (round-off:
+the anchor's face shift differs in the eleventh digit), 1.1e-6 at step 2, 6.7e-5 at step 3 and
+1e-5 to 2e-3 from then on without further growth, the interface-cell counts identical at
+every step. A round-off difference amplified a million-fold in two steps and then bounded is
+a discontinuous choice in the loop: the second-ring search takes the closest surface among
+the face neighbours by `d < dMin`, and on the Cartesian mesh with the sphere centred on a
+cell corner two surfaces are often at the same distance, so the first considered wins (the
+local one in parallel, the lower cell index in serial); a different surface changes that
+face's fraction by O(h^2). Fork c7b2058 breaks ties within 1e-9 by the surface origin
+lexicographically (order-independent); the serial smoke (55582019) and the parallel check
+(55582020) rerun on the same binary after build 55582018 (the earlier runs kept aside as
+`*.ringTies-*`). The Kromer-Bothe ladder (55577406) started on 93149e3 and its later cases
+load whatever library the cluster build last wrote (the version stamp per case records
+which); it is a dry run and restarts on the final binary once the tie-break and the
+brute-force comparison are in. The sensitivity itself is a
+property of the second-ring rule worth stating: runs that differ in round-off differ by up to
+1e-3 of L1(alphaf), below the ladder's resolution of orders but above a bitwise comparison.
+The `hexRuleDebug` second run (55578132): neither kromerBotheMinSplit 8 nor kromerBotheFan
+false moves a digit of the 5.316e-6 prism maximum, so the arcs and the fan are
+self-consistent; third run (55582004, fork 685a6e9) prints a brute-force midpoint-grid value
+(n = 200, 400, 800, Richardson) of every printed mismatching prism as the third opinion.
