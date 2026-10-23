@@ -6555,4 +6555,16 @@ origin's plane t1 = 0 (with b12 = 0.5 the parabolic traces on the faces normal t
 carry their vertex inside the box). Seventh run (55582761, fork afc0008): exact per-face
 references for the axis-aligned frame (the wetted area of every box face and the patch
 integral int_S g, exact in one direction and adaptive in the other) next to the rule's
-per-face terms, to name the defective term.
+per-face terms, to name the defective term. RESULT (reversing the attribution): in the three
+failing boxes the Kromer-Bothe wetted areas of all six faces, the face sum, the line integral
+and the volume agree with the exact references to 1e-16 (e.g. V 2.99390157064e-06 both)
+while the split quadrature, at the run's settings and tightened alike, is 5e-5 of the prism
+below (2.99359526506e-06): the SPLIT quadrature is the one off, consistently, in prisms that
+contain the silhouette of the surface along the sweep direction (the line where the segments
+are tangent to the surface, at x = -b12 y/b11 inside the box only when the box straddles
+t1 = 0), which it leaves unmarked; on the sphere control that line lay exactly on the
+equatorial face plane x = 0.5 and the trace breakpoints caught it, hence the 9e-12 agreement
+with the exact overlap there, while the paraboloid's frame at the PLIC centroid puts it
+slightly inside the equatorial prisms. A value the split rule converges to with every
+tightening is not a resolution problem; the integrand or the breakpoints are wrong near the
+silhouette (under inspection in davofCurvedGeometry.H).
