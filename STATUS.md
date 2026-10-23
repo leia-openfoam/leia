@@ -6319,3 +6319,8 @@ Newton and secant steps and the defect every tenth step. Queued: the gate ladder
 Co 0.05 and at the tight quadrature, the proposal session's check), then the rebuild and the
 ladders `sphereTranslation3D_hexParaboloid` (variant 3 rows, exact state, 36 cases; P-P1 to P-P5
 restated in the config) and `planeTranslation3D_hexParaboloid` (48 cases).
+
+Appendix to 10.18 (2026-10-24 early, smoke 5). The face-interpolating surface's instability is
+independent of the quadrature tolerance (identical digits at 1e-8 / 9 and 1e-10 / 12, the same
+abort step) and of the Courant number (at Co 0.05 stopped after 0.9 cell lengths against 2.8 at
+Co 0.2: the amplification is per application of the map). P-S5a and P-S5b held.
