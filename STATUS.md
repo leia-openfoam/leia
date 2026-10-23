@@ -6384,3 +6384,34 @@ remaining cost is the anchor's cell-volume evaluations (24 pyramids per Illinois
 the exact sphere-tetrahedron overlap (Strobl, Formella, Pöschel 2016) for the control and the
 Evrard et al. (2023) closed forms for the paraboloid are the next levers if the N = 128 cases
 do not fit the wall time.
+
+Appendix to 10.18 (2026-10-24 evening, the run-time selectable volume rules). Tomislav's
+decisions: Kromer and Bothe's method as the general volume rule, the exact sphere-tetrahedron
+overlap for the sphere translation case, both run-time selectable; every implemented algorithm
+cited in full with its DOI (and the journal version of every arXiv preprint). Fork 038f4d7:
+`davofVolumeRule` (RTS, key `volumeRule` of the isoAdvector dictionary) with the rules
+`splitQuadrature` (the reference, bit-identical to 8e76295), `kromerBothe` (J. Kromer, D.
+Bothe, J. Comput. Phys. 475 (2023) 111840, doi:10.1016/j.jcp.2022.111840, arXiv:2111.01073;
+the divergence theorem twice, the paraboloid patch as the line integral of H1 = c t1 - (b11
+t1^3/6 + b12 t1^2 t2/2 + b22 t1 t2^2/2) along the conic traces, the wetted face areas by
+Green's theorem; the conic in principal form (their Eqs. 26-34) only to order the crossings
+and split long arcs, every arc integrated as the graph over its chord with the exact root
+along the chord's normal and adaptive Gauss-Legendre 12; fallback per polyhedron to the split
+quadrature, counted; `davofKromerBothe.H`) and `exactSphere` (S. Strobl, A. Formella, T.
+Pöschel, J. Comput. Phys. 311 (2016) 158-172, doi:10.1016/j.jcp.2016.02.003, through their
+MIT header-only reference implementation vendored as `src/VoF/davof/thirdParty/overlap`,
+Eigen 3 from `EIGEN_INC`, set by `etc/davof-env.sh`; the cell as the centre-face-edge
+tetrahedra, the prism as three tetrahedra per fan triangle). The anchor, the flux, the face
+update and the defect all go through the selected rule; the Info line gains "; volume rule
+<name> fallbacks N" (converter columns volumeRule, nRuleFallback; leia b9a1e935 + 877284a0:
+the token TPF_VOLUME_RULE, default splitQuadrature, in both templates and parameter files).
+Studies (predictions in the configs): `planeTranslation3D_hexCurvedDebugKB` (the one-step
+plane diagnostic with kromerBothe: must reproduce the linear cut to round-off, no fallbacks,
+cheaper than 13.6 / 12.0 s per step; 55573931), `sphereTranslation3D_hexRuleKromerBothe`
+(variant 3 rows exact / ringArea at N = 32, Co 0.2, split against kromerBothe: P-KB1 agreement
+to 1e-9 relative, P-KB2 fallbacks below 1 %, P-KB3 a third of the time; 55573932),
+`sphereTranslation3D_hexRuleExactSphere` (the control, split against exactSphere: P-ES1 the
+gate holds, P-ES2 the defect agrees, P-ES3 a third of the time; 55573933), all behind the
+cluster build 55573930 (Eigen 3.4.0 downloaded to ~/OpenFOAM/thirdparty/eigen on the cluster
+as on the laptop). The serial ladders (55557458, 55566845, 55566846) run on unchanged. The
+MPI exchange of the surfaces follows the rules.
