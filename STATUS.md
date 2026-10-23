@@ -6324,3 +6324,11 @@ Appendix to 10.18 (2026-10-24 early, smoke 5). The face-interpolating surface's 
 independent of the quadrature tolerance (identical digits at 1e-8 / 9 and 1e-10 / 12, the same
 abort step) and of the Courant number (at Co 0.05 stopped after 0.9 cell lengths against 2.8 at
 Co 0.2: the amplification is per application of the map). P-S5a and P-S5b held.
+
+Appendix to 10.18 (2026-10-24 morning). The plane test of variant 3 was not at round-off (1 to 76
+anchor failures per case, errors to 4e-4, the own-normal rows diverging): the anchor's
+Newton-plus-secant failed where V(c) is flat or the start far. Fork 2eb3496 brackets the root and
+solves it by the Illinois rule; the plane test (55561277) and the sphere ladder (55561278) were
+restarted on it after the rebuild (55561276); the partial runs are kept aside as
+`*.secantAnchor-*`. The gate ladder (55557458) runs on, 14 of 27 cases done after three hours (the
+N = 128 cases).
