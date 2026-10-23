@@ -6528,4 +6528,10 @@ x). Fifth run (55582136, fork 2c8daf5): a self-test at the rule's construction a
 exact reference, thin axis-aligned boxes (dx = 0.2 h, h = 1/32) under the axis-aligned
 paraboloid z = -7 (x^2 + y^2)/2, the equatorial configuration exactly (the traces on the
 side faces are parabolas, on the top and bottom circles), the reference exact in x and
-adaptive in y, with the per-face breakdown of every failing box.
+adaptive in y, with the per-face breakdown of every failing box. RESULT: the Kromer-Bothe
+rule is exact (1e-15 of the prism) on all 36 boxes, the split quadrature at the run's
+settings off by 2.3e-8 (box 15) and 8.7e-9 (box 32), i.e. an unmarked kink of the split
+rule's sweep (a trace tangent to a sweep line) accepted early. The axis-aligned
+configuration does not reproduce the 5e-6; the sixth run (55582183, fork 33836c8) adds a
+tilted frame (e3 with 0.1 and 0.3 rad along the thin direction, 0.33 rad about it) and
+b12 = 0.5, against the split quadrature at 1e-15 of the prism and depth 20.
