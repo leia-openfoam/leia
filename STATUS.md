@@ -6520,7 +6520,15 @@ and the patch-owning side in parallel, an unrelated rank. Fork 2727892: in seria
 parallel a zero-flux face goes to the cell with the lexicographically smaller centre (the
 neighbour centres across a patch from patchNeighbourField); the serial smoke (55582697) and
 the parallel check (55582698) rerun on this binary after build 55582696 (the earlier runs kept
-aside as `*.tieBreak-*`). The sensitivity itself is a
+aside as `*.tieBreak-*`). Fifth run: the convention changed the parallel result (end 5.17254e-4
+against 5.17280e-4) and halved the worst difference (8.7e-4 at step 52) but left the pattern:
+2.8e-10 at step 1 with the anchor's face shift in its eleventh digit, 1e-4 by step 3, 1e-5 to
+1e-4 afterwards; the step-1 difference is the same as in every run, consistent with the ring
+tensor's summation order across processors (a round-off difference that cannot be removed).
+Whether the loop amplifies round-off a million-fold within two steps is decided in serial
+by `sphereTranslation3D_hexNoise` (two serial runs differing only in curvedTolRel by 1 %;
+prediction in the config): if they differ by 1e-5 or more from step 3, the loop has a
+round-off noise floor and the parallel check is as good as serial reproducibility allows. The sensitivity itself is a
 property of the second-ring rule worth stating: runs that differ in round-off differ by up to
 1e-3 of L1(alphaf), below the ladder's resolution of orders but above a bitwise comparison.
 The `hexRuleDebug` second run (55578132): neither kromerBotheMinSplit 8 nor kromerBotheFan
