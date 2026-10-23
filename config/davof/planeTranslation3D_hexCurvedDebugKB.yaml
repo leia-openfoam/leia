@@ -1,0 +1,45 @@
+# The Kromer-Bothe volume rule on the plane (2026-10-24): the one-step quadrature
+# diagnostic of planeTranslation3D_hexCurvedDebug (N = 40, Co 0.2, both arms, the
+# volume-positioned ring-tensor surface with the exact normal, curvedDebug on)
+# with volumeRule kromerBothe (Kromer and Bothe, J. Comput. Phys. 475 (2023)
+# 111840, doi:10.1016/j.jcp.2022.111840; davofKromerBothe.H). On a plane the
+# traces are lines and the patch integral is c times the projected area, so
+# the rule must reproduce the exact linear cut to round-off: the worst-cell
+# line prints "rule(kromerBothe)" next to the split quadrature and the linear
+# cut; the one-step L1(alphaf) must be at 1e-14 as with the split quadrature
+# (2.4e-15 / 6.5e-15 on 8e76295), with "volume rule kromerBothe fallbacks 0"
+# and a lower per-step time than the 13.6 / 12.0 s of the split quadrature.
+# FALSIFIED by a rule value off the linear cut by more than 1e-12 of the cell,
+# by fallbacks, or by L1(alphaf) above 1e-13. 2 one-step cases.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexCurvedDebugKB --export=ALL,STUDY=davof/planeTranslation3D_hexCurvedDebugKB run-studies.sbatch
+study_name: planeTranslation3D_hexCurvedDebugKB
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [40]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  END_TIME: [2e-5]
+  TPF_CURVED_DEBUG: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 30
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

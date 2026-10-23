@@ -106,6 +106,8 @@ MAX_COLS = {
     "nFitNoBracket_max": "nFitNoBracket", "fitResMax_max": "fitResMax",
     "fitResMean_max": "fitResMean", "defectMax_max": "defectMax", "defectL1_max": "defectL1",
     "nAnchorFail_max": "nAnchorFail", "anchorShiftMax_max": "anchorShiftMax", "anchorShiftMean_max": "anchorShiftMean",
+    # the volume rule (2026-10-24): its fallbacks to the split quadrature per step
+    "nRuleFallback_max": "nRuleFallback",
 }
 # the order tables: (long-table column, tex label, has an order)
 ORDER_METRICS = [

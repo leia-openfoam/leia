@@ -1,0 +1,48 @@
+# The exact sphere-tetrahedron volume rule against the split quadrature on the
+# exact-surface control (2026-10-24): clippingSurface exactSphere (row
+# davof-exactSurface-exact) at N = 32, Co 0.2 on the exact state over 160
+# steps, once with volumeRule splitQuadrature (the reference) and once with
+# exactSphere (Strobl, Formella, Poeschel, J. Comput. Phys. 311 (2016) 158-172,
+# doi:10.1016/j.jcp.2016.02.003, through their reference implementation,
+# src/VoF/davof/thirdParty/overlap), the per-step diagnostics on. 2 cases.
+#
+# What this study can establish: the exact overlap replaces the ray and
+# prism quadratures of the control by closed forms, so the face fractions
+# stay exact to 1e-14 from the second step (the gate), the surface defect
+# against the initialisation's volumes stays at the initialisation's 7e-9,
+# and the per-step time falls. PREDICTIONS (before the run): P-ES1 the gate
+# holds (L1(alphaf) below 1e-12 at every step without linear cuts); P-ES2 the
+# surface defect L1 agrees with the reference's to 1e-10; P-ES3 the per-step
+# time at most a third of the reference's. FALSIFIED by a gate failure (a
+# defect of the tetrahedral decomposition or of the library's use).
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexRuleExactSphere --export=ALL,STUDY=davof/sphereTranslation3D_hexRuleExactSphere run-studies.sbatch
+study_name: sphereTranslation3D_hexRuleExactSphere
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-exactSurface-exact]
+  TPF_VOLUME_RULE: [splitQuadrature, exactSphere]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 360
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

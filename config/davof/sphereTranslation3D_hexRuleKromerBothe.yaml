@@ -1,0 +1,51 @@
+# The Kromer-Bothe volume rule against the split quadrature on the sphere
+# (2026-10-24): the volume-positioned ring-tensor surface (variant 3, rows
+# davof-paraboloidRing-exact and -ringArea) at N = 32, Co 0.2 on the exact
+# state over 160 steps, once with volumeRule splitQuadrature (the reference,
+# the binary 8e76295's result) and once with kromerBothe (Kromer and Bothe,
+# J. Comput. Phys. 475 (2023) 111840, doi:10.1016/j.jcp.2022.111840;
+# davofKromerBothe.H), the per-step diagnostics on. 2 x 2 = 4 cases.
+#
+# What this study can establish: for the paraboloid the rule's only error is
+# the one-dimensional arc quadrature at curvedTolRel, so the two runs must
+# agree in every per-step L1(alphaf) to the quadrature tolerance (relative
+# differences below 1e-9), with no fallbacks on the sphere's resolved
+# traces beyond the grazing cells, and the per-step time must fall (the
+# split quadrature's 2D adaptive integrals replaced by closed forms and 1D
+# integrals). PREDICTIONS (before the run): P-KB1 the end L1(alphaf) of the
+# exact-normal row agrees with the reference to 1e-9 relative and the
+# minimum of alpha and the mass to round-off (FALSIFIED by a relative
+# difference above 1e-6: a defect of the rule); P-KB2 fallbacks below 1 % of
+# the faces set per step; P-KB3 the per-step time at most a third of the
+# reference's.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexRuleKromerBothe --export=ALL,STUDY=davof/sphereTranslation3D_hexRuleKromerBothe run-studies.sbatch
+study_name: sphereTranslation3D_hexRuleKromerBothe
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringArea]
+  TPF_VOLUME_RULE: [splitQuadrature, kromerBothe]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 360
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
