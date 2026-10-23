@@ -24,7 +24,12 @@
 # rule's checks kromerBotheMinSplit 1 | 8 (the arc quadrature's convergence)
 # and kromerBotheFan true | false (the planar faces whole instead of fan
 # triangles): the knob that moves the prism maximum locates the defect.
-# 4 one-step cases.
+# 4 one-step cases. RESULT: neither knob moves any digit (max 5.316e-6 in
+# all four), so the arcs and the fan are self-consistent. THIRD RUN: one case,
+# the debug prints a brute-force midpoint-grid value (n = 200, 400, 800 with
+# exact segment fractions, Richardson-extrapolated) for every printed
+# mismatching prism: the third opinion between kromerBothe and the split
+# quadrature.
 #
 #   sbatch --parsable -J leia-davof-sphereTranslation3D_hexRuleDebug --export=ALL,STUDY=davof/sphereTranslation3D_hexRuleDebug run-studies.sbatch
 study_name: sphereTranslation3D_hexRuleDebug
@@ -47,8 +52,8 @@ axes_override:
   TPF_ROW: [davof-paraboloidRing-exact]
   TPF_VOLUME_RULE: [kromerBothe]
   TPF_CURVED_MAX_DEPTH: [9]
-  TPF_KB_MIN_SPLIT: [1, 8]
-  TPF_KB_FAN: ["true", "false"]
+  TPF_KB_MIN_SPLIT: [1]
+  TPF_KB_FAN: ["true"]
   TPF_CURVED_DEBUG: ["true"]
   END_TIME: [6.25e-3]
   TPF_DAVOF_METHOD: [exactSphere]
