@@ -6575,31 +6575,7 @@ run differs by 2.8e-10 at step 1 and at most 3.6e-7 (step 4) afterwards, no step
 interface counts and mass identical, min alpha -1.8e-18: P-PAR3 holds, the parallel curved
 flux agrees with serial within the loop's round-off floor (the 160-step comparison with the
 ladder's case 00004 follows when that case is in). 160 steps in 16 s on four processors
-(0.18 s per step, against 0.3 s serial: the N = 32 case is too small to scale).
-
-Appendix to 10.18 (2026-10-25, the control ladder with the exact overlap, 55608484, 70 min,
-tables committed as leia 9e262ff). 24 of 27 cases complete: P-X1 HELD at every N and Co: the
-face fractions exact to 1e-14 from the second step (L1 at the end 1.9e-14, 9.1e-14, 3.3e-13
-for N = 32, 64, 128 at Co 0.2; the run maxima 1.6e-10, 1.9e-11, 2.4e-12 are the first-step
-linear cuts of grazing faces, falling at third order, and absent at Co 0.5 where no face
-grazes), bounded (min alpha -1e-12 to -1e-14), conservative, the surface defect against the
-initialisation 1e-11 to 2.5e-10 in L1; the centroid second order (1.98) and the shape error
-second order (1.98) identically in all three rows, as a flux that does not use the normal
-must give. P-X2 FALSIFIED: the own-faces normal on the exactly transported fractions is
-9.5e-4, 3.3e-4, 1.4e-4 at N = 32, 64, 128 (Co 0.2), least-squares order 1.40 (pairwise 1.53,
-1.27), against the static recovery's second order on the same state (4.2e-5 at N = 160,
-2.05, davof_normal_orders_sphereNormal3D.csv); the static value extrapolated to N = 32
-agrees (1.1e-3) and the transported one is 2.1 times larger at N = 128. The two measures
-differ in the cell set (the transport's wisp threshold) and possibly in the reference point
-of the normal (the exact row's own L1(n) is 8e-5 to 1e-5, not zero); which explains the
-factor is open and must be settled before the number enters the preprint. The ring normal
-is first order as predicted (3.0e-2, 1.7e-2, 7.7e-3; 0.98). Cost 0.1 s per step at N = 32,
-0.5 to 0.8 s at N = 64, 3 to 6 s at N = 128 (the split quadrature: 121 s). The three N = 128,
-Co 0.1 cases aborted at step 29 on the overlap library's debug-only assertion ("negative
-volume detected": a thin prism tetrahedron's overlap beyond [0, V] by more than sqrt(eps)
-V); fork 3f32320 disables the assertions as a release build does and clamps the tetrahedron
-overlap to [0, V]; the three cases rerun (55610001 after build 55610000; the aborted ones
-kept aside as `*.overlapAssert-*`). The sensitivity itself is a
+(0.18 s per step, against 0.3 s serial: the N = 32 case is too small to scale). The sensitivity itself is a
 property of the second-ring rule worth stating: runs that differ in round-off differ by up to
 1e-3 of L1(alphaf), below the ladder's resolution of orders but above a bitwise comparison.
 The `hexRuleDebug` second run (55578132): neither kromerBotheMinSplit 8 nor kromerBotheFan
@@ -6647,3 +6623,55 @@ with the exact overlap there, while the paraboloid's frame at the PLIC centroid 
 slightly inside the equatorial prisms. A value the split rule converges to with every
 tightening is not a resolution problem; the integrand or the breakpoints are wrong near the
 silhouette (under inspection in davofCurvedGeometry.H).
+
+Appendix to 10.18 (2026-10-25, the control ladder with the exact overlap, 55608484, 70 min,
+tables committed as leia 9e262ff). 24 of 27 cases complete: P-X1 HELD at every N and Co: the
+face fractions exact to 1e-14 from the second step (L1 at the end 1.9e-14, 9.1e-14, 3.3e-13
+for N = 32, 64, 128 at Co 0.2; the run maxima 1.6e-10, 1.9e-11, 2.4e-12 are the first-step
+linear cuts of grazing faces, falling at third order, and absent at Co 0.5 where no face
+grazes), bounded (min alpha -1e-12 to -1e-14), conservative, the surface defect against the
+initialisation 1e-11 to 2.5e-10 in L1; the centroid second order (1.98) and the shape error
+second order (1.98) identically in all three rows, as a flux that does not use the normal
+must give. P-X2 FALSIFIED: the own-faces normal on the exactly transported fractions is
+9.5e-4, 3.3e-4, 1.4e-4 at N = 32, 64, 128 (Co 0.2), least-squares order 1.40 (pairwise 1.53,
+1.27), against the static recovery's second order on the same state (4.2e-5 at N = 160,
+2.05, davof_normal_orders_sphereNormal3D.csv); the static value extrapolated to N = 32
+agrees (1.1e-3) and the transported one is 2.1 times larger at N = 128. The two measures
+differ in the cell set (the transport's wisp threshold) and possibly in the reference point
+of the normal (the exact row's own L1(n) is 8e-5 to 1e-5, not zero); which explains the
+factor is open and must be settled before the number enters the preprint. The ring normal
+is first order as predicted (3.0e-2, 1.7e-2, 7.7e-3; 0.98). Cost 0.1 s per step at N = 32,
+0.5 to 0.8 s at N = 64, 3 to 6 s at N = 128 (the split quadrature: 121 s). The three N = 128,
+Co 0.1 cases aborted at step 29 on the overlap library's debug-only assertion ("negative
+volume detected": a thin prism tetrahedron's overlap beyond [0, V] by more than sqrt(eps)
+V); fork 3f32320 disables the assertions as a release build does and clamps the tetrahedron
+overlap to [0, V]; the three cases rerun (55610001 after build 55610000; the aborted ones
+kept aside as `*.overlapAssert-*`).
+
+Appendix to 10.18 (2026-10-25 01:10, the paraboloid sphere ladder, 55608483, PRELIMINARY: 23
+of 36 cases; the ring and exact rows complete except exact N = 128 at Co 0.1; tables leia
+61d6b0c8). The milestone's question is answered: the ring-tensor paraboloid positioned by
+alpha_k with the EXACT normal transports the face fractions at order 2.84 per period at Co 0.2
+(5.20e-4, 6.67e-5, 1.02e-5 over N = 32/64/128; Co 0.5: 2.87; Co 0.1 over two meshes: 2.97) and
+2.76 after the first step (P-P1 HELD, P-P2 HELD above the hypothesis q >= 1.8): the per-step
+error does not accumulate (end-to-first-step ratio 2.0, 1.9, 1.8 over N, stationary from the
+second step at Co 0.5). Own-faces normal 2.05 (P-P5 HELD), centroid 1.99, shape 1.98, bounded
+to -1.1e-13, no anchor failures, no rule fallbacks, anchor shift 1.75e-3 -> 4.0e-5 over N.
+With the RING normal: 1.35 per period (5.65e-3, 2.12e-3, 8.71e-4; Co 0.1: 1.38, Co 0.5: 1.29),
+1.05 after the first step (the ring normal's tilt sets the per-step order); normal 1.00 at
+8.19e-3 (plicRDF 9.20e-3, plane loop 1.09e-2 at N = 128); centroid 2.09 at 2.85e-5 (plicRDF
+1.04e-4); shape 2.30e-5 (3.08e-5); bounded to -1.5e-13; anchor failures at most 8 cells per
+step (0.45 % at N = 64, Co 0.1: P-P4's 0.1 % clause FALSIFIED for the ring row, HELD for the
+exact row); fallbacks to the split rule at most 3 per step. Courant dependence reversed
+against the plane loop: at N = 128 the ring row's error rises with Co (8.52e-4, 8.71e-4,
+1.22e-3), the exact row is flat. Own normal (P-P3): N = 32 at Co 0.1/0.2 completes without
+tripping the guard but at L1(alphaf) 6e-2, normal error 1.15 and min alpha -0.1; Co 0.5
+diverges at steps 62/64; the row with the ring normal below 0.1 h^2 at N = 32 completes at
+5e-2 with normal errors 0.4 to 0.5; the remaining own-normal cases run with thousands of
+capped fallbacks per step. Cost with the per-step diagnostics on: ring row 0.34 / 1.6 / 8.6 s
+per step at N = 32 / 64 / 128, Co 0.2. Follow-ups submitted (leia 1e8b89d0, predictions in
+the headers): the ring-QUADRIC-normal row of the ladder (sphereTranslation3D_hexParaboloidRingFit,
+55611739; the proposal session's question whether a second-order computed normal keeps the
+loop near q = 2) and the paraboloid timing study against plicRDF with the diagnostics off
+(sphereTranslation3D_hexParaboloidTiming, 55611741). Preliminary scores sent to the proposal
+session with the caveat that nothing enters the proposal before the final tables.
