@@ -1,0 +1,33 @@
+row,metric,N=32,N=64,N=128,p_ls,p_pairwise
+davof-paraboloidRing-exact,L1_alphaf_end,5.95e-04,7.20e-05,1.11e-05,2.87,3.05 / 2.70
+davof-paraboloidRing-exact,L1_alphaf_max,5.95e-04,7.57e-05,1.11e-05,2.87,2.97 / 2.78
+davof-paraboloidRing-exact,L1_n_end,2.82e-04,2.75e-05,1.15e-05,2.31,3.36 / 1.26
+davof-paraboloidRing-exact,L1_x_end,4.05e-04,9.59e-05,2.57e-05,1.99,2.08 / 1.90
+davof-paraboloidRing-exact,Eshape_end,3.58e-04,9.08e-05,2.30e-05,1.98,1.98 / 1.98
+davof-paraboloidRing-exact,Ebound_end,1.65e-14,4.94e-15,5.80e-14,,
+davof-paraboloidRing-exact,minAlpha_run,-1.7e-14,-5.5e-15,-6.3e-14,,
+davof-paraboloidRing-exact,status,ok,ok,ok,,
+davof-paraboloidRing-cellLocal,L1_alphaf_end,div.,div.,absent,--,
+davof-paraboloidRing-cellLocal,L1_alphaf_max,div.,div.,absent,--,
+davof-paraboloidRing-cellLocal,L1_n_end,div.,div.,absent,--,
+davof-paraboloidRing-cellLocal,L1_x_end,div.,div.,absent,--,
+davof-paraboloidRing-cellLocal,Eshape_end,div.,div.,absent,--,
+davof-paraboloidRing-cellLocal,Ebound_end,div.,div.,absent,,
+davof-paraboloidRing-cellLocal,minAlpha_run,div.,div.,absent,,
+davof-paraboloidRing-cellLocal,status,div.,div.,absent,,
+davof-paraboloidRing-cellSliver01,L1_alphaf_end,absent,absent,absent,--,
+davof-paraboloidRing-cellSliver01,L1_alphaf_max,absent,absent,absent,--,
+davof-paraboloidRing-cellSliver01,L1_n_end,absent,absent,absent,--,
+davof-paraboloidRing-cellSliver01,L1_x_end,absent,absent,absent,--,
+davof-paraboloidRing-cellSliver01,Eshape_end,absent,absent,absent,--,
+davof-paraboloidRing-cellSliver01,Ebound_end,absent,absent,absent,,
+davof-paraboloidRing-cellSliver01,minAlpha_run,absent,absent,absent,,
+davof-paraboloidRing-cellSliver01,status,absent,absent,absent,,
+davof-paraboloidRing-ringArea,L1_alphaf_end,7.24e-03,2.52e-03,1.22e-03,1.29,1.52 / 1.05
+davof-paraboloidRing-ringArea,L1_alphaf_max,7.24e-03,2.62e-03,1.22e-03,1.29,1.46 / 1.11
+davof-paraboloidRing-ringArea,L1_n_end,3.28e-02,1.76e-02,8.27e-03,0.99,0.90 / 1.09
+davof-paraboloidRing-ringArea,L1_x_end,5.23e-04,1.14e-04,2.83e-05,2.10,2.20 / 2.01
+davof-paraboloidRing-ringArea,Eshape_end,3.60e-04,9.10e-05,2.30e-05,1.98,1.99 / 1.98
+davof-paraboloidRing-ringArea,Ebound_end,1.06e-30,1.09e-13,1.38e-14,,
+davof-paraboloidRing-ringArea,minAlpha_run,-3.5e-18,-1.2e-13,-1.4e-14,,
+davof-paraboloidRing-ringArea,status,ok,ok,ok,,
