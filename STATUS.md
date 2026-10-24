@@ -6566,9 +6566,10 @@ floor of about 1e-6, and the parallel runs' 1e-4 to 1e-3 were a hundred times ab
 systematic difference remained, and the split quadrature's silhouette value, which depends
 on the sweep direction, supplies it, because the fan of a processor face is traversed in
 reversed order on the non-owner side; the two sides integrate the same prism to values
-5e-6 of its volume apart. Sixth parallel run (55608490-ish, see .my_jobs) with the
-kromerBothe rule against the ladder's serial case 00004 on the same binary; prediction
-P-PAR3 in the config: agreement within the serial floor. The sensitivity itself is a
+5e-6 of its volume apart. Sixth parallel run (55608669; a first submission, 55608551, went
+out with the old config before the push and was cancelled) with the kromerBothe rule against
+the ladder's serial case 00004 on the same binary; prediction P-PAR3 in the config: agreement
+within the serial floor. The sensitivity itself is a
 property of the second-ring rule worth stating: runs that differ in round-off differ by up to
 1e-3 of L1(alphaf), below the ladder's resolution of orders but above a bitwise comparison.
 The `hexRuleDebug` second run (55578132): neither kromerBotheMinSplit 8 nor kromerBotheFan
