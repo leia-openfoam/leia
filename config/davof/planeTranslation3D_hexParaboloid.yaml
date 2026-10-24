@@ -18,6 +18,21 @@
 # the plane state should not feed), on the others a defect of the fit or the
 # flux.
 #
+# RESULT of the split-rule run (2026-10-24, 44 of 48 cases, kept aside as
+# *.splitRule-*): the exact-normal and ring-normal rows at round-off (run
+# maxima of L1(alphaf) below 8e-14, of L1(n) below 2e-13) on both arms at
+# every N and Co; the own-normal row drifts as in the plane loop (3e-8 at
+# N = 20, Co 0.5 on the normal arm, 8.5e-2 with 23 anchor failures at N = 40,
+# Co 0.5, 1e-9 at N = 80), so P-PP1 is falsified for the own normal in its
+# stated direction: the exact plane fractions do not prevent the sliver
+# amplification, because the loop's fractions are the transported ones, not
+# the exact ones, from the second step on. Its four unfinished cases were
+# own-normal cases at N = 80 and 160 whose wild surfaces made the split
+# quadrature cost hours per step.
+# VOLUME RULE (2026-10-24): kromerBothe on the final binary (the zero-flux
+# convention, the tie-break, the capped fallback); on a plane both rules are
+# exact and the Kromer-Bothe rule is 50 times cheaper.
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloid --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloid run-studies.sbatch
 study_name: planeTranslation3D_hexParaboloid
 studies_dir: studies/davof
@@ -38,6 +53,7 @@ axes_override:
   TARGET_ADVECTIVE_CO: [0.2, 0.5]
   TPF_ROW: [davof-paraboloidRing-cellLocal, davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
   TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
 collapse_other_axes: true
 
 solve_mem_mb: 12000

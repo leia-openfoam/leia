@@ -64,6 +64,13 @@
 # at those resolutions (the two rules differed by 0.6 % in L1(alphaf) at the
 # end of the N = 32, Co 0.2 smoke, the split quadrature the less accurate one
 # on the curved traces). The predictions above are unchanged.
+# DRY RUN (2026-10-23/24, kept aside as *.dryRun-*, 32 of 36 cases): the exact
+# and ring rows without fallbacks at 0.2 s (N = 32) to 8 s (N = 128) per step;
+# the own-normal row aborted at every N and Co (steps 62 to 331) and the row
+# with the ring normal below 0.1 h^2 at Co 0.5 (steps 57 to 79), both with
+# thousands of fallbacks per step to the split quadrature on their wild
+# surfaces, single steps costing hours; the fallback is capped since. This
+# run is on the final binary (the zero-flux convention and the tie-break).
 #
 #   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloid --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloid run-studies.sbatch
 study_name: sphereTranslation3D_hexParaboloid
