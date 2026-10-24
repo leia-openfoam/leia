@@ -19,6 +19,23 @@
 # the exchange or of the computing-side rule. P-PAR2 no fatal error and no
 # "skipped" faces beyond the serial count.
 #
+# RUNS 1 to 5 (2026-10-23/24, split quadrature): every case to the end,
+# conservative and bounded; the control at round-off against serial; the
+# variant 3 row 1e-4 to 1e-3 of L1(alphaf) apart from the third step on after
+# 2.8e-10 at the first, through three exchange defects fixed on the way (a
+# zero-flux face computed on both sides, the second ring seeing only the local
+# neighbours, the owner convention after decomposition) and one that remains
+# with the split quadrature: its value in a prism that contains the silhouette
+# depends on the sweep direction (the self-test of 2026-10-24), and the fan of
+# a processor face is traversed in reversed order on the non-owner side, so
+# the two sides integrate the same prism to values 5e-6 of its volume apart.
+# The serial round-off floor of the loop, from two serial runs whose sphere
+# centre differs by 1e-13 (hexNoise): 1.3e-10 at step 1, 2e-6 at step 2, then
+# 1e-9 to 2e-7. RUN 6: the variant 3 row with the kromerBothe rule, np 4,
+# against the serial ladder case (sphereTranslation3D_hexParaboloid 00004, the
+# same binary); PREDICTION P-PAR3: agreement within the serial round-off floor
+# (below 1e-5 at every step). 1 case.
+#
 #   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParallel --export=ALL,STUDY=davof/sphereTranslation3D_hexParallel run-studies.sbatch
 study_name: sphereTranslation3D_hexParallel
 studies_dir: studies/davof
@@ -37,8 +54,8 @@ post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . -
 axes_override:
   N_CELLS: [32]
   TARGET_ADVECTIVE_CO: [0.2]
-  TPF_ROW: [davof-paraboloidRing-exact, davof-exactSurface-exact]
-  TPF_VOLUME_RULE: [splitQuadrature, exactSphere]
+  TPF_ROW: [davof-paraboloidRing-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
   TPF_DAVOF_METHOD: [exactSphere]
   TPF_AFE_CONSISTENCY: ["false"]
 collapse_other_axes: true
