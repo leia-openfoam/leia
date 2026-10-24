@@ -1,0 +1,49 @@
+# The cost of the ring-tensor paraboloid loop (2026-10-25), measured as the
+# plane loop's cost was (sphereTranslation3D_hexTiming2): the ring-area row
+# of the paraboloid ladder and plicRDF on the same initial state (the exact
+# sphere), N = 32 / 64 / 128 at Co 0.2, three repetitions per case, the error
+# diagnostics reduced to the end of the run (the ladder writes the face error
+# every step, which is part of its step time) and the profiling on. The
+# per-step median over the three repetitions is the number the preprint and
+# the proposal quote. 18 serial cases.
+#
+# PRE-REGISTERED PREDICTION (2026-10-25 01:05, before the run): the paraboloid
+# loop's step costs 2 to 6 times plicRDF's at N = 128 (the plane loop's
+# medians: 1.31 against 1.72 s; the paraboloid adds the Kromer-Bothe volumes
+# of every prism of every face of the interface cells and their neighbours and
+# the volume anchor's bracket per interface cell). FALSIFIED above 10 times.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloidTiming --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloidTiming run-studies.sbatch
+study_name: sphereTranslation3D_hexParaboloidTiming
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-ringArea, plicRDF]
+  TPF_REPEAT: [1, 2, 3]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_WRITE_CONTROL: ["onEnd"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VFE_WRITE_CONTROL: ["onEnd"]
+  TPF_PROFILING: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

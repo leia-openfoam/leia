@@ -102,7 +102,10 @@ ROWS = OrderedDict([
     ("davof-paraboloidRing-cellLocal", ("davof", "cellLocal", "all",   "0",    "15",  "keep", "plane", "paraboloid", "volume", "none")),
     ("davof-paraboloidRing-cellSliver01", ("davof", "ringArea", "check", "0.1", "180", "keep", "plane", "paraboloid", "volume", "none")),
     ("davof-paraboloidRing-ringArea",  ("davof", "ringArea",  "all",   "0",    "15",  "keep", "plane", "paraboloid", "volume", "none")),
-    ("davof-paraboloidOne-exact",      ("davof", "exact",     "all",   "0",    "15",  "keep", "plane", "paraboloid", "faces",  "one")),
+    # the frame from the ring quadric's normal at the cell (the Monge fit that
+    # supplies the tensor), everything else as the ringArea row (2026-10-25)
+    ("davof-paraboloidRing-ringFit",   ("davof", "ringFit",   "all",   "0",    "15",  "keep", "plane", "paraboloid", "volume", "none")),
+    ("davof-paraboloidOne-exact",     ("davof", "exact",     "all",   "0",    "15",  "keep", "plane", "paraboloid", "faces",  "one")),
     ("davof-paraboloidOne-cellLocal",  ("davof", "cellLocal", "all",   "0",    "15",  "keep", "plane", "paraboloid", "faces",  "one")),
     ("plicRDF",                  ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
     ("isoAlpha",                 ("isoAlpha", "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
@@ -169,7 +172,8 @@ LABELS = OrderedDict([
     ("davof-paraboloidRing-cellLocal", "DAVOF, ring-tensor paraboloid by volume, own normal"),
     ("davof-paraboloidRing-cellSliver01", "DAVOF, ring-tensor paraboloid by volume, own normal, ring below 0.1 h^2"),
     ("davof-paraboloidRing-ringArea",  "DAVOF, ring-tensor paraboloid by volume, ring-area normal"),
-    ("davof-paraboloidOne-exact",      "DAVOF, face-anchored paraboloid (one scalar), exact normal"),
+    ("davof-paraboloidRing-ringFit",   "DAVOF, ring-tensor paraboloid by volume, ring-quadric normal"),
+    ("davof-paraboloidOne-exact",     "DAVOF, face-anchored paraboloid (one scalar), exact normal"),
     ("davof-paraboloidOne-cellLocal",  "DAVOF, face-anchored paraboloid (one scalar), own normal"),
     ("plicRDF",             "plicRDF"),
     ("isoAlpha",            "isoAlpha"),
@@ -203,7 +207,8 @@ COLORS = {
     "davof-paraboloidRing-cellLocal": "#83c5be",  # light teal
     "davof-paraboloidRing-cellSliver01": "#2a9d8f",  # sea green
     "davof-paraboloidRing-ringArea":  "#e29578",  # salmon
-    "davof-paraboloidOne-exact":      "#6c757d",  # grey
+    "davof-paraboloidRing-ringFit":   "#7a3bb5",  # purple, as davof-ringFit
+    "davof-paraboloidOne-exact":     "#6c757d",  # grey
     "davof-paraboloidOne-cellLocal":  "#adb5bd",  # light grey
     "plicRDF":             "#eb6834",   # plicRDF's orange (make_davof_normal_table.COLORS)
     "isoAlpha":            "#eda100",   # isoAlpha's yellow (make_davof_normal_table.COLORS)
@@ -222,6 +227,7 @@ MARKERS = {
     "davof-paraboloidVol-ringArea": "p",
     "davof-paraboloidRing-exact": "x", "davof-paraboloidRing-cellLocal": "o",
     "davof-paraboloidRing-cellSliver01": "s", "davof-paraboloidRing-ringArea": "D",
+    "davof-paraboloidRing-ringFit": "p",
     "davof-paraboloidOne-exact": "+", "davof-paraboloidOne-cellLocal": "1",
     "plicRDF": "^", "isoAlpha": "v",
 }

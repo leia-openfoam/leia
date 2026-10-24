@@ -1,0 +1,65 @@
+# The fifth row of the paraboloid ladder (sphereTranslation3D_hexParaboloid,
+# 2026-10-25): the ring-tensor paraboloid positioned by alpha_k with its frame
+# from the RING QUADRIC's normal at the cell, i.e. the normal of the weighted
+# least-squares Monge patch through the ring's recovered planes that already
+# supplies the curvature tensor (normalModel ringFit), everything else as the
+# ringArea row (zero slopes, offset from the volume alone, kromerBothe rule,
+# exact-sphere initial state, 3.3 diameters). The question, raised by the
+# proposal session on the preliminary scores of the ladder: the ring-area
+# normal is the mean normal of a 3h patch and first order (1.00), which holds
+# the closed loop at q = 1.35 per period while the exact frame gives 2.8; the
+# ring quadric's normal at the cell is not a mean and should be second order
+# on a smooth state, so the closed loop may keep an order near 2 with a
+# normal that is computed, not prescribed. In the plane-clipped loop this
+# normal was bounded but erratic (fit failures in up to 1700 cells per step,
+# normal error 0.54 at N = 64, Co 0.5); the volume anchor and the surface's
+# own flux may change that, or not. N = 32 / 64 / 128, Co 0.1 / 0.2 / 0.5:
+# 9 serial cases.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-25 01:05, before the run):
+# P-RF1 (the loop): bounded at every N and Co (the ring-quadric normal is
+#   never divided by a small area). FALSIFIED if any case aborts.
+# P-RF2 (the normal): the loop's own normal error at the end is below the
+#   ringArea row's at every N (3.28e-2, 1.76e-2, 8.19e-3 at Co 0.2) and of
+#   order at least 1.5 over N. FALSIFIED if the order is below 1.2 or the
+#   error exceeds the ringArea row's at N = 128.
+# P-RF3 (the face fractions, the question): q per period over N = 32 to 128
+#   at Co 0.2 lies between the ringArea row's 1.35 and the exact row's 2.84,
+#   and is at least 1.8 if P-RF2 holds (the order of the loop is the order
+#   of the normal fed back). FALSIFIED below 1.5 with P-RF2 holding.
+# P-RF4 (the fit): the fit fails (nFitFallback, the ring quadric's fallback
+#   to the ring-area normal) in fewer than 1 % of the interface cells per step
+#   at every N. FALSIFIED above 5 %.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloidRingFit --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloidRingFit run-studies.sbatch
+study_name: sphereTranslation3D_hexParaboloidRingFit
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.1, 0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringFit]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 2880
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
