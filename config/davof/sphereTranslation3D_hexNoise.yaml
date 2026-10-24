@@ -6,15 +6,18 @@
 # growth, with identical interface-cell counts, mass and face counts. Whether
 # the loop amplifies a round-off perturbation a million-fold within two steps
 # is decided in serial alone: two serial runs of the same case (variant 3,
-# exact normal, split quadrature, N = 32, Co 0.2, exact state) that differ
-# only in the quadrature tolerance by 1 % (1e-11 against 9.9e-12), which
-# changes the adaptive rule's refinement path and so the result at round-off.
+# exact normal, N = 32, Co 0.2, exact state) that differ in the sphere centre
+# by 1e-13 (the initial state, the exact normal and every geometric quantity
+# perturbed at round-off). The first attempt perturbed the quadrature
+# tolerance by 1 %, which left the two runs bitwise identical (the adaptive
+# rule accepted at the same levels): no perturbation at all.
 # PREDICTION: if the two differ by 1e-5 or more in L1(alphaf) from the third
 # step on, the loop has a round-off noise floor of that size (a property of
 # the method to state: the second-ring and anchor choices are not smooth at
 # round-off), and the parallel check agrees with the serial run as well as two
 # serial runs agree with each other; if they agree to 1e-10 throughout, the
-# parallel difference is a defect of the exchange. 16 steps, 2 cases.
+# parallel difference is a defect of the exchange. 16 steps, 2 cases, the
+# kromerBothe rule (the reference for the paraboloid since the self-tests).
 #
 #   sbatch --parsable -J leia-davof-sphereTranslation3D_hexNoise --export=ALL,STUDY=davof/sphereTranslation3D_hexNoise run-studies.sbatch
 study_name: sphereTranslation3D_hexNoise
@@ -35,8 +38,8 @@ axes_override:
   N_CELLS: [32]
   TARGET_ADVECTIVE_CO: [0.2]
   TPF_ROW: [davof-paraboloidRing-exact]
-  TPF_VOLUME_RULE: [splitQuadrature]
-  TPF_CURVED_TOL_REL: [1e-11, 9.9e-12]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_SPHERE_CX: [0.5, 0.5000000000001]
   END_TIME: [0.1]
   TPF_DAVOF_METHOD: [exactSphere]
   TPF_AFE_CONSISTENCY: ["false"]
