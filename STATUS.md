@@ -6575,7 +6575,31 @@ run differs by 2.8e-10 at step 1 and at most 3.6e-7 (step 4) afterwards, no step
 interface counts and mass identical, min alpha -1.8e-18: P-PAR3 holds, the parallel curved
 flux agrees with serial within the loop's round-off floor (the 160-step comparison with the
 ladder's case 00004 follows when that case is in). 160 steps in 16 s on four processors
-(0.18 s per step, against 0.3 s serial: the N = 32 case is too small to scale). The sensitivity itself is a
+(0.18 s per step, against 0.3 s serial: the N = 32 case is too small to scale).
+
+Appendix to 10.18 (2026-10-25, the control ladder with the exact overlap, 55608484, 70 min,
+tables committed as leia 9e262ff). 24 of 27 cases complete: P-X1 HELD at every N and Co: the
+face fractions exact to 1e-14 from the second step (L1 at the end 1.9e-14, 9.1e-14, 3.3e-13
+for N = 32, 64, 128 at Co 0.2; the run maxima 1.6e-10, 1.9e-11, 2.4e-12 are the first-step
+linear cuts of grazing faces, falling at third order, and absent at Co 0.5 where no face
+grazes), bounded (min alpha -1e-12 to -1e-14), conservative, the surface defect against the
+initialisation 1e-11 to 2.5e-10 in L1; the centroid second order (1.98) and the shape error
+second order (1.98) identically in all three rows, as a flux that does not use the normal
+must give. P-X2 FALSIFIED: the own-faces normal on the exactly transported fractions is
+9.5e-4, 3.3e-4, 1.4e-4 at N = 32, 64, 128 (Co 0.2), least-squares order 1.40 (pairwise 1.53,
+1.27), against the static recovery's second order on the same state (4.2e-5 at N = 160,
+2.05, davof_normal_orders_sphereNormal3D.csv); the static value extrapolated to N = 32
+agrees (1.1e-3) and the transported one is 2.1 times larger at N = 128. The two measures
+differ in the cell set (the transport's wisp threshold) and possibly in the reference point
+of the normal (the exact row's own L1(n) is 8e-5 to 1e-5, not zero); which explains the
+factor is open and must be settled before the number enters the preprint. The ring normal
+is first order as predicted (3.0e-2, 1.7e-2, 7.7e-3; 0.98). Cost 0.1 s per step at N = 32,
+0.5 to 0.8 s at N = 64, 3 to 6 s at N = 128 (the split quadrature: 121 s). The three N = 128,
+Co 0.1 cases aborted at step 29 on the overlap library's debug-only assertion ("negative
+volume detected": a thin prism tetrahedron's overlap beyond [0, V] by more than sqrt(eps)
+V); fork 3f32320 disables the assertions as a release build does and clamps the tetrahedron
+overlap to [0, V]; the three cases rerun (55610001 after build 55610000; the aborted ones
+kept aside as `*.overlapAssert-*`). The sensitivity itself is a
 property of the second-ring rule worth stating: runs that differ in round-off differ by up to
 1e-3 of L1(alphaf), below the ladder's resolution of orders but above a bitwise comparison.
 The `hexRuleDebug` second run (55578132): neither kromerBotheMinSplit 8 nor kromerBotheFan
