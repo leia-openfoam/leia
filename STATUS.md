@@ -6569,7 +6569,13 @@ reversed order on the non-owner side; the two sides integrate the same prism to 
 5e-6 of its volume apart. Sixth parallel run (55608669; a first submission, 55608551, went
 out with the old config before the push and was cancelled) with the kromerBothe rule against
 the ladder's serial case 00004 on the same binary; prediction P-PAR3 in the config: agreement
-within the serial floor. The sensitivity itself is a
+within the serial floor. RESULT (55608669): against the serial run of `hexNoise` (16 steps,
+the same binary up to the fallback cap, which no fallback-free run touches) the four-processor
+run differs by 2.8e-10 at step 1 and at most 3.6e-7 (step 4) afterwards, no step above 1e-6,
+interface counts and mass identical, min alpha -1.8e-18: P-PAR3 holds, the parallel curved
+flux agrees with serial within the loop's round-off floor (the 160-step comparison with the
+ladder's case 00004 follows when that case is in). 160 steps in 16 s on four processors
+(0.18 s per step, against 0.3 s serial: the N = 32 case is too small to scale). The sensitivity itself is a
 property of the second-ring rule worth stating: runs that differ in round-off differ by up to
 1e-3 of L1(alphaf), below the ladder's resolution of orders but above a bitwise comparison.
 The `hexRuleDebug` second run (55578132): neither kromerBotheMinSplit 8 nor kromerBotheFan
