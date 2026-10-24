@@ -1,0 +1,25 @@
+row,metric,N=32,N=64,N=128,p_ls,p_pairwise
+davof-exactSurface-exact,L1_alphaf_end,1.69e-16,6.76e-16,3.12e-15,-2.11,-2.00 / -2.21
+davof-exactSurface-exact,L1_alphaf_max,2.41e-16,8.08e-16,3.12e-15,-1.85,-1.75 / -1.95
+davof-exactSurface-exact,L1_n_end,8.24e-05,1.91e-05,1.07e-05,1.47,2.11 / 0.84
+davof-exactSurface-exact,L1_x_end,4.02e-04,9.56e-05,2.57e-05,1.98,2.07 / 1.89
+davof-exactSurface-exact,Eshape_end,3.58e-04,9.08e-05,2.30e-05,1.98,1.98 / 1.98
+davof-exactSurface-exact,Ebound_end,2.20e-13,2.13e-14,9.82e-15,,
+davof-exactSurface-exact,minAlpha_run,-5.8e-13,-2.7e-14,-1.0e-14,,
+davof-exactSurface-exact,status,ok,ok,ok,,
+davof-exactSurface-cellLocal,L1_alphaf_end,1.69e-16,6.76e-16,3.12e-15,-2.11,-2.00 / -2.21
+davof-exactSurface-cellLocal,L1_alphaf_max,2.41e-16,8.08e-16,3.12e-15,-1.85,-1.75 / -1.95
+davof-exactSurface-cellLocal,L1_n_end,9.47e-04,3.29e-04,1.37e-04,1.40,1.53 / 1.27
+davof-exactSurface-cellLocal,L1_x_end,4.02e-04,9.56e-05,2.57e-05,1.98,2.07 / 1.89
+davof-exactSurface-cellLocal,Eshape_end,3.58e-04,9.08e-05,2.30e-05,1.98,1.98 / 1.98
+davof-exactSurface-cellLocal,Ebound_end,2.20e-13,2.13e-14,9.82e-15,,
+davof-exactSurface-cellLocal,minAlpha_run,-5.8e-13,-2.7e-14,-1.0e-14,,
+davof-exactSurface-cellLocal,status,ok,ok,ok,,
+davof-exactSurface-ringArea,L1_alphaf_end,1.69e-16,6.76e-16,3.12e-15,-2.11,-2.00 / -2.21
+davof-exactSurface-ringArea,L1_alphaf_max,2.41e-16,8.08e-16,3.12e-15,-1.85,-1.75 / -1.95
+davof-exactSurface-ringArea,L1_n_end,2.97e-02,1.72e-02,7.68e-03,0.98,0.79 / 1.16
+davof-exactSurface-ringArea,L1_x_end,4.00e-04,9.53e-05,2.57e-05,1.98,2.07 / 1.89
+davof-exactSurface-ringArea,Eshape_end,3.58e-04,9.08e-05,2.30e-05,1.98,1.98 / 1.98
+davof-exactSurface-ringArea,Ebound_end,2.20e-13,2.13e-14,9.82e-15,,
+davof-exactSurface-ringArea,minAlpha_run,-5.8e-13,-2.7e-14,-1.0e-14,,
+davof-exactSurface-ringArea,status,ok,ok,ok,,
