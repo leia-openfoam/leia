@@ -6528,7 +6528,47 @@ tensor's summation order across processors (a round-off difference that cannot b
 Whether the loop amplifies round-off a million-fold within two steps is decided in serial
 by `sphereTranslation3D_hexNoise` (two serial runs differing only in curvedTolRel by 1 %;
 prediction in the config): if they differ by 1e-5 or more from step 3, the loop has a
-round-off noise floor and the parallel check is as good as serial reproducibility allows. The sensitivity itself is a
+round-off noise floor and the parallel check is as good as serial reproducibility allows.
+
+Appendix to 10.18 (2026-10-24 night, the harvest after a day's suspension of the session;
+all SSH watches had died). (1) The split quadrature's defect, settled: in the self-test boxes
+that contain the silhouette its integrand is right (the segment fraction against the exact
+liquid length on a 60 x 60 grid agrees to the reference's own band width, 5e-7 of dx) but its
+value depends on the sweep direction and the triangulation (fan 0.4904706, sweep reversed
+0.4905202, the face's two diagonal triangles 0.4904690, exact 0.4905208 of the prism) and
+it accepts with 38 to 60 leaves where the Kromer-Bothe rule, exact in all 72 boxes and
+matching the exact per-face references to 1e-16, is the reference for the paraboloid; the
+split quadrature stays the reference on the plane (no silhouette) and is cross-checked by
+the exact overlap on the sphere (9e-12). Its early acceptance at the silhouette is open;
+it is the fallback only. (2) The round-off test's first form was void: curvedTolRel 1e-11
+against 9.9e-12 left the two serial runs bitwise identical (L1 3.710221e-4 both after 16
+steps); the second form perturbs the sphere centre by 1e-13 (55608426). (3) The
+Kromer-Bothe ladder dry run (32 of 36 cases, cancelled; kept aside as `*.dryRun-*`): the
+exact and ring rows without fallbacks at 0.2 s per step (N = 32), 0.9 s (N = 64) and 5 to
+8 s (N = 128; the N = 128, Co 0.1 cases in three hours); the own-normal row aborted at every
+N and Co (steps 62 to 331) and the row with the ring normal below 0.1 h^2 at Co 0.5 (steps
+57, 67, 79; at Co 0.1 and 0.2 it completed at N = 32 and 64), both with hundreds to 26 000
+fallbacks per step to the split quadrature on their wild surfaces and single steps of up to
+27 000 s; fork 7845dd2 caps the fallback (1e-8, depth 6, clamped to [0, V]). (4) The
+split-rule control ladder (55557458): 26 of 27, the N = 128, Co 0.1 own-normal case stopped
+by the 24 h limit at 121 s per step; the split-rule plane test (55566845): 44 of 48, the
+exact and ring rows at round-off everywhere (run maxima of L1(alphaf) below 8e-14), the
+own-normal row drifting (3e-8 to 8.5e-2 with 23 anchor failures), its four unfinished cases
+own-normal cases at N = 80 and 160 stalled by the split quadrature on wild surfaces (kept
+aside as `*.splitRule-*`). (5) The three ladders restarted on the final binary 7845dd2
+after build 55608481: the plane test (55608482) and the sphere ladder (55608483) with
+kromerBothe, the control (55608484) with exactSphere; configs' headers carry the split-rule
+runs' results and the dry run's. (6) The round-off floor of the loop (`hexNoise`, 55608426,
+two serial runs with the sphere centre 1e-13 apart, kromerBothe, 16 steps): 1.3e-10 of
+L1(alphaf) at step 1, 2.0e-6 at step 2, 1.5e-6 at step 3, then 1e-9 to 2.4e-7, interface
+counts identical. So the loop does amplify round-off a million-fold within two steps, to a
+floor of about 1e-6, and the parallel runs' 1e-4 to 1e-3 were a hundred times above it: a
+systematic difference remained, and the split quadrature's silhouette value, which depends
+on the sweep direction, supplies it, because the fan of a processor face is traversed in
+reversed order on the non-owner side; the two sides integrate the same prism to values
+5e-6 of its volume apart. Sixth parallel run (55608490-ish, see .my_jobs) with the
+kromerBothe rule against the ladder's serial case 00004 on the same binary; prediction
+P-PAR3 in the config: agreement within the serial floor. The sensitivity itself is a
 property of the second-ring rule worth stating: runs that differ in round-off differ by up to
 1e-3 of L1(alphaf), below the ladder's resolution of orders but above a bitwise comparison.
 The `hexRuleDebug` second run (55578132): neither kromerBotheMinSplit 8 nor kromerBotheFan
