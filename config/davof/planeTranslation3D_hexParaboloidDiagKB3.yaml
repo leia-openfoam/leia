@@ -1,0 +1,43 @@
+# Third diagnostic (2026-10-25 07:20) of the Kromer-Bothe rule on the translated
+# plane: after the flat-arc fix (fork 748e401) the plane rerun holds the gate at
+# 1e-13 in the exact row at every N, Co and arm and in the ring row everywhere
+# except the oblique arm at N = 160 (7.6e-10 at Co 0.2, 3.1e-10 at Co 0.5), where
+# 3 to 4 faces per step in 4 to 5 steps fall back on a DEGENERATE conic: the
+# ring tensor's round-off curvature rotates the principal axes of a line trace
+# onto its direction, one curvature and the slope along that axis are both at
+# round-off, and the conic is two parallel lines of which the second is at
+# 1e10 face sizes. Fork commit after 748e401 classifies that as the near line.
+# The two failing cases rerun: ring row, oblique arm, N = 160, Co 0.2 and 0.5.
+#
+# PREDICTION (before the run): zero fallbacks in both cases and the gate held
+# at 1e-13 (the split-rule run's values: below 8e-14).
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidDiagKB3 --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidDiagKB3 run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidDiagKB3
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea]
+  TPF_VELOCITY_ARM: [oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
