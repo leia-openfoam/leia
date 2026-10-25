@@ -6709,3 +6709,27 @@ finer pair, which the face fractions follow. The erratic behaviour of this norma
 plane-clipped loop (fit failures in 1700 cells per step) is absent under the surface's own
 flux. Preprint: paragraph written into Section 7 (untracked); the row is in CROWS of
 make_table_advection.py. Sent to the proposal session.
+
+Appendix to 10.18 (2026-10-25 03:40, the plane test with the kromerBothe rule, 55608482,
+PARTIAL: 35 of 48 cases, N = 160 and the own-normal rows still running; gate table on origin,
+e262e1a4). The gate is NOT held by the Kromer-Bothe run: the exact row passes at N = 20 and
+40 (1e-14), reaches 1.4e-12 at N = 80 (Co 0.2) and 1.6e-6 at N = 160 (Co 0.5, run maximum;
+3e-12 at the end); the ring row passes at N = 20 on both arms and at N = 40 on the normal arm
+(2e-14), is at 1e-12 at N = 80 on the normal arm and at 6e-9 (N = 40), 7.5e-6 and 1.1e-5
+(N = 80), 3.7e-6 (N = 160) on the oblique arm. The cause is in the counters: the rule falls
+back to the capped split quadrature (1e-8, depth 6) in thousands of prisms per step on the
+finer meshes (exact row: 0 at N = 20, 1 to 16 at N = 40, 1303 to 4010 at N = 80, 43779 at
+N = 160; ring row oblique: 250 at N = 20, 2614 and 3307 at N = 40, 12365 and 13849 at N = 80,
+69834 at N = 160), and the capped fallback is not exact on a plane while the uncapped split
+rule is (the split-rule run of the same study, kept aside as *.splitRule-*, held the gate at
+1e-14 up to N = 160 for both rows). On a plane the ring tensor is zero to round-off, every
+trace is a line, and the rule should reduce to the exact polygon cut; which check rejects the
+flat traces is not visible from the counters. Fork 01ee5d4 counts the fallbacks by reason
+(conic, point, root, gradient, area, volume) and prints them per step; diagnostic study
+planeTranslation3D_hexParaboloidDiagKB (55614649 after build 55614648; four cases, N = 80,
+Co 0.5, exact and ring rows, both arms; prediction in the header: the chord-normal root).
+Consequence for the records: the plane gate statement of the preprint and the proposal rests
+on the split-rule run (valid: the same loop with the other volume rule, which is exact on
+planes); the Kromer-Bothe run's plane table enters only after the fix, as the rule's own
+test. The sphere ladder is unaffected (fallbacks 0 to 3 per step there) but the own-normal
+rows' thousands of fallbacks per step may share the cause. Proposal session informed.
