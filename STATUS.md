@@ -6790,4 +6790,13 @@ N = 20, Co 0.2 (as in the split-rule run: 3e-8 at N = 20, Co 0.5, 8e-2 at N = 40
 6e-3 at N = 80 on the oblique arm), with fallbacks of every reason on its wild surfaces.
 Once the third diagnostic verifies, the final binary is 9dbca10 and the plane test, the
 sphere ladder and the ring-quadric study are rerun on it once more, so that every table of
-the preprint stands on one binary.
+the preprint stands on one binary. VERIFIED (55618726, 2026-10-25 08:30): zero fallbacks in
+both cases over all 160 and 64 steps (85000 quadrature leaves per step against 2.4e7 with
+the fallbacks). FINAL RERUNS on fork 9dbca10 (cluster build 55618725): the intermediate runs
+moved aside as *.on748e401-* (the plane run's own-normal N >= 80 cases cancelled unfinished),
+plane test 55619126, ring-quadric study 55619127, sphere ladder 55619128; predictions as in
+the configs, and the scored rows of the sphere ladder (exact 2.84, ring 1.35, ring quadric
+2.11 per period) are predicted to reproduce their digits (their 0 to 3 fallbacks per step
+were flat arc pieces, now resolved). Lesson from the cancellations: `ssh host bash -s "$X"`
+splits a multi-id string into separate positional parameters (ssh joins the arguments with
+spaces), so only $1 arrives; the id lists go into the command string (`cancel_ids.sh`).
