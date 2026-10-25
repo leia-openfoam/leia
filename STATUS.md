@@ -6772,3 +6772,22 @@ on the fixed binary (fork 748e401) so that the whole ladder is on one binary, wi
 own-normal rows expected to run faster without the flat-arc fallbacks; the predictions of
 the configs are unchanged, and the scored rows are predicted to reproduce their digits up to
 the 0 to 3 resolved prisms per step.
+
+Appendix to 10.18 (2026-10-25 07:30, the plane rerun on the flat-arc fix, 55616011, 43 of 48
+at the score, own-normal N >= 80 still running; tables on origin). The exact row holds the
+gate at every N, Co and arm (16 of 16; 7e-15 to 2.5e-13, the run maxima growing with N as
+round-off does); the ring row holds it in 14 of 16 (8e-15 to 2.5e-13) and misses it on the
+oblique arm at N = 160 (7.6e-10 at Co 0.2, 3.1e-10 at Co 0.5, against 3.7e-6 before the fix
+and below 8e-14 in the split-rule run): there 3 to 4 faces per step in 4 to 5 steps fall
+back on a DEGENERATE conic, the remaining classification gap: the ring tensor's round-off
+curvature rotates the principal axes of a line trace onto its direction, one curvature and
+the slope along that axis are both at round-off, and the conic B u^2 + 2 l u + K = 0 in the
+other coordinate is two parallel lines, the second at -2 l/B, 1e10 face sizes away. Fork
+9dbca10 classifies this as the near line when |B K| <= 1e-6 l^2 (the root in the stable
+form); third diagnostic planeTranslation3D_hexParaboloidDiagKB3 (the two failing cases;
+prediction: zero fallbacks, gate at 1e-13). The own normal fails the gate at every N but
+N = 20, Co 0.2 (as in the split-rule run: 3e-8 at N = 20, Co 0.5, 8e-2 at N = 40, Co 0.5,
+6e-3 at N = 80 on the oblique arm), with fallbacks of every reason on its wild surfaces.
+Once the third diagnostic verifies, the final binary is 9dbca10 and the plane test, the
+sphere ladder and the ring-quadric study are rerun on it once more, so that every table of
+the preprint stands on one binary.
