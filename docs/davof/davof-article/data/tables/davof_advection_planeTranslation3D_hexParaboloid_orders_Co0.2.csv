@@ -23,11 +23,11 @@ davof-paraboloidRing-cellLocal,normal,Eshape_end,3.53e-24,6.21e-24,1.94e-21,abse
 davof-paraboloidRing-cellLocal,normal,Ebound_end,9.63e-15,1.38e-14,2.44e-14,absent,,
 davof-paraboloidRing-cellLocal,normal,minAlpha_run,-9.6e-15,-8.9e-15,-1.6e-14,absent,,
 davof-paraboloidRing-cellLocal,normal,status,ok,ok,ok,absent,,
-davof-paraboloidRing-cellLocal,oblique,L1_alphaf_end,1.95e-13,2.81e-11,5.79e-03,absent,-17.40,-7.18 / -27.62
-davof-paraboloidRing-cellLocal,oblique,L1_alphaf_max,1.95e-13,2.81e-11,5.79e-03,absent,-17.40,-7.18 / -27.62
-davof-paraboloidRing-cellLocal,oblique,L1_n_end,3.63e-12,6.47e-10,6.06e-02,absent,-16.98,-7.48 / -26.48
-davof-paraboloidRing-cellLocal,oblique,L1_x_end,3.07e-17,1.50e-15,1.69e-06,absent,-17.84,-5.61 / -30.07
-davof-paraboloidRing-cellLocal,oblique,Eshape_end,3.99e-23,2.69e-21,1.32e-13,absent,-15.81,-6.08 / -25.55
+davof-paraboloidRing-cellLocal,oblique,L1_alphaf_end,1.95e-13,2.81e-11,6.45e-03,absent,-17.47,-7.18 / -27.77
+davof-paraboloidRing-cellLocal,oblique,L1_alphaf_max,1.95e-13,2.81e-11,6.45e-03,absent,-17.47,-7.18 / -27.77
+davof-paraboloidRing-cellLocal,oblique,L1_n_end,3.63e-12,6.47e-10,6.63e-02,absent,-17.04,-7.48 / -26.61
+davof-paraboloidRing-cellLocal,oblique,L1_x_end,3.07e-17,1.50e-15,2.38e-06,absent,-18.09,-5.61 / -30.56
+davof-paraboloidRing-cellLocal,oblique,Eshape_end,3.99e-23,2.69e-21,1.26e-13,absent,-15.78,-6.08 / -25.48
 davof-paraboloidRing-cellLocal,oblique,Ebound_end,2.86e-14,6.77e-14,1.43e-13,absent,,
 davof-paraboloidRing-cellLocal,oblique,minAlpha_run,-9.6e-15,-3.8e-14,-9.1e-13,absent,,
 davof-paraboloidRing-cellLocal,oblique,status,ok,ok,ok,absent,,
@@ -39,11 +39,11 @@ davof-paraboloidRing-ringArea,normal,Eshape_end,3.07e-24,2.35e-24,2.91e-24,3.82e
 davof-paraboloidRing-ringArea,normal,Ebound_end,9.90e-15,1.38e-14,2.46e-14,5.55e-14,,
 davof-paraboloidRing-ringArea,normal,minAlpha_run,-9.9e-15,-9.1e-15,-1.4e-14,-2.7e-14,,
 davof-paraboloidRing-ringArea,normal,status,ok,ok,ok,ok,,
-davof-paraboloidRing-ringArea,oblique,L1_alphaf_end,3.55e-14,2.70e-14,7.25e-14,2.15e-11,-2.92,0.39 / -1.42 / -8.22
-davof-paraboloidRing-ringArea,oblique,L1_alphaf_max,3.55e-14,5.95e-14,1.03e-13,7.65e-10,-4.40,-0.75 / -0.80 / -12.85
-davof-paraboloidRing-ringArea,oblique,L1_n_end,4.72e-14,3.23e-14,9.72e-14,3.34e-11,-3.00,0.55 / -1.59 / -8.43
-davof-paraboloidRing-ringArea,oblique,L1_x_end,1.97e-17,5.13e-17,2.83e-17,1.45e-15,-1.77,-1.38 / 0.86 / -5.68
-davof-paraboloidRing-ringArea,oblique,Eshape_end,1.09e-23,1.16e-23,1.33e-23,3.98e-21,-2.57,-0.09 / -0.19 / -8.23
-davof-paraboloidRing-ringArea,oblique,Ebound_end,2.86e-14,6.77e-14,1.43e-13,3.37e-13,,
-davof-paraboloidRing-ringArea,oblique,minAlpha_run,-9.5e-15,-2.8e-14,-4.8e-14,-1.3e-12,,
+davof-paraboloidRing-ringArea,oblique,L1_alphaf_end,3.55e-14,2.70e-14,7.25e-14,9.63e-11,-3.56,0.39 / -1.42 / -10.38
+davof-paraboloidRing-ringArea,oblique,L1_alphaf_max,3.55e-14,5.95e-14,1.03e-13,2.63e-09,-4.93,-0.75 / -0.80 / -14.64
+davof-paraboloidRing-ringArea,oblique,L1_n_end,4.72e-14,3.23e-14,9.72e-14,1.36e-10,-3.61,0.55 / -1.59 / -10.45
+davof-paraboloidRing-ringArea,oblique,L1_x_end,1.97e-17,5.13e-17,2.83e-17,5.47e-15,-2.35,-1.38 / 0.86 / -7.60
+davof-paraboloidRing-ringArea,oblique,Eshape_end,1.09e-23,1.16e-23,1.33e-23,1.29e-20,-3.08,-0.09 / -0.19 / -9.92
+davof-paraboloidRing-ringArea,oblique,Ebound_end,2.86e-14,6.77e-14,1.43e-13,1.89e-12,,
+davof-paraboloidRing-ringArea,oblique,minAlpha_run,-9.5e-15,-2.8e-14,-4.8e-14,-1.9e-12,,
 davof-paraboloidRing-ringArea,oblique,status,ok,ok,ok,ok,,

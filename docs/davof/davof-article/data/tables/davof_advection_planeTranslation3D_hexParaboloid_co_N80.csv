@@ -23,11 +23,11 @@ davof-paraboloidRing-cellLocal,normal,Eshape_end,1.94e-21,absent
 davof-paraboloidRing-cellLocal,normal,Ebound_end,2.44e-14,absent
 davof-paraboloidRing-cellLocal,normal,minAlpha_run,-1.6e-14,absent
 davof-paraboloidRing-cellLocal,normal,status,ok,absent
-davof-paraboloidRing-cellLocal,oblique,L1_alphaf_end,5.79e-03,1.03e-06
-davof-paraboloidRing-cellLocal,oblique,L1_alphaf_max,5.79e-03,1.03e-06
-davof-paraboloidRing-cellLocal,oblique,L1_n_end,6.06e-02,4.03e-05
-davof-paraboloidRing-cellLocal,oblique,L1_x_end,1.69e-06,7.61e-11
-davof-paraboloidRing-cellLocal,oblique,Eshape_end,1.32e-13,5.97e-17
+davof-paraboloidRing-cellLocal,oblique,L1_alphaf_end,6.45e-03,1.03e-06
+davof-paraboloidRing-cellLocal,oblique,L1_alphaf_max,6.45e-03,1.03e-06
+davof-paraboloidRing-cellLocal,oblique,L1_n_end,6.63e-02,4.03e-05
+davof-paraboloidRing-cellLocal,oblique,L1_x_end,2.38e-06,7.61e-11
+davof-paraboloidRing-cellLocal,oblique,Eshape_end,1.26e-13,5.97e-17
 davof-paraboloidRing-cellLocal,oblique,Ebound_end,1.43e-13,2.72e-13
 davof-paraboloidRing-cellLocal,oblique,minAlpha_run,-9.1e-13,-7.6e-13
 davof-paraboloidRing-cellLocal,oblique,status,ok,ok

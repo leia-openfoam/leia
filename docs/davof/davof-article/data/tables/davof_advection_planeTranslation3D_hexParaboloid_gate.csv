@@ -25,7 +25,7 @@ davof-paraboloidRing-cellLocal,normal,80,0.5,,,,absent,FAIL (absent)
 davof-paraboloidRing-cellLocal,normal,160,0.5,,,,absent,FAIL (absent)
 davof-paraboloidRing-cellLocal,oblique,20,0.2,1.94674184344635e-13,2.1509460879087783e-11,3.632292304002216e-12,completed,FAIL
 davof-paraboloidRing-cellLocal,oblique,40,0.2,2.8133184811790762e-11,4.161182731721169e-09,6.47438399491496e-10,completed,FAIL
-davof-paraboloidRing-cellLocal,oblique,80,0.2,0.005794688212829784,1.0,0.060640266265022606,completed,FAIL
+davof-paraboloidRing-cellLocal,oblique,80,0.2,0.006450339827223533,1.0,0.0662683340385129,completed,FAIL
 davof-paraboloidRing-cellLocal,oblique,160,0.2,,,,absent,FAIL (absent)
 davof-paraboloidRing-cellLocal,oblique,20,0.5,8.129653437181285e-14,2.279443300778894e-11,1.0922885719660174e-12,completed,FAIL
 davof-paraboloidRing-cellLocal,oblique,40,0.5,4.016092847163688e-09,4.672091631685582e-06,2.796122368643502e-07,completed,FAIL
@@ -42,7 +42,7 @@ davof-paraboloidRing-ringArea,normal,160,0.5,1.214395708005593e-13,3.53737039660
 davof-paraboloidRing-ringArea,oblique,20,0.2,3.548299793192479e-14,8.115730310009894e-12,4.720014082231939e-14,completed,PASS
 davof-paraboloidRing-ringArea,oblique,40,0.2,5.95222446498397e-14,3.2615021794413224e-11,9.03608637943024e-14,completed,PASS
 davof-paraboloidRing-ringArea,oblique,80,0.2,1.0329012984684619e-13,8.095413228659254e-11,1.4302667758228967e-13,completed,PASS
-davof-paraboloidRing-ringArea,oblique,160,0.2,7.649123337577272e-10,1.6198519128374222e-05,1.6828437335075207e-09,completed,FAIL
+davof-paraboloidRing-ringArea,oblique,160,0.2,2.6297364129938073e-09,8.757196212383356e-05,7.827580798073757e-09,completed,FAIL
 davof-paraboloidRing-ringArea,oblique,20,0.5,1.6619364822603222e-14,2.284838984678572e-12,2.900353316529404e-14,completed,PASS
 davof-paraboloidRing-ringArea,oblique,40,0.5,1.0215162806182003e-13,6.265443719399855e-11,1.6707205217598903e-13,completed,PASS
 davof-paraboloidRing-ringArea,oblique,80,0.5,1.6607036979341625e-13,1.6451029427599906e-10,2.467883462628394e-13,completed,PASS

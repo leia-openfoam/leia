@@ -41,8 +41,8 @@ davof-paraboloidRing-ringArea,normal,minAlpha_run,-1.1e-14,-2.2e-14,-2.9e-14,-6.
 davof-paraboloidRing-ringArea,normal,status,ok,ok,ok,ok,,
 davof-paraboloidRing-ringArea,oblique,L1_alphaf_end,1.44e-14,6.27e-14,1.53e-13,2.83e-13,-1.42,-2.12 / -1.28 / -0.89
 davof-paraboloidRing-ringArea,oblique,L1_alphaf_max,1.66e-14,1.02e-13,1.66e-13,3.06e-10,-4.32,-2.62 / -0.70 / -10.85
-davof-paraboloidRing-ringArea,oblique,L1_n_end,2.90e-14,8.18e-14,2.47e-13,4.22e-13,-1.32,-1.50 / -1.59 / -0.78
-davof-paraboloidRing-ringArea,oblique,L1_x_end,1.80e-17,4.21e-17,2.67e-17,2.29e-17,-0.04,-1.23 / 0.66 / 0.22
+davof-paraboloidRing-ringArea,oblique,L1_n_end,2.90e-14,8.18e-14,2.47e-13,4.22e-13,-1.32,-1.50 / -1.59 / -0.77
+davof-paraboloidRing-ringArea,oblique,L1_x_end,1.80e-17,4.21e-17,2.67e-17,2.28e-17,-0.04,-1.23 / 0.66 / 0.23
 davof-paraboloidRing-ringArea,oblique,Eshape_end,9.51e-24,1.11e-23,1.25e-23,9.21e-22,-2.00,-0.23 / -0.17 / -6.20
 davof-paraboloidRing-ringArea,oblique,Ebound_end,2.18e-14,7.08e-14,1.23e-13,3.26e-13,,
 davof-paraboloidRing-ringArea,oblique,minAlpha_run,-8.0e-15,-2.8e-14,-5.5e-14,-8.2e-13,,
