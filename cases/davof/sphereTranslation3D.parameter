@@ -49,9 +49,12 @@ values
     // doi:10.1016/j.jcp.2016.02.003; the exact-sphere control)
     TPF_VOLUME_RULE ( splitQuadrature );
     // the Kromer-Bothe rule's checks (davofKromerBothe.H): the least number of
-    // sub-arcs per trace arc, the fan triangulation of the planar faces
+    // sub-arcs per trace arc, and the fan triangulation of the faces: auto (fan
+    // only warped faces, by the per-face planarity test; the fork's default
+    // since davof 1f914f9, 2026-10-25) | true (always fan, the ladders' setting
+    // until then) | false (never fan); builds before 1f914f9 reject auto
     TPF_KB_MIN_SPLIT ( 1 );
-    TPF_KB_FAN ( true );
+    TPF_KB_FAN ( auto );
     // the volume anchor's root finder (fork branch davof-perf, 2026-10-25):
     // ccs (Consecutive Cubic Spline positioning on the exact volumes and
     // slopes, the fork's default) | newton | illinois (the bracket and the

@@ -7186,3 +7186,30 @@ twelfth case (ring row, oblique arm, N = 80) now at 7.0e-14 / 2.2e-16 (from 1.1e
 jumps were the dropped sliver arc), so vector + anchored centroids + face-centre apex is at
 round-off in both rows, both arms, every N (P-W2 holds in full); the other combinations
 unchanged. leia c132e854 (results in the config headers).
+
+Appendix to 10.18 (2026-10-25 23:30, davof-perf MERGED as davof 1f914f9 after the agent's second
+report: head 3f5270b = e5b6205 merge of f133781, 46db35e the edge definition and the CCS anchor,
+3f5270b compare classes; leia 30d68880 TPF_ANCHOR_METHOD default ccs, converter column
+nAnchorEdge, *Perf3 configs). The CCS anchor (Marić 2021, doi:10.1016/j.jcpx.2021.100093,
+arXiv:2012.02227): Newton step from the start until bracketed, then the root of the cubic
+Hermite interpolant through the bracket ends with exact V and dV/dc, re-bracketed, bisection
+when the iterate leaves the bracket or the bracket is not halved in two steps; the edge rule
+(kbOffsetRange: the exact range of phi + c over the cell from vertices and edge- and
+face-plane stationary points; a target within 1e-14 V of 0 or V takes cMin or cMax moved
+1e-12 h onto the flat side, no volume evaluation, counted as `edge N`). VERIFIED on the
+agent's build: exact row digits equal to the ladder (L1(n) to 6e-7); ring row -0.53 % (N = 32)
+and -2.47 % (N = 64) against the ladder, EVERY differing cell traced by `anchorMethod compare`
+to the edge definition (1294 of 1302, 1322 of 1519) or to differences below the anchor's
+resolution (|dc| A <= 1e-13 V; nearly full cells with corner slivers) or to Illinois failures,
+none other; anchor failures 0 (ladder 70 and 148), fallbacks 0, mass 8e-17, bound 9e-14. Plane
+gate 32 of 32 at round-off (max 2.75e-13; f133781 gives 2.83e-13 on that case). Evaluations
+per cell and step 3.4 (ccs) against 6.3 (illinois) and 3.5 (newton): start, one Newton step,
+the Hermite root and a confirming evaluation for the offset criterion. TIMING (medians of
+three, Co 0.2): ring 0.051 / 0.248 / 1.457 s against plicRDF 0.030 / 0.204 / 1.345 in the same
+study, ratios 1.70 / 1.21 / 1.08 (reference 6.0 / 3.5 / 3.0); raw 2.5 / 2.2 / 3.1 times faster
+than the ladder's binary. Self-test bit-identical to f133781 with fans over all 534 lines, at
+round-off with whole faces. Notes: the sliver fix's anchor event print now needs
+anchorDiagnostics true; builds before the merge reject `kromerBotheFan auto`; leia's
+sphereTranslation3D.parameter had TPF_KB_FAN ( true ), set to auto now so that the reruns use
+whole faces. The warped agent rebases onto 1f914f9 next; then the warped merge, the cluster
+build and the four reruns.
