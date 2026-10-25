@@ -6912,3 +6912,27 @@ volume in cells with a vertex grazing the surface, the loop's residue 3e-10 at N
 the ring row's oblique arm, nothing at the sphere ladder's level. The next step, when wanted,
 is a unit test in kbSelfTest with a plane grazing a box vertex at 1e-10 against the exact
 sliver volume, for both rules. Not pursued further now.
+
+Appendix to 10.18 (2026-10-25 14:30, five agents launched on Tomislav's instruction "do all of
+the other points, we have resources"; each reports to the main session, which records here).
+Convention: agents that change code work on their own fork branch (`davof-perf`,
+`davof-sliver`, `davof-warped`, pushed to tmaric only, never merged by them) in their own
+clones under /work/scratch/tm83tomy/davof/agents/<name>/{TwoPhaseFlow,leia} (leia-env.sh
+resolves the sibling fork, so their studies run their own build and the production clones
+stay untouched); their leia configs carry unique suffixes (Perf, Sliver, Warped, N256) and
+land in leia development; job ids go to .my_jobs. (1) P-X2: why the own-faces normal on the
+exactly transported fractions of the control reads order 1.40 against the static 2.05, and
+why the exact row's own normal error is not zero (cheapest check first: the diagnostic's
+step-0 value against the static table; then cell set, reference point, state). (2) The fourth
+mesh: the three paraboloid rows at N = 256 (33.6 million cells, parallel, diagnostics at the
+end), Co 0.2, for the pairwise order 128 -> 256 of the ring-quadric row (production build, no
+code change). (3) Cost: whole planar faces by a per-face planarity test (also for the face
+fractions), the anchor's diagnostics behind a switch, a safeguarded Newton anchor on the
+exact derivative (the projected wetted patch area), the cell polyhedron built once per cell
+and stack arrays; verification by the plane gate, the sphere digits at N = 32/64 and the
+timing study on its own build. (4) The vertex-grazing sliver: a kbSelfTest series with a plane
+at 1e-6 to 1e-14 from a box vertex against the exact volume for both rules, the responsible
+branch fixed, verified on the two failing plane cases. (5) Warped faces: the wetted face area
+vector (and first moment) transported instead of the scalar fraction, behind a run-time
+switch, verified by the planar reduction and the perturbed-hexahedra plane test with the
+paraboloid rows. Merging any branch into davof is a decision for Tomislav after the reports.
