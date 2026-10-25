@@ -169,6 +169,10 @@ def collect(study_dir):
     recs = []
     for params in sorted(glob.glob(os.path.join(study_dir, "*", "case_params.json"))):
         case = os.path.dirname(params)
+        if "." in os.path.basename(case):
+            # a case moved aside with a suffix (<case>.<reason>-<stamp>) is kept
+            # as a record but is not a case of the study
+            continue
         meta = json.load(open(params))
         tok = meta.get("tokens", {})
         n = _f(tok.get("N_CELLS"))
