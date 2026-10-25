@@ -7241,3 +7241,12 @@ per step at most, which is why these cases finish now where they crawled for hou
 fan binary with the flat-arc fallbacks). The plane gate of the dual advection with the
 Kromer-Bothe rule is therefore held by the exact and the ring normal at every N, Co and arm on
 the final binary, and the own normal fails it beyond N = 20 as in the plane-clipped loop.
+
+Appendix to 10.18 (2026-10-26 01:50, the FINAL TIMING on davof 7c06c57, 55634210, 18 of 18, every
+case stamped 7c06c57; tables on origin). Medians of three per step (Co 0.2, diagnostics at the
+end): ring row 0.053 / 0.358 / 2.117 s against plicRDF 0.031 / 0.184 / 1.829 s in the same study
+at N = 32 / 64 / 128, ratios 1.7 / 1.9 / 1.16 (the N = 128 pair on a slower node than the agent's
+run: 1.46 against 1.35 there; the ratio is what carries). The ring row's end digits on the final
+binary: 5.616950e-3 (N = 32), 2.066471e-3 (N = 64), 8.709252e-4 (N = 128), identical in the three
+repetitions, i.e. -0.53 %, -2.47 % and -0.003 % against the fan/Illinois ladder (the edge
+definition's cells are coarse-mesh cases); zero fallbacks, zero anchor failures.
