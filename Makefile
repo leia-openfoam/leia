@@ -22,8 +22,9 @@ PROFILE ?= profiles/local
 # `--resources tasks=N` is a LOCAL cap on concurrent MPI ranks -- it stops a
 # laptop oversubscribing its cores. On SLURM the scheduler already does that,
 # and the cap would instead serialise the solves (an np=8 study would run one
-# case at a time). Lift it for the cluster profile.
-ifeq ($(PROFILE),profiles/slurm)
+# case at a time). Lift it for the cluster profiles (profiles/slurm and
+# profiles/slurm-fat, the same executor with fat serial rules, 2026-10-25).
+ifneq (,$(filter profiles/slurm profiles/slurm-fat,$(PROFILE)))
 TASKS   ?= 10000
 else
 TASKS   ?= 12

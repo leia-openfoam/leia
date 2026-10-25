@@ -1,0 +1,111 @@
+# The fourth mesh of the paraboloid ladder (2026-10-25, agent (2) of the
+# appendix of 14:30): the three scored rows of the ring-tensor paraboloid loop
+# (sphereTranslation3D_hexParaboloid rows exact and ringArea, the ring-quadric
+# row of sphereTranslation3D_hexParaboloidRingFit) at N = 256 (512 x 256 x 256
+# = 33.6 million cells), Co 0.2 (1280 steps), on the production build of the
+# fork (branch davof, 9dbca10 at submission; no code change), in PARALLEL
+# (np 96, one node, scotch; the curved flux in parallel was validated on four
+# processors against serial within the loop's round-off floor, hexParallel
+# run 6). Everything else as the ladder: the kromerBothe rule, the exact-sphere
+# initial state, 3.3 diameters, the volume anchor, zero slopes.
+#
+# The question (the proposal session, on the three-mesh ladder): with the ring
+# quadric's normal in the frame the face-fraction error at the end is 8.75e-4,
+# 1.37e-4, 4.73e-5 at N = 32 / 64 / 128 (least-squares order 2.11, PAIRWISE
+# 2.68 then 1.53) and the normal error 1.34e-3, 3.61e-4, 1.63e-4 (1.52;
+# pairwise 1.89 then 1.15); the exact frame gives 5.20e-4, 6.67e-5, 1.02e-5
+# (2.84; pairwise 2.96 / 2.71), the ring's mean normal 5.65e-3, 2.12e-3,
+# 8.71e-4 (1.35; pairwise 1.41 / 1.28). The pairwise orders of the
+# ring-quadric row fall on the finer pair: does the computed-normal loop keep
+# second order beyond N = 128, or does it settle at first order? The pairwise
+# order 128 -> 256 of this run decides it. 3 x 1 x 1 = 3 parallel cases.
+#
+# What is reduced at this size (not the method, the diagnostics): the
+# face-fraction and volume-fraction errors are written every 128th step (ten
+# samples, the end step 1280 among them) instead of every step, because
+# areaFractionError recomputes the exact sphere state at every write; the
+# reconstruction error (normal, centre) at the end time as in the ladder; one
+# field write (t = 1) instead of four. The converter joins on time, so the
+# end values of the long table are unaffected; the history and growth tables
+# of this study are coarse by construction and L1_alphaf_max is the maximum
+# over the ten samples.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-25 13:05 CET, before the run; the
+# priors: the three-mesh tables above, serial N = 128 Co 0.2 at 5.0 s per step
+# with the per-step diagnostics, 1.74 GB resident):
+# P-N1 (the question, the ring-quadric row davof-paraboloidRing-ringFit):
+#   SECOND ORDER KEPT if the pairwise order 128 -> 256 of L1(alphaf) at the
+#   end is at least 1.8 AND of L1(n) at least 1.4; FIRST ORDER (the proposal's
+#   null) if L1(alphaf) is below 1.3 AND L1(n) below 1.0; between them the
+#   run is undecided and the two-term law c1 h + c2 h^2 fitted to N = 64 and
+#   128 is reported. My expectation, from that law (L1(alphaf): c1 = 3.4e-3,
+#   c2 = 0.35; L1(n): c1 = 1.9e-2, c2 = 0.29): the first-order component
+#   takes over, L1(alphaf) 1.6e-5 to 1.9e-5 (pairwise 1.3 to 1.55) and L1(n)
+#   7e-5 to 9e-5 (pairwise 0.9 to 1.2), i.e. the order of the normal settles
+#   at one and the face fractions follow it one pair later: "second order
+#   kept" is NOT expected; "first order" is expected for the normal and not
+#   yet reached for the face fractions.
+# P-N2 (the exact row davof-paraboloidRing-exact): the pairwise order 128 ->
+#   256 of L1(alphaf) is 2.5 to 3.0 (L1(alphaf) 1.3e-6 to 1.8e-6).
+#   FALSIFIED below 2.2.
+# P-N3 (the ring-area row davof-paraboloidRing-ringArea): the pairwise order
+#   is 1.1 to 1.4 (L1(alphaf) 3.3e-4 to 4.1e-4) and the normal's 0.9 to 1.2
+#   (L1(n) 3.6e-3 to 4.4e-3). FALSIFIED outside 0.9 to 1.6.
+# P-N4 (the loop): all three cases complete the 1280 steps, bounded (min
+#   alpha above -1e-11, Ebound below 1e-11) and conservative (the mass
+#   deviation at round-off). FALSIFIED by an abort or |min alpha| > 1e-8.
+# P-N5 (the moments the rows share): the centre and shape errors, identical
+#   across the rows to three digits at N <= 128 (2.57e-5, 2.30e-5), stay
+#   second order (pairwise 1.8 to 2.1; L1(x) 6e-6 to 7.5e-6, Eshape 5.5e-6
+#   to 6.5e-6) in all three rows.
+# P-N6 (the cost, np 96): 1.5 to 6 s of wall time per step (the interface
+#   work grows 4x and the bulk 8x from N = 128; at any time 10 to 25 % of the
+#   96 scotch parts carry the interface), 0.5 to 2 h per solve. FALSIFIED
+#   above 15 s per step.
+#
+# The serial pre- and post-processing (blockMesh, initDavofFields,
+# decomposePar, reconstructPar, one process each on 33.6 million cells) runs
+# under profiles/slurm-fat (64 / 64 / 96 / 96 GB; the slurm profile's 16 / 16
+# / 24 / 24 GB are sized for 8.4 million cells), selected by PROFILE in the
+# submission:
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloidN256 --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloidN256,PROFILE=profiles/slurm-fat run-studies.sbatch
+study_name: sphereTranslation3D_hexParaboloidN256
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: parallel
+np: 96
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [256]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-ringFit, davof-paraboloidRing-exact, davof-paraboloidRing-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_AFE_WRITE_CONTROL: ["timeStep"]
+  TPF_AFE_WRITE_INTERVAL: [128]
+  TPF_VFE_WRITE_CONTROL: ["timeStep"]
+  TPF_VFE_WRITE_INTERVAL: [128]
+  TPF_WRITE_INTERVAL: [1]
+collapse_other_axes: true
+
+# 96 ranks on one node: 3000 MB per rank (288 GB of the node's 364.8 GB; the
+# serial N = 128 solve was resident at 1.74 GB, so 33.6 million cells need
+# about 14 GB plus the per-rank overhead). 24 h for the solve.
+solve_mem_mb: 3000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

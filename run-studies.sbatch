@@ -36,15 +36,21 @@ source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
 . "$PWD/etc/leia-env.sh" || exit 1   # this clone's binaries; AFTER etc/bashrc, which defines WM_OPTIONS
 export PATH="$HOME/.local/bin:$PATH"
 
+# The workflow profile: profiles/slurm unless the submission exports another
+# (PROFILE=profiles/slurm-fat for a study whose serial mesh, initialisation,
+# decomposition and reconstruction steps hold tens of millions of cells;
+# 2026-10-25). The Makefile lifts its local tasks cap for both.
+PROFILE="${PROFILE:-profiles/slurm}"
+
 # STUDY runs exactly one config; TARGET runs a whole group.
 if [ -n "$STUDY" ]; then
-    echo "===== BEGIN study $STUDY  $(date) on $(hostname) ====="
-    make studies-one STUDY="$STUDY" PROFILE=profiles/slurm
+    echo "===== BEGIN study $STUDY  $(date) on $(hostname) with $PROFILE ====="
+    make studies-one STUDY="$STUDY" PROFILE="$PROFILE"
     echo "===== END study $STUDY rc=$?  $(date) ====="
 else
     TARGET="${TARGET:-studies-euler}"
-    echo "===== BEGIN $TARGET  $(date) on $(hostname) ====="
-    make "$TARGET" PROFILE=profiles/slurm
+    echo "===== BEGIN $TARGET  $(date) on $(hostname) with $PROFILE ====="
+    make "$TARGET" PROFILE="$PROFILE"
     echo "===== END $TARGET rc=$?  $(date) ====="
 fi
 echo "ALL-STUDIES-DONE"

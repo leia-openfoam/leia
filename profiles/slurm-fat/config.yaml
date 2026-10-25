@@ -1,0 +1,48 @@
+# SLURM profile for a study whose SERIAL steps hold a mesh of tens of millions
+# of cells: profiles/slurm with the serial rules re-sized, nothing else changed
+# (2026-10-25, the N = 256 sphere study sphereTranslation3D_hexParaboloidN256:
+# 512 x 256 x 256 = 33.6 million cells; the slurm profile's 16 / 16 / 24 / 24 GB
+# were sized for 203^3 = 8.4 million). blockMesh, the field initialiser, a
+# scotch decomposePar and reconstructPar each hold the WHOLE mesh in ONE
+# process; the rules of thumb (1 GB per million cells for blockMesh and
+# reconstructPar, 1.5 to 2 GB per million for a scotch decomposition) give
+# 34 / 34 / 50 to 67 / 34 GB, requested with a margin below. Lichtenberg nodes
+# are 96+ cores / 364800 MB with no MaxMemPerCPU, so a fat single-core request
+# pins one core, not a node, and stays on the default partition.
+#
+# Selected per submission: sbatch --export=ALL,STUDY=...,PROFILE=profiles/slurm-fat run-studies.sbatch
+# (run-studies.sbatch takes PROFILE from the environment, default profiles/slurm;
+# the Makefile lifts the local tasks cap for this profile as for profiles/slurm).
+# The launcher, the account, the requeue and the environment preamble are
+# those of profiles/slurm/config.yaml, whose comments explain them.
+executor: slurm
+slurm-requeue: true
+jobs: 200
+printshellcmds: true
+rerun-incomplete: true
+
+default-resources:
+  slurm_account: "special00004"
+  mem_mb_per_cpu: 4000
+  runtime: 1440
+
+set-resources:
+  mesh:
+    runtime: 240
+    mem_mb_per_cpu: 64000
+  preprocess:
+    runtime: 240
+    mem_mb_per_cpu: 64000
+  decompose:
+    runtime: 480
+    mem_mb_per_cpu: 96000
+  reconstruct:
+    runtime: 480
+    mem_mb_per_cpu: 96000
+  paraview_stub:
+    runtime: 10
+    mem_mb_per_cpu: 1000
+
+config:
+  - "mpi_launcher=srun --ntasks={np} --overlap --cpu-bind=none --kill-on-bad-exit=1"
+  - "env_preamble=module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv; export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2; source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
