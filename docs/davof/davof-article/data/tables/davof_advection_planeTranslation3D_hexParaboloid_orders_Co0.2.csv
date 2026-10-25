@@ -31,14 +31,14 @@ davof-paraboloidRing-cellLocal,oblique,Eshape_end,1.14e-21,2.81e-18,absent,absen
 davof-paraboloidRing-cellLocal,oblique,Ebound_end,3.14e-14,2.99e-13,absent,absent,,
 davof-paraboloidRing-cellLocal,oblique,minAlpha_run,-3.1e-14,-3.6e-13,absent,absent,,
 davof-paraboloidRing-cellLocal,oblique,status,ok,ok,absent,absent,,
-davof-paraboloidRing-ringArea,normal,L1_alphaf_end,5.81e-15,2.04e-14,1.22e-12,absent,-3.85,-1.81 / -5.90
-davof-paraboloidRing-ringArea,normal,L1_alphaf_max,7.72e-15,2.04e-14,1.28e-12,absent,-3.69,-1.40 / -5.98
-davof-paraboloidRing-ringArea,normal,L1_n_end,4.38e-15,2.55e-14,1.35e-12,absent,-4.14,-2.54 / -5.73
-davof-paraboloidRing-ringArea,normal,L1_x_end,6.15e-17,1.08e-17,4.08e-16,absent,-1.37,2.50 / -5.24
-davof-paraboloidRing-ringArea,normal,Eshape_end,3.07e-24,2.38e-24,3.39e-23,absent,-1.73,0.37 / -3.83
-davof-paraboloidRing-ringArea,normal,Ebound_end,9.90e-15,1.38e-14,2.46e-14,absent,,
-davof-paraboloidRing-ringArea,normal,minAlpha_run,-9.9e-15,-9.1e-15,-1.4e-14,absent,,
-davof-paraboloidRing-ringArea,normal,status,ok,ok,ok,absent,,
+davof-paraboloidRing-ringArea,normal,L1_alphaf_end,5.81e-15,2.04e-14,1.22e-12,1.80e-06,-9.05,-1.81 / -5.90 / -20.50
+davof-paraboloidRing-ringArea,normal,L1_alphaf_max,7.72e-15,2.04e-14,1.28e-12,3.18e-06,-9.18,-1.40 / -5.98 / -21.24
+davof-paraboloidRing-ringArea,normal,L1_n_end,4.38e-15,2.55e-14,1.35e-12,3.15e-06,-9.40,-2.54 / -5.73 / -21.15
+davof-paraboloidRing-ringArea,normal,L1_x_end,6.15e-17,1.08e-17,4.08e-16,8.77e-11,-6.66,2.50 / -5.24 / -17.71
+davof-paraboloidRing-ringArea,normal,Eshape_end,3.07e-24,2.38e-24,3.39e-23,3.74e-17,-7.44,0.37 / -3.83 / -20.07
+davof-paraboloidRing-ringArea,normal,Ebound_end,9.90e-15,1.38e-14,2.46e-14,5.53e-14,,
+davof-paraboloidRing-ringArea,normal,minAlpha_run,-9.9e-15,-9.1e-15,-1.4e-14,-4.5e-13,,
+davof-paraboloidRing-ringArea,normal,status,ok,ok,ok,ok,,
 davof-paraboloidRing-ringArea,oblique,L1_alphaf_end,1.75e-13,6.18e-10,6.66e-07,absent,-10.93,-11.79 / -10.07
 davof-paraboloidRing-ringArea,oblique,L1_alphaf_max,2.37e-13,6.29e-09,7.52e-06,absent,-12.46,-14.70 / -10.22
 davof-paraboloidRing-ringArea,oblique,L1_n_end,2.39e-13,1.15e-09,1.03e-06,absent,-11.02,-12.23 / -9.82

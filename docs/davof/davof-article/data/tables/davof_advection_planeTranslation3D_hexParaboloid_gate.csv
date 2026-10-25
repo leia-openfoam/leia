@@ -34,7 +34,7 @@ davof-paraboloidRing-cellLocal,oblique,160,0.5,,,,absent,FAIL (absent)
 davof-paraboloidRing-ringArea,normal,20,0.2,7.724671276487982e-15,6.294964549624638e-14,4.945650389679194e-15,completed,PASS
 davof-paraboloidRing-ringArea,normal,40,0.2,2.036391179820303e-14,2.6212365611399946e-13,2.553717640723231e-14,completed,PASS
 davof-paraboloidRing-ringArea,normal,80,0.2,1.282339538797851e-12,6.187292345138928e-11,1.3956656779027678e-12,completed,FAIL
-davof-paraboloidRing-ringArea,normal,160,0.2,,,,absent,FAIL (absent)
+davof-paraboloidRing-ringArea,normal,160,0.2,3.184117376014412e-06,0.017021762734875878,4.488950332329769e-06,completed,FAIL
 davof-paraboloidRing-ringArea,normal,20,0.5,1.1510633188003853e-14,1.0014211682118912e-12,1.6990240894590108e-14,completed,PASS
 davof-paraboloidRing-ringArea,normal,40,0.5,6.509734611494769e-13,2.805417009810185e-11,1.0932790495643392e-12,completed,FAIL
 davof-paraboloidRing-ringArea,normal,80,0.5,1.837831333468093e-12,8.360684367048066e-11,2.4068363930060706e-12,completed,FAIL
