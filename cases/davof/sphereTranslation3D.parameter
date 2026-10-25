@@ -64,8 +64,9 @@ values
     // the volume flux of a face (fork branch davof-fluxint, 2026-10-25): prism
     // (the liquid volume of the prism between the pre-image and the face) |
     // trapezoidal (phi_f dt times the mean of the face fractions at t^n and
-    // t^{n+1}) | simpson (with the half-step pre-image's fraction); builds
-    // before it ignore the key
+    // t^{n+1}) | simpson (with the half-step pre-image's fraction) |
+    // simpsonSplit (Simpson's rule between the vertex passages of the trace);
+    // builds before it ignore the key
     TPF_FLUX_INTEGRATION ( prism );
     // warped faces (fork branch davof-warped, 2026-10-25): the face state
     // (scalar | vector: the wetted area vector per face, the sum over the fan

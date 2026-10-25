@@ -1,0 +1,53 @@
+# The plane gate with the volume flux by Simpson's rule in time between the
+# vertex passages of the trace (fork branch davof-fluxint, 2026-10-25, key
+# fluxIntegration simpsonSplit): the times within the step at which the
+# upwind surface's trace passes a vertex of the face (or the face centre) are
+# the roots of phi along the vertex's trajectory over the step, a quadratic
+# for the paraboloid; Simpson's rule is applied on every sub-interval between
+# them with the pre-image face fractions at its ends and its midpoint. No
+# prism volume. Everything else as the prism gate on davof 7c06c57 (the exact
+# and ring-area rows, both arms, N = 20 to 160, Co 0.2 and 0.5, whole planar
+# faces, the ccs anchor): 32 serial cases, from the agent clone
+# /work/scratch/tm83tomy/davof/agents/perf/fluxint2/leia whose sibling
+# TwoPhaseFlow is the davof-fluxint build with this rule. References: the
+# prism gate (16 of 16 at round-off per row on 7c06c57) and the simpson and
+# trapezoidal studies (planeTranslation3D_hexParaboloidFluxSimpson, FluxTrap).
+#
+# PRE-REGISTERED (2026-10-25):
+# P-F4 simpsonSplit: at round-off in every run (run maxima of L1(alphaf)
+#   below 1e-12), because between the breakpoints the integrand is a
+#   quadratic of time; the step cost between simpson's and the prism's (two
+#   more face fractions per sub-interval, few faces have a breakpoint in a
+#   step). FALSIFIED by any case above 1e-12 or a cost above the prism's.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidFluxSimpsonSplit --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidFluxSimpsonSplit run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidFluxSimpsonSplit
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [simpsonSplit]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
