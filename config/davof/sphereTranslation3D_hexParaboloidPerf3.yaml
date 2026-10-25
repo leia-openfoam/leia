@@ -1,0 +1,54 @@
+# The sphere ladder's exact and ring-area rows at N = 32 and 64, Co 0.2, on
+# the fork branch davof-perf, THIRD RUN: the head after the merge of davof
+# (the davof-sliver fix) and the Consecutive Cubic Spline anchor
+# (anchorMethod ccs, the default). Run with anchorMethod compare, which
+# solves every cell with the ladder's illinois and with ccs from the same
+# start, continues with ccs (the digits are those of ccs) and counts the
+# cells whose offsets differ by more than 1e-9 h and those of them at the
+# edge of the flat root interval (a target of 0 or V), in a second Info line
+# per step. From the agent clone /work/scratch/tm83tomy/davof/agents/perf/
+# final/leia; whole planar faces. 2 x 2 = 4 serial cases.
+#
+# PRE-REGISTERED (2026-10-25): the exact row reproduces the ladder
+# (davof_advection_sphereTranslation3D_hexParaboloid.csv: L1(alphaf) end
+# 5.204966e-4 at N = 32, 6.666793e-5 at N = 64) at round-off (relative 1e-5
+# or below, the normal, centroid and shape errors too); the ring row changes
+# against the ladder (5.647061e-3, 2.118872e-3) by 0.5 to 2.5 %, and every
+# cell in which illinois and ccs differ is a flat-interval cell (the two
+# counts of the compare line equal in every step); bounded and
+# conservative, the anchor failures and the rule fallbacks not above the
+# ladder's. FALSIFIED by a differing cell that is not at the edge, or by an
+# exact-row change above 1e-5.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloidPerf3 --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloidPerf3 run-studies.sbatch
+study_name: sphereTranslation3D_hexParaboloidPerf3
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [compare]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

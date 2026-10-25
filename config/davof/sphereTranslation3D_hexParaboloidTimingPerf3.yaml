@@ -1,0 +1,52 @@
+# The cost of the paraboloid loop on the fork branch davof-perf, THIRD RUN:
+# the head after the merge of davof (the davof-sliver fix) and the
+# Consecutive Cubic Spline anchor (anchorMethod ccs, the default), measured
+# as sphereTranslation3D_hexParaboloidTiming: the ring-area row and plicRDF
+# on the exact-sphere state, N = 32 / 64 / 128 at Co 0.2, three repetitions,
+# the error diagnostics at the end, the profiling on; whole planar faces.
+# From the agent clone /work/scratch/tm83tomy/davof/agents/perf/final/leia.
+# 18 serial cases. The earlier runs: the production build 0.126 / 0.546 /
+# 4.47 s (ring) and 0.021 / 0.155 / 1.47 s (plicRDF); davof-perf with
+# illinois 0.046 / 0.333 / 1.35 s, with newton 0.041 / 0.214 / 1.71 s,
+# plicRDF in those studies 0.030 / 0.164 / 1.35 s.
+#
+# PRE-REGISTERED (2026-10-25): the ring row's median cpu_per_step is at most
+# that of the newton run, 2 to 3 anchor evaluations per interface cell and
+# step; the plicRDF medians of this study the yardstick of the node scatter.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloidTimingPerf3 --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloidTimingPerf3 run-studies.sbatch
+study_name: sphereTranslation3D_hexParaboloidTimingPerf3
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-ringArea, plicRDF]
+  TPF_REPEAT: [1, 2, 3]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_WRITE_CONTROL: ["onEnd"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VFE_WRITE_CONTROL: ["onEnd"]
+  TPF_PROFILING: ["true"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

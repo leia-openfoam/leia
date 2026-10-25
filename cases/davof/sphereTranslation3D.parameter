@@ -53,9 +53,11 @@ values
     TPF_KB_MIN_SPLIT ( 1 );
     TPF_KB_FAN ( true );
     // the volume anchor's root finder (fork branch davof-perf, 2026-10-25):
-    // illinois (the bracket and the Illinois rule) | newton (on the projected
-    // wetted patch area); builds before it ignore the key
-    TPF_ANCHOR_METHOD ( illinois );
+    // ccs (Consecutive Cubic Spline positioning on the exact volumes and
+    // slopes, the fork's default) | newton | illinois (the bracket and the
+    // Illinois rule, the method until 2026-10-25) | compare (illinois and
+    // ccs, the run continues with ccs); builds before it ignore the key
+    TPF_ANCHOR_METHOD ( ccs );
     // warped faces (fork branch davof-warped, 2026-10-25): the face state
     // (scalar | vector: the wetted area vector per face, the sum over the fan
     // triangles of the wetted area vectors), the centroids of the ring tensor

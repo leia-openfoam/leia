@@ -85,7 +85,7 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "nCurvedClips", "nCurvedLinearCuts", "nCurvedLeaves", "nFitCells",
             "nFitConverged", "nFitStalled", "nFitSingular", "nFitNoBracket",
             "fitResMax", "fitResMean", "nAnchorFail", "anchorShiftMax", "anchorShiftMean",
-            "nAnchorEvals",
+            "nAnchorEvals", "nAnchorEdge",
             "defectMax", "defectL1", "volumeRule", "nRuleFallback",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
@@ -113,7 +113,7 @@ _RE_CURVED = re.compile(
     r"(?:; fit: cells (\d+), converged (\d+), stalled (\d+), singular (\d+), "
     r"no bracket (\d+), no frame (\d+)(?:, residual max ([^\s;]+) mean ([^\s;]+))?)?"
     r"(?:; volume anchor: failed (\d+)(?:, face shift max ([^\s;]+) mean ([^\s;]+))?, leaves (\d+)"
-    r"(?:, evaluations (\d+) \(per cell [^)]*\))?)?"
+    r"(?:, evaluations (\d+) \(per cell [^)]*\))?(?:, edge (\d+))?)?"
     r"(?:; surface defect max ([^\s;]+) L1 ([^\s;]+) over (\d+) cells)?"
     r"(?:; volume rule (\w+) fallbacks (\d+))?")
 _RE_BOUND = re.compile(
@@ -243,12 +243,13 @@ def read_log(path):
                     cur["anchorShiftMax"] = m.group(18) or ""
                     cur["anchorShiftMean"] = m.group(19) or ""
                     cur["nAnchorEvals"] = m.group(21) or ""
-                if m.group(22) is not None:
-                    cur["defectMax"] = m.group(22)
-                    cur["defectL1"] = m.group(23)
-                if m.group(25) is not None:
-                    cur["volumeRule"] = m.group(25)
-                    cur["nRuleFallback"] = m.group(26)
+                    cur["nAnchorEdge"] = m.group(22) or ""
+                if m.group(23) is not None:
+                    cur["defectMax"] = m.group(23)
+                    cur["defectL1"] = m.group(24)
+                if m.group(26) is not None:
+                    cur["volumeRule"] = m.group(26)
+                    cur["nRuleFallback"] = m.group(27)
                 continue
             m = _RE_BOUND.match(line)
             if m:

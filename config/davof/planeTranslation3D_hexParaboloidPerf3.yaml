@@ -1,0 +1,45 @@
+# The plane gate of planeTranslation3D_hexParaboloid on the fork branch
+# davof-perf, THIRD RUN: the head after the merge of davof (the davof-sliver
+# fix) and the Consecutive Cubic Spline anchor (anchorMethod ccs, the default
+# since; T. Maric, J. Comput. Phys.: X 11 (2021) 100093,
+# doi:10.1016/j.jcpx.2021.100093, arXiv:2012.02227). Run from the agent clone
+# /work/scratch/tm83tomy/davof/agents/perf/final/leia whose sibling
+# TwoPhaseFlow is that build. The exact and ring-area rows, both arms, N = 20
+# to 160, Co 0.2 and 0.5: 2 x 2 x 4 x 2 = 32 serial cases; whole planar
+# faces (the fork's default kromerBotheFan auto).
+#
+# PRE-REGISTERED (2026-10-25): with the sliver fix in, every case stays at
+# or below 2.5e-13 in the run maximum of L1(alphaf) (16 of 16 per row), the
+# anchor converges in every cell, no rule fallbacks, 2 to 3 anchor
+# evaluations per interface cell and step. FALSIFIED by any case above.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidPerf3 --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidPerf3 run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidPerf3
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
