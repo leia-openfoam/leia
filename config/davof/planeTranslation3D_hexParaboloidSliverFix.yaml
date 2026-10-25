@@ -1,0 +1,42 @@
+# The two failing cases of planeTranslation3D_hexParaboloid (ring row, oblique
+# arm, N = 160, Co 0.2 and 0.5) on the fork branch davof-sliver WITH the fixes
+# (agent "sliver", 2026-10-25): the Kromer-Bothe rule orders weakly curved
+# traces as lines and keeps short arcs between exact crossings (the anchor
+# events of SliverFail: the cell volume toggling by 1.24e-5 of the cell where
+# a corner sliver's arc was dropped), and the split quadrature's sweep apex
+# leaves the traces.
+#
+# PREDICTION (before the run): no anchor event (the face residual before the
+# anchor stays at the 1e-10 of the targets), run maxima of L1(alphaf) below
+# 1e-12 in both cases (from 3.1e-10 and 2.6e-9), at the level of the exact-
+# normal row (2.5e-13 and 2.2e-13); zero volume-rule fallbacks.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidSliverFix --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidSliverFix run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidSliverFix
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea]
+  TPF_VELOCITY_ARM: [oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

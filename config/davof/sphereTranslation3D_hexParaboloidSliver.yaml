@@ -1,0 +1,41 @@
+# Digit check of the fork branch davof-sliver (agent "sliver", 2026-10-25) on
+# the curved path: the ring-normal row of sphereTranslation3D_hexParaboloid at
+# N = 32, Co 0.2 (the exact-sphere state, the Kromer-Bothe rule).
+#
+# PREDICTION (before the run): L1(alphaf) at the end 5.647061e-3 as on the
+# reference binary, to round-off, with zero volume-rule fallbacks; the changes
+# of the branch touch the split quadrature (the fallback, not called) and
+# prints only.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloidSliver --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloidSliver run-studies.sbatch
+study_name: sphereTranslation3D_hexParaboloidSliver
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 6000
+solve_runtime: 600
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

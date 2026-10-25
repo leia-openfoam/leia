@@ -1,0 +1,37 @@
+# No-regression check of the fork branch davof-sliver (agent "sliver",
+# 2026-10-25) on the plane gate: the exact-normal and the ring-normal rows of
+# planeTranslation3D_hexParaboloid at N = 40 and 80, both arms, Co 0.2 and 0.5
+# (16 serial cases), with the Kromer-Bothe rule.
+#
+# PREDICTION (before the run): every case keeps its run maximum of
+# L1(alphaf) below 1e-12, as on the reference binary.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidSliverNoReg --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidSliverNoReg run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidSliverNoReg
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [40, 80]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+collapse_other_axes: true
+
+solve_mem_mb: 6000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
