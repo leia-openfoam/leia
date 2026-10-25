@@ -1,0 +1,49 @@
+# The volume flux by the three-point Gauss rule in time between the vertex
+# passages of the trace (fork branch davof-fluxint, 2026-10-25, key
+# fluxIntegration gaussSplit): the same breakpoints as simpsonSplit, but the
+# nodes lie inside the sub-intervals, so no face fraction is evaluated at a
+# breakpoint (a pre-image vertex exactly on the surface, the degenerate
+# configuration of the face integral) and the stored fraction alpha_f^n does
+# not enter (every value is a fraction under the same surface, as the prism
+# volume is). Motivated by the simpsonSplit runs: at round-off at N = 20 and
+# 40 but 1e-6 to 1e-4 on the normal arm at N = 80 and 160, the maximum in an
+# early step; and by the divergence of every a0-based rule on the sphere.
+# From the agent clone /work/scratch/tm83tomy/davof/agents/perf/fluxint4/leia.
+#
+# PRE-REGISTERED (2026-10-25): P-F5 gaussSplit on the plane: at round-off in
+# every run (run maxima of L1(alphaf) below 1e-12); on the sphere: bounded,
+# no divergence, the ring-row digits within the quadrature's error of the
+# prism's (relative 1e-4 or below), at a cost below the prism's. FALSIFIED by
+# a plane case above 1e-12 or a sphere divergence.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidFluxGauss --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidFluxGauss run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidFluxGauss
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [gaussSplit]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
