@@ -1,0 +1,56 @@
+# The plane gate with the volume flux by Simpson's rule in time (fork branch
+# davof-fluxint, 2026-10-25, key fluxIntegration simpson): the flux through a
+# face is phi_f dt (alpha_f^n + 4 alpha_f^{n+1/2} + alpha_f^{n+1})/6, the
+# stored face fraction, the liquid fraction of the half-step pre-image f - d/2
+# and that of the pre-image f - d under the upwind surface; no prism volume.
+# Everything else as the prism gate on davof 7c06c57 (the exact and ring-area
+# rows, both arms, N = 20 to 160, Co 0.2 and 0.5, whole planar faces, the ccs
+# anchor): 2 x 2 x 4 x 2 = 32 serial cases, from the agent clone
+# /work/scratch/tm83tomy/davof/agents/perf/fluxint/leia whose sibling
+# TwoPhaseFlow is the davof-fluxint build. Reference: the prism gate, 16 of 16
+# at round-off for both rows on 7c06c57.
+#
+# PRE-REGISTERED (2026-10-25):
+# P-F2 simpson: at round-off except in the steps in which the trace passes a
+#   face vertex within the step (where the cubic in time of the face fraction
+#   breaks and Simpson's rule is not exact), so a run maximum of L1(alphaf)
+#   between 1e-12 and 1e-6 depending on how many such steps occur, the end
+#   state at round-off when none occurs in the last steps; bounded and
+#   conservative, no fallbacks.
+# P-F3 cost: Simpson's step below the prism's (one more face fraction per
+#   face instead of a prism of 12 faces).
+# FALSIFIED by a run maximum above 1e-6 or an end state above 1e-10 in a
+# case whose last steps have no vertex passage, or by a step cost above the
+# prism's.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidFluxSimpson --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidFluxSimpson run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidFluxSimpson
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [simpson]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

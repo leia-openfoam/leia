@@ -107,6 +107,10 @@ solvers
         // the anchor's root finder (fork branch davof-perf): illinois | newton
         // (ignored by the builds before it)
         anchorMethod    @!TPF_ANCHOR_METHOD!@;
+        // the volume flux of a face (fork branch davof-fluxint): prism (the
+        // prism volume) | trapezoidal | simpson (a quadrature in time of the
+        // face fractions; ignored by the builds before it)
+        fluxIntegration @!TPF_FLUX_INTEGRATION!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;

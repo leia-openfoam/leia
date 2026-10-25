@@ -1,0 +1,48 @@
+# A first look at the curved case with the volume flux by Simpson's rule in
+# time (fork branch davof-fluxint, 2026-10-25, key fluxIntegration simpson,
+# see planeTranslation3D_hexParaboloidFluxSimpson): the sphere ladder's
+# ring-area row at N = 32 and 64, Co 0.2, the exact-sphere initial state,
+# whole planar faces, the ccs anchor, from the agent clone
+# /work/scratch/tm83tomy/davof/agents/perf/fluxint/leia. 2 serial cases.
+# Reference: the prism flux on the same build (the ccs digits on 7c06c57:
+# L1(alphaf) end 5.616950e-3 at N = 32, 2.066471e-3 at N = 64).
+#
+# No prediction registered beyond the plane's (P-F2): on the sphere the
+# trace passes a vertex of some face in every step, and the face fraction
+# under a curved surface is no cubic in time, so Simpson's rule is a
+# second-order flux there; the comparison with the prism digits measures its
+# error on the curved case. Bounded and conservative as the prism flux.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloidFluxSimpson --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloidFluxSimpson run-studies.sbatch
+study_name: sphereTranslation3D_hexParaboloidFluxSimpson
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [simpson]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -1,0 +1,52 @@
+# The plane gate with the volume flux by the trapezoidal rule in time (fork
+# branch davof-fluxint, 2026-10-25, key fluxIntegration trapezoidal): the flux
+# through a face is phi_f dt (alpha_f^n + alpha_f^{n+1})/2 from the stored
+# face fraction and the pre-image's liquid fraction under the upwind surface,
+# which the face update computes in the same pass; no prism volume and no
+# further face fraction. Everything else as the prism gate on davof 7c06c57
+# (the exact and ring-area rows, both arms, N = 20 to 160, Co 0.2 and 0.5,
+# whole planar faces, the ccs anchor): 2 x 2 x 4 x 2 = 32 serial cases, from
+# the agent clone /work/scratch/tm83tomy/davof/agents/perf/fluxint/leia whose
+# sibling TwoPhaseFlow is the davof-fluxint build. Reference: the prism gate,
+# 16 of 16 at round-off for both rows on 7c06c57.
+#
+# PRE-REGISTERED (2026-10-25):
+# P-F1 trapezoidal: not at round-off; run maxima of L1(alphaf) of order Co^3
+#   (1e-3 at Co 0.2, 1e-2 at Co 0.5); the end state after an integer number
+#   of cell crossings better than the run maximum (the composite error
+#   telescopes); bounded and conservative.
+# FALSIFIED by a run maximum at round-off (the rule would then not matter),
+# by one more than an order above Co^3, or by an end state above the run
+# maximum.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidFluxTrap --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidFluxTrap run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidFluxTrap
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [trapezoidal]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
