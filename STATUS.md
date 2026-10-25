@@ -7230,3 +7230,14 @@ and their nine remaining own-normal solves cancelled by id. The settings of the 
 merged binary's defaults (kromerBotheFan auto, anchorMethod ccs, faceState scalar,
 anchorDiagnostics off), so the ring row's digits move by up to 2.5 % against the pre-merge
 tables (the edge definition) and the plane table should read 16 of 16 for exact and ring.
+
+Appendix to 10.18 (2026-10-26 01:20, the FINAL PLANE TEST on davof 7c06c57, 55634207, 48 of 48
+in 24 min; tables on origin, every case stamped 7c06c57). Exact row 16 of 16 at round-off (max
+L1(alphaf) 2.4e-13), ring row 16 of 16 (max 2.75e-13; the N = 160, Co 0.5 normal-arm entry of the
+preprint's table 9.8e-14), own-normal row 1 of 16 (at round-off only at N = 20, Co 0.2; 1.7e-8
+at N = 20, Co 0.5; 7e-2 to 1.5e-1 at N >= 40 on the normal arm at Co 0.5 and at N = 160 on both
+arms; 3e-11 to 8e-7 in between; up to 10211 rule fallbacks per step on its wild surfaces, 12.9 s
+per step at most, which is why these cases finish now where they crawled for hours on the
+fan binary with the flat-arc fallbacks). The plane gate of the dual advection with the
+Kromer-Bothe rule is therefore held by the exact and the ring normal at every N, Co and arm on
+the final binary, and the own normal fails it beyond N = 20 as in the plane-clipped loop.
