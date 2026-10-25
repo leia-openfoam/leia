@@ -6691,3 +6691,21 @@ plicRDF 1.01 to 1.49 s at N = 128). The errors of the three repetitions reproduc
 digits exactly (L1(alphaf) 5.647061e-3 at N = 32 in all three and in the ladder). The plane
 loop's earlier medians (hexTiming2: ring 1.69 s, plicRDF 1.96 s at N = 128) were on other
 nodes; the comparison holds within a study only.
+
+Appendix to 10.18 (2026-10-25 02:50, the ring-QUADRIC-normal row, 55611739, 9 of 9, tables on
+origin after the score). All four pre-registered predictions HELD: P-RF1 bounded at every N
+and Co (min alpha -2e-14); P-RF2 the transported normal 1.34e-3, 3.61e-4, 1.63e-4 at Co 0.2
+(ring-area row 8.19e-3 at N = 128, plicRDF 9.2e-3: fifty times below), order 1.52 (pairwise
+1.89 / 1.15, at the margin of the 1.5 clause and falling on the finer pair); P-RF3 q per
+period 2.11 at Co 0.2 (8.75e-4, 1.37e-4, 4.73e-5; pairwise 2.68 / 1.53), 2.24 at Co 0.1, 1.93
+at Co 0.5, first-step order 1.92 (end-to-first ratio 3.2, 2.8, 2.5 over N); P-RF4 no fit
+fallback, no ring fallback, no anchor failure in any step of any case, rule fallbacks at most
+2 per step. Centroid 2.00 at 2.57e-5 (the control's value), shape 1.98 at the control's
+value, cost 4.5 s per step at N = 128 with the diagnostics on, as the ring-area row. Reading:
+the closed loop's order is the order of the normal fed back; the ring quadric's normal is a
+computed normal that keeps q at 2 over a period, against 1.35 with the ring-area normal and
+2.84 with the exact one, and the pairwise orders say its own order falls toward one on the
+finer pair, which the face fractions follow. The erratic behaviour of this normal in the
+plane-clipped loop (fit failures in 1700 cells per step) is absent under the surface's own
+flux. Preprint: paragraph written into Section 7 (untracked); the row is in CROWS of
+make_table_advection.py. Sent to the proposal session.
