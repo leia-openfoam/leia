@@ -6751,4 +6751,7 @@ exact, ring and ring-quadric rows stand (their 0 to 3 fallbacks per step were sh
 pieces of the same kind, now resolved). RERUN: the Kromer-Bothe plane run and the second
 diagnostic moved aside as *.kbArea-*, both resubmitted after the cluster build (the
 diagnostic as the verification: zero fallbacks expected; the plane test with the prediction
-of the split-rule run: the exact and ring rows at round-off at every N and Co).
+of the split-rule run: the exact and ring rows at round-off at every N and Co). VERIFIED
+(55616010, fork 748e401): zero fallbacks in all four cases over the whole run, the
+quadrature leaves per step down from 1.6e6 to 2.4e7 to 2e3 to 6e3 (the capped fallbacks were
+the cost). The plane test rerun is 55616011.
