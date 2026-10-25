@@ -1,0 +1,48 @@
+# The vertex-grazing self-test of the volume rules (agent "sliver", 2026-10-25,
+# fork branch davof-sliver): one step of the translated plane at N = 20 with
+# volumeRuleDebug on, which runs kbSelfTest at the rule's construction, now
+# with the vertex-grazing series (boxes under a plane through a point at
+# d = 1e-6 ... 1e-14 of the box size from a vertex, exact references); the
+# table is in the solver log.
+#
+# PREDICTION (before the run): the Kromer-Bothe rule is exact to round-off
+# (below 1e-14 of V or of the face) in cells, prisms and faces at every d;
+# the split quadrature's CELL volume (pyramids from the centre) is off by
+# 1e-12 to 1e-11 of V at d = 1e-6 to 1e-10 where the grazed vertex is the
+# sweep apex of a pyramid's triangle (a layer of width d in the outer
+# parameter that the breakpoints do not mark), falling towards d = 1e-14; the
+# per-cell value of the N = 160 diagnostic (cell 3096764: kb exact to 3.8e-15,
+# split off by 1.23e-11 against the exact plane volume from the printed vertex
+# values) is this.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidSliverST --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidSliverST run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidSliverST
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea]
+  TPF_VELOCITY_ARM: [oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_CURVED_DEBUG: ["true"]
+  END_TIME: [1e-4]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 120
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

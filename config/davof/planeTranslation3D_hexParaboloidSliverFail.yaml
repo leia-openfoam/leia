@@ -1,0 +1,44 @@
+# The two failing cases of planeTranslation3D_hexParaboloid (ring row, oblique
+# arm, N = 160, Co 0.2 and 0.5: run maxima of L1(alphaf) 2.6e-9 and 3.1e-10)
+# on the fork branch davof-sliver BEFORE any fix (agent "sliver", 2026-10-25):
+# the binary adds only prints, so the run must reproduce the reference digits,
+# and the anchor's event print names the cell of the one-step jump (step 12 at
+# Co 0.5: fit residual 7.7e-5, anchor face shift 4.17e-6 = the step's
+# Linf(alphaf); step 102 at Co 0.2: residual 2.1e-4, shift 1.6e-4), with the
+# rule's face fractions against the quadratic cut per fan triangle.
+#
+# PREDICTION (before the run): the same digits as the reference run (L1 maxima
+# 3.0579825799923463e-10 and 2.6297364129938073e-09); the event print shows
+# whether the jump is a wrong Kromer-Bothe face area (rule - cut of order 1e-5
+# on one fan triangle) or a surface the anchor cannot fit (rule and cut agree,
+# residual from the frame or the tensor).
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidSliverFail --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidSliverFail run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidSliverFail
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea]
+  TPF_VELOCITY_ARM: [oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
