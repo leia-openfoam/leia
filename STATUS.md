@@ -6754,4 +6754,21 @@ diagnostic as the verification: zero fallbacks expected; the plane test with the
 of the split-rule run: the exact and ring rows at round-off at every N and Co). VERIFIED
 (55616010, fork 748e401): zero fallbacks in all four cases over the whole run, the
 quadrature leaves per step down from 1.6e6 to 2.4e7 to 2e3 to 6e3 (the capped fallbacks were
-the cost). The plane test rerun is 55616011.
+the cost); the gate at 6.9e-14 to 1.0e-13 on all four cases (the ring row's oblique arm was
+3.1e-12 before). The plane test rerun is 55616011.
+
+Appendix to 10.18 (2026-10-25 06:50, the cluster cleared and the sphere studies rerun on the
+fix). The job list showed 96 own jobs: 71 solve jobs of the drivers of 2026-10-23 (the
+split-rule and dry-run sphere ladders, studies long moved aside) still running after two
+days (own-normal cases of the uncapped-fallback era, single steps costing hours), the old
+Kromer-Bothe plane driver 55608482 with 11 children (its study moved aside at 05:13, so the
+driver could not have collected them), and the sphere driver 55608483 with its five own-normal
+children at t = 0.08 to 0.27 after 8.7 h (binary before the flat-arc fix). All 90 cancelled
+by explicit job id (`cancel_stale.sh`; the watch scripts list drivers by name only, which is
+how the 10-23 solves went unnoticed: a lesson, the watch now lists every own job). The sphere
+ladder and the ring-quadric study moved aside as *.preFlatArc-* (their exact, ring and
+ring-quadric rows are the scored ones above, 0 to 3 fallbacks per step) and both resubmitted
+on the fixed binary (fork 748e401) so that the whole ladder is on one binary, with the
+own-normal rows expected to run faster without the flat-arc fallbacks; the predictions of
+the configs are unchanged, and the scored rows are predicted to reproduce their digits up to
+the 0 to 3 resolved prisms per step.
