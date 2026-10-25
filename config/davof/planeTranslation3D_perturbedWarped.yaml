@@ -74,6 +74,10 @@
 # N (L1(alphaf) 1.1e-14 to 7.0e-14). The other combinations are unchanged to two digits: exact row
 # with cut 1.4e-5 to 1.7e-5, scalar ring row 2.6e-4 to 4.1e-4 / 2.1e-3 to 2.4e-3, vector + cut ring
 # row 1.3e-5 to 1.7e-5.
+# RESULT after the rebase onto davof 1f914f9 (the davof-perf merge; branch head 5056280; the 48
+# cases rerun): vector + anchored at round-off in both rows, both arms, every N, run maxima of
+# L1(alphaf) 5.3e-15 (N 20) to 6.3e-14 (N 80, oblique), Linf 7.9e-13 to 7.0e-11, L1(n) 2.2e-16 in
+# every case.
 #
 #   sbatch --parsable -J leia-davof-planeTranslation3D_perturbedWarped --export=ALL,STUDY=davof/planeTranslation3D_perturbedWarped run-studies.sbatch
 study_name: planeTranslation3D_perturbedWarped
