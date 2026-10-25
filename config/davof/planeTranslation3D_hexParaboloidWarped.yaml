@@ -1,0 +1,52 @@
+# The planar reduction of the wetted-area-vector face state (fork branch davof-warped,
+# 2026-10-25; agent run in /work/scratch/tm83tomy/davof/agents/warped): the hexahedral plane gate
+# of planeTranslation3D_hexParaboloid restricted to the exact-normal and ring-normal rows of the
+# volume-anchored ring-tensor paraboloid (Kromer-Bothe rule), N = 20 and 40, Co 0.2, both arms,
+# with the face state scalar (alphaf alone, the build before the key) and vector (the wetted area
+# vector wettedAreaDavof per face next to alphaf; m_c = sum_f a_f^out and the face moment
+# (x_f - x_c).a_f of the explicit position from it; initDavofFields writes it from the same fan
+# cuts). The twin planeTranslation3D_hexParaboloidWarpedRef runs the scalar cases with the
+# unmodified davof build (fork 8a1c5e4) in a second clone (agents/warped/ref).
+#
+# PRE-REGISTERED (2026-10-25, before any run):
+# P-W0a (bit identity): with faceState scalar every written number (areaFractionError.dat,
+#      error.dat, volumeFractionError.dat, advectorVoF.csv) is identical to every digit with the
+#      Ref study's: the vector branches sit behind a null pointer, the default prism apex keeps the
+#      vertex-mean fan, and every planar face is integrated whole.
+# P-W0b (round-off): with faceState vector both rows stay at round-off on both arms and both N
+#      (run maxima of L1(alphaf) and L1(n) below 1e-12), and differ from the scalar arm in the
+#      last digits only: on a planar face a_f = alpha_f S_f to round-off (the whole face's wetted
+#      area times its unit normal against the fraction times S_f).
+# FALSIFIED IF a scalar number differs in any digit (P-W0a) or a vector row exceeds 1e-12
+#      (P-W0b).
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidWarped --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidWarped run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidWarped
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_FACE_STATE: [scalar, vector]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

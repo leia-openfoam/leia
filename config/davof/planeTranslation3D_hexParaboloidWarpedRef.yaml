@@ -1,0 +1,36 @@
+# The reference of planeTranslation3D_hexParaboloidWarped (2026-10-25): the same scalar cases
+# (exact-normal and ring-normal rows of the volume-anchored ring-tensor paraboloid, Kromer-Bothe
+# rule, N = 20 and 40, Co 0.2, both arms) run from a second leia clone beside the UNMODIFIED davof
+# build (fork 8a1c5e4, /work/scratch/tm83tomy/davof/agents/warped/ref), which ignores the
+# faceState, tensorCentroid and kromerBothePrismApex keys. Prediction P-W0a of the Warped study:
+# every number of its faceState scalar cases equals this study's to every digit.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidWarpedRef --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidWarpedRef run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidWarpedRef
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -1,0 +1,79 @@
+# The plane test of the dual advection on VERTEX-PERTURBED hexahedra (every mesh point displaced
+# by up to 0.1 h, leiaPerturbMesh, the workflow's mesh: perturbed; every face warped) with the
+# wetted-area-vector face state (fork branch davof-warped, 2026-10-25; agent run in
+# /work/scratch/tm83tomy/davof/agents/warped). The plane of planeTranslation3D (the Detrixhe-Aslam
+# state, exact for a plane on the fan faces) carried over 0.2 L along its normal and along (1 0 0),
+# N = 20 / 40 / 80, Co 0.2, rows davof-paraboloidRing-exact and -ringArea (volume-anchored
+# ring-tensor paraboloid, Kromer-Bothe rule), with
+#   TPF_FACE_STATE       scalar | vector  (alphaf alone; or the wetted area vector per face, the sum
+#                        over the fan triangles of the wetted area times the triangle normal, which
+#                        carries m_c and the face moment (x_f - x_c).a_f)
+#   TPF_TENSOR_CENTROID  cut | anchored   (the ring Monge fit of the curvature tensor through the
+#                        alpha-positioned cut-polygon centroids; or through the plane in the frame
+#                        of the used normal re-anchored by the volume rule's cell volume)
+#   TPF_KB_PRISM_APEX    faceCentre       (the warped flux prism's top and bottom fanned about the
+#                        mesh face centre, the cell's own fan; the default vertexMean is the control
+#                        study planeTranslation3D_perturbedWarpedApex)
+# 2 rows x 2 arms x 3 N x 2 x 2 = 48 serial cases.
+#
+# WHY THE CENTROID SWITCH. OpenFOAM's cutCellPLIC (the alpha positioning) closes the wet part of a
+# warped face by the straight chord between the two edge crossings, while the fan face's wet region
+# is bounded by the plane's trace on the fan triangles, a polyline; the cut volume and polygon are
+# those of a different polyhedron than the fan polyhedron of the mesh, the Detrixhe-Aslam alpha and
+# the volume rule. The alpha-positioned plane, and its centroid, are therefore off the true plane by
+# a fraction of h even for exact data, and the ring fit through those centroids returns a spurious
+# curvature tensor, i.e. a curved surface for a plane. The volume anchor of the surface's offset is
+# immune (the volume rule), the tensor is not.
+#
+# PRE-REGISTERED (2026-10-25, before any run; the task's expectation of "the exact row at round-off
+# with vector, the scalar arm at the known 1 to 5 %" is refined by the mechanism above):
+# P-W1 (exact normal): the exact model never reads the direction of m_c, and the Kromer-Bothe face
+#      fractions are the fan's: scalar and vector agree to within the interface-cell selection. With
+#      cut centroids both fail the 1e-12 gate at 1e-6 to 1e-3 in L1(alphaf), not falling with N (the
+#      warp is 0.1 h at every N); with anchored centroids both are at round-off (run maxima of
+#      L1(alphaf) and L1(n) below 1e-12) on both arms at every N. The 1 to 5 % failure of the
+#      exact-normal row on these meshes belonged to the plane sweep's face update, which the dual
+#      advection does not use.
+# P-W2 (ring normal): with scalar the ring normal is biased by the partial faces on the rim of the
+#      ring's union (alpha_f S_f instead of a_f): the gate fails at 1e-5 to 1e-2 in L1(n) with either
+#      centroid; with vector + cut it fails at the tensor level of P-W1; with vector + anchored it is
+#      at round-off on both arms at every N (the ring normal of the vector state is exact for a plane
+#      on any mesh).
+# P-W3: no Kromer-Bothe fallbacks, no anchor failures, no anchored-centroid failures.
+# FALSIFIED IF the ring row with vector + anchored exceeds 1e-10 in L1(alphaf) or L1(n) at any N or
+#      arm (then the fan of the rule, of the initialisation and of the transported vector is not one
+#      surface), or if the ring row with scalar + anchored passes the gate at N >= 40.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_perturbedWarped --export=ALL,STUDY=davof/planeTranslation3D_perturbedWarped run-studies.sbatch
+study_name: planeTranslation3D_perturbedWarped
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: perturbed
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40, 80]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_DAVOF_METHOD: [detrixheAslam]
+  TPF_FACE_STATE: [scalar, vector]
+  TPF_TENSOR_CENTROID: [cut, anchored]
+  TPF_KB_PRISM_APEX: [faceCentre]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

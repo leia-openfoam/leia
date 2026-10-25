@@ -52,6 +52,14 @@ values
     // sub-arcs per trace arc, the fan triangulation of the planar faces
     TPF_KB_MIN_SPLIT ( 1 );
     TPF_KB_FAN ( true );
+    // warped faces (fork branch davof-warped, 2026-10-25): the face state
+    // (scalar | vector: the wetted area vector per face, the sum over the fan
+    // triangles of the wetted area vectors), the centroids of the ring tensor
+    // fit (cut | anchored) and the fan apex of a warped flux prism
+    // (vertexMean | faceCentre); the defaults reproduce the build before
+    TPF_FACE_STATE ( scalar );
+    TPF_TENSOR_CENTROID ( cut );
+    TPF_KB_PRISM_APEX ( vertexMean );
 
     // the prism quadrature of the curved flux: relative tolerance of the flux
     // volume per face and step, and the refinement depth (the first smoke at

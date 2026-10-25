@@ -1,0 +1,51 @@
+# The translated sphere of sphereTranslation3D (R = 0.15, U = (1 0 0), one unit of travel) on
+# VERTEX-PERTURBED hexahedra (every point displaced by up to 0.1 h; every face warped) with the
+# dual advection (volume-anchored ring-tensor paraboloid, Kromer-Bothe rule) and the warped-face
+# treatment of fork branch davof-warped (2026-10-25; agent run in
+# /work/scratch/tm83tomy/davof/agents/warped): tensor centroids anchored by the volume rule, the
+# warped prism fanned about the face centre, the face state scalar | vector. N = 32 and 64, Co 0.2,
+# rows exact, ringArea and ringFit; the state and the reference of areaFractionError the quadratic
+# faces (exactSphere needs axis-aligned faces). 3 x 2 x 2 = 12 serial cases.
+#
+# PRE-REGISTERED (2026-10-25, before any run): P-W5 every vector case bounded (min alpha above
+# -1e-10, max below 1 + 1e-10, no abort), the interface-cell count within 10 % of its start; the
+# vector rows' end errors (L1(alphaf), L1(n), L1(x), Eshape) within a factor two of the hexahedral
+# paraboloid study's at the same N and row; the ring rows' normal error with scalar larger than with
+# vector by the warp bias (O(1e-3), not falling with N); no order claimed from two rungs (the pair
+# 32 -> 64 is reported as a pairwise slope only).
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_perturbedWarped --export=ALL,STUDY=davof/sphereTranslation3D_perturbedWarped run-studies.sbatch
+study_name: sphereTranslation3D_perturbedWarped
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: perturbed
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringArea, davof-paraboloidRing-ringFit]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_DAVOF_METHOD: [quadraticFaces]
+  TPF_REF_METHOD: [quadraticFaces]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: [auto]
+  TPF_FACE_STATE: [scalar, vector]
+  TPF_TENSOR_CENTROID: [anchored]
+  TPF_KB_PRISM_APEX: [faceCentre]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 2880
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

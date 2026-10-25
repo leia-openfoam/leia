@@ -27,5 +27,8 @@ radius  @!TPF_SPHERE_RADIUS!@;
 origin  (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
 davofMethod @!TPF_DAVOF_METHOD!@;
 wispTol     @!TPF_WISP_TOL!@;
+// vector: also the wetted area vectors wettedAreaDavof.water (fork branch
+// davof-warped; the default scalar writes alphaf.water alone)
+faceState   @!TPF_FACE_STATE!@;
 
 // ************************************************************************* //

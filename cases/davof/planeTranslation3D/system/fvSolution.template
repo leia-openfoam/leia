@@ -73,6 +73,16 @@ solvers
         // exactSphere (Strobl, Formella, Poeschel 2016 for the sphere)
         volumeRule      @!TPF_VOLUME_RULE!@;
         volumeRuleDebug @!TPF_CURVED_DEBUG!@;
+        // warped faces (fork branch davof-warped, 2026-10-25): the face state
+        // scalar (alphaf alone) | vector (the wetted area vector
+        // wettedAreaDavof next to alphaf, m_c and the face moment from it;
+        // initDavofFields writes it with the same token), the centroids of
+        // the ring tensor fit cut | anchored (re-anchored by the volume
+        // rule), the fan apex of a warped flux prism vertexMean | faceCentre;
+        // the defaults are the build's behaviour before the keys
+        faceState       @!TPF_FACE_STATE!@;
+        tensorCentroid  @!TPF_TENSOR_CENTROID!@;
+        kromerBothePrismApex @!TPF_KB_PRISM_APEX!@;
         fitPriorWeight  1e-2;
         fitTol          1e-10;
         fitMaxIter      50;
