@@ -85,6 +85,7 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "nCurvedClips", "nCurvedLinearCuts", "nCurvedLeaves", "nFitCells",
             "nFitConverged", "nFitStalled", "nFitSingular", "nFitNoBracket",
             "fitResMax", "fitResMean", "nAnchorFail", "anchorShiftMax", "anchorShiftMean",
+            "nAnchorEvals",
             "defectMax", "defectL1", "volumeRule", "nRuleFallback",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
@@ -106,9 +107,13 @@ _RE_CURVED = re.compile(
     r"^isoAdvection: curved clipping \((\w+)\): alphaf and dVf set on (\d+) faces "
     r"\((\d+) second ring, (\d+) boundary\), (\d+) skipped, (\d+) clips, "
     r"(\d+) linear cuts, (\d+) quadrature leaves"
+    # the residual and the face shift are printed only with the fork's
+    # anchorDiagnostics on (davof-perf, 2026-10-25), the anchor's evaluation
+    # count since the Newton anchor; both clauses optional, the groups kept
     r"(?:; fit: cells (\d+), converged (\d+), stalled (\d+), singular (\d+), "
-    r"no bracket (\d+), no frame (\d+), residual max ([^\s;]+) mean ([^\s;]+))?"
-    r"(?:; volume anchor: failed (\d+), face shift max ([^\s;]+) mean ([^\s;]+), leaves (\d+))?"
+    r"no bracket (\d+), no frame (\d+)(?:, residual max ([^\s;]+) mean ([^\s;]+))?)?"
+    r"(?:; volume anchor: failed (\d+)(?:, face shift max ([^\s;]+) mean ([^\s;]+))?, leaves (\d+)"
+    r"(?:, evaluations (\d+) \(per cell [^)]*\))?)?"
     r"(?:; surface defect max ([^\s;]+) L1 ([^\s;]+) over (\d+) cells)?"
     r"(?:; volume rule (\w+) fallbacks (\d+))?")
 _RE_BOUND = re.compile(
@@ -231,18 +236,19 @@ def read_log(path):
                     cur["nFitStalled"] = m.group(11)
                     cur["nFitSingular"] = m.group(12)
                     cur["nFitNoBracket"] = m.group(13)
-                    cur["fitResMax"] = m.group(15)
-                    cur["fitResMean"] = m.group(16)
+                    cur["fitResMax"] = m.group(15) or ""
+                    cur["fitResMean"] = m.group(16) or ""
                 if m.group(17) is not None:
                     cur["nAnchorFail"] = m.group(17)
-                    cur["anchorShiftMax"] = m.group(18)
-                    cur["anchorShiftMean"] = m.group(19)
-                if m.group(21) is not None:
-                    cur["defectMax"] = m.group(21)
-                    cur["defectL1"] = m.group(22)
-                if m.group(24) is not None:
-                    cur["volumeRule"] = m.group(24)
-                    cur["nRuleFallback"] = m.group(25)
+                    cur["anchorShiftMax"] = m.group(18) or ""
+                    cur["anchorShiftMean"] = m.group(19) or ""
+                    cur["nAnchorEvals"] = m.group(21) or ""
+                if m.group(22) is not None:
+                    cur["defectMax"] = m.group(22)
+                    cur["defectL1"] = m.group(23)
+                if m.group(25) is not None:
+                    cur["volumeRule"] = m.group(25)
+                    cur["nRuleFallback"] = m.group(26)
                 continue
             m = _RE_BOUND.match(line)
             if m:

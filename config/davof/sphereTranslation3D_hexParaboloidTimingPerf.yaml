@@ -1,0 +1,52 @@
+# The cost of the paraboloid loop on the fork branch davof-perf (2026-10-25:
+# whole planar faces by a per-face planarity test, the anchor's face-fraction
+# diagnostics behind a switch, the safeguarded Newton anchor on the projected
+# wetted patch area, the cell polyhedron built once per cell), measured as
+# sphereTranslation3D_hexParaboloidTiming: the ring-area row and plicRDF on
+# the exact-sphere state, N = 32 / 64 / 128 at Co 0.2, three repetitions, the
+# error diagnostics at the end, the profiling on; the branch's default
+# kromerBotheFan auto. Run from the agent clone
+# /work/scratch/tm83tomy/davof/agents/perf/leia whose sibling TwoPhaseFlow is
+# that branch's build. 18 serial cases.
+#
+# PRE-REGISTERED (2026-10-25): the median cpu_per_step of the ring row falls
+# by at least a factor 2 against the production medians (0.126 / 0.546 /
+# 4.47 s at N = 32 / 64 / 128), the plicRDF medians of this study (production
+# 0.021 / 0.155 / 1.47 s) the yardstick of the node scatter (20 %).
+# FALSIFIED below a factor 1.5 at N = 64 and 128 after the plicRDF ratio.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloidTimingPerf --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloidTimingPerf run-studies.sbatch
+study_name: sphereTranslation3D_hexParaboloidTimingPerf
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-ringArea, plicRDF]
+  TPF_REPEAT: [1, 2, 3]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_WRITE_CONTROL: ["onEnd"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VFE_WRITE_CONTROL: ["onEnd"]
+  TPF_PROFILING: ["true"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

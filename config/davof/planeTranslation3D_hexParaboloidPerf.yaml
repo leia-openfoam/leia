@@ -1,0 +1,51 @@
+# The plane gate of planeTranslation3D_hexParaboloid on the fork branch
+# davof-perf (2026-10-25, the cost reductions of the paraboloid loop: whole
+# planar faces by a per-face planarity test, the anchor's face-fraction
+# diagnostics behind a switch, the safeguarded Newton anchor on the projected
+# wetted patch area, the cell polyhedron built once per cell). Run from the
+# agent clone /work/scratch/tm83tomy/davof/agents/perf/leia, whose sibling
+# TwoPhaseFlow is that branch's build (leia-env.sh: LEIA_TPF_DIR); the
+# production clones are untouched. The exact and ring-area rows only (the
+# own-normal row drifts on the plane whatever the rule), both arms, N = 20 to
+# 160, Co 0.2 and 0.5: 2 x 2 x 4 x 2 = 32 serial cases. The plane template
+# sets no kromerBotheFan, so the branch's default auto applies (every face of
+# the hexahedral mesh planar: whole faces).
+#
+# PRE-REGISTERED (2026-10-25): every case stays at round-off (run maximum of
+# L1(alphaf) below 1e-12), as the gate table of the production build
+# (docs/davof/davof-article/data/tables/
+# davof_advection_planeTranslation3D_hexParaboloid_gate.csv), whose two misses
+# at N = 160 on the oblique arm of the ring row (3e-10 at Co 0.5, 2.6e-9 at
+# Co 0.2, the vertex-grazing residue of the rule) must not grow; the anchor
+# converges in every cell and the rule does not fall back. FALSIFIED by any
+# other case above 1e-12 or by those two above their production values.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidPerf --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidPerf run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidPerf
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
