@@ -7298,3 +7298,19 @@ perturbed sphere's boundedness with the vector face state, the parallel second-r
 gap at processor corners, the off-centre control's 1e-8 face-fraction excursions in the
 exact-sphere path (the quadratic face cut), and a normal of proven second order on the
 transported state (the computed-normal loop is first order asymptotically).
+
+Appendix to 10.18 (2026-10-26 04:10, Tomislav's next question: the phase-specific flux by a TIME
+QUADRATURE instead of the prism). With face fractions as state the flux through a face is phi_f
+times the time integral of alpha_f over the step; the prism is that integral exactly for uniform
+translation. Launched on the cost agent (branch davof-fluxint from 7c06c57): `fluxIntegration
+prism|trapezoidal|simpson` (default prism, bit-identical), trapezoidal = phi_f dt (alpha_f^n +
+alpha_f^{n+1})/2 from the two face fractions the loop has, simpson = phi_f dt (alpha_f^n +
+4 alpha_f^{n+1/2} + alpha_f^{n+1})/6 with the half-step pre-image's liquid fraction under the
+same upwind surface; token TPF_FLUX_INTEGRATION. Plane test first (exact and ring rows, both
+arms, N 20 to 160, Co 0.2/0.5; studies *FluxSimpson, *FluxTrap). Pre-registered: P-F1
+trapezoidal not at round-off, run maxima of order Co^3 (1e-3 at Co 0.2), end states after
+integer crossings better than the maxima (the composite error telescopes), bounded and
+conservative; P-F2 simpson at round-off except in steps in which the trace passes a face
+vertex within the step (the quadratic in time breaks), run maximum 1e-12 to 1e-6, end state at
+round-off when no such step ends the run; P-F3 simpson's step cheaper than the prism's. Then
+the sphere ring row at N = 32/64 with simpson against the prism digits as a first look.
