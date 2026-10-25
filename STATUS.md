@@ -6800,3 +6800,15 @@ the configs, and the scored rows of the sphere ladder (exact 2.84, ring 1.35, ri
 were flat arc pieces, now resolved). Lesson from the cancellations: `ssh host bash -s "$X"`
 splits a multi-id string into separate positional parameters (ssh joins the arguments with
 spaces), so only $1 arrives; the id lists go into the command string (`cancel_ids.sh`).
+BUT the third diagnostic's gate: with zero fallbacks the ring row's oblique arm at N = 160
+still ends at 3.0579825799923463e-10 at Co 0.5, the SAME digits as with the four fallbacks of
+the 748e401 binary, and at 2.6e-9 at Co 0.2 (7.6e-10 before), the transported ring normal at
+8e-10 and 8e-9; the exact-normal row on the same binary is at 2.5e-13 and the split-rule run
+of the same case below 8e-14. The residue is therefore not a fallback. Hypothesis (fourth
+diagnostic planeTranslation3D_hexParaboloidDiagKB4, prediction in the header): the rule's
+per-prism values differ from the split rule's at round-off (1e-14) and the closed loop with
+the ring normal amplifies that difference at N = 160 (the sphere's measured round-off floor:
+1e-9 to 2e-7 from a 1e-13 perturbation), which the exact-normal row cannot show because its
+frame is prescribed; the alternative is a 1e-11 floor of the rule itself. The diagnostic runs
+the failing case with volumeRuleDebug (|kb - split| per prism and cell, 8 steps) and its
+split-rule twin over the full run.

@@ -1,0 +1,37 @@
+# The split-quadrature twin of planeTranslation3D_hexParaboloidDiagKB4 (2026-10-25
+# 09:00): the ring row, oblique arm, N = 160, Co 0.5, over the full run (64
+# steps) on the same binary (fork 9dbca10) with the split quadrature as the
+# volume rule. The prediction is in the twin's header: at 1e-13 or below, the
+# Kromer-Bothe run's 3e-10 is the loop's amplification of a round-off-level
+# difference between the rules; at 1e-10 as well, it is the loop on this
+# binary regardless of the rule.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidDiagKB4split --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidDiagKB4split run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidDiagKB4split
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [160]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea]
+  TPF_VELOCITY_ARM: [oblique]
+  TPF_VOLUME_RULE: [splitQuadrature]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

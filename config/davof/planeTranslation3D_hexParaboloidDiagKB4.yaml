@@ -1,0 +1,56 @@
+# Fourth diagnostic (2026-10-25 09:00) of the Kromer-Bothe rule on the translated
+# plane. After the flat-arc fix and the near-line classification (fork 9dbca10)
+# the ring row's oblique arm at N = 160 runs without any fallback and still
+# ends at L1(alphaf) 3.06e-10 (Co 0.5, the same digits as with the four
+# fallbacks of the previous binary) and 2.6e-9 (Co 0.2), with the transported
+# ring normal at 8e-10 and 8e-9, where the exact-normal row is at 2.5e-13 and
+# the split-rule run of the same case was below 8e-14. So the residue is not a
+# fallback. This study: the failing configuration (ring row, oblique arm,
+# N = 160, Co 0.5) with the Kromer-Bothe rule and volumeRuleDebug on, which
+# computes the split quadrature for every prism and cell and prints the
+# maximum and mean |kb - split| per step (on a plane the split rule is exact,
+# so this is the rule's own error floor), over 8 steps (END_TIME 1e-4). Its
+# twin, the split quadrature over the full run on the same binary, is
+# planeTranslation3D_hexParaboloidDiagKB4split.
+#
+# PREDICTION (before the run): the Kromer-Bothe rule's per-prism error on the
+# plane is at 1e-14 of the prism (exact chords and Gauss-12 on polynomials)
+# and the split twin ends at 1e-13 or below; then the 3e-10 is the closed
+# loop's amplification of a round-off-level difference between the rules
+# through the ring normal at N = 160 (the sphere's round-off floor was 1e-9
+# to 2e-7 from a 1e-13 perturbation), which the gate at 1e-12 does not forgive
+# and which the exact-normal row cannot show. FALSIFIED if the per-prism
+# floor is above 1e-12 of the prism (a defect of the rule) or if the split
+# twin is at 1e-10 as well (the loop, not the rule).
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidDiagKB4 --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidDiagKB4 run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidDiagKB4
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [160]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea]
+  TPF_VELOCITY_ARM: [oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_CURVED_DEBUG: ["true"]
+  END_TIME: [1e-4]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
