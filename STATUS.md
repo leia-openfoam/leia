@@ -7092,3 +7092,23 @@ ladders. Not done: step 5(a) (conic rotation reuse, would change digits), parall
 polyhedral tests of the planarity test, a new profile. Note: the shared laptop clone's libVoF
 was the agent's step-2 build between 13:04 and 14:27 (no laptop runs happened); it is rebuilt
 from davof 8329439 and the clone is on davof with a clean tree.
+
+Appendix to 10.18 (2026-10-25 19:00, the PARALLEL CONTROL of the skipped faces, 55628348, leia
+41fd73fb and e317c31): the ring-quadric and exact rows at N = 128, Co 0.2, on 96 ranks against
+the serial ladder. End values differ by 4.5e-5 (ringFit L1(alphaf)), 4.1e-5 (its normal), 6.0e-4
+(exact L1(alphaf)), 3.6e-4 (its normal), 1e-5 (centroid, shape) relative; bounded and
+conservative as serial; 0.65 s per step on 96 ranks against 4.9 serial (7.5 min per solve).
+Skipped faces per step at N = 128 on 96 ranks: 0 / 13 / 40 (min / median / max), nonzero in 638 of
+640 steps; the serial twin 0 in every step; at N = 256 7 / 42 / 87 (2.1e-4 of the curved faces);
+the skipped count is IDENTICAL between the ringFit and exact rows at every step (a property of
+the candidate set and the decomposition, not of the surfaces). P-C1 (harmless at 1e-3) HELD
+for both rows (the exact row's Linf at 1.3e-3 the only value above 1e-3); P-C2 (a decomposition
+effect) HELD; P-C3 (cost) HELD. Consequence: a perturbation of 6e-4 moves the pairwise orders
+128 -> 256 by 1e-3: the N = 256 verdict (the computed-normal loop first order) STANDS and its
+digits enter the preprint. The mechanism (the agent's reading of the code, not demonstrated
+per face): a candidate face of a non-interface cell whose nearest interface cell lies beyond
+the one remote second-ring surface the processor exchange passes (corners of three parts,
+two patches away) finds no surface and keeps the flux set before the curved pass. OPEN for the
+merge round: extend the processor exchange (two layers of remote surfaces, or exchange the
+second-ring choice itself) so that parallel runs skip none; the serial N = 256 twin (14 h on
+one core) was not run.
