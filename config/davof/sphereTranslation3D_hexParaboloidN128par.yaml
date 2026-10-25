@@ -1,0 +1,82 @@
+# The parallel control of the N = 256 study (2026-10-25, agent (2) of the
+# appendix of 14:30, after its report): the ring-quadric row and the exact row
+# of the paraboloid ladder at N = 128, Co 0.2 (640 steps), with the SAME
+# decomposition and settings as sphereTranslation3D_hexParaboloidN256 (np 96
+# on one node, scotch, the kromerBothe rule, the exact-sphere initial state,
+# the face- and volume-fraction errors every 128th step, one field write,
+# profiles/slurm-fat), against their SERIAL digits of the ladder on the same
+# binary (fork 9dbca10; the production clone is at 8329439, 9dbca10 plus a
+# print inside the debug branch, which is off): ringFit L1(alphaf) 4.725e-5,
+# L1(n) 1.632e-4; exact 1.018e-5, 1.120e-5 (tables
+# davof_advection_sphereTranslation3D_hexParaboloid{RingFit,}.csv, N = 128,
+# Co 0.2). 2 x 1 x 1 = 2 parallel cases.
+#
+# Why: at N = 256 with 96 ranks the curved clipping SKIPPED 7 to 87 faces per
+# step in every row (a face is skipped when neither the upwind cell nor its
+# first or second ring, local or across the processor patch, carries a
+# surface, isoAdvectionCurved.C; the face then keeps the flux set before the
+# curved pass), where every serial run of the ladder skipped 0 and the
+# four-processor check at N = 32 skipped 0 to 2 per step while agreeing with
+# serial within the round-off floor. Whether those faces move the digits of
+# the N = 256 orders (ringFit 1.17 / 1.18, exact 2.30 on the pair 128 -> 256)
+# is open; this run has the same decomposition at a resolution whose serial
+# digits exist.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-25 15:20 CET, before the run):
+# P-C1 (harmless): the end values L1(alphaf) and L1(n) of both rows agree
+#   with the serial digits to 1e-3 relative; expected: to 1e-4, as the
+#   four-processor check did (the skipped faces of a translation along x are
+#   expected to be faces the displacement does not sweep, whose flux is zero
+#   either way). FALSIFIED above 1e-2 relative in either value of either
+#   row: then the skipped faces are not harmless, the N = 256 orders carry
+#   the difference as an uncertainty, and nothing further is run (no code
+#   change by this agent). Between 1e-3 and 1e-2: measurable, quantified,
+#   the N = 256 verdict unchanged (the pairwise orders move by less than
+#   0.02 for a 1e-2 change of one end value).
+# P-C2 (the skip is a decomposition effect): the count of skipped faces per
+#   step is NONZERO in this run (0 in the serial twin), 2 to 40 per step
+#   (the N = 256 counts scaled by the quarter of interface cells and the
+#   same 96 parts). FALSIFIED by 0 skipped at every step: then the skip is a
+#   resolution effect of N = 256 and not of the decomposition.
+# P-C3 (the cost): 0.5 to 1.5 s of wall time per step on 96 ranks (2.1
+#   million cells, 6800 interface cells; the serial step costs 4.9 s), the
+#   640 steps in 5 to 16 min.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloidN128par --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloidN128par,PROFILE=profiles/slurm-fat run-studies.sbatch
+study_name: sphereTranslation3D_hexParaboloidN128par
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: parallel
+np: 96
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-ringFit, davof-paraboloidRing-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_AFE_WRITE_CONTROL: ["timeStep"]
+  TPF_AFE_WRITE_INTERVAL: [128]
+  TPF_VFE_WRITE_CONTROL: ["timeStep"]
+  TPF_VFE_WRITE_INTERVAL: [128]
+  TPF_WRITE_INTERVAL: [1]
+collapse_other_axes: true
+
+# As the N = 256 study (the node is taken whole by the 96 tasks either way).
+solve_mem_mb: 3000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
