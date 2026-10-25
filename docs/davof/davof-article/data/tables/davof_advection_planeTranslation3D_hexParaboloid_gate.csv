@@ -1,0 +1,49 @@
+row,arm,N,Co,L1_alphaf_max,Linf_alphaf_max,L1_n_max,status,gate
+davof-paraboloidRing-exact,normal,20,0.2,7.348490700097172e-15,5.895284260759581e-14,3.240543595371804e-15,completed,PASS
+davof-paraboloidRing-exact,normal,40,0.2,2.2222241408131893e-14,2.8477220581635265e-13,4.531996732639691e-15,completed,PASS
+davof-paraboloidRing-exact,normal,80,0.2,1.415001978047488e-12,6.207378708267264e-11,9.151057880458146e-15,completed,FAIL
+davof-paraboloidRing-exact,normal,160,0.2,,,,absent,FAIL (absent)
+davof-paraboloidRing-exact,normal,20,0.5,1.128980954257079e-14,8.152367669822524e-13,2.6807923731570453e-15,completed,PASS
+davof-paraboloidRing-exact,normal,40,0.5,6.880026844613001e-14,1.2478684752181834e-11,3.9194779371400675e-15,completed,PASS
+davof-paraboloidRing-exact,normal,80,0.5,4.574765380371602e-13,4.7821857585006455e-11,8.828905374497487e-15,completed,PASS
+davof-paraboloidRing-exact,normal,160,0.5,1.6120190165381047e-06,0.03728281027262215,1.717873335249871e-14,completed,FAIL
+davof-paraboloidRing-exact,oblique,20,0.2,3.5752949981117767e-14,8.74489369806497e-12,1.9879542032792012e-15,completed,PASS
+davof-paraboloidRing-exact,oblique,40,0.2,5.921980917282718e-14,3.731859266054016e-11,3.945535848638477e-15,completed,PASS
+davof-paraboloidRing-exact,oblique,80,0.2,1.6915776878698125e-10,1.5468778489236001e-06,7.546848984406225e-15,completed,FAIL
+davof-paraboloidRing-exact,oblique,160,0.2,,,,absent,FAIL (absent)
+davof-paraboloidRing-exact,oblique,20,0.5,1.5039643616176353e-14,2.2666313270747196e-12,1.8853620455137117e-15,completed,PASS
+davof-paraboloidRing-exact,oblique,40,0.5,1.0189974312768024e-13,7.258671441690012e-11,3.667169328601365e-15,completed,PASS
+davof-paraboloidRing-exact,oblique,80,0.5,8.947723617632856e-13,8.856491096054242e-10,7.471404131858413e-15,completed,PASS
+davof-paraboloidRing-exact,oblique,160,0.5,,,,absent,FAIL (absent)
+davof-paraboloidRing-cellLocal,normal,20,0.2,1.359240911598285e-14,1.2001510896197942e-13,2.622301721211627e-13,completed,PASS
+davof-paraboloidRing-cellLocal,normal,40,0.2,4.347247946858258e-12,2.150695177505213e-10,5.71189780009684e-10,completed,FAIL
+davof-paraboloidRing-cellLocal,normal,80,0.2,,,,absent,FAIL (absent)
+davof-paraboloidRing-cellLocal,normal,160,0.2,,,,absent,FAIL (absent)
+davof-paraboloidRing-cellLocal,normal,20,0.5,1.702377134536731e-08,1.0908071069737346e-06,1.6691050720461856e-07,completed,FAIL
+davof-paraboloidRing-cellLocal,normal,40,0.5,0.07613360271729247,1.0,0.40273535589799103,completed,FAIL
+davof-paraboloidRing-cellLocal,normal,80,0.5,,,,absent,FAIL (absent)
+davof-paraboloidRing-cellLocal,normal,160,0.5,,,,absent,FAIL (absent)
+davof-paraboloidRing-cellLocal,oblique,20,0.2,2.561828463863603e-12,1.424471651745307e-10,4.010778985946694e-11,completed,FAIL
+davof-paraboloidRing-cellLocal,oblique,40,0.2,3.850223832320084e-08,2.2213406518534207e-05,1.2169879471263474e-06,completed,FAIL
+davof-paraboloidRing-cellLocal,oblique,80,0.2,,,,absent,FAIL (absent)
+davof-paraboloidRing-cellLocal,oblique,160,0.2,,,,absent,FAIL (absent)
+davof-paraboloidRing-cellLocal,oblique,20,0.5,1.0815889170322476e-12,5.602707187080114e-11,1.0741206978335904e-11,completed,FAIL
+davof-paraboloidRing-cellLocal,oblique,40,0.5,4.1541565373560065e-09,4.577543993522504e-06,2.821018301642605e-07,completed,FAIL
+davof-paraboloidRing-cellLocal,oblique,80,0.5,,,,absent,FAIL (absent)
+davof-paraboloidRing-cellLocal,oblique,160,0.5,,,,absent,FAIL (absent)
+davof-paraboloidRing-ringArea,normal,20,0.2,7.724671276487982e-15,6.294964549624638e-14,4.945650389679194e-15,completed,PASS
+davof-paraboloidRing-ringArea,normal,40,0.2,2.036391179820303e-14,2.6212365611399946e-13,2.553717640723231e-14,completed,PASS
+davof-paraboloidRing-ringArea,normal,80,0.2,1.282339538797851e-12,6.187292345138928e-11,1.3956656779027678e-12,completed,FAIL
+davof-paraboloidRing-ringArea,normal,160,0.2,,,,absent,FAIL (absent)
+davof-paraboloidRing-ringArea,normal,20,0.5,1.1510633188003853e-14,1.0014211682118912e-12,1.6990240894590108e-14,completed,PASS
+davof-paraboloidRing-ringArea,normal,40,0.5,6.509734611494769e-13,2.805417009810185e-11,1.0932790495643392e-12,completed,FAIL
+davof-paraboloidRing-ringArea,normal,80,0.5,1.837831333468093e-12,8.360684367048066e-11,2.4068363930060706e-12,completed,FAIL
+davof-paraboloidRing-ringArea,normal,160,0.5,6.20011383373151e-07,0.01443861965985081,1.0930446885134223e-06,completed,FAIL
+davof-paraboloidRing-ringArea,oblique,20,0.2,2.3669740006552044e-13,3.986189156535147e-11,4.804286717884882e-13,completed,PASS
+davof-paraboloidRing-ringArea,oblique,40,0.2,6.286206435275334e-09,7.371522486421256e-06,1.2839859974045754e-08,completed,FAIL
+davof-paraboloidRing-ringArea,oblique,80,0.2,7.518339371027726e-06,0.04294992362473771,1.2992433405154308e-05,completed,FAIL
+davof-paraboloidRing-ringArea,oblique,160,0.2,,,,absent,FAIL (absent)
+davof-paraboloidRing-ringArea,oblique,20,0.5,1.6436882717436543e-14,2.280287070277609e-12,2.8851806772467866e-14,completed,PASS
+davof-paraboloidRing-ringArea,oblique,40,0.5,3.056650277535046e-12,2.5708002393542984e-10,4.184184214612439e-12,completed,FAIL
+davof-paraboloidRing-ringArea,oblique,80,0.5,1.1005074053904526e-05,0.043438098071455156,1.9664376637934464e-05,completed,FAIL
+davof-paraboloidRing-ringArea,oblique,160,0.5,3.6832741135004893e-06,0.0598052846118613,7.5257305392845e-06,completed,FAIL
