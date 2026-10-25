@@ -6863,3 +6863,33 @@ the exact row holds the gate in 16 of 16 (7e-15 to 2.5e-13), the ring row in 14 
 two misses being the oblique arm at N = 160 (2.6e-9 at Co 0.2, 3.1e-10 at Co 0.5: the
 Kromer-Bothe cell-volume residue above, the split-rule twin of the Co 0.5 case at 2.75e-13);
 the own-normal cases pending.
+
+Appendix to 10.18 (2026-10-25 13:00, the PROFILE of the paraboloid loop on Lichtenberg, by a
+profiling agent at Tomislav's request; OpenFOAM profiling trees of the timing study, perf with
+DWARF call graphs, and chrono counters in a separate instrumented copy of libVoF under
+/work/scratch/tm83tomy/davof/profile/, production library and studies untouched, nothing
+committed; jobs 55623213 to 55623490). Ring row, N = 64 (1760 interface cells, 12850 faces set
+per step, 4290 with flux), serial, one node: step 0.53 s, of which advect 0.48 (plicRDF 0.079):
+the VOLUME ANCHOR 0.273 s = 57 % of advect (6.2 cell-volume evaluations per interface cell per
+step: 1 start + 1.46 bracket + 3.73 Illinois; each evaluation 30 us = 24 fan triangles); the
+anchor's two FACE-FRACTION DIAGNOSTICS (the "fit residual" before and the "face shift" after
+the anchor) 0.067 s = 14 %; the PRISM volumes 0.042 s = 9 % (11 us per prism, 12 fan faces);
+the FACE FRACTIONS 0.032 s = 7 % (2.8 us per face; two thirds of them on zero-flux faces);
+second-ring search 0.2 %, ring normal 0.5 %, tensor fit 0.8 %, bounding 1.5 %, reconstruct
+3 %. N = 128: step 4.34 s, advect 3.84 (plicRDF 0.89), anchor 2.08 (54 %), diagnostics 0.52,
+prisms 0.35, fractions 0.26. Diagnostics ON (the ladder's setting) add 0.30 s/step at N = 64,
+0.24 of it areaFractionError recomputing the exact sphere state every step. perf self time:
+kbIntegrateFace's onArc lambda 17 %, kbIntegrateFace body 16 %, cellSurface::value 7.4 %,
+kbFace::setFrame 3.9 %, the allocator family 13 % (Lists and std::function per face), the
+adaptive recursion 3.3 %, conic2D::at 2.8 %, sincos 2.3 %. MEASURED remedy: whole planar faces
+instead of the fan (`kromerBotheFan false`, the knob exists): step 0.67 -> 0.37 s at N = 64
+(-45 %), 3.1 -> 1.9 s at N = 128 (-40 %), anchor 2.7 times cheaper, prisms 1.7 times, numerics
+changed at round-off only (L1 0.00195336 -> 0.00195339), 0 fallbacks; the face fractions
+ignore the knob (always fan). ESTIMATED remedies: the diagnostics behind a switch (-14 %); a
+safeguarded Newton on the anchor with the exact derivative dV/dc = the projected wetted patch
+area, one more accumulator in the arcs the rule already walks (3 instead of 6.2 evaluations,
+anchor -50 %); the cell polyhedron built once per cell for all anchor evaluations and
+stack arrays instead of Lists/std::function (-10 to -15 % of the rule's time); the conic's
+rotation reused across the anchor iterations and skipped on uncut faces. Combined estimate:
+advect 0.48 -> 0.15 to 0.18 s at N = 64, about twice plicRDF instead of six times. Nothing
+of this is implemented; the ladders stand on the fan (kromerBotheFan true).
