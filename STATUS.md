@@ -7056,3 +7056,39 @@ for the ring-quadric normal (9.1e-4 against 2.6e-3 at N = 64; two-rung slopes 1.
 sphere's boundedness and anchor failures, the parallel exchange untested beyond one
 processor, the exactSphere rule's prism path on backward-swept triangles. Merging is for
 Tomislav.
+
+Appendix to 10.18 (2026-10-25 18:30, COST, the agent's branch davof-perf: ef142fe whole faces
+by a per-face planarity test (`kbFace::warp` > 1e-10 L_s fans; `kromerBotheFan auto|true|false`,
+also in the face fractions and prism tops), 8a1c5e4 the anchor's diagnostics behind
+`anchorDiagnostics` (default off), decb99d the safeguarded Newton anchor on dV/dc = oint t1 dt2
+(`kbSums::patchSum`; rtsafe of Numerical Recipes 9.4 with a Halley correction, Scavo and Thoo
+1995, doi:10.2307/2975033; Illinois fallback; `anchorMethod illinois|newton`), a0460dc the
+cell faces cached per (cell, time index), stack lists and plain recursion, f6090c4 the
+uncut-face skip by the quadratic variation bound, 1e824cf the default `anchorMethod illinois`
+and `anchorMethod compare`; leia cd450914 (converter: nAnchorEvals) and a4b1b309 (token
+TPF_ANCHOR_METHOD, default illinois); README updated with the citations). VERIFIED: steps 2,
+4 and 5 bit-identical; `kromerBotheFan true` + illinois reproduces the ladder's ring N = 32
+digits and production's two plane misses bit for bit. DEFAULT BUILD (whole faces, illinois):
+sphere ring 5.647047e-3 against 5.647061e-3 (2.5e-6), 2.118887e-3 against 2.118872e-3 (7e-6),
+exact rows equal, everything else at round-off, anchor failures per step 2 against 3; plane
+gate 30 of 32 below 2.5e-13; the two vertex-grazing misses move with the round-off of the
+path (Co 0.2: 1.67e-9 from 2.63e-9; Co 0.5: 2.59e-9 from 3.06e-10, i.e. WORSE, and 2.8e-13 with
+newton + fans: the "not worse" clause fails for that case until the sliver fix). TIMING
+(medians of cpu per step, N = 32/64/128, Co 0.2): default build ring 0.046 / 0.333 / 1.35 s
+against plicRDF 0.030 / 0.164 / 1.35 in the same study, ratios 1.5 / 2.0 / 1.0 (reference 6.0 /
+3.5 / 3.0): raw speed-up 2.8 / 1.6 / 3.3, normalised 3.9 / 1.7 / 3.0; with newton 0.041 / 0.214 /
+1.71 (ratios 1.4 / 1.3 / 1.3; the N = 128 figure confounded by node scatter: plicRDF 1.05 to
+1.76 s). Anchor evaluations per cell and step: illinois 6.1 to 6.6, newton 3.1 to 4.0. NEWTON
+DOES NOT VERIFY on the ring row (0.5 % lower at N = 32, 2.5 % at N = 64, with 0 anchor failures
+against 70 and 148): the cause, found with `anchorMethod compare`, is a METHOD DEFINITION GAP:
+cells whose alpha is exactly 0 or 1 but which are interface cells by |m_c| > wispTol have a
+flat V(c) over an interval (every offset there is a root); Illinois stops at the first bracket
+end of its doubling (0.75 h or 1.75 h from the start), Newton at the interval's edge (0.72 to
+0.80 h), and because that surface also cuts the face prisms and second-ring faces outside
+the cell the two loops diverge: THE LADDER'S RING DIGITS DEPEND ON AN ARBITRARY BRACKET END
+in those cells. Decision for Tomislav: define the offset of such a cell (the interval edge,
+the surface touching the cell, is the natural choice), make newton the default, rerun the
+ladders. Not done: step 5(a) (conic rotation reuse, would change digits), parallel and
+polyhedral tests of the planarity test, a new profile. Note: the shared laptop clone's libVoF
+was the agent's step-2 build between 13:04 and 14:27 (no laptop runs happened); it is rebuilt
+from davof 8329439 and the clone is on davof with a clean tree.
