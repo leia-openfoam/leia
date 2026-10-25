@@ -6827,3 +6827,11 @@ diagnostic reruns. NOTE on the binaries: this rebuild happens while the final re
 (55619126/27/28) run; the change is inside `if (debug_)`, so the cases that start on the new
 library compute the same digits as the ones on 9dbca10, and the per-case tpfCommit stamp may
 show either.
+
+Appendix to 10.18 (2026-10-25 10:35, the FINAL ring-quadric study, 55619127, 9 of 9 on fork
+9dbca10, one case stamped 8329439 as noted; tables on origin). Every case reproduces the
+748e401-era digits exactly except N = 128 at Co 0.1 (5.06255e-5 against 5.06254e-5, a relative
+2e-6: that case had 2 fallbacks per step before, now 0, so the loop's round-off floor moved
+it); the orders are unchanged: q 2.24 / 2.11 / 1.93 per period, normal 1.67 / 1.52 / 1.31,
+centroid 2.00, zero fallbacks, zero anchor failures, min alpha -2e-14. The ring-quadric row's
+numbers in the preprint, the proposal and the messages to the proposal session stand.
