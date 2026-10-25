@@ -7278,3 +7278,23 @@ at every N) HELD, its third (the sliver rule bounded at N = 64 and 128) FALSIFIE
 normal below 0.1 h^2 is not enough, the whole loop needs the filtered normal. Hundreds to
 thousands of rule fallbacks per step in both own-normal rows (wild surfaces), none in the
 others.
+
+Appendix to 10.18 (2026-10-26 03:40, the FINAL RING-QUADRIC study on davof 7c06c57, 55634208, 9 of
+9, every case stamped 7c06c57; tables on origin). Digits reproduce the pre-merge study to five
+or six figures (Co 0.2: 8.75429e-4, 1.36932e-4, 4.72535e-5 against 8.75436e-4, 1.36932e-4,
+4.72530e-5; normal 1.33781e-3, 3.61347e-4, 1.63241e-4), the orders unchanged (2.24 / 2.11 / 1.93
+per period at Co 0.1 / 0.2 / 0.5, pairwise 2.68 / 1.53 at Co 0.2; normal 1.67 / 1.52 / 1.31;
+centroid 2.00), zero fallbacks, anchor failures and fit fallbacks, min alpha -2e-13. With this
+EVERY TABLE OF THE PREPRINT STANDS ON ONE BINARY, davof 7c06c57: the plane gate (exact 16/16,
+ring 16/16, own 1/16), the sphere ladder (exact 2.84, ring 1.34, own and sliver rows
+diverging), the ring-quadric row (2.11, first order on 128 -> 256 by the N = 256 study), the
+timing (1.7 / 1.9 / 1.2 times plicRDF), the N = 256 study, and the control (exactSphere rule,
+untouched by the merges, 27 of 27). The preprint's tables are regenerated
+(table_advection_curved.tex without the anchor-shift column, which the final runs do not
+record; table_advection_curved_plane.tex 8/8, 8/8, 1/8, 0/8), the build is 34 pages with every
+reference resolved, the dated copy is _build/davof-preprint-draft-2026-10-26.pdf in the
+proposal folder. Remaining open items of the method (for agents on Tomislav's word): the
+perturbed sphere's boundedness with the vector face state, the parallel second-ring exchange
+gap at processor corners, the off-centre control's 1e-8 face-fraction excursions in the
+exact-sphere path (the quadratic face cut), and a normal of proven second order on the
+transported state (the computed-normal loop is first order asymptotically).
