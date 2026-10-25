@@ -7112,3 +7112,48 @@ two patches away) finds no surface and keeps the flux set before the curved pass
 merge round: extend the processor exchange (two layers of remote surfaces, or exchange the
 second-ring choice itself) so that parallel runs skip none; the serial N = 256 twin (14 h on
 one core) was not run.
+
+Appendix to 10.18 (2026-10-25 19:30, the SLIVER defects SETTLED, the agent's branch davof-sliver
+on davof 8329439: 5991916 self-test series and anchor event print, 09ab419 split-rule fix,
+58cc582 Kromer-Bothe fix, 45436d4/2741c52 self-test additions; leia c7e1a845, 3280e7c9,
+b2410d4a with the configs *Sliver*). TWO defects, neither the one I guessed. (1) The printed
+"cell mismatch" of 2e-10 to 4.5e-12 was the SPLIT rule's error, not a sliver lost by
+Kromer-Bothe: the exact plane volume of cell 3096764 from the printed vertices (mpmath, two
+formulas to 2e-28) puts Kromer-Bothe 3.8e-15 and the split rule 1.23e-11 off; cause: a grazing
+vertex as the sweep apex of a pyramid triangle puts the sweep-line root within 7.5e-6 of the
+outer parameter, a layer the breakpoints do not mark and depth 9 does not resolve
+(triangleIntegralSplit via pyramidLiquidVolume/prismLiquidVolume); fix: the sweep apex
+rotated to the vertex farthest from the traces when the given apex is within 1e-3 of the
+largest distance (split cells 1.2e-11 -> 8.2e-15 in the self-test). (2) The plane gate's two
+misses were single-step anchor events (L1 at 2e-13, a jump at step 12 (Co 0.5) and 102 (Co 0.2)
+with Linf 4e-6 and 4e-5): in one cell the Kromer-Bothe cell volume toggled by 1.2e-5 V between
+offsets 1e-16 apart, so the anchor landed on a wrong offset; cause: the plane's ring tensor is
+round-off (b ~ 1e-8 1/m), B/l in the face's scaled coordinates between 1e-13 and 1e-9 sits just
+ABOVE the LINE threshold of 1e-13, the trace is classified as an ellipse or hyperbola with its
+centre 1e12 Ls away, its parameter carries noise of 1e-4 Ls, and a corner sliver arc with a
+chord of 3e-4 Ls is dropped (by sb > sa or by the inside test at the parameter midpoint); the
+fan triangle's wet area ends 1.5e-4 off, inside [0, A], so no fallback; the same mechanism with
+b = 0 on faces nearly parallel to the plane. Fix: a trace with max|B| <= 1e-3 |l| is ORDERED as a
+line (arcs still integrated with the exact quadric), an arc between two exact crossings is
+kept when their parameters coincide (its chord length decides), and the inside test of a
+one-piece arc is made at the arc's point over the chord midpoint. Debug knobs kbGrazingFixOn,
+splitApexRotationOn (default on). SELF-TEST (2 boxes x 4 normals x 3 grazed points x 2 sides,
+d = 1e-6 to 1e-14): Kromer-Bothe cells exact (8e-16) at b = 0 before and after; under weak
+curvature (b L = -1e-10, 1e-12) before 4.5e-7 to 4.5e-11 of V scaling with d (the dropped
+sliver's signature), after <= 8e-16; event-cell replicas scanning 201 offsets within 1e-15:
+1.6e-5 and 1.1e-5 V before, 1.4e-14 and 6.2e-15 after. VERIFIED on the agent's build: the two
+failing plane cases PASS (2.30e-13 and 2.83e-13, from 2.63e-9 and 3.06e-10; 0 fallbacks, 0 anchor
+events); no regression on 16 cases (exact and ring rows, N = 40/80, both arms, Co 0.2/0.5; all
+<= 1.7e-13; exact rows digit-identical, ring rows at 1e-14); the sphere ring row at N = 32
+bit-identical over 160 steps. The OFF-CENTRE control's excursions (1.44e-8, 128 steps) are
+bit-identical before and after: that path (tetOverlap + the quadratic cut faceCutDisplaced)
+calls none of the changed code; a grazing problem of the quadratic cut is the likely analogue,
+not shown. OPEN: fallback (unresolved) cases when d ~ |b L| with three vertices grazed at once
+and for the axis-near normal (1, 1e-7, 3e-7) (counted fallbacks, 0 in the plane runs); a
+Kromer-Bothe face error of 4.6e-11 on faces tilted 3e-7 against the plane (conditioning of the
+trace position); one axis-near case where Kromer-Bothe and the quadratic cut disagree by
+1.2e-3 on a face with no valid reference; the fix untested in parallel; the apex rotation may
+move split-rule values within the quadrature tolerance on curved surfaces. Merging is for
+Tomislav. Correction to the records above: "which rule drops the sliver is open" is answered
+(the split rule, in its sweep-apex layer), and the plane gate's residue was a separate
+Kromer-Bothe arc loss, now fixed on the branch.
