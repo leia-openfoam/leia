@@ -6811,4 +6811,19 @@ the ring normal amplifies that difference at N = 160 (the sphere's measured roun
 1e-9 to 2e-7 from a 1e-13 perturbation), which the exact-normal row cannot show because its
 frame is prescribed; the alternative is a 1e-11 floor of the rule itself. The diagnostic runs
 the failing case with volumeRuleDebug (|kb - split| per prism and cell, 8 steps) and its
-split-rule twin over the full run.
+split-rule twin over the full run. RESULT of the debug case (55619345, 8 steps, 131 s per
+step with the comparison): every PRISM volume of the Kromer-Bothe rule is within 4.9e-14 to
+6.3e-14 of the split quadrature's (mean 3.2e-15 over 28000 to 29000 prisms per step), but the
+CELL volumes, which position the surface through the volume anchor, disagree in a few cells
+per step: the maximum over the 25000 cells per step is 2.1e-10 of the cell in steps 3 and 5,
+1.2e-11 in steps 1 and 7, and 3e-14 in the other four steps (mean 5e-15 to 2.4e-14). The
+residue of the face fractions in this case (3e-10) is therefore the anchor's: a few cell
+volumes off by 2e-10 shift the surface by 2e-10 h, and the ring normal carries it along.
+The per-prism prediction of the fourth diagnostic held; the cell volumes name the defect's
+place but not its cause (which face of the cell polyhedron; the prisms, built from the same
+face routine on the same surface, are exact). Fork commit after 9dbca10 (debug branch only:
+the first twelve cells per step above 1e-12 are printed with the per-face breakdown); the
+diagnostic reruns. NOTE on the binaries: this rebuild happens while the final reruns
+(55619126/27/28) run; the change is inside `if (debug_)`, so the cases that start on the new
+library compute the same digits as the ones on 9dbca10, and the per-case tpfCommit stamp may
+show either.
