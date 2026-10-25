@@ -6936,3 +6936,44 @@ branch fixed, verified on the two failing plane cases. (5) Warped faces: the wet
 vector (and first moment) transported instead of the scalar fraction, behind a run-time
 switch, verified by the planar reduction and the perturbed-hexahedra plane test with the
 paraboloid rows. Merging any branch into davof is a decision for Tomislav after the reports.
+
+Appendix to 10.18 (2026-10-25 15:30, P-X2 RESOLVED by the P-X2 agent; study
+sphereTranslation3D_hexExactSurfaceStep0, leia 5fe40fb7, job 55624775; per-cell analysis
+under /work/scratch/tm83tomy/davof/px2/). The own-faces normal on the exactly transported
+fractions is as good as on the static exact state; the 1.40 is a property of the DIAGNOSTIC
+and of the sphere's position on the mesh, not of the transport. (a) Identity: on a sphere
+m_c = (A_c/R)(x*_c - c) with x*_c the exact patch centroid, so m_c/|m_c| IS the exact normal
+at x*_c; every nonzero L1(n) on an exact state equals the mean tangential offset of the
+chosen REFERENCE POINT from x*_c divided by R. The transport diagnostic (reconstructionError)
+takes the exact normal at the centroid of the alpha-positioned PLIC polygon, the static test
+(leiaTestDavofNormal) at the centroid of the Detrixhe-Aslam zero set; measured offsets 6.6e-3,
+4.2e-3, 2.1e-3 h (PLIC) against 6.9e-3, 5.7e-3, 3.1e-3 h (static) at N = 32/64/128, and every
+per-cell error equals offset/R to four digits. (b) The end value is Co-independent to nine
+digits (the end state is a cell-by-cell translate of the initial one) and the per-step twin
+reproduces it at every integer cell shift. (c) The static definition applied to the
+TRANSPORTED fractions gives 1.387e-3, 6.707e-4, 1.641e-4 at R/h = 4.8, 9.6, 19.2; the static
+study (R/h = 5, 10, 20, 40) gives 2.985e-3, 6.767e-4, 1.638e-4, 4.204e-5: agreement within
+1 % at R/h 9.6 and 19.2, pairwise order 2.03 on the fine pair. The "2.1 times larger at
+N = 128" of the earlier record compared at equal N instead of equal R/h (the static study
+has R = 1 mm in a 4R box); at matched R/h the transport diagnostic is 0.32 to 0.83 of the
+static value. (d) The ladder's sphere centre (0.5 0.5 0.5) sits on a mesh vertex at every N;
+shifting it by 0.2 to 0.8 h changes the diagnostic's value by factors 0.82 to 1.9 and the
+pairwise orders from 1.27 to 1.97: three-rung orders at R/h <= 19 from one symmetric position
+carry +-0.5. (e) No O(1) outliers, no wisp effect; the diagnostic's cell set equals the static
+threshold's. (f) The exact row's floor (8.2e-5, 1.9e-5, 1.1e-5): exactNormal evaluates the
+exact normal at the centroid of the plane positioned along m_c, the scheme then repositions
+the plane along that normal, and the error compares the exact normal at the two centroids
+(0.4 theta h/R per cell, dominated by grazing cells); the exact normal is exact. Caveat for
+per-cell analyses: the scheme's written fields at time t are the reconstruction at the START
+of the last step (t - dt), alpha and alphaf the end state. Verdict on P-X2 as worded:
+FALSIFIED by its diagnostic, HELD by the identity and under the static definition on the fine
+pair; the number leaves the open list. Proposed by the agent and launched: the control ladder
+with the sphere centre off the symmetry planes (TPF_SPHERE_CY 0.5137, CZ 0.4871), scored under
+both definitions (prediction: static-definition L1(n) on the transported state within 5 % of
+the static study at matched R/h, order 2.0 +- 0.2; the PLIC diagnostic 0.7 to 1.0 of it).
+Code proposals for the merge round (not applied): exactNormal evaluated at the centroid of
+the plane positioned along the exact normal itself (removes the exact row's floor);
+reconstructionError to report the error against the exact patch centroid c + R m_c/A_c (zero
+by identity: a round-off gate on the fractions) next to the PLIC-reference number and to
+write the per-cell error; the table script to state the reference point and to compare
+ladders by R/h.
