@@ -7157,3 +7157,20 @@ move split-rule values within the quadrature tolerance on curved surfaces. Mergi
 Tomislav. Correction to the records above: "which rule drops the sliver is open" is answered
 (the split rule, in its sweep-apex layer), and the plane gate's residue was a separate
 Kromer-Bothe arc loss, now fixed on the branch.
+
+Appendix to 10.18 (2026-10-25 20:30, Tomislav's DECISIONS and the merge). Decisions: (1) the
+offset of a cell whose alpha is exactly 0 or 1 while it counts as an interface cell is DEFINED
+as the edge of the flat interval, the surface tangent to the cell; (2) the anchor becomes the
+Consecutive Cubic Spline positioning (Marić, J. Comput. Phys.: X 11 (2021) 100093,
+doi:10.1016/j.jcpx.2021.100093) applied to the paraboloid: between vertex crossings the iterate
+is the root of the cubic Hermite interpolant through the bracket ends with the exact V and the
+exact dV/dc = A_p, re-bracketed, bisection-safeguarded; `anchorMethod ccs`, the default;
+(3) merge order sliver, perf, warped, then one cluster build and the reruns of the three
+ladders and the plane test on the merged binary. DONE: davof-sliver merged into davof as
+f133781 (no conflicts, 4 files; built on the laptop, pushed to tmaric). The cost agent is
+rebasing davof-perf onto f133781 and implementing the CCS anchor with the acceptance criteria
+revised for the new definition (exact row at round-off; the ring row's change traced to the
+flat-interval cells with `anchorMethod compare`, expected 0.5 to 2.5 %; plane gate 16 of 16;
+evaluations per cell 2 to 3; timing). The production library on the cluster stays at
+9dbca10/8329439 until the final own-normal cases of the last reruns are done and all three
+branches are merged.
