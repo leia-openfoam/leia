@@ -1,0 +1,5 @@
+row,arm,N,Co,L1_alphaf_max,Linf_alphaf_max,L1_n_max,status,gate
+davof-paraboloidRing-exact,normal,40,0.5,6.887556354486355e-14,1.2478684752181834e-11,4.538669506719896e-15,completed,PASS
+davof-paraboloidRing-exact,oblique,40,0.5,1.0189974312768024e-13,7.258671441690012e-11,3.667169328601365e-15,completed,PASS
+davof-paraboloidRing-ringArea,normal,40,0.5,6.94133452140613e-14,1.2405076965649187e-11,1.4849012446521587e-13,completed,PASS
+davof-paraboloidRing-ringArea,oblique,40,0.5,1.0215162806182003e-13,6.265443719399855e-11,1.6707205217598903e-13,completed,PASS
