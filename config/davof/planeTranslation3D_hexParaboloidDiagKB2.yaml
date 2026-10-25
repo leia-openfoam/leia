@@ -1,0 +1,48 @@
+# Second diagnostic (2026-10-25 05:00) of the Kromer-Bothe rule's fallbacks on
+# the translated plane. The first (planeTranslation3D_hexParaboloidDiagKB,
+# N = 80, Co 0.5) found every fallback to be the AREA check (the wetted area
+# of a face outside [0, A] by more than 1e-9: 115 to 1676 faces per step on
+# the normal arm, 52 to 7886 on the oblique arm, rising over the run), never
+# the conic classification, the conic points or the chord-normal roots. Fork
+# commit after 01ee5d4 prints the first forty failing faces of a run (the
+# conic's kind and scaled coefficients, the surface's coefficients, the edge
+# and arc parts of the area, the vertex values). N = 40, Co 0.5 (16 steps),
+# both rows, both arms: four fast cases (the ring row's oblique arm had 2614
+# fallbacks per step there, the exact row's normal arm 16).
+#
+# PREDICTION (before the run): the failing faces carry a conic classified as
+# an ellipse or hyperbola of round-off curvature (|B| just above the 1e-13
+# relative threshold), whose principal-form parametrisation loses the chord
+# between the crossings (the arc's midpoint falls outside the face and the
+# arc is skipped, or the closing arc of a huge ellipse is taken), so that
+# the arc area is missing or doubled; a genuine LINE kind does not fail.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidDiagKB2 --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidDiagKB2 run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidDiagKB2
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [40]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
