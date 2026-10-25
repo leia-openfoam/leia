@@ -7250,3 +7250,13 @@ run: 1.46 against 1.35 there; the ratio is what carries). The ring row's end dig
 binary: 5.616950e-3 (N = 32), 2.066471e-3 (N = 64), 8.709252e-4 (N = 128), identical in the three
 repetitions, i.e. -0.53 %, -2.47 % and -0.003 % against the fan/Illinois ladder (the edge
 definition's cells are coarse-mesh cases); zero fallbacks, zero anchor failures.
+
+Appendix to 10.18 (2026-10-26 02:20, the FINAL N = 256 on davof 7c06c57, 55634211, 3 of 3 in 55
+min with the fat profile, np 96; tables on origin). End values: ringFit L1(alphaf) 2.1015e-5,
+normal 7.2214e-5; exact 2.0648e-6, 6.9690e-7; ringArea 3.8992e-4, 3.9805e-3; centroid 6.27e-6
+(7.16e-6 ringArea), shape 5.738e-6; min alpha -1.9e-12; zero fallbacks and anchor failures. These
+reproduce the pre-merge N = 256 run to three or four digits (2.10e-5 / 7.22e-5, 2.06e-6 /
+6.97e-7, 3.90e-4 / 3.98e-3), so the fourth-mesh orders (ringFit 1.17 / 1.18, exact 2.30, ringArea
+1.16 / 1.04 on 128 -> 256) stand on the final binary; the preprint's printed digits need no
+change. The step now costs about half (55 min against 62 to 66 for the solve including
+pre-processing on the merged binary).
