@@ -44,6 +44,29 @@
 #      arm (then the fan of the rule, of the initialisation and of the transported vector is not one
 #      surface), or if the ring row with scalar + anchored passes the gate at N >= 40.
 #
+# RESULT (2026-10-25, fork davof-warped 73a3f57; the first two builds' runs kept in the agent's
+# clone as *.build1 / *.build2). The first build failed the oblique arm in EVERY combination
+# (5.6e-3 to 3e-2 in L1(alphaf), Linf up to 1) while the normal arm behaved as predicted: two
+# defects of the flux prism over a warped face crossed nearly tangentially, both in the build
+# before this branch as well (fixed in ee31d97, the prism oriented by the sign of d.S_f, and
+# 73a3f57, the net liquid volume admitted in [-V_back, V_fwd]). With them, run maxima of
+# L1(alphaf) / L1(n):
+#   exact row:    scalar + cut 1.3e-5..1.7e-5 / 1e-14; scalar + anchored 6.5e-15..6.4e-14 / 1e-14;
+#                 vector + cut as scalar + cut; vector + anchored 1.1e-14..6.4e-14 / 1e-14
+#                 (both arms, every N). P-W1 holds.
+#   ring row:     scalar + cut and scalar + anchored 2.6e-4..4.1e-4 / 2.1e-3..2.4e-3 (flat in N);
+#                 vector + cut 1.3e-5..1.7e-5 / 1.5e-5..2.9e-5; vector + anchored 1.2e-14..3.7e-14 /
+#                 1.8e-14..4.9e-14 on both arms at N = 20 and 40 and on the normal arm at N = 80,
+#                 but 1.1e-8 / 2.4e-8 (Linf 4.8e-5) on the oblique arm at N = 80. P-W2 holds except
+#                 that one case, which FALSIFIES its 1e-10 criterion: isolated single-face events at
+#                 steps 17, 36, 62, 71 (L1 at 5e-14 until step 16), the first at a face with a vertex
+#                 2.2e-4 h from the start-of-step plane between an interface cell and the cell the
+#                 plane enters in that step, followed by second-layer bounding in 30 to 45 cells per
+#                 step; the exact row on the same mesh and arm has neither (open: the vertex-grazing
+#                 configuration, cf. the hexahedral ring row's oblique-arm residue at N = 160).
+#   P-W3: in the two cases inspected (exact and ring row, vector + anchored, oblique, N = 80) no
+#                 Kromer-Bothe fallbacks, no anchor and no anchored-centroid failures.
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_perturbedWarped --export=ALL,STUDY=davof/planeTranslation3D_perturbedWarped run-studies.sbatch
 study_name: planeTranslation3D_perturbedWarped
 studies_dir: studies/davof

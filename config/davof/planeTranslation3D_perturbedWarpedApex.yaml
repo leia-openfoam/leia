@@ -16,6 +16,11 @@
 # FALSIFIED IF vector + anchored passes the gate with vertexMean (the lens carries no liquid at
 #      this level; the apex key would then be cosmetic).
 #
+# RESULT (2026-10-25, fork davof-warped 73a3f57): P-W4 holds. With vertexMean every combination
+# fails: vector + anchored 2.0e-5 to 3.0e-5 in L1(alphaf) (Linf 5e-4 to 1.1e-3, L1(n) 1e-14 for
+# the exact row, 2e-5 to 3e-5 for the ring row), scalar + cut 2.6e-5 to 3.5e-5 (exact) and
+# 2.6e-4 to 4.1e-4 (ring), against round-off with faceCentre (planeTranslation3D_perturbedWarped).
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_perturbedWarpedApex --export=ALL,STUDY=davof/planeTranslation3D_perturbedWarpedApex run-studies.sbatch
 study_name: planeTranslation3D_perturbedWarpedApex
 studies_dir: studies/davof

@@ -14,6 +14,20 @@
 # vector by the warp bias (O(1e-3), not falling with N); no order claimed from two rungs (the pair
 # 32 -> 64 is reported as a pairwise slope only).
 #
+# RESULT (2026-10-25, fork davof-warped 73a3f57; every case completed, no abort). P-W5 is
+# FALSIFIED on boundedness: min(alpha) over the run, vector / scalar, N = 32: exact -3.7e-11 /
+# -5.4e-6, ringArea -1.8e-4 / -1.9e-4, ringFit -1.1e-8 / -7.3e-6; N = 64: exact -5.3e-4 / -4.8e-4,
+# ringArea -3.3e-3 / -3.3e-3, ringFit -3.5e-4 / -5.0e-4 (hexahedral study: -8e-13 at worst), and
+# the volume anchor fails in 7 to 1163 cells over a run. The interface-cell count stays within
+# 1.5 % of its start. End errors (vector; scalar in parentheses where it differs by more than
+# 5 %), N = 32 / 64: L1(x) exact 8.0e-4 / 2.2e-4, ringArea 1.1e-3 / 2.7e-4, ringFit 8.0e-4 /
+# 2.2e-4 (hexahedral: 4.1e-4 / 9.6e-5, 5.2e-4 / 1.2e-4, 4.1e-4 / 9.6e-5, a factor 2 to 2.3);
+# Eshape 2.6e-4 / 6.4e-5 for exact and ringFit, 2.8e-4 / 7.2e-5 ringArea (hexahedral 3.6e-4 /
+# 9.1e-5); L1(n) ringArea 4.4e-2 / 2.0e-2 (scalar the same), ringFit 2.2e-3 / 9.1e-4 (scalar 3.5e-3
+# / 2.6e-3). Pairwise slopes 32 -> 64 (vector): L1(x) 1.9, Eshape 2.0, L1(n) ringFit 1.25
+# (scalar 0.45), ringArea 1.1. L1(alphaf) is measured against the quadraticFaces reference and
+# is not comparable with the hexahedral study's exactSphere reference.
+#
 #   sbatch --parsable -J leia-davof-sphereTranslation3D_perturbedWarped --export=ALL,STUDY=davof/sphereTranslation3D_perturbedWarped run-studies.sbatch
 study_name: sphereTranslation3D_perturbedWarped
 studies_dir: studies/davof
