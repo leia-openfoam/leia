@@ -1,0 +1,9 @@
+row,metric,N=160,p_ls,p_pairwise
+davof-paraboloidRing-ringArea,L1_alphaf_end,2.83e-13,--,
+davof-paraboloidRing-ringArea,L1_alphaf_max,3.06e-10,--,
+davof-paraboloidRing-ringArea,L1_n_end,4.22e-13,--,
+davof-paraboloidRing-ringArea,L1_x_end,2.28e-17,--,
+davof-paraboloidRing-ringArea,Eshape_end,9.21e-22,--,
+davof-paraboloidRing-ringArea,Ebound_end,3.26e-13,,
+davof-paraboloidRing-ringArea,minAlpha_run,-8.2e-13,,
+davof-paraboloidRing-ringArea,status,ok,,

@@ -1,0 +1,3 @@
+row,arm,N,Co,L1_alphaf_max,Linf_alphaf_max,L1_n_max,status,gate
+davof-paraboloidRing-ringArea,oblique,160,0.2,2.6297364129938073e-09,8.757196212383356e-05,7.827580798073757e-09,completed,FAIL
+davof-paraboloidRing-ringArea,oblique,160,0.5,3.0579825799923463e-10,4.172001017210825e-06,8.005887307278042e-10,completed,FAIL
