@@ -6977,3 +6977,82 @@ reconstructionError to report the error against the exact patch centroid c + R m
 by identity: a round-off gate on the fractions) next to the PLIC-reference number and to
 write the per-cell error; the table script to state the reference point and to compare
 ladders by R/h.
+
+Appendix to 10.18 (2026-10-25 17:00, the off-centre control, 55625094, leia b3d91618; P-X2
+CONFIRMED, a new P-X1 finding). Sphere centre (0.5 0.5137 0.4871), N = 32/64/128, Co 0.2, rows
+exact and cellLocal. The own-faces normal on the transported fractions is second order at a
+generic position under both definitions: static definition 2.70e-3, 6.17e-4, 1.81e-4 (order
+1.95, pairwise 2.13/1.77; 0.83, 0.84, 1.02 of the static study scaled to matched R/h), PLIC
+diagnostic 1.77e-3, 4.25e-4, 1.14e-4 (1.98, pairwise 2.06/1.90; 0.63 to 0.69 of the static
+definition). The agent corrects its earlier "within 1 %": scaled by (R/h)^-2 the control's
+single-position values are 0.91 to 0.92 of the static study; the accurate statement is
+agreement to 10 to 16 % in magnitude at one position (position scatter of the measure, the
+state being exact to 1e-13) and agreement in order (2.03, 1.95 against 2.05). Exact row's floor
+0.11 to 0.15 of the cellLocal value, carried by grazing cells (worst 1 % hold 60 %). NEW:
+P-X1 fails at this position: L1(alphaf) exceeds 1e-12 on 128 of 320 steps at N = 64 (max
+1.44e-8) and 256 of 640 at N = 128 (max 3.3e-9) with ZERO linear cuts, clips, skips and
+fallbacks, the end state clean at 1e-13 and mass/boundedness at round-off; the symmetric
+position showed none (2e-14 at N = 32 here too). Periodic in the fractional cell shift;
+faces not located; presumably the vertex-grazing configuration (STATUS above, the sliver
+agent); forwarded to the sliver agent as a test case. N = 256 skipped (16 h, 100 GB).
+
+Appendix to 10.18 (2026-10-25 17:00, the FOURTH MESH, 55624859, leia 7c213fce/90011e91/81374eb;
+np 96, 1280 steps, 62 to 66 min per solve, fork 8329439 = 9dbca10 numerically). N = 256 end
+values: ringFit L1(alphaf) 2.10e-5, normal 7.22e-5; exact 2.06e-6, 6.97e-7; ringArea 3.90e-4,
+3.98e-3; centroid 6.27e-6 (7.16e-6 ringArea), shape 5.74e-6 in all rows; bounded (-1.4e-13),
+conservative, zero fallbacks and anchor failures. Pairwise orders 32->64 / 64->128 / 128->256:
+ringFit face fractions 2.68 / 1.53 / 1.17 and normal 1.89 / 1.15 / 1.18; exact 2.96 / 2.71 /
+2.30 (normal not a converging quantity: 1.34 then 4.01, the reference-point effect); ringArea
+1.41 / 1.28 / 1.16 and 0.89 / 1.11 / 1.04; centroid 2.04 and shape 2.00 everywhere. VERDICT:
+the computed-normal loop does NOT keep second order: on the finest pair the ring-quadric row
+is first order in both the face fractions and the normal, with a constant 18 times below the
+ring-area row's (ratio 18.4 at N = 128, 18.6 at N = 256); a fit e = c1 h + c2 h^2 to the two
+finest meshes puts 88 % of the N = 256 error in the first-order term. P-N1's "second order
+kept" FALSIFIED; P-N3 to P-N6 held; the exact row's 2.30 lies below its predicted 2.5 to 3.0.
+CAVEAT: this parallel run skipped 7 to 87 faces per step (4e-4 of the curved faces; a face is
+skipped when neither its upwind cell nor its first or second ring carries a surface, which
+in parallel happens at processor patches: the serial runs skipped 0, the four-processor
+validation 0 to 2), so the digits carry an unquantified parallel effect; the control (the
+ringFit row at N = 128 on np 96 against the serial 4.73e-5 / 1.63e-4) is launched before the
+N = 256 numbers enter the preprint. Infrastructure: profiles/slurm-fat (64 to 96 GB for the
+serial mesh, initialisation, decomposition and reconstruction; the pre-processing peaked at
+25 GB), run-studies.sbatch reads PROFILE from the environment, the Makefile lifts the local
+task cap; 3000 MB per rank requested, 2.4 GB used.
+
+Appendix to 10.18 (2026-10-25 17:00, WARPED FACES, the agent's branch davof-warped on top of
+davof 8a1c5e4: a03dd87, ee31d97, 73a3f57, 60ae03c; leia e6e18aec, 2b2c2c5b; configs
+planeTranslation3D_hexParaboloidWarped(.yaml, Ref.yaml), planeTranslation3D_perturbedWarped
+(.yaml, Apex.yaml), sphereTranslation3D_perturbedWarped.yaml; tokens TPF_FACE_STATE,
+TPF_TENSOR_CENTROID, TPF_KB_PRISM_APEX). DESIGN: the wetted area vector a_f = sum over the fan
+triangles of A_wet n_t stored per face (surfaceVectorField wettedAreaDavof) next to alphaf;
+no separate first moment is needed because every fan triangle contains the face centre, so
+the first moment is (x_f - x_c).a_f exactly (three scalars per face, not six); planar faces
+reduce to alpha_f S_f; the update takes the pre-image's wetted area per fan triangle under
+the upwind surface; faces no surface sets take alpha_up S_f; the vector is exchanged with
+alphaf across processor patches with its sign flipped; the reconstruction sums the vectors.
+Two further pieces proved necessary: `tensorCentroid anchored` (cutCellPLIC closes the wet
+part of a warped face with a chord, so the alpha-positioned centroids are off the plane and
+the ring Monge fit returns a spurious tensor; re-anchoring each centroid by the volume rule
+before the fit removes it) and `kromerBothePrismApex faceCentre` (the prism's top and bottom
+fanned about the face centre, the cell's own fan, not the vertex mean). Two flux defects of
+davof on warped faces found and fixed unconditionally (the prism oriented by the sign of
+d.S_f with backward-swept triangles signed in the split fallback; the net liquid volume of a
+warped face admitted in [-V_back, V_fwd]): before them the oblique arm failed at 6e-3 to 3e-2
+in EVERY combination including davof as it stood, with 220 prism volumes per step rejected.
+PLANAR REDUCTION: scalar byte-identical to the reference build in all 8 hexahedral cases;
+vector at round-off (7e-15 to 6.5e-14). PERTURBED PLANE (vertices displaced up to 0.1 h,
+N = 20/40/80, both arms, Co 0.2): exact row at round-off with anchored centroids for both face
+states (1.5e-5 with cut centroids: so the 1 to 5 % failure of the earlier record belonged to
+the plane sweep, the dual advection's fan fractions were already right); ring row at round-off
+with vector + anchored (scalar: 2e-3 in the normal, flat in N) in 5 of 6 arm/N combinations,
+the exception the oblique arm at N = 80 (1.1e-8 / 2.4e-8: single-face jumps at steps 17, 36,
+62, 71, the first on a face with a vertex 2.2e-4 h from the plane: vertex grazing again);
+apex control: vertexMean fails at 2e-5 to 3.5e-5 in every combination. PERTURBED SPHERE
+(N = 32/64, three rows, 12 cases, no abort): NOT bounded with either face state (min alpha
+-5e-4 to -3.3e-3 at N = 64, anchor failures in 7 to 1163 cells per run; hexahedra: -8e-13);
+centroid 2 to 2.3 times the hexahedral value, shape error below it; the vector state matters
+for the ring-quadric normal (9.1e-4 against 2.6e-3 at N = 64; two-rung slopes 1.25 against
+0.45). OPEN: the vertex-grazing events (debug copy at agents/warped/debug/c47), the perturbed
+sphere's boundedness and anchor failures, the parallel exchange untested beyond one
+processor, the exactSphere rule's prism path on backward-swept triangles. Merging is for
+Tomislav.
