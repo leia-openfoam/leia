@@ -7174,3 +7174,15 @@ flat-interval cells with `anchorMethod compare`, expected 0.5 to 2.5 %; plane ga
 evaluations per cell 2 to 3; timing). The production library on the cluster stays at
 9dbca10/8329439 until the final own-normal cases of the last reruns are done and all three
 branches are merged.
+
+Appendix to 10.18 (2026-10-25 21:30, davof-warped REBASED onto f133781: tmaric/davof-warped =
+94dddd3, five commits; the pre-rebase head kept as the agent's local davof-warped-pre-rebase;
+its base had carried two perf commits that f133781 lacks, dropped and returning with the perf
+merge; conflicts in kbFanFaces/kbOrientedFan/kbFaceWettedArea resolved to f133781's
+kromerBotheFan bool, to be switched to kbWholeFace after perf). Verified on the agent's clones
+against a build of f133781 (jobs 55631503, 55631514, 55631702/03/07): scalar byte-identical in
+all 8 hexahedral cases, vector at round-off (6.3e-14); the perturbed plane (48 cases rerun): the
+twelfth case (ring row, oblique arm, N = 80) now at 7.0e-14 / 2.2e-16 (from 1.1e-8 / 2.4e-8: its
+jumps were the dropped sliver arc), so vector + anchored centroids + face-centre apex is at
+round-off in both rows, both arms, every N (P-W2 holds in full); the other combinations
+unchanged. leia c132e854 (results in the config headers).
