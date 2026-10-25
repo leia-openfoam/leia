@@ -6893,3 +6893,22 @@ stack arrays instead of Lists/std::function (-10 to -15 % of the rule's time); t
 rotation reused across the anchor iterations and skipped on uncut faces. Combined estimate:
 advect 0.48 -> 0.15 to 0.18 s at N = 64, about twice plicRDF instead of six times. Nothing
 of this is implemented; the ladders stand on the fan (kromerBotheFan true).
+
+Appendix to 10.18 (2026-10-25 13:30, the per-cell print of the fourth diagnostic, 55621064,
+fork 8329439). Twenty cells printed over the eight steps (diff/V 4.5e-12, 1.2e-11, 2.1e-10;
+the same handful of alpha values recur, 0.0369, 0.1600, 0.5076, 0.8400, 0.9631: the same
+configuration repeated across cells, as a plane on a Cartesian grid repeats it). Every
+printed cell has a VERTEX within 1e-10 of the surface (phi = -1.2e-10 at the vertex against
+1e-5 at the others, i.e. 1e-5 of the edge, far above the vertex-on-surface tolerance of
+1e-14), so that one or two fan triangles carry a corner sliver of liquid of 2e-20 m^2
+against a face area of 1.6e-10 (relative 2e-10). The discrepancy of the cell volume equals
+one such sliver's contribution to the face sum (face 3 of cell 3096764: faceTerm 3.0e-25,
+the cell's |kb - split| 1.9e-25). The sliver's wetted area by hand from the printed vertex
+values (legs 5.4e-10 and 1.5e-10 at 45 degrees: 2.83e-20) is exactly the Kromer-Bothe value
+(2.833e-20), so the rule's face value is right there; whether the split quadrature drops the
+sliver (a breakpoint within its tolerance of the edge end) or another face of the same cell
+is off in the rule is not decided by the log. Open, and bounded: 1e-11 to 2e-10 of the cell
+volume in cells with a vertex grazing the surface, the loop's residue 3e-10 at N = 160 on
+the ring row's oblique arm, nothing at the sphere ladder's level. The next step, when wanted,
+is a unit test in kbSelfTest with a plane grazing a box vertex at 1e-10 against the exact
+sliver volume, for both rules. Not pursued further now.
