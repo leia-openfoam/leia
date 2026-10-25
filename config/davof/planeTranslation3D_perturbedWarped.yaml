@@ -66,6 +66,14 @@
 #                 configuration, cf. the hexahedral ring row's oblique-arm residue at N = 160).
 #   P-W3: in the two cases inspected (exact and ring row, vector + anchored, oblique, N = 80) no
 #                 Kromer-Bothe fallbacks, no anchor and no anchored-centroid failures.
+# RESULT after the rebase onto davof f133781 (the davof-sliver merge: the dropped sliver arc of the
+# Kromer-Bothe rule; branch head 64a9599; the 48 cases rerun): the twelfth case, ring row, oblique
+# arm, N = 80, vector + anchored, is now at round-off as well (run maxima L1(alphaf) 7.0e-14, Linf
+# 6.9e-11, L1(n) 2.2e-16): its single-face jumps were the dropped sliver arc, as the main session
+# predicted. P-W2 now holds in full: vector + anchored at round-off in both rows, both arms, every
+# N (L1(alphaf) 1.1e-14 to 7.0e-14). The other combinations are unchanged to two digits: exact row
+# with cut 1.4e-5 to 1.7e-5, scalar ring row 2.6e-4 to 4.1e-4 / 2.1e-3 to 2.4e-3, vector + cut ring
+# row 1.3e-5 to 1.7e-5.
 #
 #   sbatch --parsable -J leia-davof-planeTranslation3D_perturbedWarped --export=ALL,STUDY=davof/planeTranslation3D_perturbedWarped run-studies.sbatch
 study_name: planeTranslation3D_perturbedWarped

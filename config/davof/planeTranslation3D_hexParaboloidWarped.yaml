@@ -26,6 +26,10 @@
 # holds: the vector cases at round-off (run maxima of L1(alphaf) 7e-15 to 6.5e-14, L1(n) 5e-15
 # to 1.2e-13), differing from the scalar ones by at most 1.2e-12 in any column (the ring row,
 # oblique arm, N = 40), 5e-16 for the exact row.
+# RESULT after the rebase onto davof f133781 (the davof-sliver merge; branch head 64a9599, the Ref
+# clone at f133781): the same. The 8 scalar cases byte-identical with the Ref study in the three
+# .dat files; the vector cases at round-off (L1(alphaf) 7.4e-15 to 6.3e-14, L1(n) at 1e-14), the
+# largest difference from scalar 3.5e-12 (ring row, oblique arm, N = 40), 5.5e-15 for the exact row.
 #
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidWarped --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidWarped run-studies.sbatch
 study_name: planeTranslation3D_hexParaboloidWarped
