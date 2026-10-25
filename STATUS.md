@@ -6646,7 +6646,11 @@ Co 0.1 cases aborted at step 29 on the overlap library's debug-only assertion ("
 volume detected": a thin prism tetrahedron's overlap beyond [0, V] by more than sqrt(eps)
 V); fork 3f32320 disables the assertions as a release build does and clamps the tetrahedron
 overlap to [0, V]; the three cases rerun (55610001 after build 55610000; the aborted ones
-kept aside as `*.overlapAssert-*`).
+kept aside as `*.overlapAssert-*`). RERUN DONE (2026-10-25 01:50, tables leia e65a334f, 27 of
+27): the N = 128, Co 0.1 cases complete over 1280 steps at L1(alphaf) 7.8e-13 at the end
+(run maximum 2.4e-12), min alpha -9.8e-15, defect 9.3e-10, 5.6 s per step; every number of
+the other rows unchanged. The report script skips cases moved aside with a suffix inside a
+study folder (leia c5653553), which the first re-score had counted as crashed duplicates.
 
 Appendix to 10.18 (2026-10-25 01:10, the paraboloid sphere ladder, 55608483, PRELIMINARY: 23
 of 36 cases; the ring and exact rows complete except exact N = 128 at Co 0.1; tables leia
