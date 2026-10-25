@@ -6835,3 +6835,31 @@ Appendix to 10.18 (2026-10-25 10:35, the FINAL ring-quadric study, 55619127, 9 o
 it); the orders are unchanged: q 2.24 / 2.11 / 1.93 per period, normal 1.67 / 1.52 / 1.31,
 centroid 2.00, zero fallbacks, zero anchor failures, min alpha -2e-14. The ring-quadric row's
 numbers in the preprint, the proposal and the messages to the proposal session stand.
+
+Appendix to 10.18 (2026-10-25 10:50, the split-rule twin, 55619346): the ring row, oblique
+arm, N = 160, Co 0.5 with the SPLIT quadrature on the same binary (9dbca10) ends at
+L1(alphaf) 2.75e-13, normal 4.07e-13, over the 64 steps: the gate held. So the loop with the
+ring normal does not amplify round-off to 3e-10 here; the Kromer-Bothe run's residue is the
+rule's own: the few CELL volumes per step off by up to 2e-10 of the cell (fourth diagnostic),
+which position the surface through the anchor. The fourth diagnostic's prediction is
+therefore FALSIFIED in its conclusion (the per-prism floor and the twin came out as
+predicted, but the cell volumes did not): a defect of the rule in the cell polyhedron, not
+in the prisms built from the same face routine. The per-cell print (fork 8329439, study
+rerunning as 55621064) names the face.
+
+Appendix to 10.18 (2026-10-25 11:00, the FINAL sphere ladder and plane test on fork 9dbca10,
+55619128 and 55619126, PARTIAL: the exact and ring rows complete in both, the own-normal rows
+still running; tables on origin 5fdc7495, 685ce0aa). SPHERE: the exact row (9 of 9) and the
+ring row (9 of 9) reproduce the scored digits (ring N = 64, Co 0.2: 2.118872e-3 against
+2.118873e-3, the loop's floor where the 1 to 3 fallbacks per step are now resolved; exact
+N = 128, Co 0.1 now 1.098e-5 as before) with ZERO rule fallbacks in every case; the orders
+stand (exact 2.84, ring 1.35 per period). The own-normal rows now run at normal speed
+(fallbacks in tens to hundreds of prisms per step, not thousands: the flat-arc defect was
+most of their cost): the own normal completes at N = 32, Co 0.1 and 0.2 at L1(alphaf) 6e-2
+with normal error 1.15 and diverges at step 266 (N = 64, Co 0.2), 208 (N = 128, Co 0.2), 63
+and 65 (N = 32 and 64, Co 0.5); the row with the ring normal below 0.1 h^2 completes at
+N = 32, Co 0.1 and 0.2 at 4.4e-2 and 5.2e-2 (normal 0.39 and 0.48); the rest pending. PLANE:
+the exact row holds the gate in 16 of 16 (7e-15 to 2.5e-13), the ring row in 14 of 16, the
+two misses being the oblique arm at N = 160 (2.6e-9 at Co 0.2, 3.1e-10 at Co 0.5: the
+Kromer-Bothe cell-volume residue above, the split-rule twin of the Co 0.5 case at 2.75e-13);
+the own-normal cases pending.
