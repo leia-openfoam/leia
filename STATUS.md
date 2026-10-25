@@ -6679,3 +6679,15 @@ the headers): the ring-QUADRIC-normal row of the ladder (sphereTranslation3D_hex
 loop near q = 2) and the paraboloid timing study against plicRDF with the diagnostics off
 (sphereTranslation3D_hexParaboloidTiming, 55611741). Preliminary scores sent to the proposal
 session with the caveat that nothing enters the proposal before the final tables.
+
+Appendix to 10.18 (2026-10-25 02:20, the paraboloid timing study, 55611741, 59 min, tables
+leia on origin after the score): the ring-area row of the paraboloid loop against plicRDF on
+the exact-sphere state, N = 32/64/128, Co 0.2, three repetitions, diagnostics at the end
+only. Per-step medians (cpu/nSteps, includes the start-up): paraboloid 0.126 / 0.546 / 4.47 s,
+plicRDF 0.021 / 0.155 / 1.47 s; factors 6.0 / 3.5 / 3.0. Step times of the logs at N = 128:
+4.2 against 1.23 s (3.4). The prediction (2 to 6 times plicRDF at N = 128) HELD at 3.0; the
+spread on the shared nodes is a factor 1.5 to 1.8 between repetitions (ring 2.43 to 4.47 s,
+plicRDF 1.01 to 1.49 s at N = 128). The errors of the three repetitions reproduce the ladder's
+digits exactly (L1(alphaf) 5.647061e-3 at N = 32 in all three and in the ladder). The plane
+loop's earlier medians (hexTiming2: ring 1.69 s, plicRDF 1.96 s at N = 128) were on other
+nodes; the comparison holds within a study only.
