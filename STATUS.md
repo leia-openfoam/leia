@@ -7213,3 +7213,20 @@ anchorDiagnostics true; builds before the merge reject `kromerBotheFan auto`; le
 sphereTranslation3D.parameter had TPF_KB_FAN ( true ), set to auto now so that the reruns use
 whole faces. The warped agent rebases onto 1f914f9 next; then the warped merge, the cluster
 build and the four reruns.
+
+Appendix to 10.18 (2026-10-26 00:30, davof-warped MERGED: tmaric/davof-warped bbd12e4 rebased
+onto 1f914f9 (scalar byte-identical to a 1f914f9 build in all 8 hexahedral cases, vector at
+round-off, the perturbed plane at 5e-15 to 6.3e-14 in every exact and ring run with vector +
+anchored + faceCentre; leia 36a5d971), merged as davof 7c06c57 (16 files; the VoF library
+built on the laptop). ALL THREE BRANCHES ARE IN: davof 7c06c57 is the final binary of the
+preprint. Next: the cluster build of 7c06c57 and the reruns of the plane test, the sphere
+ladder, the ring-quadric study, the timing study and the N = 256 study (with the fat profile)
+on it; the superseded own-normal cases of the pre-merge reruns are cancelled by id and their
+studies kept aside as *.preMerge-*. SUBMITTED (2026-10-26 00:45): build 55634206; plane test
+55634207, ring-quadric study 55634208, sphere ladder 55634209, timing study 55634210, N = 256
+55634211 (afterok the build; the N = 256 with PROFILE=profiles/slurm-fat); the five pre-merge
+study directories moved aside as *.preMerge-10251913; the pre-merge drivers 55619126/55619128
+and their nine remaining own-normal solves cancelled by id. The settings of the reruns: the
+merged binary's defaults (kromerBotheFan auto, anchorMethod ccs, faceState scalar,
+anchorDiagnostics off), so the ring row's digits move by up to 2.5 % against the pre-merge
+tables (the edge definition) and the plane table should read 16 of 16 for exact and ring.
