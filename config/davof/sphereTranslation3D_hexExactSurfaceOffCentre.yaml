@@ -1,0 +1,79 @@
+# The exact-surface control (sphereTranslation3D_hexExactSurface) with the sphere
+# centre OFF the mesh symmetry planes (2026-10-25): centre (0.5 0.5137 0.4871),
+# R = 0.15, U = (1 0 0), END_TIME 1 (the x travel of N h unchanged, so the end
+# state is still a cell-by-cell translate of the initial state), N = 32 / 64 /
+# 128, Co 0.2, rows exact and cellLocal, the exact sphere as the clipping
+# surface and the volume rule, diagnostics as in the control (the face-fraction
+# error every step, the reconstruction error at the end).
+#
+# Why: the P-X2 investigation (report of 2026-10-25) found that on the exact
+# sphere m_c/|m_c| is the exact normal at the exact patch centroid (x - c = R n,
+# so int (x - c) dA = R int n dA), that every reported L1(n) on the exact state
+# is the tangential offset of the diagnostic's reference point from that
+# centroid divided by R (transport: the alpha-positioned PLIC polygon centroid;
+# static test: the Detrixhe-Aslam zero-set centroid), that the static
+# definition applied to the transported fractions reproduces the static study
+# (sphereNormal3D, centre off every symmetry plane) at matched R/h within 1 %
+# at R/h 9.6 and 19.2 but is 2.2x below it at R/h 4.8, and that the control's
+# centre (0.5 0.5 0.5) sits on a mesh vertex at every N, where the per-step
+# twin showed the same diagnostic varying by up to 1.9x with the sphere's
+# position. This ladder removes the symmetric position.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-25, before the run; the static definition
+# is evaluated on the written end state with the per-cell script
+# px2_cell_analysis.py, the scheme's written fields scored at t - dt, alphaf at t):
+# P-O1: the static-definition L1(n) of the own-faces normal on the transported
+#   end state (row cellLocal, cells |m_c| > 1e-3 V^(2/3), count-weighted) lies
+#   within 5 % of the static study's exactSphere/davof value at the matched
+#   R/h (2.985e-3 at R/h 5, 6.767e-4 at 10, 1.638e-4 at 20, scaled by
+#   (R/h)^-2 to 4.8 / 9.6 / 19.2: 3.24e-3 / 7.34e-4 / 1.777e-4) at every N,
+#   and its least-squares order over N = 32 to 128 is 2.0 +- 0.2.
+# P-O2: the PLIC-reference diagnostic (reconstructionError LNormalDiff1, the
+#   table's L1_n_end) of the cellLocal row is 0.7 to 1.0 of the static-
+#   definition value at every N, with order 2.0 +- 0.3.
+# P-O3: the exact row's L1_n_end (its reference-point floor) is below 10 % of
+#   the cellLocal row's at every N.
+# P-O4 (the gate restated): L1(alphaf) below 1e-12 at every step except the
+#   linear-cut steps, Ebound and Emass at round-off, the end values identical
+#   to the control's structure (nInterface per N differs from the control's
+#   416 / 1760 / 6680 because the position differs).
+# FALSIFIED: P-O1 by a deviation above 5 % at R/h 9.6 or 19.2 (then the
+#   transported fractions differ from the exact state's in a way the
+#   face-fraction error does not show) or by an order below 1.8 at a generic
+#   position (then the static study's second order is itself position-bound).
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexExactSurfaceOffCentre --export=ALL,STUDY=davof/sphereTranslation3D_hexExactSurfaceOffCentre run-studies.sbatch
+study_name: sphereTranslation3D_hexExactSurfaceOffCentre
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-exactSurface-exact, davof-exactSurface-cellLocal]
+  TPF_SPHERE_CY: [0.5137]
+  TPF_SPHERE_CZ: [0.4871]
+  TPF_VOLUME_RULE: [exactSphere]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+# The N = 128 case (4.2e6 cells, four field writes) needs more than the Slurm default.
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
