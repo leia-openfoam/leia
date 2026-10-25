@@ -7260,3 +7260,21 @@ reproduce the pre-merge N = 256 run to three or four digits (2.10e-5 / 7.22e-5, 
 1.16 / 1.04 on 128 -> 256) stand on the final binary; the preprint's printed digits need no
 change. The step now costs about half (55 min against 62 to 66 for the solve including
 pre-processing on the merged binary).
+
+Appendix to 10.18 (2026-10-26 03:00, the FINAL SPHERE LADDER on davof 7c06c57, 55634209, 36 of 36
+in 1 h 41 min, every case stamped 7c06c57; tables on origin). Exact row: 5.2050e-4, 6.6668e-5,
+1.0183e-5 at Co 0.2 (orders 2.84 / 2.87 / 2.87 at Co 0.2 / 0.1 / 0.5), digits equal to the
+pre-merge ladder; own-faces normal 2.05; zero fallbacks and anchor failures. Ring row:
+5.6169e-3, 2.0665e-3, 8.7093e-4 at Co 0.2 (order 1.34; Co 0.1: 5.7508e-3, 2.0047e-3, 8.5191e-4,
+1.38; Co 0.5: 7.2302e-3, 2.5182e-3, 1.2179e-3, 1.28), normal 1.00 at 8.19e-3, bounded to -8e-13,
+zero fallbacks and anchor failures (the edge definition replaces the 70 to 148 failures of the
+Illinois ladder). OWN-NORMAL ROWS (P-P3 settled): the own normal DIVERGES at every N and Co on
+the final binary, aborted at steps 66 / 76 / 82 (Co 0.1), 46 / 63 / 68 (Co 0.2), 45 / 51 / 54
+(Co 0.5) for N = 32 / 64 / 128 with alpha reaching the abort bound, where on the pre-merge
+binaries two N = 32 cases had limped to the end at 6e-2 without tripping the guard; the row
+with the ring normal below 0.1 h^2 diverges everywhere except N = 32, Co 0.2 (completed at
+3.85e-2, normal 0.35), aborted at steps 41 to 317. So P-P3's first clause (own normal diverges
+at every N) HELD, its third (the sliver rule bounded at N = 64 and 128) FALSIFIED: the ring
+normal below 0.1 h^2 is not enough, the whole loop needs the filtered normal. Hundreds to
+thousands of rule fallbacks per step in both own-normal rows (wild surfaces), none in the
+others.
