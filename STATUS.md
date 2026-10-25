@@ -6733,3 +6733,22 @@ on the split-rule run (valid: the same loop with the other volume rule, which is
 planes); the Kromer-Bothe run's plane table enters only after the fix, as the rule's own
 test. The sphere ladder is unaffected (fallbacks 0 to 3 per step there) but the own-normal
 rows' thousands of fallbacks per step may share the cause. Proposal session informed.
+DIAGNOSED (55614649, 55615537; fork 01ee5d4, a9e20cc): every fallback is the AREA check, and
+the printed faces (N = 40, Co 0.5: 326 and 2647 per step for the ring row, 5 for the exact
+row's normal arm, none on its oblique arm) carry a LINE trace (33 to 40 of 40 printed; the
+rest parabolas of round-off curvature): the ring tensor on the plane is 1e-10, the scaled
+curvature 4e-19 against 1e-5 is classified as a line, and the chord-normal quadratic of the
+arc integrand has a leading coefficient at round-off with one root on the chord and the
+other at 1e9 face sizes; the root was chosen by the side of the chord the arc's midpoint lies
+on, which for a flat arc is round-off, so the far root was taken in about half the faces and
+the arc area came out at 1e11 to 1e13 times the face area, caught by the range check and
+sent to the capped fallback. The first diagnostic's prediction (the root's discriminant)
+named the right place for the wrong reason; the second's (an eccentric conic) was wrong: the
+kind is the line. FIX (fork 748e401): the side decides only when the midpoint is off the
+chord by more than 1e-9 of the face size, otherwise the root nearest to the chord is taken;
+curved arcs (sagitta Ls^2/R, far above the threshold) are untouched, so the sphere ladder's
+exact, ring and ring-quadric rows stand (their 0 to 3 fallbacks per step were short arc
+pieces of the same kind, now resolved). RERUN: the Kromer-Bothe plane run and the second
+diagnostic moved aside as *.kbArea-*, both resubmitted after the cluster build (the
+diagnostic as the verification: zero fallbacks expected; the plane test with the prediction
+of the split-rule run: the exact and ring rows at round-off at every N and Co).
