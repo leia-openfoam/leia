@@ -1,0 +1,60 @@
+# The sphere ladder's exact and ring-area rows at N = 32 and 64, Co 0.2, on
+# the fork branch davof-perf (2026-10-25, the cost reductions of the
+# paraboloid loop), run from the agent clone
+# /work/scratch/tm83tomy/davof/agents/perf/leia whose sibling TwoPhaseFlow is
+# that branch's build; the production clones are untouched. The settings of
+# sphereTranslation3D_hexParaboloid (the exact-sphere initial state, the
+# per-step face error, the surface defect every tenth step) with the
+# branch's default kromerBotheFan auto (whole planar faces) instead of the
+# ladder's true. SECOND RUN (the head 1e824cf): both anchor methods,
+# TPF_ANCHOR_METHOD illinois (the branch's default) and newton,
+# 2 x 2 x 2 = 8 serial cases.
+#
+# THE FIRST RUN (sphereTranslation3D_hexParaboloidPerf, decb99d, newton the
+# default then): the exact row reproduced the ladder (5.204966e-4,
+# 6.666793e-5), the ring row ended 0.5 % (N = 32) and 2.5 % (N = 64) lower;
+# the cause is the flat root interval of the anchor in full and empty
+# interface cells, where newton and illinois stop at different points (the
+# fork's anchorMethod compare), so illinois stays the default. This run
+# checks the default against the ladder and records newton beside it.
+#
+# PRE-REGISTERED (2026-10-25): the end values agree with the ladder's
+# (davof_advection_sphereTranslation3D_hexParaboloid.csv: L1(alphaf) end ring
+# 5.647061e-3 at N = 32, 2.118872e-3 at N = 64; exact 5.204966e-4,
+# 6.666793e-5; the normal, centroid and shape errors) to a relative 1e-5 or
+# below, bounded and conservative as there, the anchor failures and the rule
+# fallbacks not above the ladder's. FALSIFIED by a relative change above 1e-5
+# in any of them.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexParaboloidPerf2 --export=ALL,STUDY=davof/sphereTranslation3D_hexParaboloidPerf2 run-studies.sbatch
+study_name: sphereTranslation3D_hexParaboloidPerf2
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [illinois, newton]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

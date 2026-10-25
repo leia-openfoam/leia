@@ -49,6 +49,10 @@ values
     // (Strobl, Formella, Poeschel, J. Comput. Phys. 311 (2016) 158-172,
     // doi:10.1016/j.jcp.2016.02.003; the exact-sphere control)
     TPF_VOLUME_RULE ( splitQuadrature );
+    // the volume anchor's root finder (fork branch davof-perf, 2026-10-25):
+    // illinois (the bracket and the Illinois rule) | newton (on the projected
+    // wetted patch area); builds before it ignore the key
+    TPF_ANCHOR_METHOD ( illinois );
     // warped faces (fork branch davof-warped, 2026-10-25): the face state
     // (scalar | vector: the wetted area vector per face, the sum over the fan
     // triangles of the wetted area vectors), the centroids of the ring tensor
