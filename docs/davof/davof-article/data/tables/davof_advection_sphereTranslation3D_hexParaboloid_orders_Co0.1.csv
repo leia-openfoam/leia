@@ -7,22 +7,22 @@ davof-paraboloidRing-exact,Eshape_end,3.58e-04,9.08e-05,2.30e-05,1.98,1.98 / 1.9
 davof-paraboloidRing-exact,Ebound_end,1.53e-16,1.14e-12,5.18e-12,,
 davof-paraboloidRing-exact,minAlpha_run,-1.7e-16,-3.4e-15,-6.2e-15,,
 davof-paraboloidRing-exact,status,ok,ok,ok,,
-davof-paraboloidRing-cellLocal,L1_alphaf_end,5.97e-02,div.,absent,--,
-davof-paraboloidRing-cellLocal,L1_alphaf_max,6.37e-02,div.,absent,--,
-davof-paraboloidRing-cellLocal,L1_n_end,1.17e+00,div.,absent,--,
-davof-paraboloidRing-cellLocal,L1_x_end,1.19e-01,div.,absent,--,
-davof-paraboloidRing-cellLocal,Eshape_end,8.80e-04,div.,absent,--,
-davof-paraboloidRing-cellLocal,Ebound_end,2.43e-03,div.,absent,,
-davof-paraboloidRing-cellLocal,minAlpha_run,-3.0e-03,div.,absent,,
-davof-paraboloidRing-cellLocal,status,ok,div.,absent,,
-davof-paraboloidRing-cellSliver01,L1_alphaf_end,4.72e-02,6.32e-02,absent,-0.42,-0.42
-davof-paraboloidRing-cellSliver01,L1_alphaf_max,4.86e-02,6.43e-02,absent,-0.40,-0.40
-davof-paraboloidRing-cellSliver01,L1_n_end,3.94e-01,1.04e+00,absent,-1.40,-1.40
-davof-paraboloidRing-cellSliver01,L1_x_end,1.35e-02,8.79e-02,absent,-2.70,-2.70
-davof-paraboloidRing-cellSliver01,Eshape_end,4.80e-04,4.45e-04,absent,0.11,0.11
-davof-paraboloidRing-cellSliver01,Ebound_end,1.07e-06,1.08e-01,absent,,
-davof-paraboloidRing-cellSliver01,minAlpha_run,-2.7e-16,-1.1e-01,absent,,
-davof-paraboloidRing-cellSliver01,status,ok,ok,absent,,
+davof-paraboloidRing-cellLocal,L1_alphaf_end,5.93e-02,absent,absent,--,
+davof-paraboloidRing-cellLocal,L1_alphaf_max,6.42e-02,absent,absent,--,
+davof-paraboloidRing-cellLocal,L1_n_end,1.18e+00,absent,absent,--,
+davof-paraboloidRing-cellLocal,L1_x_end,1.17e-01,absent,absent,--,
+davof-paraboloidRing-cellLocal,Eshape_end,8.48e-04,absent,absent,--,
+davof-paraboloidRing-cellLocal,Ebound_end,1.22e-02,absent,absent,,
+davof-paraboloidRing-cellLocal,minAlpha_run,-1.7e-02,absent,absent,,
+davof-paraboloidRing-cellLocal,status,ok,absent,absent,,
+davof-paraboloidRing-cellSliver01,L1_alphaf_end,4.42e-02,absent,absent,--,
+davof-paraboloidRing-cellSliver01,L1_alphaf_max,4.58e-02,absent,absent,--,
+davof-paraboloidRing-cellSliver01,L1_n_end,3.85e-01,absent,absent,--,
+davof-paraboloidRing-cellSliver01,L1_x_end,1.36e-02,absent,absent,--,
+davof-paraboloidRing-cellSliver01,Eshape_end,4.75e-04,absent,absent,--,
+davof-paraboloidRing-cellSliver01,Ebound_end,4.54e-02,absent,absent,,
+davof-paraboloidRing-cellSliver01,minAlpha_run,-1.7e-15,absent,absent,,
+davof-paraboloidRing-cellSliver01,status,ok,absent,absent,,
 davof-paraboloidRing-ringArea,L1_alphaf_end,5.75e-03,2.01e-03,8.52e-04,1.38,1.52 / 1.24
 davof-paraboloidRing-ringArea,L1_alphaf_max,6.57e-03,2.02e-03,8.83e-04,1.45,1.70 / 1.19
 davof-paraboloidRing-ringArea,L1_n_end,3.28e-02,1.76e-02,8.19e-03,1.00,0.90 / 1.10
