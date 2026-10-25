@@ -7314,3 +7314,34 @@ conservative; P-F2 simpson at round-off except in steps in which the trace passe
 vertex within the step (the quadratic in time breaks), run maximum 1e-12 to 1e-6, end state at
 round-off when no such step ends the run; P-F3 simpson's step cheaper than the prism's. Then
 the sphere ring row at N = 32/64 with simpson against the prism digits as a first look.
+
+Appendix to 10.18 (2026-10-26 09:00, the TIME-QUADRATURE FLUX measured; branch davof-fluxint
+2660a69 on 7c06c57: 4110f48 prism|trapezoidal|simpson, 27c4b21 simpsonSplit (breakpoints at the
+roots of phi along every vertex's and the centre's trajectory, Simpson per sub-interval),
+3f6ee8d the coincident-root jump, 2660a69 gaussSplit (three-point Gauss per sub-interval: no
+value at a breakpoint, no stored a^n, every value a fraction under the same surface S); leia
+0b3b594a, 731dd7ab, f0624f37, 26b76213; prism on the branch identical to 7c06c57 at every step).
+PLANE (exact and ring rows, both arms, N 20 to 160, Co 0.2/0.5): trapezoidal 3e-3 at Co 0.2,
+1e-2 on the oblique arm at Co 0.5 and UNBOUNDED on the normal arm at Co 0.5 (0.11 to 0.15, min
+alpha -0.3), the maximum at the last step (the telescoping clause of P-F1 FALSIFIED, its Co^3
+clause held where bounded); simpson 1e-5 to 1e-4 on the oblique arm, 1e-1 on the normal arm at
+N >= 80 and one divergence (P-F2 FALSIFIED: the trace passes a vertex of a swept face in nearly
+every step, so the quadratic breaks almost always); simpsonSplit at round-off (4e-15 to 2.7e-13)
+on both arms at N = 20/40 and on the oblique arm at every N but one (1.2e-6), and 5e-6 to 7.5e-2
+on the normal arm at N >= 80 with one unbounded case (P-F4 FALSIFIED there: the sub-interval
+ends ARE the degenerate configurations, a pre-image vertex exactly on the surface, and the
+first end value is the stored a^n); gaussSplit at the prism gate's level in all ten decisive
+cases (2.2e-14 to 2.8e-13, bounded, no fallbacks; the full 32-case study queued), at 1.5 to 1.8
+times the prism's cost (three fractions per sub-interval on every face). SPHERE ring row
+N = 32/64, Co 0.2: trapezoidal, simpson and simpsonSplit all DIVERGE (steps 48 to 145);
+gaussSplit completes bounded with 5.610596e-3 / 2.066677e-3 against the prism's 5.616950e-3 /
+2.066471e-3 (-1.1e-3 / +1.0e-4 relative), normal 3.2734e-2 / 1.7601e-2 against 3.2733e-2 /
+1.7601e-2, at 1.5 times the prism's cost. READING: every rule that uses the stored a^n diverges
+on the curved case because under the anchored surface a^n differs from the face's fraction
+under S by the face shift (up to 1e-2 on the ring row): those rules integrate a mix of two
+surfaces, the prism and gaussSplit one; this is the one-surface requirement of the preprint
+seen from the time side. CONCLUSION: the prism stays the flux at Co <= 1 (cheaper, exact in
+space-time); the consistent time quadrature is gaussSplit, which is the form that extends to
+pre-images spanning several cells (breakpoints at the passages of cell faces, each piece
+under its own cell's surface), which nothing in the face geometry blocks but the one-surface-
+per-face selection, the candidate set and the processor exchange do. Not merged.
