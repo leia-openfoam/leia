@@ -7345,3 +7345,18 @@ space-time); the consistent time quadrature is gaussSplit, which is the form tha
 pre-images spanning several cells (breakpoints at the passages of cell faces, each piece
 under its own cell's surface), which nothing in the face geometry blocks but the one-surface-
 per-face selection, the candidate set and the processor exchange do. Not merged.
+
+Appendix to 10.18 (2026-10-26 12:00, the time-quadrature follow-ups). gaussSplit FULL plane study
+(55639111, 32 of 32): ring row 16 of 16 (max 2.748e-13, the prism's own 2.750e-13 on that case),
+exact row 16 of 16 (max 2.445e-13), 0 fallbacks, bounded; the ten direct runs reproduced digit
+for digit; cost 1.5 to 1.8 times the prism. Sphere ring row (55639110): bounded, 0 fallbacks,
+5.610596e-3 / 2.066677e-3 (-1.1e-3 / +1.0e-4 against the prism), 1.5 times the cost.
+simpsonSplitS (73d2721: the first value the face's fraction under S instead of the stored a^n,
+breakpoint values as one-sided limits at 1e-12 of the step): at round-off on the four
+normal-arm cases at N = 80/160 that failed before (2.1e-14 to 5.6e-14, the prism 3.8e-14 to
+1.1e-13) and the sphere ring row at N = 32 completed bounded at 5.625619e-3 (+1.5e-3 against the
+prism); cost equal to gaussSplit's (every breakpoint now costs two fractions). So the two
+changes, not the quadrature rule, were the cause of simpsonSplit's failures: Simpson and Gauss
+between the passages are equivalent once every value is a fraction under S and none sits at
+a passage, both at 1.5 to 1.8 times the prism. CONCLUSION stands: the prism at Co <= 1; the
+breakpoint quadrature under one surface is the consistent form for larger Courant numbers.
