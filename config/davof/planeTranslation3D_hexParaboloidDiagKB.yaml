@@ -1,0 +1,48 @@
+# Diagnostic (2026-10-25 03:30): the Kromer-Bothe rule's fallbacks on the
+# translated PLANE. The plane test of the ring-tensor paraboloid with the
+# kromerBothe rule (planeTranslation3D_hexParaboloid) falls back to the capped
+# split quadrature in thousands of prisms per step on the finer meshes (exact
+# row: 0 per step at N = 20, 1582 at N = 80, 43779 at N = 160 and Co 0.5; ring
+# row, oblique arm: 250 per step at N = 20 already), and the capped fallback
+# leaves the face fractions at 1e-12 to 1e-5 where the uncapped split rule
+# held the gate at 1e-14 up to N = 160. On a plane the ring tensor is zero to
+# round-off, so every trace is a line and the rule should reduce to the exact
+# polygon cut; something in the conic classification or the arc roots rejects
+# the flat traces. Fork commit (after 3f32320) counts the fallbacks by reason
+# (conic, point, root, gradient, area, volume) and prints them per step. Four
+# cases, N = 80, Co 0.5 (32 steps), exact and ring rows, both arms.
+#
+# PREDICTION (before the run): the reason is the chord-normal root ("root":
+# the quadratic along the chord's normal has a leading coefficient at
+# round-off and a negative discriminant), not the classification, because the
+# count grows with N while the classification thresholds are relative.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidDiagKB --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidDiagKB run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidDiagKB
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [80]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_ROW: [davof-paraboloidRing-ringArea, davof-paraboloidRing-exact]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 120
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
