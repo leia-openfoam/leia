@@ -1,0 +1,73 @@
+# The per-step twin of the exact-surface control (sphereTranslation3D_hexExactSurface,
+# 2026-10-25): the same exact sphere as the clipping surface and the same exact
+# initial state, N = 32 / 64 / 128, Co 0.2, rows exact and cellLocal, over ten
+# cells of travel at N = 32 (END_TIME 0.0625: 10 steps at N = 32, 20 at N = 64,
+# 40 at N = 128; the sphere is displaced by exactly one cell every 5 steps at
+# Co 0.2), with the reconstruction error (normal, centre) written at EVERY step
+# (TPF_RECON_ERROR_EVERY_STEP) and the per-face error field at the end.
+#
+# Why: the ladder's row davof-exactSurface-cellLocal reported L1(n) at the end
+# time of 9.47e-4 / 3.29e-4 / 1.37e-4 at N = 32 / 64 / 128 (order 1.40, P-X2
+# predicted 2) with face fractions exact to 1e-14, the SAME value at every Co
+# (160, 320 and 800 steps at N = 32), and the exact row a floor of 8.2e-5 /
+# 1.9e-5 / 1.1e-5. The end state is a cell-by-cell translate of the initial
+# state (END_TIME 1 = N h), so these numbers are properties of the exact state
+# under the diagnostic, not of the accumulation. The diagnostic
+# (reconstructionError::calcError) scores the normal against the exact normal
+# at the centroid of the alpha-positioned PLIC polygon; the static test
+# (leiaTestDavofNormal) scores it at the Detrixhe-Aslam zero-set centroid. On a
+# sphere m_c/|m_c| IS the exact normal at the exact patch centroid
+# (int (x - c) dA = R int n dA), so both numbers are reference-point offsets.
+# This run measures the per-step value directly, before any accumulation.
+#
+# PRE-REGISTERED PREDICTIONS (2026-10-25, before the run):
+# P-S1: row cellLocal, LNormalDiff1 at steps 5 and 10 at every N (the sphere
+#   displaced by exactly one and two cells, the state a translate of the
+#   initial one) equals the ladder's end value at the same N (9.4733e-4 at
+#   N = 32, 3.29e-4 at N = 64, 1.37e-4 at N = 128) to within 1e-4 relative
+#   (write precision 12, the fractions exact to 1e-14); at the intermediate
+#   steps (fractional cell shifts, a different cut of the same sphere) it
+#   lies between 0.6 and 1.6 of that value. FALSIFIED if the step-5 value
+#   differs from the ladder's end value by more than 1 %: the ladder's number
+#   would then depend on the number of steps, i.e. be a transport effect.
+# P-S2: row exact, the same at steps 5 and 10 against the ladder's 8.2367e-5
+#   (N = 32), 1.91e-5 (N = 64), 1.07e-5 (N = 128), the same tolerance.
+# P-S3: L1(alphaf) at every step except the first is below 1e-12 at every N
+#   (the ladder's P-X1, restated).
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexExactSurfaceStep0 --export=ALL,STUDY=davof/sphereTranslation3D_hexExactSurfaceStep0 run-studies.sbatch
+study_name: sphereTranslation3D_hexExactSurfaceStep0
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the write controls are QUOTED: they are rendered
+# verbatim into the OpenFOAM dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-exactSurface-exact, davof-exactSurface-cellLocal]
+  TPF_VOLUME_RULE: [exactSphere]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_AFE_WRITE_FACE_ERROR: ["true"]
+  END_TIME: [0.0625]
+  TPF_WRITE_INTERVAL: [0.0625]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 300
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
