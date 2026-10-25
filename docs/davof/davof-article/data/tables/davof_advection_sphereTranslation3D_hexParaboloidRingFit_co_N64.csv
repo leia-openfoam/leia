@@ -4,6 +4,6 @@ davof-paraboloidRing-ringFit,L1_alphaf_max,1.77e-04,1.45e-04,1.20e-04
 davof-paraboloidRing-ringFit,L1_n_end,3.91e-04,3.61e-04,3.22e-04
 davof-paraboloidRing-ringFit,L1_x_end,9.61e-05,9.61e-05,9.60e-05
 davof-paraboloidRing-ringFit,Eshape_end,9.08e-05,9.08e-05,9.08e-05
-davof-paraboloidRing-ringFit,Ebound_end,1.14e-12,5.46e-15,2.22e-16
-davof-paraboloidRing-ringFit,minAlpha_run,-3.4e-15,-6.3e-15,-5.6e-17
+davof-paraboloidRing-ringFit,Ebound_end,1.80e-12,7.23e-14,1.01e-13
+davof-paraboloidRing-ringFit,minAlpha_run,-6.4e-14,-7.8e-14,-1.0e-13
 davof-paraboloidRing-ringFit,status,ok,ok,ok
