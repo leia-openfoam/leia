@@ -38,6 +38,10 @@ Writes, under --out (the case directory by default):
     tiltdiag_amplification.csv analysis 2: per step and pooled, the median of
                                |tau_meas|/maxNeighbourTilt per bin of sumAbsW
                                (< 0.5, 0.5-1, 1-2, 2-5, > 5)
+    tiltdiag_mixing.csv        analysis 2b: per step the cells whose traced
+                               faces are all set by their own surface against
+                               the cells with at least one foreign face
+                               (median and max |tau_meas|, median sumAbsW)
     tiltdiag_growth.csv        analysis 3: per step max |tau_meas| over all
                                cells and over the cells with sumAbsW > 1,
                                whether the maximum sits in that set, the growth
@@ -211,6 +215,8 @@ def main(argv):
     amp_rows = []
     dead_rows = []
     pooled_amp = {name: [] for name, _, _ in BINS}
+    pooled_ampT = {name: [] for name, _, _ in BINS}
+    mix_rows = []
     pooled_dead = [0, 0]
     for s in order:
         rows = steps[s]
@@ -240,16 +246,44 @@ def main(argv):
         })
 
         # ---- analysis 2: the amplification against sumAbsW ------------------
+        # |tau_meas| over the largest tilt of the setting surfaces, and over
+        # the largest distance of a setting surface from the exact plane at
+        # a trace midpoint (maxTraceDist, over h; absent in the first build)
         bins = {name: [] for name, _, _ in BINS}
+        binsT = {name: [] for name, _, _ in BINS}
         for r in rows:
             if r["maxNeighbourTilt"] > 0:
                 amp = r["tauMeas"]/r["maxNeighbourTilt"]
                 bins[bin_of(r["sumAbsW"])].append(amp)
                 pooled_amp[bin_of(r["sumAbsW"])].append(amp)
+            td = r.get("maxTraceDist", float("nan"))
+            if td > 0:
+                ampT = r["tauMeas"]/td
+                binsT[bin_of(r["sumAbsW"])].append(ampT)
+                pooled_ampT[bin_of(r["sumAbsW"])].append(ampT)
         for name, _, _ in BINS:
             amp_rows.append({"step": s, "bin": name, "n": len(bins[name]),
                              "medianAmplification": median(bins[name]),
-                             "p90Amplification": percentile(bins[name], 90)})
+                             "p90Amplification": percentile(bins[name], 90),
+                             "nTrace": len(binsT[name]),
+                             "medianAmpOverTraceDist": median(binsT[name]),
+                             "p90AmpOverTraceDist": percentile(binsT[name], 90)})
+
+        # ---- analysis 2b: the cells whose traced faces are all set by their
+        # own surface against the cells with at least one foreign face ------
+        own_cells = [r for r in rows if r["nTraced"] > 0 and r["nForeign"] == 0]
+        mix_cells = [r for r in rows if r["nForeign"] > 0]
+        max_own = max((r["tauMeas"] for r in own_cells), default=float("nan"))
+        max_mix = max((r["tauMeas"] for r in mix_cells), default=float("nan"))
+        mix_rows.append({
+            "step": s, "nOwnOnly": len(own_cells), "nMixed": len(mix_cells),
+            "medTauOwnOnly": median([r["tauMeas"] for r in own_cells]),
+            "medTauMixed": median([r["tauMeas"] for r in mix_cells]),
+            "maxTauOwnOnly": max_own, "maxTauMixed": max_mix,
+            "maxMixedOverMaxOwn": (max_mix/max_own) if (max_own and max_own > 0) else float("nan"),
+            "medSumAbsWOwnOnly": median([r["sumAbsW"] for r in own_cells]),
+            "medSumAbsWMixed": median([r["sumAbsW"] for r in mix_cells]),
+        })
 
         # ---- analysis 3: the growth -----------------------------------------
         imax = max(range(n), key=lambda i: tm[i]) if n else -1
@@ -290,7 +324,10 @@ def main(argv):
     for name, _, _ in BINS:
         amp_rows.append({"step": "all", "bin": name, "n": len(pooled_amp[name]),
                          "medianAmplification": median(pooled_amp[name]),
-                         "p90Amplification": percentile(pooled_amp[name], 90)})
+                         "p90Amplification": percentile(pooled_amp[name], 90),
+                         "nTrace": len(pooled_ampT[name]),
+                         "medianAmpOverTraceDist": median(pooled_ampT[name]),
+                         "p90AmpOverTraceDist": percentile(pooled_ampT[name], 90)})
     dead_rows.append({"step": "all", "nHighW": sum(r["nHighW"] for r in dead_rows),
                       "nJoined": pooled_dead[0],
                       "fracOwnSetsTraceNextStep": (pooled_dead[1]/pooled_dead[0]) if pooled_dead[0] else float("nan")})
@@ -308,6 +345,7 @@ def main(argv):
 
     write("tiltdiag_per_step.csv", per_step)
     write("tiltdiag_amplification.csv", amp_rows)
+    write("tiltdiag_mixing.csv", mix_rows)
     write("tiltdiag_growth.csv", growth_rows)
     write("tiltdiag_deadends.csv", dead_rows)
 
@@ -325,6 +363,12 @@ def main(argv):
     pooled = [r for r in amp_rows if r["step"] == "all"]
     print("  P-TD2 pooled median amplification per bin:",
           ", ".join(f"{r['bin']}: {r['medianAmplification']:.3g} (n={r['n']})" for r in pooled))
+    print("  P-TD2 pooled median |tau|/maxTraceDist per bin:",
+          ", ".join(f"{r['bin']}: {r['medianAmpOverTraceDist']:.3g} (n={r['nTrace']})" for r in pooled))
+    last = mix_rows[-1]
+    print(f"  P-TD2b own-only against mixed cells at the last step: max |tau| {last['maxTauOwnOnly']:.3g}"
+          f" (n={last['nOwnOnly']}) against {last['maxTauMixed']:.3g} (n={last['nMixed']}),"
+          f" ratio {last['maxMixedOverMaxOwn']:.3g}; median {last['medTauOwnOnly']:.3g} against {last['medTauMixed']:.3g}")
     inset = [r["maxInHighW"] for r in growth_rows]
     inrange = [r["growthInRange"] for r in growth_rows[1:]]
     print(f"  P-TD3 max in high-W set: {sum(inset)}/{len(inset)} steps;"
