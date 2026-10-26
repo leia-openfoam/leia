@@ -55,6 +55,50 @@
 # describe the turn at all), INCONCLUSIVE otherwise; the deciding numbers are
 # the correlation of P-TD1 and the bin medians of P-TD2.
 #
+# MEASURED (2026-10-26, fork davof-tiltdiag with the atan2 tilt and the column
+# maxTraceDist; the first build floored every tilt at 1.5e-8 through acos and
+# is superseded, its tau columns identical to the digit). 80 steps,
+# L1(alphaf) 3.0e-15 to 2.7e-10, 3312 to 287 interface cells. P-TD1 HOLDS:
+# over the steps after the first the log-log correlation is 0.833 to 0.996
+# (median 0.992; 0.81 at step 1), the median ratio |tau_meas|/|tau_pred|
+# 0.971 to 1.01, the fraction with cosine > 0.9 0.854 to 0.97 (median 0.953,
+# cosine < -0.9 at 0.2 %): the linearised sum over the setting surfaces IS
+# the turn. P-TD2: no interface cell has sumAbsW below 1.59 (the own faces
+# alone weigh about 2), so the bins below 1 are empty by construction and
+# the clause "twice the bin below 0.5" cannot be evaluated; over the
+# populated bins the pooled median of |tau_meas|/maxNeighbourTilt rises
+# 0.64 (1-2, n = 63927), 0.94 (2-5, n = 33539), 2.99 (> 5, n = 24711; p90
+# 20.8), and of |tau_meas|/maxTraceDist 1.16, 1.43, 5.51 (p90 28.3): not
+# flat. The split by the setting surfaces (tiltdiag_mixing.csv): the cells
+# whose traced faces are all set by their own surface turn by their own tilt
+# (median |tau|/selfTilt 0.99 to 1.06, max |tau| 2.0e-11 at step 1 to
+# 2.0e-9 at step 80), the cells with a foreign face reach 2.1e-6, a factor
+# 1e3 above, with the median 5 to 6 times the own-only median from step 20
+# on. The largest turn of every step sits in a corner-cut cell WITHOUT a
+# surface of its own (alpha rounded to 1, A_k/h^2 2e-4 to 5e-3, three
+# traced faces all foreign, sumAbsW 60 to 300, |tau|/maxNeighbourTilt 15
+# to 67, cosine 1.000): 98 % of the ten largest turns per step are such
+# cells and 0.7 % of them set a traced face at the next step. P-TD3: the
+# maximum lies in the sumAbsW > 1 set at 80/80 steps (every cell is in it);
+# the growth factor of max|tau_meas| per step (0.43 to 3.2, the argmax cell
+# changing) lies within [min, max] sumAbsW of that set at 7/79 steps: the
+# turn does NOT compound by the weight per step. Over the run every maximum
+# and median grows at one rate, 1.14 to 1.22 per step (max|tau| 1.158,
+# median |tau| 1.149, max selfTilt 1.218, max maxNeighbourTilt 1.212,
+# L1(alphaf) 1.155): one unstable mode of the loop, to which all cells are
+# slaved. P-TD4 FAILS as written (0.82 of the sumAbsW > 1 cell-steps set a
+# traced face next, because that set is every cell); by bin: 1.00 (1-2),
+# 0.71 (2-5), 0.64 (5-20), 0.00 (> 20). VERDICT on the deciding numbers:
+# CONFIRMED (P-TD1 at 0.99, the P-TD2 medians rising 0.64 / 0.94 / 2.99),
+# with the literal P-TD2 baseline unmeasurable in this case. What is shown:
+# the own normal turns by the offsets of the foreign surfaces that set its
+# faces, amplified by 1/A_k in the small-area cells; the most amplified
+# cells (no surface, sumAbsW > 20) are dead ends, the feedback runs through
+# the cells with sumAbsW 2 to 20 at a damped rate of about 1.16 per step,
+# which the own-only cells (amplification 1) cannot produce. NOT shown: that
+# removing the foreign faces (one surface per face pair, or the ring normal)
+# removes the growth; that is the next test, not this one.
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidTiltDiag --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidTiltDiag run-studies.sbatch
 study_name: planeTranslation3D_hexParaboloidTiltDiag
 studies_dir: studies/davof
