@@ -1,0 +1,17 @@
+row,metric,Co=0.2
+davof-exactSurface-exact,L1_alphaf_end,9.21e-14
+davof-exactSurface-exact,L1_alphaf_max,1.44e-08
+davof-exactSurface-exact,L1_n_end,4.55e-05
+davof-exactSurface-exact,L1_x_end,9.87e-05
+davof-exactSurface-exact,Eshape_end,9.13e-05
+davof-exactSurface-exact,Ebound_end,1.29e-14
+davof-exactSurface-exact,minAlpha_run,-9.2e-15
+davof-exactSurface-exact,status,ok
+davof-exactSurface-cellLocal,L1_alphaf_end,9.21e-14
+davof-exactSurface-cellLocal,L1_alphaf_max,1.44e-08
+davof-exactSurface-cellLocal,L1_n_end,4.25e-04
+davof-exactSurface-cellLocal,L1_x_end,9.87e-05
+davof-exactSurface-cellLocal,Eshape_end,9.13e-05
+davof-exactSurface-cellLocal,Ebound_end,1.29e-14
+davof-exactSurface-cellLocal,minAlpha_run,-9.2e-15
+davof-exactSurface-cellLocal,status,ok
