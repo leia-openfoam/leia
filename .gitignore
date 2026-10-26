@@ -216,3 +216,6 @@ docs/knowledge-base/graph3d/graph.json
 !docs/knowledge-base/assets/*.svg
 docs/knowledge-base/.quartz/digests/*
 !docs/knowledge-base/.quartz/digests/README.md
+
+# the DAVOF discussion document (docs/davof/davof-discussion) is never tracked: Tomislav, 2026-10-26
+docs/davof/davof-discussion/
