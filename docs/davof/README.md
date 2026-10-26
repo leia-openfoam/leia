@@ -2,7 +2,22 @@
 
 The theme of the DAVOF studies (`config/davof/*.yaml`, `cases/davof/*`,
 `studies/davof/`). Its results land in `davof-article/data/{figures,tables}`
-through `workflow/scripts/make_davof_normal_table.py`; there is no deck yet.
+through `workflow/scripts/make_davof_normal_table.py` and
+`make_davof_advection_table.py`; there is no deck yet.
+
+Two document folders live here (2026-10-26):
+
+- `davof-article/`: the preprint (`ms.tex`, its table bodies and figures,
+  `make_table_advection.py`) and, in `data/`, the exported tables and figures
+  of every study, the only tracked part. The preprint holds results only.
+- `davof-discussion/`: the discussion document for the decisions on the
+  method's next steps (`discussion.tex`, built with `latexmk -pdf`): the state
+  of the implementation, every measured result with pgfplots charts of the
+  study data, the predictions ledger, the open items and the options with
+  their costs. Its data files under `data/` are written by
+  `make_discussion_data.py` from `../davof-article/data/tables` (and, where
+  no table exists, from the STATUS appendices named in that script); never
+  edited by hand.
 
 DAVOF transports, next to the cell volume fraction `alpha_c`, the liquid area
 fraction `alpha_f` of every face, and recovers the interface area normal of a
