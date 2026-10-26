@@ -7360,3 +7360,32 @@ changes, not the quadrature rule, were the cause of simpsonSplit's failures: Sim
 between the passages are equivalent once every value is a fraction under S and none sits at
 a passage, both at 1.5 to 1.8 times the prism. CONCLUSION stands: the prism at Co <= 1; the
 breakpoint quadrature under one surface is the consistent form for larger Courant numbers.
+
+Appendix to 10.18 (2026-10-26 evening, the tilt diagnostic of the own-normal loop). Tomislav's
+objection: on the plane every operation of the loop is exact, so a small wetted patch can be no
+source of error. Right: the plane is a fixed point of the loop in exact arithmetic, and the own-
+normal plane runs start at round-off (2e-15 to 2e-14 after step 1, the exact and ring rows'
+values) and grow geometrically from step 2 by 1.10 to 1.26 per step at Co 0.2 and 1.6 to 8.8 at
+Co 0.5 (davof_advection_history_planeTranslation3D_hexParaboloid.csv): the linear instability
+of that fixed point. Linearised mechanism (discussion document, sec. "The own normal in the
+loop"): the identity a_k = -sum alpha_f S_f is exact for ONE surface (own faces: signed weights
+sum to 1, gain exactly 1, no restoring force); the loop feeds it faces set by other cells'
+surfaces with weights w_f = l_f s_f / A_k (s_f the trace's distance from the SETTING cell's
+patch centroid), above 1 where the patch is small. TEST (study
+planeTranslation3D_hexParaboloidTiltDiag, config/davof, N = 80, Co 0.2, normal arm, own normal,
+80 steps, job 55661810, fork branch davof-tiltdiag `tiltDiagnostics true`, NOT merged into davof;
+leia branch davof-tiltdiag merged here; predictions P-TD1..4 and the measured paragraph in the
+config header; summary workflow/scripts/tilt_diagnostics_summary.py): (i) the linearised sum IS
+the turn, log-log correlation 0.83 to 0.996 (median 0.992), median ratio 0.97 to 1.01, cosine
+> 0.9 in 85 to 97 %; (ii) own-only cells turn by their own tilt (ratio 0.99 to 1.06, max 2e-11 to
+2e-9), cells with a foreign face reach 2e-6; (iii) amplification (turn / largest setting tilt)
+by sum|w|: 0.64 (1-2), 0.94 (2-5), 2.99 (> 5, p90 21); the largest turn of every step is a
+corner cut WITHOUT a surface (alpha rounded to 1, A_k 2e-4 to 5e-3 h^2, sum|w| 60-300,
+amplification 15-67), a dead end (0.7 % set a traced face next; 71 % of the 2-5 cells, 64 % of
+5-20); (iv) one mode: the turn does not compound by the weight per step; max turn, median turn,
+max own tilt and L1(alphaf) all grow at 1.14 to 1.22 per step (1.158 / 1.149 / 1.218 / 1.155).
+Caveat: sum|w| includes the own faces (moduli about 2), so no cell is below 1.6 and the
+pre-registered "below 1" baseline bin is empty by construction; verdict on the deciding numbers
+CONFIRMED with that caveat. NOT shown: that removing the foreign input removes the growth (the
+consistency-measure row is that test). Preprint: one sentence in "What this says"; the
+"normal in the loop" paragraph states the mixed input and the weights.
