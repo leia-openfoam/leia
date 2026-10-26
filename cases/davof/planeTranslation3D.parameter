@@ -106,6 +106,14 @@ values
     TPF_PLANE_NY ( 0.5 );
     TPF_PLANE_NZ ( 0.8124 );
 
+    // the fork's tilt diagnostic of the curved loop on the translated plane
+    // (fork branch davof-tiltdiag, isoAdvectionTiltDiagnostics.C, 2026-10-26):
+    // per step and interface cell the measured turn of the own normal
+    // against the linearised prediction from the surfaces that set the
+    // cell's faces, written to postProcessing/tiltDiagnostics/; serial only;
+    // builds before it ignore the key. Study: planeTranslation3D_hexParaboloidTiltDiag.
+    TPF_TILT_DIAGNOSTICS ( false );
+
     // controlDict writeInterval in steps (timeStep write control): the end
     // time only with this default; 1 writes every step
     TPF_WRITE_STEPS ( 1000000 );

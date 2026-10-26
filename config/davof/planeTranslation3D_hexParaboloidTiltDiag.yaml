@@ -1,0 +1,87 @@
+# The tilt diagnostic of the curved loop with the OWN normal on the translated
+# plane (fork branch davof-tiltdiag, isoAdvectionTiltDiagnostics.C, 2026-10-26):
+# ONE case of planeTranslation3D_hexParaboloid, N = 80, Co 0.2, the normal
+# arm, row davof-paraboloidRing-cellLocal (the ring-tensor paraboloid by
+# volume framed by the cell's own normal), the Kromer-Bothe rule, with
+# tiltDiagnostics true. Run from the agent clone
+# /work/scratch/tm83tomy/davof/agents/tiltdiag/leia, whose sibling
+# TwoPhaseFlow is that branch's build. On this case the own-normal row ran 80
+# steps to L1(alphaf) 2.7e-10 without tripping the abort guard (the guard
+# stays on), the face-fraction error growing by a factor 1.10 to 1.26 per
+# step although every operation of the loop is exact for a plane.
+#
+# THE QUESTION. The identity a_k = -sum_f alpha_f S_f (the own normal) is
+# exact for the fractions of ONE surface; in the loop the fractions of cell
+# k's faces are set by DIFFERENT surfaces (the upwind cell's by the sign of
+# phi_f, the lexicographically smaller centre's on a zero-flux face, a
+# second-ring surface where the upwind cell has none). The fork records, where
+# the choice is made, the cell u(f) whose surface set every face, and writes
+# per step and interface cell (postProcessing/tiltDiagnostics/cells_<step>.csv)
+# the measured turn tau_meas = transverse part of a_k^{n+1} over |a_k| against
+# the linearised prediction
+#
+#   tau_pred = (1/A_k) sum_f ell_f d_{u(f)}(m_f) t_f
+#
+# over the faces whose pre-image f - U dt carries a trace of the exact plane
+# Pi^n (length ell_f, midpoint m_f), d_u the signed distance from the tangent
+# plane of u's surface, t_f the unit transverse part of the outward face
+# normal, A_k the wetted patch area of the exact plane in k; the weights
+# w_f = ell_f |m_f - x*_u|/A_k, the neighbours' tilts and offsets, and whether
+# the cell's own surface sets a traced face at the next step. The script
+# workflow/scripts/tilt_diagnostics_summary.py (post_solve, after the
+# converter) writes the four summary tables next to advectorVoF.csv
+# (tiltdiag_per_step.csv, tiltdiag_amplification.csv, tiltdiag_growth.csv,
+# tiltdiag_deadends.csv).
+#
+# PRE-REGISTERED (2026-10-26): P-TD1 the prediction explains the measured
+# turn: over the cells with |tau_pred| > 1e-13, the Pearson correlation of
+# log|tau_meas| with log|tau_pred| is above 0.8 and the median ratio
+# |tau_meas|/|tau_pred| lies in [0.5, 2] at every step after the first, and
+# the fraction of cells with cosine(tau_meas, tau_pred) > 0.9 is above 0.7
+# (a cosine near -1 instead means the sign convention of the sum is flipped;
+# reported and flipped, not hidden). P-TD2 the amplification: the median of
+# |tau_meas|/maxNeighbourTilt rises with sumAbsW across the bins (< 0.5,
+# 0.5-1, 1-2, 2-5, > 5), the bins above 1 at least twice the bin below 0.5;
+# a flat relation REFUTES the mechanism. P-TD3 the growth: at every step the
+# cells with sumAbsW > 1 carry the largest |tau_meas| (the maximum over all
+# interface cells lies in that set) and the growth factor per step of
+# max|tau_meas| lies within the range of sumAbsW of those cells. P-TD4 the
+# dead ends: among the cells with sumAbsW > 1 the fraction whose own surface
+# sets a traced face at the next step is below 0.5 (the amplified normal does
+# not feed back directly through its own faces). VERDICT: the mechanism is
+# CONFIRMED when P-TD1 and P-TD2 hold, REFUTED when P-TD2 fails with P-TD1
+# holding (the prediction is right but the amplification does not sit in the
+# mixed-surface cells) or when P-TD1 fails (the linearised prediction does not
+# describe the turn at all), INCONCLUSIVE otherwise; the deciding numbers are
+# the correlation of P-TD1 and the bin medians of P-TD2.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidTiltDiag --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidTiltDiag run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidTiltDiag
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv && python3 {REPO}/workflow/scripts/tilt_diagnostics_summary.py --case . --out ."
+
+axes_override:
+  N_CELLS: [80]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-paraboloidRing-cellLocal]
+  TPF_VELOCITY_ARM: [normal]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_TILT_DIAGNOSTICS: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

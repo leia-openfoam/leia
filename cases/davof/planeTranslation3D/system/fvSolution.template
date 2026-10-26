@@ -104,6 +104,9 @@ solvers
         fluxIntegration @!TPF_FLUX_INTEGRATION!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
+        // the tilt diagnostic of the curved loop on the translated plane
+        // (fork branch davof-tiltdiag, 2026-10-26; ignored by builds before it)
+        tiltDiagnostics @!TPF_TILT_DIAGNOSTICS!@;
         defectLevels    3;
         writeCurvedFields false;
         exactNormal
