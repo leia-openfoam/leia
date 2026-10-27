@@ -22,7 +22,8 @@ Geometric Volume-of-Fluid (VOF) on unstructured polyhedral meshes reconstructs t
 - leia organisation name: `leia-openfoam` is correct (https://github.com/leia-openfoam/leia answers 200, `leia-methods/leia` 404; leia's own remote is leia-openfoam). The manuscript, the bibliography and the tag URLs use it.
 - Puckett 1991: title, proceedings (Fourth International Symposium on Computational Fluid Dynamics, Davis, CA, 1991) and pages 933–938 agree with the citation used in the literature (e.g. the reference list of arXiv:1703.02202); the editor field (H. Dwyer) is the symposium's organiser and is kept. No DOI exists for these proceedings.
 
-**Before submission (open item)**
-1. Review comment 16 on the heading of Section 4.2, "Plane: exactness": the annotation reads "Instead of" and stops; the heading is unchanged until Tomislav names the replacement.
+- Review comment 16 (heading "Plane: exactness"): withdrawn by Tomislav on 2026-10-27; the heading stays.
+
+**Nothing is open. The archive of tag `davof-v1.0` is the submission.**
 2. If the manuscript changes after the tag, move the leia tag to the final commit (`git tag -f davof-v1.0 && git push -f origin davof-v1.0`) or tag `davof-v1.0.1`; the fork tag stays.
 3. Run `bash make_arxiv_package.sh`; upload `_build/davof-preprint-arxiv.tar.gz`; paste the metadata above.
