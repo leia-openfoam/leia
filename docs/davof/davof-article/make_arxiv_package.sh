@@ -52,6 +52,7 @@ cat > "$OUT/CHECKLIST.md" <<EOF
 - Code: TwoPhaseFlow fork https://github.com/tmaric/TwoPhaseFlow branch davof at the commit of the tables (7c06c57); leia https://github.com/leia-openfoam/leia branch development. Tag both (e.g. davof-preprint-v1) before submission so the citation is stable.
 - NOT SUBMITTED: Tomislav submits. Before submission: his read of the PDF, the leia commit of docs/davof/davof-article (ms.tex, figures, scripts, reviews/), the push, the tags.
 EOF
-( cd _build && tar czf davof-preprint-arxiv.tar.gz arxiv )
+# files at the top level of the archive, as arXiv expects (the checklist stays outside)
+( cd "$OUT" && tar czf ../davof-preprint-arxiv.tar.gz --exclude=CHECKLIST.md . )
 echo "package: $OUT ($(ls "$OUT" | wc -l) files), _build/davof-preprint-arxiv.tar.gz; abstract $ABS characters; $PAGES pages"
 cat "$OUT/CHECKLIST.md"
