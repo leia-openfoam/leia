@@ -21,19 +21,30 @@ if anything below does not match what it finds, it stops and reports instead of 
 
 | item | value |
 |---|---|
-| source archive | `C:\Users\TomislavMaric\Proton Drive\tomi.maric\My files\Documents\research\projects\2026-DFG-AVOF\_build\davof-preprint-arxiv-v1.0.tar.gz` (also `~/OpenFOAM/repos/davof/leia/docs/davof/davof-article/_build/davof-preprint-arxiv.tar.gz` in WSL) |
+| source archive (Windows) | `C:\Users\TomislavMaric\Proton Drive\tomi.maric\My files\Documents\research\projects\2026-DFG-AVOF\_build\davof-preprint-arxiv-v1.0.tar.gz` |
+| source archive (WSL Ubuntu, same content) | `/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/_build/davof-preprint-arxiv.tar.gz`; the Windows file seen from WSL is `/mnt/c/Users/TomislavMaric/Proton Drive/tomi.maric/My files/Documents/research/projects/2026-DFG-AVOF/_build/davof-preprint-arxiv-v1.0.tar.gz`; the WSL folder seen from Windows is `\\wsl$\Ubuntu\home\tmaric\OpenFOAM\repos\davof\leia\docs\davof\davof-article\_build\` |
+| unpacked copy of the same files | `/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/_build/arxiv/` (with `CHECKLIST.md`, which is not part of the archive) |
+| manuscript folder (sources, scripts, review record) | `/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/` = `\\wsl$\Ubuntu\home\tmaric\OpenFOAM\repos\davof\leia\docs\davof\davof-article\` |
+| the PDF as built here, for comparison with arXiv's | `C:\Users\TomislavMaric\Proton Drive\tomi.maric\My files\Documents\research\projects\2026-DFG-AVOF\_build\davof-preprint-draft-2026-10-27.pdf` (= `/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/_build/ms.pdf`) |
 | archive contents | 20 files at the top level: `ms.tex`, `ms.bbl`, five `fig_*.tex`, eight `table_*_pp.tex`, `tikz_styles.tex`, `plic_ellipsoid.pdf`, `onering_convergence.png`, `fig_ladders.png`, `davof_advection_history_sphereTranslation3D_hex_N64_Co0.2.png`; no subfolder, no `.bib`, no PDF of the paper |
 | expected build | pdflatex, document class `elsarticle` (in arXiv's TeX Live), 45 pages, no undefined references |
-| metadata source | `~/OpenFOAM/repos/davof/leia/docs/davof/davof-article/arxiv-metadata.md` (the texts below are copied from it; if the two differ, that file wins and the agent reports the difference) |
+| metadata source | `/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/arxiv-metadata.md` = `\\wsl$\Ubuntu\home\tmaric\OpenFOAM\repos\davof\leia\docs\davof\davof-article\arxiv-metadata.md` (the texts below are copied from it; if the two differ, that file wins and the agent reports the difference) |
+| this instruction file | `/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/ARXIV-SUBMISSION-AGENT.md` |
+| where to write the report | `/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/reviews/2026-10-27-arxiv-submission-report.md` (create; this folder is tracked in leia, commit it on branch `development` with a message ending in `Co-Authored-By: <agent name> <noreply@anthropic.com>`) |
 | code and data | tag `davof-v1.0` in https://github.com/leia-openfoam/leia and https://github.com/tmaric/TwoPhaseFlow; both tag URLs must answer HTTP 200 before submission |
 
-Pre-flight checks the agent runs (shell, read-only):
+Pre-flight checks the agent runs (WSL Ubuntu shell, read-only):
 
 ```bash
-tar tzf "<archive>" | wc -l                 # 21 lines: "./" plus 20 files
-tar tzf "<archive>" | grep -c "/.*/"        # 0: nothing in a subfolder
+A="/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/_build/davof-preprint-arxiv.tar.gz"
+W="/mnt/c/Users/TomislavMaric/Proton Drive/tomi.maric/My files/Documents/research/projects/2026-DFG-AVOF/_build/davof-preprint-arxiv-v1.0.tar.gz"
+cmp "$A" "$W" && echo "same archive on both sides"
+tar tzf "$A" | wc -l                        # 21 lines: "./" plus 20 files
+tar tzf "$A" | grep -c "/.*/"               # 0: nothing in a subfolder
+tar tzf "$A" | grep -c "ms.tex\|ms.bbl"     # 2
 curl -s -o /dev/null -w "%{http_code}\n" https://github.com/leia-openfoam/leia/tree/davof-v1.0   # 200
 curl -s -o /dev/null -w "%{http_code}\n" https://github.com/tmaric/TwoPhaseFlow/tree/davof-v1.0  # 200
+pdfinfo /home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/_build/ms.pdf | grep Pages   # 45
 ```
 
 If any check fails: stop, report, do not submit.
@@ -75,7 +86,7 @@ Primary: physics.flu-dyn (Fluid Dynamics). Cross-lists: math.NA (Numerical Analy
 6. **Process**: let AutoTeX run. Open the log. Required outcome: "pdflatex" build succeeded, no errors; warnings about overfull boxes are acceptable. Download or open the produced PDF and check:
    - 45 pages (44 or 46 is acceptable if the TeX Live version differs; more than that means a missing input, report it);
    - page 1 shows the title of section 2, "Tomislav Marić", the affiliation, and the footer "Tomislav Marić, preprint, 27 October 2026";
-   - no "??" anywhere (`pdftotext file.pdf - | grep -c "??"` must print 0);
+   - no "??" anywhere: save arXiv's PDF as `/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/_build/arxiv-autotex.pdf` and run `pdftotext /home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/_build/arxiv-autotex.pdf - | grep -c "??"`, which must print 0;
    - the four graphics are present (page with the PLIC ellipsoid renderings, the one-ring convergence plot, the history plot, the ladders figure);
    - the appendix "Implementation record of the transport studies" and the bibliography are present at the end.
    If the build fails because `elsarticle.cls` or `elsarticle-num-names.bst` is not found, report it; the fix (adding the class file to the archive) is made by the maintainer, not on the site.
@@ -86,7 +97,9 @@ Primary: physics.flu-dyn (Fluid Dynamics). Cross-lists: math.NA (Numerical Analy
 
 ## 4. What to report back
 
-- Pre-flight: the four checks of section 1 with their outputs.
+Write the report to `/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/reviews/2026-10-27-arxiv-submission-report.md` and put the preview screenshot beside it as `2026-10-27-arxiv-preview.png`; the report contains:
+
+- Pre-flight: the checks of section 1 with their outputs.
 - The AutoTeX result: page count, warnings worth knowing, the "??" count.
 - The preview screenshot and the field-by-field comparison with section 2 (any difference is listed, even a punctuation change arXiv made).
 - The submission id, and later the arXiv id with its version.
@@ -94,7 +107,7 @@ Primary: physics.flu-dyn (Fluid Dynamics). Cross-lists: math.NA (Numerical Analy
 
 ## 5. After the arXiv id exists (not the submission agent's job, listed so that nothing is forgotten)
 
-- `arxiv-metadata.md` and `FINDINGS.md` get the id.
-- The animation's title card and YouTube description get the id; the preprint's next version cites the animation.
+- `/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-article/arxiv-metadata.md` and `C:\Users\TomislavMaric\Proton Drive\tomi.maric\My files\Documents\research\articles\2026-article-area-of-fluid\FINDINGS.md` get the id.
+- The animation (`/home/tmaric/OpenFOAM/repos/davof/leia/docs/davof/davof-animation/davof_identities.py`, title card) and its YouTube description get the id; the preprint's next version cites the animation.
 - The research proposal replaces "arXiv preprint, in preparation, 2026" by the id (the proposal session does this).
 - A version 2 of the preprint, when it comes, cites `arXiv:YYMM.NNNNN` as its own v1 and bumps the repository tag.
