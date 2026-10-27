@@ -18,7 +18,11 @@ Geometric Volume-of-Fluid (VOF) on unstructured polyhedral meshes reconstructs t
 
 **Data and code (decision of 2026-10-27)** No figshare deposit for version 1: the tables stay in the preprint and as CSV files in the leia repository; both repositories are cited at the release tag `davof-v1.0` (leia: branch development with the manuscript folder; TwoPhaseFlow fork: branch davof at the commit of the tables, with the branches davof-fluxint and davof-tiltdiag named for the appendix results).
 
-**Before submission (open items)**
-1. Decide review comment 16 (heading "Plane: exactness"), the leia organisation name (leia-openfoam in the manuscript, leia-methods in the comment), and check the Puckett 1991 entry.
+**Resolved (2026-10-27, late)**
+- leia organisation name: `leia-openfoam` is correct (https://github.com/leia-openfoam/leia answers 200, `leia-methods/leia` 404; leia's own remote is leia-openfoam). The manuscript, the bibliography and the tag URLs use it.
+- Puckett 1991: title, proceedings (Fourth International Symposium on Computational Fluid Dynamics, Davis, CA, 1991) and pages 933–938 agree with the citation used in the literature (e.g. the reference list of arXiv:1703.02202); the editor field (H. Dwyer) is the symposium's organiser and is kept. No DOI exists for these proceedings.
+
+**Before submission (open item)**
+1. Review comment 16 on the heading of Section 4.2, "Plane: exactness": the annotation reads "Instead of" and stops; the heading is unchanged until Tomislav names the replacement.
 2. If the manuscript changes after the tag, move the leia tag to the final commit (`git tag -f davof-v1.0 && git push -f origin davof-v1.0`) or tag `davof-v1.0.1`; the fork tag stays.
 3. Run `bash make_arxiv_package.sh`; upload `_build/davof-preprint-arxiv.tar.gz`; paste the metadata above.
