@@ -1,0 +1,93 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.7, >=Stealth, font=\small]
+  \colorlet{fluidcol}{blue!18}
+  \colorlet{gascol}{gray!10}
+  \colorlet{ifacecol}{blue!65!black}
+  \colorlet{normcol}{red!65!black}
+  \colorlet{wettedcol}{orange!80!black}
+  \colorlet{gasbdrycol}{teal!58!black}
+  \colorlet{bdrycol}{black!50}
+  \colorlet{facecol}{orange!80!black}
+  \colorlet{sweptcol}{black!8}
+  % Coordinates
+  \coordinate (Sf_bot) at ( 0.00, -0.80);
+  \coordinate (Sf_top) at ( 0.20,  0.90);
+  \coordinate (LK1) at (-1.60, -0.82);
+  \coordinate (LK2) at (-0.40, -0.98);
+  \coordinate (LK5) at (-0.55,  1.02);
+  \coordinate (LK6) at (-1.52,  0.88);
+  \coordinate (RL2) at ( 1.78, -0.58);
+  \coordinate (RL3) at ( 1.62,  0.92);
+  \coordinate (RL4) at ( 0.48,  1.05);
+  \coordinate (Pe_k) at (-1.56,  0.12);
+  \coordinate (Pf_k) at ( 0.12,  0.22);
+  \coordinate (Pf_l) at ( 0.07, -0.21);
+  \coordinate (Pe_l) at ( 1.70,  0.17);
+  \coordinate (HA) at (-0.48, -0.77);
+  \coordinate (HB) at (-0.34,  0.93);
+  \coordinate (HP) at (-0.40,  0.19);
+  % ---- Gas fills (whole cell background, then liquid overwrites) ----
+  \fill[gascol] (LK1)--(LK2)--(Sf_bot)--(Sf_top)--(LK5)--(LK6)--cycle;
+  \fill[gascol] (Sf_bot)--(RL2)--(RL3)--(RL4)--(Sf_top)--cycle;
+  % ---- Swept region ----
+  \fill[sweptcol] (Sf_bot)--(Sf_top)--(HB)--(HA)--cycle;
+  % ---- Liquid fills ----
+  \fill[fluidcol] (LK1)--(LK2)--(Sf_bot)--(Pf_k)--(Pe_k)--cycle;
+  \fill[fluidcol] (Sf_bot)--(RL2)--(Pe_l)--(Pf_l)--cycle;
+  % ---- Cell boundaries: thin neutral base ----
+  \draw[bdrycol, line width=0.6pt]
+    (LK1)--(LK2)--(Sf_bot)--(Sf_top)--(LK5)--(LK6)--cycle;
+  \draw[bdrycol, line width=0.6pt]
+    (Sf_bot)--(RL2)--(RL3)--(RL4)--(Sf_top)--cycle;
+  % ---- Colored boundary overdraws ----
+  % Left cell: liquid boundary (Pe_k -> LK1 -> LK2 -> Sf_bot)
+  \draw[wetted] (Pe_k)--(LK1)--(LK2)--(Sf_bot);
+  % Left cell: gas boundary (Sf_top -> LK5 -> LK6 -> Pe_k)
+  \draw[gasbdrycol, line width=1.8pt] (Sf_top)--(LK5)--(LK6)--(Pe_k);
+  % Right cell: liquid boundary (Sf_bot -> RL2 -> Pe_l)
+  \draw[wetted] (Sf_bot)--(RL2)--(Pe_l);
+  % Right cell: gas boundary (Pe_l -> RL3 -> RL4 -> Sf_top)
+  \draw[gasbdrycol, line width=1.8pt] (Pe_l)--(RL3)--(RL4)--(Sf_top);
+  % ---- PLIC planes ----
+  \draw[ifacecol, line width=2.2pt] (Pe_k)--(Pf_k);
+  \draw[ifacecol, line width=2.2pt] (Pf_l)--(Pe_l);
+  % ---- Dots at PLIC endpoints ----
+  \fill[ifacecol] (Pe_k) circle (1.4pt);
+  \fill[ifacecol] (Pf_k) circle (1.4pt);
+  \fill[ifacecol] (Pf_l) circle (1.4pt);
+  \fill[ifacecol] (Pe_l) circle (1.4pt);
+  % ---- Face S_f (orange, on top) ----
+  \draw[facecol, line width=3.2pt] (Sf_bot)--(Sf_top);
+  % ---- Pre-image hat-S_f ----
+  \draw[wetted]          (HA)--(HP);
+  \draw[bdrycol!75, dashed, line width=1.6pt]  (HP)--(HB);
+  % ---- Backward-trace arrows ----
+  \draw[->, gray!55!black, line width=1.0pt] (Sf_bot) -- (HA);
+  \draw[->, gray!55!black, line width=1.0pt] (Sf_top) -- (HB);
+  % ---- n_f outward from S_f midpoint ----
+  \draw[normcol, ->, line width=1.2pt]
+    (0.12, 0.05) -- ++(0.46,-0.054) node[pos=1, right=1pt, normcol]{$\mathbf{n}_f$};
+  % ================================================================
+  % LABELS
+  % ================================================================
+  \node[blue!62!black, font=\footnotesize] at (-1.08, -0.50) {$\Omega_k^-(t^n)$};
+  \node[ifacecol,      font=\footnotesize] at (-1.06,  0.26) {$\tilde{\Sigma}_k(t^n)$};
+  \node[black!55,      font=\footnotesize] at (-1.08,  0.76) {$\Omega_k^+(t^n)$};
+  \node[blue!62!black, font=\footnotesize] at ( 1.10, -0.25) {$\Omega_l^-(t^n)$};
+  \node[ifacecol,      font=\footnotesize] at ( 1.04,  0.18) {$\tilde{\Sigma}_l(t^n)$};
+  \node[black!55,      font=\footnotesize] at ( 1.10,  0.68) {$\Omega_l^+(t^n)$};
+  % S_f label with leader
+  \node[facecol, font=\footnotesize, anchor=west] at (0.38, -0.56) {$S_f\,(t^{n+1})$};
+  \draw[->, facecol!70, line width=0.5pt] (0.37,-0.56) -- (0.04,-0.56);
+  % hat-S_f label with leader
+  \node[black!60, font=\footnotesize, anchor=west] at (-0.92, 0.60) {$\hat{S}_f$};
+  \draw[->, black!45, line width=0.5pt] (-0.76,0.60) -- (-0.38,0.60);
+  % Wetted part label with leader
+  \node[wettedcol, font=\footnotesize, anchor=east] at (-0.94, -0.28)
+    {$\hat{S}_f\!\cap\!\Omega_k^-$};
+  \draw[->, wettedcol!70, line width=0.5pt] (-0.94,-0.28) -- (-0.46,-0.29);
+\end{tikzpicture}
+\caption{The semi-Lagrangian face-area update \cref{eq:face-update} on two neighbouring cells. The face $S_f$ (orange) is traced backward to its pre-image $\hat{S}_f$; the wetted part $\hat{S}_f\cap\Omega_k^-(t^n)$ (violet) gives $\alpha_f^{n+1}$ directly. The volume flux of $\alpha_k$ comes from the plane that $\alpha_k$ positions; the pre-image is clipped against the clipping surface of the cell that contains it, with the primitives of the face-vertex transport \citep{MaricMarschallBothe2018}.}
+\label{fig:faceupdate}
+\end{figure}

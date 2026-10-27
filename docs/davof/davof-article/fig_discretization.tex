@@ -1,0 +1,74 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.2, >=Stealth, font=\small]
+  \colorlet{fluidcol}{blue!18}
+  \colorlet{gascol}{gray!9}
+  \colorlet{ifacecol}{blue!65!black}
+  \colorlet{normcol}{red!65!black}
+  \colorlet{facecol}{orange!80!black}
+  \colorlet{wettedcol}{orange!80!black}
+  \colorlet{gasbdrycol}{teal!58!black}
+  \colorlet{bdrycol}{black!50}
+  \colorlet{domaincol}{black!70}
+  % --- Polygon vertices ---
+  \coordinate (V1) at (-1.32,-0.70);
+  \coordinate (V2) at ( 0.50,-0.90);
+  \coordinate (V3) at ( 1.52, 0.00);
+  \coordinate (V4) at ( 1.40, 0.94);
+  \coordinate (V5) at ( 0.06, 1.18);
+  \coordinate (V6) at (-1.20, 0.76);
+  % --- PLIC entry/exit on polygon boundary ---
+  \coordinate (Pe) at (-1.21, 0.615); % on edge V6--V1
+  \coordinate (Pf) at ( 1.471,0.386); % on edge V3--V4
+  % --- Gas background ---
+  \fill[gascol] (-2.80,-1.90) rectangle (2.80,1.80);
+  % --- Omega^-(t): fill using PLIC segments as upper boundary ---
+  \fill[fluidcol]
+    (-2.80,0.30) -- (Pe) -- (Pf) -- (2.80,0.10)
+    -- (2.80,-1.90) -- (-2.80,-1.90) -- cycle;
+  % --- Gas sub-region inside Omega_k above PLIC ---
+  \fill[gray!13] (Pe)--(Pf)--(V4)--(V5)--(V6)--cycle;
+  % --- Outer domain rectangle ---
+  \draw[domaincol, line width=0.9pt] (-2.80,-1.90) rectangle (2.80,1.80);
+  % --- C0-discontinuous PLIC: neighbours dashed/faint, cell-local solid ---
+  \draw[ifacecol!45, line width=1.2pt, dashed] (-2.80,0.30) -- (Pe);
+  \draw[ifacecol,    line width=2.2pt]          (Pe) -- (Pf);
+  \draw[ifacecol!45, line width=1.2pt, dashed] (Pf) -- (2.80,0.10);
+  % --- Polygon boundary: thin neutral base ---
+  \draw[bdrycol, line width=0.6pt] (V1)--(V2)--(V3)--(V4)--(V5)--(V6)--cycle;
+  % --- Gas boundary of Omega_k (above PLIC) ---
+  \draw[gasbdrycol, line width=1.8pt] (Pf)--(V4)--(V5)--(V6)--(Pe);
+  % --- Liquid boundary of Omega_k (inside Omega_k^-) ---
+  \draw[wetted] (Pe)--(V1)--(V2)--(V3);
+  % --- Dots at PLIC--boundary intersections ---
+  \fill[ifacecol] (Pe) circle (2.0pt);
+  \fill[ifacecol] (Pf) circle (2.0pt);
+  % --- Full face S_f = V3--V4 ---
+  \draw[facecol, line width=2.8pt] (V3)--(V4);
+  % --- Wetted part S_f^-(t) = V3 to PLIC intersection ---
+  \draw[wetted] (V3)--(Pf);
+  % --- n_f: outward normal at S_f midpoint ---
+  \draw[normcol, ->, line width=1.4pt]
+    (1.46,0.47) -- ++(0.50,0.064) node[right=2pt,black]{$\mathbf{n}_f$};
+  % --- n_Sigma: on left PLIC segment ---
+  \draw[normcol, ->, line width=1.4pt]
+    (-2.00,0.46) -- ++(-0.10,0.56) node[right=4pt,black]{$\mathbf{n}_\Sigma$};
+  % --- Labels ---
+  \node[domaincol, font=\footnotesize] at (-2.44,1.60) {$\Omega$};
+  \node[ifacecol, font=\footnotesize] at (-0.22,0.88) {$\tilde{\Sigma}_k(t)$};
+  \draw[->, ifacecol!65, line width=0.5pt] (-0.22,0.80) -- (-0.04,0.52);
+  \node[blue!62!black] at (-2.16,-0.82) {$\Omega^-(t)$};
+  \node[blue!55!black, font=\footnotesize] at (-2.16,-1.12) {$\chi=1$};
+  \node[black!62] at (2.10,1.44) {$\Omega^+(t)$};
+  \node[black!52, font=\footnotesize] at (2.10,1.18) {$\chi=0$};
+  \node[black!70] at (0.14,-0.18) {$\Omega_k$};
+  \node[black!60, font=\footnotesize] at (0.50,-1.22) {$\partial\Omega_k$};
+  \draw[->, black!40, line width=0.4pt] (0.50,-1.12) -- (0.50,-0.92);
+  \node[facecol, font=\footnotesize] at (1.84,0.82) {$S_f$};
+  \draw[->, facecol!65, line width=0.4pt] (1.84,0.76) -- (1.51,0.64);
+  \node[wettedcol, font=\footnotesize, anchor=west] at (2.00,0.06) {$S_f^-(t)$};
+  \draw[->, wettedcol!65, line width=0.4pt] (1.98,0.06) -- (1.52,0.17);
+\end{tikzpicture}
+\caption{Geometric setting in a two-dimensional cross-section: the polyhedral control volume $\Omega_k$ in the domain $\Omega$ with liquid $\Omega^-(t)$ ($\chi=1$, blue) and gas $\Omega^+(t)$ ($\chi=0$). The interface is drawn as PLIC segments, with the face $S_f$ (orange), its wetted part $S_f^-(t)$ (gold) and the outward normal $\mathbf{n}_f$. The Gauss identity on the liquid sub-volume $\Omega_k^-(t)$, enclosed by the wetted face parts and the PLIC segment, gives the interface area-normal $\mathbf{n}_{\tilde{\Sigma}_k}|A_{\tilde{\Sigma}_k}|$ as minus the sum of the wetted face area vectors $\alpha_f\mathbf{S}_f$, \cref{eq:avof-normal}; no data from neighbouring cells are used.}
+\label{fig:discretization}
+\end{figure}

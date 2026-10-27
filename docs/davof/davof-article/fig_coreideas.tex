@@ -1,0 +1,89 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1.5cm,y=1.5cm,>=Stealth,font=\scriptsize]
+  \colorlet{fluidcol}{blue!18}
+  \colorlet{gascol}{gray!11}
+  \colorlet{ifacecol}{blue!65!black}
+  \colorlet{normcol}{red!65!black}
+  \colorlet{wettedcol}{orange!80!black}
+  \colorlet{gasbdrycol}{teal!58!black}
+  \colorlet{bdrycol}{black!50}
+  \colorlet{sfminuscol}{magenta!65!black}
+  % ---- LEFT PANEL: Classical UGVOF (only alpha_k, global stencil needed) ----
+  \begin{scope}[xshift=-3.55cm]
+    \coordinate (A1) at (-0.72,-0.62);
+    \coordinate (A2) at ( 0.48,-0.76);
+    \coordinate (A3) at ( 1.10, 0.00);
+    \coordinate (A4) at ( 0.90, 0.84);
+    \coordinate (A5) at (-0.10, 1.00);
+    \coordinate (A6) at (-0.90, 0.66);
+    \coordinate (APe) at (-0.87, 0.52);
+    \coordinate (APf) at ( 1.07, 0.30);
+    \coordinate (Amid) at ($(APe)!0.5!(APf)$);
+    \fill[gascol] (A1)--(A2)--(A3)--(A4)--(A5)--(A6)--cycle;
+    \begin{scope}
+      \clip (A1)--(A2)--(A3)--(A4)--(A5)--(A6)--cycle;
+      \fill[fluidcol] (APe)--(A1)--(A2)--(A3)--(APf)--cycle;
+    \end{scope}
+    % Classical UGVOF stores nothing on the faces: the boundary is drawn plain.
+    \draw[bdrycol, line width=1.1pt, line join=round] (A1)--(A2)--(A3)--(A4)--(A5)--(A6)--cycle;
+    \draw[ifacecol, line width=1.9pt, dashed] (APe)--(APf);
+    \fill[ifacecol] (APe) circle (1.4pt);
+    \fill[ifacecol] (APf) circle (1.4pt);
+    \draw[ifacecol, line width=1.0pt, fill=white] (Amid) circle (2.0pt);
+    \node[blue!62!black] at (-0.06,-0.20) {$\alpha_k$};
+    \draw[normcol, ->, dashed, line width=1.1pt] (Amid) -- ++(0.06,0.42);
+    \node[normcol, anchor=west] at ($(Amid)+(0.12,0.32)$) {$\mathbf{n}_{\tilde\Sigma_k}=?$};
+    \node[black, anchor=north] at (0.10,-1.14) {Classical UGVOF: $\alpha_k$ only};
+    \node[black, align=center, anchor=south] at (0.10,1.32) {normal needs\\neighbor stencil};
+    % The cell cut out of its stencil: what remains of the neighbours' edges,
+    % two short rays per vertex in the edge style.
+    \draw[bdrycol, line width=0.7pt]
+      (A1)--(-0.775,-0.895) (A1)--(-0.997,-0.662)
+      (A2)--( 0.711,-0.919) (A2)--( 0.409,-1.031)
+      (A3)--( 1.355, 0.115) (A3)--( 1.295,-0.201)
+      (A4)--( 0.972, 1.111) (A4)--( 1.179, 0.865)
+      (A5)--(-0.316, 1.178) (A5)--(-0.007, 1.264)
+      (A6)--(-1.176, 0.610) (A6)--(-1.041, 0.902);
+  \end{scope}
+  % ---- RIGHT PANEL: DAVOF (alpha_k + {alpha_f}, local reconstruction) ----
+  \begin{scope}[xshift=+3.55cm]
+    \coordinate (B1) at (-0.72,-0.62);
+    \coordinate (B2) at ( 0.48,-0.76);
+    \coordinate (B3) at ( 1.10, 0.00);
+    \coordinate (B4) at ( 0.90, 0.84);
+    \coordinate (B5) at (-0.10, 1.00);
+    \coordinate (B6) at (-0.90, 0.66);
+    \coordinate (BPe) at (-0.87, 0.52);
+    % The PLIC exit is a vertex of the cell: the short face B3--B7 is fully
+    % wetted, the face B7--B4 dry.
+    \coordinate (B7) at ( 1.07, 0.30);
+    \coordinate (BPf) at ( 1.07, 0.30);
+    \coordinate (Bmid) at ($(BPe)!0.5!(BPf)$);
+    \fill[gascol] (B1)--(B2)--(B3)--(B7)--(B4)--(B5)--(B6)--cycle;
+    \begin{scope}
+      \clip (B1)--(B2)--(B3)--(B7)--(B4)--(B5)--(B6)--cycle;
+      \fill[fluidcol] (BPe)--(B1)--(B2)--(B3)--(BPf)--cycle;
+    \end{scope}
+    \draw[bdrycol, line width=0.7pt] (B1)--(B2)--(B3)--(B7)--(B4)--(B5)--(B6)--cycle;
+    \draw[wetted] (BPe)--(B1)--(B2)--(B3)--(BPf);
+    \draw[gasbdrycol, line width=1.9pt, line cap=round, line join=round] (BPf)--(B4)--(B5)--(B6)--(BPe);
+    \draw[ifacecol, line width=2.0pt] (BPe)--(BPf);
+    \fill[ifacecol] (BPe) circle (1.4pt);
+    \fill[ifacecol] (BPf) circle (1.4pt);
+    \draw[ifacecol, line width=1.0pt, fill=white] (Bmid) circle (2.0pt);
+    \draw[normcol, ->, line width=1.6pt]
+      (Bmid) -- ++(0.04,0.48)
+      node[pos=0.55, right=3pt, normcol]{$\mathbf{n}_{\tilde\Sigma_k}$};
+    \node[blue!62!black] at (-0.06,-0.20) {$\alpha_k$};
+    \node[sfminuscol, anchor=east] at (-0.72,-0.10) {$\alpha_{f_1}$};
+    \node[sfminuscol, anchor=north] at (-0.10,-0.82) {$\alpha_{f_2}$};
+    \node[sfminuscol, anchor=west] at (0.88,-0.34) {$\alpha_{f_3}$};
+    \node[sfminuscol, anchor=west] at (1.15, 0.13) {$\alpha_{f_4}{=}1$};
+    \node[black, anchor=north] at (0.10,-1.14) {DAVOF: $(\alpha_k,\{\alpha_f\})$};
+    \node[black, align=center, anchor=south] at (0.10,1.18) {normal from\\local face data};
+  \end{scope}
+\end{tikzpicture}
+\caption{The core contrast. \textbf{Left}: classical unsplit geometric VOF stores only $\alpha_k$, so the interface normal must be reconstructed from a multi-cell stencil. \textbf{Right}: DAVOF additionally transports the face-area fractions $\alpha_f$ (wetted face parts in gold), from which it recovers the interface normal of the cell by the closed-form sum \cref{eq:avof-normal}.}
+\label{fig:coreideas}
+\end{figure}

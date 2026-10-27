@@ -1,0 +1,35 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=5.0, >=Stealth, font=\small]
+  \colorlet{fluidcol}{blue!18}
+  \colorlet{sagcol}{blue!45}
+  \colorlet{ifacecol}{blue!65!black}
+  \colorlet{bdrycol}{black!50}
+  % the cell [0,1]^2; the interface: the arc of the circle with centre (0.5,-0.5), radius 0.9,
+  % liquid inside (below); it meets the faces x = 0 and x = 1 at y = 0.2483 and peaks at y = 0.4
+  \fill[fluidcol] (0,0) -- (1,0) -- (1,0.2483) arc[start angle=56.25, end angle=123.75, radius=0.9] -- cycle;
+  % the sagitta volume: between the chord y = 0.2483 and the arc
+  \fill[sagcol] (0,0.2483) -- (1,0.2483) arc[start angle=56.25, end angle=123.75, radius=0.9] -- cycle;
+  \draw[bdrycol, line width=0.6pt] (0,0) rectangle (1,1);
+  % the arc
+  \draw[ifacecol, line width=1.6pt] (1,0.2483) arc[start angle=56.25, end angle=123.75, radius=0.9];
+  % the chord: the recovered plane's direction (exact normal at the patch centroid, exact area)
+  \draw[black, dashed, line width=1.1pt] (0,0.2483) -- (1,0.2483);
+  % the volume-matched plane: shifted by delta V / |A| = 0.1029 (cuts the liquid area of the arc)
+  \draw[red!65!black, dash dot, line width=1.1pt] (0,0.3512) -- (1,0.3512);
+  % the explicit position (5) on this state: shifted by d delta V / |A| = 0.2058 (d = 2 here)
+  \draw[red!65!black, dotted, line width=1.3pt] (0,0.4541) -- (1,0.4541);
+  % labels
+  \node[ifacecol, anchor=south, font=\footnotesize] at (0.5,0.405) {$\Sigma$};
+  \node[anchor=west, font=\footnotesize] at (1.02,0.2483) {chord $\tilde\Sigma_k$};
+  \node[red!65!black, anchor=west, font=\footnotesize] at (1.02,0.3512) {volume match: $+\,\delta V/|\ASk|$};
+  \node[red!65!black, anchor=west, font=\footnotesize] at (1.02,0.4541) {\cref{eq:avof-position}: $+\,d\,\delta V/|\ASk|$};
+  \node[sagcol!60!black, anchor=north, font=\footnotesize] at (0.5,0.24) {sagitta volume $\delta V$};
+  \node[blue!62!black, font=\footnotesize] at (0.5,0.1) {$\Omega_k^-$};
+  \node[black!60, font=\footnotesize] at (0.5,0.85) {$\Omega_k^+$};
+  \draw[<->, black!70, line width=0.5pt] (0.08,0.2483) -- (0.08,0.3512);
+  \draw[<->, black!70, line width=0.5pt] (0.16,0.2483) -- (0.16,0.4541);
+\end{tikzpicture}
+\caption{The plane defect, in a two-dimensional cell ($d = 2$). The curved interface $\Sigma$ (solid) encloses, above its chord $\tilde\Sigma_k$ (dashed, the plane with the recovered normal through the chord), the sagitta volume $\delta V$ (dark blue), $O(h)$ as a fraction of the cell. The state of $\Sigma$ carries the full liquid volume, so a plane that matches $\alpha_k$ by its cut volume sits $\delta V/|\ASk|$ above the chord (dash-dotted), while the explicit position \cref{eq:avof-position} evaluated on the same state sits $d\,\delta V/|\ASk|$ above it (dotted), $d$ the space dimension, because its face terms are the chord's and do not follow the volume. The difference between $\alpha_k$ and the fraction cut by the chord is the plane defect; drawn with the arc of radius $0.9h$.}
+\label{fig:defects}
+\end{figure}

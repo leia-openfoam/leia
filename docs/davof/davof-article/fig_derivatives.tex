@@ -1,0 +1,71 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, font=\small]
+  \colorlet{fluidcol}{blue!18}
+  \colorlet{gaincol}{blue!45}
+  \colorlet{ifacecol}{blue!65!black}
+  \colorlet{normcol}{red!65!black}
+  \colorlet{facecol}{orange!80!black}
+  \colorlet{bdrycol}{black!50}
+  % ---------------------------------------------------------------- (a) a face displaced
+  \begin{scope}[scale=3.0]
+    \fill[fluidcol] (0,0) -- (1,0) -- (1,0.8) -- (0,0.3) -- cycle;
+    % the liquid gained: the wetted part of the face times s, and the second-order wedge
+    \fill[gaincol] (1,0) -- (1.15,0) -- (1.15,0.8) -- (1,0.8) -- cycle;
+    \fill[red!30] (1,0.8) -- (1.15,0.8) -- (1.15,0.875) -- cycle;
+    \draw[bdrycol, line width=0.6pt] (0,0) rectangle (1,1);
+    \draw[bdrycol, dashed, line width=0.6pt] (1,0) -- (1.15,0) -- (1.15,1) -- (1,1);
+    \draw[ifacecol, line width=1.6pt] (0,0.3) -- (1,0.8);
+    \draw[ifacecol, dashed, line width=0.9pt] (1,0.8) -- (1.15,0.875);
+    \draw[facecol, line width=3pt] (1,0) -- (1,1);
+    \draw[wetted] (1,0) -- (1,0.8);
+    \draw[->, black, line width=0.8pt] (1,-0.1) -- (1.15,-0.1) node[midway, below=1pt, font=\footnotesize] {$s$};
+    \draw[normcol, ->, line width=1pt] (1.15,0.45) -- (1.38,0.45) node[right=1pt, font=\footnotesize] {$\n_f$};
+    \node[font=\footnotesize, anchor=north] at (0.55,-0.2) {(a) $\partial|\Omega_k^-|/\partial s_f = \alpha_f|S_f|$};
+    \node[blue!62!black, font=\footnotesize] at (0.42,0.2) {$\Omega_k^-$};
+    \node[ifacecol, font=\footnotesize, anchor=south east] at (0.6,0.6) {$\Sigma$};
+    \node[facecol, font=\footnotesize, anchor=east] at (0.96,0.93) {$S_f$};
+  \end{scope}
+  % ---------------------------------------------------------------- (b) the interface displaced
+  \begin{scope}[xshift=4.9cm, scale=3.0]
+    \fill[fluidcol] (0,0) -- (1,0) -- (1,0.8) -- (0,0.3) -- cycle;
+    % the slab between the interface and its normal displacement by c: height c / n_y = 0.112
+    \fill[gaincol] (0,0.3) -- (1,0.8) -- (1,0.912) -- (0,0.412) -- cycle;
+    \draw[bdrycol, line width=0.6pt] (0,0) rectangle (1,1);
+    \draw[ifacecol, line width=1.6pt] (0,0.3) -- (1,0.8);
+    \draw[ifacecol, dashed, line width=1.1pt] (0,0.412) -- (1,0.912);
+    \draw[wetted] (0,0) -- (1,0);
+    \draw[wetted] (1,0) -- (1,0.8);
+    \draw[wetted] (0,0) -- (0,0.3);
+    \draw[normcol, ->, line width=1pt] (0.5,0.55) -- (0.388,0.774) node[pos=1, above=1pt, font=\footnotesize] {$\nSk$};
+    \draw[<->, black, line width=0.6pt] (0.72,0.66) -- (0.675,0.75) node[midway, right=1pt, font=\footnotesize] {$c$};
+    \node[font=\footnotesize, anchor=north] at (0.5,-0.2) {(b) $\partial|\Omega_k^-|/\partial c = |\ASk|$};
+    \node[blue!62!black, font=\footnotesize] at (0.42,0.18) {$\Omega_k^-$};
+  \end{scope}
+  % ---------------------------------------------------------------- (c) the ring: planes against fractions
+  \begin{scope}[xshift=8.9cm, yshift=-0.75cm, scale=1.5]
+    % the interface: the arc of the circle with centre (1.5,-3), radius 4.35, liquid inside
+    \fill[fluidcol] (0,0) -- (3,0) -- (3,1.08) arc[start angle=69.8, end angle=110.2, radius=4.35] -- cycle;
+    \draw[bdrycol, line width=0.6pt] (0,0) grid[step=1] (3,3);
+    \draw[ifacecol, line width=1.4pt] (3,1.08) arc[start angle=69.8, end angle=110.2, radius=4.35];
+    % wetted parts of the faces of the middle row (the bottom faces fully wet)
+    \draw[wetted] (0,1) -- (3,1);
+    \draw[wetted] (0,1) -- (0,1.08);
+    \draw[wetted] (1,1) -- (1,1.32);
+    \draw[wetted] (2,1) -- (2,1.32);
+    \draw[wetted] (3,1) -- (3,1.08);
+    % the recovered planes (chords) and their normals
+    \draw[ifacecol, dashed, line width=1.1pt] (0,1.08) -- (1,1.32);
+    \draw[ifacecol, dashed, line width=1.1pt] (1,1.32) -- (2,1.32);
+    \draw[ifacecol, dashed, line width=1.1pt] (2,1.32) -- (3,1.08);
+    \draw[normcol, ->, line width=0.9pt] (0.5,1.2) -- ++(-0.094,0.39);
+    \draw[normcol, ->, line width=0.9pt] (1.5,1.32) -- ++(0,0.4);
+    \draw[normcol, ->, line width=0.9pt] (2.5,1.2) -- ++(0.094,0.39);
+    \node[font=\footnotesize, anchor=north] at (1.5,-0.1) {(c) the ring's data};
+    \node[black!60, font=\footnotesize] at (1.5,2.5) {$\Omega^+$};
+    \node[blue!62!black, font=\footnotesize] at (1.5,0.45) {$\Omega^-$};
+  \end{scope}
+\end{tikzpicture}
+\caption{The face fractions as derivatives of the liquid volume, in two dimensions. (a) Displacing the planar face $S_f$ (orange) outward by $s$ along $\n_f$ adds to the cell the liquid under the wetted part of the face (dark blue), $\alpha_f|S_f|\,s$, and a wedge of second order in $s$ at the trace of the interface (red). (b) Displacing the interface piece by $c$ along its normal adds the slab over the patch, $|\ASk|\,c$; the position identity \cref{eq:avof-position} and the volume anchor of \cref{sec:tpf} use this derivative. (c) One ring of cells crossed by a curved interface (solid): the measured ring fit of \cref{sec:curv} takes the recovered planes of the ring cells (dashed chords and their normals, each the identity \cref{eq:avof-normal} on that cell's faces) as its data; the fit of \cref{sec:transport} would take the wetted face areas (gold) and the volumes of the ring cells themselves, each a derivative of the volume by (a), without forming a normal in any cell.}
+\label{fig:derivatives}
+\end{figure}
