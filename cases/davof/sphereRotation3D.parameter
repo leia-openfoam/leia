@@ -1,0 +1,109 @@
+// The solid-body rotation benchmark of the DAVOF face update (2026-10-28,
+// fork branch davof-swept), driven through the TwoPhaseFlow fork's
+// advectorVoF: the value test of the semi-Lagrangian swept-face flux
+// (TPF_FLUX_INTEGRATION sweptFace) against the prism flux, whose pre-image
+// is the face translated by the displacement of its centre.
+//
+// A sphere of radius 0.15 at (0.5 0.5 0.5) in the 2 x 1 x 1 box turns once
+// about the axis parallel to y through (TPF_AXIS_X . TPF_AXIS_Z) =
+// (0.75 . 0.5), i.e. on the circle of radius 0.25 in the x-z plane (the
+// sphere stays inside x in [0.35, 1.15], z in [0.1, 0.9]). The velocity
+// U = (-omega (z - 0.5), 0, omega (x - 0.75)), omega = TPF_OMEGA = 2 pi
+// rad/s, is set every step by the fork's setFlow block of fvSolution
+// (OpenFOAM's functionObjects::setFlow, mode rotation, refDir (1 0 0), axis
+// (0 1 0): the rotation about the global y axis with the angular velocity
+// vector (0 -omega 0)); END_TIME 1 is one full turn, after which the sphere
+// is back at its start. The arm TPF_VELOCITY_ARM rotation renders
+// TPF_UX/UY/UZ = 0 (the exact body's U0); the exact normal model and
+// areaFractionError take the turn from omega and axisPoint (fork
+// davofOrbit.H). The fixed step is dt = Co h / REFERENCE_SPEED with
+// REFERENCE_SPEED 2.5, the speed of the sphere's far point
+// (omega (0.25 + 0.15) = 2.51): the interface runs at Co 0.2, the far corner
+// of the box (pure gas) at 0.68; 400 steps per turn at N = 32, 800 at N = 64.
+//
+// The state is the exactSphere construction of initDavofFields (the study
+// sets TPF_DAVOF_METHOD); areaFractionError against the exact state of the
+// turned sphere every step; volumeFractionError's Eshape is against the
+// INITIAL sphere, so only its end value (one full turn) is a shape error,
+// Emass and Ebound hold at every step.
+values
+{
+    solver (advectorVoF);
+
+    N_CELLS ( 32 64 );
+
+    TARGET_ADVECTIVE_CO ( 0.2 );
+
+    TPF_ROW ( davof-planeSurf-exact davof-planeSurf-ringArea );
+
+    // the face-clipping model (plane | planeSagitta) is DERIVED from TPF_ROW
+    // by tpf_rows.row_tokens; the value here documents the default
+    TPF_FACE_CLIPPING ( plane );
+
+    // the clipping surface of the dual advection (none | exactSphere |
+    // paraboloid | plane), DERIVED from TPF_ROW as well
+    TPF_CLIPPING_SURFACE ( none );
+    TPF_FIT_ANCHOR ( faces );
+    TPF_FIT_DOF ( six );
+    TPF_CURVED_DEBUG ( false );
+    TPF_VOLUME_RULE ( kromerBothe );
+    TPF_KB_MIN_SPLIT ( 1 );
+    TPF_KB_FAN ( auto );
+    TPF_ANCHOR_METHOD ( ccs );
+    // the volume flux of a face: prism | trapezoidal | simpson | simpsonSplit |
+    // simpsonSplitS | gaussSplit | sweptFace (the swept-face flux, fork branch
+    // davof-swept, 2026-10-28; planes only)
+    TPF_FLUX_INTEGRATION ( prism );
+    TPF_FACE_STATE ( scalar );
+    TPF_TENSOR_CENTROID ( cut );
+    TPF_KB_PRISM_APEX ( vertexMean );
+
+    TPF_CURVED_TOL_REL ( 1e-11 );
+    TPF_CURVED_MAX_DEPTH ( 9 );
+
+    TPF_VELOCITY_ARM ( rotation );
+
+    // the rotation: omega in rad/s (2 pi: one turn in END_TIME 1) and the
+    // axis parallel to y through (TPF_AXIS_X, ., TPF_AXIS_Z)
+    TPF_OMEGA ( 6.283185307179586 );
+    TPF_AXIS_X ( 0.75 );
+    TPF_AXIS_Z ( 0.5 );
+
+    TPF_DAVOF_METHOD ( exactSphere );
+
+    TPF_REF_METHOD ( exactSphere );
+
+    DOMAIN_LENGTH ( 1 );
+
+    END_TIME ( 1 );
+
+    TIME_STEP_CONTROL ( advective );
+
+    REFERENCE_SPEED ( 2.5 );
+
+    TPF_WISP_TOL ( 1e-3 );
+
+    TPF_REPEAT ( 1 );
+
+    TPF_INTERPOLATE_NORMAL ( true );
+
+    TPF_WRITE_TENSOR ( false );
+
+    TPF_SPHERE_RADIUS ( 0.15 );
+
+    TPF_SPHERE_CX ( 0.5 );
+    TPF_SPHERE_CY ( 0.5 );
+    TPF_SPHERE_CZ ( 0.5 );
+
+    // controlDict writeInterval [s] (adjustableRunTime): four field writes
+    TPF_WRITE_INTERVAL ( 0.25 );
+
+    TPF_AFE_WRITE_CONTROL ( timeStep );
+    TPF_AFE_WRITE_INTERVAL ( 1 );
+    TPF_AFE_CONSISTENCY ( false );
+    TPF_AFE_WRITE_FACE_ERROR ( false );
+    TPF_RECON_ERROR_EVERY_STEP ( false );
+    TPF_VFE_WRITE_CONTROL ( timeStep );
+    TPF_VFE_WRITE_INTERVAL ( 1 );
+    TPF_PROFILING ( false );
+}

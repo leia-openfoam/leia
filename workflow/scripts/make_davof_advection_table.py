@@ -186,6 +186,7 @@ def collect(study_dir):
             "h": length / n, "L": length, "T": _f(tok.get("END_TIME")),
             "dt": _f(tok.get("MAX_DELTA_T")), "scheme": tok.get("TPF_RECON_SCHEME", ""),
             "normalModel": tok.get("TPF_NORMAL_MODEL", ""),
+            "flux": tok.get("TPF_FLUX_INTEGRATION", ""),
             "gitCommit": meta.get("gitCommit", ""),
             "tpfCommit": "",   # filled from the case CSV below (the fork's commit)
         }
@@ -223,6 +224,13 @@ def collect(study_dir):
         cpu = _f(rec["cpu"])
         rec["cpu_per_step"] = cpu / rec["nSteps"] if (cpu is not None and rec["nSteps"]) else ""
         recs.append(rec)
+    # A study that sweeps the volume flux (TPF_FLUX_INTEGRATION; the swept-face
+    # studies of 2026-10-28 run prism and sweptFace on one binary) keys its
+    # series by row+flux, so that the two fluxes of one row do not collide in
+    # the per-row tables and figures; a study with one flux keeps the row name
+    if len({r["flux"] for r in recs}) > 1:
+        for r in recs:
+            r["row"] = f"{r['row']}+{r['flux']}"
     recs.sort(key=lambda r: (_row_rank(r["row"]), r["row"], r["arm"], float(r["Co"]), r["N"]))
     return recs
 

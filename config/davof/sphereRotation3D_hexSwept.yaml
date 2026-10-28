@@ -1,0 +1,68 @@
+# The value test of the semi-Lagrangian swept-face flux (fork branch
+# davof-swept, 2026-10-28, fluxIntegration sweptFace): a non-uniform velocity.
+# The sphere of cases/davof/sphereRotation3D (R = 0.15 at (0.5 0.5 0.5))
+# turns once about the axis parallel to y through (0.75 . 0.5), omega = 2 pi,
+# END_TIME 1 (the sphere returns to its start; the velocity from the fork's
+# setFlow block, the exact normal and areaFractionError follow the turn by
+# omega and axisPoint), with the plane clipping surface (rows
+# davof-planeSurf-exact, davof-planeSurf-ringArea), fluxIntegration prism
+# (the pre-image is the face translated by the displacement of its centre)
+# against sweptFace (the vertices and the centre traced backward by the
+# midpoint rule, the swept volume clipped by the donor's plane), N = 32 / 64,
+# Co 0.2 at the sphere's far point (REFERENCE_SPEED 2.5; 400 / 800 steps).
+# 2 x 2 x 2 = 8 serial cases.
+#
+# PRE-REGISTERED (2026-10-28, before the run). P-S3: with sweptFace the loop
+# is bounded (min(alpha) above -1e-10, max(alpha) below 1 + 1e-10 at every
+# step) and conservative (Emass at round-off, below 1e-12), and the
+# face-fraction error at the end of the turn, L1(alphaf) against the exact
+# state of the sphere back at its start, is below the prism's for the same
+# normal and N (the prism's pre-image ignores the turn of the face over the
+# step: an error of the order of the angular displacement per step times the
+# face size, omega dt h / 2 per face, which the traced vertices remove to
+# second order). Stated the other way: the prism's error is first order in
+# the rotation per step and the swept-face's is second order, so the gap
+# widens with N at fixed Co. FALSIFIED by a sweptFace row above the prism's
+# at the end of the turn at either N, by an abort, or by an out-of-donor
+# count that grows beyond the lateral faces' share (the one-donor
+# assumption: the traced points cross into the lateral neighbours by at most
+# Co h sin(theta), the same as under an oblique translation). The intermediate
+# Eshape of volumeFractionError is against the initial sphere and is not read;
+# the exact-normal row is the control (the normal error is not transported).
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSwept --export=ALL,STUDY=davof/sphereRotation3D_hexSwept run-studies.sbatch
+study_name: sphereRotation3D_hexSwept
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [prism, sweptFace]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

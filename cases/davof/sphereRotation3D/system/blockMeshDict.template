@@ -1,0 +1,86 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// The sphere-translation benchmark of the DAVOF face update (TwoPhaseFlow
+// run/benchmark/advection/sphereTranslation3D): the 2 x 1 x 1 box with
+// N_CELLS cells across the unit height (2 N along x), h = DOMAIN_LENGTH/N_CELLS
+// with DOMAIN_LENGTH = 1 (the height); patches inlet (x = 0), outlet (x = 2)
+// and walls, as in the fork's benchmark.
+
+scale   1;
+
+// N_CELLS_BASE = N_CELLS/2^REFINE_LEVELS (materialize); with REFINE_LEVELS 0 it
+// IS @!N_CELLS!@.
+n_cells @!N_CELLS_BASE!@;
+n_x #eval{ 2*$n_cells };
+
+vertices
+(
+    (0 0 0)
+    (2 0 0)
+    (2 1 0)
+    (0 1 0)
+    (0 0 1)
+    (2 0 1)
+    (2 1 1)
+    (0 1 1)
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($n_x $n_cells $n_cells) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces
+        (
+            (0 4 7 3)
+        );
+    }
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (2 6 5 1)
+        );
+    }
+    walls
+    {
+        type patch;
+        faces
+        (
+            (1 5 4 0)
+            (3 7 6 2)
+            (0 3 2 1)
+            (4 5 6 7)
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

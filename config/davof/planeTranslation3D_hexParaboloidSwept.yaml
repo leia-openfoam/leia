@@ -1,0 +1,65 @@
+# The plane gate of the semi-Lagrangian swept-face flux (fork branch
+# davof-swept, 2026-10-28, key fluxIntegration sweptFace, isoAdvectionSwept.C;
+# the working note docs/davof/davof-swept-volume): the face's vertices and
+# centre traced backward along U (midpoint rule), the swept volume's 4F
+# triangles clipped by the donor's PLANE, the flux volume and the new face
+# fraction from the same clips. The translated plane of
+# cases/davof/planeTranslation3D, N = 20 / 40 / 80 / 160, Co 0.2 and 0.5, both
+# arms, with the exact normal and the ring normal, on two surfaces: the
+# ring-tensor paraboloid rows (davof-paraboloidRing-*, whose tensor is
+# round-off on a plane, b h = 2e-14, below the fork's plane test
+# sweptPlaneTol 1e-6) and the new plane surface (davof-planeSurf-*,
+# clippingSurface plane: the frame of the normal, a zero tensor, the offset
+# from the volume anchor), each with fluxIntegration prism and sweptFace on
+# the same binary. 4 x 2 x 2 x 4 x 2 = 128 serial cases.
+#
+# PRE-REGISTERED (2026-10-28, before the run). P-S1: every sweptFace row is at
+# round-off (run maxima of L1(alphaf) below 1e-12) at every N and Co on both
+# arms, and its end values equal the prism row's of the same surface and
+# normal to about 1e-13 (for a uniform U the traced pre-image is the prism's
+# f - d, so the swept volume IS the prism; the hexahedral faces are planar, so
+# the fan triangulation and the Kromer-Bothe face integral of the prism agree
+# to round-off); the closure residual of the triangle lists is at round-off
+# (below 1e-13) in every step; zero sign flips in every step. The
+# out-of-donor count is a geometric diagnostic, not a gate: on the normal arm
+# the pre-image of every swept face leaves the donor laterally (the
+# displacement has components along the face), on the oblique arm it does
+# not. FALSIFIED by a sweptFace case above 1e-10 (a defect of the clips, the
+# orientation or the face fraction), by a sign flip, or by a closure residual
+# above 1e-12. The planeSurf rows also gate clippingSurface plane itself: the
+# prism rows there must be at round-off as the paraboloidRing rows are.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexParaboloidSwept --export=ALL,STUDY=davof/planeTranslation3D_hexParaboloidSwept run-studies.sbatch
+study_name: planeTranslation3D_hexParaboloidSwept
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringArea, davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [prism, sweptFace]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

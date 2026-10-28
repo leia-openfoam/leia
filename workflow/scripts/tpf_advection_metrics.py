@@ -87,6 +87,8 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "fitResMax", "fitResMean", "nAnchorFail", "anchorShiftMax", "anchorShiftMean",
             "nAnchorEvals", "nAnchorEdge",
             "defectMax", "defectL1", "volumeRule", "nRuleFallback",
+            "nSweptFaces", "nSweptFlips", "nSweptOutOfDonor", "nSweptClipTris",
+            "sweptClosureMax",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
             "timeStepTime")
@@ -115,7 +117,13 @@ _RE_CURVED = re.compile(
     r"(?:; volume anchor: failed (\d+)(?:, face shift max ([^\s;]+) mean ([^\s;]+))?, leaves (\d+)"
     r"(?:, evaluations (\d+) \(per cell [^)]*\))?(?:, edge (\d+))?)?"
     r"(?:; surface defect max ([^\s;]+) L1 ([^\s;]+) over (\d+) cells)?"
-    r"(?:; volume rule (\w+) fallbacks (\d+))?")
+    r"(?:; volume rule (\w+) fallbacks (\d+))?"
+    # the swept-face flux's diagnostics (fork branch davof-swept, 2026-10-28,
+    # fluxIntegration sweptFace): the faces computed, the sign flips of the
+    # triangle list, the faces whose pre-image leaves the donor cell, the
+    # clipped triangles, the largest closure residual of the lists
+    r"(?:; swept faces (\d+), flips (\d+), out of donor (\d+), "
+    r"clipped triangles (\d+), closure max ([^\s;]+))?")
 _RE_BOUND = re.compile(
     r"^isoAdvection: After conservative bounding: min\(alpha\) = (\S+), "
     r"max\(alpha\) = 1 \+ (\S+)")
@@ -250,6 +258,12 @@ def read_log(path):
                 if m.group(26) is not None:
                     cur["volumeRule"] = m.group(26)
                     cur["nRuleFallback"] = m.group(27)
+                if m.group(28) is not None:
+                    cur["nSweptFaces"] = m.group(28)
+                    cur["nSweptFlips"] = m.group(29)
+                    cur["nSweptOutOfDonor"] = m.group(30)
+                    cur["nSweptClipTris"] = m.group(31)
+                    cur["sweptClosureMax"] = m.group(32)
                 continue
             m = _RE_BOUND.match(line)
             if m:

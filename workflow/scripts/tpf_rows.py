@@ -107,6 +107,12 @@ ROWS = OrderedDict([
     ("davof-paraboloidRing-ringFit",   ("davof", "ringFit",   "all",   "0",    "15",  "keep", "plane", "paraboloid", "volume", "none")),
     ("davof-paraboloidOne-exact",     ("davof", "exact",     "all",   "0",    "15",  "keep", "plane", "paraboloid", "faces",  "one")),
     ("davof-paraboloidOne-cellLocal",  ("davof", "cellLocal", "all",   "0",    "15",  "keep", "plane", "paraboloid", "faces",  "one")),
+    # the plane clipping surface of the curved loop (fork branch davof-swept,
+    # 2026-10-28, clippingSurface plane): the frame of the normal, a zero
+    # tensor, the offset from the volume anchor; the surface the swept-face
+    # flux (TPF_FLUX_INTEGRATION sweptFace) needs on a curved interface
+    ("davof-planeSurf-exact",          ("davof", "exact",     "all",   "0",    "15",  "keep", "plane", "plane",      "volume", "none")),
+    ("davof-planeSurf-ringArea",       ("davof", "ringArea",  "all",   "0",    "15",  "keep", "plane", "plane",      "volume", "none")),
     ("plicRDF",                  ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
     ("isoAlpha",                 ("isoAlpha", "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
 ])
@@ -137,6 +143,11 @@ VELOCITY_ARMS = OrderedDict([
     ("normal",  ("0.3", "0.5", "0.8124")),
     ("oblique", ("1", "0", "0")),
     ("axial",   ("1", "0", "0")),
+    # the solid-body rotation of cases/davof/sphereRotation3D (2026-10-28):
+    # no uniform velocity; the field is omega x (x - axisPoint) from the
+    # case's own tokens (TPF_OMEGA, TPF_AXIS_X/Y), the tokens here are the
+    # U0 of the exact body, zero
+    ("rotation", ("0", "0", "0")),
 ])
 
 VELOCITY_TOKENS = ("TPF_UX", "TPF_UY", "TPF_UZ")
@@ -175,6 +186,8 @@ LABELS = OrderedDict([
     ("davof-paraboloidRing-ringFit",   "DAVOF, ring-tensor paraboloid by volume, ring-quadric normal"),
     ("davof-paraboloidOne-exact",     "DAVOF, face-anchored paraboloid (one scalar), exact normal"),
     ("davof-paraboloidOne-cellLocal",  "DAVOF, face-anchored paraboloid (one scalar), own normal"),
+    ("davof-planeSurf-exact",          "DAVOF, plane surface by volume, exact normal (control)"),
+    ("davof-planeSurf-ringArea",       "DAVOF, plane surface by volume, ring-area normal"),
     ("plicRDF",             "plicRDF"),
     ("isoAlpha",            "isoAlpha"),
 ])
@@ -210,6 +223,8 @@ COLORS = {
     "davof-paraboloidRing-ringFit":   "#7a3bb5",  # purple, as davof-ringFit
     "davof-paraboloidOne-exact":     "#6c757d",  # grey
     "davof-paraboloidOne-cellLocal":  "#adb5bd",  # light grey
+    "davof-planeSurf-exact":          "#3a0ca3",  # dark violet: the plane-surface control
+    "davof-planeSurf-ringArea":       "#f72585",  # pink: the plane surface with the ring normal
     "plicRDF":             "#eb6834",   # plicRDF's orange (make_davof_normal_table.COLORS)
     "isoAlpha":            "#eda100",   # isoAlpha's yellow (make_davof_normal_table.COLORS)
 }
@@ -229,6 +244,7 @@ MARKERS = {
     "davof-paraboloidRing-cellSliver01": "s", "davof-paraboloidRing-ringArea": "D",
     "davof-paraboloidRing-ringFit": "p",
     "davof-paraboloidOne-exact": "+", "davof-paraboloidOne-cellLocal": "1",
+    "davof-planeSurf-exact": "x", "davof-planeSurf-ringArea": "D",
     "plicRDF": "^", "isoAlpha": "v",
 }
 

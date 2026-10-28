@@ -1,0 +1,49 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// The solid-body rotation (cases/davof/sphereRotation3D.parameter): the
+// fork's advectorVoF sets U and phi from the setFlow block of fvSolution
+// before the first step and at the half time of every step (OpenFOAM's
+// functionObjects::setFlow, mode rotation), on the cells and on every patch;
+// the values here are placeholders. The patches are fixedValue so that the
+// patch values setFlow assigns (the face-centre velocities) survive
+// correctBoundaryConditions and enter the boundary flux. The arm's
+// TPF_UX/UY/UZ are zero (the exact body's U0).
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+
+boundaryField
+{
+    inlet
+    {
+        type            fixedValue;
+        value           uniform (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+    }
+    outlet
+    {
+        type            fixedValue;
+        value           uniform (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+    }
+    walls
+    {
+        type            fixedValue;
+        value           uniform (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+    }
+}
+
+// ************************************************************************* //

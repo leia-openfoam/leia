@@ -1,0 +1,59 @@
+# The translated sphere with the plane clipping surface (fork branch
+# davof-swept, 2026-10-28, clippingSurface plane: the PLIC plane in the frame
+# of the normal the scheme used, positioned by the volume anchor; rows
+# davof-planeSurf-exact and davof-planeSurf-ringArea) with the semi-Lagrangian
+# swept-face flux (fluxIntegration sweptFace) against the prism flux on the
+# same binary: cases/davof/sphereTranslation3D (R = 0.15 in the 2 x 1 x 1 box,
+# U = (1 0 0), 3.3 diameters), the exactSphere initial state, N = 32 / 64,
+# Co 0.2. 2 x 2 x 2 = 8 serial cases. The swept flux's limits are the
+# plane (met here by construction) and the one donor cell (the prism's
+# assumption as well).
+#
+# PRE-REGISTERED (2026-10-28, before the run). P-S2: under the uniform
+# translation the traced pre-image is the prism's f - d (straight
+# trajectories, the midpoint rule exact), so the end values of L1(alphaf),
+# L1(n), L1(x), Eshape and min(alpha) of every sweptFace row equal the prism
+# row's within 1e-10 relative; zero sign flips; the closure residual at
+# round-off. The out-of-donor count is zero on the axis-aligned faces normal
+# to x (the pre-image moves into the donor) and the faces parallel to U do
+# not sweep. FALSIFIED by a relative difference above 1e-8 in any end value
+# (a defect of the clips or of the face fraction that the plane gate did not
+# reach: the curved interface cuts the lateral triangles), or by a flip.
+# Cost: the sweptFace step time against the prism's is a measurement, not a
+# prediction (4F triangle clips per face against the Kromer-Bothe prism).
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexSwept --export=ALL,STUDY=davof/sphereTranslation3D_hexSwept run-studies.sbatch
+study_name: sphereTranslation3D_hexSwept
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [prism, sweptFace]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

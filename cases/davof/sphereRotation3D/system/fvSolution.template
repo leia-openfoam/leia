@@ -1,0 +1,195 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    "alpha.water.*"
+    {
+        advectionScheme      isoAdvection;
+        // The row TPF_ROW (workflow/scripts/tpf_rows.py): the reconstruction
+        // scheme (davof | plicRDF | isoAlpha) and, for davof, the normal
+        // model; the comparators ignore the davof keys below.
+        reconstructionScheme @!TPF_RECON_SCHEME!@;
+        // davof: interface cell |m_c| > wispTol V^(2/3)
+        wispTol         @!TPF_WISP_TOL!@;
+        isoFaceTol      1e-8;
+        surfCellTol     1e-8;
+        // plicRDF's initial guess (the helper inside davof and the comparator alike):
+        // true = the previous normals shifted back by U dt (the library's default),
+        // false = the alpha gradient every time (the hexInterp diagnostic)
+        interpolateNormal @!TPF_INTERPOLATE_NORMAL!@;
+        // davof: the normal model (davofNormalModel.H) and where it replaces
+        // m_c (applyTo all, or check: the slivers |m_c| < sliverTol h^2 and
+        // the cells deviating by more than maxAngle degrees); exactNormal
+        // is the translated sphere of the exact control
+        normalModel     @!TPF_NORMAL_MODEL!@;
+        applyTo         @!TPF_APPLY_TO!@;
+        sliverTol       @!TPF_SLIVER_TOL!@;
+        maxAngle        @!TPF_MAX_ANGLE!@;
+        noNormalFallback @!TPF_NO_NORMAL_FALLBACK!@;
+        // davof: the face-clipping model of the face update (fork
+        // davofFaceClipping.H, 2026-10-15): plane (the plane clipping of the
+        // moved PLIC plane, the default) or planeSagitta (plus the
+        // second-order sagitta correction from the ring curvature tensor);
+        // the sub-keys at the fork's defaults, read by planeSagitta only
+        faceClipping    @!TPF_FACE_CLIPPING!@;
+        sagittaMinCos   0.2;
+        sagittaMinChord 0.05;
+        sagittaMaxFraction 0.25;
+        sagittaForm     full;
+        tensorSource    ring;
+        // davof: write the ring curvature tensor and the vertex offset the
+        // sagitta correction uses (curvatureTensorDavof, curvatureOffsetDavof)
+        // at the field writes (the diagnostic of 2026-10-16; false: not written)
+        writeCurvatureTensor @!TPF_WRITE_TENSOR!@;
+        // planeSagitta: the signed correction dA/|S_f| per face written as the
+        // surface field sagittaCorrection.water (the same diagnostic switch)
+        writeSagittaCorrection @!TPF_WRITE_TENSOR!@;
+        // davof: the curved clipping surface of the dual advection (fork
+        // isoAdvectionCurved.C, 2026-10-23), derived from TPF_ROW: none (the
+        // plane sweep, today's loop), exactSphere (the exact sphere of the
+        // exactNormal block for the volume flux AND the face update: the
+        // machinery gate) or paraboloid (the six-coefficient paraboloid of
+        // every interface cell fitted to its own face fractions with the ring
+        // tensor as prior, with its own volume flux); the sub-keys at the
+        // fork's defaults (the prism quadrature's relative tolerance and
+        // depth, the fit's prior weight, tolerance and iteration cap, the
+        // refinement levels of the surface-defect volume)
+        clippingSurface @!TPF_CLIPPING_SURFACE!@;
+        curvedTolRel    @!TPF_CURVED_TOL_REL!@;
+        curvedMaxDepth  @!TPF_CURVED_MAX_DEPTH!@;
+        // the rule for the cell volume, the prism volume and the face fraction
+        // under a surface: splitQuadrature (the reference) | kromerBothe (the
+        // face-based method of Kromer and Bothe 2023 for the paraboloid) |
+        // exactSphere (Strobl, Formella, Poeschel 2016 for the sphere)
+        volumeRule      @!TPF_VOLUME_RULE!@;
+        volumeRuleDebug @!TPF_CURVED_DEBUG!@;
+        // the Kromer-Bothe rule's checks: the least number of sub-arcs per
+        // trace arc and the fan triangulation of the planar faces
+        kromerBotheMinSplit @!TPF_KB_MIN_SPLIT!@;
+        kromerBotheFan  @!TPF_KB_FAN!@;
+        // warped faces (fork branch davof-warped, 2026-10-25): the face state
+        // scalar (alphaf alone) | vector (the wetted area vector
+        // wettedAreaDavof next to alphaf, m_c and the face moment from it;
+        // initDavofFields writes it with the same token), the centroids of
+        // the ring tensor fit cut | anchored (re-anchored by the volume
+        // rule), the fan apex of a warped flux prism vertexMean | faceCentre;
+        // the defaults are the build's behaviour before the keys
+        faceState       @!TPF_FACE_STATE!@;
+        tensorCentroid  @!TPF_TENSOR_CENTROID!@;
+        kromerBothePrismApex @!TPF_KB_PRISM_APEX!@;
+        fitPriorWeight  1e-2;
+        fitTol          1e-10;
+        fitMaxIter      50;
+        // faces: the surface interpolates the face fractions; volume: the offset
+        // shifted after the fit so that the volume under the surface is alpha_k V
+        fitAnchor       @!TPF_FIT_ANCHOR!@;
+        // six: all six coefficients from the face fractions; one: the offset alone
+        // from the total wetted area; none: the frame and the ring tensor only
+        fitDof          @!TPF_FIT_DOF!@;
+        // the volume anchor's tolerance (of the cell volume) and the period of the
+        // surface-defect diagnostic in steps
+        anchorTolRel    1e-11;
+        // the anchor's root finder (fork branch davof-perf): illinois | newton
+        // (ignored by the builds before it)
+        anchorMethod    @!TPF_ANCHOR_METHOD!@;
+        // the volume flux of a face (fork branch davof-fluxint): prism (the
+        // prism volume) | trapezoidal | simpson (a quadrature in time of the
+        // face fractions; ignored by the builds before it)
+        fluxIntegration @!TPF_FLUX_INTEGRATION!@;
+        defectEvery     10;
+        curvedDebug     @!TPF_CURVED_DEBUG!@;
+        defectLevels    3;
+        writeCurvedFields @!TPF_WRITE_TENSOR!@;
+        // the exact body of the exact normal model and of clippingSurface
+        // exactSphere: the sphere carried by U0 (zero on the rotation arm)
+        // and turned about the axis through axisPoint with the angular
+        // velocity omega (fork davofOrbit.H, 2026-10-28); the sign of omega
+        // follows setFlow's rotation below, U = omega_vec x (x - axisPoint)
+        // with omega_vec = (0 -omega 0)
+        exactNormal
+        {
+            functionType sphere;
+            origin      (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
+            radius      @!TPF_SPHERE_RADIUS!@;
+            U0          (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+            omega       (0 -@!TPF_OMEGA!@ 0);
+            axisPoint   (@!TPF_AXIS_X!@ @!TPF_SPHERE_CY!@ @!TPF_AXIS_Z!@);
+        }
+        vof2IsoTol      1e-8;
+        writeVTK        false;
+        snapTol         0;
+        nAlphaBounds    3;
+        clip            false;
+        nAlphaCorr      1;
+        nAlphaSubCycles 1;
+        cAlpha          1;
+    }
+}
+
+// The velocity: advectorVoF constructs OpenFOAM's functionObjects::setFlow
+// from this block (apps/benchmark/advectorVoF/createFields.H) and calls it
+// before the first step and at the half time of every step; mode rotation
+// sets U = (-omega (z - origin_z), 0, omega (x - origin_x)) on the cells and
+// the patches and phi = fvc::flux(U), i.e. the solid-body rotation about the
+// axis parallel to y through origin with the angular velocity vector
+// (0 -omega 0) (setFlow.C: the global x and z components, refDir (1 0 0)
+// and axis (0 1 0) make its frame the identity). The linear interpolation of
+// a linear velocity is exact at the face centres of the hexahedra, so the
+// discrete divergence of phi is round-off.
+setFlow
+{
+    mode        rotation;
+    omega       constant @!TPF_OMEGA!@;
+    origin      (@!TPF_AXIS_X!@ @!TPF_SPHERE_CY!@ @!TPF_AXIS_Z!@);
+    refDir      (1 0 0);
+    axis        (0 1 0);
+    scale       constant 1;
+}
+
+// advectorVoF reads period/reverseTime/spirallingFlow here (none) and the
+// abort guard (fork commit a5901fd, 2026-10-13): the run
+// ends with "advectorVoF: ABORT at step ..." and the normal "End" when alpha
+// leaves [abortMinAlpha, abortMaxAlpha] or the interface-cell count exceeds
+// abortInterfaceCellFactor times its count at the first step; the leia
+// converter tpf_advection_metrics.py records the row as status diverged.
+isoAdvector
+{
+    abortEnabled    true;
+    abortMinAlpha   -0.5;
+    abortMaxAlpha   1.5;
+    abortInterfaceCellFactor 10;
+}
+
+PIMPLE
+{
+    momentumPredictor no;
+    nCorrectors     -1;
+    nNonOrthogonalCorrectors -1;
+    nAlphaCorr      1;
+    nAlphaSubCycles 1;
+    cAlpha          1;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+SIMPLE
+{
+    nNonOrthogonalCorrectors 0;
+}
+
+// ************************************************************************* //
