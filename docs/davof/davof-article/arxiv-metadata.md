@@ -1,4 +1,4 @@
-# arXiv metadata for the DAVOF preprint (draft, 2026-10-27; Tomislav submits)
+# arXiv metadata for the DAVOF preprint (2026-10-28; Tomislav submits)
 
 **Title**
 Dual Area-Volume-of-Fluid (DAVOF): co-advecting volume and face-area fractions for a closed-form, cell-local interface normal and position on unstructured meshes
@@ -8,7 +8,7 @@ Tomislav Marić, Mathematical Modeling and Analysis, Department of Mathematics, 
 
 **Primary category** physics.flu-dyn. **Cross-lists** math.NA, physics.comp-ph.
 
-**Comments** 44 pages, 9 figures, 18 tables. Code: https://github.com/tmaric/TwoPhaseFlow (branch davof) and https://github.com/leia-openfoam/leia (branch development).
+**Comments** 45 pages, 9 figures, 18 tables. Code: https://github.com/tmaric/TwoPhaseFlow (branch davof) and https://github.com/leia-openfoam/leia (branch development).
 
 **License** CC BY 4.0 (choose the arXiv non-exclusive licence instead if the journal version may go to a publisher that objects to CC BY).
 
@@ -27,3 +27,6 @@ Geometric Volume-of-Fluid (VOF) on unstructured polyhedral meshes reconstructs t
 **Nothing is open. The archive of tag `davof-v1.0` is the submission.**
 2. If the manuscript changes after the tag, move the leia tag to the final commit (`git tag -f davof-v1.0 && git push -f origin davof-v1.0`) or tag `davof-v1.0.1`; the fork tag stays.
 3. Run `bash make_arxiv_package.sh`; upload `_build/davof-preprint-arxiv.tar.gz`; paste the metadata above.
+
+
+**2026-10-28 (proposal session)** The transport section was restructured (short results, eight new tables, the ladder figure, the implementation record as Appendix B), the limitations are stated as research goals, and the Elsevier declaration of generative AI was added after the acknowledgments; all of it is committed on development (last commit 3195655e). The tag davof-v1.0 (24e13fa8) predates these commits: before the upload, move it to the final commit as item 2 above says, or tag davof-v1.0.1 and change the two bibliography entries. The package in _build/arxiv was built from the final manuscript.
