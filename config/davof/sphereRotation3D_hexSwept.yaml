@@ -30,6 +30,32 @@
 # Eshape of volumeFractionError is against the initial sphere and is not read;
 # the exact-normal row is the control (the normal error is not transported).
 #
+# MEASURED (2026-10-28, cluster, fork d33eafb; 4 of 8 cases completed, the
+# four N = 64 cases aborted; tables davof_advection_sphereRotation3D_hexSwept*):
+# P-S3 FALSIFIED in both parts. (1) The end error: at N = 32 the sweptFace
+# row ends ABOVE the prism's, L1(alphaf) 2.384e-2 against 2.328e-2 with the
+# exact normal (2.4 % higher) and 4.275e-2 against 4.233e-2 with the ring
+# normal (1.0 % higher); the per-step relative difference of the two fluxes
+# is 1e-3 to 2e-2 from the first step on, without a trend. The traced
+# pre-image does not lower the error of this loop: every swept face's
+# pre-image leaves the donor cell (out of donor 3240 of 3240 faces in every
+# step at N = 32, 12912 of 12912 at N = 64), so the one-donor clipping, which
+# both fluxes share, is the binding assumption under rotation, not the shape
+# of the pre-image. (2) Boundedness: at N = 64 every case, prism and
+# sweptFace, exact and ring normal, aborted on the interface-cell guard (ten
+# times the initial count) at steps 565 / 390 (exact, prism / sweptFace) and
+# 268 / 270 (ring), with min(alpha) -0.18 to -0.26: the plane-surface loop
+# itself (clippingSurface plane, the volume anchor) is not bounded under this
+# rotation at N = 64 with either flux. At N = 32 both fluxes stay bounded
+# (min alpha -1e-14) but the mass deviation of the solver's sum(alpha V) is
+# -2.2e-3 to -3.3e-3 % at the end of the turn for both fluxes (Emass 3e-7 to
+# 1.3e-6; the uniform translation gives 1e-13 %): not at round-off, the
+# same for prism and sweptFace, cause not investigated. The exact-normal
+# row's normal error L1(n) is 3.571e-3 for both fluxes (the normal is not
+# transported). Zero sign flips; the closure residual 6e-18 to 3.7e-17.
+# Cost: sweptFace 1.12 to 1.24 times the prism's step time at N = 32, 0.93
+# at N = 64 (the diverging cases).
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSwept --export=ALL,STUDY=davof/sphereRotation3D_hexSwept run-studies.sbatch
 study_name: sphereRotation3D_hexSwept
 studies_dir: studies/davof

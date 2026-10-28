@@ -22,6 +22,32 @@
 # Cost: the sweptFace step time against the prism's is a measurement, not a
 # prediction (4F triangle clips per face against the Kromer-Bothe prism).
 #
+# MEASURED (2026-10-28, cluster, fork d33eafb; 8 of 8 cases completed;
+# tables davof_advection_sphereTranslation3D_hexSwept*): P-S2 HELD for the
+# exact-normal row and FALSIFIED for the ring-normal row. Exact normal: the
+# sweptFace and prism rows are identical in L1(alphaf) to all twelve written
+# digits in every one of the 160 steps at N = 32 (end 1.152e-2), and within
+# 2.6e-12 relative at N = 64 (end 6.220e-3; L1(n) within 3.4e-12, Eshape
+# within 8.2e-12). Ring normal: step 1 identical, step 2 apart by 2.4e-4
+# relative in L1(alphaf), then 1e-6 to 1e-4 along the run, the end values
+# 1.876e-2 and 1.004e-2 within 2.0e-5 (N = 32) and 1.4e-6 (N = 64), the same
+# interface-cell count in every step (419, 436, 444 at steps 2-4). The two
+# fluxes agree where the normal is prescribed and part where the normal is
+# built from the transported face fractions: HYPOTHESIS, a per-face
+# difference at round-off that the L1 sum hides (the ring normal sums m_c
+# over the ring, and a cell at the wispTol threshold of the interface-cell
+# set, or a face whose value the two clips assign to different sides, moves
+# the ring normal by more than round-off); the exact row rules out a flux
+# defect of the magnitude seen. Open: a per-face comparison of the two
+# fluxes after step 1 (writeFaceError). Zero flips; closure 0 (planar
+# faces, the clips leave the lists closed to the last bit); min(alpha)
+# -6.5e-14 to -1.8e-12 on both fluxes; Emass 3e-17 to 3e-16. The
+# out-of-donor count of this build, 2160 of 3240 faces at N = 32, is the
+# faces parallel to U (no flux, their traced vertices slide along the
+# donor's side faces); the fork counts the sweeping faces only since the
+# commit after d33eafb. Cost: sweptFace 0.87 to 1.06 times the prism's step
+# time (89 to 568 ms per step).
+#
 #   sbatch --parsable -J leia-davof-sphereTranslation3D_hexSwept --export=ALL,STUDY=davof/sphereTranslation3D_hexSwept run-studies.sbatch
 study_name: sphereTranslation3D_hexSwept
 studies_dir: studies/davof
