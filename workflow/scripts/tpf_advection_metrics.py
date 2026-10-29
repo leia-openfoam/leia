@@ -90,9 +90,9 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "nSweptFaces", "nSweptFlips", "nSweptOutOfDonor", "nSweptClipTris",
             "sweptClosureMax",
             "nSweptPieces", "nSweptBeyond", "sweptBeyondMax", "nSweptRankFallback",
-            "nSweptPartialCells", "sweptPieceClosureMax",
+            "nSweptPartialCells", "nSweptDegenerate", "sweptPieceClosureMax",
             "nClassDonor", "nClassInterface", "nClassFull", "nClassEmpty", "nClassOutside",
-            "massAdvRel", "massBoundRel", "massClipRel",
+            "massAdvRel", "massBoundRel", "massClipRel", "massBoundaryRel",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
             "timeStepTime")
@@ -132,13 +132,14 @@ _RE_CURVED = re.compile(
     # the class of the cells their pre-image reaches beyond the donor
     # the piecewise clip (fluxIntegration sweptFaceCells, 2026-10-29)
     r"(?:; cells: pieces (\d+), beyond layer (\d+) \(max ([^)]+)\), rank fallbacks (\d+), "
-    r"partial cells (\d+), piece closure max ([^\s;]+))?"
+    r"partial cells (\d+)(?:, degenerate (\d+))?, piece closure max ([^\s;]+))?"
     r"(?:; pre-image classes: donor (\d+), interface (\d+), full (\d+), "
     r"empty (\d+), outside (\d+))?")
-# the mass through the stages of the step (the curved loop, 2026-10-29)
+# the mass through the stages of the step (the curved loop, 2026-10-29; the
+# boundary outflow since fork 78464c0)
 _RE_MASS = re.compile(
-    r"^isoAdvection: mass change relative to sum\(alpha V\) at t\^n: advection (\S+), "
-    r"bounding (\S+), clipping (\S+)")
+    r"^isoAdvection: mass change relative to sum\(alpha V\) at t\^n: advection ([^,\s]+), "
+    r"bounding ([^,\s]+), clipping ([^,\s]+)(?:, boundary outflow (\S+))?")
 _RE_BOUND = re.compile(
     r"^isoAdvection: After conservative bounding: min\(alpha\) = (\S+), "
     r"max\(alpha\) = 1 \+ (\S+)")
@@ -285,19 +286,21 @@ def read_log(path):
                     cur["sweptBeyondMax"] = m.group(35)
                     cur["nSweptRankFallback"] = m.group(36)
                     cur["nSweptPartialCells"] = m.group(37)
-                    cur["sweptPieceClosureMax"] = m.group(38)
-                if m.group(39) is not None:
-                    cur["nClassDonor"] = m.group(39)
-                    cur["nClassInterface"] = m.group(40)
-                    cur["nClassFull"] = m.group(41)
-                    cur["nClassEmpty"] = m.group(42)
-                    cur["nClassOutside"] = m.group(43)
+                    cur["nSweptDegenerate"] = m.group(38) or ""
+                    cur["sweptPieceClosureMax"] = m.group(39)
+                if m.group(40) is not None:
+                    cur["nClassDonor"] = m.group(40)
+                    cur["nClassInterface"] = m.group(41)
+                    cur["nClassFull"] = m.group(42)
+                    cur["nClassEmpty"] = m.group(43)
+                    cur["nClassOutside"] = m.group(44)
                 continue
             m = _RE_MASS.match(line)
             if m:
                 cur["massAdvRel"] = m.group(1)
                 cur["massBoundRel"] = m.group(2)
                 cur["massClipRel"] = m.group(3)
+                cur["massBoundaryRel"] = m.group(4) or ""
                 continue
             m = _RE_BOUND.match(line)
             if m:
