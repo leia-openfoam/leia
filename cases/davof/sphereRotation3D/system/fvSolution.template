@@ -125,6 +125,12 @@ solvers
         // the flux) or from the donor's plane alone (fork davof-swept,
         // 2026-10-29)
         sweptCellsFaceUpdate @!TPF_SWEPT_FACE_UPDATE!@;
+        // the rule for a part of the pre-image lying in a cell plane:
+        // donorSide (the fork's default) | both (counted in both cells, the
+        // defect of the first ladder); the one-step face dump (fork
+        // davof-swept, 2026-10-29)
+        sweptCoplanar   @!TPF_SWEPT_COPLANAR!@;
+        sweptFaceDump   @!TPF_SWEPT_DUMP!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;

@@ -71,6 +71,12 @@ values
     // donor (the donor's plane alone, as sweptFace); fork davof-swept,
     // 2026-10-29; builds before it ignore the key
     TPF_SWEPT_FACE_UPDATE ( pieces );
+    // sweptFaceCells, the face update: a pre-image part lying in a cell
+    // plane goes to the donor's side (donorSide, the fork's default since
+    // 2026-10-29) or to both cells (both, the defect); the one-step face
+    // dump postProcessing/sweptFaceDump/{faces,pieces}.csv (false: none)
+    TPF_SWEPT_COPLANAR ( donorSide );
+    TPF_SWEPT_DUMP ( false );
     TPF_FACE_STATE ( scalar );
     TPF_TENSOR_CENTROID ( cut );
     TPF_KB_PRISM_APEX ( vertexMean );

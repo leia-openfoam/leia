@@ -1,0 +1,78 @@
+# The h-independent first-step face-fraction error of the piecewise face
+# update (2026-10-29): sweptFaceCells with sweptCellsFaceUpdate pieces gave
+# L1(alphaf) 4.2e-2 after ONE step of the rotation at N = 32 (3.5e-2 at 64,
+# 3.3e-2 at 128), against 5.1e-3 with the donor-plane face update and 5.0e-3
+# with the prism. One step of cases/davof/sphereRotation3D at N = 32, Co 0.2,
+# the exact normal, alpha fixedValue, the kinematic scaling, from the
+# identical initial state: the face updates pieces and donor, the coplanar
+# rule both (the face update as in the ladder) and donorSide (the fork's
+# rule since this study), with the one-step face dump (sweptFaceDump:
+# per face the two fractions and the pieces with their cell, class, wetted
+# and full area vectors, a coplanar flag; postProcessing/sweptFaceDump/) and
+# the signed per-face error alphaf - alphaf_exact (writeFaceError, the
+# field alphafError.water at the end time). 2 x 2 = 4 serial cases.
+#
+# HYPOTHESIS (pre-registered, 2026-10-29, before the run): the error sits on
+# the faces PARALLEL to the velocity. The rotation is about the y axis, so
+# U_y = 0 everywhere and every face normal to y has phi_f = 0 exactly; its
+# traced pre-image stays in the face's own plane y = y_f, which is a face
+# plane of the cells on BOTH sides. The half-space test (x - x0).n <= 0
+# passes with a zero signed distance for both, so the pre-image is clipped
+# under the donor's PLIC plane AND under the plane of the cell across, and
+# the two wetted areas are summed: alpha_f = alpha_below + alpha_above
+# (candidates (e) and (h) of the request: a non-sweeping face, a part
+# assigned to the cell on the wrong side as well). Predicted read-out: the
+# worst 50 faces are y-normal, phi = 0, sweeps 0, interior, at the interface,
+# with at least two pieces flagged coplanar, one on each side of the face;
+# afPieces is about afDonor plus the across cell's fraction (up to 2 for a
+# wet face, clipped to 1), and the share of these faces in the L1 sum is
+# above 80 %. With sweptCoplanar donorSide (a coplanar part belongs to the
+# cell on the donor's side) the one-step L1(alphaf) of pieces falls to the
+# donor's 5.1e-3 class (P-F1: within 10 % of donor or below). FALSIFIED by
+# worst faces that sweep, or by afPieces below afDonor on them.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptOneStep --export=ALL,STUDY=davof/sphereRotation3D_hexSweptOneStep run-studies.sbatch
+study_name: sphereRotation3D_hexSweptOneStep
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False). END_TIME is one step (dt = 0.2/(32 2.5)).
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  END_TIME: [0.0025]
+  TPF_WRITE_INTERVAL: [0.0025]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces, donor]
+  TPF_SWEPT_COPLANAR: [both, donorSide]
+  TPF_SWEPT_DUMP: ["true"]
+  TPF_SWEPT_CLASSIFY: ["false"]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_AFE_WRITE_FACE_ERROR: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 120
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
