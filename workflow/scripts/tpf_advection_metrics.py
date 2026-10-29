@@ -89,6 +89,8 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "defectMax", "defectL1", "volumeRule", "nRuleFallback",
             "nSweptFaces", "nSweptFlips", "nSweptOutOfDonor", "nSweptClipTris",
             "sweptClosureMax",
+            "nSweptPieces", "nSweptBeyond", "sweptBeyondMax", "nSweptRankFallback",
+            "nSweptPartialCells", "sweptPieceClosureMax",
             "nClassDonor", "nClassInterface", "nClassFull", "nClassEmpty", "nClassOutside",
             "massAdvRel", "massBoundRel", "massClipRel",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
@@ -128,6 +130,9 @@ _RE_CURVED = re.compile(
     r"clipped triangles (\d+), closure max ([^\s;]+))?"
     # the pre-image classification (sweptClassify, 2026-10-29): the faces by
     # the class of the cells their pre-image reaches beyond the donor
+    # the piecewise clip (fluxIntegration sweptFaceCells, 2026-10-29)
+    r"(?:; cells: pieces (\d+), beyond layer (\d+) \(max ([^)]+)\), rank fallbacks (\d+), "
+    r"partial cells (\d+), piece closure max ([^\s;]+))?"
     r"(?:; pre-image classes: donor (\d+), interface (\d+), full (\d+), "
     r"empty (\d+), outside (\d+))?")
 # the mass through the stages of the step (the curved loop, 2026-10-29)
@@ -275,11 +280,18 @@ def read_log(path):
                     cur["nSweptClipTris"] = m.group(31)
                     cur["sweptClosureMax"] = m.group(32)
                 if m.group(33) is not None:
-                    cur["nClassDonor"] = m.group(33)
-                    cur["nClassInterface"] = m.group(34)
-                    cur["nClassFull"] = m.group(35)
-                    cur["nClassEmpty"] = m.group(36)
-                    cur["nClassOutside"] = m.group(37)
+                    cur["nSweptPieces"] = m.group(33)
+                    cur["nSweptBeyond"] = m.group(34)
+                    cur["sweptBeyondMax"] = m.group(35)
+                    cur["nSweptRankFallback"] = m.group(36)
+                    cur["nSweptPartialCells"] = m.group(37)
+                    cur["sweptPieceClosureMax"] = m.group(38)
+                if m.group(39) is not None:
+                    cur["nClassDonor"] = m.group(39)
+                    cur["nClassInterface"] = m.group(40)
+                    cur["nClassFull"] = m.group(41)
+                    cur["nClassEmpty"] = m.group(42)
+                    cur["nClassOutside"] = m.group(43)
                 continue
             m = _RE_MASS.match(line)
             if m:

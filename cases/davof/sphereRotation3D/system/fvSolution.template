@@ -116,6 +116,11 @@ solvers
         // the cells their pre-image reaches, the first unbounded cell with
         // its faces' fluxes, the mass through the bounding; false: inert
         sweptClassify   @!TPF_SWEPT_CLASSIFY!@;
+        // the kinematic consistency of the swept fluxes (fork davof-swept,
+        // 2026-10-29): the liquid volume of the swept volume scaled by
+        // phi_f dt / V_swept, so that a wholly wet swept volume gives the
+        // upwind flux of a full cell; false: the geometric volume as it is
+        sweptScaleToPhi @!TPF_SWEPT_SCALE!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;

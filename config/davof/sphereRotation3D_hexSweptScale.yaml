@@ -1,0 +1,57 @@
+# The two ingredients of the piecewise swept flux isolated (2026-10-29): on
+# the N = 64 exact-normal rotation case that aborts with prism (step 565) and
+# the one-donor sweptFace (step 390), the four combinations of the flux
+# (sweptFace: the one-donor clip; sweptFaceCells: the piecewise clip by the
+# cells' own planes) and the kinematic scaling (sweptScaleToPhi false: the
+# geometric swept volume; true: its liquid share times phi_f dt), with the
+# classification diagnostic on (the first unbounded cell, the mass terms).
+# 2 x 2 = 4 serial cases.
+#
+# PRE-REGISTERED (2026-10-29). H-S1: the scaling alone (sweptFace + true)
+# removes the first-step overshoot of the full cells (the step-1 event of
+# the diagnostic run) but not the abort: the one-donor clip still
+# over-fluxes the sliver interface cells whose pre-image lies in an
+# interface neighbour (the prism's event at step 14). H-S2: the pieces alone
+# (sweptFaceCells + false) remove the interface-neighbour over-flux but keep
+# the full-cell overshoot of 3e-7 per step, which accumulates to 1e-4 over
+# the turn and feeds the bounding. H-S3: only the combination (sweptFaceCells
+# + true) completes the turn bounded. FALSIFIED by the respective runs.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptScale --export=ALL,STUDY=davof/sphereRotation3D_hexSweptScale run-studies.sbatch
+study_name: sphereRotation3D_hexSweptScale
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFace, sweptFaceCells]
+  TPF_SWEPT_SCALE: ["false", "true"]
+  TPF_SWEPT_CLASSIFY: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

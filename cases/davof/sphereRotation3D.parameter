@@ -58,6 +58,11 @@ values
     // builds before it ignore the key): false inert, true the per-step class
     // counts, the first unbounded cell and the mass through the bounding
     TPF_SWEPT_CLASSIFY ( false );
+    // the kinematic consistency of the swept fluxes (fork davof-swept,
+    // 2026-10-29; builds before it ignore the key): true scales the swept
+    // liquid volume by phi_f dt / V_swept (a wholly wet swept volume gives
+    // the upwind flux of a full cell), false keeps the geometric volume
+    TPF_SWEPT_SCALE ( false );
     TPF_FACE_STATE ( scalar );
     TPF_TENSOR_CENTROID ( cut );
     TPF_KB_PRISM_APEX ( vertexMean );
