@@ -27,6 +27,19 @@
 # (alpha zero on every boundary face, in- and outflow; the sphere stays 3
 # to 6 cells from the walls, so only the wisps' boundary flux is removed).
 #
+# MEASURED (2026-10-29, job 55752783, fork 8e2f359): P-R6 HELD. With alpha
+# fixedValue zero on the patches the boundary-outflow term of the mass line
+# is exactly zero in every step of every case, and the deviation of
+# sum(alpha V) over the turn is 7.0e-13 % and 1.5e-12 % (prism, N = 32),
+# 1.2e-12 % and 4.2e-13 % (sweptFaceCells, N = 32), 6.1e-12 % and 5.7e-12 %
+# (sweptFaceCells, N = 64): the drift of the zeroGradient runs (1e-7 to 4e-5)
+# was the wall cells' wisps re-entering through the inflow faces. The
+# errors are unchanged to the digits printed (L1(alphaf) 2.3285e-2 against
+# 2.3285e-2, prism N = 32, exact; 5.4936e-2 against 5.4936e-2, sweptFaceCells
+# with the piecewise face update). The prism's N = 64 cases abort as before
+# (steps 572 and 268; their drift is then the bounding's and the
+# advection's own, 2.7e-4 and -4.8e-4, in the unbounded regime).
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptCellsIO --export=ALL,STUDY=davof/sphereRotation3D_hexSweptCellsIO run-studies.sbatch
 study_name: sphereRotation3D_hexSweptCellsIO
 studies_dir: studies/davof

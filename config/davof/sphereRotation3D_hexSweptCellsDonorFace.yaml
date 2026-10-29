@@ -27,6 +27,34 @@
 # (alpha zero on every boundary face, in- and outflow; the sphere stays 3
 # to 6 cells from the walls, so only the wisps' boundary flux is removed).
 #
+# MEASURED at N = 32 and 64 (2026-10-29, job 55752784, fork 8e2f359): H-F1
+# HELD. With the donor-plane face update and the piecewise flux every case
+# completes the turn bounded (min(alpha) after the bounding -1.9e-13 to
+# -4.1e-14; the largest excess over 1 is 6e-12 to 1.5e-11, and 2.0e-7 in one
+# step of the ring row at N = 32) and conservative (the deviation of
+# sum(alpha V) 1.4e-12 % to 5.8e-12 %, the boundary term zero). L1(alphaf)
+# at the end of the turn: exact normal 2.288e-2 (N = 32; the prism 2.328e-2)
+# and 1.456e-2 (N = 64; the prism aborts at step 572), ring normal 4.164e-2
+# (N = 32; the prism 4.233e-2) and 2.313e-2 (N = 64; the prism aborts at
+# step 268): at or below the prism's where the prism completes, the
+# pairwise order 32 -> 64 is 0.65 (exact) and 0.85 (ring); the first step's
+# error equals the prism's (5.06e-3 against 5.03e-3 at N = 32). The
+# piecewise face update of the ladder gave 5.49e-2 and 4.30e-2 (exact) on
+# the same fluxes: the face-fraction loss was in the piecewise face update,
+# not in the flux. Cost 0.28 s per step at N = 32 and 1.45 s at N = 64
+# against the prism's 0.16 and 1.04 (the CSV's cpu per step).
+#
+# EXTENDED to N = 128 (2026-10-29, after the N = 32/64 result; the two new
+# cases are appended, the finished ones kept). PRE-REGISTERED: P-R3' the
+# N = 128 cases complete the turn bounded (min(alpha) above -1e-12, the
+# excess over 1 below 1e-10) and conservative (sum(alpha V) within 1e-10 %);
+# P-R4' L1(alphaf) at the end of the turn falls from N = 64 to 128 with a
+# pairwise order in [0.6, 1.3] for both normals (the 32 -> 64 orders are 0.65
+# and 0.85), the centre error L1(x) with an order above 1.7; P-R5' at N = 128
+# the sweptFaceCells row ends below the prism's where the prism completes
+# (the ladder's prism at N = 128, exact normal, job 55751077, if it does).
+# FALSIFIED by an abort, a deviation above 1e-9 %, or an order below 0.5.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptCellsDonorFace --export=ALL,STUDY=davof/sphereRotation3D_hexSweptCellsDonorFace run-studies.sbatch
 study_name: sphereRotation3D_hexSweptCellsDonorFace
 studies_dir: studies/davof
@@ -45,7 +73,7 @@ post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . -
 # The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
 # dictionaries (false, not False).
 axes_override:
-  N_CELLS: [32, 64]
+  N_CELLS: [32, 64, 128]
   TARGET_ADVECTIVE_CO: [0.2]
   TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
   TPF_VELOCITY_ARM: [rotation]
@@ -61,8 +89,9 @@ axes_override:
   TPF_KB_FAN: ["auto"]
 collapse_other_axes: true
 
-solve_mem_mb: 12000
-solve_runtime: 1440
+# N = 128: 4.2e6 cells, 1600 steps
+solve_mem_mb: 16000
+solve_runtime: 2880
 
 export_slides: false
 

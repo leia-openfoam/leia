@@ -1,0 +1,17 @@
+row,metric,Co=0.2
+davof-planeSurf-exact,L1_alphaf_end,1.46e-02
+davof-planeSurf-exact,L1_alphaf_max,1.50e-02
+davof-planeSurf-exact,L1_n_end,8.96e-04
+davof-planeSurf-exact,L1_x_end,4.73e-04
+davof-planeSurf-exact,Eshape_end,1.40e-04
+davof-planeSurf-exact,Ebound_end,3.48e-12
+davof-planeSurf-exact,minAlpha_run,-2.6e-13
+davof-planeSurf-exact,status,ok
+davof-planeSurf-ringArea,L1_alphaf_end,2.31e-02
+davof-planeSurf-ringArea,L1_alphaf_max,2.37e-02
+davof-planeSurf-ringArea,L1_n_end,2.30e-02
+davof-planeSurf-ringArea,L1_x_end,7.59e-04
+davof-planeSurf-ringArea,Eshape_end,2.14e-04
+davof-planeSurf-ringArea,Ebound_end,1.66e-12
+davof-planeSurf-ringArea,minAlpha_run,-1.2e-13
+davof-planeSurf-ringArea,status,ok
