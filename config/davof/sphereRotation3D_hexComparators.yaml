@@ -1,0 +1,56 @@
+# The setup check of the rotation case (2026-10-29): the two comparators of
+# the translation studies, plicRDF and isoAlpha (the fork's geometricVoF
+# rows, the plane sweep of isoAdvector with their own reconstructions), on
+# cases/davof/sphereRotation3D (the sphere turned once about the axis
+# parallel to y through (0.75 . 0.5), omega 2 pi, END_TIME 1, Co 0.2 at the
+# sphere's far point) at N = 32 and 64. 2 x 2 = 4 serial cases. The
+# comparators carry no face fractions (L1(alphaf) is -1); the read-out is
+# the volume-fraction vector: min(alpha) after the bounding, the mass error
+# Emass, the shape error Eshape at the end of the turn (volumeFractionError
+# compares with the INITIAL sphere, the position after one full turn), and
+# the reconstruction error of the normal and the centre at the end.
+#
+# PRE-REGISTERED (2026-10-29, before the run). P-R0: both comparators are
+# bounded (min(alpha) after the bounding above -1e-12 in every step) and
+# conservative to round-off (|Emass| below 1e-12, the solver's sum(alpha V)
+# deviation below 1e-10 %) at both N, and their shape error Eshape at the end
+# of the turn and the normal error L1(n) fall from N = 32 to N = 64 (a ratio
+# above 1.5 in Eshape, i.e. an order above 0.6, as the translated sphere's
+# comparators show). FALSIFIED by an unbounded or non-conservative
+# comparator, or by an Eshape that does not fall: then the CASE is at fault
+# (the velocity field of setFlow, the orbit of the exact reference, the time
+# step), and nothing downstream (the plane-clipped loop's rotation results)
+# is meaningful until the case is repaired.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexComparators --export=ALL,STUDY=davof/sphereRotation3D_hexComparators run-studies.sbatch
+study_name: sphereRotation3D_hexComparators
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [plicRDF, isoAlpha]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
