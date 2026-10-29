@@ -17,6 +17,38 @@
 # the turn and feeds the bounding. H-S3: only the combination (sweptFaceCells
 # + true) completes the turn bounded. FALSIFIED by the respective runs.
 #
+# MEASURED (2026-10-29, cluster job 55751076, fork 78464c0; the first run
+# 55750332 on 813e8a1 is kept aside as *_813e8a1_*, its sweptFaceCells
+# cases carried the degenerate zero-thickness pieces, same verdicts):
+# H-S1 HELD: sweptFace + scaling aborts at step 387 (step 390 without); its
+# first unbounded cell moves from step 1 (a full cell, +3.1e-7) to step 45
+# (a partial cell of alpha 1.6e-5 without a surface going to -1.1e-9, the
+# prism's event type); min(alpha) -0.264 at the abort. H-S2 HELD:
+# sweptFaceCells without the scaling completes the 800 steps, but the full
+# cells overshoot from the first step (+2.3e-8 at step 1, +8.9e-7 at the
+# end) while min(alpha) stays at -1e-14. H-S3 HELD: sweptFaceCells + scaling
+# completes the turn with min(alpha) after the bounding -9.9e-15 and the
+# largest excess over 1 of 4.5e-12 (1.7e-12 at the end): P-R1 HELD at N = 64
+# for the exact normal. Mass: the bounding's term is at round-off in every
+# step of every case (max 1.2e-14 relative), the first part of P-R2 HELD;
+# the total deviation of sum(alpha V) over the turn is -8.0e-6 % for both
+# sweptFaceCells cases, and the mass line shows it enters through the
+# boundary patches (the advection-stage change +8.0e-8 equals minus the
+# boundary outflow sum, at most 9.6e-10 per step; the comparators drift
+# 1.4e-10 in total): the second part of P-R2 FALSIFIED as written; source
+# not identified (HYPOTHESIS: wisps of 1e-10 reaching the wall cells and
+# re-entering through the inflow faces' zero-gradient value). Pieces per
+# step 61144 at step 1 (12912 faces), beyond-layer faces 0 (max share 0) in
+# every step, rank fallbacks up to 82 faces per step (a PLIC plane parallel
+# to a cell face, those faces take the one-donor clip), degenerate pieces
+# up to 1 per step, the piece closure residual of the accepted pieces 2e-8
+# to 2e-7 (the thin slivers), partial cells without a surface met 30000 to
+# 38000 face-cell pairs per step (the halo of wisps around the interface).
+# End of the turn, both sweptFaceCells cases: L1(alphaf) 4.296e-2 (the
+# one-donor sweptFace 7.1e-2 at its abort), L1(n) 1.079e-2, Eshape 1.38e-4
+# (the comparators 2.4e-4 to 2.5e-4 at N = 64). Cost (the CSV's cpu per
+# step): prism 1.04 s, sweptFace 1.14 s, sweptFaceCells 1.46 s at N = 64.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptScale --export=ALL,STUDY=davof/sphereRotation3D_hexSweptScale run-studies.sbatch
 study_name: sphereRotation3D_hexSweptScale
 studies_dir: studies/davof
