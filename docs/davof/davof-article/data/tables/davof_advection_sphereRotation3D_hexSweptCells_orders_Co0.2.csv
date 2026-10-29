@@ -1,0 +1,33 @@
+row,metric,N=32,N=64,N=128,p_ls,p_pairwise
+davof-planeSurf-exact+prism,L1_alphaf_end,2.33e-02,div.,div.,--,
+davof-planeSurf-exact+prism,L1_alphaf_max,2.41e-02,div.,div.,--,
+davof-planeSurf-exact+prism,L1_n_end,3.57e-03,div.,div.,--,
+davof-planeSurf-exact+prism,L1_x_end,1.53e-03,div.,div.,--,
+davof-planeSurf-exact+prism,Eshape_end,4.79e-04,div.,div.,--,
+davof-planeSurf-exact+prism,Ebound_end,1.51e-14,div.,div.,,
+davof-planeSurf-exact+prism,minAlpha_run,-8.5e-15,div.,div.,,
+davof-planeSurf-exact+prism,status,ok,div.,div.,,
+davof-planeSurf-exact+sweptFaceCells,L1_alphaf_end,5.49e-02,4.30e-02,3.83e-02,0.26,0.35 / 0.17
+davof-planeSurf-exact+sweptFaceCells,L1_alphaf_max,5.49e-02,4.38e-02,3.94e-02,0.24,0.33 / 0.15
+davof-planeSurf-exact+sweptFaceCells,L1_n_end,2.26e-02,1.08e-02,5.91e-03,0.97,1.06 / 0.87
+davof-planeSurf-exact+sweptFaceCells,L1_x_end,1.50e-03,4.75e-04,1.39e-04,1.71,1.66 / 1.77
+davof-planeSurf-exact+sweptFaceCells,Eshape_end,4.64e-04,1.38e-04,3.99e-05,1.77,1.75 / 1.79
+davof-planeSurf-exact+sweptFaceCells,Ebound_end,4.12e-13,1.66e-12,1.21e-11,,
+davof-planeSurf-exact+sweptFaceCells,minAlpha_run,-7.2e-13,-9.9e-14,-7.8e-13,,
+davof-planeSurf-exact+sweptFaceCells,status,ok,ok,ok,,
+davof-planeSurf-ringArea+prism,L1_alphaf_end,4.23e-02,div.,div.,--,
+davof-planeSurf-ringArea+prism,L1_alphaf_max,4.34e-02,div.,div.,--,
+davof-planeSurf-ringArea+prism,L1_n_end,4.94e-02,div.,div.,--,
+davof-planeSurf-ringArea+prism,L1_x_end,2.83e-03,div.,div.,--,
+davof-planeSurf-ringArea+prism,Eshape_end,7.93e-04,div.,div.,--,
+davof-planeSurf-ringArea+prism,Ebound_end,1.55e-14,div.,div.,,
+davof-planeSurf-ringArea+prism,minAlpha_run,-9.5e-13,div.,div.,,
+davof-planeSurf-ringArea+prism,status,ok,div.,div.,,
+davof-planeSurf-ringArea+sweptFaceCells,L1_alphaf_end,6.70e-02,4.90e-02,4.05e-02,0.36,0.45 / 0.28
+davof-planeSurf-ringArea+sweptFaceCells,L1_alphaf_max,6.92e-02,4.90e-02,4.18e-02,0.36,0.50 / 0.23
+davof-planeSurf-ringArea+sweptFaceCells,L1_n_end,7.08e-02,4.43e-02,3.21e-02,0.57,0.68 / 0.46
+davof-planeSurf-ringArea+sweptFaceCells,L1_x_end,2.74e-03,6.74e-04,1.75e-04,1.98,2.03 / 1.94
+davof-planeSurf-ringArea+sweptFaceCells,Eshape_end,7.59e-04,2.00e-04,5.25e-05,1.93,1.93 / 1.93
+davof-planeSurf-ringArea+sweptFaceCells,Ebound_end,4.12e-13,1.67e-12,1.21e-11,,
+davof-planeSurf-ringArea+sweptFaceCells,minAlpha_run,-7.2e-13,-3.9e-13,-3.5e-12,,
+davof-planeSurf-ringArea+sweptFaceCells,status,ok,ok,ok,,

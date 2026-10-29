@@ -55,6 +55,27 @@
 # (the ladder's prism at N = 128, exact normal, job 55751077, if it does).
 # FALSIFIED by an abort, a deviation above 1e-9 %, or an order below 0.5.
 #
+# MEASURED at N = 128 (2026-10-29, job 55753244, fork 8e2f359; both cases
+# 1600 steps, completed). P-R3' HELD on the excess and the mass, MISSED on
+# the floor: min(alpha) after the bounding -1.4e-11 (exact) and -5.2e-11
+# (ring) against the stated -1e-12 (a round-off accumulation over 1600
+# steps, 6.8e6 cells; the N = 32 ring row has -3.0e-11 as well); the excess
+# over 1 is 8.0e-11 and 8.2e-11; the deviation of sum(alpha V) 4.8e-11 %
+# (4.8e-13 relative) for both. P-R4' HELD for the ring normal (L1(alphaf)
+# 4.16e-2 / 2.31e-2 / 1.32e-2, orders 0.85 and 0.81) and for the exact
+# normal in the stated window (2.29e-2 / 1.46e-2 / 8.96e-3, orders 0.65 and
+# 0.70), the centre error L1(x) 1.49e-3 / 4.73e-4 / 1.40e-4 (exact, orders
+# 1.66 and 1.76) and 2.81e-3 / 7.59e-4 / 2.02e-4 (ring, 1.89 and 1.91),
+# Eshape 4.68e-4 / 1.40e-4 / 4.06e-5 (exact, 1.74 and 1.78) and 7.76e-4 /
+# 2.14e-4 / 5.81e-5 (ring, 1.86 and 1.88); the exact row's face-fraction
+# order lies below the ring row's while its error is lower at every N.
+# P-R5' not decidable at N = 128: the prism aborts there (steps 602 exact,
+# 105 ring, ladder job 55751077); at N = 32, where the prism completes, the
+# row ends below it (2.288e-2 against 2.328e-2 exact, 4.164e-2 against
+# 4.233e-2 ring). Rank fallbacks at most 170 faces per step at N = 128, no
+# face beyond one layer. Cost 9.08 / 9.06 s per step at N = 128 (prism
+# 7.39 s up to its abort).
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptCellsDonorFace --export=ALL,STUDY=davof/sphereRotation3D_hexSweptCellsDonorFace run-studies.sbatch
 study_name: sphereRotation3D_hexSweptCellsDonorFace
 studies_dir: studies/davof

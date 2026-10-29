@@ -44,6 +44,33 @@
 # fallbacks (a PLIC plane parallel to a cell face), the piece closure
 # residual (round-off), the partial cells without a surface.
 #
+# MEASURED (2026-10-29, job 55751077, fork 78464c0, alpha zeroGradient on the
+# patches; 12 of 12 cases ended, tables davof_advection_sphereRotation3D_hexSweptCells*):
+# P-R1 HELD: the prism aborts at N = 64 (steps 565 exact, 268 ring) and at
+# N = 128 (602, 105); sweptFaceCells completes the turn at every N with both
+# normals. P-R2: the bounding's mass term is at round-off in every step
+# (max 1e-15 relative), HELD; the total deviation is -1.1e-5 % to -7.5e-6 %
+# (exact) and -4.4e-5 % to -1.6e-5 % (ring), FALSIFIED as written: it is the
+# boundary inflow of the zeroGradient alpha (P-R6, study *CellsIO: zero with
+# alpha fixedValue). P-R3 PARTLY: min(alpha) after the bounding -9.9e-14 to
+# -3.5e-12 at every N, but the largest excess over 1 is 6e-12 / 1.7e-11 at
+# N = 32 / 64 and 2.9e-6 (exact) and 3.8e-7 (ring) at N = 128: a full-cell
+# overshoot above 1e-10 at the finest rung, FALSIFIED there. P-R4 FALSIFIED:
+# L1(alphaf) at the end 5.49e-2 / 4.30e-2 / 3.83e-2 (exact, orders 0.35,
+# 0.17) and 6.70e-2 / 4.90e-2 / 4.05e-2 (ring, 0.45, 0.28); the first-step
+# error is 4.2e-2 / 3.5e-2 / 3.3e-2, i.e. the piecewise FACE UPDATE commits
+# an O(1)-in-h error at once (H-F1, study *CellsDonorFace: with the
+# donor-plane face update the first-step error is the prism's, 5.1e-3). The
+# centre error L1(x) 1.50e-3 / 4.75e-4 / 1.39e-4 (orders 1.66, 1.77) and
+# Eshape 4.64e-4 / 1.38e-4 / 3.99e-5 (1.75, 1.79) for the exact normal, 2.03
+# / 1.94 and 1.93 / 1.93 for the ring: the volume transport is second order.
+# P-R5 FALSIFIED at N = 32 (5.49e-2 against the prism's 2.33e-2, exact) and
+# not decidable at N = 64 / 128 (the prism aborts). Pieces: no face beyond
+# one layer at any N, rank fallbacks 43 / 82 / 170 faces per step at most,
+# degenerate pieces at most 1 per step. Cost per step: prism 0.16 / 1.04 /
+# 7.39 s (the latter two up to the abort), sweptFaceCells 0.28 / 1.44 /
+# 9.05 s at N = 32 / 64 / 128.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptCells --export=ALL,STUDY=davof/sphereRotation3D_hexSweptCells run-studies.sbatch
 study_name: sphereRotation3D_hexSweptCells
 studies_dir: studies/davof
