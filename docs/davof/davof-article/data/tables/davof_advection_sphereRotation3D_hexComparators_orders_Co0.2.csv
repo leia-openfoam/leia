@@ -1,0 +1,17 @@
+row,metric,N=32,N=64,p_ls,p_pairwise
+plicRDF,L1_alphaf_end,--,--,--,
+plicRDF,L1_alphaf_max,--,--,--,
+plicRDF,L1_n_end,5.35e-02,2.13e-02,1.33,1.33
+plicRDF,L1_x_end,3.48e-03,8.64e-04,2.01,2.01
+plicRDF,Eshape_end,9.08e-04,2.44e-04,1.90,1.90
+plicRDF,Ebound_end,2.65e-23,4.14e-25,,
+plicRDF,minAlpha_run,-8.9e-18,-7.6e-13,,
+plicRDF,status,ok,ok,,
+isoAlpha,L1_alphaf_end,--,--,--,
+isoAlpha,L1_alphaf_max,--,--,--,
+isoAlpha,L1_n_end,7.04e-02,3.56e-02,0.99,0.99
+isoAlpha,L1_x_end,3.52e-03,8.93e-04,1.98,1.98
+isoAlpha,Eshape_end,9.26e-04,2.48e-04,1.90,1.90
+isoAlpha,Ebound_end,1.06e-22,5.29e-23,,
+isoAlpha,minAlpha_run,-8.9e-18,-1.5e-17,,
+isoAlpha,status,ok,ok,,

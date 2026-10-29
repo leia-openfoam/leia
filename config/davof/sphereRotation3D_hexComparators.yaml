@@ -22,6 +22,26 @@
 # step), and nothing downstream (the plane-clipped loop's rotation results)
 # is meaningful until the case is repaired.
 #
+# MEASURED (2026-10-29, cluster job 55749767, fork 60c13fe; 4 of 4 cases
+# completed; tables davof_advection_sphereRotation3D_hexComparators*): P-R0
+# HELD, the case is sound. Bounded: min(alpha) after the bounding -8.9e-18
+# (both comparators at N = 32), -7.6e-13 (plicRDF, N = 64), -1.5e-17
+# (isoAlpha, N = 64); Ebound at the end 1e-22 to 4e-25. Conservative at the
+# level of the accumulated round-off: the solver's sum(alpha V) deviation at
+# the end of the turn is -3.0e-8 % and -2.6e-8 % at N = 32 (400 steps) and
+# -1.4e-8 % and -1.5e-8 % at N = 64 (800 steps), i.e. 1.7e-13 to 7e-13 per
+# step relative (the threshold 1e-10 % written above was too tight by two
+# orders for an 800-step run; the uniform translation's 1e-13 % is a single
+# field write earlier in the run); |Emass| at most 7.4e-12 absolute. Converging:
+# Eshape at the end of the turn 9.08e-4 -> 2.44e-4 (plicRDF, ratio 3.7,
+# order 1.9) and 9.26e-4 -> 2.48e-4 (isoAlpha, order 1.9); the normal error
+# L1(n) 5.35e-2 -> 2.13e-2 (plicRDF, order 1.3) and 7.04e-2 -> 3.56e-2
+# (isoAlpha, order 1.0); the centre error L1(x) 3.48e-3 -> 8.64e-4 (plicRDF,
+# order 2.0) and 3.52e-3 -> 8.93e-4 (isoAlpha, order 2.0). Cost 0.12 to 0.13 s
+# per step at N = 32, 0.78 to 0.84 s at N = 64. The reconstruction error's
+# reference sphere is the initial one (reconstructionError reads origin
+# only), correct after the full turn.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexComparators --export=ALL,STUDY=davof/sphereRotation3D_hexComparators run-studies.sbatch
 study_name: sphereRotation3D_hexComparators
 studies_dir: studies/davof

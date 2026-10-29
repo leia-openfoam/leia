@@ -1,0 +1,17 @@
+row,metric,Co=0.2
+davof-planeSurf-exact+prism,L1_alphaf_end,div.
+davof-planeSurf-exact+prism,L1_alphaf_max,div.
+davof-planeSurf-exact+prism,L1_n_end,div.
+davof-planeSurf-exact+prism,L1_x_end,div.
+davof-planeSurf-exact+prism,Eshape_end,div.
+davof-planeSurf-exact+prism,Ebound_end,div.
+davof-planeSurf-exact+prism,minAlpha_run,div.
+davof-planeSurf-exact+prism,status,div.
+davof-planeSurf-exact+sweptFace,L1_alphaf_end,div.
+davof-planeSurf-exact+sweptFace,L1_alphaf_max,div.
+davof-planeSurf-exact+sweptFace,L1_n_end,div.
+davof-planeSurf-exact+sweptFace,L1_x_end,div.
+davof-planeSurf-exact+sweptFace,Eshape_end,div.
+davof-planeSurf-exact+sweptFace,Ebound_end,div.
+davof-planeSurf-exact+sweptFace,minAlpha_run,div.
+davof-planeSurf-exact+sweptFace,status,div.
