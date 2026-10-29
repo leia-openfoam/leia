@@ -63,6 +63,14 @@ values
     // liquid volume by phi_f dt / V_swept (a wholly wet swept volume gives
     // the upwind flux of a full cell), false keeps the geometric volume
     TPF_SWEPT_SCALE ( false );
+    // the alpha boundary condition of the three patches (2026-10-29):
+    // zeroGradient (the runs until the ladder) | inletOutlet (zero on the
+    // inflow faces; the boundary term of the mass balance vanishes)
+    TPF_ALPHA_BC ( zeroGradient );
+    // sweptFaceCells: the face update pieces (the same clip as the flux) |
+    // donor (the donor's plane alone, as sweptFace); fork davof-swept,
+    // 2026-10-29; builds before it ignore the key
+    TPF_SWEPT_FACE_UPDATE ( pieces );
     TPF_FACE_STATE ( scalar );
     TPF_TENSOR_CENTROID ( cut );
     TPF_KB_PRISM_APEX ( vertexMean );

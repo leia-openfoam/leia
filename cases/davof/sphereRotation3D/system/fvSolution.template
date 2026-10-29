@@ -121,6 +121,10 @@ solvers
         // phi_f dt / V_swept, so that a wholly wet swept volume gives the
         // upwind flux of a full cell; false: the geometric volume as it is
         sweptScaleToPhi @!TPF_SWEPT_SCALE!@;
+        // sweptFaceCells: the face update from the pieces (the same clip as
+        // the flux) or from the donor's plane alone (fork davof-swept,
+        // 2026-10-29)
+        sweptCellsFaceUpdate @!TPF_SWEPT_FACE_UPDATE!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;

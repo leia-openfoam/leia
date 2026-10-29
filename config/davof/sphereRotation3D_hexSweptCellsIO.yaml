@@ -1,0 +1,62 @@
+# The boundary term of the mass balance under rotation (2026-10-29): every
+# curved-loop case of sphereRotation3D (prism and the swept fluxes, N = 32
+# and 64) drifts in sum(alpha V) by 1e-7 to 4e-5 relative over the turn,
+# and the fork's mass line shows the drift equal to the liquid that enters
+# through the boundary patches (the bounding and the interior fluxes are
+# conservative to 1e-14 per step). The rotation case has inflow on every
+# patch and alpha.water zeroGradient there, so a wall cell's wisp re-enters
+# through its inflow faces. This study runs the N = 32 / 64 rows of the
+# ladder (exact and ring normal, prism and sweptFaceCells with the kinematic
+# scaling) with alpha.water inletOutlet (zero on the inflow faces, zero
+# gradient on the outflow faces; the token TPF_ALPHA_BC). 2 x 2 x 2 = 8
+# serial cases.
+#
+# PRE-REGISTERED (2026-10-29). P-R6: with inletOutlet the boundary-outflow
+# term of the mass line is at round-off in every step (|sum| below 1e-12
+# over the turn) and the total deviation of sum(alpha V) falls below
+# 1e-10 % for the sweptFaceCells rows (P-R3's conservation); the face
+# fraction and shape errors change by less than 1e-4 relative against the
+# zeroGradient runs (the walls are 3 to 6 cells from the sphere, the wisps
+# there are 1e-10). FALSIFIED by a boundary term that stays, which would
+# point at the outflow faces or at a flux the curved loop sets on boundary
+# faces, or by an error change above 1e-3.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptCellsIO --export=ALL,STUDY=davof/sphereRotation3D_hexSweptCellsIO run-studies.sbatch
+study_name: sphereRotation3D_hexSweptCellsIO
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [prism, sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_CLASSIFY: ["false"]
+  TPF_ALPHA_BC: [inletOutlet]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

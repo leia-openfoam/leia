@@ -1,0 +1,63 @@
+# The face update of the piecewise swept flux separated from its flux
+# (2026-10-29): the ladder sphereRotation3D_hexSweptCells found the
+# piecewise clip bounded where the prism aborts, with a better shape error
+# (Eshape 1.38e-4 against the comparators' 2.4e-4 at N = 64), but with a
+# face-fraction error ABOVE the prism's at N = 32 (5.5e-2 against 2.3e-2,
+# exact normal; the growth is in the first 50 steps, 4.2e-3 -> 3.4e-2,
+# while the prism goes 5.0e-3 -> 8.5e-3). The piecewise face update clips
+# the pre-image pieces by the planes of the cells they lie in, so a face
+# whose pre-image spans two cells mixes two planes that differ at the
+# shared face. Here the flux stays piecewise (bounded) and the face update
+# takes the donor's plane alone (sweptCellsFaceUpdate donor, the face update
+# of sweptFace), N = 32 / 64, exact and ring normal, inletOutlet alpha.
+# 2 x 2 = 4 serial cases.
+#
+# PRE-REGISTERED (2026-10-29). H-F1: with the donor-plane face update the
+# face-fraction error at N = 32 returns to the prism's level (within 20 % of
+# 2.3e-2 exact, 4.2e-2 ring) and the run stays bounded (the flux is
+# unchanged), which would locate the face-fraction loss in the piecewise
+# face update, not in the flux. FALSIFIED if L1(alphaf) stays at 5e-2: then
+# the loss comes from the fluxes' effect on the cell state (the wisp halo),
+# or from the one-surface consistency the piecewise face update kept and
+# the donor face update breaks.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptCellsDonorFace --export=ALL,STUDY=davof/sphereRotation3D_hexSweptCellsDonorFace run-studies.sbatch
+study_name: sphereRotation3D_hexSweptCellsDonorFace
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [donor]
+  TPF_SWEPT_CLASSIFY: ["false"]
+  TPF_ALPHA_BC: [inletOutlet]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

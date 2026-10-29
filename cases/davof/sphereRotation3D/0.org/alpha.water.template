@@ -18,22 +18,31 @@ dimensions      [0 0 0 0 0 0 0];
 
 internalField   uniform 0;
 
-// The rotation (sphereRotation3D) has inflow and outflow on every patch; the
-// sphere stays at least 0.1 from the walls, so the inflow carries alpha = 0
-// from the zero-gradient value of the boundary cells.
+// The rotation (sphereRotation3D) has inflow and outflow on every patch. The
+// token TPF_ALPHA_BC (2026-10-29): zeroGradient (the first runs; an inflow
+// face carries the wall cell's own value back in, and the curved loop's
+// wisps of 1e-10 at the walls entered the mass balance at 1e-10 per step)
+// or inletOutlet (zero on the inflow faces, zero gradient on the outflow
+// faces; the inletValue and value entries are read by inletOutlet only).
 boundaryField
 {
     inlet
     {
-        type            zeroGradient;
+        type            @!TPF_ALPHA_BC!@;
+        inletValue      uniform 0;
+        value           uniform 0;
     }
     outlet
     {
-        type            zeroGradient;
+        type            @!TPF_ALPHA_BC!@;
+        inletValue      uniform 0;
+        value           uniform 0;
     }
     walls
     {
-        type            zeroGradient;
+        type            @!TPF_ALPHA_BC!@;
+        inletValue      uniform 0;
+        value           uniform 0;
     }
 }
 
