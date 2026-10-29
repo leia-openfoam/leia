@@ -21,6 +21,12 @@
 # or from the one-surface consistency the piecewise face update kept and
 # the donor face update breaks.
 #
+# NOTE (2026-10-29): inletOutlet needs the flux field phi at construction,
+# which initDavofFields does not register (FOAM FATAL in the preprocess
+# step of jobs 55752459/55752605); the runs use TPF_ALPHA_BC fixedValue
+# (alpha zero on every boundary face, in- and outflow; the sphere stays 3
+# to 6 cells from the walls, so only the wisps' boundary flux is removed).
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptCellsDonorFace --export=ALL,STUDY=davof/sphereRotation3D_hexSweptCellsDonorFace run-studies.sbatch
 study_name: sphereRotation3D_hexSweptCellsDonorFace
 studies_dir: studies/davof
@@ -49,7 +55,7 @@ axes_override:
   TPF_SWEPT_SCALE: ["true"]
   TPF_SWEPT_FACE_UPDATE: [donor]
   TPF_SWEPT_CLASSIFY: ["false"]
-  TPF_ALPHA_BC: [inletOutlet]
+  TPF_ALPHA_BC: [fixedValue]
   TPF_DAVOF_METHOD: [exactSphere]
   TPF_AFE_CONSISTENCY: ["false"]
   TPF_KB_FAN: ["auto"]

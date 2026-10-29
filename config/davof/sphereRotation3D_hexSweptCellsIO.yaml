@@ -21,6 +21,12 @@
 # point at the outflow faces or at a flux the curved loop sets on boundary
 # faces, or by an error change above 1e-3.
 #
+# NOTE (2026-10-29): inletOutlet needs the flux field phi at construction,
+# which initDavofFields does not register (FOAM FATAL in the preprocess
+# step of jobs 55752459/55752605); the runs use TPF_ALPHA_BC fixedValue
+# (alpha zero on every boundary face, in- and outflow; the sphere stays 3
+# to 6 cells from the walls, so only the wisps' boundary flux is removed).
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptCellsIO --export=ALL,STUDY=davof/sphereRotation3D_hexSweptCellsIO run-studies.sbatch
 study_name: sphereRotation3D_hexSweptCellsIO
 studies_dir: studies/davof
@@ -48,7 +54,7 @@ axes_override:
   TPF_FLUX_INTEGRATION: [prism, sweptFaceCells]
   TPF_SWEPT_SCALE: ["true"]
   TPF_SWEPT_CLASSIFY: ["false"]
-  TPF_ALPHA_BC: [inletOutlet]
+  TPF_ALPHA_BC: [fixedValue]
   TPF_DAVOF_METHOD: [exactSphere]
   TPF_AFE_CONSISTENCY: ["false"]
   TPF_KB_FAN: ["auto"]
