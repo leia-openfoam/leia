@@ -1,0 +1,67 @@
+# Where the plane-clipped loop breaks under rotation (2026-10-29, step 2 of
+# the rotation plan): the two N = 64 cases of sphereRotation3D_hexSwept that
+# aborted (exact normal, fluxIntegration prism and sweptFace, clippingSurface
+# plane) re-run with the fork's diagnostic sweptClassify true: per step the
+# swept faces classified by the cells their pre-image (vertices and centre)
+# reaches beyond the donor (donor only / an interface cell / a full cell / an
+# empty cell / outside the vertex ring), the first cell that leaves [0, 1] by
+# more than 1e-10 after the conservative bounding printed with its faces'
+# phi, dVf before and after the bounding and their classes, and the mass
+# sum(alpha V) after the advection, the bounding and the clipping relative
+# to t^n, every step. 2 serial cases; the per-step columns nSweptClass* and
+# mass* in advectorVoF.csv, the event in log.advectorVoF.
+#
+# PRE-REGISTERED (2026-10-29). HYPOTHESIS H-D1: the pre-images of most swept
+# faces reach an INTERFACE neighbour (the sphere's interface cells form a
+# shell two cells thick at N = 64, and the tangential displacement Co h
+# sin(theta) carries the vertices of every lateral face into the neighbour
+# along the interface), so the class table is dominated by "interface", and
+# the first unbounded cell is an interface cell whose outflow face has its
+# pre-image in an interface neighbour whose own plane would have given a
+# smaller liquid volume: the one-donor clipping over-fluxes. H-D2: the mass
+# change through the conservative bounding is zero to round-off (the
+# bounding corrects fluxes antisymmetrically) and the -3e-3 % of the N = 32
+# runs comes from the clipping stage or the boundary, i.e. the "clipping"
+# or "advection" term of the mass line is the one that is not zero.
+# FALSIFIED (H-D1) by a class table dominated by "donor only" or "full"/
+# "empty" with the first unbounded cell's responsible face of class
+# donorOnly: then a missing flux limiter, not the one-donor clipping, is the
+# cause; (H-D2) by a non-zero bounding term.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptDiag --export=ALL,STUDY=davof/sphereRotation3D_hexSweptDiag run-studies.sbatch
+study_name: sphereRotation3D_hexSweptDiag
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [prism, sweptFace]
+  TPF_SWEPT_CLASSIFY: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 1440
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

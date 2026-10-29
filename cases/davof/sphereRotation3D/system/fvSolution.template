@@ -111,6 +111,11 @@ solvers
         // prism volume) | trapezoidal | simpson (a quadrature in time of the
         // face fractions; ignored by the builds before it)
         fluxIntegration @!TPF_FLUX_INTEGRATION!@;
+        // the pre-image classification diagnostic of the fork branch
+        // davof-swept (2026-10-29): per step the swept faces by the class of
+        // the cells their pre-image reaches, the first unbounded cell with
+        // its faces' fluxes, the mass through the bounding; false: inert
+        sweptClassify   @!TPF_SWEPT_CLASSIFY!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;

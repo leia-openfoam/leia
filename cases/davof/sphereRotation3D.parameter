@@ -54,6 +54,10 @@ values
     // simpsonSplitS | gaussSplit | sweptFace (the swept-face flux, fork branch
     // davof-swept, 2026-10-28; planes only)
     TPF_FLUX_INTEGRATION ( prism );
+    // the pre-image classification diagnostic (fork davof-swept, 2026-10-29;
+    // builds before it ignore the key): false inert, true the per-step class
+    // counts, the first unbounded cell and the mass through the bounding
+    TPF_SWEPT_CLASSIFY ( false );
     TPF_FACE_STATE ( scalar );
     TPF_TENSOR_CENTROID ( cut );
     TPF_KB_PRISM_APEX ( vertexMean );

@@ -89,6 +89,8 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "defectMax", "defectL1", "volumeRule", "nRuleFallback",
             "nSweptFaces", "nSweptFlips", "nSweptOutOfDonor", "nSweptClipTris",
             "sweptClosureMax",
+            "nClassDonor", "nClassInterface", "nClassFull", "nClassEmpty", "nClassOutside",
+            "massAdvRel", "massBoundRel", "massClipRel",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
             "timeStepTime")
@@ -123,7 +125,15 @@ _RE_CURVED = re.compile(
     # triangle list, the faces whose pre-image leaves the donor cell, the
     # clipped triangles, the largest closure residual of the lists
     r"(?:; swept faces (\d+), flips (\d+), out of donor (\d+), "
-    r"clipped triangles (\d+), closure max ([^\s;]+))?")
+    r"clipped triangles (\d+), closure max ([^\s;]+))?"
+    # the pre-image classification (sweptClassify, 2026-10-29): the faces by
+    # the class of the cells their pre-image reaches beyond the donor
+    r"(?:; pre-image classes: donor (\d+), interface (\d+), full (\d+), "
+    r"empty (\d+), outside (\d+))?")
+# the mass through the stages of the step (the curved loop, 2026-10-29)
+_RE_MASS = re.compile(
+    r"^isoAdvection: mass change relative to sum\(alpha V\) at t\^n: advection (\S+), "
+    r"bounding (\S+), clipping (\S+)")
 _RE_BOUND = re.compile(
     r"^isoAdvection: After conservative bounding: min\(alpha\) = (\S+), "
     r"max\(alpha\) = 1 \+ (\S+)")
@@ -264,6 +274,18 @@ def read_log(path):
                     cur["nSweptOutOfDonor"] = m.group(30)
                     cur["nSweptClipTris"] = m.group(31)
                     cur["sweptClosureMax"] = m.group(32)
+                if m.group(33) is not None:
+                    cur["nClassDonor"] = m.group(33)
+                    cur["nClassInterface"] = m.group(34)
+                    cur["nClassFull"] = m.group(35)
+                    cur["nClassEmpty"] = m.group(36)
+                    cur["nClassOutside"] = m.group(37)
+                continue
+            m = _RE_MASS.match(line)
+            if m:
+                cur["massAdvRel"] = m.group(1)
+                cur["massBoundRel"] = m.group(2)
+                cur["massClipRel"] = m.group(3)
                 continue
             m = _RE_BOUND.match(line)
             if m:
