@@ -131,6 +131,10 @@ solvers
         // davof-swept, 2026-10-29)
         sweptCoplanar   @!TPF_SWEPT_COPLANAR!@;
         sweptFaceDump   @!TPF_SWEPT_DUMP!@;
+        // the per-face log of the swept fluxes, per step and rank
+        // (postProcessing/sweptFaceLog; fork davof-swept-par, 2026-10-30;
+        // builds before it ignore the key)
+        sweptFaceLog    @!TPF_SWEPT_FACE_LOG!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;

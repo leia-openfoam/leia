@@ -77,6 +77,11 @@ values
     // dump postProcessing/sweptFaceDump/{faces,pieces}.csv (false: none)
     TPF_SWEPT_COPLANAR ( donorSide );
     TPF_SWEPT_DUMP ( false );
+    // the per-face log of the swept fluxes per step and rank (fork
+    // davof-swept-par, 2026-10-30; the decomposition comparison) and the
+    // field write precision (12; 17 for that comparison)
+    TPF_SWEPT_FACE_LOG ( false );
+    TPF_WRITE_PRECISION ( 12 );
     TPF_FACE_STATE ( scalar );
     TPF_TENSOR_CENTROID ( cut );
     TPF_KB_PRISM_APEX ( vertexMean );

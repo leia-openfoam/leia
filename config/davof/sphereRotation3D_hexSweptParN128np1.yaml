@@ -1,0 +1,98 @@
+# The parallel swept flux, SHORT runs only (2026-10-30, fork davof-swept-par
+# e300b8d or later: the ring cells of other ranks through zoneDistribute's
+# cell-point-cell stencil and one mapDistributeBase transfer per step,
+# davofSweptRemote.H; a processor face computed on its upwind side).
+# cases/davof/sphereRotation3D, Co 0.2, fluxIntegration sweptFaceCells,
+# sweptCellsFaceUpdate pieces, sweptCoplanar donorSide, sweptScaleToPhi true,
+# alpha fixedValue on the patches, rows exact and ring normal (00000 exact,
+# 00001 ringArea). THIS STUDY: N = 128, 10 steps, np 1, only the end time written, no face log (the scaling).
+#
+# The family (one config per rank count, np is not an axis):
+#   sphereRotation3D_hexSweptParN32np{1,2,4,8,16}: N = 32, 20 steps, every
+#     step written (writePrecision 17) and the per-face log on (sweptFaceLog);
+#   sphereRotation3D_hexSweptParN32np1Perturbed: np 1 with alpha + 1e-14 in
+#     the interface cells of the initial field (davof_perturb_alpha.py), the
+#     serial-versus-serial control of the round-off amplification;
+#   sphereRotation3D_hexSweptParN64np{1,32}: N = 64, 10 steps, the
+#     processor-boundary check;
+#   sphereRotation3D_hexSweptParN128np{1,8,32,64,96}: N = 128, 10 steps, the
+#     scaling (only the end time written, no face log).
+# Scored by workflow/scripts/davof_decomposition_compare.py (fields after
+# reconstructPar, the face logs matched by face centre) and the converter's
+# columns nSweptRemoteCells nSweptRemoteFaces nSweptEulerTrace advectWallMax
+# curvedFluxWallMax exchangeWallMax timeStepTime.
+#
+# PRE-REGISTERED (2026-10-30, before any run; Tomislav's tests via the
+# coordinating session):
+# P-P1 (decomposition independence at the first step): at N = 32 after step 1
+#   max |alpha - alpha_serial| over the cells and max |alphaf - alphaf_serial|
+#   over the faces at most 1e-12 for np 2, 4, 8, 16, both rows. Expected: 1e-15
+#   to 1e-13 (the sums of the pieces in another order; the point velocities
+#   summed across processors by volPointInterpolation). FALSIFIED above 1e-12.
+# P-P2 (no growth beyond the round-off floor): over the 20 steps at N = 32 the
+#   per-step max difference to serial stays within ten times the serial
+#   control's difference at the same step (alpha + 1e-14; the earlier pair of
+#   serial runs 1e-13 apart differed by 2e-6 at step 2 and 1e-9 to 2e-7 later).
+#   FALSIFIED by a step where the parallel difference exceeds ten times the
+#   control's and 1e-10. Expected besides: per step nSweptEulerTrace 0, the
+#   faces with remote cells > 0 for np >= 2 and 0 in serial, the rank
+#   fallbacks and the skipped faces as in serial, no face of the serial run
+#   missing in the parallel logs (nMissing 0) and none computed twice (nDup 0).
+# P-P2b (the processor-boundary pathology): at N = 64 on 32 ranks, after
+#   step 1, zero swept faces whose pieces or trace use a cell of another rank
+#   (or that lie on a processor patch) differ from serial by more than 1e-10
+#   in alphaf or dVf/h^3. FALSIFIED by one such face at step 1. At steps 2 to
+#   10 the count is reported against the same count over the other faces (the
+#   amplified round-off reaches both; an excess at the crossing faces would
+#   be the pathology).
+# P-P3 (the cost): at N = 128 on 64 ranks one step at least 20 times faster
+#   than serial (serial about 9 s per step). Expected by this agent: 8 to 25
+#   times; the swept work sits in the ranks that hold the interface band, so
+#   the step's speed-up is bounded by the band's share of the ranks (load
+#   balance not addressed). FALSIFIED below 20.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptParN128np1 --export=ALL,STUDY=davof/sphereRotation3D_hexSweptParN128np1 run-studies.sbatch
+study_name: sphereRotation3D_hexSweptParN128np1
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and numbers rendered into the dictionaries are QUOTED.
+axes_override:
+  N_CELLS: [128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  END_TIME: ["0.00625"]
+  TPF_WRITE_INTERVAL: ["0.00625"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_SWEPT_FACE_LOG: ["false"]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_DUMP: ["false"]
+  TPF_SWEPT_CLASSIFY: ["false"]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -50,7 +50,11 @@ Columns, in this order:
     status abortStep abortReason tpfCommit tpfVersion
 
 (the tensor and sagitta counters are blank for the rows whose face clipping
-is plane: the lines do not exist in their logs)
+is plane: the lines do not exist in their logs; the swept fluxes' columns
+nSweptRemoteCells nSweptRemoteFaces nSweptEulerTrace advectWallMax
+curvedFluxWallMax exchangeWallMax, from the line `isoAdvection: swept
+parallel: ...` of fork davof-swept-par, follow massBoundaryRel and are blank
+for the builds before it)
 
 status (constant over the rows): `diverged` when the ABORT line exists,
 `completed` on `End` without it, `crashed` when .leia_solver_failed exists
@@ -93,6 +97,8 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "nSweptPartialCells", "nSweptDegenerate", "sweptPieceClosureMax",
             "nClassDonor", "nClassInterface", "nClassFull", "nClassEmpty", "nClassOutside",
             "massAdvRel", "massBoundRel", "massClipRel", "massBoundaryRel",
+            "nSweptRemoteCells", "nSweptRemoteFaces", "nSweptEulerTrace",
+            "advectWallMax", "curvedFluxWallMax", "exchangeWallMax",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
             "timeStepTime")
@@ -140,6 +146,14 @@ _RE_CURVED = re.compile(
 _RE_MASS = re.compile(
     r"^isoAdvection: mass change relative to sum\(alpha V\) at t\^n: advection ([^,\s]+), "
     r"bounding ([^,\s]+), clipping ([^,\s]+)(?:, boundary outflow (\S+))?")
+# the swept fluxes in parallel (fork davof-swept-par, 2026-10-30): the cells
+# of other ranks fetched, the faces whose pieces or trace used one, the traces
+# that fell back to the Euler step, the wall times (max over the ranks) of the
+# advect call, of curvedFlux and of the exchange
+_RE_SWEPT_PAR = re.compile(
+    r"^isoAdvection: swept parallel: remote cells (\d+), faces with remote cells (\d+), "
+    r"Euler traces (\d+); wall time max over \d+ ranks: advect (\S+) s, "
+    r"curvedFlux (\S+) s, exchange (\S+) s")
 _RE_BOUND = re.compile(
     r"^isoAdvection: After conservative bounding: min\(alpha\) = (\S+), "
     r"max\(alpha\) = 1 \+ (\S+)")
@@ -301,6 +315,15 @@ def read_log(path):
                 cur["massBoundRel"] = m.group(2)
                 cur["massClipRel"] = m.group(3)
                 cur["massBoundaryRel"] = m.group(4) or ""
+                continue
+            m = _RE_SWEPT_PAR.match(line)
+            if m:
+                cur["nSweptRemoteCells"] = m.group(1)
+                cur["nSweptRemoteFaces"] = m.group(2)
+                cur["nSweptEulerTrace"] = m.group(3)
+                cur["advectWallMax"] = m.group(4)
+                cur["curvedFluxWallMax"] = m.group(5)
+                cur["exchangeWallMax"] = m.group(6)
                 continue
             m = _RE_BOUND.match(line)
             if m:
