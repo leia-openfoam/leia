@@ -31,6 +31,29 @@
 # donor's 5.1e-3 class (P-F1: within 10 % of donor or below). FALSIFIED by
 # worst faces that sweep, or by afPieces below afDonor on them.
 #
+# MEASURED (2026-10-29, job 55759731, fork c52a904; 4 of 4 cases; the dumps
+# in each case's postProcessing/sweptFaceDump/): the hypothesis HELD. One-step
+# L1(alphaf): pieces + both 4.164e-2 (the ladder's value), donor 5.061e-3,
+# pieces + donorSide 4.603e-3 (P-F1 HELD: 9 % below the donor value). Of the
+# 3240 dumped faces 1080 are y-normal with phi = 0 exactly and sweeps 0; they
+# carry 94.3 % of the L1 sum of pieces + both, and the coverage of their
+# pre-image by the ring cells, sum |a_cell| / |A_f'|, is 2.000 on every one
+# (1.000 on every sweeping face). The worst 50 are all y-normal, phi = 0,
+# interior, at the interface, 8 pieces each, all 8 coplanar (4 below, 4
+# above the face), and carry 34 % of the L1 sum; pieces - donor = +0.50 on
+# average, the ratio pieces/donor 1.99 (median), 18 of them above 1 before
+# the clamp. Face 87789 (donor 29716 below, 29780 above): the donor's piece
+# 0.4390 of A_f' and the cell above 0.4411, the edge cells 4 x 0.02 to 0.04 on
+# each side: pieces 0.9987 = the sum of both sides, donor 0.4986, exact
+# 0.4798. Not a sign error (no face at 1 - exact), not the denominator
+# (A_f' = S_f on these faces), not the scaling (the fraction is unscaled),
+# no rank fallback among them, no stale value (the faces are recomputed).
+# The cause: the half-space test (x - x0).n <= 0 accepts a coplanar part of
+# the pre-image with a zero signed distance in BOTH cells sharing its plane.
+# Python check with the note's clip_polygon_wet on the geometry of a y-face
+# of this case (_scratch/python_check.py): the ring's area shares sum to
+# 2.000 with the s <= 0 test and to 1.000 with the donor-side rule.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptOneStep --export=ALL,STUDY=davof/sphereRotation3D_hexSweptOneStep run-studies.sbatch
 study_name: sphereRotation3D_hexSweptOneStep
 studies_dir: studies/davof

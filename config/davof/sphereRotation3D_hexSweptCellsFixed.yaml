@@ -1,0 +1,68 @@
+# The rotation ladder of the piecewise swept flux with the piecewise face
+# update after the coplanar fix (2026-10-29/30, fork davof-swept c52a904,
+# sweptCoplanar donorSide: a part of the pre-image lying in a cell plane
+# belongs to the cell on the donor's side; before it every face parallel to
+# the velocity got the sum of the fractions under the two cells sharing its
+# plane, study sphereRotation3D_hexSweptOneStep). cases/davof/sphereRotation3D,
+# N = 32 / 64 / 128, Co 0.2, one turn, exact and ring normal, fluxIntegration
+# sweptFaceCells with sweptCellsFaceUpdate pieces, sweptScaleToPhi true,
+# alpha fixedValue zero on the patches. 3 x 2 = 6 serial cases. The prism
+# comparison is sphereRotation3D_hexSweptCells (the prism aborts at N = 64
+# and 128) and the donor-plane face update sphereRotation3D_hexSweptCellsDonorFace.
+#
+# PRE-REGISTERED (2026-10-30, before the run). P-F1: the first-step
+# L1(alphaf) of the pieces face update within 10 % of the donor-plane
+# update's or below at every N (one step at N = 32 already measured 4.60e-3
+# against 5.06e-3; at N = 64 / 128 the donor's first step is 2.65e-3 /
+# 1.45e-3). P-F2: bounded, min(alpha) after the bounding above -1e-10 and no
+# full-cell excess over 1 above 1e-12, at every N, every step. P-F3: the
+# order of L1(alphaf) at the end of the turn at least 0.9 with the exact
+# normal (32 -> 64 and 64 -> 128). Expected besides: the conservation to
+# 1e-12 relative (the fixedValue patches), the centre error and Eshape near
+# second order as in the earlier pieces ladder. FALSIFIED by a first step
+# more than 10 % above the donor's, by min(alpha) below -1e-10 or an excess
+# above 1e-12, or by an exact-normal order below 0.9.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptCellsFixed --export=ALL,STUDY=davof/sphereRotation3D_hexSweptCellsFixed run-studies.sbatch
+study_name: sphereRotation3D_hexSweptCellsFixed
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64, 128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_DUMP: ["false"]
+  TPF_SWEPT_CLASSIFY: ["false"]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+# N = 128: 4.2e6 cells, 1600 steps
+solve_mem_mb: 16000
+solve_runtime: 2880
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
