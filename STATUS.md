@@ -5674,6 +5674,23 @@ UFVM and SL: `docs/gradient-controlled-level-set/gcls-static-source-report/`, se
      prescribed velocity, and an extension that depends on psi breaks that cancellation; the
      volume error at T/2 in 2D, which the extension improves, points the same way. A flow that
      does not reverse (`2Dtranslation`, a rotation) separates the two.
+10. **Use B on the 3D deformation, re-run (driver 55814176, 24/24 COMPLETED; MEASURED).**
+    N = 32/64/128, np 16. The noSource arms reproduce the void study's numbers. The rungs are NOT
+    in the asymptotic range: the baseline's shape error at T is 1.00/0.63/0.33 (order 0.80) and its
+    volume error at T 1.00/0.51/0.26; at N = 32 the interface is lost.
+    - **B1 OUT OF BAND** (neither PASS nor FAIL as written): the extension (second distance)
+      lowers the band gradient error at T/2 to 0.68/0.66 of the baseline (the 0.5 threshold is
+      missed), and the shape error at T to 0.77/0.82, with the shape order 0.83 against 0.80. The
+      volume error at T falls to 0.48 of the baseline at N = 128 (0.123 against 0.256), at T/2 to
+      0.045 (1.0e-2 against 0.22).
+    - B2 recorded (first distance: shape 0.82/0.86, gradient 0.73/0.72); B3 PASS as written (the
+      source lowers the gradient error to 0.62 to 0.74 of the extension alone; the shape order falls
+      to 0.63 to 0.74); B4 PASS (null pairs 3/3 bit-identical).
+    - **Reading.** Where the baseline converges (2D vortex, 3D shear) the extension makes the shape
+      and the volume at T worse; on the unresolved 3D deformation it improves every metric. This
+      fits the HYPOTHESIS of item 9 (the extension costs the reversal cancellation, which only a
+      resolved baseline has), but the 3D deformation rungs are too coarse to be a result on their
+      own: errors of 25 to 100 % do not give an order.
 
 ### 10.12 The plane test on perturbed hexahedra: planar faces exact, warped faces need the wetted area vector (2026-10-02)
 

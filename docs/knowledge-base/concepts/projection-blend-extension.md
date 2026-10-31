@@ -1,6 +1,6 @@
 ---
 title: "The blended projection velocity extension on the Eulerian line (D. Bothe, use B)"
-description: "Open 2026-10-31 - Uext = delta U + (1 - delta) U(x - dist n): on the 2D vortex and the 3D shear it halves the band gradient error at T/2 but makes the shape error at T 1.1 to 5 times and the volume error at T 8 to 11 times larger (B1 FAIL); the 3D deformation runs again after a setup error"
+description: "Open 2026-10-31 - Uext = delta U + (1 - delta) U(x - dist n): on the 2D vortex and the 3D shear it halves the band gradient error at T/2 but makes the shape error at T 1.1 to 5 times and the volume error at T 8 to 11 times larger (B1 FAIL); on the unresolved 3D deformation (re-run after a setup error) it improves every metric (B1 out of band)"
 aliases: [projectionBlend, VELOCITY_EXTENSION projectionBlend, use B, blended extension]
 kind: concept
 status: open
@@ -18,8 +18,10 @@ sources: [STATUS 11.28 item 9, gcls-static-source-report section 6, D. Bothe's n
 > 1.10x/1.56x (3D) of the baseline, with the shape order 2.53 against 3.23 (2D) and 1.28 against
 > 1.87 (3D); the volume error at T is 8x (2D) and 11x (3D) at the finest rung. The band gradient
 > error converges in no arm. With the small source (linearQ, mu 0.1) the gradient error falls
-> further (B3 PASS as written) and the shape and the volume become worse again. The 3D deformation
-> study is void (setup error) and runs again.
+> further (B3 PASS as written) and the shape and the volume become worse again. On the 3D
+> deformation (re-run after a setup error; N = 32 to 128 is not resolved, baseline shape error 1.00
+> to 0.33) the extension improves every metric: gradient 0.66, shape 0.82, volume at T 0.48 of the
+> baseline at N = 128 (B1 out of band).
 
 ## What it is
 
@@ -50,20 +52,22 @@ $|\nabla\psi| = 1$ there, so a small source can hold the profile.
 | volume at T, finest rung | 1.47e-3 / 1.85e-4 (2D); 5.1e-2 / 4.7e-3 (3D) | same |
 | band mean q at T/2 | 2.4 (2D), 3.2 (3D) without; 1.45 to 1.9 with | same |
 | null pairs, states | 3/3 bit-identical, all COMPLETED | B4 |
+| 3D deformation N = 128, ext / base | gradient 0.66, shape 0.82, volume at T 0.48 | STATUS 11.28 item 10 |
 
 ## Why it failed, or why we think so
 
 HYPOTHESIS: the baseline's high shape order at T comes from the time reversal of a linear
 transport with a prescribed velocity; an extension that depends on psi breaks that cancellation.
 In 2D the extension reduces the volume error at T/2 16 times, which points the same way. A flow
-that does not reverse separates the two. Earlier hypothesis (laptop smoke): the extended field is
+that does not reverse separates the two. The 3D deformation, where the baseline is not resolved and has
+no cancellation to lose, fits the hypothesis. Earlier hypothesis (laptop smoke): the extended field is
 not divergence-free and the advective form mixes a limited upwind and a centred term.
 
 ## Decisions
 
 ## Open questions
 
-- The 3D deformation re-run (driver 55814176).
+- A resolved 3D deformation ladder (N >= 256), on the cluster.
 - A non-reversing flow (`2Dtranslation`, a rotation) to test the hypothesis above.
 
 ## Related
@@ -81,3 +85,7 @@ Created with the model and the pre-registered read-out B1 to B4.
 deformation study had no `law` block in its case template: every gradientControl arm stopped at
 step 0. It is renamed `_VOID_noLawBlock_2026-10-31`, the template is fixed (9d483075), and the
 study runs again.
+
+### 2026-10-31 (later)
+The 3D deformation re-run completed (24/24, STATUS 11.28 item 10): B1 out of band, the extension
+improves every metric on these unresolved rungs. The note stays open on the reversal hypothesis.

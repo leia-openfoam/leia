@@ -80,8 +80,9 @@ fit is not blind to the odd-even mode (Section~\ref{sec:rescaling-sl}).
 
 \paragraph{Use B: the blended projection extension (\Meas).} \texttt{leiaLevelSetFoam}, Eulerian
 transport, reversed flows: 2D vortex $N=64,128,256$ on 4 ranks, 3D shear $N=32,64,128$ on 16
-ranks. The 3D deformation study had a setup error (the case template had no \texttt{law} block,
-every \texttt{gradientControl} arm stopped at step 0); it is void and runs again.
+ranks; 3D deformation $N=32,64,128$ on 16 ranks. The first 3D deformation study had a setup
+error (the case template had no \texttt{law} block, every \texttt{gradientControl} arm stopped at
+step 0); it is void, and the numbers here come from the re-run.
 
 \begin{table}[h]\centering\small
 \caption{Extension (second distance) against no extension, finest rung; ratio extension over
@@ -94,13 +95,18 @@ case & gradient ratio & shape ratio & shape order & volume at $T$ \\
 \midrule
 2D vortex, $N=256$ & 0.46 & 5.1 & 2.53 (base 3.23) & $1.5\times10^{-3}$ (base $1.9\times10^{-4}$) \\
 3D shear, $N=128$ & 0.43 & 1.56 & 1.28 (base 1.87) & $5.1\times10^{-2}$ (base $4.7\times10^{-3}$) \\
+3D deformation, $N=128$ & 0.66 & 0.82 & 0.83 (base 0.80) & $1.2\times10^{-1}$ (base $2.6\times10^{-1}$) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{enumerate}
-\item B1 FAILS on both cases: the band gradient error halves, but the shape and the volume at $T$
-are worse and converge more slowly (Table~\ref{tab:pb}).
+\item B1 FAILS on the 2D vortex and the 3D shear: the band gradient error halves, but the shape
+and the volume at $T$ are worse and converge more slowly (Table~\ref{tab:pb}).
+\item On the 3D deformation B1 is out of band: the extension improves every metric (gradient
+0.66, shape 0.82, volume at $T$ 0.48 of the baseline at $N=128$), but the gradient does not reach
+the 0.5 threshold. These rungs are not resolved: the baseline's shape error at $T$ is 1.00, 0.63,
+0.33 (order 0.80), so the numbers do not give a reliable order.
 \item The band gradient error does not converge in any arm, the baseline included (orders
 $-0.3$ to 0). The band mean of $|\nabla\psi|$ at $T/2$ is 2.4 (2D) and 3.2 (3D) without the
 extension and 1.45 to 1.9 with it: the extension reduces the steepening, but does not hold
@@ -111,6 +117,7 @@ worse again.
 \item The null pairs are bit-identical and every case completed (B4 PASS).
 \item \Hyp{} The baseline's high shape order at $T$ comes from the time reversal of a linear
 transport with a prescribed velocity; an extension that depends on $\psi$ breaks that
-cancellation. In 2D the extension reduces the volume error at $T/2$ 16 times, which points the
-same way. A flow that does not reverse separates the two.
+cancellation. In 2D the extension reduces the volume error at $T/2$ 16 times, and on the
+unresolved 3D deformation, where the baseline has no cancellation to lose, it improves every
+metric; both point the same way. A flow that does not reverse separates the two.
 \end{enumerate}
