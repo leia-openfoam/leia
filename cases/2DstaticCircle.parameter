@@ -65,6 +65,11 @@ values
     // the data of commit 010b553a is void for this reason).
     PSI_MIN_ITER ( 1 );
 
+    // Time scheme of psi (alias of system/aliasDict): PsiDdtCN (the default of every source study)
+    // or PsiDdtEuler. Crank-Nicolson re-applies a change of psi made outside the solve (a
+    // redistancer event) as a rate; the rescaling studies use PsiDdtEuler (STATUS 11.28).
+    PSI_DDT_SCHEME ( PsiDdtCN );
+
     // Read only by maxCo (adjustTimeStep no) and by the inert semiLagrangian block.
     CFL ( 0.5 );
 }

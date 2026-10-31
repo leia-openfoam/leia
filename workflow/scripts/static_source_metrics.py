@@ -143,8 +143,24 @@ def case_info(case):
 
 def arm_name(c):
     if c["source"] == "gradientControl":
-        return f"gc-{c['law']}-{c['weight']}-{c['moll']}"
-    return f"{c['source']}-{c['moll']}"
+        base = f"gc-{c['law']}-{c['weight']}-{c['moll']}"
+    else:
+        base = f"{c['source']}-{c['moll']}"
+    return base + rescale_suffix(c["tokens"])
+
+
+def rescale_suffix(tok):
+    """'' without a redistancer; else '+rescale-<order>-<once|every>-<Hessian alias>' for the rescaling
+    model of D. Bothe (STATUS 11.28), so a rescaling case never shares an arm name with a source arm."""
+    red = tok.get("REDISTANCER", "noRedistancing")
+    if red == "noRedistancing":
+        return ""
+    if red != "rescaling":
+        return f"+{red}"
+    ev = tok.get("RESCALE_MAX_EVENTS", "-1")
+    when = "once" if ev == "1" else ("every" if ev == "-1" else f"max{ev}")
+    return (f"+rescale-{tok.get('RESCALE_ORDER', 'second')}-{when}-{tok.get('RESCALE_MAG_GRAD', 'centred')}"
+            f"-{tok.get('RESCALE_HESSIAN_SCHEME', 'SdplsLSQ')}")
 
 
 def case_dirs(study_dirs):
@@ -552,6 +568,98 @@ def _undef(*rows):
     return "; ".join(f"{r['case']} N {r['N']} tau {r['tau']:g}: shift2 undefined, missing {r['missing']}" for r in bad)
 
 
+def rescale_verdicts(fields, hist, add):
+    """R1 to R6 of config/staticSource/staticSourceRescale*2D.yaml (the algebraic rescaling of
+    D. Bothe, STATUS 11.28), applied as written in the headers."""
+    by = {(r["arm"], r["init"], int(r["N"]), float(r["tau"])): r for r in fields}
+    ctrl = {int(r["N"]): r for r in fields if r["arm"] == "noSource-none" and r["init"] == "sdf" and float(r["tau"]) == 0}
+    for r in fields:   # without a control study: d at tau = 0 of any rescaling arm (no event has run yet)
+        if "+rescale" in r["arm"] and r["init"] == "sdf" and float(r["tau"]) == 0:
+            ctrl.setdefault(int(r["N"]), r)
+    get = lambda arm, init, N, tau, k: float(by[(arm, init, N, tau)][k]) if (arm, init, N, tau) in by else float("nan")
+    Ns = sorted({int(r["N"]) for r in fields if "+rescale" in r["arm"]})
+    once = lambda o, mg="centred": f"noSource-none+rescale-{o}-once-{mg}-SdplsLSQ"
+    every = lambda o, hs="SdplsLSQ", mg="centred": f"noSource-none+rescale-{o}-every-{mg}-{hs}"
+    INITS = ["sdf", "blendH2", "blendH1", "blend01", "algNorm", "alg", "modM2", "modM4"]
+    for mg in ("centred", "godunov"):
+        if not any(r["arm"].startswith(once("first", mg)[:-9]) for r in fields):
+            continue
+        _rescale_once_lines(fields, add, by, ctrl, Ns, lambda o: once(o, mg), mg, INITS, get)
+    # R5 repeated every step, and R6 the Gauss Hessian
+    _rescale_every_lines(fields, hist, add, by, Ns, every, INITS, get)
+
+
+def _rescale_once_lines(fields, add, by, ctrl, Ns, once, mg, INITS, get):
+    """R1 to R4 for one choice of |grad psi| (centred or godunov)."""
+    # R1 accuracy after one event
+    for o in ("first", "second"):
+        for init in INITS:
+            vals = [get(once(o), init, N, 1.0, "dist3_2") for N in Ns]
+            if not any(math.isfinite(v) for v in vals):
+                continue
+            od = lsq_order([1 / N for N in Ns], vals)
+            txt = " ".join(f"{v:.2e}" for v in vals) + f", order {od:.2f}"
+            if init in ("alg", "algNorm") and o == "second":
+                ok = all(get(once(o), init, N, 1.0, "dist3_2") <= 0.2 * get(once(o), init, N, 0.0, "dist3_2")
+                         for N in Ns if N >= 128)
+                add("R1", f"{mg} {o} {init}", txt, "order >= 1.7; <= 0.2 x start at N >= 128",
+                    "PASS" if od >= 1.7 and ok else ("FAIL" if od < 1.5 else "OUT OF BAND"))
+            elif init in ("alg", "algNorm"):
+                add("R1", f"{mg} {o} {init}", txt, "order 1 +- 0.3", "PASS" if abs(od - 1) <= 0.3 else "FAIL")
+            else:
+                add("R1", f"{mg} {o} {init}", txt, "recorded", "RECORDED")
+    # R2 zero set and R3 volume after one event
+    for o in ("first", "second"):
+        for init in ("alg", "algNorm", "blend01"):
+            r2, r3 = [], []
+            for N in [N for N in Ns if N >= 128]:
+                z, zd = get(once(o), init, N, 1.0, "zcL2"), float(ctrl[N]["zcL2"]) if N in ctrl else float("nan")
+                r2.append(abs(z - zd) / zd)
+                v1, v0 = get(once(o), init, N, 1.0, "VDA"), get(once(o), init, N, 0.0, "VDA")
+                vd = float(ctrl[N]["VDA"]) if N in ctrl else float("nan")
+                r3.append(abs(v1 - vd) / abs(v0 - vd) if v0 != vd else float("nan"))
+            if not r2:
+                continue
+            if o == "second":
+                add("R2", f"{mg} {o} {init}", "rel. zcL2 diff to d " + " ".join(f"{x:.3f}" for x in r2), "<= 0.1",
+                    "PASS" if all(x <= 0.1 for x in r2) else "FAIL")
+                add("R3", f"{mg} {o} {init}", "volume diff ratio " + " ".join(f"{x:.3f}" for x in r3), "<= 0.1",
+                    "PASS" if all(x <= 0.1 for x in r3) else "FAIL")
+            else:
+                add("R2", f"{mg} {o} {init}", "rel. zcL2 diff to d " + " ".join(f"{x:.3f}" for x in r2), "recorded", "RECORDED")
+                add("R3", f"{mg} {o} {init}", "volume diff ratio " + " ".join(f"{x:.3f}" for x in r3), "recorded", "RECORDED")
+    # R4 d is a fixed point
+    for o in ("first", "second"):
+        vals = [get(once(o), "sdf", N, 1.0, "dist3_2") for N in Ns if N >= 128]
+        if vals:
+            add("R4", f"{mg} {o} sdf", " ".join(f"{v:.2e}" for v in vals), "<= 1e-3", "PASS" if all(v <= 1e-3 for v in vals) else "FAIL")
+
+
+def _rescale_every_lines(fields, hist, add, by, Ns, every, INITS, get):
+    """R5 (every step) per arm, and R6 (the Gauss Hessian against the leastSquares Hessian)."""
+    surv, growth = summary_tables(fields, hist)
+    for arm in sorted({r["arm"] for r in fields if "+rescale" in r["arm"] and "-every-" in r["arm"]}):
+        grown = [g for g in growth if g["arm"] == arm and g["rate"] != ""]
+        bad = [r for r in fields if r["arm"] == arm and not (float(r["dist3_2"]) <= 1)]
+        note = "; ".join(f"{g['init']} N {g['N']} rate {g['rate']:.3f}" for g in grown[:4])
+        if "-second-" in arm:
+            ratio = [get(arm, init, N, 10.0, "dist3_2") / get(arm, init, N, 1.0, "dist3_2")
+                     for init in INITS for N in Ns if N >= 128 and (arm, init, N, 10.0) in by]
+            ok = not grown and not bad and all(x <= 2 for x in ratio)
+            add("R5" if "SdplsLSQ" in arm else "R6", arm, f"growth phases {len(grown)}, writes with dist3_2 > 1: {len(bad)}, "
+                f"max dist3_2(10)/dist3_2(1) {max(ratio) if ratio else float('nan'):.2f}",
+                "no growth, dist3_2 <= 1, ratio <= 2", "PASS" if ok else "FAIL", note)
+        else:
+            add("R5", arm, f"growth phases {len(grown)}, writes with dist3_2 > 1: {len(bad)}", "no growth, dist3_2 <= 1",
+                "PASS" if not grown and not bad else "FAIL", note)
+    ga, la = every("second", "SdplsGauss"), every("second")
+    rr = [get(ga, init, N, 10.0, "dist3_2") / get(la, init, N, 10.0, "dist3_2") for init in INITS for N in Ns
+          if N >= 128 and (ga, init, N, 10.0) in by and (la, init, N, 10.0) in by]
+    if rr:
+        add("R6", "Gauss / leastSquares Hessian, dist3_2 at tau 10", f"ratio {min(rr):.2f} to {max(rr):.2f}", "within 2x",
+            "PASS" if all(0.5 <= x <= 2 for x in rr) else "FAIL")
+
+
 def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
     V = []
 
@@ -789,6 +897,8 @@ def verdicts(fields, hist, cases, null_rows, init_rows=(), iter_rows=()):
                 ok = a[N]["shift2"] >= 0.5 * b[N]["shift2"]
                 add("P5.4", f"{arm} {init} N {N} tau 80", f"{a[N]['shift2']:.4f} vs band {b[N]['shift2']:.4f}",
                     "none >= band/2", "PASS" if ok else "FAIL")
+    if any("+rescale" in r["arm"] for r in fields):
+        rescale_verdicts(fields, hist, add)
     return V
 
 
@@ -909,7 +1019,7 @@ def _csv_equal(fa, fb, tol=0.0):
 
 
 def null_checks(study_dirs):
-    cases = [case_info(c) for c in case_dirs(study_dirs)]
+    cases = [c for c in (case_info(c) for c in case_dirs(study_dirs)) if "+" not in c["arm"]]   # null arms only
     index = {}
     for c in cases:
         index[(c["source"], c["law"], c["weight"], c["moll"], c["init"], c["N"])] = c

@@ -1,0 +1,177 @@
+%% Technical report: the Eulerian level-set source terms alone, at zero velocity (the static source
+%% test, STATUS 11.27), and the algebraic rescaling of D. Bothe (STATUS 11.28).
+%% Build:  latexmk -pdf staticSourceReport.tex
+%% Every number comes from the curated tables ../gcls-level-set-article/data/tables/staticSource_*.csv
+%% (archive data/archive/shared-method-config-2026-09-01-338-g3727b9e9/staticSource, SHA-256 manifest);
+%% the tables of this report (tables/ss_*.tex) are written by workflow/scripts/static_source_report_tables.py.
+%% Marks: MEASURED (a number in those tables), DERIVED (a closed form), HYPOTHESIS (a test is named).
+\documentclass[11pt,a4paper]{article}
+\usepackage[a4paper,margin=22mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{url}
+\usepackage{caption}
+\usepackage[hidelinks]{hyperref}
+\newcommand{\Meas}{\textsc{measured}}
+\newcommand{\Der}{\textsc{derived}}
+\newcommand{\Hyp}{\textsc{hypothesis}}
+\newcommand{\bn}{\mathbf{n}}
+\newcommand{\bx}{\mathbf{x}}
+\setlength{\parskip}{3pt}
+\setlength{\emergencystretch}{2em}
+
+\title{The Eulerian level-set source terms at zero velocity,\\ and the algebraic rescaling of the level set\\[4pt]
+\large Technical report, 2026-10-29}
+\author{Prepared by the source-term session (Claude Code) for\\
+Tomislav Mari\'{c} and Dieter Bothe, Mathematical Modeling and Analysis, TU Darmstadt}
+\date{Runs: commit 3727b9e9, library stamp \path{shared-method-config-2026-09-01-338-g3727b9e9};
+metrics: \path{static_source_metrics.py} at 21e8367d}
+
+\begin{document}
+\maketitle
+
+%% ===========================================================================
+\section{Summary}
+
+\paragraph{The test.} At $\mathbf u=0$ the level-set equation of \texttt{leiaLevelSetFoam} reduces
+to $\partial_\tau\psi=\psi\,G(q)$, $q=|\nabla\psi|$, so a run integrates a source alone. A circle
+($R=0.25$, centre off the cell lattice) on a uniform 2D mesh, $N=64,128,256,512$,
+$\Delta\tau=h/2$, $\tau\le80$ in units of the source time $1/\mu$; eight initial fields with the
+same zero set; every gradient-control law (Soga's and Bothe's included), \texttt{beta}, and the
+SDPLS strain sources; the source on a band of three cells and on the whole domain. 608 runs, all
+complete, every check passed (Section~\ref{sec:checks}).
+
+\paragraph{Results.}
+\begin{enumerate}
+\item \Meas{} The Detrixhe--Aslam volume depends on the profile of $\psi$, not only on its zero
+set: $(r^2-R^2)/(2R)$ has twice the volume error of the signed distance $d$, and the difference
+converges at order 1.97. A source that restores $d$ therefore changes the measured volume by
+$O(h^2)$ without moving the zero set (Table~\ref{tab:repr}).
+\item \Meas{} With the centred gradient, every law is unstable at the grid scale. The error grows
+exponentially at the rate $G(0)$, the value of the law at $q=0$, within a few percent for every
+law (Table~\ref{tab:growth}). At a grid-scale extremum of $\psi$ the centred gradient is zero; on
+a staircase (steps of $2h$ every two cells) it is exactly 1, so the source sees a correct profile
+and does not correct it.
+\item \Meas{} From $d$ in the band, a slow drift (the error doubles every 8 to 9 time units)
+precedes the growth; the zero crossings move $0.46h$, $0.30h$, $0.080h$, $0.032h$ at
+$N=64$ to 512 by $\tau=80$, order 2.35 in length (Table~\ref{tab:shift}). From every other start
+the growth at $G(0)$ arrives earlier (Table~\ref{tab:survband}). On the whole domain every law
+fails by $\tau=10$ to 50, from the kink of $d$ at the circle centre (Table~\ref{tab:survnone}).
+\item \Meas{} No law restores $d$ from the blends or the algebraic fields without moving the
+zero set. The laws that keep the zero set of $d$ (cubic, soft wall) do so because they hardly act
+near $q=1$.
+\end{enumerate}
+
+\paragraph{Consequence.} The defect is the estimate of $q$, not the law. The next step is the
+algebraic rescaling of D.~Bothe (Section~\ref{sec:rescaling}): a pointwise map with no
+growth mechanism, as an alternative to a source term, tested on this same case first.
+
+%% ===========================================================================
+\section{The sources, one paragraph each}
+\label{sec:each}
+
+$\zeta=(q^2-1)/2$; every rate constant is $\mu=1$.
+
+\begin{description}
+\item[\texttt{linearQ}, $G=-(q-1)$ (Soga; Bothe--Fricke--Soga).] Follows the exact zero-set equation
+$\dot q=qG(q)$ for $\tau\le2$ (from $r^2-R^2$: 0.7325 against 0.7311 at $\tau=1$), then grows at
+0.98 to 1.00 ($G(0)=1$). In the band it keeps $d$ to $\tau=80$ only at $N\ge256$; from every
+other start it fails by $\tau=10$ to 80. Whole domain: fails by $\tau=10$.
+\item[\texttt{beta}, $G=1-q$.] Bit-identical to \texttt{linearQ} at $\mu=1$ (48 of 48 pairs).
+\item[\texttt{linearZ}, $G=-\zeta$.] As \texttt{linearQ}, at the rate 0.46 to 0.50 ($G(0)=0.5$).
+\item[\texttt{saturatedLinearZ}, $G=-\zeta/(1+|\zeta|)$.] The slowest growth, 0.331 to 0.337
+($G(0)=1/3$); the same failure pattern, later. No far sign flips on the whole domain (as
+predicted, $|F|\le1$).
+\item[\texttt{twoThirdsZReg}, $G=-\zeta/(\zeta^2+\varepsilon^2)^{1/6}$.] The steepest law at $q=1$
+($|G'(1)|=3.68$): removes every zero crossing of $d$ in the band by $\tau=60$ to 80 at
+$N\le256$; rate 0.59 to 0.62 ($G(0)=0.63$).
+\item[\texttt{cubicQ}, $G=-(q-1)^3$; \texttt{cubicZ}, $G=-\zeta^3$.] In the band they keep the zero
+set of $d$ (shift $10^{-9}h$ and below) because $|F|\sim|q-1|^3$ is tiny near $q=1$; for the same
+reason they leave the blends and the normalised algebraic field almost unchanged in 80 time
+units. From $r^2-R^2$ they correct the profile, and \texttt{cubicZ} then fails by $\tau=40$ to 80.
+Whole domain: fail by $\tau=10$ to 50 (rate $\approx G(0)$).
+\item[\texttt{softWall}, $G=-\tanh(\gamma((q-1)/\delta)^5)$ (Bothe S1a, $\epsilon_D=0.8$).] Acts only
+outside $|q-1|\approx\delta=0.08$: keeps $d$ and the small blends untouched (at $N\ge256$ its source
+is below the round-off of the matrix diagonal), and from every start with $|q-1|>\delta$ it grows at
+1.00 to 1.02 ($G(0)=1$) and fails by $\tau=10$ to 20. On the whole domain it amplifies round-off:
+serial and four-process runs differ by 20\,\%.
+\item[\texttt{R}, \texttt{Rdiv}, \texttt{RdivStrictSp} (SDPLS strain sources).] Zero at
+$\mathbf u=0$ by construction; bit-identical to no source (48 of 48 pairs). Likewise the strain
+half of \texttt{linearQ} with strain weight \texttt{full} (32 of 32).
+\end{description}
+
+%% ===========================================================================
+\section{Tables}
+\label{sec:tables}
+
+\begin{table}[h]\centering\small
+\caption{No source, $\tau=0$, $N=64$ to 512: the Detrixhe--Aslam volume error $(V_{DA}-V)/V$, and
+the volume difference from $d$, $\Delta V=(V_{DA}-V_{DA}(d))/V$, with least-squares orders.
+The L1 shape error equals $|$volEx$|$ for every field and rung: the DA fraction is below the
+exact fraction in every cut cell. \Meas}
+\label{tab:repr}
+\input{tables/ss_representation.tex}
+\end{table}
+
+\begin{table}[h]\centering\small
+\caption{Growth rate of the band gradient error in its growth phase (least squares of the
+logarithm between 1 and $10^8$; in brackets the number of runs with a growth phase), against $G(0)$.
+\Meas}
+\label{tab:growth}
+\input{tables/ss_growth.tex}
+\end{table}
+
+\begin{table}[h]\centering\small
+\caption{Band arm, start $d$: zero-crossing shift against $\tau=0$ (L2 over the edges, in $h$)
+at $\tau=80$, and the order of the shift in length. -- : no edge crosses at both times.
+\texttt{beta} has no $N=512$ run. \Meas}
+\label{tab:shift}
+\input{tables/ss_shift.tex}
+\end{table}
+
+\begin{table}[h]\centering\scriptsize
+\caption{Band arm: the first field write ($\tau=10,20,\dots$) at which $\psi$ is more than one cell
+from $d$ near the circle (L2 of $(\psi-d)/h$ in $|d|\le3h$ above 1), $N=64/128/256/512$; - :
+never by $\tau=80$. \Meas}
+\label{tab:survband}
+\resizebox{\textwidth}{!}{\input{tables/ss_survival_band.tex}}
+\end{table}
+
+\begin{table}[h]\centering\scriptsize
+\caption{As Table~\ref{tab:survband}, the source on the whole domain. \Meas}
+\label{tab:survnone}
+\resizebox{\textwidth}{!}{\input{tables/ss_survival_none.tex}}
+\end{table}
+
+%% ===========================================================================
+\section{Checks and pre-registered lines}
+\label{sec:checks}
+
+The first cluster run (commit 010b553a) is void: at $\mathbf u=0$ the matrix of $\psi$ is
+diagonal, the solver residual is scaled by the whole field, and a small source update started
+below the tolerance, so the solver left $\psi$ unchanged in 68\,\% of the solves. The re-run forces
+one iteration (\texttt{PSI\_MIN\_ITER 1}); every log is checked: no solve skipped a nonzero
+residual (608 of 608). The initial fields equal their formulas to $10^{-14}$ (608 of 608); 132
+null pairs are bit-identical. Table~\ref{tab:verdicts} counts the verdicts of the pre-registered
+lines (the config headers of \path{config/staticSource/}).
+
+Wrong predictions, stated: P1.1 predicted order 2 for the L2 fraction error over the cut cells;
+it is order 1 by construction. P4.2 predicted a zero-crossing shift of $d$ of at least $0.05h$ on
+every rung by $\tau=80$; at $N=512$ it is $0.032h$, so the damage from $d$ converges. P5.3
+predicted Crank--Nicolson sign flips far from the circle by $\tau=10$ on every mesh; a flip needs
+$|F|\Delta\tau>2$, which takes longer on finer meshes. The crossing error zcL2 has order 1.65
+because of the edges nearly parallel to the circle (2.03 without them).
+
+\begin{table}[h]\centering\small
+\caption{Verdicts per pre-registered line (\texttt{staticSource\_verdicts.csv}). UNDEFINED: the metric
+needs edges that cross at both times; NOT EVALUATED: outside the line's condition.}
+\label{tab:verdicts}
+\input{tables/ss_verdicts.tex}
+\end{table}
+
+\clearpage
+\input{sec_rescaling_accuracy.tex}
+
+\end{document}

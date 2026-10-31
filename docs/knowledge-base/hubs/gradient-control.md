@@ -89,3 +89,10 @@ The static source test (STATUS 11.27, [[concepts/static-source-gate-eulerian]]):
 source alone at zero velocity, on a circle from eight initial fields. The first cluster run is void:
 the psi solver did nothing below its tolerance in 68 % of the solves
 ([[retractions/static-source-solver-dead-zone]]); fixed with `minIter 1`, re-run on Lichtenberg.
+
+### 2026-10-29
+The static source test is settled ([[concepts/static-source-gate-eulerian]]): every Eulerian law grows
+grid-scale extrema at its G(0) with the centred gradient. Next, by the author's decision: D. Bothe's
+algebraic rescaling of psi (first and second order) as an alternative to a source term, in UFVM
+(`REDISTANCER rescaling`, STATUS 11.28) and with the SL quadratic fit (task T6 of
+[[sessions/sl-session-handover]]); then his blended velocity extension.

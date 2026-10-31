@@ -1,0 +1,587 @@
+item,scope,value,threshold,verdict,note
+P0.1,"noSource, every write",288/288 bit-identical,all,PASS,
+P1.1,shapeEx1 alg tau 0 (absolute),1.99,2 +- 0.3 (FAIL < 1.5),PASS,
+P1.1,shapeEx1 algNorm tau 0 (absolute),1.99,2 +- 0.3 (FAIL < 1.5),PASS,
+P1.1,shapeEx1 blend01 tau 0 (absolute),2.01,2 +- 0.3 (FAIL < 1.5),PASS,
+P1.1,shapeEx1 blendH1 tau 0 (absolute),2.03,2 +- 0.3 (FAIL < 1.5),PASS,
+P1.1,shapeEx1 blendH2 tau 0 (absolute),2.01,2 +- 0.3 (FAIL < 1.5),PASS,
+P1.1,shapeEx1 modM2 tau 0 (absolute),2.01,2 +- 0.3 (FAIL < 1.5),PASS,
+P1.1,shapeEx1 modM4 tau 0 (absolute),2.01,2 +- 0.3 (FAIL < 1.5),PASS,
+P1.1,shapeEx1 sdf tau 0 (absolute),2.01,2 +- 0.3 (FAIL < 1.5),PASS,
+P1.1,shapeEx2 alg tau 0 (absolute),0.98,2 +- 0.3 (FAIL < 1.5),FAIL,
+P1.1,shapeEx2 algNorm tau 0 (absolute),0.98,2 +- 0.3 (FAIL < 1.5),FAIL,
+P1.1,shapeEx2 blend01 tau 0 (absolute),1.00,2 +- 0.3 (FAIL < 1.5),FAIL,
+P1.1,shapeEx2 blendH1 tau 0 (absolute),1.03,2 +- 0.3 (FAIL < 1.5),FAIL,
+P1.1,shapeEx2 blendH2 tau 0 (absolute),1.00,2 +- 0.3 (FAIL < 1.5),FAIL,
+P1.1,shapeEx2 modM2 tau 0 (absolute),1.00,2 +- 0.3 (FAIL < 1.5),FAIL,
+P1.1,shapeEx2 modM4 tau 0 (absolute),1.00,2 +- 0.3 (FAIL < 1.5),FAIL,
+P1.1,shapeEx2 sdf tau 0 (absolute),1.00,2 +- 0.3 (FAIL < 1.5),FAIL,
+P1.1,zcL2 alg tau 0 (absolute),1.80,2 +- 0.3 (FAIL < 1.5),PASS,
+P1.1,zcL2 algNorm tau 0 (absolute),1.80,2 +- 0.3 (FAIL < 1.5),PASS,
+P1.1,zcL2 blend01 tau 0 (absolute),1.66,2 +- 0.3 (FAIL < 1.5),OUT OF BAND,
+P1.1,zcL2 blendH1 tau 0 (absolute),1.66,2 +- 0.3 (FAIL < 1.5),OUT OF BAND,
+P1.1,zcL2 blendH2 tau 0 (absolute),1.65,2 +- 0.3 (FAIL < 1.5),OUT OF BAND,
+P1.1,zcL2 modM2 tau 0 (absolute),1.66,2 +- 0.3 (FAIL < 1.5),OUT OF BAND,
+P1.1,zcL2 modM4 tau 0 (absolute),1.59,2 +- 0.3 (FAIL < 1.5),OUT OF BAND,
+P1.1,zcL2 sdf tau 0 (absolute),1.65,2 +- 0.3 (FAIL < 1.5),OUT OF BAND,
+P1.1,|volEx| alg tau 0,1.99,2 +- 0.3,PASS,
+P1.1,|volEx| algNorm tau 0,1.99,2 +- 0.3,PASS,
+P1.1,|volEx| blend01 tau 0,2.01,2 +- 0.3,PASS,
+P1.1,|volEx| blendH1 tau 0,2.03,2 +- 0.3,PASS,
+P1.1,|volEx| blendH2 tau 0,2.01,2 +- 0.3,PASS,
+P1.1,|volEx| modM2 tau 0,2.01,2 +- 0.3,PASS,
+P1.1,|volEx| modM4 tau 0,2.01,2 +- 0.3,PASS,
+P1.1,|volEx| sdf tau 0,2.01,2 +- 0.3,PASS,
+P1.2,blend01 N 128,1.000,"[0.85, 1.15]",PASS,
+P1.2,blendH1 N 128,0.999,"[0.85, 1.15]",PASS,
+P1.2,blendH2 N 128,0.999,"[0.85, 1.15]",PASS,
+P1.2,blend01 N 256,1.000,"[0.85, 1.15]",PASS,
+P1.2,blendH1 N 256,1.000,"[0.85, 1.15]",PASS,
+P1.2,blendH2 N 256,1.000,"[0.85, 1.15]",PASS,
+P1.2,blend01 N 512,1.000,"[0.85, 1.15]",PASS,
+P1.2,blendH1 N 512,1.000,"[0.85, 1.15]",PASS,
+P1.2,blendH2 N 512,1.000,"[0.85, 1.15]",PASS,
+P1.3,|V_DA(alg) - V_DA(sdf)|/V_exact,1.97,2 +- 0.3,PASS,
+P1.4,modM2 tau 0,"shapeEx1 order 2.01, shapeEx2 order 1.00",no derived value,RECORDED,
+P1.4,modM4 tau 0,"shapeEx1 order 2.01, shapeEx2 order 1.00",no derived value,RECORDED,
+S0,every case (iterations),608/608 PASS,psi solves present; no deadZone solve; F = 0: zero residual in every solve,PASS,
+S0,cases with F != 0 and singular solves (zero residual to round-off),9,counted,RECORDED,staticSourceGcBand2D/2DstaticCircle_00146 gc-softWall-none-band sdf N 256: 122880/122880; staticSourceGcBand2D/2DstaticCircle_00149 gc-softWall-none-band blendH2 N 256: 122880/122880; staticSourceGcBand2D_N512/2DstaticCircle_00016 gc-cubicQ-none-band sdf N 512: 245760/245760; staticSourceGcBand2D_N512/2DstaticCircle_00017 gc-cubicQ-none-band blendH2 N 512: 245760/245760; staticSourceGcBand2D_N512/2DstaticCircle_00024 gc-cubicZ-none-band sdf N 512: 245760/245760; staticSourceGcBand2D_N512/2DstaticCircle_00025 gc-cubicZ-none-band blendH2 N 512: 245760/245760; staticSourceGcBand2D_N512/2DstaticCircle_00048 gc-softWall-none-band sdf N 512: 245760/245760; staticSourceGcBand2D_N512/2DstaticCircle_00049 gc-softWall-none-band blendH2 N 512: 245760/245760
+P0.2,every case (check-init),608/608 PASS,"L1, L2 <= 1e-14; signs of d; sdf = psiEnd",PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00000 (beta-none, sdf, N 64) vs staticSourceGcNone2D/2DstaticCircle_00000 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00001 (beta-none, sdf, N 128) vs staticSourceGcNone2D/2DstaticCircle_00001 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00002 (beta-none, sdf, N 256) vs staticSourceGcNone2D/2DstaticCircle_00002 (gc-linearQ-none-none)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00003 (beta-band, sdf, N 64) vs staticSourceGcBand2D/2DstaticCircle_00000 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00004 (beta-band, sdf, N 128) vs staticSourceGcBand2D/2DstaticCircle_00001 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00005 (beta-band, sdf, N 256) vs staticSourceGcBand2D/2DstaticCircle_00002 (gc-linearQ-none-band)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00006 (beta-none, blendH2, N 64) vs staticSourceGcNone2D/2DstaticCircle_00003 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00007 (beta-none, blendH2, N 128) vs staticSourceGcNone2D/2DstaticCircle_00004 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00008 (beta-none, blendH2, N 256) vs staticSourceGcNone2D/2DstaticCircle_00005 (gc-linearQ-none-none)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00009 (beta-band, blendH2, N 64) vs staticSourceGcBand2D/2DstaticCircle_00003 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00010 (beta-band, blendH2, N 128) vs staticSourceGcBand2D/2DstaticCircle_00004 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00011 (beta-band, blendH2, N 256) vs staticSourceGcBand2D/2DstaticCircle_00005 (gc-linearQ-none-band)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00012 (beta-none, blendH1, N 64) vs staticSourceGcNone2D/2DstaticCircle_00006 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00013 (beta-none, blendH1, N 128) vs staticSourceGcNone2D/2DstaticCircle_00007 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00014 (beta-none, blendH1, N 256) vs staticSourceGcNone2D/2DstaticCircle_00008 (gc-linearQ-none-none)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00015 (beta-band, blendH1, N 64) vs staticSourceGcBand2D/2DstaticCircle_00006 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00016 (beta-band, blendH1, N 128) vs staticSourceGcBand2D/2DstaticCircle_00007 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00017 (beta-band, blendH1, N 256) vs staticSourceGcBand2D/2DstaticCircle_00008 (gc-linearQ-none-band)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00018 (beta-none, blend01, N 64) vs staticSourceGcNone2D/2DstaticCircle_00009 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00019 (beta-none, blend01, N 128) vs staticSourceGcNone2D/2DstaticCircle_00010 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00020 (beta-none, blend01, N 256) vs staticSourceGcNone2D/2DstaticCircle_00011 (gc-linearQ-none-none)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00021 (beta-band, blend01, N 64) vs staticSourceGcBand2D/2DstaticCircle_00009 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00022 (beta-band, blend01, N 128) vs staticSourceGcBand2D/2DstaticCircle_00010 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00023 (beta-band, blend01, N 256) vs staticSourceGcBand2D/2DstaticCircle_00011 (gc-linearQ-none-band)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00024 (beta-none, algNorm, N 64) vs staticSourceGcNone2D/2DstaticCircle_00012 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00025 (beta-none, algNorm, N 128) vs staticSourceGcNone2D/2DstaticCircle_00013 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00026 (beta-none, algNorm, N 256) vs staticSourceGcNone2D/2DstaticCircle_00014 (gc-linearQ-none-none)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00027 (beta-band, algNorm, N 64) vs staticSourceGcBand2D/2DstaticCircle_00012 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00028 (beta-band, algNorm, N 128) vs staticSourceGcBand2D/2DstaticCircle_00013 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00029 (beta-band, algNorm, N 256) vs staticSourceGcBand2D/2DstaticCircle_00014 (gc-linearQ-none-band)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00030 (beta-none, alg, N 64) vs staticSourceGcNone2D/2DstaticCircle_00015 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00031 (beta-none, alg, N 128) vs staticSourceGcNone2D/2DstaticCircle_00016 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00032 (beta-none, alg, N 256) vs staticSourceGcNone2D/2DstaticCircle_00017 (gc-linearQ-none-none)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00033 (beta-band, alg, N 64) vs staticSourceGcBand2D/2DstaticCircle_00015 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00034 (beta-band, alg, N 128) vs staticSourceGcBand2D/2DstaticCircle_00016 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00035 (beta-band, alg, N 256) vs staticSourceGcBand2D/2DstaticCircle_00017 (gc-linearQ-none-band)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00036 (beta-none, modM2, N 64) vs staticSourceGcNone2D/2DstaticCircle_00018 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00037 (beta-none, modM2, N 128) vs staticSourceGcNone2D/2DstaticCircle_00019 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00038 (beta-none, modM2, N 256) vs staticSourceGcNone2D/2DstaticCircle_00020 (gc-linearQ-none-none)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00039 (beta-band, modM2, N 64) vs staticSourceGcBand2D/2DstaticCircle_00018 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00040 (beta-band, modM2, N 128) vs staticSourceGcBand2D/2DstaticCircle_00019 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00041 (beta-band, modM2, N 256) vs staticSourceGcBand2D/2DstaticCircle_00020 (gc-linearQ-none-band)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00042 (beta-none, modM4, N 64) vs staticSourceGcNone2D/2DstaticCircle_00021 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00043 (beta-none, modM4, N 128) vs staticSourceGcNone2D/2DstaticCircle_00022 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00044 (beta-none, modM4, N 256) vs staticSourceGcNone2D/2DstaticCircle_00023 (gc-linearQ-none-none)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00045 (beta-band, modM4, N 64) vs staticSourceGcBand2D/2DstaticCircle_00021 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00046 (beta-band, modM4, N 128) vs staticSourceGcBand2D/2DstaticCircle_00022 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P6.1,"staticSourceBeta2D/2DstaticCircle_00047 (beta-band, modM4, N 256) vs staticSourceGcBand2D/2DstaticCircle_00023 (gc-linearQ-none-band)",fields: 9 writes; csv: 40961 rows; grad csv: 40961 rows,bit-identical,PASS,
+P0.3,"2DstaticCircle_00020 alg vs 2DstaticCircle_00016 algNorm, N 64",alpha at 9 writes,bit-identical,PASS,
+P0.3,"2DstaticCircle_00021 alg vs 2DstaticCircle_00017 algNorm, N 128",alpha at 9 writes,bit-identical,PASS,
+P0.3,"2DstaticCircle_00022 alg vs 2DstaticCircle_00018 algNorm, N 256",alpha at 9 writes,bit-identical,PASS,
+P0.3,"2DstaticCircle_00023 alg vs 2DstaticCircle_00019 algNorm, N 512",alpha at 9 writes,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00000 (R-none, sdf, N 64) vs staticSourceControl2D/2DstaticCircle_00000 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00001 (Rdiv-none, sdf, N 64) vs staticSourceControl2D/2DstaticCircle_00000 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00002 (RdivStrictSp-none, sdf, N 64) vs staticSourceControl2D/2DstaticCircle_00000 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00003 (R-none, sdf, N 128) vs staticSourceControl2D/2DstaticCircle_00001 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00004 (Rdiv-none, sdf, N 128) vs staticSourceControl2D/2DstaticCircle_00001 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00005 (RdivStrictSp-none, sdf, N 128) vs staticSourceControl2D/2DstaticCircle_00001 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00006 (R-none, blendH2, N 64) vs staticSourceControl2D/2DstaticCircle_00004 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00007 (Rdiv-none, blendH2, N 64) vs staticSourceControl2D/2DstaticCircle_00004 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00008 (RdivStrictSp-none, blendH2, N 64) vs staticSourceControl2D/2DstaticCircle_00004 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00009 (R-none, blendH2, N 128) vs staticSourceControl2D/2DstaticCircle_00005 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00010 (Rdiv-none, blendH2, N 128) vs staticSourceControl2D/2DstaticCircle_00005 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00011 (RdivStrictSp-none, blendH2, N 128) vs staticSourceControl2D/2DstaticCircle_00005 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00012 (R-none, blendH1, N 64) vs staticSourceControl2D/2DstaticCircle_00008 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00013 (Rdiv-none, blendH1, N 64) vs staticSourceControl2D/2DstaticCircle_00008 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00014 (RdivStrictSp-none, blendH1, N 64) vs staticSourceControl2D/2DstaticCircle_00008 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00015 (R-none, blendH1, N 128) vs staticSourceControl2D/2DstaticCircle_00009 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00016 (Rdiv-none, blendH1, N 128) vs staticSourceControl2D/2DstaticCircle_00009 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00017 (RdivStrictSp-none, blendH1, N 128) vs staticSourceControl2D/2DstaticCircle_00009 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00018 (R-none, blend01, N 64) vs staticSourceControl2D/2DstaticCircle_00012 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00019 (Rdiv-none, blend01, N 64) vs staticSourceControl2D/2DstaticCircle_00012 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00020 (RdivStrictSp-none, blend01, N 64) vs staticSourceControl2D/2DstaticCircle_00012 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00021 (R-none, blend01, N 128) vs staticSourceControl2D/2DstaticCircle_00013 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00022 (Rdiv-none, blend01, N 128) vs staticSourceControl2D/2DstaticCircle_00013 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00023 (RdivStrictSp-none, blend01, N 128) vs staticSourceControl2D/2DstaticCircle_00013 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00024 (R-none, algNorm, N 64) vs staticSourceControl2D/2DstaticCircle_00016 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00025 (Rdiv-none, algNorm, N 64) vs staticSourceControl2D/2DstaticCircle_00016 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00026 (RdivStrictSp-none, algNorm, N 64) vs staticSourceControl2D/2DstaticCircle_00016 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00027 (R-none, algNorm, N 128) vs staticSourceControl2D/2DstaticCircle_00017 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00028 (Rdiv-none, algNorm, N 128) vs staticSourceControl2D/2DstaticCircle_00017 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00029 (RdivStrictSp-none, algNorm, N 128) vs staticSourceControl2D/2DstaticCircle_00017 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00030 (R-none, alg, N 64) vs staticSourceControl2D/2DstaticCircle_00020 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00031 (Rdiv-none, alg, N 64) vs staticSourceControl2D/2DstaticCircle_00020 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00032 (RdivStrictSp-none, alg, N 64) vs staticSourceControl2D/2DstaticCircle_00020 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00033 (R-none, alg, N 128) vs staticSourceControl2D/2DstaticCircle_00021 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00034 (Rdiv-none, alg, N 128) vs staticSourceControl2D/2DstaticCircle_00021 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00035 (RdivStrictSp-none, alg, N 128) vs staticSourceControl2D/2DstaticCircle_00021 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00036 (R-none, modM2, N 64) vs staticSourceControl2D/2DstaticCircle_00024 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00037 (Rdiv-none, modM2, N 64) vs staticSourceControl2D/2DstaticCircle_00024 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00038 (RdivStrictSp-none, modM2, N 64) vs staticSourceControl2D/2DstaticCircle_00024 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00039 (R-none, modM2, N 128) vs staticSourceControl2D/2DstaticCircle_00025 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00040 (Rdiv-none, modM2, N 128) vs staticSourceControl2D/2DstaticCircle_00025 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00041 (RdivStrictSp-none, modM2, N 128) vs staticSourceControl2D/2DstaticCircle_00025 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00042 (R-none, modM4, N 64) vs staticSourceControl2D/2DstaticCircle_00028 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00043 (Rdiv-none, modM4, N 64) vs staticSourceControl2D/2DstaticCircle_00028 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00044 (RdivStrictSp-none, modM4, N 64) vs staticSourceControl2D/2DstaticCircle_00028 (noSource-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00045 (R-none, modM4, N 128) vs staticSourceControl2D/2DstaticCircle_00029 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00046 (Rdiv-none, modM4, N 128) vs staticSourceControl2D/2DstaticCircle_00029 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P7.1,"staticSourceNullR2D/2DstaticCircle_00047 (RdivStrictSp-none, modM4, N 128) vs staticSourceControl2D/2DstaticCircle_00029 (noSource-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00000 (gc-linearQ-full-none, sdf, N 64) vs staticSourceGcNone2D/2DstaticCircle_00000 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00001 (gc-linearQ-full-none, sdf, N 128) vs staticSourceGcNone2D/2DstaticCircle_00001 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00002 (gc-linearQ-full-band, sdf, N 64) vs staticSourceGcBand2D/2DstaticCircle_00000 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00003 (gc-linearQ-full-band, sdf, N 128) vs staticSourceGcBand2D/2DstaticCircle_00001 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00004 (gc-linearQ-full-none, blendH2, N 64) vs staticSourceGcNone2D/2DstaticCircle_00003 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00005 (gc-linearQ-full-none, blendH2, N 128) vs staticSourceGcNone2D/2DstaticCircle_00004 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00006 (gc-linearQ-full-band, blendH2, N 64) vs staticSourceGcBand2D/2DstaticCircle_00003 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00007 (gc-linearQ-full-band, blendH2, N 128) vs staticSourceGcBand2D/2DstaticCircle_00004 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00008 (gc-linearQ-full-none, blendH1, N 64) vs staticSourceGcNone2D/2DstaticCircle_00006 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00009 (gc-linearQ-full-none, blendH1, N 128) vs staticSourceGcNone2D/2DstaticCircle_00007 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00010 (gc-linearQ-full-band, blendH1, N 64) vs staticSourceGcBand2D/2DstaticCircle_00006 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00011 (gc-linearQ-full-band, blendH1, N 128) vs staticSourceGcBand2D/2DstaticCircle_00007 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00012 (gc-linearQ-full-none, blend01, N 64) vs staticSourceGcNone2D/2DstaticCircle_00009 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00013 (gc-linearQ-full-none, blend01, N 128) vs staticSourceGcNone2D/2DstaticCircle_00010 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00014 (gc-linearQ-full-band, blend01, N 64) vs staticSourceGcBand2D/2DstaticCircle_00009 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00015 (gc-linearQ-full-band, blend01, N 128) vs staticSourceGcBand2D/2DstaticCircle_00010 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00016 (gc-linearQ-full-none, algNorm, N 64) vs staticSourceGcNone2D/2DstaticCircle_00012 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00017 (gc-linearQ-full-none, algNorm, N 128) vs staticSourceGcNone2D/2DstaticCircle_00013 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00018 (gc-linearQ-full-band, algNorm, N 64) vs staticSourceGcBand2D/2DstaticCircle_00012 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00019 (gc-linearQ-full-band, algNorm, N 128) vs staticSourceGcBand2D/2DstaticCircle_00013 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00020 (gc-linearQ-full-none, alg, N 64) vs staticSourceGcNone2D/2DstaticCircle_00015 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00021 (gc-linearQ-full-none, alg, N 128) vs staticSourceGcNone2D/2DstaticCircle_00016 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00022 (gc-linearQ-full-band, alg, N 64) vs staticSourceGcBand2D/2DstaticCircle_00015 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00023 (gc-linearQ-full-band, alg, N 128) vs staticSourceGcBand2D/2DstaticCircle_00016 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00024 (gc-linearQ-full-none, modM2, N 64) vs staticSourceGcNone2D/2DstaticCircle_00018 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00025 (gc-linearQ-full-none, modM2, N 128) vs staticSourceGcNone2D/2DstaticCircle_00019 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00026 (gc-linearQ-full-band, modM2, N 64) vs staticSourceGcBand2D/2DstaticCircle_00018 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00027 (gc-linearQ-full-band, modM2, N 128) vs staticSourceGcBand2D/2DstaticCircle_00019 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00028 (gc-linearQ-full-none, modM4, N 64) vs staticSourceGcNone2D/2DstaticCircle_00021 (gc-linearQ-none-none)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00029 (gc-linearQ-full-none, modM4, N 128) vs staticSourceGcNone2D/2DstaticCircle_00022 (gc-linearQ-none-none)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00030 (gc-linearQ-full-band, modM4, N 64) vs staticSourceGcBand2D/2DstaticCircle_00021 (gc-linearQ-none-band)",fields: 9 writes; csv: 10241 rows; grad csv: 10241 rows,bit-identical,PASS,
+P8.1,"staticSourceNullStrain2D/2DstaticCircle_00031 (gc-linearQ-full-band, modM4, N 128) vs staticSourceGcBand2D/2DstaticCircle_00022 (gc-linearQ-none-band)",fields: 9 writes; csv: 20481 rows; grad csv: 20481 rows,bit-identical,PASS,
+P2.1,"beta-band: qband vs dq/dtau = q G(q), N >= 128, tau 1,2,5,7,10","51/60 within 0.02, worst 2.75e+01",0.02,FAIL,algNorm N 128 tau 7: 0.022; algNorm N 128 tau 10: 0.118; algNorm N 256 tau 10: 0.038; alg N 128 tau 5: 0.417; alg N 128 tau 7: 1.582; alg N 128 tau 10: 27.492; alg N 256 tau 5: 0.422; alg N 256 tau 7: 1.452
+P2.1,"beta-none: qband vs dq/dtau = q G(q), N >= 128, tau 1,2","24/24 within 0.02, worst 3.77e-04",0.02,PASS,
+P2.1,"gc-cubicQ-none-band: qband vs dq/dtau = q G(q), N >= 128, tau 1,2,5,7,10","90/90 within 0.02, worst 1.10e-02",0.02,PASS,
+P2.1,"gc-cubicQ-none-none: qband vs dq/dtau = q G(q), N >= 128, tau 1,2","9/36 within 0.02, worst 3.69e+02",0.02,FAIL,sdf N 128 tau 2: 2.901; sdf N 256 tau 1: 15.761; sdf N 256 tau 2: 41.209; blendH2 N 128 tau 2: 2.996; blendH2 N 256 tau 1: 13.763; blendH2 N 256 tau 2: 36.307; blendH1 N 128 tau 2: 3.118; blendH1 N 256 tau 1: 12.701
+P2.1,"gc-cubicZ-none-band: qband vs dq/dtau = q G(q), N >= 128, tau 1,2,5,7,10","90/90 within 0.02, worst 8.40e-04",0.02,PASS,
+P2.1,"gc-cubicZ-none-none: qband vs dq/dtau = q G(q), N >= 128, tau 1,2","16/36 within 0.02, worst 7.20e+01",0.02,FAIL,sdf N 256 tau 2: 10.683; blendH2 N 256 tau 2: 10.048; blendH1 N 256 tau 2: 12.095; blend01 N 256 tau 2: 11.956; algNorm N 128 tau 1: 15.599; algNorm N 128 tau 2: 16.939; algNorm N 256 tau 1: 33.369; algNorm N 256 tau 2: 36.295
+P2.1,"gc-linearQ-full-band: qband vs dq/dtau = q G(q), N >= 128, tau 1,2,5,7,10","25/30 within 0.02, worst 2.75e+01",0.02,FAIL,algNorm N 128 tau 7: 0.022; algNorm N 128 tau 10: 0.118; alg N 128 tau 5: 0.417; alg N 128 tau 7: 1.582; alg N 128 tau 10: 27.492
+P2.1,"gc-linearQ-full-none: qband vs dq/dtau = q G(q), N >= 128, tau 1,2","12/12 within 0.02, worst 3.77e-04",0.02,PASS,
+P2.1,"gc-linearQ-none-band: qband vs dq/dtau = q G(q), N >= 128, tau 1,2,5,7,10","78/90 within 0.02, worst 2.75e+01",0.02,FAIL,algNorm N 128 tau 7: 0.022; algNorm N 128 tau 10: 0.118; algNorm N 256 tau 10: 0.038; alg N 128 tau 5: 0.417; alg N 128 tau 7: 1.582; alg N 128 tau 10: 27.492; alg N 256 tau 5: 0.422; alg N 256 tau 7: 1.452
+P2.1,"gc-linearQ-none-none: qband vs dq/dtau = q G(q), N >= 128, tau 1,2","36/36 within 0.02, worst 3.77e-04",0.02,PASS,
+P2.1,"gc-linearZ-none-band: qband vs dq/dtau = q G(q), N >= 128, tau 1,2,5,7,10","79/90 within 0.02, worst 1.62e+00",0.02,FAIL,algNorm N 128 tau 10: 0.088; algNorm N 256 tau 10: 0.031; alg N 128 tau 5: 0.094; alg N 128 tau 7: 0.459; alg N 128 tau 10: 1.434; alg N 256 tau 5: 0.089; alg N 256 tau 7: 0.490; alg N 256 tau 10: 1.564
+P2.1,"gc-linearZ-none-none: qband vs dq/dtau = q G(q), N >= 128, tau 1,2","26/36 within 0.02, worst 3.24e+01",0.02,FAIL,algNorm N 256 tau 1: 1.451; algNorm N 256 tau 2: 1.618; sdf N 512 tau 2: 13.337; blendH2 N 512 tau 2: 13.127; blendH1 N 512 tau 2: 13.747; blend01 N 512 tau 2: 15.368; algNorm N 512 tau 1: 19.888; algNorm N 512 tau 2: 32.371
+P2.1,"gc-saturatedLinearZ-none-band: qband vs dq/dtau = q G(q), N >= 128, tau 1,2,5,7,10","80/90 within 0.02, worst 5.60e-01",0.02,FAIL,algNorm N 128 tau 10: 0.040; alg N 128 tau 5: 0.048; alg N 128 tau 7: 0.090; alg N 128 tau 10: 0.531; alg N 256 tau 5: 0.049; alg N 256 tau 7: 0.083; alg N 256 tau 10: 0.560; alg N 512 tau 5: 0.048
+P2.1,"gc-saturatedLinearZ-none-none: qband vs dq/dtau = q G(q), N >= 128, tau 1,2","36/36 within 0.02, worst 9.97e-05",0.02,PASS,
+P2.1,"gc-softWall-none-band: qband vs dq/dtau = q G(q), N >= 128, tau 1,2,5,7,10","70/90 within 0.02, worst 1.02e+03",0.02,FAIL,algNorm N 128 tau 2: 0.114; algNorm N 128 tau 5: 3.476; algNorm N 128 tau 7: 29.105; algNorm N 128 tau 10: 599.147; algNorm N 256 tau 2: 0.029; algNorm N 256 tau 5: 0.407; algNorm N 256 tau 7: 4.082; algNorm N 256 tau 10: 91.973
+P2.1,"gc-softWall-none-none: qband vs dq/dtau = q G(q), N >= 128, tau 1,2","3/36 within 0.02, worst 1.02e+00",0.02,FAIL,sdf N 128 tau 1: 0.200; sdf N 128 tau 2: 1.016; sdf N 256 tau 1: 0.127; sdf N 256 tau 2: 0.939; blendH2 N 128 tau 1: 0.203; blendH2 N 128 tau 2: 0.965; blendH2 N 256 tau 1: 0.129; blendH2 N 256 tau 2: 0.920
+P2.1,"gc-twoThirdsZReg-none-band: qband vs dq/dtau = q G(q), N >= 128, tau 1,2,5,7,10","69/90 within 0.02, worst 9.74e+00",0.02,FAIL,blend01 N 128 tau 10: 0.034; algNorm N 128 tau 5: 0.061; algNorm N 128 tau 7: 0.133; algNorm N 128 tau 10: 0.559; algNorm N 256 tau 5: 0.035; algNorm N 256 tau 7: 0.056; algNorm N 256 tau 10: 0.161; alg N 128 tau 2: 0.028
+P2.1,"gc-twoThirdsZReg-none-none: qband vs dq/dtau = q G(q), N >= 128, tau 1,2","28/36 within 0.02, worst 2.21e+00",0.02,FAIL,sdf N 128 tau 2: 0.042; blendH2 N 128 tau 2: 0.042; blendH1 N 128 tau 2: 0.042; blend01 N 128 tau 2: 0.038; algNorm N 128 tau 2: 0.023; blendH1 N 512 tau 2: 0.149; algNorm N 512 tau 2: 2.213; alg N 512 tau 2: 0.331
+P2.2,"beta-band: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","30/54 within floor + 0.01, worst margin +3.45e-01",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 3: 0.0166 > 0.0106; modM2 N 64 tau 5: 0.0252 > 0.0106; modM2 N 64 tau 7: 0.1290 > 0.0106; modM2 N 64 tau 10: 0.2758 > 0.0106; modM2 N 128 tau 3: 0.0167 > 0.0101; modM2 N 128 tau 5: 0.0266 > 0.0101; modM2 N 128 tau 7: 0.1291 > 0.0101; modM2 N 128 tau 10: 0.2731 > 0.0101
+P2.2,"beta-none: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","30/54 within floor + 0.01, worst margin +1.08e+04",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 2: 0.0167 > 0.0106; modM2 N 64 tau 3: 0.2702 > 0.0106; modM2 N 64 tau 5: 2.2373 > 0.0106; modM2 N 64 tau 7: 142.4062 > 0.0106; modM2 N 64 tau 10: 2194.4294 > 0.0106; modM2 N 128 tau 3: 0.0721 > 0.0101; modM2 N 128 tau 5: 67.0782 > 0.0101; modM2 N 128 tau 7: 552.2429 > 0.0101
+P2.2,"gc-cubicQ-none-band: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","72/72 within floor + 0.01, worst margin -7.73e-03",|eikB - qODErms| <= floor + 0.01,PASS,
+P2.2,"gc-cubicQ-none-none: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","11/72 within floor + 0.01, worst margin +2.75e+05",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 5: 4.8745 > 0.0106; modM2 N 64 tau 7: 34.7750 > 0.0106; modM2 N 64 tau 10: 283.9872 > 0.0106; modM2 N 128 tau 0.1: 3.5517 > 0.0101; modM2 N 128 tau 0.2: 2.9829 > 0.0101; modM2 N 128 tau 0.5: 4.5391 > 0.0101; modM2 N 128 tau 1: 7.6335 > 0.0101; modM2 N 128 tau 2: 21.1173 > 0.0101
+P2.2,"gc-cubicZ-none-band: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","72/72 within floor + 0.01, worst margin -7.73e-03",|eikB - qODErms| <= floor + 0.01,PASS,
+P2.2,"gc-cubicZ-none-none: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","3/72 within floor + 0.01, worst margin +1.19e+02",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 0.5: 2.3936 > 0.0106; modM2 N 64 tau 1: 2.5462 > 0.0106; modM2 N 64 tau 2: 2.9270 > 0.0106; modM2 N 64 tau 3: 3.3665 > 0.0106; modM2 N 64 tau 5: 4.4287 > 0.0106; modM2 N 64 tau 7: 5.8131 > 0.0106; modM2 N 64 tau 10: 8.5883 > 0.0106; modM2 N 128 tau 0.1: 7.1894 > 0.0101
+P2.2,"gc-linearQ-full-band: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","20/36 within floor + 0.01, worst margin +3.45e-01",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 3: 0.0166 > 0.0106; modM2 N 64 tau 5: 0.0252 > 0.0106; modM2 N 64 tau 7: 0.1290 > 0.0106; modM2 N 64 tau 10: 0.2758 > 0.0106; modM2 N 128 tau 3: 0.0167 > 0.0101; modM2 N 128 tau 5: 0.0266 > 0.0101; modM2 N 128 tau 7: 0.1291 > 0.0101; modM2 N 128 tau 10: 0.2731 > 0.0101
+P2.2,"gc-linearQ-full-none: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","18/36 within floor + 0.01, worst margin +9.63e+03",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 2: 0.0167 > 0.0106; modM2 N 64 tau 3: 0.2702 > 0.0106; modM2 N 64 tau 5: 2.2373 > 0.0106; modM2 N 64 tau 7: 142.4062 > 0.0106; modM2 N 64 tau 10: 2194.4294 > 0.0106; modM2 N 128 tau 3: 0.0721 > 0.0101; modM2 N 128 tau 5: 67.0782 > 0.0101; modM2 N 128 tau 7: 552.2429 > 0.0101
+P2.2,"gc-linearQ-none-band: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","40/72 within floor + 0.01, worst margin +3.45e-01",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 3: 0.0166 > 0.0106; modM2 N 64 tau 5: 0.0252 > 0.0106; modM2 N 64 tau 7: 0.1290 > 0.0106; modM2 N 64 tau 10: 0.2758 > 0.0106; modM2 N 128 tau 3: 0.0167 > 0.0101; modM2 N 128 tau 5: 0.0266 > 0.0101; modM2 N 128 tau 7: 0.1291 > 0.0101; modM2 N 128 tau 10: 0.2731 > 0.0101
+P2.2,"gc-linearQ-none-none: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","42/72 within floor + 0.01, worst margin +1.84e+04",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 2: 0.0167 > 0.0106; modM2 N 64 tau 3: 0.2702 > 0.0106; modM2 N 64 tau 5: 2.2373 > 0.0106; modM2 N 64 tau 7: 142.4062 > 0.0106; modM2 N 64 tau 10: 2194.4294 > 0.0106; modM2 N 128 tau 3: 0.0721 > 0.0101; modM2 N 128 tau 5: 67.0782 > 0.0101; modM2 N 128 tau 7: 552.2429 > 0.0101
+P2.2,"gc-linearZ-none-band: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","40/72 within floor + 0.01, worst margin +3.23e-01",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 3: 0.0157 > 0.0106; modM2 N 64 tau 5: 0.0340 > 0.0106; modM2 N 64 tau 7: 0.1318 > 0.0106; modM2 N 64 tau 10: 0.2700 > 0.0106; modM2 N 128 tau 3: 0.0158 > 0.0101; modM2 N 128 tau 5: 0.0346 > 0.0101; modM2 N 128 tau 7: 0.1320 > 0.0101; modM2 N 128 tau 10: 0.2699 > 0.0101
+P2.2,"gc-linearZ-none-none: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","26/72 within floor + 0.01, worst margin +5.40e+02",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 2: 0.0176 > 0.0106; modM2 N 64 tau 3: 0.2154 > 0.0106; modM2 N 64 tau 5: 2.0185 > 0.0106; modM2 N 64 tau 7: 11.5928 > 0.0106; modM2 N 64 tau 10: 46.9620 > 0.0106; modM2 N 128 tau 3: 0.0469 > 0.0101; modM2 N 128 tau 5: 8.8182 > 0.0101; modM2 N 128 tau 7: 26.4454 > 0.0101
+P2.2,"gc-saturatedLinearZ-none-band: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","40/72 within floor + 0.01, worst margin +2.34e-01",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 3: 0.0132 > 0.0106; modM2 N 64 tau 5: 0.0406 > 0.0106; modM2 N 64 tau 7: 0.0777 > 0.0106; modM2 N 64 tau 10: 0.2097 > 0.0106; modM2 N 128 tau 3: 0.0136 > 0.0101; modM2 N 128 tau 5: 0.0404 > 0.0101; modM2 N 128 tau 7: 0.0782 > 0.0101; modM2 N 128 tau 10: 0.2116 > 0.0101
+P2.2,"gc-saturatedLinearZ-none-none: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","44/72 within floor + 0.01, worst margin +2.69e+00",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 3: 0.0718 > 0.0106; modM2 N 64 tau 5: 0.4663 > 0.0106; modM2 N 64 tau 7: 0.9391 > 0.0106; modM2 N 64 tau 10: 2.6968 > 0.0106; modM2 N 128 tau 3: 0.0131 > 0.0101; modM2 N 128 tau 5: 0.3066 > 0.0101; modM2 N 128 tau 7: 0.8083 > 0.0101; modM2 N 128 tau 10: 2.2305 > 0.0101
+P2.2,"gc-softWall-none-band: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","16/72 within floor + 0.01, worst margin +8.95e+02",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 0.5: 0.0313 > 0.0106; modM2 N 64 tau 1: 0.0462 > 0.0106; modM2 N 64 tau 2: 0.2772 > 0.0106; modM2 N 64 tau 3: 0.6285 > 0.0106; modM2 N 64 tau 5: 5.7078 > 0.0106; modM2 N 64 tau 7: 44.1893 > 0.0106; modM2 N 64 tau 10: 894.5694 > 0.0106; modM2 N 128 tau 0.5: 0.0328 > 0.0101
+P2.2,"gc-softWall-none-none: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","18/72 within floor + 0.01, worst margin +6.82e+03",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 0.5: 0.1332 > 0.0106; modM2 N 64 tau 1: 0.5574 > 0.0106; modM2 N 64 tau 2: 1.3137 > 0.0106; modM2 N 64 tau 3: 3.9566 > 0.0106; modM2 N 64 tau 5: 32.4494 > 0.0106; modM2 N 64 tau 7: 243.6839 > 0.0106; modM2 N 64 tau 10: 4906.6111 > 0.0106; modM2 N 128 tau 0.5: 0.0727 > 0.0101
+P2.2,"gc-twoThirdsZReg-none-band: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","32/72 within floor + 0.01, worst margin +1.01e+00",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 2: 0.0621 > 0.0106; modM2 N 64 tau 3: 0.0738 > 0.0106; modM2 N 64 tau 5: 0.2297 > 0.0106; modM2 N 64 tau 7: 0.3378 > 0.0106; modM2 N 64 tau 10: 0.9613 > 0.0106; modM2 N 128 tau 2: 0.0620 > 0.0101; modM2 N 128 tau 3: 0.0724 > 0.0101; modM2 N 128 tau 5: 0.2510 > 0.0101
+P2.2,"gc-twoThirdsZReg-none-none: modM eikB vs RMS_theta(qODE - 1), 0 < tau <= 10","30/72 within floor + 0.01, worst margin +1.40e+03",|eikB - qODErms| <= floor + 0.01,FAIL,modM2 N 64 tau 1: 0.0174 > 0.0106; modM2 N 64 tau 2: 0.2738 > 0.0106; modM2 N 64 tau 3: 0.7098 > 0.0106; modM2 N 64 tau 5: 2.4804 > 0.0106; modM2 N 64 tau 7: 47.3174 > 0.0106; modM2 N 64 tau 10: 241.1190 > 0.0106; modM2 N 128 tau 2: 0.1676 > 0.0101; modM2 N 128 tau 3: 0.4942 > 0.0101
+P3.1,gc-cubicQ-none-band N 64 tau 10,0.962,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicQ-none-band N 64 tau 40,0.897,|ratio - 1| <= 0.1,FAIL,
+P3.1,gc-cubicQ-none-band N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-band N 128 tau 10,0.988,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicQ-none-band N 128 tau 40,0.961,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicQ-none-band N 128 tau 80,0.934,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicQ-none-band N 256 tau 10,0.997,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicQ-none-band N 256 tau 40,0.988,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicQ-none-band N 256 tau 80,0.977,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicQ-none-band N 512 tau 10,0.999,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicQ-none-band N 512 tau 40,0.997,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicQ-none-band N 512 tau 80,0.994,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicQ-none-none N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-none N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-none N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-none N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-none N 128 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-none N 128 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-none N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-none N 256 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-none N 256 tau 80,,,UNDEFINED,"2DstaticCircle_00062 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00050 N 256 tau 80: shift2 undefined, missing 512"
+P3.1,gc-cubicQ-none-none N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-none N 512 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicQ-none-none N 512 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicZ-none-band N 64 tau 10,0.962,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicZ-none-band N 64 tau 40,0.868,|ratio - 1| <= 0.1,FAIL,
+P3.1,gc-cubicZ-none-band N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicZ-none-band N 128 tau 10,0.988,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicZ-none-band N 128 tau 40,0.961,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicZ-none-band N 128 tau 80,0.934,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicZ-none-band N 256 tau 10,0.997,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicZ-none-band N 256 tau 40,0.988,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicZ-none-band N 256 tau 80,0.977,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicZ-none-band N 512 tau 10,0.999,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicZ-none-band N 512 tau 40,0.997,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicZ-none-band N 512 tau 80,0.994,|ratio - 1| <= 0.1,PASS,
+P3.1,gc-cubicZ-none-none N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicZ-none-none N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicZ-none-none N 64 tau 80,,,UNDEFINED,"2DstaticCircle_00084 N 64 tau 80: shift2 undefined, missing 128"
+P3.1,gc-cubicZ-none-none N 128 tau 10,-1.17e+03,|ratio - 1| <= 0.1,FAIL,
+P3.1,gc-cubicZ-none-none N 128 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicZ-none-none N 128 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicZ-none-none N 256 tau 10,2.48e+03,|ratio - 1| <= 0.1,FAIL,
+P3.1,gc-cubicZ-none-none N 256 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicZ-none-none N 256 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicZ-none-none N 512 tau 10,4.33e+03,|ratio - 1| <= 0.1,FAIL,
+P3.1,gc-cubicZ-none-none N 512 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-cubicZ-none-none N 512 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-full-band N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-full-band N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-full-band N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-full-band N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-full-band N 128 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-full-band N 128 tau 80,,,UNDEFINED,"2DstaticCircle_00019 N 128 tau 80: shift2 undefined, missing 256"
+P3.1,gc-linearQ-full-none N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-full-none N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-full-none N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-full-none N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-full-none N 128 tau 40,,,UNDEFINED,"2DstaticCircle_00017 N 128 tau 40: shift2 undefined, missing 256; 2DstaticCircle_00001 N 128 tau 40: shift2 undefined, missing 256"
+P3.1,gc-linearQ-full-none N 128 tau 80,,,UNDEFINED,"2DstaticCircle_00017 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00001 N 128 tau 80: shift2 undefined, missing 256"
+P3.1,gc-linearQ-none-band N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-band N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-band N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-band N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-band N 128 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-band N 128 tau 80,,,UNDEFINED,"2DstaticCircle_00013 N 128 tau 80: shift2 undefined, missing 256"
+P3.1,gc-linearQ-none-band N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-band N 256 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-band N 256 tau 80,,,UNDEFINED,"2DstaticCircle_00014 N 256 tau 80: shift2 undefined, missing 512"
+P3.1,gc-linearQ-none-band N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-band N 512 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-band N 512 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-none N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-none N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-none N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-none N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-none N 128 tau 40,,,UNDEFINED,"2DstaticCircle_00013 N 128 tau 40: shift2 undefined, missing 256; 2DstaticCircle_00001 N 128 tau 40: shift2 undefined, missing 256"
+P3.1,gc-linearQ-none-none N 128 tau 80,,,UNDEFINED,"2DstaticCircle_00013 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00001 N 128 tau 80: shift2 undefined, missing 256"
+P3.1,gc-linearQ-none-none N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-none N 256 tau 40,,,UNDEFINED,"2DstaticCircle_00014 N 256 tau 40: shift2 undefined, missing 512; 2DstaticCircle_00002 N 256 tau 40: shift2 undefined, missing 512"
+P3.1,gc-linearQ-none-none N 256 tau 80,,,UNDEFINED,"2DstaticCircle_00014 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00002 N 256 tau 80: shift2 undefined, missing 512"
+P3.1,gc-linearQ-none-none N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearQ-none-none N 512 tau 40,,,UNDEFINED,"2DstaticCircle_00004 N 512 tau 40: shift2 undefined, missing 1024; 2DstaticCircle_00000 N 512 tau 40: shift2 undefined, missing 1024"
+P3.1,gc-linearQ-none-none N 512 tau 80,,,UNDEFINED,"2DstaticCircle_00004 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00000 N 512 tau 80: shift2 undefined, missing 1024"
+P3.1,gc-linearZ-none-band N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-band N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-band N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-band N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-band N 128 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-band N 128 tau 80,,,UNDEFINED,"2DstaticCircle_00037 N 128 tau 80: shift2 undefined, missing 256"
+P3.1,gc-linearZ-none-band N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-band N 256 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-band N 256 tau 80,,,UNDEFINED,"2DstaticCircle_00038 N 256 tau 80: shift2 undefined, missing 512"
+P3.1,gc-linearZ-none-band N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-band N 512 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-band N 512 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-none N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-none N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-none N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-none N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-none N 128 tau 40,,,UNDEFINED,"2DstaticCircle_00037 N 128 tau 40: shift2 undefined, missing 256; 2DstaticCircle_00025 N 128 tau 40: shift2 undefined, missing 256"
+P3.1,gc-linearZ-none-none N 128 tau 80,,,UNDEFINED,"2DstaticCircle_00037 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00025 N 128 tau 80: shift2 undefined, missing 256"
+P3.1,gc-linearZ-none-none N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-none N 256 tau 40,,,UNDEFINED,"2DstaticCircle_00038 N 256 tau 40: shift2 undefined, missing 512; 2DstaticCircle_00026 N 256 tau 40: shift2 undefined, missing 512"
+P3.1,gc-linearZ-none-none N 256 tau 80,,,UNDEFINED,"2DstaticCircle_00038 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00026 N 256 tau 80: shift2 undefined, missing 512"
+P3.1,gc-linearZ-none-none N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-linearZ-none-none N 512 tau 40,,,UNDEFINED,"2DstaticCircle_00012 N 512 tau 40: shift2 undefined, missing 1024; 2DstaticCircle_00008 N 512 tau 40: shift2 undefined, missing 1024"
+P3.1,gc-linearZ-none-none N 512 tau 80,,,UNDEFINED,"2DstaticCircle_00012 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00008 N 512 tau 80: shift2 undefined, missing 1024"
+P3.1,gc-saturatedLinearZ-none-band N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 128 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 128 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 256 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 256 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 512 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-band N 512 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 128 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 128 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 256 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 256 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 512 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-saturatedLinearZ-none-none N 512 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 128 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 128 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 256 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 256 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 512 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-band N 512 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 64 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 64 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 128 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 128 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 256 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 256 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 512 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-softWall-none-none N 512 tau 80,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-band N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-band N 64 tau 40,,,UNDEFINED,"2DstaticCircle_00108 N 64 tau 40: shift2 undefined, missing 128"
+P3.1,gc-twoThirdsZReg-none-band N 64 tau 80,,,UNDEFINED,"2DstaticCircle_00108 N 64 tau 80: shift2 undefined, missing 128; 2DstaticCircle_00096 N 64 tau 80: shift2 undefined, missing 128"
+P3.1,gc-twoThirdsZReg-none-band N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-band N 128 tau 40,,,UNDEFINED,"2DstaticCircle_00109 N 128 tau 40: shift2 undefined, missing 256"
+P3.1,gc-twoThirdsZReg-none-band N 128 tau 80,,,UNDEFINED,"2DstaticCircle_00109 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00097 N 128 tau 80: shift2 undefined, missing 256"
+P3.1,gc-twoThirdsZReg-none-band N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-band N 256 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-band N 256 tau 80,,,UNDEFINED,"2DstaticCircle_00110 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00098 N 256 tau 80: shift2 undefined, missing 512"
+P3.1,gc-twoThirdsZReg-none-band N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-band N 512 tau 40,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-band N 512 tau 80,,,UNDEFINED,"2DstaticCircle_00036 N 512 tau 80: shift2 undefined, missing 1024"
+P3.1,gc-twoThirdsZReg-none-none N 64 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-none N 64 tau 40,,,UNDEFINED,"2DstaticCircle_00108 N 64 tau 40: shift2 undefined, missing 128; 2DstaticCircle_00096 N 64 tau 40: shift2 undefined, missing 128"
+P3.1,gc-twoThirdsZReg-none-none N 64 tau 80,,,UNDEFINED,"2DstaticCircle_00108 N 64 tau 80: shift2 undefined, missing 128; 2DstaticCircle_00096 N 64 tau 80: shift2 undefined, missing 128"
+P3.1,gc-twoThirdsZReg-none-none N 128 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-none N 128 tau 40,,,UNDEFINED,"2DstaticCircle_00109 N 128 tau 40: shift2 undefined, missing 256; 2DstaticCircle_00097 N 128 tau 40: shift2 undefined, missing 256"
+P3.1,gc-twoThirdsZReg-none-none N 128 tau 80,,,UNDEFINED,"2DstaticCircle_00109 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00097 N 128 tau 80: shift2 undefined, missing 256"
+P3.1,gc-twoThirdsZReg-none-none N 256 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-none N 256 tau 40,,,UNDEFINED,"2DstaticCircle_00110 N 256 tau 40: shift2 undefined, missing 512; 2DstaticCircle_00098 N 256 tau 40: shift2 undefined, missing 512"
+P3.1,gc-twoThirdsZReg-none-none N 256 tau 80,,,UNDEFINED,"2DstaticCircle_00110 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00098 N 256 tau 80: shift2 undefined, missing 512"
+P3.1,gc-twoThirdsZReg-none-none N 512 tau 10,,,NOT EVALUATED,shift2 > 0.02h
+P3.1,gc-twoThirdsZReg-none-none N 512 tau 40,,,UNDEFINED,"2DstaticCircle_00036 N 512 tau 40: shift2 undefined, missing 1024; 2DstaticCircle_00032 N 512 tau 40: shift2 undefined, missing 1024"
+P3.1,gc-twoThirdsZReg-none-none N 512 tau 80,,,UNDEFINED,"2DstaticCircle_00036 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00032 N 512 tau 80: shift2 undefined, missing 1024"
+P4.1,gc-cubicQ-none-band sdf tau 80,max over rungs 0.0000 h,<= 0.01h (FAIL > 0.05h),PASS,
+P4.1,gc-cubicZ-none-band sdf tau 80,max over rungs 0.0000 h,<= 0.01h (FAIL > 0.05h),PASS,
+P4.2,gc-linearQ-full-band sdf,"shift2(10) <= 0.02h: True; shift2(80) >= 0.05h: True; finest 0.2968 h, abs order 1.64",see header,PASS,
+P4.2,gc-linearQ-none-band sdf,"shift2(10) <= 0.02h: True; shift2(80) >= 0.05h: False; finest 0.0315 h, abs order 2.35",see header,FAIL,
+P4.2,gc-linearZ-none-band sdf,"shift2(10) <= 0.02h: True; shift2(80) >= 0.05h: False; finest 0.0317 h, abs order 2.33",see header,FAIL,
+P4.2,gc-saturatedLinearZ-none-band sdf,"shift2(10) <= 0.02h: True; shift2(80) >= 0.05h: False; finest 0.0307 h, abs order 2.29",see header,FAIL,
+P4.1,gc-softWall-none-band sdf tau 80,max over rungs 0.0000 h,<= 0.01h (FAIL > 0.05h),PASS,
+P4.3,"twoThirdsZReg vs linearQ, band, sdf, tau 80",N64: nan/0.4618 N128: nan/0.2968 N256: nan/0.0800 N512: 0.3861/0.0315,>=,UNDEFINED,"2DstaticCircle_00096 N 64 tau 80: shift2 undefined, missing 128; 2DstaticCircle_00097 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00098 N 256 tau 80: shift2 undefined, missing 512"
+P5.1,"gc-cubicQ-none-none tau 10, all starts and rungs",changed in 32/32,all,PASS,
+P5.1,"gc-cubicZ-none-none tau 10, all starts and rungs",changed in 32/32,all,PASS,
+P5.1,"gc-linearQ-none-none tau 10, all starts and rungs",changed in 32/32,all,PASS,
+P5.3,gc-linearQ-none-none sdf tau 10,far spurious in 2/4,all,FAIL,
+P5.3,"gc-linearQ-none-none tau 10, all starts and rungs",16/32 case(s) with far spurious crossings,predicted: appear,RECORDED,
+P5.1,"gc-linearZ-none-none tau 10, all starts and rungs",changed in 32/32,all,PASS,
+P5.3,"gc-linearZ-none-none tau 10, all starts and rungs",32/32 case(s) with far spurious crossings,predicted: appear,RECORDED,
+P5.1,"gc-saturatedLinearZ-none-none tau 10, all starts and rungs",changed in 32/32,all,PASS,
+P5.3,gc-saturatedLinearZ-none-none tau 10,0 case(s) with far spurious crossings,none,PASS,
+P5.1,"gc-softWall-none-none tau 10, all starts and rungs",changed in 32/32,all,PASS,
+P5.3,gc-softWall-none-none tau 10,0 case(s) with far spurious crossings,none,PASS,
+P5.1,"gc-twoThirdsZReg-none-none tau 10, all starts and rungs",changed in 32/32,all,PASS,
+P5.3,"gc-twoThirdsZReg-none-none tau 10, all starts and rungs",8/32 case(s) with far spurious crossings,predicted: appear,RECORDED,
+P5.2,every case,608/608 COMPLETED,all,PASS,
+P5.4,gc-cubicQ-none-none alg N 128 tau 80,0.5903 vs band 0.5202,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none alg N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00065 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00065 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-cubicQ-none-none alg N 512 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00021 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00021 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-cubicQ-none-none algNorm N 128 tau 80,0.5810 vs band 0.0001,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none algNorm N 256 tau 80,nan vs band 0.0000,none >= band/2,UNDEFINED,"2DstaticCircle_00062 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-cubicQ-none-none algNorm N 512 tau 80,0.1222 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none blend01 N 128 tau 80,0.6492 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none blend01 N 256 tau 80,nan vs band 0.0000,none >= band/2,UNDEFINED,"2DstaticCircle_00059 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-cubicQ-none-none blend01 N 512 tau 80,nan vs band 0.0000,none >= band/2,UNDEFINED,"2DstaticCircle_00019 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-cubicQ-none-none blendH1 N 128 tau 80,0.4826 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none blendH1 N 256 tau 80,0.0474 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none blendH1 N 512 tau 80,0.1650 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none blendH2 N 128 tau 80,0.5896 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none blendH2 N 256 tau 80,nan vs band 0.0000,none >= band/2,UNDEFINED,"2DstaticCircle_00053 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-cubicQ-none-none blendH2 N 512 tau 80,nan vs band 0.0000,none >= band/2,UNDEFINED,"2DstaticCircle_00017 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-cubicQ-none-none modM2 N 128 tau 80,0.5769 vs band 0.0002,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none modM2 N 256 tau 80,nan vs band 0.0001,none >= band/2,UNDEFINED,"2DstaticCircle_00068 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-cubicQ-none-none modM2 N 512 tau 80,nan vs band 0.0001,none >= band/2,UNDEFINED,"2DstaticCircle_00022 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-cubicQ-none-none modM4 N 128 tau 80,0.5567 vs band 0.0004,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none modM4 N 256 tau 80,nan vs band 0.0002,none >= band/2,UNDEFINED,"2DstaticCircle_00071 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-cubicQ-none-none modM4 N 512 tau 80,nan vs band 0.0001,none >= band/2,UNDEFINED,"2DstaticCircle_00023 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-cubicQ-none-none sdf N 128 tau 80,0.6313 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicQ-none-none sdf N 256 tau 80,nan vs band 0.0000,none >= band/2,UNDEFINED,"2DstaticCircle_00050 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-cubicQ-none-none sdf N 512 tau 80,0.0515 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none alg N 128 tau 80,0.2670 vs band 0.5325,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none alg N 256 tau 80,0.4143 vs band 0.5895,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none alg N 512 tau 80,0.3490 vs band 0.5302,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none algNorm N 128 tau 80,0.4977 vs band 0.0001,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none algNorm N 256 tau 80,0.3412 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none algNorm N 512 tau 80,0.3962 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none blend01 N 128 tau 80,nan vs band 0.0000,none >= band/2,UNDEFINED,"2DstaticCircle_00082 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-cubicZ-none-none blend01 N 256 tau 80,0.6229 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none blend01 N 512 tau 80,0.3731 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none blendH1 N 128 tau 80,0.6154 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none blendH1 N 256 tau 80,0.6809 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none blendH1 N 512 tau 80,0.3711 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none blendH2 N 128 tau 80,0.3244 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none blendH2 N 256 tau 80,0.3645 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none blendH2 N 512 tau 80,0.3931 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none modM2 N 128 tau 80,0.1935 vs band 0.0002,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none modM2 N 256 tau 80,0.3182 vs band 0.0001,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none modM2 N 512 tau 80,0.2122 vs band 0.0001,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none modM4 N 128 tau 80,0.1360 vs band 0.0004,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none modM4 N 256 tau 80,0.5133 vs band 0.0002,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none modM4 N 512 tau 80,0.2694 vs band 0.0001,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none sdf N 128 tau 80,0.5871 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none sdf N 256 tau 80,0.1559 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-cubicZ-none-none sdf N 512 tau 80,0.3598 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-linearQ-none-none alg N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00016 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00016 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearQ-none-none alg N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00017 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00017 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearQ-none-none alg N 512 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00005 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00005 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearQ-none-none algNorm N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00013 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00013 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearQ-none-none algNorm N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00014 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00014 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearQ-none-none algNorm N 512 tau 80,nan vs band 0.4099,none >= band/2,UNDEFINED,"2DstaticCircle_00004 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearQ-none-none blend01 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00010 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00010 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearQ-none-none blend01 N 256 tau 80,nan vs band 0.4929,none >= band/2,UNDEFINED,"2DstaticCircle_00011 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearQ-none-none blend01 N 512 tau 80,nan vs band 0.4956,none >= band/2,UNDEFINED,"2DstaticCircle_00003 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearQ-none-none blendH1 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00007 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00007 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearQ-none-none blendH1 N 256 tau 80,nan vs band 0.4143,none >= band/2,UNDEFINED,"2DstaticCircle_00008 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearQ-none-none blendH1 N 512 tau 80,nan vs band 0.3644,none >= band/2,UNDEFINED,"2DstaticCircle_00002 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearQ-none-none blendH2 N 128 tau 80,nan vs band 0.4113,none >= band/2,UNDEFINED,"2DstaticCircle_00004 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearQ-none-none blendH2 N 256 tau 80,nan vs band 0.1503,none >= band/2,UNDEFINED,"2DstaticCircle_00005 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearQ-none-none blendH2 N 512 tau 80,nan vs band 0.0411,none >= band/2,UNDEFINED,"2DstaticCircle_00001 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearQ-none-none modM2 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00019 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00019 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearQ-none-none modM2 N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00020 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00020 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearQ-none-none modM2 N 512 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00006 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00006 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearQ-none-none modM4 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00022 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00022 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearQ-none-none modM4 N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00023 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00023 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearQ-none-none modM4 N 512 tau 80,nan vs band 0.6559,none >= band/2,UNDEFINED,"2DstaticCircle_00007 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearQ-none-none sdf N 128 tau 80,nan vs band 0.2968,none >= band/2,UNDEFINED,"2DstaticCircle_00001 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearQ-none-none sdf N 256 tau 80,nan vs band 0.0800,none >= band/2,UNDEFINED,"2DstaticCircle_00002 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearQ-none-none sdf N 512 tau 80,nan vs band 0.0315,none >= band/2,UNDEFINED,"2DstaticCircle_00000 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearZ-none-none alg N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00040 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00040 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearZ-none-none alg N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00041 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00041 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearZ-none-none alg N 512 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00013 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00013 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearZ-none-none algNorm N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00037 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00037 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearZ-none-none algNorm N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00038 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00038 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearZ-none-none algNorm N 512 tau 80,nan vs band 0.3382,none >= band/2,UNDEFINED,"2DstaticCircle_00012 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearZ-none-none blend01 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00034 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00034 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearZ-none-none blend01 N 256 tau 80,nan vs band 0.5173,none >= band/2,UNDEFINED,"2DstaticCircle_00035 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearZ-none-none blend01 N 512 tau 80,nan vs band 0.5080,none >= band/2,UNDEFINED,"2DstaticCircle_00011 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearZ-none-none blendH1 N 128 tau 80,nan vs band 0.5532,none >= band/2,UNDEFINED,"2DstaticCircle_00031 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearZ-none-none blendH1 N 256 tau 80,nan vs band 0.4205,none >= band/2,UNDEFINED,"2DstaticCircle_00032 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearZ-none-none blendH1 N 512 tau 80,nan vs band 0.3672,none >= band/2,UNDEFINED,"2DstaticCircle_00010 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearZ-none-none blendH2 N 128 tau 80,nan vs band 0.4139,none >= band/2,UNDEFINED,"2DstaticCircle_00028 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearZ-none-none blendH2 N 256 tau 80,nan vs band 0.1506,none >= band/2,UNDEFINED,"2DstaticCircle_00029 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearZ-none-none blendH2 N 512 tau 80,nan vs band 0.0413,none >= band/2,UNDEFINED,"2DstaticCircle_00009 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearZ-none-none modM2 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00043 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00043 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearZ-none-none modM2 N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00044 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00044 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearZ-none-none modM2 N 512 tau 80,nan vs band 0.0978,none >= band/2,UNDEFINED,"2DstaticCircle_00014 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearZ-none-none modM4 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00046 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00046 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearZ-none-none modM4 N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00047 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00047 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearZ-none-none modM4 N 512 tau 80,nan vs band 0.1585,none >= band/2,UNDEFINED,"2DstaticCircle_00015 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-linearZ-none-none sdf N 128 tau 80,nan vs band 0.2961,none >= band/2,UNDEFINED,"2DstaticCircle_00025 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-linearZ-none-none sdf N 256 tau 80,nan vs band 0.0805,none >= band/2,UNDEFINED,"2DstaticCircle_00026 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-linearZ-none-none sdf N 512 tau 80,nan vs band 0.0317,none >= band/2,UNDEFINED,"2DstaticCircle_00008 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-saturatedLinearZ-none-none alg N 128 tau 80,0.5673 vs band 0.6002,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none alg N 256 tau 80,0.5245 vs band 0.6144,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none alg N 512 tau 80,0.5035 vs band 0.6208,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none algNorm N 128 tau 80,0.5571 vs band 0.5285,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none algNorm N 256 tau 80,0.5253 vs band 0.5633,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none algNorm N 512 tau 80,0.5245 vs band 0.5572,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none blend01 N 128 tau 80,0.5586 vs band 0.5160,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none blend01 N 256 tau 80,0.5664 vs band 0.5574,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none blend01 N 512 tau 80,0.5363 vs band 0.4972,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none blendH1 N 128 tau 80,0.5590 vs band 0.5507,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none blendH1 N 256 tau 80,0.5778 vs band 0.4766,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none blendH1 N 512 tau 80,0.5307 vs band 0.3269,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none blendH2 N 128 tau 80,0.5586 vs band 0.3545,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none blendH2 N 256 tau 80,0.5644 vs band 0.1433,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none blendH2 N 512 tau 80,0.5441 vs band 0.0400,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none modM2 N 128 tau 80,0.5714 vs band 0.5566,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none modM2 N 256 tau 80,0.5677 vs band 0.5757,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none modM2 N 512 tau 80,0.5516 vs band 0.5767,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none modM4 N 128 tau 80,0.5630 vs band 0.4664,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none modM4 N 256 tau 80,0.5246 vs band 0.4898,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none modM4 N 512 tau 80,0.5344 vs band 0.4685,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none sdf N 128 tau 80,0.5590 vs band 0.2749,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none sdf N 256 tau 80,0.5613 vs band 0.0774,none >= band/2,PASS,
+P5.4,gc-saturatedLinearZ-none-none sdf N 512 tau 80,0.5408 vs band 0.0307,none >= band/2,PASS,
+P5.4,gc-softWall-none-none alg N 128 tau 80,0.4936 vs band 0.5864,none >= band/2,PASS,
+P5.4,gc-softWall-none-none alg N 256 tau 80,0.5116 vs band 0.5624,none >= band/2,PASS,
+P5.4,gc-softWall-none-none alg N 512 tau 80,0.4793 vs band 0.5837,none >= band/2,PASS,
+P5.4,gc-softWall-none-none algNorm N 128 tau 80,0.5151 vs band 0.5149,none >= band/2,PASS,
+P5.4,gc-softWall-none-none algNorm N 256 tau 80,0.5133 vs band 0.5364,none >= band/2,PASS,
+P5.4,gc-softWall-none-none algNorm N 512 tau 80,0.4684 vs band 0.4972,none >= band/2,PASS,
+P5.4,gc-softWall-none-none blend01 N 128 tau 80,0.5116 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none blend01 N 256 tau 80,0.5268 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none blend01 N 512 tau 80,0.4799 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none blendH1 N 128 tau 80,0.4924 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none blendH1 N 256 tau 80,0.5100 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none blendH1 N 512 tau 80,0.4786 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none blendH2 N 128 tau 80,0.5264 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none blendH2 N 256 tau 80,0.5179 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none blendH2 N 512 tau 80,0.4657 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none modM2 N 128 tau 80,0.4943 vs band 0.5334,none >= band/2,PASS,
+P5.4,gc-softWall-none-none modM2 N 256 tau 80,0.4986 vs band 0.5458,none >= band/2,PASS,
+P5.4,gc-softWall-none-none modM2 N 512 tau 80,0.4829 vs band 0.5386,none >= band/2,PASS,
+P5.4,gc-softWall-none-none modM4 N 128 tau 80,0.5053 vs band 0.4417,none >= band/2,PASS,
+P5.4,gc-softWall-none-none modM4 N 256 tau 80,0.5007 vs band 0.4299,none >= band/2,PASS,
+P5.4,gc-softWall-none-none modM4 N 512 tau 80,0.4651 vs band 0.4362,none >= band/2,PASS,
+P5.4,gc-softWall-none-none sdf N 128 tau 80,0.4944 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none sdf N 256 tau 80,0.5039 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-softWall-none-none sdf N 512 tau 80,0.4759 vs band 0.0000,none >= band/2,PASS,
+P5.4,gc-twoThirdsZReg-none-none alg N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00112 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00112 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-twoThirdsZReg-none-none alg N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00113 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00113 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-twoThirdsZReg-none-none alg N 512 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00037 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00037 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-twoThirdsZReg-none-none algNorm N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00109 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00109 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-twoThirdsZReg-none-none algNorm N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00110 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00110 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-twoThirdsZReg-none-none algNorm N 512 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00036 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00036 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-twoThirdsZReg-none-none blend01 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00106 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00106 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-twoThirdsZReg-none-none blend01 N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00107 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00107 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-twoThirdsZReg-none-none blend01 N 512 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00035 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00035 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-twoThirdsZReg-none-none blendH1 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00103 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00103 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-twoThirdsZReg-none-none blendH1 N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00104 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00104 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-twoThirdsZReg-none-none blendH1 N 512 tau 80,nan vs band 0.1473,none >= band/2,UNDEFINED,"2DstaticCircle_00034 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-twoThirdsZReg-none-none blendH2 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00100 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00100 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-twoThirdsZReg-none-none blendH2 N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00101 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00101 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-twoThirdsZReg-none-none blendH2 N 512 tau 80,nan vs band 0.5289,none >= band/2,UNDEFINED,"2DstaticCircle_00033 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-twoThirdsZReg-none-none modM2 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00115 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00115 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-twoThirdsZReg-none-none modM2 N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00116 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00116 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-twoThirdsZReg-none-none modM2 N 512 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00038 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00038 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-twoThirdsZReg-none-none modM4 N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00118 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00118 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-twoThirdsZReg-none-none modM4 N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00119 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00119 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-twoThirdsZReg-none-none modM4 N 512 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00039 N 512 tau 80: shift2 undefined, missing 1024; 2DstaticCircle_00039 N 512 tau 80: shift2 undefined, missing 1024"
+P5.4,gc-twoThirdsZReg-none-none sdf N 128 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00097 N 128 tau 80: shift2 undefined, missing 256; 2DstaticCircle_00097 N 128 tau 80: shift2 undefined, missing 256"
+P5.4,gc-twoThirdsZReg-none-none sdf N 256 tau 80,nan vs band nan,none >= band/2,UNDEFINED,"2DstaticCircle_00098 N 256 tau 80: shift2 undefined, missing 512; 2DstaticCircle_00098 N 256 tau 80: shift2 undefined, missing 512"
+P5.4,gc-twoThirdsZReg-none-none sdf N 512 tau 80,nan vs band 0.3861,none >= band/2,UNDEFINED,"2DstaticCircle_00032 N 512 tau 80: shift2 undefined, missing 1024"

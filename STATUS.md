@@ -5482,6 +5482,106 @@ dt = 0.5 h. Plan and decisions: the plan of 2026-10-14; the read-out is in each 
    `leia-static-m` with `check-init`, `iterations`, `null` and `analyse`; S0 must PASS before any
    result is read.
 
+#### 11.27, part 3: the results of the re-run (2026-10-29)
+
+1. **What ran.** Worktree `/work/scratch/tm83tomy/leia-static2` at 3727b9e9 (`PSI_MIN_ITER 1`; build
+   55441730, `CI: PASS`, stamp `shared-method-config-2026-09-01-338-g3727b9e9`). Drivers: stage A
+   55441743 to 55441745, stage B 55441746 to 55441748, stage C 55446048 and 55446049 (ended
+   2026-10-15, rc 0). 608 cases, all COMPLETED. Metrics job 55753419 from `leia-static-m` at
+   21e8367d: check-init 608/608, S0 608/608 (no psi solve skipped a nonzero residual; 9 cases with a
+   source below the round-off of the diagonal: softWall in the band on d and the h^2 blend at
+   N = 256 and 512 (and the h/R blend at 512), the cubic laws on the same two starts at N = 512),
+   132 null pairs bit-identical. Curated: `docs/gradient-controlled-level-set/gcls-level-set-article/
+   data/tables/staticSource_*.csv`, archive `data/archive/shared-method-config-2026-09-01-338-g3727b9e9/
+   staticSource/` (SHA-256 manifest). Report: `docs/gradient-controlled-level-set/
+   gcls-static-source-report/staticSourceReport.tex` (tables by `workflow/scripts/
+   static_source_report_tables.py`).
+2. **Representation (no source, N = 64 to 512).** The Detrixhe-Aslam volume of d is below the
+   circle area by 1.27e-3 (N = 64) to 1.92e-5 (N = 512), order 2.01; the L1 shape error equals that
+   volume error to every digit (the DA fraction is below the exact one in every cut cell).
+   (r^2 - R^2)/(2R) doubles the volume error; the difference from d is -1.17e-3 to -1.95e-5,
+   order 1.97. A blend shifts it by eps times that (P1.2: ratio 0.999 to 1.000). So restoring d
+   changes the measured volume by O(h^2) with the zero set in place.
+3. **One mechanism: growth at G(0).** In every arm that reaches a growth phase, the band gradient
+   error grows at the law's G(0) (`staticSource_growth.csv`): linearQ and beta 0.98 to 1.00 (band)
+   against 1; linearZ 0.46 to 0.50 against 0.5; saturatedLinearZ 0.331 to 0.337 against 1/3;
+   twoThirdsZReg 0.59 to 0.62 against 0.63; cubicZ 0.12 against 0.125; softWall 1.00 to 1.02
+   against 1; on the whole domain the same within 0.81 to 1.07 (linearQ) and 0.89 to 1.04 (cubicQ).
+   At a grid-scale extremum of psi the centred gradient vanishes (q = 0); on a staircase it is 1 and
+   the source sees nothing to correct (the radial field of linearQ from the normalised algebraic
+   start, N = 128: equal pairs 2.08 h / 2.02 h at tau = 10, the interface cell at -0.0001 h at
+   tau = 20).
+4. **From d, in the band:** a slow drift (the error doubles every 8 to 9 time units) before the
+   growth. The zero crossings move 0.46, 0.30, 0.080 and 0.032 h at N = 64 to 512 by tau = 80, order
+   2.35 in length (linearQ; linearZ and saturatedLinearZ the same). **P4.2 FAILS as written**
+   (shift2(80) >= 0.05 h on every rung): 0.032 h at N = 512; its falsification line (< 0.02 h at
+   N = 512 with order >= 1.8) is not met either. I was wrong that the damage from d persists under
+   refinement: the slow drift converges.
+5. **From the other starts:** the growth at G(0) arrives by tau = 10 to 80 (r^2 - R^2: tau = 10 on
+   every rung), the earlier the farther the start is from d. No law brings psi closer to d from the
+   blends or the normalised algebraic field (linearQ, N = 256, tau = 10: the field error near the
+   circle 3.2e-3 h -> 2.0e-2 h from the 0.1 blend). The cubic laws and softWall keep the zero set
+   of d (shift <= 2.5e-9 h) because |F| ~ |q - 1|^3 or ^5 is tiny near q = 1; for the same reason
+   they leave the blends almost unchanged. twoThirdsZReg removes every crossing of d by tau = 60
+   to 80 at N <= 256 (0.39 h at N = 512); P4.3 UNDEFINED.
+6. **Whole domain:** every law leaves one cell of error near the circle by tau = 10 (cubicQ 10 to
+   20, cubicZ 20 to 50), from the circle centre (the kink of d, q < 1, G > 0). P5.3 FAILS for linearQ
+   on d at N = 256 and 512 (no far sign flip by tau = 10: a flip needs |F| dtau > 2).
+7. **Reading.** MEASURED: the defect is the estimate of q, not the law: the centred gradient lets
+   grid-scale extrema grow at G(0) under every law. No Eulerian source restores d from a perturbed
+   profile without moving the zero set. DERIVED/next: D. Bothe's algebraic rescaling (11.28), a
+   pointwise map without a growth mechanism, as an alternative to the source term.
+
+### 11.28 D. Bothe's algebraic rescaling and blended projection extension (2026-10-29)
+
+The author's decisions of 2026-10-29, from D. Bothe's notes ("Dieter-Besprechung-LevelSet"):
+(0) the algebraic rescaling psi -> c psi, c > 0, (0a) r = psi/|grad psi| (a first-order distance)
+and (0b) dhat = 2 psi/(|grad psi| + sqrt((|grad psi|^2 - 2 psi d_nn psi)^+)) (second order), as an
+alternative to a source term; (1) his blended projection extension; (2) a small source with it.
+The UFVM version here (FVM gradient, the Hessian as the FVM gradient of that gradient, also to show
+whether its noise destroys the solution); the SL version with the quadratic fit is task T6 of the SL
+session (`docs/knowledge-base/sessions/sl-session-handover.md`). The expected orders, separately for
+UFVM and SL: `docs/gradient-controlled-level-set/gcls-static-source-report/`, section 5.
+
+1. **The models** (runtime-selectable, inert by default; one shared formula,
+   `src/leiaLevelSet/profile/rescaledDistance.H`):
+   - `REDISTANCER rescaling` (`rescalingRedistancer`, the redistancer family): tokens
+     `RESCALE_ORDER first|second`, `RESCALE_REGION band|all` (+ `RESCALE_NLAYERS`),
+     `RESCALE_MAX_EVENTS` (1 = once), `RESCALE_MAG_GRAD centred|godunov` (Rouy-Tourin, the formula
+     of the PDE redistancer), `RESCALE_GRAD_SCHEME`, `RESCALE_HESSIAN_SCHEME`, `RESCALE_POSITIVE`,
+     `RESCALE_GRAD_FLOOR`; each event logs the cells changed, floored and with a negative
+     discriminant.
+   - `VELOCITY_EXTENSION projectionBlend` (the velocity-extension family): P(x) = x - dist n,
+     Uext = delta U + (1 - delta) U(P), U(P) by a first-order Taylor step from the cell centre (no
+     point search), delta a raised cosine from 0 at |dist| <= `PB_W1` h to 1 at `PB_W2` h; tokens
+     `PB_DISTANCE`, `PB_W1`, `PB_W2`. `cases/3Ddeformation` got a velocityExtension block (none =
+     the identity, as before).
+   - `PSI_DDT_SCHEME` for `cases/2DstaticCircle` (aliases `PsiDdtCN`, the default, and
+     `PsiDdtEuler`).
+2. **Gates passed (laptop, 4 ranks):** the new tokens are inert: an existing static source study
+   (linearQ and softWall, band, N = 64, tau = 2) is bit-identical with the old and the new templates
+   (4/4, twice); moving the formula into the shared header left the model bit-identical (32/32).
+3. **Two setup findings.** (a) Crank-Nicolson stores the last increment of psi, so it re-applies a
+   change made outside the solve (any redistancer event) as a rate: one rescaling of r^2 - R^2 at
+   N = 128 kept half its error after 128 further steps with CN, and reached round-off
+   (9.7e-15 h, the map is exact for a quadratic psi) with Euler. The rescaling studies use Euler.
+   (b) The first-order map with the centred gradient is, linearised about d, one step of the linearQ
+   source with mu dt = 1: it doubles the mode (-1)^(i+j) d per application. MEASURED: applied every
+   step on d at N = 64 the second-order map diverges, with CN (event changes x3 to x12 per event)
+   and with Euler (x2 to x4). `RESCALE_MAG_GRAD godunov` is the one-sided option.
+4. **Laptop smoke with Euler (N = 64 and 128; smoke only, not a result for the record).**
+   - Once, centred, second order: the zero crossings land where d has them (zcL2 difference 0.000)
+     and the DA volume equals that of d (difference ratio 0.000) from r^2 - R^2, its normalised
+     form and the 0.1 blend; d stays a fixed point to 2.5e-4 h. A band of 3 face layers missed a few
+     cells at 2h < |d| < 3h, which the measure includes: the configs now use `RESCALE_NLAYERS 4`.
+   - Once, one-sided (godunov): first order everywhere; it moves d itself by 1.3e-2 h and moves the
+     zero crossings (the one-sided slope across the interface is a first-order estimate).
+   - Every step: unstable with both gradients. Centred: the change per event reaches 1e3 to 7e4 by
+     event 128 to 256; godunov: 1 to 17 per event, which also destroys the field. The cluster
+     configs run every step to tau = 10 only.
+5. **Next.** The cluster ladder N = 64 to 512 of the once, every and Gauss configs; the laptop smoke
+   and then the cluster ladder of `config/projectionBlend/` (use B).
+
 ### 10.12 The plane test on perturbed hexahedra: planar faces exact, warped faces need the wetted area vector (2026-10-02)
 
 Asked by the panel review of the proposal (R3, R5: every static test so far ran on blockMesh hexahedra).

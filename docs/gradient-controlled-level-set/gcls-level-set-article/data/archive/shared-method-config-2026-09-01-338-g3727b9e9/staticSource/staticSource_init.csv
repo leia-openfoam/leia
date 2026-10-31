@@ -1,0 +1,609 @@
+item,case,init,N,result,verdict
+P0.2,staticSourceBeta2D/2DstaticCircle_00000,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00001,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00002,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00003,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00004,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00005,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00006,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00007,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00008,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00009,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00010,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00011,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00012,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00013,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00014,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00015,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00016,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00017,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00018,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00019,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00020,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00021,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00022,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00023,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00024,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00025,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00026,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00027,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00028,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00029,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00030,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00031,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00032,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00033,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00034,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00035,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00036,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00037,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00038,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00039,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00040,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00041,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00042,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00043,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00044,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00045,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00046,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceBeta2D/2DstaticCircle_00047,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00000,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00001,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00002,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00003,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00004,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00005,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00006,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00007,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00008,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00009,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00010,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00011,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00012,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00013,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00014,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00015,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00016,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00017,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00018,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00019,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00020,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00021,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00022,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00023,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00024,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00025,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00026,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00027,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00028,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00029,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00030,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceControl2D/2DstaticCircle_00031,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00000,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00001,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00002,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00003,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00004,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00005,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00006,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00007,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00008,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00009,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00010,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00011,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00012,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00013,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00014,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00015,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00016,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00017,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00018,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00019,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00020,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00021,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00022,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00023,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00024,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00025,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00026,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00027,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00028,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00029,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00030,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00031,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00032,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00033,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00034,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00035,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00036,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00037,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00038,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00039,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00040,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00041,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00042,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00043,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00044,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00045,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00046,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00047,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00048,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00049,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00050,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00051,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00052,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00053,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00054,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00055,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00056,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00057,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00058,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00059,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00060,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00061,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00062,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00063,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00064,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00065,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00066,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00067,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00068,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00069,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00070,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00071,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00072,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00073,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00074,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00075,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00076,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00077,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00078,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00079,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00080,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00081,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00082,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00083,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00084,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00085,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00086,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00087,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00088,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00089,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00090,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00091,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00092,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00093,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00094,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00095,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00096,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00097,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00098,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00099,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00100,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00101,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00102,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00103,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00104,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00105,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00106,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00107,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00108,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00109,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00110,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00111,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00112,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00113,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00114,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00115,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00116,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00117,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00118,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00119,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00120,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00121,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00122,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00123,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00124,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00125,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00126,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00127,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00128,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00129,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00130,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00131,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00132,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00133,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00134,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00135,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00136,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00137,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00138,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00139,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00140,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00141,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00142,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00143,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00144,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00145,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00146,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00147,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00148,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00149,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00150,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00151,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00152,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00153,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00154,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00155,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00156,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00157,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00158,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00159,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00160,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00161,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00162,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00163,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00164,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00165,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00166,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D/2DstaticCircle_00167,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00000,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00001,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00002,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00003,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00004,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00005,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00006,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00007,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00008,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00009,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00010,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00011,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00012,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00013,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00014,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00015,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00016,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00017,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00018,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00019,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00020,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00021,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00022,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00023,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00024,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00025,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00026,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00027,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00028,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00029,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00030,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00031,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00032,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00033,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00034,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00035,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00036,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00037,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00038,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00039,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00040,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00041,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00042,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00043,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00044,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00045,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00046,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00047,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00048,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00049,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00050,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00051,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00052,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00053,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00054,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcBand2D_N512/2DstaticCircle_00055,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00000,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00001,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00002,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00003,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00004,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00005,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00006,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00007,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00008,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00009,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00010,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00011,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00012,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00013,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00014,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00015,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00016,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00017,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00018,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00019,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00020,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00021,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00022,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00023,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00024,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00025,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00026,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00027,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00028,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00029,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00030,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00031,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00032,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00033,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00034,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00035,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00036,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00037,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00038,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00039,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00040,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00041,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00042,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00043,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00044,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00045,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00046,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00047,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00048,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00049,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00050,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00051,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00052,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00053,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00054,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00055,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00056,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00057,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00058,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00059,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00060,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00061,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00062,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00063,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00064,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00065,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00066,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00067,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00068,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00069,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00070,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00071,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00072,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00073,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00074,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00075,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00076,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00077,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00078,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00079,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00080,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00081,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00082,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00083,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00084,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00085,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00086,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00087,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00088,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00089,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00090,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00091,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00092,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00093,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00094,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00095,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00096,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00097,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00098,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00099,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00100,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00101,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00102,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00103,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00104,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00105,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00106,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00107,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00108,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00109,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00110,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00111,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00112,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00113,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00114,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00115,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00116,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00117,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00118,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00119,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00120,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00121,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00122,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00123,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00124,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00125,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00126,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00127,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00128,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00129,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00130,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00131,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00132,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00133,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00134,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00135,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00136,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00137,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00138,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00139,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00140,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00141,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00142,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00143,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00144,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00145,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00146,sdf,256,L1 5.9e-17 L2 9.3e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00147,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00148,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00149,blendH2,256,L1 5.9e-17 L2 9.3e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00150,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00151,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00152,blendH1,256,L1 6.0e-17 L2 9.4e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00153,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00154,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00155,blend01,256,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00156,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00157,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00158,algNorm,256,L1 9.4e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00159,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00160,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00161,alg,256,L1 4.7e-17 L2 8.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00162,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00163,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00164,modM2,256,L1 6.1e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00165,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00166,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D/2DstaticCircle_00167,modM4,256,L1 6.1e-17 L2 9.6e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00000,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00001,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00002,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00003,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00004,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00005,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00006,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00007,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00008,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00009,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00010,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00011,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00012,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00013,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00014,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00015,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00016,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00017,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00018,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00019,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00020,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00021,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00022,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00023,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00024,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00025,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00026,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00027,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00028,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00029,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00030,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00031,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00032,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00033,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00034,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00035,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00036,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00037,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00038,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00039,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00040,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00041,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00042,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00043,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00044,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00045,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00046,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00047,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00048,sdf,512,L1 6.3e-17 L2 1.0e-16; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00049,blendH2,512,L1 6.3e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00050,blendH1,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00051,blend01,512,L1 6.7e-17 L2 1.1e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00052,algNorm,512,L1 1.0e-16 L2 1.8e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00053,alg,512,L1 5.0e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00054,modM2,512,L1 6.5e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceGcNone2D_N512/2DstaticCircle_00055,modM4,512,L1 6.4e-17 L2 1.0e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00000,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00001,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00002,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00003,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00004,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00005,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00006,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00007,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00008,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00009,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00010,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00011,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00012,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00013,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00014,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00015,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00016,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00017,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00018,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00019,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00020,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00021,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00022,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00023,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00024,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00025,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00026,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00027,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00028,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00029,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00030,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00031,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00032,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00033,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00034,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00035,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00036,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00037,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00038,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00039,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00040,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00041,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00042,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00043,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00044,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00045,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00046,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullR2D/2DstaticCircle_00047,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00000,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00001,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00002,sdf,64,L1 5.4e-17 L2 8.5e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00003,sdf,128,L1 5.5e-17 L2 8.8e-17; sign ok; sdf = psiEnd bit for bit: True; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00004,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00005,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00006,blendH2,64,L1 5.4e-17 L2 8.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00007,blendH2,128,L1 5.5e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00008,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00009,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00010,blendH1,64,L1 5.6e-17 L2 8.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00011,blendH1,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00012,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00013,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00014,blend01,64,L1 5.8e-17 L2 9.2e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00015,blend01,128,L1 5.8e-17 L2 9.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00016,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00017,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00018,algNorm,64,L1 8.6e-17 L2 1.5e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00019,algNorm,128,L1 8.8e-17 L2 1.6e-16; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00020,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00021,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00022,alg,64,L1 4.3e-17 L2 7.5e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00023,alg,128,L1 4.4e-17 L2 7.9e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00024,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00025,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00026,modM2,64,L1 5.6e-17 L2 8.7e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00027,modM2,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00028,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00029,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00030,modM4,64,L1 5.6e-17 L2 8.8e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS
+P0.2,staticSourceNullStrain2D/2DstaticCircle_00031,modM4,128,L1 5.6e-17 L2 9.0e-17; sign ok; psiEnd/alphaEnd in 4 processor dirs: ok,PASS

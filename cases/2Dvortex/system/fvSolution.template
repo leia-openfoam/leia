@@ -160,6 +160,16 @@ levelSet
         criterionRegion     @!REDIST_REGION!@;
         freezeBand          @!REDIST_FREEZE!@;
         anchorLayers        @!REDIST_ANCHOR_LAYERS!@;
+        // rescaling model (D. Bothe 2026-10; inert unless type rescaling):
+        // psi -> psi/|grad psi| (first) or the quadratic-root distance (second)
+        order               @!RESCALE_ORDER!@;
+        region              @!RESCALE_REGION!@;
+        nLayers             @!RESCALE_NLAYERS!@;
+        maxEvents           @!RESCALE_MAX_EVENTS!@;
+        positivePart        @!RESCALE_POSITIVE!@;
+        smoothEps           @!RESCALE_SMOOTH_EPS!@;
+        gradFloor           @!RESCALE_GRAD_FLOOR!@;
+        magGrad             @!RESCALE_MAG_GRAD!@;
         // PDE baseline (ignored by the geometric models): mesh-relative
         // pseudo-time step -- the explicit reinit equation is CFL-limited
         // by h, a fixed deltaT stable on one mesh diverges on finer ones
@@ -297,6 +307,11 @@ levelSet
     velocityExtension
     {
         type        @!VELOCITY_EXTENSION!@;
+        // projectionBlend (D. Bothe 2026-10; read only by that model): P(x) = x - dist n,
+        // Uext = delta U + (1 - delta) U(P), delta from 0 (|dist| <= w1 h) to 1 (>= w2 h)
+        distance    @!PB_DISTANCE!@;
+        w1          @!PB_W1!@;
+        w2          @!PB_W2!@;
         nLayers     3;
         // Foot-point + pin this many additional cell layers around the
         // interface layer (Dirichlet anchors; 0 = interface layer only).

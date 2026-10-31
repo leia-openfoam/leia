@@ -1,9 +1,10 @@
 ---
 title: "The static source test: the Eulerian source terms alone, at zero velocity"
-description: "Open 2026-10-14 - every Eulerian level-set source of leiaLevelSetFoam (the seven gradient-control laws of Soga and Bothe, beta, the SDPLS strain sources) integrated alone in pseudo-time on a circle, from eight initial fields with the exact circle as zero set; the first run was void (the psi solver did nothing below its tolerance), the re-run is on Lichtenberg"
+description: "Settled 2026-10-29 - every Eulerian source of leiaLevelSetFoam alone at zero velocity on a circle, eight starts, N = 64 to 512: with the centred gradient every law grows grid-scale extrema at its G(0), no law restores d without moving the zero set, and the DA volume depends on the profile at O(h^2); next: the algebraic rescaling of D. Bothe"
 aliases: [static source test, staticSource, 2DstaticCircle, source terms at zero velocity]
 kind: concept
-status: open
+status: settled
+outcome: negative
 part: gradient-control
 tags: [concept, part/gradient-control]
 date: 2026-10-14
@@ -12,9 +13,17 @@ sources: [STATUS 11.27, the plan of 2026-10-14, the config headers of config/sta
 ---
 # The static source test: the Eulerian source terms alone, at zero velocity
 
-> Open (2026-10-14). The test is set up and gated; its first cluster run is void
-> ([[retractions/static-source-solver-dead-zone]]), and the re-run (worktree `leia-static2`) is
-> running. No result of the source terms is stated here yet.
+> Settled 2026-10-29 (STATUS 11.27 part 3; report `docs/gradient-controlled-level-set/
+> gcls-static-source-report/`). MEASURED, 608 runs, N = 64 to 512: with the centred gradient every
+> law grows grid-scale extrema of psi at its G(0) (linearQ 0.98 to 1.00, linearZ 0.46 to 0.50,
+> saturatedLinearZ 0.331 to 0.337, twoThirdsZReg 0.59 to 0.62, softWall 1.00 to 1.02); no law
+> restores d from a perturbed profile without moving the zero set; the cubic laws and softWall keep
+> the zero set of d only because they hardly act near q = 1; on the whole domain every law fails by
+> tau = 10 to 50 from the kink of d. From d in the band the zero crossings move 0.46 to 0.032 h at
+> tau = 80, order 2.35 (the slow drift converges). The Detrixhe-Aslam volume of
+> (r^2 - R^2)/(2R) differs from that of d by O(h^2) (order 1.97). The first run was void
+> ([[retractions/static-source-solver-dead-zone]]). Next: the algebraic rescaling of D. Bothe
+> (STATUS 11.28).
 
 ## What it is
 
@@ -79,3 +88,8 @@ Created. The first cluster run (010b553a) voided; the fix edb1d5bb gated on the 
 re-run at 3727b9e9 submitted on Lichtenberg: build 55441730 (`CI: PASS`, stamp
 `shared-method-config-2026-09-01-338-g3727b9e9`), stage A and B drivers 55441743 to 55441748
 (`leia-s2-*`); stage C after stage A passes.
+
+### 2026-10-29
+SETTLED with the final metrics (job 55753419, 608 runs): growth at G(0) for every law, no recovery
+of d without a moved zero set, the DA volume depends on the profile; P4.2 fails as written (the
+shift of d converges, 0.032 h at N = 512). Negative-log lines added. Next: the rescaling (STATUS 11.28).

@@ -6,6 +6,7 @@ redistancer.C
 pdeRedistancer.C
 planeAnchors.C
 anchoredEikonalRedistancer.C
+rescalingRedistancer.C
 planeFootWaveRedistancer.C
 
 leiaStamp_leiaRedistancer.C

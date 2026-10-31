@@ -104,6 +104,35 @@ decision and the cheapest discriminator.
   author's Lean project `formal/SlTransportProofs` is not on `development` yet.
 - Sent to the SL session (SLLS, fc0271) on 2026-10-13 by the source-term session.
 
+**T6 (2026-10-29). Author decision: test D. Bothe's algebraic rescaling of psi with the SL quadratic fit.**
+
+- The maps (D. Bothe, notes of 2026-10; the static source report
+  `docs/gradient-controlled-level-set/gcls-static-source-report/`, section "The algebraic rescaling
+  of psi"): psi -> c psi with c > 0, so the zero set and its normal stay exactly as they are.
+  (0a) r = psi/|grad psi|, a first-order distance: r = d - (B/(2A)) d^2 + O(d^3).
+  (0b) dhat = 2 psi/(|grad psi| + sqrt((|grad psi|^2 - 2 psi d_nn psi)^+)), d_nn psi = n.(grad grad
+  psi).n, the stable root of the second-order Taylor expansion of psi(x - d n) = 0: dhat = d + O(d^3);
+  exact for psi = r^2 - R^2.
+- The SL version takes grad psi and the Hessian at the cell centre from the quadratic fit it already
+  has (a compact stencil, consistent on any mesh: grad error O(h^2), Hessian error O(h)), and
+  multiplies the CELL value psi_c (the fit does not interpolate; the sign stays exact). Expected
+  (DERIVED in the report, section "The semi-Lagrangian method"): (0a) order 1 and (0b) order 2 in
+  the band error (psi - d)/h, on hexahedra AND polyhedra; noise grows with the fit's amplification
+  factor. The UFVM version of the Eulerian solvers (grad of grad as the Hessian) is expected to
+  lose the second order on non-uniform meshes; the source-term session measures it.
+- The static test case: `cases/2DstaticCircle` (u = 0, a circle R = 0.25 off the lattice, eight
+  initial fields with the same zero set: d, three blends d + eps d^2/(2R), (r^2 - R^2)/(2R),
+  r^2 - R^2, d(1 + 0.1 cos m theta)), the configs `config/staticSource/staticSourceRescale*2D.yaml`
+  (pre-registered R1 to R6 in their headers: accuracy after one rescaling, zero set, volume, d as a
+  fixed point, repeated every step to tau = 80) and the metrics
+  `workflow/scripts/static_source_metrics.py`. The SL session needs an SL version of the case (the
+  kinematic SL solver at u = 0) or the rescaling inside `leiaSemiLagrangeLevelSetFoam`.
+- Then on hexahedral meshes, three resolutions each, against the unrescaled baseline: the 2D shear
+  (`cases/2Dvortex`), the 3D shear (`cases/3Dshear`) and the 3D deformation (`cases/3Ddeformation`).
+  Use (A), the rescaling as an alternative to a source term (once per step, and every k steps), and
+  report the whole vector (shape, volume, band gradient error, orders).
+- Sent by the source-term session on 2026-10-29 (no SL session was reachable; it reads this note).
+
 ## Results of 2026-09-29 (information for the SL session)
 
 1. **`2Dtranslation` translates one way, and every earlier number of the case is void**
@@ -244,3 +273,6 @@ Added task T4 (the stale narrow band; the CFL 1.0 row of the 2D convergence tabl
 
 ### 2026-10-13
 Added task T5 (the author's decision to pause the SL work; the refined-box translation test; the Lean alternative).
+
+### 2026-10-29
+Added task T6 (D. Bothe's algebraic rescaling with the SL quadratic fit: the static case, then the 2D shear, 3D shear and 3D deformation on hexahedra).

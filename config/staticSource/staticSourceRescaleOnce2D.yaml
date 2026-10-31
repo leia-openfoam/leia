@@ -1,0 +1,76 @@
+# ============================================================================
+# THE ALGEBRAIC RESCALING OF THE LEVEL SET ON THE STATIC CIRCLE (STATUS 11.28; D. Bothe, 2026-10;
+# author decisions 2026-10-29). Case cases/2DstaticCircle at u = 0 with NO source: the only change
+# of psi is the rescaling model of the redistancer family (REDISTANCER rescaling), a pointwise map
+# psi -> c psi, c > 0, applied after the (identity) transport step:
+#   RESCALE_ORDER first   (0a)  r    = psi/|grad psi|                    (a first-order distance)
+#   RESCALE_ORDER second  (0b)  dhat = 2 psi/(|grad psi| + sqrt((|grad psi|^2 - 2 psi d_nn psi)^+))
+#                                                                         (a second-order distance)
+# grad psi = fvc::grad (leastSquares, RESCALE_GRAD_SCHEME); the Hessian = the FVM gradient of that
+# gradient (RESCALE_HESSIAN_SCHEME); d_nn psi = n.H.n. Region: the sign-change band + 3 layers.
+# The eight initial fields, the mesh ladder and the metrics are those of config/staticSource/
+# staticSourceControl2D.yaml (L1 and L2 only). The expected accuracy, separately for the UFVM
+# version and for the semi-Lagrangian quadratic fit: docs/gradient-controlled-level-set/
+# gcls-static-source-report, section "The algebraic rescaling of psi".
+#
+# PRE-REGISTERED READ-OUT (2026-10-29, before any run). dist3_2 = L2 of (psi - d)/h in |d| <= 3h;
+# 'after one event' = the write at tau = 1 of the once-configs (the map acts at step 1 only).
+# R1 accuracy, one event: second order, starts alg and algNorm: dist3_2 after the event has a
+#    least-squares order >= 1.7 over N = 64..512, and is <= 0.2 x its start value at N >= 128.
+#    FAIL: order < 1.5. First order, starts alg and algNorm: order 1 +- 0.3 (the model term
+#    -(B/2A) d^2). The blends and the modulated starts: recorded.
+# R2 the zero set, one event: second order, starts alg, algNorm, blend01: zcL2 after the event is
+#    within 10 % of zcL2 of d (same N) at N >= 128. First order: recorded.
+# R3 the volume, one event: second order, starts alg, algNorm, blend01:
+#    |V_DA(after) - V_DA(d)| <= 0.1 |V_DA(start) - V_DA(d)| at N >= 128. First order: recorded.
+# R4 d is a fixed point: start d, both orders, one event: dist3_2 after the event <= 1e-3 at
+#    N >= 128.
+# R5 repeated, every step to tau = 10 (the every-configs; 80 before 2026-10-29, see CHANGED below):
+#    no exponential growth phase (empty growth rate in staticSource_growth.csv) for any start, and
+#    dist3_2(10) <= 2 x dist3_2(1) at N >= 128 for the second order. FAIL: a growth phase, or
+#    dist3_2 > 1 at any write.
+# R6 the Hessian scheme (staticSourceRescaleGauss2D, every step): Gauss linear of the leastSquares
+#    gradient, second order. On uniform hexahedra both Hessians are consistent, so dist3_2 at
+#    tau = 10 is within 2x of the leastSquares Hessian (staticSourceRescaleEvery2D) at N >= 128.
+#    A noise-driven loss (dist3_2 > 1 at any write to tau = 80) falsifies this.
+# Time scheme: Euler (PSI_DDT_SCHEME PsiDdtEuler). Crank-Nicolson re-applies the change of a
+# rescaling event as a rate (laptop smoke 2026-10-29); with no source, Euler is the identity.
+# CHANGED 2026-10-29 after the laptop smoke, before any cluster run: RESCALE_NLAYERS 4 (a band of 3
+# face layers leaves cells at 2h < |d| < 3h untouched, which the measure dist3_2 includes); the
+# every-step configs end at tau = 10 (written every 1), not 80 (the smoke diverged within tau = 2 at
+# N = 64 with Euler); RESCALE_MAG_GRAD centred | godunov is an axis of the once and every configs.
+# Checks as for the source studies: check-init, S0 (every psi solve has a zero residual: there is
+# no source), every case COMPLETED.
+# ============================================================================
+study_name: staticSourceRescaleOnce2D
+case: 2DstaticCircle
+mesh: hex
+mode: parallel
+np: 4
+solver: leiaLevelSetFoam
+theme: gradient-controlled-level-set
+studies_dir: studies/staticSource
+setfields_app: setExprFields
+setfields_args: ''
+solve_runtime: 60
+export_slides: false
+collapse_other_axes: true
+mpi_launcher: mpirun -np {np}
+env_preamble: source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true
+axes_override:
+  PHASE_INDICATOR: [detrixheAslam]
+  N_CELLS: [64, 128, 256, 512]
+  INIT_FIELD: [sdf, blendH2, blendH1, blend01, algNorm, alg, modM2, modM4]
+  SDPLS_SOURCE: [noSource]
+  MOLLIFIER: [none]
+  REDISTANCER: [rescaling]
+  PSI_DDT_SCHEME: [PsiDdtEuler]
+  REDIST_TRIGGER: [interval]
+  REDIST_INTERVAL: [1]
+  RESCALE_ORDER: [first, second]
+  RESCALE_NLAYERS: [4]
+  RESCALE_MAX_EVENTS: [1]
+  RESCALE_MAG_GRAD: [centred, godunov]
+  RESCALE_HESSIAN_SCHEME: [SdplsLSQ]
+  END_TIME: [1]
+  WRITE_EVERY_TAU: [1]

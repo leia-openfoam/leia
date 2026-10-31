@@ -44,6 +44,9 @@ gradSchemes
     // signedDistanceBounds redistancing criterion gradient (decoupled from
     // the psi advection scheme's limiter)
     redistGradPsi   leastSquares;
+    // rescaling redistancer: grad psi and its Hessian = grad of that gradient
+    rescaleGradPsi  $@!RESCALE_GRAD_SCHEME!@;
+    rescaleHessian  $@!RESCALE_HESSIAN_SCHEME!@;
     default         Gauss linear;
     // Level-set ADVECTION gradient: the reconstruction gradient of the
     // linearUpwind div(phi,psi) scheme above, and the gradient the

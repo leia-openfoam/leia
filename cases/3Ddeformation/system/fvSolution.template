@@ -108,6 +108,16 @@ levelSet
         criterionRegion     @!REDIST_REGION!@;
         freezeBand          @!REDIST_FREEZE!@;
         anchorLayers        @!REDIST_ANCHOR_LAYERS!@;
+        // rescaling model (D. Bothe 2026-10; inert unless type rescaling):
+        // psi -> psi/|grad psi| (first) or the quadratic-root distance (second)
+        order               @!RESCALE_ORDER!@;
+        region              @!RESCALE_REGION!@;
+        nLayers             @!RESCALE_NLAYERS!@;
+        maxEvents           @!RESCALE_MAX_EVENTS!@;
+        positivePart        @!RESCALE_POSITIVE!@;
+        smoothEps           @!RESCALE_SMOOTH_EPS!@;
+        gradFloor           @!RESCALE_GRAD_FLOOR!@;
+        magGrad             @!RESCALE_MAG_GRAD!@;
         // PDE baseline (ignored by the geometric models): mesh-relative
         // pseudo-time step -- the explicit reinit equation is CFL-limited
         // by h, a fixed deltaT stable on one mesh diverges on finer ones
@@ -155,6 +165,16 @@ levelSet
     volumeCorrection
     {
         type @!VOLUME_CORRECTION!@;
+    }
+
+    // Velocity extension of the Eulerian line (added 2026-10-29 for the projectionBlend tests;
+    // VELOCITY_EXTENSION none is the identity, as before this block existed).
+    velocityExtension
+    {
+        type        @!VELOCITY_EXTENSION!@;
+        distance    @!PB_DISTANCE!@;
+        w1          @!PB_W1!@;
+        w2          @!PB_W2!@;
     }
 
     sdplsSource

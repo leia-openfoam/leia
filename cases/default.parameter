@@ -255,6 +255,30 @@ OMEGA_M    2;
 // token on purpose -- it is the measurement and must not move with the source.
 GRAD_PSI_SDPLS SdplsLSQ;
 GRAD_U_SDPLS   SdplsUGauss;
+
+// rescaling redistancer (REDISTANCER rescaling; D. Bothe 2026-10, STATUS 11.28): psi -> c psi with
+// c > 0, so the zero set is kept. RESCALE_ORDER first: psi/|grad psi| (a first-order distance);
+// second: 2 psi/(|grad psi| + sqrt((|grad psi|^2 - 2 psi d_nn psi)^+)) (second order). The
+// gradient and the Hessian (the FVM gradient of the FVM gradient) use the aliases below. Every
+// key is read only by the rescaling model, so these defaults are inert for every other study.
+RESCALE_ORDER          second;
+RESCALE_REGION         band;   // band (sign-change cells + RESCALE_NLAYERS) | all
+RESCALE_NLAYERS        3;
+RESCALE_MAX_EVENTS     -1;     // -1: no limit; 1: rescale once
+RESCALE_POSITIVE       max;    // max | smooth
+RESCALE_SMOOTH_EPS     0;
+RESCALE_GRAD_FLOOR     1e-3;   // |grad psi| below it: the cell is left unchanged
+RESCALE_MAG_GRAD       centred; // centred (|fvc::grad psi|) | godunov (Rouy-Tourin one-sided)
+
+// projectionBlend velocity extension (VELOCITY_EXTENSION projectionBlend; D. Bothe 2026-10, STATUS 11.28):
+// P(x) = x - dist n with dist the first (psi/|grad psi|) or second-order distance; Uext = delta U +
+// (1 - delta) U(P(x)); delta ramps from 0 at |dist| <= PB_W1 h to 1 at |dist| >= PB_W2 h. Read only by
+// that model: inert for every other study.
+PB_DISTANCE            second;
+PB_W1                  1.5;
+PB_W2                  4;
+RESCALE_GRAD_SCHEME    SdplsLSQ;
+RESCALE_HESSIAN_SCHEME SdplsLSQ;
 GRAD_PSI       fvc;
                      // (drives |grad psi| -> beta; beta = 1 = signed distance).
 ADVECTION eulerian;  // unified leiaLevelSetFoam advection method:

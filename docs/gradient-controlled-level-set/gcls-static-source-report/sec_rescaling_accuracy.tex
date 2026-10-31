@@ -1,0 +1,96 @@
+%% The algebraic rescaling (D. Bothe, 2026-10): order-of-accuracy assumptions, separately for the
+%% unstructured finite-volume (PDE) solvers and for the semi-Lagrangian method.
+\section{The algebraic rescaling of $\psi$: what accuracy to expect}
+\label{sec:rescaling}
+
+\paragraph{The two maps (D.~Bothe).} Both multiply $\psi$ by a positive factor, so the sign of
+$\psi$, the zero set $\Sigma$ and the normal on $\Sigma$ stay exactly as they are:
+\begin{align}
+  \text{(0a)}\quad r &= \frac{\psi}{|\nabla\psi|}, \label{eq:r}\\
+  \text{(0b)}\quad \hat d &= \frac{2\psi}{|\nabla\psi| +
+     \sqrt{\left(|\nabla\psi|^2 - 2\psi\,\partial_{nn}\psi\right)^+}},
+  \qquad \partial_{nn}\psi = \bn\cdot(\nabla\nabla\psi)\,\bn,\ \bn=\frac{\nabla\psi}{|\nabla\psi|}.
+  \label{eq:dhat}
+\end{align}
+(0b) is the stable root of $\psi-d\,\partial_n\psi+\tfrac{d^2}{2}\partial_{nn}\psi=0$, the
+Taylor expansion of $\psi(\bx-d\bn)=0$ to second order. With $A=|\nabla\psi|$ and
+$B=\partial_{nn}\psi$ on $\Sigma$ (\Der):
+\begin{equation}
+  r = d - \frac{B}{2A}\,d^2 + O(d^3), \qquad \hat d = d + O(d^3).
+\end{equation}
+So (0a) is a first-order distance (exact value and slope on $\Sigma$) and (0b) a second-order
+distance. Both return $\psi$ unchanged if $\psi=d$. For $\psi=r^2-R^2$,
+$|\nabla\psi|^2-2\psi\,\partial_{nn}\psi=4R^2$ and (0b) gives $r-R$ exactly (\Der).
+
+\paragraph{How the error is counted.} In the band $|d|\le kh$ (the sign-change cells and $k-1$
+layers) the pointwise error of a discrete map has a model part and a part from the discrete
+derivatives. To leading order, with the errors $\delta q$ of $|\nabla\psi|$ and $\delta B$ of
+$\partial_{nn}\psi$ (\Der):
+\begin{equation}
+  \delta r \approx -\,d\,\delta q, \qquad
+  \delta\hat d \approx -\,d\,\delta q + \tfrac12 d^2\,\delta B .
+  \label{eq:derr}
+\end{equation}
+The error of the field near $\Sigma$ is reported in units of $h$ (the static test's
+\texttt{dist3}), so a pointwise $O(h^{p+1})$ is ``order $p$''.
+
+\subsection{Unstructured finite volumes (the PDE solvers)}
+\label{sec:rescaling-fvm}
+
+The PDE solvers have no reconstruction. The UFVM version takes $\nabla\psi$ from a FVM gradient
+(least squares or Gauss) and the Hessian as the FVM gradient of that gradient,
+$\nabla\nabla\psi\approx\nabla_h(\nabla_h\psi)$ (\path{rescalingRedistancer}, the redistancer
+family of \texttt{leiaLevelSetFoam}).
+
+\begin{enumerate}
+\item Uniform hexahedra, smooth $\psi$ (\Der). The centred gradient has $\delta q=O(h^2)$, and
+the gradient of the gradient is a consistent second difference over $2h$ with $\delta B=O(h^2)$.
+By \eqref{eq:derr}: (0a) error $O(h^2)$ from the model term, order~1 in units of $h$; (0b)
+error $O(h^3)$, order~2.
+\item Noise and the grid-scale mode (\Der, corrected 2026-10-29). A perturbation $\varepsilon$
+of $\psi$ gives $\delta q=O(\varepsilon/h)$ and $\delta B=O(\varepsilon/h^2)$; in the band,
+\eqref{eq:derr} turns this into $O(k\varepsilon)$ and $O(k^2\varepsilon)$. Linearised about $d$,
+the first-order map with the centred gradient is $\delta\leftarrow\delta-d\,(\bn\cdot\nabla_h\delta)$:
+exactly one step of the \texttt{linearQ} source with $\mu\Delta t=1$. For the mode
+$\delta=E(-1)^{i+j}d$ the centred difference gives $\bn\cdot\nabla_h\delta=-(-1)^{i+j}E$, so one
+application DOUBLES the mode. (A first version of this report said the maps are neutral on the
+unstable mode; that holds only for the pure staircase, not for the $d$-modulated mode.) Applied
+once, the map is accurate; applied repeatedly with the centred gradient, it amplifies the mode by
+up to 2 per application (\Meas: applied every step on $d$, $N=64$, it diverges, with
+Crank--Nicolson and with Euler). A one-sided (Rouy--Tourin) $|\nabla\psi|$ does not vanish at a
+grid-scale extremum and damps the mode instead (\Der{} in the first-campaign report,
+sec.~eigenmode); \texttt{magGrad godunov} selects it.
+\item Time integration (\Meas, 2026-10-29). A change of $\psi$ outside the linear solve (any
+redistancer event) is re-applied as a rate by Crank--Nicolson, which stores the last increment:
+one rescaling of $r^2-R^2$ at $N=128$ kept half of its error after 128 further steps with
+Crank--Nicolson, and reached round-off ($9.7\times10^{-15}h$) with Euler. The rescaling tests
+therefore integrate with Euler (\texttt{PSI\_DDT\_SCHEME}).
+\item Non-uniform and polyhedral meshes (\Der, to be measured). The FVM gradient is first order,
+$\delta q=O(h)$, and the gradient of the gradient is not consistent, $\delta B=O(1)$. Then
+$\delta\hat d=O(h^2)$, as $\delta r$: (0b) loses its advantage and both maps are order~1. This
+is the prediction the UFVM Hessian is built to test (author decision 2026-10-29: implement it
+also to show whether its noise destroys the solution).
+\item Repeated application. The discrete map is not a projection: a second application changes
+the field again by the discretisation error. Applied every step for $\tau/\Delta\tau=O(N)$
+steps, a per-event error $O(h^{p+1})$ can accumulate to $O(h^p)$ unless the map contracts. The
+static test measures one event and one event per step (pre-registered in the configs).
+\end{enumerate}
+
+\subsection{The semi-Lagrangian method (quadratic fit)}
+\label{sec:rescaling-sl}
+
+The semi-Lagrangian method fits a weighted least-squares quadratic per cell. At the cell centre
+the fit gives $\nabla\psi$ and $\nabla\nabla\psi$ from one compact stencil.
+
+\begin{enumerate}
+\item Any mesh, smooth $\psi$, a well-conditioned fit (\Der). A consistent quadratic fit has
+$\delta q=O(h^2)$ and $\delta B=O(h)$, also on polyhedra. By \eqref{eq:derr}: (0a) order~1 (the
+model term), (0b) $O(h^3)$, order~2, on every mesh. So the reconstruction keeps the advantage of
+(0b) where the UFVM Hessian loses it.
+\item Noise (\Der). The same scaling as in the UFVM case, multiplied by the fit's amplification
+factor $\Lambda$: the amplification report measured $\Lambda_{\max}=1.05$ on blockMesh
+hexahedra and $1.26$ on pMesh polyhedra. The fit is not blind to the odd-even mode in the same
+way as the centred difference; how much of the mode the fit removes is to be measured.
+\item The value. The map multiplies the cell value $\psi_c$, not the fit value at the centre
+(the least-squares fit does not interpolate), so the sign of $\psi_c$ is kept exactly.
+\end{enumerate}

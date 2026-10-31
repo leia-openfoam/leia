@@ -1,0 +1,57 @@
+# ============================================================================
+# D. BOTHE'S BLENDED PROJECTION EXTENSION ON THE EULERIAN LINE (STATUS 11.28; use B of the author
+# decision 2026-10-29). leiaLevelSetFoam, eulerian transport of psi with the extended velocity
+#   P(x) = x - dist(x) n(x),  Uext = delta U(x) + (1 - delta) U(P(x)),
+# dist = psi/|grad psi| (PB_DISTANCE first) or the quadratic-root distance (second), n from the FVM
+# gradient, U(P) by a first-order Taylor step from the cell centre, delta a raised cosine from 0 at
+# |dist| <= 1.5 h to 1 at |dist| >= 4 h (src/leiaLevelSet/velocityExtension/projectionBlend.H).
+# Arms: VELOCITY_EXTENSION none | projectionBlend x SDPLS_SOURCE noSource | gradientControl
+# (linearQ, GC_MU 0.1 1/s, band of 3 layers: "a small beta") x PB_DISTANCE first | second. The two
+# 'none' arms that differ only in PB_DISTANCE are a null pair (PB_* is read only by projectionBlend).
+# Relation to the record: haloLimited (HL0, 2026-09-27) is the same construction with the travel
+# capped at R <= 1 cell and the first-order distance; it failed methodGate2D on the shape order.
+# Reversed flow (OSCILLATION on): the gradient error at T/2, the shape error at T, the volume error
+# at T/2 and T (L1/L2 only).
+#
+# PRE-REGISTERED READ-OUT (2026-10-29, before any run):
+# B1 the extension alone (projectionBlend, noSource, second): the band gradient error
+#    E_NARROW_L2_GRAD_PSI at T/2 is at least 2x smaller than the baseline (none, noSource) at the
+#    two finest rungs, and the shape error E_GEOM_ALPHA_REL at T is at most 1.2x the baseline with
+#    an observed order not below the baseline's minus 0.3. FAIL: shape order loss > 0.3 or shape
+#    error > 2x baseline at the finest rung.
+# B2 first against second distance: recorded (the second is predicted no worse).
+# B3 with the small source (gradientControl linearQ, mu 0.1): the band gradient error at T/2 is no
+#    larger than the extension alone; a growth phase at about 0.1 (= G(0)) in the band error is
+#    recorded as the centred-q defect of the static test (STATUS 11.27).
+# B4 the null pair (none, first/second) is bit-identical; every case COMPLETED or an explained
+#    DIVERGED; the laptop smoke compares np 4 with serial at the coarsest rung.
+# ============================================================================
+study_name: projectionBlend3Ddeformation
+case: 3Ddeformation
+mesh: hex
+mode: parallel
+np: 16
+solver: leiaLevelSetFoam
+theme: gradient-controlled-level-set
+studies_dir: studies/projectionBlend
+solve_runtime: 720
+collapse_other_axes: true
+export_slides: false
+mpi_launcher: mpirun -np {np}
+env_preamble: source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc; [ -f $HOME/.leia_env ] && . $HOME/.leia_env || true
+axes_override:
+  END_TIME: [3]
+  N_CELLS: [32, 64, 128]
+  CFL: [0.5]
+  PHASE_INDICATOR: [detrixheAslam]
+  REPORT_WRITE_ONLY: ["false"]   # the band mollifier seeds from alpha, refreshed only at report steps
+  REDISTANCER: [noRedistancing]
+  ADVECTION: [eulerian]
+  VELOCITY_EXTENSION: [none, projectionBlend]
+  PB_DISTANCE: [first, second]
+  SDPLS_SOURCE: [noSource, gradientControl]
+  GC_LAW: [linearQ]
+  GC_MU: [0.1]
+  GC_STRAIN_WEIGHT: [none]
+  MOLLIFIER: [band]
+  SOURCE_SCHEME: [simpleLinearImplicit]

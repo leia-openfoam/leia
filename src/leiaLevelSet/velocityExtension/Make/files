@@ -9,6 +9,7 @@ pseudoTime.C
 steadyUpwind.C
 steadyUpwindLinear.C
 closestPoint.C
+projectionBlend.C
 meshWaveExt.C
 haloLimited/haloLimitedStrategies.C
 haloLimited/haloLimited.C

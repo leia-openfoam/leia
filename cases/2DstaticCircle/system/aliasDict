@@ -47,3 +47,9 @@ SdplsPointLSQ     pointCellsLeastSquares;    // extended point-cell stencil
 SdplsGauss        Gauss linear;              // Green-Gauss, different family
 SdplsUGauss       Gauss linear;              // grad(v) for a = n.grad(v).n
 SdplsULSQ         leastSquares;
+// Time scheme of psi (token PSI_DDT_SCHEME, cases/2DstaticCircle.parameter). Crank-Nicolson stores
+// the last increment of psi; a change of psi outside the solve (a redistancer event) is then
+// re-applied as a rate (MEASURED 2026-10-29: one rescaling of r^2 - R^2 kept half its error after
+// 128 steps with CN, round-off with Euler). The rescaling studies use Euler.
+PsiDdtCN          CrankNicolson 1;
+PsiDdtEuler       Euler;
