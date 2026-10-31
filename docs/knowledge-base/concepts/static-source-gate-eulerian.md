@@ -93,3 +93,6 @@ re-run at 3727b9e9 submitted on Lichtenberg: build 55441730 (`CI: PASS`, stamp
 SETTLED with the final metrics (job 55753419, 608 runs): growth at G(0) for every law, no recovery
 of d without a moved zero set, the DA volume depends on the profile; P4.2 fails as written (the
 shift of d converges, 0.032 h at N = 512). Negative-log lines added. Next: the rescaling (STATUS 11.28).
+
+### 2026-10-31
+The follow-up, D. Bothe's rescaling on this same case, is settled in [[concepts/algebraic-rescaling-eulerian]]: once it works, every step it fails.

@@ -62,6 +62,15 @@ date: 2026-09-28
    re-run runs on Lichtenberg in the worktree `/work/scratch/tm83tomy/leia-static2` (commit
    3727b9e9, job names `leia-s2-*`, ledger `.my_jobs` there); the metrics run from
    `/work/scratch/tm83tomy/leia-static-m`. Read no result before the row S0 passes.
+   Settled 2026-10-29.
+9. 2026-10-29 to 31 (STATUS 11.28), D. Bothe's notes: the algebraic rescaling (use A,
+   [[concepts/algebraic-rescaling-eulerian]], settled: once works, every step fails) and the
+   blended projection extension (use B, [[concepts/projection-blend-extension]], B1 FAIL on the 2D
+   vortex and the 3D shear). Worktree `/work/scratch/tm83tomy/leia-rescale` (binaries 049cfa66,
+   ledger `.my_jobs`, drivers `.my_jobs.drivers`, `.my_jobs.drivers3dd`); the 3D deformation
+   re-run is driver 55814176. Since 2026-10-31 nothing runs on the laptop
+   ([[decisions/process-operating-rules]]). The SL version is task T6 of
+   [[sessions/sl-session-handover]].
 
 ## What is open, in order
 

@@ -5598,6 +5598,82 @@ UFVM and SL: `docs/gradient-controlled-level-set/gcls-static-source-report/`, se
    on the nodes that took most of the 697 small jobs at once (mpqc0002: 327, mpzd0001: 132). The
    commands never started: launch failures, not results. Re-submitted with `--jobs 15` per driver
    and 90 s stagger (drivers 55812674 to 55812679); snakemake re-runs only the missing outputs.
+7. **Cluster, second submission (2026-10-31): complete, one setup error.** Every static case
+   (Once 128, Every 128, Gauss 32) and every case of the 2D vortex and 3D shear studies (24 + 24)
+   COMPLETED. On the 3D deformation all 12 gradientControl arms stopped at step 0 with `FOAM FATAL
+   IO ERROR: Entry 'law' not found`: `cases/3Ddeformation/system/fvSolution.template` had no `law`
+   block. A setup error, not a divergence. The study is renamed
+   `projectionBlend3Ddeformation_VOID_noLawBlock_2026-10-31` and NOT read, the noSource arms
+   included; the template has the block of `cases/3Dshear` now (9d483075; `src/` unchanged since
+   the build commit 049cfa66, so the binaries stay); the re-run is driver 55814176. Metrics: job
+   55814177 on Lichtenberg (`static_source_metrics.py` at 9d483075; check-init 288/288 PASS,
+   iterations 288/288 PASS, no singular solve), tables in
+   `studies/staticSource/metrics-rescale` and `studies/projectionBlend/metrics` of
+   `/work/scratch/tm83tomy/leia-rescale`. Units: dist3_2 = L2 of (psi - d)/h over |d| <= 3h, so
+   order p means a pointwise error O(h^(p+1)). L1/L2 only.
+8. **Use A, the rescaling, static circle, uniform hexahedra, N = 64/128/256/512 (MEASURED).**
+   - **Once, centred gradient, second order (0b): works as derived.** From r^2 - R^2 and its
+     normalised form, dist3_2 after one event is 4.9e-15 to 4.5e-14 h: round-off, the map is exact
+     for a quadratic psi (DERIVED, report section 5). The pre-registered R1 line reads FAIL as
+     written (its least-squares order is -1.06 < 1.5): the read-out had no clause for an error at
+     round-off. The value meets the intent of R1; the verdict stays as written. The blends and the
+     modulated starts: order 1.93 to 2.01 (blend01 8.5e-4 h at N = 64 to 1.5e-5 h at N = 512). The
+     zero crossings and the DA volume equal those of d (R2, R3 PASS: relative difference 0.000). d
+     is a fixed point to 2.6e-4/6.5e-5/1.6e-5 h at N = 128/256/512 (R4 PASS).
+   - **Once, centred, first order (0a): order 1 as derived (R1 PASS).** From r^2 - R^2: 1.25e-1,
+     6.3e-2, 3.2e-2, 1.6e-2 h. On the normalised form it does not reduce the error (start 1.24e-1 h
+     at N = 64): the model term -(B/2A) d^2 has the size of the start error. Order 2 where that term
+     vanishes or scales with h (sdf, blendH2, blendH1); order 1.00 on blend01.
+   - **Once, one-sided (godunov) |grad psi|: first order for everything (R4 FAIL).** It moves d by
+     2.6e-2 h at N = 64 to 3.3e-3 h at N = 512; with the second order, the zero crossings move by
+     0.9 to 1.8 times the error of d, and the DA volume difference to d grows to 1.9x (alg) and
+     7.7x (blend01) of the start (R2, R3 FAIL).
+   - **Every step to tau = 10: every arm FAILS (R5).** Centred, first and second order, with the
+     leastSquares and the Gauss Hessian: unstable from the first events. sdf at N = 64, second
+     order: band mean |grad psi| 37.6 at tau = 0.1 (13 events) and 2.7e4 at tau = 0.2. At tau = 10
+     dist3_2 is 3e4 to 6e6 h for every start and every N, the zero crossings moved 0.3 to 0.7 h,
+     the DA volume grew 10 to 15 %. One-sided, first order: bounded, but it settles at dist3_2 =
+     1.13 h on every rung (order 0), crossings moved 0.24 to 0.41 h, volume -3.3 % (N = 64) to
+     -0.2 % (N = 512). One-sided, second order: dist3_2 3 to 41 h, not monotone in N or tau.
+   - **R6 (Gauss against leastSquares Hessian): PASS as written, ratio 0.89 to 1.02 at tau = 10,
+     but both arms diverged.** The noise of the FVM Hessian is NOT the failure mode on uniform
+     hexahedra: the first-order map, which uses no Hessian, diverges in the same way. The amplifier
+     is the centred gradient (item 3b: two times per application on the mode (-1)^(i+j) d). The
+     author asked to show whether the Hessian noise destroys the solution: on this mesh the
+     centred gradient destroys it first; the polyhedral prediction (report section 5, item 4) is
+     not measured.
+   - **Reading.** On the UFVM line with these gradients the rescaling is a ONE-TIME map, not an
+     alternative to a source term: applied once (centred, second order) it gives a second-order
+     distance with the zero set and the DA volume unchanged; applied every step it diverges
+     (centred) or settles about 1.1 h away from d and moves the interface by 0.25 to 0.4 h
+     (one-sided). Not tested: an event every k steps with k > 1; a gradient that is neither
+     centred nor one-sided.
+9. **Use B, the blended projection extension, reversed kinematic flows (MEASURED; 3D deformation
+   pending, item 7).** 2D vortex N = 64/128/256 np 4; 3D shear N = 32/64/128 np 16. Gradient error
+   E_NARROW_L2_GRAD_PSI at T/2, shape error E_GEOM_ALPHA_REL at T, volume error at T/2 and T.
+   - **B1 FAILS on both rungs.** The extension alone (second distance) halves the band gradient
+     error at T/2 (ratio 0.34/0.46 in 2D, 0.40/0.43 in 3D at the two finest rungs), but the shape
+     error at T is 4.5x/5.1x larger in 2D and 1.10x/1.56x in 3D, and the shape order falls from
+     3.23 to 2.53 (2D) and from 1.87 to 1.28 (3D). The volume error at T at the finest rung is 8x
+     larger in 2D (1.47e-3 against 1.85e-4) and 11x larger in 3D (5.1e-2 against 4.7e-3, order
+     0.15 against 3.36). At T/2 the 2D volume error is 16x smaller (2.8e-5 against 4.7e-4 at
+     N = 256), the 3D one 5x larger.
+   - **The band gradient error does not converge in any arm**, the baseline included (orders -0.3
+     to 0.0). The band mean |grad psi| at T/2 is 2.4 (2D) and 3.2 (3D) without the extension and
+     1.45 to 1.9 with it: the extension reduces the steepening, it does not hold |grad psi| = 1.
+   - **B2 (first against second distance): RECORDED.** The second distance is no worse: at the
+     finest rung, 2D shape 2.12e-3 against 3.11e-3 and volume at T 1.47e-3 against 1.99e-3; 3D
+     shape 5.79e-2 against 5.67e-2, volume at T 5.1e-2 against 5.2e-2.
+   - **B3 PASSES as written** (with the source the band gradient error is 0.77 to 0.86 of the
+     extension alone), but the shape and the volume become worse again (3D shape order 0.86 to
+     0.91).
+   - **B4 PASSES:** the null pairs are bit-identical (3/3 per study), every case COMPLETED.
+   - **Reading.** On the Eulerian line this extension trades the gradient error for the shape and
+     volume errors at the end of the reversed flow. HYPOTHESIS (not tested): the baseline's high
+     shape order at T (3.23 in 2D) comes from the time reversal of a linear transport with a
+     prescribed velocity, and an extension that depends on psi breaks that cancellation; the
+     volume error at T/2 in 2D, which the extension improves, points the same way. A flow that
+     does not reverse (`2Dtranslation`, a rotation) separates the two.
 
 ### 10.12 The plane test on perturbed hexahedra: planar faces exact, warped faces need the wetted area vector (2026-10-02)
 

@@ -1,0 +1,11 @@
+item,scope,value,threshold,verdict,note
+B2,projectionBlend2Dvortex projectionBlend-first-noSource,grad(T/2) ratio 0.40 0.47; shape(T) ratio 4.50 7.47; shape order 2.22 against 3.23,recorded,RECORDED,
+B3,projectionBlend2Dvortex projectionBlend-first-gradientControl,grad(T/2) ratio 0.34 0.40; shape(T) ratio 6.28 14.31; shape order 1.89 against 3.23; grad(T/2) against extension alone 0.84 0.86,<= 1 against the extension alone,PASS,
+B1,projectionBlend2Dvortex projectionBlend-second-noSource,grad(T/2) ratio 0.34 0.46; shape(T) ratio 4.45 5.10; shape order 2.53 against 3.23,"grad <= 0.5x, shape <= 1.2x, order >= base - 0.3",FAIL,
+B3,projectionBlend2Dvortex projectionBlend-second-gradientControl,grad(T/2) ratio 0.28 0.39; shape(T) ratio 6.36 12.62; shape order 2.01 against 3.23; grad(T/2) against extension alone 0.83 0.86,<= 1 against the extension alone,PASS,
+B4,projectionBlend2Dvortex,null pairs 3/3 bit-identical; states COMPLETED 24,"all identical, all COMPLETED",PASS,
+B2,projectionBlend3Dshear projectionBlend-first-noSource,grad(T/2) ratio 0.47 0.50; shape(T) ratio 0.96 1.53; shape order 1.29 against 1.87,recorded,RECORDED,
+B3,projectionBlend3Dshear projectionBlend-first-gradientControl,grad(T/2) ratio 0.37 0.39; shape(T) ratio 1.83 2.93; shape order 0.91 against 1.87; grad(T/2) against extension alone 0.78 0.78,<= 1 against the extension alone,PASS,
+B1,projectionBlend3Dshear projectionBlend-second-noSource,grad(T/2) ratio 0.40 0.43; shape(T) ratio 1.10 1.56; shape order 1.28 against 1.87,"grad <= 0.5x, shape <= 1.2x, order >= base - 0.3",FAIL,
+B3,projectionBlend3Dshear projectionBlend-second-gradientControl,grad(T/2) ratio 0.31 0.34; shape(T) ratio 1.91 3.08; shape order 0.86 against 1.87; grad(T/2) against extension alone 0.77 0.78,<= 1 against the extension alone,PASS,
+B4,projectionBlend3Dshear,null pairs 3/3 bit-identical; states COMPLETED 24,"all identical, all COMPLETED",PASS,

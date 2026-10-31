@@ -96,3 +96,11 @@ grid-scale extrema at its G(0) with the centred gradient. Next, by the author's 
 algebraic rescaling of psi (first and second order) as an alternative to a source term, in UFVM
 (`REDISTANCER rescaling`, STATUS 11.28) and with the SL quadratic fit (task T6 of
 [[sessions/sl-session-handover]]); then his blended velocity extension.
+
+### 2026-10-31
+Use A, the algebraic rescaling on the UFVM line, is settled ([[concepts/algebraic-rescaling-eulerian]]):
+applied once (centred, second order) it gives a second-order distance and keeps the zero set and the DA
+volume; applied every step it fails in every variant (negative log). Use B, the blended projection
+extension ([[concepts/projection-blend-extension]]): on the 2D vortex and the 3D shear it halves the band
+gradient error at T/2 and makes the shape and the volume at T worse (B1 FAIL); the 3D deformation runs
+again after a setup error. Task T6 (the SL version) waits for the SL session.

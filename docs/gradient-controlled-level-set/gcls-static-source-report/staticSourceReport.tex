@@ -64,9 +64,26 @@ zero set. The laws that keep the zero set of $d$ (cubic, soft wall) do so becaus
 near $q=1$.
 \end{enumerate}
 
-\paragraph{Consequence.} The defect is the estimate of $q$, not the law. The next step is the
-algebraic rescaling of D.~Bothe (Section~\ref{sec:rescaling}): a pointwise map with no
-growth mechanism, as an alternative to a source term, tested on this same case first.
+\paragraph{Consequence.} The defect is the estimate of $q$, not the law. The next step was the
+algebraic rescaling of D.~Bothe (Section~\ref{sec:rescaling}), as an alternative to a source
+term, tested on this same case first. A first version of this report called it ``a pointwise map
+with no growth mechanism''. That was wrong: with the centred gradient the map has the same growth
+mechanism as the \texttt{linearQ} source (Section~\ref{sec:rescaling-fvm}, item 2), and the
+measurement confirms it (Section~\ref{sec:rescaling-results}).
+
+\paragraph{The rescaling and the blended extension (2026-10-31).}
+\begin{enumerate}\setcounter{enumi}{4}
+\item \Meas{} Applied once, the second-order rescaling with the centred gradient gives a
+second-order distance (exact for $r^2-R^2$), and keeps the zero crossings and the DA volume of $d$.
+\item \Meas{} Applied every step it fails in every variant: the centred maps diverge from the
+first events (with the least-squares and the Gauss Hessian alike, and without any Hessian), and
+the one-sided map stays bounded but settles $1.1h$ away from $d$ on every mesh and moves the
+zero crossings by $0.25h$ to $0.4h$. The noise of the FVM Hessian is not what fails first on
+uniform hexahedra; the centred gradient is.
+\item \Meas{} The blended projection extension halves the band gradient error at $T/2$ on the
+2D vortex and the 3D shear, but makes the shape error at $T$ 1.1 to 5 times and the volume error
+at $T$ 8 to 11 times larger at the finest rung (pre-registered B1: FAIL).
+\end{enumerate}
 
 %% ===========================================================================
 \section{The sources, one paragraph each}
@@ -173,5 +190,6 @@ needs edges that cross at both times; NOT EVALUATED: outside the line's conditio
 
 \clearpage
 \input{sec_rescaling_accuracy.tex}
+\input{sec_rescaling_results.tex}
 
 \end{document}

@@ -1,0 +1,116 @@
+%% The measured results of the rescaling (use A) and of the blended projection extension (use B),
+%% 2026-10-31. Numbers from the curated tables
+%% docs/gradient-controlled-level-set/gcls-level-set-article/data/tables/rescale_*.csv and
+%% projectionBlend_*.csv (static_source_metrics.py and projection_blend_metrics.py at 9d483075,
+%% Lichtenberg job 55814177; runs at 049cfa66). STATUS.md 11.28, items 7 to 9.
+\section{The rescaling and the blended extension: measured}
+\label{sec:rescaling-results}
+
+\paragraph{Set-up.} The static circle of this report, uniform hexahedra, $N=64$ to 512,
+\texttt{REDISTANCER rescaling}, no source, Euler in pseudo-time (Section~\ref{sec:rescaling-fvm},
+item 3), the band of the sign-change cells and four layers. ``Once'': one event at the first
+step, read at $\tau=1$. ``Every step'': one event per step to $\tau=10$. The error is
+$\mathrm{dist3}_2$, the $L_2$ norm of $(\psi-d)/h$ over $|d|\le3h$, so order $p$ is a pointwise
+$O(h^{p+1})$. The pre-registered lines R1 to R6 are in the headers of
+\path{config/staticSource/staticSourceRescale*2D.yaml}.
+
+\begin{table}[h]\centering\small
+\caption{One event: $\mathrm{dist3}_2$ after the event, and its order over $N=64$ to 512.
+\Meas}
+\label{tab:rescale-once}
+\begin{tabular}{llllll}
+\toprule
+$|\nabla\psi|$ & map & start & $N=64$ & $N=512$ & order \\
+\midrule
+centred & second (0b) & $r^2-R^2$ & $4.9\times10^{-15}$ & $4.5\times10^{-14}$ & round-off \\
+centred & second (0b) & blend 0.1 & $8.5\times10^{-4}$ & $1.5\times10^{-5}$ & 1.96 \\
+centred & second (0b) & $d$ & $9.4\times10^{-4}$ & $1.6\times10^{-5}$ & 1.96 \\
+centred & first (0a) & $r^2-R^2$ & $1.2\times10^{-1}$ & $1.6\times10^{-2}$ & 1.00 \\
+centred & first (0a) & blend 0.1 & $1.3\times10^{-2}$ & $1.6\times10^{-3}$ & 1.00 \\
+one-sided & first (0a) & $d$ & $2.6\times10^{-2}$ & $3.3\times10^{-3}$ & 0.99 \\
+one-sided & second (0b) & $r^2-R^2$ & $6.9\times10^{-2}$ & $8.7\times10^{-3}$ & 1.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{One event (\Meas).}
+\begin{enumerate}
+\item The centred second-order map gives the orders that Section~\ref{sec:rescaling-fvm} derives
+for uniform hexahedra: exact for $r^2-R^2$, order 2 otherwise. The zero crossings and the DA
+volume after the event equal those of $d$ (R2, R3: relative difference 0.000 at $N\ge128$), and
+$d$ is a fixed point to $1.6\times10^{-5}h$ at $N=512$ (R4). The line R1 for $r^2-R^2$ reads
+FAIL as written: its least-squares order of a round-off error is $-1.06$, and the read-out had no
+clause for that case. The verdict stays as written; the value is round-off.
+\item The centred first-order map is order 1 where the model term $-(B/2A)d^2$ is present (R1
+PASS). On $(r^2-R^2)/(2R)$ it does not reduce the error: the model term has the size of the start
+error and the opposite sign.
+\item The one-sided (Rouy--Tourin) $|\nabla\psi|$ is a first-order estimate, so every map with
+it is order 1: it moves $d$ itself (R4 FAIL), and with the second-order map it moves the zero
+crossings by 0.9 to 1.8 times the error of $d$ and changes the DA volume (R2, R3 FAIL).
+\end{enumerate}
+
+\paragraph{Every step (\Meas).} Every arm FAILS R5.
+\begin{enumerate}
+\item Centred, first and second order, least-squares and Gauss Hessian: unstable from the first
+events. From $d$ at $N=64$ (second order) the band mean of $|\nabla\psi|$ is 37.6 after 13
+events and $2.7\times10^4$ after 26. At $\tau=10$, $\mathrm{dist3}_2$ is $3\times10^4$ to
+$6\times10^6$ for every start and every $N$; the zero crossings moved $0.3h$ to $0.7h$, the DA
+volume grew 10 to 15\,\%.
+\item One-sided, first order: bounded. It settles at $\mathrm{dist3}_2=1.13$ on every rung (order
+0); the zero crossings moved $0.24h$ to $0.41h$; the volume changed by $-3.3\,\%$ ($N=64$) to
+$-0.2\,\%$ ($N=512$). One-sided, second order: $\mathrm{dist3}_2$ between 3 and 41, not
+monotone in $N$ or $\tau$.
+\item R6 reads PASS as written (Gauss over least-squares Hessian at $\tau=10$: 0.89 to 1.02) only
+because both arms diverged to the same level.
+\end{enumerate}
+
+\paragraph{Does the noise of the FVM Hessian destroy the solution?} On uniform hexahedra the
+question does not arise: the first-order map, which uses no Hessian, diverges in the same way, and
+the Gauss Hessian gives the same result as the least-squares one. The centred gradient destroys
+the solution first, by the mechanism of Section~\ref{sec:rescaling-fvm}, item 2 (one application
+doubles the mode $(-1)^{i+j}d$). The polyhedral prediction (item 4 there) is not measured.
+
+\paragraph{Assessment (use A on the UFVM line).} The rescaling is a correct ONE-TIME map, not an
+alternative to a source term with these gradients. Applied once (centred, second order) it gives a
+second-order distance and keeps the zero set and the DA volume. Applied every step it diverges
+(centred) or keeps an $O(h)$ error and moves the interface (one-sided). Open: an event every $k$
+steps, $k>1$, which bounds the growth by $2^{n/k}$ only if the transport between events damps the
+mode; and the semi-Lagrangian version with the quadratic fit (task T6 of the SL session), whose
+fit is not blind to the odd-even mode (Section~\ref{sec:rescaling-sl}).
+
+\paragraph{Use B: the blended projection extension (\Meas).} \texttt{leiaLevelSetFoam}, Eulerian
+transport, reversed flows: 2D vortex $N=64,128,256$ on 4 ranks, 3D shear $N=32,64,128$ on 16
+ranks. The 3D deformation study had a setup error (the case template had no \texttt{law} block,
+every \texttt{gradientControl} arm stopped at step 0); it is void and runs again.
+
+\begin{table}[h]\centering\small
+\caption{Extension (second distance) against no extension, finest rung; ratio extension over
+baseline, and the observed orders. Gradient error in the band at $T/2$, shape at $T$, volume at
+$T$. \Meas}
+\label{tab:pb}
+\begin{tabular}{lllll}
+\toprule
+case & gradient ratio & shape ratio & shape order & volume at $T$ \\
+\midrule
+2D vortex, $N=256$ & 0.46 & 5.1 & 2.53 (base 3.23) & $1.5\times10^{-3}$ (base $1.9\times10^{-4}$) \\
+3D shear, $N=128$ & 0.43 & 1.56 & 1.28 (base 1.87) & $5.1\times10^{-2}$ (base $4.7\times10^{-3}$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{enumerate}
+\item B1 FAILS on both cases: the band gradient error halves, but the shape and the volume at $T$
+are worse and converge more slowly (Table~\ref{tab:pb}).
+\item The band gradient error does not converge in any arm, the baseline included (orders
+$-0.3$ to 0). The band mean of $|\nabla\psi|$ at $T/2$ is 2.4 (2D) and 3.2 (3D) without the
+extension and 1.45 to 1.9 with it: the extension reduces the steepening, but does not hold
+$|\nabla\psi|=1$.
+\item With the small source (\texttt{linearQ}, $\mu=0.1$) the gradient error falls further, to
+0.77 to 0.86 of the extension alone (B3 PASS as written), and the shape and the volume become
+worse again.
+\item The null pairs are bit-identical and every case completed (B4 PASS).
+\item \Hyp{} The baseline's high shape order at $T$ comes from the time reversal of a linear
+transport with a prescribed velocity; an extension that depends on $\psi$ breaks that
+cancellation. In 2D the extension reduces the volume error at $T/2$ 16 times, which points the
+same way. A flow that does not reverse separates the two.
+\end{enumerate}
