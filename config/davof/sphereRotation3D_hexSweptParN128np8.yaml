@@ -45,6 +45,7 @@
 #   10 the count is reported against the same count over the other faces (the
 #   amplified round-off reaches both; an excess at the crossing faces would
 #   be the pathology).
+# (np 8 re-run with 8000 MB per rank after the OOM kill of the 3000 MB run, jobs 55810185/6)
 # P-P3 (the cost): at N = 128 on 64 ranks one step at least 20 times faster
 #   than serial (serial about 9 s per step). Expected by this agent: 8 to 25
 #   times; the swept work sits in the ranks that hold the interface band, so
@@ -90,7 +91,7 @@ axes_override:
   TPF_KB_FAN: ["auto"]
 collapse_other_axes: true
 
-solve_mem_mb: 3000
+solve_mem_mb: 8000
 solve_runtime: 30
 
 export_slides: false
