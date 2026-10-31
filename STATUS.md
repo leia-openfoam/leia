@@ -5592,8 +5592,12 @@ UFVM and SL: `docs/gradient-controlled-level-set/gcls-static-source-report/`, se
    Found on the way, NOT caused by the new models: serial and np 4 of the Eulerian 2D vortex BASELINE
    (no extension) differ by 1.6e-6 relative in E_GEOM_ALPHA_REL at step 1 and 2.2e-5 at tau = 0.5 (a
    decomposition dependence of the Eulerian kinematic line; open, to be located).
-6. **Next.** The cluster ladders of the once, every and Gauss configs and of `config/projectionBlend/`
-   (worktree `/work/scratch/tm83tomy/leia-rescale` at 049cfa66).
+6. **Cluster, first submission (drivers 55810546 to 55810551, `--jobs 60` each): launch failures.**
+   All six drivers ended rc 2: 162 mesh/preprocess/decompose, 90 reconstruct and 108 solve steps
+   failed with `srun: error: Task launch ... Socket timed out on send` or `Job credential expired`,
+   on the nodes that took most of the 697 small jobs at once (mpqc0002: 327, mpzd0001: 132). The
+   commands never started: launch failures, not results. Re-submitted with `--jobs 15` per driver
+   and 90 s stagger (drivers 55812674 to 55812679); snakemake re-runs only the missing outputs.
 
 ### 10.12 The plane test on perturbed hexahedra: planar faces exact, warped faces need the wetted area vector (2026-10-02)
 
