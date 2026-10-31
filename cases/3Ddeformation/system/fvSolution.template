@@ -200,6 +200,36 @@ levelSet
           // distance while psi is a signed distance function.
           nLayers @!SDPLS_NLAYERS!@;
         }
+
+        // gradientControl only (Phase D2; inert for every other type): the law of F.
+        law
+        {
+            // F = w(q)*a + G(q) in D_t psi = psi*F; q = |grad psi|, a = n.D.n.
+            // G(1) = 0 for every law. A law reads only its own entries, and every
+            // entry that a law reads is REQUIRED (no code default).
+            //   none | linearQ | linearZ | cubicQ | cubicZ | twoThirdsZReg |
+            //   saturatedLinearZ | softWall
+            type        @!GC_LAW!@;
+            mu          @!GC_MU!@;   // [1/s] rate of the q- and z-laws
+            eps         @!GC_EPS!@;   // twoThirdsZReg: G = -mu*zeta/(zeta^2 + eps^2)^(1/6)
+            c           @!GC_SAT_C!@;   // saturatedLinearZ: G = -mu*zeta/(1 + c*|zeta|)
+            // softWall: G = -cKappa*sqrt(D:D + epsD^2)*tanh[gamma*((q - 1)/deltaS)^p]
+            cKappa      @!SW_C_KAPPA!@;
+            deltaS      @!SW_DELTA_S!@;
+            p           @!SW_P!@;   // odd
+            gamma       @!SW_GAMMA!@;   // artanh(0.9)
+            epsD        @!SW_EPS_D!@;   // [1/s]
+            // The weight w(q) of the strain term a:
+            //   none (w = 0) | full (w = 1: the SDPLS R source) |
+            //   omega (w = 1 - exp[-beta*((q - 1)/deltaS)^(2m)])
+            strainWeight
+            {
+                type    @!GC_STRAIN_WEIGHT!@;
+                beta    @!OMEGA_BETA!@;
+                m       @!OMEGA_M!@;
+                deltaS  @!SW_DELTA_S!@;
+            }
+        }
     }
 
     // ===================================================================== //

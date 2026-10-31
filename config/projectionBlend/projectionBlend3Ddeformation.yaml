@@ -25,6 +25,12 @@
 #    recorded as the centred-q defect of the static test (STATUS 11.27).
 # B4 the null pair (none, first/second) is bit-identical; every case COMPLETED or an explained
 #    DIVERGED; the laptop smoke compares np 4 with serial at the coarsest rung.
+#
+# SETUP NOTE (2026-10-31, after the first cluster run, before any read-out): the case template
+# cases/3Ddeformation/system/fvSolution.template had no gradientControl 'law' block, so every
+# gradientControl arm stopped at startup (FOAM FATAL IO ERROR: Entry 'law' not found). The first
+# study is renamed projectionBlend3Ddeformation_VOID_noLawBlock_2026-10-31 and not read; the
+# template now carries the block of cases/3Dshear; the read-out above is unchanged.
 # ============================================================================
 study_name: projectionBlend3Ddeformation
 case: 3Ddeformation
