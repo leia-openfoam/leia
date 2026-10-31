@@ -5579,8 +5579,21 @@ UFVM and SL: `docs/gradient-controlled-level-set/gcls-static-source-report/`, se
    - Every step: unstable with both gradients. Centred: the change per event reaches 1e3 to 7e4 by
      event 128 to 256; godunov: 1 to 17 per event, which also destroys the field. The cluster
      configs run every step to tau = 10 only.
-5. **Next.** The cluster ladder N = 64 to 512 of the once, every and Gauss configs; the laptop smoke
-   and then the cluster ladder of `config/projectionBlend/` (use B).
+5. **Use-B laptop smoke (`config/projectionBlend/`, 2D vortex N = 64 to tau = 0.5 on 4 ranks and
+   serial, 3D shear N = 32 to tau = 0.3; one resolution, not a result).** All 14 cases COMPLETED; the
+   null pairs (none, first against second distance) are bit-identical. Uniform translation (grad U =
+   0, so Uext = U): projectionBlend equals none to all ten printed digits, so the code path is right.
+   On the vortex the extension makes every measure worse: shape error 1.5e-2 against 1.0e-3 (15x),
+   volume error 1.1e-2 against 6.7e-5, band gradient error 6.2e-2 against 2.9e-3; 3D shear: shape
+   2.3x, volume 24x, band 2x. The small source (mu 0.1) changes little. HYPOTHESIS for the cause:
+   the extended field is not divergence-free, and the advective form ddt + div(phi psi) - psi div(phi)
+   mixes a limited upwind and a centred term; the ladder decides whether the loss stays under
+   refinement.
+   Found on the way, NOT caused by the new models: serial and np 4 of the Eulerian 2D vortex BASELINE
+   (no extension) differ by 1.6e-6 relative in E_GEOM_ALPHA_REL at step 1 and 2.2e-5 at tau = 0.5 (a
+   decomposition dependence of the Eulerian kinematic line; open, to be located).
+6. **Next.** The cluster ladders of the once, every and Gauss configs and of `config/projectionBlend/`
+   (worktree `/work/scratch/tm83tomy/leia-rescale` at 049cfa66).
 
 ### 10.12 The plane test on perturbed hexahedra: planar faces exact, warped faces need the wetted area vector (2026-10-02)
 
