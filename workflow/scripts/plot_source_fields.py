@@ -158,19 +158,22 @@ def cmd_static(a):
     fig.tight_layout()
     save(fig, a.out, "static_linearQ_fields.png")
 
-    # a row cut through the centre
-    j = int(float(tokens(c)["CIRCLE_Y0"]) * N)
+    # a row cut: the row of the window with the largest |psi - d| at the last write
+    tv, tn = at_time(c, 80)
+    e80 = np.where(win, np.abs(field(c, tn, N) - d), 0)
+    j = int(np.unravel_index(np.argmax(e80), e80.shape)[0])
     x = X[j]
-    sel = (x > 0.64) & (x < 0.86)
+    sel = (x > 0.62) & (x < 0.84)
+    xz = float(tokens(c)["CIRCLE_X0"]) + np.sqrt(float(tokens(c)["CIRCLE_R"]) ** 2 - (Y[j, 0] - float(tokens(c)["CIRCLE_Y0"])) ** 2)
     fig, ax = plt.subplots(figsize=(9, 4.6))
     dark(fig, ax)
     for t, col in zip((40, 60, 80), SLOT):
         tv, tn = at_time(c, t)
         e = (field(c, tn, N)[j] - d[j]) / h
         ax.plot(x[sel], e[sel], "o-", color=col, ms=5, lw=1.2, label=rf"$\tau={tv:g}$")
-    ax.axvline(float(tokens(c)["CIRCLE_X0"]) + float(tokens(c)["CIRCLE_R"]), color=MUTED, ls="--", lw=1)
-    ax.text(0.753, ax.get_ylim()[1] * 0.9, " zero set", color=MUTED, fontsize=10)
-    ax.set_xlabel("x (cell centres of the row through the circle centre)")
+    ax.axvline(xz, color=MUTED, ls="--", lw=1)
+    ax.text(xz, ax.get_ylim()[1] * 0.9, " zero set", color=MUTED, fontsize=10)
+    ax.set_xlabel(f"x (cell centres of the row y = {Y[j, 0]:.3f}, the row with the largest error at tau = 80)")
     ax.set_ylabel(r"$(\psi-d)/h$")
     ax.grid(True, color=GRID, lw=0.6)
     leg = ax.legend(frameon=False, fontsize=10)
@@ -195,18 +198,18 @@ def cmd_rescale(a):
     panels = [(c1, 0, "start: $(r^2-R^2)/2R$"), (c1, 1, "after (0a), centred"), (c2, 1, "after (0b), centred")]
     fig, axes = plt.subplots(1, 3, figsize=(14.5, 4.6))
     dark(fig, axes)
-    lim = 0.5
+    lim = 0.15
     for ax, (c, t, lab) in zip(axes, panels):
         tv, tn = at_time(c, t)
         e = (field(c, tn, N) - d) / h
         band = np.abs(d) <= 3 * h
         l2 = np.sqrt(np.mean(e[band] ** 2))
-        im = ax.pcolormesh(X, Y, np.where(np.abs(d) <= 6 * h, e, np.nan), cmap=DIV,
+        im = ax.pcolormesh(X, Y, np.where(band, e, np.nan), cmap=DIV,
                            norm=TwoSlopeNorm(0, -lim, lim), shading="nearest")
         ax.contour(X, Y, d, [0], colors=[TEXT], linewidths=0.6)
         ax.set_xlim(0.2, 0.8); ax.set_ylim(0.2, 0.8); ax.set_aspect("equal")
         ax.set_title(f"{lab}\nL2 in |d| <= 3h: {l2:.2e} h", fontsize=11)
-        cbar(fig, im, ax, r"$(\psi-d)/h$ in $|d|\leq 6h$")
+        cbar(fig, im, ax, r"$(\psi-d)/h$ in $|d|\leq 3h$")
     fig.tight_layout()
     save(fig, a.out, "rescale_once_fields.png")
 
@@ -220,7 +223,7 @@ def cmd_rescale(a):
     for k, (ax, (c, t, lab)) in enumerate(zip(axes, panels)):
         tv, tn = at_time(c, t)
         e = (field(c, tn, N) - d) / h
-        show = np.where(np.abs(d) <= 6 * h, e, np.nan)
+        show = np.where(np.abs(d) <= 3 * h, e, np.nan)
         if k == 0:
             norm = SymLogNorm(linthresh=1.0, vmin=-np.nanmax(np.abs(show)), vmax=np.nanmax(np.abs(show)))
         else:
@@ -229,7 +232,7 @@ def cmd_rescale(a):
         ax.contour(X, Y, d, [0], colors=[TEXT], linewidths=0.6)
         ax.set_xlim(0.62, 0.82); ax.set_ylim(0.40, 0.60); ax.set_aspect("equal")
         ax.set_title(rf"{lab}, $\tau={tv:g}$", fontsize=11)
-        cbar(fig, im, ax, r"$(\psi-d)/h$" + (" (symlog)" if k == 0 else ""))
+        cbar(fig, im, ax, r"$(\psi-d)/h$ in $|d|\leq 3h$" + (" (symlog)" if k == 0 else ""))
     fig.suptitle(f"start d, N = {N}, window near the right of the circle", color=TEXT, fontsize=12)
     fig.tight_layout()
     save(fig, a.out, "rescale_every_fields.png")
@@ -256,24 +259,29 @@ def cmd_extension(a):
         ax.contour(X, Y, p, [0], colors=[TEXT], linewidths=0.7)
         ax.set_aspect("equal"); ax.set_xlim(0, 1); ax.set_ylim(0, 1)
         ax.set_title(rf"{lab}, $t={tv:.3f}$ (T/2)", fontsize=12)
-        cbar(fig, im, ax, r"$|\nabla\psi|$ in $|\psi|\leq 6h$ (central differences)")
+        cbar(fig, im, ax, r"$|\nabla\psi|$ in $|\psi|\leq 6h$ (central differences, clipped at 3)")
     fig.suptitle(f"2D vortex, N = {N}: the gradient at the largest deformation", color=TEXT, fontsize=13)
     fig.tight_layout()
     save(fig, a.out, "extension_vortex_gradient.png")
 
-    # shape at T: the zero contours against the initial circle
-    fig, ax = plt.subplots(figsize=(6.4, 6.0))
+    # shape at T: the radial deviation of the zero contour from the initial circle (0.5, 0.75), R = 0.15
+    fig, ax = plt.subplots(figsize=(9, 4.6))
     dark(fig, ax)
-    t0, n0 = at_time(base, 0)
-    ax.contour(X, Y, field(base, n0, N), [0], colors=[MUTED], linewidths=1.2, linestyles="--")
-    for c, col, lab in ((base, SLOT[0], "no extension"), (ext, SLOT[1], "projectionBlend")):
+    for c, col, lab in ((base, SLOT[0], "no extension"), (ext, SLOT[1], "projectionBlend, second distance")):
         tv, tn = at_time(c, T)
-        ax.contour(X, Y, field(c, tn, N), [0], colors=[col], linewidths=1.4)
-        ax.plot([], [], color=col, label=f"{lab}, t = {tv:g}")
-    ax.plot([], [], color=MUTED, ls="--", label="initial circle")
-    ax.set_aspect("equal"); ax.set_xlim(0.33, 0.67); ax.set_ylim(0.58, 0.92)
-    ax.set_title(f"2D vortex, N = {N}: the zero level set at T", fontsize=12)
-    leg = ax.legend(frameon=False, fontsize=10, loc="lower center")
+        cs = plt.figure().add_subplot().contour(X, Y, field(c, tn, N), [0])
+        pts = np.vstack([seg for seg in cs.allsegs[0]])
+        plt.close()
+        th = np.degrees(np.arctan2(pts[:, 1] - 0.75, pts[:, 0] - 0.5))
+        dr = (np.hypot(pts[:, 0] - 0.5, pts[:, 1] - 0.75) - 0.15) / h
+        k = np.argsort(th)
+        ax.plot(th[k], dr[k], color=col, lw=1.6, label=f"{lab}, t = {tv:g}")
+    ax.axhline(0, color=MUTED, lw=1, ls="--")
+    ax.set_xlabel("angle on the circle (degrees)")
+    ax.set_ylabel(r"$(r-R)/h$ of the zero level set at $T$")
+    ax.set_title(f"2D vortex, N = {N}: the zero level set after the reversal", fontsize=12)
+    ax.grid(True, color=GRID, lw=0.6)
+    leg = ax.legend(frameon=False, fontsize=10)
     [t.set_color(TEXT) for t in leg.get_texts()]
     fig.tight_layout()
     save(fig, a.out, "extension_vortex_shape.png")
