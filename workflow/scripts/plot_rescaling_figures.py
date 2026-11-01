@@ -14,6 +14,7 @@ import os
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.ticker  # noqa: E402
 
 SURFACE, TEXT, MUTED, GRID = "#191919", "#f0efec", "#c3c2b7", "#3a3a38"
 SLOT = ["#3987e5", "#d95926", "#199e70"]
@@ -57,6 +58,7 @@ def main():
         ax.text(560, y0 * 8.0 ** -p, f"order {p}", color=MUTED, fontsize=11, va="center")
     ax.set_xticks(Ns)
     ax.set_xticklabels([str(N) for N in Ns])
+    ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
     ax.set_xlim(55, 700)
     ax.set_xlabel("N (cells per side)", fontsize=13)
     ax.set_ylabel(r"$L_2$ of $(\psi-d)/h$ in $|d|\leq 3h$ after one event", fontsize=13)
@@ -77,10 +79,10 @@ def main():
         pts = sorted((t, v) for (ar, i, N, t), v in val.items() if ar == arm and i == "sdf" and N == 256)
         ax.semilogy([t for t, _ in pts], [v for _, v in pts], "-o", color=c, lw=2, ms=8, label=lab)
     ax.axhline(1.0, color=MUTED, lw=1, ls="--")
-    ax.text(10.1, 1.0, "1 h", color=MUTED, fontsize=11, va="center")
+    ax.text(0.15, 2.0, "1 h", color=MUTED, fontsize=11, va="bottom")
     ax.set_xlabel(r"pseudo-time $\tau$ (one event per step, $\Delta\tau = h/2$)", fontsize=13)
     ax.set_ylabel(r"$L_2$ of $(\psi-d)/h$ in $|d|\leq 3h$", fontsize=13)
-    ax.set_title("start: the signed distance d, N = 256", fontsize=13)
+    ax.set_title("start: the signed distance d, N = 256 (writes at integer tau)", fontsize=13)
     leg = ax.legend(frameon=False, fontsize=11, loc="center right")
     for t in leg.get_texts():
         t.set_color(TEXT)
