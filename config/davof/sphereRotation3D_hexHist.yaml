@@ -1,0 +1,87 @@
+# Where the face-fraction error accumulates over the rotation turn
+# (2026-11-01). The fixed piecewise loop (sphereRotation3D_hexSweptCellsFixed,
+# fork c52a904) has a first-step error of order 0.9 to 1 (4.60e-3 / 2.35e-3 /
+# 1.26e-3 at N = 32 / 64 / 128, exact normal) but a per-turn order of only
+# 0.67 / 0.70 (2.31e-2 / 1.45e-2 / 8.94e-3); under translation the plane
+# loop's per-run order was 0.89 (sphereTranslation3D_hexSwept). Five short
+# studies, N = 32 and 64 only (Tomislav: nothing above 30 min serial until
+# the parallel branch), Co 0.2 unless stated, every step the face-fraction
+# error, the reconstruction error (L1(x)), Eshape against the sphere at its
+# position at t (volumeFractionError with omega, fork 2026-11-01), the mass
+# and the bounds:
+#   sphereRotation3D_hexHist           BASE: plane surface by the volume
+#                                      anchor, exact normal, sweptFaceCells,
+#                                      pieces face update, scaling, alpha
+#                                      fixedValue (this file)
+#   sphereRotation3D_hexHistExactPlane (b): the same with planeSource exact
+#                                      (the tangent plane of the exact
+#                                      sphere: no anchor, no feedback)
+#   sphereRotation3D_hexHistPrism      (c): the base with the prism flux
+#   sphereRotation3D_hexHistExactSurf  (a): the exact sphere as every cell's
+#                                      surface, prism flux (the swept flux is
+#                                      planes only), volume rule exactSphere
+#   sphereRotation3D_hexHistCo         (d): the base at Co 0.1, N = 32
+# The analysis is workflow/scripts/davof_rotation_history.py on the cluster:
+# per case L1(alphaf) at 25 / 50 / 75 / 100 % of the turn, the fit of the
+# growth L1(t) - L1(t1) = b t^p over the turn (p ~ 1 accumulation of a fixed
+# remainder, p ~ 0.5 random, p ~ 0 saturation), the increment per unit time
+# and its h-scaling between N = 32 and 64.
+#
+# PRE-REGISTERED (2026-11-01, before the runs). H-A1 (BASE): after a short
+# transient L1(alphaf) grows linearly in time (p in [0.8, 1.2]) at both N;
+# the increment per unit time scales with h^0.5 to h^0.7 (the per-turn order
+# 0.67), not with h^1 (which would keep the per-step order). H-A2 (b): with
+# the exact tangent plane the error does not accumulate (p below 0.3 over
+# the second half of the turn) and its level is the tangent plane's first-
+# order clipping error: the accumulation lives in the loop's feedback
+# (the anchor positions the plane by the transported alpha, whose error the
+# next flux carries), not in the flux geometry. H-A3 (c): the prism at N = 32
+# accumulates at least as fast as the base. H-A4 (a): the exact surface
+# with the prism flux accumulates (the prism's translated pre-image is the
+# wrong swept shape under rotation, an error of order omega dt per step that
+# the exact surface does not remove). H-A5 (d): at Co 0.1 the per-unit-time
+# increment of the base is within 30 % of Co 0.2's if the remainder is a
+# spatial (per-time) error, twice it if it is a per-step error. FALSIFIED as
+# a set if (b) accumulates like the base: then the flux or the face update
+# carries the remainder, not the anchor.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexHist --export=ALL,STUDY=davof/sphereRotation3D_hexHist run-studies.sbatch
+study_name: sphereRotation3D_hexHist
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 45
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -131,6 +131,11 @@ solvers
         // davof-swept, 2026-10-29)
         sweptCoplanar   @!TPF_SWEPT_COPLANAR!@;
         sweptFaceDump   @!TPF_SWEPT_DUMP!@;
+        // clippingSurface plane: anchor (the plane of the used normal
+        // positioned by the volume anchor) | exact (the tangent plane of the
+        // exact sphere per interface cell, a control without the anchor;
+        // fork davof-swept 2026-11-01)
+        planeSource     @!TPF_PLANE_SOURCE!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;

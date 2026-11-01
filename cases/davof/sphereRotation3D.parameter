@@ -77,6 +77,10 @@ values
     // dump postProcessing/sweptFaceDump/{faces,pieces}.csv (false: none)
     TPF_SWEPT_COPLANAR ( donorSide );
     TPF_SWEPT_DUMP ( false );
+    // clippingSurface plane: anchor (the volume-anchored plane of the used
+    // normal, the fork's default) | exact (the tangent plane of the exact
+    // sphere, a diagnostic control without the anchor; 2026-11-01)
+    TPF_PLANE_SOURCE ( anchor );
     TPF_FACE_STATE ( scalar );
     TPF_TENSOR_CENTROID ( cut );
     TPF_KB_PRISM_APEX ( vertexMean );

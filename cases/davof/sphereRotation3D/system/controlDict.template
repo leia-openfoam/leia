@@ -118,10 +118,11 @@ functions
         writeInterval   @!TPF_AFE_WRITE_INTERVAL!@;
         writePrecision  12;
     }
-    // Eshape = sum |alpha - alpha_exact| V against the INITIAL sphere (the
-    // function object knows no motion): a shape error at the end of the
-    // full turn only; Emass and Ebound hold at every step
-    // (TPF_VFE_WRITE_CONTROL timeStep, TPF_VFE_WRITE_INTERVAL 1):
+    // Eshape = sum |alpha - alpha_exact| V against the sphere at its position
+    // at t (the keys omega and axisPoint, fork davof-swept 2026-11-01; builds
+    // before it ignore them and compare with the initial sphere, a shape
+    // error at the end of the full turn only); Emass and Ebound at every
+    // step (TPF_VFE_WRITE_CONTROL timeStep, TPF_VFE_WRITE_INTERVAL 1):
     // postProcessing/volumeFractionError/0/volumeFractionError.dat.
     volumeFractionError
     {
@@ -131,6 +132,8 @@ functions
         functionType    sphere;
         origin          (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
         radius          @!TPF_SPHERE_RADIUS!@;
+        omega           (0 -@!TPF_OMEGA!@ 0);
+        axisPoint       (@!TPF_AXIS_X!@ @!TPF_SPHERE_CY!@ @!TPF_AXIS_Z!@);
         writeControl    @!TPF_VFE_WRITE_CONTROL!@;
         writeInterval   @!TPF_VFE_WRITE_INTERVAL!@;
         writePrecision  12;
