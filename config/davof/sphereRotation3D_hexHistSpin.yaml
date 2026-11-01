@@ -20,6 +20,15 @@
 # (saturation): then the orbit (the curved path of the centre), not the
 # spin, carries the accumulation.
 #
+# MEASURED (2026-11-01, job 55838686): H-S1 FALSIFIED. L1(alphaf) 5.45e-3 at
+# the first step, 6.18e-3 at 25 % and 6.20e-3 at the end (N = 32); 2.71e-3,
+# 3.29e-3, 3.29e-3 (N = 64; order 0.91); p 0.007 / 0.006, the rate per unit
+# time 1.5e-5 / 2.7e-6 (the base: 1.65e-2 / 1.20e-2). min(alpha) 0, excess
+# 9e-12 / 8e-11, mass 1e-13 %. The spin alone saturates; the velocity is
+# tangent to the sphere, so nothing crosses the interface: this control
+# separates "the interface turns relative to the mesh" from "liquid crosses
+# a turning interface" only in part (see the base config's READING).
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexHistSpin --export=ALL,STUDY=davof/sphereRotation3D_hexHistSpin run-studies.sbatch
 study_name: sphereRotation3D_hexHistSpin
 studies_dir: studies/davof

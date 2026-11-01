@@ -45,6 +45,56 @@
 # a set if (b) accumulates like the base: then the flux or the face update
 # carries the remainder, not the anchor.
 #
+# MEASURED (2026-11-01, fork 100eb6a, build 55838221; jobs 55838222 base,
+# 55838223 (b), 55838224 (c), 55838225 (a), 55838226 (d), 55838686 spin;
+# analysis davof_rotation_history.py on the cluster, $A/rotation_history*.csv).
+# L1(alphaf) at the first step / 25 / 50 / 75 / 100 % of the turn, the growth
+# exponent p over [0.1 T, T], the rate per unit time over [0.25 T, T]:
+#   base N 32   4.60e-3 / 1.07e-2 / 1.58e-2 / 1.98e-2 / 2.31e-2  p 0.82  rate 1.65e-2
+#   base N 64   2.35e-3 / 5.85e-3 / 9.13e-3 / 1.20e-2 / 1.45e-2  p 0.93  rate 1.20e-2  (rate h-order 0.45)
+#   (b) N 32    1.20e-2 / 7.32e-3 / 5.13e-3 / 4.02e-3 / 3.45e-3  decreasing
+#   (b) N 64    6.12e-3 / 4.54e-3 / 3.40e-3 / 2.76e-3 / 2.24e-3  decreasing
+#   (c) N 32    5.03e-3 / 1.15e-2 / 1.64e-2 / 2.02e-2 / 2.33e-2  p 0.76  rate 1.62e-2
+#   (c) N 64    2.65e-3 / 6.34e-3 / 9.50e-3 / abort at step 572 (71 %)
+#   (a) N 32    5.12e-4 / 5.59e-4 / 5.93e-4 / 5.52e-4 / 6.19e-4  flat
+#   (a) N 64    2.98e-4 / 3.68e-4 / 3.64e-4 / 3.69e-4 / 3.95e-4  flat
+#   (d) N 32    5.44e-3 / 1.27e-2 / 1.90e-2 / 2.38e-2 / 2.74e-2  p 0.86  rate 1.94e-2
+#   spin N 32   5.45e-3 / 6.18e-3 / 6.19e-3 / 6.20e-3 / 6.20e-3  saturated
+#   spin N 64   2.71e-3 / 3.29e-3 / 3.29e-3 / 3.29e-3 / 3.29e-3  saturated (order 0.91)
+#   translation (sphereTranslation3D_hexSwept, planeSurf-exact, its own
+#   T = 1): N 32 5.79e-3 -> 1.15e-2, p 0.30, rate 2.25e-3; N 64 3.15e-3 ->
+#   6.22e-3, rate 8.0e-4, rate h-order 1.48.
+# H-A1 HELD in form (the base grows about linearly, p 0.82 / 0.93) with the
+# rate's h-order 0.45, at the low end of the predicted 0.5 to 0.7. H-A2 HELD:
+# with the exact tangent plane nothing accumulates (the error falls over
+# the turn; the run is unbounded by 2e-3 because those planes do not match
+# the transported alpha, and its L1(x) of 0.28 is not a usable number for
+# the same reason). H-A3 HELD: the prism accumulates at the base's rate
+# (1.62e-2 against 1.65e-2 at N = 32), so the swept shape of the flux is
+# not the source. H-A4 FALSIFIED: the exact sphere with the prism flux does
+# NOT accumulate (flat at 5e-4 / 3.7e-4), so the prism's translated pre-image
+# is not the source either. H-A5: the rate at Co 0.1 is 1.18 times Co 0.2's,
+# within 30 %: the remainder is per unit time, a spatial error, not a
+# per-step one. Spin control: H-S1 FALSIFIED, the pure spin saturates
+# within the first quarter turn at the translation-like level (order 0.91):
+# the spin alone does not accumulate (the velocity is tangent to the sphere
+# there, nothing crosses the interface). Mass to 1e-11 % and min(alpha)
+# >= -1e-12 in the base, the prism (N = 32), the Co and the spin runs.
+# READING: the accumulation needs the loop's OWN surface (the volume-anchored
+# plane, fed by the transported alpha) and a rotating flow that moves the
+# interface across the mesh (orbit with spin); it does not depend on the
+# flux geometry (prism and swept agree) nor on the step. HYPOTHESIS for the
+# mechanism: under translation every interface patch keeps its orientation
+# relative to the mesh, so the orientation-dependent distortion that the
+# anchored plane imprints on alpha (and alpha feeds back into the next
+# plane) settles into a stationary pattern; under the orbit each patch
+# turns relative to the mesh by 2 pi over the turn while liquid crosses it,
+# so that pattern is re-established continuously and leaves a remainder per
+# unit time. Discriminator not run (it needs a uniform time-dependent
+# velocity, which the case does not render yet): a circular translation
+# without spin, U(t) = U0 (cos wt, 0, sin wt); accumulation there would point
+# at the changing transport direction, saturation at the patch rotation.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexHist --export=ALL,STUDY=davof/sphereRotation3D_hexHist run-studies.sbatch
 study_name: sphereRotation3D_hexHist
 studies_dir: studies/davof
