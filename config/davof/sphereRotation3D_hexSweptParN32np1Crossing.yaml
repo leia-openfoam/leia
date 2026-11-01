@@ -1,0 +1,93 @@
+# The cap set of sweptFaceCells (item 3 of Tomislav's decisions of
+# 2026-11-01; fork davof-swept de7aea9, key sweptCapSet): THIS STUDY is
+# sphereRotation3D_hexSweptParN32np1 (N = 32, 20 steps, rows exact / ring,
+# every step written, the per-face log on) with sweptCapSet crossing, the
+# order-dependent rule before 2026-11-02, run on the same binary as the
+# default (final) for the per-face comparison at identical states.
+#
+# The defect (parallel report, sphereRotation3D_hexSweptParN32np1.yaml,
+# job 55812211): the rank fallback of a face (the one-donor clip when a
+# piece's cap system is rank-deficient) depended on the order of a cell's
+# face planes; at step 20 one face of the sixteen-rank run took the pieces
+# where serial fell back (alphaf 0.995149 against 0.998743). The fix
+# (davofSweptPieces.H): the cap set from the edges the planes produced in
+# the FINAL clipped polygons, and a boundary triangle lying in a cell plane
+# with the donor on the other side is a contact, dropped from that cell.
+#
+# Runs on de7aea9: this study; the five decomposition studies
+# sphereRotation3D_hexSweptParN32np{1,2,4,8,16} (default final; the runs of
+# the merge binary 0f7bf4d moved aside to *_merge0f7bf4d_2026-11-02); the
+# full turn sphereRotation3D_hexHist (N = 32 / 64, the base; the 100eb6a
+# study moved aside to *_100eb6a_2026-11-02).
+#
+# PRE-REGISTERED (2026-11-02, before the runs):
+# P-C1 (decomposition independence over all 20 steps): with final, for
+#   np 2, 4, 8, 16 and both rows, max |alphaf - alphaf_np1| <= 1e-8 and
+#   max |alpha - alpha_np1| <= 1e-8 at EVERY step (steps 1-19 of the merge
+#   binary: <= 1e-9 / 5.2e-9; step 20 at np 16: 3.6e-3 / 2.7e-3), and the
+#   set of faces with the fallback flag equal to np 1's at every step.
+#   FALSIFIED by one step above 1e-8 or one differing fallback set.
+# P-C2 (the earlier rule kept exactly): crossing on de7aea9 reproduces the
+#   merge binary's np 1 run (0f7bf4d) to the last written digit (alpha,
+#   alphaf, dVf; 20 steps, both rows). FALSIFIED by any difference.
+# P-C3 (the change is confined to the fallback faces at the first step):
+#   final against crossing at step 1 (identical input state): every face
+#   that differs by more than 1e-12 in alphaf or dVf/h^3 is a face whose
+#   fallback flag differs between the two runs, or a face with a piece in a
+#   cell where a contact was dropped; expected: at least 90 % of the
+#   differing faces are fallback-flag changes, and final has at most as many
+#   fallbacks as crossing at every step (contacts and spurious flags removed;
+#   the corner pieces with three cell planes and the PLIC plane still fall
+#   back). FALSIFIED below 90 % or by a step with more fallbacks under final.
+# P-C4 (the full turn, sphereRotation3D_hexHist on de7aea9): bounded
+#   (min(alpha) >= -1e-10, excess over 1 <= 1e-10) and conservative (mass
+#   deviation <= 1e-10 %) as on 100eb6a, and L1(alphaf) at the end within
+#   5 % of 2.305e-2 (N = 32) and 1.452e-2 (N = 64). FALSIFIED otherwise.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptParN32np1Crossing --export=ALL,STUDY=davof/sphereRotation3D_hexSweptParN32np1Crossing run-studies.sbatch
+study_name: sphereRotation3D_hexSweptParN32np1Crossing
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  END_TIME: ["0.05"]
+  TPF_WRITE_INTERVAL: ["0.0025"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_SWEPT_FACE_LOG: ["true"]
+  TPF_SWEPT_CAP_SET: [crossing]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_DUMP: ["false"]
+  TPF_SWEPT_CLASSIFY: ["false"]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 30
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

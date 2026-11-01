@@ -86,6 +86,9 @@ values
     // field write precision (12; 17 for that comparison)
     TPF_SWEPT_FACE_LOG ( false );
     TPF_WRITE_PRECISION ( 12 );
+    // the cap set of a piece of sweptFaceCells (fork davof-swept 2026-11-02):
+    // final (order-independent, the default) | crossing (the earlier rule)
+    TPF_SWEPT_CAP_SET ( final );
     TPF_FACE_STATE ( scalar );
     TPF_TENSOR_CENTROID ( cut );
     TPF_KB_PRISM_APEX ( vertexMean );

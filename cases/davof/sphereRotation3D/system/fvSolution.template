@@ -140,6 +140,11 @@ solvers
         // (postProcessing/sweptFaceLog; fork davof-swept-par, 2026-10-30;
         // builds before it ignore the key)
         sweptFaceLog    @!TPF_SWEPT_FACE_LOG!@;
+        // the cap set of a piece: final (the planes that produced an edge of
+        // the final clipped polygons, contacts dropped; fork davof-swept
+        // 2026-11-02, the default) | crossing (the earlier order-dependent
+        // rule, for the comparison); builds before it ignore the key
+        sweptCapSet     @!TPF_SWEPT_CAP_SET!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;
