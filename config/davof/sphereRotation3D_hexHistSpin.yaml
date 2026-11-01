@@ -1,0 +1,64 @@
+# Control (e) of sphereRotation3D_hexHist (2026-11-01, after the five
+# studies): the pure spin. The base accumulates (p 0.82 / 0.93, the rate per
+# unit time 1.65e-2 / 1.20e-2 at N = 32 / 64, h-order 0.45), the prism does
+# the same (rate 1.62e-2 at N = 32), while the exact tangent plane and the
+# exact sphere do not accumulate, and Co 0.1 gives the same rate per unit
+# time as Co 0.2 (1.18 times): the remainder lives in the loop's own
+# surface (the anchored plane) and is per unit time. Solid-body rotation
+# about an axis off the sphere's centre is an orbit of the centre PLUS a
+# spin of the sphere about its own centre at the same omega; under
+# translation (no spin) the same loop saturates (p 0.22 to 0.30, h-order of
+# the rate 1.48). Here the axis passes through the sphere's centre
+# (TPF_AXIS_X = TPF_SPHERE_CX, TPF_AXIS_Z = TPF_SPHERE_CZ): the sphere stays
+# where it is and only spins; the exact state is stationary. Everything
+# else as the base (the same dt, REFERENCE_SPEED 2.5), N = 32 / 64.
+#
+# PRE-REGISTERED (2026-11-01). H-S1: the spin alone accumulates like the
+# base: p above 0.7 and the rate per unit time within a factor 2 of the
+# base's at both N; then the interface's rotation relative to the mesh is
+# what keeps the plane loop's error from settling. FALSIFIED by p below 0.3
+# (saturation): then the orbit (the curved path of the centre), not the
+# spin, carries the accumulation.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexHistSpin --export=ALL,STUDY=davof/sphereRotation3D_hexHistSpin run-studies.sbatch
+study_name: sphereRotation3D_hexHistSpin
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_AXIS_X: [0.5]
+  TPF_AXIS_Z: [0.5]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 45
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
