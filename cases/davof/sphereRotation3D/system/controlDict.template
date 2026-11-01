@@ -124,6 +124,11 @@ functions
     // error at the end of the full turn only); Emass and Ebound at every
     // step (TPF_VFE_WRITE_CONTROL timeStep, TPF_VFE_WRITE_INTERVAL 1):
     // postProcessing/volumeFractionError/0/volumeFractionError.dat.
+    // U0 given (zero on the rotation arm), as in areaFractionError: builds
+    // before fork davof-swept 2026-11-01 ignored the key and took U0 = U[0]
+    // whenever U was uniform, which displaced the exact sphere under the
+    // circular translation (TPF_SETFLOW_MODE function; Eshape invalid there,
+    // valid under the rotation, where U is not uniform).
     volumeFractionError
     {
         type            volumeFractionError;
@@ -132,6 +137,7 @@ functions
         functionType    sphere;
         origin          (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
         radius          @!TPF_SPHERE_RADIUS!@;
+        U0              (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
         omega           (0 -@!TPF_OMEGA!@ 0);
         axisPoint       (@!TPF_AXIS_X!@ @!TPF_SPHERE_CY!@ @!TPF_AXIS_Z!@);
         writeControl    @!TPF_VFE_WRITE_CONTROL!@;
