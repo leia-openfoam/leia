@@ -81,6 +81,11 @@ values
     // normal, the fork's default) | exact (the tangent plane of the exact
     // sphere, a diagnostic control without the anchor; 2026-11-01)
     TPF_PLANE_SOURCE ( anchor );
+    // the per-face log of the swept fluxes per step and rank (fork
+    // davof-swept-par, 2026-10-30; the decomposition comparison) and the
+    // field write precision (12; 17 for that comparison)
+    TPF_SWEPT_FACE_LOG ( false );
+    TPF_WRITE_PRECISION ( 12 );
     TPF_FACE_STATE ( scalar );
     TPF_TENSOR_CENTROID ( cut );
     TPF_KB_PRISM_APEX ( vertexMean );

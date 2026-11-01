@@ -1,0 +1,143 @@
+# The parallel swept flux, SHORT runs only (2026-10-30, fork davof-swept-par
+# e300b8d or later: the ring cells of other ranks through zoneDistribute's
+# cell-point-cell stencil and one mapDistributeBase transfer per step,
+# davofSweptRemote.H; a processor face computed on its upwind side).
+# cases/davof/sphereRotation3D, Co 0.2, fluxIntegration sweptFaceCells,
+# sweptCellsFaceUpdate pieces, sweptCoplanar donorSide, sweptScaleToPhi true,
+# alpha fixedValue on the patches, rows exact and ring normal (00000 exact,
+# 00001 ringArea). THIS STUDY: N = 64, 10 steps, np 1 (the serial reference).
+#
+# The family (one config per rank count, np is not an axis):
+#   sphereRotation3D_hexSweptParN32np{1,2,4,8,16}: N = 32, 20 steps, every
+#     step written (writePrecision 17) and the per-face log on (sweptFaceLog);
+#   sphereRotation3D_hexSweptParN32np1Perturbed: np 1 with alpha + 1e-14 in
+#     the interface cells of the initial field (davof_perturb_alpha.py), the
+#     serial-versus-serial control of the round-off amplification;
+#   sphereRotation3D_hexSweptParN64np{1,32}: N = 64, 10 steps, the
+#     processor-boundary check;
+#   sphereRotation3D_hexSweptParN128np{1,8,32,64,96}: N = 128, 10 steps, the
+#     scaling (only the end time written, no face log).
+# Scored by workflow/scripts/davof_decomposition_compare.py (fields after
+# reconstructPar, the face logs matched by face centre) and the converter's
+# columns nSweptRemoteCells nSweptRemoteFaces nSweptEulerTrace advectWallMax
+# curvedFluxWallMax exchangeWallMax timeStepTime.
+#
+# PRE-REGISTERED (2026-10-30, before any run; Tomislav's tests via the
+# coordinating session):
+# P-P1 (decomposition independence at the first step): at N = 32 after step 1
+#   max |alpha - alpha_serial| over the cells and max |alphaf - alphaf_serial|
+#   over the faces at most 1e-12 for np 2, 4, 8, 16, both rows. Expected: 1e-15
+#   to 1e-13 (the sums of the pieces in another order; the point velocities
+#   summed across processors by volPointInterpolation). FALSIFIED above 1e-12.
+# P-P2 (no growth beyond the round-off floor): over the 20 steps at N = 32 the
+#   per-step max difference to serial stays within ten times the serial
+#   control's difference at the same step (alpha + 1e-14; the earlier pair of
+#   serial runs 1e-13 apart differed by 2e-6 at step 2 and 1e-9 to 2e-7 later).
+#   FALSIFIED by a step where the parallel difference exceeds ten times the
+#   control's and 1e-10. Expected besides: per step nSweptEulerTrace 0, the
+#   faces with remote cells > 0 for np >= 2 and 0 in serial, the rank
+#   fallbacks and the skipped faces as in serial, no face of the serial run
+#   missing in the parallel logs (nMissing 0) and none computed twice (nDup 0).
+# P-P2b (the processor-boundary pathology): at N = 64 on 32 ranks, after
+#   step 1, zero swept faces whose pieces or trace use a cell of another rank
+#   (or that lie on a processor patch) differ from serial by more than 1e-10
+#   in alphaf or dVf/h^3. FALSIFIED by one such face at step 1. At steps 2 to
+#   10 the count is reported against the same count over the other faces (the
+#   amplified round-off reaches both; an excess at the crossing faces would
+#   be the pathology).
+# P-P3 (the cost): at N = 128 on 64 ranks one step at least 20 times faster
+#   than serial (serial about 9 s per step). Expected by this agent: 8 to 25
+#   times; the swept work sits in the ranks that hold the interface band, so
+#   the step's speed-up is bounded by the band's share of the ranks (load
+#   balance not addressed). FALSIFIED below 20.
+#
+#
+# MEASURED (2026-10-31 / 11-01; fork 490fea9 for N = 32 np 2/8/16 and the
+# control, fc08178 for N = 32 np 4, N = 64 np 32 and N = 128 np 8/32/64/96;
+# the values of 490fea9, 50b8bef and fc08178 are digit-identical, the later
+# commits change the exchange's cost only; scored by
+# davof_decomposition_compare.py and timing.py as jobs on Lichtenberg).
+# P-P1 HELD: after step 1 max|dalpha| 2.9e-14 to 9.8e-14 and max|dalphaf|
+#   4.1e-14 to 8.5e-14 for np 2/4/8/16, both rows (the alpha + 1e-14 control:
+#   6.4e-14 / 2.0e-13). Every face of the serial run has a value in the
+#   parallel logs at every step (nMissing 0, nDup 0) after fork 490fea9 (the
+#   four-rank run of e300b8d skipped 1 to 2 dry processor faces per step from
+#   step 14: the second ring of a processor face, fixed).
+# P-P2 HELD for np 2/4/8 at all 20 steps and for np 16 at steps 1 to 19
+#   (max|dalpha| per step at or below 6e-11 exact, 2.5e-9 ring, the control
+#   1.2e-10 / 1.1e-9; max|dalphaf| at or below 1e-9 exact, 5e-9 ring);
+#   FALSIFIED for np 16 at step 20: one processor face (centre (0.46875
+#   0.390625 0.484375)) has alphaf 0.995149 against 0.998743 and its flux
+#   apart by 1.1e-6 V (max|dalpha| 1.1e-6 exact, 6.4e-7 ring). Cause (debug
+#   face, sweptDebugPoint, job 55812211): serial takes the RANK FALLBACK (the
+#   one-donor clip) for that face, the 16-rank run does not; the switch is
+#   thrown by a zero-volume piece in a neighbour cell whose cap system is
+#   borderline, and the cell's face planes come in another order on the
+#   decomposed mesh (all inputs equal to round-off). A discontinuity of the
+#   method's fallback rule, not a missing or wrong remote datum; it belongs
+#   to the face-update work on davof-swept (an order-independent cap test,
+#   or no rank status for a piece of zero volume). Per step: Euler traces 0,
+#   skipped faces 0, rank fallbacks as in serial (0 to 22 per step).
+# P-P2b HELD: N = 64 on 32 ranks, step 1: 0 of 2674 crossing faces (2486
+#   with remote pieces or trace, the rest on processor patches) above 1e-10;
+#   steps 2 to 10: 0 to 10 crossing faces against 0 to 61 other faces above
+#   1e-10 (crossing faces 21 % of the faces, 0 to 14 % of the differing
+#   ones): no excess at the processor boundaries.
+# P-P3 FALSIFIED (narrowly): N = 128, median step 2 to 9, rows exact / ring:
+#   np 1 8.90 / 8.86 s; np 8 0.905 / 0.885 s; np 32 0.835 / 0.735 s; np 64
+#   0.490 / 0.470 s (18.2 / 18.9 times serial, parallel efficiency 0.28 /
+#   0.29); np 96 0.680 / 1.035 s. The advect call: 3.33 / 3.30 s serial,
+#   0.46 (np 8), 0.55 to 0.63 (np 32), 0.34 to 0.36 (np 64), 0.53 to 0.81 s
+#   (np 96); the exchange (stencil, map, pack, transfer) 0.011 to 0.026 s,
+#   2 to 5 % of the advect call (fork fc08178; 0.31 to 1.9 s before it). The
+#   swept face loop does not scale past 8 ranks (max-rank curvedFlux 0.40 s
+#   at np 8, 0.31 to 0.58 s at 32 to 96): the interface band sits in a few
+#   ranks of the scotch decomposition; load balance not addressed.
+# N = 128 end-of-run (step 10) max|dalpha| against serial: 2.3e-10 to
+#   3.8e-8 exact, 7.9e-9 to 5.4e-7 ring (no control at N = 128).
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptParN64np1 --export=ALL,STUDY=davof/sphereRotation3D_hexSweptParN64np1 run-studies.sbatch
+study_name: sphereRotation3D_hexSweptParN64np1
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and numbers rendered into the dictionaries are QUOTED.
+axes_override:
+  N_CELLS: [64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  END_TIME: ["0.0125"]
+  TPF_WRITE_INTERVAL: ["0.00125"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_SWEPT_FACE_LOG: ["true"]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_DUMP: ["false"]
+  TPF_SWEPT_CLASSIFY: ["false"]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 30
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

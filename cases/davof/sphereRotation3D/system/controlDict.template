@@ -47,7 +47,10 @@ writeInterval   @!TPF_WRITE_INTERVAL!@;
 purgeWrite      0;
 
 writeFormat     ascii;
-writePrecision  12;
+// TPF_WRITE_PRECISION (default 12; 17 for the decomposition comparison of
+// the parallel swept flux, 2026-10-30, whose field differences are read at
+// 1e-12 and below)
+writePrecision  @!TPF_WRITE_PRECISION!@;
 writeCompression off;
 
 timeFormat      general;
