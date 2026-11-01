@@ -80,171 +80,325 @@
 <!-- ===== TITLE ===== -->
 <section>
   <h1>Gradient control by source terms</h1>
-  <p class="muted">status review: what we tested, what it measured, what to do next</p>
+  <p class="muted">status review: what we tested, what it measured, why it failed, what to do next</p>
   <p><b>Tomislav Marić</b> · <b>Dieter Bothe</b><br>
      <span class="muted">MMA, TU Darmstadt · review of 2026-11-01</span></p>
-  <p class="footnote">Every number: MEASURED <span class="tag m">M</span>, DERIVED <span class="tag d">D</span> or HYPOTHESIS
-     <span class="tag h">H</span>. Sources: <code>STATUS.md</code> 11.15, 11.26 to 11.28; the technical report
-     <code>gcls-technical-report/</code>; the source-term report <code>gcls-static-source-report/</code>;
-     the knowledge base, hub <code>hubs/gradient-control</code>. L1 and L2 norms only.</p>
+  <p class="footnote">Every claim is marked MEASURED <span class="tag m">M</span>, DERIVED <span class="tag d">D</span> or
+     HYPOTHESIS <span class="tag h">H</span>. Sources: <code>STATUS.md</code> 11.15, 11.26 to 11.28; the technical report
+     <code>gcls-technical-report/</code>; the source-term report <code>gcls-static-source-report/</code>; the knowledge
+     base (hub <code>hubs/gradient-control</code>). L1 and L2 norms only. Field figures: committed scripts
+     <code>plot_source_fields.py</code>, <code>plot_rescaling_figures.py</code>, rendered on Lichtenberg from the study data.</p>
 </section>
 
-<!-- ===== 1 THE QUESTION ===== -->
+<!-- ===== ABBREVIATIONS 1 ===== -->
+<section>
+  <h2>Names used in this review (1/2): the source laws</h2>
+  <p class="muted" style="font-size:0.85em">Level-set equation with a source: \(\mathrm D_t\psi=\psi F\), \(F=w(q)\,a+G(q)\),
+     \(q=|\nabla\psi|\), \(a=\mathbf n\cdot\mathbf D\,\mathbf n\), \(\zeta=(q^2-1)/2\). Every law has \(G(1)=0\).</p>
+  <table style="font-size:0.72em">
+    <tr><th>name</th><th>what</th><th>\(G(q)\)</th><th>\(G(0)\)</th><th>\(-G'(1)\)</th><th>origin</th></tr>
+    <tr><td><code>linearQ</code></td><td>linear in q</td><td>\(-\mu(q-1)\)</td><td>\(\mu\)</td><td>\(\mu\)</td><td>Soga's restoring term (Bothe–Fricke–Soga)</td></tr>
+    <tr><td><code>linearZ</code></td><td>linear in \(\zeta\)</td><td>\(-\mu\zeta\)</td><td>\(\mu/2\)</td><td>\(\mu\)</td><td>Bothe–Marić–Soga dossier</td></tr>
+    <tr><td><code>cubicQ</code></td><td>cubic in q</td><td>\(-\mu(q-1)^3\)</td><td>\(\mu\)</td><td>0</td><td>dossier</td></tr>
+    <tr><td><code>cubicZ</code></td><td>cubic in \(\zeta\)</td><td>\(-\mu\zeta^3\)</td><td>\(\mu/8\)</td><td>0</td><td>dossier</td></tr>
+    <tr><td><code>twoThirdsZReg</code></td><td>regularised \(\zeta^{2/3}\)</td><td>\(-\mu\zeta/(\zeta^2+\varepsilon^2)^{1/6}\)</td><td>\(0.63\mu\)</td><td>\(3.68\mu\)</td><td>dossier, \(\varepsilon=0.02\)</td></tr>
+    <tr><td><code>saturatedLinearZ</code></td><td>bounded \(\zeta\) law</td><td>\(-\mu\zeta/(1+c|\zeta|)\)</td><td>\(\mu/3\)</td><td>\(\mu\)</td><td>dossier, \(c=1\)</td></tr>
+    <tr><td><code>softWall</code></td><td>soft wall (S1a)</td><td>\(-C_\kappa\sqrt{\sigma^2+\epsilon_D^2}\tanh[\gamma((q-1)/\delta_s)^p]\)</td><td>\(C_\kappa\epsilon_D\)=1</td><td>0</td><td>Bothe; \(p=5\), \(\delta_s=0.08\)</td></tr>
+    <tr><td><code>beta</code></td><td>SDPLS restoring</td><td>\(\beta-q\), rate 1</td><td>1</td><td>1</td><td>SDPLS; = linearQ, \(\mu=1\)</td></tr>
+    <tr><td><code>R</code></td><td>SDPLS strain source</td><td>\(F=a\) (\(w=1\), \(G=0\))</td><td colspan="2">zero at \(\mathbf u=0\)</td><td>Fricke, Marić, Vučković, Roisman, Bothe</td></tr>
+    <tr><td><code>Rdiv</code>, <code>RdivStrictSp</code></td><td>material form of R</td><td>\(F=a+\nabla\cdot\mathbf u\)</td><td colspan="2">zero at \(\mathbf u=0\)</td><td>retracted (diverges)</td></tr>
+  </table>
+  <p class="footnote">\(G(0)\): the rate where the estimated \(q\) is 0. \(-G'(1)\): the restoring rate for small errors. Both decide the
+     failure mechanism (slides 13 to 15). Code: <code>src/leiaLevelSet/gradientControl/gradientControlLaws.H</code>.</p>
+</section>
+
+<!-- ===== ABBREVIATIONS 2 ===== -->
+<section>
+  <h2>Names used in this review (2/2): candidates, estimators, maps</h2>
+  <table style="font-size:0.72em">
+    <tr><th>name</th><th>what it is</th><th>line</th></tr>
+    <tr><td>S1</td><td>softWall source alone, band of 3 cells</td><td>SL, first campaign</td></tr>
+    <tr><td>HL0</td><td>halo-limited velocity extension, travel cap \(R=h\), no source</td><td>SL, first campaign</td></tr>
+    <tr><td>HL1q / HL1z</td><td>HL0 + linearQ / HL0 + linearZ, \(\mu=1/T_\mathrm{ref}\)</td><td>SL, first campaign</td></tr>
+    <tr><td>HL2</td><td>HL0 + softWall</td><td>SL, first campaign</td></tr>
+    <tr><td>FP0</td><td>closest-point (foot-point) velocity extension</td><td>SL, first campaign</td></tr>
+    <tr><td>CS1</td><td>combined source \(F=a+\lambda(1-q)\): strain + linearQ (Bothe, Soga)</td><td>SL, 2026-10-13</td></tr>
+    <tr><td>CS0s / CS0r</td><td>the strain term alone / the restoring term alone</td><td>SL, 2026-10-13</td></tr>
+    <tr><td>centred q</td><td>\(|\nabla_h\psi|\) from the centred least-squares gradient (<code>gradPsi fvc</code>)</td><td>Eulerian default, SL default</td></tr>
+    <tr><td><code>upwindFit</code></td><td>one-sided q: upwind-weighted mean of the face neighbours' quadratic fits</td><td>SL only (<code>GC_Q_SCHEME</code>)</td></tr>
+    <tr><td>one-sided (godunov)</td><td>Rouy–Tourin \(|\nabla\psi|\): per axis the largest one-sided slope toward the zero set</td><td>UFVM (<code>RESCALE_MAG_GRAD</code>)</td></tr>
+    <tr><td>(0a)</td><td>first-order rescaling \(r=\psi/|\nabla\psi|\)</td><td>D. Bothe, 2026-10</td></tr>
+    <tr><td>(0b)</td><td>second-order rescaling \(\hat d\) (the stable root of the 2nd-order Taylor expansion)</td><td>D. Bothe, 2026-10</td></tr>
+    <tr><td>use A</td><td>apply (0a) or (0b) to \(\psi\) (<code>REDISTANCER rescaling</code>), once or every step</td><td>UFVM, this review</td></tr>
+    <tr><td>use B</td><td>blended projection extension (<code>VELOCITY_EXTENSION projectionBlend</code>)</td><td>UFVM, this review</td></tr>
+    <tr><td>DA volume</td><td>volume of the Detrixhe–Aslam phase indicator from \(\psi\)</td><td>both lines</td></tr>
+  </table>
+</section>
+
+<!-- ===== THE QUESTION ===== -->
 <section>
   <h2>The question</h2>
-  <p>For \(\partial_t\psi+\mathbf u\cdot\nabla\psi=0\) and \(q=|\nabla\psi|\), the exact solution has</p>
+  <p>For \(\partial_t\psi+\mathbf u\cdot\nabla\psi=0\) the exact solution has</p>
   <p>\[ \mathrm D_t q = -a\,q,\qquad a=\mathbf n\cdot\mathbf D\,\mathbf n,\qquad \mathbf n=\nabla\psi/q . \]</p>
-  <p>Normal strain steepens or flattens the profile. Can a <b>source term</b> \(\psi F\), or an <b>extension of the
-     velocity</b> off the interface, keep \(q\approx 1\) in the narrow band:</p>
+  <p>Normal strain steepens or flattens the profile. Can a <b>source term</b> \(\psi F\), or an <b>extension of the velocity</b>
+     off the interface, keep \(q\approx1\) in the narrow band</p>
   <ul class="tight">
     <li>without a reinitialisation,</li>
     <li>without moving the zero set,</li>
-    <li>without losing the transport order of the baseline (shape order about 3 on the 2D vortex),</li>
-    <li>on unstructured meshes, compact stencils, MPI?</li>
+    <li>without losing the transport order of the baseline (shape order about 3 on the reversed 2D vortex),</li>
+    <li>on unstructured meshes, with compact stencils, under MPI?</li>
   </ul>
-  <div class="ask"><b>Question for you:</b> is this still the question? Or is "keep the zero set and the order,
-     and accept any q" the real requirement?</div>
+  <div class="ask"><b>Question for you:</b> is this still the requirement? Or is "keep the zero set and the order; accept any
+     \(q\) inside the admissible band \(0.9\le q\le1.1\)" the real one?</div>
 </section>
 
-<!-- ===== 2 TIMELINE ===== -->
+<!-- ===== TIMELINE ===== -->
 <section>
   <h2>Four stages since September</h2>
   <table>
     <tr><th>date</th><th>stage</th><th>outcome</th></tr>
-    <tr><td>09-26 to 28</td><td>first campaign: 6 candidates in the 2D method gate</td><td class="bad">all fail</td></tr>
-    <tr><td>10-13</td><td>zero-flow gates E1, E2.1; combined source \(F=a+\lambda(1-q)\)</td>
-        <td><span class="good">one-sided q passes</span>, <span class="bad">kinematic gate fails</span></td></tr>
+    <tr><td>09-26 to 28</td><td>first campaign: 6 candidates in the 2D method gate (SL line)</td><td class="bad">all fail</td></tr>
+    <tr><td>10-13</td><td>zero-flow gates E1, E2.1; combined source CS1 in the kinematic gate</td>
+        <td><span class="good">one-sided q passes</span>, <span class="bad">CS1 fails</span></td></tr>
     <tr><td>10-14 to 29</td><td>static test: every Eulerian source alone at \(\mathbf u=0\), 608 runs</td>
         <td class="bad">every law unstable with centred q</td></tr>
-    <tr><td>10-29 to 31</td><td>D. Bothe's notes: algebraic rescaling (use A), blended extension (use B)</td>
+    <tr><td>10-29 to 31</td><td>D. Bothe's notes: rescaling (use A), blended extension (use B), 360 runs</td>
         <td><span class="good">A once works</span>, <span class="bad">A every step fails</span>, <span class="warn">B mixed</span></td></tr>
   </table>
-  <p class="muted">One thread runs through all four: <b>how \(q\) is estimated</b> decides the outcome
-     before the law does.</p>
-  <div class="ask"><b>Question for you:</b> do you agree that the estimator, not the law, is the common cause?</div>
+  <p>The thread through all four: <b>how \(q\) is estimated</b> decides the outcome before the law does.
+     The centred estimate is blind to the odd-even mode; every failure in stages 2 to 4 traces back to it.</p>
+  <div class="ask"><b>Question for you:</b> do you accept the estimator as the common cause? Slides 13 to 15 give the mechanism.</div>
 </section>
 
-<!-- ===== 3 FIRST CAMPAIGN ===== -->
+<!-- ===== FIRST CAMPAIGN ===== -->
 <section>
-  <h2>Stage 1: the first campaign — every candidate fails</h2>
-  <table>
-    <tr><th>candidate</th><th>what</th><th>shear arm, shape at T <span class="tag m">M</span></th><th>other</th></tr>
-    <tr><td>S1</td><td>soft wall alone</td><td>411× baseline, order 0.06</td><td>translating diverges</td></tr>
-    <tr><td>HL0</td><td>halo-limited extension, \(R=h\)</td><td>14×, order 1.39 (base 3.07)</td><td>strain moved into a shell at 1 to 2 h</td></tr>
-    <tr><td>HL1q</td><td>HL0 + linearQ</td><td>173×, order 0.02</td><td>stationary droplet destroyed, volume 76 %</td></tr>
-    <tr><td>HL1z</td><td>HL0 + linearZ</td><td>band error 10.5</td><td>stationary destroyed, volume 84 %</td></tr>
-    <tr><td>HL2</td><td>HL0 + soft wall</td><td>400×</td><td>translating diverges on every rung</td></tr>
-    <tr><td>FP0</td><td>closest-point extension</td><td>34×, order 1.38</td><td>decomposition-dependent search</td></tr>
+  <h2>Stage 1: the first campaign — every candidate fails <span class="tag m">M</span></h2>
+  <table style="font-size:0.78em">
+    <tr><th>candidate</th><th>shear arm, shape error at T vs baseline</th><th>other arms</th></tr>
+    <tr><td>S1</td><td>411×, order 0.06</td><td>translating diverges at N = 142; oscillating volume error 21</td></tr>
+    <tr><td>HL0</td><td>14×, order 1.39 (baseline 3.07)</td><td>oscillating band error 2e7; translating 64×</td></tr>
+    <tr><td>HL1q</td><td>173×, order 0.02</td><td>stationary droplet destroyed at N = 200: shape 3.8 R, volume 76 %</td></tr>
+    <tr><td>HL1z</td><td>band error 10.5, shape 1.65, volume 1.6</td><td>stationary destroyed: 3.7 R, 84 %</td></tr>
+    <tr><td>HL2</td><td>400×</td><td>translating diverges on every rung</td></tr>
+    <tr><td>FP0</td><td>34×, order 1.38</td><td>seam-dependent: kinematic 0.45, coupled 1.11</td></tr>
   </table>
-  <p><b>Three causes</b> (technical report): the centred \(q\) of the source step <span class="tag d">D</span>,
-     the hard band edge <span class="tag d">D</span>, and two blind spots of the gate (vacuous 1D closed form,
-     a centred band metric that cannot see the cell-scale mode) <span class="tag m">M</span>.
-     <span class="muted">The laws were never tested: the discretisation failed first.</span></p>
-  <div class="ask"><b>Question for you:</b> the extension at \(R=h\), HL2, the soft wall as parameterised and FP0
-     are in the negative log. Any of these you want back?</div>
+  <p><b>Causes</b> (technical report, 2026-09-28):</p>
+  <ul class="tight">
+    <li>the centred \(q\) of the source step <span class="tag d">D</span> — its growth law "rate \(\mu\)" was later <span class="bad">retracted</span> (slide 7);</li>
+    <li>the hard band edge: a law that reaches its target puts an \(O(1)\) jump of \(|\psi|\) at the edge <span class="tag d">D</span>;</li>
+    <li>HL at \(R=h\) moves the normal strain into a shell at \(d=1\) to \(2h\) with a 27 % overshoot <span class="tag d">D</span><span class="tag m">M</span>;</li>
+    <li>two gate blind spots: a vacuous 1D closed form, and a centred band metric that cannot see the odd-even mode <span class="tag m">M</span>.</li>
+  </ul>
+  <div class="ask"><b>Question for you:</b> HL at \(R=h\), HL2, the soft wall as parameterised and FP0 are in the negative log. Any of
+     these you want back?</div>
 </section>
 
-<!-- ===== 4 E1 / E2.1 ===== -->
+<!-- ===== E1 / E2.1 ===== -->
 <section>
-  <h2>Stage 2a: the source at zero velocity (SL line, E1 and E2.1)</h2>
+  <h2>Stage 2a: the SL source at zero velocity (gates E1, E2.1)</h2>
   <div class="cols">
     <div>
-      <p><b>E1, centred q</b>, \(N=100\), \(\mathbf u=0\), linearQ <span class="tag m">M</span></p>
+      <p><b>E1, centred q</b>, N = 100, \(\mathbf u=0\), linearQ, band 3 <span class="tag m">M</span></p>
       <ul class="tight">
-        <li>The sawtooth rises 5e-8 → 2e-5 by \(\mu t=4\), then grows at \(0.067\mu\).</li>
+        <li>The odd-even amplitude rises from 5.2e-8 to 2e-5 by \(\mu t=4\), stays flat to \(\mu t\approx16\), then grows at \(0.067\mu\).</li>
+        <li>A seeded mode \(10^{-6}(-1)^{i+j}d\) does <b>not</b> grow at \(e^{\mu t}\): the "rate \(\mu\)" law is retracted.</li>
         <li>The interface cells flatten: median \(\psi/d=0.33\) at \(\mu t=80\).</li>
-        <li>The "eigenmode at rate \(\mu\)" law of the report: <span class="bad">retracted</span>.
-            Mechanism <span class="tag d">D</span>: the centred difference reverses the group velocity of
-            the sawtooth, so the source carries it <i>onto</i> the zero set.</li>
+        <li>Mechanism <span class="tag d">D</span>: the centred difference carries the envelope of the odd-even error <i>onto</i> the
+            zero set (slide 14).</li>
       </ul>
     </div>
     <div>
-      <p><b>E2.1, one-sided q</b> (<code>GC_Q_SCHEME upwindFit</code>) <span class="tag m">M</span></p>
+      <p><b>E2.1, one-sided q</b> (<code>upwindFit</code>), \(\mu t=80\) <span class="tag m">M</span></p>
       <table>
-        <tr><th></th><th>50</th><th>100</th><th>200</th></tr>
-        <tr><td>crossing shift L2 / h</td><td>1.6e-2</td><td>2.1e-3</td><td>3.0e-4</td></tr>
+        <tr><th>N</th><th>50</th><th>100</th><th>200</th></tr>
+        <tr><td>crossing shift, L2 / h</td><td>1.6e-2</td><td>2.1e-3</td><td>3.0e-4</td></tr>
         <tr><td>rms(ψ−d)/h, |d|&lt;3h</td><td>1.5e-2</td><td>2.3e-3</td><td>3.8e-4</td></tr>
+        <tr><td>odd-even growth, μt 40→80</td><td>1.69×</td><td>1.32×</td><td>1.16×</td></tr>
       </table>
-      <p>Crossing order 2.9, profile order 3.6. Stable to \(\mu t=80\); np 4 = serial to 1e-13.</p>
-      <p class="muted">upwindFit = upwind-weighted mean of the face neighbours' quadratic fits. It needs
-         the SL reconstruction.</p>
+      <p>Crossing order 2.89 / 2.82, profile order 3.70 / 3.58. From \(\psi_0=1.5d\): median \(\psi/d\) at the interface 0.998.
+         np 4 = serial to 1e-13.</p>
     </div>
   </div>
-  <div class="ask"><b>Question for you:</b> this is the only q estimator that has passed anything. Should every
-     further source/rescaling test on the SL line use it by default?</div>
+  <div class="ask"><b>Question for you:</b> <code>upwindFit</code> is the only q estimator that has passed a gate. Make it the default of
+     every SL source and rescaling test?</div>
 </section>
 
-<!-- ===== 5 COMBINED SOURCE ===== -->
+<!-- ===== COMBINED SOURCE ===== -->
 <section>
-  <h2>Stage 2b: the combined source \(F=a+\lambda(1-q)\) in the kinematic gate</h2>
-  <p>With the one-sided q, 2D vortex (reversed), \(N=68/96/136\) <span class="tag m">M</span>:</p>
+  <h2>Stage 2b: the combined source in the kinematic gate <span class="tag m">M</span></h2>
+  <p>One-sided q, 2D vortex (reversed), N = 68 / 96 / 136, \(M_\mu=1\), band 3:</p>
   <table>
-    <tr><th>arm</th><th>gradient error at T/2, ratio to base</th><th>shape order (base 3.25)</th><th>volume at T, N=136 (base 2.2e-4)</th></tr>
-    <tr><td>CS1 = strain + restoring</td><td class="good">0.14</td><td class="bad">0.88</td><td class="bad">3.7e-2</td></tr>
-    <tr><td>CS0s = strain only</td><td>0.58</td><td class="bad">1.24</td><td class="bad">1.2e-2</td></tr>
-    <tr><td>CS0r = restoring only</td><td>0.30</td><td class="bad">0.26</td><td class="bad">3.3e-2</td></tr>
+    <tr><th>arm</th><th>gradient error at T/2, ratio to baseline</th><th>shape order (baseline 3.25)</th><th>volume at T, N = 136 (baseline 2.2e-4)</th></tr>
+    <tr><td>CS1</td><td class="good">0.14</td><td class="bad">0.88</td><td class="bad">3.7e-2</td></tr>
+    <tr><td>CS0s</td><td>0.58</td><td class="bad">1.24</td><td class="bad">1.2e-2</td></tr>
+    <tr><td>CS0r</td><td>0.30</td><td class="bad">0.26</td><td class="bad">3.3e-2</td></tr>
   </table>
   <ul class="tight">
-    <li>The source does what it should for \(q\); it destroys the shape order.</li>
-    <li>Falsified readings: time step, deformation, crossing shift, the band in 2D, the fit clip.</li>
-    <li>Located <span class="tag m">M</span>: the \(\psi\)-dependence of \(\mathbf n\) inside \(a=\mathbf n\cdot\mathbf D\mathbf n\).
-        With \(\mathbf n\) fixed to \(\mathbf e_x\) the shape stays at 1.2× the baseline.</li>
+    <li>The source corrects \(q\); it destroys the shape order. The interface corrugates: zero crossings 0.22 to 0.25 h rms against 0.01 h.</li>
+    <li>Falsified readings (probes): the time step, the deformation, the direct crossing shift (anchored interface: still 23×),
+        the band in 2D (whole domain: still 32 to 73×), the fit clip (20×), a centred direction (34×).</li>
+    <li>Located: the \(\psi\)-dependence of \(\mathbf n\) inside \(a=\mathbf n\cdot\mathbf D\mathbf n\). With \(\mathbf n\) fixed to
+        \(\mathbf e_x\) the shape stays at 1.2× the baseline.</li>
+    <li>In 1D the 3-cell band is the cause: the exact 1D arm keeps \(q=1.000003\) on the whole domain, 0.534 with the band.</li>
   </ul>
-  <div class="ask"><b>Question for you:</b> E2.4 (a normal-constant \(a\) taken from the zero set) is still open.
-     Do we pursue it, or does the strain term stay parked?</div>
+  <div class="ask"><b>Question for you:</b> E2.4 (a normal-constant \(a\) from the zero set) is open. Pursue it, or keep the strain
+     term parked?</div>
 </section>
 
-<!-- ===== 6 STATIC TEST SETUP ===== -->
+<!-- ===== STATIC SETUP ===== -->
 <section>
   <h2>Stage 3: the static test — every Eulerian source alone</h2>
   <ul class="tight">
-    <li>\(\mathbf u=0\): <code>leiaLevelSetFoam</code> integrates \(\partial_\tau\psi=\psi\,G(q)\) only.</li>
-    <li>Circle \(R=0.25\), centre off the lattice, \(N=64\) to 512, \(\Delta\tau=h/2\), \(\tau\le80\).</li>
-    <li>Eight starts with the same zero set: \(d\); blends \(d+\varepsilon d^2/2R\), \(\varepsilon=(h/R)^2, h/R, 0.1\);
+    <li>\(\mathbf u=0\): <code>leiaLevelSetFoam</code> integrates only \(\partial_\tau\psi=\psi\,G(q)\); every rate is 1, so \(\tau\) counts
+        source times.</li>
+    <li>Circle \(R=0.25\), centre (0.5013, 0.4987) off the lattice; N = 64, 128, 256, 512; \(\Delta\tau=h/2\); \(\tau\le80\).</li>
+    <li>Eight starts, all with the exact circle as zero set: \(d\); blends \(d+\varepsilon d^2/2R\), \(\varepsilon=(h/R)^2,\ h/R,\ 0.1\);
         \((r^2-R^2)/2R\); \(r^2-R^2\); \(d(1+0.1\cos m\theta)\), \(m=2,4\).</li>
-    <li>Laws: linearQ (Soga), linearZ, cubicQ, cubicZ, twoThirdsZReg, saturatedLinearZ, softWall (Bothe S1a),
-        beta; R, Rdiv, RdivStrictSp as null checks (zero at \(\mathbf u=0\)).</li>
-    <li>Source on a band of 3 cells, or on the whole domain.</li>
-    <li>608 runs on Lichtenberg. The first run was <span class="bad">void</span>: at \(\mathbf u=0\) the solver
-        did zero iterations in 68 % of the solves. Re-run with <code>minIter 1</code>.</li>
+    <li>All seven laws, <code>beta</code>, and R, Rdiv, RdivStrictSp as null checks (zero at \(\mathbf u=0\): bit-identical to no source).</li>
+    <li>The source on a band of 3 cells, or on the whole domain. Centred q (<code>gradPsi fvc</code>); the Eulerian line has no one-sided q.</li>
+    <li>608 runs on Lichtenberg. The first run was <span class="bad">void</span>: at \(\mathbf u=0\) the linear solver did zero
+        iterations in 68 % of the solves (residual below tolerance from the start). Re-run with <code>minIter 1</code>.</li>
   </ul>
-  <div class="ask"><b>Question for you:</b> is a static test the right first rung for every future
-     profile-correction idea (source, rescaling, extension)?</div>
+  <div class="ask"><b>Question for you:</b> make this static test the first rung for every future profile correction (source,
+     rescaling, extension)?</div>
 </section>
 
-<!-- ===== 7 STATIC RESULTS ===== -->
+<!-- ===== STATIC RATES ===== -->
 <section>
-  <h2>Stage 3: results <span class="tag m">M</span></h2>
+  <h2>Stage 3: every law grows at its \(G(0)\) <span class="tag m">M</span></h2>
+  <table>
+    <tr><th>law</th><th>\(G(0)\)</th><th>\(-G'(1)\)</th><th>growth rate, band</th><th>growth rate, whole domain</th></tr>
+    <tr><td>linearQ</td><td>1</td><td>1</td><td>0.982–1.001 (7)</td><td>0.807–1.066 (32)</td></tr>
+    <tr><td>linearZ</td><td>0.5</td><td>1</td><td>0.464–0.499 (23)</td><td>0.440–0.512 (32)</td></tr>
+    <tr><td>saturatedLinearZ</td><td>0.333</td><td>1</td><td>0.331–0.337 (22)</td><td>0.335–0.337 (32)</td></tr>
+    <tr><td>twoThirdsZReg</td><td>0.630</td><td>3.68</td><td>0.594–0.623 (32)</td><td>0.520–0.646 (32)</td></tr>
+    <tr><td>cubicQ</td><td>1</td><td>0</td><td class="good">no growth phase</td><td>0.888–1.044 (32)</td></tr>
+    <tr><td>cubicZ</td><td>0.125</td><td>0</td><td>0.121–0.122 (2)</td><td>0.113–0.127 (32)</td></tr>
+    <tr><td>softWall</td><td>1</td><td>0*</td><td>1.002–1.009 (15)</td><td>1.007–1.018 (32)</td></tr>
+    <tr><td>beta</td><td>1</td><td>1</td><td>0.982–1.001 (6)</td><td>0.809–1.066 (24)</td></tr>
+  </table>
+  <p class="footnote">(n): cases with an exponential growth phase, of 32 per law and region (beta: 24). The rate follows \(G(0)\), not
+     \(-G'(1)\): twoThirdsZReg has the steepest restoring slope and grows at 0.6. *softWall: slope 0 at \(q=1\), but about
+     \(40\sigma\) at \(|q-1|\approx0.07\) — nearly a switch.</p>
+  <ul class="tight">
+    <li>From \(d\) in the band: a slow drift first (the error doubles every 8 to 9 \(\tau\)); the zero crossings move 0.46 / 0.30 / 0.080 /
+        0.032 h at N = 64 to 512 by \(\tau=80\), order 2.35.</li>
+    <li>No law restores \(d\) from a perturbed start without moving the zero set. The cubic laws and softWall keep the zero set only
+        because they hardly act near \(q=1\).</li>
+    <li>On the whole domain every law fails by \(\tau=10\) to 50, from the kink of \(d\) at the circle centre.</li>
+  </ul>
+</section>
+
+<!-- ===== STATIC FIELDS ===== -->
+<section>
+  <h2>Stage 3: what linearQ does to \(d\), in the field <span class="tag m">M</span></h2>
+  <img class="fig" style="max-height:330px" src="../gcls-level-set-article/data/figures/static_linearQ_fields.png">
+  <ul class="tight">
+    <li>Start: \(\psi=d\) exactly. The source acts in a band of 3 cells (the coloured strip); outside it, \(\psi\) stays \(d\).</li>
+    <li>The largest error in the window grows 0.003 → 0.025 → 0.17 → 1.1 h between \(\tau=20\) and 80: about ×7 per 20 \(\tau\).</li>
+    <li>The error is cell-scale: neighbouring cells alternate in sign. It is strongest where the circle crosses the cell rows
+        obliquely (here near \(y=0.43\) and \(0.57\)), weakest where the circle is parallel to a mesh line (\(y\approx0.5\)).</li>
+  </ul>
+  <div class="ask"><b>Question for you:</b> is a field view like this what you want for every static result (one law per slide), or is
+     this one law enough?</div>
+</section>
+
+<!-- ===== STATIC CUT ===== -->
+<section>
+  <h2>Stage 3: one row of cells through the worst place <span class="tag m">M</span></h2>
   <div class="cols">
-    <div>
-      <p><b>Every law grows grid-scale extrema at its \(G(0)\)</b></p>
-      <table>
-        <tr><th>law</th><th>\(G(0)\)</th><th>rate, band</th></tr>
-        <tr><td>linearQ</td><td>1</td><td>0.98–1.00</td></tr>
-        <tr><td>linearZ</td><td>0.5</td><td>0.46–0.50</td></tr>
-        <tr><td>saturatedLinearZ</td><td>1/3</td><td>0.331–0.337</td></tr>
-        <tr><td>twoThirdsZReg</td><td>0.63</td><td>0.59–0.62</td></tr>
-        <tr><td>cubicZ</td><td>0.125</td><td>0.121–0.122</td></tr>
-        <tr><td>softWall</td><td>1</td><td>1.00–1.01</td></tr>
-      </table>
-      <p class="footnote">At a grid-scale extremum the centred q is 0, so \(F=G(0)\): growth.</p>
-    </div>
+    <div style="flex:1.4"><img class="fig" src="../gcls-level-set-article/data/figures/static_linearQ_cut.png"></div>
     <div>
       <ul class="tight">
-        <li>No law restores \(d\) from a perturbed profile <b>without moving the zero set</b>. Cubic laws and
-            softWall keep the zero set only because they hardly act near \(q=1\).</li>
-        <li>From \(d\) itself: zero crossings move 0.46 / 0.30 / 0.080 / 0.032 h by \(\tau=80\) (order 2.35).</li>
-        <li>On the whole domain every law fails by \(\tau=10\) to 50, from the kink of \(d\) at the centre.</li>
-        <li>The DA volume depends on the profile: \((r^2-R^2)/2R\) has twice the volume error of \(d\), order 1.97.
-            So <b>any</b> profile correction changes the measured volume by \(O(h^2)\).</li>
+        <li>Row \(y=0.426\), linearQ, band 3, start \(d\), N = 128.</li>
+        <li>At \(\tau=80\) the largest error, 1.1 h, sits in the <b>first band cell on the inside</b> (\(x=0.707\)), next to a cell where the
+            source is off and \(\psi=d\).</li>
+        <li>Inside the band the error alternates cell by cell (0.6 / 0.75 / 0.58 / 0.19).</li>
+        <li>Outside the circle the sign is opposite (−0.12 / −0.31).</li>
       </ul>
+      <p>Two things act together: the <b>band edge</b> (a jump in the source) and the <b>odd-even error</b>. The next three slides
+         show why the centred \(q\) carries both onto the interface instead of removing them.</p>
     </div>
   </div>
-  <div class="ask"><b>Question for you:</b> the static test closes the centred-q Eulerian laws (negative log).
-     Agreed?</div>
 </section>
 
-<!-- ===== 8 DIETER'S NOTES ===== -->
+<!-- ===== MECHANISM 1 ===== -->
+<section>
+  <h2>How the centred gradient destroys linearQ (1/3): one cell <span class="tag d">D</span></h2>
+  <div class="cols">
+    <div style="flex:1.3"><img class="fig" src="../gcls-level-set-article/data/figures/mech_centred_q.png"></div>
+    <div>
+      <p>Take the odd-even mode on a distance, in 1D: \(\psi_i=d_i(1+E\,s_i)\), \(s_i=(-1)^i\).</p>
+      <p><b>Centred:</b> \(q_i=\dfrac{|\psi_{i+1}-\psi_{i-1}|}{2h}=1-E\,s_i\).</p>
+      <p>The two neighbours of cell \(i\) carry the <b>opposite</b> sign \(-s_i\). So a cell that is too steep (\(s_i=+1\), \(|\psi_i|>|d_i|\))
+         reads \(q=1-E<1\), and linearQ gives \(F=\mu E>0\): it makes \(|\psi_i|\) <b>larger</b>. A cell that is too flat reads
+         \(q>1\) and is made flatter. Every arrow points away from \(d\).</p>
+      <p><b>One-sided:</b> \(q_i=|\psi_i-\psi_{up}|/h\) contains the cell's own value, so a too-steep cell reads \(q>1\) and is pulled
+         back. Every one-sided arrow points toward \(d\).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== MECHANISM 2 ===== -->
+<section>
+  <h2>How the centred gradient destroys linearQ (2/3): the band <span class="tag d">D</span></h2>
+  <p>Linearise \(\partial_\tau\psi=-\mu\psi(q-1)\) about \(\psi=d+\delta\), with \(q\approx1+\mathbf n\cdot\nabla_h\delta\):</p>
+  <p>\[ \partial_\tau\delta = -\mu\, d\;\mathbf n\cdot\nabla_h\delta . \]</p>
+  <div class="cols">
+    <div>
+      <p><b>Smooth \(\delta\):</b> an advection with speed \(\mu d\,\mathbf n\), <b>away</b> from the zero set. The error leaves the band. This
+         is the restoring action the law is designed for.</p>
+    </div>
+    <div>
+      <p><b>Odd-even \(\delta=(-1)^{i+j}A\):</b> the centred difference returns \(\nabla_h\delta=-(-1)^{i+j}\nabla A\). The envelope obeys
+         \(\partial_\tau A=+\mu d\,\mathbf n\cdot\nabla A\): advection <b>toward</b> the zero set.</p>
+    </div>
+  </div>
+  <ul class="tight">
+    <li>With a band, nothing removes an odd-even error: whatever sits in the band — round-off, the jump at the band edge — is carried to the
+        interface. That is the static field (slides 11, 12) and E1 (slide 7).</li>
+    <li>An envelope \(A\propto d\) grows at \(\mu\) only if it extends to large \(|d|\); a band cuts it off. This is why the
+        "rate \(\mu\)" law was retracted (E1: \(0.067\mu\)).</li>
+  </ul>
+</section>
+
+<!-- ===== MECHANISM 3 ===== -->
+<section>
+  <h2>How the centred gradient destroys linearQ (3/3): the growth at \(G(0)\) <span class="tag d">D</span><span class="tag m">M</span></h2>
+  <ol>
+    <li><b>Linear phase.</b> The odd-even error is not damped and is carried onto the interface. Its amplitude grows slowly (from \(d\):
+        ×2 per 8 to 9 \(\tau\) <span class="tag m">M</span>), seeded by the band edge and round-off <span class="tag h">H</span>.</li>
+    <li><b>Saturated phase.</b> When the odd-even amplitude reaches the slope of \(\psi\), the flat cells reach 0 and a steep cell becomes a
+        grid-scale extremum. There the centred \(q\to0\), so \(F\to G(0)\), and the cell grows as \(e^{G(0)\tau}\).</li>
+  </ol>
+  <table>
+    <tr><th>prediction from this mechanism</th><th>measured</th></tr>
+    <tr><td>every law grows at \(G(0)\), not at \(-G'(1)\)</td><td class="good">yes, within a few % (slide 10)</td></tr>
+    <tr><td>cubicQ (\(G'(1)=0\)): no linear phase in the band, so no growth there</td><td class="good">no growth phase in the band</td></tr>
+    <tr><td>cubicQ on the whole domain: the kink at the centre gives \(q<1\) at once, growth at \(G(0)=1\)</td><td class="good">0.888–1.044</td></tr>
+    <tr><td>the rescaling (0a) with centred q is one linearQ step with \(\mu\Delta\tau=1\): ×2 per event on \(A\propto d\)</td><td class="good">diverges every step (slide 21)</td></tr>
+    <tr><td>a one-sided q removes the defect</td><td class="good">E2.1: order 2.9, stable</td></tr>
+  </table>
+  <p>The law cannot repair this: every law with \(G(0)>0\) grows. The estimator must not vanish at a grid-scale extremum.</p>
+</section>
+
+<!-- ===== DA VOLUME ===== -->
+<section>
+  <h2>Stage 3: the DA volume depends on the profile <span class="tag m">M</span></h2>
+  <ul>
+    <li>The Detrixhe–Aslam indicator fits a plane of \(\psi\) per cell and normalises it: \(\alpha\) depends on \(\psi/|\nabla\psi|\),
+        not only on the zero set.</li>
+    <li>Same zero set, different profile: \((r^2-R^2)/2R\) has <b>twice</b> the volume error of \(d\); the difference converges at order
+        1.97.</li>
+    <li>Consequence: any profile correction (source, rescaling, reinitialisation) changes the measured volume by \(O(h^2)\) without
+        moving the zero set. A volume change of that size is not a mass error of the method.</li>
+    <li>The rescaling (0b) applied once moves the DA volume of \((r^2-R^2)/2R\) exactly onto that of \(d\) (slide 20).</li>
+  </ul>
+  <div class="ask"><b>Question for you:</b> should the volume metric of the gates be read against the DA volume of the exact
+     distance at the same N, instead of the exact volume?</div>
+</section>
+
+<!-- ===== DIETER'S NOTES ===== -->
 <section>
   <h2>Stage 4: D. Bothe's notes (2026-10)</h2>
   <div class="cols">
@@ -252,192 +406,224 @@
       <p>Model: \(\partial_t\phi+\mathbf v^{ext}\cdot\nabla\phi=\beta\phi(1-|\nabla\phi|)\)</p>
       <p>Projection: \(P_x=x-\phi\nabla\phi/|\nabla\phi|^2\)</p>
       <p>Blend: \(\mathbf v^{ext}=\delta\,\mathbf v(x)+(1-\delta)\,\mathbf v(P_x)\)</p>
-      <p>Plan: (0) algebraic improvement, (1) extension with blending, (2) source term.</p>
+      <p>Plan: (0) algebraic improvement — a) \(\phi\to\phi/|\nabla\phi|\), b) \(\phi\to\tilde\phi\); (1) extension with blending;
+         (2) source term.</p>
     </div>
     <div>
-      <p>(0a) \(r=\phi/|\nabla\phi| = d-\tfrac{B}{2A}d^2+O(d^3)\) — first order</p>
-      <p>(0b) \(\hat d=\dfrac{2\phi}{|\nabla\phi|+\sqrt{(|\nabla\phi|^2-2\phi\,\partial_{nn}\phi)^+}} = d+O(d^3)\) — second order</p>
-      <p class="muted">Both multiply \(\phi\) by a positive factor: the sign and the zero set stay. (0b) is exact for
-         \(r^2-R^2\) <span class="tag d">D</span>.</p>
+      <p>(0a) \(r=\phi/|\nabla\phi|=d-\tfrac{B}{2A}d^2+O(d^3)\), \(A=|\nabla\phi|\), \(B=\partial_{nn}\phi\): first order.</p>
+      <p>(0b) \(\hat d=\dfrac{2\phi}{|\nabla\phi|+\sqrt{(|\nabla\phi|^2-2\phi\,\partial_{nn}\phi)^+}}=d+O(d^3)\): second order.</p>
+      <p class="muted">Both multiply \(\phi\) by a positive factor: the sign and the zero set stay. (0b) is exact for \(r^2-R^2\)
+         <span class="tag d">D</span>.</p>
     </div>
   </div>
-  <p><b>Use A</b>: apply the map to \(\psi\) (a redistancer event, once or every step).
-     <b>Use B</b>: use the distance only inside the extension.</p>
-  <div class="ask"><b>Question for you:</b> did I read the notes correctly — especially the role of \(\beta\)
-     ("small") and that the rescaling is an alternative to the source, not a part of it?</div>
+  <p><b>Use A</b>: apply the map to \(\psi\) (once, or every step) — your decision: an alternative to the source term.
+     <b>Use B</b>: use the distance only inside the extension, with and without a small source (linearQ, \(\mu=0.1\)).</p>
 </section>
 
-<!-- ===== 9 EXPECTED ORDERS ===== -->
+<!-- ===== EXPECTED ORDERS ===== -->
 <section>
-  <h2>What accuracy to expect <span class="tag d">D</span></h2>
-  <p>Error of the discrete map: \(\delta r\approx -d\,\delta q\), \(\;\delta\hat d\approx -d\,\delta q+\tfrac12 d^2\delta B\)
-     (\(\delta q\): error of \(|\nabla\psi|\), \(\delta B\): error of \(\partial_{nn}\psi\)).</p>
+  <h2>What accuracy to expect, before running <span class="tag d">D</span></h2>
+  <p>Error of the discrete maps: \(\delta r\approx-d\,\delta q\), \(\ \delta\hat d\approx-d\,\delta q+\tfrac12d^2\,\delta B\), with
+     \(\delta q\) the error of \(|\nabla\psi|\) and \(\delta B\) that of \(\partial_{nn}\psi\). In the band \(|d|\le3h\).</p>
   <table>
     <tr><th></th><th>UFVM, uniform hex</th><th>UFVM, polyhedra</th><th>SL quadratic fit, any mesh</th></tr>
     <tr><td>\(\delta q\)</td><td>\(O(h^2)\)</td><td>\(O(h)\)</td><td>\(O(h^2)\)</td></tr>
-    <tr><td>\(\delta B\)</td><td>\(O(h^2)\) (grad of grad)</td><td>\(O(1)\), inconsistent</td><td>\(O(h)\)</td></tr>
+    <tr><td>\(\delta B\)</td><td>\(O(h^2)\) (gradient of the gradient)</td><td>\(O(1)\), inconsistent</td><td>\(O(h)\)</td></tr>
     <tr><td>(0a)</td><td>order 1</td><td>order 1</td><td>order 1</td></tr>
     <tr><td>(0b)</td><td>order 2</td><td><span class="bad">order 1</span></td><td>order 2</td></tr>
   </table>
-  <p>Order in units of \(h\): pointwise \(O(h^{p+1})\) is order \(p\).
-     <b>Noise:</b> linearised about \(d\), (0a) with the centred gradient is one linearQ step with \(\mu\Delta t=1\):
-     it <b>doubles</b> the mode \((-1)^{i+j}d\) per application.</p>
-  <div class="ask"><b>Question for you:</b> the polyhedral column is not measured. Worth one cfMesh run of the
-     once-map, or do we accept the derivation?</div>
+  <p>Order in units of \(h\): a pointwise \(O(h^{p+1})\) is order \(p\). Applied repeatedly, a map can accumulate its per-event error, and
+     with the centred gradient (0a) is one linearQ step with \(\mu\Delta\tau=1\) — the mechanism of slide 14 with a full step.</p>
+  <p class="footnote">Measured here: uniform hexahedra only. The SL column is task T6 of the SL session.</p>
 </section>
 
-<!-- ===== 10 USE A ONCE ===== -->
+<!-- ===== USE A ONCE: ORDERS ===== -->
 <section>
-  <h2>Use A, once: it works as derived <span class="tag m">M</span></h2>
+  <h2>Use A, applied once: the orders hold <span class="tag m">M</span></h2>
   <div class="cols">
     <div style="flex:1.3"><img class="fig" src="../gcls-level-set-article/data/figures/rescale_once_convergence.png"></div>
     <div>
       <ul class="tight">
-        <li><b>(0b), centred:</b> from \(r^2-R^2\) the error is 5e-15 to 5e-14 h — <b>round-off</b>, exact.
-            Order 1.93 to 2.01 from every other start.</li>
-        <li>Zero crossings and DA volume equal those of \(d\) (difference 0.000).</li>
-        <li>\(d\) is a fixed point to 1.6e-5 h at \(N=512\).</li>
-        <li><b>(0a):</b> order 1, as derived. From \((r^2-R^2)/2R\) it does not reduce the error (the model term
-            has the size of the start error).</li>
-        <li><b>One-sided |∇ψ|:</b> order 1 for everything; it moves \(d\) and the zero crossings.</li>
+        <li><b>(0b), centred:</b> from \(r^2-R^2\) the error is 4.9e-15 to 4.5e-14 h — round-off; the map is exact there. From every other
+            start: order 1.93 to 2.01.</li>
+        <li>\(d\) stays \(d\) to 2.6e-4 / 6.5e-5 / 1.6e-5 h at N = 128 / 256 / 512.</li>
+        <li><b>(0a), centred:</b> order 1.00 where the model term \(-\tfrac{B}{2A}d^2\) is present; order 2 where it vanishes or scales with
+            \(h\).</li>
+        <li><b>One-sided |∇ψ|:</b> order 1 for every map and start; it moves \(d\) itself.</li>
       </ul>
-      <p class="footnote">Pre-registered R1 for \(r^2-R^2\) reads FAIL as written: the order of a round-off
-         error is meaningless. Kept as written.</p>
+      <p class="footnote">The pre-registered R1 line for \(r^2-R^2\) reads FAIL as written (the "order" of a round-off error is −1.06);
+         kept as written, the value is round-off.</p>
     </div>
   </div>
-  <div class="ask"><b>Question for you:</b> should the once-map become the default initialisation of
-     \(\psi\) from an algebraic field?</div>
 </section>
 
-<!-- ===== 11 USE A EVERY STEP ===== -->
+<!-- ===== USE A ONCE: FIELDS ===== -->
+<section>
+  <h2>Use A, applied once: the field <span class="tag m">M</span></h2>
+  <img class="fig" style="max-height:330px" src="../gcls-level-set-article/data/figures/rescale_once_fields.png">
+  <ul class="tight">
+    <li>Start \((r^2-R^2)/2R=d+d^2/2R\): the error \(+d^2/2R\) is positive on both sides of the circle.</li>
+    <li>After (0a) the error is \(-d^2/2R\): the same size, the <b>opposite sign</b>. L2 6.32e-2 h before and after. The first-order map
+        cannot remove a curvature error of the profile.</li>
+    <li>After (0b): 1.07e-14 h. The zero crossings and the DA volume equal those of \(d\) (relative difference 0.000).</li>
+  </ul>
+  <div class="ask"><b>Question for you:</b> make the once-map (0b) the initialisation of \(\psi\) from an algebraic field?</div>
+</section>
+
+<!-- ===== USE A EVERY STEP: HISTORY ===== -->
 <section>
   <h2>Use A, every step: every variant fails <span class="tag m">M</span></h2>
   <div class="cols">
     <div style="flex:1.3"><img class="fig" src="../gcls-level-set-article/data/figures/rescale_every_history.png"></div>
     <div>
       <ul class="tight">
-        <li><b>Centred</b> (0a or 0b; least-squares or Gauss Hessian): diverges in the first events.
-            From \(d\), \(N=64\): band mean \(q\) = 37.6 after 13 events. At \(\tau=10\): 3e4 to 6e6 h,
-            crossings moved 0.3 to 0.7 h, DA volume +10 to 15 %.</li>
-        <li><b>One-sided, first order:</b> bounded, but settles at 1.13 h on <i>every</i> mesh (order 0);
-            crossings moved 0.24 to 0.41 h.</li>
-        <li><b>One-sided, second order:</b> 3 to 41 h, not monotone.</li>
+        <li><b>Centred</b>, (0a) and (0b), least-squares and Gauss Hessian alike: diverges in the first events. From \(d\) at N = 64:
+            band mean \(q\) = 37.6 after 13 events, 2.7e4 after 26. At \(\tau=10\): 3e4 to 6e6 h for every start and N; crossings moved 0.3
+            to 0.7 h; DA volume +10 to 15 %.</li>
+        <li><b>One-sided, (0a):</b> bounded, but it settles at 1.13 h on every mesh (order 0); crossings moved 0.24 to 0.41 h; volume −3.3 %
+            (N = 64) to −0.2 % (N = 512).</li>
+        <li><b>One-sided, (0b):</b> 3 to 41 h, not monotone in N or \(\tau\).</li>
       </ul>
-      <p>Seed: the discretisation error of one event (2.6e-4 h at \(N=128\)); amplifier: ×2 per event.</p>
+      <p>Seed: the error of one event (2.6e-4 h at N = 128). Amplifier: the centred gradient, ×2 per event (slide 14). The map without a
+         Hessian fails in the same way, so the Hessian is not the cause on this mesh.</p>
     </div>
   </div>
-  <div class="ask"><b>Question for you:</b> close every-step rescaling on the UFVM line (in the negative log
-     now), or test one event every \(k\) steps?</div>
 </section>
 
-<!-- ===== 12 HESSIAN ===== -->
+<!-- ===== USE A EVERY STEP: FIELDS ===== -->
 <section>
-  <h2>Your question: does the FVM Hessian noise destroy the solution?</h2>
-  <p><b>On uniform hexahedra: no — something else destroys it first.</b> <span class="tag m">M</span></p>
+  <h2>Use A, every step: the field <span class="tag m">M</span></h2>
+  <img class="fig" style="max-height:330px" src="../gcls-level-set-article/data/figures/rescale_every_fields.png">
   <ul class="tight">
-    <li>The first-order map uses <b>no Hessian</b> and diverges in the same way.</li>
-    <li>Gauss Hessian against least-squares Hessian at \(\tau=10\): ratio 0.89 to 1.02 (both diverged).</li>
-    <li>The amplifier is the <b>centred gradient</b>: one application doubles \((-1)^{i+j}d\)
-        <span class="tag d">D</span> — the same mechanism as the linearQ source in stage 3.</li>
+    <li>Centred (0b) at \(\tau=1\): a checkerboard over the whole band, up to \(10^6\,h\) — the odd-even mode, fully grown.</li>
+    <li>One-sided (0a): no checkerboard. A smooth bias instead: \(|\psi|<|d|\) on both sides (the profile is flattened), growing toward
+        the band edge (3 h and more at \(|d|\approx3h\)). The same pattern at \(\tau=1\) and \(\tau=10\): a fixed point that is not \(d\).
+        <span class="tag d">D</span> The fixed point of (0a) satisfies \(q_{one\text{-}sided}=1\), and the one-sided slope is a first-order
+        estimate of \(|\nabla\psi|\), so that fixed point is not \(d\).</li>
   </ul>
-  <p>Not answered: the polyhedral case, where the grad-of-grad Hessian is inconsistent
-     <span class="tag d">D</span>. On hex, the Hessian is consistent and its noise never got the chance.</p>
-  <div class="ask"><b>Question for you:</b> does this answer what you wanted to demonstrate, or do you want the
-     Hessian noise isolated (once-map on a perturbed / polyhedral mesh)?</div>
+  <div class="ask"><b>Question for you:</b> close every-step rescaling on the UFVM line (it is in the negative log), or test one event
+     every \(k\) steps?</div>
 </section>
 
-<!-- ===== 13 USE B ===== -->
+<!-- ===== USE B: TABLE ===== -->
 <section>
   <h2>Use B: the blended projection extension <span class="tag m">M</span></h2>
-  <p>\(\mathbf U^{ext}=\delta\mathbf U+(1-\delta)\mathbf U(P)\), \(P=x-\mathrm{dist}\,\mathbf n\), \(\mathbf U(P)\) by a Taylor step,
-     \(\delta\): 0 at \(|d|\le1.5h\) → 1 at \(4h\). Eulerian, reversed flows.</p>
+  <p>\(\mathbf U^{ext}=\delta\mathbf U+(1-\delta)\mathbf U(P)\), \(P=x-\mathrm{dist}\,\mathbf n\), \(\mathbf U(P)\) by a first-order Taylor
+     step, \(\delta\): 0 at \(|\mathrm{dist}|\le1.5h\) to 1 at \(4h\). Eulerian transport, reversed flows, no filters.</p>
   <table>
-    <tr><th>case (finest rung)</th><th>gradient at T/2</th><th>shape at T</th><th>shape order (base)</th><th>volume at T</th></tr>
-    <tr><td>2D vortex, N=256</td><td class="good">0.46×</td><td class="bad">5.1×</td><td>2.53 (3.23)</td><td class="bad">8×</td></tr>
-    <tr><td>3D shear, N=128</td><td class="good">0.43×</td><td class="bad">1.56×</td><td>1.28 (1.87)</td><td class="bad">11×</td></tr>
-    <tr><td>3D deformation, N=128</td><td class="good">0.66×</td><td class="good">0.82×</td><td>0.83 (0.80)</td><td class="good">0.48×</td></tr>
+    <tr><th>case (finest rung)</th><th>gradient error at T/2</th><th>shape at T</th><th>shape order (baseline)</th><th>volume at T</th></tr>
+    <tr><td>2D vortex, N = 256</td><td class="good">0.46×</td><td class="bad">5.1×</td><td>2.53 (3.23)</td><td class="bad">8× (1.5e-3)</td></tr>
+    <tr><td>3D shear, N = 128</td><td class="good">0.43×</td><td class="bad">1.56×</td><td>1.28 (1.87)</td><td class="bad">11× (5.1e-2)</td></tr>
+    <tr><td>3D deformation, N = 128</td><td class="good">0.66×</td><td class="good">0.82×</td><td>0.83 (0.80)</td><td class="good">0.48× (0.12)</td></tr>
   </table>
   <ul class="tight">
-    <li>B1 <span class="bad">FAIL</span> on vortex and shear; <span class="warn">out of band</span> on deformation
-        (unresolved: baseline shape error 1.00 / 0.63 / 0.33).</li>
-    <li>The band gradient error converges in <b>no</b> arm, baseline included. Mean \(q\) at T/2: 2.4–3.2 without,
-        1.45–1.9 with.</li>
-    <li>+ small source (linearQ, \(\mu=0.1\)): gradient lower again, shape and volume worse again.</li>
+    <li>Pre-registered B1: <span class="bad">FAIL</span> on the vortex and the shear; <span class="warn">out of band</span> on the deformation.
+        The deformation rungs are not resolved (baseline shape error 1.00 / 0.63 / 0.33).</li>
+    <li>The band gradient error converges in <b>no</b> arm, the baseline included (orders −0.9 to 0).</li>
+    <li>With the small source (linearQ, \(\mu=0.1\)): the gradient error falls further (0.62 to 0.86 of the extension alone); on the vortex
+        and the shear, shape and volume get worse again; on the deformation the change is mixed.</li>
+    <li>First against second distance (finest rung, at T): within 26 % on the 3D cases; the second is better on the 2D shape (2.1e-3 against
+        3.1e-3). At T/2 the 3D deformation volume differs 5× (1.0e-2 second, 5.4e-2 first).</li>
+    <li>Null pairs bit-identical; every case complete. The first 3D deformation study was void (a missing <code>law</code> block) and re-ran.</li>
   </ul>
-  <p><span class="tag h">H</span> The reversed baseline gets its high shape order from cancellation at \(T\); a
-     \(\psi\)-dependent velocity breaks it. Where there is no cancellation to lose (deformation) B helps.</p>
-  <div class="ask"><b>Question for you:</b> test the hypothesis on a flow that does not reverse
-     (<code>2Dtranslation</code>, a rotation)?</div>
 </section>
 
-<!-- ===== 14 PROCESS ===== -->
+<!-- ===== USE B: GRADIENT FIELD ===== -->
 <section>
-  <h2>What went wrong in the process</h2>
+  <h2>Use B: the gradient at the largest deformation <span class="tag m">M</span></h2>
+  <img class="fig" style="max-height:380px" src="../gcls-level-set-article/data/figures/extension_vortex_gradient.png">
   <ul class="tight">
-    <li>First static run void: solver dead zone at \(\mathbf u=0\) (zero iterations). Now: count iterations,
-        <code>minIter 1</code>.</li>
-    <li>Crank–Nicolson re-applies any change made outside the solve as a rate: one rescaling kept half its error.
-        Rescaling studies use Euler.</li>
-    <li>First cluster submission: 360 steps never launched (srun timeouts on two overloaded nodes).
-        Re-submitted with lower concurrency.</li>
-    <li>3D deformation template had no <code>law</code> block: 12 arms stopped at step 0. Study voided, fixed,
-        re-run.</li>
-    <li>My own wrong claim, retracted: "the rescaling is a pointwise map with no growth mechanism".</li>
+    <li>Without extension, \(|\nabla\psi|\) reaches 3 and more on the outer side of the filament and about 2 on the inner side: the
+        stretching flow steepens the profile. Band mean 2.42 at N = 256.</li>
+    <li>With the extension the outer side stays near 1 to 1.5 next to the interface; the steepening moves to the band edge (yellow rim at
+        \(|\psi|\approx4\) to \(6h\), where \(\delta\to1\)). Band mean 1.64 at N = 256.</li>
   </ul>
-  <div class="ask"><b>Question for you:</b> should the renderer refuse a case whose selected model reads a
-     dictionary block the template does not have (it would have caught the 3D deformation error)?</div>
 </section>
 
-<!-- ===== 15 WHERE WE STAND ===== -->
+<!-- ===== USE B: SHAPE ===== -->
+<section>
+  <h2>Use B: the zero level set after the reversal <span class="tag m">M</span><span class="tag h">H</span></h2>
+  <div class="cols">
+    <div style="flex:1.4"><img class="fig" src="../gcls-level-set-article/data/figures/extension_vortex_shape.png"></div>
+    <div>
+      <ul class="tight">
+        <li>2D vortex, N = 256, \(t=T\): the radius of the zero level set minus \(R\), in cells.</li>
+        <li>Baseline: within ±0.025 h around the circle.</li>
+        <li>Extension: −0.1 to +0.18 h, a smooth wave with its largest part between 60° and 140°.</li>
+      </ul>
+      <p><span class="tag h">H</span> The baseline is a linear transport with a prescribed velocity, so the forward and the backward half
+         cancel most of their error at \(T\). The extension depends on \(\psi\), so the backward half does not undo the forward half.
+         Supporting: in 2D the extension's volume error at \(T/2\) is 16× <b>smaller</b> (2.8e-5 against 4.7e-4); on the unresolved
+         deformation, where there is no cancellation to lose, it improves every metric.</p>
+    </div>
+  </div>
+  <div class="ask"><b>Question for you:</b> test this on a flow that does not reverse (<code>2Dtranslation</code>, a rotation)?</div>
+</section>
+
+<!-- ===== PROCESS ===== -->
+<section>
+  <h2>What went wrong in the process, and what changed</h2>
+  <table style="font-size:0.78em">
+    <tr><th>event</th><th>effect</th><th>change</th></tr>
+    <tr><td>static test, first run: solver did 0 iterations in 68 % of solves</td><td>whole study void</td><td><code>minIter 1</code>; iteration counts read before any metric</td></tr>
+    <tr><td>Crank–Nicolson re-applies a change made outside the solve</td><td>one rescaling kept half its error</td><td>rescaling studies integrate with Euler</td></tr>
+    <tr><td>first cluster submission: 360 steps never launched</td><td>srun timeouts on two overloaded nodes</td><td>15 jobs per driver, staggered starts</td></tr>
+    <tr><td>3D deformation template without a <code>law</code> block</td><td>12 arms stopped at step 0</td><td>study void, template fixed, re-run</td></tr>
+    <tr><td>my claim "the rescaling has no growth mechanism"</td><td>wrong (slide 14)</td><td>retracted in the report and the KB</td></tr>
+    <tr><td>a pre-registered order criterion without a round-off clause</td><td>R1 reads FAIL on an exact result</td><td>proposed: every read-out states a round-off floor</td></tr>
+  </table>
+  <div class="ask"><b>Question for you:</b> should the renderer refuse a case whose selected model reads a dictionary block that the
+     template does not have? It would have caught the 3D deformation error before the cluster.</div>
+</section>
+
+<!-- ===== WHERE WE STAND ===== -->
 <section>
   <h2>Where we stand</h2>
   <div class="cols">
     <div>
       <p class="good"><b>Works</b></p>
       <ul class="tight">
-        <li>One-sided upwindFit q (SL line): order 2.9, stable at \(\mathbf u=0\).</li>
-        <li>Rescaling (0b) applied once: second-order distance, zero set and volume kept.</li>
+        <li><code>upwindFit</code> q (SL line): order 2.9, stable at \(\mathbf u=0\).</li>
+        <li>Rescaling (0b) applied once: second-order distance, zero set and DA volume of \(d\).</li>
       </ul>
       <p class="bad"><b>Fails</b></p>
       <ul class="tight">
-        <li>Every centred-q Eulerian law (static test).</li>
+        <li>Every Eulerian law with the centred q (static test).</li>
         <li>Every-step rescaling on UFVM, centred or one-sided.</li>
-        <li>Combined source in the kinematic gate (shape order).</li>
-        <li>Extensions HL0, FP0, and B on resolved reversed flows.</li>
+        <li>The combined source in the kinematic gate (shape order).</li>
+        <li>HL0, HL2, FP0, S1; use B on resolved reversed flows.</li>
       </ul>
     </div>
     <div>
       <p class="warn"><b>Open</b></p>
       <ul class="tight">
-        <li>SL rescaling with the quadratic fit (task T6, waiting for the SL session).</li>
+        <li>SL rescaling with the quadratic fit (task T6; the SL session is not running).</li>
         <li>Use B on a non-reversing flow.</li>
         <li>Rescaling every \(k\) steps.</li>
         <li>Normal-constant strain term (E2.4).</li>
-        <li>Polyhedral behaviour of the UFVM Hessian.</li>
-        <li>Serial / np 4 difference of the Eulerian 2D vortex baseline (1.6e-6 at step 1).</li>
+        <li>Polyhedral meshes for every UFVM result above.</li>
+        <li>Serial against np 4 of the Eulerian 2D vortex baseline: 1.6e-6 at step 1 (not caused by the new models).</li>
       </ul>
     </div>
   </div>
 </section>
 
-<!-- ===== 16 PROPOSAL ===== -->
+<!-- ===== PROPOSAL ===== -->
 <section>
   <h2>What I propose next (cheapest first)</h2>
   <ol>
-    <li><b>Use B on a non-reversing flow</b> (<code>2Dtranslation</code>, rotation), 3 rungs.
-        Prediction: shape and volume no worse than the baseline. Cost: hours on Lichtenberg.</li>
-    <li><b>SL rescaling with the upwindFit gradient</b> (T6): (0b) with \(q\) and \(\partial_{nn}\psi\) from the
-        upwind fits, which passed E2.1. Static circle every step first. Prediction: bounded and order 2,
-        because the one-sided fit does not vanish at the sawtooth. Falsified by any growth phase.</li>
-    <li><b>UFVM: keep the once-map</b> for initialisation; close every-step rescaling unless an interval
-        \(k>1\) test is cheap enough to settle it (one study, 1 hour).</li>
-    <li>Only on a pass of 2.: the small source <b>with</b> rescaling on the kinematic gate, then the coupled
-        stationary droplet.</li>
+    <li><b>Use B on a non-reversing flow</b> (<code>2Dtranslation</code>, rotation), three rungs. Prediction: shape and volume no worse than
+        the baseline. Falsified if the shape error is above 1.2× at the two finest rungs. Cost: hours on Lichtenberg.</li>
+    <li><b>SL rescaling with the <code>upwindFit</code> gradient</b> (T6): (0b) with \(q\) and \(\partial_{nn}\psi\) from the upwind fits. Static
+        circle, every step, first. Prediction: bounded, order 2, because the one-sided fit contains the cell's own value (slide 13).
+        Falsified by any growth phase.</li>
+    <li><b>UFVM: keep the once-map</b> for initialisation; close every-step rescaling, unless one interval-\(k\) study (about one hour)
+        shows a bounded order-2 field.</li>
+    <li>Only after a pass of 2: the small source <b>with</b> rescaling in the kinematic gate, then the coupled stationary droplet.</li>
   </ol>
-  <p class="muted">My view: the UFVM line has no \(q\) estimator that is both high-order and not blind to the
-     odd-even mode. The SL line has one. The next effort belongs there.</p>
-  <div class="ask"><b>Decision for you:</b> which of 1 to 4, in which order — and is my reading of the UFVM line
-     right?</div>
+  <p class="muted">My reading: the UFVM line has no \(q\) estimator that is both high order and not blind to the odd-even mode; the SL
+     line has one. The next effort belongs there.</p>
+  <div class="ask"><b>Decision for you:</b> which of 1 to 4, in which order — and is my reading of the UFVM line right?</div>
 </section>
 
 </div>

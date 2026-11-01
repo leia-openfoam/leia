@@ -94,3 +94,17 @@ order, and the anchor shows that the direct crossing shift is not the cause (STA
 Later the same day: the direction and the clip probes; the strain term corrugates the interface in
 2D, and the hypothesis is a tangential transport through n(grad psi) that both q schemes discretise
 centred (STATUS 11.26 item 7).
+
+### 2026-11-01
+The two-phase reading of the centred-q failure, written for the review deck
+(`gcls-level-set-presentation`, slides 13 to 15). DERIVED: for the 1D mode psi_i = d_i (1 + E (-1)^i)
+the centred q_i is 1 - E (-1)^i, because both neighbours carry the opposite sign, so linearQ pushes
+every cell away from d; the one-sided q contains the cell's own value and pulls it back. Linearised,
+a smooth error is carried away from the zero set and the envelope of an odd-even error toward it
+(the E1 reading). Saturated phase: once the odd-even amplitude reaches the slope, the centred q of a
+grid-scale extremum is 0 and the cell grows at G(0). Consistent with the static test
+([[concepts/static-source-gate-eulerian]], MEASURED): every law grows at G(0), not at -G'(1)
+(twoThirdsZReg, -G'(1) = 3.68, grows at 0.6); cubicQ (G'(1) = 0) has no growth phase in the band
+and grows at 0.888 to 1.044 on the whole domain, where the kink of d gives q < 1 at once. The
+seeding of the linear phase by the band edge and round-off is a HYPOTHESIS; the static linearQ field
+at tau = 80 (N = 128) has its largest error, 1.1 h, in the first band cell inside the circle.
