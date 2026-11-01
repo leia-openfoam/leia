@@ -71,6 +71,12 @@
 # centroid stays within 0.043 h / 0.023 h of the exact centre. Eshape of
 # these runs is INVALID: volumeFractionError adds U[0] t when U is uniform
 # (fork volumeFractionError.C); areaFractionError (U0 given) is correct.
+# RERUN (2026-11-01, fork 6315783 with the U0 fix, leia 714f1c68, job
+# 55844938; the 100eb6a study kept as *_preU0fix_100eb6a_2026-11-01):
+# L1(alphaf), L1(x), L1(n), mass, min/max(alpha) and the interface-cell
+# counts identical as strings in every step; Eshape now valid: 3.75e-4 /
+# 3.81e-4 / 3.73e-4 / 3.72e-4 (N 32) and 9.67e-5 / 9.92e-5 / 9.56e-5 /
+# 9.44e-5 (N 64) at 25 / 50 / 75 / 100 %.
 #
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexHistOrbit --export=ALL,STUDY=davof/sphereRotation3D_hexHistOrbit run-studies.sbatch
 study_name: sphereRotation3D_hexHistOrbit

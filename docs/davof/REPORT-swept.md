@@ -272,3 +272,68 @@ volume) is invalid. areaFractionError reads U0 from its dictionary (given,
 zero) and is correct, so L1(alphaf), L1(x) and the verdicts are unaffected.
 A fix (an optional U0 key as in areaFractionError) needs a fork commit and
 a rebuild.
+
+## Item 1 (2026-11-01): the U0 of volumeFractionError fixed
+
+Agent: Claude Opus 5.5. Fork davof-swept 6315783, leia davof-swept 714f1c68.
+
+Confirmed by reading the code: volumeFractionError::write() (fork 100eb6a)
+set U0 = U[0] whenever max|U| - min|U| <= SMALL over the cells and patches
+and passed it to davof::orbitOrigin, which adds U0 t to the orbit; under the
+circular translation (uniform U(t)) the exact sphere was moved by
+U(t) t on top of the orbit. Every other place was checked: the exact normal
+model (exactNormal.C: U0 = the required key of the exactNormal dictionary),
+the exactSphere surface and the planeSource exact tangent plane
+(isoAdvectionCurved.C: U0 from the exactNormal dictionary, default zero),
+the split-quadrature diagnostic of the debug path (the same dictionary),
+areaFractionError (the key U0 when given, the field only without it) and
+the apps (advectorVoF's U0 is the initial velocity field of its periodic
+modes, not an exact body). volumeFractionError was the only consumer that
+inferred U0 against a given orbit. The leia templates give U0 (zero on the
+rotation arm) to areaFractionError and exactNormal; volumeFractionError had
+none.
+
+Fix: volumeFractionError reads the key U0 when given (precedence). Without
+it, U0 is zero when omega is nonzero (the orbit already moves the body; a
+uniform U under a rotation is the circular translation, whose exact body is
+the orbit itself), and only without a rotation the former inference stays
+as the fallback (valid for a constant uniform translation; the
+sphereTranslation3D and planeTranslation3D templates give no U0 and rely on
+it). The same omega guard in areaFractionError (no run changes: its
+templates give U0). Not changed: the fallback's test on |U| only, and its
+validity for a constant U only (a uniform U(t) without omega needs the key).
+leia sphereRotation3D/system/controlDict.template gives
+U0 (TPF_UX TPF_UY TPF_UZ) to volumeFractionError.
+
+Verification (job 55844920 on the old binary 100eb6a, build 55844936 of
+6315783, job 55845067 on the new one; 20-step copies of rendered cases in
+$W/verify-u0, the cases' dictionaries unchanged, i.e. without the U0 key):
+- straight translation (sphereTranslation3D_hexSwept case 0, no omega, the
+  fallback path): volumeFractionError Time/Eshape/Emass/Ebound and
+  areaFractionError.dat byte-identical before and after;
+- rotation base (sphereRotation3D_hexHist case 0, omega, U not uniform):
+  identical as well;
+- circular translation (hexHistOrbit case 0, omega, U uniform): Eshape at
+  step 20 1.068e-2 before, 3.700e-4 after (the rotation base's 3.698e-4 at
+  the same step); Emass, Ebound, areaFractionError identical; the copy with
+  U0 (0 0 0) added gives the same digits as the one without the key.
+
+Reruns of the two circular-translation studies on 6315783 (jobs 55844938,
+16.5 min, and 55844939, 6.2 min; the 100eb6a studies moved aside to
+`*_preU0fix_100eb6a_2026-11-01`): L1(alphaf), L1(x), L1(n), devPercent,
+min/max(alpha) and the interface-cell counts identical as strings to the
+100eb6a runs in all 400 / 800 / 400 steps; only Eshape changed.
+Eshape (now valid), at 25 / 50 / 75 / 100 % of the turn:
+
+| run | N | Eshape 25 % | 50 % | 75 % | 100 % | L1(x) 100 % |
+|---|---|---|---|---|---|---|
+| orbit, anchor | 32 | 3.75e-4 | 3.81e-4 | 3.73e-4 | 3.72e-4 | 7.51e-4 |
+| orbit, anchor | 64 | 9.67e-5 | 9.92e-5 | 9.56e-5 | 9.44e-5 | 1.89e-4 |
+| orbit, exact plane | 32 | 6.90e-4 | 8.61e-4 | 9.91e-4 | 1.10e-3 | 1.50e-1 |
+| rotation, anchor (base, 100eb6a) | 32 | 3.70e-4 | 3.88e-4 | 4.25e-4 | 4.68e-4 | 1.49e-3 |
+| rotation, anchor (base, 100eb6a) | 64 | 9.50e-5 | 1.02e-4 | 1.20e-4 | 1.40e-4 | 4.72e-4 |
+
+The orbit's Eshape stays within 1.5 % (N = 32) and 3.7 % (N = 64) of its
+T/4 value at the eighth-turn samples from T/4 to T; its order between
+N = 32 and 64 at
+the end is 1.98; the rotation's Eshape grows by 26 % / 47 % from T/4 to T.
