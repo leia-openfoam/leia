@@ -51,6 +51,51 @@
 #   the step's speed-up is bounded by the band's share of the ranks (load
 #   balance not addressed). FALSIFIED below 20.
 #
+#
+# MEASURED (2026-10-31 / 11-01; fork 490fea9 for N = 32 np 2/8/16 and the
+# control, fc08178 for N = 32 np 4, N = 64 np 32 and N = 128 np 8/32/64/96;
+# the values of 490fea9, 50b8bef and fc08178 are digit-identical, the later
+# commits change the exchange's cost only; scored by
+# davof_decomposition_compare.py and timing.py as jobs on Lichtenberg).
+# P-P1 HELD: after step 1 max|dalpha| 2.9e-14 to 9.8e-14 and max|dalphaf|
+#   4.1e-14 to 8.5e-14 for np 2/4/8/16, both rows (the alpha + 1e-14 control:
+#   6.4e-14 / 2.0e-13). Every face of the serial run has a value in the
+#   parallel logs at every step (nMissing 0, nDup 0) after fork 490fea9 (the
+#   four-rank run of e300b8d skipped 1 to 2 dry processor faces per step from
+#   step 14: the second ring of a processor face, fixed).
+# P-P2 HELD for np 2/4/8 at all 20 steps and for np 16 at steps 1 to 19
+#   (max|dalpha| per step at or below 6e-11 exact, 2.5e-9 ring, the control
+#   1.2e-10 / 1.1e-9; max|dalphaf| at or below 1e-9 exact, 5e-9 ring);
+#   FALSIFIED for np 16 at step 20: one processor face (centre (0.46875
+#   0.390625 0.484375)) has alphaf 0.995149 against 0.998743 and its flux
+#   apart by 1.1e-6 V (max|dalpha| 1.1e-6 exact, 6.4e-7 ring). Cause (debug
+#   face, sweptDebugPoint, job 55812211): serial takes the RANK FALLBACK (the
+#   one-donor clip) for that face, the 16-rank run does not; the switch is
+#   thrown by a zero-volume piece in a neighbour cell whose cap system is
+#   borderline, and the cell's face planes come in another order on the
+#   decomposed mesh (all inputs equal to round-off). A discontinuity of the
+#   method's fallback rule, not a missing or wrong remote datum; it belongs
+#   to the face-update work on davof-swept (an order-independent cap test,
+#   or no rank status for a piece of zero volume). Per step: Euler traces 0,
+#   skipped faces 0, rank fallbacks as in serial (0 to 22 per step).
+# P-P2b HELD: N = 64 on 32 ranks, step 1: 0 of 2674 crossing faces (2486
+#   with remote pieces or trace, the rest on processor patches) above 1e-10;
+#   steps 2 to 10: 0 to 10 crossing faces against 0 to 61 other faces above
+#   1e-10 (crossing faces 21 % of the faces, 0 to 14 % of the differing
+#   ones): no excess at the processor boundaries.
+# P-P3 FALSIFIED (narrowly): N = 128, median step 2 to 9, rows exact / ring:
+#   np 1 8.90 / 8.86 s; np 8 0.905 / 0.885 s; np 32 0.835 / 0.735 s; np 64
+#   0.490 / 0.470 s (18.2 / 18.9 times serial, parallel efficiency 0.28 /
+#   0.29); np 96 0.680 / 1.035 s. The advect call: 3.33 / 3.30 s serial,
+#   0.46 (np 8), 0.55 to 0.63 (np 32), 0.34 to 0.36 (np 64), 0.53 to 0.81 s
+#   (np 96); the exchange (stencil, map, pack, transfer) 0.011 to 0.026 s,
+#   2 to 5 % of the advect call (fork fc08178; 0.31 to 1.9 s before it). The
+#   swept face loop does not scale past 8 ranks (max-rank curvedFlux 0.40 s
+#   at np 8, 0.31 to 0.58 s at 32 to 96): the interface band sits in a few
+#   ranks of the scotch decomposition; load balance not addressed.
+# N = 128 end-of-run (step 10) max|dalpha| against serial: 2.3e-10 to
+#   3.8e-8 exact, 7.9e-9 to 5.4e-7 ring (no control at N = 128).
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptParN128np1 --export=ALL,STUDY=davof/sphereRotation3D_hexSweptParN128np1 run-studies.sbatch
 study_name: sphereRotation3D_hexSweptParN128np1
 studies_dir: studies/davof
