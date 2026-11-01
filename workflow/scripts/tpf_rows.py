@@ -148,6 +148,13 @@ VELOCITY_ARMS = OrderedDict([
     # case's own tokens (TPF_OMEGA, TPF_AXIS_X/Y), the tokens here are the
     # U0 of the exact body, zero
     ("rotation", ("0", "0", "0")),
+    # the straight translations of cases/davof/sphereRotation3D at the
+    # circular translation's speed pi/2 (= omega 0.25, omega 2 pi), rendered
+    # into setFlow's mode function as the constant level of the velocity
+    # and as the exact body's U0 (2026-11-02): along the diagonal of the x-z
+    # plane, (pi/2)(1 0 1)/sqrt(2), and along x
+    ("lineDiagXZ", ("1.1107207345395915", "0", "1.1107207345395915")),
+    ("lineX",      ("1.5707963267948966", "0", "0")),
 ])
 
 VELOCITY_TOKENS = ("TPF_UX", "TPF_UY", "TPF_UZ")

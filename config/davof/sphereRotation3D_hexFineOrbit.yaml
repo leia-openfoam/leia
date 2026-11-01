@@ -1,0 +1,128 @@
+# The finer circular-translation test (item 4 of Tomislav's decisions of
+# 2026-11-01): resolve the rise and fall of the face-fraction error under
+# the circular translation without spin and its relation to the direction
+# of travel relative to the mesh axes. Fork davof-swept de7aea9 (the U0 fix
+# of volumeFractionError, the merged parallel swept flux, the
+# order-independent cap set), every case serial.
+#
+# What is known (sphereRotation3D_hexHistOrbit, fork 100eb6a / 6315783;
+# REPORT-swept.md): L1(alphaf) of the orbit follows the rotation's for a
+# quarter turn (to 9 / 11 % at N = 32 / 64), peaks near t = T/2 (1.38e-2 at
+# t = 0.52, 7.77e-3 at t = 0.505) and falls to 1.9 times the first step at
+# T; sampled at eighths only, the quarter points (travel along a mesh axis)
+# were higher than the neighbouring odd eighths (travel along a diagonal).
+# One turn T = 1, omega = 2 pi, so turned angle and elapsed time are
+# proportional in that run: periodicity is the only handle there.
+#
+# THE STUDIES (every step: L1(alphaf) by areaFractionError, L1(x) by the
+# reconstruction error every step, Eshape now valid, i.e. 400 / 800 samples
+# per turn at N = 32 / 64, the same fixed dt as the rotation, REFERENCE_SPEED
+# 2.5, Co 0.2 at the rotation's far point; |U| = pi/2 = 1.571 everywhere,
+# interface Co 0.126):
+#   sphereRotation3D_hexFineOrbit      THIS: the circular translation
+#     (TPF_SETFLOW_MODE function), omega 2 pi, radius 0.25 about the axis
+#     through (0.75 . 0.5), one turn, N = 32, 64;
+#   sphereRotation3D_hexFineOrbit2     the circular translation at 2 omega
+#     (4 pi) on the radius 0.125 (axis through (0.625 . 0.5)): the same speed
+#     pi/2, the same dt and END_TIME 1, i.e. TWO turns; the direction of
+#     travel turns twice as fast, which separates the turned angle from the
+#     elapsed time;
+#   sphereRotation3D_hexFineLineDiag   the straight translation along the
+#     x-z diagonal, (pi/2)(1 0 1)/sqrt(2) (arm lineDiagXZ; psi = 45 degrees),
+#     from (0.25 0.5 0.25) to (0.75 0.5 0.75), END_TIME 0.45 (180 / 360 steps);
+#   sphereRotation3D_hexFineLineX      the straight translation along x,
+#     (pi/2)(1 0 0) (arm lineX; psi = 0), from (0.25 0.5 0.5), END_TIME 0.45;
+#   the rotation base alongside: sphereRotation3D_hexHist rerun on de7aea9
+#     (item 3, job 55845649; the same sampling, every step).
+# The straight translations use setFlow's mode function with the axis
+# through the sphere's centre (both orbital scales zero) and the arm's
+# velocity as the constant level (fvSolution.template, 2026-11-02); the exact
+# body translates by U0 = the arm velocity (volumeFractionError reads U0
+# since fork 6315783). Start points on mesh vertices at both N (0.25 = 8 h /
+# 16 h), as the orbit's start (0.5); the sphere stays 0.1 from every wall.
+#
+# MEASURES (workflow/scripts/davof_rotation_angle.py, on the cluster): per
+# step the direction of travel phi of the sphere's centre and its angle to
+# the nearest mesh axis psi in [0, 45] degrees (psi = 0 at t = 0, T/4, T/2,
+# 3T/4 of the orbit). S(t): the centred trapezoidal mean of L1(alphaf) over a
+# quarter turn (removes every harmonic of period T/4 and T/8); the ripple
+# R = L1 - S fitted over the window by c + sum_{m=4,8} A_m cos(m omega t -
+# delta_m): r4 = A_4 / mean(L1), delta4 in degrees (0: maxima at psi = 0,
+# travel along a mesh axis; +-180: at psi = 45). The hump: the time of the
+# maximum of S (the window is [T/8, END - T/8]); for orbit2 the maxima of S in
+# each half of the window and their excess over the minimum of S on
+# [0.4, 0.6], relative to mean(L1). The straight translations: the mean of
+# L1(alphaf) over t in [0.1, 0.45] and L1(end) / max L1.
+#
+# PRE-REGISTERED (2026-11-02, before any of these runs and before the
+# measures were computed on any data):
+# F-A (a ripple with the direction of travel relative to the mesh): for the
+#   orbit at BOTH N, r4 >= 0.02 and |delta4| <= 45 degrees (maxima within
+#   T/32 of the quarter points, the travel along a mesh axis). FALSIFIED if
+#   r4 < 0.01 at either N, or |delta4| >= 135 degrees at both N (maxima at
+#   the diagonal directions: the phase opposite to the eighth-turn hint).
+#   Otherwise INCONCLUSIVE. Secondary, same thresholds: orbit2 with its own
+#   omega; the rotation base shares the orbit's phase (|delta4_rot -
+#   delta4_orbit| <= 45 degrees at both N).
+# F-B (the hump follows the turned angle, not the elapsed time): orbit2 at
+#   BOTH N has the maximum of S in the first half of the window in
+#   [0.20, 0.30] and in the second half in [0.70, 0.80] (half a turn into
+#   each turn), each exceeding the minimum of S on [0.4, 0.6] by at least
+#   0.10 mean(L1). HELD then (angle). The ELAPSED-TIME reading is HELD
+#   instead if at BOTH N the maximum of S over the whole window lies in
+#   [0.40, 0.60] and the first-half excess is below 0.05. Neither:
+#   INCONCLUSIVE. Check (not deciding): the orbit at omega reproduces its
+#   hump, the maximum of S in [0.40, 0.60] at both N.
+# F-C (a static effect of the direction on a straight translation): the
+#   mean L1(alphaf) over [0.1, 0.45] of lineX over that of lineDiag is >= 1.03
+#   at BOTH N (axis-aligned travel worse, the phase of the eighth-turn hint).
+#   FALSIFIED if <= 1.00 at either N; between: INCONCLUSIVE. With it: both
+#   lines saturate without turning, L1(end) / max L1 >= 0.90 at both N.
+# F-D (check): the orbit's Eshape (now valid) stays within 5 % of its T/4
+#   value at every eighth-turn sample after T/4, at both N (fork 6315783:
+#   1.5 % / 3.7 %).
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineOrbit --export=ALL,STUDY=davof/sphereRotation3D_hexFineOrbit run-studies.sbatch
+study_name: sphereRotation3D_hexFineOrbit
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

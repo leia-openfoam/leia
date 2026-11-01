@@ -1,0 +1,57 @@
+# The straight translation along x at the circular translation's speed
+# (item 4, 2026-11-02): U = (pi/2)(1 0 0) (arm lineX), psi = 0 throughout,
+# from (0.25 0.5 0.5) to (0.957 0.5 0.5) in END_TIME 0.45 (180 / 360 steps,
+# the orbit's dt). setFlow mode function with the axis through the sphere's
+# centre (both orbital scales zero) and the arm's velocity as the constant
+# level; the exact body: U0 = the arm velocity, omega a spin about its own
+# centre. The axis-aligned partner of sphereRotation3D_hexFineLineDiag, in
+# the same case, flux and dt (the earlier straight translation,
+# sphereTranslation3D_hexSwept, ran the one-donor sweptFace flux at |U| = 1).
+# Measures and predictions (F-C): sphereRotation3D_hexFineOrbit.yaml.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineX --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineX run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineX
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineX]
+  TPF_SPHERE_CX: [0.25]
+  TPF_AXIS_X: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.15]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 45
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

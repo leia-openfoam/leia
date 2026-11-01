@@ -216,6 +216,12 @@ solvers
 // the exact angle w t_n+1 (without it the centre would lead by theta^2/24
 // of the step per step). The sphere's exact state (davofOrbit.H, a sphere is
 // invariant under the spin) is then the rotation case's at every step end.
+// The inner level is the uniform velocity of the arm (TPF_UX/UY/UZ, zero on
+// the rotation arm, so the orbit is unchanged; 2026-11-02): with the axis
+// through the sphere's centre (TPF_AXIS_X/Z = TPF_SPHERE_CX/CZ) both scales
+// vanish and mode function gives the straight translation at that constant
+// velocity (arms lineDiagXZ, lineX), for which the exact body's U0 is the
+// same arm velocity and its omega a spin about its own centre.
 setFlow
 {
     mode        @!TPF_SETFLOW_MODE!@;
@@ -236,7 +242,7 @@ setFlow
             frequency   #eval{ @!TPF_OMEGA!@/(2*pi()) };
             amplitude   #eval{ sin(0.5*@!TPF_OMEGA!@*@!MAX_DELTA_T!@)/(0.5*@!TPF_OMEGA!@*@!MAX_DELTA_T!@) };
             scale       #eval{ vector(@!TPF_OMEGA!@*(@!TPF_AXIS_Z!@ - @!TPF_SPHERE_CZ!@), 0, @!TPF_OMEGA!@*(@!TPF_SPHERE_CX!@ - @!TPF_AXIS_X!@)) };
-            level       (0 0 0);
+            level       (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
         }
     }
 }
