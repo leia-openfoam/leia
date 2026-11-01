@@ -58,6 +58,20 @@
 #   under the new velocity carry no growing error of their own; if it
 #   accumulates, the setup is wrong and H-R / H-D are not decided.
 #
+# MEASURED (2026-11-01, job 55841489, fork 100eb6a, build 55838221;
+# $A/rotation_history_orbit.csv). L1(alphaf) first step / 25 / 50 / 75 /
+# 100 %, r over [0.25 T, T], p_full / p_half:
+#   N 32  5.13e-3 / 1.17e-2 / 1.34e-2 / 1.11e-2 / 9.52e-3  r -5.39e-3  0.02 / -1.44
+#   N 64  2.60e-3 / 6.48e-3 / 7.54e-3 / 6.12e-3 / 4.89e-3  r -3.64e-3  -0.01 / -1.73
+# mass 3.7e-13 / 5.6e-12 %, min(alpha) -6.9e-13 / -9.9e-13, excess 3.3e-13 /
+# 1.3e-12. H-R HELD by the thresholds, H-D FALSIFIED; L1(T)/L1(t1) 1.86 /
+# 1.88. Not a plateau: the first quarter follows the rotation's history to
+# 9 / 11 %, the maximum (1.38e-2 / 7.77e-3) is near t = T/2, then it falls.
+# The written U equals the formula at t - dt/2 to 12 digits; the alpha
+# centroid stays within 0.043 h / 0.023 h of the exact centre. Eshape of
+# these runs is INVALID: volumeFractionError adds U[0] t when U is uniform
+# (fork volumeFractionError.C); areaFractionError (U0 given) is correct.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexHistOrbit --export=ALL,STUDY=davof/sphereRotation3D_hexHistOrbit run-studies.sbatch
 study_name: sphereRotation3D_hexHistOrbit
 studies_dir: studies/davof

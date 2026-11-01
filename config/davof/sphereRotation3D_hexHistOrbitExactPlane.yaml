@@ -14,6 +14,13 @@
 # of their own. FALSIFIED by r > 3.3e-3; then the setup is suspect and the
 # main study does not decide H-R against H-D.
 #
+# MEASURED (2026-11-01, job 55841490): H-O0 HELD. L1(alphaf) 1.25e-2 /
+# 9.06e-3 / 6.77e-3 / 5.28e-3 / 4.46e-3 (first step, 25 / 50 / 75 / 100 %),
+# r = -5.58e-3; mass 9.2e-13 %, min(alpha) -1.26e-2, excess 1.6e-6, L1(x)
+# 0.15 at the end, interface cells 416 -> 1919 (the exact planes do not
+# match the transported alpha, as under the rotation). Eshape invalid (see
+# sphereRotation3D_hexHistOrbit.yaml).
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexHistOrbitExactPlane --export=ALL,STUDY=davof/sphereRotation3D_hexHistOrbitExactPlane run-studies.sbatch
 study_name: sphereRotation3D_hexHistOrbitExactPlane
 studies_dir: studies/davof
