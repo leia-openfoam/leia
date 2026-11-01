@@ -335,5 +335,41 @@ Eshape (now valid), at 25 / 50 / 75 / 100 % of the turn:
 
 The orbit's Eshape stays within 1.5 % (N = 32) and 3.7 % (N = 64) of its
 T/4 value at the eighth-turn samples from T/4 to T; its order between
-N = 32 and 64 at
-the end is 1.98; the rotation's Eshape grows by 26 % / 47 % from T/4 to T.
+N = 32 and 64 at the end is 1.98; the rotation's Eshape grows by 26 % /
+47 % from T/4 to T.
+
+## Item 2 (2026-11-02): davof-swept-par merged into davof-swept
+
+Fork: merge commit 0f7bf4d (davof-swept-par fc08178 onto 6315783), no
+conflicts (the branches touch disjoint hunks of isoAdvection.C/H and
+isoAdvectionCurved.C; checked by reading the parallel branch's changes to
+buildCellSurfaces and curvedFlux against 100eb6a's planeSource exact path:
+the exact tangent planes are built before the exchanges, which carry them
+like any other surface). leia: merge commit 3a09bbff (davof-swept-par
+95b8fcc8), two conflicts, both resolved by keeping both sides
+(sphereRotation3D.parameter: TPF_PLANE_SOURCE next to TPF_SWEPT_FACE_LOG and
+TPF_WRITE_PRECISION; fvSolution.template: planeSource next to
+sweptFaceLog). The davof-swept-par branches are kept.
+
+Verification on the merged binary (build 55845299):
+- serial, unchanged (job 55845300, the 20-step copies of item 1): the
+  translation, the rotation base and the orbit give volumeFractionError
+  (Time, Eshape, Emass, Ebound) and areaFractionError.dat byte-identical to
+  6315783, and the translation and the rotation base byte-identical to
+  100eb6a as well; the swept counters of the log identical.
+- decomposition (studies sphereRotation3D_hexSweptParN32np{1,2,4,8,16},
+  jobs 55845301-05, 4.0 to 5.5 min; davof_decomposition_compare.py against
+  np 1, $W/cmp-merge): every face of the serial run has a value at every
+  step in every decomposition (nMissing 0, nDup 0). Rows exact / ring:
+
+| np | step 1 max dalpha | step 1 max dalphaf | steps 1-19 max dalpha | steps 1-19 max dalphaf | step 20 max dalpha | step 20 max dalphaf |
+|---|---|---|---|---|---|---|
+| 2 | 2.9e-14 / 6.8e-14 | 4.1e-14 / 5.7e-14 | 4.2e-11 / 2.5e-9 | 1.1e-10 / 5.2e-9 | 6.9e-12 / 4.3e-10 | 1.8e-11 / 1.2e-9 |
+| 4 | 3.5e-14 / 6.8e-14 | 8.5e-14 / 5.7e-14 | 6.0e-11 / 2.1e-9 | 8.0e-10 / 4.3e-9 | 2.1e-11 / 3.5e-10 | 4.2e-11 / 9.7e-10 |
+| 8 | 8.8e-14 / 6.7e-14 | 8.5e-14 / 5.7e-14 | 6.0e-11 / 2.1e-9 | 9.9e-10 / 4.4e-9 | 2.1e-11 / 4.3e-10 | 4.3e-11 / 1.2e-9 |
+| 16 | 9.8e-14 / 6.8e-14 | 5.7e-14 / 5.7e-14 | 5.5e-11 / 1.5e-9 | 2.4e-10 / 4.4e-9 | 1.1e-6 / 6.4e-7 | 3.6e-3 / 2.7e-3 |
+
+  The parallel report's numbers are reproduced, including the sixteen-rank
+  face at step 20 (the cap-rank fallback, item 3). The merged serial np 1
+  runs equal the parallel branch's np 1 runs (fork fc08178) to the last
+  written digit at all 20 steps in both rows (alpha, alphaf, dVf: 0).
