@@ -176,14 +176,60 @@ solvers
 // and axis (0 1 0) make its frame the identity). The linear interpolation of
 // a linear velocity is exact at the face centres of the hexahedra, so the
 // discrete divergence of phi is round-off.
+//
+// mode function (TPF_SETFLOW_MODE function, 2026-11-01): the circular
+// translation WITHOUT spin. setFlow.C (v2606) assigns the spatially uniform
+// U == velocity(t) to the cells AND every patch (operator==, which also
+// overrides the fixedValue patches) and phi = fvc::flux(U), i.e. U(t).S_f on
+// every face; the keys omega/origin/refDir/axis are read in mode rotation
+// only, velocity in mode function only. velocity(t) is the velocity of the
+// centre c(t) of the sphere turned about the axis through axisPoint
+// a = (TPF_AXIS_X . TPF_AXIS_Z) with omega_vec = omega k, k = (0 -1 0):
+// with d0 = c0 - a and Rodrigues' formula (O. Rodrigues, Des lois
+// geometriques qui regissent les deplacements d'un systeme solide dans
+// l'espace, J. Math. Pures Appl. 5 (1840) 380-440, no DOI; as in the fork's
+// davofOrbit.H), d(t) = d0 cos(wt) + (k x d0) sin(wt) (k.d0 = 0), and
+//     U(t) = d'(t) = s [ sin(wt) w (-d0) + cos(wt) w (k x d0) ],
+//     w (-d0)     = w (a_x - c_x, 0, a_z - c_z)   (the sine's scale),
+//     w (k x d0)  = w (a_z - c_z, 0, c_x - a_x)   (the cosine's scale),
+// as OpenFOAM's Function1 sine (value = amplitude sin(2 pi f t) scale +
+// level) whose level is a Function1 cosine of the same form. setFlow is
+// evaluated at the half time t_m = t_n + dt/2, so the centre moves by
+// U(t_m) dt per step; with theta = w dt and the identities
+// cos A - cos B = -2 sin((A+B)/2) sin((A-B)/2), sin A - sin B =
+// 2 cos((A+B)/2) sin((A-B)/2) (M. Abramowitz, I. A. Stegun (eds.), Handbook
+// of Mathematical Functions, National Bureau of Standards Applied
+// Mathematics Series 55 (1964), Section 4.3, no DOI) the exact step is
+// d(t_n+1) - d(t_n) = 2 sin(theta/2) [ sin(w t_m) (-d0) + cos(w t_m) (k x d0) ],
+// the chord, while U(t_m) dt with s = 1 is theta [ ... ], the arc. The
+// amplitude s = sin(theta/2)/(theta/2) of the fixed step (MAX_DELTA_T) makes
+// U(t_m) dt the chord, so that every step end lies on the exact circle at
+// the exact angle w t_n+1 (without it the centre would lead by theta^2/24
+// of the step per step). The sphere's exact state (davofOrbit.H, a sphere is
+// invariant under the spin) is then the rotation case's at every step end.
 setFlow
 {
-    mode        rotation;
+    mode        @!TPF_SETFLOW_MODE!@;
     omega       constant @!TPF_OMEGA!@;
     origin      (@!TPF_AXIS_X!@ @!TPF_SPHERE_CY!@ @!TPF_AXIS_Z!@);
     refDir      (1 0 0);
     axis        (0 1 0);
     scale       constant 1;
+    velocity
+    {
+        type        sine;
+        frequency   #eval{ @!TPF_OMEGA!@/(2*pi()) };
+        amplitude   #eval{ sin(0.5*@!TPF_OMEGA!@*@!MAX_DELTA_T!@)/(0.5*@!TPF_OMEGA!@*@!MAX_DELTA_T!@) };
+        scale       #eval{ vector(@!TPF_OMEGA!@*(@!TPF_AXIS_X!@ - @!TPF_SPHERE_CX!@), 0, @!TPF_OMEGA!@*(@!TPF_AXIS_Z!@ - @!TPF_SPHERE_CZ!@)) };
+        level
+        {
+            type        cosine;
+            frequency   #eval{ @!TPF_OMEGA!@/(2*pi()) };
+            amplitude   #eval{ sin(0.5*@!TPF_OMEGA!@*@!MAX_DELTA_T!@)/(0.5*@!TPF_OMEGA!@*@!MAX_DELTA_T!@) };
+            scale       #eval{ vector(@!TPF_OMEGA!@*(@!TPF_AXIS_Z!@ - @!TPF_SPHERE_CZ!@), 0, @!TPF_OMEGA!@*(@!TPF_SPHERE_CX!@ - @!TPF_AXIS_X!@)) };
+            level       (0 0 0);
+        }
+    }
 }
 
 // advectorVoF reads period/reverseTime/spirallingFlow here (none) and the

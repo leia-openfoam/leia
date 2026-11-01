@@ -1,0 +1,59 @@
+# Control of sphereRotation3D_hexHistOrbit (2026-11-01): the circular
+# translation without spin with planeSource exact (the tangent plane of the
+# exact sphere at c(t) in every interface cell: no volume anchor, no
+# feedback of the transported alpha into the surface), N = 32 only. Under
+# the rotation the same control did not accumulate (sphereRotation3D_
+# hexHistExactPlane: L1(alphaf) 1.20e-2 at the first step falling to 3.45e-3
+# at the end of the turn, N = 32).
+#
+# PRE-REGISTERED (2026-11-01, before the first run), see the header of
+# sphereRotation3D_hexHistOrbit.yaml for the setup and the main predictions.
+# H-O0: no accumulation, the late-turn slope r = d L1(alphaf)/dt over
+# [0.25 T, T] <= 0.2 r_rot = 3.3e-3 (or r <= 0): the exact state and the
+# kinematics under the uniform time-dependent velocity carry no growing error
+# of their own. FALSIFIED by r > 3.3e-3; then the setup is suspect and the
+# main study does not decide H-R against H-D.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexHistOrbitExactPlane --export=ALL,STUDY=davof/sphereRotation3D_hexHistOrbitExactPlane run-studies.sbatch
+study_name: sphereRotation3D_hexHistOrbitExactPlane
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_PLANE_SOURCE: [exact]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 45
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

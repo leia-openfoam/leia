@@ -96,6 +96,15 @@ values
     TPF_AXIS_X ( 0.75 );
     TPF_AXIS_Z ( 0.5 );
 
+    // the velocity field (2026-11-01): rotation (setFlow mode rotation, the
+    // solid-body rotation above) | function (setFlow mode function, the
+    // circular translation WITHOUT spin: the spatially uniform
+    // U(t) = omega_vec x (c(t) - axisPoint), omega_vec = (0 -TPF_OMEGA 0),
+    // c(t) the orbit of the sphere's centre, so that the centre runs on the
+    // same circle in the same sense; for a sphere the exact state equals the
+    // rotation's at every t; see the setFlow block of fvSolution)
+    TPF_SETFLOW_MODE ( rotation );
+
     TPF_DAVOF_METHOD ( exactSphere );
 
     TPF_REF_METHOD ( exactSphere );

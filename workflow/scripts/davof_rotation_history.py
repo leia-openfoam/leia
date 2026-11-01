@@ -103,6 +103,7 @@ def main():
             b2, p2 = growth(t, L1, T, 0.5)
             rec = dict(study=os.path.basename(st), case=os.path.basename(case), row=tok.get("TPF_ROW"),
                        flux=tok.get("TPF_FLUX_INTEGRATION"), plane=tok.get("TPF_PLANE_SOURCE", ""),
+                       flow=tok.get("TPF_SETFLOW_MODE", "rotation"),
                        N=int(float(tok["N_CELLS"])), Co=tok.get("TARGET_ADVECTIVE_CO"), T=T,
                        steps=len(rows), status=status, abortStep=rows[-1].get("abortStep", ""),
                        L1_first=float(L1[0]) if len(L1) else None,
@@ -118,11 +119,12 @@ def main():
         r["rate_order"] = None
         if r["N"] == 32:
             mate = [s for s in out if s["study"] == r["study"] and s["row"] == r["row"] and s["flux"] == r["flux"]
-                    and s["Co"] == r["Co"] and s["N"] == 64]
+                    and s["Co"] == r["Co"] and s["plane"] == r["plane"] and s["flow"] == r["flow"]
+                    and s["N"] == 64]
             if mate and r["rate"] and mate[0]["rate"] and r["rate"] > 0 and mate[0]["rate"] > 0:
                 r["rate_order"] = math.log2(r["rate"] / mate[0]["rate"])
     fmt = lambda v: ("%.3e" % v) if isinstance(v, float) else str(v)
-    keys = ["study", "N", "Co", "flux", "plane", "steps", "status", "L1_first", "L1_25", "L1_50", "L1_75", "L1_100",
+    keys = ["study", "N", "Co", "flow", "flux", "plane", "steps", "status", "L1_first", "L1_25", "L1_50", "L1_75", "L1_100",
             "p_full", "p_half", "rate", "rate_order", "L1x_100", "Eshape_100", "minAlpha", "maxExcess", "devPercent_end"]
     print("\t".join(keys))
     for r in out:

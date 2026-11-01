@@ -1,0 +1,103 @@
+# Control (f) of sphereRotation3D_hexHist (2026-11-01): the circular
+# translation WITHOUT spin, the discriminator named in the base config's
+# READING. Measured so far (fork 100eb6a, N = 32 / 64, Co 0.2): the base
+# (volume-anchored plane, exact normal, sweptFaceCells) grows about linearly
+# over the turn, the rate per unit time over [0.25 T, T] 1.65e-2 / 1.20e-2
+# (h-order 0.45), L1(alphaf) 4.60e-3 at the first step and 2.31e-2 at the end
+# (N = 32); the exact tangent plane and the exact sphere do not accumulate;
+# the prism accumulates like the swept flux; Co 0.1 gives the same rate per
+# unit time; the pure spin (axis through the centre) and the straight
+# translation (sphereTranslation3D_hexSwept, |U| = 1 along x) saturate.
+#
+# The test. For a sphere, the rotation about the off-centre axis and the
+# circular translation of the sphere without spin have the SAME exact state
+# at every time: the centre runs on the same circle, and a sphere is
+# invariant under the spin about its centre. The fork's exact body
+# (davofOrbit.H: only the origin c(t) enters the exact normal model, the
+# exactSphere surface / tangent plane, areaFractionError and
+# volumeFractionError; the sphere's implicit function has no orientation)
+# therefore stays exactly as in the rotation case (keys omega, axisPoint).
+# Only the velocity changes (TPF_SETFLOW_MODE function, fvSolution's setFlow
+# block): the spatially uniform U(t) = omega_vec x (c(t) - axisPoint),
+# omega_vec = (0 -2pi 0), |U| = 2 pi 0.25 = 1.571, set on the cells and every
+# patch by OpenFOAM's setFlow mode function at the half time of each step,
+# phi = U(t).S_f on every face; the amplitude is scaled by
+# sin(theta/2)/(theta/2), theta = omega dt, so that U(t_m) dt is the chord and
+# every step end lies on the exact circle (theta^2/24 = 1.0e-5 / 2.6e-6 of a
+# step at N = 32 / 64 without it). The swept flux traces the face vertices
+# and centre back with the cell-point interpolate of U (midpoint rule); for a
+# uniform U every interpolate is U, the pre-image is x - U dt exactly (the
+# exact pre-image of the circular translation over the step, given the chord
+# scaling) and the kinematic scaling phi_f dt / V_swept is 1 to round-off.
+# The sphere stays in x in [0.35, 1.15], z in [0.1, 0.9], y in [0.35, 0.65]
+# (0.1 = 3.2 h from the nearest wall at N = 32), as in the rotation.
+# Everything else as the base: the same fixed dt (REFERENCE_SPEED 2.5, Co
+# 0.2 at the rotation's far point), 400 / 800 steps, one turn END_TIME 1.
+# Difference to the rotation: under the translation every interface point
+# moves at 1.571, i.e. at Co 0.126 (the rotation: 0.05 to 0.2 over the
+# sphere); the base's Co 0.1 control gave the same rate per unit time.
+#
+# PRE-REGISTERED (2026-11-01, before the first run). The measure is the late-
+# turn slope r = d L1(alphaf)/dt over [0.25 T, T] (davof_rotation_history.py
+# "rate"), compared with the rotation base's r_rot = 1.65e-2 (N = 32) and
+# 1.20e-2 (N = 64) at the same dt and the same exact state.
+#   H-R (the patch turning relative to the mesh causes the accumulation; no
+#   patch turns here): saturation like the straight translation. HELD if at
+#   BOTH N r <= 0.2 r_rot (r <= 3.3e-3 at N = 32, <= 2.4e-3 at N = 64) and
+#   the growth exponent over the second half p_half < 0.3 (or r <= 0).
+#   H-D (the changing direction of travel causes it): linear growth at the
+#   rotation's rate. HELD if at BOTH N r >= 0.5 r_rot (r >= 8.3e-3 at
+#   N = 32, >= 6.0e-3 at N = 64) and p_full in [0.7, 1.3].
+#   Each falsifies the other. A slope between 0.2 and 0.5 r_rot, or the two
+#   N on different sides, is INCONCLUSIVE (both or a third mechanism) and is
+#   reported as such. Secondary (not deciding): end-to-first-step ratio
+#   L1(T)/L1(t1) <= 2.5 under H-R (straight translation 2.0), >= 4 under H-D
+#   (rotation 5.0 / 6.2).
+#   Control sphereRotation3D_hexHistOrbitExactPlane (planeSource exact, N = 32):
+#   H-O0, no accumulation (r <= 0.2 r_rot): the exact state and the kinematics
+#   under the new velocity carry no growing error of their own; if it
+#   accumulates, the setup is wrong and H-R / H-D are not decided.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexHistOrbit --export=ALL,STUDY=davof/sphereRotation3D_hexHistOrbit run-studies.sbatch
+study_name: sphereRotation3D_hexHistOrbit
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 45
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
