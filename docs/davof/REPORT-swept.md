@@ -792,3 +792,63 @@ and rear sides stop growing at N = 64 (slopes -7e-6 and -1e-5) and its whole
 late slope sits in the tangent band. Against the mesh axes the diagonal's
 slope follows the face counts of the angle bins (0.575 / 0.532 in 30-45
 degrees with 0.54 / 0.51 of the faces), the x-line's likewise.
+
+## Setup check of the straight lines (2026-11-02, no new runs)
+
+Asked because the exact-plane diagonal smears where the exact-plane x-line
+does not. Read from the fork's code (f974845) and the rendered cases on the
+cluster; no defect found, no run repeated.
+
+Code: every object that defines the exact body reads origin, U0, omega and
+axisPoint from its own dictionary and places it with davof::orbitOrigin,
+which turns x0 about axisPoint and then adds U0 t (davofOrbit.H): the
+exact normal model (exactNormal.C, U0 required), the exactSphere surface and
+the planeSource exact plane (isoAdvectionCurved.C, the exactNormal subdict
+of the advection's model dictionary, at tState = t - dt, i.e. t^n),
+areaFractionError and volumeFractionError. With axisPoint = x0 (the lines'
+setting) the turn is the identity and the centre is x0 + U0 t in every
+direction. Inference of U0 from the field is left only without a U0 key and
+with omega zero (areaFractionError, volumeFractionError); every rendered
+dictionary of these cases gives U0, so nothing is inferred.
+
+Rendered dictionaries (LineDiagExactPlane, LineXExactPlane, LineDiag, LineX,
+N = 32 and 64; Line3D both Co): in fvSolution's exactNormal, in
+areaFractionError and in volumeFractionError, origin, radius 0.15, U0,
+omega (0 -2 pi 0) and axisPoint are identical, U0 equal to the arm's
+velocity in all three components ((1.1107207345395915 0 1.1107207345395915),
+(1.5707963267948966 0 0), (0.9068996821171089 x3)) and axisPoint equal to
+origin; setFlow's two orbital scales are zero and its level is the same
+vector; the written U at the first write is uniform and equal to it to the
+12 written digits; the log's exact-normal line repeats the values. The
+areaFractionError centre written by the Faces runs at t = 0.45 is (0.749824
+0.5 0.749824) and (0.956858 0.5 0.5), x0 + U0 t.
+
+The alpha centroid of the written fields (uniform hex mesh, 2N x N x N cells
+on [0,2] x [0,1]^2) against x0 + U0 t, in cells h, at t = 0.15 / 0.30 /
+0.45: LineDiagExactPlane 0.054 / 0.041 / 0.0015 (N = 32), 0.024 / 0.008 /
+0.036 (N = 64); LineXExactPlane 0.041 / 0.046 / 0.045, 0.018 / 0.020 /
+0.021; LineDiag 0.027 / 0.048 / 0.064, 0.014 / 0.026 / 0.036; LineX 0.013 /
+0.017 / 0.019, 0.004 / 0.006 / 0.006; Line3D Co 0.2 0.027 / 0.051 / 0.070,
+Co 0.346 0.006 / 0.016 / 0.026 (the y component moving with x and z). The
+volume is conserved to the printed digits in every run. The exact body and
+the transported body move together in all of them.
+
+What the smearing is (cells by alpha at the end, N = 32 unless stated):
+
+| run | [1e-12, 1e-6) | [1e-6, 1e-3) | [1e-3, 0.01) | [0.01, 0.99) | [0.99, 1 - 1e-6) | volume below 1e-3 (cells) |
+|---|---|---|---|---|---|---|
+| lineX, anchor | 260 | 57 | 40 | 336 | 70 | 7.5e-4 |
+| lineDiag, anchor | 5076 | 33 | 30 | 356 | 55 | 3.4e-4 |
+| lineX, exact plane | 0 | 8 | 16 | 320 | 180 | 3.9e-3 |
+| lineDiag, exact plane | 5538 | 3480 | 1040 | 464 | 188 | 0.46 |
+| lineDiag, exact plane, N 64 | 30662 | 20237 | 6426 | 1666 | 2436 | 3.29 |
+| Line3D Co 0.2 | 20800 | 2281 | 45 | 361 | 32 | 3.4e-2 |
+| Line3D Co 0.346 | 19210 | 2029 | 18 | 361 | 41 | 4.7e-2 |
+
+(of 463.25 cell volumes at N = 32, 3706 at N = 64). The exact-plane
+diagonal's growth of the interface cells is a film of cells with alpha below
+1e-2 around the body, holding 0.1 % of the volume at N = 32; the band
+[0.01, 0.99) grows only 398 -> 464. The oblique anchored runs leave a film
+as well, at smaller values: 5076 cells below 1e-6 on the x-z diagonal
+against 260 on the x-line, and 23 000 cells below 1e-3 on the space
+diagonal. Not a setup defect; its cause is not examined here.
