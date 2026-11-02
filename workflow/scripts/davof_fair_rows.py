@@ -26,6 +26,24 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import davof_static_faces as dsf  # noqa: E402
 
 
+def cases(study, rowtok=None):
+    """{N: (case, tokens)} of a study, only the cases of TPF_ROW rowtok when
+    given (dsf.cases keys by N alone)"""
+    if rowtok is None:
+        return dsf.cases(study)
+    import glob
+    import json
+    out = {}
+    for c in sorted(glob.glob(os.path.join(study, "*_0*"))):
+        p = os.path.join(c, "case_params.json")
+        if "." in os.path.basename(c) or not os.path.isfile(p):
+            continue
+        tok = json.load(open(p))["tokens"]
+        if tok.get("TPF_ROW") == rowtok:
+            out[int(float(tok["N_CELLS"]))] = (c, tok)
+    return out
+
+
 def v1(case):
     """max over the written times of |Eshape(.dat) - Evol(app)| / Evol, and
     whether the .dat is of the fixed object"""
@@ -53,8 +71,12 @@ def main():
 
     out, delta = [], {}
     for label, sd, sx in a.row:
-        D = {N: dsf.measure(c, tok) for N, (c, tok) in dsf.cases(sd).items()}
-        X = {N: dsf.measure(c, tok) for N, (c, tok) in dsf.cases(sx).items()}
+        # LABEL=TPF_ROW selects that row's cases of a study holding several
+        # rows (2026-11-03, the paraboloid studies)
+        rowtok = label.split("=", 1)[1] if "=" in label else None
+        label = label.split("=", 1)[0]
+        D = {N: dsf.measure(c, tok) for N, (c, tok) in cases(sd, rowtok).items()}
+        X = {N: dsf.measure(c, tok) for N, (c, tok) in cases(sx, rowtok).items()}
         for N in sorted(D):
             if N not in X:
                 continue

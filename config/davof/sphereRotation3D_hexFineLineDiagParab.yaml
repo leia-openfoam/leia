@@ -1,0 +1,90 @@
+# The paraboloid loop on oblique translation (2026-11-03, Tomislav's decision
+# via the coordinating session): the dual advection of the preprint's
+# tab:tpf-curved, i.e. the ring-tensor paraboloid positioned by alpha (fitDof
+# none, fitAnchor volume, the volume anchor ccs), the Kromer-Bothe volume rule
+# and its own prism flux (fluxIntegration prism, clippingSurface paraboloid),
+# rows exact normal (davof-paraboloidRing-exact), ring quadric
+# (davof-paraboloidRing-ringFit) and ring mean (davof-paraboloidRing-ringArea),
+# on the x-z diagonal (this config) and the x-line
+# (sphereRotation3D_hexFineLineXParab), at the settings of LineDiagW / LineXW
+# (speed pi/2, dt of Co 0.2, END_TIME 0.45, fields every 0.0125 at 17 digits),
+# N = 32 and 64. Fork davof-swept 1f3f238 (the fixed volumeFractionError).
+# Read-out (davof_fair_rows.py): Ec = mean |alpha - alpha_exact| over the
+# exact interface cells and its late slope over the written times in
+# [0.25 T, T], the loop's L1(alphaf) and its late slope, the fixed E_shape,
+# L1(x), min alpha, the mass; Delta = s_Ec,D - s_Ec,X and s_Ec,D/s_Ec,X, next
+# to the plane rows (a), (b), (c) and plicRDF of REPORT-swept (2026-11-02/03).
+#
+# PRE-REGISTERED (2026-11-03, before the runs), per paraboloid row, with
+# Delta(a) = 2.943e-2 / 2.169e-2 (N = 32 / 64; the exact-normal swept row):
+# K-0c (the build reproduces the preprint's dual advection): a copy of the
+#   preprint's sphereTranslation3D_hexParaboloid case N = 32, Co 0.2, rows
+#   exact and ring mean, and of _hexParaboloidRingFit (ring quadric), run with
+#   this build, ends with L1(alphaf), L1(n) and L1(x) within 1e-3 relative of
+#   the v1 table's values. FAILED: the oblique numbers below are of this
+#   build, reported with the difference.
+# H-curved-free (the paraboloid loop levels off on the diagonal): Delta <
+#   0.2 Delta(a) AND s_Ec,D/s_Ec,X < 1.5 at N = 32 AND 64 (if s_Ec,X <= 0:
+#   Delta < 0.2 Delta(a) alone).
+# H-curved-excess (present): s_Ec,D/s_Ec,X >= 1.5 at N = 32 AND 64.
+#   Otherwise MIXED, with both reported.
+# O-N (the order in N of Ec at the end, p = log2(Ec(32)/Ec(64)) per line):
+#   reported for both lines; with H-curved-free the two orders are expected
+#   within 0.5 of each other, a larger gap is reported as a contradiction.
+# B-0 (bounds and mass, reported, not a gate): min alpha over the run and the
+#   mass deviation at the end.
+# N = 128 is added only if one run takes under about 30 min with ranks; then
+#   the verdicts are also read at N = 128 and the orders over 32 / 64 / 128.
+#
+# Seen before writing this: every number of REPORT-swept up to 2026-11-03
+# (rows a, b, c, plicRDF on the lines; the re-scored preprint E_shape, among
+# them the paraboloid rows on the axis-aligned translation). Not seen: any
+# paraboloid run on the lines. This agent's expectation, stated separately:
+# not firm; the excess of the plane rows lives in alpha, and the paraboloid
+# moves alpha with its own surface flux, so it may shrink, but a ratio below
+# 1.5 is not expected for the ring mean.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagParab --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagParab run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineDiagParab
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineDiagXZ]
+  TPF_SPHERE_CX: [0.25]
+  TPF_SPHERE_CZ: [0.25]
+  TPF_AXIS_X: [0.25]
+  TPF_AXIS_Z: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.0125]
+  TPF_WRITE_PRECISION: [17]
+  TPF_ROW: [davof-paraboloidRing-exact, davof-paraboloidRing-ringFit, davof-paraboloidRing-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_FLUX_INTEGRATION: [prism]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 180
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
