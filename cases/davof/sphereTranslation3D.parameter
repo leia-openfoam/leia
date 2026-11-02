@@ -68,6 +68,9 @@ values
     // simpsonSplit (Simpson's rule between the vertex passages of the trace);
     // builds before it ignore the key
     TPF_FLUX_INTEGRATION ( prism );
+    // the kinematic scaling of the swept fluxes (sweptScaleToPhi, 2026-11-02):
+    // false, the fork's default; true for the swept-face advection
+    TPF_SWEPT_SCALE ( false );
     // warped faces (fork branch davof-warped, 2026-10-25): the face state
     // (scalar | vector: the wetted area vector per face, the sum over the fan
     // triangles of the wetted area vectors), the centroids of the ring tensor

@@ -102,6 +102,10 @@ solvers
         // prism volume) | trapezoidal | simpson (a quadrature in time of the
         // face fractions; ignored by the builds before it)
         fluxIntegration @!TPF_FLUX_INTEGRATION!@;
+        // the kinematic consistency of the swept fluxes (sweptScaleToPhi, fork
+        // davof-swept; added here 2026-11-02, default false = the fork's
+        // default, so the studies before it render the same dictionary values)
+        sweptScaleToPhi @!TPF_SWEPT_SCALE!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         // the tilt diagnostic of the curved loop on the translated plane

@@ -1,0 +1,58 @@
+# B (2026-11-02, the swept-face advection in the preprint's framing; via the
+# coordinating session): the translated-plane gate of the preprint
+# (planeTranslation3D_hex, tab. "plane gate") with the swept-face advection,
+# i.e. the anchored plane (rows davof-planeSurf-exact and
+# davof-planeSurf-ringArea: the plane of the normal positioned by the volume
+# anchor, Kromer-Bothe, ccs), the pieces flux sweptFaceCells with the
+# kinematic scaling (sweptScaleToPhi true; the face update pieces, donorSide,
+# the cap set final and planeSource anchor at the fork's defaults), at Co 0.2,
+# N = 20 / 40 / 80 / 160, both arms (normal: U along the plane's normal;
+# oblique: U = (1 0 0)), the preprint's initial state and END_TIME. Fork
+# davof-swept a7e6853. The template's new token TPF_SWEPT_SCALE (default
+# false, the fork's default) is set true here.
+#
+# PRE-REGISTERED (2026-11-02, before the runs). G-1: every one of the 16 cases
+#   (2 rows x 2 arms x 4 meshes) passes the preprint's gate (GATE_TOL 1e-12 of
+#   make_davof_advection_table.py: the run maxima of L1(alphaf) and L1(n)
+#   below 1e-12) and completes bounded (min alpha >= -1e-12, excess <= 1e-12)
+#   and conservative (|mass deviation| <= 1e-10 %). A case failing is
+#   reported with its maxima; the row then does NOT carry a planar state
+#   exactly under the swept-face advection.
+# Seen before writing this: the preprint's plane gate of the plane-clipped
+# loop (8/8 for the ring and the exact normal at every Co). No swept-face run
+# on the plane.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexSwept --export=ALL,STUDY=davof/planeTranslation3D_hexSwept run-studies.sbatch
+study_name: planeTranslation3D_hexSwept
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 480
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

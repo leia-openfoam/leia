@@ -1,0 +1,39 @@
+# D (2026-11-02): the translated-sphere ladder with the swept-face advection at
+# N = 128 on 64 ranks, Co 0.1 / 0.2 / 0.5, rows exact and ring normal. Purpose, read-out and the pre-registered predictions (T-0 .. T-4):
+# sphereTranslation3D_hexSweptLadder.yaml.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexSweptLadderN128 --export=ALL,STUDY=davof/sphereTranslation3D_hexSweptLadderN128 run-studies.sbatch
+study_name: sphereTranslation3D_hexSweptLadderN128
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: parallel
+np: 64
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [128]
+  TARGET_ADVECTIVE_CO: [0.1, 0.2, 0.5]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_KB_FAN: ["auto"]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
