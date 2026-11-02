@@ -63,6 +63,9 @@ values
     // liquid volume by phi_f dt / V_swept (a wholly wet swept volume gives
     // the upwind flux of a full cell), false keeps the geometric volume
     TPF_SWEPT_SCALE ( false );
+    // the surface of a wisp's pieces in sweptFaceCells (2026-11-02): none,
+    // the fork's default | neighbour
+    TPF_SWEPT_WISP_SURFACE ( none );
     // the alpha boundary condition of the three patches (2026-10-29):
     // zeroGradient (the runs until the ladder) | inletOutlet (zero on the
     // inflow faces; the boundary term of the mass balance vanishes)

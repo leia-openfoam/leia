@@ -1,0 +1,76 @@
+# The plane gate's failure under the swept-face advection, diagnosed and fixed
+# (2026-11-02, via the coordinating session; REPORT-swept "The plane gate of
+# the swept-face advection: the wisp pieces"). The diagnosis (jobs 55870504,
+# 55870604, 55870680; N = 20, normal arm, exact normal): after step 1 alpha is
+# off by up to 1.1e-6 in interface cells; of the 1550 computed faces of step
+# 1 the 872 one-donor fallbacks and every face fraction are exact, five
+# piece-computed faces carry a deficit of up to 8.0e-7 V; on the worst face a
+# ring cell (alpha 1.64e-6, the plane cutting its corner, |m_c| below the
+# interface threshold wispTol V^(2/3)) has no plane, and its piece of 6.2e-14
+# m^3 is taken dry by the 0/1 rule of a wisp. sweptConsistent (alpha V) errs
+# alike: the corner's liquid is not spread over the cell. The fix (fork
+# davof-swept, key sweptWispSurface neighbour, opt-in): such a cell's piece
+# and face-update part are clipped by the plane of its closest face neighbour
+# with a surface (the second-ring rule the face fallback and the plane-clipped
+# loop use), the surrogate packed into the remote ring cells in parallel.
+#
+# PRE-REGISTERED (2026-11-02, before the runs; the diagnosis above seen):
+# F-0 (the default path): with sweptWispSurface none the new build reproduces
+#   the previous one bit for bit (fields and .dat of 20-step copies of the plane
+#   N = 20 normal case, the x-line N = 32 and the rotation N = 32).
+# F-1 (the plane gate): with sweptWispSurface neighbour every case of
+#   planeTranslation3D_hexSweptWisp (N = 20 / 40 / 80 / 160, both arms, exact
+#   and ring normal, target Co 0.2 / 0.5 / 0.8 / 0.95) passes the gate (run
+#   maxima of L1(alphaf) and L1(n) below 1e-12), bounded (min alpha >= -1e-12,
+#   excess <= 1e-11); the mass clause, corrected for this open case (the plane
+#   leaves through the boundary): the mass deviation at the end equals the
+#   preprint's plane-clipped loop's (97.51624 % normal, 51.15733 % oblique)
+#   within 1e-9 percentage points. The target Co is of the case's reference
+#   speed |U| = 1 (dt = Co h); OpenFOAM's Courant number 0.5 sum|phi_f| dt / V
+#   is sum_k |U_k| dt / h, 1.612 Co on the normal arm (U = (0.3 0.5 0.8124)),
+#   Co on the oblique arm (U = (1 0 0)); the largest per-axis displacement is
+#   0.8124 Co h and Co h, below h at every Co (one layer), logged with the
+#   "beyond layer" count and the rank fallbacks.
+# F-2 (the curved cases): with the key, the rotation ladder (N = 32 / 64, exact
+#   and ring normal; sphereRotation3D_hexRotFinalWisp) and the translated sphere
+#   (N = 32 / 64, Co 0.2; sphereTranslation3D_hexSweptLadderWisp) end within
+#   1 % relative of the default's L1(alphaf), L1(x) and E_shape, bounded and
+#   conservative as R-0 / T-0. The default is decided from F-1 and F-2.
+# This agent's expectation: F-1 holds; F-2 holds (the rule touches only the
+# pieces of cells next to the interface cells with small alpha).
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptWisp --export=ALL,STUDY=davof/planeTranslation3D_hexSweptWisp run-studies.sbatch
+study_name: planeTranslation3D_hexSweptWisp
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.8, 0.95]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_WISP_SURFACE: [neighbour]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 600
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

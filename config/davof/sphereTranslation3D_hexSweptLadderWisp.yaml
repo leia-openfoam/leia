@@ -1,0 +1,39 @@
+# F-2 (2026-11-02): sphereTranslation3D_hexSweptLadder (N = 32, 64, Co 0.2) with
+# sweptWispSurface neighbour. Purpose and predictions: planeTranslation3D_hexSweptWisp.yaml.
+#
+#   sbatch --parsable -J leia-davof-sphereTranslation3D_hexSweptLadderWisp --export=ALL,STUDY=davof/sphereTranslation3D_hexSweptLadderWisp run-studies.sbatch
+study_name: sphereTranslation3D_hexSweptLadderWisp
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_KB_FAN: ["auto"]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_SWEPT_WISP_SURFACE: [neighbour]
+collapse_other_axes: true
+
+solve_mem_mb: 12000
+solve_runtime: 600
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
