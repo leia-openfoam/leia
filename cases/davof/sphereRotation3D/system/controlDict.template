@@ -117,6 +117,10 @@ functions
         // surface field alphafError.water at every write of this object
         // (the sagitta diagnostic of 2026-10-16; false: not written)
         writeFaceError  @!TPF_AFE_WRITE_FACE_ERROR!@;
+        // the counted faces of every write as CSV (centre, S_f, alphaf,
+        // alphaf_exact; postProcessing/areaFractionError/faceError; fork
+        // davof-swept f974845, 2026-11-02; builds before it ignore the key)
+        faceErrorCsv    @!TPF_AFE_FACE_CSV!@;
         writeControl    @!TPF_AFE_WRITE_CONTROL!@;
         writeInterval   @!TPF_AFE_WRITE_INTERVAL!@;
         writePrecision  12;

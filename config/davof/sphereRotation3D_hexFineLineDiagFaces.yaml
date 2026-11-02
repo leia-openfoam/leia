@@ -1,0 +1,85 @@
+# Where the diagonal line's face-fraction error builds up (2026-11-02,
+# Tomislav's approval via the coordinating session): sphereRotation3D_hexFineLineDiag
+# (the x-z diagonal, anchored plane, Co 0.2, N = 32, 64) rerun with the
+# per-face output of areaFractionError (faceErrorCsv true: every step the
+# counted faces with centre, S_f, alphaf, alphaf_exact; fork davof-swept
+# f974845, which differs from the original runs' de7aea9 only in that
+# opt-in output). Partner: sphereRotation3D_hexFineLineXFaces (the x-line).
+#
+# MEASURE (workflow/scripts/davof_face_bins.py): e = |alphaf - alphaf_exact|
+# per counted face, the contribution C_b = sum_bin e / nFaces of a bin to
+# L1(alphaf) per step (the C_b of a binning add up to L1), its late slope
+# (least squares over [0.25 T, T], T = 0.45; the slopes add up to the slope
+# of L1) and its SHARE of the late slope of L1; the bins: the face direction
+# (x-, y-, z-normal), the side of the sphere (the exact outward normal's
+# angle theta to the travel direction: front [0, 60), tangent [60, 120),
+# rear [120, 180] degrees; and six bins of 30 degrees), the exact normal's
+# angle to the nearest mesh axis ([0, 15), [15, 30), [30, 45), [45, 54.8]
+# degrees), and face direction x side.
+#
+# PRE-REGISTERED (2026-11-02, before the runs; this agent's predictions):
+# B-0 (checks): the areaFractionError.dat of both Faces studies equals the
+#   original runs' (sphereRotation3D_hexFineLineDiag / _hexFineLineX, fork
+#   de7aea9) byte for byte at both N, and the row sums of the face CSVs
+#   reproduce the L1 column to 1e-10 relative at every step. FALSIFIED by
+#   any difference.
+# B-1 (the faces parallel to the travel): in the diagonal at BOTH N, the
+#   y-normal faces (zero flux; their face fraction from the face update of
+#   the pieces) carry >= 50 % of the late slope of L1.
+# B-2 (the faces crossed by the flux): in the diagonal at BOTH N, the x- and
+#   z-normal faces together carry >= 75 % of the late slope.
+#   B-1 and B-2 exclude each other; neither holding: MIXED.
+# B-3 (the band tangent to the motion): in the diagonal at BOTH N, the
+#   tangent band (theta in [60, 120)) carries >= 50 % of the late slope.
+# Reported without a prediction: every bin's C_b first / end, count share,
+# late slope and share, the mean error per face first / end, for both lines.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagFaces --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagFaces run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineDiagFaces
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineDiagXZ]
+  TPF_SPHERE_CX: [0.25]
+  TPF_SPHERE_CZ: [0.25]
+  TPF_AXIS_X: [0.25]
+  TPF_AXIS_Z: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.15]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_AFE_FACE_CSV: ["true"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 45
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

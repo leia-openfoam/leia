@@ -146,6 +146,8 @@ values
     TPF_AFE_WRITE_INTERVAL ( 1 );
     TPF_AFE_CONSISTENCY ( false );
     TPF_AFE_WRITE_FACE_ERROR ( false );
+    // the counted faces per write as CSV (fork 2026-11-02, faceErrorCsv)
+    TPF_AFE_FACE_CSV ( false );
     TPF_RECON_ERROR_EVERY_STEP ( false );
     TPF_VFE_WRITE_CONTROL ( timeStep );
     TPF_VFE_WRITE_INTERVAL ( 1 );

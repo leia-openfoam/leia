@@ -1,0 +1,98 @@
+# Does the oblique build-up need the volume-anchored plane? (2026-11-02,
+# Tomislav's approval via the coordinating session.) The x-z diagonal at the
+# original Co 0.2 (sphereRotation3D_hexFineLineDiag) with planeSource exact:
+# the clipping plane of every interface cell is the tangent plane of the
+# exact sphere at t^n (fork 100eb6a, isoAdvectionCurved.C), not the plane of
+# the used normal positioned by the volume anchor. Partner:
+# sphereRotation3D_hexFineLineXExactPlane (the x-line, the same change).
+# Fork davof-swept f974845 (de7aea9 plus the opt-in faceErrorCsv of
+# areaFractionError, off here), N = 32, 64, serial, every step.
+#
+# What the exact plane does to the comparison (known from
+# sphereRotation3D_hexHistOrbitExactPlane / _hexHistExactPlane, REPORT-swept
+# "Circular translation without spin"): it ignores alpha, so the plane is
+# not consistent with the transported volume; alpha leaves the bounds
+# (orbit: min(alpha) -1.26e-2, excess 1.6e-6, conservatively bounded and
+# clipped), smears (interface cells 416 -> 1919 over the turn) and its
+# centroid error grows (L1(x) 0.15 at the end), while the face fractions
+# are produced by the exact surface at the start of every step and are not
+# fed back by the transported alpha. L1(alphaf) of the exact plane started
+# at 1.2e-2 (2.6 times the anchor's first step) and DECREASED over the turn.
+# Hence: (i) these runs ask whether the oblique build-up arises in the flux
+# and face update of an exactly placed plane, not in the coupled scheme;
+# (ii) L1 is a mean over the faces of the interface cells of either state,
+# and the smearing adds faces, which biases the slope of L1 downward in
+# both lines, so the diagonal is compared with its own exact-plane x-line
+# (the difference of the slopes), not with the anchored lines alone;
+# (iii) the face count, the error sum L1 nFaces, the bounds and the mass are
+# reported with it.
+#
+# MEASURE: the late slope s (least-squares slope of L1(alphaf) against t
+# over [0.25 T, T], T = 0.45; davof_line_confound.py). Anchored references:
+# s_X 8.059e-3 / 2.988e-3, s_D 2.773e-2 / 1.804e-2 (N = 32 / 64), the
+# anchored excess D_A = s_D - s_X = 1.967e-2 / 1.505e-2. Exact plane:
+# D_E = s(LineDiagExactPlane) - s(LineXExactPlane).
+#
+# PRE-REGISTERED (2026-11-02, before the runs):
+# P-E1 (the build-up needs the anchored plane): at BOTH N, D_E <= 0.25 D_A,
+#   i.e. D_E <= 4.92e-3 (N = 32) and <= 3.76e-3 (N = 64). HELD then.
+# P-E2 (it does not): at BOTH N, D_E >= 0.75 D_A, i.e. >= 1.475e-2 and
+#   >= 1.129e-2. HELD then.
+#   Otherwise both INCONCLUSIVE. Reported with them (no verdict): the
+#   log-position x of each exact-plane slope between the anchored lines,
+#   the late slope of the error sum L1 nFaces of both exact-plane lines and
+#   its ratio diagonal / x-line against the anchored ratio.
+# P-E3 (checks): mass deviation |dev| <= 1e-10 %; min(alpha) and the excess
+#   reported (expected outside [-1e-10, 1 + 1e-10], as in the orbit).
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagExactPlane --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagExactPlane run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineDiagExactPlane
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineDiagXZ]
+  TPF_SPHERE_CX: [0.25]
+  TPF_SPHERE_CZ: [0.25]
+  TPF_AXIS_X: [0.25]
+  TPF_AXIS_Z: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.15]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [exact]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_AFE_FACE_CSV: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 45
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
