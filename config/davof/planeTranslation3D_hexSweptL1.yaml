@@ -1,0 +1,58 @@
+# B, the discriminator of the failed plane gate (2026-11-02): G-1 of
+# planeTranslation3D_hexSwept failed (L1(alphaf) run maxima 1.6e-8 to 6.0e-6;
+# per step 36 % of the swept faces took the one-donor fallback, the pieces'
+# closure residual reached 0.72, the partial cells without a surface grew).
+# The plane case is the only case of these studies whose box is not of unit
+# size (DOMAIN_LENGTH 0.004, h = 2e-4 to 2.5e-5). This study is the same case
+# scaled by 250: DOMAIN_LENGTH 1, END_TIME 0.2 (the same 0.2 L travel and
+# steps), the plane's point (0.8 0.9 0.7878) (the same relative position),
+# the same normal and arms, N = 20 and 40, Co 0.2, both rows, the settings of
+# planeTranslation3D_hexSwept.
+#
+# PRE-REGISTERED (2026-11-02, before the runs; the G-1 failure above seen):
+# G-2: if all 8 cases pass the gate (run maxima of L1(alphaf) and L1(n) below
+#   1e-12) with no one-donor fallback, the failure of G-1 is a scale
+#   dependence of the swept path (an absolute length tolerance), not a
+#   property of the advection. If they fail as at L = 0.004 (maxima within a
+#   factor 10 of G-1's, fallbacks above 10 % of the swept faces), the cause is
+#   not the scale.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptL1 --export=ALL,STUDY=davof/planeTranslation3D_hexSweptL1 run-studies.sbatch
+study_name: planeTranslation3D_hexSweptL1
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [20, 40]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  DOMAIN_LENGTH: [1]
+  END_TIME: [0.2]
+  TPF_PLANE_PX: [0.8]
+  TPF_PLANE_PY: [0.9]
+  TPF_PLANE_PZ: [0.7878]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
