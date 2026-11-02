@@ -10,9 +10,9 @@
 %   cell (2,1) alpha 0.16289  n ( 0.83382, 0.55204) c 2.60692   (D2; the donor D in panel a)
 % The jump of N's and D2's planes on x = 2: z = 1.6752 (N) and 1.7015 (D2).
 % Displacement per step: 0.56h along x (a), 0.4h per axis (b); the measured runs: 0.126h.
-% Panels (c, d): the measured E_c of the studies sphereRotation3D_hexFineLine{Diag,X}{W,RDF},
+% Panels (c, d): the measured E_c of the studies sphereRotation3D_hexFineLine{Diag,X}{RingPlane,RDF},
 % column 10 of staticFaceFractions.dat, copied from the cluster into data/oblique.
-\begin{figure}[htbp]
+\begin{figure}[tb]
 \centering
 % the half-plane n.x <= c and the line n.x = c, for a clip
 \newcommand{\obqHalf}[3]{({#3*#1-20*#2},{#3*#2+20*#1}) -- ({#3*#1+20*#2},{#3*#2-20*#1})
@@ -70,7 +70,7 @@
   \draw[black!55, line width=0.4pt, densely dotted] (1.6,1.6) -- (2,2);
   \draw[facecol, line width=2.6pt] (2,2) -- (2,3);
   \draw[facecol, line width=2.6pt] (2,2) -- (3,2);}
-\begin{tikzpicture}[scale=1.38, >=Stealth, font=\footnotesize]
+\begin{tikzpicture}[scale=1.26, >=Stealth, font=\footnotesize]
   \colorlet{fluidcol}{blue!18}
   \colorlet{gaincol}{blue!45}
   \colorlet{ifacecol}{blue!65!black}
@@ -137,22 +137,22 @@
 \vspace{1mm}
 \begin{tikzpicture}
   \begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.4cm},
-      width=6.4cm, height=4.0cm, xmin=0, xmax=0.45, ymin=0, ymax=0.045,
+      width=6.4cm, height=3.7cm, xmin=0, xmax=0.45, ymin=0, ymax=0.065,
       xlabel={$t$}, ylabel={$E_c$}, tick label style={font=\scriptsize},
       label style={font=\footnotesize}, title style={font=\footnotesize, yshift=-1mm},
-      scaled y ticks=false, ytick={0,0.01,0.02,0.03,0.04},
+      xlabel style={yshift=1mm}, scaled y ticks=false, ytick={0,0.02,0.04,0.06},
       yticklabel style={/pgf/number format/fixed, /pgf/number format/precision=2},
       table/header=false, table/comment chars={\#}, table/x index=0, table/y index=9,
       legend style={font=\scriptsize, draw=none, fill=none, at={(0.02,0.98)}, anchor=north west},
       legend cell align=left]
-    \nextgroupplot[title={(c) swept-face flux, exact normal}]
-      \addplot[red!85!black, line width=1.2pt] table {data/oblique/lineDiagW_N64.dat};
+    \nextgroupplot[title={(c) plane-clipped loop, ring normal}]
+      \addplot[red!85!black, line width=1.2pt] table {data/oblique/lineDiagRingPlane_N64.dat};
       \addlegendentry{diagonal, $N = 64$}
-      \addplot[red!85!black, line width=0.9pt, densely dashed] table {data/oblique/lineDiagW_N32.dat};
+      \addplot[red!85!black, line width=0.9pt, densely dashed] table {data/oblique/lineDiagRingPlane_N32.dat};
       \addlegendentry{diagonal, $N = 32$}
-      \addplot[blue!80!black, line width=1.2pt] table {data/oblique/lineXW_N64.dat};
+      \addplot[blue!80!black, line width=1.2pt] table {data/oblique/lineXRingPlane_N64.dat};
       \addlegendentry{$x$, $N = 64$}
-      \addplot[blue!80!black, line width=0.9pt, densely dashed] table {data/oblique/lineXW_N32.dat};
+      \addplot[blue!80!black, line width=0.9pt, densely dashed] table {data/oblique/lineXRingPlane_N32.dat};
       \addlegendentry{$x$, $N = 32$}
     \nextgroupplot[title={(d) plicRDF with isoAdvector}]
       \addplot[red!85!black, line width=1.2pt] table {data/oblique/lineDiagRDF_N64.dat};
@@ -161,6 +161,6 @@
       \addplot[blue!80!black, line width=0.9pt, densely dashed] table {data/oblique/lineXRDF_N32.dat};
   \end{groupplot}
 \end{tikzpicture}
-\caption{The oblique excess on an equidistant Cartesian mesh of spacing $h$, in a two-dimensional cut. Liquid (light blue) lies inside the curved interface $\Sigma$ (thin line); every interface cell holds its plane (thick segments) with the exact normal, positioned by its exact volume fraction, and the planes of neighbouring cells meet with a jump. Orange: the faces whose fluxes are drawn; grey: their swept volumes for a displacement $\mathbf{U}\Delta t$ of $0.56h$, enlarged for legibility (the measured runs: $0.126h$); dark blue: the liquid that crosses the face in the step. (a) Translation along $x$: the swept volume of $f$ lies in its donor $D$ and is cut by $D$'s plane only. (b) Translation along the diagonal, with the corner of the neighbour $N$ magnified three times: the swept parallelograms of the faces $f_1$ and $f_2$ of the receiving cell $R$ reach from their donors $D_1$ and $D_2$ into $N$, where their two triangles (separated by the dotted line) make up the part of $N$ that moves into $R$. isoAdvector cuts each triangle by its donor's plane extended beyond the donor (dashed), the swept-face flux by $N$'s own plane; the two cuts differ by the red regions. The swept-face flux of $f_2$ meets the jump between $N$'s and $D_2$'s planes on their common boundary (red circle). (c), (d) The measured $E_c$ of \cref{eq:Ec} on the translated sphere along the $x$--$z$ diagonal and along $x$, $N = 32$ and $64$, $|\mathbf{U}|\Delta t = 0.126h$: (c) the DAVOF loop with the swept-face flux and the exact normal, a control whose level is not comparable with (d); (d) plicRDF with isoAdvector on the same initial state and time step.}
+\caption{The oblique excess on an equidistant Cartesian mesh of spacing $h$, two-dimensional cut. Every interface cell holds its plane (thick) with the exact normal, positioned by its exact volume fraction; orange: the faces whose fluxes are drawn; grey: their swept volumes ($\mathbf{U}\Delta t = 0.56h$, enlarged; the runs: $0.126h$); dark blue: the liquid crossing the face. (a) Along $x$ the swept volume of $f$ lies in its donor $D$ and is cut by $D$'s plane. (b) Along the diagonal (inset: the corner of $N$, magnified four times) the swept volumes of the faces $f_1$, $f_2$ of $R$ reach from their donors $D_1$, $D_2$ into the neighbour $N$; isoAdvector cuts the two triangles there by the donors' planes extended (dashed), the swept-face flux by $N$'s plane, and the cuts differ by the red regions; the red circle marks the jump between $N$'s and $D_2$'s planes. (c), (d) The measured $E_c$, \cref{eq:Ec}, of the translated sphere along the $x$--$z$ diagonal and along $x$, same initial state and time step.}
 \label{fig:oblique}
 \end{figure}
