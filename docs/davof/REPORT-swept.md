@@ -461,3 +461,101 @@ round-off under either rule: per step its maximum lies between 1e-11 and
 9.99e-7 / 1.0e-6, i.e. pieces just below the 1e-6 degenerate threshold are
 taken); the 1.0 of the crossing runs' column were the rank-deficient pieces.
 Which pieces close only to 1e-7..1e-6 is not investigated.
+
+## Item 4 (2026-11-02): the finer circular-translation test
+
+Fork de7aea9 (build 55845642), leia 2caa4293 (configs, analysis script and
+the predictions F-A..F-D, committed before the runs) and 1927347f; jobs
+55846276 (sphereRotation3D_hexFineOrbit, 20.6 min), 55846277
+(_hexFineOrbit2, 20.6 min), 55846278 (_hexFineLineDiag, 11.1 min), 55846279
+(_hexFineLineX, 10.2 min); the rotation base is sphereRotation3D_hexHist on
+de7aea9 (job 55845649, item 3). All serial, every step sampled (400 / 800
+samples per turn of the orbit and the rotation, 200 / 400 per turn of
+orbit2, 180 / 360 on the lines), the same dt everywhere (0.0025 / 0.00125),
+|U| = pi/2. Analysis: davof_rotation_angle.py on the cluster
+($W/angle_steps_fine.csv: per step t, omega t, the direction of travel phi,
+its angle psi to the nearest mesh axis, L1(alphaf), L1(x), Eshape;
+$W/angle_summary_fine.csv). N = 128 was not run.
+
+The setups as rendered (checked in the case dictionaries): orbit2 omega
+4 pi about (0.625 . 0.5); the lines with both orbital scales zero and the
+level (1.1107 0 1.1107) resp. (1.5708 0 0), the exact body's U0 the same
+and axisPoint the sphere's centre; the written U of lineX uniform
+(1.57079632679 0 0). OpenFOAM's Courant number (sum of the components) is
+0.178 on the diagonal and 0.126 on lineX and the orbit (the displacement
+per step 0.089 h along each of x and z on the diagonal, 0.126 h along x).
+All eight runs bounded (min(alpha) >= -9.9e-13, excess <= 4.5e-12),
+mass deviation <= 6.3e-12 %, no rank fallback. The orbit on de7aea9 against
+its 6315783 run: L1(alphaf) apart by at most 2.6e-7 (N = 32) and 1.7e-8
+(N = 64) absolute (the contact rule of item 3), the quarter values equal to
+the printed digits.
+
+L1(alphaf) (orbit, orbit2 and rotation at t = 1/8 .. 1 of the end time;
+orbit2 makes two turns in that time), the largest value and its time, the
+time of the maximum of the quarter-turn mean S, the ripple fitted at
+4 omega and 8 omega (r = amplitude / mean L1, delta the phase: 0 = maxima at
+psi = 0, travel along a mesh axis), L1(x) and Eshape at the end:
+
+| run | N | first | 1/8 | 1/4 | 3/8 | 1/2 | 5/8 | 3/4 | 7/8 | 1 | max (t) | S max at | r4 | delta4 | r8 | delta8 | L1(x) | Eshape |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| orbit | 32 | 5.13e-3 | 7.71e-3 | 1.17e-2 | 1.12e-2 | 1.34e-2 | 1.05e-2 | 1.11e-2 | 7.95e-3 | 9.52e-3 | 1.38e-2 (0.518) | 0.480 | 0.070 | 21.9 | 0.014 | 76.2 | 7.51e-4 | 3.72e-4 |
+| orbit | 64 | 2.60e-3 | 4.15e-3 | 6.48e-3 | 6.51e-3 | 7.54e-3 | 6.24e-3 | 6.12e-3 | 4.45e-3 | 4.89e-3 | 7.77e-3 (0.505) | 0.485 | 0.063 | 16.9 | 0.015 | 50.7 | 1.89e-4 | 9.44e-5 |
+| orbit2 (2 omega) | 32 | 5.11e-3 | 8.56e-3 | 9.65e-3 | 8.28e-3 | 7.52e-3 | 8.19e-3 | 8.79e-3 | 8.14e-3 | 7.71e-3 | 1.01e-2 (0.255) | 0.243, 0.755 | 0.065 | 32.4 | 0.016 | 51.2 | 6.32e-4 | 3.61e-4 |
+| orbit2 (2 omega) | 64 | 2.60e-3 | 4.79e-3 | 5.25e-3 | 4.61e-3 | 4.18e-3 | 4.62e-3 | 4.95e-3 | 4.54e-3 | 4.24e-3 | 5.40e-3 (0.256) | 0.248, 0.751 | 0.073 | 22.2 | 0.024 | 36.7 | 1.70e-4 | 9.23e-5 |
+| rotation (base) | 32 | 4.60e-3 | 7.67e-3 | 1.07e-2 | 1.28e-2 | 1.58e-2 | 1.73e-2 | 1.98e-2 | 2.09e-2 | 2.31e-2 | 2.33e-2 (0.995) | 0.875 (window end) | 0.044 | -64.5 | 0.010 | -40.2 | 1.49e-3 | 4.68e-4 |
+| rotation (base) | 64 | 2.35e-3 | 4.08e-3 | 5.85e-3 | 7.23e-3 | 9.13e-3 | 1.04e-2 | 1.20e-2 | 1.32e-2 | 1.45e-2 | 1.48e-2 (0.995) | 0.875 (window end) | 0.030 | -71.9 | 0.004 | -53.2 | 4.72e-4 | 1.40e-4 |
+
+The straight translations (t = 0.1125, 0.225, 0.3375, 0.45), the mean over
+[0.1, 0.45] and L1(end) / max L1:
+
+| run | N | first | 0.1125 | 0.225 | 0.3375 | 0.45 | mean [0.1, 0.45] | end / max | L1(x) end | Eshape end |
+|---|---|---|---|---|---|---|---|---|---|---|
+| lineDiag (psi 45) | 32 | 4.31e-3 | 7.98e-3 | 1.15e-2 | 1.47e-2 | 1.75e-2 | 1.263e-2 | 1.00 | 1.20e-3 | 4.13e-4 |
+| lineDiag (psi 45) | 64 | 2.19e-3 | 4.35e-3 | 6.35e-3 | 8.39e-3 | 1.03e-2 | 7.17e-3 | 1.00 | 3.41e-4 | 1.14e-4 |
+| lineX (psi 0) | 32 | 5.14e-3 | 8.64e-3 | 1.03e-2 | 1.13e-2 | 1.14e-2 | 1.054e-2 | 0.964 | 8.66e-4 | 3.83e-4 |
+| lineX (psi 0) | 64 | 2.61e-3 | 5.12e-3 | 5.86e-3 | 6.19e-3 | 6.28e-3 | 5.88e-3 | 0.989 | 2.29e-4 | 9.99e-5 |
+
+Mean L1(alphaf) for t >= T/8 binned by psi ([0, 15), [15, 30), [30, 45]
+degrees): orbit 1.140e-2 / 1.065e-2 / 1.002e-2 (N = 32), 6.27e-3 / 5.85e-3 /
+5.58e-3 (N = 64); orbit2 8.27e-3 / 7.85e-3 / 7.58e-3, 4.56e-3 / 4.22e-3 /
+4.09e-3; rotation 1.635e-2 / 1.590e-2 / 1.564e-2, 9.74e-3 / 9.61e-3 / 9.49e-3.
+
+Verdicts against the pre-registered thresholds:
+- F-A HELD: the orbit's ripple at period T/4 has r4 = 0.070 / 0.063 (>= 0.02)
+  and delta4 = 21.9 / 16.9 degrees (<= 45): maxima 0.015 T / 0.012 T after
+  the quarter points, where the travel is along a mesh axis. Secondary:
+  orbit2 r4 0.065 / 0.073, delta4 32.4 / 22.2 degrees (HELD); the rotation
+  base's ripple does NOT share the orbit's phase (delta4 -64.5 / -71.9,
+  apart by 86 / 89 degrees > 45: FALSIFIED; its maxima lie 0.045 T / 0.050 T
+  before the quarter points; r4 0.044 / 0.030).
+- F-B HELD (the turned angle): orbit2's S peaks at t = 0.243 / 0.248 and
+  0.755 / 0.751, half a turn into each of its two turns, exceeding the
+  minimum of S on [0.4, 0.6] by 0.23 / 0.25 and 0.13 / 0.18 of mean L1
+  (>= 0.10); the elapsed-time reading is not held (the global maximum of S
+  is not in [0.4, 0.6]). Check held: the orbit's S peaks at 0.480 / 0.485.
+  The second hump of orbit2 is lower than the first (S excess 0.13 against
+  0.23 at N = 32).
+- F-C FALSIFIED: the mean of lineX over that of lineDiag is 0.834 / 0.821
+  (<= 1.00): the axis-aligned straight translation has the LOWER face error.
+  The saturation clause holds for lineX (0.964 / 0.989) and fails for
+  lineDiag: its L1(alphaf) grows over the whole run, about linearly (the
+  increments per quarter of the run 3.5e-3, 3.2e-3, 2.8e-3 at N = 32),
+  slope over the last three quarters 2.77e-2 / 1.80e-2 per unit time
+  (rotation base: 1.65e-2 / 1.20e-2 over its turn), h-order of the slope
+  0.62.
+- F-D HELD: the orbit's Eshape within 1.4 % / 3.7 % of its T/4 value at the
+  eighth-turn samples after T/4.
+
+What the numbers show without further interpretation: (i) the rise and fall
+of the circular translation's face error recurs once per turn of the
+direction of travel (the 2 omega run has two humps at half of each turn,
+the omega run one at half its turn), not once per unit of elapsed time;
+(ii) on top of it a ripple of period T/4 with 6 to 7 % of the mean, largest
+shortly after the travel aligns with a mesh axis, in both orbits; (iii) a
+straight translation along the x-z diagonal accumulates face error without
+any turning, at a slope above the rotation's, while the one along x
+saturates. Surprising against the earlier picture (the straight
+translation along x saturates, so translation was taken as
+non-accumulating): the diagonal direction accumulates. Not examined: the
+diagonal line at another Co (its per-axis displacement per step is 0.089 h
+against 0.126 h on lineX), other diagonal directions, N = 128.

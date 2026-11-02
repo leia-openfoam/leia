@@ -82,6 +82,20 @@
 #   value at every eighth-turn sample after T/4, at both N (fork 6315783:
 #   1.5 % / 3.7 %).
 #
+# MEASURED (2026-11-02, fork de7aea9, jobs 55846276-79 and 55845649 for the
+# rotation base; $W/angle_summary_fine.csv; REPORT-swept.md "Item 4"):
+# F-A HELD: orbit r4 0.070 / 0.063, delta4 21.9 / 16.9 degrees (maxima
+#   0.015 T / 0.012 T after the quarter points); orbit2 0.065 / 0.073,
+#   32.4 / 22.2 degrees; the rotation base's phase -64.5 / -71.9 degrees,
+#   86 / 89 degrees from the orbit's (that secondary clause FALSIFIED).
+# F-B HELD (turned angle): orbit2's S peaks at 0.243 / 0.248 and
+#   0.755 / 0.751, excess over the mid minimum 0.23 / 0.25 and 0.13 / 0.18;
+#   the orbit's S at 0.480 / 0.485.
+# F-C FALSIFIED: lineX / lineDiag mean over [0.1, 0.45] 0.834 / 0.821;
+#   lineX saturates (0.964 / 0.989), lineDiag grows to the end (slope
+#   2.77e-2 / 1.80e-2 per unit time, the rotation's 1.65e-2 / 1.20e-2).
+# F-D HELD: 1.4 % / 3.7 %.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineOrbit --export=ALL,STUDY=davof/sphereRotation3D_hexFineOrbit run-studies.sbatch
 study_name: sphereRotation3D_hexFineOrbit
 studies_dir: studies/davof
