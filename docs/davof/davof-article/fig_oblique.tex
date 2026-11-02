@@ -1,0 +1,166 @@
+% The oblique excess on an equidistant Cartesian mesh (two-dimensional cut, cell size h = 1).
+% Interface: the circle with centre (0.818, 0.4) and radius 1.72, liquid inside. The plane of
+% every interface cell is n.x = c with the exact normal at the midpoint of the cell's arc and c
+% positioned by the cell's exact liquid fraction (computed on Lichtenberg; values below):
+%   cell (0,1) alpha 0.99230  n (-0.42208, 0.90656) c 1.73636
+%   cell (0,2) alpha 0.07211  n (-0.13452, 0.99091) c 1.98602
+%   cell (1,1) alpha 0.91710  n ( 0.53689, 0.84365) c 2.48705   (N, the lateral neighbour)
+%   cell (1,2) alpha 0.02960  n ( 0.23864, 0.97111) c 2.29799   (D1)
+%   cell (2,0) alpha 0.51042  n ( 0.99815, 0.06075) c 2.53616
+%   cell (2,1) alpha 0.16289  n ( 0.83382, 0.55204) c 2.60692   (D2; the donor D in panel a)
+% The jump of N's and D2's planes on x = 2: z = 1.6752 (N) and 1.7015 (D2).
+% Displacement per step: 0.56h along x (a), 0.4h per axis (b); the measured runs: 0.126h.
+% Panels (c, d): the measured E_c of the studies sphereRotation3D_hexFineLine{Diag,X}{W,RDF},
+% column 10 of staticFaceFractions.dat, copied from the cluster into data/oblique.
+\begin{figure}[htbp]
+\centering
+% the half-plane n.x <= c and the line n.x = c, for a clip
+\newcommand{\obqHalf}[3]{({#3*#1-20*#2},{#3*#2+20*#1}) -- ({#3*#1+20*#2},{#3*#2-20*#1})
+  -- ({(#3-20)*#1+20*#2},{(#3-20)*#2-20*#1}) -- ({(#3-20)*#1-20*#2},{(#3-20)*#2+20*#1}) -- cycle}
+\newcommand{\obqLine}[3]{({#3*#1-20*#2},{#3*#2+20*#1}) -- ({#3*#1+20*#2},{#3*#2-20*#1})}
+% the liquid inside the circle, clipped to the mesh
+\newcommand{\obqLiquid}{%
+  \begin{scope}
+    \clip (0,0) rectangle (4,4);
+    \fill[fluidcol] (0.818,0.4) circle[radius=1.72];
+  \end{scope}}
+% the interface and every cell's plane
+\newcommand{\obqPlanes}{%
+  \begin{scope}
+    \clip (0,0) rectangle (4,4);
+    \draw[ifacecol!55, line width=0.5pt] (0.818,0.4) circle[radius=1.72];
+  \end{scope}
+  \foreach \ci/\cj/\nx/\nz/\cc in {0/1/-0.42208/0.90656/1.73636, 0/2/-0.13452/0.99091/1.98602,
+      1/1/0.53689/0.84365/2.48705, 1/2/0.23864/0.97111/2.29799,
+      2/0/0.99815/0.06075/2.53616, 2/1/0.83382/0.55204/2.60692}{%
+    \begin{scope}
+      \clip (\ci,\cj) rectangle ++(1,1);
+      \draw[ifacecol, line width=1.5pt] \obqLine{\nx}{\nz}{\cc};
+    \end{scope}}}
+% panel (b): the swept volumes of f1 and f2, their cuts and the faces
+\newcommand{\obqCorner}{%
+  \fill[sweptcol] (2,2) -- (2,3) -- (1.6,2.6) -- (1.6,1.6) -- cycle;
+  \fill[sweptcol] (2,2) -- (3,2) -- (2.6,1.6) -- (1.6,1.6) -- cycle;
+  \begin{scope}
+    \clip (2,1.6) -- (2.6,1.6) -- (3,2) -- (2,2) -- cycle;
+    \fill[gaincol] \obqHalf{0.83382}{0.55204}{2.60692};
+  \end{scope}
+  \begin{scope}
+    \clip (1.6,1.6) -- (2,2) -- (1.6,2) -- cycle;
+    \fill[mismcol] \obqHalf{0.23864}{0.97111}{2.29799};
+    \fill[gaincol] \obqHalf{0.53689}{0.84365}{2.48705};
+    \draw[ifacecol, dashed, line width=0.9pt] \obqLine{0.23864}{0.97111}{2.29799};
+  \end{scope}
+  \begin{scope}
+    \clip (1.6,1.6) -- (2,1.6) -- (2,2) -- cycle;
+    \fill[mismcol] \obqHalf{0.83382}{0.55204}{2.60692};
+    \fill[gaincol] \obqHalf{0.53689}{0.84365}{2.48705};
+    \draw[ifacecol, dashed, line width=0.9pt] \obqLine{0.83382}{0.55204}{2.60692};
+  \end{scope}
+  \begin{scope}
+    \clip (1,1) rectangle (2,2);
+    \draw[ifacecol, line width=1.5pt] \obqLine{0.53689}{0.84365}{2.48705};
+  \end{scope}
+  \begin{scope}
+    \clip (2,1) rectangle (3,2);
+    \draw[ifacecol, line width=1.5pt] \obqLine{0.83382}{0.55204}{2.60692};
+  \end{scope}
+  \draw[black!55, line width=0.5pt] (2,2) -- (2,3) -- (1.6,2.6) -- (1.6,1.6) -- cycle;
+  \draw[black!55, line width=0.5pt] (2,2) -- (3,2) -- (2.6,1.6) -- (1.6,1.6);
+  \draw[black!55, line width=0.4pt, densely dotted] (1.6,1.6) -- (2,2);
+  \draw[facecol, line width=2.6pt] (2,2) -- (2,3);
+  \draw[facecol, line width=2.6pt] (2,2) -- (3,2);}
+\begin{tikzpicture}[scale=1.38, >=Stealth, font=\footnotesize]
+  \colorlet{fluidcol}{blue!18}
+  \colorlet{gaincol}{blue!45}
+  \colorlet{ifacecol}{blue!65!black}
+  \colorlet{facecol}{orange!80!black}
+  \colorlet{bdrycol}{black!50}
+  \colorlet{sweptcol}{black!12}
+  \colorlet{mismcol}{red!60}
+  % ------------------------------------------------ (a) translation along x
+  \begin{scope}
+    \obqLiquid
+    \draw[bdrycol, line width=0.5pt] (0,0) grid[step=1] (4,4);
+    % the swept volume of the face f = {x = 2, 1 <= z <= 2}: inside its donor D = (1,1)
+    \fill[sweptcol] (1.44,1) rectangle (2,2);
+    \begin{scope}
+      \clip (1.44,1) rectangle (2,2);
+      \fill[gaincol] \obqHalf{0.53689}{0.84365}{2.48705};
+    \end{scope}
+    \obqPlanes
+    \draw[black!55, line width=0.5pt] (1.44,1) rectangle (2,2);
+    \draw[facecol, line width=2.6pt] (2,1) -- (2,2);
+    \node[facecol, anchor=west] at (2.04,1.88) {$f$};
+    \node at (1.22,1.2) {$D$};
+    \node at (2.8,1.2) {$R$};
+    \draw[->, line width=0.8pt] (2.6,3.5) -- (3.16,3.5) node[midway, above=1pt] {$\mathbf{U}\Delta t$};
+    \draw[<->, black!70, line width=0.5pt] (0,-0.18) -- (1,-0.18) node[midway, below=0pt] {$h$};
+    \node[anchor=north] at (2,-0.42) {(a) along $x$};
+  \end{scope}
+  % ------------------------------------------------ (b) translation along the diagonal
+  \begin{scope}[xshift=4.45cm]
+    \obqLiquid
+    \draw[bdrycol, line width=0.5pt] (0,0) grid[step=1] (4,4);
+    \obqPlanes
+    \obqCorner
+    \draw[red!65!black, line width=0.6pt] (2,1.688) circle[radius=0.07];
+    \node[facecol, anchor=west] at (2.04,2.62) {$f_1$};
+    \node[facecol, anchor=south] at (2.62,2.03) {$f_2$};
+    \node at (1.22,2.8) {$D_1$};
+    \node at (2.8,1.2) {$D_2$};
+    \node at (1.22,1.2) {$N$};
+    \node at (2.8,2.8) {$R$};
+    \draw[->, line width=0.8pt] (2.6,3.25) -- (3.0,3.65) node[pos=0.4, above left=0pt] {$\mathbf{U}\Delta t$};
+    \node[anchor=north] at (2,-0.42) {(b) along the diagonal};
+    % the square of N that moves into R, magnified three times to the right
+    \draw[black!70, line width=0.4pt] (1.55,1.55) rectangle (2.05,2.05);
+    \draw[black!40, line width=0.3pt] (2.05,2.05) -- (4.45,3.0) (2.05,1.55) -- (4.45,1.0);
+    \begin{scope}[shift={(4.45,1.0)}, scale=4, shift={(-1.55,-1.55)}]
+      \fill[white] (1.55,1.55) rectangle (2.05,2.05);
+      \begin{scope}
+        \clip (1.55,1.55) rectangle (2.05,2.05);
+        \obqLiquid
+        \draw[bdrycol, line width=0.5pt] (1,1) grid[step=1] (3,3);
+        \obqCorner
+        \draw[red!65!black, line width=0.6pt] (2,1.688) circle[radius=0.02];
+      \end{scope}
+      \draw[black!70, line width=0.4pt] (1.55,1.55) rectangle (2.05,2.05);
+      \node[anchor=south] at (1.775,2.05) {$D_1$};
+      \node[anchor=south] at (2.025,2.05) {$R$};
+      \node[anchor=east] at (1.55,1.775) {$N$};
+      \node[anchor=west] at (2.05,1.775) {$D_2$};
+    \end{scope}
+  \end{scope}
+\end{tikzpicture}
+
+\vspace{1mm}
+\begin{tikzpicture}
+  \begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.4cm},
+      width=6.4cm, height=4.0cm, xmin=0, xmax=0.45, ymin=0, ymax=0.045,
+      xlabel={$t$}, ylabel={$E_c$}, tick label style={font=\scriptsize},
+      label style={font=\footnotesize}, title style={font=\footnotesize, yshift=-1mm},
+      scaled y ticks=false, ytick={0,0.01,0.02,0.03,0.04},
+      yticklabel style={/pgf/number format/fixed, /pgf/number format/precision=2},
+      table/header=false, table/comment chars={\#}, table/x index=0, table/y index=9,
+      legend style={font=\scriptsize, draw=none, fill=none, at={(0.02,0.98)}, anchor=north west},
+      legend cell align=left]
+    \nextgroupplot[title={(c) swept-face flux, exact normal}]
+      \addplot[red!85!black, line width=1.2pt] table {data/oblique/lineDiagW_N64.dat};
+      \addlegendentry{diagonal, $N = 64$}
+      \addplot[red!85!black, line width=0.9pt, densely dashed] table {data/oblique/lineDiagW_N32.dat};
+      \addlegendentry{diagonal, $N = 32$}
+      \addplot[blue!80!black, line width=1.2pt] table {data/oblique/lineXW_N64.dat};
+      \addlegendentry{$x$, $N = 64$}
+      \addplot[blue!80!black, line width=0.9pt, densely dashed] table {data/oblique/lineXW_N32.dat};
+      \addlegendentry{$x$, $N = 32$}
+    \nextgroupplot[title={(d) plicRDF with isoAdvector}]
+      \addplot[red!85!black, line width=1.2pt] table {data/oblique/lineDiagRDF_N64.dat};
+      \addplot[red!85!black, line width=0.9pt, densely dashed] table {data/oblique/lineDiagRDF_N32.dat};
+      \addplot[blue!80!black, line width=1.2pt] table {data/oblique/lineXRDF_N64.dat};
+      \addplot[blue!80!black, line width=0.9pt, densely dashed] table {data/oblique/lineXRDF_N32.dat};
+  \end{groupplot}
+\end{tikzpicture}
+\caption{The oblique excess on an equidistant Cartesian mesh of spacing $h$, in a two-dimensional cut. Liquid (light blue) lies inside the curved interface $\Sigma$ (thin line); every interface cell holds its plane (thick segments) with the exact normal, positioned by its exact volume fraction, and the planes of neighbouring cells meet with a jump. Orange: the faces whose fluxes are drawn; grey: their swept volumes for a displacement $\mathbf{U}\Delta t$ of $0.56h$, enlarged for legibility (the measured runs: $0.126h$); dark blue: the liquid that crosses the face in the step. (a) Translation along $x$: the swept volume of $f$ lies in its donor $D$ and is cut by $D$'s plane only. (b) Translation along the diagonal, with the corner of the neighbour $N$ magnified three times: the swept parallelograms of the faces $f_1$ and $f_2$ of the receiving cell $R$ reach from their donors $D_1$ and $D_2$ into $N$, where their two triangles (separated by the dotted line) make up the part of $N$ that moves into $R$. isoAdvector cuts each triangle by its donor's plane extended beyond the donor (dashed), the swept-face flux by $N$'s own plane; the two cuts differ by the red regions. The swept-face flux of $f_2$ meets the jump between $N$'s and $D_2$'s planes on their common boundary (red circle). (c), (d) The measured $E_c$ of \cref{eq:Ec} on the translated sphere along the $x$--$z$ diagonal and along $x$, $N = 32$ and $64$, $|\mathbf{U}|\Delta t = 0.126h$: (c) the DAVOF loop with the swept-face flux and the exact normal, a control whose level is not comparable with (d); (d) plicRDF with isoAdvector on the same initial state and time step.}
+\label{fig:oblique}
+\end{figure}
