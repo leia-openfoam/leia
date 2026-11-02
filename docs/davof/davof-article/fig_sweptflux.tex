@@ -1,0 +1,71 @@
+% The swept-face advection. Panels a, b: fig_sweptflux_a.tex, fig_sweptflux_b.tex, written by
+% make_fig_sweptflux.py (run on Lichtenberg). Panel c: a two-dimensional cut, cells of unit size;
+% the face f = {x = 1, 0 <= y <= 1}, displacement (0.5, 0.4), pre-image {x = 0.5, -0.4 <= y <= 0.6};
+% the donor D = [0,1]x[0,1] with its plane n = (0.371, 0.928), n.x = 0.603 (through (0.5, 0.45) and
+% (1, 0.25)); the lateral neighbour N = [0,1]x[-1,0] full. Closure of D's liquid piece:
+% 0.25 (1,0) + 0.45 (-1,0) + 0.5 (0,-1) + 0.5385 (0.371, 0.928) = 0; of N's piece:
+% 0.4 (-1,0) + (0.4,-0.5) + 0.5 (0,1) = 0. Liquid: 0.175 + 0.1 of the swept 0.5; alpha_f = 0.85.
+\begin{figure}[tb]
+\centering
+\begin{tikzpicture}[>=Stealth, font=\footnotesize, line join=round]
+  \colorlet{facecol}{orange!80!black}
+  \colorlet{precol}{teal!60!black}
+  \colorlet{wetcol}{yellow!70!orange}
+  \colorlet{capcol}{blue!55}
+  \colorlet{ifacecol}{blue!65!black}
+  \colorlet{fluidcol}{blue!18}
+  \colorlet{gaincol}{blue!45}
+  \colorlet{bdrycol}{black!50}
+  % ------------------------------------------------ (a) the closed triangulation
+  \begin{scope}[scale=2.45]
+    \input{fig_sweptflux_a}
+    \draw[->, facecol, line width=0.9pt] (fC) -- ($(fC)!2.1!(fS)$) node[right=0pt] {$\mathbf{S}_f$};
+    \node[facecol, anchor=south west] at (fP) {$f$};
+    \node[precol, anchor=north east] at (pP) {$f'$};
+    \node[anchor=north] at (0.9,-0.18) {(a)};
+  \end{scope}
+  % ------------------------------------------------ (b) the cut by the donor's plane
+  \begin{scope}[xshift=5.0cm, scale=2.45]
+    \input{fig_sweptflux_b}
+    \draw[->, red!65!black, line width=0.9pt] (capC) -- (capN) node[above=0pt] {$\mathbf{n}$};
+    \node[anchor=north west, inner sep=1pt] at (xz) {$\mathbf{x}_0$};
+    \node[ifacecol, anchor=south] at (0.25,1.15) {$\Gamma$};
+    \draw[ifacecol, line width=0.3pt] (0.27,1.15) -- (0.55,0.98);
+    \node[anchor=north] at (0.9,-0.18) {(b)};
+  \end{scope}
+  % ------------------------------------------------ (c) the pieces, two-dimensional cut
+  \begin{scope}[xshift=10.6cm, yshift=1.75cm, scale=1.75]
+    % liquid: D below its plane, R below its own plane, the lower row full
+    \fill[fluidcol] (0,-1) rectangle (2,0);
+    \fill[fluidcol] (0,0) -- (1,0) -- (1,0.25) -- (0,0.65) -- cycle;
+    \fill[fluidcol] (1,0) -- (2,0) -- (2,0.03) -- (1,0.22) -- cycle;
+    \draw[bdrycol, line width=0.5pt] (0,-1) grid[step=1] (2,1);
+    \draw[ifacecol, line width=1.4pt] (0,0.65) -- (1,0.25);
+    \draw[ifacecol, line width=1.4pt] (1,0.22) -- (2,0.03);
+    % the swept volume and its two pieces
+    \fill[black!10] (1,0) -- (1,1) -- (0.5,0.6) -- (0.5,0) -- cycle;
+    \fill[gaincol] (1,0) -- (1,0.25) -- (0.5,0.45) -- (0.5,0) -- cycle;
+    \fill[gaincol] (1,0) -- (0.5,0) -- (0.5,-0.4) -- cycle;
+    \draw[black!60, line width=0.5pt] (1,0) -- (1,1) -- (0.5,0.6) -- (0.5,-0.4) -- cycle;
+    \draw[ifacecol, line width=1.4pt] (0.5,0.45) -- (1,0.25);
+    % the wetted parts of the boundary of the swept volume and the face
+    \draw[precol, line width=1.2pt, dashed] (0.5,-0.4) -- (0.5,0.6);
+    \draw[facecol, line width=2.2pt] (1,0) -- (1,1);
+    \draw[wetted] (0.5,-0.4) -- (0.5,0.45);
+    \draw[wetted] (1,0) -- (1,0.25);
+    \draw[wetted] (0.5,-0.4) -- (1,0);
+    % the caps and their normals: the cell plane y = 0 (both pieces) and D's plane
+    \draw[->, black!75, line width=0.7pt] (0.8,0.0) -- (0.8,-0.22) node[right=-1pt] {$A_1\mathbf{n}_1$};
+    \draw[->, black!75, line width=0.7pt] (0.62,0.0) -- (0.62,0.22) node[left=-1pt, pos=0.9] {$A_3\mathbf{n}_3$};
+    \draw[->, red!65!black, line width=0.7pt] (0.75,0.35) -- ++(0.0928,0.232) node[above left=-2pt] {$A_2\mathbf{n}_2$};
+    \node at (0.15,0.88) {$D$};
+    \node at (0.15,-0.85) {$N$};
+    \node at (1.82,0.85) {$R$};
+    \node[facecol, anchor=west] at (1.02,0.88) {$f$};
+    \node[precol, anchor=east] at (0.48,-0.28) {$f'$};
+    \node[anchor=north] at (1,-1.08) {(c)};
+  \end{scope}
+\end{tikzpicture}
+\caption{The swept-face advection. (a) A face $f$ (orange) with its area vector $\mathbf{S}_f$, traced backward to its pre-image $f'$ (dashed) along the trajectories of its vertices and centre (arrows); the swept volume is closed by the face fan, the reversed pre-image fan and two triangles per lateral quadrilateral, $4F = 16$ triangles for a quadrilateral face. (b) The same volume cut by a plane with normal $\mathbf{n}$: the wetted parts of the triangles (gold), the cap $\Gamma$ (blue), and the cone from the point $\mathbf{x}_0$ of the plane to one wetted triangle (dashed), one term of \cref{eq:swept-volume}; drawn from the geometry computed by \texttt{make\_fig\_sweptflux.py}, whose closed form reproduces a quadrature of the liquid indicator. (c) A two-dimensional cut of the pieces: the swept volume of $f$ reaches from its donor $D$, an interface cell clipped by its own plane, into the full neighbour $N$, wet in total; each liquid piece is closed by the wetted parts of the swept volume's boundary (gold) and by its caps on the cell plane and on $D$'s plane, whose areas follow from the closure \cref{eq:swept-closure}. The wetted part of $f'$ gives $\alpha_f^{n+1} = 0.85$.}
+\label{fig:sweptflux}
+\end{figure}
