@@ -45,6 +45,14 @@
 # expectation: O-b and O-c PRESENT (the exact-normal loop and plicRDF both
 # carry the excess in alpha).
 #
+# MEASURED (2026-11-03; studies 55866607-10, app 55866611, V-2 55866605;
+# REPORT-swept "The shape error fixed, the preprint re-scored, the fair
+# rows"): O-b PRESENT (Delta(b) 4.985e-2 / 3.256e-2 = 1.69 / 1.50 of
+# Delta(a), s_Ec,D/s_Ec,X 2.38 / 2.69); O-c PRESENT (1.82 / 1.58, 2.48 /
+# 2.79); A-b HELD (phi 0.85 / 0.91); A-c PARTIAL (phi 0.39 / 0.47: the
+# plane-clipped face update adds an oblique excess of its own); V-1 HELD
+# (max rel 6.2e-12); V-2 HELD (1.567e-19 m^3; cutCellIso 3.580e-4 m^3).
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagRingSwept --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagRingSwept run-studies.sbatch
 study_name: sphereRotation3D_hexFineLineDiagRingSwept
 studies_dir: studies/davof

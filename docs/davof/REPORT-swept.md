@@ -1085,10 +1085,13 @@ exactSphere state. Ec = mean |alpha - alpha_exact| over the exact state's
 interface cells (416 / 1762 cells). Late slope: over the 28 written times in
 [0.25 T, T] (writes every 0.0125).
 
-Note on Eshape: volumeFractionError builds its alpha_exact with
-cutCellImpFunc, not the exactSphere state. The app's sum |alpha -
-alpha_exact| V is 0.09 to 0.88 of Eshape over the run (0 at t = 0), so Eshape
-carries a construction floor that dilutes ratios between the lines.
+Note on Eshape: volumeFractionError builds its alpha_exact with cutCellIso
+(the cut by the isosurface of the vertex values; corrected 2026-11-03, this
+note first said cutCellImpFunc, which is only a commented-out line there), not
+the exactSphere state. The app's sum |alpha - alpha_exact| V is 0.09 to 0.88
+of Eshape over the run (0 at t = 0), so Eshape carries a construction floor
+that dilutes ratios between the lines. Fixed on 2026-11-03 (next section). The
+Eshape column of the table below is the former one.
 
 | run | N | loop L1 end | loop late slope (per step / written) | static L1 end | static late slope | floor (alpha_exact) L1 end / slope | Ec end | Ec late slope | Eshape end | L1(x) end |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1151,3 +1154,208 @@ Surprising:
 
 Not examined: the mechanism in alpha. One candidate is the volume flux of the
 oblique swept volumes.
+
+## The shape error fixed, the preprint re-scored, the fair rows (2026-11-03)
+
+Tomislav's decision via the coordinating session: fix the shape-error
+measure, re-score the preprint's shape errors, and test the oblique excess on
+fair rows (a computed normal for our loop too). The preprint itself is edited
+by a separate writing agent.
+
+Commits:
+- Fork davof-swept 1f3f238, pushed to tmaric only.
+- leia 16f59466: the fair-row configs with the predictions, committed before
+  the runs.
+- leia 2a865522: davof_rescore_eshape.py.
+- This section and the MEASURED paragraph.
+
+Jobs:
+- 55866604: the build.
+- 55866605: V-2.
+- 55866606 and 55866618: the re-score (N <= 128, and N = 256).
+- 55866607-10: the four fair-row studies.
+- 55866611: the app over them.
+
+### The fix
+
+volumeFractionError took alpha_exact from cutCellIso: each cell cut by the
+isosurface 0 of the implicit function's vertex values, linear along the
+edges. That is not the exact sphere.
+
+The new key exactState:
+- exactSphere: the cell fractions of davofInit::exactSphere at origin(t).
+  This is the state of initDavofFields and the reference of
+  areaFractionError and staticFaceFractions.
+- cutCellIso: the former construction, kept for comparison.
+- auto, the default: exactSphere when functionType is sphere and every cell
+  is an axis-aligned box (the condition of davofInit::exactSphere, which is
+  fatal elsewhere), cutCellIso otherwise.
+
+Why this default: it is the only construction here that is the exact sphere,
+and it is the one every other measure of these studies uses. Bodies and
+meshes where it does not apply keep their output byte for byte.
+
+What changes, exactly:
+- On spheres on axis-aligned boxes, the Eshape column.
+- The first .dat header line, which now reads "volumeFractionError
+  (exactState exactSphere)".
+- Eshape keeps its normalisation: none. It is sum_c |alpha_c -
+  alpha_exact,c| V_c in m^3, against the sphere volume 1.414e-2.
+- Emass, Ebound, the solver and every other output are unchanged.
+
+V-2 HELD (zero-velocity copy of the x-line N = 32 case, 3 steps, so the state
+stays the initial exact one):
+- exactState auto: Eshape 1.567e-19 m^3 at every step.
+- exactState cutCellIso: 3.580e-4 m^3, the former floor (2.5 % of the
+  sphere's volume).
+- The app at t = 0: 0 exactly.
+
+V-1 HELD: in all eight fair-row cases (fields written at 17 digits), the
+fixed object's Eshape equals the app's sum |alpha - alpha_exact| V at every
+one of the 36 written times to at most 6.2e-12 relative.
+
+### The re-score of the preprint (arXiv v1, tag davof-v1.0)
+
+The written end fields of the 114 completed cases were re-scored without
+re-solving:
+- Studies: sphereTranslation3D_hex, _hexExactSurface, _hexParaboloid,
+  _hexParaboloidRingFit, _hexParaboloidN128par, _hexParaboloidN256.
+- Method: staticFaceFractions -entry volumeFractionError -davofMethod
+  exactSphere -evolOnly, at t = 0 and t = 1.
+- The aborted runs have no end field and are tabulated as aborted.
+
+Checks:
+- The v1 tables' old Eshape_end equals the runs' .dat last rows in all 114
+  cases (difference 0).
+- The new E_shape at t = 0 is 0, or 3e-16 to 7e-16 m^3 for the parallel runs,
+  in every study but sphereTranslation3D_hex.
+- sphereTranslation3D_hex starts from its own quadraticFaces state, 1.064e-4
+  / 2.848e-5 / 7.277e-6 m^3 from the exact sphere at N = 32 / 64 / 128, and
+  its new E_shape includes that.
+
+Full mapping: $W/preprint_eshape_map.csv (every cited number) and
+$W/rescore_eshape.csv (every case), $W = /work/scratch/tm83tomy/davof/agents/swept.
+
+N = 128, old -> new (order over N = 32, 64, 128: old -> new).
+
+table_advection_sphere (the plane-clipped loop):
+
+| row | Co 0.1 | Co 0.2 | Co 0.5 |
+|---|---|---|---|
+| DAVOF, ring normal | 3.902e-5 -> 3.338e-5 (1.82 -> 1.82) | 3.047e-5 -> 2.441e-5 (1.83 -> 1.84) | 1.576e-5 -> 7.394e-6 (2.02 -> 2.02) |
+| DAVOF, exact normal | 2.190e-5 -> 1.585e-5 (1.91 -> 1.90) | 1.935e-5 -> 1.288e-5 (1.92 -> 1.90) | 1.575e-5 -> 7.293e-6 (2.00 -> 1.94) |
+| DAVOF, plicRDF normal | 6.750e-5 -> 6.346e-5 (1.51 -> 1.48) | 6.264e-5 -> 5.830e-5 (1.39 -> 1.32) | 3.403e-5 -> 2.844e-5 (1.44 -> 1.02) |
+| DAVOF, ring quadric | 3.980e-5 -> 3.447e-5 (1.86 -> 1.85) | 3.096e-5 -> 2.500e-5 (2.61 -> 2.74) | 1.575e-5 -> 7.316e-6 (2.00 -> 1.93) |
+| plicRDF | 3.928e-5 -> 3.432e-5 (1.90 -> 1.89) | 3.078e-5 -> 2.478e-5 (1.91 -> 1.93) | 1.614e-5 -> 7.960e-6 (1.98 -> 1.94) |
+| isoAlpha | 4.582e-5 -> 4.136e-5 (1.86 -> 1.85) | 3.526e-5 -> 2.999e-5 (1.86 -> 1.86) | 1.710e-5 -> 9.549e-6 (1.95 -> 1.76) |
+
+table_advection_curved (the dual advection; old 2.302e-5 to 2.304e-5 in every
+row, order 1.98):
+
+| row | Co 0.1 | Co 0.2 | Co 0.5 | new order (0.1 / 0.2 / 0.5) |
+|---|---|---|---|---|
+| exact sphere, exact / own / ring (identical) | 2.127e-12 | 1.202e-12 | 1.792e-13 | none (quadrature level) |
+| paraboloid, exact | 3.223e-8 | 2.397e-8 | 2.978e-9 | 4.04 / 4.05 / 3.64 |
+| paraboloid, ring | 1.868e-6 | 1.751e-6 | 1.655e-6 | 2.63 / 2.67 / 2.74 |
+| paraboloid, ring quadric | 1.631e-7 | 1.473e-7 | 1.293e-7 | 3.42 / 3.25 / 2.30 |
+
+The old values were the construction floor itself: 3.580e-4 / 9.078e-5 /
+2.302e-5 at N = 32 / 64 / 128, identical in every row whose transport is
+exact or nearly so.
+
+tab:tpf-n256 (Co 0.2; old "all rows 2.30e-05 5.74e-06 2.00"):
+
+| row | N = 128 | N = 256 | pairwise order |
+|---|---|---|---|
+| exact (control) | 2.397e-8 (parallel run 2.436e-8) | 2.294e-9 | 3.39 |
+| ring quadric | 1.473e-7 (parallel 1.476e-7) | 3.206e-8 | 2.20 |
+| ring mean | 1.751e-6 | 3.298e-7 | 2.41 |
+
+Preprint statements that change in substance (the edits are the writing
+agent's):
+- "The centroid and the shape error are second order (1.98) in every row"
+  (the exact-sphere surface rows): the shape error is 1.8e-13 to 2.1e-12 m^3.
+  The 1.98 was the floor's order.
+- Paraboloid, exact normal, "the centroid (1.99) and the shape error (1.98)
+  as in the control": 2.40e-8 at N = 128, order 4.05, not the control's.
+- Paraboloid, ring normal, "the shape error (1.98) is 2.30e-5 against
+  3.08e-5": 1.75e-6 (order 2.67) against plicRDF's 2.48e-5, 14 times below.
+- Ring quadric, "the shape error is the control's": 1.47e-7 (order 3.25),
+  6.1 times the exact-normal control.
+- tab:tpf-n256's single E_shape row: three rows, orders 3.39 / 2.20 / 2.41.
+- Plane-clipped loop against plicRDF ("the shape error is plicRDF's", 3.05e-5
+  against 3.08e-5): 2.441e-5 against 2.478e-5. It holds, within 1.5 %. Both
+  include the initial state's 7.28e-6; at Co 0.5 both are within 2 % and 9 %
+  of it.
+- Not re-scorable here: the perturbed-mesh statements ("converging shape
+  errors", "the shape error below it"). davofInit::exactSphere needs
+  axis-aligned boxes, so these stay on cutCellIso. Their comparison with a
+  hexahedral value must not mix constructions. An exact sphere-polyhedron
+  cell volume would be needed; it is not implemented.
+
+### The fair rows
+
+Row (b), RingSwept: the swept flux with the ring normal. Row (c), RingPlane:
+the preprint's plane-clipped loop with the ring normal. Both use LineDiagW /
+LineXW settings.
+
+All eight runs completed, bounded (min alpha >= -6.4e-13) and conservative
+(mass deviation <= 3.8e-12 %).
+
+E_shape is the fixed one at the end. For (a) and plicRDF it is the app's sum,
+equal to the fixed object by V-1.
+
+| row | N | line | loop L1(alphaf) end | loop late slope | static L1 end | static late slope | Ec end | Ec late slope | E_shape end | L1(x) end |
+|---|---|---|---|---|---|---|---|---|---|---|
+| (a) ours, exact normal, swept | 32 | diag | 1.752e-2 | 2.783e-2 | 1.626e-2 | 2.524e-2 | 2.373e-2 | 4.224e-2 | 3.013e-4 | 1.195e-3 |
+| | 32 | x | 1.135e-2 | 8.082e-3 | 1.096e-2 | 4.918e-3 | 1.227e-2 | 1.281e-2 | 1.632e-4 | 8.661e-4 |
+| | 64 | diag | 1.028e-2 | 1.790e-2 | 1.005e-2 | 1.613e-2 | 1.330e-2 | 2.630e-2 | 8.928e-5 | 3.412e-4 |
+| | 64 | x | 6.278e-3 | 3.045e-3 | 6.239e-3 | 2.837e-3 | 6.374e-3 | 4.605e-3 | 4.242e-5 | 2.290e-4 |
+| plicRDF + isoAdvector | 32 | diag | - | - | 2.986e-2 | 5.493e-2 | 4.156e-2 | 8.494e-2 | 5.280e-4 | 1.982e-3 |
+| | 32 | x | - | - | 2.022e-2 | 3.005e-2 | 2.527e-2 | 4.604e-2 | 3.364e-4 | 1.410e-3 |
+| | 64 | diag | - | - | 1.674e-2 | 3.266e-2 | 2.221e-2 | 4.804e-2 | 1.492e-4 | 5.308e-4 |
+| | 64 | x | - | - | 1.108e-2 | 1.487e-2 | 1.294e-2 | 2.215e-2 | 8.615e-5 | 3.764e-4 |
+| (b) ring normal, swept | 32 | diag | 3.279e-2 | 5.816e-2 | 2.845e-2 | 5.264e-2 | 4.651e-2 | 8.610e-2 | 5.906e-4 | 2.071e-3 |
+| | 32 | x | 1.839e-2 | 2.314e-2 | 1.846e-2 | 2.299e-2 | 2.240e-2 | 3.624e-2 | 2.982e-4 | 1.286e-3 |
+| | 64 | diag | 1.831e-2 | 3.659e-2 | 1.770e-2 | 3.420e-2 | 2.415e-2 | 5.178e-2 | 1.621e-4 | 5.696e-4 |
+| | 64 | x | 1.033e-2 | 1.276e-2 | 1.039e-2 | 1.243e-2 | 1.195e-2 | 1.922e-2 | 7.953e-5 | 3.495e-4 |
+| (c) ring normal, plane-clipped (preprint) | 32 | diag | 3.363e-2 | 5.909e-2 | 2.317e-2 | 3.588e-2 | 4.821e-2 | 8.965e-2 | 6.123e-4 | 2.141e-3 |
+| | 32 | x | 1.941e-2 | 2.313e-2 | 1.854e-2 | 2.184e-2 | 2.235e-2 | 3.620e-2 | 2.976e-4 | 1.280e-3 |
+| | 64 | diag | 1.890e-2 | 3.745e-2 | 1.362e-2 | 2.403e-2 | 2.491e-2 | 5.354e-2 | 1.674e-4 | 5.896e-4 |
+| | 64 | x | 1.069e-2 | 1.298e-2 | 1.047e-2 | 1.264e-2 | 1.192e-2 | 1.922e-2 | 7.936e-5 | 3.486e-4 |
+
+The oblique excess. Delta = s_Ec,D - s_Ec,X; "share" is Delta / Delta(a);
+phi = (s_S,D - s_S,X)/(s_L,D - s_L,X), each row against its own loop.
+
+| row | Delta N 32 / 64 | share | s_Ec,D/s_Ec,X | phi |
+|---|---|---|---|---|
+| (a) | 2.943e-2 / 2.169e-2 | 1 / 1 | 3.30 / 5.71 | 1.03 / 0.89 |
+| plicRDF | 3.891e-2 / 2.589e-2 | 1.32 / 1.19 | 1.85 / 2.17 | - |
+| (b) | 4.985e-2 / 3.256e-2 | 1.69 / 1.50 | 2.38 / 2.69 | 0.85 / 0.91 |
+| (c) | 5.345e-2 / 3.431e-2 | 1.82 / 1.58 | 2.48 / 2.79 | 0.39 / 0.47 |
+
+Verdicts:
+- O-b PRESENT and O-c PRESENT: shares >= 0.5 and ratios >= 1.5 at both N.
+- A-b HELD (phi 0.85 / 0.91): with the swept face update, the face fractions
+  follow the alpha.
+- A-c PARTIAL (phi 0.39 / 0.47): the plane-clipped loop's face fractions
+  build up on the diagonal beyond what its alpha implies. The loop's late
+  slope is 5.9e-2 / 3.7e-2 against its static 3.6e-2 / 2.4e-2.
+
+What the runs show:
+- With a computed normal, our transport's alpha is plicRDF's on both lines.
+  - Ec late slope, (b) against plicRDF, x-line: 3.62e-2 vs 4.60e-2 (N = 32),
+    1.92e-2 vs 2.22e-2 (N = 64).
+  - Diagonal: 8.61e-2 vs 8.49e-2, 5.18e-2 vs 4.80e-2.
+  - The exact-normal row's advantage over plicRDF (1.8 to 4.8 times in Ec's
+    slope) is the normal's.
+- The swept flux and the plane flux give nearly the same alpha with the ring
+  normal (Ec at the end within 4 %).
+- They differ in the face fractions: the plane-clipped loop's face update
+  adds an oblique excess of its own, and the swept face update does not.
+
+Surprising:
+- The former E_shape of every exact or nearly exact transport in the
+  preprint was the construction floor of the reference.
+- With the fixed measure, the paraboloid rows' shape error at N = 128 is 14
+  (ring) to 1030 (exact normal) times below plicRDF's, at orders 2.3 to 4.05.
