@@ -1,4 +1,4 @@
-# The paraboloid loop on oblique translation (2026-11-03, Tomislav's decision
+# The paraboloid loop on oblique translation (2026-11-02, Tomislav's decision
 # via the coordinating session): the dual advection of the preprint's
 # tab:tpf-curved, i.e. the ring-tensor paraboloid positioned by alpha (fitDof
 # none, fitAnchor volume, the volume anchor ccs), the Kromer-Bothe volume rule
@@ -13,9 +13,9 @@
 # exact interface cells and its late slope over the written times in
 # [0.25 T, T], the loop's L1(alphaf) and its late slope, the fixed E_shape,
 # L1(x), min alpha, the mass; Delta = s_Ec,D - s_Ec,X and s_Ec,D/s_Ec,X, next
-# to the plane rows (a), (b), (c) and plicRDF of REPORT-swept (2026-11-02/03).
+# to the plane rows (a), (b), (c) and plicRDF of REPORT-swept (2026-11-02).
 #
-# PRE-REGISTERED (2026-11-03, before the runs), per paraboloid row, with
+# PRE-REGISTERED (2026-11-02, before the runs), per paraboloid row, with
 # Delta(a) = 2.943e-2 / 2.169e-2 (N = 32 / 64; the exact-normal swept row):
 # K-0c (the build reproduces the preprint's dual advection): a copy of the
 #   preprint's sphereTranslation3D_hexParaboloid case N = 32, Co 0.2, rows
@@ -36,13 +36,23 @@
 # N = 128 is added only if one run takes under about 30 min with ranks; then
 #   the verdicts are also read at N = 128 and the orders over 32 / 64 / 128.
 #
-# Seen before writing this: every number of REPORT-swept up to 2026-11-03
+# Seen before writing this: every number of REPORT-swept up to 2026-11-02
 # (rows a, b, c, plicRDF on the lines; the re-scored preprint E_shape, among
 # them the paraboloid rows on the axis-aligned translation). Not seen: any
 # paraboloid run on the lines. This agent's expectation, stated separately:
 # not firm; the excess of the plane rows lives in alpha, and the paraboloid
 # moves alpha with its own surface flux, so it may shrink, but a ratio below
 # 1.5 is not expected for the ring mean.
+#
+# MEASURED (2026-11-02; studies 55868373-74, app 55868375, K-0c 55868371;
+# REPORT-swept "The shape error on the same state; the paraboloid loop on
+# oblique translation"): K-0c HELD (ring mean and ring quadric bit for bit,
+# exact normal within 4.7e-7). H-curved-free NOT HELD in any row;
+# H-curved-excess HELD in all three by the ratio (exact 3.42 / 6.23, ring
+# quadric 1.97 / 2.65, ring mean 58 / 278), while Delta is 0.048 / 0.011 and
+# 0.058 / 0.015 of Delta(a) for exact and ring quadric (1.06 / 1.00 for ring
+# mean). Orders of Ec at the end p_D / p_X: 2.91 / 3.04, 2.59 / 2.77,
+# 1.04 / 1.78. B-0: min alpha >= -6.1e-13, mass <= 4.8e-12 %. N = 128 not run.
 #
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagParab --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagParab run-studies.sbatch
 study_name: sphereRotation3D_hexFineLineDiagParab

@@ -1,4 +1,4 @@
-# The paraboloid loop on the x-line (2026-11-03): the x-line partner of
+# The paraboloid loop on the x-line (2026-11-02): the x-line partner of
 # sphereRotation3D_hexFineLineDiagParab (rows exact normal, ring quadric, ring
 # mean of the preprint's dual advection, Kromer-Bothe, prism flux), at the
 # settings of LineXW, fields every 0.0125 at 17 digits, N = 32 and 64.

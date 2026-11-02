@@ -1,4 +1,4 @@
-# Fair row (c) on the x-z diagonal (2026-11-03): the preprint's own
+# Fair row (c) on the x-z diagonal (2026-11-02): the preprint's own
 # plane-clipped loop, isoAdvector's plane flux with the DAVOF face update and
 # the ring normal (row davof-ringArea of the preprint's transport study
 # sphereTranslation3D_hex; its flux and clipping tokens at the study defaults:

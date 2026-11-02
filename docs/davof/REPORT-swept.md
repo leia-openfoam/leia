@@ -1086,11 +1086,11 @@ interface cells (416 / 1762 cells). Late slope: over the 28 written times in
 [0.25 T, T] (writes every 0.0125).
 
 Note on Eshape: volumeFractionError builds its alpha_exact with cutCellIso
-(the cut by the isosurface of the vertex values; corrected 2026-11-03, this
+(the cut by the isosurface of the vertex values; corrected 2026-11-02, this
 note first said cutCellImpFunc, which is only a commented-out line there), not
 the exactSphere state. The app's sum |alpha - alpha_exact| V is 0.09 to 0.88
 of Eshape over the run (0 at t = 0), so Eshape carries a construction floor
-that dilutes ratios between the lines. Fixed on 2026-11-03 (next section). The
+that dilutes ratios between the lines. Fixed on 2026-11-02 (next section). The
 Eshape column of the table below is the former one.
 
 | run | N | loop L1 end | loop late slope (per step / written) | static L1 end | static late slope | floor (alpha_exact) L1 end / slope | Ec end | Ec late slope | Eshape end | L1(x) end |
@@ -1155,7 +1155,7 @@ Surprising:
 Not examined: the mechanism in alpha. One candidate is the volume flux of the
 oblique swept volumes.
 
-## The shape error fixed, the preprint re-scored, the fair rows (2026-11-03)
+## The shape error fixed, the preprint re-scored, the fair rows (2026-11-02)
 
 Tomislav's decision via the coordinating session: fix the shape-error
 measure, re-score the preprint's shape errors, and test the oblique excess on
@@ -1359,3 +1359,145 @@ Surprising:
   preprint was the construction floor of the reference.
 - With the fixed measure, the paraboloid rows' shape error at N = 128 is 14
   (ring) to 1030 (exact normal) times below plicRDF's, at orders 2.3 to 4.05.
+  That comparison uses plicRDF from another initial state; the same-state
+  ratios are in the next section.
+
+## The shape error on the same state; the paraboloid loop on oblique translation (2026-11-02)
+
+Tomislav's decision via the coordinating session. The dates of the previous
+section's headers were corrected from 2026-11-03 to 2026-11-02; the commit
+messages of fork 1f3f238 and leia 16f59466 / 2a865522 / dd575392 keep the
+wrong date.
+
+Commits:
+- leia 1a3335d7: configs and predictions, committed before the runs.
+- This section, the MEASURED paragraph and the date corrections.
+
+Jobs:
+- 55868371: K-0c.
+- 55868372: the re-score of the timing study.
+- 55868373-74: the two paraboloid line studies (6 cases each).
+- 55868375: the app over them.
+
+CSVs: $W/same_state_eshape.csv and $W/oblique_rows.csv, with $W =
+/work/scratch/tm83tomy/davof/agents/swept.
+
+### The shape error on the same state
+
+The preprint's cost paragraph points to plicRDF on the exact initial state of
+the dual advection: sphereTranslation3D_hexParaboloidTiming, rows plicRDF and
+ring mean.
+- What it holds: N = 32 / 64 / 128 at Co 0.2 only, three repetitions each.
+  The repetitions agree to every digit.
+- Its end fields were re-scored with the fixed measure; nothing was re-run.
+- E(t = 0) is 0.
+- Its ring-mean row reproduces the table study's E_shape and L1(x) to every
+  digit.
+- Co 0.1 and 0.5 do not exist for plicRDF on this state.
+
+Same state, Co 0.2, end of the run. Ratios are row / plicRDF.
+
+| row | N | E_shape | ratio | L1(n) | ratio | L1(x) | ratio |
+|---|---|---|---|---|---|---|---|
+| plicRDF + isoAdvector | 32 | 3.231e-4 | 1 | 3.852e-2 | 1 | 1.385e-3 | 1 |
+| paraboloid, exact normal | 32 | 6.540e-6 | 0.0202 | 1.926e-4 | 0.0050 | 4.081e-4 | 0.295 |
+| paraboloid, ring quadric | 32 | 1.324e-5 | 0.0410 | 1.338e-3 | 0.0347 | 4.100e-4 | 0.296 |
+| paraboloid, ring mean | 32 | 7.053e-5 | 0.218 | 3.273e-2 | 0.850 | 5.178e-4 | 0.374 |
+| plicRDF + isoAdvector | 64 | 8.109e-5 | 1 | 1.938e-2 | 1 | 3.411e-4 | 1 |
+| paraboloid, exact normal | 64 | 3.649e-7 | 0.0045 | 2.840e-5 | 0.0015 | 9.586e-5 | 0.281 |
+| paraboloid, ring quadric | 64 | 9.896e-7 | 0.0122 | 3.613e-4 | 0.0186 | 9.606e-5 | 0.282 |
+| paraboloid, ring mean | 64 | 9.638e-6 | 0.119 | 1.760e-2 | 0.908 | 1.169e-4 | 0.343 |
+| plicRDF + isoAdvector | 128 | 2.157e-5 | 1 | 9.125e-3 | 1 | 9.069e-5 | 1 |
+| paraboloid, exact normal | 128 | 2.397e-8 | 0.00111 | 1.120e-5 | 0.00123 | 2.574e-5 | 0.284 |
+| paraboloid, ring quadric | 128 | 1.473e-7 | 0.00683 | 1.632e-4 | 0.0179 | 2.572e-5 | 0.284 |
+| paraboloid, ring mean | 128 | 1.751e-6 | 0.0812 | 8.191e-3 | 0.898 | 2.851e-5 | 0.314 |
+
+Orders over N = 32, 64, 128 (E_shape / L1(n) / L1(x)):
+- plicRDF: 1.95 / 1.04 / 1.97.
+- Paraboloid, exact normal: 4.05 / 2.05 / 1.99.
+- Paraboloid, ring quadric: 3.25 / 1.52 / 2.00.
+- Paraboloid, ring mean: 2.67 / 1.00 / 2.09.
+
+plicRDF on the exact state against plicRDF on the plane-loop study's
+quadraticFaces state, N = 128, Co 0.2:
+- E_shape 2.157e-5 against 2.478e-5.
+- L1(n) 9.125e-3 against 9.20e-3 (the preprint's number).
+- L1(x) 9.069e-5 against 1.04e-4.
+
+### The paraboloid loop on oblique translation
+
+The preprint's dual advection (rows exact normal, ring quadric, ring mean;
+Kromer-Bothe, prism flux) at the LineDiagW / LineXW settings.
+
+K-0c HELD. Copies of the preprint's N = 32, Co 0.2 cases, re-run with fork
+1f3f238, end at the original values:
+- Ring mean and ring quadric: bit for bit in areaFractionError and
+  reconstructionError.
+- Exact normal: within 4.7e-7 relative.
+
+B-0, all 12 runs:
+- Completed, min alpha >= -6.1e-13, excess <= 2.7e-13.
+- Mass deviation <= 4.8e-12 %.
+- No fit fallback, no anchor failure.
+- CPU about 45 s (N = 32) and 465 to 485 s (N = 64) per run, serial.
+
+N = 128 was not run. Serial it would take about 2 h per case. With ranks,
+the 36 written 4.2-million-cell states would have to be reconstructed for
+the serial app.
+
+| row | N | line | loop L1 end | loop late slope | Ec end | Ec late slope | E_shape end | L1(x) end |
+|---|---|---|---|---|---|---|---|---|
+| paraboloid, exact normal | 32 | diag | 8.362e-4 | 1.280e-3 | 1.115e-3 | 1.997e-3 | 1.428e-5 | 4.087e-4 |
+| | 32 | x | 5.768e-4 | 3.824e-4 | 5.464e-4 | 5.835e-4 | 7.275e-6 | 4.025e-4 |
+| | 64 | diag | 1.218e-4 | 1.912e-4 | 1.487e-4 | 2.940e-4 | 1.009e-6 | 9.592e-5 |
+| | 64 | x | 7.138e-5 | 2.691e-5 | 6.640e-5 | 4.717e-5 | 4.427e-7 | 1.006e-4 |
+| paraboloid, ring quadric | 32 | diag | 1.264e-3 | 2.397e-3 | 1.734e-3 | 3.491e-3 | 2.214e-5 | 4.151e-4 |
+| | 32 | x | 9.128e-4 | 1.247e-3 | 1.058e-3 | 1.774e-3 | 1.408e-5 | 4.069e-4 |
+| | 64 | diag | 2.316e-4 | 3.659e-4 | 2.883e-4 | 5.268e-4 | 1.951e-6 | 9.619e-5 |
+| | 64 | x | 1.415e-4 | 1.195e-4 | 1.552e-4 | 1.991e-4 | 1.033e-6 | 1.008e-4 |
+| paraboloid, ring mean | 32 | diag | 1.594e-2 | 2.259e-2 | 2.265e-2 | 3.168e-2 | 2.878e-4 | 1.058e-3 |
+| | 32 | x | 5.838e-3 | 4.210e-4 | 5.001e-3 | 5.423e-4 | 6.658e-5 | 5.389e-4 |
+| | 64 | diag | 8.528e-3 | 1.562e-2 | 1.103e-2 | 2.176e-2 | 7.454e-5 | 2.867e-4 |
+| | 64 | x | 1.929e-3 | -3.714e-5 | 1.457e-3 | 7.813e-5 | 9.699e-6 | 1.200e-4 |
+
+The excess, next to the plane rows of the previous section. Delta = s_Ec,D -
+s_Ec,X, the same N; "share" is Delta / Delta(a); p_D / p_X is the order
+log2(Ec(32)/Ec(64)) of Ec at the end on each line.
+
+| row | Delta N 32 / 64 | share | s_Ec,D/s_Ec,X | p_D / p_X |
+|---|---|---|---|---|
+| (a) plane, exact normal, swept | 2.943e-2 / 2.169e-2 | 1 / 1 | 3.30 / 5.71 | 0.84 / 0.94 |
+| plicRDF | 3.891e-2 / 2.589e-2 | 1.32 / 1.19 | 1.85 / 2.17 | 0.90 / 0.97 |
+| (b) plane, ring, swept | 4.985e-2 / 3.256e-2 | 1.69 / 1.50 | 2.38 / 2.69 | 0.95 / 0.91 |
+| (c) plane, ring, plane-clipped | 5.345e-2 / 3.431e-2 | 1.82 / 1.58 | 2.48 / 2.79 | 0.95 / 0.91 |
+| paraboloid, exact normal | 1.414e-3 / 2.468e-4 | 0.048 / 0.011 | 3.42 / 6.23 | 2.91 / 3.04 |
+| paraboloid, ring quadric | 1.717e-3 / 3.277e-4 | 0.058 / 0.015 | 1.97 / 2.65 | 2.59 / 2.77 |
+| paraboloid, ring mean | 3.114e-2 / 2.168e-2 | 1.06 / 1.00 | 58 / 278 | 1.04 / 1.78 |
+
+Verdicts:
+- H-curved-free NOT HELD for any row: it needs both Delta < 0.2 Delta(a)
+  and ratio < 1.5.
+- H-curved-excess HELD for all three rows by the registered measure (ratio
+  >= 1.5 at both N). The ratio measure and the absolute excess disagree for
+  the exact normal and the ring quadric:
+  - Their Delta is 0.011 to 0.058 of the plane row's.
+  - Their Delta falls 5.7 / 5.2 times from N = 32 to 64.
+  - Their Ec converges at third order on both lines (2.6 to 3.0).
+  - So the diagonal keeps a relative excess at a much smaller error level.
+- The ring mean keeps the full absolute excess (Delta 1.06 / 1.00 of the
+  plane row's). Its x-line levels off (Ec late slope 5.4e-4 / 7.8e-5) while
+  its diagonal grows at 3.2e-2 / 2.2e-2. Its Ec order is 1.04 on the
+  diagonal against 1.78 on the x-line.
+- O-N: not applicable, since H-curved-free did not hold. The orders are
+  reported above.
+- phi is not meaningful for these rows: the static construction is plane
+  based, the paraboloid loop is not.
+
+What the runs show:
+- With the exact normal or the ring quadric, the paraboloid loop reduces the
+  oblique excess of Ec 17 to 88 times in absolute terms against the plane
+  rows. Ec, E_shape and L1(alphaf) on the diagonal stay 2 to 3 times the
+  x-line's, at third order in N on both lines.
+- With the ring mean, the excess is as large as the plane rows'.
+- L1(x) shows no oblique excess for the exact normal and the ring quadric
+  (diagonal 4.09e-4 / 9.59e-5 against x-line 4.03e-4 / 1.01e-4).

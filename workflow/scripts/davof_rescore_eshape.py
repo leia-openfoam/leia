@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The re-scoring of the preprint's shape errors (2026-11-03; arXiv v1, tag
+"""The re-scoring of the preprint's shape errors (2026-11-02; arXiv v1, tag
 davof-v1.0). The old E_shape is the volumeFractionError of the runs, whose
 alpha_exact was the cutCellIso cut of the implicit function's vertex values;
 the new one is sum |alpha - alpha_exact| V against the exact sphere

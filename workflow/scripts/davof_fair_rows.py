@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The fair rows of the oblique comparison (2026-11-03; predictions O-b, O-c,
+"""The fair rows of the oblique comparison (2026-11-02; predictions O-b, O-c,
 A-b, A-c, V-1 in the header of config/davof/sphereRotation3D_hexFineLineDiag
 RingSwept.yaml): per row a diagonal and an x-line study, both N, read as
 davof_static_faces.measure() reads them (the app staticFaceFractions over the
@@ -72,7 +72,7 @@ def main():
     out, delta = [], {}
     for label, sd, sx in a.row:
         # LABEL=TPF_ROW selects that row's cases of a study holding several
-        # rows (2026-11-03, the paraboloid studies)
+        # rows (2026-11-02, the paraboloid studies)
         rowtok = label.split("=", 1)[1] if "=" in label else None
         label = label.split("=", 1)[0]
         D = {N: dsf.measure(c, tok) for N, (c, tok) in cases(sd, rowtok).items()}
