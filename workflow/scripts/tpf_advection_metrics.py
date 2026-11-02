@@ -34,9 +34,28 @@ Sources, all optional (a missing one leaves its columns blank):
 
 The latest time directory under each postProcessing/<fo>/ is read (a restart
 writes a new one); rows are de-duplicated on the rounded Time, the last one
-kept. The join is an OUTER join on TIME (9 significant digits): a row of any
-source makes a row of the CSV, blank where a source has no row; `step` is the
-rank of the time in the union.
+kept. The join is an OUTER join on the time: a row of any source makes a row
+of the CSV, blank where a source has no row; `step` is the rank of the time
+in the union.
+
+The join on the time (2026-11-02). The sources print the same step's time
+with different precisions (the .dat files with the function objects' write
+precision, e.g. 0.03181980515; the log's `t = ` line with 12 digits,
+0.031819805154), so a string key rounded to 9 significant digits splits a
+step whose time lies near a rounding boundary into two rows, each with the
+other's columns blank (an irrational fixed dt: up to 24 of 509 steps). The
+times are therefore matched numerically: two times belong to one step when
+they differ by at most tol = 1e-3 dt_min, dt_min the smallest gap between
+consecutive times WITHIN one source (the step; the gaps between sources are
+round-off). The printed times of one step differ by at most about 5e-10 |t|
+(10 or more significant digits), consecutive steps by dt, so tol separates
+the two by three orders of magnitude on either side for |t| < 1e6 dt. The
+step index is not used as the key: the sources do not share a row set
+(reconstructionError at the end only unless every step, a t = 0 row in some
+.dat files, a restart's new time directory). TIME is written as the 9-digit
+key of the log's time where the log has the step, else of the first source
+that has it (areaFractionError, reconstructionError, volumeFractionError);
+for a step that no rounding split, this is the string written before.
 
 Columns, in this order:
 
@@ -204,9 +223,11 @@ def read_dat(fo_dir, name):
                 continue
             try:
                 k = tkey(parts[0])
+                tf = float(parts[0])
             except ValueError:
                 continue
             out[k] = dict(zip(names, parts))
+            out[k]["_tf"] = tf
     return out, True
 
 
@@ -350,6 +371,32 @@ def read_log(path):
     return steps, abort, ended, True
 
 
+def join_times(sources):
+    """The steps of the union of the sources' times: a list of {source: key},
+    in time order, the times of one group within tol = 1e-3 dt_min of the
+    group's first time (module docstring); and tol."""
+    def tval(name, k, r):
+        if name == "log":
+            return float(r.get("_t", k))
+        return float(r.get("_tf", k))
+    entries = []
+    gaps = []
+    for name, d in sources:
+        ts = sorted(tval(name, k, r) for k, r in d.items())
+        gaps += [b - a for a, b in zip(ts, ts[1:]) if b > a]
+        entries += [(tval(name, k, r), name, k) for k, r in d.items()]
+    entries.sort(key=lambda e: e[0])
+    tol = 1e-3 * min(gaps) if gaps else 0.0
+    groups = []
+    t0 = None
+    for tf, name, k in entries:
+        if t0 is None or tf - t0 > tol:
+            groups.append({})
+            t0 = tf
+        groups[-1][name] = k     # a source twice in one group: the later time
+    return groups, tol
+
+
 def tpf_provenance():
     """(short git commit of the TwoPhaseFlow fork, its platforms version stamp), from
     LEIA_TPF_DIR (exported by etc/leia-env.sh); "unknown" where not available. The solver
@@ -401,21 +448,20 @@ def main(argv):
     abort_step = abort[0] if abort else ""
     abort_reason = abort[2] if abort else ""
 
-    keys = set(af) | set(rec) | set(vol) | set(log)
-    keys = sorted(keys, key=float)
+    groups, tol = join_times((("log", log), ("af", af), ("rec", rec), ("vol", vol)))
     tpf_commit, tpf_version = tpf_provenance()
     rows = []
-    for step, k in enumerate(keys, start=1):
+    for step, g in enumerate(groups, start=1):
         row = {c: "" for c in COLUMNS}
-        row["TIME"] = k
+        row["TIME"] = next(g[s] for s in ("log", "af", "rec", "vol") if s in g)
         row["step"] = step
-        for src, cols in ((af, AF_COLS), (rec, REC_COLS), (vol, VOL_COLS)):
-            r = src.get(k)
-            if r:
+        for name, src, cols in (("af", af, AF_COLS), ("rec", rec, REC_COLS), ("vol", vol, VOL_COLS)):
+            if name in g:
+                r = src[g[name]]
                 for src_col, out_col in cols.items():
                     row[out_col] = r.get(src_col, "")
-        r = log.get(k)
-        if r:
+        if "log" in g:
+            r = log[g["log"]]
             for c in LOG_COLS:
                 row[c] = r.get(c, "")
         row["status"] = status
