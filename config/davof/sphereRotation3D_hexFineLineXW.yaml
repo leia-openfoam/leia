@@ -1,0 +1,56 @@
+# sphereRotation3D_hexFineLineX (the x-line, default swept flux, anchored
+# exact-normal planes, N = 32 and 64) re-run with the fields written every
+# 0.0125 instead of every 0.15; nothing else changes (2026-11-02). The x-line
+# partner of sphereRotation3D_hexFineLineDiagW, whose header holds the
+# measures (the static face fractions of alpha, app staticFaceFractions) and
+# the pre-registered predictions K-0, H-alpha, H-face, K-1, E-1, R-1. K-0 here:
+# the .dat files byte-identical to sphereRotation3D_hexFineLineX's.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineXW --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineXW run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineXW
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineX]
+  TPF_SPHERE_CX: [0.25]
+  TPF_AXIS_X: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.0125]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

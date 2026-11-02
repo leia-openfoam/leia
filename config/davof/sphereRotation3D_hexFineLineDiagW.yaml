@@ -1,0 +1,109 @@
+# Is the oblique build-up of L1(alphaf) a property of the transported volume
+# fractions (any plane-based geometric transport) or of the DAVOF face update?
+# (2026-11-02, Tomislav's approval via the coordinating session.) This study:
+# sphereRotation3D_hexFineLineDiag (the x-z diagonal, default swept flux,
+# anchored exact-normal planes, N = 32 and 64) re-run with the fields written
+# every 0.0125 (36 writes, 28 in the late window [0.25 T, T]) instead of every
+# 0.15; nothing else changes. Its partners: sphereRotation3D_hexFineLineXW
+# (the x-line), sphereRotation3D_hexFineLine{Diag,X}RDF (plicRDF + isoAdvector).
+#
+# THE MEASURES. At every written time the fork's post-processing app
+# staticFaceFractions (davof-swept, apps/benchmark/staticFaceFractions)
+# reconstructs face fractions from alpha ALONE: every cell with 1e-8 < alpha <
+# 1 - 1e-8 gets the plane of the exact normal (towards the exact sphere's centre
+# at t, taken at the centroid of the plane positioned along the normal at the
+# cell centre, then repositioned) positioned by alpha to 1e-11
+# (surfaceIteratorPLIC::vofCutCell, the volume of the loop's anchor); a face
+# takes its donor cell's clip (owner for phi_f >= 0), the dt -> 0 limit of the
+# loop's face update (sweptFaceCells pieces, donorSide); a cell without a plane
+# gives 0 or 1. These STATIC fractions are scored with areaFractionError's
+# L1(alphaf) against the exact sphere, next to the loop's own alphaf (LOOP)
+# read from the same time directory; the same construction from alpha_exact
+# (the reconstruction FLOOR); the mean of the two cells' clips (MEAN rule,
+# sensitivity only); the cell-level error Ec = mean |alpha - alpha_exact| over
+# the exact state's interface cells (1e-8 < alpha_exact < 1 - 1e-8; not
+# diluted by the sphere volume) and Eout = the rest of sum |alpha -
+# alpha_exact| per exact interface cell. Late slope s: the least-squares slope
+# over the written times in [0.25 T, T]. Analysis: workflow/scripts/
+# davof_static_faces.py.
+#
+# PRE-REGISTERED (2026-11-02, before the runs; the three partner configs
+# point here). s_L the loop's, s_S the static, s_0 the floor's late slope
+# of L1(alphaf), D the diagonal, X the x-line, the same N; the share of the
+# loop's oblique excess that the static fractions reproduce
+#     phi = (s_S,D - s_S,X) / (s_L,D - s_L,X).
+# K-0 (validity): the .dat files of this re-run byte-identical to
+#   sphereRotation3D_hexFineLineDiag's (fields written more often change
+#   nothing); the app's L1 of the loop's alphaf equals areaFractionError.dat at
+#   every written time to 1e-6 relative; no failed plane positioning. FAILED:
+#   nothing below counts.
+# H-alpha (the build-up lives in alpha): phi >= 0.5 at N = 32 AND 64.
+# H-face (it lives in the face update): phi <= 0.25 at N = 32 AND 64.
+#   Otherwise PARTIAL, with phi reported.
+# K-1 (the floor has no trend): |s_0| <= 0.1 s_L,X on both lines and both N;
+#   if not, phi is also formed from s_S - s_0 and THAT decides the verdict.
+# E-1 (the cell level agrees): with H-alpha, s_Ec,D >= 1.5 s_Ec,X at both N;
+#   with H-face, s_Ec,D <= 1.25 s_Ec,X at both N (if s_Ec,X <= 0: decided by
+#   the sign of s_Ec,D). A contradiction is reported, not overruled.
+# R-1 (any plane-based transport): phi_R = (s_R,D - s_R,X)/(s_L,D - s_L,X)
+#   with s_R the static slopes of the plicRDF runs: phi_R >= 0.5 at both N
+#   says plicRDF's alpha carries the build-up too, phi_R <= 0.25 says not.
+#
+# Seen before writing this: the loop's per-step late slopes (s_L,D 2.773e-2 /
+# 1.804e-2, s_L,X 8.059e-3 / 2.988e-3 at N = 32 / 64), Eshape at the end
+# (diagonal 4.13e-4 / 1.14e-4, x-line 3.83e-4 / 9.99e-5), the film counts, and
+# plicRDF on the ROTATION (sphereRotation3D_hexComparators). Not seen: any
+# static face fraction, Ec, or plicRDF on the lines. This agent's own
+# expectation, stated separately: the Eshape ratios diagonal / x-line of 1.08 /
+# 1.14 suggest H-face.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagW --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagW run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineDiagW
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineDiagXZ]
+  TPF_SPHERE_CX: [0.25]
+  TPF_SPHERE_CZ: [0.25]
+  TPF_AXIS_X: [0.25]
+  TPF_AXIS_Z: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.0125]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
