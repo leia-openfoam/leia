@@ -145,6 +145,12 @@ solvers
         // 2026-11-02, the default) | crossing (the earlier order-dependent
         // rule, for the comparison); builds before it ignore the key
         sweptCapSet     @!TPF_SWEPT_CAP_SET!@;
+        // the consistency under oblique travel (fork davof-swept c635611,
+        // 2026-11-02; builds before it ignore the keys): the serial
+        // diagnostic (postProcessing/sweptConsistency, field sweptResidue)
+        // and the consistent variant of sweptFaceCells
+        sweptConsistencyLog @!TPF_SWEPT_CONSISTENCY_LOG!@;
+        sweptConsistent @!TPF_SWEPT_CONSISTENT!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;

@@ -89,6 +89,14 @@ values
     // the cap set of a piece of sweptFaceCells (fork davof-swept 2026-11-02):
     // final (order-independent, the default) | crossing (the earlier rule)
     TPF_SWEPT_CAP_SET ( final );
+    // the consistency of sweptFaceCells under oblique travel (fork
+    // davof-swept c635611, 2026-11-02; builds before it ignore the keys):
+    // the serial diagnostic of the algebraic faces, the wisp pieces and the
+    // per-cell residue (postProcessing/sweptConsistency), and the consistent
+    // variant (the candidates extended to the vertex ring of the active
+    // cells, a piece without a surface alpha_c V_piece); false: inert
+    TPF_SWEPT_CONSISTENCY_LOG ( false );
+    TPF_SWEPT_CONSISTENT ( false );
     TPF_FACE_STATE ( scalar );
     TPF_TENSOR_CENTROID ( cut );
     TPF_KB_PRISM_APEX ( vertexMean );

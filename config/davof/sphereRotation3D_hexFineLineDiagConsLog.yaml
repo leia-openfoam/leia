@@ -1,0 +1,120 @@
+# The consistency of the swept flux under oblique travel, A: the diagnostic
+# (2026-11-02, Tomislav's approval via the coordinating session).
+# sphereRotation3D_hexFineLineDiag (the x-z diagonal, anchored plane, Co 0.2,
+# N = 32, 64; default flux) rerun on fork davof-swept c635611 with the opt-in
+# key sweptConsistencyLog true (TPF_SWEPT_CONSISTENCY_LOG). Partner:
+# sphereRotation3D_hexFineLineXConsLog (the x-line). The variant B and the
+# runs C: sphereRotation3D_hexFineLine{Diag,X}Cons.
+#
+# THE SUSPECTED MECHANISM (from reading isoAdvectionCurved.C curvedFlux and
+# isoAdvectionSwept.C sweptFaceCellsFlux at de7aea9 / f974845): a corner
+# region of a cell C lies in the swept volumes of two faces (C|N and N|NE
+# under north-east travel); the receiving cell balances only if both faces
+# give that region the same liquid. (1) Mixed faces: the swept flux is
+# computed only on the faces of candidate cells (the interface cells and
+# their face neighbours); every other face keeps the algebraic upwind flux
+# alpha_donor phi_f dt. (2) Wisps: a cell with 1e-8 < alpha < 1 - 1e-8 and
+# no surface (|m_c| <= wispTol V^(2/3)) makes no candidates, and its pieces
+# are wet if alpha >= 1/2 else dry, while the algebraic faces release alpha
+# phi_f dt. Hypothesis: on oblique travel these leave residues in the cells
+# beside the body (the low-alpha film) and drive the front/rear build-up;
+# axis-aligned travel cannot trigger (1), a face's swept volume staying in
+# its donor.
+#
+# THE DIAGNOSTIC (fork isoAdvectionSwept.C sweptConsistencyProbe, serial),
+# per step: (i) the algebraic faces (internal faces whose flux curvedFlux did
+# not set) with a cell of another alpha or with a surface among the cells
+# sharing a vertex of the face: their swept volume (the prism f - d) cut into
+# the pieces of the donor's vertex ring; the consistent rule's liquid (a
+# cell with a surface clipped by its plane, every other cell alpha_c
+# V_piece; scaled by |phi_f| dt / V_swept) minus the algebraic flux; the
+# faces whose swept volume reaches (piece volume > 1e-9 V_swept) a cell in
+# another state than the donor: a surface, a wisp, a pure cell of the other
+# state; (ii) the wisp pieces of the computed faces and the mismatch of the
+# 0/1 rule against alpha_c V_piece; (iii) per cell the residue R_c = the
+# used change of the cell's liquid minus the consistent rule's (residue_<step>.csv,
+# the cumulative field sweptResidue). MEASURE: workflow/scripts/davof_consistency.py
+# (sums over the run in cell volumes h^3; the film = the cells with alpha in
+# [1e-12, 1e-3) at the end; the side of a residue cell by the angle of
+# x_c - c(t^n) to the travel: front [0, 60), tangent [60, 120), rear
+# [120, 180] degrees; the late window t^n in [0.25 T, T], T = 0.45).
+#
+# Seen before writing the predictions: the 20-step verification of the
+# binary (job 55858737, this case at N = 32): with the log on, 0 to 18
+# algebraic faces per step reach another state, their summed |mismatch|
+# at most 2e-12 m^3 per step (6e-8 h^3); 8 to 178 wisp pieces per step with
+# summed |mismatch| at most 3.1e-10 m^3 (1e-5 h^3); the largest per-step
+# residue |R|/V 8.1e-7. The keys off reproduce f974845 byte for byte (the
+# diagonal, the x-line, the rotation base, 20 steps; fields, .dat, log), and
+# the log on leaves the flux, the fields and the .dat files unchanged.
+#
+# PRE-REGISTERED (2026-11-02, before the runs; the hypothesis' predictions):
+# A-0 (checks): areaFractionError.dat and volumeFractionError.dat of both
+#   ConsLog studies byte-identical to the original runs
+#   (sphereRotation3D_hexFineLineDiag / _hexFineLineX, fork de7aea9) at both
+#   N; no probe fallbacks in more than 1 % of the probed faces.
+# A-1 (axis-aligned travel does not trigger (1)): at BOTH N the x-line's
+#   faces reaching another state, summed over the run, and its summed
+#   |mismatch| of the algebraic faces are each at most 1 % of the diagonal's.
+#   FALSIFIED above 10 %.
+# A-2 (the residue is the film): in the diagonal at BOTH N at least 50 % of
+#   the film cells at the end received a residue (|R| > 1e-15 V) in some
+#   step. FALSIFIED below 20 %.
+# A-3 (the residue sits on the front and rear sides): in the diagonal at
+#   BOTH N the front and rear bins carry at least 75 % of the summed |R| over
+#   the late window (the face error's excess over the x-line lies 97 % / 84 %
+#   there). FALSIFIED below 50 % (the tangent band's share of the faces).
+# Reported without a prediction: the wisp mismatch against the algebraic
+# one, the residue by distance from the exact sphere, the cumulative
+# residue in the film cells against the film's liquid, both lines.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagConsLog --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagConsLog run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineDiagConsLog
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineDiagXZ]
+  TPF_SPHERE_CX: [0.25]
+  TPF_SPHERE_CZ: [0.25]
+  TPF_AXIS_X: [0.25]
+  TPF_AXIS_Z: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.15]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_SWEPT_CONSISTENCY_LOG: ["true"]
+  TPF_SWEPT_CONSISTENT: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 120
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

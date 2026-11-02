@@ -1,0 +1,127 @@
+# The consistency of the swept flux under oblique travel, C: the consistent
+# variant on the x-z diagonal (2026-11-02, Tomislav's approval via the
+# coordinating session). sphereRotation3D_hexFineLineDiag (anchored plane,
+# Co 0.2, N = 32, 64) on fork davof-swept c635611 with sweptConsistent true
+# (TPF_SWEPT_CONSISTENT): the candidates extended to the vertex ring of every
+# active cell (a cell with a surface, an interface cell, a cell with
+# 1e-8 < alpha^n < 1 - 1e-8), every face of a candidate computed by the
+# swept flux with or without a surface, and a piece in a cell without a
+# surface carrying alpha_c V_piece (alpha_c times its pre-image area in the
+# face update). Also sweptConsistencyLog true (what inconsistency is left)
+# and faceErrorCsv true (the per-face bins of davof_face_bins.py). Partner:
+# sphereRotation3D_hexFineLineXCons. The mechanism and the diagnostic:
+# sphereRotation3D_hexFineLineDiagConsLog.
+#
+# The stencil: the swept volume of a face f reaches only cells sharing a
+# vertex of f while the displacement per step stays below h along each mesh
+# axis (0.0889 h on this diagonal, 0.1257 h on the x-line); every such cell
+# shares that vertex with the donor, so a face whose swept volume touches an
+# active cell has its donor among the candidates. In parallel the vertices of
+# the active cells are marked and synchronised over the processor patches
+# (syncTools); the remote cells of the donor's ring already carry alpha^n
+# and the surface (sweptExchange). Parallel check:
+# sphereRotation3D_hexSweptConsParN32np{1,2,4,8,16}.
+#
+# Seen before writing the predictions (the 20-step verification, job
+# 55858737, this case at N = 32 with sweptConsistent and the log on): no
+# algebraic face reaches another state, the wisp mismatch is 0, the summed
+# |mismatch| left 4e-14 to 5e-14 m^3 per step (cells below 1e-8 next to
+# other values), 820 to 831 candidates added and about 2600 faces without a
+# surface per step, no fallback, alpha within [-3e-15, 1 + 9e-14];
+# L1(alphaf) at step 20 6.344973e-3 against 6.344976e-3 of the default.
+#
+# MEASURES (as in sphereRotation3D_hexFineLineDiagM and _hexFineLineDiagFaces):
+# the late slope s of L1(alphaf) over [0.25 T, T], T = 0.45, and its
+# log-position x = ln(s / s_X) / ln(s_D / s_X) between the DEFAULT x-line
+# (s_X = 8.059e-3 / 2.988e-3) and diagonal (s_D = 2.773e-2 / 1.804e-2) at
+# N = 32 / 64 (davof_line_confound.py); the late slope of the front + rear
+# contribution C_front + C_rear of davof_face_bins.py (default diagonal
+# 2.136e-2 / 1.267e-2, default x-line 2.27e-3 / -1.7e-5; the excess over the
+# x-line 1.909e-2 / 1.269e-2); the film = the cells with alpha in
+# [1e-12, 1e-3) at the end (davof_consistency.py; default diagonal 5109 /
+# 30711, default x-line 317 / 4182).
+#
+# PRE-REGISTERED (2026-11-02, before the runs; the hypothesis' predictions
+# as stated by the coordinating session, thresholds by this agent):
+# C-0 (the variant does what it claims; else the test is INCONCLUSIVE): in
+#   both Cons studies at both N the algebraic faces reaching another state,
+#   summed over the run, are at most 1 % of the default's (ConsLog studies),
+#   the wisp mismatch is 0, the no-surface fallbacks at most 1e-3 of the
+#   faces without a surface; min(alpha) >= -1e-10, excess <= 1e-10, |mass
+#   deviation| <= 1e-9 %.
+# C-1 (the build-up): the consistent diagonal is X-like at BOTH N, x <= 0.25
+#   (s <= 1.098e-2 at N = 32, <= 4.684e-3 at N = 64). HELD then.
+# C-2 (the film): the consistent diagonal's film count is at most 0.1 times
+#   the default diagonal's at BOTH N (<= 511 / <= 3071). Note: 3071 lies below
+#   the default x-line's own 4182 at N = 64. HELD then.
+# C-3 (the front/rear excess): the consistent diagonal's front + rear late
+#   slope exceeds the default x-line's by at most 0.25 of the default excess
+#   at BOTH N (front + rear slope <= 7.04e-3 / 3.16e-3). HELD then.
+# C-4 (control): the consistent x-line's late slope within 0.85 to 1.15 times
+#   the default x-line's at both N (axis-aligned travel has no mixed-face
+#   residue; the wisp rule may move it a little).
+# VERDICT on the hypothesis (given C-0): SUPPORTED if C-1, C-2 and C-3 hold;
+#   FALSIFIED if the consistent diagonal is D-like at BOTH N (x >= 0.75, s >=
+#   2.036e-2 / 1.151e-2), i.e. removing the inconsistency leaves the build-up;
+#   otherwise PARTIAL (which of C-1..C-3 hold, per N). C-2 alone holding with
+#   C-1 falsified would tie the film, not the build-up, to the inconsistency.
+# R-1 (only if C-1 holds: the rotation base, sphereRotation3D_hexHistCons):
+#   the consistent rotation's slope of L1(alphaf) over the last three
+#   quarters of the turn at most 0.6 times the default's (1.65e-2 / 1.20e-2
+#   at N = 32 / 64), at both N.
+#
+# This agent's expectation, stated separately: the 20-step numbers above
+# (mismatches of 1e-8 h^3 per step against an L1 growth of about 7e-5 per
+# step) make C-1 unlikely to hold; C-2 may hold.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagCons --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagCons run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineDiagCons
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineDiagXZ]
+  TPF_SPHERE_CX: [0.25]
+  TPF_SPHERE_CZ: [0.25]
+  TPF_AXIS_X: [0.25]
+  TPF_AXIS_Z: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.15]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_AFE_FACE_CSV: ["true"]
+  TPF_SWEPT_CONSISTENCY_LOG: ["true"]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 180
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
