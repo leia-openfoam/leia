@@ -51,8 +51,15 @@ def cases(study):
 def measure(case):
     tok = json.load(open(os.path.join(case, "case_params.json")))["tokens"]
     rows = list(csv.DictReader(open(os.path.join(case, "advectorVoF.csv"))))
-    t = np.array([f(r["TIME"]) for r in rows])
-    L = np.array([f(r["L1_alphaf"]) for r in rows])
+    # a step whose time prints differently in two postProcessing files (an
+    # irrational fixed dt) is split by the converter into two rows, each
+    # with the other's columns empty: every column is read from its
+    # non-empty entries
+    col = lambda k: [f(r.get(k)) for r in rows if f(r.get(k)) is not None]
+    lastOf = lambda k: (col(k) or [None])[-1]
+    tl = [(f(r["TIME"]), f(r["L1_alphaf"])) for r in rows if f(r.get("L1_alphaf")) is not None]
+    t = np.array([a for a, _ in tl])
+    L = np.array([b for _, b in tl])
     T = f(tok["END_TIME"])
     N = int(float(tok["N_CELLS"]))
     dt = f(tok["MAX_DELTA_T"])
@@ -60,18 +67,17 @@ def measure(case):
     m = (t >= 0.25 * T) & (t <= T * (1 + 1e-9))
     slope = float(np.polyfit(t[m], L[m], 1)[0])
     w = (t >= 0.1 - 1e-12) & (t <= 0.45 + 1e-12)
-    last = rows[-1]
     return dict(
         study=os.path.basename(os.path.dirname(case)), case=os.path.basename(case), N=N,
         arm=tok.get("TPF_VELOCITY_ARM"), Co=f(tok.get("TARGET_ADVECTIVE_CO")), dt=dt,
         axisDisp=max(abs(u) for u in U) * dt * N, speedDisp=math.sqrt(sum(u * u for u in U)) * dt * N,
-        steps=len(rows), tEnd=float(t[-1]), lateSlope=slope, meanL1=float(L[w].mean()),
-        L1_end=float(L[-1]), L1_max=float(L.max()), L1x_end=f(last.get("LCentreDiff1")),
-        Es_end=f(last.get("Eshape")),
-        minAlpha=min(f(r["minAlphaBound"]) for r in rows),
-        maxExcess=max(f(r["maxAlphaBound"]) for r in rows),
-        devPercent_end=f(last.get("devPercent")),
-        fallbacks=int(sum(f(r.get("nSweptRankFallback")) or 0 for r in rows)),
+        steps=len(t), tEnd=float(t[-1]), lateSlope=slope, meanL1=float(L[w].mean()),
+        L1_end=float(L[-1]), L1_max=float(L.max()), L1x_end=lastOf("LCentreDiff1"),
+        Es_end=lastOf("Eshape"),
+        minAlpha=min(col("minAlphaBound")),
+        maxExcess=max(col("maxAlphaBound")),
+        devPercent_end=lastOf("devPercent"),
+        fallbacks=int(sum(col("nSweptRankFallback"))),
     )
 
 

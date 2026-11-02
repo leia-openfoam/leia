@@ -47,6 +47,17 @@
 #   1e-10) and conservative (|mass deviation| <= 1e-10 %).
 # No expectation is stated by this agent.
 #
+# MEASURED (2026-11-02, jobs 55854681-83; REPORT-swept.md "The diagonal
+# line's confound"):
+# P-L1 HELD: LineDiagM D-like (s 2.405e-2 / 1.550e-2, x 0.885 / 0.916),
+#   LineXs X-like (s 8.914e-3 / 3.192e-3, x 0.082 / 0.037).
+# P-L2 NOT HELD.
+# P-L3: Line3D Co 0.2 D-like (s 2.356e-2, x 0.868), Co 0.2 sqrt(3) X-like
+#   (s 1.067e-2, x 0.227), the per-axis pattern by the threshold; both
+#   histories non-monotone (maxima 1.98e-2 / 2.58e-2 near t 0.35-0.37, then
+#   falling), so the late slope does not decide on them.
+# P-L4 HELD: min(alpha) >= -4.2e-13, excess <= 4.4e-12, mass <= 2.5e-12 %.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagM --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagM run-studies.sbatch
 study_name: sphereRotation3D_hexFineLineDiagM
 studies_dir: studies/davof
