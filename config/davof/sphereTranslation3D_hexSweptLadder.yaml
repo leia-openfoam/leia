@@ -29,6 +29,13 @@
 # sweptFace flux, exactSphere state, N = 32 / 64). No sweptFaceCells run on
 # this case.
 #
+# MEASURED (2026-11-02; jobs 55869114-15; REPORT-swept "The swept-face
+# advection in the preprint's framing: A to D"): T-0 HELD (min >= -1.0e-12,
+# excess <= 5.0e-11, mass <= 2.9e-12 %, no rank fallback); T-1 HELD (Co 0.2:
+# L1(x) 1.93 / 1.86, E_shape 1.90 / 1.84); T-2 HELD (0.86 / 0.83); T-3 HELD
+# (ring E_shape 2.443e-5 = 0.986 and L1(x) 1.024e-4 = 0.987 of plicRDF's);
+# T-4 HELD at every Co (Co 0.5: 1.28e-3 / 1.62e-3 against 3.46e-3 / 2.96e-3).
+#
 #   sbatch --parsable -J leia-davof-sphereTranslation3D_hexSweptLadder --export=ALL,STUDY=davof/sphereTranslation3D_hexSweptLadder run-studies.sbatch
 study_name: sphereTranslation3D_hexSweptLadder
 studies_dir: studies/davof

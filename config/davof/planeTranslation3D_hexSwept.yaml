@@ -22,6 +22,16 @@
 # loop (8/8 for the ring and the exact normal at every Co). No swept-face run
 # on the plane.
 #
+# MEASURED (2026-11-02; job 55869109, discriminator 55870149; REPORT-swept
+# "The swept-face advection in the preprint's framing: A to D"): G-1
+# FALSIFIED: no case passes; run maxima of L1(alphaf) 1.6e-8 to 2.1e-7
+# (normal arm) and 2.5e-6 to 6.0e-6 (oblique), L1(n) round-off for the exact
+# normal, up to 9.4e-6 for the ring. Bounded (min -9.7e-13, excess 5.2e-11);
+# the mass deviation 97.52 % / 51.16 % is the case's own (the preprint's runs
+# give the same; the 1e-10 % clause was mis-set). One-donor fallbacks 8 % to
+# 44 % of the swept faces per step. G-2 (unit box) fails the same way: not a
+# scale effect; cause open.
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexSwept --export=ALL,STUDY=davof/planeTranslation3D_hexSwept run-studies.sbatch
 study_name: planeTranslation3D_hexSwept
 studies_dir: studies/davof

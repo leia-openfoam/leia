@@ -17,6 +17,11 @@
 #   factor 10 of G-1's, fallbacks above 10 % of the swept faces), the cause is
 #   not the scale.
 #
+# MEASURED (2026-11-02; job 55870149): G-2 NOT HELD in its first branch, the
+#   second holds: run maxima of L1(alphaf) 2.7e-8 to 7.0e-6 (within a factor
+#   1.15 of G-1's), one-donor fallbacks 10 % to 44 % of the swept faces. The
+#   failure of G-1 is not a scale effect.
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptL1 --export=ALL,STUDY=davof/planeTranslation3D_hexSweptL1 run-studies.sbatch
 study_name: planeTranslation3D_hexSweptL1
 studies_dir: studies/davof

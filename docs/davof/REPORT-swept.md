@@ -1501,3 +1501,194 @@ What the runs show:
 - With the ring mean, the excess is as large as the plane rows'.
 - L1(x) shows no oblique excess for the exact normal and the ring quadric
   (diagonal 4.09e-4 / 9.59e-5 against x-line 4.03e-4 / 1.01e-4).
+
+## The swept-face advection in the preprint's framing: A to D (2026-11-02)
+
+Via the coordinating session. The preprint presents sweptFaceCells as its
+advection scheme.
+
+Commits (leia):
+- f7ea4b7f: davof_rescore_cases.py.
+- bc2a21e8: the TPF_SWEPT_SCALE token in the translation templates; the B, C
+  and D configs; the predictions, committed before the runs.
+- cececa3f: davof_swept_ladders.py.
+- abccf02d: G-2, pre-registered after G-1 failed.
+- This section and the MEASURED paragraphs.
+
+The binary is the fork 1f3f238 build (55866604); a7e6853 changes comments only.
+
+Jobs:
+- A: 55868997 and 55868998.
+- B: 55869109; G-2: 55870149.
+- C: 55869110-13.
+- D: 55869114-15.
+
+CSVs ($W = /work/scratch/tm83tomy/davof/agents/swept):
+
+| item | file |
+|---|---|
+| A | $W/rescoreA_eshape_end.csv (end values, orders) and $W/rescoreA_eshape_times.csv (every written time) |
+| B | $W/itemB_plane_gate.csv and $W/itemB_plane_gate_L1.csv |
+| C | $W/itemC_rotation_ladder.csv |
+| D | $W/itemD_sphere_ladder.csv (all cases) and $W/itemD_comparison.csv (N = 128 with orders, next to the preprint's plane-clipped rows and plicRDF) |
+
+The token TPF_SWEPT_SCALE (sweptScaleToPhi) was added to the plane and
+sphere translation templates. Its default is false, the fork's default, so
+every earlier study renders the same dictionary values. The other swept keys
+of the final configuration are the fork's defaults: pieces, donorSide, cap set
+final, planeSource anchor.
+
+### A: the fixed E_shape of the rotation ladder and the line runs (no re-solve)
+
+110 current cases of sphereRotation3D_* were re-scored at every written time;
+superseded copies (VOID, pre-fix) were excluded. E(t = 0) is 0 in every case.
+For an aborted case the last written time is the abort time, not the end.
+
+Rotation ladder, sphereRotation3D_hexSweptCellsFixed (pieces, donorSide), end
+of the turn:
+
+| row | N 32 | N 64 | N 128 | order |
+|---|---|---|---|---|
+| exact normal | 3.997e-4 | 1.285e-4 | 3.869e-5 | 1.68 (old 1.76) |
+| ring normal | 7.602e-4 | 2.114e-4 | 5.738e-5 | 1.86 (old 1.87) |
+
+Other studies (old -> new at the end):
+- The donor-face variant (hexSweptCellsDonorFace) agrees to 3 digits.
+- plicRDF on the rotation (hexComparators, zeroGradient patches): 9.081e-4 /
+  2.437e-4 -> 8.999e-4 / 2.416e-4.
+- The lines (N 32 / 64), diagonal / x-line:
+  - Default swept flux: 3.013e-4 / 1.632e-4 and 8.928e-5 / 4.242e-5 (old
+    4.126e-4 / 3.829e-4 and 1.142e-4 / 9.986e-5).
+  - plicRDF: 5.280e-4 / 3.364e-4 and 1.492e-4 / 8.615e-5.
+
+The full list is in the CSVs.
+
+The fix moves the rotation values by at most 15 %; the floor (3.58e-4 at
+N = 32) is small against these errors. It moves the lines' x-line values by
+a factor of 2.3: there the floor was most of the old number.
+
+### B: the translated-plane gate with the swept-face advection
+
+The preprint's planeTranslation3D matrix: Co 0.2, N = 20 / 40 / 80 / 160, both
+arms, rows exact and ring normal (planeTranslation3D_hexSwept).
+
+G-1 FALSIFIED: no case passes the 1e-12 gate. Run maxima:
+
+| row, arm | L1(alphaf) N 20 / 40 / 80 / 160 | L1(n) |
+|---|---|---|
+| exact, normal | 1.52e-7 / 3.04e-8 / 1.60e-8 / 2.06e-7 | <= 1.7e-14 |
+| exact, oblique | 5.75e-6 / 2.46e-6 / 3.20e-6 / 2.84e-6 | <= 1.5e-14 |
+| ring, normal | 1.62e-7 / 3.37e-8 / 1.61e-8 / 2.05e-7 | 1.8e-7 to 7.3e-9 |
+| ring, oblique | 6.04e-6 / 2.65e-6 / 3.85e-6 / 3.37e-6 | 9.4e-6 to 4.9e-6 |
+
+For comparison, the preprint's plane-clipped loop on the same cases has run
+maxima 2.9e-15 to 4.2e-14.
+
+The rest of the measurement:
+- Bounded: min alpha >= -9.7e-13, excess <= 5.2e-11.
+- The mass deviation at the end, 97.52 % (normal) and 51.16 % (oblique), is
+  the case's own: the plane leaves through the boundary. The preprint's
+  plane-clipped runs give the same values (97.516 / 51.157), so G-1's mass clause
+  (1e-10 %) was mis-set for this open case.
+- The error appears at the second step. At N = 20 normal, step 1 is 6.1e-15
+  and step 2 is 1.0e-8.
+- Per step, 8 % (oblique) to 44 % (normal) of the swept faces take the
+  one-donor fallback (nSweptRankFallback, in serial).
+- The pieces' closure residual reaches 0.62 to 0.72.
+- The partial cells without a surface grow from 147 to 507 over the run
+  (N = 20, normal).
+
+G-2 (the case scaled to a unit box, N = 20 / 40) NOT HELD: it fails as at L =
+0.004 (maxima within a factor 1.15, the same fallback shares 0.10 to 0.44).
+The failure is not a scale effect; its cause is open.
+
+### C: the rotation ladder with the final code, and plicRDF on the same rotation
+
+The sphere is turned once, Co 0.2, from the exactSphere state, with alpha
+fixedValue. N = 128 runs on 64 ranks. Values are at the end of the turn.
+
+| row | N | L1(alphaf) | L1(n) | L1(x) | E_shape | min alpha / excess | mass dev % |
+|---|---|---|---|---|---|---|---|
+| swept, exact normal | 32 | 2.305e-2 | 2.469e-3 | 1.491e-3 | 3.997e-4 | -5.6e-13 / 6.3e-12 | 4.2e-13 |
+| | 64 | 1.452e-2 | 8.221e-4 | 4.722e-4 | 1.285e-4 | -2.7e-13 / 1.1e-11 | 4.9e-12 |
+| | 128 | 8.943e-3 | 2.419e-4 | 1.392e-4 | 3.869e-5 | -3.3e-13 / 8.0e-11 | 1.1e-12 |
+| swept, ring normal | 32 | 4.158e-2 | 4.938e-2 | 2.809e-3 | 7.603e-4 | -8.0e-13 / 4.0e-12 | 1.0e-12 |
+| | 64 | 2.323e-2 | 2.277e-2 | 7.587e-4 | 2.114e-4 | -1.0e-14 / 1.6e-11 | 6.3e-12 |
+| | 128 | 1.322e-2 | 1.022e-2 | 2.024e-4 | 5.738e-5 | -1.1e-13 / 8.2e-11 | 9.3e-13 |
+| plicRDF + isoAdvector | 32 | - | 5.350e-2 | 3.483e-3 | 8.999e-4 | -8.9e-18 / 2.2e-16 | 1.3e-12 |
+| | 64 | - | 2.132e-2 | 8.642e-4 | 2.416e-4 | -7.6e-13 / 4.4e-16 | 1.0e-11 |
+| | 128 | - | 9.302e-3 | 2.310e-4 | 6.435e-5 | -3.1e-5 / 7.1e-7 | 2.0e-12 |
+
+Orders over N = 32, 64, 128:
+
+| row | L1(alphaf) | L1(n) | L1(x) | E_shape |
+|---|---|---|---|---|
+| exact | 0.68 | 1.68 | 1.71 | 1.68 |
+| ring | 0.83 | 1.14 | 1.90 | 1.86 |
+| plicRDF | - | 1.26 | 1.96 | 1.90 |
+
+Verdicts:
+- R-0 HELD (no rank fallback).
+- R-1 HELD (0.83 / 0.68).
+- R-2 HELD.
+- R-3 HELD.
+- R-4 HELD. At N = 128:
+  - The exact row's L1(x) is 1.392e-4 and its E_shape 3.869e-5, against
+    plicRDF's 2.310e-4 and 6.435e-5.
+  - The ring row's are 2.024e-4 and 5.738e-5, below plicRDF's.
+
+The final code reproduces the earlier ladder (sphereRotation3D_hexSweptCells
+Fixed): E_shape to 4 digits, L1(alphaf) 8.94e-3 against 8.96e-3 (exact,
+N = 128).
+
+Cost at N = 128 on 64 ranks: rank 0 CPU 1143 s (exact) and 2105 s (ring).
+
+plicRDF on 64 ranks at N = 128 is not bounded: min alpha -3.1e-5, excess
+7.1e-7. Serial at N = 32 / 64 it stays within -7.6e-13.
+
+### D: the translated-sphere ladder with the swept-face advection
+
+The preprint's tab:tpf-sphere: the table's quadraticFaces state, Co 0.1 / 0.2 /
+0.5; N = 128 on 64 ranks. The plane-clipped rows and plicRDF are the
+preprint's own runs on the same state, with E_shape re-scored.
+
+| Co | row | L1(alphaf) N128 (p) | L1(n) N128 (p) | L1(x) N128 (p) | E_shape N128 (p) |
+|---|---|---|---|---|---|
+| 0.1 | swept, exact | 3.723e-3 (0.87) | 5.365e-4 (1.45) | 7.928e-5 (1.92) | 1.587e-5 (1.90) |
+| 0.1 | swept, ring | 7.666e-3 (0.79) | 1.261e-2 (0.94) | 1.341e-4 (1.86) | 3.340e-5 (1.82) |
+| 0.1 | plane-clipped, exact | 3.842e-3 (0.85) | 5.553e-4 (1.43) | 7.926e-5 (1.92) | 1.585e-5 (1.90) |
+| 0.1 | plane-clipped, ring | 7.723e-3 (0.80) | 1.261e-2 (0.94) | 1.335e-4 (1.86) | 3.338e-5 (1.82) |
+| 0.1 | plicRDF | - | 1.142e-2 (1.03) | 1.397e-4 (1.90) | 3.432e-5 (1.89) |
+| 0.2 | swept, exact | 2.963e-3 (0.86) | 4.140e-4 (1.54) | 6.753e-5 (1.93) | 1.289e-5 (1.90) |
+| 0.2 | swept, ring | 5.556e-3 (0.83) | 1.091e-2 (0.95) | 1.024e-4 (1.86) | 2.443e-5 (1.84) |
+| 0.2 | plane-clipped, exact | 3.322e-3 (0.82) | 4.704e-4 (1.48) | 6.758e-5 (1.93) | 1.288e-5 (1.90) |
+| 0.2 | plane-clipped, ring | 5.763e-3 (0.81) | 1.092e-2 (0.95) | 1.022e-4 (1.86) | 2.441e-5 (1.84) |
+| 0.2 | plicRDF | - | 9.203e-3 (1.04) | 1.038e-4 (1.94) | 2.478e-5 (1.93) |
+| 0.5 | swept, exact | 1.284e-3 (0.98) | 2.137e-4 (1.81) | 4.748e-5 (1.98) | 7.301e-6 (1.93) |
+| 0.5 | swept, ring | 1.622e-3 (1.12) | 8.170e-3 (1.03) | 4.876e-5 (2.00) | 7.342e-6 (2.04) |
+| 0.5 | plane-clipped, exact | 3.462e-3 (0.99) | 5.543e-4 (1.90) | 4.759e-5 (1.98) | 7.293e-6 (1.94) |
+| 0.5 | plane-clipped, ring | 2.958e-3 (1.00) | 8.120e-3 (1.02) | 4.880e-5 (1.99) | 7.394e-6 (2.02) |
+| 0.5 | plicRDF | - | 6.030e-3 (0.97) | 4.871e-5 (1.99) | 7.960e-6 (1.94) |
+
+All 18 swept cases are bounded (min alpha >= -1.0e-12, excess <= 5.0e-11)
+and conservative (mass dev <= 2.9e-12 %), with no rank fallback.
+
+Verdicts:
+- T-0 HELD.
+- T-1 HELD (Co 0.2: L1(x) 1.93 / 1.86, E_shape 1.90 / 1.84).
+- T-2 HELD (0.86 / 0.83).
+- T-3 HELD: the ring row's E_shape is 0.986 and its L1(x) 0.987 of
+  plicRDF's; the exact row is below plicRDF in both.
+- T-4 HELD at every Co.
+
+What the runs show:
+- On the axis-aligned translation the swept-face advection gives the plane
+  loop's L1(x) and E_shape to 3 digits.
+- Its L1(alphaf) is at or below the plane loop's at every Co. At Co 0.5 it
+  is 2.7 times lower with the exact normal and 1.8 times lower with the ring
+  normal.
+
+Surprising:
+- B: the swept-face advection does not keep a translated plane exact (errors
+  up to 6e-6), while it keeps a translated sphere within plicRDF's errors.
+- C: plicRDF on 64 ranks is not bounded at N = 128.
