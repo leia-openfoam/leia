@@ -198,9 +198,23 @@ def read_dat(fo_dir, name):
     out = {}
     if not tdirs:
         return out, False
-    try:
-        latest = max(tdirs, key=lambda d: float(os.path.basename(d)))
-    except ValueError:
+
+    # the latest TIME directory: a function object may keep other
+    # directories next to its time directories (areaFractionError's
+    # faceError of faceErrorCsv, fork f974845), which are no candidates;
+    # before 2026-11-02 one such name made float() fail and the fallback
+    # sorted()[-1] took faceError, so no area-fraction column was read
+    def is_time(d):
+        try:
+            float(os.path.basename(d))
+            return True
+        except ValueError:
+            return False
+
+    times = [d for d in tdirs if is_time(d)]
+    if times:
+        latest = max(times, key=lambda d: float(os.path.basename(d)))
+    else:
         latest = sorted(tdirs)[-1]
     path = os.path.join(latest, name)
     if not os.path.isfile(path):
