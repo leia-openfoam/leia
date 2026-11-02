@@ -68,6 +68,24 @@
 # one, the residue by distance from the exact sphere, the cumulative
 # residue in the film cells against the film's liquid, both lines.
 #
+# MEASURED (2026-11-02, jobs 55859067-68; REPORT-swept "The consistency of
+# the swept flux under oblique travel"):
+# A-0 HELD (both .dat files byte-identical to the original runs in all
+#   eight cases; probe fallbacks 0).
+# A-1 HELD: the x-line has no algebraic face reaching another state in any
+#   step (diagonal 1144 / 10020 per step) and a summed |mismatch| of
+#   1.1e-10 / 2.4e-8 h^3 against 6.2e-5 / 1.2e-3 h^3.
+# A-2 HELD by its measure (99.8 % / 99.5 % of the film cells received a
+#   residue), but the measure does not separate: the x-line gives 95.9 % /
+#   99.3 % and the consistent runs, whose residue is round-off, 98.7 % /
+#   99.0 %.
+# A-3 NOT HELD at N = 32 (front + rear 0.540 of the late |R|) and FALSIFIED
+#   at N = 64 (0.471); the tangent band carries 0.460 / 0.529, and 58 % /
+#   68 % of |R| lies in cells centred inside the exact sphere.
+# The wisp mismatch dominates (2.1e-3 / 2.9e-2 h^3 against 6.2e-5 /
+#   1.2e-3 h^3 of the algebraic faces) and is as large on the x-line
+#   (1.9e-3 / 3.7e-2 h^3).
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagConsLog --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagConsLog run-studies.sbatch
 study_name: sphereRotation3D_hexFineLineDiagConsLog
 studies_dir: studies/davof

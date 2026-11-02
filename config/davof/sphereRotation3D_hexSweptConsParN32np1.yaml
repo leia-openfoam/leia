@@ -24,6 +24,13 @@
 #   "candidates added" and "faces without a surface" of the log (summed over
 #   the ranks) equal the serial run's for every np, both rows.
 #
+# MEASURED (2026-11-02, jobs 55859071-75, $W/cmp-cons): P-C1 HELD (step 1
+#   max|dalpha| 1.3e-14 to 8.8e-14, max|dalphaf| 4.1e-14 to 8.5e-14; nMissing
+#   0, nDup 0 at every step); P-C2 HELD (steps 1 to 20 max|dalpha| at most
+#   2.6e-12 exact, 4.8e-13 ring); P-C3 HELD (368 candidates added and 1092
+#   faces without a surface at step 1 for every np, both rows); no rank
+#   fallback in any run.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptConsParN32np1 --export=ALL,STUDY=davof/sphereRotation3D_hexSweptConsParN32np1 run-studies.sbatch
 study_name: sphereRotation3D_hexSweptConsParN32np1
 studies_dir: studies/davof

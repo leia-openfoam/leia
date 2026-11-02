@@ -852,3 +852,183 @@ diagonal's growth of the interface cells is a film of cells with alpha below
 as well, at smaller values: 5076 cells below 1e-6 on the x-z diagonal
 against 260 on the x-line, and 23 000 cells below 1e-3 on the space
 diagonal. Not a setup defect; its cause is not examined here.
+
+## The consistency of the swept flux under oblique travel (2026-11-02)
+
+Tomislav's approval via the coordinating session. The problem: under travel
+oblique to the mesh a region of a cell lies in the swept volumes of two
+faces (a corner of C in those of C|N and N|NE under north-east travel), and
+the cell that receives it balances only if both faces give that region the
+same liquid. Two rules of the swept flux can differ there:
+- (1) mixed faces: only the faces of candidate cells (the interface cells
+  and their face neighbours) are computed; every other face keeps the
+  algebraic upwind flux alpha_donor phi_f dt, also where its swept volume
+  reaches a cell in another state;
+- (2) wisps: a cell with 1e-8 < alpha < 1 - 1e-8 and no surface is wet or
+  dry in the pieces by alpha >= 1/2, while the algebraic faces release
+  alpha phi_f dt.
+
+The hypothesis under test: these leave residues in the cells beside the
+body (the low-alpha film) and drive the diagonal's front/rear build-up.
+
+Fork davof-swept c635611 (both keys opt-in, default false):
+- sweptConsistencyLog (serial) probes every algebraic face whose vertices
+  touch a cell with a surface or another alpha. It cuts the face's swept
+  volume into the ring pieces and compares the consistent rule (a surface
+  clips, any other cell gives alpha_c V_piece) with the algebraic flux. It
+  also sums the wisp pieces' 0/1-against-alpha mismatch of the computed
+  faces, and writes the per-cell residue R (the used change of a cell's
+  liquid minus the consistent rule's) per step.
+- sweptConsistent extends the candidates to the vertex ring of every active
+  cell: a surface, an interface cell, or a wisp. The vertex marks are synced
+  over the processor patches. Such faces are computed with or without a
+  surface, and a piece without a surface carries alpha_c V_piece (alpha_c
+  times its pre-image area in the face update).
+- The stencil: a face's swept volume reaches only cells sharing a vertex of
+  the face while the displacement per step stays below h per axis (0.089 h
+  and 0.126 h here). Every such cell shares that vertex with the donor.
+
+leia:
+- 126761fc: tokens, configs, davof_consistency.py and the predictions,
+  committed before the runs.
+- 2f240340: the converter fix below.
+
+Build 55858735. Serial line studies: jobs 55859067 (DiagConsLog) and
+55859068 (XConsLog), the A runs; 55859069 (DiagCons) and 55859070 (XCons),
+the C runs. Parallel: 55859071-75.
+
+Verification (jobs 55858715 before / 55858737 after, 20-step copies):
+- With the keys off, the x-z diagonal, the x-line and the rotation base
+  (N = 32) reproduce f974845 byte for byte: fields at steps 10 and 20, every
+  .dat, and the log apart from timings.
+- With the log on, the flux, the fields and the .dat files are unchanged.
+- The full ConsLog runs give areaFractionError.dat and volumeFractionError.dat
+  byte-identical to the original lineDiag / lineX runs in all eight cases.
+
+Disclosed in the headers: the 20-step numbers were seen before the
+predictions were written. The agent's own expectation (C-1 unlikely to hold)
+is stated there separately.
+
+Parallel (sphereRotation3D_hexSweptConsParN32np{1,2,4,8,16}: rotation, rows
+exact and ring, 20 steps; davof_decomposition_compare.py, $W/cmp-cons):
+- Step 1: max|dalpha| 1.3e-14 to 8.8e-14 and max|dalphaf| 4.1e-14 to
+  8.5e-14.
+- Steps 1 to 20: max|dalpha| at most 2.6e-12 (exact) and 4.8e-13 (ring),
+  below the default family's 6.0e-11 / 2.5e-9.
+- nMissing 0 and nDup 0 at every step.
+- At step 1, 368 candidates added and 1092 faces without a surface for
+  every np.
+- No rank fallback.
+- P-C1, P-C2 and P-C3 HELD.
+
+A: the diagnostic on the default flux (sums over the run in h^3; per-step
+means; residue cells: |R| > 1e-15 V; film: alpha in [1e-12, 1e-3) at the
+end):
+
+| | lineDiag N 32 | lineDiag N 64 | lineX N 32 | lineX N 64 |
+|---|---|---|---|---|
+| algebraic faces probed per step | 28010 | 218100 | 1672 | 11650 |
+| reaching another state per step (surface / wisp / pure) | 1144 (0 / 981 / 163) | 10020 (0 / 9103 / 918) | 0 | 0 |
+| algebraic mismatch: sum of abs / largest (h^3) | 6.2e-5 / 3.8e-8 | 1.2e-3 / 4.3e-8 | 1.1e-10 / 4.3e-14 | 2.4e-8 / 1.9e-13 |
+| wisp pieces per step | 500 | 2872 | 61 | 487 |
+| wisp mismatch: sum / sum of abs / largest (h^3) | 3.9e-4 / 2.1e-3 / 1.3e-6 | 1.1e-2 / 2.9e-2 / 1.5e-6 | 1.0e-3 / 1.9e-3 / 2.3e-6 | 2.7e-2 / 3.7e-2 / 5.7e-6 |
+| residue: sum of abs (h^3) / largest abs(R)/V | 3.8e-3 / 2.6e-6 | 5.2e-2 / 2.9e-6 | 2.9e-3 / 2.3e-6 | 5.0e-2 / 5.7e-6 |
+| film cells at the end that got a residue | 99.8 % | 99.5 % | 95.9 % | 99.3 % |
+| residue cells that end in the film | 66 % | 56 % | 15 % | 23 % |
+| late abs(R): front / tangent / rear | 0.255 / 0.460 / 0.285 | 0.286 / 0.529 / 0.185 | 0.229 / 0.541 / 0.230 | 0.238 / 0.639 / 0.122 |
+| abs(R) by distance: inside / 0-1 h / 1-2 h / >2 h | 0.58 / 0.14 / 0.23 / 0.05 | 0.68 / 0.09 / 0.18 / 0.05 | 0.72 / 0.10 / 0.15 / 0.03 | 0.81 / 0.05 / 0.12 / 0.02 |
+
+Verdicts A:
+- A-0 HELD.
+- A-1 HELD: on the x-line no algebraic face reaches another state, and its
+  summed mismatch is 2e-6 / 2e-5 of the diagonal's.
+- A-2 HELD by its measure, but the measure does not separate. Almost every
+  film cell receives a residue above 1e-15 V on the x-line too, and in the
+  consistent runs, whose residue is round-off (below).
+- A-3 NOT HELD at N = 32 (front + rear 0.540) and FALSIFIED at N = 64
+  (0.471). The residue sits mostly in the tangent band and inside the
+  sphere.
+
+Of the two mechanisms, the wisp rule moves 34 / 25 times more than the mixed
+faces, and it moves as much on the x-line as on the diagonal. No algebraic
+face reaches an interface cell: the mixed faces reach wisps and pure cells
+only.
+
+C: the consistent variant (sweptConsistent, with the log and faceErrorCsv).
+Late slope over [0.25 T, T] and x as in the confound section; front + rear
+from davof_face_bins.py; bands at the end; the default values in brackets:
+
+| run | N | late slope | x | L1 end | max abs(dL1) over the steps | front + rear slope | film [1e-12, 1e-3) | [1e-12, 1e-6) / [1e-6, 1e-3) / [0.99, 1 - 1e-6) | mass dev % end | min alpha / excess |
+|---|---|---|---|---|---|---|---|---|---|---|
+| lineDiag cons | 32 | 2.7731e-2 (2.7733e-2) | 1.000 | 1.7517e-2 (1.7518e-2) | 7.0e-7 | 2.136e-2 (2.136e-2) | 7239 (5109) | 7232 / 7 / 24 (5076 / 33 / 55) | 5.6e-7 (6.7e-13) | -9.7e-15 / 1.0e-13 |
+| lineDiag cons | 64 | 1.8032e-2 (1.8037e-2) | 1.000 | 1.0279e-2 (1.0280e-2) | 1.7e-6 | 1.267e-2 (1.267e-2) | 39223 (30711) | 39187 / 36 / 167 (30404 / 307 / 638) | 8.4e-8 (3.2e-12) | -1.8e-13 / 6.9e-13 |
+| lineX cons | 32 | 8.0591e-3 (8.0589e-3) | 0.000 | 1.1354e-2 (1.1354e-2) | 1.0e-6 | 2.27e-3 (2.27e-3) | 1925 (317) | 1902 / 23 / 45 (260 / 57 / 70) | 3.0e-13 (-2.0e-13) | -1.5e-14 / 1.4e-13 |
+| lineX cons | 64 | 2.9861e-3 (2.9884e-3) | -0.000 | 6.2768e-3 (6.2776e-3) | 4.7e-6 | -2.0e-5 (-1.7e-5) | 13257 (4182) | 13147 / 110 / 233 (3817 / 365 / 753) | 2.1e-12 (3.9e-13) | -6.6e-14 / 8.6e-13 |
+
+Per step in the consistent runs:
+- Candidates added: 1883 / 9874 (diagonal), 1279 / 7039 (x-line).
+- Faces without a surface: 5970 / 30220 and 4023 / 21470.
+- Fallbacks of those faces: 0. Algebraic faces reaching another state: 0.
+  Wisp mismatch: 0.
+- The residue left per step is at most 5e-11 V: algebraic faces between
+  cells below 1e-8 of different alpha.
+- Interface cells at the end: 416 / 1762 (diagonal) and 433 / 1724 (x-line),
+  as in the default runs.
+- Eshape and L1(x) at the end are within 0.03 % of the default.
+
+Verdicts C:
+- C-0: the consistency clauses HELD. The mass clause NOT HELD on the
+  diagonal: the whole deviation is liquid leaving through the walls (summed
+  boundary outflow 5.626e-9 / 8.42e-10 of the mass, from step 146 / 332).
+  - The film reaches the outflow walls: 370 / 1071 wall cells with alpha
+    above 1e-12, against 173 / 585 in the default.
+  - The swept flux of a computed wall face carries alpha_c V_piece, where
+    the algebraic face takes the wall's fixedValue 0. In the default runs no
+    computed face reaches a wall.
+  - By the registered rule the verdict on the hypothesis is therefore
+    INCONCLUSIVE.
+- C-1 FALSIFIED by its threshold: the consistent diagonal stays D-like
+  (x = 1.000 at both N). Removing both inconsistencies changes its
+  L1(alphaf) history by at most 1.7e-6 absolute and its late slope by
+  0.006 % / 0.02 %.
+- C-2 FALSIFIED: the film grows, by 1.42 / 1.28 times on the diagonal and
+  6.1 / 3.2 times on the x-line, while the near-full band shrinks.
+- C-3 FALSIFIED: the front + rear slope is unchanged to 4 digits.
+- C-4 HELD.
+- R-1: the rotation base was not run (conditional on C-1).
+
+What the runs show: the mixed-face and wisp mismatches are real but small
+(1e-8 to 1e-6 of a cell per face and step). Removing them leaves the face
+error history of both lines unchanged to 1e-6, so they do not drive the
+oblique build-up. The film is not their residue either. The 0/1 wisp rule
+holds the liquid of the sub-1/2 wisps back, and the alpha_c V_piece rule
+transports it upwind like the algebraic faces do, so the consistent variant
+spreads a larger film. On the diagonal that film reaches the outflow walls.
+
+Surprising:
+- The 0/1 wisp rule, the inconsistency, keeps the film smaller.
+- The swept flux does not apply the alpha boundary condition on the wall
+  faces it computes.
+
+Not examined: the cause of the film itself (a candidate: the bounding of
+limitFluxes); the consistent variant without the log (cost). With the log
+on, N = 64 took 2048 s (default flux) and 2322 s (consistent) on the
+diagonal, and 355 s and 773 s on the x-line.
+
+## The converter's time directory (2026-11-02)
+
+tpf_advection_metrics.py chose the newest subdirectory of a function
+object's output by float(name). With faceErrorCsv true, areaFractionError
+writes a directory faceError next to 0. float('faceError') failed, and the
+fallback sorted()[-1] took faceError, which holds no .dat, so every
+area-fraction column (L1_alphaf ...) was empty. Affected: the faceErrorCsv
+runs, sphereRotation3D_hexFineLine{Diag,X}Faces and _Cons. The earlier
+per-face analysis read the .dat itself and is unaffected.
+
+Fix (leia 2f240340): only directories whose name is a number are candidates.
+Job 55860362:
+- All 298 study cases converted by the previous and the fixed converter:
+  290 byte-identical, and the 8 others exactly the faceErrorCsv cases.
+- Those 8 re-converted in place (old files kept as
+  advectorVoF.preDirFix.csv, tpfCommit carried over): 6 columns filled, no
+  non-empty value changed.
