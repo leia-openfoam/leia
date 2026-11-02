@@ -1,0 +1,54 @@
+# Fair row (b) on the x-line (2026-11-03): the swept flux with the ring
+# normal (row davof-planeSurf-ringArea), settings of LineXW, fields every
+# 0.0125 at 17 digits. Purpose, read-out and the pre-registered predictions
+# (O-b, A-b, V-1, V-2): sphereRotation3D_hexFineLineDiagRingSwept.yaml.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineXRingSwept --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineXRingSwept run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineXRingSwept
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineX]
+  TPF_SPHERE_CX: [0.25]
+  TPF_AXIS_X: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.0125]
+  TPF_WRITE_PRECISION: [17]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 90
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

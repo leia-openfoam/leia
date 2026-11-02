@@ -1,0 +1,98 @@
+# FAIR ROWS for the oblique comparison (2026-11-03, Tomislav's decision via
+# the coordinating session). The first comparison (sphereRotation3D_hexFine
+# Line{Diag,X}W against _RDF) gave OUR loop the EXACT normal and plicRDF its
+# computed one. Two rows with a computed normal, on the x-z diagonal and the
+# x-line, with the settings of LineDiagW / LineXW (speed, dt, window, fields
+# every 0.0125, N = 32 and 64; written at 17 digits for the check V-1):
+#   (b) RingSwept: the swept flux (sweptFaceCells, pieces, donorSide, the
+#       anchored plane) with the ring normal, row davof-planeSurf-ringArea;
+#       this config and sphereRotation3D_hexFineLineXRingSwept;
+#   (c) RingPlane: the preprint's own plane-clipped loop (isoAdvector's plane
+#       flux with the DAVOF face update, the ring normal: row davof-ringArea of
+#       the preprint's transport study sphereTranslation3D_hex, its tokens at
+#       the study defaults); sphereRotation3D_hexFineLine{Diag,X}RingPlane.
+# Built with fork davof-swept 1f3f238, whose volumeFractionError takes the
+# exact sphere's alpha_exact (exactState auto -> exactSphere here).
+# Read-out (fork app staticFaceFractions, workflow/scripts/
+# davof_static_faces.py): the static face fractions of alpha, Ec = mean
+# |alpha - alpha_exact| over the exact interface cells, the fixed E_shape,
+# L1(x), late slopes over the written times in [0.25 T, T], and the excess
+# share phi = (s_S,D - s_S,X)/(s_L,D - s_L,X) of each row's own loop.
+#
+# PRE-REGISTERED (2026-11-03, before the runs). Delta = s_Ec,D - s_Ec,X (the
+# oblique excess of the cell-level error's late slope), the same N; the
+# references measured on 2026-11-02: Delta(a) = 2.943e-2 / 2.170e-2 (ours,
+# exact normal, N = 32 / 64), Delta(plicRDF) = 3.890e-2 / 2.589e-2.
+# O-b (the excess is present with the ring normal, swept flux): PRESENT if
+#   Delta(b) >= 0.5 Delta(a) and s_Ec,D/s_Ec,X >= 1.5 at N = 32 AND 64; ABSENT
+#   if Delta(b) <= 0.25 Delta(a) at both N; otherwise PARTIAL.
+# O-c (the same for the plane-clipped loop): the same thresholds on Delta(c).
+#   A run that aborts (the abort guard) is reported as aborted, with the
+#   excess over its completed written times only, and O-c is then NOT DECIDED
+#   for that N.
+# A-b, A-c (the row's face fractions follow its alpha): phi >= 0.5 at both N
+#   as H-alpha of 2026-11-02; phi <= 0.25 at both N the opposite.
+# V-1 (the fixed E_shape): the Eshape column of volumeFractionError.dat equals
+#   the app's sum |alpha - alpha_exact| V at every written time of the eight
+#   cases to 1e-10 relative.
+# V-2 (the exact initial state): a zero-velocity copy of the x-line N = 32 run
+#   (3 steps; verify job) gives Eshape <= 1e-15 m^3 at every step with
+#   exactState auto, the former construction (cutCellIso) its floor.
+#
+# Seen before writing this: Delta(a) and Delta(plicRDF) above and every number
+# of the 2026-11-02 section; the ring normal on the axis-aligned translation
+# (the preprint). Not seen: any ring-normal run on the lines. This agent's
+# expectation: O-b and O-c PRESENT (the exact-normal loop and plicRDF both
+# carry the excess in alpha).
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagRingSwept --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagRingSwept run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineDiagRingSwept
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineDiagXZ]
+  TPF_SPHERE_CX: [0.25]
+  TPF_SPHERE_CZ: [0.25]
+  TPF_AXIS_X: [0.25]
+  TPF_AXIS_Z: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.0125]
+  TPF_WRITE_PRECISION: [17]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 90
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
