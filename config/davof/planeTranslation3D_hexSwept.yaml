@@ -31,6 +31,12 @@
 # give the same; the 1e-10 % clause was mis-set). One-donor fallbacks 8 % to
 # 44 % of the swept faces per step. G-2 (unit box) fails the same way: not a
 # scale effect; cause open.
+# CORRECTED (2026-11-02): the mass clause of G-1 does not fit this open case
+# (the plane leaves through the boundary); the clause that applies is the
+# equality of the mass deviation with the preprint's plane-clipped loop's
+# (97.51624 % / 51.15733 %), registered as F-1 in
+# planeTranslation3D_hexSweptWisp.yaml. The cause was found and fixed there
+# (the wisp pieces, key sweptWispSurface).
 #
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexSwept --export=ALL,STUDY=davof/planeTranslation3D_hexSwept run-studies.sbatch
 study_name: planeTranslation3D_hexSwept
