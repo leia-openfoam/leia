@@ -155,6 +155,9 @@ VELOCITY_ARMS = OrderedDict([
     # plane, (pi/2)(1 0 1)/sqrt(2), and along x
     ("lineDiagXZ", ("1.1107207345395915", "0", "1.1107207345395915")),
     ("lineX",      ("1.5707963267948966", "0", "0")),
+    # the space diagonal at the same speed, (pi/2)(1 1 1)/sqrt(3)
+    # (2026-11-02, the per-axis-displacement control)
+    ("lineDiag3D", ("0.9068996821171089", "0.9068996821171089", "0.9068996821171089")),
 ])
 
 VELOCITY_TOKENS = ("TPF_UX", "TPF_UY", "TPF_UZ")

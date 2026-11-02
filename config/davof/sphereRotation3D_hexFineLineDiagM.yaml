@@ -1,0 +1,99 @@
+# The confound of the diagonal straight translation (2026-11-02, Tomislav's
+# approval via the coordinating session): sphereRotation3D_hexFineLineDiag
+# accumulated face error (late slope 2.773e-2 / 1.804e-2 per unit time at
+# N = 32 / 64) while sphereRotation3D_hexFineLineX levelled off (8.059e-3 /
+# 2.988e-3), but at the same speed and dt the diagonal moves 0.0889 h per
+# step along each of x and z, the x-line 0.1257 h along x. Two variables,
+# the direction and the per-axis displacement per step, are crossed here by
+# the fixed step alone (dt = Co h / REFERENCE_SPEED, REFERENCE_SPEED 2.5;
+# the speed pi/2 and the window END_TIME 0.45 unchanged):
+#   sphereRotation3D_hexFineLineDiagM  THIS: the x-z diagonal with dt x
+#     sqrt(2) (TARGET_ADVECTIVE_CO 0.2 sqrt(2)): 0.1257 h per step per axis,
+#     the x-line's; |U| dt = 0.1778 h; 127 / 255 steps (N = 32 / 64);
+#   sphereRotation3D_hexFineLineXs     the x-line with dt / sqrt(2) (Co
+#     0.2 / sqrt(2)): 0.0889 h per step along x, the old diagonal's;
+#     255 / 509 steps;
+#   sphereRotation3D_hexFineLine3D     N = 32 only: the space diagonal
+#     (pi/2)(1 1 1)/sqrt(3) (arm lineDiag3D) from (0.25 0.25 0.25), at Co 0.2
+#     (0.0726 h per step per axis, 180 steps) and at Co 0.2 sqrt(3) (0.1257 h
+#     per axis, the x-line's; 104 steps).
+# Everything else as sphereRotation3D_hexFineLineDiag (fork davof-swept
+# de7aea9, the binary of the existing lines, build 55845642; serial; every
+# step L1(alphaf), L1(x), Eshape, bounds, mass).
+#
+# MEASURE (workflow/scripts/davof_line_confound.py): the LATE SLOPE s, the
+# least-squares slope of L1(alphaf) against t over [0.25 T, T], T = 0.45
+# (the column rate of davof_rotation_history.py, as reported for the
+# existing lines), and its log-position between the existing x-line (s_X)
+# and diagonal (s_D) of the same N,
+#     x = ln(s / s_X) / ln(s_D / s_X):
+#   D-like (accumulates) x >= 0.75, i.e. s >= 2.036e-2 (N = 32), >= 1.151e-2
+#   (N = 64); X-like (levels off) x <= 0.25, i.e. s <= 1.098e-2 (N = 32),
+#   <= 4.684e-3 (N = 64); between: AMBIGUOUS.
+#
+# PRE-REGISTERED (2026-11-02, before any of these runs):
+# P-L1 (the oblique travel causes the build-up): at BOTH N, LineDiagM is
+#   D-like AND LineXs is X-like. HELD then.
+# P-L2 (the per-axis displacement per step causes it): at BOTH N, LineDiagM
+#   is X-like AND LineXs is D-like. HELD then.
+#   P-L1 and P-L2 exclude each other; any other combination (a run
+#   AMBIGUOUS, both new runs D-like or both X-like, or the two N disagreeing)
+#   makes both INCONCLUSIVE, and the per-run classes are reported.
+# P-L3 (secondary, N = 32, thresholds of N = 32): the oblique reading
+#   predicts both Line3D runs D-like; the per-axis reading predicts the
+#   Co 0.2 run (0.0726 h per axis) D-like and the Co 0.2 sqrt(3) run (0.1257 h)
+#   X-like. Reported as consistent with one, the other or neither.
+# P-L4 (checks): all runs bounded (min(alpha) >= -1e-10, excess over 1 <=
+#   1e-10) and conservative (|mass deviation| <= 1e-10 %).
+# No expectation is stated by this agent.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagM --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagM run-studies.sbatch
+study_name: sphereRotation3D_hexFineLineDiagM
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.28284271247461906]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineDiagXZ]
+  TPF_SPHERE_CX: [0.25]
+  TPF_SPHERE_CZ: [0.25]
+  TPF_AXIS_X: [0.25]
+  TPF_AXIS_Z: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.15]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 45
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

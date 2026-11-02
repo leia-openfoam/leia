@@ -1,0 +1,59 @@
+# The space-diagonal straight translation (2026-11-02), N = 32 only: U =
+# (pi/2)(1 1 1)/sqrt(3) (arm lineDiag3D) from (0.25 0.25 0.25) (a mesh vertex;
+# the sphere of radius 0.15 ends near (0.658 0.658 0.658), 0.19 from the
+# walls), END_TIME 0.45, at two fixed steps: Co 0.2 (dt 0.0025, 0.0726 h per
+# step per axis) and Co 0.2 sqrt(3) (0.1257 h per axis, the x-line's).
+# setFlow mode function with the axis through the sphere's centre (both
+# orbital scales zero) and the arm's velocity as the level, including its y
+# component; the exact body: U0 the arm velocity. Measure and predictions
+# (P-L3, P-L4): sphereRotation3D_hexFineLineDiagM.yaml.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLine3D --export=ALL,STUDY=davof/sphereRotation3D_hexFineLine3D run-studies.sbatch
+study_name: sphereRotation3D_hexFineLine3D
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2, 0.34641016151377546]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineDiag3D]
+  TPF_SPHERE_CX: [0.25]
+  TPF_SPHERE_CY: [0.25]
+  TPF_SPHERE_CZ: [0.25]
+  TPF_AXIS_X: [0.25]
+  TPF_AXIS_Z: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.15]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 45
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
