@@ -34,6 +34,15 @@
 # Reported without a prediction: every bin's C_b first / end, count share,
 # late slope and share, the mean error per face first / end, for both lines.
 #
+# MEASURED (2026-11-02, jobs 55855818-19; REPORT-swept "Where the anchored
+# diagonal's error builds up"):
+# B-0 HELD (.dat byte-identical, row sums to 4.8e-13 relative).
+# B-1 NOT HELD (y-normal 0.285 / 0.299), B-2 NOT HELD (x + z 0.716 / 0.701):
+#   MIXED, each face direction about its share of the faces.
+# B-3 FALSIFIED (tangent 0.230 / 0.297 with half the faces).
+# The excess over the x-line lies on the front and rear sides (97 % / 84 %
+#   of it); the x-line's front and rear do not grow at N = 64.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagFaces --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagFaces run-studies.sbatch
 study_name: sphereRotation3D_hexFineLineDiagFaces
 studies_dir: studies/davof

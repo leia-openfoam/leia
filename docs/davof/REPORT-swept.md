@@ -629,3 +629,166 @@ differently in two postProcessing files, and tpf_advection_metrics.py then
 writes that step as two rows, each with the other's columns empty (8 / 10 /
 10 / 24 / 0 / 6 such pairs in the six runs). davof_line_confound.py reads
 every column from its non-empty entries; the converter is not changed.
+(Superseded: the converter fixed in leia 24ebf8df, next section.)
+
+## The converter's join on the time (2026-11-02)
+
+Cause: the sources print a step's time with different precisions
+(areaFractionError.dat 0.03181980515, the log's `t = ` 0.031819805154); the
+join key, the time rounded to 9 significant digits, made 0.0318198051 of the
+first and 0.0318198052 of the second, and the outer join wrote two rows.
+Fix (leia 24ebf8df, tpf_advection_metrics.py): the times are matched
+numerically, one step when within tol = 1e-3 dt_min (dt_min the smallest gap
+between consecutive times within one source). The printed times of one step
+differ by about 5e-10 |t| at most (10 or more significant digits), so tol
+lies three orders of magnitude above that and below dt for |t| < 1e6 dt. Not
+the step index: the sources do not share a row set (reconstructionError at
+the end only unless every step, a t = 0 row in some .dat files, restarts).
+TIME is the 9-digit key of the log's time where the log has the step, else
+of the first source with it; unchanged for every unsplit step.
+
+Verification (job 55855815, 2.1 min): all 272 cases under leia/studies with
+advectorVoF.csv and log.advectorVoF re-converted by the previous (2aa541ee)
+and the new converter on the same inputs: 267 byte-identical; the 5 others
+are exactly the split confound cases (LineDiagM 00000 / 00001, LineXs 00000
+/ 00001, Line3D 00001: 135 / 265 / 265 / 533 / 110 rows -> 127 / 255 / 255 /
+509 / 104, one per step), in each the sequence of non-empty values of every
+column identical, the constant columns identical, and no row left with the
+area-fraction columns filled and the log's empty or the reverse. The six
+confound cases were re-converted in place (the old files kept as
+advectorVoF.preJoinFix.csv; tpfCommit and tpfVersion carried over from them,
+de7aea9). The workaround of davof_line_confound.py was then removed (leia
+0940279b): the plain row-wise reading on the re-converted files prints the
+confound table identical, byte for byte, to the workaround on the split
+files. The studies of the next two sections were converted by the new
+converter as they ran.
+
+## The exact plane on the straight lines (2026-11-02)
+
+Does the oblique build-up need the volume-anchored plane? The x-z diagonal
+and the x-line at Co 0.2 with planeSource exact (the tangent plane of the
+exact sphere per interface cell). Fork f974845 (de7aea9 plus the opt-in
+faceErrorCsv, off here), build 55855814; leia 4a4311b6 (configs and P-E1..P-E3
+with the exact plane's expected effects, committed before the runs); jobs
+55855816 (diagonal, 12.9 min), 55855817 (x-line, 10.1 min). Late slope s and
+x as in the confound section; "error sum" = L1 nFaces (the sum of
+|alphaf - alphaf_exact| over the counted faces), its late slope over the
+same window; interface cells = the davof count of the transported state at
+the first step and the end; no rank fallback in any run:
+
+| run | N | late slope s | mean L1 | L1 first | L1 end | L1(x) end | Eshape end | nFaces first -> end | interface cells | error-sum late slope | min alpha | excess | mass dev % |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| lineX, anchor | 32 | 8.059e-3 | 1.054e-2 | 5.14e-3 | 1.135e-2 | 8.66e-4 | 3.83e-4 | 1668 -> 1765 | 416 -> 444 | 14.13 | -3.4e-14 | 9.9e-13 | -2.0e-13 |
+| lineX, anchor | 64 | 2.988e-3 | 5.884e-3 | 2.61e-3 | 6.278e-3 | 2.29e-4 | 9.99e-5 | 6990 -> 6954 | 1760 -> 1756 | 21.02 | -5.4e-14 | 2.5e-12 | 3.9e-13 |
+| lineDiag, anchor | 32 | 2.773e-2 | 1.263e-2 | 4.31e-3 | 1.752e-2 | 1.19e-3 | 4.13e-4 | 1656 -> 1668 | 416 -> 414 | 48.71 | -2.4e-14 | 1.2e-12 | 6.7e-13 |
+| lineDiag, anchor | 64 | 1.804e-2 | 7.170e-3 | 2.19e-3 | 1.028e-2 | 3.41e-4 | 1.14e-4 | 6984 -> 7056 | 1760 -> 1732 | 126.3 | -6.9e-14 | 4.5e-12 | 3.2e-12 |
+| lineX, exact plane | 32 | 4.723e-3 | 1.218e-2 | 1.25e-2 | 1.270e-2 | 9.15e-4 | 4.90e-4 | 1668 -> 1756 | 416 -> 432 | -1.62 | -2.3e-17 | 3.3e-13 | 1.9e-13 |
+| lineX, exact plane | 64 | 3.749e-3 | 6.138e-3 | 6.33e-3 | 6.440e-3 | 2.96e-4 | 1.46e-4 | 7046 -> 6942 | 1760 -> 1748 | -5.22 | -4.0e-17 | 2.4e-12 | 1.1e-13 |
+| lineDiag, exact plane | 32 | -1.163e-2 | 7.755e-3 | 1.18e-2 | 6.295e-3 (max 1.28e-2) | 1.60e-1 | 9.52e-4 | 1665 -> 4028 | 416 -> 1491 | 19.74 | -4.1e-13 | 6.0e-8 | 5.4e-13 |
+| lineDiag, exact plane | 64 | -2.743e-3 | 4.340e-3 | 6.06e-3 | 3.482e-3 (max 6.42e-3) | 1.21e-1 | 3.67e-4 | 7008 -> 29256 | 1760 -> 3310 | 89.03 | -2.6e-4 | 2.5e-7 | 2.8e-12 |
+
+L1(alphaf) of the exact-plane diagonal at t = 0.1125 / 0.225 / 0.3375:
+9.35e-3 / 8.88e-3 / 6.18e-3 (N = 32), 4.42e-3 / 4.13e-3 / 3.78e-3 (N = 64);
+of the exact-plane x-line 1.20e-2 / 1.13e-2 / 1.29e-2, 5.15e-3 / 5.78e-3 /
+6.43e-3.
+
+Verdicts against the pre-registered thresholds:
+- P-E1 HELD by its measure: D_E = s(diagonal) - s(x-line) = -1.635e-2 /
+  -6.49e-3 (<= 4.92e-3 / 3.76e-3). P-E2 NOT HELD.
+- The bias named in the header decides this verdict. The exact-plane
+  diagonal smears: the transported state's interface cells grow 416 ->
+  1491 / 1760 -> 3310, the counted faces 2.4 / 4.2 times, L1(x) reaches
+  0.16 / 0.12 (anchored 1.2e-3 / 3.4e-4), min(alpha) -2.6e-4 at N = 64; the
+  mean L1 falls because the added faces enter the denominator, while the
+  error SUM rises with a late slope of 19.7 / 89.0 against -1.6 / -5.2 of
+  the exact-plane x-line (anchored: 48.7 / 126.3 against 14.1 / 21.0). The
+  exact-plane x-line does not smear (432 / 1748 interface cells at the end,
+  L1(x) 9.2e-4 / 3.0e-4, bounded to 1e-16, level L1(alphaf)). So with the
+  exact plane the diagonal still differs from the x-line, now as a growing
+  error sum on a smearing field, and the registered measure (the mean L1)
+  does not show it; the run does not show that the build-up needs the
+  anchor.
+- P-E3: mass deviation <= 2.8e-12 % (HELD). Bounds: the x-line stays within
+  [-4e-17, 1 + 2.4e-12]; the diagonal reaches -2.6e-4 and 1 + 2.5e-7 at
+  N = 64 (the header expected both lines outside; only the diagonal is).
+
+Surprising: an exact tangent plane per cell, independent of alpha, keeps the
+transported alpha on the sphere along x (L1(x) at the anchor's level) and
+lets it drift and smear along the x-z diagonal at the same speed and step.
+
+## Where the anchored diagonal's error builds up (2026-11-02)
+
+The anchored lines rerun with the per-face output (fork f974845:
+areaFractionError faceErrorCsv, the counted faces of every step with centre,
+S_f, alphaf, alphaf_exact; leia 4a4311b6: configs, davof_face_bins.py and
+B-0..B-3 committed before the runs); jobs 55855818 (diagonal, 10.8 min) and
+55855819 (x-line, 12.3 min). Per step e = |alphaf - alphaf_exact| per
+counted face; the contribution of a bin C_b = sum_bin e / nFaces (the C_b of
+a binning add up to L1), its late slope over [0.25 T, T] and its share of
+the late slope of L1 (the shares add up to 1). Bins: the face direction;
+the side, theta = angle of the exact outward normal to the travel: front
+[0, 60), tangent [60, 120), rear [120, 180] degrees; theta in 30-degree
+bins; the angle of the normal to the nearest mesh axis. "faces" = the bin's
+share of the counted faces at the end.
+
+Checks (B-0 HELD): areaFractionError.dat of all four runs byte-identical to
+the original lineDiag / lineX runs (fork de7aea9); the row sums of the CSVs
+reproduce the L1 column to 4.8e-13 relative at every step (180 / 360 steps).
+By symmetry the x- and z-normal faces of the diagonal and the y- and
+z-normal faces of the x-line carry identical numbers.
+
+Late slope per bin (share of the late slope of L1 in brackets) and the
+bin's share of the faces, N = 32 / N = 64:
+
+| bin | lineDiag N 32 | lineDiag N 64 | lineX N 32 | lineX N 64 | faces (diag / x) |
+|---|---|---|---|---|---|
+| total L1 | 2.773e-2 | 1.804e-2 | 8.059e-3 | 2.988e-3 | |
+| x-normal | 9.92e-3 (0.358) | 6.32e-3 (0.350) | 3.25e-3 (0.403) | 1.17e-3 (0.391) | 0.33 / 0.33 |
+| y-normal | 7.90e-3 (0.285) | 5.39e-3 (0.299) | 2.41e-3 (0.299) | 9.10e-4 (0.304) | 0.33 / 0.33 |
+| z-normal | 9.92e-3 (0.358) | 6.32e-3 (0.350) | 2.41e-3 (0.299) | 9.10e-4 (0.304) | 0.33 / 0.33 |
+| front (0-60) | 1.152e-2 (0.416) | 6.77e-3 (0.375) | 1.14e-3 (0.141) | -7.3e-6 (-0.002) | 0.25 / 0.25-0.27 |
+| tangent (60-120) | 6.37e-3 (0.230) | 5.37e-3 (0.297) | 5.79e-3 (0.718) | 3.01e-3 (1.006) | 0.50-0.51 / 0.46-0.50 |
+| rear (120-180) | 9.84e-3 (0.355) | 5.90e-3 (0.327) | 1.13e-3 (0.140) | -1.0e-5 (-0.003) | 0.24-0.25 / 0.25-0.27 |
+| theta 0-30 | 3.44e-3 (0.124) | 2.18e-3 (0.121) | -1.9e-5 (-0.002) | 8.5e-7 (0.000) | 0.07 / 0.06-0.07 |
+| theta 30-60 | 8.09e-3 (0.292) | 4.59e-3 (0.254) | 1.16e-3 (0.143) | -8.1e-6 (-0.003) | 0.17-0.18 / 0.19-0.20 |
+| theta 60-90 | 3.24e-3 (0.117) | 2.82e-3 (0.156) | 2.95e-3 (0.366) | 1.45e-3 (0.485) | 0.26-0.27 / 0.21-0.26 |
+| theta 90-120 | 3.13e-3 (0.113) | 2.54e-3 (0.141) | 2.84e-3 (0.352) | 1.56e-3 (0.521) | 0.24-0.25 / 0.24-0.25 |
+| theta 120-150 | 6.80e-3 (0.245) | 3.89e-3 (0.216) | 1.08e-3 (0.134) | -1.1e-5 (-0.004) | 0.17-0.18 / 0.19-0.20 |
+| theta 150-180 | 3.05e-3 (0.110) | 2.01e-3 (0.111) | 4.8e-5 (0.006) | 9.4e-7 (0.000) | 0.07 / 0.06 |
+| axis 0-15 | 1.49e-3 (0.054) | 7.85e-4 (0.044) | 2.99e-4 (0.037) | 2.61e-4 (0.087) | 0.07 / 0.07 |
+| axis 15-30 | 7.05e-3 (0.254) | 5.30e-3 (0.294) | 2.52e-3 (0.313) | 1.07e-3 (0.359) | 0.26-0.29 / 0.27-0.29 |
+| axis 30-45 | 1.596e-2 (0.575) | 9.60e-3 (0.532) | 3.53e-3 (0.438) | 1.27e-3 (0.426) | 0.51-0.54 / 0.50-0.51 |
+| axis 45-55 | 3.23e-3 (0.117) | 2.35e-3 (0.130) | 1.71e-3 (0.212) | 3.83e-4 (0.128) | 0.13 / 0.13-0.16 |
+
+Contribution C_b at the first step -> the end, N = 32 (N = 64): diagonal
+front 1.15e-3 -> 6.45e-3 (5.84e-4 -> 3.57e-3), tangent 2.11e-3 -> 6.14e-3
+(1.05e-3 -> 3.90e-3), rear 1.05e-3 -> 4.94e-3 (5.55e-4 -> 2.82e-3); x-line
+front 1.44e-3 -> 2.59e-3 (7.01e-4 -> 9.50e-4), tangent 2.27e-3 -> 6.71e-3
+(1.24e-3 -> 4.43e-3), rear 1.43e-3 -> 2.05e-3 (6.64e-4 -> 9.00e-4). Mean
+error per face at the end: diagonal front 2.63e-2 / 1.42e-2, rear 2.03e-2 /
+1.14e-2, tangent 1.20e-2 / 7.77e-3; x-line front 9.48e-3 / 3.83e-3, rear
+7.66e-3 / 3.60e-3, tangent 1.46e-2 / 8.82e-3. Within the diagonal's front
+and rear, the x-, y- and z-normal faces carry 0.13 to 0.14 of the slope each
+at N = 32 (y/front 0.142, y/rear 0.091) and 0.09 to 0.13 at N = 64.
+
+Verdicts:
+- B-1 NOT HELD: the y-normal faces carry 0.285 / 0.299 of the diagonal's
+  late slope (< 0.50), their share of the faces 0.33.
+- B-2 NOT HELD: the x- and z-normal faces carry 0.716 / 0.701 (< 0.75).
+  Hence MIXED: the build-up is not tied to a face direction; each direction
+  carries about its share of the faces in both lines.
+- B-3 FALSIFIED: the tangent band carries 0.230 / 0.297 of the diagonal's
+  late slope (< 0.50) with 0.51 / 0.50 of the faces.
+
+Where the build-up concentrates: the diagonal's excess late slope over the
+x-line (1.967e-2 / 1.505e-2) lies on the front and rear sides of the
+sphere: there the diagonal's slope is 2.136e-2 / 1.267e-2 against 2.27e-3 /
+-1.7e-5 on the x-line, i.e. 1.909e-2 / 1.269e-2 = 97 % / 84 % of the excess;
+the tangent band's slope is close in both lines (6.37e-3 / 5.37e-3 against
+5.79e-3 / 3.01e-3; 3 % / 16 % of the excess). Within front and rear the
+30-60 and 120-150 degree bins carry the most (0.292 + 0.245 / 0.254 + 0.216
+of the diagonal's slope with 0.35 of the faces). On the x-line the front
+and rear sides stop growing at N = 64 (slopes -7e-6 and -1e-5) and its whole
+late slope sits in the tangent band. Against the mesh axes the diagonal's
+slope follows the face counts of the angle bins (0.575 / 0.532 in 30-45
+degrees with 0.54 / 0.51 of the faces), the x-line's likewise.
