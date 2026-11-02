@@ -57,6 +57,15 @@
 # expectation, stated separately: the Eshape ratios diagonal / x-line of 1.08 /
 # 1.14 suggest H-face.
 #
+# MEASURED (2026-11-02; studies 55863224-27, app 55863587, fork 394afb6;
+# REPORT-swept "Is the oblique build-up in alpha or in the face update?"):
+# K-0 HELD (.dat byte-identical in all four W cases, the app's loop L1
+#   within 5.4e-12 relative at 36 times, no failed plane). H-alpha HELD:
+#   phi 1.029 / 0.895 (mean rule 0.998 / 0.963); H-face FALSIFIED. K-1 HELD
+#   (|s_0| <= 2.1e-4; corrected phi 1.043 / 0.895). E-1 HELD (s_Ec,D/s_Ec,X
+#   3.30 / 5.71). R-1: phi_R 1.260 / 1.198, plicRDF's alpha carries the
+#   excess too. The agent's expectation (H-face) was wrong.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexFineLineDiagW --export=ALL,STUDY=davof/sphereRotation3D_hexFineLineDiagW run-studies.sbatch
 study_name: sphereRotation3D_hexFineLineDiagW
 studies_dir: studies/davof

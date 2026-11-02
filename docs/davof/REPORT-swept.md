@@ -1032,3 +1032,122 @@ Job 55860362:
 - Those 8 re-converted in place (old files kept as
   advectorVoF.preDirFix.csv, tpfCommit carried over): 6 columns filled, no
   non-empty value changed.
+
+Open defect of the opt-in variant (recorded, not fixed; 2026-11-02):
+sweptConsistent computes the walls' faces as well. On such a face a piece of
+a cell without a surface carries alpha_c V_piece, so liquid leaves through a
+wall where the algebraic flux takes the boundary value (fixedValue 0). This
+is the whole mass deviation of the consistent diagonal above: 5.6e-9 / 8.4e-10
+of the mass. The default path (sweptConsistent false) never computes a wall
+face in these runs.
+
+## Is the oblique build-up in alpha or in the face update? (2026-11-02)
+
+Tomislav's approval via the coordinating session. The question: does the
+oblique build-up of L1(alphaf) belong to the transported volume fractions,
+which any plane-based geometric transport would show, or to the DAVOF face
+update? The test reconstructs face fractions from alpha alone and scores
+them as the loop's are.
+
+Fork davof-swept, pushed to tmaric only:
+- f568faa: the post-processing app staticFaceFractions
+  (apps/benchmark/staticFaceFractions; serial; no library source changes).
+- be237e4: Allwmake's executable bit, lost in f568faa.
+- 394afb6: a diagnostic line of the app.
+
+leia 401f0bc6: configs and davof_static_faces.py, with the predictions in the
+header of sphereRotation3D_hexFineLineDiagW.yaml. They were committed before
+any run. The numbers seen before are listed there: the loop's slopes,
+Eshape, the film counts, and plicRDF on the rotation. My own expectation
+from the Eshape ratios was H-face.
+
+Jobs:
+- 55863223, 55863347: builds. 55863196 failed on the mode bit and its four
+  dependent studies were cancelled.
+- 55863224-27: the four studies.
+- 55863587: the app over 8 cases x 37 written times. 55863228 failed on an
+  unknown option.
+- 55863306, 55863348: a smoke test at t = 0.
+
+The static rule:
+- Interface cells: 1e-8 < alpha < 1 - 1e-8.
+- The plane: the exact sphere normal, positioned by alpha to 1e-11
+  (vofCutCell), then repositioned with the normal at the first plane's
+  centroid.
+- A face takes its donor cell's clip, the owner for phi_f >= 0
+  (cutFacePLIC). This is the dt -> 0 limit of the sweptFaceCells pieces with
+  donorSide.
+- A cell without a plane gives 0 or 1.
+- The mean of the two cells' clips is a sensitivity check.
+
+Scoring: areaFractionError's L1(alphaf), its counted faces and its
+exactSphere state. Ec = mean |alpha - alpha_exact| over the exact state's
+interface cells (416 / 1762 cells). Late slope: over the 28 written times in
+[0.25 T, T] (writes every 0.0125).
+
+Note on Eshape: volumeFractionError builds its alpha_exact with
+cutCellImpFunc, not the exactSphere state. The app's sum |alpha -
+alpha_exact| V is 0.09 to 0.88 of Eshape over the run (0 at t = 0), so Eshape
+carries a construction floor that dilutes ratios between the lines.
+
+| run | N | loop L1 end | loop late slope (per step / written) | static L1 end | static late slope | floor (alpha_exact) L1 end / slope | Ec end | Ec late slope | Eshape end | L1(x) end |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ours, x-z diagonal | 32 | 1.752e-2 | 2.773e-2 / 2.783e-2 | 1.626e-2 | 2.524e-2 | 6.67e-3 / -2.1e-4 | 2.373e-2 | 4.224e-2 | 4.126e-4 | 1.195e-3 |
+| ours, x-z diagonal | 64 | 1.028e-2 | 1.804e-2 / 1.790e-2 | 1.005e-2 | 1.613e-2 | 3.29e-3 / -4.9e-5 | 1.330e-2 | 2.630e-2 | 1.142e-4 | 3.412e-4 |
+| ours, x-line | 32 | 1.135e-2 | 8.059e-3 / 8.082e-3 | 1.096e-2 | 4.918e-3 | 6.71e-3 / 7.7e-5 | 1.227e-2 | 1.281e-2 | 3.829e-4 | 8.661e-4 |
+| ours, x-line | 64 | 6.278e-3 | 2.988e-3 / 3.045e-3 | 6.239e-3 | 2.837e-3 | 3.40e-3 / -4.8e-5 | 6.374e-3 | 4.605e-3 | 9.986e-5 | 2.290e-4 |
+| plicRDF, x-z diagonal | 32 | - | - | 2.986e-2 | 5.493e-2 | (as ours) | 4.156e-2 | 8.494e-2 | 6.130e-4 | 1.982e-3 |
+| plicRDF, x-z diagonal | 64 | - | - | 1.674e-2 | 3.266e-2 | | 2.221e-2 | 4.804e-2 | 1.691e-4 | 5.308e-4 |
+| plicRDF, x-line | 32 | - | - | 2.022e-2 | 3.005e-2 | | 2.527e-2 | 4.604e-2 | 5.048e-4 | 1.410e-3 |
+| plicRDF, x-line | 64 | - | - | 1.108e-2 | 1.487e-2 | | 1.294e-2 | 2.215e-2 | 1.408e-4 | 3.764e-4 |
+
+All eight runs completed, bounded and conservative:
+- min alpha at or above -3.1e-13; excess at most 4.5e-12.
+- Mass deviation at the end at most 5.3e-12 %.
+- plicRDF has no alphaf, so there is no loop column.
+- The N = 64 rows' tpfCommit reads 394afb6: the converter ran after that
+  build. The solver and libraries were unchanged, and K-0 holds.
+
+Verdicts:
+- K-0 HELD:
+  - The W re-runs' areaFractionError.dat and volumeFractionError.dat are
+    byte-identical to the originals in all four cases.
+  - The app's L1 of the loop's alphaf matches the .dat at all 36 written
+    times to at most 5.4e-12 relative.
+  - 0 failed plane positionings.
+- H-alpha HELD: phi = (s_S,D - s_S,X)/(s_L,D - s_L,X) = 1.029 (N = 32) and
+  0.895 (N = 64). The static face fractions of the transported alpha build up
+  on the diagonal like the loop's (static s_D/s_X 5.13 / 5.69 against the
+  loop's 3.44 / 5.88). The mean rule gives phi 0.998 / 0.963.
+- H-face FALSIFIED (it needs phi <= 0.25).
+- K-1 HELD: the floor's slopes are at most 2.1e-4 in magnitude, against the
+  thresholds 0.1 s_L,X = 8.1e-4 / 3.0e-4. Floor-corrected phi: 1.043 / 0.895.
+- E-1 HELD: s_Ec,D/s_Ec,X = 3.30 / 5.71. The excess sits in the exact
+  interface cells: our Eout at the end is at most 2.2e-6 per exact interface
+  cell, so the low-alpha film carries none of it.
+- R-1: phi_R = 1.260 / 1.198, so plicRDF's alpha carries the oblique excess
+  too.
+  - Its own ratio is smaller: static s_D/s_X 1.83 / 2.20, Ec 1.85 / 2.17.
+  - But its absolute excess is at least ours: static s_D - s_X 2.49e-2 /
+    1.78e-2 against ours 2.03e-2 / 1.33e-2.
+
+What the runs show:
+- The oblique build-up is in the transported volume fractions. The face
+  update reproduces what its alpha implies: at the end the loop's L1(alphaf)
+  is within 0.6 % to 8 % of the static L1 of the same alpha. It starts from
+  0 against the reconstruction floor's 6.7e-3 / 3.3e-3, and the floor stays
+  flat.
+- plicRDF + isoAdvector, from the same initial alpha with the same dt, has
+  the oblique excess as well, with larger errors on both lines.
+- Our Ec late slope is 3.6 / 4.8 times smaller than plicRDF's on the x-line,
+  but only 2.0 / 1.8 times smaller on the diagonal.
+
+Surprising:
+- The registered expectation (H-face) was wrong. Eshape's diagonal/x-line
+  ratio at the end (1.08 / 1.14) hides a factor of about 2 in Ec (1.94 /
+  2.09), because of its construction floor.
+- From N = 32 to 64, Ec's late slope falls by 1.61 on our diagonal against
+  2.78 on our x-line, and by 1.77 / 2.08 for plicRDF.
+
+Not examined: the mechanism in alpha. One candidate is the volume flux of the
+oblique swept volumes.
