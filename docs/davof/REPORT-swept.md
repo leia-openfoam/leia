@@ -559,3 +559,73 @@ translation along x saturates, so translation was taken as
 non-accumulating): the diagonal direction accumulates. Not examined: the
 diagonal line at another Co (its per-axis displacement per step is 0.089 h
 against 0.126 h on lineX), other diagonal directions, N = 128.
+
+## The diagonal line's confound (2026-11-02)
+
+Tomislav's approval via the coordinating session. At the same speed and dt
+the x-z diagonal moved 0.0889 h per step along each axis and the x-line
+0.1257 h. The fixed step alone crosses the two variables (dt = Co h / 2.5;
+speed pi/2, window END_TIME 0.45, fork de7aea9 / build 55845642, serial):
+LineDiagM = the x-z diagonal at Co 0.2 sqrt(2) (0.1257 h per axis);
+LineXs = the x-line at Co 0.2/sqrt(2) (0.0889 h per axis); Line3D = the
+space diagonal (pi/2)(1 1 1)/sqrt(3) from (0.25 0.25 0.25) at Co 0.2
+(0.0726 h per axis) and Co 0.2 sqrt(3) (0.1257 h), N = 32 only. leia
+fc97d8bd: configs, davof_line_confound.py and the predictions P-L1..P-L4
+(in sphereRotation3D_hexFineLineDiagM.yaml), committed before the runs.
+Jobs 55854681 (LineDiagM, 8.3 min), 55854682 (LineXs, 12.1 min), 55854683
+(Line3D, 4.6 min). The rendered dictionaries were checked (deltaT
+0.003535533906 / 0.001767766953 / 0.0025 / 0.004330127019 at N = 32, the
+arm velocity as setFlow's level and as U0, axisPoint the sphere's centre).
+
+Measure: the late slope s, the least-squares slope of L1(alphaf) against t
+over [0.25 T, T] (as reported for lineX and lineDiag in item 4), and its
+log-position x = ln(s/s_X)/ln(s_D/s_X) between the existing x-line and
+diagonal of the same N: D-like x >= 0.75, X-like x <= 0.25. "per-axis" is
+the displacement per step along each moving mesh axis in cells, "|U|dt"
+along the travel; mean L1 over t in [0.1, 0.45]; bounds and mass over all
+steps, the mass deviation at the end; no rank fallback in any run:
+
+| run | N | per-axis (h) | U dt (h) | steps | late slope | x | class | mean L1 | L1 first | L1 max | L1 end | L1(x) end | Eshape end | min alpha | excess | mass dev % |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| lineX | 32 | 0.1257 | 0.1257 | 180 | 8.059e-3 | 0 | ref | 1.054e-2 | 5.14e-3 | 1.177e-2 | 1.135e-2 | 8.66e-4 | 3.83e-4 | -3.4e-14 | 9.9e-13 | -2.0e-13 |
+| lineX | 64 | 0.1257 | 0.1257 | 360 | 2.988e-3 | 0 | ref | 5.884e-3 | 2.61e-3 | 6.346e-3 | 6.278e-3 | 2.29e-4 | 9.99e-5 | -5.4e-14 | 2.5e-12 | 3.9e-13 |
+| lineDiag | 32 | 0.0889 | 0.1257 | 180 | 2.773e-2 | 1 | ref | 1.263e-2 | 4.31e-3 | 1.752e-2 | 1.752e-2 | 1.20e-3 | 4.13e-4 | -2.4e-14 | 1.2e-12 | 6.7e-13 |
+| lineDiag | 64 | 0.0889 | 0.1257 | 360 | 1.804e-2 | 1 | ref | 7.170e-3 | 2.19e-3 | 1.028e-2 | 1.028e-2 | 3.41e-4 | 1.14e-4 | -6.9e-14 | 4.5e-12 | 3.2e-12 |
+| LineDiagM | 32 | 0.1257 | 0.1777 | 127 | 2.405e-2 | 0.885 | D-like | 1.123e-2 | 3.64e-3 | 1.542e-2 | 1.542e-2 | 1.07e-3 | 3.94e-4 | -2.3e-13 | 7.2e-13 | 2.4e-13 |
+| LineDiagM | 64 | 0.1257 | 0.1777 | 255 | 1.550e-2 | 0.916 | D-like | 6.325e-3 | 1.95e-3 | 9.049e-3 | 9.005e-3 | 3.02e-4 | 1.07e-4 | -4.2e-13 | 4.4e-12 | 2.5e-12 |
+| LineXs | 32 | 0.0889 | 0.0889 | 255 | 8.914e-3 | 0.082 | X-like | 1.138e-2 | 5.43e-3 | 1.281e-2 | 1.237e-2 | 9.10e-4 | 3.91e-4 | -1.7e-14 | 1.2e-12 | 6.7e-14 |
+| LineXs | 64 | 0.0889 | 0.0889 | 509 | 3.192e-3 | 0.037 | X-like | 6.346e-3 | 2.72e-3 | 6.825e-3 | 6.776e-3 | 2.45e-4 | 1.02e-4 | -4.8e-14 | 3.6e-12 | 5.0e-13 |
+| Line3D Co 0.2 | 32 | 0.0726 | 0.1257 | 180 | 2.356e-2 | 0.868 | D-like | 1.496e-2 | 3.60e-3 | 1.981e-2 (t 0.348) | 1.763e-2 | 1.85e-3 | 4.31e-4 | -2.5e-14 | 1.3e-12 | 1.6e-12 |
+| Line3D Co 0.346 | 32 | 0.1257 | 0.2177 | 104 | 1.067e-2 | 0.227 | X-like | 1.924e-2 | 2.21e-3 | 2.577e-2 (t 0.368) | 1.854e-2 | 2.22e-3 | 4.56e-4 | -3.2e-14 | 1.0e-12 | 1.0e-12 |
+
+L1(alphaf) at t = 0.05, 0.10, ..., 0.45: LineDiagM N = 32 5.72e-3 6.86e-3
+7.97e-3 9.54e-3 1.09e-2 1.19e-2 1.30e-2 1.42e-2 1.54e-2 (monotone, max at
+the end, as lineDiag); LineXs N = 32 8.01e-3 9.16e-3 1.02e-2 1.09e-2 1.15e-2
+1.17e-2 1.22e-2 1.24e-2 1.24e-2; Line3D Co 0.2 8.48e-3 1.04e-2 1.02e-2
+1.33e-2 1.70e-2 1.50e-2 1.91e-2 1.76e-2 1.76e-2; Line3D Co 0.346 1.42e-2
+1.27e-2 1.96e-2 2.08e-2 2.20e-2 2.22e-2 2.29e-2 2.05e-2 1.85e-2.
+
+Verdicts:
+- P-L1 HELD (the oblique travel): LineDiagM is D-like at both N (x 0.885 /
+  0.916; slope 87 % / 86 % of lineDiag's) and LineXs X-like at both N (x
+  0.082 / 0.037; slope 111 % / 107 % of lineX's). Matching the per-axis
+  displacement to the x-line's leaves the diagonal accumulating, and
+  reducing the x-line's to the diagonal's leaves it levelling off.
+- P-L2 NOT HELD.
+- P-L3 (secondary, N = 32): by the threshold the space diagonal is D-like
+  at Co 0.2 (x 0.868) and X-like at Co 0.2 sqrt(3) (x 0.227), the pattern
+  the per-axis reading predicts, not the oblique one. Both 3D histories
+  are non-monotone (maxima 1.98e-2 at t 0.348 and 2.58e-2 at t 0.368,
+  then falling), unlike every planar line; the Co 0.346 run's slope is
+  small because it falls after t 0.37, while its mean L1 (1.92e-2) is the
+  largest of all runs. A late slope does not separate accumulation from
+  levelling off on these two histories, so the 3D pair does not decide
+  between the readings.
+- P-L4 HELD: min(alpha) >= -4.2e-13, excess <= 4.4e-12, |mass deviation|
+  <= 2.5e-12 % in all six new runs.
+
+Converter note: with an irrational fixed dt the time of a step can print
+differently in two postProcessing files, and tpf_advection_metrics.py then
+writes that step as two rows, each with the other's columns empty (8 / 10 /
+10 / 24 / 0 / 6 such pairs in the six runs). davof_line_confound.py reads
+every column from its non-empty entries; the converter is not changed.
