@@ -44,6 +44,22 @@
 #   deviation <= 1e-10 %) as on 100eb6a, and L1(alphaf) at the end within
 #   5 % of 2.305e-2 (N = 32) and 1.452e-2 (N = 64). FALSIFIED otherwise.
 #
+# MEASURED (2026-11-02, build 55845642, jobs 55845643-49, 55846097;
+# REPORT-swept.md "Item 3"):
+# P-C1 HELD: over all 20 steps max|dalpha| 1.2e-13 .. 2.5e-12, max|dalphaf|
+#   1.4e-12 .. 6.1e-12 for np 2/4/8/16, both rows; no fallback on any face at
+#   any step in any decomposition; nMissing 0, nDup 0.
+# P-C2 HELD: crossing equals the merge binary's np 1 to the last digit.
+# P-C3 HELD (vacuously at step 1: no face differs above 1e-12): crossing
+#   falls back from step 12 (2..19 / 4..22 faces per step), final never;
+#   from step 5 faces without a fallback differ too (dVf up to 4.8e-11 /
+#   1.8e-9 h^3): contact pieces that the earlier rule gave a spurious volume
+#   (debug face: -5.57e-14 m^3 in an interface cell holding only contacts).
+# P-C4 HELD: full turn bounded (min -5.8e-13 / -2.7e-13, excess 6.3e-12 /
+#   1.1e-11), mass 4.8e-13 / 5.1e-12 %, L1(alphaf) 2.30541e-2 / 1.452021e-2
+#   (100eb6a: 2.30545e-2 / 1.452023e-2); fallbacks 0 against 7552 / 32717
+#   face-steps.
+#
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptParN32np1Crossing --export=ALL,STUDY=davof/sphereRotation3D_hexSweptParN32np1Crossing run-studies.sbatch
 study_name: sphereRotation3D_hexSweptParN32np1Crossing
 studies_dir: studies/davof

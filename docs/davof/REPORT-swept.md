@@ -373,3 +373,91 @@ Verification on the merged binary (build 55845299):
   face at step 20 (the cap-rank fallback, item 3). The merged serial np 1
   runs equal the parallel branch's np 1 runs (fork fc08178) to the last
   written digit at all 20 steps in both rows (alpha, alphaf, dVf: 0).
+
+## Item 3 (2026-11-02): the cap set of a piece, independent of the face order
+
+Fork davof-swept de7aea9 (build 55845642); leia 4291efb9 (token
+TPF_SWEPT_CAP_SET, config sphereRotation3D_hexSweptParN32np1Crossing with
+P-C1..P-C4 pre-registered before the runs).
+
+The defect, read from davofSweptPieces.H and the parallel run's debug face
+(job 55812211): sweptPieceVolume flagged a cell plane as a cap when it
+crossed the polygon at its turn in the clipping order (the cell's face
+list), so (i) a plane whose new edge a later plane removed again still
+counted, and (ii) the clipped remnant of zero area of a triangle touching a
+cell plane in one edge set a flag as well. The face at step 20 is an
+x-normal face whose lateral quad of the edge y = 0.375 lies IN that plane
+(the rotation about y keeps y); the edge neighbour below it
+(alpha 0.063) received those triangles with a zero signed distance, and its
+cap set was {x, y, z+, PLIC} (four: rank-deficient, fallback) in the serial
+face order and three planes in the decomposed one (volume 8.8e-24, no
+fallback).
+
+Decision (commit message and file header of davofSweptPieces.H): make the
+cap set a property of the piece, i.e. of the swept volume intersected with
+the half-spaces, rather than only muting zero-volume pieces (which leaves
+the order dependence for pieces of positive volume):
+(a) a boundary triangle lying in a cell plane (every vertex within 1e-10 of
+    its longest edge) is a contact, dropped from that cell's piece, when the
+    donor lies on the other side of the plane; with the donor on the cell's
+    side it bounds the piece and is not clipped by that plane (the side
+    rule of the face update's coplanar rule donorSide; the triangle's own
+    orientation is not used because a lateral quad of a twisted swept
+    volume is a bow tie with triangles pointing to both sides);
+(b) a plane carries a cap when it produced an edge of the FINAL wet polygon
+    (edge labels carried through the Sutherland-Hodgman clip), longer than
+    1e-12 of the triangle's longest edge, on a polygon of area above 1e-14
+    of that edge squared.
+Key sweptCapSet final (default) | crossing (the earlier rule, kept for the
+comparison); sweptFaceLog gains the per-face fallback flag; the debug face
+prints the caps, the rank status and the contacts of every piece.
+
+Verification (jobs 55845643-48, 55845649, 55846097; $W/cmp-caps):
+
+- P-C1 HELD. N = 32, np 2/4/8/16 against np 1 (final), 20 steps, rows
+  exact / ring: max over all 20 steps of max|dalpha| 1.2e-13 to 2.5e-12 and
+  of max|dalphaf| 1.4e-12 to 6.1e-12 (threshold 1e-8); step 20 at np 16:
+  2.2e-12 / 2.2e-12 exact, 1.9e-13 / 1.0e-12 ring (merge binary 1.1e-6 /
+  3.6e-3 and 6.4e-7 / 2.7e-3). The fallback flags are 0 on every face at
+  every step in every decomposition; nMissing 0, nDup 0. The steps 1-19
+  floor of the merge binary (up to 1e-9 exact, 5.2e-9 ring in alphaf) is
+  gone as well: 1.4e-12 to 6.1e-12.
+- P-C2 HELD. crossing on de7aea9 equals the merge binary's np 1 to the last
+  written digit (alpha, alphaf, dVf; 20 steps, both rows).
+- P-C3 HELD as stated, with a finding. final against crossing on the same
+  binary: at step 1 no face differs above 1e-12 (max dVf 4.5e-14 h^3); the
+  crossing run falls back from step 12 on (2 to 19 / 4 to 22 faces per
+  step), final never (0 at every step). Before the first fallback, from
+  step 5 on, faces without a fallback differ as well: 22 / 15 faces at step
+  5, dVf up to 4.8e-11 / 1.8e-9 h^3, alphaf at round-off; 88 to 330 faces at
+  steps 6-11, alphaf up to 1.0e-10 / 4.3e-9 (the loop's amplification). The
+  debug face of the largest one (ring row, step 5, z-normal face at
+  (0.390625 0.578125 0.46875), job 55846097): under crossing the interface
+  cell 31948 (alpha 0.279) held a piece of contact triangles only (coverage
+  1.75e-4 m^2, three caps) with the volume -5.57e-14 m^3, exactly the
+  difference of the face's liquid volume (5.2045871742e-6 final,
+  5.2045871185e-6 crossing); under final that cell has 2 contacts, no
+  coverage, no volume. So the earlier rule also gave contact pieces a
+  spurious nonzero volume where their cap system was solvable. From step 12
+  the faces with a changed fallback flag carry the large differences
+  (alphaf up to 2.3e-2), the others up to 3.8e-4 (propagated).
+- P-C4 HELD. Full turn sphereRotation3D_hexHist (N = 32 / 64; the 100eb6a
+  study moved to *_100eb6a_2026-11-02):
+
+| N | rule | rank fallbacks (face-steps / steps with one) | L1(alphaf) end | L1(x) end | Eshape end | min alpha | excess | mass dev % |
+|---|---|---|---|---|---|---|---|---|
+| 32 | crossing (100eb6a) | 7552 / 308 of 400 | 2.30545e-2 | 1.49130e-3 | 4.6807e-4 | -5.6e-13 | 6.3e-12 | 1.3e-12 |
+| 32 | final (de7aea9) | 0 / 0 | 2.30541e-2 | 1.49131e-3 | 4.6805e-4 | -5.8e-13 | 6.3e-12 | 4.8e-13 |
+| 64 | crossing (100eb6a) | 32717 / 655 of 800 | 1.452023e-2 | 4.72148e-4 | 1.39877e-4 | -2.4e-13 | 1.1e-11 | 5.6e-12 |
+| 64 | final (de7aea9) | 0 / 0 | 1.452021e-2 | 4.72147e-4 | 1.39876e-4 | -2.7e-13 | 1.1e-11 | 5.1e-12 |
+
+  The end values change by -1.7e-5 (N = 32) and -2.0e-6 (N = 64) relative.
+  Degenerate pieces (closure residual above 1e-6, volume zero) 62 / 1270
+  face-steps (crossing 60 / 1082).
+
+Not changed and open: the closure residual of the ACCEPTED pieces is not at
+round-off under either rule: per step its maximum lies between 1e-11 and
+1e-6 (crossing, steps without a fallback: up to 6.4e-7 / 9.9e-7; final: up to
+9.99e-7 / 1.0e-6, i.e. pieces just below the 1e-6 degenerate threshold are
+taken); the 1.0 of the crossing runs' column were the rank-deficient pieces.
+Which pieces close only to 1e-7..1e-6 is not investigated.
