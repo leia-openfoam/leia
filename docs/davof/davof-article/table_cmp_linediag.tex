@@ -1,0 +1,32 @@
+% written by make_table_cmp.py from data/swept/cmp_table.csv -- do not edit
+\begin{tabular}{llrrrrrrrr}
+\toprule
+Co & $N$ (ranks) & method & $L_1(\mathbf{x})$ & $E_{\mathrm{shape}}$ & $L_1(\mathbf{n})$ & $L_1(\alpha_f)$ & $\min_t\alpha$ / excess & wall s & ratio \\
+\midrule
+1 & 32 (1) & swept-face, ring normal & 7.86e-04 & 1.81e-04 & 3.87e-02 & 1.12e-02 & -3.9e-11 / 1.4e-13 & 10.5 & 3.4 \\
+ &  & swept-face, exact normal & 4.19e-04 & 1.18e-05 & 2.39e-03 & 4.85e-03 & -3.0e-14 / 2.0e-13 & 10.7 & 3.4 \\
+ &  & plicRDF + isoAdvector & 6.47e-03 & 1.29e-03 & 1.25e-01 & -- & -1.0e-14 / 9.3e-15 & 3.1 & 1.0 \\
+ & 64 (8) & swept-face, ring normal & 1.76e-04 & 3.89e-05 & 1.91e-02 & 5.05e-03 & -1.5e-13 / 2.0e-12 & 36.4 & 4.0 \\
+ &  & swept-face, exact normal & 1.01e-04 & 3.78e-06 & 7.22e-04 & 2.36e-03 & -3.2e-11 / 1.5e-12 & 37.3 & 4.1 \\
+ &  & plicRDF + isoAdvector & 5.08e-03 & 6.31e-04 & 1.39e-01 & -- & -1.5e-03 / 1.2e-03 & 9.1 & 1.0 \\
+ & 128 (64) & swept-face, ring normal & 3.55e-05 & 7.18e-06 & 8.29e-03 & 2.18e-03 & -3.6e-11 / 1.3e-11 & 204.3 & 5.0 \\
+ &  & swept-face, exact normal & 2.64e-05 & 8.77e-07 & 1.87e-04 & 1.24e-03 & -1.3e-13 / 1.3e-11 & 211.2 & 5.2 \\
+ &  & plicRDF + isoAdvector & 3.00e-03 & 3.22e-04 & 1.48e-01 & -- & -6.6e-03 / 4.1e-03 & 40.5 & 1.0 \\
+ & order & swept-face, ring normal & 2.23 & 2.33 & 1.11 & 1.18 &  &  &  \\
+ &  & swept-face, exact normal & 1.99 & 1.88 & 1.84 & 0.98 &  &  &  \\
+ &  & plicRDF + isoAdvector & 0.55 & 1.00 & -0.13 & -- &  &  &  \\
+\midrule
+0.2 & 32 (1) & swept-face, ring normal & 2.01e-03 & 5.73e-04 & 5.36e-02 & 3.17e-02 & -1.7e-14 / 2.5e-13 & 42.4 & 7.0 \\
+ &  & swept-face, exact normal & 1.15e-03 & 2.89e-04 & 2.37e-03 & 1.69e-02 & -3.6e-13 / 2.0e-13 & 43.3 & 7.1 \\
+ &  & plicRDF + isoAdvector & 1.93e-03 & 5.12e-04 & 4.23e-02 & -- & -2.5e-13 / 2.2e-16 & 6.1 & 1.0 \\
+ & 64 (8) & swept-face, ring normal & 5.52e-04 & 1.57e-04 & 2.41e-02 & 1.77e-02 & -8.9e-13 / 5.2e-12 & 164.5 & 8.3 \\
+ &  & swept-face, exact normal & 3.28e-04 & 8.58e-05 & 8.40e-04 & 9.89e-03 & -5.9e-13 / 5.3e-12 & 169.1 & 8.5 \\
+ &  & plicRDF + isoAdvector & 5.13e-04 & 1.44e-04 & 1.92e-02 & -- & -4.5e-10 / 4.7e-13 & 19.9 & 1.0 \\
+ & 128 (64) & swept-face, ring normal & 1.28e-04 & 3.69e-05 & 9.73e-03 & 8.82e-03 & -2.8e-11 / 1.2e-11 & 982.5 & 9.9 \\
+ &  & swept-face, exact normal & 9.02e-05 & 2.44e-05 & 2.42e-04 & 5.71e-03 & -3.7e-11 / 1.2e-11 & 1016.6 & 10.2 \\
+ &  & plicRDF + isoAdvector & 1.23e-04 & 3.44e-05 & 7.79e-03 & -- & -1.2e-07 / 1.7e-13 & 99.5 & 1.0 \\
+ & order & swept-face, ring normal & 1.98 & 1.98 & 1.23 & 0.92 &  &  &  \\
+ &  & swept-face, exact normal & 1.84 & 1.78 & 1.65 & 0.78 &  &  &  \\
+ &  & plicRDF + isoAdvector & 1.99 & 1.95 & 1.22 & -- &  &  &  \\
+\bottomrule
+\end{tabular}
