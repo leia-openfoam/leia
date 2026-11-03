@@ -2060,3 +2060,212 @@ are indistinguishable at OpenFOAM Co <= 1.
 
 The limitation: beyond OpenFOAM Co 1 on the rotation the one-layer ring, not
 the volume correction, sets the error.
+
+## The comparison with plicRDF + isoAdvector at OpenFOAM Co 1, timed (2026-11-03)
+
+The question (Tomislav, via the coordinating session): at OpenFOAM Co 1 (and
+Co 0.2 for reference), from the same exact initial sphere, on the same mesh,
+with the same dt and the same rank count, how do the swept-face advection and
+plicRDF + isoAdvector compare in error norms and in total wall-clock time?
+The standing rule applies: error norms are compared with the total wall-clock
+time at the same number of MPI ranks.
+
+Predictions C-1 .. C-4: config/davof/sphereRotation3D_hexCmpLineXSweptN32.yaml,
+written before the runs.
+
+Commits:
+- leia 736b93d6: the tokens TPF_N_ALPHA_BOUNDS, TPF_SNAP_TOL, TPF_CLIP
+  (defaults = the template before) and 18 preparation configs.
+- Fork 720cfc6, built, unchanged during the timings.
+
+Jobs:
+- 55885736-53: the preparations.
+- 55887088-106 and 55889018-22, 55889179-89, 55889532-40, 55889642-45,
+  55889869-71: the timings.
+- Some were cancelled before their start and resubmitted; the ledger
+  .my_jobs says which.
+
+CSVs for the writing agent, on the cluster:
+- /work/scratch/tm83tomy/davof/agents/swept/csv/cmp_runs.csv: every run.
+- csv/cmp_table.csv: per case and method.
+- Raw data: cmp-time/<flow>_N<N>_co<0|1>/.
+
+### The setup
+
+Cases and ranks:
+- The translated sphere along x and along the x-z diagonal, END_TIME 0.45.
+- The rotation, one turn, END_TIME 1.
+- alpha fixedValue walls; N = 32 / 64 / 128 on 1 / 8 / 64 ranks, for every
+  method.
+
+The Courant number is OpenFOAM's: the maximum over the cells of
+0.5 sum |phi_f| dt / V, logged.
+- Measured ratio to the target Co of the template: pi/5 (x),
+  sqrt(2) pi/5 (diagonal), 4.320 / 4.359 / 4.379 (rotation at N = 32 / 64 /
+  128, at the domain's corners).
+- The runs are set to OpenFOAM Co 1.0000016 and 0.2000003 (dt rounded to six
+  digits).
+- They end at n dt with n = round(END_TIME / dt): for example 23 steps and
+  t = 0.4576 on the x-line at N = 32 and Co 1.
+- Note: the earlier rotation ladders "at Co 0.2" ran at OpenFOAM Co 0.86 to
+  0.88.
+
+The rows:
+- swept, ring: the swept-face advection with the final wisp rule (matched,
+  match tolerance 1e-9, band 0, sweptConsistent, the wall faces kept at the
+  boundary condition), the ring normal, and the volume correction scale. By
+  the rule registered before, the pyramid only if Y-0 and Y-1 held; Y-1 was
+  falsified, and the two differ by less than 1e-6 here.
+- swept, exact: the same with the exact normal, as a control.
+- plicRDF: isoAdvection with reconstructionScheme plicRDF, set as the fork's
+  advection test suite sets it:
+  - snapTol 0, clip false, nAlphaCorr 1, nAlphaSubCycles 1;
+  - nAlphaBounds 3 on the translations (test-discUniFlow);
+  - nAlphaBounds 5 on the rotation (test-deformationSphere, test-Leveque,
+    test-vortexShearedDisc, the fork's rotational tests).
+  - The swept rows keep nAlphaBounds 3.
+
+Diagnostics at the end only for every method: reconstructionError,
+areaFractionError and volumeFractionError at the end, no profiling, the
+fields written at the end.
+
+The timing:
+- One exclusive i01 node per job: Intel Xeon Platinum 9242, 2 x 48 cores,
+  384 GB.
+- Three repetitions of every method, the order rotated per repetition.
+- Every solve is one srun step (--ntasks np --cpu-bind cores) on the same
+  launcher and node.
+- Reported: wall = the step's wall time (date around srun; sacct's Elapsed
+  agrees to the second where recorded), median [min, max]; clock = the
+  solver's ClockTime at the end, median; step = the median of timeStepTime.
+- Where 30-minute jobs were needed, repetitions ran on different i01 nodes.
+  The deflt partition stopped starting jobs at about 14:00.
+- The three repetitions give identical error norms in every case.
+
+Scored at the end: L1(x), E_shape (the exact sphere, m^3), L1(n) against the
+exact sphere, min alpha / excess, mass deviation, and L1(alphaf) for ours.
+
+### The translated sphere along x
+
+| N, ranks | OF Co | row | L1(x) | E_shape | L1(n) | L1(alphaf) | min / excess | mass % | wall s | clock s | step s | wall / plicRDF |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 32, 1 | 0.2 | swept ring | 1.025e-3 | 2.329e-4 | 4.204e-2 | 1.494e-2 | -2.0e-14 / 2.1e-13 | 7.8e-14 | 22.5 [22.5, 22.5] | 23 | 0.17 | 4.5 |
+| | | swept exact | 7.351e-4 | 1.283e-4 | 5.539e-3 | 9.595e-3 | -1.8e-14 / 2.1e-13 | 3.3e-14 | 23.4 [23.4, 23.4] | 24 | 0.18 | 4.7 |
+| | | plicRDF | 1.134e-3 | 2.562e-4 | 3.758e-2 | - | -1.9e-24 / 0 | 1.1e-14 | 5.0 [4.9, 5.0] | 5 | 0.02 | 1 |
+| 32, 1 | 1 | swept ring | 3.998e-4 | 2.364e-7 | 3.152e-2 | 6.990e-3 | -1.1e-13 / 2.9e-13 | 1.4e-13 | 7.5 [7.5, 8.9] | 8 | 0.20 | 2.6 |
+| | | swept exact | 4.024e-4 | 2.364e-7 | 1.595e-3 | 6.647e-3 | -6.4e-14 / 5.3e-13 | 2.0e-13 | 7.7 [7.7, 7.8] | 8 | 0.22 | 2.7 |
+| | | plicRDF | 4.012e-4 | 2.363e-7 | 2.072e-2 | - | -1.0e-14 / 1.0e-14 | 6.7e-14 | 2.9 [2.9, 2.9] | 3 | 0.02 | 1 |
+| 64, 8 | 0.2 | swept ring | 2.792e-4 | 6.185e-5 | 2.066e-2 | 8.394e-3 | -3.8e-14 / 5.0e-12 | 8.2e-13 | 84.2 [84.2, 85.9] | 84 | 0.37 | 5.8 |
+| | | swept exact | 1.932e-4 | 3.371e-5 | 1.286e-3 | 5.334e-3 | -4.7e-14 / 4.9e-12 | 9.7e-13 | 87.7 [87.5, 88.1] | 88 | 0.38 | 6.0 |
+| | | plicRDF | 2.919e-4 | 6.578e-5 | 1.759e-2 | - | -9.9e-15 / 0 | 2.8e-13 | 14.7 [14.6, 14.7] | 15 | 0.05 | 1 |
+| 64, 8 | 1 | swept ring | 9.531e-5 | 2.325e-7 | 1.774e-2 | 3.485e-3 | -1.2e-13 / 2.4e-12 | 2.2e-14 | 20.3 [20.2, 20.8] | 20 | 0.38 | 3.5 |
+| | | swept exact | 9.563e-5 | 2.325e-7 | 5.732e-4 | 3.271e-3 | -1.7e-13 / 2.4e-12 | 7.8e-14 | 21.0 [21.0, 21.1] | 21 | 0.39 | 3.6 |
+| | | plicRDF | 9.549e-5 | 2.326e-7 | 1.232e-2 | - | -1.0e-14 / 1.0e-14 | -2.2e-14 | 5.9 [5.8, 5.9] | 6 | 0.05 | 1 |
+| 128, 64 | 0.2 | swept ring | 7.666e-5 | 1.729e-5 | 1.008e-2 | 4.781e-3 | -9.7e-14 / 9.7e-12 | 2.4e-12 | 434.3 [430.0, 443.9] | 434 | 0.94 | 6.7 |
+| | | swept exact | 5.272e-5 | 9.251e-6 | 3.595e-4 | 3.004e-3 | -8.8e-14 / 9.7e-12 | 2.5e-12 | 448.7 [447.9, 448.8] | 448 | 0.98 | 6.9 |
+| | | plicRDF | 7.725e-5 | 1.721e-5 | 8.262e-3 | - | -1.0e-14 / 1.0e-14 | 1.6e-13 | 64.7 [64.6, 65.2] | 64 | 0.12 | 1 |
+| 128, 64 | 1 | swept ring | 2.577e-5 | 2.325e-7 | 8.031e-3 | 1.882e-3 | -8.1e-14 / 2.9e-11 | -2.0e-13 | 94.9 [94.6, 96.4] | 95 | 0.98 | 4.8 |
+| | | swept exact | 2.576e-5 | 2.325e-7 | 1.912e-4 | 1.791e-3 | -3.6e-13 / 2.9e-11 | -2.9e-13 | 98.7 [98.4, 99.2] | 99 | 1.02 | 5.0 |
+| | | plicRDF | 2.500e-5 | 2.325e-7 | 5.835e-3 | - | -1.0e-14 / 1.0e-14 | 7.8e-14 | 19.9 [19.5, 20.0] | 20 | 0.13 | 1 |
+
+At OpenFOAM Co 1 on the x-line the displacement is exactly h per step. Every
+step shifts the volume by one cell, which any upwind scheme does exactly: all
+methods reach E_shape 2.3e-7, the discretisation of the initial sphere. These
+rows do not discriminate.
+
+### The translated sphere along the x-z diagonal
+
+| N, ranks | OF Co | row | L1(x) | E_shape | L1(n) | L1(alphaf) | min / excess | mass % | wall s | clock s | step s | wall / plicRDF |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 32, 1 | 0.2 | swept ring | 2.009e-3 | 5.729e-4 | 5.356e-2 | 3.175e-2 | -1.7e-14 / 2.5e-13 | 1.2e-13 | 42.4 [42.3, 43.9] | 42 | 0.25 | 7.0 |
+| | | swept exact | 1.155e-3 | 2.894e-4 | 2.368e-3 | 1.687e-2 | -3.6e-13 / 2.0e-13 | 1.2e-13 | 43.3 [43.3, 43.4] | 43 | 0.25 | 7.1 |
+| | | plicRDF | 1.930e-3 | 5.119e-4 | 4.230e-2 | - | -2.5e-13 / 2.2e-16 | 8.5e-13 | 6.1 [6.0, 6.1] | 6 | 0.02 | 1 |
+| 32, 1 | 1 | swept ring | 7.864e-4 | 1.809e-4 | 3.870e-2 | 1.118e-2 | -3.9e-11 / 1.4e-13 | 1.4e-13 | 10.5 [10.4, 11.0] | 10 | 0.24 | 3.4 |
+| | | swept exact | 4.187e-4 | 1.182e-5 | 2.392e-3 | 4.846e-3 | -3.0e-14 / 2.0e-13 | -4.4e-14 | 10.7 [10.7, 10.7] | 11 | 0.25 | 3.4 |
+| | | plicRDF | 6.469e-3 | 1.295e-3 | 1.246e-1 | - | -1.0e-14 / 9.3e-15 | 1.3e-13 | 3.1 [3.1, 3.2] | 3 | 0.03 | 1 |
+| 64, 8 | 0.2 | swept ring | 5.517e-4 | 1.568e-4 | 2.408e-2 | 1.770e-2 | -8.9e-13 / 5.2e-12 | 4.4e-13 | 164.5 [164.1, 166.8] | 164 | 0.54 | 8.3 |
+| | | swept exact | 3.285e-4 | 8.579e-5 | 8.397e-4 | 9.891e-3 | -5.9e-13 / 5.3e-12 | 4.3e-13 | 169.1 [169.1, 169.2] | 169 | 0.56 | 8.5 |
+| | | plicRDF | 5.127e-4 | 1.436e-4 | 1.922e-2 | - | -4.5e-10 / 4.7e-13 | 5.3e-13 | 19.9 [19.8, 20.2] | 20 | 0.05 | 1 |
+| 64, 8 | 1 | swept ring | 1.764e-4 | 3.887e-5 | 1.907e-2 | 5.045e-3 | -1.5e-13 / 2.0e-12 | 3.1e-13 | 36.4 [36.4, 36.7] | 37 | 0.54 | 4.0 |
+| | | swept exact | 1.007e-4 | 3.784e-6 | 7.224e-4 | 2.357e-3 | -3.2e-11 / 1.5e-12 | 3.8e-13 | 37.3 [37.2, 37.3] | 37 | 0.56 | 4.1 |
+| | | plicRDF | 5.077e-3 | 6.306e-4 | 1.392e-1 | - | **-1.5e-3 / 1.2e-3** | -4.4e-14 | 9.1 [9.0, 9.3] | 9 | 0.08 | 1 |
+| 128, 64 | 0.2 | swept ring | 1.283e-4 | 3.689e-5 | 9.731e-3 | 8.820e-3 | -2.8e-11 / 1.2e-11 | 1.2e-12 | 982.5 [979.5, 1010.8] | 982 | 1.51 | 9.9 |
+| | | swept exact | 9.017e-5 | 2.443e-5 | 2.419e-4 | 5.713e-3 | -3.7e-11 / 1.2e-11 | 1.5e-12 | 1016.6 [1009.4, 1022.9] | 1011 | 1.57 | 10.2 |
+| | | plicRDF | 1.231e-4 | 3.437e-5 | 7.793e-3 | - | -1.2e-7 / 1.7e-13 | 8.1e-12 | 99.5 [98.8, 100.0] | 94 | 0.14 | 1 |
+| 128, 64 | 1 | swept ring | 3.549e-5 | 7.184e-6 | 8.292e-3 | 2.178e-3 | -3.6e-11 / 1.3e-11 | 1.5e-12 | 204.3 [204.2, 204.8] | 204 | 1.53 | 5.0 |
+| | | swept exact | 2.640e-5 | 8.771e-7 | 1.866e-4 | 1.242e-3 | -1.3e-13 / 1.3e-11 | 1.6e-12 | 211.2 [210.6, 211.2] | 211 | 1.59 | 5.2 |
+| | | plicRDF | 2.999e-3 | 3.221e-4 | 1.484e-1 | - | **-6.6e-3 / 4.1e-3** | 4.3e-13 | 40.5 [40.5, 40.6] | 41 | 0.25 | 1 |
+
+OpenFOAM Co 1 breaks plicRDF + isoAdvector on the diagonal in parallel:
+- At N = 64 / 128 on 8 / 64 ranks, alpha leaves [0, 1] by up to 1.5e-3 /
+  6.6e-3 (min alpha and excess).
+- Its L1(n) is 0.14 to 0.15, and its L1(x) is 29 / 85 times the swept ring
+  row's.
+- Serially (N = 32) it stays bounded, at an L1(x) 8 times ours.
+- At OpenFOAM Co 0.2 on the diagonal it undershoots slightly in parallel:
+  -4.5e-10 (N = 64) and -1.2e-7 (N = 128).
+- Not tuned (the settings are the fork's tests').
+
+### The rotation, one turn
+
+| N, ranks | OF Co | row | L1(x) | E_shape | L1(n) | L1(alphaf) | min / excess | mass % | wall s | clock s | step s | wall / plicRDF |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 32, 1 | 0.2 | swept ring | 3.958e-3 | 1.059e-3 | 5.728e-2 | 5.704e-2 | -9.8e-13 / 1.1e-11 | 2.1e-12 | 438.1 [437.0, 439.1] | 438 | 0.25 | 9.7 |
+| | | swept exact | 1.959e-3 | 5.261e-4 | 3.181e-3 | 2.981e-2 | -9.8e-13 / 2.5e-12 | 2.5e-12 | 443.5 [442.1, 445.0] | 444 | 0.25 | 9.8 |
+| | | plicRDF | 4.389e-3 | 1.155e-3 | 5.752e-2 | - | -5.1e-19 / 2.2e-16 | 1.2e-12 | 45.2 [45.0, 45.4] | 45 | 0.02 | 1 |
+| 32, 1 | 1 | swept ring | 2.629e-3 | 7.071e-4 | 4.784e-2 | 3.823e-2 | -8.7e-13 / 9.5e-13 | 2.0e-12 | 90.5 [90.5, 91.6] | 90 | 0.25 | 8.0 |
+| | | swept exact | 1.399e-3 | 3.758e-4 | 2.511e-3 | 2.159e-2 | -4.4e-13 / 3.2e-12 | 1.4e-12 | 91.4 [91.3, 91.7] | 92 | 0.25 | 8.1 |
+| | | plicRDF | 3.328e-3 | 8.477e-4 | 5.443e-2 | - | -5.1e-18 / 2.2e-16 | 1.2e-12 | 11.3 [11.3, 11.3] | 11 | 0.03 | 1 |
+| 64, 8 | 1 | swept ring | 7.093e-4 | 1.974e-4 | 2.250e-2 | 2.191e-2 | -7.8e-13 / 3.5e-11 | 3.3e-12 | 380.0 [379.9, 380.6] | 380 | 0.52 | 9.0 |
+| | | swept exact | 4.449e-4 | 1.208e-4 | 7.539e-4 | 1.379e-2 | -5.6e-13 / 1.6e-11 | 3.2e-12 | 383.7 [383.3, 384.4] | 384 | 0.52 | 9.1 |
+| | | plicRDF | 8.467e-4 | 2.297e-4 | 2.233e-2 | - | -2.0e-17 / 4.4e-16 | 9.4e-13 | 42.2 [41.3, 44.0] | 42 | 0.05 | 1 |
+| 128, 64 | 1 | plicRDF | 2.234e-4 | 6.096e-5 | 9.432e-3 | - | -9.8e-13 / 2.9e-13 | 1.9e-12 | 204.3 [201.6, 207.6] | 204 | 0.13 | 1 |
+
+PENDING (queued in deflt, which starts no jobs since about 14:00; every run of
+these cells exceeds the 30-minute partition):
+- the rotation at N = 64 and N = 128, OpenFOAM Co 0.2 (jobs 55887103,
+  55887105);
+- the swept rows of the rotation at N = 128, OpenFOAM Co 1 (jobs
+  55889869-71; one run takes about 33 minutes at 1.33 s per step on 64
+  ranks).
+
+### Verdicts (on the 15 complete cells)
+
+- C-1 HELD: the swept-face advection at OpenFOAM Co 1 is bounded and
+  conservative on every complete case, N and normal: min alpha >= -3.9e-11,
+  excess <= 3.5e-11, mass <= 3.3e-12 %. So is it at Co 0.2.
+- C-2 FALSIFIED.
+  - Holds on the rotation: the ring row's L1(x) is 0.79 to 0.90 and its
+    E_shape 0.83 to 0.92 of plicRDF's.
+  - Holds on the diagonal at OpenFOAM Co 1 (0.012 to 0.12; plicRDF breaks).
+  - Fails on the diagonal at OpenFOAM Co 0.2: L1(x) 1.04 to 1.08 and E_shape
+    1.07 to 1.12 of plicRDF's, all three N.
+  - Fails at the edge on the x-line at N = 128: E_shape 1.005 (Co 0.2),
+    L1(x) 1.031 (Co 1, the degenerate shift).
+  - The exact normal (the control) is below plicRDF everywhere (0.009 to
+    0.73) except on the degenerate x-line shift at Co 1 (1.00 to 1.03).
+- C-3 FALSIFIED (the expectation was too low):
+  - The swept-face advection's total wall clock at the same ranks is 2.6 to
+    6.7 times plicRDF's on the x-line, 3.4 to 9.9 on the diagonal, and 8.0 to
+    9.7 on the rotation, with the ring normal (expected 1.5 to 4 and 2 to 6).
+  - The exact normal is not cheaper: 2.7 to 10.2.
+  - Per step the median is 0.17 to 1.53 s against 0.02 to 0.25 s. The ratio
+    grows with N on the translations (Co 0.2: 4.5 / 5.8 / 6.7 on x, 7.0 / 8.3
+    / 9.9 on the diagonal).
+- C-4:
+  - HELD serially: plicRDF bounded at both Co on all three cases.
+  - In parallel the diagonal is not bounded at either Co (above).
+  - The x-line and the rotation (N = 64, and N = 128 at Co 1, nAlphaBounds 5)
+    are bounded. The registered expectation of an unbounded N = 128 rotation
+    (seen at nAlphaBounds 3, OpenFOAM Co 0.88) is open with its Co 0.2 cell.
+
+What this demonstrates:
+- At OpenFOAM Co 1 the swept-face advection stays bounded and conservative
+  where plicRDF + isoAdvector, on the same mesh, ranks and dt, loses
+  boundedness on oblique translation.
+- On the rotation it is 10 to 21 % more accurate in L1(x) with the ring
+  normal.
+- It costs 3 to 10 times the wall clock at the same ranks.
+- On the diagonal at Co 0.2, with the ring normal, it is 4 to 12 % less
+  accurate than plicRDF; there the normal, not the flux, sets the error (the
+  exact normal is 0.6 to 0.7 of plicRDF's).
