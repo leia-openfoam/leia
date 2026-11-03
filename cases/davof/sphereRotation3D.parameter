@@ -65,6 +65,10 @@ values
     TPF_SWEPT_SCALE ( false );
     // the volume correction of the swept fluxes, the fork's default
     TPF_SWEPT_VOLUME_CORRECTION ( auto );
+    // the bounding of isoAdvection (2026-11-03), the template's values before
+    TPF_N_ALPHA_BOUNDS ( 3 );
+    TPF_SNAP_TOL ( 0 );
+    TPF_CLIP ( false );
     // the surface of a wisp's pieces in sweptFaceCells (2026-11-02): none,
     // the fork's default | neighbour
     TPF_SWEPT_WISP_SURFACE ( none );

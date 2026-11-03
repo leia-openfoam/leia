@@ -1,0 +1,51 @@
+# Part of the timed comparison with plicRDF (2026-11-03): the preparation of
+# the cases (short END_TIME). Purpose and predictions:
+# sphereRotation3D_hexCmpLineXSweptN32.yaml.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexCmpLineDiagRDFN32 --export=ALL,STUDY=davof/sphereRotation3D_hexCmpLineDiagRDFN32 run-studies.sbatch
+study_name: sphereRotation3D_hexCmpLineDiagRDFN32
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.225079079039, 1.1253953952]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineDiagXZ]
+  TPF_SPHERE_CX: [0.25]
+  TPF_SPHERE_CZ: [0.25]
+  TPF_AXIS_X: [0.25]
+  TPF_AXIS_Z: [0.25]
+  END_TIME: [0.02]
+  TPF_WRITE_INTERVAL: [0.02]
+  TPF_ROW: [plicRDF]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["false"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_PROFILING: ["false"]
+  TPF_AFE_WRITE_CONTROL: [onEnd]
+  TPF_VFE_WRITE_CONTROL: [onEnd]
+  TPF_N_ALPHA_BOUNDS: [3]
+  TPF_SNAP_TOL: [0]
+  TPF_CLIP: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

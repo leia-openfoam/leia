@@ -1,0 +1,107 @@
+# The swept-face advection against plicRDF + isoAdvector at OpenFOAM Co 1
+# and 0.2, error norms with the total wall-clock time (2026-11-03, Tomislav via
+# the coordinating session; REPORT-swept "The comparison with plicRDF +
+# isoAdvector at OpenFOAM Co 1, timed").
+# Cases: the translated sphere along x (lineX) and along the x-z diagonal
+# (lineDiagXZ), END_TIME 0.45, and the rotation (one turn, END_TIME 1), from the
+# exact sphere of initDavofFields, alpha fixedValue walls; N = 32 / 64 / 128 on
+# 1 / 8 / 64 ranks for every method. The Courant number is OpenFOAM's,
+# max over the cells of 0.5 sum|phi_f| dt / V (logged): OpenFOAM Co = r
+# TARGET_ADVECTIVE_CO with r = pi/5 (x), sqrt(2) pi/5 (diagonal), 4.3197 /
+# 4.3590 / 4.3786 (rotation at N = 32 / 64 / 128, the domain's corner cells),
+# measured from the logs of the earlier runs; the timed copies end at
+# n dt, n = round(END_TIME / dt). Rows: the swept-face advection
+# (sweptFaceCells, final wisp rule: sweptWispSurface matched, sweptWispMatchTol
+# 1e-9, sweptWispTol 0, sweptConsistent true, wall faces kept at the boundary
+# condition; the volume correction pyramid if Y-0 and Y-1 of
+# planeTranslation3D_hexSweptPyr held, else scale, stated) with the ring
+# normal (davof-planeSurf-ringArea) and the exact normal as a control; plicRDF
+# + isoAdvector (the fork's isoAdvection with reconstructionScheme plicRDF)
+# with the settings of the fork's advection test suite: snapTol 0, clip
+# false, nAlphaBounds 3 on the translations (testsuite/advection/
+# test-discUniFlow) and 5 on the rotation (test-deformationSphere, test-Leveque,
+# test-vortexShearedDisc), nAlphaCorr 1, nAlphaSubCycles 1; the swept rows
+# keep nAlphaBounds 3. Diagnostics at the end only for every method
+# (reconstructionError, areaFractionError, volumeFractionError at the end, no
+# profiling, the fields written at the end). Timing (davof-cmp-time.sbatch): one
+# exclusive job per (case, N, Co) on an i01 node (Intel, 96 cores, 384 GB),
+# three repetitions of every method interleaved, each solve one srun step
+# (srun --ntasks np --cpu-bind cores); the solver's ClockTime at the end and the
+# step's Elapsed (sacct); the median and the spread (min, max) of the three; the
+# per-step median of timeStepTime. Scored at the end: L1(x), E_shape (exact
+# sphere), L1(n) against the exact sphere, min alpha and the excess, the mass
+# deviation, and L1(alphaf) for the swept rows.
+#
+# PRE-REGISTERED (2026-11-03, before the runs):
+# C-1: the swept-face advection at OpenFOAM Co 1 bounded (min alpha >= -1e-10,
+#   excess <= 1e-10) and conservative (|mass deviation| <= 1e-9 %) on every
+#   case and N, both normals.
+# C-2: its L1(x) and E_shape (ring normal) at or below plicRDF's on every case,
+#   N and Co (the earlier rotation ladder: 0.88 / 0.96 of plicRDF's at N = 128,
+#   OpenFOAM Co 0.88).
+# C-3 (this agent's expectation, with numbers): the swept-face advection's
+#   total wall clock relative to plicRDF's at the same ranks is 1.5 to 4 on the
+#   translations and 2 to 6 on the rotation with the ring normal (the earlier
+#   runs with diagnostics every step: 1.3 at N = 64 on the lines, 2.6 at
+#   N = 64 and 2.9 at N = 128 on the rotation; with the diagnostics at the end
+#   plicRDF's share falls more), lower with the exact normal.
+# C-4: plicRDF bounded at OpenFOAM Co 0.2 and 1 serially; on 64 ranks the earlier
+#   N = 128 rotation was not bounded (min alpha -3.1e-5), expected again.
+# If OpenFOAM Co 1 breaks a method on a case, it is reported, not tuned.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexCmpLineXSweptN32 --export=ALL,STUDY=davof/sphereRotation3D_hexCmpLineXSweptN32 run-studies.sbatch
+study_name: sphereRotation3D_hexCmpLineXSweptN32
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.318309886184, 1.59154943092]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineX]
+  TPF_SPHERE_CX: [0.25]
+  TPF_AXIS_X: [0.25]
+  END_TIME: [0.02]
+  TPF_WRITE_INTERVAL: [0.02]
+  TPF_ROW: [davof-planeSurf-ringArea, davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["false"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+  TPF_PROFILING: ["false"]
+  TPF_AFE_WRITE_CONTROL: [onEnd]
+  TPF_VFE_WRITE_CONTROL: [onEnd]
+  TPF_SWEPT_WISP_SURFACE: [matched]
+  TPF_SWEPT_WISP_TOL: [0]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_SWEPT_WISP_MATCH_TOL: [1e-9]
+  TPF_SWEPT_VOLUME_CORRECTION: [scale]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

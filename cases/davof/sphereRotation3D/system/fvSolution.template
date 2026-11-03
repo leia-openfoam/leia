@@ -185,9 +185,10 @@ solvers
         }
         vof2IsoTol      1e-8;
         writeVTK        false;
-        snapTol         0;
-        nAlphaBounds    3;
-        clip            false;
+        // the bounding of isoAdvection (2026-11-03 tokens; defaults = before)
+        snapTol         @!TPF_SNAP_TOL!@;
+        nAlphaBounds    @!TPF_N_ALPHA_BOUNDS!@;
+        clip            @!TPF_CLIP!@;
         nAlphaCorr      1;
         nAlphaSubCycles 1;
         cAlpha          1;
