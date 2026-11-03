@@ -2216,27 +2216,35 @@ OpenFOAM Co 1 breaks plicRDF + isoAdvector on the diagonal in parallel:
 | 32, 1 | 1 | swept ring | 2.629e-3 | 7.071e-4 | 4.784e-2 | 3.823e-2 | -8.7e-13 / 9.5e-13 | 2.0e-12 | 90.5 [90.5, 91.6] | 90 | 0.25 | 8.0 |
 | | | swept exact | 1.399e-3 | 3.758e-4 | 2.511e-3 | 2.159e-2 | -4.4e-13 / 3.2e-12 | 1.4e-12 | 91.4 [91.3, 91.7] | 92 | 0.25 | 8.1 |
 | | | plicRDF | 3.328e-3 | 8.477e-4 | 5.443e-2 | - | -5.1e-18 / 2.2e-16 | 1.2e-12 | 11.3 [11.3, 11.3] | 11 | 0.03 | 1 |
+| 64, 8 | 0.2 | swept ring | 1.057e-3 | 2.956e-4 | 2.514e-2 | 3.220e-2 | -4.4e-14 / 6.0e-10 | 4.7e-12 | 1875.0 [1871.7, 1875.4] | 1875 | 0.52 | 9.8 |
+| | | swept exact | 6.274e-4 | 1.718e-4 | 8.168e-4 | 1.929e-2 | -5.1e-14 / 2.3e-10 | 5.0e-12 | 1895.0 [1894.8, 1896.7] | 1895 | 0.52 | 9.9 |
+| | | plicRDF | 1.139e-3 | 3.127e-4 | 2.407e-2 | - | -2.6e-19 / 2.2e-16 | 1.1e-12 | 192.2 [189.9, 192.3] | 192 | 0.05 | 1 |
 | 64, 8 | 1 | swept ring | 7.093e-4 | 1.974e-4 | 2.250e-2 | 2.191e-2 | -7.8e-13 / 3.5e-11 | 3.3e-12 | 380.0 [379.9, 380.6] | 380 | 0.52 | 9.0 |
 | | | swept exact | 4.449e-4 | 1.208e-4 | 7.539e-4 | 1.379e-2 | -5.6e-13 / 1.6e-11 | 3.2e-12 | 383.7 [383.3, 384.4] | 384 | 0.52 | 9.1 |
 | | | plicRDF | 8.467e-4 | 2.297e-4 | 2.233e-2 | - | -2.0e-17 / 4.4e-16 | 9.4e-13 | 42.2 [41.3, 44.0] | 42 | 0.05 | 1 |
-| 128, 64 | 1 | plicRDF | 2.234e-4 | 6.096e-5 | 9.432e-3 | - | -9.8e-13 / 2.9e-13 | 1.9e-12 | 204.3 [201.6, 207.6] | 204 | 0.13 | 1 |
+| 128, 64 | 1 | swept ring | 1.891e-4 | 5.342e-5 | 9.880e-3 | 1.227e-2 | -4.9e-11 / 6.5e-11 | 5.9e-12 | 1882.7 [1881.8, 1882.7] | 1882 | 1.21 | 9.2 |
+| | | swept exact | 1.303e-4 | 3.620e-5 | 2.392e-4 | 8.362e-3 | -4.9e-11 / 1.3e-10 | 6.4e-12 | 1905.8 [1903.4, 1909.7] | 1906 | 1.22 | 9.3 |
+| | | plicRDF | 2.234e-4 | 6.096e-5 | 9.432e-3 | - | -9.8e-13 / 2.9e-13 | 1.9e-12 | 204.3 [201.6, 207.6] | 204 | 0.13 | 1 |
 
-PENDING (queued in deflt, which starts no jobs since about 14:00; every run of
-these cells exceeds the 30-minute partition):
-- the rotation at N = 64 and N = 128, OpenFOAM Co 0.2 (jobs 55887103,
-  55887105);
-- the swept rows of the rotation at N = 128, OpenFOAM Co 1 (jobs
-  55889869-71; one run takes about 33 minutes at 1.33 s per step on 64
-  ranks).
+ROTATION N = 128, OpenFOAM Co 0.2: see below (the last cell).
 
-### Verdicts (on the 15 complete cells)
+The deflt partition started no job from about 14:00 to 16:15. Every run of
+the rotation cells exceeds the 30-minute partition, so they waited. They ran
+one job per repetition (each with the three methods interleaved).
 
-- C-1 HELD: the swept-face advection at OpenFOAM Co 1 is bounded and
-  conservative on every complete case, N and normal: min alpha >= -3.9e-11,
-  excess <= 3.5e-11, mass <= 3.3e-12 %. So is it at Co 0.2.
+### Verdicts
+
+- C-1 FALSIFIED, narrowly and only by the exact-normal control: the rotation
+  at N = 128, OpenFOAM Co 1 has excess 1.3e-10 against 1e-10.
+  - The ring row there: min alpha -4.9e-11, excess 6.5e-11.
+  - Every other case, N and normal at OpenFOAM Co 1: min alpha >= -4.9e-11,
+    excess <= 6.5e-11, mass <= 6.4e-12 %.
+  - At OpenFOAM Co 0.2 the rotation at N = 64 has excess 6.0e-10 (ring) and
+    2.3e-10 (exact).
+  - The mass is conserved everywhere.
 - C-2 FALSIFIED.
-  - Holds on the rotation: the ring row's L1(x) is 0.79 to 0.90 and its
-    E_shape 0.83 to 0.92 of plicRDF's.
+  - Holds on the rotation: the ring row's L1(x) is 0.79 to 0.93 and its
+    E_shape 0.83 to 0.95 of plicRDF's.
   - Holds on the diagonal at OpenFOAM Co 1 (0.012 to 0.12; plicRDF breaks).
   - Fails on the diagonal at OpenFOAM Co 0.2: L1(x) 1.04 to 1.08 and E_shape
     1.07 to 1.12 of plicRDF's, all three N.
@@ -2247,7 +2255,7 @@ these cells exceeds the 30-minute partition):
 - C-3 FALSIFIED (the expectation was too low):
   - The swept-face advection's total wall clock at the same ranks is 2.6 to
     6.7 times plicRDF's on the x-line, 3.4 to 9.9 on the diagonal, and 8.0 to
-    9.7 on the rotation, with the ring normal (expected 1.5 to 4 and 2 to 6).
+    9.8 on the rotation, with the ring normal (expected 1.5 to 4 and 2 to 6).
   - The exact normal is not cheaper: 2.7 to 10.2.
   - Per step the median is 0.17 to 1.53 s against 0.02 to 0.25 s. The ratio
     grows with N on the translations (Co 0.2: 4.5 / 5.8 / 6.7 on x, 7.0 / 8.3
@@ -2263,7 +2271,7 @@ What this demonstrates:
 - At OpenFOAM Co 1 the swept-face advection stays bounded and conservative
   where plicRDF + isoAdvector, on the same mesh, ranks and dt, loses
   boundedness on oblique translation.
-- On the rotation it is 10 to 21 % more accurate in L1(x) with the ring
+- On the rotation it is 7 to 21 % more accurate in L1(x) with the ring
   normal.
 - It costs 3 to 10 times the wall clock at the same ranks.
 - On the diagonal at Co 0.2, with the ring normal, it is 4 to 12 % less
