@@ -1,0 +1,54 @@
+# Part of the pyramid / Courant tests (2026-11-03). Purpose and predictions:
+# planeTranslation3D_hexSweptPyr.yaml.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexLineXCoScale --export=ALL,STUDY=davof/sphereRotation3D_hexLineXCoScale run-studies.sbatch
+study_name: sphereRotation3D_hexLineXCoScale
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.8, 0.95]
+  TPF_SETFLOW_MODE: [function]
+  TPF_VELOCITY_ARM: [lineX]
+  TPF_SPHERE_CX: [0.25]
+  TPF_AXIS_X: [0.25]
+  END_TIME: [0.45]
+  TPF_WRITE_INTERVAL: [0.15]
+  TPF_ROW: [davof-planeSurf-exact]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_WISP_SURFACE: [matched]
+  TPF_SWEPT_WISP_TOL: [0]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_SWEPT_WISP_MATCH_TOL: [1e-9]
+  TPF_SWEPT_VOLUME_CORRECTION: [scale]
+collapse_other_axes: true
+
+solve_mem_mb: 8000
+solve_runtime: 180
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

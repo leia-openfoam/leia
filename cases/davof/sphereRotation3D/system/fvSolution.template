@@ -121,6 +121,9 @@ solvers
         // phi_f dt / V_swept, so that a wholly wet swept volume gives the
         // upwind flux of a full cell; false: the geometric volume as it is
         sweptScaleToPhi @!TPF_SWEPT_SCALE!@;
+        // the volume correction of the swept fluxes (2026-11-03): auto (the
+        // mode of sweptScaleToPhi, the fork's default) | none | scale | pyramid
+        sweptVolumeCorrection @!TPF_SWEPT_VOLUME_CORRECTION!@;
         // sweptFaceCells: the surface of a wisp's pieces (a cell without a
         // surface and with 1e-8 < alpha < 1 - 1e-8): none (0/1 by alpha, the
         // fork's default) | neighbour (the plane of its closest face neighbour

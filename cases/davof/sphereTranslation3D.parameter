@@ -71,6 +71,8 @@ values
     // the kinematic scaling of the swept fluxes (sweptScaleToPhi, 2026-11-02):
     // false, the fork's default; true for the swept-face advection
     TPF_SWEPT_SCALE ( false );
+    // the volume correction of the swept fluxes, the fork's default
+    TPF_SWEPT_VOLUME_CORRECTION ( auto );
     // the surface of a wisp's pieces in sweptFaceCells (2026-11-02): none,
     // the fork's default | neighbour
     TPF_SWEPT_WISP_SURFACE ( none );

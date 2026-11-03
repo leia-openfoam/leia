@@ -1,0 +1,86 @@
+# The UFVFC pyramid volume correction and the Courant tests (2026-11-03,
+# Tomislav's design and his approval, via the coordinating session; REPORT-swept
+# "The pyramid volume correction and the Courant tests").
+# The mode sweptVolumeCorrection pyramid (fork davof-swept 720cfc6): only the
+# face points are traced, the apex of the pre-image fan starts at the mean of
+# the traced vertices and moves along the pre-image's outward area vector by
+# delta = 3 (V_f - V_g)/|A_pre|, V_g = (1/3) sum_T x_T.a_T of the closed list,
+# V_f = |phi_f| dt (phi of the half step, paired with the midpoint trace);
+# against scale (the liquid volume times V_f / V_g, sweptScaleToPhi). Every
+# study runs the final wisp rule (sweptWispSurface matched, sweptWispMatchTol
+# 1e-9, sweptWispTol 0, sweptConsistent true; the wall faces of the consistent
+# variant kept at the boundary condition, eb17c0a).
+# The Courant number: TARGET_ADVECTIVE_CO is of the case's reference speed
+# (dt = Co h / REFERENCE_SPEED); OpenFOAM's 0.5 sum|phi_f| dt / V (the sum of
+# the per-axis displacements over h on a cube) is read from the log; the
+# largest per-axis displacement of a traced vertex over h, the uncovered share
+# ("beyond layer", max), the rank fallbacks, max |V_f - V_g|/V_f, max
+# |delta|/h and the twisted faces (V_g < 0.1 of the unsigned tetrahedra) are
+# logged per step.
+#
+# PRE-REGISTERED (2026-11-03, before the runs):
+# Y-0 (uniform translation: planeTranslation3D_hexSweptPyr against
+#   planeTranslation3D_hexSweptWispM9; the lines x and x-z diagonal, pyramid
+#   against scale): max |V_f - V_g|/V_f and max |delta|/h at round-off
+#   (<= 1e-11) in every step; the plane gate's pass count equal to M9's
+#   (31 / 64) and every run maximum of L1(alphaf), L1(n) within 1e-12
+#   absolute of M9's for the cases with OpenFOAM Co <= 1; the lines' L1(alphaf),
+#   L1(x), E_shape at the end within 1e-8 relative of scale.
+# Y-1 (bounded and conservative at every Co, Tomislav's prediction): every
+#   case of every study with OpenFOAM Co <= 1 has min alpha >= -1e-10, excess
+#   <= 1e-10 and |mass deviation| <= 1e-9 %, with pyramid and with scale. The
+#   normal arm of the plane at target Co 0.8 / 0.95 (OpenFOAM Co 1.29 / 1.53)
+#   is exempt (the open growth (iii)-a).
+# Y-2 (the rotation ladder N = 32 / 64 / 128 and the pure spin, Co 0.2 / 0.5):
+#   pyramid's L1(alphaf), L1(x), E_shape within 10 % of scale's; the twisted
+#   faces counted only in the spin and the rotation (the poles), none on the
+#   lines and the plane.
+# Y-3 (Tomislav's prediction): the pyramid's advantage over the scaling grows
+#   with Co under rotation: (E_shape(scale) - E_shape(pyramid)) / E_shape(scale)
+#   increases with Co over 0.2 / 0.5 / 0.8 / 0.95 at N = 32 and 64, both rows.
+# This agent's expectations, separately: Y-0 holds; Y-1 holds at Co 0.2 / 0.5;
+#   at Co 0.8 / 0.95 the rotation reaches OpenFOAM Co about 1.1 / 1.3 (the
+#   velocity has two components), where the plane's open growth (iii)-a set in,
+#   so Y-1 may fail there for both modes; the volume defect V_f - V_g of the
+#   rotation is a few 1e-4 of V_f at Co 0.2, so Y-2's 10 % holds and Y-3's
+#   differences are small at Co 0.2.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptPyr --export=ALL,STUDY=davof/planeTranslation3D_hexSweptPyr run-studies.sbatch
+study_name: planeTranslation3D_hexSweptPyr
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.8, 0.95]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_WISP_SURFACE: [matched]
+  TPF_SWEPT_WISP_TOL: [0]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_SWEPT_WISP_MATCH_TOL: [1e-9]
+  TPF_SWEPT_VOLUME_CORRECTION: [pyramid]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
