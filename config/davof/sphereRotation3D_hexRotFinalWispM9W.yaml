@@ -1,0 +1,73 @@
+# The wall-face defect of sweptConsistent, fixed (2026-11-03, via the
+# coordinating session; REPORT-swept "The wall faces of the consistent
+# variant"). The defect (sphereRotation3D_hexFineLineDiagCons, MEASURED
+# 2026-11-02): a computed wall face without a surface carried alpha_c V_piece
+# where the wall's alpha is fixedValue 0, the whole mass deviation of the
+# consistent diagonal (5.6e-7 % / 8.4e-8 % at N = 32 / 64; boundary outflow
+# 5.626e-9 / 8.42e-10 of the mass). The fix (fork davof-swept, under
+# sweptConsistent only): a boundary face without a surface on a patch whose
+# alpha condition fixes the value keeps the boundary condition's flux (the
+# default path's value); on a patch that does not fix alpha (zeroGradient) the
+# swept flux stays. Counted per step ("consistent boundary faces kept at the
+# boundary condition").
+#
+# PRE-REGISTERED (2026-11-03, before the runs):
+# W-1 (the consistent diagonal, sphereRotation3D_hexFineLineDiagConsWall): |mass deviation|
+#   at the end <= 1e-10 % at N = 32 and 64 (the default diagonal: 6.7e-13 /
+#   3.2e-12 %), the counter positive from step 146 / 332 on (the steps the
+#   outflow began); the late slope of L1(alphaf) and E_shape at the end within
+#   1e-3 of ...DiagCons; bounded as before (min alpha >= -1e-12, excess <=
+#   1e-11).
+# W-2 (the curved ladders of the final rule, ...WispM9W: rotation and sphere
+#   translation N = 32 / 64): the counter 0 in every step and the results
+#   identical to ...WispM9 (the interface does not reach a wall).
+# W-3 (the plane, whose patch is zeroGradient): the counter 0, two 20-step
+#   copies (normal Co 0.95 N = 40, oblique Co 0.95 N = 40, the final rule)
+#   bit for bit identical to the build before (verify-wall).
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexRotFinalWispM9W --export=ALL,STUDY=davof/sphereRotation3D_hexRotFinalWispM9W run-studies.sbatch
+study_name: sphereRotation3D_hexRotFinalWispM9W
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_WISP_SURFACE: [matched]
+  TPF_SWEPT_WISP_TOL: [0]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_SWEPT_WISP_MATCH_TOL: [1e-9]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
