@@ -21,6 +21,10 @@
 #   <= 1e-10), conservative (mass deviation <= 1e-10 %), L1(alphaf), L1(x),
 #   E_shape within 1 % of the default.
 #
+# MEASURED (2026-11-03; REPORT-swept, same section): M-1 FALSIFIED on the
+# oblique arm at N = 160 (7.6e-11 to 1.4e-9; the match tolerance), 31 / 64
+# pass. M-2 HELD.
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptWispM --export=ALL,STUDY=davof/planeTranslation3D_hexSweptWispM run-studies.sbatch
 study_name: planeTranslation3D_hexSweptWispM
 studies_dir: studies/davof

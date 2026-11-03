@@ -1692,3 +1692,220 @@ Surprising:
 - B: the swept-face advection does not keep a translated plane exact (errors
   up to 6e-6), while it keeps a translated sphere within plicRDF's errors.
 - C: plicRDF on 64 ranks is not bounded at N = 128.
+
+## The plane gate of the swept-face advection: the wisp pieces (2026-11-02/03)
+
+The problem: B above. The piecewise swept flux (fluxIntegration
+sweptFaceCells) does not keep a translated plane exact, although every piece
+of a plane case is cut by the same plane. Fork davof-swept 0ea9caa .. fab068c,
+leia davof-swept 0b4fdc20 .. edfddf2b. Predictions F-0..F-2, A-1..A-3, M-1,
+M-2 and M9-1, M9-2 are in the config headers (planeTranslation3D_hexSweptWisp,
+..WispA, ..WispM, ..WispM9), each written before its runs.
+
+Jobs (ledger .my_jobs):
+- diagnosis: 55870504, 55870604, 55870680, 55872695;
+- F-0 before / after: 55871135, 55871147;
+- neighbour studies: 55871149-51;
+- variants: 55880564 (pg-var), 55880908 (pg-var2), 55883022 (pg-var3),
+  55883256 (pg-var4);
+- anchored studies: 55880912, 55880915, 55880916;
+- matched studies: 55881463-65 (M), 55883569-71 (M9);
+- builds: 55871146, 55880563, 55880907, 55881462, 55883255.
+
+### The cause
+
+Diagnosis on N = 20, normal arm, exact normal (jobs 55870504, 55870604,
+55870680):
+- After step 1, alpha is off by up to 1.1e-6 in interface cells.
+- Of the 1550 faces computed in step 1, the 872 one-donor fallbacks and every
+  face fraction are exact. Five faces computed by pieces are short by up to
+  8.0e-7 V.
+- On the worst face, one ring cell has alpha 1.64e-6: the plane cuts a small
+  corner of it, so |m_c| is below the interface threshold wispTol V^(2/3)
+  and the cell has no plane. The piece in it (6.2e-14 m^3) was taken dry by
+  the wisp's 0/1 rule (wet for alpha >= 1/2).
+- sweptConsistent (alpha_c V_piece) errs the same way: it spreads the
+  corner's liquid over the whole cell.
+
+The mechanism: a cell holding liquid but no plane gives its pieces a liquid
+volume that is not the plane's.
+
+### The fix and its three rounds
+
+Keys (all opt-in; the defaults reproduce the build before, F-0 HELD bit for
+bit on 20-step copies of the plane, x-line and rotation cases, job 55871147):
+- sweptWispSurface: none (default) | neighbour | anchored | matched.
+- sweptWispTol: the band of the wisp class (default 1e-8).
+- sweptWispMatchTol: the tolerance of matched (default 1e-11).
+
+The rounds:
+- neighbour: the plane of the closest face neighbour with a surface clips
+  the wisp's pieces and its part of the face update.
+  - Exact on the plane.
+  - On the rotation, accuracy within 1e-3 but NOT bounded: min alpha -1.7e-5
+    (N = 64, exact normal), -9.8e-6 (ring). The neighbour's plane extended
+    into a wisp of a curved interface holds more liquid there than the wisp
+    has. F-2 FALSIFIED on boundedness.
+- anchored: the neighbour's normal, the plane positioned in the wisp by
+  alpha^n V.
+  - Bounded on the rotation (A-3 HELD: min alpha >= -9.5e-13).
+  - NOT exact on the plane with sweptWispTol 0 (A-1 FALSIFIED: oblique arm
+    3.5e-11 to 3.6e-9). The cause is conditioning: a wisp of round-off alpha
+    gets a positioned corner, and the face fraction of a corner goes as
+    alpha^(2/3), so (1e-15)^(2/3) gives about 1e-10.
+- matched: the neighbour's plane where the volume it puts in the wisp is
+  alpha^n V within sweptWispMatchTol V, else anchored.
+  - With the tolerance 1e-11 (M), the oblique arm at N = 160 fails (see
+    below).
+  - With 1e-9 (M9, the final rule), it is restored.
+
+Two further causes surfaced in the plane matrix (job 55880564; N = 20 unless
+stated):
+
+| case | study keys | + sweptWispTol 0 | + sweptConsistent | both |
+|---|---|---|---|---|
+| oblique Co 0.2, max L1(alphaf) | 1.2e-8 | 8.6e-14 | 1.2e-8 | 6.0e-14 |
+| oblique Co 0.95 | 1.3e-8 | 3.9e-14 | 1.3e-8 | 3.9e-14 |
+| normal Co 0.95 | 0.115 | 0.116 | 7.8e-12 | 1.6e-13 |
+
+- The oblique arm: one face fraction of step 1 was short by 1.05e-5. A
+  corner below 1e-8 V of a ring cell was counted empty. Cured by
+  sweptWispTol 0.
+- The normal arm at Co 0.95 (OpenFOAM Co 1.53): the candidate band limits
+  Co. The faces outside the face-neighbour band of the interface cells keep
+  the algebraic flux and a stale face fraction, and at a displacement of
+  0.77 h per axis their swept volumes reach liquid. In step 1, E_shape is
+  2.5e-11 while L1(alphaf) is 0.115. Cured by the vertex-ring candidates
+  (sweptConsistent true).
+
+### The plane matrix with the final rule
+
+The final rule: sweptWispSurface matched, sweptWispMatchTol 1e-9,
+sweptWispTol 0, sweptConsistent true.
+
+planeTranslation3D_hexSweptWispM9, job 55883569 (M with 1e-11: job
+55881463). The gate: run maxima of
+L1(alphaf) and L1(n) below 1e-12, min alpha >= -1e-12, excess <= 1e-11, and
+Eshape / sum(alpha V) below 1e-12.
+
+The mass clause is corrected for this open case. Eshape = int |alpha -
+alpha_exact| dV bounds |M - M_exact| at whatever time the run ends. At
+Co 0.95, END_TIME 8e-4 is not a multiple of dt and the run stops at 7.6e-4,
+so the earlier comparison with the plane-clipped loop's mass at 8e-4 was not
+valid there.
+
+The Courant number: TARGET_ADVECTIVE_CO is of |U| (dt = Co h). OpenFOAM's
+0.5 sum|phi_f| dt / V equals sum_k |U_k| dt / h, which is 1.612 Co on the
+normal arm and Co on the oblique arm. The largest per-axis displacement is
+0.8124 Co h and Co h respectively: below h at every Co, and the "beyond
+layer" count is 0 from N = 40 on.
+
+| class | passed | max L1(alphaf) / L1(n) | min alpha | max Eshape/M |
+|---|---|---|---|---|
+| OpenFOAM Co <= 1, N 20 / 40 | 23 / 24 | 4.9e-13 / 1.1e-12 | -1.5e-13 | 3.4e-13 |
+| OpenFOAM Co <= 1, N 80 / 160 | 6 / 24 | 9.5e-12 / 8.3e-12 | -8.2e-13 | 7.1e-12 |
+| OpenFOAM Co > 1 (normal arm, Co 0.8 / 0.95) | 2 / 16 | 3.1e-7 / 5.4e-7 | -4.3e-4 | 1.1e-4 |
+
+31 / 64 pass, against 15 / 64 with neighbour (sweptWispTol 1e-8, the
+candidate band), 9 / 64 with anchored, and 31 / 64 with M (1e-11).
+
+The failures, by class:
+- With OpenFOAM Co <= 1, every case is below 1e-11 in both norms, bounded
+  to -8.2e-13, and conserves mass to 7.1e-12 (Eshape/M).
+- At N <= 40 the only failure is the ring row, normal arm, Co 0.5, N = 40:
+  L1(n) 1.14e-12 (the ring normal's own error; its L1(alphaf) is 4.9e-13).
+- At N = 80 every oblique case at Co >= 0.5 passes. The normal arm and the
+  oblique Co 0.2 sit at 1.3e-12 to 1.9e-12; at N = 160 everything sits at
+  3.5e-12 to 9.5e-12. This is the floor (iii)-b below.
+- With M (1e-11), the oblique arm at N = 160 had reached 7.6e-11 to 1.4e-9
+  (M-1 FALSIFIED there). The error was there at step 2, not accumulated:
+  - Three steps at N = 160 (job 55883022): 1.1e-11 with matched against
+    1.4e-12 with neighbour. Excluding round-off cells (sweptWispTol 1e-14)
+    changes nothing.
+  - matched sent wisps that the plane does cut to the anchored branch, since
+    their mismatch exceeded 1e-11 V at this resolution.
+  - With sweptWispMatchTol 1e-9 or 1e-7 (job 55883256), step 3 is 1.378e-12,
+    neighbour's value. The N = 32 rotation with 1e-7 stays bounded (min alpha
+    -7.9e-13) and within 4e-7 of 1e-11.
+- Verdicts: M9-1 HELD on the N = 160 clause (oblique 3.5e-12 to 9.5e-12,
+  below 1e-11). M9-1 FALSIFIED on the count (31, predicted >= 33) and on N = 80
+  (oblique Co 0.2 at 1.5e-12). "Within a factor 2 of M" is FALSIFIED in the
+  OpenFOAM Co > 1 class only, where min alpha changes by up to 6.5x (the growth
+  (iii)-a is sensitive to any change).
+
+Open, with their discriminators:
+- (iii)-a, OpenFOAM Co > 1 on the normal arm: min alpha grows by about x1.4
+  per step. With the final rule it reaches -1.9e-10 at N = 80 and -1.9e-6 at
+  N = 160 for Co 0.8, and -4.3e-4 at N = 160 for Co 0.95. It is
+  unchanged by every wisp rule and by sweptConsistent. Thousands of one-donor
+  rank fallbacks occur per step, and the bounding is extended to a second
+  layer in hundreds of cells.
+  - The hypothesis that the fallback, a donor-cell flux, is unstable above
+    OpenFOAM Co 1 is FALSIFIED at 1.05: the normal arm at Co 0.65 (OpenFOAM
+    1.05, N = 80, 24 steps) stays at -3e-14 (job 55880908).
+  - The threshold lies between OpenFOAM Co 1.05 and 1.29. Cause open.
+- (iii)-b, a floor that grows with N on the normal arm even at Co 0.2:
+  L1(alphaf) 1.2e-13 / 1.3e-12 / 8.7e-12 at N = 40 / 80 / 160, Eshape/M up
+  to 7e-12.
+  - It is not the anchor's tolerance: anchorTolRel and curvedTolRel 1e-14
+    change nothing, bit for bit (job 55880908).
+  - The prism and the one-donor sweptFace keep the same cases at round-off
+    through N = 160 (L1(alphaf) <= 2.4e-13, Eshape/M <= 1e-12, study
+    planeTranslation3D_hexParaboloidSwept), so the floor is specific to the
+    pieces: about 4e-14 per step against 5e-16. Cause open.
+
+### The curved cases with the final rule
+
+sphereRotation3D_hexRotFinalWispM9 and
+sphereTranslation3D_hexSweptLadderWispM9 (jobs 55883570, 55883571; Co 0.2),
+against the default:
+
+| case | L1(alphaf) | L1(x) | E_shape | min alpha / excess | mass dev % |
+|---|---|---|---|---|---|
+| rotation exact N 32 | -6.8e-5 | -8.8e-5 | -1.3e-4 | -6.0e-13 / 3.9e-12 | 2.0e-12 |
+| rotation exact N 64 | -2.9e-4 | -3.1e-4 | -5.4e-4 | -9.5e-13 / 1.1e-11 | 1.4e-11 |
+| rotation ring N 32 | -6.4e-5 | -7.8e-4 | -1.1e-4 | -7.9e-13 / 5.6e-12 | 1.7e-12 |
+| rotation ring N 64 | -3.2e-4 | -7.2e-4 | -4.8e-4 | -8.1e-13 / 1.6e-11 | 1.4e-11 |
+| sphere x-line exact N 32 | -7.8e-8 | -4.5e-7 | -2.8e-6 | -2.3e-14 / 4.1e-13 | 5.0e-13 |
+| sphere x-line exact N 64 | -2.5e-4 | +1.6e-4 | -2.0e-4 | -4.0e-14 / 9.1e-12 | 3.0e-12 |
+| sphere x-line ring N 32 | -1.0e-5 | -2.3e-5 | -5.7e-5 | -2.2e-14 / 3.7e-13 | 5.1e-13 |
+| sphere x-line ring N 64 | -3.8e-4 | -2.4e-4 | -5.6e-4 | -3.3e-14 / 9.1e-12 | 2.7e-12 |
+
+The error columns are relative changes against the default; every change is
+below 1e-3 and slightly favourable (M-2 and M9-2 HELD; the M and A rounds
+agree to two digits). Bounded and conservative as the default (the
+default's min alpha is -5.6e-13 to -1.0e-14; with neighbour it was -1.7e-5).
+
+### Verdicts and the recommendation
+
+The verdicts:
+- F-0 HELD.
+- F-1 FALSIFIED (the first rule, neighbour with the band 1e-8: 15 / 64).
+- F-2 FALSIFIED on boundedness.
+- A-1 FALSIFIED, A-2 FALSIFIED on both hypotheses, A-3 HELD.
+- M-1 FALSIFIED (oblique N = 160), M-2 HELD.
+- M9-1 HELD on N = 160 and FALSIFIED on the count and on N = 80, M9-2 HELD.
+
+What the runs demonstrate:
+- The plane gate's failure at Co 0.2 had two causes, both in the classes of
+  ring cells without a plane:
+  - the 0/1 rule of a wisp (the normal arm);
+  - the empty band 1e-8 (the oblique arm).
+- A third cause bounds Co: the face-neighbour candidate band.
+- With the final rule, every plane case with OpenFOAM Co <= 1 (both arms up
+  to the target Co 0.95 on the oblique one) is exact to 1e-11 in L1(alphaf)
+  and L1(n), bounded to -8.2e-13, and conserves mass to 7.1e-12 relative.
+  The 1e-12 gate is met at N <= 40 (23 / 24).
+- The curved cases do not change beyond 1e-3 and stay bounded.
+
+Limitations and open questions:
+- (iii)-b: the pieces' round-off floor grows with N, to 9.5e-12 at N = 160.
+  The prism stays at 2.4e-13 there.
+- (iii)-a: min alpha grows on the normal arm above an OpenFOAM Co between
+  1.05 and 1.29. Both causes are open.
+- The cost of sweptConsistent (more computed faces) was not measured.
+
+The recommendation: the final rule as the sweptFaceCells setting of the
+studies (sweptWispSurface matched, sweptWispMatchTol 1e-9, sweptWispTol 0,
+sweptConsistent true). The fork's defaults stay at the earlier behaviour
+until Tomislav decides.

@@ -49,6 +49,12 @@
 # This agent's expectation: A-1 and A-2 hold; A-3 holds on boundedness; the
 # accuracy change stays below 1e-3 as with neighbour.
 #
+# MEASURED (2026-11-03; REPORT-swept, same section): A-1 FALSIFIED (9 / 64;
+# the oblique arm 3.5e-11 to 3.6e-9, anchored's conditioning on round-off
+# wisps). A-2 FALSIFIED on both hypotheses (no growth at OpenFOAM Co 1.05; the
+# anchor tolerance changes nothing). A-3 HELD (min alpha >= -9.5e-13, within
+# 8e-4).
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptWispA --export=ALL,STUDY=davof/planeTranslation3D_hexSweptWispA run-studies.sbatch
 study_name: planeTranslation3D_hexSweptWispA
 studies_dir: studies/davof

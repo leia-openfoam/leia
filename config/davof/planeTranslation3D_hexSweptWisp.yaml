@@ -39,6 +39,12 @@
 # This agent's expectation: F-1 holds; F-2 holds (the rule touches only the
 # pieces of cells next to the interface cells with small alpha).
 #
+# MEASURED (2026-11-03; REPORT-swept "The plane gate of the swept-face
+# advection: the wisp pieces"): F-0 HELD (bit for bit). F-1 FALSIFIED: 15 / 64
+# pass (the oblique arm 1.2e-8, the band 1e-8; the normal arm at Co 0.95,
+# the candidate band). F-2 FALSIFIED on boundedness (rotation min alpha
+# -1.7e-5); accuracy within 1e-3.
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptWisp --export=ALL,STUDY=davof/planeTranslation3D_hexSweptWisp run-studies.sbatch
 study_name: planeTranslation3D_hexSweptWisp
 studies_dir: studies/davof
