@@ -68,6 +68,10 @@ values
     // the surface of a wisp's pieces in sweptFaceCells (2026-11-02): none,
     // the fork's default | neighbour
     TPF_SWEPT_WISP_SURFACE ( none );
+    // the band of the wisp class (2026-11-03), the fork's default
+    TPF_SWEPT_WISP_TOL ( 1e-8 );
+    // the vertex-ring candidates of sweptFaceCells, the fork's default
+    TPF_SWEPT_CONSISTENT ( false );
     // warped faces (fork branch davof-warped, 2026-10-25): the face state
     // (scalar | vector: the wetted area vector per face, the sum over the fan
     // triangles of the wetted area vectors), the centroids of the ring tensor

@@ -1,0 +1,88 @@
+# The plane gate after the wisp fix, second round (2026-11-03, via the
+# coordinating session; REPORT-swept "The plane gate of the swept-face
+# advection: the wisp pieces").
+# MEASURED before this file (jobs 55871149-51, 55872695, 55880564):
+# planeTranslation3D_hexSweptWisp passes 15 of 62 cases; three causes:
+# (i) the oblique arm, one face fraction of step 1 short by 1.05e-5: a corner
+#     below 1e-8 V of a ring cell counted empty (sweptWispTol 0: 8.6e-14);
+# (ii) the normal arm at Co 0.95 (OpenFOAM Co 1.53): L1(alphaf) 0.115 at
+#     step 1, the faces outside the face-neighbour candidate band keep the
+#     algebraic flux and a stale face fraction (sweptConsistent: 7.8e-12, with
+#     (i) 1.6e-13);
+# (iii) not changed by (i), (ii): min alpha growing x1.4 per step at Co 0.8
+#     on the normal arm (OpenFOAM Co 1.29; -2.5e-10 at N = 80, -7e-6 at
+#     N = 160), with thousands of one-donor rank fallbacks per step;
+#     hypothesis: the fallback is a donor-cell flux, unstable above OpenFOAM
+#     Co 1; and L1(alphaf) 1e-12 to 6e-12 at N >= 80, hypothesis: the anchor's
+#     tolerance anchorTolRel 1e-11.
+# F-2 on the rotation (sweptWispSurface neighbour): accuracy within 1e-3, but
+# min alpha -1.7e-5 (N = 64 exact): the neighbour's plane extended into a wisp
+# of a curved interface gives it more liquid than it holds. The rule
+# sweptWispSurface anchored keeps the neighbour's normal and positions the
+# plane by the wisp's alpha (the PLIC of the wisp).
+#
+# The mass clause (corrected, an open case): Eshape / sum(alpha V) at the
+# last step below 1e-12, Eshape = int |alpha - alpha_exact| dV bounding
+# |M - M_exact| at whatever time the run ends (at Co 0.95, END_TIME 8e-4 is
+# not a multiple of dt and the run ends at 7.6e-4; the comparison with the
+# plane-clipped loop's mass deviation at 8e-4 was not valid there).
+# The Courant number: the target Co is of |U| (dt = Co h); OpenFOAM's
+# 0.5 sum|phi_f| dt / V = sum_k |U_k| dt / h is 1.612 Co on the normal arm,
+# Co on the oblique arm; the per-axis displacement 0.8124 Co h resp. Co h.
+#
+# PRE-REGISTERED (2026-11-03, before the runs of this file):
+# A-1 (the plane, final rule: sweptWispSurface anchored, sweptWispTol 0,
+#   sweptConsistent true): run maxima of L1(alphaf) and L1(n) below 1e-12,
+#   bounded (min alpha >= -1e-12, excess <= 1e-11), mass clause above, on
+#   every case with OpenFOAM Co <= 1 (both arms Co 0.2 / 0.5, the oblique arm
+#   0.8 / 0.95) at N = 20 / 40; at N = 80 / 160 below 1e-11 (the anchor
+#   tolerance, (iii)). The normal arm at Co 0.8 / 0.95 (OpenFOAM Co > 1):
+#   expected to fail boundedness from N = 80 by (iii), reported, not tuned.
+# A-2 (discriminators of (iii), pg-var2): the normal arm N = 80 at Co 0.6
+#   (OpenFOAM 0.97) bounded to round-off, at Co 0.65 (OpenFOAM 1.05) min alpha
+#   growing per step; Co 0.5 N = 80 with anchorTolRel and curvedTolRel 1e-14:
+#   L1(alphaf) below 1e-13.
+# A-3 (the curved cases with the final rule, sphereRotation3D_hexRotFinalWispA,
+#   sphereTranslation3D_hexSweptLadderWispA): bounded as the default (min
+#   alpha >= -1e-10, excess <= 1e-10), conservative (mass deviation <= 1e-10
+#   percent), L1(alphaf), L1(x), E_shape within 1 % of the default.
+# This agent's expectation: A-1 and A-2 hold; A-3 holds on boundedness; the
+# accuracy change stays below 1e-3 as with neighbour.
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptWispA --export=ALL,STUDY=davof/planeTranslation3D_hexSweptWispA run-studies.sbatch
+study_name: planeTranslation3D_hexSweptWispA
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.8, 0.95]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_WISP_SURFACE: [anchored]
+  TPF_SWEPT_WISP_TOL: [0]
+  TPF_SWEPT_CONSISTENT: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -111,6 +111,11 @@ solvers
         // fork's default) | neighbour (the plane of its closest face neighbour
         // with a surface); fork davof-swept 2026-11-02, builds before it ignore it
         sweptWispSurface @!TPF_SWEPT_WISP_SURFACE!@;
+        // the band of the wisp class (2026-11-03): full for alpha >= 1 - tol, empty
+        // for alpha <= tol (1e-8 the fork's default; 0: every partial cell)
+        sweptWispTol @!TPF_SWEPT_WISP_TOL!@;
+        // sweptFaceCells: the vertex-ring candidates (fork default false)
+        sweptConsistent @!TPF_SWEPT_CONSISTENT!@;
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         // the tilt diagnostic of the curved loop on the translated plane
