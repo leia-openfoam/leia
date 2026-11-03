@@ -1,0 +1,68 @@
+# The plane gate, third round (2026-11-03, via the coordinating session).
+# MEASURED before this file (A-2, job 55880908): anchorTolRel / curvedTolRel
+# 1e-14 change nothing (the floor 1.5e-12 at N = 80 is not the anchor's
+# tolerance: (iii)-b FALSIFIED); the normal arm at Co 0.65 (OpenFOAM Co 1.05)
+# has no growth (the donor-cell hypothesis of (iii)-a FALSIFIED at 1.05; the
+# growth at OpenFOAM Co 1.29 is open); sweptWispSurface anchored with
+# sweptWispTol 0 gives 7.7e-11 on the oblique arm N = 20 (neighbour: 6.0e-14):
+# a wisp of round-off alpha gets a positioned corner whose face fraction goes as
+# alpha^(2/3). sweptWispSurface matched: the neighbour's plane where its volume
+# in the wisp is alpha^n V within anchorTolRel V (a plane: always), else the
+# plane positioned by alpha (a curved interface: bounded).
+#
+# PRE-REGISTERED (2026-11-03, before the runs of this file; the mass clause and
+# the Courant definition as in planeTranslation3D_hexSweptWispA.yaml):
+# M-1 (the plane): L1(alphaf), L1(n) run maxima below 1e-12, bounded (min alpha
+#   >= -1e-12, excess <= 1e-11), Eshape / sum(alpha V) below 1e-12 at N = 20 /
+#   40 on every case except the normal arm at Co 0.8 / 0.95; the cases at
+#   N = 80 / 160 below 1e-11 ((iii)-b, cause open); the normal arm at Co 0.8 /
+#   0.95 reported ((iii)-a, open).
+# M-2 (the curved cases): bounded as the default (min alpha >= -1e-10, excess
+#   <= 1e-10), conservative (mass deviation <= 1e-10 %), L1(alphaf), L1(x),
+#   E_shape within 1 % of the default.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexRotFinalWispM --export=ALL,STUDY=davof/sphereRotation3D_hexRotFinalWispM run-studies.sbatch
+study_name: sphereRotation3D_hexRotFinalWispM
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_WISP_SURFACE: [matched]
+  TPF_SWEPT_WISP_TOL: [0]
+  TPF_SWEPT_CONSISTENT: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
