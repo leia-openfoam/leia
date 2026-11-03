@@ -1909,3 +1909,154 @@ The recommendation: the final rule as the sweptFaceCells setting of the
 studies (sweptWispSurface matched, sweptWispMatchTol 1e-9, sweptWispTol 0,
 sweptConsistent true). The fork's defaults stay at the earlier behaviour
 until Tomislav decides.
+
+## The wall faces of the consistent variant (2026-11-03)
+
+The problem: sweptConsistent (part of the final wisp rule) computed every
+face of a candidate, also a wall face without a surface on either side or in
+the second ring. A piece of a cell without a surface then carried
+alpha_c V_piece through a wall whose alpha is fixedValue 0. This was the whole
+mass loss of the consistent diagonal: 5.6e-7 % / 8.4e-8 % (N = 32 / 64), the
+summed boundary outflow 5.626e-9 / 8.42e-10 of the mass.
+
+The fix (fork eb17c0a, under sweptConsistent only): such a face keeps the
+boundary condition's flux, the value of the default path, which skips every
+face without a surface. This applies only where the patch's alpha condition
+fixes the value. On a zeroGradient outflow patch (the plane gate's rim) the
+algebraic alpha_owner phi_f dt is the approximation the swept flux replaces,
+not a condition, and the swept flux stays. Counted per step ("consistent
+boundary faces kept at the boundary condition").
+
+Jobs: 55884523 / 55884531 (W-3, before / after), 55884530 (the build),
+55884532-34 (W-1, W-2), 55885589 (the E_shape re-score).
+
+| run | N | mass dev % | summed boundary outflow | late slope L1(alphaf) | L1(x) end | E_shape end (re-scored) | min alpha |
+|---|---|---|---|---|---|---|---|
+| default diagonal | 32 | 6.7e-13 | 0 | 2.77329e-2 | 1.19481e-3 | 3.01304e-4 | -1.4e-14 |
+| consistent, before | 32 | 5.6e-7 | 5.63e-9 | 2.77312e-2 | 1.19474e-3 | 3.01286e-4 | -1.3e-18 |
+| consistent, fixed | 32 | 5.7e-13 | 0 | 2.77312e-2 | 1.19474e-3 | 3.01286e-4 | -1.2e-18 |
+| default diagonal | 64 | 3.2e-12 | 0 | 1.80365e-2 | 3.41190e-4 | 8.92760e-5 | -1.0e-14 |
+| consistent, before | 64 | 8.4e-8 | 8.42e-10 | 1.80325e-2 | 3.41134e-4 | 8.92518e-5 | -5.0e-22 |
+| consistent, fixed | 64 | 3.3e-12 | 0 | 1.80325e-2 | 3.41134e-4 | 8.92518e-5 | -5.1e-22 |
+
+How the E_shape column was obtained: the consistent diagonal of 2026-11-02 ran
+before the E_shape fix (its own Eshape column used the cutCellIso reference:
+4.126e-4 / 1.141e-4). All three are re-scored here from the end fields with
+staticFaceFractions -entry volumeFractionError -davofMethod exactSphere
+-evolOnly, as in the preprint's re-score. The fixed run's own Eshape
+(3.0129e-4 / 8.9252e-5) equals its re-score.
+
+Verdicts:
+- W-1 HELD: mass deviation at round-off; the counter positive from step 146 /
+  332 (4764 / 7437 faces in total); slope, L1(x) and the re-scored E_shape
+  within 3e-7 of the consistent run before the fix.
+- W-2 HELD: the curved ladders of the final rule (rotation and sphere
+  translation, N = 32 / 64, both normals) are identical to the last digit of
+  the CSV; the counter is 0 in every step.
+- W-3 HELD: two 20-step plane copies are bit for bit identical; the counter is
+  0.
+
+No number of the plane matrix (zeroGradient patch, the branch cannot trigger)
+or of the curved ladders changes.
+
+## The UFVFC pyramid volume correction (2026-11-03)
+
+The problem: under a non-uniform velocity the traced swept volume V_g is not
+the flux volume V_f = |phi_f| dt.
+- V_g = (1/3) sum_T x_T . a_T over the closed list of 4F triangles.
+- V_f uses phi of the half step (setFlow at t + dt/2), the temporal pair of
+  the explicit midpoint trace.
+- The scaling (sweptScaleToPhi) multiplies the liquid by V_f / V_g and
+  divides by V_g, which vanishes for a face twisted near a rotation axis.
+
+The mechanism of the pyramid (Tomislav's design; fork 720cfc6, key
+sweptVolumeCorrection auto | none | scale | pyramid, default auto = the mode
+of sweptScaleToPhi):
+- Only the face points are traced.
+- The apex of the pre-image fan starts at the mean of the traced vertices.
+- The apex moves along the pre-image's outward area vector A_pre by
+  delta = 3 (V_f - V_g) / |A_pre|. This is exact because the volume is linear
+  in the apex and the fan's area vector does not depend on it.
+- The corrected closed list is clipped and capped as before, and the face
+  update uses the corrected fan.
+- No tetrahedra or prisms are formed.
+
+The two references:
+- The correction is that of the unsplit face-vertex flux calculation:
+  T. Marić, H. Marschall, D. Bothe, An enhanced un-split face-vertex
+  flux-based VoF method, J. Comput. Phys. 371 (2018) 967-993,
+  doi:10.1016/j.jcp.2018.03.048. No arXiv version was found.
+- The volume sum is that of T. Tolle, D. Gründing, D. Bothe, T. Marić,
+  triSurfaceImmersion: Computing volume fractions and signed distances from
+  triangulated surfaces immersed in unstructured meshes, Comput. Phys.
+  Commun. 273 (2022) 108249, doi:10.1016/j.cpc.2021.108249,
+  arXiv:2101.08511.
+
+The review against the design: the saved first version started the apex at
+the traced face centre. It now starts at the vertex mean, so nothing but the
+face points is traced.
+
+Logged per step: max |V_f - V_g|/V_f, max |delta|/h, the twisted faces, the
+pyramid skips and the largest per-axis displacement over h.
+
+The default path is unchanged bit for bit (jobs 55884662 / 55884669: four
+20-step copies). A sanity run (55884670) gates the studies.
+
+Studies (jobs 55885449-57, the final wisp rule in every case). Tomislav's
+change before the runs: Co 0.8 / 0.95 dropped, so Co 0.2 / 0.5 only; the
+first submission was cancelled before it started:
+- planeTranslation3D_hexSweptPyr: 32 cases against WispM9.
+- sphereRotation3D_hexLineXCo{Scale,Pyr}: N 32 / 64.
+- sphereRotation3D_hexRotCo{Scale,Pyr}: N 32 / 64, both normals.
+- sphereRotation3D_hexSpinCo{Scale,Pyr}: N 32 / 64.
+- sphereRotation3D_hexRotN128Co{Scale,Pyr}: 64 ranks.
+- CSV: csv/pyramid_item1.csv on the cluster.
+
+Measured:
+- Uniform translation.
+  - Plane: every run maximum within 2.9e-13 of the scaling's, with the same
+    17 / 17 gate passes.
+  - x-line: L1(alphaf), L1(x) and E_shape within 1.3e-10 relative.
+  - max |V_f - V_g|/V_f <= 5.4e-13 and max |delta|/h <= 1.2e-13 (round-off).
+- The rotation at target Co 0.2 (OpenFOAM Co 0.86 / 0.87 / 0.88 at
+  N = 32 / 64 / 128):
+  - max |V_f - V_g|/V_f is 1.4e-5 / 3.3e-6 / 8.0e-7, and max |delta|/h is
+    3.2e-7 / 3.9e-8 / 4.7e-9.
+  - The pyramid's L1(alphaf), L1(x) and E_shape lie 2e-8 to 8e-7 below the
+    scaling's, both normals.
+- The pure spin at target Co 0.2 (OpenFOAM Co 0.99): defect 5.8e-6 / 1.3e-6,
+  E_shape 6e-6 / 2e-6 lower. min alpha 0 for both modes.
+- No face is twisted (V_g below 0.1 of the unsigned tetrahedra) in any run,
+  also not at the poles of the spin.
+- Target Co 0.5 is OpenFOAM Co 2.16 to 2.19 on the rotation and 2.47 on the
+  spin:
+  - On the rotation the per-axis displacement reaches 1.57 h. Parts of the
+    swept volumes leave the one-layer ring (largest uncovered share 0.82 to
+    1.0), there are up to 1.1e8 rank fallbacks per run, and min alpha is
+    -7e-8 (N = 32), -8e-7 (N = 64) and -1.7e-4 (N = 128) for both modes.
+  - The pyramid lowers the excess there (to 4e-13 to 2.7e-12, from up to
+    1e-8 with the scaling) but not the undershoot.
+  - The spin at Co 0.5 (displacement 0.24 h at the interface) stays bounded.
+
+Verdicts:
+- Y-0 HELD.
+- Y-1 FALSIFIED, narrowly and for both modes, by the rotation at N = 128 and
+  OpenFOAM Co 0.88 (64 ranks): excess 2.8e-10 (scaling) and 3.3e-10
+  (pyramid) against 1e-10. The mass stays within 1e-11 %. The ladder before
+  the wisp rule had 8e-11 there. Every other case with OpenFOAM Co <= 1 holds.
+- Y-2 HELD on accuracy (pyramid within 7e-5 of the scaling everywhere).
+  FALSIFIED on the twisted faces: there are none.
+- Y-3 HELD in direction: the E_shape gain grows from 8e-8 to 8e-7 at Co 0.2
+  to 1e-5 to 5e-5 at Co 0.5, both N and normals. It is negligible in size.
+
+By the rule registered for the comparison (pyramid only if Y-0 and Y-1
+held), the comparison with plicRDF runs the scaling. The two differ by less
+than 1e-6 relative at OpenFOAM Co <= 1.
+
+What this demonstrates: the pyramid is exact on uniform translation, removes
+the division by V_g, and is at least as accurate and bounded as the scaling
+wherever the swept volumes stay in the one-layer ring. On these cases the two
+are indistinguishable at OpenFOAM Co <= 1.
+
+The limitation: beyond OpenFOAM Co 1 on the rotation the one-layer ring, not
+the volume correction, sets the error.

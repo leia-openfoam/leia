@@ -53,6 +53,15 @@
 # Co 0.8 / 0.95 points are void, Y-3 is read over Co 0.2 / 0.5. The first
 # submission (55884671-81) was cancelled before it started.
 #
+# MEASURED (2026-11-03; REPORT-swept "The UFVFC pyramid volume correction"):
+# Y-0 HELD (plane within 2.9e-13 of M9, 17 / 17 passes both; x-line within
+# 1.3e-10; defect <= 5.4e-13). Y-1 FALSIFIED narrowly for both modes by the
+# rotation N = 128 at OpenFOAM Co 0.88 (excess 2.8e-10 / 3.3e-10). Y-2 HELD on
+# accuracy (within 7e-5), FALSIFIED on the twisted faces (none anywhere). Y-3
+# HELD in direction, negligible (8e-8 to 8e-7 at Co 0.2, 1e-5 to 5e-5 at 0.5).
+# Target Co 0.5 on the rotation is OpenFOAM Co 2.2: beyond the one-layer ring,
+# min alpha down to -1.7e-4 for both modes. The comparison runs the scaling.
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptPyr --export=ALL,STUDY=davof/planeTranslation3D_hexSweptPyr run-studies.sbatch
 study_name: planeTranslation3D_hexSweptPyr
 studies_dir: studies/davof
