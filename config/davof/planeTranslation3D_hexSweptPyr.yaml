@@ -45,6 +45,14 @@
 #   rotation is a few 1e-4 of V_f at Co 0.2, so Y-2's 10 % holds and Y-3's
 #   differences are small at Co 0.2.
 #
+# CHANGED before any run of these studies (2026-11-03, Tomislav via the
+# coordinating session: "Don't go for higher Co numbers, 1 is already OK"):
+# the target Co 0.8 / 0.95 dropped from every study of this set (the plane:
+# OpenFOAM Co at most 0.81 now), the diagonal-line studies dropped (the
+# comparison with plicRDF covers the diagonal); Y-1's exemption and Y-3's
+# Co 0.8 / 0.95 points are void, Y-3 is read over Co 0.2 / 0.5. The first
+# submission (55884671-81) was cancelled before it started.
+#
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptPyr --export=ALL,STUDY=davof/planeTranslation3D_hexSweptPyr run-studies.sbatch
 study_name: planeTranslation3D_hexSweptPyr
 studies_dir: studies/davof
@@ -64,7 +72,7 @@ post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . -
 # dictionaries (false, not False).
 axes_override:
   N_CELLS: [20, 40, 80, 160]
-  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.8, 0.95]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
   TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
   TPF_VELOCITY_ARM: [normal, oblique]
   TPF_VOLUME_RULE: [kromerBothe]

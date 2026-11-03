@@ -21,7 +21,7 @@ post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . -
 axes_override:
   N_CELLS: [32, 64]
   TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
-  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.8, 0.95]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
   TPF_VELOCITY_ARM: [rotation]
   TPF_ALPHA_BC: [fixedValue]
   TPF_DAVOF_METHOD: [exactSphere]
