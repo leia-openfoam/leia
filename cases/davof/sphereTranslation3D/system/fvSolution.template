@@ -123,6 +123,8 @@ solvers
         // the band of the wisp class (2026-11-03): full for alpha >= 1 - tol, empty
         // for alpha <= tol (1e-8 the fork's default; 0: every partial cell)
         sweptWispTol @!TPF_SWEPT_WISP_TOL!@;
+        // sweptWispSurface matched: the match tolerance of V (2026-11-03)
+        sweptWispMatchTol @!TPF_SWEPT_WISP_MATCH_TOL!@;
         // sweptFaceCells: the vertex-ring candidates (fork default false)
         sweptConsistent @!TPF_SWEPT_CONSISTENT!@;
         defectEvery     10;

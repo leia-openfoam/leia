@@ -1,0 +1,56 @@
+# The plane gate, fourth round (2026-11-03, via the coordinating session).
+# MEASURED before this file: planeTranslation3D_hexSweptWispM (matched with the
+# match tolerance 1e-11 V) passes 31 / 64; the oblique arm at N = 160 fails
+# (7.6e-11 to 1.4e-9) because wisps the plane cuts exceed the tolerance and
+# take the positioned plane. Three steps at N = 160 (job 55883256): the
+# tolerance 1e-9 (and 1e-7) gives 1.378e-12 at step 3, neighbour's value,
+# against 1.14e-11; the N = 32 rotation with 1e-7 stays bounded (min alpha
+# -7.9e-13) and within 4e-7 of 1e-11.
+#
+# PRE-REGISTERED (2026-11-03, before the runs of this file; the gate, the mass
+# clause and the Courant definition as in planeTranslation3D_hexSweptWispM):
+# M9-1 (the plane): the oblique arm at N = 160 falls to the normal arm's floor
+#   (run maxima below 1e-11) and passes the gate at N = 80; every other case
+#   within a factor 2 of planeTranslation3D_hexSweptWispM; at least 33 / 64 pass.
+# M9-2 (the curved cases): as M-2 (bounded: min alpha >= -1e-10, excess <=
+#   1e-10; mass deviation <= 1e-10 %; L1(alphaf), L1(x), E_shape within 1 % of
+#   the default).
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptWispM9 --export=ALL,STUDY=davof/planeTranslation3D_hexSweptWispM9 run-studies.sbatch
+study_name: planeTranslation3D_hexSweptWispM9
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.8, 0.95]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_WISP_SURFACE: [matched]
+  TPF_SWEPT_WISP_TOL: [0]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_SWEPT_WISP_MATCH_TOL: [1e-9]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

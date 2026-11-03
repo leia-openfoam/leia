@@ -70,6 +70,8 @@ values
     TPF_SWEPT_WISP_SURFACE ( none );
     // the band of the wisp class (2026-11-03), the fork's default
     TPF_SWEPT_WISP_TOL ( 1e-8 );
+    // the match tolerance of sweptWispSurface matched, the fork's default
+    TPF_SWEPT_WISP_MATCH_TOL ( 1e-11 );
     // the vertex-ring candidates of sweptFaceCells, the fork's default
     TPF_SWEPT_CONSISTENT ( false );
     // warped faces (fork branch davof-warped, 2026-10-25): the face state
