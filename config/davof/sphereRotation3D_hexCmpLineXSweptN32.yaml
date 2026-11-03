@@ -49,15 +49,17 @@
 #   N = 128 rotation was not bounded (min alpha -3.1e-5), expected again.
 # If OpenFOAM Co 1 breaks a method on a case, it is reported, not tuned.
 #
-# MEASURED (2026-11-03, 15 of 18 cells; REPORT-swept "The comparison with
-# plicRDF + isoAdvector at OpenFOAM Co 1, timed"): C-1 HELD (min alpha >=
-# -3.9e-11, excess <= 3.5e-11, mass <= 3.3e-12 %). C-2 FALSIFIED (the ring row
-# at or below plicRDF on the rotation and the diagonal at Co 1, above it on the
-# diagonal at Co 0.2 by 4 to 12 %). C-3 FALSIFIED (wall clock 2.6 to 9.9 times
-# plicRDF's at the same ranks, rotation 8.0 to 9.7). C-4 HELD serially;
-# plicRDF unbounded on the diagonal in parallel (Co 1: -6.6e-3 / +4.1e-3 at
-# N = 128). Pending (deflt starts no jobs): the rotation at N = 64 / 128, Co 0.2,
-# and the swept rows at N = 128, Co 1. The scripts: workflow/scripts/davof_cmp/.
+# MEASURED (2026-11-03, all 18 cells; REPORT-swept "The comparison with plicRDF
+# + isoAdvector at OpenFOAM Co 1, timed"): C-1 FALSIFIED narrowly by the
+# exact-normal control only (rotation N = 128, Co 1: excess 1.3e-10; the ring
+# row 6.5e-11; every case conservative to 8.5e-12 %). C-2 FALSIFIED (the ring
+# row at or below plicRDF on the rotation, 0.79 to 0.96, and on the diagonal at
+# Co 1; above it on the diagonal at Co 0.2 by 4 to 12 %). C-3 FALSIFIED (wall
+# clock 2.6 to 9.9 times plicRDF's at the same ranks; rotation 8.0 to 9.8).
+# C-4: plicRDF bounded serially; unbounded on the diagonal in parallel (Co 1:
+# -6.6e-3 / +4.1e-3 at N = 128); the N = 128 rotation bounded with nAlphaBounds 5
+# (the expectation falsified). Scripts: workflow/scripts/davof_cmp/; CSVs on
+# the cluster: csv/cmp_runs.csv, csv/cmp_table.csv.
 #
 #   sbatch --parsable -J leia-davof-sphereRotation3D_hexCmpLineXSweptN32 --export=ALL,STUDY=davof/sphereRotation3D_hexCmpLineXSweptN32 run-studies.sbatch
 study_name: sphereRotation3D_hexCmpLineXSweptN32
