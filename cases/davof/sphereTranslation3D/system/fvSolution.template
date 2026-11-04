@@ -117,6 +117,13 @@ solvers
         // keep a plane that positioning ccs left within the anchor's tolerance
         // without the anchor (fork davof-swept 2026-11-04; opt-in, default false)
         anchorSkipConverged @!TPF_ANCHOR_SKIP_CONVERGED!@;
+        // the pre-test of a ring cell before the clips and the state shortcut of
+        // sweptFaceCells (fork davof-swept 3aaf49d, 2026-11-04, whose FORK
+        // defaults are touching and true): none and false reproduce the path
+        // of 720cfc6 (the comparison of 2026-11-03); builds before 3aaf49d
+        // ignore the keys
+        sweptPreTest    @!TPF_SWEPT_PRE_TEST!@;
+        sweptStateShortcut @!TPF_SWEPT_STATE_SHORTCUT!@;
         // the volume flux of a face (fork branch davof-fluxint): prism (the
         // prism volume) | trapezoidal | simpson (a quadrature in time of the
         // face fractions; ignored by the builds before it)

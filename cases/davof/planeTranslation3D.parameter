@@ -61,6 +61,11 @@ values
     TPF_POSITIONING ( vofCutCell );
     TPF_POSITIONING_TOL ( 1e-14 );
     TPF_ANCHOR_SKIP_CONVERGED ( false );
+    // the pre-test and the state shortcut of sweptFaceCells (fork 3aaf49d):
+    // none / false = the path of 720cfc6 (the fork's own defaults since
+    // 3aaf49d are touching / true)
+    TPF_SWEPT_PRE_TEST ( none );
+    TPF_SWEPT_STATE_SHORTCUT ( false );
     // the volume flux of a face (fork branch davof-fluxint, 2026-10-25): prism
     // (the liquid volume of the prism between the pre-image and the face) |
     // trapezoidal (phi_f dt times the mean of the face fractions at t^n and

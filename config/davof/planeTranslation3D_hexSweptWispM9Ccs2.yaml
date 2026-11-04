@@ -38,6 +38,8 @@ axes_override:
   TPF_SWEPT_WISP_MATCH_TOL: [1e-9]
   TPF_POSITIONING: [ccs]
   TPF_POSITIONING_TOL: [1e-14]
+  TPF_SWEPT_PRE_TEST: [none]
+  TPF_SWEPT_STATE_SHORTCUT: ["false"]
 collapse_other_axes: true
 
 solve_mem_mb: 16000
