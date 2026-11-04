@@ -128,6 +128,40 @@ def main():
                 ratiob, fnum(overb)))
             allok = allok and ok1 and ok2 and ok3
         fh.write("%% overall: %s\n" % ("POSITIVE" if allok else "NEGATIVE"))
+    # the breakdown by the class of the face: the number of planes k (0: no
+    # plane, identical by construction; 1: one plane, the extension into the
+    # cells without a plane is the only departure; 2; >= 3) and whether a
+    # wisp's matched plane is among them; per class the L1 of the pieces, the
+    # joint min and the band variant against the truth, in units of the
+    # class's exact liquid, and the ratios
+    with open(os.path.join(args.out, "table_class.tex"), "w") as fh:
+        for N, co, row, step, s, name in runs:
+            if step == 1:
+                continue
+            rows = list(csv.DictReader(open(os.path.join(args.an, name + "_faces.csv"))))
+            classes = [("$k = 0$", lambda r: int(r["k"]) == 0), ("$k = 1$", lambda r: int(r["k"]) == 1),
+                       ("$k = 2$", lambda r: int(r["k"]) == 2), ("$k \\ge 3$", lambda r: int(r["k"]) >= 3),
+                       ("with a wisp plane", lambda r: int(r["nWisp"]) == 0 and "wisp" in r.get("classes", "") ),
+                       ("with a full cell", lambda r: int(r["nFull"]) > 0),
+                       ("with an empty cell", lambda r: int(r["nEmpty"]) > 0)]
+            first = True
+            for lab, pred in classes:
+                sel = [r for r in rows if pred(r) and float(r["vExact"]) >= 0]
+                if not sel:
+                    continue
+                E = sum(float(r["vExact"]) for r in sel)
+                if E <= 0:
+                    continue
+                l1p = sum(abs(float(r["vPieces"]) - float(r["vExact"])) for r in sel)/E
+                l1m = sum(abs(float(r["vMin"]) - float(r["vExact"])) for r in sel)/E
+                l1b = sum(abs(float(r["vBand"]) - float(r["vExact"])) for r in sel)/E
+                netm = sum(float(r["vMin"]) - float(r["vExact"]) for r in sel)/E
+                netp = sum(float(r["vPieces"]) - float(r["vExact"]) for r in sel)/E
+                fh.write("%s & %s & %d & $%s$ & $%s$ & $%s$ & $%s$ & $%s$ & %.2f & %.2f \\\\\n" % (
+                    label(N, co, row, step) if first else " & & & ", lab, len(sel), fnum(l1p), fnum(l1m), fnum(l1b),
+                    fnum(netp), fnum(netm), l1m/l1p if l1p > 0 else float("inf"), l1b/l1p if l1p > 0 else float("inf")))
+                first = False
+            fh.write("\\midrule\n")
     # the histograms of the signed error over the swept volume
     for N, co, row, step, s, name in runs:
         rows = list(csv.DictReader(open(os.path.join(args.an, name + "_faces.csv"))))
