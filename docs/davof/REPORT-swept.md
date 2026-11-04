@@ -2280,3 +2280,284 @@ What this demonstrates:
 - On the diagonal at Co 0.2, with the ring normal, it is 4 to 12 % less
   accurate than plicRDF; there the normal, not the flux, sets the error (the
   exact normal is 0.6 to 0.7 of plicRDF's).
+
+## The cost of the swept-face advection: HPCToolkit profiles (2026-11-04)
+
+Tomislav's item: profile the swept-face advection with HPCToolkit on
+Lichtenberg and isolate the serial and the parallel bottlenecks. Nothing was
+changed in the fork; the recommendations at the end are not implemented.
+
+### The setup
+
+- HPCToolkit 2025.0.1 (spack, ~/spack/opt/spack/linux-x86_64/hpctoolkit-
+  2025.0.1-ky3i4lsw; the 2017.06 copy in ~/Software/hpctoolkit-install lacks
+  its libraries). hpcrun samples CPUTIME every 1000 us and the LLC misses
+  (libpfm ix86arch::LLC_MISSES, PAPI-less) every 100000 misses, on every
+  rank; hpcstruct (cached) and hpcprof in the job. The installation has no
+  hpcviewer and no Python bindings, so the databases (format v4: meta.db,
+  profile.db) are read by a reader written from the installed FORMATS.md
+  (workflow/scripts/davof_prof/hpdb.py) and analysed by hpan.py: exclusive
+  time = HPCToolkit's "function" scope (the lexical subtree of a function,
+  not crossing a call or an inlined call: an inlined helper is its own
+  entry), inclusive = the "execution" scope. The samples are attributed to
+  categories by the nearest ancestor context matching a rule (a function
+  name, a source-line range of fork 720cfc6, or a load module;
+  rules_swept.py); libc's malloc/free count for the caller and are listed
+  apart. Scripts: workflow/scripts/davof_prof/ (README there).
+- The build: a detached git worktree of the fork at davof-swept HEAD 720cfc6
+  (prof/TwoPhaseFlow on the cluster), WM_COMPILER=Gcc (11.5.0),
+  WM_COMPILE_OPTION=Opt (c++OPT = -O3, the default), WM_OPTIONS
+  linux64GccDPInt32Opt, plus FOAM_EXTRA_CXXFLAGS="-g -fno-omit-frame-pointer"
+  (appended to c++FLAGS by wmake/rules/linux64Gcc/c++), its own platforms/.
+  One compile line: g++ -std=c++17 -m64 -pthread -DOPENFOAM=2606 -DWM_DP
+  -DWM_LABEL_SIZE=32 -Wall ... -O3 -DNoRepository -ftemplate-depth=1000 -g
+  -fno-omit-frame-pointer. The default build is untouched; OpenFOAM's own
+  libraries stay as installed (-O3, no -g: attributed by function only).
+- The cases: the comparison's rotation, OpenFOAM Co 1, prepared from the
+  comparison's study cases exactly as davof-cmp-time.sbatch does (ring
+  normal, sweptVolumeCorrection scale, the final wisp rule; plicRDF with
+  nAlphaBounds 5), on exclusive i01 nodes (Xeon Platinum 9242, 2 x 48
+  cores), --cpu-bind=cores. Serial: N = 32 and 64 full turns (346 and 697
+  steps), N = 128 20 steps (2M cells). Parallel: N = 64 on 8 ranks and N =
+  128 on 64 ranks, full turns (697 and 1401 steps), the comparison's scotch
+  decompositions. plicRDF + isoAdvector profiled the same way on every case.
+- The window: the full turn rather than 20 steps, because the comparison's
+  timeStepTime is NOT stationary in parallel: at 8 ranks the mean over 50
+  steps goes 0.34 / 0.49 / 0.73 / 0.82 / 0.82 / 0.70 / 0.45 / 0.35 ... s
+  over the turn, at 64 ranks 1.03 to 2.11 s, while serially it is 1.05 to
+  1.18 s (N = 64). The variation is the imbalance moving through the
+  partitions as the sphere turns (below), not the algorithm; the first 20
+  steps (0.31 s at 8 ranks) would under-represent the turn (0.52 s).
+- hpcrun's overhead: 0.4 to 1.3 % of the wall clock (serial N = 32: 91.1 vs
+  91.7 s; serial N = 64, 20 steps: 37.8 vs 38.2 s; 8 ranks: 0.538 vs 0.544
+  s/step; 64 ranks: 1883 vs 1902 s per turn).
+- Jobs: 55914082 (build, deflt_short), 55924284 (serial), 55924287 (8
+  ranks), 55924288 (64 ranks); 55912929-32 were the first submission
+  (cancelled / a spec-parsing failure). CSVs on the cluster:
+  csv/hp_categories.csv (run x category), hp_ranks.csv (per rank),
+  hp_hotspots.csv (top 25 exclusive per run), hp_timing.csv; the full
+  analyses in prof/an/ (flat, lines, tree, callers, categories per rank).
+
+### (a) The serial breakdown per step, N = 64, one turn (697 steps)
+
+Seconds per step and the share of the step; exclusive by category (the
+categories partition the step; the inclusive time of a routine is the sum
+of its categories). The swept-face advection (ring normal) against plicRDF +
+isoAdvector on the same case.
+
+| category (fork routine) | swept s/step | % | plicRDF s/step | % |
+|---|---|---|---|---|
+| pieces: clip by the cell planes and the PLIC plane (sweptPieceVolume, davofSweptPieces.H 296-394, with the inlined clipByHalfSpace) | 0.4685 | 42.2 | - | - |
+| pieces: cap closure and volume (395-496) | 0.0025 | 0.2 | - | - |
+| face update: the pre-image fan clipped (sweptPieceArea) | 0.1819 | 16.4 | - | - |
+| swept cells: the ring search (vertex ring, bounding boxes; isoAdvectionSwept.C 694-731) | 0.0412 | 3.7 | - | - |
+| swept cells: the cell planes, state and wisp rule (774-846) | 0.0302 | 2.7 | - | - |
+| swept cells: the pre-image fan, the rest of sweptFaceCellsFlux | 0.0079 | 0.7 | - | - |
+| trace: the velocity at the traced points (interpolationCellPoint, cellPointWeight::findTetrahedron) | 0.0742 | 6.7 | 0.0019 | 0.9 |
+| trace: the cell holding a point (ring, octree) | 0.0174 | 1.6 | - | - |
+| trace: the midpoint trace, the triangle list | 0.0104 | 0.9 | - | - |
+| the point velocity (volPointInterpolation of U, once per step) | 0.0222 | 2.0 | 0.0113 | 5.4 |
+| curvedFlux: the candidate band | 0.0056 | 0.5 | - | - |
+| curvedFlux: the wisp surfaces (neighbour plane, anchoring) | 0.0036 | 0.3 | - | - |
+| curvedFlux: the second ring / surfaceOf | 0.0014 | 0.1 | - | - |
+| curvedFlux: the face loop and the rest | 0.0106 | 1.0 | - | - |
+| the remote exchange (serial: the zoneDistribute stencil setup) | 0.0030 | 0.3 | 0.0113 | 5.4 |
+| the surface build (buildCellSurfaces: fit, anchor, kromerBothe) | 0.0451 | 4.1 | - | - |
+| the reconstruction (davof::reconstruct + ring normal; plicRDF::reconstruct) | 0.0365 | 3.3 | 0.0684 | 32.7 |
+| the bounding (limitFluxes, boundCellContent, second layer) | 0.0102 | 0.9 | 0.0077 | 3.7 |
+| isoAdvector's timeIntegratedFlux (the faces no plane set) | 0.0147 | 1.3 | 0.0051 | 2.4 |
+| isoAdvector's advect, the rest (alpha update, counters) | 0.0293 | 2.6 | 0.0248 | 11.8 |
+| setFlow (the function object) | 0.0309 | 2.8 | 0.0306 | 14.6 |
+| the solver loop's field algebra (main) | 0.0355 | 3.2 | 0.0352 | 16.8 |
+| I/O and start-up | 0.0243 | 2.2 | 0.0105 | 5.0 |
+| the Courant number | 0.0015 | 0.1 | 0.0015 | 0.7 |
+| total | 1.1105 | 100 | 0.2090 | 100 |
+
+- The swept advection's own parts (pieces, face update, swept cells, trace,
+  point velocity, curvedFlux, surface build) are 0.926 s/step = 83 % of the
+  step; the two clips alone (pieces + face update) 0.65 s = 59 %.
+- The ratio to plicRDF is 5.3 serially (the comparison measured 9.0 at 8
+  ranks: the difference is the parallel imbalance, (c)). Function by
+  function the swept row adds: pieces +0.472, face update +0.182, trace
+  +0.100, swept cells +0.079, surface build +0.045, curvedFlux +0.021, point
+  velocity +0.011, timeIntegratedFlux +0.010 s/step; its reconstruction is
+  cheaper than plicRDF's (-0.032; the ring normal against plicRDF's
+  iterations); setFlow, the solver loop and the alpha update are the same.
+- Allocation is 2.6 % of the step (20.3 s of 774: the trace's tetrahedron
+  lists 13.8 s, the solver loop 2.2, the DynamicLists of sweptFaceCellsFlux
+  1.2, the surface build 0.9). The LLC misses (12.2e9 over the turn) sit in
+  the mesh-wide field operations (setFlow 2.5e9, the point velocity 2.5e9,
+  the alpha update 2.3e9, the solver loop 2.0e9, the reconstruction 0.8e9);
+  the two clips have 0.8 % of them: the clipping is compute-bound.
+- The in-code timers of the comparison logs agree: advect is 97 to 99 % of
+  the step, curvedFlux 95 %, the exchange 1.7 to 1.8 % (its wait 0.1 to 0.3
+  %).
+
+### (b) The scaling with N, serial
+
+The full turns at N = 32 and 64 (346 and 697 steps); the growth factor
+against the interface-cell count (431 -> 1723, x 4.00; swept faces 4500 ->
+17574, x 3.91; pieces 6261 -> 23939, x 3.82; cells x 8). The 20-step windows
+at N = 64 and 128 (the serial N = 128 turn is not affordable); there the
+start-up and the field write of step 20 are excluded.
+
+| category | N = 32 s/step | N = 64 s/step | x (32 -> 64) | N = 64, 20 steps | N = 128, 20 steps | x (64 -> 128) |
+|---|---|---|---|---|---|---|
+| pieces: clip | 0.1205 | 0.4685 | 3.89 | 0.464 | 1.830 | 3.94 |
+| face update | 0.0472 | 0.1819 | 3.85 | 0.182 | 0.691 | 3.80 |
+| ring search | 0.0106 | 0.0412 | 3.89 | 0.043 | 0.167 | 3.9 |
+| cell planes, wisp rule | 0.0075 | 0.0302 | 4.03 | 0.027 | 0.114 | 4.2 |
+| trace: velocity at the points | 0.0191 | 0.0742 | 3.88 | 0.085 | 0.403 | 4.7 |
+| trace: cell search | 0.0045 | 0.0174 | 3.87 | 0.022 | 0.097 | 4.4 |
+| surface build | 0.0130 | 0.0451 | 3.47 | 0.043 | 0.179 | 4.2 |
+| reconstruction | 0.0064 | 0.0365 | 5.70 | 0.028 | 0.148 | 5.3 |
+| point velocity (mesh-wide) | 0.0025 | 0.0222 | 8.9 | 0.029 | 0.235 | 8.1 |
+| setFlow (mesh-wide) | 0.0034 | 0.0309 | 9.1 | 0.033 | 0.366 | 11 |
+| alpha update (mesh-wide) | 0.0028 | 0.0293 | 10.5 | 0.030 | 0.334 | 11 |
+| bounding (mesh-wide) | 0.0009 | 0.0102 | 11 | 0.010 | 0.110 | 11 |
+| total | 0.2606 | 1.1105 | 4.26 | | ~5.5 (steady) | |
+
+- Every part of the swept advection grows with the interface cells (x 3.5 to
+  4.0 from N = 32 to 64; the trace's cell search and the velocity lookup
+  somewhat faster, x 4.4 to 4.7, from 64 to 128: the octree and the
+  tetrahedron search are logarithmic in the mesh), the reconstruction x 5.3
+  to 5.7 (the ring stencil), and the mesh-wide operations shared with
+  plicRDF (setFlow, the alpha update, the point velocity, the bounding, the
+  Courant number) x 8 to 11. No part of the swept flux grows faster than the
+  interface-cell count.
+- The ratio to plicRDF therefore FALLS with N serially (9.6 at N = 32, 5.3 at
+  N = 64): the mesh-wide part that both share grows faster than the swept
+  part. The growth of the ratio with N in the comparison (4.5 / 5.8 / 6.7 on
+  the x-line) comes from the ranks (1 / 8 / 64) changing with N, not from
+  the algorithm: (c).
+
+### (c) Parallel: the time in MPI against compute, the imbalance
+
+CPUTIME summed over the turn per rank (its helper threads included; a rank
+busy-waits in MPI, so CPUTIME is the wall clock). The MPI time is also split
+by the call site (the nearest fork routine above the MPI call).
+
+| | N = 64, 8 ranks (697 steps) | N = 128, 64 ranks (1401 steps) |
+|---|---|---|
+| step (CPUTIME per rank / steps; the wall clock) | 0.545 s (0.551) | 1.341 s (1.358) |
+| MPI library, share of all CPUTIME | 72.1 % | 91.2 % |
+| MPI per rank: mean / max / min | 274 / 359 / 72 s | 1715 / 1841 / 929 s |
+| Pstream wrappers | 0.1 % | 0.1 % |
+| compute per rank: max / mean (max/mean) | 303 / 104 s (2.92) | 931 / 156 s (5.98) |
+| ranks with compute < 10 % of the max | 2 of 8 | 42 of 64 |
+| compute per rank, s | 235 59 303 58 43 27 85 20 | 75 ... 931 (ranks 27, 7, 15, 28, 29, 26, 14, 6: 931 758 692 691 483 419 385 359; 42 ranks at 37-80) |
+| partial cells per rank at t = 0 (1e-8 < alpha < 1 - 1e-8) | 532 438 394 396 0 0 0 0; max/mean 2.42 | 55 ranks with 0; max 1746 of 6920 (25 %), mean 108, max/mean 16.2 |
+| MPI by call site, share of the MPI time | syncProcPatches 90.8 %, sweptExchange (mapDistribute) 6.4 %, the reduce in davof::reconstruct 1.5 %, the alpha update 0.4 %, the second exchange 0.2 %, the surface exchanges 0.2 % | syncProcPatches 90.1 %, sweptExchange 6.2 %, davof::reconstruct 1.6 %, the alpha update 0.7 %, the second exchange 0.6 %, setFlow 0.2 %, the surface exchanges 0.2 %, the bounding 0.1 % |
+| the exchange proper (pack, map, unpack: compute) | 0.0049 s/step/rank | 0.0058 s/step/rank |
+| the busiest rank: compute, of which | rank 2: 0.435 s/step: pieces 0.204, face update 0.083, trace velocity 0.031, surface build 0.019, ring 0.018; MPI 0.104 | rank 27: 0.665 s/step: pieces 0.299, face update 0.129, trace velocity 0.046, surface build 0.027, ring 0.027; MPI 0.663 |
+| an idle rank | rank 7: compute 0.029 s/step (the solver loop 0.0046, setFlow 0.0039, the alpha update 0.0037, the point velocity 0.0033); MPI 0.514 | rank 61: compute 0.026 s/step (0.0044, 0.0043, 0.0044, 0.0037); MPI 1.314 |
+| the balanced step (the sum of compute / ranks / steps) | 0.151 s: the step is 3.6 x | 0.111 s: the step is 12 x |
+| cap-closure fallback / candidate band, on the busiest rank | 0.0003 / 0.0008 s/step | 0.0016 / 0.0011 s/step |
+| plicRDF on the same case: MPI share; compute max/mean; its interface work of its compute | 47 %; 2.4; - | 65.6 %; 1.94; 27 % (reconstruction 908 s + bounding 196 + timeIntegratedFlux 70 of 4373 s) |
+
+- The parallel bottleneck is the load imbalance of the interface band under
+  the comparison's scotch decomposition of the whole mesh, not the
+  communication: the exchange proper is 0.5 % of the step; 90 % of the MPI
+  time is the all-to-all of syncProcPatches inside curvedFlux, where the
+  ranks without interface cells wait for the rank with the most. The swept
+  advection's compute is ~ 95 % interface work (plicRDF's 27 %), so the
+  interface band's distribution sets its parallel efficiency directly: at 64
+  ranks 55 of 64 ranks hold no partial cell and the busiest holds 25 %.
+- The busiest rank's compute is only half the step at 64 ranks (0.665 of
+  1.34 s) because the band moves through the partitions as the sphere turns:
+  eight ranks take turns as the busiest (931 to 359 s over the turn) and the
+  step is each step's maximum; hence the 2 x variation of the per-step time
+  over the turn in parallel (1.03 to 2.11 s per 50 steps at 64 ranks) against
+  a constant serial step.
+- The speed-up against the serial step: N = 64, 1.11 -> 0.545 s at 8 ranks =
+  2.0 (efficiency 25 %); N = 128, ~5.5 s (the serial 20-step profile without
+  the start-up and the write) -> 1.017 s (the unprofiled 20 steps at 64
+  ranks) = 5.4 (8.5 %). Amdahl's law would read a serial fraction f = (64/5.4
+  - 1)/63 = 0.17 into the 64-rank figure (0.42 into the 8-rank one), but
+  there is no serial fraction: the balanced step would be 0.111 s, and the
+  18-19 x of the earlier note is not reached by the measured 5.4. (The
+  origin of the 18-19 x is not in this report; the measured values stand.)
+- Neither the cap-closure fallback nor the candidate band dominates on any
+  rank (0.1 to 0.3 % of the busiest rank's compute); on every busy rank the
+  piece clip is first and the face-update clip second.
+- The remote exchange's wait (6 % of the MPI time, 0.076 s/step/rank at 64
+  ranks) is also an imbalance wait: the idle ranks reach the mapDistribute of
+  sweptExchange before the busy ones leave the surface build.
+
+### (d) The top ten exclusive hotspots (serial, N = 64, one turn; 774 s)
+
+| # | % | s | function (file:line; fork 720cfc6) | kind |
+|---|---|---|---|---|
+| 1 | 15.9 | 123.1 | Foam::minusOp (ops.H:209): the vector subtraction inlined into clipByHalfSpace (davofSweptPieces.H:184, 205) and the contact test (341) | algorithmic (vertices x planes) |
+| 2 | 10.6 | 82.1 | davof::clipByHalfSpace (davofSweptPieces.H:181-212; own lines 195, 185, 196, 192, 181, 205); 64.0 s under sweptPieceVolume, 18.1 s under sweptPieceArea | algorithmic |
+| 3 | 7.2 | 56.0 | Foam::Vector::inner (VectorI.H:157): the signed distances of the clip (184) and of the contact / coplanar tests (341, 545) | algorithmic; half redundant: the contact test (336-352) computes (t_j - x0).n for every vertex and plane and clipByHalfSpace recomputes it at 184 |
+| 4 | 5.8 | 45.2 | davof::sweptPieceVolume, own lines (362, 343, 336, 346, 371, 360, 296): the contact rule's loop over the planes and the per-triangle bookkeeping | algorithmic |
+| 5 | 4.3 | 33.6 | std::__copy_move (stl_algobase.h:430): the FixedList<point, 16> copy poly.p = out, poly.e = lab at the end of every clip (davofSweptPieces.H:210-211) | redundant (a 384-byte copy per clip; ping-pong buffers or an in-place clip remove it) |
+| 6 | 2.9 | 22.6 | Foam::Vector::cross (VectorI.H:169): areaVector (154) and the triangle normals | algorithmic |
+| 7 | 2.6 (5.7 with its callees) | 20.3 (44) | cellPointWeight::findTetrahedron (libfiniteVolume) + polyMeshTetDecomposition::cellTetIndices 4.8 s + faceTetIndices 5.4 s + the allocation of their lists 13.8 s: the velocity at a traced point (sweptTriangles' lambda, isoAdvectionSwept.C 329-344) | redundant + allocation: the cell's tetrahedra are rebuilt and the list allocated per traced point, and a mesh point is traced by every face that uses it |
+| 8 | 2.4 (5.6 with magSqr, mag) | 18.8 (43.6) | plusEqMagSqrOp2 (ops.H:79) + magSqr (scalarImpl.H:339) 14.8 s + mag (doubleScalar.H:78) 10.0 s: the mag() of the triangle edges (300) and of sweptPieceArea's coplanar test (541-546: per plane and vertex) | redundant in part: the polygon size L is recomputed for every plane (541-546), the signed distances again at 557 |
+| 9 | 2.3 | 17.5 | Foam::boundBox::boundBox(points, cellPoints) (libOpenFOAM; the touches lambda, isoAdvectionSwept.C 705-709): a cell bounding box per ring candidate per face, every step | redundant (a static mesh: once) |
+| 10 | 1.8 | 13.7 | volPointInterpolation::interpolateInternalField (libfiniteVolume): the point velocity of the whole mesh, once per step | algorithmic, mesh-wide (x 8.1 from N = 64 to 128); could be restricted to the band's points |
+
+Then: sweptPieceArea's own lines 12.5 s (1.6 %), sweptFaceCellsFlux's own
+lines 10.5 s (1.4 %), operator*(scalar, vector) 10.1 s, FixedList::operator[]
+8.4 s, kbIntegrateFace 7.4 s (the surface build), fvc::surfaceIntegrate 6.4
+s, malloc + free 11.6 s (1.5 %). At 8 and 64 ranks the same functions lead
+the compute (the clip's lines, the tetrahedron search), behind the MPI
+progress functions (mca_btl_vader_component_progress 51 % / 74 % of all
+samples, opal_progress 10 % / 8 %: the busy-wait).
+
+### The changes with the largest expected gain (not implemented)
+
+1. An exact pre-test of the ring cells before the two clips (serial; the
+   largest). Evidence: the ring of a face holds 18 to 27 cells (the donor's
+   vertex ring whose bounding boxes overlap the swept volume's: the box of a
+   face's swept volume touches 3 x 3 cell columns and 2 to 3 layers, and
+   boundBox::overlaps is inclusive), while the pieces per face are 1.36
+   (23939 pieces / 17574 faces per step at N = 64; the same at N = 128). So
+   ~ 93 % of the sweptPieceVolume and sweptPieceArea calls clip 16 (and 4)
+   triangles by 6 to 7 planes and find nothing; the two clips are 0.65 of
+   the 1.11 s serial step (59 %) and 0.43 of the busiest rank's 0.665 s at 64
+   ranks. A separating-plane test of the swept volume's vertices (the face's
+   points, their pre-images and the two centres) against the cell's planes
+   (all outside one plane -> no piece) costs ~ 60 dot products per candidate
+   instead of up to 16 x 7 clips. Expected: the clips drop to ~ 0.15 s/step
+   (the true pieces and the near misses) -> the serial step from 1.11 to ~
+   0.6 s (factor ~ 1.8), and the busiest rank's compute in parallel alike
+   (the 64-rank step from 1.34 to ~ 0.9 s).
+2. Balance the interface band across the ranks (parallel; the dominant
+   loss). Evidence: (c): 91 % of all CPU time at 64 ranks is the wait at
+   syncProcPatches, the busiest rank holds 25 % of the partial cells and 55
+   ranks none, the balanced step would be 0.111 s against 1.34 (12 x), at 8
+   ranks 0.151 against 0.545 (3.6 x); the exchange proper is 0.5 % of the
+   step. A decomposition weighted by the interface band (decomposePar with
+   cell weights from the alpha band) addresses the start; since the band
+   moves through the partitions over the turn (the per-step time varies 2 x),
+   a periodic re-decomposition (redistributePar) or a dynamic weighting is
+   needed to hold the balance. Expected factor 3 to 6 at 64 ranks and 2 to 3
+   at 8 ranks (the bound 12 and 3.6; the band's width against the rank
+   count and its motion limit it). With 1 and 2 together the 64-rank step
+   would be ~ 0.2 to 0.3 s against plicRDF's 0.14: a ratio of ~ 2 instead of
+   9.
+3. Trace each mesh point once per step (serial; redundant + allocation).
+   Evidence: hotspot 7: the velocity at a traced point rebuilds the cell's
+   tetrahedra (an allocated list) per lookup, and a mesh point is traced by
+   every face that uses it; the trace's velocity lookup and cell search are
+   0.092 s/step at N = 64 (8.3 %) and grow x 4.5 to N = 128. A per-step cache
+   of the traced points keyed by the mesh point (the midpoint trace depends
+   on the point only, not on the face) and of the face centres removes the
+   repeats, and the tet decomposition can be reused per cell. Expected ~ 6 %
+   of the serial step (factor 1.06), ~ 7 % of the busiest rank's compute.
+4. Within the clip (micro, after 1 it matters little): the polygon copy at
+   the end of clipByHalfSpace (4.3 %), the per-plane recomputation of L and
+   of the signed distances in the contact and coplanar tests (~ 4 % of the
+   step: hotspots 3 and 8), the cell bounding boxes once (hotspot 9, 2.3 %).
+   Together ~ 10 % of the serial step today; ~ 1 % after 1.
+
+What this demonstrates: serially the swept-face advection's cost is the
+clipping of ~ 20 ring cells per face of which ~ 1.4 hold a piece (59 % of
+the step in the two clips), every part of it scales with the interface-cell
+count, allocation is 2.6 % and the work is compute-bound; in parallel its
+cost is set by the rank holding the most interface at each step, which under
+the mesh-wide decomposition leaves 42 of 64 ranks idle and makes the
+comparison's 9 x against plicRDF (5.3 x serially) a decomposition effect.
