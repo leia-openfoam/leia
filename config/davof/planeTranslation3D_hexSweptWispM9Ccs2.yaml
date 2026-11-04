@@ -4,7 +4,9 @@
 # took the cubic through the bracket ends only, which the one-sided Newton
 # iterates never completed, 3.8 cuts per cell), and the target clamped to
 # [0, V] (a round-off wisp of alpha -3e-15 ran to maxIter before). The same
-# cases, tokens, gate and predictions P-1, P-2 as planeTranslation3D_hexSweptWispM9Ccs.
+# cases, tokens, gate and predictions P-1, P-2 as planeTranslation3D_hexSweptWispM9Ccs;
+# the third fork build (the floor exit only near the tolerance) and the
+# pre-test keys pinned to the path of 720cfc6.
 #
 #   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptWispM9Ccs2 --export=ALL,LEIA_TPF_DIR=<the v2 clone>,STUDY=davof/planeTranslation3D_hexSweptWispM9Ccs2 run-studies.sbatch
 study_name: planeTranslation3D_hexSweptWispM9Ccs2
