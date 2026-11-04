@@ -2818,3 +2818,228 @@ Newton branch alone; below the floor the secant's exit returns unconverged
 planes as converged, up to 270 times the tolerance off. The swept flux clips
 the anchored plane (anchorTolRel 1e-11 in volume, 1e-11 h in offset), not
 vofCutCell's.
+
+## The Consecutive Cubic Spline positioning in the reconstruction (2026-11-04)
+
+The question (Tomislav, via the coordinating session, after the section
+above): position the plane to machine epsilon with Consecutive Cubic Spline
+positioning from the closed-form explicit position, which should converge
+within one iteration, so that the flux integration clips properly
+positioned planes; configurable and replaceable with the previous algorithm.
+
+Pre-registered before the runs:
+- C1..C5 in the header of apps/benchmark/planeVolumeConsistency (fork
+  de416fa): C1 per cell |V_cut - alpha V| < 1e-14 V; C2 |sum| of the order
+  N eps V; C3 one to two cuts per cell [the agent: two to three, one on a
+  planar state]; C4 the end-of-interval cells get a plane; C5 the cost per
+  positioning not above vofCutCell's.
+- P-1, P-2 in config/davof/planeTranslation3D_hexSweptWispM9Ccs.yaml:
+  identical or better errors; the wall clock not worse than 5 %.
+- The anchor's start with the plane at round-off: 0 to 1 iterations (the
+  task).
+
+Commits:
+- Fork davof-swept (remote tmaric): de416fa (the key positioning
+  vofCutCell | ccs with positioningTol and positioningMaxIter; the shared
+  kernel davofCcsPositioning.H; the anchor's start statistics and the key
+  anchorSkipConverged; the app's -positioning ccs), 264778b (the CCS step
+  proper, the target clamped to [0, V]), b6a7dc9 (the floor exit only within
+  a hundred tolerances; positioningMaxIter 30). The isoAdvection edits of
+  the first commit travelled in 3aaf49d of the other session, which commits
+  in the same worktree (see "Surprises").
+- leia davof-swept (origin): f12875ee (the tokens TPF_POSITIONING,
+  TPF_POSITIONING_TOL, TPF_ANCHOR_SKIP_CONVERGED, defaults = before; the
+  gate config), 7519fae0 and a605efec (the gate config of the later
+  builds), d809acc0 (the tokens TPF_SWEPT_PRE_TEST none and
+  TPF_SWEPT_STATE_SHORTCUT false, see "Surprises").
+
+Jobs (ledger .my_jobs): builds 55928069 (de416fa), 55929209 (rc 126: the
+worktree's Allwmake not executable) and 55929401 (264778b), 55929937
+(b6a7dc9, in the worktrees TwoPhaseFlow-v2 and -v3 so that the running jobs
+kept their library); the verification 55928070-72, 55929402-04,
+55929938-40; the anchor pairs 55929615, 55929941; the plane gate 55928074
+(de416fa) and 55929942 (b6a7dc9); the timed comparison 55928075-105
+(de416fa, the fork defaults of 3aaf49d active) and 55929943-67 (b6a7dc9,
+pinned); the pre-test check 55929616. Raw data: vol-consistency/run3,
+run4, run5 (the verification of the three builds), vol-consistency/
+anchor-skip22 and anchor-skip3, vol-consistency/pretest-check, cmp-pos and
+cmp-pos3, leia/studies/davof/planeTranslation3D_hexSweptWispM9Ccs and
+..M9Ccs2; the tables csv/pos_table.csv, csv/pos_table_pos3.csv,
+csv/gate_pos_Ccs.csv, csv/gate_pos_Ccs2.csv (vol-consistency/pos_an.py,
+gate_an.py).
+
+### What was built
+
+The reconstruction key positioning (default vofCutCell: the path of
+720cfc6 bit for bit; the face moment is now formed before the first-pass
+positioning, which does not read it). With ccs, davof::positionPlane
+positions the plane along the selected normal by davof::ccsPositionPlane
+(davofCcsPositioning.H): the start p0 = pPlane_c, the Gauss-theorem
+position; the volume and the slope dV/dp = -A (A the cut polygon's area)
+from cutCellPLIC::calcSubCell, the same cut as vofCutCell and the
+diagnostics; the bracket from the vertex extrema (V = V_c and 0, A = 0,
+no cut); the first step Newton's from the single evaluated point; every
+later step the root of the cubic Hermite interpolant through the two
+consecutive evaluated points with their slopes (T. Maric, J. Comput.
+Phys.: X 11 (2021) 100093, doi:10.1016/j.jcpx.2021.100093,
+arXiv:2012.02227; exact once both lie between the same vertex levels as
+the root, since V(p) is a cubic there), through the bracket ends once both
+are evaluated, else through the previous and the latest point,
+extrapolated, taken where the root lies inside the bracket; bisection
+where an iterate leaves the bracket or the bracket was not halved over two
+steps; the stop at |V - alpha V| <= positioningTol V (default 1e-14, the
+floor measured above), at a non-decreasing residual at a cubic step within
+a hundred tolerances (the floor; the best cut is returned), at a closed
+bracket, or at positioningMaxIter. alpha outside [0, 1] is clamped; alpha
+<= 0 or >= 1 takes the vertex extreme (no plane, as vofCutCell); the cells
+with alpha within isoFaceTol of 0 or 1 are positioned. normal_ and
+centre_ come from the final cut as before; the kernel hermiteRoot01 is the
+anchor's, moved unchanged and shared. The Info line reports the cuts per
+cell (histogram), the residuals, the floor and maxIter exits and the
+end-of-interval cells; the per-cell signed residual is kept for the
+anchor.
+
+The anchor: the start residual's maximum and mean, the cells within the
+tolerance, and |V_KromerBothe - V_cut|/V for the same plane (positioning
+ccs) in the curved report; the key anchorSkipConverged (default false)
+keeps a plane ccs left within the anchor's tolerance without the start
+evaluation.
+
+The three builds: de416fa took the cubic through the bracket ends only,
+which the one-sided Newton iterates rarely completed (3.8 cuts per cell,
+13 000 Newton against 3 300 cubic steps at N = 128) and ran a round-off
+wisp of alpha -3e-15 to maxIter (1.1e-12 V off); 264778b the CCS step
+proper and the clamp; b6a7dc9 the floor exit armed only near the
+tolerance, after the sphere's exact-normal row had returned planes up to
+3.7e-3 V off from a non-decrease far from the root (the anchor's start
+residual mean 1e-4 against 1e-14 on the ring row). The verification
+statistics of 264778b and b6a7dc9 are identical on the 30 files.
+
+### The verification (planeVolumeConsistency -positioning ccs, b6a7dc9, jobs 55929938-40)
+
+The same 30 files as the section above (the exact initial sphere and the
+transported ends, N = 32 / 64 / 128, the normals areaNormal, exact,
+field), each positioned by vofCutCell (isoFaceTol 1e-8) and by ccs in the
+same job on the same node.
+
+| N | max \|d\| (ccs) | mean \|d\| | cuts per cell, mean (histogram 2 / 3 / 4+) | floor exits | \|sum signed\| / (N eps V) | ns per positioning ccs / vofCutCell |
+|---|---|---|---|---|---|---|
+| 32 | 4.4e-15 to 1.2e-14 | 1.0e-15 to 1.6e-15 | 2.81 to 2.98 (t = 0: 72 / 320 / 24 of 416) | 0 | 0.1 to 1.8 | 1659 to 1959 / 3221 to 4061 |
+| 64 | 8.9e-15 to 1.8e-14 | 2.1e-15 to 2.9e-15 | 2.84 to 2.97 | 0 to 7 of 1760 | 0.1 to 1.3 | 1669 to 2037 / 3566 to 4300 |
+| 128 | 2.5e-14 to 4.0e-14 | 4.1e-15 to 5.6e-15 | 2.91 to 3.22 (777 / 4567 / 1445 of 6789) | 180 to 420 of 6800 (3 to 6 %) | 0.3 to 2.9 | 2039 to 2578 / 3677 to 4248 |
+
+(d = (V_ind - alpha V)/V by the independent clip; eps = 2.22e-16; the
+means over the 84 file-normal pairs: ccs 1991 ns, vofCutCell 3779 ns.)
+The histogram's mode is 3 cuts: the start, Newton's step, the consecutive
+cubic, which lands at the floor; 2 cuts where V(p) is linear (an
+axis-aligned normal); 4 or more where a vertex level lies between the
+iterates. The closed-form start is 1 to 8 % of V off on the sphere (the
+realizability defect of a curved interface in a cell), exact on a plane:
+on the plane case the first step gives 416 cells with 1 cut and the
+residual max 5.7e-15.
+
+Verdicts:
+- C1 HELD at N = 32 in 25 of 28 file-normal pairs (the others by one cell
+  at 1.0 to 1.2e-14); FALSIFIED at N = 64 (max 1.8e-14) and N = 128 (max
+  4.0e-14) by the round-off floor of the cut volume, as pre-registered for
+  N = 128.
+- C2 HELD in all 84: the signed sum is 0.1 to 2.9 N eps V.
+- C3 FALSIFIED (1 to 2 cuts): 2.8 to 3.2; the agent's 2 to 3 holds at N
+  <= 64 on the mean and is exceeded by 0.2 at N = 128.
+- C4 HELD except the cells with alpha <= 0 or below the floor (1 to 7 per
+  file), which take the vertex extreme.
+- C5 HELD: 47 % less per positioning.
+- Unchanged from the section above: the orientation (0 flips, 0
+  sphere-side violations), the two clips within 4e-14 V.
+
+### The anchor (job 55929941, rotation N = 32, Co 0.2, the ring row, pre-test keys pinned)
+
+| run | anchor evaluations per cell (step 1 / last) | start \|r\|/V max, mean (step 1) | within tol (step 1 / last) | \|V_KB - V_cut\|/V max over the turn | wall s | L1(alphaf), E_shape at the end |
+|---|---|---|---|---|---|---|
+| vofCutCell | 1.37 / 1.55 | 2.1e-10, 1.6e-11 | 336 of 416 / 230 of 423 | - | 158.8 | 5.703502513999e-02, 1.058669062821e-03 |
+| ccs | 1.00 / 1.00 | 1.1e-14, 1.7e-15 | 416 of 416 / 420 of 423 | 1.6e-14 | 148.5 | 5.703502513976e-02, 1.058669062804e-03 |
+| ccs + anchorSkipConverged | 0 / 0.014 (skipped 416 / 417) | - | - | - | 144.3 | 5.703502512518e-02, 1.058669062810e-03 |
+
+The three cells not within tolerance at the end are the ones without a
+plane (alpha at 0 or 1, the start residual 0.5). The Kromer-Bothe volume
+and the cutCellPLIC cut of the same plane agree to 1.6e-14 V on this case,
+3.7e-14 at N = 64 and 8.4e-14 at N = 128 (cmp-pos). The end alpha fields:
+max |alpha_ccs - alpha_vofCutCell| = 4.0e-11, max |alpha_skip - alpha_ccs|
+= 5.4e-10, the sums equal to 2e-14 relative. The skip changes the pieces'
+fluxes within the anchor's own offset tolerance (1e-11 h), not within
+machine epsilon: with the anchor the plane is still shifted by up to
+1e-11 h from the reconstruction's; min alpha -8.8e-13 to -9.8e-13 and the
+excess 1.1e-11 in all three.
+
+### The timed comparison (b6a7dc9, pre-test keys pinned, jobs 55929943-67; cmp-pos3)
+
+ring and exact normal x vofCutCell and ccs, one exclusive i01 node per
+(flow, N, Co, repetition), the four solves in rotated order, everything
+else as the Co 1 comparison of 2026-11-03. The rotation at N = 64, Co 0.2
+exceeds the 30-minute jobs (four solves of 16 min) and has one repetition
+or none; N = 128 ran in the first batch only (fork defaults of 3aaf49d
+active: wall ratio 0.956 to 0.986, the norms as below).
+
+| case | row | E_shape, L1(alphaf) ratio ccs / vofCutCell | L1(x) ratio | L1(n) ratio | wall ratio (median of 3) | cuts per cell | anchor evaluations per cell ccs / vofCutCell |
+|---|---|---|---|---|---|---|---|
+| diagonal N 32, Co 0.2 | ring / exact | 1.000000 / 1.000000 | 1.0017 / 1.0000 | 1.0000 / 1.0000 | 0.978 / 0.977 | 2.98 / 2.93 | 1.00 / 1.52 |
+| diagonal N 32, Co 1 | ring / exact | 1.000000 / 1.000000 | 1.0000 / 1.0000 | 1.0000 / 1.0000 | 0.983 / 0.980 | 3.08 / 2.91 | 1.00 / 1.49 |
+| diagonal N 64, Co 0.2 | ring / exact | 1.000000 / 1.000000 | 1.0046 / 1.0021 | 1.0088 / 1.0031 | 0.982 / 0.972 | 2.94 / 2.91 | 1.00 / 1.53 |
+| diagonal N 64, Co 1 | ring / exact | 1.000000 / 1.000000 | 1.0000 / 1.0000 | 1.0000 / 1.0000 | 0.982 / 0.988 | 2.93 / 2.87 | 1.00 / 1.50 |
+| rotation N 32, Co 0.2 | ring / exact | 1.000000 / 1.000000 | 1.0064 / 1.0034 | 1.0072 / 1.0821 | 0.977 / 0.973 | 2.96 / 2.93 | 1.00 / 1.55 |
+| rotation N 32, Co 1 | ring / exact | 1.000000 / 1.000000 | 1.0060 / 1.0027 | 1.0048 / 1.1286 | 0.978 / 0.973 | 2.98 / 2.94 | 1.00 / 1.57 |
+| rotation N 64, Co 1 | ring / exact | 1.000000 / 1.000000 | 1.0022 / 1.0000 | 1.0023 / 1.0000 | 0.980 / 0.972 | 2.97 / 2.93 | 1.00 / 1.55 |
+
+Bounded and conservative alike: min alpha -1.7e-14 to -8.3e-11, the
+excess 1.3e-13 to 3.5e-11, the mass within 3e-12 % in both. The ccs
+residual's maximum over all steps and cells is 1.0e-14 to 6.6e-14 V.
+- P-2 HELD: the wall clock is 1.2 to 2.8 % lower with ccs in every case.
+- P-1 HELD for the transport: E_shape and L1(alphaf) are identical to
+  seven digits in every case (the anchor re-solves the offset either way,
+  so the clipped plane is the same within 1e-11 h). FALSIFIED for the
+  reconstruction norms of the end state, L1(x) up to +0.6 % and L1(n) up
+  to +13 % (the exact row at N = 32): with ccs the cells with alpha within
+  1e-8 of 0 or 1 carry a plane, a corner sliver whose centroid and normal
+  enter the norm; vofCutCell leaves them without.
+
+### The plane gate (b6a7dc9, config planeTranslation3D_hexSweptWispM9Ccs2, job 55929942; 57 of 64 cases at the time of writing)
+
+Against planeTranslation3D_hexSweptWispM9, case by case: the gate verdicts
+are identical in all 57 (52 pass both, the 5 failing M9 cases fail with
+ccs too); the run maxima of L1(alphaf) are round-off numbers (4e-14 to
+1e-11) and differ by -18 % to +24 % in both directions (30 identical or
+better, 27 worse); min alpha and the mass clause alike. The ClockTimes are
+integer seconds on shared nodes (median ratio 1.2 between 0.6 and 1.6):
+not a timing measurement; the timing is the comparison above. At N = 20
+the ccs run maxima are 3.0e-14 to 1.7e-13 against M9's 2.8e-14 to 2.0e-13.
+
+### Surprises
+
+- The fork defaults of 3aaf49d (the other session's sweptPreTest
+  touching and sweptStateShortcut true, in every build from de416fa on)
+  are not inert: the N = 20 plane case loses the plane at step 1
+  (L1(alphaf) 4.8e-3 against 6e-15, the step-1 swept line "pre-test: ring
+  cells skipped 15", the beyond-layer pieces 0 against 16). The 2 x 2 check
+  (job 55929616, the same case): touching / true gives L1(alphaf) max
+  9.0e-2 (vofCutCell) and 9.1e-2 (ccs), min alpha -2.2e-2; none / false
+  gives 4.23e-14 (vofCutCell, the M9 reference exactly) and 4.08e-14
+  (ccs). On the sphere cases the norms agree with the 720cfc6 reference to
+  four digits with either setting, and the step is 37 % faster with the
+  pre-test (rotation N = 32, Co 0.2, ring: 217 against 344 s). The first
+  gate (job 55928074) and the first comparison ran with it; the tokens
+  TPF_SWEPT_PRE_TEST (none) and TPF_SWEPT_STATE_SHORTCUT (false) now pin
+  the 720cfc6 path in the templates; the fork default is theirs to decide.
+- Two sessions commit in the same worktree: 3aaf49d carried this task's
+  isoAdvection edits two minutes before de416fa.
+- "Within one iteration" holds on a planar state only (1 cut); on the
+  sphere the closed-form start is 1 to 8 % of V off and the third cut is
+  the answer.
+
+What this demonstrates: positioning ccs is a drop-in replacement, opt-in
+by the key: the planes sit at the round-off floor (1e-15 V mean, 4e-14
+max at N = 128) with three cuts per cell, 47 % less per positioning and
+1 to 3 % less per step; the anchor then starts within its tolerance in
+every cell with a plane and reduces to its start evaluation, or none with
+anchorSkipConverged, the fluxes changed by at most 5e-10 in alpha; the
+transported fields are identical in E_shape and L1(alphaf). The default
+stays vofCutCell.
