@@ -1,0 +1,61 @@
+# The plane gate with the CCS plane positioning (2026-11-04, Tomislav via the
+# coordinating session): planeTranslation3D_hexSweptWispM9 (the final wisp
+# rule, scaling, both rows, both arms, N 20..160, target Co 0.2..0.95) with
+# the reconstruction's positioning ccs (fork davof-swept: Consecutive Cubic
+# Spline on the cutCellPLIC cut from the explicit Gauss-theorem position, to
+# positioningTol 1e-14 of V or the round-off floor; T. Maric, J. Comput.
+# Phys.: X 11 (2021) 100093, doi:10.1016/j.jcpx.2021.100093,
+# arXiv:2012.02227) in place of vofCutCell (isoFaceTol 1e-8 in alpha).
+#
+# PRE-REGISTERED (2026-11-04, before the runs; the gate, the mass clause and
+# the Courant definition as in planeTranslation3D_hexSweptWispM):
+# P-1 (errors): every case's run maximum of L1(alphaf) is identical to or
+#   below planeTranslation3D_hexSweptWispM9's (the same case, the same
+#   tokens); the gate count is at least M9's 31 / 64. [The agent's reading:
+#   on the plane the state is planar and the explicit position is exact to
+#   round-off, so the reconstruction's plane is the same to ~1e-14 h and the
+#   anchor starts from a residual at the floor; the differences are
+#   round-off, so "identical or better" is expected within 1e-12.]
+# P-2 (cost): the total wall clock of every case is within 5 % of M9's, the
+#   same node class (serial; the solver's ClockTime at the end).
+#
+#   sbatch --parsable -J leia-davof-planeTranslation3D_hexSweptWispM9Ccs --export=ALL,STUDY=davof/planeTranslation3D_hexSweptWispM9Ccs run-studies.sbatch
+study_name: planeTranslation3D_hexSweptWispM9Ccs
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 0.8, 0.95]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_WISP_SURFACE: [matched]
+  TPF_SWEPT_WISP_TOL: [0]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_SWEPT_WISP_MATCH_TOL: [1e-9]
+  TPF_POSITIONING: [ccs]
+  TPF_POSITIONING_TOL: [1e-14]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

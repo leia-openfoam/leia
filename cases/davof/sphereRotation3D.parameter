@@ -50,6 +50,12 @@ values
     TPF_KB_MIN_SPLIT ( 1 );
     TPF_KB_FAN ( auto );
     TPF_ANCHOR_METHOD ( ccs );
+    // the plane positioning of the davof reconstruction (fork davof-swept
+    // 2026-11-04): vofCutCell (the fork's default) | ccs; its tolerance of V;
+    // and the anchor skip of planes ccs left within anchorTolRel (opt-in)
+    TPF_POSITIONING ( vofCutCell );
+    TPF_POSITIONING_TOL ( 1e-14 );
+    TPF_ANCHOR_SKIP_CONVERGED ( false );
     // the volume flux of a face: prism | trapezoidal | simpson | simpsonSplit |
     // simpsonSplitS | gaussSplit | sweptFace (the swept-face flux, fork branch
     // davof-swept, 2026-10-28; planes only)

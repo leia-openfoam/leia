@@ -30,6 +30,13 @@ solvers
         wispTol         @!TPF_WISP_TOL!@;
         isoFaceTol      1e-14;
         surfCellTol     1e-8;
+        // the plane positioning of the reconstruction (fork davof-swept
+        // 2026-11-04; builds before it ignore the keys): vofCutCell (the
+        // fork's default, surfaceIteratorPLIC to isoFaceTol) | ccs (Consecutive
+        // Cubic Spline on the same cut from the explicit position, to
+        // positioningTol of V or the round-off floor)
+        positioning     @!TPF_POSITIONING!@;
+        positioningTol  @!TPF_POSITIONING_TOL!@;
         // plicRDF's initial guess (the helper inside davof and the comparator alike):
         // true = the previous normals shifted back by U dt (the library's default),
         // false = the alpha gradient every time (the hexInterp diagnostic)
@@ -98,6 +105,9 @@ solvers
         // the anchor's root finder (fork branch davof-perf): illinois | newton
         // (ignored by the builds before it)
         anchorMethod    @!TPF_ANCHOR_METHOD!@;
+        // keep a plane that positioning ccs left within the anchor's tolerance
+        // without the anchor (fork davof-swept 2026-11-04; opt-in, default false)
+        anchorSkipConverged @!TPF_ANCHOR_SKIP_CONVERGED!@;
         // the volume flux of a face (fork branch davof-fluxint): prism (the
         // prism volume) | trapezoidal | simpson (a quadrature in time of the
         // face fractions; ignored by the builds before it)

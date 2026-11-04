@@ -55,6 +55,12 @@ values
     // Illinois rule, the method until 2026-10-25) | compare (illinois and
     // ccs, the run continues with ccs); builds before it ignore the key
     TPF_ANCHOR_METHOD ( ccs );
+    // the plane positioning of the davof reconstruction (fork davof-swept
+    // 2026-11-04): vofCutCell (the fork's default) | ccs; its tolerance of V;
+    // and the anchor skip of planes ccs left within anchorTolRel (opt-in)
+    TPF_POSITIONING ( vofCutCell );
+    TPF_POSITIONING_TOL ( 1e-14 );
+    TPF_ANCHOR_SKIP_CONVERGED ( false );
     // the volume flux of a face (fork branch davof-fluxint, 2026-10-25): prism
     // (the liquid volume of the prism between the pre-image and the face) |
     // trapezoidal (phi_f dt times the mean of the face fractions at t^n and
