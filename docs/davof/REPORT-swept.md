@@ -3231,7 +3231,7 @@ turn, the 50-step-bin history, the partial cells per rank at t = 0.
 | 64, 8 | weighted W 1000 | 805 to 517098 | 0 220 203 239 278 310 258 252 (1.4) | 0.4991 / 0.5000 | 0.35 0.43 0.51 0.55 0.54 0.53 0.53 0.54 0.54 0.55 0.56 0.52 0.45 0.39 | - |
 | 64, 8 | W 100, redistributePar every 100 steps (7 cycles) | 2k to 134k after each renewal | at the renewals: max/mean 1.76 to 2.03, 0 to 2 ranks without | 0.2305 solve + 6.9 s per redistribution (41 s of 235 s per turn) | 0.17 0.26 0.21 0.33 0.19 0.26 0.21 0.29 0.18 0.24 0.18 0.23 0.23 0.24 | - |
 | 128, 64 | scotch | 64881 to 66191 | 55 ranks with 0, max 1746 (16.2) | 0.5834 / 0.5824 | 0.47 0.50 0.48 0.50 0.51 0.52 0.50 0.49 0.58 0.69 0.79 0.85 0.85 0.69 0.53 0.51 0.58 0.63 0.66 0.62 0.59 0.52 0.49 0.53 0.60 0.61 0.54 0.50 0.67 | 1.341 |
-| 128, 64 | weighted W 100 | 992 to 101162 | 35 ranks with 0, max 373 (3.5) | TODO | TODO | - |
+| 128, 64 | weighted W 100 | 992 to 101162 | 35 ranks with 0, max 373 (3.5) | 0.7102 / 0.7097 | 0.35 0.42 0.44 0.54 0.66 0.84 0.95 0.88 0.82 0.83 0.75 0.66 0.77 0.85 0.83 0.77 0.69 0.77 0.80 0.71 0.68 0.86 1.03 0.96 0.75 0.55 0.41 0.30 0.94 | - |
 | 128, 64 | W 100, redistributePar every 100 steps | - | - | TODO | TODO | - |
 
 - The optimised code in parallel with the comparison's decomposition: 0.545
@@ -3254,7 +3254,10 @@ turn, the 50-step-bin history, the partial cells per rank at t = 0.
   s/step serial) is now 2 x unbalanced. With W 1000 one rank holds 517k of
   524k cells and the step doubles. At N = 128 W 100 halves the band's
   concentration at t = 0 (35 ranks without a partial cell against 55,
-  max/mean 3.5 against 16) with ranks of 1k to 101k cells; its turn: TODO.
+  max/mean 3.5 against 16) with ranks of 1k to 101k cells, and the turn is
+  slower (0.710 against 0.583 s/step): the first 100 steps are faster (0.35
+  against 0.47, the band on its weighted ranks), then the band leaves them
+  and the step rises to 0.8 to 1.0 s on the big ranks.
 - The renewed weighted decomposition (5 b, N 64, every 100 steps) does not
   help either: the solve step is scotch's (0.2305 against 0.236 s) and the
   six redistributions add 41 s to a 193 s turn. At every renewal scotch with
@@ -3285,7 +3288,10 @@ opt-redist.sbatch runs K steps, writes, computes the weights per processor
 from the written alpha (cellweight_par.py, the layers grown inside each
 processor), redistributePar -parallel -overwrite -latestTime, and continues
 from the written state; the solve and the redistribution wall clocks are
-kept apart. Results: TODO.
+kept apart. The weight field needs the processor patches typed processor
+(OpenFOAM names them procBoundary<i>to<j> and tries the last listed
+pattern first). Results: in the table above (N 64: the solve step is
+scotch's, the renewals cost 20 % of the turn; N 128: TODO).
 
 ### The 18-19 x of the parallel branch, reconciled
 
@@ -3329,5 +3335,19 @@ reconciliation with the 5.4 of the profile section is:
 The two figures are consistent: the advection itself scales 9 to 10 times
 at 64 ranks in both, and neither better, because the band sits on 9 of 64
 ranks.
+
+What this demonstrates: the piecewise swept-face advection runs 2.14 times
+faster serially (1.110 -> 0.519 s/step on the rotation N 64) with the same
+numbers bit for bit on eight 20-step cases, by not clipping the ring cells
+the swept volume only touches (the touching pre-test, 77 % of the ring),
+by the clip internals, and by tracing each mesh point once per step with
+an exact reuse; in parallel the step follows (0.545 -> 0.236 s at 8 ranks,
+1.341 -> 0.583 s at 64 ranks, 2.3 times) and the imbalance of the
+interface band is untouched, because scotch with cell weights, static or
+renewed, keeps the band compact; the state shortcut is equivalent to the
+pieces only up to a round-off that the wisp rules amplify and gains
+nothing on the rotation, so it stays opt-in false; the 18-19 x of the
+parallel branch is the scaling of a step dominated by per-step diagnostics,
+its advection scaled 9.6 times then and now.
 
 
