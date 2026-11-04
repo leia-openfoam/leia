@@ -3232,7 +3232,7 @@ turn, the 50-step-bin history, the partial cells per rank at t = 0.
 | 64, 8 | W 100, redistributePar every 100 steps (7 cycles) | 2k to 134k after each renewal | at the renewals: max/mean 1.76 to 2.03, 0 to 2 ranks without | 0.2305 solve + 6.9 s per redistribution (41 s of 235 s per turn) | 0.17 0.26 0.21 0.33 0.19 0.26 0.21 0.29 0.18 0.24 0.18 0.23 0.23 0.24 | - |
 | 128, 64 | scotch | 64881 to 66191 | 55 ranks with 0, max 1746 (16.2) | 0.5834 / 0.5824 | 0.47 0.50 0.48 0.50 0.51 0.52 0.50 0.49 0.58 0.69 0.79 0.85 0.85 0.69 0.53 0.51 0.58 0.63 0.66 0.62 0.59 0.52 0.49 0.53 0.60 0.61 0.54 0.50 0.67 | 1.341 |
 | 128, 64 | weighted W 100 | 992 to 101162 | 35 ranks with 0, max 373 (3.5) | 0.7102 / 0.7097 | 0.35 0.42 0.44 0.54 0.66 0.84 0.95 0.88 0.82 0.83 0.75 0.66 0.77 0.85 0.83 0.77 0.69 0.77 0.80 0.71 0.68 0.86 1.03 0.96 0.75 0.55 0.41 0.30 0.94 | - |
-| 128, 64 | W 100, redistributePar every 100 steps | - | - | TODO | TODO | - |
+| 128, 64 | W 100, redistributePar every 100 steps (7 cycles = half a turn, then redistributePar killed, rc 137, at the seventh renewal) | 1k to 100k after each renewal | at the renewals: 36 to 39 ranks without, max/mean 3.6 to 4.0 | 0.4195 solve over the half turn + 13.9 s per redistribution (84 s of 439 s) | 0.35 0.43 0.42 0.53 0.34 0.45 0.39 0.50 0.31 0.43 0.39 0.45 0.36 0.53 | - |
 
 - The optimised code in parallel with the comparison's decomposition: 0.545
   -> 0.236 s/step at 8 ranks (2.3 times), 1.341 -> 0.583 at 64 ranks (2.3
@@ -3290,8 +3290,17 @@ processor), redistributePar -parallel -overwrite -latestTime, and continues
 from the written state; the solve and the redistribution wall clocks are
 kept apart. The weight field needs the processor patches typed processor
 (OpenFOAM names them procBoundary<i>to<j> and tries the last listed
-pattern first). Results: in the table above (N 64: the solve step is
-scotch's, the renewals cost 20 % of the turn; N 128: TODO).
+pattern first). Results: in the table above. N 64: the solve step is
+scotch's, the renewals cost 20 % of the turn. N 128: over the half turn it
+completed the solve step is 0.42 s against scotch's 0.47 to 0.52 over the
+same window (the band on the weighted ranks after each renewal, 36 to 39
+ranks still without a partial cell), the renewals cost 13.9 s each (0.12
+s per step, which cancels the gain), and the seventh renewal was killed
+(rc 137, job 55936389; the cause is not in the log, the memory of 64
+ranks at 3000 MB per rank redistributing 2M cells is the suspect). The
+same conclusion as at N 64: with scotch's partition of a weighted graph
+the band's share of the ranks does not grow, so a renewal moves the
+compact band along with the sphere and cannot balance it.
 
 ### The 18-19 x of the parallel branch, reconciled
 
