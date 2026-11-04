@@ -2561,3 +2561,260 @@ count, allocation is 2.6 % and the work is compute-bound; in parallel its
 cost is set by the rank holding the most interface at each step, which under
 the mesh-wide decomposition leaves 42 of 64 ranks idle and makes the
 comparison's 9 x against plicRDF (5.3 x serially) a decomposition effect.
+
+## The volume consistency of the PLIC plane positioning (2026-11-04)
+
+The question (Tomislav, 2026-11-04): is surfaceIteratorPLIC::vofCutCell, as
+davof::positionPlane uses it, volume-consistent, i.e. after the positioning,
+does clipping every interface cell by its plane give back alpha_c V_c, and
+does the sum over the interface cells close to machine epsilon times their
+number? Measured on the sphere.
+
+Pre-registered (the header of the app, fork fdd649d, before the runs):
+- E1: per cell |V_cut - alpha_c V_c| < 1e-14 V_c.
+- E2: |sum over the interface cells of (V_cut - alpha_c V_c)| < N_interface
+  x 1e-15 x V_c.
+- E3: every status 0 (converged) except the cells with alpha outside
+  [tol, 1 - tol].
+- The agent's reading of the code before the runs, also in the header: the
+  iteration stops at |alpha(p) - alpha| <= isoFaceTol = 1e-8, so residuals
+  between 1e-14 and 1e-8 are admitted by construction; E1 and E2 hold only
+  if the first Newton exit sits at round-off in every cell.
+- Before the tolerance sweep (commit 9394337): at 1e-14 E1 HELD everywhere
+  with no secant-bad cell; at 1e-15 some cells reach the secant stage and a
+  few exhaust it.
+
+Commits (fork TwoPhaseFlow, branch davof-swept, remote tmaric):
+- fdd649d: apps/benchmark/planeVolumeConsistency (the app, Allwmake entry).
+- 9394337: the cap-area check with the sign of faceArea_ (into the liquid);
+  the worst-cell trace with the normal actually used.
+
+Jobs (ledger .my_jobs): 55926460 build; 55926498 / 55926499 / 55926500 the
+first run (N = 32 serial, 64 on 8 ranks, 128 on 64 ranks, positionTol 1e-8);
+55926744 build; 55926769 / 55926770 / 55926771 the sweep (N = 32 and 64 at
+1e-8, 1e-10, 1e-12, 1e-14, 1e-15; N = 128 at 1e-8 and 1e-14). Each
+invocation took 5 to 12 s wall at N = 128 on 64 ranks.
+
+Raw data: /work/scratch/tm83tomy/davof/agents/swept/vol-consistency/ (the
+first run: <case>_<t0|end>.dat and .log) and vol-consistency/run2/ (the
+sweep: <case>_<t0|end>_tol<tol>.dat and .log; the .log holds the ten worst
+cells per rank with the branch and the iterates, every non-converged cell
+with its full iterate history, and every status-0 cell whose residual is
+above the tolerance).
+
+### The code (read 2026-11-04, fork 720cfc6)
+
+surfaceIteratorPLIC::vofCutCell(celli, alpha, tol, maxIter = 100, normal):
+- The normal is normalised in place; a zero normal returns sign(alpha -
+  0.5) without a cut (a warning).
+- The vertex values f_i = (p_i - x_c).n are sorted; a1 = 1 is assumed at the
+  lowest level, a2 = 0 at the highest (alpha(f) decreases in f).
+- alpha < tol returns -1, 1 - alpha < tol returns +1, before any cut: the
+  cut object keeps the previous cell's cut, which davof::positionPlane
+  handles by reading the RETURNED status (the phantom-plane fix of
+  2026-10-13).
+- Bisection over the sorted vertex levels (a cut per step) until two
+  adjacent levels bracket alpha; an exact hit returns that cut.
+- Adjacent levels closer than 1e-14: the cut at the lower level is
+  returned. Bracket flatter than tol in alpha: the midpoint cut is returned.
+- Otherwise two more cuts at the thirds, the cubic through the four
+  (Vandermonde, LU), Newton on the cubic from f = 1/3 until the model
+  residual is <= tol (at most 1000 steps), one cut at the root, and if its
+  residual is <= tol the cut is returned. Between adjacent vertex levels
+  alpha(f) is exactly a cubic (its derivative, the section area, is
+  quadratic), so the model is exact up to round-off.
+- Else the secant from that point and a second point x1 = clamp(max(1e-3
+  (f2 - f1), 1e-13), f1, f2): an absolute offset near the cell centre, not
+  a perturbation of the Newton point. The loop runs while the residual is
+  above tol, fewer than maxIter steps, and g1 != g2. Whatever ends it, the
+  status of the LAST cut is returned, so a loop that stalls (g1 == g2) or
+  exhausts maxIter returns a plane with a residual above tol as status 0.
+- The returned plane is in every branch the last cut; cutValue(),
+  VolumeOfFluid(), surfaceArea() and surfaceCentre() belong to it.
+- The liquid side: cutFacePLIC counts a vertex as liquid for (p - base).n >
+  0 after snapping |.| < 1e-15 to 0; status -1 is the fully liquid cell,
+  +1 the fully gas cell. cutCell::calcGeomDataCutFace turns faceArea_ into
+  the sub-cell (into the liquid). cutCell::calcCellData sums pyramids from
+  the mean of the sub-cell's face centres with |.| per pyramid, exact for
+  the convex sub-cell of a convex cell.
+- Production: isoFaceTol 1e-8 (the dictionary key, the fvSolution of every
+  comparison run), surfCellTol 1e-8, maxIter 100.
+
+The swept pieces: a SECOND positioning. isoAdvection::buildCellSurfaces
+(isoAdvectionCurved.C) takes vofCutCell's plane only as the start, S.o =
+the cut polygon's centroid and the used normal, and with fitAnchor volume
+(every comparison run: clippingSurface plane, planeSource anchor, fitDof
+none, anchorMethod ccs, anchorTolRel 1e-11) re-solves the offset c so that
+the Kromer-Bothe volume under the plane equals alpha_c V_c, to max(1e-11
+V, 1e-14 V) in the volume and 1e-11 h in the offset (the bracket closed, the
+exit codes 2 to 9), the full and empty cells placed at the edge of the flat
+interval. planeOf in isoAdvectionSwept.C then takes (S.o + S.c e3, e3) of
+that anchored surface as the plane the pieces are clipped by. So the
+1e-8 tolerance of vofCutCell enters the swept flux only through the anchor's
+start; the clipped plane is the anchored one.
+
+### The app
+
+apps/benchmark/planeVolumeConsistency (fork 9394337): for a time directory's
+alpha and alphaf, the interface cells as davof::reconstruct selects them
+(m_c = sum_f alpha_f S_f^out, the all-equal face rule, |m_c| > wispTol
+V^(2/3)); per cell the production call vofCutCell(celli, alpha,
+positionTol, 100, n) with n one of areaNormal (m_c), exact (the sphere's
+normal at the cell centre, re-positioned with the normal at the first
+plane's centroid, as the exact model) or field (the written
+interfaceNormal, the normal the run used); the returned plane clipped by a
+fresh cutCellPLIC (V_plic) and by the divergence-theorem volume of the cut
+polyhedron, V_ind = (1/3)[sum_F x_F . S_F + base . S_cap] over the wet
+polygons of the cell faces and the closing cap (independent of cutFacePLIC
+and cutCellPLIC); d_c = (V_ind - alpha_c V_c)/V_c, its histogram, the sums;
+a verbatim copy of vofCutCell with the branch and the iterates recorded,
+checked bitwise against the production call; the orientation (a flip is
+V_ind closer to (1 - alpha) V than to alpha V; on the sphere the liquid
+sub-cell centroid must be nearer the centre than the gas one). Serial or
+parallel; -out writes the table outside the case.
+
+### Results at the production tolerance 1e-8
+
+30 files: the exact initial sphere (t = 0, initDavofFields exactSphere) at
+N = 32 / 64 / 128 on the rotation case (centre (0.5 0.5 0.5)) and the
+diagonal case (centre (0.25 0.5 0.25)); the transported spheres at the end of
+the comparison runs of 2026-11-03 (rotation one turn and the diagonal line,
+OpenFOAM Co 0.2 and 1, the ring row and the exact row, repetition 1); the
+normals areaNormal and exact at t = 0, areaNormal, exact and field at the
+end. V_c = 3.05e-5 / 3.81e-6 / 4.77e-7, h = 1/32 / 1/64 / 1/128; the liquid
+volume 0.0141372 everywhere (mass conserved).
+
+Checks that held in every file:
+- The traced copy returned the production cutValue bitwise (0 mismatches of
+  117 000 positionings).
+- Every inside cell converged in the Newton branch: 0 secant, 0 stalled, 0
+  flat brackets, 0 coincident levels, 0 bisection hits, 0 planes outside the
+  vertex range; at most 8 to 11 Newton steps on the cubic.
+- The returned plane is the last cut: max |V_plic/V - VolumeOfFluid()| = 0.
+- The two clips agree: max |V_plic - V_ind|/V_c 3.6e-15 (N = 32) to 4.0e-14
+  (N = 128); max |S_cap + A_plic|/h^2 1.2e-15 to 6.6e-15.
+- The orientation: 0 flips and 0 sphere-side violations (5232 cells tested
+  at N = 128).
+- The outside cells (alpha < 1e-8 or > 1 - 1e-8 while |m_c| passes the wisp
+  threshold; 0 to 13 per file) all returned the designed -1 / +1; their
+  alpha residual is at most 1.2e-9.
+- E3 HELD in all 30 files.
+
+The per-cell mismatch, areaNormal (the exact and field normals give the same
+numbers to within 10 %):
+
+| case, time | N_int (inside) | max \|d\| | mean \|d\| | cells >= 1e-14 | sum signed | sum abs | sum abs / (N eps V) |
+|---|---|---|---|---|---|---|---|
+| sphere t = 0, N 32 (both centres) | 416 | 2.0e-10 | 1.4e-11 | 344 | +1.3e-13 | 1.8e-13 | 6.2e4 |
+| sphere t = 0, N 64 | 1760 | 8.4e-9 | 7.0e-10 | 1328 | -2.2e-13 | 4.7e-12 | 3.2e6 |
+| sphere t = 0, N 128 | 6680 | 9.7e-9 | 6.4e-10 | 4915 | -2.2e-13 | 2.0e-12 | 2.9e6 |
+| rotation end, Co 0.2, ring, N 32 | 421 (415) | 9.7e-9 | 6.7e-10 | 291 | +1.2e-12 | 8.5e-12 | 3.0e6 |
+| rotation end, Co 1, ring, N 32 | 421 (416) | 9.8e-9 | 8.6e-10 | 289 | +3.6e-12 | 1.1e-11 | 3.8e6 |
+| diagonal end, Co 0.2, ring, N 32 | 414 (412) | 9.7e-9 | 1.1e-9 | 290 | +5.3e-12 | 1.3e-11 | 4.7e6 |
+| diagonal end, Co 1, ring, N 32 | 416 | 9.8e-9 | 5.9e-10 | 264 | -1.0e-12 | 7.5e-12 | 2.7e6 |
+| rotation end, Co 0.2, ring, N 64 | 1745 (1737) | 1.0e-8 | 7.6e-10 | 1260 | +7.8e-13 | 5.0e-12 | 3.4e6 |
+| rotation end, Co 1, ring, N 64 | 1758 (1753) | 9.8e-9 | 7.1e-10 | 1276 | +9.8e-13 | 4.7e-12 | 3.2e6 |
+| diagonal end, Co 0.2, ring, N 64 | 1752 (1742) | 1.0e-8 | 8.8e-10 | 1356 | +1.5e-13 | 5.8e-12 | 3.9e6 |
+| diagonal end, Co 1, ring, N 64 | 1760 | 8.9e-9 | 7.6e-10 | 1291 | -9.8e-13 | 5.1e-12 | 3.4e6 |
+| rotation end, Co 0.2, ring, N 128 | 6921 (6908) | 1.0e-8 | 7.2e-10 | 5333 | +3.3e-13 | 2.4e-12 | 3.2e6 |
+| rotation end, Co 1, ring, N 128 | 6773 (6766) | 1.0e-8 | 6.6e-10 | 5229 | +3.9e-14 | 2.1e-12 | 3.0e6 |
+| diagonal end, Co 0.2, ring, N 128 | 6800 | 1.0e-8 | 7.3e-10 | 5407 | -8.1e-14 | 2.4e-12 | 3.3e6 |
+| diagonal end, Co 1, ring, N 128 | 6736 | 1.0e-8 | 8.1e-10 | 5473 | -4.4e-13 | 2.6e-12 | 3.7e6 |
+
+(d = (V_ind - alpha V)/V; the sums in volume units; eps = 2.22e-16; V the
+mean interface-cell volume. The exact rows at the end: the same ranges.)
+
+The histogram of |d| at the end of the rotation, N = 64, Co 1, ring,
+areaNormal (1753 cells; the bins < 1e-16, 1e-16..1e-15, ..., 1e-9..1e-8, >=
+1e-8): 6, 91, 380, 197, 177, 169, 207, 243, 283, 0. The residual is spread
+over every decade between 1e-16 and 1e-8: Newton on the cubic stops at the
+first iterate below 1e-8, wherever its quadratic sequence lands. No cell
+exceeds the tolerance.
+
+Verdicts at 1e-8:
+- E1 FALSIFIED in all 30 files: max |d| 9.7e-9 to 1.0e-8 (2.0e-10 on the
+  exact N = 32 sphere, whose cuts repeat by symmetry); 60 to 82 % of the
+  cells are at or above 1e-14.
+- E2 FALSIFIED in all 30 files: |sum signed| 3.9e-14 to 5.3e-12 against the
+  bound 3.2e-18 to 1.3e-17 (10^4 to 10^6 times); relative to the liquid
+  volume 3e-12 to 4e-10. The absolute sum is 2e-12 to 1.3e-11, 6e4 to 5e6
+  times N eps V.
+- E3 HELD.
+- The orientation convention HELD: alpha is the volume on the side (x -
+  base).n > 0 of the plane whose normal is m_c, the exact inward normal or
+  the written normal; no cell shape flipped it.
+
+What this demonstrates: at its production tolerance the positioning is
+exactly as consistent as that tolerance, |V_cut - alpha_c V_c| <= 1e-8 V_c
+in every cell with the whole range used, and the per-cell errors cancel to
+a signed sum of order 1e-11 of the liquid volume. There is no wrong plane,
+no silently non-converged plane, no bracket failure and no orientation
+defect at 1e-8. Machine-epsilon consistency is not what the loop asks for.
+
+### The opt-in: the tolerance sweep (isoFaceTol is the key; the default stays 1e-8)
+
+The sweep's pre-registration: 1e-14 HELD everywhere without secant-bad
+cells; 1e-15 with some secant cells, a few exhausted.
+
+| tol | N | max \|d\| over the files | cells in the secant | secant-bad (stalled / exhausted) | \|sum signed\| | E1 | E2 | E3 |
+|---|---|---|---|---|---|---|---|---|
+| 1e-10 | 32, 64 | 3.3e-11 to 1.0e-10 | 0 | 0 | 4e-17 to 6e-14 | F | F | H |
+| 1e-12 | 32, 64 | 1.6e-13 to 1.0e-12 | 0 to 1 | 0 | 1e-18 to 7e-16 | F | F (H in 1) | H |
+| 1e-14 | 32 | 3.4e-15 to 1.25e-14 | 0 to 6 | 0 | 2e-20 to 9e-18 | H in 12 of 20, F by 1 cell (1.0 to 1.25e-14) in 8 | H | H |
+| 1e-14 | 64 | 1.0e-14 to 2.0e-14 | 3 to 65 | 0 to 2 | 5e-20 to 2e-18 | F (2 to 42 cells, by at most 2x) | H | H in 10 of 20, F in 10 (1 to 2 cells) |
+| 1e-14 | 128 | 2.2e-14 to 3.1e-14, with outliers 1.3e-13, 2.5e-13, 6.2e-13, 1.0e-12, 2.7e-12 | 707 to 1218 (11 to 18 %) | 70 to 209 | 3e-19 to 2e-18 | F (526 to 1039 cells) | H | F in all 15 |
+| 1e-15 | 32 | 4.1e-15 to 1.9e-14 | 75 to 119 (20 to 28 %) | 20 to 123 | 7e-19 to 2e-18 | H in 18 of 20 | H | F in all 20 |
+| 1e-15 | 64 | 9.8e-15 to 7.2e-14 | 248 to 471 (20 to 27 %) | 400 to 818 (23 to 46 %) | 2e-19 to 1.5e-18 | F (1 to 18 cells) | H | F in all 20 |
+
+The mean |d| at 1e-14 is 1.2e-15 (N = 32), 2.0e-15 to 3.0e-15 (N = 64) and
+4.1e-15 to 4.4e-15 (N = 128): the round-off floor of the cut volume relative
+to V_c grows with N (the cells are smaller, the cut's intermediate
+quantities are not), and at N = 128 it sits above 1e-14 in 8 to 15 % of the
+cells. The absolute sum at 1e-14 is 3 to 7 times N eps V at N = 32, 7 to 13
+at N = 64 and 19 to 20 at N = 128; the signed sum 0.3 to 2 times N eps V.
+
+Effect of the opt-in on the sums: tightening isoFaceTol from 1e-8 to 1e-14
+takes the signed sum from 1e-13..5e-12 to 1e-19..2e-18 (E2 HELD in all 55
+files at 1e-14) and the absolute sum from 2e-12..1.3e-11 to 1e-17..2e-17,
+at the price of 0 to 18 % of the cells passing through the secant stage.
+
+### The defect found (latent at 1e-8, exposed below the round-off floor)
+
+The secant stage returns its LAST iterate with status 0 when it stalls (g1
+== g2, the two latest cuts equal to the bit) or exhausts maxIter. Below the
+floor this happens in 1.2 % of the cells at N = 128 (tol 1e-14) and in 23 to
+46 % at N = 64 (tol 1e-15); across the sweep 22 986 stalled, 16 exhausted, 1
+coincident-level cut above tol. Most such planes sit at the floor (the
+residual 1e-15 to 3e-14), but the last iterate is not the best one: the
+worst returned planes are off by 2.67e-12 V (LineDiag N = 128, Co 0.2, exact
+row, exact normal), 1.01e-12 V (rotation N = 128, Co 0.2, ring row, m_c; the
+same file has 3 inside cells returned as full/empty: alpha 1.3e-14 to 5e-15,
+m_c of 4e-7 to 4e-5 h^2, the secant jumped to the vertex level f = +h/2
+twice and stalled there) and 6.1e-13 V, i.e. 60 to 270 times the requested
+tolerance, reported as converged. At the production tolerance 1e-8 this
+branch is never entered (0 of 117 000 positionings).
+
+Contributing cause: the secant's second point x1 = clamp(1e-3 (f2 - f1)) is
+an absolute cut value near the cell centre, not a perturbation of the Newton
+root, so the first secant step leaves the neighbourhood of the root; the
+stalls come after 2 to 7 steps.
+
+Proposed fix, NOT applied to production: (i) keep the best iterate (the cut
+with the smallest |residual| among those evaluated) and return it when the
+secant loop ends without reaching tol; (ii) take the second secant point as
+the Newton root shifted by a small fraction of the bracket (or use the
+bracket ends f1, f2 with a regula-falsi step, which always exists); (iii)
+return a distinct code, or at least count, when the loop ends above tol, so
+that davof::positionPlane can see it. Each is opt-in by a new key; the
+effect to show is the max |d| at tol 1e-14 on N = 128 falling from 2.7e-12
+to the floor (~ 3e-14) with the same cell count in the secant. Not done in
+this task: the production default is unchanged, and isoFaceTol 1e-8 never
+reaches the branch.
+
+What this demonstrates: the positioning is volume-consistent to its
+tolerance, which is 1e-8 and not machine epsilon; the dictionary key
+isoFaceTol takes it to the round-off floor (1e-14 at N <= 64) with the
+Newton branch alone; below the floor the secant's exit returns unconverged
+planes as converged, up to 270 times the tolerance off. The swept flux clips
+the anchored plane (anchorTolRel 1e-11 in volume, 1e-11 h in offset), not
+vofCutCell's.
