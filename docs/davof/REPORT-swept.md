@@ -3229,7 +3229,7 @@ turn, the 50-step-bin history, the partial cells per rank at t = 0.
 | 64, 8 | scotch | 64885 to 66139 | 532 438 394 396 0 0 0 0 (max/mean 2.4) | 0.2355 / 0.2366 / 0.2360 | 0.16 0.21 0.30 0.32 0.32 0.28 0.19 0.16 0.17 0.20 0.26 0.28 0.25 0.20 | 0.545 |
 | 64, 8 | weighted W 100 | 1422 to 137284 | 0 0 0 0 399 466 459 436 (2.1) | 0.2933 / 0.2935 / 0.2928 | 0.17 0.23 0.36 0.41 0.39 0.29 0.22 0.20 0.23 0.33 0.42 0.38 0.27 0.18 | - |
 | 64, 8 | weighted W 1000 | 805 to 517098 | 0 220 203 239 278 310 258 252 (1.4) | 0.4991 / 0.5000 | 0.35 0.43 0.51 0.55 0.54 0.53 0.53 0.54 0.54 0.55 0.56 0.52 0.45 0.39 | - |
-| 64, 8 | W 100, redistributePar every 100 steps | - | - | TODO | TODO | - |
+| 64, 8 | W 100, redistributePar every 100 steps (7 cycles) | 2k to 134k after each renewal | at the renewals: max/mean 1.76 to 2.03, 0 to 2 ranks without | 0.2305 solve + 6.9 s per redistribution (41 s of 235 s per turn) | 0.17 0.26 0.21 0.33 0.19 0.26 0.21 0.29 0.18 0.24 0.18 0.23 0.23 0.24 | - |
 | 128, 64 | scotch | 64881 to 66191 | 55 ranks with 0, max 1746 (16.2) | 0.5834 / 0.5824 | 0.47 0.50 0.48 0.50 0.51 0.52 0.50 0.49 0.58 0.69 0.79 0.85 0.85 0.69 0.53 0.51 0.58 0.63 0.66 0.62 0.59 0.52 0.49 0.53 0.60 0.61 0.54 0.50 0.67 | 1.341 |
 | 128, 64 | weighted W 100 | 992 to 101162 | 35 ranks with 0, max 373 (3.5) | TODO | TODO | - |
 | 128, 64 | W 100, redistributePar every 100 steps | - | - | TODO | TODO | - |
@@ -3255,8 +3255,21 @@ turn, the 50-step-bin history, the partial cells per rank at t = 0.
   524k cells and the step doubles. At N = 128 W 100 halves the band's
   concentration at t = 0 (35 ranks without a partial cell against 55,
   max/mean 3.5 against 16) with ranks of 1k to 101k cells; its turn: TODO.
-  A static weighting cannot follow a moving interface; only a renewed
-  decomposition can (5 b).
+- The renewed weighted decomposition (5 b, N 64, every 100 steps) does not
+  help either: the solve step is scotch's (0.2305 against 0.236 s) and the
+  six redistributions add 41 s to a 193 s turn. At every renewal scotch with
+  the weights keeps the band compact (max/mean 1.8 to 2.0 over the band
+  ranks, two ranks without a partial cell at four of the six renewals) and
+  the rest of the mesh on ranks of 2k to 134k cells. The reason is scotch
+  itself: it balances the total weight per rank while minimising the edge
+  cut, so with a heavy compact band it gives each rank either a piece of
+  the band or a block of the rest, never a slice of both; the band's share
+  of the ranks does not grow with the weight. Balancing the swept work
+  needs a decomposition that slices the band across every rank (the band's
+  cells partitioned on their own, each rank one slice, the rest filled in
+  around it: a custom decomposition, or scotch's multi-constraint mode
+  which OpenFOAM's interface does not expose), and then a renewal as the
+  band moves. Not done here.
 
 ### The restart and the redistribution (item 5 b)
 

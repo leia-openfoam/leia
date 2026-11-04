@@ -43,4 +43,6 @@ def write_weights(path, t, w):
     with open(path, "w") as f:
         f.write("FoamFile\n{\n    version     2.0;\n    format      ascii;\n    class       volScalarField;\n    location    \"%s\";\n    object      cellWeight;\n}\ndimensions      [0 0 0 0 0 0 0];\ninternalField   nonuniform List<scalar>\n%d\n(\n" % (t, len(w)))
         f.write("\n".join("%g" % x for x in w))
-        f.write("\n)\n;\nboundaryField\n{\n    \".*\"\n    {\n        type            calculated;\n        value           uniform 1;\n    }\n}\n")
+        # the processor patches (procBoundary<i>to<j>) need the processor type; OpenFOAM tries the
+        # LAST listed pattern first, so the processor pattern comes last
+        f.write("\n)\n;\nboundaryField\n{\n    \".*\"\n    {\n        type            calculated;\n        value           uniform 1;\n    }\n    \"procBoundary.*\"\n    {\n        type            processor;\n        value           uniform 1;\n    }\n}\n")
