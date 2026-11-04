@@ -3360,3 +3360,91 @@ parallel branch is the scaling of a step dominated by per-step diagnostics,
 its advection scaled 9.6 times then and now.
 
 
+
+## The reference setting of the swept-face advection (2026-11-04)
+
+Tomislav's instruction (via the coordinating session): make the measured
+best configuration the fork's default, so that a dictionary without the keys
+runs it, and verify the defaults by a rerun with no keys in the dictionaries.
+
+### The defaults (fork davof-swept 407f969)
+
+| key | old default | new default | provenance |
+|---|---|---|---|
+| sweptWispSurface | none | matched | the plane gate (2026-11-02/03) |
+| sweptWispMatchTol | 1e-11 | 1e-9 | the plane gate |
+| sweptWispTol | 1e-8 | 0 | the plane gate |
+| sweptConsistent | false | true | the consistency under oblique travel (2026-11-02); the wall faces kept at the boundary condition (eb17c0a) |
+| sweptVolumeCorrection | auto (= none) | pyramid | the UFVFC pyramid (2026-11-03): exact on uniform translation, within 1e-6 of the scaling at OpenFOAM Co <= 1 |
+| positioning | vofCutCell | ccs (positioningTol 1e-14, positioningMaxIter 30 unchanged) | the Consecutive Cubic Spline positioning (2026-11-04) |
+| anchorSkipConverged | false | true | the same: the anchor skipped where ccs is within its tolerance |
+| sweptPreTest | none | touching | the efficiency work (2026-11-04), bit for bit |
+| sweptTraceCache | false | true | the same, bit for bit |
+
+Every old value stays selectable by writing the key. The fork's
+etc/README-davof.md carries the same table. leia f74c3e29: the token defaults
+of the three davof cases are these values, the token TPF_SWEPT_TRACE_CACHE
+added; the configs that pin an old value are named in its message (the Cmp*
+and *CoScale configs pin sweptVolumeCorrection scale, the Wisp / WispA
+configs the surfaces neighbour / anchored, the *ConsLog configs sweptConsistent
+false, planeTranslation3D_hexSweptWispM9Ccs2 sweptPreTest none); the
+sweptFaceCells configs before the wisp rule (Fine*, Hist*, RotFinal*,
+SweptPar*, SweptCons*, SweptLadder*, the first plane configs) pin none of
+the nine tokens and would run the reference setting if re-rendered.
+
+### The rerun with no keys (PRE-REGISTERED 2026-11-04, 23:40, before the submission)
+
+The runner: workflow/scripts/davof_prof/ref-run.sbatch copies the rendered
+study cases and deletes the thirteen lines of the reference-setting keys
+(the nine above, positioningTol, positioningMaxIter, sweptStateShortcut,
+sweptScaleToPhi) from alpha.water, so that the fork's defaults act; the
+converter scores every case; the main clone's default build (407f969) runs.
+The cells:
+- the plane gate matrix: planeTranslation3D_hexSweptWispM9Ccs2's cases at
+  target Co 0.2 and 0.95, N 20 / 40 / 80 / 160, both arms, exact and ring (32
+  cases, serial);
+- the rotation (one turn), the sphere along x and along the x-z diagonal
+  (END 0.45): N 32 / 64 / 128 on 1 / 8 / 64 ranks at OpenFOAM Co 1 and 0.2,
+  the comparison's cases; the ring row three repetitions, the exact row one
+  (the control's norms; its wall clock was within 4 % of the ring row's in
+  the comparison); one exclusive i01 node per (flow, N, Co), wall = the
+  srun step's wall time, as the comparison;
+- the pure spin: sphereRotation3D_hexSpinCoPyr's cases (N 32 / 64, target
+  Co 0.2 / 0.5, exact row), serial;
+- the parallel identity: sphereRotation3D_hexSweptParN32np{1,2,4,8,16} (N
+  32, 20 steps, both rows, every step written at precision 17, the face
+  log), scored by davof_decomposition_compare.py against np 1.
+Predictions:
+- D-1 (the errors equal the opt-in runs'): the plane gate's verdicts are
+  those of M9Ccs2 case by case (the cases that fail M9Ccs2's gate at target
+  Co 0.2 / 0.95 fail here too, none else); every run
+  maximum of L1(alphaf) and L1(n) of a passing case is a round-off number
+  (<= 1e-11); the rotation, the lines and the spin have E_shape and
+  L1(alphaf) within 1e-6 relative of the comparison's (ring and exact; the
+  pyramid against the scaling: 1e-6 at OpenFOAM Co <= 1; the positioning:
+  identical to seven digits) and within 1e-6 of hexSpinCoPyr's; L1(x) within
+  1 %; L1(n) at the end within 1 % on the ring row and up to +13 % on the
+  exact row at N 32 (the corner slivers that ccs gives a plane). FALSIFIED
+  by any case outside these bands.
+- D-2 (bounded, conservative): every case min alpha >= -1e-10, excess <=
+  1.5e-10 (the comparison's largest, 1.3e-10, was the exact row at N 128,
+  OpenFOAM Co 1), |mass deviation| <= 1e-9 %.
+- D-3 (the wall clock): at equal ranks the ring row's median wall clock is
+  2.0 to 2.5 times lower than the comparison's in every one of the 18
+  timed cells (the serial step 2.14 x, the scotch cells 2.3 x in the
+  efficiency work; ccs and the skipped anchor 1 to 3 %; the pyramid at the
+  cost of the scaling). FALSIFIED by a cell below 2.0 or above 2.5.
+- D-4 (the parallel identity): at step 1 max |alpha - alpha_np1| <= 1e-12
+  and max |alphaf - alphaf_np1| <= 1e-12 for np 2 / 4 / 8 / 16, both rows;
+  nMissing 0, nDup 0 at every step; over the 20 steps max |dalpha| <= 6e-10
+  (exact) / 2.5e-8 (ring), the default family's bands; a step above it is
+  reported with its cause (the rank-fallback discontinuity of P-P2, if it
+  returns).
+- D-5 (the profile): the serial N = 64 step of the profiling build falls
+  from 1.11 to 0.50 to 0.55 s (the 100-step cycle measured 0.519 s at
+  touching + trace cache; ccs and the skipped anchor take 1 to 3 % more
+  off, the pyramid nothing), the two clips to 0.09 to 0.10 s/step; at 8
+  ranks the step from 0.545 to 0.23 to 0.26 s, at 64 ranks from 1.34 to
+  0.55 to 0.62 s (the comparison's scotch decompositions as before); the
+  MPI share stays above 70 / 90 %.
+
