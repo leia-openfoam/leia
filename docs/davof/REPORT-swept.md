@@ -3043,3 +3043,172 @@ every cell with a plane and reduces to its start evaluation, or none with
 anchorSkipConverged, the fluxes changed by at most 5e-10 in alpha; the
 transported fields are identical in E_shape and L1(alphaf). The default
 stays vofCutCell.
+
+## The efficiency of the piecewise swept-face advection (2026-11-04)
+
+Tomislav's decision after the profile: improve the efficiency of the
+original piecewise algorithm, guided by the HPCToolkit breakdown, every
+change giving the same numbers bit for bit (or round-off, stated and
+explained per change) on 20-step copies, keyed when it alters any number,
+the serial step and the breakdown measured after each; then the
+decomposition. His addition: the state shortcut (a face whose touched
+cells are all full or all empty takes the upwind flux without a clip). The
+plane gate entered the verification set after the first shortcut proved
+wrong there (below). The fork's defaults are unchanged (sweptPreTest none,
+sweptStateShortcut false, sweptTraceCache false, since 158f486): every
+build reproduces 720cfc6 bit for bit unless a key is set; leia's templates
+carry TPF_SWEPT_PRE_TEST and TPF_SWEPT_STATE_SHORTCUT (d809acc0, the CCS
+session), not yet a token for sweptTraceCache.
+
+### The verification and the measure
+
+- The identity set, 20 steps each, serial, writePrecision 17, every written
+  field compared bit for bit (cmp) and alpha and alphaf by max |difference|,
+  the log's counters diffed: the rotation N 32 and 64 (ring row, OF Co 1),
+  the diagonal line N 32 (ring row, OF Co 1), the plane N 40 normal (exact
+  row, hexSweptWispM9, Co 0.95) and the plane gate (hexSweptPyr: N 20 and
+  40, both arms, ring row, Co 0.5, the final wisp rule matched + consistent;
+  sweptVolumeCorrection scale everywhere). The reference is the code with
+  the keys off (ref3, fork 158f486), itself bit for bit 720cfc6 / 9394337
+  (ref2 at de416fa against "before") on every case: the CCS positioning
+  commits in between preserve the defaults.
+- The serial timing: the rotation N 64, OF Co 1, final wisp rule, 200
+  steps, three repetitions on an exclusive i01 node, the mean of the
+  per-step time over steps 2 to 199, the median and spread of the three
+  (the serial step is stationary over the turn: 1.05 to 1.18 s per 50-step
+  bin). The breakdown: 100 steps under hpcrun (CPUTIME 1 kHz) as in the
+  profile section, the categories by routine or source-line range of the
+  current sources (rules_swept2.py; rules_swept.py for the original); a
+  100-step profile carries the start-up and the final write (0.18 s/step
+  of "I/O" and "main" that the 200-step timing excludes).
+- The cycle: workflow/scripts/davof_prof/opt-cycle.sbatch (the build of the
+  profiling worktree at a commit, the identity set against a reference tag,
+  the timing, the profile; the keys per run inserted into fvSolution); the
+  profiling build throughout (-O3 -g -fno-omit-frame-pointer).
+- The hazard met: a second session (CCS positioning) committed in the same
+  worktree; 3aaf49d carried its uncommitted include of a file it added two
+  minutes later (de416fa), so 3aaf49d alone does not build, and the first
+  cycles on it ran a binary with one stale object. From 158f486 on, my
+  edits live in a worktree of their own (TwoPhaseFlow-opt) and are
+  committed through the index (git apply --cached) so neither session's
+  pending edits enter the other's commits; the shared clone's working tree
+  then lags HEAD for the edited files until reset.
+
+### The changes (fork davof-swept; every commit names the keys it adds)
+
+| commit | change | key (default) | identity |
+|---|---|---|---|
+| 3aaf49d, 5e4d0c0, 85cc209 | the pre-test of a ring cell before the two clips: the cell is skipped when one of its planes has every vertex of the swept volume (x_f, the face points, the apex after the pyramid, the traced points) on its outer side. strict: beyond 1e-10 L (L the longest triangle edge, the bound of every polygon size the clips meet and the tolerance of the contact and coplanar tests): the clips of such a cell remove every triangle. touching: signed distance >= 0 (the cells sharing only a face, an edge or a point with the swept volume) unless a pre-image triangle lies in the plane (the coplanar rule of the face update keeps it). Two passes over the ring: the planes, state and counters of every cell as before, then the clips of the touched cells in the same order with the same sums. | sweptPreTest none / strict / touching (none) | strict and touching both bit for bit on all eight cases |
+| 1e279d4 | the clip internals: the signed distances of the vertices computed once (planeDistances) and shared between the contact / coplanar tests and the clip; the clip into a second polygon, the two buffers alternated (no copy of 16 points and labels back after every clip, hotspot 5); the triangle's three distances per plane kept from the contact test and reused while the polygon is still the triangle (hotspot 3), a plane the triangle lies beyond by 1e-12 L drops it before any clip, a plane it lies within by 1e-12 L is not clipped after a crossing (no crossing point's round-off reaches the margin); the polygon size L measured for the coplanar test only when the largest distance is within 1e-10 of the triangle's longest edge (hotspot 8); the cell bounding boxes of the ring search cached per step (hotspot 9) | none (unconditional) | bit for bit (c2 against ref2) |
+| 4ec4bb7, 557fab7 | the trace cache: per mesh point the cell that held its midpoint and the velocity there; another face holding the point repeats only the cell search from its own donor (the ring order of that donor, as the per-face trace) and takes the kept velocity when the same cell results, else interpolates anew (hotspot 7: the tetrahedra of the cell rebuilt per lookup). The first version (4ec4bb7) reused the traced point itself: a midpoint within the tolerance of a cell face is claimed by the first cell of the donor's search order, the velocity there differs by the extrapolation over the tolerance, and the wisp rules amplified it (rotation N 64, 20 steps: alpha 1.1e-9, alphaf 1.2e-8) | sweptTraceCache (false) | 557fab7 bit for bit on all eight cases (c4); 4ec4bb7 round-off, amplified |
+| 3aaf49d, 5e4d0c0, 85cc209 | the state shortcut: a face whose touched ring cells are all full (alpha^n exactly 1, no surface) takes V_liq = \|phi_f\| dt and alpha_f = 1, all empty 0 and 0, without a clip; exact 0 and 1 rather than the wisp tolerance since sweptConsistent gives a piece of a cell at alpha = 1 - 1e-10 alpha V_piece (the faces the tolerance would take in addition are counted). The condition that the pieces cover the swept volume: 3aaf49d none (wrong, below), 5e4d0c0 every vertex inside the donor (never true under a velocity with a component along the face: 0 of 17528 faces on the rotation), 85cc209 every vertex inside a touched ring cell | sweptStateShortcut (false) | round-off, amplified: rotation N 64 alpha 1.2e-10, alphaf 1.0e-6 after 20 steps; plane N 40 oblique 5.7e-13 / 1.7e-12; three of the eight cases bit for bit |
+| 5e4d0c0, 0703ee6, 85cc209, 09a6c07 | the debug key: every skipped ring cell clipped and counted when it holds a piece by the pieces' own gate (coverage above 1e-12 of the boundary) and not a degenerate slab, or a nonzero wetted area; a shortcut face run through the pieces and counted when a sum differs by more than 1e-10; the first forty printed with the face, the cells, the coverages, the separating plane, the piece's volume, caps and contacts | sweptPreTestCheck (false) | - |
+| 158f486 | the defaults back to none / false / false (the code of 720cfc6 by default); dc75317 before it changed only the executable bits of two Allwmake scripts under the same message | - | - |
+
+The first shortcut (3aaf49d) and why it was wrong: it assumed the touched
+cells cover the swept volume. On the plane gate the inflow boundary faces
+have their pre-image outside the mesh; the pieces give V_liq = 0 and
+alpha_f = 0 there (the uncovered pre-image, the "beyond layer" faces), the
+shortcut gave \|phi_f\| dt and 1: L1(alphaf) 4.8e-3 at step 1, min alpha
+-2.2e-2 over the run (job 55929616, the CCS session's 2 x 2 check; the
+sphere norms were inert to four digits, so the sphere copies had not
+caught it: no face of theirs has a swept volume leaving its ring). The
+defaults were reverted (158f486) before anything else.
+
+What the check found (sweptPreTestCheck, cycles chkT, chkS, chkS2 and the
+debug runs 55933853 / 55934488):
+
+- The pre-test: on the sphere cases, the plane N 40 and the plane N 20
+  normal no skipped cell holds a piece. On the plane N 20 the four inflow
+  boundary faces per step whose donor the touching rule skips: the swept
+  volume lies in the donor's boundary plane (the face points on it, the
+  pre-image outside the mesh), the donor's piece is the face triangles kept
+  as lying in the plane (the contact rule, the donor inside): a
+  zero-thickness slab, degenerate, volume 0, wetted area 0, 25 to 29 % of
+  the boundary as coverage, nothing taken from it. On the rotation N 32 a
+  few skipped cells per step return a wetted area of 1.4e-14 of A_pre from
+  zero-area polygons (coverage 0, two contacts): the round-off the clips
+  of the unskipped code add to the wetted area vector; the fields stay bit
+  for bit over the 20 steps on every case, so these round-off areas did not
+  reach a written digit. The strict rule has no such case by construction;
+  the touching rule's identity is empirical on the eight cases.
+- The shortcut with the coverage condition of 85cc209: the faces the check
+  flags are faces whose donor piece has an unsolvable cap system (ok 0,
+  three or four caps), i.e. faces the pieces hand to the rank fallback
+  (the one-donor clip), which for a full donor without a surface returns
+  exactly the shortcut's values; the coverage of those faces is 1.000.
+  The shortcut is therefore the pieces' result up to round-off on every
+  face, but that round-off is amplified by the discrete wisp rules
+  (matching at 1e-11) to 1e-6 in alphaf within 20 steps on the rotation N
+  64, as any round-off change is on that case (the first trace cache
+  showed the same). And it gains nothing: the candidate band is one to two
+  layers around the interface, so nearly every candidate face has an
+  interface cell in its ring; on the rotation N 64 the shortcut takes 540
+  of 17571 faces (3 full, 536 empty at the last step) and the coverage
+  test costs what it saves: 0.542 s/step against 0.541 without it (the
+  unsafe first version, no coverage test: 0.478). Not achieved as asked;
+  the key stays opt-in, default false.
+
+### The serial step after each change (rotation N 64, OF Co 1, final wisp rule)
+
+| configuration | commit (keys) | s/step, median of 3 (spread) | per step: ring cells skipped / clipped; trace points reused / traced | against 1.110 |
+|---|---|---|---|---|
+| the original | 9394337 (none); de416fa keys off | 1.110 (0.1 %); 1.122 | 0 / 316278 | 1 |
+| clip internals | 1e279d4, keys off | 0.937 (0.2 %) | 0 / 316278 | 0.84 |
+| + pre-test strict | b6a7dc9, strict | 0.978 (0.3 %) | 0 / 316278 | 0.88 |
+| + pre-test touching | b6a7dc9, touching | 0.541 (0.2 %) | 244156 / 72122 | 0.49 |
+| touching + the first trace cache (round-off) | b6a7dc9 (4ec4bb7), touching + cache | 0.488 (0.6 %) | 244156 / 72122; 63282 / 7070 | 0.44 |
+| touching + the exact trace cache (THE RESULT) | 09a6c07 (557fab7), touching + cache | 0.519 (0.5 %) | 244156 / 72122; 45273 / 24799 | 0.47 |
+| touching + the unsafe shortcut (3aaf49d, wrong on the plane) | b6a7dc9 | 0.478 (0.5 %) | faces full / empty / pieces 4 / 536 / 17031 | 0.43 |
+| touching + the covered shortcut (round-off, amplified) | 85cc209 | 0.542 (0.2 %) | 3 / 536 / 17032 | 0.49 |
+
+- The result: 1.110 -> 0.519 s/step, 2.14 times, bit for bit; against
+  plicRDF + isoAdvector serial on the same case (0.209 s/step) the ratio
+  is 2.5 instead of 5.3.
+- The strict pre-test skips nothing on the rotation: no ring cell lies
+  beyond 1e-10 L of the swept volume, the touching cells ARE the ring; it
+  costs its own test (4 %). The touching rule skips 77 % of the ring cells
+  (4.1 clipped of 18 per face against 1.36 pieces per face) and halves the
+  step.
+- The exact trace cache reuses 65 % of the vertex traces (45273 of 70072
+  per step; the first version 90 %, the rest are midpoints whose cell
+  search from another donor finds another cell within the tolerance).
+
+### The breakdown before and after (100-step profiles, s/step, the same case)
+
+| category | original (ref2) | after (c4) |
+|---|---|---|
+| pieces: the clip by the cell planes and the PLIC plane | 0.465 | 0.061 |
+| face update: the pre-image fan clipped | 0.189 | 0.034 |
+| swept cells: the pre-test | - | 0.039 |
+| swept cells: the ring search | 0.041 | 0.018 |
+| swept cells: the cell planes, state, wisp rule | 0.029 | 0.027 |
+| swept cells: the rest of sweptFaceCellsFlux | 0.017 | 0.011 |
+| trace: the velocity at the traced points (findTetrahedron) | 0.077 | 0.054 |
+| trace: the cell search (ring, octree) | 0.025 | 0.023 |
+| trace: the triangle list, the midpoint trace | 0.011 | 0.010 |
+| the point velocity (volPointInterpolation of U) | 0.023 | 0.024 |
+| the surface build | 0.043 | 0.043 |
+| the reconstruction | 0.028 | 0.027 |
+| curvedFlux (candidate band, wisp surfaces, face loop) | 0.018 | 0.023 |
+| the bounding, timeIntegratedFlux, the alpha update | 0.049 | 0.049 |
+| setFlow, the Courant number, the solver loop | 0.116 | 0.117 |
+| I/O and start-up (the 100-step window's write and reads) | 0.110 | 0.109 |
+| total of the window | 1.264 | 0.677 |
+
+- The two clips fell from 0.654 to 0.095 s/step (the pre-test's 0.039
+  included: 0.134), the swept advection's own parts from 0.93 to 0.37.
+  What is left above 5 % of the step: the trace's velocity lookup (8 %,
+  OpenFOAM's cellPointWeight rebuilding the cell's tetrahedra per lookup:
+  a per-cell cache of the decomposition would take it further), the pre-test
+  itself (6 %: 60 dot products per ring cell, 18 cells per face; a cheaper
+  first test by the cell's bounding box against each vertex would halve it),
+  the surface build and the reconstruction (6 and 4 %), the point velocity
+  of the whole mesh (3.5 %, mesh-wide), and the parts shared with plicRDF
+  (setFlow, the alpha update, the Courant number, 17 %).
+- The top exclusive functions after: the vector subtraction and dot product
+  of the clips (3.5 and 3.8 %), sweptFaceCellsFlux's own lines (the
+  pre-test), findTetrahedron, volPointInterpolation, the per-step rebuild
+  of the cell bounding boxes (1.5 %: once per mesh would do), malloc / free
+  (3.4 %).
+
