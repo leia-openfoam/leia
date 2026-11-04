@@ -105,10 +105,17 @@ def main():
                 fnum(s["L1_afMax"]), fnum(s["L1_afBand"]), fnum(s["max_afMin"])))
     with open(os.path.join(args.out, "table_bound.tex"), "w") as fh:
         for N, co, row, step, s, name in runs:
-            fh.write("%s & %s & $%s$ & $%s$ & $%s$ & $%s$ & %s / %s / %s \\\\\n" % (
+            # the overdraw of the joint min beyond the pieces' own, per donor:
+            # max over donors of (out_min - out_pieces)/V, and the donors where
+            # the joint min overdraws (> 1e-12 V) while the pieces do not
+            drows = list(csv.DictReader(open(os.path.join(args.an, name + "_donors.csv"))))
+            dmax = max((float(r["overMin"]) - float(r["overPieces"]) for r in drows), default=0.0)
+            dnew = sum(1 for r in drows if float(r["overMin"]) > 1e-12 and float(r["overPieces"]) <= 1e-12)
+            fh.write("%s & %s & $%s$ & $%s$ & $%s$ & $%s$ & %s / %s / %s & $%s$ & %d \\\\\n" % (
                 label(N, co, row, step), s["donors"], fnum(s["overdrawMax_pieces"]), fnum(s["overdrawMax_min"]),
                 fnum(s["overdrawMax_max"]), fnum(s["overdrawMax_band"]),
-                s["overdrawCount_pieces"], s["overdrawCount_min"], s["overdrawCount_band"]))
+                s["overdrawCount_pieces"], s["overdrawCount_min"], s["overdrawCount_band"], fnum(dmax), dnew))
+            s["overdrawBeyondPieces"] = dmax; s["overdrawNewDonors"] = dnew
     with open(os.path.join(args.out, "table_cost.tex"), "w") as fh:
         for N, co, row, step, s, name in runs:
             n = int(s["faces"])
@@ -121,13 +128,17 @@ def main():
             fh.write("%s & %s & $%s$ & $%s$ & %.0f \\\\\n" % (
                 label(N, co, row, step), s["piecesCheckFaces"], fnum(s["piecesCheckMaxRel"]), fnum(s["listCheckMaxRel"]), float(s["seconds"])))
     with open(os.path.join(args.out, "verdict.tex"), "w") as fh:
-        allok = True
-        for lab, ratio, ok1, over, ok2, share, ok3, ratiob, overb in verdict_rows:
-            fh.write("%s & %.2f & %s & $%s$ & %s & %.4f & %s & %.2f & $%s$ \\\\\n" % (
-                lab, ratio, "yes" if ok1 else "no", fnum(over), "yes" if ok2 else "no", share, "yes" if ok3 else "no",
-                ratiob, fnum(overb)))
+        allok = True; allok_rel = True
+        for (lab, ratio, ok1, over, ok2, share, ok3, ratiob, overb), (N, co, row, step, s, name) in zip(verdict_rows, runs):
+            overp = float(s["overdrawMax_pieces"]); beyond = float(s.get("overdrawBeyondPieces", 0.0))
+            ok2rel = beyond <= 1e-12
+            fh.write("%s & %.2f & %s & $%s$ & $%s$ & %s & $%s$ & %s & %.4f & %s \\\\\n" % (
+                lab, ratio, "yes" if ok1 else "no", fnum(over), fnum(overp), "yes" if ok2 else "no",
+                fnum(beyond), "yes" if ok2rel else "no", share, "yes" if ok3 else "no"))
             allok = allok and ok1 and ok2 and ok3
-        fh.write("%% overall: %s\n" % ("POSITIVE" if allok else "NEGATIVE"))
+            allok_rel = allok_rel and ok1 and ok2rel and ok3
+        fh.write("%% overall, the literal rule: %s; with the overdraw clause read against the pieces: %s\n" % (
+            "POSITIVE" if allok else "NEGATIVE", "POSITIVE" if allok_rel else "NEGATIVE"))
     # the breakdown by the class of the face: the number of planes k (0: no
     # plane, identical by construction; 1: one plane, the extension into the
     # cells without a plane is the only departure; 2; >= 3) and whether a
