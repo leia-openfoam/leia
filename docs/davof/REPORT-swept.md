@@ -3212,3 +3212,109 @@ debug runs 55933853 / 55934488):
   of the cell bounding boxes (1.5 %: once per mesh would do), malloc / free
   (3.4 %).
 
+### The decomposition (item 5): the optimised code in parallel
+
+The runs: the comparison's rotation (ring row, OF Co 1, final wisp rule),
+sweptPreTest touching and sweptTraceCache on, full turns on exclusive i01
+nodes, the undecomposed study case decomposed in the job
+(workflow/scripts/davof_prof/opt-par.sbatch): scotch over the whole mesh
+(the comparison's decomposition) against scotch with the cell weights of
+cellweight.py (W for the cells within two face layers of a partial cell
+at t = 0, 1 elsewhere; decomposeParDict weightField). N = 64 on 8 ranks
+three turns, N = 128 on 64 ranks two turns; the per-step mean over the
+turn, the 50-step-bin history, the partial cells per rank at t = 0.
+
+| N, ranks | decomposition | cells per rank | partial cells per rank at t = 0 | s/step (turn means) | 50-step bins | before the optimisation (scotch, profile section) |
+|---|---|---|---|---|---|---|
+| 64, 8 | scotch | 64885 to 66139 | 532 438 394 396 0 0 0 0 (max/mean 2.4) | 0.2355 / 0.2366 / 0.2360 | 0.16 0.21 0.30 0.32 0.32 0.28 0.19 0.16 0.17 0.20 0.26 0.28 0.25 0.20 | 0.545 |
+| 64, 8 | weighted W 100 | 1422 to 137284 | 0 0 0 0 399 466 459 436 (2.1) | 0.2933 / 0.2935 / 0.2928 | 0.17 0.23 0.36 0.41 0.39 0.29 0.22 0.20 0.23 0.33 0.42 0.38 0.27 0.18 | - |
+| 64, 8 | weighted W 1000 | 805 to 517098 | 0 220 203 239 278 310 258 252 (1.4) | 0.4991 / 0.5000 | 0.35 0.43 0.51 0.55 0.54 0.53 0.53 0.54 0.54 0.55 0.56 0.52 0.45 0.39 | - |
+| 64, 8 | W 100, redistributePar every 100 steps | - | - | TODO | TODO | - |
+| 128, 64 | scotch | 64881 to 66191 | 55 ranks with 0, max 1746 (16.2) | 0.5834 / 0.5824 | 0.47 0.50 0.48 0.50 0.51 0.52 0.50 0.49 0.58 0.69 0.79 0.85 0.85 0.69 0.53 0.51 0.58 0.63 0.66 0.62 0.59 0.52 0.49 0.53 0.60 0.61 0.54 0.50 0.67 | 1.341 |
+| 128, 64 | weighted W 100 | 992 to 101162 | 35 ranks with 0, max 373 (3.5) | TODO | TODO | - |
+| 128, 64 | W 100, redistributePar every 100 steps | - | - | TODO | TODO | - |
+
+- The optimised code in parallel with the comparison's decomposition: 0.545
+  -> 0.236 s/step at 8 ranks (2.3 times), 1.341 -> 0.583 at 64 ranks (2.3
+  times); the parallel step follows the serial one (the busiest rank's
+  compute shrank with it), the imbalance is unchanged: the history over the
+  turn still varies 2 x (0.16 to 0.32, 0.47 to 0.85 s per 50 steps).
+- The speed-up against the serial step: 0.519 -> 0.236 at 8 ranks = 2.2
+  (before 2.0); against the serial N = 128 steady step the 64-rank step is
+  now 0.58 s (the serial N = 128 step was not re-measured after the
+  optimisation; with the serial parts scaling as at N = 64, ~ 2.6 s, the
+  speed-up stays ~ 4.5, the balanced step would be ~ 0.05 s).
+- The static weighting does not help; it hurts. With W 100 scotch gives the
+  band at t = 0 half of the weight and spreads it over four ranks of 1.4k
+  to 10k cells, the other four ranks take 100k to 137k cells each: the
+  band is as concentrated as before (four ranks hold it, max/mean 2.1
+  against 2.4) and as the sphere turns the band leaves the small ranks and
+  crosses the big ones (bins 0.17 to 0.42 against 0.16 to 0.32), while the
+  mesh-wide work (setFlow, the alpha update, the point velocity: 0.14
+  s/step serial) is now 2 x unbalanced. With W 1000 one rank holds 517k of
+  524k cells and the step doubles. At N = 128 W 100 halves the band's
+  concentration at t = 0 (35 ranks without a partial cell against 55,
+  max/mean 3.5 against 16) with ranks of 1k to 101k cells; its turn: TODO.
+  A static weighting cannot follow a moving interface; only a renewed
+  decomposition can (5 b).
+
+### The restart and the redistribution (item 5 b)
+
+The fork restarts bit for bit: the rotation N 32, 40 steps in one go
+against 20 steps, a stop and 20 more from the written state (writePrecision
+17), every field at step 40 identical (job 55931978; the last time value
+differs in its 17th digit from the accumulated dt, which changes nothing
+written). OpenFOAM v2606's decomposePar and redistributePar read a
+weightField from decomposeParDict (a volScalarField of cell weights,
+scotch weighted; applications/utilities/parallelProcessing), so a
+decomposed run can be renewed between steps without any change to the fork:
+opt-redist.sbatch runs K steps, writes, computes the weights per processor
+from the written alpha (cellweight_par.py, the layers grown inside each
+processor), redistributePar -parallel -overwrite -latestTime, and continues
+from the written state; the solve and the redistribution wall clocks are
+kept apart. Results: TODO.
+
+### The 18-19 x of the parallel branch, reconciled
+
+The parallel branch's report (config sphereRotation3D_hexSweptParN128np*,
+the MEASURED block, 2026-10-31 / 11-01, fork fc08178): N = 128, 10 steps,
+target Co 0.2 (OF Co 0.88), the median of steps 2 to 9, rows exact / ring:
+np 1 8.90 / 8.86 s, np 64 0.490 / 0.470 s, 18.2 / 18.9 times; the advect
+call 3.33 / 3.30 s serial and 0.34 to 0.36 s at np 64. The same two
+configs rerun today on the current code with the keys off (jobs 55934645
+/ 55934646, the default build at 09a6c07, the study's own scotch
+decomposeParDict, the study's tokens: no wisp rule, no consistent band,
+anchorMethod ccs): np 1 11.59 / 11.55 s per step with the advect call
+3.11 / 3.05 s; np 64 0.595 / 0.530 s with the advect call 0.356 / 0.316 s;
+19.5 / 21.8 times. So the branch's numbers reproduce in kind, and the
+reconciliation with the 5.4 of the profile section is:
+
+- What the two serial figures measure. The branch's "serial 8.9 s" is the
+  whole step of a 10-step run whose per-step diagnostics (areaFractionError
+  and volumeFractionError every step on 2M cells, the Courant number, the
+  field algebra) cost 5.6 s of the 8.9 (8.5 of 11.6 today); the swept
+  advection (the advect call) is 3.3 s. That part parallelises perfectly,
+  the advect call does not: 3.3 -> 0.34 s at 64 ranks is 9.6 times
+  (today 3.05 -> 0.32, 9.6 times), the diagnostics 5.6 -> 0.1. The 18-19
+  times is the ratio of two totals dominated by the diagnostics. The
+  profile section's 5.4 divides the steady serial step (5.5 s at OF Co 1,
+  the comparison's settings, no per-step diagnostics) by the 64-rank
+  20-step mean (1.02 s) of the comparison's runs.
+- The code: fc08178 has no wisp rule and no consistent band; the
+  comparison's final rule computes every face whose donor shares a vertex
+  with an active cell (4752 faces without a surface per step at N 64) and
+  the wisp surfaces, which doubles the swept work per step (the comparison
+  64-rank step 1.02 s against 0.53 here, both scotch).
+- Co: OF 0.88 against 1 changes the pieces little (the clipped triangles
+  per face are the same); the step count: 10 steps from the start against
+  a turn, over which the busiest rank changes and the per-step time varies
+  2 x (the 10-step window sits at 0.47 to 0.50 of the N 128 history above
+  while the turn's mean is 0.58).
+- The decomposition: both scotch over the whole mesh; the branch's run
+  shows the same concentration ("the interface band sits in a few ranks").
+
+The two figures are consistent: the advection itself scales 9 to 10 times
+at 64 ranks in both, and neither better, because the band sits on 9 of 64
+ranks.
+
+
