@@ -88,40 +88,50 @@ def newell(poly):
 
 # --------------------------------------------------------------------------- polygon and polyhedron clips
 
-def clip_polygon(poly, n, x0):
-    """The part of a convex polygon with (x - x0).n <= 0 (Sutherland-Hodgman, one plane).
-    Returns (polygon, crossed)."""
+def clip_polygon(poly, n, x0, tol=0.0):
+    """The part of a convex polygon with (x - x0).n <= 0 (Sutherland-Hodgman, one plane;
+    a vertex within tol of the plane is kept). Returns (polygon, crossed)."""
     m = len(poly)
     s = [dot(sub(p, x0), n) for p in poly]
     anyIn = False; anyOut = False
     for v in s:
-        if v <= 0.0: anyIn = True
+        if v <= tol: anyIn = True
         else: anyOut = True
     if not anyOut: return poly, False
     if not anyIn: return [], False
     out = []
     for j in range(m):
         p = poly[j]; q = poly[(j + 1) % m]; sp = s[j]; sq = s[(j + 1) % m]
-        if sp <= 0.0:
+        inP = (sp <= tol); inQ = (sq <= tol)
+        if inP:
             out.append(p)
-            if sq > 0.0:
+            if not inQ and sp <= 0.0:
                 t = sp/(sp - sq); out.append(add(p, mul(sub(q, p), t)))
-        elif sq <= 0.0:
+        elif inQ and sq <= 0.0:
             t = sp/(sp - sq); out.append(add(p, mul(sub(q, p), t)))
     return (out if len(out) >= 3 else []), True
 
 
-def clip_polyhedron(faces, n, x0, pid):
+def clip_polyhedron(faces, n, x0, pid, tol=0.0):
     """Clip a convex polyhedron (a list of (polygon, label)) by (x - x0).n <= 0.
     The cap polygon (label pid) is built from the crossing points, ordered by
-    angle about their mean in the plane (convex). Returns the new face list."""
+    angle about their mean in the plane (convex). Returns the new face list.
+
+    A vertex within tol of the plane counts as on it and is kept (inside): a
+    plane that coincides with an earlier cap (two cells with the same matched
+    plane; a cell plane holding a boundary triangle) then changes nothing,
+    whereas a tolerance-free classification by signed distances of round-off
+    size drops cap vertices, opens the face set and spoils the divergence sum
+    by O(area x size) (the defect found on face 51905 of the N = 32, Co 1
+    dump, 2026-11-04). tol is absolute (the caller gives 1e-12 of the
+    polyhedron's size)."""
     new_faces = []
     cap = []
     for poly, lab in faces:
         s = [dot(sub(p, x0), n) for p in poly]
         anyIn = False; anyOut = False
         for v in s:
-            if v <= 0.0: anyIn = True
+            if v <= tol: anyIn = True
             else: anyOut = True
         if not anyOut:
             new_faces.append((poly, lab)); continue
@@ -130,12 +140,20 @@ def clip_polyhedron(faces, n, x0, pid):
         m = len(poly); out = []
         for j in range(m):
             p = poly[j]; q = poly[(j + 1) % m]; sp = s[j]; sq = s[(j + 1) % m]
-            if sp <= 0.0:
+            inP = (sp <= tol); inQ = (sq <= tol)
+            if inP:
                 out.append(p)
+                if not inQ:
+                    if sp > 0.0:
+                        # p lies on the plane: the crossing is p itself
+                        cap.append(p)
+                    else:
+                        t = sp/(sp - sq); x = add(p, mul(sub(q, p), t)); out.append(x); cap.append(x)
+            elif inQ:
                 if sq > 0.0:
+                    cap.append(q)
+                else:
                     t = sp/(sp - sq); x = add(p, mul(sub(q, p), t)); out.append(x); cap.append(x)
-            elif sq <= 0.0:
-                t = sp/(sp - sq); x = add(p, mul(sub(q, p), t)); out.append(x); cap.append(x)
         if len(out) >= 3:
             new_faces.append((out, lab))
     if len(cap) >= 3:
@@ -147,11 +165,12 @@ def clip_polyhedron(faces, n, x0, pid):
             e1 = mul(e1, 1.0/L); e2 = cross(n, e1)
             ang = sorted((math.atan2(dot(sub(p, cen), e2), dot(sub(p, cen), e1)), i) for i, p in enumerate(cap))
             ordered = [cap[i] for _, i in ang]
+            dtol = max(tol, 1e-15)
             dedup = [ordered[0]]
             for p in ordered[1:]:
-                if norm(sub(p, dedup[-1])) > 1e-15:
+                if norm(sub(p, dedup[-1])) > dtol:
                     dedup.append(p)
-            if len(dedup) >= 3 and norm(sub(dedup[0], dedup[-1])) <= 1e-15:
+            if len(dedup) >= 3 and norm(sub(dedup[0], dedup[-1])) <= dtol:
                 dedup.pop()
             if len(dedup) >= 3:
                 a = newell(dedup)
@@ -161,10 +180,12 @@ def clip_polyhedron(faces, n, x0, pid):
     return new_faces
 
 
-def polyhedron_volume(faces):
+def polyhedron_volume(faces, xref=(0.0, 0.0, 0.0)):
+    """(1/3) sum_faces (p_0 - xref).a of a closed face set; the moments about
+    xref (the apex) keep the round-off of the global coordinates out."""
     v = 0.0
     for poly, _ in faces:
-        v += dot(poly[0], newell(poly))
+        v += dot(sub(poly[0], xref), newell(poly))
     return v/3.0
 
 
@@ -188,12 +209,13 @@ def list_clipped_volume(T, xref, planes, want_caps=False):
         else:
             sign = -1.0; faces = tet_faces(xref, a, c, b)
         L2 = max(dot(sub(a, xref), sub(a, xref)), dot(sub(b, xref), sub(b, xref)), dot(sub(c, xref), sub(c, xref)))
+        tol = 1e-12*math.sqrt(L2)
         for pid, (n, x0) in enumerate(planes):
-            faces = clip_polyhedron(faces, n, x0, pid)
+            faces = clip_polyhedron(faces, n, x0, pid, tol)
             if not faces:
                 break
         if faces:
-            vol += sign*polyhedron_volume(faces)
+            vol += sign*polyhedron_volume(faces, xref)
             if want_caps:
                 for poly, lab in faces:
                     if lab >= 0 and norm(newell(poly)) > 1e-14*L2:
@@ -206,8 +228,9 @@ def fan_clipped_area(Tpre, planes):
     a = (0.0, 0.0, 0.0)
     for tri in Tpre:
         poly = list(tri)
+        L = max(norm(sub(tri[1], tri[0])), norm(sub(tri[2], tri[0])))
         for n, x0 in planes:
-            poly, _ = clip_polygon(poly, n, x0)
+            poly, _ = clip_polygon(poly, n, x0, 1e-12*L)
             if not poly:
                 break
         if poly:

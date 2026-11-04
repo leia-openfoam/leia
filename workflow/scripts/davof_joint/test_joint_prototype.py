@@ -91,6 +91,18 @@ def main():
     vA, _ = list_clipped_volume(T, xf, [(n, x0)]); vB, _ = list_clipped_volume(T, xf, [(m, y0)])
     # inclusion-exclusion: V(A ∪ B) = V(A) + V(B) - V(A ∩ B) = V - V(A^c ∩ B^c)
     check("4 max by complement = inclusion-exclusion", V - vdry, vA + vB - vmin, 1e-12)
+    # 4b two coincident planes (the same plane given twice with another point on
+    # it): the second must change nothing (the defect of face 51905)
+    x0b = add(x0, cross(n, (0.3, 0.2, 0.1)))      # another point of the same plane
+    v1b, capsb = list_clipped_volume(T, xf, [(n, x0), (n, x0b)], want_caps=True)
+    check("4b two coincident planes = one plane", v1b, v1, 1e-12)
+    print("   caps", capsb)
+    # 4c a plane through the apex and a face-plane contact: the box clipped by
+    # z <= 1 (its own top face) and by x <= 1 (its own side face) is the box
+    v4c, _ = list_clipped_volume(Tb, xf, [((0.0, 0.0, 1.0), (0.0, 0.0, 1.0)), ((1.0, 0.0, 0.0), (1.0, 0.0, 0.0))])
+    check("4c contact planes (own faces) keep the box", v4c, 0.5, 1e-12)
+    v4d, _ = list_clipped_volume(Tb, xf, [((0.0, 0.0, -1.0), (0.0, 0.0, 1.0))])
+    check("4d the own face plane from the other side: nothing", v4d, 0.0, 1e-12)
     # 5 the disc areas
     o = (0.5, 0.5, 0.0); R = 1.0
     tri = ((0.4, 0.4, 0.0), (0.6, 0.4, 0.0), (0.5, 0.6, 0.0))
