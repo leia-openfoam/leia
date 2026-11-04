@@ -115,6 +115,9 @@ solvers
         // ignore the keys
         sweptPreTest    @!TPF_SWEPT_PRE_TEST!@;
         sweptStateShortcut @!TPF_SWEPT_STATE_SHORTCUT!@;
+        // the per-step trace cache of the mesh points (fork davof-swept 557fab7,
+        // 2026-11-04, bit for bit; builds before it ignore the key)
+        sweptTraceCache @!TPF_SWEPT_TRACE_CACHE!@;
         // the volume flux of a face (fork branch davof-fluxint): prism (the
         // prism volume) | trapezoidal | simpson (a quadrature in time of the
         // face fractions; ignored by the builds before it)
