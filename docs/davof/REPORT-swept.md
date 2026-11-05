@@ -3448,3 +3448,332 @@ Predictions:
   0.55 to 0.62 s (the comparison's scotch decompositions as before); the
   MPI share stays above 70 / 90 %.
 
+
+### MEASURED (2026-11-05, 00:37 to 01:15; the cells still pending are marked)
+
+Jobs: the main clone's build 55939665, the profiling build 55939666; the
+plane gate 55944952 (N 20 / 40 / 80) and 55940563 (N 160, PENDING); the spin
+55944116; the parallel identity 55944115; the timed cells 55944119-30,
+55945423-24 (14 of 18; Rot N 64 Co 0.2 55940568, Rot N 128 Co 0.2 / 1
+55940570-71 and LineDiag N 128 Co 0.2 55940582 PENDING in deflt); the
+profiles 55944117 (serial), 55944118 (8 ranks), 55940586 (64 ranks,
+PENDING). The cluster's deflt partition started no job of this set between
+23:45 and 01:15; the cells that fit 30 minutes were moved to deflt_short.
+Every run's startup line reads "sweptPreTest touching, sweptStateShortcut
+0, sweptTraceCache 1, sweptWispSurface matched, sweptWispTol 0,
+sweptWispMatchTol 1e-09, sweptConsistent true" with no key in the
+dictionary (the strip left 0 key lines).
+
+CSVs on the cluster (/work/scratch/tm83tomy/davof/agents/swept):
+csv/ref_setting.csv (every case and method of the rerun: the norms, their
+relative difference to the opt-in runs, the wall clocks and the ratios);
+csv/hp2_categories.csv, hp2_ranks.csv, hp2_hotspots.csv, hp2_timing.csv
+(the two profiles side by side); the databases prof/runs2/serial/ring32_full,
+ring64_20, ring64_full, prof/runs2/par8/ring64_full, prof/runs2/par64/
+ring128_full (each <run>/hpctoolkit-database, the first profile's under
+prof/runs/); the analyses prof/an2/<mode>_<run>.{summary.txt,flat.csv,
+lines.csv,tree.txt,callers.txt,cat.csv,catranks.csv,ranks.csv} (the first
+profile's under prof/an/). Scripts: workflow/scripts/davof_prof/ref-run.sbatch,
+ref_an.py, hp-run2.sbatch, rules_swept3.py, hp2_an.sh, hp_side.py.
+
+#### The plane gate (N 20 / 40 / 80, 24 cases; N 160 pending)
+
+The rule, applied alike to both sides: the run maxima of L1(alphaf) and
+L1(n) below 1e-12, min alpha >= -1e-12, the excess <= 1e-11, E_shape / V
+< 1e-12.
+
+| N | Co | arm | row | gate M9Ccs2 / no keys | L1(alphaf) max M9Ccs2 / no keys | L1(n) max M9Ccs2 / no keys | min alpha | excess | steps |
+|---|---|---|---|---|---|---|---|---|---|
+| 20 | 0.2 | normal | exact | pass / pass | 4.08e-14 / 4.23e-14 | 3.4e-15 / 2.8e-15 | -2.7e-14 | 1.5e-13 | 20 |
+| 20 | 0.2 | oblique | exact | pass / pass | 6.49e-14 / 6.34e-14 | 1.9e-15 / 1.8e-15 | -1.1e-14 | 3.6e-13 | 20 |
+| 20 | 0.2 | normal | ring | pass / pass | 4.31e-14 / 3.85e-14 | 5.2e-14 / 5.9e-14 | -2.0e-14 | 1.5e-13 | 20 |
+| 20 | 0.2 | oblique | ring | pass / pass | 6.50e-14 / 6.93e-14 | 8.2e-14 / 7.5e-14 | -1.3e-14 | 3.6e-13 | 20 |
+| 20 | 0.95 | normal | exact | pass / pass | 1.43e-13 / 1.49e-13 | 2.3e-15 / 2.3e-15 | -1.3e-13 | 5.9e-14 | 4 |
+| 20 | 0.95 | oblique | exact | pass / pass | 3.94e-14 / 4.21e-14 | 1.7e-15 / 1.8e-15 | -1.3e-14 | 4.7e-14 | 4 |
+| 20 | 0.95 | normal | ring | fail / fail | 1.69e-13 / 1.57e-13 | 2.6e-13 / 2.5e-13 | -1.6e-13 | 5.9e-14 | 4 |
+| 20 | 0.95 | oblique | ring | pass / pass | 4.37e-14 / 4.07e-14 | 4.7e-14 / 4.6e-14 | -1.2e-14 | 4.7e-14 | 4 |
+| 40 | 0.2 | normal | exact | pass / pass | 1.16e-13 / 1.18e-13 | 4.5e-15 / 4.5e-15 | -1.1e-13 | 8.6e-13 | 40 |
+| 40 | 0.2 | oblique | exact | pass / pass | 4.40e-13 / 4.39e-13 | 3.8e-15 / 4.4e-15 | -2.3e-14 | 1.9e-12 | 40 |
+| 40 | 0.2 | normal | ring | pass / pass | 1.24e-13 / 1.24e-13 | 1.4e-13 / 1.4e-13 | -1.1e-13 | 8.6e-13 | 40 |
+| 40 | 0.2 | oblique | ring | pass / pass | 4.72e-13 / 4.66e-13 | 6.5e-13 / 6.4e-13 | -1.8e-14 | 1.9e-12 | 40 |
+| 40 | 0.95 | normal | exact | fail / fail | 3.04e-12 / 2.41e-12 | 4.2e-15 / 3.7e-15 | -1.9e-11 | 2.4e-13 | 8 |
+| 40 | 0.95 | oblique | exact | pass / pass | 1.62e-13 / 1.60e-13 | 3.9e-15 / 4.0e-15 | -1.1e-13 | 4.9e-13 | 8 |
+| 40 | 0.95 | normal | ring | fail / fail | 3.18e-12 / 3.82e-12 | 5.5e-12 / 6.4e-12 | -1.9e-11 | 2.4e-13 | 8 |
+| 40 | 0.95 | oblique | ring | pass / pass | 1.66e-13 / 1.61e-13 | 1.7e-13 / 1.7e-13 | -8.7e-14 | 4.9e-13 | 8 |
+| 80 | 0.2 | normal | exact | fail / fail | 1.28e-12 / 1.26e-12 | 8.7e-15 / 9.7e-15 | -1.1e-14 | 4.5e-12 | 80 |
+| 80 | 0.2 | oblique | exact | fail / fail | 1.49e-12 / 1.51e-12 | 7.5e-15 / 7.5e-15 | -4.9e-14 | 1.1e-11 | 80 |
+| 80 | 0.2 | normal | ring | fail / fail | 1.27e-12 / 1.27e-12 | 5.3e-13 / 5.2e-13 | -1.2e-14 | 4.5e-12 | 80 |
+| 80 | 0.2 | oblique | ring | fail / fail | 1.53e-12 / 1.54e-12 | 1.6e-12 / 1.6e-12 | -4.9e-14 | 1.1e-11 | 80 |
+| 80 | 0.95 | normal | exact | fail / fail | 1.38e-11 / 1.34e-11 | 1.1e-14 / 9.5e-15 | -1.2e-08 | 5.5e-12 | 17 |
+| 80 | 0.95 | oblique | exact | pass / pass | 8.89e-13 / 8.87e-13 | 7.4e-15 / 7.3e-15 | -2.6e-14 | 6.1e-12 | 17 |
+| 80 | 0.95 | normal | ring | fail / fail | 1.34e-11 / 1.39e-11 | 1.8e-11 / 1.5e-11 | -1.2e-08 | 5.5e-12 | 17 |
+| 80 | 0.95 | oblique | ring | pass / pass | 8.92e-13 / 9.05e-13 | 7.6e-13 / 7.7e-13 | -1.8e-14 | 6.1e-12 | 17 |
+
+24 of 24 verdicts equal to M9Ccs2's (15 pass, 9 fail on both sides: the
+normal arm at target Co 0.95, OpenFOAM Co 1.53, the open growth (iii)-a,
+and the N = 80 cases at Co 0.2 whose run maxima sit at 1.3 to 1.5e-12,
+above the 1e-12 of this rule on both sides). Every run maximum is a
+round-off number of the same size as M9Ccs2's (within -21 % to +21 %, 3e-15
+to 1.4e-11); the mass is conserved to 1e-12 %.
+
+#### The timed cells (ring three repetitions, exact one; 14 of 18)
+
+| cell | OF Co | row | E_shape (rel. to the comparison) | L1(alphaf) (rel.) | L1(x) (rel.) | L1(n) (rel.) | min / excess | wall no keys, median [min, max] s | wall comparison | comparison / no keys | step s |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| x-line N 32, 1 rank | 0.2 | ring | 2.3293e-4 (+1.4e-10) | 1.4939e-2 (-1.5e-10) | 1.0264e-3 (+1.7e-3) | 4.2658e-2 (+1.5e-2) | -1.3e-14 / 2.1e-13 | 10.2 [10.2, 10.5] | 22.5 | 2.19 | 0.07 |
+| | | exact | 1.2829e-4 (-2.9e-10) | 9.5951e-3 (+5.0e-10) | 7.3486e-4 (-3.8e-4) | 6.3177e-3 (+1.4e-1) | -1.7e-14 / 2.1e-13 | 10.8 | 23.4 | 2.17 | 0.07 |
+| x-line N 32, 1 rank | 1 | ring | 2.3635e-7 (-1.2e-10) | 6.9899e-3 (-5.7e-13) | 3.9975e-4 (+8.6e-8) | 3.1516e-2 (+6.9e-9) | -7.3e-14 / 3.0e-13 | 4.3 [4.3, 4.5] | 7.5 | 1.73 | 0.07 |
+| | | exact | 2.3641e-7 (+1.6e-10) | 6.6466e-3 (+1.4e-9) | 4.0244e-4 (+5.5e-10) | 1.5948e-3 (-8.9e-8) | -8.9e-14 / 3.5e-13 | 4.4 | 7.7 | 1.73 | 0.07 |
+| x-line N 64, 8 ranks | 0.2 | ring | 6.1850e-5 (+2.8e-10) | 8.3941e-3 (+1.8e-10) | 2.7945e-4 (+8.5e-4) | 2.0956e-2 (+1.4e-2) | -4.2e-14 / 5.0e-12 | 36.7 [36.2, 37.2] | 84.2 | 2.29 | 0.15 |
+| | | exact | 3.3711e-5 (-2.3e-10) | 5.3345e-3 (-7.0e-10) | 1.9291e-4 (-1.7e-3) | 1.7480e-3 (+3.6e-1) | -4.6e-14 / 5.0e-12 | 38.4 | 87.7 | 2.29 | 0.16 |
+| x-line N 64, 8 ranks | 1 | ring | 2.3252e-7 (-4.2e-10) | 3.4847e-3 (-3.4e-12) | 9.5311e-5 (-1.1e-7) | 1.7740e-2 (+1.5e-8) | -1.5e-13 / 2.4e-12 | 10.6 [10.5, 11.2] | 20.3 | 1.91 | 0.15 |
+| | | exact | 2.3252e-7 (-1.6e-10) | 3.2711e-3 (+3.7e-9) | 9.5627e-5 (-2.2e-7) | 5.7317e-4 (-1.9e-7) | -1.4e-13 / 2.4e-12 | 10.9 | 21.0 | 1.92 | 0.16 |
+| x-line N 128, 64 ranks | 0.2 | ring | 1.7291e-5 (+2.9e-10) | 4.7810e-3 (+1.5e-9) | 7.6630e-5 (-3.4e-4) | 1.0102e-2 (+1.9e-3) | -8.8e-14 / 9.6e-12 | 179.4 [179.1, 179.6] | 434.3 | 2.42 | 0.38 |
+| | | exact | 9.2505e-6 (-8.5e-10) | 3.0040e-3 (+1.1e-8) | 5.2724e-5 (+1.6e-4) | 3.8696e-4 (+7.6e-2) | -1.1e-13 / 9.6e-12 | 191.2 | 448.7 | 2.35 | 0.40 |
+| x-line N 128, 64 ranks | 1 | ring | 2.3246e-7 (-2.8e-10) | 1.8815e-3 (+2.0e-9) | 2.5787e-5 (+5.5e-4) | 8.0368e-3 (+6.8e-4) | -8.6e-14 / 2.9e-11 | 44.5 [44.2, 44.9] | 94.9 | 2.13 | 0.41 |
+| | | exact | 2.3246e-7 (-3.0e-10) | 1.7913e-3 (-6.7e-10) | 2.5761e-5 (+4.1e-7) | 1.9116e-4 (+4.8e-6) | -2.5e-13 / 2.9e-11 | 47.4 | 98.7 | 2.08 | 0.43 |
+| diagonal N 32, 1 rank | 0.2 | ring | 5.7286e-4 (-2.5e-11) | 3.1749e-2 (-2.0e-9) | 2.0126e-3 (+1.7e-3) | 5.3562e-2 (+2.6e-6) | -2.0e-14 / 2.8e-13 | 16.1 [16.1, 16.6] | 42.4 | 2.64 | 0.08 |
+| | | exact | 2.8940e-4 (-8.0e-10) | 1.6873e-2 (-1.1e-9) | 1.1550e-3 (+4.2e-7) | 2.3675e-3 (+6.8e-8) | -3.2e-13 / 2.0e-13 | 18.1 | 43.3 | 2.40 | 0.09 |
+| diagonal N 32, 1 rank | 1 | ring | 1.8090e-4 (-5.5e-13) | 1.1178e-2 (-6.7e-11) | 7.8639e-4 (-8.6e-9) | 3.8703e-2 (+2.1e-8) | -6.0e-13 / 2.6e-13 | 5.7 [5.3, 6.3] | 10.5 | 1.84 | 0.08 |
+| | | exact | 1.1818e-5 (-1.8e-9) | 4.8457e-3 (+4.0e-10) | 4.1866e-4 (+5.9e-10) | 2.3924e-3 (-3.0e-8) | -2.3e-14 / 1.4e-13 | 5.4 | 10.7 | 1.97 | 0.08 |
+| diagonal N 64, 8 ranks | 0.2 | ring | 1.5684e-4 (+3.5e-11) | 1.7696e-2 (+4.0e-11) | 5.5372e-4 (+3.7e-3) | 2.4281e-2 (+8.5e-3) | -2.0e-11 / 5.3e-12 | 60.4 [60.4, 60.5] | 164.5 | 2.72 | 0.18 |
+| | | exact | 8.5795e-5 (-1.0e-9) | 9.8911e-3 (-1.3e-9) | 3.2914e-4 (+2.1e-3) | 8.4231e-4 (+3.1e-3) | -1.2e-11 / 5.3e-12 | 63.4 | 169.1 | 2.67 | 0.19 |
+| diagonal N 64, 8 ranks | 1 | ring | 3.8868e-5 (-1.8e-12) | 5.0451e-3 (-7.2e-11) | 1.7639e-4 (+9.3e-8) | 1.9075e-2 (+2.0e-8) | -1.2e-13 / 2.0e-12 | 15.9 [15.4, 17.1] | 36.4 | 2.29 | 0.18 |
+| | | exact | 3.7843e-6 (-3.1e-9) | 2.3569e-3 (+6.4e-9) | 1.0070e-4 (+2.0e-7) | 7.2236e-4 (-2.2e-7) | -3.3e-11 / 1.5e-12 | 16.1 | 37.3 | 2.32 | 0.19 |
+| diagonal N 128, 64 ranks | 0.2 | | PENDING (55940582) | | | | | | 982.5 | | |
+| diagonal N 128, 64 ranks | 1 | ring | 7.1839e-6 (+3.3e-9) | 2.1775e-3 (-9.4e-9) | 3.5490e-5 (-1.6e-7) | 8.2923e-3 (+8.7e-8) | -3.6e-11 / 1.3e-11 | 77.5 [77.3, 77.7] | 204.3 | 2.64 | 0.54 |
+| | | exact | 8.7709e-7 (+4.9e-9) | 1.2420e-3 (+2.5e-9) | 2.6397e-5 (-2.5e-6) | 1.8660e-4 (+1.2e-5) | -1.4e-13 / 1.3e-11 | 82.2 | 211.2 | 2.57 | 0.58 |
+| rotation N 32, 1 rank | 0.2 | ring | 1.0587e-3 (-1.6e-9) | 5.7035e-2 (-1.6e-9) | 3.9776e-3 (+5.1e-3) | 5.7649e-2 (+6.5e-3) | -6.9e-13 / 1.9e-11 | 164.4 [164.2, 164.4] | 438.1 | 2.67 | 0.09 |
+| | | exact | 5.2607e-4 (-4.1e-9) | 2.9807e-2 (-3.0e-9) | 1.9624e-3 (+1.7e-3) | 3.1766e-3 (-1.5e-3) | -2.1e-13 / 2.1e-12 | 168.3 | 443.5 | 2.64 | 0.10 |
+| rotation N 32, 1 rank | 1 | ring | 7.0707e-4 (-6.0e-7) | 3.8232e-2 (-5.2e-7) | 2.6449e-3 (+6.0e-3) | 4.8100e-2 (+5.5e-3) | -9.2e-13 / 6.0e-13 | 34.8 [34.8, 35.1] | 90.5 | 2.60 | 0.09 |
+| | | exact | 3.7576e-4 (-1.4e-6) | 2.1590e-2 (-1.3e-6) | 1.4072e-3 (+6.2e-3) | 3.5835e-3 (+4.3e-1) | -7.1e-13 / 6.1e-13 | 35.6 | 91.4 | 2.57 | 0.09 |
+| rotation N 64, 8 ranks | 0.2 | | PENDING (55940568) | | | | | | 1875.0 | | |
+| rotation N 64, 8 ranks | 1 | ring | 1.9738e-4 (-1.3e-7) | 2.1912e-2 (-1.4e-7) | 7.1023e-4 (+1.4e-3) | 2.2567e-2 (+2.8e-3) | -5.3e-13 / 6.1e-12 | 145.3 [144.7, 145.5] | 380.0 | 2.62 | 0.20 |
+| | | exact | 1.2085e-4 (-3.6e-7) | 1.3792e-2 (-3.5e-7) | 4.4486e-4 (-5.1e-7) | 7.5390e-4 (-1.6e-6) | -5.6e-12 / 5.3e-12 | 147.9 | 383.7 | 2.60 | 0.20 |
+| rotation N 128, 64 ranks | 0.2 | | PENDING (55940570) | | | | | | 9370.9 | | |
+| rotation N 128, 64 ranks | 1 | | PENDING (55940571) | | | | | | 1882.7 | | |
+
+The mass deviation is within 4.2e-12 % in every cell. The three
+repetitions give the same norms to every printed digit.
+
+#### The pure spin (sphereRotation3D_hexSpinCoPyr, exact row) and the parallel identity
+
+| N | target Co | OF Co | E_shape (rel. to hexSpinCoPyr) | L1(alphaf) (rel.) | L1(x) (rel.) | L1(n) (rel.) | min / excess | mass % | step s |
+|---|---|---|---|---|---|---|---|---|---|
+| 32 | 0.2 | 0.990 | 2.5486e-5 (-2.9e-9) | 6.1976e-3 (+2.1e-10) | 4.7471e-4 (+1.4e-7) | 7.4966e-4 (+3.3e-7) | 0 / 9.3e-13 | 1.0e-12 | 0.26 |
+| 32 | 0.5 | 2.474 | 2.1231e-5 (+1.1e-9) | 4.5104e-3 (+8.2e-10) | 4.5696e-4 (-2.0e-7) | 1.1874e-3 (-2.0e-7) | 0 / 5.5e-13 | 3.7e-13 | 0.26 |
+| 64 | 0.2 | 0.997 | 7.0677e-6 (+2.6e-9) | 3.2924e-3 (+1.8e-9) | 1.2361e-4 (+3.0e-6) | 2.8416e-4 (-1.4e-5) | 0 / 1.8e-11 | 2.1e-13 | 1.52 |
+| 64 | 0.5 | 2.494 | 6.3340e-6 (+2.1e-9) | 2.4365e-3 (+2.9e-9) | 1.1542e-4 (+4.6e-7) | 4.3037e-4 (+1.9e-6) | 0 / 4.4e-12 | 1.1e-12 | 1.52 |
+
+| row | np | step 1 max dalpha / dalphaf | max over 20 steps dalpha / dalphaf | nMissing / nDup | rank fallbacks |
+|---|---|---|---|---|---|
+| exact | 2 | 0 / 0 | 0 / 0 | 0 / 0 | 0 |
+| exact | 4 | 2.1e-14 / 5.7e-14 | 1.3e-12 / 4.4e-9 | 0 / 0 | 0 |
+| exact | 8 | 2.0e-14 / 9.9e-14 | 6.6e-13 / 4.2e-10 | 0 / 0 | 0 |
+| exact | 16 | 3.4e-14 / 1.1e-13 | 2.3e-12 / 1.6e-9 | 0 / 0 | 0 |
+| ring | 2 | 2.9e-14 / 5.7e-14 | 6.2e-12 / 8.3e-10 | 0 / 0 | 0 |
+| ring | 4 | 3.2e-14 / 5.7e-14 | 9.4e-12 / 1.4e-9 | 0 / 0 | 0 |
+| ring | 8 | 3.0e-14 / 1.1e-13 | 4.7e-12 / 7.4e-10 | 0 / 0 | 0 |
+| ring | 16 | 2.9e-14 / 5.8e-14 | 9.5e-12 / 1.4e-9 | 0 / 0 | 0 |
+
+The two-rank exact row is bit for bit the serial run at every step (the
+exact normal needs no stencil across the processor boundary and no face of
+this decomposition takes a rank fallback); every other decomposition stays
+within 1e-11 in alpha over the 20 steps, 50 to 2500 times below the bands
+of the default family (6e-10 / 2.5e-8), and the np 16 step-20 discontinuity
+of P-P2 does not return (no rank fallback on any rank).
+
+#### Verdicts (the pending cells excluded)
+
+- D-1 HELD for the plane gate (24 of 24 verdicts equal, the maxima
+  round-off numbers of the same size), for E_shape and L1(alphaf) within
+  1e-8 everywhere except the rotation at OpenFOAM Co 1 (ring -6.0e-7 /
+  -5.2e-7 at N 32, -1.3e-7 at N 64; exact -1.4e-6 / -1.3e-6 at N 32,
+  -3.6e-7 at N 64): the pyramid against the scaling at OpenFOAM Co 1, the
+  band of 1e-6 exceeded by the exact row at N 32 (1.4e-6). FALSIFIED there,
+  narrowly. L1(x) within 0.62 % everywhere (HELD). L1(n) at the end:
+  FALSIFIED on both rows: the ring row +1.4 to +1.5 % on the x-line at
+  OpenFOAM Co 0.2 (N 32 / 64), within 0.9 % elsewhere; the exact row +43 %
+  on the rotation at N 32, Co 1, +36 % on the x-line at N 64, Co 0.2, +14 %
+  at N 32, +7.6 % at N 128, within 0.3 % at Co 1 on the lines. The
+  positioning section measured +8 to +13 % at N 32 with the anchor active;
+  with the anchor skipped (anchorSkipConverged) the corner slivers that ccs
+  gives a plane carry their own plane into the end-state norm. The
+  transported fields do not see it (E_shape, L1(alphaf) within 1.4e-6).
+  The spin HELD (E_shape and L1(alphaf) within 3e-9, L1(x) within 3e-6,
+  L1(n) within 1.4e-5).
+- D-2 HELD: min alpha >= -3.6e-11, the excess <= 2.9e-11, the mass within
+  4.2e-12 % in every finished cell; the spin's min alpha is 0.
+- D-3 FALSIFIED on both sides. The ratio of the comparison's wall clock to
+  the rerun's (the ring row, medians) is 1.73 to 2.72: below 2.0 in the
+  cells whose runs last 4 to 11 s (the x-line at Co 1 at N 32 / 64, the
+  diagonal at Co 1 at N 32: 1.73 / 1.91 / 1.84, where the start-up, the
+  mesh read and the end write are the same seconds on both sides), 2.1 to
+  2.4 on the x-line otherwise, and 2.6 to 2.7 on the rotation and the
+  diagonal (the rotation N 32: 2.67 / 2.60; N 64 at Co 1 on 8 ranks: 2.62;
+  the diagonal N 64 at Co 0.2: 2.72, N 128 at Co 1 on 64 ranks: 2.64).
+  Per step: the rotation N 64 on 8 ranks 0.52 -> 0.20 s (2.6 x; the
+  efficiency work's scotch cell gave 0.545 -> 0.236 with touching + trace
+  cache alone), N 32 serial 0.25 -> 0.09 s. The exact row's wall clock is
+  within 7 % of the ring row's, as in the comparison.
+- D-4 HELD (above).
+- D-5: the serial N = 64 step 0.491 s (predicted 0.50 to 0.55: below the
+  band by 2 %), the two clips 0.101 s/step (HELD); 8 ranks 0.207 s/step
+  (predicted 0.23 to 0.26: below the band); the MPI share at 8 ranks 64.5 %
+  (predicted above 70 %: FALSIFIED, the imbalance eased, below). 64 ranks
+  pending.
+
+#### The HPCToolkit profile of the reference setting, side by side with the first
+
+The same build flags (Opt, -O3, plus -g -fno-omit-frame-pointer in the
+profiling worktree prof/TwoPhaseFlow at 407f969), the same events (CPUTIME
+every 1000 us, LLC misses every 100000), the same cases (the comparison's
+rotation at OpenFOAM Co 1, the ring row, the comparison's scotch
+decompositions) with the thirteen key lines deleted, the same readers
+(hpdb.py, hpan.py; the categories rules_swept3.py, the line ranges of
+407f969). hpcrun's overhead: 1.1 % (serial N 32: 35.2 against 35.5 s; N 64,
+20 steps: 25.6 against 25.8 s). plicRDF was not profiled again: none of the
+nine keys is read by plicRDF + isoAdvector (its numbers stand).
+
+(a) The serial breakdown per step, N = 64, one turn (697 steps):
+
+| category | before (720cfc6) s/step | % | after (407f969) s/step | % | after / before |
+|---|---|---|---|---|---|
+| pieces: the clip by the cell planes and the PLIC plane | 0.4685 | 42.2 | 0.0660 | 13.4 | 0.14 |
+| pieces: the cap closure and the volume | 0.0032 | 0.3 | 0.0012 | 0.2 | 0.38 |
+| face update: the pre-image fan clipped (sweptPieceArea) | 0.1819 | 16.4 | 0.0353 | 7.2 | 0.19 |
+| swept cells: the ring search | 0.0412 | 3.7 | 0.0127 | 2.6 | 0.31 |
+| swept cells: the cell planes, state, wisp rule | 0.0302 | 2.7 | 0.0291 | 5.9 | 0.96 |
+| swept cells: the pre-test | - | - | 0.0372 | 7.6 | - |
+| swept cells: the shortcut and the check (both off) | - | - | 0.0013 | 0.3 | - |
+| swept cells: the pre-image fan and the rest | 0.0079 | 0.7 | 0.0122 | 2.5 | 1.54 |
+| trace: the velocity at the traced points (findTetrahedron) | 0.0743 | 6.7 | 0.0302 | 6.2 | 0.41 |
+| trace: the cell search (ring, octree) | 0.0174 | 1.6 | 0.0153 | 3.1 | 0.88 |
+| trace: the midpoint trace, the triangle list | 0.0104 | 0.9 | 0.0107 | 2.2 | 1.03 |
+| the point velocity (volPointInterpolation of U, the whole mesh) | 0.0222 | 2.0 | 0.0223 | 4.5 | 1.00 |
+| curvedFlux: the band, the wisp surfaces, the exchanges, the face loop | 0.0212 | 1.9 | 0.0226 | 4.6 | 1.07 |
+| the remote exchange (serial: the stencil setup) | 0.0030 | 0.3 | 0.0031 | 0.6 | 1.03 |
+| the surface build (fit, anchor, volume rule) | 0.0451 | 4.1 | 0.0155 | 3.2 | 0.34 |
+| the reconstruction (davof, ring normal, positioning) | 0.0365 | 3.3 | 0.0299 | 6.1 | 0.82 |
+| the bounding | 0.0102 | 0.9 | 0.0113 | 2.3 | 1.11 |
+| isoAdvector: timeIntegratedFlux | 0.0147 | 1.3 | 0.0150 | 3.0 | 1.02 |
+| isoAdvector: advect, the rest (alpha update, counters) | 0.0293 | 2.6 | 0.0291 | 5.9 | 0.99 |
+| setFlow | 0.0309 | 2.8 | 0.0309 | 6.3 | 1.00 |
+| the Courant number, other function objects | 0.0015 | 0.1 | 0.0016 | 0.3 | 1.07 |
+| I/O and start-up | 0.0243 | 2.2 | 0.0218 | 4.4 | 0.90 |
+| the solver loop (main) | 0.0355 | 3.2 | 0.0355 | 7.2 | 1.00 |
+| total | 1.1105 | 100 | 0.4907 | 100 | 0.44 |
+
+- The swept advection's own parts fell from 0.926 to 0.315 s/step (64 % of
+  the step, 83 % before); the two clips from 0.650 to 0.101 (0.139 with the
+  pre-test that replaces them); the trace's velocity lookup from 0.074 to
+  0.030 (the cache: each mesh point once); the surface build from 0.045 to
+  0.016 and the reconstruction from 0.037 to 0.030 (ccs with the anchor
+  skipped: 0.036 s/step, 3 % of the old step, 7 % of the new). The parts
+  shared with plicRDF (the reconstruction, the bounding, timeIntegratedFlux,
+  the alpha update, setFlow, the Courant number, I/O, the solver loop) are
+  unchanged at 0.175 s/step and are now 36 % of the step. N = 32: 0.261 ->
+  0.099 s/step (0.38).
+- The ratio to plicRDF's serial step (0.209 s, the first profile) is 2.3
+  (5.3 before).
+
+(b) The scaling with N after (the full turns at N = 32 and 64; the N = 128
+serial window was not rerun: the first profile's x 3.8 to 4.7 for the swept
+parts stands): the clips x 3.82 / 3.88, the pre-test x 3.76, the ring search
+x 3.63, the trace's velocity lookup x 3.97 and its cell search x 4.37, the
+surface build x 3.88, the reconstruction x 6.5, the mesh-wide parts x 8.6 to
+9.7 (the point velocity, the alpha update, setFlow). As before, no swept part
+grows faster than the interface-cell count (x 4.00).
+
+(c) Parallel, N = 64 on 8 ranks, one turn (the 64-rank profile PENDING):
+
+| | before | after |
+|---|---|---|
+| step (CPUTIME per rank / steps; the wall clock) | 0.545 s (0.551) | 0.207 s (0.212) |
+| MPI library, share of all CPUTIME | 72.1 % | 64.5 % |
+| MPI per rank: mean / max / min | 274 / 359 / 72 s | 93 / 123 / 27 s |
+| compute per rank: max / mean (max/mean) | 303 / 104 (2.92) | 113 / 49 (2.31) |
+| compute per rank, s | 235 59 303 58 43 27 85 20 | 96 34 113 34 28 24 43 20 |
+| ranks with compute < 10 % of the max | 2 of 8 | 0 of 8 |
+| the balanced step (the sum of compute / ranks / steps) | 0.149 s: the step is 3.6 x | 0.070 s: the step is 3.0 x |
+| the busiest rank (rank 2): pieces + face update + pre-test + trace velocity | 0.204 + 0.083 + 0 + 0.031 s/step | 0.029 + 0.015 + 0.016 + 0.012 s/step |
+| the exchange proper (pack, map, unpack) | 0.0049 s/step/rank | 0.0049 s/step/rank |
+
+The interface ranks' compute fell by the serial factor (rank 2: 303 -> 113
+s, 2.7 x), the idle ranks' not (rank 7: 20 -> 20 s: the mesh-wide parts), so
+the imbalance eased from 2.92 to 2.31 and the MPI wait from 72 to 65 %; the
+step is still 3.0 times the balanced step. The decomposition, not the
+communication, stays the parallel bottleneck (the exchange proper 2.4 % of
+the step).
+
+(d) The top exclusive hotspots after (serial, N = 64, one turn; 342 s),
+with the kind:
+
+| # | % | s | function (file:line; fork 407f969) | kind |
+|---|---|---|---|---|
+| 1 | 7.0 | 23.8 | Foam::minusOp (ops.H:209): the vector subtraction x - x0 of planeDistances (davofSweptPieces.H:189) and of the pre-test (isoAdvectionSwept.C:966-983) | algorithmic (vertices x planes) |
+| 2 | 4.7 | 16.0 | Foam::Vector::inner (VectorI.H:157): the signed distances of the pre-test and the clip | algorithmic |
+| 3 | 4.3 | 14.9 | sweptFaceCellsFlux's own lines (970: the pre-test's loop over the vertices, 3.7 s; 903-905: the cell planes, 2.6 s) | algorithmic |
+| 4 | 4.2 | 14.2 | sweptPieceVolume's own lines (405-470: the per-triangle loop, the cap bookkeeping) | algorithmic |
+| 5 | 4.0 | 13.6 | volPointInterpolation::interpolateInternalField (libfiniteVolume): the point velocity of the whole mesh | mesh-wide, redundant (the band's points would do) |
+| 6 | 3.4 | 11.5 | __mempcpy (libc): GeometricField::operator== 3.6 s and operator= 2.8 s (the solver loop's and setFlow's field assignments), the pointField construction 1.8 s | redundant copies, mesh-wide |
+| 7 | 2.7 | 9.2 | davof::clipWith (davofSweptPieces.H:216-229): the clip proper | algorithmic |
+| 8 | 2.6 (6.3 with its callees) | 9.0 (21.6) | cellPointWeight::findTetrahedron (libfiniteVolume): the velocity at a traced point; cellTetIndices and faceTetIndices and their lists under it | redundant + allocation (the cell's tetrahedra rebuilt per lookup; once per point now, but still per cell visit) |
+| 9 | 1.9 (5.3 with magSqr, mag) | 6.4 (18.2) | plusEqMagSqrOp2, magSqr, mag: the edge lengths and the coplanar tests | algorithmic, in part redundant (L per polygon recomputed) |
+| 10 | 1.8 | 6.2 | fvc::surfaceIntegrate (the alpha update) | mesh-wide |
+| 11 | 1.8 | 6.2 | Foam::Vector::cross (VectorI.H:169): areaVector, the triangle normals | algorithmic |
+| 12 | 1.6 | 5.3 | surfaceInterpolationScheme::dotInterpolate (libfiniteVolume): phi from U (setFlow, the Courant number) | mesh-wide |
+
+Then: inCellTol (isoAdvectionSwept.C:221-222, the cell search) 3.2 s,
+planeDistances' own lines 2.7 s, the curvedFlux face loop 3.3 s,
+kbIntegrateFace (the surface build) 1.0 s; the allocation (malloc, free
+and their callees) 13.7 s = 4.0 % of the step (20.3 s = 2.6 % before: the
+trace's tetrahedron lists and the DynamicLists of sweptFaceCellsFlux). The
+line table also lists 22.4 s (6.5 %) at a PLT stub of IOstream::fatalCheck
+in libOpenFOAM: an attribution artefact of OpenFOAM's libraries built
+without -g (the samples sit in their callers' categories above).
+
+The next changes with the largest expected gain (not implemented):
+1. The pre-test on a hex mesh (serial, 7.6 % + the ring search 2.6 %): the
+   cell planes of a hex are axis-aligned, so the separating-plane test
+   reduces to the overlap of the swept volume's vertex box with the cell's
+   box (six comparisons instead of 60 dot products and subtractions:
+   hotspots 1 to 3 carry most of the pre-test's 0.037 s/step); for a
+   general polyhedron the box test first and the planes only for the boxes
+   that overlap. Expected: the pre-test to ~ 0.01 s/step, the step from
+   0.49 to ~ 0.46 s (6 %).
+2. The point velocity of the band only (mesh-wide, 4.5 %): volPointInterpolation
+   of U over the whole mesh (hotspot 5, x 8.6 from N = 32 to 64) where only
+   the points of the swept faces are read; interpolating the band's points
+   (the vertex ring of the active cells, ~ 5 % of the points at N = 64)
+   removes ~ 4 % of the step and grows with N like the interface.
+3. The cell's tetrahedra once per cell per step (serial, 6.2 % + 3.1 %):
+   findTetrahedron rebuilds the decomposition per lookup (hotspot 8); a
+   per-cell cache of the tetrahedra (or the cell-centre + face-centre
+   decomposition of the cell kept per step for the band's cells) and the
+   cell search started from the traced point's own cell would take the
+   trace's 0.046 s/step to ~ 0.02 (5 %).
+4. In parallel the imbalance remains the loss (the step 3.0 x the balanced
+   step at 8 ranks): the static interface weighting and the renewed
+   decomposition measured no net gain in the efficiency work (the renewal's
+   13.9 s at N 128 against the gain per step); a cheaper renewal
+   (redistributePar's cost is the mesh rebuild) or a two-level scheme (the
+   band's faces distributed apart from the mesh) is the next parallel item.
+
+What this demonstrates: with no key in the dictionary the fork at 407f969
+runs the measured best configuration (the final wisp rule, the consistent
+variant, the pyramid, ccs with the anchor skipped, the pre-test, the trace
+cache): the plane gate's verdicts and round-off maxima, the spin, the
+parallel identity and the transported fields of the rotation and the lines
+(E_shape and L1(alphaf) within 1.4e-6, L1(x) within 0.62 %) equal the
+opt-in runs', bounded to 3.6e-11 and conservative to 4e-12 %; the wall
+clock at equal ranks is 2.1 to 2.7 times lower than the comparison's in
+every cell longer than 15 s (1.7 to 2.0 in the 4 to 11 s cells); the serial
+N = 64 step is 0.49 s (2.3 times plicRDF's, 5.3 before) with the swept
+parts at 64 % of it and the mesh-wide parts shared with plicRDF at 36 %;
+the 8-rank step 0.21 s with the imbalance eased to 2.3 (the MPI wait 65 %).
+The limitation: the end-state L1(n) of the exact row is up to 43 % above
+the comparison's (the planes of the corner slivers under ccs with the
+anchor skipped), the ring row's up to 1.5 %; the four long cells and the
+64-rank profile are pending in the deflt queue.
+

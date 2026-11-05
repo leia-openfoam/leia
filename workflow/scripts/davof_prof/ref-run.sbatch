@@ -36,12 +36,14 @@ metrics() { (cd $1 && python3 $W/leia/workflow/scripts/tpf_advection_metrics.py 
 tok() { /usr/bin/python3 -c "import json,sys; t=json.load(open(sys.argv[1]+'/case_params.json'))['tokens']; print(' '.join(str(t.get(k,'')) for k in sys.argv[2:]))" "$@"; }
 case $MODE in
 plane)
-  T=$W/ref/plane; rm -rf $T; mkdir -p $T
-  run1() { local src=$1 c=$T/$(basename $1); copy $src $c; (cd $c && advectorVoF > log.advectorVoF 2>&1; echo "$(basename $c) rc=$? steps $(grep -c '^Time = ' log.advectorVoF)"); metrics $c; }
+  # PTAG: a suffix of the output directory (a split submission); NSET: only these N (default all four)
+  T=$W/ref/plane${PTAG:-}; rm -rf $T; mkdir -p $T; NSET=${NSET:-"20 40 80 160"}
+  run1() { local src=$1 c=$T/$(basename $1); copy $src $c; (cd $c && advectorVoF > log.advectorVoF 2>&1; echo "$(basename $c) rc=$? steps $(grep -c '^Time = ' log.advectorVoF) $(grep -o 'ClockTime = [^ ]* s' log.advectorVoF | tail -1)"); metrics $c; }
   export -f run1 copy strip metrics; export T W KEYS
   for c in $S/planeTranslation3D_hexSweptWispM9Ccs2/planeTranslation3D_0*; do
     [ -f $c/case_params.json ] || continue
     read N co row arm <<< "$(tok $c N_CELLS TARGET_ADVECTIVE_CO TPF_ROW TPF_VELOCITY_ARM)"
+    N=${N%.*}; [[ " $NSET " == *" $N "* ]] || continue
     case $co in 0.2|0.95) echo $c;; esac
   done | xargs -P $PAR -I{} bash -c 'run1 {}'
   echo "plane: $(ls -d $T/planeTranslation3D_0* | wc -l) cases"
