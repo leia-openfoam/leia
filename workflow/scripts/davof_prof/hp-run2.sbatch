@@ -21,6 +21,17 @@ cd $P/TwoPhaseFlow && . etc/davof-env.sh || exit 1
 : ${MODE:?}
 NP=$SLURM_NTASKS
 T=$P/runs2/$MODE
+if [ -n "$ANALYSE" ]; then
+  # the analysis alone (the measurement job ran with MEASURE_ONLY)
+  for c in $T/*/; do
+    M=$c/hpctoolkit-measurements; [ -d $M ] || continue
+    ls $M | grep -c '\.hpcrun$' | xargs echo "$(basename $c): hpcrun files"
+    $HP/hpcstruct -j $(nproc) -c $P/struct-cache $M > $c/log.hpcstruct 2>&1 || echo "hpcstruct failed for $c"
+    $HP/hpcprof -j $(nproc) -o $c/hpctoolkit-database $M > $c/log.hpcprof 2>&1 || echo "hpcprof failed for $c"
+    ls $c/hpctoolkit-database 2>/dev/null | tr '\n' ' '; echo
+  done
+  echo "HP-RUN-DONE $MODE (analysis) $(date)"; exit 0
+fi
 rm -rf $T; mkdir -p $T
 echo "fork worktree $(git -C $P/TwoPhaseFlow log --oneline -1 | cut -c1-70); leia $(git -C $W/leia log --oneline -1 | cut -c1-70)"
 echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), cores $(nproc --all), job $SLURM_JOB_ID, np $NP"
@@ -96,6 +107,8 @@ EOF
   [ $rc -eq 0 ] || { echo "FAILED $tag"; tail -20 $c/log.advectorVoF; }
 done
 echo "=== analysis $(date)"
+# ANALYSE=only: no runs, hpcstruct + hpcprof of the measurements already in $T (a second 30-minute job)
+[ -n "$MEASURE_ONLY" ] && { cat $csv; echo "HP-RUN-MEASURED $MODE $(date)"; exit 0; }
 for c in $T/*/; do
   M=$c/hpctoolkit-measurements; [ -d $M ] || continue
   ls $M | grep -c '\.hpcrun$' | xargs echo "$(basename $c): hpcrun files"

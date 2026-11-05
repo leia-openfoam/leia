@@ -71,14 +71,14 @@ print("\n### The timed cells (ring 3 repetitions, exact 1) against the compariso
 print("| cell | OF Co | row | E_shape new (rel. to cmp) | L1(alphaf) (rel.) | L1(x) (rel.) | L1(n) (rel.) | min / excess | mass % | wall new med [min, max] s | wall cmp med | cmp / new | step new / cmp s |")
 print("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
 for d in sorted(glob.glob(W + "/ref/cmp/*_N*_co*")):
-    tf = d + "/timing.csv"
-    if not os.path.isfile(tf): continue
+    tfs = sorted(glob.glob(d + "/timing*.csv"))
+    if not tfs: continue
     m = re.match(r".*/(\w+)_N(\d+)_co(\d)$", d); flow, N, co = m.group(1), int(m.group(2)), int(m.group(3))
-    T = list(csv.DictReader(open(tf)))
+    T = [row for tf in tfs for row in csv.DictReader(open(tf))]
     for meth in ("ring", "exact"):
-        reps = [t for t in T if t["method"] == meth]
+        reps = [t for t in T if t["method"] == meth and t.get("wall_s")]
         if not reps: continue
-        c = "%s/%s_r1" % (d, meth)
+        c = "%s/%s_r%s" % (d, meth, reps[0]["rep"])
         a = {**metrics(c), **logs(c)}
         walls = [float(t["wall_s"]) for t in reps]
         ref = cmp.get((flow, N, co, meth))

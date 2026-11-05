@@ -57,7 +57,9 @@ spin)
 cmp)
   : ${FLOW:?} ${N:?} ${CO:?}
   case $FLOW in Rot) END=1;; *) END=0.45;; esac
-  T=$W/ref/cmp/${FLOW}_N${N}_co${CO}; rm -rf $T; mkdir -p $T
+  # REP0 / REP1 (optional): only the repetitions REP0..REP1 (one 30-minute job per repetition for the
+  # long cells; their timing rows go to timing_r<REP0>.csv, the case directories are the same)
+  T=$W/ref/cmp/${FLOW}_N${N}_co${CO}; [ -z "$REP0" ] && rm -rf $T; mkdir -p $T
   pick() { /usr/bin/python3 - "$S/sphereRotation3D_hexCmp${FLOW}SweptN$N" "$1" "$CO" <<'EOF'
 import json, glob, os, sys
 st, row, co = sys.argv[1], sys.argv[2], int(sys.argv[3])
@@ -76,10 +78,12 @@ EOF
     foamDictionary -entry endTime -set "$(python3 -c "print(repr($n*$dt))")" $c/system/controlDict > /dev/null
     foamDictionary -entry writeControl -set timeStep $c/system/controlDict > /dev/null
     foamDictionary -entry writeInterval -set $n $c/system/controlDict > /dev/null; echo $c; }
-  csv=$T/timing.csv; echo "flow,N,np,co_index,method,rep,corr,steps,dt,end_time,clock_s,exec_s,wall_s,median_step_s,node" > $csv
+  SUF=${REP0:+_r$REP0}${METHODS:+_${METHODS// /-}}
+  csv=$T/timing$SUF.csv; echo "flow,N,np,co_index,method,rep,corr,steps,dt,end_time,clock_s,exec_s,wall_s,median_step_s,node" > $csv
   par=""; [ $NP -gt 1 ] && par="-parallel"
-  for r in $(seq 1 $REPS); do for m in ring exact; do
+  for r in $(seq ${REP0:-1} ${REP1:-$REPS}); do for m in ring exact; do
     [ $m = exact ] && [ $r -gt 1 ] && continue
+    if [ -n "$METHODS" ] && [[ " $METHODS " != *" $m "* ]]; then continue; fi
     c=$(prep $m $r); t0=$(date +%s.%N)
     (cd $c && srun --ntasks=$NP --cpu-bind=cores --kill-on-bad-exit=1 --job-name=${m}_r$r advectorVoF $par > log.advectorVoF 2>&1); rc=$?
     t1=$(date +%s.%N); metrics $c
@@ -96,7 +100,7 @@ print(",".join(str(x) for x in (flow, N, np_, co, m, r, "pyramid", steps, dt, et
 EOF
     echo "$m r$r rc=$rc wall $(python3 -c "print('%.1f' % ($t1-$t0))") s; $(grep -o 'faces by path: [^;]*' $c/log.advectorVoF | tail -1)"
   done; done
-  sleep 5; sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps.txt; cat $T/sacct_steps.txt
+  sleep 5; sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps$SUF.txt; cat $T/sacct_steps$SUF.txt
   ;;
 par)
   T=$W/ref/par; rm -rf $T; mkdir -p $T
