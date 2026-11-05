@@ -3961,3 +3961,105 @@ clone built at the new commit (the first clone's library serves batch 1).
   the pieces pass and a guarded variant fails, by an overdrawn donor or a
   gaining full cell beyond the pieces' at Co 0.2, or by hits above 3 %.
 
+### MEASURED (2026-11-05, 11:14 to 15:00; batch 1 jobs 55965310-18, batch 2 jobs 55965965-73, the builds 55965002 and 55965685)
+
+The tables (the plane gate per case, the timed cells with the errors
+relative to the pieces, the boundedness before and after the bounding,
+the clips and the faces by path, the rule per cell) are in the note
+docs/davof/davof-swept-joint/report.tex (section 6) and on the cluster
+(b1/, b2/: score.md, csv/joint_cases.csv, joint_cells.csv, joint_plane.csv,
+tex2/). The N 128 cells were not run: the rule had failed on every cell
+before them.
+
+The plane gate (16 cases per variant):
+- hybrid and the two hex variants: 14 / 16, exactly the pieces' verdicts
+  (the normal arm at Co 0.95 fails at N 20 ring and N 40 both rows on both
+  sides), run maxima of the pieces' size (1e-14 to 4e-12).
+- joint: 8 / 16; fails six cases the pieces pass (N 20 oblique exact
+  3.2e-11; N 40 normal exact 1.2e-8 with min alpha -3e-7 before the
+  bounding; N 40 oblique 6e-10 / 7.6e-12; Co 0.95 oblique 2.8e-11 /
+  7.5e-12), 3 to 100 bounding passes; 1e-13 to 1e-12 where it passes.
+- jointGuarded: 7 / 16 (N 40 normal exact 1.1e-9, oblique exact 4.9e-10,
+  ring 2.1e-11 / 3.4e-11, N 20 normal ring 1.9e-12 / L1(n) 1.2e-11, N 20
+  oblique exact 4.0e-11, Co 0.95 oblique exact 2.7e-11); jointConfig 13 /
+  16 (N 40 oblique exact 3.2e-11).
+- The hex clip: alpha.water byte-identical at the end time for pieces /
+  piecesHex and hybrid / hybridHex on every rank of every cell and case
+  (the job's cmp), the norms identical to every digit, the step within the
+  repetition scatter (0.09 / 0.09, 0.19 / 0.19, 0.21 / 0.21 s).
+- The mechanism of the joint failures on the plane: a plane positioned by
+  its cell's volume to 1e-14 V is accurate in volume, not in position
+  (1e-14 alpha^(-2/3) h: 1e-7 h for a wisp of 1e-10 V, 1e-10 h for an
+  interface cell of 1e-6 V); the pieces use it in its own cell only, the
+  joint minimum extends it into the neighbours.
+
+The timed cells (the ring row medians of three repetitions; the exact row
+once; min / excess before the bounding, the cell balance):
+- pieces (the reference, this build): bounded before the bounding to
+  -1e-9 / 1e-12 at both Courant numbers (the overlap of neighbouring
+  swept volumes is in the per-donor sums, not in the cell balance); 0 to
+  7 steps out of [0, 1] by 1e-10 on the diagonal, 11 to 121 on the
+  rotation; after the bounding the reference's values.
+- joint: diverges on every sphere cell: at the first step of the diagonal N
+  32, Co 1, max alpha = 1 + 1.4e-3 on 16 cells before any feedback; the
+  band widens (swept faces 4332 -> 29955), the run aborts at step 25
+  (the rotation at 36) with min alpha -0.41 after the bounding; on the
+  rotation N 32 at Co 0.2 it ran to the end with nan norms (diverged).
+- hybrid: bounded from below as the pieces (-6e-10 to -9e-10 at Co 0.2,
+  -2e-14 at Co 1), NOT from above: excess before the bounding 3.6e-4 to
+  1.1e-3 on 32 to 68 of 160 steps (diagonal), the bounding takes it to
+  1e-9 .. 1e-10 with 58 to 77 passes; errors -0.3 .. +0.4 % of the
+  pieces' at Co 0.2, E_shape +11 to +34 % at Co 1; clips 0.90 to 1.05 of
+  the pieces', step 0.80 to 1.00 of the pieces' speed; faces inside the
+  donor: 0 on every cell (the travel is never normal to a face).
+- jointGuarded / jointConfig: min alpha before the bounding -1.5e-3 /
+  -7e-3 (diagonal N 32 / 64 at Co 0.2), -1.7e-2 / -4e-2 (rotation N 32
+  at Co 0.2 / 1), excess 2e-4 to 2e-3; the donor check: full cells
+  gaining 0 in every run; the geometric hits 0 to 0.18 % of the faces, the
+  configuration fallbacks 5.8 to 16 %; the faces without a test 6 to 15 %
+  of all faces (30 % of those with a plane: the majority was predicted,
+  FALSIFIED); errors 2 to 6 % BELOW the pieces' at Co 0.2 (L1(n) up to
+  48 % below with the exact normal), +10 to +29 % at Co 1 (diagonal);
+  clips 0.61 (guarded) / 0.73 (config) of the pieces' where the band
+  stays, the step 1.00 (Co 0.2) / 0.80 to 0.89 (Co 1) of the pieces'
+  speed; on the rotation at Co 1 the band widens (swept faces 4332 ->
+  18255 at N 32 against the pieces' 4342; clips 2.4 to 2.7 x, the step
+  0.38 x) and at N 64 both abort (min alpha -0.51).
+- The cause (with the guard in place and no full cell ever gaining): the
+  liquid of a region depends on the face that sweeps it. Under the
+  pieces every region of a cell is counted by every face with that cell's
+  own plane; under a joint rule the face's plane set differs between the
+  faces sweeping the same region, so the liquid leaving a cell through one
+  face and entering its neighbour through another are not the same
+  quantity, and the cell balance leaves [0, 1] by the jump volume
+  (1e-4 to 1e-2 of a cell per step here). A consistent joint function is
+  a function of the region (e.g. the minimum over the planes of the
+  cell's own ring, applied to every face: the band variant with a
+  per-cell set, which keeps the cell-face clips and the pieces' cost); a
+  single clip without cell faces is consistent only for a single global
+  implicit function of the band (the exactSphere surface is one; per-cell
+  PLIC planes are not).
+
+### Verdicts
+
+- J-1 HELD for the hybrid (14 / 16, the pieces' verdicts), FALSIFIED for
+  the joint (8 / 16). J-2 HELD (byte-identical, the step within the
+  scatter). J-3 HELD at Co 0.2 (hybrid, guarded within -6 / +0.4 %),
+  FALSIFIED at Co 1 (+10 to +34 % in E_shape). J-4: the hybrid clause
+  FALSIFIED (not bounded from above: excess 1e-4 to 1e-3), the joint
+  clause HELD in its first part (not bounded, the bounding on most steps)
+  and FALSIFIED in its second (the bounding does not contain it: abort).
+  J-5 HELD in its conclusion (no variant reaches 1.5 x; the joint's
+  clip reduction never materialised: the band widens), FALSIFIED in the
+  hybrid's "less than 5 %" (0.80 at Co 1). J-6 FALSIFIED (the gate 7 /
+  16 and 13 / 16; not bounded; the faces without a test 6 to 15 %).
+- The registered rule: NO variant replaces the pieces. The pure joint is
+  reported with its post-bounding state: it diverges.
+- The one positive outcome: sweptHexClip, bit for bit the pieces on the
+  hexahedral meshes (opt-in on the branch; a cheaper clip whose step gain
+  is below the scatter at these sizes).
+- Open: the consistent joint function per region (the per-cell ring
+  minimum inside the pieces: the prototype's band variant, 2 to 6 % more
+  accurate, the pieces' cost) and the single clip under a globally
+  defined implicit surface, which the question's efficiency aim needs.
+
