@@ -75,9 +75,17 @@ def logs(c):
     if hb:
         d.update(hybInside=sum(int(x[0]) for x in hb), hybFaces=sum(int(x[1]) for x in hb), hybMax=sum(int(x[2]) for x in hb),
                  hybSaddle=sum(int(x[3]) for x in hb), hybFallback=sum(int(x[4]) for x in hb))
+    gd = re.findall(r"guarded clip: faces without a test (\d+), tested (\d+), joint (\d+), hybrid on a hit (\d+), on a saddle (\d+), on the caps (\d+), pieces on no plane (\d+)", log)
+    if gd:
+        d.update(gNoTest=sum(int(x[0]) for x in gd), gTested=sum(int(x[1]) for x in gd), gJoint=sum(int(x[2]) for x in gd),
+                 gHit=sum(int(x[3]) for x in gd), gSaddle=sum(int(x[4]) for x in gd), gCaps=sum(int(x[5]) for x in gd), gNoPlane=sum(int(x[6]) for x in gd))
+    dc = re.findall(r"donor check: overdrawn donors (\d+) \(max (\S+) V\), full cells gaining (\d+) \(max (\S+) V\)", log)
+    if dc:
+        d.update(dcOverMax=max(int(x[0]) for x in dc), dcOverSum=sum(int(x[0]) for x in dc), dcOverExcess=max(float(x[1]) for x in dc),
+                 dcGainMax=max(int(x[2]) for x in dc), dcGainSum=sum(int(x[2]) for x in dc), dcGainExcess=max(float(x[3]) for x in dc))
     sw = re.findall(r"swept faces (\d+)", log)
     if sw:
-        d["sweptFacesSum"] = sum(int(x) for x in sw)
+        d["sweptFacesSum"] = sum(int(x) for x in sw); d["sweptFacesFirst"] = int(sw[0]); d["sweptFacesLast"] = int(sw[-1])
     return d
 
 
@@ -185,7 +193,8 @@ def main():
                  wallMed=statistics.median(walls) if walls else nan, wallMin=min(walls) if walls else nan, wallMax=max(walls) if walls else nan,
                  stepMed=statistics.median(steps) if steps else nan)
         for k in ("L1af", "L1x", "Eshape", "L1n", "massDevPct", "minAlpha", "excess", "minBefore", "excessBefore", "outBeforeMax", "outBeforeSum", "stepsWithOut", "passesSum", "stepsWithPass", "contentBoundSum", "clipsPerStep", "steps", "keys", "hexDetected", "status",
-                  "jointFaces", "jointMax", "jointSaddle", "jointCaps", "jointNoPlane", "hybInside", "hybFaces", "hybMax", "hybSaddle", "hybFallback", "sweptFacesSum"):
+                  "jointFaces", "jointMax", "jointSaddle", "jointCaps", "jointNoPlane", "hybInside", "hybFaces", "hybMax", "hybSaddle", "hybFallback", "sweptFacesSum", "sweptFacesFirst", "sweptFacesLast",
+                  "gNoTest", "gTested", "gJoint", "gHit", "gSaddle", "gCaps", "gNoPlane", "dcOverMax", "dcOverSum", "dcOverExcess", "dcGainMax", "dcGainSum", "dcGainExcess"):
             e[k] = r0.get(k, nan)
         crows.append(e)
     with open(args.out + "/csv/joint_cells.csv", "w", newline="") as fh:
@@ -219,7 +228,16 @@ def main():
                 extra = "%d / %d / %d / %d / %d" % (e["jointFaces"], e["jointMax"], e["jointSaddle"], e["jointCaps"], e["jointNoPlane"])
             if e["variant"].startswith("hybrid") and e.get("hybInside", nan) == e.get("hybInside", nan):
                 extra = "%d / %d / %d / %d / %d" % (e["hybInside"], e["hybFaces"], e["hybMax"], e["hybSaddle"], e["hybFallback"])
-            fc.write("%s & %.0f & %.2f & %.3f & %.2f & %.1f & %.2f & %s \\\\\n" % (lab, e["clipsPerStep"], rC, e["stepMed"], rS, e["wallMed"], rW, extra))
+            if e["variant"] in ("jointGuarded", "jointConfig") and e.get("gNoTest", nan) == e.get("gNoTest", nan):
+                tot = max(1, e["gNoTest"] + e["gTested"] + e["gNoPlane"])
+                extra = "%d / %d / %d / %d / %d / %d / %d (%.0f / %.0f\\,\\%%)" % (e["gNoTest"], e["gTested"], e["gJoint"], e["gHit"], e["gSaddle"], e["gCaps"], e["gNoPlane"], 100.0*e["gNoTest"]/tot, 100.0*e["gHit"]/tot)
+            faces = ""
+            if e.get("sweptFacesLast", nan) == e.get("sweptFacesLast", nan):
+                faces = "%d / %d" % (e["sweptFacesFirst"], e["sweptFacesLast"])
+            fc.write("%s & %.0f & %.2f & %.3f & %.2f & %.1f & %.2f & %s & %s \\\\\n" % (lab, e["clipsPerStep"], rC, e["stepMed"], rS, e["wallMed"], rW, faces, extra))
+            if e.get("dcOverMax", nan) == e.get("dcOverMax", nan):
+                print("donor check %s N %d co %d %s %s: overdrawn donors max %d per step (sum %d, max excess %.2e V); full cells gaining max %d (sum %d, max %.2e V); faces %s; guard %s" % (
+                    e["flow"], e["N"], e["co"], e["row"], e["variant"], e["dcOverMax"], e["dcOverSum"], e["dcOverExcess"], e["dcGainMax"], e["dcGainSum"], e["dcGainExcess"], faces, extra))
             if e["variant"] != "pieces" and e["row"] == "ring":
                 okB = e["minBefore"] >= -1e-10 and e["excessBefore"] <= 1e-10
                 okE = all(x == x and x <= 0.05 for x in (rE, rA, rX, rN)) or all(x == x and x <= 0.05 for x in (rE, rA, rX))
