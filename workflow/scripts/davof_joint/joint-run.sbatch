@@ -54,7 +54,8 @@ tok() { /usr/bin/python3 -c "import json,sys; t=json.load(open(sys.argv[1]+'/cas
 case $MODE in
 plane)
   T=$W/runs/plane${PTAG:-}; rm -rf $T; mkdir -p $T; NSET=${NSET:-"20 40"}
-  run1() { local src=$1 v=$2 c=$T/$v/$(basename $1); copy $src $c $v; (cd $c && advectorVoF > log.advectorVoF 2>&1; echo "$v $(basename $c) rc=$? steps $(grep -c '^Time = ' log.advectorVoF) $(grep -o 'ClockTime = [^ ]* s' log.advectorVoF | tail -1)"); metrics $c; }
+  # (one assignment per local: a single "local a=$1 b=$a" expands every word before it assigns)
+  run1() { local src=$1; local v=$2; local c=$T/$v/$(basename $src); copy $src $c $v; (cd $c && advectorVoF > log.advectorVoF 2>&1; echo "$v $(basename $c) rc=$? steps $(grep -c '^Time = ' log.advectorVoF) $(grep -o 'ClockTime = [^ ]* s' log.advectorVoF | tail -1)"); metrics $c; }
   export -f run1 copy strip addkeys clipOf hexOf metrics; export T W KEYS
   for c in $S/planeTranslation3D_hexSweptWispM9Ccs2/planeTranslation3D_0*; do
     [ -f $c/case_params.json ] || continue
@@ -81,7 +82,7 @@ EOF
   }
   declare -A SRC; SRC[ring]=$(pick davof-planeSurf-ringArea); SRC[exact]=$(pick davof-planeSurf-exact)
   for m in ring exact; do echo "source $m ${SRC[$m]}"; done
-  prep() { local row=$1 v=$2 r=$3 c=$T/${row}_${v}_r$r; copy ${SRC[$row]} $c $v
+  prep() { local row=$1; local v=$2; local r=$3; local c=$T/${row}_${v}_r$r; copy ${SRC[$row]} $c $v
     local dt=$(foamDictionary -entry deltaT -value $c/system/controlDict); local n=$(python3 -c "print(max(1, round($END/$dt)))")
     foamDictionary -entry endTime -set "$(python3 -c "print(repr($n*$dt))")" $c/system/controlDict > /dev/null
     foamDictionary -entry writeControl -set timeStep $c/system/controlDict > /dev/null
