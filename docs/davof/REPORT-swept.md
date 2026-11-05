@@ -3854,3 +3854,303 @@ plicRDF's the comparison's.
   on the diagonal the plane-clipped loop unbounded in parallel as in F-2.
 - F-4 (the cost): the plane-clipped loop's wall clock at equal ranks 1.2 to
   2 times plicRDF's, i.e. 1.3 to 2.2 times below the swept loop's.
+
+### A: the flux against isoAdvector's, function by function (2026-11-05)
+
+Fork: da04ece (key sweptClassStats, default false: per face class and step
+the faces, the touched cells, the pieces, the half-space clips of the volume
+clip and of the face update, the triangles entered, and the wall time in
+sweptPieceVolume, sweptPieceArea, the trace and the first pass, by
+steady_clock around the calls; pieceResult carries nClip and nTri) and
+c453c47 (a fourth class, the faces without a flux). Counters only: bit for
+bit on the eight cases with the key on (jobs 55964204, 55965249: 11
+identical field files per case, max |diff| 0). The HPCToolkit profile of
+the reference setting (prof/runs2) and the first profile's plicRDF +
+isoAdvector databases (prof/runs/serial/rdf64_full, rdf32_full; the
+plicRDF loop reads none of the nine keys) re-attributed alike with
+rules_cmp.py (prof/an3/{ring64,rdf64,ring32,rdf32}.*): the reconstruction
+split into the plane positioning (surfaceIteratorPLIC / cutCellPLIC, the
+same code in both; ours ccs on the same cut) and the normal, the flux into
+its sub-parts, the point velocity and the stencil machinery named alike.
+The in-code counters: the full turn of the rotation N 64 (job 55965249,
+697 steps, the key on: 0.4986 s/step against 0.4847 without it, the timers
+3 %) and N 32 (55965250).
+
+The rotation N 64 serial, OpenFOAM Co 1, one turn, s/step (N 32 in
+brackets):
+
+| part | swept (ours) | plicRDF + isoAdvector |
+|---|---|---|
+| reconstruction: the plane positioning (vofCutCell / ccs on cutCellPLIC) | 0.0072 (0.0017) | 0.0260 (0.0063) |
+| reconstruction: the normal (ours the ring normal; theirs the RDF, its interpolation, gradient, residual, the initial normals) | 0.0002 | 0.0341 (0.0043) |
+| reconstruction: the rest (own lines, field algebra) | 0.0225 (0.0029) | 0.0084 (0.0007) |
+| ours: the surface build (fit, anchor, volume rule) | 0.0155 (0.0040) | - |
+| reconstruction total | 0.0454 (0.0086) | 0.0684 (0.0113) |
+| flux: the trace (the cell search 0.0153, the velocity at the traced points 0.0302, the midpoint trace and the list 0.0107) / theirs the velocity at the face points | 0.0562 (0.0138) | 0.0019 (0.0004) |
+| flux: the ring search 0.0127, the cell planes, state and wisp rule 0.0291, the pre-test 0.0369 | 0.0787 (0.0206) | - |
+| flux: the clips (the pieces 0.0672, the face update 0.0353) / theirs the plane sweep per face (cutFaceAdvect) | 0.1025 (0.0267) | 0.0019 (0.0004) |
+| flux: the fan, sweptFaceCellsFlux other, the band and the face loop of curvedFlux / theirs timeIntegratedFlux other | 0.0364 (0.0070) | 0.0032 (0.0002) |
+| the point velocity (volPointInterpolation of U, the whole mesh; both) | 0.0223 (0.0026) | 0.0113 (0.0013) |
+| the stencil machinery (zoneDistribute, zoneCPCStencil, mapDistribute; both) | 0.0089 (0.0022) | 0.0171 (0.0042) |
+| isoAdvector's defaultAreaFractions (ours: the faces without a plane) | 0.0144 (0.0017) | 0 |
+| flux total | 0.3200 (0.0746) | 0.0354 (0.0065) |
+| bounding | 0.0113 (0.0004) | 0.0077 (0.0006) |
+| shared mesh-wide (the alpha update 0.0291 / 0.0248, setFlow 0.0309 / 0.0306, the Courant number, I/O 0.0218 / 0.0105, main 0.0297 / 0.0293) | 0.1131 (0.0150) | 0.0967 (0.0116) |
+| total | 0.4907 (0.0989) | 0.2090 (0.0303) |
+
+Where the extra 0.28 s/step sits: in the flux, +0.285: the two clips
+0.103, the pre-test with the ring search and the cell states 0.079, the
+trace 0.056, the band, fan and face loop 0.036, defaultAreaFractions
++0.014, the point velocity +0.011, the stencil machinery -0.008 (plicRDF's
+RDF stencil costs more than our exchange's). The reconstruction is cheaper
+by 0.023 (the ring normal against the RDF, ccs against vofCutCell), the
+bounding +0.004, I/O +0.011 (more fields written), the rest +0.005.
+
+Per face class (the in-code counters, N 64, means per step over the turn):
+
+| class | faces/step | touched cells/face | pieces/face | volume clips/face | area clips/face | triangles/face | t volume | t area | t trace | t pre-test (ring, states) | sum |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| no-sweep (phi_f = 0: the face update alone) | 5856 (33 %) | 8.17 | 0 | 0 | 165.5 | 0 | 0 | 0.0241 | 0.0173 | 0.0229 | 0.0642 |
+| (i) donor-only, sweeping | 0 | - | - | - | - | - | 0 | 0 | 0 | 0 | 0 |
+| (ii) multi-cell, sweeping | 11718 (67 %) | 2.04 | 2.04 | 140.3 | 50.2 | 32.7 | 0.0681 | 0.0137 | 0.0528 | 0.0418 | 0.1764 |
+| (iii) boundary | 0 | - | - | - | - | - | - | - | - | - | - |
+
+N 32 the same shares (no-sweep 1479 faces, 8.35 cells, 167 area clips,
+27 % of the four timed parts; multi-cell 2956 faces, 2.09 cells; donor-only
+0). The four timed parts sum to 0.241 s/step of the 0.499; the rest of the
+swept parts (the point velocity, the band, the fan, the surface build) and
+the shared parts make the step.
+
+What this shows:
+- Under the rotation at OpenFOAM Co 1 class (i) is empty: every sweeping
+  face's traced vertices leave the donor across a lateral plane (by |u_t|
+  dt, the tangential velocity), so a face touches the donor and one
+  neighbour, and both hold a piece (2.04 touched = 2.04 pieces: the
+  pre-test is exact on the sweeping faces, no clip without a piece). The
+  fraction of the flux time on class (i) faces is 0 %.
+- One third of the swept faces carry no flux (the faces normal to the
+  rotation axis), and they cost 0.064 s/step (13 % of the step, 27 % of
+  the four timed parts) for a face fraction without a flux: their
+  pre-image lies in the face plane, the pre-test's coplanar exception
+  keeps the four cells across that plane which the face update's coplanar
+  rule then drops, so each touches 8.2 cells and runs 166 area clips.
+- The sweeping faces spend 0.068 in the volume clip (140 clips over 33
+  triangles per face), 0.053 in the trace, 0.042 in the pre-test and the
+  cell states, 0.014 in the face update.
+
+### B: the structural savings (2026-11-05)
+
+Three changes, each behind a key (default false), each verified on the
+eight cases against the reference setting (ref407full: 407f969, no keys;
+the rotation N 32 / 64, the plane N 40 exact normal, the diagonal N 32,
+the plane gate N 20 / 40 both arms, 20 steps, writePrecision 17), and timed
+on the rotation N 64 serial at OpenFOAM Co 1 (200 steps, three
+repetitions, the median of the per-step mean; the reference 0.4847 s/step,
+0.4805 to 0.4856, the same build with no key: job 55964206).
+
+| change | commit | key | identity on the eight cases | s/step (median of 3) | against the reference |
+|---|---|---|---|---|---|
+| B.1 the donor fast path | cd9385b, 8933403 | sweptDonorFastPath | bit for bit (55965251: 11 identical field files per case) | 0.4847 (0.4843 to 0.4870) | 1.000 (0 faces take it) |
+| B.3 the pre-test's coplanar side | a11ebc1 | sweptPreTestCoplanarSide | bit for bit (55965847) | 0.4622 (0.4622 to 0.4636) | 0.954 |
+| B.2 the face update from the volume clip | a11ebc1 | sweptFaceUpdateFromVolume | round-off (55965848; below) | 0.4688 (0.4678 to 0.4712) | 0.967 |
+| B.1 + B.2 + B.3 | | the three keys | round-off (B.2's) | 0.4531 (0.4505 to 0.4541) | 0.935 |
+
+B.1, the donor fast path: a face whose swept volume's vertices (x_f, the
+face points, the apex, the traced points) have no vertex outside any donor
+plane (signed distance <= 0) is clipped by the donor's PLIC plane alone,
+with no ring search, no pre-test of the ring and no cell-plane clips. Bit
+for bit by construction: a clip changes nothing without a vertex strictly
+outside (clipWith), a triangle lying in a donor plane is kept uncut by the
+contact rule (the donor's centre inside), a pre-image part lying in the
+face's own plane is kept by the coplanar rule on the donor's side, and
+every other ring cell is separated from the swept volume by a donor plane
+or, the cell across a face parallel to the velocity, adds nothing. Measured
+on the eight cases at step 20: 0 faces of 4582 (rotation N 32), 0 of 17528
+(N 64), 0 of 4580 (the diagonal), 0 of 367 (the plane N 40, normal arm),
+1 of 598 (N 20, oblique), 26 of 5111 (N 40, oblique). Why so few: under
+the rotation every sweeping face's traced vertices leave the donor across a
+lateral plane (A); under an axis-aligned translation the face points lie on
+the donor's lateral planes, where the signed distance (p - x0) . n to the
+face centre x0 of that lateral face is +-1e-17 in floating point, so one
+vertex is "outside" by round-off on nearly every face. A tolerance would
+take those faces but the clips would no longer be no-ops (a vertex at
+s = +1e-17 is clipped, the crossing point replaces it), so the result would
+be round-off, not identical; the rule "a tolerance that keeps the result
+identical" leaves tolerance 0. The path stays in the code (the key), off.
+
+B.2, the face update from the volume clip: the pre-image fan triangles are
+every fourth triangle of the closed list, so their wetted parts after the
+volume clip's cell-plane and PLIC clips (pieceResult::aPre, covPre) give
+the wetted area vector of a sweeping face without the separate
+sweptPieceArea clip (50 area clips per sweeping face in A). Not bit for
+bit: the triangles enter the clip in the opposite vertex order (outward),
+so the crossing points are computed from the other end, and the volume
+clip's remnant filter (1e-14 L^2) applies. Measured after 20 steps: max
+|dalpha| 1.0e-12 (R32), 2.6e-10 (R64), 1.6e-12 (D), 2.7e-12 (P), 1.5e-17
+(P20n), 3.4e-14 (P20o), 2.9e-13 (P40n), 4.7e-13 (P40o); max |dalphaf|
+1.2e-11, 1.3e-8 (R64), 3.4e-10, 1.7e-12, 1.5e-17, 1.1e-13, 1.2e-12,
+2.9e-12: the round-off of the reordered clip, amplified on the rotation at
+N 64 by the rank-fallback faces as the trace cache's first version was
+(2026-11-04). The faces without a flux, the dump, the debug face and the
+check keep the separate clip, which stays selectable (the key off). Opt-in
+by the rules (it alters the numbers).
+
+B.3, the pre-test's coplanar side (from A's class table): a ring cell
+separated from the swept volume by one of its planes that holds a
+pre-image triangle was kept for the face update's coplanar rule; with the
+rule donorSide that part belongs to the cell on the donor's side of the
+plane, so a cell across the plane ((n . nRef) <= 0) adds nothing (its
+coplanar part is dropped by the rule, a contact is dropped by the volume
+clip) and is skipped. Bit for bit on the eight cases. The faces without a
+flux touch 4.09 cells instead of 8.17 and run 92 area clips instead of
+165; their four timed parts 0.064 -> 0.050 s/step, the sweeping faces'
+pre-test 0.042 -> 0.035 (job 55965852, with B.1 and B.2 on: the class
+table below). Bit for bit, it can become the default; the key is left
+false in this commit so that the reference setting 407f969 stays
+reproducible by the builds between.
+
+The class table with the three keys on (N 64, one turn, job 55965852;
+0.4623 s/step with the timers, 0.4531 without):
+
+| class | faces/step | touched cells/face | pieces/face | volume clips/face | area clips/face | t volume | t area | t trace | t pre-test | sum |
+|---|---|---|---|---|---|---|---|---|---|---|
+| no-sweep | 5856 | 4.09 (8.17) | 0 | 0 | 92.0 (165.5) | 0 | 0.0142 (0.0241) | 0.0165 | 0.0195 (0.0229) | 0.0502 (0.0642) |
+| (ii) multi-cell, sweeping | 11718 | 2.04 | 2.04 | 140.3 | 0 (50.2) | 0.0681 | 0 (0.0137) | 0.0516 | 0.0345 (0.0418) | 0.1542 (0.1764) |
+| the four timed parts | | | | | | | | | | 0.2044 (0.2407) |
+
+### C MEASURED (2026-11-05, jobs 55965344-55; csv/fluxC.csv, csv/fluxC.md)
+
+The plane-clipped loop (the preprint's: the davof reconstruction with the
+prism flux and the plane face update) on the comparison's cases with the
+exact normal and with the ring normal, three repetitions each; the swept
+rows from the reference rerun (ref/cmp: the exact row one repetition, the
+ring row three), plicRDF from the comparison. The main clone's build at
+da04ece (the reference setting; the counters' key off). A run the abort
+guard stopped (the interface cells above the factor of the initial count)
+is "diverged" with its step; its norms are not scored.
+
+| cell | OF Co | loop, normal | L1(x) | E_shape | L1(alphaf) | L1(n) | min / excess | mass % | wall median [min, max] s | step s |
+|---|---|---|---|---|---|---|---|---|---|---|
+| rotation N 32, 1 ranks | 0.200 | swept, exact | 1.9624e-03 | 5.2607e-04 | 2.9807e-02 | 3.1766e-03 | -2.1e-13 / 2.1e-12 | 9.3e-13 | 168.3 [168.3, 168.3] | 0.100 |
+| rotation N 32, 1 ranks | 0.200 | swept, ring | 3.9776e-03 | 1.0587e-03 | 5.7035e-02 | 5.7649e-02 | -6.9e-13 / 1.9e-11 | 1.1e-12 | 164.4 [164.2, 164.4] | 0.090 |
+| rotation N 32, 1 ranks | 0.200 | plane-clipped, exact | 2.0397e-03 | 5.4593e-04 | 3.0518e-02 | 3.8068e-03 | -9.1e-06 / 2.4e-15 | 1.0e-12 | 40.3 [40.3, 40.7] | 0.020 |
+| rotation N 32, 1 ranks | 0.200 | plane-clipped, ring | 4.1106e-03 | 1.0907e-03 | 5.7716e-02 | 5.9394e-02 | -6.8e-13 / 5.1e-15 | 1.5e-12 | 37.5 [37.5, 37.6] | 0.020 |
+| rotation N 32, 1 ranks | 0.200 | plicRDF + isoAdvector | 4.3887e-03 | 1.1552e-03 | - | 5.7522e-02 | -5.1e-19 / 2.2e-16 | 1.2e-12 | 45.2 [45.0, 45.4] | 0.020 |
+|  | | the flux's share of the exact-normal advantage: L1(x) 0.032, E_shape 0.032; plane-clipped / swept (exact): L1(x) 1.039, E_shape 1.038, wall 0.24 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) 1.033, E_shape 1.030, L1(alphaf) 1.012, wall 0.23; plane-clipped-ring / plicRDF wall 0.83 | | | | | | | | |
+| rotation N 32, 1 ranks | 1.000 | swept, exact | 1.4072e-03 | 3.7576e-04 | 2.1590e-02 | 3.5835e-03 | -7.1e-13 / 6.1e-13 | 1.3e-12 | 35.6 [35.6, 35.6] | 0.090 |
+| rotation N 32, 1 ranks | 1.000 | swept, ring | 2.6449e-03 | 7.0707e-04 | 3.8232e-02 | 4.8100e-02 | -9.2e-13 / 6.0e-13 | 8.9e-13 | 34.8 [34.8, 35.1] | 0.090 |
+| rotation N 32, 1 ranks | 1.000 | plane-clipped, exact | - | - | - | - | -1.4e-01 / 9.3e-15 (diverged, the abort guard at step 208 of 208) | 3.8e-13 | 7.3 [7.3, 7.4] | 0.020 |
+| rotation N 32, 1 ranks | 1.000 | plane-clipped, ring | - | - | - | - | -1.7e-01 / 7.3e-15 (diverged, the abort guard at step 109 of 109) | 9.2e-01 | 5.0 [5.0, 5.0] | 0.020 |
+| rotation N 32, 1 ranks | 1.000 | plicRDF + isoAdvector | 3.3276e-03 | 8.4772e-04 | - | 5.4431e-02 | -5.1e-18 / 2.2e-16 | 1.2e-12 | 11.3 [11.3, 11.3] | 0.030 |
+|  | | the flux's share of the exact-normal advantage: L1(x) nan, E_shape nan; plane-clipped / swept (exact): L1(x) nan, E_shape nan, wall 0.20 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) nan, E_shape nan, L1(alphaf) nan, wall 0.14; plane-clipped-ring / plicRDF wall 0.44 | | | | | | | | |
+| rotation N 64, 8 ranks | 0.200 | swept, exact | 6.2757e-04 | 1.7175e-04 | 1.9290e-02 | 8.4615e-04 | -7.7e-13 / 1.0e-10 | 4.5e-12 | 720.4 [720.4, 720.4] | 0.200 |
+| rotation N 64, 8 ranks | 0.200 | swept, ring | 1.0577e-03 | 2.9561e-04 | 3.2196e-02 | 2.5174e-02 | -6.2e-14 / 6.2e-10 | 4.2e-12 | 705.1 [704.2, 706.1] | 0.200 |
+| rotation N 64, 8 ranks | 0.200 | plane-clipped, exact | 6.4763e-04 | 1.7697e-04 | 1.9783e-02 | 9.7257e-04 | -1.4e-05 / 8.7e-15 | 4.8e-13 | 131.0 [130.9, 131.3] | 0.040 |
+| rotation N 64, 8 ranks | 0.200 | plane-clipped, ring | - | - | - | - | -5.1e-02 / 1.1e-14 (diverged, the abort guard at step 3420 of 3420) | 5.5e-03 | 126.2 [126.0, 126.4] | 0.040 |
+| rotation N 64, 8 ranks | 0.200 | plicRDF + isoAdvector | 1.1393e-03 | 3.1273e-04 | - | 2.4068e-02 | -2.6e-19 / 2.2e-16 | 1.1e-12 | 192.2 [189.9, 192.3] | 0.050 |
+|  | | the flux's share of the exact-normal advantage: L1(x) 0.039, E_shape 0.037; plane-clipped / swept (exact): L1(x) 1.032, E_shape 1.030, wall 0.18 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) nan, E_shape nan, L1(alphaf) nan, wall 0.18; plane-clipped-ring / plicRDF wall 0.66 | | | | | | | | |
+| rotation N 64, 8 ranks | 1.000 | swept, exact | 4.4486e-04 | 1.2085e-04 | 1.3792e-02 | 7.5390e-04 | -5.6e-12 / 5.3e-12 | 4.2e-12 | 147.9 [147.9, 147.9] | 0.200 |
+| rotation N 64, 8 ranks | 1.000 | swept, ring | 7.1023e-04 | 1.9738e-04 | 2.1912e-02 | 2.2567e-02 | -5.3e-13 / 6.1e-12 | 4.1e-12 | 145.3 [144.7, 145.5] | 0.200 |
+| rotation N 64, 8 ranks | 1.000 | plane-clipped, exact | - | - | - | - | -1.7e-01 / 3.0e-03 (diverged, the abort guard at step 357 of 357) | 7.0e-13 | 18.2 [18.2, 18.3] | 0.040 |
+| rotation N 64, 8 ranks | 1.000 | plane-clipped, ring | - | - | - | - | -3.1e-01 / 3.8e-03 (diverged, the abort guard at step 189 of 189) | 3.0e-01 | 12.4 [12.4, 12.5] | 0.040 |
+| rotation N 64, 8 ranks | 1.000 | plicRDF + isoAdvector | 8.4673e-04 | 2.2972e-04 | - | 2.2329e-02 | -2.0e-17 / 4.4e-16 | 9.4e-13 | 42.2 [41.3, 44.0] | 0.050 |
+|  | | the flux's share of the exact-normal advantage: L1(x) nan, E_shape nan; plane-clipped / swept (exact): L1(x) nan, E_shape nan, wall 0.12 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) nan, E_shape nan, L1(alphaf) nan, wall 0.09; plane-clipped-ring / plicRDF wall 0.29 | | | | | | | | |
+| rotation N 128, 64 ranks | 0.200 | swept, exact | 1.8746e-04 | 5.2188e-05 | 1.1923e-02 | 2.6495e-04 | -7.9e-14 / 5.1e-10 | 8.8e-12 | 3622.8 [3622.8, 3622.8] | 0.470 |
+| rotation N 128, 64 ranks | 0.200 | swept, ring | 2.8343e-04 | 8.0418e-05 | 1.8297e-02 | 1.1299e-02 | -1.8e-13 / 7.4e-10 | 7.6e-12 | 3541.6 [3538.6, 3551.4] | 0.470 |
+| rotation N 128, 64 ranks | 0.200 | plane-clipped, exact | 1.9343e-04 | 5.3950e-05 | 1.2288e-02 | 2.9719e-04 | -3.1e-03 / 1.2e-14 | 1.4e-12 | 680.2 [678.4, 680.5] | 0.090 |
+| rotation N 128, 64 ranks | 0.200 | plane-clipped, ring | - | - | - | - | -3.0e-02 / 1.0e-14 (diverged, the abort guard at step 1205 of 1205) | -2.0e-13 | 117.7 [117.5, 117.8] | 0.080 |
+| rotation N 128, 64 ranks | 0.200 | plicRDF + isoAdvector | 2.9492e-04 | 8.3739e-05 | - | 9.5597e-03 | -5.0e-13 / 4.4e-16 | 1.8e-12 | 959.4 [958.6, 970.1] | 0.130 |
+|  | | the flux's share of the exact-normal advantage: L1(x) 0.056, E_shape 0.056; plane-clipped / swept (exact): L1(x) 1.032, E_shape 1.034, wall 0.19 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) nan, E_shape nan, L1(alphaf) nan, wall 0.03; plane-clipped-ring / plicRDF wall 0.12 | | | | | | | | |
+| rotation N 128, 64 ranks | 1.000 | swept, exact | 1.3028e-04 | 3.6197e-05 | 8.3619e-03 | 2.3922e-04 | -6.6e-11 / 1.4e-10 | 9.6e-12 | 739.1 [739.1, 739.1] | 0.480 |
+| rotation N 128, 64 ranks | 1.000 | swept, ring | 1.8942e-04 | 5.3417e-05 | 1.2274e-02 | 9.9009e-03 | -5.4e-11 / 7.2e-11 | 8.1e-12 | 727.8 [717.6, 851.4] | 0.470 |
+| rotation N 128, 64 ranks | 1.000 | plane-clipped, exact | - | - | - | - | -6.1e-01 / 8.0e-02 (diverged, the abort guard at step 803 of 803) | 1.0e-13 | 102.9 [102.9, 103.3] | 0.120 |
+| rotation N 128, 64 ranks | 1.000 | plane-clipped, ring | - | - | - | - | -3.1e-01 / 9.3e-02 (diverged, the abort guard at step 331 of 331) | 8.1e-02 | 44.4 [44.4, 44.5] | 0.080 |
+| rotation N 128, 64 ranks | 1.000 | plicRDF + isoAdvector | 2.2338e-04 | 6.0959e-05 | - | 9.4322e-03 | -9.8e-13 / 2.9e-13 | 1.9e-12 | 204.3 [201.6, 207.6] | 0.130 |
+|  | | the flux's share of the exact-normal advantage: L1(x) nan, E_shape nan; plane-clipped / swept (exact): L1(x) nan, E_shape nan, wall 0.14 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) nan, E_shape nan, L1(alphaf) nan, wall 0.06; plane-clipped-ring / plicRDF wall 0.22 | | | | | | | | |
+| diagonal N 32, 1 ranks | 0.200 | swept, exact | 1.1550e-03 | 2.8940e-04 | 1.6873e-02 | 2.3675e-03 | -3.2e-13 / 2.0e-13 | 7.8e-14 | 18.1 [18.1, 18.1] | 0.090 |
+| diagonal N 32, 1 ranks | 0.200 | swept, ring | 2.0126e-03 | 5.7286e-04 | 3.1749e-02 | 5.3562e-02 | -2.0e-14 / 2.8e-13 | 2.0e-13 | 16.1 [16.1, 16.6] | 0.080 |
+| diagonal N 32, 1 ranks | 0.200 | plane-clipped, exact | 1.4169e-03 | 3.4274e-04 | 1.9826e-02 | 2.9428e-03 | -1.3e-04 / 1.0e-14 | 3.9e-13 | 5.5 [5.5, 5.6] | 0.020 |
+| diagonal N 32, 1 ranks | 0.200 | plane-clipped, ring | 2.1058e-03 | 5.9854e-04 | 3.2753e-02 | 5.5036e-02 | -1.0e-14 / 1.0e-14 | 3.3e-13 | 5.3 [5.3, 5.3] | 0.020 |
+| diagonal N 32, 1 ranks | 0.200 | plicRDF + isoAdvector | 1.9296e-03 | 5.1187e-04 | - | 4.2305e-02 | -2.5e-13 / 2.2e-16 | 8.5e-13 | 6.1 [6.0, 6.1] | 0.020 |
+|  | | the flux's share of the exact-normal advantage: L1(x) 0.338, E_shape 0.240; plane-clipped / swept (exact): L1(x) 1.227, E_shape 1.184, wall 0.31 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) 1.046, E_shape 1.045, L1(alphaf) 1.032, wall 0.33; plane-clipped-ring / plicRDF wall 0.87 | | | | | | | | |
+| diagonal N 32, 1 ranks | 1.000 | swept, exact | 4.1866e-04 | 1.1818e-05 | 4.8457e-03 | 2.3924e-03 | -2.3e-14 / 1.4e-13 | 1.6e-13 | 5.4 [5.4, 5.4] | 0.080 |
+| diagonal N 32, 1 ranks | 1.000 | swept, ring | 7.8639e-04 | 1.8090e-04 | 1.1178e-02 | 3.8703e-02 | -6.0e-13 / 2.6e-13 | 1.7e-13 | 5.7 [5.3, 6.3] | 0.080 |
+| diagonal N 32, 1 ranks | 1.000 | plane-clipped, exact | 2.3603e-02 | 3.9105e-03 | 1.7036e-01 | 3.5782e-02 | -9.3e-02 / 1.6e-02 | 1.4e-13 | 3.2 [3.2, 3.2] | 0.020 |
+| diagonal N 32, 1 ranks | 1.000 | plane-clipped, ring | 9.8349e-02 | 3.3791e-03 | 1.8808e-01 | 7.6533e-01 | -1.2e-01 / 1.6e-03 | 8.8e-01 | 3.3 [3.3, 3.3] | 0.020 |
+| diagonal N 32, 1 ranks | 1.000 | plicRDF + isoAdvector | 6.4695e-03 | 1.2946e-03 | - | 1.2457e-01 | -1.0e-14 / 9.3e-15 | 1.3e-13 | 3.1 [3.1, 3.2] | 0.030 |
+|  | | the flux's share of the exact-normal advantage: L1(x) 3.832, E_shape 3.039; plane-clipped / swept (exact): L1(x) 56.378, E_shape 330.897, wall 0.59 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) 125.063, E_shape 18.679, L1(alphaf) 16.826, wall 0.58; plane-clipped-ring / plicRDF wall 1.05 | | | | | | | | |
+| diagonal N 64, 8 ranks | 0.200 | swept, exact | 3.2914e-04 | 8.5795e-05 | 9.8911e-03 | 8.4231e-04 | -1.2e-11 / 5.3e-12 | 3.7e-13 | 63.4 [63.4, 63.4] | 0.190 |
+| diagonal N 64, 8 ranks | 0.200 | swept, ring | 5.5372e-04 | 1.5684e-04 | 1.7696e-02 | 2.4281e-02 | -2.0e-11 / 5.3e-12 | 3.9e-13 | 60.4 [60.4, 60.5] | 0.180 |
+| diagonal N 64, 8 ranks | 0.200 | plane-clipped, exact | 2.6684e-03 | 1.7558e-04 | 3.8586e-02 | 5.5897e-03 | -2.5e-02 / 1.0e-14 | 3.1e-13 | 14.0 [13.9, 14.3] | 0.030 |
+| diagonal N 64, 8 ranks | 0.200 | plane-clipped, ring | 6.9686e-02 | 1.9137e-04 | 1.0868e-01 | 5.4833e-01 | -4.5e-02 / 8.4e-03 | 3.9e-02 | 19.9 [19.9, 19.9] | 0.060 |
+| diagonal N 64, 8 ranks | 0.200 | plicRDF + isoAdvector | 5.1269e-04 | 1.4356e-04 | - | 1.9224e-02 | -4.5e-10 / 4.7e-13 | 5.3e-13 | 19.9 [19.8, 20.2] | 0.050 |
+|  | | the flux's share of the exact-normal advantage: L1(x) 12.744, E_shape 1.554; plane-clipped / swept (exact): L1(x) 8.107, E_shape 2.046, wall 0.22 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) 125.852, E_shape 1.220, L1(alphaf) 6.142, wall 0.33; plane-clipped-ring / plicRDF wall 1.00 | | | | | | | | |
+| diagonal N 64, 8 ranks | 1.000 | swept, exact | 1.0070e-04 | 3.7843e-06 | 2.3569e-03 | 7.2236e-04 | -3.3e-11 / 1.5e-12 | 2.4e-13 | 16.1 [16.1, 16.1] | 0.190 |
+| diagonal N 64, 8 ranks | 1.000 | swept, ring | 1.7639e-04 | 3.8868e-05 | 5.0451e-03 | 1.9075e-02 | -1.2e-13 / 2.0e-12 | 1.9e-13 | 15.9 [15.4, 17.1] | 0.180 |
+| diagonal N 64, 8 ranks | 1.000 | plane-clipped, exact | 1.6971e-02 | 2.7172e-03 | 1.9562e-01 | 2.3644e-02 | -1.1e-01 / 1.9e-01 | 1.1e-13 | 6.3 [6.3, 6.5] | 0.040 |
+| diagonal N 64, 8 ranks | 1.000 | plane-clipped, ring | 6.9098e-02 | 2.9658e-03 | 1.8403e-01 | 9.1427e-01 | -1.3e-01 / 1.2e-01 | 2.8e-01 | 7.2 [7.2, 7.2] | 0.040 |
+| diagonal N 64, 8 ranks | 1.000 | plicRDF + isoAdvector | 5.0766e-03 | 6.3059e-04 | - | 1.3923e-01 | -1.5e-03 / 1.2e-03 | -4.4e-14 | 9.1 [9.0, 9.3] | 0.080 |
+|  | | the flux's share of the exact-normal advantage: L1(x) 3.390, E_shape 4.329; plane-clipped / swept (exact): L1(x) 168.522, E_shape 718.017, wall 0.39 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) 391.728, E_shape 76.305, L1(alphaf) 36.477, wall 0.45; plane-clipped-ring / plicRDF wall 0.79 | | | | | | | | |
+| diagonal N 128, 64 ranks | 0.200 | swept, exact | 9.0167e-05 | 2.4429e-05 | 5.7134e-03 | 2.4190e-04 | -2.4e-11 / 1.2e-11 | 1.5e-12 | 369.6 [369.6, 369.6] | 0.560 |
+| diagonal N 128, 64 ranks | 0.200 | swept, ring | 1.2827e-04 | 3.6888e-05 | 8.8200e-03 | 9.7307e-03 | -1.8e-11 / 1.2e-11 | 1.3e-12 | 348.9 [347.6, 350.8] | 0.530 |
+| diagonal N 128, 64 ranks | 0.200 | plane-clipped, exact | 1.2379e-04 | 3.3292e-05 | 7.5656e-03 | 3.9157e-04 | -3.9e-02 / 1.5e-03 | 7.2e-13 | 66.5 [66.3, 66.5] | 0.090 |
+| diagonal N 128, 64 ranks | 0.200 | plane-clipped, ring | 5.4488e-02 | 7.0303e-05 | 1.1177e-01 | 5.7199e-01 | -4.4e-02 / 6.4e-02 | 5.2e-03 | 90.4 [90.2, 90.5] | 0.130 |
+| diagonal N 128, 64 ranks | 0.200 | plicRDF + isoAdvector | 1.2306e-04 | 3.4374e-05 | - | 7.7935e-03 | -1.2e-07 / 1.7e-13 | 8.1e-12 | 99.5 [98.8, 100.0] | 0.140 |
+|  | | the flux's share of the exact-normal advantage: L1(x) 1.022, E_shape 0.891; plane-clipped / swept (exact): L1(x) 1.373, E_shape 1.363, wall 0.18 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) 424.775, E_shape 1.906, L1(alphaf) 12.672, wall 0.26; plane-clipped-ring / plicRDF wall 0.91 | | | | | | | | |
+| diagonal N 128, 64 ranks | 1.000 | swept, exact | 2.6397e-05 | 8.7709e-07 | 1.2420e-03 | 1.8660e-04 | -1.4e-13 / 1.3e-11 | 1.7e-12 | 82.2 [82.2, 82.2] | 0.580 |
+| diagonal N 128, 64 ranks | 1.000 | swept, ring | 3.5490e-05 | 7.1839e-06 | 2.1775e-03 | 8.2923e-03 | -3.6e-11 / 1.3e-11 | 1.6e-12 | 77.5 [77.3, 77.7] | 0.540 |
+| diagonal N 128, 64 ranks | 1.000 | plane-clipped, exact | 1.8244e-02 | 2.3967e-03 | 2.3181e-01 | 1.3253e-02 | -2.0e-01 / 2.4e-01 | 2.0e-13 | 27.4 [27.4, 27.5] | 0.130 |
+| diagonal N 128, 64 ranks | 1.000 | plane-clipped, ring | - | - | - | - | -2.2e-01 / 1.6e-01 (diverged, the abort guard at step 73 of 73) | 3.0e-13 | 18.0 [17.9, 18.0] | 0.160 |
+| diagonal N 128, 64 ranks | 1.000 | plicRDF + isoAdvector | 2.9987e-03 | 3.2206e-04 | - | 1.4836e-01 | -6.6e-03 / 4.1e-03 | 4.3e-13 | 40.5 [40.5, 40.6] | 0.250 |
+|  | | the flux's share of the exact-normal advantage: L1(x) 6.129, E_shape 7.459; plane-clipped / swept (exact): L1(x) 691.151, E_shape 2732.546, wall 0.33 | | | | | | | | |
+|  | | plane-clipped / swept (ring): L1(x) nan, E_shape nan, L1(alphaf) nan, wall 0.23; plane-clipped-ring / plicRDF wall 0.44 | | | | | | | | |
+
+Verdicts:
+- F-1 (the flux's share of the exact-normal advantage at OpenFOAM Co 0.2):
+  HELD on the rotation: the plane-clipped loop with the exact normal has
+  L1(x) and E_shape 1.03 to 1.04 times the swept loop's at N 32 / 64 / 128,
+  the flux's share of the advantage over plicRDF 0.03 to 0.06; the normal
+  carries it. FALSIFIED on the diagonal: 1.23 x at N 32 (share 0.34), 8.1 x
+  at N 64 (the plane-clipped loop loses its boundedness, min alpha -2.5e-2;
+  share 12.7), 1.37 x at N 128 (min alpha -3.9e-2; share 1.02). And the
+  plane-clipped loop is not bounded even where its norms are close: min
+  alpha -9.1e-6 (rotation N 32), -1.4e-5 (N 64), -3.1e-3 (N 128), -1.3e-4
+  (diagonal N 32); the swept loop >= -7.9e-14 there.
+- F-2 (OpenFOAM Co 1): FALSIFIED in its rotation half. The plane-clipped
+  loop diverges on the rotation too (the abort guard at step 208 of 208 at
+  N 32, 357 of 357 at N 64, 803 of 803 at N 128, min alpha -0.14 to -0.61),
+  not only on the diagonal (min alpha -0.093 / -0.11 / -0.20 at N 32 / 64 /
+  128, L1(x) 56 / 169 / 691 times the swept loop's); the swept loop is
+  bounded to 6.6e-11 in every cell. The "prism aborts at N 64 / 128" of
+  2026-10-29 (OpenFOAM Co 0.86) returns at Co 1 at every N.
+- F-3 (the ring-normal rows): the two loops with the ring normal are within
+  3.3 % (L1(x)) and 3.0 % (E_shape) on the rotation at N 32, Co 0.2 (HELD
+  there, within 4.6 % on the diagonal N 32); at N 64 / 128 the plane-clipped
+  ring loop diverges on the rotation at Co 0.2 (step 3420 of 3420, 1205 of
+  1205) and loses its boundedness on the diagonal (L1(x) 126 to 425 times
+  the swept loop's, the mass off by 0.5 to 4 %); at Co 1 it diverges in
+  every cell. FALSIFIED beyond N 32.
+- F-4 (the cost): the plane-clipped loop's wall clock is 0.12 to 1.05 times
+  plicRDF's and 0.03 to 0.59 times the swept loop's (the diverged runs
+  shorter still): below the band, FALSIFIED; per step 0.02 to 0.16 s against
+  the swept loop's 0.08 to 0.58.
+
+What this shows: with the same exact normal, the swept-face advection and
+the plane-clipped loop transport alike on the rotation at OpenFOAM Co 0.2
+(within 4 %), so the exact-normal rows' advantage over plicRDF there is the
+normal's, not the flux's; everywhere else the flux decides: the
+plane-clipped loop loses its boundedness on the diagonal at Co 0.2 from
+N 64 and diverges at Co 1 on both flows and every N, where the swept loop
+stays bounded to 1e-10. The plane-clipped loop costs 2 to 8 times less per
+step than the swept loop (its flux is the prism of isoAdvector's kind).

@@ -6,6 +6,9 @@ writes hp2_categories.csv (run x group: s/step/rank old and new), hp2_ranks.csv,
 hp2_timing.csv, and prints the markdown tables (a) to (d)."""
 import sys, os, glob, csv, re, statistics
 P, OUT = sys.argv[1], sys.argv[2]
+OLD, NEW = (sys.argv[3], sys.argv[4]) if len(sys.argv) > 4 else ("an", "an2")
+LOLD, LNEW = (sys.argv[5], sys.argv[6]) if len(sys.argv) > 6 else ("720cfc6", "407f969")
+SUF = sys.argv[7] if len(sys.argv) > 7 else "hp2"
 os.makedirs(OUT, exist_ok=True)
 GROUPS = [
     ("pieces: the clip by the cell planes and the PLIC plane", ["pieces: clip"]),
@@ -51,10 +54,10 @@ def cats(path):
 runs = ["serial_ring32_full", "serial_ring64_full", "serial_ring64_20", "serial_ring128_20", "par8_ring64_full", "par64_ring128_full"]
 table = {}
 for run in runs:
-    for lab, d in (("old", "an"), ("new", "an2")):
+    for lab, d in (("old", OLD), ("new", NEW)):
         f = "%s/%s/%s.cat.csv" % (P, d, run)
         if os.path.isfile(f): table[(run, lab)] = cats(f)
-with open(OUT + "/hp2_categories.csv", "w") as f:
+with open(OUT + "/%s_categories.csv" % SUF, "w") as f:
     f.write("group," + ",".join("%s_%s_s_per_step_per_rank,%s_%s_pct" % (r, l, r, l) for r in runs for l in ("old", "new")) + "\n")
     for g, _ in GROUPS:
         f.write('"%s"' % g)
@@ -72,7 +75,7 @@ def md_a(run, title):
     o, n = table.get((run, "old")), table.get((run, "new"))
     if not o or not n: print("(%s: missing %s)" % (run, "old" if not o else "new")); return
     print("\n%s\n" % title)
-    print("| category | before (720cfc6) s/step | % | after (407f969) s/step | % | ratio |")
+    print("| category | before (%s) s/step | %% | after (%s) s/step | %% | ratio |" % (LOLD, LNEW))
     print("|---|---|---|---|---|---|")
     for g, _ in GROUPS:
         a, b = o[0].get(g), n[0].get(g)
@@ -96,9 +99,9 @@ for g, _ in GROUPS[:20]:
     if a == 0 and b == 0: continue
     print("| %s | %.4f | %.4f | %.2f | %.4f | %.4f | %.2f |" % (g, a, b, b/a if a else float("nan"), c, d, d/c if c else float("nan")))
 # (c) ranks
-with open(OUT + "/hp2_ranks.csv", "w") as f:
+with open(OUT + "/%s_ranks.csv" % SUF, "w") as f:
     first = True
-    for lab, d in (("old", "an"), ("new", "an2")):
+    for lab, d in (("old", OLD), ("new", NEW)):
         for g in sorted(glob.glob("%s/%s/par*.ranks.csv" % (P, d))):
             run = os.path.basename(g)[:-10]; lines = open(g).read().splitlines()
             if first: f.write("profile,run," + lines[0] + "\n"); first = False
@@ -115,7 +118,7 @@ def ranks(run, d):
     return dict(step=sum(tot)/len(tot)/steps, mpi_share=100*sum(mpi)/sum(tot), mpi="%.0f / %.0f / %.0f" % (statistics.mean(mpi), max(mpi), min(mpi)),
                 comp="%.0f / %.0f (%.2f)" % (max(comp), statistics.mean(comp), max(comp)/statistics.mean(comp)), idle=sum(1 for c in comp if c < 0.1*max(comp)), n=len(comp),
                 balanced=sum(comp)/len(comp)/steps, busiest=max(range(len(comp)), key=lambda i: comp[i]), comps=comp, steps=steps)
-R = {(run, lab): ranks(run, d) for run in ("par8_ring64_full", "par64_ring128_full") for lab, d in (("old", "an"), ("new", "an2"))}
+R = {(run, lab): ranks(run, d) for run in ("par8_ring64_full", "par64_ring128_full") for lab, d in (("old", OLD), ("new", NEW))}
 def cell(run, lab, k, fmt="%s"):
     x = R.get((run, lab)); return (fmt % x[k]) if x else "-"
 for key, name, fmt in (("step", "step (CPUTIME per rank / steps), s", "%.3f"), ("mpi_share", "MPI library, % of all CPUTIME", "%.1f"), ("mpi", "MPI per rank mean / max / min, s", "%s"),
@@ -125,16 +128,16 @@ for run in ("par8_ring64_full", "par64_ring128_full"):
     x = R.get((run, "new"))
     if x: print("- %s after: compute per rank s: %s" % (run, " ".join("%.0f" % c for c in x["comps"])))
 # (d) hotspots
-with open(OUT + "/hp2_hotspots.csv", "w") as f:
+with open(OUT + "/%s_hotspots.csv" % SUF, "w") as f:
     f.write("profile,run,rank_in_run,function,module,file,line,excl_s,excl_pct,incl_s,incl_pct,llc_misses\n")
-    for lab, d in (("old", "an"), ("new", "an2")):
+    for lab, d in (("old", OLD), ("new", NEW)):
         for g in sorted(glob.glob("%s/%s/*.flat.csv" % (P, d))):
             run = os.path.basename(g)[:-9]
             for i, r in enumerate(csv.DictReader(open(g))):
                 if i >= 25: break
                 f.write('%s,%s,%d,"%s",%s,%s,%s,%s,%s,%s,%s,%s\n' % (lab, run, i + 1, r["function"].replace('"', "'")[:160], r["module"], os.path.basename(r["file"]), r["line"], r["excl_s"], r["excl_pct"], r["incl_s"], r["incl_pct"], r["llc_miss_samples"]))
 print("\n### (d) The top ten exclusive hotspots after (serial, N = 64, one turn)\n")
-f = "%s/an2/serial_ring64_full.flat.csv" % P
+f = "%s/%s/serial_ring64_full.flat.csv" % (P, NEW)
 if os.path.isfile(f):
     rows = list(csv.DictReader(open(f)))
     T = sum(float(r["excl_s"]) for r in rows)
@@ -144,15 +147,15 @@ if os.path.isfile(f):
         print("| %d | %s | %s | %s (%s:%s) | %s |" % (i + 1, r["excl_pct"], r["excl_s"], r["function"][:110], os.path.basename(r["file"]), r["line"], r["incl_s"]))
     print("total exclusive %.1f s" % T)
     # the hot lines of the fork
-    lf = "%s/an2/serial_ring64_full.lines.csv" % P
+    lf = "%s/%s/serial_ring64_full.lines.csv" % (P, NEW)
     print("\nthe hot source lines (fork + OpenFOAM):")
     for i, r in enumerate(csv.DictReader(open(lf))):
         if i >= 20: break
         print("  %s:%s %s s %s %% %s" % (os.path.basename(r["file"]), r["line"], r["excl_s"], r["excl_pct"], r["function"][:80]))
-with open(OUT + "/hp2_timing.csv", "w") as f:
+with open(OUT + "/%s_timing.csv" % SUF, "w") as f:
     first = True
-    for g in sorted(glob.glob(P + "/runs2/*/timing.csv")):
+    for g in sorted(glob.glob(P + "/%s/*/timing.csv" % ("runs3" if NEW == "an4" else "runs2"))):
         lines = open(g).read().splitlines()
         if first: f.write(lines[0] + "\n"); first = False
         for l in lines[1:]: f.write(l + "\n")
-print("\nwrote", OUT, "hp2_categories.csv hp2_ranks.csv hp2_hotspots.csv hp2_timing.csv")
+print("\nwrote", OUT, SUF)

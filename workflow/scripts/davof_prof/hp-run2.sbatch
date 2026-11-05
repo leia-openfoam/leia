@@ -20,7 +20,9 @@ source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
 cd $P/TwoPhaseFlow && . etc/davof-env.sh || exit 1
 : ${MODE:?}
 NP=$SLURM_NTASKS
-T=$P/runs2/$MODE
+# RUNDIR (optional): the runs directory under prof (default runs2); ADDKEYS (optional): key=value+key=value
+# inserted into the alpha.water dictionary after reconstructionScheme (the opt-in keys of a round)
+T=$P/${RUNDIR:-runs2}/$MODE
 if [ -n "$ANALYSE" ]; then
   # the analysis alone (the measurement job ran with MEASURE_ONLY)
   for c in $T/*/; do
@@ -74,6 +76,9 @@ prep() { # method N steps|full tag -> case dir
   foamDictionary -entry writeControl -set timeStep $c/system/controlDict > /dev/null
   foamDictionary -entry writeInterval -set $n $c/system/controlDict > /dev/null
   sed -i -E "/^\s*($KEYS)\s/d" $c/system/fvSolution
+  if [ -n "$ADDKEYS" ]; then for kv in ${ADDKEYS//+/ }; do
+    sed -i "s/^\(\s*\)reconstructionScheme davof;/&\n\1${kv%%=*} ${kv#*=};/" $c/system/fvSolution
+  done; fi
   echo "$src" > $c/.source; echo $c
 }
 csv=$T/timing.csv
