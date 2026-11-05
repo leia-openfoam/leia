@@ -143,7 +143,8 @@ def main():
                 r["N"], r["Co"], r["arm"], r["row"], r["variant"], "pass" if r["gate"] else "fail", fnum(r["L1afMax"], 2), fnum(r["L1nMax"], 2), fnum(r["minBefore"], 2), fnum(r["excessBefore"], 2), r["stepsWithOut"], r["passesSum"], r["clipsPerStep"]))
     with open(args.out + "/csv/joint_plane.csv", "w", newline="") as fh:
         if prow:
-            w = csv.DictWriter(fh, fieldnames=list(prow[0].keys())); w.writeheader(); w.writerows(prow)
+            keys = sorted(set(k for r in prow for k in r.keys()))
+            w = csv.DictWriter(fh, fieldnames=keys); w.writeheader(); w.writerows(prow)
     byv = {}
     for r in prow:
         byv.setdefault(r["variant"], []).append(r["gate"])

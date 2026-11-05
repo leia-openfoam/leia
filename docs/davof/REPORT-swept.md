@@ -3908,3 +3908,56 @@ Predictions:
   under hybrid; the wall clock at 8 ranks follows the step. The rule's
   speed clause fails for every variant: predicted, not a defect.
 
+Batch 1 (jobs 55965310-18, 11:14) ran pieces / joint / hybrid and the hex
+variants. Its plane gate came in before batch 2 was registered: the
+hybrid passes exactly where the pieces pass and the hex variants are
+byte-identical (J-1 for hybrid and J-2 HELD), the pure joint FAILS the
+gate on passing cases (N 20 oblique exact 3.2e-11; N 40: 1.2e-8 normal
+exact with min alpha -3e-7 before the bounding, 6e-10 oblique exact,
+7.6e-12 oblique ring, Co 0.95 oblique both rows), with 3 to 100 bounding
+passes per run, and sits at 1e-13 to 1e-12 where it passes against the
+pieces' 1e-14 to 1e-13 (J-1 FALSIFIED for joint). The cause, read from
+the gate's own mechanism: the planes P of the joint include a wisp's
+matched or anchored plane, and a plane positioned from a volume of 1e-10
+V by a volume tolerance of 1e-14 V sits up to 1e-7 h off the true plane
+(the corner volume goes as d^3); inside its own tiny wisp the error is
+harmless, extended into the neighbours by the minimum it dries 1e-7 h of
+liquid. Tomislav's addition of 2026-11-05 (recognise and handle the
+overdraw in the joint algorithm) is implemented as:
+- sweptClip jointGuarded: the joint clip over the planes of the touched
+  cells WITH a surface only (no constructed wisp plane); no touched full or
+  empty cell (alpha within 1e-8 of 1 or 0, no surface): no test (counted);
+  otherwise the boundary triangles are clipped by the planes in turn and
+  every removed part (the other side of the same Sutherland-Hodgman pass)
+  is tested with its vertices and centroid, strictly inside by 1e-10 h,
+  against the full cells' boxes, the final kept part against the empty
+  cells' (davof::jointGuardViolated; the maximum with the complements and
+  the boxes swapped); a hit, a saddle or a failed cap system takes the
+  hybrid path for the face (bounded by construction). Counted: no test,
+  tested, joint, hybrid on a hit / a saddle / the caps, pieces on no plane.
+- sweptClip jointConfig: the same without the geometric test; the hybrid
+  whenever a full or empty cell is touched together with two or more
+  interface cells.
+- sweptDonorCheck (default false; true in batch 2 for every variant): per
+  step the donors whose outgoing liquid exceeds alpha_c V_c by 1e-12 V (the
+  largest excess) and the full cells gaining (inflow above outflow) before
+  the bounding.
+Batch 2 (PRE-REGISTERED 2026-11-05, 11:35): the plane gate (16 cases) and
+the eight cells with pieces / jointGuarded / jointConfig (the ring row three
+rotated repetitions, the exact row once; no hex variants), from a second
+clone built at the new commit (the first clone's library serves batch 1).
+- J-6 (the guarded variants): jointGuarded and jointConfig pass the plane
+  gate exactly where the pieces pass, with run maxima within a factor 3 of
+  the pieces' (the surface planes of a translated plane coincide; the
+  wisps are left to the planes of their neighbours); bounded before the
+  bounding at Co 0.2 like the pieces, and at Co 1 not worse than the
+  pieces (the overlap); the donor check reports zero overdrawn donors
+  beyond the pieces' own count and zero full cells gaining at Co 0.2 for
+  both, as for the pieces; the faces without a test are the majority
+  (above 60 %), the hits below 3 % of the faces under jointGuarded and
+  the configuration fallbacks 5 to 20 % under jointConfig; the errors
+  within -6 / +2 % of the pieces' (J-3); the step time between the joint's
+  and the hybrid's (0.85 to 1.25 x the pieces'). FALSIFIED by a gate case
+  the pieces pass and a guarded variant fails, by an overdrawn donor or a
+  gaining full cell beyond the pieces' at Co 0.2, or by hits above 3 %.
+

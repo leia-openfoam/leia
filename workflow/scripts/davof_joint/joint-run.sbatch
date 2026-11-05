@@ -24,23 +24,26 @@
 #   sbatch -J joint-<tag> -n NP -t LIMIT --export=ALL,MODE=..,FLOW=..,N=..,CO=.. joint-run.sbatch
 W=/work/scratch/tm83tomy/davof/agents/joint
 S=/work/scratch/tm83tomy/davof/agents/swept/leia/studies/davof
+TPF=${TPF:-$W/TwoPhaseFlow}   # the fork clone whose binaries run (batch 2: TwoPhaseFlow2)
+RUNS=${RUNS:-$W/runs}         # the output root (batch 2: runs2)
 module purge
 module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv
 export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2
 source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
-cd $W/TwoPhaseFlow && . etc/davof-env.sh || exit 1
+cd $TPF && . etc/davof-env.sh || exit 1
 : ${MODE:?}
 NP=${SLURM_NTASKS:-1}; REPS=${REPS:-3}; PAR=${PAR:-8}
 VARIANTS=${VARIANTS:-"pieces joint hybrid piecesHex hybridHex"}
-echo "fork $(git -C $W/TwoPhaseFlow log --oneline -1 | cut -c1-90); leia $(git -C $W/leia log --oneline -1 | cut -c1-70)"
+echo "fork $(git -C $TPF log --oneline -1 | cut -c1-90); leia $(git -C $W/leia log --oneline -1 | cut -c1-70)"
 echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), job $SLURM_JOB_ID, MODE $MODE np $NP $(date)"
 echo "advectorVoF $(command -v advectorVoF)"
 KEYS='sweptWispSurface|sweptWispMatchTol|sweptWispTol|sweptConsistent|sweptVolumeCorrection|sweptScaleToPhi|positioning|positioningTol|positioningMaxIter|anchorSkipConverged|sweptPreTest|sweptStateShortcut|sweptTraceCache|sweptClip|sweptHexClip'
 strip() { sed -i -E "/^\s*($KEYS)\s/d" $1/system/fvSolution; local n=$(grep -c -E "^\s*($KEYS)\s" $1/system/fvSolution); [ $n -eq 0 ] || echo "STRIP FAILED in $1: $n keys left"; }
-clipOf() { case $1 in pieces|piecesHex) echo pieces;; joint) echo joint;; hybrid|hybridHex) echo hybrid;; esac; }
+clipOf() { case $1 in pieces|piecesHex) echo pieces;; joint) echo joint;; hybrid|hybridHex) echo hybrid;; jointGuarded) echo jointGuarded;; jointConfig) echo jointConfig;; esac; }
 hexOf() { case $1 in piecesHex|hybridHex) echo true;; *) echo false;; esac; }
-addkeys() { # case variant: the two keys after the fluxIntegration line, the write precision
-  sed -i "s/^\(\s*\)fluxIntegration\s.*/&\n\1sweptClip $(clipOf $2);\n\1sweptHexClip $(hexOf $2);/" $1/system/fvSolution
+DONORCHECK=${DONORCHECK:-false}   # sweptDonorCheck in every case (batch 2: true)
+addkeys() { # case variant: the keys after the fluxIntegration line, the write precision
+  sed -i "s/^\(\s*\)fluxIntegration\s.*/&\n\1sweptClip $(clipOf $2);\n\1sweptHexClip $(hexOf $2);\n\1sweptDonorCheck $DONORCHECK;/" $1/system/fvSolution
   foamDictionary -entry writePrecision -set 17 $1/system/controlDict > /dev/null
   grep -q "sweptClip $(clipOf $2);" $1/system/fvSolution || echo "ADDKEYS FAILED in $1"
 }
@@ -53,10 +56,10 @@ metrics() { (cd $1 && python3 $W/leia/workflow/scripts/tpf_advection_metrics.py 
 tok() { /usr/bin/python3 -c "import json,sys; t=json.load(open(sys.argv[1]+'/case_params.json'))['tokens']; print(' '.join(str(t.get(k,'')) for k in sys.argv[2:]))" "$@"; }
 case $MODE in
 plane)
-  T=$W/runs/plane${PTAG:-}; rm -rf $T; mkdir -p $T; NSET=${NSET:-"20 40"}
+  T=$RUNS/plane${PTAG:-}; rm -rf $T; mkdir -p $T; NSET=${NSET:-"20 40"}
   # (one assignment per local: a single "local a=$1 b=$a" expands every word before it assigns)
   run1() { local src=$1; local v=$2; local c=$T/$v/$(basename $src); copy $src $c $v; (cd $c && advectorVoF > log.advectorVoF 2>&1; echo "$v $(basename $c) rc=$? steps $(grep -c '^Time = ' log.advectorVoF) $(grep -o 'ClockTime = [^ ]* s' log.advectorVoF | tail -1)"); metrics $c; }
-  export -f run1 copy strip addkeys clipOf hexOf metrics; export T W KEYS
+  export -f run1 copy strip addkeys clipOf hexOf metrics; export T W KEYS DONORCHECK
   for c in $S/planeTranslation3D_hexSweptWispM9Ccs2/planeTranslation3D_0*; do
     [ -f $c/case_params.json ] || continue
     read N co row arm <<< "$(tok $c N_CELLS TARGET_ADVECTIVE_CO TPF_ROW TPF_VELOCITY_ARM)"
@@ -68,7 +71,7 @@ plane)
 cmp)
   : ${FLOW:?} ${N:?} ${CO:?}
   case $FLOW in Rot) END=1;; *) END=0.45;; esac
-  T=$W/runs/cmp/${FLOW}_N${N}_co${CO}; [ -z "$REP0" ] && rm -rf $T; mkdir -p $T
+  T=$RUNS/cmp/${FLOW}_N${N}_co${CO}; [ -z "$REP0" ] && rm -rf $T; mkdir -p $T
   pick() { /usr/bin/python3 - "$S/sphereRotation3D_hexCmp${FLOW}SweptN$N" "$1" "$CO" <<'EOF'
 import json, glob, os, sys
 st, row, co = sys.argv[1], sys.argv[2], int(sys.argv[3])
@@ -90,7 +93,9 @@ EOF
   SUF=${REP0:+_r$REP0}
   csv=$T/timing$SUF.csv; echo "flow,N,np,co_index,row,variant,rep,steps,dt,end_time,clock_s,exec_s,wall_s,median_step_s,node" > $csv
   par=""; [ $NP -gt 1 ] && par="-parallel"
-  orders=("pieces joint hybrid" "joint hybrid pieces" "hybrid pieces joint")
+  # the three timed variants (TRIO; batch 2: "pieces jointGuarded jointConfig"), rotated per repetition
+  read -r v1 v2 v3 <<< "${TRIO:-pieces joint hybrid}"
+  orders=("$v1 $v2 $v3" "$v2 $v3 $v1" "$v3 $v1 $v2")
   runone() { local row=$1 v=$2 r=$3; local c=$(prep $row $v $r); local t0=$(date +%s.%N)
     (cd $c && srun --ntasks=$NP --cpu-bind=cores --kill-on-bad-exit=1 --job-name=${row}_${v}_r$r advectorVoF $par > log.advectorVoF 2>&1); local rc=$?
     local t1=$(date +%s.%N); metrics $c
@@ -112,7 +117,7 @@ EOF
     if [ $r -eq 1 ]; then
       [ $DOHEX -eq 1 ] && for v in piecesHex hybridHex; do runone ring $v $r; done
       if [ $DOEXACT -eq 1 ]; then
-        for v in pieces joint hybrid; do runone exact $v $r; done
+        for v in $v1 $v2 $v3; do runone exact $v $r; done
         [ $DOHEX -eq 1 ] && for v in piecesHex hybridHex; do runone exact $v $r; done
       fi
     fi
