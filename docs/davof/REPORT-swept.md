@@ -4266,3 +4266,172 @@ The next gains (not implemented; the expected figures from this profile):
    it (~ 7 %), round-off against the clip.
 With 1 to 4 the serial N 64 step would reach ~ 0.38 s (1.8 times
 plicRDF's); the parts shared with plicRDF (0.175 s) then dominate.
+
+## Round 4: the five remaining gains (2026-11-05)
+
+Tomislav's instruction (via the coordinating session): the five gains named
+after round 3b, each verified on the eight cases (the rotation N 32 / 64,
+the plane N 40 exact normal, the diagonal N 32, the plane gate N 20 / 40
+both arms; 20 steps at writePrecision 17), bit for bit where possible,
+round-off stated per case otherwise, opt-in keys for anything not bit for
+bit, three timed repetitions. Baseline: a11ebc1 with B.2 and B.3 on
+(refB23, job 55972899 for the identity; the 200-step timing of that
+configuration 0.4531 s/step, the full-turn profile 0.4586). Fork commits
+(tmaric, nothing merged): c884540 (the keys sweptNoFluxLayer,
+sweptAxisPlanes, sweptPointVelocityLazy, sweptTetCache; davofVelocityAt.H),
+81dcc8a (sweptSliverClosedForm), fbbfaf9 (gain 1 made exact). Jobs:
+55973440 (the first form of gain 1), 55973713-18 (the cumulative cycles
+g1b, g12, g123, g1234, g12345, g12345stats), 55973719-22 (the round-4
+profiles).
+
+### The gains, each with its identity and its step (rotation N 64 serial, OpenFOAM Co 1, 200 steps x 3, the median of the per-step mean)
+
+| gain | key | what | identity on the eight cases | s/step (min .. max) | against the baseline 0.4531 |
+|---|---|---|---|---|---|
+| 1 | sweptNoFluxLayer | a face without a flux: a ring cell across the face plane skipped before its planes and state when its own face in that plane separates it (the pre-test's test on that one plane, B.3's rule) | bit for bit (fbbfaf9, job 55973713); the first form (c884540, decided from the plane through x_f) moved the plane gate's oblique arm by 3.4e-14 / 6.2e-13 in alpha, 1.3e-13 / 2.1e-12 in alphaf (N 20 / 40) and gave 0.4398 | 0.4534 (0.4518 .. 0.4535) | 1.00: no gain |
+| 2 | sweptAxisPlanes | the signed distance to an axis-aligned plane as the one coordinate difference (the clips, the triangle distances, the pre-test, the coplanar exception, the covered-vertex test, the fast path) | bit for bit (55973714): the two zero products and their sums vanish exactly, the product by +-1 is exact | 0.4408 (0.4399 .. 0.4433) | 0.973 |
+| 3 | sweptPointVelocityLazy | the point velocity per point on first use: an interior point by the library's inverse-distance weights and sums repeated in order, a point of any patch by the whole-mesh field once; 7063 of 545025 points evaluated per step at N 64 (8182 with gain 4) | bit for bit (55973715), the plane gate's patch points included | 0.4406 (0.4403 .. 0.4421) | 0.972 (alone no gain: interpolationCellPoint still interpolates the whole mesh for its own lookup) |
+| 4 | sweptTetCache | the trace's lookup on the cell's tetrahedra cached per cell (davofVelocityAt.H: cellTetIndices once per cell as point triples, cellPointWeight::findTetrahedron's search and interpolationCellPoint::interpolate's weights repeated operation by operation); no interpolationCellPoint on the swept path, so with gain 3 no whole-mesh point interpolation at all | bit for bit (55973716) | 0.3908 (0.3907 .. 0.3923) | 0.862 |
+| 5 | sweptSliverClosedForm | the piece of a touched ring cell without a PLIC plane that one plane alone cuts, in closed form (sweptPieceOnePlane: triNegativePolygon per triangle, the volume (1/3) sum (x_T - x0) . a_T about the plane's point x0 where the cap's moment vanishes; the contact rule and the remnant filter kept); 6114 of 23982 pieces per step take it | round-off (55973717): max dalpha 7.4e-13 (R32), 1.1e-9 (R64), 3.3e-12 (D), 4.8e-14 (P20o), 5.0e-13 (P40o), 0 on the normal arms (P, P20n, P40n: no such piece); max dalphaf 7.8e-12, 4.3e-9, 2.7e-10, 1.5e-13, 1.5e-12 | 0.3823 (0.3814 .. 0.3827) | 0.844 |
+
+Gain 1: the cells it spares are exactly those B.3 already skips at their
+first plane; the 2.9 % of the first form came from the cells the pre-test
+clips for a round-off sliver (their own face centre's distances differ from
+the plane through x_f by 1e-17), which no exact rule can skip.
+Gain 5's construction: the piece inside the half-space H of the plane is
+Omega_f cut by H when every other plane of the cell has no vertex outside
+(the pre-test now counts, per touched cell, the planes with a vertex
+outside); its boundary is the triangles' parts inside H plus the cap in the
+plane, so V = (1/3) sum over the parts of (x_T - x0) . a_T with x0 on the
+plane (the divergence theorem on the piece's closed boundary; the cap's
+term (x_cap - x0) . a_cap vanishes), and the parts come from the one-plane
+closed form of the one-donor clip (triNegativePolygon). No citation beyond
+that identity. Its error against the clip: the fields above (the clip
+computes the polygon by Sutherland-Hodgman and its area vector by Newell,
+the moments about the face centre with the cap solved); on the rotation
+N 64 the difference reaches 1.1e-9 in alpha after 20 steps, the
+rank-fallback amplification seen for B.2 and the trace cache's first form.
+
+Together (gains 2 to 5 with B.2 and B.3): 0.4531 -> 0.3823 s/step (0.844
+of the baseline; 0.789 of the 200-step reference-setting figure 0.4847).
+
+### The round-4 profile (the seven keys on: B.2, B.3, gains 1 to 5)
+
+The full-turn profiles of the rounds before repeated for fbbfaf9 (serial,
+job 55973719) and c5c00c5 (8 and 64 ranks: c5c00c5 adds the parallel rule
+of gain 3 only, below), the same cases, flags, events and readers
+(prof/runs4/{serial,par8,par64}/<run>/hpctoolkit-database, the analyses
+prof/an5/ with rules_swept5.py; csv/hp4_*.csv against 407f969, csv/hp4b_*.csv
+against a11ebc1 + B). The class statistics with every key on (job
+55973718, N 64, one turn, 0.3954 s/step with the timers): the sweeping
+faces' volume clip 0.0681 -> 0.0529 (gain 5), their trace 0.0528 -> 0.0301
+(gains 3 and 4), the no-flux faces' trace 0.0173 -> 0.0115, the four timed
+parts 0.241 -> 0.167 s/step.
+
+(a) The serial breakdown per step, N = 64, one turn (697 steps):
+
+| category | 407f969 s/step | % | a11ebc1 + B | after (fbbfaf9 + B + gains) s/step | % | after / 407f969 |
+|---|---|---|---|---|---|---|
+| pieces: the clip by the cell planes and the PLIC plane (after: the one-plane closed form included) | 0.0660 | 13.4 | 0.0662 | 0.0459 | 11.3 | 0.70 |
+| pieces: the cap closure and the volume | 0.0012 | 0.2 | 0.0010 | 0.0006 | 0.2 | 0.50 |
+| face update: the pre-image fan clipped (the faces without a flux only, after B.2) | 0.0353 | 7.2 | 0.0137 | 0.0138 | 3.4 | 0.39 |
+| swept cells: the ring search | 0.0127 | 2.6 | 0.0089 | 0.0083 | 2.0 | 0.65 |
+| swept cells: the cell planes, state, wisp rule and the pre-test | 0.0291 + 0.0372 | 13.5 | 0.0543 | 0.0616 | 15.2 | 0.93 |
+| swept cells: the shortcut, the check, the fast-path test (off) | 0.0013 | 0.3 | 0.0002 | 0.0003 | 0.1 | - |
+| swept cells: the pre-image fan and the rest | 0.0122 | 2.5 | 0.0122 | 0.0125 | 3.1 | 1.02 |
+| trace: the velocity at the traced points (findTetrahedron / the cached tetrahedra) | 0.0302 | 6.2 | 0.0293 | 0.0100 | 2.5 | 0.33 |
+| trace: the cell search (ring, octree) | 0.0153 | 3.1 | 0.0146 | 0.0146 | 3.6 | 0.95 |
+| trace: the midpoint trace, the triangle list | 0.0107 | 2.2 | 0.0111 | 0.0107 | 2.6 | 1.00 |
+| the point velocity (volPointInterpolation of U / the lazy points) | 0.0223 | 4.5 | 0.0223 | 0.0019 | 0.5 | 0.09 |
+| curvedFlux: the band, the wisp surfaces, the exchanges, the face loop | 0.0226 | 4.6 | 0.0234 | 0.0219 | 5.4 | 0.97 |
+| the remote exchange (serial: the stencil setup) | 0.0031 | 0.6 | 0.0030 | 0.0031 | 0.8 | 1.00 |
+| the surface build (fit, anchor, volume rule) | 0.0155 | 3.2 | 0.0158 | 0.0155 | 3.8 | 1.00 |
+| the reconstruction (davof, ring normal, positioning) | 0.0299 | 6.1 | 0.0301 | 0.0299 | 7.4 | 1.00 |
+| the bounding | 0.0113 | 2.3 | 0.0112 | 0.0109 | 2.7 | 0.96 |
+| isoAdvector: timeIntegratedFlux | 0.0150 | 3.0 | 0.0149 | 0.0157 | 3.9 | 1.05 |
+| isoAdvector: advect, the rest (alpha update, counters) | 0.0291 | 5.9 | 0.0290 | 0.0290 | 7.2 | 1.00 |
+| setFlow | 0.0309 | 6.3 | 0.0305 | 0.0316 | 7.8 | 1.02 |
+| the Courant number, other function objects | 0.0016 | 0.3 | 0.0016 | 0.0016 | 0.4 | 1.00 |
+| I/O and start-up | 0.0218 | 4.4 | 0.0218 | 0.0199 | 4.9 | 0.91 |
+| the solver loop (main) | 0.0355 | 7.2 | 0.0351 | 0.0350 | 8.7 | 0.99 |
+| total | 0.4907 | 100 | 0.4586 | 0.4048 | 100 | 0.82 |
+
+- The step 0.4907 -> 0.4586 -> 0.4048 s (the 200-step timings 0.4847 ->
+  0.4531 -> 0.3823); N 32 0.0989 -> 0.0921 -> 0.0764 (28.6 s against 35.2
+  for the turn). The ratio to plicRDF's serial step (0.2090): 1.94 (2.19
+  after round 3b, 2.35 at 407f969, 5.3 in the first profile).
+- What remains specific to the swept flux: 0.229 s/step (57 % of the step):
+  the first pass (cell planes, states, the pre-test) 0.062, the volume
+  clip 0.046, the trace 0.035, the band and face loop 0.022, the surface
+  build 0.016, the face update of the no-flux faces 0.014, the fan and the
+  rest 0.013, the ring search 0.008, the point velocity 0.002, the
+  exchange setup 0.003, the shared parts of isoAdvector that only the
+  swept path reaches (defaultAreaFractions, in timeIntegratedFlux) ~ 0.012.
+  What is shared with plicRDF: 0.176 s/step (43 %): the reconstruction
+  0.030 (plicRDF's 0.068), the bounding 0.011, the alpha update 0.029,
+  setFlow 0.032, the Courant number, I/O 0.020, the solver loop 0.035 =
+  84 % of plicRDF's whole step (0.209).
+- The pre-test's first pass is now the largest swept item (15 %): the
+  states of 2.04 (sweeping) and 4.09 (no-flux) touched cells per face with
+  the plane of every interface cell (planeOf) rebuilt per face that
+  touches it; a per-step cache of the ring cells' half-spaces and states
+  (built once per cell, read per face) is the next structural saving
+  (expected ~ 0.03 s/step, 7 %).
+
+(c) Parallel, the comparison's scotch decompositions (no balancing):
+
+| | N 64, 8 ranks, 407f969 | a11ebc1 + B | after (c5c00c5 + B + gains) | N 128, 64 ranks, 407f969 | a11ebc1 + B | after |
+|---|---|---|---|---|---|---|
+| step (CPUTIME per rank / steps; the wall clock) | 0.207 s (0.212) | 0.190 (0.194) | 0.171 s (0.176) | 0.508 s (0.519) | 0.471 (0.481) | 0.426 s (0.436) |
+| MPI library, share of all CPUTIME | 64.5 % | 63.2 % | 62.7 % | 84.6 % | 83.5 % | 83.3 % |
+| MPI per rank: mean / max / min | 93 / 123 / 27 s | 84 / 111 / 24 | 75 / 100 / 21 s | 603 / 674 / 332 s | 551 / 621 / 304 | 497 / 562 / 272 s |
+| compute per rank: max / mean (max/mean) | 113 / 49 (2.31) | 104 / 46 (2.25) | 94 / 42 (2.23) | 361 / 101 (3.59) | 337 / 100 (3.38) | 307 / 91 (3.35) |
+| the balanced step | 0.070 s | 0.066 | 0.061 s | 0.072 s | 0.071 | 0.065 s |
+| the ratio to plicRDF's step at the same ranks (0.0556 / 0.1395 s) | 3.8 | 3.5 | 3.2 | 3.7 | 3.4 | 3.1 |
+
+The busiest rank's compute fell by the serial factor again (113 -> 94 s at
+8 ranks, 361 -> 307 s at 64), the step by 10 % and 10 % against a11ebc1
++ B; the imbalance (2.23 and 3.35) sets the step as before. In parallel
+gain 3 computes the whole point field up front on every rank (c5c00c5: the
+patch-point interpolation is collective, and the lazy form deadlocked at 8
+ranks, job 55973720), so only gain 4's saving of the interpolationCellPoint
+interpolation reaches the parallel step from that pair.
+
+(d) The top exclusive hotspots after (serial, N = 64, one turn):
+
+| # | % | s | function (file:line; fork fbbfaf9) | kind |
+|---|---|---|---|---|
+| 1 | 5.6 | 15.8 | sweptFaceCellsFlux's own lines (the pre-test's loops, the cell planes and states) | algorithmic |
+| 2 | 3.7 | 10.4 | sweptPieceVolume's own lines (the per-triangle loop, the cap bookkeeping) | algorithmic |
+| 3 | 3.5 | 9.8 | __mempcpy (libc): the field assignments of the solver loop and setFlow | redundant copies, mesh-wide |
+| 4 | 3.4 | 9.5 | Foam::minusOp (ops.H:209): the subtractions of the general-plane distances (the PLIC planes) | algorithmic |
+| 5 | 3.2 | 9.0 | davof::halfSpace::dist (davofSweptPieces.H:139): the axis-aligned distances | algorithmic |
+| 6 | 2.8 | 7.8 | curvedFlux's own lines (the face loop) | algorithmic |
+| 7 | 2.2 | 6.1 | fvc::surfaceIntegrate (the alpha update) | mesh-wide |
+| 8 | 1.9 | 5.3 | surfaceInterpolationScheme::dotInterpolate (phi from U, setFlow) | mesh-wide |
+| 9 | 1.9 | 5.2 | davof::clipWith: the clip proper | algorithmic |
+| 10 | 1.8 | 5.1 | plusEqMagSqrOp2 + magSqr + mag (the edge lengths, the tolerances) | algorithmic |
+| 11 | 1.7 | 4.9 | Foam::Vector::cross: areaVector, the triangle normals | algorithmic |
+| 12 | 1.6 | 4.4 | setDefaultAreaFraction (isoAdvector: the faces without a plane) | shared, mesh-wide |
+
+Total exclusive 282.1 s; the allocation 8.2 s (2.9 %; 13.0 s before: the
+trace's tetrahedron lists are gone). findTetrahedron and
+volPointInterpolation have left the list (hotspots 4 and 7 of round 3b);
+the line table's largest entry is libOpenFOAM's Field multiply (5.8 %, the
+solver loop's field algebra).
+
+### Recommendation on the defaults
+
+Bit for bit and a gain: sweptAxisPlanes (-2.8 %), sweptTetCache with
+sweptPointVelocityLazy (-11 % together; the lazy key alone gains nothing
+and in parallel computes the whole field up front), sweptPreTestCoplanarSide
+(B.3, -4.6 %): these four should join the defaults; they reproduce 407f969
+bit for bit on the eight cases and change no number anywhere a plane is
+general (the axis test falls back to the dot product). Bit for bit without a
+gain: sweptNoFluxLayer and sweptDonorFastPath (B.1): leave off (code paths
+that add nothing on these meshes). Round-off: sweptFaceUpdateFromVolume
+(B.2, -3.3 %) and sweptSliverClosedForm (-2.2 %): opt-in by the rules; the
+differences are 1e-12 after 20 steps except the rotation N 64 (1e-9, the
+rank-fallback amplification), the same order as the trace cache's first
+form and the processor-boundary round-off of the parallel runs; Tomislav's
+call whether a change of that size may enter the defaults.
