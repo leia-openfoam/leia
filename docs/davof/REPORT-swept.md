@@ -3449,15 +3449,15 @@ Predictions:
   MPI share stays above 70 / 90 %.
 
 
-### MEASURED (2026-11-05, 00:37 to 02:41; one cell still running is marked)
+### MEASURED (2026-11-05, 00:37 to 06:30; every cell finished)
 
 Jobs: the main clone's build 55939665, the profiling build 55939666; the
 plane gate 55944952 (N 20 / 40 / 80) and 55940563 (N 160); the spin
 55944116; the parallel identity 55944115; the timed cells 55944119-30,
 55945423-24, and, one 30-minute job per repetition on separate i01 nodes,
 55946942-48 (Rot N 64 Co 0.2), 55946950-56 (Rot N 128 Co 1), 55946958 /
-55946960 (LineDiag N 128 Co 0.2); Rot N 128 Co 0.2 (55940570, four runs of
-about an hour on 64 ranks) RUNNING in deflt since 02:19; the profiles
+55946960 (LineDiag N 128 Co 0.2); Rot N 128 Co 0.2 55940570 (four runs of
+an hour on 64 ranks, in deflt from 02:19); the profiles
 55944117 (serial), 55944118 (8 ranks), 55946962 / 55946963 (64 ranks: the
 measurement, then hpcstruct + hpcprof). The cluster's deflt partition
 started no job of this set between 23:45 and 02:18; the cells that fit 30
@@ -3565,7 +3565,8 @@ cases); the mass is conserved to 1e-12 %.
 | | | exact | 1.7175e-4 (-2.0e-9) | 1.9290e-2 (-1.9e-9) | 6.2757e-4 (+3.1e-4) | 8.4615e-4 (+3.6e-2) | -7.7e-13 / 1.0e-10 | 720.4 | 1895.0 | 2.63 | 0.20 |
 | rotation N 64, 8 ranks | 1 | ring | 1.9738e-4 (-1.3e-7) | 2.1912e-2 (-1.4e-7) | 7.1023e-4 (+1.4e-3) | 2.2567e-2 (+2.8e-3) | -5.3e-13 / 6.1e-12 | 145.3 [144.7, 145.5] | 380.0 | 2.62 | 0.20 |
 | | | exact | 1.2085e-4 (-3.6e-7) | 1.3792e-2 (-3.5e-7) | 4.4486e-4 (-5.1e-7) | 7.5390e-4 (-1.6e-6) | -5.6e-12 / 5.3e-12 | 147.9 | 383.7 | 2.60 | 0.20 |
-| rotation N 128, 64 ranks | 0.2 | | RUNNING (55940570, four runs of about an hour) | | | | | | 9370.9 | | |
+| rotation N 128, 64 ranks | 0.2 | ring | 8.0418e-5 (+6.1e-10) | 1.8297e-2 (+5.6e-10) | 2.8343e-4 (+1.8e-3) | 1.1299e-2 (+2.7e-3) | -1.8e-13 / 7.4e-10 | 3541.6 [3538.6, 3551.4] | 9370.9 | 2.65 | 0.47 |
+| | | exact | 5.2188e-5 (-3.8e-10) | 1.1923e-2 (+1.3e-10) | 1.8746e-4 (+1.2e-4) | 2.6495e-4 (+3.7e-2) | -7.9e-14 / 5.1e-10 | 3622.8 | 9473.1 | 2.61 | 0.47 |
 | rotation N 128, 64 ranks | 1 | ring | 5.3417e-5 (-5.2e-8) | 1.2274e-2 (-3.2e-8) | 1.8942e-4 (+1.7e-3) | 9.9009e-3 (+2.1e-3) | -5.4e-11 / 7.2e-11 | 727.8 [717.6, 851.4] | 1882.7 | 2.59 | 0.47 |
 | | | exact | 3.6197e-5 (-1.1e-7) | 8.3619e-3 (-6.9e-8) | 1.3028e-4 (-3.0e-7) | 2.3922e-4 (-5.1e-6) | -6.6e-11 / 1.4e-10 | 739.1 | 1905.8 | 2.58 | 0.48 |
 
@@ -3602,7 +3603,7 @@ within 1e-11 in alpha over the 20 steps, 50 to 2500 times below the bands
 of the default family (6e-10 / 2.5e-8), and the np 16 step-20 discontinuity
 of P-P2 does not return (no rank fallback on any rank).
 
-#### Verdicts (the rotation N 128 at Co 0.2 pending)
+#### Verdicts
 
 - D-1 HELD for the plane gate (32 of 32 verdicts equal, the maxima
   numbers of the same size), for E_shape and L1(alphaf) within 1e-8
@@ -3626,9 +3627,10 @@ of P-P2 does not return (no rank fallback on any rank).
   finished cell, the spin's min alpha 0; the excess <= 2.9e-11 at OpenFOAM
   Co 1 except the rotation N 128 exact (1.4e-10, the comparison's 1.3e-10),
   and 6.2e-10 (ring) / 1.0e-10 (exact) on the rotation N 64 at Co 0.2
-  (the comparison's 6.0e-10 / 2.3e-10). FALSIFIED as written (the band
-  1.5e-10 was taken from the Co 1 cells); the values equal the opt-in
-  runs' within round-off.
+  (the comparison's 6.0e-10 / 2.3e-10), 7.4e-10 / 5.1e-10 at N 128 (the
+  comparison's 7.5e-10 / 5.1e-10). FALSIFIED as written (the band 1.5e-10
+  was taken from the Co 1 cells); the values equal the opt-in runs' within
+  round-off.
 - D-3 FALSIFIED on both sides. The ratio of the comparison's wall clock to
   the rerun's (the ring row, medians) is 1.73 to 2.72: below 2.0 in the
   cells whose runs last 4 to 11 s (the x-line at Co 1 at N 32 / 64, the
@@ -3636,11 +3638,11 @@ of P-P2 does not return (no rank fallback on any rank).
   mesh read and the end write are the same seconds on both sides), 2.1 to
   2.4 on the x-line otherwise, and 2.6 to 2.7 on the rotation and the
   diagonal (the rotation N 32: 2.67 / 2.60; N 64 on 8 ranks: 2.66 / 2.62;
-  N 128 at Co 1 on 64 ranks: 2.59; the diagonal N 64 at Co 0.2: 2.72, N
+  N 128 on 64 ranks: 2.65 / 2.59; the diagonal N 64 at Co 0.2: 2.72, N
   128: 2.82 / 2.64). Per step: the rotation N 64 on 8 ranks 0.52 -> 0.20 s
   (2.6 x; the efficiency work's scotch cell gave 0.545 -> 0.236 with
-  touching + trace cache alone), N 128 on 64 ranks 1.21 -> 0.47 s, N 32
-  serial 0.25 -> 0.09 s. The exact row's wall clock is within 7 % of the
+  touching + trace cache alone), N 128 on 64 ranks 1.21 -> 0.47 s (one
+  turn 9371 -> 3542 s), N 32 serial 0.25 -> 0.09 s. The exact row's wall clock is within 7 % of the
   ring row's, as in the comparison.
 - D-4 HELD (above).
 - D-5: the serial N = 64 step 0.491 s (predicted 0.50 to 0.55: below the
@@ -3806,7 +3808,49 @@ the mesh-wide parts shared with plicRDF at 36 %; the 8-rank step 0.21 s and
 the 64-rank step 0.51 s with the imbalance eased to 2.3 and 3.6 (the MPI
 wait 65 and 85 %). The limitation: the end-state L1(n) of the exact row is
 up to 43 % above the comparison's (the planes of the corner slivers under
-ccs with the anchor skipped), the ring row's up to 1.5 %; the rotation N
-128 at Co 0.2 on 64 ranks is still running (job 55940570; python3
-prof/ref_an.py rewrites csv/ref_setting.csv and prints its row).
+ccs with the anchor skipped), the ring row's up to 1.5 %.
 
+
+## Profile round 3: the flux against isoAdvector's, the two structural savings, the flux isolated (2026-11-05)
+
+Tomislav (2026-11-05, via the coordinating session): more speed-up from the
+closed forms, more HPCToolkit benchmarking of the swept-flux advection; the
+decomposition deferred. Reference: the reference setting 407f969 and its
+profile (prof/runs2). Three parts: A, the flux against isoAdvector's
+function by function with in-code counters per face class; B, the two
+structural savings the profile points at (the donor fast path, the face
+update from the volume clip), each verified bit for bit on the eight cases;
+C, the flux accuracy isolated (the two loops with the same exact normal).
+
+### C: the flux accuracy isolated (PRE-REGISTERED 2026-11-05, 11:30, before the runs)
+
+The preprint's plane-clipped isoAdvector loop (the rows davof-exact and
+davof-ringArea: fluxIntegration prism, clippingSurface none, fitAnchor
+faces; the reconstruction at the reference setting, ccs with the anchor
+skipped, as the swept loop's) on the comparison's cells: the rotation (one
+turn) and the sphere along the x-z diagonal (END 0.45), N 32 / 64 / 128 on
+1 / 8 / 64 ranks, OpenFOAM Co 1 and 0.2, three repetitions, from the
+comparison's rendered cases with the three keys edited and the
+reference-setting keys stripped (workflow/scripts/davof_prof/ref-run.sbatch,
+MODE cmpC); scored as the comparison (L1(x), E_shape, L1(alphaf), L1(n),
+the bounds, the mass, the wall clock at equal ranks). The swept rows are the
+reference rerun's (the exact row one repetition, the ring row three) and
+plicRDF's the comparison's.
+- F-1 (the flux's share of the exact-normal advantage): at OpenFOAM Co 0.2
+  the plane-clipped loop with the exact normal has L1(x) and E_shape within
+  10 % of the swept loop's on the rotation and the diagonal at every N, so
+  the flux's share of the exact-normal rows' advantage over plicRDF
+  ((L1(x)_plane-exact - L1(x)_swept-exact) / (L1(x)_plicRDF -
+  L1(x)_swept-exact)) is below 0.15: the normal carries the advantage (the
+  fair rows at OpenFOAM Co 0.126 had Ec within 4 % between the two loops
+  with the ring normal). FALSIFIED by a share above 0.15 in any cell.
+- F-2 (OpenFOAM Co 1): the plane-clipped loop (isoAdvector's flux with the
+  exact plane) loses boundedness on the diagonal in parallel at N 64 / 128
+  (min alpha below -1e-6) as plicRDF + isoAdvector did (C-4), and its L1(x)
+  there exceeds the swept loop's by more than 2 x; on the rotation it stays
+  bounded (min alpha >= -1e-9) and within 20 % of the swept loop's L1(x).
+- F-3 (the ring-normal rows at Co 1): the two loops with the ring normal
+  within 10 % in L1(x) and E_shape on the rotation at Co 0.2 and 1; at Co 1
+  on the diagonal the plane-clipped loop unbounded in parallel as in F-2.
+- F-4 (the cost): the plane-clipped loop's wall clock at equal ranks 1.2 to
+  2 times plicRDF's, i.e. 1.3 to 2.2 times below the swept loop's.

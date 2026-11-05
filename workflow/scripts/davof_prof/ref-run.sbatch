@@ -102,6 +102,55 @@ EOF
   done; done
   sleep 5; sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps$SUF.txt; cat $T/sacct_steps$SUF.txt
   ;;
+cmpC)
+  # C (2026-11-05): the preprint's plane-clipped loop (fluxIntegration prism, clippingSurface none,
+  # fitAnchor faces: the rows davof-exact / davof-ringArea) on the comparison's cells, from the
+  # comparison's swept cases with the three keys edited and the reference-setting keys stripped;
+  # the rows prismExact and prismRing, REPS repetitions each; the swept rows are ref/cmp's
+  : ${FLOW:?} ${N:?} ${CO:?}
+  case $FLOW in Rot) END=1;; *) END=0.45;; esac
+  T=$W/ref/cmpC/${FLOW}_N${N}_co${CO}; rm -rf $T; mkdir -p $T
+  pick() { /usr/bin/python3 - "$S/sphereRotation3D_hexCmp${FLOW}SweptN$N" "$1" "$CO" <<'EOF'
+import json, glob, os, sys
+st, row, co = sys.argv[1], sys.argv[2], int(sys.argv[3])
+cs = []
+for c in sorted(glob.glob(st + "/sphereRotation3D_0*")):
+    if "." in os.path.basename(c): continue
+    t = json.load(open(c + "/case_params.json"))["tokens"]
+    if t["TPF_ROW"] == row: cs.append((float(t["TARGET_ADVECTIVE_CO"]), c))
+cs.sort(); print(cs[co][1])
+EOF
+  }
+  declare -A SRC; SRC[prismRing]=$(pick davof-planeSurf-ringArea); SRC[prismExact]=$(pick davof-planeSurf-exact)
+  for m in prismExact prismRing; do echo "source $m ${SRC[$m]}"; done
+  prep() { local m=$1 r=$2 c=$T/${1}_r$2; copy ${SRC[$m]} $c
+    sed -i -E 's/^(\s*)clippingSurface\s+plane;/\1clippingSurface none;/; s/^(\s*)fitAnchor\s+volume;/\1fitAnchor faces;/; s/^(\s*)fluxIntegration\s+sweptFaceCells;/\1fluxIntegration prism;/' $c/system/fvSolution
+    local dt=$(foamDictionary -entry deltaT -value $c/system/controlDict); local n=$(python3 -c "print(max(1, round($END/$dt)))")
+    foamDictionary -entry endTime -set "$(python3 -c "print(repr($n*$dt))")" $c/system/controlDict > /dev/null
+    foamDictionary -entry writeControl -set timeStep $c/system/controlDict > /dev/null
+    foamDictionary -entry writeInterval -set $n $c/system/controlDict > /dev/null; echo $c; }
+  csv=$T/timing.csv; echo "flow,N,np,co_index,method,rep,corr,steps,dt,end_time,clock_s,exec_s,wall_s,median_step_s,node" > $csv
+  par=""; [ $NP -gt 1 ] && par="-parallel"
+  for r in $(seq 1 $REPS); do for m in prismExact prismRing; do
+    c=$(prep $m $r); t0=$(date +%s.%N)
+    [ $r -eq 1 ] && echo "$m keys: $(grep -E '^\s*(fluxIntegration|clippingSurface|fitAnchor)\s' $c/system/fvSolution | tr -s ' ' | tr '\n' ' ')"
+    (cd $c && srun --ntasks=$NP --cpu-bind=cores --kill-on-bad-exit=1 --job-name=${m}_r$r advectorVoF $par > log.advectorVoF 2>&1); rc=$?
+    t1=$(date +%s.%N); metrics $c
+    /usr/bin/python3 - $c $m $r $rc $t0 $t1 "$FLOW" "$N" "$NP" "$CO" >> $csv <<'EOF'
+import sys, re, os, statistics
+c, m, r, rc, t0, t1, flow, N, np_, co = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), float(sys.argv[5]), float(sys.argv[6]), sys.argv[7], sys.argv[8], sys.argv[9], sys.argv[10]
+log = open(c + "/log.advectorVoF").read()
+ct = re.findall(r"ExecutionTime = (\S+) s\s+ClockTime = (\S+) s(?:\s+timeStepTime = (\S+) s)?", log)
+steps = len(re.findall(r"\nTime = ", log)); st = [float(x[2]) for x in ct if x[2]]
+cd = open(c + "/system/controlDict").read()
+dt = re.search(r"\ndeltaT\s+([^;]+);", cd).group(1); et = re.search(r"\nendTime\s+([^;]+);", cd).group(1)
+print(",".join(str(x) for x in (flow, N, np_, co, m, r, "-", steps, dt, et, ct[-1][1] if ct else "", ct[-1][0] if ct else "", "%.2f" % (t1 - t0),
+      "%.4f" % statistics.median(st) if st else "", os.uname().nodename)) + ("" if rc == 0 else ",rc=%d" % rc))
+EOF
+    echo "$m r$r rc=$rc wall $(python3 -c "print('%.1f' % ($t1-$t0))") s"
+  done; done
+  sleep 5; sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps.txt; cat $T/sacct_steps.txt
+  ;;
 par)
   T=$W/ref/par; rm -rf $T; mkdir -p $T
   for k in 1 2 4 8 16; do for i in 0 1; do

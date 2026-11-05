@@ -134,8 +134,8 @@ EOF
   done
 fi
 [ -n "$VERIFY_ONLY" ] && { echo "OPT-CYCLE-DONE $TAG (verify only) $(date)"; exit 0; }
-# ---- 3. timing
-src=$(pick $S/sphereRotation3D_hexCmpRotSweptN64 davof-planeSurf-ringArea 1)
+# ---- 3. timing (TN: the N of the timing case, default 64)
+src=$(pick $S/sphereRotation3D_hexCmpRotSweptN${TN:-64} davof-planeSurf-ringArea 1)
 for r in $(seq 1 $REPS); do
   prep $src $T/timing/r$r $STEPS
   t0=$(date +%s.%N); (cd $T/timing/r$r && advectorVoF > log.advectorVoF 2>&1); rc=$?; t1=$(date +%s.%N)
