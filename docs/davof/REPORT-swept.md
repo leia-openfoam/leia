@@ -3810,3 +3810,101 @@ ccs with the anchor skipped), the ring row's up to 1.5 %; the rotation N
 128 at Co 0.2 on 64 ranks is still running (job 55940570; python3
 prof/ref_an.py rewrites csv/ref_setting.csv and prints its row).
 
+## The joint clipping function of the swept-face flux (2026-11-04/05, branch davof-swept-joint)
+
+Tomislav's question (2026-11-04): gather the PLIC plane equations that
+intersect the swept volume, take their minimum as one joint function and
+clip by it instead of by all faces of the stencil. The prototype on the
+solver's dumped swept volumes (fork key sweptJointDumpSteps, leia
+workflow/scripts/davof_joint, the note docs/davof/davof-swept-joint,
+untracked; the PDF in the proposal's _build) measured, against the exact
+sphere, on sixteen dumps (N 32 / 64, OpenFOAM Co 0.2 / 1, ring / exact
+normal, steps 1 and the quarter turn): the per-face L1 of the joint minimum
+0.94 to 1.00 of the pieces' (the own secant is the minimum inside its cell
+on a convex body, a neighbour's secant trims the own secant's spurious
+liquid near the cell's edges); at most three caps on 99.93 to 100 % of the
+faces; 12 to 22 times fewer triangle-plane clips than the pre-tested pieces;
+the discontinuity of the planes costs nothing on a convex body; the cells
+without a plane (an empty cell above the band, a wisp without a matched
+plane) are wetted inside every extended half-space and overdraw 1 to 10
+donors per quarter-turn step by 2.9e-5 to 1.7e-3 V_c beyond the pieces'
+own overdraw (the pieces themselves overdraw up to 6.7e-3 V_c at Co 1 by
+the overlap of neighbouring swept volumes, which the bounding removes).
+Tomislav (2026-11-05): pursue it in the fork, with the guards measured.
+
+### What was built (fork davof-swept-joint df125bb1, aa0f29d9 on 407f969)
+
+- sweptClip pieces (default, the code before) | joint | hybrid. joint: the
+  closed list after the pyramid clipped in turn by the PLIC planes of the
+  touched interface cells (the pre-test's touched set; a wisp's matched
+  plane counts): the intersection (the minimum) where every plane pair
+  opens toward the liquid, (n_j - n_i).(x0_j - x0_i) >= 0 with n out of
+  the liquid; the union (the maximum, the complement of the intersection
+  of the complements) where every pair closes; a saddle, no plane, more
+  than three caps or a rank deficiency fall back to the pieces (counted);
+  the caps from the pieces' closure; the face fraction from the same clip
+  of the pre-image fan; the cell states of full and empty cells NOT
+  enforced (the single clip), the solver's bounding acts afterwards.
+  hybrid: a swept volume touching the donor alone takes the donor's plane
+  alone (one plane clip, counted); otherwise the donor's piece by its own
+  plane and every other touched piece by its state (empty: no clip) or,
+  an interface cell with two or more planes, by the joint minimum
+  (maximum) inside the piece: no overdraw beyond the pieces' by
+  construction.
+- sweptHexClip (default false): the cell-plane clip as one coordinate
+  difference times the normal's component where every face area vector of
+  the mesh has exactly two zero components (checked once over all ranks):
+  bit for bit the dot product (exact zeros, 0 + 0 + x = x). The cap
+  bookkeeping of sweptPieceVolume holds 13 planes (7 before).
+- Per step: the half-space clips (davof::clipCount, every clipWith call),
+  the faces by path of joint / hybrid, the state before the bounding (min,
+  max, the cells out of [0, 1] by 1e-10) and the bounding passes that
+  corrected (isoAdvectionTemplates.C; printed for every rule).
+- leia workflow/scripts/davof_joint/joint-run.sbatch (the runs: the
+  reference rerun's cases with the thirteen keys deleted and the two keys
+  written, the fields at precision 17, the hex check by cmp of alpha.water)
+  and joint_an.py (the scoring, csv/joint_*.csv, the note's tables).
+
+### The tests and the rule (PRE-REGISTERED 2026-11-05, 11:30, before the submission)
+
+The variants pieces, joint, hybrid, piecesHex, hybridHex on:
+- the plane gate: planeTranslation3D_hexSweptWispM9Ccs2 at N 20 / 40,
+  target Co 0.2 / 0.95, both arms, ring and exact (16 cases, serial);
+- the rotation and the diagonal at N 32 (1 rank) and 64 (8 ranks), OpenFOAM
+  Co 1 and 0.2, ring and exact: the ring row three repetitions of pieces /
+  joint / hybrid in a rotated order on one exclusive i01 node per cell, the
+  hex variants and the exact row once; N 128 on 64 ranks at Co 1 where the
+  cell fits (ring, pieces / joint / hybrid once).
+The rule: a variant replaces the pieces as a candidate default if it is
+bounded to 1e-10 BEFORE the bounding step (min alpha >= -1e-10, excess <=
+1e-10 on every step), within 1.05 of the pieces' end errors (E_shape,
+L1(alphaf), L1(x), L1(n)) and at least 1.5 x faster per step (the median
+timeStepTime); the pure joint is reported with its post-bounding
+boundedness whatever the rule says.
+Predictions:
+- J-1 (the plane gate): joint and hybrid pass exactly the cases the pieces
+  pass (the reference rerun: the normal arm at Co 0.95 fails at N 20 ring
+  and N 40 both rows, the growth (iii)-a; all else passes), run maxima of
+  L1(alphaf) and L1(n) below 1e-11 on them: on a plane every plane of P
+  coincides and the joint clip is the one-plane clip. FALSIFIED by a case
+  the pieces pass and joint or hybrid fails.
+- J-2 (the hex clip): alpha.water of pieces and piecesHex, hybrid and
+  hybridHex identical byte for byte at the end time on every rank; the
+  step within 3 % of the variant without it. FALSIFIED by a differing byte.
+- J-3 (accuracy): joint and hybrid within -6 to +2 % of the pieces' E_shape,
+  L1(alphaf), L1(x) on every cell; L1(n) within 5 %.
+- J-4 (boundedness): pieces and hybrid bounded before the bounding to 1e-10
+  at Co 0.2, not at Co 1 (the overlap of neighbouring swept volumes, 1e-3
+  V_c in the prototype); joint not at either Co (the cells without a
+  plane), the bounding takes it to the reference's post-bounding level
+  (min alpha >= -1e-10, excess <= 1e-9) and acts on more steps than under
+  the pieces (at Co 0.2 most steps against few). FALSIFIED by a joint run
+  left below -1e-9 after the bounding, or by a hybrid run less bounded
+  before the bounding than the pieces beyond round-off.
+- J-5 (cost): the half-space clips per step fall by 8 to 15 x under joint
+  and by 0 to 20 % under hybrid; the serial step falls by at most 1.25 x
+  under joint (the two clipping loops are 0.101 of the 0.491 s reference
+  step; no clipping rule can reach 1.5 x) and changes by less than 5 %
+  under hybrid; the wall clock at 8 ranks follows the step. The rule's
+  speed clause fails for every variant: predicted, not a defect.
+
