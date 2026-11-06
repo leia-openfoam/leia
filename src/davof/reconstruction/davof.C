@@ -26,6 +26,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "davof.H"
+#include "emptyPolyPatch.H"
 #include "davofInit.H"
 #include "davofCcsPositioning.H"
 #include "zoneDistribute.H"
@@ -225,6 +226,8 @@ void Foam::reconstruction::davof::updateHasValue()
     // whose fvsPatchField has the patch size (empty patches have none).
     hasValue_.resize(mesh_.nFaces());
     hasValue_ = false;
+    emptyFace_.resize(mesh_.nFaces());
+    emptyFace_ = false;
     for (label facei = 0; facei < mesh_.nInternalFaces(); ++facei)
     {
         hasValue_[facei] = true;
@@ -238,6 +241,13 @@ void Foam::reconstruction::davof::updateHasValue()
             forAll(pp, i)
             {
                 hasValue_[pp.start() + i] = true;
+            }
+        }
+        else if (isA<emptyPolyPatch>(pp))
+        {
+            forAll(pp, i)
+            {
+                emptyFace_[pp.start() + i] = true;
             }
         }
     }
@@ -432,6 +442,7 @@ Foam::reconstruction::davof::davof
     wetVecOwnPtr_(readWetVecIfAbsent(alpha1, faceState_)),
     wetVecPtr_(nullptr),
     hasValue_(),
+    emptyFace_(),
     wetFacesPtr_(nullptr),
     wetFacesNFaces_(-1),
     touchedCell_(),
@@ -720,13 +731,19 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
         scalar faceMoment = 0;
         for (const label facei : sortedFaces)
         {
-            if (!hasValue_[facei]) continue;
-            const scalar af = faceFraction(facei);
+            // A face of an empty patch carries no value (the one-cell-thick
+            // mesh of the 2D tests): its cross-section is the cell's, so
+            // its fraction is alpha_c and its term closes the Gauss sum
+            // (the fork's davof-isoAdvector 3ff7ac7, 2026-11-07; a closed
+            // cell has no such face and keeps its sum bit for bit)
+            const bool empty = !hasValue_[facei];
+            if (empty && !emptyFace_[facei]) continue;
+            const scalar af = empty ? alpha1_[celli] : faceFraction(facei);
             if (af == 0) continue;
             // faceState vector: (x_f - x_c).a_f, the exact first moment of
             // the fan face (every fan triangle contains x_f)
             const scalar term =
-                wetVecPtr_
+                (wetVecPtr_ && !empty)
               ? ((Cf[facei] - C[celli]) & faceWettedArea(facei))
               : af*((Cf[facei] - C[celli]) & Sf[facei]);
             if (own[facei] == celli)

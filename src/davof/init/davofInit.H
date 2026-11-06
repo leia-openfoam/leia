@@ -219,6 +219,15 @@ public:
         //  hexahedra; FatalError on any other cell
         void exactSphere(volScalarField& alpha, surfaceScalarField& alphaf);
 
+        //- The exact state of the cylinder (origin, direction, radius; the
+        //  axis along a coordinate axis) on axis-aligned hexahedra: the
+        //  faces along the axis cut by the disc in closed form, the faces
+        //  across it by the band of the chord, the cells by the disc on the
+        //  cross-section rectangle; FatalError on any other cell. The 2D
+        //  disc on a one-cell-thick mesh (the fork's davof-isoAdvector
+        //  b467390, 2026-11-07, taken over into leia the same day).
+        void exactCylinder(volScalarField& alpha, surfaceScalarField& alphaf);
+
         //- Interface-cell threshold on |m_c|: wispTol V_c^(2/3)
         static scalar wispThreshold
         (

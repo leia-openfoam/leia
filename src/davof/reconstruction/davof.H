@@ -278,6 +278,12 @@ class davof
         //  built once per mesh (updateHasValue)
         boolList hasValue_;
 
+        //- The faces of empty patches (no value; the cross-section of the
+        //  one-cell-thick mesh of the 2D tests is the cell's, so the
+        //  explicit plane position takes alpha_c there); built with
+        //  hasValue_ (the fork's davof-isoAdvector 3ff7ac7, 2026-11-07)
+        boolList emptyFace_;
+
         //- The faces with alpha_f != 0 after the last transport step, in
         //  ascending face order (isoAdvection keeps the list and hands it
         //  over, setWetFaces); nullptr, or built for another face count,

@@ -32,7 +32,9 @@
 values
 {
     solver (advectorVoF);
-    TPF_APPLICATION ( advectorVoF );
+    // TPF_APPLICATION retired 2026-11-07: the application, the advection scheme and the
+    // function-object library come from the config's solver (DAVOF_APP, DAVOF_ADVECTION_SCHEME,
+    // DAVOF_FO_LIBS; materialize.py)
     N_CELLS ( 32 64 128 );
     TARGET_ADVECTIVE_CO ( 0.2 0.5 1 );
     // the rows of the verification (tpf_rows.py): plicRDF (vofCutCell, the

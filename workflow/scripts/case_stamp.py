@@ -270,6 +270,12 @@ def library_closure(app_path):
     return libs
 
 
+def app_names(command):
+    """The application names of a setfields command ("initDavofFields && initVortex2D",
+    "leiaSetFields -alphaName alpha.water"): the words that are not options or operators."""
+    return [w for w in re.split(r"[\s;&|]+", command or "") if w and not w.startswith("-") and w not in ("&&", "||", ";")]
+
+
 def binary_stamp(apps):
     """{app: {path, sha256, libs}} for the named applications (the solver, the initialiser)."""
     out = {}
@@ -327,7 +333,7 @@ def stamp_id(trigger):
 def current_stamp(render, spec, apps=None):
     """The whole stamp of a case from its render stamp and the study's solve specification
     (solver, setfields_app, setfields_args, solver_cmd, post_solve, mesh_cmd)."""
-    apps = apps or [spec.get("solver", ""), spec.get("setfields_app", "")]
+    apps = apps or [spec.get("solver", "")] + app_names(spec.get("setfields_app", ""))
     binaries = binary_stamp(apps)
     trigger = {
         "render": {k: render[k] for k in ("dicts", "mesh", "np", "mode", "meshKind")},
@@ -601,7 +607,7 @@ def main(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("check"); c.add_argument("case"); c.add_argument("--csv", required=True)
-    w = sub.add_parser("write"); w.add_argument("case"); w.add_argument("--apps", nargs="+", required=True); w.add_argument("--rc", type=int, default=0)
+    w = sub.add_parser("write"); w.add_argument("case"); w.add_argument("--apps", nargs="+", required=True, help="application names or commands (a command's words are split)"); w.add_argument("--rc", type=int, default=0)
     a = sub.add_parser("archive"); a.add_argument("case"); a.add_argument("--solver", required=True); a.add_argument("--csv", required=True)
     r = sub.add_parser("report"); r.add_argument("study"); r.add_argument("--verbose", action="store_true")
     args = ap.parse_args(argv)
@@ -609,7 +615,7 @@ def main(argv):
     if args.cmd == "check":
         return cmd_check(args.case, args.csv)
     if args.cmd == "write":
-        return cmd_write(args.case, args.apps, args.rc)
+        return cmd_write(args.case, [n for a in args.apps for n in app_names(a)], args.rc)
     if args.cmd == "archive":
         return cmd_archive(args.case, args.solver, args.csv)
     return cmd_report(args.study, args.verbose)

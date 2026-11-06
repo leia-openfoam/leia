@@ -86,10 +86,17 @@ SETFIELDS_APP = config.get("setfields_app", "leiaSetFields")
 # The DAVOF advection studies (cases/davof) run on two routes selected by the solver
 # alone (docs/davof/PORT-DESIGN.md, 2026-11-06): advectorVoF, the TwoPhaseFlow fork's
 # benchmark solver (LEIA_TPF_DIR; the acceptance comparison only), or davofAdvectorFoam,
-# leia's own (libleiaDavof). The fork's initialisation app initDavofFields becomes
-# leia's davofInitFields on the leia route, so a config switches routes by one line.
-if SOLVER == "davofAdvectorFoam" and SETFIELDS_APP == "initDavofFields":
-    SETFIELDS_APP = "davofInitFields"
+# leia's own (libleiaDavof). The fork's initialisation apps become leia's on the leia
+# route (initDavofFields -> davofInitFields; the field initialisers of the shear cases,
+# taken over from the fork agent's davof-isoAdvector on 2026-11-07: initShearFlow3D ->
+# davofInitShearFlow3D, initVortex2D -> davofInitVortex2D), also inside a command such as
+# "initDavofFields && initVortex2D", so a config switches routes by one line.
+_LEIA_APPS = {"initDavofFields": "davofInitFields", "initShearFlow3D": "davofInitShearFlow3D",
+              "initVortex2D": "davofInitVortex2D"}
+if SOLVER == "davofAdvectorFoam":
+    import re as _re
+    SETFIELDS_APP = _re.sub(r"\b(" + "|".join(_LEIA_APPS) + r")\b",
+                            lambda m: _LEIA_APPS[m.group(1)], SETFIELDS_APP)
 
 # hexRefined | polyRefined: statically refined around the interface by the
 # drivers in workflow/scripts (leiaRefineHexMesh.py / leiaRefinePolyMesh.py),
@@ -363,7 +370,7 @@ if POST_SOLVE:
 # The stamp the result ran under (the binaries and the dictionaries hashed again now, in
 # the job's environment), stored as <case>/.leia_stamp.json; a diverged run is a result
 # and gets its stamp like any other (its rc is in the stamp and in .leia_launch).
-_solve.append(f"{_STAMP_PY} write . --apps {SOLVER} {SETFIELDS_APP} --rc $rc")
+_solve.append(f"{_STAMP_PY} write . --apps {SOLVER} '{SETFIELDS_APP}' --rc $rc")
 
 # THE PARSE-TIME PART OF THE STAMP. For every variation: the dictionaries rendered in
 # memory (materialize.py's rendering, token for token) and hashed, the binaries the

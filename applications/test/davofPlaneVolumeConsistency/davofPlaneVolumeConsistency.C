@@ -148,6 +148,7 @@ Description
 #include "fvCFD.H"
 #include "timeSelector.H"
 #include "davofInit.H"
+#include "emptyPolyPatch.H"
 #include "davofOrbit.H"
 #include "surfaceIteratorPLIC.H"
 #include "cutCellPLIC.H"
@@ -608,12 +609,19 @@ int main(int argc, char *argv[])
         davofInit::areaNormal(mesh, alphaf, m, afAll);
         boolList hasValue(mesh.nFaces(), false);
         for (label facei = 0; facei < nInt; ++facei) hasValue[facei] = true;
+        // the faces of empty patches take alpha_c in the explicit start (the
+        // 2D tests; the fork's davof-isoAdvector 3ff7ac7, as davof does)
+        boolList emptyFace(mesh.nFaces(), false);
         forAll(alphaf.boundaryField(), patchi)
         {
             const polyPatch& pp = mesh.boundaryMesh()[patchi];
             if (alphaf.boundaryField()[patchi].size() == pp.size())
             {
                 forAll(pp, i) hasValue[pp.start() + i] = true;
+            }
+            else if (isA<emptyPolyPatch>(pp))
+            {
+                forAll(pp, i) emptyFace[pp.start() + i] = true;
             }
         }
         DynamicList<label> interfaceLabels(mesh.nCells()/10 + 16);
@@ -677,8 +685,8 @@ int main(int argc, char *argv[])
                 scalar faceMoment = 0;
                 for (const label facei : sortedFaces)
                 {
-                    if (!hasValue[facei]) continue;
-                    const scalar af = afAll[facei];
+                    // an empty patch's face takes alpha_c (the 2D tests), as davof does
+                    const scalar af = hasValue[facei] ? afAll[facei] : (emptyFace[facei] ? a[celli] : 0);
                     if (af == 0) continue;
                     const scalar term = af*((mesh.faceCentres()[facei] - C[celli]) & mesh.faceAreas()[facei]);
                     faceMoment += (mesh.faceOwner()[facei] == celli) ? term : -term;

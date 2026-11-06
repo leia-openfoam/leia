@@ -23,7 +23,10 @@ solvers
 {
     "alpha.water.*"
     {
-        advectionScheme      isoAdvection;
+        // the route (DAVOF_SOLVER -> the Snakefile): isoAdvection on the fork
+        // route; davofSwept (the davof rows) | isoAdvector (the comparators,
+        // OpenFOAM's isoAdvection) on the leia route (materialize.py, 2026-11-06)
+        advectionScheme      @!DAVOF_ADVECTION_SCHEME!@;
         reconstructionScheme @!TPF_RECON_SCHEME!@;
         // the plane positioning of the row: vofCutCell (surfaceIteratorPLIC's
         // cubic fit and secant to isoFaceTol in alpha; the classical plicRDF
