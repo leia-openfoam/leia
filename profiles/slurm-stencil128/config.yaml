@@ -1,0 +1,40 @@
+# profiles/slurm-small with the serial rules of a 128^3 case (mesh, preprocess, decompose,
+# reconstruct) on FOUR cores at 4000 MB each (2026-11-08, the stencil study stencil_sphereN128):
+# 16 GB for a 2.1M-cell blockMesh / davofInitFields / scotch on the deflt partition, which
+# Lichtenberg's job_submit plugin would route to the drained `mem` partition when asked as one
+# core with 16 GB (profiles/slurm). Everything else is profiles/slurm-small's.
+executor: slurm
+slurm-requeue: true
+jobs: 200
+printshellcmds: true
+rerun-incomplete: true
+
+default-resources:
+  slurm_account: "special00004"
+  mem_mb_per_cpu: 4000
+  runtime: 1440
+
+set-resources:
+  mesh:
+    runtime: 180
+    mem_mb_per_cpu: 4000
+    cpus_per_task: 4
+  preprocess:
+    runtime: 180
+    mem_mb_per_cpu: 4000
+    cpus_per_task: 4
+  decompose:
+    runtime: 180
+    mem_mb_per_cpu: 4000
+    cpus_per_task: 4
+  reconstruct:
+    runtime: 180
+    mem_mb_per_cpu: 4000
+    cpus_per_task: 4
+  paraview_stub:
+    runtime: 10
+    mem_mb_per_cpu: 1000
+
+config:
+  - "mpi_launcher=srun --ntasks={np} --overlap --cpu-bind=none --kill-on-bad-exit=1"
+  - "env_preamble=module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv; export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2; source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

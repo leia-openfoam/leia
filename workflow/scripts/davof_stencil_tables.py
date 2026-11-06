@@ -231,9 +231,9 @@ def test_plane(st, out, gate_tol=1e-11, port_plane=None):
             row = [v]
             for k in cells:
                 r = sel.get(k)
-                row.append("-" if r is None else "%s / %s / %s" % (fmt(r["g_early"], "%.2f"), fmt(r["g_late"], "%.2f"), fmt(r["L1a_end"], "%.1e")))
+                row.append("-" if r is None else "%s / %s / %s / %s" % (fmt(r["g_early"], "%.2f"), fmt(r["g_late"], "%.2f"), fmt(r["L1a_first"], "%.1e"), fmt(r["L1a_end"], "%.1e")))
             lines.append(row)
-        text += "\n### Test 1b: the seeded perturbation (1e-8 on the partial faces): g_early / g_late / L1(alphaf) at the end\n\n"
+        text += "\n### Test 1b: the seeded perturbation (1e-8 on the partial faces): g_early / g_late / L1(alphaf) after step 1 / at the end\n\n"
         text += md(["variant"] + ["N %d Co %s %s" % k for k in cells], lines)
         first = med([r["L1a_first"] for r in growth])
         text += "\nL1(alphaf) at step 1 (median over the cases): %s; steps per cell: %s.\n" % (

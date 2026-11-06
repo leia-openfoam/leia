@@ -23,8 +23,10 @@ PROFILE ?= profiles/local
 # laptop oversubscribing its cores. On SLURM the scheduler already does that,
 # and the cap would instead serialise the solves (an np=8 study would run one
 # case at a time). Lift it for the cluster profiles (profiles/slurm and
-# profiles/slurm-fat, the same executor with fat serial rules, 2026-10-25).
-ifneq (,$(filter profiles/slurm profiles/slurm-fat,$(PROFILE)))
+# profiles/slurm-fat, the same executor with fat serial rules, 2026-10-25; profiles/slurm-small
+# and profiles/slurm-stencil128 since 2026-11-08: under the cap snakemake scaled an np 64 solve's
+# tasks down to 12 and the srun inside the allocation failed, MEASURED on stencil_sphereN128).
+ifneq (,$(filter profiles/slurm profiles/slurm-fat profiles/slurm-small profiles/slurm-stencil128,$(PROFILE)))
 TASKS   ?= 10000
 else
 TASKS   ?= 12
