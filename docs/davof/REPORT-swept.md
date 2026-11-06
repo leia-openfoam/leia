@@ -5668,4 +5668,238 @@ of every timed cell (the fork commit and the sha256 of its `advectorVoF` and `li
 the leia commit that last touched the case template, the study configuration and the runner,
 the sha256 over the rendered dictionaries of the prepared cases) are in
 `iso/csv/iso_stamps.csv`; the recompute-on-change rule itself is the port agent's stamp
-mechanism in leia's workflow, which this track will use when it lands.
+mechanism in leia's workflow, which this track will use when it lands. (Merged on 2026-11-07,
+1478b631: the port agent's tokenised `cases/davof/iso*` templates serve both tracks, and
+`workflow/scripts/case_stamp.py` is the mechanism. The cases prepared before the merge render
+differently now (the added keys, which the fork's isoAdvection ignores), so `refresh_study`
+does not adopt them; they get their stamps at their next materialisation, and until then the
+runs' own `.stamp` files (the runner writes them since a6175245) and `iso_stamps.csv` carry
+the binary and the dictionaries they ran with.)
+
+### The 2D sheared disc (Rider & Kothe 1998), hexahedral one-cell-thick (T = 8; OF Co 0.2 / 0.5 / 1)
+
+The disc of radius 0.15 at (0.5, 0.75) of the unit square, N x 1 x N cubic cells (the
+thickness h along y, front and back empty), the single vortex of `initVortex2D` reversed by
+cos(pi t / 8), scored at t = 8 against the initial disc (`exactCylinder`); N = 64 / 128 / 256
+on 1 / 1 / 8 ranks; the binary 3ff7ac7 for the plicRDF and isoAlpha rows and 74ea376 for
+the DAVOF rows (the second-ring sweep took the empty faces as candidates and died at step 3
+in `davof::faceFraction`; 74ea376 leaves them, identical bit for bit on the eight 3D
+verification cases, `iso/ident7`). The E_shape column carries the cell thickness h = 1/N
+(the sum of |alpha - alpha_exact| V over cubic cells): multiply by N for the area error the
+fork's testsuite reports, and subtract 1 from the orders over N. L1(x) is not meaningful
+on this case (the centroid distance of `reconstructionError` to the cylinder, 26-870; not
+used).
+
+| N (ranks) | OF Co | row | status | steps | E_shape | E/RDF | L1(n) | L1(x) | min alpha | mass dev. % | interface cells (first / max) | wall s | ms/step | step/RDF |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 64 (1) | 0.2 | RDF | completed | 3328 | 3.20e-04 | 1.00 | 0.334 | 39.5 | -8.8e-18 | 1.3e-12 |  | 27.46 | 8.25 | 1.00 |
+|  |  | RDFccs | completed | 3328 | 3.25e-04 | 1.02 | 0.343 | 39.3 | -8.2e-18 | 9.2e-13 |  | 19.25 | 5.78 | 0.70 |
+|  |  | RING | completed, unbounded | 3328 | 3.93e-04 | 1.23 | 1.29 | 118 | -0.084 | 7.5e-13 | 76 / 2510 | 33.23 | 9.98 | 1.21 |
+|  |  | RINGvcc | completed, unbounded | 3328 | 4.31e-04 | 1.35 | 1.25 | 33.7 | -0.075 | 9.7e-13 | 76 / 2396 | 35.35 | 10.6 | 1.29 |
+|  |  | ISO | completed | 3328 | 2.40e-04 | 0.75 | 0.424 | 43.2 | -1.6e-17 | 8.9e-13 |  | 11.28 | 3.39 | 0.41 |
+| 64 (1) | 0.5 | RDF | completed, min -1.2e-04 | 1331 | 2.05e-04 | 1.00 | 0.325 | 64.3 | -1.2e-04 | 7.5e-13 |  | 12.41 | 9.32 | 1.00 |
+|  |  | RDFccs | completed, min -1.2e-04 | 1331 | 2.09e-04 | 1.02 | 0.443 | 37.3 | -1.2e-04 | 8.2e-13 |  | 9.04 | 6.79 | 0.73 |
+|  |  | RING | completed, unbounded | 1331 | 4.98e-04 | 2.44 | 1.31 | 171 | -0.2 | 6.9e-13 | 76 / 2116 | 15.04 | 11.3 | 1.21 |
+|  |  | RINGvcc | completed, unbounded | 1331 | 5.56e-04 | 2.72 | 1.2 | 72.2 | -0.16 | 6.7e-13 | 76 / 1982 | 14.48 | 10.9 | 1.17 |
+|  |  | ISO | completed, min -1.3e-04 | 1331 | 2.05e-04 | 1.00 | 0.334 | 43.3 | -1.3e-04 | 8.7e-13 |  | 5.63 | 4.23 | 0.45 |
+| 64 (1) | 1 | RDF | completed, unbounded | 666 | 1.83e-04 | 1.00 | 0.39 | 35.2 | -0.019 | 8.2e-13 |  | 7.31 | 11 | 1.00 |
+|  |  | RDFccs | completed, unbounded | 666 | 1.56e-04 | 0.85 | 0.279 | 27.4 | -0.016 | 8.2e-13 |  | 5.4 | 8.11 | 0.74 |
+|  |  | RING | completed, unbounded | 666 | 5.86e-04 | 3.20 | 1.23 | 42.9 | -0.38 | 8.4e-13 | 76 / 2390 | 8.01 | 12 | 1.10 |
+|  |  | RINGvcc | completed, unbounded | 666 | 7.79e-04 | 4.25 | 1.26 | 80 | -0.37 | 5.6e-13 | 76 / 1981 | 8.07 | 12.1 | 1.10 |
+|  |  | ISO | completed, min -1.7e-03 | 666 | 2.01e-04 | 1.09 | 0.357 | 26.3 | -1.7e-03 | 9.3e-13 |  | 3.35 | 5.03 | 0.46 |
+| 128 (1) | 0.2 | RDF | completed, min -2.1e-05 | 6656 | 2.22e-05 | 1.00 | 0.186 | 55.4 | -2.1e-05 | 3.7e-12 |  | 116 | 17.4 | 1.00 |
+|  |  | RDFccs | completed, min -2.1e-05 | 6656 | 2.33e-05 | 1.05 | 0.167 | 38.4 | -2.1e-05 | 3.6e-12 |  | 82.93 | 12.5 | 0.72 |
+|  |  | RING | completed, unbounded | 6656 | 4.00e-05 | 1.80 | 1.2 | 90.9 | -0.12 | 1.6e-12 | 156 / 6063 | 144 | 21.6 | 1.24 |
+|  |  | RINGvcc | completed, unbounded | 6656 | 3.26e-05 | 1.47 | 1.08 | 40.9 | -0.085 | 1.6e-12 | 156 / 5089 | 144 | 21.7 | 1.25 |
+|  |  | ISO | completed, min -2.4e-05 | 6656 | 1.61e-05 | 0.73 | 0.113 | 76.5 | -2.4e-05 | 3.5e-12 |  | 52.45 | 7.88 | 0.45 |
+| 128 (1) | 0.5 | RDF | completed, min -4.5e-04 | 2662 | 2.27e-05 | 1.00 | 0.193 | 209 | -4.5e-04 | 3.1e-12 |  | 52.79 | 19.8 | 1.00 |
+|  |  | RDFccs | completed, min -5.1e-04 | 2662 | 2.23e-05 | 0.98 | 0.113 | 66.7 | -5.1e-04 | 3.2e-12 |  | 37.95 | 14.3 | 0.72 |
+|  |  | RING | completed, unbounded | 2662 | 5.36e-05 | 2.36 | 1.26 | 43.4 | -0.33 | 1.6e-12 | 156 / 6576 | 86.61 | 32.5 | 1.64 |
+|  |  | RINGvcc | completed, unbounded | 2662 | 4.27e-05 | 1.88 | 1.1 | 46 | -0.23 | 1.7e-12 | 156 / 4017 | 62.77 | 23.6 | 1.19 |
+|  |  | ISO | completed, min -3.5e-04 | 2662 | 1.66e-05 | 0.73 | 0.0969 | 37.9 | -3.5e-04 | 3.6e-12 |  | 22.65 | 8.51 | 0.43 |
+| 128 (1) | 1 | RDF | completed, min -9.2e-03 | 1331 | 2.00e-05 | 1.00 | 0.17 | 171 | -9.2e-03 | 2.3e-12 |  | 30.24 | 22.7 | 1.00 |
+|  |  | RDFccs | completed, unbounded | 1331 | 2.22e-05 | 1.11 | 0.176 | 88.4 | -0.016 | 3.5e-12 |  | 21.27 | 16 | 0.70 |
+|  |  | RING | ABORT step 73 (max alpha) | 73 | - | - | - | - | -0.15 | 3.6e-13 | 156 / 1113 | 2.16 | 29.6 | 1.30 |
+|  |  | RINGvcc | ABORT step 151 (min alpha) | 151 | - | - | - | - | -0.51 | 9.8e-13 | 156 / 1344 | 2.53 | 16.8 | 0.74 |
+|  |  | ISO | completed, min -2.9e-03 | 1331 | 1.79e-05 | 0.90 | 0.173 | 57 | -2.9e-03 | 2.9e-12 |  | 12.27 | 9.22 | 0.41 |
+| 256 (8) | 0.2 | RDF | completed, min -8.8e-05 | 13312 | 2.48e-06 | 1.00 | 0.054 | 36.4 | -8.8e-05 | 2.5e-12 |  | 118 | 8.89 | 1.00 |
+|  |  | RDFccs | completed, min -9.4e-05 | 13312 | 2.48e-06 | 1.00 | 0.054 | 83.9 | -9.4e-05 | 2.4e-12 |  | 93.08 | 6.99 | 0.79 |
+|  |  | RING | completed, unbounded | 13312 | 5.45e-06 | 2.20 | 1.12 | 44.3 | -0.12 | 9.0e-13 | 308 / 13290 | 185 | 13.9 | 1.56 |
+|  |  | RINGvcc | completed, unbounded | 13312 | 3.92e-06 | 1.58 | 0.912 | 37.9 | -0.12 | 8.4e-13 | 308 / 12725 | 176 | 13.2 | 1.48 |
+|  |  | ISO | completed, min -2.8e-05 | 13312 | 1.93e-06 | 0.78 | 0.0386 | 35.5 | -2.8e-05 | 2.9e-12 |  | 57.7 | 4.33 | 0.49 |
+| 256 (8) | 0.5 | RDF | completed, min -4.4e-04 | 5325 | 2.56e-06 | 1.00 | 0.0566 | 868 | -4.4e-04 | 1.7e-12 |  | 52.78 | 9.91 | 1.00 |
+|  |  | RDFccs | completed, min -5.5e-04 | 5325 | 2.56e-06 | 1.00 | 0.0563 | 128 | -5.5e-04 | 1.8e-12 |  | 41.77 | 7.84 | 0.79 |
+|  |  | RING | completed, unbounded | 5325 | 1.64e-05 | 6.42 | 1.26 | 72.2 | -0.3 | 2.7e-12 | 308 / 26751 | 114 | 21.4 | 2.16 |
+|  |  | RINGvcc | completed, unbounded | 5325 | 9.98e-06 | 3.90 | 1.05 | 102 | -0.31 | 1.7e-12 | 308 / 10782 | 71.07 | 13.3 | 1.35 |
+|  |  | ISO | completed, min -2.8e-04 | 5325 | 2.29e-06 | 0.90 | 0.0472 | 80.9 | -2.8e-04 | 1.8e-12 |  | 25.19 | 4.73 | 0.48 |
+| 256 (8) | 1 | RDF | completed, unbounded | 2662 | 4.28e-06 | 1.00 | 0.126 | 223 | -0.016 | 1.8e-12 |  | 32.69 | 12.3 | 1.00 |
+|  |  | RDFccs | completed, unbounded | 2662 | 4.35e-06 | 1.01 | 0.127 | 26.3 | -0.021 | 1.8e-12 |  | 25.79 | 9.69 | 0.79 |
+|  |  | RING | ABORT step 124 (max alpha) | 124 | - | - | - | - | -0.32 | 3.1e-13 | 308 / 3837 | 3.31 | 26.7 | 2.17 |
+|  |  | RINGvcc | ABORT step 2198 (min alpha) | 2198 | - | - | - | - | -0.56 | 1.1e-12 | 308 / 12583 | 37.81 | 17.2 | 1.40 |
+|  |  | ISO | completed, min -6.5e-03 | 2662 | 3.80e-06 | 0.89 | 0.122 | 35.6 | -6.5e-03 | 1.9e-12 |  | 14.35 | 5.39 | 0.44 |
+
+Orders of E_shape over N (64-128 / 128-256, minus the thickness's 1): RDF 2.85 / 2.16 at
+Co 0.2, 2.17 / 2.15 at Co 0.5, 2.20 / 1.22 at Co 1; RDFccs 2.80 / 2.23; ISO 2.90 / 2.06 at
+Co 0.2; RING 2.30 / 1.87 at Co 0.2, 2.22 / 0.71 at Co 0.5. Against the fork's testsuite
+(expected_results.csv, adaptive maxAlphaCo 0.5, thickness 1, nAlphaBounds 5), E_shape x N at
+OF Co 0.5: plicRDF 1.31e-2 / 2.92e-3 / 6.55e-4 at N 64 / 128 / 256 against 8.16e-3 /
+2.33e-3 / 5.37e-4 (1.60 / 1.25 / 1.22 x), isoAlpha 1.31e-2 / 2.12e-3 / 5.87e-4 against
+9.41e-3 / 1.47e-3 / 4.34e-4 (1.39 / 1.44 / 1.35 x). The profiled runs at Co 0.2 (ms per step;
+the DAVOF rows' reconstruction share 42-53 %, plicRDF's 76-86 %):
+
+| N (ranks) | OF Co | row | steps | step | reconstruct | share | advect | flux sweep | 2nd ring | content bound | defaults |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 64 | 0.2 | RDF | 3328 | 8.06 | 6.97 | 86 % | 7.82 | 0.639 | 0 | 0 | 0 |
+| 64 | 0.2 | RDFccs | 3328 | 5.51 | 4.43 | 80 % | 5.27 | 0.641 | 0 | 0 | 0 |
+| 64 | 0.2 | RING | 3328 | 9.71 | 4.41 | 45 % | 9.43 | 2.37 | 0.69 | 0.061 | 0.34 |
+| 64 | 0.2 | RINGvcc | 3328 | 10.4 | 5.47 | 53 % | 10.1 | 2.12 | 0.63 | 0.059 | 0.36 |
+| 64 | 0.2 | ISO | 3328 | 3.12 | 2.02 | 65 % | 2.89 | 0.656 | 0 | 0 | 0 |
+| 128 | 0.2 | RDF | 6656 | 17.3 | 14.1 | 81 % | 16.6 | 1.5 | 0 | 0 | 0 |
+| 128 | 0.2 | RDFccs | 6656 | 12.4 | 9.18 | 74 % | 11.7 | 1.51 | 0 | 0 | 0 |
+| 128 | 0.2 | RING | 6656 | 21.5 | 8.97 | 42 % | 20.8 | 4.95 | 1.6 | 0.16 | 1.5 |
+| 128 | 0.2 | RINGvcc | 6656 | 21.4 | 10.8 | 50 % | 20.7 | 4.26 | 1.3 | 0.14 | 1.5 |
+| 128 | 0.2 | ISO | 6656 | 7.73 | 4.37 | 56 % | 7.02 | 1.6 | 0 | 0 | 0 |
+| 256 | 0.2 | RDF | 13312 | 8.74 | 6.62 | 76 % | 8.24 | 0.899 | 0 | 0 | 0 |
+| 256 | 0.2 | RDFccs | 13312 | 6.89 | 4.79 | 69 % | 6.4 | 0.894 | 0 | 0 | 0 |
+| 256 | 0.2 | RING | 13312 | 13.8 | 5.74 | 42 % | 13.2 | 2.8 | 0.22 | 0.023 | 0.83 |
+| 256 | 0.2 | RINGvcc | 13312 | 13.1 | 6.38 | 49 % | 12.5 | 2.58 | 0.18 | 0.021 | 0.83 |
+| 256 | 0.2 | ISO | 13312 | 4.22 | 0.941 | 22 % | 3.73 | 2.07 | 0 | 0 | 0 |
+
+Verdicts (the pre-registration S-1..S-5 of `config/davof/isoShear2D_hexN64.yaml`,
+4dfb4f3c):
+
+- S-1 (completion and bounds): FALSIFIED in both directions. The DAVOF rows complete at
+  every cell of Co 0.2 and 0.5 and at N 64 Co 1 (the registration expected completion at
+  N 64 Co 0.2 only), but unbounded everywhere (min alpha -0.08 .. -0.38, the overshoot
+  0.02 .. 0.39; the registration admitted 1e-6), with interface-cell counts of 2-4 times the
+  initial and the ring normal's L1(n) 0.9-1.3 against plicRDF's 0.05-0.44; they abort at
+  N 128 and 256 for Co 1 (the max-alpha guard within 73-124 steps for RING, RINGvcc at N 256
+  after 2198 steps). RDF, RDFccs and ISO complete every cell; at Co 1 plicRDF leaves [0, 1]
+  by 0.02 at N 64 / 128 / 256 (ISO 1.8e-3 .. 6.5e-3), at Co 0.5 by 1e-4 .. 9e-4. The mass of
+  the DAVOF rows is conserved to 1e-12 % here (a closed box: the deviation of the rotation
+  is the outflow of wisps, see the item 1 below), their E_shape 1.2-6.4 x plicRDF's.
+- S-2 (the template against the testsuite): FALSIFIED at N 64 (plicRDF 60 % above, isoAlpha
+  39 %), within the 30 % bound at N 128 and 256 (22-25 % for plicRDF, 35-44 % for
+  isoAlpha: falsified for isoAlpha at every N). The fixed step at OF Co 0.5 (the
+  testsuite's adaptive step keeps the interface Co at 0.5, which is a larger step than
+  OF Co 0.5 on this flow), nAlphaBounds 3 against 5 and the cubic cells leave the decade
+  and the orders unchanged: the template reproduces the testsuite's numbers to 20-60 %.
+- S-3 (errors where RING completes): FALSIFIED: E_shape(RING)/E_shape(RDF) 1.23 (N 64
+  Co 0.2) to 6.4 (N 256 Co 0.5), L1(n) 3.9-23 x.
+- S-4 (wall clock): FALSIFIED: RING / RDF per step 1.21-1.64 at Co 0.2 (N 64: 1.21,
+  N 128: 1.24, N 256: 1.57 on 8 ranks), 1.0-1.6 at Co 0.5; the DAVOF reconstruction itself
+  is 0.6-0.9 x plicRDF's (4.4 vs 7.0 ms at N 64, 9.0 vs 14.1 at N 128, 5.7 vs 6.6 at N 256
+  per step) and the face update (the flux sweep 2.4-5.0 against 0.6-1.5 ms, the second
+  ring 0.2-1.6, the defaults 0.3-1.5) costs the difference. plicRDF-ccs is 20-32 % faster
+  than plicRDF with vofCutCell on this case (the positioning dominates the 2D
+  reconstruction: 4.4 against 7.0 ms at N 64).
+- S-5 (orders): HELD for E_shape (2.15-2.9 at Co 0.2 and 0.5 after the thickness
+  correction; 1.2-2.2 at Co 1 at N 256).
+
+### The DAVOF mass deviation pinned (Tomislav's item 1, 2026-11-07)
+
+The rotation at N 32, OF Co 0.2, the full turn (1728 steps), the prepared cases of
+`isoRotation3D_hexN32` (writePrecision 17), one run per variant on one node (job 56013845,
+`iso/mass/<variant>/`, the analysis `prof/iso_mass_an.py`); the per-step mass diagnostics
+of 4d92699 (`massDiagnostics true`, off by default) print sum(alpha V) before the step, the
+change by the flux step against the boundary sum of dVf over the non-coupled patches (their
+sum is the antisymmetry residual: the internal faces cancel in the divergence), the change
+by the bounding against its boundary correction, the change by the clipping, and the
+internal sum of dVf.
+
+| variant | binary | steps | max dev % (step) | end dev % | sum of the flux changes | minus the boundary dVf | antisymmetry residual, max per step | bounding change | clipping |
+|---|---|---|---|---|---|---|---|---|---|
+| RING, ccs | davof-swept c5c00c5 | 1728 | 4.007e-4 (1190) | -2.479e-4 | (no diagnostics) | | | | |
+| RING, ccs | c699e9e | 1728 | 4.007e-4 (1190) | -2.479e-4 | (no diagnostics) | | | | |
+| RING, ccs | ae08dc0 (inflow rule, final) | 1728 | 4.007e-4 (1190) | -2.479e-4 | (no diagnostics) | | | | |
+| RING, ccs | 4d92699 (HEAD), diagnostics | 1728 | 2.687e-4 (1194) | -2.248e-4 | 3.178e-8 | 3.178e-8 | 1.9e-16 | -5e-17 | 0 |
+| RINGvcc | 4d92699 | 1728 | 2.710e-4 (1195) | -2.176e-4 | 3.077e-8 | 3.077e-8 | 2.2e-16 | -3e-17 | 0 |
+| RING, contentBound false | 4d92699 | 1728 | 3.887e-4 (1191) | -2.436e-4 | 3.443e-8 | 3.443e-8 | 2.1e-16 | 1e-16 | 0 |
+| RING, boundSecondLayer false | 4d92699 | 1728 | 2.687e-4 (1194) | -2.248e-4 | 3.178e-8 | 3.178e-8 | 1.9e-16 | -5e-17 | 0 |
+| RING, 8 ranks (scotch) | 4d92699 | ABORT 1353 | 7.39e-2 (1345) | 4.43e-2 | -2.793e-4 | -2.793e-4 | 5.3e-17 | 2.730e-4 = its boundary correction | 0 |
+| RDF | 4d92699 | 1728 | 6.062e-8 (1169) | -3.526e-8 | 4.984e-12 | 4.984e-12 | 2.6e-16 | 4e-17 | 0 |
+| ISO | 4d92699 | 1728 | 4.979e-8 (1186) | -2.896e-8 | 4.094e-12 | 4.095e-12 | 2.7e-16 | -2e-17 | 0 |
+
+The deviation is a boundary flux, not an antisymmetry loss: on every variant the flux
+step's change of sum(alpha V) equals minus the boundary sum of dVf to 2-3e-16 per step
+(the sum of dVf over the internal faces is -4e-4 .. -2e-4 at every step and cancels in the
+divergence), the bounding's change equals its own boundary correction to 1e-17, the clipping
+changes nothing (`clip false`, `snapTol 0`), and the cumulative boundary dVf over V0 is the
+dev to every printed digit at the step of the maximum (-2.687e-4 % against -2.687e-4 %).
+The liquid leaves through the box faces where the rotation field flows out (phi up to
+7.6e-3 on `walls`, 3.0e-3 on `inlet`/`outlet`): at t = 1 the DAVOF row holds alpha up to
+2.1e-6 in the wall cells (1050 wall cells above 1e-12, 377 above 1e-8, 69 above 1e-6, eleven
+cells from the sphere), plicRDF 2.0e-10 at most (778 above 1e-12, none above 1e-8); the
+instantaneous liquid outflow through the walls is 2.8e-8 per unit time against 7.5e-12 for
+plicRDF. So the mechanism is the transport of the loop's wisps (alpha 1e-8 .. 1e-6, made at
+the interface by the second-ring sweep and the bounding, see the seed log below) as a
+passive upwind scalar to the outflow boundary, four decades above plicRDF's wisps. The
+deviation is present at c5c00c5 (the plane-clipped loop of davof-swept, before the
+package: identical to c699e9e and ae08dc0 to every digit over the turn), so no commit of
+the branch introduced it; the swept rows of the Co 1 comparison (1e-11 %) are the other
+loop. Positioning (ccs 2.69e-4, vofCutCell 2.71e-4), the content bound (off: 3.9e-4) and
+the second bounding layer (off: identical, it corrects no cell on this case) do not change
+the decade. On 8 ranks the same case ABORTS at step 1353 (interface cells 4322 of 416,
+min alpha -0.028; serial it completes bounded to -7e-13): the first parallel failure of
+the loop on the rotation at N 32 (the N 64 cell on 8 ranks completed on 2026-11-06), with
+the bounding's boundary corrections reaching 2.7e-4 of V0; to be taken up with the seed
+log in parallel. HEAD's run with the diagnostics on differs from ae08dc0's from step 2 (sum(alpha V)
+by 1e-17, 439 against 438 interface cells later, the end dev 2.25e-4 against 2.48e-4):
+the same binary without the key reproduces ae08dc0 to every digit over the 1728 steps
+(`head-RING-nodiag`), and the eight verification cases are bit for bit (`iso/ident6`), so
+the perturbation was the diagnostics' own `alpha1_.oldTime()` call; 8c1f5d5 reads the
+start-of-step field instead, and its run with the key is checked against ae08dc0 in
+`iso/mass/head2-RING-diag`: it differs from ae08dc0 at step 2 as well, and so does the run
+whose dictionary passed through `foamDictionary` with the key set to FALSE
+(`head2-RING-noopkey`, identical to `head-RING` to every digit): the perturbation is the
+dictionary rewrite (the expanded dictionaries differ by the added key alone; the raw files
+by the spelling of three numbers, 1e-3 as 0.001 and 1e-8 as 1e-08, under test in
+`head3-RING-sed`), not the diagnostics, which are inert. The numbers of the table are those
+of the rewritten dictionary's run; the conclusion (a boundary flux to 1e-16 per step) does
+not depend on it.
+
+### The seed log on the shear (Tomislav's item 2, 2026-11-07)
+
+The 3D shear at N 32, OF Co 0.2, serial, the RING row (and RINGvcc) run to the abort with
+`planeFragmentLog true` (53df20a, off by default; the analogue of the swept loop's
+`sweptFragmentLog` of davof-swept-enright 5d8e57d: a seed is a cell that becomes an
+interface cell of the reconstruction, |m_c| > wispTol V^(2/3), while its alpha is within
+1e-6 of 0 or 1; the classes are the marks of the previous two steps: a face of the cell
+whose fraction the second-ring sweep set from a neighbour's plane (ring), a face whose flux
+the plane set beyond the donor (ringFlux), a face whose flux the bounding changed in the
+first layer (bound1) or the second layer (bound2), a face the content bound moved
+(content), the cell a wisp (wet faces without a plane) in the previous step (wisp), none;
+`iso/frag/shear-RING/postProcessing/planeFragmentLog/cells_0.csv`, job 56014025, the
+analysis `prof/frag_an.py`). RING aborts at step 382 (t 1.59) with 41,614 interface cells
+of 416, RINGvcc at step 384; the seeds appear from step 2 on, in 381 of the 382 steps,
+54,908 in all (RINGvcc 52,215): 435 in steps 1-50 (4 to 13 per step), 9,281 in 51-100,
+35,902 in 101-200, 6,951 in 201-300 and 2,339 up to the abort. Cumulative classes (a seed
+can carry several): ring 42,961, ringFlux 42,625, bound1 22,457, bound2 41,157 (26 in the
+first 50 steps, 6,925 in 51-100: the second-layer bounding sets in with the fragmentation),
+content 38,480, wisp 50,962, none 7.
+
+The first 200 seeds (steps 2-26) fall into two mechanisms:
+
+| class of the first 200 | RING | RINGvcc | the state |
+|---|---|---|---|
+| ring + ringFlux + content + wisp | 94 | 94 | alpha exactly 0, one face at 1e-3 .. 1e-2 set by a neighbour's extended plane; the cell was a wisp the step before |
+| bound1 | 51 | 45 | alpha 1 (faces 0.99 .. 0.999) or alpha at round-off of 0 (faces 5e-4 .. 8e-3): the bounding changed the cell's flux, the face fractions stayed |
+| ringFlux + bound1 (+ content) | 26 | 32 | both |
+| ring + ringFlux + bound1 + content + wisp | 21 | 22 | both |
+| other combinations | 6 | 6 | |
+| none | 2 | 1 | |
+
+149 of the 200 sit on the gas side (alpha ~ 0), 51 on the liquid side; |m_c|/V^(2/3) is
+1.0e-3 .. 0.44 (median 5.4e-3, just above the threshold 1e-3); 62 seeds have one
+fractional face, 50 two, 85 three, 3 four, the largest |alpha_f - round(alpha_f)| 4.8e-3 in
+the median. So the seeds are made (a) by the second-ring sweep: a plane extended over the
+face of a cell it does not cut leaves a fraction of 1e-3 .. 1e-2 on that face while the
+cell holds no liquid, with the plane flux beyond the donor and the content bound acting on
+the same face; the cell is an |m_c| interface cell at alpha = 0 and gets a plane the next
+step; and (b) by the bounding: a cell whose flux the conservative bounding corrected ends
+pure (alpha 0 or 1 to round-off) while its face fractions keep the plane's values, so its
+|m_c| makes it an interface cell. Both are what the swept loop's decisions 2 and 3 address
+(sweptBoundedFaceFraction: the face fraction after a bounded flux; interfaceCellRule: the
+interface-cell test with alpha): (a) is the interfaceCellRule's case, (b) the bounded face
+fraction's. The positioning (ccs or vofCutCell) does not change the picture (the same
+first three seeds at step 2, the same classes to within 10 %).
