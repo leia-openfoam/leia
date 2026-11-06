@@ -356,10 +356,13 @@ def load(path):
         return None
 
 
-def write_if_changed(path, obj, backdate_to=None):
+def write_if_changed(path, obj, backdate_to=None, compare_key=None):
     """Write the JSON only when its content differs (the mtime is Snakemake's trigger).
-    backdate_to: a file whose mtime minus one second the new file gets, when it was
-    written (adoption: a stamp for a result that exists must not reschedule it)."""
+    compare_key: compare this key of the old and the new object instead of the whole
+    text (the current stamp is compared on its trigger: its record carries the time of
+    the computation, which must not move the file's mtime). backdate_to: a file whose
+    mtime minus one second the new file gets, when it was written (adoption: a stamp
+    for a result that exists must not reschedule it)."""
     text = json.dumps(obj, indent=1, sort_keys=True)
     old = None
     try:
@@ -369,6 +372,12 @@ def write_if_changed(path, obj, backdate_to=None):
         pass
     if old == text:
         return False
+    if compare_key and old is not None:
+        try:
+            if json.loads(old).get(compare_key) == obj.get(compare_key):
+                return False
+        except ValueError:
+            pass
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     tmp = path + ".tmp"
     with open(tmp, "w") as fh:
@@ -450,7 +459,7 @@ def refresh_study(study_dir, case_name, indices, base_case, variations, spec, cs
             stored = None
         os.makedirs(d, exist_ok=True)
         write_if_changed(os.path.join(d, RENDER_FILE), render)
-        write_if_changed(os.path.join(d, CURRENT_FILE), cur)
+        write_if_changed(os.path.join(d, CURRENT_FILE), cur, compare_key="trigger")
         if stored is None:
             status[idx] = ("new", [])
         elif stored.get("id") == cur["id"]:
@@ -529,7 +538,7 @@ def cmd_write(case_dir, apps, rc):
         json.dump(stored, fh, indent=1, sort_keys=True)
     if stored["id"] != cur["id"]:
         # the plan's stamp follows the run's, so the next parse finds them equal
-        write_if_changed(os.path.join(case_dir, CURRENT_FILE), dict(cur, trigger=trigger, id=stored["id"]))
+        write_if_changed(os.path.join(case_dir, CURRENT_FILE), dict(cur, trigger=trigger, id=stored["id"]), compare_key="trigger")
         print(f"[leia] stamp: stored {stored['id']} (the plan's {cur['id']} differed: {', '.join(note) or 'binaries'})")
     else:
         print(f"[leia] stamp: stored {stored['id']}")
