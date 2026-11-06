@@ -1,3 +1,5 @@
+# 2026-11-07: OpenFOAM Co 1 (interface Co 0.2315) added (the standing protocol: Co 0.2, 0.5 and 1 on
+# every cell); the cases of Co 0.2 and 0.5 keep their indices, the Co 1 cases are appended.
 # The isoAdvector package's verification on the poly mesh class (fork branch
 # davof-isoAdvector, 2026-11-06): the preparation of the cases of isoRotation3D at N 32 on 1
 # rank(s) (rendered, meshed, initialised; a short END_TIME). The
@@ -24,7 +26,7 @@ post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . -
 axes_override:
   N_CELLS: [32]
   TPF_ROW: [plicRDF, plicRDF-ccs, davof-ringArea, davof-ringArea-vofCutCell, isoAlpha]
-  TARGET_ADVECTIVE_CO: [0.0463, 0.1157]
+  TARGET_ADVECTIVE_CO: [0.0463, 0.1157, 0.2315]
   TPF_DAVOF_METHOD: [quadraticFaces]
   TPF_REF_METHOD: [quadraticFaces]
   END_TIME: [0.02]
