@@ -5292,3 +5292,46 @@ normalAndAlpha 1.6e-12 / 1.9e-12 / 1.6e-12 and 6.8e-10 / 2.8e-10 /
 4.4e-10 / 4.4e-10. P1-5, P2-3, P3-3 hold to 1e-12 in alpha; alphaf is at
 the processor round-off of 1e-10 (the same level as the parallel
 validation of 2026-11-02).
+
+#### Results: G2, the deformation at N 32, Co 0.5, T = 3, serial (2026-11-07)
+
+Jobs 56014034 (the closure-based settings) and 56014561 (the
+signedTets-based settings), fork 25e6ebc; `csv/diag_runs_matrix_enright32.csv`,
+`csv/diag_frag_N32_co0_<run>.csv`, `csv/diag_history_N32_co0_<run>.csv`.
+plicRDF on this cell: E_shape 7.765e-3 (0.549 V_s), L1(x) 0.0845, min
+alpha -2e-17, partial cells 747 at T.
+
+| setting | end | min alpha before / after the bounding (run) | excess after | fragments over the run (bounded-face class) | cells with \|m_c\| > tol and alpha outside (tol, 1-tol), with a plane | bounded faces (s = 0) | E_shape (/V_s) | L1(x) | L1(alphaf) | partial cells T | wall s |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| closure (= the production row) | T | -1.24 / -0.270 | 2.9e-4 | 26470 (26047) | 1216652, 1216652 | - | 1.137e-2 (0.804) | 0.306 | 7.06e-2 | 5871 | 518 |
+| closureThenTets | ABORT step 50 | -1.45 / -0.788 | 1.1e-11 | 99 (95) | 229, 229 | - | - | - | - | - | 29 |
+| signedTets | T | -1.28e-5 / -1.34e-7 | 1.0e-7 | 323 (21) | 165, 165 | - | 9.315e-3 (0.659) | 0.083 | 2.69e-1 | 5421 | 678 |
+| cTT + scale | ABORT step 459 | -0.560 / -0.555 | 2.4e-10 | 1075 (461) | 1300, 1300 | 2794363 (13255) | - | - | - | - | 296 |
+| cTT + recompute | T | -0.344 / -0.344 | 1.8e-10 | 5764 (5326) | 17474, 17474 | 3435707 (19351), 2068575 recomputed | 1.042e-2 (0.737) | 0.094 | 2.25e-1 | 11798 | 625 |
+| cTT + scale + normalAndAlpha | T | -7.2e-2 / -4.1e-2 | 3.3e-10 | 998 (169) | 11826, 0 | 2794072 (12908) | 1.024e-2 (0.724) | 0.133 | 2.41e-1 | 16799 | 328 |
+| cTT + scale + normalAndAlphaReset | T | -2.16 / -6.7e-2 | 2.8e-10 | 648 (141) | 7, 0; 8635 cells reset | 2838554 (13031) | 1.030e-2 (0.728) | 0.121 | 2.54e-1 | 12563 | 299 |
+| sT + scale | T | -8.1e-4 / -2.5e-4 | 1.0e-7 | 319 (29) | 170, 170 | 136340 (2312) | 9.315e-3 (0.659) | 0.089 | 2.62e-1 | 5068 | 711 |
+| sT + recompute | T | -1.28e-5 / -7.3e-7 | 1.0e-7 | 1199 (931) | 1487, 1487 | 128389 (2154), 66982 recomputed | 9.313e-3 (0.659) | 0.083 | 2.69e-1 | 6217 | 794 |
+| sT + scale + normalAndAlpha | T | -9.3e-5 / -1.34e-7 | 1.0e-7 | 304 (7) | 169, 0 | 133926 (2233) | 9.315e-3 (0.659) | 0.085 | 2.62e-1 | 6457 | 795 |
+| sT + scale + normalAndAlphaReset | T | -4.4e-5 / -1.34e-7 | 1.0e-7 | 303 (8) | 0, 0; 146 cells reset | 132951 (2155) | 9.315e-3 (0.659) | 0.086 | 2.61e-1 | 5816 | 783 |
+
+Reading: the signed tetrahedra alone turn the deformation at N 32 from a
+fragmenting, unbounded run (closure: 26470 fragments, min alpha -0.27)
+into a bounded one (min alpha -1.3e-7 after and -1.3e-5 before the
+bounding, 323 fragments, 165 dry/full cells with a plane over 480 steps),
+with plicRDF's position error (L1(x) 0.083 against 0.0845) and E_shape 20 %
+above plicRDF's (0.659 against 0.549 V_s). closureThenTets aborts at step
+50: the pieces the closure "solves" with a missed fourth cap (T-1) are the
+overdraw; the fallback is only the fragmentation seed. On the signedTets
+base neither the bounded face fractions nor the interface-cell rule changes
+E_shape (9.313 .. 9.315e-3) or L1(x) beyond 7 %; scale makes the bounds
+slightly worse (-2.5e-4 after the bounding, the partial scaling of the
+face fractions is not the liquid's), recompute creates fragments (1199,
+931 of them at bounded faces: the positioned plane's face area is not the
+flux's face area either), normalAndAlpha and the Reset variant keep the
+bounds of signedTets and remove the planes of dry/full cells (0 with a
+plane; 146 cells reset over the run) at the same errors. On the
+closureThenTets base the variants cannot repair the defective closure
+pieces (cTT + scale aborts at step 459; the rules hold the run at -0.04 ..
+-0.07). The wall clock of signedTets at N 32 serial is 1.3 x closure (678
+against 518 s; the tetrahedra clip 27.7 M pieces).
