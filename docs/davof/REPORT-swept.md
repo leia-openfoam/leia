@@ -4614,6 +4614,58 @@ Open after phase 2: the rotation N 64 and N 128 cells at OF Co 0.2 of the compar
 job per repetition for N 128); the record in `docs/davof/PORT-DESIGN.md` of the measured
 scatter as the acceptance tolerance of long runs on the default route.
 
+### Phase 3, the Enright identity (PORT-DESIGN section 5): MEASURED 2026-11-06
+
+The Enright agent's timed comparison (`enright-time.sbatch`, its branch `davof-swept-enright`
+402fcc2e merged into `davof-port` 6a3cdcda, the templates tokenised) run from the leia-route
+preparations `port_enright{Swept,RDF}N{32,64,128}_leia` on three routes by
+`davof_enright/port-enright-time.sbatch`: `leia` (v2606's `cutCellPLIC`), `leiaGF` (the
+opt-in `grazingCut fork`) and `fork` (the three lines rewritten); ring = the swept-face
+advection with the ring normal, rdf = plicRDF + isoAdvector; N 32 serial, N 64 on 8 ranks,
+N 128 on 64; OF Co 0.5 and 1 (the `co_index` 0 and 1 of the preparations); T = 3, the
+abort at min(alpha) < -0.5 as in the Enright record below. Scored by
+`davof_enright/port_enright_an.py` (`csv/port_enright_table.csv`):
+
+| N | np | OF Co | ring, fork: steps, status | ring, leia (default): steps, status | ring, leiaGF: identity | rdf, v2606 against TwoPhaseFlow |
+|---|---|---|---|---|---|---|
+| 32 | 1 | 0.49 | 480, ended (E_shape 1.137e-2) | 443, aborted (min alpha -0.742) | bit for bit, 480 ended | same digits |
+| 32 | 1 | 0.98 | 240, ended (1.250e-2) | 225, aborted (-0.797) | bit for bit, 240 ended | same digits |
+| 64 | 8 | 0.50 | 628, aborted (-0.545) | 777, aborted (-1.12) | running at the time of writing (job 56010618) | E_shape 3.0181e-3 / 3.0181e-3, L1(x) 5.870e-2 / 5.854e-2, L1(n) 0.5963 / 0.5938 |
+| 64 | 8 | 0.99 | 399, aborted (-1.20) | 138, aborted (-0.774) | bit for bit, 399 aborted | E_shape 3.1633e-3 / 3.1633e-3, L1(x) 6.087e-2 / 6.075e-2 |
+| 128 | 64 | 0.50 | 125, aborted (-1.25) | 216, aborted (-0.750) | bit for bit, 125 aborted | same digits (E_shape 6.9114e-4, L1(x) 7.4270e-3) |
+| 128 | 64 | 0.99 | 106, aborted (-0.508) | 67, aborted (-0.932) | bit for bit, 106 aborted | E_shape 6.908e-4 / 6.906e-4, L1(x) 7.622e-3 / 7.841e-3, excess 8.7e-5 / 9.2e-5 |
+
+Bit for bit = the fields of the last written time in every processor directory (72 at N 64,
+576 at N 128), the three function-object files, the CSV but its wall-clock columns, every
+numeric log line and the abort line with its numbers; the per-rank `kromerBothe area check
+failed` warnings reach the log in the ranks' flush order and are compared as sorted sets
+(`port_identity_check.py` 2aa8c65a). The wall clock of the leiaGF binary is 0.994 .. 1.004
+of the fork's.
+
+What this says. The Enright case is the loop's sensitivity at its sharpest: the default
+route and the fork separate at the first grazing cut (N 32 OF Co 0.5: step 6, "2 clips,
+12627 against 12629 quadrature leaves", the mass change of the step 4.9e-16 against
+6.1e-16), and from there the two runs are different realisations of the same unstable
+fragmentation: the fork's N 32 runs end at T = 3 and the default route's abort at step 443
+and 225; at N 64 OF Co 1 the fork aborts at step 399 and the default route at 138; at N 128
+OF Co 0.5 at 125 against 216. The abort step of the Enright record below is therefore not a
+property of the method but of the realisation, to be read with the round-off sensitivity
+in mind (the loop amplifies a 1e-16 difference of one step, REPORT 2026-10-24). With
+`grazingCut fork` every finished cell is bit for bit, in serial and on 8 and 64 ranks: the
+threshold of `cutCellPLIC::calcSubCell` is the whole difference between the port and the
+fork on this case too. The plicRDF + isoAdvector arm differs between OpenFOAM v2606's and
+TwoPhaseFlow's classes in the third to fourth digit of L1(x) and L1(n) at N 64 (both OF
+Co) and N 128 OF Co 1, the unbounded runs (min alpha -4.8e-6 .. -1.1e-3, the bounding
+tolerances differ, PORT-DESIGN 1.3), and to the printed digits at N 32 and N 128 OF Co 0.5;
+leia's reference row is v2606's by Tomislav's decision, the difference is stated, not
+resolved.
+
+For the standing study matrix (Tomislav, 2026-11-07) this fixes two things: the DAVOF
+rows run with `grazingCut fork` where a result is to be reproduced against the fork's
+record and with the default otherwise, the key written into the stamp of every case; and
+the Enright rows' abort step is reported with the realisation's seed (the route and the
+threshold) named.
+
 ## The 3D Enright deformation (2026-11-06)
 
 Tomislav's task of 2026-11-06: the 3D deformation test (LeVeque 1996, Enright et
