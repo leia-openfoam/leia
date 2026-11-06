@@ -15,8 +15,8 @@
 // at T/2 and the exact state at t = T is the initial disc. The disc leaves the
 // square through no edge (the vortex is tangential on the boundary, psi = 0
 // there: the rim flux is exactly zero). The fixed step is dt = Co h /
-// REFERENCE_SPEED with REFERENCE_SPEED the maximum over the cells of
-// 0.5 sum_f |phi_f| / V_c h at t = 0 (initVortex2D prints it: 1.2 provisional until the first preparation prints it, then set);
+// REFERENCE_SPEED with REFERENCE_SPEED 1.3, the maximum over the cells of
+// 0.5 sum_f |phi_f| / V_c h at t = 0 (the first preparation at N 64 with 1.2 measured OpenFOAM Co 0.2163 at the target 0.2, so 1.3);
 // END_TIME 8. The exact body of the function objects is the disc at rest
 // (U0 = 0): only the values at t = T are errors of the transport; the fork's
 // testsuite scores plicRDF at N 128 with 2.334e-3 and isoAlpha with 1.469e-3
@@ -55,7 +55,7 @@ values
     TPF_SPHERE_CY ( 0 );
     TPF_SPHERE_CZ ( 0.75 );
     END_TIME ( 8 );
-    REFERENCE_SPEED ( 1.2 );
+    REFERENCE_SPEED ( 1.3 );
     // zeroGradient: the rim flux is exactly zero
     TPF_ALPHA_BC ( zeroGradient );
     TPF_ABORT_INTERFACE_FACTOR ( 100 );
