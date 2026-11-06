@@ -102,7 +102,8 @@ def compare_post(cf, cl, rep):
                     if len(ca) != len(cb): cols.add("(column count)")
                 # the wall-clock columns of the converter are not results
                 TIMING = ("advectWallMax", "curvedFluxWallMax", "exchangeWallMax", "clockTime", "executionTime", "timeStepTime")
-                numeric = [c for c in cols if c not in ("solver", "binary", "version", "gitCommit", "log", "application", "clippingSurface", "fluxIntegration") and c not in TIMING]
+                # tpfCommit/tpfVersion: the converter's record of LEIA_TPF_DIR (the fork build of the route), a label
+                numeric = [c for c in cols if c not in ("solver", "binary", "version", "gitCommit", "log", "application", "clippingSurface", "fluxIntegration", "tpfCommit", "tpfVersion") and c not in TIMING]
                 rep.append(f"  {f}: differing columns {sorted(cols)}" + (" (wall-clock and route labels only)" if not numeric else ""))
                 if numeric: ok = False
                 continue
