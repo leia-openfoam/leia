@@ -28,7 +28,7 @@ render() { # case N label
       (cd $c && reconstructPar -time $t -fields '(alpha.water)' > log.reconstructPar.$t 2>&1) || echo "reconstructPar $c $t failed"
     fi
     [ -f $c/$t/alpha.water ] || continue
-    $PY -I $R $c $t $N $W/pics/${lab}_t$t.png "$lab, t = $t" 2>&1 | tail -1
+    $PY $R $c $t $N $W/pics/${lab}_t$t.png "$lab, t = $t" 2>&1 | tail -1
   done
 }
 for d in $W/time/N*_co*; do
