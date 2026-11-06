@@ -27,7 +27,11 @@ NOISE = re.compile(
     r"davofSwept: the key|isoAdvector: OpenFOAM|leia-stamp|version).*|.*(ExecutionTime|ClockTime|timeStepTime|wall time| s \(wait |elapsed).*$"
 )
 def norm_line(s):
-    s = s.replace("isoAdvection: ", "davofSwept: ").replace("advectorVoF", "davofAdvectorFoam")
+    # the log prefixes, the application name and the two renamed keys of the leia route
+    # (surface for clippingSurface, flux for fluxIntegration; the values are the same)
+    s = (s.replace("isoAdvection: ", "davofSwept: ").replace("advectorVoF", "davofAdvectorFoam")
+          .replace("davofSwept: clippingSurface ", "davofSwept: surface ")
+          .replace(", fluxIntegration ", ", flux "))
     return s.rstrip("\n")
 
 def last_time_dir(case):
@@ -69,9 +73,22 @@ def compare_post(cf, cl, rep):
             if "sweptFaceLog" in f or "consistency" in f.lower(): continue
             rep.append(f"  missing on the leia side: {f}"); ok = False; continue
         if not filecmp.cmp(a, b, shallow=False):
-            ok = False
             la, lb = open(a, errors="replace").read().split("\n"), open(b, errors="replace").read().split("\n")
             k = next((i for i in range(min(len(la), len(lb))) if la[i] != lb[i]), min(len(la), len(lb)))
+            if f.endswith(".csv") and k < min(len(la), len(lb)) and len(la) == len(lb):
+                # the converter's CSV: name the differing columns; a column that names the
+                # route (the solver, the log file, the version stamp) is not a number
+                hdr = la[0].split(",")
+                cols = set()
+                for i in range(1, len(la)):
+                    ca, cb = la[i].split(","), lb[i].split(",")
+                    cols |= {hdr[j] if j < len(hdr) else str(j) for j in range(min(len(ca), len(cb))) if ca[j] != cb[j]}
+                    if len(ca) != len(cb): cols.add("(column count)")
+                numeric = [c for c in cols if c not in ("solver", "binary", "version", "gitCommit", "log", "application", "clippingSurface", "fluxIntegration")]
+                rep.append(f"  {f}: differing columns {sorted(cols)}" + (" (route labels only)" if not numeric else ""))
+                if numeric: ok = False
+                continue
+            ok = False
             rep.append(f"  {f} differs at line {k + 1}:\n    fork {la[k][:120] if k < len(la) else ''}\n    leia {lb[k][:120] if k < len(lb) else ''}")
         else:
             n += 1
