@@ -152,6 +152,8 @@ def main():
         w = csv.DictWriter(f, fieldnames=keys); w.writeheader(); w.writerows(runs)
     # the table per cell and method
     table = []
+    # tet: dropped by decision (Tomislav, 2026-11-08): out of the tables, kept in iso_runs.csv as a record
+    runs = [r for r in runs if r["mesh"] != "tet"]
     cells = sorted({(r["flow"], r["mesh"], r["N"], r["co_index"]) for r in runs})
     for (flow, mc, N, co) in cells:
         for m in METHODS:
@@ -216,6 +218,7 @@ def main():
             fmt(row.get("step_s_wall_median"), 4), fmt(row.get("Eshape_end"), 3), fmt(row.get("L1n_end"), 3), fmt(row.get("L1x_end"), 3),
             fmt(row.get("min_alpha_run"), 2), fmt(row.get("max_excess_run"), 2), fmt(row.get("mass_dev_max_pct"), 2), row.get("interface_cells_first"), row.get("interface_cells_max"),
             ("ABORT step %s: %s" % (row.get("abort_step"), row.get("abort_reason"))) if row.get("abort_step") else ""))
+    lines.append("tet: dropped by decision (Tomislav, 2026-11-08); the finished tet runs are in iso_runs.csv as a record")
     open(OUT + "/iso_summary.txt", "w").write("\n".join(lines) + "\n")
     print("\n".join(lines))
     print("wrote", OUT + "/iso_runs.csv", OUT + "/iso_table.csv", OUT + "/iso_orders.csv")

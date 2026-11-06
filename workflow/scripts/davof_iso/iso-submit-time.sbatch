@@ -22,7 +22,7 @@ I=$W/iso; S=$I/leia/studies/davof; SB=$I/leia/workflow/scripts/davof_iso/iso-tim
 FLOWS=${FLOWS:-"Rotation Shear Deformation"}; NS=${NS:-"32 64 128"}; COS=${COS:-"0 1 2"}
 # MESHCLASSES (default hex): the mesh classes; a class other than hex has N 32 and 64 (OF Co
 # 0.2, 0.5 and 1 like hex: the standing protocol of 2026-11-07), and its job names carry the class.
-MESHCLASSES=${MESHCLASSES:-hex}
+MESHCLASSES=${MESHCLASSES:-hex}   # tet: dropped by decision (Tomislav, 2026-11-08), do not submit it
 declare -A NP=([32]=1 [64]=8 [128]=64)
 # the 2D flows (FLOW *2D, the study iso<FLOW>_...): N 64 / 128 / 256 on 1 / 1 / 8 ranks
 declare -A NP2D=([64]=1 [128]=1 [256]=8)
