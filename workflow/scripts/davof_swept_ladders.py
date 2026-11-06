@@ -48,7 +48,8 @@ def measure(c):
     col = lambda k: [f(r.get(k)) for r in rows if f(r.get(k)) is not None]
     dat = os.path.join(c, "postProcessing", "volumeFractionError", "0", "volumeFractionError.dat")
     fixed = os.path.isfile(dat) and "exactState exactSphere" in open(dat).readline()
-    ex = [l for l in open(os.path.join(c, "log.advectorVoF")) if l.startswith("ExecutionTime")]
+    logf = next((os.path.join(c, n) for n in ("log.advectorVoF", "log.davofAdvectorFoam") if os.path.isfile(os.path.join(c, n))), os.path.join(c, "log.advectorVoF"))  # either route (2026-11-06)
+    ex = [l for l in open(logf) if l.startswith("ExecutionTime")]
     L1a, L1n = col("L1_alphaf"), col("LNormalDiff1")
     return dict(
         study=os.path.basename(os.path.dirname(c)), case=os.path.basename(c), row=tok.get("TPF_ROW"),

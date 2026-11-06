@@ -1,0 +1,91 @@
+# 4.3, the grazing-cut proof on the ladders (2026-11-06): the leia route with grazingCut fork; expected
+# byte-identical to port_ladder_rotation_fork where the default (openfoam) drifted at the last digit.
+# The port acceptance (docs/davof/PORT-DESIGN.md, 2026-11-06): the rotation ladder N 32/64 (4.3) on the leia route; the reference is the fork's ref_setting.csv.
+# Rendered from sphereRotation3D_hexRotFinal.yaml with the solver and the keys of this header changed.
+# C (2026-11-02, the swept-face advection in the preprint's framing; via the
+# coordinating session): the rotation ladder with the final code. The sphere
+# (R 0.15) turned once about the axis through (0.75 . 0.5), omega 2 pi,
+# END_TIME 1, Co 0.2 at the far point (400 / 800 / 1600 steps at N = 32 / 64 /
+# 128), exactSphere initial state, alpha fixedValue on the patches. Rows:
+# the swept-face advection (anchored plane by volume, Kromer-Bothe, ccs;
+# sweptFaceCells with sweptScaleToPhi, the pieces face update, donorSide, the
+# cap set final of de7aea9, planeSource anchor) with the exact and the ring
+# normal (sphereRotation3D_hexRotFinal: N = 32, 64 serial;
+# _hexRotFinalN128: N = 128 on 64 ranks), and plicRDF + isoAdvector on the
+# same rotation and state (_hexRotRDF, _hexRotRDFN128). Fork davof-swept
+# a7e6853 (the fixed volumeFractionError: E_shape against the exact sphere).
+# Read-out at the end of the turn: L1(alphaf), L1(x), L1(n), the fixed
+# E_shape, min alpha and the excess over 1 over the run, the mass deviation;
+# least-squares orders over N = 32, 64, 128.
+#
+# PRE-REGISTERED (2026-11-02, before the runs; the fixed E_shape of the earlier
+# ladders, item A, not yet seen):
+# R-0 bounded and conservative: min alpha >= -1e-10, excess <= 1e-10, |mass
+#   deviation| <= 1e-9 % at every N, both rows; no rank fallback at N = 128.
+# R-1 L1(alphaf) order: ring >= 0.7, exact >= 0.55.
+# R-2 L1(x) order >= 1.6, both rows.
+# R-3 fixed E_shape order >= 1.5, both rows.
+# R-4 against plicRDF on the same state at N = 128: the exact-normal row's L1(x)
+#   and E_shape below plicRDF's; the ring row's within a factor 1.5 of
+#   plicRDF's.
+# Seen before writing this: the earlier ladders (sphereRotation3D_hexSweptCells
+# Fixed / DonorFace: L1(alphaf) orders 0.67 / 0.70 exact and 0.84 / 0.81 ring,
+# L1(x) 1.66 to 1.91, the former E_shape 1.74 to 1.88, excess 1e-11 to 8e-11)
+# and plicRDF on the rotation at N = 32, 64 (sphereRotation3D_hexComparators,
+# zeroGradient patches).
+#
+# MEASURED (2026-11-02; jobs 55869110-13; REPORT-swept "The swept-face
+# advection in the preprint's framing: A to D"): R-0 HELD (min >= -8.0e-13,
+# excess <= 8.2e-11, mass <= 6.3e-12 %, no rank fallback); R-1 HELD
+# (L1(alphaf) orders exact 0.68, ring 0.83); R-2 HELD (L1(x) 1.71 / 1.90);
+# R-3 HELD (E_shape 1.68 / 1.86); R-4 HELD (N = 128: exact L1(x) 1.392e-4,
+# E_shape 3.869e-5; ring 2.024e-4, 5.738e-5; plicRDF 2.310e-4, 6.435e-5).
+# plicRDF on 64 ranks at N = 128 is not bounded (min -3.1e-5, excess 7.1e-7).
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexRotFinal --export=ALL,STUDY=davof/sphereRotation3D_hexRotFinal run-studies.sbatch
+study_name: port_ladder_rotation_leiaGF
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32, 64]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+  TPF_GRAZING_CUT: [fork]
+collapse_other_axes: true
+
+solve_mem_mb: 16000
+solve_runtime: 600
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
