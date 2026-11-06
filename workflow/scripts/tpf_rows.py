@@ -158,6 +158,11 @@ VELOCITY_ARMS = OrderedDict([
     # the space diagonal at the same speed, (pi/2)(1 1 1)/sqrt(3)
     # (2026-11-02, the per-axis-displacement control)
     ("lineDiag3D", ("0.9068996821171089", "0.9068996821171089", "0.9068996821171089")),
+    # the 3D deformation of cases/davof/sphereDeformation3D (2026-11-06): no
+    # uniform velocity; the field is setFlow's vortex3D (LeVeque 1996) from
+    # the case's own tokens, the tokens here are the U0 of the exact body
+    # (the sphere at rest: the exact state at t = T is the initial sphere)
+    ("deformation3D", ("0", "0", "0")),
 ])
 
 VELOCITY_TOKENS = ("TPF_UX", "TPF_UY", "TPF_UZ")

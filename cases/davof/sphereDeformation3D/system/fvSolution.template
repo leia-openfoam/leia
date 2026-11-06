@@ -1,0 +1,194 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// The 3D deformation benchmark (cases/davof/sphereDeformation3D.parameter):
+// the alpha solver dictionary of the rotation benchmark
+// (cases/davof/sphereRotation3D/system/fvSolution.template, where every key
+// is documented) with the four bit-for-bit keys of round 4 added and the
+// setFlow block replaced by the deformation field.
+
+solvers
+{
+    "alpha.water.*"
+    {
+        // the route (DAVOF_SOLVER -> the Snakefile): isoAdvection on the fork
+        // route; davofSwept (the davof rows) | isoAdvector (the comparators,
+        // OpenFOAM's isoAdvection) on the leia route (materialize.py, 2026-11-06)
+        advectionScheme      @!DAVOF_ADVECTION_SCHEME!@;
+        reconstructionScheme @!TPF_RECON_SCHEME!@;
+        wispTol         @!TPF_WISP_TOL!@;
+        isoFaceTol      1e-8;
+        surfCellTol     1e-8;
+        positioning     @!TPF_POSITIONING!@;
+        positioningTol  @!TPF_POSITIONING_TOL!@;
+        // the grazing-cut rule of the cell cut (leia 2026-11-06, PORT-DESIGN 1.2):
+        // openfoam (v2606's cutCellPLIC, the default) | fork (the TwoPhaseFlow
+        // threshold 10*SMALL, the opt-in copy); the fork's binary ignores the key
+        grazingCut      @!TPF_GRAZING_CUT!@;
+        interpolateNormal @!TPF_INTERPOLATE_NORMAL!@;
+        normalModel     @!TPF_NORMAL_MODEL!@;
+        applyTo         @!TPF_APPLY_TO!@;
+        sliverTol       @!TPF_SLIVER_TOL!@;
+        maxAngle        @!TPF_MAX_ANGLE!@;
+        noNormalFallback @!TPF_NO_NORMAL_FALLBACK!@;
+        faceClipping    @!TPF_FACE_CLIPPING!@;
+        sagittaMinCos   0.2;
+        sagittaMinChord 0.05;
+        sagittaMaxFraction 0.25;
+        sagittaForm     full;
+        tensorSource    ring;
+        writeCurvatureTensor @!TPF_WRITE_TENSOR!@;
+        writeSagittaCorrection @!TPF_WRITE_TENSOR!@;
+        clippingSurface @!TPF_CLIPPING_SURFACE!@;
+        curvedTolRel    @!TPF_CURVED_TOL_REL!@;
+        curvedMaxDepth  @!TPF_CURVED_MAX_DEPTH!@;
+        volumeRule      @!TPF_VOLUME_RULE!@;
+        volumeRuleDebug @!TPF_CURVED_DEBUG!@;
+        kromerBotheMinSplit @!TPF_KB_MIN_SPLIT!@;
+        kromerBotheFan  @!TPF_KB_FAN!@;
+        faceState       @!TPF_FACE_STATE!@;
+        tensorCentroid  @!TPF_TENSOR_CENTROID!@;
+        kromerBothePrismApex @!TPF_KB_PRISM_APEX!@;
+        fitPriorWeight  1e-2;
+        fitTol          1e-10;
+        fitMaxIter      50;
+        fitAnchor       @!TPF_FIT_ANCHOR!@;
+        fitDof          @!TPF_FIT_DOF!@;
+        anchorTolRel    1e-11;
+        anchorMethod    @!TPF_ANCHOR_METHOD!@;
+        anchorSkipConverged @!TPF_ANCHOR_SKIP_CONVERGED!@;
+        sweptPreTest    @!TPF_SWEPT_PRE_TEST!@;
+        sweptStateShortcut @!TPF_SWEPT_STATE_SHORTCUT!@;
+        sweptTraceCache @!TPF_SWEPT_TRACE_CACHE!@;
+        fluxIntegration @!TPF_FLUX_INTEGRATION!@;
+        sweptClassify   @!TPF_SWEPT_CLASSIFY!@;
+        sweptScaleToPhi @!TPF_SWEPT_SCALE!@;
+        sweptVolumeCorrection @!TPF_SWEPT_VOLUME_CORRECTION!@;
+        sweptWispSurface @!TPF_SWEPT_WISP_SURFACE!@;
+        sweptWispTol @!TPF_SWEPT_WISP_TOL!@;
+        sweptWispMatchTol @!TPF_SWEPT_WISP_MATCH_TOL!@;
+        sweptCellsFaceUpdate @!TPF_SWEPT_FACE_UPDATE!@;
+        sweptCoplanar   @!TPF_SWEPT_COPLANAR!@;
+        sweptFaceDump   @!TPF_SWEPT_DUMP!@;
+        planeSource     @!TPF_PLANE_SOURCE!@;
+        sweptFaceLog    @!TPF_SWEPT_FACE_LOG!@;
+        sweptCapSet     @!TPF_SWEPT_CAP_SET!@;
+        sweptConsistencyLog @!TPF_SWEPT_CONSISTENCY_LOG!@;
+        sweptConsistent @!TPF_SWEPT_CONSISTENT!@;
+        // the four bit-for-bit keys of round 4 (fork davof-swept c5c00c5,
+        // opt-in there, default false; builds before it ignore them): the
+        // axis-aligned plane clips, the cached cell tetrahedra, the
+        // band-only point velocity and the coplanar-side pre-test
+        sweptAxisPlanes @!TPF_SWEPT_AXIS_PLANES!@;
+        sweptTetCache   @!TPF_SWEPT_TET_CACHE!@;
+        sweptPointVelocityLazy @!TPF_SWEPT_POINT_VELOCITY_LAZY!@;
+        sweptPreTestCoplanarSide @!TPF_SWEPT_PRE_TEST_COPLANAR_SIDE!@;
+        defectEvery     10;
+        curvedDebug     @!TPF_CURVED_DEBUG!@;
+        defectLevels    3;
+        writeCurvedFields @!TPF_WRITE_TENSOR!@;
+        // the exact body of the exact normal model (not used by the ring
+        // row; the key block is read): the sphere at rest
+        exactNormal
+        {
+            functionType sphere;
+            origin      (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
+            radius      @!TPF_SPHERE_RADIUS!@;
+            U0          (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+            omega       (0 0 0);
+            axisPoint   (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
+        }
+        vof2IsoTol      1e-8;
+        writeVTK        false;
+        // the bounding of isoAdvection (the comparator plicRDF: nAlphaBounds 5,
+        // snapTol 0, clip false, nAlphaCorr 1, the fork's deformation test)
+        snapTol         @!TPF_SNAP_TOL!@;
+        nAlphaBounds    @!TPF_N_ALPHA_BOUNDS!@;
+        clip            @!TPF_CLIP!@;
+        nAlphaCorr      1;
+        nAlphaSubCycles 1;
+        cAlpha          1;
+    }
+}
+
+// The velocity: advectorVoF constructs OpenFOAM's functionObjects::setFlow
+// from this block (apps/benchmark/advectorVoF/createFields.H) and calls it
+// before the first step and at the half time t_n + dt/2 of every step. Mode
+// vortex3D (setFlow.C, v2606) sets on the cell centres and the patch faces
+//     U = ( 2 sin^2(pi x) sin(2 pi y) sin(2 pi z),
+//          -sin(2 pi x) sin^2(pi y) sin(2 pi z),
+//          -sin(2 pi x) sin(2 pi y) sin^2(pi z) )
+// with x = C - origin (origin (0 0 0); refDir (1 0 0) and axis (0 1 0) make
+// its frame the identity), the flux phi = U(x_f) . S_f from the same
+// expression at the face centres (exactly divergence-free on the
+// equidistant hexahedra by the product structure of the field, see the
+// .parameter file; the continuity error printed per step is 1e-13), and
+// multiplies both by
+// scale(t) = cos(2 pi t / (2 T)) = cos(pi t / T) (Function1 cosine of period
+// 2 T; value = amplitude cos(2 pi t / period) scale + level): the LeVeque /
+// Enright deformation that reverses at T/2 and returns the sphere at T.
+// Evaluated at the half time, cos(pi t_m / T) dt is the step's integral of
+// the time factor to O(dt^3).
+setFlow
+{
+    mode        vortex3D;
+    origin      (0 0 0);
+    refDir      (1 0 0);
+    axis        (0 1 0);
+    scale       cosine;
+    scaleCoeffs
+    {
+        period      #eval{ 2*@!TPF_PERIOD!@ };
+        amplitude   1;
+        scale       1;
+        level       0;
+    }
+}
+
+// advectorVoF reads period/reverseTime/spirallingFlow here (none) and the
+// abort guard (fork commit a5901fd, 2026-10-13): the run ends with
+// "advectorVoF: ABORT at step ..." and the normal "End" when alpha leaves
+// [abortMinAlpha, abortMaxAlpha] or the interface-cell count exceeds
+// abortInterfaceCellFactor times its count at the first step (100 here: the
+// sheet's area, see the .parameter file); the leia converter
+// tpf_advection_metrics.py records the row as status diverged.
+isoAdvector
+{
+    abortEnabled    true;
+    abortMinAlpha   -0.5;
+    abortMaxAlpha   1.5;
+    abortInterfaceCellFactor @!TPF_ABORT_INTERFACE_FACTOR!@;
+}
+
+PIMPLE
+{
+    momentumPredictor no;
+    nCorrectors     -1;
+    nNonOrthogonalCorrectors -1;
+    nAlphaCorr      1;
+    nAlphaSubCycles 1;
+    cAlpha          1;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+SIMPLE
+{
+    nNonOrthogonalCorrectors 0;
+}
+
+// ************************************************************************* //
