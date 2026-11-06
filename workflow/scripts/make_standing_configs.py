@@ -10,9 +10,11 @@ agree in everything but the family and the rung. Run it after a change of the ma
 
 The families: shear2D (cases/davof/isoShear2D, the sheared disc of Rider and Kothe 1998 on
 a one-cell-thick mesh, T = 8), shear3D (cases/davof/isoShear3D, the sphere in the shear
-flow of Liovic et al. 2006, T = 3), deformation3D (cases/davof/sphereDeformation3D, the
-LeVeque / Enright deformation, T = 3); the first two are the fork agent's templates
-(origin/davof-swept, tokenised on 2026-11-07), the third the Enright agent's. Rows: the
+flow of Liovic et al. 2006, T = 3), deformation3D (cases/davof/isoDeformation3D, the
+LeVeque / Enright deformation, T = 3); the fork agent's templates (origin/davof-swept,
+tokenised and extended with the swept keys on 2026-11-07), one template per case on both
+tracks (the coordinator's decision; the Enright agent's sphereDeformation3D, the same
+sphere, field and setting, stays its diagnosis case). Rows: the
 DAVOF swept-face advection in its reference setting (davof-planeSurf-ringArea: the ring
 normal, the plane surface, sweptFaceCells, the round-4 keys) and OpenFOAM v2606's
 isoAdvector + plicRDF (plicRDF). OpenFOAM Co 0.2, 0.5, 1 (TARGET_ADVECTIVE_CO with the
@@ -35,7 +37,10 @@ FAMILIES = {
                 {64: (1, 240, 3000), 128: (1, 600, 3000), 256: (8, 900, 3000)}),
     "shear3D": ("davof/isoShear3D", "initDavofFields && initShearFlow3D",
                 {32: (1, 240, 4000), 64: (8, 600, 4000), 128: (64, 900, 4000)}),
-    "deformation3D": ("davof/sphereDeformation3D", "initDavofFields",
+    # the coordinator's decision of 2026-11-07: one template per case on both tracks = the
+    # fork agent's iso* templates; the Enright agent's sphereDeformation3D is its diagnosis
+    # case only (the same sphere, field, period, reference speed and abort factor)
+    "deformation3D": ("davof/isoDeformation3D", "initDavofFields",
                       {32: (1, 240, 4000), 64: (8, 600, 4000), 128: (64, 900, 4000)}),
 }
 ROWS = ["davof-planeSurf-ringArea", "plicRDF"]
@@ -94,7 +99,9 @@ PREREG = {
 #   writes, the measured OF Courant number, the stamps.
 """,
     "deformation3D": """# PRE-REGISTERED (2026-11-07, before any run; the Enright record of 2026-11-06, REPORT-swept
-# "The 3D Enright deformation" and "Phase 3, the Enright identity", is the evidence).
+# "The 3D Enright deformation" and "Phase 3, the Enright identity", is the evidence: the
+# same sphere, field, period, reference speed and abort factor as this template
+# (isoDeformation3D); its plicRDF row ran nAlphaBounds 5, this one the fork agent's 3).
 #   D-1  Completion. plicRDF completes every cell (bounded to 1e-6 at N 32, unbounded to
 #        1e-3 at N 128 OF Co 1 as on 2026-11-06). The DAVOF row with grazingCut fork
 #        reproduces the fork's record bit for bit where the fork ran the same cell (N 32:

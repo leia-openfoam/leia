@@ -1,6 +1,6 @@
 # The standing study matrix (Tomislav, 2026-11-07; docs/davof/PORT-DESIGN.md 5b;
 # workflow/scripts/make_standing_configs.py writes this file, edit the script): the
-# family deformation3D (davof/sphereDeformation3D) at N 128 on 64 rank(s); the rows davof-planeSurf-ringArea, plicRDF; OpenFOAM Co
+# family deformation3D (davof/isoDeformation3D) at N 128 on 64 rank(s); the rows davof-planeSurf-ringArea, plicRDF; OpenFOAM Co
 # 0.2, 0.5, 1; three identical repetitions per cell (TPF_REPETITION);
 # the DAVOF rows with grazingCut fork (Tomislav's policy of 2026-11-07: the numbers
 # are reproduced against the fork track's record, which runs the same templates).
@@ -9,7 +9,9 @@
 #
 #   sbatch --parsable -J leia-standing-deformation3D-N128 --export=ALL,STUDY=davof/standing/deformation3D_N128 run-studies.sbatch
 # PRE-REGISTERED (2026-11-07, before any run; the Enright record of 2026-11-06, REPORT-swept
-# "The 3D Enright deformation" and "Phase 3, the Enright identity", is the evidence).
+# "The 3D Enright deformation" and "Phase 3, the Enright identity", is the evidence: the
+# same sphere, field, period, reference speed and abort factor as this template
+# (isoDeformation3D); its plicRDF row ran nAlphaBounds 5, this one the fork agent's 3).
 #   D-1  Completion. plicRDF completes every cell (bounded to 1e-6 at N 32, unbounded to
 #        1e-3 at N 128 OF Co 1 as on 2026-11-06). The DAVOF row with grazingCut fork
 #        reproduces the fork's record bit for bit where the fork ran the same cell (N 32:
@@ -27,7 +29,7 @@
 #   writes (the fragmentation), the measured OF Courant number, the abort steps, the stamps.
 study_name: standing_deformation3D_N128
 studies_dir: studies/davof
-case: davof/sphereDeformation3D
+case: davof/isoDeformation3D
 mesh: hex
 mode: parallel
 np: 64

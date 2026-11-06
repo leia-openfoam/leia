@@ -4721,11 +4721,12 @@ D-1..4 in the headers. The tables: `workflow/scripts/make_standing_tables.py <fa
 the ranks, dt and the steps). The smoke before the matrix: `config/davof/port_shear2D_smoke.yaml`
 (the swept flux on the 2D mesh with empty patches, 17 steps).
 
-Open before the matrix runs (the hand-back): the deformation family's template (the
-Enright agent's `sphereDeformation3D` here, the fork agent's `isoDeformation3D` on its
-track: two templates for one case, to be settled); the fork agent takes the tokenised and
-extended templates (its stamps change by the added keys); the Enright agent's keys
-(decisions 1-3) ported when the coordinator says; the 2D smoke on the cluster.
+The coordinator's decisions (2026-11-07, after the hand-back): one template per case on
+both tracks = the fork agent's iso* templates (the deformation family switched to
+`isoDeformation3D`; the Enright agent's `sphereDeformation3D` is its diagnosis case only);
+the stamp id without the workflow commit stays; the matrix starts after the 2D smoke
+passes, as the BASELINE (the two rows), the variant rows added later as new rows (the
+stamps make them additive); the fork agent merges davof-port's template changes.
 
 ## The 3D Enright deformation (2026-11-06)
 
