@@ -6123,3 +6123,43 @@ column's surface from 0.23 ms on. Reported as measured, one run per setting; the
 (128 ranks) is not started for the DAVOF row. mass5 is closed: the head build with
 ae08dc0-RING's fvSolution reformatted by sed reproduces ae08dc0-RING to every step, so the
 earlier mass discrepancy was the foamDictionary rewrite's round-off, not the code.
+
+### Open build defect of the fork track: OpenFOAM's `interface` sampled surface cannot see the fork's reconstruction (2026-11-08)
+
+Symptom: a run of the fork with the published jet case's `surfaces` function object
+(`FO_plicInterface`: `libs (geometricVoF sampling)`, surface `type interface`) aborts at
+the first write time with `bad lookup of reconstructionScheme (objectRegistry region0):
+expected a reconstructionSchemes, found a davof` (`objectRegistry::lookupObject`, a failed
+dynamic cast), MPI_ABORT on every rank. Reproducer: `prof/jet-run.sbatch` with
+`MESH=coarse ROW=RING END=0.0001` and the mesh dictionary as published, 200 steps on 32 ranks,
+aborts at t = 1e-4 on the 74ea376 build (-c) and on the bf70393 build (-e) alike (jobs
+56028088, 56028089); the same with the plicRDF rows, whose object is a `plicRDF`.
+
+Cause: two base classes with the same unqualified name. OpenFOAM's `sampledInterface`
+(`src/transportModels/geometricVoF/sampledInterface`) does
+`lookupObjectRef<Foam::reconstructionSchemes>("reconstructionScheme")`; the fork's
+reconstructions register the object under that name, but their base is
+`Foam::twoPhaseFlow::reconstructionSchemes` (the `inline namespace twoPhaseFlow` fix of
+`feature/parasitic-currents`, which keeps the fork's `libVoF` apart from OpenFOAM's
+`libgeometricVoF`); `nm -C` shows the typeinfo and vtable of `Foam::reconstructionSchemes`
+only in `libgeometricVoF.so` and those of `Foam::twoPhaseFlow::reconstructionSchemes` only
+in the fork's `libVoF.so`, in both builds, so the cast can never succeed, on any build of
+the fork, with any key. Not a defect of bf70393 and not of the item-3 keys: the measured
+jet rows of 2026-11-06 passed their writes because their dictionary carried the fork's own
+sampled surface (`libs ("libpostProcess.so" sampling)`, `type reconstructedInterface`,
+`src/postProcessing/interface`, built against the fork's base), while the mesh dictionary
+every later run copied carried the published `interface` surface (and the published
+`visRDF` coded function object, whose build needs the fork's `lnInclude` by a relative
+path and fails from the run directory). The first two submissions of the reset windows
+died on these two (the first also lost its second key to sbatch's comma split of
+`--export`; the runner's `KEYS` now separates by colons).
+
+Minimal fix, applied (a dictionary, no code, no number changes: a post-processing
+surface): the jet mesh dictionaries `iso/jet/mesh/{coarse,fine}/system/controlDict` use the
+fork's surface (`libs ("libpostProcess.so" sampling)`, `type reconstructedInterface`) and
+drop the `visRDF` function object, as the measured rows had; `prof/jet-run.sbatch` keeps
+`NOSURF=1` as the opt-in without surface writes (the two reset windows ran so). The code
+alternative, the fork's reconstruction registering also under OpenFOAM's base, would
+undo the inline-namespace separation and is not taken. For every other case run with the
+fork: an interface-surface function object must use the fork's `reconstructedInterface`,
+never OpenFOAM's `interface`.
