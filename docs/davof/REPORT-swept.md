@@ -4728,6 +4728,28 @@ the stamp id without the workflow commit stays; the matrix starts after the 2D s
 passes, as the BASELINE (the two rows), the variant rows added later as new rows (the
 stamps make them additive); the fork agent merges davof-port's template changes.
 
+### The 2D smoke of the swept-face advection: PASSED (2026-11-06, job 56018102)
+
+`config/davof/port_shear2D_smoke.yaml` on the leia route (leia 39cea3d7, built 56014921;
+`profiles/slurm-small`, the serial rules at 4 GB: a 16 GB single-core request routes to the
+`mem` partition, whose five nodes were draining, and the first submission's mesh jobs sat
+pending for an hour): the sheared disc isoShear2D at N 64, OF Co 0.5 (measured 0.4988),
+17 steps of T = 8, `grazingCut fork`, the rows `davof-planeSurf-ringArea` and `plicRDF`.
+Both rows run through (17 steps, End, no FatalError, no abort). The DAVOF row on the
+one-cell-thick mesh with two empty faces per cell: the swept flux "alphaf and dVf set on
+532 faces (216 second ring, 0 boundary), 0 skipped, 0 clips", the fit "cells 76, converged
+76, stalled 0, singular 0"; the explicit plane position's start defect
+max |alpha_plane - alpha| = 0.0126 at t = 0 on the exact cylinder state (the fork agent
+measured 0.48 before the empty faces closed the Gauss sum); at the last step min(alpha)
+-6.5e-14, max(alpha) = 1 + 7.5e-13, the mass change of the step 5.9e-16 relative, the
+converter's mass deviation 1.0e-13 %; plicRDF: min(alpha) -2.7e-19, max 1 + 0, mass
+deviation 0. The function objects compare with the disc at rest (U0 = 0), so the numbers
+at t = 0.1 are the deformation, not errors; they agree between the rows (E_shape 8.156e-4
+against 8.146e-4, L1(n) 0.4091 against 0.4094), and L1(alphaf) of the DAVOF row is finite
+(0.475, the face fractions of the moved disc against the initial one). Verdict: the swept
+flux, the face update and the function objects work on the 2D mesh with empty patches; the
+baseline matrix starts (the coordinator's decision 3).
+
 ## The 3D Enright deformation (2026-11-06)
 
 Tomislav's task of 2026-11-06: the 3D deformation test (LeVeque 1996, Enright et
