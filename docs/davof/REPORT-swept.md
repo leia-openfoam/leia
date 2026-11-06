@@ -4435,3 +4435,136 @@ differences are 1e-12 after 20 steps except the rotation N 64 (1e-9, the
 rank-fallback amplification), the same order as the trace cache's first
 form and the processor-boundary round-off of the parallel runs; Tomislav's
 call whether a change of that size may enter the defaults.
+
+## The 3D Enright deformation (2026-11-06)
+
+Tomislav's task of 2026-11-06: the 3D deformation test (LeVeque 1996, Enright et
+al. 2002) with the swept-face advection in parallel against isoAdvector +
+plicRDF, on the equidistant hexahedral meshes of the level-set case
+`cases/3Ddeformation`. Agent clones: fork
+`/work/scratch/tm83tomy/davof/agents/enright/TwoPhaseFlow` (branch
+`davof-swept-enright` from `davof-swept` c5c00c5, no source change), leia
+`.../enright/leia` (branch `davof-swept-enright` from `davof-swept` 930d2328);
+the job ledger `.../enright/.my_jobs`.
+
+### The case
+
+`cases/davof/sphereDeformation3D` (new; the dictionaries of
+`sphereRotation3D` with the setFlow block replaced): the unit cube with N^3
+equidistant hexahedra, one patch `walls`; the sphere R = 0.15 at
+(0.35 0.35 0.35); the velocity
+
+    u =  2 sin^2(pi x) sin(2 pi y) sin(2 pi z) cos(pi t / T),
+    v = -sin(2 pi x) sin^2(pi y) sin(2 pi z) cos(pi t / T),
+    w = -sin(2 pi x) sin(2 pi y) sin^2(pi z) cos(pi t / T),  T = 3,
+
+the 3D field of R. J. LeVeque, High-resolution conservative algorithms for
+advection in incompressible flow, SIAM J. Numer. Anal. 33 (1996) 627-665,
+doi:10.1137/0733033, with the time reversal of D. Enright, R. Fedkiw,
+J. Ferziger, I. Mitchell, A hybrid particle level set method for improved
+interface capturing, J. Comput. Phys. 183 (2002) 83-116,
+doi:10.1006/jcph.2002.7166. The field is set by OpenFOAM's
+`functionObjects::setFlow`, mode `vortex3D` (exactly the three components
+above on the cell centres and the face centres, `phi = U(x_f) . S_f`), with
+the time factor through its `scale` Function1 `cosine` of period 2T;
+advectorVoF evaluates it at the half time of every step (as for the
+rotation). The velocity vanishes on the six faces of the cube, so the
+boundary flux is zero. The face-centre flux is divergence-free to the
+midpoint rule only (setFlow prints the continuity error per step; the
+level-set case `cases/3Ddeformation` uses the same face-centre flux on
+hexahedra through `velocityModel::setVolumetricFlux`, its Helmholtz
+projection is for polyhedral meshes); advectorVoF passes `div(phi)` to the
+advection as the source `divU alpha`, so full and empty cells stay exactly
+1 and 0.
+
+The step: dt = Co h / 2.5 with 2.5 just above the maximum over the cells of
+0.5 sum_f |U(x_f) . n_f| at t = 0 (2.460 / 2.475 / 2.478 at N = 32 / 64 /
+128 on the three meshes; the continuum maximum of |u| + |v| + |w| is 2.479,
+of |U| 2.000), so that the nominal Co is OpenFOAM's Courant number
+(0.5 sum_f |phi_f| dt / V, the maximum over the cells, at the first step)
+to within 1.6 % at N = 32 and 1 % above; T = 3 is 3 N 2.5 / Co steps, every
+count a multiple of four, so that the field writes at T/4, T/2, 3T/4 and T
+land on steps:
+
+| N | ranks | Co 0.5: dt, steps | Co 1: dt, steps |
+|---|---|---|---|
+| 32 | 1 | 0.00625, 480 | 0.0125, 240 |
+| 64 | 8 | 0.003125, 960 | 0.00625, 480 |
+| 128 | 64 | 0.0015625, 1920 | 0.003125, 960 |
+
+Rows: ours = the swept-face advection with the ring normal
+(`davof-planeSurf-ringArea`) in the reference setting of 407f969
+(sweptWispSurface matched / 1e-9 / 0, sweptConsistent, pyramid, ccs
+positioning, anchorSkipConverged, sweptPreTest touching, sweptTraceCache)
+plus the four bit-for-bit keys of round 4 ON as the study setting
+(sweptAxisPlanes, sweptTetCache, sweptPointVelocityLazy,
+sweptPreTestCoplanarSide; they reproduce 407f969 bit for bit on the eight
+verification cases of round 4); the fork's bounding at its defaults
+(nAlphaBounds 3, snapTol 0, clip false). The comparator = isoAdvector +
+plicRDF with nAlphaBounds 5, snapTol 0, clip false, nAlphaCorr 1 (the
+fork's deformation test `testsuite/advection/test-deformationSphere`; that
+test runs Roenby's spiralling field in a 1 x 1 x 2 box and is not this case).
+No exact-normal row: a deformed sphere has no exact normal. Same initial
+alpha and alphaf (initDavofFields exactSphere), same mesh, dt, scotch
+decomposition and ranks (1 / 8 / 64 at N = 32 / 64 / 128, as in the
+comparison of 2026-11-03). The abort guard's interface-cell factor is 100
+instead of the sphere cases' 10 (the sheet's area alone multiplies the
+interface cells; the counts at T/2 and T are reported); its alpha bounds
+are unchanged.
+
+Scoring at t = T against the initial sphere (the exact end state; the
+function objects' body at rest, U0 = 0, omega = 0): E_shape =
+sum |alpha - alpha_exact| V (volumeFractionError, exactState exactSphere),
+also as the fraction of the sphere volume 4/3 pi R^3 = 0.0141372 (for sharp
+fields E_shape is the volume of the symmetric difference); L1(x) and L1(n)
+of the recovered planes (reconstructionError at the write times); for ours
+L1(alphaf) against the exact initial state (areaFractionError); min alpha
+and the excess over the whole run and the mass deviation from advectorVoF's
+per-step line; the interface cells and the wisps at T/2 and T; the swept
+counters per step. Timing: the total wall clock per case at equal ranks,
+three repetitions on exclusive i01 nodes, the diagnostics at the four write
+times only for both methods.
+
+Files: `cases/davof/sphereDeformation3D{,.parameter}`, the velocity arm
+`deformation3D` in `workflow/scripts/tpf_rows.py` (U0 = 0), the six
+preparation configs `config/davof/sphereDeformation3D_hex{Swept,RDF}N{32,64,128}.yaml`
+(short END_TIME; the timed runner sets T), the timed runner
+`workflow/scripts/davof_enright/enright-time.sbatch` and the scoring
+`workflow/scripts/davof_enright/enright_an.py`.
+
+### Pre-registered before any run
+
+(The same text in `config/davof/sphereDeformation3D_hexSweptN32.yaml`.)
+
+- E-1: both methods complete every case (6 cells each) and conserve the
+  volume to 1e-10 % (the log's dev % at every step). Falsified by an abort
+  (reported with the counters, not tuned around) or by |dev| > 1e-10 %.
+- E-2: ours stays bounded to 1e-9 over the whole run (min alpha >= -1e-9,
+  excess <= 1e-9) at both Co and every N. plicRDF's boundedness is
+  measured; the expectation from the comparison of 2026-11-03 (unbounded on
+  the diagonal at OF Co 1 in parallel): plicRDF leaves [0, 1] by more than
+  1e-6 at Co 1 for N >= 64. Falsified for ours by any excursion beyond 1e-9.
+- E-3: E_shape at T: the ratio ours / plicRDF in [0.7, 1.5] at every
+  N >= 64 and both Co (the ring normal is first order, plicRDF's second; the
+  swept flux is bounded where isoAdvector's is not; on the rotation ours was
+  7-21 % better in L1(x), on the diagonal at Co 0.2 4-12 % worse).
+  Falsified if the ratio exceeds 2 at N = 128 for either Co: the thin sheet
+  (thinner than h at T/2 for N <= 64) is where the one-layer ring stencil
+  and the wisp rule are stressed, and a ratio above 2 would mean the ring
+  normal on the sheet loses more than the swept flux gains.
+- E-4: the orders over N of E_shape at T (log2 of the ratio on 32 -> 64 and
+  64 -> 128): both methods between 1 and 2.5 on 64 -> 128 at both Co (the
+  sphere returns under-resolved at N = 32, so 32 -> 64 may exceed 2).
+  Falsified for ours by an order below 1 on 64 -> 128.
+- E-5: the wall clock ours / plicRDF at equal ranks between 2 and 4
+  (Tomislav's prediction; the reference setting measured 1.9 x serial at
+  N 64 and 3.1 x on 64 ranks on the rotation, where the interface is a
+  sphere; the sheet at T/2 multiplies the interface cells, and the swept
+  flux's cost follows the interface band while isoAdvector's is mostly
+  mesh-wide). Falsified if the median ratio exceeds 6 at any N.
+
+Also reported, not predicted: L1(x), L1(n), L1(alphaf) at T, the
+interface-cell and wisp counts at T/2 and T, the swept counters per step
+(rank fallbacks, beyond-layer faces, pyramid delta max, twisted faces, wisp
+pieces, bounding passes), setFlow's continuity error, the pictures of the
+alpha = 0.5 surface at T/2 and T.
