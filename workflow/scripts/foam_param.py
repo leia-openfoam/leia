@@ -94,6 +94,8 @@ _DERIVED_TOKENS = {
     "TPF_INTERFACE_CELL_RULE",
     "TPF_SWEPT_FRAGMENT_LOG",
     "TPF_ENRIGHT_KEYS",
+    # the davof key positioningDirection, rendered only when not unit (2026-11-08)
+    "TPF_POSITIONING_DIRECTION_KEY",
     # The route of the DAVOF advection studies (docs/davof/PORT-DESIGN.md, 2026-11-06):
     # the application, the advection scheme and the function-object library of a
     # rendered case, from the study's solver (DAVOF_SOLVER, injected by the Snakefile)
@@ -141,6 +143,7 @@ _DERIVED_INPUTS = {
     "TPF_INTERFACE_CELL_RULE": ("TPF_ENRIGHT_SETTING",),
     "TPF_SWEPT_FRAGMENT_LOG": ("TPF_ENRIGHT_SETTING",),
     "TPF_ENRIGHT_KEYS": ("TPF_ENRIGHT_SETTING",),
+    "TPF_POSITIONING_DIRECTION_KEY": ("TPF_POSITIONING_DIRECTION",),
     # the advection scheme of the leia route follows the row's reconstruction scheme
     "DAVOF_ADVECTION_SCHEME": ("TPF_ROW",),
 }

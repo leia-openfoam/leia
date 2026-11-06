@@ -1,0 +1,86 @@
+# The interface-cell threshold tau of the DAVOF reconstruction (Tomislav, 2026-11-08): the
+# sensitivity of the swept-face advection in its recommended setting (signedTets + scale +
+# normalAndAlpha, grazingCut fork) to tau = wispTol (a cell is an interface cell when
+# |m_k| > tau V_k^(2/3), m_k = -sum_f alpha_f S_f) on the 3D deformation (davof/isoDeformation3D),
+# OpenFOAM Co 0.5, T = 3. The threshold varies in the reconstruction dictionary only
+# (TPF_RECON_WISP_TOL; the initialisation and the function objects keep wispTol 1e-3, so the
+# initial state and the error measures cell sets are the same in every run; the reference
+# value renders every dictionary byte for byte as the standing matrix, checked 2026-11-08).
+# Hypothesis (Tomislav): tau has no physical job left once the alpha condition of the
+# interface-cell rule is on (cells with all face fractions equal already get m_k = 0 exactly;
+# the ring normal removes the sliver amplification), so tau can go to the round-off level and
+# every cell whose faces and volume both see the interface gets a plane; a large tau excludes
+# cells with liquid and a real patch, whose faces then take the neighbours extended planes
+# (a seed of the fragmentation). The end point is tau = 0 exactly: the test is then m_k != 0
+# (exactly, after the all-equal-faces rule) and the alpha condition; the positioning direction
+# d_k (the ring sum of the m_j, including m_k) is never zero then unless the ring cancels exactly.
+# The table: workflow/scripts/davof_wisptol_table.py; the record: docs/davof/REPORT-swept.md
+# "The interface-cell threshold tau (2026-11-08)".
+# THIS STUDY: N 32, serial, one run per tau in {1e-3 (the reference = the matrix recommended
+# row), 1e-4, 1e-6, 1e-8, 1e-10, 1e-12, 0}, positioningDirection unit (the default: the plane
+# positioned along d_k/|d_k|). The fragment log is on (TPF_ENRIGHT_SETTING recommendedLog:
+# the per-step seed counts); the log records and changes no number, which the replica study
+# deformation3D_N32_wisptolReplica (recommended without the log at tau 1e-3, which must
+# reproduce the matrix row bit for bit) checks against this study tau 1e-3 run.
+#
+#   sbatch --parsable -J wisp-N32-wisptol -t 6:00:00 --export=ALL,STUDY=davof/standing/deformation3D_N32_wisptol,PROFILE=profiles/slurm-small run-studies.sbatch
+# PRE-REGISTERED (2026-11-08, before any run; the evidence: the standing matrix recommended
+# row at N 32 OF Co 0.5, the port tree studies/davof/standing_deformation3D_N32_variants case
+# 00009: completed, E_shape 9.315e-3 at T, min alpha after the bounding -1.3e-7 over the run
+# (-6.1e-16 at the last step; before the bounding -9.3e-5), excess after the bounding 1.0e-7,
+# 410 interface cells at step 1, 688 at T, wall 612 s serial):
+#   W-1  tau <= 1e-8 keeps the run bounded to the reference level (min alpha after the
+#        bounding >= -1e-6 over the run) and completes. Falsified by an abort or a min alpha
+#        below -1e-6 at any tau <= 1e-8.
+#   W-2  the number of interface cells (the reconstruction own count, the log) rises
+#        monotonically as tau falls, by less than 20 % between 1e-3 and 1e-10 at T/2.
+#        Falsified by a decrease between consecutive tau at T/2 or a rise above 20 %.
+#   W-3  E_shape at T changes by less than 5 % across tau (max/min - 1 over the completed
+#        runs). Falsified by a change above 5 %.
+#   W-4  the count of cells with |m_k| above the threshold and alpha outside (eps, 1 - eps)
+#        (the interface-cell rule counter, eps = surfCellTol 1e-8; its maximum over the
+#        steps and its values at the writes) does not grow as tau falls. Falsified by a
+#        count at a smaller tau above 1.1 x the reference plus one cell.
+#   W-5  wall clock within 10 % across tau. Falsified by a run outside [0.9, 1.1] x the
+#        reference wall clock (the same node class; the solve wall clock of .leia_launch).
+#   W-7  the tau -> 0 limit (the coordinator addition): the series converges: the
+#        interface-cell count at T/2 and E_shape at T of tau 1e-10, 1e-12 and 0 within 1 %
+#        of each other, tau = 0 completes bounded as W-1. Falsified by a run at tau <= 1e-10
+#        that aborts, loses the bound, or differs from its neighbours by more than 5 %.
+#   Also reported, not predicted: L1(x), L1(n), L1(alphaf) at the writes, min alpha before
+#   the bounding, the excess over 1, the mass deviation, the wisp counts (wisps without a
+#   neighbour surface), the fragment log per-step seed counts, the kept-m count (cells whose
+#   ring sum vanished), the positioning statistics.
+study_name: standing_deformation3D_N32_wisptol
+studies_dir: studies/davof
+case: davof/isoDeformation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: "initDavofFields"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False). 1e-3 etc. are YAML strings (no dot), rendered verbatim.
+axes_override:
+  N_CELLS: [32]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_REPETITION: [1]
+  TPF_GRAZING_CUT: [fork]
+  TPF_ENRIGHT_SETTING: [recommendedLog]
+  TPF_RECON_WISP_TOL: [1e-3, 1e-4, 1e-6, 1e-8, 1e-10, 1e-12, 0]
+  TPF_POSITIONING_DIRECTION: [unit]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

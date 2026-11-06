@@ -208,6 +208,15 @@ def _with_derived_tokens(tokens):
     # (tpf_rows.enright_setting_tokens)
     if "TPF_ENRIGHT_SETTING" in out:
         out.update(tpf_rows.enright_setting_tokens(str(out["TPF_ENRIGHT_SETTING"])))
+    # The direction of the davof plane positioning (2026-11-08, the wisp-threshold study,
+    # config/davof/standing/*_wisptol*): the key line `positioningDirection <d>;` is
+    # rendered ONLY when the direction is not the default unit, so that every dictionary
+    # rendered before stays byte for byte the same (the stamps recompute nothing).
+    if "TPF_POSITIONING_DIRECTION" in out:
+        direction = str(out["TPF_POSITIONING_DIRECTION"])
+        out["TPF_POSITIONING_DIRECTION_KEY"] = (
+            "" if direction == "unit"
+            else "\n        positioningDirection " + direction + ";")
     if "END_TIME" in out:
         try:
             out["HALF_END_TIME"] = "{:g}".format(float(out["END_TIME"]) / 2.0)

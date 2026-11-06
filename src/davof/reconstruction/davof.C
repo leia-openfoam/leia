@@ -158,11 +158,27 @@ bool Foam::reconstruction::davof::positionPlane
         }
         const scalar ac = alpha1_[celli];
         Foam::davof::ccsRecord rec;
-        const label status = Foam::davof::ccsPositionPlane
-        (
-            mesh_, cutCellPos_, celli, ac, n/nMag, pPlane_[celli],
-            positioningTol_, positioningMaxIter_, rec
-        );
+        // positioningDirection unit (the default): along n/|n| in the
+        // distance p from pPlane_c; areaNormal (2026-11-08, opt-in): along n
+        // itself (the ring area normal d_k, not divided by its magnitude)
+        // in s = n.(x - x_k), from the same plane, s0 = pPlane_c |n|
+        const bool areaDir = (positioningDirection_ == "areaNormal");
+        if (areaDir && nMag*Foam::cbrt(mesh_.V()[celli]) < 1e-12)
+        {
+            ++nPosTinyDir_;
+        }
+        const label status =
+            areaDir
+          ? Foam::davof::ccsPositionPlane
+            (
+                mesh_, cutCellPos_, celli, ac, n, pPlane_[celli]*nMag,
+                positioningTol_, positioningMaxIter_, rec, true
+            )
+          : Foam::davof::ccsPositionPlane
+            (
+                mesh_, cutCellPos_, celli, ac, n/nMag, pPlane_[celli],
+                positioningTol_, positioningMaxIter_, rec
+            );
         const bool atEnd = (ac < isoFaceTol_) || (1 - ac < isoFaceTol_);
         ++nPosCells_;
         nPosEvals_ += rec.nEvals;
@@ -408,6 +424,8 @@ Foam::reconstruction::davof::davof
     positioning_(modelDict().getOrDefault<word>("positioning", "ccs")),
     positioningTol_(modelDict().getOrDefault<scalar>("positioningTol", 1e-14)),
     positioningMaxIter_(modelDict().getOrDefault<label>("positioningMaxIter", 30)),
+    positioningDirection_(modelDict().getOrDefault<word>("positioningDirection", "unit")),
+    nPosTinyDir_(0),
     grazingCut_(modelDict().getOrDefault<word>("grazingCut", "openfoam")),
     cutCellPos_(alpha1.mesh(), grazingCut_ == "fork"),
     positioningResidual_
@@ -569,6 +587,27 @@ Foam::reconstruction::davof::davof
             << positioningTol_ << " of V, positioningMaxIter "
             << positioningMaxIter_ << ")" << endl;
     }
+    if (positioningDirection_ != "unit" && positioningDirection_ != "areaNormal")
+    {
+        FatalIOErrorInFunction(modelDict())
+            << "positioningDirection '" << positioningDirection_
+            << "' unknown. Valid: unit, areaNormal." << exit(FatalIOError);
+    }
+    if (positioningDirection_ == "areaNormal")
+    {
+        if (positioning_ != "ccs")
+        {
+            FatalIOErrorInFunction(modelDict())
+                << "positioningDirection areaNormal needs positioning ccs:"
+                << " vofCutCell normalises the normal internally"
+                << " (surfaceIteratorPLIC::vofCutCell), the key would be"
+                << " inert." << exit(FatalIOError);
+        }
+        Info<< "davof: positioningDirection areaNormal (the plane positioned"
+            << " along the selected normal itself, not divided by its"
+            << " magnitude; the CCS kernel in s = d_k.(x - x_k) over the"
+            << " vertex interval)" << endl;
+    }
     if (grazingCut_ != "openfoam" && grazingCut_ != "fork")
     {
         FatalIOErrorInFunction(modelDict())
@@ -651,6 +690,7 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     maxPlaneAreaDefect_ = 0;
     nPosCells_ = nPosEvals_ = maxPosEvals_ = nPosFloor_ = nPosMaxIter_ = 0;
     nPosEnd_ = nPosEndNoPlane_ = 0;
+    nPosTinyDir_ = 0;
     maxPosRes_ = sumPosRes_ = 0;
     posEvalHist_ = Zero;
 
@@ -941,6 +981,14 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
             << ", floor exits " << nF << ", maxIter exits " << nM
             << ", end-of-interval cells " << nEnd << " (" << nEndNo
             << " without a plane)";
+        if (positioningDirection_ != "unit")
+        {
+            // the line stays the former one under the default
+            label nT = nPosTinyDir_;
+            if (Pstream::parRun()) reduce(nT, sumOp<label>());
+            Info<< "; positioning direction " << positioningDirection_
+                << ", tiny directions (|d| h < 1e-12) " << nT;
+        }
     }
     {
         label nO = nRuleOutside_, nOP = nRuleOutsidePlane_;

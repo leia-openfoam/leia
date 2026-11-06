@@ -98,7 +98,8 @@ Description
     reconstruction.
 
     Dictionary (the reconstruction dictionary):
-        wispTol      1e-3;      // leia's value (V^(2/3) scaled)
+        wispTol      1e-3;      // leia's value (V^(2/3) scaled); 0 = every cell with m_c != 0 (2026-11-08)
+        positioningDirection unit; // unit | areaNormal (positioning ccs; 2026-11-08)
         surfCellTol  1e-8;
         isoFaceTol   1e-8;
         normalModel  cellLocal; // cellLocal | youngs | plicRDF | exact | ringArea | ringFit
@@ -237,6 +238,22 @@ class davof
         word positioning_;
         scalar positioningTol_;
         label positioningMaxIter_;
+
+        //- The direction the plane is positioned along (key
+        //  positioningDirection, 2026-11-08, Tomislav's wisp-threshold
+        //  study): unit (the default = before: the selected normal divided
+        //  by its magnitude, n/|n|, and the CCS kernel in the distance p) or
+        //  areaNormal (opt-in, positioning ccs only: the selected normal
+        //  itself, the ring area normal d_k never divided by |d_k|, and the
+        //  kernel in s = d_k.(x - x_k) over the vertex interval; the same
+        //  plane to round-off, with no division by a magnitude that can be
+        //  small). vofCutCell normalises its copy of the normal internally
+        //  (surfaceIteratorPLIC), so the key is refused with it. Counted
+        //  per step under areaNormal: the positionings whose direction is
+        //  tiny, |d_k| h < 1e-12 (the cut's absolute vertex snapping SMALL
+        //  then classifies the cell as full or empty: no plane).
+        word positioningDirection_;
+        label nPosTinyDir_;
 
         //- The grazing-cut rule of the cell cuts below (key grazingCut,
         //  2026-11-06): openfoam (v2606's cutCellPLIC, ROOTVSMALL, the

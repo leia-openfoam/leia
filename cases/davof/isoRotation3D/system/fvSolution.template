@@ -36,7 +36,7 @@ solvers
         // inert for isoAlpha (an iso-value positioning)
         positioning     @!TPF_POSITIONING!@;
         positioningTol  @!TPF_POSITIONING_TOL!@;
-        positioningMaxIter @!TPF_POSITIONING_MAX_ITER!@;
+        positioningMaxIter @!TPF_POSITIONING_MAX_ITER!@;@!TPF_POSITIONING_DIRECTION_KEY!@
         // the grazing-cut rule of the cell cut (leia 2026-11-06, PORT-DESIGN 1.2):
         // openfoam (v2606's cutCellPLIC, the default) | fork (the TwoPhaseFlow
         // threshold 10*SMALL, the opt-in copy); the fork's binary ignores the key
@@ -51,7 +51,7 @@ solvers
         // check: the slivers |m_c| < sliverTol h^2 and the cells deviating by
         // more than maxAngle degrees); exactNormal is the exact body of the
         // exact control
-        wispTol         @!TPF_WISP_TOL!@;
+        wispTol         @!TPF_RECON_WISP_TOL!@;
         normalModel     @!TPF_NORMAL_MODEL!@;
         applyTo         @!TPF_APPLY_TO!@;
         sliverTol       @!TPF_SLIVER_TOL!@;

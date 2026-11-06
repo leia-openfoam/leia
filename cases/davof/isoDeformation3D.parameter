@@ -32,6 +32,17 @@ values
     TPF_POSITIONING_MAX_ITER ( 30 );
     TPF_INTERPOLATE_NORMAL ( true );
     TPF_WISP_TOL ( 1e-3 );
+    // The reconstruction's own interface-cell threshold tau (the wispTol of the davof
+    // dictionary in fvSolution: a cell is an interface cell when |m_k| > tau V_k^(2/3));
+    // the initialisation and the function objects keep TPF_WISP_TOL, so that the
+    // initial state and the error measures' cell sets do not move with tau (the
+    // wisp-threshold study, config/davof/standing/*_wisptol*, 2026-11-08). The same
+    // text as TPF_WISP_TOL here: every dictionary renders byte for byte as before.
+    TPF_RECON_WISP_TOL ( 1e-3 );
+    // The direction of the davof plane positioning (key positioningDirection,
+    // rendered only when not unit, materialize.py): unit (n/|n|, the default) |
+    // areaNormal (the un-normalised ring area normal d_k; positioning ccs only)
+    TPF_POSITIONING_DIRECTION ( unit );
     TPF_N_ALPHA_BOUNDS ( 3 );
     TPF_SNAP_TOL ( 0 );
     TPF_CLIP ( false );

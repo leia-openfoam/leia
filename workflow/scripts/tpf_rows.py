@@ -325,6 +325,9 @@ ENRIGHT_SETTINGS = OrderedDict([
     ("normalAndAlphaReset", ("closure",        "false", "none",    "normalAndAlphaReset", "false")),
     ("fragmentLog",        ("closure",         "false", "none",    "normalOnly",         "true")),
     ("recommended",        ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
+    # the recommended setting with the fragment log (2026-11-08, the wisp-threshold study:
+    # the per-step seed counts; the log records, it changes no number)
+    ("recommendedLog",     ("signedTets",      "false", "scale",   "normalAndAlpha",     "true")),
 ])
 ENRIGHT_TOKENS = ("TPF_SWEPT_PIECE_VOLUME", "TPF_SWEPT_PIECE_VALIDATE",
                   "TPF_SWEPT_BOUNDED_FACE_FRACTION", "TPF_INTERFACE_CELL_RULE",
@@ -340,6 +343,7 @@ ENRIGHT_LABELS = OrderedDict([
     ("normalAndAlphaReset", "interface cells by normal and alpha, faces reset"),
     ("fragmentLog", "fragment log"),
     ("recommended", "signedTets + scale + normalAndAlpha"),
+    ("recommendedLog", "signedTets + scale + normalAndAlpha, fragment log"),
 ])
 
 

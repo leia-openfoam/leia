@@ -38,6 +38,10 @@ values
     TPF_POSITIONING_MAX_ITER ( 30 );
     TPF_INTERPOLATE_NORMAL ( true );
     TPF_WISP_TOL ( 1e-3 );
+    // the reconstruction's own interface-cell threshold tau and the direction of the
+    // plane positioning (2026-11-08, the wisp-threshold study; see isoDeformation3D.parameter)
+    TPF_RECON_WISP_TOL ( 1e-3 );
+    TPF_POSITIONING_DIRECTION ( unit );
     TPF_N_ALPHA_BOUNDS ( 3 );
     TPF_SNAP_TOL ( 0 );
     TPF_CLIP ( false );

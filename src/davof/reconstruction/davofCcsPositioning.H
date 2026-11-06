@@ -176,6 +176,23 @@ struct ccsRecord
 //  that the cut volume equals alpha V_c (see the Description). Returns the
 //  status of the final cut (0 cut, -1 fully liquid, +1 fully gas); the cut
 //  object holds it.
+//  areaNormal (2026-11-08, the reconstruction's key positioningDirection
+//  areaNormal): n is an UN-NORMALISED direction (the ring area normal d_k,
+//  never divided by its magnitude) and the iteration runs in the coordinate
+//  s = n.(x - x_k) over the vertex interval [s_min, s_max], p0 given in s.
+//  The cut (cutCellPLIC::calcSubCell) puts its plane through the base
+//  x_k + p n, i.e. at the level (x - x_k).n = p |n|^2, so the cut's parameter
+//  is s/|n|^2 and the slope dV/ds is -A/|n| (A the cut polygon's area;
+//  dV/d(distance) = -A); the bracket-closed test is scaled by the interval
+//  itself (s_max - s_min) instead of h. The kernel's other tolerances are
+//  relative already: hermiteRoot01 and hermiteRootFrom work in the unit
+//  parameter of the interval, the residual tests in volume. With areaNormal
+//  false every expression is the former one (the branches keep the unit
+//  path's arithmetic bit for bit: no multiplication by |n| = 1 +- eps). The
+//  cut itself is NOT scale-free: cutFacePLIC::calcSubFace snaps a vertex
+//  level |(x - base).n| below SMALL (1e-15, absolute) to zero, so a direction
+//  with |n| h below about 1e-15 cuts nothing (the cell is then full or empty
+//  to the cut: no plane); the caller counts those.
 template<class CutCell>
 inline label ccsPositionPlane
 (
@@ -187,7 +204,8 @@ inline label ccsPositionPlane
     const scalar p0,
     const scalar tolRel,
     const label maxIter,
-    ccsRecord& rec
+    ccsRecord& rec,
+    const bool areaNormal = false
 )
 {
     const scalar Vc = mesh.V()[celli];
@@ -207,6 +225,11 @@ inline label ccsPositionPlane
         pMax = max(pMax, f);
     }
     const scalar h = Foam::cbrt(Vc);
+    // areaNormal: the cut's parameter s/|n|^2, the slope A/|n|, the floor's
+    // scale the interval (see above); unit: the former expressions untouched
+    const scalar nn = n & n;
+    const scalar nMag = Foam::sqrt(nn);
+    const scalar hs = areaNormal ? (pMax - pMin) : h;
 
     rec = ccsRecord();
 
@@ -214,9 +237,9 @@ inline label ccsPositionPlane
     scalar r = 0, A = 0;
     auto evaluate = [&](const scalar p) -> void
     {
-        status = cut.calcSubCell(celli, p, n);
+        status = cut.calcSubCell(celli, areaNormal ? p/nn : p, n);
         const scalar V = (status == 0) ? cut.subCellVolume() : ((status < 0) ? Vc : 0);
-        A = (status == 0) ? mag(cut.faceArea()) : 0;
+        A = (status == 0) ? (areaNormal ? mag(cut.faceArea())/nMag : mag(cut.faceArea())) : 0;
         r = V - target;
         ++rec.nEvals;
     };
@@ -248,7 +271,7 @@ inline label ccsPositionPlane
         if (r > 0) { lo = p; rlo = r; Alo = A; loEval = true; }
         else       { hi = p; rhi = r; Ahi = A; hiEval = true; }
         const scalar w = hi - lo;
-        if (w <= 1e-15*max(h, max(mag(lo), mag(hi))))
+        if (w <= 1e-15*max(hs, max(mag(lo), mag(hi))))
         {
             rec.exitCode = 3;
             break;
