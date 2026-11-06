@@ -125,6 +125,15 @@ def compare_logs(cf, cl, rep, verbose):
     B = [norm_line(x) for x in open(ll, errors="replace") if not NOISE.match(x)]
     # the numbers of the per-step lines: keep the lines that carry a digit
     A = [x for x in A if re.search(r"\d", x)]; B = [x for x in B if re.search(r"\d", x)]
+    # the per-rank warnings ("[3] kromerBothe area check failed: ...") reach the log in the
+    # order the ranks' output is flushed, which is not deterministic: compared as sorted sets
+    RANK = re.compile(r"^\[\d+\] ")
+    RA, RB = sorted(x for x in A if RANK.match(x)), sorted(x for x in B if RANK.match(x))
+    A = [x for x in A if not RANK.match(x)]; B = [x for x in B if not RANK.match(x)]
+    if RA != RB:
+        k = next((i for i in range(min(len(RA), len(RB))) if RA[i] != RB[i]), min(len(RA), len(RB)))
+        rep.append(f"  log: the per-rank warnings differ ({len(RA)} vs {len(RB)} lines, sorted; first at {k}):\n    fork {RA[k][:140] if k < len(RA) else ''}\n    leia {RB[k][:140] if k < len(RB) else ''}")
+        return False
     diffs = [(i, a, b) for i, (a, b) in enumerate(zip(A, B)) if a != b]
     if len(A) != len(B) or diffs:
         i, a, b = diffs[0] if diffs else (min(len(A), len(B)), "", "")
@@ -132,7 +141,7 @@ def compare_logs(cf, cl, rep, verbose):
         if verbose:
             for i, a, b in diffs[1:6]: rep.append(f"    ... {i}: {a[:100]} | {b[:100]}")
         return False
-    rep.append(f"  log: {len(A)} numeric lines identical (prefixes normalised)")
+    rep.append(f"  log: {len(A)} numeric lines identical (prefixes normalised)" + (f", {len(RA)} per-rank warning lines identical as sets" if RA else ""))
     return True
 
 def main():

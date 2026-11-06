@@ -14,6 +14,9 @@ import csv, glob, os, statistics, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import enright_an as E   # noqa: E402  (its module-level W/OUT are not used here)
+import re
+# the abort line of either route's solver (the fork's advectorVoF, leia's davofAdvectorFoam)
+E._RE_ABORT = re.compile(r"(?:advectorVoF|davofAdvectorFoam): ABORT at step (\d+), t = (\S+): (.*)")
 
 W = sys.argv[1] if len(sys.argv) > 1 else "/work/scratch/tm83tomy/davof/agents/port"
 OUT = W + "/csv"; os.makedirs(OUT, exist_ok=True)
