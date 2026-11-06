@@ -312,7 +312,8 @@ Dropped, with the reason:
 | `sweptStateShortcut` | "not achieved" (README 2026-11-04); broke the plane gate when defaulted on in `3aaf49d` |
 | `sweptNoFluxLayer` | an opt-in, default `false` in `c5c00c5` (`isoAdvection.C` line 225), so no study and no acceptance key depends on it; round-4 gain 1 (`fbbfaf9`) is a path the reference setting does not take |
 | `sweptDonorFastPath` | "useless under rotation (vertices always leave laterally)", round 3 |
-| `sweptClip joint | hybrid | jointGuarded | jointConfig`, `sweptDonorCheck`, `sweptJointDumpSteps` | negative result 2026-11-05 (the flux must be single-valued per region); stay in the fork's joint branch; `sweptHexClip` is extracted from `df125bb` by hand (the `davofSweptPieces.H` clip functions and the `isoAdvectionSwept.C` switch), the joint parts left behind |
+| `sweptClip joint | hybrid | jointGuarded | jointConfig`, `sweptDonorCheck`, `sweptJointDumpSteps` | negative result 2026-11-05 (the flux must be single-valued per region); stay in the fork's joint branch |
+| `sweptHexClip` (the joint branch, `df125bb`) | NOT a second key: it is the same device as `c5c00c5`'s round-4 key `sweptAxisPlanes` (gain 2, `fbbfaf9`..`c5c00c5`: `halfSpace::axis`/`sgn`, `setAxis`, `dist` = the one coordinate difference, bit for bit the dot product, applied to the local and the remote cell planes), implemented independently on the `407f969` base by the joint agent (`halfSpace::axis`, `axisOf`, `sdist`, `remoteCellPlanes(.., hexClip)`); found in phase 1 (2026-11-06) when extracting it. The port carries `sweptAxisPlanes`; the acceptance item 4.1 "sweptHexClip on against off" is run as `sweptAxisPlanes` on against off |
 | `faceClipping`-dependent rows in `tpf_rows.py` (`davof-sagitta-*`), the `clippingSurface none` rows (`davof-cellLocal`, `-ringArea`, `-ringFit`, `-exact`, `-plicRDFnormal*`) | they select the dropped loop; the rows stay in `tpf_rows.py` marked fork-only (the fork route renders them, the leia route refuses them with a message) |
 | `apps/benchmark/reconstructInterface`, `apps/test/testCutFaceAdvectEndArea`, `src/postProcessing/{interface, interfaceRegion, superHeated, interfaceEnergyFluxes, wallHeatFluxSolid}` | not DAVOF; `testCutFaceAdvectEndArea` tests the dropped `cutFaceAdvect` additions |
 | `markInterfaceRegion`, `cutCellImpFunc` includes | unused |
@@ -343,10 +344,9 @@ min/max lines, the fallback counts) are identical as text.
 Keys on both sides: the reference defaults of `407f969` plus `sweptAxisPlanes true`,
 `sweptTetCache true`, `sweptPointVelocityLazy true`, `sweptPreTestCoplanarSide true`
 (written explicitly, since the fork's defaults for the four are `false`). Criterion: all
-eight bit for bit. Then `sweptHexClip true` on the leia side only: all eight bit for bit
-against `sweptHexClip false` (the joint branch's claim, measured there on `407f969`); one
-case (rotation N 32) additionally against a build of `tmaric/davof-swept-joint` `6a12d7f`
-with its defaults and the four keys off, bit for bit. A difference in any case is traced
+eight bit for bit. Then `sweptAxisPlanes false` on the leia side only (the other three round-4 keys on): all
+eight bit for bit against the run with it on (the fork's claim for gain 2; the joint
+branch's `sweptHexClip` is the same device, section 3). A difference in any case is traced
 to its first differing cell and step (`sweptFaceLog` and the per-cell print exist for
 that) and explained in the report before anything else runs; section 1.2 item 1 is the
 first suspect.
