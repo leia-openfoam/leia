@@ -4435,3 +4435,106 @@ differences are 1e-12 after 20 steps except the rotation N 64 (1e-9, the
 rank-fallback amplification), the same order as the trace cache's first
 form and the processor-boundary round-off of the parallel runs; Tomislav's
 call whether a change of that size may enter the defaults.
+
+## The isoAdvector package: the fork branch `davof-isoAdvector` (2026-11-06)
+
+Tomislav's decision of 2026-11-06: the method (the swept-face advection, the
+paraboloid dual advection, the volume rules, the swept geometry) is ported into
+leia (branch `davof-port`); the fork keeps ONLY what the isoAdvector improvement
+needs and runs the verification that demonstrates it. The fork branch
+`davof-isoAdvector` starts from `davof-swept` at `c5c00c5` and holds one commit,
+`fab3805` (pushed to `tmaric`); `davof-swept` is untouched (the history). The
+package is defined in the fork's `etc/README-davof.md` ("The package"):
+
+- (a) the DAVOF reconstruction for isoAdvector: the `davof` scheme (the normal
+  from the face fractions, the plane positioned by alpha, `positioning` default
+  `ccs`), the normal models `ringArea` (the stable model), `cellLocal`, `youngs`,
+  `exact` and `plicRDF` (the controls), `ringFit`; the face update of
+  isoAdvector's own plane sweep (`storeAreaFractions`, the second-ring sweep,
+  `planeSpeaks`/`planeFlux`, the content bound, the second bounding layer, the
+  defaults, the processor sync of `alphaf` with `dVf`); `davofInit` with the
+  simplex, quadratic-face and sphere geometry (`detrixheAslam`,
+  `quadraticFaces`, `exactSphere`); `davofOrbit.H`.
+- (b) the CCS positioning for every plane-positioning reconstruction scheme:
+  `surfaceIteratorPLIC::vofCutCell` (plicRDF, gradAlpha) reads `positioning
+  vofCutCell | ccs`, `positioningTol` (1e-14 of V_c), `positioningMaxIter` (30)
+  from the scheme's dictionary; the default `vofCutCell` leaves the code and the
+  logs unchanged; `ccs` calls `davof::ccsPositionPlane` on the same `cutCellPLIC`
+  cut from the linear estimate between the vertex extrema and prints one Info
+  line per reconstruction. `isoAlpha` positions an iso-value of the
+  point-interpolated alpha (`surfaceIteratorIso`), not a plane: `cutCellIso`
+  gives no slope of the cut volume, so `isoAlpha` is unchanged (the third
+  reference row).
+- (c) the function objects `areaFractionError`, `volumeFractionError`
+  (`exactState exactSphere`), `reconstructionError`; the apps `advectorVoF`
+  (`setFlow` at the half step, the abort guard), `initDavofFields`,
+  `planeVolumeConsistency`, `staticFaceFractions`, `testCutFaceAdvectEndArea`;
+  the benchmark dictionaries `run/benchmark/{advection,reconstruction}`.
+
+Removed (history on `davof-swept`): `isoAdvectionSwept.C` and every `swept*`
+key; `isoAdvectionCurved.C` (the paraboloid dual advection, the quadrature
+fluxes, the volume anchor; keys `clippingSurface`, `fluxIntegration`, `fit*`,
+`anchor*`, `curved*`, `tensorCentroid`, `planeSource`, `defectLevels`,
+`writeCurvedFields`); the volume rules with the vendored overlap library and the
+Eigen dependency (`volumeRule`); the swept geometry (`davofSweptPieces.H`,
+`davofSweptRemote.H`, `davofVelocityAt.H`, `davofCurvedGeometry.H`); the
+face-clipping models with the curvature tensor of the `davof` scheme
+(`faceClipping`, `tensor*`, `writeCurvatureTensor`); the vector face state of
+`davof-warped` (`faceState vector`, `wettedAreaDavof`, in `davof`,
+`isoAdvection`, `davofInit`, `initDavofFields`, `areaFractionError`); the chord
+of `cutFaceAdvect` (`keepChord`, `chordEnd`, `edgeCrossings`);
+`apps/test/testSweptPieces`. The diff of `fab3805` against upstream
+`origin/master` (`ba10702`): 225 files, +21006/-83, i.e. the package plus the
+`inline namespace twoPhaseFlow` fix of `feature/parasitic-currents` (the
+3-line diffs of the cellCuts, surfaceIterators, reconstructionSchemes,
+thermoDynamics files and the testsuite controlDicts). `isoAdvection.H` has
+upstream's include list again; `isoAdvectionTemplates.C` keeps only the second
+bounding layer and the default face fractions. Build: `Allwmake` clean on the
+laptop (libVoF, postProcessing, every app and solver) and on Lichtenberg (job
+56001915: `iso/TwoPhaseFlow` at `fab3805` in 384 s, `iso/TwoPhaseFlow-swept` at
+`c5c00c5` in 389 s, both with the default flags, worktrees of the main clone).
+
+### The identity check (job 56001915, mpsc0039, 2026-11-06)
+
+Keys off = the same code path: 20-step copies (writePrecision 17) of the
+plane-clipped loop's rows run with both binaries, the written fields compared
+with `cmp` and by max |difference|, the per-step log lines diffed
+(`prof/iso-ident.sbatch`; the cases in `iso/ident/{A,B}`). The davof cases are
+the comparison's swept cases with `clippingSurface none`, `fluxIntegration
+prism`, `fitAnchor faces` (as `ref/cmpC`); the plicRDF and isoAlpha cases lose
+the keys `positioning*` (the study templates write `positioning ccs` for every
+row, which the new binary's plicRDF would read; see the note below).
+
+| case | row | source study, N, OF Co | ranks | field files identical | alpha / alphaf differing values | per-step log lines differing |
+|---|---|---|---|---|---|---|
+| R32 | davof-ringArea | hexCmpRotSweptN32, 32, 1 | 1 | 11 of 11 | 0 / 0 | 0 |
+| R32x | davof-exact | hexCmpRotSweptN32, 32, 1 | 1 | 11 of 11 | 0 / 0 | 0 |
+| D32 | davof-ringArea | hexCmpLineDiagSweptN32, 32, 1 | 1 | 11 of 11 | 0 / 0 | 0 |
+| P20n | davof-ringArea | hexSweptPyr, 20, 0.5, normal arm | 1 | 11 of 11 | 0 / 0 | 0 |
+| P20o | davof-ringArea | hexSweptPyr, 20, 0.5, oblique arm | 1 | 11 of 11 | 0 / 0 | 0 |
+| RDF32 | plicRDF | hexCmpRotRDFN32, 32, 1 | 1 | 6 of 6 | 0 / - | 0 |
+| ISO32 | isoAlpha | hexComparators, 32, 0.2 | 1 | 5 of 5 | 0 / - | 0 |
+| R32p8 | davof-ringArea | as R32, simple (2 2 2) | 8 | 11 of 11 | 0 / 0 | 0 |
+
+Every row reproduces the `davof-swept` binary bit for bit (min(alpha) after the
+bounding equal to the last digit in every log, e.g. R32 -8.0394031111856562e-15,
+D32 -0.099564557019122008: the diagonal line at OF Co 1 loses the bound on both
+binaries alike, as the comparison C of 2026-11-05 found).
+
+Smoke test of (b), plicRDF with `positioning ccs` (RDF32ccs, the new binary):
+runs, 1248 positionings per reconstruction, 5.6 cuts per cell (max 9), the
+positioning residual max 8.7e-15, mean 1.1e-16 of V. Against the vofCutCell row
+after 20 steps alpha differs in 2519 cells, max |dalpha| 2.8e-4: NOT round-off.
+vofCutCell positions to `isoFaceTol` 1e-8 in alpha (the cubic through four cuts,
+Newton, then the secant), ccs to 1e-14 of V, and plicRDF's normal iteration (the
+RDF from the plane centres) carries the plane differences into the normals. The
+pre-registered expectation "ccs cheaper than vofCutCell with identical errors" is
+therefore measured in step 2 as the difference of the two rows' errors against
+the exact state (L1(n), L1(x), E_shape, with vofCutCell's own plane residual
+reported by the same diagnostic), not as a field identity.
+
+Note for the verification's templates: `positioning` is read from the alpha
+dictionary by whichever scheme is selected (davof since 2026-11-04, plicRDF and
+gradAlpha since `fab3805`); the token `TPF_POSITIONING` must be set per row
+(plicRDF: `vofCutCell` for the classical setting, `ccs` for the ccs row),
+not study-wide.
