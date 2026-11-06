@@ -61,6 +61,7 @@ values
     // (vofCutCell, false, none, false, auto, none, 1e-8, 1e-11, false).
     TPF_POSITIONING ( ccs );
     TPF_POSITIONING_TOL ( 1e-14 );
+    TPF_GRAZING_CUT ( openfoam );
     TPF_ANCHOR_SKIP_CONVERGED ( true );
     // the pre-test and the state shortcut of sweptFaceCells (fork 3aaf49d):
     // none / false = the path of 720cfc6 (the fork's own defaults since

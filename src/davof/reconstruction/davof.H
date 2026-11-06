@@ -171,6 +171,7 @@ SourceFiles
 #include "autoPtr.H"
 #include "surfaceIteratorPLIC.H"
 #include "cutCellPLIC.H"
+#include "davofCellCut.H"
 #include "davofNormalModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -216,9 +217,15 @@ class davof
         scalar positioningTol_;
         label positioningMaxIter_;
 
+        //- The grazing-cut rule of the cell cuts below (key grazingCut,
+        //  2026-11-06): openfoam (v2606's cutCellPLIC, ROOTVSMALL, the
+        //  default) | fork (the TwoPhaseFlow threshold 10*SMALL in the copy
+        //  davofCutCellPLIC, the opt-in of PORT-DESIGN 1.2 item 1)
+        word grazingCut_;
+
         //- ccs: the cut object of the positioned plane (normal_, centre_
         //  and the polygon moments are read from it)
-        cutCellPLIC cutCellPos_;
+        davofCellCut cutCellPos_;
 
         //- ccs: the per-cell signed residual (V_cut - alpha V)/V of the
         //  positioned plane (zero where none; registered, not written) and the
@@ -244,7 +251,7 @@ class davof
         surfaceIteratorPLIC sIterPLIC_;
 
         //- Cuts the explicit plane for the defects
-        cutCellPLIC cutCell_;
+        davofCellCut cutCell_;
 
         //- The face fractions when this scheme had to read them
         autoPtr<surfaceScalarField> alphafPtr_;

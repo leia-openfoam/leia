@@ -176,10 +176,11 @@ struct ccsRecord
 //  that the cut volume equals alpha V_c (see the Description). Returns the
 //  status of the final cut (0 cut, -1 fully liquid, +1 fully gas); the cut
 //  object holds it.
+template<class CutCell>
 inline label ccsPositionPlane
 (
     const fvMesh& mesh,
-    cutCellPLIC& cut,
+    CutCell& cut,   // cutCellPLIC or davofCellCut (the grazing-cut rule)
     const label celli,
     const scalar alpha,
     const vector& n,

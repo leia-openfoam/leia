@@ -391,7 +391,8 @@ Foam::reconstruction::davof::davof
     positioning_(modelDict().getOrDefault<word>("positioning", "ccs")),
     positioningTol_(modelDict().getOrDefault<scalar>("positioningTol", 1e-14)),
     positioningMaxIter_(modelDict().getOrDefault<label>("positioningMaxIter", 30)),
-    cutCellPos_(alpha1.mesh()),
+    grazingCut_(modelDict().getOrDefault<word>("grazingCut", "openfoam")),
+    cutCellPos_(alpha1.mesh(), grazingCut_ == "fork"),
     positioningResidual_
     (
         IOobject
@@ -418,7 +419,7 @@ Foam::reconstruction::davof::davof
     lastTimeIndex_(-1),
     nReconstructInIndex_(0),
     sIterPLIC_(mesh_, surfCellTol_),
-    cutCell_(mesh_),
+    cutCell_(mesh_, grazingCut_ == "fork"),
     alphafPtr_(readAlphafIfAbsent(alpha1)),
     alphaf_
     (
@@ -549,6 +550,18 @@ Foam::reconstruction::davof::davof
             << " cutCellPLIC cut from the explicit position, positioningTol "
             << positioningTol_ << " of V, positioningMaxIter "
             << positioningMaxIter_ << ")" << endl;
+    }
+    if (grazingCut_ != "openfoam" && grazingCut_ != "fork")
+    {
+        FatalIOErrorInFunction(modelDict())
+            << "grazingCut '" << grazingCut_
+            << "' unknown. Valid: openfoam, fork." << exit(FatalIOError);
+    }
+    if (grazingCut_ == "fork")
+    {
+        Info<< "davof: grazingCut fork (the cell cuts classify a cut polygon"
+            << " below 10*SMALL as no cut, the TwoPhaseFlow threshold; the"
+            << " default openfoam is v2606's cutCellPLIC, ROOTVSMALL)" << endl;
     }
 
     normalModel_ = davofNormalModel::New(modelDict(), *this);

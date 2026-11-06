@@ -19,6 +19,7 @@ normalModels/ringAreaNormal.C
 normalModels/ringFitNormal.C
 normalModels/youngsNormal.C
 reconstruction/davof.C
+reconstruction/davofCutCellPLIC.C
 volumeRules/davofVolumeRule.C
 volumeRules/exactSphereVolumeRule.C
 volumeRules/kromerBotheVolumeRule.C
