@@ -1,0 +1,50 @@
+% The signed decomposition of a twisted swept volume, two-dimensional analogue (cell size 1).
+% Face f = (0,0)-(0,1) with centre x_f = (0, 0.5); pre-image f' = (-1, 0.85)-(-1, 0.15) with the
+% lateral edges p1-p1' and p2-p2' crossing at c = (-0.588, 0.5): a bow tie. The triangles about
+% x_f (the two-dimensional tetrahedra): (x_f, p2, p2') +0.25, (x_f, p2', p1') -0.35,
+% (x_f, p1', p1) +0.25; signed sum 0.15 = the signed area of the bow tie, +0.294 (the lobe on
+% the face's side) - 0.144 (the lobe on the pre-image's side). Computed by hand (2D, exact).
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=3.6, >=Stealth, font=\footnotesize, line join=round]
+  \colorlet{facecol}{orange!80!black}
+  \colorlet{precol}{teal!60!black}
+  \colorlet{poscol}{blue!22}
+  \colorlet{negcol}{red!30}
+  \colorlet{ifacecol}{blue!65!black}
+  \coordinate (p1) at (0,0);
+  \coordinate (p2) at (0,1);
+  \coordinate (xf) at (0,0.5);
+  \coordinate (q1) at (-1,0.85);
+  \coordinate (q2) at (-1,0.15);
+  \coordinate (c) at (-0.588,0.5);
+  % the two positive triangles and the negative one about x_f
+  \fill[poscol] (xf) -- (p2) -- (q2) -- cycle;
+  \fill[poscol] (xf) -- (q1) -- (p1) -- cycle;
+  \fill[negcol, opacity=0.9] (xf) -- (q2) -- (q1) -- cycle;
+  \draw[black!40, line width=0.3pt] (xf) -- (q2) (xf) -- (q1);
+  % the closed list: face, lateral edges, pre-image
+  \draw[black!55, line width=0.6pt] (p2) -- (q2);
+  \draw[black!55, line width=0.6pt] (p1) -- (q1);
+  \draw[precol, line width=1.2pt, dashed] (q2) -- (q1);
+  \draw[facecol, line width=2.2pt] (p1) -- (p2);
+  \fill[facecol] (xf) circle[radius=0.012];
+  % the clipping plane (an interface plane), to be applied to every triangle
+  \draw[ifacecol, line width=1.1pt] (-1.15,0.62) -- (0.15,0.22);
+  \node[ifacecol, anchor=south west] at (-1.15,0.63) {plane};
+  % labels
+  \node[facecol, anchor=west] at (0.03,0.95) {$f$};
+  \node[facecol, anchor=west] at (0.03,0.5) {$\x_f$};
+  \node[precol, anchor=east] at (-1.03,0.5) {$f'$};
+  \node[anchor=south east, inner sep=1pt] at (0.0,-0.02) {$\mathbf{p}_1$};
+  \node[anchor=south west, inner sep=1pt] at (0.0,1.0) {$\mathbf{p}_2$};
+  \node[anchor=east, inner sep=1pt] at (-1.0,0.88) {$\mathbf{p}_1'$};
+  \node[anchor=east, inner sep=1pt] at (-1.0,0.12) {$\mathbf{p}_2'$};
+  \node at (-0.3,0.79) {$+$};
+  \node at (-0.3,0.21) {$+$};
+  \node[red!60!black] at (-0.76,0.5) {$-$};
+  \node[anchor=north] at (-0.5,-0.08) {signed sum $= +0.294 - 0.144 = 0.150$};
+\end{tikzpicture}
+\caption{The signed decomposition of a twisted swept volume, in two dimensions. The face $f$ (orange) and its pre-image $f'$ (dashed) are joined by lateral edges that cross, so the closed list bounds two lobes of opposite orientation. The triangles about the face centre $\x_f$, one per boundary edge (the face's own edge contains $\x_f$ and vanishes), are positive on the face's side ($+$, blue) and negative on the pre-image's side ($-$, red); their signed sum, $\tfrac12\sum_T (\mathbf{p}_T - \x_f)\cdot\mathbf{a}_T$ in two dimensions, is the signed area of the list, $+0.294 - 0.144$. A plane (blue line) clips every triangle as a convex polygon, and the signed sum of the clipped triangles is the clipped signed area, because the signed decomposition represents the winding number of the closed list. In three dimensions the triangles are the tetrahedra of \cref{eq:swept-signed}.}
+\label{fig:signedtets}
+\end{figure}
