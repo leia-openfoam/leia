@@ -39,8 +39,8 @@ _RE_ABORT = re.compile(r"advectorVoF: ABORT at step (\d+), t = (\S+): (.*)")
 _RE_SWEPT = {
     "rankFallbacks": r"rank fallbacks (\d+)",
     "beyondLayer": r"beyond layer (\d+) \(max (\S+)\)",
-    "pyramidDeltaMaxOverH": r"max \|delta\|/h (\S+)",
-    "pyramidVolDevMax": r"max \|V_f - V_g\|/V_f (\S+)",
+    "pyramidDeltaMaxOverH": r"max \|delta\|/h ([0-9.eE+-]+)",
+    "pyramidVolDevMax": r"max \|V_f - V_g\|/V_f ([0-9.eE+-]+)",
     "twistedFaces": r"twisted faces (\d+)",
     "pyramidSkipped": r"pyramid skipped (\d+)",
     "wispPiecesNeighbour": r"pieces clipped by a neighbour's plane (\d+)",
@@ -51,7 +51,7 @@ _RE_SWEPT = {
     "pieces": r"cells: pieces (\d+)",
     "partialCells": r"partial cells (\d+)",
     "degenerate": r"degenerate (\d+)",
-    "pieceClosureMax": r"piece closure max (\S+)",
+    "pieceClosureMax": r"piece closure max ([0-9.eE+-]+)",
     "sweptFaces": r"swept faces (\d+)",
     "outOfDonor": r"out of donor (\d+)",
     "anchorFailed": r"volume anchor: failed (\d+)",
@@ -194,8 +194,14 @@ def main():
                        anchorFailedSum=sum(g("anchorFailed")), ruleFallbacksSum=sum(g("ruleFallbacks")), degenerateMax=max(g("degenerate")) if g("degenerate") else float("nan"),
                        clock_s=f(t["clock_s"]), exec_s=f(t["exec_s"]), wall_s=f(t["wall_s"]), sacct_s=sac.get("%s_r%s" % (t["method"], t["rep"]), float("nan")),
                        median_step_s=f(t["median_step_s"]), node=t["node"], case=c)
-            run["nWispsT"] = run["nPartialT"] - run["nInterfaceAdvT"] if t["method"] in DAVOF else run["nPartialT"] - run["nInterfaceT"]
-            run["nWispsHalf"] = run["nPartialHalf"] - run["nInterfaceAdvHalf"] if t["method"] in DAVOF else run["nPartialHalf"] - run["nInterfaceHalf"]
+            # the wisps: the partial cells (1e-8 < alpha < 1 - 1e-8 in the written field)
+            # without a reconstructed surface (reconstructionError's nInterface at the
+            # same write; for the davof rows the cells with |m_c| > wispTol V^(2/3), for
+            # plicRDF the cells inside (surfCellTol, 1 - surfCellTol), so plicRDF's count
+            # is zero by definition); davof's own per-step count nInterfaceAdv is kept
+            # next to it (it counts by the face fractions, alpha unrestricted)
+            run["nWispsT"] = run["nPartialT"] - run["nInterfaceT"]
+            run["nWispsHalf"] = run["nPartialHalf"] - run["nInterfaceHalf"]
             runs.append(run)
             if t["method"] in DAVOF and int(t["rep"]) == 1:
                 with open(OUT + "/enright_counters_N%s_co%s_%s.csv" % (t["N"], t["co_index"], t["method"]), "w", newline="") as fh:
