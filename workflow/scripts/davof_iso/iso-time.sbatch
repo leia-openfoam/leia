@@ -68,6 +68,11 @@ declare -A SRC
 SRC[RDF]=$(pick plicRDF); SRC[RDFccs]=$(pick plicRDF-ccs); SRC[RING]=$(pick davof-ringArea)
 SRC[RINGvcc]=$(pick davof-ringArea-vofCutCell); SRC[ISO]=$(pick isoAlpha)
 ALL="RDF RDFccs RING RINGvcc ISO"
+# the row PURE ("pure" DAVOF, Tomislav 2026-11-08; opt-in through METHODS until it is the default):
+# the RING case copy with the keys appended to the rendered fvSolution by sed (a foamDictionary
+# rewrite perturbs a run at round-off); needs a build with the keys (TPF_DIR, 7646055 or later)
+SRC[PURE]=${SRC[RING]}
+PURE_KEYS='davofFluxExtension none; davofFaceFractionSource sweepOnly; boundSecondLayer false; sweptBoundedFaceFraction scale; interfaceCellRule alphaAndRingSum; normalModel ringSum; wispTol 0;'
 for m in $ALL; do echo "source $m ${SRC[$m]}"; done
 prep() { # method rep [prof] -> case dir
   local m=$1 r=$2 src=${SRC[$1]} c=$T/${1}_r$2
@@ -82,6 +87,10 @@ prep() { # method rep [prof] -> case dir
   foamDictionary -entry functions/areaFractionError/writeInterval -set $WI $c/system/controlDict > /dev/null
   foamDictionary -entry functions/volumeFractionError/writeInterval -set $WI $c/system/controlDict > /dev/null
   [ "$3" = prof ] && foamDictionary -entry profiling/active -set true $c/system/controlDict > /dev/null
+  if [ "$m" = PURE ]; then
+    sed -i -E "s/^(\s*)(normalModel\s+[A-Za-z]+;)/\1\/\/ \2 (PURE)/; s/^(\s*)(wispTol\s+[0-9.e-]+;)/\1\/\/ \2 (PURE)/" $c/system/fvSolution
+    sed -i "0,/^\(\s*\)reconstructionScheme davof;/s||&\n\1$PURE_KEYS|" $c/system/fvSolution
+  fi
   echo "$src" > $c/.source; echo $c
 }
 csv=$T/timing$SUF.csv; echo "flow,N,np,co_index,method,rep,steps,dt,end_time,clock_s,exec_s,wall_s,median_step_s,node" > $csv
