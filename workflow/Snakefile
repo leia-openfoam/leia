@@ -46,7 +46,11 @@ SOLVER      = config.get("solver", "leiaLevelSetFoam")
 # a completed run and never reached aggregate (MEASURED 2026-09-23, WP3 gate; four such
 # studies sat on the cluster without a table). workflow/scripts/guard_finished_cases.py
 # carries the same rule.
+# The DAVOF advection apps of both routes (advectorVoF, davofAdvectorFoam) write no CSV
+# themselves: post_solve converts their function-object output into advectorVoF.csv,
+# the name every scoring script of the davof theme reads (2026-11-06).
 SOLVER_CSV  = ("leiaLevelSetFoam.csv" if SOLVER == "leiaLevelSetTwoPhaseFoam"
+               else "advectorVoF.csv" if SOLVER == "davofAdvectorFoam"
                else f"{SOLVER}.csv")
 # Optional SERIAL command run in the case directory immediately after the solver,
 # whether it succeeded or diverged. It exists so a solver that does NOT write

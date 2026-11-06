@@ -33,6 +33,8 @@ FINISHED = {0: "COMPLETED", 3: "DIVERGED"}   # foam_log_state.sh exit codes
 
 def solver_csv(solver):
     """The file the `solve` rule waits for -- the same rule as workflow/Snakefile."""
+    if solver == "davofAdvectorFoam":
+        return "advectorVoF.csv"   # the DAVOF advection apps of both routes (Snakefile SOLVER_CSV)
     return "leiaLevelSetFoam.csv" if solver == "leiaLevelSetTwoPhaseFoam" else f"{solver}.csv"
 
 
