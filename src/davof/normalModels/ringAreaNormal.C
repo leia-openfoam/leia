@@ -78,6 +78,7 @@ Foam::davofNormalModels::ringArea::ringArea
     cosAngleFilter_(Foam::cos(degToRad(angleFilter_))),
     planeFit_(dict.getOrDefault<word>("ringPlaneFit", "none")),
     planeFitTol_(dict.getOrDefault<scalar>("ringPlaneFitTol", 1e-10)),
+    planeFitDebug_(dict.getOrDefault<label>("ringPlaneFitDebug", 0)),
     nAngleDropped_(0),
     nAngleKept_(0),
     nRemoteRings_(0)
@@ -151,6 +152,91 @@ Foam::scalar Foam::davofNormalModels::ringArea::kernelValue
         return t*t*t*t*(1 + 4*r);
     }
     return 1;
+}
+
+
+void Foam::davofNormalModels::ringArea::jacobiEigen
+(
+    const symmTensor& T,
+    vector& eVals,
+    tensor& eVecs
+)
+{
+    // Cyclic Jacobi rotations on the full 3 x 3 matrix a, the rotations
+    // accumulated in v (columns = eigenvectors)
+    scalar a[3][3] =
+    {
+        {T.xx(), T.xy(), T.xz()},
+        {T.xy(), T.yy(), T.yz()},
+        {T.xz(), T.yz(), T.zz()}
+    };
+    scalar v[3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    const scalar norm2 = sqr(T.xx()) + sqr(T.yy()) + sqr(T.zz())
+      + 2*(sqr(T.xy()) + sqr(T.xz()) + sqr(T.yz()));
+
+    for (label sweep = 0; sweep < 50; ++sweep)
+    {
+        const scalar off = 2*(sqr(a[0][1]) + sqr(a[0][2]) + sqr(a[1][2]));
+        if (!(off > 1e-30*norm2)) break;
+
+        for (label p = 0; p < 2; ++p)
+        {
+            for (label q = p + 1; q < 3; ++q)
+            {
+                if (!(mag(a[p][q]) > 0)) continue;
+                const scalar theta = (a[q][q] - a[p][p])/(2*a[p][q]);
+                const scalar t =
+                    (theta >= 0 ? 1 : -1)/(mag(theta) + Foam::sqrt(theta*theta + 1));
+                const scalar c = 1/Foam::sqrt(t*t + 1);
+                const scalar s = t*c;
+
+                // a' = R^T a R with the rotation in the (p, q) plane
+                for (label k = 0; k < 3; ++k)
+                {
+                    const scalar akp = a[k][p];
+                    const scalar akq = a[k][q];
+                    a[k][p] = c*akp - s*akq;
+                    a[k][q] = s*akp + c*akq;
+                }
+                for (label k = 0; k < 3; ++k)
+                {
+                    const scalar apk = a[p][k];
+                    const scalar aqk = a[q][k];
+                    a[p][k] = c*apk - s*aqk;
+                    a[q][k] = s*apk + c*aqk;
+                }
+                a[p][q] = 0;
+                a[q][p] = 0;
+                for (label k = 0; k < 3; ++k)
+                {
+                    const scalar vkp = v[k][p];
+                    const scalar vkq = v[k][q];
+                    v[k][p] = c*vkp - s*vkq;
+                    v[k][q] = s*vkp + c*vkq;
+                }
+            }
+        }
+    }
+
+    // Ascending order; the rows of eVecs are the eigenvectors (the columns
+    // of v)
+    label idx[3] = {0, 1, 2};
+    for (label i = 0; i < 2; ++i)
+    {
+        for (label j = i + 1; j < 3; ++j)
+        {
+            if (a[idx[j]][idx[j]] < a[idx[i]][idx[i]])
+            {
+                const label tmp = idx[i]; idx[i] = idx[j]; idx[j] = tmp;
+            }
+        }
+    }
+    for (label i = 0; i < 3; ++i)
+    {
+        eVals[i] = a[idx[i]][idx[i]];
+        const vector e(v[0][idx[i]], v[1][idx[i]], v[2][idx[i]]);
+        eVecs.row(i, e/max(mag(e), VSMALL));
+    }
 }
 
 
@@ -536,8 +622,9 @@ void Foam::davofNormalModels::ringArea::variantNormals(vectorField& n)
                 b += ws[s]*r;
                 M += ws[s]*sqr(r);
             }
-            const vector mu = eigenValues(M);
-            const tensor ev = eigenVectors(M, mu);
+            vector mu;
+            tensor ev;
+            jacobiEigen(M, mu, ev);
             const scalar muMax = max(mag(mu.x()), max(mag(mu.y()), mag(mu.z())));
             vector lambda(Zero);
             for (direction k = 0; k < 3; ++k)
@@ -563,31 +650,22 @@ void Foam::davofNormalModels::ringArea::variantNormals(vectorField& n)
             const vector r = (xs[s] - c)/h;
             cov += ws[s]*sqr(r);
         }
-        const vector ev = eigenValues(cov);
+        vector ev;
+        tensor evs;
+        jacobiEigen(cov, ev, evs);
         const scalar trace = ev.x() + ev.y() + ev.z();
-        label kMin = 0;
-        for (direction k = 1; k < 3; ++k)
-        {
-            if (ev[k] < ev[kMin]) kMin = k;
-        }
-        // The second smallest: the in-plane spread must exist
-        scalar second = GREAT;
-        for (direction k = 0; k < 3; ++k)
-        {
-            if (k != label(kMin)) second = min(second, ev[k]);
-        }
+        // ev ascending: ev.x() the smallest, ev.y() the in-plane spread
         if
         (
             !(trace > 0)
-         || second <= planeFitTol_*trace
-         || ev[kMin] < -planeFitTol_*trace
+         || ev.y() <= planeFitTol_*trace
+         || ev.x() < -planeFitTol_*trace
         )
         {
             ++nFallback_;
             continue;
         }
-        const tensor evs = eigenVectors(cov, ev);
-        vector nFit = evs.row(kMin);
+        vector nFit = evs.x();
         const scalar nFitMag = mag(nFit);
         if (!(nFitMag > 0) || nFitMag > ROOTVGREAT)
         {
@@ -601,6 +679,22 @@ void Foam::davofNormalModels::ringArea::variantNormals(vectorField& n)
         if ((nFit & ref) < 0)
         {
             nFit = -nFit;
+        }
+
+        if (planeFitDebug_ > 0)
+        {
+            --planeFitDebug_;
+            Pout<< "ringArea planeFit cell " << celli << " C " << C[celli]
+                << " c " << c << " h " << h << " d " << d << nl;
+            forAll(xs, s)
+            {
+                Pout<< "    x " << xs[s] << " w " << ws[s]
+                    << " r/h " << (xs[s] - c)/h << nl;
+            }
+            Pout<< "    cov " << cov << nl
+                << "    eVals " << ev << " eVecs " << evs << nl
+                << "    nFit " << nFit << " |n - d/|d|| "
+                << mag(nFit - ref/mag(ref)) << endl;
         }
         // The magnitude of d_k kept so that the normal carries the ring's
         // area (the scheme normalises)

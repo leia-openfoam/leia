@@ -156,6 +156,11 @@ protected:
         word planeFit_;
         scalar planeFitTol_;
 
+        //- ringPlaneFitDebug N: the ring data, the covariance and its
+        //  eigen-decomposition of the first N fitted cells of the first
+        //  call printed (0: off)
+        label planeFitDebug_;
+
         //- Counts of the last variant call (reduced): cells dropped by the
         //  angle filter, cells whose filtered sum vanished (kept d_k),
         //  remote ring cells whose rings were requested (two rings)
@@ -174,6 +179,23 @@ protected:
 
         //- The kernel value at q = r/h (1 for none)
         scalar kernelValue(const scalar q) const;
+
+        //- The eigen-decomposition of a symmetric 3 x 3 matrix by cyclic
+        //  Jacobi rotations (C. G. J. Jacobi, J. Reine Angew. Math. 30
+        //  (1846) 51-94, doi:10.1515/crll.1846.30.51): eVals ascending,
+        //  the rows of eVecs the unit eigenvectors in that order. Used in
+        //  place of OpenFOAM's eigenValues()/eigenVectors() (the roots of
+        //  the characteristic cubic), which on the covariance of a
+        //  coplanar ring (eigenvalues 1e-24, 1.4e-8, 3.6e-8 in units of
+        //  h^2 |Sigma|) returned a normal 45 degrees off without a
+        //  warning (measured 2026-11-08 on the translated plane, L1(n)
+        //  0.77); the Jacobi rotations give the plane's normal to 2e-15
+        static void jacobiEigen
+        (
+            const symmTensor& T,
+            vector& eVals,
+            tensor& eVecs
+        );
 
         //- The ring of every interface cell as a list of (global index,
         //  m) pairs: ringStencil one (the stencil) or two (the union of the
