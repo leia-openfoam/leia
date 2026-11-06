@@ -21,6 +21,35 @@ default stays v2606's; a DAVOF row runs with `grazingCut fork` wherever a number
 reproduced against the fork's record, otherwise with the default; the key is in every case
 stamp (`stampGrazingCut`) and in every table caption.
 
+**The positioning rule (Tomislav, 2026-11-08): "We should never count on the closed form to
+position PLIC, only always as input for CCS."** The explicit closed-form position
+pPlane_c = (sum_f alpha_f (x_f - x_c).S_f^out - 3 alpha_c V_c)/|m_c| is the START of the
+Consecutive Cubic Spline positioning and a diagnostic; no plane that enters a flux, a
+normal model, a function object or a written field is the closed-form plane. The audit of
+libleiaDavof and the apps (2026-11-08, port branch, no change needed), path by path:
+
+| path | the plane's position comes from | closed form as the final plane? |
+|---|---|---|
+| `davof::positionPlane`, `positioning ccs` (the default) | CCS (`davofCcsPositioning.H`) on the cut volume along the model normal, from alpha, started at pPlane_c; a failed positioning leaves the cell WITHOUT a plane (normal zero), counted "end-of-interval cells (n without a plane)" | no |
+| `davof::positionPlane`, `positioning vofCutCell` (opt-in) | the former `surfaceIteratorPLIC::vofCutCell` iteration (the cubic fit and the secant to isoFaceTol) | no |
+| the explicit plane cut in `davof::reconstruct` (`cutCell_.calcSubCell(celli, pPlane_c, n)`) | the closed form | diagnostic only: `pPlane`, `planeVolDefect`, `planeAreaDefect` (written fields, the "explicit plane defects" line) |
+| the swept scheme's cell surfaces (`buildCellSurfaces`, `surface plane`, `planeSource anchor`) | the frame from the used normal, the origin the CCS plane's cut centroid (the cell centre when the reconstruction gave no plane), the offset by the volume anchor (`fitAnchor volume`, `anchorMethod ccs`: CCS on the volume rule's V(c) to anchorTolRel); `anchorSkipConverged` keeps the CCS plane when its residual is within the tolerance; a failed anchor keeps the better bracket end (counted) | no |
+| `planeSource exact` | the tangent plane of the exact sphere (a control) | no |
+| the paraboloid (`surface paraboloid`) | the face fit (`fitParaboloidFull`) and the same volume anchor | no |
+| the wisp surfaces (`sweptWispSurface matched`, the default) | the neighbour's anchored plane where its volume in the wisp is alpha V within the tolerance, else the neighbour's normal positioned by the wisp's alpha (`davof::solveOffset`, bisection on the volume rule); `anchored`: the latter always; `neighbour`: the neighbour's plane | no |
+| `planeOf` (the swept clips, the face update, the consistency probe, the recompute of decision 2) | the anchored surface's plane (e3, o, c) | no |
+| the normal models `exact`, `ringFit` | read the CCS-positioned planes of the first pass (the centroid as the evaluation point, the ring's centroids and normals for the fit); `ringArea`, `cellLocal`, `youngs`, `plicRDF`: normals only | no plane positioned by a model |
+| `areaFractionError`, `reconstructionError` | the reconstruction's CCS planes (`surf.normal()`, `surf.centre()`); the exact reference from `davofInit` (the exact ball or cylinder: closed-form AREAS of the exact body, no PLIC) | no |
+| `volumeFractionError` | the exact state, else `cutCellIso` (an alpha iso-value of the interpolated field, not a PLIC position) | no |
+| `davofAdvectorFoam`, `davofInitFields` | the scheme above; the states (Detrixhe-Aslam, quadraticFaces, exactSphere, exactCylinder: no PLIC plane) | no |
+| `davofStaticFaceFractions` (the static test) | the exact normal positioned by `vofCutCell` to positionTol | no (the former iteration, not the closed form) |
+| `davofPlaneVolumeConsistency` (the diagnostic) | measures CCS from the explicit start and `vofCutCell`; forms no plane for anything | no |
+| the diagnostics that write a plane | `pPlane` (the closed-form offset), `positioningResidual` (the CCS residual), `sweptPieceDump` (the anchored plane of a piece) | the closed form appears as the offset field only |
+
+Outside the four apps: `leiaTestDavofNormal` (libleiaDavofState, the static gates) carries the
+option `regenOrigin volume | explicit` (default volume); `explicit` would regenerate from the
+closed-form position and is kept only as the gate's control.
+
 Two document folders live here (2026-10-26):
 
 - `davof-article/`: the preprint (`ms.tex`, its table bodies and figures,
