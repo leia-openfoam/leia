@@ -42,12 +42,27 @@ def main():
     ap.add_argument("--ylen", type=float, required=True)
     ap.add_argument("--zlen", type=float, required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--solids", choices=("flow", "faces"), default="flow",
-                    help="flow: inlet/outlet/walls (default); faces: one solid per "
+    ap.add_argument("--solids", choices=("flow", "faces", "one"), default="flow",
+                    help="flow: inlet/outlet/walls (default; one: every face in the single solid walls (2026-11-06)"); faces: one solid per "
                          "box face, left/right/front/back/bottom/top")
     a = ap.parse_args()
     X, Y, Z = a.xlen, a.ylen, a.zlen
     P = lambda x, y, z: (x, y, z)
+    if a.solids == "one":
+        faces = (
+            ("walls", (-1, 0, 0), (P(0, 0, 0), P(0, 0, Z), P(0, Y, Z), P(0, Y, 0))),
+            ("walls", (1, 0, 0),  (P(X, 0, 0), P(X, Y, 0), P(X, Y, Z), P(X, 0, Z))),
+            ("walls", (0, -1, 0), (P(0, 0, 0), P(X, 0, 0), P(X, 0, Z), P(0, 0, Z))),
+            ("walls", (0, 1, 0),  (P(0, Y, 0), P(0, Y, Z), P(X, Y, Z), P(X, Y, 0))),
+            ("walls", (0, 0, -1), (P(0, 0, 0), P(0, Y, 0), P(X, Y, 0), P(X, 0, 0))),
+            ("walls", (0, 0, 1),  (P(0, 0, Z), P(X, 0, Z), P(X, Y, Z), P(0, Y, Z))),
+        )
+        with open(a.out, "w") as fh:
+            fh.write("solid walls\n")
+            for _, n, q in faces:
+                quad(fh, n, *q)
+            fh.write("endsolid walls\n")
+        return
     if a.solids == "faces":
         faces = (
             ("left",   (-1, 0, 0), (P(0, 0, 0), P(0, 0, Z), P(0, Y, Z), P(0, Y, 0))),

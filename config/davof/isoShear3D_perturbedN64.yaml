@@ -1,0 +1,41 @@
+# The isoAdvector package's verification on the perturbed mesh class (fork branch
+# davof-isoAdvector, 2026-11-06): the preparation of the cases of isoShear3D at N 64 on 8
+# rank(s) (rendered, meshed, initialised, decomposed; a short END_TIME). The
+# timed runner workflow/scripts/davof_iso/iso-time.sbatch (MESHCLASS=perturbed) copies them.
+# Purpose and predictions: isoShear3D_perturbedN32.yaml (M-1 .. M-4) and isoShear3D_hexN32.yaml.
+#
+#   sbatch --parsable -J leia-davof-isoShear3D_perturbedN64 --export=ALL,STUDY=davof/isoShear3D_perturbedN64 run-studies.sbatch
+study_name: isoShear3D_perturbedN64
+studies_dir: studies/davof
+case: davof/isoShear3D
+mesh: perturbed
+mode: parallel
+np: 8
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: "initDavofFields && initShearFlow3D"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [64]
+  TPF_ROW: [plicRDF, plicRDF-ccs, davof-ringArea, davof-ringArea-vofCutCell, isoAlpha]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_DAVOF_METHOD: [quadraticFaces]
+  TPF_REF_METHOD: [quadraticFaces]
+  END_TIME: [0.05]
+  TPF_WRITE_INTERVAL: [0.05]
+  TPF_AFE_WRITE_INTERVAL: [0.05]
+  TPF_VFE_WRITE_INTERVAL: [0.05]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 30
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

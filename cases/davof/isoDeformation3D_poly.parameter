@@ -1,0 +1,67 @@
+// The 3D deformation of the isoAdvector package's verification (fork branch
+// davof-isoAdvector, 2026-11-06): the sphere of radius 0.15 at (0.35 0.35 0.35)
+// in the unit cube carried by the divergence-free field
+//     u =  2 sin^2(pi x) sin(2 pi y) sin(2 pi z) cos(pi t / T),
+//     v = -sin(2 pi x) sin^2(pi y) sin(2 pi z) cos(pi t / T),
+//     w = -sin(2 pi x) sin(2 pi y) sin^2(pi z) cos(pi t / T),
+// T = TPF_PERIOD = 3 (R. J. LeVeque, SIAM J. Numer. Anal. 33 (1996) 627-665,
+// doi:10.1137/0733033, section 6.3; D. Enright, R. Fedkiw, J. Ferziger,
+// I. Mitchell, J. Comput. Phys. 183 (2002) 83-116, doi:10.1006/jcph.2002.7166,
+// section 6.2), set every step by the fork's setFlow block (mode vortex3D, the
+// cosine scale of period 2 T) at the half time of the step: the templates of leia
+// branch davof-swept-enright (cases/davof/sphereDeformation3D, 2026-11-06) without
+// the keys of the swept-face advection. The velocity vanishes on the six faces of
+// the cube. The fixed step is dt = Co h / REFERENCE_SPEED with REFERENCE_SPEED 2.5
+// (the maximum over the cells of 0.5 sum_f |U(x_f) . n_f| h at t = 0 to within
+// 1.6 % at N = 32), so TARGET_ADVECTIVE_CO is OpenFOAM's Courant number; T = 3 is
+// 3 N 2.5 / Co steps. The exact body of the function objects is the sphere at
+// rest: only the values at t = T are errors of the transport.
+// The POLYHEDRAL / TETRAHEDRAL twin of isoDeformation3D.parameter (mesh: poly -> cfMesh
+// pMesh, mesh: tet -> cfMesh tetMesh; 2026-11-06): this file REPLACES the hex
+// parameter file for those studies (workflow/Snakefile PARAM_FILE), so it carries
+// the hex values plus the surface of the box (SURFACE_FILE, system/meshDict.template)
+// at the same N_CELLS ladder (CFMESH_CELL_SIZE = h/2^(-1/3)). The state is the
+// quadraticFaces construction of initDavofFields (exactSphere needs axis-aligned
+// boxes) and the function objects' exact state is quadraticFaces / cutCellIso.
+values
+{
+    solver (advectorVoF);
+    TPF_APPLICATION ( advectorVoF );
+    N_CELLS ( 32 64 128 );
+    TARGET_ADVECTIVE_CO ( 0.2 0.5 1 );
+    // the rows of the verification (tpf_rows.py): plicRDF (vofCutCell, the
+    // classical setting), plicRDF-ccs, davof-ringArea (ccs), davof-ringArea-vofCutCell,
+    // isoAlpha (the third reference)
+    TPF_ROW ( plicRDF plicRDF-ccs davof-ringArea davof-ringArea-vofCutCell isoAlpha );
+    TPF_POSITIONING_TOL ( 1e-14 );
+    TPF_POSITIONING_MAX_ITER ( 30 );
+    TPF_INTERPOLATE_NORMAL ( true );
+    TPF_WISP_TOL ( 1e-3 );
+    TPF_N_ALPHA_BOUNDS ( 3 );
+    TPF_SNAP_TOL ( 0 );
+    TPF_CLIP ( false );
+    TPF_DAVOF_METHOD ( quadraticFaces );
+    TPF_REF_METHOD ( quadraticFaces );
+    TPF_SPHERE_RADIUS ( 0.15 );
+    DOMAIN_LENGTH ( 1 );
+    SURFACE_FILE ( box1x1x1-one.stl );
+    TIME_STEP_CONTROL ( advective );
+    // 17: the fields, the function objects and the log at full double precision
+    TPF_WRITE_PRECISION ( 17 );
+    TPF_RECON_ERROR_EVERY_STEP ( false );
+    TPF_PROFILING ( false );
+    TPF_AFE_WRITE_CONTROL ( adjustableRunTime );
+    TPF_VFE_WRITE_CONTROL ( adjustableRunTime );
+    TPF_VELOCITY_ARM ( deformation3D );
+    TPF_PERIOD ( 3 );
+    TPF_SPHERE_CX ( 0.35 );
+    TPF_SPHERE_CY ( 0.35 );
+    TPF_SPHERE_CZ ( 0.35 );
+    END_TIME ( 3 );
+    REFERENCE_SPEED ( 2.5 );
+    TPF_ALPHA_BC ( zeroGradient );
+    TPF_ABORT_INTERFACE_FACTOR ( 100 );
+    TPF_WRITE_INTERVAL ( 0.75 );
+    TPF_AFE_WRITE_INTERVAL ( 0.75 );
+    TPF_VFE_WRITE_INTERVAL ( 0.75 );
+}

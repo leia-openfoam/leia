@@ -19,6 +19,8 @@
 #   sbatch -J davof-iso-<FLOW>-N<N>-co<CO> -n <NP> -t <limit> --export=ALL,FLOW=Rotation|Shear|Deformation,N=..,CO=0|1|2 iso-time.sbatch
 # REP0 / REP1 (optional): only the repetitions REP0..REP1; METHODS (optional): only these
 # rows; NOPROF=1: no profiled runs. ISO_W: the workspace (default the swept agent's iso/).
+# MESHCLASS (default hex): hex | perturbed | poly | tet, the preparation study
+# iso<FLOW>3D_<MESHCLASS>N<N> and the output directory time/<FLOW>_<MESHCLASS>_N<N>_co<CO>.
 W=${ISO_W:-/work/scratch/tm83tomy/davof/agents/swept/iso}
 S=${STUDIES:-$W/leia/studies/davof}
 module purge
@@ -26,19 +28,20 @@ module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv
 source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
 cd $W/leia && . etc/leia-env.sh || exit 1
 : ${FLOW:?} ${N:?} ${CO:?}
+MESHCLASS=${MESHCLASS:-hex}
 REPS=${REPS:-3}
 NP=$SLURM_NTASKS
 case $FLOW in Rotation) END=1; WI=0.25;; Shear|Deformation) END=3; WI=0.75;; *) echo "FLOW $FLOW?"; exit 1;; esac
 echo "fork $(git -C $W/TwoPhaseFlow log --oneline -1 | cut -c1-90); leia $(git -C $W/leia log --oneline -1 | cut -c1-90)"
-echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), cores $(nproc --all), job $SLURM_JOB_ID, np $NP, FLOW $FLOW N $N CO index $CO, $(date)"
+echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), cores $(nproc --all), job $SLURM_JOB_ID, np $NP, FLOW $FLOW MESHCLASS $MESHCLASS N $N CO index $CO, $(date)"
 echo "advectorVoF $(command -v advectorVoF)"
-T=$W/time/${FLOW}_N${N}_co${CO}
+T=$W/time/${FLOW}_${MESHCLASS}_N${N}_co${CO}
 if [ -z "$REP0" ]; then rm -rf $T
 elif [ -n "$METHODS" ]; then for m in $METHODS; do rm -rf $T/${m}_r$REP0; done
 else rm -rf $T/*_r$REP0; fi
 mkdir -p $T
 SUF=${REP0:+_r$REP0}${METHODS:+_${METHODS// /-}}
-pick() { /usr/bin/python3 - "$S/iso${FLOW}3D_hexN$N" "$1" "$CO" <<'EOF'
+pick() { /usr/bin/python3 - "$S/iso${FLOW}3D_${MESHCLASS}N$N" "$1" "$CO" <<'EOF'
 import json, glob, os, sys
 st, row, co = sys.argv[1], sys.argv[2], int(sys.argv[3])
 cs = []
@@ -96,10 +99,17 @@ if [ -z "$REP0" ] || [ -z "$METHODS" ]; then METHODS=${METHODS:-$ALL}; fi
 for r in $(seq ${REP0:-1} ${REP1:-$REPS}); do
   # the order rotated per repetition
   set -- $METHODS; k=$(( (r - 1) % $# )); order="${@:$((k+1))} ${@:1:$k}"
-  for m in $order; do run1 $m $r; done
+  for m in $order; do
+    # one repetition per aborted cell (Tomislav, 2026-11-06): a method whose first
+    # repetition ended by the abort guard is not repeated
+    if [ "$r" != 1 ] && [ "$r" != prof ] && grep -q 'advectorVoF: ABORT' $T/${m}_r1/log.advectorVoF 2>/dev/null; then
+      echo "$m r$r skipped (r1 aborted: $(grep -o 'ABORT at step [0-9]*' $T/${m}_r1/log.advectorVoF | head -1))"; continue
+    fi
+    run1 $m $r
+  done
 done
 if [ -z "$NOPROF" ] && [ -z "$REP0" ]; then
   for m in $METHODS; do run1 $m prof prof; done
 fi
 sleep 5; sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps$SUF.txt
-echo "ISO-TIME-DONE $FLOW N$N co$CO $(date)"
+echo "ISO-TIME-DONE $FLOW $MESHCLASS N$N co$CO $(date)"

@@ -1,0 +1,74 @@
+# The isoAdvector package's verification on the perturbed mesh class (fork branch
+# davof-isoAdvector, 2026-11-06): the preparation of the cases of isoDeformation3D at N 32 on 1
+# rank(s) (rendered, meshed, initialised; a short END_TIME). The
+# timed runner workflow/scripts/davof_iso/iso-time.sbatch (MESHCLASS=perturbed) copies them.
+# Purpose and predictions: isoDeformation3D_perturbedN32.yaml (M-1 .. M-4) and isoDeformation3D_hexN32.yaml.
+#
+#   sbatch --parsable -J leia-davof-isoDeformation3D_perturbedN32 --export=ALL,STUDY=davof/isoDeformation3D_perturbedN32 run-studies.sbatch
+# PRE-REGISTERED (2026-11-06, before any run; Tomislav's task of 2026-11-06, the mesh
+# classes). The same rows and scoring as the hexahedral family (iso*3D_hexN32.yaml) on the
+# three other mesh classes of the preprint: perturbed hexahedral (blockMesh, every interior
+# vertex displaced by up to 0.1 h, leiaPerturbMesh: warped faces), polyhedral (cfMesh pMesh,
+# maxCellSize h/2^(-1/3)) and tetrahedral (cfMesh tetMesh, the same meshDict), N 32 / 64 on
+# 1 / 8 ranks, OpenFOAM Co 0.2 / 0.5; the state from initDavofFields quadraticFaces, the
+# function objects' exact state quadraticFaces / cutCellIso. The known limitation, stated
+# before the runs: the DAVOF face fraction is a SCALAR per face; on a warped face the plane
+# clip's area and the Gauss identity m_c = sum_f alpha_f S_f hold only to O(warp), and the
+# plane-clipped loop failed the plane gate on warped hexahedra (preprint 7.x; the vector face
+# state of davof-warped is the remedy, not in this package).
+#   M-1  Completion: RDF, RDFccs and ISO complete every cell on every class; the DAVOF rows
+#        complete the rotation at Co 0.2 on the perturbed and the polyhedral class at N 32
+#        and 64 (bounded to 1e-6, not 1e-9), and abort or lose the bound (> 1e-6) at Co 0.5 on
+#        the perturbed class and on the tetrahedral class at both Co (the wisps the scalar
+#        face fraction produces on warped/skewed faces). Falsified if the DAVOF rows stay
+#        bounded to 1e-9 on the tetrahedral class.
+#   M-2  Errors: E_shape(RING)/E_shape(RDF) on the rotation at Co 0.2: in [0.7, 1.5] on the
+#        perturbed class, in [0.8, 2.5] on the polyhedral class, above 2 on the tetrahedral
+#        class; L1(n)(RING)/L1(n)(RDF) in [0.7, 2.0] on the perturbed, [1.0, 3.0] on the
+#        polyhedral and tetrahedral classes (the ring normal's stencil is the vertex ring,
+#        wider and more irregular on polyhedra). Falsified by a ratio above 4 anywhere.
+#   M-3  ccs against vofCutCell, the same scheme: the error ratios within 5 % on every
+#        class and cell (the positioning is exact to 1e-14 on any cell shape; vofCutCell's
+#        cubic fit is per cell as well). Falsified by a ratio outside [0.95, 1.05].
+#   M-4  Wall clock per step RING / RDF in [1.0, 3.0] on every class (the face update's
+#        second-ring sweep grows with the vertex ring); the reconstruction's share of the
+#        step for RING below RDF's by a factor >= 2 on the polyhedral and tetrahedral
+#        classes (plicRDF's RDF iteration costs more on irregular stencils). Falsified if
+#        RING / RDF > 4.
+#   Also reported: the measured OF Courant number, the cell and interface-cell counts per
+#   class (cfMesh's counts differ from the hex ladder), the face non-planarity of the
+#   perturbed and polyhedral meshes, the wisp counts of the DAVOF rows.
+study_name: isoDeformation3D_perturbedN32
+studies_dir: studies/davof
+case: davof/isoDeformation3D
+mesh: perturbed
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: "initDavofFields"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TPF_ROW: [plicRDF, plicRDF-ccs, davof-ringArea, davof-ringArea-vofCutCell, isoAlpha]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_DAVOF_METHOD: [quadraticFaces]
+  TPF_REF_METHOD: [quadraticFaces]
+  END_TIME: [0.05]
+  TPF_WRITE_INTERVAL: [0.05]
+  TPF_AFE_WRITE_INTERVAL: [0.05]
+  TPF_VFE_WRITE_INTERVAL: [0.05]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 30
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

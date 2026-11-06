@@ -1,0 +1,20 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                |
+| \\      /  F ield         | cfMesh: A library for mesh generation          |
+|  \\    /   O peration     |                                                |
+|   \\  /    A nd           | Author: Franjo Juretic                         |
+|    \\/     M anipulation  | E-mail: franjo.juretic@c-fields.com            |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      meshDict;
+}
+// pMesh (polyhedral) and tetMesh (tetrahedral) on the box surface; maxCellSize
+// = h / 2^(-1/3), h = DOMAIN_LENGTH / N_CELLS, so that the dual cells at the
+// interface measure the hex ladder's h (materialize: CFMESH_CELL_SIZE)
+maxCellSize     @!CFMESH_CELL_SIZE!@;
+surfaceFile     "@!SURFACE_FILE!@";
