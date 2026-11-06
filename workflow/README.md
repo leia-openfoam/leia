@@ -146,6 +146,61 @@ every file a new mtime, after which the flags above made 6 of 42 finished cases 
 preserve its directory (rename it with a dated suffix), then
 `LEIA_ALLOW_RERUN=1 make studies-one STUDY=<name> PROFILE=...`.
 
+### Recompute only on change: the case stamp (2026-11-07)
+
+Tomislav's rule: "Only re-calculate studies if we change something in the methods."
+`workflow/scripts/case_stamp.py` makes it mechanical. Every case directory carries
+
+- `.leia_render_stamp.json`: the hash of the case's dictionaries as the templates and the
+  variation's tokens render them (`system/`, `constant/` without `polyMesh`, `0.org/`, the
+  generated `decomposeParDict`), the mesh inputs (`blockMeshDict`, `meshDict`,
+  `triSurface/`) named separately, plus np and the mode. Input of `generate_case`: a
+  changed template or token re-materialises, re-meshes, re-initialises and re-solves.
+- `.leia_stamp_current.json`: the whole stamp: the render stamp, the binaries (the solver
+  and the field initialiser, sha256 of the files and of every library they load from this
+  clone's `platforms/`, the TwoPhaseFlow fork's and OpenFOAM's, by the ELF `DT_NEEDED`
+  closure), the OpenFOAM version, the solve command, the post-solve command and the scripts
+  it names, the mesh command. The id is the sha256 of these trigger fields. leia's and the
+  fork's `git describe`, the tokens, the `grazingCut` key and the time are recorded but do
+  not enter the id: a commit that changes nothing the case runs with recomputes nothing.
+  Input of `solve`.
+- `.leia_stamp.json`: the stamp a completed solve ran under, written at the end of the
+  solve rule with the binaries and the dictionaries hashed again in the job (a rebuild
+  between the plan and the run is recorded, and the stored id follows the run); the exit
+  code and the job id with it. Previous stamps go to `.leia_stamp_history.jsonl`.
+
+The Snakefile writes the first two at parse time for every variation, only when their
+content changed, so Snakemake schedules a `solve` exactly when the stamp changed:
+Snakemake 9 counts an input as updated when it is newer than the oldest output AND its
+checksum differs from the one recorded at the job's completion (`dag.py`,
+`update_needrun`), so a touched stamp file with the same content schedules nothing
+(MEASURED 2026-11-06, `port_stamp_test` phase 3: `touch` on both current stamps, "Nothing
+to be done"), and a rewritten one does. The `solve` rule's first step is `case_stamp.py
+check`: equal stamps and a result present means the solver is NOT run (the CSV is
+touched); a changed stamp moves the previous `log.*`, CSVs, launch record,
+`postProcessing/` and stamp to `previous/<old id>/` and runs; a re-materialisation
+(changed render stamp) archives the same way before the directory is rebuilt. The
+launch guard above allows a solve over a finished case whose stamp changed (it prints the
+reasons) and refuses one whose stamp is unchanged. A finished case from before this
+mechanism is adopted at the first parse (the current stamp stored as its stamp with
+`adopted: true`, the files back-dated, nothing rescheduled; `stampAdopted 1` in the table).
+Accepted on the cluster 2026-11-06 with `config/davof/port_stamp_test.yaml` (its header
+lists the four phases: fresh, idempotent, touched, changed).
+
+```bash
+snakemake --workflow-profile profiles/slurm --configfile config/davof/<study>.yaml -n   # refreshes the stamps; onstart prints
+#   [leia] stamps: 27 cases: 24 up to date, 0 adopted, 3 to recompute (stamp changed), 0 without a result
+#   [leia]   sphereDeformation3D_00004: changed; libraries of davofAdvectorFoam rebuilt: libleiaDavof.so
+LEIA_STAMP_VERBOSE=1 snakemake ... -n                              # every case with its status
+python3 workflow/scripts/case_stamp.py report studies/davof/<study>  # the same from the files, no snakemake
+```
+
+`snakemake` on an unchanged study is idempotent (every stamp equal: no job). The study
+table (`<study>_database.csv`, `aggregate.py`) records per case `stampId`, `stampBinary`
+(the solver's sha256, 12 digits), `stampDicts`, `stampLeia`, `stampTpf`, `stampGrazingCut`,
+`stampAdopted`, `stampCompletedAt`. Parse-time cost: the binaries and their libraries are
+hashed once per invocation (about a second), the dictionaries once per case (milliseconds).
+
 ### Scope (smoke vs full)
 
 `config/config.yaml` defaults to a small **smoke** grid via `axes_override` +
@@ -837,7 +892,7 @@ The dual area/volume-of-fluid method carries, next to the cell volume fraction
 `alpha_c`, the liquid area fraction `alpha_f` of every face, and recovers the
 interface area normal of a cell from the Gauss identity on the liquid sub-volume,
 `m_c = -sum_f alpha_f S_f^out` (`|m_c|` = interface area in the cell, direction =
-normal out of the liquid). Library `src/leiaLevelSet/davof` (`libleiaDavof`,
+normal out of the liquid). Library `src/leiaLevelSet/davof` (`libleiaDavofState`,
 `davofState.H`), app `applications/test/leiaTestDavofNormal`, theme `davof`
 (`docs/davof/README.md`). The studies live in their own sub-folders:
 `config/davof/<study>.yaml`, `cases/davof/<case>{,.parameter}`, `studies/davof/<study>`
@@ -900,7 +955,7 @@ per (alphaSource, model)). `--tpf-results <csv>` merges the rows of the TwoPhase
 benchmark `run/benchmark/reconstruction/sphereNormal3D` as `tpf:<scheme>/<setAlpha>`.
 
 Curvature of the DAVOF state (`src/leiaLevelSet/davof/curvature`, part of
-`libleiaDavof`, run-time selectable by the DAVOF applications and independent of
+`libleiaDavofState`, run-time selectable by the DAVOF applications and independent of
 the level-set libraries): `fvSolution davof { curvature { models (normalsOnly
 hermite); normalsOnly { type quadricFit; positionWeight 0; } hermite { type
 quadricFit; positionWeight 1; } } }`. `quadricFit` fits, per interface cell, a
@@ -1122,6 +1177,37 @@ studies drive its benchmark solver `advectorVoF` with the dictionaries of the fo
   gate; 32 cases; P-S5). Dry-run gate of the seventh token (2026-10-15):
   `snakemake -n` of both configs plans 21 and 32 cases; the converter's columns
   checked on a synthetic log.
+
+### The standing study matrix (Tomislav, 2026-11-07)
+
+"2D shear, 3D shear and 3D deformation, over 3 mesh resolution and compare DAVOF
+combination methods in leia, then parallel to this, in TwoPhaseFlow original
+isoAdvector-plicRDF and DAVOF reconstruction and isoAdvector combination ... Only
+re-calculate studies if we change something in the methods." The leia track:
+`config/davof/standing/<family>_N<N>.yaml`, written by
+`workflow/scripts/make_standing_configs.py` (the matrix in one table; `--check` refuses a
+hand edit): the families shear2D (`cases/davof/isoShear2D`, N 64/128/256 on 1/1/8 ranks),
+shear3D (`isoShear3D`, 32/64/128 on 1/8/64) and deformation3D (`sphereDeformation3D`,
+32/64/128 on 1/8/64); the rows `davof-planeSurf-ringArea` (the swept-face advection in
+its reference setting) and `plicRDF` (OpenFOAM v2606's isoAdvector + plicRDF); OpenFOAM
+Co 0.2, 0.5, 1; three identical repetitions per cell (`TPF_REPETITION`, a comment line of
+`controlDict`, so every repetition is its own case and stamp); the DAVOF rows with
+`grazingCut fork` (the policy of PORT-DESIGN 1.2: the numbers are reproduced against the
+fork track's record, which runs the same templates on the fork route); the
+pre-registration in every config's header. One study per rung:
+
+```bash
+sbatch --parsable -J leia-standing-shear2D-N64 --export=ALL,STUDY=davof/standing/shear2D_N64 run-studies.sbatch
+python3 workflow/scripts/make_standing_tables.py shear2D      # docs/davof/data/standing/standing_shear2D{,_orders,_caption}.{csv,tex}
+```
+
+The tables: one row per (row, N, OF Co) with E_shape, L1(x), L1(n), L1(alphaf), the mass
+deviation, min alpha and the excess over the run, the interface cells, the steps, the
+median wall clock of the repetitions and the per-step time, the status (the abort step),
+the repetitions' identity verdict, the ratios to plicRDF; the orders over N per (row, Co);
+the caption with the stamps (ids, the solver binary, leia's describe), `grazingCut`, the
+ranks, dt and the steps per rung. A changed method recomputes only the rows it touches
+(the case stamp above); the previous results stay under `previous/<id>/`.
 
 ```bash
 snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeTranslation3D_hexSmoke.yaml   # 8 cases, seconds

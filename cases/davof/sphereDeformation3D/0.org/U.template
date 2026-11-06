@@ -1,0 +1,38 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// The 3D deformation (cases/davof/sphereDeformation3D.parameter): the fork's
+// advectorVoF sets U and phi from the setFlow block of fvSolution before the
+// first step and at the half time of every step (OpenFOAM's
+// functionObjects::setFlow, mode vortex3D), on the cells and on the patch;
+// the values here are placeholders. The patch is fixedValue so that the
+// patch values setFlow assigns (the face-centre velocities, zero on the six
+// faces of the unit cube) survive correctBoundaryConditions and enter the
+// boundary flux. The arm's TPF_UX/UY/UZ are zero (the exact body's U0).
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+
+boundaryField
+{
+    walls
+    {
+        type            fixedValue;
+        value           uniform (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+    }
+}
+
+// ************************************************************************* //

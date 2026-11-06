@@ -1,0 +1,44 @@
+# The 3D deformation (Enright / LeVeque) comparison of the swept-face advection with
+# plicRDF + isoAdvector (2026-11-06): the preparation of the cases (short END_TIME; the
+# timed runner workflow/scripts/davof_enright/enright-time.sbatch sets T = 3 and the
+# write intervals). Purpose and predictions: sphereDeformation3D_hexSweptN32.yaml.
+#
+#   sbatch --parsable -J leia-davof-sphereDeformation3D_hexPrismN64 --export=ALL,STUDY=davof/sphereDeformation3D_hexPrismN64 run-studies.sbatch
+study_name: sphereDeformation3D_hexPrismN64
+studies_dir: studies/davof
+case: davof/sphereDeformation3D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [64]
+  # the third row (Tomislav, 2026-11-06): the plane-clipped loop, isoAdvector's own
+  # flux with the DAVOF ring normal and the CCS positioning (the preprint's
+  # davof-ringArea row plus ccs); the swept keys of the template are inert
+  TPF_ROW: [davof-ringArea]
+  TPF_FLUX_INTEGRATION: [prism]
+  TARGET_ADVECTIVE_CO: [0.5, 1]
+  # the preparation runs a few steps; the timed runner sets END_TIME 3 and the
+  # write intervals 0.75
+  END_TIME: [0.05]
+  TPF_WRITE_INTERVAL: [0.05]
+  TPF_AFE_WRITE_INTERVAL: [0.05]
+  TPF_VFE_WRITE_INTERVAL: [0.05]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

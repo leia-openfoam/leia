@@ -19,7 +19,7 @@ FoamFile
 // TwoPhaseFlow run/benchmark/advection/planeTranslation3D with the values
 // from the study tokens (cases/davof/planeTranslation3D.parameter).
 
-application     advectorVoF;
+application     @!DAVOF_APP!@;
 
 // repetition @!TPF_REPEAT!@ of a timing study (the token is an axis that changes nothing in the case)
 
@@ -45,7 +45,7 @@ writeInterval   @!TPF_WRITE_STEPS!@;
 purgeWrite      0;
 
 writeFormat     ascii;
-writePrecision  16;
+writePrecision  @!TPF_WRITE_PRECISION!@;
 writeCompression off;
 
 timeFormat      general;
@@ -83,7 +83,7 @@ functions
     areaFractionError
     {
         type            areaFractionError;
-        libs            ("libpostProcess.so");
+        libs            (@!DAVOF_FO_LIBS!@);
         field           alpha.water;
         functionType    plane;
         origin          (@!TPF_PLANE_PX!@ @!TPF_PLANE_PY!@ @!TPF_PLANE_PZ!@);
@@ -105,7 +105,7 @@ functions
     volumeFractionError
     {
         type            volumeFractionError;
-        libs            ("libpostProcess.so");
+        libs            (@!DAVOF_FO_LIBS!@);
         field           alpha.water;
         functionType    plane;
         origin          (@!TPF_PLANE_PX!@ @!TPF_PLANE_PY!@ @!TPF_PLANE_PZ!@);

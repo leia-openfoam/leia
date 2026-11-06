@@ -1,0 +1,29 @@
+# The acceptance of the case stamp (workflow/scripts/case_stamp.py, workflow/README.md
+# "Recompute only on change", 2026-11-07): two plane cases of seconds each on the leia
+# route. The protocol (REPORT-swept "The port into leia", the stamp): (1) a fresh study
+# runs both cases; (2) the same launch again schedules nothing; (3) the current stamp
+# files touched (an mtime sweep) schedule the solve rule, whose first step finds the
+# stamps equal and does NOT run the solver (the CSV's content unchanged); (4) a changed
+# dictionary value (TPF_WRITE_PRECISION 16 -> 17 through the config) recomputes both
+# cases with the previous result under previous/<old id>/ and a new stampId in the table.
+study_name: port_stamp_test
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+axes_override:
+  N_CELLS: [20]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_WRITE_PRECISION: ["16"]
+collapse_other_axes: true
+solve_runtime: 20
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

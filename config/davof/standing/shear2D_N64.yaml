@@ -1,0 +1,64 @@
+# The standing study matrix (Tomislav, 2026-11-07; docs/davof/PORT-DESIGN.md 5b;
+# workflow/scripts/make_standing_configs.py writes this file, edit the script): the
+# family shear2D (davof/isoShear2D) at N 64 on 1 rank(s); the rows davof-planeSurf-ringArea, plicRDF; OpenFOAM Co
+# 0.2, 0.5, 1; three identical repetitions per cell (TPF_REPETITION);
+# the DAVOF rows with grazingCut fork (Tomislav's policy of 2026-11-07: the numbers
+# are reproduced against the fork track's record, which runs the same templates).
+# Recompute only on change: workflow/scripts/case_stamp.py (README "Recompute only on
+# change"); the tables: workflow/scripts/make_standing_tables.py shear2D.
+#
+#   sbatch --parsable -J leia-standing-shear2D-N64 --export=ALL,STUDY=davof/standing/shear2D_N64 run-studies.sbatch
+# PRE-REGISTERED (2026-11-07, before any run; the swept-face advection has not run a 2D
+# case before: the one-cell-thick mesh with two empty faces per cell is new ground for the
+# swept flux, the explicit plane position was closed over the empty faces on 2026-11-07).
+#   S2-1 Completion. plicRDF completes every cell bounded to 1e-9 (the fork agent's S-1).
+#        The DAVOF row completes N 64 and 128 at OF Co 0.2 and 0.5 bounded to 1e-9 and
+#        with |mass deviation| < 1e-10 (the swept flux is conservative by construction);
+#        at OF Co 1 and at N 256 it may abort by the interface-cell guard (the fragmentation
+#        of the thin filament at T/2: the 3D deformation aborted at N >= 64 on 2026-11-06).
+#        Falsified if the DAVOF row aborts at N 64 OF Co 0.2 or loses the bound beyond 1e-6
+#        at a cell it completes.
+#   S2-2 Errors where both complete: E_shape(DAVOF) / E_shape(plicRDF) in [0.5, 1.5] at
+#        every completed cell; L1(n)(DAVOF) / L1(n)(plicRDF) in [0.5, 2]. Falsified by a
+#        ratio outside [0.3, 3].
+#   S2-3 Orders over N (64 -> 128 -> 256) of E_shape between 1.5 and 2.5 for plicRDF at
+#        every Co; for the DAVOF row over the completed rungs >= 1.5. Falsified by an
+#        order below 1 on completed rungs.
+#   S2-4 Wall clock per step at equal ranks: DAVOF / plicRDF in [1, 4] (the swept pieces
+#        cost 1.5 to 3.6 x on the 3D cells of 2026-11-06; a one-cell-thick mesh has fewer
+#        pieces per cell). Falsified by a ratio above 6.
+#   S2-5 The three repetitions of a cell give identical results (every number of the
+#        converter's last row), the wall clock within 5 % of the median. Falsified by a
+#        differing result (the run would not be deterministic).
+#   Also reported, not predicted: L1(alphaf) of the DAVOF row, the interface-cell counts
+#   at the writes, the measured OF Courant number, the stamps.
+study_name: standing_shear2D_N64
+studies_dir: studies/davof
+case: davof/isoShear2D
+mesh: hex
+mode: serial
+np: 1
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: "initDavofFields && initVortex2D"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [64]
+  TPF_ROW: [davof-planeSurf-ringArea, plicRDF]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 1]
+  TPF_REPETITION: [1, 2, 3]
+  TPF_GRAZING_CUT: [fork]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

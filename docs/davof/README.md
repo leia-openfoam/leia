@@ -5,6 +5,22 @@ The theme of the DAVOF studies (`config/davof/*.yaml`, `cases/davof/*`,
 through `workflow/scripts/make_davof_normal_table.py` and
 `make_davof_advection_table.py`; there is no deck yet.
 
+The port of the swept-face advection into leia (`src/davof`, `libleiaDavof`; the apps
+`davofAdvectorFoam`, `davofInitFields`; `PORT-DESIGN.md`, `REPORT-swept.md` "The port into
+leia") is built against OpenFOAM v2606's geometricVoF. Its one arithmetic difference from
+the TwoPhaseFlow fork is the grazing-cut threshold of `cutCellPLIC::calcSubCell`
+(`ROOTVSMALL` in v2606, `10*SMALL` in the fork), a round-off-level choice: the port
+reproduces the fork bit for bit with the opt-in `grazingCut fork` (the `fvSolution` key of
+the `davof` reconstruction scheme, the token `TPF_GRAZING_CUT`) in every test including the
+Enright deformation on 64 ranks, and with the default the two runs separate at the first
+grazing cut and the loop amplifies the one-ulp difference: the end norms agree to five
+digits on every ladder rung, and on the chaotic Enright case the abort step becomes a
+property of the realisation (the fork's N 32 run ends at T = 3, the default's aborts at
+step 443 of 480; the numbers in PORT-DESIGN 1.2). Policy (Tomislav, 2026-11-07): the
+default stays v2606's; a DAVOF row runs with `grazingCut fork` wherever a number is
+reproduced against the fork's record, otherwise with the default; the key is in every case
+stamp (`stampGrazingCut`) and in every table caption.
+
 Two document folders live here (2026-10-26):
 
 - `davof-article/`: the preprint (`ms.tex`, its table bodies and figures,
@@ -26,7 +42,7 @@ cell locally from the Gauss identity on the liquid sub-volume,
     m_c = - sum_f alpha_f S_f^out ,
 
 with `|m_c|` the interface area in the cell and `m_c/|m_c|` the normal out of
-the liquid. Library: `src/leiaLevelSet/davof` (`libleiaDavof`). Gates:
+the liquid. Library: `src/leiaLevelSet/davof` (`libleiaDavofState`). Gates:
 
 - `cases/davof/planeNormal3D/Allrun`: exact-solution gate (a plane; the
   normal, the explicit plane position, the tet/face consistency, the alpha

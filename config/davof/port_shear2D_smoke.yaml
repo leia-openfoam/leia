@@ -1,0 +1,33 @@
+# The swept-face advection on a 2D mesh with empty patches, the smoke before the standing
+# matrix (PORT-DESIGN 5b, 2026-11-07): the sheared disc isoShear2D at N 64, OF Co 0.5, the
+# DAVOF reference row and plicRDF, 17 steps (END_TIME 0.1 of T = 8), on the leia route
+# with grazingCut fork. Verdict: the DAVOF row runs through (no FatalError on the empty
+# faces of the swept pieces, the face update and the function objects), its mass
+# deviation at round-off, alpha bounded, L1(alphaf) finite; the plane residual of the
+# explicit start closed over the empty faces (the reconstruction line's defect).
+study_name: port_shear2D_smoke
+studies_dir: studies/davof
+case: davof/isoShear2D
+mesh: hex
+mode: serial
+np: 1
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: "initDavofFields && initVortex2D"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+axes_override:
+  N_CELLS: [64]
+  TPF_ROW: [davof-planeSurf-ringArea, plicRDF]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_GRAZING_CUT: [fork]
+  END_TIME: [0.1]
+  TPF_WRITE_INTERVAL: [0.1]
+  TPF_AFE_WRITE_INTERVAL: [0.1]
+  TPF_VFE_WRITE_INTERVAL: [0.1]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+collapse_other_axes: true
+solve_mem_mb: 3000
+solve_runtime: 30
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

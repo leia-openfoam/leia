@@ -86,6 +86,13 @@ _DERIVED_TOKENS = {
     "TPF_UX",
     "TPF_UY",
     "TPF_UZ",
+    # The route of the DAVOF advection studies (docs/davof/PORT-DESIGN.md, 2026-11-06):
+    # the application, the advection scheme and the function-object library of a
+    # rendered case, from the study's solver (DAVOF_SOLVER, injected by the Snakefile)
+    # and the row's reconstruction scheme (materialize._with_derived_tokens).
+    "DAVOF_APP",
+    "DAVOF_ADVECTION_SCHEME",
+    "DAVOF_FO_LIBS",
 }
 
 # A derived token is computed FROM other tokens, and those inputs are typically
@@ -120,6 +127,8 @@ _DERIVED_INPUTS = {
     "TPF_UX": ("TPF_VELOCITY_ARM",),
     "TPF_UY": ("TPF_VELOCITY_ARM",),
     "TPF_UZ": ("TPF_VELOCITY_ARM",),
+    # the advection scheme of the leia route follows the row's reconstruction scheme
+    "DAVOF_ADVECTION_SCHEME": ("TPF_ROW",),
 }
 
 

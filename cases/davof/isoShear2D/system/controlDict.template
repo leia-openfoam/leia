@@ -22,7 +22,9 @@ FoamFile
 //   reference domain length=@!DOMAIN_LENGTH!@ m
 //   reference speed=@!REFERENCE_SPEED!@ m/s
 // dt = Co h / REFERENCE_SPEED with h = DOMAIN_LENGTH/N_CELLS.
-application     @!TPF_APPLICATION!@;
+// the route (DAVOF_SOLVER -> the Snakefile): advectorVoF (the fork) or davofAdvectorFoam (leia)
+application     @!DAVOF_APP!@;
+// the repetition of the standing matrix (TPF_REPETITION): @!TPF_REPETITION!@
 
 startFrom       startTime;
 startTime       0;
@@ -62,7 +64,7 @@ functions
     areaFractionError
     {
         type            areaFractionError;
-        libs            ("libpostProcess.so");
+        libs            (@!DAVOF_FO_LIBS!@);
         field           alpha.water;
         functionType    cylinder;
         origin          (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
@@ -86,7 +88,7 @@ functions
     volumeFractionError
     {
         type            volumeFractionError;
-        libs            ("libpostProcess.so");
+        libs            (@!DAVOF_FO_LIBS!@);
         field           alpha.water;
         functionType    cylinder;
         origin          (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);

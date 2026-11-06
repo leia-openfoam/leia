@@ -1,0 +1,55 @@
+# 4.3, the grazing-cut proof on the ladders (2026-11-06): the leia route with grazingCut fork; expected
+# byte-identical to port_ladder_rotationN128_fork where the default (openfoam) drifted at the last digit.
+# The port acceptance (docs/davof/PORT-DESIGN.md, 2026-11-06): the rotation ladder N 128 on 64 ranks (4.3) on the leia route.
+# Rendered from sphereRotation3D_hexRotFinalN128.yaml with the solver and the keys of this header changed.
+# C (2026-11-02): the rotation ladder with the final code at N = 128 on 64
+# ranks, rows exact and ring normal. Purpose, read-out and the pre-registered predictions (R-0 .. R-4):
+# sphereRotation3D_hexRotFinal.yaml.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexRotFinalN128 --export=ALL,STUDY=davof/sphereRotation3D_hexRotFinalN128 run-studies.sbatch
+study_name: port_ladder_rotationN128_leiaGF
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: parallel
+np: 64
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [128]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+  TPF_GRAZING_CUT: [fork]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -1,0 +1,184 @@
+// The 3D deformation benchmark (LeVeque 1996, Enright et al. 2002) of the
+// DAVOF swept-face advection against isoAdvector + plicRDF (2026-11-06,
+// fork branch davof-swept, leia branch davof-swept-enright), driven through
+// the TwoPhaseFlow fork's advectorVoF.
+//
+// A sphere of radius 0.15 at (0.35 0.35 0.35) in the unit cube is carried by
+// the divergence-free deformation field
+//     u =  2 sin^2(pi x) sin(2 pi y) sin(2 pi z) cos(pi t / T),
+//     v = -sin(2 pi x) sin^2(pi y) sin(2 pi z) cos(pi t / T),
+//     w = -sin(2 pi x) sin(2 pi y) sin^2(pi z) cos(pi t / T),
+// T = TPF_PERIOD = 3: the sphere is drawn into a thin sheet, thinnest at
+// T/2, and the cosine reverses the flow so that the exact state at t = T is
+// the initial sphere (R. J. LeVeque, High-resolution conservative algorithms
+// for advection in incompressible flow, SIAM J. Numer. Anal. 33 (1996)
+// 627-665, doi:10.1137/0733033, the 3D field of section 6.3; D. Enright,
+// R. Fedkiw, J. Ferziger, I. Mitchell, A hybrid particle level set method
+// for improved interface capturing, J. Comput. Phys. 183 (2002) 83-116,
+// doi:10.1006/jcph.2002.7166, section 6.2). The field is set every step by
+// the fork's setFlow block of fvSolution (OpenFOAM's
+// functionObjects::setFlow, mode vortex3D: exactly the three components
+// above on the cell centres and the face centres, phi = U(x_f) . S_f, the
+// time factor through its scale Function1 cosine of period 2 T), evaluated
+// at the half time of the step as advectorVoF does for every setFlow case.
+// The velocity vanishes on the six faces of the cube (sin(pi x) = 0 and
+// sin(2 pi x) = 0 at x = 0 and 1, the same in y and z), so phi = 0 on the
+// boundary: no inflow and no outflow, the one patch walls carries
+// zeroGradient alpha. The face-centre flux is EXACTLY divergence-free on the
+// equidistant hexahedral mesh (not only to the midpoint rule): with
+// A(x) = 2 sin^2(pi x), D(x) = sin(2 pi x), B(y) = sin(2 pi y),
+// E(y) = sin^2(pi y), C(z) = sin(2 pi z), F(z) = sin^2(pi z) the cell's
+// flux sum is h^2 [ (A(x1) - A(x0)) B(yc) C(zc) - D(xc) (E(y1) - E(y0)) C(zc)
+// - D(xc) B(yc) (F(z1) - F(z0)) ] and A(x1) - A(x0) = 2 D(xc) sin(pi h),
+// E(y1) - E(y0) = B(yc) sin(pi h), F(z1) - F(z0) = C(zc) sin(pi h), so the
+// three terms cancel identically; setFlow's continuity error is 1e-13
+// (measured 2026-11-06). The level-set reference case cases/3Ddeformation
+// uses the same face-centre flux on hexahedra. advectorVoF passes div(phi)
+// to the advection as the source divU alpha (round-off here).
+//
+// The fixed step is dt = Co h / REFERENCE_SPEED with REFERENCE_SPEED 2.5,
+// just above the maximum over the cells of 0.5 sum_f |U(x_f) . n_f| at
+// t = 0 (2.460 / 2.475 / 2.478 at N = 32 / 64 / 128; the continuum maximum
+// of |u| + |v| + |w| is 2.479, of |U| 2.000), so that TARGET_ADVECTIVE_CO is
+// OpenFOAM's Courant number (0.5 sum_f |phi_f| dt / V, maximum over the
+// cells) to within 1.6 % at N = 32 and 1 % above, and T = 3 is
+// 3 N 2.5 / Co steps: 240 / 480 / 960 at Co 1, twice that at Co 0.5, every
+// count a multiple of four, so that the writes at T/4, T/2, 3T/4 and T land
+// on steps.
+//
+// The exact body of the function objects is the sphere at rest (U0 = 0,
+// omega = 0: the velocity arm deformation3D of tpf_rows.py renders
+// TPF_UX/UY/UZ = 0): areaFractionError and volumeFractionError at the write
+// times compare with the INITIAL sphere, so their values at T/4 .. 3T/4 are
+// not errors (the sheet against the sphere) and only the values at t = T
+// are the errors of the transport. The state is the exactSphere construction
+// of initDavofFields; every row starts from the same alpha and alphaf.
+//
+// The abort guard's interface-cell factor is raised from the sphere cases' 10
+// to TPF_ABORT_INTERFACE_FACTOR 100: the sheet at T/2 carries several times
+// the sphere's interface cells by its area alone (the interface-cell counts
+// at T/2 and T are reported, so the growth is visible); the alpha bounds of
+// the guard are unchanged.
+values
+{
+    solver (advectorVoF);
+    // the application entry of controlDict (the fork's advectorVoF; the leia
+    // app of the port takes its place by this token and the config's solver)
+    // TPF_APPLICATION retired 2026-11-06: the application, the advection scheme and the
+    // function-object library come from the config's solver (DAVOF_APP, DAVOF_ADVECTION_SCHEME,
+    // DAVOF_FO_LIBS; materialize.py)
+
+    N_CELLS ( 32 64 128 );
+
+    TARGET_ADVECTIVE_CO ( 0.5 1 );
+
+    TPF_ROW ( davof-planeSurf-ringArea );
+
+    TPF_FACE_CLIPPING ( plane );
+    TPF_CLIPPING_SURFACE ( none );
+    TPF_FIT_ANCHOR ( faces );
+    TPF_FIT_DOF ( six );
+    TPF_CURVED_DEBUG ( false );
+    TPF_VOLUME_RULE ( kromerBothe );
+    TPF_KB_MIN_SPLIT ( 1 );
+    TPF_KB_FAN ( auto );
+    TPF_ANCHOR_METHOD ( ccs );
+    // the reference setting of the swept-face advection (fork davof-swept
+    // 407f969, etc/README-davof.md "The reference setting"): the tokens below
+    // are the fork's defaults, written so that the dictionary states them
+    TPF_POSITIONING ( ccs );
+    TPF_POSITIONING_TOL ( 1e-14 );
+    TPF_GRAZING_CUT ( openfoam );
+    TPF_ANCHOR_SKIP_CONVERGED ( true );
+    TPF_SWEPT_PRE_TEST ( touching );
+    TPF_SWEPT_STATE_SHORTCUT ( false );
+    TPF_SWEPT_TRACE_CACHE ( true );
+    TPF_FLUX_INTEGRATION ( sweptFaceCells );
+    TPF_SWEPT_CLASSIFY ( false );
+    TPF_SWEPT_SCALE ( true );
+    TPF_SWEPT_VOLUME_CORRECTION ( pyramid );
+    TPF_SWEPT_WISP_SURFACE ( matched );
+    TPF_SWEPT_WISP_TOL ( 0 );
+    TPF_SWEPT_WISP_MATCH_TOL ( 1e-9 );
+    TPF_SWEPT_FACE_UPDATE ( pieces );
+    TPF_SWEPT_COPLANAR ( donorSide );
+    TPF_SWEPT_DUMP ( false );
+    TPF_PLANE_SOURCE ( anchor );
+    TPF_SWEPT_FACE_LOG ( false );
+    // 17: the fields, the function objects and the log (OpenFOAM sets the
+    // stream precision from writePrecision) at full double precision, so that
+    // the leia re-run after the port can be checked bit for bit (Tomislav,
+    // 2026-11-06)
+    TPF_WRITE_PRECISION ( 17 );
+    TPF_SWEPT_CAP_SET ( final );
+    TPF_SWEPT_CONSISTENCY_LOG ( false );
+    TPF_SWEPT_CONSISTENT ( true );
+    // the four bit-for-bit keys of round 4 (fork c5c00c5, REPORT-swept
+    // "Round 4"; opt-in there, ON here as the study setting: they reproduce
+    // 407f969 bit for bit on the eight verification cases)
+    TPF_SWEPT_AXIS_PLANES ( true );
+    TPF_SWEPT_TET_CACHE ( true );
+    TPF_SWEPT_POINT_VELOCITY_LAZY ( true );
+    TPF_SWEPT_PRE_TEST_COPLANAR_SIDE ( true );
+    TPF_FACE_STATE ( scalar );
+    TPF_TENSOR_CENTROID ( cut );
+    TPF_KB_PRISM_APEX ( vertexMean );
+
+    TPF_CURVED_TOL_REL ( 1e-11 );
+    TPF_CURVED_MAX_DEPTH ( 9 );
+
+    // the bounding of isoAdvection: the fork's defaults for the swept rows;
+    // the plicRDF comparator takes nAlphaBounds 5 (the fork's deformation
+    // test testsuite/advection/test-deformationSphere), set by its config
+    TPF_N_ALPHA_BOUNDS ( 3 );
+    TPF_SNAP_TOL ( 0 );
+    TPF_CLIP ( false );
+
+    TPF_ALPHA_BC ( zeroGradient );
+
+    // the arm deformation3D renders the exact body's U0 = 0
+    TPF_VELOCITY_ARM ( deformation3D );
+
+    // the period T of the deformation: the flow reverses through
+    // cos(pi t / T), END_TIME = T returns the sphere
+    TPF_PERIOD ( 3 );
+
+    TPF_DAVOF_METHOD ( exactSphere );
+    TPF_REF_METHOD ( exactSphere );
+
+    DOMAIN_LENGTH ( 1 );
+    END_TIME ( 3 );
+    TIME_STEP_CONTROL ( advective );
+    REFERENCE_SPEED ( 2.5 );
+
+    TPF_WISP_TOL ( 1e-3 );
+    TPF_REPEAT ( 1 );
+    TPF_INTERPOLATE_NORMAL ( true );
+    TPF_WRITE_TENSOR ( false );
+
+    TPF_SPHERE_RADIUS ( 0.15 );
+    TPF_SPHERE_CX ( 0.35 );
+    TPF_SPHERE_CY ( 0.35 );
+    TPF_SPHERE_CZ ( 0.35 );
+
+    // the field writes at T/4, T/2, 3T/4 and T (the sheet's pictures)
+    TPF_WRITE_INTERVAL ( 0.75 );
+
+    // the diagnostics at the write times only (both methods alike; the
+    // timing rule: errors with the wall clock at the same ranks)
+    TPF_AFE_WRITE_CONTROL ( adjustableRunTime );
+    TPF_AFE_WRITE_INTERVAL ( 0.75 );
+    TPF_AFE_CONSISTENCY ( false );
+    TPF_AFE_WRITE_FACE_ERROR ( false );
+    TPF_AFE_FACE_CSV ( false );
+    TPF_RECON_ERROR_EVERY_STEP ( true );
+    TPF_VFE_WRITE_CONTROL ( adjustableRunTime );
+    TPF_VFE_WRITE_INTERVAL ( 0.75 );
+    TPF_PROFILING ( false );
+
+    TPF_ABORT_INTERFACE_FACTOR ( 100 );
+    // the timed repetitions of the standing matrix (config/davof/standing): identical
+    // runs numbered 1, 2, 3 (a comment line of controlDict carries the number, so every
+    // repetition is its own case with its own stamp); 1 for a study without them
+    TPF_REPETITION ( 1 );
+}

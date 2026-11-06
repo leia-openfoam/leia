@@ -4436,6 +4436,749 @@ rank-fallback amplification), the same order as the trace cache's first
 form and the processor-boundary round-off of the parallel runs; Tomislav's
 call whether a change of that size may enter the defaults.
 
+
+## The port into leia (2026-11-06)
+
+Tomislav's decision of 2026-11-06: the DAVOF method leaves the TwoPhaseFlow fork and
+becomes leia's own library against OpenFOAM v2606's geometricVoF ("I do not want to make
+TwoPhaseFlow 'famous' by my work, I want to have it in my own project"). The delta
+analysis, the layout, the drop list and the acceptance plan are `docs/davof/PORT-DESIGN.md`
+(phase 0, 0ec77adf). The fork at `c5c00c5` (branch `davof-swept`) stays the reference of
+every number above; from here on new results are recorded against leia commits (the
+version stamp of `libleiaDavof`, printed by every app).
+
+### Phase 1: what was built (leia branch `davof-port`, 4dbd4803 .. 1761c0b9)
+
+- `libleiaDavof` (`src/davof`, 20 500 lines moved from the fork, bit for bit where the
+  acceptance below measures it): `reconstruction/` (the davof scheme,
+  `davofCcsPositioning.H`), `normalModels/` (cellLocal, youngs, plicRDF, exact, ringArea,
+  ringFit), `volumeRules/` (kromerBothe, exactSphere with the vendored MIT overlap library,
+  splitQuadrature), `geometry/` (the swept pieces, the remote cells, the point velocity,
+  the orbit, the curved geometry), `init/davofInit`, and `advection/`: the base
+  `davofAdvectionScheme` (run-time selected by `advectionScheme`, registered as
+  `davofAdvectionScheme` for the function objects), `davofSweptAdvection`
+  (`advectionScheme davofSwept`: the fork's `isoAdvection` with the plane-clipped loop of
+  the preprint v1, the face-clipping models, the one-donor option and the time-quadrature
+  fluxes removed (PORT-DESIGN section 3), the keys `surface plane | paraboloid |
+  exactSphere` and `flux sweptFaceCells | prism`, the fork's `clippingSurface` and
+  `fluxIntegration` as deprecated aliases, the log prefix `davofSwept:`) and
+  `isoAdvectorScheme` (`advectionScheme isoAdvector`: OpenFOAM's own `isoAdvection`, the
+  comparison arm). The three geometry headers keep their one home in
+  `src/leiaLevelSet/davof` (included by path); that library, the level-set side's state
+  constructor, is `libleiaDavofState` now.
+- `libleiaDavofFunctionObjects` (`src/functionObjects/davof`): areaFractionError,
+  volumeFractionError, reconstructionError, linked into the solver.
+- The apps `davofAdvectorFoam` (from `advectorVoF`), `davofInitFields`,
+  `davofStaticFaceFractions`, `davofPlaneVolumeConsistency`, `davofTestSweptPieces`.
+- The build gate, laptop and Lichtenberg, OpenFOAM v2606 (job 56002310, rc 0): no
+  TwoPhaseFlow include or library in any Make file; `ldd` of the five apps and the two
+  libraries lists OpenFOAM's and leia's libraries only; the DAVOF sources compile without
+  a warning. `EIGEN_INC` is set by `etc/leia-env.sh`.
+- The workflow: the route is the solver token alone (`solver: davofAdvectorFoam`, or
+  `advectorVoF` for the fork through `LEIA_TPF_DIR`); the Snakefile hands `DAVOF_SOLVER`
+  to `materialize.py`, which derives the three tokenised lines (`application`,
+  `advectionScheme`, the function objects' `libs`); `initDavofFields` maps to
+  `davofInitFields` on the leia route; both routes' solve output is `advectorVoF.csv`
+  (the converter's file, which reads both logs). `port_render_diff.py` renders a config
+  on both routes and found nothing but those three lines differing (`port_rotation_leia`,
+  2 cases; `port_plane_leia`, 8 cases).
+- Not a second key: the joint branch's `sweptHexClip` is the same device as `c5c00c5`'s
+  round-4 `sweptAxisPlanes` (`halfSpace::axis`, the one coordinate difference, local and
+  remote cell planes alike), found when extracting it; the port carries `sweptAxisPlanes`.
+- The round-4 keys and the two round-off opt-ins are tokens of the three cases
+  (`TPF_SWEPT_AXIS_PLANES`, `..._TET_CACHE`, `..._POINT_VELOCITY_LAZY`,
+  `..._PRE_TEST_COPLANAR_SIDE`, `..._FACE_UPDATE_FROM_VOLUME`, `..._SLIVER_CLOSED_FORM`,
+  the fork's defaults false); the plane case's `writePrecision` is a token.
+
+### Phase 2, the identity set (PORT-DESIGN 4.1): MEASURED 2026-11-06
+
+Workspace `/work/scratch/tm83tomy/davof/agents/port` (the fork at `c5c00c5` through
+`LEIA_TPF_DIR`, leia `davof-port` 2033532e for the runs), the studies
+`config/davof/port_{rotation,diagonal,plane}_{fork,leia}.yaml`: the reference setting
+with the four round-4 keys on, `writePrecision 17`, serial; the rotation N 32 (20 steps)
+and N 64 (40 steps), the lineDiagXZ diagonal N 32 (18 steps), the plane N 20 and 40 at
+Co 0.5 (8 and 16 steps) for both rows and both arms. Judged by
+`workflow/scripts/port_identity_check.py` (the written fields of the last time after the
+FoamFile header, the function objects' files and the converter's CSV byte for byte, the
+logs' numeric lines after the prefixes and the two renamed keys are normalised):
+
+| study | cases | written fields | function-object files | converter CSV | log numeric lines |
+|---|---|---|---|---|---|
+| rotation N 32 | 1 | 9 fields identical | identical | identical but the 5 wall-clock columns | 212 of 212 identical |
+| rotation N 64 | 1 | 9 fields identical | identical | wall-clock columns and `nAnchorEvals`, `nAnchorEdge` at ONE step (1 vs 0) | 410 of 412; the two lines of that step (below) |
+| diagonal N 32 | 1 | 9 fields identical | identical | wall-clock columns | 192 of 192 |
+| plane N 20, 40, both rows, both arms | 8 | the t = 0 fields only (the case writes no later time, `TPF_WRITE_STEPS`) | identical | wall-clock columns | 91 or 92 / 171 or 172 of as many, all identical |
+
+The written fields are byte-identical in every case (`alpha.water`, `alphaf.water`,
+`areaNormalDavof.water`, `pPlane.water`, the defect and sliver fields, `U`, `phi`), the
+per-step errors of the function objects (areaFractionError's L1, L2, Linf, the face and
+cell counts; volumeFractionError) identical to the last printed digit in all 11 cases.
+
+The one difference, rotation N 64 at one step: the fork's reconstruction line says
+"end-of-interval cells 5 (1 without a plane)", leia's "(0 without a plane)", the
+positioning residual mean differs in the 11th digit (2.1213936337790828e-15 against
+2.1213936338419322e-15), the anchor evaluated 1 cell (edge 1) in the fork and 0 in leia
+(skipped 1702 against 1703), the swept flux clipped 129132 against 129136 triangles;
+every field written after that step is identical. This is PORT-DESIGN 1.2 item 1 in its
+mildest form: one cell whose positioned plane grazes the cell is classified by
+`cutCellPLIC::calcSubCell` as no cut by the fork's threshold (`mag(faceArea) < 10*SMALL`,
+TwoPhaseFlow's) and as a cut with a vanishing polygon by OpenFOAM v2606's
+(`< ROOTVSMALL`); the cut volume is the same either way (the sliver's volume is below
+the residual tolerance), so the plane, the anchor's result and the transported state do
+not change; what changes is whether the cell counts as "without a plane", whether
+`anchorSkipConverged` skips it, and four clipped triangles of a vanishing polygon.
+Tomislav's rule for this case (2026-11-06): v2606's class stays the default; the
+fork's threshold comes as an OPT-IN copy (`davofCutCellPLIC`) to prove that the
+threshold is the whole difference, and the difference is documented as it is here:
+not round-off in the state, which is identical, but a diagnostic count. The opt-in and
+its proof run are the next item.
+
+Open after this measurement: the opt-in proof (above); the plane case's last-time
+fields were not compared (the template writes at `TPF_WRITE_STEPS` only; the per-step
+CSV and log numbers were); the parallel identity (4.2), the ladders (4.3) and the Co 1
+comparison (4.4), whose configs are in place (`port_parN32np*_{fork,leia}`,
+`port_ladder_*_leia`, `port_rotation_leia_noAxis`).
+
+### Phase 2, the acceptance (PORT-DESIGN 4.1 .. 4.4): MEASURED 2026-11-06
+
+The same workspace; leia `davof-port` 5854a387 (the grazing-cut opt-in) and later for the
+runs; every verdict by `workflow/scripts/port_identity_check.py` (bit for bit = the written
+fields of the last time after the FoamFile header, every function-object file including the
+per-rank `sweptFaceLog` files, the converter's CSV apart from its five wall-clock columns,
+and every numeric line of the log after the prefixes, the two renamed keys and the MPI host
+lines are normalised). The studies and the scoring scripts are in `config/davof/port_*.yaml`,
+`workflow/scripts/port_{identity,parallel,ladder}_check.py`, `davof_cmp/port_cmp_an.py`.
+
+| item | what ran | verdict |
+|---|---|---|
+| 4.1 the identity set, 11 cases, serial, 20 to 40 steps | `port_{rotation,diagonal,plane}_{fork,leia}` | bit for bit in 10 of 11; the rotation N 64 differs in two anchor counts of one step and in the diagnostic line of that step, every field identical (the grazing cut, PORT-DESIGN 1.2 item 1) |
+| 4.1 the plane set with the last step's fields written | `port_planeW_{fork,leia}` (`TPF_WRITE_STEPS 8`) | bit for bit, 8 of 8 (9 fields each at t = 8e-4) |
+| 4.1 the grazing-cut proof | `port_rotation_leia_grazingFork` (N 64, `grazingCut fork`) against the fork's N 64 case | bit for bit: the 9 fields, the 3 function-object files, the CSV, all 412 numeric log lines; against the default leia run the two counts (`nAnchorEvals` 1 against 0, `nAnchorEdge` 1 against 0) and that line differ, nothing else |
+| 4.1 `sweptAxisPlanes` off against on (leia, N 32 and 64) | `port_rotation_leia_noAxis` | fields, function-object files and CSV identical; the log differs in the startup line that prints the key and in nothing else (the fork's claim for gain 2 holds in leia) |
+| 4.2 the parallel identity, np 1, 2, 4, 8, 16, both rows, 20 steps | `port_parN32np*_{fork,leia}` | leia np k against fork np k bit for bit at every np (43 to 323 files per case, the per-rank swept-face logs included); leia np k against np 1 within 1e-12 of L1(alphaf) at every step but np 4 on the exact row (2.4e-12), the fork's own scatter digit for digit |
+| 4.3 the ladders, 16 rungs (rotation N 32/64 serial, 128 on 64 ranks; sphere N 32/64, 128 at Co 0.1/0.2/0.5), both rows, a full turn / translation | `port_ladder_*_{fork,leia,leiaGF}` | the default route (v2606's `cutCellPLIC`) is bit for bit in 5 rungs and drifts at the last digit in 11 from the step of the first grazing cut on; the route with `grazingCut fork` is bit for bit in all 16 (the threshold is the whole difference over 160 to 1280 steps) |
+| 4.4 the Co 1 comparison, 18 cells, both routes on one node, 3 repetitions of the ring row | `port_cmp*_leia` preparations, `davof_cmp/port-cmp-time.sbatch` | 16 cells scored (table below; the rotation N 64 and N 128 at OF Co 0.2 were still running at the time of writing, the N 128 one at 3255 s per 7000-step run needs one job per repetition as the fork's protocol had) |
+
+The drift of the default route on the ladders, in the scored end norms (the preprint's
+scorer, `davof_swept_ladders.py`, fork against leia; `grazingCut fork` reproduces the fork
+in every digit): L1(alphaf) and E_shape identical to five digits in all 16 rungs; L1(n)
+within 3.2e-3 relative on the rotation ring row at N 64 and within 3.4e-2 on the sphere
+exact row at N 128 (the sliver-normal sensitivity of that measure, REPORT 2026-11-05
+"L1(n) end +43 % on the exact row (sliver planes, measurement only)"); L1(x) within
+9.2e-4 (sphere ring N 64), 4.0e-4 (rotation ring N 128); min alpha and the largest
+excess at the 1e-13 .. 1e-11 level in both routes. This is the loop's known
+round-off amplification (REPORT 2026-10-24: two serial runs 1e-13 apart differ by 2e-6 at
+step 2 and hold 1e-9 .. 2e-7 afterwards) seeded by one classification of one grazing cut;
+the state stays bounded and conservative in both routes.
+
+The Co 1 comparison (PORT-DESIGN 4.4; `csv/port_cmp_table.csv`; the values of repetition 1,
+the wall clock the median of three for the ring row): the DAVOF arm's end norms (L1(x),
+E_shape, L1(n), min alpha, the excess, the mass) agree between the routes to the printed
+digits in 12 of the 16 cells and within the ladder's drift in the others (LineX N 64 OF
+Co 0.2 exact: L1(x) 1.9338e-4 against 1.9313e-4, L1(n) 1.5876e-3 against 1.5596e-3; LineX
+N 128 OF Co 0.2 exact: L1(x) 5.2747e-5 against 5.2740e-5; rotation N 64 OF Co 0.2 ring:
+1.0590e-3 against 1.0582e-3); the wall clock of the leia binary is 0.994 .. 1.015 of the
+fork's for the DAVOF arm (the same code) and 0.94 .. 1.00 for isoAdvector (OpenFOAM
+v2606's against TwoPhaseFlow's). The plicRDF + isoAdvector arm (OpenFOAM v2606's
+`plicRDF` and `isoAdvection` against TwoPhaseFlow's, PORT-DESIGN 1.3): L1(x), E_shape and
+L1(n) identical to seven digits in 15 of the 16 cells; min alpha and the excess differ at
+the 1e-13 .. 1e-14 level (the bounding tolerances `100*SMALL` against `1e-12` / `10*SMALL`),
+and in the one unbounded cell (LineDiag N 128, OF Co 1, 64 ranks: both versions lose the
+boundedness, REPORT 2026-11-03) the numbers differ: L1(x) 3.0422e-3 against 2.9987e-3,
+E_shape 3.2446e-4 against 3.2206e-4, the excess 3.52e-3 against 4.09e-3. The DAVOF arm
+against plicRDF on the leia route: wall clock 1.46 .. 3.62 x, E_shape 0.45 .. 0.91 x on
+the ring row (the fork's picture of 2026-11-03 unchanged).
+
+The bit-for-bit verdict of the DAVOF arm's cells (`port_identity_check.py` on the first
+repetition, the fields of the last written time per processor directory, the
+function-object files, the CSV, the log): bit for bit in 15 of the 34 scored runs (every
+LineDiag and LineX run at OF Co 1 at N 32, 64, 128, both rows; the LineDiag N 32 and the
+LineX N 32 ring runs at OF Co 0.2); identical fields with the two anchor counts
+(`nAnchorEvals`, `nAnchorEdge`) and the diagnostic line of a few steps different in 5
+(LineDiag N 64 OF Co 0.2 both rows, rotation N 32 OF Co 0.2 both rows and OF Co 1 ring);
+the fields different at the round-off level in the remaining 14 (the rotation at N 64 and
+N 128, LineX at OF Co 0.2 from N 32 on, LineDiag N 128 OF Co 0.2: e.g. alpha
+0.99999999994613487 against 0.99999999994613797, a wisp 3.199e-14 against 3.907e-14, the
+LineX N 32 exact run only in `reconstructionError`'s L1(n) 1.9368e-4 against 1.9390e-4 and
+L1(x) in the seventh digit). The pattern is the ladders': the default route separates from
+the fork at the step of the first grazing cut and the loop amplifies the difference to
+the 1e-11 .. 1e-4 relative level in the end norms; the rotation, with the most grazing
+cuts, never stays bit for bit beyond N 32 at OF Co 0.2; the straight lines at OF Co 1 do.
+
+Tomislav's rule (2026-11-06) is applied: v2606's `cutCellPLIC` stays the default; the
+opt-in `grazingCut fork` (`davofCutCellPLIC`, a parameterised copy of v2606's class,
+selected through `davofCellCut`) proves the threshold to be the whole difference; the
+drift of the default is documented above with its numbers.
+
+Open after phase 2: the rotation N 64 and N 128 cells at OF Co 0.2 of the comparison (one
+job per repetition for N 128); the record in `docs/davof/PORT-DESIGN.md` of the measured
+scatter as the acceptance tolerance of long runs on the default route.
+
+### Phase 3, the Enright identity (PORT-DESIGN section 5): MEASURED 2026-11-06
+
+The Enright agent's timed comparison (`enright-time.sbatch`, its branch `davof-swept-enright`
+402fcc2e merged into `davof-port` 6a3cdcda, the templates tokenised) run from the leia-route
+preparations `port_enright{Swept,RDF}N{32,64,128}_leia` on three routes by
+`davof_enright/port-enright-time.sbatch`: `leia` (v2606's `cutCellPLIC`), `leiaGF` (the
+opt-in `grazingCut fork`) and `fork` (the three lines rewritten); ring = the swept-face
+advection with the ring normal, rdf = plicRDF + isoAdvector; N 32 serial, N 64 on 8 ranks,
+N 128 on 64; OF Co 0.5 and 1 (the `co_index` 0 and 1 of the preparations); T = 3, the
+abort at min(alpha) < -0.5 as in the Enright record below. Scored by
+`davof_enright/port_enright_an.py` (`csv/port_enright_table.csv`):
+
+| N | np | OF Co | ring, fork: steps, status | ring, leia (default): steps, status | ring, leiaGF: identity | rdf, v2606 against TwoPhaseFlow |
+|---|---|---|---|---|---|---|
+| 32 | 1 | 0.49 | 480, ended (E_shape 1.137e-2) | 443, aborted (min alpha -0.742) | bit for bit, 480 ended | same digits |
+| 32 | 1 | 0.98 | 240, ended (1.250e-2) | 225, aborted (-0.797) | bit for bit, 240 ended | same digits |
+| 64 | 8 | 0.50 | 628, aborted (-0.545) | 777, aborted (-1.12) | bit for bit, 628 aborted (wall 0.995) | E_shape 3.0181e-3 / 3.0181e-3, L1(x) 5.870e-2 / 5.854e-2, L1(n) 0.5963 / 0.5938 |
+| 64 | 8 | 0.99 | 399, aborted (-1.20) | 138, aborted (-0.774) | bit for bit, 399 aborted | E_shape 3.1633e-3 / 3.1633e-3, L1(x) 6.087e-2 / 6.075e-2 |
+| 128 | 64 | 0.50 | 125, aborted (-1.25) | 216, aborted (-0.750) | bit for bit, 125 aborted | same digits (E_shape 6.9114e-4, L1(x) 7.4270e-3) |
+| 128 | 64 | 0.99 | 106, aborted (-0.508) | 67, aborted (-0.932) | bit for bit, 106 aborted | E_shape 6.908e-4 / 6.906e-4, L1(x) 7.622e-3 / 7.841e-3, excess 8.7e-5 / 9.2e-5 |
+
+Bit for bit = the fields of the last written time in every processor directory (72 at N 64,
+576 at N 128), the three function-object files, the CSV but its wall-clock columns, every
+numeric log line and the abort line with its numbers; the per-rank `kromerBothe area check
+failed` warnings reach the log in the ranks' flush order and are compared as sorted sets
+(`port_identity_check.py` 2aa8c65a). The wall clock of the leiaGF binary is 0.994 .. 1.004
+of the fork's.
+
+What this says. The Enright case is the loop's sensitivity at its sharpest: the default
+route and the fork separate at the first grazing cut (N 32 OF Co 0.5: step 6, "2 clips,
+12627 against 12629 quadrature leaves", the mass change of the step 4.9e-16 against
+6.1e-16), and from there the two runs are different realisations of the same unstable
+fragmentation: the fork's N 32 runs end at T = 3 and the default route's abort at step 443
+and 225; at N 64 OF Co 1 the fork aborts at step 399 and the default route at 138; at N 128
+OF Co 0.5 at 125 against 216. The abort step of the Enright record below is therefore not a
+property of the method but of the realisation, to be read with the round-off sensitivity
+in mind (the loop amplifies a 1e-16 difference of one step, REPORT 2026-10-24). With
+`grazingCut fork` every cell (6 of 6) is bit for bit, in serial and on 8 and 64 ranks: the
+threshold of `cutCellPLIC::calcSubCell` is the whole difference between the port and the
+fork on this case too. The plicRDF + isoAdvector arm differs between OpenFOAM v2606's and
+TwoPhaseFlow's classes in the third to fourth digit of L1(x) and L1(n) at N 64 (both OF
+Co) and N 128 OF Co 1, the unbounded runs (min alpha -4.8e-6 .. -1.1e-3, the bounding
+tolerances differ, PORT-DESIGN 1.3), and to the printed digits at N 32 and N 128 OF Co 0.5;
+leia's reference row is v2606's by Tomislav's decision, the difference is stated, not
+resolved.
+
+For the standing study matrix (Tomislav, 2026-11-07) this fixes two things: the DAVOF
+rows run with `grazingCut fork` where a result is to be reproduced against the fork's
+record and with the default otherwise, the key written into the stamp of every case; and
+the Enright rows' abort step is reported with the realisation's seed (the route and the
+threshold) named.
+
+### The standing matrix: the mechanism and the configs (2026-11-07, before the matrix runs)
+
+(1) Recompute only on change: `workflow/scripts/case_stamp.py` (README "Recompute only on
+change: the case stamp"; PORT-DESIGN 5b), accepted on the cluster with
+`config/davof/port_stamp_test.yaml` (two plane cases of seconds; jobs 56013329, 56013443,
+56013459, 56013789, 56014057): a fresh study runs both cases and stores their stamps
+(92e360124a45, c884e6ea4e15; the table carries `stampId`, `stampBinary` 547e31ad011d,
+`stampGrazingCut`, `stampLeia`); the same launch again schedules nothing ("Nothing to be
+done", the guard lists 0 solve jobs); the current stamp files touched schedule nothing
+either (Snakemake 9.23 counts an input as updated only when its checksum differs from the
+one recorded at the job's completion, `dag.py` `update_needrun`; measured); a changed
+dictionary value (TPF_WRITE_PRECISION 16 to 17 through the config) recomputes both cases
+with the reason "dictionaries changed" in the dry run and the guard, new ids (d78a09747c4f,
+757ad626d9f7) and, after the config is restored, the original ids again (the id is
+content-addressed) with the 17-results under `previous/d78a09747c4f/`. Two defects found
+and fixed on the way (both measured on the test): the current stamp's record carried the
+computation time and moved the file at every parse (rescheduling every finished case; the
+file is now rewritten on a changed trigger only, 4f9cdd3d), and an executor job re-parses
+the Snakefile, so two jobs raced on the stamp's temporary file (the driver alone writes,
+ebf5c70c); a re-materialisation archives the result before it rebuilds the directory
+(94b885d4).
+
+(2) The cases. The fork agent's leia track (origin/davof-swept 95952849) merged into
+`davof-port` (a71f887e): `cases/davof/isoShear2D` (the sheared disc of Rider and Kothe
+1998 on the one-cell-thick mesh, T = 8), `isoShear3D` (the sphere in the shear flow of
+Liovic et al. 2006, T = 3), `isoDeformation3D`, `isoRotation3D`, the rows `plicRDF-ccs`
+and `davof-ringArea-vofCutCell`, the positioning per row, the tet mesh class, its runner
+and tables. The pieces of the fork's `davof-isoAdvector` that the shear cases need, taken
+over into leia (face94ab, compiled on the laptop): `davofInit::exactCylinder` (the exact
+state of the disc; `davofInitFields`, `areaFractionError davofMethod exactCylinder`,
+`volumeFractionError exactState auto` picks it for a cylinder on boxes), the explicit
+plane position's Gauss sum closed over the empty faces (davof.C, the consistency app), the
+apps `davofInitShearFlow3D` and `davofInitVortex2D` (the fork's `initShearFlow3D` and
+`initVortex2D`, phi the exact line integral of the stream function in 2D); the Snakefile
+maps the fork's initialiser names to leia's inside a setfields command, the stamp hashes
+every app of it. The iso* templates tokenised for the route (the three lines) and extended
+with the swept-face advection's reference-setting keys and `grazingCut` (the fork route's
+isoAdvection does not read them), so that ONE template per case serves both tracks: on the
+fork route the rendering differs from the fork agent's by the added keys and in nothing
+else, on the leia route by the three lines (checked for isoShear2D and isoShear3D, both
+rows). The repetition token `TPF_REPETITION` (a comment line of controlDict, so every
+repetition is its own case with its own stamp) in the three standing cases.
+
+(3) The configs, `config/davof/standing/<family>_N<N>.yaml`, written by
+`workflow/scripts/make_standing_configs.py` (the matrix in one table): the families
+shear2D (N 64/128/256 on 1/1/8 ranks, the fork agent's decomposition), shear3D (32/64/128
+on 1/8/64) and deformation3D (the Enright agent's `sphereDeformation3D`, 32/64/128 on
+1/8/64); the rows `davof-planeSurf-ringArea` (the swept-face advection, the reference
+setting) and `plicRDF` (v2606's isoAdvector + plicRDF); OF Co 0.2, 0.5, 1; three
+repetitions; `grazingCut fork` for the DAVOF rows; the pre-registration S2-1..5, S3-1..5,
+D-1..4 in the headers. The tables: `workflow/scripts/make_standing_tables.py <family>`
+(one table set per family: the cells, the orders over N, the caption with the stamps,
+the ranks, dt and the steps). The smoke before the matrix: `config/davof/port_shear2D_smoke.yaml`
+(the swept flux on the 2D mesh with empty patches, 17 steps).
+
+Open before the matrix runs (the hand-back): the deformation family's template (the
+Enright agent's `sphereDeformation3D` here, the fork agent's `isoDeformation3D` on its
+track: two templates for one case, to be settled); the fork agent takes the tokenised and
+extended templates (its stamps change by the added keys); the Enright agent's keys
+(decisions 1-3) ported when the coordinator says; the 2D smoke on the cluster.
+
+## The 3D Enright deformation (2026-11-06)
+
+Tomislav's task of 2026-11-06: the 3D deformation test (LeVeque 1996, Enright et
+al. 2002) with the swept-face advection in parallel against isoAdvector +
+plicRDF, on the equidistant hexahedral meshes of the level-set case
+`cases/3Ddeformation`. Agent clones: fork
+`/work/scratch/tm83tomy/davof/agents/enright/TwoPhaseFlow` (branch
+`davof-swept-enright` from `davof-swept` c5c00c5, no source change), leia
+`.../enright/leia` (branch `davof-swept-enright` from `davof-swept` 930d2328);
+the job ledger `.../enright/.my_jobs`.
+
+### The case
+
+`cases/davof/sphereDeformation3D` (new; the dictionaries of
+`sphereRotation3D` with the setFlow block replaced): the unit cube with N^3
+equidistant hexahedra, one patch `walls`; the sphere R = 0.15 at
+(0.35 0.35 0.35); the velocity
+
+    u =  2 sin^2(pi x) sin(2 pi y) sin(2 pi z) cos(pi t / T),
+    v = -sin(2 pi x) sin^2(pi y) sin(2 pi z) cos(pi t / T),
+    w = -sin(2 pi x) sin(2 pi y) sin^2(pi z) cos(pi t / T),  T = 3,
+
+the 3D field of R. J. LeVeque, High-resolution conservative algorithms for
+advection in incompressible flow, SIAM J. Numer. Anal. 33 (1996) 627-665,
+doi:10.1137/0733033, with the time reversal of D. Enright, R. Fedkiw,
+J. Ferziger, I. Mitchell, A hybrid particle level set method for improved
+interface capturing, J. Comput. Phys. 183 (2002) 83-116,
+doi:10.1006/jcph.2002.7166. The field is set by OpenFOAM's
+`functionObjects::setFlow`, mode `vortex3D` (exactly the three components
+above on the cell centres and the face centres, `phi = U(x_f) . S_f`), with
+the time factor through its `scale` Function1 `cosine` of period 2T;
+advectorVoF evaluates it at the half time of every step (as for the
+rotation). The velocity vanishes on the six faces of the cube, so the
+boundary flux is zero. The face-centre flux is EXACTLY divergence-free on
+the equidistant hexahedra, not only to the midpoint rule: with
+A(x) = 2 sin^2(pi x), D(x) = sin(2 pi x), B(y) = sin(2 pi y),
+E(y) = sin^2(pi y), C(z) = sin(2 pi z), F(z) = sin^2(pi z) a cell's flux
+sum is h^2 [(A(x1) - A(x0)) B(yc) C(zc) - D(xc) (E(y1) - E(y0)) C(zc)
+- D(xc) B(yc) (F(z1) - F(z0))], and A(x1) - A(x0) = 2 D(xc) sin(pi h),
+E(y1) - E(y0) = B(yc) sin(pi h), F(z1) - F(z0) = C(zc) sin(pi h): the
+three terms cancel identically. setFlow's continuity error per step is
+1e-13 (measured on the preparation runs). The level-set case
+`cases/3Ddeformation` uses the same face-centre flux on hexahedra through
+`velocityModel::setVolumetricFlux` (its Helmholtz projection is for
+polyhedral meshes); advectorVoF's source `divU alpha` is round-off here.
+
+The step: dt = Co h / 2.5 with 2.5 just above the maximum over the cells of
+0.5 sum_f |U(x_f) . n_f| at t = 0 (2.460 / 2.475 / 2.478 at N = 32 / 64 /
+128 on the three meshes; the continuum maximum of |u| + |v| + |w| is 2.479,
+of |U| 2.000), so that the nominal Co is OpenFOAM's Courant number
+(0.5 sum_f |phi_f| dt / V, the maximum over the cells, at the first step)
+to within 1.6 % at N = 32 and 1 % above; T = 3 is 3 N 2.5 / Co steps, every
+count a multiple of four, so that the field writes at T/4, T/2, 3T/4 and T
+land on steps:
+
+| N | ranks | Co 0.5: dt, steps | Co 1: dt, steps |
+|---|---|---|---|
+| 32 | 1 | 0.00625, 480 | 0.0125, 240 |
+| 64 | 8 | 0.003125, 960 | 0.00625, 480 |
+| 128 | 64 | 0.0015625, 1920 | 0.003125, 960 |
+
+Rows: ours = the swept-face advection with the ring normal
+(`davof-planeSurf-ringArea`) in the reference setting of 407f969
+(sweptWispSurface matched / 1e-9 / 0, sweptConsistent, pyramid, ccs
+positioning, anchorSkipConverged, sweptPreTest touching, sweptTraceCache)
+plus the four bit-for-bit keys of round 4 ON as the study setting
+(sweptAxisPlanes, sweptTetCache, sweptPointVelocityLazy,
+sweptPreTestCoplanarSide; they reproduce 407f969 bit for bit on the eight
+verification cases of round 4); the fork's bounding at its defaults
+(nAlphaBounds 3, snapTol 0, clip false). The comparator = isoAdvector +
+plicRDF with nAlphaBounds 5, snapTol 0, clip false, nAlphaCorr 1 (the
+fork's deformation test `testsuite/advection/test-deformationSphere`; that
+test runs Roenby's spiralling field in a 1 x 1 x 2 box and is not this case).
+No exact-normal row: a deformed sphere has no exact normal. Same initial
+alpha and alphaf (initDavofFields exactSphere), same mesh, dt, scotch
+decomposition and ranks (1 / 8 / 64 at N = 32 / 64 / 128, as in the
+comparison of 2026-11-03). The abort guard's interface-cell factor is 100
+instead of the sphere cases' 10 (the sheet's area alone multiplies the
+interface cells; the counts at T/2 and T are reported); its alpha bounds
+are unchanged.
+
+Scoring at t = T against the initial sphere (the exact end state; the
+function objects' body at rest, U0 = 0, omega = 0): E_shape =
+sum |alpha - alpha_exact| V (volumeFractionError, exactState exactSphere),
+also as the fraction of the sphere volume 4/3 pi R^3 = 0.0141372 (for sharp
+fields E_shape is the volume of the symmetric difference); L1(x) and L1(n)
+of the recovered planes (reconstructionError at the write times); for ours
+L1(alphaf) against the exact initial state (areaFractionError); min alpha
+and the excess over the whole run and the mass deviation from advectorVoF's
+per-step line; the interface cells and the wisps at T/2 and T; the swept
+counters per step. Timing: the total wall clock per case at equal ranks,
+three repetitions on exclusive i01 nodes, the diagnostics at the four write
+times only for both methods.
+
+Files: `cases/davof/sphereDeformation3D{,.parameter}`, the velocity arm
+`deformation3D` in `workflow/scripts/tpf_rows.py` (U0 = 0), the six
+preparation configs `config/davof/sphereDeformation3D_hex{Swept,RDF}N{32,64,128}.yaml`
+(short END_TIME; the timed runner sets T), the timed runner
+`workflow/scripts/davof_enright/enright-time.sbatch` and the scoring
+`workflow/scripts/davof_enright/enright_an.py`.
+
+### Pre-registered before any run
+
+(The same text in `config/davof/sphereDeformation3D_hexSweptN32.yaml`.)
+
+- E-1: both methods complete every case (6 cells each) and conserve the
+  volume to 1e-10 % (the log's dev % at every step). Falsified by an abort
+  (reported with the counters, not tuned around) or by |dev| > 1e-10 %.
+- E-2: ours stays bounded to 1e-9 over the whole run (min alpha >= -1e-9,
+  excess <= 1e-9) at both Co and every N. plicRDF's boundedness is
+  measured; the expectation from the comparison of 2026-11-03 (unbounded on
+  the diagonal at OF Co 1 in parallel): plicRDF leaves [0, 1] by more than
+  1e-6 at Co 1 for N >= 64. Falsified for ours by any excursion beyond 1e-9.
+- E-3: E_shape at T: the ratio ours / plicRDF in [0.7, 1.5] at every
+  N >= 64 and both Co (the ring normal is first order, plicRDF's second; the
+  swept flux is bounded where isoAdvector's is not; on the rotation ours was
+  7-21 % better in L1(x), on the diagonal at Co 0.2 4-12 % worse).
+  Falsified if the ratio exceeds 2 at N = 128 for either Co: the thin sheet
+  (thinner than h at T/2 for N <= 64) is where the one-layer ring stencil
+  and the wisp rule are stressed, and a ratio above 2 would mean the ring
+  normal on the sheet loses more than the swept flux gains.
+- E-4: the orders over N of E_shape at T (log2 of the ratio on 32 -> 64 and
+  64 -> 128): both methods between 1 and 2.5 on 64 -> 128 at both Co (the
+  sphere returns under-resolved at N = 32, so 32 -> 64 may exceed 2).
+  Falsified for ours by an order below 1 on 64 -> 128.
+- E-5: the wall clock ours / plicRDF at equal ranks between 2 and 4
+  (Tomislav's prediction; the reference setting measured 1.9 x serial at
+  N 64 and 3.1 x on 64 ranks on the rotation, where the interface is a
+  sphere; the sheet at T/2 multiplies the interface cells, and the swept
+  flux's cost follows the interface band while isoAdvector's is mostly
+  mesh-wide). Falsified if the median ratio exceeds 6 at any N.
+
+- E-6 (the third row, added by Tomislav on 2026-11-06 after E-1 .. E-5
+  were registered and before any of its runs: isoAdvector's own plane flux
+  with the DAVOF ring normal and the CCS positioning, the fork's
+  plane-clipped loop = the preprint's davof-ringArea row plus ccs:
+  reconstructionScheme davof, normalModel ringArea, positioning ccs,
+  faceClipping plane, clippingSurface none, fitAnchor faces,
+  fluxIntegration prism, nAlphaBounds 3, snapTol 0, clip false, the swept
+  keys inert; configs `sphereDeformation3D_hexPrismN{32,64,128}.yaml`, the
+  method `prism` of the timed runner and the scoring): the expectation from
+  the rotation (it diverged there at OF Co 1 and was within 4 % of the
+  swept loop at Co 0.2): the plane loop loses boundedness beyond 1e-6 at
+  Co 1 for every N and ends by the abort guard or unbounded; at Co 0.5 it
+  completes with E_shape within a factor 1.3 of the swept row; its wall
+  clock is within 1.5 x plicRDF's (the flux is isoAdvector's). Falsified if
+  it stays bounded to 1e-9 at Co 1 for every N.
+
+Also reported, not predicted: L1(x), L1(n), L1(alphaf) at T, the
+interface-cell and wisp counts at T/2 and T, the swept counters per step
+(rank fallbacks, beyond-layer faces, pyramid delta max, twisted faces, wisp
+pieces, bounding passes), setFlow's continuity error, the pictures of the
+alpha = 0.5 surface at T/2 and T.
+
+Changes after the registration and before the recorded runs (Tomislav's
+notes of 2026-11-06 through the coordinator): writePrecision 17 for the
+fields, the function objects and the log (OpenFOAM sets the stream
+precision from it), so that the leia re-run after the port can be checked
+bit for bit (a first timed pass at precision 12 was cancelled after a few
+minutes and kept as `time-p12/`; its observations are repeated below from
+the recorded runs); the controlDict application from the token
+`TPF_APPLICATION` and the timed runner's `APP` / `ENRIGHT_W` / `STUDIES`
+variables, so that only the solver changes for the leia app; the third row.
+
+### Results (2026-11-06)
+
+Jobs (ledger `/work/scratch/tm83tomy/davof/agents/enright/.my_jobs`): build
+55999984 (fork c5c00c5); preparation studies at writePrecision 17
+56000993-56000998 (Swept, RDF) and 56001210-56001212 (Prism); the timed cells
+56001326 (N 32, Co 0.5), 56001327 (N 32, Co 1), 56001328 (N 64, Co 0.5),
+56001329 (N 64, Co 1), 56001330 (N 128, Co 0.5), 56001331 (N 128, Co 1), one
+exclusive i01 node each (Xeon Platinum 9242), three repetitions of the three
+rows, the order rotated; the diagnostics 56000705 (diag1) and 56000828
+(diag2); the pictures 56002022 / 56003985 / 56006509. The precision-12 first
+pass (56000603-56000608, cancelled after a few minutes) is kept as `time-p12/`.
+Every number below is from `csv/enright_runs.csv`, `csv/enright_table.csv`,
+`csv/enright_orders.csv` and `csv/enright_counters_N<N>_co<i>_<row>.csv`
+(the per-step counters of the davof rows) under the agent workspace; the
+cases with their logs, fields and function-object output at writePrecision
+17 under `time/N<N>_co<i>/<row>_r<rep>/` (`.source` names the prepared case
+they were copied from). The three repetitions of every cell reproduce their
+digits (`repsIdentical` true for all 18 cells).
+
+Measured OpenFOAM Courant numbers (the first step): 0.492 / 0.984 at N = 32,
+0.495 / 0.990 at N = 64, 0.496 / 0.991 at N = 128. setFlow's continuity
+error 4.6e-14 .. 2.6e-13 at every step. Mass: the largest |dev| of
+sum(alpha V) over every run of every row 5.0e-12 % (plicRDF N 32),
+4.2e-12 % (ours); within E-1's 1e-10 % everywhere.
+
+**Completion and bounds (the whole run; the abort guard's bounds are
+[-0.5, 1.5] and 100 x the initial interface cells).**
+
+| N | Co | ours (swept, ring) | plicRDF | prism (plane loop, ring, ccs) |
+|---|---|---|---|---|
+| 32 | 0.5 | completes; min alpha -2.70e-1, excess 2.95e-4 | completes; -2.3e-17, 4.4e-16 | completes; -2.41e-1, 2.86e-2 |
+| 32 | 1 | completes; -1.40e-1, 9.17e-4 | completes; -3.9e-13, 4.4e-16 | completes; -4.68e-1, 4.11e-2 |
+| 64 | 0.5 | ABORT step 628, t = 1.9625: min alpha -0.5446 (excess 8.96e-3; 51138 interface cells of 1694) | completes; -4.76e-6 (first below -1e-9 at step 47, t = 0.147), 4.4e-16 | ABORT step 495, t = 1.547: interface cells 169410 > 100 x 1694 (min -2.36e-2 there, over the run -2.31e-1, excess 7.85e-2) |
+| 64 | 1 | ABORT step 399, t = 2.4938: min alpha -1.2037 (excess 1.87e-2; 56463 cells) | completes; -5.20e-4 (from step 1), 3.94e-7 | ABORT step 264, t = 1.65: interface cells 169703 (min over the run -4.57e-1, excess 8.59e-2) |
+| 128 | 0.5 | ABORT step 125, t = 0.1953: min alpha -1.2535 (excess 5.02e-5; 66741 cells of 6836) | completes; -3.23e-5 (from step 25, t = 0.039), 2.46e-6 | ABORT step 234, t = 0.3656: interface cells 684394 (min over the run -3.72e-1, excess 3.98e-2) |
+| 128 | 1 | ABORT step 106, t = 0.3313: min alpha -0.5081 (excess 3.25e-2; 82892 cells) | completes; -1.10e-3 (from step 2), 9.20e-5 | ABORT step 131, t = 0.4094: min alpha -0.5261 (excess 1.56e-1; 390192 cells) |
+
+**Errors at t = T against the initial sphere (the rows that reached T; V_s
+= 0.0141372).**
+
+| N | Co | row | E_shape | E_shape / V_s | L1(x) | L1(n) | L1(alphaf) | interface cells T/2, T | partial cells T/2, T | wisps T/2, T |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 32 | 0.5 | ours | 1.137e-2 | 0.804 | 0.306 | 1.460 | 7.06e-2 | 6019, 5230 | 6638, 5871 | 619, 641 |
+| 32 | 0.5 | plicRDF | 7.765e-3 | 0.549 | 0.0845 | 0.692 | - | 1324, 747 | 1324, 747 | 0, 0 |
+| 32 | 0.5 | prism | 1.441e-2 | 1.019 | 0.326 | 1.196 | 1.46e-1 | 6328, 5328 | 6866, 5359 | 538, 31 |
+| 32 | 1 | ours | 1.250e-2 | 0.884 | 0.313 | 1.479 | 7.88e-2 | 6659, 5305 | 7348, 6136 | 689, 831 |
+| 32 | 1 | plicRDF | 8.009e-3 | 0.567 | 0.0952 | 0.749 | - | 1327, 833 | 1327, 833 | 0, 0 |
+| 32 | 1 | prism | 1.755e-2 | 1.241 | 0.311 | 1.188 | 1.61e-1 | 5343, 5102 | 5597, 4837 | 254, -265 |
+| 64 | 0.5 | plicRDF | 3.018e-3 | 0.2135 | 0.0585 | 0.594 | - | 6245, 2736 | 6245, 2736 | 0, 0 |
+| 64 | 1 | plicRDF | 3.163e-3 | 0.2238 | 0.0608 | 0.631 | - | 6291, 2973 | 6291, 2973 | 0, 0 |
+| 128 | 0.5 | plicRDF | 6.911e-4 | 0.0489 | 7.43e-3 | 0.187 | - | 27650, 7724 | 27650, 7724 | 0, 0 |
+| 128 | 1 | plicRDF | 6.906e-4 | 0.0489 | 7.84e-3 | 0.207 | - | 27645, 8181 | 27645, 8181 | 0, 0 |
+
+The interface cells are reconstructionError's count at the write (for the
+davof rows the cells with |m_c| > wispTol V^(2/3), for plicRDF the cells
+inside (surfCellTol, 1 - surfCellTol)); the partial cells are the cells of
+the written field with 1e-8 < alpha < 1 - 1e-8; the wisps their difference
+(negative where face-fraction interface cells carry alpha outside the band).
+The davof rows' own per-step count (by the face fractions, alpha
+unrestricted) is larger: ours 10813 / 10367 at T at N = 32 (of 32768
+cells), the prism row 23198 / 23590. At N = 64 the last writes before the
+aborts: ours E_shape 2.105e-2 at T/2 (Co 0.5; 35644 interface cells of
+262144) and 2.868e-2 at 3T/4 (Co 1); the prism row 2.225e-2 / 2.247e-2 at
+T/2 (43372 / 36310 cells); plicRDF's E_shape at T/2 is the sheet against
+the sphere and not an error. Orders of plicRDF (E_shape; L1(x); L1(n)):
+32 -> 64: 1.36; 0.53; 0.22 (Co 0.5), 1.34; 0.65; 0.25 (Co 1); 64 -> 128:
+2.13; 2.98; 1.66 (Co 0.5), 2.20; 2.95; 1.61 (Co 1). No order for the davof
+rows (one rung).
+
+**Wall clock (median of three; the aborted rows to their abort, with the
+steps reached).**
+
+| N | ranks | Co | ours s (steps) | plicRDF s (steps) | prism s (steps) | ours / plicRDF | per step ours / plicRDF / prism s |
+|---|---|---|---|---|---|---|---|
+| 32 | 1 | 0.5 | 819.5 (480) | 26.1 (480) | 72.4 (480) | 31.4 | 1.89 / 0.050 / 0.160 |
+| 32 | 1 | 1 | 394.3 (240) | 14.8 (240) | 35.0 (240) | 26.7 | 1.885 / 0.050 / 0.150 |
+| 64 | 8 | 0.5 | 1450.8 (628 of 960) | 81.1 (960) | 83.6 (495) | 17.9 (partial) | 2.11 / 0.080 / 0.180 |
+| 64 | 8 | 1 | 908.1 (399 of 480) | 46.2 (480) | 46.2 (264) | 19.7 (partial) | 2.17 / 0.080 / 0.180 |
+| 128 | 64 | 0.5 | 264.3 (125 of 1920) | 354.5 (1920) | 49.8 (234) | 0.75 (6.5 % of the run) | 1.71 / 0.170 / 0.160 |
+| 128 | 64 | 1 | 267.3 (106 of 960) | 210.9 (960) | 32.7 (131) | 1.27 (11 % of the run) | 2.15 / 0.190 / 0.210 |
+
+The per-step ratio of ours to plicRDF is 38 (N 32), 26-27 (N 64) and 10-11
+(N 128, the first 6-11 % of the run); the preparation runs on the undeformed
+sphere gave 3 / 3.9 / 3.3 (0.09 / 0.29 / 1.48 s against 0.03 / 0.075 /
+0.445 s per step at N 32 serial / 64 on 8 / 128 on 64 ranks). The growth is
+the fragmentation: the swept flux's cost follows the number of cells with
+face-fraction surfaces, which grows 20-fold before T/4 (below).
+
+**The swept counters (rep 1; `enright_counters_*_ring.csv`).** Rank
+fallbacks (the one-donor clip of a face whose piece has more than three
+caps) from step 1: 463 of 4716 swept faces at N 32 (9.8 %), 994 of 18103
+at N 64 (5.5 %), 1699 of 70814 at N 128 (2.4 %), at both Co alike (458 at
+Co 0.25 in diag1: the share is set by the oblique 3D motion of the
+pre-images, not by the step); they grow with the band to 4.5-4.9e3 (N 32),
+2.0-2.5e4 (N 64), 4.9-5.2e4 (N 128) per step, 5 % of the swept faces
+throughout. Beyond-layer faces (the uncovered pre-image parts): 0 at every
+step except 199 (N 32, Co 0.5, max share 0.00), 12 (N 32, Co 1), 12897 (N
+64, Co 0.5) and 2658 (N 64, Co 1) in total, 0 at N 128. Twisted faces 0
+everywhere; the pyramid delta at most 0.053 h (N 32, Co 1), 0.013 h (N 64),
+0.0034 h (N 128); the anchor never failed; the volume rule fell back
+7104 / 6348 (N 32), 114454 / 88718 (N 64), 21787 / 35326 (N 128) times in
+total. The second-layer bounding corrects cells from step 1 (25 / 38 at
+N 32, 559 / 518 at N 64, 3300 / 3277 at N 128) and then 1.4-1.8e4 (N 32),
+0.9-1.4e5 (N 64), 1.9-2.2e5 (N 128) cells per step: the bounded alpha is
+held by the bounding, and the excess it cannot remove is the unboundedness
+above. The wisp pieces without a neighbour surface grow from 0 at step 1 to
+1.4-1.6e4 (N 32), 5.6-5.8e4 (N 64), 2.0-2.5e5 (N 128) per step at their
+peak. The face-fraction interface cells grow 410 -> 3625 / 7155 at T/4
+(N 32, Co 1 / 0.5), 1694 -> 38713 / 48181 at T/4 (N 64), 6836 -> 66741 /
+82892 at the aborts (N 128, t = 0.20 / 0.33).
+
+**Controls (not production rows, N 32 serial, precision 12; diag1 job
+56000705, diag2 56000828).** diag1: the four round-4 keys off reproduce
+the keys-on run bit for bit (alpha at t = 0.1 identical, the same counters
+at every step); Co 0.25 has the same rank-fallback share (458 of 4711 at
+step 1) and the same growth of the wisp pieces; sweptCapSet crossing has 0
+degenerate pieces, 517 rank fallbacks and min alpha -7.6e-7 by step 3
+(final: -2.6e-6 by step 8). diag2 (the full T): the plane-clipped loop with
+the ring normal (= the prism row) ends unbounded (-0.278 / -0.135 at Co 1 /
+0.5, E_shape 1.755e-2 / 1.441e-2, the same digits as the timed prism row);
+the swept flux with plicRDF's normal in the davof scheme (normalModel
+plicRDF, everything else ours) aborts at step 26, t = 0.325, at Co 1
+(min -0.665) and completes at Co 0.5 with min -6.9e-3, excess 5.3e-3,
+E_shape 8.706e-3 (plicRDF 7.765e-3), L1(x) 0.240, L1(alphaf) 5.44e-2 and
+1924 interface cells at T (plicRDF 747).
+
+**Pictures** (`/work/scratch/tm83tomy/davof/agents/enright/pics/`,
+`N<N>_co<i>_<row>_t<t>.png` for every written time of every row and
+`diag_<control>_t<t>.png`; the alpha = 0.5 surface by marching cubes on
+the reconstructed fields, `render_alpha_mc.py`; the cluster's ParaView
+5.13.3 modules carry no pvpython, `render_sheet.py` is kept for a build
+that does): plicRDF at N 128 shows the sheet at T/2 (a thin shell with one
+hole, 27650 interface cells) and a sphere with a small lobe at T; ours at
+N 32 shows at T/2 a blunt body with detached fragments (7348 partial
+cells) and at T a dented blob with two satellites; the rows that aborted
+have the writes before their abort only (ours at N 64: T/4 and T/2 at
+Co 0.5, T/4 .. 3T/4 at Co 1; nothing at N 128).
+
+### Verdicts
+
+- E-1 FALSIFIED for ours and for the prism row: ours aborts in the four
+  cells with N >= 64 (min alpha below -0.5 at t = 0.20, 0.33, 1.96, 2.49),
+  the prism row in the same four (three by the interface-cell factor, one
+  by min alpha); both complete at N = 32 only. plicRDF completes every
+  cell. The mass part holds for every row (5e-12 %).
+- E-2 FALSIFIED for ours: min alpha -0.14 .. -1.25, excess 3e-4 .. 3e-2
+  (N 32: -0.27 / -0.14 at Co 0.5 / 1). plicRDF: bounded to 4e-13 at N 32;
+  below -1e-6 at N >= 64 at BOTH Co (-4.8e-6 / -5.2e-4 at N 64, -3.2e-5 /
+  -1.1e-3 at N 128), the Co 1 part as expected, the Co 0.5 part beyond the
+  expectation.
+- E-3 FALSIFIED by absence: no value of ours at N >= 64. At N 32 the ratio
+  is 1.46 (Co 0.5) and 1.56 (Co 1), inside the registered band but for the
+  under-resolved rung the band excluded.
+- E-4 not evaluable for ours (one rung). plicRDF: E_shape 1.35 then 2.1-2.2.
+- E-5 FALSIFIED: the median wall clock ratio is 31 / 27 at N 32, 18-20 for
+  the partial runs at N 64, and the per-step ratio 38 / 26 / 10-11 at N
+  32 / 64 / 128 against the 2-4 predicted; the cause is the fragmentation
+  (the band of face-fraction surfaces grows 20-fold), not the per-face
+  cost (3-4 x on the undeformed sphere).
+- E-6 (prism row): the loss of boundedness at Co 1 held (every N); the
+  completion at Co 0.5 within 1.3 x of the swept row is falsified at
+  N >= 64 (aborts) and at N 32 (1.27 x of ours, but 1.86 x plicRDF); the
+  wall clock within 1.5 x plicRDF held at N >= 64 (1.0 x, aborted runs) and
+  not at N 32 (2.8 / 2.4 x).
+
+### What the counters say about the failure
+
+The swept flux itself does what it did on the rotation and the lines: no
+twisted faces, the pyramid correction below 0.053 h, no anchor failures, no
+uncovered pre-image parts at N 128. Two things are new under the straining
+field. (1) From step 1 a fixed share of the swept faces (2-10 %, falling
+with N, independent of Co) has a piece with more than three caps and takes
+the one-donor clip, the rule the rotation study showed to be unbounded;
+the second-layer bounding has to correct tens to thousands of cells at
+step 1 already. (2) The face-fraction state fragments: cells with a
+face-fraction surface multiply 20-fold before T/4 while the alpha field's
+partial cells do not (N 32 at T/2: 6638 partial cells against plicRDF's
+1324; the davof count by the faces alone 7155 at T/4), the wisp pieces
+without a neighbour surface rise from none to 1e4-2e5 per step, and the
+rank fallbacks and the bounding grow with that band. The prism row, which
+shares the davof state and the ring normal but uses isoAdvector's own
+flux, fragments faster (23590 face-fraction interface cells of 32768 at
+T at N 32; 684394 of 2.1 M at N 128 at t = 0.37) and is as unbounded, and
+the swept flux with plicRDF's normal in the davof scheme still aborts at
+Co 1: the fragmentation sits in the transported face-fraction state under
+straining (the face update by the moved plane / the clipped pieces leaves
+faces inconsistent with their cells, m_c = -sum alphaf S_f then marks cells
+as interface cells that the alpha field does not have), and the normal
+and the flux only change how fast. Not shown here: which of the two (the
+face update or the one-donor fallback) starts it; a per-cell history of
+|m_c| against alpha on the first fragmenting cells would tell. Nothing was
+tuned; the rows ran as registered.
+
+Commits (leia, branch `davof-swept-enright`): df4a8805 (the case, the arm,
+the six configs with E-1 .. E-5, the timed runner, the report's setup and
+registration), 54638749 (the scoring and the pvpython script), dbecf5fa /
+796f4e6d (the exact divergence), 4180c110 / 9bcd55e2 (writePrecision 17,
+TPF_APPLICATION, the runner's variables, the marching-cubes render),
+8d849ca5 / 72d3f42e / 72210ab4 (the render job), 402fcc2e (the third row,
+E-6), 704d709a (the wisps), and this one (the results). The fork branch
+`davof-swept-enright` is c5c00c5 without a change (nothing to push). The
+templates and configs a re-run needs: `cases/davof/sphereDeformation3D/`,
+`cases/davof/sphereDeformation3D.parameter` (every key with its value),
+`config/davof/sphereDeformation3D_hex{Swept,RDF,Prism}N{32,64,128}.yaml`;
+only `solver` and `TPF_APPLICATION` change for the leia app.
+
+### The diagnosis of the fragmentation (2026-11-06, Tomislav's follow-up)
+
+Short runs only: N = 32, Co 0.5, serial, the full T = 3 (N = 64 only where a
+control needs it); fork branch `davof-swept-enright` 5d8e57d (three opt-in
+keys, default false, the default path unchanged, built from c5c00c5):
+
+- `sweptFragmentLog`: the per-cell history (1). At the start of every step,
+  after the reconstruction, every cell that is a face-fraction interface
+  cell (|m_c| > wispTol V^(2/3)) while alpha < 1e-6 or alpha > 1 - 1e-6
+  and was not logged before is recorded once: the step, t, the cell and
+  its centre, alpha, |m_c|/V^(2/3), the six alphaf in cell-face order,
+  whether a face of the cell was computed by the one-donor rank fallback
+  (more than three caps or a rank-deficient cap system) in the previous
+  step or the one before, whether the cell was in the second-layer
+  bounding set then, and whether it was a wisp without a neighbour
+  surface then (`postProcessing/sweptFragmentLog/cells_<rank>.csv`, the
+  first 200 per rank); the class counts of every step in the log.
+- `sweptExactCaps` (control a): where the closure's cap system is not
+  solvable (k > 3 caps, or a PLIC plane parallel to a cell face) the piece
+  volume is taken exactly instead of the one-donor fallback
+  (`davof::sweptPieceExactVolume`, davofSweptPieces.H): the closed
+  triangle list of the swept volume is decomposed into the signed
+  tetrahedra about the face centre (Zhang & Chen, ICIP 2001,
+  doi:10.1109/ICIP.2001.958278), each tetrahedron is clipped as a convex
+  polyhedron by the cell's half-spaces and the PLIC half-space face by
+  face (Sutherland & Hodgman, Commun. ACM 17 (1974) 32-42,
+  doi:10.1145/360767.360802; the cap of each clip from the crossing points
+  ordered about their centroid), the volume of each clipped polyhedron by
+  the divergence theorem; sum_T vol(tet_T ∩ K) = vol(P ∩ K) for every
+  convex K by the winding number, so no cap system is solved. The 2D face
+  update (no caps) is unchanged. The ordinary pieces (k <= 3) keep the
+  closure path bit for bit.
+- `sweptReinitFaceFractions` (controls c, d): at the start of every step
+  (from step 2) the face fractions are set from the previous
+  reconstruction's planes (cutFacePLIC: the mean of the two clips on a
+  face between two interface cells, the one clip by one plane, the mean of
+  the two alphas on a face without a plane; the boundary faces by the
+  owner), the transported alphaf discarded, the wet-face list rebuilt; the
+  reconstruction then forms m_c and the ring normal from those. One
+  reconstruction per step; the planes are those positioned on the previous
+  alpha, which the next step's planes correct.
+- control (e): wispTol 1e-2 in the reconstruction's dictionary (the
+  initialisation and the function objects keep 1e-3).
+- The runner `workflow/scripts/davof_enright/enright-diag.sbatch` (six
+  runs on one node: frag = the production row + the log, exactCaps,
+  reinit, reinitPrism = the prism row + reinit, wispTol, exactReinit = a
+  + c together as the cross-check of D-2 and D-3), the scoring
+  `enright_diag_an.py` (csv/diag_runs_diag3.csv, diag_frag_*.csv,
+  diag_history_*.csv).
+
+Pre-registered before the runs:
+
+- D-1 (the seeds): the first fragmenting cells appear by step 3; of the
+  first 200, more than 60 % have a face computed by the rank fallback in
+  the previous step or the one before, fewer than 20 % belong to none of
+  the three classes; more than 80 % are dry cells (alpha < 1e-6) that
+  gained a face-fraction surface, with |m_c|/V^(2/3) between 1e-3 and 1e-1.
+  Falsified if the fallback-adjacent share is below 40 % or the "none"
+  share above 40 %.
+- D-2 (a): the rank fallbacks are 0 at every step; the second-layer
+  bounding at step 1 drops below 10 cells (from 25); min alpha stays above
+  -1e-9 over the first 20 steps; over T the run does NOT stay bounded
+  (min alpha below -1e-3 by T/2) and the face-fraction interface cells
+  still exceed twice the partial cells at T/2: the fallback contributes,
+  it is not the seed. Falsified if the run stays bounded to 1e-9 over T
+  (then the fallback IS the seed) or if the first 20 steps already leave
+  -1e-9 (then the exact caps do not remove the step-1 inconsistency).
+- D-3 (c): the face-fraction interface cells stay within 1.5 x the
+  partial cells at every write; min alpha over the run above -1e-2 (ten
+  times better than the row's -0.27); E_shape at T within 1.5 x plicRDF's
+  7.765e-3 and the sphere returns in the picture. Falsified if the ratio
+  exceeds 2 at any write or min alpha falls below -0.1: then the loop's
+  geometry (the flux and its fallback), not the transported state,
+  fragments.
+- D-4 (d): as D-3 for the prism row but less bounded: min alpha above
+  -5e-2, the ratio within 1.5 x.
+- D-5 (e): the interface count at T/2 falls by 30-50 %, min alpha stays
+  below -0.1: a sensitivity, not a cure.
+- D-6: no control keeps N = 32 bounded to 1e-9 over T. If (c) or (a + c)
+  keeps N = 32 above -1e-2, that control is run at N = 64, Co 0.5 (the
+  prepared 8-rank case) and is expected to complete without an abort.
+
 ## The isoAdvector package: the fork branch `davof-isoAdvector` (2026-11-06)
 
 Tomislav's decision of 2026-11-06: the method (the swept-face advection, the

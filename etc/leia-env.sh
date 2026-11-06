@@ -65,6 +65,24 @@ export LD_LIBRARY_PATH="$FOAM_USER_LIBBIN:$(_leia_strip "$LD_LIBRARY_PATH")"
 unset -f _leia_strip
 unset _leia_acct
 
+# Eigen 3 for the overlap library vendored in src/davof/thirdParty/overlap (the exact
+# sphere-tetrahedron overlap of S. Strobl, A. Formella, T. Poeschel, J. Comput. Phys.
+# 311 (2016) 158-172, doi:10.1016/j.jcp.2016.02.003, MIT; the volume rule exactSphere
+# of libleiaDavof): src/davof/Make/options adds -isystem $(EIGEN_INC). Keep an EIGEN_INC
+# set by a module (Lichtenberg: eigen/5.0.1 puts its include on CPATH as well); else the
+# headers of $HOME/OpenFOAM/thirdparty/eigen/eigen-3.4.0 (the cluster and the laptop,
+# downloaded 2026-10-24, MPL2), else the system's /usr/include/eigen3, else the first
+# CPATH entry (the same rule as the fork's etc/davof-env.sh, 2026-10-24).
+if [ -z "${EIGEN_INC:-}" ]; then
+    if [ -d "$HOME/OpenFOAM/thirdparty/eigen/eigen-3.4.0" ]; then
+        export EIGEN_INC="$HOME/OpenFOAM/thirdparty/eigen/eigen-3.4.0"
+    elif [ -d /usr/include/eigen3 ]; then
+        export EIGEN_INC=/usr/include/eigen3
+    else
+        export EIGEN_INC="${CPATH%%:*}"
+    fi
+fi
+
 # cfMesh (pMesh, cartesianMesh) is a third-party mesher built once per machine, like
 # OpenFOAM itself, not per clone: $LEIA_CFMESH_DIR, in the layout of a
 # WM_PROJECT_USER_DIR. Default: the per-version build $HOME/OpenFOAM/cfmesh-$WM_PROJECT_VERSION

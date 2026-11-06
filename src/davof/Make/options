@@ -1,0 +1,46 @@
+/* OpenFOAM v2606 only: the cell cuts, the surface iterators, the reconstruction base
+   and zoneDistribute come from libgeometricVoF and libfiniteVolume (J. Roenby,
+   H. Bredmose, H. Jasak, R. Soc. Open Sci. 3 (2016) 160405, doi:10.1098/rsos.160405;
+   H. Scheufler, J. Roenby, J. Comput. Phys. 383 (2019) 1-23,
+   doi:10.1016/j.jcp.2019.01.009); the implicit functions of the exact states from
+   libalphaFieldFunctions (setAlphaField). No TwoPhaseFlow anywhere.
+   EIGEN_INC: Eigen 3 for the vendored overlap library (thirdParty/overlap, S. Strobl,
+   A. Formella, T. Poeschel, J. Comput. Phys. 311 (2016) 158-172,
+   doi:10.1016/j.jcp.2016.02.003, MIT), set by etc/leia-env.sh.
+   The three DAVOF geometry headers (davofSimplexGeometry.H, davofSphereGeometry.H,
+   davofQuadraticFaceGeometry.H) have their single home in src/leiaLevelSet/davof
+   (header-only, no link to libleiaDavofState); libleiaCore for the version
+   stamp (leiaVersionRegistry.H, etc/leia-stamp.sh). */
+EXE_INC = \
+    -std=c++17 \
+    -isystem $(EIGEN_INC) \
+    -IthirdParty \
+    -I../leiaLevelSet/davof \
+    -I../leiaLevelSet/lnInclude \
+    -I$(FOAM_UTILITIES)/preProcessing/setAlphaField/alphaFieldFunctions/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/fileFormats/lnInclude \
+    -I$(LIB_SRC)/surfMesh/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/transportModels/geometricVoF/lnInclude \
+    -I$(LIB_SRC)/transportModels/interfaceProperties/lnInclude \
+    -I$(LIB_SRC)/transportModels/twoPhaseProperties/lnInclude
+
+/* --no-undefined: a symbol used from a library that is not in LIB_LIBS fails THIS
+   link instead of surfacing when an app loads the library (leia's rule). */
+LIB_LIBS = \
+    -Wl,--no-undefined \
+    -L$(FOAM_USER_LIBBIN) \
+    -lleiaCore \
+    -lOpenFOAM \
+    -lfiniteVolume \
+    -lmeshTools \
+    -lfileFormats \
+    -lsurfMesh \
+    -lsampling \
+    -lgeometricVoF \
+    -lalphaFieldFunctions \
+    -ltwoPhaseMixture \
+    -ltwoPhaseProperties

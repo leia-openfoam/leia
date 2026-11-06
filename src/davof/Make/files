@@ -1,0 +1,30 @@
+/* libleiaDavof: the DAVOF method (dual area/volume-of-fluid) of Tomislav Maric: the
+   reconstruction from cell and face fractions, its normal models and the CCS
+   positioning, the volume rules under a surface, the swept-face dual advection and
+   the paraboloid dual advection, the state initialisation. Built against OpenFOAM
+   v2606's geometricVoF (docs/davof/PORT-DESIGN.md, 2026-11-06). */
+
+advection/davofAdvectionScheme.C
+advection/davofAdvectionSchemeNew.C
+advection/davofSweptAdvection.C
+advection/davofSweptAdvectionFlux.C
+advection/davofSweptAdvectionSurfaces.C
+advection/isoAdvectorScheme.C
+init/davofInit.C
+normalModels/cellLocalNormal.C
+normalModels/davofNormalModel.C
+normalModels/exactNormal.C
+normalModels/plicRDFNormal.C
+normalModels/ringAreaNormal.C
+normalModels/ringFitNormal.C
+normalModels/youngsNormal.C
+reconstruction/davof.C
+reconstruction/davofCutCellPLIC.C
+volumeRules/davofVolumeRule.C
+volumeRules/exactSphereVolumeRule.C
+volumeRules/kromerBotheVolumeRule.C
+volumeRules/splitQuadratureVolumeRule.C
+
+leiaStamp_leiaDavof.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaDavof

@@ -106,6 +106,33 @@ def _last_step(path):
 # classifier line of workflow/scripts/foam_log_state.sh for the finished log
 # ("COMPLETED steps=N age=S nprocs=P"). nRanks is the rank count MPI actually
 # started (the log header), not the configured np, which a serial run also carries.
+def _stamp_record(case_dir):
+    """The case stamp the result ran under (<case>/.leia_stamp.json, written by the
+    solve rule through workflow/scripts/case_stamp.py, 2026-11-07): the study's table
+    records per case which stamp it came from."""
+    path = os.path.join(case_dir, ".leia_stamp.json")
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path) as fh:
+            s = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    trig, rec = s.get("trigger", {}), s.get("record", {})
+    bins = trig.get("binaries", {})
+    solver = next(iter(bins.values()), {}) if bins else {}
+    return {
+        "stampId": s.get("id", ""),
+        "stampBinary": (solver.get("sha256") or "")[:12],
+        "stampDicts": (trig.get("render", {}).get("dicts") or "")[:12],
+        "stampLeia": rec.get("leiaAtRun") or rec.get("leia", ""),
+        "stampTpf": rec.get("tpfAtRun") or rec.get("tpf", ""),
+        "stampGrazingCut": rec.get("grazingCut", ""),
+        "stampAdopted": "1" if s.get("adopted") else "",
+        "stampCompletedAt": s.get("completedAt", ""),
+    }
+
+
 def _launch_record(case_dir):
     path = os.path.join(case_dir, ".leia_launch")
     out = {}
@@ -261,6 +288,13 @@ def _write_error_table(records, database_path):
             "nRanks", "wallClockSolve", "steps", "logState", "slurmJobId",
             # the libraries the solver loaded, "<lib> <git describe>" joined by ";"
             "libStamps",
+            # The case stamp the result ran under (workflow/scripts/case_stamp.py,
+            # 2026-11-07): its id, the solver binary's sha256 (12 digits), the rendered
+            # dictionaries' hash, leia's and the fork's git describe at the run, the
+            # grazingCut key, "1" when the stamp was adopted for a result run before the
+            # mechanism existed, and the completion time.
+            "stampId", "stampBinary", "stampDicts", "stampLeia", "stampTpf",
+            "stampGrazingCut", "stampAdopted", "stampCompletedAt",
             # `on` = reversed flow (cos(pi t/tau)); the interface returns to its
             # initial shape at t=T and the sourceless drift cancels by symmetry,
             # which flatters doing nothing. `off` = steady vortex, sustained
@@ -403,6 +437,8 @@ def _write_error_table(records, database_path):
             "gitCommit": rec.get("gitCommit", ""),
             "runDate": rec.get("runDate", ""),
             "libStamps": rec.get("libStamps", ""),
+            **{c: rec.get(c, "") for c in ("stampId", "stampBinary", "stampDicts", "stampLeia", "stampTpf",
+                                           "stampGrazingCut", "stampAdopted", "stampCompletedAt")},
             **{c: rec.get(c, "") for c in fvschemes.COLUMNS},
         })
     rows.sort(key=lambda r: (r["velocityExtension"], r["phaseIndicator"],
@@ -467,6 +503,7 @@ def build_database(case_dirs, out_path):
         # case run before 2026-09-23, every leiaTest*/interFoam/interFlow case) lost
         # N_CELLS, END_TIME and DOMAIN_LENGTH and had its index overwritten.
         rec.update(_launch_record(case_dir))
+        rec.update(_stamp_record(case_dir))
         rec["case_dir"] = os.path.relpath(case_dir, os.path.dirname(out_path) or ".")
 
         # The discretization the solver ACTUALLY read, parsed from the rendered

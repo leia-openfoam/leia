@@ -225,7 +225,7 @@ theme `davof` -> `docs/davof/davof-article/data/` (README section "DAVOF").
 `libleiaDavofInterface` writes the PLIC surfaces (VTK, `sampledSurface`
 `davofInterface`); `make davof-proposal DEST=...` exports the proposal's table
 and figures (README section "DAVOF").
-Curvature of the DAVOF state: run-time-selectable models in `libleiaDavof`
+Curvature of the DAVOF state: run-time-selectable models in `libleiaDavofState`
 (`src/leiaLevelSet/davof/curvature`, `fvSolution davof.curvature`, NOT in the
 level-set libraries), delivered to cells and faces with the parallel-surface
 closed form; measured on the ellipsoid ladder `config/davof/ellipsoidNormal3D.yaml`
@@ -235,10 +235,26 @@ and was falsified). That study needs 9 GB per N = 160 case: ONE case at a time
 so long runs go through an attached session. Still open: the zero-step
 regeneration and one-step translation gates (the proposal package's
 `research/projects/2026-DFG-AVOF/AGENTS.md` lists them).
-The TRANSPORTED face fractions (2026-10-13) run through the TwoPhaseFlow
-fork's `advectorVoF` (branch `davof`, the sibling clone found by
-`LEIA_TPF_DIR`; its face update, normal models and abort guard are the
-fork's, nothing of it is in leia): `config/davof/{plane,sphere}Translation3D_hex.yaml`
+The TRANSPORTED face fractions (2026-10-13) ran through the TwoPhaseFlow
+fork's `advectorVoF` until 2026-11-06, when the DAVOF method was ported into
+leia (`docs/davof/PORT-DESIGN.md`): `libleiaDavof` (`src/davof`: the davof
+reconstruction with the CCS positioning, the seven normal models, the three
+volume rules, the swept-face and the paraboloid dual advection
+`advectionScheme davofSwept` with the keys `surface plane | paraboloid |
+exactSphere` and `flux sweptFaceCells | prism`, the comparison arm
+`isoAdvector` = OpenFOAM's own isoAdvection, the state initialisation),
+`libleiaDavofFunctionObjects` (`src/functionObjects/davof`: areaFractionError,
+volumeFractionError, reconstructionError) and the apps `davofAdvectorFoam`,
+`davofInitFields`, `davofStaticFaceFractions`, `davofPlaneVolumeConsistency`,
+`davofTestSweptPieces`, against OpenFOAM v2606's geometricVoF only; the
+acceptance against the fork at c5c00c5 (bit for bit on the identity set) is
+in `docs/davof/REPORT-swept.md`. The study route is the solver token alone:
+`solver: davofAdvectorFoam` (leia) or `advectorVoF` (the fork through
+`LEIA_TPF_DIR`, the acceptance comparison only); the Snakefile hands
+`DAVOF_SOLVER` to `materialize.py`, which derives the application, the
+advection scheme and the function-object library of a rendered case (the
+three tokenised template lines; everything else renders identically):
+`config/davof/{plane,sphere}Translation3D_hex.yaml`
 with `cases/davof/*Translation3D`, the rows as ONE token `TPF_ROW`
 (`workflow/scripts/tpf_rows.py`, expanded by `materialize._with_derived_tokens`),
 `post_solve` = `tpf_advection_metrics.py` (one CSV row per step, `status
