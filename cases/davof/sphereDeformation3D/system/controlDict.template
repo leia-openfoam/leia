@@ -20,9 +20,10 @@ FoamFile
 // from the study tokens (cases/davof/sphereDeformation3D.parameter); the
 // velocity comes from the setFlow block of fvSolution.
 
-// the solver token of the study (the fork's advectorVoF; the leia app of the
-// port takes its place through the same token)
-application     @!solver!@;
+// the application token TPF_APPLICATION (the fork's advectorVoF; the leia
+// app of the port takes its place through the same token, next to the
+// config's solver entry that the workflow launches)
+application     @!TPF_APPLICATION!@;
 
 // repetition @!TPF_REPEAT!@ of a timing study (the token is an axis that changes nothing in the case)
 

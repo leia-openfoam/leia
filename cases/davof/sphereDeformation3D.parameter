@@ -62,6 +62,9 @@
 values
 {
     solver (advectorVoF);
+    // the application entry of controlDict (the fork's advectorVoF; the leia
+    // app of the port takes its place by this token and the config's solver)
+    TPF_APPLICATION ( advectorVoF );
 
     N_CELLS ( 32 64 128 );
 
