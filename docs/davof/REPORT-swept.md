@@ -6163,3 +6163,69 @@ alternative, the fork's reconstruction registering also under OpenFOAM's base, w
 undo the inline-namespace separation and is not taken. For every other case run with the
 fork: an interface-surface function object must use the fork's `reconstructedInterface`,
 never OpenFOAM's `interface`.
+
+### DAVOF as a pure reconstruction scheme in isoAdvector ("pure"; Tomislav's decision, 2026-11-08): the predictions, registered before the runs
+
+The decision: DAVOF in isoAdvector becomes a reconstruction scheme only, the face
+fractions confined to what isoAdvector's own flux computes, tested on the matrix and the
+jet. On davof-isoAdvector, behind keys whose defaults are the former behaviour (every
+earlier result stays reproducible), the setting "pure" is:
+
+1. isoAdvector's flux untouched: no plane flux on faces beyond the downwind faces
+   (`planeFlux` off), no content bound, the published bounding (`boundSecondLayer false`)
+   plus decision 2's scaling of the stored face fraction where the bounding changes a flux
+   (`sweptBoundedFaceFraction scale`). Key `davofFluxExtension none | secondRing` (default
+   `secondRing`, the former behaviour).
+2. The face-fraction rule: alphaf^{n+1} is the end area of the donor's plane sweep on every
+   face isoAdvector's sweep used that plane for (the downwind faces of the surface cells;
+   outflow boundary faces likewise); on every other face alphaf is the upwind cell's state
+   after the bounding (0 or 1 for a dry or full cell; a partial upwind cell without a plane
+   gives its alpha, the one approximation), inflow boundary faces the alpha boundary
+   condition's value; no second-ring sweep, no plane sweep of a surface cell's upwind faces,
+   no plane sweep of its inflow boundary faces. Key `davofFaceFractionSource sweepOnly |
+   secondRing` (default `secondRing`, the former behaviour).
+3. The interface cells: eps < alpha_k < 1 - eps AND d_k != 0, with d_k = sum over the
+   point-neighbour ring of the cell (the cell included) of the face-fraction normals m_j of
+   EVERY ring cell (not the interface cells only, as the ringArea model sums), eps =
+   `surfCellTol`; tau = 0 (no wisp threshold). Key `interfaceCellRule alphaAndRingSum`
+   (the former rules unchanged); the plane positioned along d_k, the normal model
+   `ringSum` (d_k as computed by the rule). The CCS kernel is scale-free in the direction's
+   magnitude except for the length floor h = V_c^(1/3) in its bracket-closure test
+   (`w <= 1e-15 max(h, |lo|, |hi|)`); the key `positioningDirection unit | areaNormal`
+   (default `unit`, the former normalisation) hands d_k un-normalised to the positioning
+   with the explicit start scaled by |d_k|, and the identity set with the key flipped
+   measures the difference (prediction: the same planes to round-off, 1e-15 relative).
+4. The CCS positioning from alpha_k with the closed-form start, as now; a cell with
+   m_c = 0 (a partial cell whose faces all carry the same fraction, possible under rule 2
+   when liquid enters through a face at the upwind state) starts at the cell centre, p0 = 0,
+   the explicit position being undefined there (stated as the one change of the start).
+
+The verification, registered with the predictions (Tomislav's, 2026-11-08):
+
+(a) Identity: the former keys reproduce the eight cases of `prof/iso-ident.sbatch` bit for
+    bit against the bf70393 build (R32, R32x, D32, P20n, P20o, RDF32, ISO32, R32p8).
+(b) The plane gate (`planeTranslation3D_hexSweptPyr`: N 20, 40, 80, 160, both arms, Co 0.2
+    and 0.5 as prepared, Co 1 derived from the Co 0.5 case by doubling deltaT) with "pure":
+    prediction: NOT exact for a plane any more on the oblique arm (the faces of non-interface
+    cells carry the upwind state, so the receiving cell's first partial step has approximate
+    face data); the measured level of L1(alphaf) and L1(n) and whether it converges with N
+    are stated; the normal arm's level stated likewise.
+(c) The standing matrix rows (2D shear, 3D shear, 3D deformation, 3D rotation, hex;
+    perturbed and poly where prepared) with "pure" as the row PURE beside RDF, RDFccs, RING
+    and RINGvcc, N x3 (32, 64, 128 for hex), Co 0.2, 0.5, 1: completion, bounds before and
+    after the bounding, mass (the closed boxes to round-off; the shear's open box with the
+    inflow leak stated), E_shape, L1(x), L1(n) and its order, interface-cell counts, wall
+    clock at equal ranks. Prediction: PURE completes every cell plicRDF completes, is bounded
+    like plicRDF (its own bounding), L1(n) first order at or below plicRDF's constant, the
+    reconstruction cost 0.3-0.4 of plicRDF's, the step time below plicRDF's.
+(d) The jet, coarse mesh (32 ranks), the 1 ms window x3 and the 8 ms run, with the fork's
+    `reconstructedInterface` surface: prediction: completes, min alpha like plicRDF's, the
+    trajectory within the row-to-row scatter, the step time below plicRDF's.
+
+Mechanics: `prof/iso-ident.sbatch` with the new binary (TwoPhaseFlow-f) against -e;
+`iso/leia/workflow/scripts/davof_iso/iso-time.sbatch` row PURE (the RING case copy with the
+keys appended to the rendered fvSolution by sed, as the dec matrix: a foamDictionary rewrite
+perturbs a run at round-off), stamps as before; `prof/jet-run.sbatch` ROW=RING with KEYS;
+the gate ladder by `prof/iso-gate.sbatch` (the prepared cases copied, the keys appended,
+`tpf_advection_metrics.py`, the orders over N). Reported per family with the tables, then
+the recommendation whether "pure" becomes the package's default.
