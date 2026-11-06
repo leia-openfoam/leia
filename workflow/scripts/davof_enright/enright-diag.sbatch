@@ -73,5 +73,9 @@ want wispTol && run wispTol $SRC_SWEPT sweptFragmentLog=true wispTol=1e-2
 want exactReinit && run exactReinit $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true sweptReinitFaceFractions=true
 want exactCapsClassify && run exactCapsClassify $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true sweptClassify=true
 want exactReinitClassify && run exactReinitClassify $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true sweptReinitFaceFractions=true sweptClassify=true
+# the coverage check (which path sums the ring's pieces to the swept volume): the production
+# row and the exact-caps row with sweptCoverageCheck
+want covFrag && run covFrag $SRC_SWEPT sweptFragmentLog=true sweptCoverageCheck=true
+want covExact && run covExact $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true sweptCoverageCheck=true
 wait
 echo DIAG-DONE
