@@ -344,11 +344,27 @@ ENRIGHT_LABELS = OrderedDict([
 
 
 def enright_setting_tokens(name):
-    """The five template tokens of a setting; RuntimeError on an unknown name."""
+    """The five tokens of a setting plus TPF_ENRIGHT_KEYS, the block of the five keys the
+    templates render (appended to the sweptPreTestCoplanarSide line): EMPTY for the
+    reference setting, so that every dictionary rendered before 2026-11-07 stays byte
+    for byte the same (the stamps recompute nothing), and the five lines otherwise.
+    RuntimeError on an unknown name."""
     if name not in ENRIGHT_SETTINGS:
         raise RuntimeError(f"[tpf_rows] unknown TPF_ENRIGHT_SETTING {name!r}; "
                            f"known: {list(ENRIGHT_SETTINGS)}")
-    return dict(zip(ENRIGHT_TOKENS, ENRIGHT_SETTINGS[name]))
+    out = dict(zip(ENRIGHT_TOKENS, ENRIGHT_SETTINGS[name]))
+    if name == "reference":
+        out["TPF_ENRIGHT_KEYS"] = ""
+    else:
+        out["TPF_ENRIGHT_KEYS"] = (
+            "\n        // the Enright agent's decisions 1-3 (fork davof-swept-enright 25e6ebc,"
+            "\n        // leia 2026-11-07; the setting " + name + " of tpf_rows.ENRIGHT_SETTINGS)"
+            "\n        sweptPieceVolume " + out["TPF_SWEPT_PIECE_VOLUME"] + ";"
+            "\n        sweptPieceValidate " + out["TPF_SWEPT_PIECE_VALIDATE"] + ";"
+            "\n        sweptBoundedFaceFraction " + out["TPF_SWEPT_BOUNDED_FACE_FRACTION"] + ";"
+            "\n        interfaceCellRule " + out["TPF_INTERFACE_CELL_RULE"] + ";"
+            "\n        sweptFragmentLog " + out["TPF_SWEPT_FRAGMENT_LOG"] + ";")
+    return out
 
 
 if __name__ == "__main__":

@@ -136,7 +136,10 @@ def config_text(family, N, variants=False):
     mode = "parallel" if np_ > 1 else "serial"
     rows = ", ".join(ROWS) if not variants else ROWS[0]
     suffix = "_variants" if variants else ""
-    setting_axis = ("  TPF_ENRIGHT_SETTING: [" + ", ".join(VARIANT_SETTINGS) + "]\n") if variants else "  TPF_ENRIGHT_SETTING: [reference]\n"
+    # the baseline carries no setting axis: the parameter default (reference) renders the
+    # templates byte for byte as before the keys existed (TPF_ENRIGHT_KEYS empty), so its
+    # stamps stand
+    setting_axis = ("  TPF_ENRIGHT_SETTING: [" + ", ".join(VARIANT_SETTINGS) + "]\n") if variants else ""
     variants_note = ("# THE VARIANT ROWS: the DAVOF row with the settings " + ", ".join(VARIANT_SETTINGS)
                      + " of tpf_rows.ENRIGHT_SETTINGS\n# (the Enright agent's decisions 1-3, ported 2026-11-07), added to the baseline study of this rung.\n") if variants else ""
     return f"""# The standing study matrix (Tomislav, 2026-11-07; docs/davof/PORT-DESIGN.md 5b;

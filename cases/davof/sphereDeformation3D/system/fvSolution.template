@@ -96,17 +96,7 @@ solvers
         sweptAxisPlanes @!TPF_SWEPT_AXIS_PLANES!@;
         sweptTetCache   @!TPF_SWEPT_TET_CACHE!@;
         sweptPointVelocityLazy @!TPF_SWEPT_POINT_VELOCITY_LAZY!@;
-        sweptPreTestCoplanarSide @!TPF_SWEPT_PRE_TEST_COPLANAR_SIDE!@;
-        // the Enright agent's decisions 1-3 (fork davof-swept-enright 25e6ebc, leia
-        // 2026-11-07; TPF_ENRIGHT_SETTING -> tpf_rows.ENRIGHT_SETTINGS): the piece
-        // volume closure | closureThenTets | signedTets (+ the validation), the face
-        // fractions under the bounding none | scale | recompute, the interface-cell
-        // rule normalOnly | normalAndAlpha | normalAndAlphaReset, the fragment log
-        sweptPieceVolume @!TPF_SWEPT_PIECE_VOLUME!@;
-        sweptPieceValidate @!TPF_SWEPT_PIECE_VALIDATE!@;
-        sweptBoundedFaceFraction @!TPF_SWEPT_BOUNDED_FACE_FRACTION!@;
-        interfaceCellRule @!TPF_INTERFACE_CELL_RULE!@;
-        sweptFragmentLog @!TPF_SWEPT_FRAGMENT_LOG!@;
+        sweptPreTestCoplanarSide @!TPF_SWEPT_PRE_TEST_COPLANAR_SIDE!@;@!TPF_ENRIGHT_KEYS!@
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;
