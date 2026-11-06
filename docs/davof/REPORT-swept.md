@@ -4589,6 +4589,22 @@ E_shape 3.2446e-4 against 3.2206e-4, the excess 3.52e-3 against 4.09e-3. The DAV
 against plicRDF on the leia route: wall clock 1.46 .. 3.62 x, E_shape 0.45 .. 0.91 x on
 the ring row (the fork's picture of 2026-11-03 unchanged).
 
+The bit-for-bit verdict of the DAVOF arm's cells (`port_identity_check.py` on the first
+repetition, the fields of the last written time per processor directory, the
+function-object files, the CSV, the log): bit for bit in 15 of the 34 scored runs (every
+LineDiag and LineX run at OF Co 1 at N 32, 64, 128, both rows; the LineDiag N 32 and the
+LineX N 32 ring runs at OF Co 0.2); identical fields with the two anchor counts
+(`nAnchorEvals`, `nAnchorEdge`) and the diagnostic line of a few steps different in 5
+(LineDiag N 64 OF Co 0.2 both rows, rotation N 32 OF Co 0.2 both rows and OF Co 1 ring);
+the fields different at the round-off level in the remaining 14 (the rotation at N 64 and
+N 128, LineX at OF Co 0.2 from N 32 on, LineDiag N 128 OF Co 0.2: e.g. alpha
+0.99999999994613487 against 0.99999999994613797, a wisp 3.199e-14 against 3.907e-14, the
+LineX N 32 exact run only in `reconstructionError`'s L1(n) 1.9368e-4 against 1.9390e-4 and
+L1(x) in the seventh digit). The pattern is the ladders': the default route separates from
+the fork at the step of the first grazing cut and the loop amplifies the difference to
+the 1e-11 .. 1e-4 relative level in the end norms; the rotation, with the most grazing
+cuts, never stays bit for bit beyond N 32 at OF Co 0.2; the straight lines at OF Co 1 do.
+
 Tomislav's rule (2026-11-06) is applied: v2606's `cutCellPLIC` stays the default; the
 opt-in `grazingCut fork` (`davofCutCellPLIC`, a parameterised copy of v2606's class,
 selected through `davofCellCut`) proves the threshold to be the whole difference; the
