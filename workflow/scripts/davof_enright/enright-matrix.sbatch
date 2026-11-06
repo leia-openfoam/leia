@@ -58,7 +58,8 @@ runone() { # name src np steps rep keys
   echo "$name r$rep np $np steps $nst dt $dt keys: $keys"
   local par=""; [ $np -gt 1 ] && par="-parallel"
   local t0=$(date +%s.%N)
-  (cd $c && srun --ntasks=$np --cpu-bind=cores --exclusive --kill-on-bad-exit=1 --job-name=$name $APP $par > log.advectorVoF 2>&1); local rc=$?
+  # stdin closed: srun must not read the spec lines of the enclosing loop
+  (cd $c && srun --ntasks=$np --cpu-bind=cores --exclusive --kill-on-bad-exit=1 --job-name=$name $APP $par < /dev/null > log.advectorVoF 2>&1); local rc=$?
   local t1=$(date +%s.%N)
   (cd $c && python3 $W/leia/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv > log.metrics 2>&1)
   /usr/bin/python3 - $c $name $rep $np $dt $rc $t0 $t1 >> $csv <<'EOF'
@@ -74,12 +75,14 @@ EOF
   echo "$name r$rep rc=$rc wall $(python3 -c "print('%.1f' % ($t1-$t0))") s $(grep -c '^Time = ' $c/log.advectorVoF) steps, abort $(grep -c ABORT $c/log.advectorVoF)"
 }
 export -f runone setkey; export D W APP csv
-while IFS='|' read -r name src np steps reps keys; do
+exec 3< $SPEC
+while IFS='|' read -r -u 3 name src np steps reps keys; do
   [ -z "$name" ] && continue; [[ "$name" == \#* ]] && continue
   reps=${reps:-1}
   for r in $(seq 1 $reps); do
     if [ "$PARALLEL" = "1" ]; then runone "$name" "$src" "$np" "$steps" "$r" "$keys" & else runone "$name" "$src" "$np" "$steps" "$r" "$keys"; fi
   done
-done < $SPEC
+done
+exec 3<&-
 wait
 echo MATRIX-DONE

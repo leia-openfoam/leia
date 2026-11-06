@@ -59,7 +59,7 @@ _RE = {
     "minAlpha": r"min\(alpha1\) = (\S+) at cell", "oneMinusMax": r"1-max\(alpha1\) = (\S+) at cell",
     "ifc": r"\ndavof: (\d+) interface cells", "rankFb": r"rank fallbacks (\d+)", "swept": r"swept faces (\d+)",
     "bound2": r"second layer: (\d+) cells", "wispNoSurf": r"wisps without a neighbour surface (\d+)",
-    "newFrag": r"sweptFragmentLog: new [^:]*: (\d+) \(fallback-adjacent (\d+), second-layer bounded (\d+), wisp without a surface (\d+), none (\d+)\)",
+    "newFrag": r"sweptFragmentLog: new [^:]*: (\d+) \(fallback-adjacent (\d+), second-layer bounded (\d+), wisp without a surface (\d+)(?:, bounded face (\d+))?, none (\d+)\)",
     "reinit": r"re-initialised from the planes[^:]*: (\d+) faces between two planes[^,]*, (\d+) by one plane, (\d+) from alpha",
 }
 
@@ -81,14 +81,17 @@ def main():
                     m = re.search(r, b)
                     if not m: continue
                     if k == "newFrag":
-                        h["newFrag"], h["newFb"], h["newB2"], h["newW"], h["newNone"] = [int(x) for x in m.groups()]
+                        gr = m.groups()
+                        h["newFrag"], h["newFb"], h["newB2"], h["newW"] = [int(x) for x in gr[:4]]
+                        h["newBf"] = int(gr[4]) if gr[4] is not None else 0
+                        h["newNone"] = int(gr[5])
                     elif k == "reinit":
                         h["reinitTwo"], h["reinitOne"], h["reinitAlpha"] = [int(x) for x in m.groups()]
                     else:
                         h[k] = f(m.group(1))
                 hist.append(h)
             with open("%s/diag_history_%s_%s.csv" % (OUT, cell, run), "w", newline="") as fh:
-                keys = ["t", "minAlpha", "oneMinusMax", "ifc", "rankFb", "swept", "bound2", "wispNoSurf", "newFrag", "newFb", "newB2", "newW", "newNone", "reinitTwo", "reinitOne", "reinitAlpha"]
+                keys = ["t", "minAlpha", "oneMinusMax", "ifc", "rankFb", "swept", "bound2", "wispNoSurf", "newFrag", "newFb", "newB2", "newW", "newBf", "newNone", "reinitTwo", "reinitOne", "reinitAlpha"]
                 w = csv.DictWriter(fh, fieldnames=keys, extrasaction="ignore"); w.writeheader(); w.writerows(hist)
             g = lambda k: [h[k] for h in hist if k in h]
             ab = re.search(r"ABORT at step (\d+), t = (\S+): ([^(]*)", txt)
@@ -105,7 +108,7 @@ def main():
                        bound2Step1=g("bound2")[0] if g("bound2") else float("nan"), bound2Sum=sum(g("bound2")), bound2Max=max(g("bound2")) if g("bound2") else float("nan"),
                        wispNoSurfMax=max(g("wispNoSurf")) if g("wispNoSurf") else float("nan"),
                        ifcStep1=g("ifc")[0] if g("ifc") else float("nan"), ifcMax=max(g("ifc")) if g("ifc") else float("nan"),
-                       fragTotal=sum(g("newFrag")), fragFb=sum(g("newFb")), fragB2=sum(g("newB2")), fragW=sum(g("newW")), fragNone=sum(g("newNone")),
+                       fragTotal=sum(g("newFrag")), fragFb=sum(g("newFb")), fragB2=sum(g("newB2")), fragW=sum(g("newW")), fragBf=sum(g("newBf")), fragNone=sum(g("newNone")),
                        fragFirstStep=next((i + 1 for i, h in enumerate(hist) if h.get("newFrag", 0) > 0), float("nan")),
                        EshapeT=conv(3.0, "Eshape"), EshapeTRel=conv(3.0, "Eshape")/V_SPHERE, L1xT=conv(3.0, "LCentreDiff1"), L1nT=conv(3.0, "LNormalDiff1"), L1afT=conv(3.0, "L1_alphaf"))
             for t in WRITES:
@@ -144,7 +147,7 @@ def main():
     for r in rows:
         for k in r:
             if k not in keys: keys.append(k)
-    with open(OUT + "/diag_runs_%s.csv" % TAG, "w", newline="") as fh:
+    with open(OUT + "/diag_runs_%s.csv" % TAG.replace("/", "_"), "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=keys); w.writeheader(); w.writerows(rows)
     print("cell run status steps | min excess (run) | min excess (first 20) | rankFb step1/max | bound2 step1/max | ifc step1/max | frag total: fb b2 wisp none, first step | frag200: n firstStep dry fbAdj b2 wisp none |m|med afMax_med wet_med | ifc/partial at T/4 T/2 3T/4 T | partial T/2, T | Eshape T (rel) L1x L1af")
     def s(x, fmt="%g"):
