@@ -61,11 +61,17 @@ run() { # name src keys...
     echo "$name rc=$rc wall $(python3 -c "print('%.1f' % ($t1-$t0))") s steps $(grep -c '^Time = ' log.advectorVoF) abort $(grep -c ABORT log.advectorVoF) $(grep '^t = ' log.advectorVoF | tail -1 | cut -c1-120)"
     python3 $W/leia/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv > log.metrics 2>&1 ) &
 }
-run frag $SRC_SWEPT sweptFragmentLog=true
-run exactCaps $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true
-run reinit $SRC_SWEPT sweptFragmentLog=true sweptReinitFaceFractions=true
-run reinitPrism $SRC_PRISM sweptFragmentLog=true sweptReinitFaceFractions=true
-run wispTol $SRC_SWEPT sweptFragmentLog=true wispTol=1e-2
-run exactReinit $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true sweptReinitFaceFractions=true
+# RUNS (optional) selects the runs; the two *Classify runs add sweptClassify (the first
+# unbounded cell with its faces' fluxes) and the validation line of sweptExactCaps
+RUNS=${RUNS:-"frag exactCaps reinit reinitPrism wispTol exactReinit"}
+want() { [[ " $RUNS " == *" $1 "* ]]; }
+want frag && run frag $SRC_SWEPT sweptFragmentLog=true
+want exactCaps && run exactCaps $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true
+want reinit && run reinit $SRC_SWEPT sweptFragmentLog=true sweptReinitFaceFractions=true
+want reinitPrism && run reinitPrism $SRC_PRISM sweptFragmentLog=true sweptReinitFaceFractions=true
+want wispTol && run wispTol $SRC_SWEPT sweptFragmentLog=true wispTol=1e-2
+want exactReinit && run exactReinit $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true sweptReinitFaceFractions=true
+want exactCapsClassify && run exactCapsClassify $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true sweptClassify=true
+want exactReinitClassify && run exactReinitClassify $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true sweptReinitFaceFractions=true sweptClassify=true
 wait
 echo DIAG-DONE
