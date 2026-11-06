@@ -5071,3 +5071,46 @@ comparison (`sphereRotation3D_hexCmpRotSweptN32`, the ring row at OF Co
   faces at every step (so alphaf stays as the face update left it while
   the bounded flux moved the liquid elsewhere). Falsified if the bounded-
   face share is below 40 % or alphaf changes on any face.
+
+Results of T-1 .. T-3 (jobs: build 56010970 on fork 8fec921; diag6 56011676
+= exactCapsDump, N 32 Co 0.5, 50 steps to the abort; diag6rot 56011678 and
+diag6rot1 56011679 = the rotation N 32 ring row at OF Co 0.2 and OF Co 1,
+100 steps each; `diag6*/N32_co0/*/postProcessing/sweptPieceDump/`,
+`piece_truth.py` output in the job log):
+
+- T-1 HELD. 106 pieces were dumped (|closure - exact| > 1e-6 V_c). On all
+  ten worst (|closure - exact|/V_c from 0.83 down to 1.3e-3; nCaps 3 each)
+  the fork's exact path, the independent tetrahedra and the Monte Carlo
+  (1e6 samples, no |w| = 2 sample: no self-overlap) agree: exact(C++) =
+  tets(py) to 7 digits, MC within 1 sigma (e.g. 50_0_97: closure
+  -0.8315 V_c, exact 1.7297e-5 V_c, tets 1.7297e-5, MC 1.738e-5 +- 1.6e-7;
+  50_0_98: closure +0.7888, exact 1.5737e-4, MC 1.590e-4 +- 1.1e-6). Over
+  all 106 (2e5 samples each) the exact path agrees with MC on 104, the
+  closure on 0. The closure is the wrong one. Why: every one of the ten
+  has nCaps = 3 and a closed 3 x 3 cap system, whose residual is zero by
+  construction, so a cap that rule b did not detect (a fourth cutting
+  plane whose edges in the final polygons are missing or shorter than the
+  1e-12 L filter) is invisible to the residual check and the three
+  solved areas absorb its area vector: the volume is wrong by up to a
+  cell. The PLIC section of the cell-clipped list has 1 .. 3 closed loops
+  plus open chains on these pieces (a cap that is not simply connected on
+  7 of 10). Not a rank-deficient system accepted (those take the exact
+  path), not a non-convex piece mis-decomposed (the signed decomposition
+  needs no convexity, and MC confirms it).
+- T-2 HELD. The rotation N 32, 100 steps, OF Co 0.2 and OF Co 1: 0 pieces
+  dumped, max |V_closure - V_exact|/V_c 1.8e-13 and 1.7e-13 over the
+  runs, 0 rank fallbacks. The class is specific to the straining flow; the
+  rotation and translation results carry no such defect.
+- T-3 HELD. Of the exact-caps run's 99 fragment cells (91 dry), 95 are
+  adjacent to a face whose dVf the first-layer bounding changed in the
+  previous step (94) or the one before; the summed |correction|/V_c on
+  those faces: median 3.3e-4, min 5.1e-7, max 0.23; fallback-adjacent 0,
+  second-layer 2, wisp 4, none of the four 2. The bounding changed dVf on
+  39 .. 885 faces per step (median 92; 25 of the 50 steps) and alphaf on 0
+  faces at every step: the face fractions stay as the face update left
+  them while the bounded flux moved the liquid elsewhere.
+
+Seed classes of the exact-caps run's 99 fragments with the bounding class
+included: bounded face 95 (96 %), wisp 4, second-layer 2, fallback 0, none
+2 (steps 12 .. 50; the 40-step production run's seeds are the fallback's,
+82 %, with the bounding second).
