@@ -1,0 +1,9 @@
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc}
+% Wetted parts of faces in every schematic: a light gold core on a dark base,
+% so that the wetted areas, the quantity DAVOF transports, are visible.
+\tikzset{wetted/.style={draw=black!60, double=yellow!85!orange, double distance=2.4pt,
+                        line width=0.9pt, line cap=round, line join=round}}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}

@@ -10,7 +10,7 @@
 %   cell (2,1) alpha 0.16289  n ( 0.83382, 0.55204) c 2.60692   (D2; the donor D in panel a)
 % The jump of N's and D2's planes on x = 2: z = 1.6752 (N) and 1.7015 (D2).
 % Displacement per step: 0.56h along x (a), 0.4h per axis (b); the measured runs: 0.126h.
-% Panels (c, d): the measured E_c of the studies sphereRotation3D_hexFineLine{Diag,X}{RingSwept,RDF},
+% Panels (c, d): the measured E_c of the studies sphereRotation3D_hexFineLine{Diag,X}{RingPlane,RDF},
 % column 10 of staticFaceFractions.dat, copied from the cluster into data/oblique.
 \begin{figure}[tb]
 \centering
@@ -145,14 +145,14 @@
       table/header=false, table/comment chars={\#}, table/x index=0, table/y index=9,
       legend style={font=\scriptsize, draw=none, fill=none, at={(0.02,0.98)}, anchor=north west},
       legend cell align=left]
-    \nextgroupplot[title={(c) swept-face advection, ring normal}]
-      \addplot[red!85!black, line width=1.2pt] table {data/oblique/lineDiagRingSwept_N64.dat};
+    \nextgroupplot[title={(c) plane-clipped loop, ring normal}]
+      \addplot[red!85!black, line width=1.2pt] table {data/oblique/lineDiagRingPlane_N64.dat};
       \addlegendentry{diagonal, $N = 64$}
-      \addplot[red!85!black, line width=0.9pt, densely dashed] table {data/oblique/lineDiagRingSwept_N32.dat};
+      \addplot[red!85!black, line width=0.9pt, densely dashed] table {data/oblique/lineDiagRingPlane_N32.dat};
       \addlegendentry{diagonal, $N = 32$}
-      \addplot[blue!80!black, line width=1.2pt] table {data/oblique/lineXRingSwept_N64.dat};
+      \addplot[blue!80!black, line width=1.2pt] table {data/oblique/lineXRingPlane_N64.dat};
       \addlegendentry{$x$, $N = 64$}
-      \addplot[blue!80!black, line width=0.9pt, densely dashed] table {data/oblique/lineXRingSwept_N32.dat};
+      \addplot[blue!80!black, line width=0.9pt, densely dashed] table {data/oblique/lineXRingPlane_N32.dat};
       \addlegendentry{$x$, $N = 32$}
     \nextgroupplot[title={(d) plicRDF with isoAdvector}]
       \addplot[red!85!black, line width=1.2pt] table {data/oblique/lineDiagRDF_N64.dat};
@@ -161,6 +161,6 @@
       \addplot[blue!80!black, line width=0.9pt, densely dashed] table {data/oblique/lineXRDF_N32.dat};
   \end{groupplot}
 \end{tikzpicture}
-\caption{The oblique excess on an equidistant Cartesian mesh of spacing $h$, two-dimensional cut. Every interface cell holds its plane (thick) with the exact normal, positioned by its exact volume fraction; orange: the faces whose fluxes are drawn; grey: their swept volumes ($\mathbf{U}\Delta t = 0.56h$, enlarged; the runs: $0.126h$); dark blue: the liquid crossing the face. (a) Along $x$ the swept volume of $f$ lies in its donor $D$ and is cut by $D$'s plane. (b) Along the diagonal (inset: the corner of $N$, magnified four times) the swept volumes of the faces $f_1$, $f_2$ of $R$ reach from their donors $D_1$, $D_2$ into the neighbour $N$; isoAdvector cuts the two triangles there by the donors' planes extended (dashed), the swept-face advection by $N$'s plane, and the cuts differ by the red regions; the red circle marks the jump between $N$'s and $D_2$'s planes. (c), (d) The measured $E_c$, \cref{eq:Ec}, of the translated sphere along the $x$--$z$ diagonal and along $x$, same initial state and time step.}
+\caption{The oblique excess on an equidistant Cartesian mesh of spacing $h$, two-dimensional cut. Every interface cell holds its plane (thick) with the exact normal, positioned by its exact volume fraction; orange: the faces whose fluxes are drawn; grey: their swept volumes ($\mathbf{U}\Delta t = 0.56h$, enlarged; the runs: $0.126h$); dark blue: the liquid crossing the face. (a) Along $x$ the swept volume of $f$ lies in its donor $D$ and is cut by $D$'s plane. (b) Along the diagonal (inset: the corner of $N$, magnified four times) the swept volumes of the faces $f_1$, $f_2$ of $R$ reach from their donors $D_1$, $D_2$ into the neighbour $N$; isoAdvector cuts the two triangles there by the donors' planes extended (dashed); the red regions are where the donors' extended planes and $N$'s own plane disagree, and the red circle marks the jump between $N$'s and $D_2$'s planes on their common boundary. (c), (d) The measured $E_c$, \cref{eq:Ec}, of the translated sphere along the $x$--$z$ diagonal and along $x$, same initial state and time step.}
 \label{fig:oblique}
 \end{figure}
