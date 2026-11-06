@@ -5361,3 +5361,112 @@ every piece (16.7 M per turn) is clipped as tetrahedra (3F per face, each
 by up to seven planes) where the closure clips the boundary triangles
 once. Its errors are the closure's to 1e-13 (E_shape identical to 4
 digits on 8 ranks).
+
+#### Results: G3, the deformation at N 64, Co 0.5, T = 3, 8 ranks (2026-11-07)
+
+Jobs 56014562 (the closure-based settings, one exclusive i01 node) and
+56014563 (the signedTets-based settings, one exclusive i01 node), fork
+25e6ebc; `csv/diag_runs_matrix_enright64.csv` and the per-run CSVs. plicRDF
+on this cell (the comparison of 2026-11-06): E_shape 3.018e-3 (0.2135 V_s),
+L1(x) 0.0585, min alpha -4.8e-6, partial cells 2736 at T, wall clock 81 s.
+
+| setting | end | min alpha before / after the bounding (run) | excess after | fragments (bounded-face) | dry/full cells with \|m_c\| > tol, with a plane | bounded faces (s = 0) | E_shape (/V_s) | L1(x) | L1(alphaf) | partial cells T | wall s |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| closure (= the production row) | ABORT step 628 | -8.07 / -0.545 | 9.0e-3 | 189524 (179409) | 7708921, 7708921 | - | - | - | - | - | 1463 |
+| closureThenTets | T | -0.447 / -0.274 | 6.7e-8 | 7701 (2244) | 10907, 10907 | - | 4.571e-3 (0.323) | 0.060 | 2.40e-1 | 109598 | 6388 |
+| signedTets | T | -3.0e-2 / -9.7e-8 | 6.3e-8 | 1202 (40) | 222, 222 | - | 3.883e-3 (0.275) | 0.055 | 2.42e-1 | 11761 | 2212 |
+| cTT + scale | ABORT step 737 | -0.866 / -0.857 | 8.6e-10 | 6798 (1213) | 3778, 3778 | 10621773 (33338) | - | - | - | - | 931 |
+| cTT + scale + normalAndAlpha | T (954 of 960 steps at the scoring) | -0.389 / -9.8e-2 | 5.4e-3 | 5441 (340) | 6626, 0 | 11912032 (41622) | - | - | - | - | 1302 |
+| sT + scale | T | -4.3e-6 / -9.7e-8 | 6.3e-8 | 1190 (40) | 217, 217 | 1416174 (8869) | 3.883e-3 (0.275) | 0.056 | 2.42e-1 | 12442 | 1998 |
+| sT + recompute | T | -3.2e-4 / -3.2e-4 | 6.3e-8 | 9024 (7903) | 11658, 11658 | 1294095 (8884), 586418 recomputed | 3.883e-3 (0.275) | 0.057 | 2.40e-1 | 13477 | 2108 |
+| sT + scale + normalAndAlpha | T | -4.3e-6 / -9.7e-8 | 6.3e-8 | 1186 (30) | 218, 0 | 1416345 (8832) | 3.883e-3 (0.275) | 0.055 | 2.43e-1 | 12835 | 1987 |
+| sT + scale + normalAndAlphaReset | T | -6.6e-4 / -6.6e-4 | 6.3e-8 | 1189 (31) | 0, 0; 216 cells reset | 1424872 (8851) | 3.883e-3 (0.275) | 0.055 | 2.43e-1 | 12038 | 2001 |
+
+Reading at N 64: every signedTets-based setting completes T bounded to
+1e-7 after the bounding, with E_shape 3.883e-3 = 1.29 x plicRDF and L1(x)
+0.055 .. 0.057 below plicRDF's 0.0585; the bounded face fractions (scale)
+remove the single pre-bounding excursion of plain signedTets (-3.0e-2 ->
+-4.3e-6) at the same errors; recompute and the Reset rule are worse (-3.2e-4
+and -6.6e-4 after the bounding, recompute with 9024 fragments);
+normalAndAlpha changes nothing measurable beyond removing the planes of the
+217 dry/full cells. closureThenTets completes at N 64 but unbounded
+(-0.27) and fragmented (109598 partial cells at T), at 3.2 x the wall clock
+of signedTets; with scale it aborts, with scale + normalAndAlpha it holds
+-0.098. The wall clock of the signedTets settings at N 64 on 8 ranks is
+2.0 .. 2.2 ks against plicRDF's 81 s (25 x; the production closure row took
+1.46 ks to its abort at step 628 of 960): the per-step cost of the swept
+flux on the sheet (the band) times the tetrahedra's 2.6 x.
+
+#### Verdicts on P1-3, P2-2, P3-2 and the recommendation (2026-11-07)
+
+- P1-3: HELD for closure (the production row reproduced) and for
+  closureThenTets at N 32 (the abort at step 50) and FALSIFIED in its
+  last clause: signedTets completes N 32 AND N 64 bounded (-1.3e-7 /
+  -9.7e-8 after the bounding), not "within round-off of
+  closureThenTets": the pieces the closure solves with an undetected
+  fourth cap (T-1) were the overdraw, and only the tetrahedra on every
+  piece remove it. closureThenTets at N 64 completes unbounded (-0.27).
+- P2-2: FALSIFIED on the closureThenTets base (cTT + scale aborts; the
+  fragments do not fall by 80 %); on the signedTets base scale is neutral
+  at N 32 (the bounds -2.5e-4 against -1.3e-7 without it; E_shape equal)
+  and useful at N 64 (the pre-bounding minimum -4.3e-6 against -3.0e-2;
+  the after-bounding minimum the same); recompute is worse on both (its
+  positioned plane's face area is not the bounded flux's; 931 / 7903
+  fragments at bounded faces). The difference between scale and recompute
+  in E_shape is 0.02 % at N 32 and 0 % at N 64; in the bounds 1e-3.
+- P3-2: FALSIFIED in its mechanism: on the signedTets base the dry/full
+  cells with a plane are 165 / 222 per run (not the source of an
+  overdraw any more), normalAndAlpha removes their planes with no
+  measurable effect on the bounds or the errors (E_shape equal to 4
+  digits, L1(x) within 2 %); the Reset variant worsens the bounds (-6.6e-4
+  at N 64 after the bounding) and does not bring the face-fraction
+  interface count to the partial-cell count (the partial cells are 12000
+  against the sphere's 2736 for every setting: the thin tails of alpha
+  at 1e-8 .. 1e-3 that the exact-state comparison counts, not surfaces;
+  the face-fraction interface cells are 2600 .. 2650 at T). Both rules
+  complete N 32 and N 64 (held).
+- P1-1 / P2-1 / P3-1 (the identities): as stated under G1: bit for bit
+  where the respective counter is 0; closure's one-donor clip fires on
+  the plane cases (1e-14 .. 8e-9 differences, the gate passes for all
+  three algorithms at 1e-13); the rules change the rotation by 1e-4 ..
+  1e-3 because 30 / 62 dry/full cells with a plane exist there too.
+- P1-4: closureThenTets = closure in the wall clock (0.999 / 1.000) and
+  bit for bit on the rotation; signedTets costs 2.35 x serial and 2.6 x
+  on 8 ranks (falsified against 1.5 x / 1.3 x).
+- P1-5 / P2-3 / P3-3: the parallel identity to 1e-12 in alpha and 1e-10
+  in alphaf for every setting (held).
+
+Recommendation for the default: `sweptPieceVolume signedTets` with
+`sweptBoundedFaceFraction scale` and `interfaceCellRule normalAndAlpha`
+(the combined setting Tomislav named, with signedTets in place of
+closureThenTets): it is the only setting that completes the deformation
+at N 32 and N 64 bounded to 1e-7 after and 1e-5 before the bounding, with
+E_shape 1.2 .. 1.3 x plicRDF and L1(x) at or below plicRDF's; it passes
+the plane gate at 1e-13, equals closure to round-off on the rotation and
+the diagonal (1e-9 .. 1e-12), and is parallel-identical to 1e-12; its
+price is 2.35 .. 2.6 x the closure's wall clock everywhere (the tetrahedra
+on every piece) and, on the deformation, 25 x plicRDF at equal ranks.
+closureThenTets must NOT be the default: the closure's undetected fourth
+cap (a closed 3 x 3 system with zero residual) overdraws on straining
+flows, and no bounding or rule repairs it; it equals closure elsewhere
+and is the drop-in for the rotation and translation results. The Reset
+rule and recompute are not recommended (the bounds worsen). What the
+recommendation does not settle: the cost (a cheaper exact piece volume
+would be the closure with a cap set verified against the tetrahedra on
+the pieces whose polygons touch four planes), and the 12000 partial cells
+of alpha at 1e-8 .. 1e-3 that every bounded run leaves on the
+deformation (plicRDF: 2736), which the next decision on the wisp rule
+should address; E_shape stays 20-30 % above plicRDF on this flow.
+
+Commits: fork `davof-swept-enright` 1306749 (decisions 1-3), 25e6ebc
+(the coplanar tolerance of the tetrahedra clips; the keys in
+`etc/README-davof.md`); leia `davof-swept-enright` 39076782 .. this
+commit (the matrix, the scoring, the report). Jobs: builds 56012689,
+56013478; the first pass 56013036-56013040 (kept as `matrix/*.tets-notol`,
+the no-tolerance build); the recorded matrix 56014032 (dbgPlane),
+56014033 (G1), 56014034 (G2), 56014035 (G3, superseded), 56014037 (G5),
+56014561 (G2b), 56014562 (G3a), 56014563 (G3b), 56014564 (G4 re-run),
+56014565 (G1b), 56014566 (G5b). CSVs: `csv/matrix_G1.csv`,
+`csv/matrix_G4.csv`, `csv/matrix_G5.csv`,
+`csv/diag_runs_matrix_enright32.csv`, `csv/diag_runs_matrix_enright64.csv`
+and the per-run `diag_frag_*`, `diag_history_*` under the agent workspace.
