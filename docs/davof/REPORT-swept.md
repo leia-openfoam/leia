@@ -4887,3 +4887,140 @@ Pre-registered before the runs:
 - D-6: no control keeps N = 32 bounded to 1e-9 over T. If (c) or (a + c)
   keeps N = 32 above -1e-2, that control is run at N = 64, Co 0.5 (the
   prepared 8-rank case) and is expected to complete without an abort.
+
+#### Results of the diagnosis (2026-11-06)
+
+Jobs: build 56007406 (fork 5d8e57d), diag3 56008047 (the six runs), build
+56008906 (43f7cac, the validation counter of the exact caps), diag4 56009270
+(exact caps and exact caps + re-init with sweptClassify), build 56009585
+(b56f5d1, the coverage check), diag5 56010158 (the coverage check on the
+production row and on exact caps). Data: `csv/diag_runs_diag3.csv`,
+`csv/diag_frag_N32_co0_<run>.csv` (the first 200 fragmenting cells),
+`csv/diag_history_N32_co0_<run>.csv` (per step); the cases under
+`diag3/`, `diag4/`, `diag5/N32_co0/<run>/`. All N = 32, Co 0.5
+(OF 0.492), serial, dt 0.00625, 480 steps, from the production prepared
+case (writePrecision 17); the frag run reproduces the production row's
+digits (E_shape 1.137e-2, min alpha -0.270).
+
+| run | status | min alpha / excess (run) | min alpha (first 20 steps) | rank fallbacks step 1 / max | 2nd-layer bounding step 1 / max | face-fraction interface cells step 1 / max | ratio interface / partial cells at T/4, T/2, 3T/4, T | partial cells T/2, T | E_shape T (/V_s) | L1(x) | L1(alphaf) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| frag (= ours) | ended | -2.70e-1 / 2.95e-4 | -1.55e-3 | 459 / 4633 | 25 / 17989 | 410 / 10924 | 1.14, 1.27, 1.50, 1.84 | 6638, 5871 | 1.137e-2 (0.804) | 0.306 | 7.06e-2 |
+| exactCaps (a) | ABORT step 50, t 0.3125, min -0.788 | -7.88e-1 / 1.1e-11 | -2.8e-12 | 0 / 0 | 25 / 540 | 410 / 712 | - | - | - | - | - |
+| reinit (c) | ended | -1.56e-1 / 7.2e-3 | -2.4e-3 | 451 / 3489 | 25 / 13186 | 440 / 7179 | 0.88, 0.92, 1.09, 1.30 | 2630, 5344 | 9.844e-3 (0.696) | 0.247 | 5.15e-2 |
+| reinitPrism (d) | ended | -2.32e-1 / 1.33e-1 | -8.4e-3 | - | 0 / 19087 | 440 / 11934 | 1.35, 0.84, 1.05, 2.03 | 6454, 5893 | 1.116e-2 (0.790) | 0.318 | 9.27e-2 |
+| wispTol 1e-2 (e) | ABORT step 41, t 0.256, min -1.06 | -1.06 / 1.9e-13 | -2.9e-4 | 459 / 597 | 25 / 625 | 409 / 582 | - | - | - | - | - |
+| exactReinit (a + c) | ended | -1.51e-1 / 1.2e-7 | -1.4e-12 | 0 / 0 | 25 / 3850 | 440 / 1726 | 0.89, 0.60, 0.47, 0.73 | 2768, 1611 | 9.608e-3 (0.680) | 0.081 | 2.44e-1 |
+
+plicRDF on the same cell for comparison: E_shape 7.765e-3 (0.549), L1(x)
+0.0845, L1(n) 0.692, partial cells 1324 / 747 at T/2 / T, min alpha
+-2.3e-17. The sphere's cell count at T is 747 (plicRDF); the exactReinit run
+ends with 843 reconstructed surfaces and L1(x) 0.081, L1(n) 0.697: plicRDF's
+shape and position quality without the fragmentation, but unbounded to
+-0.15 and with E_shape 24 % above plicRDF's (0.68 against 0.55 V_s).
+
+The fragment log (1) of the production row: 26470 cells became
+face-fraction interface cells while alpha was within 1e-6 of 0 or 1 over
+the run (52 per step); the first appear at step 8 (t = 0.05). Of the first
+200 (steps 8-?; `diag_frag_N32_co0_frag.csv`): 199 dry (alpha < 1e-6), 1
+full; 164 (82 %) have a face computed by the one-donor rank fallback in the
+previous step or the one before, 15 were in the second-layer bounding set,
+49 were wisps without a surface, 36 (18 %) belong to none of the three
+classes; the median |m_c|/V^(2/3) is 4.7e-2 (the threshold 1e-3), the
+median largest face fraction 0.058, typically 2 wet faces. The typical seed
+(the first rows): a dry cell with ONE face at af = 0.01 .. 0.16 and five dry
+faces, that face shared with the donor whose flux took the one-donor clip:
+the fallback's face update sets the wetted area of the face from the
+extended donor plane while the fallback's volume gives the dry cell
+nothing. Over the whole run the classes are 35 % fallback-adjacent, 24 %
+second-layer bounded, 4 % wisp, 49 % none (the later fragments are seeded
+by earlier ones).
+
+The exact caps (a): the exact path is validated two ways. Against the
+closure on every piece the closure solves (k <= 3): max |dV|/V_c 8e-14 at
+step 1 on 17178 pieces, 1e-8 median per step, but isolated pieces differ
+by 1e-4 .. 4e-3 V_c from step 25 and by 0.83 V_c at the abort step (21 of
+50 steps above 1e-6). Against the geometric swept volume (diag5: the
+unclipped pieces of the ring summed per face, every face the ring covers):
+|sum V_exact - V_g|/V_g at most 4.1e-10 over 117 steps of the production
+row (4365 .. 62826 faces per step) and 5.8e-13 over the 50 steps of the
+exact-caps run: the exact path is exact for the pieces without a PLIC
+clip, on every twisted swept volume of this flow. (The same check for the
+closure path is invalid as written: a face with one rank-deficient piece
+drops that piece and the check reads the dropped volume; the closure path
+is validated by the plane gate and the rotation only.) Where the exact
+path and the closure differ on a PLIC-clipped piece it is therefore the
+closure's cap system that is suspect (rule b's cap set on a twisted list
+with a PLIC plane nearly parallel to a cell face), or the piece itself is
+not a volume the planes bound consistently; a per-piece dump would settle
+it. Not done.
+
+With the exact caps the rank fallbacks are 0 at every step, the run stays
+bounded to 2.8e-12 for 31 steps (the production row leaves -1e-3 at step
+16), the face-fraction interface cells stay at 712 (the production row:
+7155 at T/4; plicRDF 1324 at T/2), only 99 fragment cells appear in 50
+steps (2 per step, 25 x fewer), none fallback-adjacent, 95 of the "none"
+class: 87 dry cells with 1 .. 6 wet faces (median 4), the largest face
+fraction 0.05 (max 0.57). Then the run goes unbounded from step 32 (the
+first unbounded cell after the bounding: cell 5392 at (0.516 0.266 0.172),
+alpha 2e-20 -> -7.1e-6, WITH a surface: a fragment cell whose plane,
+positioned for alpha = 0, clips the pieces of its faces) and collapses at
+step 50 (min -0.788, one event, the mass conserved) by the abort guard.
+With exact caps and re-initialised face fractions (a + c) the first
+unbounded cell is a full cell without a surface at step 10 (alpha
+1 + 1e-9), the run completes with min -0.15, 348 of 480 steps with a
+closure/exact disagreement above 1e-6.
+
+Verdicts on D-1 .. D-6:
+- D-1 HELD: the first 200 seeds appear from step 8, 82 % fallback-adjacent
+  (> 60 %), 18 % none (< 20 %), 99.5 % dry (> 80 %), |m_c|/V^(2/3) median
+  4.7e-2 (within 1e-3 .. 1e-1). The one-donor rank fallback's face update
+  seeds the inconsistency between alphaf and alpha.
+- D-2 HELD in both parts: no rank fallbacks, bounded to 1e-9 over the first
+  20 steps (to 2.8e-12 over 31), not bounded over T (the abort at step 50
+  is stronger than the predicted -1e-3 by T/2); the second-layer bounding
+  at step 1 stayed at 25 (the "below 10" part falsified: the step-1
+  corrections are not the fallback's). The interface count does NOT exceed
+  twice the partial cells (712 against the sphere's ~1300): the second
+  clause of D-2 is falsified in the direction that strengthens D-1: the
+  fallback is the seed of the FRAGMENTATION; the unboundedness has a
+  second source the exact pieces expose.
+- D-3 FALSIFIED: the ratio stays within 1.3 (held) but min alpha -0.156
+  (not above -1e-2); E_shape 9.84e-3 = 1.27 x plicRDF (held). The
+  transported state is not the only fragmenting ingredient: with the
+  face fractions re-initialised every step the row still fragments to
+  7179 interface cells and stays unbounded (the fallback remains).
+- D-4 FALSIFIED (min -0.232, ratio up to 2.03 at T).
+- D-5 FALSIFIED in the direction of a cure's opposite: wispTol 1e-2 aborts
+  at step 41 (min -1.06): more cells without a surface take the 0/1 piece
+  rule and the flux overdraws at once.
+- D-6 HELD: no control keeps N 32 bounded to 1e-9 over T; (a + c) reaches
+  -0.15, so the N 64 run was not triggered.
+
+What starts the fragmentation (3): the one-donor rank fallback of the
+swept flux. On this flow 2-10 % of the swept faces have a piece with more
+than three caps from step 1 (the oblique 3D pre-images), the fallback
+computes those faces' wetted areas from the extended donor plane and their
+volumes by the one-donor clip, and the dry neighbours of such faces receive
+a wet face and no liquid: 82 % of the first 200 fragments. Removing the
+fallback by the exact piece volume (a) removes the fragmentation (712
+interface cells instead of 7155 at T/4, 2 fragments per step instead of
+52) and keeps the run bounded to 1e-12 for 31 steps. What the exact pieces
+then expose is the second source: a fragment cell of the remaining "none"
+class (a dry cell with wet faces, 87 of 99, not adjacent to a fallback,
+not bounded, not a wisp: the candidate is the first-layer bounding, which
+corrects alpha but not alphaf, not tracked by the log's three classes)
+gets a surface positioned for alpha = 0, its plane clips its neighbours'
+pieces, and one such face overdraws a cell by 0.79 at step 50; the
+closure's cap system also disagrees with the exact volume on isolated
+PLIC-clipped pieces by up to 0.8 V_c on this flow (open which is right).
+Re-initialising the face fractions (c) does not remove either source
+(-0.15 with the fallback, -0.15 with exact caps), raising wispTol makes it
+worse. No control keeps N 32 bounded; none was run at N 64. Nothing was
+tuned beyond the listed controls.
+
+Fork commits (branch `davof-swept-enright`, pushed to tmaric): 5d8e57d
+(the three keys), 43f7cac (the validation counter), b56f5d1 (the coverage
+check); all opt-in, default false, the default path unchanged (the
+production row's digits reproduced by the frag run). leia commits:
+18b78dda (the runner, the scoring, the predictions), cf8f81c8, 079227f4,
+a8346ddd, and this one.
