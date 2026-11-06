@@ -4435,3 +4435,106 @@ differences are 1e-12 after 20 steps except the rotation N 64 (1e-9, the
 rank-fallback amplification), the same order as the trace cache's first
 form and the processor-boundary round-off of the parallel runs; Tomislav's
 call whether a change of that size may enter the defaults.
+
+
+## The port into leia (2026-11-06)
+
+Tomislav's decision of 2026-11-06: the DAVOF method leaves the TwoPhaseFlow fork and
+becomes leia's own library against OpenFOAM v2606's geometricVoF ("I do not want to make
+TwoPhaseFlow 'famous' by my work, I want to have it in my own project"). The delta
+analysis, the layout, the drop list and the acceptance plan are `docs/davof/PORT-DESIGN.md`
+(phase 0, 0ec77adf). The fork at `c5c00c5` (branch `davof-swept`) stays the reference of
+every number above; from here on new results are recorded against leia commits (the
+version stamp of `libleiaDavof`, printed by every app).
+
+### Phase 1: what was built (leia branch `davof-port`, 4dbd4803 .. 1761c0b9)
+
+- `libleiaDavof` (`src/davof`, 20 500 lines moved from the fork, bit for bit where the
+  acceptance below measures it): `reconstruction/` (the davof scheme,
+  `davofCcsPositioning.H`), `normalModels/` (cellLocal, youngs, plicRDF, exact, ringArea,
+  ringFit), `volumeRules/` (kromerBothe, exactSphere with the vendored MIT overlap library,
+  splitQuadrature), `geometry/` (the swept pieces, the remote cells, the point velocity,
+  the orbit, the curved geometry), `init/davofInit`, and `advection/`: the base
+  `davofAdvectionScheme` (run-time selected by `advectionScheme`, registered as
+  `davofAdvectionScheme` for the function objects), `davofSweptAdvection`
+  (`advectionScheme davofSwept`: the fork's `isoAdvection` with the plane-clipped loop of
+  the preprint v1, the face-clipping models, the one-donor option and the time-quadrature
+  fluxes removed (PORT-DESIGN section 3), the keys `surface plane | paraboloid |
+  exactSphere` and `flux sweptFaceCells | prism`, the fork's `clippingSurface` and
+  `fluxIntegration` as deprecated aliases, the log prefix `davofSwept:`) and
+  `isoAdvectorScheme` (`advectionScheme isoAdvector`: OpenFOAM's own `isoAdvection`, the
+  comparison arm). The three geometry headers keep their one home in
+  `src/leiaLevelSet/davof` (included by path); that library, the level-set side's state
+  constructor, is `libleiaDavofState` now.
+- `libleiaDavofFunctionObjects` (`src/functionObjects/davof`): areaFractionError,
+  volumeFractionError, reconstructionError, linked into the solver.
+- The apps `davofAdvectorFoam` (from `advectorVoF`), `davofInitFields`,
+  `davofStaticFaceFractions`, `davofPlaneVolumeConsistency`, `davofTestSweptPieces`.
+- The build gate, laptop and Lichtenberg, OpenFOAM v2606 (job 56002310, rc 0): no
+  TwoPhaseFlow include or library in any Make file; `ldd` of the five apps and the two
+  libraries lists OpenFOAM's and leia's libraries only; the DAVOF sources compile without
+  a warning. `EIGEN_INC` is set by `etc/leia-env.sh`.
+- The workflow: the route is the solver token alone (`solver: davofAdvectorFoam`, or
+  `advectorVoF` for the fork through `LEIA_TPF_DIR`); the Snakefile hands `DAVOF_SOLVER`
+  to `materialize.py`, which derives the three tokenised lines (`application`,
+  `advectionScheme`, the function objects' `libs`); `initDavofFields` maps to
+  `davofInitFields` on the leia route; both routes' solve output is `advectorVoF.csv`
+  (the converter's file, which reads both logs). `port_render_diff.py` renders a config
+  on both routes and found nothing but those three lines differing (`port_rotation_leia`,
+  2 cases; `port_plane_leia`, 8 cases).
+- Not a second key: the joint branch's `sweptHexClip` is the same device as `c5c00c5`'s
+  round-4 `sweptAxisPlanes` (`halfSpace::axis`, the one coordinate difference, local and
+  remote cell planes alike), found when extracting it; the port carries `sweptAxisPlanes`.
+- The round-4 keys and the two round-off opt-ins are tokens of the three cases
+  (`TPF_SWEPT_AXIS_PLANES`, `..._TET_CACHE`, `..._POINT_VELOCITY_LAZY`,
+  `..._PRE_TEST_COPLANAR_SIDE`, `..._FACE_UPDATE_FROM_VOLUME`, `..._SLIVER_CLOSED_FORM`,
+  the fork's defaults false); the plane case's `writePrecision` is a token.
+
+### Phase 2, the identity set (PORT-DESIGN 4.1): MEASURED 2026-11-06
+
+Workspace `/work/scratch/tm83tomy/davof/agents/port` (the fork at `c5c00c5` through
+`LEIA_TPF_DIR`, leia `davof-port` 2033532e for the runs), the studies
+`config/davof/port_{rotation,diagonal,plane}_{fork,leia}.yaml`: the reference setting
+with the four round-4 keys on, `writePrecision 17`, serial; the rotation N 32 (20 steps)
+and N 64 (40 steps), the lineDiagXZ diagonal N 32 (18 steps), the plane N 20 and 40 at
+Co 0.5 (8 and 16 steps) for both rows and both arms. Judged by
+`workflow/scripts/port_identity_check.py` (the written fields of the last time after the
+FoamFile header, the function objects' files and the converter's CSV byte for byte, the
+logs' numeric lines after the prefixes and the two renamed keys are normalised):
+
+| study | cases | written fields | function-object files | converter CSV | log numeric lines |
+|---|---|---|---|---|---|
+| rotation N 32 | 1 | 9 fields identical | identical | identical but the 5 wall-clock columns | 212 of 212 identical |
+| rotation N 64 | 1 | 9 fields identical | identical | wall-clock columns and `nAnchorEvals`, `nAnchorEdge` at ONE step (1 vs 0) | 410 of 412; the two lines of that step (below) |
+| diagonal N 32 | 1 | 9 fields identical | identical | wall-clock columns | 192 of 192 |
+| plane N 20, 40, both rows, both arms | 8 | the t = 0 fields only (the case writes no later time, `TPF_WRITE_STEPS`) | identical | wall-clock columns | 91 or 92 / 171 or 172 of as many, all identical |
+
+The written fields are byte-identical in every case (`alpha.water`, `alphaf.water`,
+`areaNormalDavof.water`, `pPlane.water`, the defect and sliver fields, `U`, `phi`), the
+per-step errors of the function objects (areaFractionError's L1, L2, Linf, the face and
+cell counts; volumeFractionError) identical to the last printed digit in all 11 cases.
+
+The one difference, rotation N 64 at one step: the fork's reconstruction line says
+"end-of-interval cells 5 (1 without a plane)", leia's "(0 without a plane)", the
+positioning residual mean differs in the 11th digit (2.1213936337790828e-15 against
+2.1213936338419322e-15), the anchor evaluated 1 cell (edge 1) in the fork and 0 in leia
+(skipped 1702 against 1703), the swept flux clipped 129132 against 129136 triangles;
+every field written after that step is identical. This is PORT-DESIGN 1.2 item 1 in its
+mildest form: one cell whose positioned plane grazes the cell is classified by
+`cutCellPLIC::calcSubCell` as no cut by the fork's threshold (`mag(faceArea) < 10*SMALL`,
+TwoPhaseFlow's) and as a cut with a vanishing polygon by OpenFOAM v2606's
+(`< ROOTVSMALL`); the cut volume is the same either way (the sliver's volume is below
+the residual tolerance), so the plane, the anchor's result and the transported state do
+not change; what changes is whether the cell counts as "without a plane", whether
+`anchorSkipConverged` skips it, and four clipped triangles of a vanishing polygon.
+Tomislav's rule for this case (2026-11-06): v2606's class stays the default; the
+fork's threshold comes as an OPT-IN copy (`davofCutCellPLIC`) to prove that the
+threshold is the whole difference, and the difference is documented as it is here:
+not round-off in the state, which is identical, but a diagnostic count. The opt-in and
+its proof run are the next item.
+
+Open after this measurement: the opt-in proof (above); the plane case's last-time
+fields were not compared (the template writes at `TPF_WRITE_STEPS` only; the per-step
+CSV and log numbers were); the parallel identity (4.2), the ladders (4.3) and the Co 1
+comparison (4.4), whose configs are in place (`port_parN32np*_{fork,leia}`,
+`port_ladder_*_leia`, `port_rotation_leia_noAxis`).
