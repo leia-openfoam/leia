@@ -4630,7 +4630,7 @@ abort at min(alpha) < -0.5 as in the Enright record below. Scored by
 |---|---|---|---|---|---|---|
 | 32 | 1 | 0.49 | 480, ended (E_shape 1.137e-2) | 443, aborted (min alpha -0.742) | bit for bit, 480 ended | same digits |
 | 32 | 1 | 0.98 | 240, ended (1.250e-2) | 225, aborted (-0.797) | bit for bit, 240 ended | same digits |
-| 64 | 8 | 0.50 | 628, aborted (-0.545) | 777, aborted (-1.12) | running at the time of writing (job 56010618) | E_shape 3.0181e-3 / 3.0181e-3, L1(x) 5.870e-2 / 5.854e-2, L1(n) 0.5963 / 0.5938 |
+| 64 | 8 | 0.50 | 628, aborted (-0.545) | 777, aborted (-1.12) | bit for bit, 628 aborted (wall 0.995) | E_shape 3.0181e-3 / 3.0181e-3, L1(x) 5.870e-2 / 5.854e-2, L1(n) 0.5963 / 0.5938 |
 | 64 | 8 | 0.99 | 399, aborted (-1.20) | 138, aborted (-0.774) | bit for bit, 399 aborted | E_shape 3.1633e-3 / 3.1633e-3, L1(x) 6.087e-2 / 6.075e-2 |
 | 128 | 64 | 0.50 | 125, aborted (-1.25) | 216, aborted (-0.750) | bit for bit, 125 aborted | same digits (E_shape 6.9114e-4, L1(x) 7.4270e-3) |
 | 128 | 64 | 0.99 | 106, aborted (-0.508) | 67, aborted (-0.932) | bit for bit, 106 aborted | E_shape 6.908e-4 / 6.906e-4, L1(x) 7.622e-3 / 7.841e-3, excess 8.7e-5 / 9.2e-5 |
@@ -4651,7 +4651,7 @@ and 225; at N 64 OF Co 1 the fork aborts at step 399 and the default route at 13
 OF Co 0.5 at 125 against 216. The abort step of the Enright record below is therefore not a
 property of the method but of the realisation, to be read with the round-off sensitivity
 in mind (the loop amplifies a 1e-16 difference of one step, REPORT 2026-10-24). With
-`grazingCut fork` every finished cell is bit for bit, in serial and on 8 and 64 ranks: the
+`grazingCut fork` every cell (6 of 6) is bit for bit, in serial and on 8 and 64 ranks: the
 threshold of `cutCellPLIC::calcSubCell` is the whole difference between the port and the
 fork on this case too. The plicRDF + isoAdvector arm differs between OpenFOAM v2606's and
 TwoPhaseFlow's classes in the third to fourth digit of L1(x) and L1(n) at N 64 (both OF
@@ -4665,6 +4665,67 @@ rows run with `grazingCut fork` where a result is to be reproduced against the f
 record and with the default otherwise, the key written into the stamp of every case; and
 the Enright rows' abort step is reported with the realisation's seed (the route and the
 threshold) named.
+
+### The standing matrix: the mechanism and the configs (2026-11-07, before the matrix runs)
+
+(1) Recompute only on change: `workflow/scripts/case_stamp.py` (README "Recompute only on
+change: the case stamp"; PORT-DESIGN 5b), accepted on the cluster with
+`config/davof/port_stamp_test.yaml` (two plane cases of seconds; jobs 56013329, 56013443,
+56013459, 56013789, 56014057): a fresh study runs both cases and stores their stamps
+(92e360124a45, c884e6ea4e15; the table carries `stampId`, `stampBinary` 547e31ad011d,
+`stampGrazingCut`, `stampLeia`); the same launch again schedules nothing ("Nothing to be
+done", the guard lists 0 solve jobs); the current stamp files touched schedule nothing
+either (Snakemake 9.23 counts an input as updated only when its checksum differs from the
+one recorded at the job's completion, `dag.py` `update_needrun`; measured); a changed
+dictionary value (TPF_WRITE_PRECISION 16 to 17 through the config) recomputes both cases
+with the reason "dictionaries changed" in the dry run and the guard, new ids (d78a09747c4f,
+757ad626d9f7) and, after the config is restored, the original ids again (the id is
+content-addressed) with the 17-results under `previous/d78a09747c4f/`. Two defects found
+and fixed on the way (both measured on the test): the current stamp's record carried the
+computation time and moved the file at every parse (rescheduling every finished case; the
+file is now rewritten on a changed trigger only, 4f9cdd3d), and an executor job re-parses
+the Snakefile, so two jobs raced on the stamp's temporary file (the driver alone writes,
+ebf5c70c); a re-materialisation archives the result before it rebuilds the directory
+(94b885d4).
+
+(2) The cases. The fork agent's leia track (origin/davof-swept 95952849) merged into
+`davof-port` (a71f887e): `cases/davof/isoShear2D` (the sheared disc of Rider and Kothe
+1998 on the one-cell-thick mesh, T = 8), `isoShear3D` (the sphere in the shear flow of
+Liovic et al. 2006, T = 3), `isoDeformation3D`, `isoRotation3D`, the rows `plicRDF-ccs`
+and `davof-ringArea-vofCutCell`, the positioning per row, the tet mesh class, its runner
+and tables. The pieces of the fork's `davof-isoAdvector` that the shear cases need, taken
+over into leia (face94ab, compiled on the laptop): `davofInit::exactCylinder` (the exact
+state of the disc; `davofInitFields`, `areaFractionError davofMethod exactCylinder`,
+`volumeFractionError exactState auto` picks it for a cylinder on boxes), the explicit
+plane position's Gauss sum closed over the empty faces (davof.C, the consistency app), the
+apps `davofInitShearFlow3D` and `davofInitVortex2D` (the fork's `initShearFlow3D` and
+`initVortex2D`, phi the exact line integral of the stream function in 2D); the Snakefile
+maps the fork's initialiser names to leia's inside a setfields command, the stamp hashes
+every app of it. The iso* templates tokenised for the route (the three lines) and extended
+with the swept-face advection's reference-setting keys and `grazingCut` (the fork route's
+isoAdvection does not read them), so that ONE template per case serves both tracks: on the
+fork route the rendering differs from the fork agent's by the added keys and in nothing
+else, on the leia route by the three lines (checked for isoShear2D and isoShear3D, both
+rows). The repetition token `TPF_REPETITION` (a comment line of controlDict, so every
+repetition is its own case with its own stamp) in the three standing cases.
+
+(3) The configs, `config/davof/standing/<family>_N<N>.yaml`, written by
+`workflow/scripts/make_standing_configs.py` (the matrix in one table): the families
+shear2D (N 64/128/256 on 1/1/8 ranks, the fork agent's decomposition), shear3D (32/64/128
+on 1/8/64) and deformation3D (the Enright agent's `sphereDeformation3D`, 32/64/128 on
+1/8/64); the rows `davof-planeSurf-ringArea` (the swept-face advection, the reference
+setting) and `plicRDF` (v2606's isoAdvector + plicRDF); OF Co 0.2, 0.5, 1; three
+repetitions; `grazingCut fork` for the DAVOF rows; the pre-registration S2-1..5, S3-1..5,
+D-1..4 in the headers. The tables: `workflow/scripts/make_standing_tables.py <family>`
+(one table set per family: the cells, the orders over N, the caption with the stamps,
+the ranks, dt and the steps). The smoke before the matrix: `config/davof/port_shear2D_smoke.yaml`
+(the swept flux on the 2D mesh with empty patches, 17 steps).
+
+Open before the matrix runs (the hand-back): the deformation family's template (the
+Enright agent's `sphereDeformation3D` here, the fork agent's `isoDeformation3D` on its
+track: two templates for one case, to be settled); the fork agent takes the tokenised and
+extended templates (its stamps change by the added keys); the Enright agent's keys
+(decisions 1-3) ported when the coordinator says; the 2D smoke on the cluster.
 
 ## The 3D Enright deformation (2026-11-06)
 

@@ -37,6 +37,10 @@ solvers
         positioning     @!TPF_POSITIONING!@;
         positioningTol  @!TPF_POSITIONING_TOL!@;
         positioningMaxIter @!TPF_POSITIONING_MAX_ITER!@;
+        // the grazing-cut rule of the cell cut (leia 2026-11-06, PORT-DESIGN 1.2):
+        // openfoam (v2606's cutCellPLIC, the default) | fork (the TwoPhaseFlow
+        // threshold 10*SMALL, the opt-in copy); the fork's binary ignores the key
+        grazingCut      @!TPF_GRAZING_CUT!@;
         isoFaceTol      1e-8;
         surfCellTol     1e-8;
         // plicRDF: the initial guess from the previous normals (the library's
@@ -53,6 +57,64 @@ solvers
         sliverTol       @!TPF_SLIVER_TOL!@;
         maxAngle        @!TPF_MAX_ANGLE!@;
         noNormalFallback @!TPF_NO_NORMAL_FALLBACK!@;
+        // The swept-face advection of leia's davofSwept scheme (the reference
+        // setting of fork davof-swept 407f969 with the four round-4 keys on, as
+        // cases/davof/sphereDeformation3D; the tokens' defaults in the parameter
+        // file state it); the fork route's isoAdvection does not read these keys
+        // (2026-11-07, the standing matrix: one template per case on both tracks)
+        faceClipping    @!TPF_FACE_CLIPPING!@;
+        sagittaMinCos   0.2;
+        sagittaMinChord 0.05;
+        sagittaMaxFraction 0.25;
+        sagittaForm     full;
+        tensorSource    ring;
+        writeCurvatureTensor @!TPF_WRITE_TENSOR!@;
+        writeSagittaCorrection @!TPF_WRITE_TENSOR!@;
+        clippingSurface @!TPF_CLIPPING_SURFACE!@;
+        curvedTolRel    @!TPF_CURVED_TOL_REL!@;
+        curvedMaxDepth  @!TPF_CURVED_MAX_DEPTH!@;
+        volumeRule      @!TPF_VOLUME_RULE!@;
+        volumeRuleDebug @!TPF_CURVED_DEBUG!@;
+        kromerBotheMinSplit @!TPF_KB_MIN_SPLIT!@;
+        kromerBotheFan  @!TPF_KB_FAN!@;
+        faceState       @!TPF_FACE_STATE!@;
+        tensorCentroid  @!TPF_TENSOR_CENTROID!@;
+        kromerBothePrismApex @!TPF_KB_PRISM_APEX!@;
+        fitPriorWeight  1e-2;
+        fitTol          1e-10;
+        fitMaxIter      50;
+        fitAnchor       @!TPF_FIT_ANCHOR!@;
+        fitDof          @!TPF_FIT_DOF!@;
+        anchorTolRel    1e-11;
+        anchorMethod    @!TPF_ANCHOR_METHOD!@;
+        anchorSkipConverged @!TPF_ANCHOR_SKIP_CONVERGED!@;
+        sweptPreTest    @!TPF_SWEPT_PRE_TEST!@;
+        sweptStateShortcut @!TPF_SWEPT_STATE_SHORTCUT!@;
+        sweptTraceCache @!TPF_SWEPT_TRACE_CACHE!@;
+        fluxIntegration @!TPF_FLUX_INTEGRATION!@;
+        sweptClassify   @!TPF_SWEPT_CLASSIFY!@;
+        sweptScaleToPhi @!TPF_SWEPT_SCALE!@;
+        sweptVolumeCorrection @!TPF_SWEPT_VOLUME_CORRECTION!@;
+        sweptWispSurface @!TPF_SWEPT_WISP_SURFACE!@;
+        sweptWispTol @!TPF_SWEPT_WISP_TOL!@;
+        sweptWispMatchTol @!TPF_SWEPT_WISP_MATCH_TOL!@;
+        sweptCellsFaceUpdate @!TPF_SWEPT_FACE_UPDATE!@;
+        sweptCoplanar   @!TPF_SWEPT_COPLANAR!@;
+        sweptFaceDump   @!TPF_SWEPT_DUMP!@;
+        planeSource     @!TPF_PLANE_SOURCE!@;
+        sweptFaceLog    @!TPF_SWEPT_FACE_LOG!@;
+        sweptCapSet     @!TPF_SWEPT_CAP_SET!@;
+        sweptConsistencyLog @!TPF_SWEPT_CONSISTENCY_LOG!@;
+        sweptConsistent @!TPF_SWEPT_CONSISTENT!@;
+        // the four bit-for-bit keys of round 4 (fork davof-swept c5c00c5)
+        sweptAxisPlanes @!TPF_SWEPT_AXIS_PLANES!@;
+        sweptTetCache   @!TPF_SWEPT_TET_CACHE!@;
+        sweptPointVelocityLazy @!TPF_SWEPT_POINT_VELOCITY_LAZY!@;
+        sweptPreTestCoplanarSide @!TPF_SWEPT_PRE_TEST_COPLANAR_SIDE!@;
+        defectEvery     10;
+        curvedDebug     @!TPF_CURVED_DEBUG!@;
+        defectLevels    3;
+        writeCurvedFields @!TPF_WRITE_TENSOR!@;
         exactNormal
         {
             functionType cylinder;

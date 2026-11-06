@@ -24,6 +24,7 @@ FoamFile
 // dt = Co h / REFERENCE_SPEED with h = DOMAIN_LENGTH/N_CELLS.
 // the route (DAVOF_SOLVER -> the Snakefile): advectorVoF (the fork) or davofAdvectorFoam (leia)
 application     @!DAVOF_APP!@;
+// the repetition of the standing matrix (TPF_REPETITION): @!TPF_REPETITION!@
 
 startFrom       startTime;
 startTime       0;

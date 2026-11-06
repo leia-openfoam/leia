@@ -25,6 +25,7 @@ FoamFile
 // app of the port takes its place through the same token, next to the
 // config's solver entry that the workflow launches)
 application     @!DAVOF_APP!@;
+// the repetition of the standing matrix (TPF_REPETITION): @!TPF_REPETITION!@
 
 // repetition @!TPF_REPEAT!@ of a timing study (the token is an axis that changes nothing in the case)
 

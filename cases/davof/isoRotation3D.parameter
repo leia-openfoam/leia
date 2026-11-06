@@ -57,4 +57,51 @@ values
     TPF_WRITE_INTERVAL ( 0.25 );
     TPF_AFE_WRITE_INTERVAL ( 0.25 );
     TPF_VFE_WRITE_INTERVAL ( 0.25 );
+    // The swept-face advection of leia's davofSwept scheme (the leia route's DAVOF
+    // rows; the fork route's isoAdvection does not read them), 2026-11-07: the
+    // reference setting of fork davof-swept 407f969 (cases/davof/sphereDeformation3D)
+    // with the four round-4 keys on; the tokens TPF_FACE_CLIPPING, TPF_CLIPPING_SURFACE,
+    // TPF_FIT_ANCHOR, TPF_FIT_DOF and TPF_POSITIONING come from the row (tpf_rows.py)
+    TPF_CURVED_DEBUG ( false );
+    TPF_VOLUME_RULE ( kromerBothe );
+    TPF_KB_MIN_SPLIT ( 1 );
+    TPF_KB_FAN ( auto );
+    TPF_ANCHOR_METHOD ( ccs );
+    // the grazing-cut rule of the cell cut (PORT-DESIGN 1.2 item 1; Tomislav's policy of
+    // 2026-11-07): fork wherever a number is reproduced against the fork's record (the
+    // standing matrix's DAVOF rows against the fork track), openfoam otherwise
+    TPF_GRAZING_CUT ( openfoam );
+    TPF_ANCHOR_SKIP_CONVERGED ( true );
+    TPF_SWEPT_PRE_TEST ( touching );
+    TPF_SWEPT_STATE_SHORTCUT ( false );
+    TPF_SWEPT_TRACE_CACHE ( true );
+    TPF_FLUX_INTEGRATION ( sweptFaceCells );
+    TPF_SWEPT_CLASSIFY ( false );
+    TPF_SWEPT_SCALE ( true );
+    TPF_SWEPT_VOLUME_CORRECTION ( pyramid );
+    TPF_SWEPT_WISP_SURFACE ( matched );
+    TPF_SWEPT_WISP_TOL ( 0 );
+    TPF_SWEPT_WISP_MATCH_TOL ( 1e-9 );
+    TPF_SWEPT_FACE_UPDATE ( pieces );
+    TPF_SWEPT_COPLANAR ( donorSide );
+    TPF_SWEPT_DUMP ( false );
+    TPF_PLANE_SOURCE ( anchor );
+    TPF_SWEPT_FACE_LOG ( false );
+    TPF_SWEPT_CAP_SET ( final );
+    TPF_SWEPT_CONSISTENCY_LOG ( false );
+    TPF_SWEPT_CONSISTENT ( true );
+    TPF_SWEPT_AXIS_PLANES ( true );
+    TPF_SWEPT_TET_CACHE ( true );
+    TPF_SWEPT_POINT_VELOCITY_LAZY ( true );
+    TPF_SWEPT_PRE_TEST_COPLANAR_SIDE ( true );
+    TPF_FACE_STATE ( scalar );
+    TPF_TENSOR_CENTROID ( cut );
+    TPF_KB_PRISM_APEX ( vertexMean );
+    TPF_CURVED_TOL_REL ( 1e-11 );
+    TPF_CURVED_MAX_DEPTH ( 9 );
+    TPF_WRITE_TENSOR ( false );
+    // the timed repetitions of the standing matrix (config/davof/standing): identical
+    // runs numbered 1, 2, 3 (a comment line of controlDict carries the number, so every
+    // repetition is its own case with its own stamp); 1 for a study without them
+    TPF_REPETITION ( 1 );
 }

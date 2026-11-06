@@ -177,4 +177,8 @@ values
     TPF_PROFILING ( false );
 
     TPF_ABORT_INTERFACE_FACTOR ( 100 );
+    // the timed repetitions of the standing matrix (config/davof/standing): identical
+    // runs numbered 1, 2, 3 (a comment line of controlDict carries the number, so every
+    // repetition is its own case with its own stamp); 1 for a study without them
+    TPF_REPETITION ( 1 );
 }
