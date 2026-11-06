@@ -6091,11 +6091,11 @@ writes every 1e-4 s), the rows of the standing matrix: RDF (plicRDF, vofCutCell,
 published row), RDFccs (plicRDF, CCS positioning) and the DAVOF ring + ccs row started from
 the all-gas state (alphaf uniform 0, the nozzle patch at 1). The measurement window is 1 ms
 (2,000 steps), three repetitions of the plicRDF rows; the full runs are 8 ms (16,000 steps).
-`prof/jet-run.sbatch`, `iso/jet/run/coarse/<ROW>_r<REP>`, the table `data/iso/jet_timing.csv`.
+`prof/jet-run.sbatch`, `iso/jet/run/coarse/<ROW>_r<REP>`, the table `data/iso/jet_timing.md`.
 
 - With the earlier (cubic) scheme every row diverged, plicRDF included (RDF full run at
   step 4,063, RDFccs at 3,594, the DAVOF row at 455-623), so the published scheme is the
-  one kept; the cubic rows are in `timing_cubic.csv` as a record only.
+  one kept; the cubic rows are in `data/iso/jet_timing.md` as a record only.
 - The plicRDF rows complete the 8 ms: RDF 17,000 s wall, RDFccs 16,731 s (1.06 s per
   step on 32 ranks), min alpha -2.8e-6 and -3.8e-6, the overshoot 1e-14; the 1 ms windows
   take 1,804-1,926 s (RDF) and 1,787-1,889 s (RDFccs), the repetition spread 6 %.
