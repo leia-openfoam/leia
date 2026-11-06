@@ -379,7 +379,7 @@ def write_if_changed(path, obj, backdate_to=None, compare_key=None):
         except ValueError:
             pass
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    tmp = path + ".tmp"
+    tmp = f"{path}.tmp.{os.getpid()}"   # unique: two processes may write the same stamp
     with open(tmp, "w") as fh:
         fh.write(text)
     os.replace(tmp, path)
@@ -467,6 +467,16 @@ def refresh_study(study_dir, case_name, indices, base_case, variations, spec, cs
         else:
             status[idx] = ("changed", diff_reasons(stored, cur))
     return status
+
+
+def in_job():
+    """True inside an executor job (Snakemake re-parses the Snakefile there to run one
+    rule): the stamps are then read, never written; the driver wrote them. Measured
+    2026-11-06: two jobs refreshing the same case raced on the temporary file."""
+    argv = sys.argv
+    if "--target-jobs" in argv:
+        return True
+    return any(a == "--mode" and i + 1 < len(argv) and argv[i + 1] == "remote" for i, a in enumerate(argv))
 
 
 def summary_line(status):

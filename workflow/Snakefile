@@ -373,7 +373,7 @@ _solve.append(f"{_STAMP_PY} write . --apps {SOLVER} {SETFIELDS_APP} --rc $rc")
 _STAMP_SPEC = dict(solver=SOLVER, setfields_app=SETFIELDS_APP, setfields_args=SETFIELDS_ARGS,
                    solver_cmd=_solver_cmd, post_solve=POST_SOLVE, mesh_cmd=MESH_CMD,
                    np=(NP if PARALLEL else 1), mode=MODE, mesh=MESH)
-STAMPS = case_stamp.refresh_study(
+STAMPS = {} if case_stamp.in_job() else case_stamp.refresh_study(
     STUDY_DIR, CASE_NAME, IDX, BASE_CASE,
     [{**v, "DAVOF_SOLVER": SOLVER} for v in VARIATIONS], _STAMP_SPEC, SOLVER_CSV)
 # The static gate measures kappa_f ACCURACY on an exact signed distance field.
