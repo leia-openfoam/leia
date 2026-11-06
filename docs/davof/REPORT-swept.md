@@ -5761,3 +5761,255 @@ the leia commit that last touched the case template, the study configuration and
 the sha256 over the rendered dictionaries of the prepared cases) are in
 `iso/csv/iso_stamps.csv`; the recompute-on-change rule itself is the port agent's stamp
 mechanism in leia's workflow, which this track will use when it lands.
+
+## The interface-cell threshold tau (2026-11-08)
+
+Tomislav's question (2026-11-08): the DAVOF reconstruction calls a cell an interface cell
+when |m_k| > tau V_k^(2/3), m_k = -sum_f alpha_f S_f (the key `wispTol`, tau = 1e-3 since
+leia's first version). With the alpha condition of the interface-cell rule on (decision 3,
+`interfaceCellRule normalAndAlpha`: a plane only where surfCellTol < alpha_k < 1 -
+surfCellTol), the cells whose face fractions are all equal already get m_k = 0 exactly (the
+all-equal rule of the reconstruction), and the ring normal removes the sliver
+amplification (the direction of a small m_k never positions a plane: the ring sum d_k =
+sum over the point neighbours of m_j does), so the hypothesis was that tau has no physical
+job left: it can go to the round-off level and every cell whose faces and volume both see
+the interface gets a plane, while a large tau excludes cells with liquid and a real patch,
+whose faces then take the neighbours' extended planes, a seed of the fragmentation. The end
+point of the series is tau = 0 exactly (the coordinator, 2026-11-08): the test is then
+m_k != 0 (exactly, after the all-equal rule) and the alpha condition; with it the
+positioning is to divide by no magnitude anywhere: the plane direction is the
+un-normalised d_k and the CCS positioning runs in s = d_k.(x - x_k) over the vertex
+interval. Branch leia `davof-wisptol` (from davof-port 777bcdb4; 3b038b36 the code, the
+configs and the table script, c06d8cee the N 64 and upward configs), workspace
+`/work/scratch/tm83tomy/davof/agents/wisp` (its own clone and binaries, `.my_jobs`).
+
+### How the normal is used in the positioning (the code as found, leia davof-port 777bcdb4)
+
+- The reconstruction (`davof.C`): the explicit plane and the realizability diagnostics are
+  formed along n = m_k/|m_k| (one division; m_k is an interface cell's, so |m_k| > tau
+  V^(2/3) > 0 for tau > 0 and m_k != 0 at tau = 0). The ring model
+  (`davofNormalModel::ringAreaNormals`) returns the RAW sum d_k = sum_j m_j over the
+  point-neighbour stencil (the cell included), not normalised; `select` hands it over as
+  `nUse` unchanged. `positionPlane(celli, n)` divides ONCE, n/|n|, before the CCS kernel
+  (`positioning ccs`, the default), and returns no plane when |n| = 0. `usedNormal_` is
+  n/|n| for the curvature-tensor frame (a direction only). The stored `normal_` is the cut
+  polygon's area vector (its magnitude is the patch area; every consumer that needs a
+  direction divides by that magnitude, a real area, never small by cancellation).
+- `vofCutCell` (`positioning vofCutCell`, OpenFOAM's `surfaceIteratorPLIC`) normalises its
+  by-value copy of the normal internally (`normal.normalise()`): that path always
+  positions along a unit vector whatever is passed.
+- The CCS kernel (`davofCcsPositioning.H`, `ccsPositionPlane`): the vertex extrema are
+  (P - x_k).n, so the bracket is in the units of n; the Hermite root finders work in the
+  unit parameter of the interval (relative tolerances 1e-15 and 1e-14 of the interval), the
+  residual tests in volume (positioningTol V_k; 100 tol for the floor exit): scale-free. ONE
+  test was absolute in distance: the bracket-closed exit `w <= 1e-15 max(h, |lo|, |hi|)`,
+  h = V_k^(1/3). The CUT the kernel calls (`cutCellPLIC::calcSubCell(celli, p, n)`, and the
+  fork copy `davofCutCellPLIC`) puts its plane through the base x_k + p n, i.e. at the
+  level (x - x_k).n = p |n|^2: for a non-unit n the kernel's coordinate and the cut's
+  parameter differ by |n|^2, and the slope of the cut volume along s is -A/|n| (A the cut
+  polygon's area). The cut is NOT scale-free: `cutFacePLIC::calcSubFace` snaps a vertex
+  level |(x - base).n| below SMALL = 1e-15 (absolute) to zero, so a direction with |n| h
+  below about 1e-15 cuts nothing (the cell is full or empty to the cut: no plane), and a
+  direction with |n| h between about 1e-15 and 1e-12 cuts with some vertices snapped
+  (measured below: the kernel then runs to maxIter).
+- The exact-normal control (`exactNormal`) returns grad of the implicit function (unit on
+  a sphere); the swept anchor (`davofSweptAdvectionSurfaces.C`) positions the stored plane
+  along its own area vector by its own volume rule (no m_k, no d_k in it).
+
+The opt-in `positioningDirection areaNormal` of the davof dictionary (3b038b36; the
+default `unit` is bit for bit the former path, its arithmetic untouched): `positionPlane`
+passes n itself and the start s_0 = pPlane_c |n|; the kernel converts to the cut's
+parameter (s/|n|^2) and slope (A/|n|) and scales the bracket-closed test by the interval
+(s_max - s_min) instead of h; refused with `positioning vofCutCell` (the key would be
+inert there); the positionings whose direction is tiny (|d_k| h < 1e-12) are counted per
+step ("tiny directions" in the log line, printed under areaNormal only, so the default's
+log line is the former one). The templates render the key line only when the direction
+is not `unit` (`TPF_POSITIONING_DIRECTION_KEY`, materialize.py), and the reconstruction's
+threshold from its own token `TPF_RECON_WISP_TOL` (the initialisation and the function
+objects keep `TPF_WISP_TOL`, so the initial state and the error measures' cell sets do not
+move with tau); every dictionary of the standing matrix renders byte for byte as before
+(checked against the port tree's case 00009 of `standing_deformation3D_N32_variants`: all
+ten rendered files identical), so no stamp recomputes.
+
+### The test
+
+The 3D deformation (`cases/davof/isoDeformation3D`, the LeVeque / Enright field, T = 3),
+OpenFOAM Co 0.5, the recommended setting (signedTets + scale + normalAndAlpha, grazingCut
+fork, the ring-area normal, ccs positioning), writePrecision 17. N 32 serial (dt 6.25e-3,
+480 steps): one run per tau in {1e-3 (the reference = the standing matrix's recommended
+row), 1e-4, 1e-6, 1e-8, 1e-10, 1e-12, 0} with the fragment log on (`TPF_ENRIGHT_SETTING
+recommendedLog`), the two areaNormal points at tau 1e-3 and 0, the replica of the matrix's
+row (recommended, no log, tau 1e-3), and, added after the series, the two points above the
+reference, 3e-3 and 1e-2. N 64 on 8 ranks (dt 3.125e-3, 960 steps): the reference and the
+best two of the series by the bound (1e-4, 1e-8). Configs
+`config/davof/standing/deformation3D_N32_wisptol{,Area,Replica,Up}.yaml` and
+`deformation3D_N64_wisptol.yaml` (the pre-registration in the headers, each committed
+before its runs), the table `workflow/scripts/davof_wisptol_table.py`, the CSVs
+`docs/davof/data/wisptol/wisptol_deformation3D{,_writes,_steps}.csv` (per run, per write,
+per step), the cases under `studies/davof/standing_deformation3D_N*_wisptol*` of the
+workspace. Scored as the standing matrix: E_shape against the initial sphere with the
+exact reference, L1(x), L1(n), L1(alphaf), min alpha before and after the bounding over
+the run, the excess over 1, the mass deviation, the reconstruction's own interface-cell
+count per step (the log), the FO counts at the writes, the wisp count ("wisps without a
+neighbour surface" of the swept pieces), the interface-cell rule's counter (cells with
+|m_k| above the threshold and alpha outside (eps, 1 - eps)), the fragment log's per-step
+seed counts, the wall clock of the solve.
+
+### Pre-registered (in the config headers, before the runs they govern)
+
+W-0 the replica reproduces the matrix's row bit for bit, and the logged run at tau 1e-3
+reproduces the replica (the log inert). W-1 tau <= 1e-8 keeps the run bounded to the
+reference's level (min alpha after the bounding >= -1e-6) and completes. W-2 the
+interface-cell count rises monotonically as tau falls, by less than 20 % between 1e-3 and
+1e-10 at T/2. W-3 E_shape at T changes by less than 5 % across tau. W-4 the rule's counter
+does not grow as tau falls. W-5 wall clock within 10 % across tau. W-6 at tau 1e-3 the
+areaNormal run agrees with the unit run at the loop's round-off floor (E_shape, L1(x),
+L1(n), L1(alphaf) within 1e-4 relative at every write, the counts within 0.5 %; not bit for
+bit). W-7 the tau -> 0 limit converges (1e-10, 1e-12, 0 within 1 % in the T/2 count and
+E_shape; tau = 0 completes bounded). W-7b at tau 0 the areaNormal run agrees with the unit
+run alike, with zero tiny directions. After the N 32 series, before the N 64 and upward
+runs: W-8 the N 64 reference completes bounded and reproduces the matrix's N 64 Co 0.5
+recommended case bit for bit once that has run. W-9 the N 32 ordering holds at N 64: tau
+1e-4 within 10 x the reference's bound, tau 1e-8 beyond 100 x, E_shape within 1 %. W-10
+tau 3e-3 and 1e-2 keep the bound at the reference's level and E_shape within 1 %, the plane
+count at T/2 falling by less than 10 % / 30 %; the default stays 1e-3 unless a larger tau
+improves the bound by more than 10 x at an E_shape within 1 %.
+
+### Results (2026-11-08; jobs 56028524-26, 56029531, 56029562; the binary of 3b038b36 on OpenFOAM-v2606)
+
+The identity (W-0): the replica of the matrix's recommended row reproduces the port
+tree's case 00009 of `standing_deformation3D_N32_variants` bit for bit (36 of 36 written
+field files identical at the four writes, every result column of the CSV identical; only
+the per-step wall-time columns differ), and the logged run at tau 1e-3 reproduces the
+replica alike: the binary of this branch is the matrix's on the default path, and the
+fragment log records without changing a number. HELD. The matrix's N 64 Co 0.5
+recommended case had not run by 22:30 (the orchestrator 56025356 is still on its Co 0.2
+cases), so the bit-for-bit half of W-8 is pending; its N 32 half (W-0) is the same binary
+on the same path.
+
+N 32, serial, 480 steps; E_shape, L1(x), L1(n), L1(alphaf) at T against the initial
+sphere; the mass deviation at T; min alpha before and after the bounding and the excess
+over 1 after it, over the run; planes = the reconstruction's own interface-cell count,
+step 1 / T/2 / T / max; rule = the interface-cell rule's counter (cells with |m_k| above
+the threshold and alpha outside (1e-8, 1 - 1e-8)), max over the steps and the sum; wisps =
+the swept pieces' "wisps without a neighbour surface", max; kept m = cells positioned
+along their own m_k because the ring sum gave no usable normal, max per step; seeds = the
+fragment log's new face-fraction interface cells with alpha within 1e-6 of 0 or 1 over
+the run, and the first step with one; wall = the solve's wall clock (nodes of one class,
+not the same node):
+
+| tau | E_shape(T) | L1(x) | L1(n) | L1(alphaf) | mass % | min alpha before | min alpha after | excess | planes 1 / T/2 / T / max | rule max (sum) | wisps max | kept m | seeds (first step) | wall s |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1e-2 | 9.309e-3 | 7.458e-2 | 0.6831 | 0.2667 | 1.6e-12 | -1.3e-5 | -1.3e-7 | 6.5e-8 | 409 / 1385 / 610 / 1523 | 3 (114) | 30621 | 0 | 12 (242) | 739 |
+| 3e-3 | 9.316e-3 | 7.664e-2 | 0.7051 | 0.2682 | 1.2e-12 | -1.9e-5 | -1.3e-7 | 1.0e-7 | 410 / 1463 / 656 / 1616 | 3 (133) | 29373 | 0 | 81 (83) | 581 |
+| 1e-3 (reference) | 9.315e-3 | 8.469e-2 | 0.7216 | 0.2624 | 2.5e-12 | -9.3e-5 | -1.3e-7 | 1.0e-7 | 410 / 1527 / 688 / 1688 | 4 (168) | 28910 | 0 | 304 (25) | 572 |
+| 1e-4 | 9.298e-3 | 8.148e-2 | 0.7261 | 0.2644 | 2.0e-12 | -7.9e-4 | -4.5e-7 | 9.6e-8 | 428 / 1613 / 713 / 1765 | 10 (415) | 27609 | 0 | 1881 (3) | 486 |
+| 1e-6 | 9.316e-3 | 8.887e-2 | 0.7640 | 0.2614 | 1.9e-12 | -8.7e-4 | -8.7e-4 | 1.0e-7 | 428 / 1687 / 746 / 1836 | 277 (16342) | 24822 | 2 | 2949 (2) | 481 |
+| 1e-8 | 9.316e-3 | 9.248e-2 | 0.8047 | 0.2585 | 2.0e-12 | -4.5e-3 | -3.5e-5 | 1.0e-7 | 428 / 1686 / 782 / 1834 | 186 (12817) | 26019 | 0 | 3086 (2) | 462 |
+| 1e-10 | 9.316e-3 | 7.730e-2 | 0.7328 | 0.2715 | 1.2e-12 | -1.7e-3 | -1.7e-3 | 1.0e-7 | 428 / 1686 / 705 / 1834 | 8521 (425654) | 23959 | 3 | 2988 (2) | 451 |
+| 1e-12 | 9.316e-3 | 9.122e-2 | 0.7952 | 0.2585 | 1.8e-12 | -4.0e-3 | -4.0e-3 | 1.0e-7 | 428 / 1685 / 770 / 1834 | 16578 (2006089) | 24945 | 2 | 3613 (2) | 465 |
+| 0 | 9.312e-3 | 8.098e-2 | 0.7456 | 0.2616 | -4.7e-13 | -4.2e-2 | -4.9e-2 | 1.0e-7 | 428 / 1678 / 731 / 1830 | 31936 (14138903) | 21190 | 2 | 3168 (2) | 447 |
+| 1e-3, areaNormal | 9.315e-3 | 9.303e-2 | 0.7617 | 0.2557 | 2.5e-12 | -2.5e-5 | -2.5e-7 | 1.0e-7 | 410 / 1527 / 691 / 1688 | 4 (150) | 28814 | 0 | 310 (25) | 559 |
+| 0, areaNormal | 9.312e-3 | 8.146e-2 | 0.7724 | 0.2484 | 2.1e-13 | -1.9e-2 | -1.9e-2 | 1.0e-7 | 428 / 1678 / 788 / 1830 | 31947 (14133431) | 20371 | 2 | 3281 (2) | 446 |
+
+Every run completed. At the writes before T the unit runs 1e-6 .. 1e-12 are one run to
+the printed digits (E_shape 2.80984e-2 / 1.93724e-2 / 2.82739e-2 at t = 0.75 / 1.5 / 2.25,
+L1(alphaf) 0.371413 / 0.27165 / 0.36946, the planes 1059 / 1686 / 1002), 1e-3 and 1e-4
+differ from them in the fourth digit of L1(alphaf); the series separates in the last
+quarter (t > 2.4), where the sheet is thinnest and returns: the first step with min alpha
+after the bounding below -1e-6 is 416 (1e-6, 1e-8), 400 (1e-10), 413 (1e-12), 390 (0),
+none at 1e-4 and above. The second-layer bounding grows with falling tau over steps
+385-425 (0-74 cells per step at 1e-3, 38-279 at 1e-8, 184-484 at 0) and at tau 0 no
+longer restores the bound from step 390 on (before -8.3e-4, after -8.3e-4). The seeds'
+count is definitional (the log's test uses the threshold itself): of the first 200 seeds
+of each run, those with |m_k| above the reference's 1e-3 V^(2/3) are 200 at 1e-3 and
+5-15 at 1e-4 .. 1e-10, so the extra seeds are the small-|m_k| cells the reference does not
+count; the rule's counter is definitional alike (at tau 0 it is every dry or full cell
+with a non-zero face fraction, 31,936 of 32,768). The measures that are not definitional:
+the bound, E_shape, L1, the planes (+10 % at T/2 from 1e-3 to 1e-6, -4 % at 3e-3, -9 % at
+1e-2), the wall clock (falling with tau: 739 s at 1e-2, 572 at 1e-3, 447 at 0; the wisp
+count, which the matched-surface search handles, falls with it, 30,621 to 21,190, a
+reading not a measurement).
+
+N 64, 8 ranks, 960 steps, the same columns:
+
+| tau | E_shape(T) | L1(x) | L1(n) | L1(alphaf) | mass % | min alpha before | min alpha after | excess | planes 1 / T/2 / T / max | rule max (sum) | wisps max | kept m | seeds (first step) | wall s |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1e-3 (reference) | 3.883e-3 | 5.459e-2 | 0.6090 | 0.2432 | 1.3e-12 | -4.3e-6 | -9.7e-8 | 6.3e-8 | 1694 / 6504 / 2601 / 6845 | 4 (216) | 165227 | 0 | 1186 (45) | 1301 |
+| 1e-4 | 3.883e-3 | 5.726e-2 | 0.6216 | 0.2418 | 2.8e-13 | -5.8e-4 | -2.9e-4 | 6.3e-8 | 1724 / 6642 / 2662 / 7058 | 24 (1685) | 125423 | 0 | 12197 (1) | 1422 |
+| 1e-8 | 3.883e-3 | 6.150e-2 | 0.6452 | 0.2415 | 1.3e-12 | -5.0e-2 | -5.0e-2 | 6.3e-8 | 1730 / 6692 / 2772 / 7154 | 8131 (584780) | 110184 | 7 | 22053 (1) | 1131 |
+
+E_shape identical to four digits; the bound: the reference never leaves -1e-7 (worst step
+12), tau 1e-4 leaves -1e-6 at step 745 and reaches -2.9e-4 (3000 x the reference's), tau
+1e-8 leaves it at step 765 and reaches -5.0e-2 at step 904; min alpha after the bounding
+at the writes -2.8e-11 / -1.8e-11 / -1.2e-11 / -2.6e-8 (1e-3) against -2.2e-6 and -3.0e-4
+at T for 1e-4 and 1e-8. The wall clock on 8 ranks 1301 / 1422 / 1131 s (the N 32 trend
+not reproduced at 1e-4).
+
+The areaNormal path (W-6, W-7b): at tau 1e-3 the unit and areaNormal runs agree at the
+round-off floor for 240 steps (min alpha before the bounding per step within 1e-11 .. 1e-9
+relative, the plane counts identical until step 313; E_shape at t = 0.75 / 1.5 / 2.25 and
+L1(alphaf) there identical to six digits) and separate afterwards (step 480: min alpha
+before the bounding 11 % apart, L1(x) 9 %, L1(n) 5 %, L1(alphaf) 2.6 %, E_shape(T)
+9.3147e-3 both); one tiny direction in the run (step 452), no maxIter exit. The direction
+is the same vector: the separation is the loop's amplification of round-off through its
+non-smooth operations (the bounding decisions, the wisp matching), which on this flow
+reaches percent in the end-state norms while E_shape stays. At tau 0 the two agree alike
+for 100 steps (1e-11 .. 1e-8), the plane counts differ from step 8 by a cell or two, and
+the areaNormal run meets 200 tiny directions over 118 steps from step 291 on (up to 9 per
+step) and 529 maxIter exits of the kernel (35 steps with maxIter exits without a tiny
+direction): the cut's absolute snapping (SMALL) acts on directions with |d_k| h below
+about 1e-12 (the sheet's cancelling rings), where the unit path positions along
+d_k/|d_k| with levels of order h and sees nothing. Its end state: bound -1.9e-2 (unit
+-4.9e-2), E_shape 9.312e-3 (both), L1(x) 0.0815 against 0.0810.
+
+### Verdicts
+
+- W-0 HELD (bit for bit, N 32).
+- W-1 FALSIFIED: every tau <= 1e-8 completes but loses the bound (-3.5e-5 at 1e-8, -1.7e-3,
+  -4.0e-3, -4.9e-2); tau 1e-4 keeps it at N 32 (-4.5e-7) and loses it at N 64 (-2.9e-4).
+- W-2 FALSIFIED in the letter, held in the substance: the planes at T/2 rise 1527 (1e-3),
+  1613, 1687, 1686, 1686, 1685, 1678 (0): +10.4 % from 1e-3 to 1e-10 (within the 20 %),
+  monotone from 1e-2 (1385) to 1e-6 and flat within 0.5 % below (the small decrease
+  1687 -> 1678 is the round-off separation of the runs, not a trend).
+- W-3 HELD: E_shape at T within 0.19 % over nine tau at N 32 (9.298e-3 .. 9.316e-3), within
+  0.01 % at N 64.
+- W-4 FALSIFIED by its own definition: the counter is the number of dry or full cells with
+  |m_k| above the threshold, which the threshold itself sets (4 at 1e-3, 31,936 at 0).
+- W-5 FALSIFIED in the favourable direction at N 32 (the wall clock falls with tau: 739 s
+  at 1e-2, 572 at 1e-3, 486 at 1e-4, 447 at 0) and not reproduced at N 64 on 8 ranks (1301
+  / 1422 / 1131).
+- W-6 HELD for the first three writes (identical to six digits) and FALSIFIED at T (up to
+  9 % in L1(x)): the same direction to round-off, separated late by the loop's
+  amplification. W-7b FALSIFIED: 200 tiny directions and 529 maxIter exits at tau 0.
+- W-7 FALSIFIED: the limit converges in the planes (within 0.5 %) and in E_shape (0.04 %)
+  but not in the bound (-1.7e-3, -4.0e-3, -4.9e-2).
+- W-8 half HELD (the N 64 reference bounded to -9.7e-8), half pending (the matrix's N 64
+  Co 0.5 case has not run).
+- W-9 FALSIFIED: tau 1e-4 loses the bound at N 64 by 3000 x, not within 10 x; the lower edge
+  of the admissible band moves up with the resolution.
+- W-10 HELD: 3e-3 and 1e-2 keep the reference's bound (-1.3e-7 both), E_shape within 0.1 %,
+  the planes at T/2 -4 % and -9 %, the seeds 81 and 12 (against 304), the wall clock +2 %
+  and +29 %. No larger tau improves the bound by 10 x: the default stays.
+
+### What tau does, bounded by this evidence
+
+The hypothesis is falsified: tau has one job, the bound. With the alpha condition on, a
+cell whose faces carry a patch below tau V_k^(2/3) but whose alpha is inside (eps, 1 -
+eps) gets a plane positioned by alpha along the ring's direction when tau falls; such
+planes (10 % more at T/2) feed the face update and the second-layer bounding of the thin
+returning sheet until the bounding can no longer restore the bound, from step 390 of 480
+at N 32 (tau 0) and from step 745 of 960 at N 64 (tau 1e-4), while E_shape, the mass and
+the first three writes do not move. The admissible band on the deformation is [1e-3,
+1e-2] at both resolutions; 1e-4 passes at N 32 and fails at N 64, so 1e-3 is the lowest
+value shown safe. Not shown: which cells lose the bound (no per-cell trace of the
+bounding failure was taken), whether the band holds on the 3D shear and at Co 1, and the
+cause of the wall-clock trend (a reading from the wisp count).
+
+Recommendation for the default: keep tau = 1e-3. The point 3e-3 gives the same bound and
+E_shape with 4 x fewer seeds and 4 % fewer planes at +2 % wall clock on this one case and
+is the candidate if the standing matrix's shear rows ask for a larger threshold; a change
+of the default is Tomislav's call after the matrix. The areaNormal path is kept as the
+opt-in it is (no division by a magnitude in the positioning; bit for bit the former path
+when off): it changes nothing where the unit path is sound and fails through the cut's
+absolute snapping exactly where d_k is tiny, so it is not a route to tau = 0.
