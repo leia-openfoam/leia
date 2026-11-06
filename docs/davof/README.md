@@ -138,3 +138,39 @@ the liquid. Library: `src/leiaLevelSet/davof` (`libleiaDavofState`). Gates:
   `davof-cellLocal` ABORTED at step 111 (interface cells 4171 of initial
   416; L1(alphaf) 2.0e-1 there), recorded as `status diverged`. The ringArea
   and exact values reproduce the fork's laptop table to every printed digit.
+
+## The ring normal's stencil: the opt-in keys of `normalModel ringArea` (2026-11-08)
+
+The production normal of the swept-face advection is the one-ring area normal,
+`d_k = sum_{j in R(k)} m_j`, `n_k = d_k/|d_k|`, the sum over the point-neighbour
+ring of the cell (`src/davof/normalModels/ringAreaNormal.H`). Its stencil
+variants are keys of the `ringArea` model in the davof dictionary of
+`fvSolution`; every key is opt-in, and at the defaults the model runs the
+production path bit for bit (the production variant of every study before this
+date renders no key at all). In the studies the one word `TPF_NORMAL_STENCIL`
+(`workflow/scripts/tpf_rows.py`, `NORMAL_STENCILS`) renders the keys as the
+block `TPF_NORMAL_STENCIL_KEYS` after the `noNormalFallback` line of the four
+swept-face templates (plane and sphere translation, rotation, deformation);
+`production` renders an empty block.
+
+| key | values | default | variant word |
+|---|---|---|---|
+| `ringStencil` | `one`, `two` (the union of the rings of the ring's cells, each cell once; the rings of ring cells on other processors are requested from their owners) | `one` | `twoRings` |
+| `ringKernel`, `ringKernelSupport` | `none`, `gaussian` (`exp(-q^2)`, cut at the support), `wendland` (the C2 function `(1 - q/s)^4 (1 + 4 q/s)`); `q = |x_j - x_k|/h_k` with the cell centres, `h_k = V_k^(1/3)`, `s` the support in `h_k` | `none`, `2` | `kernelGaussian`, `kernelWendland` |
+| `ringAngleFilter` | the angle in degrees beyond which a ring cell's own normal is dropped from the sum (0: off) | `0` | `angle30`, `angle60` |
+| `ringPlaneFit`, `ringPlaneFitTol` | `none`, `mean`, `own`: the normal of the weighted least-squares plane through the ring's patch centroids (the positioned planes' centroids, two positioning passes), the eigenvector of the smallest eigenvalue of the weighted covariance with the area weights, the sign from `d_k`; `mean` about the weighted centroid, `own` about the cell's own centroid with the weights corrected so that `sum_j w'_j (x_j - x_k) = 0`; the tolerance of the eigenvalue tests (collinear or indefinite: `d_k`, a fit fallback) | `none`, `1e-10` | `planeFitMean`, `planeFitOwn` |
+| `normalModel ringFit` | the ring quadric of the preprint (`weight area; alignTol 0.2; minCells 6;`) | - | `ringQuadric` |
+
+Citations: the Gaussian kernel R. A. Gingold, J. J. Monaghan, Mon. Not. R.
+Astron. Soc. 181 (1977) 375-389, doi:10.1093/mnras/181.3.375; the Wendland
+function H. Wendland, Adv. Comput. Math. 4 (1995) 389-396,
+doi:10.1007/BF02123482; the principal-component plane K. Pearson, Philos. Mag.
+2 (1901) 559-572, doi:10.1080/14786440109462720, and H. Hoppe, T. DeRose, T.
+Duchamp, J. McDonald, W. Stuetzle, Computer Graphics 26 (1992) 71-78,
+doi:10.1145/133994.134011; the moment-corrected weights W. K. Liu, S. Jun, Y. F.
+Zhang, Int. J. Numer. Methods Fluids 20 (1995) 1081-1106,
+doi:10.1002/fld.1650200824. The studies: `config/davof/stencil_*.yaml`
+(`make_stencil_configs.py`, the predictions in the headers), the tables
+`davof_stencil_tables.py`, the perturbation of the face fractions
+`davof_perturb_alphaf.py`; the record in `REPORT-swept.md`, "The ring normal's
+stencil (2026-11-08)".

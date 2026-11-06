@@ -108,4 +108,10 @@ values
     // the setting of the Enright agent's decisions 1-3 (tpf_rows.ENRIGHT_SETTINGS,
     // 2026-11-07): reference = closure, no bounded face fractions, normalOnly
     TPF_ENRIGHT_SETTING ( reference );
+
+    // the ring normal's stencil variant (2026-11-08, tpf_rows.NORMAL_STENCILS):
+    // production (the one-ring area normal, the block empty) | twoRings |
+    // kernelGaussian | kernelWendland | angle30 | angle60 | planeFitMean |
+    // planeFitOwn | ringQuadric
+    TPF_NORMAL_STENCIL ( production );
 }

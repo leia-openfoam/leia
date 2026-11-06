@@ -56,7 +56,7 @@ solvers
         applyTo         @!TPF_APPLY_TO!@;
         sliverTol       @!TPF_SLIVER_TOL!@;
         maxAngle        @!TPF_MAX_ANGLE!@;
-        noNormalFallback @!TPF_NO_NORMAL_FALLBACK!@;
+        noNormalFallback @!TPF_NO_NORMAL_FALLBACK!@;@!TPF_NORMAL_STENCIL_KEYS!@
         // The swept-face advection of leia's davofSwept scheme (the reference
         // setting of fork davof-swept 407f969 with the four round-4 keys on, as
         // cases/davof/sphereDeformation3D; the tokens' defaults in the parameter

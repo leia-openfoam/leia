@@ -367,6 +367,55 @@ def enright_setting_tokens(name):
     return out
 
 
+
+# The ring normal's stencil variants (2026-11-08, Tomislav's task: the stability and
+# the accuracy of the ring normal's stencil; src/davof/normalModels/ringAreaNormal.H):
+# one word TPF_NORMAL_STENCIL -> the block TPF_NORMAL_STENCIL_KEYS appended to the
+# noNormalFallback line of the templates, EMPTY for production (every dictionary
+# rendered before stays byte for byte, the stamps recompute nothing) and the opt-in
+# keys of the ringArea model otherwise; ringQuadric selects the ring quadric model of
+# the preprint (normalModel ringFit, the later entry of the dictionary replaces the
+# row's). The rows keep normalModel ringArea (davof-planeSurf-ringArea).
+NORMAL_STENCILS = OrderedDict([
+    ("production",     ""),
+    ("twoRings",       "ringStencil two;"),
+    ("kernelGaussian", "ringKernel gaussian; ringKernelSupport 2;"),
+    ("kernelWendland", "ringKernel wendland; ringKernelSupport 2;"),
+    ("angle30",        "ringAngleFilter 30;"),
+    ("angle60",        "ringAngleFilter 60;"),
+    ("planeFitMean",   "ringPlaneFit mean; ringPlaneFitTol 1e-10;"),
+    ("planeFitOwn",    "ringPlaneFit own; ringPlaneFitTol 1e-10;"),
+    ("ringQuadric",    "normalModel ringFit; weight area; alignTol 0.2; minCells 6;"),
+])
+NORMAL_STENCIL_LABELS = OrderedDict([
+    ("production",     "one ring, area weights (production)"),
+    ("twoRings",       "two rings, area weights"),
+    ("kernelGaussian", "one ring, Gaussian kernel"),
+    ("kernelWendland", "one ring, Wendland C2 kernel"),
+    ("angle30",        "one ring, angle filter 30 deg"),
+    ("angle60",        "one ring, angle filter 60 deg"),
+    ("planeFitMean",   "plane fit through the patch centroids, weighted mean"),
+    ("planeFitOwn",    "plane fit through the patch centroids, centred on the cell"),
+    ("ringQuadric",    "ring quadric (ringFit)"),
+])
+
+
+def normal_stencil_tokens(name):
+    """TPF_NORMAL_STENCIL_KEYS of a stencil variant: empty for production, the keys of
+    NORMAL_STENCILS as one commented block otherwise. RuntimeError on an unknown name."""
+    if name not in NORMAL_STENCILS:
+        raise RuntimeError(f"[tpf_rows] unknown TPF_NORMAL_STENCIL {name!r}; "
+                           f"known: {list(NORMAL_STENCILS)}")
+    keys = NORMAL_STENCILS[name]
+    if not keys:
+        return {"TPF_NORMAL_STENCIL_KEYS": ""}
+    lines = [k.strip() + ";" for k in keys.split(";") if k.strip()]
+    return {"TPF_NORMAL_STENCIL_KEYS":
+            "\n        // the ring normal's stencil variant " + name
+            + " (2026-11-08, tpf_rows.NORMAL_STENCILS)"
+            + "".join("\n        " + l for l in lines)}
+
+
 if __name__ == "__main__":
     for name in ROWS:
         print(f"{name:22s} {row_tokens(name)}")

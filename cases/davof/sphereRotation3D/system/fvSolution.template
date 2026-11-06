@@ -54,7 +54,7 @@ solvers
         applyTo         @!TPF_APPLY_TO!@;
         sliverTol       @!TPF_SLIVER_TOL!@;
         maxAngle        @!TPF_MAX_ANGLE!@;
-        noNormalFallback @!TPF_NO_NORMAL_FALLBACK!@;
+        noNormalFallback @!TPF_NO_NORMAL_FALLBACK!@;@!TPF_NORMAL_STENCIL_KEYS!@
         // davof: the face-clipping model of the face update (fork
         // davofFaceClipping.H, 2026-10-15): plane (the plane clipping of the
         // moved PLIC plane, the default) or planeSagitta (plus the

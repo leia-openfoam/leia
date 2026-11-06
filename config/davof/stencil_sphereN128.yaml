@@ -1,0 +1,104 @@
+# THE RING NORMAL'S STENCIL (2026-11-08; workflow/scripts/make_stencil_configs.py writes this
+# file, edit the script). The normal of cell k is the ring area normal d_k = sum over the ring
+# R(k) of m_j, m_j = -sum_f alpha_f S_f (|m_j| = |Sigma_j| for a plane), n_k = d_k/|d_k|: the
+# area-weighted average of the ring's unit normals, stable because the division is by the
+# ring's total patch area (the own normal m_k/|m_k| grew 1.16 per step on the translated
+# plane, tilt diagnostic of 2026-10-26). The variants, one word TPF_NORMAL_STENCIL
+# (tpf_rows.NORMAL_STENCILS, the opt-in keys of normalModel ringArea; production = the block
+# empty, bit for bit the model of every study before): twoRings (the union of the rings of
+# the ring's cells, area weights), kernelGaussian / kernelWendland (one ring, w_j = |Sigma_j|
+# K(|x_j - x_k|/h_k) with the cell centres; Gaussian exp(-q^2) cut at 2 h, Gingold and
+# Monaghan 1977 doi:10.1093/mnras/181.3.375; Wendland C2 (1 - q/2)^4 (1 + 2 q), support 2 h,
+# Wendland 1995 doi:10.1007/BF02123482), angle30 / angle60 (a ring cell whose own normal
+# deviates from d_k by more than theta_max is dropped), planeFitMean / planeFitOwn (the
+# weighted least-squares plane through the ring's patch centroids, the eigenvector of the
+# smallest eigenvalue of the weighted covariance, Pearson 1901
+# doi:10.1080/14786440109462720, Hoppe et al. 1992 doi:10.1145/133994.134011; own: centred
+# on the cell's centroid with the moment-corrected weights sum_j w'_j (x_j - x_k) = 0, Liu,
+# Jun, Zhang 1995 doi:10.1002/fld.1650200824), ringQuadric (the ring quadric of the
+# preprint, normalModel ringFit). Every variant on the swept-face advection in the
+# recommended setting (TPF_ENRIGHT_SETTING recommended: signedTets + scale + normalAndAlpha)
+# with grazingCut fork (the identity policy of 2026-11-07), the four bit-for-bit keys of
+# round 4, write precision 17.
+# TEST 2, THE ACCURACY ON THE TRANSLATED SPHERE (cases/davof/sphereTranslation3D along x,
+# exactSphere state, R 0.15, one period L = 1 at Co 0.2 = N / 0.2 steps) at N 128 on 64
+# rank(s) (parallel), every variant, three repetitions (TPF_REPEAT, the timing): 27 cases.
+# Read-out at the end: L1(n) against the exact normal (reconstructionError at the end), its
+# least-squares order over N 32 / 64 / 128 (the three studies stencil_sphereN32/64/128
+# together, docs/davof tables by davof_stencil_tables.py), L1(alphaf), L1(x), E_shape
+# (the fixed one against the exact sphere), min alpha, the excess over 1, the mass
+# deviation, the interface-cell count, and the wall clock at equal ranks (the solve's
+# total, three repetitions, median and spread; the per-step median from the log; nodes
+# shared, not exclusive: the spread is reported with it).
+#
+# PRE-REGISTERED (2026-11-08, before any run; the record: the ring normal's L1(n) order 1.00
+# in the paraboloid loop, 1.35 per period for the fractions; the ring quadric 1.52 at
+# 1.6e-4, fifty times below plicRDF's; in the swept loop the ring row's L1(n) order is not
+# on record):
+# A-1 (the quadric is the accurate stencil): ringQuadric has the lowest L1(n) at every N
+#     and an order >= 1.5 over 32 -> 128; production's order lies in [0.8, 1.2].
+#     Falsified by ringQuadric above production at any N or an order below 1.2.
+# A-2 (the area-weighted stencils are first order, whatever their width): twoRings,
+#     kernelGaussian and kernelWendland have L1(n) orders in [0.8, 1.2] and end values
+#     within a factor 2 of production's (the error is the asymmetry of the patch about the
+#     cell, O(h/R), which a wider or a sharper stencil moves but does not remove).
+#     Falsified by an order outside [0.6, 1.4] or a factor above 3.
+# A-3 (the angle filters are inert on a resolved sphere): the normals of neighbouring
+#     cells differ by about h/R (12 degrees at N 32, 3 at N 128), below both thresholds,
+#     so angle30 and angle60 drop no cell and reproduce production bit for bit at every
+#     N. Falsified by any dropped cell or any digit.
+# A-4 (the centred plane fit): planeFitOwn's L1(n) order is >= 1.5 (the centring condition
+#     cancels the first-order asymmetry of the patch about x_k; the eigenvector then sees
+#     the second-order curvature term only), planeFitMean's stays in [0.8, 1.2]. This is
+#     the hypothesis behind the centring condition; falsified by planeFitOwn's order
+#     below 1.3.
+# A-5 (cost): the per-step median of every one-ring variant is within 1.1 x production's,
+#     twoRings within 1.3 x, planeFitMean / planeFitOwn / ringQuadric within 1.5 x (the
+#     two positioning passes). Falsified by a ratio above 2 for any variant.
+# A-6 (robustness): every variant completes every case bounded to 1e-9 (min alpha
+#     >= -1e-9, excess <= 1e-9) and conserves the volume to 1e-10 %.
+#
+#   sbatch --parsable -J leia-davof-stencil_sphereN128 --export=ALL,STUDY=davof/stencil_sphereN128,PROFILE=profiles/slurm-small run-studies.sbatch
+study_name: stencil_sphereN128
+studies_dir: studies/davof
+case: davof/sphereTranslation3D
+mesh: hex
+mode: parallel
+np: 64
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [128]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_REPEAT: [1, 2, 3]
+  TPF_NORMAL_STENCIL: [production, twoRings, kernelGaussian, kernelWendland, angle30, angle60, planeFitMean, planeFitOwn, ringQuadric]
+  TPF_ENRIGHT_SETTING: [recommended]
+  TPF_GRAZING_CUT: [fork]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_AFE_CONSISTENCY: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

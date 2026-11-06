@@ -29,16 +29,83 @@ Class
 Description
     The area-weighted average of the ring's DAVOF normals,
 
-        n_c = sum_k m_k / |sum_k m_k|,
+        n_k = d_k / |d_k|,   d_k = sum_j m_j,
 
-    the sum over the point-neighbour ring of the cell (the cells sharing at
-    least one point with it, the cell included; zoneDistribute's stencil,
-    across processor boundaries), where only the interface cells
-    contribute (m_k = 0 otherwise). This is the DAVOF normal of the union
-    of the ring's cells: exact for a plane on any mesh, no division by a
-    small area. Default applyTo all. The computation is the base class's
+    the sum over the point-neighbour ring R(k) of the cell (the cells sharing
+    at least one point with it, the cell included; zoneDistribute's stencil,
+    across processor boundaries), where only the interface cells contribute
+    (m_j = 0 otherwise). This is the DAVOF normal of the union of the ring's
+    cells: exact for a plane on any mesh, no division by a small area (the
+    division is by the ring's total patch area |d_k|, the mechanism of its
+    stability against the own normal m_k/|m_k|; see the tilt diagnostic of
+    2026-10-26). Default applyTo all. The computation is the base class's
     davofNormalModel::ringAreaNormals(), shared with the noNormalFallback
     ringArea rule of the other models.
+
+    The stencil variants (2026-11-08, Tomislav's task: the stability and the
+    accuracy of the ring normal's stencil). Every key is opt-in; at the
+    defaults the model runs the production path above, bit for bit:
+
+        ringStencil     one;       // one | two: the point-neighbour ring, or
+                                   // the union of the rings of the ring's
+                                   // cells (every cell within two point
+                                   // adjacencies, each counted once; the
+                                   // rings of ring cells on other processors
+                                   // are requested from their owners)
+        ringKernel      none;      // none | gaussian | wendland: the weight
+                                   // w_j = |Sigma_j| K(|x_j - x_k| / h_k) with
+                                   // the cell centres x and h_k = V_k^(1/3);
+                                   // d_k = sum_j K_j m_j. gaussian: K(q) =
+                                   // exp(-q^2) cut off at ringKernelSupport
+                                   // (R. A. Gingold, J. J. Monaghan, Mon. Not.
+                                   // R. Astron. Soc. 181 (1977) 375-389,
+                                   // doi:10.1093/mnras/181.3.375); wendland:
+                                   // the C2 function of minimal degree,
+                                   // K(q) = (1 - q/s)^4 (1 + 4 q/s) for q < s
+                                   // (H. Wendland, Adv. Comput. Math. 4 (1995)
+                                   // 389-396, doi:10.1007/BF02123482)
+        ringKernelSupport 2;       // s, in units of h_k
+        ringAngleFilter 0;         // theta_max in degrees (0: off): a ring
+                                   // cell whose own normal m_j deviates from
+                                   // the ring sum d_k by more than theta_max
+                                   // is dropped and the sum recomputed; a
+                                   // cell whose filtered sum vanishes keeps
+                                   // d_k (counted)
+        ringPlaneFit    none;      // none | mean | own: the normal of the
+                                   // weighted least-squares plane through the
+                                   // ring's patch centroids x_j (the
+                                   // positioned planes' centroids, the first
+                                   // pass) with the area weights w_j =
+                                   // |Sigma_j|: the eigenvector of the
+                                   // smallest eigenvalue of the weighted
+                                   // covariance sum_j w_j (x_j - c)(x_j - c)^T
+                                   // (the principal-component plane, K.
+                                   // Pearson, Philos. Mag. 2 (1901) 559-572,
+                                   // doi:10.1080/14786440109462720; H. Hoppe,
+                                   // T. DeRose, T. Duchamp, J. McDonald, W.
+                                   // Stuetzle, Computer Graphics 26 (1992)
+                                   // 71-78, doi:10.1145/133994.134011), the
+                                   // sign from d_k. mean: c the weighted
+                                   // centroid. own: c = x_k, the cell's own
+                                   // patch centroid, with the weights
+                                   // corrected to w'_j = w_j (1 + lambda .
+                                   // (x_j - x_k)) so that the centring
+                                   // condition sum_j w'_j (x_j - x_k) = 0
+                                   // holds (the linear moment correction of
+                                   // the reproducing kernel particle method,
+                                   // W. K. Liu, S. Jun, Y. F. Zhang, Int. J.
+                                   // Numer. Methods Fluids 20 (1995)
+                                   // 1081-1106, doi:10.1002/fld.1650200824).
+                                   // Fewer than three usable centroids, a
+                                   // collinear set (second eigenvalue below
+                                   // ringPlaneFitTol times the trace) or an
+                                   // indefinite covariance: d_k, counted as
+                                   // a fit fallback
+        ringPlaneFitTol 1e-10;
+
+    The variants compose (a kernel and an angle filter on one or two rings;
+    the plane fit reads the ring of ringStencil); the studies of 2026-11-08
+    test them one at a time.
 
 SourceFiles
     ringAreaNormal.C
@@ -49,6 +116,7 @@ SourceFiles
 #define davofNormalModels_ringArea_H
 
 #include "davofNormalModel.H"
+#include "Map.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -78,11 +146,53 @@ protected:
         //  the next fill; zero elsewhere)
         labelList filled_;
 
+        //- The stencil variants (2026-11-08); at the defaults the
+        //  production path runs unchanged
+        word stencil_;
+        word kernel_;
+        scalar kernelSupport_;
+        scalar angleFilter_;
+        scalar cosAngleFilter_;
+        word planeFit_;
+        scalar planeFitTol_;
+
+        //- Counts of the last variant call (reduced): cells dropped by the
+        //  angle filter, cells whose filtered sum vanished (kept d_k),
+        //  remote ring cells whose rings were requested (two rings)
+        label nAngleDropped_;
+        label nAngleKept_;
+        label nRemoteRings_;
+
 
     // Protected Member Functions
 
         //- Fill mInterface_ from the scheme's area normal
         void fillInterfaceNormals();
+
+        //- Whether every stencil key is at its default
+        bool production() const;
+
+        //- The kernel value at q = r/h (1 for none)
+        scalar kernelValue(const scalar q) const;
+
+        //- The ring of every interface cell as a list of (global index,
+        //  m) pairs: ringStencil one (the stencil) or two (the union of the
+        //  stencils of the stencil's cells, across processors); the
+        //  exchange of mInterface_ is set up here (zone: the interface
+        //  cells, or the interface cells and their point neighbours).
+        //  Returns the stencil's exchange map of mInterface_ for further
+        //  reads through exchange.getValue (one ring: every ring index is
+        //  in the stencil of the cell; two rings: the map covers the
+        //  stencils of the zone's local cells, the remote rings' values are
+        //  in ringM)
+        void ringMembers
+        (
+            labelListList& ringIdx,
+            List<vectorField>& ringM
+        );
+
+        //- The variant normals (any key off its default)
+        void variantNormals(vectorField& n);
 
 
 public:
@@ -106,6 +216,13 @@ public:
     // Member Functions
 
         virtual void modelNormals(const scalar tState, vectorField& n);
+
+        //- The plane fit reads the ring's positioned planes (their
+        //  centroids) from the first pass
+        virtual bool needsPositionedPlanes() const
+        {
+            return planeFit_ != "none";
+        }
 };
 
 

@@ -1,0 +1,87 @@
+# THE RING NORMAL'S STENCIL (2026-11-08; workflow/scripts/make_stencil_configs.py writes this
+# file, edit the script). The normal of cell k is the ring area normal d_k = sum over the ring
+# R(k) of m_j, m_j = -sum_f alpha_f S_f (|m_j| = |Sigma_j| for a plane), n_k = d_k/|d_k|: the
+# area-weighted average of the ring's unit normals, stable because the division is by the
+# ring's total patch area (the own normal m_k/|m_k| grew 1.16 per step on the translated
+# plane, tilt diagnostic of 2026-10-26). The variants, one word TPF_NORMAL_STENCIL
+# (tpf_rows.NORMAL_STENCILS, the opt-in keys of normalModel ringArea; production = the block
+# empty, bit for bit the model of every study before): twoRings (the union of the rings of
+# the ring's cells, area weights), kernelGaussian / kernelWendland (one ring, w_j = |Sigma_j|
+# K(|x_j - x_k|/h_k) with the cell centres; Gaussian exp(-q^2) cut at 2 h, Gingold and
+# Monaghan 1977 doi:10.1093/mnras/181.3.375; Wendland C2 (1 - q/2)^4 (1 + 2 q), support 2 h,
+# Wendland 1995 doi:10.1007/BF02123482), angle30 / angle60 (a ring cell whose own normal
+# deviates from d_k by more than theta_max is dropped), planeFitMean / planeFitOwn (the
+# weighted least-squares plane through the ring's patch centroids, the eigenvector of the
+# smallest eigenvalue of the weighted covariance, Pearson 1901
+# doi:10.1080/14786440109462720, Hoppe et al. 1992 doi:10.1145/133994.134011; own: centred
+# on the cell's centroid with the moment-corrected weights sum_j w'_j (x_j - x_k) = 0, Liu,
+# Jun, Zhang 1995 doi:10.1002/fld.1650200824), ringQuadric (the ring quadric of the
+# preprint, normalModel ringFit). Every variant on the swept-face advection in the
+# recommended setting (TPF_ENRIGHT_SETTING recommended: signedTets + scale + normalAndAlpha)
+# with grazingCut fork (the identity policy of 2026-11-07), the four bit-for-bit keys of
+# round 4, write precision 17.
+# TEST 1a, THE PLANE GATE: the translated plane (cases/davof/planeTranslation3D, the exact
+# Detrixhe-Aslam state, 0.2 L of travel = 0.2 N / Co steps) at N 40 / 80, OpenFOAM Co 0.2 /
+# 0.5, both arms (normal: U = n, the sliver-amplifying arm; oblique: U = (1 0 0)), every
+# variant: 2 x 2 x 2 x 9 = 72 serial cases. Read-out: the run maxima of L1(alphaf) and L1(n)
+# (areaFractionError and reconstructionError every step), min alpha, the excess over 1, the
+# mass deviation, the wall clock.
+#
+# PRE-REGISTERED (2026-11-08, before any run):
+# G-0 (identity): the production rows reproduce the port's record bit for bit where the same
+#     cell exists (port_enrightKeys_plane_leia, setting recommended, N 40, Co 0.5, both arms:
+#     L1(alphaf) and L1(n) at every step equal to the digit). Falsified by any difference.
+# G-1 (the gate): every variant keeps the plane at round-off: the run maxima of L1(alphaf)
+#     and L1(n) below 1e-11 in all 72 cases. A plane is reproduced exactly by every stencil
+#     (the sum of parallel area normals, a kernel-weighted sum, a filtered sum, the plane
+#     through coplanar centroids, the quadric through coplanar planes). Falsified by any
+#     case above 1e-11; the expected weak spots are planeFitOwn (the moment-corrected
+#     weights can be negative) and ringQuadric (the Monge frame of m_k of a sliver cell).
+# G-2 (identity of the angle filters on the plane): angle30 and angle60 drop no cell on the
+#     plane (every ring normal is parallel to d_k) and reproduce production bit for bit.
+#
+#   sbatch --parsable -J leia-davof-stencil_plane_gate --export=ALL,STUDY=davof/stencil_plane_gate,PROFILE=profiles/slurm-small run-studies.sbatch
+study_name: stencil_plane_gate
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [40, 80]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_NORMAL_STENCIL: [production, twoRings, kernelGaussian, kernelWendland, angle30, angle60, planeFitMean, planeFitOwn, ringQuadric]
+  TPF_ENRIGHT_SETTING: [recommended]
+  TPF_GRAZING_CUT: [fork]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_RECON_ERROR_EVERY_STEP: ["true"]
+  TPF_PROFILING: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
