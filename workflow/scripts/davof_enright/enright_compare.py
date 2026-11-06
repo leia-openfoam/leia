@@ -21,8 +21,21 @@ def field_values(fn):
     return None
 
 
+def serial_times(case):
+    ts = []
+    for d in glob.glob(case + "/[0-9]*"):
+        if not os.path.isdir(d): continue
+        try: ts.append((float(os.path.basename(d)), os.path.basename(d)))
+        except ValueError: pass
+    ts.sort()
+    return [t for v, t in ts if v > 0 and os.path.isfile(d_ := "%s/%s/alpha.water" % (case, t))]
+
+
 def last_time(case):
-    ds = glob.glob(case + "/processor0/[0-9]*") or glob.glob(case + "/[0-9]*")
+    # the reconstructed (serial) fields are preferred; else the decomposed ones
+    st = serial_times(case)
+    if st: return st[-1]
+    ds = glob.glob(case + "/processor0/[0-9]*")
     ts = []
     for d in ds:
         try: ts.append((float(os.path.basename(d)), os.path.basename(d)))
@@ -32,10 +45,10 @@ def last_time(case):
 
 
 def files(case, t, name):
+    if os.path.isfile("%s/%s/alpha.water" % (case, t)):
+        return [case + "/" + t + "/" + name]
     pr = sorted(glob.glob(case + "/processor*"), key=lambda p: int(p.split("processor")[-1]))
-    if pr:
-        return [p + "/" + t + "/" + name for p in pr]
-    return [case + "/" + t + "/" + name]
+    return [p + "/" + t + "/" + name for p in pr]
 
 
 def main():
