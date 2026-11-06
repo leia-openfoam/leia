@@ -1,0 +1,50 @@
+# The port acceptance, the Co 1 comparison (PORT-DESIGN 4.4, 2026-11-06): the preparation
+# of the cell (Rot, RDF, N 32) on the leia route, rendered from sphereRotation3D_hexCmpRotRDFN32.yaml with the solver
+# changed (OpenFOAM v2606's plicRDF + isoAdvector); the timed runner workflow/scripts/davof_cmp/port-cmp-time.sbatch
+# copies the prepared cases and runs both routes on one exclusive node.
+# Part of the timed comparison with plicRDF (2026-11-03): the preparation of
+# the cases (short END_TIME). Purpose and predictions:
+# sphereRotation3D_hexCmpLineXSweptN32.yaml.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexCmpRotRDFN32 --export=ALL,STUDY=davof/sphereRotation3D_hexCmpRotRDFN32 run-studies.sbatch
+study_name: port_cmpRotRDFN32_leia
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TPF_ROW: [plicRDF]
+  TARGET_ADVECTIVE_CO: [0.0462996198086, 0.231498099043]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  END_TIME: [0.02]
+  TPF_WRITE_INTERVAL: [0.02]
+  TPF_RECON_ERROR_EVERY_STEP: ["false"]
+  TPF_PROFILING: ["false"]
+  TPF_AFE_WRITE_CONTROL: [onEnd]
+  TPF_VFE_WRITE_CONTROL: [onEnd]
+  TPF_N_ALPHA_BOUNDS: [5]
+  TPF_SNAP_TOL: [0]
+  TPF_CLIP: ["false"]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 60
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
