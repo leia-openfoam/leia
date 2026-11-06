@@ -17,6 +17,7 @@ REPO = os.path.abspath(os.path.join(workflow.basedir, ".."))
 sys.path.insert(0, os.path.join(workflow.basedir, "scripts"))
 import foam_param
 import materialize
+import case_stamp   # recompute only on change: the case stamp (2026-11-07)
 import aggregate
 import plots
 import export_html
@@ -232,7 +233,17 @@ if os.path.isfile(_tmpl_fvsol) and "@!END_REFERENCE!@" in open(_tmpl_fvsol).read
     _preprocess.append(" ".join(filter(None, [
         f"python3 {REPO}/workflow/scripts/write_end_reference.py", SETFIELDS_ARGS])))
 
-_solve = ["cd {params.d}", f"rm -f {SOLVER_CSV} .leia_solver_failed .leia_launch"]
+_STAMP_PY = f"python3 {REPO}/workflow/scripts/case_stamp.py"
+# RECOMPUTE ONLY ON CHANGE (Tomislav, 2026-11-07; workflow/scripts/case_stamp.py). The
+# solve rule is scheduled when <case>/.leia_stamp_current.json (written at parse time,
+# below) is newer than the CSV, i.e. when the stamp changed; its first step compares the
+# stored stamp of a completed case with the current one and does NOT run the solver when
+# they are equal and a result is there (an mtime artefact costs seconds, no result). A
+# changed stamp moves the previous result to previous/<old id>/ before the solver runs.
+_solve = ["cd {params.d}",
+          f"if {_STAMP_PY} check . --csv {SOLVER_CSV}; then touch {SOLVER_CSV}; exit 0; fi",
+          f"{_STAMP_PY} archive . --solver {SOLVER} --csv {SOLVER_CSV}",
+          f"rm -f {SOLVER_CSV} .leia_solver_failed .leia_launch"]
 # The TwoPhaseFlow benchmark solver's function objects write under
 # postProcessing/<fo>/<startTime>/ and APPEND to a .dat of a repeated start time:
 # a re-run would stack a second series onto the stale one (the converter keeps
@@ -344,6 +355,27 @@ if POST_SOLVE:
         "echo \"[leia] post_solve FAILED ($prc); tail of log.postSolve:\"; "
         "tail -20 log.postSolve; fi",
     ]
+# The stamp the result ran under (the binaries and the dictionaries hashed again now, in
+# the job's environment), stored as <case>/.leia_stamp.json; a diverged run is a result
+# and gets its stamp like any other (its rc is in the stamp and in .leia_launch).
+_solve.append(f"{_STAMP_PY} write . --apps {SOLVER} {SETFIELDS_APP} --rc $rc")
+
+# THE PARSE-TIME PART OF THE STAMP. For every variation: the dictionaries rendered in
+# memory (materialize.py's rendering, token for token) and hashed, the binaries the
+# study runs (located on PATH or in this clone's and the fork's platforms/), the solve
+# command, the post-solve command and its scripts; written into the case directory as
+# .leia_render_stamp.json (input of generate_case) and .leia_stamp_current.json (input of
+# solve), only when the content changed. A finished case without a stored stamp is
+# adopted (its stamp files back-dated, nothing rescheduled). `snakemake -n` therefore
+# refreshes the stamps and lists exactly the cases whose stamp changed; onstart prints
+# the one-line summary (LEIA_STAMP_VERBOSE=1: every case with its reasons);
+# `case_stamp.py report <study dir>` prints the same from the files.
+_STAMP_SPEC = dict(solver=SOLVER, setfields_app=SETFIELDS_APP, setfields_args=SETFIELDS_ARGS,
+                   solver_cmd=_solver_cmd, post_solve=POST_SOLVE, mesh_cmd=MESH_CMD,
+                   np=(NP if PARALLEL else 1), mode=MODE, mesh=MESH)
+STAMPS = case_stamp.refresh_study(
+    STUDY_DIR, CASE_NAME, IDX, BASE_CASE,
+    [{**v, "DAVOF_SOLVER": SOLVER} for v in VARIATIONS], _STAMP_SPEC, SOLVER_CSV)
 # The static gate measures kappa_f ACCURACY on an exact signed distance field.
 # In the coupled solve psi is never exact, and MEASURED (plan sec. 10) accuracy
 # does not predict coupled stability -- the two orders are inverted. The second
@@ -365,6 +397,10 @@ onstart:
     print(f"[leia] axes={ {k: len(v) for k, v in AXES.items()} } -> {len(VARIATIONS)} variations")
     if IGNORED:
         print(f"[leia] ignored params (not in templates): {IGNORED}")
+    print(case_stamp.summary_line(STAMPS))
+    for _i, (_s, _r) in STAMPS.items():
+        if _s == "changed" or os.environ.get("LEIA_STAMP_VERBOSE") == "1":
+            print(f"[leia]   {CASE_NAME}_{_i}: {_s}" + ("; " + "; ".join(_r) if _r else ""))
 
 
 rule all:
@@ -375,6 +411,9 @@ rule all:
 
 
 rule generate_case:
+    input:
+        # the render stamp: a changed template or token re-materialises the case
+        os.path.join(CASE_DIR, case_stamp.RENDER_FILE),
     output:
         os.path.join(CASE_DIR, "case_params.json"),
     run:
@@ -454,6 +493,8 @@ rule solve:
         (os.path.join(CASE_DIR, "processor0", "constant", "polyMesh", "owner")
          if PARALLEL else
          os.path.join(CASE_DIR, ".leia_preprocessed")),
+        # the case stamp: a changed binary, dictionary or solve command re-solves the case
+        os.path.join(CASE_DIR, case_stamp.CURRENT_FILE),
     output:
         os.path.join(CASE_DIR, SOLVER_CSV),
     params:

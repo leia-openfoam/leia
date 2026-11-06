@@ -83,7 +83,14 @@ def main():
         if m and rule == "solve":
             solve_idx.append(m.group(1))
 
-    finished = []
+    # The case stamp (workflow/scripts/case_stamp.py, 2026-11-07): a solve over a finished
+    # case whose stamp CHANGED (a rebuilt binary, an edited dictionary, another solve
+    # command) is the designed recompute, not an accident; it is listed with its reasons
+    # and allowed. A solve over a finished case whose stamp is unchanged is the mtime
+    # artefact this guard exists for, and is refused as before.
+    sys.path.insert(0, HERE)
+    import case_stamp
+    finished, recompute = [], []
     for idx in sorted(set(solve_idx)):
         d = os.path.join(studies_dir, study, f"{case}_{idx}")
         log = os.path.join(d, f"log.{solver}")
@@ -92,13 +99,23 @@ def main():
             continue
         s = subprocess.run([os.path.join(HERE, "foam_log_state.sh"), log], capture_output=True, text=True)
         if s.returncode in FINISHED:
-            finished.append((idx, FINISHED[s.returncode], s.stdout.strip(), os.path.isfile(csv)))
+            stored = case_stamp.load(os.path.join(d, case_stamp.STAMP_FILE))
+            current = case_stamp.load(os.path.join(d, case_stamp.CURRENT_FILE))
+            reasons = case_stamp.diff_reasons(stored, current) if (stored and current) else []
+            if reasons:
+                recompute.append((idx, FINISHED[s.returncode], reasons))
+            else:
+                finished.append((idx, FINISHED[s.returncode], s.stdout.strip(), os.path.isfile(csv)))
 
     n = len(set(solve_idx))
+    if recompute:
+        print(f"guard: {study}: {len(recompute)} of {n} listed solve job(s) recompute a finished case whose stamp changed:")
+        for idx, state, reasons in recompute:
+            print(f"    {case}_{idx}  {state}  " + "; ".join(reasons))
     if not finished:
-        print(f"guard: {study}: {n} solve job(s) listed, none over a finished case")
+        print(f"guard: {study}: {n} solve job(s) listed, none over a finished case with an unchanged stamp")
         return 0
-    print(f"guard: {study}: {len(finished)} of {n} listed solve job(s) would RE-RUN a finished case:")
+    print(f"guard: {study}: {len(finished)} of {n} listed solve job(s) would RE-RUN a finished case whose stamp is unchanged:")
     for idx, state, line, has_csv in finished:
         print(f"    {case}_{idx}  {line}  csv={'present' if has_csv else 'absent'}")
     if os.environ.get("LEIA_ALLOW_RERUN") == "1":

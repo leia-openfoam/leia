@@ -78,6 +78,27 @@ TwoPhaseFlow's divergence from OpenFOAM, not DAVOF's:
    grazing cut, the port carries a 210-line copy `davofCutCellPLIC` (GPL, Scheufler and
    Roenby 2019 cited) with the fork's threshold and the reason in its header; Tomislav
    decides between the copy and accepting the (then documented) difference.
+
+   MEASURED and DECIDED (2026-11-06/07, REPORT-swept "The port into leia"). The
+   threshold is the whole difference between the port and the fork: with the opt-in
+   `grazingCut fork` (the copy, selected through `davofCellCut`) leia reproduces the fork
+   bit for bit in every test (the identity set, the 16 ladder rungs of 160 to 1280 steps,
+   np 1 to 16, the Enright deformation serial and on 8 and 64 ranks including the abort
+   step); with v2606's default the two separate at the step of the first grazing cut (a
+   cell whose positioned plane cuts a polygon of area between 1e-150 and 1e-14: one
+   anchor count, four clipped triangles of a vanishing polygon, the mass change of that
+   step 4.9e-16 against 6.1e-16) and the loop amplifies the one-ulp difference. The two
+   thresholds are a ROUND-OFF-LEVEL CHOICE: the state is bounded and conservative under
+   both, E_shape and L1(alphaf) agree to five digits on every ladder rung, L1(x) within
+   9.2e-4 relative, L1(n) within 3.4e-2 (the sliver-normal measure); the effect is
+   visible only through the loop's amplification on the chaotic case: the Enright
+   deformation's abort step is a property of the realisation, not of the method (N 32 OF
+   Co 0.5: the fork ends at T = 3, the default aborts at step 443 of 480; N 64 OF Co 1:
+   399 against 138; N 128 OF Co 0.5: 125 against 216). Tomislav's policy (2026-11-07):
+   v2606's `cutCellPLIC` stays the default; a DAVOF row runs with `grazingCut fork`
+   wherever a number is reproduced against the fork's record, otherwise with the default;
+   the key is in every case stamp (`stampGrazingCut` of the study table, section 5) and in
+   the caption of every table.
 2. `cutCell::calcIsoFacePointsFromEdges`: `mag(faceArea) == 0` (fork) against
    `< VSMALL` (1e-300): no case produces an area in (0, 1e-300).
 3. `cutFace::calcSubFaceCentreAndArea`, the triangle branch: the fork writes
@@ -429,6 +450,66 @@ The Enright agent's work is not touched; its results in the fork are the referen
 `<case>/leia.version`, replaces the fork's commit in the CSVs' version column); the
 fork's results stay as the reference in `REPORT-swept.md`, under the heading "The port
 into leia (2026-11-06)" appended in phase 2.
+
+## 5b. Phase 3 redefined: the standing study matrix (Tomislav, 2026-11-07)
+
+Phase 2 accepted (2026-11-07: the port reproduces the fork bit for bit with `grazingCut
+fork` in every test). Tomislav's standing protocol, in his words: "From now on, run on
+lichtenberg. 2D shear, 3D shear and 3D deformation, over 3 mesh resolution and compare
+DAVOF combination methods in leia, then parallel to this, in TwoPhaseFlow original
+isoAdvector-plicRDF and DAVOF reconstruction and isoAdvector combination. Create
+reproducible snakemake studies and evaluations, measure volume conservation, geometric
+error, and also wall clock time, range Co numbers from 0.2 to 1 (OpenFOAM), make proper
+studies. Only re-calculate studies if we change something in the methods." The leia
+track is this agent's; the fork track (agents/swept) runs the same route.
+
+(1) Recompute only on change: `workflow/scripts/case_stamp.py` (workflow/README.md
+"Recompute only on change: the case stamp"). Every case directory carries the stamp its
+result ran under: the binaries (the solver and the initialiser with every library they
+load from the clone's, the fork's and OpenFOAM's platforms, sha256 through the ELF
+DT_NEEDED closure), the OpenFOAM version, the hash of the rendered dictionaries and, named
+separately, of the mesh inputs, the solve command, the post-solve command with its scripts,
+np and the mode; the id is the sha256 of these. leia's and the fork's `git describe` are
+recorded (the tables carry them), but do NOT enter the id: a commit that changes nothing
+the case runs with does not recompute it, which is Tomislav's "only if we change something
+in the methods". The Snakefile writes the current stamp at parse time (content change only,
+so Snakemake's mtime trigger fires exactly on a change), the solve rule skips the solver
+when the stored stamp equals the current one and a result is there, archives the previous
+result under `previous/<old id>/` otherwise, and stores the stamp at the end with the
+binaries hashed again in the job. `snakemake -n` is the dry-run report (the onstart line
+"stamps: N cases: a up to date, b adopted, c to recompute, d without a result" and the
+reasons per changed case); `case_stamp.py report <study>` prints the same from the files.
+The study table records `stampId`, `stampBinary`, `stampDicts`, `stampLeia`, `stampTpf`,
+`stampGrazingCut`, `stampAdopted`, `stampCompletedAt` per case. A finished case from before
+the mechanism is adopted (its stamp files back-dated; `stampAdopted 1`).
+
+(2) The standing matrix, `config/davof/standing/`, one YAML per case family and row set:
+the 2D shear (the reversed-vortex disc of Rider and Kothe 1998 as isoAdvector's sheared
+disc: one cell thick, empty patches, the cosine reversal, scored at T against the initial
+disc; the swept flux verified on a 2D mesh with empty patches first), the 3D shear (the
+Liovic et al. 2006 sphere, the field `initShearFlow3D` taken over from the fork agent's
+`davof-isoAdvector` when it lands), the 3D deformation (the Enright case of
+`davof-swept-enright`); three resolutions (2D 64/128/256, 3D 32/64/128), OpenFOAM Co 0.2,
+0.5, 1 (dt per case stated in the table caption), ranks fixed per resolution (3D 1/8/64, 2D
+1/4/16) and the same decomposition for every row; rows: the DAVOF reference setting, the
+Enright agent's variants as they are ported (`sweptPieceVolume closure | signedTets |
+closureThenTets`, `sweptBoundedFaceFraction none | scale | recompute`, `interfaceCellRule
+normalOnly | normalAndAlpha | normalAndAlphaReset`, `sweptFragmentLog`; each a row), and
+isoAdvector + plicRDF of v2606 as the reference row in leia; the fork track runs the
+TwoPhaseFlow original and the DAVOF reconstruction + isoAdvector combination from the SAME
+case templates (one template per case across both tracks, differing in the three tokenised
+lines). Evaluations: volume conservation (the mass deviation), boundedness (min alpha, the
+excess), the geometric error (E_shape against the exact end state, L1(x), L1(n), L1(alphaf)
+where defined), interface-cell and wisp counts, the total and per-step wall clock at equal
+ranks (three repetitions on the timed cells, the diagnostics at the writes only), the
+orders over the three resolutions; one table set per case family (CSV + .tex) generated by
+a script, with the stamps and the `grazingCut` key in the captions.
+
+(3) Pre-registration per case family before the first run; the matrix runs once the
+ported variants are accepted bit for bit against the fork (the Enright agent's keys as soon
+as its tests are done, the coordinator tells when); from then on only changed rows
+recompute. Hand-backs: after the mechanism and the configs (before the matrix runs), then
+with the tables.
 
 ## 6. Effort estimate
 

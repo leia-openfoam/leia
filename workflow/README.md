@@ -146,6 +146,54 @@ every file a new mtime, after which the flags above made 6 of 42 finished cases 
 preserve its directory (rename it with a dated suffix), then
 `LEIA_ALLOW_RERUN=1 make studies-one STUDY=<name> PROFILE=...`.
 
+### Recompute only on change: the case stamp (2026-11-07)
+
+Tomislav's rule: "Only re-calculate studies if we change something in the methods."
+`workflow/scripts/case_stamp.py` makes it mechanical. Every case directory carries
+
+- `.leia_render_stamp.json`: the hash of the case's dictionaries as the templates and the
+  variation's tokens render them (`system/`, `constant/` without `polyMesh`, `0.org/`, the
+  generated `decomposeParDict`), the mesh inputs (`blockMeshDict`, `meshDict`,
+  `triSurface/`) named separately, plus np and the mode. Input of `generate_case`: a
+  changed template or token re-materialises, re-meshes, re-initialises and re-solves.
+- `.leia_stamp_current.json`: the whole stamp: the render stamp, the binaries (the solver
+  and the field initialiser, sha256 of the files and of every library they load from this
+  clone's `platforms/`, the TwoPhaseFlow fork's and OpenFOAM's, by the ELF `DT_NEEDED`
+  closure), the OpenFOAM version, the solve command, the post-solve command and the scripts
+  it names, the mesh command. The id is the sha256 of these trigger fields. leia's and the
+  fork's `git describe`, the tokens, the `grazingCut` key and the time are recorded but do
+  not enter the id: a commit that changes nothing the case runs with recomputes nothing.
+  Input of `solve`.
+- `.leia_stamp.json`: the stamp a completed solve ran under, written at the end of the
+  solve rule with the binaries and the dictionaries hashed again in the job (a rebuild
+  between the plan and the run is recorded, and the stored id follows the run); the exit
+  code and the job id with it. Previous stamps go to `.leia_stamp_history.jsonl`.
+
+The Snakefile writes the first two at parse time for every variation, only when their
+content changed, so with `--rerun-triggers mtime` Snakemake schedules a `solve` exactly
+when the stamp changed. The `solve` rule's first step is `case_stamp.py check`: equal
+stamps and a result present means the solver is NOT run (the CSV is touched; an mtime
+artefact costs seconds and no result); a changed stamp moves the previous `log.<solver>`,
+CSV, launch record, `postProcessing/` and stamp to `previous/<old id>/` and runs. The
+launch guard above allows a solve over a finished case whose stamp changed (it prints the
+reasons) and refuses one whose stamp is unchanged. A finished case from before this
+mechanism is adopted at the first parse (the current stamp stored as its stamp with
+`adopted: true`, the files back-dated, nothing rescheduled; `stampAdopted 1` in the table).
+
+```bash
+snakemake --workflow-profile profiles/slurm --configfile config/davof/<study>.yaml -n   # refreshes the stamps; onstart prints
+#   [leia] stamps: 27 cases: 24 up to date, 0 adopted, 3 to recompute (stamp changed), 0 without a result
+#   [leia]   sphereDeformation3D_00004: changed; libraries of davofAdvectorFoam rebuilt: libleiaDavof.so
+LEIA_STAMP_VERBOSE=1 snakemake ... -n                              # every case with its status
+python3 workflow/scripts/case_stamp.py report studies/davof/<study>  # the same from the files, no snakemake
+```
+
+`snakemake` on an unchanged study is idempotent (every stamp equal: no job). The study
+table (`<study>_database.csv`, `aggregate.py`) records per case `stampId`, `stampBinary`
+(the solver's sha256, 12 digits), `stampDicts`, `stampLeia`, `stampTpf`, `stampGrazingCut`,
+`stampAdopted`, `stampCompletedAt`. Parse-time cost: the binaries and their libraries are
+hashed once per invocation (about a second), the dictionaries once per case (milliseconds).
+
 ### Scope (smoke vs full)
 
 `config/config.yaml` defaults to a small **smoke** grid via `axes_override` +
