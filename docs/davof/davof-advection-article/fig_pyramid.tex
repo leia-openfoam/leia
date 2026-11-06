@@ -1,0 +1,43 @@
+% The correction of the swept volume to the flux volume, two-dimensional analogue. The face
+% f = (0,0)-(0,1); under a rotation its traced pre-image f' = p1' (-0.60,0.06), p2' (-0.52,0.98)
+% is turned; the traced area V_g of the list (0,0) (0,1) (-0.52,0.98) (-0.60,0.06) is
+% 0.5 |(0,1)x(-0.52,0.98) + (-0.52,0.98)x(-0.60,0.06) + (-0.60,0.06)x(0,0)| = 0.5 |0.52 + 0.5568| = 0.5384
+% (shoelace about the origin). The flux area V_f = |phi_f| dt = 0.65 (chosen large, so that the
+% correction is visible). The apex of the pre-image fan starts at the mean of p1' and p2',
+% c' = (-0.56,0.52), and moves along the pre-image's outward normal A' = (-0.92,-0.08) (the normal
+% of p1'p2' pointing away from f, length |p2'-p1'| = 0.9235) by delta = 2 (V_f - V_g)/|A'|
+% = 2 (0.65 - 0.5384)/0.9235 = 0.2417 (in two dimensions the area of a fan is linear in the apex
+% with the factor 1/2): c'' = c' + 0.2417 A'/|A'| = (-0.8008, 0.4991). The added area is the
+% triangle p1' c'' p2', 0.5 |(q2 - q1) x (c'' - q1)| = 0.1116 = V_f - V_g. Computed by hand (2D, exact).
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=3.4, >=Stealth, font=\footnotesize, line join=round]
+  \colorlet{facecol}{orange!80!black}
+  \colorlet{precol}{teal!60!black}
+  \colorlet{sweptcol}{black!10}
+  \colorlet{addcol}{blue!30}
+  \colorlet{apexcol}{red!65!black}
+  \coordinate (p1) at (0,0);
+  \coordinate (p2) at (0,1);
+  \coordinate (q1) at (-0.60,0.06);
+  \coordinate (q2) at (-0.52,0.98);
+  \coordinate (c) at (-0.56,0.52);
+  \coordinate (cc) at (-0.8008,0.4991);
+  \fill[sweptcol] (p1) -- (p2) -- (q2) -- (q1) -- cycle;
+  \fill[addcol] (q1) -- (cc) -- (q2) -- cycle;
+  \draw[black!55, line width=0.6pt] (p2) -- (q2) (p1) -- (q1);
+  \draw[precol, line width=1.0pt, dashed] (q1) -- (q2);
+  \draw[precol, line width=1.2pt] (q1) -- (cc) -- (q2);
+  \draw[facecol, line width=2.2pt] (p1) -- (p2);
+  \fill[precol] (c) circle[radius=0.012];
+  \fill[apexcol] (cc) circle[radius=0.014];
+  \draw[->, apexcol, line width=0.9pt] (c) -- (cc) node[pos=1, anchor=east, fill=white, inner sep=1pt] {$\delta\,\mathbf{A}_{f'}/|\mathbf{A}_{f'}|$};
+  \node[facecol, anchor=west] at (0.03,0.5) {$f$};
+  \node[precol, anchor=south, fill=white, inner sep=1pt] at (-0.56,1.02) {$f'$};
+  \node[anchor=north, fill=white, inner sep=1pt] at (-0.45,-0.02) {apex from the vertex mean of $f'$};
+  \node[fill=white, inner sep=1pt] at (-0.25,0.5) {$V_g$};
+  \node[anchor=east, fill=white, inner sep=1pt] at (-0.76,0.80) {$V_f - V_g$};
+\end{tikzpicture}
+\caption{The correction of the swept volume to the flux volume, in a two-dimensional analogue. Under a non-uniform velocity the traced list of the face $f$ (orange) and its pre-image $f'$ (dashed) encloses the volume $V_g$ (grey), which differs from the flux volume $V_f = |\phi_f|\Delta t$ of the step. The apex of the pre-image fan, started at the mean of the traced vertices, is moved along the pre-image's outward area vector $\mathbf{A}_{f'}$ by $\delta = 3(V_f - V_g)/|\mathbf{A}_{f'}|$ (the factor is $2$ in two dimensions), which adds exactly $V_f - V_g$ (blue), because the volume of the list is linear in the apex and the fan's area vector does not depend on it; the corrected list (solid teal) is then clipped and capped as before.}
+\label{fig:pyramid}
+\end{figure}

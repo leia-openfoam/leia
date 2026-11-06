@@ -1,0 +1,46 @@
+% The pre-test of the ring cells, two-dimensional cut, cells of unit size; the swept volume of
+% fig_pieces (the parallelogram (2,0) (2,1) (1.4,0.5) (1.4,-0.5)), its axis-aligned box
+% [1.4, 2] x [-0.5, 1]. The cells whose boxes overlap it (inclusively): D = [1,2]x[0,1],
+% B = [1,2]x[-1,0], the cell above D, A = [1,2]x[1,2], and the receiver R = [2,3]x[0,1] on the
+% face line x = 2. A's plane y = 1 and R's plane x = 2 separate: every vertex of the swept volume
+% lies on or beyond them, so A and R hold no piece and are skipped before any clip.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=2.2, >=Stealth, font=\footnotesize, line join=round]
+  \colorlet{facecol}{orange!80!black}
+  \colorlet{precol}{teal!60!black}
+  \colorlet{bdrycol}{black!50}
+  \colorlet{sweptcol}{black!12}
+  \colorlet{boxcol}{violet!70!black}
+  \colorlet{skipcol}{red!65!black}
+  \colorlet{keepcol}{green!45!black}
+  % the candidate cells
+  \fill[keepcol!12] (1,-1) rectangle (2,1);
+  \fill[skipcol!10] (1,1) rectangle (2,2);
+  \fill[skipcol!10] (2,0) rectangle (3,1);
+  \draw[bdrycol, line width=0.5pt] (0,-1) grid[step=1] (3,2);
+  % the swept volume and its box
+  \fill[sweptcol] (2,0) -- (2,1) -- (1.4,0.5) -- (1.4,-0.5) -- cycle;
+  \draw[black!60, line width=0.5pt] (2,0) -- (2,1) -- (1.4,0.5) -- (1.4,-0.5) -- cycle;
+  \draw[boxcol, line width=0.7pt, dashed] (1.4,-0.5) rectangle (2,1);
+  \draw[precol, line width=1.2pt, dashed] (1.4,-0.5) -- (1.4,0.5);
+  \draw[facecol, line width=2.2pt] (2,0) -- (2,1);
+  % the vertices of the swept volume
+  \foreach \p in {(2,0),(2,1),(1.4,0.5),(1.4,-0.5)} \fill[black] \p circle[radius=0.025];
+  % the separating planes
+  \draw[skipcol, line width=1.4pt] (1,1) -- (2,1);
+  \draw[skipcol, line width=1.4pt] (2,0) -- (2,1);
+  \draw[->, skipcol, line width=0.8pt] (1.3,1) -- (1.3,1.25) node[right=0pt, fill=white, inner sep=1pt] {$\mathbf{n}$};
+  % labels
+  \node[fill=white, inner sep=1pt] at (1.15,0.88) {$D$};
+  \node[fill=white, inner sep=1pt] at (1.15,-0.88) {$B$};
+  \node[skipcol, fill=white, inner sep=1pt] at (1.5,1.6) {$A$: skipped};
+  \node[skipcol, fill=white, inner sep=1pt] at (2.5,0.5) {$R$: skipped};
+  \node[facecol, anchor=west, fill=white, inner sep=1pt] at (2.04,0.78) {$f$};
+  \node[precol, anchor=east, fill=white, inner sep=1pt] at (1.37,0.62) {$f'$};
+  \node[boxcol, anchor=north, fill=white, inner sep=1pt] at (1.7,-0.54) {box of $\Omega_f$};
+  \node[keepcol, fill=white, inner sep=1pt] at (0.5,-0.5) {$D$, $B$: pieces};
+\end{tikzpicture}
+\caption{The pre-test of the ring cells, in a two-dimensional cut. The ring cells whose boxes overlap the box of the swept volume $\Omega_f$ (dashed) are candidates: here the donor $D$, its face neighbour $B$, the cell $A$ above $D$ and the receiver $R$, whose boxes touch the swept volume's at $y = 1$ and $x = 2$. For every candidate the vertices of $\Omega_f$ (dots) are tested against the cell's face planes; a plane with every vertex on its outer side (red) separates the cell from the swept volume, so $A$ and $R$ are skipped without a clip, and only $D$ and $B$ are clipped into pieces. On the rotated sphere about 20 ring cells per face are candidates and $1.36$ hold a piece, so the test removes most of the clips and changes no number (\cref{sec:efficiency}).}
+\label{fig:pretest}
+\end{figure}

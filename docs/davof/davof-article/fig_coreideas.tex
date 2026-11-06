@@ -33,7 +33,7 @@
     \draw[ifacecol, line width=1.0pt, fill=white] (Amid) circle (2.0pt);
     \node[blue!62!black] at (-0.06,-0.20) {$\alpha_k$};
     \draw[normcol, ->, dashed, line width=1.1pt] (Amid) -- ++(0.06,0.42);
-    \node[normcol, anchor=west] at ($(Amid)+(0.12,0.32)$) {$\mathbf{n}_{\tilde\Sigma_k}=?$};
+    \node[normcol, anchor=west, fill=white, inner sep=1pt] at ($(Amid)+(0.12,0.32)$) {$\mathbf{n}_{\tilde\Sigma_k}=?$};
     \node[black, anchor=north] at (0.10,-1.14) {Classical UGVOF: $\alpha_k$ only};
     \node[black, align=center, anchor=south] at (0.10,1.32) {normal needs\\neighbor stencil};
     % The cell cut out of its stencil: what remains of the neighbours' edges,
@@ -78,8 +78,8 @@
     \node[blue!62!black] at (-0.06,-0.20) {$\alpha_k$};
     \node[sfminuscol, anchor=east] at (-0.72,-0.10) {$\alpha_{f_1}$};
     \node[sfminuscol, anchor=north] at (-0.10,-0.82) {$\alpha_{f_2}$};
-    \node[sfminuscol, anchor=west] at (0.88,-0.34) {$\alpha_{f_3}$};
-    \node[sfminuscol, anchor=west] at (1.15, 0.13) {$\alpha_{f_4}{=}1$};
+    \node[sfminuscol, anchor=west] at (0.98,-0.40) {$\alpha_{f_3}$};
+    \node[sfminuscol, anchor=west] at (1.22, 0.13) {$\alpha_{f_4}{=}1$};
     \node[black, anchor=north] at (0.10,-1.14) {DAVOF: $(\alpha_k,\{\alpha_f\})$};
     \node[black, align=center, anchor=south] at (0.10,1.18) {normal from\\local face data};
   \end{scope}

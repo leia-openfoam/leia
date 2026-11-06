@@ -1,0 +1,58 @@
+% The pieces of a swept volume and their caps, two-dimensional cut, cells of unit size.
+% Donor D = [1,2]x[0,1], its face neighbour B = [1,2]x[-1,0], the face f = {x = 2, 0 <= y <= 1},
+% the displacement (0.6, 0.5): the pre-image f' = {x = 1.4, -0.5 <= y <= 0.5}; the swept
+% parallelogram (2,0) (2,1) (1.4,0.5) (1.4,-0.5), lateral edges of slope 5/6.
+% D's plane y = 0.55 - 0.1 (x - 1), liquid below; B's plane y = -0.2 - 0.15 (x - 1), liquid below.
+% Computed by hand (2D, exact):
+%   D's piece: (1.4,0) (2,0) (2,0.45) (1.4107,0.5089) (1.4,0.5); caps: the cell plane y = 0
+%   (length 0.6, outward normal (0,-1)) and D's plane (length 0.5923, normal (0.0995,0.9950));
+%   B's piece: (1.4,-0.5) (1.6441,-0.2966) (1.4,-0.26); cap: B's plane only, outward normal
+%   (0.1483,0.9889).
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=3.0, >=Stealth, font=\footnotesize, line join=round]
+  \colorlet{fluidcol}{blue!18}
+  \colorlet{gaincol}{blue!45}
+  \colorlet{ifacecol}{blue!65!black}
+  \colorlet{facecol}{orange!80!black}
+  \colorlet{precol}{teal!60!black}
+  \colorlet{bdrycol}{black!50}
+  \colorlet{sweptcol}{black!10}
+  \colorlet{capcol}{red!65!black}
+  % liquid of the two cells (below their planes)
+  \fill[fluidcol] (1,0) -- (2,0) -- (2,0.45) -- (1,0.55) -- cycle;
+  \fill[fluidcol] (1,-1) -- (2,-1) -- (2,-0.35) -- (1,-0.2) -- cycle;
+  \draw[bdrycol, line width=0.5pt] (1,-1) grid[step=1] (3,1);
+  \draw[ifacecol, line width=1.3pt] (1,0.55) -- (2,0.45);
+  \draw[ifacecol, line width=1.3pt] (1,-0.2) -- (2,-0.35);
+  % the swept volume and its two liquid pieces
+  \fill[sweptcol] (2,0) -- (2,1) -- (1.4,0.5) -- (1.4,-0.5) -- cycle;
+  \fill[gaincol] (1.4,0) -- (2,0) -- (2,0.45) -- (1.4107,0.5089) -- (1.4,0.5) -- cycle;
+  \fill[gaincol] (1.4,-0.5) -- (1.6441,-0.2966) -- (1.4,-0.26) -- cycle;
+  \draw[black!60, line width=0.5pt] (2,0) -- (2,1) -- (1.4,0.5) -- (1.4,-0.5) -- cycle;
+  \draw[ifacecol, line width=1.3pt] (1.4107,0.5089) -- (2,0.45);
+  \draw[ifacecol, line width=1.3pt] (1.4,-0.26) -- (1.6441,-0.2966);
+  % the caps: the cell plane y = 0 (D's piece) and the two interface caps
+  \draw[capcol, line width=2pt] (1.4,0) -- (2,0);
+  \draw[->, capcol, line width=0.8pt] (1.9,0) -- (1.9,-0.08);
+  \node[capcol, anchor=west, fill=white, inner sep=1pt] at (2.04,-0.09) {$A_1\mathbf{n}_1$};
+  \draw[->, capcol, line width=0.8pt] (1.7,0.48) -- ++(0.0299,0.2985) node[anchor=east, fill=white, inner sep=1pt] {$A_2\mathbf{n}_2$};
+  \draw[->, capcol, line width=0.8pt] (1.522,-0.278) -- ++(0.0267,0.178) node[anchor=west, fill=white, inner sep=1pt] {$A_3\mathbf{n}_3$};
+  % the wetted parts of the swept boundary and the face
+  \draw[precol, line width=1.2pt, dashed] (1.4,-0.5) -- (1.4,0.5);
+  \draw[facecol, line width=2.2pt] (2,0) -- (2,1);
+  \draw[wetted] (1.4,-0.26) -- (1.4,0.5);
+  \draw[wetted] (2,0) -- (2,0.45);
+  \draw[wetted] (1.4,-0.5) -- (1.6441,-0.2966);
+  \draw[wetted] (1.4,0.5) -- (1.4107,0.5089);
+  % labels
+  \node[fill=white, inner sep=1pt] at (1.15,0.88) {$D$};
+  \node[fill=white, inner sep=1pt] at (1.15,-0.88) {$B$};
+  \node[fill=white, inner sep=1pt] at (2.85,0.88) {$R$};
+  \node[facecol, anchor=west] at (2.03,0.75) {$f$};
+  \node[precol, anchor=east] at (1.36,0.62) {$f'$};
+  \node[anchor=north] at (2,-1.06) {closure of $D$'s piece: $\sum_T \mathbf{a}_T^{\cap} + A_1\mathbf{n}_1 + A_2\mathbf{n}_2 = \mathbf{0}$};
+\end{tikzpicture}
+\caption{The pieces of a swept volume and their caps, in a two-dimensional cut. The face $f$ (orange) between the donor $D$ and the receiver $R$ is traced back obliquely to $f'$ (dashed); its swept volume (grey) lies in $D$ and in $D$'s face neighbour $B$. The piece in $D$ is clipped by $D$'s own plane, the piece in $B$ by $B$'s; their liquid parts (dark blue) are closed by the wetted parts of the swept volume's boundary (gold) and by the caps (red): the cell plane $y = 0$ carries the cap $A_1\mathbf{n}_1$ of $D$'s piece, and each interface plane the cap of its piece, $A_2\mathbf{n}_2$ and $A_3\mathbf{n}_3$. The cap areas follow from the closure \cref{eq:swept-closure} of each piece, written for $D$'s piece below the drawing, and the liquid volume from \cref{eq:swept-piece}; no cut polygon is assembled. In three dimensions an edge-neighbour piece carries two cell-plane caps and one interface cap, the three that the closure determines.}
+\label{fig:pieces}
+\end{figure}

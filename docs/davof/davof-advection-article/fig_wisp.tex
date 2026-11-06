@@ -1,0 +1,38 @@
+% The wisp rule, two-dimensional cut, cells of unit size. The interface cell N = [0,1]x[0,1]
+% holds the plane y = 0.7 - 0.6 x (liquid below). Extended into W = [1,2]x[0,1] the plane cuts
+% the corner triangle (1,0) (1,0.1) (1.1667,0) of area 0.00833. Left: W's own liquid equals that
+% corner to 1e-9 of the cell (matched): the extended plane clips W's pieces. Right: W holds
+% alpha_W = 0.02: N's normal with the plane positioned in W by alpha_W, y = 0.155 - 0.6 (x - 1),
+% the corner (1,0) (1,0.155) (1.258,0) of area 0.02 (anchored). Computed by hand (2D, exact).
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=2.4, >=Stealth, font=\footnotesize, line join=round]
+  \colorlet{fluidcol}{blue!18}
+  \colorlet{ifacecol}{blue!65!black}
+  \colorlet{bdrycol}{black!50}
+  \colorlet{wispcol}{red!65!black}
+  \foreach \dx/\lab in {0/{(a) matched\\ $N$'s plane holds $\alpha_W|\Omega_W|$}, 2.6/{(b) anchored\\ $N$'s normal, positioned by $\alpha_W$}}{
+    \begin{scope}[xshift=\dx cm]
+      % N's liquid and plane
+      \fill[fluidcol] (0,0) -- (1,0) -- (1,0.1) -- (0,0.7) -- cycle;
+      \draw[bdrycol, line width=0.5pt] (0,0) grid[step=1] (2,1);
+      \draw[ifacecol, line width=1.3pt] (0,0.7) -- (1,0.1);
+      % the plane extended into W (dashed) and W's corner
+      \draw[ifacecol, line width=0.9pt, dashed] (1,0.1) -- (1.1667,0);
+      \node[fill=white, inner sep=1pt] at (0.5,0.85) {$N$};
+      \node[fill=white, inner sep=1pt] at (1.5,0.85) {$W$, no plane};
+      \node[anchor=north, align=center] at (1,-0.1) {\lab};
+    \end{scope}}
+  % (a) matched: the extended plane's corner is W's liquid
+  \fill[fluidcol] (1,0) -- (1.1667,0) -- (1,0.1) -- cycle;
+  \draw[ifacecol, line width=1.3pt] (1,0.1) -- (1.1667,0);
+  % (b) anchored: N's normal, the plane positioned by alpha_W
+  \begin{scope}[xshift=2.6cm]
+    \fill[fluidcol] (1,0) -- (1.258,0) -- (1,0.155) -- cycle;
+    \draw[wispcol, line width=1.3pt] (1,0.155) -- (1.258,0);
+    \draw[->, wispcol, line width=0.8pt] (1.13,0.077) -- ++(0.117,0.195) node[above=0pt, fill=white, inner sep=1pt] {$\mathbf{n}_N$};
+  \end{scope}
+\end{tikzpicture}
+\caption{The wisp rule, in a two-dimensional cut. The cell $W$ holds liquid in a corner but no plane of its own, because its wetted area vector lies below the interface threshold; its pieces take their plane from the neighbour $N$. (a) Matched: the plane of $N$ extended into $W$ (dashed) encloses the liquid $\alpha_W|\Omega_W|$ of $W$ to $10^{-9}|\Omega_W|$, and it clips $W$'s pieces. (b) Anchored: otherwise $N$'s normal $\mathbf{n}_N$ is kept and the plane is positioned in $W$ by $\alpha_W$. Neither alone suffices: the extended plane of a curved interface can hold more liquid than $W$ has, and the positioned corner's face fraction grows as $\alpha_W^{2/3}$, so a volume fraction at round-off becomes a visible face fraction.}
+\label{fig:wisp}
+\end{figure}
