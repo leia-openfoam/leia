@@ -6157,7 +6157,7 @@ died on these two (the first also lost its second key to sbatch's comma split of
 Minimal fix, applied (a dictionary, no code, no number changes: a post-processing
 surface): the jet mesh dictionaries `iso/jet/mesh/{coarse,fine}/system/controlDict` use the
 fork's surface (`libs ("libpostProcess.so" sampling)`, `type reconstructedInterface`) and
-drop the `visRDF` function object, as the measured rows had; `prof/jet-run.sbatch` keeps
+drop the `visRDF` function object, as the measured rows had; verified on the bf70393 build (job 56028939: the RING row, 200 steps to the first write, rc 0, `postProcessing/surfaces/0.0001/freeSurf.vtp` written, no abort); `prof/jet-run.sbatch` keeps
 `NOSURF=1` as the opt-in without surface writes (the two reset windows ran so). The code
 alternative, the fork's reconstruction registering also under OpenFOAM's base, would
 undo the inline-namespace separation and is not taken. For every other case run with the
