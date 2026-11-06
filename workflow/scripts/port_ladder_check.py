@@ -20,22 +20,29 @@ sd = sys.argv[1]
 LADDERS = {"rotation": ("port_ladder_rotation", "port_ladder_rotationN128"),
            "sphere": ("port_ladder_sphere", "port_ladder_sphereN128")}
 allok = True
-print("(a) the identity of the routes per study")
+print("(a) the identity per study: the leia route (default grazingCut openfoam) and the leia route with grazingCut fork, each against the fork route")
+verdicts = {}
 for name, studies in LADDERS.items():
     for st in studies:
-        f, l = os.path.join(sd, st + "_fork"), os.path.join(sd, st + "_leia")
-        if not (os.path.isdir(f) and os.path.isdir(l)):
-            print(f"  {st}: missing"); allok = False; continue
-        p = subprocess.run([sys.executable, os.path.join(HERE, "port_identity_check.py"), f, l], capture_output=True, text=True)
-        lines = p.stdout.strip().split("\n")
-        print(f"  {st}: {lines[-1]}")
-        for x in lines[:-1]:
-            if x.startswith(("IDENTICAL", "DIFFERENT")) or ("differs" in x) or ("first difference" in x) or x.startswith("    "):
-                print("     " + x[:220])
-        allok &= lines[-1] == "ALL IDENTICAL"
+        f = os.path.join(sd, st + "_fork")
+        for route in ("leia", "leiaGF"):
+            l = os.path.join(sd, st + "_" + route)
+            if not (os.path.isdir(f) and os.path.isdir(l)):
+                print(f"  {st} {route}: missing"); allok = allok and route != "leiaGF"; continue
+            p = subprocess.run([sys.executable, os.path.join(HERE, "port_identity_check.py"), f, l], capture_output=True, text=True)
+            lines = p.stdout.strip().split("\n")
+            verdicts[(st, route)] = lines[-1]
+            print(f"  {st} {route}: {lines[-1]}")
+            for x in lines[:-1]:
+                if x.startswith(("IDENTICAL", "DIFFERENT")):
+                    print("     " + x[:160])
+                elif route == "leia" and ("differs at" in x or "first difference" in x):
+                    print("       " + x.strip()[:200])
+            if route == "leiaGF":
+                allok &= lines[-1] == "ALL IDENTICAL"
 print("(b) the ladders scored (davof_swept_ladders.py), both routes")
 for name, studies in LADDERS.items():
-    for route in ("fork", "leia"):
+    for route in ("fork", "leia", "leiaGF"):
         args = [sys.executable, os.path.join(HERE, "davof_swept_ladders.py")]
         for st in studies:
             d = os.path.join(sd, st + "_" + route)
@@ -45,5 +52,5 @@ for name, studies in LADDERS.items():
             print(f"--- {name}, {route} route")
             print(p.stdout.strip()[:6000])
             if p.returncode: print("  (scorer rc", p.returncode, p.stderr.strip()[-500:], ")")
-print("LADDERS IDENTICAL" if allok else "LADDERS NOT IDENTICAL (see (a))")
+print("LADDERS: grazingCut fork IDENTICAL to the fork route" if allok else "LADDERS: grazingCut fork NOT IDENTICAL to the fork route (see (a))")
 sys.exit(0 if allok else 1)
