@@ -396,8 +396,12 @@ def materialize(base_case, tokens, out_dir, np_, mesh, mode, dims, case_name, in
         )
     kept = {}
     if os.path.exists(out_dir):
-        # the stamp files and the previous results sit next to the directory while it
-        # is rebuilt (<case>.<name>.keep), then move back in
+        # a result in the directory (a re-materialisation after a changed template or
+        # token) goes to previous/<stamp id>/ first; then the stamp files and the
+        # previous results sit next to the directory while it is rebuilt
+        # (<case>.<name>.keep) and move back in
+        import case_stamp
+        case_stamp.archive_result(out_dir)
         for f in _KEEP + ("previous",):
             p = os.path.join(out_dir, f)
             if os.path.exists(p):

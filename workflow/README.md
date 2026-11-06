@@ -170,15 +170,22 @@ Tomislav's rule: "Only re-calculate studies if we change something in the method
   code and the job id with it. Previous stamps go to `.leia_stamp_history.jsonl`.
 
 The Snakefile writes the first two at parse time for every variation, only when their
-content changed, so with `--rerun-triggers mtime` Snakemake schedules a `solve` exactly
-when the stamp changed. The `solve` rule's first step is `case_stamp.py check`: equal
-stamps and a result present means the solver is NOT run (the CSV is touched; an mtime
-artefact costs seconds and no result); a changed stamp moves the previous `log.<solver>`,
-CSV, launch record, `postProcessing/` and stamp to `previous/<old id>/` and runs. The
+content changed, so Snakemake schedules a `solve` exactly when the stamp changed:
+Snakemake 9 counts an input as updated when it is newer than the oldest output AND its
+checksum differs from the one recorded at the job's completion (`dag.py`,
+`update_needrun`), so a touched stamp file with the same content schedules nothing
+(MEASURED 2026-11-06, `port_stamp_test` phase 3: `touch` on both current stamps, "Nothing
+to be done"), and a rewritten one does. The `solve` rule's first step is `case_stamp.py
+check`: equal stamps and a result present means the solver is NOT run (the CSV is
+touched); a changed stamp moves the previous `log.*`, CSVs, launch record,
+`postProcessing/` and stamp to `previous/<old id>/` and runs; a re-materialisation
+(changed render stamp) archives the same way before the directory is rebuilt. The
 launch guard above allows a solve over a finished case whose stamp changed (it prints the
 reasons) and refuses one whose stamp is unchanged. A finished case from before this
 mechanism is adopted at the first parse (the current stamp stored as its stamp with
 `adopted: true`, the files back-dated, nothing rescheduled; `stampAdopted 1` in the table).
+Accepted on the cluster 2026-11-06 with `config/davof/port_stamp_test.yaml` (its header
+lists the four phases: fresh, idempotent, touched, changed).
 
 ```bash
 snakemake --workflow-profile profiles/slurm --configfile config/davof/<study>.yaml -n   # refreshes the stamps; onstart prints

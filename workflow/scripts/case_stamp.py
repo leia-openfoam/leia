@@ -501,18 +501,35 @@ def cmd_check(case_dir, csv_name):
     return 0
 
 
-def cmd_archive(case_dir, solver, csv_name):
+def archive_result(case_dir):
+    """Move a previous result (every log.*, *.csv, the launch record, postProcessing/,
+    leia.version and the stored stamp) to previous/<stored id>/; the written time
+    directories and the mesh stay and are overwritten by the next run. Called by the
+    solve rule before a recompute and by materialize.py before a re-materialisation
+    (which removes the case directory). Returns the destination or ""."""
     stored = load(os.path.join(case_dir, STAMP_FILE))
-    if stored is None or not result_present(case_dir, csv_name):
-        return 0
-    dest = os.path.join(case_dir, "previous", stored.get("id", "unstamped"))
+    launch = os.path.join(case_dir, ".leia_launch")
+    if not os.path.isfile(launch) and not glob.glob(os.path.join(case_dir, "log.*")):
+        return ""
+    sid = (stored or {}).get("id") or "unstamped"
+    dest = os.path.join(case_dir, "previous", sid)
+    if os.path.isdir(dest):
+        dest += "-" + datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
     os.makedirs(dest, exist_ok=True)
+    names = sorted(set(os.path.basename(p) for p in glob.glob(os.path.join(case_dir, "log.*")) + glob.glob(os.path.join(case_dir, "*.csv")))
+                   | {".leia_launch", ".leia_solver_failed", "leia.version", "postProcessing", STAMP_FILE})
     moved = []
-    for f in (f"log.{solver}", csv_name, ".leia_launch", ".leia_solver_failed", "log.postSolve", "leia.version", "postProcessing", STAMP_FILE):
+    for f in names:
         p = os.path.join(case_dir, f)
         if os.path.exists(p):
             shutil.move(p, os.path.join(dest, f)); moved.append(f)
-    print(f"[leia] stamp: the previous result ({stored.get('id')}) moved to previous/{stored.get('id')}/: " + ", ".join(moved))
+    print(f"[leia] stamp: the previous result ({sid}) moved to {os.path.relpath(dest, case_dir)}/: " + ", ".join(moved))
+    return dest
+
+
+def cmd_archive(case_dir, solver, csv_name):
+    if result_present(case_dir, csv_name):
+        archive_result(case_dir)
     return 0
 
 
