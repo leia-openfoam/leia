@@ -38,7 +38,7 @@ CLUSTER    ?= lichtenberg
 REMOTE_DIR ?= /work/scratch/tm83tomy/leia
 REMOTE     ?= $(CLUSTER):$(REMOTE_DIR)
 SNAKE    = PATH=$$HOME/.local/bin:$$PATH snakemake --workflow-profile $(PROFILE) \
-             --nolock --keep-going --resources tasks=$(TASKS) --rerun-triggers mtime
+             --nolock --keep-going --resources tasks=$(TASKS) --rerun-triggers mtime --scheduler greedy
 # Before every launch: refuse to re-run a FINISHED case (a result the solve rule would
 # delete). `--rerun-triggers mtime` reads file times, and a touch sweep over the scratch
 # filesystem once made 6 of 42 finished cases due again (STATUS.md section 9). Override,

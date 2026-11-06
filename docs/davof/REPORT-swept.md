@@ -4750,6 +4750,75 @@ against 8.146e-4, L1(n) 0.4091 against 0.4094), and L1(alphaf) of the DAVOF row 
 flux, the face update and the function objects work on the 2D mesh with empty patches; the
 baseline matrix starts (the coordinator's decision 3).
 
+### The Enright agent's decisions 1-3 in leia: the identity acceptance PASSED (2026-11-06)
+
+The fork's `davof-swept-enright` c5c00c5..25e6ebc (the keys `sweptPieceVolume closure |
+closureThenTets | signedTets` with `sweptPieceValidate`, `sweptBoundedFaceFraction none |
+scale | recompute`, `interfaceCellRule normalOnly | normalAndAlpha | normalAndAlphaReset`,
+the diagnostics `sweptFragmentLog`, `sweptReinitFaceFractions`, `sweptCoverageCheck`,
+`sweptPieceDumpTol`; the coplanar tolerance of the tetrahedra clips, 25e6ebc) taken over
+into leia (e1d11045: the eight diffs applied to the port's files with the class name and
+the log prefix renamed, nothing else changed) and selected by one token
+`TPF_ENRIGHT_SETTING` (tpf_rows.ENRIGHT_SETTINGS: reference, closureThenTets, signedTets,
+signedTetsValidate, scale, recompute, normalAndAlpha, normalAndAlphaReset, fragmentLog,
+recommended = signedTets + scale + normalAndAlpha) that renders the five keys as one block
+appended to the `sweptPreTestCoplanarSide` line, EMPTY for reference (002ef32d): every
+dictionary rendered before the keys existed is byte for byte the same (checked for four
+cases against the templates of e1d11045), so the baseline matrix's stamps stand and the
+variant rows are added, not recomputed.
+
+The acceptance (`config/davof/port_enrightKeys_*`, make_port_enright_configs.py; the fork
+route against `advectorVoF` built from 25e6ebc in the worktree `TwoPhaseFlow-enright` of
+the port workspace, the leia route `davofAdvectorFoam` at 002ef32d; `grazingCut fork`;
+jobs 56023550-63 and 56024911/12; `port_identity_check.py`, every file, every numeric log
+line):
+
+| study | cases per route | verdict |
+|---|---|---|
+| rotation N 32 (20 steps) and N 64 (40 steps), the ten settings | 20 | ALL IDENTICAL (with the default `grazingCut openfoam` first: 13 of 20, the 7 at N 64 the known grazing-cut separation, PORT-DESIGN 1.2) |
+| diagonal translation N 32, the ten settings | 10 | ALL IDENTICAL |
+| plane N 20 and 40, both arms, both rows, the ten settings | 80 | ALL IDENTICAL |
+| parallel np 1, 2, 4, 8, the recommended setting, both rows | 2 each | ALL IDENTICAL; leia np k against np 1: max |dL1(alphaf)| 9.5e-14 (ring), 2.6e-12 (exact) at np 4 and 8, the fork's digits |
+
+The validation counter (`sweptPieceValidate true` with signedTets): the largest
+|V_closure - V_tets|/V_c over the run 1.8e-13 (rotation N 32, 6448 pieces per step
+validated), 6.2e-13 (rotation N 64, 24035 per step), 9.0e-14 (diagonal), 3.6e-14 to
+6.1e-13 (the plane, 2417 to 10670 per step): the signed tetrahedra and the closure agree
+to round-off on the rotation and the translations (the closure's fourth-cap defect is on
+the straining flows, the Enright agent 2026-11-07). The bounded face fractions on the
+rotation N 64 (40 steps): `scale` touched 1071 faces, all partial, max |1 - s| 8.6e-7;
+`recompute` 1084, max |1 - s| 4.5e-9. `normalAndAlpha`: one cell per step with |m_c|
+above the threshold and alpha outside (tol, 1 - tol), no plane for it (the reference
+gives it one). Wall clock not measured here (20 to 40 steps); the Enright agent's 2.35 to
+2.6 x of signedTets stands.
+
+The variant rows of the standing matrix: `config/davof/standing/<family>_N<N>_variants.yaml`
+(the DAVOF row with recommended, signedTets, closureThenTets; `grazingCut fork`; three
+repetitions), submitted after this acceptance; `make_standing_tables.py` labels the row
+with the setting.
+
+### The baseline matrix, first findings while it runs (2026-11-06)
+
+- The DAVOF reference row on the 3D shear (isoShear3D) DIES with a floating-point
+  exception in the bounding (`boundFlux` within `limitFluxes`) at N 32 OF Co 0.2 step 112
+  of 1440 (all three repetitions, deterministic) and at N 64 OF Co 0.5 step 108 (rank 4),
+  after a step with min(alpha) = -0.053 and "explicit plane defects max |alpha_plane -
+  alpha| = 1.0004": the swept flux unbounded on the shear, then the bounding divides by
+  zero. S3-1 of the pre-registration is FALSIFIED for the reference setting (it predicted
+  completion at N 32 for every Co); the same code runs in the fork at 25e6ebc. Whether the
+  recommended setting (signedTets + scale + normalAndAlpha) holds the bound on the shear
+  is the variant rows' question. The 2D shear (isoShear2D) completes every cell at N 64,
+  128 and the finished N 256 cells (13312 steps at OF Co 0.2 on 8 ranks).
+- One plicRDF case (shear3D N 64 OF Co 0.2 rep 1, job 56020056) was CANCELLED by SLURM
+  at step 575 (not a result); its files moved to `previous/cancelled-56020056/`, the
+  study relaunched (56024903): the stamps run that case alone.
+- The shear2D_N256 orchestrator (56018304) died in Snakemake's ILP scheduler
+  (pulp/CBC `IndexError` reading an empty solution file) with 8 of 18 cases done;
+  relaunched (56025308), the stamps skip the finished eight. The Makefile's launches
+  take `--scheduler greedy` from now on (no CBC).
+- The N 128 rungs of the 3D families wait for the `mem` partition (16 GB serial steps;
+  its nodes draining since the afternoon); every other rung ran on deflt.
+
 ## The 3D Enright deformation (2026-11-06)
 
 Tomislav's task of 2026-11-06: the 3D deformation test (LeVeque 1996, Enright et
