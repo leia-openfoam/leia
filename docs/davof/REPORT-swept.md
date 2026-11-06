@@ -4568,8 +4568,34 @@ preparation configs `config/davof/sphereDeformation3D_hex{Swept,RDF}N{32,64,128}
   flux's cost follows the interface band while isoAdvector's is mostly
   mesh-wide). Falsified if the median ratio exceeds 6 at any N.
 
+- E-6 (the third row, added by Tomislav on 2026-11-06 after E-1 .. E-5
+  were registered and before any of its runs: isoAdvector's own plane flux
+  with the DAVOF ring normal and the CCS positioning, the fork's
+  plane-clipped loop = the preprint's davof-ringArea row plus ccs:
+  reconstructionScheme davof, normalModel ringArea, positioning ccs,
+  faceClipping plane, clippingSurface none, fitAnchor faces,
+  fluxIntegration prism, nAlphaBounds 3, snapTol 0, clip false, the swept
+  keys inert; configs `sphereDeformation3D_hexPrismN{32,64,128}.yaml`, the
+  method `prism` of the timed runner and the scoring): the expectation from
+  the rotation (it diverged there at OF Co 1 and was within 4 % of the
+  swept loop at Co 0.2): the plane loop loses boundedness beyond 1e-6 at
+  Co 1 for every N and ends by the abort guard or unbounded; at Co 0.5 it
+  completes with E_shape within a factor 1.3 of the swept row; its wall
+  clock is within 1.5 x plicRDF's (the flux is isoAdvector's). Falsified if
+  it stays bounded to 1e-9 at Co 1 for every N.
+
 Also reported, not predicted: L1(x), L1(n), L1(alphaf) at T, the
 interface-cell and wisp counts at T/2 and T, the swept counters per step
 (rank fallbacks, beyond-layer faces, pyramid delta max, twisted faces, wisp
 pieces, bounding passes), setFlow's continuity error, the pictures of the
 alpha = 0.5 surface at T/2 and T.
+
+Changes after the registration and before the recorded runs (Tomislav's
+notes of 2026-11-06 through the coordinator): writePrecision 17 for the
+fields, the function objects and the log (OpenFOAM sets the stream
+precision from it), so that the leia re-run after the port can be checked
+bit for bit (a first timed pass at precision 12 was cancelled after a few
+minutes and kept as `time-p12/`; its observations are repeated below from
+the recorded runs); the controlDict application from the token
+`TPF_APPLICATION` and the timed runner's `APP` / `ENRIGHT_W` / `STUDIES`
+variables, so that only the solver changes for the leia app; the third row.

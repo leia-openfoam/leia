@@ -9,8 +9,9 @@
 # The timed 3D deformation (Enright / LeVeque) comparison of the swept-face advection with
 # plicRDF + isoAdvector (2026-11-06; the pre-registration E-1 .. E-5 in
 # config/davof/sphereDeformation3D_hexSweptN32.yaml). One exclusive i01 node per (N, CO):
-# REPS repetitions of the two methods (ring = the swept-face advection with the ring normal
-# in the study setting, rdf = plicRDF + isoAdvector), the order alternated per repetition,
+# REPS repetitions of the three methods (ring = the swept-face advection with the ring normal
+# in the study setting, rdf = plicRDF + isoAdvector, prism = the plane-clipped loop with the
+# ring normal and ccs, Tomislav's third row of 2026-11-06), the order rotated per repetition,
 # each solve one srun step on NP ranks (--cpu-bind=cores); the case copies come from the
 # preparation studies sphereDeformation3D_hex{Swept,RDF}N<N> (rendered, meshed, initialised,
 # decomposed), endTime set to T = 3 (3 N 2.5 / Co steps of the fixed dt, a multiple of four),
@@ -56,7 +57,9 @@ EOF
 declare -A SRC
 SRC[ring]=$(pick Swept davof-planeSurf-ringArea)
 SRC[rdf]=$(pick RDF plicRDF)
-for m in ring rdf; do echo "source $m ${SRC[$m]}"; done
+# the third row (Tomislav, 2026-11-06): the plane-clipped loop with the ring normal and ccs
+SRC[prism]=$(pick Prism davof-ringArea)
+for m in ring rdf prism; do echo "source $m ${SRC[$m]}"; done
 prep() { # method rep -> case dir
   local m=$1 r=$2 src=${SRC[$1]} c=$T/${1}_r$2
   mkdir -p $c; cp -r $src/system $src/constant $c/
@@ -74,7 +77,7 @@ prep() { # method rep -> case dir
 }
 csv=$T/timing$SUF.csv
 echo "N,np,co_index,method,rep,steps,dt,end_time,clock_s,exec_s,wall_s,median_step_s,node" > $csv
-orders=("ring rdf" "rdf ring" "ring rdf")
+orders=("ring rdf prism" "rdf prism ring" "prism ring rdf")
 for r in $(seq ${REP0:-1} ${REP1:-$REPS}); do
   for m in ${orders[$(( (r-1) % 3 ))]}; do
     if [ -n "$METHODS" ] && [[ " $METHODS " != *" $m "* ]]; then continue; fi

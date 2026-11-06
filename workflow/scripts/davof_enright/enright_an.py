@@ -24,6 +24,10 @@ W = os.environ.get("ENRIGHT_W", "/work/scratch/tm83tomy/davof/agents/enright")
 OUT = W + "/csv"; os.makedirs(OUT, exist_ok=True)
 V_SPHERE = 4.0/3.0*math.pi*0.15**3
 T_END, T_HALF = 3.0, 1.5
+# ring = the swept-face advection with the ring normal (ours), rdf = plicRDF + isoAdvector,
+# prism = the plane-clipped loop with the ring normal and ccs (the third row, 2026-11-06)
+METHODS = ("ring", "rdf", "prism")
+DAVOF = ("ring", "prism")
 
 _RE_T = re.compile(r"^t = ([^,]+),\s*sum\(alpha\*V\) = ([^,]+),\s*dev = ([^%]+)%,\s*1-max\(alpha1\) = (\S+) at cell \S+,\s*min\(alpha1\) = (\S+) at cell", re.M)
 _RE_BOUND = re.compile(r"After conservative bounding: min\(alpha\) = (\S+), max\(alpha\) = 1 \+ (\S+)")
@@ -175,7 +179,7 @@ def main():
                        massDevPctMax=max(abs(x) for x in g("devPct")) if g("devPct") else float("nan"),
                        Eshape=conv_at(R, T_END, "Eshape"), EshapeRel=conv_at(R, T_END, "Eshape")/V_SPHERE,
                        L1x=conv_at(R, T_END, "LCentreDiff1"), L1n=conv_at(R, T_END, "LNormalDiff1"),
-                       L1af=conv_at(R, T_END, "L1_alphaf") if t["method"] == "ring" else float("nan"),
+                       L1af=conv_at(R, T_END, "L1_alphaf") if t["method"] in DAVOF else float("nan"),
                        EshapeHalf=conv_at(R, T_HALF, "Eshape"),
                        nInterfaceT=conv_at(R, T_END, "nInterface"), nInterfaceHalf=conv_at(R, T_HALF, "nInterface"),
                        nInterfaceAdvT=sT.get("nInterfaceAdv", float("nan")), nInterfaceAdvHalf=sH.get("nInterfaceAdv", float("nan")),
@@ -190,11 +194,11 @@ def main():
                        anchorFailedSum=sum(g("anchorFailed")), ruleFallbacksSum=sum(g("ruleFallbacks")), degenerateMax=max(g("degenerate")) if g("degenerate") else float("nan"),
                        clock_s=f(t["clock_s"]), exec_s=f(t["exec_s"]), wall_s=f(t["wall_s"]), sacct_s=sac.get("%s_r%s" % (t["method"], t["rep"]), float("nan")),
                        median_step_s=f(t["median_step_s"]), node=t["node"], case=c)
-            run["nWispsT"] = run["nPartialT"] - run["nInterfaceAdvT"] if t["method"] == "ring" else run["nPartialT"] - run["nInterfaceT"]
-            run["nWispsHalf"] = run["nPartialHalf"] - run["nInterfaceAdvHalf"] if t["method"] == "ring" else run["nPartialHalf"] - run["nInterfaceHalf"]
+            run["nWispsT"] = run["nPartialT"] - run["nInterfaceAdvT"] if t["method"] in DAVOF else run["nPartialT"] - run["nInterfaceT"]
+            run["nWispsHalf"] = run["nPartialHalf"] - run["nInterfaceAdvHalf"] if t["method"] in DAVOF else run["nPartialHalf"] - run["nInterfaceHalf"]
             runs.append(run)
-            if t["method"] == "ring" and int(t["rep"]) == 1:
-                with open(OUT + "/enright_counters_N%s_co%s.csv" % (t["N"], t["co_index"]), "w", newline="") as fh:
+            if t["method"] in DAVOF and int(t["rep"]) == 1:
+                with open(OUT + "/enright_counters_N%s_co%s_%s.csv" % (t["N"], t["co_index"], t["method"]), "w", newline="") as fh:
                     keys = ["t", "nInterfaceAdv", "minAlpha", "excess", "devPct", "contErr"] + list(_RE_SWEPT.keys()) + ["beyondLayerMax"]
                     w = csv.DictWriter(fh, fieldnames=keys, extrasaction="ignore"); w.writeheader(); w.writerows(steps)
     if not runs:
@@ -228,7 +232,7 @@ def main():
         w = csv.DictWriter(fh, fieldnames=list(table[0].keys())); w.writeheader(); w.writerows(table)
     orders = []
     for co in sorted(set(r["co_index"] for r in table)):
-        for m in ("ring", "rdf"):
+        for m in METHODS:
             rows = sorted([r for r in table if r["co_index"] == co and r["method"] == m], key=lambda r: r["N"])
             for a, b in zip(rows, rows[1:]):
                 o = dict(co_index=co, method=m, N1=a["N"], N2=b["N"])
