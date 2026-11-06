@@ -5335,3 +5335,29 @@ closureThenTets base the variants cannot repair the defective closure
 pieces (cTT + scale aborts at step 459; the rules hold the run at -0.04 ..
 -0.07). The wall clock of signedTets at N 32 serial is 1.3 x closure (678
 against 518 s; the tetrahedra clip 27.7 M pieces).
+
+#### Results: G4, the wall clock on the rotation N 64 at OF Co 1 (2026-11-07)
+
+Job 56014564 (one exclusive i01 node, Xeon Platinum 9242; fork 25e6ebc), one
+turn = 697 steps, three repetitions of each setting, the order rotated;
+`csv/matrix_G4.csv`. The serial signedTets runs completed their 697 steps
+and were then OOM-killed in the final write (the function objects' exact
+state at 3000 MB per task; rc = 1, the wall clock of the loop is valid,
+E_shape missing for them); every other run ended normally.
+
+| setting | ranks | wall clock median [min, max] s | median step s | ratio to closure | tets pieces per turn | min alpha | E_shape at the end |
+|---|---|---|---|---|---|---|---|
+| closure | 1 | 369.8 [369.2, 370.2] | 0.505 | 1.000 | 0 | -8.1e-13 | 1.974e-4 |
+| closureThenTets | 1 | 369.4 [369.3, 370.5] | 0.500 | 0.999 | 0 | -8.1e-13 | 1.974e-4 (bit for bit) |
+| signedTets | 1 | 867.6 [846.8, 871.9] | 1.220 | 2.346 | 16.7 M | -9.9e-13 | (OOM in the final write) |
+| closure | 8 | 162.0 [161.7, 162.0] | 0.230 | 1.000 | 0 | -7.7e-13 | 1.974e-4 |
+| closureThenTets | 8 | 162.0 [161.6, 162.0] | 0.230 | 1.000 | 0 | -7.7e-13 | 1.974e-4 (bit for bit) |
+| signedTets | 8 | 421.2 [416.9, 425.4] | 0.590 | 2.600 | 16.7 M | -9.9e-13 | 1.974e-4 |
+
+P1-4: closureThenTets = closure within 0.1 % serial and 0 % on 8 ranks
+(no fallback fires, the same numbers) HOLDS; signedTets at 2.35 x serial
+and 2.60 x on 8 ranks is FALSIFIED against the 1.5 x / 1.3 x registered:
+every piece (16.7 M per turn) is clipped as tetrahedra (3F per face, each
+by up to seven planes) where the closure clips the boundary triangles
+once. Its errors are the closure's to 1e-13 (E_shape identical to 4
+digits on 8 ranks).
