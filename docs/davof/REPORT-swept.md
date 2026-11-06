@@ -4805,3 +4805,85 @@ templates and configs a re-run needs: `cases/davof/sphereDeformation3D/`,
 `cases/davof/sphereDeformation3D.parameter` (every key with its value),
 `config/davof/sphereDeformation3D_hex{Swept,RDF,Prism}N{32,64,128}.yaml`;
 only `solver` and `TPF_APPLICATION` change for the leia app.
+
+### The diagnosis of the fragmentation (2026-11-06, Tomislav's follow-up)
+
+Short runs only: N = 32, Co 0.5, serial, the full T = 3 (N = 64 only where a
+control needs it); fork branch `davof-swept-enright` 5d8e57d (three opt-in
+keys, default false, the default path unchanged, built from c5c00c5):
+
+- `sweptFragmentLog`: the per-cell history (1). At the start of every step,
+  after the reconstruction, every cell that is a face-fraction interface
+  cell (|m_c| > wispTol V^(2/3)) while alpha < 1e-6 or alpha > 1 - 1e-6
+  and was not logged before is recorded once: the step, t, the cell and
+  its centre, alpha, |m_c|/V^(2/3), the six alphaf in cell-face order,
+  whether a face of the cell was computed by the one-donor rank fallback
+  (more than three caps or a rank-deficient cap system) in the previous
+  step or the one before, whether the cell was in the second-layer
+  bounding set then, and whether it was a wisp without a neighbour
+  surface then (`postProcessing/sweptFragmentLog/cells_<rank>.csv`, the
+  first 200 per rank); the class counts of every step in the log.
+- `sweptExactCaps` (control a): where the closure's cap system is not
+  solvable (k > 3 caps, or a PLIC plane parallel to a cell face) the piece
+  volume is taken exactly instead of the one-donor fallback
+  (`davof::sweptPieceExactVolume`, davofSweptPieces.H): the closed
+  triangle list of the swept volume is decomposed into the signed
+  tetrahedra about the face centre (Zhang & Chen, ICIP 2001,
+  doi:10.1109/ICIP.2001.958278), each tetrahedron is clipped as a convex
+  polyhedron by the cell's half-spaces and the PLIC half-space face by
+  face (Sutherland & Hodgman, Commun. ACM 17 (1974) 32-42,
+  doi:10.1145/360767.360802; the cap of each clip from the crossing points
+  ordered about their centroid), the volume of each clipped polyhedron by
+  the divergence theorem; sum_T vol(tet_T ∩ K) = vol(P ∩ K) for every
+  convex K by the winding number, so no cap system is solved. The 2D face
+  update (no caps) is unchanged. The ordinary pieces (k <= 3) keep the
+  closure path bit for bit.
+- `sweptReinitFaceFractions` (controls c, d): at the start of every step
+  (from step 2) the face fractions are set from the previous
+  reconstruction's planes (cutFacePLIC: the mean of the two clips on a
+  face between two interface cells, the one clip by one plane, the mean of
+  the two alphas on a face without a plane; the boundary faces by the
+  owner), the transported alphaf discarded, the wet-face list rebuilt; the
+  reconstruction then forms m_c and the ring normal from those. One
+  reconstruction per step; the planes are those positioned on the previous
+  alpha, which the next step's planes correct.
+- control (e): wispTol 1e-2 in the reconstruction's dictionary (the
+  initialisation and the function objects keep 1e-3).
+- The runner `workflow/scripts/davof_enright/enright-diag.sbatch` (six
+  runs on one node: frag = the production row + the log, exactCaps,
+  reinit, reinitPrism = the prism row + reinit, wispTol, exactReinit = a
+  + c together as the cross-check of D-2 and D-3), the scoring
+  `enright_diag_an.py` (csv/diag_runs_diag3.csv, diag_frag_*.csv,
+  diag_history_*.csv).
+
+Pre-registered before the runs:
+
+- D-1 (the seeds): the first fragmenting cells appear by step 3; of the
+  first 200, more than 60 % have a face computed by the rank fallback in
+  the previous step or the one before, fewer than 20 % belong to none of
+  the three classes; more than 80 % are dry cells (alpha < 1e-6) that
+  gained a face-fraction surface, with |m_c|/V^(2/3) between 1e-3 and 1e-1.
+  Falsified if the fallback-adjacent share is below 40 % or the "none"
+  share above 40 %.
+- D-2 (a): the rank fallbacks are 0 at every step; the second-layer
+  bounding at step 1 drops below 10 cells (from 25); min alpha stays above
+  -1e-9 over the first 20 steps; over T the run does NOT stay bounded
+  (min alpha below -1e-3 by T/2) and the face-fraction interface cells
+  still exceed twice the partial cells at T/2: the fallback contributes,
+  it is not the seed. Falsified if the run stays bounded to 1e-9 over T
+  (then the fallback IS the seed) or if the first 20 steps already leave
+  -1e-9 (then the exact caps do not remove the step-1 inconsistency).
+- D-3 (c): the face-fraction interface cells stay within 1.5 x the
+  partial cells at every write; min alpha over the run above -1e-2 (ten
+  times better than the row's -0.27); E_shape at T within 1.5 x plicRDF's
+  7.765e-3 and the sphere returns in the picture. Falsified if the ratio
+  exceeds 2 at any write or min alpha falls below -0.1: then the loop's
+  geometry (the flux and its fallback), not the transported state,
+  fragments.
+- D-4 (d): as D-3 for the prism row but less bounded: min alpha above
+  -5e-2, the ratio within 1.5 x.
+- D-5 (e): the interface count at T/2 falls by 30-50 %, min alpha stays
+  below -0.1: a sensitivity, not a cure.
+- D-6: no control keeps N = 32 bounded to 1e-9 over T. If (c) or (a + c)
+  keeps N = 32 above -1e-2, that control is run at N = 64, Co 0.5 (the
+  prepared 8-rank case) and is expected to complete without an abort.
