@@ -26,7 +26,7 @@ cell locally from the Gauss identity on the liquid sub-volume,
     m_c = - sum_f alpha_f S_f^out ,
 
 with `|m_c|` the interface area in the cell and `m_c/|m_c|` the normal out of
-the liquid. Library: `src/leiaLevelSet/davof` (`libleiaDavof`). Gates:
+the liquid. Library: `src/leiaLevelSet/davof` (`libleiaDavofState`). Gates:
 
 - `cases/davof/planeNormal3D/Allrun`: exact-solution gate (a plane; the
   normal, the explicit plane position, the tet/face consistency, the alpha

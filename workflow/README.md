@@ -837,7 +837,7 @@ The dual area/volume-of-fluid method carries, next to the cell volume fraction
 `alpha_c`, the liquid area fraction `alpha_f` of every face, and recovers the
 interface area normal of a cell from the Gauss identity on the liquid sub-volume,
 `m_c = -sum_f alpha_f S_f^out` (`|m_c|` = interface area in the cell, direction =
-normal out of the liquid). Library `src/leiaLevelSet/davof` (`libleiaDavof`,
+normal out of the liquid). Library `src/leiaLevelSet/davof` (`libleiaDavofState`,
 `davofState.H`), app `applications/test/leiaTestDavofNormal`, theme `davof`
 (`docs/davof/README.md`). The studies live in their own sub-folders:
 `config/davof/<study>.yaml`, `cases/davof/<case>{,.parameter}`, `studies/davof/<study>`
@@ -900,7 +900,7 @@ per (alphaSource, model)). `--tpf-results <csv>` merges the rows of the TwoPhase
 benchmark `run/benchmark/reconstruction/sphereNormal3D` as `tpf:<scheme>/<setAlpha>`.
 
 Curvature of the DAVOF state (`src/leiaLevelSet/davof/curvature`, part of
-`libleiaDavof`, run-time selectable by the DAVOF applications and independent of
+`libleiaDavofState`, run-time selectable by the DAVOF applications and independent of
 the level-set libraries): `fvSolution davof { curvature { models (normalsOnly
 hermite); normalsOnly { type quadricFit; positionWeight 0; } hermite { type
 quadricFit; positionWeight 1; } } }`. `quadricFit` fits, per interface cell, a

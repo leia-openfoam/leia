@@ -1,0 +1,531 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | www.openfoam.com
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+    Copyright (C) 2026 Tomislav Maric, TU Darmstadt
+-------------------------------------------------------------------------------
+License
+    This file is part of OpenFOAM.
+
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
+\*---------------------------------------------------------------------------*/
+
+#include "areaFractionError.H"
+#include "addToRunTimeSelectionTable.H"
+
+#include "davofAdvectionScheme.H"
+#include "reconstructionSchemes.H"
+#include "implicitFunction.H"
+#include "davofInit.H"
+#include "davofOrbit.H"
+#include "volFields.H"
+#include "surfaceFields.H"
+#include "profiling.H"
+#include "syncTools.H"
+#include "processorPolyPatch.H"
+#include "OFstream.H"
+#include "OSspecific.H"
+
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+namespace Foam
+{
+namespace functionObjects
+{
+    defineTypeNameAndDebug(areaFractionError, 0);
+    addToRunTimeSelectionTable(functionObject, areaFractionError, dictionary);
+}
+}
+
+
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void Foam::functionObjects::areaFractionError::writeFileHeader(Ostream& os) const
+{
+    writeHeader(os, "areaFractionError ");
+    writeCommented(os, "Time");
+    writeTabbed(os, "L1");
+    writeTabbed(os, "L2");
+    writeTabbed(os, "Linf");
+    writeTabbed(os, "nFaces");
+    writeTabbed(os, "nInterfaceCells");
+    writeTabbed(os, "consistency");
+    os  << endl;
+}
+
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::functionObjects::areaFractionError::areaFractionError
+(
+    const word& name,
+    const Time& runTime,
+    const dictionary& dict
+)
+:
+    fvMeshFunctionObject(name, runTime, dict),
+    writeFile(obr_, name, typeName, dict),
+    dict_(dict),
+    fieldName_(),
+    functionType_(),
+    origin0_(Zero),
+    U0_(Zero),
+    U0FromField_(true),
+    omega_(Zero),
+    axisPoint_(Zero),
+    davofMethod_("quadraticFaces"),
+    wispTol_(1e-3),
+    consistency_(true),
+    reconstructionError_(true),
+    reconstructionErrorEveryStep_(false),
+    writeFaceError_(false),
+    faceErrorCsv_(false),
+    recErrPtr_(nullptr)
+{
+    read(dict);
+
+    writeFileHeader(file());
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+bool Foam::functionObjects::areaFractionError::read(const dictionary& dict)
+{
+    fvMeshFunctionObject::read(dict);
+    writeFile::read(dict);
+
+    fieldName_ = dict.get<word>("field");
+    functionType_ = dict.get<word>("functionType");
+    origin0_ = dict.get<vector>("origin");
+    U0_ = dict.getOrDefault<vector>("U0", vector::zero);
+    davof::readOrbit(dict, origin0_, omega_, axisPoint_);
+    // U0 from a uniform velocity field only without U0 and without a
+    // rotation (2026-11-01, as in volumeFractionError): with omega the orbit
+    // moves the body, and a uniform U is the circular translation without
+    // spin, whose exact body is the orbit itself (U0 zero)
+    U0FromField_ = !dict.found("U0") && mag(omega_) <= VSMALL;
+    davofMethod_ = dict.getOrDefault<word>("davofMethod", "quadraticFaces");
+    wispTol_ = dict.getOrDefault<scalar>("wispTol", 1e-3);
+    consistency_ = dict.getOrDefault<Switch>("consistency", Switch(true));
+    reconstructionError_ = dict.getOrDefault<bool>("reconstructionError", true);
+    writeFaceError_ = dict.getOrDefault<bool>("writeFaceError", false);
+    faceErrorCsv_ = dict.getOrDefault<bool>("faceErrorCsv", false);
+    reconstructionErrorEveryStep_ =
+        dict.getOrDefault<bool>("reconstructionErrorEveryStep", false);
+
+    if (reconstructionError_)
+    {
+        recErrPtr_.reset(new Foam::reconstructionError(mesh_, obr_, dict));
+    }
+
+    return true;
+}
+
+
+bool Foam::functionObjects::areaFractionError::execute()
+{
+    // Nothing: the exact state, the error and the extra reconstructions
+    // are built in write() only, so a write control that fires at the end
+    // (onEnd) computes nothing before it
+    return true;
+}
+
+
+bool Foam::functionObjects::areaFractionError::write()
+{
+    addProfilingInFunction(geometricVoF);
+    const Time& runTime = mesh_.time();
+    const scalar t = runTime.value();
+
+    vector U0 = U0_;
+    if (U0FromField_)
+    {
+        const volVectorField& U = lookupObject<volVectorField>("U");
+        const scalarField magU(mag(U.primitiveField()));
+        if (U.size() && (gMax(magU) - gMin(magU)) <= SMALL)
+        {
+            U0 = U[0];
+        }
+        reduce(U0, maxMagSqrOp<vector>());
+    }
+
+    // The implicit function translated (and, with omega, turned about the
+    // axis through axisPoint) to time t
+    dictionary funcDict(dict_);
+    funcDict.set("type", functionType_);
+    funcDict.set("origin", davof::orbitOrigin(origin0_, U0, omega_, axisPoint_, t));
+
+    autoPtr<implicitFunction> func
+    (
+        implicitFunction::New(functionType_, funcDict)
+    );
+
+    const volScalarField& alpha = lookupObject<volScalarField>(fieldName_);
+    const word afName(IOobject::groupName("alphaf", alpha.group()));
+
+    // The exact DAVOF state of the translated function
+    volScalarField alphaEx
+    (
+        IOobject
+        (
+            "areaFractionError:alphaExact",
+            runTime.timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        mesh_,
+        dimensionedScalar(dimless, Zero),
+        calculatedFvPatchScalarField::typeName
+    );
+    surfaceScalarField alphafEx
+    (
+        IOobject
+        (
+            "areaFractionError:alphafExact",
+            runTime.timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE,
+            false
+        ),
+        mesh_,
+        dimensionedScalar(dimless, Zero),
+        calculatedFvsPatchScalarField::typeName
+    );
+
+    davofInit init(mesh_, func(), funcDict);
+    if (davofMethod_ == "exactSphere")
+    {
+        init.exactSphere(alphaEx, alphafEx);
+    }
+    else if (davofMethod_ == "quadraticFaces")
+    {
+        init.quadraticFaces(alphaEx, alphafEx);
+    }
+    else if (davofMethod_ == "detrixheAslam" || davofMethod_ == "linearInterpolant")
+    {
+        init.detrixheAslam(alphaEx, alphafEx);
+    }
+    else
+    {
+        FatalErrorInFunction
+            << "Unknown davofMethod '" << davofMethod_
+            << "'. Valid: exactSphere, quadraticFaces, detrixheAslam."
+            << exit(FatalError);
+    }
+
+    scalar L1 = -1, L2 = -1, Linf = -1, consistency = -1;
+    label nFaces = 0, nInterface = 0;
+
+    davofAdvectionScheme* advPtr = nullptr;
+    if (mesh_.foundObject<davofAdvectionScheme>("davofAdvectionScheme"))
+    {
+        advPtr = &mesh_.lookupObjectRef<davofAdvectionScheme>("davofAdvectionScheme");
+    }
+
+    if (foundObject<surfaceScalarField>(afName))
+    {
+        const surfaceScalarField& af = lookupObject<surfaceScalarField>(afName);
+
+        vectorField mCur, mEx;
+        scalarField afCur, afEx;
+        davofInit::areaNormal(mesh_, af, mCur, afCur);
+        davofInit::areaNormal(mesh_, alphafEx, mEx, afEx);
+
+        // faceState vector (2026-10-25): m_c of both states from the wetted
+        // area vectors (the interface-cell set of the norms), and the
+        // vector error |a_f - a_f,exact|/|S_f| in the log; the .dat
+        // columns stay the scalar fractions'
+        const word wvName(IOobject::groupName("wettedAreaDavof", alpha.group()));
+        const bool haveVec = foundObject<surfaceVectorField>(wvName);
+        scalarField vecErr;
+        if (haveVec)
+        {
+            const surfaceVectorField& wv = lookupObject<surfaceVectorField>(wvName);
+            surfaceVectorField wvEx
+            (
+                IOobject
+                (
+                    "areaFractionError:wettedAreaExact",
+                    runTime.timeName(),
+                    mesh_,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE,
+                    false
+                ),
+                mesh_,
+                dimensionedVector(dimArea, Zero),
+                calculatedFvsPatchVectorField::typeName
+            );
+            init.fillWettedArea(wvEx);
+            davofInit::areaNormal(mesh_, af, wv, mCur);
+            davofInit::areaNormal(mesh_, alphafEx, wvEx, mEx);
+            vecErr.setSize(mesh_.nFaces(), 0);
+            const vectorField& Sf = mesh_.faceAreas();
+            for (label facei = 0; facei < mesh_.nInternalFaces(); ++facei)
+            {
+                vecErr[facei] = mag(wv[facei] - wvEx[facei])/mag(Sf[facei]);
+            }
+            forAll(wv.boundaryField(), patchi)
+            {
+                const label start = mesh_.boundaryMesh()[patchi].start();
+                const fvsPatchVectorField& pv = wv.boundaryField()[patchi];
+                const fvsPatchVectorField& pe = wvEx.boundaryField()[patchi];
+                if (pv.size() != pe.size()) continue;
+                forAll(pv, i)
+                {
+                    vecErr[start + i] = mag(pv[i] - pe[i])/mag(Sf[start + i]);
+                }
+            }
+        }
+
+        const labelUList& own = mesh_.faceOwner();
+        const labelUList& nei = mesh_.faceNeighbour();
+        const label nInt = mesh_.nInternalFaces();
+
+        boolList isInterface(mesh_.nCells(), false);
+        label nIntLocal = 0;
+        forAll(isInterface, celli)
+        {
+            const scalar thr = davofInit::wispThreshold(mesh_, celli, wispTol_);
+            isInterface[celli] = (mag(mCur[celli]) > thr || mag(mEx[celli]) > thr);
+            if (isInterface[celli]) ++nIntLocal;
+        }
+
+        boolList hasValue(mesh_.nFaces(), false);
+        for (label facei = 0; facei < nInt; ++facei)
+        {
+            hasValue[facei] = true;
+        }
+        const surfaceScalarField::Boundary& bf = af.boundaryField();
+        forAll(bf, patchi)
+        {
+            const polyPatch& pp = mesh_.boundaryMesh()[patchi];
+            if (bf[patchi].size() == pp.size())
+            {
+                forAll(pp, i)
+                {
+                    hasValue[pp.start() + i] = true;
+                }
+            }
+        }
+
+        // The signed per-face error on the counted faces (written on request)
+        autoPtr<surfaceScalarField> errPtr;
+        if (writeFaceError_)
+        {
+            errPtr.reset
+            (
+                new surfaceScalarField
+                (
+                    IOobject
+                    (
+                        IOobject::groupName("alphafError", alpha.group()),
+                        runTime.timeName(),
+                        mesh_,
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE,
+                        false
+                    ),
+                    mesh_,
+                    dimensionedScalar(dimless, Zero),
+                    calculatedFvsPatchScalarField::typeName
+                )
+            );
+        }
+
+        // a processor face is one face: counted on the owning side of the
+        // patch, adjacent when either cell is an interface cell (the remote
+        // cell's flag swapped across the patch), as an internal face in
+        // serial (2026-10-24: the parallel norm counted them twice)
+        boolList nbrInterface;
+        if (Pstream::parRun())
+        {
+            syncTools::swapBoundaryCellList(mesh_, isInterface, nbrInterface);
+        }
+        const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
+
+        // the counted faces as CSV (faceErrorCsv, 2026-11-02): one file per
+        // write and rank
+        autoPtr<OFstream> csvPtr;
+        if (faceErrorCsv_)
+        {
+            const fileName dir
+            (
+                runTime.globalPath()/"postProcessing"/name()/"faceError"
+            );
+            mkDir(dir);
+            csvPtr.reset
+            (
+                new OFstream
+                (
+                    dir/(Foam::name(runTime.timeIndex()) + "_"
+                  + Foam::name(Pstream::myProcNo()) + ".csv")
+                )
+            );
+            csvPtr().precision(15);
+            const point o = davof::orbitOrigin(origin0_, U0, omega_, axisPoint_, t);
+            csvPtr() << "# t " << t << " origin " << o.x() << ' ' << o.y()
+                << ' ' << o.z() << nl
+                << "x,y,z,Sx,Sy,Sz,alphaf,alphafExact" << nl;
+        }
+        const vectorField& CfAll = mesh_.faceCentres();
+        const vectorField& SfAll = mesh_.faceAreas();
+
+        scalar sum = 0, sum2 = 0, worst = 0;
+        scalar vSum = 0, vWorst = 0;
+        label nLocal = 0;
+        forAll(hasValue, facei)
+        {
+            if (!hasValue[facei]) continue;
+            bool adjacent =
+                isInterface[own[facei]]
+             || (facei < nInt && isInterface[nei[facei]]);
+            if (facei >= nInt && Pstream::parRun())
+            {
+                const label patchi = pbm.whichPatch(facei);
+                if (patchi >= 0 && isA<processorPolyPatch>(pbm[patchi]))
+                {
+                    if (!refCast<const processorPolyPatch>(pbm[patchi]).owner())
+                    {
+                        continue;
+                    }
+                    adjacent = adjacent || nbrInterface[facei - nInt];
+                }
+            }
+            if (!adjacent) continue;
+            const scalar e = mag(afCur[facei] - afEx[facei]);
+            sum += e;
+            sum2 += e*e;
+            worst = max(worst, e);
+            if (haveVec)
+            {
+                vSum += vecErr[facei];
+                vWorst = max(vWorst, vecErr[facei]);
+            }
+            ++nLocal;
+            if (csvPtr)
+            {
+                const point& x = CfAll[facei];
+                const vector& S = SfAll[facei];
+                csvPtr() << x.x() << ',' << x.y() << ',' << x.z() << ','
+                    << S.x() << ',' << S.y() << ',' << S.z() << ','
+                    << afCur[facei] << ',' << afEx[facei] << nl;
+            }
+            if (errPtr && facei < nInt)
+            {
+                errPtr->primitiveFieldRef()[facei] = afCur[facei] - afEx[facei];
+            }
+        }
+        if (errPtr)
+        {
+            errPtr->write();
+        }
+
+        nFaces = returnReduce(nLocal, sumOp<label>());
+        nInterface = returnReduce(nIntLocal, sumOp<label>());
+        sum = returnReduce(sum, sumOp<scalar>());
+        sum2 = returnReduce(sum2, sumOp<scalar>());
+        L1 = sum/max(nFaces, label(1));
+        L2 = Foam::sqrt(sum2/max(nFaces, label(1)));
+        Linf = returnReduce(worst, maxOp<scalar>());
+        if (haveVec)
+        {
+            vSum = returnReduce(vSum, sumOp<scalar>());
+            vWorst = returnReduce(vWorst, maxOp<scalar>());
+            Log << type() << " " << name() << ": wetted area vector error"
+                << " |a_f - a_f,exact|/|S_f| L1 = " << vSum/max(nFaces, label(1))
+                << ", Linf = " << vWorst << endl;
+        }
+
+        // The consistency of the transported state with the plane the
+        // davof scheme positions in it (one extra reconstruction; -1 when
+        // switched off)
+        if (consistency_ && advPtr && advPtr->surf().type() == "davof")
+        {
+            reconstructionSchemes& surf = advPtr->surf();
+            surf.reconstruct(true);
+            const volVectorField& n = surf.normal();
+            const scalarField& V = mesh_.V();
+            scalar worstC = 0;
+            for (const label celli : surf.interfaceLabels())
+            {
+                worstC = max
+                (
+                    worstC,
+                    mag(mCur[celli] - n[celli])/Foam::pow(V[celli], 2.0/3.0)
+                );
+            }
+            consistency = returnReduce(worstC, maxOp<scalar>());
+        }
+    }
+
+    if (Pstream::master())
+    {
+        writeCurrentTime(file());
+        file()
+            << token::TAB << L1
+            << token::TAB << L2
+            << token::TAB << Linf
+            << token::TAB << nFaces
+            << token::TAB << nInterface
+            << token::TAB << consistency
+            << endl;
+    }
+
+    Log << type() << " " << name() << ": alphaf error L1 = " << L1
+        << ", L2 = " << L2 << ", Linf = " << Linf << " over " << nFaces
+        << " faces of " << nInterface << " interface cells, consistency "
+        << consistency << endl;
+
+    // The reconstruction error against the translated function
+    if (recErrPtr_ && advPtr)
+    {
+        const bool last =
+            (t + 0.5*runTime.deltaTValue() >= runTime.endTime().value());
+        if (reconstructionErrorEveryStep_ || last)
+        {
+            reconstructionSchemes& surf = advPtr->surf();
+            surf.reconstruct(true);
+            volScalarField curv
+            (
+                IOobject
+                (
+                    "areaFractionError:curv",
+                    runTime.timeName(),
+                    mesh_,
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE,
+                    false
+                ),
+                mesh_,
+                dimensionedScalar(dimless/dimLength, Zero)
+            );
+            recErrPtr_->calcError(funcDict, surf.centre(), surf.normal(), curv, true);
+            recErrPtr_->write();
+        }
+    }
+
+    return true;
+}
+
+
+// ************************************************************************* //

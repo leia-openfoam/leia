@@ -78,6 +78,13 @@ SETFIELDS_ARGS = (config.get("setfields_args") or "").strip()
 # The field initialiser (see the preprocess rule below); the static-refinement
 # drivers call it once per refinement pass and once more on the final mesh.
 SETFIELDS_APP = config.get("setfields_app", "leiaSetFields")
+# The DAVOF advection studies (cases/davof) run on two routes selected by the solver
+# alone (docs/davof/PORT-DESIGN.md, 2026-11-06): advectorVoF, the TwoPhaseFlow fork's
+# benchmark solver (LEIA_TPF_DIR; the acceptance comparison only), or davofAdvectorFoam,
+# leia's own (libleiaDavof). The fork's initialisation app initDavofFields becomes
+# leia's davofInitFields on the leia route, so a config switches routes by one line.
+if SOLVER == "davofAdvectorFoam" and SETFIELDS_APP == "initDavofFields":
+    SETFIELDS_APP = "davofInitFields"
 
 # hexRefined | polyRefined: statically refined around the interface by the
 # drivers in workflow/scripts (leiaRefineHexMesh.py / leiaRefinePolyMesh.py),
@@ -185,7 +192,7 @@ MPI_PREFIX = (MPI.format(np=NP) + " ") if PARALLEL else ""
 # 2026-10-13) has none either (its velocity is uniform and prescribed).
 FLUX       = (" -fluxCorrection"
               if MESH == "perturbed"
-              and SOLVER not in ("leiaTestDavofNormal", "advectorVoF") else "")
+              and SOLVER not in ("leiaTestDavofNormal", "advectorVoF", "davofAdvectorFoam") else "")
 INIT_END   = f"./system/init_End/init_End.{MODE}" if CASE == "3Dtranslation" else ""
 
 # The gradPsiErrorCSV / leiaSetFields function objects APPEND to their CSVs: a
@@ -227,7 +234,7 @@ _solve = ["cd {params.d}", f"rm -f {SOLVER_CSV} .leia_solver_failed .leia_launch
 # a re-run would stack a second series onto the stale one (the converter keeps
 # the last row of a repeated time, which would then be the OLD run's for every
 # step the new run has not reached). Remove the whole directory first.
-if SOLVER == "advectorVoF":
+if SOLVER in ("advectorVoF", "davofAdvectorFoam"):
     _solve.append("rm -rf postProcessing")
 if INIT_END:
     _solve.append(INIT_END)
@@ -368,7 +375,8 @@ rule generate_case:
         os.path.join(CASE_DIR, "case_params.json"),
     run:
         materialize.materialize(
-            BASE_CASE, VARIATIONS[int(wildcards.idx)],
+            # DAVOF_SOLVER: the route of the DAVOF advection studies (materialize.py)
+            BASE_CASE, {**VARIATIONS[int(wildcards.idx)], "DAVOF_SOLVER": SOLVER},
             os.path.dirname(output[0]),
             NP, MESH, MODE, DIMS, CASE_NAME, wildcards.idx,
         )
@@ -565,7 +573,7 @@ rule report:
         # publishes its own davof_normal_orders table (1c below), and for the
         # TwoPhaseFlow advection benchmark (advectorVoF, 1d below), whose
         # per-step CSV has none of the level-set error columns.
-        _STATIC_APPS = ("leiaTestMeanCurvature", "leiaTestDavofNormal", "advectorVoF")
+        _STATIC_APPS = ("leiaTestMeanCurvature", "leiaTestDavofNormal", "advectorVoF", "davofAdvectorFoam")
         if SOLVER not in _STATIC_APPS:
             for _csv in _glob.glob(os.path.join(STUDY_DIR, f"{STUDY}_errors.csv")):
                 _shutil.copy(_csv, TABLES_DIR)
@@ -600,7 +608,7 @@ rule report:
         # (tpf_advection_metrics.py, post_solve) -> the long table, the
         # histories and growth factors, the per-Co order tables, the Co table,
         # the plane gate table and the log-log figures in the davof theme data.
-        if SOLVER == "advectorVoF":
+        if SOLVER in ("advectorVoF", "davofAdvectorFoam"):
             _run([_PY, os.path.join(_scripts, "make_davof_advection_table.py"),
                      STUDY_DIR, "--theme", THEME], "make_davof_advection_table.py")
         # 1b. The SDPLS convergence + order tables are a DATA product that
@@ -739,7 +747,7 @@ rule report:
             # Unchanged for every existing solver (leiaTestMeanCurvature included);
             # only the DAVOF app and the TwoPhaseFlow benchmark solver, which have
             # no level-set advection metrics, are exempted.
-            if SOLVER not in ("leiaTestDavofNormal", "advectorVoF"):
+            if SOLVER not in ("leiaTestDavofNormal", "advectorVoF", "davofAdvectorFoam"):
                 plots.main(STUDY_DIR, "")
             # keep the presentation-side data mirror current even when the deck
             # rebuild is skipped (the errors.csv above landed in the article data/).

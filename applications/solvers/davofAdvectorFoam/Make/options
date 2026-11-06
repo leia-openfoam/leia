@@ -1,0 +1,39 @@
+/* The advection benchmark solver of the DAVOF studies (from TwoPhaseFlow's
+   advectorVoF, apps/benchmark; docs/davof/PORT-DESIGN.md, 2026-11-06). The
+   function objects of libleiaDavofFunctionObjects are linked in, so a case
+   needs no libs entry for them. OpenFOAM v2606 only. */
+EXE_INC = \
+    -std=c++17 \
+    -I../../../src/davof/lnInclude \
+    -I../../../src/functionObjects/davof/lnInclude \
+    -I$(FOAM_UTILITIES)/preProcessing/setAlphaField/alphaFieldFunctions/lnInclude \
+    -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/surfMesh/lnInclude \
+    -I$(LIB_SRC)/functionObjects/field/lnInclude \
+    -I$(LIB_SRC)/transportModels/geometricVoF/lnInclude \
+    -I$(LIB_SRC)/transportModels/twoPhaseMixture/lnInclude \
+    -I$(LIB_SRC)/transportModels \
+    -I$(LIB_SRC)/transportModels/incompressible/lnInclude \
+    -I$(LIB_SRC)/transportModels/interfaceProperties/lnInclude \
+    -I$(LIB_SRC)/TurbulenceModels/turbulenceModels/lnInclude \
+    -I$(LIB_SRC)/TurbulenceModels/incompressible/lnInclude \
+    -I$(LIB_SRC)/transportModels/immiscibleIncompressibleTwoPhaseMixture/lnInclude
+
+EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) \
+    -lfiniteVolume \
+    -ldynamicFvMesh \
+    -lmeshTools \
+    -lsampling \
+    -lgeometricVoF \
+    -lalphaFieldFunctions \
+    -lleiaDavof \
+    -lleiaDavofFunctionObjects \
+    -lleiaCore \
+    -limmiscibleIncompressibleTwoPhaseMixture \
+    -lturbulenceModels \
+    -lincompressibleTurbulenceModels \
+    -lfieldFunctionObjects

@@ -73,6 +73,14 @@ values
     TPF_SWEPT_PRE_TEST ( touching );
     TPF_SWEPT_STATE_SHORTCUT ( false );
     TPF_SWEPT_TRACE_CACHE ( true );
+    // the four bit-for-bit keys of round 4 and the two round-off opt-ins of the
+    // swept-face flux (fork davof-swept c5c00c5, 2026-11-05; the fork's defaults)
+    TPF_SWEPT_AXIS_PLANES ( false );
+    TPF_SWEPT_TET_CACHE ( false );
+    TPF_SWEPT_POINT_VELOCITY_LAZY ( false );
+    TPF_SWEPT_PRE_TEST_COPLANAR_SIDE ( false );
+    TPF_SWEPT_FACE_UPDATE_FROM_VOLUME ( false );
+    TPF_SWEPT_SLIVER_CLOSED_FORM ( false );
     // the volume flux of a face (fork branch davof-fluxint, 2026-10-25): prism
     // (the liquid volume of the prism between the pre-image and the face) |
     // trapezoidal (phi_f dt times the mean of the face fractions at t^n and
@@ -149,6 +157,8 @@ values
     // controlDict writeInterval in steps (timeStep write control): the end
     // time only with this default; 1 writes every step
     TPF_WRITE_STEPS ( 1000000 );
+    // the precision of the field writes (16 as before; 17 for a bit-for-bit comparison)
+    TPF_WRITE_PRECISION ( 16 );
 
     // The diagnostics' write controls and the profiling (2026-10-15; the
     // defaults render the study as before, plus the inert profiling block;

@@ -176,6 +176,24 @@ def _with_derived_tokens(tokens):
     out = dict(tokens)
     if "TPF_ROW" in out:
         out.update(tpf_rows.row_tokens(str(out["TPF_ROW"])))
+    # The route of the DAVOF advection studies (docs/davof/PORT-DESIGN.md, 2026-11-06):
+    # DAVOF_SOLVER is the study's solver (injected by the Snakefile), advectorVoF (the
+    # TwoPhaseFlow fork, the acceptance comparison only) or davofAdvectorFoam (leia).
+    # The three template lines that differ between the routes: the application, the
+    # advection scheme of the alpha solver dictionary (the fork's isoAdvection carries
+    # every row; leia's davofSwept the davof rows and isoAdvector the comparators) and
+    # the function objects' library. Everything else renders identically.
+    if "DAVOF_SOLVER" in out:
+        solver = str(out["DAVOF_SOLVER"])
+        if solver in ("advectorVoF", "davofAdvectorFoam"):
+            leia = (solver == "davofAdvectorFoam")
+            recon = str(out.get("TPF_RECON_SCHEME", "davof"))
+            out.setdefault("DAVOF_APP", solver)
+            out.setdefault("DAVOF_ADVECTION_SCHEME",
+                           (("davofSwept" if recon == "davof" else "isoAdvector")
+                            if leia else "isoAdvection"))
+            out.setdefault("DAVOF_FO_LIBS",
+                           '"libleiaDavofFunctionObjects.so"' if leia else '"libpostProcess.so"')
     if "TPF_VELOCITY_ARM" in out:
         out.update(tpf_rows.velocity_tokens(str(out["TPF_VELOCITY_ARM"])))
     if "END_TIME" in out:

@@ -225,7 +225,7 @@ theme `davof` -> `docs/davof/davof-article/data/` (README section "DAVOF").
 `libleiaDavofInterface` writes the PLIC surfaces (VTK, `sampledSurface`
 `davofInterface`); `make davof-proposal DEST=...` exports the proposal's table
 and figures (README section "DAVOF").
-Curvature of the DAVOF state: run-time-selectable models in `libleiaDavof`
+Curvature of the DAVOF state: run-time-selectable models in `libleiaDavofState`
 (`src/leiaLevelSet/davof/curvature`, `fvSolution davof.curvature`, NOT in the
 level-set libraries), delivered to cells and faces with the parallel-surface
 closed form; measured on the ellipsoid ladder `config/davof/ellipsoidNormal3D.yaml`

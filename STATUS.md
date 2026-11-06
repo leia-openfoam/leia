@@ -3319,7 +3319,7 @@ its convergence next to the best PLIC reconstructions (TwoPhaseFlow's plicRDF, g
 isoAlpha). Expectation before the run: DAVOF second order, the PLIC schemes first.
 
 **What exists now (commits 98bb59f, 9cfcd4b, this one).** `src/leiaLevelSet/davof`
-(`libleiaDavof`, `davofState.H`): the DAVOF state with three sources of `(alpha_c, alpha_f)`:
+(`libleiaDavofState`, `davofState.H`): the DAVOF state with three sources of `(alpha_c, alpha_f)`:
 `exactSphere` (closed-form circle-polygon face fractions, quadrature cell fractions, both
 exact), `linearInterpolant` (the exact signed distance at the cell centre, the face centres
 and the points, linear on the Detrixhe-Aslam tets and on the face fans with the same vertex
@@ -3562,7 +3562,7 @@ items outside WP1.
 ### 10.11 DAVOF static gate 2: the curvature of the DAVOF state on an ellipsoid, measured (2026-09-29)
 
 **What.** The curvature of the DAVOF state as run-time-selectable models inside
-`libleiaDavof` (`src/leiaLevelSet/davof/curvature`, `fvSolution davof.curvature`,
+`libleiaDavofState` (`src/leiaLevelSet/davof/curvature`, `fvSolution davof.curvature`,
 nothing in the level-set libraries): `quadricFit` fits, per interface cell, a
 quadric graph in the frame of `n_c = m_c/|m_c|` about the plane-polygon centroid
 to the Hermite data of the point-neighbour ring (OpenFOAM's `CPCCellToCellStencil`,

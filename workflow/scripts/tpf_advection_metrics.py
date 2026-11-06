@@ -135,7 +135,7 @@ _RE_SAGITTA = re.compile(
     r"; sagitta corrected (\d+) faces, (\d+) capped, (\d+) clamped, "
     r"(\d+) skipped \(cos\), (\d+) skipped \(chord\)")
 _RE_CURVED = re.compile(
-    r"^isoAdvection: curved clipping \((\w+)\): alphaf and dVf set on (\d+) faces "
+    r"^(?:isoAdvection|davofSwept): curved clipping \((\w+)\): alphaf and dVf set on (\d+) faces "
     r"\((\d+) second ring, (\d+) boundary\), (\d+) skipped, (\d+) clips, "
     r"(\d+) linear cuts, (\d+) quadrature leaves"
     # the residual and the face shift are printed only with the fork's
@@ -163,18 +163,18 @@ _RE_CURVED = re.compile(
 # the mass through the stages of the step (the curved loop, 2026-10-29; the
 # boundary outflow since fork 78464c0)
 _RE_MASS = re.compile(
-    r"^isoAdvection: mass change relative to sum\(alpha V\) at t\^n: advection ([^,\s]+), "
+    r"^(?:isoAdvection|davofSwept): mass change relative to sum\(alpha V\) at t\^n: advection ([^,\s]+), "
     r"bounding ([^,\s]+), clipping ([^,\s]+)(?:, boundary outflow (\S+))?")
 # the swept fluxes in parallel (fork davof-swept-par, 2026-10-30): the cells
 # of other ranks fetched, the faces whose pieces or trace used one, the traces
 # that fell back to the Euler step, the wall times (max over the ranks) of the
 # advect call, of curvedFlux and of the exchange
 _RE_SWEPT_PAR = re.compile(
-    r"^isoAdvection: swept parallel: remote cells (\d+), faces with remote cells (\d+), "
+    r"^(?:isoAdvection|davofSwept): swept parallel: remote cells (\d+), faces with remote cells (\d+), "
     r"Euler traces (\d+); wall time max over \d+ ranks: advect (\S+) s, "
     r"curvedFlux (\S+) s, exchange (\S+) s")
 _RE_BOUND = re.compile(
-    r"^isoAdvection: After conservative bounding: min\(alpha\) = (\S+), "
+    r"^(?:isoAdvection|davofSwept): After conservative bounding: min\(alpha\) = (\S+), "
     r"max\(alpha\) = 1 \+ (\S+)")
 _RE_T = re.compile(
     r"^t = ([^,]+),\s*sum\(alpha\*V\) = ([^,]+),\s*dev = ([^%]+)%,\s*"
@@ -182,7 +182,7 @@ _RE_T = re.compile(
 _RE_EXEC = re.compile(
     r"^ExecutionTime = (\S+) s\s+ClockTime = (\S+) s\s+timeStepTime = (\S+) s")
 _RE_ABORT = re.compile(
-    r"^advectorVoF: ABORT at step (\d+), t = (\S+): (.*?) \(min\(alpha\)")
+    r"^(?:advectorVoF|davofAdvectorFoam): ABORT at step (\d+), t = (\S+): (.*?) \(min\(alpha\)")
 
 
 def tkey(t):
@@ -438,13 +438,20 @@ def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--case", default=".", help="case directory (default .)")
     ap.add_argument("--out", default="advectorVoF.csv", help="output CSV, relative to --case")
-    ap.add_argument("--log", default="log.advectorVoF", help="solver log, relative to --case")
+    ap.add_argument("--log", default=None,
+                help="solver log, relative to --case (default: log.davofAdvectorFoam, the"
+                     " leia route, when present, else log.advectorVoF, the fork route)")
     a = ap.parse_args(argv)
     case = a.case
     pp = os.path.join(case, "postProcessing")
     af, have_af = read_dat(os.path.join(pp, "areaFractionError"), "areaFractionError.dat")
     rec, have_rec = read_dat(os.path.join(pp, "reconstructionError"), "error.dat")
     vol, have_vol = read_dat(os.path.join(pp, "volumeFractionError"), "volumeFractionError.dat")
+    if a.log is None:
+        # the leia route writes log.davofAdvectorFoam, the fork route log.advectorVoF
+        a.log = ("log.davofAdvectorFoam"
+                 if os.path.isfile(os.path.join(case, "log.davofAdvectorFoam"))
+                 else "log.advectorVoF")
     log, abort, ended, have_log = read_log(os.path.join(case, a.log))
     if not (have_af or have_rec or have_vol or have_log):
         print(f"[tpf_advection_metrics] no .dat file under {pp} and no {a.log}: nothing to convert",

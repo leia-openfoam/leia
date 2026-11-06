@@ -1,0 +1,14 @@
+/* libleiaDavofFunctionObjects: the error measures of the DAVOF advection studies
+   against an exact state (an implicit function carried by the exact orbit):
+   areaFractionError (the face fractions and the recovered normal),
+   volumeFractionError (the cell fractions, the shape error, the boundedness),
+   reconstructionError (the reconstruction's normal and position). Ported from
+   TwoPhaseFlow's libpostProcess (docs/davof/PORT-DESIGN.md, 2026-11-06). */
+
+areaFractionError/areaFractionError.C
+volumeFractionError/volumeFractionError.C
+reconstructionError/reconstructionError.C
+
+leiaStamp_leiaDavofFunctionObjects.C
+
+LIB = $(FOAM_USER_LIBBIN)/libleiaDavofFunctionObjects

@@ -19,7 +19,10 @@ solvers
 {
     "alpha.water.*"
     {
-        advectionScheme      isoAdvection;
+        // the route (DAVOF_SOLVER -> the Snakefile): isoAdvection on the fork
+        // route; davofSwept (the davof rows) | isoAdvector (the comparators,
+        // OpenFOAM's isoAdvection) on the leia route (materialize.py, 2026-11-06)
+        advectionScheme      @!DAVOF_ADVECTION_SCHEME!@;
         // The row TPF_ROW (workflow/scripts/tpf_rows.py): the reconstruction
         // scheme (davof | plicRDF | isoAlpha) and, for davof, the normal
         // model; the comparators ignore the davof keys below.
@@ -127,6 +130,17 @@ solvers
         // the per-step trace cache of the mesh points (fork davof-swept 557fab7,
         // 2026-11-04, bit for bit; builds before it ignore the key)
         sweptTraceCache @!TPF_SWEPT_TRACE_CACHE!@;
+        // the four bit-for-bit keys of round 4 (fork davof-swept c5c00c5, opt-in
+        // there, default false; builds before it ignore them): the axis-aligned
+        // plane clips, the cached cell tetrahedra, the band-only point velocity
+        // and the coplanar-side pre-test; and the two round-off opt-ins (the
+        // face update from the volume clip, the sliver piece in closed form)
+        sweptAxisPlanes @!TPF_SWEPT_AXIS_PLANES!@;
+        sweptTetCache   @!TPF_SWEPT_TET_CACHE!@;
+        sweptPointVelocityLazy @!TPF_SWEPT_POINT_VELOCITY_LAZY!@;
+        sweptPreTestCoplanarSide @!TPF_SWEPT_PRE_TEST_COPLANAR_SIDE!@;
+        sweptFaceUpdateFromVolume @!TPF_SWEPT_FACE_UPDATE_FROM_VOLUME!@;
+        sweptSliverClosedForm @!TPF_SWEPT_SLIVER_CLOSED_FORM!@;
         // the volume flux of a face (fork branch davof-fluxint): prism (the
         // prism volume) | trapezoidal | simpson (a quadrature in time of the
         // face fractions; ignored by the builds before it)

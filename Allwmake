@@ -61,8 +61,21 @@ for entry in \
     leiaVolumeCorrection:src/leiaLevelSet/volumeCorrection \
     leiaSurfaceTension:src/leiaLevelSet/surfaceTensionForce \
     leiaAdvection:src/leiaLevelSet/advection \
-    leiaDavof:src/leiaLevelSet/davof \
+    leiaDavofState:src/leiaLevelSet/davof \
     leiaDavofInterface:src/leiaLevelSet/davofInterface
+do
+    name="${entry%%:*}"; dir="${entry#*:}"
+    "$ROOT/etc/leia-stamp.sh" "$dir" "$name" || exit 1
+    wmake $WITH_BEAR $1 "$ROOT/$dir" || exit 1
+done
+
+# The DAVOF method (the reconstruction, the swept-face and the paraboloid dual advection,
+# the volume rules, the state initialisation) and its function objects, against OpenFOAM
+# v2606's geometricVoF (docs/davof/PORT-DESIGN.md, 2026-11-06). libleiaDavofState above
+# is the level-set-side state constructor (src/leiaLevelSet/davof, libleiaDavof until then).
+for entry in \
+    leiaDavof:src/davof \
+    leiaDavofFunctionObjects:src/functionObjects/davof
 do
     name="${entry%%:*}"; dir="${entry#*:}"
     "$ROOT/etc/leia-stamp.sh" "$dir" "$name" || exit 1

@@ -20,7 +20,7 @@ FoamFile
 // study tokens (cases/davof/sphereRotation3D.parameter); the velocity comes
 // from the setFlow block of fvSolution.
 
-application     advectorVoF;
+application     @!DAVOF_APP!@;
 
 // repetition @!TPF_REPEAT!@ of a timing study (the token is an axis that changes nothing in the case)
 
@@ -96,7 +96,7 @@ functions
     areaFractionError
     {
         type            areaFractionError;
-        libs            ("libpostProcess.so");
+        libs            (@!DAVOF_FO_LIBS!@);
         field           alpha.water;
         functionType    sphere;
         origin          (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
@@ -139,7 +139,7 @@ functions
     volumeFractionError
     {
         type            volumeFractionError;
-        libs            ("libpostProcess.so");
+        libs            (@!DAVOF_FO_LIBS!@);
         field           alpha.water;
         functionType    sphere;
         origin          (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);

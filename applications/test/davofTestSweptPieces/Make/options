@@ -1,0 +1,24 @@
+/* OpenFOAM v2606 + libleiaDavof only (docs/davof/PORT-DESIGN.md, 2026-11-06). */
+EXE_INC = \
+    -std=c++17 \
+    -I../../../src/davof/lnInclude \
+    -I../../../src/leiaLevelSet/davof \
+    -I$(FOAM_UTILITIES)/preProcessing/setAlphaField/alphaFieldFunctions/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/surfMesh/lnInclude \
+    -I$(LIB_SRC)/fileFormats/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/transportModels/geometricVoF/lnInclude
+
+EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) \
+    -lfiniteVolume \
+    -lmeshTools \
+    -lsurfMesh \
+    -lfileFormats \
+    -lsampling \
+    -lgeometricVoF \
+    -lalphaFieldFunctions \
+    -lleiaDavof \
+    -lleiaCore

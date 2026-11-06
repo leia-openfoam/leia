@@ -1,0 +1,31 @@
+/* OpenFOAM v2606 only (no TwoPhaseFlow): the exact states from libalphaFieldFunctions
+   (setAlphaField's implicit functions) and the DAVOF initialisation of libleiaDavof;
+   cutCellIso of libgeometricVoF for the cutCellIso reference state. */
+EXE_INC = \
+    -std=c++17 \
+    -I../../davof/lnInclude \
+    -I../../leiaLevelSet/lnInclude \
+    -I$(FOAM_UTILITIES)/preProcessing/setAlphaField/alphaFieldFunctions/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/fileFormats/lnInclude \
+    -I$(LIB_SRC)/surfMesh/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I$(LIB_SRC)/transportModels/geometricVoF/lnInclude \
+    -I$(LIB_SRC)/transportModels/twoPhaseMixture/lnInclude \
+    -I$(LIB_SRC)/transportModels/interfaceProperties/lnInclude \
+    -I$(LIB_SRC)/transportModels/twoPhaseProperties/lnInclude
+
+LIB_LIBS = \
+    -Wl,--no-undefined \
+    -L$(FOAM_USER_LIBBIN) \
+    -lOpenFOAM \
+    -lfiniteVolume \
+    -lmeshTools \
+    -lfileFormats \
+    -lsurfMesh \
+    -lsampling \
+    -lgeometricVoF \
+    -lalphaFieldFunctions \
+    -lleiaDavof \
+    -lleiaCore
