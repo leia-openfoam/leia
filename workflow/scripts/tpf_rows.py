@@ -302,6 +302,55 @@ def velocity_tokens(arm):
     return dict(zip(VELOCITY_TOKENS, VELOCITY_ARMS[arm]))
 
 
+# The settings of the Enright agent's decisions 1-3 (fork davof-swept-enright 25e6ebc,
+# taken over into leia on 2026-11-07): one word TPF_ENRIGHT_SETTING -> the five keys
+# of the alpha dictionary (sweptPieceVolume, sweptPieceValidate,
+# sweptBoundedFaceFraction, interfaceCellRule, sweptFragmentLog). reference = the
+# behaviour before 2026-11-07 (closure, none, normalOnly); the one-key variations for
+# the identity acceptance against the fork; recommended = the Enright agent's
+# recommendation (signedTets + scale + normalAndAlpha). The closure is WRONG on
+# straining flows (an undetected fourth cap on pieces whose 3x3 cap system closes with
+# zero residual, the Enright agent 2026-11-07), so closureThenTets is the bit-for-bit
+# drop-in for the rotation and the translations only; signedTets costs 2.35 to 2.6 x
+# the closure's wall clock.
+ENRIGHT_SETTINGS = OrderedDict([
+    #                       pieceVolume        validate bounded    cellRule              fragLog
+    ("reference",          ("closure",         "false", "none",    "normalOnly",         "false")),
+    ("closureThenTets",    ("closureThenTets", "false", "none",    "normalOnly",         "false")),
+    ("signedTets",         ("signedTets",      "false", "none",    "normalOnly",         "false")),
+    ("signedTetsValidate", ("signedTets",      "true",  "none",    "normalOnly",         "false")),
+    ("scale",              ("closure",         "false", "scale",   "normalOnly",         "false")),
+    ("recompute",          ("closure",         "false", "recompute", "normalOnly",       "false")),
+    ("normalAndAlpha",     ("closure",         "false", "none",    "normalAndAlpha",     "false")),
+    ("normalAndAlphaReset", ("closure",        "false", "none",    "normalAndAlphaReset", "false")),
+    ("fragmentLog",        ("closure",         "false", "none",    "normalOnly",         "true")),
+    ("recommended",        ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
+])
+ENRIGHT_TOKENS = ("TPF_SWEPT_PIECE_VOLUME", "TPF_SWEPT_PIECE_VALIDATE",
+                  "TPF_SWEPT_BOUNDED_FACE_FRACTION", "TPF_INTERFACE_CELL_RULE",
+                  "TPF_SWEPT_FRAGMENT_LOG")
+ENRIGHT_LABELS = OrderedDict([
+    ("reference", ""),
+    ("closureThenTets", "closureThenTets"),
+    ("signedTets", "signedTets"),
+    ("signedTetsValidate", "signedTets, validated"),
+    ("scale", "bounded face fractions scaled"),
+    ("recompute", "bounded face fractions recomputed"),
+    ("normalAndAlpha", "interface cells by normal and alpha"),
+    ("normalAndAlphaReset", "interface cells by normal and alpha, faces reset"),
+    ("fragmentLog", "fragment log"),
+    ("recommended", "signedTets + scale + normalAndAlpha"),
+])
+
+
+def enright_setting_tokens(name):
+    """The five template tokens of a setting; RuntimeError on an unknown name."""
+    if name not in ENRIGHT_SETTINGS:
+        raise RuntimeError(f"[tpf_rows] unknown TPF_ENRIGHT_SETTING {name!r}; "
+                           f"known: {list(ENRIGHT_SETTINGS)}")
+    return dict(zip(ENRIGHT_TOKENS, ENRIGHT_SETTINGS[name]))
+
+
 if __name__ == "__main__":
     for name in ROWS:
         print(f"{name:22s} {row_tokens(name)}")

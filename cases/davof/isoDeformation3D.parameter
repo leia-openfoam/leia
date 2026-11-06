@@ -105,4 +105,7 @@ values
     // runs numbered 1, 2, 3 (a comment line of controlDict carries the number, so every
     // repetition is its own case with its own stamp); 1 for a study without them
     TPF_REPETITION ( 1 );
+    // the setting of the Enright agent's decisions 1-3 (tpf_rows.ENRIGHT_SETTINGS,
+    // 2026-11-07): reference = closure, no bounded face fractions, normalOnly
+    TPF_ENRIGHT_SETTING ( reference );
 }

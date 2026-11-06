@@ -1,0 +1,56 @@
+# The identity acceptance of the Enright agent's decisions 1-3 (fork davof-swept-enright
+# 25e6ebc, leia 2026-11-07; workflow/scripts/make_port_enright_configs.py writes this file):
+# the port's identity set with the setting TPF_ENRIGHT_SETTING as an axis; the fork route
+# runs advectorVoF built from 25e6ebc (LEIA_TPF_DIR), the leia route davofAdvectorFoam;
+# the two must be bit for bit for every setting (port_identity_check.py).
+study_name: port_enrightKeys_par1_fork
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and numbers rendered into the dictionaries are QUOTED.
+axes_override:
+  TPF_ENRIGHT_SETTING: [recommended]
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  END_TIME: ["0.05"]
+  TPF_WRITE_INTERVAL: ["0.0025"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_SWEPT_FACE_LOG: ["true"]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_SWEPT_CONSISTENCY_LOG: ["false"]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_DUMP: ["false"]
+  TPF_SWEPT_CLASSIFY: ["false"]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 30
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

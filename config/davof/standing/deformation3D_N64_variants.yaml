@@ -1,0 +1,62 @@
+# The standing study matrix (Tomislav, 2026-11-07; docs/davof/PORT-DESIGN.md 5b;
+# workflow/scripts/make_standing_configs.py writes this file, edit the script): the
+# family deformation3D (davof/isoDeformation3D) at N 64 on 8 rank(s); the rows davof-planeSurf-ringArea; OpenFOAM Co
+# 0.2, 0.5, 1; three identical repetitions per cell (TPF_REPETITION);
+# the DAVOF rows with grazingCut fork (Tomislav's policy of 2026-11-07: the numbers
+# are reproduced against the fork track's record, which runs the same templates).
+# Recompute only on change: workflow/scripts/case_stamp.py (README "Recompute only on
+# change"); the tables: workflow/scripts/make_standing_tables.py deformation3D.
+#
+#   sbatch --parsable -J leia-standing-deformation3D-N64_variants --export=ALL,STUDY=davof/standing/deformation3D_N64_variants run-studies.sbatch
+# THE VARIANT ROWS: the DAVOF row with the settings recommended, signedTets, closureThenTets of tpf_rows.ENRIGHT_SETTINGS
+# (the Enright agent's decisions 1-3, ported 2026-11-07), added to the baseline study of this rung.
+# PRE-REGISTERED (2026-11-07, before any run; the Enright record of 2026-11-06, REPORT-swept
+# "The 3D Enright deformation" and "Phase 3, the Enright identity", is the evidence: the
+# same sphere, field, period, reference speed and abort factor as this template
+# (isoDeformation3D); its plicRDF row ran nAlphaBounds 5, this one the fork agent's 3).
+#   D-1  Completion. plicRDF completes every cell (bounded to 1e-6 at N 32, unbounded to
+#        1e-3 at N 128 OF Co 1 as on 2026-11-06). The DAVOF row with grazingCut fork
+#        reproduces the fork's record bit for bit where the fork ran the same cell (N 32:
+#        ends at T = 3 at OF Co 0.5 and 1; N 64: aborts at step 628 / 399 for OF Co 0.5 / 1;
+#        N 128: aborts at 125 / 106) and completes N 32 at OF Co 0.2 bounded to 1e-9.
+#        Falsified if an N 32 cell aborts or an N >= 64 cell completes.
+#   D-2  Errors at N 32 (the completed rungs): E_shape(DAVOF) / E_shape(plicRDF) in
+#        [1.2, 1.8] (2026-11-06: 1.137e-2 / 7.765e-3 = 1.46 at OF Co 0.5, 1.56 at OF Co 1),
+#        L1(n) ratio in [1.5, 2.5]. Falsified by a ratio outside [1, 3].
+#   D-3  Wall clock per step at equal ranks, N 32: DAVOF / plicRDF in [20, 40] (2026-11-06:
+#        31 x at OF Co 0.5, 27 x at OF Co 1: the sheet's many interface cells and the swept
+#        pieces of every one). Falsified by a ratio below 10 or above 60.
+#   D-4  The three repetitions identical, the wall clock within 5 % of the median.
+#   Also reported, not predicted: L1(alphaf), the interface-cell and wisp counts at the
+#   writes (the fragmentation), the measured OF Courant number, the abort steps, the stamps.
+study_name: standing_deformation3D_N64_variants
+studies_dir: studies/davof
+case: davof/isoDeformation3D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: "initDavofFields"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [64]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 1]
+  TPF_REPETITION: [1, 2, 3]
+  TPF_GRAZING_CUT: [fork]
+  TPF_ENRIGHT_SETTING: [recommended, signedTets, closureThenTets]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 600
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

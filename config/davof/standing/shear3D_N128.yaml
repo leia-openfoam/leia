@@ -53,6 +53,7 @@ axes_override:
   TARGET_ADVECTIVE_CO: [0.2, 0.5, 1]
   TPF_REPETITION: [1, 2, 3]
   TPF_GRAZING_CUT: [fork]
+  TPF_ENRIGHT_SETTING: [reference]
 collapse_other_axes: true
 
 solve_mem_mb: 4000

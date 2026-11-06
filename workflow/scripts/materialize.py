@@ -202,6 +202,12 @@ def _with_derived_tokens(tokens):
                            '"libleiaDavofFunctionObjects.so"' if leia else '"libpostProcess.so"')
     if "TPF_VELOCITY_ARM" in out:
         out.update(tpf_rows.velocity_tokens(str(out["TPF_VELOCITY_ARM"])))
+    # The setting of the Enright agent's decisions 1-3 (2026-11-07): one word per
+    # setting, the five dictionary keys sweptPieceVolume, sweptPieceValidate,
+    # sweptBoundedFaceFraction, interfaceCellRule, sweptFragmentLog in the templates
+    # (tpf_rows.enright_setting_tokens)
+    if "TPF_ENRIGHT_SETTING" in out:
+        out.update(tpf_rows.enright_setting_tokens(str(out["TPF_ENRIGHT_SETTING"])))
     if "END_TIME" in out:
         try:
             out["HALF_END_TIME"] = "{:g}".format(float(out["END_TIME"]) / 2.0)

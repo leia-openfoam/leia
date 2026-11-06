@@ -32,7 +32,10 @@ import argparse, csv, glob, json, math, os, re, statistics, sys
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 RESULT_COLS = ("Eshape", "L1x", "L1n", "L1af", "massDevPct", "minAlpha", "excess", "nInterfaceEnd", "steps", "status", "abortStep")
-LABELS = {"davof-planeSurf-ringArea": "DAVOF (swept-face, ring normal)", "plicRDF": "isoAdvector + plicRDF (v2606)"}
+LABELS = {"davof-planeSurf-ringArea": "DAVOF (swept-face, ring normal)", "plicRDF": "isoAdvector + plicRDF (v2606)",
+          "davof-planeSurf-ringArea [recommended]": "DAVOF, signedTets + scale + normalAndAlpha",
+          "davof-planeSurf-ringArea [signedTets]": "DAVOF, signedTets",
+          "davof-planeSurf-ringArea [closureThenTets]": "DAVOF, closureThenTets"}
 
 
 def f(x, nd=4):
@@ -58,7 +61,10 @@ def read_case(c):
     if not os.path.isfile(p):
         return None
     t = json.load(open(p))["tokens"]
-    rec = dict(case=c, row=t.get("TPF_ROW"), N=int(float(t.get("N_CELLS", 0))), co=float(t.get("TARGET_ADVECTIVE_CO", 0)),
+    # the row of the table = the TPF_ROW plus the Enright setting (the variant rows)
+    setting = t.get("TPF_ENRIGHT_SETTING", "reference")
+    row = t.get("TPF_ROW") + ("" if setting in ("reference", None) else " [" + setting + "]")
+    rec = dict(case=c, row=row, setting=setting, N=int(float(t.get("N_CELLS", 0))), co=float(t.get("TARGET_ADVECTIVE_CO", 0)),
                rep=int(float(t.get("TPF_REPETITION", 1))), grazingCut=t.get("TPF_GRAZING_CUT", ""), dt=t.get("MAX_DELTA_T", ""), T=t.get("END_TIME", ""))
     csvp = os.path.join(c, "advectorVoF.csv")
     rows = list(csv.DictReader(open(csvp))) if os.path.isfile(csvp) and os.path.getsize(csvp) else []
@@ -140,7 +146,8 @@ def cells(recs):
     return out
 
 
-ROW_ORDER = {"davof-planeSurf-ringArea": 0, "plicRDF": 1}
+ROW_ORDER = {"davof-planeSurf-ringArea": 0, "davof-planeSurf-ringArea [recommended]": 1,
+             "davof-planeSurf-ringArea [signedTets]": 2, "davof-planeSurf-ringArea [closureThenTets]": 3, "plicRDF": 9}
 
 
 def orders(cells_):

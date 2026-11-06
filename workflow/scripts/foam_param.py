@@ -86,6 +86,13 @@ _DERIVED_TOKENS = {
     "TPF_UX",
     "TPF_UY",
     "TPF_UZ",
+    # The setting of the Enright agent's decisions 1-3 (tpf_rows.ENRIGHT_SETTINGS,
+    # 2026-11-07): the five keys from the one word TPF_ENRIGHT_SETTING
+    "TPF_SWEPT_PIECE_VOLUME",
+    "TPF_SWEPT_PIECE_VALIDATE",
+    "TPF_SWEPT_BOUNDED_FACE_FRACTION",
+    "TPF_INTERFACE_CELL_RULE",
+    "TPF_SWEPT_FRAGMENT_LOG",
     # The route of the DAVOF advection studies (docs/davof/PORT-DESIGN.md, 2026-11-06):
     # the application, the advection scheme and the function-object library of a
     # rendered case, from the study's solver (DAVOF_SOLVER, injected by the Snakefile)
@@ -127,6 +134,11 @@ _DERIVED_INPUTS = {
     "TPF_UX": ("TPF_VELOCITY_ARM",),
     "TPF_UY": ("TPF_VELOCITY_ARM",),
     "TPF_UZ": ("TPF_VELOCITY_ARM",),
+    "TPF_SWEPT_PIECE_VOLUME": ("TPF_ENRIGHT_SETTING",),
+    "TPF_SWEPT_PIECE_VALIDATE": ("TPF_ENRIGHT_SETTING",),
+    "TPF_SWEPT_BOUNDED_FACE_FRACTION": ("TPF_ENRIGHT_SETTING",),
+    "TPF_INTERFACE_CELL_RULE": ("TPF_ENRIGHT_SETTING",),
+    "TPF_SWEPT_FRAGMENT_LOG": ("TPF_ENRIGHT_SETTING",),
     # the advection scheme of the leia route follows the row's reconstruction scheme
     "DAVOF_ADVECTION_SCHEME": ("TPF_ROW",),
 }

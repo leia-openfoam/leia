@@ -44,6 +44,15 @@ FAMILIES = {
                       {32: (1, 240, 4000), 64: (8, 600, 4000), 128: (64, 900, 4000)}),
 }
 ROWS = ["davof-planeSurf-ringArea", "plicRDF"]
+# The variant rows (the coordinator, 2026-11-07, after the Enright agent's hand-back): the
+# DAVOF row with the settings of tpf_rows.ENRIGHT_SETTINGS (a) recommended = signedTets +
+# scale + normalAndAlpha, (b) signedTets alone, (c) closureThenTets alone (the bit-for-bit
+# drop-in for the rotation and the translations; the closure is WRONG on straining flows:
+# an undetected fourth cap on pieces whose 3x3 cap system closes with zero residual, so
+# closureThenTets is not safe there; signedTets costs 2.35 to 2.6 x the closure's wall
+# clock), each with grazingCut fork; a separate study per rung (<family>_N<N>_variants), so
+# that the baseline's cases keep their stamps and the variants are added, not recomputed.
+VARIANT_SETTINGS = ["recommended", "signedTets", "closureThenTets"]
 CO = [0.2, 0.5, 1]
 REPS = [1, 2, 3]
 GRAZING = "fork"
@@ -121,11 +130,15 @@ PREREG = {
 }
 
 
-def config_text(family, N):
+def config_text(family, N, variants=False):
     case, setfields, rungs = FAMILIES[family]
     np_, runtime, mem = rungs[N]
     mode = "parallel" if np_ > 1 else "serial"
-    rows = ", ".join(ROWS)
+    rows = ", ".join(ROWS) if not variants else ROWS[0]
+    suffix = "_variants" if variants else ""
+    setting_axis = ("  TPF_ENRIGHT_SETTING: [" + ", ".join(VARIANT_SETTINGS) + "]\n") if variants else "  TPF_ENRIGHT_SETTING: [reference]\n"
+    variants_note = ("# THE VARIANT ROWS: the DAVOF row with the settings " + ", ".join(VARIANT_SETTINGS)
+                     + " of tpf_rows.ENRIGHT_SETTINGS\n# (the Enright agent's decisions 1-3, ported 2026-11-07), added to the baseline study of this rung.\n") if variants else ""
     return f"""# The standing study matrix (Tomislav, 2026-11-07; docs/davof/PORT-DESIGN.md 5b;
 # workflow/scripts/make_standing_configs.py writes this file, edit the script): the
 # family {family} ({case}) at N {N} on {np_} rank(s); the rows {rows}; OpenFOAM Co
@@ -135,8 +148,8 @@ def config_text(family, N):
 # Recompute only on change: workflow/scripts/case_stamp.py (README "Recompute only on
 # change"); the tables: workflow/scripts/make_standing_tables.py {family}.
 #
-#   sbatch --parsable -J leia-standing-{family}-N{N} --export=ALL,STUDY=davof/standing/{family}_N{N} run-studies.sbatch
-{PREREG[family]}study_name: standing_{family}_N{N}
+#   sbatch --parsable -J leia-standing-{family}-N{N}{suffix} --export=ALL,STUDY=davof/standing/{family}_N{N}{suffix} run-studies.sbatch
+{variants_note}{PREREG[family]}study_name: standing_{family}_N{N}{suffix}
 studies_dir: studies/davof
 case: {case}
 mesh: hex
@@ -158,7 +171,7 @@ axes_override:
   TARGET_ADVECTIVE_CO: [{', '.join(str(c) for c in CO)}]
   TPF_REPETITION: [{', '.join(str(r) for r in REPS)}]
   TPF_GRAZING_CUT: [{GRAZING}]
-collapse_other_axes: true
+{setting_axis}collapse_other_axes: true
 
 solve_mem_mb: {mem}
 solve_runtime: {runtime}
@@ -174,9 +187,10 @@ def main(argv):
     os.makedirs(OUT, exist_ok=True)
     bad = 0
     for family, (case, setfields, rungs) in FAMILIES.items():
-        for N in rungs:
-            path = os.path.join(OUT, f"{family}_N{N}.yaml")
-            text = config_text(family, N)
+      for N in rungs:
+        for variants in (False, True):
+            path = os.path.join(OUT, f"{family}_N{N}{'_variants' if variants else ''}.yaml")
+            text = config_text(family, N, variants)
             old = open(path).read() if os.path.isfile(path) else None
             if check:
                 if old != text:
