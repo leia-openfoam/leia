@@ -4538,3 +4538,391 @@ dictionary by whichever scheme is selected (davof since 2026-11-04, plicRDF and
 gradAlpha since `fab3805`); the token `TPF_POSITIONING` must be set per row
 (plicRDF: `vofCutCell` for the classical setting, `ccs` for the ccs row),
 not study-wide.
+
+## The isoAdvector improvement: the verification in the fork (2026-11-06)
+
+The fork branch `davof-isoAdvector` (fab3805 the package, c699e9e `initShearFlow3D` and the
+jet case, 65ad6ae the jet README and comparison scripts, 690a023 / 4da5799 / b09b800 /
+ae08dc0 the inflow face fraction, fe5ff45 the `initShearFlow3D` fix, b467390 the 2D sheared
+disc: `exactCylinder` and `initVortex2D`) against upstream isoAdvector + plicRDF, on
+Lichtenberg (exclusive i01 nodes, 96 cores), every row with isoAdvector's own flux and
+bounding (`nAlphaBounds 3`, `snapTol 0`, `clip false`), the same initial state
+(`initDavofFields exactSphere`), mesh, dt, decomposition (scotch) and ranks. Rows: RDF =
+plicRDF with `positioning vofCutCell` (the classical setting), RDFccs = plicRDF with `ccs`,
+RING = `davof` with the ring-area normal and `ccs` (the package's row), RINGvcc = the same
+with `vofCutCell`, ISO = isoAlpha. Three repetitions per cell (the order rotated), the
+diagnostics at the writes only (quarter turns / T/4), one profiled run per cell (OpenFOAM's
+profiling, rank 0) outside the timing. The pre-registration F-1 .. F-5 is in leia
+`config/davof/iso*3D_hexN32.yaml` (committed 1bf91bcd before any run); the tables are
+`iso/csv/{iso_table,iso_orders,iso_prof,iso_runs}.csv` on the cluster
+(`/work/scratch/tm83tomy/davof/agents/swept/iso/`, the cases under `time/`), the scripts
+`workflow/scripts/davof_iso/{iso-time.sbatch,iso_an.py,iso_prof.py}`. The hexahedral
+rotation, shear and deformation ran with the binary of c699e9e (`iso/TwoPhaseFlow`; the inflow
+rule that came later changes nothing on these cases: `zeroGradient` inlets). The inflow face
+fraction (Tomislav's rule of 2026-11-06: at a liquid inlet the face fraction is the alpha
+condition's value, as the flux is) went through four versions, each checked against
+davof-swept c5c00c5 on the eight verification cases (R32, R32x, D32, P20n, P20o, RDF32,
+ISO32, R32p8 on 8 ranks; `iso/ident2..5`): the condition's value on every swept inflow face
+(690a023) moved the oblique plane gate P20o by 1.8e-2 in alpha within 20 steps; the liquid
+inlet's faces (alpha_b = 1) in the sweep, the second ring and the defaults (4da5799, and
+b09b800 with the full cells' faces excluded) by 5.7e-6 (312 cells; the plane's cut of an inlet
+face the condition calls liquid is below 1 where the plane crosses the inlet); the value in
+the defaults alone (ae08dc0: a face no plane sets) leaves all eight cases unchanged bit for
+bit (`iso/ident5`, job 56013017: every field file identical, no per-step log line differing).
+The other seven cases were unchanged bit for bit under every version. The three families
+below do not depend on the rule.
+
+### The solid-body rotation, hexahedral (one turn; interface Co 0.046 / 0.116 / 0.23 = OpenFOAM Co 0.2 / 0.5 / 1)
+
+Wall clock in seconds (the median of three repetitions; the spread max-min over the median
+is 0.1-2.5 % on every cell), the per-step time from the run's wall clock; E_shape, L1(n),
+L1(x) at the end of the turn against the exact sphere; min(alpha) over the run.
+
+| N (ranks) | OF Co | row | status | steps | E_shape | E/RDF | L1(n) | L1(n)/RDF | L1(x) | min alpha | mass dev. % | wall s | ms/step | step/RDF |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 32 (1) | 0.2 | RDF | completed | 1728 | 1.155e-3 | 1 | 0.0575 | 1 | 4.39e-3 | -7e-20 | 6e-8 | 47.7 | 27.6 | 1 |
+| | | RDFccs | completed | 1728 | 1.155e-3 | 1.00 | 0.0575 | 1.00 | 4.39e-3 | -7e-20 | 9e-8 | 47.0 | 27.2 | 0.99 |
+| | | RING | completed | 1728 | 1.091e-3 | 0.94 | 0.0594 | 1.03 | 4.11e-3 | -6.9e-13 | 4.0e-4 | 39.9 | 23.1 | 0.84 |
+| | | RINGvcc | completed | 1728 | 1.090e-3 | 0.94 | 0.0587 | 1.02 | 4.10e-3 | -9.4e-13 | 2.7e-4 | 42.5 | 24.6 | 0.89 |
+| | | ISO | completed | 1728 | 1.172e-3 | 1.01 | 0.0737 | 1.28 | 4.37e-3 | -2e-20 | 5e-8 | 33.4 | 19.3 | 0.70 |
+| 32 (1) | 0.5 | RDF | completed | 691 | 1.039e-3 | 1 | 0.0541 | 1 | 3.92e-3 | -3e-18 | 6e-8 | 21.6 | 31.3 | 1 |
+| | | RDFccs | completed | 691 | 1.038e-3 | 1.00 | 0.0542 | 1.00 | 3.92e-3 | -6e-19 | 9e-8 | 21.5 | 31.2 | 1.00 |
+| | | RING | ABORT step 497 (4270 interface cells of 416) | 497 | - | - | - | - | - | -0.064 | 0.083 | 14.6 | 29.3 | 0.94 |
+| | | RINGvcc | completed, unbounded | 691 | 1.065e-3 | 1.02 | 0.361 | 6.7 | 0.041 | -0.071 | 2.1e-3 | 20.2 | 29.2 | 0.93 |
+| | | ISO | completed | 691 | 1.052e-3 | 1.01 | 0.0713 | 1.32 | 3.99e-3 | -3e-18 | 5e-8 | 15.9 | 23.0 | 0.73 |
+| 32 (1) | 1 | RDF | completed | 346 | 8.478e-4 | 1 | 0.0544 | 1 | 3.33e-3 | -1e-17 | 5e-8 | 13.1 | 37.9 | 1 |
+| | | RDFccs | completed | 346 | 8.467e-4 | 1.00 | 0.0545 | 1.00 | 3.32e-3 | -1e-17 | 9e-8 | 13.1 | 37.8 | 1.00 |
+| | | RING | ABORT step 111 | 111 | - | - | - | - | - | -0.21 | 0.33 | 6.0 | 54.1 | 1.43 |
+| | | RINGvcc | ABORT step 231 | 231 | - | - | - | - | - | -0.22 | 76 | 10.6 | 45.7 | 1.21 |
+| | | ISO | completed | 346 | 8.746e-4 | 1.03 | 0.0720 | 1.32 | 3.38e-3 | -5e-18 | 5e-8 | 10.1 | 29.1 | 0.77 |
+| 64 (8) | 0.2 | RDF | completed | 3456 | 3.127e-4 | 1 | 0.0241 | 1 | 1.139e-3 | -5e-19 | 2e-8 | 191.2 | 55.3 | 1 |
+| | | RDFccs | completed | 3456 | 3.127e-4 | 1.00 | 0.0240 | 1.00 | 1.138e-3 | -5e-19 | 2e-8 | 189.8 | 54.9 | 0.99 |
+| | | RING | completed | 3456 | 3.016e-4 | 0.96 | 0.0256 | 1.06 | 1.087e-3 | -3.3e-6 | 1.7e-4 | 127.3 | 36.8 | 0.67 |
+| | | RINGvcc | completed | 3456 | 3.016e-4 | 0.96 | 0.0256 | 1.06 | 1.085e-3 | -9.9e-13 | 1.7e-4 | 139.8 | 40.5 | 0.73 |
+| | | ISO | completed | 3456 | 3.154e-4 | 1.01 | 0.0375 | 1.56 | 1.137e-3 | -1e-19 | 2e-8 | 103.4 | 29.9 | 0.54 |
+| 64 (8) | 0.5 | RDF | completed | 1383 | 2.789e-4 | 1 | 0.0224 | 1 | 1.007e-3 | -5e-18 | 2e-8 | 80.4 | 58.1 | 1 |
+| | | RDFccs | completed | 1383 | 2.789e-4 | 1.00 | 0.0224 | 1.00 | 1.007e-3 | -5e-18 | 2e-8 | 80.1 | 57.9 | 1.00 |
+| | | RING | ABORT step 588 (18159 of 1760) | 588 | - | - | - | - | - | -0.086 | 1.1e-3 | 27.3 | 46.4 | 0.80 |
+| | | RINGvcc | ABORT step 1364 | 1364 | - | - | - | - | - | -0.15 | 0.022 | 61.4 | 45.0 | 0.77 |
+| | | ISO | completed | 1383 | 2.827e-4 | 1.01 | 0.0361 | 1.61 | 1.016e-3 | -3e-18 | 1e-8 | 44.6 | 32.3 | 0.55 |
+| 64 (8) | 1 | RDF | completed | 691 | 2.287e-4 | 1 | 0.0218 | 1 | 8.39e-4 | -1e-17 | 1e-8 | 43.8 | 63.4 | 1 |
+| | | RDFccs | completed | 691 | 2.285e-4 | 1.00 | 0.0220 | 1.01 | 8.42e-4 | -2e-17 | 2e-8 | 43.9 | 63.5 | 1.00 |
+| | | RING | ABORT step 156 | 156 | - | - | - | - | - | -0.19 | 0.033 | 11.6 | 74.4 | 1.17 |
+| | | RINGvcc | ABORT step 292 | 292 | - | - | - | - | - | -0.12 | 29 | 19.7 | 67.5 | 1.06 |
+| | | ISO | completed | 691 | 2.336e-4 | 1.02 | 0.0355 | 1.63 | 8.60e-4 | -1e-17 | 1e-8 | 25.5 | 36.8 | 0.58 |
+| 128 (64) | 0.2 | RDF | completed | 6911 | 8.364e-5 | 1 | 9.59e-3 | 1 | 2.937e-4 | -6e-13 | 5e-9 | 947.1 | 137 | 1 |
+| | | RDFccs | completed | 6911 | 8.364e-5 | 1.00 | 9.60e-3 | 1.00 | 2.937e-4 | -1e-18 | 7e-9 | 947.1 | 137 | 1.00 |
+| | | RING | ABORT step 670 (67049 of 6680) | 670 | - | - | - | - | - | -0.035 | 1.6e-3 | 69.6 | 104 | 0.76 |
+| | | RINGvcc | ABORT step 2131 | 2131 | - | - | - | - | - | -0.039 | 7.5e-3 | 223.2 | 105 | 0.76 |
+| | | ISO | completed | 6911 | 8.304e-5 | 0.99 | 0.0202 | 2.11 | 2.935e-4 | -6e-13 | 5e-9 | 488.1 | 70.6 | 0.52 |
+| 128 (64) | 0.5 | RDF | completed | 2766 | 7.447e-5 | 1 | 9.28e-3 | 1 | 2.614e-4 | -1e-17 | 4e-9 | 389.1 | 141 | 1 |
+| | | RDFccs | completed | 2766 | 7.446e-5 | 1.00 | 9.28e-3 | 1.00 | 2.614e-4 | -1e-17 | 6e-9 | 389.3 | 141 | 1.00 |
+| | | RING | ABORT step 835 | 835 | - | - | - | - | - | -0.11 | 1.4e-3 | 85.8 | 103 | 0.73 |
+| | | RINGvcc | completed, min -1.2e-3 | 2766 | 7.367e-5 | 0.99 | 0.0109 | 1.17 | 2.590e-4 | -1.2e-3 | 2.9e-4 | 283.4 | 102 | 0.73 |
+| | | ISO | completed | 2766 | 7.410e-5 | 1.00 | 0.0203 | 2.19 | 2.630e-4 | -3e-13 | 4e-9 | 203.1 | 73.4 | 0.52 |
+| 128 (64) | 1 | RDF | completed, min -1.5e-4 | 1382 | 6.065e-5 | 1 | 9.34e-3 | 1 | 2.221e-4 | -1.5e-4 | 7e-8 | 201.4 | 146 | 1 |
+| | | RDFccs | completed | 1382 | 6.066e-5 | 1.00 | 9.43e-3 | 1.01 | 2.227e-4 | -1.1e-4 | 5e-8 | 203.0 | 147 | 1.01 |
+| | | RING | ABORT step 334 | 334 | - | - | - | - | - | -0.16 | 0.026 | 46.7 | 140 | 0.96 |
+| | | RINGvcc | ABORT step 508 | 508 | - | - | - | - | - | -0.15 | 33 | 68.6 | 135 | 0.93 |
+| | | ISO | completed | 1382 | 6.093e-5 | 1.00 | 0.0201 | 2.15 | 2.254e-4 | -4e-5 | 1e-8 | 108.0 | 78.2 | 0.54 |
+
+Orders over N (E_shape; L1(n)) at OF Co 0.2: RDF 1.89 / 1.90 (32-64 / 64-128); 1.26 / 1.33;
+RING 1.85; 1.21 (32-64, the only completed pair); ISO 1.89 / 1.93; 0.97 / 0.89. ISO's normal
+is first order and 1.3-2.2 x plicRDF's, its shape error equal to plicRDF's: the shape error
+of isoAdvector on this case is set by the flux, not by the normal.
+
+The profiled runs (rank 0; the time of the step and its parts per step, ms; the share of
+`reconstruct()` in `time.run()`):
+
+| N (ranks) | OF Co | row | step | reconstruct | share | advect | flux sweep | ring normal | 2nd ring | content bound | defaults |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 32 (1) | 0.2 | RDF | 25.7 | 13.3 | 52 % | 18.7 | 2.5 | | | | |
+| | | RDFccs | 25.3 | 13.0 | 51 % | 18.3 | 2.5 | | | | |
+| | | RING | 21.2 | 5.1 | 24 % | 13.8 | 3.4 | 0.43 | 0.63 | 0.05 | 2.2 |
+| | | RINGvcc | 22.9 | 6.7 | 30 % | 15.4 | 3.4 | 0.43 | 0.62 | 0.06 | 2.2 |
+| | | ISO | 17.9 | 4.8 | 27 % | 10.7 | 2.4 | | | | |
+| 64 (8) | 0.2 | RDF | 54.3 | 35.7 | 66 % | 45.4 | 5.2 | | | | |
+| | | RDFccs | 53.8 | 35.2 | 65 % | 44.9 | 5.1 | | | | |
+| | | RING | 35.6 | 11.2 | 32 % | 26.0 | 7.5 | 3.6 | 0.89 | 0.10 | 2.3 |
+| | | RINGvcc | 39.0 | 14.7 | 38 % | 29.4 | 7.5 | 3.5 | 0.89 | 0.10 | 2.2 |
+| | | ISO | 28.8 | 7.0 | 24 % | 19.9 | 7.9 | | | | |
+| 128 (64) | 0.2 | RDF | 136 | 86.0 | 63 % | 113 | 13.1 | | | | |
+| | | RDFccs | 136 | 86.5 | 64 % | 113 | 12.8 | | | | |
+| | | RING (670 steps) | 93.5 | 28.0 | 30 % | 66.0 | 19.4 | 0.003 | 0.008 | 0.68 |
+| | | RINGvcc (2131 steps) | 101 | 35.4 | 35 % | 73.0 | 20.4 | 0.002 | 0.008 | 0.69 |
+| | | ISO | 69.6 | 5.2 | 8 % | 46.4 | 26.1 | | | | |
+
+(The cells of Co 0.5 and 1 are in `iso_prof.csv`; the N 128 rows are the resubmitted
+profiled runs of 2026-11-06, 12:30.) The DAVOF reconstruction costs 0.38 x (N 32), 0.31 x
+(N 64) and 0.33 x (N 128, up to the abort) of plicRDF's: 2.6 to 3.2 x cheaper, not the
+registered fifth; the ring normal is a third of it at N 64 (3.6 of 11.2 ms, the vertex-ring
+exchange), the ccs positioning the rest (6.7 - 5.1 = 1.6 ms less than vofCutCell at N 32).
+The face update adds the plane sweep's extra faces (the flux sweep 3.4 vs 2.5 ms at N 32,
+7.5 vs 5.2 at N 64, 19.4 vs 13.1 at N 128), the second ring (0.6-0.9 ms at N <= 64, 0.003
+ms at N 128 on 64 ranks), the content bound (0.1 ms) and the defaults (2.2 ms at N <= 64,
+0.7 ms at N 128: a pass over the faces whose value can differ): 3.6-6.8 ms per step. The
+step of the RING row is 0.84 x (N 32, serial), 0.67 x (N 64, 8 ranks) and 0.69 x (N 128,
+64 ranks, up to the abort) of plicRDF's wall clock; the whole step's saving is the
+reconstruction's. isoAlpha is cheaper still (0.70 / 0.54 / 0.51 x).
+
+### The 3D deformation (LeVeque / Enright), hexahedral (T = 3; OF Co 0.2 / 0.5 / 1)
+
+| N (ranks) | OF Co | row | status | steps | E_shape | E/RDF | L1(n) | L1(x) | min alpha | interface cells (first / max) | wall s | ms/step | step/RDF |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 32 (1) | 0.2 | RDF | completed | 1200 | 7.93e-3 | 1 | 0.692 | 0.079 | -1.2e-8 | | 62.0 | 51.6 | 1 |
+| | | RDFccs | completed | 1200 | 7.93e-3 | 1.00 | 0.690 | 0.080 | -1.2e-7 | | 60.5 | 50.4 | 0.98 |
+| | | RING | completed, unbounded | 1200 | 1.21e-2 | 1.5 | 1.20 | 0.355 | -0.12 | 410 / 26628 | 197.7 | 165 | 3.2 |
+| | | RINGvcc | completed, unbounded | 1200 | 1.25e-2 | 1.6 | 1.20 | 0.363 | -0.11 | 410 / 27359 | 190.3 | 159 | 3.1 |
+| | | ISO | completed | 1200 | 9.07e-3 | 1.14 | 0.742 | 0.077 | -3e-17 | | 43.2 | 36.0 | 0.70 |
+| 32 (1) | 0.5 | RDF | completed | 480 | 7.78e-3 | 1 | 0.719 | 0.084 | -1.6e-4 | | 26.6 | 55.3 | 1 |
+| | | RDFccs | completed | 480 | 7.77e-3 | 1.00 | 0.695 | 0.083 | -1.6e-4 | | 26.6 | 55.3 | 1.00 |
+| | | RING | completed, unbounded | 480 | 1.44e-2 | 1.9 | 1.20 | 0.326 | -0.24 | 410 / 24350 | 71.8 | 149 | 2.7 |
+| | | RINGvcc | completed, unbounded | 480 | 1.49e-2 | 1.9 | 1.19 | 0.340 | -0.22 | 410 / 23692 | 64.8 | 135 | 2.4 |
+| | | ISO | completed | 480 | 9.04e-3 | 1.16 | 0.753 | 0.079 | -1e-9 | | 18.9 | 39.4 | 0.71 |
+| 32 (1) | 1 | RDF | completed | 240 | 8.06e-3 | 1 | 0.783 | 0.101 | -5.5e-4 | | 15.0 | 62.5 | 1 |
+| | | RDFccs | completed | 240 | 7.95e-3 | 0.99 | 0.766 | 0.098 | -5.0e-4 | | 14.9 | 61.9 | 0.99 |
+| | | RING | completed, unbounded | 240 | 1.76e-2 | 2.2 | 1.19 | 0.311 | -0.47 | 410 / 23590 | 34.8 | 145 | 2.3 |
+| | | RINGvcc | completed, unbounded | 240 | 1.77e-2 | 2.2 | 1.19 | 0.275 | -0.47 | 410 / 22259 | 28.6 | 119 | 1.9 |
+| | | ISO | completed | 240 | 8.56e-3 | 1.06 | 0.802 | 0.104 | -3.8e-4 | | 11.0 | 45.6 | 0.73 |
+| 64 (8) | 0.2 | RDF | completed | 2400 | 3.07e-3 | 1 | 0.618 | 0.061 | -5.9e-5 | | 194.1 | 80.9 | 1 |
+| | | RDFccs | completed | 2400 | 3.05e-3 | 0.99 | 0.608 | 0.060 | -5.9e-5 | | 190.1 | 79.2 | 0.98 |
+| | | RING | ABORT step 1222 (t 1.53) | 1222 | - | - | - | - | -0.094 | 1694 / 169630 | 203.1 | 166 | 2.1 |
+| | | RINGvcc | ABORT step 1211 (t 1.51) | 1211 | - | - | - | - | -0.11 | 1694 / 170240 | 201.8 | 167 | 2.1 |
+| | | ISO | completed | 2400 | 3.27e-3 | 1.06 | 0.551 | 0.038 | -4.9e-6 | | 113.2 | 47.2 | 0.58 |
+| 64 (8) | 0.5 | RDF | completed | 960 | 2.98e-3 | 1 | 0.597 | 0.059 | -2.1e-4 | | 82.2 | 85.6 | 1 |
+| | | RDFccs | completed | 960 | 3.10e-3 | 1.04 | 0.609 | 0.060 | -2.7e-4 | | 79.7 | 83.0 | 0.97 |
+| | | RING | ABORT step 495 (t 1.55) | 495 | - | - | - | - | -0.23 | 1694 / 169410 | 82.2 | 166 | 1.9 |
+| | | RINGvcc | ABORT step 493 | 493 | - | - | - | - | -0.22 | 1694 / 170555 | 74.4 | 151 | 1.8 |
+| | | ISO | completed | 960 | 3.32e-3 | 1.11 | 0.546 | 0.036 | -5.3e-4 | | 48.6 | 50.6 | 0.59 |
+| 64 (8) | 1 | RDF | completed | 480 | 3.13e-3 | 1 | 0.633 | 0.061 | -8.3e-3 | | 46.5 | 96.9 | 1 |
+| | | RDFccs | completed | 480 | 3.16e-3 | 1.01 | 0.629 | 0.062 | -7.1e-3 | | 46.9 | 97.6 | 1.00 |
+| | | RING | ABORT step 264 (t 1.65) | 264 | - | - | - | - | -0.46 | 1694 / 169703 | 45.5 | 172 | 1.8 |
+| | | RINGvcc | ABORT step 295 | 295 | - | - | - | - | -0.34 | 1694 / 169622 | 42.8 | 145 | 1.5 |
+| | | ISO | completed | 480 | 3.36e-3 | 1.08 | 0.624 | 0.062 | -0.05 | | 27.0 | 56.1 | 0.58 |
+| 128 (64) | 0.2 | RDF | completed | 4800 | 6.89e-4 | 1 | 0.196 | 7.9e-3 | -2.4e-5 | | 861.0 | 179 | 1 |
+| | | RDFccs | completed | 4800 | 6.85e-4 | 0.99 | 0.179 | 7.1e-3 | -2.5e-5 | | 859.8 | 179 | 1.00 |
+| | | RING | ABORT step 646 (t 0.40) | 646 | - | - | - | - | -0.15 | 6836 / 685612 | 90.0 | 139 | 0.78 |
+| | | RINGvcc | ABORT step 862 | 862 | - | - | - | - | -0.099 | 6836 / 684118 | 132.0 | 153 | 0.85 |
+| | | ISO | completed | 4800 | 5.39e-4 | 0.78 | 0.131 | 6.4e-3 | -2.7e-5 | | 406.9 | 84.8 | 0.47 |
+| 128 (64) | 0.5 | RDF | completed | 1920 | 6.90e-4 | 1 | 0.190 | 7.7e-3 | -2.3e-4 | | 357.6 | 186 | 1 |
+| | | RDFccs | completed | 1920 | 6.87e-4 | 1.00 | 0.187 | 7.5e-3 | -2.2e-4 | | 355.4 | 185 | 0.99 |
+| | | RING | ABORT step 234 (t 0.37) | 234 | - | - | - | - | -0.37 | 6836 / 684394 | 50.0 | 214 | 1.1 |
+| | | RINGvcc | ABORT step 441 | 441 | - | - | - | - | -0.28 | 6836 / 684785 | 89.3 | 203 | 1.1 |
+| | | ISO | completed | 1920 | 5.43e-4 | 0.79 | 0.146 | 7.1e-3 | -5.2e-4 | | 172.4 | 89.8 | 0.48 |
+| 128 (64) | 1 | RDF | completed | 960 | 6.88e-4 | 1 | 0.196 | 7.6e-3 | -5.4e-3 | | 207.4 | 216 | 1 |
+| | | RDFccs | completed | 960 | 6.92e-4 | 1.01 | 0.207 | 8.1e-3 | -6.3e-3 | | 211.5 | 220 | 1.02 |
+| | | RING | ABORT step 131 (t 0.41, min alpha) | 131 | - | - | - | - | -0.53 | 6836 / 390192 | 31.2 | 238 | 1.1 |
+| | | RINGvcc | ABORT step 219 | 219 | - | - | - | - | -0.50 | 6836 / 480647 | 46.5 | 213 | 0.98 |
+| | | ISO | completed | 960 | 5.50e-4 | 0.80 | 0.173 | 8.4e-3 | -2.9e-3 | | 92.2 | 96.0 | 0.44 |
+
+Orders of E_shape (32-64 / 64-128) at OF Co 0.2: RDF 1.37 / 2.16, RDFccs 1.38 / 2.15, ISO
+1.47 / 2.60; the same within 0.05 at Co 0.5 and 1. The profiled RING runs at N 32: the
+reconstruction 59 ms of a 144 ms step (41 %; plicRDF 26 of 51 ms) because the state
+fragments into 24,000-27,000 interface cells by |m_c| against 410 at the start (the
+transported face fractions, the wisps and the second-layer bounding: the Enright agent's
+finding of 2026-11-06 on the swept loop, the same here), the flux sweep 34 ms against 2.8,
+the second ring 15 ms.
+
+
+### The 3D shear flow (Liovic et al. 2006), hexahedral (T = 3; OF Co 0.2 / 0.5 / 1)
+
+The sphere of radius 0.15 at (0.5, 0.75, 0.25) in the 1 x 1 x 2 box, the field of
+`initShearFlow3D` (phi = U(x_f) . S_f at t = 0; the first batch of 2026-11-06 ran with the
+app's face loop indexing the neighbour list beyond its size, four corrupted fluxes at N 128
+and a segfault at N 32/64, fixed in fe5ff45 and re-prepared) scaled by cos(pi t / 3), scored
+at t = 3 against the initial sphere; the timed runs of 12:14 were lost to a SLURM step
+refusal (the submitter job's TRES inherited by the timed jobs; the submitter now clears
+its SLURM variables) and re-run at 12:21 from the login node.
+
+| N (ranks) | OF Co | row | status | steps | E_shape | E/RDF | L1(n) | L1(x) | min alpha | mass dev. % | interface cells (first / max) | wall s | ms/step | step/RDF |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 32 (1) | 0.2 | RDF | completed | 720 | 4.71e-03 | 1.00 | 0.293 | 0.0177 | -1.8e-06 | 1.7e-08 |  | 28.03 | 38.9 | 1.00 |
+|  |  | RDFccs | completed | 720 | 4.71e-03 | 1.00 | 0.293 | 0.0177 | -1.8e-06 | 1.5e-08 |  | 27.32 | 37.9 | 0.97 |
+|  |  | RING | ABORT step 382 | 382 | - | - | - | - | -0.081 | 0.18 | 416 / 41614 | 65.24 | 171 | 4.39 |
+|  |  | RINGvcc | ABORT step 384 | 384 | - | - | - | - | -0.073 | 0.36 | 416 / 41807 | 57.41 | 150 | 3.84 |
+|  |  | ISO | completed | 720 | 4.67e-03 | 0.99 | 0.29 | 0.0172 | -1.7e-06 | 4.7e-09 |  | 16.93 | 23.5 | 0.60 |
+| 32 (1) | 0.5 | RDF | completed, min -1.4e-04 | 288 | 4.60e-03 | 1.00 | 0.291 | 0.0174 | -1.4e-04 | 3.6e-08 |  | 14.42 | 50.1 | 1.00 |
+|  |  | RDFccs | completed, min -1.4e-04 | 288 | 4.60e-03 | 1.00 | 0.29 | 0.0174 | -1.4e-04 | 5.4e-08 |  | 14.18 | 49.2 | 0.98 |
+|  |  | RING | ABORT step 169 | 169 | - | - | - | - | -0.18 | 0.18 | 416 / 41692 | 30.78 | 182 | 3.64 |
+|  |  | RINGvcc | ABORT step 211 | 211 | - | - | - | - | -0.14 | 0.54 | 416 / 41603 | 32.89 | 156 | 3.11 |
+|  |  | ISO | completed, min -1.3e-04 | 288 | 4.58e-03 | 0.99 | 0.285 | 0.0171 | -1.3e-04 | 1.3e-07 |  | 9.57 | 33.2 | 0.66 |
+| 32 (1) | 1 | RDF | completed, min -3.1e-03 | 144 | 4.45e-03 | 1.00 | 0.303 | 0.0217 | -3.1e-03 | 8.9e-05 |  | 9.91 | 68.8 | 1.00 |
+|  |  | RDFccs | completed, min -5.9e-03 | 144 | 4.46e-03 | 1.00 | 0.302 | 0.0205 | -5.9e-03 | 8.9e-05 |  | 9.76 | 67.8 | 0.98 |
+|  |  | RING | ABORT step 111 | 111 | - | - | - | - | -0.38 | 0.26 | 416 / 41755 | 21.82 | 197 | 2.86 |
+|  |  | RINGvcc | completed, unbounded | 144 | 0.0187 | 4.20 | 1.24 | 0.436 | -0.38 | 13 | 416 / 32849 | 20.83 | 145 | 2.10 |
+|  |  | ISO | completed, min -1.3e-03 | 144 | 4.43e-03 | 0.99 | 0.314 | 0.0273 | -1.3e-03 | 1.5e-06 |  | 7.03 | 48.8 | 0.71 |
+| 64 (8) | 0.2 | RDF | completed, min -3.0e-05 | 1440 | 1.34e-03 | 1.00 | 0.141 | 4.82e-03 | -3.0e-05 | 3.7e-10 |  | 128 | 89 | 1.00 |
+|  |  | RDFccs | completed, min -3.0e-05 | 1440 | 1.34e-03 | 1.00 | 0.141 | 4.82e-03 | -3.0e-05 | 5.4e-10 |  | 122 | 84.7 | 0.95 |
+|  |  | RING | ABORT step 265 | 265 | - | - | - | - | -0.097 | 4.2e-03 | 1760 / 177187 | 30.45 | 115 | 1.29 |
+|  |  | RINGvcc | ABORT step 367 | 367 | - | - | - | - | -0.093 | 0.15 | 1760 / 176601 | 49.59 | 135 | 1.52 |
+|  |  | ISO | completed, min -1.0e-04 | 1440 | 1.42e-03 | 1.06 | 0.144 | 5.11e-03 | -1.0e-04 | 1.1e-09 |  | 54.94 | 38.2 | 0.43 |
+| 64 (8) | 0.5 | RDF | completed, min -3.4e-04 | 576 | 1.31e-03 | 1.00 | 0.138 | 4.80e-03 | -3.4e-04 | 1.2e-07 |  | 58.5 | 102 | 1.00 |
+|  |  | RDFccs | completed, min -3.4e-04 | 576 | 1.31e-03 | 1.00 | 0.138 | 4.79e-03 | -3.4e-04 | 1.2e-07 |  | 56.65 | 98.4 | 0.97 |
+|  |  | RING | ABORT step 130 | 130 | - | - | - | - | -0.23 | 8.8e-11 | 1760 / 178058 | 23.51 | 181 | 1.78 |
+|  |  | RINGvcc | ABORT step 216 | 216 | - | - | - | - | -0.23 | 0.03 | 1760 / 176442 | 35.09 | 162 | 1.60 |
+|  |  | ISO | completed, min -2.6e-04 | 576 | 1.38e-03 | 1.05 | 0.145 | 5.05e-03 | -2.6e-04 | 7.0e-08 |  | 26.1 | 45.3 | 0.45 |
+| 64 (8) | 1 | RDF | completed, unbounded | 288 | 1.27e-03 | 1.00 | 0.265 | 0.0149 | -0.011 | 1.0e-05 |  | 38.26 | 133 | 1.00 |
+|  |  | RDFccs | completed, min -9.2e-03 | 288 | 1.27e-03 | 1.00 | 0.226 | 0.0139 | -9.2e-03 | 1.6e-05 |  | 37.45 | 130 | 0.98 |
+|  |  | RING | ABORT step 106 | 106 | - | - | - | - | -0.42 | 1.6e-12 | 1760 / 176436 | 25.57 | 241 | 1.82 |
+|  |  | RINGvcc | ABORT step 30 (max alpha) | 30 | - | - | - | - | -0.23 | 5.3e-13 | 1760 / 9216 | 5.59 | 186 | 1.40 |
+|  |  | ISO | completed, unbounded | 288 | 1.31e-03 | 1.03 | 0.228 | 0.0118 | -0.02 | 1.2e-05 |  | 16.54 | 57.4 | 0.43 |
+| 128 (64) | 0.2 | RDF | completed, min -4.6e-05 | 2880 | 3.31e-04 | 1.00 | 0.053 | 1.17e-03 | -4.6e-05 | 1.3e-09 |  | 462 | 160 | 1.00 |
+|  |  | RDFccs | completed, min -4.7e-05 | 2880 | 3.31e-04 | 1.00 | 0.053 | 1.17e-03 | -4.7e-05 | 1.3e-09 |  | 452 | 157 | 0.98 |
+|  |  | RING | ABORT step 328 | 328 | - | - | - | - | -0.11 | 1.2e-12 | 6680 / 675893 | 69.55 | 212 | 1.32 |
+|  |  | RINGvcc | ABORT step 726 | 726 | - | - | - | - | -0.11 | 8.4e-07 | 6680 / 670097 | 117 | 162 | 1.01 |
+|  |  | ISO | completed, min -1.9e-05 | 2880 | 3.78e-04 | 1.14 | 0.0608 | 1.33e-03 | -1.9e-05 | 1.3e-10 |  | 215 | 74.8 | 0.47 |
+| 128 (64) | 0.5 | RDF | completed, min -9.5e-04 | 1152 | 3.29e-04 | 1.00 | 0.0564 | 1.23e-03 | -9.5e-04 | 1.8e-07 |  | 214 | 185 | 1.00 |
+|  |  | RDFccs | completed, min -1.1e-03 | 1152 | 3.29e-04 | 1.00 | 0.0574 | 1.24e-03 | -1.1e-03 | 1.9e-07 |  | 212 | 184 | 0.99 |
+|  |  | RING | ABORT step 181 | 181 | - | - | - | - | -0.37 | 1.2e-12 | 6680 / 669254 | 55.26 | 305 | 1.65 |
+|  |  | RINGvcc | ABORT step 297 | 297 | - | - | - | - | -0.27 | 1.7e-12 | 6680 / 668695 | 73.72 | 248 | 1.34 |
+|  |  | ISO | completed, min -2.7e-04 | 1152 | 3.67e-04 | 1.11 | 0.0617 | 1.33e-03 | -2.7e-04 | 8.3e-08 |  | 96.57 | 83.8 | 0.45 |
+| 128 (64) | 1 | RDF | completed, unbounded | 576 | 3.38e-04 | 1.00 | 0.292 | 0.0116 | -0.015 | 3.6e-06 |  | 153 | 265 | 1.00 |
+|  |  | RDFccs | completed, min -9.6e-03 | 576 | 3.38e-04 | 1.00 | 0.289 | 0.0114 | -9.6e-03 | 3.4e-06 |  | 159 | 276 | 1.04 |
+|  |  | RING | ABORT step 24 (max alpha) | 24 | - | - | - | - | -0.32 | 3.4e-13 | 6680 / 20364 | 9.92 | 413 | 1.56 |
+|  |  | RINGvcc | ABORT step 39 (max alpha) | 39 | - | - | - | - | -0.46 | 2.2e-13 | 6680 / 34119 | 12.12 | 311 | 1.17 |
+|  |  | ISO | completed, unbounded | 576 | 3.65e-04 | 1.08 | 0.185 | 6.74e-03 | -0.015 | 1.2e-06 |  | 55.84 | 96.9 | 0.37 |
+
+Three repetitions on every completed cell (the spread of the wall clock 0.1-3.5 %); the
+aborted DAVOF cells ran once (Tomislav's rule of 2026-11-06), the profiled run repeats their
+abort step exactly. Orders of E_shape over N (32-64 / 64-128): RDF 1.81 / 2.02 (Co 0.2),
+1.81 / 2.00 (Co 0.5), 1.81 / 1.91 (Co 1); ISO 1.72 / 1.91; of L1(n): RDF 1.05 / 1.42 at Co
+0.2, 1.08 / 1.29 at Co 0.5, 0.19 / -0.14 at Co 1. At OF Co 1 plicRDF's normal error does
+not converge on this flow (L1(n) 0.30 / 0.27 / 0.29 at N 32 / 64 / 128 against 0.29 / 0.14 /
+0.053 at Co 0.2) and plicRDF, plicRDF-ccs and isoAlpha leave [0, 1] by 0.011-0.015 at N 64
+and 128 (RDFccs 9.2e-3 / 9.6e-3), while E_shape still converges at 1.9: the shape error is
+the flux's, the normal's error at Co 1 is a wider band of surface cells.
+
+The DAVOF rows abort at every cell by the interface-cell guard (100 x the initial count: 416
+to 41,600 at N 32, 1760 to 177,000 at N 64, 6680 to 676,000 at N 128) between t = 0.34
+(N 128, Co 0.2) and t = 2.31 (N 32, Co 1), or, at Co 1 on N >= 64, by the max-alpha guard
+within 24-39 steps; the one exception is RINGvcc at N 32 Co 1, which completes unbounded
+(min alpha -0.38, E_shape 4.2 x RDF, the mass deviation 13 %). The fragmentation is the same
+mechanism as on the deformation (the transported face fractions, the wisps and the second
+bounding layer under straining; the Enright agent's finding on the swept loop) and sets in
+earlier the finer the mesh. The profiled runs: at N 32 Co 0.2 the RING step is 160 ms
+against 34.9 (4.6 x) with the reconstruction at 68.7 ms over 41,000 interface cells (43 %),
+the flux sweep 41.7 against 3.1 ms and the second ring 19 ms; at N 128 Co 0.2 on 64 ranks
+189 against 156 ms (1.2 x; the reconstruction 77.6 ms, 41 %) up to the abort at step 328.
+
+### The verdicts on the hexahedral rotation, shear and deformation
+
+- F-1 (completion and bounds): FALSIFIED for the DAVOF rows beyond OF Co 0.2 on the
+  rotation and at N 128 even there: RING completes bounded (min alpha -6.9e-13 / -3.3e-6)
+  at N 32 and 64 at OF Co 0.2 only; at Co 0.5 it aborts at every N (the interface-cell
+  guard, 4270 / 18159 / 67945 cells of 416 / 1760 / 6680), at Co 1 as well, and at N 128
+  at Co 0.2 at step 670 of 6911. RINGvcc completes two more cells (N 32 Co 0.5 with
+  min alpha -0.07 and L1(n) 0.36, N 128 Co 0.5 with -1.2e-3). On the deformation the
+  DAVOF rows complete at N 32 unbounded (-0.12 to -0.47) and abort at N 64 (t 1.5-1.65)
+  and N 128 (t 0.37-0.41), as registered. On the shear they abort at every cell (the
+  registration expected completion at N 32 and at N 64 for Co 0.2: FALSIFIED in the
+  pessimistic direction), RINGvcc completing N 32 Co 1 unbounded. RDF, RDFccs and ISO
+  complete every cell; plicRDF leaves [0, 1] by 1.5e-4 at N 128 Co 1 on the rotation, by
+  8.3e-3 / 5.4e-3 at Co 1 on the deformation (ISO 0.05 at N 64 Co 1) and by 0.011 / 0.015
+  at N 64 / 128 Co 1 on the shear (ISO 0.02 / 0.015).
+- F-2 (errors where RING completes): HELD. E_shape(RING)/E_shape(RDF) 0.94 (N 32) and 0.96
+  (N 64), L1(n) 1.03 / 1.06, L1(x) 0.94 / 0.95; the order 32-64 of E_shape 1.85 (RDF 1.89),
+  of L1(n) 1.21 (RDF 1.26).
+- F-3 (ccs against vofCutCell): HELD for the errors and the cost. plicRDF: E_shape, L1(x)
+  within 0.1 % of each other at every rotation cell, L1(n) within 1 %; on the deformation
+  E_shape within 1 % (4 % at N 64 Co 0.5), L1(n) within 3 % (8 % at N 128 Co 0.2); the wall
+  clock within 1.5 % (RDFccs 0.98-1.02 x RDF). The DAVOF rows: RING and RINGvcc equal to
+  three digits where both complete (N 32 / 64 Co 0.2), ccs 6-8 % faster. The ccs
+  positioning: 5.6-6.0 cuts per cell, the residual max 1e-14 .. 3e-14 of V. The residual
+  of vofCutCell's own planes, measured with `planeVolumeConsistency` on the written end
+  states of the DAVOF rows (the only rows that write `alphaf`, which the app needs for its
+  interface-cell set; job 56011148, `pvc_{vofCutCell,ccs}.dat` under each case's
+  `postProcessing/planeVolumeConsistency/`), with the ring normal the run used (`field`)
+  and the area normal, at N 32 (435 cells) and N 64 (1758 cells) on the rotation and on the
+  N 32 deformation (21,880 cells by |m_c|, 5,800-6,200 inside [tol, 1 - tol]): vofCutCell
+  at its exit tolerance 1e-8 leaves |V_cut - alpha V|/V up to 9.0-10.0e-9 (mean 7-11e-10,
+  two thirds of the cells above 1e-14, signed sum 1e-12 (rotation) to 1.9e-10 (deformation)
+  against N eps V 1.3e-17), 5-6 cuts per cell, 3.7-4.2 us per positioning; ccs on the same
+  cells and normals 6e-15 .. 1.6e-14 (mean 1e-15, 0-5 cells above 1e-14 at N 64, signed sum
+  1e-18 .. 1e-17), 2.85-2.95 cuts per cell (2.0 / 4.8 on the deformation), 1.8-2.1 us per
+  positioning. So plicRDF's planes (vofCutCell, the same iteration) carry a volume residual
+  of the order of its tolerance 1e-8, six decades above ccs's, at twice ccs's cost per
+  positioning, and the transport errors of the two plicRDF rows differ by less than 1 % all
+  the same: a plane residual of 1e-8 is below what the flux sees.
+- F-4 (wall clock): FALSIFIED in the registered direction, the measurement below the
+  registered range: RING / RDF per step 0.84 (N 32, serial) and 0.67 (N 64, 8 ranks)
+  against the registered [1.0, 2.5]; the reconstruction's share 24 / 32 % (RING) against
+  52 / 66 % (RDF), the DAVOF reconstruction 2.6 x (N 32) and 3.2 x (N 64) cheaper than
+  plicRDF's (the registered factor 3 held at N 64 and N 128, missed at N 32); the face
+  update's extra cost 3.6-6.8 ms per step as itemised above. On the deformation RING / RDF
+  2.3-3.2 x (N 32) with 24,000 interface cells, 1.8-2.1 x (N 64) up to the abort; on the
+  shear 2.9-4.4 x (N 32), 1.3-1.8 x (N 64), 1.0-1.7 x (N 128), every DAVOF cell up to its
+  abort with 40,000-680,000 interface cells.
+- F-5 (parallel): HELD on the completed cells: the per-step ratio RING / RDF falls from
+  0.84 (serial) to 0.67 (8 ranks); at 64 ranks 0.69-0.76 up to the abort.
+
+Also measured: the mass deviation of the DAVOF rows over the run 1.7e-4 .. 4e-4 % (RDF,
+RDFccs, ISO 1e-8 .. 1e-7 %), present on every completed DAVOF cell: a conservation defect
+of the plane-flux rule or of the second bounding layer to be pinned (not registered, not
+tuned). The wall-clock spread (max - min over the median of three repetitions) is 0.1-3.5 %
+on 55 of the 63 completed hexahedral cells; eight cells carry one slow repetition (up to
+14 % on the deformation RDF N 64 Co 1, 41 % on the aborted RING N 128 Co 0.5: 120 s against
+85 and 86 s), and the tables report the median.
+
+### The liquid jet in cross flow (`run/rhoVoF/jetCrossFlow`, the coarse mesh, 32 ranks)
+
+(a) The meshes of the data archive (doi:10.48328/tudatalib-1277; cfMesh): coarse 524,288 and
+fine 4,194,304 cells, 100 % hexahedra, `checkMesh` OK, max non-orthogonality 4.77 degrees,
+skewness 0.065, aspect ratio 1.26; faces warped up to 8.7e-3 h (2.0 % of the coarse faces
+above 1e-6, 0.54 % of the fine), all within 0.45-6.5 cells of the box boundary, none near the
+jet; the cells are not exactly axis-aligned (`exactSphere` refuses them; the static test
+used `quadraticFaces`). The static normal test (the sphere of radius 4 mm at (12, 10, 0) mm):
+the ring normal L1(n) 1.2027e-2 (coarse) and 5.977e-3 (fine), identical to a blockMesh
+control at the same h; plicRDF 9.012e-3 / 4.328e-3 (0.75 / 0.72 of the ring's); the ccs and
+vofCutCell positionings agree to 5-6 digits. The ring normal is undegraded by the cfMesh
+hexahedra.
+
+(b) The timing window: 2000 steps of dt 5e-7 s (t = 1 ms) on 32 ranks (simple 8 2 2), the
+published settings (`interFlow`, the coded `jetInlet`, `nAlphaBounds 3`, the density-ratio
+branch's p-U coupling) except the `visRDF` function object (a compile at every start) and the
+interface surface written as `reconstructedInterface` of `libpostProcess` (the published
+`interface` key loads OpenFOAM's `geometricVoF` next to `libVoF` and crashed at the first
+write). plicRDF (vofCutCell): 2045.5 s, 1.02 s per step, min alpha -4.1e-6; plicRDF-ccs:
+2078.2 s, 1.04 s per step, -1.9e-6 (the first repetition each; two more and the 8 ms runs are
+in the queue). The DAVOF row (ring + ccs, the binary b09b800; the initial `alphaf` is the
+initial alpha's state: 0 on every internal face, 1 on the nozzle faces of the `jetInlet`
+patch, whose alpha condition is 1) ran 623 steps (t = 0.31 ms, 650 s, 1.04 s per step) and
+died with a floating-point exception in the pressure solve (rc 143): the plane state
+drifted from the step the liquid entered, the explicit plane defect max |alpha_plane -
+alpha| growing from 0 to 0.03 (step 50), 0.16 (200), 0.45 (450) and 0.77 (600), the
+interface cells from 32 to 150 and then, within the last 20 steps, to 480,000 with alpha at
+1e86; min alpha stayed above -4.6e-4 until step 500. Reported as measured; the row is
+re-run once with ae08dc0 (the inflow value in the defaults alone, identical to the swept
+branch on the eight cases), and its full 8 ms run with it (jobs 56013018 / 56013019). The windward-trajectory extraction against
+Desclaux et al. (2020) at t = 7.1 ms follows the 8 ms runs of the plicRDF rows
+(`run/rhoVoF/jetCrossFlow/comparison/`).
+
+### The standing study set (Tomislav, 2026-11-07) and the stamps
+
+The three families above (hex) are the first mesh class of the standing set: 2D shear
+(the sheared disc of Rider & Kothe 1998), 3D shear, 3D deformation; three resolutions;
+OpenFOAM Co 0.2, 0.5 and 1; the rows plicRDF (vofCutCell), plicRDF-ccs, DAVOF ring + ccs
+(+ vofCutCell), isoAlpha; perturbed and polyhedral (and tet) classes next. Added for it on
+2026-11-07: the fork's `davofInit::exactCylinder` (the exact DAVOF state of a cylinder on
+axis-aligned hexahedra: the 2D disc on a one-cell-thick mesh, selectable in
+`initDavofFields`, `areaFractionError` and `volumeFractionError`) and `initVortex2D` (U and
+phi of the single vortex, phi the exact line integral of the stream function around every
+face; b467390); leia's `cases/davof/isoShear2D` (the isoShear3D template with the N x 1 x N
+mesh of cubic cells, front and back empty, R 0.15 at (0.5, 0.75), T = 8), the configs
+`isoShear2D_hexN{64,128,256}` (1 / 1 / 8 ranks) with the pre-registration S-1..S-5
+(4dfb4f3c, written before any run), Co 1 on the mesh-class configs (0c0ddb84, 0228ea15),
+the runner's FLOW Shear2D and the submitter. The first preparation of `isoShear2D_hexN64`
+(15 cases with the fork at b467390 in `iso/TwoPhaseFlow-c`): the mesh 64 x 1 x 64, the
+exact disc by `exactCylinder` (the exact state of `volumeFractionError` taken
+automatically), OpenFOAM Co 0.2163 at the target 0.2 with the provisional reference speed
+1.2, so REFERENCE_SPEED is 1.3 (3299c7cf); the DAVOF rows' explicit plane position
+(the Gauss sum over the cell's faces) missed the two empty faces of every cell, a start
+defect of 0.48 in alpha_plane for the ccs iteration (which converges all the same), and
+the sum now takes alpha_c on an empty face (the cross-section is the cell's; a closed cell
+is unchanged bit for bit) before the three 2D studies are prepared. The 2D and 3D shear templates
+(`cases/davof/isoShear2D`, `cases/davof/isoShear3D`, their `.parameter` files) are the ones
+to share with the port track: one template per case, the rows in `tpf_rows.py`. The stamps
+of every timed cell (the fork commit and the sha256 of its `advectorVoF` and `libVoF.so`,
+the leia commit that last touched the case template, the study configuration and the runner,
+the sha256 over the rendered dictionaries of the prepared cases) are in
+`iso/csv/iso_stamps.csv`; the recompute-on-change rule itself is the port agent's stamp
+mechanism in leia's workflow, which this track will use when it lands.
