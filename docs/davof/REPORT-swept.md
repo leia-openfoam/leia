@@ -6081,3 +6081,45 @@ defaults.
 | recompute | normalAndAlpha | completed | 576 | 0.0128 | 1.46 | 0.0689 | -0.32 | 0.18 | 1760 / 97005 | 12 | 1157977.0 (90733.0 / 1067244.0 / 0.0) | 162971.8 (0.0) | 131.2 |
 | recompute | normalAndAlphaReset | completed | 576 | 7.11e-03 | 1.43 | 0.0527 | -0.25 | 0.085 | 1760 / 33052 | 19 | 460096.4 (30148.0 / 429948.4 / 0.0) | 4349.9 (53755.3) | 83.92 |
 
+
+### The jet in cross flow with the published scheme (Tomislav's task (b), 2026-11-06/08)
+
+The liquid jet in cross flow (Liu et al. 2024, section 4.6) on the prepared coarse mesh
+(cartesianMesh, 32 ranks, simple (8 2 2) decomposition), interFlow of the fork branch with
+the published settings (isoAdvection, nAlphaBounds 3, snapTol 0, clip false, dt 5e-7 fixed,
+writes every 1e-4 s), the rows of the standing matrix: RDF (plicRDF, vofCutCell, the
+published row), RDFccs (plicRDF, CCS positioning) and the DAVOF ring + ccs row started from
+the all-gas state (alphaf uniform 0, the nozzle patch at 1). The measurement window is 1 ms
+(2,000 steps), three repetitions of the plicRDF rows; the full runs are 8 ms (16,000 steps).
+`prof/jet-run.sbatch`, `iso/jet/run/coarse/<ROW>_r<REP>`, the table `data/iso/jet_timing.csv`.
+
+- With the earlier (cubic) scheme every row diverged, plicRDF included (RDF full run at
+  step 4,063, RDFccs at 3,594, the DAVOF row at 455-623), so the published scheme is the
+  one kept; the cubic rows are in `timing_cubic.csv` as a record only.
+- The plicRDF rows complete the 8 ms: RDF 17,000 s wall, RDFccs 16,731 s (1.06 s per
+  step on 32 ranks), min alpha -2.8e-6 and -3.8e-6, the overshoot 1e-14; the 1 ms windows
+  take 1,804-1,926 s (RDF) and 1,787-1,889 s (RDFccs), the repetition spread 6 %.
+- The DAVOF ring + ccs row with the former behaviour (the defaults `sweptBoundedFaceFraction
+  none`, `interfaceCellRule normalOnly`) diverges at step 574 (t = 0.29 ms): the interface
+  cells run from 207 at step 450 to 3,800 at step 500 and 11,800 at step 550 (the
+  fragmentation of the item-3 log), min alpha below -1e-3 at step 470, -0.25 at 553, -1 at
+  565, then exponentially to -7e124 and a floating-point exception; the conservative
+  bounding does not hold it (the bounded state is reported at -3.9e107 the step before).
+- The two windows with the reset rule of item 3 (the keys set explicitly on the bf70393
+  build, not as defaults; run without the `surfaces` function object, see the build defect
+  below, so their wall clock lacks the 10 interface-surface writes per window the measured
+  rows carry): `none` + `normalAndAlphaReset` diverges at step 597 (0.30 ms), `scale` +
+  `normalAndAlphaReset` at step 800 (0.40 ms). Both are bounded to -7e-12 through step 250
+  (96 interface cells) and fragment from step 450-500 on (241-269 interface cells at step
+  500, min alpha -2.2e-3; 4,200 cells at step 750 for scale + Reset, min alpha -1.8e-2),
+  i.e. the reset delays the blow-up by 25-40 % of the time but does not prevent it, unlike
+  on the advection tests, where it made the row complete every cell.
+
+So on the jet, with the flow solver coupled (the nozzle inflow, p-U coupling, Co 0.1-0.13),
+the DAVOF ring + ccs row has no completed window under any of the three settings, while the
+plicRDF rows complete the 8 ms; the seed is the same fragmentation as on the shear (the
+dry and full cells with |m_c| above the threshold feeding the plane flux), here at the jet
+column's surface from 0.23 ms on. Reported as measured, one run per setting; the fine mesh
+(128 ranks) is not started for the DAVOF row. mass5 is closed: the head build with
+ae08dc0-RING's fvSolution reformatted by sed reproduces ae08dc0-RING to every step, so the
+earlier mass discrepancy was the foamDictionary rewrite's round-off, not the code.
