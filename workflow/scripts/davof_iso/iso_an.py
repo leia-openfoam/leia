@@ -171,7 +171,8 @@ def main():
                 v = [r[q] for r in rs if q in r and not math.isnan(r[q])]
                 if v:
                     row[q + "_median"] = statistics.median(v); row[q + "_min"] = min(v); row[q + "_max"] = max(v)
-                    row[q + "_spread_pct"] = 100*(max(v) - min(v))/statistics.median(v)
+                    med = statistics.median(v)
+                    row[q + "_spread_pct"] = 100*(max(v) - min(v))/med if med else None
             if pr:
                 p = pr[0]
                 for k, v in p.items():

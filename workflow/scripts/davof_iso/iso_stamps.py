@@ -50,6 +50,10 @@ for d in sorted(glob.glob(I + "/time/*_N*_co*")):
                     mm = re.search(r"(/work/\S+?/TwoPhaseFlow[^/]*)/platforms", line); wt = mm.group(1) if mm else line.split(":", 1)[1].strip(); break
                 if line.startswith("Create time"): break
         fc, fb, fl = build_id(wt) if os.path.isdir(wt) else ("-", "-", "-")
+        # the run's own stamp (written by the runner since 2026-11-07) wins over the worktree's current state
+        if os.path.exists(run + "/.stamp"):
+            st = dict(l.strip().split("=", 1) for l in open(run + "/.stamp") if "=" in l)
+            fc = st.get("fork_commit", fc); fb = st.get("advectorVoF_sha256_16", fb); fl = st.get("libVoF_sha256_16", fl); wt = st.get("fork_dir", wt)
         lc = git(["log", "-1", "--format=%h", "--", "cases/davof/" + case, "cases/davof/" + case + ".parameter", "cases/davof/" + case + "_poly.parameter", "config/davof/" + study + ".yaml", "workflow/scripts/davof_iso/iso-time.sbatch", "workflow/scripts/tpf_rows.py", "workflow/scripts/materialize.py", "workflow/scripts/foam_param.py"], I + "/leia")
         dh, nf = dict_hash(study)
         method, rep = os.path.basename(run).rsplit("_r", 1)

@@ -40,9 +40,14 @@ STB=iso${FLOW}3D; case $FLOW in *2D) STB=iso$FLOW;; esac
 echo "fork $(git -C $LEIA_TPF_DIR log --oneline -1 | cut -c1-90) ($LEIA_TPF_DIR); leia $(git -C $W/leia log --oneline -1 | cut -c1-90)"
 echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), cores $(nproc --all), job $SLURM_JOB_ID, np $NP, FLOW $FLOW MESHCLASS $MESHCLASS N $N CO index $CO, $(date)"
 echo "advectorVoF $(command -v advectorVoF)"
+# the stamp of every run (.stamp): the fork commit and worktree, the sha256 of the binary and
+# of libVoF, the leia commit
+FORK_SHA=$(git -C $LEIA_TPF_DIR rev-parse --short HEAD); LEIA_SHA=$(git -C $W/leia rev-parse --short HEAD)
+BIN_SHA=$(sha256sum $(command -v advectorVoF) | cut -c1-16); LIB_SHA=$(sha256sum $LEIA_TPF_DIR/platforms/$WM_OPTIONS/lib/libVoF.so | cut -c1-16)
 T=$W/time/${FLOW}_${MESHCLASS}_N${N}_co${CO}
-if [ -z "$REP0" ]; then rm -rf $T
-elif [ -n "$METHODS" ]; then for m in $METHODS; do rm -rf $T/${m}_r$REP0; done
+# METHODS alone (REP0 empty) re-runs those rows of an existing cell and keeps the others
+if [ -z "$REP0" ] && [ -z "$METHODS" ]; then rm -rf $T
+elif [ -n "$METHODS" ]; then for m in $METHODS; do rm -rf $T/${m}_r${REP0:-*}; done
 else rm -rf $T/*_r$REP0; fi
 mkdir -p $T
 SUF=${REP0:+_r$REP0}${METHODS:+_${METHODS// /-}}
@@ -86,6 +91,7 @@ run1() { # method rep [prof]
   local t0=$(date +%s.%N)
   (cd $c && srun --ntasks=$NP --cpu-bind=cores --kill-on-bad-exit=1 --job-name=${m}_r$r advectorVoF $par > log.advectorVoF 2>&1); local rc=$?
   local t1=$(date +%s.%N)
+  printf "fork_commit=%s\nfork_dir=%s\nadvectorVoF_sha256_16=%s\nlibVoF_sha256_16=%s\nleia_commit=%s\njob=%s\n" "$FORK_SHA" "$LEIA_TPF_DIR" "$BIN_SHA" "$LIB_SHA" "$LEIA_SHA" "$SLURM_JOB_ID" > $c/.stamp
   (cd $c && python3 $W/leia/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv > log.metrics 2>&1)
   /usr/bin/python3 - $c $m $r $rc $t0 $t1 "$FLOW" "$N" "$NP" "$CO" >> $csv <<'EOF'
 import sys, re, os, statistics
