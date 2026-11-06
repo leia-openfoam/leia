@@ -86,8 +86,12 @@ def measure(c):
     remote = [int(m[3]) for m in _STENCIL.findall(log)]
     ringfit_fb = [int(m[4] or 0) for m in _MODEL.findall(log) if m[0] == "ringFit"]
     la = launch(c)
-    wall = None
-    if la.get("start") and la.get("end"):
+    # the solver's own wall clock (the last ClockTime of the log); the launch record's
+    # end - start includes the job step's bookkeeping after the solver (the stamp, the
+    # converter), which on the N 128 rung added several minutes
+    clocks = re.findall(r"ClockTime = (\S+) s", log)
+    wall = f(clocks[-1]) if clocks else None
+    if wall is None and la.get("start") and la.get("end"):
         wall = float(la["end"]) - float(la["start"])
     L1a, L1n = col("L1_alphaf"), col("LNormalDiff1")
     g_early = g_late = None
