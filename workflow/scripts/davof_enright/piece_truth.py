@@ -70,26 +70,28 @@ def normal_of(hs):
     return n/np.linalg.norm(n)
 
 
-def clip_poly(poly, hs):
+def clip_poly(poly, hs, tol=0.0):
     """Sutherland-Hodgman of one polygon (list of points) by the half-space; returns the
-    kept polygon and the crossing points"""
+    kept polygon and the crossing points; a vertex within tol of the plane is on it
+    (kept, no crossing): the coplanar rule, as the fork's 1e-12 L"""
     out, cross = [], []
     n = len(poly)
     for j in range(n):
         p0, p1 = poly[j], poly[(j + 1) % n]
         s0, s1 = dist(hs, p0), dist(hs, p1)
-        if s0 <= 0: out.append(p0)
-        if (s0 <= 0) != (s1 <= 0):
+        in0, in1 = s0 <= tol, s1 <= tol
+        if in0: out.append(p0)
+        if in0 != in1:
             x = p0 + (p1 - p0)*(s0/(s0 - s1))
             out.append(x); cross.append(x)
     return (out if len(out) >= 3 else []), cross
 
 
-def clip_polyhedron(polys, hs):
+def clip_polyhedron(polys, hs, tol=0.0):
     """the convex polyhedron (outward polygons) clipped; the cap closed from the crossings"""
     new, cross = [], []
     for q in polys:
-        k, c = clip_poly(q, hs)
+        k, c = clip_poly(q, hs, tol)
         if k: new.append(k)
         cross += c
     if len(cross) >= 3:
@@ -124,15 +126,17 @@ def tets_volume(T, planes, plic, wet, apex):
         a = 0.5*np.cross(t[1] - t[0], t[2] - t[0])
         vs = ((t[0] - apex) @ a)/3
         if abs(vs) < 1e-30: continue
+        L = max(np.linalg.norm(t[1] - t[0]), np.linalg.norm(t[2] - t[1]), np.linalg.norm(t[0] - t[2]))
+        tol = 1e-12*L
         sgn = 1.0 if vs > 0 else -1.0
         A, B, C = t[0], t[1], t[2]
         if sgn < 0: B, C = C, B
         polys = [[A, B, C], [apex, B, A], [apex, C, B], [apex, A, C]]
         for hs in planes:
-            polys = clip_polyhedron(polys, hs)
+            polys = clip_polyhedron(polys, hs, tol)
             if not polys: break
         if polys and wet:
-            polys = clip_polyhedron(polys, plic)
+            polys = clip_polyhedron(polys, plic, tol)
         if polys:
             vol += sgn*poly_volume_term(polys, apex)
     return vol
