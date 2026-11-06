@@ -1,0 +1,41 @@
+# SLURM profile for SMALL cases (2026-11-07): profiles/slurm with the serial rules' memory
+# at the default 4000 MB per CPU instead of 16000 / 24000. Lichtenberg's job_submit plugin
+# routes a 16 GB single-core request to the `mem` partition (5 nodes); with those nodes
+# draining (MEASURED 2026-11-06: the 2D smoke's mesh+preprocess jobs 56015265/66 sat
+# PENDING "ReqNodeNotAvail" for an hour while the deflt partition had idle nodes), a
+# 64 x 1 x 64 mesh waited for a partition it does not need. Use it for the one-cell-thick
+# 2D cases and the N <= 64 3D rungs (a 64^3 mesh is 262k cells: blockMesh, the
+# initialiser and scotch stay far below 4 GB); the N 128 rungs and the cell-doubling
+# ladders keep profiles/slurm. Everything else is profiles/slurm's, kept in step by hand.
+#   sbatch --export=ALL,STUDY=davof/standing/shear2D_N64,PROFILE=profiles/slurm-small run-studies.sbatch
+executor: slurm
+slurm-requeue: true
+jobs: 200
+printshellcmds: true
+rerun-incomplete: true
+
+default-resources:
+  slurm_account: "special00004"
+  mem_mb_per_cpu: 4000
+  runtime: 1440
+
+set-resources:
+  mesh:
+    runtime: 120
+    mem_mb_per_cpu: 4000
+  preprocess:
+    runtime: 120
+    mem_mb_per_cpu: 4000
+  decompose:
+    runtime: 120
+    mem_mb_per_cpu: 4000
+  reconstruct:
+    runtime: 120
+    mem_mb_per_cpu: 4000
+  paraview_stub:
+    runtime: 10
+    mem_mb_per_cpu: 1000
+
+config:
+  - "mpi_launcher=srun --ntasks={np} --overlap --cpu-bind=none --kill-on-bad-exit=1"
+  - "env_preamble=module purge; module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv; export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader,tcp OMPI_MCA_mtl=^ofi,psm2; source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
