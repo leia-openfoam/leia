@@ -22,7 +22,7 @@ W = os.environ.get("ISO_W", "/work/scratch/tm83tomy/davof/agents/swept/iso")
 OUT = W + "/csv"; os.makedirs(OUT, exist_ok=True)
 METHODS = ("RDF", "RDFccs", "RING", "RINGvcc", "ISO")
 DAVOF = ("RING", "RINGvcc")
-T_END = {"Rotation": 1.0, "Shear": 3.0, "Deformation": 3.0}
+T_END = {"Rotation": 1.0, "Shear": 3.0, "Deformation": 3.0, "Shear2D": 8.0}
 CO_LABEL = {"0": 0.2, "1": 0.5, "2": 1.0}
 
 _RE_T = re.compile(r"^t = ([^,]+),\s*sum\(alpha\*V\) = ([^,]+),\s*dev = ([^%]+)%,\s*1-max\(alpha1\) = (\S+) at cell \S+,\s*min\(alpha1\) = (\S+) at cell", re.M)
