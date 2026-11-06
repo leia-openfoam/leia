@@ -1,0 +1,104 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// The fixed time step (materialize._with_derived_tokens, the tokens below are
+// named here so that the workflow carries them into the case):
+//   mode=@!TIME_STEP_CONTROL!@
+//   target advective Co=@!TARGET_ADVECTIVE_CO!@
+//   reference domain length=@!DOMAIN_LENGTH!@ m
+//   reference speed=@!REFERENCE_SPEED!@ m/s
+// dt = Co h / REFERENCE_SPEED with h = DOMAIN_LENGTH/N_CELLS.
+application     @!TPF_APPLICATION!@;
+
+startFrom       startTime;
+startTime       0;
+stopAt          endTime;
+endTime         @!END_TIME!@;
+deltaT          @!MAX_DELTA_T!@;
+writeControl    adjustableRunTime;
+writeInterval   @!TPF_WRITE_INTERVAL!@;
+purgeWrite      0;
+writeFormat     ascii;
+writePrecision  @!TPF_WRITE_PRECISION!@;
+writeCompression off;
+timeFormat      general;
+timePrecision   10;
+graphFormat     raw;
+runTimeModifiable no;
+adjustTimeStep  no;
+maxCo           1e6;
+maxAlphaCo      1e6;
+maxDeltaT       1e6;
+
+// OpenFOAM's profiling (uniform/profiling at the writes): the time in
+// reconstruct() and advect() (addProfilingInFunction geometricVoF), the
+// reconstruction's share of the step; off in the timed runs
+profiling
+{
+    active          @!TPF_PROFILING!@;
+}
+
+functions
+{
+    // The exact body: the disc (the cylinder along y through the one-cell-thick mesh,
+    // davofMethod exactCylinder / exactState auto -> exactCylinder) at rest.
+    // the face fractions against the exact state of the moving body (the davof
+    // rows) and the reconstructed normal against the exact normal
+    // (reconstructionError true: every row) at the write times
+    areaFractionError
+    {
+        type            areaFractionError;
+        libs            ("libpostProcess.so");
+        field           alpha.water;
+        functionType    cylinder;
+        origin          (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
+        direction       (0 1 0);
+        radius          @!TPF_SPHERE_RADIUS!@;
+        U0              (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+        omega           (0 0 0);
+        axisPoint       (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
+        davofMethod     @!TPF_REF_METHOD!@;
+        wispTol         @!TPF_WISP_TOL!@;
+        consistency     false;
+        reconstructionError true;
+        reconstructionErrorEveryStep @!TPF_RECON_ERROR_EVERY_STEP!@;
+        writeFaceError  false;
+        faceErrorCsv    false;
+        writeControl    @!TPF_AFE_WRITE_CONTROL!@;
+        writeInterval   @!TPF_AFE_WRITE_INTERVAL!@;
+        writePrecision  @!TPF_WRITE_PRECISION!@;
+    }
+    // Eshape, Emass, Ebound against the exact body at the write times
+    volumeFractionError
+    {
+        type            volumeFractionError;
+        libs            ("libpostProcess.so");
+        field           alpha.water;
+        functionType    cylinder;
+        origin          (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
+        direction       (0 1 0);
+        radius          @!TPF_SPHERE_RADIUS!@;
+        U0              (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+        omega           (0 0 0);
+        axisPoint       (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
+        writeControl    @!TPF_VFE_WRITE_CONTROL!@;
+        writeInterval   @!TPF_VFE_WRITE_INTERVAL!@;
+        writePrecision  @!TPF_WRITE_PRECISION!@;
+    }
+}
+
+// ************************************************************************* //

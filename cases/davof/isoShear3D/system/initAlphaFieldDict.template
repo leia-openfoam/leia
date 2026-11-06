@@ -1,0 +1,27 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      initAlphaFieldDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// initDavofFields: the DAVOF state (alpha and the face fractions alphaf) of the
+// sphere; every row starts from the same fields
+field   "alpha.water";
+type    sphere;
+radius  @!TPF_SPHERE_RADIUS!@;
+origin  (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
+davofMethod @!TPF_DAVOF_METHOD!@;
+wispTol     @!TPF_WISP_TOL!@;
+
+// ************************************************************************* //

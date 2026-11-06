@@ -94,13 +94,14 @@ if SOLVER == "davofAdvectorFoam" and SETFIELDS_APP == "initDavofFields":
 # hexRefined | polyRefined: statically refined around the interface by the
 # drivers in workflow/scripts (leiaRefineHexMesh.py / leiaRefinePolyMesh.py),
 # 3D only, and REFINE_LEVELS >= 1 (materialize asserts the pairing).
-assert MESH in ("hex", "perturbed", "poly", "hexRefined", "polyRefined"), f"bad mesh: {MESH}"
+assert MESH in ("hex", "perturbed", "poly", "tet", "hexRefined", "polyRefined"), f"bad mesh: {MESH}"
 assert MODE in ("serial", "parallel"), f"bad mode: {MODE}"
 PARALLEL = MODE == "parallel"
 DIMS = 1 if CASE_NAME.startswith("1D") else (2 if CASE_NAME.startswith("2D") else 3)
 
-if MESH in ("poly", "polyRefined"):
-    assert DIMS == 3, "poly mesh is only available for 3D cases"
+if MESH in ("poly", "polyRefined", "tet"):
+    # tet (2026-11-06): cfMesh's tetMesh on the same surface and meshDict as poly
+    assert DIMS == 3, "poly/tet meshes are only available for 3D cases"
     PARAM_FILE = os.path.join(CASES_DIR, f"{CASE}_poly.parameter")
 else:
     PARAM_FILE = os.path.join(CASES_DIR, f"{CASE}.parameter")
@@ -172,6 +173,10 @@ elif MESH == "poly":
     # ONLY: a study-global LD_PRELOAD segfaults the MPI solver at startup with an empty
     # log (measured 2026-09-04). Doubled braces: this string is format()ed.
     MESH_CMD = "${{LEIA_PMESH_PRELOAD:+env LD_PRELOAD=$LEIA_PMESH_PRELOAD}} pMesh"
+elif MESH == "tet":
+    # cfMesh's tetMesh (2026-11-06, the tetrahedral mesh class of the isoAdvector
+    # verification), the same meshDict as pMesh
+    MESH_CMD = "${{LEIA_PMESH_PRELOAD:+env LD_PRELOAD=$LEIA_PMESH_PRELOAD}} tetMesh"
 elif MESH == "hexRefined":
     # blockMesh, then REFINE_LEVELS passes of [0/ := 0.org; leiaSetFields; topoSet
     # (0 < alpha < 1 seed + dilations); refineHexMesh], then leiaSetFields on the

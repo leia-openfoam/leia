@@ -82,6 +82,7 @@ _DERIVED_TOKENS = {
     "TPF_CLIPPING_SURFACE",
     "TPF_FIT_ANCHOR",
     "TPF_FIT_DOF",
+    "TPF_POSITIONING",
     "TPF_UX",
     "TPF_UY",
     "TPF_UZ",
@@ -120,6 +121,9 @@ _DERIVED_INPUTS = {
     "TPF_CLIPPING_SURFACE": ("TPF_ROW",),
     "TPF_FIT_ANCHOR": ("TPF_ROW",),
     "TPF_FIT_DOF": ("TPF_ROW",),
+    # the plane positioning (2026-11-06): read by every scheme of the fork branch
+    # davof-isoAdvector, so it is the row's, not the study's
+    "TPF_POSITIONING": ("TPF_ROW",),
     "TPF_UX": ("TPF_VELOCITY_ARM",),
     "TPF_UY": ("TPF_VELOCITY_ARM",),
     "TPF_UZ": ("TPF_VELOCITY_ARM",),
