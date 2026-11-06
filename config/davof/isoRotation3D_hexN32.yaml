@@ -1,0 +1,105 @@
+# The isoAdvector package's verification (fork branch davof-isoAdvector, 2026-11-06): the
+# preparation of the cases of isoRotation3D at N 32 on 1 rank(s) (rendered, meshed,
+# initialised; a short END_TIME). The timed runner
+# workflow/scripts/davof_iso/iso-time.sbatch copies them, sets the end time and the write
+# intervals and runs the rows and repetitions. Purpose and predictions:
+# isoRotation3D_hexN32.yaml.
+#
+#   sbatch --parsable -J leia-davof-isoRotation3D_hexN32 --export=ALL,STUDY=davof/isoRotation3D_hexN32 run-studies.sbatch
+# PRE-REGISTERED (2026-11-06, before any run; Tomislav's tasks of 2026-11-06 for the fork
+# branch davof-isoAdvector fab3805 + initShearFlow3D). The isoAdvector improvement on the
+# hexahedral ladder, three flows of the same sphere (R 0.15): the solid-body rotation
+# (one turn, isoRotation3D), the 3D shear flow (Liovic et al. 2006, T = 3, isoShear3D),
+# the 3D deformation (LeVeque 1996 / Enright et al. 2002, T = 3, isoDeformation3D);
+# N = 32 / 64 / 128 on 1 / 8 / 64 ranks (scotch), OpenFOAM Co 0.2 / 0.5 / 1 (the
+# rotation: the interface Co 0.0463 / 0.1157 / 0.2315, OF Co = 4.32 x). Rows, all with
+# isoAdvector's own flux and bounding (nAlphaBounds 3, snapTol 0, clip false):
+#   RDF     = plicRDF, positioning vofCutCell (the classical isoAdvector + plicRDF),
+#   RDFccs  = plicRDF, positioning ccs,
+#   RING    = davof, ring-area normal, positioning ccs (the package's row),
+#   RINGvcc = davof, ring-area normal, positioning vofCutCell,
+#   ISO     = isoAlpha (the third reference, no positioning key).
+# Same initial alpha and alphaf (initDavofFields exactSphere), same mesh, dt,
+# decomposition and ranks; scored at the end (the rotation: the turned sphere; the shear
+# and the deformation: the initial sphere at t = T) by E_shape (volumeFractionError,
+# exactState exactSphere), L1(x), L1(n) (reconstructionError at the writes), the bounds
+# and the mass over the whole run (every step's log), the interface-cell and wisp counts
+# at the writes; the diagnostics at the writes only (quarter turns / T/4). Timing: the
+# total wall clock and the per-step time per case at equal ranks, three repetitions on
+# exclusive i01 nodes, the order of the rows rotated per repetition; the reconstruction's
+# share of the step from OpenFOAM's profiling (reconstruct() and advect()) in ONE extra
+# run per cell, not timed.
+#   F-1  Completion and bounds. RDF, RDFccs and ISO complete every cell. The DAVOF rows
+#        (RING, RINGvcc) complete bounded to 1e-9 on the rotation at OF Co 0.2 and 0.5
+#        for every N, and LOSE the bound (beyond 1e-6, the abort guard or the end
+#        unbounded) at OF Co 1 on every flow (the comparison C of 2026-11-05: the
+#        plane-clipped loop diverges on the rotation at OF Co 1). On the deformation the
+#        DAVOF rows abort (the interface-cell guard) at N >= 64 for every Co (the Enright
+#        agent's prism row, the same code path, aborted at N 64 and 128 on 2026-11-06), and
+#        on the shear at N >= 64 for Co >= 0.5. Falsified if a DAVOF row completes
+#        bounded to 1e-9 at OF Co 1 on the rotation at every N, or completes the
+#        deformation at N 128.
+#   F-2  Errors on the rotation at OF Co 0.2 and 0.5: E_shape(RING) / E_shape(RDF) in
+#        [0.7, 1.5] at every N; L1(n)(RING) / L1(n)(RDF) in [0.7, 2.0] at every N; the
+#        order of E_shape over N (64 -> 128) between 1 and 2.5 for RDF and >= 1 for RING.
+#        Falsified by a ratio above 2 at N 128 or an order below 1 for RING.
+#   F-3  ccs against vofCutCell, the same scheme: |E_shape(RDFccs)/E_shape(RDF) - 1| < 5 %
+#        and |L1(n) ratio - 1| < 5 % at every completed cell (the 2.8e-4 field difference
+#        of the identity smoke test is a round-off-level perturbation of the planes,
+#        vofCutCell's isoFaceTol 1e-8, amplified by plicRDF's iteration but not an error
+#        change); the same for RINGvcc against RING. The plane residual |V_cut - alpha V|/V
+#        of the written planes: ccs <= 1e-13 in every cell, vofCutCell above 1e-9 in some
+#        cells (planeVolumeConsistency / the residual field). Wall clock RDFccs / RDF within
+#        [0.9, 1.1] (ccs makes 5.6 cuts per cell, vofCutCell 5 to 6: no cost gain expected
+#        from the count; Tomislav's expectation "ccs cheaper" is tested here). Falsified by
+#        an error ratio outside [0.95, 1.05] at any completed cell.
+#   F-4  Wall clock per step at equal ranks: RING / RDF in [1.0, 2.5] at N <= 64 and in
+#        [0.8, 1.5] at N 128 on 64 ranks (the Enright agent measured the plane loop with
+#        the ring normal at 3.2 x (N 32, serial), 2.25 x (N 64, 8 ranks) and 0.94 x
+#        (N 128, 64 ranks) WITH a reconstruction diagnostic every step in both rows). The
+#        reconstruction's share of the step (profiling): RING's reconstruct() below RDF's
+#        by a factor >= 3 (Tomislav's "a fifth of the reconstruction cost"); RING's extra
+#        cost is the face update (the second-ring sweep, the content bound, the defaults),
+#        reported as advect() minus RDF's advect(). Falsified if RING / RDF > 3 at any cell
+#        or RING's reconstruct() is not below RDF's.
+#   F-5  Parallel: the per-step time of every row at 8 ranks (N 64) and 64 ranks (N 128)
+#        measured; the ratio RING / RDF does not grow with the rank count (the face update
+#        has no extra communication beyond the alphaf sync). Falsified if the ratio at 64
+#        ranks exceeds the serial ratio by more than 50 %.
+#   Also reported, not predicted: L1(alphaf) of the DAVOF rows, the counts of the second
+#   ring, the content bound and the fallbacks per write, isoAlpha's errors and time, the
+#   measured OF Courant number of every cell, the pictures of the alpha = 0.5 surface.
+study_name: isoRotation3D_hexN32
+studies_dir: studies/davof
+case: davof/isoRotation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: "initDavofFields"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [32]
+  TPF_ROW: [plicRDF, plicRDF-ccs, davof-ringArea, davof-ringArea-vofCutCell, isoAlpha]
+  TARGET_ADVECTIVE_CO: [0.0463, 0.1157, 0.2315]
+  # the preparation runs a few steps; the timed runner sets the end time and the
+  # write intervals
+  END_TIME: [0.02]
+  TPF_WRITE_INTERVAL: [0.02]
+  TPF_AFE_WRITE_INTERVAL: [0.02]
+  TPF_VFE_WRITE_INTERVAL: [0.02]
+collapse_other_axes: true
+
+solve_mem_mb: 3000
+solve_runtime: 30
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

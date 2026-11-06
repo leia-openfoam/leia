@@ -1,0 +1,132 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// The alpha dictionary of the isoAdvector package's verification (fork branch
+// davof-isoAdvector, 2026-11-06): the keys the package reads and nothing else.
+// The row TPF_ROW (workflow/scripts/tpf_rows.py) sets the reconstruction
+// scheme, the davof normal model and the plane positioning.
+solvers
+{
+    "alpha.water.*"
+    {
+        advectionScheme      isoAdvection;
+        reconstructionScheme @!TPF_RECON_SCHEME!@;
+        // the plane positioning of the row: vofCutCell (surfaceIteratorPLIC's
+        // cubic fit and secant to isoFaceTol in alpha; the classical plicRDF
+        // setting) or ccs (Consecutive Cubic Spline positioning on the same
+        // cutCellPLIC cut to positioningTol of V or the round-off floor, at
+        // most positioningMaxIter cuts); read by davof, plicRDF and gradAlpha,
+        // inert for isoAlpha (an iso-value positioning)
+        positioning     @!TPF_POSITIONING!@;
+        positioningTol  @!TPF_POSITIONING_TOL!@;
+        positioningMaxIter @!TPF_POSITIONING_MAX_ITER!@;
+        isoFaceTol      1e-8;
+        surfCellTol     1e-8;
+        // plicRDF: the initial guess from the previous normals (the library's
+        // default true)
+        interpolateNormal @!TPF_INTERPOLATE_NORMAL!@;
+        // davof: interface cell |m_c| > wispTol V^(2/3); the normal model
+        // (davofNormalModel.H) and where it replaces m_c (applyTo all, or
+        // check: the slivers |m_c| < sliverTol h^2 and the cells deviating by
+        // more than maxAngle degrees); exactNormal is the exact body of the
+        // exact control
+        wispTol         @!TPF_WISP_TOL!@;
+        normalModel     @!TPF_NORMAL_MODEL!@;
+        applyTo         @!TPF_APPLY_TO!@;
+        sliverTol       @!TPF_SLIVER_TOL!@;
+        maxAngle        @!TPF_MAX_ANGLE!@;
+        noNormalFallback @!TPF_NO_NORMAL_FALLBACK!@;
+        exactNormal
+        {
+            functionType sphere;
+            origin      (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
+            radius      @!TPF_SPHERE_RADIUS!@;
+            U0          (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+            omega       (0 -@!TPF_OMEGA!@ 0);
+            axisPoint   (@!TPF_AXIS_X!@ @!TPF_SPHERE_CY!@ @!TPF_AXIS_Z!@);
+        }
+        // isoAdvection's bounding: the same for every row
+        vof2IsoTol      1e-8;
+        writeVTK        false;
+        snapTol         @!TPF_SNAP_TOL!@;
+        nAlphaBounds    @!TPF_N_ALPHA_BOUNDS!@;
+        clip            @!TPF_CLIP!@;
+        nAlphaCorr      1;
+        nAlphaSubCycles 1;
+        cAlpha          1;
+    }
+}
+
+setFlow
+{
+    // the solid-body rotation about the y axis through (TPF_AXIS_X . TPF_AXIS_Z)
+    // (OpenFOAM's functionObjects::setFlow, mode rotation, as
+    // cases/davof/sphereRotation3D: the angular velocity vector (0 -omega 0)),
+    // evaluated by advectorVoF at the half time of the step
+    mode        rotation;
+    omega       constant @!TPF_OMEGA!@;
+    origin      (@!TPF_AXIS_X!@ @!TPF_SPHERE_CY!@ @!TPF_AXIS_Z!@);
+    refDir      (1 0 0);
+    axis        (0 1 0);
+    scale       constant 1;
+    velocity
+    {
+        type        sine;
+        frequency   #eval{ @!TPF_OMEGA!@/(2*pi()) };
+        amplitude   #eval{ sin(0.5*@!TPF_OMEGA!@*@!MAX_DELTA_T!@)/(0.5*@!TPF_OMEGA!@*@!MAX_DELTA_T!@) };
+        scale       #eval{ vector(@!TPF_OMEGA!@*(@!TPF_AXIS_X!@ - @!TPF_SPHERE_CX!@), 0, @!TPF_OMEGA!@*(@!TPF_AXIS_Z!@ - @!TPF_SPHERE_CZ!@)) };
+        level
+        {
+            type        cosine;
+            frequency   #eval{ @!TPF_OMEGA!@/(2*pi()) };
+            amplitude   #eval{ sin(0.5*@!TPF_OMEGA!@*@!MAX_DELTA_T!@)/(0.5*@!TPF_OMEGA!@*@!MAX_DELTA_T!@) };
+            scale       #eval{ vector(@!TPF_OMEGA!@*(@!TPF_AXIS_Z!@ - @!TPF_SPHERE_CZ!@), 0, @!TPF_OMEGA!@*(@!TPF_SPHERE_CX!@ - @!TPF_AXIS_X!@)) };
+            level       (@!TPF_UX!@ @!TPF_UY!@ @!TPF_UZ!@);
+        }
+    }
+}
+
+// advectorVoF: the abort guard (fork etc/README-davof.md "Abort guard"): the
+// run ends with a normal End after an ABORT line when alpha leaves
+// [abortMinAlpha, abortMaxAlpha] or the interface-cell count exceeds
+// abortInterfaceCellFactor times its count at the first step
+isoAdvector
+{
+    abortEnabled    true;
+    abortMinAlpha   -0.5;
+    abortMaxAlpha   1.5;
+    abortInterfaceCellFactor @!TPF_ABORT_INTERFACE_FACTOR!@;
+}
+
+PIMPLE
+{
+    momentumPredictor no;
+    nCorrectors     -1;
+    nNonOrthogonalCorrectors -1;
+    nAlphaCorr      1;
+    nAlphaSubCycles 1;
+    cAlpha          1;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+SIMPLE
+{
+    nNonOrthogonalCorrectors 0;
+}
+
+// ************************************************************************* //

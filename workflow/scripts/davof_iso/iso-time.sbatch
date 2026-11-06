@@ -1,0 +1,105 @@
+#!/bin/bash
+#SBATCH -A special00004
+#SBATCH -N 1
+#SBATCH --exclusive
+#SBATCH --constraint=i01
+#SBATCH --mem-per-cpu=3000
+#SBATCH -o %x.%j.out
+#SBATCH -e %x.%j.err
+# The timed verification of the isoAdvector package (fork branch davof-isoAdvector,
+# 2026-11-06; the pre-registration F-1 .. F-5 in config/davof/iso*3D_hexN32.yaml). One
+# exclusive i01 node per (FLOW, N, CO index): REPS repetitions of the rows RDF (plicRDF,
+# vofCutCell), RDFccs (plicRDF, ccs), RING (davof ring normal, ccs), RINGvcc (davof ring
+# normal, vofCutCell) and ISO (isoAlpha), the order rotated per repetition, each solve one
+# srun step on NP ranks (--cpu-bind=cores); the case copies come from the preparation
+# study iso<FLOW>3D_hexN<N> (rendered, meshed, initialised, decomposed), endTime set to the
+# flow's T (the rotation 1, the shear and the deformation 3), the fields and the
+# diagnostics written at the quarter times. After the repetitions ONE profiled run per
+# row (OpenFOAM profiling active: the reconstruct()/advect() shares), not timed.
+#   sbatch -J davof-iso-<FLOW>-N<N>-co<CO> -n <NP> -t <limit> --export=ALL,FLOW=Rotation|Shear|Deformation,N=..,CO=0|1|2 iso-time.sbatch
+# REP0 / REP1 (optional): only the repetitions REP0..REP1; METHODS (optional): only these
+# rows; NOPROF=1: no profiled runs. ISO_W: the workspace (default the swept agent's iso/).
+W=${ISO_W:-/work/scratch/tm83tomy/davof/agents/swept/iso}
+S=${STUDIES:-$W/leia/studies/davof}
+module purge
+module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv
+source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+cd $W/leia && . etc/leia-env.sh || exit 1
+: ${FLOW:?} ${N:?} ${CO:?}
+REPS=${REPS:-3}
+NP=$SLURM_NTASKS
+case $FLOW in Rotation) END=1; WI=0.25;; Shear|Deformation) END=3; WI=0.75;; *) echo "FLOW $FLOW?"; exit 1;; esac
+echo "fork $(git -C $W/TwoPhaseFlow log --oneline -1 | cut -c1-90); leia $(git -C $W/leia log --oneline -1 | cut -c1-90)"
+echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), cores $(nproc --all), job $SLURM_JOB_ID, np $NP, FLOW $FLOW N $N CO index $CO, $(date)"
+echo "advectorVoF $(command -v advectorVoF)"
+T=$W/time/${FLOW}_N${N}_co${CO}
+if [ -z "$REP0" ]; then rm -rf $T
+elif [ -n "$METHODS" ]; then for m in $METHODS; do rm -rf $T/${m}_r$REP0; done
+else rm -rf $T/*_r$REP0; fi
+mkdir -p $T
+SUF=${REP0:+_r$REP0}${METHODS:+_${METHODS// /-}}
+pick() { /usr/bin/python3 - "$S/iso${FLOW}3D_hexN$N" "$1" "$CO" <<'EOF'
+import json, glob, os, sys
+st, row, co = sys.argv[1], sys.argv[2], int(sys.argv[3])
+cs = []
+for c in sorted(glob.glob(st + "/*_0*")):
+    if "." in os.path.basename(c) or not os.path.exists(c + "/case_params.json"): continue
+    t = json.load(open(c + "/case_params.json"))["tokens"]
+    if t["TPF_ROW"] == row: cs.append((float(t["TARGET_ADVECTIVE_CO"]), c))
+cs.sort()
+sys.stderr.write("pick %s: Co %s -> %s\n" % (row, [x[0] for x in cs], cs[co][0]))
+print(cs[co][1])
+EOF
+}
+declare -A SRC
+SRC[RDF]=$(pick plicRDF); SRC[RDFccs]=$(pick plicRDF-ccs); SRC[RING]=$(pick davof-ringArea)
+SRC[RINGvcc]=$(pick davof-ringArea-vofCutCell); SRC[ISO]=$(pick isoAlpha)
+ALL="RDF RDFccs RING RINGvcc ISO"
+for m in $ALL; do echo "source $m ${SRC[$m]}"; done
+prep() { # method rep [prof] -> case dir
+  local m=$1 r=$2 src=${SRC[$1]} c=$T/${1}_r$2
+  mkdir -p $c; cp -r $src/system $src/constant $c/
+  if [ $NP -gt 1 ]; then
+    for p in $src/processor*; do mkdir -p $c/$(basename $p); cp -r $p/0 $p/constant $c/$(basename $p)/; done
+  else
+    cp -r $src/0 $c/
+  fi
+  foamDictionary -entry endTime -set $END $c/system/controlDict > /dev/null
+  foamDictionary -entry writeInterval -set $WI $c/system/controlDict > /dev/null
+  foamDictionary -entry functions/areaFractionError/writeInterval -set $WI $c/system/controlDict > /dev/null
+  foamDictionary -entry functions/volumeFractionError/writeInterval -set $WI $c/system/controlDict > /dev/null
+  [ "$3" = prof ] && foamDictionary -entry profiling/active -set true $c/system/controlDict > /dev/null
+  echo "$src" > $c/.source; echo $c
+}
+csv=$T/timing$SUF.csv; echo "flow,N,np,co_index,method,rep,steps,dt,end_time,clock_s,exec_s,wall_s,median_step_s,node" > $csv
+par=""; [ $NP -gt 1 ] && par="-parallel"
+run1() { # method rep [prof]
+  local m=$1 r=$2 c; c=$(prep $m $r $3)
+  local t0=$(date +%s.%N)
+  (cd $c && srun --ntasks=$NP --cpu-bind=cores --kill-on-bad-exit=1 --job-name=${m}_r$r advectorVoF $par > log.advectorVoF 2>&1); local rc=$?
+  local t1=$(date +%s.%N)
+  (cd $c && python3 $W/leia/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv > log.metrics 2>&1)
+  /usr/bin/python3 - $c $m $r $rc $t0 $t1 "$FLOW" "$N" "$NP" "$CO" >> $csv <<'EOF'
+import sys, re, os, statistics
+c, m, r, rc, t0, t1, flow, N, np_, co = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), float(sys.argv[5]), float(sys.argv[6]), sys.argv[7], sys.argv[8], sys.argv[9], sys.argv[10]
+log = open(c + "/log.advectorVoF").read()
+ct = re.findall(r"ExecutionTime = (\S+) s\s+ClockTime = (\S+) s(?:\s+timeStepTime = (\S+) s)?", log)
+steps = len(re.findall(r"\nTime = ", log)); st = [float(x[2]) for x in ct if x[2]]
+cd = open(c + "/system/controlDict").read()
+dt = re.search(r"\ndeltaT\s+([^;]+);", cd).group(1); et = re.search(r"\nendTime\s+([^;]+);", cd).group(1)
+print(",".join(str(x) for x in (flow, N, np_, co, m, r, steps, dt, et, ct[-1][1] if ct else "", ct[-1][0] if ct else "", "%.2f" % (t1 - t0),
+      "%.4f" % statistics.median(st) if st else "", os.uname().nodename)) + ("" if rc == 0 else ",rc=%d" % rc))
+EOF
+  echo "$m r$r rc=$rc wall $(python3 -c "print('%.1f' % ($t1-$t0))") s, $(grep -c '^Time = ' $c/log.advectorVoF) steps; $(grep -o 'ABORT at step [0-9]*, t = [^:]*: [a-zA-Z() ]*' $c/log.advectorVoF | head -1)"
+}
+if [ -z "$REP0" ] || [ -z "$METHODS" ]; then METHODS=${METHODS:-$ALL}; fi
+for r in $(seq ${REP0:-1} ${REP1:-$REPS}); do
+  # the order rotated per repetition
+  set -- $METHODS; k=$(( (r - 1) % $# )); order="${@:$((k+1))} ${@:1:$k}"
+  for m in $order; do run1 $m $r; done
+done
+if [ -z "$NOPROF" ] && [ -z "$REP0" ]; then
+  for m in $METHODS; do run1 $m prof prof; done
+fi
+sleep 5; sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps$SUF.txt
+echo "ISO-TIME-DONE $FLOW N$N co$CO $(date)"

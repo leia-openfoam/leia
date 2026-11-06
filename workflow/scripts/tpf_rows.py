@@ -115,6 +115,16 @@ ROWS = OrderedDict([
     ("davof-planeSurf-ringArea",       ("davof", "ringArea",  "all",   "0",    "15",  "keep", "plane", "plane",      "volume", "none")),
     ("plicRDF",                  ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
     ("isoAlpha",                 ("isoAlpha", "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
+    # The eleventh element (2026-11-06, the fork branch davof-isoAdvector fab3805):
+    # the plane positioning, the key `positioning` of the alpha dictionary, which
+    # the davof scheme reads since 2026-11-04 and surfaceIteratorPLIC (plicRDF,
+    # gradAlpha) since fab3805: vofCutCell (the library's cubic fit plus the
+    # secant, to isoFaceTol in alpha) or ccs (the Consecutive Cubic Spline
+    # positioning to positioningTol of V). The verification rows of the package:
+    # the classical plicRDF row above (vofCutCell), plicRDF-ccs, davof-ringArea
+    # above (ccs, the fork's default for davof) and davof-ringArea-vofCutCell.
+    ("plicRDF-ccs",              ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none", "faces", "six", "ccs")),
+    ("davof-ringArea-vofCutCell", ("davof",   "ringArea",  "all",   "0",   "15",  "keep",     "plane",        "none", "faces", "six", "vofCutCell")),
 ])
 # the ninth element (2026-10-23, after the first smoke): the anchor of the
 # paraboloid fit, faces (the six coefficients interpolate the cell's face
@@ -128,13 +138,16 @@ _FULL = {}
 for _name, _vals in list(ROWS.items()):
     _v = _vals if len(_vals) >= 9 else (_vals + ("faces",))
     _v = _v if len(_v) >= 10 else (_v + ("six",))
+    # the eleventh element (see above): a davof row without it takes ccs, every
+    # other scheme vofCutCell
+    _v = _v if len(_v) >= 11 else (_v + ("ccs" if _v[0] == "davof" else "vofCutCell",))
     _FULL[_name] = _v
 ROWS = OrderedDict(_FULL)
 
 ROW_TOKENS = ("TPF_RECON_SCHEME", "TPF_NORMAL_MODEL", "TPF_APPLY_TO",
               "TPF_SLIVER_TOL", "TPF_MAX_ANGLE", "TPF_NO_NORMAL_FALLBACK",
               "TPF_FACE_CLIPPING", "TPF_CLIPPING_SURFACE", "TPF_FIT_ANCHOR",
-              "TPF_FIT_DOF")
+              "TPF_FIT_DOF", "TPF_POSITIONING")
 
 # arm -> (UX, UY, UZ); |U| = 1 for every arm (REFERENCE_SPEED 1 in the
 # .parameter files, so dt = Co h). normal = the unit normal of the plane
@@ -158,6 +171,12 @@ VELOCITY_ARMS = OrderedDict([
     # the space diagonal at the same speed, (pi/2)(1 1 1)/sqrt(3)
     # (2026-11-02, the per-axis-displacement control)
     ("lineDiag3D", ("0.9068996821171089", "0.9068996821171089", "0.9068996821171089")),
+    # the 3D deformation and the 3D shear flow (2026-11-06; cases/davof/
+    # isoDeformation3D, isoShear3D and the Enright branch's sphereDeformation3D):
+    # no uniform velocity; the field is setFlow's vortex3D or the fields of 0/
+    # (initShearFlow3D), the tokens here are the U0 of the exact body (the sphere
+    # at rest: the exact state at t = T is the initial sphere)
+    ("deformation3D", ("0", "0", "0")),
 ])
 
 VELOCITY_TOKENS = ("TPF_UX", "TPF_UY", "TPF_UZ")
@@ -173,6 +192,8 @@ LABELS = OrderedDict([
     ("davof-plicRDFnormal", "DAVOF, plicRDF normal (control)"),
     ("davof-plicRDFnormal-ring", "DAVOF, plicRDF normal, ring fallback"),
     ("davof-sagitta-exact",      "DAVOF, sagitta clipping, exact normal"),
+    ("plicRDF-ccs",              "plicRDF, CCS positioning"),
+    ("davof-ringArea-vofCutCell", "DAVOF, ring-area normal, vofCutCell positioning"),
     ("davof-sagitta-ringArea",   "DAVOF, sagitta clipping, ring-area normal"),
     ("davof-sagitta-cellSliver", "DAVOF, sagitta clipping, own normal with sliver fallback"),
     ("davof-sagitta-cellLocal",  "DAVOF, sagitta clipping, own normal"),
@@ -256,6 +277,7 @@ MARKERS = {
     "davof-paraboloidOne-exact": "+", "davof-paraboloidOne-cellLocal": "1",
     "davof-planeSurf-exact": "x", "davof-planeSurf-ringArea": "D",
     "plicRDF": "^", "isoAlpha": "v",
+    "plicRDF-ccs": "<", "davof-ringArea-vofCutCell": ">",
 }
 
 
