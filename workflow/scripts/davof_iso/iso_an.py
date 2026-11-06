@@ -141,6 +141,9 @@ def main():
             t = tim.get((m, rep))
             if t:
                 rec["wall_s"] = fnum(t["wall_s"]); rec["clock_s"] = fnum(t["clock_s"]); rec["np"] = int(t["np"]); rec["node"] = t["node"]
+                # the per-step wall time from the run (the log timeStepTime has two decimals)
+                if rec.get("steps"):
+                    rec["step_s_wall"] = rec["wall_s"]/rec["steps"]
             runs.append(rec)
     if not runs:
         print("no runs under", W + "/time"); return
@@ -164,7 +167,7 @@ def main():
             # identical repetitions?
             e = [r.get("Eshape_end") for r in rs]
             row["reps_identical"] = all(x == e[0] for x in e)
-            for q in ("wall_s", "step_s_median"):
+            for q in ("wall_s", "step_s_median", "step_s_wall"):
                 v = [r[q] for r in rs if q in r and not math.isnan(r[q])]
                 if v:
                     row[q + "_median"] = statistics.median(v); row[q + "_min"] = min(v); row[q + "_max"] = max(v)
@@ -178,7 +181,7 @@ def main():
     for row in table:
         ref = next((t for t in table if (t["flow"], t["mesh"], t["N"], t["co"]) == (row["flow"], row["mesh"], row["N"], row["co"]) and t["method"] == "RDF"), None)
         if ref:
-            for q in ("Eshape_end", "L1x_end", "L1n_end", "wall_s_median", "step_s_median_median"):
+            for q in ("Eshape_end", "L1x_end", "L1n_end", "wall_s_median", "step_s_median_median", "step_s_wall_median"):
                 a, b = row.get(q), ref.get(q)
                 row[q + "_over_RDF"] = (a/b if (a not in (None, "") and b not in (None, "", 0) and not (isinstance(a, float) and math.isnan(a))) else "")
     keys = []
@@ -209,7 +212,7 @@ def main():
     for row in table:
         lines.append("%-12s %-9s N %3d Co %-4s %-8s %-10s steps %5s wall %8s s (%s reps, spread %s%%) step %s s E_shape %s L1n %s L1x %s minA %s excess %s mass %s%% ic %s/%s %s" % (
             row["flow"], row["mesh"], row["N"], row["co"], row["method"], row["status"], row["steps"], fmt(row.get("wall_s_median")), row["reps"], fmt(row.get("wall_s_spread_pct"), 1),
-            fmt(row.get("step_s_median_median"), 4), fmt(row.get("Eshape_end"), 3), fmt(row.get("L1n_end"), 3), fmt(row.get("L1x_end"), 3),
+            fmt(row.get("step_s_wall_median"), 4), fmt(row.get("Eshape_end"), 3), fmt(row.get("L1n_end"), 3), fmt(row.get("L1x_end"), 3),
             fmt(row.get("min_alpha_run"), 2), fmt(row.get("max_excess_run"), 2), fmt(row.get("mass_dev_max_pct"), 2), row.get("interface_cells_first"), row.get("interface_cells_max"),
             ("ABORT step %s: %s" % (row.get("abort_step"), row.get("abort_reason"))) if row.get("abort_step") else ""))
     open(OUT + "/iso_summary.txt", "w").write("\n".join(lines) + "\n")

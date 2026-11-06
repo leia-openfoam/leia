@@ -96,6 +96,12 @@ EOF
   echo "$m r$r rc=$rc wall $(python3 -c "print('%.1f' % ($t1-$t0))") s, $(grep -c '^Time = ' $c/log.advectorVoF) steps; $(grep -o 'ABORT at step [0-9]*, t = [^:]*: [a-zA-Z() ]*' $c/log.advectorVoF | head -1)"
 }
 if [ -z "$REP0" ] || [ -z "$METHODS" ]; then METHODS=${METHODS:-$ALL}; fi
+# REP0=prof: the profiled runs only (one per row, after the timed repetitions of another job)
+if [ "$REP0" = prof ]; then
+  for m in $METHODS; do run1 $m prof prof; done
+  sleep 5; sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps_prof.txt
+  echo "ISO-TIME-DONE $FLOW $MESHCLASS N$N co$CO (profiled runs) $(date)"; exit 0
+fi
 for r in $(seq ${REP0:-1} ${REP1:-$REPS}); do
   # the order rotated per repetition
   set -- $METHODS; k=$(( (r - 1) % $# )); order="${@:$((k+1))} ${@:1:$k}"
