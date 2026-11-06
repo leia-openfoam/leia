@@ -1,0 +1,83 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale   1;
+
+// The one-cell-thick mesh of the 2D sheared disc (Rider & Kothe 1998; the fork's
+// testsuite advection/test-vortexShearedDisc): the unit square in the x-z plane, N x N
+// cells, ONE cell of thickness h = 1/N along y (cubic cells, so that the DAVOF
+// thresholds in V^(2/3) and the ring normal see the same cell as in 3D; the testsuite's
+// thickness is 1), front and back empty.
+n_cells @!N_CELLS_BASE!@;
+half_h  #eval{ 0.5 / $n_cells };
+
+vertices
+(
+    (0 #eval{ -$half_h } 0)
+    (1 #eval{ -$half_h } 0)
+    (1 $half_h 0)
+    (0 $half_h 0)
+    (0 #eval{ -$half_h } 1)
+    (1 #eval{ -$half_h } 1)
+    (1 $half_h 1)
+    (0 $half_h 1)
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($n_cells 1 $n_cells) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    rim
+    {
+        type patch;
+        faces
+        (
+            (0 4 7 3)
+            (2 6 5 1)
+            (0 3 2 1)
+            (4 5 6 7)
+        );
+    }
+    front
+    {
+        type empty;
+        faces
+        (
+            (1 5 4 0)
+        );
+    }
+    back
+    {
+        type empty;
+        faces
+        (
+            (3 7 6 2)
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

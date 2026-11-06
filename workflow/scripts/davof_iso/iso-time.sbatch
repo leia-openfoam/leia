@@ -31,7 +31,9 @@ cd $W/leia && . etc/leia-env.sh || exit 1
 MESHCLASS=${MESHCLASS:-hex}
 REPS=${REPS:-3}
 NP=$SLURM_NTASKS
-case $FLOW in Rotation) END=1; WI=0.25;; Shear|Deformation) END=3; WI=0.75;; *) echo "FLOW $FLOW?"; exit 1;; esac
+case $FLOW in Rotation) END=1; WI=0.25;; Shear|Deformation) END=3; WI=0.75;; Shear2D) END=8; WI=2;; *) echo "FLOW $FLOW?"; exit 1;; esac
+# the preparation study: iso<FLOW>3D_<class>N<N>, or iso<FLOW>_... for a 2D flow
+STB=iso${FLOW}3D; case $FLOW in *2D) STB=iso$FLOW;; esac
 echo "fork $(git -C $W/TwoPhaseFlow log --oneline -1 | cut -c1-90); leia $(git -C $W/leia log --oneline -1 | cut -c1-90)"
 echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), cores $(nproc --all), job $SLURM_JOB_ID, np $NP, FLOW $FLOW MESHCLASS $MESHCLASS N $N CO index $CO, $(date)"
 echo "advectorVoF $(command -v advectorVoF)"
@@ -41,7 +43,7 @@ elif [ -n "$METHODS" ]; then for m in $METHODS; do rm -rf $T/${m}_r$REP0; done
 else rm -rf $T/*_r$REP0; fi
 mkdir -p $T
 SUF=${REP0:+_r$REP0}${METHODS:+_${METHODS// /-}}
-pick() { /usr/bin/python3 - "$S/iso${FLOW}3D_${MESHCLASS}N$N" "$1" "$CO" <<'EOF'
+pick() { /usr/bin/python3 - "$S/${STB}_${MESHCLASS}N$N" "$1" "$CO" <<'EOF'
 import json, glob, os, sys
 st, row, co = sys.argv[1], sys.argv[2], int(sys.argv[3])
 cs = []

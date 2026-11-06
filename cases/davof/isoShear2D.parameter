@@ -1,0 +1,65 @@
+// The 2D sheared disc of the isoAdvector package's verification (the standing
+// study set of 2026-11-07): the disc of radius 0.15 at (0.5, 0.75) of the unit
+// square in the x-z plane (the cylinder along y through the one-cell-thick mesh,
+// N x 1 x N cubic cells, front and back empty), carried by the single vortex
+//     u = -sin(2 pi z) sin^2(pi x) cos(pi t / T),
+//     w =  sin(2 pi x) sin^2(pi z) cos(pi t / T),
+// the stream function psi = (1/pi) sin^2(pi x) sin^2(pi z), T = TPF_PERIOD = 8:
+// W.J. Rider, D.B. Kothe, Reconstructing volume tracking, J. Comput. Phys. 141
+// (1998) 112-152, doi:10.1006/jcph.1998.5906, in the form of the fork's own
+// testsuite advection/test-vortexShearedDisc (generateUVortex2D.C, J. Roenby;
+// endTime 8, period 16 = cos(pi t / 8)): the fields U and phi at t = 0 are
+// written by the fork's initVortex2D (phi the exact line integral of the stream
+// function around every face: divergence-free to round-off) and scaled by
+// advectorVoF as cos(pi (t + dt/2) / T) (spirallingFlow T), so the flow reverses
+// at T/2 and the exact state at t = T is the initial disc. The disc leaves the
+// square through no edge (the vortex is tangential on the boundary, psi = 0
+// there: the rim flux is exactly zero). The fixed step is dt = Co h /
+// REFERENCE_SPEED with REFERENCE_SPEED the maximum over the cells of
+// 0.5 sum_f |phi_f| / V_c h at t = 0 (initVortex2D prints it: 1.2 provisional until the first preparation prints it, then set);
+// END_TIME 8. The exact body of the function objects is the disc at rest
+// (U0 = 0): only the values at t = T are errors of the transport; the fork's
+// testsuite scores plicRDF at N 128 with 2.334e-3 and isoAlpha with 1.469e-3
+// (expected_results.csv, maxAlphaCo 0.5, thickness 1), the check of the template.
+values
+{
+    solver (advectorVoF);
+    TPF_APPLICATION ( advectorVoF );
+    N_CELLS ( 64 128 256 );
+    TARGET_ADVECTIVE_CO ( 0.2 0.5 1 );
+    // the rows of the verification (tpf_rows.py): plicRDF (vofCutCell, the
+    // classical setting), plicRDF-ccs, davof-ringArea (ccs), davof-ringArea-vofCutCell,
+    // isoAlpha (the third reference)
+    TPF_ROW ( plicRDF plicRDF-ccs davof-ringArea davof-ringArea-vofCutCell isoAlpha );
+    TPF_POSITIONING_TOL ( 1e-14 );
+    TPF_POSITIONING_MAX_ITER ( 30 );
+    TPF_INTERPOLATE_NORMAL ( true );
+    TPF_WISP_TOL ( 1e-3 );
+    TPF_N_ALPHA_BOUNDS ( 3 );
+    TPF_SNAP_TOL ( 0 );
+    TPF_CLIP ( false );
+    TPF_DAVOF_METHOD ( exactCylinder );
+    TPF_REF_METHOD ( exactCylinder );
+    TPF_SPHERE_RADIUS ( 0.15 );
+    DOMAIN_LENGTH ( 1 );
+    TIME_STEP_CONTROL ( advective );
+    // 17: the fields, the function objects and the log at full double precision
+    TPF_WRITE_PRECISION ( 17 );
+    TPF_RECON_ERROR_EVERY_STEP ( false );
+    TPF_PROFILING ( false );
+    TPF_AFE_WRITE_CONTROL ( adjustableRunTime );
+    TPF_VFE_WRITE_CONTROL ( adjustableRunTime );
+    TPF_VELOCITY_ARM ( deformation3D );
+    TPF_PERIOD ( 8 );
+    TPF_SPHERE_CX ( 0.5 );
+    TPF_SPHERE_CY ( 0 );
+    TPF_SPHERE_CZ ( 0.75 );
+    END_TIME ( 8 );
+    REFERENCE_SPEED ( 1.2 );
+    // zeroGradient: the rim flux is exactly zero
+    TPF_ALPHA_BC ( zeroGradient );
+    TPF_ABORT_INTERFACE_FACTOR ( 100 );
+    TPF_WRITE_INTERVAL ( 2 );
+    TPF_AFE_WRITE_INTERVAL ( 2 );
+    TPF_VFE_WRITE_INTERVAL ( 2 );
+}
