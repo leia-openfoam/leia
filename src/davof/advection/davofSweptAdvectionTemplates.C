@@ -126,6 +126,11 @@ void Foam::davofSweptAdvection::limitFluxes
     const scalar aTol = 1.0e-12;          // Note: tolerances
     scalar maxAlphaMinus1 = gMax(alpha1_) - 1;      // max(alphaNew - 1);
     scalar minAlpha = gMin(alpha1_);           // min(alphaNew);
+    if (sweptFragmentLog_ || sweptBoundedFaceFraction_ != "none")
+    {
+        Info<< "davofSwept: before the bounding: min(alpha) = " << minAlpha
+            << ", max(alpha) = 1 + " << maxAlphaMinus1 << endl;
+    }
     const label nOvershoots = 20;         // sum(pos0(alphaNew - 1 - aTol));
 
     const labelList& owner = mesh_.faceOwner();
@@ -153,6 +158,22 @@ void Foam::davofSweptAdvection::limitFluxes
         (storeAreaFractions_ && alphafPtr_ && boundSecondLayer_);
     bitSet firstLayer;
     nBoundedBeyondRing_ = 0;
+    nBoundedFaces_ = nBoundedZero_ = nBoundedPartial_ = 0;
+    maxOneMinusS_ = 0;
+    nRecomputed_ = nRecomputeNoPlane_ = nRecomputeNotBracketed_ = 0;
+    recomputeEvals_ = recomputeEvalsMax_ = 0;
+    // the fragment log: alphaf before the bounding, the faces it corrects
+    if (sweptFragmentLog_ && alphafPtr_)
+    {
+        fragAlphafCopy_.reset(new surfaceScalarField(*alphafPtr_));
+        if (fragBoundFaces_.size() != mesh_.nFaces())
+        {
+            fragBoundFaces_.resize(mesh_.nFaces()); fragBoundFaces_.reset();
+            fragBoundFacesPrev_.resize(mesh_.nFaces()); fragBoundFacesPrev_.reset();
+            fragBoundMag_.setSize(mesh_.nFaces(), 0.0);
+            fragBoundMagPrev_.setSize(mesh_.nFaces(), 0.0);
+        }
+    }
     if (extendBounding)
     {
         firstLayer = needBounding;
@@ -178,6 +199,10 @@ void Foam::davofSweptAdvection::limitFluxes
                     )
                     {
                         ++nBoundedBeyondRing_;
+                        if (sweptFragmentLog_ && fragBound2Cells_.size() > celli)
+                        {
+                            fragBound2Cells_.set(celli);
+                        }
                     }
                 }
             }
@@ -210,11 +235,25 @@ void Foam::davofSweptAdvection::limitFluxes
                     }
 
                     // Change to treat boundaries consistently
+                    const scalar dVfOld = faceValue(dVf_, facei);
                     scalar corrVf =
-                        faceValue(dVf_, facei)
+                        dVfOld
                       + faceValue(dVfcorrectionValues, facei);
 
                     setFaceValue(dVf_, facei, corrVf);
+                    if (sweptBoundedFaceFraction_ != "none" && alphafPtr_)
+                    {
+                        boundedFaceFraction(facei, dVfOld, corrVf);
+                    }
+                    if (sweptFragmentLog_ && fragBoundFaces_.size() > facei)
+                    {
+                        const scalar dc = mag(faceValue(dVfcorrectionValues, facei));
+                        if (dc > 0)
+                        {
+                            fragBoundFaces_.set(facei);
+                            fragBoundMag_[facei] += dc;
+                        }
+                    }
                 }
             }
             syncProcPatches(dVf_, phi_);
@@ -245,6 +284,55 @@ void Foam::davofSweptAdvection::limitFluxes
     }
 
     alpha1_.correctBoundaryConditions();
+
+    if (sweptBoundedFaceFraction_ != "none" && alphafPtr_)
+    {
+        label nB = nBoundedFaces_, nZ = nBoundedZero_, nPt = nBoundedPartial_;
+        label nR = nRecomputed_, nNo = nRecomputeNoPlane_, nNb = nRecomputeNotBracketed_;
+        label nEv = recomputeEvals_, nEm = recomputeEvalsMax_;
+        scalar mS = maxOneMinusS_;
+        if (Pstream::parRun())
+        {
+            reduce(nB, sumOp<label>()); reduce(nZ, sumOp<label>()); reduce(nPt, sumOp<label>());
+            reduce(nR, sumOp<label>()); reduce(nNo, sumOp<label>()); reduce(nNb, sumOp<label>());
+            reduce(nEv, sumOp<label>()); reduce(nEm, maxOp<label>()); reduce(mS, maxOp<scalar>());
+        }
+        Info<< "davofSwept: bounded face fractions (" << sweptBoundedFaceFraction_
+            << "): faces " << nB << ", s = 0 on " << nZ << ", partial " << nPt
+            << ", max |1 - s| " << mS;
+        if (sweptBoundedFaceFraction_ == "recompute")
+        {
+            Info<< ", recomputed " << nR << " (no plane " << nNo << ", not bracketed "
+                << nNb << "), positioning evaluations mean "
+                << scalar(nEv)/max(nR, label(1)) << " max " << nEm;
+        }
+        Info<< endl;
+        publishWetFaces();
+    }
+
+    if (sweptFragmentLog_ && alphafPtr_ && fragAlphafCopy_)
+    {
+        // the bounding leaves alphaf as it was? (the count of faces changed)
+        label nCh = 0;
+        const scalarField& a = alphafPtr_->primitiveField();
+        const scalarField& b = fragAlphafCopy_().primitiveField();
+        forAll(a, facei)
+        {
+            if (a[facei] != b[facei]) ++nCh;
+        }
+        forAll(alphafPtr_->boundaryField(), patchi)
+        {
+            const fvsPatchScalarField& pa = alphafPtr_->boundaryField()[patchi];
+            const fvsPatchScalarField& pb = fragAlphafCopy_().boundaryField()[patchi];
+            forAll(pa, i)
+            {
+                if (pa[i] != pb[i]) ++nCh;
+            }
+        }
+        nFragAlphafChanged_ = nCh;
+        nFragBoundFaces_ = fragBoundFaces_.count();
+        fragAlphafCopy_.clear();
+    }
 
     if (extendBounding)
     {
@@ -430,8 +518,21 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
 
     scalar rDeltaT = 1/mesh_.time().deltaTValue();
 
+    // the deformation diagnosis (2026-11-06): the face fractions from the
+    // previous reconstruction's planes before the reconstruction, the
+    // per-cell fragment log after it
+    if (sweptReinitFaceFractions_ && davofPtr_)
+    {
+        reinitFaceFractions();
+    }
+
     // reconstruct the interface
     surf_->reconstruct();
+
+    if (sweptFragmentLog_ && davofPtr_)
+    {
+        fragmentLog();
+    }
 
     if(timeIndex_ < mesh_.time().timeIndex())
     {

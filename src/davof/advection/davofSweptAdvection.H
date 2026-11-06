@@ -599,6 +599,122 @@ class davofSweptAdvection
             //  (davofSweptPieces.H); the pieces taken per step
             bool sweptSliverClosedForm_;
             label nSweptSliverClosed_;
+
+            //- The deformation diagnosis (2026-11-06, leia REPORT-swept "The
+            //  3D Enright deformation", all default false): sweptExactCaps,
+            //  the exact piece volume by davof::sweptPieceExactVolume where
+            //  the cap system is not solvable (control a, no rank fallback);
+            //  sweptReinitFaceFractions, the face fractions set at the start
+            //  of every step from the previous reconstruction's planes (the
+            //  mean of the two clips on a face between two planes, one clip
+            //  by one plane, the mean of the two alphas without a plane), the
+            //  transported state discarded (controls c and d);
+            //  sweptFragmentLog, the per-cell history of the cells that
+            //  become face-fraction interface cells while alpha is within
+            //  1e-6 of 0 or 1 (postProcessing/sweptFragmentLog/cells_<rank>.csv,
+            //  the first 200 per rank; the per-step class counts in the log:
+            //  a face of the cell computed by the rank fallback in the
+            //  previous step or the one before, the cell in the second-layer
+            //  bounding set, the cell a wisp without a neighbour surface)
+            bool sweptExactCaps_;
+            bool sweptReinitFaceFractions_;
+            bool sweptFragmentLog_;
+            bitSet fragFallbackFaces_;
+            bitSet fragFallbackFacesPrev_;
+            bitSet fragBound2Cells_;
+            bitSet fragBound2CellsPrev_;
+            bitSet fragWispCells_;
+            bitSet fragWispCellsPrev_;
+            bitSet fragLogged_;
+            label nFragLogged_;
+            label nFragFallback_;
+            label nFragBound2_;
+            label nFragWisp_;
+            label nFragNone_;
+            autoPtr<OFstream> fragStream_;
+            //- sweptExactCaps: the pieces that took the exact path per step,
+            //  the pieces checked against the closure and the largest
+            //  |V_exact - V_closure| over the donor's cell volume
+            label nSweptExactUsed_;
+            label nSweptExactChecked_;
+            scalar sweptExactDiffMax_;
+            //- sweptCoverageCheck (2026-11-06): per face the ring's unclipped
+            //  piece volumes (no PLIC clip) summed by the closure path and by
+            //  the exact path against the geometric swept volume V_g, for the
+            //  faces the ring covers; the faces checked and the largest
+            //  relative deviation of each path per step
+            bool sweptCoverageCheck_;
+            label nSweptCovChecked_;
+            scalar sweptCovClosureMax_;
+            scalar sweptCovExactMax_;
+            //- sweptPieceDumpTol (2026-11-06, default -1 = off): with
+            //  sweptExactCaps, a PLIC-clipped piece on which the closure and
+            //  the exact volume differ by more than tol V_c is dumped to
+            //  postProcessing/sweptPieceDump/<step>_<rank>_<n>.txt (the raw
+            //  closed triangle list, the cell planes, the PLIC plane, both
+            //  volumes); at most 200 per run
+            scalar sweptPieceDumpTol_;
+            label nSweptPieceDumps_;
+            //- the first-layer bounding as a class of the fragment log: the
+            //  faces whose dVf the bounding changed in the step (and the
+            //  step before) with the summed |correction|, and the faces
+            //  whose alphaf the bounding changed (expected none)
+            bitSet fragBoundFaces_;
+            bitSet fragBoundFacesPrev_;
+            scalarField fragBoundMag_;
+            scalarField fragBoundMagPrev_;
+            label nFragAlphafChanged_;
+            label nFragBoundFaces_;
+            autoPtr<surfaceScalarField> fragAlphafCopy_;
+
+            //- Decision 1 (Tomislav, 2026-11-07): the piece-volume algorithm,
+            //  key sweptPieceVolume closure | closureThenTets | signedTets
+            //  (oneDonorFallback: a deprecated alias of closure; the former
+            //  sweptExactCaps true: closureThenTets, deprecated). closure = the
+            //  cap closure for k <= 3 of full rank, the one-donor clip of the
+            //  face where it does not solve (the production behaviour before
+            //  2026-11-07, kept for reproducibility); closureThenTets = the
+            //  signed tetrahedra (davof::sweptPieceExactVolume) where the
+            //  closure does not solve, no one-donor clip anywhere;
+            //  signedTets = every piece by the signed tetrahedra, no cap
+            //  bookkeeping. The 2D face update is the same in all three.
+            //  sweptPieceValidate: |V_closure - V_tets| on every piece where
+            //  both apply (printed per step). The pieces per path per step.
+            word sweptPieceVolumeWord_;
+            label sweptPieceMode_;
+            bool sweptPieceValidate_;
+            label nSweptClosurePieces_;
+
+            //- Decision 2 (Tomislav, 2026-11-07): the face fractions under
+            //  the bounding, key sweptBoundedFaceFraction none | scale |
+            //  recompute: none = the bounding changes dVf and leaves alphaf
+            //  (before 2026-11-07); scale = wherever a bounding pass changes a
+            //  face's dVf by the factor s = dVf_bounded / dVf, the stored face
+            //  fraction (and the wetted area vector) is scaled by s, a removed
+            //  flux (s = 0) dries the face (exact there, approximate for a
+            //  partial change); recompute = the face fraction recomputed as the
+            //  wetted area of the pre-image fan under the donor's plane
+            //  positioned along its normal so that the swept liquid volume
+            //  (the signed tetrahedra under that plane alone) equals
+            //  |dVf_bounded| (davof::solveOffset), consistent by construction,
+            //  scale where no plane or no bracket. Both sides of a processor
+            //  face apply the same s. The counters per step; for recompute the
+            //  closed swept list and the donor plane of every computed face
+            //  are kept for the step.
+            word sweptBoundedFaceFraction_;
+            label nBoundedFaces_;
+            label nBoundedZero_;
+            label nBoundedPartial_;
+            scalar maxOneMinusS_;
+            label nRecomputed_;
+            label nRecomputeNoPlane_;
+            label nRecomputeNotBracketed_;
+            label recomputeEvals_;
+            label recomputeEvalsMax_;
+            List<List<FixedList<point, 3>>> sweptFaceTris_;
+            vectorField sweptFacePlaneN_;
+            pointField sweptFacePlaneX0_;
+            bitSet sweptFaceHasPlane_;
             mutable vectorField upLazy_;
             mutable bitSet upDone_;
             mutable bitSet anyPatchPoint_;
@@ -1067,6 +1183,22 @@ public:
             //  interface cells and their neighbours from the surface of the
             //  upwind cell (second ring: the closest neighbouring surface)
             void curvedFlux(const scalar dt);
+
+            //- The deformation diagnosis (2026-11-06): the face fractions
+            //  from the previous reconstruction's planes
+            //  (sweptReinitFaceFractions) and the per-cell fragment log
+            //  (sweptFragmentLog), both called from advect
+            void reinitFaceFractions();
+            void fragmentLog();
+
+            //- Decision 2: the face fraction of a face whose dVf the bounding
+            //  changed from dVfOld to dVfNew (scale or recompute)
+            void boundedFaceFraction
+            (
+                const label facei,
+                const scalar dVfOld,
+                const scalar dVfNew
+            );
 
             //- tensorCentroid anchored: for every interface cell the plane
             //  in the frame of the used normal through the cut centroid

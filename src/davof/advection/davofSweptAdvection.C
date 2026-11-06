@@ -214,6 +214,64 @@ Foam::davofSweptAdvection::davofSweptAdvection
     sweptTetCache_(modelDict().getOrDefault<bool>("sweptTetCache", false)),
     sweptSliverClosedForm_(modelDict().getOrDefault<bool>("sweptSliverClosedForm", false)),
     nSweptSliverClosed_(0),
+    sweptExactCaps_(modelDict().getOrDefault<bool>("sweptExactCaps", false)),
+    sweptReinitFaceFractions_(modelDict().getOrDefault<bool>("sweptReinitFaceFractions", false)),
+    sweptFragmentLog_(modelDict().getOrDefault<bool>("sweptFragmentLog", false)),
+    fragFallbackFaces_(),
+    fragFallbackFacesPrev_(),
+    fragBound2Cells_(),
+    fragBound2CellsPrev_(),
+    fragWispCells_(),
+    fragWispCellsPrev_(),
+    fragLogged_(),
+    nFragLogged_(0),
+    nFragFallback_(0),
+    nFragBound2_(0),
+    nFragWisp_(0),
+    nFragNone_(0),
+    fragStream_(),
+    nSweptExactUsed_(0),
+    nSweptExactChecked_(0),
+    sweptExactDiffMax_(0),
+    sweptCoverageCheck_(modelDict().getOrDefault<bool>("sweptCoverageCheck", false)),
+    nSweptCovChecked_(0),
+    sweptCovClosureMax_(0),
+    sweptCovExactMax_(0),
+    sweptPieceDumpTol_(modelDict().getOrDefault<scalar>("sweptPieceDumpTol", -1)),
+    nSweptPieceDumps_(0),
+    fragBoundFaces_(),
+    fragBoundFacesPrev_(),
+    fragBoundMag_(),
+    fragBoundMagPrev_(),
+    nFragAlphafChanged_(0),
+    nFragBoundFaces_(0),
+    fragAlphafCopy_(),
+    sweptPieceVolumeWord_
+    (
+        modelDict().getOrDefault<word>
+        (
+            "sweptPieceVolume",
+            modelDict().getOrDefault<bool>("sweptExactCaps", false)
+          ? word("closureThenTets") : word("closure")
+        )
+    ),
+    sweptPieceMode_(0),
+    sweptPieceValidate_(modelDict().getOrDefault<bool>("sweptPieceValidate", false)),
+    nSweptClosurePieces_(0),
+    sweptBoundedFaceFraction_(modelDict().getOrDefault<word>("sweptBoundedFaceFraction", "none")),
+    nBoundedFaces_(0),
+    nBoundedZero_(0),
+    nBoundedPartial_(0),
+    maxOneMinusS_(0),
+    nRecomputed_(0),
+    nRecomputeNoPlane_(0),
+    nRecomputeNotBracketed_(0),
+    recomputeEvals_(0),
+    recomputeEvalsMax_(0),
+    sweptFaceTris_(),
+    sweptFacePlaneN_(),
+    sweptFacePlaneX0_(),
+    sweptFaceHasPlane_(),
     upLazy_(),
     upDone_(),
     anyPatchPoint_(),
@@ -357,6 +415,42 @@ Foam::davofSweptAdvection::davofSweptAdvection
     fitResidualPtr_(nullptr),
     paraboloidDefectPtr_(nullptr)
 {
+
+    // decisions 1 and 2 (2026-11-07): the piece-volume algorithm and the
+    // bounded face fractions
+    if (sweptPieceVolumeWord_ == "closure") sweptPieceMode_ = 0;
+    else if (sweptPieceVolumeWord_ == "oneDonorFallback")
+    {
+        sweptPieceMode_ = 0;
+        Info<< "davofSwept: sweptPieceVolume oneDonorFallback is a DEPRECATED"
+            << " alias of closure" << endl;
+    }
+    else if (sweptPieceVolumeWord_ == "closureThenTets") sweptPieceMode_ = 1;
+    else if (sweptPieceVolumeWord_ == "signedTets") sweptPieceMode_ = 2;
+    else
+    {
+        FatalErrorInFunction
+            << "sweptPieceVolume " << sweptPieceVolumeWord_
+            << ": closure | closureThenTets | signedTets" << exit(FatalError);
+    }
+    if (modelDict().found("sweptExactCaps"))
+    {
+        Info<< "davofSwept: sweptExactCaps is DEPRECATED: use sweptPieceVolume"
+            << " closureThenTets" << endl;
+    }
+    if
+    (
+        sweptBoundedFaceFraction_ != "none" && sweptBoundedFaceFraction_ != "scale"
+     && sweptBoundedFaceFraction_ != "recompute"
+    )
+    {
+        FatalErrorInFunction
+            << "sweptBoundedFaceFraction " << sweptBoundedFaceFraction_
+            << ": none | scale | recompute" << exit(FatalError);
+    }
+    Info<< "davofSwept: sweptPieceVolume " << sweptPieceVolumeWord_
+        << ", sweptPieceValidate " << sweptPieceValidate_
+        << ", sweptBoundedFaceFraction " << sweptBoundedFaceFraction_ << endl;
 
     initAreaFractions();
 

@@ -870,6 +870,8 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
     vector aPreWet(Zero);
     scalar coverage = 0, coveragePre = 0;
     bool rankFallback = false;
+    // sweptCoverageCheck: the unclipped piece volumes of the ring by the two paths
+    scalar covVolClosure = 0, covVolExact = 0;
     List<davof::halfSpace> planes;
 
     // The pre-test (sweptPreTest, 2026-11-04). The vertex set of the swept
@@ -1177,7 +1179,7 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
                 davof::pieceResult r;
                 if (sweeps)
                 {
-                    r = davof::sweptPieceVolume(T, planes, st.wetPlane, st.plic, xf, &xDonor, sweptCapSet_ == "crossing");
+                    r = davof::sweptPieceVolume(T, planes, st.wetPlane, st.plic, xf, &xDonor, sweptCapSet_ == "crossing", sweptPieceMode_, sweptPieceValidate_);
                     covV = r.coverage;
                     // the pieces' own gate: a piece counts above 1e-12 of
                     // the boundary; below it nothing is added
@@ -1237,12 +1239,67 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
               : davof::sweptPieceVolume
                 (
                     T, planes, wetPlane, plic, xf, &xDonor,
-                    sweptCapSet_ == "crossing"
+                    sweptCapSet_ == "crossing",
+                    sweptPieceMode_,
+                    sweptPieceValidate_
                 );
             tStatVol += tick() - tv0;
             // the pre-image's wetted part in the face's orientation (preSign)
             if (areaFromVolume) { preAw = preSign*r.aPre; preCov = r.covPre; }
             nStatVolClips += r.nClip; nStatTris += r.nTri;
+            if (r.exactUsed) ++nSweptExactUsed_;
+            else if (r.coverage > 1e-12*sumMagT && !r.degenerate) ++nSweptClosurePieces_;
+            if (r.exactDiff >= 0)
+            {
+                ++nSweptExactChecked_;
+                sweptExactDiffMax_ = max(sweptExactDiffMax_, r.exactDiff/mesh_.V()[donor]);
+                if
+                (
+                    sweptPieceDumpTol_ >= 0
+                 && r.exactDiff > sweptPieceDumpTol_*mesh_.V()[donor]
+                 && nSweptPieceDumps_ < 200
+                )
+                {
+                    // the piece dump (the independent truth is computed
+                    // from the raw list and the planes, piece_truth.py)
+                    const fileName ddir(mesh_.time().globalPath()/"postProcessing"/"sweptPieceDump");
+                    mkDir(ddir);
+                    OFstream os
+                    (
+                        ddir/(Foam::name(mesh_.time().timeIndex()) + "_" + Foam::name(Pstream::myProcNo())
+                            + "_" + Foam::name(nSweptPieceDumps_) + ".txt")
+                    );
+                    os.precision(17);
+                    os << "step " << mesh_.time().timeIndex() << " t " << mesh_.time().value()
+                       << " face " << facei << " donor " << donor << " cell " << c << " remote " << (rc ? 1 : 0)
+                       << " Vc " << mesh_.V()[donor] << " alpha0c " << a0c << " wetPlane " << wetPlane
+                       << " closureVolume " << r.volume
+                       << " exactVolume " << davof::sweptPieceExactVolume(T, planes, wetPlane, plic, xf)
+                       << " nCaps " << r.nCaps << " ok " << r.ok << " degenerate " << r.degenerate
+                       << " closureResidual " << r.closureResidual << " coverage " << r.coverage << nl;
+                    os << "xRef " << xf << nl << "xDonor " << xDonor << nl;
+                    os << "plic " << plic.n << ' ' << plic.x0 << ' ' << plic.axis << ' ' << plic.sgn << nl;
+                    os << "planes " << planes.size() << nl;
+                    for (const davof::halfSpace& hs : planes)
+                    {
+                        os << hs.n << ' ' << hs.x0 << ' ' << hs.axis << ' ' << hs.sgn << nl;
+                    }
+                    os << "triangles " << T.size() << nl;
+                    forAll(T, k)
+                    {
+                        os << T[k][0] << ' ' << T[k][1] << ' ' << T[k][2] << nl;
+                    }
+                    ++nSweptPieceDumps_;
+                }
+            }
+            if (sweptCoverageCheck_)
+            {
+                // the whole piece of this cell (no PLIC clip) by both paths
+                const davof::pieceResult rc0 =
+                    davof::sweptPieceVolume(T, planes, false, plic, xf, &xDonor, sweptCapSet_ == "crossing", false);
+                if (!rc0.degenerate && rc0.ok) covVolClosure += rc0.volume;
+                covVolExact += davof::sweptPieceExactVolume(T, planes, false, plic, xf);
+            }
             if (r.coverage > 1e-12*sumMagT) ++nStatPieces;
             dbgVol = r.volume;
             dbgCovV = r.coverage;
@@ -1364,7 +1421,7 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
                     if (!st.touched) continue;
                     const SubList<davof::halfSpace> planes(ringPlanes, st.np, st.p0);
                     davof::pieceResult r;
-                    if (sweeps) r = davof::sweptPieceVolume(T, planes, st.wetPlane, st.plic, xf, &xDonor, sweptCapSet_ == "crossing");
+                    if (sweeps) r = davof::sweptPieceVolume(T, planes, st.wetPlane, st.plic, xf, &xDonor, sweptCapSet_ == "crossing", sweptPieceMode_, sweptPieceValidate_);
                     Pout<< " [cell " << st.c << (st.rc ? "r" : "") << " alpha " << st.a0c
                         << " cov " << r.coverage/max(sumMagT, VSMALL) << " V/V_g " << (vTotal > VSMALL ? r.volume/vTotal : 0)
                         << " deg " << r.degenerate << " ok " << r.ok << " caps " << r.nCaps << " contacts " << r.nContact << "]";
@@ -1378,6 +1435,12 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
     if (sumMagT > VSMALL)
     {
         const scalar beyond = max(scalar(0), (sumMagT - coverage)/sumMagT);
+        if (sweptCoverageCheck_ && vTotal > VSMALL && beyond <= 1e-12)
+        {
+            ++nSweptCovChecked_;
+            sweptCovClosureMax_ = max(sweptCovClosureMax_, mag(covVolClosure - vTotal)/vTotal);
+            sweptCovExactMax_ = max(sweptCovExactMax_, mag(covVolExact - vTotal)/vTotal);
+        }
         const scalar beyondPre = (sumMagPre > VSMALL) ? max(scalar(0), (sumMagPre - coveragePre)/sumMagPre) : 0;
         const scalar b = sweeps ? max(beyond, beyondPre) : beyondPre;
         if (b > 1e-9)
@@ -1424,11 +1487,35 @@ void Foam::davofSweptAdvection::sweptFaceCellsFlux
         return (A2 > VSMALL) ? (w & aPreFull)/A2 : 0;
     };
 
+    // decision 2, recompute: the closed swept list and the donor plane of
+    // this face, for the bounding
+    if (sweptBoundedFaceFraction_ == "recompute" && sweptFaceTris_.size() == mesh_.nFaces())
+    {
+        sweptFaceTris_[facei] = T;
+        sweptFaceHasPlane_.unset(facei);
+        if (!sweptNoDonorSurface_)
+        {
+            vector nRaw; point x0;
+            planeOf(S, donor, h, sweptPlaneTol_, "sweptFaceCells", nRaw, x0);
+            const scalar nm = mag(nRaw);
+            if (nm > VSMALL)
+            {
+                sweptFacePlaneN_[facei] = nRaw/nm;
+                sweptFacePlaneX0_[facei] = x0;
+                sweptFaceHasPlane_.set(facei);
+            }
+        }
+    }
+
     if (rankFallback)
     {
         // the one-donor clip of this face (counted)
         ++nSweptRankFallback_;
         sweptFaceFallback_ = true;
+        if (sweptFragmentLog_ && fragFallbackFaces_.size() > facei)
+        {
+            fragFallbackFaces_.set(facei);
+        }
         if (sweptNoDonorSurface_)
         {
             // a face without a surface (sweptConsistent): no plane to clip
@@ -1682,7 +1769,9 @@ void Foam::davofSweptAdvection::sweptConsistencyProbe
                 davof::sweptPieceVolume
                 (
                     T, planes, hasS, plic, Cf[facei], &C[donor],
-                    sweptCapSet_ == "crossing"
+                    sweptCapSet_ == "crossing",
+                    sweptPieceMode_,
+                    sweptPieceValidate_
                 );
             if (r.coverage <= 1e-12*sumMagT) continue;
             if (!r.ok) fallback = true;

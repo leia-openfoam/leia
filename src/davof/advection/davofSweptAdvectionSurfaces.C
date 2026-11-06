@@ -1138,6 +1138,24 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     nSweptTraceHits_ = nSweptTraceMisses_ = 0;
     nSweptDonorFast_ = 0;
     nSweptSliverClosed_ = 0;
+    nSweptExactUsed_ = nSweptExactChecked_ = 0;
+    sweptExactDiffMax_ = 0;
+    nSweptClosurePieces_ = 0;
+    if (sweptBoundedFaceFraction_ == "recompute")
+    {
+        const label nF = mesh_.nFaces();
+        if (sweptFaceTris_.size() != nF)
+        {
+            sweptFaceTris_.setSize(nF);
+            sweptFacePlaneN_.setSize(nF, Zero);
+            sweptFacePlaneX0_.setSize(nF, Zero);
+            sweptFaceHasPlane_.resize(nF);
+        }
+        forAll(sweptFaceTris_, f) sweptFaceTris_[f].clear();
+        sweptFaceHasPlane_.reset();
+    }
+    nSweptCovChecked_ = 0;
+    sweptCovClosureMax_ = sweptCovExactMax_ = 0;
     for (label k = 0; k < 4; ++k)
     {
         nClsFaces_[k] = nClsTouched_[k] = nClsPieces_[k] = nClsVolClips_[k] = nClsAreaClips_[k] = nClsTris_[k] = 0;
@@ -1451,6 +1469,10 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
             else
             {
                 ++nSweptWispNoNeighbour_;
+                if (sweptFragmentLog_ && fragWispCells_.size() > c)
+                {
+                    fragWispCells_.set(c);
+                }
             }
         }
     }
@@ -2340,6 +2362,33 @@ void Foam::davofSweptAdvection::reportCurved() const
             if (Pstream::parRun()) reduce(nUp, sumOp<label>());
             Info<< "; point velocity: points evaluated " << nUp << " of " << returnReduce(mesh_.nPoints(), sumOp<label>());
         }
+        if (sweptPieceMode_ > 0 || sweptPieceValidate_)
+        {
+            label nEu = nSweptExactUsed_, nEc = nSweptExactChecked_, nCl = nSweptClosurePieces_;
+            scalar dEm = sweptExactDiffMax_;
+            if (Pstream::parRun())
+            {
+                reduce(nEu, sumOp<label>()); reduce(nEc, sumOp<label>());
+                reduce(nCl, sumOp<label>()); reduce(dEm, maxOp<scalar>());
+            }
+            Info<< "; piece volumes (" << sweptPieceVolumeWord_ << "): closure " << nCl
+                << ", signed tets " << nEu;
+            if (sweptPieceValidate_)
+            {
+                Info<< ", validated " << nEc << ", max |V_closure - V_tets|/V_c " << dEm;
+            }
+        }
+        if (sweptCoverageCheck_)
+        {
+            label nCv = nSweptCovChecked_;
+            scalar cC = sweptCovClosureMax_, cE = sweptCovExactMax_;
+            if (Pstream::parRun())
+            {
+                reduce(nCv, sumOp<label>()); reduce(cC, maxOp<scalar>()); reduce(cE, maxOp<scalar>());
+            }
+            Info<< "; coverage check: faces " << nCv << ", max |sum V_closure - V_g|/V_g " << cC
+                << ", max |sum V_exact - V_g|/V_g " << cE;
+        }
         // the per-face-class statistics (sweptClassStats, 2026-11-05): one
         // clause per class, the sums over the ranks; the times are the sums
         // over the ranks of the wall time around the calls
@@ -2584,4 +2633,344 @@ void Foam::davofSweptAdvection::ensurePointVelocity(const label pi) const
     upLazy_[pi] = v;
     upDone_.set(pi);
     ++nUpLazy_;
+}
+
+
+// * * * * * * * * * * the deformation diagnosis (2026-11-06) * * * * * * * * //
+
+#include "cutFacePLIC.H"
+
+void Foam::davofSweptAdvection::reinitFaceFractions()
+{
+    if (!alphafPtr_ || !davofPtr_) return;
+    const boolList& ic = surf_->interfaceCell();
+    if (ic.size() != mesh_.nCells()) return;
+    label nIc = 0;
+    forAll(ic, celli)
+    {
+        if (ic[celli]) ++nIc;
+    }
+    if (returnReduce(nIc, sumOp<label>()) == 0)
+    {
+        // before the first reconstruction: the initial state is kept
+        return;
+    }
+    const volVectorField& nrm = surf_->normal();
+    const volVectorField& ctr = surf_->centre();
+    const vectorField& Sf = mesh_.faceAreas();
+    const labelUList& own = mesh_.faceOwner();
+    const labelUList& nei = mesh_.faceNeighbour();
+    const label nInt = mesh_.nInternalFaces();
+    cutFacePLIC cutFace(mesh_);
+    // the wetted fraction of a face by the plane of a cell: normal_ points
+    // into the liquid, as cutFacePLIC assumes ((p - base).n > 0 liquid)
+    auto clipBy = [&](const label facei, const label celli) -> scalar
+    {
+        cutFace.calcSubFace(facei, nrm[celli], ctr[celli]);
+        const scalar af = mag(cutFace.subFaceArea())/mag(Sf[facei]);
+        return min(max(af, scalar(0)), scalar(1));
+    };
+    if (wetFace_.size() != mesh_.nFaces())
+    {
+        wetFace_.resize(mesh_.nFaces());
+    }
+    label nTwo = 0, nOne = 0, nAlpha = 0;
+    for (label facei = 0; facei < nInt; ++facei)
+    {
+        const label o = own[facei], n = nei[facei];
+        scalar af = 0;
+        if (ic[o] && ic[n])
+        {
+            af = 0.5*(clipBy(facei, o) + clipBy(facei, n));
+            ++nTwo;
+        }
+        else if (ic[o])
+        {
+            af = clipBy(facei, o);
+            ++nOne;
+        }
+        else if (ic[n])
+        {
+            af = clipBy(facei, n);
+            ++nOne;
+        }
+        else
+        {
+            af = 0.5*(alpha1_[o] + alpha1_[n]);
+            ++nAlpha;
+        }
+        setFaceValue(*alphafPtr_, facei, af);
+        wetFace_.set(facei, (af != 0) ? 1u : 0u);
+    }
+    const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
+    forAll(pbm, patchi)
+    {
+        const polyPatch& pp = pbm[patchi];
+        if (alphafPtr_->boundaryField()[patchi].size() != pp.size()) continue;
+        forAll(pp, i)
+        {
+            const label facei = pp.start() + i;
+            const label o = own[facei];
+            const scalar af = ic[o] ? clipBy(facei, o) : alpha1_[o];
+            setFaceValue(*alphafPtr_, facei, af);
+            wetFace_.set(facei, (af != 0) ? 1u : 0u);
+        }
+    }
+    publishWetFaces();
+    Info<< "davofSwept: face fractions re-initialised from the planes of the"
+        << " previous reconstruction: " << returnReduce(nTwo, sumOp<label>())
+        << " faces between two planes (the mean of the clips), "
+        << returnReduce(nOne, sumOp<label>()) << " by one plane, "
+        << returnReduce(nAlpha, sumOp<label>()) << " from alpha" << endl;
+}
+
+
+void Foam::davofSweptAdvection::fragmentLog()
+{
+    const label nCells = mesh_.nCells(), nFaces = mesh_.nFaces();
+    if (fragLogged_.size() != nCells)
+    {
+        fragLogged_.resize(nCells); fragLogged_.reset();
+        fragFallbackFaces_.resize(nFaces); fragFallbackFaces_.reset();
+        fragFallbackFacesPrev_.resize(nFaces); fragFallbackFacesPrev_.reset();
+        fragBound2Cells_.resize(nCells); fragBound2Cells_.reset();
+        fragBound2CellsPrev_.resize(nCells); fragBound2CellsPrev_.reset();
+        fragWispCells_.resize(nCells); fragWispCells_.reset();
+        fragWispCellsPrev_.resize(nCells); fragWispCellsPrev_.reset();
+    }
+    const boolList& ic = surf_->interfaceCell();
+    if (ic.size() != nCells) return;
+    const volVectorField& m =
+        mesh_.lookupObject<volVectorField>
+        (
+            IOobject::groupName("areaNormalDavof", alpha1_.group())
+        );
+    const scalarField& V = mesh_.V();
+    const cellList& cells = mesh_.cells();
+    const vectorField& C = mesh_.cellCentres();
+    label nNew = 0, nFb = 0, nB2 = 0, nW = 0, nNone = 0, nBf = 0;
+    forAll(ic, celli)
+    {
+        if (!ic[celli] || fragLogged_.test(celli)) continue;
+        const scalar a = alpha1_[celli];
+        if (!(a < 1e-6 || a > 1 - 1e-6)) continue;
+        fragLogged_.set(celli);
+        ++nNew;
+        const labelList& cf = cells[celli];
+        bool fb1 = false, fb2 = false;
+        for (const label f : cf)
+        {
+            if (fragFallbackFaces_.test(f)) fb1 = true;
+            if (fragFallbackFacesPrev_.test(f)) fb2 = true;
+        }
+        const bool b1 = fragBound2Cells_.test(celli);
+        const bool b2 = fragBound2CellsPrev_.test(celli);
+        const bool w1 = fragWispCells_.test(celli);
+        const bool w2 = fragWispCellsPrev_.test(celli);
+        // the first-layer bounding: a face of the cell whose dVf the
+        // bounding changed, with the largest summed |correction| over V_c
+        bool bf1 = false, bf2 = false;
+        scalar bm1 = 0, bm2 = 0;
+        if (fragBoundFaces_.size() == nFaces)
+        {
+            for (const label f : cf)
+            {
+                if (fragBoundFaces_.test(f)) { bf1 = true; bm1 = max(bm1, fragBoundMag_[f]); }
+                if (fragBoundFacesPrev_.test(f)) { bf2 = true; bm2 = max(bm2, fragBoundMagPrev_[f]); }
+            }
+        }
+        bm1 /= V[celli]; bm2 /= V[celli];
+        if (fb1 || fb2) ++nFb;
+        if (b1 || b2) ++nB2;
+        if (w1 || w2) ++nW;
+        if (bf1 || bf2) ++nBf;
+        if (!(fb1 || fb2 || b1 || b2 || w1 || w2 || bf1 || bf2)) ++nNone;
+        if (nFragLogged_ < 200)
+        {
+            if (!fragStream_)
+            {
+                const fileName dir
+                (
+                    mesh_.time().globalPath()/"postProcessing"/"sweptFragmentLog"
+                );
+                mkDir(dir);
+                fragStream_.reset
+                (
+                    new OFstream
+                    (
+                        dir/("cells_" + Foam::name(Pstream::myProcNo()) + ".csv")
+                    )
+                );
+                fragStream_().precision(17);
+                fragStream_()
+                    << "step,t,cell,cx,cy,cz,alpha,mOverV23,af0,af1,af2,af3,af4,af5,"
+                    << "fallbackPrev1,fallbackPrev2,bound2Prev1,bound2Prev2,wispPrev1,wispPrev2,"
+                    << "boundFacePrev1,boundFacePrev2,boundMagPrev1OverVc,boundMagPrev2OverVc"
+                    << nl;
+            }
+            fragStream_()
+                << mesh_.time().timeIndex() << ',' << mesh_.time().value() << ','
+                << celli << ',' << C[celli].x() << ',' << C[celli].y() << ',' << C[celli].z()
+                << ',' << a << ',' << mag(m[celli])/Foam::pow(V[celli], 2.0/3.0);
+            for (label i = 0; i < 6; ++i)
+            {
+                fragStream_() << ','
+                    << ((i < cf.size()) ? faceValue(*alphafPtr_, cf[i]) : scalar(-1));
+            }
+            fragStream_()
+                << ',' << fb1 << ',' << fb2 << ',' << b1 << ',' << b2
+                << ',' << w1 << ',' << w2
+                << ',' << bf1 << ',' << bf2 << ',' << bm1 << ',' << bm2 << nl;
+            ++nFragLogged_;
+        }
+    }
+    nFragFallback_ += nFb; nFragBound2_ += nB2; nFragWisp_ += nW; nFragNone_ += nNone;
+    const label gNew = returnReduce(nNew, sumOp<label>());
+    if (gNew > 0)
+    {
+        Info<< "sweptFragmentLog: new face-fraction interface cells with alpha"
+            << " within 1e-6 of 0 or 1: " << gNew
+            << " (fallback-adjacent " << returnReduce(nFb, sumOp<label>())
+            << ", second-layer bounded " << returnReduce(nB2, sumOp<label>())
+            << ", wisp without a surface " << returnReduce(nW, sumOp<label>())
+            << ", bounded face " << returnReduce(nBf, sumOp<label>())
+            << ", none " << returnReduce(nNone, sumOp<label>())
+            << "); cumulative fallback-adjacent "
+            << returnReduce(nFragFallback_, sumOp<label>())
+            << ", second-layer bounded " << returnReduce(nFragBound2_, sumOp<label>())
+            << ", wisp " << returnReduce(nFragWisp_, sumOp<label>())
+            << ", none " << returnReduce(nFragNone_, sumOp<label>())
+            << "; the previous step's bounding changed dVf on "
+            << returnReduce(nFragBoundFaces_, sumOp<label>()) << " faces and alphaf on "
+            << returnReduce(nFragAlphafChanged_, sumOp<label>()) << " faces" << endl;
+    }
+    // the sets of the last step become the step before; the new step fills
+    // the current ones
+    fragFallbackFacesPrev_ = fragFallbackFaces_;
+    fragFallbackFaces_.reset();
+    fragBound2CellsPrev_ = fragBound2Cells_;
+    fragBound2Cells_.reset();
+    fragWispCellsPrev_ = fragWispCells_;
+    fragWispCells_.reset();
+    if (fragBoundFaces_.size() == nFaces)
+    {
+        fragBoundFacesPrev_ = fragBoundFaces_;
+        fragBoundFaces_.reset();
+        fragBoundMagPrev_ = fragBoundMag_;
+        fragBoundMag_ = 0.0;
+    }
+}
+
+
+// * * * * * * * decision 2 (2026-11-07): the bounded face fractions * * * * //
+
+#include "davofSimplexGeometry.H"
+
+void Foam::davofSweptAdvection::boundedFaceFraction
+(
+    const label facei,
+    const scalar dVfOld,
+    const scalar dVfNew
+)
+{
+    ++nBoundedFaces_;
+    const scalar af0 = faceValue(*alphafPtr_, facei);
+    scalar s = 0;
+    if (mag(dVfNew) <= VSMALL) s = 0;
+    else if (mag(dVfOld) > VSMALL) s = dVfNew/dVfOld;
+    else s = 1;   // a flux created where there was none: the fraction is left
+    if (s < 0) s = 0;
+    if (s == 0) ++nBoundedZero_;
+    else if (s != 1)
+    {
+        ++nBoundedPartial_;
+        maxOneMinusS_ = max(maxOneMinusS_, mag(1 - s));
+    }
+    bool done = false;
+    if
+    (
+        sweptBoundedFaceFraction_ == "recompute" && s != 0 && s != 1
+     && sweptFaceTris_.size() == mesh_.nFaces() && sweptFaceTris_[facei].size()
+    )
+    {
+        if (!sweptFaceHasPlane_.test(facei))
+        {
+            ++nRecomputeNoPlane_;
+        }
+        else
+        {
+            const List<FixedList<point, 3>>& T = sweptFaceTris_[facei];
+            const vector& n = sweptFacePlaneN_[facei];
+            const point& x0 = sweptFacePlaneX0_[facei];
+            const point& xf = mesh_.faceCentres()[facei];
+            const label own = mesh_.faceOwner()[facei];
+            const scalar h = Foam::cbrt(mesh_.V()[own]);
+            const List<davof::halfSpace> noPlanes;
+            label nEv = 0;
+            // the liquid volume of the swept volume under the donor's plane
+            // moved by c along its normal (the one-donor clip, exact by the
+            // signed tetrahedra); increasing in c
+            auto g = [&](const scalar c) -> scalar
+            {
+                ++nEv;
+                davof::halfSpace hs;
+                hs.n = n; hs.x0 = x0 + c*n; hs.axis = -1; hs.sgn = 1;
+                return mag(davof::sweptPieceExactVolume(T, noPlanes, true, hs, xf));
+            };
+            scalar c = 0;
+            bool bracketed = false;
+            davof::solveOffset(g, mag(dVfNew), -h, h, 1e-14*h, c, bracketed);
+            recomputeEvals_ += nEv;
+            recomputeEvalsMax_ = max(recomputeEvalsMax_, nEv);
+            if (!bracketed)
+            {
+                ++nRecomputeNotBracketed_;
+            }
+            else
+            {
+                // the wetted area of the pre-image fan under the positioned plane
+                davof::halfSpace hs;
+                hs.n = n; hs.x0 = x0 + c*n; hs.axis = -1; hs.sgn = 1;
+                vector w(Zero);
+                forAll(T, k)
+                {
+                    if (k % 4 != 1) continue;
+                    const FixedList<point, 3>& t = T[k];
+                    const scalar s0 = hs.dist(t[0]), s1 = hs.dist(t[1]), s2 = hs.dist(t[2]);
+                    if (s0 <= 0 && s1 <= 0 && s2 <= 0)
+                    {
+                        w += 0.5*((t[1] - t[0]) ^ (t[2] - t[0]));
+                    }
+                    else if (!(s0 > 0 && s1 > 0 && s2 > 0))
+                    {
+                        vector aw; point xw;
+                        davof::triNegativePolygon(t[0], t[1], t[2], s0, s1, s2, aw, xw);
+                        w += aw;
+                    }
+                }
+                const scalar magSf = mag(mesh_.faceAreas()[facei]);
+                const scalar af = min(max(mag(w)/magSf, scalar(0)), scalar(1));
+                setFaceValue(*alphafPtr_, facei, af);
+                if (wetVecPtr_)
+                {
+                    const vector v0 = faceValue(*wetVecPtr_, facei);
+                    const scalar m0 = mag(v0);
+                    setFaceValue(*wetVecPtr_, facei, (m0 > VSMALL) ? v0*(af*magSf/m0) : v0);
+                }
+                if (wetFace_.size() > facei) wetFace_.set(facei, (af != 0) ? 1u : 0u);
+                ++nRecomputed_;
+                done = true;
+            }
+        }
+    }
+    if (!done)
+    {
+        const scalar af = min(max(af0*s, scalar(0)), scalar(1));
+        setFaceValue(*alphafPtr_, facei, af);
+        if (wetVecPtr_)
+        {
+            setFaceValue(*wetVecPtr_, facei, faceValue(*wetVecPtr_, facei)*s);
+        }
+        if (wetFace_.size() > facei) wetFace_.set(facei, (af != 0) ? 1u : 0u);
+    }
 }

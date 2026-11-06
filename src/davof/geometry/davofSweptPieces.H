@@ -293,6 +293,12 @@ struct pieceResult
     label nCaps = 0;
     bool ok = true;
 
+    //- sweptExactCaps (2026-11-06): the piece took the exact path (no cap
+    //  system), and, for a piece the closure solved, |V_exact - V_closure|
+    //  (the validation of the exact path against the closure; -1 unset)
+    bool exactUsed = false;
+    scalar exactDiff = -1;
+
     //- The coverage: the total area of the boundary triangles' parts inside
     //  the cell planes (before the PLIC clip), for the check that the
     //  pieces of the ring cells cover the whole boundary
@@ -343,6 +349,250 @@ struct pieceResult
 //  when it crosses the polygon at its turn in the clipping order, no
 //  contact rule, no remnant filter; fork key sweptCapSet crossing, kept for
 //  the comparison). See the file header.
+//- The exact volume of the piece by the signed tetrahedra (2026-11-06/07;
+//  the algorithm signedTets of the key sweptPieceVolume, and the fallback
+//  of closureThenTets). The origin of the idea: the signed-simplex
+//  decomposition of crossed, non-convex flux volumes with the sign from the
+//  vertex ordering, each simplex cut by the PLIC plane and the signed
+//  volumes summed, is M. Owkes, O. Desjardins, A computational framework
+//  for conservative, three-dimensional, unsplit, geometric transport with
+//  application to the volume-of-fluid (VOF) method, J. Comput. Phys. 270
+//  (2014) 587-612, doi:10.1016/j.jcp.2014.04.022 (their sections
+//  3.2.1-3.2.3 and Algorithm 1; on unstructured meshes they cut the
+//  simplices per cell by polyhedron clipping and then by the PLIC plane,
+//  their section 5). What differs here: the tetrahedra are built about the
+//  face centre of the triangulated closed swept surface (3F tetrahedra of
+//  the 4F triangles, no predefined partition of the flux volume and no
+//  vertex-ordering tables; the sign of each tetrahedron is the sign of its
+//  own volume about the apex), and they are the alternative to, or the
+//  fallback of, the closed-form surface integral with closure caps
+//  (sweptPieceVolume), which stays the primary algorithm. The closed
+//  triangle list of the swept volume is decomposed into the signed
+//  tetrahedra (x_ref, T) about one point (the volume of a closed oriented
+//  triangulation as the sum of signed tetrahedra, the divergence theorem
+//  face by face: C. Zhang, T. Chen,
+//  Efficient feature extraction for 2D/3D objects in mesh representation,
+//  Proceedings of the IEEE International Conference on Image Processing
+//  (ICIP 2001), vol. 3, 935-938, doi:10.1109/ICIP.2001.958278); every
+//  tetrahedron is clipped as a convex polyhedron by the cell's half-spaces
+//  and, where the cell holds a plane, by the PLIC half-space, face by face
+//  with the polygon clipping of I. E. Sutherland, G. W. Hodgman, Reentrant
+//  polygon clipping, Commun. ACM 17 (1974) 32-42, doi:10.1145/360767.360802,
+//  the cap of each clip closed from the crossing points ordered about their
+//  centroid in the plane (a convex section); the volume of each clipped
+//  polyhedron is (1/3) sum_faces (p_0 - x_ref) . a_face. The argument for a
+//  non-convex swept volume: the signed indicators of the tetrahedra about
+//  one point sum to the indicator (winding number) of the closed surface,
+//  so for every convex K (an intersection of half-spaces)
+//  sum_T vol(tet_T ∩ K) = vol(P ∩ K); no cap system is solved, no cap
+//  bookkeeping, any number of cutting planes. With x_ref the face centre
+//  the face's own fan triangles give zero tetrahedra (3F tetrahedra of the
+//  4F triangles). The half-spaces use halfSpace::dist, so the axis-aligned
+//  planes of sweptAxisPlanes / sweptHexClip apply inside the clips. The
+//  optional outputs give the coverage of the triangle parts inside the cell
+//  planes (the same quantity the closure accumulates; a contact triangle in
+//  a cell plane is counted here on both sides), the pre-image triangles'
+//  (k % 4 == 1) coverage and their wetted area vector after the PLIC clip,
+//  by 2D clips of the triangles themselves. Validated 2026-11-06 against
+//  Monte Carlo with the generalized winding number on 106 pieces of the
+//  deformation and against the geometric swept volume on every face of 167
+//  steps (leia REPORT-swept, "The 3D Enright deformation").
+inline scalar sweptPieceExactVolume
+(
+    const UList<FixedList<point, 3>>& T,
+    const UList<halfSpace>& cellPlanes,
+    const bool wetPlane,
+    const halfSpace& plic,
+    const point& xRef,
+    scalar* coverage = nullptr,
+    scalar* covPre = nullptr,
+    vector* aPre = nullptr
+)
+{
+    struct poly
+    {
+        FixedList<point, 24> p;
+        label n = 0;
+    };
+    const label nc = cellPlanes.size();
+    scalar vol = 0;
+    // one polygon clipped by a half-space (Sutherland-Hodgman), the crossing
+    // points collected for the cap; a vertex within tol of the plane is on
+    // the plane: kept, and no crossing through it (the coplanar rule, as the
+    // closure's 1e-12 L: without it a swept face lying in a cell plane at
+    // round-off distance made a spurious cap of the face's size, measured
+    // 2026-11-07 on the oblique plane N 40, 0.99 V_c against the true 0.95)
+    auto clipOne = []
+    (
+        const poly& q, const halfSpace& hs, poly& out,
+        FixedList<point, 48>& cross, label& nCross, const scalar tol
+    )
+    {
+        out.n = 0;
+        for (label j = 0; j < q.n; ++j)
+        {
+            const point& p0 = q.p[j];
+            const point& p1 = q.p[(j + 1) % q.n];
+            const scalar s0 = hs.dist(p0), s1 = hs.dist(p1);
+            const bool in0 = (s0 <= tol), in1 = (s1 <= tol);
+            if (in0 && out.n < 24) out.p[out.n++] = p0;
+            if (in0 != in1)
+            {
+                const point x = p0 + (p1 - p0)*(s0/(s0 - s1));
+                if (out.n < 24) out.p[out.n++] = x;
+                if (nCross < 48) cross[nCross++] = x;
+            }
+        }
+        if (out.n < 3) out.n = 0;
+    };
+    auto areaOf = [](const poly& q, const point& o) -> vector
+    {
+        vector a(Zero);
+        for (label j = 0; j < q.n; ++j)
+        {
+            a += (q.p[j] - o) ^ (q.p[(j + 1) % q.n] - o);
+        }
+        return 0.5*a;
+    };
+    forAll(T, k)
+    {
+        const FixedList<point, 3>& t = T[k];
+        const scalar L =
+            max(mag(t[1] - t[0]), max(mag(t[2] - t[1]), mag(t[0] - t[2])));
+        if (!(L > 0)) continue;
+        const vector aT = 0.5*((t[1] - t[0]) ^ (t[2] - t[0]));
+        if (mag(aT) <= 1e-16*L*L) continue;
+        const scalar tolL = 1e-12*L;
+        // the triangle's own part inside the cell (the coverage) and, after
+        // the PLIC clip, the wetted part of a pre-image triangle
+        if (coverage || covPre || aPre)
+        {
+            poly b; b.p[0] = t[0]; b.p[1] = t[1]; b.p[2] = t[2]; b.n = 3;
+            poly c; FixedList<point, 48> cr; label ncr = 0;
+            for (label i = 0; i < nc && b.n >= 3; ++i)
+            {
+                ncr = 0; clipOne(b, cellPlanes[i], c, cr, ncr, tolL); b = c;
+            }
+            if (b.n >= 3)
+            {
+                const scalar ab = mag(areaOf(b, t[0]));
+                if (coverage) *coverage += ab;
+                if (covPre && (k % 4 == 1)) *covPre += ab;
+                if (wetPlane) { ncr = 0; clipOne(b, plic, c, cr, ncr, tolL); b = c; }
+                if (aPre && b.n >= 3 && (k % 4 == 1)) *aPre += areaOf(b, t[0]);
+            }
+        }
+        const scalar vs = ((t[0] - xRef) & aT)/3;
+        if (mag(vs) <= 1e-30) continue;
+        const scalar sgn = (vs > 0) ? 1 : -1;
+        // the base (A, B, C) with the apex on its negative side, the four
+        // faces outward
+        point A = t[0], B = t[1], C = t[2];
+        if (sgn < 0) Swap(B, C);
+        FixedList<poly, 16> P;
+        label nP = 4;
+        auto set3 = [](poly& q, const point& u, const point& v, const point& w)
+        {
+            q.p[0] = u; q.p[1] = v; q.p[2] = w; q.n = 3;
+        };
+        set3(P[0], A, B, C);
+        set3(P[1], xRef, B, A);
+        set3(P[2], xRef, C, B);
+        set3(P[3], xRef, A, C);
+        bool anyLeft = true;
+        auto clipAll = [&](const halfSpace& hs)
+        {
+            FixedList<point, 48> cross;
+            label nCross = 0;
+            anyLeft = false;
+            for (label i = 0; i < nP; ++i)
+            {
+                poly& q = P[i];
+                if (q.n < 3) continue;
+                poly out;
+                clipOne(q, hs, out, cross, nCross, tolL);
+                q = out;
+                if (q.n >= 3) anyLeft = true;
+            }
+            if (nCross >= 3 && nP < 16)
+            {
+                // the plane's outward normal (the kept side is dist <= 0)
+                vector nrm = hs.n;
+                if (hs.axis >= 0)
+                {
+                    nrm = Zero;
+                    nrm[hs.axis] = hs.sgn;
+                }
+                nrm /= max(mag(nrm), VSMALL);
+                point cen(Zero);
+                for (label i = 0; i < nCross; ++i) cen += cross[i];
+                cen /= nCross;
+                vector u = (mag(nrm.x()) < 0.9) ? vector(1, 0, 0) : vector(0, 1, 0);
+                u -= (u & nrm)*nrm;
+                u /= max(mag(u), VSMALL);
+                const vector v = nrm ^ u;
+                FixedList<scalar, 48> ang;
+                FixedList<label, 48> idx;
+                for (label i = 0; i < nCross; ++i)
+                {
+                    const vector d = cross[i] - cen;
+                    ang[i] = Foam::atan2(d & v, d & u);
+                    idx[i] = i;
+                }
+                for (label i = 1; i < nCross; ++i)
+                {
+                    const label key = idx[i];
+                    label j = i - 1;
+                    while (j >= 0 && ang[idx[j]] > ang[key])
+                    {
+                        idx[j + 1] = idx[j];
+                        --j;
+                    }
+                    idx[j + 1] = key;
+                }
+                poly& cap = P[nP];
+                cap.n = 0;
+                for (label i = 0; i < nCross && cap.n < 24; ++i)
+                {
+                    cap.p[cap.n++] = cross[idx[i]];
+                }
+                vector ac(Zero);
+                for (label i = 0; i < cap.n; ++i)
+                {
+                    ac += cap.p[i] ^ cap.p[(i + 1) % cap.n];
+                }
+                if ((ac & nrm) < 0)
+                {
+                    for (label i = 0; i < cap.n/2; ++i)
+                    {
+                        Swap(cap.p[i], cap.p[cap.n - 1 - i]);
+                    }
+                }
+                ++nP;
+                anyLeft = true;
+            }
+        };
+        for (label i = 0; i < nc && anyLeft; ++i)
+        {
+            clipAll(cellPlanes[i]);
+        }
+        if (wetPlane && anyLeft)
+        {
+            clipAll(plic);
+        }
+        if (!anyLeft) continue;
+        scalar v3 = 0;
+        for (label i = 0; i < nP; ++i)
+        {
+            const poly& q = P[i];
+            if (q.n < 3) continue;
+            v3 += (q.p[0] - xRef) & areaOf(q, xRef);
+        }
+        vol += sgn*v3/3;
+    }
+    return vol;
+}
+
 inline pieceResult sweptPieceVolume
 (
     const UList<FixedList<point, 3>>& T,
@@ -351,10 +601,33 @@ inline pieceResult sweptPieceVolume
     const halfSpace& plic,
     const point& xRef,
     const point* xSide = nullptr,
-    const bool crossing = false
+    const bool crossing = false,
+    const label mode = 0,
+    const bool validate = false
 )
 {
+    // mode (key sweptPieceVolume, 2026-11-07): 0 closure (the cap closure
+    // for k <= 3 of full rank; r.ok false otherwise, the caller's one-donor
+    // clip), 1 closureThenTets (the signed tetrahedra where the closure does
+    // not solve), 2 signedTets (every piece by the signed tetrahedra);
+    // validate: |V_closure - V_tets| on every piece where both apply
     pieceResult r;
+    if (mode == 2)
+    {
+        r.volume = sweptPieceExactVolume
+        (
+            T, cellPlanes, wetPlane, plic, xRef, &r.coverage, &r.covPre, &r.aPre
+        );
+        r.exactUsed = true;
+        r.nCaps = -1;
+        if (validate)
+        {
+            const pieceResult rc =
+                sweptPieceVolume(T, cellPlanes, wetPlane, plic, xRef, xSide, crossing, 0, false);
+            if (rc.ok && !rc.degenerate) r.exactDiff = mag(rc.volume - r.volume);
+        }
+        return r;
+    }
     const label nc = cellPlanes.size();
     if (nc > 7)
     {
@@ -550,6 +823,14 @@ inline pieceResult sweptPieceVolume
     }
     if (k > 3)
     {
+        if (mode >= 1)
+        {
+            // closureThenTets: the exact piece volume, no cap system
+            r.volume = sweptPieceExactVolume(T, cellPlanes, wetPlane, plic, xRef);
+            r.closureResidual = 0;
+            r.exactUsed = true;
+            return r;
+        }
         r.ok = false;
         r.closureResidual = mag(sumA)/sumMag;
         return r;
@@ -577,6 +858,13 @@ inline pieceResult sweptPieceVolume
         }
         if (mag(det) < 1e-10)
         {
+            if (mode >= 1)
+            {
+                r.volume = sweptPieceExactVolume(T, cellPlanes, wetPlane, plic, xRef);
+                r.closureResidual = 0;
+                r.exactUsed = true;
+                return r;
+            }
             r.ok = false;
             r.closureResidual = mag(sumA)/sumMag;
             return r;
@@ -625,6 +913,12 @@ inline pieceResult sweptPieceVolume
         return r;
     }
     r.volume = (moment + capTerm)/3;
+    if (validate)
+    {
+        // the validation of the exact path on the pieces the closure solves
+        r.exactDiff =
+            mag(sweptPieceExactVolume(T, cellPlanes, wetPlane, plic, xRef) - r.volume);
+    }
     return r;
 }
 
