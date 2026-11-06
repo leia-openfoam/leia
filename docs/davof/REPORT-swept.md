@@ -4599,3 +4599,209 @@ minutes and kept as `time-p12/`; its observations are repeated below from
 the recorded runs); the controlDict application from the token
 `TPF_APPLICATION` and the timed runner's `APP` / `ENRIGHT_W` / `STUDIES`
 variables, so that only the solver changes for the leia app; the third row.
+
+### Results (2026-11-06)
+
+Jobs (ledger `/work/scratch/tm83tomy/davof/agents/enright/.my_jobs`): build
+55999984 (fork c5c00c5); preparation studies at writePrecision 17
+56000993-56000998 (Swept, RDF) and 56001210-56001212 (Prism); the timed cells
+56001326 (N 32, Co 0.5), 56001327 (N 32, Co 1), 56001328 (N 64, Co 0.5),
+56001329 (N 64, Co 1), 56001330 (N 128, Co 0.5), 56001331 (N 128, Co 1), one
+exclusive i01 node each (Xeon Platinum 9242), three repetitions of the three
+rows, the order rotated; the diagnostics 56000705 (diag1) and 56000828
+(diag2); the pictures 56002022 / 56003985 / 56006509. The precision-12 first
+pass (56000603-56000608, cancelled after a few minutes) is kept as `time-p12/`.
+Every number below is from `csv/enright_runs.csv`, `csv/enright_table.csv`,
+`csv/enright_orders.csv` and `csv/enright_counters_N<N>_co<i>_<row>.csv`
+(the per-step counters of the davof rows) under the agent workspace; the
+cases with their logs, fields and function-object output at writePrecision
+17 under `time/N<N>_co<i>/<row>_r<rep>/` (`.source` names the prepared case
+they were copied from). The three repetitions of every cell reproduce their
+digits (`repsIdentical` true for all 18 cells).
+
+Measured OpenFOAM Courant numbers (the first step): 0.492 / 0.984 at N = 32,
+0.495 / 0.990 at N = 64, 0.496 / 0.991 at N = 128. setFlow's continuity
+error 4.6e-14 .. 2.6e-13 at every step. Mass: the largest |dev| of
+sum(alpha V) over every run of every row 5.0e-12 % (plicRDF N 32),
+4.2e-12 % (ours); within E-1's 1e-10 % everywhere.
+
+**Completion and bounds (the whole run; the abort guard's bounds are
+[-0.5, 1.5] and 100 x the initial interface cells).**
+
+| N | Co | ours (swept, ring) | plicRDF | prism (plane loop, ring, ccs) |
+|---|---|---|---|---|
+| 32 | 0.5 | completes; min alpha -2.70e-1, excess 2.95e-4 | completes; -2.3e-17, 4.4e-16 | completes; -2.41e-1, 2.86e-2 |
+| 32 | 1 | completes; -1.40e-1, 9.17e-4 | completes; -3.9e-13, 4.4e-16 | completes; -4.68e-1, 4.11e-2 |
+| 64 | 0.5 | ABORT step 628, t = 1.9625: min alpha -0.5446 (excess 8.96e-3; 51138 interface cells of 1694) | completes; -4.76e-6 (first below -1e-9 at step 47, t = 0.147), 4.4e-16 | ABORT step 495, t = 1.547: interface cells 169410 > 100 x 1694 (min -2.36e-2 there, over the run -2.31e-1, excess 7.85e-2) |
+| 64 | 1 | ABORT step 399, t = 2.4938: min alpha -1.2037 (excess 1.87e-2; 56463 cells) | completes; -5.20e-4 (from step 1), 3.94e-7 | ABORT step 264, t = 1.65: interface cells 169703 (min over the run -4.57e-1, excess 8.59e-2) |
+| 128 | 0.5 | ABORT step 125, t = 0.1953: min alpha -1.2535 (excess 5.02e-5; 66741 cells of 6836) | completes; -3.23e-5 (from step 25, t = 0.039), 2.46e-6 | ABORT step 234, t = 0.3656: interface cells 684394 (min over the run -3.72e-1, excess 3.98e-2) |
+| 128 | 1 | ABORT step 106, t = 0.3313: min alpha -0.5081 (excess 3.25e-2; 82892 cells) | completes; -1.10e-3 (from step 2), 9.20e-5 | ABORT step 131, t = 0.4094: min alpha -0.5261 (excess 1.56e-1; 390192 cells) |
+
+**Errors at t = T against the initial sphere (the rows that reached T; V_s
+= 0.0141372).**
+
+| N | Co | row | E_shape | E_shape / V_s | L1(x) | L1(n) | L1(alphaf) | interface cells T/2, T | partial cells T/2, T | wisps T/2, T |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 32 | 0.5 | ours | 1.137e-2 | 0.804 | 0.306 | 1.460 | 7.06e-2 | 6019, 5230 | 6638, 5871 | 619, 641 |
+| 32 | 0.5 | plicRDF | 7.765e-3 | 0.549 | 0.0845 | 0.692 | - | 1324, 747 | 1324, 747 | 0, 0 |
+| 32 | 0.5 | prism | 1.441e-2 | 1.019 | 0.326 | 1.196 | 1.46e-1 | 6328, 5328 | 6866, 5359 | 538, 31 |
+| 32 | 1 | ours | 1.250e-2 | 0.884 | 0.313 | 1.479 | 7.88e-2 | 6659, 5305 | 7348, 6136 | 689, 831 |
+| 32 | 1 | plicRDF | 8.009e-3 | 0.567 | 0.0952 | 0.749 | - | 1327, 833 | 1327, 833 | 0, 0 |
+| 32 | 1 | prism | 1.755e-2 | 1.241 | 0.311 | 1.188 | 1.61e-1 | 5343, 5102 | 5597, 4837 | 254, -265 |
+| 64 | 0.5 | plicRDF | 3.018e-3 | 0.2135 | 0.0585 | 0.594 | - | 6245, 2736 | 6245, 2736 | 0, 0 |
+| 64 | 1 | plicRDF | 3.163e-3 | 0.2238 | 0.0608 | 0.631 | - | 6291, 2973 | 6291, 2973 | 0, 0 |
+| 128 | 0.5 | plicRDF | 6.911e-4 | 0.0489 | 7.43e-3 | 0.187 | - | 27650, 7724 | 27650, 7724 | 0, 0 |
+| 128 | 1 | plicRDF | 6.906e-4 | 0.0489 | 7.84e-3 | 0.207 | - | 27645, 8181 | 27645, 8181 | 0, 0 |
+
+The interface cells are reconstructionError's count at the write (for the
+davof rows the cells with |m_c| > wispTol V^(2/3), for plicRDF the cells
+inside (surfCellTol, 1 - surfCellTol)); the partial cells are the cells of
+the written field with 1e-8 < alpha < 1 - 1e-8; the wisps their difference
+(negative where face-fraction interface cells carry alpha outside the band).
+The davof rows' own per-step count (by the face fractions, alpha
+unrestricted) is larger: ours 10813 / 10367 at T at N = 32 (of 32768
+cells), the prism row 23198 / 23590. At N = 64 the last writes before the
+aborts: ours E_shape 2.105e-2 at T/2 (Co 0.5; 35644 interface cells of
+262144) and 2.868e-2 at 3T/4 (Co 1); the prism row 2.225e-2 / 2.247e-2 at
+T/2 (43372 / 36310 cells); plicRDF's E_shape at T/2 is the sheet against
+the sphere and not an error. Orders of plicRDF (E_shape; L1(x); L1(n)):
+32 -> 64: 1.36; 0.53; 0.22 (Co 0.5), 1.34; 0.65; 0.25 (Co 1); 64 -> 128:
+2.13; 2.98; 1.66 (Co 0.5), 2.20; 2.95; 1.61 (Co 1). No order for the davof
+rows (one rung).
+
+**Wall clock (median of three; the aborted rows to their abort, with the
+steps reached).**
+
+| N | ranks | Co | ours s (steps) | plicRDF s (steps) | prism s (steps) | ours / plicRDF | per step ours / plicRDF / prism s |
+|---|---|---|---|---|---|---|---|
+| 32 | 1 | 0.5 | 819.5 (480) | 26.1 (480) | 72.4 (480) | 31.4 | 1.89 / 0.050 / 0.160 |
+| 32 | 1 | 1 | 394.3 (240) | 14.8 (240) | 35.0 (240) | 26.7 | 1.885 / 0.050 / 0.150 |
+| 64 | 8 | 0.5 | 1450.8 (628 of 960) | 81.1 (960) | 83.6 (495) | 17.9 (partial) | 2.11 / 0.080 / 0.180 |
+| 64 | 8 | 1 | 908.1 (399 of 480) | 46.2 (480) | 46.2 (264) | 19.7 (partial) | 2.17 / 0.080 / 0.180 |
+| 128 | 64 | 0.5 | 264.3 (125 of 1920) | 354.5 (1920) | 49.8 (234) | 0.75 (6.5 % of the run) | 1.71 / 0.170 / 0.160 |
+| 128 | 64 | 1 | 267.3 (106 of 960) | 210.9 (960) | 32.7 (131) | 1.27 (11 % of the run) | 2.15 / 0.190 / 0.210 |
+
+The per-step ratio of ours to plicRDF is 38 (N 32), 26-27 (N 64) and 10-11
+(N 128, the first 6-11 % of the run); the preparation runs on the undeformed
+sphere gave 3 / 3.9 / 3.3 (0.09 / 0.29 / 1.48 s against 0.03 / 0.075 /
+0.445 s per step at N 32 serial / 64 on 8 / 128 on 64 ranks). The growth is
+the fragmentation: the swept flux's cost follows the number of cells with
+face-fraction surfaces, which grows 20-fold before T/4 (below).
+
+**The swept counters (rep 1; `enright_counters_*_ring.csv`).** Rank
+fallbacks (the one-donor clip of a face whose piece has more than three
+caps) from step 1: 463 of 4716 swept faces at N 32 (9.8 %), 994 of 18103
+at N 64 (5.5 %), 1699 of 70814 at N 128 (2.4 %), at both Co alike (458 at
+Co 0.25 in diag1: the share is set by the oblique 3D motion of the
+pre-images, not by the step); they grow with the band to 4.5-4.9e3 (N 32),
+2.0-2.5e4 (N 64), 4.9-5.2e4 (N 128) per step, 5 % of the swept faces
+throughout. Beyond-layer faces (the uncovered pre-image parts): 0 at every
+step except 199 (N 32, Co 0.5, max share 0.00), 12 (N 32, Co 1), 12897 (N
+64, Co 0.5) and 2658 (N 64, Co 1) in total, 0 at N 128. Twisted faces 0
+everywhere; the pyramid delta at most 0.053 h (N 32, Co 1), 0.013 h (N 64),
+0.0034 h (N 128); the anchor never failed; the volume rule fell back
+7104 / 6348 (N 32), 114454 / 88718 (N 64), 21787 / 35326 (N 128) times in
+total. The second-layer bounding corrects cells from step 1 (25 / 38 at
+N 32, 559 / 518 at N 64, 3300 / 3277 at N 128) and then 1.4-1.8e4 (N 32),
+0.9-1.4e5 (N 64), 1.9-2.2e5 (N 128) cells per step: the bounded alpha is
+held by the bounding, and the excess it cannot remove is the unboundedness
+above. The wisp pieces without a neighbour surface grow from 0 at step 1 to
+1.4-1.6e4 (N 32), 5.6-5.8e4 (N 64), 2.0-2.5e5 (N 128) per step at their
+peak. The face-fraction interface cells grow 410 -> 3625 / 7155 at T/4
+(N 32, Co 1 / 0.5), 1694 -> 38713 / 48181 at T/4 (N 64), 6836 -> 66741 /
+82892 at the aborts (N 128, t = 0.20 / 0.33).
+
+**Controls (not production rows, N 32 serial, precision 12; diag1 job
+56000705, diag2 56000828).** diag1: the four round-4 keys off reproduce
+the keys-on run bit for bit (alpha at t = 0.1 identical, the same counters
+at every step); Co 0.25 has the same rank-fallback share (458 of 4711 at
+step 1) and the same growth of the wisp pieces; sweptCapSet crossing has 0
+degenerate pieces, 517 rank fallbacks and min alpha -7.6e-7 by step 3
+(final: -2.6e-6 by step 8). diag2 (the full T): the plane-clipped loop with
+the ring normal (= the prism row) ends unbounded (-0.278 / -0.135 at Co 1 /
+0.5, E_shape 1.755e-2 / 1.441e-2, the same digits as the timed prism row);
+the swept flux with plicRDF's normal in the davof scheme (normalModel
+plicRDF, everything else ours) aborts at step 26, t = 0.325, at Co 1
+(min -0.665) and completes at Co 0.5 with min -6.9e-3, excess 5.3e-3,
+E_shape 8.706e-3 (plicRDF 7.765e-3), L1(x) 0.240, L1(alphaf) 5.44e-2 and
+1924 interface cells at T (plicRDF 747).
+
+**Pictures** (`/work/scratch/tm83tomy/davof/agents/enright/pics/`,
+`N<N>_co<i>_<row>_t<t>.png` for every written time of every row and
+`diag_<control>_t<t>.png`; the alpha = 0.5 surface by marching cubes on
+the reconstructed fields, `render_alpha_mc.py`; the cluster's ParaView
+5.13.3 modules carry no pvpython, `render_sheet.py` is kept for a build
+that does): plicRDF at N 128 shows the sheet at T/2 (a thin shell with one
+hole, 27650 interface cells) and a sphere with a small lobe at T; ours at
+N 32 shows at T/2 a blunt body with detached fragments (7348 partial
+cells) and at T a dented blob with two satellites; the rows that aborted
+have the writes before their abort only (ours at N 64: T/4 and T/2 at
+Co 0.5, T/4 .. 3T/4 at Co 1; nothing at N 128).
+
+### Verdicts
+
+- E-1 FALSIFIED for ours and for the prism row: ours aborts in the four
+  cells with N >= 64 (min alpha below -0.5 at t = 0.20, 0.33, 1.96, 2.49),
+  the prism row in the same four (three by the interface-cell factor, one
+  by min alpha); both complete at N = 32 only. plicRDF completes every
+  cell. The mass part holds for every row (5e-12 %).
+- E-2 FALSIFIED for ours: min alpha -0.14 .. -1.25, excess 3e-4 .. 3e-2
+  (N 32: -0.27 / -0.14 at Co 0.5 / 1). plicRDF: bounded to 4e-13 at N 32;
+  below -1e-6 at N >= 64 at BOTH Co (-4.8e-6 / -5.2e-4 at N 64, -3.2e-5 /
+  -1.1e-3 at N 128), the Co 1 part as expected, the Co 0.5 part beyond the
+  expectation.
+- E-3 FALSIFIED by absence: no value of ours at N >= 64. At N 32 the ratio
+  is 1.46 (Co 0.5) and 1.56 (Co 1), inside the registered band but for the
+  under-resolved rung the band excluded.
+- E-4 not evaluable for ours (one rung). plicRDF: E_shape 1.35 then 2.1-2.2.
+- E-5 FALSIFIED: the median wall clock ratio is 31 / 27 at N 32, 18-20 for
+  the partial runs at N 64, and the per-step ratio 38 / 26 / 10-11 at N
+  32 / 64 / 128 against the 2-4 predicted; the cause is the fragmentation
+  (the band of face-fraction surfaces grows 20-fold), not the per-face
+  cost (3-4 x on the undeformed sphere).
+- E-6 (prism row): the loss of boundedness at Co 1 held (every N); the
+  completion at Co 0.5 within 1.3 x of the swept row is falsified at
+  N >= 64 (aborts) and at N 32 (1.27 x of ours, but 1.86 x plicRDF); the
+  wall clock within 1.5 x plicRDF held at N >= 64 (1.0 x, aborted runs) and
+  not at N 32 (2.8 / 2.4 x).
+
+### What the counters say about the failure
+
+The swept flux itself does what it did on the rotation and the lines: no
+twisted faces, the pyramid correction below 0.053 h, no anchor failures, no
+uncovered pre-image parts at N 128. Two things are new under the straining
+field. (1) From step 1 a fixed share of the swept faces (2-10 %, falling
+with N, independent of Co) has a piece with more than three caps and takes
+the one-donor clip, the rule the rotation study showed to be unbounded;
+the second-layer bounding has to correct tens to thousands of cells at
+step 1 already. (2) The face-fraction state fragments: cells with a
+face-fraction surface multiply 20-fold before T/4 while the alpha field's
+partial cells do not (N 32 at T/2: 6638 partial cells against plicRDF's
+1324; the davof count by the faces alone 7155 at T/4), the wisp pieces
+without a neighbour surface rise from none to 1e4-2e5 per step, and the
+rank fallbacks and the bounding grow with that band. The prism row, which
+shares the davof state and the ring normal but uses isoAdvector's own
+flux, fragments faster (23590 face-fraction interface cells of 32768 at
+T at N 32; 684394 of 2.1 M at N 128 at t = 0.37) and is as unbounded, and
+the swept flux with plicRDF's normal in the davof scheme still aborts at
+Co 1: the fragmentation sits in the transported face-fraction state under
+straining (the face update by the moved plane / the clipped pieces leaves
+faces inconsistent with their cells, m_c = -sum alphaf S_f then marks cells
+as interface cells that the alpha field does not have), and the normal
+and the flux only change how fast. Not shown here: which of the two (the
+face update or the one-donor fallback) starts it; a per-cell history of
+|m_c| against alpha on the first fragmenting cells would tell. Nothing was
+tuned; the rows ran as registered.
+
+Commits (leia, branch `davof-swept-enright`): df4a8805 (the case, the arm,
+the six configs with E-1 .. E-5, the timed runner, the report's setup and
+registration), 54638749 (the scoring and the pvpython script), dbecf5fa /
+796f4e6d (the exact divergence), 4180c110 / 9bcd55e2 (writePrecision 17,
+TPF_APPLICATION, the runner's variables, the marching-cubes render),
+8d849ca5 / 72d3f42e / 72210ab4 (the render job), 402fcc2e (the third row,
+E-6), 704d709a (the wisps), and this one (the results). The fork branch
+`davof-swept-enright` is c5c00c5 without a change (nothing to push). The
+templates and configs a re-run needs: `cases/davof/sphereDeformation3D/`,
+`cases/davof/sphereDeformation3D.parameter` (every key with its value),
+`config/davof/sphereDeformation3D_hex{Swept,RDF,Prism}N{32,64,128}.yaml`;
+only `solver` and `TPF_APPLICATION` change for the leia app.
