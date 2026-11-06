@@ -4538,6 +4538,66 @@ fields were not compared (the template writes at `TPF_WRITE_STEPS` only; the per
 CSV and log numbers were); the parallel identity (4.2), the ladders (4.3) and the Co 1
 comparison (4.4), whose configs are in place (`port_parN32np*_{fork,leia}`,
 `port_ladder_*_leia`, `port_rotation_leia_noAxis`).
+
+### Phase 2, the acceptance (PORT-DESIGN 4.1 .. 4.4): MEASURED 2026-11-06
+
+The same workspace; leia `davof-port` 5854a387 (the grazing-cut opt-in) and later for the
+runs; every verdict by `workflow/scripts/port_identity_check.py` (bit for bit = the written
+fields of the last time after the FoamFile header, every function-object file including the
+per-rank `sweptFaceLog` files, the converter's CSV apart from its five wall-clock columns,
+and every numeric line of the log after the prefixes, the two renamed keys and the MPI host
+lines are normalised). The studies and the scoring scripts are in `config/davof/port_*.yaml`,
+`workflow/scripts/port_{identity,parallel,ladder}_check.py`, `davof_cmp/port_cmp_an.py`.
+
+| item | what ran | verdict |
+|---|---|---|
+| 4.1 the identity set, 11 cases, serial, 20 to 40 steps | `port_{rotation,diagonal,plane}_{fork,leia}` | bit for bit in 10 of 11; the rotation N 64 differs in two anchor counts of one step and in the diagnostic line of that step, every field identical (the grazing cut, PORT-DESIGN 1.2 item 1) |
+| 4.1 the plane set with the last step's fields written | `port_planeW_{fork,leia}` (`TPF_WRITE_STEPS 8`) | bit for bit, 8 of 8 (9 fields each at t = 8e-4) |
+| 4.1 the grazing-cut proof | `port_rotation_leia_grazingFork` (N 64, `grazingCut fork`) against the fork's N 64 case | bit for bit: the 9 fields, the 3 function-object files, the CSV, all 412 numeric log lines; against the default leia run the two counts (`nAnchorEvals` 1 against 0, `nAnchorEdge` 1 against 0) and that line differ, nothing else |
+| 4.1 `sweptAxisPlanes` off against on (leia, N 32 and 64) | `port_rotation_leia_noAxis` | fields, function-object files and CSV identical; the log differs in the startup line that prints the key and in nothing else (the fork's claim for gain 2 holds in leia) |
+| 4.2 the parallel identity, np 1, 2, 4, 8, 16, both rows, 20 steps | `port_parN32np*_{fork,leia}` | leia np k against fork np k bit for bit at every np (43 to 323 files per case, the per-rank swept-face logs included); leia np k against np 1 within 1e-12 of L1(alphaf) at every step but np 4 on the exact row (2.4e-12), the fork's own scatter digit for digit |
+| 4.3 the ladders, 16 rungs (rotation N 32/64 serial, 128 on 64 ranks; sphere N 32/64, 128 at Co 0.1/0.2/0.5), both rows, a full turn / translation | `port_ladder_*_{fork,leia,leiaGF}` | the default route (v2606's `cutCellPLIC`) is bit for bit in 5 rungs and drifts at the last digit in 11 from the step of the first grazing cut on; the route with `grazingCut fork` is bit for bit in all 16 (the threshold is the whole difference over 160 to 1280 steps) |
+| 4.4 the Co 1 comparison, 18 cells, both routes on one node, 3 repetitions of the ring row | `port_cmp*_leia` preparations, `davof_cmp/port-cmp-time.sbatch` | 16 cells scored (table below; the rotation N 64 and N 128 at OF Co 0.2 were still running at the time of writing, the N 128 one at 3255 s per 7000-step run needs one job per repetition as the fork's protocol had) |
+
+The drift of the default route on the ladders, in the scored end norms (the preprint's
+scorer, `davof_swept_ladders.py`, fork against leia; `grazingCut fork` reproduces the fork
+in every digit): L1(alphaf) and E_shape identical to five digits in all 16 rungs; L1(n)
+within 3.2e-3 relative on the rotation ring row at N 64 and within 3.4e-2 on the sphere
+exact row at N 128 (the sliver-normal sensitivity of that measure, REPORT 2026-11-05
+"L1(n) end +43 % on the exact row (sliver planes, measurement only)"); L1(x) within
+9.2e-4 (sphere ring N 64), 4.0e-4 (rotation ring N 128); min alpha and the largest
+excess at the 1e-13 .. 1e-11 level in both routes. This is the loop's known
+round-off amplification (REPORT 2026-10-24: two serial runs 1e-13 apart differ by 2e-6 at
+step 2 and hold 1e-9 .. 2e-7 afterwards) seeded by one classification of one grazing cut;
+the state stays bounded and conservative in both routes.
+
+The Co 1 comparison (PORT-DESIGN 4.4; `csv/port_cmp_table.csv`; the values of repetition 1,
+the wall clock the median of three for the ring row): the DAVOF arm's end norms (L1(x),
+E_shape, L1(n), min alpha, the excess, the mass) agree between the routes to the printed
+digits in 12 of the 16 cells and within the ladder's drift in the others (LineX N 64 OF
+Co 0.2 exact: L1(x) 1.9338e-4 against 1.9313e-4, L1(n) 1.5876e-3 against 1.5596e-3; LineX
+N 128 OF Co 0.2 exact: L1(x) 5.2747e-5 against 5.2740e-5; rotation N 64 OF Co 0.2 ring:
+1.0590e-3 against 1.0582e-3); the wall clock of the leia binary is 0.994 .. 1.015 of the
+fork's for the DAVOF arm (the same code) and 0.94 .. 1.00 for isoAdvector (OpenFOAM
+v2606's against TwoPhaseFlow's). The plicRDF + isoAdvector arm (OpenFOAM v2606's
+`plicRDF` and `isoAdvection` against TwoPhaseFlow's, PORT-DESIGN 1.3): L1(x), E_shape and
+L1(n) identical to seven digits in 15 of the 16 cells; min alpha and the excess differ at
+the 1e-13 .. 1e-14 level (the bounding tolerances `100*SMALL` against `1e-12` / `10*SMALL`),
+and in the one unbounded cell (LineDiag N 128, OF Co 1, 64 ranks: both versions lose the
+boundedness, REPORT 2026-11-03) the numbers differ: L1(x) 3.0422e-3 against 2.9987e-3,
+E_shape 3.2446e-4 against 3.2206e-4, the excess 3.52e-3 against 4.09e-3. The DAVOF arm
+against plicRDF on the leia route: wall clock 1.46 .. 3.62 x, E_shape 0.45 .. 0.91 x on
+the ring row (the fork's picture of 2026-11-03 unchanged).
+
+Tomislav's rule (2026-11-06) is applied: v2606's `cutCellPLIC` stays the default; the
+opt-in `grazingCut fork` (`davofCutCellPLIC`, a parameterised copy of v2606's class,
+selected through `davofCellCut`) proves the threshold to be the whole difference; the
+drift of the default is documented above with its numbers.
+
+Open after phase 2: the rotation N 64 and N 128 cells at OF Co 0.2 of the comparison (one
+job per repetition for N 128); the record in `docs/davof/PORT-DESIGN.md` of the measured
+scatter as the acceptance tolerance of long runs on the default route.
+
 ## The 3D Enright deformation (2026-11-06)
 
 Tomislav's task of 2026-11-06: the 3D deformation test (LeVeque 1996, Enright et

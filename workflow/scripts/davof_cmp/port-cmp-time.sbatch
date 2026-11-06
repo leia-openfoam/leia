@@ -32,8 +32,15 @@ case $FLOW in Rot) END=1;; *) END=0.45;; esac
 echo "fork $(git -C $W/TwoPhaseFlow log --oneline -1 | cut -c1-70); leia $(git -C $W/leia log --oneline -1 | cut -c1-70)"
 echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), cores $(nproc --all), job $SLURM_JOB_ID, np $NP"
 echo "advectorVoF $(command -v advectorVoF); davofAdvectorFoam $(command -v davofAdvectorFoam)"
+# REP0 / REP1 (optional): only the repetitions REP0..REP1 (one job per repetition for the
+# long cells, the fork's protocol); their files carry _r<REP0>. METHODS (optional): only
+# these methods (e.g. METHODS=ring for the timed repetitions).
 T=$W/cmp-time/${FLOW}_N${N}_co${CO}
-rm -rf $T; mkdir -p $T
+if [ -z "$REP0" ]; then rm -rf $T
+elif [ -n "$METHODS" ]; then for m in $METHODS; do rm -rf $T/${m}_*_r$REP0; done
+else rm -rf $T/*_r$REP0; fi
+mkdir -p $T
+SUF=${REP0:+_r$REP0}${METHODS:+_${METHODS// /-}}
 pick() { /usr/bin/python3 - "$S/port_cmp${FLOW}$1N${N}_leia" "$2" "$CO" <<'EOF'
 import json, glob, os, sys
 st, row, co = sys.argv[1], sys.argv[2], int(sys.argv[3])
@@ -79,12 +86,13 @@ prep() { # method route rep -> case dir
   [ $route = fork ] && toFork $c
   echo $c
 }
-csv=$T/timing.csv
+csv=$T/timing$SUF.csv
 echo "flow,N,np,co_index,method,route,rep,steps,dt,end_time,clock_s,exec_s,wall_s,median_step_s,node" > $csv
 orders=("ring exact rdf" "exact rdf ring" "rdf ring exact")
-for r in $(seq 1 $REPS); do
+for r in $(seq ${REP0:-1} ${REP1:-$REPS}); do
   for m in ${orders[$(( (r-1) % 3 ))]}; do
     [ $r -gt 1 ] && [ $m != ring ] && continue
+    if [ -n "$METHODS" ] && [[ " $METHODS " != *" $m "* ]]; then continue; fi
     for route in leia fork; do
       c=$(prep $m $route $r)
       par=""; [ $NP -gt 1 ] && par="-parallel"
@@ -111,6 +119,6 @@ EOF
   done
 done
 sleep 5
-sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps.txt
-cat $T/sacct_steps.txt
+sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps$SUF.txt
+cat $T/sacct_steps$SUF.txt
 echo CMP-TIME-DONE

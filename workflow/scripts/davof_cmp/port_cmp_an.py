@@ -20,9 +20,9 @@ OUT = W + "/csv"; os.makedirs(OUT, exist_ok=True)
 nan = float("nan")
 runs = []
 for d in sorted(glob.glob(W + "/cmp-time/*_N*_co*")):
-    tf = d + "/timing.csv"
-    if not os.path.isfile(tf): continue
-    for t in csv.DictReader(open(tf)):
+    tfs = sorted(glob.glob(d + "/timing*.csv"))
+    if not tfs: continue
+    for t in (row for tf in tfs for row in csv.DictReader(open(tf))):
         c = "%s/%s_%s_r%s" % (d, t["method"], t["route"], t["rep"])
         logn = "log.davofAdvectorFoam" if t["route"] == "leia" else "log.advectorVoF"
         if not os.path.isfile(c + "/" + logn): continue
