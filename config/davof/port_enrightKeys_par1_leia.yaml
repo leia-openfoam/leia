@@ -20,6 +20,7 @@ post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . -
 # The YAML booleans and numbers rendered into the dictionaries are QUOTED.
 axes_override:
   TPF_ENRIGHT_SETTING: [recommended]
+  TPF_GRAZING_CUT: [fork]
   N_CELLS: [32]
   TARGET_ADVECTIVE_CO: [0.2]
   END_TIME: ["0.05"]

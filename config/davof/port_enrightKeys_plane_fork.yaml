@@ -16,6 +16,7 @@ setfields_args: ""
 post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
 axes_override:
   TPF_ENRIGHT_SETTING: [reference, closureThenTets, signedTets, signedTetsValidate, scale, recompute, normalAndAlpha, normalAndAlphaReset, fragmentLog, recommended]
+  TPF_GRAZING_CUT: [fork]
   N_CELLS: [20, 40]
   TARGET_ADVECTIVE_CO: [0.5]
   TPF_VELOCITY_ARM: [normal, oblique]

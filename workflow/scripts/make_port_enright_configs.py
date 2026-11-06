@@ -29,7 +29,11 @@ def derive(src, dst, study, axis):
     s = open(os.path.join(C, src)).read()
     s = re.sub(r"^(#.*\n)+", HEAD, s, count=1)
     s = re.sub(r"^study_name: .*$", f"study_name: {study}", s, flags=re.M)
-    s = s.replace("axes_override:\n", "axes_override:\n  TPF_ENRIGHT_SETTING: [" + ", ".join(axis) + "]\n", 1)
+    # grazingCut fork: the identity against the fork (PORT-DESIGN 1.2 item 1; the fork's
+    # binary ignores the key); without it the rotation N 64 separates at a grazing cut
+    # (measured 2026-11-06: 7 of 20 rotation cases differed, all at N 64, the diagonal, the
+    # plane and the parallel studies identical)
+    s = s.replace("axes_override:\n", "axes_override:\n  TPF_ENRIGHT_SETTING: [" + ", ".join(axis) + "]\n  TPF_GRAZING_CUT: [fork]\n", 1)
     assert "TPF_ENRIGHT_SETTING" in s
     with open(os.path.join(C, dst), "w") as fh:
         fh.write(s)
