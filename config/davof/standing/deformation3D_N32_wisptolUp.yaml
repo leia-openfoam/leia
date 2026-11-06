@@ -1,0 +1,68 @@
+# The interface-cell threshold tau of the DAVOF reconstruction (Tomislav, 2026-11-08): the
+# sensitivity of the swept-face advection in its recommended setting (signedTets + scale +
+# normalAndAlpha, grazingCut fork) to tau = wispTol (a cell is an interface cell when
+# |m_k| > tau V_k^(2/3), m_k = -sum_f alpha_f S_f) on the 3D deformation (davof/isoDeformation3D),
+# OpenFOAM Co 0.5, T = 3. The threshold varies in the reconstruction dictionary only
+# (TPF_RECON_WISP_TOL; the initialisation and the function objects keep wispTol 1e-3, so the
+# initial state and the error measures cell sets are the same in every run; the reference
+# value renders every dictionary byte for byte as the standing matrix, checked 2026-11-08).
+# Hypothesis (Tomislav): tau has no physical job left once the alpha condition of the
+# interface-cell rule is on (cells with all face fractions equal already get m_k = 0 exactly;
+# the ring normal removes the sliver amplification), so tau can go to the round-off level and
+# every cell whose faces and volume both see the interface gets a plane; a large tau excludes
+# cells with liquid and a real patch, whose faces then take the neighbours extended planes
+# (a seed of the fragmentation). The end point is tau = 0 exactly: the test is then m_k != 0
+# (exactly, after the all-equal-faces rule) and the alpha condition; the positioning direction
+# d_k (the ring sum of the m_j, including m_k) is never zero then unless the ring cancels exactly.
+# The table: workflow/scripts/davof_wisptol_table.py; the record: docs/davof/REPORT-swept.md
+# "The interface-cell threshold tau (2026-11-08)".
+# THIS STUDY: the two points ABOVE the reference, tau 3e-3 and 1e-2 (N 32, serial, OF Co 0.5,
+# recommendedLog, unit), added after the downward series (2026-11-08 20:39) showed the bound
+# after the bounding degrading monotonically below tau 1e-4 (-4.5e-7 at 1e-4, -8.7e-4 at 1e-6,
+# -3.5e-5 at 1e-8, -1.7e-3 at 1e-10, -4.0e-3 at 1e-12, -4.9e-2 at 0, the reference -1.3e-7)
+# at an E_shape flat to 0.05 %: the recommendation for the default needs the other side of
+# 1e-3 as well. The Enright diagnosis of 2026-11-06 ran wispTol 1e-2 once (control e).
+#
+#   sbatch --parsable -J wisp-N32-wisptolUp -t 4:00:00 --export=ALL,STUDY=davof/standing/deformation3D_N32_wisptolUp,PROFILE=profiles/slurm-small run-studies.sbatch
+# PRE-REGISTERED (2026-11-08, before any run of this study):
+#   W-10 tau 3e-3 and 1e-2 keep the bound at the reference's level (min alpha after the
+#        bounding >= -1e-6) and E_shape at T within 1 % of the reference's; the plane count
+#        at T/2 falls (by less than 10 % at 3e-3, less than 30 % at 1e-2), the seeds and the
+#        wisp count do not fall below the reference's by more than they rise in the series
+#        (the seeds' test uses the threshold itself, so the counts are definitional). The
+#        default stays 1e-3 unless a larger tau improves the bound by more than 10 x at an
+#        E_shape within 1 % (then it is Tomislav's call). Falsified by a bound below -1e-6, an
+#        E_shape change above 5 % or an abort at either tau.
+study_name: standing_deformation3D_N32_wisptolUp
+studies_dir: studies/davof
+case: davof/isoDeformation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: "initDavofFields"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False). 1e-3 etc. are YAML strings (no dot), rendered verbatim.
+axes_override:
+  N_CELLS: [32]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_REPETITION: [1]
+  TPF_GRAZING_CUT: [fork]
+  TPF_ENRIGHT_SETTING: [recommendedLog]
+  TPF_RECON_WISP_TOL: [3e-3, 1e-2]
+  TPF_POSITIONING_DIRECTION: [unit]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

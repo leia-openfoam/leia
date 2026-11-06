@@ -228,7 +228,7 @@ def verdicts(recs, N):
         say("W-0", same, "the replica (recommended, no log) and the logged tau 1e-3 run: result columns at the writes, min alpha and the interface-cell counts %s" % ("identical" if same else "DIFFER"))
     # W-1
     small = [r for r in series if r["tau"] <= 1e-8]
-    ok = bool(small) and all(r["status"] == "ended" and r["minAfter"] is not None and r["minAfter"] >= -1e-6 for r in small)
+    ok = bool(small) and all(r["status"] == "completed" and r["minAfter"] is not None and r["minAfter"] >= -1e-6 for r in small)
     say("W-1", ok if small else None, "tau <= 1e-8: " + ", ".join("%g: %s, min alpha after %s" % (r["tau"], r["status"], f(r["minAfter"], 1)) for r in small))
     # W-2
     nh = [(r["tau"], at_write(r, half, "nInterface")) for r in series]
@@ -239,7 +239,7 @@ def verdicts(recs, N):
     say("W-2", (mono and rise is not None and rise < 0.2) if all(v is not None for v in vals) and rise is not None else None,
         "interface cells at T/2 over tau: " + ", ".join("%g: %s" % (tt, fi(v)) for tt, v in nh) + "; monotone %s; rise 1e-3 -> 1e-10 %s" % (mono, ("%.1f %%" % (100 * rise)) if rise is not None else "-"))
     # W-3
-    es = [(r["tau"], r["Eshape"]) for r in series if r["status"] == "ended" and r["Eshape"]]
+    es = [(r["tau"], r["Eshape"]) for r in series if r["status"] == "completed" and r["Eshape"]]
     ch = (max(e for _, e in es) / min(e for _, e in es) - 1) if len(es) >= 2 else None
     say("W-3", (ch < 0.05) if ch is not None else None, "E_shape at T: " + ", ".join("%g: %s" % (tt, f(e)) for tt, e in es) + "; max/min - 1 = %s" % (("%.2f %%" % (100 * ch)) if ch is not None else "-"))
     # W-4
@@ -254,7 +254,7 @@ def verdicts(recs, N):
     # W-7
     lim = [r for r in series if r["tau"] <= 1e-10]
     if len(lim) >= 2:
-        okc = all(r["status"] == "ended" and r["minAfter"] is not None and r["minAfter"] >= -1e-6 for r in lim)
+        okc = all(r["status"] == "completed" and r["minAfter"] is not None and r["minAfter"] >= -1e-6 for r in lim)
         nI = [at_write(r, half, "nInterface") for r in lim]; eI = [r["Eshape"] for r in lim]
         dn = max(rel(a, b) or 0 for a in nI for b in nI) if all(v is not None for v in nI) else None
         de = max(rel(a, b) or 0 for a in eI for b in eI) if all(v is not None for v in eI) else None

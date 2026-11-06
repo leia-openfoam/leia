@@ -1,0 +1,76 @@
+# The interface-cell threshold tau of the DAVOF reconstruction (Tomislav, 2026-11-08): the
+# sensitivity of the swept-face advection in its recommended setting (signedTets + scale +
+# normalAndAlpha, grazingCut fork) to tau = wispTol (a cell is an interface cell when
+# |m_k| > tau V_k^(2/3), m_k = -sum_f alpha_f S_f) on the 3D deformation (davof/isoDeformation3D),
+# OpenFOAM Co 0.5, T = 3. The threshold varies in the reconstruction dictionary only
+# (TPF_RECON_WISP_TOL; the initialisation and the function objects keep wispTol 1e-3, so the
+# initial state and the error measures cell sets are the same in every run; the reference
+# value renders every dictionary byte for byte as the standing matrix, checked 2026-11-08).
+# Hypothesis (Tomislav): tau has no physical job left once the alpha condition of the
+# interface-cell rule is on (cells with all face fractions equal already get m_k = 0 exactly;
+# the ring normal removes the sliver amplification), so tau can go to the round-off level and
+# every cell whose faces and volume both see the interface gets a plane; a large tau excludes
+# cells with liquid and a real patch, whose faces then take the neighbours extended planes
+# (a seed of the fragmentation). The end point is tau = 0 exactly: the test is then m_k != 0
+# (exactly, after the all-equal-faces rule) and the alpha condition; the positioning direction
+# d_k (the ring sum of the m_j, including m_k) is never zero then unless the ring cancels exactly.
+# The table: workflow/scripts/davof_wisptol_table.py; the record: docs/davof/REPORT-swept.md
+# "The interface-cell threshold tau (2026-11-08)".
+# THIS STUDY: N 64 on 8 ranks (scotch, the standing matrix's decomposition), OpenFOAM Co 0.5
+# (dt 3.125e-3, 960 steps), the reference tau 1e-3 and the best two of the N 32 series by the
+# registered criterion W-1 (the bound after the bounding): 1e-4 (min alpha -4.5e-7 against the
+# reference's -1.3e-7) and 1e-8 (-3.5e-5); the fragment log on (recommendedLog). The N 32
+# series (studies/davof/standing_deformation3D_N32_wisptol, 2026-11-08 20:39): E_shape flat
+# (9.312e-3 .. 9.316e-3), the bound lost monotonically below 1e-4 except the 1e-8 point
+# (-8.7e-4 at 1e-6, -3.5e-5 at 1e-8, -1.7e-3 at 1e-10, -4.0e-3 at 1e-12, -4.9e-2 at 0), the
+# seeds 304 -> 1881 .. 3613, the rule's counter 4 -> 31936, the wall clock -15 .. -22 %.
+#
+#   sbatch --parsable -J wisp-N64-wisptol -t 8:00:00 --export=ALL,STUDY=davof/standing/deformation3D_N64_wisptol,PROFILE=profiles/slurm-small run-studies.sbatch
+# PRE-REGISTERED (2026-11-08, after the N 32 series, before any N 64 run; the evidence: the
+# N 32 series above and the matrix's N 64 recommended row at OF Co 0.2 (completed, 3157 s on
+# 8 ranks); the matrix's N 64 Co 0.5 recommended case had not run yet):
+#   W-8  the reference (tau 1e-3) completes bounded as the matrix's row (min alpha after the
+#        bounding >= -1e-6) and reproduces the matrix's N 64 Co 0.5 recommended case bit for
+#        bit once that has run (the identity of the binary on the default path, as W-0 at
+#        N 32). Falsified by an abort, a bound below -1e-6 or a differing field file.
+#   W-9  the N 32 ordering holds at N 64: min alpha after the bounding of tau 1e-4 within
+#        10 x the reference's, of tau 1e-8 below 100 x the reference's (worse); E_shape at T
+#        within 1 % across the three; the seeds and the rule's counter rise with falling tau
+#        as at N 32; the wall clock of the smaller tau at or below the reference's.
+#        Falsified by tau 1e-4 losing the bound by more than 100 x, by tau 1e-8 keeping it
+#        within 10 x, or by E_shape moving by more than 5 %.
+#   Also reported, not predicted: L1(x), L1(n), L1(alphaf) at the writes, the counts, the
+#   seeds by class, the wall clock on 8 ranks.
+study_name: standing_deformation3D_N64_wisptol
+studies_dir: studies/davof
+case: davof/isoDeformation3D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: "initDavofFields"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False). 1e-3 etc. are YAML strings (no dot), rendered verbatim.
+axes_override:
+  N_CELLS: [64]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_REPETITION: [1]
+  TPF_GRAZING_CUT: [fork]
+  TPF_ENRIGHT_SETTING: [recommendedLog]
+  TPF_RECON_WISP_TOL: [1e-3, 1e-4, 1e-8]
+  TPF_POSITIONING_DIRECTION: [unit]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 600
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
