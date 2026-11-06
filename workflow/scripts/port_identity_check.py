@@ -84,8 +84,10 @@ def compare_post(cf, cl, rep):
                     ca, cb = la[i].split(","), lb[i].split(",")
                     cols |= {hdr[j] if j < len(hdr) else str(j) for j in range(min(len(ca), len(cb))) if ca[j] != cb[j]}
                     if len(ca) != len(cb): cols.add("(column count)")
-                numeric = [c for c in cols if c not in ("solver", "binary", "version", "gitCommit", "log", "application", "clippingSurface", "fluxIntegration")]
-                rep.append(f"  {f}: differing columns {sorted(cols)}" + (" (route labels only)" if not numeric else ""))
+                # the wall-clock columns of the converter are not results
+                TIMING = ("advectWallMax", "curvedFluxWallMax", "exchangeWallMax", "clockTime", "executionTime", "timeStepTime")
+                numeric = [c for c in cols if c not in ("solver", "binary", "version", "gitCommit", "log", "application", "clippingSurface", "fluxIntegration") and c not in TIMING]
+                rep.append(f"  {f}: differing columns {sorted(cols)}" + (" (wall-clock and route labels only)" if not numeric else ""))
                 if numeric: ok = False
                 continue
             ok = False
@@ -117,13 +119,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("fork"); ap.add_argument("leia"); ap.add_argument("--verbose", action="store_true")
     a = ap.parse_args()
-    cases_f = sorted(d for d in os.listdir(a.fork) if re.search(r"_\d{5}$", d))
-    cases_l = sorted(d for d in os.listdir(a.leia) if re.search(r"_\d{5}$", d))
-    if cases_f != cases_l:
-        print(f"case sets differ: {cases_f} vs {cases_l}"); sys.exit(1)
+    if os.path.isfile(os.path.join(a.fork, "case_params.json")) and os.path.isfile(os.path.join(a.leia, "case_params.json")):
+        # two case directories (e.g. the fork's N 64 case against the one case of a proof study)
+        pairs = [(os.path.basename(a.fork) + " vs " + os.path.basename(a.leia), a.fork, a.leia)]
+    else:
+        cases_f = sorted(d for d in os.listdir(a.fork) if re.search(r"_\d{5}$", d))
+        cases_l = sorted(d for d in os.listdir(a.leia) if re.search(r"_\d{5}$", d))
+        if cases_f != cases_l or not cases_f:
+            print(f"case sets differ or empty: {cases_f} vs {cases_l}"); sys.exit(1)
+        pairs = [(c, os.path.join(a.fork, c), os.path.join(a.leia, c)) for c in cases_f]
     allok = True
-    for c in cases_f:
-        cf, cl = os.path.join(a.fork, c), os.path.join(a.leia, c)
+    for c, cf, cl in pairs:
         rep = []
         ok = compare_fields(cf, cl, rep) & compare_post(cf, cl, rep) & compare_logs(cf, cl, rep, a.verbose)
         params = ""
