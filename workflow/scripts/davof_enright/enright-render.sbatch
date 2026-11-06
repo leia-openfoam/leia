@@ -33,7 +33,7 @@ render() { # case N label
 }
 for d in $W/time/N*_co*; do
   N=$(basename $d | sed 's/N\([0-9]*\)_co.*/\1/'); co=$(basename $d | sed 's/.*_co//')
-  for m in ring rdf; do [ -d $d/${m}_r1 ] && render $d/${m}_r1 $N N${N}_co${co}_$m; done
+  for m in ring rdf prism; do [ -d $d/${m}_r1 ] && render $d/${m}_r1 $N N${N}_co${co}_$m; done
 done
 for d in $W/diag/*_co1 $W/diag/*_co05; do [ -d $d ] && render $d 32 diag_$(basename $d); done
 ls -la $W/pics
