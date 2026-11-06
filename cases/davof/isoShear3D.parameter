@@ -57,7 +57,10 @@ values
     TPF_SPHERE_CZ ( 0.25 );
     END_TIME ( 3 );
     REFERENCE_SPEED ( 1.5 );
-    TPF_ALPHA_BC ( inletOutlet );
+    // zeroGradient (inletOutlet needs phi, which initDavofFields runs without;
+    // the sphere stays 0.1 above the bottom, where the flow enters, and the
+    // gas enters at alpha 0 either way)
+    TPF_ALPHA_BC ( zeroGradient );
     TPF_ABORT_INTERFACE_FACTOR ( 100 );
     TPF_WRITE_INTERVAL ( 0.75 );
     TPF_AFE_WRITE_INTERVAL ( 0.75 );
