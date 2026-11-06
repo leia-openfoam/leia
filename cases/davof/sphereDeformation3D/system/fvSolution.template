@@ -127,8 +127,10 @@ solvers
 //          -sin(2 pi x) sin(2 pi y) sin^2(pi z) )
 // with x = C - origin (origin (0 0 0); refDir (1 0 0) and axis (0 1 0) make
 // its frame the identity), the flux phi = U(x_f) . S_f from the same
-// expression at the face centres (the midpoint rule: divergence-free to
-// O(h^2), the continuity error printed per step), and multiplies both by
+// expression at the face centres (exactly divergence-free on the
+// equidistant hexahedra by the product structure of the field, see the
+// .parameter file; the continuity error printed per step is 1e-13), and
+// multiplies both by
 // scale(t) = cos(2 pi t / (2 T)) = cos(pi t / T) (Function1 cosine of period
 // 2 T; value = amplitude cos(2 pi t / period) scale + level): the LeVeque /
 // Enright deformation that reverses at T/2 and returns the sphere at T.

@@ -24,11 +24,17 @@
 // The velocity vanishes on the six faces of the cube (sin(pi x) = 0 and
 // sin(2 pi x) = 0 at x = 0 and 1, the same in y and z), so phi = 0 on the
 // boundary: no inflow and no outflow, the one patch walls carries
-// zeroGradient alpha. The face-centre flux is divergence-free to the midpoint
-// rule only (setFlow prints its continuity error per step; the level-set
-// reference case cases/3Ddeformation uses the same face-centre flux on
-// hexahedra); advectorVoF passes div(phi) to the advection as the source
-// divU alpha, so full and empty cells stay exactly 1 and 0.
+// zeroGradient alpha. The face-centre flux is EXACTLY divergence-free on the
+// equidistant hexahedral mesh (not only to the midpoint rule): with
+// A(x) = 2 sin^2(pi x), D(x) = sin(2 pi x), B(y) = sin(2 pi y),
+// E(y) = sin^2(pi y), C(z) = sin(2 pi z), F(z) = sin^2(pi z) the cell's
+// flux sum is h^2 [ (A(x1) - A(x0)) B(yc) C(zc) - D(xc) (E(y1) - E(y0)) C(zc)
+// - D(xc) B(yc) (F(z1) - F(z0)) ] and A(x1) - A(x0) = 2 D(xc) sin(pi h),
+// E(y1) - E(y0) = B(yc) sin(pi h), F(z1) - F(z0) = C(zc) sin(pi h), so the
+// three terms cancel identically; setFlow's continuity error is 1e-13
+// (measured 2026-11-06). The level-set reference case cases/3Ddeformation
+// uses the same face-centre flux on hexahedra. advectorVoF passes div(phi)
+// to the advection as the source divU alpha (round-off here).
 //
 // The fixed step is dt = Co h / REFERENCE_SPEED with REFERENCE_SPEED 2.5,
 // just above the maximum over the cells of 0.5 sum_f |U(x_f) . n_f| at
