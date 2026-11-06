@@ -24,7 +24,7 @@ import argparse, os, re, sys, glob, filecmp
 NOISE = re.compile(
     r"^(Build|Arch|Exec|Date|Time|Host|PID|Case|nProcs|I/O|ExecutionTime|Executable|"
     r"\s*leia\b|\s*lib|davof: version|Reading|Create time|Create mesh|Selecting|\*|/\*|Starting time loop|"
-    r"davofSwept: the key|isoAdvector: OpenFOAM|leia-stamp|version).*|.*(ExecutionTime|ClockTime|timeStepTime|wall time| s \(wait |elapsed).*$"
+    r"davofSwept: the key|isoAdvector: OpenFOAM|davof: grazingCut|leia-stamp|version).*|.*(ExecutionTime|ClockTime|timeStepTime|wall time| s \(wait |elapsed).*$"
 )
 def norm_line(s):
     # the log prefixes, the application name and the two renamed keys of the leia route
@@ -98,7 +98,11 @@ def compare_post(cf, cl, rep):
     return ok
 
 def compare_logs(cf, cl, rep, verbose):
-    lf = os.path.join(cf, "log.advectorVoF"); ll = os.path.join(cl, "log.davofAdvectorFoam")
+    def logof(c):   # either route's log
+        for n in ("log.advectorVoF", "log.davofAdvectorFoam"):
+            if os.path.isfile(os.path.join(c, n)): return os.path.join(c, n)
+        return os.path.join(c, "log.advectorVoF")
+    lf, ll = logof(cf), logof(cl)
     if not (os.path.isfile(lf) and os.path.isfile(ll)):
         rep.append(f"  logs missing: {lf if not os.path.isfile(lf) else ''} {ll if not os.path.isfile(ll) else ''}"); return False
     A = [norm_line(x) for x in open(lf, errors="replace") if not NOISE.match(x)]
