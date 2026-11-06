@@ -5114,3 +5114,101 @@ Seed classes of the exact-caps run's 99 fragments with the bounding class
 included: bounded face 95 (96 %), wisp 4, second-layer 2, fallback 0, none
 2 (steps 12 .. 50; the 40-step production run's seeds are the fallback's,
 82 %, with the bounding second).
+
+### Decisions 1-3 (2026-11-07): the interchangeable algorithms, registered tests
+
+Fork 1306749 (branch `davof-swept-enright`; the keys documented in
+`etc/README-davof.md`, "The interchangeable piece volumes, bounded face
+fractions and interface-cell rule"): `sweptPieceVolume closure |
+closureThenTets | signedTets` (+ `sweptPieceValidate`, `oneDonorFallback`
+a deprecated alias of `closure`, the former `sweptExactCaps true` =
+`closureThenTets`, deprecated), `sweptBoundedFaceFraction none | scale |
+recompute`, `interfaceCellRule normalOnly | normalAndAlpha |
+normalAndAlphaReset`; the defaults are the former behaviour. The signed
+tetrahedra: after Owkes & Desjardins, J. Comput. Phys. 270 (2014) 587-612,
+doi:10.1016/j.jcp.2014.04.022 (the signed-simplex decomposition of crossed
+non-convex flux volumes cut by the PLIC plane), here built about the face
+centre of the triangulated closed swept surface (3F tetrahedra, no
+partition tables), the alternative to or the fallback of the closed-form
+surface integral with closure caps, which stays the primary algorithm;
+Zhang & Chen 2001 for the closed-mesh volume, Sutherland & Hodgman 1974
+for the clips. `scale`: the face fraction and the wetted area vector scaled
+by s = dVf_bounded / dVf in every bounding pass (s = 0 dries the face);
+`recompute`: the donor's plane positioned along its normal with
+`davof::solveOffset` so that the one-donor swept liquid volume (signed
+tetrahedra under that plane) equals |dVf_bounded|, the pre-image fan's
+wetted area under it; `scale` where no plane or no bracket.
+`normalAndAlpha`: an interface cell needs surfCellTol < alpha < 1 -
+surfCellTol (tol = 1e-8) besides |m_c| > wispTol V^(2/3);
+`normalAndAlphaReset`: also the faces of a dry or full cell set to its
+state where they differ (no mass moves; the neighbours' m_c change;
+synchronised across processor faces, the larger flag wins). Per step: the
+pieces per path, the bounded faces (s = 0 / partial, max |1 - s|, the
+recompute counts), "before the bounding" min/max alpha, the cells with
+|m_c| above the threshold and alpha outside (tol, 1 - tol) and how many got
+a plane, the reset counts.
+
+The matrix (`workflow/scripts/davof_enright/enright-matrix.sbatch` with
+the specs of `enright_specs.py`, the comparison `enright_compare.py`): the
+seven settings closure; cTT = closureThenTets (+ validate); sT = signedTets
+(+ validate); cTT+scale; cTT+recompute; cTT+scale+normalAndAlpha;
+cTT+scale+normalAndAlphaReset. G1: the eight cases (rotation N 32 ring at
+OF Co 1 serial; rotation N 64 ring OF Co 1 on 8 ranks; diagonal N 32 ring
+OF Co 1; plane N 40 exact normal arm Co 0.95; plane N 20 and N 40 ring,
+normal and oblique arms, Co 0.95; the swept agent's rendered cases of the
+comparison and of the plane gate), 20 steps, writePrecision 17, the fields
+compared value by value. G2: the deformation N 32 Co 0.5 serial, T = 3,
+the fragment log on. G3: the same at N 64 Co 0.5 on 8 ranks. G4: the
+rotation N 64 at OF Co 1, one turn, serial and 8 ranks, closure / cTT /
+sT, three repetitions, the order rotated, one exclusive i01 node. G5: the
+rotation N 32 on np 1/2/4/8, 20 steps, the five settings with keys,
+compared with np 1 after reconstruction.
+
+Registered before the runs:
+
+- P1-1 (identity): closureThenTets is bit for bit = closure on all eight
+  (the fallback and the tets counters 0 on all: asserted); signedTets
+  differs from closure by round-off: max |dalpha|, |dalphaf| <= 1e-12 on
+  the plane cases, <= 1e-10 on the rotation and the diagonal; the plane
+  gate (L1(alphaf) against the exact plane at step 20) passes at 1e-11
+  for all three.
+- P1-2 (validation): |V_closure - V_tets| / V_c <= 1e-12 on every piece of
+  the eight cases; on the deformation N 32 above 1e-6 on isolated pieces
+  from about step 25 (the closure's, as T-1 settled).
+- P1-3 (deformation): closure reproduces the production row (the
+  fragments, min alpha -0.27 at N 32, the abort at N 64); closureThenTets
+  reproduces the exact-caps run (bounded 31 steps, the abort at step 50 at
+  N 32); signedTets is within round-off of closureThenTets on the pieces
+  the closure solves and aborts within 5 steps of it; none of the three
+  completes N 32 or N 64 bounded (the bounding seed remains).
+- P1-4 (wall clock, rotation N 64, OF Co 1): closureThenTets = closure
+  within 2 % (no fallback fires); signedTets within 1.5 x closure serial
+  and within 1.3 x on 8 ranks.
+- P1-5 (parallel identity): closureThenTets and signedTets on np 2/4/8
+  equal np 1 to 1e-12 after 20 steps.
+- P2-1 (identity): none / scale / recompute bit for bit on the plane gate
+  and the diagonal (the bounded-face counter 0, asserted); on the rotation
+  N 32 / N 64 (the bounding corrects a few cells) scale and recompute
+  differ from none in alphaf by round-off to 1e-8 on the bounded faces and
+  in alpha to 1e-13 at step 20.
+- P2-2 (deformation, cTT x none / scale / recompute): scale removes the
+  bounding-seeded fragments (the fragments over the run fall by more than
+  80 %, the bounded-face class below 10 % of them), N 32 completes with min
+  alpha above -1e-2 before and after the bounding; recompute at least as
+  good, its E_shape within 5 % of scale's; N 64 completes without an
+  abort with scale.
+- P2-3 (parallel identity, scale): to 1e-12.
+- P3-1 (identity): normalAndAlpha and normalAndAlphaReset bit for bit =
+  normalOnly on all eight (the counter 0 on all, asserted).
+- P3-2 (deformation, cTT + scale x rules): normalAndAlpha removes the
+  overdraw by the planes of empty cells (min alpha before the bounding
+  above -1e-3 over the run at N 32), the dry-cells-with-wet-faces count
+  stays below 100 per step; normalAndAlphaReset brings the face-fraction
+  interface count within 1.1 x the partial cells at every write and
+  E_shape within 1.3 x plicRDF (7.765e-3 at N 32, 3.018e-3 at N 64); both
+  complete N 32 and N 64.
+- P3-3 (parallel identity): to 1e-12 for both rules.
+- Recommendation rule: the default becomes closureThenTets + scale +
+  normalAndAlpha if P1-1, P2-1, P3-1 hold and P2-2 / P3-2 hold at N 32 and
+  N 64; the Reset variant if P3-2's second clause holds and its parallel
+  identity does; else the numbers decide and are reported as they are.
