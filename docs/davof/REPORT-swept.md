@@ -5024,3 +5024,50 @@ check); all opt-in, default false, the default path unchanged (the
 production row's digits reproduced by the frag run). leia commits:
 18b78dda (the runner, the scoring, the predictions), cf8f81c8, 079227f4,
 a8346ddd, and this one.
+
+#### The two follow-up diagnostics (2026-11-06, the coordinator's request; predictions first)
+
+Fork 8fec921 (opt-in, default off): `sweptPieceDumpTol` dumps, with
+`sweptExactCaps`, every PLIC-clipped piece on which the closure and the
+exact volume differ by more than tol V_c (the raw closed triangle list of
+the swept volume, the cell's half-spaces, the PLIC half-space, both volumes,
+nCaps, the closure residual; `postProcessing/sweptPieceDump/`, at most
+200); the fragment log gains the first-layer bounding as a class (a face of
+the cell whose dVf `boundFlux` changed in the previous step or the one
+before, with the summed |correction|/V_c), and counts per step the faces
+whose dVf the bounding changed and the faces whose alphaf it changed
+(alphaf is compared before and after `limitFluxes`). The independent
+truth: `workflow/scripts/davof_enright/piece_truth.py` (numpy, on the
+cluster): per dumped piece the signed-tetrahedra clip volume written
+independently (another apex, its own cap construction) and the Monte Carlo
+volume with the generalized winding number of the closed swept list (Van
+Oosterom & Strackee 1983 doi:10.1109/TBME.1983.325207; Jacobson, Kavan,
+Sorkine-Hornung 2013 doi:10.1145/2461912.2461916) inside the half-spaces,
+1e6 samples, with the standard error and the count of |w| = 2 samples
+(self-overlap), and the loops of the PLIC section of the cell-clipped list
+(a cap that is not simply connected shows two or more loops). Runs (N 32,
+Co 0.5, serial): `exactCapsDump` = exact caps + dump + the fragment log
+with the bounding class (the same run as exactCaps, 50 steps to the
+abort); `rotExactDump` = the same keys on the rotation N 32 case of the
+comparison (`sphereRotation3D_hexCmpRotSweptN32`, the ring row at OF Co
+0.2, 100 steps) to quantify the class on a production case.
+
+- T-1 (closure vs exact): on the ten worst pieces the Monte Carlo and the
+  independent tetrahedra agree with the fork's exact path within 3 sigma
+  (MC) and 1e-10 V_c (tets); the closure is the wrong one, by a cap set
+  misclassified (rule b assigns a cap to a plane that produced an edge of
+  the final polygon through a degenerate cut) or a PLIC section that is not
+  simply connected (two loops), not by a rank-deficient system accepted
+  (the closure residual of those pieces is below 1e-6, else they would be
+  degenerate). Falsified if MC sides with the closure on more than 3 of 10.
+- T-2 (the rotation): on the rotation N 32 (100 steps) the closure and the
+  exact path agree on every piece to 1e-10 V_c, no piece is dumped: the
+  class is specific to the straining flow and not a production defect of
+  the rotation and translation results. Falsified by any dumped piece
+  above 1e-6 V_c on the rotation.
+- T-3 (the bounding class): more than 70 % of the exact-caps run's 99
+  fragment cells are adjacent to a face whose dVf the bounding changed in
+  the previous step or the one before; the bounding changes alphaf on 0
+  faces at every step (so alphaf stays as the face update left it while
+  the bounded flux moved the liquid elsewhere). Falsified if the bounded-
+  face share is below 40 % or alphaf changes on any face.

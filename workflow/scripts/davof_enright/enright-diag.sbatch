@@ -46,7 +46,9 @@ run() { # name src keys...
   local name=$1 src=$2; shift 2
   local c=$D/$name; rm -rf $c; mkdir -p $c; cp -r $src/system $src/constant $c/
   if [ $NP -gt 1 ]; then for p in $src/processor*; do mkdir -p $c/$(basename $p); cp -r $p/0 $p/constant $c/$(basename $p)/; done; else cp -r $src/0 $c/; fi
-  foamDictionary -entry endTime -set 3 $c/system/controlDict > /dev/null
+  local endT=3
+  if [ -n "$STEPS" ]; then endT=$(python3 -c "print(repr($STEPS*$(foamDictionary -entry deltaT -value $c/system/controlDict)))"); fi
+  foamDictionary -entry endTime -set $endT $c/system/controlDict > /dev/null
   foamDictionary -entry writeInterval -set 0.75 $c/system/controlDict > /dev/null
   foamDictionary -entry functions/areaFractionError/writeInterval -set 0.75 $c/system/controlDict > /dev/null
   foamDictionary -entry functions/volumeFractionError/writeInterval -set 0.75 $c/system/controlDict > /dev/null
@@ -77,5 +79,9 @@ want exactReinitClassify && run exactReinitClassify $SRC_SWEPT sweptFragmentLog=
 # row and the exact-caps row with sweptCoverageCheck
 want covFrag && run covFrag $SRC_SWEPT sweptFragmentLog=true sweptCoverageCheck=true
 want covExact && run covExact $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true sweptCoverageCheck=true
+# the piece dump (the closure/exact disagreements above 1e-6 V_c) with the fragment log's
+# bounding class; and the same on the rotation N 32 case of the comparison (ROT_SRC, STEPS)
+want exactCapsDump && run exactCapsDump $SRC_SWEPT sweptFragmentLog=true sweptExactCaps=true sweptPieceDumpTol=1e-6
+want rotExactDump && [ -n "$ROT_SRC" ] && run rotExactDump $ROT_SRC sweptFragmentLog=true sweptExactCaps=true sweptPieceDumpTol=1e-6
 wait
 echo DIAG-DONE
