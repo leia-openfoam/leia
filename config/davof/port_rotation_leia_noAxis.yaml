@@ -1,0 +1,51 @@
+# 4.1: sweptAxisPlanes off (the other three round-4 keys on): bit for bit against port_rotation_leia (the fork's claim for gain 2).
+# The port acceptance (docs/davof/PORT-DESIGN.md section 4.1, 2026-11-06): the
+# identity set of the DAVOF swept-face advection, run on the fork route (solver
+# advectorVoF, the TwoPhaseFlow fork at c5c00c5 through LEIA_TPF_DIR) and on the
+# leia route (solver davofAdvectorFoam, libleiaDavof); the two renderings differ in
+# the three tokenised lines only. The reference setting of 407f969 (the parameter
+# defaults) plus the four round-4 keys written explicitly; writePrecision 17; the
+# written fields and the function objects' CSVs of the two routes must be
+# byte-identical.
+study_name: port_rotation_leia_noAxis
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: serial
+np: 1
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+axes_override:
+  N_CELLS: [32, 64]
+  TARGET_ADVECTIVE_CO: [0.2]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  END_TIME: [0.05]
+  TPF_WRITE_INTERVAL: [0.05]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["false"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_RECON_ERROR_EVERY_STEP: ["false"]
+  TPF_PROFILING: ["false"]
+collapse_other_axes: true
+solve_mem_mb: 6000
+solve_runtime: 60
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

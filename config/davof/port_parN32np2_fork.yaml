@@ -1,0 +1,79 @@
+# The port acceptance (docs/davof/PORT-DESIGN.md, 2026-11-06): the parallel identity (4.2), np 2, the fork route: leia np k bit for bit against the fork np k, leia np k within 1e-12 of np 1.
+# Rendered from sphereRotation3D_hexSweptConsParN32np2.yaml with the solver and the keys of this header changed.
+# The consistent variant of the swept flux in parallel, SHORT runs only
+# (2026-11-02, fork davof-swept c635611): the family
+# sphereRotation3D_hexSweptParN32np{1,2,4,8,16} (rotation, N = 32, 20 steps,
+# every step written at precision 17, sweptFaceLog true, rows exact and ring
+# normal) rerun with sweptConsistent true (TPF_SWEPT_CONSISTENT): the
+# candidates extended to the vertex ring of the active cells (the vertex
+# marks synchronised over the processor patches by syncTools), faces computed
+# without a surface, a piece without a surface carrying alpha_c V_piece
+# (sphereRotation3D_hexFineLineDiagCons). THIS STUDY: np 2 (scotch).
+# Scored by workflow/scripts/davof_decomposition_compare.py against np 1 of
+# this family, as the default family was (REPORT-swept, item 2).
+#
+# PRE-REGISTERED (2026-11-02, before the runs):
+# P-C1 (step 1): max |alpha - alpha_serial| over the cells and max |alphaf -
+#   alphaf_serial| over the faces at most 1e-12 for np 2, 4, 8, 16, both rows;
+#   every face of the serial log present in every decomposition (nMissing 0)
+#   and none computed twice (nDup 0) at every step. FALSIFIED otherwise.
+# P-C2 (steps 1 to 20): the per-step max |dalpha| at most ten times the
+#   default family's maxima over steps 1 to 19 (6.0e-11 exact, 2.5e-9 ring),
+#   i.e. 6e-10 / 2.5e-8; a step above it is FALSIFIED unless traced to a rank
+#   fallback taken on one side only (the np 16 step-20 face of the default
+#   family), reported as such.
+# P-C3 (the extension is decomposition independent): at step 1 the counts
+#   "candidates added" and "faces without a surface" of the log (summed over
+#   the ranks) equal the serial run's for every np, both rows.
+#
+#   sbatch --parsable -J leia-davof-sphereRotation3D_hexSweptConsParN32np2 --export=ALL,STUDY=davof/sphereRotation3D_hexSweptConsParN32np2 run-studies.sbatch
+study_name: port_parN32np2_fork
+studies_dir: studies/davof
+case: davof/sphereRotation3D
+mesh: hex
+mode: parallel
+np: 2
+
+solver: advectorVoF
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and numbers rendered into the dictionaries are QUOTED.
+axes_override:
+  N_CELLS: [32]
+  TARGET_ADVECTIVE_CO: [0.2]
+  END_TIME: ["0.05"]
+  TPF_WRITE_INTERVAL: ["0.0025"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_SWEPT_FACE_LOG: ["true"]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_SWEPT_CONSISTENCY_LOG: ["false"]
+  TPF_ROW: [davof-planeSurf-exact, davof-planeSurf-ringArea]
+  TPF_VELOCITY_ARM: [rotation]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_DUMP: ["false"]
+  TPF_SWEPT_CLASSIFY: ["false"]
+  TPF_ALPHA_BC: [fixedValue]
+  TPF_DAVOF_METHOD: [exactSphere]
+  TPF_AFE_CONSISTENCY: ["false"]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 30
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
