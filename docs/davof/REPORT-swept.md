@@ -5212,3 +5212,83 @@ Registered before the runs:
   normalAndAlpha if P1-1, P2-1, P3-1 hold and P2-2 / P3-2 hold at N 32 and
   N 64; the Reset variant if P3-2's second clause holds and its parallel
   identity does; else the numbers decide and are reported as they are.
+
+#### Results: the tolerance defect of the tetrahedra, G1 and G5 (2026-11-07)
+
+The first matrix pass (fork 1306749; jobs 56013036-56013040, kept as
+`matrix/*.tets-notol`) found closureThenTets and signedTets breaking the
+plane gate on the oblique plane N 40 (L1(alphaf) 3.1e-4 / 4.1e-4 against
+closure's 2.5e-13, max |V_closure - V_tets| / V_c 4.0e-2 on 17 / 30
+pieces). The independent truth on those pieces (`piece_truth.py`, Monte
+Carlo with the generalized winding number): the closure was RIGHT on all
+17 (0.95 V_c = MC to 1e-19) and the tetrahedra WRONG (0.99 V_c), with
+negative volumes on contact-only pieces (-0.02 V_c for a true 0). Cause: a
+swept face lying in a cell plane at round-off distance (the lateral faces
+of a prism in the cell's lateral planes, the swept face in the face plane)
+produced a spurious cap polygon of the face's size, because the clip had
+no coplanar tolerance. Fix (fork 25e6ebc): a vertex within 1e-12 L of a
+clipping plane is on the plane, kept, no crossing (the closure's coplanar
+rule); the same in `piece_truth.py`. After the fix (job 56014032): 0
+dumped pieces, max |V_closure - V_tets| / V_c 5.8e-13 over the run, the
+plane gate 2.2e-13 (closureThenTets) and 8.7e-14 (signedTets). The two
+pieces of the deformation dump on which the tetrahedra had disagreed with
+MC (T-1, 104 of 106) are the same defect. The whole matrix was re-run on
+25e6ebc (jobs 56014033-56014037); every number below is from that build.
+
+G1 (`csv/matrix_G1.csv`; 20 steps, writePrecision 17, every setting
+against closure, max |dalpha| over the cells and max |dalphaf| over the
+faces of the last write):
+
+| case | one-donor fallbacks of closure (20 steps) | cTT: tets pieces, max\|dalpha\|, max\|dalphaf\| | sT: max\|dalpha\|, max\|dalphaf\| | plane gate L1(alphaf): closure / cTT / sT |
+|---|---|---|---|---|
+| rotation N 32 (OF Co 1) | 0 | 0, bit for bit | 9.0e-12, 1.3e-9 | - |
+| rotation N 64 (OF Co 1, 8 ranks) | 0 | 0, bit for bit | 1.1e-9, 9.8e-7 | - |
+| diagonal N 32 (OF Co 1) | 0 | 0, bit for bit | 9.2e-13, 3.4e-10 | - |
+| plane N 40 exact, normal arm | 34261 | 29996, 8.3e-9, 8.3e-9 | 8.3e-9, 8.3e-9 | 0 / 0 / 0 (min alpha -8.3e-9 / -1.9e-11 / -8.9e-13) |
+| plane N 20 ring, normal | 4116 | 3480, 3.1e-12, 3.1e-12 | 3.1e-12, 3.0e-12 | 0 / 0 / 0 |
+| plane N 20 ring, oblique | 1933 | 1479, 1.9e-14, 1.2e-14 | 2.2e-14, 1.0e-14 | 0 / 0 / 0 |
+| plane N 40 ring, normal | 34299 | 30078, 7.3e-9, 7.3e-9 | 7.3e-9, 7.3e-9 | 0 / 0 / 0 (min alpha -7.3e-9 / -1.1e-11 / -7.5e-13) |
+| plane N 40 ring, oblique | 15026 | 11566, 4.8e-13, 8.8e-12 | 9.6e-13, 5.7e-12 | 2.5e-13 / 2.2e-13 / 8.7e-14 |
+
+The validation counter (sweptPieceValidate) on every piece where both
+apply: max |V_closure - V_tets| / V_c 7.0e-14 (diagonal), 1.7e-13 (rot
+32), 9.7e-13 (rot 64), 4.7e-14 .. 5.8e-13 (the plane cases). The
+bounded-face counter: 0 on the plane and the diagonal cases, 702 (rot 32)
+and 23132 (rot 64) faces over 20 steps, all partial changes (s = 0 on 0 /
+6), max |1 - s| = 1.0. The rule counter (cells with |m_c| above the
+threshold and alpha outside (tol, 1 - tol)): 0 on the plane and the
+diagonal cases, 30 (rot 32) and 62 (rot 64) over 20 steps, all with a
+plane under normalOnly.
+
+Verdicts on G1: P1-1 holds on the rotation and the diagonal (bit for bit,
+the fallback and the tets counters 0) and is FALSIFIED in its premise on
+the plane cases: the production closure path takes the one-donor clip on
+1933 .. 34299 faces in 20 steps there (the pieces of a prism in the
+lateral planes have no solvable cap system), so closureThenTets differs
+from closure by 1e-14 .. 3e-12 at N 20 and 7 .. 8e-9 at N 40 (the
+one-donor clip's own error: closure's min alpha -8.3e-9 against
+closureThenTets' -1.9e-11); the plane gate passes for all three (1e-13);
+signedTets is round-off against closure (1e-14 .. 9e-12 in alpha, up to
+1.3e-9 (rot 32) and 9.8e-7 (rot 64, 8 ranks) in alphaf: the loop's
+round-off amplification). P1-2 holds (<= 1e-12 on every piece of the
+eight). P2-1 holds: none / scale / recompute bit for bit where the
+bounding never fires (plane, diagonal); on the rotation scale differs from
+none by 7e-13 / 2e-11 (N 32) and 4e-10 / 1.3e-8 (N 64) in alpha /
+alphaf, recompute by 2e-5 / 1.2e-4 and 3e-6 / 3e-4 (442 and 7119 faces
+recomputed, the mean positioning 3-5 evaluations). P3-1 holds on the
+plane and the diagonal (counter 0, bit for bit) and is FALSIFIED on the
+rotation: 30 / 62 such cells in 20 steps, and the rules change the result
+by 7.6e-4 / 4.2e-4 (normalAndAlpha) and 6.3e-4 / 2.1e-5
+(normalAndAlphaReset) in alpha at N 32 / N 64: the planes of those cells
+carried flux.
+
+G5 (`csv/matrix_G5.csv`; the rotation N 32 on np 2 / 4 / 8 against np 1
+after reconstruction, 20 steps): closureThenTets 2.8e-12 / 1.7e-12 /
+1.3e-12 in alpha and 6.2e-10 / 4.2e-10 / 7.4e-10 in alphaf; signedTets
+7.6e-14 / 1.9e-13 / 5.3e-14 and 3.0e-11 / 2.0e-11 / 2.9e-11; scale the
+same as closureThenTets (no bounding fired in 20 steps on this case);
+normalAndAlpha 1.6e-12 / 1.9e-12 / 1.6e-12 and 6.8e-10 / 2.8e-10 /
+2.6e-10; normalAndAlphaReset 7.9e-13 / 7.5e-13 / 7.1e-13 and 3.4e-10 /
+4.4e-10 / 4.4e-10. P1-5, P2-3, P3-3 hold to 1e-12 in alpha; alphaf is at
+the processor round-off of 1e-10 (the same level as the parallel
+validation of 2026-11-02).
