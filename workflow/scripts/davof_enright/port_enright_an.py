@@ -23,16 +23,16 @@ f = E.f
 def main():
     runs = []
     for d in sorted(glob.glob(W + "/enright-time/N*_co*")):
-        tf = d + "/timing.csv"
-        if not os.path.isfile(tf): continue
+        tfs = sorted(glob.glob(d + "/timing*.csv"))
+        if not tfs: continue
         sac = {}
         for sf in glob.glob(d + "/sacct_steps*.txt"):
             for l in open(sf):
                 p = l.strip().split("|")
                 if len(p) >= 4 and "_r" in p[1]: sac[p[1]] = int(p[3])
-        for t in csv.DictReader(open(tf)):
+        for t in (row for tf in tfs for row in csv.DictReader(open(tf))):
             c = "%s/%s_%s_r%s" % (d, t["method"], t["route"], t["rep"])
-            logn = "log.davofAdvectorFoam" if t["route"] == "leia" else "log.advectorVoF"
+            logn = "log.davofAdvectorFoam" if t["route"] != "fork" else "log.advectorVoF"
             if not os.path.isfile(c + "/" + logn): continue
             steps, abort, ended = E.read_log(c + "/" + logn)
             R = E.conv_rows(c)
@@ -89,10 +89,11 @@ def main():
         table.append(row)
     byk = {(r["N"], r["co_index"], r["method"], r["route"]): r for r in table}
     for r in table:
-        o = byk.get((r["N"], r["co_index"], r["method"], "fork" if r["route"] == "leia" else "leia"))
-        r["wall_ratio_leia_over_fork"] = (r["wall_med"]/o["wall_med"]) if (o and r["route"] == "leia" and o["wall_med"]) else nan
+        # every leia route (leia: v2606's cutCellPLIC; leiaGF: the opt-in grazingCut fork) against the fork
+        o = byk.get((r["N"], r["co_index"], r["method"], "fork")) if r["route"] != "fork" else None
+        r["wall_ratio_leia_over_fork"] = (r["wall_med"]/o["wall_med"]) if (o and o["wall_med"]) else nan
         r["identity"] = ""
-        if o and r["route"] == "leia":
+        if o:
             if r["method"] in E.DAVOF:
                 p = subprocess.run([sys.executable, os.path.join(HERE, "..", "port_identity_check.py"), o["case"], r["case"]], capture_output=True, text=True)
                 r["identity"] = "bit for bit" if p.stdout.strip().endswith("ALL IDENTICAL") else "DIFFERENT (see port_identity_check)"

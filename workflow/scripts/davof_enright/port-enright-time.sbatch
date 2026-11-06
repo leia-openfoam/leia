@@ -16,6 +16,10 @@
 # (that loop is not ported). REPS repetitions of ring, one of the others; endTime T = 3,
 # the fields and the diagnostics at T/4, T/2, 3T/4, T.
 #   sbatch -J port-enright-N<N>-co<CO> -n <NP> -t <limit> --export=ALL,N=..,CO=0|1 port-enright-time.sbatch
+# Optional: ROUTES="leia fork" (a third route, leiaGF, is the leia binary with `grazingCut fork`,
+# the opt-in davofCutCellPLIC, PORT-DESIGN 1.2 item 1); METHODS="ring rdf prism"; REP0/REP1
+# the repetitions to run (then only those runs of those methods and routes are removed, the
+# others of the cell stay, and the timing file carries the suffix _r<REP0>_<methods>_<routes>).
 W=/work/scratch/tm83tomy/davof/agents/port
 S=$W/leia/studies/davof
 module purge
@@ -30,8 +34,12 @@ END=3; WI=0.75
 echo "fork $(git -C $W/TwoPhaseFlow log --oneline -1 | cut -c1-70); leia $(git -C $W/leia log --oneline -1 | cut -c1-70)"
 echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), cores $(nproc --all), job $SLURM_JOB_ID, np $NP, N $N, CO index $CO"
 echo "advectorVoF $(command -v advectorVoF); davofAdvectorFoam $(command -v davofAdvectorFoam)"
+ROUTES=${ROUTES:-leia fork}; METHODS=${METHODS:-ring rdf prism}
 T=$W/enright-time/N${N}_co${CO}
-rm -rf $T; mkdir -p $T
+if [ -z "$REP0" ]; then rm -rf $T
+else for m in $METHODS; do for ro in $ROUTES; do for r in $(seq $REP0 ${REP1:-$REP0}); do rm -rf $T/${m}_${ro}_r$r; done; done; done; fi
+mkdir -p $T
+SUF=${REP0:+_r${REP0}_${METHODS// /-}_${ROUTES// /-}}
 pick() { /usr/bin/python3 - "$1" "$2" "$CO" <<'EOF'
 import json, glob, os, sys
 st, row, co = sys.argv[1], sys.argv[2], int(sys.argv[3])
@@ -72,21 +80,28 @@ prep() { # method route rep -> case dir
   foamDictionary -entry writePrecision -set 17 $c/system/controlDict > /dev/null
   # the prism row's preparation is already a fork-route case; the others become one by the three lines
   [ $route = fork ] && [ $m != prism ] && toFork $c
+  # the leiaGF route: the leia binary with the fork's grazing-cut threshold (the opt-in)
+  if [ $route = leiaGF ]; then
+    sed -i 's/^\(\s*\)grazingCut\s\+openfoam;/\1grazingCut fork;/' $c/system/fvSolution
+    grep -q 'grazingCut\s\+fork;' $c/system/fvSolution || echo "LEIAGF: grazingCut not set in $c" >&2
+  fi
   echo "$src" > $c/.source
   echo $c
 }
-csv=$T/timing.csv
+csv=$T/timing$SUF.csv
 echo "N,np,co_index,method,route,rep,steps,dt,end_time,clock_s,exec_s,wall_s,median_step_s,node" > $csv
 orders=("ring rdf prism" "rdf prism ring" "prism ring rdf")
-for r in $(seq 1 $REPS); do
+for r in $(seq ${REP0:-1} ${REP1:-$REPS}); do
   for m in ${orders[$(( (r-1) % 3 ))]}; do
     [ $r -gt 1 ] && [ $m != ring ] && continue
-    routes="leia fork"; [ $m = prism ] && routes="fork"
+    [[ " $METHODS " == *" $m "* ]] || continue
+    routes="$ROUTES"; [ $m = prism ] && routes="fork"
     [ $m = prism ] && [ -z "${SRC[prism]}" ] && continue
+    [ $m = prism ] && [[ " $ROUTES " != *" fork "* ]] && continue
     for route in $routes; do
       c=$(prep $m $route $r)
       par=""; [ $NP -gt 1 ] && par="-parallel"
-      if [ $route = leia ]; then app=davofAdvectorFoam; log=log.davofAdvectorFoam; else app=advectorVoF; log=log.advectorVoF; fi
+      if [ $route != fork ]; then app=davofAdvectorFoam; log=log.davofAdvectorFoam; else app=advectorVoF; log=log.advectorVoF; fi
       t0=$(date +%s.%N)
       (cd $c && srun --ntasks=$NP --cpu-bind=cores --kill-on-bad-exit=1 --job-name=${m}_${route}_r$r $app $par > $log 2>&1); rc=$?
       t1=$(date +%s.%N)
@@ -109,6 +124,6 @@ EOF
   done
 done
 sleep 5
-sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps.txt
-cat $T/sacct_steps.txt
+sacct -j $SLURM_JOB_ID -n -P -o JobID,JobName,Elapsed,ElapsedRaw,NNodes,NTasks,State > $T/sacct_steps$SUF.txt
+cat $T/sacct_steps$SUF.txt
 echo ENRIGHT-TIME-DONE

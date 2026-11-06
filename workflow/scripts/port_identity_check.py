@@ -123,8 +123,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("fork"); ap.add_argument("leia"); ap.add_argument("--verbose", action="store_true")
     a = ap.parse_args()
-    if os.path.isfile(os.path.join(a.fork, "case_params.json")) and os.path.isfile(os.path.join(a.leia, "case_params.json")):
-        # two case directories (e.g. the fork's N 64 case against the one case of a proof study)
+    if os.path.isfile(os.path.join(a.fork, "system", "controlDict")) and os.path.isfile(os.path.join(a.leia, "system", "controlDict")):
+        # two case directories (e.g. the fork's N 64 case against the one case of a proof study,
+        # or the two routes' runs of a timed cell, which carry no case_params.json)
         pairs = [(os.path.basename(a.fork) + " vs " + os.path.basename(a.leia), a.fork, a.leia)]
     else:
         cases_f = sorted(d for d in os.listdir(a.fork) if re.search(r"_\d{5}$", d))
