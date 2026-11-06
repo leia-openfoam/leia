@@ -53,12 +53,13 @@ SRC[rdf]=$(pick RDF plicRDF)
 for m in ring exact rdf; do echo "source $m ${SRC[$m]}"; done
 # the fork-route twin: the three tokenised lines (materialize.py DAVOF_* tokens)
 toFork() {
-  sed -i 's/^application     davofAdvectorFoam;/application     advectorVoF;/' $1/system/controlDict
-  sed -i 's/("libleiaDavofFunctionObjects.so")/("libpostProcess.so")/' $1/system/controlDict
+  # foamDictionary reformats the dictionaries it edits (spaces inside the parentheses),
+  # so the patterns tolerate white space; warnings go to stderr (prep's stdout is the path)
+  sed -i 's/^application\s\+davofAdvectorFoam;/application     advectorVoF;/' $1/system/controlDict
+  sed -i 's/(\s*"libleiaDavofFunctionObjects.so"\s*)/("libpostProcess.so")/' $1/system/controlDict
   sed -i 's/^\(\s*\)advectionScheme\s\+\(davofSwept\|isoAdvector\);/\1advectionScheme      isoAdvection;/' $1/system/fvSolution
-  local n=$(grep -c 'advectorVoF\|libpostProcess\|advectionScheme      isoAdvection' $1/system/controlDict $1/system/fvSolution | awk -F: '{s+=$2} END {print s}')
-  [ "$n" = 3 ] || echo "TOFORK: $n of 3 lines rewritten in $1"
-  [ $NP -gt 1 ] && for p in $1/processor*; do cp $1/system/controlDict $1/system/fvSolution $p/system/ 2>/dev/null; done
+  local n=$(cat $1/system/controlDict $1/system/fvSolution | grep -c 'application\s\+advectorVoF;\|"libpostProcess.so"\|advectionScheme\s\+isoAdvection;')
+  [ "$n" -ge 3 ] || echo "TOFORK: $n of 3 lines rewritten in $1" >&2
   true
 }
 prep() { # method route rep -> case dir
