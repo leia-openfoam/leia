@@ -18,8 +18,12 @@
 #   sbatch -J davof-enright-N<N>-co<CO> -n <NP> -t <limit> --export=ALL,N=..,CO=0|1 enright-time.sbatch
 # REP0 / REP1 (optional): only the repetitions REP0..REP1 (one job per repetition for the
 # long cells); their files carry _r<REP0>. METHODS (optional): only these methods.
-W=/work/scratch/tm83tomy/davof/agents/enright
-S=$W/leia/studies/davof
+# ENRIGHT_W (optional): the workspace holding leia/ and the fork clone (default the enright
+# agent's); APP (optional): the solver (default advectorVoF; the leia app of the port takes
+# its place), STUDIES (optional): the prepared studies' directory (default $W/leia/studies/davof).
+W=${ENRIGHT_W:-/work/scratch/tm83tomy/davof/agents/enright}
+S=${STUDIES:-$W/leia/studies/davof}
+APP=${APP:-advectorVoF}
 module purge
 module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv
 source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
@@ -28,9 +32,9 @@ cd $W/leia && . etc/leia-env.sh || exit 1
 REPS=${REPS:-3}
 NP=$SLURM_NTASKS
 END=3; WI=0.75
-echo "fork $(git -C $W/TwoPhaseFlow log --oneline -1 | cut -c1-90); leia $(git -C $W/leia log --oneline -1 | cut -c1-90)"
+echo "fork $(git -C $W/TwoPhaseFlow log --oneline -1 2>/dev/null | cut -c1-90); leia $(git -C $W/leia log --oneline -1 | cut -c1-90)"
 echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), cores $(nproc --all), job $SLURM_JOB_ID, np $NP, N $N, CO index $CO"
-echo "advectorVoF $(command -v advectorVoF)"
+echo "$APP $(command -v $APP)"
 T=$W/time/N${N}_co${CO}
 if [ -z "$REP0" ]; then rm -rf $T
 elif [ -n "$METHODS" ]; then for m in $METHODS; do rm -rf $T/${m}_r$REP0; done
@@ -78,7 +82,8 @@ for r in $(seq ${REP0:-1} ${REP1:-$REPS}); do
     [ $r -eq ${REP0:-1} ] && echo "$m: $(grep -E '^(deltaT|endTime|writeInterval)' $c/system/controlDict | tr -s ' ' | tr '\n' ' ')"
     par=""; [ $NP -gt 1 ] && par="-parallel"
     t0=$(date +%s.%N)
-    (cd $c && srun --ntasks=$NP --cpu-bind=cores --kill-on-bad-exit=1 --job-name=${m}_r$r advectorVoF $par > log.advectorVoF 2>&1); rc=$?
+    # the log keeps the converter's name whatever the app
+    (cd $c && srun --ntasks=$NP --cpu-bind=cores --kill-on-bad-exit=1 --job-name=${m}_r$r $APP $par > log.advectorVoF 2>&1); rc=$?
     t1=$(date +%s.%N)
     (cd $c && python3 $W/leia/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv > log.metrics 2>&1)
     /usr/bin/python3 - $c $m $r $rc $t0 $t1 >> $csv <<'EOF'

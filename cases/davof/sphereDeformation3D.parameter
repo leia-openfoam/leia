@@ -99,7 +99,11 @@ values
     TPF_SWEPT_DUMP ( false );
     TPF_PLANE_SOURCE ( anchor );
     TPF_SWEPT_FACE_LOG ( false );
-    TPF_WRITE_PRECISION ( 12 );
+    // 17: the fields, the function objects and the log (OpenFOAM sets the
+    // stream precision from writePrecision) at full double precision, so that
+    // the leia re-run after the port can be checked bit for bit (Tomislav,
+    // 2026-11-06)
+    TPF_WRITE_PRECISION ( 17 );
     TPF_SWEPT_CAP_SET ( final );
     TPF_SWEPT_CONSISTENCY_LOG ( false );
     TPF_SWEPT_CONSISTENT ( true );

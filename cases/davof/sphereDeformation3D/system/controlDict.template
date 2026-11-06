@@ -20,7 +20,9 @@ FoamFile
 // from the study tokens (cases/davof/sphereDeformation3D.parameter); the
 // velocity comes from the setFlow block of fvSolution.
 
-application     advectorVoF;
+// the solver token of the study (the fork's advectorVoF; the leia app of the
+// port takes its place through the same token)
+application     @!solver!@;
 
 // repetition @!TPF_REPEAT!@ of a timing study (the token is an axis that changes nothing in the case)
 
@@ -101,7 +103,7 @@ functions
         faceErrorCsv    @!TPF_AFE_FACE_CSV!@;
         writeControl    @!TPF_AFE_WRITE_CONTROL!@;
         writeInterval   @!TPF_AFE_WRITE_INTERVAL!@;
-        writePrecision  12;
+        writePrecision  @!TPF_WRITE_PRECISION!@;
     }
     // Eshape = sum |alpha - alpha_exact| V against the sphere at rest (the
     // shape error at t = T; the symmetric difference of the two volumes for
@@ -121,7 +123,7 @@ functions
         axisPoint       (@!TPF_SPHERE_CX!@ @!TPF_SPHERE_CY!@ @!TPF_SPHERE_CZ!@);
         writeControl    @!TPF_VFE_WRITE_CONTROL!@;
         writeInterval   @!TPF_VFE_WRITE_INTERVAL!@;
-        writePrecision  12;
+        writePrecision  @!TPF_WRITE_PRECISION!@;
     }
 }
 
