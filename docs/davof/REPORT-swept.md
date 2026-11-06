@@ -5761,3 +5761,285 @@ the leia commit that last touched the case template, the study configuration and
 the sha256 over the rendered dictionaries of the prepared cases) are in
 `iso/csv/iso_stamps.csv`; the recompute-on-change rule itself is the port agent's stamp
 mechanism in leia's workflow, which this track will use when it lands.
+
+## The ring normal's stencil (2026-11-08)
+
+Tomislav's task (2026-11-08): measure the stability and the accuracy of the ring
+normal's stencil variants in the swept-face advection, in leia. Branch
+`davof-stencil` from `davof-port` a763089e, clone
+`/work/scratch/tm83tomy/davof/agents/stencil/leia`, workspace
+`/work/scratch/tm83tomy/davof/agents/stencil` (its `.my_jobs`, the CSVs in `csv/`).
+
+**The normal.** The normal of cell k is the ring area normal
+`d_k = sum_{j in R(k)} m_j`, `m_j = -sum_f alpha_f S_f` the area normal of cell j
+(`|m_j| = |Sigma_j|` for a plane), `n_k = d_k/|d_k|`: the area-weighted average of
+the ring's unit normals, R(k) the cells sharing a vertex with k. Its stability comes
+from the division by the ring's total patch area; the own normal `m_k/|m_k|` (weights
+summing to one) grew 1.16 per step on the translated plane (the tilt diagnostic of
+2026-10-26).
+
+**The variants** (`src/davof/normalModels/ringAreaNormal.H`; opt-in keys of
+`normalModel ringArea`, the production path bit for bit at the defaults; the keys in
+`docs/davof/README.md`; the studies sweep the one word `TPF_NORMAL_STENCIL` of
+`tpf_rows.NORMAL_STENCILS`, rendered as the block `TPF_NORMAL_STENCIL_KEYS` after
+the `noNormalFallback` line of the four swept-face templates, empty for
+`production`, so every dictionary rendered before stays byte for byte and the running
+baseline's stamps stand):
+
+| variant | what it is | key |
+|---|---|---|
+| production | one ring, area weights | (none) |
+| twoRings | the union of the rings of the ring's cells, each cell once, area weights; the rings of ring cells on other processors are requested from their owners (two `PstreamBuffers` exchanges per step: the requests, then the stencils with their m values) | `ringStencil two` |
+| kernelGaussian | one ring, `w_j = |Sigma_j| K(q)`, `q = |x_j - x_k|/h_k` on the cell centres, `K = exp(-q^2)` cut at 2 h (R. A. Gingold, J. J. Monaghan, Mon. Not. R. Astron. Soc. 181 (1977) 375-389, doi:10.1093/mnras/181.3.375) | `ringKernel gaussian` |
+| kernelWendland | the Wendland C2 function of minimal degree, `K = (1 - q/2)^4 (1 + 2 q)`, support 2 h (H. Wendland, Adv. Comput. Math. 4 (1995) 389-396, doi:10.1007/BF02123482); the face, edge and corner neighbours weigh 0.19, 0.03 and 0.001 of the cell's own patch | `ringKernel wendland` |
+| angle30, angle60 | a ring cell whose own normal deviates from `d_k` by more than 30 or 60 degrees is dropped and the sum recomputed; a vanishing filtered sum keeps `d_k` | `ringAngleFilter 30` |
+| planeFitMean | the weighted least-squares plane through the ring's patch centroids (the positioned planes' centroids of the first pass; two positioning passes as ringFit): the eigenvector of the smallest eigenvalue of `sum_j w_j (x_j - c)(x_j - c)^T`, `w_j = |Sigma_j|`, c the weighted centroid, the sign from `d_k` (K. Pearson, Philos. Mag. 2 (1901) 559-572, doi:10.1080/14786440109462720; H. Hoppe, T. DeRose, T. Duchamp, J. McDonald, W. Stuetzle, Computer Graphics 26 (1992) 71-78, doi:10.1145/133994.134011) | `ringPlaneFit mean` |
+| planeFitOwn | the same about the cell's own centroid `x_k` with the weights corrected to `w'_j = w_j (1 + lambda . (x_j - x_k))`, lambda from the 3 x 3 moment system (its pseudo-inverse over the eigenvalues above the tolerance), so that the centring condition `sum_j w'_j (x_j - x_k) = 0` holds exactly (the linear moment correction of the reproducing kernel particle method, W. K. Liu, S. Jun, Y. F. Zhang, Int. J. Numer. Methods Fluids 20 (1995) 1081-1106, doi:10.1002/fld.1650200824) | `ringPlaneFit own` |
+| ringQuadric | the ring quadric of the preprint (`normalModel ringFit`, weight area, alignTol 0.2, minCells 6), present in the port | `normalModel ringFit` |
+
+The plane fit's eigen-decomposition is a cyclic Jacobi rotation (C. G. J. Jacobi, J.
+Reine Angew. Math. 30 (1846) 51-94, doi:10.1515/crll.1846.30.51): OpenFOAM's
+`eigenValues()`/`eigenVectors()` (the roots of the characteristic cubic) returned on
+the coplanar ring of the translated plane a normal 45 degrees off without a warning
+(eigenvalues 1e-24, 1.4e-8, 3.6e-8 in units of h^2 |Sigma|, L1(n) 0.77 at step 1);
+the Jacobi rotations give the plane's normal to 2e-15 (the debug key
+`ringPlaneFitDebug N`; commit 403be242). The first attempt of the plane studies ran
+on the binary before this fix and was cancelled; three of its solves that were still
+running finished after the rebuild, and because the stamp hashes the binary on disk
+at the END of a run they were adopted as current (a hole of the stamp mechanism for
+a run that overlaps a rebuild): the three cases were identified by their launch
+record's job id and recomputed. Every result below is from the binary of 403be242
+(build job 56029382) and the production rows reproduce the port's record to the
+digit (G-0).
+
+**The tests** (`config/davof/stencil_*.yaml` from `make_stencil_configs.py`, the
+predictions G-0..2, S-1..4, A-1..6, R-1..3, D-1..3 registered in the headers before
+any run; every variant on the swept-face advection in the recommended setting,
+signedTets + scale + normalAndAlpha, grazingCut fork, the four round-4 keys, write
+precision 17; the tables by `davof_stencil_tables.py` below, the per-case CSVs in
+`/work/scratch/tm83tomy/davof/agents/stencil/csv`; every cell three times where the
+wall clock is read, the repetitions identical to the digit everywhere):
+
+1. The plane gate (`stencil_plane_gate`: N 40/80, Co 0.2/0.5, both arms, 72 serial
+   cases) and the seeded perturbation (`stencil_plane_growth`: the same cells with
+   the partial faces' initial fractions perturbed by 1e-8 times a uniform random
+   field, seed 20261108, `davof_perturb_alphaf.py`; END_TIME 1e-3 = 50 steps at N 40
+   Co 0.2, 100 at N 80 Co 0.2, 20 / 40 at Co 0.5). The box is open (the plane leaves
+   through the boundary), so the mass column of the plane tables is the outflow, not
+   a conservation measure.
+2. The translated sphere (`stencil_sphereN32/64/128`: Co 0.2, one period, 1/8/64
+   ranks, three repetitions).
+3. The rotation (`stencil_rotation`: N 32/64 serial, one turn at Co 0.2, three
+   repetitions) and the 3D deformation (`stencil_deformation`: the standing template
+   at N 32, OpenFOAM Co 0.5, T = 3, three repetitions).
+
+**Verdicts.**
+
+Test 1a, the gate. G-0 HELD: the production rows equal the port's record
+(port_enrightKeys_plane_leia, recommended, N 40 Co 0.5, both arms) at every step to
+the digit. G-1 HELD for eight of the nine variants: the run maxima of L1(alphaf) and
+L1(n) stay below 6.1e-13 in all 64 of their cases; planeFitOwn fails one cell (N 80
+Co 0.2 oblique: max L1(alphaf) 1.2e-8, L1(n) 3.7e-8): where the moment-corrected
+weights go negative the covariance is indefinite, the guard (eigenvalues against
+1e-10 of the trace) misses the mildly indefinite cases and the wrong eigenvector is
+taken. G-2 HELD: angle30 and angle60 drop no cell on the plane and reproduce
+production bit for bit (8 of 8 cells each).
+
+Test 1b, the seeded perturbation (the step-1 value of L1(alphaf) is 1.5e-10 for the
+sum-type variants, the seed's L1 being of the order 1e-9; the gate's floor is
+1e-13..3e-13). S-1 HELD in substance: production contracts with g_early 0.68..0.75
+per step and ends at 3e-13..1.8e-11 (the late factor 0.91..0.99: the decay slows
+towards a slow mode about 10 to 100 times above the floor); twoRings (0.67..0.73,
+ends 2e-13..6e-12), angle30/60 (= production), kernelGaussian (0.72..0.76, ends
+1e-12..3e-11), ringQuadric (0.68..0.77, ends 1e-12..2e-11) contract alike; the "below
+1e-11 at Co 0.2" clause is missed by kernelGaussian and ringQuadric at N 40 by a
+factor 1.6. S-2 FALSIFIED: kernelWendland, the nearest to the own normal (the cell
+holds 40 % of the weight), contracts everywhere (0.73..0.77) and grows nowhere; the
+stability of the ring sum does not need the equal weights, the division by the
+kernel-weighted patch area is enough. S-3 as expected: planeFitOwn contracts at both
+Co (0.67..0.86). S-4 HELD: g_early orders kernelGaussian > production > twoRings in
+every one of the eight cells. planeFitMean removes the seed within the first step
+(L1(alphaf) after step 1 at the floor, 1e-13, in every cell; its factors of 1.0 are
+the floor's): the plane through the ring's centroids does not see a face-fraction
+perturbation at all.
+
+Test 2, the translated sphere. A-1 half HELD: ringQuadric has the lowest L1(n) at
+every N (2.44e-2, 1.15e-2, 5.27e-3 against production's 4.11e-2, 2.24e-2, 1.09e-2:
+a factor 2.1 at N 128), its order is 1.11, not >= 1.5; production's 0.96. A-2 HELD:
+twoRings (order 1.18; at N 128 1.092e-2, equal to production's 1.091e-2),
+kernelGaussian (0.97; 0.91 x production) and kernelWendland (0.97; 1.50 x) are first
+order within a factor 2 of production. A-3 FALSIFIED at every N: the angle filters
+drop cells on the sphere already at N 128 and differ from production in the fourth
+digit (angle30 L1(alphaf) 5.606e-3, angle60 5.573e-3, production 5.560e-3 at N 128).
+A-4 FALSIFIED: the centring condition is not realisable on the one-ring stencil of a
+curved interface with non-negative weights; planeFitOwn fell back to d_k in every
+sphere cell (416 of 416 at N 32, the corrected covariance indefinite), so its order
+0.95 is production's; planeFitMean's 0.97 at 1.07 x production. A-5 HELD at N 128
+(every per-step median within 1.02 x production, twoRings 1.09 x); at N 64 on 8
+shared ranks the ratios 1.13..1.29 are within the shared-node spread; at N 32 every
+variant ran faster than production (0.76..0.88 x, the production rows ran first on
+busier nodes). A-6 HELD: every case bounded to 1e-12, mass to 6e-13 %. Not
+predicted and the main finding of the test: the transported shape does not follow
+the normal's accuracy. At N 128 E_shape is lowest for twoRings (1.97e-5, -19 % against
+production's 2.44e-5, with L1(alphaf) 4.61e-3 against 5.56e-3) and highest for the
+sharp kernels (kernelGaussian 2.81e-5, kernelWendland 3.39e-5), while ringQuadric's
+halved L1(n) leaves E_shape at 2.50e-5 (+2 %): the wider and smoother the normal
+field, the better the transported fractions, whatever the normal's own error.
+
+Test 3a, the rotation. R-1 HELD: every variant completes both rungs bounded to 2e-12
+and conservative to 2e-12 %. R-2 FALSIFIED: the Spearman rank correlation between
+L1(n) and E_shape over the nine variants is -0.15 at N 32 and -0.07 at N 64; the best
+E_shape at N 64 is twoRings' (2.00e-4, -5 %, with the second-worst L1(n)),
+ringQuadric's halved L1(n) (1.20e-2 against 2.28e-2) gives E_shape 2.15e-4 (+1.5 %).
+R-3 FALSIFIED: angle30 drops up to 259 / 305 cells per step at N 32 / 64 and angle60
+22 / 112, the results differing from production by less than 1 %.
+
+Test 3b, the deformation (the loop's sensitivity bounds what the test can resolve:
+planeFitOwn carries production's normal in every cell and differs from production
+only by the two positioning passes, i.e. by round-off in the planes; it ends with
+E_shape 8.5e-3 against 9.3e-3 (-8 %) and min alpha -1.3e-3 against -1.3e-7, so at
+N 32 Co 0.5 differences in E_shape below about 10 % and the boundedness level between
+1e-7 and 1e-3 are properties of the realisation, not of the method). D-1 HELD for
+production (bounded to 1.3e-7), kernelGaussian (2.0e-7), angle30 (7.4e-8) and angle60
+(9.3e-8), kernelWendland at 2.2e-6 (twice the clause), FALSIFIED for planeFitMean,
+which is unbounded (-3.9e-4) with 3698 interface cells at T against 688 (the fit on
+the folded sheet takes both sides' centroids, L1(n) 1.44) and 2.5 x the wall clock;
+twoRings completes with E_shape 1.37 x production as predicted and is unbounded
+(-1.4e-3); ringQuadric completes unbounded (-7.9e-3, 42201 fit fallbacks over the
+run, 2.2 x the wall clock). D-2 half HELD: angle30 drops up to 17431 cells per step
+at T/2 and changes E_shape by -15 %; angle60 drops nearly as many (15225, not a tenth:
+the folded sheet's two sides are 180 degrees apart and both thresholds drop them
+alike) and changes E_shape by -34 %, at the price of fragmentation (interface cells
+at T 780 / 981 against 688, L1(x) 1.4 x / 2.6 x, 2.2..2.5 x the wall clock). D-3 HELD
+trivially (planeFitOwn is production's normal). The one variant that improves the
+deformation while staying bounded and cheap is kernelGaussian: E_shape 7.0e-3 (-25 %),
+L1(x) 6.1e-2 (-28 %), L1(alphaf) 2.1e-1 (-19 %), bounded to 2e-7, 1.07 x the wall
+clock; kernelWendland has the lowest E_shape of the sum-type variants (6.2e-3) but
+worse L1(x) and L1(n) and more interface cells (856).
+
+**Recommendation.** Keep the one-ring area normal as the production default: it is
+the only variant that holds every gate, contracts the seeded perturbation at
+0.68..0.75 per step, stays bounded on the deformation and costs least. The
+stencil's width trades the two tests against each other: the wider stencil
+(twoRings) transports the sphere and the rotation best (-19 % / -5 % in E_shape) and
+the sheet worst (+37 %, unbounded); the sharper stencils (the kernels) do the
+opposite. The ring quadric halves the normal's error at every resolution (order 1.1)
+without improving the transported shape on the sphere or the rotation, and it is
+unbounded on the sheet: a second-order normal is not where the loop's accuracy is
+lost (the orders of L1(x) and E_shape, 1.85..1.9, and their values are the same for
+all nine normals to within 20 %), the first-order surface is. kernelGaussian is the
+one candidate to carry further (the deformation ladder N 64 / 128 and the 3D shear
+of the standing matrix): -25 % E_shape on the deformation while bounded, at -10 %
+L1(n) and +15 % E_shape on the sphere. The angle filter is a sheet device, not a
+normal: it removes the other side of a folded sheet from the sum (-15 % / -34 %
+E_shape) but fragments the state (2.2..2.5 x the cost); if the sheet's two sides are
+to be separated, it should be done in the interface-cell rule, not in the normal.
+planeFitOwn as realised (the moment-corrected weights) is void on curved interfaces
+and should be removed or replaced by the plane through x_k without re-weighting;
+planeFitMean has no feedback from the face fractions (the seed vanishes in one
+step) but fails on the sheet. Not done: a planeFit through x_k without the weight
+correction; the N 64 deformation rung; a variant whose stencil width follows the
+local feature size (one ring on a sheet thinner than 4 h, two rings elsewhere),
+which the two tests together suggest.
+
+**Housekeeping.** The workflow's Makefile capped `--resources tasks` at 12 for every
+profile but `profiles/slurm` and `slurm-fat`: under it snakemake scaled the np 64
+solve of stencil_sphereN128 down to 12 tasks and the srun inside the allocation
+failed ("More processors requested than permitted"); the cap is lifted for
+`profiles/slurm-small` and the new `profiles/slurm-stencil128` (the serial rules of
+a 128^3 case on four cores at 4 GB instead of one core at 16 GB, which Lichtenberg
+routes to the drained `mem` partition) in 9c95bcb8; `TASKS=10000` in the sbatch
+export does the same for an existing checkout. The same cap serialised the np 8 solves
+of stencil_sphereN64 (one at a time) and is the reason that study took 1.5 hours.
+The tables (the generated `stencil_tables.md`):
+
+### Test 1a: the plane gate (72 cases per variant: N 40/80, Co 0.2/0.5, both arms)
+
+| variant | completed | gate < 1e-11 | max L1(alphaf) | max L1(n) | min alpha | max excess | max |dev| % | cells dropped | fit fallbacks | = production | step / production |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| production | 8/8 | 8/8 | 2.842e-13 | 1.597e-13 | -4.776e-14 | 1.898e-13 | 9.752e+01 | 0 | 0 | 8/8 | 1.00 |
+| twoRings | 8/8 | 8/8 | 2.833e-13 | 8.108e-14 | -4.433e-14 | 1.898e-13 | 9.752e+01 | 0 | 0 | 0/8 | 1.07 |
+| kernelGaussian | 8/8 | 8/8 | 2.854e-13 | 2.803e-13 | -4.160e-14 | 1.898e-13 | 9.752e+01 | 0 | 0 | 0/8 | 0.98 |
+| kernelWendland | 8/8 | 8/8 | 2.894e-13 | 6.053e-13 | -4.181e-14 | 1.898e-13 | 9.752e+01 | 0 | 0 | 0/8 | 0.99 |
+| angle30 | 8/8 | 8/8 | 2.842e-13 | 1.597e-13 | -4.776e-14 | 1.898e-13 | 9.752e+01 | 0 | 0 | 8/8 | 1.02 |
+| angle60 | 8/8 | 8/8 | 2.842e-13 | 1.597e-13 | -4.776e-14 | 1.898e-13 | 9.752e+01 | 0 | 0 | 8/8 | 0.97 |
+| planeFitMean | 8/8 | 8/8 | 2.896e-13 | 7.837e-14 | -4.220e-14 | 1.898e-13 | 9.752e+01 | 0 | 726 | 0/8 | 1.02 |
+| planeFitOwn | 8/8 | 7/8 | 1.167e-08 | 3.731e-08 | -8.122e-13 | 2.631e-13 | 9.752e+01 | 0 | 122598 | 0/8 | 1.00 |
+| ringQuadric | 8/8 | 8/8 | 2.838e-13 | 1.802e-13 | -4.550e-14 | 1.898e-13 | 9.752e+01 | 0 | 3285 | 0/8 | 1.02 |
+
+G-0, the production rows against the port's record (port_enrightKeys_plane_leia, recommended): 2 of 2 shared cells identical to the digit at every step.
+
+### Test 1b: the seeded perturbation (1e-8 on the partial faces): g_early / g_late / L1(alphaf) after step 1 / at the end
+
+| variant | N 40 Co 0.2 normal | N 40 Co 0.2 oblique | N 40 Co 0.5 normal | N 40 Co 0.5 oblique | N 80 Co 0.2 normal | N 80 Co 0.2 oblique | N 80 Co 0.5 normal | N 80 Co 0.5 oblique |
+|---|---|---|---|---|---|---|---|---|
+| production | 0.68 / 0.98 / 1.9e-10 / 6.8e-12 | 0.71 / 0.95 / 2.0e-10 / 2.3e-12 | 0.75 / 0.97 / 1.5e-10 / 1.8e-11 | 0.75 / 0.91 / 1.6e-10 / 9.9e-12 | 0.68 / 0.99 / 1.8e-10 / 4.1e-12 | 0.70 / 0.97 / 1.9e-10 / 2.9e-13 | 0.73 / 0.97 / 1.5e-10 / 8.8e-12 | 0.74 / 0.91 / 1.6e-10 / 1.3e-12 |
+| twoRings | 0.67 / 0.98 / 9.2e-11 / 2.4e-12 | 0.69 / 0.93 / 9.7e-11 / 5.6e-13 | 0.70 / 0.96 / 7.5e-11 / 5.7e-12 | 0.73 / 0.89 / 7.8e-11 / 3.2e-12 | 0.68 / 0.99 / 8.5e-11 / 1.5e-12 | 0.68 / 0.99 / 8.8e-11 / 2.4e-13 | 0.70 / 0.97 / 7.1e-11 / 2.9e-12 | 0.72 / 0.91 / 7.2e-11 / 3.7e-13 |
+| kernelGaussian | 0.72 / 0.99 / 3.0e-10 / 1.6e-11 | 0.73 / 0.96 / 3.2e-10 / 7.7e-12 | 0.75 / 0.97 / 2.5e-10 / 3.4e-11 | 0.76 / 0.94 / 2.6e-10 / 2.3e-11 | 0.72 / 0.99 / 2.8e-10 / 8.0e-12 | 0.72 / 0.97 / 3.1e-10 / 1.2e-12 | 0.75 / 0.98 / 2.3e-10 / 1.6e-11 | 0.76 / 0.94 / 2.5e-10 / 6.0e-12 |
+| kernelWendland | 0.76 / 0.99 / 5.2e-10 / 2.8e-11 | 0.74 / 0.98 / 5.6e-10 / 2.0e-11 | 0.76 / 0.97 / 4.3e-10 / 5.9e-11 | 0.77 / 0.95 / 4.6e-10 / 4.7e-11 | 0.75 / 0.99 / 5.1e-10 / 1.4e-11 | 0.73 / 0.98 / 5.7e-10 / 7.8e-12 | 0.75 / 0.98 / 4.2e-10 / 2.9e-11 | 0.76 / 0.96 / 4.7e-10 / 2.3e-11 |
+| angle30 | 0.68 / 0.98 / 1.9e-10 / 6.8e-12 | 0.71 / 0.95 / 2.0e-10 / 2.3e-12 | 0.75 / 0.97 / 1.5e-10 / 1.8e-11 | 0.75 / 0.91 / 1.6e-10 / 9.9e-12 | 0.68 / 0.99 / 1.8e-10 / 4.1e-12 | 0.70 / 0.97 / 1.9e-10 / 2.9e-13 | 0.73 / 0.97 / 1.5e-10 / 8.8e-12 | 0.74 / 0.91 / 1.6e-10 / 1.3e-12 |
+| angle60 | 0.68 / 0.98 / 1.9e-10 / 6.8e-12 | 0.71 / 0.95 / 2.0e-10 / 2.3e-12 | 0.75 / 0.97 / 1.5e-10 / 1.8e-11 | 0.75 / 0.91 / 1.6e-10 / 9.9e-12 | 0.68 / 0.99 / 1.8e-10 / 4.1e-12 | 0.70 / 0.97 / 1.9e-10 / 2.9e-13 | 0.73 / 0.97 / 1.5e-10 / 8.8e-12 | 0.74 / 0.91 / 1.6e-10 / 1.3e-12 |
+| planeFitMean | 0.84 / 1.00 / 1.1e-13 / 7.2e-14 | 0.72 / 1.00 / 9.5e-13 / 1.2e-13 | 1.01 / 1.02 / 4.8e-14 / 6.2e-14 | 0.68 / 1.00 / 6.6e-13 / 8.3e-14 | 1.01 / 1.01 / 1.9e-13 / 3.7e-13 | 1.00 / 1.00 / 2.1e-13 / 2.4e-13 | 1.01 / 1.01 / 1.9e-13 / 2.7e-13 | 1.01 / 1.00 / 2.1e-13 / 2.3e-13 |
+| planeFitOwn | 0.67 / 0.97 / 2.6e-11 / 2.3e-13 | 0.79 / 0.98 / 3.5e-11 / 2.9e-12 | 0.68 / 0.92 / 1.6e-11 / 3.9e-13 | 0.86 / 1.00 / 3.1e-11 / 8.5e-12 | 0.71 / 1.01 / 1.2e-11 / 3.9e-13 | 0.80 / 1.00 / 1.6e-11 / 9.0e-09 | 0.72 / 1.00 / 6.7e-12 / 3.0e-13 | 0.82 / 1.09 / 1.4e-11 / 4.8e-11 |
+| ringQuadric | 0.71 / 0.99 / 1.3e-10 / 4.8e-12 | 0.72 / 0.99 / 1.5e-10 / 1.0e-11 | 0.75 / 0.97 / 1.0e-10 / 1.2e-11 | 0.77 / 0.97 / 1.2e-10 / 1.7e-11 | 0.68 / 0.99 / 1.2e-10 / 2.8e-12 | 0.71 / 0.99 / 1.3e-10 / 1.4e-12 | 0.73 / 0.98 / 9.3e-11 / 5.8e-12 | 0.75 / 0.95 / 1.1e-10 / 2.8e-12 |
+
+L1(alphaf) at step 1 (median over the cases): 1.509e-10; steps per cell: (40, '0.2', 'normal'): 50, (40, '0.2', 'oblique'): 50, (40, '0.5', 'normal'): 20, (40, '0.5', 'oblique'): 20, (80, '0.2', 'normal'): 100, (80, '0.2', 'oblique'): 100, (80, '0.5', 'normal'): 40, (80, '0.5', 'oblique'): 40.
+
+### Test 2: the translated sphere (Co 0.2, one period; N 32/64/128 on 1/8/64 ranks; three repetitions)
+
+| variant | completed | L1(n) N32 | L1(n) N64 | L1(n) N128 | p(n) | L1(alphaf) N128 | p(alphaf) | L1(x) N128 | p(x) | E_shape N128 | p(E) | min alpha | max excess | max |dev| % | wall N32 s (spread) | wall N64 s | wall N128 s | step/prod N32 | N64 | N128 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| production | 9/9 | 4.107e-02 | 2.239e-02 | 1.091e-02 | 0.96 | 5.560e-03 | 0.83 | 1.025e-04 | 1.86 | 2.443e-05 | 1.84 | -7.329e-13 | 7.905e-14 | 3.997e-13 | 34 (0.21) | 80 (0.45) | 814 (0.01) | 1.00 | 1.00 | 1.00 |
+| twoRings | 9/9 | 5.635e-02 | 2.625e-02 | 1.092e-02 | 1.18 | 4.609e-03 | 0.92 | 8.771e-05 | 1.88 | 1.968e-05 | 1.84 | -2.871e-13 | 6.395e-14 | 4.663e-13 | 29 (0.07) | 99 (0.24) | 817 (0.01) | 0.81 | 1.29 | 1.09 |
+| kernelGaussian | 9/9 | 3.788e-02 | 2.110e-02 | 9.878e-03 | 0.97 | 6.500e-03 | 0.83 | 1.153e-04 | 1.89 | 2.814e-05 | 1.85 | -5.947e-13 | 7.883e-14 | 4.774e-13 | 31 (0.13) | 97 (0.10) | 815 (0.00) | 0.86 | 1.21 | 1.01 |
+| kernelWendland | 9/9 | 6.294e-02 | 3.370e-02 | 1.637e-02 | 0.97 | 8.302e-03 | 0.78 | 1.379e-04 | 1.88 | 3.386e-05 | 1.84 | -7.795e-13 | 9.170e-14 | 5.440e-13 | 31 (0.19) | 105 (0.21) | 818 (0.34) | 0.86 | 1.17 | 1.01 |
+| angle30 | 9/9 | 4.194e-02 | 2.242e-02 | 1.092e-02 | 0.97 | 5.606e-03 | 0.85 | 1.029e-04 | 1.88 | 2.454e-05 | 1.86 | -7.062e-13 | 7.017e-14 | 4.330e-13 | 28 (0.07) | 88 (0.17) | 814 (0.34) | 0.81 | 1.13 | 1.01 |
+| angle60 | 9/9 | 4.112e-02 | 2.242e-02 | 1.091e-02 | 0.96 | 5.573e-03 | 0.83 | 1.026e-04 | 1.86 | 2.446e-05 | 1.84 | -7.289e-13 | 8.571e-14 | 4.330e-13 | 28 (0.29) | 93 (0.08) | 676 (0.22) | 0.81 | 1.17 | 1.01 |
+| planeFitMean | 9/9 | 4.468e-02 | 2.464e-02 | 1.170e-02 | 0.97 | 6.101e-03 | 0.85 | 1.112e-04 | 1.86 | 2.704e-05 | 1.87 | -5.855e-13 | 8.171e-14 | 4.885e-13 | 29 (0.10) | 92 (0.16) | 815 (0.17) | 0.76 | 1.17 | 1.02 |
+| planeFitOwn | 9/9 | 4.065e-02 | 2.231e-02 | 1.096e-02 | 0.95 | 5.665e-03 | 0.82 | 1.040e-04 | 1.85 | 2.487e-05 | 1.83 | -6.930e-13 | 1.115e-13 | 4.441e-13 | 29 (0.14) | 102 (0.24) | 547 (0.48) | 0.76 | 1.29 | 1.02 |
+| ringQuadric | 9/9 | 2.440e-02 | 1.150e-02 | 5.269e-03 | 1.11 | 5.619e-03 | 0.85 | 1.049e-04 | 1.89 | 2.500e-05 | 1.87 | -4.412e-13 | 7.683e-14 | 4.663e-13 | 31 (0.23) | 90 (0.06) | 573 (0.47) | 0.88 | 1.17 | 1.02 |
+
+Repetitions and identity: production N 32: reps identical, = production True; production N 64: reps identical, = production True; production N 128: reps identical, = production True; twoRings N 32: reps identical, = production False; twoRings N 64: reps identical, = production False; twoRings N 128: reps identical, = production False; kernelGaussian N 32: reps identical, = production False; kernelGaussian N 64: reps identical, = production False; kernelGaussian N 128: reps identical, = production False; kernelWendland N 32: reps identical, = production False; kernelWendland N 64: reps identical, = production False; kernelWendland N 128: reps identical, = production False; angle30 N 32: reps identical, = production False; angle30 N 64: reps identical, = production False; angle30 N 128: reps identical, = production False; angle60 N 32: reps identical, = production False; angle60 N 64: reps identical, = production False; angle60 N 128: reps identical, = production False; planeFitMean N 32: reps identical, = production False; planeFitMean N 64: reps identical, = production False; planeFitMean N 128: reps identical, = production False; planeFitOwn N 32: reps identical, = production False; planeFitOwn N 64: reps identical, = production False; planeFitOwn N 128: reps identical, = production False; ringQuadric N 32: reps identical, = production False; ringQuadric N 64: reps identical, = production False; ringQuadric N 128: reps identical, = production False.
+
+### Test 3a: the rotation (one turn, Co 0.2, N 32/64 serial, three repetitions)
+
+| variant | N | completed | min alpha | max excess | max |dev| % | E_shape | L1(x) | L1(n) | L1(alphaf) | interface cells end | max | cells dropped (max/step) | fit fallbacks | wall s (spread) | step/prod |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| production | 32 | 3/3 | -3.499e-13 | 1.354e-14 | 4.996e-13 | 7.612e-04 | 2.811e-03 | 4.944e-02 | 4.164e-02 | 414 | 447 | 0 | 0 | 109 (0.07) | 1.00 |
+| production | 64 | 3/3 | -7.723e-13 | 2.147e-13 | 1.998e-12 | 2.114e-04 | 7.584e-04 | 2.276e-02 | 2.323e-02 | 1739 | 1760 | 0 | 0 | 1094 (0.03) | 1.00 |
+| twoRings | 32 | 3/3 | -1.238e-13 | 1.354e-14 | 3.775e-13 | 6.953e-04 | 2.484e-03 | 6.198e-02 | 3.892e-02 | 413 | 452 | 0 | 0 | 112 (0.06) | 1.08 |
+| twoRings | 64 | 3/3 | -1.612e-12 | 5.256e-13 | 1.699e-12 | 2.004e-04 | 7.139e-04 | 2.786e-02 | 2.223e-02 | 1742 | 1760 | 0 | 0 | 1100 (0.12) | 1.02 |
+| kernelGaussian | 32 | 3/3 | -1.203e-14 | 1.354e-14 | 4.441e-13 | 7.992e-04 | 3.082e-03 | 4.425e-02 | 4.410e-02 | 422 | 449 | 0 | 0 | 111 (0.08) | 1.00 |
+| kernelGaussian | 64 | 3/3 | -8.665e-13 | 5.329e-14 | 7.327e-13 | 2.176e-04 | 7.881e-04 | 1.950e-02 | 2.400e-02 | 1744 | 1765 | 0 | 0 | 1096 (0.03) | 1.02 |
+| kernelWendland | 32 | 3/3 | -8.417e-13 | 1.354e-14 | 9.992e-13 | 8.374e-04 | 3.234e-03 | 6.632e-02 | 4.608e-02 | 423 | 449 | 0 | 0 | 114 (0.15) | 1.04 |
+| kernelWendland | 64 | 3/3 | -8.993e-13 | 1.983e-13 | 9.104e-13 | 2.209e-04 | 8.131e-04 | 2.835e-02 | 2.466e-02 | 1744 | 1767 | 0 | 0 | 1093 (0.09) | 1.02 |
+| angle30 | 32 | 3/3 | -4.756e-13 | 1.421e-14 | 4.663e-13 | 7.679e-04 | 2.841e-03 | 5.031e-02 | 4.211e-02 | 416 | 447 | 259 | 0 | 106 (0.05) | 1.00 |
+| angle30 | 64 | 3/3 | -6.812e-13 | 2.052e-13 | 2.076e-12 | 2.119e-04 | 7.600e-04 | 2.281e-02 | 2.328e-02 | 1739 | 1760 | 305 | 0 | 1140 (0.10) | 1.08 |
+| angle60 | 32 | 3/3 | -1.082e-14 | 3.264e-14 | 3.997e-13 | 7.616e-04 | 2.813e-03 | 4.947e-02 | 4.167e-02 | 414 | 447 | 22 | 0 | 106 (0.05) | 0.96 |
+| angle60 | 64 | 3/3 | -6.474e-13 | 2.185e-13 | 1.943e-12 | 2.115e-04 | 7.588e-04 | 2.277e-02 | 2.324e-02 | 1739 | 1760 | 112 | 0 | 1131 (0.17) | 1.08 |
+| planeFitMean | 32 | 3/3 | -6.720e-14 | 1.510e-14 | 4.330e-13 | 7.674e-04 | 2.822e-03 | 4.813e-02 | 4.208e-02 | 414 | 450 | 0 | 0 | 109 (0.28) | 1.04 |
+| planeFitMean | 64 | 3/3 | -9.433e-13 | 5.329e-14 | 1.976e-12 | 2.141e-04 | 7.683e-04 | 2.359e-02 | 2.355e-02 | 1737 | 1760 | 0 | 0 | 1144 (0.16) | 1.08 |
+| planeFitOwn | 32 | 3/3 | -2.788e-13 | 1.443e-14 | 3.886e-13 | 7.611e-04 | 2.811e-03 | 4.912e-02 | 4.163e-02 | 414 | 447 | 0 | 514212 | 114 (0.18) | 1.08 |
+| planeFitOwn | 64 | 3/3 | -7.713e-13 | 2.185e-13 | 1.787e-12 | 2.115e-04 | 7.587e-04 | 2.275e-02 | 2.323e-02 | 1739 | 1760 | 0 | 4128111 | 1122 (0.02) | 1.04 |
+| ringQuadric | 32 | 3/3 | -3.099e-13 | 1.354e-14 | 3.886e-13 | 7.831e-04 | 2.932e-03 | 3.466e-02 | 4.360e-02 | 422 | 448 | 0 | 0 | 129 (0.19) | 1.23 |
+| ringQuadric | 64 | 3/3 | -9.349e-13 | 5.329e-14 | 8.660e-13 | 2.146e-04 | 7.758e-04 | 1.197e-02 | 2.376e-02 | 1742 | 1760 | 0 | 9 | 1097 (0.06) | 1.02 |
+
+Spearman rank correlation at N 32 over 9 variants: L1(n) vs E_shape -0.15, L1(n) vs L1(x) -0.15.
+
+Spearman rank correlation at N 64 over 9 variants: L1(n) vs E_shape -0.07, L1(n) vs L1(x) -0.07.
+
+### Test 3b: the 3D deformation (N 32, OpenFOAM Co 0.5, T = 3, three repetitions)
+
+| variant | N | completed | min alpha | max excess | max |dev| % | E_shape | L1(x) | L1(n) | L1(alphaf) | interface cells end | max | cells dropped (max/step) | fit fallbacks | wall s (spread) | step/prod |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| production | 32 | 3/3 | -1.342e-07 | 1.003e-07 | 2.598e-12 | 9.315e-03 | 8.469e-02 | 7.216e-01 | 2.624e-01 | 688 | 1688 | 0 | 0 | 587 (0.05) | 1.00 |
+| twoRings | 32 | 3/3 | -1.414e-03 | 5.996e-07 | 2.043e-12 | 1.276e-02 | 1.089e-01 | 7.218e-01 | 3.102e-01 | 741 | 1523 | 0 | 0 | 611 (0.06) | 1.01 |
+| kernelGaussian | 32 | 3/3 | -1.992e-07 | 8.094e-09 | 4.774e-12 | 7.008e-03 | 6.127e-02 | 7.034e-01 | 2.122e-01 | 713 | 1458 | 0 | 0 | 575 (0.13) | 1.07 |
+| kernelWendland | 32 | 3/3 | -2.173e-06 | 1.815e-09 | 4.530e-12 | 6.197e-03 | 9.433e-02 | 8.365e-01 | 1.716e-01 | 856 | 1561 | 0 | 0 | 522 (0.03) | 1.01 |
+| angle30 | 32 | 3/3 | -7.397e-08 | 4.261e-13 | 2.998e-12 | 7.893e-03 | 1.210e-01 | 7.903e-01 | 2.080e-01 | 780 | 1852 | 17431 | 0 | 1288 (0.05) | 2.50 |
+| angle60 | 32 | 3/3 | -9.292e-08 | 2.243e-14 | 3.397e-12 | 6.168e-03 | 2.189e-01 | 1.022e+00 | 1.573e-01 | 981 | 2329 | 15225 | 0 | 1179 (0.12) | 2.22 |
+| planeFitMean | 32 | 3/3 | -3.872e-04 | 7.675e-09 | 2.820e-12 | 1.017e-02 | 3.083e-01 | 1.439e+00 | 1.071e-01 | 3698 | 3783 | 0 | 3840 | 1566 (0.15) | 2.47 |
+| planeFitOwn | 32 | 3/3 | -1.322e-03 | 2.638e-07 | 3.286e-12 | 8.536e-03 | 8.876e-02 | 6.683e-01 | 2.526e-01 | 654 | 1501 | 0 | 1076682 | 595 (0.03) | 0.99 |
+| ringQuadric | 32 | 3/3 | -7.937e-03 | 2.145e-08 | 2.887e-12 | 8.547e-03 | 7.347e-02 | 6.822e-01 | 2.406e-01 | 682 | 1778 | 0 | 42201 | 1250 (0.05) | 2.18 |
+
+Spearman rank correlation at N 32 over 9 variants: L1(n) vs E_shape -0.13, L1(n) vs L1(x) 0.83.
