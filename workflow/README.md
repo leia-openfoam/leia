@@ -1178,6 +1178,37 @@ studies drive its benchmark solver `advectorVoF` with the dictionaries of the fo
   `snakemake -n` of both configs plans 21 and 32 cases; the converter's columns
   checked on a synthetic log.
 
+### The standing study matrix (Tomislav, 2026-11-07)
+
+"2D shear, 3D shear and 3D deformation, over 3 mesh resolution and compare DAVOF
+combination methods in leia, then parallel to this, in TwoPhaseFlow original
+isoAdvector-plicRDF and DAVOF reconstruction and isoAdvector combination ... Only
+re-calculate studies if we change something in the methods." The leia track:
+`config/davof/standing/<family>_N<N>.yaml`, written by
+`workflow/scripts/make_standing_configs.py` (the matrix in one table; `--check` refuses a
+hand edit): the families shear2D (`cases/davof/isoShear2D`, N 64/128/256 on 1/1/8 ranks),
+shear3D (`isoShear3D`, 32/64/128 on 1/8/64) and deformation3D (`sphereDeformation3D`,
+32/64/128 on 1/8/64); the rows `davof-planeSurf-ringArea` (the swept-face advection in
+its reference setting) and `plicRDF` (OpenFOAM v2606's isoAdvector + plicRDF); OpenFOAM
+Co 0.2, 0.5, 1; three identical repetitions per cell (`TPF_REPETITION`, a comment line of
+`controlDict`, so every repetition is its own case and stamp); the DAVOF rows with
+`grazingCut fork` (the policy of PORT-DESIGN 1.2: the numbers are reproduced against the
+fork track's record, which runs the same templates on the fork route); the
+pre-registration in every config's header. One study per rung:
+
+```bash
+sbatch --parsable -J leia-standing-shear2D-N64 --export=ALL,STUDY=davof/standing/shear2D_N64 run-studies.sbatch
+python3 workflow/scripts/make_standing_tables.py shear2D      # docs/davof/data/standing/standing_shear2D{,_orders,_caption}.{csv,tex}
+```
+
+The tables: one row per (row, N, OF Co) with E_shape, L1(x), L1(n), L1(alphaf), the mass
+deviation, min alpha and the excess over the run, the interface cells, the steps, the
+median wall clock of the repetitions and the per-step time, the status (the abort step),
+the repetitions' identity verdict, the ratios to plicRDF; the orders over N per (row, Co);
+the caption with the stamps (ids, the solver binary, leia's describe), `grazingCut`, the
+ranks, dt and the steps per rung. A changed method recomputes only the rows it touches
+(the case stamp above); the previous results stay under `previous/<id>/`.
+
 ```bash
 snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/planeTranslation3D_hexSmoke.yaml   # 8 cases, seconds
 snakemake --workflow-profile profiles/local --jobs 1 --configfile config/davof/sphereTranslation3D_hexSmoke.yaml  # 7 cases, minutes each
