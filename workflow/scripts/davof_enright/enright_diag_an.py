@@ -147,16 +147,21 @@ def main():
     with open(OUT + "/diag_runs_%s.csv" % TAG, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=keys); w.writeheader(); w.writerows(rows)
     print("cell run status steps | min excess (run) | min excess (first 20) | rankFb step1/max | bound2 step1/max | ifc step1/max | frag total: fb b2 wisp none, first step | frag200: n firstStep dry fbAdj b2 wisp none |m|med afMax_med wet_med | ifc/partial at T/4 T/2 3T/4 T | partial T/2, T | Eshape T (rel) L1x L1af")
+    def s(x, fmt="%g"):
+        try:
+            return "-" if x != x else (fmt % x)
+        except TypeError:
+            return str(x)
     for r in rows:
         gg = lambda k: r.get(k, float("nan"))
-        print("%s %-12s %-8s %4d | %.2e %.2e | %.2e %.2e | %d/%d | %d/%d | %d/%d | %d: %d %d %d %d, %s | %s %s %s %s %s %s %s %.2e %.3f %s | %.2f %.2f %.2f %.2f | %s %s | %.3e (%.3f) %.3f %s %s" % (
-            r["cell"], r["run"], r["status"], r["steps"], r["minAlphaRun"], r["excessRun"], r["minAlphaStep20"], r["excessStep20"],
-            r["rankFbStep1"], r["rankFbMax"], r["bound2Step1"], r["bound2Max"], r["ifcStep1"], r["ifcMax"],
-            r["fragTotal"], r["fragFb"], r["fragB2"], r["fragW"], r["fragNone"], r["fragFirstStep"],
-            gg("frag200_n"), gg("frag200_firstStep"), gg("frag200_dry"), gg("frag200_fallbackAdj"), gg("frag200_bound2"), gg("frag200_wisp"), gg("frag200_none"),
-            gg("frag200_mOverV23_med"), gg("frag200_afMax_med"), gg("frag200_nWetFaces_med"),
-            r["ratioIfcPartial_0.75"], r["ratioIfcPartial_1.5"], r["ratioIfcPartial_2.25"], r["ratioIfcPartial_3"],
-            r["nPartial_1.5"], r["nPartial_3"], r["EshapeT"], r["EshapeTRel"], r["L1xT"], ("%.3e" % r["L1afT"]) if r["L1afT"] == r["L1afT"] else "-", r["abort"]))
+        print("%s %-12s %-8s %4d | %s %s | %s %s | %s/%s | %s/%s | %s/%s | %s: %s %s %s %s, %s | %s %s %s %s %s %s %s %s %s %s | %s %s %s %s | %s %s | %s (%s) %s %s %s" % (
+            r["cell"], r["run"], r["status"], r["steps"], s(r["minAlphaRun"], "%.2e"), s(r["excessRun"], "%.2e"), s(r["minAlphaStep20"], "%.2e"), s(r["excessStep20"], "%.2e"),
+            s(r["rankFbStep1"], "%.0f"), s(r["rankFbMax"], "%.0f"), s(r["bound2Step1"], "%.0f"), s(r["bound2Max"], "%.0f"), s(r["ifcStep1"], "%.0f"), s(r["ifcMax"], "%.0f"),
+            s(r["fragTotal"], "%.0f"), s(r["fragFb"], "%.0f"), s(r["fragB2"], "%.0f"), s(r["fragW"], "%.0f"), s(r["fragNone"], "%.0f"), s(r["fragFirstStep"], "%.0f"),
+            s(gg("frag200_n"), "%.0f"), s(gg("frag200_firstStep"), "%.0f"), s(gg("frag200_dry"), "%.0f"), s(gg("frag200_fallbackAdj"), "%.0f"), s(gg("frag200_bound2"), "%.0f"), s(gg("frag200_wisp"), "%.0f"), s(gg("frag200_none"), "%.0f"),
+            s(gg("frag200_mOverV23_med"), "%.2e"), s(gg("frag200_afMax_med"), "%.3f"), s(gg("frag200_nWetFaces_med"), "%.0f"),
+            s(r["ratioIfcPartial_0.75"], "%.2f"), s(r["ratioIfcPartial_1.5"], "%.2f"), s(r["ratioIfcPartial_2.25"], "%.2f"), s(r["ratioIfcPartial_3"], "%.2f"),
+            s(r["nPartial_1.5"], "%.0f"), s(r["nPartial_3"], "%.0f"), s(r["EshapeT"], "%.3e"), s(r["EshapeTRel"], "%.3f"), s(r["L1xT"], "%.3f"), s(r["L1afT"], "%.3e"), r["abort"]))
 
 
 if __name__ == "__main__":
