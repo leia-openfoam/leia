@@ -4469,13 +4469,18 @@ above on the cell centres and the face centres, `phi = U(x_f) . S_f`), with
 the time factor through its `scale` Function1 `cosine` of period 2T;
 advectorVoF evaluates it at the half time of every step (as for the
 rotation). The velocity vanishes on the six faces of the cube, so the
-boundary flux is zero. The face-centre flux is divergence-free to the
-midpoint rule only (setFlow prints the continuity error per step; the
-level-set case `cases/3Ddeformation` uses the same face-centre flux on
-hexahedra through `velocityModel::setVolumetricFlux`, its Helmholtz
-projection is for polyhedral meshes); advectorVoF passes `div(phi)` to the
-advection as the source `divU alpha`, so full and empty cells stay exactly
-1 and 0.
+boundary flux is zero. The face-centre flux is EXACTLY divergence-free on
+the equidistant hexahedra, not only to the midpoint rule: with
+A(x) = 2 sin^2(pi x), D(x) = sin(2 pi x), B(y) = sin(2 pi y),
+E(y) = sin^2(pi y), C(z) = sin(2 pi z), F(z) = sin^2(pi z) a cell's flux
+sum is h^2 [(A(x1) - A(x0)) B(yc) C(zc) - D(xc) (E(y1) - E(y0)) C(zc)
+- D(xc) B(yc) (F(z1) - F(z0))], and A(x1) - A(x0) = 2 D(xc) sin(pi h),
+E(y1) - E(y0) = B(yc) sin(pi h), F(z1) - F(z0) = C(zc) sin(pi h): the
+three terms cancel identically. setFlow's continuity error per step is
+1e-13 (measured on the preparation runs). The level-set case
+`cases/3Ddeformation` uses the same face-centre flux on hexahedra through
+`velocityModel::setVolumetricFlux` (its Helmholtz projection is for
+polyhedral meshes); advectorVoF's source `divU alpha` is round-off here.
 
 The step: dt = Co h / 2.5 with 2.5 just above the maximum over the cells of
 0.5 sum_f |U(x_f) . n_f| at t = 0 (2.460 / 2.475 / 2.478 at N = 32 / 64 /
