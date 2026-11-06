@@ -46,6 +46,22 @@ def strip_header(path):
     return s[i:] if i >= 0 else s
 
 def compare_fields(cf, cl, rep):
+    # a decomposed case (no reconstructed time directory): every processor directory's last time
+    procs = sorted(d for d in os.listdir(cf) if re.fullmatch(r"processor\d+", d))
+    if last_time_dir(cf) is None and procs:
+        procl = sorted(d for d in os.listdir(cl) if re.fullmatch(r"processor\d+", d))
+        if procs != procl:
+            rep.append(f"  processor directories: fork {len(procs)} leia {len(procl)}"); return False
+        ok, n, t = True, 0, None
+        for p in procs:
+            sub = []
+            ok &= compare_fields(os.path.join(cf, p), os.path.join(cl, p), sub)
+            for s in sub:
+                if s.startswith("  fields at t = "):
+                    n += int(s.split(":")[1].split()[0]); t = s.split("t = ")[1].split(":")[0]
+                else: rep.append(f"  {p}:" + s)
+        if ok: rep.append(f"  fields at t = {t}: {n} identical over {len(procs)} processor directories")
+        return ok
     tf, tl = last_time_dir(cf), last_time_dir(cl)
     if tf is None or tl is None or float(tf) != float(tl):
         rep.append(f"  last time: fork {tf} leia {tl}"); return False
