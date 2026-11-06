@@ -24,7 +24,7 @@ import argparse, os, re, sys, glob, filecmp
 NOISE = re.compile(
     r"^(Build|Arch|Exec|Date|Time|Host|PID|Case|nProcs|I/O|ExecutionTime|Executable|"
     r"\s*leia\b|\s*lib|davof: version|Reading|Create time|Create mesh|Selecting|\*|/\*|Starting time loop|"
-    r"davofSwept: the key|isoAdvector: OpenFOAM|davof: grazingCut|leia-stamp|version).*|.*(ExecutionTime|ClockTime|timeStepTime|wall time| s \(wait |elapsed).*$"
+    r"davofSwept: the key|isoAdvector: OpenFOAM|davof: grazingCut|leia-stamp|version|Hosts|Slaves|Roots|Pstream|\s*\(\S+ \d+\)\s*$).*|.*(ExecutionTime|ClockTime|timeStepTime|wall time| s \(wait |elapsed).*$"
 )
 def norm_line(s):
     # the log prefixes, the application name and the two renamed keys of the leia route
