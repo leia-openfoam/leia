@@ -26,6 +26,9 @@ S=${STUDIES:-$W/leia/studies/davof}
 module purge
 module load gcc/11.5.0-z7mc openmpi/4.1.8-6xzv
 source "$HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"
+# the fork worktree whose binaries run (TPF_DIR; default iso/TwoPhaseFlow): leia-env.sh
+# appends its platforms to PATH and LD_LIBRARY_PATH
+export LEIA_TPF_DIR=${TPF_DIR:-$W/TwoPhaseFlow}
 cd $W/leia && . etc/leia-env.sh || exit 1
 : ${FLOW:?} ${N:?} ${CO:?}
 MESHCLASS=${MESHCLASS:-hex}
@@ -34,7 +37,7 @@ NP=$SLURM_NTASKS
 case $FLOW in Rotation) END=1; WI=0.25;; Shear|Deformation) END=3; WI=0.75;; Shear2D) END=8; WI=2;; *) echo "FLOW $FLOW?"; exit 1;; esac
 # the preparation study: iso<FLOW>3D_<class>N<N>, or iso<FLOW>_... for a 2D flow
 STB=iso${FLOW}3D; case $FLOW in *2D) STB=iso$FLOW;; esac
-echo "fork $(git -C $W/TwoPhaseFlow log --oneline -1 | cut -c1-90); leia $(git -C $W/leia log --oneline -1 | cut -c1-90)"
+echo "fork $(git -C $LEIA_TPF_DIR log --oneline -1 | cut -c1-90) ($LEIA_TPF_DIR); leia $(git -C $W/leia log --oneline -1 | cut -c1-90)"
 echo "node $(hostname) $(lscpu | grep -m1 'Model name' | sed 's/  */ /g'), cores $(nproc --all), job $SLURM_JOB_ID, np $NP, FLOW $FLOW MESHCLASS $MESHCLASS N $N CO index $CO, $(date)"
 echo "advectorVoF $(command -v advectorVoF)"
 T=$W/time/${FLOW}_${MESHCLASS}_N${N}_co${CO}
