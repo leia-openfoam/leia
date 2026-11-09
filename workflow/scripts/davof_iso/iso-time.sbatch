@@ -78,6 +78,12 @@ PURE_KEYS='davofFluxExtension none; davofFaceFractionSource sweepOnly; boundSeco
 # opt-in through METHODS; needs a build with the value, the fork after 7646055)
 SRC[ONERING]=${SRC[RING]}
 ONERING_KEYS='davofFluxExtension none; davofFaceFractionSource interfaceCellFaces; boundSecondLayer false; sweptBoundedFaceFraction scale; interfaceCellRule alphaAndRingSum; normalModel ringSum; wispTol 0;'
+# the row ENTERING (Tomislav's realizability rule of 2026-11-09: the fourth face-fraction source enteringFaces,
+# the sweeps of interfaceCellFaces plus the second-ring sweep restricted to the entering cells and the guard
+# that dries the faces of a dry cell and fills those of a full one; the other keys PURE's; opt-in through
+# METHODS; needs the fork after 294891d)
+SRC[ENTERING]=${SRC[RING]}
+ENTERING_KEYS='davofFluxExtension none; davofFaceFractionSource enteringFaces; boundSecondLayer false; sweptBoundedFaceFraction scale; interfaceCellRule alphaAndRingSum; normalModel ringSum; wispTol 0;'
 for m in $ALL; do echo "source $m ${SRC[$m]}"; done
 prep() { # method rep [prof] -> case dir
   local m=$1 r=$2 src=${SRC[$1]} c=$T/${1}_r$2
@@ -92,8 +98,8 @@ prep() { # method rep [prof] -> case dir
   foamDictionary -entry functions/areaFractionError/writeInterval -set $WI $c/system/controlDict > /dev/null
   foamDictionary -entry functions/volumeFractionError/writeInterval -set $WI $c/system/controlDict > /dev/null
   [ "$3" = prof ] && foamDictionary -entry profiling/active -set true $c/system/controlDict > /dev/null
-  if [ "$m" = PURE ] || [ "$m" = ONERING ]; then
-    local keys=$PURE_KEYS; [ "$m" = ONERING ] && keys=$ONERING_KEYS
+  if [ "$m" = PURE ] || [ "$m" = ONERING ] || [ "$m" = ENTERING ]; then
+    local keys=$PURE_KEYS; [ "$m" = ONERING ] && keys=$ONERING_KEYS; [ "$m" = ENTERING ] && keys=$ENTERING_KEYS
     sed -i -E "s/^(\s*)(normalModel\s+[A-Za-z]+;)/\1\/\/ \2 ($m)/; s/^(\s*)(wispTol\s+[0-9.e-]+;)/\1\/\/ \2 ($m)/" $c/system/fvSolution
     sed -i "0,/^\(\s*\)reconstructionScheme davof;/s||&\n\1$keys|" $c/system/fvSolution
   fi

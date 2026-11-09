@@ -16,14 +16,15 @@ uniform/profiling of the last time) and writes under <W>/csv/:
 The methods: RDF (plicRDF, vofCutCell), RDFccs (plicRDF, ccs), RING (davof ring normal,
 ccs), RINGvcc (davof ring normal, vofCutCell), ISO (isoAlpha), PURE ("pure" DAVOF, the keys
 of 2026-11-08: davofFaceFractionSource sweepOnly), ONERING (the third source
-interfaceCellFaces, 2026-11-09). The rows of a cell that are absent are skipped, so the
-standing rows are unchanged by the two additions.
+interfaceCellFaces, 2026-11-09), ENTERING (the fourth source enteringFaces, the
+realizability rule, 2026-11-09). The rows of a cell that are absent are skipped, so the
+standing rows are unchanged by the additions.
 """
 import csv, glob, os, re, statistics, sys, math
 
 W = os.environ.get("ISO_W", "/work/scratch/tm83tomy/davof/agents/swept/iso")
 OUT = W + "/csv"; os.makedirs(OUT, exist_ok=True)
-METHODS = ("RDF", "RDFccs", "RING", "RINGvcc", "ISO", "PURE", "ONERING")
+METHODS = ("RDF", "RDFccs", "RING", "RINGvcc", "ISO", "PURE", "ONERING", "ENTERING")
 DAVOF = ("RING", "RINGvcc")
 T_END = {"Rotation": 1.0, "Shear": 3.0, "Deformation": 3.0, "Shear2D": 8.0}
 CO_LABEL = {"0": 0.2, "1": 0.5, "2": 1.0}

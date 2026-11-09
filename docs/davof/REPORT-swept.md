@@ -6389,3 +6389,85 @@ FORMER's round-off on the plane, it is bit-identical to PURE on the normal arm, 
 than PURE and FORMER at Co 1 on the normal arm (min alpha -0.50 at N 80), and on the hex
 cells it changes E_shape by at most 2.2 %. The plane residual is located (the leading
 edge of the second ring); the candidate that follows is noted above and not run.
+
+### The fourth face-fraction source, the realizability rule (ENTERING; Tomislav, 2026-11-09, "Agreed, try it"): the predictions, registered before the runs
+
+The problem, from the localisation of ONERING (gate_loc.py) and the seed statistic: PURE's
+and ONERING's plane residual is made on the faces of the cells the plane enters during the
+step (no plane at t^n, cut at t^{n+1}), which no plane sets, so the upwind default hands the
+cell's new partial alpha to all its faces; FORMER's second-ring sweep sets exactly these
+faces and reaches round-off, but it also sweeps the trailing side and the dry neighbours
+(dry cells with wet faces, the fragmentation seed that diverges 22 of 27 hex cells). The
+rule (Tomislav's): the face fractions must be realizable with respect to the volume
+fractions, not with respect to the planes. A face acquires a plane value only from the
+plane of a cell that holds fluid and only where fluid actually arrives; a cell with
+alpha = 0 (1) after the step has dry (full) faces whatever a neighbour's extended plane
+says.
+
+The setting ENTERING, on davof-isoAdvector on top of 294891d: the value
+`davofFaceFractionSource enteringFaces` (`sweepOnly`, `secondRing`, `interfaceCellFaces`
+unchanged bit for bit):
+1. isoAdvector's own sweeps as under interfaceCellFaces (the downwind faces of the
+   interface cells, their upwind faces whose upwind cell has no plane, their inflow
+   boundary faces; a face two interface cells share by the upwind cell's plane, on both
+   sides of a processor boundary).
+2. The second-ring sweep restricted to the entering cells, after the bounding and before
+   the defaults: a cell with no plane at t^n whose alpha^{n+1} lies in (eps, 1 - eps),
+   eps = surfCellTol (1e-8), i.e. a cell that received liquid or gas through a shared face
+   in this step. Its faces no plane has set take the end area of ONE neighbouring plane.
+   The rule for competing planes, registered here: the plane of the upwind interface cell
+   of the shared face through which the largest volume |phi| dt entered the cell (the cell
+   the fluid came from); without an upwind interface neighbour, the interface neighbour
+   whose translated plane is closest to the cell centre at t + dt (FORMER's rule); without
+   an interface neighbour, no sweep (the default stands; counted). The flux is untouched
+   (davofFluxExtension none). Across a processor boundary the neighbour's plane is
+   exchanged per patch face, so the choice does not depend on the decomposition; a
+   processor face both sides sweep takes the upwind side's value (phi = 0: the lower
+   rank). The trailing side (cells that stay pure) and FORMER's dry-neighbour fluxes stay
+   off.
+3. The guard, after the defaults: every cell with alpha^{n+1} <= eps gets all face
+   fractions 0, >= 1 - eps gets 1; both cells of a face decide (the neighbour's alpha
+   across a processor patch exchanged), a face between a dry and a full cell is a
+   conflict, left and counted; a liquid inlet face (inflow, alpha_b = 1: the jet's nozzle)
+   is left. The faces the guard writes are marked set, so the next step's defaults revisit
+   them. Per step in the log ("isoAdvection: entering: ..."): the entering cells and
+   faces, the cells swept by the closest plane, the cells without a plane, the guard's
+   faces set to 0 and to 1, the conflicts, the inlet faces left, and the slivers (cells
+   with alpha in (eps, 1e-3) holding a wet face: a legitimate corner arrival); the seed
+   count before the guard ("seeds before the guard") beside the final one ("seeds").
+4. Decision-2 scaling, interfaceCellRule alphaAndRingSum, normalModel ringSum, wispTol 0,
+   the CCS positioning from alpha as in PURE.
+
+The predictions:
+
+(P1) The plane gate: ENTERING at round-off, L1(alphaf) <= 1e-12 on both arms at Co 0.2
+     and 0.5 for N 20, 40, 80, 160 (FORMER's level); at Co 1 on the normal arm no worse
+     than PURE (N 80 min alpha > -0.062). If (P1) fails: the residual localised per face
+     class with gate_loc.py, and the study stops before the matrix.
+(P2) The 27 hex cells (rotation, shear, deformation x N 32, 64, 128 x Co 0.2, 0.5, 1):
+     all complete (PURE's level); E_shape at the end <= PURE's in every cell; min alpha
+     and the excess above 1 of PURE's order, mass as PURE; wall clock within 10 % of
+     PURE at equal ranks.
+(P3) The seeds before the guard on the deformation N 64 at T/2: at most PURE's count
+     (1620 at Co 0.2; 32357 at Co 0.5; 232381 at Co 1), and none of FORMER's class (a
+     dry cell wetted by an extended plane's flux: FORMER's 176647 at Co 0.2).
+(P4) The jet window, 2000 steps on 32 ranks: completes, wall within 10 % of PURE's
+     1894 s; run only if the completion part of (P2) holds.
+
+The runs, on Lichtenberg, the FORMER, PURE, ONERING and plicRDF rows reused (not rerun):
+the build `iso/TwoPhaseFlow-h` (prof/iso-build.sbatch); (a) the identity
+(`prof/iso-ident-entering.sbatch`: 20 steps of the rotation N 32 at Co 1 and of the
+oblique plane gate N 20 at Co 0.5, serial against 8 ranks, PURE as the reference) and the
+plane gate N 20, 40, 80 (`prof/iso-gate2.sbatch`, ROWS=ENTERING, the rows added to
+`iso/gate/N<N>/`), submitted by `prof/iso-entering-submit.sh` after the build; (b) if
+(P1) holds at N 80: N 160, the 27 hex cells (`iso-time.sbatch` row ENTERING, three
+repetitions and the profiled run, the ranks 1, 8, 64) and the seed statistic (RING, PURE,
+ENTERING on the deformation N 64, one repetition each with the -h build in
+`iso/entering/time/`, which also checks the -h build against the standing rows); (c) the
+jet window only if (P2)'s completion part holds (`prof/jet-run.sbatch`, ROW=RING with
+KEYS, TAG=entering). Every table: Co, N, L1(alphaf) at the end with the order, E_shape
+with its order, L1(x), L1(n), min/max alpha, mass deviation, wall clock at equal ranks,
+status; the verdicts per prediction. Then the pre-existing PURE np1/np8 gap (alphaf
+9.7e-2 after 20 steps of the rotation N 32 at Co 1): the first differing step and face
+located with a 2-rank bisection, the rank-dependent branch named (the shared-face rule,
+the sync order, the boundary sweep); fixed only if it is a plain ordering defect.
