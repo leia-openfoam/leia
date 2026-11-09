@@ -6471,3 +6471,110 @@ status; the verdicts per prediction. Then the pre-existing PURE np1/np8 gap (alp
 9.7e-2 after 20 steps of the rotation N 32 at Co 1): the first differing step and face
 located with a 2-rank bisection, the rank-dependent branch named (the shared-face rule,
 the sync order, the boundary sweep); fixed only if it is a plain ordering defect.
+
+### ENTERING: the outcome (2026-11-09; fork b839296 -> e854f6e -> 9abe8c0, build `iso/TwoPhaseFlow-h`, leia 94807754)
+
+The verdicts: (P1) FAILED; by the pre-registration the study stopped before the matrix, so
+(P2), (P3) and (P4) were not run. The serial/parallel identity on the oblique plane is at
+round-off for the first time (alphaf 2.4e-14 serial against 8 ranks; PURE 1.2e-4); on the
+rotation it is not (1.36e-2; PURE 9.7e-2). The rotation's rank dependence is located in two
+plain branches of the processor faces (below), fixed behind a key; what remains with the
+fix is amplified round-off, not a branch. Tables: `iso/csv/gate_table.md` (rows ENTERING
+beside FORMER, PURE, ONERING), the per-step localisation in `iso/gate-steps/`, the
+bisections in `iso/bisect-*/`, the identities in `iso/ident-entering*/`.
+
+The plane gate (L1(alphaf) at the end, N 20 / 40 / 80; FORMER, PURE, ENTERING):
+normal Co 0.2: 3.7e-15 / 4.4e-15 / 8.2e-15; 2.25e-5 / 8.8e-5 / 1.95e-4; 9.1e-9 / 6.8e-15 /
+1.4e-14. Normal Co 0.5: FORMER 8.7e-15 / 2.0e-14 / 3.5e-14; PURE 6.1e-3 / 6.0e-3 / 7.2e-3;
+ENTERING 1.97e-4 / 2.07e-4 / 2.69e-4. Normal Co 1: FORMER 3.9e-4 / 6.0e-4 / 0.225 (min alpha
+-0.24 at N 80); PURE 3.5e-2 / 3.7e-2 / 4.1e-2 (-0.062); ENTERING 5.4e-2 / 8.0e-2 / 8.5e-2,
+min alpha -0.0024 / -0.0025 / -0.085. Oblique Co 0.2: FORMER 5.7e-15 / 7.3e-15 / 1.2e-14;
+PURE 1.25e-2 / 9.4e-3 / 4.2e-3; ENTERING 7.8e-10 / 6.2e-9 / 9.4e-9. Oblique Co 0.5: PURE
+1.09e-2 / 8.2e-3 / 4.0e-3; ENTERING 7.4e-10 / 1.3e-14 / 1.8e-14. Oblique Co 1: PURE 1.06e-2 /
+7.7e-3 / 4.8e-3; ENTERING 4.5e-9 / 4.2e-14 / 3.2e-13. So ENTERING reaches FORMER's round-off
+on the normal arm at Co 0.2 for N 40 and 80 and on the oblique arm at Co 0.5 and 1 for N 40
+and 80; it does not at N 20 anywhere (1e-9 to 1e-8), not on the oblique arm at Co 0.2 (1e-9
+at every N), and not on the normal arm at Co 0.5 (2e-4 to 3e-4 at every N: 30 times below
+PURE, not converging); at Co 1 on the normal arm it is worse than PURE in L1 and in min
+alpha. N 160 was not run. Mass and the bounds as PURE; wall clock at N 80 36 s against PURE's
+29 s (the guard's pass over all faces and the entering exchange, every step).
+
+Where the residual sits (gate_loc.py on the written end states and, per step, on the N 20
+cases rerun with every step written, `prof/iso-gate-steps.sbatch`, with the per-face record
+of the path that wrote each face fraction, key `davofFaceSourceLog`, field
+`alphafSource`; the references FORMER, PURE and ONERING per step on the same case):
+1. Co 1 on the normal arm (the failed min-alpha clause): the entering criterion admits the
+   cells the BOUNDING wets (alpha 1e-5 to 1e-4 ahead of the plane; min alpha before the
+   bounding -0.085): 119 entering cells without an interface neighbour and 37 by the
+   closest plane at N 40; those with a neighbour inherit its extended plane, which says 1
+   on faces whose exact value is 0 (75 internal and 44 boundary faces with error 1, 69 % of
+   the L1 numerator). FORMER's dry-neighbour pollution returns through the bounding.
+2. The normal arm at Co 0.5 (2e-4 at every N): after step 1 the face fractions are exact
+   except 3 faces at 1e-5 (faces of cells the plane had just touched, alpha <= 1e-8, dried
+   by the guard: the guard treats a cell within surfCellTol = 1e-8 of 0 or 1 as pure and
+   denies it the plane's footprint); at step 2 the faces off by up to 6e-3, systematically
+   high, are written by the interface cells' OWN sweeps (58 lateral faces into the entered
+   cells and 38 shared I-I faces by the downwind sweep, 20 rim outflow faces by the
+   boundary sweep: 100 % of the numerator), not by the entering sweep (its faces 1e-7 to
+   1e-4) and not by the guard (3 to 18 writes above 1e-12 per step, all on sliver faces,
+   0.6 % at most). The planes of step 2 are accurate by the reconstructionError function
+   object (normal 8.6e-7, centre 1.6e-6, E_shape 1e-13), the bounding is negligible (12
+   faces scaled by at most 4e-8), FORMER on the same case is at 1e-15 at every step, PURE
+   and ONERING at 7e-3 from step 1. The one inconsistency on record is the reconstruction's
+   own diagnostic at the start of step 2: max |A n - m|/V^(2/3) = 0.029 and an explicit
+   plane defect of 2e-3 in ENTERING, against FORMER's 5e-14 and PURE's 0.16, while the
+   written faces and alpha are exact; so the data the ring sum reads differ from the
+   written fields somewhere (the wet-face list the guard and the entering sweep update, or
+   the sliver interface cells that FORMER's wispTol 1e-3 excludes: 176 interface cells
+   against FORMER's 173 at step 2). OPEN: a per-cell dump of m against the written faces
+   is the next instrument; not run.
+3. N 20 everywhere and the oblique arm at Co 0.2 (1e-9 to 1e-8): the same classes at
+   1e-7, the shared I-I faces 85 to 93 % of the numerator; the first faces off are again
+   the sliver faces the guard dried at 1e-5, then the planes carry the pollution at 1e-7
+   (per step on the oblique arm: round-off until a sliver appears at step 5, then 1e-7).
+4. The guard's counts are round-off dust by and large: at N 20 normal Co 0.2, 986 faces
+   set to 0 per step, 0 of them above 1e-12 (cells with |alpha| ~ 1e-16 count as dry and
+   their default faces carry that value); at Co 0.5, 874 with 163 above 1e-12 (the sliver
+   faces); a conflict (a dry beside a full cell) never occurred; the liquid inlet of the
+   oblique arm takes 1 (3 faces per step; the first build left the inlet faces a plane had
+   set, 22 to 129 "full cells with a face below 1" at N 40/80, corrected in e854f6e).
+
+The serial/parallel identity (20 steps, 1 against 8 ranks): P20o ENTERING alpha 1.3e-14,
+alphaf 2.4e-14 (PURE 3.1e-5, 1.2e-4): round-off. R32 ENTERING alpha 8.6e-4, alphaf 1.36e-2
+(PURE 1.15e-3, 9.7e-2): not. The 2-rank bisections of PURE (`prof/iso-bisect-pure.sbatch`,
+`prof/bisect_an.py`: every step written, the first differing step and the classes of its
+faces): the x split (2 1 1) stays at 1e-11 over 20 steps; the y split (1 2 1) alone
+reproduces the gap, and its first differing faces, at step 2, are 32 processor faces shared
+by two interface cells with phi = 0 (lateral), 7.5e-3, the same in (2 2 1) and (2 2 2): a
+zero patch flux satisfies phi >= 0 on both sides, so both cells sweep the face as their
+downwind face, both register it, and the sync swaps the two values, where in serial the
+owner's plane alone sets it. The z split (1 1 2) shows a second branch at step 6: 4
+processor faces between two full cells with the flux entering the rank, 8.5e-5: the
+default of a boundary face is the owner's alpha, so an inflow processor face whose upwind
+cell is not a surface cell holds the downwind cell's alpha in parallel and the upwind
+cell's in serial. Both are plain rank-dependent branches of the processor faces; the fix,
+`davofProcFaceRule symmetric` (the lower rank alone sweeps a zero-flux processor face; an
+inflow processor face's default is the neighbour's alpha from the processor patch field),
+sits behind a key whose default `former` keeps the standing parallel rows reproducible.
+With it: R32 PURE alphaf 8.8e-3 (from 9.7e-2), alpha 2.3e-5 (from 1.15e-3); P20o PURE alphaf
+3.9e-5 (from 1.2e-4); R32 ENTERING alphaf 1.26e-2 (from 1.36e-2), alpha 3.0e-5 (from
+8.6e-4); P20o ENTERING unchanged at round-off. With the symmetric rule every bisection's
+first difference is round-off on rank-internal faces (1.8e-12 to 1.8e-11 on lateral I-I
+faces at steps 2 and 3, for PURE and ENTERING, in (2 2 2), (1 1 2) and (1 2 1)) and grows
+to 1e-2 by step 20: the remaining R32 gap is round-off amplified by the rotation (the
+summation order of the ring normal and the CCS iteration on it), not a branch. PURE's
+remaining P20o difference (3.9e-5) was not bisected.
+
+The recommendation: ENTERING is not the default, and the realizability rule as registered
+does not close the plane. It removes PURE's defaults on the entered cells (the oblique arm
+at Co 0.5 and 1 and the normal arm at Co 0.2 reach round-off from N 40) and makes the
+oblique plane rank-independent, but (a) its guard treats a cell within surfCellTol of 0 or
+1 as pure and denies it the plane's footprint, which seeds a 1e-7 pollution of the planes
+that does not converge; (b) at Co 0.5 on the normal arm a 4e-3 face error appears at step
+2 in the interface cells' own sweeps, with a plane/face inconsistency the reconstruction
+reports and FORMER does not (item 2, open); (c) the entering criterion lets the bounding's
+wisps inherit an extended plane at Co 1. The candidates that follow, not run: the guard
+with eps = 0 (exact zero and one only), and the entering criterion tied to a plane-set
+partial face (fluid arrived through a face a plane set), not to alpha alone. The key
+`davofProcFaceRule symmetric` is recommended for every parallel run from here on; the
+standing parallel rows (PURE, ONERING at 8 and 64 ranks) were produced with `former`.
