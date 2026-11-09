@@ -771,6 +771,12 @@ class davofSweptAdvection
             word sweptClip_;
             bool sweptOnePlane_;
             word sweptOnePlaneBound_;
+            //- The donor of the one-plane path (a diagnostic of the plane gate's
+            //  localisation, 2026-11-09): lagrangian (the default: the cell
+            //  holding the pre-image centroid, as above) or upwind (the Eulerian
+            //  upwind cell, no search; the swept volume's part in another cell
+            //  then takes this cell's plane or alpha)
+            word sweptOnePlaneDonor_;
             label nOnePlaneFaces_;
             label nOnePlaneClipped_;
             label nOnePlaneClipTris_;

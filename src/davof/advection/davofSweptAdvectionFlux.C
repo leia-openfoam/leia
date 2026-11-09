@@ -2348,8 +2348,10 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
     label donor = -1;
     const davof::remoteCell* rcDonor = nullptr;
     bool outside = false;
-    if (inCellTol(mesh_, xc, local, tolRel, h))
+    if (sweptOnePlaneDonor_ == "upwind" || inCellTol(mesh_, xc, local, tolRel, h))
     {
+        // the upwind cell (sweptOnePlaneDonor upwind: forced, the localisation
+        // diagnostic of the plane gate)
         donor = local;
         ++nOnePlaneDonorUpwind_;
     }

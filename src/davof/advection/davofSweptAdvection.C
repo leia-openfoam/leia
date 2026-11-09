@@ -275,6 +275,7 @@ Foam::davofSweptAdvection::davofSweptAdvection
     sweptClip_(modelDict().getOrDefault<word>("sweptClip", "pieces")),
     sweptOnePlane_(sweptClip_ == "onePlane"),
     sweptOnePlaneBound_(modelDict().getOrDefault<word>("sweptOnePlaneBound", "donorContent")),
+    sweptOnePlaneDonor_(modelDict().getOrDefault<word>("sweptOnePlaneDonor", "lagrangian")),
     nOnePlaneFaces_(0),
     nOnePlaneClipped_(0),
     nOnePlaneClipTris_(0),
@@ -482,6 +483,7 @@ Foam::davofSweptAdvection::davofSweptAdvection
     {
         Info<< "davofSwept: sweptClip onePlane (one plane per face, the Lagrangian"
             << " donor's; 2026-11-09), sweptOnePlaneBound " << sweptOnePlaneBound_
+            << ", sweptOnePlaneDonor " << sweptOnePlaneDonor_
             << ", rule 2 with eps " << surfCellTol_ << endl;
     }
 
@@ -630,6 +632,12 @@ Foam::davofSweptAdvection::davofSweptAdvection
                     FatalIOErrorInFunction(modelDict())
                         << "sweptOnePlaneBound '" << sweptOnePlaneBound_
                         << "' unknown. Valid: none, donorContent." << exit(FatalIOError);
+                }
+                if (sweptOnePlaneDonor_ != "lagrangian" && sweptOnePlaneDonor_ != "upwind")
+                {
+                    FatalIOErrorInFunction(modelDict())
+                        << "sweptOnePlaneDonor '" << sweptOnePlaneDonor_
+                        << "' unknown. Valid: lagrangian, upwind." << exit(FatalIOError);
                 }
                 if (sweptClassify_ || sweptConsistencyLog_ || sweptFaceDump_)
                 {
