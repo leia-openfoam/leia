@@ -234,7 +234,7 @@ def table(rows, cols, title):
 
 
 def mode_plane(args):
-    recs = collect(args.studies_dir, "kiss_plane_np*")
+    recs = collect(args.studies_dir, "kiss_plane_*_np*")
     write_csv(os.path.join(args.out, "kiss_plane_cases.csv"), [flat(r) for r in recs])
     rows = []
     worstAf = worstN = 0.0; nCells = 0; fails = []

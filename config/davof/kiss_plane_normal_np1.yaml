@@ -1,0 +1,56 @@
+# The KISS variant, P1 the plane gate (Tomislav, 2026-11-09; docs/davof/REPORT-swept.md "The
+# KISS variant: one plane per face", leia branch davof-kiss): planeTranslation3D, the plane
+# with the normal (0.3 0.5 0.8124), N 20/40/80/160, the velocity arm normal (U = n, the sliver-amplifying arm),
+# TARGET_ADVECTIVE_CO 0.124, 0.3101, 0.6202 = OpenFOAM Co 0.2 / 0.5 / 1 for this arm (OF Co = 0.5 sum |U.S_f|
+# dt / V = 1.6124 x the target; Co 1 is the target, never higher), the standing row (ring
+# normal, plane surface, sweptFaceCells, ccs, grazingCut fork, the round-4 keys as the port's
+# identity set port_enrightKeys_plane_leia), the settings onePlane (the KISS path: sweptClip
+# onePlane, sweptOnePlaneBound donorContent, interfaceCellRule normalAndAlpha) and
+# recommended (the pieces path, signedTets + scale + normalAndAlpha, the comparison),
+# writePrecision 17; serial here, the np8 study the same on 8 ranks (the parallel identity of the plane).
+# PRE-REGISTERED P1 (MUST hold): L1(alphaf) <= 1e-12 and L1(n) <= 1e-12 at every onePlane
+# cell, serial and on 8 ranks; falsified by one cell above either bound, after which the
+# failing face class is localised (zero-flux, donor upwind / downwind / ring / remote, donor
+# without a plane) and the matrix does not run. Also: np1 and np8 identical to round-off
+# (every converter number within 1e-12 relative), the donorContent bound never firing.
+#   sbatch --parsable -J kiss-plane-normal-np1 --export=ALL,STUDY=davof/kiss_plane_normal_np1 run-studies.sbatch
+study_name: kiss_plane_normal_np1
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM dictionaries.
+axes_override:
+  TPF_ENRIGHT_SETTING: [onePlane, recommended]
+  TPF_GRAZING_CUT: [fork]
+  N_CELLS: [20, 40, 80, 160]
+  TARGET_ADVECTIVE_CO: [0.124, 0.3101, 0.6202]
+  TPF_VELOCITY_ARM: [normal]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_RECON_ERROR_EVERY_STEP: ["false"]
+  TPF_PROFILING: ["false"]
+collapse_other_axes: true
+solve_mem_mb: 16000
+solve_runtime: 240
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

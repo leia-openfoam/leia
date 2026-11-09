@@ -5851,14 +5851,17 @@ CSVs under `csv/`, the job ledger `.my_jobs`).
 
 - **Identity first.** np1 against np8 on the rotation (isoRotation3D N 32, OpenFOAM Co 0.2
   and 1, t = 0 .. 0.05; configs `kiss_identity_rotation_np1 / np8`) and on the plane gate
-  (every cell of `kiss_plane_np1` against `kiss_plane_np8`): every converter number
+  (every cell of the np1 plane studies against the np8 ones): every converter number
   (E_shape, L1(x), L1(n), L1(alphaf), the mass deviation, min / max alpha) and the per-step
   bounds of the logs agree to round-off (1e-12 relative). Expected mechanism if not: a face
   whose donor is a remote ring cell (the bound skips it) or a centroid within 1e-12 h of a
   processor face (the search order differs from the serial one).
-- **P1, the plane gate (MUST hold).** `kiss_plane_np1` and `kiss_plane_np8`:
-  planeTranslation3D, N 20 / 40 / 80 / 160, OpenFOAM Co 0.2 / 0.5 / 1, the arms normal and
-  oblique, the standing row, writePrecision 17. L1(alphaf) <= 1e-12 and L1(n) <= 1e-12 at
+- **P1, the plane gate (MUST hold).** `kiss_plane_normal_np1 / np8` and
+  `kiss_plane_oblique_np1 / np8`: planeTranslation3D (the plane with the normal (0.3 0.5
+  0.8124)), N 20 / 40 / 80 / 160, OpenFOAM Co 0.2 / 0.5 / 1 per arm (the arm normal, U = n,
+  has OF Co = 1.6124 x TARGET_ADVECTIVE_CO, so its targets are 0.124 / 0.3101 / 0.6202; the
+  arm oblique, U = (1 0 0), has OF Co = the target, 0.2 / 0.5 / 1; Co 1 is the target, never
+  higher), the standing row, writePrecision 17. L1(alphaf) <= 1e-12 and L1(n) <= 1e-12 at
   every onePlane cell, serial and on 8 ranks. Falsified by one cell above either bound;
   then the failing face class is localised (zero-flux faces, donor upwind / downwind /
   ring / remote, donor without a plane; the counters of the one-plane clause and a per-face
