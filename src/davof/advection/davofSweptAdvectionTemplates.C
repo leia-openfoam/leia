@@ -674,6 +674,13 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
     {
         defaultAreaFractions();
 
+        // sweptClip onePlane, rule 2 (2026-11-09): the faces of the empty
+        // cells to 0, of the full cells to 1, after the defaults
+        if (sweptOnePlane_)
+        {
+            onePlaneResetFaces();
+        }
+
         // The faces set in this step are the previous ones of the next
         alphafPrevSetFaces_.swap(alphafSetFaces_);
         alphafSetFaces_.clear();

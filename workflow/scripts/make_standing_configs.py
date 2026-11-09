@@ -53,6 +53,33 @@ ROWS = ["davof-planeSurf-ringArea", "plicRDF"]
 # clock), each with grazingCut fork; a separate study per rung (<family>_N<N>_variants), so
 # that the baseline's cases keep their stamps and the variants are added, not recomputed.
 VARIANT_SETTINGS = ["recommended", "signedTets", "closureThenTets"]
+# THE KISS ROWS (Tomislav, 2026-11-09; leia davof-kiss): the DAVOF row with the setting
+# onePlane of tpf_rows.ENRIGHT_SETTINGS (sweptClip onePlane: one plane per face, the
+# Lagrangian donor's; sweptOnePlaneBound donorContent; interface cells by normal and alpha;
+# no bounded face fractions, rule 2 instead), a separate study per rung (<family>_N<N>_kiss),
+# so that the baseline's and the variants' cases keep their stamps: nothing is recomputed,
+# the plicRDF, reference and signedTets / recommended rows of the record are reused in the
+# tables (REPORT-swept.md "The KISS variant: one plane per face").
+KISS_SETTING = "onePlane"
+KISS_NOTE = ("# THE KISS ROW: the DAVOF row with the setting onePlane of tpf_rows.ENRIGHT_SETTINGS (one\n"
+             "# plane per face, leia davof-kiss, 2026-11-09), added to the baseline and the variant\n"
+             "# studies of this rung; their cases keep their stamps.\n")
+KISS_PREREG = """# PRE-REGISTERED (2026-11-09, before any run; REPORT-swept.md "The KISS variant: one plane
+# per face", P3-P5; the record of the pieces rows (the baseline of 2026-11-06/07 and the
+# variants recommended, signedTets, closureThenTets) is the comparison, nothing recomputed):
+#   P3-1 Completion: every cell completes (no abort by the interface-cell guard; the pieces
+#        rows aborted at N >= 64 on the deformation and the 3D shear).
+#   P3-2 Boundedness: min alpha of the onePlane row >= min alpha of plicRDF at the same cell.
+#   P3-3 Error: E_shape(onePlane) <= 1.3 x E_shape of the pieces row signedTets + scale +
+#        normalAndAlpha (recommended) where that row completed, else of the signedTets row.
+#   P3-4 Mass: |mass deviation| at round-off (< 1e-10 relative) at every cell.
+#   P4   Cost: the median wall clock per step <= 0.7 x the signedTets row's at the same rung
+#        and ranks; the clipped-triangle count per step reported.
+#   P5   Seeds: cells with alpha <= eps and a wet face before rule 2's reset: none except
+#        corner-arrival slivers; reported for deformation3D N 64 at T/2.
+#   Also reported: L1(alphaf), the donor classes, the bound activations, the rule 2 resets,
+#   the repetitions' identity, the stamps.
+"""
 CO = [0.2, 0.5, 1]
 REPS = [1, 2, 3]
 GRAZING = "fork"
@@ -130,18 +157,19 @@ PREREG = {
 }
 
 
-def config_text(family, N, variants=False):
+def config_text(family, N, variants=False, kiss=False):
     case, setfields, rungs = FAMILIES[family]
     np_, runtime, mem = rungs[N]
     mode = "parallel" if np_ > 1 else "serial"
-    rows = ", ".join(ROWS) if not variants else ROWS[0]
-    suffix = "_variants" if variants else ""
+    rows = ", ".join(ROWS) if not (variants or kiss) else ROWS[0]
+    suffix = "_variants" if variants else ("_kiss" if kiss else "")
     # the baseline carries no setting axis: the parameter default (reference) renders the
     # templates byte for byte as before the keys existed (TPF_ENRIGHT_KEYS empty), so its
     # stamps stand
-    setting_axis = ("  TPF_ENRIGHT_SETTING: [" + ", ".join(VARIANT_SETTINGS) + "]\n") if variants else ""
+    setting_axis = (("  TPF_ENRIGHT_SETTING: [" + ", ".join(VARIANT_SETTINGS) + "]\n") if variants
+                    else ("  TPF_ENRIGHT_SETTING: [" + KISS_SETTING + "]\n" if kiss else ""))
     variants_note = ("# THE VARIANT ROWS: the DAVOF row with the settings " + ", ".join(VARIANT_SETTINGS)
-                     + " of tpf_rows.ENRIGHT_SETTINGS\n# (the Enright agent's decisions 1-3, ported 2026-11-07), added to the baseline study of this rung.\n") if variants else ""
+                     + " of tpf_rows.ENRIGHT_SETTINGS\n# (the Enright agent's decisions 1-3, ported 2026-11-07), added to the baseline study of this rung.\n") if variants else (KISS_NOTE if kiss else "")
     return f"""# The standing study matrix (Tomislav, 2026-11-07; docs/davof/PORT-DESIGN.md 5b;
 # workflow/scripts/make_standing_configs.py writes this file, edit the script): the
 # family {family} ({case}) at N {N} on {np_} rank(s); the rows {rows}; OpenFOAM Co
@@ -152,7 +180,7 @@ def config_text(family, N, variants=False):
 # change"); the tables: workflow/scripts/make_standing_tables.py {family}.
 #
 #   sbatch --parsable -J leia-standing-{family}-N{N}{suffix} --export=ALL,STUDY=davof/standing/{family}_N{N}{suffix} run-studies.sbatch
-{variants_note}{PREREG[family]}study_name: standing_{family}_N{N}{suffix}
+{variants_note}{KISS_PREREG if kiss else PREREG[family]}study_name: standing_{family}_N{N}{suffix}
 studies_dir: studies/davof
 case: {case}
 mesh: hex
@@ -191,9 +219,9 @@ def main(argv):
     bad = 0
     for family, (case, setfields, rungs) in FAMILIES.items():
       for N in rungs:
-        for variants in (False, True):
-            path = os.path.join(OUT, f"{family}_N{N}{'_variants' if variants else ''}.yaml")
-            text = config_text(family, N, variants)
+        for suffix, kw in (("", {}), ("_variants", {"variants": True}), ("_kiss", {"kiss": True})):
+            path = os.path.join(OUT, f"{family}_N{N}{suffix}.yaml")
+            text = config_text(family, N, **kw)
             old = open(path).read() if os.path.isfile(path) else None
             if check:
                 if old != text:

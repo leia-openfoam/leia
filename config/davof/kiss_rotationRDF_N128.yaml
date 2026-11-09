@@ -1,0 +1,26 @@
+# The KISS variant, P2 the rotation, the comparator (2026-11-09; docs/davof/REPORT-swept.md
+# "The KISS variant: one plane per face"): OpenFOAM v2606's isoAdvector + plicRDF on
+# isoRotation3D (one turn), N 128 on 64 rank(s), interface Co 0.0463 / 0.1157 / 0.2315 =
+# OpenFOAM Co 0.2 / 0.5 / 1; the DAVOF rows in kiss_rotation_N128. Its min alpha is P2's
+# bound, its E_shape is reported.
+#   sbatch --parsable -J kiss-rotRDF-N128 --export=ALL,STUDY=davof/kiss_rotationRDF_N128 run-studies.sbatch
+study_name: kiss_rotationRDF_N128
+studies_dir: studies/davof
+case: davof/isoRotation3D
+mesh: hex
+mode: parallel
+np: 64
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: "initDavofFields"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+axes_override:
+  N_CELLS: [128]
+  TPF_ROW: [plicRDF]
+  TARGET_ADVECTIVE_CO: [0.0463, 0.1157, 0.2315]
+collapse_other_axes: true
+solve_mem_mb: 4000
+solve_runtime: 900
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

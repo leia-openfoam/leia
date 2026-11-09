@@ -1,0 +1,33 @@
+# The KISS variant, the parallel identity on the rotation (2026-11-09; docs/davof/
+# REPORT-swept.md "The KISS variant: one plane per face"): isoRotation3D N 32, interface Co
+# 0.0463 and 0.2315 (OpenFOAM Co 0.2 and 1), t = 0 .. 0.05 (86 and 17 steps), the DAVOF row
+# with the setting onePlane, on 8 ranks here, kiss_identity_rotation_np1 in serial; the two studies' converter numbers (E_shape, L1(x),
+# L1(n), L1(alphaf), the mass, min / max alpha) and the logs' per-step bounds must agree to
+# round-off (1e-12 relative). The plane identity is read off kiss_plane_np1 / np8.
+#   sbatch --parsable -J kiss-ident-np8 --export=ALL,STUDY=davof/kiss_identity_rotation_np8,PROFILE=profiles/slurm-small run-studies.sbatch
+study_name: kiss_identity_rotation_np8
+studies_dir: studies/davof
+case: davof/isoRotation3D
+mesh: hex
+mode: parallel
+np: 8
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: "initDavofFields"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+axes_override:
+  N_CELLS: [32]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_ENRIGHT_SETTING: [onePlane]
+  TARGET_ADVECTIVE_CO: [0.0463, 0.2315]
+  TPF_GRAZING_CUT: [fork]
+  END_TIME: [0.05]
+  TPF_WRITE_INTERVAL: [0.05]
+  TPF_AFE_WRITE_INTERVAL: [0.05]
+  TPF_VFE_WRITE_INTERVAL: [0.05]
+collapse_other_axes: true
+solve_mem_mb: 4000
+solve_runtime: 60
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

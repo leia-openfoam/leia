@@ -93,6 +93,7 @@ _DERIVED_TOKENS = {
     "TPF_SWEPT_BOUNDED_FACE_FRACTION",
     "TPF_INTERFACE_CELL_RULE",
     "TPF_SWEPT_FRAGMENT_LOG",
+    "TPF_SWEPT_CLIP",
     "TPF_ENRIGHT_KEYS",
     # The route of the DAVOF advection studies (docs/davof/PORT-DESIGN.md, 2026-11-06):
     # the application, the advection scheme and the function-object library of a
@@ -140,6 +141,7 @@ _DERIVED_INPUTS = {
     "TPF_SWEPT_BOUNDED_FACE_FRACTION": ("TPF_ENRIGHT_SETTING",),
     "TPF_INTERFACE_CELL_RULE": ("TPF_ENRIGHT_SETTING",),
     "TPF_SWEPT_FRAGMENT_LOG": ("TPF_ENRIGHT_SETTING",),
+    "TPF_SWEPT_CLIP": ("TPF_ENRIGHT_SETTING",),
     "TPF_ENRIGHT_KEYS": ("TPF_ENRIGHT_SETTING",),
     # the advection scheme of the leia route follows the row's reconstruction scheme
     "DAVOF_ADVECTION_SCHEME": ("TPF_ROW",),

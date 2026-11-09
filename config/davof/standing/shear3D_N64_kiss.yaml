@@ -1,0 +1,59 @@
+# The standing study matrix (Tomislav, 2026-11-07; docs/davof/PORT-DESIGN.md 5b;
+# workflow/scripts/make_standing_configs.py writes this file, edit the script): the
+# family shear3D (davof/isoShear3D) at N 64 on 8 rank(s); the rows davof-planeSurf-ringArea; OpenFOAM Co
+# 0.2, 0.5, 1; three identical repetitions per cell (TPF_REPETITION);
+# the DAVOF rows with grazingCut fork (Tomislav's policy of 2026-11-07: the numbers
+# are reproduced against the fork track's record, which runs the same templates).
+# Recompute only on change: workflow/scripts/case_stamp.py (README "Recompute only on
+# change"); the tables: workflow/scripts/make_standing_tables.py shear3D.
+#
+#   sbatch --parsable -J leia-standing-shear3D-N64_kiss --export=ALL,STUDY=davof/standing/shear3D_N64_kiss run-studies.sbatch
+# THE KISS ROW: the DAVOF row with the setting onePlane of tpf_rows.ENRIGHT_SETTINGS (one
+# plane per face, leia davof-kiss, 2026-11-09), added to the baseline and the variant
+# studies of this rung; their cases keep their stamps.
+# PRE-REGISTERED (2026-11-09, before any run; REPORT-swept.md "The KISS variant: one plane
+# per face", P3-P5; the record of the pieces rows (the baseline of 2026-11-06/07 and the
+# variants recommended, signedTets, closureThenTets) is the comparison, nothing recomputed):
+#   P3-1 Completion: every cell completes (no abort by the interface-cell guard; the pieces
+#        rows aborted at N >= 64 on the deformation and the 3D shear).
+#   P3-2 Boundedness: min alpha of the onePlane row >= min alpha of plicRDF at the same cell.
+#   P3-3 Error: E_shape(onePlane) <= 1.3 x E_shape of the pieces row signedTets + scale +
+#        normalAndAlpha (recommended) where that row completed, else of the signedTets row.
+#   P3-4 Mass: |mass deviation| at round-off (< 1e-10 relative) at every cell.
+#   P4   Cost: the median wall clock per step <= 0.7 x the signedTets row's at the same rung
+#        and ranks; the clipped-triangle count per step reported.
+#   P5   Seeds: cells with alpha <= eps and a wet face before rule 2's reset: none except
+#        corner-arrival slivers; reported for deformation3D N 64 at T/2.
+#   Also reported: L1(alphaf), the donor classes, the bound activations, the rule 2 resets,
+#   the repetitions' identity, the stamps.
+study_name: standing_shear3D_N64_kiss
+studies_dir: studies/davof
+case: davof/isoShear3D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: "initDavofFields && initShearFlow3D"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans are QUOTED: they are rendered verbatim into the OpenFOAM
+# dictionaries (false, not False).
+axes_override:
+  N_CELLS: [64]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 1]
+  TPF_REPETITION: [1, 2, 3]
+  TPF_GRAZING_CUT: [fork]
+  TPF_ENRIGHT_SETTING: [onePlane]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 600
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

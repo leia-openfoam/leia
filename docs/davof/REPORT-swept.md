@@ -5761,3 +5761,134 @@ the leia commit that last touched the case template, the study configuration and
 the sha256 over the rendered dictionaries of the prepared cases) are in
 `iso/csv/iso_stamps.csv`; the recompute-on-change rule itself is the port agent's stamp
 mechanism in leia's workflow, which this track will use when it lands.
+
+## The KISS variant: one plane per face (Tomislav, 2026-11-09; leia branch `davof-kiss`)
+
+The swept-face flux of 2026-11-07 cuts the swept volume of a face into the pieces of the
+cells it lies in and clips every piece by that cell's plane (sweptFaceCells: the cap system,
+the rank test, the one-donor fallback, the signed tetrahedra of decision 1, the bounded face
+fractions of decision 2). Tomislav's KISS variant (2026-11-09) keeps the swept volume and
+clips it by ONE plane, the plane of the cell the pre-image came from. It is implemented in
+leia on the branch `davof-kiss` off `davof-port` a763089e as the key `sweptClip pieces |
+onePlane` of the davofSwept scheme (default `pieces`, bit for bit the path of 2026-11-07:
+no code of that path changed, the new path is a branch of `processFace` and three member
+functions, `sweptOnePlaneFlux`, `onePlaneBoundDonors`, `onePlaneResetFaces` in
+`davofSweptAdvectionFlux.C`). The workspace is
+`/work/scratch/tm83tomy/davof/agents/enright/kiss` (the clone `leia` on `davof-kiss`, the
+CSVs under `csv/`, the job ledger `.my_jobs`).
+
+### The scheme as implemented (written before any run)
+
+1. The swept volume: unchanged. The midpoint trace of the face vertices, the closed
+   triangle list (the face fan, the pre-image fan, the lateral quads), the pyramid
+   correction delta = 3 (V_f - V_g)/|A_pre| of the pre-image apex (`sweptTriangles`).
+2. The Lagrangian donor: the cell holding the centroid of the pre-image (the area-weighted
+   centroids of the pre-image fan's triangles). It is searched, with the trace's point-in-
+   cell tolerance 1e-12 h on the face planes, in the order: the Eulerian upwind cell, the
+   downwind cell, the upwind cell's vertex ring, the ring cells of other ranks (the packed
+   cells of `sweptExchange`, which carry alpha^n, the surface flag and the surface). A
+   pre-image whose centroid lies outside the mesh at a face of a non-coupled patch (an
+   inflow boundary) takes the boundary value of alpha, as the pieces path does; a centroid
+   found nowhere (a displacement above h) takes the upwind cell (counted as "beyond").
+   ONE zero-flux rule, pre-registered: a face that does not sweep (|d . S_f| <= 1e-10 |d|
+   |S_f|) carries no volume and takes its face fraction from the owner's plane if the owner
+   has one, else from the neighbour's plane, else alpha of the upwind cell (the
+   lexicographic tie of phi_f = 0 in `curvedFlux`). Tomislav's candidate was "the interface
+   cell among the two, the owner if both, the upwind alpha if neither"; the owner-first
+   order is that candidate with the tie resolved to the owner.
+3. A donor with a plane: the whole closed list is clipped by that plane alone. The wet
+   volume is the closed form with the apex on the plane, V_wet = (1/3) sum_T (x_T - x_0) .
+   a_T over the wet polygons; the cap closes the surface and contributes nothing, every
+   point of it has (x - x_0) . n = 0, so the one unknown of the cap closure, A_cap n =
+   -sum a_T, never has to be solved (the divergence-theorem sum of T. Tolle, D. Gruending,
+   D. Bothe, T. Maric, triSurfaceImmersion: Computing volume fractions and signed distances
+   from triangulated surfaces immersed in unstructured meshes, Comput. Phys. Commun. 273
+   (2022) 108249, doi:10.1016/j.cpc.2021.108249; the swept volume of the unsplit
+   face-vertex flux calculation, T. Maric, H. Marschall, D. Bothe, An enhanced un-split
+   face-vertex flux-based VoF method, J. Comput. Phys. 371 (2018) 967-993,
+   doi:10.1016/j.jcp.2018.03.048; both cited in the code). The face fraction is the face's
+   OWN fan clipped by the same plane, alpha_f = a_wet . A/|A|^2 (the pieces path took the
+   pre-image fan). A wisp donor with a matched surface (`sweptWispSurface matched`) is
+   clipped by it: the wisp rule unchanged.
+4. A donor without a plane: V_wet = alpha_D V_swept, alpha_f = alpha_D; alpha_D is 0 or 1
+   within eps for a full or an empty cell (eps = `surfCellTol` 1e-8, the interface-cell
+   tolerance); a partial cell without a plane (a wisp without a matched surface) gives its
+   alpha the same way and is counted. `sweptScaleToPhi` applies as on the pieces row (with
+   the pyramid correction V_g = V_f, so it is a no-op up to round-off). The wet volume is
+   clamped to [0, V_swept]; a clamp beyond 1e-12 V_swept is counted.
+5. Rule 2, after the step and after the defaults of the unset faces: a cell with alpha <=
+   eps gets 0 on all its faces, a cell with alpha >= 1 - eps gets 1; a full cell wins over
+   an empty one at a shared face; the flags are synchronised over the processor patches
+   (max), so both sides agree. Counted per step, before the reset: the faces reset, the
+   seeds (cells with alpha <= eps and a wet face) and the corner-arrival slivers (eps <
+   alpha < 1e-3 with a wet face). Decision 2's bounded face fractions are OFF
+   (`sweptBoundedFaceFraction none`, enforced by a FatalError); decision 3's reset rule is
+   not used; the interface-cell rule of the reconstruction is `normalAndAlpha` (an
+   interface cell has alpha in (eps, 1 - eps) AND |m_k| > tau V_k^(2/3)); the piece-volume
+   key is not read by the path (the setting carries signedTets, inert).
+6. `sweptOnePlaneBound none | donorContent` (default donorContent): per donor cell D the
+   wet volumes leaving it are summed; above alpha_D V_D they are scaled by the ratio; then
+   the gas complements (V_swept - V_wet) are summed and scaled likewise against
+   (1 - alpha_D) V_D. Volumes only; the face fractions are untouched. ONE pass,
+   pre-registered: the liquid scaling lowers V_wet, which raises the gas sum, so the gas
+   pass may follow it; the gas pass raises V_wet, which could re-open the liquid bound only
+   when both sums exceed their contents, which needs sum V_swept > V_D (OpenFOAM Co above
+   1). The counters per step (donors scaled, liquid and gas, the smallest ratio) say
+   whether that ever occurs; a second pass is added only if they do. A face whose donor is
+   a cell of another rank is not bounded (counted): its donor's other faces are on the
+   other rank. The bound is applied on the computing side before the processor faces are
+   copied, so both sides carry the bounded flux.
+7. The positioning (ccs from alpha_k with the closed-form start), the ring area normal,
+   the wisp rule: the standing reconstruction, unchanged.
+8. The study setting `onePlane` of `tpf_rows.ENRIGHT_SETTINGS` = (signedTets, false, none,
+   normalAndAlpha, false, onePlane); it renders the five keys of the decisions and appends
+   `sweptClip onePlane; sweptOnePlaneBound donorContent;`. Every other setting renders byte
+   for byte as before (the sixth field, the clip, is `pieces` and renders nothing), so the
+   stamps of the record stand and nothing is recomputed: the plicRDF, reference and
+   signedTets / recommended rows of the standing matrix are reused in the tables.
+
+### Pre-registered predictions (2026-11-09, before the first run)
+
+- **Identity first.** np1 against np8 on the rotation (isoRotation3D N 32, OpenFOAM Co 0.2
+  and 1, t = 0 .. 0.05; configs `kiss_identity_rotation_np1 / np8`) and on the plane gate
+  (every cell of `kiss_plane_np1` against `kiss_plane_np8`): every converter number
+  (E_shape, L1(x), L1(n), L1(alphaf), the mass deviation, min / max alpha) and the per-step
+  bounds of the logs agree to round-off (1e-12 relative). Expected mechanism if not: a face
+  whose donor is a remote ring cell (the bound skips it) or a centroid within 1e-12 h of a
+  processor face (the search order differs from the serial one).
+- **P1, the plane gate (MUST hold).** `kiss_plane_np1` and `kiss_plane_np8`:
+  planeTranslation3D, N 20 / 40 / 80 / 160, OpenFOAM Co 0.2 / 0.5 / 1, the arms normal and
+  oblique, the standing row, writePrecision 17. L1(alphaf) <= 1e-12 and L1(n) <= 1e-12 at
+  every onePlane cell, serial and on 8 ranks. Falsified by one cell above either bound;
+  then the failing face class is localised (zero-flux faces, donor upwind / downwind /
+  ring / remote, donor without a plane; the counters of the one-plane clause and a per-face
+  dump) and the matrix does not run. Also expected: the donorContent bound never fires on
+  the plane (a translating plane leaves every donor exactly its content).
+- **P2, the rotation.** `kiss_rotation_N32 / N64 / N128` (1 / 8 / 64 ranks, one turn,
+  OpenFOAM Co 0.2 / 0.5 / 1, the settings onePlane and recommended) and
+  `kiss_rotationRDF_N*` (plicRDF): E_shape(onePlane)/E_shape(recommended) in [0.9, 1.1] at
+  every cell; min alpha of onePlane >= min alpha of plicRDF at the same cell. Falsified by a
+  ratio outside [0.9, 1.1] or a lower min alpha.
+- **P3, the standing matrix.** `config/davof/standing/<family>_N<N>_kiss.yaml`: the DAVOF
+  row with the setting onePlane, three repetitions, OpenFOAM Co 0.2 / 0.5 / 1, on the
+  rungs of the matrix (2D shear N 64 / 128 / 256 on 1 / 1 / 8 ranks, 3D shear and 3D
+  deformation N 32 / 64 / 128 on 1 / 8 / 64 ranks); the other rows reused from the record.
+  Every cell completes (no abort by the interface-cell guard); min alpha of onePlane >=
+  plicRDF's at the same cell; E_shape(onePlane) <= 1.3 x E_shape of the recommended row
+  where it completed, else of the signedTets row; |mass deviation| < 1e-10 relative.
+  Falsified by an abort, a lower min alpha, a ratio above 1.3 or a mass deviation above
+  1e-10.
+- **P4, the cost.** The median wall clock per step of onePlane <= 0.7 x the signedTets
+  row's at the same rung and ranks; the clipped-triangle count per step is reported (the
+  one-plane clause of the clipping line).
+- **P5, the seeds.** Per step, before rule 2's reset: cells with alpha <= eps and a wet
+  face: none, except corner-arrival slivers (reported separately: eps < alpha < 1e-3 with a
+  wet face). Reported for deformation3D N 64 at T/2 (t = 1.5) and over the run (the maximum
+  per step, the steps with a non-zero count).
+- Also reported, not predicted: the donor classes per step, the zero-flux faces, the
+  clamps, the bound activations and the smallest ratio, the rule 2 resets, L1(alphaf), the
+  interface-cell counts at the writes, the measured Courant number, the stamps.
+
+Every table of the results carries Co (target and measured), h or N, L1(alphaf) with its
+order, E_shape with its order, L1(x), L1(n), min / max alpha, the mass deviation, the total
+wall clock at the same rank count, the status and the verdict per prediction.

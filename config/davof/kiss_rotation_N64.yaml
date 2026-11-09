@@ -1,0 +1,33 @@
+# The KISS variant, P2 the rotation (Tomislav, 2026-11-09; docs/davof/REPORT-swept.md "The
+# KISS variant: one plane per face", leia branch davof-kiss): isoRotation3D (one turn,
+# T = 1), N 64 on 8 rank(s), interface Co 0.0463 / 0.1157 / 0.2315 = OpenFOAM Co 0.2 /
+# 0.5 / 1 (REFERENCE_SPEED 2.5, the far point), the standing DAVOF row (ring normal, plane
+# surface, sweptFaceCells, ccs, grazingCut fork) with the settings onePlane (the KISS path)
+# and recommended (the pieces path signedTets + scale + normalAndAlpha, the comparison);
+# plicRDF in kiss_rotationRDF_N64 (no setting axis). writePrecision 17 (the parameter).
+# PRE-REGISTERED P2: E_shape(onePlane) / E_shape(recommended) in [0.9, 1.1] at every cell;
+# min alpha of onePlane no lower than plicRDF's at the same cell; falsified by a ratio
+# outside [0.9, 1.1] or a lower min alpha.
+#   sbatch --parsable -J kiss-rot-N64 --export=ALL,STUDY=davof/kiss_rotation_N64,PROFILE=profiles/slurm-small run-studies.sbatch
+study_name: kiss_rotation_N64
+studies_dir: studies/davof
+case: davof/isoRotation3D
+mesh: hex
+mode: parallel
+np: 8
+solver: davofAdvectorFoam
+theme:  davof
+setfields_app: "initDavofFields"
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+axes_override:
+  N_CELLS: [64]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_ENRIGHT_SETTING: [onePlane, recommended]
+  TARGET_ADVECTIVE_CO: [0.0463, 0.1157, 0.2315]
+  TPF_GRAZING_CUT: [fork]
+collapse_other_axes: true
+solve_mem_mb: 4000
+solve_runtime: 600
+export_slides: false
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

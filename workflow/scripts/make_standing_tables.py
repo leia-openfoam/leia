@@ -35,7 +35,8 @@ RESULT_COLS = ("Eshape", "L1x", "L1n", "L1af", "massDevPct", "minAlpha", "excess
 LABELS = {"davof-planeSurf-ringArea": "DAVOF (swept-face, ring normal)", "plicRDF": "isoAdvector + plicRDF (v2606)",
           "davof-planeSurf-ringArea [recommended]": "DAVOF, signedTets + scale + normalAndAlpha",
           "davof-planeSurf-ringArea [signedTets]": "DAVOF, signedTets",
-          "davof-planeSurf-ringArea [closureThenTets]": "DAVOF, closureThenTets"}
+          "davof-planeSurf-ringArea [closureThenTets]": "DAVOF, closureThenTets",
+          "davof-planeSurf-ringArea [onePlane]": "DAVOF, one plane per face (KISS)"}
 
 
 def f(x, nd=4):
@@ -147,7 +148,8 @@ def cells(recs):
 
 
 ROW_ORDER = {"davof-planeSurf-ringArea": 0, "davof-planeSurf-ringArea [recommended]": 1,
-             "davof-planeSurf-ringArea [signedTets]": 2, "davof-planeSurf-ringArea [closureThenTets]": 3, "plicRDF": 9}
+             "davof-planeSurf-ringArea [signedTets]": 2, "davof-planeSurf-ringArea [closureThenTets]": 3,
+             "davof-planeSurf-ringArea [onePlane]": 4, "plicRDF": 9}
 
 
 def orders(cells_):

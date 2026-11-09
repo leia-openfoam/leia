@@ -198,6 +198,8 @@ SourceFiles
 #include "zoneDistribute.H"
 #include "mapDistributeBase.H"
 #include "polyMeshTetDecomposition.H"
+#include "syncTools.H"
+#include "processorPolyPatch.H"
 #include "tetIndices.H"
 #include <chrono>
 
@@ -2165,5 +2167,496 @@ Foam::label Foam::davofSweptAdvection::classifyPreImage
     return best;
 }
 
+
+// * * * * * * * * * * * sweptClip onePlane (2026-11-09)  * * * * * * * * * //
+
+void Foam::davofSweptAdvection::sweptOnePlaneFlux
+(
+    const label facei,
+    const label local,
+    const label up,
+    const label other,
+    const scalar dt,
+    const scalar phiF,
+    const bool sweeps,
+    const bool boundary,
+    const davof::velocityAt& UInterp,
+    const vectorField& Up,
+    scalar& af,
+    vector& aWet,
+    scalar& vLiq
+)
+{
+    af = 0;
+    aWet = Zero;
+    vLiq = 0;
+    const scalar h = Foam::cbrt(mesh_.V()[local]);
+    const vectorField& Sf = mesh_.faceAreas();
+    const scalarField& a0 = alpha1_.oldTime().primitiveField();
+    const labelListList& cellPoints = mesh_.cellPoints();
+    const labelListList& pointCells = mesh_.pointCells();
+    const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
+    const label patchi = boundary ? pbm.whichPatch(facei) : -1;
+    const scalar eps = surfCellTol_;
+
+    // The closed triangle list of the swept volume: the midpoint trace of
+    // the face vertices and the pyramid correction, as the pieces path
+    // (sweptTriangles; T[4i] the face fan, T[4i + 1] the pre-image fan,
+    // T[4i + 2], T[4i + 3] the lateral quad; outward of the swept volume)
+    List<FixedList<point, 3>> T;
+    pointField q;
+    point xq;
+    label preSign;
+    scalar vTotal;
+    sweptTriangles(facei, local, dt, phiF, sweeps, UInterp, Up, T, q, xq, preSign, vTotal);
+
+    // The plane of a local cell: its own surface, else a wisp's matched
+    // surface (sweptWispSurface; the wisp rule unchanged); none otherwise
+    auto planeOfCell = [&](const label c, vector& nRaw, point& x0) -> bool
+    {
+        if (hasSurface_.test(c))
+        {
+            planeOf(cellSurfaces_[c], c, h, sweptPlaneTol_, "onePlane", nRaw, x0);
+            return true;
+        }
+        if
+        (
+            sweptWispSurface_ != "none"
+         && hasWispSurface_.size() == mesh_.nCells() && hasWispSurface_.test(c)
+        )
+        {
+            planeOf(wispSurfaces_[c], c, h, sweptPlaneTol_, "onePlane", nRaw, x0);
+            ++nOnePlaneWispPlane_;
+            return true;
+        }
+        return false;
+    };
+    // the same of a cell of another rank (its packed state, sweptExchange)
+    auto planeOfRemote = [&](const davof::remoteCell& rc, vector& nRaw, point& x0) -> bool
+    {
+        if (rc.hasSurface || (sweptWispSurface_ != "none" && rc.wispSurface))
+        {
+            planeOf(rc.S, rc.gid, h, sweptPlaneTol_, "onePlane", nRaw, x0);
+            if (!rc.hasSurface) ++nOnePlaneWispPlane_;
+            return true;
+        }
+        return false;
+    };
+
+    // The clip of the list by the plane (x - x0) . nRaw = 0, liquid on the
+    // negative side: the wet volume by the closed form with the apex on the
+    // plane, V_wet = (1/3) sum_T (x_T - x_0) . a_T over the wet polygons
+    // (the cap contributes nothing; Tolle, Gruending, Bothe, Maric, CPC 273
+    // (2022) 108249, doi:10.1016/j.cpc.2021.108249; Maric, Marschall,
+    // Bothe, JCP 371 (2018) 967-993, doi:10.1016/j.jcp.2018.03.048), the
+    // face's own fan (k % 4 == 0) wet and full for the face fraction
+    auto clipBy = [&]
+    (
+        const vector& nRaw, const point& x0,
+        scalar& vWet, vector& aFaceWet, vector& aFaceFull
+    )
+    {
+        scalar threeV = 0;
+        aFaceWet = Zero;
+        aFaceFull = Zero;
+        forAll(T, k)
+        {
+            const FixedList<point, 3>& t = T[k];
+            const scalar s0 = (t[0] - x0) & nRaw;
+            const scalar s1 = (t[1] - x0) & nRaw;
+            const scalar s2 = (t[2] - x0) & nRaw;
+            const vector aFull = 0.5*((t[1] - t[0]) ^ (t[2] - t[0]));
+            vector aw(Zero);
+            if (s0 <= 0 && s1 <= 0 && s2 <= 0)
+            {
+                aw = aFull;
+            }
+            else if (s0 > 0 && s1 > 0 && s2 > 0)
+            {
+                aw = Zero;
+            }
+            else
+            {
+                point xw;
+                davof::triNegativePolygon(t[0], t[1], t[2], s0, s1, s2, aw, xw);
+                ++nOnePlaneClipTris_;
+            }
+            threeV += (t[0] - x0) & aw;
+            if (k % 4 == 0)
+            {
+                aFaceWet += aw;
+                aFaceFull += aFull;
+            }
+        }
+        vWet = threeV/3;
+    };
+    // the face fraction alpha_f = a_wet . A/|A|^2 and the wetted area
+    // vector in the face's orientation (the fan is along S_f for phi_f > 0
+    // and reversed otherwise)
+    auto faceFraction = [&](const vector& aFaceWet, const vector& aFaceFull)
+    {
+        const scalar A2 = magSqr(aFaceFull);
+        af = (A2 > VSMALL) ? (aFaceWet & aFaceFull)/A2 : 0;
+        aWet = scalar(((aFaceFull & Sf[facei]) >= 0) ? 1 : -1)*aFaceWet;
+    };
+
+    vector nRaw;
+    point x0;
+
+    if (!sweeps)
+    {
+        // THE ZERO-FLUX RULE (pre-registered 2026-11-09): a face that does
+        // not sweep carries no volume; its fraction comes from the owner's
+        // plane if it has one, else the neighbour's, else alpha of the
+        // upwind cell (the lexicographic tie of phi_f = 0 in curvedFlux)
+        ++nOnePlaneZeroFlux_;
+        const label own = mesh_.faceOwner()[facei];
+        const label nb = (other >= 0) ? ((up == own) ? other : up) : -1;
+        if (planeOfCell(own, nRaw, x0) || (nb >= 0 && planeOfCell(nb, nRaw, x0)))
+        {
+            scalar vW;
+            vector aFW, aFF;
+            clipBy(nRaw, x0, vW, aFW, aFF);
+            faceFraction(aFW, aFF);
+        }
+        else
+        {
+            af = a0[up];
+            aWet = af*Sf[facei];
+        }
+        return;
+    }
+    ++nOnePlaneFaces_;
+
+    // The Lagrangian donor: the cell holding the centroid of the pre-image
+    // (the area-weighted centroids of the pre-image fan, k % 4 == 1), in
+    // the order upwind cell, downwind cell, the upwind cell's vertex ring,
+    // the ring cells of other ranks (the tolerance of the trace's cell
+    // search; a centroid within it of a shared face goes to the first)
+    point xc(Zero);
+    scalar wSum = 0;
+    forAll(T, k)
+    {
+        if (k % 4 != 1) continue;
+        const FixedList<point, 3>& t = T[k];
+        const scalar w = mag(0.5*((t[1] - t[0]) ^ (t[2] - t[0])));
+        xc += w*(t[0] + t[1] + t[2])/3;
+        wSum += w;
+    }
+    xc = (wSum > VSMALL) ? point(xc/wSum) : xq;
+    const scalar tolRel = 1e-12;
+    label donor = -1;
+    const davof::remoteCell* rcDonor = nullptr;
+    bool outside = false;
+    if (inCellTol(mesh_, xc, local, tolRel, h))
+    {
+        donor = local;
+        ++nOnePlaneDonorUpwind_;
+    }
+    else if (other >= 0 && inCellTol(mesh_, xc, other, tolRel, h))
+    {
+        donor = other;
+        ++nOnePlaneDonorDownwind_;
+    }
+    else
+    {
+        for (const label pi : cellPoints[local])
+        {
+            for (const label c : pointCells[pi])
+            {
+                if (c != local && c != other && inCellTol(mesh_, xc, c, tolRel, h))
+                {
+                    donor = c;
+                    break;
+                }
+            }
+            if (donor >= 0) break;
+        }
+        if (donor >= 0)
+        {
+            ++nOnePlaneDonorRing_;
+        }
+        else
+        {
+            const auto remoteIter = sweptRemoteRing_.cfind(local);
+            if (remoteIter.good())
+            {
+                for (const label k : remoteIter.val())
+                {
+                    if (davof::inRemoteCellTol(sweptRemote_[k], xc, tolRel, h))
+                    {
+                        rcDonor = &sweptRemote_[k];
+                        break;
+                    }
+                }
+            }
+            if (rcDonor)
+            {
+                ++nOnePlaneDonorRemote_;
+                sweptFaceRemote_ = true;
+            }
+            else if (patchi >= 0 && !pbm[patchi].coupled())
+            {
+                // a face of a non-coupled patch whose pre-image lies outside
+                // the mesh (an inflow boundary): the boundary value
+                outside = true;
+                ++nOnePlaneDonorOutside_;
+            }
+            else
+            {
+                // beyond the ring (a displacement above h): the upwind cell
+                donor = local;
+                ++nOnePlaneDonorBeyond_;
+            }
+        }
+    }
+
+    // The state of the donor: its plane, or its alpha
+    bool hasPlane = false;
+    scalar alphaD = 0;
+    if (rcDonor)
+    {
+        hasPlane = planeOfRemote(*rcDonor, nRaw, x0);
+        alphaD = rcDonor->alpha0;
+    }
+    else if (outside)
+    {
+        // the boundary value (a patch field without values, empty: the
+        // upwind cell's alpha)
+        const fvPatchScalarField& pf = alpha1_.boundaryField()[patchi];
+        alphaD = (pf.size() == pbm[patchi].size()) ? pf[facei - pbm[patchi].start()] : a0[local];
+    }
+    else
+    {
+        hasPlane = planeOfCell(donor, nRaw, x0);
+        alphaD = a0[donor];
+    }
+
+    if (hasPlane)
+    {
+        scalar vW;
+        vector aFW, aFF;
+        clipBy(nRaw, x0, vW, aFW, aFF);
+        faceFraction(aFW, aFF);
+        vLiq = vW;
+        ++nOnePlaneClipped_;
+    }
+    else
+    {
+        // a donor without a plane: its alpha (a full or an empty cell
+        // within eps; a partial cell without a plane, a wisp, the same)
+        if (alphaD <= eps) ++nOnePlaneEmpty_;
+        else if (alphaD >= 1 - eps) ++nOnePlaneFull_;
+        else ++nOnePlaneWisp_;
+        vLiq = alphaD*vTotal;
+        af = alphaD;
+        aWet = af*Sf[facei];
+    }
+    // the wet volume within the swept volume (the closed form of a list
+    // whose closure residual is round-off can leave it by round-off; more
+    // than that is counted)
+    if (vLiq < 0 || vLiq > vTotal)
+    {
+        if (vLiq < -1e-12*vTotal || vLiq > (1 + 1e-12)*vTotal) ++nOnePlaneClamped_;
+        vLiq = min(max(vLiq, scalar(0)), vTotal);
+    }
+    // the kinematic consistency of the pieces path (sweptScaleToPhi): the
+    // liquid share of the swept volume times the flux volume phi_f dt
+    scalar vTotalUsed = vTotal;
+    if (sweptScaleToPhi_ && vTotal > VSMALL)
+    {
+        const scalar Vf = mag(phiF)*dt;
+        vLiq *= Vf/vTotal;
+        vTotalUsed = Vf;
+    }
+    // the record for the donorContent bound: a face whose flux is written
+    // (not an inflow patch face); a remote or an outside donor is not
+    // bounded (counted)
+    if (sweptOnePlaneBound_ == "donorContent" && !(boundary && phiF < 0))
+    {
+        onePlaneRecord r;
+        r.facei = facei;
+        r.donor = (rcDonor || outside) ? label(-1) : donor;
+        r.vLiq = vLiq;
+        r.vTotal = vTotalUsed;
+        r.sgn = (phiF >= 0) ? 1 : -1;
+        r.patchFace = boundary;
+        onePlaneRecords_.append(r);
+        if (rcDonor) ++nOnePlaneBoundSkipped_;
+    }
+}
+
+
+void Foam::davofSweptAdvection::onePlaneBoundDonors()
+{
+    const scalarField& a0 = alpha1_.oldTime().primitiveField();
+    const scalarField& V = mesh_.V();
+
+    // the wet volumes leaving every donor against its liquid content
+    Map<scalar> liq;
+    for (const onePlaneRecord& r : onePlaneRecords_)
+    {
+        if (r.donor >= 0) liq(r.donor) += r.vLiq;
+    }
+    Map<scalar> rLiq;
+    forAllConstIters(liq, iter)
+    {
+        const label D = iter.key();
+        const scalar cap = a0[D]*V[D];
+        if (iter.val() > cap + 1e-12*V[D])
+        {
+            const scalar r = (cap > 0) ? cap/iter.val() : 0;
+            rLiq.insert(D, r);
+            ++nOnePlaneBoundLiq_;
+            onePlaneBoundMin_ = min(onePlaneBoundMin_, r);
+        }
+    }
+    for (onePlaneRecord& r : onePlaneRecords_)
+    {
+        if (r.donor < 0) continue;
+        const auto it = rLiq.cfind(r.donor);
+        if (it.good()) r.vLiq *= it.val();
+    }
+    // then the gas complements, with the liquid as bounded, against the
+    // gas content
+    Map<scalar> gas;
+    for (const onePlaneRecord& r : onePlaneRecords_)
+    {
+        if (r.donor >= 0) gas(r.donor) += r.vTotal - r.vLiq;
+    }
+    Map<scalar> rGas;
+    forAllConstIters(gas, iter)
+    {
+        const label D = iter.key();
+        const scalar cap = (1 - a0[D])*V[D];
+        if (iter.val() > cap + 1e-12*V[D])
+        {
+            const scalar r = (cap > 0) ? cap/iter.val() : 0;
+            rGas.insert(D, r);
+            ++nOnePlaneBoundGas_;
+            onePlaneBoundMin_ = min(onePlaneBoundMin_, r);
+        }
+    }
+    for (onePlaneRecord& r : onePlaneRecords_)
+    {
+        if (r.donor < 0) continue;
+        const auto it = rGas.cfind(r.donor);
+        if (it.good()) r.vLiq = r.vTotal - it.val()*(r.vTotal - r.vLiq);
+    }
+    // the fluxes rewritten where a ratio applied (the face fractions stay)
+    scalarField& dVfIn = dVf_.primitiveFieldRef();
+    for (const onePlaneRecord& r : onePlaneRecords_)
+    {
+        if (r.donor < 0) continue;
+        if (!rLiq.found(r.donor) && !rGas.found(r.donor)) continue;
+        const scalar v = r.sgn*r.vLiq;
+        if (r.patchFace)
+        {
+            setFaceValue(dVf_, r.facei, v);
+        }
+        else
+        {
+            dVfIn[r.facei] = v;
+        }
+    }
+}
+
+
+void Foam::davofSweptAdvection::onePlaneResetFaces()
+{
+    const scalarField& a = alpha1_.primitiveField();
+    const scalar eps = surfCellTol_;
+    const cellList& cells = mesh_.cells();
+    const label nFaces = mesh_.nFaces();
+    const label nInt = mesh_.nInternalFaces();
+    const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
+    nOnePlaneReset0_ = nOnePlaneReset1_ = nOnePlaneSeeds_ = nOnePlaneSlivers_ = 0;
+
+    // the flag of every face: 1 to 0 (a face of an empty cell), 2 to 1 (of
+    // a full cell; a full cell wins); the maximum over the processor patches
+    labelList flag(nFaces, 0);
+    forAll(a, celli)
+    {
+        const bool empty = (a[celli] <= eps);
+        const bool full = (a[celli] >= 1 - eps);
+        if (empty || a[celli] < 1e-3)
+        {
+            // the seeds and the slivers: a wet face before the reset
+            bool wet = false;
+            for (const label facei : cells[celli])
+            {
+                if (faceValue(*alphafPtr_, facei) != 0)
+                {
+                    wet = true;
+                    break;
+                }
+            }
+            if (wet)
+            {
+                if (empty) ++nOnePlaneSeeds_; else ++nOnePlaneSlivers_;
+            }
+        }
+        if (full)
+        {
+            for (const label facei : cells[celli]) flag[facei] = 2;
+        }
+        else if (empty)
+        {
+            for (const label facei : cells[celli]) flag[facei] = max(flag[facei], label(1));
+        }
+    }
+    if (Pstream::parRun())
+    {
+        syncTools::syncFaceList(mesh_, flag, maxEqOp<label>());
+    }
+
+    for (label facei = 0; facei < nFaces; ++facei)
+    {
+        if (flag[facei] == 0) continue;
+        bool countHere = true;
+        if (facei >= nInt)
+        {
+            // a patch face: only where the field has a value (not empty);
+            // a processor face counted on the lower rank's side only
+            const label patchi = pbm.whichPatch(facei);
+            if (alphafPtr_->boundaryField()[patchi].size() != pbm[patchi].size()) continue;
+            if (isA<processorPolyPatch>(pbm[patchi]))
+            {
+                const processorPolyPatch& ppp = refCast<const processorPolyPatch>(pbm[patchi]);
+                countHere = (ppp.myProcNo() < ppp.neighbProcNo());
+            }
+        }
+        const scalar target = (flag[facei] == 2) ? 1 : 0;
+        if (faceValue(*alphafPtr_, facei) == target) continue;
+        setFaceValue(*alphafPtr_, facei, target);
+        if (wetVecPtr_)
+        {
+            setFaceValue(*wetVecPtr_, facei, vector(target*mesh_.faceAreas()[facei]));
+        }
+        wetFace_.set(facei, (target != 0) ? 1u : 0u);
+        // a face written outside the step's evaluation: listed as set, so
+        // that the next step re-evaluates its default (defaultAreaFractions)
+        if (!alphafSetFace_.test(facei))
+        {
+            alphafSetFaces_.append(facei);
+            alphafSetFace_.set(facei);
+        }
+        if (countHere)
+        {
+            if (flag[facei] == 2) ++nOnePlaneReset1_; else ++nOnePlaneReset0_;
+        }
+    }
+    label n0 = nOnePlaneReset0_, n1 = nOnePlaneReset1_;
+    label nS = nOnePlaneSeeds_, nL = nOnePlaneSlivers_;
+    if (Pstream::parRun())
+    {
+        reduce(n0, sumOp<label>()); reduce(n1, sumOp<label>());
+        reduce(nS, sumOp<label>()); reduce(nL, sumOp<label>());
+    }
+    Info<< "davofSwept: one plane, rule 2: faces reset to 0 " << n0
+        << ", to 1 " << n1 << "; before the reset: seeds (alpha <= " << eps
+        << " with a wet face) " << nS
+        << ", slivers (eps < alpha < 1e-3 with a wet face) " << nL << endl;
+}
 
 // ************************************************************************* //

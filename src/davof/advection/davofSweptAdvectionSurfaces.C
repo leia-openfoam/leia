@@ -1125,6 +1125,15 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     nCurvedLeaves_ = 0;
     nRuleFallback_ = 0;
     nSweptFaces_ = nSweptFlips_ = nSweptOutOfDonor_ = nSweptClipTris_ = 0;
+    // sweptClip onePlane (2026-11-09): the counters and the records of the step
+    nOnePlaneFaces_ = nOnePlaneClipped_ = nOnePlaneClipTris_ = 0;
+    nOnePlaneDonorUpwind_ = nOnePlaneDonorDownwind_ = nOnePlaneDonorRing_ = 0;
+    nOnePlaneDonorRemote_ = nOnePlaneDonorBeyond_ = nOnePlaneDonorOutside_ = 0;
+    nOnePlaneFull_ = nOnePlaneEmpty_ = nOnePlaneWisp_ = nOnePlaneWispPlane_ = 0;
+    nOnePlaneZeroFlux_ = nOnePlaneClamped_ = 0;
+    nOnePlaneBoundLiq_ = nOnePlaneBoundGas_ = nOnePlaneBoundSkipped_ = 0;
+    onePlaneBoundMin_ = 1;
+    onePlaneRecords_.clear();
     sweptClosureMax_ = 0;
     sweptPyrDeltaMax_ = sweptVolDefectMax_ = sweptDispAxisMax_ = 0;
     nSweptTwisted_ = nSweptPyrSkipped_ = 0;
@@ -1887,7 +1896,17 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
         point xqSw(Zero);
         sweptFaceRemote_ = false;
         sweptFaceFallback_ = false;
-        if (fluxIntegration_ == "sweptFaceCells")
+        if (fluxIntegration_ == "sweptFaceCells" && sweptOnePlane_)
+        {
+            // sweptClip onePlane (2026-11-09): one plane per face, the
+            // Lagrangian donor's; the surface S found above is not used
+            sweptOnePlaneFlux
+            (
+                facei, local, up, other, dt, phiF, sweeps, boundary,
+                UInterp, *UpPtr, af, aWet, vSwept
+            );
+        }
+        else if (fluxIntegration_ == "sweptFaceCells")
         {
             sweptFaceCellsFlux
             (
@@ -2096,6 +2115,13 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     if (sweptConsistencyLog_ && fluxIntegration_ == "sweptFaceCells")
     {
         sweptConsistencyProbe(dt, UInterp, *UpPtr);
+    }
+    // sweptClip onePlane, sweptOnePlaneBound donorContent (2026-11-09): the
+    // wet volumes leaving a donor bounded by its content, before the
+    // computed processor faces are copied to the other side
+    if (sweptOnePlane_ && sweptOnePlaneBound_ == "donorContent")
+    {
+        onePlaneBoundDonors();
     }
     if (Pstream::parRun())
     {
@@ -2454,6 +2480,42 @@ void Foam::davofSweptAdvection::reportCurved() const
             {
                 Info<< "; wisp neighbour plane matched " << nWm;
             }
+        }
+    }
+    // sweptClip onePlane (2026-11-09), a clause of its own: the sums over
+    // the ranks, the smallest bounding ratio as a minimum
+    if (sweptOnePlane_)
+    {
+        label nF = nOnePlaneFaces_, nC = nOnePlaneClipped_, nT = nOnePlaneClipTris_;
+        label nDu = nOnePlaneDonorUpwind_, nDd = nOnePlaneDonorDownwind_, nDr = nOnePlaneDonorRing_;
+        label nDm = nOnePlaneDonorRemote_, nDb = nOnePlaneDonorBeyond_, nDo = nOnePlaneDonorOutside_;
+        label nFu = nOnePlaneFull_, nEm = nOnePlaneEmpty_, nWi = nOnePlaneWisp_, nWp = nOnePlaneWispPlane_;
+        label nZ = nOnePlaneZeroFlux_, nCl = nOnePlaneClamped_;
+        label nBl = nOnePlaneBoundLiq_, nBg = nOnePlaneBoundGas_, nBs = nOnePlaneBoundSkipped_;
+        scalar bMin = onePlaneBoundMin_;
+        if (Pstream::parRun())
+        {
+            reduce(nF, sumOp<label>()); reduce(nC, sumOp<label>()); reduce(nT, sumOp<label>());
+            reduce(nDu, sumOp<label>()); reduce(nDd, sumOp<label>()); reduce(nDr, sumOp<label>());
+            reduce(nDm, sumOp<label>()); reduce(nDb, sumOp<label>()); reduce(nDo, sumOp<label>());
+            reduce(nFu, sumOp<label>()); reduce(nEm, sumOp<label>()); reduce(nWi, sumOp<label>());
+            reduce(nWp, sumOp<label>()); reduce(nZ, sumOp<label>()); reduce(nCl, sumOp<label>());
+            reduce(nBl, sumOp<label>()); reduce(nBg, sumOp<label>()); reduce(nBs, sumOp<label>());
+            reduce(bMin, minOp<scalar>());
+        }
+        Info<< "; one plane: faces " << nF << ", clipped " << nC
+            << ", clipped triangles " << nT
+            << "; donors: upwind " << nDu << ", downwind " << nDd << ", ring " << nDr
+            << ", remote " << nDm << ", beyond (upwind taken) " << nDb
+            << ", outside (boundary value) " << nDo
+            << "; without a plane: full " << nFu << ", empty " << nEm
+            << ", wisps " << nWi << ", wisp planes " << nWp
+            << "; zero-flux faces " << nZ << ", clamped " << nCl;
+        if (sweptOnePlaneBound_ == "donorContent")
+        {
+            Info<< "; donor content: donors scaled liquid " << nBl << ", gas " << nBg
+                << ", min ratio " << bMin
+                << ", faces with a remote donor not bounded " << nBs;
         }
     }
     if (sweptClassify_)

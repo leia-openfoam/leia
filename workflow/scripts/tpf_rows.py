@@ -325,10 +325,15 @@ ENRIGHT_SETTINGS = OrderedDict([
     ("normalAndAlphaReset", ("closure",        "false", "none",    "normalAndAlphaReset", "false")),
     ("fragmentLog",        ("closure",         "false", "none",    "normalOnly",         "true")),
     ("recommended",        ("signedTets",      "false", "scale",   "normalAndAlpha",     "false")),
+    # THE KISS VARIANT (Tomislav, 2026-11-09; leia davof-kiss): one plane per face, the
+    # Lagrangian donor's (sweptClip onePlane, sweptOnePlaneBound donorContent), the
+    # interface cells by normal and alpha, no bounded face fractions (rule 2 instead);
+    # the sixth field, the clip, is "pieces" for every other setting and renders nothing
+    ("onePlane",           ("signedTets",      "false", "none",    "normalAndAlpha",     "false", "onePlane")),
 ])
 ENRIGHT_TOKENS = ("TPF_SWEPT_PIECE_VOLUME", "TPF_SWEPT_PIECE_VALIDATE",
                   "TPF_SWEPT_BOUNDED_FACE_FRACTION", "TPF_INTERFACE_CELL_RULE",
-                  "TPF_SWEPT_FRAGMENT_LOG")
+                  "TPF_SWEPT_FRAGMENT_LOG", "TPF_SWEPT_CLIP")
 ENRIGHT_LABELS = OrderedDict([
     ("reference", ""),
     ("closureThenTets", "closureThenTets"),
@@ -340,6 +345,7 @@ ENRIGHT_LABELS = OrderedDict([
     ("normalAndAlphaReset", "interface cells by normal and alpha, faces reset"),
     ("fragmentLog", "fragment log"),
     ("recommended", "signedTets + scale + normalAndAlpha"),
+    ("onePlane", "one plane per face (KISS)"),
 ])
 
 
@@ -352,7 +358,9 @@ def enright_setting_tokens(name):
     if name not in ENRIGHT_SETTINGS:
         raise RuntimeError(f"[tpf_rows] unknown TPF_ENRIGHT_SETTING {name!r}; "
                            f"known: {list(ENRIGHT_SETTINGS)}")
-    out = dict(zip(ENRIGHT_TOKENS, ENRIGHT_SETTINGS[name]))
+    # the clip (the sixth field, 2026-11-09): pieces unless the setting says otherwise
+    values = tuple(ENRIGHT_SETTINGS[name]) + (("pieces",) if len(ENRIGHT_SETTINGS[name]) == 5 else ())
+    out = dict(zip(ENRIGHT_TOKENS, values))
     if name == "reference":
         out["TPF_ENRIGHT_KEYS"] = ""
     else:
@@ -364,6 +372,13 @@ def enright_setting_tokens(name):
             "\n        sweptBoundedFaceFraction " + out["TPF_SWEPT_BOUNDED_FACE_FRACTION"] + ";"
             "\n        interfaceCellRule " + out["TPF_INTERFACE_CELL_RULE"] + ";"
             "\n        sweptFragmentLog " + out["TPF_SWEPT_FRAGMENT_LOG"] + ";")
+        if out["TPF_SWEPT_CLIP"] == "onePlane":
+            # the KISS variant (2026-11-09): the two keys appended, so that every
+            # dictionary of a pieces setting stays byte for byte as before
+            out["TPF_ENRIGHT_KEYS"] += (
+                "\n        // the KISS variant (Tomislav, 2026-11-09; leia davof-kiss): one plane per face"
+                "\n        sweptClip onePlane;"
+                "\n        sweptOnePlaneBound donorContent;")
     return out
 
 

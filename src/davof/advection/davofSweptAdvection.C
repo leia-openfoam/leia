@@ -272,6 +272,33 @@ Foam::davofSweptAdvection::davofSweptAdvection
     sweptFacePlaneN_(),
     sweptFacePlaneX0_(),
     sweptFaceHasPlane_(),
+    sweptClip_(modelDict().getOrDefault<word>("sweptClip", "pieces")),
+    sweptOnePlane_(sweptClip_ == "onePlane"),
+    sweptOnePlaneBound_(modelDict().getOrDefault<word>("sweptOnePlaneBound", "donorContent")),
+    nOnePlaneFaces_(0),
+    nOnePlaneClipped_(0),
+    nOnePlaneClipTris_(0),
+    nOnePlaneDonorUpwind_(0),
+    nOnePlaneDonorDownwind_(0),
+    nOnePlaneDonorRing_(0),
+    nOnePlaneDonorRemote_(0),
+    nOnePlaneDonorBeyond_(0),
+    nOnePlaneDonorOutside_(0),
+    nOnePlaneFull_(0),
+    nOnePlaneEmpty_(0),
+    nOnePlaneWisp_(0),
+    nOnePlaneWispPlane_(0),
+    nOnePlaneZeroFlux_(0),
+    nOnePlaneClamped_(0),
+    nOnePlaneBoundLiq_(0),
+    nOnePlaneBoundGas_(0),
+    onePlaneBoundMin_(1),
+    nOnePlaneBoundSkipped_(0),
+    nOnePlaneReset0_(0),
+    nOnePlaneReset1_(0),
+    nOnePlaneSeeds_(0),
+    nOnePlaneSlivers_(0),
+    onePlaneRecords_(),
     upLazy_(),
     upDone_(),
     anyPatchPoint_(),
@@ -451,6 +478,12 @@ Foam::davofSweptAdvection::davofSweptAdvection
     Info<< "davofSwept: sweptPieceVolume " << sweptPieceVolumeWord_
         << ", sweptPieceValidate " << sweptPieceValidate_
         << ", sweptBoundedFaceFraction " << sweptBoundedFaceFraction_ << endl;
+    if (sweptOnePlane_)
+    {
+        Info<< "davofSwept: sweptClip onePlane (one plane per face, the Lagrangian"
+            << " donor's; 2026-11-09), sweptOnePlaneBound " << sweptOnePlaneBound_
+            << ", rule 2 with eps " << surfCellTol_ << endl;
+    }
 
     initAreaFractions();
 
@@ -573,6 +606,47 @@ Foam::davofSweptAdvection::davofSweptAdvection
             // simpsonSplitS, gaussSplit; branch davof-fluxint) are not ported
             // (PORT-DESIGN.md section 3); the one-donor clip remains as the
             // rank-deficient-cap fallback of sweptFaceCells (sweptFaceFlux)
+            // sweptClip onePlane (2026-11-09): the one-plane path needs the
+            // swept flux; the diagnostics of the pieces path (sweptClassify,
+            // sweptConsistencyLog, sweptFaceDump) and decision 2's bounded
+            // face fractions are not implemented for it (the face fractions
+            // come from the donor's plane and rule 2 alone)
+            if (sweptClip_ != "pieces" && sweptClip_ != "onePlane")
+            {
+                FatalIOErrorInFunction(modelDict())
+                    << "sweptClip '" << sweptClip_
+                    << "' unknown. Valid: pieces, onePlane." << exit(FatalIOError);
+            }
+            if (sweptOnePlane_)
+            {
+                if (fluxIntegration_ != "sweptFaceCells")
+                {
+                    FatalIOErrorInFunction(modelDict())
+                        << "sweptClip onePlane needs flux sweptFaceCells, not "
+                        << fluxIntegration_ << exit(FatalIOError);
+                }
+                if (sweptOnePlaneBound_ != "none" && sweptOnePlaneBound_ != "donorContent")
+                {
+                    FatalIOErrorInFunction(modelDict())
+                        << "sweptOnePlaneBound '" << sweptOnePlaneBound_
+                        << "' unknown. Valid: none, donorContent." << exit(FatalIOError);
+                }
+                if (sweptClassify_ || sweptConsistencyLog_ || sweptFaceDump_)
+                {
+                    FatalIOErrorInFunction(modelDict())
+                        << "sweptClip onePlane: sweptClassify, sweptConsistencyLog"
+                        << " and sweptFaceDump are diagnostics of sweptClip pieces"
+                        << exit(FatalIOError);
+                }
+                if (sweptBoundedFaceFraction_ != "none")
+                {
+                    FatalIOErrorInFunction(modelDict())
+                        << "sweptClip onePlane leaves the face fractions to the"
+                        << " donor's plane and rule 2: sweptBoundedFaceFraction"
+                        << " must be none, not " << sweptBoundedFaceFraction_
+                        << exit(FatalIOError);
+                }
+            }
             if (fluxIntegration_ != "prism" && fluxIntegration_ != "sweptFaceCells")
             {
                 FatalIOErrorInFunction(modelDict())
