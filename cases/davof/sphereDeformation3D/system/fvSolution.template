@@ -96,7 +96,7 @@ solvers
         sweptAxisPlanes @!TPF_SWEPT_AXIS_PLANES!@;
         sweptTetCache   @!TPF_SWEPT_TET_CACHE!@;
         sweptPointVelocityLazy @!TPF_SWEPT_POINT_VELOCITY_LAZY!@;
-        sweptPreTestCoplanarSide @!TPF_SWEPT_PRE_TEST_COPLANAR_SIDE!@;@!TPF_ENRIGHT_KEYS!@
+        sweptPreTestCoplanarSide @!TPF_SWEPT_PRE_TEST_COPLANAR_SIDE!@;@!TPF_ENRIGHT_KEYS!@@!TPF_CORRECTOR_KEYS!@
         defectEvery     10;
         curvedDebug     @!TPF_CURVED_DEBUG!@;
         defectLevels    3;

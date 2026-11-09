@@ -31,6 +31,8 @@ License
 #include "davofCcsPositioning.H"
 #include "zoneDistribute.H"
 #include "syncTools.H"
+#include "cutFacePLIC.H"
+#include "coupledFvPatchField.H"
 #include "addToRunTimeSelectionTable.H"
 #include "profiling.H"
 
@@ -186,6 +188,16 @@ bool Foam::reconstruction::davof::positionPlane
             }
         }
         if (atEnd) ++nPosEndNoPlane_;
+        normal_[celli] = Zero;
+        centre_[celli] = Zero;
+        return false;
+    }
+
+    // No normal (an alphaOnly interface cell whose ring sum vanishes,
+    // 2026-11-09): no plane. Never taken on the default path, where every
+    // selected normal has a positive magnitude.
+    if (mag(n) == 0)
+    {
         normal_[celli] = Zero;
         centre_[celli] = Zero;
         return false;
@@ -405,6 +417,21 @@ Foam::reconstruction::davof::davof
     nRuleResetCells_(0),
     nRuleResetFaces_(0),
     ruleResetMaxDaf_(0),
+    faceFractionCorrector_
+    (
+        modelDict().getOrDefault<word>("faceFractionCorrector", "none")
+    ),
+    correctorIterations_(modelDict().getOrDefault<label>("correctorIterations", 1)),
+    correctorTolerance_(modelDict().getOrDefault<scalar>("correctorTolerance", 1e-12)),
+    correctorLog_(modelDict().getOrDefault<bool>("correctorLog", false)),
+    correctedTimeIndex_(-1),
+    corrIterationsUsed_(0),
+    corrMaxChange_(),
+    corrL1Change_(),
+    corrFaces_(0),
+    corrNoPlaneCells_(0),
+    corrInterfaceCells_(0),
+    corrIdentity_(0),
     positioning_(modelDict().getOrDefault<word>("positioning", "ccs")),
     positioningTol_(modelDict().getOrDefault<scalar>("positioningTol", 1e-14)),
     positioningMaxIter_(modelDict().getOrDefault<label>("positioningMaxIter", 30)),
@@ -582,6 +609,42 @@ Foam::reconstruction::davof::davof
             << " default openfoam is v2606's cutCellPLIC, ROOTVSMALL)" << endl;
     }
 
+    // The iterative face-fraction corrector (2026-11-09)
+    if (faceFractionCorrector_ != "none" && faceFractionCorrector_ != "mean")
+    {
+        FatalIOErrorInFunction(modelDict())
+            << "faceFractionCorrector '" << faceFractionCorrector_
+            << "' unknown. Valid: none, mean." << exit(FatalIOError);
+    }
+    if (faceFractionCorrector_ != "none")
+    {
+        if (correctorIterations_ < 1)
+        {
+            FatalIOErrorInFunction(modelDict())
+                << "correctorIterations " << correctorIterations_
+                << ": at least 1" << exit(FatalIOError);
+        }
+        if (faceState_ == "vector")
+        {
+            FatalIOErrorInFunction(modelDict())
+                << "faceFractionCorrector " << faceFractionCorrector_
+                << " is not implemented for faceState vector"
+                << exit(FatalIOError);
+        }
+        Info<< "davof: faceFractionCorrector " << faceFractionCorrector_
+            << " (correctorIterations " << correctorIterations_
+            << ", correctorTolerance " << correctorTolerance_
+            << ", correctorLog " << correctorLog_ << ")";
+        if (interfaceCellRule_ != "alphaOnly")
+        {
+            Info<< "; interfaceCellRule " << interfaceCellRule_
+                << " replaced by alphaOnly (the corrector's interface cells"
+                << " are the cells with surfCellTol < alpha < 1 - surfCellTol)";
+            interfaceCellRule_ = "alphaOnly";
+        }
+        Info<< endl;
+    }
+
     normalModel_ = davofNormalModel::New(modelDict(), *this);
 
     Info<< "davof: normalModel " << normalModel_->type() << ", applyTo "
@@ -602,6 +665,30 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
 
     if (uptodate && !forceUpdate)
     {
+        return;
+    }
+
+    // The face-fraction corrector ran at the end of the previous step and
+    // left the planes of the state (alpha, alphaf) it ends with; nothing has
+    // changed them since, so the advection step's reconstruction (the first
+    // one of this time index) is the corrector's last (2026-11-09)
+    if
+    (
+        faceFractionCorrector_ != "none"
+     && correctedTimeIndex_ >= 0
+     && mesh_.time().timeIndex() == correctedTimeIndex_ + 1
+     && mesh_.time().timeIndex() != lastTimeIndex_
+     && !mesh_.topoChanging()
+    )
+    {
+        lastTimeIndex_ = mesh_.time().timeIndex();
+        nReconstructInIndex_ = 1;
+        if (correctorLog_)
+        {
+            Info<< "davof: reconstruction skipped, the face-fraction"
+                << " corrector's planes of the previous step are current"
+                << endl;
+        }
         return;
     }
 
@@ -667,13 +754,19 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     if
     (
         interfaceCellRule_ != "normalOnly" && interfaceCellRule_ != "normalAndAlpha"
-     && interfaceCellRule_ != "normalAndAlphaReset"
+     && interfaceCellRule_ != "normalAndAlphaReset" && interfaceCellRule_ != "alphaOnly"
     )
     {
         FatalErrorInFunction
             << "interfaceCellRule " << interfaceCellRule_
-            << ": normalOnly | normalAndAlpha | normalAndAlphaReset" << exit(FatalError);
+            << ": normalOnly | normalAndAlpha | normalAndAlphaReset | alphaOnly"
+            << exit(FatalError);
     }
+    // alphaOnly (2026-11-09, the face-fraction corrector's rule): the
+    // interface cells are the cells with tol < alpha < 1 - tol, whatever
+    // their face fractions; a cell among them with m_c = 0 gets its normal
+    // from the model (the ring sum) or no plane
+    const bool alphaOnly = (interfaceCellRule_ == "alphaOnly");
     const scalar tolA = surfCellTol_;
     auto alphaInside = [&](const label celli) -> bool
     {
@@ -759,9 +852,27 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
         {
             const bool inside = alphaInside(celli);
             if (!inside) ++nRuleOutside_;
+            if (alphaOnly)
+            {
+                // the set is formed from alpha below; the count of the
+                // cells with wet faces and alpha outside is kept
+                continue;
+            }
             if (interfaceCellRule_ == "normalOnly" || inside)
             {
                 if (!inside) ++nRuleOutsidePlane_;
+                interfaceCell_[celli] = true;
+                interfaceLabels_.append(celli);
+            }
+        }
+    }
+    if (alphaOnly)
+    {
+        const label nCells = mesh_.nCells();
+        for (label celli = 0; celli < nCells; ++celli)
+        {
+            if (alphaInside(celli))
+            {
                 interfaceCell_[celli] = true;
                 interfaceLabels_.append(celli);
             }
@@ -799,7 +910,9 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
     {
         const label celli = interfaceLabels_[i];
         const scalar mMag = mag(m[celli]);
-        const vector n = m[celli]/mMag;
+        // mMag > 0 on every path but alphaOnly (the interface cells are
+        // selected by |m_c| above a positive threshold otherwise)
+        const vector n = (mMag > 0) ? m[celli]/mMag : vector(Zero);
 
         if (normalModel_->isSliver(celli, mMag))
         {
@@ -844,7 +957,8 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
             }
         }
 
-        const scalar p = (faceMoment - 3.0*alpha1_[celli]*V[celli])/mMag;
+        const scalar p =
+            (mMag > 0) ? (faceMoment - 3.0*alpha1_[celli]*V[celli])/mMag : 0;
         pPlane_[celli] = p;
 
         if (twoPass)
@@ -856,16 +970,25 @@ void Foam::reconstruction::davof::reconstruct(bool forceUpdate)
             }
         }
 
-        const label status = cutCell_.calcSubCell(celli, p, n);
-        const scalar alphaPlane =
-            (status == 0) ? cutCell_.VolumeOfFluid() : ((status < 0) ? 1 : 0);
-        const vector areaPlane = (status == 0) ? cutCell_.faceArea() : vector(Zero);
+        if (mMag > 0)
+        {
+            const label status = cutCell_.calcSubCell(celli, p, n);
+            const scalar alphaPlane =
+                (status == 0) ? cutCell_.VolumeOfFluid() : ((status < 0) ? 1 : 0);
+            const vector areaPlane = (status == 0) ? cutCell_.faceArea() : vector(Zero);
 
-        planeVolDefect_[celli] = mag(alphaPlane - alpha1_[celli]);
-        planeAreaDefect_[celli] =
-            mag(areaPlane - m[celli])/Foam::pow(V[celli], 2.0/3.0);
-        maxPlaneVolDefect_ = max(maxPlaneVolDefect_, planeVolDefect_[celli]);
-        maxPlaneAreaDefect_ = max(maxPlaneAreaDefect_, planeAreaDefect_[celli]);
+            planeVolDefect_[celli] = mag(alphaPlane - alpha1_[celli]);
+            planeAreaDefect_[celli] =
+                mag(areaPlane - m[celli])/Foam::pow(V[celli], 2.0/3.0);
+            maxPlaneVolDefect_ = max(maxPlaneVolDefect_, planeVolDefect_[celli]);
+            maxPlaneAreaDefect_ = max(maxPlaneAreaDefect_, planeAreaDefect_[celli]);
+        }
+        else
+        {
+            // no explicit plane without an area normal (alphaOnly)
+            planeVolDefect_[celli] = 0;
+            planeAreaDefect_[celli] = 0;
+        }
     }
 
     if (twoPass)
@@ -1220,4 +1343,269 @@ void Foam::reconstruction::davof::setFaceFraction(const label facei, const scala
     const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
     const label patchi = pbm.whichPatch(facei);
     alphaf_.boundaryFieldRef()[patchi][facei - pbm[patchi].start()] = v;
+}
+
+
+// * * * * * * * * the iterative face-fraction corrector (2026-11-09) * * * * //
+
+void Foam::reconstruction::davof::inducedFaceFractions
+(
+    scalarField& afNew,
+    bitSet& set,
+    scalar& dMax,
+    scalar& dSum,
+    label& nSet,
+    label& nNoPlane
+)
+{
+    addProfilingInFunction(geometricVoF);
+    const label nFaces = mesh_.nFaces();
+    const label nInt = mesh_.nInternalFaces();
+    const labelUList& own = mesh_.faceOwner();
+    const labelUList& nei = mesh_.faceNeighbour();
+    const vectorField& Sf = mesh_.faceAreas();
+    const scalarField& aIn = alpha1_.primitiveField();
+    const vectorField& nIn = normal_.primitiveField();
+    const vectorField& cIn = centre_.primitiveField();
+    const scalar tolA = surfCellTol_;
+
+    afNew.resize(nFaces);
+    set.resize(nFaces);
+    set.reset();
+    for (label facei = 0; facei < nFaces; ++facei)
+    {
+        afNew[facei] = hasValue_[facei] ? faceFraction(facei) : 0;
+    }
+
+    // The clip of a face polygon by a plane: the wet area over the face
+    // area (cutFacePLIC, H. Scheufler, J. Roenby, J. Comput. Phys. 383
+    // (2019) 1-23, doi:10.1016/j.jcp.2019.01.009; the plane's normal points
+    // into the liquid, as the cut assumes: (x - base).n > 0 is liquid)
+    cutFacePLIC cutF(mesh_);
+    auto clip = [&](const label facei, const vector& nrm, const point& ctr) -> scalar
+    {
+        cutF.calcSubFace(facei, nrm, ctr);
+        const scalar af = mag(cutF.subFaceArea())/mag(Sf[facei]);
+        return min(max(af, scalar(0)), scalar(1));
+    };
+    // The contribution of a cell to the mean on a face: its plane's clip
+    // when it has one, its (clamped) alpha otherwise; an interface cell
+    // without a plane (the ring sum vanished, or the positioning failed)
+    // is counted
+    label nNoPlaneLocal = 0;
+    auto contrib = [&]
+    (
+        const label facei,
+        const bool interfaceCell,
+        const vector& nrm,
+        const point& ctr,
+        const scalar a
+    ) -> scalar
+    {
+        if (mag(nrm) > 0)
+        {
+            return clip(facei, nrm, ctr);
+        }
+        if (interfaceCell)
+        {
+            ++nNoPlaneLocal;
+        }
+        return min(max(a, scalar(0)), scalar(1));
+    };
+
+    for (label facei = 0; facei < nInt; ++facei)
+    {
+        const label o = own[facei], n = nei[facei];
+        const bool io = interfaceCell_[o], in = interfaceCell_[n];
+        if (!(io || in)) continue;
+        afNew[facei] =
+            0.5*
+            (
+                contrib(facei, io, nIn[o], cIn[o], aIn[o])
+              + contrib(facei, in, nIn[n], cIn[n], aIn[n])
+            );
+        set.set(facei);
+    }
+
+    // The coupled patches: the other side's plane and alpha from the
+    // patch-neighbour fields (the remote cell's values), its interface
+    // flag from its alpha (the alphaOnly rule, the same on both sides);
+    // the non-coupled patches are left as the transport set them
+    const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
+    bitSet coupledSet(nFaces);
+    forAll(pbm, patchi)
+    {
+        const polyPatch& pp = pbm[patchi];
+        if (!pp.coupled()) continue;
+        if (alphaf_.boundaryField()[patchi].size() != pp.size()) continue;
+        const coupledFvPatchField<vector>& pn =
+            refCast<const coupledFvPatchField<vector>>(normal_.boundaryField()[patchi]);
+        const coupledFvPatchField<vector>& pc =
+            refCast<const coupledFvPatchField<vector>>(centre_.boundaryField()[patchi]);
+        const coupledFvPatchField<scalar>& pa =
+            refCast<const coupledFvPatchField<scalar>>(alpha1_.boundaryField()[patchi]);
+        const tmp<vectorField> tnN(pn.patchNeighbourField());
+        const tmp<vectorField> tcN(pc.patchNeighbourField());
+        const tmp<scalarField> taN(pa.patchNeighbourField());
+        const vectorField& nN = tnN();
+        const vectorField& cN = tcN();
+        const scalarField& aN = taN();
+        forAll(pp, i)
+        {
+            const label facei = pp.start() + i;
+            const label o = own[facei];
+            const bool io = interfaceCell_[o];
+            const bool in = (aN[i] > tolA && aN[i] < 1 - tolA);
+            if (!(io || in)) continue;
+            afNew[facei] =
+                0.5*
+                (
+                    contrib(facei, io, nIn[o], cIn[o], aIn[o])
+                  + contrib(facei, in, nN[i], cN[i], aN[i])
+                );
+            set.set(facei);
+            coupledSet.set(facei);
+        }
+    }
+    if (Pstream::parRun() || coupledSet.any())
+    {
+        // one value per coupled face: the half-sum of the two sides' means
+        // (the sum is symmetric bit for bit; the two clips of one face by
+        // one plane differ at round-off through the face's orientation)
+        scalarList both(nFaces, Zero);
+        for (const label facei : coupledSet)
+        {
+            both[facei] = afNew[facei];
+        }
+        syncTools::syncFaceList(mesh_, both, plusEqOp<scalar>());
+        for (const label facei : coupledSet)
+        {
+            afNew[facei] = 0.5*both[facei];
+        }
+    }
+
+    dMax = 0;
+    dSum = 0;
+    scalar nSetW = 0;
+    for (const label facei : set)
+    {
+        const scalar d = mag(afNew[facei] - faceFraction(facei));
+        const scalar w = coupledSet.test(facei) ? 0.5 : 1.0;
+        dMax = max(dMax, d);
+        dSum += w*d;
+        nSetW += w;
+    }
+    reduce(dMax, maxOp<scalar>());
+    reduce(dSum, sumOp<scalar>());
+    reduce(nSetW, sumOp<scalar>());
+    nSet = label(nSetW + 0.5);
+    nNoPlane = returnReduce(nNoPlaneLocal, sumOp<label>());
+}
+
+
+bool Foam::reconstruction::davof::correctFaceFractions()
+{
+    addProfilingInFunction(geometricVoF);
+    if (faceFractionCorrector_ == "none")
+    {
+        return false;
+    }
+
+    // the remote cells' alpha on the processor patches (the bounding may
+    // have changed alpha after the last evaluation)
+    if (Pstream::parRun())
+    {
+        alpha1_.correctBoundaryConditions();
+    }
+
+    // iteration 0: the planes of the predictor state (the transported
+    // face fractions; the advection's wet-face list describes them)
+    reconstruct(true);
+
+    corrIterationsUsed_ = 0;
+    corrMaxChange_.clear();
+    corrL1Change_.clear();
+    corrFaces_ = 0;
+    corrNoPlaneCells_ = 0;
+    bool changedAny = false;
+
+    scalarField afNew;
+    bitSet set;
+    for (label it = 0; it < correctorIterations_; ++it)
+    {
+        scalar dMax = 0, dSum = 0;
+        label nSet = 0, nNoPlane = 0;
+        inducedFaceFractions(afNew, set, dMax, dSum, nSet, nNoPlane);
+        corrMaxChange_.append(dMax);
+        corrL1Change_.append(dSum/max(nSet, label(1)));
+        corrFaces_ = nSet;
+        corrNoPlaneCells_ = max(corrNoPlaneCells_, nNoPlane);
+        if (dMax <= correctorTolerance_)
+        {
+            break;
+        }
+        for (const label facei : set)
+        {
+            setFaceFraction(facei, afNew[facei]);
+        }
+        ++corrIterationsUsed_;
+        changedAny = true;
+        // the wet-face list no longer describes alphaf: the full pass
+        wetFacesNFaces_ = -1;
+        reconstruct(true);
+    }
+    correctedTimeIndex_ = mesh_.time().timeIndex();
+    corrInterfaceCells_ = returnReduce(interfaceLabels_.size(), sumOp<label>());
+
+    // The identity sum_k m_k = sum_b alpha_f S_f over the non-coupled
+    // boundary faces (the internal and coupled faces cancel when every face
+    // carries ONE value; m_k here is the code's sum_f alpha_f S_f^out, into
+    // the liquid, i.e. minus the area normal of the notation)
+    {
+        const vectorField& m = areaNormal_.primitiveField();
+        const vectorField& Sf = mesh_.faceAreas();
+        vector sumM(Zero), sumB(Zero);
+        scalar sumMag = 0;
+        forAll(m, celli)
+        {
+            sumM += m[celli];
+            sumMag += mag(m[celli]);
+        }
+        const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
+        forAll(pbm, patchi)
+        {
+            if (pbm[patchi].coupled()) continue;
+            const fvsPatchScalarField& pf = alphaf_.boundaryField()[patchi];
+            forAll(pf, i)
+            {
+                sumB += pf[i]*Sf[pbm[patchi].start() + i];
+            }
+        }
+        reduce(sumM, sumOp<vector>());
+        reduce(sumB, sumOp<vector>());
+        reduce(sumMag, sumOp<scalar>());
+        corrIdentity_ = mag(sumM - sumB)/max(sumMag, VSMALL);
+    }
+
+    if (correctorLog_)
+    {
+        Info<< "davof corrector (" << faceFractionCorrector_ << "): iterations "
+            << corrIterationsUsed_ << " of " << correctorIterations_
+            << ", interface cells (alpha) " << corrInterfaceCells_
+            << ", faces " << corrFaces_
+            << ", cells without a plane " << corrNoPlaneCells_
+            << "; max |dalphaf| per iteration (";
+        forAll(corrMaxChange_, k)
+        {
+            Info<< (k ? " " : "") << corrMaxChange_[k];
+        }
+        Info<< "), L1 |dalphaf| (";
+        forAll(corrL1Change_, k)
+        {
+            Info<< (k ? " " : "") << corrL1Change_[k];
+        }
+        Info<< "); identity |sum_k m_k - sum_b alphaf S_f| / sum_k |m_k| = "
+            << corrIdentity_ << endl;
+    }
+    return changedAny;
 }

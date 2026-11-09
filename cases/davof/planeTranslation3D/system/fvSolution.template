@@ -133,7 +133,7 @@ solvers
         sweptAxisPlanes @!TPF_SWEPT_AXIS_PLANES!@;
         sweptTetCache   @!TPF_SWEPT_TET_CACHE!@;
         sweptPointVelocityLazy @!TPF_SWEPT_POINT_VELOCITY_LAZY!@;
-        sweptPreTestCoplanarSide @!TPF_SWEPT_PRE_TEST_COPLANAR_SIDE!@;@!TPF_ENRIGHT_KEYS!@
+        sweptPreTestCoplanarSide @!TPF_SWEPT_PRE_TEST_COPLANAR_SIDE!@;@!TPF_ENRIGHT_KEYS!@@!TPF_CORRECTOR_KEYS!@
         sweptFaceUpdateFromVolume @!TPF_SWEPT_FACE_UPDATE_FROM_VOLUME!@;
         sweptSliverClosedForm @!TPF_SWEPT_SLIVER_CLOSED_FORM!@;
         // the volume flux of a face (fork branch davof-fluxint): prism (the

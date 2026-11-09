@@ -5761,3 +5761,122 @@ the leia commit that last touched the case template, the study configuration and
 the sha256 over the rendered dictionaries of the prepared cases) are in
 `iso/csv/iso_stamps.csv`; the recompute-on-change rule itself is the port agent's stamp
 mechanism in leia's workflow, which this track will use when it lands.
+
+## The iterative face-fraction corrector (2026-11-09, leia branch `davof-iter`)
+
+Tomislav's instruction (2026-11-09): "Start it." The DAVOF state is (alpha_k, alpha_f).
+The transport step sets alpha_k^{n+1} and alpha_f^{n+1} (the swept pieces' clips of the
+faces, the predictor); the reconstruction then forms m_k = -sum_f alpha_f S_f, the ring
+area normal d_k = sum_{j in R(k)} m_j and positions the plane by CCS from alpha_k. The
+predictor's face fractions and the planes they produce are not consistent with each
+other: the plane of a cell clips its faces to fractions that differ from the transported
+ones. The corrector iterates on this inconsistency inside the reconstruction, the
+advection untouched:
+
+1. reconstruct from the current alpha_f (ring area normal, CCS from alpha_k);
+2. the face fractions the planes induce: a face between two interface cells takes
+   1/2 (alpha_f[Pi_owner] + alpha_f[Pi_neighbour]), alpha_f[Pi] the face polygon
+   clipped by the plane Pi (wet area over face area); a face shared with a cell that has
+   no plane takes that cell's alpha (0 or 1 within the tolerance) in place of its clip;
+   a face touching no interface cell and every non-coupled boundary face are unchanged;
+   a processor face receives the identical value on both sides (the half-sum);
+3. alpha_f := the induced values; back to 1, up to `correctorIterations` times or until
+   the largest change of alpha_f falls below `correctorTolerance` (then no replacement).
+
+The interface cells of the iteration are the cells with eps < alpha_k < 1 - eps
+(eps = surfCellTol 1e-8; `interfaceCellRule alphaOnly`, forced while the corrector is
+on), not the cells flagged by their face fractions. The final alpha_f is the state
+carried to the next step and written; the final planes are the reconstruction the next
+step's flux uses (the first reconstruct() of the next time index returns without
+recomputing). Keys of the alpha dictionary: `faceFractionCorrector none | mean`
+(default none: bit for bit the behaviour before), `correctorIterations` (1),
+`correctorTolerance` (1e-12), `correctorLog` (false; the per-step line: iterations
+used, max and L1 change of alpha_f per iteration, interface cells, faces, cells without
+a plane, and the identity |sum_k m_k - sum_b alpha_f S_f| / sum_k |m_k| over the
+non-coupled boundary faces, which holds to round-off exactly when every face carries one
+value). Code: `src/davof/reconstruction/davof.{H,C}` (`correctFaceFractions`,
+`inducedFaceFractions`, the rule `alphaOnly`, the skip of the next step's first
+reconstruction), the hook at the end of `davofSweptAdvection::advect` (the flux
+untouched), and `isoAdvectorScheme` (the DAVOF reconstruction under OpenFOAM's
+isoAdvection: the predictor alpha_f from the UPWIND cell's plane translated by U_k dt,
+the fork's plane-clipped face update in the wrapper, then the corrector). The study
+tokens: `TPF_FACE_FRACTION_CORRECTOR none | mean | mean<k>` renders the keys through
+`TPF_CORRECTOR_KEYS` (empty for none: every dictionary rendered before stays byte for
+byte, the stamps recompute nothing); `TPF_ADVECTION_SCHEME auto | isoAdvector`.
+
+Prior art (cited in the code): B. Swartz, The second-order sharpening of blurred smooth
+borders, Math. Comp. 52 (1989) 675-714, doi:10.1090/S0025-5718-1989-0983313-8, and
+S. J. Mosso, B. K. Swartz, D. B. Kothe, R. C. Ferrell, A parallel, volume-tracking
+algorithm for unstructured meshes, Parallel CFD '96 (Capri, 1996), Elsevier 1997, pp.
+368-375, LA-UR-96-2420 (no DOI; the author list, title and conference verified from the
+reference list of Maric, Marschall, Bothe, arXiv:1305.3417, 2026-11-09; the proceedings'
+pages from the standard citation, not re-verified) iterate the NORMAL of a cell from
+the positions of the neighbours' planes (the line through the neighbouring interface
+points). Ours iterates the FACE FRACTIONS the neighbouring planes induce; the normal is
+never touched directly and follows from alpha_f by the area identity and the ring sum,
+so that every iterate is a DAVOF state (alpha_k, alpha_f).
+
+### Pre-registered (2026-11-09, before the first run)
+
+The cases: the plane translation `planeTranslation3D` (both arms: normal U = n and
+oblique U = (1 0 0); Co 0.2 / 0.5 / 1; N 20 / 40 / 80), the sphere rotation
+`sphereRotation3D` (one turn; OF Co 0.2 = interface Co 0.0463, OF Co 1 = 0.2315; N 32 /
+64 / 128 on 1 / 8 / 64 ranks), the 3D deformation `isoDeformation3D` (the standing
+matrix's template, OF Co 0.5, N 32 / 64 on 1 / 8 ranks, `grazingCut fork` so that the
+none row reproduces the standing record), every DAVOF row the port's reference setting
+(`davof-planeSurf-ringArea`: the swept flux with the round-4 keys, the ring area normal,
+CCS); the corrector none | mean with 1, 2 and 4 iterations (tolerance 1e-12); the
+rotation at N 32 / 64, OF Co 0.2, also under `isoAdvector` with the DAVOF reconstruction.
+Configs `config/davof/iter_*.yaml` (`workflow/scripts/iter_make_configs.py`), tables
+`workflow/scripts/iter_tables.py`, cluster directory
+`/work/scratch/tm83tomy/davof/agents/iter`.
+
+- **P1, the plane gate (MUST hold).** On the plane translation, both arms, every Co and
+  N, the corrector changes nothing: 0 or 1 iteration per step with max |dalpha_f| <=
+  1e-12 at the first evaluation of every step; the run maxima of L1(alphaf) and L1(n)
+  <= 1e-12 as without the corrector; alpha, alphaf at the end of the np 8 run equal the
+  np 1 run's to round-off (max |difference| <= 1e-12, 20 steps, plane N 40 oblique Co
+  0.5 and rotation N 32 OF Co 0.2). FALSIFIED by a step with max |dalpha_f| > 1e-12 on
+  the plane (the planes of a planar state must reproduce the transported fractions;
+  a larger change is a defect of the clip, the sync or the alphaOnly set), by a gate
+  value above 1e-12, or by a parallel difference above 1e-12.
+- **P2, convergence on the sphere.** Rotation N 32 / 64 at OF Co 0.2 and 1, deformation
+  N 32 / 64 at OF Co 0.5, 4 iterations: the max change of alpha_f falls by at least a
+  factor 2 from one iteration to the next over the first 4 iterations at every step
+  (the median and the worst factor per iteration are reported), and the iterations to
+  reach max |dalpha_f| 1e-6 and 1e-10 are reported (">4" when not reached). FALSIFIED
+  by a step whose max change grows from one iteration to the next (factor < 1) or whose
+  factors stay below 2 at every iteration after the first; a factor below 2 at a few
+  steps is reported with the located cells, not a falsification.
+- **P3, accuracy.** Rotation N 32 / 64 / 128 at OF Co 0.2 and deformation N 32 / 64 at
+  OF Co 0.5, mean with 1, 2 and 4 iterations against none: E_shape and L1(n) at the end
+  not worse than none by more than 5 % with 1 iteration; L1(n) improves with the
+  iterations (the ring normal is first order, L1(n) about 1e-2 at N 128 on the sphere
+  as the ladders of 2026-11-05 measured; the expected size of the improvement is a few
+  per cent to a factor 2, not an order change); boundedness (min alpha >= -1e-9, excess
+  <= 1e-9 on the rotation) and the mass deviation as without the corrector (round-off);
+  the interface-cell count of every corrected run equals the alpha-based count (no
+  face-fraction-flagged cells: the log's count equals the number of cells with
+  1e-8 < alpha < 1 - 1e-8). FALSIFIED by E_shape or L1(n) worse than none by more than
+  5 % at 1 iteration on any rung, by L1(n) growing with the iterations, by an
+  unbounded or non-conservative run that none completes bounded, or by an
+  interface-cell count differing from the alpha-based one.
+- **P4, cost.** Wall clock per step at equal ranks (rotation N 64, OF Co 0.2, 8 ranks,
+  one exclusive node, two repetitions, the diagnostics at the end only): one corrector
+  iteration adds at most one reconstruction's cost to the step; the reconstruction's
+  share of the step is measured first (OpenFOAM's profiling, `reconstruct` against
+  `advect`; the fork measured the DAVOF reconstruction at 0.49-0.61 x plicRDF's at N
+  128). FALSIFIED if (t_mean1 - t_none) per step exceeds 1.2 x the measured
+  reconstruction time per step, or if t_mean4 - t_none exceeds 4.8 x of it.
+- **P5, the first correction as a diagnostic.** On the rotation N 32 / 64 / 128 at OF
+  Co 0.2 the max and the L1 change of alpha_f at iteration 1 (the median over the
+  steps) scale as O(h): the least-squares order over N between 0.7 and 1.3 for the L1
+  change (the advection's face-fraction inconsistency is first order); the order of
+  the max change is reported. Under isoAdvector (N 32 / 64) the same quantity is
+  reported next to the swept flux's. FALSIFIED by an order of the L1 change below 0.5
+  or above 1.5.
+
+Also reported, not predicted: the iterations used per step (median, max), the identity
+defect, the cells without a plane, L1(alphaf) at the end and its order, L1(x), the
+interface-cell counts, the total wall clock of every case (shared nodes, one run; the
+exclusive-node timing of P4 is the cost measurement), the job ids and the stamps.

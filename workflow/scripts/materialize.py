@@ -208,6 +208,35 @@ def _with_derived_tokens(tokens):
     # (tpf_rows.enright_setting_tokens)
     if "TPF_ENRIGHT_SETTING" in out:
         out.update(tpf_rows.enright_setting_tokens(str(out["TPF_ENRIGHT_SETTING"])))
+    # The iterative face-fraction corrector of the davof reconstruction (leia davof-iter,
+    # 2026-11-09; src/davof/reconstruction/davof.H): TPF_FACE_FRACTION_CORRECTOR none |
+    # mean | mean<k> (k the iterations, overriding TPF_CORRECTOR_ITERATIONS) renders the
+    # block TPF_CORRECTOR_KEYS appended to the Enright keys' line of the templates: EMPTY
+    # for none (and for a case without the token), so that every dictionary rendered
+    # before stays byte for byte the same and the stamps recompute nothing.
+    corr = str(out.get("TPF_FACE_FRACTION_CORRECTOR", "none"))
+    if corr == "none":
+        out["TPF_CORRECTOR_KEYS"] = ""
+    else:
+        iters = str(out.get("TPF_CORRECTOR_ITERATIONS", 1))
+        if corr.startswith("mean") and corr != "mean":
+            iters = corr[len("mean"):]
+            corr = "mean"
+        out["TPF_CORRECTOR_KEYS"] = (
+            "\n        // the iterative face-fraction corrector of the davof reconstruction"
+            "\n        // (leia davof-iter, 2026-11-09; davof.H): the planes from the"
+            "\n        // transported face fractions, the face fractions the planes induce,"
+            "\n        // repeated; the interface cells by alpha alone while it is on"
+            "\n        faceFractionCorrector " + corr + ";"
+            "\n        correctorIterations " + iters + ";"
+            "\n        correctorTolerance " + str(out.get("TPF_CORRECTOR_TOLERANCE", "1e-12")) + ";"
+            "\n        correctorLog " + str(out.get("TPF_CORRECTOR_LOG", "true")) + ";")
+    # The advection scheme override of the leia route (TPF_ADVECTION_SCHEME auto |
+    # davofSwept | isoAdvector): the DAVOF reconstruction under OpenFOAM's isoAdvection
+    # (isoAdvectorScheme.H, 2026-11-09) is selected by isoAdvector on a davof row
+    ov = str(out.get("TPF_ADVECTION_SCHEME", "auto"))
+    if ov != "auto" and str(out.get("DAVOF_SOLVER", "")) == "davofAdvectorFoam":
+        out["DAVOF_ADVECTION_SCHEME"] = ov
     if "END_TIME" in out:
         try:
             out["HALF_END_TIME"] = "{:g}".format(float(out["END_TIME"]) / 2.0)

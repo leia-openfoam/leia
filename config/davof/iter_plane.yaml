@@ -1,0 +1,56 @@
+# The plane gate P1 of the corrector: both arms (U = n, U = (1 0 0)), Co 0.2 / 0.5 / 1,
+# N 20 / 40 / 80, the corrector none | mean4; the corrector must change nothing (0 or 1
+# iteration with max |dalphaf| <= 1e-12 every step; L1(alphaf), L1(n) <= 1e-12 as without).
+# Written by workflow/scripts/iter_make_configs.py (leia davof-iter, 2026-11-09); edit the
+# script. Pre-registration: docs/davof/REPORT-swept.md "The iterative face-fraction corrector".
+#
+#   sbatch --parsable -J leia-iter_plane --export=ALL,STUDY=davof/iter_plane run-studies.sbatch
+study_name: iter_plane
+studies_dir: studies/davof
+case: davof/planeTranslation3D
+mesh: hex
+mode: serial
+np: 1
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the numbers rendered into the dictionaries are QUOTED.
+axes_override:
+  N_CELLS: [20, 40, 80]
+  TARGET_ADVECTIVE_CO: [0.2, 0.5, 1]
+  TPF_VELOCITY_ARM: [normal, oblique]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TPF_FACE_FRACTION_CORRECTOR: [none, mean4]
+  TPF_WRITE_PRECISION: ["17"]
+  TPF_PROFILING: ["false"]
+  TPF_VOLUME_RULE: [kromerBothe]
+  TPF_ANCHOR_METHOD: [ccs]
+  TPF_FLUX_INTEGRATION: [sweptFaceCells]
+  TPF_SWEPT_SCALE: ["true"]
+  TPF_SWEPT_FACE_UPDATE: [pieces]
+  TPF_SWEPT_COPLANAR: [donorSide]
+  TPF_SWEPT_CAP_SET: [final]
+  TPF_PLANE_SOURCE: [anchor]
+  TPF_KB_FAN: ["auto"]
+  TPF_SWEPT_WISP_SURFACE: [matched]
+  TPF_SWEPT_WISP_TOL: [0]
+  TPF_SWEPT_CONSISTENT: ["true"]
+  TPF_SWEPT_WISP_MATCH_TOL: [1e-9]
+  TPF_SWEPT_VOLUME_CORRECTION: [scale]
+  TPF_SWEPT_AXIS_PLANES: ["true"]
+  TPF_SWEPT_TET_CACHE: ["true"]
+  TPF_SWEPT_POINT_VELOCITY_LAZY: ["true"]
+  TPF_SWEPT_PRE_TEST_COPLANAR_SIDE: ["true"]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 240
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

@@ -155,6 +155,58 @@ Description
     (default false; the fields are allocated on request only). The
     tensor of the start-of-step reconstruction serves the whole step.
 
+    The iterative face-fraction corrector (2026-11-09, leia davof-iter):
+
+        faceFractionCorrector  none | mean;   // default none (bit for bit)
+        correctorIterations    1;             // the most iterations per step
+        correctorTolerance     1e-12;         // stop: max |dalpha_f| below it
+        correctorLog           false;         // the per-step line
+
+    With mean, the advection scheme calls correctFaceFractions() once the
+    fluxes have set alpha_k^{n+1} and the transported alpha_f^{n+1} (the
+    predictor). The corrector reconstructs the planes from that state
+    (the ring area normal d_k = sum_{j in R(k)} m_j of the normal model,
+    the plane positioned by CCS from alpha_k), forms the face fractions
+    the planes induce (a face between two interface cells: the mean of
+    the two planes' clips of the face polygon, cutFacePLIC, wet area
+    over face area; a face shared with a cell that has no plane: that
+    cell's alpha, which is 0 or 1 within the tolerance, enters the mean
+    in place of a clip; a face touching no interface cell, and every
+    non-coupled boundary face, unchanged; a processor or cyclic face
+    receives the identical value on both sides, the half-sum of the two
+    sides' means), replaces alpha_f by the induced values and
+    reconstructs again, up to correctorIterations times or until the
+    largest change of alpha_f falls below correctorTolerance (the
+    replacement is then not made). The final alpha_f is the state
+    carried to the next step and written; the final planes are the
+    reconstruction the next step's flux uses (the first reconstruct()
+    of the next time index returns without recomputing them). During
+    the iteration the interface cells are the cells with
+    surfCellTol < alpha_k < 1 - surfCellTol (interfaceCellRule
+    alphaOnly, forced by the corrector), not the cells flagged by their
+    face fractions. The per-step line (correctorLog) prints the
+    iterations used, the max and L1 change of alpha_f per iteration,
+    the interface-cell count and the identity sum_k m_k = sum_b alpha_f
+    S_f over the non-coupled boundary faces (one value per face), which
+    holds to round-off exactly when every face carries one value.
+
+    Prior art: normals iterated from the neighbouring interface
+    positions are B. Swartz, The second-order sharpening of blurred
+    smooth borders, Math. Comp. 52 (1989) 675-714,
+    doi:10.1090/S0025-5718-1989-0983313-8, and S. J. Mosso, B. K.
+    Swartz, D. B. Kothe, R. C. Ferrell, A parallel, volume-tracking
+    algorithm for unstructured meshes, Parallel CFD '96 (Capri, 1996),
+    in: Parallel Computational Fluid Dynamics: Algorithms and Results
+    Using Advanced Computers, Elsevier, 1997, pp. 368-375, Los Alamos
+    report LA-UR-96-2420 (no DOI): there the normal of a cell is
+    corrected from the positions of the neighbours' planes (the line
+    through the neighbouring interface points). Here the normals are
+    not touched by the iteration: the iterate is the FACE FRACTION the
+    neighbouring planes induce, and the normal follows from the face
+    fractions by the area identity m_k = sum_f alpha_f S_f (and the
+    ring sum), so that the state (alpha_k, alpha_f) stays a DAVOF state
+    at every iterate.
+
 SourceFiles
     davof.C
 
@@ -223,6 +275,23 @@ class davof
         label nRuleResetCells_;
         label nRuleResetFaces_;
         scalar ruleResetMaxDaf_;
+
+        //- The iterative face-fraction corrector (2026-11-09, see the
+        //  Description): the keys, the time index of the last correction
+        //  (the first reconstruction of the following index is skipped)
+        //  and the record of the last call
+        word faceFractionCorrector_;
+        label correctorIterations_;
+        scalar correctorTolerance_;
+        bool correctorLog_;
+        label correctedTimeIndex_;
+        label corrIterationsUsed_;
+        scalarList corrMaxChange_;
+        scalarList corrL1Change_;
+        label corrFaces_;
+        label corrNoPlaneCells_;
+        label corrInterfaceCells_;
+        scalar corrIdentity_;
 
         //- The plane positioning (key positioning, 2026-11-04): vofCutCell
         //  (surfaceIteratorPLIC::vofCutCell to isoFaceTol in alpha, the
@@ -435,6 +504,23 @@ class davof
         //- The time the current state belongs to (see Description)
         scalar stateTime();
 
+        //- The face fractions the current planes induce (the corrector's
+        //  step 2): afNew holds, per mesh face, the induced value where
+        //  the face touches an interface cell (set[facei]), the current
+        //  value otherwise; the largest and the summed |change| over the
+        //  set faces (a coupled face counted once), their count and the
+        //  interface cells without a plane whose alpha entered a mean
+        //  (all reduced over the processors)
+        void inducedFaceFractions
+        (
+            scalarField& afNew,
+            bitSet& set,
+            scalar& dMax,
+            scalar& dSum,
+            label& nSet,
+            label& nNoPlane
+        );
+
         //- No copy construct
         davof(const davof&) = delete;
 
@@ -605,6 +691,45 @@ public:
         const vectorField& usedNormals() const noexcept
         {
             return usedNormal_;
+        }
+
+
+    // The iterative face-fraction corrector (see the Description)
+
+        //- none | mean
+        const word& faceFractionCorrector() const noexcept
+        {
+            return faceFractionCorrector_;
+        }
+
+        //- Run the corrector on the current state (alpha_k, alpha_f) at
+        //  the end of the advection step: reconstruct, induce, replace,
+        //  repeat. Returns true when alpha_f was changed. With
+        //  faceFractionCorrector none nothing is done (false).
+        bool correctFaceFractions();
+
+        //- The record of the last call: the replacements made, the max and
+        //  L1 change of alpha_f at every iteration evaluated (the last
+        //  entry is the one below the tolerance when the loop stopped
+        //  early), the identity defect
+        label correctorIterationsUsed() const noexcept
+        {
+            return corrIterationsUsed_;
+        }
+
+        const scalarList& correctorMaxChange() const noexcept
+        {
+            return corrMaxChange_;
+        }
+
+        const scalarList& correctorL1Change() const noexcept
+        {
+            return corrL1Change_;
+        }
+
+        scalar correctorIdentity() const noexcept
+        {
+            return corrIdentity_;
         }
 
 

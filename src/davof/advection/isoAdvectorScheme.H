@@ -36,6 +36,22 @@ Description
     This is OpenFOAM proper's isoAdvection, not the TwoPhaseFlow fork's; the
     two differ (docs/davof/PORT-DESIGN.md section 1.3).
 
+    The DAVOF reconstruction under isoAdvector (2026-11-09, leia davof-iter):
+    with reconstructionScheme davof the state carries the face fractions
+    alpha_f, which OpenFOAM's isoAdvection does not know. After every step
+    this wrapper sets the predictor alpha_f^{n+1} the way the fork's
+    plane-clipped loop did (TwoPhaseFlow davof-isoAdvector: the moving
+    plane's submerged face area at the end of the step): every face
+    touching an interface cell of the step's reconstruction takes the clip
+    of the face polygon by the UPWIND cell's plane translated by U_k dt
+    (U_k the cell velocity, set by setFlow at the half step), the other
+    cell's translated plane when the upwind cell has none, the upwind
+    cell's new alpha when neither has a plane; a non-coupled boundary face
+    the owner's translated plane or its alpha; a coupled face the same on
+    both sides (the half-sum). Then the davof scheme's face-fraction
+    corrector runs when it is switched on (faceFractionCorrector mean).
+    Nothing of isoAdvection's own flux or bounding changes.
+
 SourceFiles
     isoAdvectorScheme.C
 
@@ -52,6 +68,10 @@ SourceFiles
 
 namespace Foam
 {
+namespace reconstruction
+{
+    class davof;
+}
 
 /*---------------------------------------------------------------------------*\
                        Class isoAdvectorScheme Declaration
@@ -65,6 +85,19 @@ class isoAdvectorScheme
 
         //- OpenFOAM's isoAdvection (it owns its reconstruction scheme)
         isoAdvection iso_;
+
+        //- The davof reconstruction when selected (nullptr otherwise)
+        reconstruction::davof* davofPtr_;
+
+
+    // Private Member Functions
+
+        //- The predictor alpha_f^{n+1} from the translated planes of the
+        //  step's reconstruction (see the Description)
+        void predictFaceFractions();
+
+        //- The face update and the corrector after isoAdvection's step
+        void afterAdvect();
 
 
 public:
@@ -97,6 +130,7 @@ public:
             zeroField Su;
             iso_.advect<zeroField, zeroField>(Sp, Su);
             alphaPhi_ = iso_.alphaPhi();
+            afterAdvect();
         }
 
         //- Advection of the interface with source terms
@@ -112,6 +146,7 @@ public:
                 Su
             );
             alphaPhi_ = iso_.alphaPhi();
+            afterAdvect();
         }
 
         //- The reconstruction of isoAdvection

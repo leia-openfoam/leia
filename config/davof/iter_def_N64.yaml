@@ -1,0 +1,36 @@
+# The corrector on the 3D deformation (the standing matrix's isoDeformation3D at N 64 on
+# 8 rank(s), OF Co 0.5, grazingCut fork): none | mean 1, 2, 4 iterations (P3).
+# Written by workflow/scripts/iter_make_configs.py (leia davof-iter, 2026-11-09); edit the
+# script. Pre-registration: docs/davof/REPORT-swept.md "The iterative face-fraction corrector".
+#
+#   sbatch --parsable -J leia-iter_def_N64 --export=ALL,STUDY=davof/iter_def_N64 run-studies.sbatch
+study_name: iter_def_N64
+studies_dir: studies/davof
+case: davof/isoDeformation3D
+mesh: hex
+mode: parallel
+np: 8
+
+solver: davofAdvectorFoam
+theme:  davof
+
+setfields_app: initDavofFields
+setfields_args: ""
+post_solve: "python3 {REPO}/workflow/scripts/tpf_advection_metrics.py --case . --out advectorVoF.csv"
+
+# The YAML booleans and the numbers rendered into the dictionaries are QUOTED.
+axes_override:
+  N_CELLS: [64]
+  TPF_ROW: [davof-planeSurf-ringArea]
+  TARGET_ADVECTIVE_CO: [0.5]
+  TPF_REPETITION: [1]
+  TPF_GRAZING_CUT: [fork]
+  TPF_FACE_FRACTION_CORRECTOR: [none, mean1, mean2, mean4]
+collapse_other_axes: true
+
+solve_mem_mb: 4000
+solve_runtime: 720
+
+export_slides: false
+
+env_preamble: "source $HOME/OpenFOAM/OpenFOAM-v2606/etc/bashrc"

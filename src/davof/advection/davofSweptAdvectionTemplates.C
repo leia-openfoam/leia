@@ -683,6 +683,21 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
         publishWetFaces();
     }
 
+    // The iterative face-fraction corrector of the davof scheme (2026-11-09,
+    // davof.H "The iterative face-fraction corrector"): a reconstruction
+    // change on the transported state (alpha, alphaf) of this step; the flux
+    // above is untouched. When it changed alphaf, the invariant of
+    // defaultAreaFractions (an unset face holds its upwind cell's alpha) no
+    // longer holds: every unset face is re-evaluated at the end of the next
+    // step and the wet faces are rebuilt from the values.
+    if (davofPtr_ && davofPtr_->faceFractionCorrector() != "none")
+    {
+        if (davofPtr_->correctFaceFractions())
+        {
+            defaultsValid_ = false;
+        }
+    }
+
     // The swept fluxes: the remote cells of the parallel path and the wall
     // times of the step's advection (2026-10-30; the maxima over the ranks,
     // the counts summed)

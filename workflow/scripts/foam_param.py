@@ -94,6 +94,9 @@ _DERIVED_TOKENS = {
     "TPF_INTERFACE_CELL_RULE",
     "TPF_SWEPT_FRAGMENT_LOG",
     "TPF_ENRIGHT_KEYS",
+    # The iterative face-fraction corrector (leia davof-iter, 2026-11-09): the key block
+    # from TPF_FACE_FRACTION_CORRECTOR none | mean | mean<k> (materialize.py)
+    "TPF_CORRECTOR_KEYS",
     # The route of the DAVOF advection studies (docs/davof/PORT-DESIGN.md, 2026-11-06):
     # the application, the advection scheme and the function-object library of a
     # rendered case, from the study's solver (DAVOF_SOLVER, injected by the Snakefile)
@@ -141,8 +144,11 @@ _DERIVED_INPUTS = {
     "TPF_INTERFACE_CELL_RULE": ("TPF_ENRIGHT_SETTING",),
     "TPF_SWEPT_FRAGMENT_LOG": ("TPF_ENRIGHT_SETTING",),
     "TPF_ENRIGHT_KEYS": ("TPF_ENRIGHT_SETTING",),
-    # the advection scheme of the leia route follows the row's reconstruction scheme
-    "DAVOF_ADVECTION_SCHEME": ("TPF_ROW",),
+    "TPF_CORRECTOR_KEYS": ("TPF_FACE_FRACTION_CORRECTOR", "TPF_CORRECTOR_ITERATIONS",
+                           "TPF_CORRECTOR_TOLERANCE", "TPF_CORRECTOR_LOG"),
+    # the advection scheme of the leia route follows the row's reconstruction scheme,
+    # or the study's override TPF_ADVECTION_SCHEME (2026-11-09)
+    "DAVOF_ADVECTION_SCHEME": ("TPF_ROW", "TPF_ADVECTION_SCHEME"),
 }
 
 
