@@ -73,6 +73,11 @@ ALL="RDF RDFccs RING RINGvcc ISO"
 # rewrite perturbs a run at round-off); needs a build with the keys (TPF_DIR, 7646055 or later)
 SRC[PURE]=${SRC[RING]}
 PURE_KEYS='davofFluxExtension none; davofFaceFractionSource sweepOnly; boundSecondLayer false; sweptBoundedFaceFraction scale; interfaceCellRule alphaAndRingSum; normalModel ringSum; wispTol 0;'
+# the row ONERING (Tomislav's hypothesis of 2026-11-09: the third face-fraction source interfaceCellFaces,
+# every face of every interface cell swept by the moving plane, no second ring; the other keys PURE's;
+# opt-in through METHODS; needs a build with the value, the fork after 7646055)
+SRC[ONERING]=${SRC[RING]}
+ONERING_KEYS='davofFluxExtension none; davofFaceFractionSource interfaceCellFaces; boundSecondLayer false; sweptBoundedFaceFraction scale; interfaceCellRule alphaAndRingSum; normalModel ringSum; wispTol 0;'
 for m in $ALL; do echo "source $m ${SRC[$m]}"; done
 prep() { # method rep [prof] -> case dir
   local m=$1 r=$2 src=${SRC[$1]} c=$T/${1}_r$2
@@ -87,9 +92,10 @@ prep() { # method rep [prof] -> case dir
   foamDictionary -entry functions/areaFractionError/writeInterval -set $WI $c/system/controlDict > /dev/null
   foamDictionary -entry functions/volumeFractionError/writeInterval -set $WI $c/system/controlDict > /dev/null
   [ "$3" = prof ] && foamDictionary -entry profiling/active -set true $c/system/controlDict > /dev/null
-  if [ "$m" = PURE ]; then
-    sed -i -E "s/^(\s*)(normalModel\s+[A-Za-z]+;)/\1\/\/ \2 (PURE)/; s/^(\s*)(wispTol\s+[0-9.e-]+;)/\1\/\/ \2 (PURE)/" $c/system/fvSolution
-    sed -i "0,/^\(\s*\)reconstructionScheme davof;/s||&\n\1$PURE_KEYS|" $c/system/fvSolution
+  if [ "$m" = PURE ] || [ "$m" = ONERING ]; then
+    local keys=$PURE_KEYS; [ "$m" = ONERING ] && keys=$ONERING_KEYS
+    sed -i -E "s/^(\s*)(normalModel\s+[A-Za-z]+;)/\1\/\/ \2 ($m)/; s/^(\s*)(wispTol\s+[0-9.e-]+;)/\1\/\/ \2 ($m)/" $c/system/fvSolution
+    sed -i "0,/^\(\s*\)reconstructionScheme davof;/s||&\n\1$keys|" $c/system/fvSolution
   fi
   echo "$src" > $c/.source; echo $c
 }

@@ -6229,3 +6229,57 @@ perturbs a run at round-off), stamps as before; `prof/jet-run.sbatch` ROW=RING w
 the gate ladder by `prof/iso-gate.sbatch` (the prepared cases copied, the keys appended,
 `tpf_advection_metrics.py`, the orders over N). Reported per family with the tables, then
 the recommendation whether "pure" becomes the package's default.
+
+### The third face-fraction source, every face of the interface cells (ONERING; Tomislav's hypothesis, 2026-11-09): the predictions, registered before the runs
+
+The problem: the plane gate of 2026-11-07/08 (`iso/csv/gate_table.md`) shows that PURE
+(`davofFaceFractionSource sweepOnly`) is not exact on a translating plane: L1(alphaf) 2e-4
+to 8e-3, first order on the oblique arm (p 0.8-0.9 at Co 0.2 and 0.5), not converging on the
+normal arm (p -0.1 to +0.07), whereas FORMER (`secondRing`) reproduces the plane to round-off
+except at Co 1 on the normal arm. The hypothesis (Tomislav's, untested, stated as such): in
+PURE the lateral faces of an interface cell that the flux never sweeps keep chi_up, so m_k is
+assembled from a mix of exact and upwind face fractions; on the normal arm no lateral face is
+ever swept, hence the non-convergence; on the oblique arm the swept subset shrinks with h at
+first order. Sweeping every face of every interface cell (both faces the moving plane touches)
+should restore the plane to round-off; the second ring stays untouched, so the fragmentation
+seed of FORMER (dry neighbours with wet faces) does not come back.
+
+The setting ONERING, on davof-isoAdvector on top of 7646055: the new value
+`davofFaceFractionSource interfaceCellFaces` (`sweepOnly` and `secondRing` unchanged bit for
+bit): every face of every cell the rule `alphaAndRingSum` flags as an interface cell takes
+alphaf from the moving-plane sweep at the end of the step, every other face chi_up (the
+upwind cell's state after the bounding); `davofFluxExtension none`, `boundSecondLayer false`,
+`sweptBoundedFaceFraction scale`, `normalModel ringSum`, `wispTol 0`, the CCS positioning from
+alpha as in PURE. The rule for a face two interface cells share: the upwind cell's plane sets
+it (the face is that cell's downwind face; the downwind cell skips a face whose upwind cell is
+a surface cell), on both sides of a processor boundary (the sync carries the upwind surface
+cell's value to the other side); an upwind face whose upwind cell is not an interface cell is
+swept by the interface cell's own plane, an inflow boundary face of an interface cell likewise.
+A per-step count of the fragmentation seeds is added to the log for every source (the cells
+with alpha = 0 and a wet face; the cells with alpha = 1 and a face below 1).
+
+The predictions:
+
+(P1) The plane gate: ONERING at round-off, L1(alphaf) <= 1e-12 on both arms at Co 0.2 and
+     0.5 at every N (20, 40, 80, 160), like FORMER.
+(P2) The plane gate at Co 1 on the normal arm: ONERING behaves like PURE or better; at N 80
+     min alpha > -0.062 (PURE's value).
+(P3) The standing hex matrix (rotation, shear, deformation x N 32, 64, 128 x Co 0.2, 0.5, 1):
+     ONERING completes all 27 cells.
+(P4) E_shape at the end: within PURE's +-10 % on the rotation, below PURE's on the shear and
+     the deformation.
+
+The runs, on Lichtenberg, in this order, the FORMER and PURE rows reused (not rerun):
+(a) the plane gate N 20, 40, 80, both arms, Co 0.2, 0.5, 1 (`prof/iso-gate2.sbatch`, the
+ONERING rows into `iso/gate/N<N>/`), N 160 only if (P1) holds at N 80; (b) the 27 hex cells
+(`iso-time.sbatch` row ONERING, three repetitions and the profiled run, the ranks of the
+standing matrix: 1, 8, 64); (c) the jet's 2000-step window on 32 ranks only if (P3) holds.
+Beside them: the serial/parallel identity of ONERING on one case (`prof/iso-ident-onering.sbatch`:
+20 steps of the rotation N 32 at Co 1 and of the oblique plane gate N 20 at Co 0.5, serial
+against 8 ranks, PURE as the reference of the round-off level), and the seed statistic for
+FORMER, PURE and ONERING on the deformation N 64 at the three Co (one repetition each with the
+new build in `iso/onering/time/`, which also checks that the new build reproduces the standing
+FORMER and PURE rows). Every table: Co, N, L1(alphaf) end with the least-squares order,
+E_shape with its order, L1(x), L1(n), min/max alpha, mass deviation, total wall clock at the
+same rank count, status. Reported with every prediction held or failed; if ONERING fails the
+plane, where the remaining alphaf error sits (which faces of which cells).
