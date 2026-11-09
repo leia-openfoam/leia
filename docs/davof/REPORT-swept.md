@@ -6283,3 +6283,109 @@ FORMER and PURE rows). Every table: Co, N, L1(alphaf) end with the least-squares
 E_shape with its order, L1(x), L1(n), min/max alpha, mass deviation, total wall clock at the
 same rank count, status. Reported with every prediction held or failed; if ONERING fails the
 plane, where the remaining alphaf error sits (which faces of which cells).
+
+### ONERING: the outcome (2026-11-09; fork 294891d, build `iso/TwoPhaseFlow-g`, leia 9527a46f)
+
+The verdicts: (P1) FAILED, (P2) FAILED, (P3) HELD, (P4) FAILED (21 of 27 cells, the six
+failing within 0.7 % of PURE). The jet window ran because (P3) held: 2000 steps on 32
+ranks completed, wall 1878 s against PURE's 1894 s. The hypothesis' mechanism, unswept lateral faces of the
+interface cells, is not the source of PURE's plane error on the normal arm, and it is
+only part of it on the oblique arm; the remaining error is made on the faces of the cells
+the plane enters during the step (uncut at the start, cut at the end), which no plane sets
+under PURE or ONERING. Tables: `iso/csv/gate_table.md` (rows ONERING beside FORMER and
+PURE), `iso/csv/onering_table.md` (the 27 cells, the verdicts, the seed statistic), the
+localisation by `prof/gate_loc.py` on the written end state.
+
+The plane gate (L1(alphaf) at the end, N 20 / 40 / 80; FORMER, PURE, ONERING):
+normal Co 0.2: 3.7e-15 / 4.4e-15 / 8.2e-15; 2.25e-5 / 8.82e-5 / 1.95e-4; ONERING
+bit-identical to PURE at every step. Normal Co 0.5: FORMER 8.7e-15 / 2.0e-14 / 3.5e-14;
+PURE = ONERING 6.07e-3 / 6.01e-3 / 7.17e-3. Normal Co 1: FORMER 3.9e-4 / 6.0e-4 / 0.225
+(min alpha -0.24 at N 80); PURE 3.5e-2 / 3.7e-2 / 4.1e-2 (min alpha -0.062); ONERING
+3.8e-2 / 0.100 / 0.119, min alpha -0.078 at N 40 and -0.499 at N 80: (P2) failed, worse
+than FORMER. Oblique Co 0.2: FORMER 5.7e-15 / 7.3e-15 / 1.2e-14; PURE 1.25e-2 / 9.4e-3 /
+4.2e-3; ONERING 7.5e-7 / 2.7e-6 / 3.6e-6. Oblique Co 0.5: PURE 1.09e-2 / 8.2e-3 / 4.0e-3;
+ONERING 4.8e-5 / 9.4e-5 / 1.14e-4. Oblique Co 1: PURE 1.06e-2 / 7.7e-3 / 4.8e-3; ONERING
+1.55e-3 / 1.16e-3 / 1.22e-3. ONERING is 2 to 4 orders below PURE on the oblique arm and
+does not converge there either (the error grows with N at Co 0.2 and 0.5); N 160 was not
+run. Mass and the bounds otherwise as FORMER/PURE; wall clock within 10 % of PURE.
+
+Where the error sits (`prof/gate_loc.py`: the written end state against the exact plane of
+the function object, every face with |alphaf - exact| > 1e-10 classed by the states of its
+two cells at the start and the end of the last step; the diagnostic reproduces the function
+object's L1 to three digits):
+1. On the normal arm no face of an interface cell is unswept under PURE: a lateral face has
+   phi = 0 and counts as the owner's downwind face, so the owner's plane sweeps it; ONERING's
+   extra sweeps (the upwind faces from a non-interface upwind cell, the inflow boundary
+   faces) return exactly the upwind state there, hence the bit-identity. On the oblique arm
+   those faces were PURE's dominant term (1.3e-2 to 7.5e-7 at N 20, Co 0.2).
+2. The residual is created on the faces of the cells the plane enters during the step:
+   second ring at the start, interface cells at the end, so no plane sweeps their faces,
+   and the upwind default is the cell's new partial alpha (0.997, 0.9998) where the exact
+   value is 1 (or 0 on the gas side). At N 40 these classes ("P-P face, one cell cut at the
+   end" and "outflow boundary face of a cell cut only at the end") carry 77 % of the L1
+   numerator on the normal arm and 49 % on the oblique arm. This is the one approximation
+   of PURE's rule 2 (a partial upwind cell without a plane gives its alpha); FORMER's
+   second-ring sweep sets exactly these faces from the neighbouring plane, hence its
+   round-off.
+3. The rest (the faces two interface cells share, 16 to 42 %; the outflow faces of the
+   interface cells, 6 %) are faces the planes do set, with the plane itself off by 1e-6 to
+   1e-4: the polluted face values of step n enter the ring-sum normal and the CCS position
+   of step n+1. The error is made afresh every step (the function object's L1 is steady
+   from step 1, not accumulating).
+4. Not involved: the shared faces as such, the inflow boundary faces, the lateral faces of
+   the interface cells.
+The candidate that follows from the mechanism, not run: the faces of a cell that the plane
+at t + dt cuts but the plane at t does not (the leading edge of the second ring) take the
+neighbouring plane's value, while the trailing side and the dry-neighbour fluxes of FORMER's
+full second ring stay off.
+
+The 27 hex cells (P3, P4; `iso/csv/onering_table.md`): ONERING completes all 27 (FORMER 5
+of 27). E_shape ONERING/PURE: rotation 0.978 to 1.000 (within 2.2 %), shear 0.990 to 1.005,
+deformation 0.980 to 1.007; the six cells above 1 are the shear at N 32 (all Co, 1.001 to
+1.002), the shear Co 1 at N 64 and 128 (1.002, 1.005) and the deformation Co 0.2 N 128
+(1.007). L1(alphaf) at the end: ONERING below PURE in 22 cells (deformation Co 0.2 N 64
+0.185 against 0.224, N 128 0.117 against 0.143), above in the shear at Co 1 N 128 (0.098
+against 0.090). L1(n): below PURE on the rotation and the deformation at N 32 and 64, above
+on the shear at Co 1 (N 32 0.49 against 0.39, N 128 0.37 against 0.22) and the deformation
+Co 0.2 N 128 (0.31 against 0.16, L1(x) 0.037 against 0.008). The bounds: min alpha and the
+excess of the same order as PURE in every cell (shear Co 1 N 128 -0.034 against -0.022,
+rotation Co 1 N 128 -3.5e-5 against -8.5e-5). Mass as PURE (1e-12 to 1e-7 %). Wall clock
+at equal ranks within 4 % of PURE in 26 cells (rotation Co 0.2 N 128: 604 s against 725 s,
+a node effect of the single repetition set as likely as a method effect). The orders over
+N 32 -> 64 -> 128 as PURE's: E_shape 1.9 on the rotation, 1.7 to 1.9 on the shear, 1.3
+then 2.4 on the deformation; L1(alphaf) 0.6 to 0.9.
+
+The serial/parallel identity (`iso/ident-onering`, 20 steps, 1 against 8 ranks; PURE as the
+reference of the round-off level): ONERING rotation N 32 Co 1 max|diff| alpha 7.2e-4,
+alphaf 1.4e-2 (PURE 1.2e-3, 9.7e-2); oblique plane gate N 20 Co 0.5 alpha 2.8e-6, alphaf
+7.9e-6 (PURE 3.1e-5, 1.2e-4). No O(1) asymmetry on the processor faces. The np1/np8 gap of
+PURE itself (1e-1 on alphaf after 20 steps of the rotation) is pre-existing and open.
+
+The seed statistic (deformation N 64, one repetition each with the -g build, which
+reproduces the standing FORMER and PURE rows bit for bit; the cells with alpha = 0 and a
+wet face, at T/2 and at the end): Co 0.2 FORMER 176647 / 166701 (diverged at step 1222),
+PURE 1620 / 69128, ONERING 120883 / 151993; Co 0.5 FORMER 197410 / 174956 (diverged 495),
+PURE 32357 / 130803, ONERING 75552 / 183934; Co 1 FORMER 211068 / 178760 (diverged 264),
+PURE 232381 / 247157, ONERING 216195 / 254303. ONERING carries more wet-faced dry cells than
+PURE at Co 0.2 and 0.5 (its sweep of an interface cell's inflow face from a dry upwind cell
+gives that dry cell a face above 0) and still completes, so the count alone does not
+separate the rows: what FORMER adds is the second-ring flux into those cells.
+
+The jet window (`prof/jet-run.sbatch`, mesh coarse, 32 ranks, 2000 steps, job 56121228;
+`iso/jet/run/timing.csv`, the logs in `iso/jet/run/coarse/RINGonering_r1` and
+`RINGpure_r1`): ONERING completed the 2000 steps in 1878 s (ExecutionTime 1861 s), PURE in
+1894 s (1878 s); min alpha over the run -9.6e-13 against PURE's -3.8e-6, the excess above 1
+2.2e-16 in both, interface Courant number at the last step 0.073 against 0.075, rc 0 in
+both. The seed count of ONERING over the window: 48 cells at step 1, 42495 at step 500,
+7820 at 1000, 7881 at 1500, 421 at 2000 (the cells with alpha = 1 and a face below 1: 0 to
+9); the PURE log predates the counter. The window says nothing about the jet's fragmentation
+beyond 2000 steps; it says ONERING runs the production case at PURE's cost with the same
+bounds.
+
+The recommendation: ONERING does not become the default. It costs the same as PURE, it
+holds the bounds and completes every case PURE completes, and it removes PURE's unswept
+lateral faces on the oblique plane (2 to 4 orders in L1(alphaf)), but it does not reach
+FORMER's round-off on the plane, it is bit-identical to PURE on the normal arm, it is worse
+than PURE and FORMER at Co 1 on the normal arm (min alpha -0.50 at N 80), and on the hex
+cells it changes E_shape by at most 2.2 %. The plane residual is located (the leading
+edge of the second ring); the candidate that follows is noted above and not run.
