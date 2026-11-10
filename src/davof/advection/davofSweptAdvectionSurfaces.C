@@ -1904,6 +1904,7 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
             sweptOnePlaneFlux
             (
                 facei, local, up, other, dt, phiF, sweeps, boundary,
+                (procFace && remoteHas) ? remote : nullptr,
                 UInterp, *UpPtr, af, aWet, vSwept
             );
         }

@@ -1352,9 +1352,11 @@ public:
             //  is the cell whose velocity interpolates the displacement (the
             //  upwind cell, or the local cell of a processor face), up and
             //  other the local upwind and downwind cells (-1 when remote or
-            //  none), boundary whether the face is a patch face; af, aWet
-            //  and vLiq as sweptFaceFlux (vLiq positive, the caller gives it
-            //  the sign of phi_f)
+            //  none), boundary whether the face is a patch face, remoteNb the
+            //  surface of the cell across a processor face (nullptr when none:
+            //  the neighbour of the zero-flux rule, as the local one in serial);
+            //  af, aWet and vLiq as sweptFaceFlux (vLiq positive, the caller
+            //  gives it the sign of phi_f)
             void sweptOnePlaneFlux
             (
                 const label facei,
@@ -1365,6 +1367,7 @@ public:
                 const scalar phiF,
                 const bool sweeps,
                 const bool boundary,
+                const davof::cellSurface* remoteNb,
                 const davof::velocityAt& UInterp,
                 const vectorField& Up,
                 scalar& af,

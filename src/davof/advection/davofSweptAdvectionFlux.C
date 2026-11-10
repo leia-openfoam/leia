@@ -2180,6 +2180,7 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
     const scalar phiF,
     const bool sweeps,
     const bool boundary,
+    const davof::cellSurface* remoteNb,
     const davof::velocityAt& UInterp,
     const vectorField& Up,
     scalar& af,
@@ -2320,7 +2321,17 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
         ++nOnePlaneZeroFlux_;
         const label own = mesh_.faceOwner()[facei];
         const label nb = (other >= 0) ? ((up == own) ? other : up) : -1;
-        if (planeOfCell(own, nRaw, x0) || (nb >= 0 && planeOfCell(nb, nRaw, x0)))
+        // the neighbour across a processor face: its surface from the
+        // exchange (2026-11-10, the rotation identity: without it such a
+        // face took alpha where the serial run took the neighbour's plane)
+        bool remotePlane = false;
+        if (nb < 0 && remoteNb && !planeOfCell(own, nRaw, x0))
+        {
+            planeOf(*remoteNb, own, h, sweptPlaneTol_, "onePlane", nRaw, x0);
+            remotePlane = true;
+            sweptFaceRemote_ = true;
+        }
+        if (remotePlane || planeOfCell(own, nRaw, x0) || (nb >= 0 && planeOfCell(nb, nRaw, x0)))
         {
             scalar vW;
             vector aFW, aFF;
