@@ -93,9 +93,11 @@ void Foam::isoAdvectorScheme::predictFaceFractions()
     // H. Scheufler, J. Roenby, J. Comput. Phys. 383 (2019) 1-23,
     // doi:10.1016/j.jcp.2019.01.009; the normal points into the liquid)
     cutFacePLIC cutF(mesh);
+    // the UNIT normal (calcSubFace snaps |(x - base).n| < SMALL to zero,
+    // davof.C inducedFaceFractions, 2026-11-10)
     auto clip = [&](const label facei, const vector& n, const point& c, const vector& u) -> scalar
     {
-        cutF.calcSubFace(facei, n, c + u*dt);
+        cutF.calcSubFace(facei, n/mag(n), c + u*dt);
         return min(max(mag(cutF.subFaceArea())/mag(Sf[facei]), scalar(0)), scalar(1));
     };
     // the value of a face from the two cells (u the upwind one): u's

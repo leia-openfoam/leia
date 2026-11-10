@@ -1380,11 +1380,18 @@ void Foam::reconstruction::davof::inducedFaceFractions
     // The clip of a face polygon by a plane: the wet area over the face
     // area (cutFacePLIC, H. Scheufler, J. Roenby, J. Comput. Phys. 383
     // (2019) 1-23, doi:10.1016/j.jcp.2019.01.009; the plane's normal points
-    // into the liquid, as the cut assumes: (x - base).n > 0 is liquid)
+    // into the liquid, as the cut assumes: (x - base).n > 0 is liquid).
+    // The UNIT normal, as cutCellPLIC passes it: calcSubFace snaps a point's
+    // signed value (x - base).n to zero below SMALL (1e-15, absolute) and
+    // calls a face without a positive point a gas face; with the cut
+    // polygon's area vector normal_ (|normal_| down to 1e-12 for a sliver
+    // cut) every point of a fully wet face snapped and the clip returned 0,
+    // which gave the 0.5 changes of the plane gate of 2026-11-09 (located
+    // 2026-11-10 by the unit check on the exact planar state).
     cutFacePLIC cutF(mesh_);
     auto clip = [&](const label facei, const vector& nrm, const point& ctr) -> scalar
     {
-        cutF.calcSubFace(facei, nrm, ctr);
+        cutF.calcSubFace(facei, nrm/mag(nrm), ctr);
         const scalar af = mag(cutF.subFaceArea())/mag(Sf[facei]);
         return min(max(af, scalar(0)), scalar(1));
     };
@@ -1487,19 +1494,48 @@ void Foam::reconstruction::davof::inducedFaceFractions
     dMax = 0;
     dSum = 0;
     scalar nSetW = 0;
+    label worst = -1;
     for (const label facei : set)
     {
         const scalar d = mag(afNew[facei] - faceFraction(facei));
         const scalar w = coupledSet.test(facei) ? 0.5 : 1.0;
-        dMax = max(dMax, d);
+        if (d > dMax)
+        {
+            dMax = d;
+            worst = facei;
+        }
         dSum += w*d;
         nSetW += w;
     }
+    const scalar dMaxLocal = dMax;
     reduce(dMax, maxOp<scalar>());
     reduce(dSum, sumOp<scalar>());
     reduce(nSetW, sumOp<scalar>());
     nSet = label(nSetW + 0.5);
     nNoPlane = returnReduce(nNoPlaneLocal, sumOp<label>());
+
+    // The face of the largest change above the tolerance (correctorLog;
+    // printed by the rank that holds it): the located cell pair, not a
+    // guess (2026-11-10)
+    if (correctorLog_ && worst >= 0 && dMaxLocal == dMax && dMax > correctorTolerance_)
+    {
+        const label o = own[worst];
+        const bool internal = (worst < nInt);
+        Pout<< "davof corrector: worst face " << worst
+            << (internal ? "" : " (boundary)") << " centre " << mesh_.faceCentres()[worst]
+            << " alphaf " << faceFraction(worst) << " -> " << afNew[worst]
+            << "; owner " << o << " alpha " << aIn[o] << " interface " << interfaceCell_[o]
+            << " |n| " << mag(nIn[o]);
+        if (internal)
+        {
+            const label n = nei[worst];
+            Pout<< "; neighbour " << n << " alpha " << aIn[n] << " interface "
+                << interfaceCell_[n] << " |n| " << mag(nIn[n]);
+            if (mag(nIn[o]) > 0) Pout<< "; clip owner " << clip(worst, nIn[o], cIn[o]);
+            if (mag(nIn[n]) > 0) Pout<< " clip neighbour " << clip(worst, nIn[n], cIn[n]);
+        }
+        Pout<< endl;
+    }
 }
 
 

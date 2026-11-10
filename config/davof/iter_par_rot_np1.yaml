@@ -1,6 +1,7 @@
 # The parallel identity of the corrector on the rotation (N 32, OF Co 0.2, 20 steps):
-# np 1 of the pair np 1 / np 8, alpha and alphaf at the end compared (the corrector
-# acts here, unlike on the plane).
+# np 1 of the pair np 1 / np 8, corrector mean4, alpha and alphaf at the end compared
+# (the none pair measures the swept flux's own parallel scatter, 2.5e-9 per value on
+# the ring row on 2026-11-02; the mean4 pair the corrector's on top of it).
 # Written by workflow/scripts/iter_make_configs.py (leia davof-iter, 2026-11-09); edit the
 # script. Pre-registration: docs/davof/REPORT-swept.md "The iterative face-fraction corrector".
 #

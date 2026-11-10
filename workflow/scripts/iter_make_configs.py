@@ -149,17 +149,19 @@ def main():
         write("iter_par_plane_np%d" % np_, "planeTranslation3D", np_, axes,
               "The parallel identity of the corrector on the plane (N 40, oblique, Co 0.5, 20 steps =\n"
               "# 1e-3, dt 5e-5): np %d of the pair np 1 / np 8, alpha and alphaf at the end compared." % np_, 30)
-        axes = {"N_CELLS": ["32"], "TARGET_ADVECTIVE_CO": [CO_OF02], "TPF_FACE_FRACTION_CORRECTOR": ["mean4"]}
-        axes.update(ROT)
-        axes.update(SWEPT)
-        # 20 steps of the rendered dt 0.0005787452476 (= 0.0462996198086 (1/32)/2.5), every
-        # step written so that the end state is on disk whatever the end-time rounding
-        axes["END_TIME"] = ['"0.011574904952"']
-        axes["TPF_WRITE_INTERVAL"] = ['"0.0005787452476"']
-        write("iter_par_rot_np%d" % np_, "sphereRotation3D", np_, axes,
-              "The parallel identity of the corrector on the rotation (N 32, OF Co 0.2, 20 steps):\n"
-              "# np %d of the pair np 1 / np 8, alpha and alphaf at the end compared (the corrector\n"
-              "# acts here, unlike on the plane)." % np_, 30)
+        for corr_, tag in (("mean4", ""), ("none", "_none")):
+            axes = {"N_CELLS": ["32"], "TARGET_ADVECTIVE_CO": [CO_OF02], "TPF_FACE_FRACTION_CORRECTOR": [corr_]}
+            axes.update(ROT)
+            axes.update(SWEPT)
+            # 20 steps of the rendered dt 0.0005787452476 (= 0.0462996198086 (1/32)/2.5), every
+            # step written so that the end state is on disk whatever the end-time rounding
+            axes["END_TIME"] = ['"0.011574904952"']
+            axes["TPF_WRITE_INTERVAL"] = ['"0.0005787452476"']
+            write("iter_par_rot_np%d%s" % (np_, tag), "sphereRotation3D", np_, axes,
+                  "The parallel identity of the corrector on the rotation (N 32, OF Co 0.2, 20 steps):\n"
+                  "# np %d of the pair np 1 / np 8, corrector %s, alpha and alphaf at the end compared\n"
+                  "# (the none pair measures the swept flux's own parallel scatter, 2.5e-9 per value on\n"
+                  "# the ring row on 2026-11-02; the mean4 pair the corrector's on top of it)." % (np_, corr_), 30)
     # the 3D deformation of the standing matrix (its template and tokens; grazingCut fork so
     # that the none row reproduces the standing record)
     for N, np_, rt in ((32, 1, 360), (64, 8, 720)):
