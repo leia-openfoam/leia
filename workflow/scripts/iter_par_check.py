@@ -94,12 +94,50 @@ def compare(a, b, tol):
     return max(ds), sum(ds) / len(ds), sum(1 for d in ds if d > tol), len(ds)
 
 
+def has_time(case):
+    try:
+        last_time(case)
+        return True
+    except SystemExit:
+        return False
+
+
+def compare_csv(case1, case8, tol):
+    """The per-step numbers of the converter's CSV for a case that writes no fields (the
+    plane template writes at writeInterval 1000000 by design): the function objects' L1,
+    L2, Linf of alphaf, L1(n), L1(x), E_shape, the mass and the bounds, step by step."""
+    import csv
+    r1 = list(csv.DictReader(open(os.path.join(case1, "advectorVoF.csv"))))
+    r8 = list(csv.DictReader(open(os.path.join(case8, "advectorVoF.csv"))))
+    print("steps: %d (np1) %d (np8)" % (len(r1), len(r8)))
+    ok = len(r1) == len(r8)
+    for col in ("L1_alphaf", "L2_alphaf", "Linf_alphaf", "LNormalDiff1", "LCentreDiff1", "Eshape",
+                "sumAlphaV", "minAlpha", "oneMinusMaxAlpha", "nInterfaceAdv"):
+        ds = []
+        for x, y in zip(r1, r8):
+            try:
+                ds.append(abs(float(x[col]) - float(y[col])))
+            except (KeyError, TypeError, ValueError):
+                pass
+        if not ds:
+            continue
+        nbad = sum(1 for d in ds if d > tol)
+        print("%-17s steps %d, max |diff| %.3e, above %g: %d" % (col, len(ds), max(ds), tol, nbad))
+        ok = ok and nbad == 0
+    print("PARALLEL IDENTITY (per-step function-object numbers):",
+          "held (every number within %g)" % tol if ok else "FAILED")
+    sys.exit(0 if ok else 1)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("case1")
     ap.add_argument("case8")
     ap.add_argument("--tol", type=float, default=1e-12)
     a = ap.parse_args()
+    if not (has_time(a.case1) and has_time(a.case8)):
+        print("no written fields in one of the cases: the per-step numbers of advectorVoF.csv")
+        compare_csv(a.case1, a.case8, a.tol)
     t1, t8 = last_time(a.case1), last_time(a.case8)
     print("last times: %s (np1) %s (np8)" % (t1, t8))
     ok = True
