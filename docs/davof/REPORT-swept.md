@@ -4757,7 +4757,14 @@ closureThenTets | signedTets` with `sweptPieceValidate`, `sweptBoundedFaceFracti
 scale | recompute`, `interfaceCellRule normalOnly | normalAndAlpha | normalAndAlphaReset`,
 the diagnostics `sweptFragmentLog`, `sweptReinitFaceFractions`, `sweptCoverageCheck`,
 `sweptPieceDumpTol`; the coplanar tolerance of the tetrahedra clips, 25e6ebc) taken over
-into leia (e1d11045: the eight diffs applied to the port's files with the class name and
+(the corrector agent found on 2026-11-10 that `reinitFaceFractions` passed the cut
+polygon's AREA vector to `cutFacePLIC::calcSubFace`, which snaps |(x - base).n| < SMALL
+to zero, so a sliver plane returned a wet face as gas; the port's copy carries the same
+fix as leia `davof-iter` 9c0d983d, the unit normal. No run and no conclusion of the port's
+record used that diagnostic: the identity sets, the ladders, the Enright identity and the
+ten accepted settings run with `sweptReinitFaceFractions false`, and the Enright agent's
+controls c and d appear here as the pre-registration only, their measured verdicts are on
+its branch) into leia (e1d11045: the eight diffs applied to the port's files with the class name and
 the log prefix renamed, nothing else changed) and selected by one token
 `TPF_ENRIGHT_SETTING` (tpf_rows.ENRIGHT_SETTINGS: reference, closureThenTets, signedTets,
 signedTetsValidate, scale, recompute, normalAndAlpha, normalAndAlphaReset, fragmentLog,

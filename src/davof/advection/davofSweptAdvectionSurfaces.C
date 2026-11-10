@@ -2666,7 +2666,13 @@ void Foam::davofSweptAdvection::reinitFaceFractions()
     // into the liquid, as cutFacePLIC assumes ((p - base).n > 0 liquid)
     auto clipBy = [&](const label facei, const label celli) -> scalar
     {
-        cutFace.calcSubFace(facei, nrm[celli], ctr[celli]);
+        // the UNIT normal (the corrector agent, leia davof-iter 9c0d983d,
+        // 2026-11-10): normal_ is the cut polygon's area vector, and
+        // calcSubFace snaps |(x - base).n| < SMALL to zero, so a sliver
+        // plane (|normal| down to 1e-12) returned a fully wet face as gas
+        const scalar nMag = mag(nrm[celli]);
+        if (!(nMag > 0)) return alpha1_[celli] >= 0.5 ? scalar(1) : scalar(0);
+        cutFace.calcSubFace(facei, nrm[celli]/nMag, ctr[celli]);
         const scalar af = mag(cutFace.subFaceArea())/mag(Sf[facei]);
         return min(max(af, scalar(0)), scalar(1));
     };
