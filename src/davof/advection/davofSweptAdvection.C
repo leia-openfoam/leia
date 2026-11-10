@@ -289,6 +289,8 @@ Foam::davofSweptAdvection::davofSweptAdvection
     nOnePlaneEmpty_(0),
     nOnePlaneWisp_(0),
     nOnePlaneWispPlane_(0),
+    nOnePlaneFallbackPlane_(0),
+    nOnePlaneFallbackRemote_(0),
     nOnePlaneZeroFlux_(0),
     nOnePlaneClamped_(0),
     nOnePlaneBoundLiq_(0),

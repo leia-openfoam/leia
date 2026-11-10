@@ -1130,6 +1130,7 @@ void Foam::davofSweptAdvection::curvedFlux(const scalar dt)
     nOnePlaneDonorUpwind_ = nOnePlaneDonorDownwind_ = nOnePlaneDonorRing_ = 0;
     nOnePlaneDonorRemote_ = nOnePlaneDonorBeyond_ = nOnePlaneDonorOutside_ = 0;
     nOnePlaneFull_ = nOnePlaneEmpty_ = nOnePlaneWisp_ = nOnePlaneWispPlane_ = 0;
+    nOnePlaneFallbackPlane_ = nOnePlaneFallbackRemote_ = 0;
     nOnePlaneZeroFlux_ = nOnePlaneClamped_ = 0;
     nOnePlaneBoundLiq_ = nOnePlaneBoundGas_ = nOnePlaneBoundSkipped_ = 0;
     onePlaneBoundMin_ = 1;
@@ -2490,6 +2491,7 @@ void Foam::davofSweptAdvection::reportCurved() const
         label nDu = nOnePlaneDonorUpwind_, nDd = nOnePlaneDonorDownwind_, nDr = nOnePlaneDonorRing_;
         label nDm = nOnePlaneDonorRemote_, nDb = nOnePlaneDonorBeyond_, nDo = nOnePlaneDonorOutside_;
         label nFu = nOnePlaneFull_, nEm = nOnePlaneEmpty_, nWi = nOnePlaneWisp_, nWp = nOnePlaneWispPlane_;
+        label nFp = nOnePlaneFallbackPlane_, nFr = nOnePlaneFallbackRemote_;
         label nZ = nOnePlaneZeroFlux_, nCl = nOnePlaneClamped_;
         label nBl = nOnePlaneBoundLiq_, nBg = nOnePlaneBoundGas_, nBs = nOnePlaneBoundSkipped_;
         scalar bMin = onePlaneBoundMin_;
@@ -2500,6 +2502,7 @@ void Foam::davofSweptAdvection::reportCurved() const
             reduce(nDm, sumOp<label>()); reduce(nDb, sumOp<label>()); reduce(nDo, sumOp<label>());
             reduce(nFu, sumOp<label>()); reduce(nEm, sumOp<label>()); reduce(nWi, sumOp<label>());
             reduce(nWp, sumOp<label>()); reduce(nZ, sumOp<label>()); reduce(nCl, sumOp<label>());
+            reduce(nFp, sumOp<label>()); reduce(nFr, sumOp<label>());
             reduce(nBl, sumOp<label>()); reduce(nBg, sumOp<label>()); reduce(nBs, sumOp<label>());
             reduce(bMin, minOp<scalar>());
         }
@@ -2510,6 +2513,7 @@ void Foam::davofSweptAdvection::reportCurved() const
             << ", outside (boundary value) " << nDo
             << "; without a plane: full " << nFu << ", empty " << nEm
             << ", wisps " << nWi << ", wisp planes " << nWp
+            << "; fallback planes " << nFp << " (remote " << nFr << ")"
             << "; zero-flux faces " << nZ << ", clamped " << nCl;
         if (sweptOnePlaneBound_ == "donorContent")
         {
