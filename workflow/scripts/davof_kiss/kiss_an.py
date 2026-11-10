@@ -34,10 +34,10 @@ P1_TOL = 1e-12
 ONEPLANE_RE = re.compile(
     r"; one plane: faces (\d+), clipped (\d+), clipped triangles (\d+); donors: upwind (\d+), downwind (\d+), "
     r"ring (\d+), remote (\d+), beyond \(upwind taken\) (\d+), outside \(boundary value\) (\d+); "
-    r"without a plane: full (\d+), empty (\d+), wisps (\d+), wisp planes (\d+); zero-flux faces (\d+), clamped (\d+)"
+    r"without a plane: full (\d+), empty (\d+), wisps (\d+), wisp planes (\d+); fallback planes (\d+) \(remote (\d+)\); zero-flux faces (\d+), clamped (\d+)"
     r"(?:; donor content: donors scaled liquid (\d+), gas (\d+), min ratio (\S+), faces with a remote donor not bounded (\d+))?")
 ONEPLANE_KEYS = ("faces", "clipped", "clipTris", "donorUp", "donorDown", "donorRing", "donorRemote", "donorBeyond",
-                 "donorOutside", "full", "empty", "wisps", "wispPlanes", "zeroFlux", "clamped",
+                 "donorOutside", "full", "empty", "wisps", "wispPlanes", "fallbackPlanes", "fallbackRemote", "zeroFlux", "clamped",
                  "boundLiq", "boundGas", "boundMin", "boundSkipped")
 RULE2_RE = re.compile(r"one plane, rule 2: faces reset to 0 (\d+), to 1 (\d+); before the reset: seeds \(alpha <= \S+ with a wet face\) (\d+), "
                       r"slivers \(eps < alpha < 1e-3 with a wet face\) (\d+)")
@@ -212,12 +212,17 @@ def identity_pairs(r1, r8, key):
         b = d8.get(key(a))
         if not b:
             continue
+        # the error measures relatively, the round-off quantities (the mass deviation, min
+        # alpha, the excess over 1, the per-step bounds) absolutely (2026-11-10: a relative
+        # difference of two round-off numbers says nothing)
         diffs = {}
-        for k in ("Eshape", "L1x", "L1n", "L1af", "massDevPct", "minAlpha", "excess"):
+        for k in ("Eshape", "L1x", "L1n", "L1af"):
             diffs[k] = rel(a[k], b[k])
+        for k in ("massDevPct", "minAlpha", "excess"):
+            diffs[k] = (abs(a[k] - b[k]) if (a[k] is not None and b[k] is not None) else None)
         bd = None
         if a["bounds"] and b["bounds"] and len(a["bounds"]) == len(b["bounds"]):
-            bd = max(max(rel(x[0], y[0]) or 0, rel(x[1], y[1]) or 0) for x, y in zip(a["bounds"], b["bounds"]))
+            bd = max(max(abs(x[0] - y[0]), abs(x[1] - y[1])) for x, y in zip(a["bounds"], b["bounds"]))
         worst = max([v for v in diffs.values() if v is not None] + ([bd] if bd is not None else [0]))
         out.append(dict(key=key(a), steps1=a["steps"], steps8=b["steps"], boundsRel=bd, worstRel=worst,
                         verdict=("identical to round-off" if worst <= IDENT_TOL else "DIFFERS"), **{"rel_" + k: v for k, v in diffs.items()}))
@@ -253,7 +258,7 @@ def mode_plane(args):
                          minAlpha=g(r["minAlpha"], 6), excess=g(r["excess"]), massDev=g(r["massDevPct"]),
                          steps=r["steps"], wall_s=g(r["wall"], 4), np=r["np"], status=r["status"],
                          donors="up %s dn %s ring %s rem %s bey %s out %s" % tuple(int(op.get(k + "Sum", 0)) for k in ("donorUp", "donorDown", "donorRing", "donorRemote", "donorBeyond", "donorOutside")) if op else "",
-                         noPlane="full %s empty %s wisp %s" % tuple(int(op.get(k + "Sum", 0)) for k in ("full", "empty", "wisps")) if op else "",
+                         noPlane="full %s empty %s wisp %s fallbackPl %s" % tuple(int(op.get(k + "Sum", 0)) for k in ("full", "empty", "wisps", "fallbackPlanes")) if op else "",
                          bound="liq %s gas %s min %s" % (int(op.get("boundLiqSum", 0)), int(op.get("boundGasSum", 0)), g(op.get("boundMin"))) if op else "",
                          zeroFlux=int(op.get("zeroFluxSum", 0)) if op else "", clamped=int(op.get("clampedSum", 0)) if op else "",
                          reset="0:%s 1:%s" % (r["rule2"].get("reset0Sum", ""), r["rule2"].get("reset1Sum", "")) if r["rule2"] else "",
@@ -270,7 +275,7 @@ def mode_plane(args):
     prow = [dict(setting=p["setting"], arm=p["arm"], N=p["N"], Co=p["Co"], steps=f"{p['steps1']}/{p['steps8']}",
                  Eshape=g(p["rel_Eshape"]), L1x=g(p["rel_L1x"]), L1n=g(p["rel_L1n"]), L1af=g(p["rel_L1af"]), mass=g(p["rel_massDevPct"]),
                  minAlpha=g(p["rel_minAlpha"]), bounds=g(p["boundsRel"]), worst=g(p["worstRel"]), verdict=p["verdict"]) for p in pairs]
-    table(prow, ["setting", "arm", "N", "Co", "steps", "Eshape", "L1x", "L1n", "L1af", "mass", "minAlpha", "bounds", "worst", "verdict"], "the plane identity np1 vs np8 (relative differences)")
+    table(prow, ["setting", "arm", "N", "Co", "steps", "Eshape", "L1x", "L1n", "L1af", "mass", "minAlpha", "bounds", "worst", "verdict"], "the plane identity np1 vs np8 (the errors relative, mass / min alpha / excess / bounds absolute)")
     write_csv(os.path.join(args.out, "kiss_plane_identity.csv"), prow)
     if pairs:
         w = max(p["worstRel"] for p in pairs)
@@ -288,7 +293,7 @@ def mode_identity(args):
     pairs = identity_pairs(r1, r8, lambda r: (r["N"], r["co"]))
     prow = [dict(N=p["key"][0], Co=p["key"][1], steps=f"{p['steps1']}/{p['steps8']}", Eshape=g(p["rel_Eshape"]), L1x=g(p["rel_L1x"]), L1n=g(p["rel_L1n"]),
                  L1af=g(p["rel_L1af"]), mass=g(p["rel_massDevPct"]), minAlpha=g(p["rel_minAlpha"]), bounds=g(p["boundsRel"]), worst=g(p["worstRel"]), verdict=p["verdict"]) for p in pairs]
-    table(prow, ["N", "Co", "steps", "Eshape", "L1x", "L1n", "L1af", "mass", "minAlpha", "bounds", "worst", "verdict"], "the rotation identity np1 vs np8 (relative differences)")
+    table(prow, ["N", "Co", "steps", "Eshape", "L1x", "L1n", "L1af", "mass", "minAlpha", "bounds", "worst", "verdict"], "the rotation identity np1 vs np8 (the errors relative, mass / min alpha / excess / bounds absolute)")
     write_csv(os.path.join(args.out, "kiss_identity_table.csv"), prow)
     if pairs:
         w = max(p["worstRel"] for p in pairs)
@@ -367,7 +372,7 @@ def mode_standing(args):
                          seedsMax=r["seedsMax"], seedsSteps=r["seedsSteps"], sliversHalf=r.get("sliversHalf"), sliversMax=r["sliversMax"], sliversSteps=r.get("sliversSteps"),
                          clipTrisPerStep=g((op.get("clipTrisSum") or 0)/max(r["steps"] or 1, 1)) if op else "",
                          donors="up %s dn %s ring %s rem %s bey %s out %s" % tuple(int(op.get(k + "Sum", 0)) for k in ("donorUp", "donorDown", "donorRing", "donorRemote", "donorBeyond", "donorOutside")) if op else "",
-                         noPlane="full %s empty %s wisp %s wispPl %s" % tuple(int(op.get(k + "Sum", 0)) for k in ("full", "empty", "wisps", "wispPlanes")) if op else "",
+                         noPlane="full %s empty %s wisp %s wispPl %s fallbackPl %s (remote %s)" % tuple(int(op.get(k + "Sum", 0)) for k in ("full", "empty", "wisps", "wispPlanes", "fallbackPlanes", "fallbackRemote")) if op else "",
                          bound="liq %s gas %s min %s skipped %s" % (int(op.get("boundLiqSum", 0)), int(op.get("boundGasSum", 0)), g(op.get("boundMin")), int(op.get("boundSkippedSum", 0))) if op else "",
                          clamped=int(op.get("clampedSum", 0)) if op else "", reset="0:%s 1:%s" % (r["rule2"].get("reset0Sum", ""), r["rule2"].get("reset1Sum", "")) if r["rule2"] else ""))
     table(rows, ["study", "N", "Co", "rep", "steps", "status", "seedsHalf", "tHalf", "seedsMax", "seedsSteps", "sliversHalf", "sliversMax", "clipTrisPerStep", "donors", "noPlane", "bound", "clamped", "reset"], "P5 the seeds and the one-plane counters of the kiss rows")

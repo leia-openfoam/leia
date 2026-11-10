@@ -2249,7 +2249,14 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
     // (the cap contributes nothing; Tolle, Gruending, Bothe, Maric, CPC 273
     // (2022) 108249, doi:10.1016/j.cpc.2021.108249; Maric, Marschall,
     // Bothe, JCP 371 (2018) 967-993, doi:10.1016/j.jcp.2018.03.048), the
-    // face's own fan (k % 4 == 0) wet and full for the face fraction
+    // PRE-IMAGE fan (k % 4 == 1) wet and full for the face fraction: the
+    // fraction of the face at t^(n+1) is the fraction of its pre-image
+    // under the plane of t^n (the Lagrangian transport, as sweptFaceFlux
+    // and the pieces path). The plane gate of 2026-11-09 falsified the
+    // first reading of rule (3), the Eulerian face's own fan (k % 4 == 0)
+    // under the plane of t^n, which is the fraction at t^n: L1(alphaf) of
+    // O(Co) on every cell while E_shape stayed at round-off (the fluxes
+    // exact); REPORT-swept.md "The KISS variant", the gate's finding.
     auto clipBy = [&]
     (
         const vector& nRaw, const point& x0,
@@ -2282,7 +2289,7 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
                 ++nOnePlaneClipTris_;
             }
             threeV += (t[0] - x0) & aw;
-            if (k % 4 == 0)
+            if (k % 4 == 1)
             {
                 aFaceWet += aw;
                 aFaceFull += aFull;
@@ -2290,14 +2297,15 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
         }
         vWet = threeV/3;
     };
-    // the face fraction alpha_f = a_wet . A/|A|^2 and the wetted area
-    // vector in the face's orientation (the fan is along S_f for phi_f > 0
-    // and reversed otherwise)
-    auto faceFraction = [&](const vector& aFaceWet, const vector& aFaceFull)
+    // the face fraction alpha_f = a_wet . A_pre/|A_pre|^2 and the wetted
+    // area vector in the face's orientation (preSign: the stored pre-image
+    // fan against the face's own order, as sweptFaceFlux)
+    auto faceFraction = [&](const vector& aPreWet, const vector& aPreFull)
     {
-        const scalar A2 = magSqr(aFaceFull);
-        af = (A2 > VSMALL) ? (aFaceWet & aFaceFull)/A2 : 0;
-        aWet = scalar(((aFaceFull & Sf[facei]) >= 0) ? 1 : -1)*aFaceWet;
+        aWet = preSign*aPreWet;
+        const vector Apre = preSign*aPreFull;
+        const scalar A2 = magSqr(Apre);
+        af = (A2 > VSMALL) ? (aWet & Apre)/A2 : 0;
     };
 
     vector nRaw;
@@ -2432,6 +2440,79 @@ void Foam::davofSweptAdvection::sweptOnePlaneFlux
     {
         hasPlane = planeOfCell(donor, nRaw, x0);
         alphaD = a0[donor];
+    }
+
+    // THE AMENDMENT OF RULE (2) (the coordinator, 2026-11-10, before the
+    // second plane gate): a donor without a plane while the swept volume
+    // overlaps an interface cell takes the plane of the overlapping
+    // interface cell nearest to the pre-image centroid: the upwind and the
+    // downwind cell, the vertex ring of the upwind cell, the ring cells of
+    // other ranks; the overlap by the bounding boxes of the closed list and
+    // the cell. The centroid rule stays the first choice; the fallback is
+    // counted. On a plane every interface cell carries the same plane, so
+    // the gate cannot distinguish the choices; the rotation will.
+    if (!hasPlane && !outside)
+    {
+        boundBox sweptBb(boundBox::invertedBox);
+        forAll(T, k)
+        {
+            for (direction v = 0; v < 3; ++v) sweptBb.add(T[k][v]);
+        }
+        scalar dBest = GREAT;
+        label cBest = -1;
+        const davof::remoteCell* rcBest = nullptr;
+        auto considerLocal = [&](const label c)
+        {
+            if (c < 0 || !hasSurface_.test(c)) return;
+            if (!sweptBb.overlaps(mesh_.cellBb(c))) return;
+            const scalar d2 = magSqr(mesh_.cellCentres()[c] - xc);
+            if (d2 < dBest)
+            {
+                dBest = d2;
+                cBest = c;
+                rcBest = nullptr;
+            }
+        };
+        considerLocal(local);
+        considerLocal(other);
+        for (const label pi : cellPoints[local])
+        {
+            for (const label c : pointCells[pi])
+            {
+                if (c != local && c != other) considerLocal(c);
+            }
+        }
+        const auto remoteIter = sweptRemoteRing_.cfind(local);
+        if (remoteIter.good())
+        {
+            for (const label k : remoteIter.val())
+            {
+                const davof::remoteCell& rc = sweptRemote_[k];
+                if (!rc.hasSurface) continue;
+                if (!sweptBb.overlaps(boundBox(rc.bbMin, rc.bbMax))) continue;
+                const scalar d2 = magSqr(rc.C - xc);
+                if (d2 < dBest)
+                {
+                    dBest = d2;
+                    cBest = -1;
+                    rcBest = &rc;
+                }
+            }
+        }
+        if (rcBest)
+        {
+            planeOf(rcBest->S, rcBest->gid, h, sweptPlaneTol_, "onePlane", nRaw, x0);
+            hasPlane = true;
+            ++nOnePlaneFallbackPlane_;
+            ++nOnePlaneFallbackRemote_;
+            sweptFaceRemote_ = true;
+        }
+        else if (cBest >= 0)
+        {
+            planeOf(cellSurfaces_[cBest], cBest, h, sweptPlaneTol_, "onePlane", nRaw, x0);
+            hasPlane = true;
+            ++nOnePlaneFallbackPlane_;
+        }
     }
 
     if (hasPlane)

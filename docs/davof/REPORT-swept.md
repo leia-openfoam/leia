@@ -5806,10 +5806,14 @@ CSVs under `csv/`, the job ledger `.my_jobs`).
    (2022) 108249, doi:10.1016/j.cpc.2021.108249; the swept volume of the unsplit
    face-vertex flux calculation, T. Maric, H. Marschall, D. Bothe, An enhanced un-split
    face-vertex flux-based VoF method, J. Comput. Phys. 371 (2018) 967-993,
-   doi:10.1016/j.jcp.2018.03.048; both cited in the code). The face fraction is the face's
-   OWN fan clipped by the same plane, alpha_f = a_wet . A/|A|^2 (the pieces path took the
-   pre-image fan). A wisp donor with a matched surface (`sweptWispSurface matched`) is
-   clipped by it: the wisp rule unchanged.
+   doi:10.1016/j.jcp.2018.03.048; both cited in the code). The face fraction is the
+   PRE-IMAGE fan clipped by the same plane, alpha_f = a_wet . A_pre/|A_pre|^2 (AMENDED
+   2026-11-10 after the first plane gate, see "The plane gate, first round" below: the
+   first implementation read rule (3) as the face's OWN fan, the Eulerian face under the
+   plane of t^n, which is the face fraction at t^n; the dual advection transports the
+   pre-image's fraction, alphaf^(n+1) = the pre-image under the plane of t^n, as
+   sweptFaceFlux and the pieces path do). A wisp donor with a matched surface
+   (`sweptWispSurface matched`) is clipped by it: the wisp rule unchanged.
 4. A donor without a plane: V_wet = alpha_D V_swept, alpha_f = alpha_D; alpha_D is 0 or 1
    within eps for a full or an empty cell (eps = `surfCellTol` 1e-8, the interface-cell
    tolerance); a partial cell without a plane (a wisp without a matched surface) gives its
@@ -5895,3 +5899,106 @@ CSVs under `csv/`, the job ledger `.my_jobs`).
 Every table of the results carries Co (target and measured), h or N, L1(alphaf) with its
 order, E_shape with its order, L1(x), L1(n), min / max alpha, the mass deviation, the total
 wall clock at the same rank count, the status and the verdict per prediction.
+
+### The plane gate, first round (2026-11-09, jobs 56128255-58; the identity 56127501/02): P1 FALSIFIED, the mechanism located
+
+The four plane studies (normal and oblique arm, serial and 8 ranks, N 20 / 40 / 80 / 160,
+OF Co 0.2 / 0.5 / 1, the settings onePlane and recommended; 96 cases, all completed) and the
+rotation identity ran on the build d45d2215. The onePlane row failed P1 on every one of its 48
+cells; the recommended row held 1e-13 on the same cells (its record of 2026-11-06 stands). The
+numbers at N 40, serial (the other rungs alike; `studies/davof/kiss_tables/kiss_plane_table.csv`
+of that round is kept as `kiss_tables_round1/`):
+
+| arm | OF Co | setting | L1(alphaf) | L1(n) | E_shape | L1(x) | min alpha | steps |
+|---|---|---|---|---|---|---|---|---|
+| normal | 0.2 | onePlane | 6.40e-2 | 1.25e-3 | 5.3e-15 | 1.4e-8 | -1.3e-15 | 65 |
+| normal | 0.5 | onePlane | 1.57e-1 | 1.12e-2 | 4.3e-14 | 1.4e-7 | -5.8e-15 | 26 |
+| normal | 1 | onePlane | 1.34e-1 | 8.66e-1 | 1.4e-10 | 5.8e-4 | -9.9e-3 | 13 |
+| normal | 0.2 / 0.5 / 1 | recommended | 1.2e-13 / 6.6e-14 / 5.5e-14 | 7.4e-14 / 5.8e-14 / 3.8e-14 | 1e-23 | 2e-17 | -1e-14 | 65 / 26 / 13 |
+| oblique | 0.2 | onePlane | 2.90e-2 | 2.58e-4 | 1.6e-14 | 6.0e-9 | -6.7e-16 | 40 |
+| oblique | 0.5 | onePlane | 7.19e-2 | 2.46e-3 | 2.0e-13 | 8.6e-8 | -2.0e-15 | 16 |
+| oblique | 1 | onePlane | 1.37e-1 | 1.08e-2 | 1.7e-23 | 2.2e-9 | -1.1e-14 | 8 |
+| oblique | 0.2 / 0.5 / 1 | recommended | 6.1e-14 / 6.6e-14 / 9.5e-14 | 4.1e-14 / 5.0e-14 / 8.0e-14 | 2e-23 | 3e-17 | -1e-14 | 40 / 16 / 8 |
+
+The mechanism, located from the numbers themselves (no further run needed): E_shape is at
+round-off (1e-14 .. 1e-23) at OF Co 0.2 and 0.5 on both arms, so the volume fluxes of the
+one-plane path (the Lagrangian donor, the clip, the cap closure, the donorContent bound, rule
+2) are exact on the plane; the face fractions alone are wrong, by O(Co) per interface face
+(L1(alphaf) 0.03 at Co 0.2, 0.07 at 0.5, 0.14 at 1 on the oblique arm: linear in Co). That is
+the signature of a face fraction taken one step late: the first implementation read rule (3),
+"the face's wet area = the face's own triangles clipped by the same plane", as the EULERIAN
+face's fan (the triangles k % 4 == 0 of the closed list) under the donor's plane of t^n,
+which is the fraction of the face at t^n. The dual advection stores alphaf at t^(n+1), the
+Lagrangian transport of the pre-image's fraction: the pre-image fan (k % 4 == 1, the traced
+copy of the face) under the plane of t^n, which is what sweptFaceFlux and the pieces path
+compute (`aPreWet`, `preSign`). The zero-flux faces (1.9e5 on the oblique arm at N 40, OF Co
+0.2) carried the same lag: a face parallel to the velocity is still slid along by the
+interface. The wrong fractions fed the ring area normal (L1(n) 1e-3 .. 1e-2) without touching
+the fluxes at OF Co 0.2 and 0.5, because the positioning by ccs from alpha corrects the plane
+position step by step and the normal error of 1e-3 moves no volume at round-off level on a
+plane translated along x or along n over 8 .. 65 steps; at OF Co 1 on the normal arm the
+error compounds (L1(n) 0.87, min alpha -0.01, E_shape 1.4e-10) through the second mechanism
+below.
+
+The second mechanism, visible only at OF Co 1 on the normal arm (U = n, the target 0.6202):
+the pre-image centroid of an x-face or a y-face shifts 0.8124 x 0.6202 h = 0.5039 h in z and
+leaves the upwind cell; the donor becomes a vertex-ring cell (109 981 ring donors at N 40
+against 0 at OF Co 0.2 and 0.5), the counters show 4 670 wisp donors and 40 515 clamps, and the
+donorContent bound fires on 35 167 donors (liquid) and 48 904 (gas) with a smallest ratio of 0.
+A ring donor deeper in the liquid than the face is full while the swept volume is cut near the
+face's top vertices: the whole swept volume is taken as liquid. This is the structural
+limit of "one plane, the Lagrangian donor's" at a displacement near h on a tilted plane, and
+it is separate from the face-fraction reading; it will be measured again with the corrected
+face fraction (the counters of the ring-donor class are reported per cell), and the key
+`sweptOnePlaneDonor upwind` (added before this round) is the elimination test if needed.
+
+The identity of this round (the rotation at N 32, t = 0 .. 0.05, OF Co 0.2 and 1; serial
+against 8 ranks): no remote donors, the bound skipped no face; the per-step bounds differ
+from step 3 on at the 1e-16 level (max(alpha) 1 + 2.66e-15 against 1 + 2.44e-15: the
+summation order of the decomposed mesh's faces), E_shape agrees to 12 digits at OF Co 0.2
+(L1(x) to 3.5e-12 relative) and to 6e-8 relative at OF Co 1, where the round-off seed is
+amplified by discrete decisions (the matched wisp planes 173 against 170 in a step, the
+bound's smallest ratio 3.38494991147742e-12 against ...792e-12): the one-plane path is not
+bit-for-bit across ranks and is round-off-identical only while no threshold decision flips.
+The identity metric itself was too strict for the round-off quantities (the mass deviation
+-2.2e-13 against 1.1e-14 is a relative difference of 1 and an absolute one of 2e-13): the
+amended analysis compares the error measures relatively and the round-off quantities (mass
+deviation, min alpha, the excess over 1) absolutely, both at 1e-12.
+
+Decision (2026-11-10, before the second round): the face fraction of the one-plane path is
+the PRE-IMAGE fan under the donor's plane (one line of the clip changed, k % 4 == 1, the
+orientation by preSign as sweptFaceFlux); everything else of the scheme as pre-registered;
+the first-round studies are kept beside the new ones (`studies/davof/*_round1`); P1 is run
+again on the same four configs and the identity on the same two; the matrix waits.
+
+The coordinator confirmed the reading (2026-11-10): the face fraction at t^(n+1) is the
+pre-image fan clipped by the donor's plane of t^n, the Lagrangian transport as in
+sweptFaceFlux, not the Eulerian face; the brief's wording "the face's own triangles" was the
+brief's error, recorded here as such with the gate's finding.
+
+### The amendment of rule (2), pre-registered 2026-11-10 before the second round
+
+The coordinator's addition for the same rebuild, so that the OF Co 1 mechanism does not cost a
+third round: when the cell containing the pre-image centroid has no plane while the swept
+volume overlaps an interface cell, the donor plane is the plane of the interface cell the swept
+volume overlaps that is nearest to the centroid. The centroid rule stays the first choice. As
+implemented (`sweptOnePlaneFlux`, after the donor's state): the candidates are the upwind and
+the downwind cell, the vertex ring of the upwind cell and the ring cells of other ranks (the
+packed cells of sweptExchange); an interface cell is one with its own surface
+(`hasSurface_`, the interface-cell rule normalAndAlpha); the overlap is that of the bounding
+boxes of the closed triangle list and of the cell (a conservative test: a box overlap without
+a true overlap can only add a candidate, and every candidate carries a plane of the same
+interface); the distance is from the cell centre to the centroid; the fallback is counted per
+step ("fallback planes N (remote M)" in the one-plane clause). A donor without a plane whose
+swept volume overlaps no interface cell keeps its alpha, as before. Predictions: on the plane
+every interface cell carries the same plane, so P1 at OF Co 1 on the normal arm is expected to
+HOLD now (the ring donors that were full while the swept volume was cut take the cutting
+cell's plane; a swept volume cut while no overlapping cell has a plane cannot occur on a
+plane unless the cut lies in a cell below the interface-cell threshold, the wisp case, whose
+error is bounded by the threshold); the fallback count per step is expected to be zero at OF
+Co 0.2 and 0.5 on both arms and of the order of the ring-donor count (1.1e5 over the run at
+N 40) at OF Co 1 on the normal arm; on the rotation the choice of the plane matters at the
+level of the plane's O(h) difference between neighbouring interface cells, and P2 (E_shape
+within 10 % of the pieces row) is the test. The identity (np1 against np8) must still hold to
+round-off: the candidate set is the same on every rank (the ring cells of other ranks are in
+the exchange) and the nearest-centre rule is deterministic.

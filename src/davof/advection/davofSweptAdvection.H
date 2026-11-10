@@ -742,8 +742,11 @@ class davofSweptAdvection
             //  T. Maric, H. Marschall, D. Bothe, An enhanced un-split
             //  face-vertex flux-based VoF method, J. Comput. Phys. 371
             //  (2018) 967-993, doi:10.1016/j.jcp.2018.03.048). The face
-            //  fraction is the face's own fan clipped by the same plane,
-            //  alpha_f = a_wet . A/|A|^2. A donor without a plane gives its
+            //  fraction is the PRE-IMAGE fan clipped by the same plane,
+            //  alpha_f = a_wet . A_pre/|A_pre|^2 (the fraction at t^(n+1) is
+            //  the pre-image's under the plane of t^n; the Eulerian face's
+            //  own fan gives the fraction at t^n, which the plane gate of
+            //  2026-11-09 falsified). A donor without a plane gives its
             //  alpha: V_wet = alpha_D V_swept, alpha_f = alpha_D (a full or
             //  an empty cell within the interface tolerance; a partial cell
             //  without a plane, a wisp, the same, counted; a wisp with a
@@ -790,6 +793,15 @@ class davofSweptAdvection
             label nOnePlaneEmpty_;
             label nOnePlaneWisp_;
             label nOnePlaneWispPlane_;
+            //- The amendment of rule (2) (2026-11-10, before the second plane
+            //  gate): a donor without a plane while the swept volume overlaps
+            //  an interface cell takes the plane of the overlapping interface
+            //  cell nearest to the pre-image centroid (the upwind and downwind
+            //  cells, the vertex ring, the ring cells of other ranks; the
+            //  overlap by bounding boxes); the faces per step, those with a
+            //  remote cell's plane
+            label nOnePlaneFallbackPlane_;
+            label nOnePlaneFallbackRemote_;
             label nOnePlaneZeroFlux_;
             label nOnePlaneClamped_;
             label nOnePlaneBoundLiq_;
