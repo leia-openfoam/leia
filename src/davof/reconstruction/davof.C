@@ -424,6 +424,10 @@ Foam::reconstruction::davof::davof
     correctorIterations_(modelDict().getOrDefault<label>("correctorIterations", 1)),
     correctorTolerance_(modelDict().getOrDefault<scalar>("correctorTolerance", 1e-12)),
     correctorLog_(modelDict().getOrDefault<bool>("correctorLog", false)),
+    correctorNoPlaneRule_
+    (
+        modelDict().getOrDefault<word>("correctorNoPlaneRule", "clip")
+    ),
     correctedTimeIndex_(-1),
     corrIterationsUsed_(0),
     corrMaxChange_(),
@@ -631,10 +635,17 @@ Foam::reconstruction::davof::davof
                 << " is not implemented for faceState vector"
                 << exit(FatalIOError);
         }
+        if (correctorNoPlaneRule_ != "clip" && correctorNoPlaneRule_ != "alpha")
+        {
+            FatalIOErrorInFunction(modelDict())
+                << "correctorNoPlaneRule '" << correctorNoPlaneRule_
+                << "' unknown. Valid: clip, alpha." << exit(FatalIOError);
+        }
         Info<< "davof: faceFractionCorrector " << faceFractionCorrector_
             << " (correctorIterations " << correctorIterations_
             << ", correctorTolerance " << correctorTolerance_
-            << ", correctorLog " << correctorLog_ << ")";
+            << ", correctorLog " << correctorLog_
+            << ", correctorNoPlaneRule " << correctorNoPlaneRule_ << ")";
         if (interfaceCellRule_ != "alphaOnly")
         {
             Info<< "; interfaceCellRule " << interfaceCellRule_
@@ -1395,29 +1406,40 @@ void Foam::reconstruction::davof::inducedFaceFractions
         const scalar af = mag(cutF.subFaceArea())/mag(Sf[facei]);
         return min(max(af, scalar(0)), scalar(1));
     };
-    // The contribution of a cell to the mean on a face: its plane's clip
-    // when it has one, its (clamped) alpha otherwise; an interface cell
-    // without a plane (the ring sum vanished, or the positioning failed)
-    // is counted
+    // The value of a face from its two cells (correctorNoPlaneRule): two
+    // planes, the mean of the two clips; one plane, that plane's clip (clip)
+    // or the mean of the clip and the plane-less cell's clamped alpha
+    // (alpha); no plane, unchanged (clip; false returned) or the mean of
+    // the two alphas (alpha). An interface cell without a plane (the ring
+    // sum vanished, or the positioning failed) is counted once per face.
+    const bool ruleClip = (correctorNoPlaneRule_ == "clip");
     label nNoPlaneLocal = 0;
-    auto contrib = [&]
+    auto faceValue = [&]
     (
         const label facei,
-        const bool interfaceCell,
-        const vector& nrm,
-        const point& ctr,
-        const scalar a
-    ) -> scalar
+        const bool io, const vector& no, const point& co, const scalar ao,
+        const bool in, const vector& nn, const point& cn, const scalar an,
+        scalar& value
+    ) -> bool
     {
-        if (mag(nrm) > 0)
+        const bool po = (mag(no) > 0), pn = (mag(nn) > 0);
+        if (io && !po) ++nNoPlaneLocal;
+        if (in && !pn) ++nNoPlaneLocal;
+        if (po && pn)
         {
-            return clip(facei, nrm, ctr);
+            value = 0.5*(clip(facei, no, co) + clip(facei, nn, cn));
+            return true;
         }
-        if (interfaceCell)
+        if (ruleClip)
         {
-            ++nNoPlaneLocal;
+            if (po) { value = clip(facei, no, co); return true; }
+            if (pn) { value = clip(facei, nn, cn); return true; }
+            return false;
         }
-        return min(max(a, scalar(0)), scalar(1));
+        const scalar vo = po ? clip(facei, no, co) : min(max(ao, scalar(0)), scalar(1));
+        const scalar vn = pn ? clip(facei, nn, cn) : min(max(an, scalar(0)), scalar(1));
+        value = 0.5*(vo + vn);
+        return true;
     };
 
     for (label facei = 0; facei < nInt; ++facei)
@@ -1425,13 +1447,12 @@ void Foam::reconstruction::davof::inducedFaceFractions
         const label o = own[facei], n = nei[facei];
         const bool io = interfaceCell_[o], in = interfaceCell_[n];
         if (!(io || in)) continue;
-        afNew[facei] =
-            0.5*
-            (
-                contrib(facei, io, nIn[o], cIn[o], aIn[o])
-              + contrib(facei, in, nIn[n], cIn[n], aIn[n])
-            );
-        set.set(facei);
+        scalar v = 0;
+        if (faceValue(facei, io, nIn[o], cIn[o], aIn[o], in, nIn[n], cIn[n], aIn[n], v))
+        {
+            afNew[facei] = v;
+            set.set(facei);
+        }
     }
 
     // The coupled patches: the other side's plane and alpha from the
@@ -1464,14 +1485,13 @@ void Foam::reconstruction::davof::inducedFaceFractions
             const bool io = interfaceCell_[o];
             const bool in = (aN[i] > tolA && aN[i] < 1 - tolA);
             if (!(io || in)) continue;
-            afNew[facei] =
-                0.5*
-                (
-                    contrib(facei, io, nIn[o], cIn[o], aIn[o])
-                  + contrib(facei, in, nN[i], cN[i], aN[i])
-                );
-            set.set(facei);
-            coupledSet.set(facei);
+            scalar v = 0;
+            if (faceValue(facei, io, nIn[o], cIn[o], aIn[o], in, nN[i], cN[i], aN[i], v))
+            {
+                afNew[facei] = v;
+                set.set(facei);
+                coupledSet.set(facei);
+            }
         }
     }
     if (Pstream::parRun() || coupledSet.any())

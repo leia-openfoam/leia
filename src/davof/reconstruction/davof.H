@@ -284,6 +284,20 @@ class davof
         label correctorIterations_;
         scalar correctorTolerance_;
         bool correctorLog_;
+
+        //- The rule for a face that touches ONE plane (key correctorNoPlaneRule,
+        //  2026-11-10): clip (the default): the face takes that plane's clip
+        //  and a face touching no plane is left unchanged; alpha (the
+        //  pre-registered rule of 2026-11-09): the plane-less cell's alpha
+        //  enters the mean in place of a clip. The alpha rule is wrong by
+        //  O(alpha^(2/3)) on a face shared with a cell the plane grazes
+        //  (alpha within surfCellTol of 0 or 1, no plane, but the shared
+        //  face still cut by the plane): the plane gate of 2026-11-10 showed
+        //  changes of 1e-10 to 1.7e-5 per step on exactly such faces, and
+        //  the divergence of the plane at N 80, Co 1 (the face of the
+        //  interface cell is described by the plane that cuts it; the
+        //  neighbour's alpha says nothing about the face's wet area).
+        word correctorNoPlaneRule_;
         label correctedTimeIndex_;
         label corrIterationsUsed_;
         scalarList corrMaxChange_;
