@@ -4906,10 +4906,10 @@ digits (E_shape 1.137e-2, min alpha -0.270).
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | frag (= ours) | ended | -2.70e-1 / 2.95e-4 | -1.55e-3 | 459 / 4633 | 25 / 17989 | 410 / 10924 | 1.14, 1.27, 1.50, 1.84 | 6638, 5871 | 1.137e-2 (0.804) | 0.306 | 7.06e-2 |
 | exactCaps (a) | ABORT step 50, t 0.3125, min -0.788 | -7.88e-1 / 1.1e-11 | -2.8e-12 | 0 / 0 | 25 / 540 | 410 / 712 | - | - | - | - | - |
-| reinit (c) | ended | -1.56e-1 / 7.2e-3 | -2.4e-3 | 451 / 3489 | 25 / 13186 | 440 / 7179 | 0.88, 0.92, 1.09, 1.30 | 2630, 5344 | 9.844e-3 (0.696) | 0.247 | 5.15e-2 |
-| reinitPrism (d) | ended | -2.32e-1 / 1.33e-1 | -8.4e-3 | - | 0 / 19087 | 440 / 11934 | 1.35, 0.84, 1.05, 2.03 | 6454, 5893 | 1.116e-2 (0.790) | 0.318 | 9.27e-2 |
+| reinit (c) VOID | ended | -1.56e-1 / 7.2e-3 | -2.4e-3 | 451 / 3489 | 25 / 13186 | 440 / 7179 | 0.88, 0.92, 1.09, 1.30 | 2630, 5344 | 9.844e-3 (0.696) | 0.247 | 5.15e-2 |
+| reinitPrism (d) VOID | ended | -2.32e-1 / 1.33e-1 | -8.4e-3 | - | 0 / 19087 | 440 / 11934 | 1.35, 0.84, 1.05, 2.03 | 6454, 5893 | 1.116e-2 (0.790) | 0.318 | 9.27e-2 |
 | wispTol 1e-2 (e) | ABORT step 41, t 0.256, min -1.06 | -1.06 / 1.9e-13 | -2.9e-4 | 459 / 597 | 25 / 625 | 409 / 582 | - | - | - | - | - |
-| exactReinit (a + c) | ended | -1.51e-1 / 1.2e-7 | -1.4e-12 | 0 / 0 | 25 / 3850 | 440 / 1726 | 0.89, 0.60, 0.47, 0.73 | 2768, 1611 | 9.608e-3 (0.680) | 0.081 | 2.44e-1 |
+| exactReinit (a + c) VOID | ended | -1.51e-1 / 1.2e-7 | -1.4e-12 | 0 / 0 | 25 / 3850 | 440 / 1726 | 0.89, 0.60, 0.47, 0.73 | 2768, 1611 | 9.608e-3 (0.680) | 0.081 | 2.44e-1 |
 
 plicRDF on the same cell for comparison: E_shape 7.765e-3 (0.549), L1(x)
 0.0845, L1(n) 0.692, partial cells 1324 / 747 at T/2 / T, min alpha
@@ -4970,6 +4970,17 @@ unbounded cell is a full cell without a surface at step 10 (alpha
 1 + 1e-9), the run completes with min -0.15, 348 of 480 steps with a
 closure/exact disagreement above 1e-6.
 
+VOID (2026-11-10): the controls (c) reinit, (d) reinitPrism and (a + c) exactReinit ran
+through the diagnostic sweptReinitFaceFractions, whose clip passed the cut polygon's AREA
+vector (normal_) to cutFacePLIC::calcSubFace, which snaps |(x - base).n| < SMALL to zero, so
+a sliver plane returned a fully wet face as gas (the corrector agent's finding, leia
+davof-iter 9c0d983d; fixed in the port ee6fddc8 and in the fork's isoAdvectionCurved.C on
+this branch 740223e: the unit normal). Their rows above and the verdicts D-3, D-4 and D-6
+below are void (the numbers -0.156, -0.232, E_shape 1.27 x plicRDF, the N 64 decision of
+D-6 included); the controls are not rerun, the corrector on davof-iter is the test of face
+fractions from planes now. The rows frag, exactCaps (a) and wispTol (e), D-1, D-2 and D-5
+did not use the diagnostic and stand.
+
 Verdicts on D-1 .. D-6:
 - D-1 HELD: the first 200 seeds appear from step 8, 82 % fallback-adjacent
   (> 60 %), 18 % none (< 20 %), 99.5 % dry (> 80 %), |m_c|/V^(2/3) median
@@ -4984,16 +4995,16 @@ Verdicts on D-1 .. D-6:
   clause of D-2 is falsified in the direction that strengthens D-1: the
   fallback is the seed of the FRAGMENTATION; the unboundedness has a
   second source the exact pieces expose.
-- D-3 FALSIFIED: the ratio stays within 1.3 (held) but min alpha -0.156
+- D-3 VOID (2026-11-10, the reinit clip's defect above; was: FALSIFIED): the ratio stays within 1.3 (held) but min alpha -0.156
   (not above -1e-2); E_shape 9.84e-3 = 1.27 x plicRDF (held). The
   transported state is not the only fragmenting ingredient: with the
   face fractions re-initialised every step the row still fragments to
   7179 interface cells and stays unbounded (the fallback remains).
-- D-4 FALSIFIED (min -0.232, ratio up to 2.03 at T).
+- D-4 VOID (2026-11-10, the reinit clip's defect; was: FALSIFIED, min -0.232, ratio up to 2.03 at T).
 - D-5 FALSIFIED in the direction of a cure's opposite: wispTol 1e-2 aborts
   at step 41 (min -1.06): more cells without a surface take the 0/1 piece
   rule and the flux overdraws at once.
-- D-6 HELD: no control keeps N 32 bounded to 1e-9 over T; (a + c) reaches
+- D-6 VOID (2026-11-10, the reinit clip's defect; was: HELD): no control keeps N 32 bounded to 1e-9 over T; (a + c) reaches
   -0.15, so the N 64 run was not triggered.
 
 What starts the fragmentation (3): the one-donor rank fallback of the
