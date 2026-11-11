@@ -6002,3 +6002,115 @@ level of the plane's O(h) difference between neighbouring interface cells, and P
 within 10 % of the pieces row) is the test. The identity (np1 against np8) must still hold to
 round-off: the candidate set is the same on every rank (the ring cells of other ranks are in
 the exchange) and the nearest-centre rule is deterministic.
+
+### The plane gate, second round (2026-11-10/11, build 1f34653e, jobs 56168619-24): P1 FALSIFIED, the residual located, the matrix not run
+
+The second round ran the pre-image face fraction and the amendment of rule (2) (the fallback
+plane; its counters were left out of 1f34653e by the commit's add list and are printed from
+ada526cc on: the logic was in, the counts below come from the localisation runs). The four
+plane studies (96 cases) and the rotation identity completed without an abort. The onePlane
+cells against the gate's bounds (L1(alphaf) <= 1e-12 and L1(n) <= 1e-12), serial and on 8
+ranks; the pieces row (recommended) on the same cells for the scale:
+
+| arm | OF Co (target) | N | L1(alphaf) np1 / np8 | L1(n) np1 / np8 | E_shape np1 | min alpha np1 / np8 | steps | pieces row np1 L1(alphaf) | P1 (np1 / np8) |
+|---|---|---|---|---|---|---|---|---|---|
+| normal | 0.2 (0.124) | 20 | 2.7e-09 / 2.7e-09 | 4.9e-09 / 4.9e-09 | 4.8e-19 | -6.0e-13 / -6.0e-13 | 32 | 4.1e-14 | FAIL / FAIL |
+| normal | 0.2 (0.124) | 40 | 5.5e-08 / 5.5e-08 | 5.3e-08 / 5.3e-08 | 3.9e-19 | -9.6e-13 / -9.6e-13 | 65 | 1.2e-13 | FAIL / FAIL |
+| normal | 0.2 (0.124) | 80 | 3.9e-09 / 3.9e-09 | 6.0e-09 / 6.0e-09 | 1.7e-19 | -1.0e-12 / -9.3e-13 | 129 | 3.6e-13 | FAIL / FAIL |
+| normal | 0.2 (0.124) | 160 | 4.7e-09 / 4.7e-09 | 6.3e-09 / 6.3e-09 | 9.4e-20 | -1.0e-12 / -1.0e-12 | 258 | 1.2e-12 | FAIL / FAIL |
+| normal | 0.5 (0.3101) | 20 | 4.5e-08 / 4.5e-08 | 6.2e-08 / 6.2e-08 | 9.3e-18 | -1.3e-14 / -1.0e-14 | 13 | 2.1e-14 | FAIL / FAIL |
+| normal | 0.5 (0.3101) | 40 | 7.2e-08 / 7.2e-08 | 1.1e-07 / 1.1e-07 | 5.5e-18 | -1.1e-14 / -1.2e-14 | 26 | 6.6e-14 | FAIL / FAIL |
+| normal | 0.5 (0.3101) | 80 | 6.2e-08 / 6.2e-08 | 9.4e-08 / 9.4e-08 | 1.8e-18 | -8.4e-13 / -8.3e-13 | 52 | 2.5e-13 | FAIL / FAIL |
+| normal | 0.5 (0.3101) | 160 | 8.1e-08 / 8.1e-08 | 1.7e-07 / 1.7e-07 | 1.2e-18 | -9.1e-13 / -9.3e-13 | 103 | 9.4e-13 | FAIL / FAIL |
+| normal | 1 (0.6202) | 20 | 6.9e-02 / 7.1e-02 | 8.6e-01 / 8.5e-01 | 2.2e-10 | -2.9e-05 / -2.9e-05 | 6 | 1.7e-14 | FAIL / FAIL |
+| normal | 1 (0.6202) | 40 | 9.5e-02 / 9.7e-02 | 1.0e+00 / 1.0e+00 | 1.3e-10 | -3.2e-03 / -1.1e-02 | 13 | 5.5e-14 | FAIL / FAIL |
+| normal | 1 (0.6202) | 80 | 1.0e-01 / 9.9e-02 | 1.2e+00 / 1.2e+00 | 8.6e-11 | -2.1e-02 / -3.7e-01 | 26 | 2.3e-13 | FAIL / FAIL |
+| normal | 1 (0.6202) | 160 | 1.0e-01 / 9.8e-02 | 1.3e+00 / 1.3e+00 | 5.6e-11 | -7.7e-02 / -4.9e-01 | 52 | 8.8e-13 | FAIL / FAIL |
+| oblique | 0.2 (0.2) | 20 | 8.3e-10 / 8.3e-10 | 9.8e-10 / 9.8e-10 | 6.5e-19 | -1.5e-13 / -1.5e-13 | 20 | 2.3e-14 | FAIL / FAIL |
+| oblique | 0.2 (0.2) | 40 | 6.0e-09 / 6.0e-09 | 7.9e-09 / 7.9e-09 | 3.3e-18 | -2.6e-13 / -2.6e-13 | 40 | 6.1e-14 | FAIL / FAIL |
+| oblique | 0.2 (0.2) | 80 | 9.3e-09 / 9.6e-09 | 1.4e-08 / 1.5e-08 | 1.7e-18 | -3.5e-12 / -3.1e-12 | 80 | 2.4e-13 | FAIL / FAIL |
+| oblique | 0.2 (0.2) | 160 | 8.0e-09 / 2.1e-08 | 1.3e-08 / 3.9e-08 | 4.4e-19 | -2.7e-12 / -2.7e-12 | 160 | 8.8e-13 | FAIL / FAIL |
+| oblique | 0.5 (0.5) | 20 | 1.9e-09 / 1.9e-09 | 2.5e-09 / 2.5e-09 | 1.5e-18 | -9.0e-15 / -9.6e-15 | 8 | 2.1e-14 | FAIL / FAIL |
+| oblique | 0.5 (0.5) | 40 | 9.0e-15 / 9.4e-15 | 1.0e-14 / 9.4e-15 | 1.7e-23 | -1.0e-14 / -1.1e-14 | 16 | 6.6e-14 | ok / ok |
+| oblique | 0.5 (0.5) | 80 | 1.9e-14 / 2.5e-08 | 1.9e-14 / 3.8e-08 | 2.0e-23 | -2.6e-14 / -2.0e-12 | 32 | 2.3e-13 | ok / FAIL |
+| oblique | 0.5 (0.5) | 160 | 7.7e-09 / 4.1e-08 | 1.2e-08 / 7.3e-08 | 3.4e-19 | -2.6e-12 / -2.6e-12 | 64 | 8.8e-13 | FAIL / FAIL |
+| oblique | 1 (1.0) | 20 | 4.9e-09 / 4.9e-09 | 9.2e-09 / 9.2e-09 | 1.8e-23 | -1.1e-14 / -1.1e-14 | 4 | 3.5e-14 | FAIL / FAIL |
+| oblique | 1 (1.0) | 40 | 3.2e-14 / 3.3e-14 | 5.0e-14 / 5.3e-14 | 2.2e-23 | -2.1e-14 / -1.4e-14 | 8 | 9.5e-14 | ok / ok |
+| oblique | 1 (1.0) | 80 | 7.7e-14 / 4.0e-11 | 1.1e-13 / 7.6e-11 | 2.8e-23 | -5.3e-14 / -7.8e-13 | 16 | 3.7e-13 | ok / FAIL |
+| oblique | 1 (1.0) | 160 | 7.8e-09 / 1.8e-06 | 1.3e-08 / 5.4e-06 | 3.8e-23 | -2.4e-13 / -9.7e-13 | 32 | 1.8e-12 | FAIL / FAIL |
+
+Cells holding P1: 4 of 48 serial, 2 of 48 on 8 ranks.
+
+| N 40, normal arm | OF Co | steps | L1(alphaf) | L1(n) | E_shape | min alpha | fallback planes / step | ring donors / step | wisps / step | bound liq / gas | clamps |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| base | 0.2 | 65 | 5.5e-08 | 5.3e-08 | 3.9e-19 | -9.6e-13 | 1705 | 0 | 0 | 17 / 0 | 0 |
+| eps1e-14 | 0.2 | 65 | 1.8e-14 | 3.0e-14 | 2.5e-24 | -1.0e-14 | 1659 | 0 | 2 | 0 / 0 | 0 |
+| boundNone | 0.2 | 65 | 5.5e-08 | 5.3e-08 | 3.9e-19 | -9.6e-13 | 1698 | 0 | 0 | - / - | 0 |
+| donorUpwind | 0.2 | 65 | 5.5e-08 | 5.3e-08 | 3.9e-19 | -9.6e-13 | 1705 | 0 | 0 | 17 / 0 | 0 |
+| base | 1 | 13 | 9.5e-02 | 1.0e+00 | 1.3e-10 | -3.2e-03 | 3002 | 8441 | 527 | 44065 / 49264 | 50218 |
+| eps1e-14 | 1 | 13 | 9.0e-02 | 1.0e+00 | 1.3e-10 | -1.1e-02 | 3016 | 8442 | 533 | 43995 / 49269 | 50371 |
+| boundNone | 1 | 10 | - | - | - | -5.8e-01 | 2223 | 3623 | 44 | - / - | 0 |
+| donorUpwind | 1 | 13 | 1.7e-02 | 5.9e-02 | 2.7e-12 | -6.8e-05 | 1325 | 0 | 224 | 14871 / 23450 | 17771 |
+
+P1 is FALSIFIED: 4 of 48 serial cells hold (the oblique arm at N 40 and 80, OF Co 0.5 and 1),
+2 of 48 on 8 ranks. Three mechanisms, located by the counters and by elimination (the four
+one-key reruns of N 40 on the normal arm, serial, binary 54175674, second table):
+
+1. The interface-cell tolerance eps = 1e-8 (the residual of 1e-9 .. 1e-7 at OF Co 0.2 and 0.5
+   on both arms). E_shape is at round-off everywhere there (1e-18 .. 1e-23) and the bound
+   (`sweptOnePlaneBound none`: unchanged) and the donor rule (`sweptOnePlaneDonor upwind`:
+   unchanged, no ring donors at these Co) are not involved; `surfCellTol 1e-14` brings N 40,
+   OF Co 0.2 on the normal arm from L1(alphaf) 5.5e-8 to 1.8e-14 and L1(n) to 3.0e-14 (the
+   gate's bound). A cell within eps of 0 or 1 is no interface cell (the rule normalAndAlpha),
+   so its corner sliver has no plane of its own, and rule 2 resets ALL its face fractions to
+   0 or 1 after the step; a sliver of volume fraction e has face footprints of order
+   e^(2/3), so eps 1e-8 admits face errors up to 5e-6 and gives the 1e-9 .. 1e-7 measured
+   on the sliver-amplifying arm. The pieces row keeps 1e-13 at the same eps because its
+   face fractions come from the pieces' clips (the matched wisp surfaces of the cells
+   without a plane) and nothing resets them. The one-plane path's planeOfCell takes the
+   matched wisp surface as well (20 052 wisp planes over the run at N 40, OF Co 0.2), so the
+   clip is exact; rule 2 then overwrites it. This is a property of rule 2 as pre-registered
+   (eps = the interface-cell tolerance), not of the flux.
+2. OF Co 1 on the normal arm (U = n, the displacement 0.62 h along the tilted normal): the
+   failure is structural and not cured by the amendment. Per step at N 40: 8 441 ring donors
+   (the centroid leaves the upwind cell in two of three faces), 3 002 fallback planes, 527
+   wisp donors, 3 863 clamps (the closed form outside [0, V_swept]), and the donorContent
+   bound fires on 3 390 donors with the smallest ratio 0; already at step 1, with the exact
+   initial state, the bound scales 1 459 donors (liquid) and 2 449 (gas). The bound is the
+   wrong constraint there: with a displacement of 0.62 h a face's swept volume reaches
+   through its upwind cell into the cell behind it, and the liquid that crosses the donor
+   within one step legitimately exceeds the donor's own content; scaling it to the content
+   is what fragments the state (L1(n) 1.0, min alpha -3e-3 serial, -0.49 on 8 ranks at N
+   160). Without the bound (`sweptOnePlaneBound none`) the run leaves [0, 1] by 0.58 at step
+   10 and aborts: the one-plane fluxes of the ring and wisp donors are then unbounded. With
+   the donor forced to the upwind cell the errors fall (L1(alphaf) 1.7e-2, min alpha -6.8e-5)
+   but stay far from the gate. The pieces path has no such regime: every piece is bounded
+   by the content of the cell it lies in, which is what the per-cell cut is for. The
+   `eps 1e-14` variation changes nothing here.
+3. The parallel identity. np1 against np8 agrees to round-off on the normal arm at OF Co 0.2
+   and 0.5 (every number of the table equal to the digits shown; the absolute differences
+   of the round-off quantities 1e-15 .. 1e-13), and differs on the oblique arm from N 80 on
+   (N 160, OF Co 1: 7.8e-9 against 1.8e-6) and at OF Co 1 on the normal arm (the regime of
+   mechanism 2). The oblique arm has two of three faces at zero flux (U along x); the
+   zero-flux rule took the local neighbour's plane in serial and nothing across a processor
+   patch (other = -1), so such a face fell back to the upwind alpha on the rank boundary
+   only. Found by the rotation identity (every y-face of the rotation about y is at zero
+   flux: the wisp-plane counts differed by four faces per step from step 2 on, L1(n) by
+   1.4e-5 at the end), fixed in 54175674 (the neighbour's surface across the patch, already
+   exchanged, is the neighbour of the owner-first rule); the rotation identity reruns on
+   that build (round 3, `kiss3-ident-np1 / np8`); the plane identity is not rerun before the
+   decision below. The identity metric of kiss_an.py compares relatively above 1e-12 and
+   absolutely below it (E_shape of 1e-23 against 8e-24 is round-off, not a 30 % difference).
+
+Decision: P1 does not hold, the matrix (P2 rotation, P3-P5 standing kiss rows) is not
+submitted; the configs stay ready. What would change the verdict, for Tomislav's decision:
+(a) rule 2 with its own tolerance well below the interface-cell tolerance (or none) would
+remove mechanism 1 (the eps 1e-14 run is the evidence: 1.8e-14 at N 40, OF Co 0.2); (b)
+mechanism 2 is the one-plane scheme's own limit at OF Co 1 on a tilted plane (the donor's
+content is not the bound of a swept volume that crosses the donor), so OF Co 1 on the normal
+arm cannot pass the gate with the donorContent bound, and does not survive without it; at OF
+Co <= 0.5 the scheme is exact up to mechanism 1. The round-2 cases are kept
+(`studies/davof/kiss_plane_*_np?`, `kiss_identity_rotation_np?`; the first round as
+`*_round1`), the tables in `studies/davof/kiss_tables/` (kiss_plane_table.csv,
+kiss_plane_identity.csv, kiss_identity_table.csv) and the localisation in
+`csv/kiss_locate.csv` with the runs under `locate/`.

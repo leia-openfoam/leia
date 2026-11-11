@@ -196,11 +196,13 @@ def order(pairs):
     return sum((x - mx)*(y - my) for x, y in zip(xs, ys))/den if den > 0 else None
 
 
-def rel(a, b):
+def rel(a, b, floor=1e-12):
+    """The relative difference where the larger value is above the floor, the absolute one
+    below it (2026-11-11: E_shape of 1e-23 against 8e-24 is round-off, not a 30 % difference)."""
     if a is None or b is None:
         return None
     s = max(abs(a), abs(b))
-    return abs(a - b)/s if s > 0 else 0.0
+    return abs(a - b)/s if s > floor else abs(a - b)
 
 
 def identity_pairs(r1, r8, key):
@@ -219,7 +221,7 @@ def identity_pairs(r1, r8, key):
         for k in ("Eshape", "L1x", "L1n", "L1af"):
             diffs[k] = rel(a[k], b[k])
         for k in ("massDevPct", "minAlpha", "excess"):
-            diffs[k] = (abs(a[k] - b[k]) if (a[k] is not None and b[k] is not None) else None)
+            diffs[k] = rel(a[k], b[k], floor=1e-6)
         bd = None
         if a["bounds"] and b["bounds"] and len(a["bounds"]) == len(b["bounds"]):
             bd = max(max(abs(x[0] - y[0]), abs(x[1] - y[1])) for x, y in zip(a["bounds"], b["bounds"]))
@@ -239,7 +241,7 @@ def table(rows, cols, title):
 
 
 def mode_plane(args):
-    recs = collect(args.studies_dir, "kiss_plane_*_np*")
+    recs = collect(args.studies_dir, "kiss_plane_*_np[18]")
     write_csv(os.path.join(args.out, "kiss_plane_cases.csv"), [flat(r) for r in recs])
     rows = []
     worstAf = worstN = 0.0; nCells = 0; fails = []
@@ -283,7 +285,7 @@ def mode_plane(args):
 
 
 def mode_identity(args):
-    recs = collect(args.studies_dir, "kiss_identity_rotation_np*")
+    recs = collect(args.studies_dir, "kiss_identity_rotation_np[18]")
     write_csv(os.path.join(args.out, "kiss_identity_cases.csv"), [flat(r) for r in recs])
     rows = [dict(study=r["study"], N=r["N"], Co=r["co"], ofCo=g(r["ofCo"]), steps=r["steps"], Eshape=f(r["Eshape"], 12), L1x=f(r["L1x"], 12),
                  L1n=f(r["L1n"], 12), L1af=f(r["L1af"], 12), minAlpha=g(r["minAlpha"], 15), excess=g(r["excess"], 15), massDev=g(r["massDevPct"], 15),
