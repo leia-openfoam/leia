@@ -5880,3 +5880,339 @@ Also reported, not predicted: the iterations used per step (median, max), the id
 defect, the cells without a plane, L1(alphaf) at the end and its order, L1(x), the
 interface-cell counts, the total wall clock of every case (shared nodes, one run; the
 exclusive-node timing of P4 is the cost measurement), the job ids and the stamps.
+
+### MEASURED (2026-11-09 to 2026-11-11; three runs, the third the one reported)
+
+Branch `davof-iter` (leia): bb14d0c5 the corrector and the pre-registration, 967b2657 the
+unit app `davofTestCorrector`, 9c0d983d the unit-normal clip, 44da32c8 the parallel check's
+CSV fallback, 914505cd the rule `correctorNoPlaneRule`. Cluster
+`/work/scratch/tm83tomy/davof/agents/iter` (the clone `leia/`, the tables `csv/run3/`
+with `iter_cases.csv`, `iter_orders.csv`, `timing_N64.csv`, `profiling_{none,mean1}.txt`,
+`par_checks.txt`; the earlier runs kept in `csv/run2_full/` and `csv/run2_keep/`). Jobs:
+run 1 build 56128315, orchestrators 56130420-31; run 2 build 56168740, orchestrators
+56168741-54, unit 56168755, timing 56168756; run 3 build 56170303, orchestrators
+56170304-17, unit 56170318, timing 56170319; the run-2 tables 56170339.
+
+**Three runs, two located defects, one rule changed after the data.** Run 1 (2026-11-09,
+bb14d0c5) failed the plane gate P1 with changes of alpha_f of exactly 0.5 at N 40 and 1
+at N 80 and three divergences; the unit check on the exact planar state (N 40, 840
+interface cells) reproduced it with the EXACT normal (pass 1: max change 0.5, L1 4.0e-3
+over 3203 faces, i.e. about 25 faces; passes 2-3 round-off), identical to seven digits
+with the ring normal: a defect of the clip, not of the normals or the positioning.
+`cutFacePLIC::calcSubFace` snaps a point's signed value (x - base).n to zero below SMALL
+(1e-15, absolute) and calls a face without a positive point a gas face; `cutCellPLIC`
+passes the unit normal, so that snap acts at 1e-15 m, but the corrector passed the cut
+polygon's AREA vector `normal_`, down to 1e-12 for a sliver cut, so every point of a
+fully wet face of such a cell snapped and the face was induced as 0 (mean(1, 0) = 0.5
+with its full neighbour); the number of sliver cuts grows with N (8.8e-4 at N 20, 0.5 at
+N 40, 1 at N 80). Fixed in 9c0d983d (the clip takes the unit normal; the same defect was
+in the port's `reinitFaceFractions` diagnostic of 2026-11-06 and is fixed on this branch).
+Run 2 (2026-11-10, 9c0d983d) then showed changes of 1e-10 to 1.7e-5 per step at every N
+and a divergence at N 80, Co 1 (normal arm, step 14-16), every worst face being a face
+shared by an interface cell and a cell the plane GRAZES (alpha within surfCellTol 1e-8 of
+1, e.g. 1 - 7.6e-9, no plane) whose shared face is still cut by the plane (the
+transported value and the owner's clip agree at 0.99998958): the pre-registered rule
+"that cell's alpha enters the mean in place of its clip" is wrong there by
+O(alpha^(2/3)) ~ 1e-5. The plane that cuts the face is the only information about its
+wet area; the neighbour's alpha says nothing about the face. Changed in 914505cd, AFTER
+the data: `correctorNoPlaneRule clip` (the default: a face touching one plane takes that
+plane's clip, a face touching no plane is unchanged), the pre-registered rule kept as
+`alpha`. Run 3 (2026-11-11, 914505cd) is reported below; run 2's tables (the alpha rule)
+are kept on the cluster and differ from run 3 on the sphere by less than 1 % in every
+error (the rule touches grazed faces only).
+
+**The default is unchanged (demonstrated).** The `none` rows of the deformation
+(grazingCut fork, OF Co 0.5) reproduce the port's standing record bit for bit in every
+run: N 32 every one of the 480 per-step bounding lines and E_shape 1.13689512056824021e-02
+identical, N 64 the abort at step 628 with the identical min alpha -0.54457534646676198.
+
+**The unit check (davofTestCorrector, run 3).** Exact planar state N 40: pass 1 changes
+alpha_f by 4.0e-13 (max) and 2.9e-15 (L1), both arms, ring and exact normal: the planes
+of a planar state reproduce the transported fractions to round-off. Static exact sphere
+N 32, exact normal: pass 1 the realizability defect (max 0.0236, L1 6.6e-3), then
+2.2e-4, 1.0e-5, 6.9e-7, 5.8e-8, 5.2e-9 (a contraction of 10-20 per pass: the exact model
+takes the normal at the plane centroid of the first pass, which moves with m_c, so the
+fixed point is approached, not hit); ring normal: 0.0270, 1.4e-3, 1.6e-4, 3.7e-5, 5.9e-6,
+8.3e-7, 2.2e-7, 3.8e-8, 9.9e-9, 2.1e-9 (contraction 4-19 per pass). The identity
+|sum_k m_k - sum_b alpha_f S_f| / sum_k |m_k| is 5e-15 to 5e-17 in every pass.
+
+**P1, the plane gate: FAILED in its strict form, HELD in its gate values except one cell;
+the mechanisms located.** Table "The plane gate" below (run 3; it = iterations used per
+step median/max, d1 = the change of alpha_f at iteration 1, median over the steps; the
+none rows are the gate as before, L1(alphaf) and L1(n) 1e-14 to 1.6e-11). (i) The
+corrector does not change nothing: the first evaluation changes alpha_f by 8e-13 (N 20)
+to 1.2e-10 (N 80) at Co 0.2 / 0.5 and 1.9e-9 (N 40) / 5e-8 (N 80) at Co 1, so 1 to 4
+iterations are used and the strict clause (max change <= 1e-12 every step) is falsified
+at N >= 40. Located: at N 80 the worst face is shared with an interface cell of alpha
+1 - 6.7e-7 whose plane is a sliver (|normal_| 6e-13 against 3e-9 for a full cut); CCS
+positions it to 1e-14 of V, which for a corner of 7e-7 V is a plane shift of 1e-10 h,
+and the clip of the shared face inherits the 1e-10. (ii) The gate values hold: L1(alphaf)
+and L1(n) at the end are at the none row's level (1e-14 to 3.3e-12) in 17 of the 18
+mean4 cells, the np 8 run's per-step function-object numbers equal the np 1 run's to
+3e-14 (L1), 4e-14 (L1(n)), 3e-24 (E_shape); Linf(alphaf) differs by up to 5e-12 in 7 of
+20 steps. (iii) The exception: normal arm, Co 1, N 80 ends at L1(alphaf) 9.7e-3, L1(n)
+0.133, min alpha -9.2e-4. Located: at step 13 a cell with alpha 1.49e-8, just inside the
+tolerance band (surfCellTol 1e-8), is an interface cell under `alphaOnly` and gets a
+sliver plane (|normal_| 4e-14) whose clip of its face (1.0e-5) replaces the transported
+1.5e-8 next to a cell at alpha -9.2e-9; the none row itself holds cells at -1.2e-8 on this
+cell (the swept flux's round-off wisps at Co 1). The alpha-based interface set admits
+round-off wisps at the band's edge and gives them meaningless sliver planes: a
+limitation of the alpha-only rule (the normal-based rule excludes them by |m_c|), not of
+the clip. Parallel: the rotation pair np 1 / np 8 (20 steps, mean4) differs by 4.2e-10
+per value in alpha (54 cells above 1e-12) and 3.4e-10 in alpha_f (178 faces), L1 2.8e-14;
+the none pair differs by 1.1e-9 (181 cells) and 2.4e-9 (487 faces), L1 1.9e-13 / 4.1e-13:
+the per-value scatter is the swept flux's own (2.5e-9 on the ring row, 2026-11-02), the
+corrector adds none, and the pre-registered per-value 1e-12 was below the baseline's
+scatter (the port's criterion was the L1, which holds).
+
+**P2, convergence on the sphere: HELD on the rotation, FALSIFIED on the deformation; the
+mechanism located.** Rotation (N 32 / 64 / 128 at OF Co 0.2, N 32 / 64 at Co 1, mean4):
+the contraction factors of the max change, median / worst over the steps, are 18.9 /
+4.3, 8.3 / 2.6, 6.0 / 2.8 (N 32, Co 0.2), 41 / 8.8, 5.9 / 1.8, 6.2 / 2.5 (N 64), 51 /
+8.4, 4.8 / 1.6, 6.0 / 2.1 (N 128), 17 / 4.8, 8.7 / 2.6, 5.7 / 2.8 (N 32, Co 1), 44 / 11,
+7.2 / 2.0, 6.3 / 2.5 (N 64, Co 1); under isoAdvector 22 / 4.2, 9.4 / 2.9, 5.9 / 2.7 (N
+32) and 50 / 13, 7.7 / 2.0, 6.0 / 2.1 (N 64). No step grows; the worst factor falls
+below 2 at the second iteration on a few steps at N 64 and 128 (1.6 to 2.0). The first
+correction is 0.15 to 0.20 (max) and the fourth about 1e-4, so 1e-6 needs about 7 and
+1e-10 about 12 iterations (not reached within 4; ">4" in the table). Deformation (N 32
+serial, N 64 on 8 ranks, OF Co 0.5): the max change is 1 at EVERY iteration of every
+step after the sheet forms (factor 1 / 1), while the L1 change contracts (step 300: L1
+0.053, 0.043, 0.038, 0.036; step 1: 5.5e-3, 3.5e-4, 5.5e-5, 1.0e-5). Located: the faces
+that change by 1 are (a) faces between two interface cells of the sub-cell sheet (alpha
+0.09 and 0.08) whose planes both clip the shared face to 0 while the transported value
+is 1, i.e. a sheet thinner than a cell that one plane per cell cannot carry across the
+face, and (b) faces of wisp cells (alpha 1e-4 to 1e-8) whose ring normal is axis-aligned
+so that the CCS plane lies ON a cell face (|normal_| = h^2 exactly) and the clip of that
+face is 0 or 1 by the SMALL snap, flipping between iterations; next to them cells at
+alpha -7e-6 (unbounded by the swept flux, no plane). These are the realizability limit of
+one plane per cell on the sheet and the wisps of the fragmentation, not a defect of the
+iteration.
+
+**P3, accuracy: HELD on the rotation for the 5 % clause, FALSIFIED for "L1(n) improves
+with iterations", FALSIFIED on the deformation (E_shape), with a positive finding on the
+deformation's completion.** Rotation, OF Co 0.2, E_shape none / mean1 / mean4: N 32
+1.059e-3 / 1.097e-3 (+3.6 %) / 1.102e-3 (+4.1 %); N 64 2.95e-4 / 3.02e-4 (+2.4 %) /
+3.02e-4; N 128 8.05e-5 / 8.14e-5 (+1.1 %) / 8.14e-5. L1(n): N 32 0.0575 / 0.0596 (+3.7 %)
+/ 0.0593; N 64 0.0252 / 0.0265 (+4.8 %) / 0.0265; N 128 0.0113 / 0.0116 (+2.5 %) /
+0.0116. L1(x) +3 to +4 %. The corrector makes every error slightly WORSE, within the 5 %
+clause at one iteration, and the iterations do not move it (mean4 = mean1 to three
+digits): the fixed point of (reconstruct, induce) on the sphere is a state whose normals
+are no better than the transported state's; the ring-area normal is first order and the
+corrector cannot make it second order. The orders over N are unchanged: E_shape 1.88
+(none 1.86), L1(n) 1.18 (1.17), L1(x) 1.93 (1.90), L1(alphaf) 0.84 (0.82); at Co 1 the
+same picture (+5 % in E_shape, +3 % in L1(n)). Boundedness as without: min alpha -1e-12
+to -1e-14, the excess over 1 up to 8.6e-10 at N 128 (none 6.5e-10); mass to 8e-12 %;
+the interface-cell count of every corrected run is the alpha-based count (424 against
+423 flagged by |m_c| at N 32, 6970 against 6870 at N 128). Under isoAdvector (the DAVOF
+reconstruction, the predictor from the translated planes) the same: E_shape +3.7 %
+(N 32), +2 % (N 64), L1(n) +2 to +4 %. Deformation N 32: E_shape none 1.137e-2, mean1
+1.407e-2 (+24 %), mean2 1.486e-2, mean4 1.537e-2: falsified; L1(n) 1.46 / 1.30 / 1.29 /
+1.40 and the run minimum of alpha -0.27 (none) against -0.05 / -0.06 / -0.06: the
+corrector improves the bound and the normals on the sheet and worsens the shape. N 64
+(8 ranks): none aborts at step 628 (the standing record), mean1 at step 889, mean2 and
+mean4 COMPLETE T = 3 with E_shape 7.84e-3 and 7.72e-3 (orders 32 -> 64 of 0.92 and
+0.99), L1(n) 1.30 and 1.31, min alpha -0.065 (mean2) and -0.315 (mean4), mass to 1e-12 %:
+one realisation each, not predicted, reported as a lead for the fragmentation work and
+nothing more. The identity defect on the deformation N 64 runs is 7.6e-5 to 1.3e-4
+(relative) against 1e-15 serial and 1e-12 to 1e-11 on the rotation in parallel: the
+state of these parallel deformation runs carries double-valued processor faces among
+the faces no plane touches (the swept flux's own sync on the sheet's fragments); the
+faces the corrector sets are single-valued by construction. To be located in the swept
+flux, not here.
+
+**P4, cost: HELD.** Rotation N 64, OF Co 0.2, 8 ranks, one exclusive i01 node
+(mpsc0203), 864 steps, the diagnostics at the end, two repetitions within 0.6 %: the
+median step 0.190 s (none), 0.200 s (mean1), 0.210 s (mean2), 0.2375 s (mean4), i.e.
++10, +20, +48 ms per step. The profile (OpenFOAM's profiling, one run each): none spends
+9.83 s of 156.3 s of `advect` in `reconstruct` over 864 steps, 11.4 ms per step (6.3 % of
+the step; `curvedFlux` 137.5 s); mean1 spends 20.87 s in `correctFaceFractions` (two
+reconstructions 17.9 s, the induced fractions 2.6 s, the exchange of the ring normal
+inside) and 0.013 s in the skipped start-of-step reconstruction, so one iteration adds
+12.8 ms net = 1.12 reconstructions (the clause: at most 1.2), and four add 48 ms = 4.2
+(the clause: at most 4.8). The DAVOF reconstruction's share of the swept step is small;
+the corrector's cost is the reconstructions it repeats.
+
+**P5, the first correction as a diagnostic: HELD for the L1, the max is O(1).** The L1
+change of alpha_f at iteration 1 (median over the steps) is 5.41e-3, 2.55e-3, 1.28e-3 at
+N 32, 64, 128 (swept flux, OF Co 0.2): order 1.04; at Co 1 5.90e-3, 2.83e-3: order 1.06;
+under isoAdvector 5.23e-3, 2.49e-3: order 1.07. The two fluxes' inconsistency is the same
+size within 3 % (the swept pieces' clips and isoAdvector's translated planes leave the
+same first-order inconsistency with the planes reconstructed from alpha^{n+1}). The max
+change is 0.175, 0.161, 0.200 (order -0.09): it is set by isolated faces (grazing cuts,
+wisps) at every N, not by h.
+
+**What is demonstrated, what is a limitation, what is open.** Demonstrated: the
+corrector as implemented leaves a planar state unchanged to round-off at the first
+evaluation (the unit check) and to 1e-12 .. 1e-10 under transport at every N and Co
+except the one cell where the swept flux's own round-off wisps enter the band; the
+default path is bit for bit the old one; the iteration contracts on the sphere by a
+factor 5 to 50 per iteration (median) with the first correction first order in h and the
+same for the swept and the isoAdvector flux; the cost is one reconstruction per
+iteration; the identity holds to round-off wherever every face is single-valued, and it
+locates double-valued processor faces where it is not. Limitations: on the sphere the
+fixed point is no more accurate than the transported state (every error +2 to +5 %, no
+gain with iterations: the ring-area normal's first order is not improved by making the
+face fractions consistent with it), and on the deformation the one-plane-per-cell
+representation cannot carry a sub-cell sheet across a face, so the max change never
+contracts and the shape error grows by 24 % at N 32, while the bound improves and N 64
+completes with 2 and 4 iterations. Open: the interface set at the tolerance band's edge
+(round-off wisps of alpha ~1e-8 get sliver planes; the normal-based rule excludes them),
+the sliver positioning tolerance (1e-14 of V is 1e-10 h for a corner of 1e-7 V), the
+double-valued processor faces of the parallel deformation runs (the swept flux's), and
+whether a different normal model at the fixed point (the ring fit, second order) gains
+what the ring area normal cannot.
+
+Side findings for the other tracks: the port's `reinitFaceFractions` diagnostic
+(2026-11-06) clipped with the area vector and returned 0 on fully wet faces of sliver
+cuts (fixed here in 9c0d983d, the same line); the none np 1 / np 8 pair of the rotation
+differs by up to 2.4e-9 per face after 20 steps (L1 4e-13), the swept flux's own
+parallel scatter, which the port's L1 criterion does not see.
+
+#### The plane gate (run 3, 914505cd; mean4 = the corrector with 4 iterations, tolerance 1e-12; it = iterations used per step, median/max; d1 = the change of alpha_f at iteration 1, median over the steps, max over the faces / L1 over the set faces; ident = |sum_k m_k - sum_b alpha_f S_f| / sum_k |m_k|, max over the steps; serial)
+
+| arm | Co | N | corrector | it med/max | d1 max | d1 L1 | L1(alphaf) end | L1(alphaf) max | E_shape | L1(n) | min alpha | max alpha - 1 | interface cells | no plane | ident | steps | status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| normal | 0.2 | 20 | mean4 | 0/1 | 8.37e-13 | 3.72e-14 | 3.75e-14 | 7.09e-14 | 8.73e-24 | 6.63e-14 | -1.62e-14 | 1.85e-13 | 19 | 0 | 9.06e-16 | 20 | completed |
+| normal | 0.2 | 40 | mean4 | 1/4 | 1.84e-11 | 1.89e-13 | 1.25e-13 | 3.18e-13 | 1.32e-23 | 1.43e-13 | -1.16e-13 | 8.84e-13 | 71 | 0 | 4.60e-15 | 40 | completed |
+| normal | 0.2 | 80 | mean4 | 4/4 | 1.16e-10 | 7.17e-13 | 1.16e-12 | 1.74e-12 | 7.50e-23 | 5.43e-13 | -1.04e-14 | 3.27e-12 | 287 | 0 | 2.41e-14 | 80 | completed |
+| normal | 0.2 | 20 | none | -/- | - | - | 4.33e-14 | 4.33e-14 | 9.42e-24 | 6.05e-14 | -2.75e-14 | 1.84e-13 | 24 | - | - | 20 | completed |
+| normal | 0.2 | 40 | none | -/- | - | - | 7.05e-14 | 9.57e-14 | 1.25e-23 | 8.97e-14 | -9.54e-14 | 8.84e-13 | 80 | - | - | 40 | completed |
+| normal | 0.2 | 80 | none | -/- | - | - | 1.06e-12 | 1.06e-12 | 7.66e-23 | 4.62e-13 | -1.12e-14 | 3.27e-12 | 302 | - | - | 80 | completed |
+| normal | 0.5 | 20 | mean4 | 0.5/1 | 1.05e-12 | 4.09e-14 | 1.05e-14 | 2.99e-14 | 6.20e-24 | 2.41e-14 | -2.65e-14 | 4.75e-14 | 19 | 0 | 6.68e-16 | 8 | completed |
+| normal | 0.5 | 40 | mean4 | 2/4 | 5.76e-11 | 4.81e-13 | 3.30e-13 | 1.58e-12 | 2.53e-23 | 5.69e-13 | -6.51e-13 | 3.27e-13 | 71 | 0 | 4.63e-15 | 16 | completed |
+| normal | 0.5 | 80 | mean4 | 4/4 | 9.51e-10 | 1.95e-12 | 1.60e-12 | 1.60e-12 | 7.26e-23 | 3.23e-12 | -5.83e-13 | 1.74e-12 | 287 | 0 | 1.10e-14 | 32 | completed |
+| normal | 0.5 | 20 | none | -/- | - | - | 1.06e-14 | 2.87e-14 | 6.44e-24 | 1.94e-14 | -3.59e-14 | 4.75e-14 | 32 | - | - | 8 | completed |
+| normal | 0.5 | 40 | none | -/- | - | - | 3.28e-13 | 3.82e-13 | 1.76e-23 | 7.06e-13 | -1.64e-13 | 3.28e-13 | 94 | - | - | 16 | completed |
+| normal | 0.5 | 80 | none | -/- | - | - | 1.20e-12 | 1.31e-12 | 5.07e-23 | 2.43e-12 | -6.95e-13 | 1.74e-12 | 330 | - | - | 32 | completed |
+| normal | 1 | 20 | mean4 | 1/1 | 5.50e-12 | 2.23e-13 | 4.60e-13 | 4.60e-13 | 6.29e-23 | 6.97e-13 | -2.66e-13 | 3.06e-14 | 19 | 0 | 6.97e-16 | 4 | completed |
+| normal | 1 | 40 | mean4 | 3.5/4 | 1.94e-09 | 1.80e-11 | 4.91e-11 | 6.14e-11 | 6.94e-21 | 5.45e-11 | -3.43e-10 | 2.78e-13 | 71 | 0 | 3.92e-15 | 8 | completed |
+| normal | 1 | 80 | mean4 | 4/4 | 5.05e-08 | 2.55e-10 | 0.009704 | 0.009704 | 1.13e-15 | 0.133 | -9.23e-04 | 6.65e-12 | 325 | 0 | 7.42e-15 | 16 | completed |
+| normal | 1 | 20 | none | -/- | - | - | 1.10e-13 | 1.10e-13 | 5.38e-23 | 1.31e-13 | -1.76e-13 | 3.06e-14 | 48 | - | - | 4 | completed |
+| normal | 1 | 40 | none | -/- | - | - | 1.57e-12 | 1.57e-12 | 6.07e-22 | 2.33e-12 | -1.52e-11 | 2.78e-13 | 121 | - | - | 8 | completed |
+| normal | 1 | 80 | none | -/- | - | - | 1.19e-11 | 1.19e-11 | 2.25e-19 | 1.59e-11 | -1.22e-08 | 6.65e-12 | 378 | - | - | 16 | completed |
+| oblique | 0.2 | 20 | mean4 | 1.5/4 | 4.71e-12 | 7.90e-14 | 7.59e-14 | 2.13e-13 | 6.92e-23 | 1.01e-13 | -1.11e-14 | 2.31e-13 | 132 | 0 | 7.06e-16 | 20 | completed |
+| oblique | 0.2 | 40 | mean4 | 4/4 | 1.11e-10 | 6.27e-13 | 4.36e-13 | 7.72e-13 | 2.12e-22 | 5.25e-13 | -1.81e-14 | 2.66e-12 | 521 | 0 | 4.82e-15 | 40 | completed |
+| oblique | 0.2 | 80 | mean4 | 4/4 | 7.86e-10 | 2.17e-12 | 1.71e-12 | 3.17e-12 | 5.12e-22 | 1.99e-12 | -3.71e-14 | 7.21e-12 | 2.09e+03 | 0 | 1.24e-14 | 80 | completed |
+| oblique | 0.2 | 20 | none | -/- | - | - | 8.41e-14 | 8.41e-14 | 7.06e-23 | 1.29e-13 | -9.87e-15 | 2.31e-13 | 131 | - | - | 20 | completed |
+| oblique | 0.2 | 40 | none | -/- | - | - | 3.04e-13 | 4.20e-13 | 2.03e-22 | 3.33e-13 | -3.06e-14 | 2.66e-12 | 525 | - | - | 40 | completed |
+| oblique | 0.2 | 80 | none | -/- | - | - | 1.25e-12 | 1.43e-12 | 4.92e-22 | 1.23e-12 | -3.91e-14 | 7.02e-12 | 2.06e+03 | - | - | 80 | completed |
+| oblique | 0.5 | 20 | mean4 | 1/1 | 1.54e-12 | 4.26e-14 | 3.08e-14 | 3.54e-14 | 3.33e-23 | 3.74e-14 | -1.10e-14 | 1.87e-13 | 132 | 0 | 5.37e-16 | 8 | completed |
+| oblique | 0.5 | 40 | mean4 | 3.5/4 | 7.91e-11 | 3.65e-13 | 2.85e-13 | 2.94e-13 | 9.31e-23 | 4.14e-13 | -3.94e-14 | 7.37e-13 | 521 | 0 | 4.00e-15 | 16 | completed |
+| oblique | 0.5 | 80 | mean4 | 4/4 | 3.11e-10 | 1.09e-12 | 8.14e-13 | 9.11e-13 | 2.34e-22 | 8.85e-13 | -1.15e-13 | 4.18e-12 | 2.09e+03 | 0 | 9.91e-15 | 32 | completed |
+| oblique | 0.5 | 20 | none | -/- | - | - | 2.89e-14 | 3.30e-14 | 3.43e-23 | 3.07e-14 | -1.15e-14 | 1.87e-13 | 136 | - | - | 8 | completed |
+| oblique | 0.5 | 40 | none | -/- | - | - | 1.43e-13 | 1.71e-13 | 8.85e-23 | 1.40e-13 | -4.06e-14 | 7.37e-13 | 534 | - | - | 16 | completed |
+| oblique | 0.5 | 80 | none | -/- | - | - | 7.06e-13 | 7.12e-13 | 2.29e-22 | 7.31e-13 | -1.15e-13 | 4.18e-12 | 2.10e+03 | - | - | 32 | completed |
+| oblique | 1 | 20 | mean4 | 1/1 | 1.30e-12 | 3.59e-14 | 4.20e-14 | 4.20e-14 | 2.52e-23 | 5.62e-14 | -1.40e-14 | 6.37e-14 | 132 | 0 | 2.77e-16 | 4 | completed |
+| oblique | 1 | 40 | mean4 | 2/4 | 4.28e-11 | 2.34e-13 | 2.45e-13 | 2.47e-13 | 7.46e-23 | 2.91e-13 | -1.26e-13 | 4.58e-13 | 521 | 0 | 4.64e-15 | 8 | completed |
+| oblique | 1 | 80 | mean4 | 4/4 | 2.80e-10 | 1.14e-12 | 1.57e-12 | 1.57e-12 | 1.83e-22 | 1.93e-12 | -2.08e-13 | 2.95e-12 | 2.09e+03 | 0 | 8.82e-15 | 16 | completed |
+| oblique | 1 | 20 | none | -/- | - | - | 4.68e-14 | 4.68e-14 | 2.68e-23 | 6.12e-14 | -1.66e-14 | 6.33e-14 | 147 | - | - | 4 | completed |
+| oblique | 1 | 40 | none | -/- | - | - | 2.26e-13 | 2.33e-13 | 7.57e-23 | 2.76e-13 | -8.43e-14 | 4.58e-13 | 553 | - | - | 8 | completed |
+| oblique | 1 | 80 | none | -/- | - | - | 1.24e-12 | 1.24e-12 | 1.83e-22 | 1.32e-12 | -2.15e-13 | 2.95e-12 | 2.14e+03 | - | - | 16 | completed |
+| normal | 0.2 | mean4 | -1.552 | -1.517 | -1.513 | -3.56 ||||||||||||
+| normal | 0.2 | none | -1.512 | -1.467 | -0.8392 | - ||||||||||||
+| normal | 0.5 | mean4 | -1.775 | -3.533 | -1.219 | -4.913 ||||||||||||
+| normal | 0.5 | none | -1.487 | -3.484 | -0.7899 | - ||||||||||||
+| normal | 1 | mean4 | -12.05 | -18.74 | -17.21 | -6.582 ||||||||||||
+| normal | 1 | none | -6.016 | -3.462 | -1.985 | - ||||||||||||
+| oblique | 0.2 | mean4 | -1.443 | -2.154 | -2.176 | -3.691 ||||||||||||
+| oblique | 0.2 | none | -1.399 | -1.623 | -1.5 | - ||||||||||||
+| oblique | 0.5 | mean4 | -1.404 | -2.281 | -1.914 | -3.829 ||||||||||||
+| oblique | 0.5 | none | -1.368 | -2.287 | -1.661 | - ||||||||||||
+| oblique | 1 | mean4 | -1.43 | -2.551 | -2.003 | -3.872 ||||||||||||
+| oblique | 1 | none | -1.385 | -2.217 | -1.579 | - ||||||||||||
+
+#### The sphere rotation (one turn; OF Co 0.2 = interface Co 0.0463, OF Co 1 = 0.2315; N 32 / 64 / 128 on 1 / 8 / 64 ranks), the deformation (isoDeformation3D, OF Co 0.5, grazingCut fork, N 32 / 64 on 1 / 8 ranks) and the np 1 / np 8 pairs (20 steps); run 3. fac_i = the contraction factor max|dalpha_f|(i) / max|dalpha_f|(i+1), median / worst over the steps; wall = ClockTime at the end on shared nodes (the timed comparison is the table below)
+
+| study | scheme | Co | N | corrector | it med/max | d1 max | d1 L1 | fac1 med/worst | fac2 | fac3 | L1(alphaf) end | E_shape | L1(x) | L1(n) | min alpha | max alpha - 1 | mass dev % | interface cells | no plane | ident | steps | wall s | status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| iter_def_N32 | davofSwept | 0.5 | 32 | mean1 | 1/1 | 1 | 0.04082 | -/- | -/- | -/- | 0.03764 | 0.01407 | 0.275 | 1.299 | -0.05041 | 0.00129 | -6.88e-13 | 4.49e+03 | 51 | 1.41e-15 | 480 | 301 | completed |
+| iter_def_N32 | davofSwept | 0.5 | 32 | mean2 | 2/2 | 1 | 0.05077 | 1/1 | -/- | -/- | 0.04155 | 0.01486 | 0.296 | 1.289 | -0.06278 | 0.001915 | -8.44e-13 | 4.48e+03 | 54 | 1.15e-15 | 480 | 267 | completed |
+| iter_def_N32 | davofSwept | 0.5 | 32 | mean4 | 4/4 | 1 | 0.05206 | 1/1 | 1/0.9999 | 1/0.407 | 0.05065 | 0.01537 | 0.284 | 1.396 | -0.06074 | 0.004057 | -6.66e-14 | 4.73e+03 | 101 | 1.24e-15 | 480 | 285 | completed |
+| iter_def_N32 | davofSwept | 0.5 | 32 | none | -/- | - | - | -/- | -/- | -/- | 0.07063 | 0.01137 | 0.3063 | 1.46 | -0.2701 | 2.95e-04 | -8.44e-13 | 1.08e+04 | - | - | 480 | 466 | completed |
+| iter_def_N64 | davofSwept | 0.5 | 64 | mean1 | 1/1 | 1 | 0.03768 | -/- | -/- | -/- | - | - | - | - | -0.7715 | 0.001959 | 3.77e-13 | 2.64e+04 | 133 | 7.91e-05 | 889 | 446 | diverged |
+| iter_def_N64 | davofSwept | 0.5 | 64 | mean2 | 2/2 | 1 | 0.05633 | 1/1 | -/- | -/- | 0.04164 | 0.007841 | 0.2792 | 1.297 | -0.06511 | 0.0118 | 1.13e-12 | 2.87e+04 | 223 | 7.64e-05 | 960 | 559 | completed |
+| iter_def_N64 | davofSwept | 0.5 | 64 | mean4 | 4/4 | 1 | 0.05221 | 1/1 | 1/0.8029 | 1/0.5992 | 0.0483 | 0.007724 | 0.2865 | 1.314 | -0.315 | 0.008982 | 3.44e-13 | 2.96e+04 | 391 | 1.32e-04 | 960 | 668 | completed |
+| iter_def_N64 | davofSwept | 0.5 | 64 | none | -/- | - | - | -/- | -/- | -/- | - | - | - | - | -0.5446 | 0.00896 | -2.00e-13 | 5.11e+04 | - | - | 628 | 828 | diverged |
+| iter_par_plane_np1 | davofSwept | 0.5 | 40 | mean4 | 3/4 | 8.71e-11 | 3.70e-13 | 39.2/6.135 | 1.751/0.5046 | 1.481/0.5672 | 1.97e-13 | 7.90e-23 | 8.22e-16 | 2.25e-13 | -3.94e-14 | 7.37e-13 | 60.39 | 452 | 0 | 4.00e-15 | 20 | 5 | completed |
+| iter_par_plane_np8 | davofSwept | 0.5 | 40 | mean4 | 4/4 | 8.64e-11 | 3.80e-13 | 41.44/5.867 | 1.469/0.7695 | 1.008/0.782 | 1.96e-13 | 7.82e-23 | 8.08e-16 | 2.26e-13 | -2.86e-14 | 7.37e-13 | 60.39 | 452 | 0 | 3.13e-15 | 20 | 2 | completed |
+| iter_par_rot_np1 | davofSwept | 0.0462996198086 | 32 | mean4 | 4/4 | 0.04227 | 0.003093 | 13.42/4.309 | 7.014/5.585 | 7.377/5.3 | 0.007105 | 4.96e-05 | 5.62e-04 | 0.0385 | -1.10e-14 | 5.73e-13 | 7.77e-14 | 444 | 0 | 4.76e-16 | 20 | 10 | completed |
+| iter_par_rot_np1_none | davofSwept | 0.0462996198086 | 32 | none | -/- | - | - | -/- | -/- | -/- | 0.007048 | 5.01e-05 | 5.58e-04 | 0.03834 | -7.62e-15 | 5.73e-13 | 1.22e-13 | 433 | - | - | 20 | 11 | completed |
+| iter_par_rot_np8 | davofSwept | 0.0462996198086 | 32 | mean4 | 4/4 | 0.04227 | 0.003093 | 13.42/4.309 | 7.014/5.585 | 7.377/5.3 | 0.007105 | 4.96e-05 | 5.62e-04 | 0.0385 | -1.06e-14 | 5.73e-13 | -4.44e-14 | 444 | 0 | 8.37e-16 | 20 | 5 | completed |
+| iter_par_rot_np8_none | davofSwept | 0.0462996198086 | 32 | none | -/- | - | - | -/- | -/- | -/- | 0.007048 | 5.01e-05 | 5.58e-04 | 0.03834 | -6.76e-15 | 5.73e-13 | -8.88e-14 | 433 | - | - | 20 | 5 | completed |
+| iter_rotIso_N32 | isoAdvector | 0.0462996198086 | 32 | mean1 | 1/1 | 0.1744 | 0.005227 | -/- | -/- | -/- | 0.06019 | 0.001131 | 0.004237 | 0.06012 | -5.12e-19 | 2.22e-16 | 1.12e-12 | 422 | 0 | 8.79e-16 | 1728 | 239 | completed |
+| iter_rotIso_N32 | isoAdvector | 0.0462996198086 | 32 | mean4 | 4/4 | 0.1745 | 0.005206 | 21.72/4.183 | 9.356/2.923 | 5.852/2.687 | 0.06042 | 0.001135 | 0.004251 | 0.0603 | -1.29e-19 | 2.22e-16 | 1.32e-12 | 422 | 0 | 5.97e-16 | 1728 | 257 | completed |
+| iter_rotIso_N32 | isoAdvector | 0.0462996198086 | 32 | none | -/- | - | - | -/- | -/- | -/- | 0.05831 | 0.001091 | 0.004119 | 0.05893 | -6.79e-14 | 2.22e-16 | 8.44e-13 | 423 | - | - | 1728 | 235 | completed |
+| iter_rotIso_N64 | isoAdvector | 0.0462996198086 | 64 | mean1 | 1/1 | 0.1601 | 0.002491 | -/- | -/- | -/- | 0.03343 | 3.08e-04 | 0.001109 | 0.02658 | -5.14e-19 | 2.22e-16 | 7.44e-13 | 1.77e+03 | 0 | 8.41e-16 | 3456 | 952 | completed |
+| iter_rotIso_N64 | isoAdvector | 0.0462996198086 | 64 | mean4 | 4/4 | 0.1594 | 0.002488 | 50.36/13.03 | 7.675/1.995 | 5.993/2.13 | 0.03346 | 3.08e-04 | 0.001111 | 0.02666 | -1.29e-19 | 2.22e-16 | 9.99e-13 | 1.77e+03 | 0 | 9.36e-16 | 3456 | 642 | completed |
+| iter_rotIso_N64 | isoAdvector | 0.0462996198086 | 64 | none | -/- | - | - | -/- | -/- | -/- | 0.03272 | 3.02e-04 | 0.001088 | 0.02565 | -9.51e-14 | 2.22e-16 | 1.44e-13 | 1.75e+03 | - | - | 3456 | 898 | completed |
+| iter_rot_N128 | davofSwept | 0.0462996198086 | 128 | mean1 | 1/1 | 0.1981 | 0.00128 | -/- | -/- | -/- | 0.01851 | 8.14e-05 | 2.87e-04 | 0.01159 | -3.22e-14 | 6.64e-10 | 7.58e-12 | 6.97e+03 | 0 | 1.40e-12 | 6912 | 3.24e+03 | completed |
+| iter_rot_N128 | davofSwept | 0.0462996198086 | 128 | mean2 | 2/2 | 0.1997 | 0.00128 | 50.94/8.459 | -/- | -/- | 0.01851 | 8.14e-05 | 2.87e-04 | 0.0116 | -1.11e-12 | 8.61e-10 | 7.67e-12 | 6.97e+03 | 0 | 1.41e-12 | 6912 | 3.36e+03 | completed |
+| iter_rot_N128 | davofSwept | 0.0462996198086 | 128 | mean4 | 4/4 | 0.2002 | 0.00128 | 50.86/8.396 | 4.752/1.601 | 6.04/2.084 | 0.01851 | 8.14e-05 | 2.87e-04 | 0.01161 | -1.13e-12 | 5.20e-10 | 7.88e-12 | 6.97e+03 | 0 | 1.44e-12 | 6912 | 4.60e+03 | completed |
+| iter_rot_N128 | davofSwept | 0.0462996198086 | 128 | none | -/- | - | - | -/- | -/- | -/- | 0.01829 | 8.05e-05 | 2.84e-04 | 0.01131 | -2.07e-14 | 6.45e-10 | 7.45e-12 | 6.87e+03 | - | - | 6912 | 3.14e+03 | completed |
+| iter_rot_N32 | davofSwept | 0.0462996198086 | 32 | mean1 | 1/1 | 0.1749 | 0.005411 | -/- | -/- | -/- | 0.05933 | 0.001097 | 0.004127 | 0.05961 | -8.74e-13 | 1.57e-12 | 2.40e-12 | 424 | 0 | 3.22e-15 | 1728 | 306 | completed |
+| iter_rot_N32 | davofSwept | 0.0462996198086 | 32 | mean2 | 2/2 | 0.1758 | 0.005397 | 18.76/4.321 | -/- | -/- | 0.05933 | 0.001101 | 0.004173 | 0.0593 | -9.76e-13 | 5.13e-11 | 2.43e-12 | 422 | 0 | 3.38e-15 | 1728 | 294 | completed |
+| iter_rot_N32 | davofSwept | 0.0462996198086 | 32 | mean4 | 4/4 | 0.1761 | 0.005398 | 18.85/4.309 | 8.329/2.622 | 5.959/2.773 | 0.0596 | 0.001102 | 0.004175 | 0.05933 | -6.89e-13 | 4.88e-12 | 2.10e-12 | 422 | 0 | 3.27e-15 | 1728 | 326 | completed |
+| iter_rot_N32 | davofSwept | 0.0462996198086 | 32 | none | -/- | - | - | -/- | -/- | -/- | 0.05704 | 0.001059 | 0.003972 | 0.05749 | -8.12e-13 | 1.99e-11 | 2.14e-12 | 423 | - | - | 1728 | 270 | completed |
+| iter_rot_N32 | davofSwept | 0.231498099043 | 32 | mean1 | 1/1 | 0.1535 | 0.005898 | -/- | -/- | -/- | 0.04032 | 7.40e-04 | 0.002748 | 0.04976 | -9.99e-13 | 9.09e-13 | 2.03e-12 | 420 | 0 | 3.29e-15 | 346 | 61 | completed |
+| iter_rot_N32 | davofSwept | 0.231498099043 | 32 | mean2 | 2/2 | 0.1536 | 0.005889 | 17.09/4.782 | -/- | -/- | 0.04051 | 7.43e-04 | 0.002759 | 0.04992 | -9.74e-13 | 9.82e-13 | 2.25e-12 | 420 | 0 | 3.57e-15 | 346 | 68 | completed |
+| iter_rot_N32 | davofSwept | 0.231498099043 | 32 | mean4 | 4/4 | 0.1536 | 0.005892 | 17.1/4.766 | 8.714/2.645 | 5.727/2.771 | 0.04053 | 7.44e-04 | 0.00276 | 0.04995 | -9.76e-13 | 9.89e-13 | 2.33e-12 | 420 | 0 | 3.64e-15 | 346 | 72 | completed |
+| iter_rot_N32 | davofSwept | 0.231498099043 | 32 | none | -/- | - | - | -/- | -/- | -/- | 0.03824 | 7.07e-04 | 0.002653 | 0.04828 | -8.67e-13 | 8.47e-13 | 2.32e-12 | 415 | - | - | 346 | 59 | completed |
+| iter_rot_N64 | davofSwept | 0.0462996198086 | 64 | mean1 | 1/1 | 0.1606 | 0.002549 | -/- | -/- | -/- | 0.03278 | 3.02e-04 | 0.001087 | 0.02645 | -6.61e-14 | 5.51e-10 | 4.47e-12 | 1.76e+03 | 0 | 2.45e-12 | 3456 | 984 | completed |
+| iter_rot_N64 | davofSwept | 0.0462996198086 | 64 | mean2 | 2/2 | 0.1608 | 0.002548 | 40.95/8.845 | -/- | -/- | 0.03281 | 3.02e-04 | 0.001087 | 0.02648 | -2.19e-14 | 1.70e-10 | 4.39e-12 | 1.76e+03 | 0 | 2.92e-12 | 3456 | 938 | completed |
+| iter_rot_N64 | davofSwept | 0.0462996198086 | 64 | mean4 | 4/4 | 0.1609 | 0.002548 | 40.97/8.808 | 5.893/1.837 | 6.219/2.525 | 0.03281 | 3.02e-04 | 0.001087 | 0.02648 | -1.64e-14 | 1.17e-10 | 4.57e-12 | 1.76e+03 | 0 | 2.81e-12 | 3456 | 1.01e+03 | completed |
+| iter_rot_N64 | davofSwept | 0.0462996198086 | 64 | none | -/- | - | - | -/- | -/- | -/- | 0.03211 | 2.95e-04 | 0.00106 | 0.02523 | -2.02e-14 | 1.72e-10 | 4.17e-12 | 1.76e+03 | - | - | 3456 | 981 | completed |
+| iter_rot_N64 | davofSwept | 0.231498099043 | 64 | mean1 | 1/1 | 0.134 | 0.002825 | -/- | -/- | -/- | 0.02235 | 2.02e-04 | 7.28e-04 | 0.02351 | -4.25e-13 | 3.22e-11 | 2.52e-12 | 1.77e+03 | 0 | 1.10e-11 | 691 | 191 | completed |
+| iter_rot_N64 | davofSwept | 0.231498099043 | 64 | mean2 | 2/2 | 0.1338 | 0.002824 | 44.05/11.33 | -/- | -/- | 0.02242 | 2.02e-04 | 7.29e-04 | 0.02357 | -3.88e-13 | 5.22e-11 | 2.95e-12 | 1.77e+03 | 0 | 1.09e-11 | 691 | 215 | completed |
+| iter_rot_N64 | davofSwept | 0.231498099043 | 64 | mean4 | 4/4 | 0.1338 | 0.002825 | 44.04/11.33 | 7.193/1.973 | 6.338/2.52 | 0.02242 | 2.02e-04 | 7.29e-04 | 0.02357 | -4.02e-13 | 4.87e-11 | 2.95e-12 | 1.77e+03 | 0 | 1.11e-11 | 691 | 196 | completed |
+| iter_rot_N64 | davofSwept | 0.231498099043 | 64 | none | -/- | - | - | -/- | -/- | -/- | 0.02174 | 1.97e-04 | 7.07e-04 | 0.02257 | -6.07e-13 | 1.89e-10 | 3.05e-12 | 1.75e+03 | - | - | 691 | 213 | completed |
+| iter_def | davofSwept | 0.5 | mean1 | - | - | - | 0 | 0.1155 ||||||||||||||||
+| iter_def | davofSwept | 0.5 | mean2 | 0.9219 | -0.009266 | 0.08423 | 0 | -0.15 ||||||||||||||||
+| iter_def | davofSwept | 0.5 | mean4 | 0.9927 | 0.08771 | -0.0129 | 0 | -0.004169 ||||||||||||||||
+| iter_def | davofSwept | 0.5 | none | - | - | - | - | - ||||||||||||||||
+| iter_rot | davofSwept | 0.0462996198086 | mean1 | 1.877 | 1.182 | 1.923 | -0.08987 | 1.04 ||||||||||||||||
+| iter_rot | davofSwept | 0.0462996198086 | mean2 | 1.879 | 1.177 | 1.931 | -0.09193 | 1.038 ||||||||||||||||
+| iter_rot | davofSwept | 0.0462996198086 | mean4 | 1.879 | 1.177 | 1.931 | -0.09226 | 1.038 ||||||||||||||||
+| iter_rot | davofSwept | 0.0462996198086 | none | 1.859 | 1.173 | 1.903 | - | - ||||||||||||||||
+| iter_rot | davofSwept | 0.231498099043 | mean1 | 1.874 | 1.082 | 1.916 | 0.1959 | 1.062 ||||||||||||||||
+| iter_rot | davofSwept | 0.231498099043 | mean2 | 1.877 | 1.083 | 1.92 | 0.1984 | 1.06 ||||||||||||||||
+| iter_rot | davofSwept | 0.231498099043 | mean4 | 1.878 | 1.083 | 1.921 | 0.1988 | 1.061 ||||||||||||||||
+| iter_rot | davofSwept | 0.231498099043 | none | 1.848 | 1.097 | 1.908 | - | - ||||||||||||||||
+| iter_rotIso | isoAdvector | 0.0462996198086 | mean1 | 1.878 | 1.177 | 1.933 | 0.1233 | 1.069 ||||||||||||||||
+| iter_rotIso | isoAdvector | 0.0462996198086 | mean4 | 1.881 | 1.178 | 1.936 | 0.131 | 1.065 ||||||||||||||||
+| iter_rotIso | isoAdvector | 0.0462996198086 | none | 1.855 | 1.2 | 1.92 | - | - ||||||||||||||||
+
+#### The orders over N (least squares; d1 = the first correction)
+
+| family | scheme | Co | corrector | N | order L1(alphaf) | order E_shape | order L1(n) | order L1(x) | order d1 max | order d1 L1 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| iter_def | davofSwept | 0.5 | mean1 | 32 64 | - | - | - | - | 0 | 0.1155 |
+| iter_def | davofSwept | 0.5 | mean2 | 32 64 | -0.003361 | 0.9219 | -0.009266 | 0.08423 | 0 | -0.15 |
+| iter_def | davofSwept | 0.5 | mean4 | 32 64 | 0.06852 | 0.9927 | 0.08771 | -0.0129 | 0 | -0.004169 |
+| iter_def | davofSwept | 0.5 | none | 32 64 | - | - | - | - | - | - |
+| iter_rot | davofSwept | 0.0462996198086 | mean1 | 32 64 128 | 0.8404 | 1.877 | 1.182 | 1.923 | -0.08987 | 1.04 |
+| iter_rot | davofSwept | 0.0462996198086 | mean2 | 32 64 128 | 0.8402 | 1.879 | 1.177 | 1.931 | -0.09193 | 1.038 |
+| iter_rot | davofSwept | 0.0462996198086 | mean4 | 32 64 128 | 0.8436 | 1.879 | 1.177 | 1.931 | -0.09226 | 1.038 |
+| iter_rot | davofSwept | 0.0462996198086 | none | 32 64 128 | 0.8204 | 1.859 | 1.173 | 1.903 | - | - |
+| iter_rot | davofSwept | 0.231498099043 | mean1 | 32 64 | 0.8511 | 1.874 | 1.082 | 1.916 | 0.1959 | 1.062 |
+| iter_rot | davofSwept | 0.231498099043 | mean2 | 32 64 | 0.8537 | 1.877 | 1.083 | 1.92 | 0.1984 | 1.06 |
+| iter_rot | davofSwept | 0.231498099043 | mean4 | 32 64 | 0.8543 | 1.878 | 1.083 | 1.921 | 0.1988 | 1.061 |
+| iter_rot | davofSwept | 0.231498099043 | none | 32 64 | 0.8145 | 1.848 | 1.097 | 1.908 | - | - |
+| iter_rotIso | isoAdvector | 0.0462996198086 | mean1 | 32 64 | 0.8482 | 1.878 | 1.177 | 1.933 | 0.1233 | 1.069 |
+| iter_rotIso | isoAdvector | 0.0462996198086 | mean4 | 32 64 | 0.8527 | 1.881 | 1.178 | 1.936 | 0.131 | 1.065 |
+| iter_rotIso | isoAdvector | 0.0462996198086 | none | 32 64 | 0.8337 | 1.855 | 1.2 | 1.92 | - | - |
+
+#### P4: rotation N 64, OF Co 0.2, 8 ranks, one exclusive i01 node (mpsc0203), 864 steps, the function objects at the end; the median of the per-step ExecutionTime differences
+
+| setting | rep | steps | wall s | median step s |
+|---|---|---|---|---|
+| none | 1 | 864 | 168.61 | 0.1900 |
+| mean1 | 1 | 864 | 178.12 | 0.2000 |
+| mean2 | 1 | 864 | 189.15 | 0.2100 |
+| mean4 | 1 | 864 | 211.29 | 0.2400 |
+| mean1 | 2 | 864 | 179.13 | 0.2000 |
+| mean2 | 2 | 864 | 189.70 | 0.2100 |
+| mean4 | 2 | 864 | 210.63 | 0.2350 |
+| none | 2 | 864 | 168.13 | 0.1900 |
+| none (profiled) | 1 | 864 | 167.26 | 0.1800 |
+| mean1 (profiled) | 1 | 864 | 178.20 | 0.2000 |
+
