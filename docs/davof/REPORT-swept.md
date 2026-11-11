@@ -6114,3 +6114,37 @@ Co <= 0.5 the scheme is exact up to mechanism 1. The round-2 cases are kept
 `*_round1`), the tables in `studies/davof/kiss_tables/` (kiss_plane_table.csv,
 kiss_plane_identity.csv, kiss_identity_table.csv) and the localisation in
 `csv/kiss_locate.csv` with the runs under `locate/`.
+
+### The rotation identity, rounds 3 and 4 (2026-11-11, leia2 at 54175674 and 1dc922e8)
+
+Round 3 (54175674: the exchanged face-neighbour surface as the neighbour of the zero-flux
+rule across a processor patch) brought OF Co 1 from 1.6e-5 to 1.6e-7 and left OF Co 0.2 at
+2.5e-5: the one-plane clause still differed from step 2 on by the wisp planes, because the
+exchanged face-neighbour surface covers a neighbour with its own plane only, while the serial
+rule also takes the neighbour's matched wisp surface. Round 4 (1dc922e8: the packed ring cell
+holding the point just across the face, with its own or its matched wisp surface, the
+exchange's flag 2) gives, np1 against np8 at N 32: OF Co 0.2 (86 steps) E_shape 8.0e-12, L1(x)
+4.8e-12, L1(n) 1.4e-12, L1(alphaf) 5.8e-12 relative, the mass deviation, min alpha and the
+per-step bounds within 3e-15 absolute; OF Co 1 (17 steps) E_shape 1.4e-13, L1(x) 6.5e-12,
+L1(n) 8.3e-10, L1(alphaf) 1.7e-8. The seed is the summation order of the decomposed mesh
+(the bounds differ at the 1e-16 level from step 2 or 4 on), the amplification the discrete
+decisions of the step (the matched wisp planes, rule 2's eps, the bound's ratio), which a
+sliver at OF Co 1 flips: the one-plane path is round-off-identical across ranks while no
+threshold decision flips and is not bit-for-bit. The identity verdict of the pre-registration
+(1e-12 relative) holds at OF Co 0.2 within a factor of 8 and is falsified at OF Co 1 by
+L1(alphaf). The round-3 studies are kept as `leia2/studies/davof/*_round3`, round 4 under
+`leia2/studies/davof/kiss_identity_rotation_np?` with `kiss_tables/kiss_identity_table.csv`.
+
+### Status at the hand-back (2026-11-11)
+
+Branch `davof-kiss` on origin: 2f238602 (the scheme and the pre-registration), 2de4c681 (the
+analysis), f7a64596 (the per-arm plane configs), d45d2215 (`sweptOnePlaneDonor`), 1f34653e
+(the pre-image face fraction, the amendment of rule (2)), ada526cc (its counters), 54175674 and
+1dc922e8 (the zero-flux rule across processor faces), 0bb9c3cb (this report's second round);
+nothing merged into development; the pieces path untouched (`sweptClip pieces` the default,
+its dictionaries byte for byte as before). The cluster: `/work/scratch/tm83tomy/davof/agents/
+enright/kiss` (the clone `leia` at 1f34653e with the round-1 and round-2 studies, `leia2` at
+1dc922e8 with the localisation runs and the identity rounds 3 and 4, `.my_jobs`, `csv/`,
+`locate/`). P1 falsified: the matrix (P2 `kiss_rotation_N*` / `kiss_rotationRDF_N*`, P3-P5
+`config/davof/standing/<family>_N<N>_kiss.yaml`) is not submitted; the decision on rule 2's
+tolerance and on the OF Co 1 regime is Tomislav's.
