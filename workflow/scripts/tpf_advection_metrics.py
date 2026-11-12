@@ -98,7 +98,10 @@ AF_COLS = {"L1": "L1_alphaf", "L2": "L2_alphaf", "Linf": "Linf_alphaf",
            "consistency": "consistency"}
 REC_COLS = {k: k for k in ("LNormalDiff1", "LNormalDiff2", "LNormalDiffInf",
                            "LCentreDiff1", "LCentreDiff2", "LCentreDiffInf",
-                           "areaSum", "areaExact", "nInterface")}
+                           "areaSum", "areaExact", "nInterface",
+                           # 2026-11-12: the angle and 1 - n.n_e (mean, max)
+                           "LNormalAngle1", "LNormalAngleInf",
+                           "LNormalOneMinusDot1", "LNormalOneMinusDotInf")}
 VOL_COLS = {k: k for k in ("Eshape", "Emass", "Ebound")}
 LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "nRingFallback",
@@ -120,7 +123,9 @@ LOG_COLS = ("nInterfaceAdv", "nSliver", "nReplaced", "nKept", "nFitFallback",
             "advectWallMax", "curvedFluxWallMax", "exchangeWallMax",
             "minAlphaBound", "maxAlphaBound", "sumAlphaV", "devPercent",
             "oneMinusMaxAlpha", "minAlpha", "executionTime", "clockTime",
-            "timeStepTime")
+            "timeStepTime",
+            # 2026-11-12: the per-step flux error on the translated sphere
+            "fluxErrFaces", "fluxErrL1", "fluxErrInf", "fluxErrSigned", "fluxErrWall")
 COLUMNS = (["TIME", "step"] + list(AF_COLS.values()) + list(REC_COLS.values())
            + list(VOL_COLS.values()) + list(LOG_COLS)
            + ["status", "abortStep", "abortReason", "tpfCommit", "tpfVersion"])
@@ -176,6 +181,11 @@ _RE_SWEPT_PAR = re.compile(
 _RE_BOUND = re.compile(
     r"^(?:isoAdvection|davofSwept): After conservative bounding: min\(alpha\) = (\S+), "
     r"max\(alpha\) = 1 \+ (\S+)")
+# the per-step flux error against the exact flux of the translated sphere
+# (sweptExactFluxError, leia davof-normal-order 2026-11-12)
+_RE_FLUXERR = re.compile(
+    r"^davofSwept: exact flux error over (\d+) faces: L1 (\S+), Linf (\S+), "
+    r"signed mean (\S+) \(\|dVf - dVf_exact\|/V\); wall (\S+) s")
 _RE_T = re.compile(
     r"^t = ([^,]+),\s*sum\(alpha\*V\) = ([^,]+),\s*dev = ([^%]+)%,\s*"
     r"1-max\(alpha1\) = (\S+) at cell \S+,\s*min\(alpha1\) = (\S+) at cell")
@@ -364,6 +374,14 @@ def read_log(path):
             if m:
                 cur["minAlphaBound"] = m.group(1)
                 cur["maxAlphaBound"] = m.group(2)
+                continue
+            m = _RE_FLUXERR.match(line)
+            if m:
+                cur["fluxErrFaces"] = m.group(1)
+                cur["fluxErrL1"] = m.group(2)
+                cur["fluxErrInf"] = m.group(3)
+                cur["fluxErrSigned"] = m.group(4)
+                cur["fluxErrWall"] = m.group(5)
                 continue
             m = _RE_T.match(line)
             if m:

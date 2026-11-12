@@ -97,6 +97,23 @@ class reconstructionError
         scalar LCentreDiff2_;
         scalar LCentreDiffInf_;
 
+        // Appended columns (davof, 2026-11-12): the angle between the unit
+        // normals theta = 2 asin(|n - n_e|/2) and 1 - n.n_e = |n - n_e|^2/2,
+        // over the interface cells as mean (1) and maximum (Inf). For a
+        // normal whose angle converges at order p, 1 - n.n_e converges at
+        // order 2p. LNormalOneMinusDotInf is the normal error of the plicRDF
+        // benchmark (H. Scheufler, J. Roenby, Accurate and efficient surface
+        // reconstruction from volume fraction data on general meshes,
+        // J. Comput. Phys. 383 (2019) 1-23, doi:10.1016/j.jcp.2019.01.009,
+        // arXiv:1801.05382, Sec. 4.1, Eq. (21): L_inf^n = max_i(1 -
+        // n_S,i . n_S,i^exact) over all interface cells), the original
+        // LNormalInf_/LNormal1_ columns of this function object being the
+        // same quantity accumulated over the calls.
+        scalar LNormalAngle1_;
+        scalar LNormalAngleInf_;
+        scalar LNormalOneMinusDot1_;
+        scalar LNormalOneMinusDotInf_;
+
     // Protected Member Functions
 
         //- File header information

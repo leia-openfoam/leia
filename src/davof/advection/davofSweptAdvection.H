@@ -618,6 +618,10 @@ class davofSweptAdvection
             //  bounding set, the cell a wisp without a neighbour surface)
             bool sweptExactCaps_;
             bool sweptReinitFaceFractions_;
+            //- The per-step flux error against the exact flux of the
+            //  translated sphere (key sweptExactFluxError, default false;
+            //  2026-11-12, see exactFluxError)
+            bool sweptExactFluxError_;
             bool sweptFragmentLog_;
             bitSet fragFallbackFaces_;
             bitSet fragFallbackFacesPrev_;
@@ -1190,6 +1194,20 @@ public:
             //  (sweptFragmentLog), both called from advect
             void reinitFaceFractions();
             void fragmentLog();
+
+            //- The flux error of the step on the translated sphere
+            //  (sweptExactFluxError, 2026-11-12): for every face of the
+            //  interface cells, the computed volume flux dVf (after the flux,
+            //  before the bounding) against the exact one, the liquid volume
+            //  of the prism between f - U0 dt and f under the sphere of the
+            //  exactNormal dictionary at t^n (the exact sphere-tetrahedron
+            //  overlap, davofVolumeRules::exactSphere; S. Strobl, A. Formella,
+            //  T. Poeschel, J. Comput. Phys. 311 (2016) 158-172,
+            //  doi:10.1016/j.jcp.2016.02.003), exact for a uniform
+            //  translation; |dVf - dVf_exact|/V of the upwind cell as the
+            //  mean (L1) and maximum over the faces, one line per step.
+            //  Skipped (one message) when the dictionary carries a rotation.
+            void exactFluxError(const scalar dt);
 
             //- Decision 2: the face fraction of a face whose dVf the bounding
             //  changed from dVfOld to dVfNew (scale or recompute)

@@ -145,7 +145,10 @@ _DERIVED_INPUTS = {
     "TPF_SWEPT_FRAGMENT_LOG": ("TPF_ENRIGHT_SETTING",),
     "TPF_ENRIGHT_KEYS": ("TPF_ENRIGHT_SETTING",),
     "TPF_CORRECTOR_KEYS": ("TPF_FACE_FRACTION_CORRECTOR", "TPF_CORRECTOR_ITERATIONS",
-                           "TPF_CORRECTOR_TOLERANCE", "TPF_CORRECTOR_LOG"),
+                           "TPF_CORRECTOR_TOLERANCE", "TPF_CORRECTOR_LOG",
+                           # the normal-order study's keys, appended to the block
+                           # (2026-11-12; empty at the defaults)
+                           "TPF_EXACT_FLUX_ERROR", "TPF_YOUNGS_GRAD_SCHEME"),
     # the advection scheme of the leia route follows the row's reconstruction scheme,
     # or the study's override TPF_ADVECTION_SCHEME (2026-11-09)
     "DAVOF_ADVECTION_SCHEME": ("TPF_ROW", "TPF_ADVECTION_SCHEME"),

@@ -81,6 +81,7 @@ SourceFiles
 #include "PstreamBuffers.H"
 #include "OSspecific.H"
 #include "syncTools.H"
+#include "emptyPolyPatch.H"
 #include <cmath>
 #include <chrono>
 
@@ -2977,4 +2978,103 @@ void Foam::davofSweptAdvection::boundedFaceFraction
         }
         if (wetFace_.size() > facei) wetFace_.set(facei, (af != 0) ? 1u : 0u);
     }
+}
+
+
+// * * * * * * * * the flux error on the translated sphere (2026-11-12) * * * //
+
+void Foam::davofSweptAdvection::exactFluxError(const scalar dt)
+{
+    const auto wall0 = std::chrono::steady_clock::now();
+    if (!modelDict().found("exactNormal"))
+    {
+        Info<< "davofSwept: exact flux error skipped: no exactNormal dictionary"
+            << endl;
+        return;
+    }
+    const dictionary& ed = modelDict().subDict("exactNormal");
+    const point origin0 = ed.get<point>("origin");
+    const vector U0 = ed.getOrDefault<vector>("U0", vector::zero);
+    vector omega;
+    point axisPoint;
+    davof::readOrbit(ed, origin0, omega, axisPoint);
+    if (mag(omega) > VSMALL || !ed.found("radius"))
+    {
+        // the exact flux of a rotating sphere is not a prism's: skipped
+        Info<< "davofSwept: exact flux error skipped: the exact body rotates"
+            << " (the prism is exact for a uniform translation only)" << endl;
+        return;
+    }
+
+    // the sphere at the start of the step (advect runs after runTime++)
+    davof::cellSurface S;
+    S.sphere = true;
+    S.o = davof::orbitOrigin(origin0, U0, omega, axisPoint, mesh_.time().value() - dt);
+    S.R = ed.get<scalar>("radius");
+    const vector d = U0*dt;
+
+    dictionary dExact(modelDict());
+    dExact.set("volumeRule", "exactSphere");
+    autoPtr<davofVolumeRule> exact(davofVolumeRule::New(mesh_, dExact));
+
+    // the faces of the interface cells of this step's reconstruction, the
+    // processor faces flagged on both sides (each side counts half)
+    const label nFaces = mesh_.nFaces();
+    const label nInt = mesh_.nInternalFaces();
+    boolList inSet(nFaces, false);
+    for (const label celli : surf_->interfaceLabels())
+    {
+        for (const label f : mesh_.cells()[celli])
+        {
+            inSet[f] = true;
+        }
+    }
+    syncTools::syncFaceList(mesh_, inSet, orEqOp<bool>());
+
+    const vectorField& Sf = mesh_.faceAreas();
+    const labelUList& own = mesh_.faceOwner();
+    const labelUList& nei = mesh_.faceNeighbour();
+    const scalarField& V = mesh_.V();
+    const polyBoundaryMesh& pbm = mesh_.boundaryMesh();
+
+    scalar sumW = 0, sumE = 0, sumS = 0, maxE = 0;
+    forAll(inSet, f)
+    {
+        if (!inSet[f]) continue;
+        scalar w = 1;
+        label up = own[f];
+        if (f >= nInt)
+        {
+            const polyPatch& pp = pbm[pbm.whichPatch(f)];
+            if (isA<emptyPolyPatch>(pp)) continue;
+            if (pp.coupled()) w = 0.5;
+        }
+        const scalar pv = d & Sf[f];
+        if (f < nInt && pv < 0)
+        {
+            up = nei[f];
+        }
+        scalar vEx = 0;
+        if (mag(pv) > 1e-10*mag(d)*mag(Sf[f]))
+        {
+            const scalar v = exact->prismLiquidVolume(f, d, S, curvedTolRel_);
+            vEx = (pv >= 0) ? v : -v;
+        }
+        const scalar diff = (faceValue(dVf_, f) - vEx)/V[up];
+        sumW += w;
+        sumE += w*mag(diff);
+        sumS += w*diff;
+        maxE = max(maxE, mag(diff));
+    }
+    reduce(sumW, sumOp<scalar>());
+    reduce(sumE, sumOp<scalar>());
+    reduce(sumS, sumOp<scalar>());
+    reduce(maxE, maxOp<scalar>());
+    scalar wall =
+        std::chrono::duration<scalar>(std::chrono::steady_clock::now() - wall0).count();
+    reduce(wall, maxOp<scalar>());
+    Info<< "davofSwept: exact flux error over " << label(sumW + 0.5)
+        << " faces: L1 " << sumE/max(sumW, scalar(1)) << ", Linf " << maxE
+        << ", signed mean " << sumS/max(sumW, scalar(1))
+        << " (|dVf - dVf_exact|/V); wall " << wall << " s" << endl;
 }

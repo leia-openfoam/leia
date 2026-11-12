@@ -113,7 +113,11 @@ ROWS = OrderedDict([
     # flux (TPF_FLUX_INTEGRATION sweptFace) needs on a curved interface
     ("davof-planeSurf-exact",          ("davof", "exact",     "all",   "0",    "15",  "keep", "plane", "plane",      "volume", "none")),
     ("davof-planeSurf-ringArea",       ("davof", "ringArea",  "all",   "0",    "15",  "keep", "plane", "plane",      "volume", "none")),
-    ("plicRDF",                  ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
+    # the Youngs normal (the alpha gradient; its scheme by TPF_YOUNGS_GRAD_SCHEME) on the
+    # same plane surface everywhere: the deliberately biased first-order normal of the
+    # normal-order study (leia davof-normal-order, 2026-11-12)
+    ("davof-planeSurf-youngs",         ("davof", "youngs",    "all",   "0",    "15",  "keep", "plane", "plane",      "volume", "none")),
+    ("plicRDF",                 ("plicRDF",  "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
     ("isoAlpha",                 ("isoAlpha", "cellLocal", "all",   "0",   "15",  "keep",     "plane",        "none")),
     # The eleventh element (2026-11-06, the fork branch davof-isoAdvector fab3805):
     # the plane positioning, the key `positioning` of the alpha dictionary, which
@@ -219,6 +223,7 @@ LABELS = OrderedDict([
     ("davof-paraboloidOne-cellLocal",  "DAVOF, face-anchored paraboloid (one scalar), own normal"),
     ("davof-planeSurf-exact",          "DAVOF, plane surface by volume, exact normal (control)"),
     ("davof-planeSurf-ringArea",       "DAVOF, plane surface by volume, ring-area normal"),
+    ("davof-planeSurf-youngs",         "DAVOF, plane surface by volume, Youngs normal"),
     ("plicRDF",             "plicRDF"),
     ("isoAlpha",            "isoAlpha"),
 ])
@@ -256,6 +261,7 @@ COLORS = {
     "davof-paraboloidOne-cellLocal":  "#adb5bd",  # light grey
     "davof-planeSurf-exact":          "#3a0ca3",  # dark violet: the plane-surface control
     "davof-planeSurf-ringArea":       "#f72585",  # pink: the plane surface with the ring normal
+    "davof-planeSurf-youngs":         "#2a9d8f",  # teal: the plane surface with the Youngs normal
     "plicRDF":             "#eb6834",   # plicRDF's orange (make_davof_normal_table.COLORS)
     "isoAlpha":            "#eda100",   # isoAlpha's yellow (make_davof_normal_table.COLORS)
 }
@@ -276,6 +282,7 @@ MARKERS = {
     "davof-paraboloidRing-ringFit": "p",
     "davof-paraboloidOne-exact": "+", "davof-paraboloidOne-cellLocal": "1",
     "davof-planeSurf-exact": "x", "davof-planeSurf-ringArea": "D",
+    "davof-planeSurf-youngs": "s",
     "plicRDF": "^", "isoAlpha": "v",
     "plicRDF-ccs": "<", "davof-ringArea-vofCutCell": ">",
 }

@@ -231,6 +231,22 @@ def _with_derived_tokens(tokens):
             "\n        correctorIterations " + iters + ";"
             "\n        correctorTolerance " + str(out.get("TPF_CORRECTOR_TOLERANCE", "1e-12")) + ";"
             "\n        correctorLog " + str(out.get("TPF_CORRECTOR_LOG", "true")) + ";")
+    # The normal-order study (leia davof-normal-order, 2026-11-12), appended to the same
+    # block and EMPTY at the defaults: TPF_EXACT_FLUX_ERROR "true" renders
+    # sweptExactFluxError (the per-step flux error against the exact flux of the
+    # translated sphere), TPF_YOUNGS_GRAD_SCHEME other than none renders
+    # youngsGradScheme (the gradient of the Youngs normal model; underscores become
+    # spaces: Gauss_linear -> "Gauss linear")
+    extra = ""
+    if str(out.get("TPF_EXACT_FLUX_ERROR", "false")) == "true":
+        extra += ("\n        // the per-step flux error against the exact flux of the translated"
+                  "\n        // sphere (leia davof-normal-order, 2026-11-12)"
+                  "\n        sweptExactFluxError true;")
+    ygs = str(out.get("TPF_YOUNGS_GRAD_SCHEME", "none"))
+    if ygs != "none":
+        extra += ("\n        // the gradient of the Youngs normal model (2026-11-12)"
+                  "\n        youngsGradScheme \"" + ygs.replace("_", " ") + "\";")
+    out["TPF_CORRECTOR_KEYS"] = out["TPF_CORRECTOR_KEYS"] + extra
     # The advection scheme override of the leia route (TPF_ADVECTION_SCHEME auto |
     # davofSwept | isoAdvector): the DAVOF reconstruction under OpenFOAM's isoAdvection
     # (isoAdvectorScheme.H, 2026-11-09) is selected by isoAdvector on a davof row

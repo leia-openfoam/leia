@@ -6216,3 +6216,123 @@ parallel scatter, which the port's L1 criterion does not see.
 | none (profiled) | 1 | 864 | 167.26 | 0.1800 |
 | mean1 (profiled) | 1 | 864 | 178.20 | 0.2000 |
 
+
+## Normal order versus normal bias (2026-11-12, leia branch `davof-normal-order`)
+
+Tomislav's study of 2026-11-12: separate the ORDER of the interface normal from its BIAS,
+and report the error |1 - n_k . n_e| with its convergence orders wherever a normal error
+appears. Branch `davof-normal-order`, based on `davof-iter` 76db7b64, which carries the
+unit-normal clip fix 9c0d983d (the port's ee6fddc8 carries the same fix in the
+`reinitFaceFractions` diagnostic only; the standing pieces path does not call the clip,
+so both bases run the same flux; davof-iter adds the face-fraction corrector, default
+`none`, bit for bit the old path, verified on the standing deformation record).
+
+### The argument under test (pre-registered before the first run)
+
+CCS positions the plane inside the cell from alpha_k for a given normal, so the plane
+pivots about a point of the cell: a normal whose angle error is theta_k = O(h^p) places
+the plane with an in-cell position error O(h^{p+1}) (the lever arm is O(h)). The volume
+flux of a face is the liquid volume in the slab the face sweeps in one step; the error a
+tilted plane makes there is the sliver between the true and the tilted plane inside that
+slab, O(Co h^{p+1}) relative to the cell volume, per interface cell and per step. Over the
+O(1/(Co h)) steps of a fixed travel, the GLOBAL shape error has an order between p and
+p + 1: close to p when the per-step errors keep their sign from step to step (a BIASED
+normal estimator, whose error accumulates), close to p + 1 when they are unbiased and the
+next reconstruction, from the transported alpha_k, absorbs them. A first-order normal
+therefore does not imply a first-order scheme: the shape order is set by the bias of the
+normal, not by its order. This is a heuristic error budget, not a proof; the study tests
+its four consequences. The data so far straddle it: on the rotation (the corrector study,
+2026-11-11) the ring-area normal converges at 1.18 in L1(n) while E_shape converges at
+1.88; on the sphere translation ladder of 2026-10-25 E_shape converged at 1.35 with the
+ring normal and 2.84 with the exact normal.
+
+### The norms (every row, every N, every Co; least-squares and pairwise orders)
+
+All over the interface cells of the reconstruction at the end of the run (the
+`reconstructionError` function object), with n_k the unit normal of the positioned plane
+and n_e the exact unit normal at the plane's centroid x_k (the gradient of the exact
+implicit function there):
+
+(a) the angle theta_k = acos(n_k . n_e), computed as 2 asin(|n_k - n_e|/2) (acos loses
+half the digits at small angles): L1 (the mean) and Linf (the maximum);
+(b) 1 - n_k . n_e: L1 and Linf. For unit vectors 1 - n_k . n_e = |n_k - n_e|^2/2 exactly,
+and 1 - cos theta = theta^2/2 (1 + O(theta^2)): when the angle converges at order p this
+norm reads 2p, so a first-order angle appears as second order in it. Consequently
+L1(1 - n.n_e) = L2(|n - n_e|)^2/2 and Linf(1 - n.n_e) = Linf(|n - n_e|)^2/2 exactly, their
+orders are exactly twice the L2 and Linf orders of |n - n_e|, and every finished case that
+stored the L2 and Linf of |n - n_e| gives this norm without a re-run;
+(c) the existing column L1(n) = `LNormalDiff1` of `reconstructionError`: the mean over the
+interface cells of |n_k - n_e|, the length of the difference of the two unit vectors (not
+the angle; |n_k - n_e| = 2 sin(theta_k/2) = theta_k (1 - theta_k^2/24 + ...), so it has
+the angle's order); `LNormalDiff2` its root mean square, `LNormalDiffInf` its maximum;
+(d) the in-cell position error: the distance of the plane centroid x_k from the exact
+sphere, |R - |x_k - o||, L1 over the interface cells (`LCentreDiff1`);
+(e) the per-step flux error on the translation: for every face of the interface cells, the
+computed volume flux dVf of the step (after the swept flux, before the bounding) against
+the exact one, the liquid volume of the prism between f - U dt and f under the exactly
+moved sphere at t^n (the exact sphere-tetrahedron overlap of Strobl, Formella and
+Poeschel 2016, the `exactSphere` volume rule, exact for a uniform translation),
+|dVf - dVf_exact|/V of the upwind cell, the mean over the faces per step (`fluxErrL1`), and
+the max over the steps of that mean (the median over the steps reported next to it);
+(f) E_shape (`volumeFractionError`, against the exact end state), E_mass (the volume
+deviation in %), min and max alpha over the run;
+plus the normal error of the plicRDF benchmark, defined by H. Scheufler and J. Roenby,
+Accurate and efficient surface reconstruction from volume fraction data on general meshes,
+J. Comput. Phys. 383 (2019) 1-23, doi:10.1016/j.jcp.2019.01.009, arXiv:1801.05382,
+Section 4.1, Eq. (21), verbatim: "For the interface position, x_S, and normal, n̂_S,
+inside a cell we define the two norms, L∞^x = max_i(|x_S,i − x^exact_S,i|) and
+L∞^n = max_i(1 − n̂_S,i · n̂^exact_S,i), (21) where the maximum is taken over all interface
+cells, x^exact_S,i is the exact interface position, and n̂^exact_S,i is the exact interface
+unit normal." It is the Linf of (b) (their reference point of the exact normal is not
+stated; ours is the plane centroid), reported as its own column so that the comparison
+with their figures is like for like; they report it, not the angle, and so read a
+first-order angle as second order. Wall clock: the ClockTime at the end of every case, at
+equal ranks (8; the serial N 32 check on 1), on shared nodes, one run per case.
+
+### The rows and the tests
+
+Three normals on identical initial states (initDavofFields `exactSphere`), the same
+swept-face scheme for all three, the pieces path in the standing Co 1 setting (the
+round-4 keys; the Enright setting `recommended`: `sweptPieceVolume signedTets`,
+`sweptBoundedFaceFraction scale`, `interfaceCellRule normalAndAlpha`; CCS positioning to
+1e-14 of V; `grazingCut openfoam`): (1) `davof-planeSurf-exact`, the exact normal (the
+control); (2) `davof-planeSurf-ringArea`, the ring area normal d_k = sum_{j in R(k)} m_j;
+(3) `davof-planeSurf-youngs`, a deliberately biased first-order normal, Youngs' normal
+-grad(alpha_k)/|grad(alpha_k)| (the code's sign convention points into the liquid) from
+OpenFOAM's Gauss linear gradient of alpha_k (the gradient of OpenFOAM's gradAlpha), the
+existing `youngs` model with the new key `youngsGradScheme "Gauss linear"` (D. L. Youngs,
+Time-dependent multi-material flow with large fluid distortion, in: K. W. Morton,
+M. J. Baines (eds.), Numerical Methods for Fluid Dynamics, Academic Press, 1982,
+pp. 273-285; no DOI exists). Tests: the sphere translation (`sphereTranslation3D`, R 0.15,
+U = (1 0 0), one unit of travel; OpenFOAM Co = the interface Co for the uniform velocity)
+and the solid-body rotation of the standing family (`sphereRotation3D`, one turn); N 32,
+64, 128 on 8 ranks; OpenFOAM Co 0.2 and 1 (the rotation: interface Co 0.0463 and 0.2315);
+N 32 also serial. Configs `config/davof/nor_{trans,rot}_N{32,64,128}[_np1].yaml`
+(`workflow/scripts/nor_make_configs.py`), tables `workflow/scripts/nor_tables.py`, cluster
+directory `/work/scratch/tm83tomy/davof/agents/normal`.
+
+### Predictions per row (p = the least-squares order of L1(theta) over N 32-128, per row, test and Co)
+
+- **N-1 position:** the order of L1(d) is p + 1 within 0.3, for all three rows.
+- **N-2 flux (translation):** the order over N of the max over the steps of the per-step
+  L1 flux error is p + 1 within 0.3, for all three rows.
+- **N-3 shape:** with q the order of E_shape, q - p >= 0.6 ("near p + 1") for the exact and
+  the ring normal and q - p <= 0.4 ("near p") for the Youngs normal; 0.4 < q - p < 0.6 is
+  undecided and reported as such.
+- **N-4 the 1 - n.n_e norm:** the order of L1(1 - n.n_e) is 2p within 0.3, for all three rows
+  (it is exactly twice the L2 order of |n - n_e|, so this tests whether the L2 and the L1
+  of the angle share an order).
+- **N-5 serial/parallel:** at N 32 the end values of E_shape, L1(theta), L1(d), L1(alphaf)
+  of np 1 and np 8 agree to four significant digits (relative 1e-4; the swept flux's
+  parallel scatter is 1e-9 per value per 20 steps, its growth over a whole run unmeasured).
+- Expected sizes, not predictions: p about 2 for the exact normal (the exact normal at a
+  centroid that is itself O(h^2) off), p about 1 for the ring and the Youngs normal.
+
+Falsifiers stated with the predictions: the ring row's E_shape near p on BOTH tests means
+the ring normal is biased (the fix is then a normal, not a flux); the ring row near p + 1 on
+the translation but near p on the rotation means the flux path carries a rotation error
+the plane gate does not see. N-1 or N-2 failing for a row falsifies the error budget's
+first two steps for that row and voids its N-3 verdict.
+
+The one-plane path (davof-kiss, KISS round 3: one plane per swept face) enters as rows 4-6
+in a second pass if its plane gate passes; it is not waited for.

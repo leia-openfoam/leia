@@ -59,6 +59,12 @@ void Foam::reconstructionError::writeFileHeader(Ostream& os) const
     writeTabbed(os, "LCentreDiff1");
     writeTabbed(os, "LCentreDiff2");
     writeTabbed(os, "LCentreDiffInf");
+    // appended (davof, 2026-11-12): the angle theta = 2 asin(|n - n_e|/2)
+    // and 1 - n.n_e = |n - n_e|^2/2, mean (1) and maximum (Inf)
+    writeTabbed(os, "LNormalAngle1");
+    writeTabbed(os, "LNormalAngleInf");
+    writeTabbed(os, "LNormalOneMinusDot1");
+    writeTabbed(os, "LNormalOneMinusDotInf");
     os  << endl;
 }
 
@@ -92,7 +98,11 @@ Foam::reconstructionError::reconstructionError
     nInterface_(0),
     LCentreDiff1_(0),
     LCentreDiff2_(0),
-    LCentreDiffInf_(0)
+    LCentreDiffInf_(0),
+    LNormalAngle1_(0),
+    LNormalAngleInf_(0),
+    LNormalOneMinusDot1_(0),
+    LNormalOneMinusDotInf_(0)
 {
 
 
@@ -183,6 +193,8 @@ void Foam::reconstructionError::calcError
     // appended (davof): |n - n_exact| moments, total area, interface count
     scalar sumD = 0, sumD2 = 0, maxD = 0, areaLocal = 0;
     scalar sumP = 0, sumP2 = 0, maxP = 0;
+    // the angle and 1 - n.n_e (2026-11-12)
+    scalar sumA = 0, maxA = 0, sumO = 0, maxO = 0;
     label nLocal = 0;
 
     forAll(normal,cellI)
@@ -204,6 +216,17 @@ void Foam::reconstructionError::calcError
            sumD += diff;
            sumD2 += diff*diff;
            maxD = max(maxD, diff);
+           // the angle between the unit normals, 2 asin(|n - n_e|/2)
+           // (accurate for small angles, where acos(n.n_e) loses half the
+           // digits), and 1 - n.n_e = |n - n_e|^2/2 (exact for unit
+           // vectors; the plicRDF benchmark's measure, Scheufler and Roenby
+           // 2019, Sec. 4.1, Eq. (21), there as the maximum)
+           const scalar angle = 2*Foam::asin(min(0.5*diff, scalar(1)));
+           const scalar omd = 0.5*diff*diff;
+           sumA += angle;
+           maxA = max(maxA, angle);
+           sumO += omd;
+           maxO = max(maxO, omd);
            areaLocal += mag(normal[cellI]);
            ++nLocal;
 
@@ -226,6 +249,10 @@ void Foam::reconstructionError::calcError
     LCentreDiff1_ = sumPg/max(nInterface_, label(1));
     LCentreDiff2_ = Foam::sqrt(sumP2g/max(nInterface_, label(1)));
     LCentreDiffInf_ = returnReduce(maxP, maxOp<scalar>());
+    LNormalAngle1_ = returnReduce(sumA, sumOp<scalar>())/max(nInterface_, label(1));
+    LNormalAngleInf_ = returnReduce(maxA, maxOp<scalar>());
+    LNormalOneMinusDot1_ = returnReduce(sumO, sumOp<scalar>())/max(nInterface_, label(1));
+    LNormalOneMinusDotInf_ = returnReduce(maxO, maxOp<scalar>());
     if (type == "sphere")
     {
         const scalar R = readScalar(dict.lookup("radius"));
@@ -308,6 +335,10 @@ void Foam::reconstructionError::write(const scalar k1, const scalar k2)
             << token::TAB << LCentreDiff1_
             << token::TAB << LCentreDiff2_
             << token::TAB << LCentreDiffInf_
+            << token::TAB << LNormalAngle1_
+            << token::TAB << LNormalAngleInf_
+            << token::TAB << LNormalOneMinusDot1_
+            << token::TAB << LNormalOneMinusDotInf_
             << endl;
     }
 
@@ -348,6 +379,10 @@ void Foam::reconstructionError::write()
             << token::TAB << LCentreDiff1_
             << token::TAB << LCentreDiff2_
             << token::TAB << LCentreDiffInf_
+            << token::TAB << LNormalAngle1_
+            << token::TAB << LNormalAngleInf_
+            << token::TAB << LNormalOneMinusDot1_
+            << token::TAB << LNormalOneMinusDotInf_
             << endl;
     }
 

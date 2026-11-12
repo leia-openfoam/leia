@@ -42,6 +42,13 @@ Description
     vanishes has no model normal and gets the base class's noNormalFallback
     (keep: m_c; ringArea: the ring normal).
 
+    The gradient (key youngsGradScheme, 2026-11-12): empty (the default) is
+    fvc::grad with the case's gradSchemes entry for grad(alpha), as before;
+    a scheme given here (e.g. "Gauss linear", the centred Gauss gradient of
+    OpenFOAM's gradAlpha reconstruction) is used for this model alone, so
+    that the Youngs normal does not change with the scheme the case selects
+    for its other gradients.
+
 SourceFiles
     youngsNormal.C
 
@@ -67,6 +74,9 @@ class youngs
 :
     public davofNormalModel
 {
+    //- The gradient scheme of this model (empty: the case's grad(alpha))
+    string gradScheme_;
+
 public:
 
     //- Runtime type information

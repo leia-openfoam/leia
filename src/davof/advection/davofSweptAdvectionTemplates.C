@@ -550,6 +550,13 @@ void Foam::davofSweptAdvection::advect(const SpType& Sp, const SuType& Su)
     curvedFlux(mesh_.time().deltaTValue());
     reportCurved();
 
+    // the flux error against the exact flux of the translated sphere
+    // (sweptExactFluxError, a diagnostic; 2026-11-12)
+    if (sweptExactFluxError_)
+    {
+        exactFluxError(mesh_.time().deltaTValue());
+    }
+
     // Adjust alpha for mesh motion
     if (mesh_.moving())
     {

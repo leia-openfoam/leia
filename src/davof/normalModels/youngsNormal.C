@@ -28,6 +28,8 @@ License
 #include "youngsNormal.H"
 #include "davof.H"
 #include "fvcGrad.H"
+#include "gradScheme.H"
+#include "IStringStream.H"
 #include "addToRunTimeSelectionTable.H"
 #include "profiling.H"
 
@@ -51,8 +53,15 @@ Foam::davofNormalModels::youngs::youngs
     const reconstruction::davof& scheme
 )
 :
-    davofNormalModel(typeName, dict, scheme, "check")
-{}
+    davofNormalModel(typeName, dict, scheme, "check"),
+    gradScheme_(dict.getOrDefault<string>("youngsGradScheme", ""))
+{
+    if (!gradScheme_.empty())
+    {
+        Info<< "davof: normalModel youngs with the gradient scheme "
+            << gradScheme_ << " (youngsGradScheme)" << endl;
+    }
+}
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
@@ -64,7 +73,22 @@ void Foam::davofNormalModels::youngs::modelNormals
 )
 {
     addProfilingInFunction(geometricVoF);
-    const tmp<volVectorField> tgradAlpha(fvc::grad(scheme_.alpha1()));
+    tmp<volVectorField> tgradAlpha;
+    if (gradScheme_.empty())
+    {
+        tgradAlpha = fvc::grad(scheme_.alpha1());
+    }
+    else
+    {
+        // the model's own scheme, e.g. "Gauss linear"
+        IStringStream is(gradScheme_);
+        tgradAlpha =
+            fv::gradScheme<scalar>::New(mesh_, is)().grad
+            (
+                scheme_.alpha1(),
+                "grad(" + scheme_.alpha1().name() + ')'
+            );
+    }
     const volVectorField& gradAlpha = tgradAlpha();
     const DynamicField<label>& labels = scheme_.interfaceLabels();
 
