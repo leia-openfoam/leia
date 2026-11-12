@@ -1892,6 +1892,7 @@ which is the question of Section~\ref{sec:optweights}, and on a perfect lattice 
 \(\rho = 1\).
 
 \subsection{A different polynomial degree}
+\label{sec:degree}
 
 The second natural idea is to change the degree: a higher degree for accuracy, or a lower one
 for robustness. On the same one-ring stencil, the worst \(\max|G|\) over nine flow directions:
@@ -2114,45 +2115,73 @@ cell, and it is the number previously recorded as the mesh's $\Lambda_{\max}$.
 
 \part{What it all amounts to, and what to change}
 
-\section{One sentence covers every case in this document}
+\section{Three conditions decide whether a scheme amplifies}
 \label{sec:principle}
 
-Four separate calculations have now been done: the interior of a box mesh, the interior at
-high Courant number, a cell against a wall, and a honeycomb. They give one statement.
+An earlier version of this section said: the scheme amplifies exactly when the point it must
+look up lies outside the region that its data covers. \textbf{That sentence is too strong, and
+it is withdrawn.} It is correct for the original scheme on a perfect mesh. It is not a law.
+The calculations of this document give three conditions, and a scheme must meet all three.
 
-\begin{quote}
-\textbf{The scheme amplifies exactly when the point it must look up lies outside the region
-its data covers.} Inside that region the local fit interpolates and nothing grows, at any
-Courant number and in any direction. Outside it, the fit continues a parabola past its data,
-and a continued parabola grows.
-\end{quote}
-
-Everything measured here is that sentence with a different distance in it:
+\paragraph{Condition 1: where the departure point lies in the data.}
+The departure point must lie in the central region of the data, not only inside their outline.
+Outside the data the fit continues a parabola past its last point, and a continued parabola
+grows. This condition gives every limit of the original scheme:
 
 \begin{center}
 \begin{tabular}{lll}
 \toprule
-situation & how far the data reaches & limit \\
+situation & how far the data reach & limit \\
 \midrule
 box mesh, flow along an axis   & the next cell centre, $1$ cell   & $\mathrm{Co} = 1$ \\
 box mesh, flow along a diagonal & the corner neighbour, further   & $\mathrm{Co} \approx 1.07$ \\
-honeycomb, between two neighbours & the hexagon's near side, $\sqrt3/2$ & $\mathrm{Co} = 0.866$ \\
+honeycomb, between two neighbours & the near side of the hexagon, $\sqrt3/2$ & $\mathrm{Co} = 0.866$ \\
 cell against a wall & nothing beyond the wall, $0$ & any inward flow \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-The last row is why a boundary is different in kind rather than in degree. An interior cell
-has data on both sides and only runs out of it at a Courant number near one. A wall cell has
-\emph{no} data beyond the wall at all, so the moment the flow carries material inward from
-outside, the fit is extrapolating --- at any Courant number, however small. That is why the
-boundary amplifies at $\mathrm{Co} = 0.0164$ while the interior does not.
+The last row is why a boundary is different in kind. An interior cell has data on both sides.
+A wall cell has no data beyond the wall, so the fit extrapolates at any Courant number as soon
+as the flow carries material inward. That is why the boundary amplifies at
+$\mathrm{Co} = 0.0164$ and the interior does not. It is also why the boundary face value helps
+and why its weight is irrelevant: it is the only datum on the far side of the departure point.
 
-It is also why the boundary face value helps, and why its weight is irrelevant: it is the only
-thing standing on the far side of the departure point, so it converts an extrapolation into an
-interpolation. It is doing geometry, not carrying information.
+\paragraph{Condition 2: the polynomial space.}
+A departure point inside its data is not sufficient. \measured{} On the perfect square, the
+points centre, vertices and edge midpoints enclose every departure point of a cell. With the
+tensor quadratic through these nine points the growth factor is $1.000000$. With the
+least-squares complete quadratic through the same nine points it is $1.018$ at
+$\mathrm{Co} = 0.0164$ (\texttt{sympy/scheme\_matrix.py}, schemes \texttt{BFC/I} and
+\texttt{BFC/L2}). The data and the departure point are the same; only the space differs.
+\derived{} The linear fit of Section~\ref{sec:degree} is the same statement: its departure
+point is inside the data, and it is unstable at every Courant number. \measured{} The
+honeycomb gives a third case: no combination of centre, vertices and edge midpoints reaches
+growth factor exactly $1$ with the spaces tried.
 
+\paragraph{Condition 3: the regularity of the points.}
+The exact value $1$ comes from a symmetry of the weights on a perfect lattice. A mesh that
+breaks the symmetry loses the exact value, also for a departure point in the centre of its
+data. \measured{} On a periodic block of $3\times3$ quadrilaterals with vertices displaced by
+$10\,\%$ of $h$, the original scheme has growth factor $1 + 3.9\times10^{-4}$ at
+$\mathrm{Co} = 0.0164$, and the tensor point set has $1 + 4\times10^{-8}$
+(\texttt{data/tables/multipoint\_perturbed.csv}). \measured{} A $2{:}1$ refinement transition
+is the strongest loss of regularity that a hexahedral mesh has: there the original scheme has
+$1 + 3.3\times10^{-3}$ at $\mathrm{Co} = 0.0164$ and $1 + 5.8\times10^{-2}$ at
+$\mathrm{Co} = 0.3$ for flow normal to the transition (Section~\ref{sec:scheme-matrix}).
 
+\paragraph{A correction.}
+Section~\ref{sec:optweights} quotes $1.026$ at $\mathrm{Co} = 0.3$ for a stencil perturbed by
+$10\,\%$. That number comes from one perturbed stencil that every cell applies
+(\texttt{sympy/perturbed\_stencil.py}). This is not a mesh: on a mesh the stencils of
+neighbour cells are different and they share their points. The consistent mesh gives
+$1 + 1.1\times10^{-4}$ at the same Courant number, two orders smaller. The single-stencil
+number is an upper indication only.
+
+\paragraph{What this means for a new scheme.}
+The three conditions are tests, not a proof. A candidate is judged by the growth factor of
+its one-step matrix on a periodic block of the mesh type in question, for all waves. The
+script \texttt{sympy/scheme\_matrix.py} does this for every scheme and every mesh type.
 
 \section{Improvements to the reconstruction}
 \label{sec:improve}
